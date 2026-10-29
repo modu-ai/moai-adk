@@ -91,24 +91,7 @@ func (s *Store) writeDocLocal(d Doc) error {
 	if err != nil {
 		return err
 	}
-	tmp, err := os.CreateTemp(dir, "doc.tmp-*")
-	if err != nil {
-		return fmt.Errorf("%w: %v", core.ErrStoreUnavailable, err)
-	}
-	if _, err := tmp.Write(b); err != nil {
-		_ = tmp.Close()
-		_ = os.Remove(tmp.Name())
-		return fmt.Errorf("%w: %v", core.ErrStoreUnavailable, err)
-	}
-	if err := tmp.Close(); err != nil {
-		_ = os.Remove(tmp.Name())
-		return fmt.Errorf("%w: %v", core.ErrStoreUnavailable, err)
-	}
-	if err := os.Rename(tmp.Name(), s.docPath(d.Kind, d.Name)); err != nil {
-		_ = os.Remove(tmp.Name())
-		return fmt.Errorf("%w: %v", core.ErrStoreUnavailable, err)
-	}
-	return nil
+	return s.writeAtomic(dir, "doc.tmp-*", s.docPath(d.Kind, d.Name), b)
 }
 
 // GetDoc returns a document, or core.ErrNotHeld.

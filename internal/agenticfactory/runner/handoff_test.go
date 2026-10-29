@@ -47,10 +47,10 @@ func TestAttemptSeqCountsAttempts(t *testing.T) {
 	}
 }
 
-func TestHandoffReleasesClaimKeepsReceipt(t *testing.T) {
+func TestHandoffReleasesClaimKeepsReceiptWhenTheOwnerHasGone(t *testing.T) {
 	r, ref := newRunner(t)
 	tk := landed(t, r, ref)
-	rec, err := r.HandOff(tk, goodHandoff())
+	rec, err := handOffAndLeave(r, tk, goodHandoff())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -111,7 +111,7 @@ func TestHandoffOnlyFromLanding(t *testing.T) {
 func TestSameReceiptTwiceIsAcceptedOnce(t *testing.T) {
 	r, ref := newRunner(t)
 	tk := landed(t, r, ref)
-	first, err := r.HandOff(tk, goodHandoff())
+	first, err := handOffAndLeave(r, tk, goodHandoff())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -168,7 +168,7 @@ func TestReceiptNeedsAnIdAndTheLeadersAcceptance(t *testing.T) {
 func TestPRPublishedIsNotDone(t *testing.T) {
 	r, ref := newRunner(t)
 	tk := landed(t, r, ref)
-	if _, err := r.HandOff(tk, goodHandoff()); err != nil {
+	if _, err := handOffAndLeave(r, tk, goodHandoff()); err != nil {
 		t.Fatal(err)
 	}
 	cur, _ := r.Store.Read(ref)
@@ -189,7 +189,7 @@ func TestPRPublishedIsNotDone(t *testing.T) {
 func TestDoneNeedsIssueCloseAndPendingEffectKeepsMergeFact(t *testing.T) {
 	r, ref := newRunner(t)
 	tk := landed(t, r, ref)
-	_, _ = r.HandOff(tk, goodHandoff())
+	_, _ = handOffAndLeave(r, tk, goodHandoff())
 	noClose := Landing{RemoteMerged: true, LocalSyncRecorded: true, Deploy: "N/A: x"}
 	if _, err := r.CompleteHandedOff(ref, noClose); !errors.Is(err, core.ErrEvidenceIncomplete) {
 		t.Fatalf("close missing: %v", err)
@@ -220,7 +220,7 @@ func TestUnmergedAttemptRecordsNoMergeFact(t *testing.T) {
 func TestReopenThenSingleRepairClaim(t *testing.T) {
 	r, ref := newRunner(t)
 	tk := landed(t, r, ref)
-	_, _ = r.HandOff(tk, goodHandoff())
+	_, _ = handOffAndLeave(r, tk, goodHandoff())
 	if _, err := r.ClaimRepair(ref, "sess-b", "disp-r", "run-2", "WT-agentic-x"); !errors.Is(err, core.ErrTransitionInvalid) {
 		t.Errorf("repair straight from landing: %v", err)
 	}
@@ -262,7 +262,7 @@ func TestHistoryKeptUnderOneIssueAcrossRepair(t *testing.T) {
 	_, _ = r.Submit(tk, headA, false)
 	_, _ = r.Verify(tk, passAllFor(tk, headA))
 	_, _ = landOK(r, tk, headA)
-	if _, err := r.HandOff(tk, goodHandoff()); err != nil {
+	if _, err := handOffAndLeave(r, tk, goodHandoff()); err != nil {
 		t.Fatal(err)
 	}
 	_, _ = r.Reopen(ref, "ci failed")
@@ -276,7 +276,7 @@ func TestHistoryKeptUnderOneIssueAcrossRepair(t *testing.T) {
 	_, _ = landOK(r, rep, headB)
 	h := goodHandoff()
 	h.HandoffID, h.Head, h.BoundaryHead = "ho-2", headB, headB
-	if _, err := r.HandOff(rep, h); err != nil {
+	if _, err := handOffAndLeave(r, rep, h); err != nil {
 		t.Fatal(err)
 	}
 	recs, _ := r.Store.List()
@@ -315,7 +315,7 @@ func TestCompleteHandedOffNeedsAHandoff(t *testing.T) {
 func TestRepairIsSingleOwner(t *testing.T) {
 	r, ref := newRunner(t)
 	tk := landed(t, r, ref)
-	if _, err := r.HandOff(tk, goodHandoff()); err != nil {
+	if _, err := handOffAndLeave(r, tk, goodHandoff()); err != nil {
 		t.Fatal(err)
 	}
 	// A fresh claim on a PR-published Issue is not allowed.
@@ -358,7 +358,7 @@ func TestRepairRequiresAReceipt(t *testing.T) {
 func TestRepairCanRepublishNewHead(t *testing.T) {
 	r, ref := newRunner(t)
 	tk := landed(t, r, ref)
-	_, _ = r.HandOff(tk, goodHandoff())
+	_, _ = handOffAndLeave(r, tk, goodHandoff())
 	mustReopen(t, r, ref)
 	rep, _ := r.ClaimRepair(ref, "sess-b", "disp-r", "run-2", "WT-agentic-x")
 	if _, err := r.StartAttempt(rep, "attempt-2", core.DeliveryExecuted); err != nil {
@@ -378,7 +378,7 @@ func TestRepairCanRepublishNewHead(t *testing.T) {
 	}
 	h := goodHandoff()
 	h.HandoffID, h.Head, h.BoundaryHead = "ho-2", headB, headB
-	if rec, err := r.HandOff(rep, h); err != nil || rec.Receipt.Head != core.HeadSHA(headB) || rec.Holder != "" {
+	if rec, err := handOffAndLeave(r, rep, h); err != nil || rec.Receipt.Head != core.HeadSHA(headB) || rec.Holder != "" {
 		t.Errorf("second handoff: %+v %v", rec, err)
 	}
 }
@@ -387,7 +387,7 @@ func TestBacklogCapHoldsNewClaimsNotRepairs(t *testing.T) {
 	r, ref := newRunner(t)
 	_ = r.Store.SetMaxOpenPRs(1)
 	tk := landed(t, r, ref)
-	if _, err := r.HandOff(tk, goodHandoff()); err != nil {
+	if _, err := handOffAndLeave(r, tk, goodHandoff()); err != nil {
 		t.Fatal(err)
 	}
 	other, _ := core.NewIssueRef(2000)
@@ -411,7 +411,7 @@ func TestBacklogCapFreedByDone(t *testing.T) {
 	r, ref := newRunner(t)
 	_ = r.Store.SetMaxOpenPRs(1)
 	tk := landed(t, r, ref)
-	_, _ = r.HandOff(tk, goodHandoff())
+	_, _ = handOffAndLeave(r, tk, goodHandoff())
 	if _, err := r.CompleteHandedOff(ref, Landing{RemoteMerged: true, LocalSyncRecorded: true, IssueClosed: true, Deploy: "N/A: x"}); err != nil {
 		t.Fatal(err)
 	}
@@ -440,7 +440,7 @@ func TestLeaderRestartRestoresClaims(t *testing.T) {
 	ref1, _ := core.NewIssueRef(1948)
 	ref2, _ := core.NewIssueRef(2000)
 	tk := landed(t, r, ref1)
-	if _, err := r.HandOff(tk, goodHandoff()); err != nil {
+	if _, err := handOffAndLeave(r, tk, goodHandoff()); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := r.Claim(ref2, "sess-b", "disp-9", "run-9"); err != nil {
@@ -484,7 +484,7 @@ func TestAgentIdentitySurvivesHandoffAndRepair(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, _ = landOK(r, tk, headA)
-	rec, err := r.HandOff(tk, goodHandoff())
+	rec, err := handOffAndLeave(r, tk, goodHandoff())
 	if err != nil || rec.Receipt.Agent != "agent-1" {
 		t.Fatalf("receipt agent: %+v %v", rec, err)
 	}
@@ -509,7 +509,7 @@ func TestReceiptStaysAttributedAfterNumberReuse(t *testing.T) {
 	_, _ = r.Submit(tk, headA, false)
 	_, _ = r.Verify(tk, passAllFor(tk, headA))
 	_, _ = landOK(r, tk, headA)
-	rec, err := r.HandOff(tk, goodHandoff())
+	rec, err := handOffAndLeave(r, tk, goodHandoff())
 	if err != nil || rec.Receipt.Session != a1.SessionID {
 		t.Fatalf("receipt session: %+v %v", rec, err)
 	}
@@ -523,5 +523,83 @@ func TestReceiptStaysAttributedAfterNumberReuse(t *testing.T) {
 	cur, _ := r.Store.Read(ref)
 	if cur.Receipt.Agent != "agent-1" || cur.Receipt.Session != a1.SessionID || cur.Receipt.Session == a2.SessionID {
 		t.Errorf("attribution after reuse: %+v", cur.Receipt)
+	}
+}
+
+// handOffAndLeave is a handoff followed by the owner being gone: the receipt no
+// longer holds the Issue, so the owner must leave (or be taken over) for the
+// leader and monitor paths on a released record to apply. The returned record is
+// the stored one.
+func handOffAndLeave(r *Runner, t Ticket, h Handoff) (claim.Record, error) {
+	if _, err := r.HandOff(t, h); err != nil {
+		return claim.Record{}, err
+	}
+	if err := r.Store.Release(t.Issue, t.Holder); err != nil {
+		return claim.Record{}, err
+	}
+	return r.Store.Read(t.Issue)
+}
+
+// A PR receipt does not hand the Issue back: the same agent stays the owner until
+// the Issue is closed (operator decision), so it can answer CI and review and
+// finish the merge itself.
+func TestReceiptKeepsTheIssueWithItsAgentUntilClosed(t *testing.T) {
+	r, ref := newRunner(t)
+	tk := landed(t, r, ref)
+	rec, err := r.HandOff(tk, goodHandoff())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rec.Holder != tk.Holder || rec.Epoch != tk.Epoch || rec.Receipt == nil || rec.State != core.StateLanding {
+		t.Fatalf("the owner must survive the receipt: %+v", rec)
+	}
+	if _, err := r.Claim(ref, "other", "disp-x", "run-9"); !errors.Is(err, core.ErrHeld) {
+		t.Errorf("another agent claimed an Issue whose owner has a PR: %v", err)
+	}
+	if _, err := r.CompleteHandedOff(ref, Landing{RemoteMerged: true, LocalSyncRecorded: true, IssueClosed: true, Deploy: "N/A: x"}); !errors.Is(err, core.ErrTransitionInvalid) {
+		t.Errorf("the leader path must not write over a live owner: %v", err)
+	}
+	done, err := r.Complete(tk, Landing{RemoteMerged: true, LocalSyncRecorded: true, IssueClosed: true, Deploy: "N/A: x"})
+	if err != nil || done.State != core.StateDone || done.Holder != tk.Holder {
+		t.Fatalf("the owner finishes its own PR: %+v %v", done, err)
+	}
+}
+
+// Canon E06 (REVIEWING -> BUILDING/FIX) needs four things: the repair decision,
+// the exclusive owner, the scope reserved again and the previous writer ended.
+// The owner's reopen carries them, and without them nothing moves.
+func TestOwnerReopensItsOwnPRForRepairOnTheE06Evidence(t *testing.T) {
+	r, ref := newRunner(t)
+	tk := landed(t, r, ref)
+	if _, err := r.HandOff(tk, goodHandoff()); err != nil {
+		t.Fatal(err)
+	}
+	ok := RepairEvidence{ScopeReserved: true, OldWriterEnded: true}
+	if _, err := r.ReopenOwn(tk, "", ok); !errors.Is(err, core.ErrEvidenceIncomplete) {
+		t.Errorf("the repair decision is required: %v", err)
+	}
+	for name, ev := range map[string]RepairEvidence{
+		"scope not reserved":   {OldWriterEnded: true},
+		"old writer not ended": {ScopeReserved: true},
+	} {
+		if _, err := r.ReopenOwn(tk, "ci failed on latest head", ev); !errors.Is(err, core.ErrEvidenceIncomplete) {
+			t.Errorf("%s: %v", name, err)
+		}
+	}
+	if cur, _ := r.Store.Read(ref); cur.State != core.StateLanding {
+		t.Fatalf("a refused reopen must change nothing: %+v", cur)
+	}
+	rec, err := r.ReopenOwn(tk, "ci failed on latest head", ok)
+	if err != nil || rec.State != core.StateVerifying || rec.Holder != tk.Holder || rec.Receipt == nil || rec.Epoch != tk.Epoch {
+		t.Fatalf("reopen by the owner: %+v %v", rec, err)
+	}
+	if rec.Stage != core.StageBuilding || rec.Sub != core.SubFix {
+		t.Errorf("an accepted PR under repair is BUILDING/FIX (canon E06), got %s/%s", rec.Stage, rec.Sub)
+	}
+	if rec.Repair == nil || rec.Repair.Decision != "ci failed on latest head" || rec.Repair.Owner != tk.Holder {
+		t.Errorf("the E06 evidence is recorded: %+v", rec.Repair)
+	}
+	if _, err := r.ReopenOwn(Ticket{Issue: ref, Holder: "other", Epoch: tk.Epoch}, "x", ok); !errors.Is(err, core.ErrOwnershipUnverified) {
+		t.Errorf("a stranger reopened: %v", err)
 	}
 }

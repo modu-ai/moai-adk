@@ -81,6 +81,20 @@ type WebhookFeed interface {
 	Drain() []Change
 }
 
+// PendingChange is one pushed event that is queued durably. ID is the host's delivery id.
+type PendingChange struct {
+	ID string
+	Change
+}
+
+// DurableFeed is a push channel whose events survive a restart: Pending lists them without removing
+// anything, and an event leaves the queue only through Commit, after the consumer acknowledged it.
+type DurableFeed interface {
+	Healthy() bool
+	Pending() ([]PendingChange, error)
+	Commit(ids []string) error
+}
+
 // Adaptive bounds the polling interval; all three come from configuration.
 type Adaptive struct {
 	Min, Max time.Duration
@@ -95,9 +109,13 @@ type Report struct {
 	Parked   bool
 	Reason   string
 	Baseline bool // Changes came from a first observation (nothing acknowledged yet): initial state, not new events
+	// Notice is a fact about the stored cursor worth showing, not a failure: for example that it was
+	// resumed from an older generation. It stays on the reports until an acknowledgement is saved.
+	Notice string
 
-	snap  []byte // observed body this report describes; Ack makes it the acknowledged baseline
-	feedN int    // how many pushed (webhook) events this report carries
+	snap    []byte   // observed body this report describes; Ack makes it the acknowledged baseline
+	feedN   int      // how many pushed (webhook) events this report carries
+	feedIDs []string // delivery ids of the durable pushed events this report carries
 }
 
 // CursorStore persists the consumer-acknowledged baseline (the collector contract's cursor), so a restart
@@ -109,24 +127,33 @@ type CursorStore interface {
 	SaveCursor(key string, body []byte) error
 }
 
+// NotedCursorStore is a CursorStore that can also say when the cursor it returned is not the newest one.
+// The collector puts that note in its reports until the next acknowledgement is saved.
+type NotedCursorStore interface {
+	CursorStore
+	LoadCursorNoted(key string) (body []byte, found bool, note string, err error)
+}
+
 // Collector is the single collector of one repository: it fetches one path, remembers what it last
 // saw and what the consumer last acknowledged, passes on only the difference, and picks its own next
-// wake time. The acknowledged baseline lives in memory only; persisting it (the collector contract's
-// cursor and consumer ACK) is not implemented, so after a restart the first report is a Baseline.
+// wake time.
 type Collector struct {
 	Client   *Client
 	Path     string
 	Interval Adaptive
 	Differ   Differ
-	Feed     WebhookFeed
+	// Feed is a push channel kept in memory: its events are lost on a restart (the safety poll covers
+	// them). Durable is the push channel that survives a restart; use it where losing one matters.
+	Feed    WebhookFeed
+	Durable DurableFeed
 	// Cursors and CursorKey persist the acknowledged baseline. Optional: without a store the baseline
-	// lives in memory only and the first report after a restart is a Baseline. Pushed (webhook) events
-	// that were not yet acknowledged are NOT persisted; the safety poll covers them.
+	// lives in memory only and the first report after a restart is a Baseline.
 	Cursors   CursorStore
 	CursorKey string
 
 	mu       sync.Mutex
 	loaded   bool   // the cursor has been read from Cursors (or there is none to read)
+	note     string // what loading the cursor had to say; cleared once an acknowledgement is saved
 	last     []byte // acknowledged by the consumer
 	seen     []byte // latest observed from the host
 	feedBuf  []Change
@@ -149,10 +176,18 @@ func (c *Collector) Ack(rep Report) error {
 	}
 	if rep.snap != nil {
 		c.last = rep.snap
+		c.note = ""
 	}
 	if rep.feedN > 0 {
 		n := min(rep.feedN, len(c.feedBuf))
 		c.feedBuf = append([]Change(nil), c.feedBuf[n:]...)
+	}
+	// Durable events leave the queue last: a crash after the cursor save but before this commit reports
+	// them once more (at least once), never zero times.
+	if len(rep.feedIDs) > 0 && c.Durable != nil {
+		if err := c.Durable.Commit(rep.feedIDs); err != nil {
+			return fmt.Errorf("forge: the pushed events could not be removed from the queue: %w", err)
+		}
 	}
 	return nil
 }
@@ -162,7 +197,14 @@ func (c *Collector) Tick(ctx context.Context, now time.Time) Report {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if !c.loaded && c.Cursors != nil {
-		body, found, err := c.Cursors.LoadCursor(c.CursorKey)
+		var body []byte
+		var found bool
+		var err error
+		if n, ok := c.Cursors.(NotedCursorStore); ok {
+			body, found, c.note, err = n.LoadCursorNoted(c.CursorKey)
+		} else {
+			body, found, err = c.Cursors.LoadCursor(c.CursorKey)
+		}
 		if err != nil {
 			// Do not poll and do not report: with the real cursor unknown, any report could be wrong.
 			return Report{Reason: "the cursor could not be read: " + err.Error(), Next: now.Add(c.Interval.Min)}
@@ -173,8 +215,21 @@ func (c *Collector) Tick(ctx context.Context, now time.Time) Report {
 	}
 	c.loaded = true
 	rep := c.tick(ctx, now)
+	rep.Notice = c.note
 	rep.Changes = append(rep.Changes, c.feedBuf...)
 	rep.feedN = len(c.feedBuf)
+	if c.Durable != nil {
+		pending, err := c.Durable.Pending()
+		if err != nil {
+			if rep.Reason == "" {
+				rep.Reason = "the pushed-event queue could not be read: " + err.Error()
+			}
+		}
+		for _, p := range pending {
+			rep.Changes = append(rep.Changes, p.Change)
+			rep.feedIDs = append(rep.feedIDs, p.ID)
+		}
+	}
 	if c.seen != nil {
 		if ch, err := c.Differ(c.last, c.seen); err == nil {
 			rep.Changes = append(rep.Changes, ch...)
@@ -191,8 +246,10 @@ func (c *Collector) tick(ctx context.Context, now time.Time) Report {
 		return Report{Parked: true, Reason: "parked: permission denied", Next: now.Add(c.Interval.Max)}
 	}
 	var rep Report
-	if c.Feed != nil && c.Feed.Healthy() {
-		c.feedBuf = append(c.feedBuf, c.Feed.Drain()...)
+	if c.feedHealthy() {
+		if c.Feed != nil && c.Feed.Healthy() {
+			c.feedBuf = append(c.feedBuf, c.Feed.Drain()...)
+		}
 		if now.Before(c.next) {
 			rep.Next = minTime(c.next, now.Add(c.Interval.Safety))
 			return rep
@@ -244,12 +301,17 @@ func (c *Collector) tick(ctx context.Context, now time.Time) Report {
 	if res.PollInterval > wait {
 		wait = res.PollInterval
 	}
-	if c.Feed != nil && c.Feed.Healthy() {
+	if c.feedHealthy() {
 		wait = c.Interval.Safety
 	}
 	c.next = now.Add(wait)
 	rep.Next = c.next
 	return rep
+}
+
+// feedHealthy: a healthy push channel, volatile or durable, turns polling into a safety net.
+func (c *Collector) feedHealthy() bool {
+	return (c.Feed != nil && c.Feed.Healthy()) || (c.Durable != nil && c.Durable.Healthy())
 }
 
 func minTime(a, b time.Time) time.Time {

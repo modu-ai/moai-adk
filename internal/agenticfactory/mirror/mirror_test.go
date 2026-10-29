@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/claim"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
@@ -290,8 +291,12 @@ func TestLedgerFromRecordCarriesTheS46Position(t *testing.T) {
 	park := &core.Park{Reason: core.ReasonRateLimited, Evidence: "429", Resume: "after 15:00"}
 	gate := &core.Gate{Reason: core.ReasonDebtPresent, Detail: "debt", Resume: "rerun"}
 	ref := &core.Refusal{Reason: core.ReasonForeignClosing, Detail: "would close #3000"}
+	wait := &core.Wait{Owner: "h", NextAction: "re-run", RecheckAt: time.Date(2026, 10, 30, 9, 0, 0, 0, time.UTC), Diagnosis: "ci red", MaxRetries: 2, Escalate: "leader"}
 	l := LedgerFromRecord(claim.Record{Issue: 7, Holder: "h", State: core.StateVerifying, Stage: core.StageBuilding, Sub: core.SubImplement,
-		Park: park, Gate: gate, Refusal: ref, Seq: 4})
+		Park: park, Gate: gate, Refusal: ref, Wait: wait, Seq: 4})
+	if l.Wait != wait {
+		t.Errorf("the wait record must reach the ledger: %+v", l.Wait)
+	}
 	if l.Stage != core.StageBuilding || l.Sub != core.SubImplement || l.Park != park || l.Gate != gate || l.Refusal != ref || l.State != core.StateVerifying {
 		t.Errorf("projection: %+v", l)
 	}
