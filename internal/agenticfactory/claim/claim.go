@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
+	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
 // Record is the authoritative local claim for one Issue.
@@ -37,7 +38,10 @@ type Record struct {
 
 // Store keeps records under one directory: issue-<n>.json, guarded by
 // issue-<n>.lock created with O_EXCL.
-type Store struct{ dir string }
+type Store struct {
+	dir   string
+	probe func(int) (string, homestate.ProcessIdentityState)
+}
 
 const (
 	lockTries = 5
@@ -52,7 +56,7 @@ func Open(dir string) (*Store, error) {
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return nil, fmt.Errorf("%w: %v", core.ErrStoreUnavailable, err)
 	}
-	return &Store{dir: dir}, nil
+	return &Store{dir: dir, probe: homestate.ProbeProcessIdentity}, nil
 }
 
 func (s *Store) path(i core.IssueRef) string { return filepath.Join(s.dir, i.Resource()+".json") }
@@ -77,6 +81,14 @@ func (s *Store) withLock(i core.IssueRef, fn func() error) error {
 	if err != nil {
 		return fmt.Errorf("%w: %s", core.ErrBusy, i.Resource())
 	}
+	// Record who holds the lock so a crashed owner can later be told apart
+	// from a live one. An unprovable identity is written empty and is never
+	// recoverable (it classifies indeterminate).
+	start, state := s.probe(os.Getpid())
+	if state != homestate.ProcessIdentityLive {
+		start = ""
+	}
+	_, _ = fmt.Fprintf(f, "%d %s\n", os.Getpid(), start)
 	_ = f.Close()
 	defer func() { _ = os.Remove(s.lock(i)) }()
 	return fn()
