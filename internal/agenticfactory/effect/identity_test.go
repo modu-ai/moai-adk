@@ -94,6 +94,12 @@ func TestOwnIssueCloseIsAllowedOwnLabelsAndAssigneesAreNot(t *testing.T) {
 		if r := reasonOf(t, patch(e, "/repos/o/r/issues/7", body)); r != ReasonPermissionNotGranted {
 			t.Errorf("%s on our own issue: reason = %s", body, r)
 		}
+		// the label and assignee keys are for other authors' Issues: turning them on does not open our own
+		on := enforcer(world())
+		on.Collaboration = core.Collaboration{Provider: "github", Enabled: true, AllowedRepositories: []string{"o/r"}, Labels: true, Assignees: true}
+		if r := reasonOf(t, patch(on, "/repos/o/r/issues/7", body)); r != ReasonPermissionNotGranted {
+			t.Errorf("%s on our own issue with the keys on: reason = %s", body, r)
+		}
 	}
 }
 
@@ -249,9 +255,17 @@ func TestStaticGuardStillAppliesAndCollaborationNeverOverridesIt(t *testing.T) {
 
 func TestBadBodiesAndFieldsOutsideThePolicyAreRefused(t *testing.T) {
 	e := enforcer(world())
-	for _, body := range []string{"", "not json", "[]", "{}", "null", `{"title":"x"}`, `{"milestone":1}`, `{"state":"open"}`, `{"body":"x","title":"y"}`} {
+	for _, body := range []string{"", "not json", "[]", "{}", "null"} {
 		if r := reasonOf(t, patch(e, "/repos/o/r/issues/7", body)); r != ReasonMalformed {
 			t.Errorf("body %q: reason = %s", body, r)
+		}
+	}
+	// A field the policy does not define is not malformed: core says op-not-defined and that is recorded.
+	for _, body := range []string{`{"title":"x"}`, `{"milestone":1}`, `{"state":"open"}`, `{"body":"x","title":"y"}`, `{"locked":true}`} {
+		for _, path := range []string{"/repos/o/r/issues/7", "/repos/o/r/issues/8"} {
+			if r := reasonOf(t, patch(e, path, body)); r != ReasonOpNotDefined {
+				t.Errorf("%s %q: reason = %s, want op-not-defined", path, body, r)
+			}
 		}
 	}
 	for _, p := range []string{"/repos/o/r/issues/abc", "/repos/o/r/issues/0", "/repos/o/r/issues/comments/abc", "/repos/o/r/issues/7/comments/9"} {
@@ -292,7 +306,7 @@ func TestReasonStringsMatchCore(t *testing.T) {
 	pairs := map[RefusalReason]core.BlockReason{
 		ReasonNotIssueAuthor: core.ReasonNotIssueAuthor, ReasonIdentityUnknown: core.ReasonIdentityUnknown,
 		ReasonRepoNotAllowed: core.ReasonRepoNotAllowed, ReasonPermissionNotGranted: core.ReasonPermissionNotGranted,
-		ReasonOwnerUnconfirmed: core.ReasonOwnerUnconfirmed,
+		ReasonOwnerUnconfirmed: core.ReasonOwnerUnconfirmed, ReasonOpNotDefined: core.ReasonOpNotDefined,
 	}
 	for ours, theirs := range pairs {
 		if string(ours) != string(theirs) {

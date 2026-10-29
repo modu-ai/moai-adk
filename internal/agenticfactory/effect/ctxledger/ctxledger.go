@@ -58,6 +58,10 @@ var (
 // cover these, so the sender refuses them whatever the flag says.
 func personalData(s string) bool { return emailRe.MatchString(s) || homeRe.MatchString(s) }
 
+// ErrNoConditionalRead is returned by a wrapper whose inner Remote cannot read conditionally. The drift
+// check then falls back to the marker lookup instead of treating it as a failed check.
+var ErrNoConditionalRead = errors.New("ctxledger: the remote has no conditional read")
+
 // Fetcher is the optional cheap read used to notice that a machine-owned comment was edited by hand.
 // It is a conditional GET of one comment (If-None-Match with the ETag): notModified=true means the
 // remote still holds what the last read saw. See ForgeFetcher for the forge-backed implementation.
@@ -290,6 +294,9 @@ func (l *Ledger) drifted(ctx context.Context, in effect.Intent) (bool, error) {
 	c, have := l.cacheGet(in.Issue)
 	if f, ok := l.Remote.(Fetcher); ok && have {
 		cm, tag, notModified, err := f.Fetch(ctx, in.Issue, c.id, c.etag)
+		if errors.Is(err, ErrNoConditionalRead) {
+			goto lookup
+		}
 		switch {
 		case err != nil && isGone(err):
 			l.cacheDrop(in.Issue) // deleted: the sender falls back to the marker lookup and recreates it
@@ -308,6 +315,7 @@ func (l *Ledger) drifted(ctx context.Context, in effect.Intent) (bool, error) {
 		l.cachePut(in.Issue, c)
 		return true, nil
 	}
+lookup:
 	cm, found, err := l.Remote.Find(ctx, in.Issue, Marker(in.Issue))
 	if err != nil {
 		return false, l.classify(err)
