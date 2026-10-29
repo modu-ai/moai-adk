@@ -30,6 +30,12 @@
   exit 0
   ```
 
+**Context refinement — dependency checksums:** A valid root `go.sum` record whose dependency
+version equals the authoritative token, including its `/go.mod` form, does not enter the sweep on
+that field alone. A token in any other field or line, an invalid checksum, an invalid module/version
+pair, and the same content in another file remain detectable. `TestVersionStampGoSumContext`
+exercises both sides; the population and examined-count checks still include `go.sum`.
+
 ### AC-VSP-002 — 등록부는 정확 경로 28항목이고 글로브를 담지 않으며 스윕의 상위집합이다
 
 **Given** 등록부 리터럴
@@ -58,7 +64,7 @@
 
 ### AC-VSP-003 — 미등록 + 현재 를 잡고 경로를 이름으로 부른다 [완결성]
 
-**Given** 권위 토큰을 담았으나 등록부에 없는 파일이 트리에 있고
+**Given** 권위 토큰을 위의 의존성 버전 필드가 아닌 위치에 담았으나 등록부에 없는 파일이 트리에 있고
 **When** 검사가 실행될 때
 **Then** 검사는 실패하고 그 경로를 실패 출력에 이름으로 적는다.
 

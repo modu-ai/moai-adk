@@ -35,6 +35,7 @@
 package cli
 
 import (
+	"encoding/base64"
 	"fmt"
 	"os"
 	"os/exec"
@@ -43,6 +44,8 @@ import (
 	"sort"
 	"strings"
 	"testing"
+
+	"golang.org/x/mod/module"
 )
 
 const (
@@ -265,7 +268,8 @@ var versionStampDocStampsLiteral = []string{
 }
 
 // versionStampSweep computes the sweep: the population paths whose content
-// carries the token, plus the number of paths actually examined. A population
+// carries the token outside a valid dependency-version field in go.sum, plus
+// the number of paths actually examined. A population
 // path with no content entry — the file is absent from the working tree — is
 // not examined; the gap between examined and handed is exactly what the
 // population-reach assertion surfaces.
@@ -278,11 +282,39 @@ func versionStampSweep(token string, population []string, contents map[string]st
 			continue
 		}
 		judged++
-		if token != "" && strings.Contains(content, token) {
+		if versionStampContentContains(path, content, token) {
 			sweep = append(sweep, path)
 		}
 	}
 	return sweep, judged
+}
+
+// versionStampContentContains ignores only the version field of a valid go.sum
+// dependency record. All other occurrences, including malformed records and
+// occurrences elsewhere on a valid line, remain in the sweep.
+func versionStampContentContains(path, content, token string) bool {
+	if token == "" {
+		return false
+	}
+	if path != "go.sum" {
+		return strings.Contains(content, token)
+	}
+	for _, line := range strings.Split(content, "\n") {
+		if !strings.Contains(line, token) {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) == 3 && (fields[1] == token || fields[1] == token+"/go.mod") &&
+			!strings.Contains(fields[0], token) && !strings.Contains(fields[2], token) &&
+			strings.HasPrefix(fields[2], "h1:") {
+			digest, err := base64.StdEncoding.DecodeString(strings.TrimPrefix(fields[2], "h1:"))
+			if err == nil && len(digest) == 32 && module.Check(fields[0], token) == nil {
+				continue
+			}
+		}
+		return true
+	}
+	return false
 }
 
 // judgeVersionStampRegistry holds every judgment the version-stamp predicate
@@ -568,6 +600,50 @@ func TestVersionStampSweepByContent(t *testing.T) {
 	}
 	if judged != len(population) {
 		t.Errorf("judged=%d handed=%d", judged, len(population))
+	}
+}
+
+// TestVersionStampGoSumContext distinguishes dependency versions from product stamps.
+func TestVersionStampGoSumContext(t *testing.T) {
+	const token = "v3.2.0"
+	const sum = "h1:/Y3LGDMQaoYf55PebP1qsZ5FDGgAZyG1RYKEHeQzh1o="
+	valid := "modernc.org/gc/v3 " + token + " " + sum + "\n"
+	tests := []struct {
+		name, path, content string
+		want                bool
+	}{
+		{"dependency version", "go.sum", valid, false},
+		{"dependency go.mod", "go.sum", "modernc.org/gc/v3 " + token + "/go.mod " + sum + "\n", false},
+		{"extra product stamp", "go.sum", valid + "product version: " + token + "\n", true},
+		{"token in module path", "go.sum", "example.com/" + token + " " + token + " " + sum + "\n", true},
+		{"invalid checksum", "go.sum", "modernc.org/gc/v3 " + token + " bogus\n", true},
+		{"invalid module major", "go.sum", "example.com/x " + token + " " + sum + "\n", true},
+		{"not go.sum", "other.txt", valid, true},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			sweep, judged := versionStampSweep(token, []string{tc.path}, map[string]string{tc.path: tc.content})
+			if got := len(sweep) != 0; got != tc.want || judged != 1 {
+				t.Errorf("sweep=%v judged=%d, want match=%v judged=1", sweep, judged, tc.want)
+			}
+		})
+	}
+}
+
+// TestVersionStampGoSumRegistry preserves completeness for non-dependency text.
+func TestVersionStampGoSumRegistry(t *testing.T) {
+	in := versionStampSyntheticBase()
+	in.population = append(in.population, "go.sum")
+	line := "example.com/module/v9 " + in.token + " h1:/Y3LGDMQaoYf55PebP1qsZ5FDGgAZyG1RYKEHeQzh1o=\n"
+	in.contents["go.sum"] = line
+	if findings := judgeVersionStampRegistry(in.token, in.population, in.contents, in.registry, in.docStamps); len(findings) != 0 {
+		t.Fatalf("dependency record: %v", findings)
+	}
+	in.contents["go.sum"] += "product stamp: " + in.token + "\n"
+	findings := judgeVersionStampRegistry(in.token, in.population, in.contents, in.registry, in.docStamps)
+	want := "unregistered file carries the authoritative token: go.sum"
+	if !versionStampFindingsContain(findings, want) {
+		t.Errorf("missing %q: %v", want, findings)
 	}
 }
 
