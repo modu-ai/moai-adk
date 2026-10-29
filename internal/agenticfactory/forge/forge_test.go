@@ -3,7 +3,11 @@ package forge
 import (
 	"context"
 	"errors"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -218,5 +222,77 @@ func TestEffectErrorMapsLimitAndDenial(t *testing.T) {
 	}
 	if EffectError(Verdict{Kind: KindOK}) != nil {
 		t.Error("ok must map to nil")
+	}
+}
+
+// lane-17 table G5/G6: a 403 is a permission denial only when the host says so; a 403 with no signal at
+// all is unclassified. Both stop and neither retries.
+func TestUnsignalled403IsUnclassifiedNotPermissionNotRateLimit(t *testing.T) {
+	v := Classify(resp(403, `{"message":"Forbidden"}`, "x-ratelimit-remaining", "4000"), t0, cfg(), 0)
+	if v.Kind != KindUnclassified {
+		t.Fatalf("kind = %s", v.Kind)
+	}
+	f := &fakeT{resps: []Response{resp(403, `{"message":"Forbidden"}`, "x-ratelimit-remaining", "4000")}}
+	c := client(f, t0)
+	if _, err := c.Get(t.Context(), "/x"); !errors.Is(err, ErrDenied) || len(f.calls) != 1 {
+		t.Errorf("err=%v calls=%d: an unclassified 403 must stop without a retry", err, len(f.calls))
+	}
+	if !errors.Is(EffectError(v), effect.ErrDenied) {
+		t.Error("an unclassified 403 must park the intent")
+	}
+}
+
+func TestGitLabResetTimeHeaderIsReadAndMissingHeadersStayUnknown(t *testing.T) {
+	at := t0.Add(5 * time.Minute).UTC().Format(http.TimeFormat)
+	b := &Budget{}
+	b.Observe(resp(200, "", "ratelimit-remaining", "0", "ratelimit-resettime", at), t0)
+	if ok, until := b.Allow(t0); ok || until.Sub(t0) != 5*time.Minute {
+		t.Errorf("ok=%v until=%v", ok, until.Sub(t0))
+	}
+	unknown := &Budget{}
+	unknown.Observe(resp(200, ""), t0) // Projects/Groups/Users API answers carry no rate-limit headers
+	if ok, _ := unknown.Allow(t0); !ok {
+		t.Error("absent headers must read as unknown, not as an exhausted budget")
+	}
+	v := Classify(resp(429, "", "ratelimit-resettime", at, "ratelimit-remaining", "0"), t0, cfg(), 0)
+	if v.Kind != KindLimited || v.RetryAt.Sub(t0) != 5*time.Minute {
+		t.Errorf("429 with a reset date: %+v", v)
+	}
+}
+
+// Limits are read from response headers and configuration, never carried as constants. The scan flags
+// the documented limit values and the hour/minute units anywhere outside DocDefaults (which carries the
+// two documentation-stated values together with their source URL).
+func TestNoHardcodedLimitConstants(t *testing.T) {
+	banned := map[string]bool{"60": true, "100": true, "900": true, "1000": true, "3600": true, "5000": true, "15000": true}
+	fset := token.NewFileSet()
+	files, _ := filepath.Glob("*.go")
+	for _, f := range files {
+		if strings.HasSuffix(f, "_test.go") {
+			continue
+		}
+		af, err := parser.ParseFile(fset, f, nil, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, d := range af.Decls {
+			fd, isFn := d.(*ast.FuncDecl)
+			if isFn && fd.Name.Name == "DocDefaults" {
+				continue
+			}
+			ast.Inspect(d, func(n ast.Node) bool {
+				switch x := n.(type) {
+				case *ast.BasicLit:
+					if x.Kind == token.INT && banned[x.Value] {
+						t.Errorf("%s: numeric literal %s looks like a hardcoded limit", fset.Position(x.Pos()), x.Value)
+					}
+				case *ast.SelectorExpr:
+					if id, ok := x.X.(*ast.Ident); ok && id.Name == "time" && (x.Sel.Name == "Minute" || x.Sel.Name == "Hour") {
+						t.Errorf("%s: time.%s outside DocDefaults", fset.Position(x.Pos()), x.Sel.Name)
+					}
+				}
+				return true
+			})
+		}
 	}
 }

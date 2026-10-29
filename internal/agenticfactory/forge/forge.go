@@ -31,6 +31,7 @@ type Request struct {
 	Method string
 	Path   string
 	Header map[string]string
+	Body   []byte // request body for writes; empty for GET
 }
 
 // Response is a host-neutral response. Header keys are lower-case.
@@ -85,12 +86,13 @@ func DocDefaults() Documented {
 type Kind string
 
 const (
-	KindOK          Kind = "ok"
-	KindNotModified Kind = "not-modified"
-	KindLimited     Kind = "rate-limited"
-	KindDenied      Kind = "permission-denied"
-	KindTransient   Kind = "transient"
-	KindOther       Kind = "other"
+	KindOK           Kind = "ok"
+	KindNotModified  Kind = "not-modified"
+	KindLimited      Kind = "rate-limited"
+	KindDenied       Kind = "permission-denied"
+	KindUnclassified Kind = "unclassified-403" // 403 with no rate-limit signal and no permission wording: stop, do not guess
+	KindTransient    Kind = "transient"
+	KindOther        Kind = "other"
 )
 
 // Verdict is Classify's answer. RetryAt is set for limited and transient responses.
@@ -131,6 +133,20 @@ func parseRetryAfter(v string, now time.Time) (time.Time, bool) {
 	return time.Time{}, false
 }
 
+// parseReset reads a reset header: epoch seconds (GitHub x-ratelimit-reset, GitLab RateLimit-Reset)
+// or an HTTP date (GitLab RateLimit-ResetTime).
+func parseReset(h map[string]string) (time.Time, bool) {
+	if t, ok := parseEpoch(firstOf(h, "x-ratelimit-reset", "ratelimit-reset")); ok {
+		return t, true
+	}
+	if v := h["ratelimit-resettime"]; v != "" {
+		if t, err := http.ParseTime(strings.TrimSpace(v)); err == nil {
+			return t, true
+		}
+	}
+	return time.Time{}, false
+}
+
 func parseEpoch(v string) (time.Time, bool) {
 	n, err := strconv.ParseInt(strings.TrimSpace(v), 10, 64)
 	if err != nil || n <= 0 {
@@ -167,12 +183,15 @@ func Classify(r Response, now time.Time, b Backoff, attempt int) Verdict {
 		exhausted := firstOf(h, "x-ratelimit-remaining", "ratelimit-remaining") == "0"
 		worded := strings.Contains(strings.ToLower(string(r.Body)), "rate limit")
 		if r.Status == http.StatusForbidden && !hasRA && !exhausted && !worded {
-			return Verdict{Kind: KindDenied, Reason: "forbidden without a rate-limit signal"}
+			if strings.Contains(strings.ToLower(string(r.Body)), "not accessible") {
+				return Verdict{Kind: KindDenied, Reason: "resource not accessible (permission)"}
+			}
+			return Verdict{Kind: KindUnclassified, Reason: "403 with neither a rate-limit signal nor permission wording"}
 		}
 		if t, ok := parseRetryAfter(h["retry-after"], now); ok {
 			return Verdict{Kind: KindLimited, RetryAt: t, Reason: "retry-after"}
 		}
-		if t, ok := parseEpoch(firstOf(h, "x-ratelimit-reset", "ratelimit-reset")); ok && exhausted {
+		if t, ok := parseReset(h); ok && exhausted {
 			return Verdict{Kind: KindLimited, RetryAt: t, Reason: "reset time"}
 		}
 		return Verdict{Kind: KindLimited, RetryAt: now.Add(grow(b.MinSecondaryWait, attempt, b.Max)), Reason: "no hint; configured minimum"}
@@ -204,7 +223,7 @@ func (b *Budget) Observe(r Response, now time.Time) {
 			b.remaining, b.known = n, true
 		}
 	}
-	if t, ok := parseEpoch(firstOf(h, "x-ratelimit-reset", "ratelimit-reset")); ok {
+	if t, ok := parseReset(h); ok {
 		b.resetAt = t
 	}
 }
@@ -321,7 +340,7 @@ func (c *Client) Get(ctx context.Context, path string) (Result, error) {
 		c.bump(path)
 		res.Deferred, res.NotBefore = true, v.RetryAt
 		return res, nil
-	case KindDenied:
+	case KindDenied, KindUnclassified:
 		return Result{}, fmt.Errorf("%w: %s", ErrDenied, v.Reason)
 	}
 	return Result{}, fmt.Errorf("forge: unexpected response: %s", v.Reason)
@@ -342,7 +361,7 @@ func EffectError(v Verdict) error {
 	switch v.Kind {
 	case KindLimited:
 		return &effect.LimitedError{RetryAt: v.RetryAt}
-	case KindDenied:
+	case KindDenied, KindUnclassified:
 		return fmt.Errorf("%w: %s", effect.ErrDenied, v.Reason)
 	}
 	return nil
@@ -365,4 +384,26 @@ func ClassifyError(err error, now time.Time, b Backoff, attempt int) (Verdict, b
 		return Verdict{}, false
 	}
 	return Classify(Response{Status: se.Status, Header: se.Header, Body: se.Body}, now, b, attempt), true
+}
+
+// ForEffect maps a failed call to what the effect executor understands: a rate limit waits for its
+// RetryAt (when a valid Backoff is configured), a permission or missing-repository answer parks the
+// intent, and anything else is returned unchanged. The decision uses the status code only.
+func ForEffect(err error, now time.Time, b Backoff) error {
+	var se *StatusError
+	if !errors.As(err, &se) {
+		return err
+	}
+	if b.Validate() == nil {
+		if v, ok := ClassifyError(err, now, b, 0); ok {
+			if mapped := EffectError(v); mapped != nil {
+				return mapped
+			}
+		}
+	}
+	switch se.Status {
+	case 401, 403, 404:
+		return fmt.Errorf("%w: http %d", effect.ErrDenied, se.Status)
+	}
+	return err
 }

@@ -33,6 +33,7 @@ const (
 	WorktreePrepare Kind = "worktree-prepare"
 	CheckObserve    Kind = "check-observe"
 	LedgerComment   Kind = "ledger-comment"
+	LabelApply      Kind = "label-apply"
 )
 
 // Status is the life of one intent.
@@ -126,7 +127,9 @@ type Lookuper interface {
 }
 
 // IntentStore persists intents. It is a local cache behind this interface: the authority is the
-// online control ref, and consumer ACK and cursor (the collector contract) are not implemented yet.
+// online control ref. Not implemented yet: the collector contract's consumer ACK and cursor.
+// (Retry-After / X-RateLimit-* backoff, conditional GET with ETag, and the shared call budget ARE
+// implemented, in package forge; this executor honours them through LimitedError and ErrDenied.)
 type IntentStore interface {
 	Get(key string) (Intent, bool, error)
 	Put(Intent) error
@@ -135,7 +138,7 @@ type IntentStore interface {
 
 // Timeouts bounds each stage.
 type Timeouts struct {
-	IssueCreate, BranchPrepare, WorktreePrepare, CheckObserve, LedgerComment time.Duration
+	IssueCreate, BranchPrepare, WorktreePrepare, CheckObserve, LedgerComment, LabelApply time.Duration
 }
 
 // For returns the timeout for a kind, 0 when unset.
@@ -151,6 +154,8 @@ func (t Timeouts) For(k Kind) time.Duration {
 		return t.CheckObserve
 	case LedgerComment:
 		return t.LedgerComment
+	case LabelApply:
+		return t.LabelApply
 	}
 	return 0
 }

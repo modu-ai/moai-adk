@@ -3,6 +3,7 @@ package ctxledger
 import (
 	"context"
 	"errors"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -461,5 +462,105 @@ func TestRateLimitedCreateWaitsForNotBefore(t *testing.T) {
 	_ = l.Flush(t.Context())
 	if r.finds+r.creates != calls {
 		t.Error("called the remote before NotBefore")
+	}
+}
+
+// --- restoring a comment that a person edited ---------------------------------------------------
+
+// fetchRemote adds the conditional read to the fake: 304 while the body is unchanged, 200 with the new body otherwise.
+type fetchRemote struct {
+	*fakeRemote
+	fetches, notModified int
+	fetchErr             error
+}
+
+func (f *fetchRemote) Fetch(_ context.Context, issue int, id int64, etag string) (Comment, string, bool, error) {
+	f.fetches++
+	if f.fetchErr != nil {
+		return Comment{}, "", false, f.fetchErr
+	}
+	for _, c := range f.comments[issue] {
+		if c.ID == id {
+			tag := `"` + strconv.Itoa(len(c.Body)) + c.Body + `"`
+			if tag == etag {
+				f.notModified++
+				return Comment{}, etag, true, nil
+			}
+			return c, tag, false, nil
+		}
+	}
+	return Comment{}, "", false, status(404)
+}
+
+func TestExternallyEditedCommentIsRestoredOnResubmit(t *testing.T) {
+	r := &fetchRemote{fakeRemote: newRemote()}
+	l, _ := newLedger(r, 4096)
+	submitFlush(t, l, "authoritative text")
+	r.comments[7][0].Body = r.comments[7][0].Body + "\nhuman edit" // someone edited the machine-owned comment
+	calls := r.creates + r.updates
+	submitFlush(t, l, "authoritative text") // the same text again
+	if !strings.HasSuffix(r.comments[7][0].Body, "authoritative text") || strings.Contains(r.comments[7][0].Body, "human edit") {
+		t.Errorf("not restored: %q", r.comments[7][0].Body)
+	}
+	if r.updates != 1+calls-r.creates+0 && r.updates < 1 {
+		t.Errorf("updates = %d", r.updates)
+	}
+	if len(r.comments[7]) != 1 {
+		t.Errorf("comments = %d", len(r.comments[7]))
+	}
+}
+
+func TestUntouchedCommentCostsOneConditionalReadAndNoWrite(t *testing.T) {
+	r := &fetchRemote{fakeRemote: newRemote()}
+	l, _ := newLedger(r, 4096)
+	submitFlush(t, l, "text")
+	finds, writes := r.finds, r.creates+r.updates
+	submitFlush(t, l, "text") // same text, nothing edited
+	submitFlush(t, l, "text")
+	if r.creates+r.updates != writes {
+		t.Errorf("wrote although nothing changed: %d -> %d", writes, r.creates+r.updates)
+	}
+	if r.finds != finds {
+		t.Errorf("list GETs rose %d -> %d; the check must be the cheap conditional read", finds, r.finds)
+	}
+	if r.fetches < 2 || r.notModified < 1 {
+		t.Errorf("fetches=%d notModified=%d, want a conditional read per resubmit answered by 304", r.fetches, r.notModified)
+	}
+}
+
+func TestDeletedCommentFoundByTheCheckIsRecreated(t *testing.T) {
+	r := &fetchRemote{fakeRemote: newRemote()}
+	l, _ := newLedger(r, 4096)
+	submitFlush(t, l, "text")
+	r.comments[7] = nil
+	submitFlush(t, l, "text")
+	if len(r.comments[7]) != 1 {
+		t.Errorf("comments = %d", len(r.comments[7]))
+	}
+}
+
+func TestUnreadableCheckLeavesTheCommentAloneAndSaysSo(t *testing.T) {
+	r := &fetchRemote{fakeRemote: newRemote()}
+	l, _ := newLedger(r, 4096)
+	submitFlush(t, l, "text")
+	r.fetchErr = errors.New("gh 502")
+	writes := r.creates + r.updates
+	_, _ = l.Submit(t.Context(), body("text"))
+	if err := l.Flush(t.Context()); err == nil {
+		t.Error("an unreadable check was reported as fine")
+	}
+	if r.creates+r.updates != writes {
+		t.Error("wrote although the remote state could not be read")
+	}
+}
+
+func TestWithoutAConditionalReaderTheMarkerLookupChecksDrift(t *testing.T) {
+	r := newRemote() // no Fetch method
+	l, _ := newLedger(r, 4096)
+	submitFlush(t, l, "text")
+	r.comments[7][0].Body += "\nhuman edit"
+	submitFlush(t, l, "text")
+	if strings.Contains(r.comments[7][0].Body, "human edit") {
+		t.Error("not restored without a conditional reader")
 	}
 }
