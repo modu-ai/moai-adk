@@ -37,6 +37,9 @@ type PRTrackRowVM struct {
 	Refusal  string
 	// Ledger is the ctxmodel view of this Issue's context ledger.
 	Ledger ContextModelVM
+	// Wait is the agent's wait record, shown beside the position and never
+	// changing it.
+	Wait WaitVM
 }
 
 // PRBacklogVM is the open-PR count against its limit.
@@ -99,6 +102,7 @@ type monRow struct {
 		Reason string `json:"reason"`
 		Detail string `json:"detail"`
 	}] `json:"refusal"`
+	Wait monField[*monWait] `json:"wait"`
 }
 
 type monView struct {
@@ -166,6 +170,7 @@ func (a *app) buildPRTracking(ctx context.Context) PRTrackingVM {
 		}
 		row.Context = buildContext(r.Context)
 		row.Ledger = a.buildContextModel(ctx, r.Issue)
+		row.Wait = buildWait(r.Wait)
 		vm.Rows = append(vm.Rows, row)
 	}
 	return vm
