@@ -295,3 +295,26 @@ func TestCaseOnlyDifferentSpellingsOfOneTreeAreOneWorktree(t *testing.T) {
 		t.Errorf("one directory, two reservation keys: %s %s", WorktreeKey(real), WorktreeKey(alt))
 	}
 }
+
+// sameWorktree decides by the file, not by a name: two directories that happen to
+// share a base name are different trees, and one tree spelled two ways is one.
+func TestSameWorktreeComparesTheFileNotTheName(t *testing.T) {
+	a := realWT(t, "same")
+	b := realWT(t, "same") // another parent, the same base name
+	if sameWorktree(a, canonOf(t, b)) {
+		t.Error("two different directories with one base name were taken for one tree")
+	}
+	if !sameWorktree(a, canonOf(t, a)) {
+		t.Error("a directory is not the same tree as itself")
+	}
+	link := filepath.Join(t.TempDir(), "alias")
+	if err := os.Symlink(a, link); err != nil {
+		t.Fatal(err)
+	}
+	if !sameWorktree(link, canonOf(t, a)) {
+		t.Error("a symlink to a tree is that tree")
+	}
+	if sameWorktree("", canonOf(t, a)) {
+		t.Error("an empty stored path is no tree")
+	}
+}
