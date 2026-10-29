@@ -203,6 +203,14 @@ func (r *Runner) StartAttempt(t Ticket, attempt string, delivery core.Delivery) 
 		if err := r.Store.ReadyGate(rec.Issue, rec.Holder); err != nil {
 			return err
 		}
+		// Another PR of this agent is open: this Issue is written in its own worktree.
+		if rec.Worktree == "" {
+			if open, err := r.Store.HasOpenHandoff(rec.Holder, core.IssueRef{Number: rec.Issue}); err != nil {
+				return err
+			} else if open {
+				return fmt.Errorf("%w: issue-%d", core.ErrWorktreeUnbound, rec.Issue)
+			}
+		}
 		if !delivery.AtLeast(core.DeliveryExecuted) {
 			return fmt.Errorf("%w: delivery %q has not reached executed", core.ErrTransitionInvalid, delivery)
 		}
@@ -509,7 +517,7 @@ func (r *Runner) HandOff(t Ticket, h Handoff) (claim.Record, error) {
 		if rec.Receipt != nil && rec.Receipt.Head == head {
 			return fmt.Errorf("%w: PR #%d", core.ErrDuplicateHandoff, rec.Receipt.PR)
 		}
-		rec.Repair, rec.Wait = nil, nil // a new receipt ends the repair and what it waited for
+		rec.Repair, rec.Wait, rec.Revision = nil, nil, "" // a new receipt ends the repair, the wait and the revision
 		rec.Receipt = &claim.Receipt{
 			HandoffID: h.HandoffID, LeaderAccepted: true, PR: h.PR, Head: head, Branch: h.Branch, Worktree: h.Worktree,
 			Attempt: rec.Attempt, AttemptSeq: rec.AttemptSeq, Agent: rec.AgentName, Session: rec.Holder,
@@ -623,10 +631,76 @@ func (r *Runner) ReopenOwn(t Ticket, reason string, ev RepairEvidence) (claim.Re
 		if !ev.OldWriterEnded {
 			return fmt.Errorf("%w: the previous writer has not ended", core.ErrEvidenceIncomplete)
 		}
-		rec.State, rec.Pending, rec.Repair = core.StateVerifying, "", &rep
+		rec.State, rec.Pending, rec.Repair, rec.RepairNeeded = core.StateVerifying, "", &rep, ""
 		rec.AddEvent(claim.Event{Kind: "reopen", Head: string(rec.Head), PR: rec.Receipt.PR, Note: reason})
 		return nil
 	})
+}
+
+// Takeover is the evidence that an owner is really gone before its Issue moves:
+// its session is confirmed gone, its writer has stopped, and what it left
+// uncommitted is preserved at PreservedRef. All four are required; a missing one
+// leaves the record as it was.
+type Takeover struct {
+	OwnerGone            bool
+	WriterStopped        bool
+	UncommittedPreserved bool
+	PreservedRef         string
+}
+
+// TakeOver reassigns a held Issue after its owner died. old is the ticket of the
+// owner the decision was taken about; the new holder gets the next epoch and the
+// old ticket stops writing. This is not the repair claim: that one serves a
+// released record.
+func (r *Runner) TakeOver(i core.IssueRef, old Ticket, newHolder, dispatch string, run core.RunID, ev Takeover) (claim.Record, error) {
+	switch {
+	case !ev.OwnerGone:
+		return claim.Record{}, fmt.Errorf("%w: the owner's session is not confirmed gone", core.ErrEvidenceIncomplete)
+	case !ev.WriterStopped:
+		return claim.Record{}, fmt.Errorf("%w: writer stop not confirmed", core.ErrEvidenceIncomplete)
+	case !ev.UncommittedPreserved || strings.TrimSpace(ev.PreservedRef) == "":
+		return claim.Record{}, fmt.Errorf("%w: the owner's uncommitted work is not preserved", core.ErrEvidenceIncomplete)
+	}
+	if err := r.guard(i, core.OpTakeOver); err != nil {
+		return claim.Record{}, err
+	}
+	return r.Store.TakeOver(i, old.Holder, old.Epoch, newHolder, dispatch, run, ev.PreservedRef)
+}
+
+// ContractRevision is the evidence of canon E18 adopt: what changed in the
+// contract and the revision that was approved.
+type ContractRevision struct {
+	Diff     string
+	Approved string
+}
+
+// AdoptRevision applies an approved contract revision to a NEW attempt of a PR
+// that is parked for contract-change in BUILDING/FIX (canon E24, then E18): the
+// park is released, the attempt is reset and the position becomes BUILDING/SPEC.
+// The receipt, the owner and the epoch stay. Resuming alone (E20) never does
+// this. The position decision is core's: any other position or park is refused.
+func (r *Runner) AdoptRevision(t Ticket, rev ContractRevision) (claim.Record, error) {
+	if strings.TrimSpace(rev.Diff) == "" || strings.TrimSpace(rev.Approved) == "" {
+		return claim.Record{}, fmt.Errorf("%w: adopting needs the contract diff and the approved revision", core.ErrEvidenceIncomplete)
+	}
+	return r.Store.Update(t.Issue, t.Holder, t.Epoch, func(rec *claim.Record) error {
+		pos := core.Position{Stage: rec.Stage, Sub: rec.Sub, Park: rec.Park}
+		if _, err := core.Transition(pos, core.Event{ID: "E18", Outcome: "adopt", Evidence: []string{"contract-diff", "approved-revision"}}); err != nil {
+			return err
+		}
+		rec.State, rec.Return, rec.Reason, rec.Resume = core.StateClaimed, "", "", ""
+		rec.Attempt, rec.Delivery, rec.Repair, rec.Gate, rec.Refusal = "", "", nil, nil, nil
+		rec.Revision = rev.Approved
+		rec.AddEvent(claim.Event{Kind: "revision", Head: string(rec.Head), Note: "approved revision " + rev.Approved + " applied to a new attempt"})
+		return nil
+	})
+}
+
+// BindWorktree binds the write worktree of the ticket's Issue. It is required
+// before writing when the same agent already has another PR open, and it must be
+// a worktree no other open Issue uses.
+func (r *Runner) BindWorktree(t Ticket, path string) (claim.Record, error) {
+	return r.Store.BindWorktree(t.Issue, t.Holder, t.Epoch, path)
 }
 
 // SetWait records what the owner waits for. The wait belongs to the ticket's
