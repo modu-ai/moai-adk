@@ -23,7 +23,7 @@ func goodHandoff() Handoff {
 func landed(t *testing.T, r *Runner, ref core.IssueRef) Ticket {
 	t.Helper()
 	tk := toVerifying(t, r, ref)
-	if _, err := r.Verify(tk, passAll(headA)); err != nil {
+	if _, err := r.Verify(tk, passAllFor(tk, headA)); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := r.Land(tk, headA); err != nil {
@@ -221,7 +221,7 @@ func TestHistoryKeptUnderOneIssueAcrossRepair(t *testing.T) {
 	tk, _ := r.ClaimAs(ref, a1, "disp-1", "run-1")
 	_, _ = r.StartAttempt(tk, "attempt-1", core.DeliveryExecuted)
 	_, _ = r.Submit(tk, headA, false)
-	_, _ = r.Verify(tk, passAll(headA))
+	_, _ = r.Verify(tk, passAllFor(tk, headA))
 	_, _ = r.Land(tk, headA)
 	if _, err := r.HandOff(tk, goodHandoff()); err != nil {
 		t.Fatal(err)
@@ -233,7 +233,7 @@ func TestHistoryKeptUnderOneIssueAcrossRepair(t *testing.T) {
 	}
 	_, _ = r.StartAttempt(rep, "attempt-2", core.DeliveryExecuted)
 	_, _ = r.Submit(rep, headB, false)
-	_, _ = r.Verify(rep, passAll(headB))
+	_, _ = r.Verify(rep, passAllFor(rep, headB))
 	_, _ = r.Land(rep, headB)
 	h := goodHandoff()
 	h.Head, h.BoundaryHead = headB, headB
@@ -331,7 +331,7 @@ func TestRepairCanRepublishNewHead(t *testing.T) {
 	if _, err := r.Submit(rep, headB, false); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := r.Verify(rep, passAll(headB)); err != nil {
+	if _, err := r.Verify(rep, passAllFor(rep, headB)); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := r.Land(rep, headB); err != nil {
@@ -397,7 +397,7 @@ func TestBacklogCapZeroMeansUnlimited(t *testing.T) {
 func TestLeaderRestartRestoresClaims(t *testing.T) {
 	dir := t.TempDir()
 	st, _ := claim.OpenWithLimit(dir, 100)
-	r := New(st)
+	r := withRoles(New(st))
 	ref1, _ := core.NewIssueRef(1948)
 	ref2, _ := core.NewIssueRef(2000)
 	tk := landed(t, r, ref1)
@@ -419,7 +419,7 @@ func TestLeaderRestartRestoresClaims(t *testing.T) {
 	if recs[0].Receipt == nil || recs[0].Holder != "" || recs[1].Holder != "sess-b" {
 		t.Errorf("restored ownership: %+v", recs)
 	}
-	r2 := New(st2)
+	r2 := withRoles(New(st2))
 	mustReopen(t, r2, ref1)
 	if _, err := r2.Claim(ref2, "sess-b", "disp-9", "run-9"); !errors.Is(err, core.ErrDuplicateDispatch) {
 		t.Errorf("re-sent dispatch after restart: %v", err)
@@ -441,7 +441,7 @@ func TestAgentIdentitySurvivesHandoffAndRepair(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, _ = r.Submit(tk, headA, false)
-	if _, err := r.Verify(tk, passAll(headA)); err != nil {
+	if _, err := r.Verify(tk, passAllFor(tk, headA)); err != nil {
 		t.Fatal(err)
 	}
 	_, _ = r.Land(tk, headA)
@@ -468,7 +468,7 @@ func TestReceiptStaysAttributedAfterNumberReuse(t *testing.T) {
 	tk, _ := r.ClaimAs(ref, a1, "disp-1", "run-1")
 	_, _ = r.StartAttempt(tk, "attempt-1", core.DeliveryExecuted)
 	_, _ = r.Submit(tk, headA, false)
-	_, _ = r.Verify(tk, passAll(headA))
+	_, _ = r.Verify(tk, passAllFor(tk, headA))
 	_, _ = r.Land(tk, headA)
 	rec, err := r.HandOff(tk, goodHandoff())
 	if err != nil || rec.Receipt.Session != a1.SessionID {
