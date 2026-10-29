@@ -21,17 +21,45 @@ func newRunner(t *testing.T) (*Runner, core.IssueRef) {
 		t.Fatal(err)
 	}
 	ref, _ := core.NewIssueRef(1948)
-	return New(st), ref
+	return withRoles(New(st)), ref // identity lookup and host, both faked
 }
 
-func passAll(head string) Verification {
+// landOK publishes the PR the way the flow does: the preflight on this head
+// first, then the landing.
+func landOK(r *Runner, tk Ticket, head string) (claimRecord, error) {
+	if _, err := r.PreflightPR(tk, head, "acme/widgets", "Refs #1948"); err != nil {
+		return claimRecord{}, err
+	}
+	return r.Land(tk, head)
+}
+
+// passAllFor is a complete passing evidence set for the ticket's holder and epoch.
+func passAllFor(tk Ticket, head string) Verification {
 	return Verification{Head: head, Results: []Result{
 		{Kind: KindCheck, Name: "build", Head: head, Verdict: VerdictPass},
 		{Kind: KindReview, Name: "code-review", Head: head, Verdict: VerdictPass},
 		{Kind: KindAudit, Name: "independent-audit", Head: head, Verdict: VerdictPass},
-		{Kind: KindHandoffWriter, Name: "writer", Head: head, Verdict: VerdictPass},
+		{Kind: KindHandoffWriter, Name: "writer", Head: head, Verdict: VerdictPass, Session: tk.Holder, Epoch: tk.Epoch},
 		{Kind: KindHandoffCoordinator, Name: "coordinator", Head: head, Verdict: VerdictPass},
 	}}
+}
+
+func passAll(head string) Verification { return passAllFor(Ticket{Holder: "sess-a", Epoch: 1}, head) }
+
+type claimRecord = claim.Record
+
+// withRoles gives a Runner built by hand the faked attribution lookup.
+func withRoles(r *Runner) *Runner {
+	r.Attributor = goodRoles()
+	r.Facts = ownIssues{}
+	return r
+}
+
+// ownIssues is a host where every Issue was opened by the acting user.
+type ownIssues struct{}
+
+func (ownIssues) IssueFacts(core.IssueRef) (IssueFacts, error) {
+	return IssueFacts{RequestedRepo: "acme/widgets", ActualRepo: "acme/widgets", UserID: 7, AuthorID: 7, Owner: core.OwnerNone}, nil
 }
 
 func toVerifying(t *testing.T, r *Runner, ref core.IssueRef) Ticket {
@@ -52,11 +80,11 @@ func toVerifying(t *testing.T, r *Runner, ref core.IssueRef) Ticket {
 func TestHappyPathQueuedToDone(t *testing.T) {
 	r, ref := newRunner(t)
 	tk := toVerifying(t, r, ref)
-	rec, err := r.Verify(tk, passAll(headA))
+	rec, err := r.Verify(tk, passAllFor(tk, headA))
 	if err != nil || rec.State != core.StateReady {
 		t.Fatalf("verify: %+v %v", rec, err)
 	}
-	if rec, err = r.Land(tk, headA); err != nil || rec.State != core.StateLanding {
+	if rec, err = landOK(r, tk, headA); err != nil || rec.State != core.StateLanding {
 		t.Fatalf("land: %+v %v", rec, err)
 	}
 	rec, err = r.Complete(tk, Landing{RemoteMerged: true, LocalSyncRecorded: true, IssueClosed: true, Deploy: "N/A: no deploy target"})
@@ -95,7 +123,7 @@ func TestStepsCannotBeSkipped(t *testing.T) {
 	if _, err := r.Submit(tk, headA, false); !errors.Is(err, core.ErrTransitionInvalid) {
 		t.Errorf("claimed->verifying must be refused: %v", err)
 	}
-	if _, err := r.Land(tk, headA); !errors.Is(err, core.ErrTransitionInvalid) {
+	if _, err := landOK(r, tk, headA); !errors.Is(err, core.ErrTransitionInvalid) {
 		t.Errorf("claimed->landing must be refused: %v", err)
 	}
 	if _, err := r.Complete(tk, Landing{RemoteMerged: true, LocalSyncRecorded: true, Deploy: "N/A: x"}); !errors.Is(err, core.ErrTransitionInvalid) {
@@ -128,7 +156,7 @@ func TestDuplicateClaimDispatchRefused(t *testing.T) {
 func TestVerifyStaleHeadRejected(t *testing.T) {
 	r, ref := newRunner(t)
 	tk := toVerifying(t, r, ref)
-	rec, err := r.Verify(tk, passAll(headB))
+	rec, err := r.Verify(tk, passAllFor(tk, headB))
 	if !errors.Is(err, core.ErrStaleHead) {
 		t.Fatalf("want ErrStaleHead, got %v", err)
 	}
@@ -168,9 +196,9 @@ func TestVerifyVerdictMapping(t *testing.T) {
 		wantWhy core.BlockReason
 	}{
 		{"fail goes back to implementing", func(v *Verification) { v.Results[1].Verdict = VerdictFail }, core.StateImplementing, ""},
-		{"debt blocks", func(v *Verification) { v.Results[2].Verdict = VerdictPassWithDebt }, core.StateBlocked, core.ReasonDebtPresent},
-		{"skipped check blocks", func(v *Verification) { v.Results[0].Verdict = "skipped" }, core.StateBlocked, core.ReasonCheckNotPassed},
-		{"unknown audit verdict blocks", func(v *Verification) { v.Results[2].Verdict = "" }, core.StateBlocked, core.ReasonVerdictNotPass},
+		{"debt records a gate", func(v *Verification) { v.Results[2].Verdict = VerdictPassWithDebt }, core.StateVerifying, core.ReasonDebtPresent},
+		{"skipped check records a gate", func(v *Verification) { v.Results[0].Verdict = "skipped" }, core.StateVerifying, core.ReasonCheckNotPassed},
+		{"unknown audit verdict records a gate", func(v *Verification) { v.Results[2].Verdict = "" }, core.StateVerifying, core.ReasonVerdictNotPass},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -182,11 +210,11 @@ func TestVerifyVerdictMapping(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if rec.State != c.wantSt || rec.Reason != c.wantWhy {
-				t.Errorf("got %v/%q want %v/%q", rec.State, rec.Reason, c.wantSt, c.wantWhy)
+			if rec.State != c.wantSt || gateReason(rec) != c.wantWhy {
+				t.Errorf("got %v/%q want %v/%q", rec.State, gateReason(rec), c.wantSt, c.wantWhy)
 			}
-			if c.wantSt == core.StateBlocked && rec.Return != core.StateVerifying {
-				t.Errorf("return_stage = %v", rec.Return)
+			if c.wantWhy != "" && (rec.Park != nil || rec.Return != "" || rec.Reason != "" || rec.Stage != core.StageBuilding) {
+				t.Errorf("a gate is a record on the stage, not a pause: %+v", rec)
 			}
 		})
 	}
@@ -195,10 +223,10 @@ func TestVerifyVerdictMapping(t *testing.T) {
 func TestLandRechecksHead(t *testing.T) {
 	r, ref := newRunner(t)
 	tk := toVerifying(t, r, ref)
-	if _, err := r.Verify(tk, passAll(headA)); err != nil {
+	if _, err := r.Verify(tk, passAllFor(tk, headA)); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := r.Land(tk, headB); !errors.Is(err, core.ErrStaleHead) {
+	if _, err := landOK(r, tk, headB); !errors.Is(err, core.ErrStaleHead) {
 		t.Errorf("want stale head, got %v", err)
 	}
 }
@@ -215,8 +243,8 @@ func TestCompleteNeedsAllThreeRecords(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			r, ref := newRunner(t)
 			tk := toVerifying(t, r, ref)
-			_, _ = r.Verify(tk, passAll(headA))
-			_, _ = r.Land(tk, headA)
+			_, _ = r.Verify(tk, passAllFor(tk, headA))
+			_, _ = landOK(r, tk, headA)
 			if _, err := r.Complete(tk, l); !errors.Is(err, core.ErrEvidenceIncomplete) {
 				t.Errorf("want ErrEvidenceIncomplete, got %v", err)
 			}
@@ -269,7 +297,7 @@ func TestPausedIssueRefusesForwardSteps(t *testing.T) {
 	r, ref := newRunner(t)
 	tk := toVerifying(t, r, ref)
 	_, _ = r.Pause(tk, core.StateOnHold, core.ReasonOperatorHold, "operator resumes")
-	if _, err := r.Verify(tk, passAll(headA)); !errors.Is(err, core.ErrTransitionInvalid) {
+	if _, err := r.Verify(tk, passAllFor(tk, headA)); !errors.Is(err, core.ErrTransitionInvalid) {
 		t.Errorf("verify while on-hold: %v", err)
 	}
 }
@@ -279,15 +307,15 @@ func TestPausedIssueRefusesForwardSteps(t *testing.T) {
 func TestReconnectContinuesFromPersistedState(t *testing.T) {
 	st, _ := claim.OpenWithLimit(t.TempDir(), 100)
 	ref, _ := core.NewIssueRef(1948)
-	first := New(st)
+	first := withRoles(New(st))
 	tk := toVerifying(t, first, ref)
 
-	second := New(st) // new process, same store
+	second := withRoles(New(st)) // new process, same store
 	cur, err := second.Store.Load(ref)
 	if err != nil || cur.State != core.StateVerifying || cur.Head != core.HeadSHA(headA) {
 		t.Fatalf("persisted state lost: %+v %v", cur, err)
 	}
-	if rec, err := second.Verify(tk, passAll(headA)); err != nil || rec.State != core.StateReady {
+	if rec, err := second.Verify(tk, passAllFor(tk, headA)); err != nil || rec.State != core.StateReady {
 		t.Fatalf("continue after reconnect: %+v %v", rec, err)
 	}
 	// The re-sent dispatch after reconnect is not a second run.
@@ -309,10 +337,10 @@ func TestPreviousHeadResultRejectedAfterRepair(t *testing.T) {
 	if _, err := r.Submit(tk, headB, false); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := r.Verify(tk, passAll(headA)); !errors.Is(err, core.ErrStaleHead) {
+	if _, err := r.Verify(tk, passAllFor(tk, headA)); !errors.Is(err, core.ErrStaleHead) {
 		t.Errorf("old-HEAD pass must be stale: %v", err)
 	}
-	if rec, err := r.Verify(tk, passAll(headB)); err != nil || rec.State != core.StateReady {
+	if rec, err := r.Verify(tk, passAllFor(tk, headB)); err != nil || rec.State != core.StateReady {
 		t.Errorf("new-HEAD pass: %+v %v", rec, err)
 	}
 }
@@ -322,10 +350,77 @@ func TestPartialFailureKeepsStage(t *testing.T) {
 	r, ref := newRunner(t)
 	tk := toVerifying(t, r, ref)
 	stale := Ticket{Issue: ref, Holder: tk.Holder, Epoch: tk.Epoch + 1}
-	if _, err := r.Verify(stale, passAll(headA)); !errors.Is(err, core.ErrOwnershipUnverified) {
+	if _, err := r.Verify(stale, passAllFor(stale, headA)); !errors.Is(err, core.ErrOwnershipUnverified) {
 		t.Fatalf("stale epoch: %v", err)
 	}
 	if cur, _ := r.Store.Load(ref); cur.State != core.StateVerifying {
 		t.Errorf("stage moved: %v", cur.State)
+	}
+}
+
+// Merge-gate behaviour change: a non-pass no longer pauses the Issue. The gate is
+// a record on the verifying stage; judging the same HEAD with the same evidence
+// records the same gate and nothing else, and only new evidence passes.
+func TestAGateIsRecordedOnceAndOnlyNewEvidenceOrAHeadPassesIt(t *testing.T) {
+	r, ref := newRunner(t)
+	tk := toVerifying(t, r, ref)
+	bad := func() Verification {
+		v := passAllFor(tk, headA)
+		v.Results[2].Verdict = VerdictPassWithDebt
+		return v
+	}
+	first, err := r.Verify(tk, bad())
+	if err != nil || first.Gate == nil || first.State != core.StateVerifying {
+		t.Fatalf("first: %+v %v", first, err)
+	}
+	for i := 0; i < 3; i++ {
+		again, err := r.Verify(tk, bad())
+		if err != nil {
+			t.Fatalf("again %d: %v", i, err)
+		}
+		if again.State != first.State || again.Stage != first.Stage || *again.Gate != *first.Gate || again.Park != nil || again.Return != "" {
+			t.Fatalf("the same evidence must record the same gate and change nothing else: %+v vs %+v", again, first)
+		}
+	}
+	// the gate does not let the Issue land
+	if _, err := landOK(r, tk, headA); !errors.Is(err, core.ErrTransitionInvalid) {
+		t.Errorf("land with an open gate: %v", err)
+	}
+	// new evidence for the same HEAD (a rerun without debt) passes and clears the gate
+	passed, err := r.Verify(tk, passAllFor(tk, headA))
+	if err != nil || passed.State != core.StateReady || passed.Gate != nil {
+		t.Fatalf("new evidence: %+v %v", passed, err)
+	}
+}
+
+func TestANewHeadAfterAFailStartsFromACleanGate(t *testing.T) {
+	r, ref := newRunner(t)
+	tk := toVerifying(t, r, ref)
+	v := passAllFor(tk, headA)
+	v.Results[2].Verdict = VerdictPassWithDebt
+	if rec, err := r.Verify(tk, v); err != nil || rec.Gate == nil {
+		t.Fatalf("gate: %+v %v", rec, err)
+	}
+	fail := passAllFor(tk, headA)
+	fail.Results[1].Verdict = VerdictFail
+	if rec, err := r.Verify(tk, fail); err != nil || rec.State != core.StateImplementing || rec.Gate != nil {
+		t.Fatalf("fail clears the gate: %+v %v", rec, err)
+	}
+	if rec, err := r.Submit(tk, headB, false); err != nil || rec.Gate != nil || string(rec.Head) != headB {
+		t.Fatalf("submit: %+v %v", rec, err)
+	}
+}
+
+func TestPauseTakesOnlyOverlayReasons(t *testing.T) {
+	r, ref := newRunner(t)
+	tk := toVerifying(t, r, ref)
+	for _, why := range append(core.GateReasons(), core.ReasonForeignClosing, core.ReasonNotIssueAuthor) {
+		if _, err := r.Pause(tk, core.StateBlocked, why, "later"); !errors.Is(err, core.ErrReasonNotAllowed) {
+			t.Errorf("pause with %s: %v", why, err)
+		}
+	}
+	rec, err := r.Pause(tk, core.StateBlocked, core.ReasonRateLimited, "later")
+	if err != nil || rec.Park == nil || rec.Park.Reason != core.ReasonRateLimited || rec.Stage != core.StageBuilding {
+		t.Errorf("overlay pause: %+v %v", rec, err)
 	}
 }

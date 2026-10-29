@@ -33,18 +33,51 @@ const (
 	KindCheck              Kind = "check"
 	KindReview             Kind = "review"
 	KindAudit              Kind = "audit"
+	KindQA                 Kind = "qa"
 	KindHandoffWriter      Kind = "handoff-writer"
 	KindHandoffCoordinator Kind = "handoff-coordinator"
 )
 
 var requiredKinds = []Kind{KindCheck, KindReview, KindAudit, KindHandoffWriter, KindHandoffCoordinator}
 
-// Result is one observed outcome tied to the HEAD it judged.
+// Result is one observed outcome tied to the HEAD it judged. Session and Epoch
+// are what the registering service observed for the writer handoff; they are never
+// read from the evidence file, and for the other producer-checked kinds they are
+// ignored in favour of the attribution lookup.
 type Result struct {
 	Kind    Kind
 	Name    string
 	Head    string
 	Verdict string
+	Session string
+	Epoch   int64
+}
+
+// Attribution is the answer of the read-only attribution lookup of
+// SPEC-AGENTIC-FACTORY-001's identity sub-SPEC: either who produced a result
+// and in which role, or why that cannot be said.
+type Attribution struct {
+	Attributed bool
+	Role       string
+	Session    string
+	Attempt    string
+	Epoch      int64
+	Reason     string // set when not attributed
+}
+
+// Attributor looks up the producer of a result. The implementation belongs to
+// the identity SPEC; until it exists the Runner has none, and every
+// producer-checked result is unattributable.
+type Attributor interface {
+	Attribute(res Result) Attribution
+}
+
+// roleFor is the role design 11 requires for each producer-checked kind.
+var roleFor = map[Kind]string{
+	KindReview:             core.RoleReviewer,
+	KindAudit:              core.RoleAuditor,
+	KindQA:                 core.RoleQA,
+	KindHandoffCoordinator: core.RoleCoordinator,
 }
 
 // Verification is the evidence set for one candidate HEAD.
@@ -68,14 +101,63 @@ type Ticket struct {
 	Epoch  int64
 }
 
+// IssueFacts is what the host says about an Issue, for the permission decision:
+// the repository asked about and the one answered for (and whether a redirect
+// intervened), the authenticated user, the Issue's author, and who owns the work.
+// An id that could not be established is passed as 0.
+type IssueFacts struct {
+	RequestedRepo string
+	ActualRepo    string
+	Redirected    bool
+	UserID        int64
+	AuthorID      int64
+	Owner         core.OwnerState
+}
+
+// Facts looks an Issue up on the host. The implementation lives with the forge
+// code; it makes no write.
+type Facts interface {
+	IssueFacts(issue core.IssueRef) (IssueFacts, error)
+}
+
 // Runner applies transitions to claims in Store.
-type Runner struct{ Store *claim.Store }
+//
+// Two lookups are injected and both fail closed: with no Attributor every
+// review, audit, QA and coordinator result is unattributable and is refused; with
+// no Facts nobody's identity is established and no Issue is claimed. Collab holds
+// the collaboration settings that decide when another author's Issue may be taken.
+type Runner struct {
+	Store      *claim.Store
+	Attributor Attributor
+	Facts      Facts
+	Collab     core.Collaboration
+}
+
+// guard decides whether the acting user may perform op on the Issue, through the
+// one permission decision in core. A failed or missing lookup is an unknown
+// identity.
+func (r *Runner) guard(i core.IssueRef, op core.Op) error {
+	if r.Facts == nil {
+		return core.DenyIdentityUnknown.Err()
+	}
+	f, err := r.Facts.IssueFacts(i)
+	if err != nil {
+		return fmt.Errorf("%w: host lookup of issue-%d failed: %v", core.ErrIdentityUnknown, i.Number, err)
+	}
+	return r.Collab.Authorize(core.AuthzRequest{
+		Op: op, RequestedRepo: f.RequestedRepo, ActualRepo: f.ActualRepo, Redirected: f.Redirected,
+		UserID: f.UserID, IssueAuthorID: f.AuthorID, Owner: f.Owner,
+	}).Err()
+}
 
 // New returns a Runner over st.
 func New(st *claim.Store) *Runner { return &Runner{Store: st} }
 
 // Claim admits holder for the Issue (queued -> claimed).
 func (r *Runner) Claim(i core.IssueRef, holder, dispatch string, run core.RunID) (Ticket, error) {
+	if err := r.guard(i, core.OpTakeOver); err != nil {
+		return Ticket{}, err
+	}
 	rec, err := r.Store.Acquire(i, holder, dispatch, run)
 	if err != nil {
 		return Ticket{}, err
@@ -86,6 +168,9 @@ func (r *Runner) Claim(i core.IssueRef, holder, dispatch string, run core.RunID)
 // ClaimAs admits a registered agent: the claim stores its session id and its
 // display name separately.
 func (r *Runner) ClaimAs(i core.IssueRef, a core.Agent, dispatch string, run core.RunID) (Ticket, error) {
+	if err := r.guard(i, core.OpTakeOver); err != nil {
+		return Ticket{}, err
+	}
 	rec, err := r.Store.AcquireFor(i, a, dispatch, run)
 	if err != nil {
 		return Ticket{}, err
@@ -143,8 +228,10 @@ func (r *Runner) Submit(t Ticket, head string, dirty bool) (claim.Record, error)
 
 // Verify judges the evidence set against the candidate HEAD. Stale or
 // incomplete evidence is an error and changes nothing. A FAIL sends the Issue
-// back to implementing; a non-pass pauses it as blocked; all-pass makes it
-// ready.
+// back to implementing; a non-pass records a merge gate on the verifying stage
+// (the state does not change and nothing is paused); all-pass makes it ready.
+// Judging the same HEAD with the same evidence records the same gate again and
+// nothing else: only a new HEAD or new evidence can turn it into a pass.
 func (r *Runner) Verify(t Ticket, v Verification) (claim.Record, error) {
 	return r.step(t, core.StateVerifying, func(rec *claim.Record) error {
 		if v.Head != string(rec.Head) {
@@ -162,17 +249,51 @@ func (r *Runner) Verify(t Ticket, v Verification) (claim.Record, error) {
 				return fmt.Errorf("%w: no %s result", core.ErrEvidenceIncomplete, k)
 			}
 		}
+		if detail := r.producerProblem(t, v.Results); detail != "" {
+			rec.Gate = &core.Gate{Reason: core.ReasonProducerNotAllowed, Detail: detail,
+				Resume: "a producer in the required role registers the evidence on the same HEAD", Head: rec.Head}
+			return nil
+		}
 		reason, failed := judge(v.Results)
 		switch {
 		case failed:
-			rec.State = core.StateImplementing
+			rec.State, rec.Gate = core.StateImplementing, nil
 		case reason != "":
-			pauseIn(rec, core.StateBlocked, reason, "same-HEAD rerun passes without debt")
+			rec.Gate = &core.Gate{Reason: reason, Detail: fmt.Sprintf("verification of %.12s did not pass: %s", rec.Head, reason),
+				Resume: "same-HEAD rerun passes without debt", Head: rec.Head}
 		default:
-			rec.State = core.StateReady
+			rec.State, rec.Gate = core.StateReady, nil
 		}
 		return nil
 	})
+}
+
+// producerProblem returns why some result must not be counted, or "" when every
+// producer is allowed. Review, audit, QA and coordinator results need the
+// lookup to say "attributed" with the right role; the writer handoff must come
+// from the holder and epoch the attempt was issued to. Nothing the evidence says
+// about its own producer is used.
+func (r *Runner) producerProblem(t Ticket, results []Result) string {
+	for _, res := range results {
+		switch res.Kind {
+		case KindHandoffWriter:
+			if res.Session == "" || res.Session != t.Holder || res.Epoch != t.Epoch {
+				return fmt.Sprintf("writer handoff %q is not from the issued holder and epoch (%s)", res.Name, core.ReasonProducerNotAllowed)
+			}
+		case KindReview, KindAudit, KindQA, KindHandoffCoordinator:
+			att := Attribution{Reason: core.AttributionLocked}
+			if r.Attributor != nil {
+				att = r.Attributor.Attribute(res)
+			}
+			switch {
+			case !att.Attributed:
+				return fmt.Sprintf("%s %q is unattributable (%s); a producer in the required role must register it on the same HEAD", res.Kind, res.Name, att.Reason)
+			case att.Role != roleFor[res.Kind]:
+				return fmt.Sprintf("%s %q was produced in role %q, %q is required", res.Kind, res.Name, att.Role, roleFor[res.Kind])
+			}
+		}
+	}
+	return ""
 }
 
 // judge returns (reason, false) for a pause, ("", true) when any result is a
@@ -203,11 +324,15 @@ func judge(results []Result) (core.BlockReason, bool) {
 	return reason, false
 }
 
-// Land moves ready -> landing after re-confirming the HEAD.
+// Land moves ready -> landing after re-confirming the HEAD and that the PR text
+// was checked on it (PreflightPR). Publishing the PR is this step.
 func (r *Runner) Land(t Ticket, head string) (claim.Record, error) {
 	return r.step(t, core.StateReady, func(rec *claim.Record) error {
 		if head != string(rec.Head) {
 			return fmt.Errorf("%w: landing %.12s, ready %.12s", core.ErrStaleHead, head, rec.Head)
+		}
+		if string(rec.PreflightHead) != head {
+			return fmt.Errorf("%w: the PR text was not checked for closing keywords on %.12s (PreflightPR)", core.ErrEvidenceIncomplete, head)
 		}
 		rec.State = core.StateLanding
 		return nil
@@ -280,6 +405,10 @@ func (r *Runner) Pause(t Ticket, to core.State, reason core.BlockReason, resume 
 	if err := core.ValidatePause(to, reason); err != nil {
 		return claim.Record{}, err
 	}
+	if !core.IsParkable(reason) {
+		// Gate and refusal reasons are records on a stage, not pauses.
+		return claim.Record{}, fmt.Errorf("%w: %q cannot pause an Issue", core.ErrReasonNotAllowed, reason)
+	}
 	return r.Store.Update(t.Issue, t.Holder, t.Epoch, func(rec *claim.Record) error {
 		if !rec.State.IsProgress() || rec.State.IsTerminal() {
 			return fmt.Errorf("%w: cannot pause from %s", core.ErrTransitionInvalid, rec.State)
@@ -315,12 +444,17 @@ func (r *Runner) Resume(t Ticket, conditionMet bool) (claim.Record, error) {
 // BoundaryHead is the branch HEAD observed after the writer stopped; it must
 // equal the PR head, which proves nothing was written after publication.
 type Handoff struct {
-	PR            int
-	Head          string
-	Branch        string
-	Worktree      string
-	WriterStopped bool
-	BoundaryHead  string
+	// HandoffID names the receipt; delivering the same id again is a replay and
+	// converges on one acceptance. LeaderAccepted is true only when the leader
+	// has accepted the receipt: the claim is returned after that, not before.
+	HandoffID      string
+	LeaderAccepted bool
+	PR             int
+	Head           string
+	Branch         string
+	Worktree       string
+	WriterStopped  bool
+	BoundaryHead   string
 }
 
 // HandOff records the PR receipt and releases the agent's claim in one write,
@@ -328,6 +462,12 @@ type Handoff struct {
 // untouched. It is refused unless the writer has stopped and the write boundary
 // matches the PR head. The Issue stays in landing: a PR is not done.
 func (r *Runner) HandOff(t Ticket, h Handoff) (claim.Record, error) {
+	if _, err := core.ParseRunID(h.HandoffID); err != nil {
+		return claim.Record{}, fmt.Errorf("%w: a handoff id is required", core.ErrEvidenceIncomplete)
+	}
+	if !h.LeaderAccepted {
+		return claim.Record{}, fmt.Errorf("%w: the claim is returned only after the leader accepted the receipt", core.ErrEvidenceIncomplete)
+	}
 	head, err := core.ParseHeadSHA(h.Head)
 	if err != nil {
 		return claim.Record{}, err
@@ -346,6 +486,14 @@ func (r *Runner) HandOff(t Ticket, h Handoff) (claim.Record, error) {
 	case boundary != head:
 		return claim.Record{}, fmt.Errorf("%w: branch moved to %.12s after PR head %.12s", core.ErrStaleHead, boundary, head)
 	}
+	// A receipt that was already accepted is a replay: same id and same content
+	// converge on the stored record, a different content under that id conflicts.
+	if cur, err := r.Store.Read(t.Issue); err == nil && cur.Receipt != nil && cur.Receipt.HandoffID == h.HandoffID {
+		if cur.Receipt.PR == h.PR && cur.Receipt.Head == head && cur.Receipt.Branch == h.Branch {
+			return cur, nil
+		}
+		return claim.Record{}, fmt.Errorf("%w: receipt %s was accepted with other content", core.ErrDuplicateHandoff, h.HandoffID)
+	}
 	return r.Store.UpdateRelease(t.Issue, t.Holder, t.Epoch, func(rec *claim.Record) error {
 		if rec.State != core.StateLanding {
 			return fmt.Errorf("%w: %s, handoff needs a published PR (landing)", core.ErrTransitionInvalid, rec.State)
@@ -357,10 +505,10 @@ func (r *Runner) HandOff(t Ticket, h Handoff) (claim.Record, error) {
 			return fmt.Errorf("%w: PR #%d", core.ErrDuplicateHandoff, rec.Receipt.PR)
 		}
 		rec.Receipt = &claim.Receipt{
-			PR: h.PR, Head: head, Branch: h.Branch, Worktree: h.Worktree,
+			HandoffID: h.HandoffID, LeaderAccepted: true, PR: h.PR, Head: head, Branch: h.Branch, Worktree: h.Worktree,
 			Attempt: rec.Attempt, AttemptSeq: rec.AttemptSeq, Agent: rec.AgentName, Session: rec.Holder,
 		}
-		rec.AddEvent(claim.Event{Kind: "handoff", Agent: rec.AgentName, Session: rec.Holder, Attempt: string(rec.Attempt), Head: string(head), PR: h.PR})
+		rec.AddEvent(claim.Event{Kind: "handoff", Agent: rec.AgentName, Session: rec.Holder, Attempt: string(rec.Attempt), Head: string(head), PR: h.PR, Note: "receipt " + h.HandoffID + " accepted by the leader"})
 		return nil
 	})
 }
@@ -368,6 +516,9 @@ func (r *Runner) HandOff(t Ticket, h Handoff) (claim.Record, error) {
 // ClaimRepair admits the single repair holder of a handed-off Issue, on the
 // branch its receipt names. The repair attempt then runs the normal steps.
 func (r *Runner) ClaimRepair(i core.IssueRef, holder, dispatch string, run core.RunID, branch string) (Ticket, error) {
+	if err := r.guard(i, core.OpTakeOver); err != nil {
+		return Ticket{}, err
+	}
 	rec, err := r.Store.AcquireRepair(i, holder, dispatch, run, branch)
 	if err != nil {
 		return Ticket{}, err
@@ -377,6 +528,9 @@ func (r *Runner) ClaimRepair(i core.IssueRef, holder, dispatch string, run core.
 
 // ClaimRepairAs is ClaimRepair for a registered agent.
 func (r *Runner) ClaimRepairAs(i core.IssueRef, a core.Agent, dispatch string, run core.RunID, branch string) (Ticket, error) {
+	if err := r.guard(i, core.OpTakeOver); err != nil {
+		return Ticket{}, err
+	}
 	rec, err := r.Store.AcquireRepairFor(i, a, dispatch, run, branch)
 	if err != nil {
 		return Ticket{}, err
@@ -428,4 +582,81 @@ func (r *Runner) Reopen(i core.IssueRef, reason string) (claim.Record, error) {
 		rec.AddEvent(claim.Event{Kind: "reopen", Head: string(rec.Head), PR: rec.Receipt.PR, Note: reason})
 		return nil
 	})
+}
+
+// PreflightPR checks the PR text (description and commit messages) before the PR
+// is published. A closing keyword (close/fix/resolve and their forms) that would
+// close an Issue the acting user may not close stops the PR: the operation is
+// refused with the reason foreign-closing-keyword, the Issues are named, the
+// state does not change and Land stays shut (behaviour change: it used to
+// pause the Issue as blocked and wait for a resume). Each
+// target is decided by the same permission decision as any other close
+// (core.Authorize with OpClose), so there is no second rule: your own Issues pass,
+// another author's Issue passes only where collaboration allows closing it. A
+// target that cannot be checked (another repository, an unknown author, no host
+// lookup) blocks. Passing records the HEAD; Land needs it. ownRepo is the PR's
+// repository, used to tell same-repository references from others.
+func (r *Runner) PreflightPR(t Ticket, head, ownRepo string, texts ...string) (claim.Record, error) {
+	h, err := core.ParseHeadSHA(head)
+	if err != nil {
+		return claim.Record{}, err
+	}
+	var problems []string
+	for _, c := range core.ClosingTargets(texts...) {
+		if c.Repo != "" && core.NormalizeRepo(r.Collab.Provider, c.Repo) != core.NormalizeRepo(r.Collab.Provider, ownRepo) {
+			problems = append(problems, fmt.Sprintf("%s#%d is in another repository", c.Repo, c.Issue))
+			continue
+		}
+		if c.Issue == t.Issue.Number {
+			continue
+		}
+		if why := r.mayClose(c.Issue); why != "" {
+			problems = append(problems, fmt.Sprintf("#%d (%s)", c.Issue, why))
+		}
+	}
+	var refused error
+	rec, err := r.step(t, core.StateReady, func(rec *claim.Record) error {
+		if h != rec.Head {
+			return fmt.Errorf("%w: preflight on %.12s, candidate %.12s", core.ErrStaleHead, h, rec.Head)
+		}
+		if len(problems) == 0 {
+			rec.PreflightHead, rec.Refusal = h, nil
+			return nil
+		}
+		// A refusal (SPEC column R): the state does not change, the refusal is
+		// recorded, and Land stays shut because no HEAD is preflighted.
+		detail := "PR text would close: " + strings.Join(problems, ", ")
+		rec.Refusal = &core.Refusal{Reason: core.ReasonForeignClosing, Detail: detail + "; reword the keyword to Refs #N and run the preflight again"}
+		rec.PreflightHead = ""
+		rec.AddEvent(claim.Event{Kind: "preflight-refused", Head: string(h), Note: detail})
+		refused = fmt.Errorf("%w: %s", core.ErrForeignClosing, detail)
+		return nil
+	})
+	if err != nil {
+		return rec, err
+	}
+	return rec, refused
+}
+
+// mayClose returns why the acting user may not close the Issue, or "" when the
+// permission decision allows it.
+func (r *Runner) mayClose(issue int) string {
+	ref, err := core.NewIssueRef(issue)
+	if err != nil {
+		return "not a valid issue number"
+	}
+	if r.Facts == nil {
+		return "no host lookup to check the author"
+	}
+	f, err := r.Facts.IssueFacts(ref)
+	if err != nil {
+		return "the host lookup failed"
+	}
+	if v := r.Collab.Authorize(core.AuthzRequest{
+		Op: core.OpClose, RequestedRepo: f.RequestedRepo, ActualRepo: f.ActualRepo, Redirected: f.Redirected,
+		UserID: f.UserID, IssueAuthorID: f.AuthorID, Owner: f.Owner,
+	}); v != core.Allow {
+		return string(v)
+	}
+	return ""
 }

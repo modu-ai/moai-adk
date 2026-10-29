@@ -134,3 +134,53 @@ func TestBudgetAnswersTheCoreHook(t *testing.T) {
 		t.Error("an exhausted search quota must not hold a report that counts against core")
 	}
 }
+
+// core now has a middle tier, PriorityNotice (a message that needs a human). The scheduler takes its order
+// and its right to the reserve from core's numeric order, so no scheduler change was needed.
+func TestSafetyThenNoticeThenReportAndNoticeMaySpendTheReserve(t *testing.T) {
+	if !(core.PrioritySafety < core.PriorityNotice && core.PriorityNotice < core.PriorityReport) {
+		t.Fatal("core's tier order changed")
+	}
+	s := &Scheduler{Gate: &Budget{}, Merge: merge}
+	s.Push(Item{Priority: core.PriorityReport, Key: "r", Payload: "report"})
+	s.Push(Item{Priority: core.PriorityNotice, Key: "n", Payload: "approval needed"})
+	s.Push(Item{Priority: core.PrioritySafety, Key: "s", Payload: "claim"})
+	var order []core.Priority
+	for {
+		it, ok, _ := s.Pop(t0)
+		if !ok {
+			break
+		}
+		order = append(order, it.Priority)
+	}
+	if len(order) != 3 || order[0] != core.PrioritySafety || order[1] != core.PriorityNotice || order[2] != core.PriorityReport {
+		t.Errorf("order = %v", order)
+	}
+
+	low := &Scheduler{Gate: lowBudget(t), Merge: merge}
+	low.Push(Item{Priority: core.PriorityReport, Key: "r", Payload: "report"})
+	low.Push(Item{Priority: core.PriorityNotice, Key: "n", Payload: "security failure"})
+	it, ok, _ := low.Pop(t0)
+	if !ok || it.Priority != core.PriorityNotice {
+		t.Errorf("under a low budget a notice must still go before the held report: %+v ok=%v", it, ok)
+	}
+	if _, ok, _ := low.Pop(t0); ok {
+		t.Error("the report must stay held")
+	}
+}
+
+func TestNoticesAreNotMergedLikeReports(t *testing.T) {
+	s := &Scheduler{Gate: &Budget{}, Merge: merge}
+	s.Push(Item{Priority: core.PriorityNotice, Key: "same", Payload: "first notice"})
+	s.Push(Item{Priority: core.PriorityNotice, Key: "same", Payload: "second notice"})
+	if s.Held() != 2 {
+		t.Errorf("held = %d: two notices to a human must not be folded into one", s.Held())
+	}
+}
+
+func TestTheBudgetHookNeverHoldsANotice(t *testing.T) {
+	var hook core.Budget = lowBudget(t)
+	if !hook.Reserve(core.PriorityNotice) {
+		t.Error("a notice is never held by the budget")
+	}
+}

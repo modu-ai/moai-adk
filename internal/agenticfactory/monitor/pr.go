@@ -3,6 +3,8 @@ package monitor
 import (
 	"context"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
 )
 
 // PRInfo is what the remote says about the PR tied to an Issue.
@@ -152,5 +154,5 @@ func (c *Collector) fillPR(ctx context.Context, r *Row, at time.Time) {
 	if found {
 		r.PR.Value.Phase = Phase(info)
 	}
-	r.Completed = found && info.Merged && info.IssueClosed && r.State.Value == "done"
+	r.Completed = found && info.Merged && info.IssueClosed && r.Stage.Value == string(core.StageDone)
 }

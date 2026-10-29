@@ -222,7 +222,7 @@ func (f *fakeRun) run(_ context.Context, args ...string) ([]byte, error) {
 
 func TestGHRemoteOnlyIssuesCommentCalls(t *testing.T) {
 	fr := &fakeRun{}
-	g := GHRemote{Repo: "o/r", Run: fr.run}
+	g := GHRemote{Repo: "o/r", Run: fr.run, Enforcer: ownEnforcer()}
 	if _, err := g.Create(t.Context(), 7, "b"); err != nil {
 		t.Fatal(err)
 	}

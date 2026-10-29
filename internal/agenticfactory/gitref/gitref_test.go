@@ -301,7 +301,7 @@ func TestClaimStoreOnTheGitRefAcrossTwoCaches(t *testing.T) {
 	if _, err := s2.Update(issue, "holder-a", rec.Epoch, func(r *claim.Record) error { r.State = core.StateVerifying; return nil }); err != nil {
 		t.Fatal(err)
 	}
-	_, err = s1.Update(issue, "holder-a", rec.Epoch, func(r *claim.Record) error { r.State = core.StateBlocked; return nil })
+	_, err = s1.Update(issue, "holder-a", rec.Epoch, func(r *claim.Record) error { r.State = core.StateReady; return nil })
 	if !errors.Is(err, core.ErrRevisionConflict) {
 		t.Errorf("a stale cache must be refused: %v", err)
 	}
@@ -469,6 +469,26 @@ func TestMalformedIdentitiesAreRefusedBeforeAnyGitCall(t *testing.T) {
 		r2.Committer = bad
 		if _, err := r2.CompareAndSwap(bg, "issue/1", 0, []byte(`{}`)); !errors.Is(err, core.ErrIDInvalid) {
 			t.Errorf("committer %q: %v", bad, err)
+		}
+	}
+}
+
+// The keyed documents (intents, audit rounds, the context ledger) use the same
+// compare-and-swap line as claims, and unknown kinds are still refused.
+func TestDocumentKindsAreStoredAndUnknownKindsRefused(t *testing.T) {
+	r := newFixture(t, true).ref()
+	for _, key := range []string{"intent/9f2c0a", "audit/issue-1948", "context/issue-1948", "checkpoint/issue-1948", "collector/cursor-main"} {
+		if rev, err := r.CompareAndSwap(bg, key, 0, []byte(`{"n":1}`)); err != nil || rev != 1 {
+			t.Errorf("%s: %d %v", key, rev, err)
+		}
+	}
+	keys, _ := r.Keys(bg, "")
+	if strings.Join(keys, ",") != "audit/issue-1948,checkpoint/issue-1948,collector/cursor-main,context/issue-1948,intent/9f2c0a" {
+		t.Errorf("keys = %v", keys)
+	}
+	for _, bad := range []string{"permit/issue-1", "docs/issue-1", "intent/Bad"} {
+		if _, err := r.CompareAndSwap(bg, bad, 0, []byte(`{}`)); !errors.Is(err, core.ErrIDInvalid) {
+			t.Errorf("%s: %v", bad, err)
 		}
 	}
 }

@@ -31,8 +31,12 @@ type ClaimRow struct {
 	Owner           string
 	AgentName       string // display name, e.g. agent-3; not an identity
 	SessionID       string // immutable session id; the identity
-	State           string
-	Stage           string
+	State           string // the runner's old progress state (still recorded); display only
+	Stage           string // S46 stage: READY, BUILDING, REVIEWING, MERGING, DONE, CANCELLED
+	SubStage        string // SPEC, IMPLEMENT or FIX while BUILDING, else ""
+	Park            *ParkInfo
+	Gate            *GateInfo
+	Refusal         *RefusalInfo
 	Attempt         int
 	Epoch           int
 	HeadSHA         string
@@ -41,6 +45,27 @@ type ClaimRow struct {
 	LastCheckedAt   time.Time
 	BlockReason     string
 	ResumeCondition string
+}
+
+// ParkInfo is the PARKED overlay: the position is stopped, the stage and owner are unchanged.
+type ParkInfo struct {
+	Reason   string `json:"reason"`
+	Evidence string `json:"evidence"`
+	Resume   string `json:"resume_condition"`
+}
+
+// GateInfo is the merge-gate record on a stage. It does not move the stage.
+type GateInfo struct {
+	Reason string `json:"reason"`
+	Detail string `json:"detail"`
+	Resume string `json:"resume_condition"`
+	Head   string `json:"head,omitempty"`
+}
+
+// RefusalInfo is the last refused operation. It does not move the stage.
+type RefusalInfo struct {
+	Reason string `json:"reason"`
+	Detail string `json:"detail"`
 }
 
 // CheckRun is one required check as the remote reports it.
@@ -83,6 +108,10 @@ type Row struct {
 	SessionID       Field[string] `json:"session_id"`
 	State           Field[string]
 	Stage           Field[string]
+	SubStage        Field[string]       `json:"sub_stage"`
+	Park            Field[*ParkInfo]    `json:"park"`
+	Gate            Field[*GateInfo]    `json:"gate"`
+	Refusal         Field[*RefusalInfo] `json:"refusal"`
 	Attempt         Field[int]
 	Epoch           Field[int]
 	HeadSHA         Field[string]
@@ -137,6 +166,10 @@ func (c *Collector) row(ctx context.Context, issue int) Row {
 		r.SessionID = idField(cr.SessionID, SrcClaimStore, at)
 		r.State = textField("state", cr.State, SrcClaimStore, at)
 		r.Stage = textField("stage", cr.Stage, SrcClaimStore, at)
+		r.SubStage = textField("sub_stage", cr.SubStage, SrcClaimStore, at)
+		r.Park = Field[*ParkInfo]{maskPark(cr.Park, at), SrcClaimStore, at, true, false}
+		r.Gate = Field[*GateInfo]{maskGate(cr.Gate, at), SrcClaimStore, at, true, false}
+		r.Refusal = Field[*RefusalInfo]{maskRefusal(cr.Refusal, at), SrcClaimStore, at, true, false}
 		r.Attempt = Field[int]{cr.Attempt, SrcClaimStore, at, true, false}
 		r.Epoch = Field[int]{cr.Epoch, SrcClaimStore, at, true, false}
 		r.HeadSHA = textField("head", cr.HeadSHA, SrcClaimStore, at)
@@ -147,6 +180,7 @@ func (c *Collector) row(ctx context.Context, issue int) Row {
 	} else {
 		r.Owner.Source, r.State.Source, r.Stage.Source = SrcClaimStore, SrcClaimStore, SrcClaimStore
 		r.Agent.Source, r.SessionID.Source = SrcClaimStore, SrcClaimStore
+		r.SubStage.Source, r.Park.Source, r.Gate.Source, r.Refusal.Source = SrcClaimStore, SrcClaimStore, SrcClaimStore, SrcClaimStore
 		r.Attempt.Source, r.Epoch.Source, r.HeadSHA.Source = SrcClaimStore, SrcClaimStore, SrcClaimStore
 		r.LastCheckedAt.Source, r.BlockReason.Source = SrcClaimStore, SrcClaimStore
 		r.ResumeCondition.Source, r.MirrorState.Source = SrcClaimStore, SrcClaimStore
@@ -194,4 +228,31 @@ func idField(s string, src Source, at time.Time) Field[string] {
 // unconfirmed or empty session id never matches anything.
 func SameIdentity(a, b Row) bool {
 	return a.SessionID.Confirmed && b.SessionID.Confirmed && a.SessionID.Value != "" && a.SessionID.Value == b.SessionID.Value
+}
+
+// The overlay, gate and refusal texts come from people and tools, so each text field is masked and
+// omitted whole when it still looks like a credential (the same rule as every other text field).
+func maskText(label, s string, at time.Time) string {
+	return textField(label, s, SrcClaimStore, at).Value
+}
+
+func maskPark(p *ParkInfo, at time.Time) *ParkInfo {
+	if p == nil {
+		return nil
+	}
+	return &ParkInfo{Reason: p.Reason, Evidence: maskText("evidence", p.Evidence, at), Resume: maskText("resume", p.Resume, at)}
+}
+
+func maskGate(g *GateInfo, at time.Time) *GateInfo {
+	if g == nil {
+		return nil
+	}
+	return &GateInfo{Reason: g.Reason, Detail: maskText("detail", g.Detail, at), Resume: maskText("resume", g.Resume, at), Head: g.Head}
+}
+
+func maskRefusal(r *RefusalInfo, at time.Time) *RefusalInfo {
+	if r == nil {
+		return nil
+	}
+	return &RefusalInfo{Reason: r.Reason, Detail: maskText("detail", r.Detail, at)}
 }

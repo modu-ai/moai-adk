@@ -2,6 +2,7 @@ package runner
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/claim"
@@ -16,17 +17,17 @@ func mustReopen(t *testing.T, r *Runner, ref core.IssueRef) {
 }
 
 func goodHandoff() Handoff {
-	return Handoff{PR: 321, Head: headA, Branch: "WT-agentic-x", Worktree: "/wt/x", WriterStopped: true, BoundaryHead: headA}
+	return Handoff{HandoffID: "ho-1", LeaderAccepted: true, PR: 321, Head: headA, Branch: "WT-agentic-x", Worktree: "/wt/x", WriterStopped: true, BoundaryHead: headA}
 }
 
 // landed drives an Issue to landing (PR published) and returns its ticket.
 func landed(t *testing.T, r *Runner, ref core.IssueRef) Ticket {
 	t.Helper()
 	tk := toVerifying(t, r, ref)
-	if _, err := r.Verify(tk, passAll(headA)); err != nil {
+	if _, err := r.Verify(tk, passAllFor(tk, headA)); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := r.Land(tk, headA); err != nil {
+	if _, err := landOK(r, tk, headA); err != nil {
 		t.Fatal(err)
 	}
 	return tk
@@ -105,24 +106,62 @@ func TestHandoffOnlyFromLanding(t *testing.T) {
 	}
 }
 
-func TestDuplicateHandoffRejected(t *testing.T) {
+// The same receipt delivered twice (or late, after the claim was returned)
+// converges on one acceptance and one claim return.
+func TestSameReceiptTwiceIsAcceptedOnce(t *testing.T) {
 	r, ref := newRunner(t)
 	tk := landed(t, r, ref)
-	if _, err := r.HandOff(tk, goodHandoff()); err != nil {
-		t.Fatal(err)
-	}
-	// Same agent retries with its old ticket.
-	if _, err := r.HandOff(tk, goodHandoff()); !errors.Is(err, core.ErrOwnershipUnverified) {
-		t.Errorf("retry by released agent: %v", err)
-	}
-	// A repair holder re-publishing the same head is a duplicate receipt.
-	mustReopen(t, r, ref)
-	rep, err := r.ClaimRepair(ref, "sess-b", "disp-r", "run-2", "WT-agentic-x")
+	first, err := r.HandOff(tk, goodHandoff())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := r.HandOff(rep, goodHandoff()); !errors.Is(err, core.ErrTransitionInvalid) && !errors.Is(err, core.ErrDuplicateHandoff) {
-		t.Errorf("repair handoff on same head / wrong stage: %v", err)
+	again, err := r.HandOff(tk, goodHandoff())
+	if err != nil {
+		t.Fatalf("the same receipt again must be accepted idempotently: %v", err)
+	}
+	if again.Seq != first.Seq || again.Receipt == nil || again.Receipt.HandoffID != "ho-1" || len(again.History) != len(first.History) {
+		t.Errorf("the replay changed the record: first=%+v again=%+v", first, again)
+	}
+	// The same id with different content is a conflict, not a replay.
+	other := goodHandoff()
+	other.PR = 999
+	if _, err := r.HandOff(tk, other); !errors.Is(err, core.ErrDuplicateHandoff) {
+		t.Errorf("same id, other PR: %v", err)
+	}
+	// Another receipt for the same HEAD from the released ticket is not accepted:
+	// the claim was already returned once.
+	second := goodHandoff()
+	second.HandoffID = "ho-other"
+	if _, err := r.HandOff(tk, second); !errors.Is(err, core.ErrOwnershipUnverified) {
+		t.Errorf("a different receipt after the claim was returned: %v", err)
+	}
+}
+
+func TestReceiptNeedsAnIdAndTheLeadersAcceptance(t *testing.T) {
+	for name, mut := range map[string]func(*Handoff){
+		"no handoff id":       func(h *Handoff) { h.HandoffID = "" },
+		"bad handoff id":      func(h *Handoff) { h.HandoffID = "Not Valid/1" },
+		"leader not accepted": func(h *Handoff) { h.LeaderAccepted = false },
+	} {
+		r, ref := newRunner(t)
+		tk := landed(t, r, ref)
+		h := goodHandoff()
+		mut(&h)
+		if _, err := r.HandOff(tk, h); err == nil {
+			t.Errorf("%s: accepted", name)
+		}
+		if cur, err := r.Store.Load(ref); err != nil || cur.Holder != "sess-a" || cur.Receipt != nil {
+			t.Errorf("%s: the claim must stay with the agent until the leader accepted: %+v %v", name, cur, err)
+		}
+	}
+	r, ref := newRunner(t)
+	tk := landed(t, r, ref)
+	rec, err := r.HandOff(tk, goodHandoff())
+	if err != nil || !rec.Receipt.LeaderAccepted || rec.Receipt.HandoffID != "ho-1" {
+		t.Errorf("accepted receipt: %+v %v", rec.Receipt, err)
+	}
+	if last := rec.History[len(rec.History)-1]; last.Kind != "handoff" || !strings.Contains(last.Note, "ho-1") {
+		t.Errorf("the history must name the receipt: %+v", last)
 	}
 }
 
@@ -221,8 +260,8 @@ func TestHistoryKeptUnderOneIssueAcrossRepair(t *testing.T) {
 	tk, _ := r.ClaimAs(ref, a1, "disp-1", "run-1")
 	_, _ = r.StartAttempt(tk, "attempt-1", core.DeliveryExecuted)
 	_, _ = r.Submit(tk, headA, false)
-	_, _ = r.Verify(tk, passAll(headA))
-	_, _ = r.Land(tk, headA)
+	_, _ = r.Verify(tk, passAllFor(tk, headA))
+	_, _ = landOK(r, tk, headA)
 	if _, err := r.HandOff(tk, goodHandoff()); err != nil {
 		t.Fatal(err)
 	}
@@ -233,10 +272,10 @@ func TestHistoryKeptUnderOneIssueAcrossRepair(t *testing.T) {
 	}
 	_, _ = r.StartAttempt(rep, "attempt-2", core.DeliveryExecuted)
 	_, _ = r.Submit(rep, headB, false)
-	_, _ = r.Verify(rep, passAll(headB))
-	_, _ = r.Land(rep, headB)
+	_, _ = r.Verify(rep, passAllFor(rep, headB))
+	_, _ = landOK(r, rep, headB)
 	h := goodHandoff()
-	h.Head, h.BoundaryHead = headB, headB
+	h.HandoffID, h.Head, h.BoundaryHead = "ho-2", headB, headB
 	if _, err := r.HandOff(rep, h); err != nil {
 		t.Fatal(err)
 	}
@@ -331,14 +370,14 @@ func TestRepairCanRepublishNewHead(t *testing.T) {
 	if _, err := r.Submit(rep, headB, false); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := r.Verify(rep, passAll(headB)); err != nil {
+	if _, err := r.Verify(rep, passAllFor(rep, headB)); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := r.Land(rep, headB); err != nil {
+	if _, err := landOK(r, rep, headB); err != nil {
 		t.Fatal(err)
 	}
 	h := goodHandoff()
-	h.Head, h.BoundaryHead = headB, headB
+	h.HandoffID, h.Head, h.BoundaryHead = "ho-2", headB, headB
 	if rec, err := r.HandOff(rep, h); err != nil || rec.Receipt.Head != core.HeadSHA(headB) || rec.Holder != "" {
 		t.Errorf("second handoff: %+v %v", rec, err)
 	}
@@ -397,7 +436,7 @@ func TestBacklogCapZeroMeansUnlimited(t *testing.T) {
 func TestLeaderRestartRestoresClaims(t *testing.T) {
 	dir := t.TempDir()
 	st, _ := claim.OpenWithLimit(dir, 100)
-	r := New(st)
+	r := withRoles(New(st))
 	ref1, _ := core.NewIssueRef(1948)
 	ref2, _ := core.NewIssueRef(2000)
 	tk := landed(t, r, ref1)
@@ -419,7 +458,7 @@ func TestLeaderRestartRestoresClaims(t *testing.T) {
 	if recs[0].Receipt == nil || recs[0].Holder != "" || recs[1].Holder != "sess-b" {
 		t.Errorf("restored ownership: %+v", recs)
 	}
-	r2 := New(st2)
+	r2 := withRoles(New(st2))
 	mustReopen(t, r2, ref1)
 	if _, err := r2.Claim(ref2, "sess-b", "disp-9", "run-9"); !errors.Is(err, core.ErrDuplicateDispatch) {
 		t.Errorf("re-sent dispatch after restart: %v", err)
@@ -441,10 +480,10 @@ func TestAgentIdentitySurvivesHandoffAndRepair(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, _ = r.Submit(tk, headA, false)
-	if _, err := r.Verify(tk, passAll(headA)); err != nil {
+	if _, err := r.Verify(tk, passAllFor(tk, headA)); err != nil {
 		t.Fatal(err)
 	}
-	_, _ = r.Land(tk, headA)
+	_, _ = landOK(r, tk, headA)
 	rec, err := r.HandOff(tk, goodHandoff())
 	if err != nil || rec.Receipt.Agent != "agent-1" {
 		t.Fatalf("receipt agent: %+v %v", rec, err)
@@ -468,8 +507,8 @@ func TestReceiptStaysAttributedAfterNumberReuse(t *testing.T) {
 	tk, _ := r.ClaimAs(ref, a1, "disp-1", "run-1")
 	_, _ = r.StartAttempt(tk, "attempt-1", core.DeliveryExecuted)
 	_, _ = r.Submit(tk, headA, false)
-	_, _ = r.Verify(tk, passAll(headA))
-	_, _ = r.Land(tk, headA)
+	_, _ = r.Verify(tk, passAllFor(tk, headA))
+	_, _ = landOK(r, tk, headA)
 	rec, err := r.HandOff(tk, goodHandoff())
 	if err != nil || rec.Receipt.Session != a1.SessionID {
 		t.Fatalf("receipt session: %+v %v", rec, err)
