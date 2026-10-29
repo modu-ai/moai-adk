@@ -58,6 +58,13 @@ var (
 // cover these, so the sender refuses them whatever the flag says.
 func personalData(s string) bool { return emailRe.MatchString(s) || homeRe.MatchString(s) }
 
+// Fetcher is the optional cheap read used to notice that a machine-owned comment was edited by hand.
+// It is a conditional GET of one comment (If-None-Match with the ETag): notModified=true means the
+// remote still holds what the last read saw. See ForgeFetcher for the forge-backed implementation.
+type Fetcher interface {
+	Fetch(ctx context.Context, issue int, id int64, etag string) (c Comment, newETag string, notModified bool, err error)
+}
+
 // Remote is the comment API. The only production implementation is GHRemote.
 type Remote interface {
 	Find(ctx context.Context, issue int, marker string) (Comment, bool, error)
@@ -79,13 +86,15 @@ type Ledger struct {
 	// cache holds, per Issue, the comment id and body hash of the last write known to have landed.
 	// With it a write skips the marker list GET, and an unchanged body skips the write. It is only a
 	// hint: it is dropped on any ambiguous outcome or a 404, and the marker lookup is the fallback.
-	mu    sync.Mutex
-	cache map[int]cached
+	mu      sync.Mutex
+	cache   map[int]cached
+	recheck map[int]bool // issues whose same text was submitted again: verify the remote before trusting the hash
 }
 
 type cached struct {
 	id   int64
 	hash string
+	etag string // validator of the last conditional read; empty when none
 }
 
 func (l *Ledger) cacheGet(issue int) (cached, bool) {
@@ -102,6 +111,19 @@ func (l *Ledger) cachePut(issue int, c cached) {
 		l.cache = map[int]cached{}
 	}
 	l.cache[issue] = c
+}
+
+func (l *Ledger) markRecheck(issue int, on bool) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.recheck == nil {
+		l.recheck = map[int]bool{}
+	}
+	if on {
+		l.recheck[issue] = true
+	} else {
+		delete(l.recheck, issue)
+	}
 }
 
 func (l *Ledger) cacheDrop(issue int) {
@@ -177,7 +199,8 @@ func (l *Ledger) Submit(_ context.Context, b Body) (effect.Intent, error) {
 			continue
 		}
 		if in.Seq == latest {
-			return in, nil // same text as the newest: nothing to send
+			l.markRecheck(b.Issue, true) // the comment is machine-owned: confirm nobody edited it, then send nothing
+			return in, nil
 		}
 		in.Status, in.Attempts, in.ProviderID, in.LastError, in.Seq = effect.StatusIntended, 0, "", "", latest+1
 		return in, l.Store.Put(in) // older text submitted again: re-arm so the remote is brought back to it
@@ -224,7 +247,80 @@ func (l *Ledger) Flush(ctx context.Context) error {
 			}
 		}
 	}
+	for _, in := range newest {
+		l.mu.Lock()
+		want := l.recheck[in.Issue]
+		l.mu.Unlock()
+		if !want || in.Status != effect.StatusConfirmed {
+			continue
+		}
+		drift, derr := l.drifted(ctx, in)
+		if derr != nil {
+			if first == nil {
+				first = fmt.Errorf("ctxledger: issue %d: could not check the comment for edits: %w", in.Issue, derr)
+			}
+			continue // stays marked; the next Flush checks again
+		}
+		l.markRecheck(in.Issue, false)
+		if !drift {
+			continue
+		}
+		in.Status, in.Attempts, in.ProviderID = effect.StatusIntended, 0, ""
+		if err := l.Store.Put(in); err != nil && first == nil {
+			first = err
+			continue
+		}
+		got, err := ex.Execute(ctx, effect.Request{Kind: in.Kind, Issue: in.Issue, Target: in.Target, Digest: in.Digest, Payload: in.Payload})
+		if first == nil {
+			switch {
+			case err != nil:
+				first = err
+			case got.Status != effect.StatusConfirmed:
+				first = fmt.Errorf("ctxledger: issue %d comment did not land (%s): %s", got.Issue, got.Status, got.LastError)
+			}
+		}
+	}
 	return first
+}
+
+// drifted reports whether the remote comment no longer holds the intent's text. With a Fetcher and a
+// remembered id it is one conditional read (a 304 means unchanged); otherwise it is the marker lookup.
+// When drift is found the remembered hash is cleared so the sender writes to the known id at once.
+func (l *Ledger) drifted(ctx context.Context, in effect.Intent) (bool, error) {
+	c, have := l.cacheGet(in.Issue)
+	if f, ok := l.Remote.(Fetcher); ok && have {
+		cm, tag, notModified, err := f.Fetch(ctx, in.Issue, c.id, c.etag)
+		switch {
+		case err != nil && isGone(err):
+			l.cacheDrop(in.Issue) // deleted: the sender falls back to the marker lookup and recreates it
+			return true, nil
+		case err != nil:
+			return false, l.classify(err)
+		case notModified:
+			return false, nil
+		}
+		c.etag = tag
+		if cm.Body == in.Payload {
+			l.cachePut(in.Issue, c)
+			return false, nil
+		}
+		c.hash = ""
+		l.cachePut(in.Issue, c)
+		return true, nil
+	}
+	cm, found, err := l.Remote.Find(ctx, in.Issue, Marker(in.Issue))
+	if err != nil {
+		return false, l.classify(err)
+	}
+	if !found {
+		l.cacheDrop(in.Issue)
+		return true, nil
+	}
+	if cm.Body == in.Payload {
+		return false, nil
+	}
+	l.cachePut(in.Issue, cached{id: cm.ID})
+	return true, nil
 }
 
 type sender struct {
@@ -244,7 +340,7 @@ func (s sender) Send(ctx context.Context, in effect.Intent) (string, error) {
 		s.l.cacheDrop(in.Issue) // outcome unknown: do not trust a remembered id or hash
 		return "", err
 	}
-	s.l.cachePut(in.Issue, cached{id: id, hash: digest(in.Payload)})
+	s.l.cachePut(in.Issue, cached{id: id, hash: digest(in.Payload)}) // a new write: the old validator no longer describes the body
 	return strconv.FormatInt(id, 10), nil
 }
 
@@ -258,7 +354,7 @@ func (s sender) send(ctx context.Context, in effect.Intent) (int64, error) {
 			return c.id, nil
 		}
 		if !isGone(err) {
-			return 0, err
+			return 0, s.l.classify(err)
 		}
 		s.l.cacheDrop(in.Issue) // the comment is gone: fall back to the marker lookup
 	}
@@ -271,7 +367,7 @@ func (s sender) send(ctx context.Context, in effect.Intent) (int64, error) {
 		return c.ID, nil
 	case found:
 		if err := s.r.Update(ctx, in.Issue, c.ID, in.Payload); err != nil {
-			return 0, err
+			return 0, s.l.classify(err) // the lookup just found the comment: a refusal now is permission, not "gone"
 		}
 		return c.ID, nil
 	}
@@ -378,4 +474,35 @@ func (g GHRemote) Update(ctx context.Context, issue int, id int64, body string) 
 	}
 	_, err := g.Run(ctx, "api", "-X", "PATCH", fmt.Sprintf("repos/%s/issues/comments/%d", g.Repo, id), "-f", "body="+body)
 	return err // a Runner reports HTTP failures as *forge.StatusError; isGone reads the status
+}
+
+// ForgeFetcher implements Fetcher on a forge.Client, which keeps the ETag cache and the shared
+// budget. A call the budget defers is reported as a LimitedError so the caller waits instead of
+// writing. Whether a 304 counts against the primary limit follows the host's documentation
+// (https://docs.github.com/en/rest/using-the-rest-api/best-practices-for-using-the-rest-api states it
+// does not count for authorized requests); that statement is taken from the doc summary and was not
+// measured here.
+type ForgeFetcher struct {
+	Client *forge.Client
+	Repo   string
+}
+
+func (f ForgeFetcher) Fetch(ctx context.Context, issue int, id int64, _ string) (Comment, string, bool, error) {
+	res, err := f.Client.Get(ctx, fmt.Sprintf("/repos/%s/issues/comments/%d", f.Repo, id))
+	switch {
+	case err != nil:
+		return Comment{}, "", false, err
+	case res.Deferred:
+		return Comment{}, "", false, &effect.LimitedError{RetryAt: res.NotBefore}
+	case res.FromCache:
+		return Comment{}, "", true, nil
+	}
+	var c struct {
+		ID   int64  `json:"id"`
+		Body string `json:"body"`
+	}
+	if err := json.Unmarshal(res.Body, &c); err != nil {
+		return Comment{}, "", false, fmt.Errorf("ctxledger: comment response: %w", err)
+	}
+	return Comment{ID: c.ID, Body: c.Body}, "", false, nil
 }
