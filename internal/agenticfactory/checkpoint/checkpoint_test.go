@@ -267,7 +267,7 @@ func TestGitRemoteReadsTheBareFixture(t *testing.T) {
 	git := func(dir string, args ...string) string {
 		c := exec.Command("git", args...)
 		c.Dir = dir
-		c.Env = append(os.Environ(), "GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@t.invalid", "GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@t.invalid", "GIT_CONFIG_GLOBAL=/dev/null", "GIT_CONFIG_SYSTEM=/dev/null")
+		c.Env = append(os.Environ(), "GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=fixture@example.invalid", "GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=fixture@example.invalid", "GIT_CONFIG_GLOBAL=/dev/null", "GIT_CONFIG_SYSTEM=/dev/null")
 		out, err := c.CombinedOutput()
 		if err != nil {
 			t.Fatalf("git %v: %v %s", args, err, out)
@@ -335,5 +335,37 @@ func TestAnUnknownPushOutcomeParksAsUnknownEffect(t *testing.T) {
 	_ = r.ConfirmRemote(&fakeRemote{sha: shaA, found: true, contains: true})
 	if _, ok := r.ParkedReason(); ok {
 		t.Error("an acknowledged push has no unknown effect")
+	}
+}
+
+// The manifest goes through the one sanitizer and is refused, not masked: the
+// error names what was found (a category) and never repeats the value.
+func TestManifestRefusalNamesTheCategoryNotTheValue(t *testing.T) {
+	for name, c := range map[string]struct {
+		mut      func(*Manifest)
+		category string
+		secret   string
+	}{
+		"token":       {func(m *Manifest) { m.Next = "use ghp_abcdefghijklmnopqrstuvwxyz0123456789" }, "token", "ghp_abcdefghijklmnopqrstuvwxyz0123456789"},
+		"private key": {func(m *Manifest) { m.Next = "-----BEGIN PRIVATE KEY-----\nMIIBVQIBADANBgkqhkiG9w0BAQEFAASC" }, "private-key", "MIIBVQIBADANBgkqhkiG9w0BAQEFAASC"},
+		"cookie":      {func(m *Manifest) { m.Tests = []string{"Cookie: sid=zzzz9999yyyy"} }, "cookie", "zzzz9999yyyy"},
+		"aws key id":  {func(m *Manifest) { m.PendingEffects = []string{"AKIAIOSFODNN7EXAMPLE"} }, "token", "AKIAIOSFODNN7EXAMPLE"},
+		"url secret":  {func(m *Manifest) { m.Tests = []string{"clone https://u:s3cr3tPass@github.com/o/r.git"} }, "url-credential", "s3cr3tPass"},
+		"email":       {func(m *Manifest) { m.Tests = []string{"ran as someone@example.com"} }, "email", "someone@example.com"},
+		"home path":   {func(m *Manifest) { m.Next = "see /Users/goos/x" }, "home-path", "/Users/goos"},
+	} {
+		m := manifest()
+		c.mut(&m)
+		err := m.Validate()
+		if !errors.Is(err, ErrManifestInvalid) {
+			t.Errorf("%s: %v", name, err)
+			continue
+		}
+		if !strings.Contains(err.Error(), c.category) {
+			t.Errorf("%s: the refusal must name the category %q: %v", name, c.category, err)
+		}
+		if strings.Contains(err.Error(), c.secret) {
+			t.Errorf("%s: the refusal repeats the value: %v", name, err)
+		}
 	}
 }

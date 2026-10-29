@@ -40,7 +40,7 @@ type Record struct {
 	Head      core.HeadSHA     `json:"head,omitempty"`
 	Delivery  core.Delivery    `json:"delivery,omitempty"`
 	Deploy    string           `json:"deploy,omitempty"`
-	Mirror    string           `json:"mirror_state,omitempty"` // current | stale | blocked(<reason>)
+	Mirror    string           `json:"mirror_state,omitempty"` // current | stale | refused | blocked(<reason>)
 	// AttemptSeq counts attempts on this Issue (initial plus repairs).
 	AttemptSeq int `json:"attempt_seq,omitempty"`
 	// Receipt is set when the agent published a PR and handed the Issue off.
@@ -114,33 +114,70 @@ func (p Repair) validate(holder string) error {
 	return nil
 }
 
+// The fixed codes PositionUnknown can hold. A reader (web, monitor) shows one of
+// these, never the text of an error.
+const (
+	PositionUnmappable     = "unmappable-legacy-state" // the old state/return/reason cannot be mapped to the S46 model
+	PositionInvalidGate    = "invalid-gate"
+	PositionInvalidRefusal = "invalid-refusal"
+	PositionInvalidWait    = "invalid-wait"
+	PositionWaitOwner      = "wait-owner-mismatch"
+	PositionInvalidRepair  = "invalid-repair"
+	PositionUnknownOther   = "unknown" // anything else
+)
+
+// positionError is the error deriveStage returns: the cause unchanged for errors.Is,
+// plus the fixed code a reader gets.
+type positionError struct {
+	code string
+	err  error
+}
+
+func (e *positionError) Error() string { return e.err.Error() }
+func (e *positionError) Unwrap() error { return e.err }
+
+// positionCode is the fixed code of a deriveStage error.
+func positionCode(err error) string {
+	var pe *positionError
+	if errors.As(err, &pe) {
+		return pe.code
+	}
+	if errors.Is(err, core.ErrLegacyUnmappable) {
+		return PositionUnmappable
+	}
+	return PositionUnknownOther
+}
+
 // deriveStage recomputes Stage, Sub and Park from the old fields. A legacy pause
 // whose reason is a gate (G) or refusal (R) reason is read as a Gate or Refusal
 // on the stage it returns to, because only overlay reasons may park. A record that
 // cannot be mapped (a pause without a return stage, for instance) is an error.
 func (r *Record) deriveStage() error {
 	r.Stage, r.Sub, r.Park = "", "", nil
+	// A position that is derived is known: the marker a read set does not outlive
+	// a write that repaired the record.
+	r.PositionUnknown = ""
 	if r.Gate != nil {
 		if err := r.Gate.Validate(); err != nil {
-			return err
+			return &positionError{PositionInvalidGate, err}
 		}
 	}
 	if r.Refusal != nil {
 		if err := r.Refusal.Validate(); err != nil {
-			return err
+			return &positionError{PositionInvalidRefusal, err}
 		}
 	}
 	if r.Wait != nil {
 		if err := r.Wait.Validate(); err != nil {
-			return err
+			return &positionError{PositionInvalidWait, err}
 		}
 		if r.Holder != "" && r.Wait.Owner != r.Holder {
-			return fmt.Errorf("%w: the wait is owned by %q, the Issue by %q", core.ErrOwnershipUnverified, r.Wait.Owner, r.Holder)
+			return &positionError{PositionWaitOwner, fmt.Errorf("%w: the wait is owned by %q, the Issue by %q", core.ErrOwnershipUnverified, r.Wait.Owner, r.Holder)}
 		}
 	}
 	if r.Repair != nil {
 		if err := r.Repair.validate(r.Holder); err != nil {
-			return err
+			return &positionError{PositionInvalidRepair, err}
 		}
 	}
 	l := core.Legacy{
@@ -162,7 +199,7 @@ func (r *Record) deriveStage() error {
 	}
 	pos, err := core.FromLegacy(l)
 	if err != nil {
-		return err
+		return &positionError{PositionUnmappable, err}
 	}
 	r.Stage, r.Sub, r.Park = pos.Stage, pos.Sub, pos.Park
 	return nil
@@ -352,7 +389,7 @@ func (s *Store) read(i core.IssueRef) (Record, bool, error) {
 	// write path refuses the same record for the same reason (see write).
 	r.PositionUnknown = ""
 	if err := r.deriveStage(); err != nil {
-		r.PositionUnknown = err.Error()
+		r.PositionUnknown = positionCode(err)
 	}
 	return r, true, nil
 }

@@ -2,6 +2,8 @@ package mirror
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -141,19 +143,75 @@ func TestReadWithoutLedgerComment(t *testing.T) {
 	}
 }
 
-func TestSecretsAreRedactedAndCounted(t *testing.T) {
+// bodyOf is the comment body a gh call sends.
+func bodyOf(t *testing.T, call []string) string {
+	t.Helper()
+	for _, a := range call {
+		if strings.HasPrefix(a, "body=") {
+			return strings.TrimPrefix(a, "body=")
+		}
+	}
+	t.Fatalf("no body in %v", call)
+	return ""
+}
+
+// A ledger that holds a secret or personal data is not posted (design 4.4): what is
+// posted in its place is a RESTRICTED record with three fields, status, a short
+// summary and a SHA-256, and WriteLedger still reports the refusal. The summary
+// names the categories, never the values, and the hash is of the masked form so it
+// reveals nothing about the original.
+func TestASensitiveLedgerIsPostedAsARestrictedRecordAndReportedRefused(t *testing.T) {
 	l := ledger()
 	l.NextAction = "use ghp_abcdefghijklmnopqrstuvwxyz0123456789 and password=hunter2 then continue"
 	f := &fakeGH{results: []result{{out: ""}, {out: "{}"}}}
-	if err := writable(f).WriteLedger(context.Background(), l); err != nil {
+	err := writable(f).WriteLedger(context.Background(), l)
+	if !errors.Is(err, core.ErrUnsanitized) {
+		t.Fatalf("want ErrUnsanitized, got %v", err)
+	}
+	if len(f.calls) != 2 {
+		t.Fatalf("want list + create of the RESTRICTED record, got %v", f.calls)
+	}
+	body := bodyOf(t, f.calls[1])
+	for _, leak := range []string{"ghp_abcdef", "hunter2", "wait for audit", "sess-a"} {
+		if strings.Contains(body, leak) {
+			t.Errorf("the RESTRICTED record carries %q: %s", leak, body)
+		}
+	}
+	start := strings.Index(body, "{")
+	end := strings.LastIndex(body, "}")
+	var rec map[string]string
+	if err := json.Unmarshal([]byte(body[start:end+1]), &rec); err != nil {
+		t.Fatalf("the record is JSON: %v\n%s", err, body)
+	}
+	if len(rec) != 3 || rec["status"] != "RESTRICTED" || rec["summary"] == "" || len(rec["sha256"]) != 64 {
+		t.Errorf("the record must be exactly status, summary and a SHA-256: %v", rec)
+	}
+	// the hash is of the masked form: it matches a hash computed here from
+	// Sanitize, and differs from the hash of the original ledger text
+	rawLedger, err := json.MarshalIndent(l, "", "  ")
+	if err != nil {
 		t.Fatal(err)
 	}
-	body := strings.Join(f.calls[1], " ")
-	if strings.Contains(body, "ghp_abcdef") || strings.Contains(body, "hunter2") {
-		t.Errorf("secret leaked into body: %s", body)
+	masked, _ := core.Sanitize(string(rawLedger))
+	wantSum := sha256.Sum256([]byte(masked))
+	origSum := sha256.Sum256(rawLedger)
+	if rec["sha256"] != hex.EncodeToString(wantSum[:]) || rec["sha256"] == hex.EncodeToString(origSum[:]) {
+		t.Errorf("the SHA-256 must be of the masked ledger: %s", rec["sha256"])
 	}
-	if !strings.Contains(body, "redacted") {
-		t.Errorf("redaction must be disclosed: %s", body)
+	for _, name := range []string{"token", "credential-assignment"} {
+		if !strings.Contains(rec["summary"], name) {
+			t.Errorf("the summary must name %q: %q", name, rec["summary"])
+		}
+	}
+	// the hash is of the masked form: the same ledger again changes nothing sent
+	f2 := &fakeGH{}
+	m := writable(&fakeGH{results: []result{{out: ""}, {out: `{"id":5}`}}})
+	if err := m.WriteLedger(context.Background(), l); !errors.Is(err, core.ErrUnsanitized) {
+		t.Fatal(err)
+	}
+	m.Exec = f2
+	if err := m.WriteLedger(context.Background(), l); !errors.Is(err, core.ErrUnsanitized) || len(f2.calls) != 0 {
+		t.Errorf("the same refused ledger twice must send nothing the second time: %v %v", err, f2.calls)
 	}
 }
 
@@ -318,5 +376,32 @@ func TestLedgerFromRecordCarriesAnUnknownPosition(t *testing.T) {
 	}
 	if h := LedgerFromRecord(claim.Record{Issue: 7, Holder: "h", State: core.StateClaimed}); h.PositionUnknown != "" {
 		t.Errorf("a known position carries no marker: %+v", h)
+	}
+}
+
+// Publish records that the ledger was refused, leaves the execution state alone and
+// returns the refusal; only the RESTRICTED record reaches gh.
+func TestPublishRecordsARefusedLedger(t *testing.T) {
+	st, _ := claim.OpenWithLimit(t.TempDir(), 100)
+	ref, _ := core.NewIssueRef(1948)
+	rec, err := st.Acquire(ref, "sess-a", "d1", "run-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.Update(ref, "sess-a", rec.Epoch, func(r *claim.Record) error { r.Resume = "ask dev@example.com"; return nil }); err != nil {
+		t.Fatal(err)
+	}
+	f := &fakeGH{results: []result{{out: ""}, {out: "{}"}}}
+	out, err := Publish(context.Background(), writable(f), st, ref, "sess-a", rec.Epoch)
+	if !errors.Is(err, core.ErrUnsanitized) {
+		t.Fatalf("want ErrUnsanitized, got %v", err)
+	}
+	for _, c := range f.calls {
+		if strings.Contains(strings.Join(c, " "), "dev@example.com") {
+			t.Errorf("a refused ledger leaked into gh: %v", c)
+		}
+	}
+	if out.Mirror != "refused" || out.State != core.StateClaimed {
+		t.Errorf("record after the refusal: mirror=%q state=%s", out.Mirror, out.State)
 	}
 }

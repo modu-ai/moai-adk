@@ -107,8 +107,9 @@ func (m Manifest) Validate() error {
 	if len(b) > MaxManifestBytes {
 		return invalid("manifest too large")
 	}
-	if red, n := core.Redact(string(b)); n > 0 || red != string(b) {
-		return invalid("manifest carries content that masking would change (secret, e-mail or home path)")
+	// The manifest is refused, not masked, and the refusal names what was found.
+	if err := core.RefuseIfSensitive(string(b)); err != nil {
+		return invalid("manifest carries sensitive content: " + strings.TrimPrefix(err.Error(), core.ErrUnsanitized.Error()+": "))
 	}
 	return nil
 }

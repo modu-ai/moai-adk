@@ -310,3 +310,59 @@ func TestTakingOverAnOldParkedRecordStillNeedsAWait(t *testing.T) {
 		t.Errorf("with the new holder's wait: %+v %v", rec, err)
 	}
 }
+
+// A write that repairs the record clears the marker on the record it returns; the
+// marker is a fact about the stored position and must not outlive the fix.
+func TestARepairingWriteClearsPositionUnknown(t *testing.T) {
+	s := open(t)
+	if err := writeRaw(s, 1, `{"issue":1,"holder":"w","dispatch":"d","run":"run-1","epoch":1,"seq":1,"state":"blocked"}`); err != nil {
+		t.Fatal(err)
+	}
+	cur, _ := s.Read(ref(t, 1))
+	if cur.PositionUnknown == "" {
+		t.Fatal("setup: the record must be unmappable")
+	}
+	out, err := s.Update(ref(t, 1), "w", cur.Epoch, func(r *Record) error {
+		r.Return, r.Reason, r.Resume = core.StateClaimed, core.ReasonDebtPresent, "rerun" // a gate reason on a legacy pause maps
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.PositionUnknown != "" || out.Stage == "" {
+		t.Errorf("the returned record still says its position is unknown: %+v", out)
+	}
+	if again, _ := s.Read(ref(t, 1)); again.PositionUnknown != "" {
+		t.Errorf("the stored record reads as unknown: %q", again.PositionUnknown)
+	}
+}
+
+// The marker holds one of a few fixed codes, not the text of an error.
+func TestPositionUnknownIsAFixedReasonCode(t *testing.T) {
+	good := `"issue":%d,"holder":"w","dispatch":"d","run":"run-1","epoch":1,"seq":1`
+	_ = good
+	cases := []struct {
+		name, raw string
+		want      string
+	}{
+		{"unmappable legacy state", `{"issue":1,"holder":"w","dispatch":"d","run":"run-1","epoch":1,"seq":1,"state":"blocked"}`, PositionUnmappable},
+		{"gate that is not a gate", `{"issue":1,"holder":"w","dispatch":"d","run":"run-1","epoch":1,"seq":1,"state":"claimed","gate":{"reason":"rate-limited","detail":"x","resume_condition":"y"}}`, PositionInvalidGate},
+		{"refusal without detail", `{"issue":1,"holder":"w","dispatch":"d","run":"run-1","epoch":1,"seq":1,"state":"claimed","refusal":{"reason":"foreign-closing-keyword"}}`, PositionInvalidRefusal},
+		{"wait without escalation", `{"issue":1,"holder":"w","dispatch":"d","run":"run-1","epoch":1,"seq":1,"state":"claimed","wait":{"owner":"w","next_action":"a","recheck_at":"2026-10-30T09:00:00Z","diagnosis":"d","max_retries":2}}`, PositionInvalidWait},
+		{"wait owned by someone else", `{"issue":1,"holder":"w","dispatch":"d","run":"run-1","epoch":1,"seq":1,"state":"claimed","wait":{"owner":"x","next_action":"a","recheck_at":"2026-10-30T09:00:00Z","diagnosis":"d","max_retries":2,"escalate_to":"leader"}}`, PositionWaitOwner},
+		{"repair evidence incomplete", `{"issue":1,"holder":"w","dispatch":"d","run":"run-1","epoch":1,"seq":1,"state":"verifying","repair":{"decision":"d","exclusive_owner":"w"}}`, PositionInvalidRepair},
+	}
+	for _, c := range cases {
+		s := open(t)
+		if err := writeRaw(s, 1, c.raw); err != nil {
+			t.Fatal(err)
+		}
+		rec, err := s.Read(ref(t, 1))
+		if err != nil {
+			t.Fatalf("%s: %v", c.name, err)
+		}
+		if rec.PositionUnknown != c.want {
+			t.Errorf("%s: marker = %q, want the code %q", c.name, rec.PositionUnknown, c.want)
+		}
+	}
+}
