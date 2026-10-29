@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/effect"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/effect/ctxledger"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/effect/ghintake"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/forge"
@@ -41,6 +42,7 @@ case "$FAKE_GH_MODE" in
   pend)  printf '[{"bucket":"pending","name":"build"}]'; printf 'some checks pending' >&2; exit 8;;
   sleep) echo $$ > "$dir/pid"; exec sleep 30;;
   big)   head -c 100000 /dev/zero | tr '\0' 'x'; exit 0;;
+  comment) if [ "$2" = "-X" ]; then printf '{"id":55}'; else printf '{"id":5,"body":"hello MARK"}\n'; fi;;
   env)   printf '%s|%s|%s|%s' "$GH_PROMPT_DISABLED" "$GH_NO_UPDATE_NOTIFIER" "$NO_COLOR" "$EXTRA";;
   pr)    case "$1 $2" in
            "pr view")    printf '{"headRefOid":"%s","number":9,"reviewDecision":"","state":"OPEN"}' "$(printf 'a%.0s' $(seq 1 40))";;
@@ -346,5 +348,171 @@ func TestWritesPassTheProtectionGuardAtTheLastGate(t *testing.T) {
 	f := newFake(t, "ok")
 	if _, err := e.Run(t.Context(), "issue", "create", "--repo=o/r", "--title", "t", "--body", "b"); err != nil || !f.spawned() {
 		t.Errorf("a plain write to a plain repository: err=%v spawned=%v", err, f.spawned())
+	}
+}
+
+// --- the context ledger's comment writes: Enforcer first, then this wrapper ----------------------------
+
+const me, other = int64(1001), int64(2002)
+
+type ident struct {
+	user     int64
+	userErr  error
+	issues   map[int]effect.IssueFacts
+	comments map[int64]effect.CommentFacts
+}
+
+func (f ident) CurrentUserID(context.Context) (int64, error) { return f.user, f.userErr }
+func (f ident) IssueFacts(_ context.Context, _ string, n int) (effect.IssueFacts, error) {
+	v, ok := f.issues[n]
+	if !ok {
+		return effect.IssueFacts{}, errors.New("lookup failed")
+	}
+	return v, nil
+}
+func (f ident) CommentFacts(_ context.Context, _ string, c int64) (effect.CommentFacts, error) {
+	v, ok := f.comments[c]
+	if !ok {
+		return effect.CommentFacts{}, errors.New("lookup failed")
+	}
+	return v, nil
+}
+
+// issue 7 is ours, issue 8 is someone else's; comment 501 is ours, 502 is theirs (both on issue 8).
+func world() ident {
+	return ident{
+		user: me,
+		issues: map[int]effect.IssueFacts{
+			7: {AuthorID: me, ActualRepo: "o/r"}, 8: {AuthorID: other, ActualRepo: "o/r"},
+		},
+		comments: map[int64]effect.CommentFacts{
+			501: {AuthorID: me, Issue: 8, ActualRepo: "o/r"}, 502: {AuthorID: other, Issue: 8, ActualRepo: "o/r"},
+		},
+	}
+}
+
+func remote(write bool, id effect.Identity) ctxledger.GHRemote {
+	e := ex()
+	e.AllowWrite = write
+	var enf *effect.Enforcer
+	if id != nil {
+		enf = &effect.Enforcer{Identity: id}
+	}
+	return ctxledger.GHRemote{Repo: "o/r", Run: e.Run, Enforcer: enf}
+}
+
+// Own Issue, someone else's Issue: a comment may be created on both (comments are the one write the policy
+// gives on another author's Issue); editing is for our own comments only; the process starts only when the
+// Enforcer approved and the wrapper may write.
+func TestLedgerCommentWritesPassTheEnforcerThenRunThroughTheWrapper(t *testing.T) {
+	f := newFake(t, "comment")
+	r := remote(true, world())
+	c, err := r.Create(t.Context(), 7, "a ledger body")
+	if err != nil || c.ID != 55 || !f.spawned() {
+		t.Fatalf("own issue: comment=%+v err=%v spawned=%v", c, err, f.spawned())
+	}
+	got := f.args()
+	if strings.Join(got[:4], " ") != "api -X POST repos/o/r/issues/7/comments" || got[4] != "-f" || got[5] != "body=a ledger body" {
+		t.Errorf("args = %q", got)
+	}
+	f = newFake(t, "comment")
+	if _, err := r.Create(t.Context(), 8, "on their issue"); err != nil || !f.spawned() {
+		t.Errorf("another author's issue: err=%v spawned=%v", err, f.spawned())
+	}
+	f = newFake(t, "comment")
+	if err := r.Update(t.Context(), 8, 501, "our comment"); err != nil || !f.spawned() {
+		t.Errorf("edit of our comment: err=%v spawned=%v", err, f.spawned())
+	}
+	f = newFake(t, "comment")
+	err = r.Update(t.Context(), 8, 502, "their comment")
+	var re *effect.RefusedError
+	if !errors.As(err, &re) || f.spawned() {
+		t.Errorf("edit of their comment: err=%v spawned=%v, want a refusal and no process", err, f.spawned())
+	}
+	f = newFake(t, "comment")
+	if _, found, err := r.Find(t.Context(), 7, "MARK"); err != nil || !found || !f.spawned() {
+		t.Errorf("a read needs no approval: found=%v err=%v spawned=%v", found, err, f.spawned())
+	}
+}
+
+// Editing the body of an Issue is not something this path does: the policy refuses it on someone else's
+// Issue and the wrapper refuses it everywhere, whoever asks.
+func TestAnIssueBodyEditNeverRuns(t *testing.T) {
+	f := newFake(t, "comment")
+	enf := &effect.Enforcer{Identity: world()}
+	body := []byte(`{"body":"changed"}`)
+	if _, err := enf.Approve(t.Context(), "PATCH", "/repos/o/r/issues/8", nil, body); err == nil {
+		t.Error("the policy approved editing someone else's Issue body")
+	}
+	e := ex()
+	e.AllowWrite = true
+	ctx, err := enf.Approve(t.Context(), "PATCH", "/repos/o/r/issues/7", nil, body) // ours: the policy allows it
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, issue := range []string{"7", "8"} {
+		if _, err := e.Run(ctx, "api", "-X", "PATCH", "repos/o/r/issues/"+issue, "-f", "body=changed"); !errors.Is(err, ErrNotAllowed) {
+			t.Errorf("issue %s: err=%v, want the wrapper to refuse", issue, err)
+		}
+	}
+	if f.spawned() {
+		t.Error("a process was started for an Issue body edit")
+	}
+}
+
+// Without an identity nothing is written: no lookup answer, no Enforcer, no identity provider.
+func TestUnknownIdentityRefusesTheWriteAndStartsNoProcess(t *testing.T) {
+	unknownUser := world()
+	unknownUser.user, unknownUser.userErr = 0, errors.New("no user")
+	unknownAuthor := world()
+	unknownAuthor.issues = map[int]effect.IssueFacts{}
+	for name, r := range map[string]ctxledger.GHRemote{
+		"the user cannot be established": remote(true, unknownUser),
+		"the Issue author is unknown":    remote(true, unknownAuthor),
+		"no Enforcer":                    remote(true, nil),
+		"an Enforcer with no identity":   {Repo: "o/r", Run: ex().Run, Enforcer: &effect.Enforcer{}},
+	} {
+		f := newFake(t, "comment")
+		if _, err := r.Create(t.Context(), 7, "x"); err == nil || f.spawned() {
+			t.Errorf("%s: err=%v spawned=%v", name, err, f.spawned())
+		}
+	}
+}
+
+// AllowWrite is the wrapper's own switch: off, nothing starts even for a write the policy approved.
+func TestWithAllowWriteOffNoProcessStartsEvenForAnApprovedWrite(t *testing.T) {
+	f := newFake(t, "comment")
+	_, err := remote(false, world()).Create(t.Context(), 7, "x")
+	if !errors.Is(err, ErrNotAllowed) || f.spawned() {
+		t.Errorf("err=%v spawned=%v", err, f.spawned())
+	}
+}
+
+// The proof is for one write: it does not open another issue, another verb, or a call with no proof.
+func TestAnApprovalOpensOnlyTheWriteItWasGivenFor(t *testing.T) {
+	enf := &effect.Enforcer{Identity: world()}
+	e := ex()
+	e.AllowWrite = true
+	ctx, err := enf.Approve(t.Context(), "POST", "/repos/o/r/issues/7/comments", nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, tc := range map[string]struct {
+		ctx  context.Context
+		args []string
+	}{
+		"another issue":   {ctx, []string{"api", "-X", "POST", "repos/o/r/issues/8/comments", "-f", "body=x"}},
+		"another verb":    {ctx, []string{"api", "-X", "PATCH", "repos/o/r/issues/7/comments", "-f", "body=x"}},
+		"another repo":    {ctx, []string{"api", "-X", "POST", "repos/x/y/issues/7/comments", "-f", "body=x"}},
+		"no proof at all": {t.Context(), []string{"api", "-X", "POST", "repos/o/r/issues/7/comments", "-f", "body=x"}},
+	} {
+		f := newFake(t, "comment")
+		if _, err := e.Run(tc.ctx, tc.args...); !errors.Is(err, ErrNotAllowed) || f.spawned() {
+			t.Errorf("%s: err=%v spawned=%v", name, err, f.spawned())
+		}
+	}
+	f := newFake(t, "comment")
+	if _, err := e.Run(ctx, "api", "-X", "POST", "repos/o/r/issues/7/comments", "-f", "body=x"); err != nil || !f.spawned() {
+		t.Errorf("the approved write itself: err=%v spawned=%v", err, f.spawned())
 	}
 }
