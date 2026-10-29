@@ -165,6 +165,9 @@ func (s *Store) BindWorktree(i core.IssueRef, holder string, epoch int64, path s
 	})
 }
 
+// ReserveWorktree takes the documents lock, so it may run under the Issue lock of
+// the caller (the order is Issue lock, then documents lock; see withDocs).
+//
 // ReserveWorktree holds path for Issue i (the scan of the other records, then the
 // create-only reservation). A handoff uses it for the receipt's worktree, so an
 // open PR's path cannot be bound by another Issue.
