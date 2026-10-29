@@ -36,6 +36,13 @@ type PRBacklogVM struct {
 	Open  int
 	Limit int
 	State string // within-limit | at-limit | over-limit | no-limit-set
+	// RepairBacklog counts rows whose confirmed PR phase is repair-needed or
+	// repair-dispatched. It is counted from the rows, not read from a record.
+	RepairBacklog int
+	// HandoffWaiting and OldestWait are S46 PRQueue fields the monitor does not
+	// carry yet; they stay "not provided" instead of being derived.
+	HandoffWaiting string
+	OldestWait     string
 }
 
 // PRTrackingVM is the PR panel and /api/pr-tracking payload.
@@ -94,6 +101,7 @@ func (a *app) buildPRTracking(ctx context.Context) PRTrackingVM {
 		b := doc.Backlog.Value
 		vm.Backlog = PRBacklogVM{Known: true, Open: b.Open, Limit: b.Limit, State: b.State}
 	}
+	vm.Backlog.HandoffWaiting, vm.Backlog.OldestWait = "not provided", "not provided"
 	for _, r := range doc.Rows {
 		row := PRTrackRowVM{
 			Issue: r.Issue, Project: r.Project,
@@ -111,6 +119,9 @@ func (a *app) buildPRTracking(ctx context.Context) PRTrackingVM {
 		if r.PR.Confirmed {
 			row.PR = "#" + itoa(r.PR.Value.Number)
 			row.Phase, row.Track = r.PR.Value.Phase, prTrack(r.PR.Value.Phase)
+		}
+		if row.Track == "repair" {
+			vm.Backlog.RepairBacklog++
 		}
 		vm.Rows = append(vm.Rows, row)
 	}
@@ -181,7 +192,8 @@ func prMeta(vm PRTrackingVM) string {
 	case !vm.Backlog.Known:
 		return "backlog unknown"
 	case vm.Backlog.State == "no-limit-set":
-		return "open PRs " + itoa(vm.Backlog.Open) + " · no limit set"
+		return "open PRs " + itoa(vm.Backlog.Open) + " · no limit set · repair " + itoa(vm.Backlog.RepairBacklog)
 	}
-	return "open PRs " + itoa(vm.Backlog.Open) + "/" + itoa(vm.Backlog.Limit) + " · " + vm.Backlog.State
+	return "open PRs " + itoa(vm.Backlog.Open) + "/" + itoa(vm.Backlog.Limit) + " · " + vm.Backlog.State +
+		" · repair " + itoa(vm.Backlog.RepairBacklog)
 }

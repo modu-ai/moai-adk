@@ -73,6 +73,9 @@ func TestPRTracking_RowsAndBacklog(t *testing.T) {
 	if r := by[15]; r.State != "—" || r.Track != "gap" || r.Phase != "brand-new-phase" {
 		t.Errorf("unknown phase must stay verbatim and ungrouped: %+v", r)
 	}
+	if b := vm.Backlog; b.RepairBacklog != 1 || b.HandoffWaiting != "not provided" || b.OldestWait != "not provided" {
+		t.Errorf("repair backlog counts repair phases only and unprovided PRQueue fields stay gaps: %+v", b)
+	}
 	if got := vm.Backlog; !got.Known || got.Open != 6 || got.Limit != 5 || got.State != "over-limit" {
 		t.Errorf("backlog = %+v", got)
 	}
@@ -102,7 +105,7 @@ func TestPRTracking_MonitorAndAPI(t *testing.T) {
 	a := prApp(t, prRowsJSON, nil)
 	m, _ := a.buildMonitor(time.Now())
 	html := renderTempl(t, Monitor(tg1ShellVM(), m))
-	for _, want := range []string{`id="pr-tracking"`, "#101", "agent agent-3", "session 11111111-2222-3333-4444-555555555555", "1 passed, 1 failed", "checks-failed", "open PRs 6/5 · over-limit"} {
+	for _, want := range []string{`id="pr-tracking"`, "#101", "agent agent-3", "session 11111111-2222-3333-4444-555555555555", "1 passed, 1 failed", "checks-failed", "open PRs 6/5 · over-limit · repair 1", "handoff waiting not provided", "oldest wait not provided"} {
 		if !strings.Contains(html, want) {
 			t.Errorf("monitor missing %q", want)
 		}

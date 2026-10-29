@@ -647,6 +647,9 @@ templ Monitor(vm ShellVM, m MonitorVM) {
 			}
 			@panel("PR tracking", prMeta(m.PR), "", "", "Read-only. Phases come from the monitor; unconfirmed values show as a gap.", "roomy") {
 				<div class="vlist" id="pr-tracking">
+					if m.PR.Available {
+						<p class="panel__meta">{ "handoff waiting " + m.PR.Backlog.HandoffWaiting + " · oldest wait " + m.PR.Backlog.OldestWait }</p>
+					}
 					if m.PR.Note != "" {
 						<p class="warn">{ m.PR.Note }</p>
 					}
