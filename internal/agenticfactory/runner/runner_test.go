@@ -16,7 +16,7 @@ var (
 
 func newRunner(t *testing.T) (*Runner, core.IssueRef) {
 	t.Helper()
-	st, err := claim.Open(t.TempDir())
+	st, err := claim.OpenWithLimit(t.TempDir(), 100)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,7 +59,7 @@ func TestHappyPathQueuedToDone(t *testing.T) {
 	if rec, err = r.Land(tk, headA); err != nil || rec.State != core.StateLanding {
 		t.Fatalf("land: %+v %v", rec, err)
 	}
-	rec, err = r.Complete(tk, Landing{RemoteMerged: true, LocalSyncRecorded: true, Deploy: "N/A: no deploy target"})
+	rec, err = r.Complete(tk, Landing{RemoteMerged: true, LocalSyncRecorded: true, IssueClosed: true, Deploy: "N/A: no deploy target"})
 	if err != nil || rec.State != core.StateDone {
 		t.Fatalf("complete: %+v %v", rec, err)
 	}
@@ -205,10 +205,11 @@ func TestLandRechecksHead(t *testing.T) {
 
 func TestCompleteNeedsAllThreeRecords(t *testing.T) {
 	cases := map[string]Landing{
-		"no remote merge": {LocalSyncRecorded: true, Deploy: "N/A: x"},
-		"no local sync":   {RemoteMerged: true, Deploy: "N/A: x"},
-		"no deploy":       {RemoteMerged: true, LocalSyncRecorded: true},
-		"bare N/A":        {RemoteMerged: true, LocalSyncRecorded: true, Deploy: "N/A"},
+		"no remote merge": {LocalSyncRecorded: true, IssueClosed: true, Deploy: "N/A: x"},
+		"no issue close":  {RemoteMerged: true, LocalSyncRecorded: true, Deploy: "N/A: x"},
+		"no local sync":   {RemoteMerged: true, IssueClosed: true, Deploy: "N/A: x"},
+		"no deploy":       {RemoteMerged: true, LocalSyncRecorded: true, IssueClosed: true},
+		"bare N/A":        {RemoteMerged: true, LocalSyncRecorded: true, IssueClosed: true, Deploy: "N/A"},
 	}
 	for name, l := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -219,8 +220,13 @@ func TestCompleteNeedsAllThreeRecords(t *testing.T) {
 			if _, err := r.Complete(tk, l); !errors.Is(err, core.ErrEvidenceIncomplete) {
 				t.Errorf("want ErrEvidenceIncomplete, got %v", err)
 			}
-			if cur, _ := r.Store.Load(ref); cur.State != core.StateLanding {
-				t.Errorf("state = %v", cur.State)
+			cur, _ := r.Store.Load(ref)
+			if cur.State != core.StateLanding || cur.Closed {
+				t.Errorf("state = %v closed=%v", cur.State, cur.Closed)
+			}
+			// A merge that was observed is kept as a fact with the open obligation named.
+			if l.RemoteMerged != cur.Merged || (l.RemoteMerged && cur.Pending == "") {
+				t.Errorf("merged=%v pending=%q for %+v", cur.Merged, cur.Pending, l)
 			}
 		})
 	}
@@ -265,5 +271,61 @@ func TestPausedIssueRefusesForwardSteps(t *testing.T) {
 	_, _ = r.Pause(tk, core.StateOnHold, core.ReasonOperatorHold, "operator resumes")
 	if _, err := r.Verify(tk, passAll(headA)); !errors.Is(err, core.ErrTransitionInvalid) {
 		t.Errorf("verify while on-hold: %v", err)
+	}
+}
+
+// Session drop: a fresh Runner over the same store sees the persisted state
+// and continues with the original ticket; nothing is replayed.
+func TestReconnectContinuesFromPersistedState(t *testing.T) {
+	st, _ := claim.OpenWithLimit(t.TempDir(), 100)
+	ref, _ := core.NewIssueRef(1948)
+	first := New(st)
+	tk := toVerifying(t, first, ref)
+
+	second := New(st) // new process, same store
+	cur, err := second.Store.Load(ref)
+	if err != nil || cur.State != core.StateVerifying || cur.Head != core.HeadSHA(headA) {
+		t.Fatalf("persisted state lost: %+v %v", cur, err)
+	}
+	if rec, err := second.Verify(tk, passAll(headA)); err != nil || rec.State != core.StateReady {
+		t.Fatalf("continue after reconnect: %+v %v", rec, err)
+	}
+	// The re-sent dispatch after reconnect is not a second run.
+	if _, err := second.Claim(ref, "sess-a", "disp-1", "run-1"); !errors.Is(err, core.ErrDuplicateDispatch) {
+		t.Errorf("re-sent dispatch: %v", err)
+	}
+}
+
+// A result produced for the previous HEAD must not count after a repair
+// attempt submitted a new HEAD.
+func TestPreviousHeadResultRejectedAfterRepair(t *testing.T) {
+	r, ref := newRunner(t)
+	tk := toVerifying(t, r, ref)
+	v := passAll(headA)
+	v.Results[1].Verdict = VerdictFail
+	if rec, err := r.Verify(tk, v); err != nil || rec.State != core.StateImplementing {
+		t.Fatalf("fail path: %+v %v", rec, err)
+	}
+	if _, err := r.Submit(tk, headB, false); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := r.Verify(tk, passAll(headA)); !errors.Is(err, core.ErrStaleHead) {
+		t.Errorf("old-HEAD pass must be stale: %v", err)
+	}
+	if rec, err := r.Verify(tk, passAll(headB)); err != nil || rec.State != core.StateReady {
+		t.Errorf("new-HEAD pass: %+v %v", rec, err)
+	}
+}
+
+// Partial failure: a refused ownership write mid-flow leaves the stage where it was.
+func TestPartialFailureKeepsStage(t *testing.T) {
+	r, ref := newRunner(t)
+	tk := toVerifying(t, r, ref)
+	stale := Ticket{Issue: ref, Holder: tk.Holder, Epoch: tk.Epoch + 1}
+	if _, err := r.Verify(stale, passAll(headA)); !errors.Is(err, core.ErrOwnershipUnverified) {
+		t.Fatalf("stale epoch: %v", err)
+	}
+	if cur, _ := r.Store.Load(ref); cur.State != core.StateVerifying {
+		t.Errorf("stage moved: %v", cur.State)
 	}
 }

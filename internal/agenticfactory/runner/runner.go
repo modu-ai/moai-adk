@@ -57,6 +57,7 @@ type Verification struct {
 type Landing struct {
 	RemoteMerged      bool
 	LocalSyncRecorded bool
+	IssueClosed       bool
 	Deploy            string // evidence path, or "N/A: <reason>"
 }
 
@@ -82,6 +83,16 @@ func (r *Runner) Claim(i core.IssueRef, holder, dispatch string, run core.RunID)
 	return Ticket{Issue: i, Holder: holder, Epoch: rec.Epoch}, nil
 }
 
+// ClaimAs admits a registered agent: the claim stores its session id and its
+// display name separately.
+func (r *Runner) ClaimAs(i core.IssueRef, a core.Agent, dispatch string, run core.RunID) (Ticket, error) {
+	rec, err := r.Store.AcquireFor(i, a, dispatch, run)
+	if err != nil {
+		return Ticket{}, err
+	}
+	return Ticket{Issue: i, Holder: a.SessionID, Epoch: rec.Epoch}, nil
+}
+
 // step applies fn when the record is in state from; otherwise it refuses.
 func (r *Runner) step(t Ticket, from core.State, fn func(*claim.Record) error) (claim.Record, error) {
 	return r.Store.Update(t.Issue, t.Holder, t.Epoch, func(rec *claim.Record) error {
@@ -104,6 +115,7 @@ func (r *Runner) StartAttempt(t Ticket, attempt string, delivery core.Delivery) 
 			return fmt.Errorf("%w: delivery %q has not reached executed", core.ErrTransitionInvalid, delivery)
 		}
 		rec.State, rec.Attempt, rec.Delivery = core.StateImplementing, id, delivery
+		rec.AttemptSeq++
 		return nil
 	})
 }
@@ -197,21 +209,57 @@ func (r *Runner) Land(t Ticket, head string) (claim.Record, error) {
 	})
 }
 
-// Complete moves landing -> done only with a remote merge, a recorded local
-// sync and a deploy record (or a deploy N/A that states why).
+// Complete moves landing -> done only when every obligation is met: remote
+// merge, local sync, a deploy record (or a reasoned N/A) and the Issue close.
+// Publishing a PR is none of these. When the merge was observed but another
+// obligation is open, the merge fact is kept, the open obligation is named in
+// the record (the merged-and-pending state) and done stays unreached.
 func (r *Runner) Complete(t Ticket, l Landing) (claim.Record, error) {
-	return r.step(t, core.StateLanding, func(rec *claim.Record) error {
-		switch {
-		case !l.RemoteMerged:
-			return fmt.Errorf("%w: remote main merge not observed", core.ErrEvidenceIncomplete)
-		case !l.LocalSyncRecorded:
-			return fmt.Errorf("%w: local sync not recorded", core.ErrEvidenceIncomplete)
-		case !deployOK(l.Deploy):
-			return fmt.Errorf("%w: deploy record or reasoned N/A missing", core.ErrEvidenceIncomplete)
+	var open error
+	rec, err := r.step(t, core.StateLanding, func(rec *claim.Record) error {
+		var e error
+		if open, e = settle(rec, l); e != nil {
+			return e
 		}
-		rec.State, rec.Deploy = core.StateDone, l.Deploy
 		return nil
 	})
+	if err != nil {
+		return rec, err
+	}
+	return rec, open
+}
+
+// settle applies Landing to rec. It returns (pending, nil) when the merge is
+// observed but an obligation is open (the record is updated and persisted by
+// the caller, who then reports pending), and (nil, err) when nothing may be
+// recorded because the merge itself was not observed.
+func settle(rec *claim.Record, l Landing) (pending error, err error) {
+	name, miss := firstMissing(l)
+	if miss == nil {
+		rec.State, rec.Deploy, rec.Closed, rec.Merged, rec.Pending = core.StateDone, l.Deploy, true, true, ""
+		return nil, nil
+	}
+	if !l.RemoteMerged {
+		return nil, miss
+	}
+	rec.Merged, rec.Pending = true, name
+	return miss, nil
+}
+
+// firstMissing names the first open obligation, in the order they are
+// observed in practice.
+func firstMissing(l Landing) (string, error) {
+	switch {
+	case !l.RemoteMerged:
+		return "remote-merge", fmt.Errorf("%w: remote main merge not observed", core.ErrEvidenceIncomplete)
+	case !l.LocalSyncRecorded:
+		return "local-sync", fmt.Errorf("%w: local sync not recorded", core.ErrEvidenceIncomplete)
+	case !deployOK(l.Deploy):
+		return "deploy", fmt.Errorf("%w: deploy record or reasoned N/A missing", core.ErrEvidenceIncomplete)
+	case !l.IssueClosed:
+		return "issue-close", fmt.Errorf("%w: issue close not recorded", core.ErrEvidenceIncomplete)
+	}
+	return "", nil
 }
 
 func deployOK(d string) bool {
@@ -254,6 +302,125 @@ func (r *Runner) Resume(t Ticket, conditionMet bool) (claim.Record, error) {
 			return fmt.Errorf("%w: resume condition not met: %s", core.ErrTransitionInvalid, rec.Resume)
 		}
 		rec.State, rec.Return, rec.Reason, rec.Resume = rec.Return, "", "", ""
+		return nil
+	})
+}
+
+// Handoff is the PR handoff evidence an agent supplies when it publishes a PR.
+// BoundaryHead is the branch HEAD observed after the writer stopped; it must
+// equal the PR head, which proves nothing was written after publication.
+type Handoff struct {
+	PR            int
+	Head          string
+	Branch        string
+	Worktree      string
+	WriterStopped bool
+	BoundaryHead  string
+}
+
+// HandOff records the PR receipt and releases the agent's claim in one write,
+// so an agent can take a new Issue while the original worktree and branch stay
+// untouched. It is refused unless the writer has stopped and the write boundary
+// matches the PR head. The Issue stays in landing: a PR is not done.
+func (r *Runner) HandOff(t Ticket, h Handoff) (claim.Record, error) {
+	head, err := core.ParseHeadSHA(h.Head)
+	if err != nil {
+		return claim.Record{}, err
+	}
+	boundary, err := core.ParseHeadSHA(h.BoundaryHead)
+	if err != nil {
+		return claim.Record{}, err
+	}
+	switch {
+	case h.PR <= 0:
+		return claim.Record{}, fmt.Errorf("%w: PR number is required", core.ErrEvidenceIncomplete)
+	case h.Branch == "" || h.Worktree == "":
+		return claim.Record{}, fmt.Errorf("%w: branch and worktree are required", core.ErrEvidenceIncomplete)
+	case !h.WriterStopped:
+		return claim.Record{}, fmt.Errorf("%w: writer stop not confirmed", core.ErrEvidenceIncomplete)
+	case boundary != head:
+		return claim.Record{}, fmt.Errorf("%w: branch moved to %.12s after PR head %.12s", core.ErrStaleHead, boundary, head)
+	}
+	return r.Store.UpdateRelease(t.Issue, t.Holder, t.Epoch, func(rec *claim.Record) error {
+		if rec.State != core.StateLanding {
+			return fmt.Errorf("%w: %s, handoff needs a published PR (landing)", core.ErrTransitionInvalid, rec.State)
+		}
+		if head != rec.Head {
+			return fmt.Errorf("%w: PR head %.12s, candidate %.12s", core.ErrStaleHead, head, rec.Head)
+		}
+		if rec.Receipt != nil && rec.Receipt.Head == head {
+			return fmt.Errorf("%w: PR #%d", core.ErrDuplicateHandoff, rec.Receipt.PR)
+		}
+		rec.Receipt = &claim.Receipt{
+			PR: h.PR, Head: head, Branch: h.Branch, Worktree: h.Worktree,
+			Attempt: rec.Attempt, AttemptSeq: rec.AttemptSeq, Agent: rec.AgentName, Session: rec.Holder,
+		}
+		rec.AddEvent(claim.Event{Kind: "handoff", Agent: rec.AgentName, Session: rec.Holder, Attempt: string(rec.Attempt), Head: string(head), PR: h.PR})
+		return nil
+	})
+}
+
+// ClaimRepair admits the single repair holder of a handed-off Issue, on the
+// branch its receipt names. The repair attempt then runs the normal steps.
+func (r *Runner) ClaimRepair(i core.IssueRef, holder, dispatch string, run core.RunID, branch string) (Ticket, error) {
+	rec, err := r.Store.AcquireRepair(i, holder, dispatch, run, branch)
+	if err != nil {
+		return Ticket{}, err
+	}
+	return Ticket{Issue: i, Holder: holder, Epoch: rec.Epoch}, nil
+}
+
+// ClaimRepairAs is ClaimRepair for a registered agent.
+func (r *Runner) ClaimRepairAs(i core.IssueRef, a core.Agent, dispatch string, run core.RunID, branch string) (Ticket, error) {
+	rec, err := r.Store.AcquireRepairFor(i, a, dispatch, run, branch)
+	if err != nil {
+		return Ticket{}, err
+	}
+	return Ticket{Issue: i, Holder: a.SessionID, Epoch: rec.Epoch}, nil
+}
+
+// CompleteHandedOff is Complete for an Issue whose agent already left: the
+// leader or monitor records done once every obligation, the Issue close
+// included, is observed. It refuses a record that is still held or never
+// handed off.
+func (r *Runner) CompleteHandedOff(i core.IssueRef, l Landing) (claim.Record, error) {
+	var open error
+	rec, err := r.Store.UpdateReleased(i, func(rec *claim.Record) error {
+		if rec.Receipt == nil {
+			return fmt.Errorf("%w: no PR handoff receipt", core.ErrTransitionInvalid)
+		}
+		if rec.State != core.StateLanding {
+			return fmt.Errorf("%w: %s, expected %s", core.ErrTransitionInvalid, rec.State, core.StateLanding)
+		}
+		var e error
+		open, e = settle(rec, l)
+		return e
+	})
+	if err != nil {
+		return rec, err
+	}
+	return rec, open
+}
+
+// Reopen is the E10 edge: a handed-off PR that is not merged goes back from
+// landing to verifying (head, base or protection changed, or CI/review needs a
+// repair). The merge fact is never reverted, so a merged Issue is refused. The
+// next step is the single repair claim (E06).
+func (r *Runner) Reopen(i core.IssueRef, reason string) (claim.Record, error) {
+	if strings.TrimSpace(reason) == "" {
+		return claim.Record{}, fmt.Errorf("%w: a reopen reason is required", core.ErrEvidenceIncomplete)
+	}
+	return r.Store.UpdateReleased(i, func(rec *claim.Record) error {
+		switch {
+		case rec.Receipt == nil:
+			return fmt.Errorf("%w: no PR handoff receipt", core.ErrTransitionInvalid)
+		case rec.State != core.StateLanding:
+			return fmt.Errorf("%w: %s, reopen applies to landing", core.ErrTransitionInvalid, rec.State)
+		case rec.Merged:
+			return fmt.Errorf("%w: merge already observed, not reverted", core.ErrTransitionInvalid)
+		}
+		rec.State, rec.Pending = core.StateVerifying, ""
+		rec.AddEvent(claim.Event{Kind: "reopen", Head: string(rec.Head), PR: rec.Receipt.PR, Note: reason})
 		return nil
 	})
 }

@@ -45,6 +45,29 @@ func ParseHeadSHA(s string) (HeadSHA, error) {
 	return HeadSHA(s), nil
 }
 
+// sessionPattern admits UUID-like session ids and nothing that could escape a
+// path segment.
+var sessionPattern = regexp.MustCompile(`^[0-9A-Za-z-]{8,64}$`)
+
+// Agent is an agent session's identity: the immutable session id, and the
+// number that gives it the display name agent-<number>. The two never stand in
+// for each other.
+type Agent struct {
+	SessionID string `json:"session_id"`
+	Number    int    `json:"number"`
+}
+
+// DisplayName is agent-<number>.
+func (a Agent) DisplayName() string { return fmt.Sprintf("agent-%d", a.Number) }
+
+// ParseSessionID validates a session id.
+func ParseSessionID(s string) (string, error) {
+	if !sessionPattern.MatchString(s) {
+		return "", fmt.Errorf("%w: session id %q", ErrIDInvalid, s)
+	}
+	return s, nil
+}
+
 // IssueRef names the GitHub Issue a claim belongs to.
 type IssueRef struct{ Number int }
 

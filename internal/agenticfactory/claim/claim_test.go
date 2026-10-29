@@ -22,7 +22,7 @@ func ref(t *testing.T, n int) core.IssueRef {
 
 func open(t *testing.T) *Store {
 	t.Helper()
-	s, err := Open(t.TempDir())
+	s, err := OpenWithLimit(t.TempDir(), 100)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -169,7 +169,7 @@ func TestReleaseOnlyByHolderThenReacquireBumpsEpoch(t *testing.T) {
 
 func TestStoreUnavailableMapsToBlockReason(t *testing.T) {
 	dir := t.TempDir()
-	s, _ := Open(dir)
+	s, _ := OpenWithLimit(dir, 100)
 	if _, err := s.Acquire(ref(t, 1), "a", "d1", "run-1"); err != nil {
 		t.Fatal(err)
 	}
@@ -187,7 +187,7 @@ func TestStoreUnavailableMapsToBlockReason(t *testing.T) {
 
 func TestBusyWhenLockHeld(t *testing.T) {
 	dir := t.TempDir()
-	s, _ := Open(dir)
+	s, _ := OpenWithLimit(dir, 100)
 	if err := os.WriteFile(filepath.Join(dir, "issue-1.lock"), nil, 0o600); err != nil {
 		t.Fatal(err)
 	}
