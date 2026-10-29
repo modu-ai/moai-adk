@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -248,6 +249,90 @@ func TestAgenticFactoryCodexNonBoolRejected(t *testing.T) {
 			}
 			if en, ex := cfg.CodexOptIn(); en || ex {
 				t.Errorf("rejected value produced opt-in (%v,%v)", en, ex)
+			}
+		})
+	}
+}
+
+func TestAgenticFactoryWIPLimitUnsetIsNotUnlimited(t *testing.T) {
+	t.Setenv(EnvConfigDir, "")
+	cases := map[string]string{
+		"no file":     "",
+		"no block":    "workflow:\n  factory_lease:\n    duration: 20m\n",
+		"empty block": "workflow:\n  agentic_factory:\n",
+		"empty queue": "workflow:\n  agentic_factory:\n    pr_queue:\n",
+		"null":        "workflow:\n  agentic_factory:\n    pr_queue:\n      wip_limit:\n",
+		"explicit nl": "workflow:\n  agentic_factory:\n    pr_queue:\n      wip_limit: null\n",
+		"only codex":  "workflow:\n  agentic_factory:\n    codex:\n      enabled: true\n",
+	}
+	for name, body := range cases {
+		t.Run(name, func(t *testing.T) {
+			root := t.TempDir()
+			if body != "" {
+				writeAgenticFactoryWorkflow(t, root, body)
+			}
+			cfg, err := LoadAgenticFactory(root)
+			if err != nil {
+				t.Fatalf("LoadAgenticFactory: %v", err)
+			}
+			if cfg.PRQueueWIPLimit != nil {
+				t.Fatalf("PRQueueWIPLimit = %d, want nil (unset)", *cfg.PRQueueWIPLimit)
+			}
+			if limit, set := cfg.WIPLimit(); limit != 0 || set {
+				t.Fatalf("WIPLimit = (%d,%v), want (0,false): unset must not invent a number", limit, set)
+			}
+		})
+	}
+}
+
+func TestAgenticFactoryWIPLimitValid(t *testing.T) {
+	t.Setenv(EnvConfigDir, "")
+	for _, want := range []int{1, 7, 1000000} {
+		t.Run(strconv.Itoa(want), func(t *testing.T) {
+			root := t.TempDir()
+			writeAgenticFactoryWorkflow(t, root, "workflow:\n  agentic_factory:\n    pr_queue:\n      wip_limit: "+strconv.Itoa(want)+"\n")
+			cfg, err := LoadAgenticFactory(root)
+			if err != nil {
+				t.Fatalf("LoadAgenticFactory: %v", err)
+			}
+			if limit, set := cfg.WIPLimit(); limit != want || !set {
+				t.Fatalf("WIPLimit = (%d,%v), want (%d,true)", limit, set, want)
+			}
+		})
+	}
+}
+
+func TestAgenticFactoryWIPLimitInvalidIsRejected(t *testing.T) {
+	t.Setenv(EnvConfigDir, "")
+	bad := map[string]string{
+		"zero":         "0",
+		"negative":     "-1",
+		"float":        "2.5",
+		"string":       `"3"`,
+		"bool":         "true",
+		"list":         "[3]",
+		"mapping":      "{a: 3}",
+		"overflow":     "99999999999999999999999999",
+		"empty string": `""`,
+	}
+	for name, v := range bad {
+		t.Run(name, func(t *testing.T) {
+			root := t.TempDir()
+			p := writeAgenticFactoryWorkflow(t, root, "workflow:\n  agentic_factory:\n    pr_queue:\n      wip_limit: "+v+"\n")
+			cfg, err := LoadAgenticFactory(root)
+			if err == nil {
+				t.Fatalf("LoadAgenticFactory accepted %s; cfg=%+v", v, cfg)
+			}
+			if !errors.Is(err, ErrInvalidConfig) {
+				t.Errorf("error does not wrap ErrInvalidConfig: %v", err)
+			}
+			for _, part := range []string{"workflow.agentic_factory.pr_queue.wip_limit", ">= 1", p} {
+				if !strings.Contains(err.Error(), part) {
+					t.Errorf("error %q lacks %q", err.Error(), part)
+				}
+			}
+			if limit, set := cfg.WIPLimit(); limit != 0 || set {
+				t.Errorf("rejected value leaked: WIPLimit = (%d,%v)", limit, set)
 			}
 		})
 	}

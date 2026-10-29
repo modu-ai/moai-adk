@@ -41,13 +41,27 @@ const AgenticFactoryDefaultBrowser = AgenticFactoryBrowserChrome
 const (
 	agenticFactoryBrowserKey = "workflow.agentic_factory.browser.selected"
 	agenticFactoryCodexKey   = "workflow.agentic_factory.codex.enabled"
+	// provisional: SPEC-AGENTIC-FACTORY-001 — PR backlog cap, mirrors the canonical PRQueue.WIP_limit
+	agenticFactoryWIPLimitKey = "workflow.agentic_factory.pr_queue.wip_limit"
 )
 
-// AgenticFactoryConfig holds the two keys as written. A nil pointer means the
+// AgenticFactoryConfig holds the keys as written. A nil pointer means the
 // key is absent (or null) in the file.
 type AgenticFactoryConfig struct {
 	BrowserSelected *string
 	CodexEnabled    *bool
+	PRQueueWIPLimit *int
+}
+
+// WIPLimit returns the PR backlog cap and whether it was set.
+// provisional: SPEC-AGENTIC-FACTORY-001 — the design requires a cap, so an
+// unset value (0, false) must NOT be treated as unlimited by the caller; the
+// numeric default is an open decision and is deliberately not invented here.
+func (c AgenticFactoryConfig) WIPLimit() (limit int, set bool) {
+	if c.PRQueueWIPLimit == nil {
+		return 0, false
+	}
+	return *c.PRQueueWIPLimit, true
 }
 
 // BrowserResolution is the effective browser plus where it came from:
@@ -69,6 +83,9 @@ type agenticFactoryFile struct {
 			Codex struct {
 				Enabled yaml.Node `yaml:"enabled"`
 			} `yaml:"codex"`
+			PRQueue struct {
+				WIPLimit yaml.Node `yaml:"wip_limit"`
+			} `yaml:"pr_queue"`
 		} `yaml:"agentic_factory"`
 	} `yaml:"workflow"`
 }
@@ -147,6 +164,13 @@ func LoadAgenticFactory(projectRoot string) (AgenticFactoryConfig, error) {
 			return AgenticFactoryConfig{}, agenticFactoryFileError(path, agenticFactoryCodexKey, "must be a bool (true or false) or unset", n.Value)
 		}
 		cfg.CodexEnabled = &v
+	}
+	if n := &af.PRQueue.WIPLimit; !agenticFactoryUnset(n) {
+		var v int
+		if n.Kind != yaml.ScalarNode || n.Tag != "!!int" || n.Decode(&v) != nil || v < 1 {
+			return AgenticFactoryConfig{}, agenticFactoryFileError(path, agenticFactoryWIPLimitKey, "must be an integer >= 1 (or unset)", n.Value)
+		}
+		cfg.PRQueueWIPLimit = &v
 	}
 	return cfg, nil
 }
