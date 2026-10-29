@@ -373,3 +373,274 @@ func TestAgenticFactoryLeavesExistingDefaultsUnchanged(t *testing.T) {
 		t.Fatalf("missing section must read as unset: %+v", cfg)
 	}
 }
+
+// collabBody builds a workflow.yaml whose agentic_factory.collaboration block is inner.
+func collabBody(inner string) string {
+	var b strings.Builder
+	b.WriteString("workflow:\n  agentic_factory:\n    collaboration:\n")
+	for _, l := range strings.Split(strings.TrimRight(inner, "\n"), "\n") {
+		if l != "" {
+			b.WriteString("      " + l + "\n")
+		}
+	}
+	return b.String()
+}
+
+func loadCollab(t *testing.T, body string) AgenticFactoryConfig {
+	t.Helper()
+	t.Setenv(EnvConfigDir, "")
+	root := t.TempDir()
+	if body != "" {
+		writeAgenticFactoryWorkflow(t, root, body)
+	}
+	cfg, err := LoadAgenticFactory(root)
+	if err != nil {
+		t.Fatalf("LoadAgenticFactory: %v", err)
+	}
+	return cfg
+}
+
+func TestAgenticFactoryCollaborationDefaults(t *testing.T) {
+	cases := map[string]string{
+		"no file":          "",
+		"empty block":      "workflow:\n  agentic_factory:\n",
+		"null collab":      "workflow:\n  agentic_factory:\n    collaboration:\n",
+		"empty map":        "workflow:\n  agentic_factory:\n    collaboration: {}\n",
+		"null list":        collabBody("allowed_repositories:\n"),
+		"empty list":       collabBody("allowed_repositories: []\n"),
+		"null permissions": collabBody("permissions:\n"),
+	}
+	for name, body := range cases {
+		t.Run(name, func(t *testing.T) {
+			c := loadCollab(t, body).Collaboration()
+			if c.Enabled || c.EnabledExplicit || len(c.AllowedRepositoriesRaw) != 0 || len(c.AllowedRepositories("github")) != 0 || c.EditBody || c.Close || c.Labels || c.Assignees {
+				t.Fatalf("defaults wrong: %+v", c)
+			}
+		})
+	}
+}
+
+func TestAgenticFactoryCollaborationExplicitFalse(t *testing.T) {
+	c := loadCollab(t, collabBody("enabled: false\n")).Collaboration()
+	if c.Enabled || !c.EnabledExplicit {
+		t.Fatalf("explicit false: %+v", c)
+	}
+}
+
+func TestAgenticFactoryCollaborationParsedValues(t *testing.T) {
+	c := loadCollab(t, collabBody("enabled: true\nallowed_repositories: [o/n, grp/sub/proj]\npermissions:\n  edit_body: true\n  labels: true\n")).Collaboration()
+	want := CollaborationConfig{Enabled: true, EnabledExplicit: true, AllowedRepositoriesRaw: []string{"o/n", "grp/sub/proj"}, EditBody: true, Labels: true}
+	if !reflect.DeepEqual(c, want) {
+		t.Fatalf("got %+v, want %+v", c, want)
+	}
+	for k, f := range map[string]func(CollaborationConfig) bool{
+		"edit_body": func(c CollaborationConfig) bool { return c.EditBody },
+		"close":     func(c CollaborationConfig) bool { return c.Close },
+		"labels":    func(c CollaborationConfig) bool { return c.Labels },
+		"assignees": func(c CollaborationConfig) bool { return c.Assignees },
+	} {
+		got := loadCollab(t, collabBody("permissions:\n  "+k+": true\n")).Collaboration()
+		if !f(got) || got.Enabled {
+			t.Errorf("%s alone: %+v", k, got)
+		}
+	}
+}
+
+func TestNormalizeRepositoryPath(t *testing.T) {
+	for in, want := range map[string]string{"Owner/Name": "owner/name", "GRP/Sub/Proj": "grp/sub/proj", "a/b": "a/b", "": ""} {
+		if got := NormalizeRepositoryPath("github", in); got != want {
+			t.Errorf("github: NormalizeRepositoryPath(%q) = %q, want %q", in, got, want)
+		}
+	}
+	// ASCII only: non-ASCII letters are untouched.
+	if got := NormalizeRepositoryPath("github", "Ünï/ABC"); got != "Ünï/abc" {
+		t.Errorf("non-ASCII altered: %q", got)
+	}
+	// gitlab, unknown and empty provider: unchanged (exact match).
+	for _, p := range []string{"gitlab", "", "bitbucket", "GitHub"} {
+		if got := NormalizeRepositoryPath(p, "Owner/Name"); got != "Owner/Name" {
+			t.Errorf("provider %q lower-cased: %q", p, got)
+		}
+	}
+}
+
+func TestAgenticFactoryCollaborationRepositoriesDedupedByNormalizedForm(t *testing.T) {
+	c := loadCollab(t, collabBody("allowed_repositories: [B/X, a/y, b/x, A/Y, c/z, B/x]\n")).Collaboration()
+	want := []string{"B/X", "a/y", "c/z"}
+	if got := c.AllowedRepositories("github"); !reflect.DeepEqual(got, want) {
+		t.Fatalf("github: got %v, want %v", got, want)
+	}
+	wantExact := []string{"B/X", "a/y", "b/x", "A/Y", "c/z", "B/x"}
+	for _, p := range []string{"gitlab", "", "other"} {
+		if got := c.AllowedRepositories(p); !reflect.DeepEqual(got, wantExact) {
+			t.Errorf("provider %q: got %v, want %v", p, got, wantExact)
+		}
+	}
+	two := loadCollab(t, collabBody("allowed_repositories: [Group/Proj, group/proj]\n")).Collaboration()
+	if got := two.AllowedRepositories("gitlab"); !reflect.DeepEqual(got, []string{"Group/Proj", "group/proj"}) {
+		t.Fatalf("gitlab merged case variants: %v", got)
+	}
+	if got := two.AllowedRepositories("github"); !reflect.DeepEqual(got, []string{"Group/Proj"}) {
+		t.Fatalf("github kept case variants: %v", got)
+	}
+}
+
+func TestAgenticFactoryRepositoryCaseNoteKeepsProvenance(t *testing.T) {
+	for _, part := range []string{
+		"The name is not case sensitive.",
+		"https://docs.github.com/en/rest/repos/repos",
+		"2026-10-29",
+		"uncollated (from a WebFetch summary, not compared with the original page)",
+		"no official statement found on 2026-10-29; exact match only",
+	} {
+		if !strings.Contains(AgenticFactoryRepositoryCaseNote, part) {
+			t.Errorf("case note lacks %q", part)
+		}
+	}
+}
+
+func TestAgenticFactoryCollaborationInvalidRepositoryEntries(t *testing.T) {
+	t.Setenv(EnvConfigDir, "")
+	bad := map[string]string{
+		"wildcard star":     `"owner/*"`,
+		"wildcard question": `"owner/na?e"`,
+		"url scheme":        `"https://example.com/owner/name"`,
+		"whitespace":        `"owner/na me"`,
+		"leading space":     `" owner/name"`,
+		"tab":               `"owner/\tname"`,
+		"empty":             `""`,
+		"leading slash":     `"/owner/name"`,
+		"trailing slash":    `"owner/name/"`,
+		"single segment":    `"owner"`,
+		"empty segment":     `"owner//name"`,
+		"upper wildcard":    `"OWNER/*"`,
+		"number entry":      `5`,
+		"bool entry":        `true`,
+		"list entry":        `[a/b]`,
+		"map entry":         `{a: b}`,
+		"null entry":        `null`,
+	}
+	for name, v := range bad {
+		t.Run(name, func(t *testing.T) {
+			root := t.TempDir()
+			p := writeAgenticFactoryWorkflow(t, root, collabBody("allowed_repositories:\n  - good/one\n  - "+v+"\n"))
+			cfg, err := LoadAgenticFactory(root)
+			if err == nil {
+				t.Fatalf("accepted %s: %+v", v, cfg)
+			}
+			if !errors.Is(err, ErrInvalidConfig) {
+				t.Errorf("not ErrInvalidConfig: %v", err)
+			}
+			for _, part := range []string{"workflow.agentic_factory.collaboration.allowed_repositories", p} {
+				if !strings.Contains(err.Error(), part) {
+					t.Errorf("error %q lacks %q", err.Error(), part)
+				}
+			}
+			if !reflect.DeepEqual(cfg, AgenticFactoryConfig{}) {
+				t.Errorf("non-zero config on error: %+v", cfg)
+			}
+		})
+	}
+}
+
+func TestAgenticFactoryCollaborationNonListRepositories(t *testing.T) {
+	t.Setenv(EnvConfigDir, "")
+	for name, v := range map[string]string{"string": "owner/name", "map": "{a: b}", "number": "3", "bool": "true"} {
+		t.Run(name, func(t *testing.T) {
+			root := t.TempDir()
+			p := writeAgenticFactoryWorkflow(t, root, collabBody("allowed_repositories: "+v+"\n"))
+			cfg, err := LoadAgenticFactory(root)
+			if err == nil {
+				t.Fatalf("accepted %s", v)
+			}
+			if !errors.Is(err, ErrInvalidConfig) || !strings.Contains(err.Error(), "workflow.agentic_factory.collaboration.allowed_repositories") || !strings.Contains(err.Error(), p) {
+				t.Errorf("bad error: %v", err)
+			}
+			if !reflect.DeepEqual(cfg, AgenticFactoryConfig{}) {
+				t.Errorf("non-zero config on error: %+v", cfg)
+			}
+		})
+	}
+}
+
+func TestAgenticFactoryCollaborationNonBoolRejected(t *testing.T) {
+	t.Setenv(EnvConfigDir, "")
+	keys := map[string]string{
+		"workflow.agentic_factory.collaboration.enabled":               "enabled: %s\n",
+		"workflow.agentic_factory.collaboration.permissions.edit_body": "permissions:\n  edit_body: %s\n",
+		"workflow.agentic_factory.collaboration.permissions.close":     "permissions:\n  close: %s\n",
+		"workflow.agentic_factory.collaboration.permissions.labels":    "permissions:\n  labels: %s\n",
+		"workflow.agentic_factory.collaboration.permissions.assignees": "permissions:\n  assignees: %s\n",
+	}
+	vals := map[string]string{"string true": `"true"`, "int": "1", "word": "yes-please", "empty string": `""`, "list": "[true]", "map": "{a: b}"}
+	for key, tmpl := range keys {
+		for vn, v := range vals {
+			t.Run(key+"/"+vn, func(t *testing.T) {
+				root := t.TempDir()
+				p := writeAgenticFactoryWorkflow(t, root, collabBody(strings.Replace(tmpl, "%s", v, 1)))
+				cfg, err := LoadAgenticFactory(root)
+				if err == nil {
+					t.Fatalf("accepted %s", v)
+				}
+				if !errors.Is(err, ErrInvalidConfig) {
+					t.Errorf("not ErrInvalidConfig: %v", err)
+				}
+				for _, part := range []string{key, "bool", p} {
+					if !strings.Contains(err.Error(), part) {
+						t.Errorf("error %q lacks %q", err.Error(), part)
+					}
+				}
+				if !reflect.DeepEqual(cfg, AgenticFactoryConfig{}) {
+					t.Errorf("non-zero config on error: %+v", cfg)
+				}
+			})
+		}
+	}
+}
+
+// The error names the value kind, never the value itself.
+func TestAgenticFactoryCollaborationErrorOmitsValue(t *testing.T) {
+	t.Setenv(EnvConfigDir, "")
+	root := t.TempDir()
+	writeAgenticFactoryWorkflow(t, root, collabBody("allowed_repositories: [\"s3cr3t-token/*\"]\n"))
+	_, err := LoadAgenticFactory(root)
+	if err == nil {
+		t.Fatal("accepted wildcard")
+	}
+	if strings.Contains(err.Error(), "s3cr3t-token") {
+		t.Fatalf("error leaks value: %v", err)
+	}
+}
+
+func TestAgenticFactoryCollaborationReaderNeverWrites(t *testing.T) {
+	t.Setenv(EnvConfigDir, "")
+	root := t.TempDir()
+	body := "# c\n" + collabBody("enabled: true   # mine\nallowed_repositories: [a/b, A/B]\npermissions:\n  close: true\n")
+	p := writeAgenticFactoryWorkflow(t, root, body)
+	if _, err := LoadAgenticFactory(root); err != nil {
+		t.Fatal(err)
+	}
+	after, err := os.ReadFile(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(after) != body {
+		t.Fatalf("file changed:\n%s", after)
+	}
+}
+
+func TestAgenticFactoryCollaborationCoexistsWithOtherKeys(t *testing.T) {
+	cfg := loadCollab(t, "workflow:\n  agentic_factory:\n    browser:\n      selected: aside\n    codex:\n      enabled: true\n    pr_queue:\n      wip_limit: 4\n    collaboration:\n      enabled: true\n")
+	if res, _ := cfg.EffectiveBrowser(); res.Browser != "aside" {
+		t.Fatalf("browser %+v", res)
+	}
+	if en, ex := cfg.CodexOptIn(); !en || !ex {
+		t.Fatal("codex lost")
+	}
+	if l, ok := cfg.WIPLimit(); l != 4 || !ok {
+		t.Fatal("wip lost")
+	}
+	if !cfg.Collaboration().Enabled {
+		t.Fatal("collab lost")
+	}
+}

@@ -21,6 +21,8 @@ package config
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
+	"unicode"
 
 	"gopkg.in/yaml.v3"
 )
@@ -51,6 +53,8 @@ type AgenticFactoryConfig struct {
 	BrowserSelected *string
 	CodexEnabled    *bool
 	PRQueueWIPLimit *int
+
+	collaboration CollaborationConfig // read via Collaboration()
 }
 
 // WIPLimit returns the PR backlog cap and whether it was set.
@@ -86,8 +90,21 @@ type agenticFactoryFile struct {
 			PRQueue struct {
 				WIPLimit yaml.Node `yaml:"wip_limit"`
 			} `yaml:"pr_queue"`
+			Collaboration agenticFactoryCollabNodes `yaml:"collaboration"`
 		} `yaml:"agentic_factory"`
 	} `yaml:"workflow"`
+}
+
+// agenticFactoryCollabNodes is the collaboration decode target (values kept as nodes).
+type agenticFactoryCollabNodes struct {
+	Enabled             yaml.Node `yaml:"enabled"`
+	AllowedRepositories yaml.Node `yaml:"allowed_repositories"`
+	Permissions         struct {
+		EditBody  yaml.Node `yaml:"edit_body"`
+		Close     yaml.Node `yaml:"close"`
+		Labels    yaml.Node `yaml:"labels"`
+		Assignees yaml.Node `yaml:"assignees"`
+	} `yaml:"permissions"`
 }
 
 // agenticFactoryBrowsers is the closed set of browser selections.
@@ -172,6 +189,11 @@ func LoadAgenticFactory(projectRoot string) (AgenticFactoryConfig, error) {
 		}
 		cfg.PRQueueWIPLimit = &v
 	}
+	collab, err := readAgenticFactoryCollaboration(path, &af.Collaboration)
+	if err != nil {
+		return AgenticFactoryConfig{}, err
+	}
+	cfg.collaboration = collab
 	return cfg, nil
 }
 
@@ -187,4 +209,178 @@ func agenticFactoryFileError(path, key, msg string, got any) error {
 		Value:   got,
 		Wrapped: ErrInvalidConfig,
 	}
+}
+
+// Issue collaboration option keys (workflow.agentic_factory.collaboration.*).
+//
+// This reader only READS and VALIDATES: defaults, type/format refusal, and
+// accessors returning the parsed values. The evaluation rule (enabled AND
+// allow-list AND permission) is NOT implemented here; the matching itself is
+// implemented by lane-18, which MUST compare normalized forms
+// (NormalizeRepositoryPath with the repository's provider).
+//
+// provisional: SPEC-AGENTIC-FACTORY-001 — key names and defaults (all false / empty list).
+const (
+	agenticFactoryCollabEnabledKey   = "workflow.agentic_factory.collaboration.enabled"
+	agenticFactoryCollabReposKey     = "workflow.agentic_factory.collaboration.allowed_repositories"
+	agenticFactoryCollabEditBodyKey  = "workflow.agentic_factory.collaboration.permissions.edit_body"
+	agenticFactoryCollabCloseKey     = "workflow.agentic_factory.collaboration.permissions.close"
+	agenticFactoryCollabLabelsKey    = "workflow.agentic_factory.collaboration.permissions.labels"
+	agenticFactoryCollabAssigneesKey = "workflow.agentic_factory.collaboration.permissions.assignees"
+
+	agenticFactoryBoolMessage = "must be a bool (true or false) or unset"
+	agenticFactoryRepoMessage = "must be a list of repository paths: owner/name or group/subgroup/project (>= 2 non-empty '/'-separated segments, no wildcard, no URL scheme, no whitespace, no leading/trailing '/')"
+)
+
+// AgenticFactoryRepositoryCaseNote records what is, and is not, known about
+// repository-path case sensitivity. It is a constant so a future edit cannot
+// drop the provenance silently (a test asserts its contents).
+// provisional: SPEC-AGENTIC-FACTORY-001 — matching/case handling decided by lane-18.
+const AgenticFactoryRepositoryCaseNote = "GitHub: for the owner and repo path parameters the REST docs state " +
+	"\"The name is not case sensitive.\" (source https://docs.github.com/en/rest/repos/repos, 'Get a repository', 2026-10-29; " +
+	"uncollated (from a WebFetch summary, not compared with the original page)). " +
+	"GitLab: no official statement found on 2026-10-29; exact match only."
+
+// CollaborationConfig is the Issue collaboration option as parsed. Nothing here
+// decides whether an operation is permitted. AllowedRepositoriesRaw holds the
+// validated entries exactly as written (duplicates kept); use
+// AllowedRepositories(provider) for the de-duplicated list.
+type CollaborationConfig struct {
+	Enabled                bool
+	EnabledExplicit        bool
+	AllowedRepositoriesRaw []string
+	EditBody               bool
+	Close                  bool
+	Labels                 bool
+	Assignees              bool
+}
+
+// NormalizeRepositoryPath returns the comparison form of a repository path:
+// provider "github" ⇒ ASCII lower-casing only; "gitlab" and any unknown or
+// empty provider ⇒ s unchanged (exact match). See AgenticFactoryRepositoryCaseNote.
+// provisional: SPEC-AGENTIC-FACTORY-001
+func NormalizeRepositoryPath(provider, s string) string {
+	if provider != "github" {
+		return s
+	}
+	b := []byte(s)
+	for i, c := range b {
+		if c >= 'A' && c <= 'Z' {
+			b[i] = c + ('a' - 'A')
+		}
+	}
+	return string(b)
+}
+
+// AllowedRepositories returns the allow-list de-duplicated by the provider's
+// normalized form, in first-seen order, keeping the first spelling as written.
+// The result is a fresh slice (empty, never nil-sensitive) the caller may keep.
+func (c CollaborationConfig) AllowedRepositories(provider string) []string {
+	out := make([]string, 0, len(c.AllowedRepositoriesRaw))
+	seen := make(map[string]struct{}, len(c.AllowedRepositoriesRaw))
+	for _, r := range c.AllowedRepositoriesRaw {
+		k := NormalizeRepositoryPath(provider, r)
+		if _, dup := seen[k]; dup {
+			continue
+		}
+		seen[k] = struct{}{}
+		out = append(out, r)
+	}
+	return out
+}
+
+// Collaboration returns the parsed Issue collaboration option (zero value when unset).
+func (c AgenticFactoryConfig) Collaboration() CollaborationConfig {
+	out := c.collaboration
+	out.AllowedRepositoriesRaw = append([]string(nil), c.collaboration.AllowedRepositoriesRaw...)
+	return out
+}
+
+// agenticFactoryRepoValid reports whether s is a well-formed repository path.
+func agenticFactoryRepoValid(s string) bool {
+	if s == "" || strings.ContainsAny(s, "*?") || strings.Contains(s, "://") {
+		return false
+	}
+	if strings.IndexFunc(s, unicode.IsSpace) >= 0 {
+		return false
+	}
+	segs := strings.Split(s, "/")
+	if len(segs) < 2 {
+		return false
+	}
+	for _, seg := range segs {
+		if seg == "" {
+			return false
+		}
+	}
+	return true
+}
+
+// agenticFactoryNodeKind names the kind of a YAML node without echoing its value.
+func agenticFactoryNodeKind(n *yaml.Node) string {
+	switch n.Kind {
+	case yaml.SequenceNode:
+		return "list"
+	case yaml.MappingNode:
+		return "map"
+	case yaml.ScalarNode:
+		switch n.Tag {
+		case "!!str":
+			return "string"
+		case "!!int", "!!float":
+			return "number"
+		case "!!bool":
+			return "bool"
+		case "!!null":
+			return "null"
+		}
+	}
+	return "other"
+}
+
+// agenticFactoryReadBool reads an optional bool key; ok=false means unset.
+func agenticFactoryReadBool(path, key string, n *yaml.Node) (v, ok bool, err error) {
+	if agenticFactoryUnset(n) {
+		return false, false, nil
+	}
+	if n.Kind != yaml.ScalarNode || n.Tag != "!!bool" || n.Decode(&v) != nil {
+		return false, false, agenticFactoryFileError(path, key, agenticFactoryBoolMessage, agenticFactoryNodeKind(n))
+	}
+	return v, true, nil
+}
+
+// readAgenticFactoryCollaboration validates the collaboration block.
+func readAgenticFactoryCollaboration(path string, c *agenticFactoryCollabNodes) (CollaborationConfig, error) {
+	var out CollaborationConfig
+	var err error
+	if out.Enabled, out.EnabledExplicit, err = agenticFactoryReadBool(path, agenticFactoryCollabEnabledKey, &c.Enabled); err != nil {
+		return CollaborationConfig{}, err
+	}
+	for _, p := range []struct {
+		key string
+		n   *yaml.Node
+		dst *bool
+	}{
+		{agenticFactoryCollabEditBodyKey, &c.Permissions.EditBody, &out.EditBody},
+		{agenticFactoryCollabCloseKey, &c.Permissions.Close, &out.Close},
+		{agenticFactoryCollabLabelsKey, &c.Permissions.Labels, &out.Labels},
+		{agenticFactoryCollabAssigneesKey, &c.Permissions.Assignees, &out.Assignees},
+	} {
+		if *p.dst, _, err = agenticFactoryReadBool(path, p.key, p.n); err != nil {
+			return CollaborationConfig{}, err
+		}
+	}
+	if n := &c.AllowedRepositories; !agenticFactoryUnset(n) {
+		if n.Kind != yaml.SequenceNode {
+			return CollaborationConfig{}, agenticFactoryFileError(path, agenticFactoryCollabReposKey, agenticFactoryRepoMessage, agenticFactoryNodeKind(n))
+		}
+		for i := range n.Content {
+			e := n.Content[i]
+			if e.Kind != yaml.ScalarNode || e.Tag != "!!str" || !agenticFactoryRepoValid(e.Value) {
+				return CollaborationConfig{}, agenticFactoryFileError(path, fmt.Sprintf("%s[%d]", agenticFactoryCollabReposKey, i), agenticFactoryRepoMessage, agenticFactoryNodeKind(e))
+			}
+			out.AllowedRepositoriesRaw = append(out.AllowedRepositoriesRaw, e.Value)
+		}
+	}
+	return out, nil
 }
