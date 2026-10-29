@@ -23,30 +23,33 @@ import (
 
 // Record is the authoritative local claim for one Issue.
 type Record struct {
-	Issue    int              `json:"issue"`
-	Holder   string           `json:"holder"` // empty once released
-	Dispatch string           `json:"dispatch"`
-	Run      core.RunID       `json:"run"`
-	Attempt  core.AttemptID   `json:"attempt,omitempty"`
-	Epoch    int64            `json:"epoch"`
-	Seq      int64            `json:"seq"`
-	State    core.State       `json:"state"`
-	Return   core.State       `json:"return_stage,omitempty"`
-	Reason   core.BlockReason `json:"block_reason,omitempty"`
-	Resume   string           `json:"resume_condition,omitempty"`
-	Head     core.HeadSHA     `json:"head,omitempty"`
-	Delivery core.Delivery    `json:"delivery,omitempty"`
-	Deploy   string           `json:"deploy,omitempty"`
-	Mirror   string           `json:"mirror_state,omitempty"` // current | stale | blocked(<reason>)
+	Issue  int    `json:"issue"`
+	Holder string `json:"holder"` // empty once released
+	// AgentName is the display name (agent-N) of the holder; Holder carries
+	// the immutable session id. Neither is changed by Update.
+	AgentName string           `json:"agent_name,omitempty"`
+	Dispatch  string           `json:"dispatch"`
+	Run       core.RunID       `json:"run"`
+	Attempt   core.AttemptID   `json:"attempt,omitempty"`
+	Epoch     int64            `json:"epoch"`
+	Seq       int64            `json:"seq"`
+	State     core.State       `json:"state"`
+	Return    core.State       `json:"return_stage,omitempty"`
+	Reason    core.BlockReason `json:"block_reason,omitempty"`
+	Resume    string           `json:"resume_condition,omitempty"`
+	Head      core.HeadSHA     `json:"head,omitempty"`
+	Delivery  core.Delivery    `json:"delivery,omitempty"`
+	Deploy    string           `json:"deploy,omitempty"`
+	Mirror    string           `json:"mirror_state,omitempty"` // current | stale | blocked(<reason>)
 	// AttemptSeq counts attempts on this Issue (initial plus repairs).
 	AttemptSeq int `json:"attempt_seq,omitempty"`
-	// Receipt is set when the Worker published a PR and handed the Issue off.
+	// Receipt is set when the agent published a PR and handed the Issue off.
 	Receipt *Receipt `json:"receipt,omitempty"`
 	// Closed is set after done, once the Issue itself has been closed.
 	Closed bool `json:"closed,omitempty"`
 }
 
-// Receipt is the PR handoff record. It outlives the Worker's claim: the
+// Receipt is the PR handoff record. It outlives the agent's claim: the
 // branch and worktree it names are preserved, and only a repair claim on that
 // branch may write to the Issue again.
 type Receipt struct {
@@ -56,6 +59,7 @@ type Receipt struct {
 	Worktree   string         `json:"worktree"`
 	Attempt    core.AttemptID `json:"attempt,omitempty"`
 	AttemptSeq int            `json:"attempt_seq,omitempty"`
+	Agent      string         `json:"agent,omitempty"` // display name of the agent that published the PR
 }
 
 // Store keeps records under one directory: issue-<n>.json, guarded by
@@ -177,6 +181,16 @@ func (s *Store) Load(i core.IssueRef) (Record, error) {
 // new dispatch on an owned Issue is Held. An Issue with a published PR takes
 // only a repair claim, and a full PR backlog holds the claim.
 func (s *Store) Acquire(i core.IssueRef, holder, dispatch string, run core.RunID) (Record, error) {
+	return s.acquire(i, holder, "", dispatch, run)
+}
+
+// AcquireFor is Acquire for a registered agent: the record stores the
+// session id as Holder and the display name separately.
+func (s *Store) AcquireFor(i core.IssueRef, a core.Agent, dispatch string, run core.RunID) (Record, error) {
+	return s.acquire(i, a.SessionID, a.DisplayName(), dispatch, run)
+}
+
+func (s *Store) acquire(i core.IssueRef, holder, name, dispatch string, run core.RunID) (Record, error) {
 	if holder == "" || dispatch == "" {
 		return Record{}, fmt.Errorf("%w: holder and dispatch are required", core.ErrIDInvalid)
 	}
@@ -208,7 +222,7 @@ func (s *Store) Acquire(i core.IssueRef, holder, dispatch string, run core.RunID
 			}
 		}
 		out = Record{
-			Issue: i.Number, Holder: holder, Dispatch: dispatch, Run: run,
+			Issue: i.Number, Holder: holder, AgentName: name, Dispatch: dispatch, Run: run,
 			Epoch: cur.Epoch + 1, Seq: cur.Seq + 1, State: core.StateClaimed,
 		}
 		return s.write(i, out)
@@ -223,6 +237,15 @@ func (s *Store) Acquire(i core.IssueRef, holder, dispatch string, run core.RunID
 // its receipt names. Contention is Held, the same dispatch again is a
 // duplicate, and a different branch is refused: a repair never forks.
 func (s *Store) AcquireRepair(i core.IssueRef, holder, dispatch string, run core.RunID, branch string) (Record, error) {
+	return s.acquireRepair(i, holder, "", dispatch, run, branch)
+}
+
+// AcquireRepairFor is AcquireRepair for a registered agent.
+func (s *Store) AcquireRepairFor(i core.IssueRef, a core.Agent, dispatch string, run core.RunID, branch string) (Record, error) {
+	return s.acquireRepair(i, a.SessionID, a.DisplayName(), dispatch, run, branch)
+}
+
+func (s *Store) acquireRepair(i core.IssueRef, holder, name, dispatch string, run core.RunID, branch string) (Record, error) {
 	if holder == "" || dispatch == "" {
 		return Record{}, fmt.Errorf("%w: holder and dispatch are required", core.ErrIDInvalid)
 	}
@@ -245,7 +268,7 @@ func (s *Store) AcquireRepair(i core.IssueRef, holder, dispatch string, run core
 			return fmt.Errorf("%w: no open PR on branch %q for %s", core.ErrTransitionInvalid, branch, i.Resource())
 		}
 		out = cur
-		out.Holder, out.Dispatch, out.Run = holder, dispatch, run
+		out.Holder, out.AgentName, out.Dispatch, out.Run = holder, name, dispatch, run
 		out.Epoch, out.Seq, out.State = cur.Epoch+1, cur.Seq+1, core.StateClaimed
 		out.Return, out.Reason, out.Resume = "", "", ""
 		return s.write(i, out)
@@ -327,7 +350,7 @@ func (s *Store) UpdateRelease(i core.IssueRef, holder string, epoch int64, fn fu
 		if err := fn(&next); err != nil {
 			return err
 		}
-		next.Issue, next.Epoch, next.Seq = cur.Issue, cur.Epoch, cur.Seq+1
+		next.Issue, next.AgentName, next.Epoch, next.Seq = cur.Issue, cur.AgentName, cur.Epoch, cur.Seq+1
 		next.Holder = ""
 		out = next
 		return s.write(i, out)
@@ -340,7 +363,7 @@ func (s *Store) UpdateRelease(i core.IssueRef, holder string, epoch int64, fn fu
 
 // UpdateReleased applies fn to a record nobody holds (a handed-off or done
 // Issue), for the leader or monitor that tracks the PR. It refuses a held
-// record, so it can never race a Worker's own writes.
+// record, so it can never race an agent's own writes.
 func (s *Store) UpdateReleased(i core.IssueRef, fn func(*Record) error) (Record, error) {
 	var out Record
 	err := s.withLock(i, func() error {
@@ -358,7 +381,7 @@ func (s *Store) UpdateReleased(i core.IssueRef, fn func(*Record) error) (Record,
 		if err := fn(&next); err != nil {
 			return err
 		}
-		next.Issue, next.Holder, next.Epoch, next.Seq = cur.Issue, "", cur.Epoch, cur.Seq+1
+		next.Issue, next.Holder, next.AgentName, next.Epoch, next.Seq = cur.Issue, "", cur.AgentName, cur.Epoch, cur.Seq+1
 		out = next
 		return s.write(i, out)
 	})
@@ -397,7 +420,7 @@ func (s *Store) Update(i core.IssueRef, holder string, epoch int64, fn func(*Rec
 		if err := fn(&next); err != nil {
 			return err
 		}
-		next.Issue, next.Holder, next.Epoch, next.Seq = cur.Issue, cur.Holder, cur.Epoch, cur.Seq+1
+		next.Issue, next.Holder, next.AgentName, next.Epoch, next.Seq = cur.Issue, cur.Holder, cur.AgentName, cur.Epoch, cur.Seq+1
 		out = next
 		return s.write(i, out)
 	})

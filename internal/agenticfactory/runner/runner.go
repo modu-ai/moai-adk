@@ -82,6 +82,16 @@ func (r *Runner) Claim(i core.IssueRef, holder, dispatch string, run core.RunID)
 	return Ticket{Issue: i, Holder: holder, Epoch: rec.Epoch}, nil
 }
 
+// ClaimAs admits a registered agent: the claim stores its session id and its
+// display name separately.
+func (r *Runner) ClaimAs(i core.IssueRef, a core.Agent, dispatch string, run core.RunID) (Ticket, error) {
+	rec, err := r.Store.AcquireFor(i, a, dispatch, run)
+	if err != nil {
+		return Ticket{}, err
+	}
+	return Ticket{Issue: i, Holder: a.SessionID, Epoch: rec.Epoch}, nil
+}
+
 // step applies fn when the record is in state from; otherwise it refuses.
 func (r *Runner) step(t Ticket, from core.State, fn func(*claim.Record) error) (claim.Record, error) {
 	return r.Store.Update(t.Issue, t.Holder, t.Epoch, func(rec *claim.Record) error {
@@ -267,7 +277,7 @@ func (r *Runner) Resume(t Ticket, conditionMet bool) (claim.Record, error) {
 	})
 }
 
-// Handoff is the PR handoff evidence a Worker supplies when it publishes a PR.
+// Handoff is the PR handoff evidence an agent supplies when it publishes a PR.
 // BoundaryHead is the branch HEAD observed after the writer stopped; it must
 // equal the PR head, which proves nothing was written after publication.
 type Handoff struct {
@@ -279,8 +289,8 @@ type Handoff struct {
 	BoundaryHead  string
 }
 
-// HandOff records the PR receipt and releases the Worker's claim in one write,
-// so a Worker can take a new Issue while the original worktree and branch stay
+// HandOff records the PR receipt and releases the agent's claim in one write,
+// so an agent can take a new Issue while the original worktree and branch stay
 // untouched. It is refused unless the writer has stopped and the write boundary
 // matches the PR head. The Issue stays in landing: a PR is not done.
 func (r *Runner) HandOff(t Ticket, h Handoff) (claim.Record, error) {
@@ -314,7 +324,7 @@ func (r *Runner) HandOff(t Ticket, h Handoff) (claim.Record, error) {
 		}
 		rec.Receipt = &claim.Receipt{
 			PR: h.PR, Head: head, Branch: h.Branch, Worktree: h.Worktree,
-			Attempt: rec.Attempt, AttemptSeq: rec.AttemptSeq,
+			Attempt: rec.Attempt, AttemptSeq: rec.AttemptSeq, Agent: rec.AgentName,
 		}
 		return nil
 	})
@@ -330,7 +340,16 @@ func (r *Runner) ClaimRepair(i core.IssueRef, holder, dispatch string, run core.
 	return Ticket{Issue: i, Holder: holder, Epoch: rec.Epoch}, nil
 }
 
-// CompleteHandedOff is Complete for an Issue whose Worker already left: the
+// ClaimRepairAs is ClaimRepair for a registered agent.
+func (r *Runner) ClaimRepairAs(i core.IssueRef, a core.Agent, dispatch string, run core.RunID, branch string) (Ticket, error) {
+	rec, err := r.Store.AcquireRepairFor(i, a, dispatch, run, branch)
+	if err != nil {
+		return Ticket{}, err
+	}
+	return Ticket{Issue: i, Holder: a.SessionID, Epoch: rec.Epoch}, nil
+}
+
+// CompleteHandedOff is Complete for an Issue whose agent already left: the
 // leader or monitor records done once the merge is observed. It refuses a
 // record that is still held or never handed off.
 func (r *Runner) CompleteHandedOff(i core.IssueRef, l Landing) (claim.Record, error) {

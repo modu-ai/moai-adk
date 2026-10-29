@@ -50,16 +50,16 @@ func TestHandoffReleasesClaimKeepsReceipt(t *testing.T) {
 		t.Fatalf("after handoff: %+v", rec)
 	}
 	if _, err := r.Store.Load(ref); !errors.Is(err, core.ErrNotHeld) {
-		t.Errorf("worker must no longer hold the claim: %v", err)
+		t.Errorf("agent must no longer hold the claim: %v", err)
 	}
-	// The worker's old ticket can no longer write.
+	// The agent's old ticket can no longer write.
 	if _, err := r.Complete(tk, Landing{RemoteMerged: true, LocalSyncRecorded: true, Deploy: "N/A: x"}); !errors.Is(err, core.ErrOwnershipUnverified) {
-		t.Errorf("released worker wrote: %v", err)
+		t.Errorf("released agent wrote: %v", err)
 	}
-	// A different Issue can now be claimed by the same worker.
+	// A different Issue can now be claimed by the same agent.
 	other, _ := core.NewIssueRef(2000)
 	if _, err := r.Claim(other, "sess-a", "disp-2", "run-1"); err != nil {
-		t.Errorf("worker could not take a new issue: %v", err)
+		t.Errorf("agent could not take a new issue: %v", err)
 	}
 }
 
@@ -84,7 +84,7 @@ func TestHandoffRefusedWithoutStopOrBoundaryProof(t *testing.T) {
 			}
 			cur, err := r.Store.Load(ref)
 			if err != nil || cur.Receipt != nil || cur.Holder != "sess-a" {
-				t.Errorf("claim must stay with the worker: %+v %v", cur, err)
+				t.Errorf("claim must stay with the agent: %+v %v", cur, err)
 			}
 		})
 	}
@@ -104,9 +104,9 @@ func TestDuplicateHandoffRejected(t *testing.T) {
 	if _, err := r.HandOff(tk, goodHandoff()); err != nil {
 		t.Fatal(err)
 	}
-	// Same worker retries with its old ticket.
+	// Same agent retries with its old ticket.
 	if _, err := r.HandOff(tk, goodHandoff()); !errors.Is(err, core.ErrOwnershipUnverified) {
-		t.Errorf("retry by released worker: %v", err)
+		t.Errorf("retry by released agent: %v", err)
 	}
 	// A repair holder re-publishing the same head is a duplicate receipt.
 	rep, err := r.ClaimRepair(ref, "sess-b", "disp-r", "run-2", "WT-agentic-x")
@@ -152,7 +152,7 @@ func TestMarkClosedRefusedBeforeDone(t *testing.T) {
 
 func TestCompleteHandedOffNeedsAHandoff(t *testing.T) {
 	r, ref := newRunner(t)
-	_ = landed(t, r, ref) // worker still holds the claim, no receipt
+	_ = landed(t, r, ref) // agent still holds the claim, no receipt
 	if _, err := r.CompleteHandedOff(ref, Landing{RemoteMerged: true, LocalSyncRecorded: true, Deploy: "N/A: x"}); !errors.Is(err, core.ErrTransitionInvalid) {
 		t.Errorf("complete without receipt: %v", err)
 	}
@@ -307,5 +307,35 @@ func TestLeaderRestartRestoresClaims(t *testing.T) {
 	}
 	if _, err := r2.ClaimRepair(ref1, "sess-c", "disp-r", "run-3", "WT-agentic-x"); err != nil {
 		t.Errorf("repair after restart: %v", err)
+	}
+}
+
+func TestAgentIdentitySurvivesHandoffAndRepair(t *testing.T) {
+	r, ref := newRunner(t)
+	a1, _ := r.Store.RegisterAgent("aaaaaaaa-0000-0000-0000-000000000001")
+	a2, _ := r.Store.RegisterAgent("aaaaaaaa-0000-0000-0000-000000000002")
+	tk, err := r.ClaimAs(ref, a1, "disp-1", "run-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := r.StartAttempt(tk, "attempt-1", core.DeliveryExecuted); err != nil {
+		t.Fatal(err)
+	}
+	_, _ = r.Submit(tk, headA, false)
+	if _, err := r.Verify(tk, passAll(headA)); err != nil {
+		t.Fatal(err)
+	}
+	_, _ = r.Land(tk, headA)
+	rec, err := r.HandOff(tk, goodHandoff())
+	if err != nil || rec.Receipt.Agent != "agent-1" {
+		t.Fatalf("receipt agent: %+v %v", rec, err)
+	}
+	rep, err := r.ClaimRepairAs(ref, a2, "disp-r", "run-2", "WT-agentic-x")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cur, _ := r.Store.Load(ref)
+	if cur.AgentName != "agent-2" || cur.Receipt.Agent != "agent-1" || rep.Holder != a2.SessionID {
+		t.Errorf("identities: %+v", cur)
 	}
 }
