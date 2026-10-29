@@ -32,6 +32,31 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 )
 
+// The bound on each external effect. The leader decided the values for OD-20 (the key names, and so
+// whether they become settings, stay open); until then they are these named constants, not literals at the
+// call sites. An effect that does not answer within its bound is treated as possibly delivered: the
+// executor records it as sent and reconciles it by looking, it never sends again.
+const (
+	// A gh subprocess that writes: the bound of the repository's existing gh subprocess
+	// (internal/cli/todo_pr.go todoPRSubprocessTimeout).
+	issueCreateTimeout   = 30 * time.Second
+	ledgerCommentTimeout = 30 * time.Second
+	labelApplyTimeout    = 30 * time.Second
+	// A gh read: the bound of the delivery edge's gh call (internal/cli/factory_card_pr.go factoryGHTimeout).
+	checkObserveTimeout = 10 * time.Second
+	// Local git work. The repository has no precedent for these two; the leader set them, and an expiry is
+	// safe because it takes the same reconcile-by-lookup path.
+	branchPrepareTimeout   = 60 * time.Second
+	worktreePrepareTimeout = 120 * time.Second
+)
+
+func defaultTimeouts() effect.Timeouts {
+	return effect.Timeouts{
+		IssueCreate: issueCreateTimeout, BranchPrepare: branchPrepareTimeout, WorktreePrepare: worktreePrepareTimeout,
+		CheckObserve: checkObserveTimeout, LedgerComment: ledgerCommentTimeout, LabelApply: labelApplyTimeout,
+	}
+}
+
 // Deps is what the settings cannot provide.
 type Deps struct {
 	// Store is the claim store, opened by the caller.
@@ -58,8 +83,9 @@ type Resident struct {
 	Budget  *forge.Budget
 	Cursors docstore.Cursors
 
-	deps   Deps
-	queues map[string]*docstore.Queue // by the repository a webhook route names
+	deps     Deps
+	queues   map[string]*docstore.Queue // by the repository a webhook route names
+	timeouts effect.Timeouts
 }
 
 // ErrNotConfigured is returned when the settings say Agentic Factory is not configured.
@@ -87,7 +113,7 @@ func Build(s config.AgenticFactorySettings, d Deps) (*Resident, error) {
 	case len(s.WebhookRoutes) > 0 && d.Secret == nil:
 		return nil, errors.New("resident: Deps.Secret is required while webhook routes are configured (where the secret is read from is undecided, OD-17)")
 	}
-	r := &Resident{Settings: s, deps: d, queues: map[string]*docstore.Queue{}}
+	r := &Resident{Settings: s, deps: d, queues: map[string]*docstore.Queue{}, timeouts: defaultTimeouts()}
 	r.Backoff = forge.Backoff{
 		MinSecondaryWait: s.GitHubBackoff.MinSecondaryWait, Base: s.GitHubBackoff.Base,
 		Max: s.GitHubBackoff.Max, MaxAttempts: s.GitHubBackoff.MaxAttempts,
@@ -140,6 +166,14 @@ func Build(s config.AgenticFactorySettings, d Deps) (*Resident, error) {
 	return r, nil
 }
 
+// Timeouts is the bound on each external effect.
+func (r *Resident) Timeouts() effect.Timeouts { return r.timeouts }
+
+// Executor is the effect executor with these timeouts and the intents kept in the claim store.
+func (r *Resident) Executor(send effect.Sender, lookup effect.Lookuper) *effect.Executor {
+	return &effect.Executor{Store: docstore.Store{C: r.deps.Store}, Send: send, Lookup: lookup, Timeouts: r.timeouts, Now: r.deps.Now}
+}
+
 // NewWait is a wait record whose retry limit and escalation target come from the settings; the owner
 // supplies the rest.
 func (r *Resident) NewWait(owner, nextAction, diagnosis string, recheckAt time.Time) core.Wait {
@@ -189,7 +223,7 @@ func (r *Resident) PRReader(run adapt.GHRunner) adapt.GHReader {
 
 // Ledger is the Issue context ledger with the configured size cap.
 func (r *Resident) Ledger(remote ctxledger.Remote, store effect.IntentStore) *ctxledger.Ledger {
-	return &ctxledger.Ledger{Remote: remote, Store: store, MaxBytes: r.Settings.ContextSummaryMaxBytes, Backoff: r.Backoff, Now: r.deps.Now}
+	return &ctxledger.Ledger{Remote: remote, Store: store, MaxBytes: r.Settings.ContextSummaryMaxBytes, Timeouts: r.timeouts, Backoff: r.Backoff, Now: r.deps.Now}
 }
 
 // Pass is the outcome of one pass of the loop.
