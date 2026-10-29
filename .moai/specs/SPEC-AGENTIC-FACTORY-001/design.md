@@ -1,4 +1,4 @@
-# SPEC-AGENTIC-FACTORY-001 — 설계 (0.6.2)
+# SPEC-AGENTIC-FACTORY-001 — 설계 (0.6.3)
 
 이 문서는 `spec.md`의 표 요구사항(REQ-AF-016~025)이 가리키는 표와, 묶음 요구사항(REQ-AF-001~015)의 세부 계약을 담는다. 코드 구조와 함수 이름은 정하지 않는다. 다만 이미 다른 레인이 만든 이름(예: lane-18 `core.Collaboration.Authorize`, lane-17 `NormalizeRepositoryPath`)은 사실로 인용한다.
 
@@ -163,25 +163,34 @@ GitHub Issue (업무 필드의 권위: 제목·수용 기준·우선순위·의�
 
 - 표에 없는 간선과 요청자가 맞지 않는 요청은 거절하고 상태를 바꾸지 않는다.
 - E13의 순서: Issue 종료가 DONE 기록보다 먼저다(DEC-AF-07, 시험 M34). 다음 dispatch는 DONE 뒤.
-- 0.5.0에 없던 간선 `landing → verifying`은 E10이 메운다. 수리는 E10 → E06이다(DEC-AF-07).
+- 0.5.0에 없던 간선 `landing → verifying`은 E10이 메운다. 수리는 E10 → E06이다(DEC-AF-07). 옛 이름이 어느 정본 단계에 놓이는지는 이름이 아니라 증거로 정한다(§2.3).
 
-### 2.3 옛 상태 이름 대응 (0.4.0·0.5.0 → 정본 값)
+### 2.3 옛 상태 → 정본 값 대응 (0.4.0·0.5.0 → 정본, 증거 기준)
 
-오른쪽 열은 정본 값(§2.1의 단계·하위 단계, §2.1a 사유)만 쓴다. "출처" 열이 '리더 결정'인 행은 0.6.2에서 'leader decision, relayed via the leader session'으로 받은 대응이다. 나머지 행은 0.6.0 판의 대응이 그대로다.
+출처: 'leader decision, relayed via the leader session'(0.6.3 정정). 대응은 **옛 상태 이름이 아니라 증거로** 정하며, 정본 E03(S46 49행, PR 인계 → REVIEWING)을 따른다. 오른쪽 값은 정본 값(§2.1의 단계·하위 단계, §2.1a 사유)만 쓴다.
+
+**증거 규칙** — 옛 상태 이름이 `verifying`·`ready`·`landing` 가운데 무엇이든 아래 순서로 읽는다.
+
+| 관측한 증거 | 정본 값 |
+|---|---|
+| writer 인계 receipt **와** leader의 인계 수락이 **둘 다** 있음 | `REVIEWING` |
+| 병합 의무가 진행 중(`merged=true`) | `MERGING` |
+| 그 밖의 모든 경우 — 인계 증거 둘 가운데 하나라도 없는 `landing`, 그리고 `verifying`·`ready` 포함 | `BUILDING/IMPLEMENT` + 검사 증거. 새 하위 단계는 만들지 않는다 |
+
+**이름으로 정하는 나머지 행**
 
 | 옛 상태 | 정본 값 | 출처 |
 |---|---|---|
 | `queued` | `READY` | 0.6.0 |
 | `claimed` | (E01 안의 원자 단계, 별도 상태 없음) | 0.6.0 |
 | `implementing` | `BUILDING/IMPLEMENT` 또는 `BUILDING/FIX` | 0.6.0 |
-| `verifying`, `ready` | `BUILDING/IMPLEMENT` + 검사 증거. 새 하위 단계는 만들지 않는다 | 리더 결정 |
-| `landing` | 인계 receipt(E03)가 있으면 `REVIEWING`, 병합 의무가 진행 중이면 `MERGING` | 리더 결정 |
 | `done` | `DONE` | 0.6.0 |
-| `blocked` | 현 단계 + `PARKED`(사유 하나, §2.1a) | 리더 결정 |
+| `blocked` | 현 단계 + `PARKED`(사유 하나, §2.1a) | 리더 결정(0.6.2, 0.6.3에서 그대로) |
 | `on-hold` | 정하지 않음. `operator-hold`를 PARKED 사유로 둘지와 함께 운영자 결정 대기 OD-12(spec.md §G.1) | — |
 
-- 0.6.1까지 이 표는 `verifying`·`ready` → `REVIEWING`, `landing` → `MERGING`, `blocked`·`on-hold` → 현 단계 + `PARKED`였다. 0.6.2에서 리더 결정으로 바꿨다.
-- `landing`에서 인계 receipt도 없고 병합 의무도 진행 중이 아닌 경우는 리더 결정에 없다(spec.md §H).
+- 판 이력: 0.6.1까지는 이름 기준(`verifying`·`ready` → `REVIEWING`, `landing` → `MERGING`)이었다. 0.6.2도 이름 기준(`verifying`·`ready` → `BUILDING/IMPLEMENT`, `landing` → receipt에 따라 `REVIEWING`/`MERGING`)이었다. 0.6.3에서 위 증거 규칙으로 바꿨다.
+- 이 규칙으로 0.6.2의 두 공백이 닫힌다: 옛 `ready`·`verifying` 정의와 E03의 어긋남, 그리고 정해지지 않았던 `landing` 경우(spec.md §H (i)·(j)).
+- 인계 증거 둘과 `merged=true`가 함께 관측될 때 어느 행이 먼저인지는 리더 결정 문언에 없다(spec.md §H (k)).
 - 옛 상태 키의 이전은 세 단계로 나란히 진행된다고 기록한다: 새 키 추가 → 전환(옛 값을 새 값에서 파생) → 옛 키 제거. 출처: 'leader decision / lane-18 implementation in progress'. 관찰로만 기록하며 이 SPEC은 코드에 무엇도 요구하지 않는다(spec.md §B.2).
 
 ## §3 전달 상태 네 단계 (REQ-AF-005)
