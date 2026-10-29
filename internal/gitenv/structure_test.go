@@ -91,7 +91,7 @@ func TestFixturePackagesScrubProcess(t *testing.T) {
 	root := moduleRoot(t)
 
 	var fixturePkgs, missing []string
-	for _, top := range []string{"internal", "pkg", "cmd"} {
+	for _, top := range []string{"internal", "pkg", "cmd", "scripts"} {
 		err := filepath.WalkDir(filepath.Join(root, top), func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
 				if errors.Is(err, fs.ErrNotExist) && path == filepath.Join(root, top) {

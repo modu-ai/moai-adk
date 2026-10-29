@@ -826,3 +826,30 @@ func TestFactoryLeaseDriftLogVerbTailHoldsWithOutputOverhead(t *testing.T) {
 		})
 	}
 }
+
+func TestExpiredReacquireUnderDriftLogLock(t *testing.T) {
+	isolateFactoryHandoffHome(t)
+	root, store := nmBase(t, factory.BacklogStatePicked)
+	nmIsolatedWorktrees(t, "t1")
+	setReacquireRegistration(t, root)
+	fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardRun, Stage: homestate.CardRun, OwnerLabel: "lane-1", LeaseHolder: "lane-1", LeaseExpiresAt: fcNow.Add(-time.Minute).Format(time.RFC3339Nano), HeartbeatAt: fcNow.Add(-2 * time.Minute).Format(time.RFC3339Nano)})
+	nmLaneEnv(t, "lane-1", "")
+	flSeedDriftEntry(t, root)
+	release := flHoldDriftLogLock(t, root)
+	time.AfterFunc(3*factoryLeaseClaimWaitCap+flMargin, release)
+	start := time.Now()
+	card, err := factoryNextNominate(context.Background(), root, fcRun, "lane-1", "t1", "")
+	elapsed := time.Since(start)
+	unrec, drift := flUnreconciled(t, root), fcEventCount(t, root, "record.drift")
+	queueFree, qerr := flQueueFreeWithin(store, flMargin)
+	release()
+	if err != nil || card.LeaseHolder != "lane-1" {
+		t.Fatalf("claim: card=%+v err=%v", card, err)
+	}
+	if elapsed > factoryLeaseClaimWaitCap+flMargin {
+		t.Errorf("claim took %s under drift lock", elapsed)
+	}
+	if unrec != 1 || drift != 0 || !queueFree || qerr != nil {
+		t.Errorf("unreconciled=%d drift=%d queueFree=%v err=%v", unrec, drift, queueFree, qerr)
+	}
+}

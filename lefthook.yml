@@ -2,11 +2,11 @@ pre-push:
   parallel: false
   commands:
     preflight:
-      run: make preflight
+      run: sh scripts/ci/preflight-hook.sh
 
 pre-commit:
   parallel: true
   commands:
     lint-staged:
       glob: "*.go"
-      run: golangci-lint run --fast {staged_files}
+      run: golangci-lint run --fast-only

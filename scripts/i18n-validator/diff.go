@@ -34,6 +34,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/modu-ai/moai-adk/internal/gitenv"
 )
 
 // @MX:NOTE: [AUTO] --diff mode temporal oracle. Uses git show + git diff shell-out.
@@ -181,6 +183,7 @@ func buildViolation(lit LockedLiteral, oldText, relFile, newText string) Violati
 // isGitRepo checks whether the given directory is inside a git repository.
 func isGitRepo(dir string) bool {
 	cmd := exec.Command("git", "rev-parse", "--git-dir")
+	cmd.Env = gitenv.Env()
 	cmd.Dir = dir
 	err := cmd.Run()
 	return err == nil
@@ -190,6 +193,7 @@ func isGitRepo(dir string) bool {
 // getChangedGoFiles returns a list of Go files changed since the baseline revision.
 func getChangedGoFiles(dir, rev string) ([]string, error) {
 	cmd := exec.Command("git", "diff", "--name-only", rev, "--", "*.go")
+	cmd.Env = gitenv.Env()
 	cmd.Dir = dir
 	out, err := cmd.Output()
 	if err != nil {
@@ -211,6 +215,7 @@ func getChangedGoFiles(dir, rev string) ([]string, error) {
 // getBaselineContent retrieves the content of a file at the baseline git revision.
 func getBaselineContent(dir, rev, relFile string) ([]byte, error) {
 	cmd := exec.Command("git", "show", rev+":"+relFile)
+	cmd.Env = gitenv.Env()
 	cmd.Dir = dir
 	out, err := cmd.Output()
 	if err != nil {

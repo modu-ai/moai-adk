@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/execerr"
+	"github.com/modu-ai/moai-adk/internal/gitenv"
 )
 
 // Detect analyzes recent commits in the repository and returns the best
@@ -80,6 +81,7 @@ func Score(messages []string, conv *Convention) float64 {
 // getRecentCommitMessages retrieves recent commit messages from git log.
 func getRecentCommitMessages(repoPath string, limit int) ([]string, error) {
 	cmd := exec.Command("git", "-C", repoPath, "log", fmt.Sprintf("--max-count=%d", limit), "--format=%s")
+	cmd.Env = gitenv.Env()
 	out, err := cmd.Output()
 	if err != nil {
 		// execerr.StatusDetail, not %w: a raw *exec.ExitError chain would be

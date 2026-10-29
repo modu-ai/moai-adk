@@ -201,8 +201,8 @@ tui-snapshot-verify: ## Verify all internal/tui golden snapshots match on-disk s
 preflight: lint-fast test-race-short build ## Run pre-push preflight: lint-fast + test-race-short + build
 	@echo "✓ ready to push"
 
-lint-fast: ## Run golangci-lint --fast (preflight gate)
-	@golangci-lint run --fast || (echo "preflight: lint-fast FAIL"; exit 1)
+lint-fast: ## Run golangci-lint --fast-only (preflight gate)
+	@golangci-lint run --fast-only || (echo "preflight: lint-fast FAIL"; exit 1)
 
 test-race-short: ## Run go test -race -short (preflight gate)
 	@go test -race -short -timeout 60m ./... || (echo "preflight: test-race-short FAIL"; exit 1) # -timeout 60m = D1 derivation (SPEC-CLI-TEST-TIMEOUT-001; baseline .moai/reports/t1253/measure-meta.txt; -short subset unmeasured — spec.md §C.3)

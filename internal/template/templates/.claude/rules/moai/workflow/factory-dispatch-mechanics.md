@@ -31,7 +31,7 @@ Executing means the lane is carrying out a stage of the card — plan, run, sync
 
 A lane renews the lease of the card it is executing, and of no other card: only the card the lane is actually executing is renewed.
 
-A lease on a merge-ready, held (operator-wait), or serial-waiting card may expire; expiry is harmless, because at the landing slot the leader reassigns the card or the lane re-leases it with `factory next --card`, the stage preserved.
+A lease on a merge-ready, held (operator-wait), or serial-waiting card may expire. At the landing slot the leader can reassign it, or the same lane can use `factory next --card` when the queue is not held, its recorded lease and lane registration still match, and the backend permits that stage. A changed registration or an interrupted merge requires the leader's recovery path. The stage and worktree are preserved; a HOLD is never cleared by reacquisition.
 
 The lane's standing recheck cron is kept while the lane executes the card; a lane waiting on a slot or a trigger arms and keeps no polling cron for that wait, and the leader sends a notice when a slot or a landing turn opens.
 
