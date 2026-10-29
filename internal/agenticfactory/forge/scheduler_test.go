@@ -7,8 +7,11 @@ import (
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
 )
 
-func lowBudget(t *testing.T) *Budget {
-	b := &Budget{ReserveCalls: 10}
+// lowBudget is at its reserve inside the window that resets an hour after t0. Reserve reads the budget's
+// own clock, so it is pinned to t0: with the wall clock the window had already rolled over once the real
+// time passed t0+1h, and the budget reported itself open.
+func lowBudget() *Budget {
+	b := &Budget{ReserveCalls: 10, Now: func() time.Time { return t0 }}
 	b.Observe(resp(200, "", "x-ratelimit-remaining", "10", "x-ratelimit-reset", reset(time.Hour)), t0)
 	return b
 }
@@ -33,7 +36,7 @@ func TestSafetyWritesGoBeforeReports(t *testing.T) {
 }
 
 func TestReportsNeverSpendTheReservedBudget(t *testing.T) {
-	s := &Scheduler{Gate: lowBudget(t), Merge: merge}
+	s := &Scheduler{Gate: lowBudget(), Merge: merge}
 	s.Push(Item{Priority: core.PriorityReport, Key: "p", Payload: "report"})
 	if _, ok, _ := s.Pop(t0); ok {
 		t.Fatal("a report went out on the reserved budget")
@@ -52,7 +55,7 @@ func TestReportsNeverSpendTheReservedBudget(t *testing.T) {
 }
 
 func TestHeldReportsWithTheSameKeyAreMergedIntoOne(t *testing.T) {
-	s := &Scheduler{Gate: lowBudget(t), Merge: merge}
+	s := &Scheduler{Gate: lowBudget(), Merge: merge}
 	for _, p := range []string{"a", "b", "c"} {
 		s.Push(Item{Priority: core.PriorityReport, Key: "issue-7", Payload: p})
 	}
@@ -109,9 +112,24 @@ func TestSchedulerUsesCorePriorityNotItsOwnDefinition(t *testing.T) {
 	}
 }
 
+// The answer to Reserve is a function of the budget's clock and nothing else: at the pinned time inside the
+// window the report waits, and once the pinned time is past the reset the window has rolled over.
+func TestReserveFollowsTheBudgetsClockNotTheWallClock(t *testing.T) {
+	now := t0
+	b := lowBudget()
+	b.Now = func() time.Time { return now }
+	if b.Reserve(core.PriorityReport) {
+		t.Error("inside the window at the reserve, a report must wait")
+	}
+	now = t0.Add(2 * time.Hour)
+	if !b.Reserve(core.PriorityReport) {
+		t.Error("after the reset the window has rolled over and a report may go")
+	}
+}
+
 // core.Budget is the hook lane 18's writers call; forge.Budget answers it.
 func TestBudgetAnswersTheCoreHook(t *testing.T) {
-	var hook core.Budget = lowBudget(t)
+	var hook core.Budget = lowBudget()
 	if hook.Reserve(core.PriorityReport) {
 		t.Error("a report must be told to wait when ordinary calls are stopped")
 	}
@@ -157,7 +175,7 @@ func TestSafetyThenNoticeThenReportAndNoticeMaySpendTheReserve(t *testing.T) {
 		t.Errorf("order = %v", order)
 	}
 
-	low := &Scheduler{Gate: lowBudget(t), Merge: merge}
+	low := &Scheduler{Gate: lowBudget(), Merge: merge}
 	low.Push(Item{Priority: core.PriorityReport, Key: "r", Payload: "report"})
 	low.Push(Item{Priority: core.PriorityNotice, Key: "n", Payload: "security failure"})
 	it, ok, _ := low.Pop(t0)
@@ -179,7 +197,7 @@ func TestNoticesAreNotMergedLikeReports(t *testing.T) {
 }
 
 func TestTheBudgetHookNeverHoldsANotice(t *testing.T) {
-	var hook core.Budget = lowBudget(t)
+	var hook core.Budget = lowBudget()
 	if !hook.Reserve(core.PriorityNotice) {
 		t.Error("a notice is never held by the budget")
 	}
