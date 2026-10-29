@@ -19,9 +19,11 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/claim"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/forge"
 )
 
 // Marker identifies the single ledger comment on an Issue.
@@ -34,8 +36,10 @@ var (
 
 // BlockedError reports a gh failure that maps to a block reason.
 type BlockedError struct {
-	Reason core.BlockReason
-	Detail string
+	Reason  core.BlockReason
+	Detail  string
+	Status  int       // HTTP status behind the block, 0 when none
+	RetryAt time.Time // when a rate limit lifts, if the response said; zero otherwise
 }
 
 func (e *BlockedError) Error() string {
@@ -75,6 +79,12 @@ type Mirror struct {
 	// Budget, when set, is asked before a report write that has something to
 	// send. A refusal defers the write (core.ErrDeferred); nothing is sent.
 	Budget core.Budget
+	// Backoff holds the wait numbers forge.Classify needs. They come from
+	// configuration; with the zero value a limit that carries no hint has no
+	// known retry time, and BlockedError.RetryAt stays zero.
+	Backoff forge.Backoff
+	// Now is the clock; nil means time.Now.
+	Now func() time.Time
 
 	mu      sync.Mutex
 	memos   map[int]memo
@@ -89,27 +99,110 @@ type queued struct {
 
 func redact(s string) (string, int) { return core.Redact(s) }
 
-func classify(stderr []byte, exit int, err error) error {
+func (m *Mirror) now() time.Time {
+	if m.Now != nil {
+		return m.Now()
+	}
+	return time.Now()
+}
+
+// parseHTTP splits the output of `gh api -i`: the status line, the headers
+// (names lower-cased), a blank line and the body. Output that does not start
+// with a status line is all body.
+func parseHTTP(out []byte) (status int, header map[string]string, body []byte, ok bool) {
+	text := string(out)
+	if !strings.HasPrefix(text, "HTTP/") {
+		return 0, nil, out, false
+	}
+	// gh ends the status line with a bare newline and the header lines with
+	// CRLF. The first blank line, whichever form, ends the headers.
+	head, rest := text, ""
+	cut, width := -1, 0
+	for _, sep := range []string{"\r\n\r\n", "\n\n"} {
+		if at := strings.Index(text, sep); at >= 0 && (cut < 0 || at < cut) {
+			cut, width = at, len(sep)
+		}
+	}
+	if cut >= 0 {
+		head, rest = text[:cut], text[cut+width:]
+	}
+	lines := strings.Split(head, "\n")
+	fields := strings.Fields(strings.TrimSpace(lines[0]))
+	if len(fields) < 2 {
+		return 0, nil, out, false
+	}
+	code, err := strconv.Atoi(fields[1])
+	if err != nil {
+		return 0, nil, out, false
+	}
+	header = map[string]string{}
+	for _, l := range lines[1:] {
+		if k, v, found := strings.Cut(strings.TrimRight(l, "\r"), ":"); found {
+			header[strings.ToLower(strings.TrimSpace(k))] = strings.TrimSpace(v)
+		}
+	}
+	return code, header, []byte(rest), true
+}
+
+// call runs `gh api -i` and returns the response body. A failure is decided
+// on the status code and headers through forge.ClassifyError; the wording of an
+// error message never decides anything. Output without a status line is a
+// plain error.
+func (m *Mirror) call(ctx context.Context, args ...string) ([]byte, error) {
+	out, errb, exit, err := m.Exec.Run(ctx, append([]string{"api", "-i"}, args...)...)
 	if err != nil {
 		if errors.Is(err, exec.ErrNotFound) {
-			return &BlockedError{Reason: core.ReasonNotInstalled, Detail: "gh not found"}
+			return nil, &BlockedError{Reason: core.ReasonNotInstalled, Detail: "gh not found"}
 		}
-		return fmt.Errorf("agenticfactory/mirror: gh did not run: %w", err)
+		return nil, fmt.Errorf("agenticfactory/mirror: gh did not run: %w", err)
 	}
-	if exit == 0 {
-		return nil
+	status, header, body, parsed := parseHTTP(out)
+	if exit == 0 && (!parsed || status < 400) {
+		return body, nil
 	}
-	text, _ := redact(string(stderr))
-	low := strings.ToLower(text)
-	switch {
-	case strings.Contains(low, "http 401") || strings.Contains(low, "bad credentials"):
-		return &BlockedError{Reason: core.ReasonAuthFailed, Detail: text}
-	case strings.Contains(low, "http 403"):
-		return &BlockedError{Reason: core.ReasonPermissionDenied, Detail: text}
-	case strings.Contains(low, "http 429") || strings.Contains(low, "rate limit"):
-		return &BlockedError{Reason: core.ReasonRateLimited, Detail: text}
+	if parsed && status >= 400 {
+		return nil, m.fromStatus(&forge.StatusError{Status: status, Header: header, Body: body})
 	}
-	return fmt.Errorf("agenticfactory/mirror: gh exit %d: %s", exit, text)
+	text, _ := redact(string(errb))
+	return nil, fmt.Errorf("agenticfactory/mirror: gh exit %d: %s", exit, text)
+}
+
+// fromStatus turns a typed HTTP failure into a block or a plain status error.
+func (m *Mirror) fromStatus(se *forge.StatusError) error {
+	now := m.now()
+	v, _ := forge.ClassifyError(se, now, m.Backoff, 0)
+	return outcome(v, se, now)
+}
+
+// errUnhandledKind marks a forge.Kind this consumer has no rule for.
+var errUnhandledKind = errors.New("agenticfactory/mirror: unhandled forge kind")
+
+// outcome is the consumer's rule for every forge.Kind. A rate limit, a permission
+// denial and an unclassified 403 stop with a recorded block (nothing here
+// retries); a transient failure and anything else is returned as the typed
+// status error for the caller to read. A Kind added to forge without a case here
+// ends in errUnhandledKind, never in a silent plain error.
+func outcome(v forge.Verdict, se *forge.StatusError, now time.Time) error {
+	switch v.Kind {
+	case forge.KindLimited:
+		be := &BlockedError{Reason: core.ReasonRateLimited, Status: se.Status, Detail: v.Reason}
+		if v.RetryAt.After(now) {
+			be.RetryAt = v.RetryAt
+		}
+		return be
+	case forge.KindDenied:
+		reason := core.ReasonPermissionDenied
+		if se.Status == 401 {
+			reason = core.ReasonAuthFailed
+		}
+		return &BlockedError{Reason: reason, Status: se.Status, Detail: v.Reason}
+	case forge.KindUnclassified:
+		// Neither a limit nor a confirmed permission problem, so it is not filed as one.
+		return &BlockedError{Reason: core.ReasonUnclassified, Status: se.Status, Detail: v.Reason}
+	case forge.KindTransient, forge.KindOther, forge.KindOK, forge.KindNotModified:
+		return fmt.Errorf("agenticfactory/mirror: %w", se)
+	}
+	return fmt.Errorf("%w: %q", errUnhandledKind, v.Kind)
 }
 
 type comment struct {
@@ -117,20 +210,43 @@ type comment struct {
 	Body string `json:"body"`
 }
 
-// ledgerComment returns the marked comment, or ok=false when there is none.
-func (m *Mirror) ledgerComment(ctx context.Context, issue int) (comment, bool, error) {
-	out, errb, exit, err := m.Exec.Run(ctx, "api", fmt.Sprintf("repos/%s/issues/%d/comments", m.Repo, issue),
-		"--paginate", "--jq", ".[] | {id: .id, body: .body}")
-	if e := classify(errb, exit, err); e != nil {
-		return comment{}, false, e
+const (
+	commentsPerPage = 100
+	maxCommentPages = 20
+)
+
+// parseComments reads a page of comments: a JSON array, or one object per line.
+func parseComments(body []byte) []comment {
+	var arr []comment
+	if json.Unmarshal(body, &arr) == nil {
+		return arr
 	}
-	for _, line := range strings.Split(string(out), "\n") {
-		if strings.TrimSpace(line) == "" {
-			continue
-		}
+	var out []comment
+	for _, line := range strings.Split(string(body), "\n") {
 		var c comment
-		if json.Unmarshal([]byte(line), &c) == nil && strings.Contains(c.Body, Marker) {
-			return c, true, nil
+		if strings.TrimSpace(line) != "" && json.Unmarshal([]byte(line), &c) == nil {
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
+// ledgerComment returns the marked comment, or ok=false when there is none.
+// It walks the comments page by page, at most maxCommentPages pages.
+func (m *Mirror) ledgerComment(ctx context.Context, issue int) (comment, bool, error) {
+	for page := 1; page <= maxCommentPages; page++ {
+		body, err := m.call(ctx, fmt.Sprintf("repos/%s/issues/%d/comments?per_page=%d&page=%d", m.Repo, issue, commentsPerPage, page))
+		if err != nil {
+			return comment{}, false, err
+		}
+		items := parseComments(body)
+		for _, c := range items {
+			if strings.Contains(c.Body, Marker) {
+				return c, true, nil
+			}
+		}
+		if len(items) < commentsPerPage {
+			break
 		}
 	}
 	return comment{}, false, nil
@@ -190,19 +306,13 @@ func (m *Mirror) remember(issue int, id int64, hash [sha256.Size]byte) {
 	m.memos[issue] = memo{id: id, hash: hash}
 }
 
-// send runs one gh call and classifies a failure.
-func (m *Mirror) send(ctx context.Context, args ...string) ([]byte, error) {
-	out, errb, exit, err := m.Exec.Run(ctx, args...)
-	return out, classify(errb, exit, err)
-}
-
 func (m *Mirror) patch(ctx context.Context, id int64, body string) error {
-	_, errb, exit, err := m.Exec.Run(ctx, "api", "-X", "PATCH",
-		fmt.Sprintf("repos/%s/issues/comments/%s", m.Repo, strconv.FormatInt(id, 10)), "-f", "body="+body)
-	if err == nil && exit != 0 && strings.Contains(strings.ToLower(string(errb)), "http 404") {
+	_, err := m.call(ctx, "-X", "PATCH", fmt.Sprintf("repos/%s/issues/comments/%s", m.Repo, strconv.FormatInt(id, 10)), "-f", "body="+body)
+	var se *forge.StatusError
+	if errors.As(err, &se) && se.Status == 404 {
 		return errCommentGone
 	}
-	return classify(errb, exit, err)
+	return err
 }
 
 // createdID reads the comment id from a create response; 0 when absent.
@@ -268,7 +378,7 @@ func (m *Mirror) WriteLedger(ctx context.Context, l core.Ledger) error {
 		m.remember(issue, c.ID, sum)
 		return nil
 	}
-	out, err := m.send(ctx, "api", "-X", "POST", fmt.Sprintf("repos/%s/issues/%d/comments", m.Repo, issue), "-f", "body="+body)
+	out, err := m.call(ctx, "-X", "POST", fmt.Sprintf("repos/%s/issues/%d/comments", m.Repo, issue), "-f", "body="+body)
 	if err != nil {
 		return err
 	}

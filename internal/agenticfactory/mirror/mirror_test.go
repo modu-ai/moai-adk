@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os/exec"
 	"strings"
 	"testing"
@@ -32,6 +33,26 @@ func (f *fakeGH) Run(_ context.Context, args ...string) ([]byte, []byte, int, er
 	r := f.results[0]
 	f.results = f.results[1:]
 	return []byte(r.out), []byte(r.errOut), r.exit, r.err
+}
+
+// httpFail is what `gh api -i` leaves on stdout for a failed call: the status
+// line, the headers, a blank line and the body. kv pairs are header names and
+// values; the key "body" sets the body instead. stderr carries wording that the
+// code must not decide on.
+func httpFail(status int, kv ...string) result {
+	var hdr, body string
+	for i := 0; i+1 < len(kv); i += 2 {
+		if kv[i] == "body" {
+			body = kv[i+1]
+			continue
+		}
+		hdr += kv[i] + ": " + kv[i+1] + "\r\n"
+	}
+	return result{
+		out:    fmt.Sprintf("HTTP/2.0 %d status\r\n%s\r\n%s", status, hdr, body),
+		errOut: fmt.Sprintf("gh: request failed (HTTP %d)", status),
+		exit:   1,
+	}
 }
 
 func ledger() core.Ledger {
@@ -141,9 +162,10 @@ func TestFailuresBecomeBlocksWithoutRetry(t *testing.T) {
 		res  result
 		want core.BlockReason
 	}{
-		{"401", result{errOut: "gh: Bad credentials (HTTP 401)", exit: 1}, core.ReasonAuthFailed},
-		{"403", result{errOut: "gh: Resource not accessible (HTTP 403)", exit: 1}, core.ReasonPermissionDenied},
-		{"429", result{errOut: "gh: API rate limit exceeded (HTTP 429)", exit: 1}, core.ReasonRateLimited},
+		{"401", httpFail(401), core.ReasonAuthFailed},
+		{"403 resource not accessible", httpFail(403, "body", `{"message":"Resource not accessible by integration"}`), core.ReasonPermissionDenied},
+		{"403 with no signal", httpFail(403), core.ReasonUnclassified},
+		{"429", httpFail(429), core.ReasonRateLimited},
 		{"not installed", result{err: exec.ErrNotFound}, core.ReasonNotInstalled},
 	}
 	for _, c := range cases {
@@ -178,7 +200,7 @@ func TestPublishRecordsMirrorStateAndNeverChangesIssueState(t *testing.T) {
 		t.Fatal(err)
 	}
 	// 429 -> mirror_state blocked(rate-limited), execution state untouched.
-	f := &fakeGH{results: []result{{errOut: "HTTP 429", exit: 1}}}
+	f := &fakeGH{results: []result{httpFail(429)}}
 	out, err := Publish(context.Background(), writable(f), st, ref, "sess-a", rec.Epoch)
 	var be *BlockedError
 	if !errors.As(err, &be) {
@@ -244,7 +266,7 @@ func TestReadLedgerMalformedComments(t *testing.T) {
 			t.Errorf("%s: want error", name)
 		}
 	}
-	m := &Mirror{Repo: "o/r", Exec: &fakeGH{results: []result{{errOut: "HTTP 401", exit: 1}}}}
+	m := &Mirror{Repo: "o/r", Exec: &fakeGH{results: []result{httpFail(401)}}}
 	var be *BlockedError
 	if _, err := m.ReadLedger(context.Background(), 1948); !errors.As(err, &be) {
 		t.Errorf("read must classify 401: %v", err)

@@ -12,19 +12,23 @@ import (
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
 )
 
-// Stage is a background-intake stage. Only the first three are stored;
-// StageStarted is derived from the claim (see ViewRequest) and can never be
-// written.
+// Stage is a stored background-intake readiness stage (S51). They are not
+// product states: ACCEPTED is not BUILDING, and BUILDING begins only after
+// READY_ACKED. Whether the agent has begun is not a stage; ViewRequest derives
+// it from the claim (Started).
 type Stage string
 
 const (
-	StageACK            Stage = "ACK"
-	StageIssuePublished Stage = "ISSUE_PUBLISHED"
-	StageWTReady        Stage = "WT_READY"
-	StageStarted        Stage = "STARTED" // derived only
+	StageAccepted         Stage = "ACCEPTED"          // intent and approved scope are fixed
+	StageIssueConfirmed   Stage = "ISSUE_CONFIRMED"   // the real Issue is bound to the request by a lookup
+	StageBranchRegistered Stage = "BRANCH_REGISTERED" // ref, base OID and any remote branch are checked
+	StageAgentReserved    Stage = "AGENT_RESERVED"    // one agent and a slot are reserved; no development yet
+	StageWTPrepared       Stage = "WT_PREPARED"       // the local worktree is verified and the preparer has stopped writing
+	StageReadyAcked       Stage = "READY_ACKED"       // the reserved agent accepted the receipt; BUILDING may follow
 )
 
-// Park reasons for a request that is held outside the in-flight set.
+// Park reasons for a request that is held outside the in-flight set. They say
+// the request is waiting, not that anything failed.
 const (
 	ParkBackpressure = "backpressure"
 	ParkNoSlot       = "no-slot"
@@ -36,13 +40,35 @@ type StageEvidence struct {
 	Ref   string `json:"ref"`
 }
 
-// Ready is the preparer's READY receipt: the worktree exists and the preparer
-// has stopped writing to it.
+// Branch is the BRANCH_REGISTERED receipt: the ref, the base OID and, when a
+// remote branch was needed, its remote OID. BaseOID is a full SHA.
+type Branch struct {
+	Ref       string `json:"ref"`
+	BaseOID   string `json:"base_oid"`
+	Remote    bool   `json:"remote"`
+	RemoteOID string `json:"remote_oid,omitempty"`
+}
+
+// Ready is the preparer's WT_PREPARED receipt: where the worktree is, and that
+// the preparer has stopped writing to it. Host and Path identify the local
+// worktree; nothing assumes two hosts share a path.
 type Ready struct {
+	Host          string `json:"host"`
 	Slot          string `json:"slot"`
 	Path          string `json:"path"`
 	Head          string `json:"head"`
 	WriterStopped bool   `json:"writer_stopped"`
+}
+
+// Blocked is the BLOCKED or EFFECT_UNKNOWN row: the step that failed, why, and
+// the condition to resume. Unknown means an effect may have happened (an Issue
+// may exist) and must be looked up, never repeated.
+type Blocked struct {
+	Step      Stage  `json:"step"`
+	Detail    string `json:"detail"`
+	Retryable bool   `json:"retryable"`
+	Unknown   bool   `json:"unknown,omitempty"`
+	Resume    string `json:"resume,omitempty"`
 }
 
 // Request is a durable background intake record. The payload itself is never
@@ -55,13 +81,59 @@ type Request struct {
 	Stage       Stage           `json:"stage"`
 	Parked      string          `json:"parked,omitempty"`
 	Issue       int             `json:"issue,omitempty"`
+	Branch      *Branch         `json:"branch,omitempty"`
+	Agent       string          `json:"agent,omitempty"` // reserved agent's session id
+	AgentName   string          `json:"agent_name,omitempty"`
 	Slot        string          `json:"slot,omitempty"`
-	Attempts    int             `json:"attempts,omitempty"`
-	Retryable   bool            `json:"retryable,omitempty"`
-	LastError   string          `json:"last_error,omitempty"`
-	Evidence    []StageEvidence `json:"evidence"`
 	Ready       *Ready          `json:"ready,omitempty"`
+	AckedBy     string          `json:"acked_by,omitempty"`
+	Blocked     *Blocked        `json:"blocked,omitempty"`
+	Attempts    int             `json:"attempts,omitempty"`
+	Evidence    []StageEvidence `json:"evidence"`
 	Rev         int64           `json:"rev,omitempty"`
+
+	// Started and StartedRef are filled only by ViewRequest(s), from the claim.
+	// They are never stored.
+	Started    bool   `json:"started,omitempty"`
+	StartedRef string `json:"started_ref,omitempty"`
+
+	// Fields of the first (S46) six-step layout, read once and migrated by
+	// normalizeLegacy; they are never written.
+	LegacyRetryable bool   `json:"retryable,omitempty"`
+	LegacyLastError string `json:"last_error,omitempty"`
+}
+
+// normalizeLegacy migrates a record written by the first layout (stages ACK,
+// ISSUE_PUBLISHED, WT_READY). The rule: a legacy record is never placed above
+// the highest S51 stage whose evidence it carries. ACK becomes ACCEPTED. An
+// ISSUE_PUBLISHED or WT_READY record had its Issue recorded without the
+// re-lookup S51 requires, and WT_READY carries no branch or agent evidence, so
+// both return to ACCEPTED as EFFECT_UNKNOWN: the Issue number is kept and a
+// lookup confirms it, the old slot and worktree receipt are kept as data, and
+// nothing is created again. A legacy failure of the publish step is treated as
+// unknown too, because the old code could not tell "not sent" from "lost".
+func normalizeLegacy(r *Request) {
+	was := r.Stage
+	switch was {
+	case "ACK":
+		r.Stage = StageAccepted
+	case "ISSUE_PUBLISHED", "WT_READY":
+		r.Stage = StageAccepted
+		detail := "legacy ISSUE_PUBLISHED: the issue was recorded without a confirming lookup"
+		if was == "WT_READY" {
+			detail = "legacy WT_READY: no branch or agent evidence exists for this request"
+		}
+		r.Blocked = &Blocked{Step: StageAccepted, Detail: detail, Unknown: true, Resume: "FindIssue confirms the recorded issue"}
+	}
+	if r.LegacyRetryable || r.LegacyLastError != "" {
+		if r.Blocked == nil {
+			r.Blocked = &Blocked{Step: r.Stage, Detail: r.LegacyLastError, Retryable: r.LegacyRetryable, Unknown: was == "ACK" && r.LegacyRetryable}
+			if r.Blocked.Unknown {
+				r.Blocked.Resume = "FindIssue decides whether the issue was created"
+			}
+		}
+		r.LegacyRetryable, r.LegacyLastError = false, ""
+	}
 }
 
 // Policy bounds intake: requests in flight, and requests parked behind them.
@@ -96,6 +168,7 @@ func (s *Store) readRequest(key string) (Request, bool, error) {
 	if err := json.Unmarshal(b, &r); err != nil {
 		return Request{}, false, fmt.Errorf("%w: corrupt request: %v", core.ErrStoreUnavailable, err)
 	}
+	normalizeLegacy(&r)
 	return r, true, nil
 }
 
@@ -151,6 +224,7 @@ func (s *Store) listRequests() ([]Request, error) {
 
 // writeRequest persists r: authority first when attached, then the cache.
 func (s *Store) writeRequest(r *Request) error {
+	r.Started, r.StartedRef = false, ""
 	if s.ref != nil {
 		old, _, err := s.readRequest(r.Key)
 		if err != nil {
@@ -175,7 +249,7 @@ func (s *Store) writeRequest(r *Request) error {
 // started reports whether the request's Issue has begun an attempt, and the
 // evidence reference for it. This is the only definition of STARTED.
 func (s *Store) started(r Request) (string, bool) {
-	if r.Stage != StageWTReady || r.Issue <= 0 {
+	if r.Stage != StageReadyAcked || r.Issue <= 0 {
 		return "", false
 	}
 	ref, err := core.NewIssueRef(r.Issue)
@@ -244,8 +318,8 @@ func (s *Store) PutRequest(key, payloadHash string, priority int, p Policy) (Req
 			}
 		}
 		out = Request{
-			Key: key, PayloadHash: payloadHash, Priority: priority, Seq: seq + 1, Stage: StageACK,
-			Evidence: []StageEvidence{{Stage: StageACK, Ref: "accepted"}},
+			Key: key, PayloadHash: payloadHash, Priority: priority, Seq: seq + 1, Stage: StageAccepted,
+			Evidence: []StageEvidence{{Stage: StageAccepted, Ref: "accepted"}},
 		}
 		switch {
 		case s.inFlight(all) < p.MaxInFlight:
@@ -281,13 +355,12 @@ func (s *Store) ListRequests() ([]Request, error) { return s.listRequests() }
 
 func (s *Store) view(r Request) Request {
 	if ref, ok := s.started(r); ok {
-		r.Stage = StageStarted
-		r.Evidence = append(append([]StageEvidence(nil), r.Evidence...), StageEvidence{Stage: StageStarted, Ref: ref})
+		r.Started, r.StartedRef = true, ref
 	}
 	return r
 }
 
-// ViewRequest returns the request with STARTED derived from the claim state.
+// ViewRequest returns the request with Started derived from the claim state.
 // Nothing is written: a reader (the monitor) sees the same value the owner does.
 func (s *Store) ViewRequest(key string) (Request, error) {
 	r, err := s.GetRequest(key)
@@ -309,11 +382,13 @@ func (s *Store) ViewRequests() ([]Request, error) {
 	return all, nil
 }
 
-var stageRank = map[Stage]int{StageACK: 0, StageIssuePublished: 1, StageWTReady: 2}
+var stageRank = map[Stage]int{
+	StageAccepted: 0, StageIssueConfirmed: 1, StageBranchRegistered: 2,
+	StageAgentReserved: 3, StageWTPrepared: 4, StageReadyAcked: 5,
+}
 
 // UpdateRequest applies fn to a copy. Key, payload hash, priority and arrival
-// order are fixed; the stage stays or advances by one stored step; STARTED can
-// never be written.
+// order are fixed; the stage stays or advances by one step.
 func (s *Store) UpdateRequest(key string, fn func(*Request) error) (Request, error) {
 	var out Request
 	err := s.withRequests(func() error {
@@ -392,9 +467,11 @@ func (s *Store) PromoteParked(p Policy, freeSlots int) ([]Request, error) {
 	return promoted, err
 }
 
-// ReadyGate refuses to let an agent begin writing before the preparer's READY
-// receipt exists. An Issue that no intake request names is not gated.
-func (s *Store) ReadyGate(issue int) error {
+// ReadyGate refuses to let an agent begin writing before the whole readiness
+// chain is done: the request must be READY_ACKED, not parked, not blocked, the
+// preparer's receipt must say it stopped writing, and the agent that acked must
+// be the one now starting. An Issue that no intake request names is not gated.
+func (s *Store) ReadyGate(issue int, holder string) error {
 	all, err := s.listRequests()
 	if err != nil {
 		return err
@@ -403,12 +480,139 @@ func (s *Store) ReadyGate(issue int) error {
 		if r.Issue != issue {
 			continue
 		}
-		if r.Parked != "" || r.Stage != StageWTReady || r.Ready == nil || !r.Ready.WriterStopped {
+		switch {
+		case r.Parked != "" || r.Blocked != nil || r.Stage != StageReadyAcked:
 			return fmt.Errorf("%w: worktree for issue-%d is not ready (%s)", core.ErrTransitionInvalid, issue, r.Stage)
+		case r.Ready == nil || !r.Ready.WriterStopped:
+			return fmt.Errorf("%w: the preparer has not stopped writing for issue-%d", core.ErrTransitionInvalid, issue)
+		case r.AckedBy == "" || r.AckedBy != holder:
+			return fmt.Errorf("%w: issue-%d was acknowledged by another agent", core.ErrTransitionInvalid, issue)
 		}
 		return nil
 	}
 	return nil
+}
+
+// VerifyAgent reports whether a is still the registered holder of its number.
+func (s *Store) VerifyAgent(a core.Agent) error { return s.verifyAgent(a) }
+
+// ReserveRequest reserves one agent and one worktree slot for a request that
+// has its branch registered (AGENT_RESERVED). It does not allow development:
+// that waits for the preparer and the agent's own ack. An agent that is already
+// reserved for, or working on, another request is refused (ErrHeld), and with
+// no free slot the request is parked (ErrNoSlot) instead of being half
+// reserved. A slot the request already holds (a migrated record) is reused.
+func (s *Store) ReserveRequest(key string, a core.Agent, slots []string) (Request, error) {
+	var out Request
+	err := s.withRequests(func() error {
+		cur, ok, err := s.readRequest(key)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return core.ErrNotHeld
+		}
+		if cur.Stage != StageBranchRegistered || cur.Parked != "" || cur.Blocked != nil {
+			return fmt.Errorf("%w: %s is %s, an agent is reserved once the branch is registered and nothing is blocked", core.ErrTransitionInvalid, key, cur.Stage)
+		}
+		if err := s.verifyAgent(a); err != nil {
+			return err
+		}
+		all, err := s.listRequests()
+		if err != nil {
+			return err
+		}
+		for _, o := range all {
+			if o.Key != key && o.Agent == a.SessionID && s.holdsAgent(o) {
+				return fmt.Errorf("%w: %s is already reserved for %s", core.ErrHeld, a.DisplayName(), o.Key)
+			}
+		}
+		slot := cur.Slot
+		if slot != "" {
+			if err := s.AcquireSlot(slot, key); err != nil {
+				return err
+			}
+		} else {
+			for _, name := range slots {
+				if aerr := s.AcquireSlot(name, key); aerr == nil {
+					slot = name
+					break
+				} else if !errors.Is(aerr, core.ErrHeld) {
+					return aerr
+				}
+			}
+			if slot == "" {
+				cur.Parked = ParkNoSlot
+				if werr := s.writeRequest(&cur); werr != nil {
+					return werr
+				}
+				return fmt.Errorf("%w: %s", core.ErrNoSlot, key)
+			}
+		}
+		cur.Stage, cur.Agent, cur.AgentName, cur.Slot = StageAgentReserved, a.SessionID, a.DisplayName(), slot
+		cur.Evidence = append(cur.Evidence, StageEvidence{Stage: StageAgentReserved, Ref: a.DisplayName() + "@" + slot})
+		out = cur
+		return s.writeRequest(&out)
+	})
+	if err != nil {
+		return Request{}, err
+	}
+	return out, nil
+}
+
+// holdsAgent reports whether request o still keeps its reserved agent busy: it
+// is reserved, prepared or acked and not yet started, or it started and the
+// agent's claim on the Issue is still held. Once the agent handed the PR off
+// (the claim is released) the agent is free for a new request.
+func (s *Store) holdsAgent(o Request) bool {
+	if o.Stage != StageAgentReserved && o.Stage != StageWTPrepared && o.Stage != StageReadyAcked {
+		return false
+	}
+	if _, started := s.started(o); !started {
+		return true
+	}
+	ref, err := core.NewIssueRef(o.Issue)
+	if err != nil {
+		return true
+	}
+	rec, found, err := s.read(ref)
+	return err != nil || !found || rec.Holder != ""
+}
+
+// AckRequestReady records the reserved agent's explicit acceptance of the
+// preparation receipt (READY_ACKED). Only the agent the request is reserved for
+// may ack, only after the preparer stopped writing.
+func (s *Store) AckRequestReady(key string, a core.Agent) (Request, error) {
+	var out Request
+	err := s.withRequests(func() error {
+		cur, ok, err := s.readRequest(key)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return core.ErrNotHeld
+		}
+		if cur.Stage != StageWTPrepared || cur.Parked != "" || cur.Blocked != nil {
+			return fmt.Errorf("%w: %s is %s, the receipt is acknowledged once the worktree is prepared", core.ErrTransitionInvalid, key, cur.Stage)
+		}
+		if err := s.verifyAgent(a); err != nil {
+			return err
+		}
+		if cur.Agent != a.SessionID {
+			return fmt.Errorf("%w: %s is reserved for %s, not %s", core.ErrForeign, key, cur.AgentName, a.DisplayName())
+		}
+		if cur.Ready == nil || !cur.Ready.WriterStopped {
+			return fmt.Errorf("%w: the preparer has not stopped writing", core.ErrEvidenceIncomplete)
+		}
+		cur.Stage, cur.AckedBy = StageReadyAcked, a.SessionID
+		cur.Evidence = append(cur.Evidence, StageEvidence{Stage: StageReadyAcked, Ref: "acked by " + a.DisplayName()})
+		out = cur
+		return s.writeRequest(&out)
+	})
+	if err != nil {
+		return Request{}, err
+	}
+	return out, nil
 }
 
 type slotFile struct {

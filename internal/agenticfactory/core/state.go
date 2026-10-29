@@ -67,6 +67,12 @@ const (
 	ReasonStoreUnavailable    BlockReason = "store-unavailable"
 	ReasonUserControl         BlockReason = "user-control"
 	ReasonOperatorAckMissing  BlockReason = "operator-ack-missing"
+	// ReasonUnclassified is a 403 that carries neither a rate-limit signal nor
+	// permission wording. It is not a confirmed denial and not a limit: stop,
+	// no retry, keep the work. The value equals forge.KindUnclassified so the
+	// two never need a translation. Provisional: the contract's closed reason
+	// set (design 2.1a) has to list it.
+	ReasonUnclassified BlockReason = "unclassified-403"
 	// ReasonOperatorHold is valid for on-hold only.
 	ReasonOperatorHold BlockReason = "operator-hold"
 )
@@ -76,7 +82,7 @@ var allReasons = []BlockReason{
 	ReasonAuthFailed, ReasonPermissionDenied, ReasonRateLimited, ReasonCapacityShort,
 	ReasonBudgetExhausted, ReasonCheckNotPassed, ReasonDebtPresent, ReasonVerdictNotPass,
 	ReasonProducerNotAllowed, ReasonOwnershipUnverified, ReasonStoreUnavailable,
-	ReasonUserControl, ReasonOperatorAckMissing, ReasonOperatorHold,
+	ReasonUserControl, ReasonOperatorAckMissing, ReasonUnclassified, ReasonOperatorHold,
 }
 
 // AllReasons returns every reason in declaration order.
