@@ -32,17 +32,19 @@ const (
 	BranchPrepare   Kind = "branch-prepare"
 	WorktreePrepare Kind = "worktree-prepare"
 	CheckObserve    Kind = "check-observe"
+	LedgerComment   Kind = "ledger-comment"
 )
 
 // Status is the life of one intent.
 type Status string
 
 const (
-	StatusIntended  Status = "intended"  // recorded, nothing sent
-	StatusSent      Status = "sent"      // send attempted; outcome not yet known
-	StatusConfirmed Status = "confirmed" // the effect exists (provider id recorded)
-	StatusFailed    Status = "failed"    // known not to have happened; safe to retry
-	StatusParked    Status = "parked"    // outcome unknown; do not send until reconciled
+	StatusIntended   Status = "intended"   // recorded, nothing sent
+	StatusSent       Status = "sent"       // send attempted; outcome not yet known
+	StatusConfirmed  Status = "confirmed"  // the effect exists (provider id recorded)
+	StatusFailed     Status = "failed"     // known not to have happened; safe to retry
+	StatusParked     Status = "parked"     // outcome unknown; do not send until reconciled
+	StatusSuperseded Status = "superseded" // replaced by a newer intent for the same target; never sent
 )
 
 // Intent is the durable record of one effect. It lives in the lane-18 claim store; this package
@@ -52,7 +54,9 @@ type Intent struct {
 	Kind       Kind   `json:"kind"`
 	Issue      int    `json:"issue"`
 	Target     string `json:"target"`
-	Digest     string `json:"digest"` // digest of the request payload
+	Digest     string `json:"digest"`            // digest of the request payload
+	Payload    string `json:"payload,omitempty"` // already-masked text to send, when the effect carries one
+	Seq        int    `json:"seq,omitempty"`     // order among intents for one target
 	Status     Status `json:"status"`
 	Attempts   int    `json:"attempts"`
 	ProviderID string `json:"provider_id,omitempty"`
@@ -61,10 +65,11 @@ type Intent struct {
 
 // Request describes an effect to perform.
 type Request struct {
-	Kind   Kind
-	Issue  int
-	Target string
-	Digest string
+	Kind    Kind
+	Issue   int
+	Target  string
+	Digest  string
+	Payload string
 }
 
 // Key is the idempotency key: the same kind, target and payload always give the same key.
@@ -117,7 +122,7 @@ type IntentStore interface {
 
 // Timeouts bounds each stage.
 type Timeouts struct {
-	IssueCreate, BranchPrepare, WorktreePrepare, CheckObserve time.Duration
+	IssueCreate, BranchPrepare, WorktreePrepare, CheckObserve, LedgerComment time.Duration
 }
 
 // For returns the timeout for a kind, 0 when unset.
@@ -131,6 +136,8 @@ func (t Timeouts) For(k Kind) time.Duration {
 		return t.WorktreePrepare
 	case CheckObserve:
 		return t.CheckObserve
+	case LedgerComment:
+		return t.LedgerComment
 	}
 	return 0
 }
@@ -162,7 +169,7 @@ func (e *Executor) Execute(ctx context.Context, r Request) (Intent, error) {
 			return e.Reconcile(ctx, key)
 		}
 	} else {
-		in = Intent{Key: key, Kind: r.Kind, Issue: r.Issue, Target: r.Target, Digest: r.Digest, Status: StatusIntended}
+		in = Intent{Key: key, Kind: r.Kind, Issue: r.Issue, Target: r.Target, Digest: r.Digest, Payload: r.Payload, Status: StatusIntended}
 		if err := e.Store.Put(in); err != nil {
 			return Intent{}, err
 		}
@@ -226,6 +233,11 @@ func (e *Executor) RequestObservation(_ context.Context, r Request) (Intent, err
 	if r.Kind != CheckObserve {
 		return Intent{}, fmt.Errorf("effect: %s is not an observation", r.Kind)
 	}
+	return e.Record(r)
+}
+
+// Record stores the intent (idempotent per key) without sending anything.
+func (e *Executor) Record(r Request) (Intent, error) {
 	key := Key(r.Kind, r.Target, r.Digest)
 	if in, ok, err := e.Store.Get(key); err != nil || ok {
 		return in, err
