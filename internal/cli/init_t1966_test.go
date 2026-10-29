@@ -1,0 +1,148 @@
+package cli
+
+// Card t1966 — `moai init` wizard/flag regression tests (items 1, 2, 7).
+
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/cli/wizard"
+)
+
+// Item 1: the already-initialized probe must run BEFORE the wizard, so an
+// initialized project gets the `moai update` guidance before any question.
+func TestRunInit_AlreadyInitializedProbeRunsBeforeWizard(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+
+	var calls int
+	origWizard := runWizardFn
+	runWizardFn = func(_, _, _ string) (*wizard.WizardResult, error) {
+		calls++
+		return &wizard.WizardResult{}, nil
+	}
+	t.Cleanup(func() { runWizardFn = origWizard })
+
+	origInteractive := isInteractiveStdin
+	isInteractiveStdin = func() bool { return true }
+	t.Cleanup(func() { isInteractiveStdin = origInteractive })
+
+	origDeps := deps
+	deps = nil
+	t.Cleanup(func() { deps = origDeps })
+
+	projectDir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(projectDir, ".moai", "config"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	cmd := newInitTestCmd()
+	err := runInit(cmd, []string{projectDir})
+	if err == nil {
+		t.Fatal("runInit on an initialized project: want the already-initialized error, got nil")
+	}
+	if !strings.Contains(err.Error(), "moai update") {
+		t.Errorf("error lacks the `moai update` guidance: %v", err)
+	}
+	if calls != 0 {
+		t.Errorf("wizard ran %d time(s) before the already-initialized probe, want 0", calls)
+	}
+}
+
+// Item 2: --bundles catalog validation lives in validateInitFlags (PreRunE).
+func TestValidateInitFlags_UnknownBundleFailsEarly(t *testing.T) {
+	cmd := newInitTestCmd()
+	if err := cmd.Flags().Set("bundles", "no-such-bundle-t1966"); err != nil {
+		t.Fatal(err)
+	}
+	err := validateInitFlags(cmd, nil)
+	if err == nil {
+		t.Fatal("validateInitFlags accepted an unknown bundle name")
+	}
+	if !strings.Contains(err.Error(), "no-such-bundle-t1966") || !strings.Contains(err.Error(), "--bundles") {
+		t.Errorf("error should name the flag and the unknown bundle: %v", err)
+	}
+}
+
+func TestValidateInitFlags_KnownBundleAccepted(t *testing.T) {
+	cmd := newInitTestCmd()
+	if err := cmd.Flags().Set("bundles", "backend"); err != nil {
+		t.Fatal(err)
+	}
+	if err := validateInitFlags(cmd, nil); err != nil {
+		t.Errorf("known bundle rejected: %v", err)
+	}
+}
+
+// Item 5: development_mode is not a wizard question on the init path (TDD is
+// the silent default; --mode is the only override), so a wizard result field
+// must not reach the persisted config. The former dead mapping let it through.
+func TestRunInit_WizardDevelopmentModeDoesNotReachConfig(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+
+	origWizard := runWizardFn
+	runWizardFn = func(_, _, _ string) (*wizard.WizardResult, error) {
+		return &wizard.WizardResult{ProjectName: "devmode-proj", DevelopmentMode: "ddd", GitMode: "manual"}, nil
+	}
+	t.Cleanup(func() { runWizardFn = origWizard })
+
+	origInteractive := isInteractiveStdin
+	isInteractiveStdin = func() bool { return true }
+	t.Cleanup(func() { isInteractiveStdin = origInteractive })
+
+	origDeps := deps
+	deps = nil
+	t.Cleanup(func() { deps = origDeps })
+
+	projectDir := filepath.Join(t.TempDir(), "devmode-proj")
+	if err := runInit(newInitTestCmd(), []string{projectDir}); err != nil {
+		t.Fatalf("runInit: %v", err)
+	}
+	data, err := os.ReadFile(filepath.Join(projectDir, ".moai", "config", "sections", "quality.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var mode string
+	for _, line := range strings.Split(string(data), "\n") {
+		if k, v, ok := strings.Cut(strings.TrimSpace(line), ":"); ok && k == "development_mode" {
+			mode = strings.Trim(strings.TrimSpace(v), `"'`)
+		}
+	}
+	if mode != "tdd" {
+		t.Errorf("quality.yaml development_mode = %q, want %q (silent default; wizard result must not set it)", mode, "tdd")
+	}
+}
+
+// Item 7: the --enable-lsp registration default must match its help text
+// ("default: true"), like --enforce-quality.
+func TestInitCmd_EnableLSPRegisteredDefaultMatchesHelp(t *testing.T) {
+	f := initCmd.Flags().Lookup("enable-lsp")
+	if f == nil {
+		t.Fatal("--enable-lsp not registered")
+	}
+	if f.DefValue != "true" {
+		t.Errorf("--enable-lsp DefValue = %q, want \"true\" (help says default: true)", f.DefValue)
+	}
+}
+
+// Audit F4: the flag is registered with default true, so cobra appends its own
+// default marker; the usage string must not state the default a second time.
+func TestInitCmd_EnableLSPHelpStatesDefaultOnce(t *testing.T) {
+	var line string
+	for _, l := range strings.Split(initCmd.Flags().FlagUsages(), "\n") {
+		if strings.Contains(l, "--enable-lsp") {
+			line = l
+			break
+		}
+	}
+	if line == "" {
+		t.Fatal("--enable-lsp missing from the rendered flag usages")
+	}
+	if n := strings.Count(line, "default"); n != 1 {
+		t.Errorf("--enable-lsp help states the default %d times, want once: %q", n, line)
+	}
+	if f := initCmd.Flags().Lookup("enable-lsp"); f == nil || f.DefValue != "true" {
+		t.Errorf("--enable-lsp DefValue must stay \"true\"")
+	}
+}

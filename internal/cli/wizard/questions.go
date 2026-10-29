@@ -8,10 +8,10 @@ import (
 
 // The wizard question set is split across these constructors:
 //
-//   - DefaultQuestions      — the five Basic / Model & Report questions shared
+//   - DefaultQuestions      — the four Basic / Model & Report questions shared
 //     with the reconfigure path (NO Git questions)
-//   - Page3Questions        — the init-only questions: autonomy_tier and
-//     jev_enabled
+//   - Page3Questions        — the init-only questions: autonomy_tier,
+//     jev_enabled, and feedback_participation
 //   - InitQuestions         — the `moai init` set, picked by ID from
 //     DefaultQuestions and followed by Page3Questions
 //   - GitQuestions          — the 7 Git questions, on their own
@@ -20,14 +20,17 @@ import (
 //     NOT include the page-3 questions, so the reconfigure set keeps its
 //     pre-restructure membership.
 //
-// The `moai init` wizard asks four questions (SPEC-INIT-QUIET-WIZARD-001
-// REQ-IQW-001 set three; SPEC-JEV-OPTIN-MEASURE-001 REQ-JEVO-005 added the
-// fourth; the agent_wiring harness selector went with the general codex
-// execution surface removal, card t1909), each keeping its group label:
+// The `moai init` wizard asks five questions on four pages
+// (SPEC-INIT-QUIET-WIZARD-001 REQ-IQW-001 set three; SPEC-JEV-OPTIN-MEASURE-001
+// REQ-JEVO-005 added jev_enabled; SPEC-FEEDBACK-PARTICIPATION-001 REQ-ANON-003
+// added feedback_participation; the agent_wiring harness selector went with the
+// general codex execution surface removal, card t1909), each page keeping its
+// group label:
 //
 //	"Basic"                — conversation_language, user_name
 //	"Agents & Autonomy"    — autonomy_tier
 //	"Judgment Capability"  — jev_enabled
+//	"Participation"        — feedback_participation
 //
 // A page is a run of consecutive UNCONDITIONAL questions sharing one Group
 // label: buildFormGroups (wizard.go) merges each such run into a single huh
@@ -38,17 +41,16 @@ import (
 //  1. Conversation language (drives the rendering language of every later question)
 //  2. User name (optional)
 //  3. Project name (required)
-//  4. Model policy
-//  5. Report format
+//  4. Report format
 //
 // Git mode and provider are NOT asked here: `moai init` derives them from the
 // repository's configured remotes (see detectGitConfig in internal/cli), so a
 // fresh init no longer interrogates the user about Git. The reconfigure path
 // still asks them — see ReconfigureQuestions.
 //
-// plan_type and development_mode are NO LONGER interactive questions — they
-// default silently (plan_type → subscription at persistence; development_mode →
-// tdd in init.go) and remain overridable via the --plan-type / --mode flags.
+// plan_type, development_mode, and the model policy are NO LONGER interactive
+// questions — they default silently (plan_type → subscription at persistence;
+// development_mode → tdd in init.go, overridable via the --mode flag).
 func DefaultQuestions(projectRoot string) []Question {
 	// Use current directory name as default project name
 	defaultProjectName := filepath.Base(projectRoot)
