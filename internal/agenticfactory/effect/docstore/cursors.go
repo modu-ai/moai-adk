@@ -18,6 +18,12 @@ type Docs interface {
 	PutDoc(kind, name string, expectRev int64, data []byte) (claim.Doc, error)
 }
 
+// CollectorKind is the claim store's document kind for collector cursors (lane 18, safety priority).
+const CollectorKind = "collector"
+
+// CollectorCursors is Cursors on a claim store, using the collector document kind.
+func CollectorCursors(c *claim.Store) Cursors { return Cursors{Docs: c, Kind: CollectorKind} }
+
 // Cursors keeps a collector's acknowledged baseline (its cursor) in the claim store's documents, so it
 // follows the same authority and revision rules as every other document. Kind is the document kind to use.
 // It is required because the claim store, not this package, decides which kinds exist; with a kind it does

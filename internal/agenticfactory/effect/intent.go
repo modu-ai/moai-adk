@@ -129,8 +129,8 @@ type Lookuper interface {
 
 // IntentStore persists intents. effect/docstore keeps them in the claim store's "intent" documents, which
 // is where the authority (the online control ref, when attached) comes first. The collector's consumer
-// ACK is forge.Collector.Ack and its cursor is forge.CursorStore; the claim store has no document kind
-// for a collector cursor yet, so until lane 18 names one the cursor lives in memory only. Retry-After /
+// ACK is forge.Collector.Ack and its cursor is forge.CursorStore, kept by effect/docstore in the claim
+// store's "collector" documents. Retry-After /
 // X-RateLimit-* backoff, conditional GET with ETag and the shared call budget are in package forge; this
 // executor honours them through LimitedError and ErrDenied.
 type IntentStore interface {
