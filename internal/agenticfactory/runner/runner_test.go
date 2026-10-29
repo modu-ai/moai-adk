@@ -21,9 +21,7 @@ func newRunner(t *testing.T) (*Runner, core.IssueRef) {
 		t.Fatal(err)
 	}
 	ref, _ := core.NewIssueRef(1948)
-	r := New(st)
-	r.Attributor = goodRoles() // the lookup of the identity SPEC, faked
-	return r, ref
+	return withRoles(New(st)), ref // identity lookup and host, both faked
 }
 
 // passAllFor is a complete passing evidence set for the ticket's holder and epoch.
@@ -42,7 +40,18 @@ func passAll(head string) Verification { return passAllFor(Ticket{Holder: "sess-
 type claimRecord = claim.Record
 
 // withRoles gives a Runner built by hand the faked attribution lookup.
-func withRoles(r *Runner) *Runner { r.Attributor = goodRoles(); return r }
+func withRoles(r *Runner) *Runner {
+	r.Attributor = goodRoles()
+	r.Facts = ownIssues{}
+	return r
+}
+
+// ownIssues is a host where every Issue was opened by the acting user.
+type ownIssues struct{}
+
+func (ownIssues) IssueFacts(core.IssueRef) (IssueFacts, error) {
+	return IssueFacts{RequestedRepo: "acme/widgets", ActualRepo: "acme/widgets", UserID: 7, AuthorID: 7, Owner: core.OwnerNone}, nil
+}
 
 func toVerifying(t *testing.T, r *Runner, ref core.IssueRef) Ticket {
 	t.Helper()

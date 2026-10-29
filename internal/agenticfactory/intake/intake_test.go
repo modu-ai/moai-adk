@@ -171,6 +171,13 @@ func rigAt(t *testing.T, dir string, cfg Config, pub *fakePub, br *fakeBr, pr *f
 	return &rig{dir: dir, in: in, pub: pub, br: br, pr: pr}
 }
 
+// ownIssues is a host where every Issue was opened by the acting user.
+type ownIssues struct{}
+
+func (ownIssues) IssueFacts(core.IssueRef) (runner.IssueFacts, error) {
+	return runner.IssueFacts{RequestedRepo: "acme/widgets", ActualRepo: "acme/widgets", UserID: 7, AuthorID: 7, Owner: core.OwnerNone}, nil
+}
+
 func ctx() context.Context { return context.Background() }
 
 var agentSeq atomic.Int32
@@ -229,6 +236,7 @@ func advanceTo(t *testing.T, r *rig, key string, want claim.Stage) (claim.Reques
 func beginAttempt(t *testing.T, r *rig, req claim.Request, a core.Agent) error {
 	t.Helper()
 	rn := runner.New(r.in.Store)
+	rn.Facts = ownIssues{}
 	ref, _ := core.NewIssueRef(req.Issue)
 	tk, err := rn.ClaimAs(ref, a, "disp-"+req.Key, "run-1")
 	if err != nil {

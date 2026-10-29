@@ -101,11 +101,53 @@ type Ticket struct {
 	Epoch  int64
 }
 
-// Runner applies transitions to claims in Store. With no Attributor every
-// review, audit, QA and coordinator result is unattributable and is refused.
+// IssueFacts is what the host says about an Issue, for the permission decision:
+// the repository asked about and the one answered for (and whether a redirect
+// intervened), the authenticated user, the Issue's author, and who owns the work.
+// An id that could not be established is passed as 0.
+type IssueFacts struct {
+	RequestedRepo string
+	ActualRepo    string
+	Redirected    bool
+	UserID        int64
+	AuthorID      int64
+	Owner         core.OwnerState
+}
+
+// Facts looks an Issue up on the host. The implementation lives with the forge
+// code; it makes no write.
+type Facts interface {
+	IssueFacts(issue core.IssueRef) (IssueFacts, error)
+}
+
+// Runner applies transitions to claims in Store.
+//
+// Two lookups are injected and both fail closed: with no Attributor every
+// review, audit, QA and coordinator result is unattributable and is refused; with
+// no Facts nobody's identity is established and no Issue is claimed. Collab holds
+// the collaboration settings that decide when another author's Issue may be taken.
 type Runner struct {
 	Store      *claim.Store
 	Attributor Attributor
+	Facts      Facts
+	Collab     core.Collaboration
+}
+
+// guard decides whether the acting user may perform op on the Issue, through the
+// one permission decision in core. A failed or missing lookup is an unknown
+// identity.
+func (r *Runner) guard(i core.IssueRef, op core.Op) error {
+	if r.Facts == nil {
+		return core.DenyIdentityUnknown.Err()
+	}
+	f, err := r.Facts.IssueFacts(i)
+	if err != nil {
+		return fmt.Errorf("%w: host lookup of issue-%d failed: %v", core.ErrIdentityUnknown, i.Number, err)
+	}
+	return r.Collab.Authorize(core.AuthzRequest{
+		Op: op, RequestedRepo: f.RequestedRepo, ActualRepo: f.ActualRepo, Redirected: f.Redirected,
+		UserID: f.UserID, IssueAuthorID: f.AuthorID, Owner: f.Owner,
+	}).Err()
 }
 
 // New returns a Runner over st.
@@ -113,6 +155,9 @@ func New(st *claim.Store) *Runner { return &Runner{Store: st} }
 
 // Claim admits holder for the Issue (queued -> claimed).
 func (r *Runner) Claim(i core.IssueRef, holder, dispatch string, run core.RunID) (Ticket, error) {
+	if err := r.guard(i, core.OpTakeOver); err != nil {
+		return Ticket{}, err
+	}
 	rec, err := r.Store.Acquire(i, holder, dispatch, run)
 	if err != nil {
 		return Ticket{}, err
@@ -123,6 +168,9 @@ func (r *Runner) Claim(i core.IssueRef, holder, dispatch string, run core.RunID)
 // ClaimAs admits a registered agent: the claim stores its session id and its
 // display name separately.
 func (r *Runner) ClaimAs(i core.IssueRef, a core.Agent, dispatch string, run core.RunID) (Ticket, error) {
+	if err := r.guard(i, core.OpTakeOver); err != nil {
+		return Ticket{}, err
+	}
 	rec, err := r.Store.AcquireFor(i, a, dispatch, run)
 	if err != nil {
 		return Ticket{}, err
@@ -456,6 +504,9 @@ func (r *Runner) HandOff(t Ticket, h Handoff) (claim.Record, error) {
 // ClaimRepair admits the single repair holder of a handed-off Issue, on the
 // branch its receipt names. The repair attempt then runs the normal steps.
 func (r *Runner) ClaimRepair(i core.IssueRef, holder, dispatch string, run core.RunID, branch string) (Ticket, error) {
+	if err := r.guard(i, core.OpTakeOver); err != nil {
+		return Ticket{}, err
+	}
 	rec, err := r.Store.AcquireRepair(i, holder, dispatch, run, branch)
 	if err != nil {
 		return Ticket{}, err
@@ -465,6 +516,9 @@ func (r *Runner) ClaimRepair(i core.IssueRef, holder, dispatch string, run core.
 
 // ClaimRepairAs is ClaimRepair for a registered agent.
 func (r *Runner) ClaimRepairAs(i core.IssueRef, a core.Agent, dispatch string, run core.RunID, branch string) (Ticket, error) {
+	if err := r.guard(i, core.OpTakeOver); err != nil {
+		return Ticket{}, err
+	}
 	rec, err := r.Store.AcquireRepairFor(i, a, dispatch, run, branch)
 	if err != nil {
 		return Ticket{}, err

@@ -64,6 +64,18 @@ func ReasonFor(err error) (BlockReason, bool) {
 		return ReasonCapacityShort, true
 	case errors.Is(err, ErrBacklogUnset):
 		return ReasonNotConfigured, true
+	case errors.Is(err, ErrNotIssueAuthor):
+		return ReasonNotIssueAuthor, true
+	case errors.Is(err, ErrIdentityUnknown):
+		return ReasonIdentityUnknown, true
+	case errors.Is(err, ErrRepoNotAllowed):
+		return ReasonRepoNotAllowed, true
+	case errors.Is(err, ErrPermissionNotGranted):
+		return ReasonPermissionNotGranted, true
+	case errors.Is(err, ErrOwnerUnconfirmed):
+		return ReasonOwnerUnconfirmed, true
+	case errors.Is(err, ErrForeignClosing):
+		return ReasonForeignClosing, true
 	}
 	return "", false
 }
