@@ -445,6 +445,7 @@ func (s *Store) acquireRepair(i core.IssueRef, holder, name, dispatch string, ru
 		out.Holder, out.AgentName, out.Dispatch, out.Run = holder, name, dispatch, run
 		out.Epoch, out.Seq, out.State = cur.Epoch+1, cur.Seq+1, core.StateClaimed
 		out.Return, out.Reason, out.Resume = "", "", ""
+		out.Gate, out.Refusal = nil, nil
 		out.History = append(append([]Event(nil), cur.History...), Event{Kind: "repair-claim", Agent: name, Session: holder})
 		return s.write(i, &out)
 	})
