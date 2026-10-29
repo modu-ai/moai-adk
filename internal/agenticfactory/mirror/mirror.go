@@ -167,11 +167,22 @@ func (m *Mirror) call(ctx context.Context, args ...string) ([]byte, error) {
 	return nil, fmt.Errorf("agenticfactory/mirror: gh exit %d: %s", exit, text)
 }
 
-// fromStatus turns a typed HTTP failure into a block (rate limit, denial) or
-// returns it unchanged for the caller to read the status.
+// fromStatus turns a typed HTTP failure into a block or a plain status error.
 func (m *Mirror) fromStatus(se *forge.StatusError) error {
 	now := m.now()
 	v, _ := forge.ClassifyError(se, now, m.Backoff, 0)
+	return outcome(v, se, now)
+}
+
+// errUnhandledKind marks a forge.Kind this consumer has no rule for.
+var errUnhandledKind = errors.New("agenticfactory/mirror: unhandled forge kind")
+
+// outcome is the consumer's rule for every forge.Kind. A rate limit, a permission
+// denial and an unclassified 403 stop with a recorded block (nothing here
+// retries); a transient failure and anything else is returned as the typed
+// status error for the caller to read. A Kind added to forge without a case here
+// ends in errUnhandledKind, never in a silent plain error.
+func outcome(v forge.Verdict, se *forge.StatusError, now time.Time) error {
 	switch v.Kind {
 	case forge.KindLimited:
 		be := &BlockedError{Reason: core.ReasonRateLimited, Status: se.Status, Detail: v.Reason}
@@ -185,8 +196,13 @@ func (m *Mirror) fromStatus(se *forge.StatusError) error {
 			reason = core.ReasonAuthFailed
 		}
 		return &BlockedError{Reason: reason, Status: se.Status, Detail: v.Reason}
+	case forge.KindUnclassified:
+		// Neither a limit nor a confirmed permission problem, so it is not filed as one.
+		return &BlockedError{Reason: core.ReasonUnclassified, Status: se.Status, Detail: v.Reason}
+	case forge.KindTransient, forge.KindOther, forge.KindOK, forge.KindNotModified:
+		return fmt.Errorf("agenticfactory/mirror: %w", se)
 	}
-	return fmt.Errorf("agenticfactory/mirror: %w", se)
+	return fmt.Errorf("%w: %q", errUnhandledKind, v.Kind)
 }
 
 type comment struct {
