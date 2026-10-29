@@ -8,9 +8,26 @@
 // reset header. No limit value is hardcoded: the budget is learned from response headers, and the
 // backoff numbers come from configuration or the documented defaults below.
 //
+// Consumer contract per Kind (what a caller of Client/Classify must do). Adding or changing a Kind means
+// updating this table in the same change and telling the consumers (lane 18's mirror and claim code,
+// lane 22's tests); TestEveryKindHasAConsumerContract fails when a Kind is missing from the table.
+//
+//	ok                 use the body.
+//	not-modified       use the cached body; nothing changed.
+//	rate-limited       STOP sending on that host resource until RetryAt; keep the work and retry later,
+//	                   bounded by Backoff.MaxAttempts; no block record until the attempts run out.
+//	transient          retry at RetryAt, bounded by Backoff.MaxAttempts, then give up.
+//	permission-denied  STOP, no retry; record a block (PARKED, reason permission-denied).
+//	unclassified-403   STOP, no retry; record a block (PARKED, reason unclassified-403); do not guess.
+//	other              caller decides (a 404 is not evidence of deletion or of missing permission).
+//
+// After MaxAttempts consecutive rate-limited/transient answers for one path the client returns
+// ErrGiveUp: treat it like a denial (STOP, record a block).
+//
 // Documentation relied on (fetched 2026-10-29):
 //   - https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api
 //   - https://docs.github.com/en/rest/using-the-rest-api/best-practices-for-using-the-rest-api
+//   - https://docs.github.com/en/rest/using-the-rest-api/troubleshooting-the-rest-api
 package forge
 
 import (
@@ -51,6 +68,10 @@ type Transport interface {
 // ErrDenied marks a permission or authentication refusal. It is never retried; the caller parks.
 var ErrDenied = errors.New("forge: permission denied (not retried; park the work)")
 
+// ErrGiveUp means the same path was rate-limited or failing transiently Backoff.MaxAttempts times in a
+// row. The caller stops and records a block; the client never loops on its own.
+var ErrGiveUp = errors.New("forge: retry attempts exhausted (stop and record a block)")
+
 // Backoff holds the wait parameters. There are no hidden defaults: Validate rejects a zero value.
 type Backoff struct {
 	MinSecondaryWait time.Duration // wait when a limit is signalled with no Retry-After and no reset
@@ -87,6 +108,9 @@ type Verdict struct {
 	Kind    Kind
 	RetryAt time.Time
 	Reason  string
+	// Signal says what decided a rate-limit verdict: "header" (Retry-After, an exhausted remaining count)
+	// or "wording" (the host's message text only). It is empty for other kinds.
+	Signal string
 }
 
 func lower(h map[string]string) map[string]string {
@@ -169,22 +193,33 @@ func Classify(r Response, now time.Time, b Backoff, attempt int) Verdict {
 	case r.Status == http.StatusUnauthorized:
 		return Verdict{Kind: KindDenied, Reason: "authentication failed"}
 	case r.Status == http.StatusTooManyRequests || r.Status == http.StatusForbidden:
-		_, hasRA := parseRetryAfter(h["retry-after"], now)
 		exhausted := firstOf(h, "x-ratelimit-remaining", "ratelimit-remaining") == "0"
-		worded := strings.Contains(strings.ToLower(string(r.Body)), "rate limit")
-		if r.Status == http.StatusForbidden && !hasRA && !exhausted && !worded {
-			if strings.Contains(strings.ToLower(string(r.Body)), "not accessible") {
-				return Verdict{Kind: KindDenied, Reason: "resource not accessible (permission)"}
-			}
-			return Verdict{Kind: KindUnclassified, Reason: "403 with neither a rate-limit signal nor permission wording"}
-		}
 		if t, ok := parseRetryAfter(h["retry-after"], now); ok {
-			return Verdict{Kind: KindLimited, RetryAt: t, Reason: "retry-after"}
+			return Verdict{Kind: KindLimited, RetryAt: t, Reason: "retry-after", Signal: "header"}
 		}
 		if t, ok := parseReset(h); ok && exhausted {
-			return Verdict{Kind: KindLimited, RetryAt: t, Reason: "reset time"}
+			return Verdict{Kind: KindLimited, RetryAt: t, Reason: "reset time", Signal: "header"}
 		}
-		return Verdict{Kind: KindLimited, RetryAt: now.Add(grow(b.MinSecondaryWait, attempt, b.Max)), Reason: "no hint; configured minimum"}
+		if exhausted || r.Status == http.StatusTooManyRequests {
+			return Verdict{Kind: KindLimited, RetryAt: now.Add(grow(b.MinSecondaryWait, attempt, b.Max)), Reason: "no hint; configured minimum", Signal: "header"}
+		}
+		// A 403 with no usable header. GitHub's documentation separates a secondary rate limit from a
+		// permission error by the message text only (rate-limits page: the response carries "an error
+		// message that indicates that you exceeded a secondary rate limit"; troubleshooting page, both
+		// fetched 2026-10-29: "Resource not accessible by integration" / "... by personal access token"
+		// for missing permissions). The exact secondary-limit text is not published, so the wording is
+		// a fallback signal used ONLY here, when no header decided. Every outcome of this branch is on
+		// the safe side: the rate-limit reading waits at least the configured minimum and is bounded by
+		// MaxAttempts, and anything else stops. The "not accessible" wording changes the reason shown,
+		// never the behaviour: denied and unclassified both stop without a retry.
+		body := strings.ToLower(string(r.Body))
+		if r.Status == http.StatusForbidden && strings.Contains(body, "rate limit") {
+			return Verdict{Kind: KindLimited, RetryAt: now.Add(grow(b.MinSecondaryWait, attempt, b.Max)), Reason: "secondary limit wording; configured minimum", Signal: "wording"}
+		}
+		if strings.Contains(body, "not accessible") {
+			return Verdict{Kind: KindDenied, Reason: "resource not accessible (permission)"}
+		}
+		return Verdict{Kind: KindUnclassified, Reason: "403 with neither a rate-limit signal nor permission wording"}
 	case r.Status >= 500:
 		return Verdict{Kind: KindTransient, RetryAt: now.Add(grow(b.Base, attempt, b.Max)), Reason: fmt.Sprintf("status %d", r.Status)}
 	}
@@ -360,7 +395,9 @@ func (c *Client) Get(ctx context.Context, path string) (Result, error) {
 	}
 	resp, err := c.T.Do(ctx, req)
 	if err != nil {
-		c.bump(path)
+		if c.bump(path) >= c.Backoff.MaxAttempts {
+			return Result{}, fmt.Errorf("%w: transport error", ErrGiveUp)
+		}
 		return Result{Deferred: true, NotBefore: now.Add(grow(c.Backoff.Base, attempt, c.Backoff.Max))}, nil
 	}
 	c.B.Observe(resp, now)
@@ -393,11 +430,15 @@ func (c *Client) Get(ctx context.Context, path string) (Result, error) {
 		return res, nil
 	case KindLimited:
 		c.B.BlockFor(resName, v.RetryAt)
-		c.bump(path)
+		if c.bump(path) >= c.Backoff.MaxAttempts {
+			return Result{}, fmt.Errorf("%w: %s", ErrGiveUp, v.Reason)
+		}
 		res.Deferred, res.NotBefore = true, v.RetryAt
 		return res, nil
 	case KindTransient:
-		c.bump(path)
+		if c.bump(path) >= c.Backoff.MaxAttempts {
+			return Result{}, fmt.Errorf("%w: %s", ErrGiveUp, v.Reason)
+		}
 		res.Deferred, res.NotBefore = true, v.RetryAt
 		return res, nil
 	case KindDenied, KindUnclassified:
@@ -406,13 +447,14 @@ func (c *Client) Get(ctx context.Context, path string) (Result, error) {
 	return Result{}, fmt.Errorf("forge: unexpected response: %s", v.Reason)
 }
 
-func (c *Client) bump(path string) {
+func (c *Client) bump(path string) int {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.attempts == nil {
 		c.cache, c.attempts, c.learned = map[string]entry{}, map[string]int{}, map[string]string{}
 	}
 	c.attempts[path]++
+	return c.attempts[path]
 }
 
 // EffectError maps a verdict to the error the effect executor understands, so a rate limit waits for

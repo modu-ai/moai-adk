@@ -173,7 +173,7 @@ func (c *Collector) tick(ctx context.Context, now time.Time) Report {
 
 	res, err := c.Client.Get(ctx, c.Path)
 	switch {
-	case errors.Is(err, ErrDenied):
+	case errors.Is(err, ErrDenied) || errors.Is(err, ErrGiveUp):
 		c.parked = true
 		rep.Parked, rep.Reason = true, "permission denied; not retried"
 		rep.Next = now.Add(c.Interval.Max)
