@@ -1,4 +1,4 @@
-# SPEC-AGENTIC-FACTORY-001 — 수용 기준 (0.6.6)
+# SPEC-AGENTIC-FACTORY-001 — 수용 기준 (0.6.7)
 
 ## §A 측정 규칙
 
@@ -136,18 +136,20 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 
 - 주 REQ: maps REQ-AF-004. 초록: M1.
 - 정본 주 시험 7: M06~M12.
-- 명령: `go test ./internal/agenticfactory/... -run '^TestAcceptanceManifest$/^(M06|M07|M08|M09|M10|M11|M12)$|^(TestLiveness_.*)$' -count=1 -v` → PASS 줄 = 7 + 사례 4.
+- 명령: `go test ./internal/agenticfactory/... -run '^TestAcceptanceManifest$/^(M06|M07|M08|M09|M10|M11|M12)$|^(TestLiveness_.*)$' -count=1 -v` → PASS 줄 = 7 + 사례 5.
 - 사례: (a) lease 만료 + 판정 `live` → 인계 거절, attempt `lapsed`. (b) `indeterminate` → 같음. (c) 같은 pid·다른 fingerprint → `dead` → epoch+1, 이전 worktree·branch·SHA·dirty 목록 보존·참조. (d) 재시작·끊김 뒤 복구 → 실제 실행 조회가 재개·재발급·PARKED 결정보다 먼저(호출 순서 기록), 강제 종료 0, 중복 attempt 0.
-- 변형 단언: PID만 보는 판정은 (c)에서 FAIL(재사용된 pid를 `live`로 봄). TTL만으로 인계하는 구현은 (a)에서 FAIL.
+- (e) **시나리오 "crash 인계"**(0.6.7, DEC-AF-23, REQ-AF-009의 책임 기록을 함께 단언, 제안 이름 `TestLiveness_CrashHandover_ResponsibilityPassesWithEpoch`): PR을 연 Issue의 책임 agent 프로세스가 죽음(판정 `dead`) → 새 agent에게 epoch+1로 책임이 넘어감, control ref의 책임 기록이 새 agent를 가리킴, 책임자 없는 시간 0(책임 기록이 비는 순번 0), 이전 worktree·branch·변경 보존, 같은 Issue의 attempt 동시 둘 0. 판정이 `live`·`indeterminate`면 책임 이전 0.
+- 변형 단언: PID만 보는 판정은 (c)에서 FAIL(재사용된 pid를 `live`로 봄). TTL만으로 인계하는 구현은 (a)에서 FAIL. crash 뒤 책임 기록을 비워 두는 구현은 (e)에서 FAIL.
 - RED 이유: 판정 연결 없음. 초록 경로: M1(lane-18, `homestate.ClassifyOwnerWith` 사용).
 
 #### AC-AF-005 — effect 불명 재조회·전달 상태
 
 - 주 REQ: maps REQ-AF-005. 초록: M2.
 - 정본 주 시험 10: M18, M19, M20, M29, M30, M31, SYNC03, SYNC04, SYNC05, SYNC11.
-- 명령: `go test ./internal/agenticfactory/... -run '^TestAcceptanceManifest$/^(M18|M19|M20|M29|M30|M31|SYNC03|SYNC04|SYNC05|SYNC11)$|^(TestDelivery_.*)$' -count=1 -v` → PASS 줄 = 10 + 사례 4.
+- 명령: `go test ./internal/agenticfactory/... -run '^TestAcceptanceManifest$/^(M18|M19|M20|M29|M30|M31|SYNC03|SYNC04|SYNC05|SYNC11)$|^(TestDelivery_.*)$' -count=1 -v` → PASS 줄 = 10 + 사례 5.
 - 사례: (a) 전송 성공만 있음 → `sent`만, `received` 이상 0. (b) idle 알림 → `completed` 아님. (c) effect 응답 불명 → 재발행 전 원격 조회 1회 이상, 재발행 0, PARKED `unknown-effect`. (d) intent 기록 전에 전송을 시도하는 경로 → 거절(intent 없는 전송 0).
-- 변형 단언: 답장으로 `completed`를 세우는 구현은 (b), 불명 시 재전송하는 구현은 (c)에서 FAIL.
+- (e) **시나리오 "답장 유실 복구"**(0.6.7, DEC-AF-23, 제안 이름 `TestDelivery_ReplyLoss_RecoveredFromRecordNotReply`): agent가 일을 끝냈지만 완료 답장이 전송 계층에서 버려짐 → 진행은 control ref·증거 기록을 읽어 복구되고 다음 단계로 감, 같은 명령 재전송 0, 답장 대기 중에 남긴 대기 기록은 design §2.1c 여섯 필드를 모두 가짐. 답장만 잃고 기록도 없으면 `completed` 0이고 대기 기록의 재확인 시각에 상승 대상으로 넘어감.
+- 변형 단언: 답장으로 `completed`를 세우는 구현은 (b), 불명 시 재전송하는 구현은 (c), 답장이 올 때까지 멈추는 구현은 (e)에서 FAIL.
 - RED 이유: effect 경계 없음. 초록 경로: M2(lane-20).
 
 #### AC-AF-006 — DONE 순서
@@ -183,9 +185,11 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 
 - 주 REQ: maps REQ-AF-009. 초록: M3.
 - 정본 주 시험 8: HANDOFF01~HANDOFF08.
-- 명령: `go test ./internal/agenticfactory/... -run '^TestAcceptanceManifest$/^(HANDOFF0[1-8])$|^(TestHandoff_.*|TestRepair_.*)$' -count=1 -v` → PASS 줄 = 8 + 사례 5.
-- 사례: (a) receipt 필드(design §4.8 PRHandoff) 하나씩 빼기 → E03 거절, 상태 BUILDING 유지. (b) PR 발행만 있음 → DONE도 REVIEWING도 아님. (c) E03 뒤 agent claim·slot 반환, worktree·branch·변경 보존(경로 digest 불변). (d) E06 수리 → 원 Issue·branch에 배타 claim, 같은 worktree·epoch 연속성, 가용 agent에 배차, 그 agent의 다른 Issue 기록 불변. (e) MERGING 중 HEAD 변경 → E10으로 REVIEWING, 이어 E06.
-- 변형 단언: 필드 하나 없이 인계를 받는 구현은 (a), 수리를 새 Issue로 여는 구현은 (d), 바쁜 agent의 Issue를 덮는 구현은 (d)에서 FAIL.
+- 명령: `go test ./internal/agenticfactory/... -run '^TestAcceptanceManifest$/^(HANDOFF0[1-8])$|^(TestHandoff_.*|TestRepair_.*|TestResponsibility_.*)$' -count=1 -v` → PASS 줄 = 8 + 사례 7.
+- 사례: (a) receipt 필드(design §4.8 PRHandoff) 하나씩 빼기 → E03 거절, 상태 BUILDING 유지. (b) PR 발행만 있음 → DONE도 REVIEWING도 아님. (c) E03 뒤 agent claim·slot 반환, worktree·branch·변경 보존(경로 digest 불변), 그 Issue의 책임 기록은 그대로 같은 agent. (d) E06 수리 → 원 Issue·branch에 배타 claim, 같은 worktree·epoch 연속성, 그 Issue의 책임 agent에 배차, 그 agent의 다른 Issue 기록 불변. (e) MERGING 중 HEAD 변경 → E10으로 REVIEWING, 이어 E06.
+- (f) **시나리오 "CI 실패 수리부터 종료까지"**(0.6.7, DEC-AF-23, 제안 이름 `TestResponsibility_CIFailure_SameAgentRepairsThroughDone`): 일부러 실패하게 만든 필수 검사 → 같은 agent가 수리 → 다시 CI → 리뷰 → 병합 → DONE. 단언: 수리·리뷰 대응 attempt의 writer가 모두 처음 배정된 agent와 같음, leader(Coordinator) 쓰기 주체의 구현·수리 커밋 0, 각 단계 순번이 CI 실패 < 수리 커밋 < 재검사 PASS < 리뷰 PASS < 병합 < Issue 종료 확인 < DONE, 책임 기록은 DONE 전까지 비지 않음. 시나리오는 격리 사본(acceptance §A.1 격리 실행 규칙)에서 돈다.
+- (g) **다른 Issue를 맡는 조건**(0.6.7, 제안 이름 `TestResponsibility_SecondIssue_OnlyWhenConditionsHold`): PR을 연 agent에게 두 번째 Issue 배차 요청 → ① 원 Issue 수리가 대기 중이면 거절, 수리가 먼저 배차됨 ② `wip_limit`에 닿았으면 거절(설정값 N 사례만. 미설정 사례는 두지 않는다 — OD-7) ③ 두 번째 Issue의 쓰기 worktree가 첫 Issue의 것과 같으면 거절 ④ 첫 Issue의 책임 기록이 control ref에 없으면 거절 ⑤ 넷이 모두 맞으면 허용, 두 Issue 모두 같은 agent가 책임자.
+- 변형 단언: 필드 하나 없이 인계를 받는 구현은 (a), 수리를 새 Issue로 여는 구현은 (d), 바쁜 agent의 Issue를 덮는 구현은 (d), PR 인계로 책임을 끝내는 구현은 (c)·(f), 수리를 다른 agent에 주는 구현은 (d)·(f), worktree를 같이 쓰는 구현은 (g) ③에서 FAIL.
 - RED 이유: E03·E06·E10 없음. 초록 경로: M3(lane-18).
 
 #### AC-AF-010 — 독립성과 역할 쓰기 경계
@@ -194,7 +198,8 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 - 정본 주 시험 2: M22, M23.
 - 명령: `go test ./internal/agenticfactory/... -run '^TestAcceptanceManifest$/^(M22|M23)$|^(TestIndependence_.*)$' -count=1 -v` → PASS 줄 = 2 + 사례 4.
 - 사례: (a) ControlService가 아닌 쓰기 주체의 claim·lease·liveness·resume 쓰기 → 거절. (b) Coordinator의 직접 상태 쓰기 → 거절. (c) 같은 Issue의 어느 attempt writer였던 세션의 리뷰 증거 → 세지 않음. (d) Coordinator가 직접 구현한 변경의 리뷰 → 세지 않음. (e) 다른 Issue의 writer였던 세션이 이 Issue를 리뷰 → 셈(정본 [2]§21).
-- 변형 단언: run 전체를 막는 과잉 구현은 (e)에서 FAIL, Issue 범위를 보지 않는 구현은 (c)에서 FAIL.
+- (f) leader 역할 경계(0.6.7, DEC-AF-23, 제안 이름 `TestIndependence_LeaderDoesNotTakeOverAgentWork`): Coordinator가 agent에 배정된 Issue의 구현·수리·리뷰 대응 쓰기를 요청 → 거절, 그 Issue의 attempt 기록 불변. 변경 알림·실패 복구·배정 조정·통합 지원 요청 → ControlService 명령으로 받아들여짐. 이 사례는 위 PASS 줄 수에 1을 더한다.
+- 변형 단언: run 전체를 막는 과잉 구현은 (e)에서 FAIL, Issue 범위를 보지 않는 구현은 (c)에서 FAIL, leader가 agent 일을 대신하는 구현은 (f)에서 FAIL.
 - RED 이유: 역할 경계 없음. 초록 경로: M4. (e)는 귀속 대역으로 게이트 단위 시험 안에서만 돈다.
 
 #### AC-AF-011 — 역할 귀속과 잠금
@@ -256,8 +261,8 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 - 주 REQ: maps REQ-AF-016. 초록: M1.
 - 정본 주 시험 6: M16, M41, M42, M48, M54, M56. 전용: `TestTransition_Table_*`, §12 `TestState_SpeclessIssue_TransitionsWithoutSpecHash`, `TestState_OperatorDecision_RequiresOperatorEvidence_CoordinatorRefused`.
 - 명령: `go test ./internal/agenticfactory/... -run '^TestAcceptanceManifest$/^(M16|M41|M42|M48|M54|M56)$|^(TestTransition_Table_.*|TestState_SpeclessIssue_TransitionsWithoutSpecHash|TestState_OperatorDecision_RequiresOperatorEvidence_CoordinatorRefused)$' -count=1 -v`.
-- 사례: (a) 상태 7 × 사건 전부의 표 구동 시험: E01~E27에 있는 쌍만 적용, 나머지는 거절하고 상태 불변(쌍 수를 출력에 기록하고 0이 아님을 단언). (b) 요청자가 맞지 않음 → 거절. (c) PARKED 사유 집합 밖 값 → 거절. (d) E20 → 단계·owner 불변.
-- 변형 단언: 표에 없는 간선 하나를 허용하는 구현은 (a), owner를 바꾸는 재개는 (d)에서 FAIL.
+- 사례: (a) 상태 7 × 사건 전부의 표 구동 시험: E01~E27에 있는 쌍만 적용, 나머지는 거절하고 상태 불변(쌍 수를 출력에 기록하고 0이 아님을 단언). (b) 요청자가 맞지 않음 → 거절. (c) PARKED 사유 집합 밖 값 → 거절. (d) E20 → 단계·owner 불변. (e) 대기 기록 여섯 필드(design §2.1c, 0.6.7, 제안 이름 `TestTransition_Table_WaitRecordRequiresAllSixFields`): 필드를 하나씩 뺀 대기 기록 여섯 개 → 각각 무효로 거절, 이전 상태 불변. 여섯 필드가 모두 있는 기록 → 받아들여짐.
+- 변형 단언: 표에 없는 간선 하나를 허용하는 구현은 (a), owner를 바꾸는 재개는 (d), 필드가 빠진 대기 기록을 받는 구현은 (e)에서 FAIL.
 - RED 이유: 상태 엔진 없음. 초록 경로: M1(lane-18).
 
 #### AC-AF-017 — record와 수집기
@@ -357,7 +362,14 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 | 007 | 한 결과에 사유 둘 | 표 행 기록 수 = 1 |
 | 007 | `wip_limit: 0`을 끔으로 해석 | 적체 (b) |
 | 008 | 약화 연산 하나 전송 | W1~W7 |
+| 004 | crash 뒤 책임 기록 비움 | (e) |
+| 005 | 답장이 올 때까지 멈춤 | (e) |
 | 009 | 필드 빠진 receipt 수락 | (a) |
+| 009 | PR 인계로 책임 종료 | (c)·(f) |
+| 009 | 수리를 다른 agent에 배차 | (d)·(f) |
+| 009 | 두 Issue가 쓰기 worktree 공유 | (g) ③ |
+| 010 | leader가 agent 일을 대신 | (f) |
+| 016 | 필드 빠진 대기 기록 수락 | (e) |
 | 010 | run 전체 금지 | (e) |
 | 011 | 환경 변수로 잠금 해제 | L3 |
 | 011 | 시나리오에서 대역 사용 | L4 |

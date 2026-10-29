@@ -1,4 +1,4 @@
-# SPEC-AGENTIC-FACTORY-001 — 설계 (0.6.6)
+# SPEC-AGENTIC-FACTORY-001 — 설계 (0.6.7)
 
 이 문서는 `spec.md`의 표 요구사항(REQ-AF-016~025)이 가리키는 표와, 묶음 요구사항(REQ-AF-001~015)의 세부 계약을 담는다. 코드 구조와 함수 이름은 정하지 않는다. 다만 이미 다른 레인이 만든 이름(예: lane-18 `core.Collaboration.Authorize`, lane-17 `NormalizeRepositoryPath`)은 사실로 인용한다.
 
@@ -39,7 +39,7 @@ GitHub Issue (업무 필드의 권위: 제목·수용 기준·우선순위·의�
 |---|---|---|---|
 | `READY` | — | 실행 대상, 활성 claim 없음 | [0]§8 |
 | `BUILDING` | `SPEC` / `IMPLEMENT` / `FIX` | agent가 attempt 안에서 일함. SPEC은 E23 감사 결과로 IMPLEMENT로 감 | [0]§8, [7] S46 |
-| `REVIEWING` | — | PR 인계 receipt 뒤. 종결 책임은 leader(Coordinator) | [7] S46 E03 |
+| `REVIEWING` | — | PR 인계 receipt 뒤. 책임은 배정된 agent에 남아 CI 실패 수리·리뷰 대응·병합·Issue 종료 확인까지 간다. leader(Coordinator)는 인계를 수락하고 변경 알림·실패 복구·배정 조정·통합을 지원한다(0.6.7 리더 결정. S46 문언 "종결 책임 leader"와의 차이는 spec.md §H 0.6.7) | [7] S46 E03, DEC-AF-23 |
 | `MERGING` | `remote_integrated` 표시 가능 | durable effect intent와 함께 병합 요청 | [0]§8 E08, E12 |
 | `DONE` | — | E13 의무 전부 충족(Issue 종료 포함) | [0]§8 E13 |
 | `CANCELLED` | — | 사용자 취소 후 안전 정리 | [0]§8 E15/E16 |
@@ -127,6 +127,22 @@ GitHub Issue (업무 필드의 권위: 제목·수용 기준·우선순위·의�
 - 귀속 판정 순서: 판정값·HEAD 검사보다 귀속 검사가 먼저다. 귀속이 실패한 증거는 판정값이 `PASS`여도 `producer-not-allowed` 하나로만 기록한다.
 - writer 인계(`writer-handoff`)는 두 단계다. 먼저 fencing(REQ-AF-001): 옛 epoch의 등록은 귀속 조회에 닿기 전에 epoch 거절(종료 코드 15)이다. fencing을 통과한 등록만 귀속 조회로 간다.
 
+### 2.1c 대기 기록 필수 필드 (REQ-AF-016, DEC-AF-23, 0.6.7)
+
+출처: 리더 결정(리더 세션 경유). 대기 기록은 `PARKED` overlay와, Issue나 agent가 무언가를 기다린다고 남기는 그 밖의 모든 기록이다(예: CI 결과 대기, 리뷰 대기, 인계 대기). 아래 여섯 필드가 모두 있어야 하며, 하나라도 없으면 그 기록은 **무효**다. 상태 엔진은 무효 기록을 거절하고 이전 상태를 그대로 둔다. 거절에 쓸 새 사유 값은 만들지 않았다(§2.1a 닫힌 집합 불변).
+
+| 필드 | 뜻 |
+|---|---|
+| 단일 책임자 | 이 대기를 풀 책임이 있는 주체 하나(agent·leader·ControlService·운영자 중 하나, 이름까지) |
+| 다음 자동 동작 | 아무도 개입하지 않을 때 다음에 자동으로 일어나는 일 |
+| 재확인 시각 | 대기 상태를 다시 확인할 시각(마감) |
+| 진단 | 지금 무엇을 왜 기다리는지에 대한 관측 근거 |
+| 재시도 상한 | 자동 동작을 되풀이할 최대 횟수 |
+| 상승 대상 | 상한에 닿거나 재확인 시각을 넘겼을 때 넘길 대상 |
+
+- 값(시각, 횟수, 상승 대상의 기본값)은 이 SPEC이 정하지 않는다. 필드의 존재만 정한다(spec.md §H 0.6.7).
+- `PARKED` overlay의 기존 세 요소(사유, 근거, 정상 재개 조건)는 그대로이며, 여섯 필드가 함께 있어야 한다. "진단"이 근거를, "다음 자동 동작"·"재확인 시각"이 재개 조건을 대신하지 않는다.
+
 ### 2.2 전이표 E01~E27
 
 정본 [0]§8 표에 S46([7]) 개정을 반영했다. "쓰는 역할"은 상태를 실제로 쓰는 쪽이며 모두 ControlService다. 괄호는 요청자다.
@@ -135,10 +151,10 @@ GitHub Issue (업무 필드의 권위: 제목·수용 기준·우선순위·의�
 |---|---|---|---|---|---|
 | E01 | READY | claim | 채택 계약·의존·scope·예산, 활성 owner 없음, 준비 receipt와 READY ACK(§4.2) | BUILDING/SPEC. epoch·attempt·예약을 원자적으로 확정 | ControlService(dispatcher) |
 | E02 | READY | 의존 미완료 | 원격 의존 증거 | READY + PARKED `dependency` | ControlService |
-| E03 | BUILDING | PR 인계 | PR 원격 HEAD/base, 계약, SPEC, task 결과, 검사 상태, 원 writer, leader 수락 receipt, quiescence, 보존 확인(§4.8 PRHandoff) | REVIEWING. 종결 책임 leader로, agent claim·slot 반환 | ControlService(agent, leader) |
+| E03 | BUILDING | PR 인계 | PR 원격 HEAD/base, 계약, SPEC, task 결과, 검사 상태, 원 writer, leader 수락 receipt, quiescence, 보존 확인(§4.8 PRHandoff) | REVIEWING. agent claim·slot 반환, 책임은 agent에 남음(0.6.7 리더 결정. S46 문언은 "종결 책임 leader로" — spec.md §H 0.6.7) | ControlService(agent, leader) |
 | E04 | BUILDING | heartbeat·stop 불명 | incarnation 확인, quiescence 부족 | 같은 단계 + PARKED `stop_unknown` | ControlService |
 | E05 | BUILDING/REVIEWING | 안전 인계 | process·tool·원격 quiescence, 잔여 send·write 정리, 원본 보존 | 새 epoch·attempt로 BUILDING, 보존 후 재검증 | ControlService |
-| E06 | REVIEWING | 수리 결정 | finding·예산, 원 Issue·branch의 배타 owner, scope 재예약, 기존 writer 종료 | BUILDING/FIX, 새 attempt. 가용 agent에 배차, 그 agent의 다른 Issue를 덮어쓰지 않음 | ControlService(leader) |
+| E06 | REVIEWING | 수리 결정 | finding·예산, 원 Issue·branch의 배타 owner, scope 재예약, 기존 writer 종료 | BUILDING/FIX, 새 attempt. 그 Issue의 책임 agent에 배차(0.6.7 리더 결정. S46 문언은 "가용 agent에 배차" — spec.md §H 0.6.7), 그 agent의 다른 Issue를 덮어쓰지 않음 | ControlService(leader) |
 | E07 | REVIEWING | advisory 무응답 | 정책 fallback 허용 | 단계 유지, leader 판단 receipt. 감사 게이트 불변 | ControlService |
 | E08 | REVIEWING | 병합 허용 | §11 병합 게이트 전부 | MERGING + durable effect intent | ControlService |
 | E09 | REVIEWING | HEAD·base·환경 변경 | provider 사실·manifest 차이 | REVIEWING + 관련 증거 무효. 변경이 필요하면 E06 | ControlService |
@@ -513,6 +529,8 @@ SPEC-ASIDE-BROWSER-001은 aside 부재 시 조용히 기본 도구로 진행(REQ
 | `workflow.agentic_factory.budget.reserve` | 안전 쓰기 예비 몫 | OPEN | 0 이상 | 제안 |
 | `workflow.agentic_factory.comments.batch_window` | duration | OPEN | 0보다 큼 | 제안 |
 
+아직 이름이 없는 키(0.6.7): lane-20 코드에만 있는 `MaxChunks`(chunk 상한, `0` = 나누기 끔)와 `SeenLimit`(webhook 중복 제거 창, 커밋 `527ca7e3a7`)의 키 이름은 OD-17(spec.md §G.1)이다. "AF가 설정되었다"를 판정하는 키는 OD-14이며, 위 표의 `workflow.agentic_factory.enabled`(제안)가 그 키인지도 정해지지 않았다. 이 표에 행을 더하지 않았다. 새 키는 새 파일에만 넣고 기존 설정 파일은 바꾸지 않는다(리더 결정).
+
 Template-First 연동: 실제 삽입 때 로컬 `.moai/config/sections/*.yaml`과 `internal/template/templates/.moai/config/sections/*.yaml`을 함께 바꾸고 `internal/config` 타입·기본값과 `internal/settings` 스키마를 맞춘다. 템플릿에 `codex.enabled: true`를 넣지 않는다.
 
 ## §7 역할 (REQ-AF-010)
@@ -520,8 +538,8 @@ Template-First 연동: 실제 삽입 때 로컬 `.moai/config/sections/*.yaml`�
 | 역할 | 하는 일 | 쓸 수 있는 것 | 쓸 수 없는 것 |
 |---|---|---|---|
 | `ControlService` | claim, lease·활성 확인, epoch, reconcile, 재개 판단, 역할 부여(하위 SPEC). LLM 없음 | control ref, Issue 보고 쓰기(§4.1), 전이 | 코드, SPEC 본문 |
-| `Coordinator`(표시 `leader`) | 우선순위·다음 행동 제안, 사용자 대화, PR 인계 수락, 종결 책임 | 자기 판단 기록 | 상태 직접 쓰기. 자기가 직접 구현한 변경의 리뷰·감사 증거 |
-| `agent` | Issue 하나의 plan·SPEC·run·sync·PR, 수리 | 자기 attempt의 worktree, 시험 출력, writer 인계 증거(자기 epoch) | 다른 attempt, control ref, 역할 부여 요청, 같은 Issue의 리뷰·감사·QA 증거 |
+| `Coordinator`(표시 `leader`) | 우선순위·다음 행동 제안, 사용자 대화, PR 인계 수락, 변경 알림, 실패 복구, 배정 조정, 통합 지원(0.6.7 리더 결정, DEC-AF-23) | 자기 판단 기록 | 상태 직접 쓰기. 자기가 직접 구현한 변경의 리뷰·감사 증거. 배정된 agent의 구현·수리·리뷰 대응을 대신하는 것 |
+| `agent` | Issue 하나의 plan·SPEC·run·sync·PR, 수리. PR 인계 뒤에도 CI 실패 수리·리뷰 대응·병합·Issue 종료 확인까지 책임(0.6.7) | 자기 attempt의 worktree, 시험 출력, writer 인계 증거(자기 epoch) | 다른 attempt, control ref, 역할 부여 요청, 같은 Issue의 리뷰·감사·QA 증거 |
 | 리뷰·감사·QA 세션 | 같은 HEAD의 판정 | 부여받은 역할 하나의 증거 | 코드, 다른 역할 증거 |
 | 준비 subagent | 접수·조회·준비 결과를 영속 receipt로 반환하고 종료 | 준비 grant 범위(branch·worktree 준비) | 제품 코드·SPEC, READY 전 개발 launch |
 
@@ -805,6 +823,7 @@ effect 경계(lane-20)가 요청을 보내기 전에 거절한다. 사유 타입
 | 항목 | 이 SPEC의 처분 |
 |---|---|
 | Issue·PR template | 다른 worktree(`af-templates`)의 작업. 이 SPEC은 참조만 |
+| 기존 template 파일과 `moai update` (알려진 동작, DEC-AF-24) | 프로젝트에 provider template 파일이 이미 있는데 manifest에 없으면 `moai update`는 그 파일을 `user_created`로 기록하고 건너뛴다. 그 파일은 뒤의 template 개정을 받지 못한다. 사용자 파일 보존이 우선하며 결함이 아니다. 근거: 브랜치 `WT-agentic-factory-templates` 커밋 `8ebbacad30`(`internal/template/user_owned_templates.go` `isUserOwnedTemplatePath`, `deployer.go` 한 줄), 보호 시험 승격 `47d8b782b7`. 출처: 'leader decision, relayed via the leader session'. 이 실행은 두 커밋을 읽지 않았다 |
 | 계층·분류(tier·epic·sub-issue) | 공급자가 지원하지 않으면 `not supported`로 보고. 흉내 내지 않음 |
 | 초기 setup | DELTA3 setup 적용은 운영자 결정 |
 | 댓글 묶음 | 급하지 않은 진척 댓글은 `comments.batch_window` 안에서 묶음. 보안 실패·승인·실제 차단은 지연 없이 |

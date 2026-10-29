@@ -1,4 +1,4 @@
-# SPEC-AGENTIC-FACTORY-001 — 구현 계획 (0.6.6)
+# SPEC-AGENTIC-FACTORY-001 — 구현 계획 (0.6.7)
 
 순서는 바뀔 가능성이 큰 결정부터 둔다(데이터 모델·권위, effect 경계, 생명주기). 기계적인 단계(CLI·template·행렬)는 뒤에 둔다. 시간 예측은 쓰지 않는다.
 
