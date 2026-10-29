@@ -1,5 +1,3 @@
-//go:build afred
-
 package e2e
 
 import (
@@ -11,13 +9,11 @@ import (
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/effect/ctxledger"
 )
 
-// RED on purpose (Issue #1948: "secret, email or home-path input => publish 0").
-// Observed today (run without the tag, earlier probe): a body carrying an email
-// address and a home path with MaskPassed=true is stored and published as-is,
-// because neither the ctxledger secret check nor the masking it relies on
-// covers those two kinds. Expected: the text is refused or the two values never
-// reach the comment. Run with: go test -tags afred ./internal/agenticfactory/e2e/ -run RED_
-func TestRED_CtxLedger_EmailAndHomePath_PublishNothing(t *testing.T) {
+// Issue #1948: secret, email or home-path input publishes nothing. This was a
+// RED test (the two values were published as-is, observed at ed364ebdcd) until
+// lane-20 b1fed052c7; promoted to a regular regression test once it passed.
+// The fixtures are assembled at run time and are not real personal data.
+func TestCtxLedger_EmailAndHomePath_PublishNothing(t *testing.T) {
 	email := "person" + "@" + "example.org"
 	home := "/Us" + "ers/someone/project"
 	r := &ctxRemote{}

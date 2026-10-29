@@ -3,6 +3,7 @@ package e2e
 import (
 	"context"
 	"errors"
+	"fmt"
 	"reflect"
 	"strings"
 	"sync"
@@ -26,7 +27,19 @@ type ctxRemote struct {
 
 	// loseNextCreate applies the create and then reports a transport failure.
 	loseNextCreate bool
+
+	// updateErr, when set, is returned by every Update without applying it.
+	updateErr error
 }
+
+// statusErr is a typed HTTP failure: the caller can read the status code
+// instead of parsing the message.
+type statusErr struct {
+	Status int
+	Msg    string
+}
+
+func (e *statusErr) Error() string { return fmt.Sprintf("HTTP %d: %s", e.Status, e.Msg) }
 
 func (r *ctxRemote) Find(_ context.Context, _ int, marker string) (ctxledger.Comment, bool, error) {
 	r.mu.Lock()
@@ -58,13 +71,18 @@ func (r *ctxRemote) Update(_ context.Context, _ int, id int64, body string) erro
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.Updates++
+	if r.updateErr != nil {
+		return r.updateErr
+	}
 	for i := range r.comments {
 		if r.comments[i].ID == id {
 			r.comments[i].Body = body
 			return nil
 		}
 	}
-	return errors.New("HTTP 404: comment not found") // as GitHub answers an unknown comment id
+	// An unknown comment id: the documented typed error of the Remote contract,
+	// not a message the caller has to read.
+	return fmt.Errorf("%w: HTTP 404", ctxledger.ErrGone)
 }
 
 func (r *ctxRemote) calls() int { return r.Finds + r.Creates + r.Updates }
