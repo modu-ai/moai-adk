@@ -10,16 +10,20 @@ package mirror
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os/exec"
-	"regexp"
+	"sort"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/claim"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/forge"
 )
 
 // Marker identifies the single ledger comment on an Issue.
@@ -32,8 +36,10 @@ var (
 
 // BlockedError reports a gh failure that maps to a block reason.
 type BlockedError struct {
-	Reason core.BlockReason
-	Detail string
+	Reason  core.BlockReason
+	Detail  string
+	Status  int       // HTTP status behind the block, 0 when none
+	RetryAt time.Time // when a rate limit lifts, if the response said; zero otherwise
 }
 
 func (e *BlockedError) Error() string {
@@ -70,45 +76,117 @@ type Mirror struct {
 	Repo       string // owner/name
 	Exec       Exec
 	AllowWrite bool
+	// Budget, when set, is asked before a report write that has something to
+	// send. A refusal defers the write (core.ErrDeferred); nothing is sent.
+	Budget core.Budget
+	// Backoff holds the wait numbers forge.Classify needs. They come from
+	// configuration; with the zero value a limit that carries no hint has no
+	// known retry time, and BlockedError.RetryAt stays zero.
+	Backoff forge.Backoff
+	// Now is the clock; nil means time.Now.
+	Now func() time.Time
+
+	mu      sync.Mutex
+	memos   map[int]memo
+	pending map[int]queued
+	gen     uint64
 }
 
-var secretPatterns = []*regexp.Regexp{
-	regexp.MustCompile(`gh[pousr]_[A-Za-z0-9]{20,}`),
-	regexp.MustCompile(`github_pat_[A-Za-z0-9_]{20,}`),
-	regexp.MustCompile(`sk-[A-Za-z0-9_-]{16,}`),
-	regexp.MustCompile(`(?i)bearer\s+[A-Za-z0-9._~+/=-]{8,}`),
-	regexp.MustCompile(`(?i)(token|api[_-]?key|secret|password|cookie)\s*[:=]\s*[^\s",}]+`),
+type queued struct {
+	l   core.Ledger
+	gen uint64
 }
 
-func redact(s string) (string, int) {
-	n := 0
-	for _, re := range secretPatterns {
-		s = re.ReplaceAllStringFunc(s, func(string) string { n++; return "[REDACTED]" })
+func redact(s string) (string, int) { return core.Redact(s) }
+
+func (m *Mirror) now() time.Time {
+	if m.Now != nil {
+		return m.Now()
 	}
-	return s, n
+	return time.Now()
 }
 
-func classify(stderr []byte, exit int, err error) error {
+// parseHTTP splits the output of `gh api -i`: the status line, the headers
+// (names lower-cased), a blank line and the body. Output that does not start
+// with a status line is all body.
+func parseHTTP(out []byte) (status int, header map[string]string, body []byte, ok bool) {
+	text := string(out)
+	if !strings.HasPrefix(text, "HTTP/") {
+		return 0, nil, out, false
+	}
+	// gh ends the status line with a bare newline and the header lines with
+	// CRLF. The first blank line, whichever form, ends the headers.
+	head, rest := text, ""
+	cut, width := -1, 0
+	for _, sep := range []string{"\r\n\r\n", "\n\n"} {
+		if at := strings.Index(text, sep); at >= 0 && (cut < 0 || at < cut) {
+			cut, width = at, len(sep)
+		}
+	}
+	if cut >= 0 {
+		head, rest = text[:cut], text[cut+width:]
+	}
+	lines := strings.Split(head, "\n")
+	fields := strings.Fields(strings.TrimSpace(lines[0]))
+	if len(fields) < 2 {
+		return 0, nil, out, false
+	}
+	code, err := strconv.Atoi(fields[1])
+	if err != nil {
+		return 0, nil, out, false
+	}
+	header = map[string]string{}
+	for _, l := range lines[1:] {
+		if k, v, found := strings.Cut(strings.TrimRight(l, "\r"), ":"); found {
+			header[strings.ToLower(strings.TrimSpace(k))] = strings.TrimSpace(v)
+		}
+	}
+	return code, header, []byte(rest), true
+}
+
+// call runs `gh api -i` and returns the response body. A failure is decided
+// on the status code and headers through forge.ClassifyError; the wording of an
+// error message never decides anything. Output without a status line is a
+// plain error.
+func (m *Mirror) call(ctx context.Context, args ...string) ([]byte, error) {
+	out, errb, exit, err := m.Exec.Run(ctx, append([]string{"api", "-i"}, args...)...)
 	if err != nil {
 		if errors.Is(err, exec.ErrNotFound) {
-			return &BlockedError{Reason: core.ReasonNotInstalled, Detail: "gh not found"}
+			return nil, &BlockedError{Reason: core.ReasonNotInstalled, Detail: "gh not found"}
 		}
-		return fmt.Errorf("agenticfactory/mirror: gh did not run: %w", err)
+		return nil, fmt.Errorf("agenticfactory/mirror: gh did not run: %w", err)
 	}
-	if exit == 0 {
-		return nil
+	status, header, body, parsed := parseHTTP(out)
+	if exit == 0 && (!parsed || status < 400) {
+		return body, nil
 	}
-	text, _ := redact(string(stderr))
-	low := strings.ToLower(text)
-	switch {
-	case strings.Contains(low, "http 401") || strings.Contains(low, "bad credentials"):
-		return &BlockedError{Reason: core.ReasonAuthFailed, Detail: text}
-	case strings.Contains(low, "http 403"):
-		return &BlockedError{Reason: core.ReasonPermissionDenied, Detail: text}
-	case strings.Contains(low, "http 429") || strings.Contains(low, "rate limit"):
-		return &BlockedError{Reason: core.ReasonRateLimited, Detail: text}
+	if parsed && status >= 400 {
+		return nil, m.fromStatus(&forge.StatusError{Status: status, Header: header, Body: body})
 	}
-	return fmt.Errorf("agenticfactory/mirror: gh exit %d: %s", exit, text)
+	text, _ := redact(string(errb))
+	return nil, fmt.Errorf("agenticfactory/mirror: gh exit %d: %s", exit, text)
+}
+
+// fromStatus turns a typed HTTP failure into a block (rate limit, denial) or
+// returns it unchanged for the caller to read the status.
+func (m *Mirror) fromStatus(se *forge.StatusError) error {
+	now := m.now()
+	v, _ := forge.ClassifyError(se, now, m.Backoff, 0)
+	switch v.Kind {
+	case forge.KindLimited:
+		be := &BlockedError{Reason: core.ReasonRateLimited, Status: se.Status, Detail: v.Reason}
+		if v.RetryAt.After(now) {
+			be.RetryAt = v.RetryAt
+		}
+		return be
+	case forge.KindDenied:
+		reason := core.ReasonPermissionDenied
+		if se.Status == 401 {
+			reason = core.ReasonAuthFailed
+		}
+		return &BlockedError{Reason: reason, Status: se.Status, Detail: v.Reason}
+	}
+	return fmt.Errorf("agenticfactory/mirror: %w", se)
 }
 
 type comment struct {
@@ -116,20 +194,43 @@ type comment struct {
 	Body string `json:"body"`
 }
 
-// ledgerComment returns the marked comment, or ok=false when there is none.
-func (m *Mirror) ledgerComment(ctx context.Context, issue int) (comment, bool, error) {
-	out, errb, exit, err := m.Exec.Run(ctx, "api", fmt.Sprintf("repos/%s/issues/%d/comments", m.Repo, issue),
-		"--paginate", "--jq", ".[] | {id: .id, body: .body}")
-	if e := classify(errb, exit, err); e != nil {
-		return comment{}, false, e
+const (
+	commentsPerPage = 100
+	maxCommentPages = 20
+)
+
+// parseComments reads a page of comments: a JSON array, or one object per line.
+func parseComments(body []byte) []comment {
+	var arr []comment
+	if json.Unmarshal(body, &arr) == nil {
+		return arr
 	}
-	for _, line := range strings.Split(string(out), "\n") {
-		if strings.TrimSpace(line) == "" {
-			continue
-		}
+	var out []comment
+	for _, line := range strings.Split(string(body), "\n") {
 		var c comment
-		if json.Unmarshal([]byte(line), &c) == nil && strings.Contains(c.Body, Marker) {
-			return c, true, nil
+		if strings.TrimSpace(line) != "" && json.Unmarshal([]byte(line), &c) == nil {
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
+// ledgerComment returns the marked comment, or ok=false when there is none.
+// It walks the comments page by page, at most maxCommentPages pages.
+func (m *Mirror) ledgerComment(ctx context.Context, issue int) (comment, bool, error) {
+	for page := 1; page <= maxCommentPages; page++ {
+		body, err := m.call(ctx, fmt.Sprintf("repos/%s/issues/%d/comments?per_page=%d&page=%d", m.Repo, issue, commentsPerPage, page))
+		if err != nil {
+			return comment{}, false, err
+		}
+		items := parseComments(body)
+		for _, c := range items {
+			if strings.Contains(c.Body, Marker) {
+				return c, true, nil
+			}
+		}
+		if len(items) < commentsPerPage {
+			break
 		}
 	}
 	return comment{}, false, nil
@@ -156,8 +257,62 @@ func (m *Mirror) ReadLedger(ctx context.Context, issue int) (core.Ledger, error)
 	return l, nil
 }
 
+// errCommentGone means the remembered comment no longer exists (HTTP 404).
+var errCommentGone = errors.New("agenticfactory/mirror: remembered ledger comment is gone")
+
+// memo is what the mirror remembers of the last ledger comment it wrote.
+type memo struct {
+	id   int64
+	hash [sha256.Size]byte
+}
+
+// Invalidate forgets the remembered comment of an Issue, so the next write
+// lists the comments and re-sends the body. Use it when the comment may have
+// been changed outside this process.
+func (m *Mirror) Invalidate(issue int) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	delete(m.memos, issue)
+}
+
+func (m *Mirror) recall(issue int) memo {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.memos[issue]
+}
+
+func (m *Mirror) remember(issue int, id int64, hash [sha256.Size]byte) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.memos == nil {
+		m.memos = map[int]memo{}
+	}
+	m.memos[issue] = memo{id: id, hash: hash}
+}
+
+func (m *Mirror) patch(ctx context.Context, id int64, body string) error {
+	_, err := m.call(ctx, "-X", "PATCH", fmt.Sprintf("repos/%s/issues/comments/%s", m.Repo, strconv.FormatInt(id, 10)), "-f", "body="+body)
+	var se *forge.StatusError
+	if errors.As(err, &se) && se.Status == 404 {
+		return errCommentGone
+	}
+	return err
+}
+
+// createdID reads the comment id from a create response; 0 when absent.
+func createdID(out []byte) int64 {
+	var c comment
+	if json.Unmarshal(out, &c) != nil {
+		return 0
+	}
+	return c.ID
+}
+
 // WriteLedger creates or updates the ledger comment. Secrets are masked and
-// the masking is disclosed in the comment.
+// the masking is disclosed in the comment. The id and body hash of the last
+// write are remembered per Issue: an unchanged body sends nothing, and a known
+// id skips the comment listing. A 404 on the remembered id falls back to the
+// listing, so exactly one ledger comment is kept.
 func (m *Mirror) WriteLedger(ctx context.Context, l core.Ledger) error {
 	if !m.AllowWrite {
 		return ErrWriteDisabled
@@ -171,16 +326,50 @@ func (m *Mirror) WriteLedger(ctx context.Context, l core.Ledger) error {
 	if n > 0 {
 		body += fmt.Sprintf("<!-- redacted: %d -->\n", n)
 	}
-	c, ok, err := m.ledgerComment(ctx, l.Issue.Number)
+	issue := l.Issue.Number
+	sum := sha256.Sum256([]byte(body))
+
+	mem := m.recall(issue)
+	if mem.id != 0 && mem.hash == sum {
+		return nil
+	}
+	if m.Budget != nil && !m.Budget.Reserve(core.PriorityReport) {
+		return core.ErrDeferred
+	}
+	if mem.id != 0 {
+		err := m.patch(ctx, mem.id, body)
+		if err == nil {
+			m.remember(issue, mem.id, sum)
+			return nil
+		}
+		if !errors.Is(err, errCommentGone) {
+			return err
+		}
+		m.Invalidate(issue)
+	}
+
+	c, ok, err := m.ledgerComment(ctx, issue)
 	if err != nil {
 		return err
 	}
-	args := []string{"api", "-X", "POST", fmt.Sprintf("repos/%s/issues/%d/comments", m.Repo, l.Issue.Number), "-f", "body=" + body}
 	if ok {
-		args = []string{"api", "-X", "PATCH", fmt.Sprintf("repos/%s/issues/comments/%s", m.Repo, strconv.FormatInt(c.ID, 10)), "-f", "body=" + body}
+		if err := m.patch(ctx, c.ID, body); err != nil {
+			if errors.Is(err, errCommentGone) {
+				return fmt.Errorf("agenticfactory/mirror: ledger comment vanished while updating: %w", err)
+			}
+			return err
+		}
+		m.remember(issue, c.ID, sum)
+		return nil
 	}
-	_, errb, exit, err := m.Exec.Run(ctx, args...)
-	return classify(errb, exit, err)
+	out, err := m.call(ctx, "-X", "POST", fmt.Sprintf("repos/%s/issues/%d/comments", m.Repo, issue), "-f", "body="+body)
+	if err != nil {
+		return err
+	}
+	if id := createdID(out); id != 0 {
+		m.remember(issue, id, sum)
+	}
+	return nil
 }
 
 // LedgerFromRecord projects a claim record onto the ledger fields.
@@ -207,6 +396,8 @@ func Publish(ctx context.Context, m *Mirror, st *claim.Store, issue core.IssueRe
 	var be *BlockedError
 	switch {
 	case werr == nil:
+	case errors.Is(werr, core.ErrDeferred):
+		state = "stale" // the authority is ahead of the comment
 	case errors.As(werr, &be):
 		state = "blocked(" + string(be.Reason) + ")"
 	default:
@@ -217,4 +408,55 @@ func Publish(ctx context.Context, m *Mirror, st *claim.Store, issue core.IssueRe
 		return rec, uerr
 	}
 	return out, werr
+}
+
+// Enqueue records the latest ledger of an Issue for a later Flush. A newer
+// ledger for the same Issue replaces the older one, so a burst of state changes
+// becomes one comment update.
+func (m *Mirror) Enqueue(l core.Ledger) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.pending == nil {
+		m.pending = map[int]queued{}
+	}
+	m.gen++
+	m.pending[l.Issue.Number] = queued{l: l, gen: m.gen}
+}
+
+// Pending lists the Issues with an unsent ledger, ascending.
+func (m *Mirror) Pending() []int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	out := make([]int, 0, len(m.pending))
+	for n := range m.pending {
+		out = append(out, n)
+	}
+	sort.Ints(out)
+	return out
+}
+
+// Flush writes each queued ledger once, lowest Issue first, and returns how many
+// were written. It stops at the first failure (a short budget, a block, an
+// error) and leaves the rest queued, so a refusal is never hammered. An entry
+// queued again while its predecessor was being written stays queued.
+func (m *Mirror) Flush(ctx context.Context) (int, error) {
+	written := 0
+	for _, n := range m.Pending() {
+		m.mu.Lock()
+		q, ok := m.pending[n]
+		m.mu.Unlock()
+		if !ok {
+			continue
+		}
+		if err := m.WriteLedger(ctx, q.l); err != nil {
+			return written, err
+		}
+		written++
+		m.mu.Lock()
+		if cur, ok := m.pending[n]; ok && cur.gen == q.gen {
+			delete(m.pending, n)
+		}
+		m.mu.Unlock()
+	}
+	return written, nil
 }

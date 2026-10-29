@@ -161,3 +161,71 @@ func TestBacklogFullMapsToCapacityShort(t *testing.T) {
 		t.Errorf("got %q ok=%v", r, ok)
 	}
 }
+
+func TestRedactMasksSecretsAndCounts(t *testing.T) {
+	in := "use ghp_abcdefghijklmnopqrstuvwxyz0123 and Bearer abcdefgh12345678 with api_key=zzz999 ok"
+	out, n := Redact(in)
+	if n != 3 || strings.Contains(out, "ghp_") || strings.Contains(out, "zzz999") || strings.Contains(out, "abcdefgh12345678") {
+		t.Errorf("redact: %q n=%d", out, n)
+	}
+	if clean, n := Redact("nothing to hide"); clean != "nothing to hide" || n != 0 {
+		t.Errorf("clean text changed: %q %d", clean, n)
+	}
+}
+
+func TestIntakeErrorsMapToCapacity(t *testing.T) {
+	for _, e := range []error{ErrIntakeFull, ErrNoSlot, ErrBacklogFull} {
+		if r, ok := ReasonFor(e); !ok || r != ReasonCapacityShort {
+			t.Errorf("%v -> %q %v", e, r, ok)
+		}
+	}
+}
+
+func TestRedactMasksEmailsAndAbsoluteHomePaths(t *testing.T) {
+	cases := []struct{ name, in string }{
+		{"email", "ask dev.person+x@example.co.kr about it"},
+		{"ssh remote", "git@github.com:org/repo.git"},
+		{"mac home", "see /Users/goos/MoAI/moai-adk-go/internal/x.go for details"},
+		{"linux home", "log at /home/runner/work/_temp/out.log"},
+		{"windows home", `file C:\Users\Goos\AppData\x.txt here`},
+		{"bare home dir", "cwd=/Users/goos"},
+		{"quoted", `{"path":"/Users/goos/secret/file.txt"}`},
+	}
+	for _, c := range cases {
+		out, n := Redact(c.in)
+		if n == 0 {
+			t.Errorf("%s: nothing masked in %q", c.name, c.in)
+		}
+		for _, leak := range []string{"example.co.kr", "dev.person", "github.com:org", "goos", "Goos", "runner", "AppData"} {
+			if strings.Contains(out, leak) && strings.Contains(c.in, leak) {
+				t.Errorf("%s: %q still leaks in %q", c.name, leak, out)
+			}
+		}
+	}
+}
+
+func TestRedactLeavesOrdinaryTextAlone(t *testing.T) {
+	for _, in := range []string{
+		"internal/agenticfactory/claim/claim.go:42",
+		"/usr/local/bin/moai and /tmp/work",
+		"@MX:NOTE reviewed by the team",
+		"user@host without a domain suffix",
+		"state=verifying head=cb30e05b3e",
+		".moai/specs/SPEC-AGENTIC-FACTORY-001/spec.md",
+	} {
+		if out, n := Redact(in); n != 0 || out != in {
+			t.Errorf("over-redacted %q -> %q (%d)", in, out, n)
+		}
+	}
+}
+
+func TestPriorityOrderAndNotice(t *testing.T) {
+	if !(PrioritySafety < PriorityNotice && PriorityNotice < PriorityReport) {
+		t.Fatal("order must be safety, notice, report")
+	}
+	for p, name := range map[Priority]string{PrioritySafety: "safety", PriorityNotice: "notice", PriorityReport: "report", Priority(99): "unknown"} {
+		if p.String() != name {
+			t.Errorf("%d -> %q, want %q", p, p.String(), name)
+		}
+	}
+}

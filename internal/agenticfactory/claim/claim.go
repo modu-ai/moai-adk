@@ -47,6 +47,8 @@ type Record struct {
 	Receipt *Receipt `json:"receipt,omitempty"`
 	// Closed is set with done: closing the Issue is part of finishing it.
 	Closed bool `json:"closed,omitempty"`
+	// Rev is the revision of the authoritative copy this cache entry mirrors.
+	Rev int64 `json:"rev,omitempty"`
 	// Merged is the preserved fact that the PR reached the remote; it is
 	// never reverted. Pending names the obligation (local-sync, deploy,
 	// issue-close) that still keeps a merged Issue out of done.
@@ -94,10 +96,15 @@ type Store struct {
 	// done. It has no default: below 1 (unset) new claims are refused, and a
 	// value below 1 is rejected, never clamped. Repair claims are not held by it.
 	maxOpenPRs int
+	// ref is the authoritative store when attached; the files under dir are
+	// then a cache that Rebuild can recreate.
+	ref ControlRef
+	// budget is told about every authority write; see core.Budget.
+	budget core.Budget
 }
 
 const (
-	lockTries = 5
+	lockTries = 40
 	lockWait  = 10 * time.Millisecond
 )
 
@@ -197,7 +204,7 @@ func (s *Store) read(i core.IssueRef) (Record, bool, error) {
 	return r, true, nil
 }
 
-func (s *Store) write(i core.IssueRef, r Record) error {
+func (s *Store) writeLocal(i core.IssueRef, r Record) error {
 	b, err := json.MarshalIndent(r, "", "  ")
 	if err != nil {
 		return err
@@ -220,6 +227,31 @@ func (s *Store) write(i core.IssueRef, r Record) error {
 		return fmt.Errorf("%w: %v", core.ErrStoreUnavailable, err)
 	}
 	return nil
+}
+
+// write persists r: to the authoritative copy first when one is attached
+// (compare-and-swap against the revision this cache holds), then to the
+// cache. A refusal leaves the cache untouched; r.Rev carries the new revision.
+func (s *Store) write(i core.IssueRef, r *Record) error {
+	if s.ref != nil {
+		old, _, err := s.read(i)
+		if err != nil {
+			return err
+		}
+		pushed := *r
+		pushed.Rev = 0
+		data, err := json.Marshal(pushed)
+		if err != nil {
+			return err
+		}
+		s.announce()
+		rev, err := s.ref.CompareAndSwap(refCtx(), "issue/"+strconv.Itoa(i.Number), old.Rev, data)
+		if err != nil {
+			return refErr(err)
+		}
+		r.Rev = rev
+	}
+	return s.writeLocal(i, *r)
 }
 
 // Load returns the live claim, or ErrNotHeld when none (or released).
@@ -294,7 +326,7 @@ func (s *Store) acquire(i core.IssueRef, holder, name, dispatch string, run core
 			Epoch: cur.Epoch + 1, Seq: cur.Seq + 1, State: core.StateClaimed,
 		}
 		out.History = append(append([]Event(nil), cur.History...), Event{Kind: "claim", Agent: name, Session: holder})
-		return s.write(i, out)
+		return s.write(i, &out)
 	})
 	if err != nil {
 		return Record{}, err
@@ -350,7 +382,7 @@ func (s *Store) acquireRepair(i core.IssueRef, holder, name, dispatch string, ru
 		out.Epoch, out.Seq, out.State = cur.Epoch+1, cur.Seq+1, core.StateClaimed
 		out.Return, out.Reason, out.Resume = "", "", ""
 		out.History = append(append([]Event(nil), cur.History...), Event{Kind: "repair-claim", Agent: name, Session: holder})
-		return s.write(i, out)
+		return s.write(i, &out)
 	})
 	if err != nil {
 		return Record{}, err
@@ -432,7 +464,7 @@ func (s *Store) UpdateRelease(i core.IssueRef, holder string, epoch int64, fn fu
 		next.Issue, next.AgentName, next.Epoch, next.Seq = cur.Issue, cur.AgentName, cur.Epoch, cur.Seq+1
 		next.Holder = ""
 		out = next
-		return s.write(i, out)
+		return s.write(i, &out)
 	})
 	if err != nil {
 		return Record{}, err
@@ -462,7 +494,7 @@ func (s *Store) UpdateReleased(i core.IssueRef, fn func(*Record) error) (Record,
 		}
 		next.Issue, next.Holder, next.AgentName, next.Epoch, next.Seq = cur.Issue, "", cur.AgentName, cur.Epoch, cur.Seq+1
 		out = next
-		return s.write(i, out)
+		return s.write(i, &out)
 	})
 	if err != nil {
 		return Record{}, err
@@ -501,7 +533,7 @@ func (s *Store) Update(i core.IssueRef, holder string, epoch int64, fn func(*Rec
 		}
 		next.Issue, next.Holder, next.AgentName, next.Epoch, next.Seq = cur.Issue, cur.Holder, cur.AgentName, cur.Epoch, cur.Seq+1
 		out = next
-		return s.write(i, out)
+		return s.write(i, &out)
 	})
 	if err != nil {
 		return Record{}, err
@@ -524,6 +556,6 @@ func (s *Store) Release(i core.IssueRef, holder string) error {
 			return fmt.Errorf("%w: %q is not the holder", core.ErrForeign, holder)
 		}
 		cur.Holder, cur.Seq = "", cur.Seq+1
-		return s.write(i, cur)
+		return s.write(i, &cur)
 	})
 }

@@ -206,3 +206,38 @@ func TestKeyMarkerRoundTrips(t *testing.T) {
 		t.Errorf("marker = %q", m)
 	}
 }
+
+func TestPermissionDenialParksWithoutLookupOrRetry(t *testing.T) {
+	s := &fakeSender{err: ErrDenied}
+	lk := &fakeLookup{}
+	ex := newExec(s, lk, NewMemIntentStore())
+	in, _ := ex.Execute(t.Context(), req())
+	if in.Status != StatusParked || lk.calls != 0 || s.calls != 1 {
+		t.Fatalf("in=%+v lookups=%d sends=%d", in, lk.calls, s.calls)
+	}
+	if again, _ := ex.Execute(t.Context(), req()); again.Status != StatusParked || s.calls != 1 {
+		t.Errorf("a denied intent was sent again: calls=%d", s.calls)
+	}
+}
+
+func TestRateLimitSetsNotBeforeAndBlocksEarlySends(t *testing.T) {
+	now := time.Date(2026, 10, 29, 9, 0, 0, 0, time.UTC)
+	s := &fakeSender{err: &LimitedError{RetryAt: now.Add(30 * time.Second)}}
+	lk := &fakeLookup{}
+	ex := newExec(s, lk, NewMemIntentStore())
+	ex.Now = func() time.Time { return now }
+	in, _ := ex.Execute(t.Context(), req())
+	if in.Status != StatusFailed || in.NotBefore != now.Add(30*time.Second).Unix() || lk.calls != 0 {
+		t.Fatalf("in=%+v lookups=%d", in, lk.calls)
+	}
+	ex.Now = func() time.Time { return now.Add(10 * time.Second) }
+	if _, err := ex.Execute(t.Context(), req()); err != nil || s.calls != 1 {
+		t.Errorf("sent again before NotBefore: calls=%d err=%v", s.calls, err)
+	}
+	ex.Now = func() time.Time { return now.Add(31 * time.Second) }
+	s.err, s.id = nil, "n3"
+	in, _ = ex.Execute(t.Context(), req())
+	if in.Status != StatusConfirmed || s.calls != 2 {
+		t.Errorf("after NotBefore: %+v calls=%d", in, s.calls)
+	}
+}

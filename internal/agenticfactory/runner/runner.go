@@ -111,6 +111,11 @@ func (r *Runner) StartAttempt(t Ticket, attempt string, delivery core.Delivery) 
 		return claim.Record{}, err
 	}
 	return r.step(t, core.StateClaimed, func(rec *claim.Record) error {
+		// An Issue that came through intake may not start until the reserved
+		// agent acknowledged the preparer's receipt (READY_ACKED).
+		if err := r.Store.ReadyGate(rec.Issue, rec.Holder); err != nil {
+			return err
+		}
 		if !delivery.AtLeast(core.DeliveryExecuted) {
 			return fmt.Errorf("%w: delivery %q has not reached executed", core.ErrTransitionInvalid, delivery)
 		}

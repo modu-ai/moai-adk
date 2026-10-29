@@ -1,0 +1,152 @@
+package forge
+
+import (
+	"strings"
+	"testing"
+	"time"
+)
+
+func adaptive() Adaptive {
+	return Adaptive{Min: 10 * time.Second, Max: 5 * time.Minute, Safety: 30 * time.Minute}
+}
+
+func collectorWith(f *fakeT, now *time.Time, feed WebhookFeed) *Collector {
+	c := &Client{T: f, B: &Budget{}, Backoff: cfg(), Now: func() time.Time { return *now }}
+	return &Collector{Client: c, Path: "/repos/o/r/pulls", Interval: adaptive(), Differ: DiffByKey("number"), Feed: feed}
+}
+
+func TestAdaptiveCollectorSendsChangesOnlyAndStretchesWhenIdle(t *testing.T) {
+	now := t0
+	f := &fakeT{resps: []Response{
+		resp(200, `[{"number":1,"state":"open"}]`, "etag", `"a"`),
+		resp(304, ""),
+		resp(304, ""),
+		resp(200, `[{"number":1,"state":"merged"},{"number":2,"state":"open"}]`, "etag", `"b"`),
+	}}
+	col := collectorWith(f, &now, nil)
+
+	rep := col.Tick(t.Context(), now)
+	if len(rep.Changes) != 1 || rep.Changes[0].Key != "1" || rep.Changes[0].Kind != ChangeAdded {
+		t.Fatalf("first tick = %+v", rep)
+	}
+	first := rep.Next.Sub(now)
+	now = rep.Next
+	rep = col.Tick(t.Context(), now) // 304: nothing changed
+	if len(rep.Changes) != 0 || rep.Next.Sub(now) <= first {
+		t.Fatalf("idle tick must stretch the interval: %+v first=%v next=%v", rep, first, rep.Next.Sub(now))
+	}
+	now = rep.Next
+	rep = col.Tick(t.Context(), now)
+	now = rep.Next
+	rep = col.Tick(t.Context(), now) // content changed
+	kinds := map[string]ChangeKind{}
+	for _, c := range rep.Changes {
+		kinds[c.Key] = c.Kind
+	}
+	if kinds["1"] != ChangeModified || kinds["2"] != ChangeAdded || len(rep.Changes) != 2 {
+		t.Fatalf("changes = %+v", rep.Changes)
+	}
+	if rep.Next.Sub(now) > 5*time.Minute || rep.Next.Sub(now) < 10*time.Second {
+		t.Errorf("interval out of bounds: %v", rep.Next.Sub(now))
+	}
+}
+
+func TestTickBeforeNextMakesNoCall(t *testing.T) {
+	now := t0
+	f := &fakeT{resps: []Response{resp(200, `[]`)}}
+	col := collectorWith(f, &now, nil)
+	rep := col.Tick(t.Context(), now)
+	_ = col.Tick(t.Context(), now.Add(time.Second))
+	_ = col.Tick(t.Context(), now.Add(2*time.Second))
+	if len(f.calls) != 1 || rep.Next.IsZero() {
+		t.Errorf("calls = %d", len(f.calls))
+	}
+}
+
+type fakeFeed struct {
+	healthy bool
+	events  []Change
+}
+
+func (f *fakeFeed) Healthy() bool   { return f.healthy }
+func (f *fakeFeed) Drain() []Change { e := f.events; f.events = nil; return e }
+
+func TestWebhookFirstPollsOnlyAsSafetyNet(t *testing.T) {
+	now := t0
+	f := &fakeT{resps: []Response{resp(200, `[]`)}}
+	feed := &fakeFeed{healthy: true, events: []Change{{Key: "7", Kind: ChangeModified}}}
+	col := collectorWith(f, &now, feed)
+	rep := col.Tick(t.Context(), now)
+	if len(rep.Changes) != 1 || rep.Changes[0].Key != "7" {
+		t.Fatalf("webhook events not delivered: %+v", rep)
+	}
+	if len(f.calls) != 0 {
+		t.Errorf("polled %d times while the webhook is healthy and no safety poll is due", len(f.calls))
+	}
+	if rep.Next.Sub(now) > adaptive().Safety {
+		t.Errorf("next wake %v beyond the safety interval", rep.Next.Sub(now))
+	}
+	feed.healthy = false // webhook lost: fall back to polling
+	now = now.Add(time.Second)
+	_ = col.Tick(t.Context(), now.Add(adaptive().Safety))
+	if len(f.calls) != 1 {
+		t.Errorf("no polling fallback when the webhook is unhealthy: calls=%d", len(f.calls))
+	}
+}
+
+func TestDeferredPollRespectsNotBeforeAndPollIntervalHeader(t *testing.T) {
+	now := t0
+	f := &fakeT{resps: []Response{resp(429, "", "retry-after", "120")}}
+	col := collectorWith(f, &now, nil)
+	rep := col.Tick(t.Context(), now)
+	if rep.Next.Sub(now) != 120*time.Second || len(rep.Changes) != 0 {
+		t.Errorf("rep = %+v", rep)
+	}
+	f2 := &fakeT{resps: []Response{resp(200, `[]`, "x-poll-interval", "600")}}
+	col2 := collectorWith(f2, &now, nil)
+	if r := col2.Tick(t.Context(), now); r.Next.Sub(now) < 600*time.Second {
+		t.Errorf("x-poll-interval ignored: %v", r.Next.Sub(now))
+	}
+}
+
+func TestDeniedIsParkedNotRetried(t *testing.T) {
+	now := t0
+	f := &fakeT{resps: []Response{resp(403, `{"message":"Resource not accessible"}`)}}
+	col := collectorWith(f, &now, nil)
+	rep := col.Tick(t.Context(), now)
+	if !rep.Parked || !strings.Contains(rep.Reason, "denied") {
+		t.Fatalf("rep = %+v", rep)
+	}
+	_ = col.Tick(t.Context(), now.Add(24*time.Hour))
+	if len(f.calls) != 1 {
+		t.Errorf("a parked collector kept calling: %d", len(f.calls))
+	}
+}
+
+func TestRegistryGivesOneCollectorPerRepo(t *testing.T) {
+	now := t0
+	f := &fakeT{resps: []Response{resp(200, `[]`)}}
+	reg := &Registry{New: func(repo string) *Collector { return collectorWith(f, &now, nil) }}
+	a, b := reg.For("o/r"), reg.For("o/r")
+	if a != b || reg.For("o/other") == a {
+		t.Error("registry must return the same collector for a repo and a different one for another")
+	}
+}
+
+func TestDiffByKeyDetectsAddModifyRemove(t *testing.T) {
+	d := DiffByKey("number")
+	ch, err := d([]byte(`[{"number":1,"s":"a"},{"number":2,"s":"a"}]`), []byte(`[{"number":2,"s":"b"},{"number":3,"s":"a"}]`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]ChangeKind{}
+	for _, c := range ch {
+		got[c.Key] = c.Kind
+	}
+	if got["1"] != ChangeRemoved || got["2"] != ChangeModified || got["3"] != ChangeAdded || len(ch) != 3 {
+		t.Errorf("changes = %+v", ch)
+	}
+	if _, err := d(nil, []byte(`not json`)); err == nil {
+		t.Error("bad json accepted")
+	}
+}

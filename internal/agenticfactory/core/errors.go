@@ -19,6 +19,13 @@ var (
 	ErrIdentityMismatch    = errors.New("agenticfactory: session id, agent number and owned claims do not match")
 	ErrBacklogUnset        = errors.New("agenticfactory: open PR backlog limit is not configured, new claim refused")
 	ErrLimitInvalid        = errors.New("agenticfactory: open PR backlog limit must be at least 1")
+	ErrRevisionConflict    = errors.New("agenticfactory: the authoritative copy moved on, write refused")
+	ErrEffectUnknown       = errors.New("agenticfactory: an effect may have happened and must be looked up, not repeated")
+	ErrDeferred            = errors.New("agenticfactory: call budget is short, report write deferred")
+	ErrHistoryRewritten    = errors.New("agenticfactory: the control ref history was rewritten, writes refused")
+	ErrConflict            = errors.New("agenticfactory: the same request key carries a different payload")
+	ErrIntakeFull          = errors.New("agenticfactory: intake is full, request rejected")
+	ErrNoSlot              = errors.New("agenticfactory: no free worktree slot, request parked")
 	ErrBacklogFull         = errors.New("agenticfactory: open PR backlog is at its limit, new claim held")
 )
 
@@ -47,7 +54,7 @@ func ReasonFor(err error) (BlockReason, bool) {
 		return ReasonOwnershipUnverified, true
 	case errors.Is(err, ErrStoreUnavailable):
 		return ReasonStoreUnavailable, true
-	case errors.Is(err, ErrBacklogFull):
+	case errors.Is(err, ErrBacklogFull), errors.Is(err, ErrIntakeFull), errors.Is(err, ErrNoSlot):
 		return ReasonCapacityShort, true
 	case errors.Is(err, ErrBacklogUnset):
 		return ReasonNotConfigured, true

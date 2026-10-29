@@ -31,8 +31,33 @@ func readAgentFile(path string) (core.Agent, error) {
 	return a, nil
 }
 
+// agentFile reads one agent record from the authority when attached, else from
+// the cache file; a missing record is os.ErrNotExist either way. The revision
+// is the authority's (0 without one).
+func (s *Store) agentFile(n int) (core.Agent, int64, error) {
+	if s.ref != nil {
+		data, rev, err := s.ref.Read(refCtx(), fmt.Sprintf("agent/%d", n))
+		if errors.Is(err, core.ErrNotHeld) {
+			return core.Agent{}, 0, os.ErrNotExist
+		}
+		if err != nil {
+			return core.Agent{}, 0, refErr(err)
+		}
+		var a core.Agent
+		if err := json.Unmarshal(data, &a); err != nil {
+			return core.Agent{}, 0, fmt.Errorf("%w: corrupt agent in authority: %v", core.ErrStoreUnavailable, err)
+		}
+		return a, rev, nil
+	}
+	a, err := readAgentFile(s.agentPath(n))
+	return a, 0, err
+}
+
 // agents returns every registered agent.
 func (s *Store) agents() ([]core.Agent, error) {
+	if s.ref != nil {
+		return s.refAgents()
+	}
 	ents, err := os.ReadDir(s.agentsDir())
 	if errors.Is(err, os.ErrNotExist) {
 		return nil, nil
@@ -113,6 +138,17 @@ func (s *Store) linkAgent(a core.Agent) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	if s.ref != nil {
+		// The authority decides who owns the number; the file is its cache.
+		s.announce()
+		if _, err := s.ref.CompareAndSwap(refCtx(), fmt.Sprintf("agent/%d", a.Number), 0, b); err != nil {
+			if errors.Is(err, core.ErrRevisionConflict) {
+				return false, nil
+			}
+			return false, refErr(err)
+		}
+		return true, s.cacheAgent(a)
+	}
 	tmp, err := os.CreateTemp(s.agentsDir(), "agent.tmp-*")
 	if err != nil {
 		return false, fmt.Errorf("%w: %v", core.ErrStoreUnavailable, err)
@@ -139,7 +175,7 @@ func (s *Store) linkAgent(a core.Agent) (bool, error) {
 // returns the identity and the claims the agent still owns, by Issue number.
 // Claims acquired without an agent identity are not counted.
 func (s *Store) ResumeAgent(sessionID string, number int) (core.Agent, []Record, error) {
-	a, err := readAgentFile(s.agentPath(number))
+	a, _, err := s.agentFile(number)
 	if errors.Is(err, os.ErrNotExist) {
 		return core.Agent{}, nil, core.ErrNotHeld
 	}
@@ -180,7 +216,7 @@ func (s *Store) withRegistryLock(fn func() error) error {
 // released identity, or one whose number now belongs to another session, is
 // refused so it can never write under a name it no longer owns.
 func (s *Store) verifyAgent(a core.Agent) error {
-	cur, err := readAgentFile(s.agentPath(a.Number))
+	cur, _, err := s.agentFile(a.Number)
 	if errors.Is(err, os.ErrNotExist) {
 		return fmt.Errorf("%w: agent-%d is not registered", core.ErrIdentityMismatch, a.Number)
 	}
@@ -202,7 +238,7 @@ func (s *Store) ReleaseAgent(sessionID string, number int) error {
 }
 
 func (s *Store) releaseAgent(sessionID string, number int) error {
-	a, err := readAgentFile(s.agentPath(number))
+	a, rev, err := s.agentFile(number)
 	if errors.Is(err, os.ErrNotExist) {
 		return core.ErrNotHeld
 	}
@@ -212,7 +248,7 @@ func (s *Store) releaseAgent(sessionID string, number int) error {
 	if a.SessionID != sessionID {
 		return fmt.Errorf("%w: agent-%d is not session %q", core.ErrIdentityMismatch, number, sessionID)
 	}
-	recs, err := s.List()
+	recs, err := s.allRecords()
 	if err != nil {
 		return err
 	}
@@ -221,8 +257,43 @@ func (s *Store) releaseAgent(sessionID string, number int) error {
 			return fmt.Errorf("%w: agent-%d still holds issue-%d", core.ErrHeld, number, r.Issue)
 		}
 	}
+	if s.ref != nil {
+		s.announce()
+		if err := s.ref.Delete(refCtx(), fmt.Sprintf("agent/%d", number), rev); err != nil {
+			return refErr(err)
+		}
+	}
 	if err := os.Remove(s.agentPath(number)); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return fmt.Errorf("%w: %v", core.ErrStoreUnavailable, err)
 	}
 	return nil
+}
+
+// allRecords lists every Issue record: from the authority when attached (other
+// caches' claims are visible there), else from the cache.
+func (s *Store) allRecords() ([]Record, error) {
+	if s.ref == nil {
+		return s.List()
+	}
+	keys, err := s.ref.Keys(refCtx(), "issue/")
+	if err != nil {
+		return nil, refErr(err)
+	}
+	var out []Record
+	for _, k := range keys {
+		data, rev, err := s.ref.Read(refCtx(), k)
+		if errors.Is(err, core.ErrNotHeld) {
+			continue
+		}
+		if err != nil {
+			return nil, refErr(err)
+		}
+		var r Record
+		if err := json.Unmarshal(data, &r); err != nil {
+			return nil, fmt.Errorf("%w: corrupt %s in authority: %v", core.ErrStoreUnavailable, k, err)
+		}
+		r.Rev = rev
+		out = append(out, r)
+	}
+	return out, nil
 }
