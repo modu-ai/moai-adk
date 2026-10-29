@@ -5,9 +5,25 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/claim"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/runner"
 )
+
+// producerGated is the record after a verify refused for the role lock: since
+// lane-18 3dd74138d2 (behavior change 1) a non-passing verify gate keeps the
+// stage at verifying and records a Gate, instead of pausing as blocked.
+func producerGated(rec claim.Record) bool {
+	return rec.State == core.StateVerifying && rec.Gate != nil && rec.Gate.Reason == core.ReasonProducerNotAllowed
+}
+
+// gateText is everything the gate says to a reader.
+func gateText(rec claim.Record) string {
+	if rec.Gate == nil {
+		return ""
+	}
+	return rec.Gate.Detail + " " + rec.Gate.Resume
+}
 
 // AC11 (DEC-AF-01 / DEC-AF-02) on lane-18's runner: review, audit, QA and
 // coordinator evidence counts only when an attribution lookup says it was
@@ -42,14 +58,12 @@ func TestRoleLock_NoAttributor_BlocksACompletePassSet(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if rec.State != core.StateBlocked || rec.Reason != core.ReasonProducerNotAllowed {
-		t.Fatalf("record = state %s reason %s; want blocked/producer-not-allowed", rec.State, rec.Reason)
+	// Behavior change 1: expectation updated from blocked/producer-not-allowed to verifying + gate.
+	if !producerGated(rec) {
+		t.Fatalf("record = state %s gate %+v; want verifying with a producer-not-allowed gate", rec.State, rec.Gate)
 	}
-	if !strings.Contains(rec.Resume, core.AttributionLocked) {
-		t.Errorf("the resume text %q does not name the lock (%s)", rec.Resume, core.AttributionLocked)
-	}
-	if rec.Return != core.StateVerifying {
-		t.Errorf("return stage = %s, want verifying", rec.Return)
+	if !strings.Contains(gateText(rec), core.AttributionLocked) {
+		t.Errorf("the gate text %q does not name the lock (%s)", gateText(rec), core.AttributionLocked)
 	}
 	if _, err := r.Land(tk, headA); !errors.Is(err, core.ErrTransitionInvalid) {
 		t.Errorf("land after a locked verify: %v, want ErrTransitionInvalid", err)
@@ -84,8 +98,8 @@ func TestRoleLock_EvidenceCannotVouchForItself(t *testing.T) {
 		v.Results[i].Session = "producer-" + string(v.Results[i].Kind)
 	}
 	rec, err := r.Verify(tk, v)
-	if err != nil || rec.State != core.StateBlocked || rec.Reason != core.ReasonProducerNotAllowed {
-		t.Errorf("self-described producers: %+v, %v; want blocked/producer-not-allowed", rec, err)
+	if err != nil || !producerGated(rec) {
+		t.Errorf("self-described producers: state %s gate %+v, %v; want verifying + producer-not-allowed gate", rec.State, rec.Gate, err)
 	}
 }
 
@@ -101,11 +115,11 @@ func TestRoleLock_WrongRole_IsRefused(t *testing.T) {
 	r, tk := lockedRunner(t)
 	r.Attributor = swappedAttributor{}
 	rec, err := r.Verify(tk, passAll(tk, headA))
-	if err != nil || rec.State != core.StateBlocked || rec.Reason != core.ReasonProducerNotAllowed {
-		t.Fatalf("wrong roles: %+v, %v; want blocked/producer-not-allowed", rec, err)
+	if err != nil || !producerGated(rec) {
+		t.Fatalf("wrong roles: state %s gate %+v, %v; want verifying + producer-not-allowed gate", rec.State, rec.Gate, err)
 	}
-	if !strings.Contains(rec.Resume, "role") {
-		t.Errorf("the resume text %q does not name the role mismatch", rec.Resume)
+	if !strings.Contains(gateText(rec), "role") {
+		t.Errorf("the gate text %q does not name the role mismatch", gateText(rec))
 	}
 }
 
@@ -120,11 +134,11 @@ func TestRoleLock_UnattributedAnswer_IsRefused(t *testing.T) {
 	r, tk := lockedRunner(t)
 	r.Attributor = unattributed{reason: "no grant on record"}
 	rec, err := r.Verify(tk, passAll(tk, headA))
-	if err != nil || rec.State != core.StateBlocked || rec.Reason != core.ReasonProducerNotAllowed {
-		t.Fatalf("unattributed: %+v, %v", rec, err)
+	if err != nil || !producerGated(rec) {
+		t.Fatalf("unattributed: state %s gate %+v, %v", rec.State, rec.Gate, err)
 	}
-	if !strings.Contains(rec.Resume, "no grant on record") {
-		t.Errorf("the resume text %q lost the reason", rec.Resume)
+	if !strings.Contains(gateText(rec), "no grant on record") {
+		t.Errorf("the gate text %q lost the reason", gateText(rec))
 	}
 }
 
@@ -152,8 +166,8 @@ func TestRoleLock_WriterHandoff_MustBeFromTheIssuedHolderAndEpoch(t *testing.T) 
 				}
 			}
 			rec, err := r.Verify(tk, v)
-			if err != nil || rec.State != core.StateBlocked || rec.Reason != core.ReasonProducerNotAllowed {
-				t.Errorf("%s: %+v, %v; want blocked/producer-not-allowed", name, rec, err)
+			if err != nil || !producerGated(rec) {
+				t.Errorf("%s: state %s gate %+v, %v; want verifying + producer-not-allowed gate", name, rec.State, rec.Gate, err)
 			}
 		})
 	}

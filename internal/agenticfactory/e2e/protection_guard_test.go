@@ -127,6 +127,7 @@ func TestProtectionGuard_NoProductionLiteralMentionsProtectionSettings(t *testin
 	fset := token.NewFileSet()
 	files, literals := 0, 0
 	sawGuard := false
+	transitionNeeds := 0
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -159,6 +160,14 @@ func TestProtectionGuard_NoProductionLiteralMentionsProtectionSettings(t *testin
 				return true
 			}
 			literals++
+			// The S46 transition table (E08) names "protection" as a precondition the
+			// merge step needs evidence for; it is a read-side evidence key, not a
+			// settings change. Exactly this one literal, in this one file, is exempt,
+			// and the count is pinned below so the exemption cannot grow.
+			if filepath.ToSlash(path) == "../core/transition.go" && s == "protection" {
+				transitionNeeds++
+				return true
+			}
 			low := strings.ToLower(s)
 			for _, bad := range settingNames {
 				if strings.Contains(low, bad) {
@@ -179,6 +188,9 @@ func TestProtectionGuard_NoProductionLiteralMentionsProtectionSettings(t *testin
 	}
 	if !sawGuard {
 		t.Error("effect/guard.go (the one exempt file) was not found: the refusal guard is missing")
+	}
+	if transitionNeeds > 1 {
+		t.Errorf("core/transition.go carries %d \"protection\" literals; the exemption covers exactly one (E08 Needs)", transitionNeeds)
 	}
 	// Positive control: an empty scan is not a pass.
 	if files < 10 || literals < 100 {

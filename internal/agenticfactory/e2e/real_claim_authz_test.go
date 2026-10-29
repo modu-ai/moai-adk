@@ -191,9 +191,11 @@ func TestPreflightPR_OwnIssueAndRefs_Pass_ThenLandWorks(t *testing.T) {
 	}
 }
 
-// A closing keyword aimed at another author's Issue blocks the PR with the
-// foreign-closing-keyword reason, and Land stays closed.
-func TestPreflightPR_ForeignClosingKeyword_Blocks(t *testing.T) {
+// A closing keyword aimed at another author's Issue stops the PR: since lane-18
+// 3dd74138d2 (behavior change 2) the stage does not change, a refusal with the
+// foreign-closing-keyword reason is recorded, and Land stays closed because the
+// preflight never passed.
+func TestPreflightPR_ForeignClosingKeyword_Refuses(t *testing.T) {
 	for _, text := range []string{"Closes #99", "fixes #99", "Resolved #99"} {
 		t.Run(text, func(t *testing.T) {
 			r, tk := readyTicket(t)
@@ -201,14 +203,18 @@ func TestPreflightPR_ForeignClosingKeyword_Blocks(t *testing.T) {
 			if !errors.Is(err, core.ErrForeignClosing) {
 				t.Fatalf("err = %v, want ErrForeignClosing", err)
 			}
-			if rec.State != core.StateBlocked || rec.Reason != core.ReasonForeignClosing {
-				t.Errorf("record = state %s reason %s, want blocked/foreign-closing-keyword", rec.State, rec.Reason)
+			// Behavior change 2: expectation updated from blocked to state unchanged + refusal.
+			if rec.State != core.StateReady {
+				t.Errorf("state = %s, want ready (unchanged)", rec.State)
+			}
+			if rec.Refusal == nil || rec.Refusal.Reason != core.ReasonForeignClosing {
+				t.Errorf("refusal = %+v, want a foreign-closing-keyword refusal", rec.Refusal)
 			}
 			if rec.PreflightHead != "" {
-				t.Error("a blocked preflight left a preflight head")
+				t.Error("a refused preflight left a preflight head")
 			}
-			if _, err := r.Land(tk, headA); !errors.Is(err, core.ErrTransitionInvalid) {
-				t.Errorf("land while blocked: %v, want ErrTransitionInvalid", err)
+			if _, err := r.Land(tk, headA); !errors.Is(err, core.ErrEvidenceIncomplete) {
+				t.Errorf("land after a refused preflight: %v, want ErrEvidenceIncomplete", err)
 			}
 		})
 	}
