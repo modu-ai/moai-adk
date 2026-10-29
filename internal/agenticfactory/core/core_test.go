@@ -161,3 +161,22 @@ func TestBacklogFullMapsToCapacityShort(t *testing.T) {
 		t.Errorf("got %q ok=%v", r, ok)
 	}
 }
+
+func TestRedactMasksSecretsAndCounts(t *testing.T) {
+	in := "use ghp_abcdefghijklmnopqrstuvwxyz0123 and Bearer abcdefgh12345678 with api_key=zzz999 ok"
+	out, n := Redact(in)
+	if n != 3 || strings.Contains(out, "ghp_") || strings.Contains(out, "zzz999") || strings.Contains(out, "abcdefgh12345678") {
+		t.Errorf("redact: %q n=%d", out, n)
+	}
+	if clean, n := Redact("nothing to hide"); clean != "nothing to hide" || n != 0 {
+		t.Errorf("clean text changed: %q %d", clean, n)
+	}
+}
+
+func TestIntakeErrorsMapToCapacity(t *testing.T) {
+	for _, e := range []error{ErrIntakeFull, ErrNoSlot, ErrBacklogFull} {
+		if r, ok := ReasonFor(e); !ok || r != ReasonCapacityShort {
+			t.Errorf("%v -> %q %v", e, r, ok)
+		}
+	}
+}
