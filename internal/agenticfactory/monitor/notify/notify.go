@@ -34,6 +34,12 @@ type Waiter interface {
 	RetryWait(t runner.Ticket, diagnosis, next string, recheck time.Time) (claim.Record, error)
 }
 
+// Repairs records the signal that an open pull request needs a repair (claim.Store.MarkRepairNeeded). It
+// writes the signal only: holder, epoch and state stay, so the owner repairs its own PR.
+type Repairs interface {
+	MarkRepairNeeded(i core.IssueRef, reason string) (claim.Record, error)
+}
+
 // PRView is what the host says about an Issue's pull request.
 type PRView struct {
 	Number      int
@@ -98,6 +104,7 @@ type Service struct {
 	Records   Records
 	Waits     Waiter
 	PRs       PRSource // optional: without it only waits are watched
+	Repairs   Repairs  // optional: where a failed check or a change request is recorded as a repair signal
 	Notifier  Notifier
 	Escalator Escalator
 	// State is the per-Issue memory (what was already notified, the record revision last seen). It survives
@@ -119,6 +126,8 @@ type Action struct {
 }
 
 type prMark struct {
+	// RepairKey is the failure the repair signal was last recorded for ("ci:<head>" or "review:<head>").
+	RepairKey    string `json:"repair_key,omitempty"`
 	CIFailedHead string `json:"ci_failed_head,omitempty"`
 	Review       string `json:"review,omitempty"`
 	Merged       bool   `json:"merged,omitempty"`
@@ -187,14 +196,14 @@ func (s *Service) issue(ctx context.Context, rec claim.Record) []Action {
 	}
 	var acts []Action
 	if s.PRs != nil {
-		acts = append(acts, s.prNotices(ctx, rec, &st)...)
+		acts = append(acts, s.prNotices(ctx, &rec, &st)...)
 	}
 	acts = append(acts, s.wait(ctx, rec, &st)...)
 	return acts
 }
 
 // prNotices tells the holder about each notable change of the pull request that it was not told about yet.
-func (s *Service) prNotices(ctx context.Context, rec claim.Record, st *state) []Action {
+func (s *Service) prNotices(ctx context.Context, rec *claim.Record, st *state) []Action {
 	view, found, err := s.PRs.PR(ctx, rec.Issue)
 	if err != nil {
 		return []Action{{Issue: rec.Issue, What: "pr-read-error", Err: err}}
@@ -202,6 +211,7 @@ func (s *Service) prNotices(ctx context.Context, rec claim.Record, st *state) []
 	if !found {
 		return nil
 	}
+	acts := s.repairSignal(rec, st, view)
 	type event struct {
 		kind   Kind
 		detail string
@@ -226,7 +236,6 @@ func (s *Service) prNotices(ctx context.Context, rec claim.Record, st *state) []
 	if view.IssueClosed && !st.PR.IssueClosed {
 		evs = append(evs, event{IssueClosed, "the Issue was closed", func(m *prMark) { m.IssueClosed = true }})
 	}
-	var acts []Action
 	for _, ev := range evs {
 		n := Notice{Issue: rec.Issue, Holder: rec.Holder, Agent: rec.AgentName, Kind: ev.kind, Detail: ev.detail}
 		if err := s.Notifier.Notify(ctx, n); err != nil {
@@ -343,4 +352,46 @@ func (s *Service) escalate(ctx context.Context, rec claim.Record, w core.Wait, s
 		return []Action{{Issue: rec.Issue, What: "escalation", Err: fmt.Errorf("delivered, but not remembered: %w", err)}}
 	}
 	return []Action{{Issue: rec.Issue, What: "escalation", Detail: fmt.Sprintf("%d of %d retries spent; told %s", w.Retries, w.MaxRetries, w.Escalate)}}
+}
+
+// repairSignal records, once per failure, that the open pull request needs a repair. The write moves the
+// record's revision, so the monitor takes the new revision as its own and does not read it as the owner's
+// progress.
+func (s *Service) repairSignal(rec *claim.Record, st *state, view PRView) []Action {
+	if s.Repairs == nil {
+		return nil
+	}
+	var key, reason string
+	switch {
+	case view.CI == "failure":
+		key, reason = "ci:"+view.Head, fmt.Sprintf("a required check failed on %.12s of PR #%d", view.Head, view.Number)
+	case view.Review == "changes_requested":
+		key, reason = "review:"+view.Head, fmt.Sprintf("changes were requested on PR #%d", view.Number)
+	default:
+		return nil
+	}
+	if st.PR.RepairKey == key {
+		return nil
+	}
+	ref, err := core.NewIssueRef(rec.Issue)
+	if err != nil {
+		return []Action{{Issue: rec.Issue, What: "repair-signal", Err: err}}
+	}
+	out, err := s.Repairs.MarkRepairNeeded(ref, reason)
+	switch {
+	case err == nil:
+		if st.Seen == 0 || st.Seen == rec.Seq {
+			st.Seen = out.Seq
+		}
+		*rec = out
+	case errors.Is(err, core.ErrTransitionInvalid):
+		// there is no open pull request to repair on this record: nothing to signal, and nothing to retry
+	default:
+		return []Action{{Issue: rec.Issue, What: "repair-signal", Detail: reason, Err: err}}
+	}
+	st.PR.RepairKey = key
+	if err := s.save(rec.Issue, *st); err != nil {
+		return []Action{{Issue: rec.Issue, What: "state-error", Err: err}}
+	}
+	return []Action{{Issue: rec.Issue, What: "repair-signal", Detail: reason}}
 }

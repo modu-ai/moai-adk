@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -84,7 +85,7 @@ func newEnv(t *testing.T) *env {
 // service is a fresh Service over the same store and memory: what a restarted monitor is.
 func (e *env) service() *Service {
 	return &Service{
-		Records: e.st, Waits: e.rn, PRs: e.prs, Notifier: e.n, Escalator: e.esc,
+		Records: e.st, Waits: e.rn, PRs: e.prs, Repairs: e.st, Notifier: e.n, Escalator: e.esc,
 		State: docstore.CollectorCursors(e.st), Now: func() time.Time { return e.now }, ReNotifyAfter: 30 * time.Minute,
 	}
 }
@@ -434,3 +435,92 @@ func TestAPullRequestReadErrorIsReportedAndTheWaitStillRuns(t *testing.T) {
 }
 
 var _ forge.CursorStore = brokenState{}
+
+// handedOff gives the record the receipt of an open pull request, the way a published PR leaves it.
+func (e *env) handedOff(tk runner.Ticket, pr int) {
+	e.t.Helper()
+	_, err := e.st.Update(tk.Issue, tk.Holder, tk.Epoch, func(r *claim.Record) error {
+		r.Receipt = &claim.Receipt{HandoffID: "h1", PR: pr, Head: core.HeadSHA(strings.Repeat("a", 40)), Branch: "WT-x", Worktree: "/w/x", Session: holder}
+		return nil
+	})
+	if err != nil {
+		e.t.Fatal(err)
+	}
+}
+
+// A failed check or a change request is recorded once as the repair signal, on the holder's own record;
+// the holder, epoch and state stay. The monitor's own write is not mistaken for the owner's progress.
+func TestAFailedCheckIsSignalledOnceAndIsNotTakenForOwnerProgress(t *testing.T) {
+	e := newEnv(t)
+	tk := e.acquire(7)
+	e.handedOff(tk, 9)
+	if _, err := e.rn.SetWait(tk, waitAt(t0.Add(time.Hour), 3)); err != nil {
+		t.Fatal(err)
+	}
+	s := e.service()
+	e.tickAt(s, t0) // the monitor has seen the record
+	before := e.record(7)
+	// The failure is first seen on the very pass where the wait comes due: the signal write and the
+	// reminder happen together, and the signal must not be read as the owner's progress.
+	e.prs.found, e.prs.view = true, PRView{Number: 9, Head: strings.Repeat("a", 40), CI: "failure"}
+	acts := e.tickAt(s, t0.Add(time.Hour))
+	rec := e.record(7)
+	if !strings.Contains(rec.RepairNeeded, "required check failed") || rec.Holder != holder || rec.Epoch != before.Epoch || rec.State != before.State {
+		t.Fatalf("repair signal: %+v (acts %v)", rec, acts)
+	}
+	if e.n.count(WaitOverdue) != 1 {
+		t.Fatalf("the monitor's own signal write was taken for owner progress: %v (acts %v)", e.n.notices, acts)
+	}
+	if rec.Seq != before.Seq+2 { // the signal and the one retry
+		t.Errorf("seq %d -> %d, want the signal and the retry only", before.Seq, rec.Seq)
+	}
+	e.tickAt(s, t0.Add(time.Hour+time.Minute))
+	if e.record(7).Seq != rec.Seq {
+		t.Errorf("the same failure was signalled again")
+	}
+	e.prs.view = PRView{Number: 9, Head: strings.Repeat("b", 40), CI: "failure"} // a new head failing is a new signal
+	e.tickAt(s, t0.Add(time.Hour+time.Minute))
+	e.prs.view = PRView{Number: 9, Head: strings.Repeat("b", 40), CI: "success", Review: "changes_requested"}
+	e.tickAt(s, t0.Add(time.Hour+2*time.Minute))
+	if got := e.record(7).RepairNeeded; !strings.Contains(got, "changes were requested") {
+		t.Errorf("a change request is a repair signal too: %q", got)
+	}
+}
+
+type failingRepairs struct{ calls int }
+
+func (f *failingRepairs) MarkRepairNeeded(core.IssueRef, string) (claim.Record, error) {
+	f.calls++
+	return claim.Record{}, errors.New("store unavailable")
+}
+
+func TestARepairSignalThatFailedIsRetriedAndAnIssueWithoutAnOpenPRIsLeftAlone(t *testing.T) {
+	e := newEnv(t)
+	tk := e.acquire(7)
+	e.handedOff(tk, 9)
+	e.prs.found, e.prs.view = true, PRView{Number: 9, Head: strings.Repeat("a", 40), CI: "failure"}
+	s := e.service()
+	f := &failingRepairs{}
+	s.Repairs = f
+	e.tickAt(s, t0)
+	e.tickAt(s, t0.Add(time.Minute))
+	if f.calls != 2 || e.record(7).RepairNeeded != "" {
+		t.Errorf("calls=%d signal=%q: a failed signal must be tried again", f.calls, e.record(7).RepairNeeded)
+	}
+
+	// no receipt: there is no open pull request on the record, so there is nothing to repair
+	e2 := newEnv(t)
+	e2.acquire(8)
+	e2.prs.found, e2.prs.view = true, PRView{Number: 9, Head: strings.Repeat("a", 40), CI: "failure"}
+	s2 := e2.service()
+	acts := e2.tickAt(s2, t0)
+	e2.tickAt(s2, t0.Add(time.Minute))
+	for _, a := range acts {
+		if a.What == "repair-signal" && a.Err != nil {
+			t.Errorf("a record without an open PR is not an error: %v", a.Err)
+		}
+	}
+	if e2.record(8).RepairNeeded != "" {
+		t.Errorf("signal on a record without a receipt: %q", e2.record(8).RepairNeeded)
+	}
+}
