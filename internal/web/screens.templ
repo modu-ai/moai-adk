@@ -659,6 +659,10 @@ templ Monitor(vm ShellVM, m MonitorVM) {
 							<span class="panel__meta">{ "agent " + r.Agent }</span>
 							<span class="mono panel__meta">{ "session " + r.SessionID }</span>
 							<span class="panel__meta">{ r.State + " · " + r.Stage }</span>
+							<span class="panel__meta">{ "sub-stage " + r.SubStage }</span>
+							<span class="panel__meta">{ "park " + r.Park }</span>
+							<span class="panel__meta">{ "gate " + r.Gate }</span>
+							<span class="panel__meta">{ "refusal " + r.Refusal }</span>
 							<span class="mono panel__meta">{ r.Head }</span>
 							<span class="panel__meta">{ "checks " + r.Checks }</span>
 							if r.ChecksStale {

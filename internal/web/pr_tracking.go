@@ -29,6 +29,12 @@ type PRTrackRowVM struct {
 	Context     ContextVM
 	Agent       string // display name (agent-N); never an identity key
 	SessionID   string // full immutable id, or a gap when unconfirmed
+	// S46 position detail, shown as the monitor reports it. A key the monitor
+	// did not send or confirm is a gap; a confirmed null (nothing recorded) is "none".
+	SubStage string
+	Park     string
+	Gate     string
+	Refusal  string
 }
 
 // PRBacklogVM is the open-PR count against its limit.
@@ -75,6 +81,22 @@ type monRow struct {
 	}] `json:"pr"`
 	Completed bool                   `json:"completed"`
 	Context   monField[[]monCtxItem] `json:"context"`
+	SubStage  monField[string]       `json:"sub_stage"`
+	Park      monField[*struct {
+		Reason   string `json:"reason"`
+		Evidence string `json:"evidence"`
+		Resume   string `json:"resume_condition"`
+	}] `json:"park"`
+	Gate monField[*struct {
+		Reason string `json:"reason"`
+		Detail string `json:"detail"`
+		Resume string `json:"resume_condition"`
+		Head   string `json:"head"`
+	}] `json:"gate"`
+	Refusal monField[*struct {
+		Reason string `json:"reason"`
+		Detail string `json:"detail"`
+	}] `json:"refusal"`
 }
 
 type monView struct {
@@ -119,6 +141,16 @@ func (a *app) buildPRTracking(ctx context.Context) PRTrackingVM {
 			Checks: "not read", ChecksStale: r.ChecksStale,
 			PR: prGap, Phase: prGap, Track: "gap", Completed: r.Completed,
 			Agent: gapText(r.Agent), SessionID: gapText(r.SessionID),
+			SubStage: gapText(r.SubStage),
+			Park: detailText(r.Park.Confirmed, r.Park.Value != nil, func() []string {
+				return []string{r.Park.Value.Reason, r.Park.Value.Evidence, resumeText(r.Park.Value.Resume)}
+			}),
+			Gate: detailText(r.Gate.Confirmed, r.Gate.Value != nil, func() []string {
+				return []string{r.Gate.Value.Reason, r.Gate.Value.Detail, resumeText(r.Gate.Value.Resume), headText(r.Gate.Value.Head)}
+			}),
+			Refusal: detailText(r.Refusal.Confirmed, r.Refusal.Value != nil, func() []string {
+				return []string{r.Refusal.Value.Reason, r.Refusal.Value.Detail}
+			}),
 		}
 		if r.HeadSHA.Confirmed && r.HeadSHA.Value != "" {
 			row.Head = r.HeadSHA.Value[:min(8, len(r.HeadSHA.Value))]
@@ -141,6 +173,45 @@ func gapText(f monField[string]) string {
 		return prGap
 	}
 	return f.Value
+}
+
+// detailText renders a confirmed detail record as its non-empty parts joined
+// by " · ". An unconfirmed or absent key is a gap, never "none".
+func detailText(confirmed, present bool, parts func() []string) string {
+	if !confirmed {
+		return prGap
+	}
+	if !present {
+		return "none"
+	}
+	out := ""
+	for _, p := range parts() {
+		if p == "" {
+			continue
+		}
+		if out != "" {
+			out += " · "
+		}
+		out += p
+	}
+	if out == "" {
+		return prGap
+	}
+	return out
+}
+
+func resumeText(s string) string {
+	if s == "" {
+		return ""
+	}
+	return "resume: " + s
+}
+
+func headText(s string) string {
+	if s == "" {
+		return ""
+	}
+	return "head " + s[:min(8, len(s))]
 }
 
 // prTrack groups the monitor's phases into the five tracked stages. A phase
