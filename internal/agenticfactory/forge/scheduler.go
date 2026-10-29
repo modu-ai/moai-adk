@@ -1,30 +1,25 @@
 package forge
 
 import (
+	"sort"
 	"sync"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
 )
 
-// Class orders writes when the budget is tight: state-safety writes first, then safety notices, then
-// progress and report comments.
-type Class int
-
-const (
-	ClassStateWrite   Class = iota // claim, PARKED, blocked, completion obligation, readback
-	ClassSafetyNotice              // security failure, approval needed, an actual block
-	ClassProgress                  // progress and report comments
-)
-
-// Item is one queued write. Items of the progress class with the same Key are merged into one.
+// Item is one queued write. Priority is lane 18's core.Priority: the ordering and its meaning are
+// defined in core only, and a lower value is more urgent. Report items with the same Key are merged.
 type Item struct {
-	Class   Class
-	Key     string
-	Payload any
+	Priority core.Priority
+	Key      string
+	Payload  any
 }
 
-// Scheduler decides which queued write may go out next under the shared Budget. State and safety
-// writes may spend the reserve; progress comments never do, and are held (and merged by key) until the
-// budget recovers. Nothing is dropped.
+// Scheduler decides which queued write may go out next under the shared Budget. Writes more urgent than
+// a report may spend the reserve; reports never do, and are held (and merged by key) until the budget
+// recovers. Nothing is dropped. The order is the numeric order of core.Priority, so a tier added to
+// core later is honoured without a change here.
 type Scheduler struct {
 	Gate     *Budget
 	Resource string                 // budget bucket the writes count against; "" = default
@@ -38,9 +33,9 @@ type Scheduler struct {
 func (s *Scheduler) Push(it Item) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if it.Class == ClassProgress {
+	if it.Priority >= core.PriorityReport {
 		for i := range s.queue {
-			if s.queue[i].Class == ClassProgress && s.queue[i].Key == it.Key {
+			if s.queue[i].Priority == it.Priority && s.queue[i].Key == it.Key {
 				if s.Merge != nil {
 					s.queue[i].Payload = s.Merge(s.queue[i].Payload, it.Payload)
 				} else {
@@ -66,26 +61,35 @@ func (s *Scheduler) Pop(now time.Time) (Item, bool, time.Time) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	var until time.Time
-	for _, cl := range []Class{ClassStateWrite, ClassSafetyNotice, ClassProgress} {
+	// find the most urgent queued priority that the budget lets through, remembering when to retry
+	order := make([]core.Priority, 0, len(s.queue))
+	seen := map[core.Priority]bool{}
+	for _, it := range s.queue {
+		if !seen[it.Priority] {
+			seen[it.Priority] = true
+			order = append(order, it.Priority)
+		}
+	}
+	sort.Slice(order, func(i, j int) bool { return order[i] < order[j] })
+	for _, pr := range order {
 		var ok bool
 		var when time.Time
-		if cl == ClassProgress {
+		if pr >= core.PriorityReport {
 			ok, when = s.Gate.AllowFor(s.Resource, now)
 		} else {
 			ok, when = s.Gate.AllowReserved(s.Resource, now)
 		}
+		if !ok {
+			if until.IsZero() || when.Before(until) {
+				until = when
+			}
+			continue
+		}
 		for i, it := range s.queue {
-			if it.Class != cl {
-				continue
+			if it.Priority == pr {
+				s.queue = append(s.queue[:i], s.queue[i+1:]...)
+				return it, true, time.Time{}
 			}
-			if !ok {
-				if until.IsZero() || when.Before(until) {
-					until = when
-				}
-				break
-			}
-			s.queue = append(s.queue[:i], s.queue[i+1:]...)
-			return it, true, time.Time{}
 		}
 	}
 	return Item{}, false, until

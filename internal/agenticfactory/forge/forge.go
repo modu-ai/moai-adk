@@ -23,6 +23,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/effect"
 )
 
@@ -201,9 +202,12 @@ type bucket struct {
 
 // Budget is the call budget shared by every caller using the same credential, kept per host resource
 // so an exhausted search quota does not stop ordinary calls. It learns limits from response headers;
-// it never assumes one. Reserve is the number of calls kept unspent for state and safety writes.
+// it never assumes one. ReserveCalls is the number of calls kept unspent for writes more urgent than a
+// report. Budget implements core.Budget, the hook lane 18's writers call before a report write.
 type Budget struct {
-	Reserve int // from configuration
+	ReserveCalls   int              // from configuration
+	ReportResource string           // host resource report writes count against ("" = default bucket)
+	Now            func() time.Time // optional clock for Reserve; defaults to time.Now
 
 	mu sync.Mutex
 	b  map[string]*bucket
@@ -260,8 +264,24 @@ func (b *Budget) Allow(now time.Time) (bool, time.Time) { return b.AllowFor("", 
 
 // AllowFor is Allow for one resource. Ordinary calls stop at the reserve.
 func (b *Budget) AllowFor(res string, now time.Time) (bool, time.Time) {
-	return b.allow(res, now, b.Reserve)
+	return b.allow(res, now, b.ReserveCalls)
 }
+
+// Reserve implements core.Budget. A report write is told to wait (false) when ordinary calls are
+// stopped for its resource; anything more urgent than a report is never held, so it reports true.
+func (b *Budget) Reserve(p core.Priority) bool {
+	if p < core.PriorityReport {
+		return true
+	}
+	now := time.Now()
+	if b.Now != nil {
+		now = b.Now()
+	}
+	ok, _ := b.AllowFor(b.ReportResource, now)
+	return ok
+}
+
+var _ core.Budget = (*Budget)(nil)
 
 // AllowReserved is AllowFor for state and safety writes: they may spend the reserve, down to the
 // host's own zero.

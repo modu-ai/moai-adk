@@ -60,7 +60,7 @@ func TestClientLearnsWhichResourceAPathUsesAndBlocksOnlyThat(t *testing.T) {
 }
 
 func TestReservedBudgetIsOpenOnlyToSafetyClassWrites(t *testing.T) {
-	b := &Budget{Reserve: 10}
+	b := &Budget{ReserveCalls: 10}
 	b.Observe(resp(200, "", "x-ratelimit-remaining", "10", "x-ratelimit-reset", reset(time.Hour)), t0)
 	if ok, _ := b.Allow(t0); ok {
 		t.Error("ordinary calls must stop at the reserve")

@@ -93,7 +93,7 @@ func TestRetryAfterAsHTTPDate(t *testing.T) {
 }
 
 func TestBudgetFollowsHeadersAndBlocks(t *testing.T) {
-	b := &Budget{Reserve: 10}
+	b := &Budget{ReserveCalls: 10}
 	if ok, _ := b.Allow(t0); !ok {
 		t.Error("unknown budget must allow the first call")
 	}
