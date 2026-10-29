@@ -54,9 +54,10 @@ type Intent struct {
 	Kind       Kind   `json:"kind"`
 	Issue      int    `json:"issue"`
 	Target     string `json:"target"`
-	Digest     string `json:"digest"`            // digest of the request payload
-	Payload    string `json:"payload,omitempty"` // already-masked text to send, when the effect carries one
-	Seq        int    `json:"seq,omitempty"`     // order among intents for one target
+	Digest     string `json:"digest"`               // digest of the request payload
+	Payload    string `json:"payload,omitempty"`    // already-masked text to send, when the effect carries one
+	Seq        int    `json:"seq,omitempty"`        // order among intents for one target
+	NotBefore  int64  `json:"not_before,omitempty"` // unix seconds; no send before this (rate limit)
 	Status     Status `json:"status"`
 	Attempts   int    `json:"attempts"`
 	ProviderID string `json:"provider_id,omitempty"`
@@ -89,6 +90,17 @@ func KeyFromMarker(body string) string {
 		return m[1]
 	}
 	return ""
+}
+
+// ErrDenied marks a permission or authentication refusal: the effect did not happen, retrying cannot
+// help, so the intent is parked with no lookup and no resend.
+var ErrDenied = errors.New("effect: permission denied")
+
+// LimitedError marks a rate limit: the effect did not happen and may be retried at RetryAt, never before.
+type LimitedError struct{ RetryAt time.Time }
+
+func (e *LimitedError) Error() string {
+	return "effect: rate limited until " + e.RetryAt.UTC().Format(time.RFC3339)
 }
 
 // ErrNotSent marks a send that provably never left (validation, no connection made). Only this
@@ -149,6 +161,14 @@ type Executor struct {
 	Send     Sender
 	Lookup   Lookuper
 	Timeouts Timeouts
+	Now      func() time.Time // defaults to time.Now
+}
+
+func (e *Executor) now() time.Time {
+	if e.Now != nil {
+		return e.Now()
+	}
+	return time.Now()
 }
 
 // Execute performs the request at most once per key.
@@ -169,6 +189,9 @@ func (e *Executor) Execute(ctx context.Context, r Request) (Intent, error) {
 		case StatusSent:
 			return e.Reconcile(ctx, key)
 		}
+		if in.NotBefore > e.now().Unix() {
+			return in, nil // rate limited: not yet
+		}
 	} else {
 		in = Intent{Key: key, Kind: r.Kind, Issue: r.Issue, Target: r.Target, Digest: r.Digest, Payload: r.Payload, Status: StatusIntended}
 		if err := e.Store.Put(in); err != nil {
@@ -178,6 +201,7 @@ func (e *Executor) Execute(ctx context.Context, r Request) (Intent, error) {
 	in.Attempts++
 	in.Status = StatusSent
 	in.LastError = ""
+	in.NotBefore = 0
 	if err := e.Store.Put(in); err != nil {
 		return Intent{}, err
 	}
@@ -187,6 +211,12 @@ func (e *Executor) Execute(ctx context.Context, r Request) (Intent, error) {
 	switch {
 	case serr == nil:
 		in.Status, in.ProviderID = StatusConfirmed, id
+	case errors.Is(serr, ErrDenied):
+		in.Status, in.LastError = StatusParked, serr.Error()
+	case errors.As(serr, new(*LimitedError)):
+		var le *LimitedError
+		errors.As(serr, &le)
+		in.Status, in.LastError, in.NotBefore = StatusFailed, serr.Error(), le.RetryAt.Unix()
 	case errors.Is(serr, ErrNotSent):
 		in.Status, in.LastError = StatusFailed, serr.Error()
 	default:

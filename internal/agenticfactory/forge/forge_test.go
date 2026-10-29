@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/effect"
 )
 
 var t0 = time.Date(2026, 10, 29, 9, 0, 0, 0, time.UTC)
@@ -202,5 +204,19 @@ func TestPollIntervalHeaderIsHonoured(t *testing.T) {
 	r, _ := client(f, t0).Get(t.Context(), "/x")
 	if r.PollInterval != 60*time.Second {
 		t.Errorf("poll interval = %v", r.PollInterval)
+	}
+}
+
+func TestEffectErrorMapsLimitAndDenial(t *testing.T) {
+	lim := EffectError(Classify(resp(429, "", "retry-after", "30"), t0, cfg(), 0))
+	var le *effect.LimitedError
+	if !errors.As(lim, &le) || le.RetryAt.Sub(t0) != 30*time.Second {
+		t.Errorf("limit mapped to %v", lim)
+	}
+	if den := EffectError(Classify(resp(403, `{"message":"forbidden"}`), t0, cfg(), 0)); !errors.Is(den, effect.ErrDenied) {
+		t.Errorf("denial mapped to %v", den)
+	}
+	if EffectError(Verdict{Kind: KindOK}) != nil {
+		t.Error("ok must map to nil")
 	}
 }

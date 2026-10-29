@@ -22,6 +22,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/effect"
 )
 
 // Request is a host-neutral request. Header keys are lower-case.
@@ -332,4 +334,16 @@ func (c *Client) bump(path string) {
 		c.cache, c.attempts = map[string]entry{}, map[string]int{}
 	}
 	c.attempts[path]++
+}
+
+// EffectError maps a verdict to the error the effect executor understands, so a rate limit waits for
+// its RetryAt and a permission denial parks the intent. Other kinds map to nil.
+func EffectError(v Verdict) error {
+	switch v.Kind {
+	case KindLimited:
+		return &effect.LimitedError{RetryAt: v.RetryAt}
+	case KindDenied:
+		return fmt.Errorf("%w: %s", effect.ErrDenied, v.Reason)
+	}
+	return nil
 }
