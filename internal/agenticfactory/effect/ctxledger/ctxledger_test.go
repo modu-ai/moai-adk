@@ -564,3 +564,33 @@ func TestWithoutAConditionalReaderTheMarkerLookupChecksDrift(t *testing.T) {
 		t.Error("not restored without a conditional reader")
 	}
 }
+
+// Lookup works but editing is refused (403 or 404 on PATCH): park, and stop spending calls.
+func TestEditRefusedAfterASuccessfulLookupParksAndStopsSpendingCalls(t *testing.T) {
+	for name, code := range map[string]int{"403": 403, "404": 404} {
+		r := newRemote()
+		l, st := newLedger(r, 4096)
+		submitFlush(t, l, "first")
+		r.updateErr = status(code, "x-ratelimit-remaining", "4000")
+		_, _ = l.Submit(t.Context(), body("second"))
+		if err := l.Flush(t.Context()); err == nil {
+			t.Errorf("%s: refused edit reported as success", name)
+		}
+		parked := false
+		for _, in := range mustList(st) {
+			if in.Status == effect.StatusParked {
+				parked = true
+			}
+		}
+		if !parked {
+			t.Errorf("%s: no intent parked: %+v", name, mustList(st))
+		}
+		calls := r.finds + r.creates + r.updates
+		for i := 0; i < 3; i++ {
+			_ = l.Flush(t.Context())
+		}
+		if after := r.finds + r.creates + r.updates; after != calls {
+			t.Errorf("%s: a parked edit kept spending calls (%d -> %d)", name, calls, after)
+		}
+	}
+}

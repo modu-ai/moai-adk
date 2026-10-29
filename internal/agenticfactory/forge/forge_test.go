@@ -37,10 +37,6 @@ func TestBackoffMustBeConfiguredNotDefaulted(t *testing.T) {
 	if err := cfg().Validate(); err != nil {
 		t.Error(err)
 	}
-	d := DocDefaults()
-	if !strings.HasPrefix(d.Source, "https://docs.github.com/") || d.MinSecondaryWait != time.Minute || d.MinWriteGap != time.Second {
-		t.Errorf("doc defaults must name their source: %+v", d)
-	}
 }
 
 func TestClassifyTable(t *testing.T) {
@@ -261,7 +257,7 @@ func TestGitLabResetTimeHeaderIsReadAndMissingHeadersStayUnknown(t *testing.T) {
 }
 
 // Limits are read from response headers and configuration, never carried as constants. The scan flags
-// the documented limit values and the hour/minute units anywhere outside DocDefaults (which carries the
+// the documented limit values and the hour/minute units anywhere anywhere in the package (which carries the
 // two documentation-stated values together with their source URL).
 func TestNoHardcodedLimitConstants(t *testing.T) {
 	banned := map[string]bool{"60": true, "100": true, "900": true, "1000": true, "3600": true, "5000": true, "15000": true}
@@ -276,10 +272,6 @@ func TestNoHardcodedLimitConstants(t *testing.T) {
 			t.Fatal(err)
 		}
 		for _, d := range af.Decls {
-			fd, isFn := d.(*ast.FuncDecl)
-			if isFn && fd.Name.Name == "DocDefaults" {
-				continue
-			}
 			ast.Inspect(d, func(n ast.Node) bool {
 				switch x := n.(type) {
 				case *ast.BasicLit:
@@ -288,11 +280,28 @@ func TestNoHardcodedLimitConstants(t *testing.T) {
 					}
 				case *ast.SelectorExpr:
 					if id, ok := x.X.(*ast.Ident); ok && id.Name == "time" && (x.Sel.Name == "Minute" || x.Sel.Name == "Hour") {
-						t.Errorf("%s: time.%s outside DocDefaults", fset.Position(x.Pos()), x.Sel.Name)
+						t.Errorf("%s: time.%s anywhere in the package", fset.Position(x.Pos()), x.Sel.Name)
 					}
 				}
 				return true
 			})
 		}
+	}
+}
+
+func TestBackoffMaxBelowTheMinimumIsRejectedAndNeverShortensIt(t *testing.T) {
+	bad := cfg()
+	bad.Max = bad.MinSecondaryWait / 2
+	if err := bad.Validate(); err == nil {
+		t.Error("Max below MinSecondaryWait accepted")
+	}
+	bad = cfg()
+	bad.Max = bad.Base / 2
+	if err := bad.Validate(); err == nil {
+		t.Error("Max below Base accepted")
+	}
+	// Even an unvalidated config must not shorten the documented minimum.
+	if d := Classify(resp(403, "secondary rate limit"), t0, bad, 0).RetryAt.Sub(t0); d < bad.MinSecondaryWait {
+		t.Errorf("wait %v is shorter than the minimum %v", d, bad.MinSecondaryWait)
 	}
 }

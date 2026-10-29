@@ -62,24 +62,10 @@ func (b Backoff) Validate() error {
 	if b.MinSecondaryWait <= 0 || b.Base <= 0 || b.Max <= 0 || b.MaxAttempts <= 0 {
 		return errors.New("forge: backoff needs MinSecondaryWait, Base, Max and MaxAttempts from configuration")
 	}
-	return nil
-}
-
-// Documented carries the two values the GitHub documentation states outright, with where they come from.
-type Documented struct {
-	Source           string
-	MinSecondaryWait time.Duration // "wait at least one minute" when a secondary limit gives no hint
-	MinWriteGap      time.Duration // "wait at least one second between each" write
-}
-
-// DocDefaults returns the documented values. Base, Max and MaxAttempts are NOT in the documentation
-// ("a set number of retries") and must be configured.
-func DocDefaults() Documented {
-	return Documented{
-		Source:           "https://docs.github.com/en/rest/using-the-rest-api/best-practices-for-using-the-rest-api",
-		MinSecondaryWait: time.Minute,
-		MinWriteGap:      time.Second,
+	if b.Max < b.MinSecondaryWait || b.Max < b.Base {
+		return errors.New("forge: backoff Max must not be below MinSecondaryWait or Base (a cap may not shorten the documented minimum)")
 	}
+	return nil
 }
 
 // Kind is the outcome class of a response.
@@ -156,6 +142,9 @@ func parseEpoch(v string) (time.Time, bool) {
 }
 
 func grow(base time.Duration, attempt int, max time.Duration) time.Duration {
+	if max < base {
+		max = base // a cap never shortens the base wait, even when the config was not validated
+	}
 	d := base
 	for i := 0; i < attempt && d < max; i++ {
 		d *= 2

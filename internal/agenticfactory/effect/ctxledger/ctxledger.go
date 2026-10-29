@@ -354,7 +354,7 @@ func (s sender) send(ctx context.Context, in effect.Intent) (int64, error) {
 			return c.id, nil
 		}
 		if !isGone(err) {
-			return 0, err
+			return 0, s.l.classify(err)
 		}
 		s.l.cacheDrop(in.Issue) // the comment is gone: fall back to the marker lookup
 	}
@@ -367,7 +367,7 @@ func (s sender) send(ctx context.Context, in effect.Intent) (int64, error) {
 		return c.ID, nil
 	case found:
 		if err := s.r.Update(ctx, in.Issue, c.ID, in.Payload); err != nil {
-			return 0, err
+			return 0, s.l.classify(err) // the lookup just found the comment: a refusal now is permission, not "gone"
 		}
 		return c.ID, nil
 	}
