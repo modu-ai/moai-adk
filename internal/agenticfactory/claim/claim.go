@@ -241,6 +241,12 @@ type Store struct {
 // holder stays away longer still ends in Busy, the contract's retry signal, never
 // in Held. The polling is still unfair (a waiter's turn depends on when its poll
 // lands), which the tail wait shows: the budget is what covers it.
+//
+// @MX:DEBT: the wait is a fixed poll with no order among waiters, and its ceiling is paid by callers
+// @MX:CEILING: a webhook answering 503 waits up to about two seconds (lockTries x lockWait) for a held lock;
+// the tail wait is up to about twice the fair bound (4 writers x 200ms hold: p95 1s, max 1.2s against 600ms)
+// @MX:UPGRADE: replace the poll with a fair queue (ticket order, with recovery of a dead waiter's ticket) when
+// resident writers on the documents lock grow past four, or when a measured Busy appears under this budget
 const (
 	lockTries = 200
 	lockWait  = 10 * time.Millisecond

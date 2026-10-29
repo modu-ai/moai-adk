@@ -36,6 +36,7 @@ var (
 	ErrBacklogFull               = errors.New("agenticfactory: open PR backlog is at its limit, new claim held")
 	ErrNotResponsibleAgent       = errors.New("agenticfactory: only the agent responsible for the PR may repair it; another holder needs a takeover")
 	ErrResponsibilityNotRecorded = errors.New("agenticfactory: an Issue this agent already holds is not recorded on the control ref, new claim refused")
+	ErrUnsanitized               = errors.New("agenticfactory: the text holds a secret or personal data and is not sent")
 	ErrRepairFirst               = errors.New("agenticfactory: an open PR of this agent needs repair, which comes before new work")
 	ErrWorktreeInUse             = errors.New("agenticfactory: the worktree is already used by another open Issue")
 	ErrWorktreeUnbound           = errors.New("agenticfactory: another PR of this agent is open, bind a separate worktree before writing")
