@@ -347,3 +347,22 @@ func EffectError(v Verdict) error {
 	}
 	return nil
 }
+
+// StatusError is a typed HTTP failure. A Transport or Runner returns it so callers decide on the
+// status code and headers, never on error wording.
+type StatusError struct {
+	Status int
+	Header map[string]string
+	Body   []byte
+}
+
+func (e *StatusError) Error() string { return fmt.Sprintf("forge: http status %d", e.Status) }
+
+// ClassifyError turns a *StatusError (anywhere in err's chain) into a verdict; ok is false for any other error.
+func ClassifyError(err error, now time.Time, b Backoff, attempt int) (Verdict, bool) {
+	var se *StatusError
+	if !errors.As(err, &se) {
+		return Verdict{}, false
+	}
+	return Classify(Response{Status: se.Status, Header: se.Header, Body: se.Body}, now, b, attempt), true
+}

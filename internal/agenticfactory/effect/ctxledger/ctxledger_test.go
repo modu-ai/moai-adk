@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/effect"
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/forge"
 )
 
 // fakeRemote is the only "GitHub" the tests see: an in-memory comment list with write counters.
@@ -19,6 +20,8 @@ type fakeRemote struct {
 	lostAfterUpdate  bool
 	findErr          error
 	finds            int
+	createErr        error
+	updateErr        error
 	plain404         bool           // Update reports a missing comment as a plain error, not ErrGone
 	gone             map[int64]bool // ids that no longer exist
 }
@@ -40,6 +43,9 @@ func (f *fakeRemote) Find(_ context.Context, issue int, marker string) (Comment,
 
 func (f *fakeRemote) Create(_ context.Context, issue int, body string) (Comment, error) {
 	f.creates++
+	if f.createErr != nil {
+		return Comment{}, f.createErr
+	}
 	f.nextID++
 	c := Comment{ID: f.nextID, Body: body}
 	f.comments[issue] = append(f.comments[issue], c)
@@ -51,6 +57,9 @@ func (f *fakeRemote) Create(_ context.Context, issue int, body string) (Comment,
 
 func (f *fakeRemote) Update(_ context.Context, issue int, id int64, body string) error {
 	f.updates++
+	if f.updateErr != nil {
+		return f.updateErr
+	}
 	if f.gone[id] {
 		return ErrGone
 	}
@@ -327,24 +336,6 @@ func TestAmbiguousUpdateDropsTheCacheSoReconcileReadsTheRemote(t *testing.T) {
 	}
 }
 
-// A person deletes the comment; the remembered id now answers 404 in whatever words the host uses.
-// The first Flush must leave one comment at the newest text, or return an error — never look fine
-// with the comment missing.
-func TestDeletedCommentIsRecreatedInTheSameFlushEvenWithoutErrGone(t *testing.T) {
-	r := newRemote()
-	l, _ := newLedger(r, 4096)
-	submitFlush(t, l, "first")
-	r.comments[7] = nil
-	r.plain404 = true // Update answers errors.New("HTTP 404: comment not found"), not ErrGone
-	if _, err := l.Submit(t.Context(), body("second")); err != nil {
-		t.Fatal(err)
-	}
-	err := l.Flush(t.Context())
-	if err == nil && (len(r.comments[7]) != 1 || !strings.HasSuffix(r.comments[7][0].Body, "second")) {
-		t.Errorf("Flush returned nil but comments = %v", r.comments[7])
-	}
-}
-
 func TestFlushReportsAnIntentThatDidNotLand(t *testing.T) {
 	r := newRemote()
 	r.findErr = errors.New("gh 502")
@@ -384,5 +375,91 @@ func TestRelativeEvidencePathsStillPass(t *testing.T) {
 	submitFlush(t, l, "see .moai/evidence/issue-7/audit.md and internal/agenticfactory/effect")
 	if len(r.comments[7]) != 1 {
 		t.Errorf("relative path text was refused: %v", r.comments[7])
+	}
+}
+
+func status(code int, kv ...string) error {
+	h := map[string]string{}
+	for i := 0; i+1 < len(kv); i += 2 {
+		h[kv[i]] = kv[i+1]
+	}
+	return &forge.StatusError{Status: code, Header: h}
+}
+
+func TestOnlyATypedCommentNotFoundMeansTheCommentIsGone(t *testing.T) {
+	r := newRemote()
+	l, _ := newLedger(r, 4096)
+	submitFlush(t, l, "first")
+	r.comments[7] = nil
+	r.updateErr = status(404)
+	submitFlush(t, l, "second") // typed 404 on the remembered id: marker lookup, then create
+	if len(r.comments[7]) != 1 || !strings.HasSuffix(r.comments[7][0].Body, "second") {
+		t.Errorf("comments = %v", r.comments[7])
+	}
+}
+
+func TestErrorWordingNeverDecidesThatTheCommentIsGone(t *testing.T) {
+	for _, text := range []string{"HTTP 404: comment not found", "repository not found", "request id 4040404 failed"} {
+		r := newRemote()
+		l, _ := newLedger(r, 4096)
+		submitFlush(t, l, "first")
+		r.updateErr = errors.New(text)
+		creates := r.creates
+		_, _ = l.Submit(t.Context(), body("second"))
+		if err := l.Flush(t.Context()); err == nil {
+			t.Errorf("%q: Flush hid the failure", text)
+		}
+		if r.creates != creates {
+			t.Errorf("%q: created a comment because of error wording", text)
+		}
+	}
+}
+
+func TestPermissionOrMissingRepoOnLookupOrCreateParksWithoutRetry(t *testing.T) {
+	for name, set := range map[string]func(*fakeRemote){
+		"find 403":   func(r *fakeRemote) { r.findErr = status(403, "x-ratelimit-remaining", "4000") },
+		"find 404":   func(r *fakeRemote) { r.findErr = status(404) },
+		"create 403": func(r *fakeRemote) { r.createErr = status(403, "x-ratelimit-remaining", "4000") },
+		"create 401": func(r *fakeRemote) { r.createErr = status(401) },
+	} {
+		r := newRemote()
+		set(r)
+		l, st := newLedger(r, 4096)
+		_, _ = l.Submit(t.Context(), body("v1"))
+		if err := l.Flush(t.Context()); err == nil {
+			t.Errorf("%s: no error", name)
+		}
+		for _, in := range mustList(st) {
+			if in.Status != effect.StatusParked {
+				t.Errorf("%s: status = %s, want parked", name, in.Status)
+			}
+		}
+		calls := r.finds + r.creates + r.updates
+		_ = l.Flush(t.Context())
+		_ = l.Flush(t.Context())
+		if after := r.finds + r.creates + r.updates; after != calls {
+			t.Errorf("%s: a parked intent kept calling the remote (%d -> %d)", name, calls, after)
+		}
+	}
+}
+
+func TestRateLimitedCreateWaitsForNotBefore(t *testing.T) {
+	now := time.Date(2026, 10, 29, 9, 0, 0, 0, time.UTC)
+	r := newRemote()
+	r.createErr = status(429, "retry-after", "30")
+	l, st := newLedger(r, 4096)
+	l.Backoff = forge.Backoff{MinSecondaryWait: time.Minute, Base: time.Second, Max: time.Minute, MaxAttempts: 3}
+	l.Now = func() time.Time { return now }
+	_, _ = l.Submit(t.Context(), body("v1"))
+	_ = l.Flush(t.Context())
+	got := mustList(st)[0]
+	if got.Status != effect.StatusFailed || got.NotBefore != now.Add(30*time.Second).Unix() {
+		t.Fatalf("intent = %+v", got)
+	}
+	calls := r.finds + r.creates
+	l.Now = func() time.Time { return now.Add(5 * time.Second) }
+	_ = l.Flush(t.Context())
+	if r.finds+r.creates != calls {
+		t.Error("called the remote before NotBefore")
 	}
 }

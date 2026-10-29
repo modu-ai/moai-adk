@@ -17,9 +17,11 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 	"unicode/utf8"
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/effect"
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/forge"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/monitor"
 )
 
@@ -69,6 +71,10 @@ type Ledger struct {
 	Store    effect.IntentStore
 	MaxBytes int
 	Timeouts effect.Timeouts
+	// Backoff and Now are optional. With a valid Backoff a typed rate-limit error sets the intent's
+	// NotBefore; without it a rate limit is treated like any other failed send.
+	Backoff forge.Backoff
+	Now     func() time.Time
 
 	// cache holds, per Issue, the comment id and body hash of the last write known to have landed.
 	// With it a write skips the marker list GET, and an unchanged body skips the write. It is only a
@@ -193,7 +199,7 @@ func (l *Ledger) Flush(ctx context.Context) error {
 			newest[in.Issue] = in
 		}
 	}
-	ex := &effect.Executor{Store: l.Store, Send: sender{l.Remote, l}, Lookup: lookup{l.Remote}, Timeouts: l.Timeouts}
+	ex := &effect.Executor{Store: l.Store, Send: sender{l.Remote, l}, Lookup: lookup{l.Remote}, Timeouts: l.Timeouts, Now: l.Now}
 	var first error
 	for _, in := range all {
 		if in.Kind != effect.LedgerComment {
@@ -258,7 +264,7 @@ func (s sender) send(ctx context.Context, in effect.Intent) (int64, error) {
 	}
 	c, found, err := s.r.Find(ctx, in.Issue, Marker(in.Issue))
 	if err != nil {
-		return 0, err
+		return 0, s.l.classify(err)
 	}
 	switch {
 	case found && c.Body == in.Payload:
@@ -271,18 +277,46 @@ func (s sender) send(ctx context.Context, in effect.Intent) (int64, error) {
 	}
 	nc, err := s.r.Create(ctx, in.Issue, in.Payload)
 	if err != nil {
-		return 0, err
+		return 0, s.l.classify(err)
 	}
 	return nc.ID, nil
 }
 
-// isGone reports a missing comment: the documented ErrGone, or any error that says the host answered 404.
+// isGone reports a missing comment from a typed signal only: the documented ErrGone or an HTTP 404
+// status error. Error wording never decides it ("repository not found" is a permission problem, and a
+// 404 on a private repository is indistinguishable from a deleted comment — which is why a 404 is only
+// ever followed by the marker lookup, and a lookup that is refused parks the intent).
 func isGone(err error) bool {
 	if errors.Is(err, ErrGone) {
 		return true
 	}
-	t := strings.ToLower(err.Error())
-	return strings.Contains(t, "404") || strings.Contains(t, "not found")
+	var se *forge.StatusError
+	return errors.As(err, &se) && se.Status == 404
+}
+
+// classify maps a typed failure of Find or Create to what the effect executor understands. A
+// permission or missing-repository answer parks the intent; a rate limit waits for NotBefore.
+func (l *Ledger) classify(err error) error {
+	now := time.Now()
+	if l.Now != nil {
+		now = l.Now()
+	}
+	var se *forge.StatusError
+	if !errors.As(err, &se) {
+		return err
+	}
+	if l.Backoff.Validate() == nil {
+		if v, ok := forge.ClassifyError(err, now, l.Backoff, 0); ok {
+			if mapped := forge.EffectError(v); mapped != nil {
+				return mapped
+			}
+		}
+	}
+	switch se.Status {
+	case 401, 403, 404:
+		return fmt.Errorf("%w: http %d", effect.ErrDenied, se.Status)
+	}
+	return err
 }
 
 type lookup struct{ r Remote }
@@ -343,8 +377,5 @@ func (g GHRemote) Update(ctx context.Context, issue int, id int64, body string) 
 		return errors.New("ctxledger: update needs a comment id")
 	}
 	_, err := g.Run(ctx, "api", "-X", "PATCH", fmt.Sprintf("repos/%s/issues/comments/%d", g.Repo, id), "-f", "body="+body)
-	if err != nil && (strings.Contains(err.Error(), "404") || strings.Contains(strings.ToLower(err.Error()), "not found")) {
-		return ErrGone
-	}
-	return err
+	return err // a Runner reports HTTP failures as *forge.StatusError; isGone reads the status
 }
