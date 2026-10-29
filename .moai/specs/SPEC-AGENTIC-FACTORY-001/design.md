@@ -151,7 +151,7 @@ GitHub Issue (업무 필드의 권위: 제목·수용 기준·우선순위·의�
 |---|---|---|---|---|---|
 | E01 | READY | claim | 채택 계약·의존·scope·예산, 활성 owner 없음, 준비 receipt와 READY ACK(§4.2) | BUILDING/SPEC. epoch·attempt·예약을 원자적으로 확정 | ControlService(dispatcher) |
 | E02 | READY | 의존 미완료 | 원격 의존 증거 | READY + PARKED `dependency` | ControlService |
-| E03 | BUILDING | PR 인계 | PR 원격 HEAD/base, 계약, SPEC, task 결과, 검사 상태, 원 writer, leader 수락 receipt, quiescence, 보존 확인(§4.8 PRHandoff) | REVIEWING. agent claim·slot 반환, 책임은 agent에 남음(0.6.7 리더 결정. S46 문언은 "종결 책임 leader로" — spec.md §H 0.6.7) | ControlService(agent, leader) |
+| E03 | BUILDING | PR 인계 | PR 원격 HEAD/base, 계약, SPEC, task 결과, 검사 상태, 원 writer, leader 수락 receipt, quiescence, 보존 확인(§4.8 PRHandoff) | REVIEWING. 책임은 agent(Holder)에 남음. 새 Issue를 받을지는 acquire 검사가 판정 — 책임과 실행 자리는 따로 있는 두 자원이 아니며 효과로 읽는다(0.6.7 리더 판정, 리더 세션 경유). S46 문언: "종결 책임 leader로, agent claim·slot 반환" — spec.md §H 0.6.7 | ControlService(agent, leader) |
 | E04 | BUILDING | heartbeat·stop 불명 | incarnation 확인, quiescence 부족 | 같은 단계 + PARKED `stop_unknown` | ControlService |
 | E05 | BUILDING/REVIEWING | 안전 인계 | process·tool·원격 quiescence, 잔여 send·write 정리, 원본 보존 | 새 epoch·attempt로 BUILDING, 보존 후 재검증 | ControlService |
 | E06 | REVIEWING | 수리 결정 | finding·예산, 원 Issue·branch의 배타 owner, scope 재예약, 기존 writer 종료 | BUILDING/FIX, 새 attempt. 그 Issue의 책임 agent에 배차(0.6.7 리더 결정. S46 문언은 "가용 agent에 배차" — spec.md §H 0.6.7), 그 agent의 다른 Issue를 덮어쓰지 않음 | ControlService(leader) |
@@ -166,7 +166,7 @@ GitHub Issue (업무 필드의 권위: 제목·수용 기준·우선순위·의�
 | E15 | READY/BUILDING/REVIEWING | 사용자 취소 | 새 허가 즉시 차단, 모든 writer·effect 안전 정리 | CANCELLED(정리 불명이면 현 단계 + PARKED) | ControlService(사용자) |
 | E16 | MERGING | 취소 요청 | sender 잔여 send 제거 + queue·원격 효과 확인 | CANCELLED 또는 MERGING + PARKED `unknown-effect` | ControlService(사용자) |
 | E17 | MERGING/DONE | 취소 뒤 병합 관측 | provider 병합 커밋 확인 | 통합 사실 보존, 후속 결정 별도. 자동 revert 없음 | ControlService |
-| E18 | 비종결 | 계약·설정·정책 변경 | proposed/adopted 차이, revocation 범위 | 현 단계 + PARKED `contract-change` | ControlService |
+| E18 | 비종결 | 계약·설정·정책 변경. 이어 승인된 revision 채택(adopt) | proposed/adopted 차이, revocation 범위. 채택 간선은 그 revision이 승인되었다는 증거가 있어야만 일어남 | 현 단계 + PARKED `contract-change`. 채택: BUILDING/FIX + PARKED `contract-change`에서 승인된 revision을 채택하면 BUILDING/SPEC, owner·receipt·epoch 유지(0.6.7 리더 결정, 리더 세션 경유. 정본 대조 안 함. 구현 lane-18 `core/transition.go` 137~138행, runner `AdoptRevision` — 리더 전달, 이 작성자는 다시 읽지 않음. spec.md §G.1 OD-16) | ControlService |
 | E19 | 비종결 | quota·권한·예산 차단 | §4.5 분류 결과 | 현 단계 + PARKED(분류 값), 재개 조건 기록 | ControlService |
 | E20 | PARKED | 재개 | 그 사유의 재개 조건 전부 | overlay 해제, 단계·owner 불변 | ControlService |
 | E21 | DONE/CANCELLED | 늦은 명령·결과 | id·epoch·receipt 확인 | no-op 또는 거절 | ControlService |
