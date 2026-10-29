@@ -165,3 +165,26 @@ func TestNoDestructiveActionExists(t *testing.T) {
 		}
 	}
 }
+
+func TestOpenPRMissingFromRecordIsReportedNotActedOn(t *testing.T) {
+	rep := Reconcile(context.Background(), &fakeProber{act: Actual{Liveness: Live, WorktreeHead: headA, Delivery: effect.Executed, PRNumber: 55}},
+		Recorded{Issue: 7, HeadSHA: headA, Delivery: effect.Executed, State: "implementing"})
+	if !has(rep, KindPRUnrecorded) {
+		t.Fatalf("kinds = %v", kinds(rep))
+	}
+	for _, d := range rep.Divergences {
+		if d.Action != ActionNone {
+			t.Errorf("%s offered action %s", d.Kind, d.Action)
+		}
+	}
+}
+
+func TestMergedPRWhileRecordNotLandingIsReported(t *testing.T) {
+	for state, want := range map[string]bool{"implementing": true, "verifying": true, "ready": true, "landing": false, "done": false} {
+		rep := Reconcile(context.Background(), &fakeProber{act: Actual{Liveness: Dead, WorktreeHead: headA, Delivery: effect.Executed, PRNumber: 55, PRMerged: true}},
+			Recorded{Issue: 7, HeadSHA: headA, Delivery: effect.Executed, State: state, PRNumber: 55})
+		if got := has(rep, KindMergedUnrecorded); got != want {
+			t.Errorf("state %s: merged-unrecorded = %v, want %v", state, got, want)
+		}
+	}
+}

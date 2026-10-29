@@ -29,6 +29,8 @@ type ClaimRow struct {
 	Project         string
 	Issue           int
 	Owner           string
+	AgentName       string // display name, e.g. agent-3; not an identity
+	SessionID       string // immutable session id; the identity
 	State           string
 	Stage           string
 	Attempt         int
@@ -77,6 +79,8 @@ type Row struct {
 	Issue   int
 
 	Owner           Field[string]
+	Agent           Field[string] `json:"agent"`
+	SessionID       Field[string] `json:"session_id"`
 	State           Field[string]
 	Stage           Field[string]
 	Attempt         Field[int]
@@ -89,6 +93,11 @@ type Row struct {
 	Checks          Field[[]CheckRun]
 	NextAction      Field[string]
 
+	PR Field[PRStatus] `json:"pr"`
+	// Completed is true only when the claim state is done AND the PR is merged AND the Issue is
+	// closed. An open or merely merged PR is never completion.
+	Completed bool `json:"completed"`
+
 	// ChecksStale is set when any returned check ran against a HEAD other than the claim's HEAD.
 	ChecksStale bool
 }
@@ -99,6 +108,9 @@ type Collector struct {
 	Remote RemoteReader
 	Ledger LedgerReader
 	Now    func() time.Time
+
+	PRs          PRReader // optional; nil leaves PR fields unconfirmed
+	BacklogLimit int      // open-PR cap; 0 = no cap configured
 }
 
 // Collect returns one row per Issue, in the order given.
@@ -117,6 +129,8 @@ func (c *Collector) row(ctx context.Context, issue int) Row {
 	if err == nil {
 		r.Project = cr.Project
 		r.Owner = textField("owner", cr.Owner, SrcClaimStore, at)
+		r.Agent = textField("agent", cr.AgentName, SrcClaimStore, at)
+		r.SessionID = idField(cr.SessionID, SrcClaimStore, at)
 		r.State = textField("state", cr.State, SrcClaimStore, at)
 		r.Stage = textField("stage", cr.Stage, SrcClaimStore, at)
 		r.Attempt = Field[int]{cr.Attempt, SrcClaimStore, at, true, false}
@@ -128,6 +142,7 @@ func (c *Collector) row(ctx context.Context, issue int) Row {
 		r.MirrorState = textField("mirror_state", cr.MirrorState, SrcClaimStore, at)
 	} else {
 		r.Owner.Source, r.State.Source, r.Stage.Source = SrcClaimStore, SrcClaimStore, SrcClaimStore
+		r.Agent.Source, r.SessionID.Source = SrcClaimStore, SrcClaimStore
 		r.Attempt.Source, r.Epoch.Source, r.HeadSHA.Source = SrcClaimStore, SrcClaimStore, SrcClaimStore
 		r.LastCheckedAt.Source, r.BlockReason.Source = SrcClaimStore, SrcClaimStore
 		r.ResumeCondition.Source, r.MirrorState.Source = SrcClaimStore, SrcClaimStore
@@ -149,6 +164,7 @@ func (c *Collector) row(ctx context.Context, issue int) Row {
 	if next, lerr := c.Ledger.NextAction(ctx, issue); lerr == nil {
 		r.NextAction = textField("next_action", next, SrcLedger, at)
 	}
+	c.fillPR(ctx, &r, at)
 	return r
 }
 
@@ -159,4 +175,18 @@ func textField(_ string, s string, src Source, at time.Time) Field[string] {
 		return Field[string]{Source: src, ReadAt: at, Confirmed: true, Redacted: true}
 	}
 	return Field[string]{Value: out, Source: src, ReadAt: at, Confirmed: true, Redacted: masked}
+}
+
+// idField carries an identifier verbatim when it is a UUID; anything else goes through textField.
+func idField(s string, src Source, at time.Time) Field[string] {
+	if uuidRe.MatchString(s) {
+		return Field[string]{Value: s, Source: src, ReadAt: at, Confirmed: true}
+	}
+	return textField("session_id", s, src, at)
+}
+
+// SameIdentity judges identity by session id alone. The display name never decides, and an
+// unconfirmed or empty session id never matches anything.
+func SameIdentity(a, b Row) bool {
+	return a.SessionID.Confirmed && b.SessionID.Confirmed && a.SessionID.Value != "" && a.SessionID.Value == b.SessionID.Value
 }

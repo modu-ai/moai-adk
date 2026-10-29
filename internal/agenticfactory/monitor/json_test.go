@@ -12,7 +12,7 @@ func TestViewJSONIsStableAndCarriesSourceAndConfirmation(t *testing.T) {
 		fakeRemote{checks: []CheckRun{{Name: "build", Conclusion: "success", HeadSHA: head}}},
 		fakeLedger{next: "wait"},
 	)
-	b, err := MarshalView(c.Collect(t.Context(), []int{7, 8}))
+	b, err := MarshalView(c.View(t.Context(), []int{7, 8}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -31,7 +31,7 @@ func TestViewJSONIsStableAndCarriesSourceAndConfirmation(t *testing.T) {
 			t.Errorf("json lacks %s", want)
 		}
 	}
-	b2, _ := MarshalView(c.Collect(t.Context(), []int{7, 8}))
+	b2, _ := MarshalView(c.View(t.Context(), []int{7, 8}))
 	if string(b) != string(b2) {
 		t.Error("output not deterministic")
 	}
@@ -39,7 +39,7 @@ func TestViewJSONIsStableAndCarriesSourceAndConfirmation(t *testing.T) {
 
 func TestViewJSONNeverLeaksSecret(t *testing.T) {
 	c := collector(fakeClaims{rows: map[int]ClaimRow{7: {Issue: 7, ResumeCondition: "GITHUB_TOKEN=abc123def456ghi789"}}}, fakeRemote{}, fakeLedger{})
-	b, _ := MarshalView(c.Collect(t.Context(), []int{7}))
+	b, _ := MarshalView(c.View(t.Context(), []int{7}))
 	if strings.Contains(string(b), "abc123def456ghi789") {
 		t.Errorf("secret in json: %s", b)
 	}

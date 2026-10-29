@@ -30,6 +30,8 @@ type Recorded struct {
 	LeaseExpired    bool
 	Delivery        effect.Stage
 	PendingDispatch string // a dispatch waiting to be sent for this Issue, if any
+	State           string // recorded execution state (queued ... done)
+	PRNumber        int    // PR the record knows about, 0 if none
 }
 
 // Actual is what a read-only probe observed.
@@ -39,6 +41,8 @@ type Actual struct {
 	RemoteHead        string
 	Delivery          effect.Stage
 	ActiveDispatchIDs []string // dispatches that already have a live attempt or are undelivered
+	PRNumber          int      // PR found on the remote for this Issue, 0 if none
+	PRMerged          bool
 }
 
 // Prober observes actual execution. It must not change anything.
@@ -56,6 +60,8 @@ const (
 	KindRecordBehind      Kind = "record-behind-actual"
 	KindRecordAhead       Kind = "record-ahead-of-actual"
 	KindDuplicateDispatch Kind = "duplicate-dispatch"
+	KindPRUnrecorded      Kind = "pr-not-in-record"
+	KindMergedUnrecorded  Kind = "merged-not-in-record"
 )
 
 // Action is a recommendation for the control service. There is deliberately no action that kills a
@@ -110,6 +116,13 @@ func Reconcile(ctx context.Context, p Prober, rec Recorded) Report {
 
 	if rec.PendingDispatch != "" && len(act.ActiveDispatchIDs) > 0 && !contains(act.ActiveDispatchIDs, rec.PendingDispatch) {
 		add(KindDuplicateDispatch, ActionNone, "dispatch %s refused: collides with active dispatch %s", rec.PendingDispatch, act.ActiveDispatchIDs[0])
+	}
+
+	if act.PRNumber > 0 && act.PRNumber != rec.PRNumber {
+		add(KindPRUnrecorded, ActionNone, "remote has PR #%d, record has #%d", act.PRNumber, rec.PRNumber)
+	}
+	if act.PRMerged && rec.State != "landing" && rec.State != "done" {
+		add(KindMergedUnrecorded, ActionNone, "PR #%d is merged but record state is %q; completion needs the done evidence, not the merge alone", act.PRNumber, rec.State)
 	}
 	return Report{Divergences: out}
 }
