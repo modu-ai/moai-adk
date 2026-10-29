@@ -221,3 +221,89 @@ func TestRecordRows_RepairNeededAndPRURL(t *testing.T) {
 		t.Errorf("a PR URL is shown as text only, never as a link, and a non-https value never reaches the page")
 	}
 }
+
+// seedIntegrityRecords adds records for the position-integrity cases: a record
+// whose stage could not be derived, and records whose mirror is not current.
+func seedIntegrityRecords(t *testing.T, dir string) {
+	t.Helper()
+	sha := core.HeadSHA(strings.Repeat("a", 40))
+	// 78: the stored wait is invalid (no owner), so the S46 position cannot be
+	// derived and Stage stays empty although the file carries a park and a gate.
+	writeRecord(t, dir, claim.Record{Issue: 78, Holder: "s-78", AgentName: "agent-10", State: core.StateLanding,
+		Gate: &core.Gate{Reason: core.BlockReason("checks-failed"), Detail: "lint red", Resume: "checks green"},
+		Wait: &core.Wait{NextAction: "x", Diagnosis: "y", MaxRetries: 2, Escalate: "leader", RecheckAt: time.Now()}})
+	// 79 / 80: the cache of the authoritative copy is stale / blocked.
+	writeRecord(t, dir, claim.Record{Issue: 79, Holder: "s-79", AgentName: "agent-11", State: core.StateLanding, Head: sha, Mirror: "stale",
+		Receipt: &claim.Receipt{HandoffID: "h9", LeaderAccepted: true, PR: 509, Head: sha}})
+	writeRecord(t, dir, claim.Record{Issue: 80, Holder: "s-80", AgentName: "agent-12", State: core.StateLanding, Head: sha, Mirror: "blocked(auth)",
+		Receipt: &claim.Receipt{HandoffID: "h10", LeaderAccepted: true, PR: 510, Head: sha}})
+}
+
+func TestRecordRows_UnderivedPositionIsNotAnAbsence(t *testing.T) {
+	s, dir := recordStore(t, 9)
+	seedRecords(t, dir)
+	seedIntegrityRecords(t, dir)
+	by := map[int]PRTrackRowVM{}
+	for _, r := range recordApp(t, s).buildPRTracking(context.Background()).Rows {
+		by[r.Issue] = r
+	}
+	r := by[78]
+	for name, got := range map[string]string{"park": r.Park, "gate": r.Gate, "refusal": r.Refusal, "wait": r.Wait.State, "stage": r.Stage} {
+		if got != prGap {
+			t.Errorf("78 %s = %q: a record whose position could not be derived must not claim 'none' or a value", name, got)
+		}
+	}
+	// The control: a healthy record with no park really has none.
+	if by[74].Park != "none" || by[74].Refusal != "none" {
+		t.Errorf("a derived position with nothing recorded is 'none': %+v", by[74])
+	}
+}
+
+func TestRecordRows_MirrorState(t *testing.T) {
+	s, dir := recordStore(t, 9)
+	seedRecords(t, dir)
+	seedIntegrityRecords(t, dir)
+	by := map[int]PRTrackRowVM{}
+	for _, r := range recordApp(t, s).buildPRTracking(context.Background()).Rows {
+		by[r.Issue] = r
+	}
+	if by[74].Mirror != prGap {
+		t.Errorf("a record with no mirror state shows a gap: %q", by[74].Mirror)
+	}
+	for _, issue := range []int{79, 80} {
+		r := by[issue]
+		if r.Mirror == prGap {
+			t.Errorf("%d: the mirror state must be shown", issue)
+		}
+		if r.State != prGap || r.Stage != prGap || r.Head != prGap || r.PR != prGap || r.Completed {
+			t.Errorf("%d: a stale or blocked mirror must not present the cached position as confirmed: %+v", issue, r)
+		}
+		if r.Agent == prGap {
+			t.Errorf("%d: identity is not a mirrored position and stays shown", issue)
+		}
+	}
+	if by[79].Mirror != "stale" || by[80].Mirror != "blocked(auth)" {
+		t.Errorf("mirror = %q / %q", by[79].Mirror, by[80].Mirror)
+	}
+}
+
+func TestRecordRows_RepairBacklogFromPersistedFacts(t *testing.T) {
+	s, dir := recordStore(t, 9)
+	seedRecords(t, dir) // 75 has repair evidence, 76 the repair signal; 73 is done
+	writeRecord(t, dir, claim.Record{Issue: 81, State: core.StateDone, Closed: true, Merged: true, RepairNeeded: "old",
+		Receipt: &claim.Receipt{HandoffID: "h11", PR: 511, Head: core.HeadSHA(strings.Repeat("a", 40))}})
+	vm := recordApp(t, s).buildPRTracking(context.Background())
+	if vm.Backlog.RepairBacklog != 2 || !vm.Backlog.RepairKnown {
+		t.Errorf("repair backlog = %+v: open PRs with the signal or the evidence, done excluded", vm.Backlog)
+	}
+	if vm.Backlog.QueueKnown {
+		t.Errorf("the other queue figures are still not provided: %+v", vm.Backlog)
+	}
+	if !strings.Contains(prMeta(vm), "repair 2") || queueFigure(vm.Backlog, vm.Backlog.AwaitingHandoff) != "not provided" {
+		t.Errorf("meta = %q", prMeta(vm))
+	}
+	// A Collector-shaped JSON without the record key keeps repair 'not provided'.
+	if got := prMeta(prApp(t, prRowsJSON, nil).buildPRTracking(context.Background())); !strings.Contains(got, "repair 3") {
+		t.Errorf("collector backlog must be unchanged: %q", got)
+	}
+}

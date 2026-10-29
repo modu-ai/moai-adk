@@ -41,6 +41,8 @@ type PRTrackRowVM struct {
 	// Wait is the agent's wait record, shown beside the position and never
 	// changing it.
 	Wait WaitVM
+	// Mirror is the claim cache's state (current | stale | blocked(<reason>)).
+	Mirror string
 	// PRURL is the URL the PR receipt recorded, as text only (never a link).
 	PRURL string
 }
@@ -53,7 +55,10 @@ type PRBacklogVM struct {
 	State string // within-limit | at-limit | over-limit | no-limit-set
 	// QueueKnown mirrors the monitor's queue_known. When false the three figures
 	// below are zero placeholders and render as "not provided", never as 0.
-	QueueKnown        bool
+	QueueKnown bool
+	// RepairKnown is set when the repair figure was counted from persisted
+	// records although the rest of the queue was not provided.
+	RepairKnown       bool
 	AwaitingHandoff   int
 	RepairBacklog     int
 	OldestWaitSeconds int
@@ -105,7 +110,8 @@ type monRow struct {
 		Reason string `json:"reason"`
 		Detail string `json:"detail"`
 	}] `json:"refusal"`
-	Wait monField[*monWait] `json:"wait"`
+	Wait        monField[*monWait] `json:"wait"`
+	MirrorState monField[string]
 }
 
 type monView struct {
@@ -122,6 +128,8 @@ type monView struct {
 	Intake monField[[]monIntakeItem] `json:"intake"`
 	// PRURLs is read from the record source only (see record_rows.go).
 	PRURLs map[string]string `json:"web_pr_urls"`
+	// RepairBacklog is counted from persisted records (record source only).
+	RepairBacklog *int `json:"web_repair_backlog"`
 }
 
 func (a *app) buildPRTracking(ctx context.Context) PRTrackingVM {
@@ -143,6 +151,9 @@ func (a *app) buildPRTracking(ctx context.Context) PRTrackingVM {
 			Known: true, Open: b.Open, Limit: b.Limit, State: b.State, QueueKnown: b.QueueKnown,
 			AwaitingHandoff: b.AwaitingHandoff, RepairBacklog: b.RepairBacklog, OldestWaitSeconds: b.OldestWaitSeconds,
 		}
+	}
+	if doc.RepairBacklog != nil {
+		vm.Backlog.RepairBacklog, vm.Backlog.RepairKnown = *doc.RepairBacklog, true
 	}
 	vm.Intake = buildIntake(doc.Intake)
 	for _, r := range doc.Rows {
@@ -177,6 +188,7 @@ func (a *app) buildPRTracking(ctx context.Context) PRTrackingVM {
 		row.Ledger = a.buildContextModel(ctx, r.Issue)
 		row.Wait = buildWait(r.Wait)
 		row.PRURL = prURLText(doc.PRURLs[itoa(r.Issue)])
+		row.Mirror = gapText(r.MirrorState)
 		vm.Rows = append(vm.Rows, row)
 	}
 	return vm
@@ -285,10 +297,10 @@ func prMeta(vm PRTrackingVM) string {
 	case !vm.Backlog.Known:
 		return "backlog unknown"
 	case vm.Backlog.State == "no-limit-set":
-		return "open PRs " + itoa(vm.Backlog.Open) + " · no limit set · repair " + queueFigure(vm.Backlog, vm.Backlog.RepairBacklog)
+		return "open PRs " + itoa(vm.Backlog.Open) + " · no limit set · repair " + repairFigure(vm.Backlog)
 	}
 	return "open PRs " + itoa(vm.Backlog.Open) + "/" + itoa(vm.Backlog.Limit) + " · " + vm.Backlog.State +
-		" · repair " + queueFigure(vm.Backlog, vm.Backlog.RepairBacklog)
+		" · repair " + repairFigure(vm.Backlog)
 }
 
 // prURLText accepts only an https URL, shown as text; anything else is a gap.
@@ -297,4 +309,13 @@ func prURLText(u string) string {
 		return prGap
 	}
 	return u
+}
+
+// repairFigure is the repair backlog: counted from records when the record
+// source supplied it, else the monitor's queue figure, else "not provided".
+func repairFigure(b PRBacklogVM) string {
+	if b.RepairKnown {
+		return itoa(b.RepairBacklog)
+	}
+	return queueFigure(b, b.RepairBacklog)
 }

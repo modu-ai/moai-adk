@@ -38,6 +38,9 @@ type RecordSource interface {
 type recordView struct {
 	monitor.View
 	PRURLs map[string]string `json:"web_pr_urls,omitempty"`
+	// RepairBacklog counts open PRs that carry the repair signal or the repair
+	// evidence; nil when not counted. Also a web-local key.
+	RepairBacklog *int `json:"web_repair_backlog,omitempty"`
 }
 
 // RecordRowsFrom builds a MonitorRows source from persisted claim records. A
@@ -55,6 +58,7 @@ func RecordRowsFrom(s RecordSource) func(context.Context) ([]byte, error) {
 		view := monitor.View{Rows: make([]monitor.Row, 0, len(recs))}
 		open := 0
 		urls := map[string]string{}
+		repair := 0
 		for _, r := range recs {
 			view.Rows = append(view.Rows, recordRow(r, at))
 			if r.Receipt != nil && r.Receipt.PRURL != "" {
@@ -62,11 +66,14 @@ func RecordRowsFrom(s RecordSource) func(context.Context) ([]byte, error) {
 			}
 			if r.Receipt != nil && r.State != core.StateDone {
 				open++
+				if r.RepairNeeded != "" || r.Repair != nil {
+					repair++
+				}
 			}
 		}
 		limit := s.MaxOpenPRs()
 		view.Backlog = recField(monitor.Backlog{Open: open, Limit: limit, State: recBacklogState(open, limit)}, at, true)
-		out := recordView{View: view, PRURLs: urls}
+		out := recordView{View: view, PRURLs: urls, RepairBacklog: &repair}
 		return json.Marshal(out)
 	}
 }
@@ -75,36 +82,46 @@ func recField[T any](v T, at time.Time, confirmed bool) monitor.Field[T] {
 	return monitor.Field[T]{Value: v, Source: monitor.SrcClaimStore, ReadAt: at, Confirmed: confirmed}
 }
 
-// recText masks a persisted text the way the monitor masks claim texts.
+// recText masks a persisted text with core.Redact. It is not the monitor's own
+// mask (which also drops opaque blobs and marks the Field redacted); that
+// function is unexported, and this stays until the monitor publishes it.
 func recText(s string) string {
 	red, _ := core.Redact(s)
 	return red
 }
 
 func recordRow(r claim.Record, at time.Time) monitor.Row {
+	// The cached position is shown as confirmed only while the cache matches the
+	// authoritative copy (design §8.1: a stale or blocked mirror confirms
+	// nothing it carries), and the S46 detail only when the position could be
+	// derived: a record with no Stage says nothing about park, gate, refusal or
+	// wait, and an absent value there would be an invented "none".
+	fresh := r.Mirror == "" || r.Mirror == "current"
+	derived := fresh && r.Stage != ""
 	row := monitor.Row{
-		Issue:     r.Issue,
-		Agent:     recField(r.AgentName, at, r.AgentName != ""),
-		SessionID: recField(r.Holder, at, r.Holder != ""),
-		State:     recField(string(r.State), at, r.State != ""),
-		Stage:     recField(string(r.Stage), at, r.Stage != ""),
-		SubStage:  recField(string(r.Sub), at, r.Sub != ""),
-		Completed: r.State == core.StateDone && r.Merged && r.Closed,
+		Issue:       r.Issue,
+		Agent:       recField(r.AgentName, at, r.AgentName != ""),
+		SessionID:   recField(r.Holder, at, r.Holder != ""),
+		State:       recField(string(r.State), at, fresh && r.State != ""),
+		Stage:       recField(string(r.Stage), at, derived),
+		SubStage:    recField(string(r.Sub), at, derived && r.Sub != ""),
+		MirrorState: recField(r.Mirror, at, r.Mirror != ""),
+		Completed:   fresh && r.State == core.StateDone && r.Merged && r.Closed,
 	}
-	row.Park = recField[*monitor.ParkInfo](nil, at, true)
-	if p := r.Park; p != nil {
+	row.Park = recField[*monitor.ParkInfo](nil, at, derived)
+	if p := r.Park; derived && p != nil {
 		row.Park.Value = &monitor.ParkInfo{Reason: string(p.Reason), Evidence: recText(p.Evidence), Resume: recText(p.Resume)}
 	}
-	row.Gate = recField[*monitor.GateInfo](nil, at, true)
-	if g := r.Gate; g != nil {
+	row.Gate = recField[*monitor.GateInfo](nil, at, derived)
+	if g := r.Gate; derived && g != nil {
 		row.Gate.Value = &monitor.GateInfo{Reason: string(g.Reason), Detail: recText(g.Detail), Resume: recText(g.Resume), Head: string(g.Head)}
 	}
-	row.Refusal = recField[*monitor.RefusalInfo](nil, at, true)
-	if f := r.Refusal; f != nil {
+	row.Refusal = recField[*monitor.RefusalInfo](nil, at, derived)
+	if f := r.Refusal; derived && f != nil {
 		row.Refusal.Value = &monitor.RefusalInfo{Reason: string(f.Reason), Detail: recText(f.Detail)}
 	}
-	row.Wait = recField[*monitor.WaitInfo](nil, at, true)
-	if w := r.Wait; w != nil {
+	row.Wait = recField[*monitor.WaitInfo](nil, at, derived)
+	if w := r.Wait; derived && w != nil {
 		row.Wait.Value = &monitor.WaitInfo{
 			Owner: w.Owner, NextAction: recText(w.NextAction), RecheckAt: w.RecheckAt, Diagnosis: recText(w.Diagnosis),
 			Retries: w.Retries, MaxRetries: w.MaxRetries, EscalateTo: w.Escalate, Escalated: w.Escalated,
@@ -114,8 +131,8 @@ func recordRow(r claim.Record, at time.Time) monitor.Row {
 	if r.Receipt != nil && r.Receipt.Head != "" {
 		head = string(r.Receipt.Head)
 	}
-	row.HeadSHA = recField(head, at, head != "")
-	if rc := r.Receipt; rc != nil {
+	row.HeadSHA = recField(head, at, fresh && head != "")
+	if rc := r.Receipt; fresh && rc != nil {
 		row.PR = recField(monitor.PRStatus{Number: rc.PR, Phase: recordPhase(r)}, at, true)
 	}
 	return row
