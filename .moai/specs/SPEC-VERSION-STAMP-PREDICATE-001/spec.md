@@ -316,7 +316,15 @@ exit 0
 
 **REQ-VSP-001** — The check shall derive the authoritative version token from the `Version`
 default in `pkg/version/version.go`, read from the working tree, and shall use exactly that
-token as its sweep predicate. The check shall not sweep on the general `vX.Y.Z` shape.
+token as its sweep predicate, subject to the Go checksum context refinement below. The check
+shall not sweep on the general `vX.Y.Z` shape.
+
+**Context refinement for Go checksum records** — In the root `go.sum` only, the authoritative
+string in the version field of a structurally valid dependency checksum record is a dependency
+version, not a product stamp. Validate the module/version pair and SHA-256 checksum encoding;
+ignore only that version-field occurrence. Examine every other occurrence, malformed record, and
+all other paths normally. This refines REQ-VSP-001/002/003 without excluding `go.sum` from the
+population or hiding product-stamp text elsewhere in it.
 
 **REQ-VSP-002** — An exact-path registry shall name every swept file carrying the authoritative
 token, and shall classify each entry as either `stamp` or `prose`. An entry shall be classified
@@ -326,8 +334,8 @@ directory prefix, and no wildcard segment. The registry shall be permitted to na
 does not carry the authoritative token — a prose citation whose release has aged out remains a
 correct entry — so the registry is a superset of the sweep result and never a subset of it.
 
-**REQ-VSP-003** — When the sweep finds a file carrying the authoritative token that the
-registry does not name, the check shall fail and shall name that path in its failure output.
+**REQ-VSP-003** — When the sweep finds a file carrying the authoritative token outside the
+dependency-version context specified above that the registry does not name, the check shall fail and shall name that path in its failure output.
 
 **REQ-VSP-004** — When a registry entry classified `stamp` does not carry the authoritative
 token, the check shall fail and shall name that path. Entries classified `prose` shall not be
