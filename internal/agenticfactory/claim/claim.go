@@ -211,6 +211,9 @@ type Store struct {
 	// sync makes a write durable before it is reported; the zero value syncs
 	// for real, tests inject failures.
 	sync syncer
+	// afterScan is a test seam: it runs between the check of the other records
+	// and the reservation in BindWorktree.
+	afterScan func()
 }
 
 const (

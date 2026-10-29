@@ -1,6 +1,10 @@
 package claim
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -81,9 +85,27 @@ func (s *Store) MarkRepairNeeded(i core.IssueRef, reason string) (Record, error)
 	return out, nil
 }
 
+// worktreeReservation is the document that holds a path for one Issue.
+type worktreeReservation struct {
+	Path  string `json:"path"`
+	Issue int    `json:"issue"`
+}
+
+func worktreeKey(path string) string {
+	sum := sha256.Sum256([]byte(path))
+	return "wt-" + hex.EncodeToString(sum[:])[:40]
+}
+
 // BindWorktree records the write worktree of an Issue's work. It must differ
 // from the worktree of every other open Issue (an open PR's receipt worktree, or
-// one another Issue is bound to).
+// one another Issue is bound to). Reading the other records cannot exclude two
+// lanes binding at the same moment, so the path is also reserved by a
+// create-only document write ("worktree" kind), which the store already makes
+// atomic across processes (the documents lock, and the authority's compare and
+// swap when one is attached): the first writer wins, the other gets
+// ErrWorktreeInUse. A reservation whose Issue no longer uses the path (done, or
+// moved to another path) is stale and is taken over by compare and swap on the
+// revision that was read.
 func (s *Store) BindWorktree(i core.IssueRef, holder string, epoch int64, path string) (Record, error) {
 	if strings.TrimSpace(path) == "" {
 		return Record{}, fmt.Errorf("%w: a worktree path is required", core.ErrEvidenceIncomplete)
@@ -100,10 +122,74 @@ func (s *Store) BindWorktree(i core.IssueRef, holder string, epoch int64, path s
 			return Record{}, fmt.Errorf("%w: %s is used by issue-%d", core.ErrWorktreeInUse, path, r.Issue)
 		}
 	}
+	if s.afterScan != nil {
+		s.afterScan()
+	}
+	if err := s.reserveWorktree(i, path); err != nil {
+		return Record{}, err
+	}
 	return s.Update(i, holder, epoch, func(rec *Record) error {
 		rec.Worktree = path
 		return nil
 	})
+}
+
+// reserveWorktree takes the path for i, or reports who has it.
+func (s *Store) reserveWorktree(i core.IssueRef, path string) error {
+	name := worktreeKey(path)
+	data, err := json.Marshal(worktreeReservation{Path: path, Issue: i.Number})
+	if err != nil {
+		return err
+	}
+	for try := 0; try < 4; try++ {
+		_, err := s.PutDoc("worktree", name, 0, data)
+		if err == nil {
+			return nil
+		}
+		if !errors.Is(err, core.ErrRevisionConflict) {
+			return err
+		}
+		cur, gerr := s.GetDoc("worktree", name)
+		if errors.Is(gerr, core.ErrNotHeld) {
+			continue // released between the two reads: try to create it again
+		}
+		if gerr != nil {
+			return gerr
+		}
+		var held worktreeReservation
+		if err := json.Unmarshal(cur.Data, &held); err != nil {
+			return fmt.Errorf("%w: corrupt worktree reservation %s: %v", core.ErrStoreUnavailable, name, err)
+		}
+		if held.Issue == i.Number {
+			return nil // already ours
+		}
+		if s.usesWorktree(held) {
+			return fmt.Errorf("%w: %s is reserved by issue-%d", core.ErrWorktreeInUse, path, held.Issue)
+		}
+		if _, err := s.PutDoc("worktree", name, cur.Rev, data); err == nil {
+			return nil
+		} else if !errors.Is(err, core.ErrRevisionConflict) {
+			return err
+		}
+	}
+	return fmt.Errorf("%w: the reservation of %s kept changing", core.ErrBusy, path)
+}
+
+// usesWorktree reports whether the Issue that holds a reservation still works
+// in that path.
+func (s *Store) usesWorktree(h worktreeReservation) bool {
+	ref, err := core.NewIssueRef(h.Issue)
+	if err != nil {
+		return false
+	}
+	r, ok, err := s.read(ref)
+	if err != nil || !ok {
+		return err != nil // an unreadable record is not proof the path is free
+	}
+	// An Issue that has reserved the path but not yet written it to its record
+	// (Worktree empty) still holds it; only a finished Issue, or one that moved
+	// to another path, lets go.
+	return r.State != core.StateDone && (r.Worktree == "" || r.Worktree == h.Path)
 }
 
 // TakeOver moves a held Issue from a dead owner to a new one. The caller has

@@ -637,10 +637,18 @@ func (r *Runner) ReopenOwn(t Ticket, reason string, ev RepairEvidence) (claim.Re
 	})
 }
 
-// Takeover is the evidence that an owner is really gone before its Issue moves:
-// its session is confirmed gone, its writer has stopped, and what it left
-// uncommitted is preserved at PreservedRef. All four are required; a missing one
-// leaves the record as it was.
+// Takeover is the evidence that an owner is really gone before its Issue moves.
+// Contract: every field is a FACT THE CALLER SUPPLIES. Nothing in this package
+// probes the owner's process, the worktree or git; the wiring that observes them
+// (the monitor and the integration side, lanes 20 and 22) is what makes the
+// facts true, and a TakeOver call is only as sound as that observation.
+// OwnerGone: the owner's session was observed gone (not merely quiet).
+// WriterStopped: nothing can still write the branch or the worktree.
+// UncommittedPreserved and PreservedRef: what the owner left uncommitted was
+// committed or snapshotted, and PreservedRef names where. What the store does
+// check is the rest: all four are present, and the owner and epoch the decision
+// was taken about are still the recorded ones.
+// All four are required; a missing one leaves the record as it was.
 type Takeover struct {
 	OwnerGone            bool
 	WriterStopped        bool
