@@ -165,3 +165,50 @@ func (s *Store) ResumeAgent(sessionID string, number int) (core.Agent, []Record,
 	}
 	return a, owned, nil
 }
+
+// verifyAgent confirms a is still the registered holder of its number. A
+// released identity, or one whose number now belongs to another session, is
+// refused so it can never write under a name it no longer owns.
+func (s *Store) verifyAgent(a core.Agent) error {
+	cur, err := readAgentFile(s.agentPath(a.Number))
+	if errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("%w: agent-%d is not registered", core.ErrIdentityMismatch, a.Number)
+	}
+	if err != nil {
+		return err
+	}
+	if cur != a {
+		return fmt.Errorf("%w: agent-%d belongs to another session", core.ErrIdentityMismatch, a.Number)
+	}
+	return nil
+}
+
+// ReleaseAgent returns an agent number so another session can take it. Only
+// the registered session may release, and only once it holds no live claim;
+// a PR it already handed off keeps its own session id in the receipt, so
+// attribution survives the number being reused.
+func (s *Store) ReleaseAgent(sessionID string, number int) error {
+	a, err := readAgentFile(s.agentPath(number))
+	if errors.Is(err, os.ErrNotExist) {
+		return core.ErrNotHeld
+	}
+	if err != nil {
+		return err
+	}
+	if a.SessionID != sessionID {
+		return fmt.Errorf("%w: agent-%d is not session %q", core.ErrIdentityMismatch, number, sessionID)
+	}
+	recs, err := s.List()
+	if err != nil {
+		return err
+	}
+	for _, r := range recs {
+		if r.Holder == sessionID {
+			return fmt.Errorf("%w: agent-%d still holds issue-%d", core.ErrHeld, number, r.Issue)
+		}
+	}
+	if err := os.Remove(s.agentPath(number)); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("%w: %v", core.ErrStoreUnavailable, err)
+	}
+	return nil
+}

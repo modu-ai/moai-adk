@@ -59,7 +59,8 @@ type Receipt struct {
 	Worktree   string         `json:"worktree"`
 	Attempt    core.AttemptID `json:"attempt,omitempty"`
 	AttemptSeq int            `json:"attempt_seq,omitempty"`
-	Agent      string         `json:"agent,omitempty"` // display name of the agent that published the PR
+	Agent      string         `json:"agent,omitempty"`   // display name of the agent that published the PR
+	Session    string         `json:"session,omitempty"` // its session id; stays unambiguous after the number is reused
 }
 
 // Store keeps records under one directory: issue-<n>.json, guarded by
@@ -187,6 +188,9 @@ func (s *Store) Acquire(i core.IssueRef, holder, dispatch string, run core.RunID
 // AcquireFor is Acquire for a registered agent: the record stores the
 // session id as Holder and the display name separately.
 func (s *Store) AcquireFor(i core.IssueRef, a core.Agent, dispatch string, run core.RunID) (Record, error) {
+	if err := s.verifyAgent(a); err != nil {
+		return Record{}, err
+	}
 	return s.acquire(i, a.SessionID, a.DisplayName(), dispatch, run)
 }
 
@@ -242,6 +246,9 @@ func (s *Store) AcquireRepair(i core.IssueRef, holder, dispatch string, run core
 
 // AcquireRepairFor is AcquireRepair for a registered agent.
 func (s *Store) AcquireRepairFor(i core.IssueRef, a core.Agent, dispatch string, run core.RunID, branch string) (Record, error) {
+	if err := s.verifyAgent(a); err != nil {
+		return Record{}, err
+	}
 	return s.acquireRepair(i, a.SessionID, a.DisplayName(), dispatch, run, branch)
 }
 
