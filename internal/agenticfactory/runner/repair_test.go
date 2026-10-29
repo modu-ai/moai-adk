@@ -142,6 +142,10 @@ func TestAHandoffReceiptCarriesTheSpecFields(t *testing.T) {
 		"an Issue URL":       func(h *Handoff) { h.PRURL = "https://github.com/acme/widgets/issues/321" },
 		"a sub-page of a PR": func(h *Handoff) { h.PRURL = "https://github.com/acme/widgets/pull/321/files" },
 		"number only":        func(h *Handoff) { h.PRURL = "https://github.com/acme/widgets/321" },
+		"GitLab other MR":    func(h *Handoff) { h.PRURL = "https://gitlab.com/acme/widgets/-/merge_requests/322" },
+		"GitLab sub-page":    func(h *Handoff) { h.PRURL = "https://gitlab.com/acme/widgets/-/merge_requests/321/diffs" },
+		"GitLab Issue":       func(h *Handoff) { h.PRURL = "https://gitlab.com/acme/widgets/-/issues/321" },
+		"GitLab no dash":     func(h *Handoff) { h.PRURL = "https://gitlab.com/acme/widgets/merge_requests/321" },
 		"base":               func(h *Handoff) { h.Base = " " },
 		"adopted spec":       func(h *Handoff) { h.AdoptedSpec = "" },
 		"task result":        func(h *Handoff) { h.TaskResult = "" },
@@ -208,6 +212,9 @@ func TestTheReceiptURLNamesThePRItCarries(t *testing.T) {
 		"https://github.com/acme/widgets/pull/321/",
 		"https://github.com/acme/widgets/pull/321?diff=split",
 		"https://github.com/acme/widgets/pull/321#issuecomment-1",
+		"https://gitlab.com/acme/widgets/-/merge_requests/321",
+		"https://gitlab.example.org/group/sub/project/-/merge_requests/321/",
+		"https://gitlab.com/acme/widgets/-/merge_requests/321?diff=split",
 	} {
 		r, ref := newRunner(t)
 		tk := landed(t, r, ref)

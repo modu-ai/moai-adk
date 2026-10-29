@@ -61,6 +61,12 @@ func checkDoc(kind, name string) (core.Priority, error) {
 	return p, nil
 }
 
+// withDocs runs fn under the documents lock. Lock order: an Issue lock may be held
+// when this is taken (a bind or a handoff reserves a worktree inside its update),
+// and the documents lock is a leaf: nothing run under it may take the Issue,
+// requests or agent-registry lock, so the order cannot form a cycle.
+// TestTheDocumentsLockIsALeaf reads the source and fails if that stops being true.
+// UpdateDoc runs its caller's function outside the lock for the same reason.
 func (s *Store) withDocs(fn func() error) error {
 	if err := os.MkdirAll(filepath.Join(s.dir, "docs"), 0o700); err != nil {
 		return fmt.Errorf("%w: %v", core.ErrStoreUnavailable, err)

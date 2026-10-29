@@ -869,9 +869,10 @@ func (r *Runner) mayClose(issue int) string {
 }
 
 // validPRURL accepts an absolute http(s) URL with a host and no blanks whose path
-// ends in /pull/<pr>: the receipt's URL is the PR the receipt carries, not another
-// PR, an Issue or a sub-page of one. A trailing slash, a query or a fragment do
-// not change which PR it names.
+// ends in the change request's own address with the receipt's number: /pull/<pr>
+// on GitHub, /-/merge_requests/<pr> on GitLab. The receipt's URL is the PR it
+// carries, not another PR, an Issue or a sub-page of one; a trailing slash, a
+// query or a fragment do not change which PR it names.
 func validPRURL(raw string, pr int) bool {
 	if raw == "" || strings.ContainsAny(raw, " \t\r\n") {
 		return false
@@ -881,5 +882,6 @@ func validPRURL(raw string, pr int) bool {
 		return false
 	}
 	p := strings.TrimSuffix(u.Path, "/")
-	return strings.HasSuffix(p, "/pull/"+strconv.Itoa(pr))
+	n := strconv.Itoa(pr)
+	return strings.HasSuffix(p, "/pull/"+n) || strings.HasSuffix(p, "/-/merge_requests/"+n)
 }
