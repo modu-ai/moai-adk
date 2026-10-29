@@ -158,3 +158,51 @@ func TestContextModel_RedactsAndRenders(t *testing.T) {
 		t.Fatalf("api = %d (secret leaked: %v)", rec.Code, strings.Contains(rec.Body.String(), secret))
 	}
 }
+
+// TestContextModel_NilSeamIsAGapNotAnError pins the start-up contract: a
+// console started without the context source (Config.ContextModel nil, the
+// Agentic Factory not configured) renders the ledger view as the gap
+// "not provided" — not as "unreadable", not as a failed page or API call. A
+// source that exists but fails stays visibly different ("unreadable").
+func TestContextModel_NilSeamIsAGapNotAnError(t *testing.T) {
+	cases := []struct {
+		name       string
+		model      func(context.Context, int) ([]byte, error)
+		wantText   string
+		rejectText string
+	}{
+		{"nil seam", nil, "model not provided", "unreadable"},
+		{"failing seam", func(context.Context, int) ([]byte, error) { return nil, errors.New("down") }, "model model unreadable: down", ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			a := cmApp(t, tc.model)
+			m, err := a.buildMonitor(time.Now())
+			if err != nil {
+				t.Fatalf("buildMonitor: %v", err)
+			}
+			html := renderTempl(t, Monitor(tg1ShellVM(), m))
+			if !strings.Contains(html, tc.wantText) {
+				t.Errorf("monitor missing %q", tc.wantText)
+			}
+			if tc.rejectText != "" && strings.Contains(html, tc.rejectText) {
+				t.Errorf("monitor shows %q for a source that is simply not wired", tc.rejectText)
+			}
+			req := httptest.NewRequest(http.MethodGet, "/api/pr-tracking", nil)
+			req.Host = "127.0.0.1:8080"
+			rec := httptest.NewRecorder()
+			a.routes().ServeHTTP(rec, req)
+			if rec.Code != http.StatusOK {
+				t.Fatalf("api = %d", rec.Code)
+			}
+		})
+	}
+	// Nothing wired at all (no monitor rows either): the page still builds.
+	bare := newApp(Config{ProjectRoot: t.TempDir()})
+	if _, err := bare.buildMonitor(time.Now()); err != nil {
+		t.Fatalf("a console with no sources must still build: %v", err)
+	}
+	if vm := bare.buildContextModel(context.Background(), 7); vm.Known || vm.Note != "not provided" {
+		t.Fatalf("unwired model = %+v", vm)
+	}
+}
