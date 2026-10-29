@@ -50,6 +50,7 @@ var (
 var (
 	ErrTransitionInvalid  = errors.New("agenticfactory: transition not allowed from the current state")
 	ErrEvidenceIncomplete = errors.New("agenticfactory: required evidence is missing")
+	ErrRetryLimit         = errors.New("agenticfactory: the retry limit is reached, the wait escalates")
 )
 
 // ReasonFor maps an error to the block reason it records when the Issue must

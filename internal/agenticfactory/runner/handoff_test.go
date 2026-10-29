@@ -565,23 +565,41 @@ func TestReceiptKeepsTheIssueWithItsAgentUntilClosed(t *testing.T) {
 	}
 }
 
-func TestOwnerReopensItsOwnPRForRepairWithoutAnotherClaim(t *testing.T) {
+// Canon E06 (REVIEWING -> BUILDING/FIX) needs four things: the repair decision,
+// the exclusive owner, the scope reserved again and the previous writer ended.
+// The owner's reopen carries them, and without them nothing moves.
+func TestOwnerReopensItsOwnPRForRepairOnTheE06Evidence(t *testing.T) {
 	r, ref := newRunner(t)
 	tk := landed(t, r, ref)
 	if _, err := r.HandOff(tk, goodHandoff()); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := r.ReopenOwn(tk, ""); !errors.Is(err, core.ErrEvidenceIncomplete) {
-		t.Errorf("a repair reason is required: %v", err)
+	ok := RepairEvidence{ScopeReserved: true, OldWriterEnded: true}
+	if _, err := r.ReopenOwn(tk, "", ok); !errors.Is(err, core.ErrEvidenceIncomplete) {
+		t.Errorf("the repair decision is required: %v", err)
 	}
-	rec, err := r.ReopenOwn(tk, "ci failed on latest head")
+	for name, ev := range map[string]RepairEvidence{
+		"scope not reserved":   {OldWriterEnded: true},
+		"old writer not ended": {ScopeReserved: true},
+	} {
+		if _, err := r.ReopenOwn(tk, "ci failed on latest head", ev); !errors.Is(err, core.ErrEvidenceIncomplete) {
+			t.Errorf("%s: %v", name, err)
+		}
+	}
+	if cur, _ := r.Store.Read(ref); cur.State != core.StateLanding {
+		t.Fatalf("a refused reopen must change nothing: %+v", cur)
+	}
+	rec, err := r.ReopenOwn(tk, "ci failed on latest head", ok)
 	if err != nil || rec.State != core.StateVerifying || rec.Holder != tk.Holder || rec.Receipt == nil || rec.Epoch != tk.Epoch {
 		t.Fatalf("reopen by the owner: %+v %v", rec, err)
 	}
-	// Known limit until progress moves to evidence fields (step 3): an accepted
-	// receipt reads as REVIEWING whatever the old state, so the repair is not
-	// yet BUILDING/FIX in the position.
-	if _, err := r.ReopenOwn(Ticket{Issue: ref, Holder: "other", Epoch: tk.Epoch}, "x"); !errors.Is(err, core.ErrOwnershipUnverified) {
+	if rec.Stage != core.StageBuilding || rec.Sub != core.SubFix {
+		t.Errorf("an accepted PR under repair is BUILDING/FIX (canon E06), got %s/%s", rec.Stage, rec.Sub)
+	}
+	if rec.Repair == nil || rec.Repair.Decision != "ci failed on latest head" || rec.Repair.Owner != tk.Holder {
+		t.Errorf("the E06 evidence is recorded: %+v", rec.Repair)
+	}
+	if _, err := r.ReopenOwn(Ticket{Issue: ref, Holder: "other", Epoch: tk.Epoch}, "x", ok); !errors.Is(err, core.ErrOwnershipUnverified) {
 		t.Errorf("a stranger reopened: %v", err)
 	}
 }

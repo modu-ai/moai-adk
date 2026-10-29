@@ -11,8 +11,10 @@
 package runner
 
 import (
+	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/claim"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
@@ -367,6 +369,7 @@ func settle(rec *claim.Record, l Landing) (pending error, err error) {
 	name, miss := firstMissing(l)
 	if miss == nil {
 		rec.State, rec.Deploy, rec.Closed, rec.Merged, rec.Pending = core.StateDone, l.Deploy, true, true, ""
+		rec.Wait, rec.Repair = nil, nil
 		return nil, nil
 	}
 	if !l.RemoteMerged {
@@ -506,6 +509,7 @@ func (r *Runner) HandOff(t Ticket, h Handoff) (claim.Record, error) {
 		if rec.Receipt != nil && rec.Receipt.Head == head {
 			return fmt.Errorf("%w: PR #%d", core.ErrDuplicateHandoff, rec.Receipt.PR)
 		}
+		rec.Repair, rec.Wait = nil, nil // a new receipt ends the repair and what it waited for
 		rec.Receipt = &claim.Receipt{
 			HandoffID: h.HandoffID, LeaderAccepted: true, PR: h.PR, Head: head, Branch: h.Branch, Worktree: h.Worktree,
 			Attempt: rec.Attempt, AttemptSeq: rec.AttemptSeq, Agent: rec.AgentName, Session: rec.Holder,
@@ -586,10 +590,20 @@ func (r *Runner) Reopen(i core.IssueRef, reason string) (claim.Record, error) {
 	})
 }
 
+// RepairEvidence is what canon E06 (REVIEWING -> BUILDING/FIX) needs besides the
+// repair decision and the exclusive owner, which the reason and the ticket give.
+type RepairEvidence struct {
+	ScopeReserved  bool
+	OldWriterEnded bool
+}
+
 // ReopenOwn is Reopen for the owner: the receipt did not release the Issue, so
-// the same agent that published the PR takes it back to verification when CI or
-// review asks for a repair. The receipt, epoch and holder stay.
-func (r *Runner) ReopenOwn(t Ticket, reason string) (claim.Record, error) {
+// the same agent that published the PR takes it back into repair when CI or
+// review asks for one. reason is the repair decision; the ticket is the
+// exclusive owner; ev carries the rest of the E06 evidence. Without all four the
+// record does not move. The receipt, epoch and holder stay, and the position
+// becomes BUILDING/FIX.
+func (r *Runner) ReopenOwn(t Ticket, reason string, ev RepairEvidence) (claim.Record, error) {
 	if strings.TrimSpace(reason) == "" {
 		return claim.Record{}, fmt.Errorf("%w: a reopen reason is required", core.ErrEvidenceIncomplete)
 	}
@@ -602,8 +616,63 @@ func (r *Runner) ReopenOwn(t Ticket, reason string) (claim.Record, error) {
 		case rec.Merged:
 			return fmt.Errorf("%w: merge already observed, not reverted", core.ErrTransitionInvalid)
 		}
-		rec.State, rec.Pending = core.StateVerifying, ""
+		rep := claim.Repair{Decision: reason, Owner: t.Holder, ScopeReserved: ev.ScopeReserved, OldWriterEnded: ev.OldWriterEnded}
+		if !ev.ScopeReserved {
+			return fmt.Errorf("%w: the scope was not reserved again", core.ErrEvidenceIncomplete)
+		}
+		if !ev.OldWriterEnded {
+			return fmt.Errorf("%w: the previous writer has not ended", core.ErrEvidenceIncomplete)
+		}
+		rec.State, rec.Pending, rec.Repair = core.StateVerifying, "", &rep
 		rec.AddEvent(claim.Event{Kind: "reopen", Head: string(rec.Head), PR: rec.Receipt.PR, Note: reason})
+		return nil
+	})
+}
+
+// SetWait records what the owner waits for. The wait belongs to the ticket's
+// holder; a wait owned by anyone else is refused.
+func (r *Runner) SetWait(t Ticket, w core.Wait) (claim.Record, error) {
+	if err := w.Validate(); err != nil {
+		return claim.Record{}, err
+	}
+	return r.Store.Update(t.Issue, t.Holder, t.Epoch, func(rec *claim.Record) error {
+		if rec.State.IsTerminal() {
+			return fmt.Errorf("%w: %s has nothing left to wait for", core.ErrTransitionInvalid, rec.State)
+		}
+		rec.Wait = &w // the store refuses a wait that its holder does not own
+		return nil
+	})
+}
+
+// RetryWait spends one retry of the recorded wait. The retry that reaches the
+// limit is recorded with Escalated set and reported as ErrRetryLimit; nothing is
+// retried past it.
+func (r *Runner) RetryWait(t Ticket, diagnosis, next string, recheck time.Time) (claim.Record, error) {
+	var limit error
+	rec, err := r.Store.Update(t.Issue, t.Holder, t.Epoch, func(rec *claim.Record) error {
+		if rec.Wait == nil {
+			return fmt.Errorf("%w: no wait is recorded", core.ErrTransitionInvalid)
+		}
+		w, e := rec.Wait.Retry(diagnosis, next, recheck)
+		if e != nil && !errors.Is(e, core.ErrRetryLimit) {
+			return e
+		}
+		if errors.Is(e, core.ErrRetryLimit) && !w.Escalated {
+			return e // already exhausted: nothing changes
+		}
+		rec.Wait, limit = &w, e
+		return nil
+	})
+	if err != nil {
+		return rec, err
+	}
+	return rec, limit
+}
+
+// ClearWait drops the wait once what it waited for has happened.
+func (r *Runner) ClearWait(t Ticket) (claim.Record, error) {
+	return r.Store.Update(t.Issue, t.Holder, t.Epoch, func(rec *claim.Record) error {
+		rec.Wait = nil
 		return nil
 	})
 }

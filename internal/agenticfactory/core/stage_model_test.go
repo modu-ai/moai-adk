@@ -444,6 +444,8 @@ func TestFromLegacyMapping(t *testing.T) {
 		{"verifying with an accepted receipt is REVIEWING", Legacy{State: StateVerifying, HasReceipt: true, LeaderAccepted: true}, Position{Stage: StageReviewing}, ""},
 		{"implementing with an accepted receipt is REVIEWING", Legacy{State: StateImplementing, HasReceipt: true, LeaderAccepted: true}, Position{Stage: StageReviewing}, ""},
 		{"verifying with a merge seen is MERGING", Legacy{State: StateVerifying, HasReceipt: true, LeaderAccepted: true, Merged: true}, Position{Stage: StageMerging, RemoteIntegrated: true}, ""},
+		{"accepted receipt under repair is FIX (canon E06)", Legacy{State: StateVerifying, HasReceipt: true, LeaderAccepted: true, Repair: true}, Position{Stage: StageBuilding, Sub: SubFix}, ""},
+		{"a merge seen outranks a repair mark", Legacy{State: StateLanding, HasReceipt: true, LeaderAccepted: true, Repair: true, Merged: true}, Position{Stage: StageMerging, RemoteIntegrated: true}, ""},
 		{"landing before the leader accepted", Legacy{State: StateLanding}, Position{Stage: StageBuilding, Sub: SubImplement}, ""},
 		{"landing with accepted receipt", Legacy{State: StateLanding, HasReceipt: true, LeaderAccepted: true}, Position{Stage: StageReviewing}, ""},
 		{"landing merged", Legacy{State: StateLanding, HasReceipt: true, LeaderAccepted: true, Merged: true}, Position{Stage: StageMerging, RemoteIntegrated: true}, ""},

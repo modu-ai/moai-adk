@@ -6,11 +6,14 @@ import "fmt"
 // a return stage), with the two facts the old State alone cannot say: whether a
 // PR receipt exists and was accepted by the leader, and whether the merge was seen.
 type Legacy struct {
-	State          State
-	Return         State
-	Reason         BlockReason
-	Resume         string
-	HasReceipt     bool
+	State      State
+	Return     State
+	Reason     BlockReason
+	Resume     string
+	HasReceipt bool
+	// Repair is true while the owner repairs a PR it handed off (canon E06 evidence
+	// is recorded): the accepted receipt then reads as BUILDING/FIX, not REVIEWING.
+	Repair         bool
 	LeaderAccepted bool
 	Merged         bool
 }
@@ -54,6 +57,8 @@ func legacyByEvidence(l Legacy) Position {
 	switch {
 	case l.Merged:
 		return Position{Stage: StageMerging, RemoteIntegrated: true}
+	case l.HasReceipt && l.Repair:
+		return Position{Stage: StageBuilding, Sub: SubFix}
 	case l.HasReceipt && l.LeaderAccepted:
 		return Position{Stage: StageReviewing}
 	case l.HasReceipt:
