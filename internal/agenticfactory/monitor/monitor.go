@@ -93,7 +93,8 @@ type Row struct {
 	Checks          Field[[]CheckRun]
 	NextAction      Field[string]
 
-	PR Field[PRStatus] `json:"pr"`
+	PR      Field[PRStatus]      `json:"pr"`
+	Context Field[[]ContextItem] `json:"context"`
 	// Completed is true only when the claim state is done AND the PR is merged AND the Issue is
 	// closed. An open or merely merged PR is never completion.
 	Completed bool `json:"completed"`
@@ -110,7 +111,10 @@ type Collector struct {
 	Now    func() time.Time
 
 	PRs          PRReader // optional; nil leaves PR fields unconfirmed
-	BacklogLimit int      // open-PR cap; 0 = no cap configured
+	Intake       IntakeReader
+	Context      ContextReader
+	Queue        QueueReader
+	BacklogLimit int // open-PR cap; 0 = no cap configured
 }
 
 // Collect returns one row per Issue, in the order given.
@@ -165,6 +169,7 @@ func (c *Collector) row(ctx context.Context, issue int) Row {
 		r.NextAction = textField("next_action", next, SrcLedger, at)
 	}
 	c.fillPR(ctx, &r, at)
+	c.fillContext(ctx, &r, at)
 	return r
 }
 
