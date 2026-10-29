@@ -85,3 +85,18 @@ func TestMissingOrFailingReadersAreUnconfirmedNotEmpty(t *testing.T) {
 		t.Error("no intake reader: unconfirmed")
 	}
 }
+
+func TestLinkIsAvailableOnlyAfterRemoteVerification(t *testing.T) {
+	c := extCollector(fakeExt{ctx: map[int][]ContextItem{7: {
+		{Section: "a", Link: ".moai/evidence/issue-7/a.md", State: CtxCurrent, RemoteVerified: true, Availability: LinkAvailable},
+		{Section: "b", Link: ".moai/evidence/issue-7/b.md", State: CtxCurrent, RemoteVerified: false, Availability: LinkAvailable}, // reader claims available without a check
+		{Section: "c", Link: ".moai/evidence/issue-7/c.md", State: CtxInaccessible, RemoteVerified: true},
+	}}})
+	items := c.Collect(context.Background(), []int{7})[0].Context.Value
+	want := []LinkAvailability{LinkAvailable, LinkUnverified, LinkInaccessible}
+	for i, it := range items {
+		if it.Availability != want[i] {
+			t.Errorf("item %s: availability = %s, want %s", it.Section, it.Availability, want[i])
+		}
+	}
+}

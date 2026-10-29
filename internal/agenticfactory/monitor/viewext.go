@@ -35,6 +35,16 @@ const (
 	CtxInaccessible ContextState = "inaccessible"
 )
 
+// LinkAvailability is the state of an evidence link. It is "available" only after a remote lookup
+// confirmed it; uploading (pushing) alone proves nothing.
+type LinkAvailability string
+
+const (
+	LinkUnverified   LinkAvailability = "unverified"
+	LinkAvailable    LinkAvailability = "available"
+	LinkInaccessible LinkAvailability = "inaccessible"
+)
+
 // ContextItem is one entry of an Issue's context ledger.
 type ContextItem struct {
 	Section    string       `json:"section"`
@@ -43,7 +53,11 @@ type ContextItem struct {
 	Hash       string       `json:"hash,omitempty"`
 	Owner      string       `json:"owner,omitempty"`
 	State      ContextState `json:"state"`
-	At         time.Time    `json:"at"`
+	// RemoteVerified is set by the reader only when a remote lookup found the link. The collector
+	// derives Availability from it and ignores whatever the reader put in Availability.
+	RemoteVerified bool             `json:"remote_verified"`
+	Availability   LinkAvailability `json:"availability"`
+	At             time.Time        `json:"at"`
 }
 
 // QueueStats are the PR queue figures beyond the open count.
@@ -78,6 +92,14 @@ func (c *Collector) fillContext(ctx context.Context, r *Row, at time.Time) {
 	for i := range items {
 		items[i].Link, _ = Mask(items[i].Link)
 		items[i].Owner, _ = Mask(items[i].Owner)
+		switch {
+		case items[i].State == CtxInaccessible:
+			items[i].Availability = LinkInaccessible
+		case items[i].RemoteVerified:
+			items[i].Availability = LinkAvailable
+		default:
+			items[i].Availability = LinkUnverified
+		}
 	}
 	r.Context = Field[[]ContextItem]{items, SrcLedger, at, true, false}
 }
