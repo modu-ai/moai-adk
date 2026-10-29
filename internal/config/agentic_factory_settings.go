@@ -19,8 +19,7 @@ package config
 //	          result is also reported as not configured.
 //
 // Keys deliberately NOT read here, because their names are still undecided:
-// webhook.routes[].secret_ref, loop.tick_period, intake.list_limit and
-// monitor.pr_list_limit. A webhook secret VALUE must never live in this file; a
+// webhook.routes[].secret_ref and loop.tick_period. A webhook secret VALUE must never live in this file; a
 // key named "secret" under webhook.routes[] is refused (the value is never
 // echoed). Unknown keys under workflow.agentic_factory are ignored (forward
 // compatible); workflow.yaml is never consulted.
@@ -70,7 +69,7 @@ type AgenticFactoryPoll struct {
 // AgenticFactoryQueueLimits sizes one doc-backed queue (webhook queue or agent
 // inbox; they are separate instances, DEC-AF-25 D4).
 type AgenticFactoryQueueLimits struct {
-	MaxDocBytes int // 0 = copy of the claim-document cap, resolved downstream
+	MaxDocBytes int // >= 1
 	SeenLimit   int
 	MaxIDBytes  int
 }
@@ -88,8 +87,10 @@ type AgenticFactorySettings struct {
 	IdentityMaxAge             time.Duration // 0 allowed
 	LabelsPerPage              int
 	IntakeDuplicateSearchLimit int
+	IntakeListLimit            int // >= 1
+	MonitorPRListLimit         int // >= 1
 
-	CursorMaxDocBytes int // 0 = copy of the claim-document cap, resolved downstream
+	CursorMaxDocBytes int // >= 1
 	CursorMaxChunks   int
 
 	WebhookQueue AgenticFactoryQueueLimits
@@ -212,9 +213,13 @@ func readAgenticFactorySettings(projectRoot string) (AgenticFactorySettings, str
 	r.check(s.LabelsPerPage > 0, "labels.per_page", "must be an integer > 0", s.LabelsPerPage)
 	s.IntakeDuplicateSearchLimit = r.integer("intake.duplicate_search_limit")
 	r.check(s.IntakeDuplicateSearchLimit > 0, "intake.duplicate_search_limit", "must be an integer > 0", s.IntakeDuplicateSearchLimit)
+	s.IntakeListLimit = r.integer("intake.list_limit")
+	r.check(s.IntakeListLimit >= 1, "intake.list_limit", "must be an integer >= 1", s.IntakeListLimit)
+	s.MonitorPRListLimit = r.integer("monitor.pr_list_limit")
+	r.check(s.MonitorPRListLimit >= 1, "monitor.pr_list_limit", "must be an integer >= 1", s.MonitorPRListLimit)
 
 	s.CursorMaxDocBytes = r.integer("cursor.max_doc_bytes")
-	r.check(s.CursorMaxDocBytes >= 0, "cursor.max_doc_bytes", "must be an integer >= 0", s.CursorMaxDocBytes)
+	r.check(s.CursorMaxDocBytes >= 1, "cursor.max_doc_bytes", "must be an integer >= 1", s.CursorMaxDocBytes)
 	s.CursorMaxChunks = r.integer("cursor.max_chunks")
 	r.check(s.CursorMaxChunks >= 0, "cursor.max_chunks", "must be an integer >= 0", s.CursorMaxChunks)
 
@@ -342,14 +347,13 @@ func (r *afsReader) queue(rel string) AgenticFactoryQueueLimits {
 		SeenLimit:   r.integer(rel + ".seen_limit"),
 		MaxIDBytes:  r.integer(rel + ".max_id_bytes"),
 	}
-	r.check(q.MaxDocBytes >= 0, rel+".max_doc_bytes", "must be an integer >= 0", q.MaxDocBytes)
+	// 0 is rejected for max_doc_bytes: it cannot be told apart from "no limit".
+	r.check(q.MaxDocBytes >= 1, rel+".max_doc_bytes", "must be an integer >= 1", q.MaxDocBytes)
 	r.check(q.SeenLimit >= 0, rel+".seen_limit", "must be an integer >= 0", q.SeenLimit)
 	r.check(q.MaxIDBytes >= 0, rel+".max_id_bytes", "must be an integer >= 0", q.MaxIDBytes)
 	r.check(q.SeenLimit == 0 || q.MaxIDBytes > 0, rel+".max_id_bytes", "must be > 0 when "+afsPrefix+rel+".seen_limit > 0", q.MaxIDBytes)
-	// When max_doc_bytes is 0 it means "copy of the claim-document cap"; that
-	// value is not duplicated here, so the inequality is skipped and the
-	// downstream constructor enforces it against the resolved cap.
-	if r.err == nil && q.MaxDocBytes > 0 && q.SeenLimit > 0 {
+	// The inequality is always evaluated (big-int safe against overflow).
+	if r.err == nil {
 		lhs := new(big.Int).Mul(big.NewInt(int64(q.SeenLimit)), new(big.Int).Add(big.NewInt(int64(q.MaxIDBytes)), big.NewInt(3)))
 		lhs.Mul(lhs, big.NewInt(2))
 		if lhs.Cmp(big.NewInt(int64(q.MaxDocBytes))) > 0 {

@@ -25,7 +25,8 @@ func afsValidDoc() afsDoc {
 		"budget":      afsDoc{"reserve": 10, "report_resource": "core"},
 		"identity":    afsDoc{"max_age": "10m"},
 		"labels":      afsDoc{"per_page": 50},
-		"intake":      afsDoc{"duplicate_search_limit": 20},
+		"intake":      afsDoc{"duplicate_search_limit": 20, "list_limit": 100},
+		"monitor":     afsDoc{"pr_list_limit": 200},
 		"cursor":      afsDoc{"max_doc_bytes": 65536, "max_chunks": 4},
 		"queue":       afsDoc{"webhook": afsDoc{"max_doc_bytes": 262144, "seen_limit": 100, "max_id_bytes": 36}},
 		"notify":      afsDoc{"inbox": afsDoc{"max_doc_bytes": 262144, "seen_limit": 50, "max_id_bytes": 32}, "renotify_after": "30m"},
@@ -139,6 +140,8 @@ var afsRequired = []struct{ key, kind string }{
 	{"identity.max_age", "dur"},
 	{"labels.per_page", "int"},
 	{"intake.duplicate_search_limit", "int"},
+	{"intake.list_limit", "int"},
+	{"monitor.pr_list_limit", "int"},
 	{"cursor.max_doc_bytes", "int"},
 	{"cursor.max_chunks", "int"},
 	{"queue.webhook.max_doc_bytes", "int"},
@@ -168,6 +171,8 @@ func TestAgenticFactorySettings_ValidLoads(t *testing.T) {
 		IdentityMaxAge:             10 * time.Minute,
 		LabelsPerPage:              50,
 		IntakeDuplicateSearchLimit: 20,
+		IntakeListLimit:            100,
+		MonitorPRListLimit:         200,
 		CursorMaxDocBytes:          65536,
 		CursorMaxChunks:            4,
 		WebhookQueue:               AgenticFactoryQueueLimits{MaxDocBytes: 262144, SeenLimit: 100, MaxIDBytes: 36},
@@ -243,7 +248,14 @@ func TestAgenticFactorySettings_Ranges(t *testing.T) {
 		{"max equals min_secondary_wait", map[string]any{"provider.github.backoff.base": "1s", "provider.github.backoff.max": "60s", "provider.github.backoff.min_secondary_wait": "60s"}, ""},
 		{"max_attempts 0", map[string]any{"provider.github.backoff.max_attempts": 0}, "provider.github.backoff.max_attempts"},
 		{"max_attempts 1", map[string]any{"provider.github.backoff.max_attempts": 1}, ""},
-		{"cursor max_doc_bytes 0", map[string]any{"cursor.max_doc_bytes": 0}, ""},
+		{"cursor max_doc_bytes 0 rejected", map[string]any{"cursor.max_doc_bytes": 0}, "cursor.max_doc_bytes"},
+		{"cursor max_doc_bytes 1 accepted", map[string]any{"cursor.max_doc_bytes": 1}, ""},
+		{"intake list_limit 0", map[string]any{"intake.list_limit": 0}, "intake.list_limit"},
+		{"intake list_limit -1", map[string]any{"intake.list_limit": -1}, "intake.list_limit"},
+		{"intake list_limit 1", map[string]any{"intake.list_limit": 1}, ""},
+		{"monitor pr_list_limit 0", map[string]any{"monitor.pr_list_limit": 0}, "monitor.pr_list_limit"},
+		{"monitor pr_list_limit -1", map[string]any{"monitor.pr_list_limit": -1}, "monitor.pr_list_limit"},
+		{"monitor pr_list_limit 1", map[string]any{"monitor.pr_list_limit": 1}, ""},
 		{"cursor max_doc_bytes -1", map[string]any{"cursor.max_doc_bytes": -1}, "cursor.max_doc_bytes"},
 		{"cursor max_chunks 0", map[string]any{"cursor.max_chunks": 0}, ""},
 		{"cursor max_chunks -1", map[string]any{"cursor.max_chunks": -1}, "cursor.max_chunks"},
@@ -304,13 +316,18 @@ func TestAgenticFactorySettings_QueueLimits(t *testing.T) {
 		}{
 			{"equality accepted", 200, 10, 7, ""},
 			{"one byte over rejected", 199, 10, 7, q + ".seen_limit"},
-			{"doc 0 skips inequality", 0, 1000000, 36, ""},
+			// seen 1, id 4: 1*(4+3)*2 = 14 is the smallest doc cap that holds.
+			{"small caps equality accepted", 14, 1, 4, ""},
+			{"small caps one byte over rejected", 13, 1, 4, q + ".seen_limit"},
+			{"doc 0 rejected", 0, 0, 0, q + ".max_doc_bytes"},
+			{"doc 0 rejected even with a large seen_limit", 0, 1000000, 36, q + ".max_doc_bytes"},
+			{"doc 1 accepted when seen 0", 1, 0, 0, ""},
+			{"doc 1 rejected when seen 1", 1, 1, 1, q + ".seen_limit"},
 			{"seen 0 id 0 accepted", 10, 0, 0, ""},
-			{"seen 0 doc 0 accepted", 0, 0, 5, ""},
-			{"seen positive id zero rejected", 0, 5, 0, q + ".max_id_bytes"},
+			{"seen positive id zero rejected", 100, 5, 0, q + ".max_id_bytes"},
 			{"negative doc", -1, 0, 0, q + ".max_doc_bytes"},
-			{"negative seen", 0, -1, 0, q + ".seen_limit"},
-			{"negative id", 0, 0, -1, q + ".max_id_bytes"},
+			{"negative seen", 10, -1, 0, q + ".seen_limit"},
+			{"negative id", 10, 0, -1, q + ".max_id_bytes"},
 			{"overflow-sized limits rejected", 1 << 62, 1 << 62, 1 << 62, q + ".seen_limit"},
 		}
 		for _, tc := range tests {
@@ -529,8 +546,6 @@ func TestAgenticFactorySettings_UnknownKeysIgnored(t *testing.T) {
 	af := afsAF(d)
 	af["future_key"] = afsDoc{"nested": []any{1, 2}}
 	af["loop"] = afsDoc{"tick_period": "1s"}
-	af["intake"].(afsDoc)["list_limit"] = 100
-	af["monitor"] = afsDoc{"pr_list_limit": 100}
 	af["webhook"].(afsDoc)["routes"] = []any{afsDoc{"repository": "o/n", "secret_ref": "some-name"}}
 	d["other_top_level"] = "x"
 	s := afsWantValid(t, afsWriteDoc(t, d))
