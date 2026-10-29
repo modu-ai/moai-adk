@@ -161,7 +161,7 @@ classification: 대상 부재 참고 관측 — EXPECTED_RED 아님
 
 - 표지 `잠금 유지 — REQ-AF-011에 따른 의도된 상태(미충족 아님)`는 이 표에 쓰지 않는다. 아홉 기준은 모두 이 SPEC 자신의 동작(부여, 인증, 계보, 결속, 배제, 귀속 행렬, 귀속 조회)이고, 상위 잠금의 동작이 아니다. 잠금 상태(`unattributable{identity-spec-incomplete}` → 게이트 `producer-not-allowed`)는 상위 REQ-AF-011과 AC-AF-011 [REF]의 것이며, Q4도 그 값을 이 SPEC의 구현이 스스로 내지 않는다는 단언이다.
 - 근거: 상위 REQ-AF-011(상위 `spec.md` 150행) 원문 "the lock SHALL be lifted only by a single code change that lands together with SPEC-AGENTIC-FACTORY-IDENTITY-001 `completed`, its acceptance criteria green, and the operator's recorded risk acceptance of its relay-path residual risk". 곧 이 아홉 기준의 동작은 잠금 해제의 선행 조건이며, 잠금 중에는 운영 경로에 쓰이지 않는다.
-- 감사 판정 문구(audit verdict wording relayed by the leader, not read by this SPEC's author): 'F2: production runner.guard always rejects identity-unknown and the merge gate is always blocked by AttributionLocked; fail-closed'. 리더 판정(relayed; lane-19 observation)은 병합 게이트 쪽을 rc.39 범위에서 의도된 상태로 본다. 이 표는 그 판정이 아니라 이 SPEC 구현의 부재를 적는다.
+- 감사 판정 문구(audit verdict wording relayed by the leader, not read by this SPEC's author): 'F2: production runner.guard always rejects identity-unknown and the merge gate is always blocked by AttributionLocked; fail-closed'. 리더 판정(relayed; lane-19 observation)은 병합 게이트 쪽(Attributor)만 rc.39 범위에서 의도된 상태로 본다. 잠금 표지는 그쪽에만 쓴다. 문구의 앞쪽(운영 `runner.guard`가 identity-unknown을 늘 거절함)은 `수리 중(B10) — Facts(HostFacts) 미연결로 생긴 결함, 잠금이 아님(리더 판정, 리더 세션 경유)`이다. 수리는 lane-22 B10(리더 전달)이며, 이 SPEC 작성자는 SHA를 모르고 주장하지 않는다. 이 표는 두 판정이 아니라 이 SPEC 구현의 부재를 적는다.
 - 의도된 상태라도 시험이 없으면 `시험 없음`으로 남는다. 이 표의 시험 축 값은 F2b 그대로다.
 
 | AC | 행동 축 | 시험 축 | 증거(원장 id: 명령 → 첫 출력 줄) |
