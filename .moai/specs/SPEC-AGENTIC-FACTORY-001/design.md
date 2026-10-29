@@ -152,7 +152,7 @@ GitHub Issue (업무 필드의 권위: 제목·수용 기준·우선순위·의�
 |---|---|---|---|---|---|
 | E01 | READY | claim | 채택 계약·의존·scope·예산, 활성 owner 없음, 준비 receipt와 READY ACK(§4.2) | BUILDING/SPEC. epoch·attempt·예약을 원자적으로 확정 | ControlService(dispatcher) |
 | E02 | READY | 의존 미완료 | 원격 의존 증거 | READY + PARKED `dependency` | ControlService |
-| E03 | BUILDING | PR 인계 | PR 원격 HEAD/base, 계약, SPEC, task 결과, 검사 상태, 원 writer, leader 수락 receipt, quiescence, 보존 확인(§4.8 PRHandoff. lane-18 필드 이름: `PR URL`·`base`·`adopted SPEC`·`task result`·`check status`·`handoff id`·`LeaderAccepted`·`PR number`·`HEAD`·`branch`·`worktree`·`WriterStopped`·`BoundaryHead` — §4.8) | REVIEWING. 책임은 agent(Holder)에 남음. 새 Issue를 받을지는 acquire 검사가 판정 — 책임과 실행 자리는 따로 있는 두 자원이 아니며 효과로 읽는다(0.6.7 리더 판정, 리더 세션 경유). S46 문언: "종결 책임 leader로, agent claim·slot 반환" — spec.md §H 0.6.7 | ControlService(agent, leader) |
+| E03 | BUILDING | PR 인계 | PR 원격 HEAD/base, 계약, SPEC, task 결과, 검사 상태, 원 writer, leader 수락 receipt, quiescence, 보존 확인 — 새 인계 쓰기에만 모든 필드 요구, 원 writer 출처는 claim 획득 때 Issue 작성자 검사가 충족(§4.8 PRHandoff 대응.  lane-18 필드 이름: `PR URL`·`base`·`adopted SPEC`·`task result`·`check status`·`handoff id`·`LeaderAccepted`·`PR number`·`HEAD`·`branch`·`worktree`·`WriterStopped`·`BoundaryHead` — §4.8) | REVIEWING. 책임은 agent(Holder)에 남음. 새 Issue를 받을지는 acquire 검사가 판정 — 책임과 실행 자리는 따로 있는 두 자원이 아니며 효과로 읽는다(0.6.7 리더 판정, 리더 세션 경유). S46 문언: "종결 책임 leader로, agent claim·slot 반환" — spec.md §H 0.6.7 | ControlService(agent, leader) |
 | E04 | BUILDING | heartbeat·stop 불명 | incarnation 확인, quiescence 부족 | 같은 단계 + PARKED `stop_unknown` | ControlService |
 | E05 | BUILDING/REVIEWING | 안전 인계 | process·tool·원격 quiescence, 잔여 send·write 정리, 원본 보존 | 새 epoch·attempt로 BUILDING, 보존 후 재검증 | ControlService |
 | E06 | REVIEWING | 수리 결정 | finding·예산, 원 Issue·branch의 배타 owner, scope 재예약, 기존 writer 종료 | BUILDING/FIX, 새 attempt. 그 Issue의 책임 agent에 배차(0.6.7 리더 결정. S46 문언은 "가용 agent에 배차" — spec.md §H 0.6.7), 그 agent의 다른 Issue를 덮어쓰지 않음. lane-18 구현 관찰: 수리는 원래 책임 세션에만 허용(`67defdeb1f`), 수리 attempt 이름은 `repair-<n>`(`06f8ccc3c7`) — 리더 전달, 이 작성자는 다시 읽지 않음. 세션 기준과 이 칸의 agent 기준의 차이는 spec.md §H 0.6.7 | ControlService(leader) |
@@ -464,7 +464,7 @@ ACK가 없으면 다시 보내지 않고 받는 쪽 상태를 먼저 조회한�
 | `ConsumerACK` | 소비자 id, ACK한 revision, ACK 시각 |
 | `SourceTombstone` | 사라진 원천 id, 관측 근거(단일 404는 근거 아님) |
 | `PRQueue` | 저장소, 열린 PR 인계 수, 수리 적체 수, `wip_limit`, 계산 시각 |
-| `PRHandoff` | PR URL, 원격 HEAD/base, 계약·SPEC revision, task 결과, 검사 상태, 원 writer, leader 수락 receipt, quiescence 증거, 보존한 worktree·branch·변경. **lane-18 필드 이름(0.6.7, 커밋 `2251e77393`, 리더 전달·이 작성자는 다시 읽지 않음)**: 새 필수 필드 `PR URL`(http/https), `base`, `adopted SPEC`, `task result`, `check status`. 유지 필드 `handoff id`, `LeaderAccepted`, `PR number`, `HEAD`, `branch`, `worktree`, `WriterStopped`, `BoundaryHead`. 옛 receipt도 읽을 수 있다(읽기 호환). 이 행의 "계약", "원 writer", "quiescence 증거", "보존한 변경"과 lane-18 필드의 대응은 판단하지 않았다(spec.md §H 0.6.7) |
+| `PRHandoff` | PR URL, 원격 HEAD/base, 계약·SPEC revision, task 결과, 검사 상태, 원 writer, leader 수락 receipt, quiescence 증거, 보존한 worktree·branch·변경. **lane-18 필드 이름(0.6.7, 커밋 `2251e77393`, 리더 전달·이 작성자는 다시 읽지 않음)**: 새 필수 필드 `PR URL`(http/https), `base`, `adopted SPEC`, `task result`, `check status`. 유지 필드 `handoff id`, `LeaderAccepted`, `PR number`, `HEAD`, `branch`, `worktree`, `WriterStopped`, `BoundaryHead`. **대응(리더 판정, 리더 세션 경유)**: "계약" = `adopted SPEC`(AdoptedSpec). "보존한 변경과 quiescence 증거" = `WriterStopped` + `BoundaryHead`==`HEAD` + `branch` + `worktree`(예약된 실제 경로). "원 writer의 출처"는 receipt 필드가 아니라 claim 획득 때의 Issue 작성자 검사(`ErrNotIssueAuthor`)가 충족한다. receipt가 담는 책임 주체 출처는 `Session`/`Agent`다. receipt 필드는 새로 더하지 않는다. 옛 receipt는 이미 기록된 과거 상태로 읽기만 하며 다시 검증하지 않는다(읽기 호환). 모든 필드가 있어야 한다는 조건은 새 인계(E03 쓰기)에만 적용된다 |
 | `EffectIntent` / `EffectReceipt` | effect id, dedup key, 종류, 대상, 보내기 전 기록 시각, 결과·원격 readback |
 
 ## §5 정책
@@ -515,7 +515,7 @@ SPEC-ASIDE-BROWSER-001은 aside 부재 시 조용히 기본 도구로 진행(REQ
 
 | 키 | 형식 | 기본값 | 검증 | 상태 |
 |---|---|---|---|---|
-| `workflow.agentic_factory.enabled` | bool | `false` | bool 외 거절 | 제안 |
+| `workflow.agentic_factory.enabled` | bool | — | 필수. bool 외 거절. 키가 없거나 `false`이면 AF는 설정되지 않은 것으로 다룬다(오류가 아니며 이유를 보인다) | 리더 결정 (리더 세션 경유, 0.6.7; §6.1·DEC-AF-25 D3) |
 | `workflow.agentic_factory.codex.enabled` | bool, 미설정 허용 | 미설정(=꺼짐) | bool 외 거절. 미설정·`false`는 호출 0 | ✓ `CodexOptIn` |
 | `workflow.agentic_factory.browser.selected` | `egolite` \| `aside` \| `chrome`, 미설정 허용 | 미설정(=사용 시 `chrome`) | 열거 외 거절. 미설정은 "선택 없음"이지 `chrome` 선택이 아님 | ✓ `ResolveAgenticFactoryBrowser` |
 | `workflow.agentic_factory.pr_queue.wip_limit` | 정수 | 미설정 | 1 이상. `0`·음수·정수 아님·범위 밖 거절. `0`을 "끔"으로 읽지 않음. 미설정일 때의 배차는 운영자 결정 대기(OD-7) | ✓ `WIPLimit` |
@@ -541,17 +541,17 @@ OD-13·OD-14·OD-17(spec.md §G.1)을 한 표로 묶는다. 출처: 'leader deci
 규칙:
 - **기본값은 하나도 정하지 않는다.** 모든 행의 기본값 칸은 `—`다. 코드가 `0`에 주는 뜻은 "검증 규칙" 칸에 코드 사실로만 적는다.
 - **필수(DEC-AF-25 D5)**: 상태가 "confirmed (leader decision)"인 키는 모두 필수이며, 없으면 거절한다. 이 규칙은 키가 **있어야 한다**는 것이며, 값의 허용 범위는 "검증 규칙" 칸 그대로다(예: `ghidentity.GitHub.MaxAge`의 `0` 허용). 이름이 정해지지 않은 행(상태 "리더 결정 대기")에는 아직 적용하지 않는다.
-- **키 이름**: 기존 접두사 `workflow.agentic_factory.*` 아래에 둔다. 상태가 "confirmed (leader decision)"인 행의 이름은 확정이다(DEC-AF-25 D5). 상태가 "리더 결정 대기"인 행(webhook 비밀 참조, `Tick` 주기, 14a·14b·14c)의 이름만 아직 제안(provisional)이다. lane-17 읽기 코드에 이미 있는 키(browser·codex 키, `pr_queue.wip_limit`, `collaboration.*`)는 이 표에 다시 넣지 않았다. 위 §6 표의 기존 제안 행 `provider.<…>.backoff.*`·`budget.reserve`와 이름을 맞췄다.
+- **키 이름**: 기존 접두사 `workflow.agentic_factory.*` 아래에 둔다. 상태가 "confirmed (leader decision)"인 행의 이름은 확정이다(DEC-AF-25 D5). 상태가 "리더 결정 대기"인 행(webhook 비밀 참조, `Tick` 주기, `ghintake.GH.ListLimit`, `adapt.GHReader.PRListLimit`)의 이름만 아직 제안(provisional)이다. lane-17 읽기 코드에 이미 있는 키(browser·codex 키, `pr_queue.wip_limit`, `collaboration.*`)는 이 표에 다시 넣지 않았다. 위 §6 표의 기존 제안 행 `provider.<…>.backoff.*`·`budget.reserve`와 이름을 맞췄다.
 - **위치(DEC-AF-25 D1)**: 이 표의 키는 모두 **새 파일 `.moai/config/sections/agentic-factory.yaml`에만** 둔다. 기존 설정 파일, `defaults.go`, `closed_sets.go`, `session_defaults.go`, `schema_sections.go`, `i18n.js`는 바꾸지 않는다. 그래서 바로 위 Template-First 문단의 "기존 sections 파일을 함께 바꾼다"는 이 표의 키에 적용하지 않는다. 이 파일을 template으로 배포할지는 따로 열린 결정이다(OD-19). 결정 전에는 template 배포 파일을 만들지 않는다 — 만들면 `moai update`가 사용자 프로젝트에 그 파일을 쓴다.
 - **"AF가 설정되었다"(DEC-AF-25 D3)**: 새 파일이 있고, `workflow.agentic_factory.enabled: true`이고, 필수 키가 모두 검증을 통과할 때만 설정된 것으로 본다. 하나라도 어긋나면 설정되지 않은 것으로 다루고 실패 이유를 보여 준다.
 - **inbox 키 분리(DEC-AF-25 D4)**: webhook 큐와 agent inbox는 크기 요구가 다른 별개 인스턴스다. 그래서 `notify.inbox.{max_doc_bytes,seen_limit,max_id_bytes}`는 따로 두고, `queue.webhook.*`은 webhook 큐에만 쓴다.
 - **비밀**: webhook 경로 서명 비밀은 값이 아니라 **참조**(어디서 읽을지의 이름)로만 둔다. 커밋되는 설정에 비밀 값을 넣지 않는다. 비밀을 어디에 둘지는 이 SPEC 소유자의 결정이며 열려 있다(OD-17).
-- **위 §6 표와의 차이(기록, 위 표는 고치지 않음)**: 위 §6 표의 `workflow.agentic_factory.enabled` 행은 기본값을 `false`로 적었다(0.6.0의 제안). 이 표의 같은 키는 DEC-AF-25 D5에 따라 기본값 `—`·필수다. 두 문언 가운데 어느 것을 남길지는 이 판에서 고치지 않았다.
-- **기준 목록**: lane-20은 자기 코드를 다시 읽은 뒤 처음 통지를 스스로 정정했고, 아래 표가 그 정정을 반영한 기준이다(lane-20 정정, 리더 전달, 이 작성자는 다시 읽지 않음). 표에 지금 하드코딩된 값 세 가지(14a·14b·14c)가 들어 있다. 이 밖에 lane-20 코드에 남은 숫자는 forge host가 `Retry-After`·reset 헤더로 주는 값이며, host가 준 값이지 정책 상수가 아니다.
+- **위 §6 표와의 차이(해결)**: 위 §6 표의 `enabled` 행이 기본값 `false`(0.6.0 제안)로 이 표와 어긋났던 것을 리더 결정(리더 세션 경유)에 따라 고쳤다 — 이제 두 표 모두 기본값 `—`·필수이며, 키가 없거나 `false`이면 오류가 아니라 설정되지 않음으로 다룬다.
+- **기준 목록**: lane-20은 자기 코드를 다시 읽은 뒤 처음 통지를 스스로 정정했고, 그 정정에 lane-20의 새 설정 필드 두 개(`ghintake.GH.ListLimit`, `adapt.GHReader.PRListLimit`; 커밋 `af72c90458`, 브랜치 `WT-agentic-monitor-effect-reconcile`)를 더한 것이 아래 표의 기준이다(리더 전달, 이 작성자는 다시 읽지 않음). 이로써 예전 하드코딩 값 14a·14b는 이 두 필드로 바뀌었고, 14c(`docstore.modifyRetries = 10`)는 사라졌다. 그래서 lane-20 범위에는 하드코딩된 한도가 남지 않는다. 이 밖에 lane-20 코드에 남은 숫자는 forge host가 `Retry-After`·reset 헤더로 주는 값이며, host가 준 값이지 정책 상수가 아니다.
 
 | 코드 필드(소관 lane/패키지) | 키 이름 | 위치 | 단위 | 검증 규칙(코드가 현재 하는 것) | 기본값 | 상태 |
 |---|---|---|---|---|---|---|
-| (이 SPEC, "AF가 설정되었다" 판정 입력, DEC-AF-25 D3) | `workflow.agentic_factory.enabled` | `.moai/config/sections/agentic-factory.yaml` | bool | 코드에 읽기 없음(lane-17 읽기 코드에 없음, OD-14 기록). 필수. 판정은 파일 존재 + 이 키 `true` + 필수 키 전부 검증 통과. 어긋나면 설정되지 않음으로 다루고 실패 이유를 보임 | — | confirmed (leader decision) |
+| (이 SPEC, "AF가 설정되었다" 판정 입력, DEC-AF-25 D3) | `workflow.agentic_factory.enabled` | `.moai/config/sections/agentic-factory.yaml` | bool | 코드에 읽기 없음(lane-17 읽기 코드에 없음, OD-14 기록). 필수. bool 외 거절. 판정은 파일 존재 + 이 키 `true` + 필수 키 전부 검증 통과. 어긋나면 설정되지 않음으로 다루고 실패 이유를 보임. 키가 없거나 `false`이면 오류가 아니라 설정되지 않음(§6 표와 같은 문언) | — | confirmed (leader decision) |
 | (이 SPEC, claim 저장소 디렉터리, DEC-AF-25 D2) | `workflow.agentic_factory.claim_store.dir` | `.moai/config/sections/agentic-factory.yaml` | 경로 | 코드에 읽기 없음(lane-21 보고: `claim.Open`에 시험 밖 호출자 없음, OD-13 기록). 필수 | — | confirmed (leader decision) |
 | `forge.Backoff.MinSecondaryWait` (lane-20 `forge`) | `workflow.agentic_factory.provider.github.backoff.min_secondary_wait` | `.moai/config/sections/agentic-factory.yaml` | duration | 기본값 없음. `Validate`가 `<=0` 거절, `Max < MinSecondaryWait`면 거절 | — | confirmed (leader decision) |
 | `forge.Backoff.Base` (lane-20 `forge`) | `workflow.agentic_factory.provider.github.backoff.base` | `.moai/config/sections/agentic-factory.yaml` | duration | 기본값 없음. `<=0` 거절, `Max < Base`면 거절 | — | confirmed (leader decision) |
@@ -583,9 +583,10 @@ OD-13·OD-14·OD-17(spec.md §G.1)을 한 표로 묶는다. 출처: 'leader deci
 | `ghpr.Source.Repo` (lane-20 `ghpr`) | `workflow.agentic_factory.pr_source.repository` | `.moai/config/sections/agentic-factory.yaml` | `owner/name` | 필수 | — | confirmed (leader decision) |
 | (아직 코드 없음) 상주 루프의 `Tick` 주기 | `workflow.agentic_factory.loop.tick_period` (provisional) | `.moai/config/sections/agentic-factory.yaml` | duration | 코드 없음. 키가 정해질 때까지 루프를 쓰지 않음 | — | 리더 결정 대기 |
 | `ctxledger` 요약 `MaxBytes` (lane-20 `ctxledger`) | `workflow.agentic_factory.context.summary_max_bytes` | `.moai/config/sections/agentic-factory.yaml` | bytes | Issue 맥락 요약 본문의 상한. `<=0` = 상한 없음 | — | confirmed (leader decision) |
-| 14a. `ghintake` 검색 호출 `--limit 100`(조회)과 `max(Limit,100)`(중복 후보 검색의 읽기 하한) (lane-20 `ghintake`) | `workflow.agentic_factory.intake.search_limit` / `workflow.agentic_factory.intake.search_read_floor` (provisional) | `.moai/config/sections/agentic-factory.yaml` | 정수 | **현재 하드코딩**. lane-20이 설정으로 옮길 예정. 이름·값은 이 SPEC 소유자의 결정이며 열려 있다 | — | 리더 결정 대기 |
-| 14b. 열린 PR 목록 `--limit 1000` (lane-20 `monitor`/`adapt`/`ghread`) | `workflow.agentic_factory.monitor.open_pr_list_limit` (provisional) | `.moai/config/sections/agentic-factory.yaml` | 정수 | **현재 하드코딩**. lane-20이 설정으로 옮길 예정. 이름·값은 열려 있다 | — | 리더 결정 대기 |
-| 14c. `docstore.modifyRetries = 10` — CAS 충돌 재시도 횟수, `claim.UpdateDoc`의 한도와 같게 둠 (lane-20 `docstore`) | `workflow.agentic_factory.docstore.modify_retries` (provisional) | `.moai/config/sections/agentic-factory.yaml` | 정수 | **현재 하드코딩**. lane-20이 설정으로 옮길 예정. 이름·값은 열려 있다 | — | 리더 결정 대기 |
+| `ghintake.GH.ListLimit` (lane-20 `ghintake`, 커밋 `af72c90458`; 예전 14a를 대신함) | `workflow.agentic_factory.intake.list_limit` (provisional) | `.moai/config/sections/agentic-factory.yaml` | 정수 | Issue 목록 호출 한 번이 읽는 최대 항목 수(조회·검색·중복 후보 모두 사용). 필수. `<=0`이면 호출을 거절(오류). 목록이 이 수에 닿으면 잘렸을 수 있다고 보고 오류로 보고한다("없음"·"중복 없음"으로 읽지 않음) → 운영 값은 실제 Issue 수보다 충분히 커야 한다. 페이지 나누기는 구현되지 않음 | — | 리더 결정 대기 |
+| `adapt.GHReader.PRListLimit` (lane-20 `adapt`, 커밋 `af72c90458`; 예전 14b를 대신함) | `workflow.agentic_factory.monitor.pr_list_limit` (provisional) | `.moai/config/sections/agentic-factory.yaml` | 정수 | PR 목록 호출 한 번이 읽는 최대 항목 수(열린 PR 수 세기와 `ReadPR`이 사용). 필수. `<=0`이면 거절. 이 수에 닿으면 오류 | — | 리더 결정 대기 |
+
+- 예전 14c(`docstore.modifyRetries = 10`) 행은 지웠다: docstore 재시도 상수가 제거됐고, CAS 재시도 한도는 `claim.UpdateDoc`의 것이다(lane-20 `af72c90458`, 리더 전달, 이 작성자는 다시 읽지 않음).
 
 - "AF가 설정되었다" 판정(OD-14)과 claim 저장소 디렉터리(OD-13)는 DEC-AF-25 D3·D2로 정해졌다(위 규칙, 표 첫 두 행). 남은 것은 이 파일의 template 배포(OD-19)다.
 - 범위 검사가 코드에 없는 칸(`forge.Adaptive` 세 필드)은 "필요한 규칙"을 적었을 뿐 이 SPEC이 그 규칙을 채택한 것은 아니다. 키 이름은 확정됐지만, 그 검증 규칙의 채택은 리더 결정을 기다린다(OD-17).
