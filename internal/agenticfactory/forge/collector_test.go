@@ -409,3 +409,32 @@ func TestAHealthyDurableFeedMakesThePollASafetyNet(t *testing.T) {
 		t.Errorf("calls=%d next=%v, want no call and the safety interval", len(f.calls), rep.Next.Sub(now))
 	}
 }
+
+// --- a cursor that was resumed from an older generation says so --------------------------------------
+
+type notedCursors struct {
+	memCursors
+	note string
+}
+
+func (n *notedCursors) LoadCursorNoted(key string) ([]byte, bool, string, error) {
+	b, ok, err := n.LoadCursor(key)
+	return b, ok, n.note, err
+}
+
+func TestACursorNoteIsOnTheReportsUntilAnAcknowledgementIsSaved(t *testing.T) {
+	now := t0
+	cs := &notedCursors{memCursors: memCursors{m: map[string][]byte{"o/r/pulls": []byte(`[{"number":1,"state":"open"}]`)}}, note: "resumed from an older generation"}
+	f := &fakeT{resps: []Response{resp(200, `[{"number":1,"state":"merged"}]`, "etag", `"a"`), resp(304, "")}}
+	col := withCursors(f, &now, cs)
+	r1 := col.Tick(t.Context(), now)
+	if r1.Notice != cs.note || r1.Baseline {
+		t.Fatalf("first report: notice=%q baseline=%v", r1.Notice, r1.Baseline)
+	}
+	if err := col.Ack(r1); err != nil {
+		t.Fatal(err)
+	}
+	if r2 := col.Tick(t.Context(), r1.Next); r2.Notice != "" {
+		t.Errorf("the note outlived the saved acknowledgement: %q", r2.Notice)
+	}
+}

@@ -23,6 +23,7 @@ var errCrash = errors.New("simulated crash")
 type faultDocs struct {
 	inner                 *claim.Store
 	puts, failAt, crashAt int
+	delErr                error // every DeleteDoc fails with it (a failing cleanup step)
 }
 
 func (f *faultDocs) arm(failAt, crashAt int) { f.puts, f.failAt, f.crashAt = 0, failAt, crashAt }
@@ -30,6 +31,9 @@ func (f *faultDocs) arm(failAt, crashAt int) { f.puts, f.failAt, f.crashAt = 0, 
 func (f *faultDocs) GetDoc(kind, name string) (claim.Doc, error) { return f.inner.GetDoc(kind, name) }
 
 func (f *faultDocs) DeleteDoc(kind, name string, rev int64) error {
+	if f.delErr != nil {
+		return f.delErr
+	}
 	return f.inner.DeleteDoc(kind, name, rev)
 }
 

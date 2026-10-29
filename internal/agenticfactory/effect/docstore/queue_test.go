@@ -11,7 +11,7 @@ import (
 )
 
 func newQueue(d Docs) *Queue {
-	return &Queue{Docs: d, Kind: CollectorKind, Key: "o/r/hooks", SeenLimit: 4, Alive: func() bool { return true }}
+	return &Queue{Docs: d, Kind: CollectorKind, Key: "o/r/hooks", SeenLimit: 4, MaxIDBytes: 36, Alive: func() bool { return true }}
 }
 
 var hook = forge.Change{Key: "7", Kind: forge.ChangeModified}
@@ -108,6 +108,7 @@ func TestTheConsumedIdMemoryIsBounded(t *testing.T) {
 func TestAFullQueueRefusesWithoutDroppingOrAcknowledging(t *testing.T) {
 	q := newQueue(&memDocs{})
 	q.MaxDocBytes = 400
+	q.SeenLimit, q.MaxIDBytes = 1, 16
 	var queued []string
 	acked := 0
 	var full error

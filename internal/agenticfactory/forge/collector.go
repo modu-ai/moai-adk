@@ -109,6 +109,9 @@ type Report struct {
 	Parked   bool
 	Reason   string
 	Baseline bool // Changes came from a first observation (nothing acknowledged yet): initial state, not new events
+	// Notice is a fact about the stored cursor worth showing, not a failure: for example that it was
+	// resumed from an older generation. It stays on the reports until an acknowledgement is saved.
+	Notice string
 
 	snap    []byte   // observed body this report describes; Ack makes it the acknowledged baseline
 	feedN   int      // how many pushed (webhook) events this report carries
@@ -122,6 +125,13 @@ type Report struct {
 type CursorStore interface {
 	LoadCursor(key string) (body []byte, found bool, err error)
 	SaveCursor(key string, body []byte) error
+}
+
+// NotedCursorStore is a CursorStore that can also say when the cursor it returned is not the newest one.
+// The collector puts that note in its reports until the next acknowledgement is saved.
+type NotedCursorStore interface {
+	CursorStore
+	LoadCursorNoted(key string) (body []byte, found bool, note string, err error)
 }
 
 // Collector is the single collector of one repository: it fetches one path, remembers what it last
@@ -143,6 +153,7 @@ type Collector struct {
 
 	mu       sync.Mutex
 	loaded   bool   // the cursor has been read from Cursors (or there is none to read)
+	note     string // what loading the cursor had to say; cleared once an acknowledgement is saved
 	last     []byte // acknowledged by the consumer
 	seen     []byte // latest observed from the host
 	feedBuf  []Change
@@ -165,6 +176,7 @@ func (c *Collector) Ack(rep Report) error {
 	}
 	if rep.snap != nil {
 		c.last = rep.snap
+		c.note = ""
 	}
 	if rep.feedN > 0 {
 		n := min(rep.feedN, len(c.feedBuf))
@@ -185,7 +197,14 @@ func (c *Collector) Tick(ctx context.Context, now time.Time) Report {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if !c.loaded && c.Cursors != nil {
-		body, found, err := c.Cursors.LoadCursor(c.CursorKey)
+		var body []byte
+		var found bool
+		var err error
+		if n, ok := c.Cursors.(NotedCursorStore); ok {
+			body, found, c.note, err = n.LoadCursorNoted(c.CursorKey)
+		} else {
+			body, found, err = c.Cursors.LoadCursor(c.CursorKey)
+		}
 		if err != nil {
 			// Do not poll and do not report: with the real cursor unknown, any report could be wrong.
 			return Report{Reason: "the cursor could not be read: " + err.Error(), Next: now.Add(c.Interval.Min)}
@@ -196,6 +215,7 @@ func (c *Collector) Tick(ctx context.Context, now time.Time) Report {
 	}
 	c.loaded = true
 	rep := c.tick(ctx, now)
+	rep.Notice = c.note
 	rep.Changes = append(rep.Changes, c.feedBuf...)
 	rep.feedN = len(c.feedBuf)
 	if c.Durable != nil {
