@@ -81,6 +81,9 @@ const (
 	ReasonPermissionNotGranted BlockReason = "permission-not-granted"
 	ReasonOwnerUnconfirmed     BlockReason = "owner-unconfirmed"
 	ReasonForeignClosing       BlockReason = "foreign-closing-keyword"
+	// ReasonOpNotDefined is an operation the policy does not define (title,
+	// milestone, reopen ...): refused, and distinct from refusing a defined one.
+	ReasonOpNotDefined BlockReason = "op-not-defined"
 	// ReasonOperatorHold is valid for on-hold only.
 	ReasonOperatorHold BlockReason = "operator-hold"
 )
@@ -90,7 +93,7 @@ var allReasons = []BlockReason{
 	ReasonAuthFailed, ReasonPermissionDenied, ReasonRateLimited, ReasonCapacityShort,
 	ReasonBudgetExhausted, ReasonCheckNotPassed, ReasonDebtPresent, ReasonVerdictNotPass,
 	ReasonProducerNotAllowed, ReasonOwnershipUnverified, ReasonStoreUnavailable,
-	ReasonUserControl, ReasonOperatorAckMissing, ReasonUnclassified, ReasonNotIssueAuthor, ReasonIdentityUnknown, ReasonRepoNotAllowed, ReasonPermissionNotGranted, ReasonOwnerUnconfirmed, ReasonForeignClosing, ReasonOperatorHold,
+	ReasonUserControl, ReasonOperatorAckMissing, ReasonUnclassified, ReasonNotIssueAuthor, ReasonIdentityUnknown, ReasonRepoNotAllowed, ReasonPermissionNotGranted, ReasonOwnerUnconfirmed, ReasonForeignClosing, ReasonOpNotDefined, ReasonOperatorHold,
 }
 
 // AllReasons returns every reason in declaration order.

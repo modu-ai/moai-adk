@@ -49,6 +49,9 @@ type Record struct {
 	Closed bool `json:"closed,omitempty"`
 	// Rev is the revision of the authoritative copy this cache entry mirrors.
 	Rev int64 `json:"rev,omitempty"`
+	// PreflightHead is the HEAD whose PR text was checked for closing keywords
+	// that would close another author's Issue; the PR is published only for it.
+	PreflightHead core.HeadSHA `json:"preflight_head,omitempty"`
 	// Merged is the preserved fact that the PR reached the remote; it is
 	// never reverted. Pending names the obligation (local-sync, deploy,
 	// issue-close) that still keeps a merged Issue out of done.

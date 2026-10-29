@@ -41,6 +41,20 @@ var ErrNotSent = errors.New("agenticfactory/intake: the request was not sent")
 type Publisher interface {
 	PublishIssue(ctx context.Context, req claim.Request) (issue int, ref string, err error)
 	FindIssue(ctx context.Context, req claim.Request) (issue int, ref string, found bool, err error)
+	// AuthenticatedUser is the numeric id of the user the host sees; 0 or an
+	// error means it could not be established.
+	AuthenticatedUser(ctx context.Context) (int64, error)
+	// FindDuplicates is a read-only search for Issues that already carry the same
+	// work. It must not create or change anything.
+	FindDuplicates(ctx context.Context, req claim.Request) ([]Candidate, error)
+}
+
+// Candidate is an existing Issue that may be the same work. AuthorID is its
+// author's numeric id, 0 when unknown.
+type Candidate struct {
+	Issue    int
+	AuthorID int64
+	Ref      string
 }
 
 // Brancher registers the one branch of an Issue: it checks whether a remote
@@ -157,7 +171,76 @@ func (in *Intake) confirmIssue(key string, issue int, ref string) (claim.Request
 	})
 }
 
+// refuse records a block that is not an unknown effect: nothing was sent.
+func (in *Intake) refuse(key string, step claim.Stage, reason core.BlockReason, candidate int, retryable bool, resume string, cause error) (claim.Request, error) {
+	detail, _ := core.Redact(cause.Error())
+	if len(detail) > 200 {
+		detail = detail[:200]
+	}
+	rec, err := in.Store.UpdateRequest(key, func(r *claim.Request) error {
+		r.Blocked = &claim.Blocked{Step: step, Detail: detail, Retryable: retryable, Reason: reason, Candidate: candidate, Resume: resume}
+		return nil
+	})
+	if err != nil {
+		return claim.Request{}, errors.Join(cause, err)
+	}
+	return rec, cause
+}
+
+// preflight looks for the same work before an Issue is created. It only reads.
+// An own Issue is reused (done=true), another author's Issue stops the request
+// (no Issue is created in its place), and an identity that cannot be told stops
+// it too. When nothing is found it returns done=false and the Issue is created.
+func (in *Intake) preflight(ctx context.Context, req claim.Request) (claim.Request, bool, error) {
+	sctx, cancel := in.step(ctx)
+	defer cancel()
+	user, err := in.pub.AuthenticatedUser(sctx)
+	if err != nil || user <= 0 {
+		cause := fmt.Errorf("%w: the authenticated user could not be established", core.ErrIdentityUnknown)
+		rec, e := in.refuse(req.Key, claim.StageAccepted, core.ReasonIdentityUnknown, 0, true, "the authenticated user is established", cause)
+		return rec, true, e
+	}
+	cands, err := in.pub.FindDuplicates(sctx, req)
+	if err != nil {
+		rec, e := in.refuse(req.Key, claim.StageAccepted, "", 0, true, "the duplicate search succeeds", fmt.Errorf("duplicate search failed: %w", err))
+		return rec, true, e
+	}
+	var foreign *Candidate
+	for i := range cands {
+		c := cands[i]
+		switch {
+		case c.AuthorID <= 0:
+			cause := fmt.Errorf("%w: the author of issue #%d could not be established", core.ErrIdentityUnknown, c.Issue)
+			rec, e := in.refuse(req.Key, claim.StageAccepted, core.ReasonIdentityUnknown, c.Issue, true, "the author of the existing issue is established", cause)
+			return rec, true, e
+		case c.AuthorID == user:
+			ref := c.Ref
+			if ref == "" {
+				ref = fmt.Sprintf("reused existing issue #%d", c.Issue)
+			}
+			rec, e := in.confirmIssue(req.Key, c.Issue, ref)
+			return rec, true, e
+		default:
+			if foreign == nil {
+				foreign = &cands[i]
+			}
+		}
+	}
+	if foreign != nil {
+		cause := fmt.Errorf("%w: the same work already exists as issue #%d by another author; no issue is created in its place", core.ErrNotIssueAuthor, foreign.Issue)
+		rec, e := in.refuse(req.Key, claim.StageAccepted, core.ReasonNotIssueAuthor, foreign.Issue, false,
+			fmt.Sprintf("comment on issue #%d, or take it over where collaboration allows it", foreign.Issue), cause)
+		return rec, true, e
+	}
+	return req, false, nil
+}
+
 func (in *Intake) publish(ctx context.Context, req claim.Request) (claim.Request, error) {
+	if req.Issue == 0 {
+		if rec, done, err := in.preflight(ctx, req); done {
+			return rec, err
+		}
+	}
 	sctx, cancel := in.step(ctx)
 	defer cancel()
 	issue, ref, err := in.pub.PublishIssue(sctx, req)

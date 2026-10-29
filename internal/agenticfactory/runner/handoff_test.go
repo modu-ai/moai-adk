@@ -27,7 +27,7 @@ func landed(t *testing.T, r *Runner, ref core.IssueRef) Ticket {
 	if _, err := r.Verify(tk, passAllFor(tk, headA)); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := r.Land(tk, headA); err != nil {
+	if _, err := landOK(r, tk, headA); err != nil {
 		t.Fatal(err)
 	}
 	return tk
@@ -261,7 +261,7 @@ func TestHistoryKeptUnderOneIssueAcrossRepair(t *testing.T) {
 	_, _ = r.StartAttempt(tk, "attempt-1", core.DeliveryExecuted)
 	_, _ = r.Submit(tk, headA, false)
 	_, _ = r.Verify(tk, passAllFor(tk, headA))
-	_, _ = r.Land(tk, headA)
+	_, _ = landOK(r, tk, headA)
 	if _, err := r.HandOff(tk, goodHandoff()); err != nil {
 		t.Fatal(err)
 	}
@@ -273,7 +273,7 @@ func TestHistoryKeptUnderOneIssueAcrossRepair(t *testing.T) {
 	_, _ = r.StartAttempt(rep, "attempt-2", core.DeliveryExecuted)
 	_, _ = r.Submit(rep, headB, false)
 	_, _ = r.Verify(rep, passAllFor(rep, headB))
-	_, _ = r.Land(rep, headB)
+	_, _ = landOK(r, rep, headB)
 	h := goodHandoff()
 	h.HandoffID, h.Head, h.BoundaryHead = "ho-2", headB, headB
 	if _, err := r.HandOff(rep, h); err != nil {
@@ -373,7 +373,7 @@ func TestRepairCanRepublishNewHead(t *testing.T) {
 	if _, err := r.Verify(rep, passAllFor(rep, headB)); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := r.Land(rep, headB); err != nil {
+	if _, err := landOK(r, rep, headB); err != nil {
 		t.Fatal(err)
 	}
 	h := goodHandoff()
@@ -483,7 +483,7 @@ func TestAgentIdentitySurvivesHandoffAndRepair(t *testing.T) {
 	if _, err := r.Verify(tk, passAllFor(tk, headA)); err != nil {
 		t.Fatal(err)
 	}
-	_, _ = r.Land(tk, headA)
+	_, _ = landOK(r, tk, headA)
 	rec, err := r.HandOff(tk, goodHandoff())
 	if err != nil || rec.Receipt.Agent != "agent-1" {
 		t.Fatalf("receipt agent: %+v %v", rec, err)
@@ -508,7 +508,7 @@ func TestReceiptStaysAttributedAfterNumberReuse(t *testing.T) {
 	_, _ = r.StartAttempt(tk, "attempt-1", core.DeliveryExecuted)
 	_, _ = r.Submit(tk, headA, false)
 	_, _ = r.Verify(tk, passAllFor(tk, headA))
-	_, _ = r.Land(tk, headA)
+	_, _ = landOK(r, tk, headA)
 	rec, err := r.HandOff(tk, goodHandoff())
 	if err != nil || rec.Receipt.Session != a1.SessionID {
 		t.Fatalf("receipt session: %+v %v", rec, err)

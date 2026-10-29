@@ -14,7 +14,7 @@ import (
 // and unknown always blocks.
 //
 // The default is: work on your own Issues only (its body, comments, closing and
-// taking it over; labels and assignees only with their own permission). On another author's Issue you
+// taking it over; never its labels or assignees). On another author's Issue you
 // may add comments and edit your own comments, nothing else. The collaboration
 // option widens that only for a repository on the allow list, and it opens no
 // write by itself: editing the body, closing, labels and assignees are four
@@ -155,13 +155,11 @@ func (c Collaboration) Authorize(r AuthzRequest) AuthzVerdict {
 	}
 	if r.UserID == r.IssueAuthorID {
 		// Your own Issue: its body, comments, closing and taking it over are yours.
-		// Labels and assignees have no basis of their own, so they need their
-		// permission here too.
+		// Labels and assignees have no basis here, and the permission keys do not
+		// create one: they are for writes to another author's Issue.
 		switch r.Op {
-		case OpLabel:
-			return flag(c.Labels)
-		case OpAssignee:
-			return flag(c.Assignees)
+		case OpLabel, OpAssignee:
+			return DenyPermissionNotGranted
 		}
 		return Allow
 	}
@@ -204,8 +202,10 @@ func flag(on bool) AuthzVerdict {
 // Reason is the block reason a denial records. Allow has none.
 func (v AuthzVerdict) Reason() (BlockReason, bool) {
 	switch v {
-	case DenyNotIssueAuthor, DenyUnknownOp:
+	case DenyNotIssueAuthor:
 		return ReasonNotIssueAuthor, true
+	case DenyUnknownOp:
+		return ReasonOpNotDefined, true
 	case DenyIdentityUnknown:
 		return ReasonIdentityUnknown, true
 	case DenyRepoNotAllowed:
@@ -224,8 +224,10 @@ func (v AuthzVerdict) Err() error {
 	switch v {
 	case Allow:
 		return nil
-	case DenyNotIssueAuthor, DenyUnknownOp:
+	case DenyNotIssueAuthor:
 		base = ErrNotIssueAuthor
+	case DenyUnknownOp:
+		base = ErrOpNotDefined
 	case DenyIdentityUnknown:
 		base = ErrIdentityUnknown
 	case DenyRepoNotAllowed:

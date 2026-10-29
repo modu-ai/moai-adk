@@ -25,6 +25,7 @@ var (
 	ErrRepoNotAllowed       = errors.New("agenticfactory: the repository is not on the collaboration allow list, or the host answered for another one")
 	ErrPermissionNotGranted = errors.New("agenticfactory: collaboration does not grant this write")
 	ErrOwnerUnconfirmed     = errors.New("agenticfactory: the Issue's current owner is not confirmed handed over or absent")
+	ErrOpNotDefined         = errors.New("agenticfactory: the operation is not defined by the Issue permission policy")
 	ErrForeignClosing       = errors.New("agenticfactory: the PR text would close an Issue by another author")
 	ErrEffectUnknown        = errors.New("agenticfactory: an effect may have happened and must be looked up, not repeated")
 	ErrDeferred             = errors.New("agenticfactory: call budget is short, report write deferred")
@@ -64,6 +65,20 @@ func ReasonFor(err error) (BlockReason, bool) {
 		return ReasonCapacityShort, true
 	case errors.Is(err, ErrBacklogUnset):
 		return ReasonNotConfigured, true
+	case errors.Is(err, ErrNotIssueAuthor):
+		return ReasonNotIssueAuthor, true
+	case errors.Is(err, ErrIdentityUnknown):
+		return ReasonIdentityUnknown, true
+	case errors.Is(err, ErrRepoNotAllowed):
+		return ReasonRepoNotAllowed, true
+	case errors.Is(err, ErrPermissionNotGranted):
+		return ReasonPermissionNotGranted, true
+	case errors.Is(err, ErrOwnerUnconfirmed):
+		return ReasonOwnerUnconfirmed, true
+	case errors.Is(err, ErrForeignClosing):
+		return ReasonForeignClosing, true
+	case errors.Is(err, ErrOpNotDefined):
+		return ReasonOpNotDefined, true
 	}
 	return "", false
 }
