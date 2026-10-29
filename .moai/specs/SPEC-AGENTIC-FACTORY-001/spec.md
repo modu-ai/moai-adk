@@ -1,7 +1,7 @@
 ---
 id: SPEC-AGENTIC-FACTORY-001
 title: "AgenticFactory 실행 계약 — GitHub Issue 원장 기반 소유권·전이·안전 게이트"
-version: "0.4.0"
+version: "0.5.0"
 status: draft
 created: 2026-10-29
 updated: 2026-10-29
@@ -13,7 +13,7 @@ lifecycle: spec-anchored
 tags: "agentic-factory, github-issues, ledger, ownership, lease, policy, contract"
 tier: L
 issue_number: 1948
-related_specs: [SPEC-ASIDE-BROWSER-001, SPEC-RESOURCE-SLOT-LEASE-001, SPEC-FACTORY-LEASE-RENEW-001]
+related_specs: [SPEC-ASIDE-BROWSER-001, SPEC-RESOURCE-SLOT-LEASE-001, SPEC-FACTORY-LEASE-RENEW-001, SPEC-AGENTIC-FACTORY-IDENTITY-001]
 ---
 
 # SPEC-AGENTIC-FACTORY-001 — AgenticFactory 실행 계약
@@ -26,6 +26,7 @@ related_specs: [SPEC-ASIDE-BROWSER-001, SPEC-RESOURCE-SLOT-LEASE-001, SPEC-FACTO
 | 0.2.0 | 2026-10-29 | manager-spec | plan-audit iteration-1 FAIL 0.69(`.moai/reports/SPEC-AGENTIC-FACTORY-001/plan-audit-iter1.md`)의 결함 D1~D18을 앞으로 고치는 판. **REQ ID 재사용(상한 25 유지)**: 옛 REQ-AF-002(차단·보류)는 REQ-AF-001에 합치고 REQ-AF-002는 `done` 수용 조건(원격 반영 + 로컬 동기화 + 배포 증거 또는 기록된 N/A)으로, 옛 REQ-AF-005(비밀 가림)는 REQ-AF-004에 합치고 REQ-AF-005는 관찰 모니터 표시 항목으로 다시 썼다. REQ-AF-015는 환경별 단계 실제 실행, REQ-AF-016은 3선택 선택 모델(선택·저장·다시 읽기), REQ-AF-014는 거울 쓰기 실패 규칙 하나로 정리(D2), REQ-AF-010은 활성 판정 정본을 `homestate.ClassifyOwnerWith`로 정함(D12, §F.2), REQ-AF-025는 단계별 호환 기준(D10). AC는 25개 그대로이며 시나리오 하네스 계약(D5), 증거 원장의 "대상 부재 참고 관측" 전환(D1), AC-AF-019·024 기준점(D1·D9), AC-AF-018 여섯 증거 제거 사례(D6), AC-AF-002 미전달 dispatch 사례(D7), AC-AF-020 운영 기록 점검(D8), 마일스톤 재배치(D11)를 반영했다. `factory.go:284-286`·`approve` `Use:` 문자열 사실 정정(D17), progress §E.1 기록(D18). 명칭·명령은 계속 미확정이다. |
 | 0.3.0 | 2026-10-29 | manager-spec | plan-audit iteration-2 FAIL 0.69(`.moai/reports/SPEC-AGENTIC-FACTORY-001/plan-audit-iter2.md`)의 차단 결함 R-D5·N1~N8과 선택 O1~O3·O6·O7을 앞으로 고치는 판. REQ·AC 수는 25/25 그대로이며 새 ID를 만들지 않고 기존 문장에 합쳤다. N1: 결정 D2를 고쳐 Codex가 아닌 **공급자 중립 리뷰 경로**(독립 리뷰 세션 또는 운영자 기록 리뷰)를 정의하고 M4에 둔다(§F.7, design §11.1). N2: 증거 생산자 역할 결속(REQ-AF-018·020, design §7.2·§11). N3: 로컬 동기화를 경로별 내용 digest로(REQ-AF-002 (b), design §4). N4~N7: AC-AF-018·003·007·020 사례 보강(N7은 커밋 그래프 확인). N8: §A.3과 acceptance §E에 3선택 UI 항목 미완료 명시. R-D5: acceptance §A.1에 05→06 증거 생산 단계, 분기 사례의 격리 실행, 재실행 규칙, 두 번째 Issue의 사후 상태 추가. O6: `cc -l` 리더 검증 위치(`internal/discovery/factory_discovery.go` `verifyCandidate`) 기록. ID 재사용 안내(O8): 1회차 판정 파일의 REQ-AF-002·005는 0.1.0의 뜻(차단 기록·비밀 가림)이며 지금은 REQ-AF-001·004 안에 있다. |
 | 0.4.0 | 2026-10-29 | manager-spec | plan-audit iteration-3 FAIL 0.69(`.moai/reports/SPEC-AGENTIC-FACTORY-001/plan-audit-iter3.md`) 뒤의 델타 수리 판. 운영자 결정(2026-10-29, 리더 경유 전달)을 **결정 DEC-AF-01**(§C.5.1, design §11.2)로 기록하고 REQ-AF-018·AC-AF-018에 합쳤다: 증거를 내는 역할은 ControlService만 운영자 인증 아래 부여하고, Worker는 자기에게도 남에게도 역할을 줄 수 없으며, 한 세션은 run 안에서 역할 하나만 갖고, 세션 신원은 ControlService가 관측한 pid·시작 시각·session id·epoch에 묶는다(D1). D2: 격리 사본을 독립 gitdir·인덱스의 별도 클론으로 하고 실제 트리 HEAD·인덱스·경로별 digest 불변을 단언. D3: AC-AF-018에 코드 리뷰·보안 리뷰·QA 각각의 Worker 생산 사례와 이전 attempt Worker의 자기 코드 리뷰 사례 추가. D4: AC-AF-020 넷째 검사를 커밋마다 값 비교로 바꾸고 `llm.yaml` 두 벌 추가. D5: AC-AF-007에 인덱스만·모드만 바뀐 변형 추가. D6: 보류 사유 `operator-hold`를 design §2.1a에 넣고 REQ-AF-001·§A.1을 맞춤. D7: AC-AF-003 ④가 `received`를 세우지 않게 고침. 선택 O1~O5·O7 반영(O6 S4 AC는 남김, OQ-20). 전 AC 변형 점검표(acceptance §D) 추가와 그에 따른 AC 보강. REQ·AC 수는 25/25 그대로이며 ID 집합은 바뀌지 않았다. |
+| 0.5.0 | 2026-10-29 | manager-spec | plan-audit iteration-4 FAIL 0.76(`.moai/reports/SPEC-AGENTIC-FACTORY-001/plan-audit-iter4.md`)의 분할 제안과 운영자 재결정(2026-10-29, 리더 경유)에 따른 델타 판. 역할 부여·세션 신원·운영자 인증(결정 DEC-AF-01, REQ-AF-018의 해당 조항, design §11.2와 §7.2·§11·§11.1의 해당 내용, AC-AF-018 R1~R10, OQ-19)을 하위 SPEC-AGENTIC-FACTORY-IDENTITY-001로 옮기고, 그 자리에 하위 SPEC의 귀속 조회 의존과 **잠금 결정 DEC-AF-02**(§C.5.1: 하위 SPEC 완료 전에는 리뷰·감사·QA·coordinator 증거가 모두 귀속 불가로 막힘)를 넣었다. N3: AC-AF-008을 M1에서 닿는 상태 엔진 조회 수준으로 다시 썼고, 관찰 출력·종료 코드 단언은 M6의 AC-AF-024로 옮겼다. 변형 점검표(acceptance §D)의 잘못 귀속된 두 행(005 하네스 행, 018 R1/R2 행)과 이관 항목 행을 고쳤다. REQ·AC 수는 25/25 그대로다. |
 
 ## §A 범위와 규범 원천
 
@@ -121,25 +122,20 @@ Issue #1948은 "상위 착수 원장이지 구현 완료나 실행 시작의 증
 
 | ID | 패턴 | 요구사항 |
 |---|---|---|
-| REQ-AF-018 | Compound (Ubiquitous + Where + Unwanted) | The merge gate SHALL admit a merge only when, for the latest HEAD, every required check actually ran and passed, a same-HEAD code review and security review each carry the verdict `PASS`, the required independent audit is a debt-free `PASS`, the official QA skill (§F.5) verdict for that HEAD is `PASS`, and both the writer's and the coordinator's ready-handoffs are present; each evidence item SHALL be bound to its producer — the role, session, attempt, and epoch that the ControlService observed when the item was registered, never a value the item states about itself — and the gate SHALL admit it only when the producer holds the role that evidence requires (`design.md` §11) and, for review, audit, and QA evidence, is not the session of the writer attempt. Every role that produces review, audit, QA, or coordinator-handoff evidence SHALL exist only as a grant made by the ControlService under a valid operator authentication (decision DEC-AF-01, `design.md` §11.2); no session SHALL hold more than one role in a run; and the ControlService SHALL admit an evidence registration only when the process it observes on the registering connection matches the identity bound at registration (session id, pid with its process-start fingerprint, run, and epoch). Where Codex is not opted in (REQ-AF-013), the code and security review requirement SHALL be satisfiable by the provider-neutral review path of `design.md` §11.1. A skipped, missing, failed, cancelled, stale, `FAIL`, `BLOCKED`, unparseable, or `PASS-WITH-DEBT` result, an item from a disallowed producer, or an exhausted audit budget SHALL be recorded as `blocked` and SHALL NOT count as a pass; a role grant requested by a Worker for itself or for another session, a grant to a session that already holds a role in the run, a grant without an operator authentication or with an expired, reused, or mismatched one, a role record the ControlService did not make, and a registration whose observed identity does not match SHALL NOT produce a role, and no path SHALL grant a role by default. |
+| REQ-AF-018 | Compound (Ubiquitous + Where + Unwanted) | The merge gate SHALL admit a merge only when, for the latest HEAD, every required check actually ran and passed, a same-HEAD code review and security review each carry the verdict `PASS`, the required independent audit is a debt-free `PASS`, the official QA skill (§F.5) verdict for that HEAD is `PASS`, and both the writer's and the coordinator's ready-handoffs are present; the writer's ready-handoff SHALL count only when the Worker of the current attempt and epoch registered it, and each code review, security review, audit, QA, and coordinator-handoff item SHALL count only when the producer-attribution query of SPEC-AGENTIC-FACTORY-IDENTITY-001 (REQ-AFI-007) returns `attributed` with the role that evidence kind requires (`design.md` §11), never on a value the item states about itself. Until SPEC-AGENTIC-FACTORY-IDENTITY-001 is `completed`, the attribution source the gate uses outside tests SHALL return `unattributable` for every such item, so that no review, audit, QA, or coordinator role can take effect and the gate records `blocked(producer-not-allowed)` (decision DEC-AF-02). Where Codex is not opted in (REQ-AF-013), the code and security review requirement SHALL be satisfiable by the provider-neutral review path of `design.md` §11.1. A skipped, missing, failed, cancelled, stale, `FAIL`, `BLOCKED`, unparseable, or `PASS-WITH-DEBT` result, an unattributable item, or an exhausted audit budget SHALL be recorded as `blocked` and SHALL NOT count as a pass, and no path SHALL treat a missing or unavailable attribution as a granted role. |
 | REQ-AF-019 | Unwanted | AgenticFactory SHALL NOT delete a required check, weaken branch protection, change the repository's current linear-history setting, force-push `main`, or merge through an administrator bypass. |
 | REQ-AF-020 | Ubiquitous | The evidence store SHALL keep SHA-bound evidence (audit, review, QA verdicts) outside the code candidate's commit history so that recording evidence does not change the code HEAD it describes, and every stored evidence item SHALL name the full HEAD SHA it judged and its producer binding (REQ-AF-018), and be re-verified against the candidate HEAD before the merge gate reads it. |
 | REQ-AF-021 | Event-driven | When a merge outcome is unknown, the merge step SHALL query the remote state first and SHALL NOT re-merge; when the remote reflection of the merge on `main` is confirmed, the state engine SHALL move the Issue to `done` only under the completion evidence of REQ-AF-002, SHALL close the Issue only after `done` is recorded, and SHALL admit the next dispatch for the freed slot only after the Issue is closed. |
 | REQ-AF-022 | Ubiquitous | The Codex default migration SHALL proceed in the order of `plan.md` §F.3 — introduce the explicit opt-in gate, verify zero calls when unset, then change defaults — and no existing Codex feature SHALL be removed before its replacement is verified; inspection, independent audit, and handoff obligations SHALL remain in force at every stage. |
 
-#### C.5.1 결정 DEC-AF-01 — 역할 부여·세션 신원·운영자 인증
+#### C.5.1 역할 부여·세션 신원 — 하위 SPEC으로 이관과 잠금 결정 DEC-AF-02
 
-- **출처**: 운영자 결정(2026-10-29, `AskUserQuestion` 답변을 리더가 전달). plan-audit iteration-3 D1이 "운영자가 정해야 할 설계 결정"으로 올린 항목이다. 운영자가 정한 것은 네 가지다. ① 리뷰·감사 역할은 ControlService만 부여한다. ② 리뷰·감사 역할 등록에는 운영자 인증이 필요하다. ③ Worker는 자기에게도 다른 세션에게도 역할을 줄 수 없다. ④ 한 세션이 Worker이면서 감사자·리뷰어일 수 없다(역할 분리).
-- **결정(이 SPEC이 구체화한 범위)**:
-  1. **부여 대상 역할**: 증거를 내는 역할 전부 — 코드 리뷰, 보안 리뷰, 독립 감사, QA, Coordinator. QA와 Coordinator를 넣은 이유는 그 둘도 병합 게이트가 세는 증거(QA 판정, coordinator 인계)를 내기 때문이다. 둘을 빼면 Worker가 띄운 세션이 그 증거를 대신 낼 수 있다. Worker 역할은 운영자 인증 없이 ControlService가 attempt를 발급할 때 준다.
-  2. **부여 주체와 기록**: 부여는 ControlService만 한다. 판정에 쓰는 부여 목록은 ControlService가 부여 명령으로 만든 기록뿐이다. claim 저장소에 남는 부여 기록은 감사·관찰용 사본이며, 판정 때 다시 읽어 권한으로 쓰지 않는다. 그래서 다른 writer가 저장소 파일에 직접 써 넣은 역할 기록은 역할을 만들지 못한다. ControlService가 재시작하면 이전 기동의 부여는 이어받지 않고 다시 부여받아야 한다(design §11.2).
-  3. **운영자 인증 경로**: 부여에는 대화형 단말 확인이 필요하다. 이 저장소의 `moai contract` 서명과 같은 부류다(`internal/contract/seal.go:47` `MethodInteractiveTTY = "interactive-tty"`, 이번 실행에서 grep으로 확인). ControlService는 대상 run·역할·세션 id·pid·프로세스 시작 시각을 보이고, 운영자가 그 세션 id를 직접 입력해 확인한다. 결과는 `operator_ack`로 claim 저장소에 기록된다. 인증이 없거나, 만료됐거나(대상 세션 종료, run 종료), 이미 쓰였거나, 대상이 맞지 않거나, 방식이 `interactive-tty`가 아니면 부여하지 않는다. 그 결과 필요한 역할이 없는 게이트는 `blocked(operator-ack-missing)`로 기록된다. 기본 부여는 없다.
-  4. **세션 신원**: session id는 ControlService가 등록 때 발급한다. ControlService는 등록 요청 연결에서 호출 프로세스의 pid를 직접 관측하고(호출자가 적어 보낸 값은 쓰지 않는다), §F.2 정본으로 그 pid의 시작 시각을 함께 묶는다. 증거를 등록할 때마다 같은 관측을 다시 한다. 관측한 pid가 기록과 다르거나 `ClassifyOwnerWith`가 `live`가 아니면 거절한다. 등록된 session id를 복사한 다른 프로세스, PID 재사용, 이미 살아 있는 프로세스에 묶인 session id로 다시 등록하는 경우가 모두 이 검사에서 걸린다.
-  5. **역할 분리**: 한 세션은 run 안에서 역할 하나만 갖는다. 그 run에서 Worker였던 세션(이전 attempt 포함), Coordinator 세션, 이미 다른 역할을 받은 세션에는 운영자 인증이 유효해도 부여하지 않는다.
-  6. **Worker의 요청**: 부여 요청이 등록된 세션의 프로세스(Worker·Coordinator·리뷰 세션)에서 오면 인증이 붙어 있어도 거절한다. Worker가 띄운 추가 세션은 ControlService 등록이 없거나, 등록은 있어도 운영자 인증이 없으니 역할이 없다. 그 세션이 낸 리뷰·감사·QA 증거는 `producer-not-allowed`로 막힌다.
-- **근거**: Issue #1948은 "같은 HEAD 코드/보안 리뷰 및 필수 독립감사 무부채 PASS"를 병합 조건으로 둔다. 역할 등록이 누구에게나 열려 있으면 Worker가 세션 하나를 더 띄우는 것만으로 이 조건이 무력해진다(iteration-3 D1). 이 SPEC은 이미 claim·전이 쓰기를 ControlService에만 허용하고 있으며(REQ-AF-023), 역할 부여도 같은 방향으로 맞춘다.
-- **결과(귀결)**: REQ-AF-018에 부여·분리·신원 조건이 합쳐졌다. AC-AF-018에 역할 부여 사례 묶음과 둘째 검증 명령이 추가됐다. design §7.2·§11·§11.1·§11.2와 acceptance §A.1(시험 세션도 운영자 인증으로 역할을 받는다)이 바뀌었다. 시나리오 06의 선행 단계에는 운영자 개입 시점(역할 넷의 부여 확인)이 생겼다. REQ·AC 상한(25)은 기존 ID에 합쳐서 지켰고 새 ID는 없다.
-- **잔여 위험**: 대화형 단말 확인은 사람과 의사 단말(pty)을 조작하는 프로그램을 구분하지 못한다. 에이전트가 pty를 띄워 운영자 확인을 흉내 낼 수 있다는 위험은 이 결정으로 닫히지 않는다(OQ-19). 호출 프로세스 pid를 OS에서 직접 얻는 플랫폼별 방법, 특히 Windows 쪽은 아직 정하지 않았다(§H).
+- **이관(0.5.0)**: 결정 DEC-AF-01(운영자 결정 2026-10-29 — ① 리뷰·감사 역할은 ControlService만 부여, ② 그 등록에는 운영자 인증 필요, ③ Worker는 자기에게도 다른 세션에게도 역할을 줄 수 없음, ④ 한 세션은 Worker이면서 감사자일 수 없음)과 그 구체화(부여 대상 역할, 부여 기록, 운영자 인증, 세션 신원, 역할 분리, 요청자 확인)는 **SPEC-AGENTIC-FACTORY-IDENTITY-001**로 옮겼다(그 SPEC §F.1, design §2~§5). plan-audit iteration-4의 분할 제안과 운영자 재결정(2026-10-29, 리더 경유)에 따른 것이다.
+- **이 SPEC이 하위 SPEC에서 받는 것**: 증거마다 `attributed{kind, role, session_id, attempt, epoch}` 또는 `unattributable{reason}`을 돌려주는 읽기 전용 귀속 조회(하위 REQ-AFI-007, 하위 design §6). 병합 게이트는 리뷰·감사·QA·coordinator 증거를 이 조회로만 판정한다(REQ-AF-018).
+- **결정 DEC-AF-02 — 잠금**: SPEC-AGENTIC-FACTORY-IDENTITY-001이 `completed`가 되기 전에는 리뷰·감사·QA·Coordinator 역할이 효력을 갖지 않는다. 시험 밖에서 게이트가 쓰는 귀속 원천은 그 증거 모두에 `unattributable{reason: identity-spec-incomplete}`를 돌려주고, 게이트는 `blocked(producer-not-allowed)`를 기록한다. 기본 부여, 증거가 스스로 적은 역할, 저장소에 남은 역할 기록 어느 것도 이 잠금을 우회하지 못한다. 잠금은 하위 SPEC의 `completed`로만 풀린다.
+- **근거**: Issue #1948의 병합 조건("같은 HEAD 코드/보안 리뷰 및 필수 독립감사 무부채 PASS")은 역할을 누가 받는지에 달려 있다. iteration-4는 부여 경로의 요청자 확인이 클라이언트 쪽 단말 확인뿐이라 Worker가 띄운 미등록 자식 프로세스가 역할을 얻을 수 있다고 지적했다(N1). 그 문제를 하위 SPEC에서 닫기 전에 이 SPEC의 게이트가 역할을 믿게 두면, 잠금이 없는 동안 병합 조건이 무력해진다. 그래서 막는 쪽을 기본으로 둔다.
+- **결과(귀결)**: REQ-AF-018에서 부여·분리·신원 조건을 빼고 귀속 조회 의존과 잠금을 넣었다. AC-AF-018에서 역할 부여 사례 R1~R10과 둘째 시험을 빼고(하위 AC-AFI-001~008로 이관) 잠금 사례와 종류별 귀속 사례를 넣었다. 시나리오 05~07의 리뷰·감사 단계는 하위 SPEC 완료 전에는 초록이 될 수 없다(acceptance §A.1). REQ·AC 수는 25/25 그대로다.
+- **잔여 위험**: 잠금 동안 이 SPEC의 병합 경로는 리뷰·감사가 필요한 모든 병합에서 막힌다. 이것은 의도한 결과다. 단말 확인의 강도와 키 입력 주입 위험은 하위 SPEC의 OQ-AFI-1로 옮겨 갔다.
 
 ### C.6 세션 구조·명령·호환 (명칭은 모두 미확정)
 
@@ -159,7 +155,7 @@ Issue #1948은 "상위 착수 원장이지 구현 완료나 실행 시작의 증
 
 | REQ | AC |
 |---|---|
-| REQ-AF-001 | AC-AF-008, AC-AF-025 |
+| REQ-AF-001 | AC-AF-008, AC-AF-022 (e), AC-AF-025 |
 | REQ-AF-002 | AC-AF-007 |
 | REQ-AF-003 | AC-AF-003 |
 | REQ-AF-004 | AC-AF-012 |
@@ -176,7 +172,7 @@ Issue #1948은 "상위 착수 원장이지 구현 완료나 실행 시작의 증
 | REQ-AF-015 | AC-AF-014 |
 | REQ-AF-016 | AC-AF-016 |
 | REQ-AF-017 | AC-AF-017 |
-| REQ-AF-018 | AC-AF-005, AC-AF-018 |
+| REQ-AF-018 | AC-AF-005, AC-AF-018 (역할 부여·신원은 SPEC-AGENTIC-FACTORY-IDENTITY-001 AC-AFI-001~009) |
 | REQ-AF-019 | AC-AF-019 |
 | REQ-AF-020 | AC-AF-018 |
 | REQ-AF-021 | AC-AF-006, AC-AF-007 |
@@ -322,7 +318,7 @@ lane-22 보고서(`a-merge-gate-gap-matrix.md`)는 D1~D5를 "결정 필요 항�
 | OQ-16 | 설정 키 `workflow.agentic_factory.slots`의 상한은 얼마인가? 하한은 1로 정했지만 상한의 근거(기기 용량, 리뷰 처리량)가 이 트리에 없다. 정해지기 전까지 이 키는 "1 이상, 상한 미정"이며 AC-AF-017은 하한 위반과 형식 위반만 시험한다. | REQ-AF-017 범위 |
 | OQ-17 | 활성 판정 정본(§F.2)의 한계: Linux `ps -o lstart=`는 초 단위라 같은 초 안의 PID 재사용을 구분하지 못할 수 있고, Windows `GetProcessTimes` 비교의 세부 의미는 읽지 않았다. 이를 측정해 정본 결정을 확정하거나, 더 정밀한 시작 시각 원천을 요구할 것인가? | REQ-AF-010 확정 |
 | OQ-18 | 브라우저 3선택을 사람이 보는 설정 화면(웹 UI)에 그릴 것인가? 그 화면은 열린 PR #1937·#1944가 고치는 `internal/settings` 영역이라 이 SPEC은 설정 키 저장·다시 읽기 계약만 정하고 화면 표시는 범위 밖으로 둔다(§I). | REQ-AF-016 표시 범위 |
-| OQ-19 | DEC-AF-01의 운영자 인증(대화형 단말 확인)은 pty를 조작하는 프로그램과 사람을 구분하지 못한다. OS 사용자 분리, 하드웨어 키, 별도 장치 확인처럼 더 강한 인증을 요구할 것인가? 요구하지 않는다면 이 위험을 수용 기록으로 남기는가? 또 운영자 확인을 기다리는 대기 한도와 시험 하네스(acceptance §A.1)의 대기 방식은 무엇인가? | REQ-AF-018 인증 강도, 시나리오 06 실행 |
+| OQ-19 | (0.5.0에서 SPEC-AGENTIC-FACTORY-IDENTITY-001의 OQ-AFI-1로 이관) 운영자 인증 강도와 운영자 확인 대기 한도. 이 SPEC에는 번호만 남긴다. | 하위 SPEC REQ-AFI-002, 이 SPEC 시나리오 05~07 실행 |
 | OQ-20 | REQ-AF-025의 S4(명령 제거) 조건을 기계로 판정할 형식이 없어 대응 AC가 없다(acceptance §D 변형 점검표의 생존 항목). S4 진입 전에 AC를 보강할 책임은 누구에게 있는가? | REQ-AF-025 S4 |
 
 ## §H 확인 공백 (관측하지 못한 것)
@@ -341,7 +337,7 @@ lane-22 보고서(`a-merge-gate-gap-matrix.md`)는 D1~D5를 "결정 필요 항�
 - 활성 판정의 Windows 구현(`factory_alive_windows.go`, `process_fingerprint_windows.go`, `pid_state_windows.go`)은 함수 머리와 분기만 읽었고 실행해 보지 않았다(OQ-17).
 - lane-22·lane-21 보고서(`/Users/goos/MoAI/moai-adk-go/.moai/worktrees/agentic-factory-integration/.moai/reports/agentic-factory/a-merge-gate-gap-matrix.md`, `c-factory-migration-map.md`, `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/agentic-factory-21/.moai/reports/agentic-factory/21-browser-contracts.md`)는 읽었지만, 그 안의 측정(브라우저 도구 실행, PR 상태, `auto-merge.yml` 186-316행 해석, `a8372b21f5` 커밋 메시지, #1943 검사 집계, worktree 등록부)은 이 세션이 다시 실행하지 않았다. 이 SPEC은 그것을 보고서 출처로만 인용한다.
 - 보고서와 이 트리의 차이: (a) lane-22는 squash를 운영 관행으로 읽었으나 `auto-merge.yml:627-632`는 일부 브랜치만 squash다(D1). (b) lane-22는 Codex 리뷰 게이트를 `auto-merge.yml:392-420`으로 적었고 이 세션은 `:325`와 `:407` 두 곳에서 `codex-review-gate.sh` 호출을 찾았다(범위 차이). (c) lane-22 C8의 `moai factory approve`는 설치 바이너리 `--help` 근거였고, 이 트리에서는 `internal/cli/leader_approval_gate.go:286`에 `Use: "approve <card-id> --run <run-id>"`가 있음을 확인했다(명령 존재는 일치. 0.1.0이 적은 `Use: "approve"`는 문자열을 줄여 적은 것이라 0.2.0에서 정정).
-- DEC-AF-01(§C.5.1)의 "호출 프로세스 pid를 ControlService가 OS에서 직접 관측"하는 방법(예: Unix 소켓 상대 자격 증명)은 플랫폼별로 정하지 않았고, Windows 대응은 확인하지 않았다. `internal/contract`는 `MethodInteractiveTTY` 상수(`seal.go:47`)만 grep으로 확인했고 서명 흐름 본문은 읽지 않았다.
+- 호출 프로세스 pid를 OS에서 관측하는 방법과 운영자 인증의 확인 공백은 0.5.0에서 SPEC-AGENTIC-FACTORY-IDENTITY-001(§H, OQ-AFI-2)로 옮겼다.
 - `auto-merge.yml`은 grep으로 일부 줄만 봤다. `scripts/ci/codex-review-gate.sh` 본문은 읽지 않았다.
 
 ## §I 범위 밖
