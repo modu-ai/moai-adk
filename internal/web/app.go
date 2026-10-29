@@ -138,6 +138,9 @@ type app struct {
 	// (Issue #1948 DELTA4). Nil until the monitor data source is wired.
 	monitorRows    func(ctx context.Context) ([]byte, error)
 	intakeRequests func(ctx context.Context) ([]byte, error)
+	// contextModel returns one Issue's ctxmodel.Ledger JSON (Ledger.Marshal);
+	// nil leaves the model view "not provided".
+	contextModel func(ctx context.Context, issue int) ([]byte, error)
 
 	// triggerShutdown is 페이지 내 서버 종료 버튼(/__shutdown__)이 호출하는
 	// injectable seam 이다. openBrowser 와 동일한 패턴이지만 app 에 두는 이유는 —
@@ -178,6 +181,7 @@ func newApp(cfg Config) *app {
 
 		monitorRows:     cfg.MonitorRows,
 		intakeRequests:  cfg.IntakeRequests,
+		contextModel:    cfg.ContextModel,
 		browserSelected: readBrowserSelected,
 		browserProbe:    browser.ExecProbe{},
 

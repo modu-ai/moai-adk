@@ -732,6 +732,17 @@ templ Monitor(vm ShellVM, m MonitorVM) {
 								<span class="panel__meta">{ "owner " + c.Owner + " · " + c.At }</span>
 							</div>
 						}
+						if !r.Ledger.Known {
+							<span class="panel__meta">{ "model " + r.Ledger.Note }</span>
+						}
+						for _, m := range r.Ledger.Items {
+							<div class="vrow">
+								<span class="panel__meta">{ "model " + m.Section + " · " + m.Title + " · " + m.Status }</span>
+								<span class="panel__meta">{ "state " + m.State + " · owner " + m.Owner }</span>
+								<span class="mono panel__meta">{ m.Path + " @ " + m.Commit + " · head " + m.TargetHead + " · sha256 " + m.Hash }</span>
+								<span class="panel__meta">{ "rev " + m.Revision + " · verified " + m.Verified + " " + m.VerifiedAt }</span>
+							</div>
+						}
 					}
 				</div>
 			}

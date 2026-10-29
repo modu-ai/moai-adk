@@ -35,6 +35,8 @@ type PRTrackRowVM struct {
 	Park     string
 	Gate     string
 	Refusal  string
+	// Ledger is the ctxmodel view of this Issue's context ledger.
+	Ledger ContextModelVM
 }
 
 // PRBacklogVM is the open-PR count against its limit.
@@ -163,6 +165,7 @@ func (a *app) buildPRTracking(ctx context.Context) PRTrackingVM {
 			row.Phase, row.Track = r.PR.Value.Phase, prTrack(r.PR.Value.Phase)
 		}
 		row.Context = buildContext(r.Context)
+		row.Ledger = a.buildContextModel(ctx, r.Issue)
 		vm.Rows = append(vm.Rows, row)
 	}
 	return vm

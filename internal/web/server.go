@@ -71,6 +71,10 @@ type Config struct {
 	// intake request panel "not provided".
 	IntakeRequests func(ctx context.Context) ([]byte, error)
 
+	// ContextModel supplies one Issue's context-ledger model (ctxmodel.Ledger
+	// JSON). Nil leaves the model view "not provided".
+	ContextModel func(ctx context.Context, issue int) ([]byte, error)
+
 	// ProfileBaseDir overrides the profile store base directory
 	// (~/.moai/claude-profiles by default). When empty, the process default is
 	// used. Tests set this to a temp dir for isolation.
