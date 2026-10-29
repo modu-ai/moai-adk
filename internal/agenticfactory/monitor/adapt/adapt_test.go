@@ -230,3 +230,45 @@ func TestRecordedFromCarriesTheStage(t *testing.T) {
 		t.Errorf("stage = %q", got.Stage)
 	}
 }
+
+// A record whose position cannot be derived reaches the row marked, never as "no park": through the real
+// store (the record is written in a shape the position derivation cannot map) and straight from a record.
+func TestReadClaimCarriesThePositionUnknownMarkerFromTheStore(t *testing.T) {
+	dir := t.TempDir()
+	s, err := claim.OpenWithLimit(dir, 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	iss, _ := core.NewIssueRef(7)
+	run, _ := core.ParseRunID("run-1")
+	if _, err := s.Acquire(iss, "lane-18", "cmd-1", run); err != nil {
+		t.Fatal(err)
+	}
+	legacyRecord(t, dir, func(m map[string]any) { m["state"] = "unheard-of" })
+	row, err := (ClaimSource{Store: s}).ReadClaim(t.Context(), 7)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if row.PositionUnknown == "" {
+		t.Errorf("the unmappable record read as a known position: %+v", row)
+	}
+	if row.Stage != "" || row.Park != nil {
+		t.Errorf("an unknown position must not be mapped to values: stage=%q park=%v", row.Stage, row.Park)
+	}
+	ok := rowFrom(claim.Record{Issue: 7, State: core.StateImplementing}, "p", "")
+	if ok.PositionUnknown != "" {
+		t.Errorf("a derivable record carries the marker: %q", ok.PositionUnknown)
+	}
+	// a record that carries values AND the marker: none of the position values may be mapped
+	both := rowFrom(claim.Record{
+		Issue: 7, State: core.StateImplementing, Stage: core.StageReviewing, Sub: core.SubFix, PositionUnknown: "why",
+		Park: &core.Park{Reason: core.ReasonPendingEffect}, Gate: &core.Gate{Reason: core.ReasonCheckNotPassed},
+		Refusal: &core.Refusal{Reason: core.ReasonNotIssueAuthor}, Wait: &core.Wait{Owner: "a"},
+	}, "p", "")
+	if both.PositionUnknown != "why" {
+		t.Errorf("the marker is not carried: %q", both.PositionUnknown)
+	}
+	if both.Stage != "" || both.SubStage != "" || both.Park != nil || both.Gate != nil || both.Refusal != nil || both.Wait != nil {
+		t.Errorf("values were mapped from a position that is not known: %+v", both)
+	}
+}

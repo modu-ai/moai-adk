@@ -55,8 +55,6 @@ func rowFrom(r claim.Record, project, sid string) monitor.ClaimRow {
 		Issue:           r.Issue,
 		Owner:           r.Holder,
 		State:           string(r.State),
-		Stage:           string(StageOf(r)),
-		SubStage:        string(r.Sub),
 		Attempt:         attemptNo(r.Attempt),
 		Epoch:           int(r.Epoch),
 		HeadSHA:         string(r.Head),
@@ -64,6 +62,13 @@ func rowFrom(r claim.Record, project, sid string) monitor.ClaimRow {
 		BlockReason:     string(r.Reason),
 		ResumeCondition: r.Resume,
 	}
+	if r.PositionUnknown != "" {
+		// The store could not derive this record's position: stage, park, gate, refusal and wait are not
+		// known and are not mapped, so the row cannot read as "no park".
+		row.PositionUnknown = r.PositionUnknown
+		return row
+	}
+	row.Stage, row.SubStage = string(StageOf(r)), string(r.Sub)
 	if p := r.Park; p != nil {
 		row.Park = &monitor.ParkInfo{Reason: string(p.Reason), Evidence: p.Evidence, Resume: p.Resume}
 	}
