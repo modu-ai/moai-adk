@@ -9,11 +9,11 @@
 // update path (internal/cli/update.go) is not driven here and must be re-run
 // after the PR that reworks it lands.
 //
-// Not covered, recorded as a gap: user-file preservation under force-update.
-// The Deployer in force mode overwrites files recorded user_modified or
-// user_created at a template path (measured: two feature files were replaced),
-// so that guarantee belongs to the command-level update path, which is not
-// driven here and must be tested after the PR that reworks it lands.
+// User-file preservation under force-update is asserted by
+// agentic_factory_update_preserve_test.go in this package and
+// update_agentic_factory_preserve_test.go in internal/cli; the deployer
+// protects Agentic Factory provider templates through isUserOwnedTemplatePath
+// (user_owned_templates.go).
 //
 // Sentinels on failure: AF_INSTALL / AF_UPDATE.
 package template_test

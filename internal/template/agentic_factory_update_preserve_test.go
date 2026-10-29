@@ -1,24 +1,21 @@
-//go:build afred
-
-// agentic_factory_update_preserve_afred_test.go: KNOWN DEFECT REPRODUCTION,
-// BEFORE ANY REPAIR (RED). Excluded from the default test run by the afred
-// build tag; run it with:
+// agentic_factory_update_preserve_test.go: user-file preservation under
+// force-update. Regression guard for a defect that was reproduced before the
+// repair (see the commit history of this file): the Deployer in force mode
+// overwrote files the manifest records user_modified or user_created at
+// Agentic Factory template paths.
 //
-//	go test -tags afred -run '^TestAgenticFactoryUpdatePreservesUserFiles$' ./internal/template/
-//
-// Defect. The Deployer in force-update mode overwrites a file recorded
-// user_modified or user_created in the manifest when that file sits at a
-// template path. Only published-skill paths keep the provenance check
-// (deployer.go: `!d.forceUpdate || protectedScope`). Measured on this tree, the
-// test fails with these two paths overwritten:
+// Defect (fixed). Force mode kept the provenance check only on published-skill
+// paths (deployer.go: `!d.forceUpdate || protectedScope`), so these two paths
+// were overwritten:
 //
 //	.github/ISSUE_TEMPLATE/agentic-factory-01-parent-issue.yml  (user_modified)
 //	.github/ISSUE_TEMPLATE/agentic-factory-02-child-issue.yml   (user_created)
 //
 // A user-only file beside the feature files and the user's default pull
-// request template stay byte-identical. The repair (protect these paths in
-// force mode) touches deployer.go, which another open PR also changes, so it is
-// deferred until that PR lands.
+// request template stay byte-identical. The repair protects Agentic Factory
+// provider templates in force mode (isUserOwnedTemplatePath in
+// user_owned_templates.go, one changed line in deployer.go); with it this test
+// passes.
 //
 // Sentinel on failure: AF_PRESERVE.
 package template_test
