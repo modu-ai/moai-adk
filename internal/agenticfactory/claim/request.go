@@ -69,6 +69,10 @@ type Blocked struct {
 	Retryable bool   `json:"retryable"`
 	Unknown   bool   `json:"unknown,omitempty"`
 	Resume    string `json:"resume,omitempty"`
+	// Reason names a policy block (for example not-issue-author) in the closed
+	// reason set; Candidate is the existing Issue that caused it, if any.
+	Reason    core.BlockReason `json:"reason,omitempty"`
+	Candidate int              `json:"candidate,omitempty"`
 }
 
 // Request is a durable background intake record. The payload itself is never

@@ -35,6 +35,25 @@ type fakePub struct {
 	block    bool           // PublishIssue waits for the context
 	findErr  error
 	wrongNum int // when set, PublishIssue claims this number instead of the real one
+
+	noUser   bool        // the authenticated user cannot be established
+	dups     []Candidate // issues that already do the same work
+	dupErr   error
+	dupLooks int
+}
+
+func (f *fakePub) AuthenticatedUser(context.Context) (int64, error) {
+	if f.noUser {
+		return 0, errors.New("whoami failed")
+	}
+	return 7, nil
+}
+
+func (f *fakePub) FindDuplicates(context.Context, claim.Request) ([]Candidate, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.dupLooks++
+	return f.dups, f.dupErr
 }
 
 func (f *fakePub) PublishIssue(ctx context.Context, req claim.Request) (int, string, error) {
@@ -171,6 +190,13 @@ func rigAt(t *testing.T, dir string, cfg Config, pub *fakePub, br *fakeBr, pr *f
 	return &rig{dir: dir, in: in, pub: pub, br: br, pr: pr}
 }
 
+// ownIssues is a host where every Issue was opened by the acting user.
+type ownIssues struct{}
+
+func (ownIssues) IssueFacts(core.IssueRef) (runner.IssueFacts, error) {
+	return runner.IssueFacts{RequestedRepo: "acme/widgets", ActualRepo: "acme/widgets", UserID: 7, AuthorID: 7, Owner: core.OwnerNone}, nil
+}
+
 func ctx() context.Context { return context.Background() }
 
 var agentSeq atomic.Int32
@@ -229,6 +255,7 @@ func advanceTo(t *testing.T, r *rig, key string, want claim.Stage) (claim.Reques
 func beginAttempt(t *testing.T, r *rig, req claim.Request, a core.Agent) error {
 	t.Helper()
 	rn := runner.New(r.in.Store)
+	rn.Facts = ownIssues{}
 	ref, _ := core.NewIssueRef(req.Issue)
 	tk, err := rn.ClaimAs(ref, a, "disp-"+req.Key, "run-1")
 	if err != nil {
@@ -776,5 +803,93 @@ func TestAdvanceFailureWhileBusyKeepsBothErrors(t *testing.T) {
 	_, err := r.in.Advance(ctx(), "req-1")
 	if err == nil || !errors.Is(err, core.ErrBusy) || !strings.Contains(err.Error(), "429") {
 		t.Fatalf("both the publish error and the Busy must survive: %v", err)
+	}
+}
+
+// Same work already exists as another author's Issue: nothing is created in its
+// place. The request is blocked and names the Issue, so the work can go there.
+func TestDuplicateOfAnotherAuthorsIssueCreatesNothing(t *testing.T) {
+	pub := &fakePub{base: 1948, dups: []Candidate{{Issue: 3000, AuthorID: 99, Ref: "issue-3000"}}}
+	r := rigAt(t, t.TempDir(), Config{}, pub, &fakeBr{}, &fakePrep{stopped: true, host: "host-1"})
+	_, _ = r.in.Accept("req-1", []byte("p"), 1)
+	_, err := r.in.Advance(ctx(), "req-1")
+	if !errors.Is(err, core.ErrNotIssueAuthor) {
+		t.Fatalf("want a refusal, got %v", err)
+	}
+	if pub.publishCount() != 0 || pub.createdCount() != 0 {
+		t.Fatalf("an issue was created over someone else's: calls=%d created=%d", pub.publishCount(), pub.createdCount())
+	}
+	cur, _ := r.in.Store.GetRequest("req-1")
+	b := cur.Blocked
+	if cur.Stage != claim.StageAccepted || b == nil || b.Candidate != 3000 || b.Reason != core.ReasonNotIssueAuthor || b.Retryable || b.Unknown || cur.Issue != 0 {
+		t.Fatalf("record: %+v blocked=%+v", cur, b)
+	}
+	// Asking again changes nothing: still blocked, still nothing created.
+	if _, err := r.in.Advance(ctx(), "req-1"); !errors.Is(err, core.ErrNotIssueAuthor) {
+		t.Errorf("second advance: %v", err)
+	}
+	if pub.publishCount() != 0 {
+		t.Error("the second advance created an issue")
+	}
+}
+
+// The user's own earlier Issue for the same work is reused, not duplicated.
+func TestOwnDuplicateIsReusedNotRecreated(t *testing.T) {
+	pub := &fakePub{base: 1948, dups: []Candidate{{Issue: 2500, AuthorID: 7, Ref: "issue-2500"}}}
+	r := rigAt(t, t.TempDir(), Config{}, pub, &fakeBr{}, &fakePrep{stopped: true, host: "host-1"})
+	_, _ = r.in.Accept("req-1", []byte("p"), 1)
+	cur, err := r.in.Advance(ctx(), "req-1")
+	if err != nil || cur.Stage != claim.StageIssueConfirmed || cur.Issue != 2500 || cur.Blocked != nil {
+		t.Fatalf("reuse: %+v %v", cur, err)
+	}
+	if pub.publishCount() != 0 {
+		t.Error("an own duplicate must not lead to another issue")
+	}
+	if last := cur.Evidence[len(cur.Evidence)-1]; last.Stage != claim.StageIssueConfirmed || !strings.Contains(last.Ref, "2500") {
+		t.Errorf("evidence: %+v", last)
+	}
+}
+
+func TestOwnDuplicateWinsOverAForeignOne(t *testing.T) {
+	pub := &fakePub{base: 1948, dups: []Candidate{{Issue: 3000, AuthorID: 99}, {Issue: 2500, AuthorID: 7}}}
+	r := rigAt(t, t.TempDir(), Config{}, pub, &fakeBr{}, &fakePrep{stopped: true, host: "host-1"})
+	_, _ = r.in.Accept("req-1", []byte("p"), 1)
+	if cur, err := r.in.Advance(ctx(), "req-1"); err != nil || cur.Issue != 2500 {
+		t.Errorf("got %+v %v", cur, err)
+	}
+}
+
+// If it cannot be told whose Issue it is, or who the user is, nothing is created.
+func TestUnknownIdentitiesBlockCreation(t *testing.T) {
+	cases := map[string]*fakePub{
+		"user unknown":     {base: 1948, noUser: true},
+		"candidate author": {base: 1948, dups: []Candidate{{Issue: 3000, AuthorID: 0}}},
+		"duplicate lookup": {base: 1948, dupErr: errors.New("search failed")},
+	}
+	for name, pub := range cases {
+		t.Run(name, func(t *testing.T) {
+			r := rigAt(t, t.TempDir(), Config{}, pub, &fakeBr{}, &fakePrep{stopped: true, host: "host-1"})
+			_, _ = r.in.Accept("req-1", []byte("p"), 1)
+			if _, err := r.in.Advance(ctx(), "req-1"); err == nil {
+				t.Fatal("want a refusal")
+			}
+			if pub.publishCount() != 0 {
+				t.Fatalf("an issue was created without knowing whose work exists")
+			}
+			cur, _ := r.in.Store.GetRequest("req-1")
+			if cur.Blocked == nil || !cur.Blocked.Retryable || cur.Blocked.Unknown || cur.Stage != claim.StageAccepted {
+				t.Errorf("a read-only failure is retryable and not an unknown effect: %+v", cur.Blocked)
+			}
+		})
+	}
+}
+
+func TestNoDuplicateMeansTheIssueIsCreatedAfterTheLookup(t *testing.T) {
+	pub := &fakePub{base: 1948}
+	r := rigAt(t, t.TempDir(), Config{}, pub, &fakeBr{}, &fakePrep{stopped: true, host: "host-1"})
+	_, _ = r.in.Accept("req-1", []byte("p"), 1)
+	cur, err := r.in.Advance(ctx(), "req-1")
+	if err != nil || cur.Issue != 1948 || pub.dupLooks != 1 || pub.createdCount() != 1 {
+		t.Errorf("got %+v %v lookups=%d created=%d", cur, err, pub.dupLooks, pub.createdCount())
 	}
 }

@@ -21,9 +21,16 @@ func newRunner(t *testing.T) (*Runner, core.IssueRef) {
 		t.Fatal(err)
 	}
 	ref, _ := core.NewIssueRef(1948)
-	r := New(st)
-	r.Attributor = goodRoles() // the lookup of the identity SPEC, faked
-	return r, ref
+	return withRoles(New(st)), ref // identity lookup and host, both faked
+}
+
+// landOK publishes the PR the way the flow does: the preflight on this head
+// first, then the landing.
+func landOK(r *Runner, tk Ticket, head string) (claimRecord, error) {
+	if _, err := r.PreflightPR(tk, head, "acme/widgets", "Refs #1948"); err != nil {
+		return claimRecord{}, err
+	}
+	return r.Land(tk, head)
 }
 
 // passAllFor is a complete passing evidence set for the ticket's holder and epoch.
@@ -42,7 +49,18 @@ func passAll(head string) Verification { return passAllFor(Ticket{Holder: "sess-
 type claimRecord = claim.Record
 
 // withRoles gives a Runner built by hand the faked attribution lookup.
-func withRoles(r *Runner) *Runner { r.Attributor = goodRoles(); return r }
+func withRoles(r *Runner) *Runner {
+	r.Attributor = goodRoles()
+	r.Facts = ownIssues{}
+	return r
+}
+
+// ownIssues is a host where every Issue was opened by the acting user.
+type ownIssues struct{}
+
+func (ownIssues) IssueFacts(core.IssueRef) (IssueFacts, error) {
+	return IssueFacts{RequestedRepo: "acme/widgets", ActualRepo: "acme/widgets", UserID: 7, AuthorID: 7, Owner: core.OwnerNone}, nil
+}
 
 func toVerifying(t *testing.T, r *Runner, ref core.IssueRef) Ticket {
 	t.Helper()
@@ -66,7 +84,7 @@ func TestHappyPathQueuedToDone(t *testing.T) {
 	if err != nil || rec.State != core.StateReady {
 		t.Fatalf("verify: %+v %v", rec, err)
 	}
-	if rec, err = r.Land(tk, headA); err != nil || rec.State != core.StateLanding {
+	if rec, err = landOK(r, tk, headA); err != nil || rec.State != core.StateLanding {
 		t.Fatalf("land: %+v %v", rec, err)
 	}
 	rec, err = r.Complete(tk, Landing{RemoteMerged: true, LocalSyncRecorded: true, IssueClosed: true, Deploy: "N/A: no deploy target"})
@@ -105,7 +123,7 @@ func TestStepsCannotBeSkipped(t *testing.T) {
 	if _, err := r.Submit(tk, headA, false); !errors.Is(err, core.ErrTransitionInvalid) {
 		t.Errorf("claimed->verifying must be refused: %v", err)
 	}
-	if _, err := r.Land(tk, headA); !errors.Is(err, core.ErrTransitionInvalid) {
+	if _, err := landOK(r, tk, headA); !errors.Is(err, core.ErrTransitionInvalid) {
 		t.Errorf("claimed->landing must be refused: %v", err)
 	}
 	if _, err := r.Complete(tk, Landing{RemoteMerged: true, LocalSyncRecorded: true, Deploy: "N/A: x"}); !errors.Is(err, core.ErrTransitionInvalid) {
@@ -208,7 +226,7 @@ func TestLandRechecksHead(t *testing.T) {
 	if _, err := r.Verify(tk, passAllFor(tk, headA)); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := r.Land(tk, headB); !errors.Is(err, core.ErrStaleHead) {
+	if _, err := landOK(r, tk, headB); !errors.Is(err, core.ErrStaleHead) {
 		t.Errorf("want stale head, got %v", err)
 	}
 }
@@ -226,7 +244,7 @@ func TestCompleteNeedsAllThreeRecords(t *testing.T) {
 			r, ref := newRunner(t)
 			tk := toVerifying(t, r, ref)
 			_, _ = r.Verify(tk, passAllFor(tk, headA))
-			_, _ = r.Land(tk, headA)
+			_, _ = landOK(r, tk, headA)
 			if _, err := r.Complete(tk, l); !errors.Is(err, core.ErrEvidenceIncomplete) {
 				t.Errorf("want ErrEvidenceIncomplete, got %v", err)
 			}

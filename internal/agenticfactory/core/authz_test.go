@@ -236,7 +236,7 @@ func TestVerdictMapsToReasonAndError(t *testing.T) {
 		DenyRepoNotAllowed:       {ReasonRepoNotAllowed, ErrRepoNotAllowed},
 		DenyPermissionNotGranted: {ReasonPermissionNotGranted, ErrPermissionNotGranted},
 		DenyOwnerUnconfirmed:     {ReasonOwnerUnconfirmed, ErrOwnerUnconfirmed},
-		DenyUnknownOp:            {ReasonNotIssueAuthor, ErrNotIssueAuthor},
+		DenyUnknownOp:            {ReasonOpNotDefined, ErrOpNotDefined},
 	}
 	for v, want := range cases {
 		reason, ok := v.Reason()
@@ -256,7 +256,7 @@ func TestVerdictMapsToReasonAndError(t *testing.T) {
 }
 
 func TestNewBlockReasonsAreInTheClosedSet(t *testing.T) {
-	for _, r := range []BlockReason{ReasonNotIssueAuthor, ReasonIdentityUnknown, ReasonRepoNotAllowed, ReasonPermissionNotGranted, ReasonOwnerUnconfirmed, ReasonForeignClosing} {
+	for _, r := range []BlockReason{ReasonNotIssueAuthor, ReasonIdentityUnknown, ReasonRepoNotAllowed, ReasonPermissionNotGranted, ReasonOwnerUnconfirmed, ReasonForeignClosing, ReasonOpNotDefined} {
 		if !r.Valid() {
 			t.Errorf("%q is not a valid reason", r)
 		}
@@ -301,36 +301,59 @@ func TestOldNameStillListedAfterARename(t *testing.T) {
 	}
 }
 
-// Labels and assignees have no basis even on one's own Issue unless their own
-// permission is set; the collaboration option does not supply one.
-func TestOwnIssueLabelsAndAssigneesNeedTheirOwnPermission(t *testing.T) {
+// The permission keys (edit_body, close, labels, assignees) are for writes to
+// another author's Issue. They open nothing on one's own Issue: labels and
+// assignees there have no basis and are refused whatever is configured.
+func TestPermissionKeysNeverOpenOwnIssueLabelsOrAssignees(t *testing.T) {
 	own := func(op Op) AuthzRequest {
 		r := req(op)
 		r.IssueAuthorID = r.UserID
 		return r
 	}
-	for _, op := range []Op{OpLabel, OpAssignee} {
-		if v := (Collaboration{}).Authorize(own(op)); v != DenyPermissionNotGranted {
-			t.Errorf("%s by default: %s", op, v)
+	every := Collaboration{Provider: "github", Enabled: true, AllowedRepositories: []string{"acme/widgets"},
+		EditBody: true, Close: true, Labels: true, Assignees: true}
+	for name, c := range map[string]Collaboration{"defaults": {}, "option only": {Provider: "github", Enabled: true, AllowedRepositories: []string{"acme/widgets"}},
+		"label key": {Labels: true}, "assignee key": {Assignees: true}, "everything on": every} {
+		for _, op := range []Op{OpLabel, OpAssignee} {
+			if v := c.Authorize(own(op)); v != DenyPermissionNotGranted {
+				t.Errorf("%s / %s on own issue: %s", name, op, v)
+			}
 		}
-		opt := Collaboration{Provider: "github", Enabled: true, AllowedRepositories: []string{"acme/widgets"}}
-		if v := opt.Authorize(own(op)); v != DenyPermissionNotGranted {
-			t.Errorf("%s with only the collaboration option: %s", op, v)
+		// What the Issue's author keeps doing stays allowed in every configuration.
+		for _, op := range []Op{OpEditBody, OpCommentCreate, OpClose, OpTakeOver} {
+			if v := c.Authorize(own(op)); v != Allow {
+				t.Errorf("%s / %s on own issue: %s", name, op, v)
+			}
 		}
-	}
-	if v := (Collaboration{Labels: true}).Authorize(own(OpLabel)); v != Allow {
-		t.Errorf("label with its permission: %s", v)
-	}
-	if v := (Collaboration{Labels: true}).Authorize(own(OpAssignee)); v != DenyPermissionNotGranted {
-		t.Errorf("the label permission must not enable assignees: %s", v)
-	}
-	if v := (Collaboration{Assignees: true}).Authorize(own(OpAssignee)); v != Allow {
-		t.Errorf("assignee with its permission: %s", v)
 	}
 	// An unknown identity still blocks first.
 	r := own(OpLabel)
 	r.UserID, r.IssueAuthorID = 0, 0
-	if v := (Collaboration{Labels: true}).Authorize(r); v != DenyIdentityUnknown {
+	if v := every.Authorize(r); v != DenyIdentityUnknown {
 		t.Errorf("unknown identity: %s", v)
+	}
+	// The same keys still govern another author's Issue.
+	if v := every.Authorize(req(OpLabel)); v != Allow {
+		t.Errorf("label on a foreign issue with its key: %s", v)
+	}
+}
+
+// An operation the policy does not define (title, milestone, reopen ...) has its
+// own reason, so a caller can tell it from a refusal of a defined one.
+func TestUndefinedOperationHasItsOwnReason(t *testing.T) {
+	for _, op := range []Op{"edit-title", "milestone", "reopen", ""} {
+		r := req(op)
+		r.IssueAuthorID = r.UserID
+		v := collab().Authorize(r)
+		if v != DenyUnknownOp {
+			t.Fatalf("%q: %s", op, v)
+		}
+		reason, ok := v.Reason()
+		if !ok || reason != ReasonOpNotDefined || !reason.Valid() {
+			t.Errorf("%q -> %q %v", op, reason, ok)
+		}
+		if err := v.Err(); !errors.Is(err, ErrOpNotDefined) || errors.Is(err, ErrNotIssueAuthor) {
+			t.Errorf("%q err = %v", op, err)
+		}
 	}
 }
