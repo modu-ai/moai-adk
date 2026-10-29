@@ -89,6 +89,11 @@ type Row struct {
 	Checks          Field[[]CheckRun]
 	NextAction      Field[string]
 
+	PR Field[PRStatus] `json:"pr"`
+	// Completed is true only when the claim state is done AND the PR is merged AND the Issue is
+	// closed. An open or merely merged PR is never completion.
+	Completed bool `json:"completed"`
+
 	// ChecksStale is set when any returned check ran against a HEAD other than the claim's HEAD.
 	ChecksStale bool
 }
@@ -99,6 +104,9 @@ type Collector struct {
 	Remote RemoteReader
 	Ledger LedgerReader
 	Now    func() time.Time
+
+	PRs          PRReader // optional; nil leaves PR fields unconfirmed
+	BacklogLimit int      // open-PR cap; 0 = no cap configured
 }
 
 // Collect returns one row per Issue, in the order given.
@@ -149,6 +157,7 @@ func (c *Collector) row(ctx context.Context, issue int) Row {
 	if next, lerr := c.Ledger.NextAction(ctx, issue); lerr == nil {
 		r.NextAction = textField("next_action", next, SrcLedger, at)
 	}
+	c.fillPR(ctx, &r, at)
 	return r
 }
 
