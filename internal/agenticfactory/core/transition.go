@@ -20,6 +20,10 @@ type Outcome struct {
 	// Park, when set, parks the position with that reason (ReasonFromCaller
 	// leaves the reason to the caller's classification).
 	Park BlockReason
+	// Adopt marks the E18 outcome that applies an approved revision: it is taken
+	// only from a contract-change parked BUILDING/FIX, moves to To/Sub and
+	// releases the park, the one stage change a parked position may make.
+	Adopt bool
 	// Integrated sets remote_integrated on a MERGING position (E12, E17).
 	Integrated bool
 	// Needs are guard keys this outcome needs on top of the edge's own. A parking
@@ -127,7 +131,11 @@ var edges = []Edge{
 	{ID: "E17", From: []Stage{StageMerging, StageDone}, Needs: []string{"provider-merge-fact"}, Outcomes: []Outcome{{Name: "keep", Default: true, Integrated: true}}},
 	// E18: S46 says "PARKED"; contract-change as its reason comes from E24 and
 	// SPEC 0.6.1 (canon-unspecified for E18 itself).
-	{ID: "E18", From: nonterminal, Needs: []string{"contract-diff"}, Outcomes: []Outcome{parkWith(ReasonContractChange)}},
+	// "adopt" (leader decision on canon rows 192/2760, "E18 후 SPEC단계"): the
+	// approved revision is applied for a new attempt, which takes a contract-change
+	// parked BUILDING/FIX back to BUILDING/SPEC. E20 alone never does that.
+	{ID: "E18", From: nonterminal, Needs: []string{"contract-diff"}, Outcomes: []Outcome{parkWith(ReasonContractChange),
+		{Name: "adopt", To: StageBuilding, Sub: SubSpec, Adopt: true, Needs: []string{"approved-revision"}}}},
 	// E19 (canon line 65): quota, permission or budget block; the guard is the
 	// classified error, so the reason must come from the classification set.
 	{ID: "E19", From: nonterminal, Needs: []string{"error-classification"}, Outcomes: []Outcome{parkWith(ReasonClassified)}},
@@ -224,7 +232,14 @@ func Transition(pos Position, ev Event) (Position, error) {
 	if m := missing(e.needsFor(out.Name), ev.Evidence); len(m) > 0 {
 		return pos, fmt.Errorf("%w: %s needs %s", ErrGuardMissing, e.ID, strings.Join(m, ", "))
 	}
+	if out.Adopt && (pos.Stage != StageBuilding || pos.Sub != SubFix || pos.Park == nil || pos.Park.Reason != ReasonContractChange) {
+		return pos, fmt.Errorf("%w: %s %s needs a contract-change parked BUILDING/FIX, not %s/%s",
+			ErrTransitionInvalid, e.ID, out.Name, pos.Stage, pos.Sub)
+	}
 	next := pos
+	if out.Adopt {
+		next.Park = nil
+	}
 	if out.To != "" {
 		next.Stage = out.To
 		if out.To != StageBuilding {
@@ -246,7 +261,7 @@ func Transition(pos Position, ev Event) (Position, error) {
 	// way out is E20, cancellation (E15/E16), or an edge that leaves the stage as
 	// it is (facts, and a park update). E13 (DONE) is refused too, because DONE
 	// needs the parked obligation resolved first; S46 is silent here (canon-unspecified).
-	if pos.Park != nil && (next.Stage != pos.Stage || next.Sub != pos.Sub) && next.Stage != StageCancelled {
+	if pos.Park != nil && !out.Adopt && (next.Stage != pos.Stage || next.Sub != pos.Sub) && next.Stage != StageCancelled {
 		return pos, fmt.Errorf("%w: %s moves %s/%s on while parked (%s); resume with E20 first",
 			ErrTransitionInvalid, e.ID, pos.Stage, pos.Sub, pos.Park.Reason)
 	}
