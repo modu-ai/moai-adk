@@ -126,6 +126,7 @@ func TestSameReceiptTwiceIsAcceptedOnce(t *testing.T) {
 	// The same id with different content is a conflict, not a replay.
 	other := goodHandoff()
 	other.PR = 999
+	other.PRURL = "https://github.com/acme/widgets/pull/999"
 	if _, err := r.HandOff(tk, other); !errors.Is(err, core.ErrDuplicateHandoff) {
 		t.Errorf("same id, other PR: %v", err)
 	}

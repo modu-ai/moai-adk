@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -504,8 +505,8 @@ func (r *Runner) HandOff(t Ticket, h Handoff) (claim.Record, error) {
 	switch {
 	case h.PR <= 0:
 		return claim.Record{}, fmt.Errorf("%w: PR number is required", core.ErrEvidenceIncomplete)
-	case !validPRURL(h.PRURL):
-		return claim.Record{}, fmt.Errorf("%w: the PR URL is missing or not an http(s) URL", core.ErrEvidenceIncomplete)
+	case !validPRURL(h.PRURL, h.PR):
+		return claim.Record{}, fmt.Errorf("%w: the PR URL is missing, not an http(s) URL, or not the URL of PR #%d", core.ErrEvidenceIncomplete, h.PR)
 	case strings.TrimSpace(h.Base) == "" || strings.TrimSpace(h.AdoptedSpec) == "" || strings.TrimSpace(h.TaskResult) == "" || strings.TrimSpace(h.CheckStatus) == "":
 		return claim.Record{}, fmt.Errorf("%w: base, adopted spec, task result and check status are required", core.ErrEvidenceIncomplete)
 	case h.Branch == "" || h.Worktree == "":
@@ -867,11 +868,18 @@ func (r *Runner) mayClose(issue int) string {
 	return ""
 }
 
-// validPRURL accepts an absolute http(s) URL with a host and no blanks.
-func validPRURL(raw string) bool {
+// validPRURL accepts an absolute http(s) URL with a host and no blanks whose path
+// ends in /pull/<pr>: the receipt's URL is the PR the receipt carries, not another
+// PR, an Issue or a sub-page of one. A trailing slash, a query or a fragment do
+// not change which PR it names.
+func validPRURL(raw string, pr int) bool {
 	if raw == "" || strings.ContainsAny(raw, " \t\r\n") {
 		return false
 	}
 	u, err := url.Parse(raw)
-	return err == nil && (u.Scheme == "https" || u.Scheme == "http") && u.Host != ""
+	if err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" {
+		return false
+	}
+	p := strings.TrimSuffix(u.Path, "/")
+	return strings.HasSuffix(p, "/pull/"+strconv.Itoa(pr))
 }

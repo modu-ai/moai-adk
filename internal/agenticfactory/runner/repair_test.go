@@ -136,12 +136,16 @@ func TestAPauseNeedsAWaitRecord(t *testing.T) {
 // refused and records nothing.
 func TestAHandoffReceiptCarriesTheSpecFields(t *testing.T) {
 	for name, mut := range map[string]func(*Handoff){
-		"PR URL":       func(h *Handoff) { h.PRURL = "" },
-		"PR URL shape": func(h *Handoff) { h.PRURL = "not a url" },
-		"base":         func(h *Handoff) { h.Base = " " },
-		"adopted spec": func(h *Handoff) { h.AdoptedSpec = "" },
-		"task result":  func(h *Handoff) { h.TaskResult = "" },
-		"check status": func(h *Handoff) { h.CheckStatus = "" },
+		"PR URL":             func(h *Handoff) { h.PRURL = "" },
+		"PR URL shape":       func(h *Handoff) { h.PRURL = "not a url" },
+		"another PR number":  func(h *Handoff) { h.PRURL = "https://github.com/acme/widgets/pull/322" },
+		"an Issue URL":       func(h *Handoff) { h.PRURL = "https://github.com/acme/widgets/issues/321" },
+		"a sub-page of a PR": func(h *Handoff) { h.PRURL = "https://github.com/acme/widgets/pull/321/files" },
+		"number only":        func(h *Handoff) { h.PRURL = "https://github.com/acme/widgets/321" },
+		"base":               func(h *Handoff) { h.Base = " " },
+		"adopted spec":       func(h *Handoff) { h.AdoptedSpec = "" },
+		"task result":        func(h *Handoff) { h.TaskResult = "" },
+		"check status":       func(h *Handoff) { h.CheckStatus = "" },
 	} {
 		t.Run(name, func(t *testing.T) {
 			r, ref := newRunner(t)
@@ -193,5 +197,24 @@ func TestAParkedIssueKeepsItsWaitRecord(t *testing.T) {
 	}
 	if cleared, err := r.ClearWait(tk); err != nil || cleared.Wait != nil {
 		t.Errorf("after the park: %+v %v", cleared.Wait, err)
+	}
+}
+
+// The URL on the receipt is the PR the receipt is about: it ends in /pull/<number>
+// with that number. A trailing slash, a query or a fragment do not change which PR.
+func TestTheReceiptURLNamesThePRItCarries(t *testing.T) {
+	for _, ok := range []string{
+		"https://github.com/acme/widgets/pull/321",
+		"https://github.com/acme/widgets/pull/321/",
+		"https://github.com/acme/widgets/pull/321?diff=split",
+		"https://github.com/acme/widgets/pull/321#issuecomment-1",
+	} {
+		r, ref := newRunner(t)
+		tk := landed(t, r, ref)
+		h := goodHandoff()
+		h.PRURL = ok
+		if _, err := r.HandOff(tk, h); err != nil {
+			t.Errorf("%s: %v", ok, err)
+		}
 	}
 }
