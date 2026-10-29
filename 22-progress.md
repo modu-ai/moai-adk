@@ -14,6 +14,11 @@ Tree: WT-agentic-factory-integration. No push.
 | 6 | unknown merge result | GREEN (model); lookup-failure block reason `connection-failed` is my mapping, contract says "해당하는 값" |
 | 7 | closure + next dispatch after remote landing | GREEN (model); "next dispatch not allowed before done" deliberately not asserted (contract silent) |
 
+## Bound to real lane-18 code (real_claim_test.go)
+- Scenario 1 real: 8 concurrent `claim.Store.Acquire` -> exactly 1 winner, epoch 1, late claimant ErrHeld. `go test -race -count=5` ok. Losers may be ErrHeld or ErrBusy (lock retries exhausted); the test accepts both and does not report which occurred.
+- Scenario 2 real: repeated same dispatch id -> ErrDuplicateDispatch, record epoch/seq unchanged.
+- Scenarios 3-7 on real code: not bound. lane-18 claim/runner exposes no ACK-timeout probe, no dead-owner resume, no audit-round budget; reconcile/effect (lane-20) not yet examined for 4, 6, 7.
+
 ## Integration merges
 Merged --no-ff locally (no push): lane-18 WT-agentic-factory-core-claim-runner @ca414f1f35, lane-19 WT-agentic-factory-review @9f058f45b7, lane-20 WT-agentic-monitor-effect-reconcile @3c255a16ca.
 After the merges: `go build ./...` ok; `go vet ./internal/agenticfactory/...` ok; `go test -race -count=1 ./internal/agenticfactory/...` ok (8 packages).
