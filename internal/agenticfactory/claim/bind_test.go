@@ -271,3 +271,27 @@ func TestAPathThatCannotBeResolvedIsRefusedAndReservesNothing(t *testing.T) {
 		t.Errorf("a refused path was recorded: %q", cur.Worktree)
 	}
 }
+
+// On a case-insensitive filesystem (the macOS default) "Tree" and "tree" are one
+// directory. The tree is identified by the file itself, not by its spelling.
+func TestCaseOnlyDifferentSpellingsOfOneTreeAreOneWorktree(t *testing.T) {
+	sa, sb := twoStores(t)
+	ra, _ := sa.Acquire(ref(t, 1), "w1", "d1", "run-1")
+	rb, _ := sb.Acquire(ref(t, 2), "w2", "d2", "run-1")
+	real := realWT(t, "CaseTree")
+	alt := filepath.Join(filepath.Dir(real), "casetree")
+	a, errA := os.Stat(real)
+	b, errB := os.Stat(alt)
+	if errA != nil || errB != nil || !os.SameFile(a, b) {
+		t.Skip("this filesystem tells CaseTree and casetree apart; nothing to measure")
+	}
+	if _, err := sa.BindWorktree(ref(t, 1), "w1", ra.Epoch, real); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := sb.BindWorktree(ref(t, 2), "w2", rb.Epoch, alt); !errors.Is(err, core.ErrWorktreeInUse) {
+		t.Errorf("the same directory spelled in another case: %v", err)
+	}
+	if WorktreeKey(real) != WorktreeKey(alt) {
+		t.Errorf("one directory, two reservation keys: %s %s", WorktreeKey(real), WorktreeKey(alt))
+	}
+}

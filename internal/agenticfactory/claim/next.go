@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -113,19 +114,30 @@ func sameWorktree(stored, canon string) bool {
 	if stored == "" {
 		return false
 	}
-	if c, err := filepath.EvalSymlinks(filepath.Clean(stored)); err == nil {
-		return c == canon
+	// the same file is the same worktree, whatever the spelling (case included)
+	if a, err := os.Stat(stored); err == nil {
+		if b, err := os.Stat(canon); err == nil {
+			return os.SameFile(a, b)
+		}
 	}
 	return filepath.Clean(stored) == canon
 }
 
-// WorktreeKey is the document name that reserves path: the hash of its canonical
-// spelling, or of the cleaned text when it cannot be resolved.
+// WorktreeKey is the document name that reserves path: the hash of the directory's
+// identity (device and inode) where the platform gives one, so spellings that
+// differ only in case on a case-insensitive filesystem share a key; otherwise the
+// hash of its canonical spelling, or of the cleaned text when it cannot be resolved.
 func WorktreeKey(path string) string {
+	name := path
 	if c, err := canonWorktree(path); err == nil {
-		path = c
+		name = c
+		if fi, err := os.Stat(c); err == nil {
+			if id, ok := fileIdentity(fi); ok {
+				name = "id:" + id
+			}
+		}
 	}
-	sum := sha256.Sum256([]byte(path))
+	sum := sha256.Sum256([]byte(name))
 	return "wt-" + hex.EncodeToString(sum[:])[:40]
 }
 
