@@ -640,7 +640,7 @@ F2 작업 당시에는 하위 SPEC의 `acceptance.md`를 고치지 않고 여기
 | 시험 이름 | AC | REQ | 패키지(제안) | 동작 |
 |---|---|---|---|---|
 | `TestScenarioSuite`(하위 `01_…`~`07_…`) | AC-AF-025 | REQ-AF-006(보조 REQ-AF-001·004·005·011) | `e2e/` | §A.1 하위 시험 01~07, 실제 Issue 한 쌍, 한 번의 실행 |
-| `TestBrowserSelect_*` | AC-AF-020 | REQ-AF-021 | `browser/`(`resolve_test.go` 옆) | (d) 미선택 → `chrome` (e) `aside` 선택·미설치 → PARKED `not-installed`, `chrome` 호출 0 (f) 선택 저장 뒤 다시 읽기 → 같은 값. zusätzlich lane-17: (f)의 저장 |
+| `TestBrowserSelect_*` | AC-AF-020 | REQ-AF-021 | `browser/`(`resolve_test.go` 옆) | (d) 미선택 → `chrome` (e) `aside` 선택·미설치 → PARKED `not-installed`, `chrome` 호출 0 (f) 선택 저장 뒤 다시 읽기 → 같은 값. zusätzlich lane-17: (f)의 저장. 현황(2026-10-30): (d), (e)와 (f)의 resolver 절반은 이제 `WT-browser-select` 브랜치의 커밋 `e196a35ff2`에 시험이 있다 — 그 브랜치 기준이며 `4cdaba5d7e` 기준은 아니다(위 `4cdaba5d7e` 기준 현황은 바뀌지 않음). 근거는 커밋 제목(lane-17이 `git show -s`로 확인, 리더 전달)뿐이고, lane-17은 그 시험을 읽지도 실행하지도 않았다. (f)의 나머지(선택 저장)는 아직 열려 있다 |
 
 #### lane-17
 
