@@ -127,7 +127,7 @@ func TestAcquireRefusesPublishedAndDoneIssues(t *testing.T) {
 
 func TestBacklogCountAndReadAndList(t *testing.T) {
 	s := open(t)
-	s.MaxOpenPRs = 2
+	_ = s.SetMaxOpenPRs(2)
 	handedOff(t, s, 1, "WT-1")
 	handedOff(t, s, 2, "WT-2")
 	if n, err := s.openPRs(); err != nil || n != 2 {
@@ -161,12 +161,12 @@ func TestListFailsOnCorruptRecord(t *testing.T) {
 	if _, err := s.List(); !errors.Is(err, core.ErrStoreUnavailable) {
 		t.Errorf("corrupt list: %v", err)
 	}
-	if _, err := s.Acquire(ref(t, 9), "w", "d", "run-1"); err != nil {
-		t.Errorf("no cap, so a corrupt neighbour must not matter: %v", err)
-	}
-	s.MaxOpenPRs = 1
-	if _, err := s.Acquire(ref(t, 10), "w", "d10", "run-1"); !errors.Is(err, core.ErrStoreUnavailable) {
-		t.Errorf("cap with unreadable store must not guess: %v", err)
+	// The limit always applies, so an unreadable store must refuse new claims
+	// instead of guessing how many PRs are open.
+	for _, n := range []int{9, 10} {
+		if _, err := s.Acquire(ref(t, n), "w", "d", "run-1"); !errors.Is(err, core.ErrStoreUnavailable) {
+			t.Errorf("claim %d with unreadable store must not guess: %v", n, err)
+		}
 	}
 }
 

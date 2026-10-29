@@ -346,7 +346,7 @@ func TestRepairCanRepublishNewHead(t *testing.T) {
 
 func TestBacklogCapHoldsNewClaimsNotRepairs(t *testing.T) {
 	r, ref := newRunner(t)
-	r.Store.MaxOpenPRs = 1
+	_ = r.Store.SetMaxOpenPRs(1)
 	tk := landed(t, r, ref)
 	if _, err := r.HandOff(tk, goodHandoff()); err != nil {
 		t.Fatal(err)
@@ -370,7 +370,7 @@ func TestBacklogCapHoldsNewClaimsNotRepairs(t *testing.T) {
 
 func TestBacklogCapFreedByDone(t *testing.T) {
 	r, ref := newRunner(t)
-	r.Store.MaxOpenPRs = 1
+	_ = r.Store.SetMaxOpenPRs(1)
 	tk := landed(t, r, ref)
 	_, _ = r.HandOff(tk, goodHandoff())
 	if _, err := r.CompleteHandedOff(ref, Landing{RemoteMerged: true, LocalSyncRecorded: true, IssueClosed: true, Deploy: "N/A: x"}); err != nil {
@@ -396,7 +396,7 @@ func TestBacklogCapZeroMeansUnlimited(t *testing.T) {
 // live and handed-off claim; nothing is re-dispatched.
 func TestLeaderRestartRestoresClaims(t *testing.T) {
 	dir := t.TempDir()
-	st, _ := claim.Open(dir)
+	st, _ := claim.OpenWithLimit(dir, 100)
 	r := New(st)
 	ref1, _ := core.NewIssueRef(1948)
 	ref2, _ := core.NewIssueRef(2000)
@@ -408,7 +408,7 @@ func TestLeaderRestartRestoresClaims(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	st2, err := claim.Open(dir)
+	st2, err := claim.OpenWithLimit(dir, 100)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -90,9 +90,10 @@ type Receipt struct {
 type Store struct {
 	dir   string
 	probe func(int) (string, homestate.ProcessIdentityState)
-	// MaxOpenPRs holds new claims while this many handed-off Issues are not
-	// done. Zero means no limit. Repair claims are never held by it.
-	MaxOpenPRs int
+	// maxOpenPRs holds new claims while this many handed-off Issues are not
+	// done. It has no default: below 1 (unset) new claims are refused, and a
+	// value below 1 is rejected, never clamped. Repair claims are not held by it.
+	maxOpenPRs int
 }
 
 const (
@@ -100,7 +101,36 @@ const (
 	lockWait  = 10 * time.Millisecond
 )
 
-// Open prepares dir (created if absent).
+// OpenWithLimit is Open with the open-PR backlog limit configured. The limit
+// must be at least 1; there is no default and no upper bound is invented.
+func OpenWithLimit(dir string, maxOpenPRs int) (*Store, error) {
+	if maxOpenPRs < 1 {
+		return nil, fmt.Errorf("%w: %d", core.ErrLimitInvalid, maxOpenPRs)
+	}
+	s, err := Open(dir)
+	if err != nil {
+		return nil, err
+	}
+	s.maxOpenPRs = maxOpenPRs
+	return s, nil
+}
+
+// SetMaxOpenPRs sets the backlog limit. A value below 1 is rejected and the
+// previous value stays.
+func (s *Store) SetMaxOpenPRs(n int) error {
+	if n < 1 {
+		return fmt.Errorf("%w: %d", core.ErrLimitInvalid, n)
+	}
+	s.maxOpenPRs = n
+	return nil
+}
+
+// MaxOpenPRs returns the configured limit, 0 when none was set.
+func (s *Store) MaxOpenPRs() int { return s.maxOpenPRs }
+
+// Open prepares dir (created if absent). The store it returns has no backlog
+// limit, so it reads and repairs but refuses new claims until one is set; a
+// monitor opens it this way.
 func Open(dir string) (*Store, error) {
 	if dir == "" {
 		return nil, errors.New("agenticfactory/claim: empty store directory")
@@ -118,10 +148,15 @@ func (s *Store) lock(i core.IssueRef) string { return filepath.Join(s.dir, i.Res
 // (retry), never Held (another owner). A lock left by a crashed process is not
 // stolen; the operator removes it.
 func (s *Store) withLock(i core.IssueRef, fn func() error) error {
+	return s.withLockFile(s.lock(i), i.Resource(), fn)
+}
+
+// withLockFile is withLock for any lock path; name appears in a Busy error.
+func (s *Store) withLockFile(path, name string, fn func() error) error {
 	var f *os.File
 	var err error
 	for n := 0; n < lockTries; n++ {
-		f, err = os.OpenFile(s.lock(i), os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+		f, err = os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
 		if err == nil {
 			break
 		}
@@ -131,7 +166,7 @@ func (s *Store) withLock(i core.IssueRef, fn func() error) error {
 		time.Sleep(lockWait)
 	}
 	if err != nil {
-		return fmt.Errorf("%w: %s", core.ErrBusy, i.Resource())
+		return fmt.Errorf("%w: %s", core.ErrBusy, name)
 	}
 	// Record who holds the lock so a crashed owner can later be told apart
 	// from a live one. An unprovable identity is written empty and is never
@@ -142,7 +177,7 @@ func (s *Store) withLock(i core.IssueRef, fn func() error) error {
 	}
 	_, _ = fmt.Fprintf(f, "%d %s\n", os.Getpid(), start)
 	_ = f.Close()
-	defer func() { _ = os.Remove(s.lock(i)) }()
+	defer func() { _ = os.Remove(path) }()
 	return fn()
 }
 
@@ -210,15 +245,24 @@ func (s *Store) Acquire(i core.IssueRef, holder, dispatch string, run core.RunID
 // AcquireFor is Acquire for a registered agent: the record stores the
 // session id as Holder and the display name separately.
 func (s *Store) AcquireFor(i core.IssueRef, a core.Agent, dispatch string, run core.RunID) (Record, error) {
-	if err := s.verifyAgent(a); err != nil {
-		return Record{}, err
-	}
-	return s.acquire(i, a.SessionID, a.DisplayName(), dispatch, run)
+	var out Record
+	err := s.withRegistryLock(func() error {
+		if err := s.verifyAgent(a); err != nil {
+			return err
+		}
+		var e error
+		out, e = s.acquire(i, a.SessionID, a.DisplayName(), dispatch, run)
+		return e
+	})
+	return out, err
 }
 
 func (s *Store) acquire(i core.IssueRef, holder, name, dispatch string, run core.RunID) (Record, error) {
 	if holder == "" || dispatch == "" {
 		return Record{}, fmt.Errorf("%w: holder and dispatch are required", core.ErrIDInvalid)
+	}
+	if s.maxOpenPRs < 1 {
+		return Record{}, fmt.Errorf("%w", core.ErrBacklogUnset)
 	}
 	var out Record
 	err := s.withLock(i, func() error {
@@ -238,14 +282,12 @@ func (s *Store) acquire(i core.IssueRef, holder, name, dispatch string, run core
 		if ok && cur.Receipt != nil {
 			return fmt.Errorf("%w: %s PR #%d", core.ErrRepairOnly, i.Resource(), cur.Receipt.PR)
 		}
-		if s.MaxOpenPRs > 0 {
-			n, err := s.openPRs()
-			if err != nil {
-				return err
-			}
-			if n >= s.MaxOpenPRs {
-				return fmt.Errorf("%w: %d open of %d", core.ErrBacklogFull, n, s.MaxOpenPRs)
-			}
+		n, err := s.openPRs()
+		if err != nil {
+			return err
+		}
+		if n >= s.maxOpenPRs {
+			return fmt.Errorf("%w: %d open of %d", core.ErrBacklogFull, n, s.maxOpenPRs)
 		}
 		out = Record{
 			Issue: i.Number, Holder: holder, AgentName: name, Dispatch: dispatch, Run: run,
@@ -269,10 +311,16 @@ func (s *Store) AcquireRepair(i core.IssueRef, holder, dispatch string, run core
 
 // AcquireRepairFor is AcquireRepair for a registered agent.
 func (s *Store) AcquireRepairFor(i core.IssueRef, a core.Agent, dispatch string, run core.RunID, branch string) (Record, error) {
-	if err := s.verifyAgent(a); err != nil {
-		return Record{}, err
-	}
-	return s.acquireRepair(i, a.SessionID, a.DisplayName(), dispatch, run, branch)
+	var out Record
+	err := s.withRegistryLock(func() error {
+		if err := s.verifyAgent(a); err != nil {
+			return err
+		}
+		var e error
+		out, e = s.acquireRepair(i, a.SessionID, a.DisplayName(), dispatch, run, branch)
+		return e
+	})
+	return out, err
 }
 
 func (s *Store) acquireRepair(i core.IssueRef, holder, name, dispatch string, run core.RunID, branch string) (Record, error) {

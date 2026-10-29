@@ -166,6 +166,16 @@ func (s *Store) ResumeAgent(sessionID string, number int) (core.Agent, []Record,
 	return a, owned, nil
 }
 
+// withRegistryLock serialises the identity check with the claim write and with
+// ReleaseAgent, so "is this agent still registered?" and "write the claim"
+// cannot be separated by a release. Order is registry lock, then issue lock.
+func (s *Store) withRegistryLock(fn func() error) error {
+	if err := os.MkdirAll(s.agentsDir(), 0o700); err != nil {
+		return fmt.Errorf("%w: %v", core.ErrStoreUnavailable, err)
+	}
+	return s.withLockFile(filepath.Join(s.dir, "agents.lock"), "agent registry", fn)
+}
+
 // verifyAgent confirms a is still the registered holder of its number. A
 // released identity, or one whose number now belongs to another session, is
 // refused so it can never write under a name it no longer owns.
@@ -188,6 +198,10 @@ func (s *Store) verifyAgent(a core.Agent) error {
 // a PR it already handed off keeps its own session id in the receipt, so
 // attribution survives the number being reused.
 func (s *Store) ReleaseAgent(sessionID string, number int) error {
+	return s.withRegistryLock(func() error { return s.releaseAgent(sessionID, number) })
+}
+
+func (s *Store) releaseAgent(sessionID string, number int) error {
 	a, err := readAgentFile(s.agentPath(number))
 	if errors.Is(err, os.ErrNotExist) {
 		return core.ErrNotHeld

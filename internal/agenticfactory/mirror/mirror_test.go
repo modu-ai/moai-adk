@@ -171,7 +171,7 @@ func TestUnclassifiedFailureIsNotABlockReason(t *testing.T) {
 }
 
 func TestPublishRecordsMirrorStateAndNeverChangesIssueState(t *testing.T) {
-	st, _ := claim.Open(t.TempDir())
+	st, _ := claim.OpenWithLimit(t.TempDir(), 100)
 	ref, _ := core.NewIssueRef(1948)
 	rec, err := st.Acquire(ref, "sess-a", "d1", "run-1")
 	if err != nil {
@@ -196,7 +196,7 @@ func TestPublishRecordsMirrorStateAndNeverChangesIssueState(t *testing.T) {
 }
 
 func TestPublishRefusedWithoutOwnership(t *testing.T) {
-	st, _ := claim.Open(t.TempDir())
+	st, _ := claim.OpenWithLimit(t.TempDir(), 100)
 	ref, _ := core.NewIssueRef(1948)
 	rec, _ := st.Acquire(ref, "sess-a", "d1", "run-1")
 	f := &fakeGH{}
@@ -252,7 +252,7 @@ func TestReadLedgerMalformedComments(t *testing.T) {
 }
 
 func TestPublishPlainFailureLeavesMirrorStateAlone(t *testing.T) {
-	st, _ := claim.Open(t.TempDir())
+	st, _ := claim.OpenWithLimit(t.TempDir(), 100)
 	ref, _ := core.NewIssueRef(1948)
 	rec, _ := st.Acquire(ref, "sess-a", "d1", "run-1")
 	f := &fakeGH{results: []result{{errOut: "boom", exit: 1}}}

@@ -16,7 +16,7 @@ var (
 
 func newRunner(t *testing.T) (*Runner, core.IssueRef) {
 	t.Helper()
-	st, err := claim.Open(t.TempDir())
+	st, err := claim.OpenWithLimit(t.TempDir(), 100)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -277,7 +277,7 @@ func TestPausedIssueRefusesForwardSteps(t *testing.T) {
 // Session drop: a fresh Runner over the same store sees the persisted state
 // and continues with the original ticket; nothing is replayed.
 func TestReconnectContinuesFromPersistedState(t *testing.T) {
-	st, _ := claim.Open(t.TempDir())
+	st, _ := claim.OpenWithLimit(t.TempDir(), 100)
 	ref, _ := core.NewIssueRef(1948)
 	first := New(st)
 	tk := toVerifying(t, first, ref)
