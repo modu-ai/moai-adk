@@ -524,3 +524,53 @@ func TestARepairSignalThatFailedIsRetriedAndAnIssueWithoutAnOpenPRIsLeftAlone(t 
 		t.Errorf("signal on a record without a receipt: %q", e2.record(8).RepairNeeded)
 	}
 }
+
+type busyNotifier struct {
+	busy  bool
+	calls int
+	sent  int
+}
+
+func (b *busyNotifier) Notify(context.Context, Notice) error {
+	b.calls++
+	if b.busy {
+		return fmt.Errorf("%w: documents", core.ErrBusy)
+	}
+	b.sent++
+	return nil
+}
+
+// A busy document lock is "retry", not a failed delivery: the reminder is tried again on the next pass
+// and no retry of the wait is spent, so lock contention alone can never walk a wait to its escalation.
+func TestABusyInboxDoesNotSpendARetry(t *testing.T) {
+	e := newEnv(t)
+	tk := e.acquire(7)
+	if _, err := e.rn.SetWait(tk, waitAt(t0.Add(time.Hour), 2)); err != nil {
+		t.Fatal(err)
+	}
+	b := &busyNotifier{busy: true}
+	s := e.service()
+	s.Notifier = b
+	for i := range 4 { // more passes than the wait has retries
+		acts := e.tickAt(s, t0.Add(time.Hour+time.Duration(i)*time.Minute))
+		deferred := false
+		for _, a := range acts {
+			deferred = deferred || (a.What == "reminder-deferred" && errors.Is(a.Err, core.ErrBusy))
+		}
+		if !deferred {
+			t.Fatalf("pass %d: %+v, want the reminder reported as deferred by Busy", i, acts)
+		}
+	}
+	rec := e.record(7)
+	if rec.Wait.Retries != 0 || rec.Wait.Escalated || len(e.esc.got) != 0 {
+		t.Fatalf("Busy spent retries: %+v escalations=%v", rec.Wait, e.esc.got)
+	}
+	if b.calls != 4 {
+		t.Errorf("delivery attempts = %d, want one per pass", b.calls)
+	}
+	b.busy = false
+	e.tickAt(s, t0.Add(time.Hour+10*time.Minute))
+	if b.sent != 1 || e.record(7).Wait.Retries != 1 {
+		t.Errorf("after the lock cleared: sent=%d retries=%d, want the reminder delivered and one retry spent", b.sent, e.record(7).Wait.Retries)
+	}
+}

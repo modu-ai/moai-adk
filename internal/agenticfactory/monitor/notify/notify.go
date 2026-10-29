@@ -303,6 +303,11 @@ func (s *Service) remind(ctx context.Context, rec claim.Record, w core.Wait, st 
 	}
 	diag := fmt.Sprintf("no progress by %s; the owner was reminded (%d of %d)", w.RecheckAt.Format(time.RFC3339), attempt, w.MaxRetries)
 	notifyErr := s.Notifier.Notify(ctx, n)
+	if errors.Is(notifyErr, core.ErrBusy) {
+		// A held lock is "retry", not a failed delivery: the same reminder is tried on the next pass and
+		// no retry of the wait is spent, so contention alone never walks a wait to its escalation.
+		return []Action{{Issue: rec.Issue, What: "reminder-deferred", Kind: WaitOverdue, Detail: n.Detail, Err: notifyErr}}
+	}
 	if notifyErr != nil {
 		// A reminder that is known not to have been delivered still spends the retry, so a broken
 		// channel ends in an escalation instead of an endless loop.

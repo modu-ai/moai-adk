@@ -4,11 +4,14 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/claim"
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/forge"
 )
 
@@ -58,8 +61,26 @@ func TestAFailingCleanupLeavesGarbageButNeverABadCursor(t *testing.T) {
 	}
 }
 
-// Two writers saving the same cursor concurrently: every save succeeds (a revision conflict is repaired by
-// re-reading), and what is left is one whole cursor that one of them wrote.
+// saveRetryingBusy is a caller that honours the claim store's contract: a held document lock is Busy, which
+// means "retry", and nothing else is retried. It returns how many times it was told Busy.
+func saveRetryingBusy(c Cursors, key string, body []byte) (busy int, err error) {
+	for deadline := time.Now().Add(30 * time.Second); ; {
+		err = c.SaveCursor(key, body)
+		if !errors.Is(err, core.ErrBusy) {
+			return busy, err
+		}
+		busy++
+		if time.Now().After(deadline) {
+			return busy, err
+		}
+	}
+}
+
+// Two writers saving the same cursor concurrently: every save succeeds once Busy is retried as the claim
+// store's contract says (a held lock is Busy, never a failure of the write), no other error appears, and
+// what is left is one whole cursor that one of them wrote. Under load the global document lock can run its
+// whole wait budget out for a writer (measured: 2 of 200 back-to-back puts at load ~60), so Busy here is
+// expected and the test must not read it as a failure.
 func TestConcurrentSavesOfOneCursorLeaveOneWholeCursor(t *testing.T) {
 	dir := t.TempDir()
 	const writers, rounds = 2, 5
@@ -67,6 +88,7 @@ func TestConcurrentSavesOfOneCursorLeaveOneWholeCursor(t *testing.T) {
 	var mu sync.Mutex
 	var wg sync.WaitGroup
 	errs := make(chan error, writers*rounds)
+	var busyTotal int
 	for w := range writers {
 		wg.Go(func() {
 			c := small(openStore(t, dir)) // each writer is its own process over the same documents
@@ -75,7 +97,11 @@ func TestConcurrentSavesOfOneCursorLeaveOneWholeCursor(t *testing.T) {
 				mu.Lock()
 				written[string(b)] = true
 				mu.Unlock()
-				if err := c.SaveCursor("k", b); err != nil {
+				busy, err := saveRetryingBusy(c, "k", b)
+				mu.Lock()
+				busyTotal += busy
+				mu.Unlock()
+				if err != nil {
 					errs <- fmt.Errorf("writer %d round %d: %w", w, r, err)
 				}
 			}
@@ -86,9 +112,51 @@ func TestConcurrentSavesOfOneCursorLeaveOneWholeCursor(t *testing.T) {
 	for err := range errs {
 		t.Error(err)
 	}
+	t.Logf("saves told Busy and retried: %d", busyTotal)
 	got, found, err := small(openStore(t, dir)).LoadCursor("k")
 	if err != nil || !found || !written[string(got)] {
 		t.Errorf("found=%v err=%v writtenByOne=%v: the result is not one whole cursor a writer saved", found, err, written[string(got)])
+	}
+}
+
+// The Busy signal itself, without any load: while another holder keeps the documents lock past the wait
+// budget, a save is told Busy (not "failed", not "unavailable"), the stored cursor is untouched, and the
+// same save succeeds once the lock is free.
+func TestASaveIsToldBusyWhileTheDocumentLockIsHeldAndSucceedsWhenItIsFree(t *testing.T) {
+	dir := t.TempDir()
+	c := small(openStore(t, dir))
+	v1, v2 := bigBody(1, 24<<10), bigBody(2, 24<<10)
+	if err := c.SaveCursor("k", v1); err != nil {
+		t.Fatal(err)
+	}
+	lock := filepath.Join(dir, "docs.lock")
+	f, err := os.OpenFile(lock, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.Close()
+	released := false
+	t.Cleanup(func() {
+		if !released {
+			_ = os.Remove(lock)
+		}
+	})
+	err = c.SaveCursor("k", v2)
+	if !errors.Is(err, core.ErrBusy) || errors.Is(err, core.ErrStoreUnavailable) {
+		t.Fatalf("err = %v, want ErrBusy while the lock is held", err)
+	}
+	if got, found, lerr := small(openStore(t, dir)).LoadCursor("k"); lerr != nil || !found || !bytes.Equal(got, v1) {
+		t.Errorf("a Busy save changed the cursor: found=%v err=%v isV1=%v", found, lerr, bytes.Equal(got, v1))
+	}
+	if err := os.Remove(lock); err != nil {
+		t.Fatal(err)
+	}
+	released = true
+	if err := c.SaveCursor("k", v2); err != nil {
+		t.Fatalf("the same save after the lock was freed: %v", err)
+	}
+	if got, _, _ := small(openStore(t, dir)).LoadCursor("k"); !bytes.Equal(got, v2) {
+		t.Error("the retried save did not land whole")
 	}
 }
 
