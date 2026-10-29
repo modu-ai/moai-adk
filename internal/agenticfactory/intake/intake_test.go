@@ -116,18 +116,6 @@ func startAgent(t *testing.T, r *rig, key string, n int) (core.Agent, error) {
 	return ag, err
 }
 
-// acceptRetry is what a caller does with ErrBusy: the store said "retry".
-func acceptRetry(in *Intake, key string, payload []byte, pri int) (claim.Request, error) {
-	for i := 0; i < 100; i++ {
-		req, err := in.Accept(key, payload, pri)
-		if !errors.Is(err, core.ErrBusy) {
-			return req, err
-		}
-		time.Sleep(5 * time.Millisecond)
-	}
-	return in.Accept(key, payload, pri)
-}
-
 func ctx() context.Context { return context.Background() }
 
 func TestConfigIsValidated(t *testing.T) {
@@ -346,7 +334,7 @@ func TestConcurrentAcceptNeverExceedsTheLimits(t *testing.T) {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			req, err := acceptRetry(r.in, "req-"+string(rune('a'+i)), []byte("p"+string(rune('a'+i))), i)
+			req, err := r.in.Accept("req-"+string(rune('a'+i)), []byte("p"+string(rune('a'+i))), i)
 			switch {
 			case errors.Is(err, core.ErrIntakeFull):
 				full.Add(1)
@@ -377,7 +365,7 @@ func TestSameKeyConcurrentlyYieldsOneRecordAndOneConflict(t *testing.T) {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			_, err := acceptRetry(r.in, "same", []byte("payload-"+string(rune('a'+i%2))), 1)
+			_, err := r.in.Accept("same", []byte("payload-"+string(rune('a'+i%2))), 1)
 			switch {
 			case err == nil:
 				ok.Add(1)
