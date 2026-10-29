@@ -116,6 +116,35 @@ func TestAnUnmappableRecordIsStillReadable(t *testing.T) {
 	if err != nil || rec.Stage != "" || rec.State != core.StateBlocked {
 		t.Errorf("read: %+v %v", rec, err)
 	}
+	// ...but it says so: an empty position must not read as "confirmed: no park"
+	if rec.PositionUnknown == "" {
+		t.Errorf("a record whose position could not be derived must carry the reason: %+v", rec)
+	}
+}
+
+// One unreadable position does not fail the listing, and a healthy record never
+// carries the marker. The marker is derived on every read and never stored.
+func TestAnUnmappablePositionIsMarkedNotHiddenAndNotFatalToTheListing(t *testing.T) {
+	s := open(t)
+	if _, err := s.Acquire(ref(t, 2), "w2", "d2", "run-2"); err != nil {
+		t.Fatal(err)
+	}
+	if err := writeRaw(s, 1, `{"issue":1,"holder":"w","dispatch":"d","run":"run-1","epoch":1,"seq":1,"state":"blocked"}`); err != nil {
+		t.Fatal(err)
+	}
+	recs, err := s.List()
+	if err != nil || len(recs) != 2 {
+		t.Fatalf("the listing must survive one unmappable record: %d %v", len(recs), err)
+	}
+	if recs[0].Issue != 1 || recs[0].PositionUnknown == "" {
+		t.Errorf("the unmappable record is marked: %+v", recs[0])
+	}
+	if recs[1].PositionUnknown != "" || recs[1].Stage == "" {
+		t.Errorf("a healthy record carries a position and no marker: %+v", recs[1])
+	}
+	if raw, err := os.ReadFile(s.path(ref(t, 1))); err != nil || strings.Contains(string(raw), "position_unknown") {
+		t.Errorf("the marker must not be written: %s %v", raw, err)
+	}
 }
 
 func TestAWriteThatCannotBeMappedIsRefusedAndChangesNothing(t *testing.T) {

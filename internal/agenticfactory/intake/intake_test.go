@@ -774,8 +774,15 @@ func TestAcceptReturnsBusyToTheCallerAfterABoundedWait(t *testing.T) {
 	if !errors.Is(err, core.ErrBusy) {
 		t.Fatalf("want ErrBusy, got %v", err)
 	}
-	if waited > 2*time.Second {
-		t.Errorf("the wait for a held lock is not bounded: %s", waited)
+	// The wait is the store's budget: a sleep never returns early, so it lasts at
+	// least that long, and it must not run on without end (five times the budget
+	// is the slack this test has always allowed for a loaded machine).
+	budget := claim.LockWaitBudget()
+	if waited < budget {
+		t.Errorf("the wait for a held lock ended before its budget: %s < %s", waited, budget)
+	}
+	if waited > 5*budget {
+		t.Errorf("the wait for a held lock is not bounded: %s (budget %s)", waited, budget)
 	}
 	if _, gerr := r.in.Store.GetRequest("req-1"); !errors.Is(gerr, core.ErrNotHeld) {
 		t.Error("a Busy accept left a record")
