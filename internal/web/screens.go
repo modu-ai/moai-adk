@@ -8,6 +8,7 @@ package web
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"net/http"
 	"path/filepath"
 	"time"
@@ -180,6 +181,14 @@ func (a *app) handleMonitor(w http.ResponseWriter, r *http.Request) {
 	}
 	vm := a.shellVM(r, "monitor", "Monitor", "sessions · goals · verification")
 	a.renderPage(w, Monitor(vm, m))
+}
+
+func (a *app) handleBrowserAPI(w http.ResponseWriter, r *http.Request) {
+	if !a.readOnly(w, r) {
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(a.buildBrowserSelection(r.Context()))
 }
 
 func (a *app) handleSpecs(w http.ResponseWriter, r *http.Request) {

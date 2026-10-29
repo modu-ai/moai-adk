@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/browser"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/glmcred"
 	"github.com/modu-ai/moai-adk/internal/jevcred"
@@ -127,6 +128,12 @@ type app struct {
 	// returns a zero view (not-installed), matching the probe's fail-open.
 	codexStateProbe func(ctx context.Context) CodexStateView
 
+	// browserSelected reads the saved browser selection and browserProbe detects
+	// installs, both for the read-only browser panel (REQ-AF-016). The saved
+	// value is owned by the settings layer; this console only reads it.
+	browserSelected func(projectRoot string) (string, error)
+	browserProbe    browser.Probe
+
 	// triggerShutdown is 페이지 내 서버 종료 버튼(/__shutdown__)이 호출하는
 	// injectable seam 이다. openBrowser 와 동일한 패턴이지만 app 에 두는 이유는 —
 	// Config 가 값 전달이라 server 와 handler 가 하나의 closure 를 공유해야
@@ -164,6 +171,9 @@ func newApp(cfg Config) *app {
 
 		codexStateProbe: defaultCodexStateProbe,
 
+		browserSelected: readBrowserSelected,
+		browserProbe:    browser.ExecProbe{},
+
 		schemaCurrentValues: settings.SchemaCurrentValues,
 		rawBlockValues:      settings.RawBlockValues,
 		applySchemaEdits:    settings.ApplySchemaEdits,
@@ -200,6 +210,8 @@ func (a *app) routes() http.Handler {
 	mux.HandleFunc("/factory", a.handleFactory)
 	registerLegacyRoutes(mux)
 	mux.HandleFunc("/monitor", a.handleMonitor)
+	// REQ-AF-016: read-only browser selection data for the monitor panel.
+	mux.HandleFunc("/api/browser", a.handleBrowserAPI)
 	// SPEC-WEB-TODO-QUEUE-001 M2 (REQ-WTQ-002): /todo renders the backlog queue
 	// read-only. Writes and id issuance belong to `moai todo`; this route only
 	// reads, and like the other monitoring routes it answers 405 to non-GET.

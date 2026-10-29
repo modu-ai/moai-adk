@@ -193,3 +193,18 @@ func equal(a, b []string) bool {
 	}
 	return true
 }
+
+func TestPreflight_NeverConnects(t *testing.T) {
+	p := &fakeProbe{installed: map[string]bool{"ego-browser": true}}
+	got, err := Preflight(context.Background(), "egolite", p)
+	if err != nil || got.Blocked() || got.Use != Egolite {
+		t.Fatalf("Preflight installed egolite = %+v, %v", got, err)
+	}
+	if len(p.ran) != 0 {
+		t.Fatalf("Preflight ran commands: %v", p.ran)
+	}
+	got, _ = Preflight(context.Background(), "egolite", &fakeProbe{})
+	if got.Reason != ReasonNotInstalled {
+		t.Fatalf("Preflight missing egolite reason = %q", got.Reason)
+	}
+}

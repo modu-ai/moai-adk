@@ -74,7 +74,20 @@ const (
 )
 
 // Resolve maps the configured selection to the one browser the adapter may use.
+// For egolite it runs the functional check, which connects to the app, so it
+// belongs at use time only.
 func Resolve(ctx context.Context, selected string, p Probe) (Resolution, error) {
+	return resolve(ctx, selected, p, true)
+}
+
+// Preflight is Resolve without the egolite functional check: it detects
+// installs only and never connects to a browser, so a status screen can call
+// it on every refresh. A Preflight pass does not rule out connection-failed.
+func Preflight(ctx context.Context, selected string, p Probe) (Resolution, error) {
+	return resolve(ctx, selected, p, false)
+}
+
+func resolve(ctx context.Context, selected string, p Probe, connect bool) (Resolution, error) {
 	res := Resolution{Selected: selected}
 	switch Choice(selected) {
 	case "", Chrome:
@@ -83,9 +96,11 @@ func Resolve(ctx context.Context, selected string, p Probe) (Resolution, error) 
 		if err := p.LookPath(egoBinary); err != nil {
 			return blockedRes(res, ReasonNotInstalled, "", "install ego-lite so `command -v ego-browser` succeeds, then retry"), nil
 		}
-		code, out, err := p.Run(ctx, egoBinary, "nodejs", "-e", "console.log('ego-browser ready')")
-		if err != nil || code != 0 || !strings.Contains(out, egoReady) {
-			return blockedRes(res, ReasonConnectionFailed, out, "start the ego lite app so `ego-browser nodejs` prints `ego-browser ready`, then retry"), nil
+		if connect {
+			code, out, err := p.Run(ctx, egoBinary, "nodejs", "-e", "console.log('ego-browser ready')")
+			if err != nil || code != 0 || !strings.Contains(out, egoReady) {
+				return blockedRes(res, ReasonConnectionFailed, out, "start the ego lite app so `ego-browser nodejs` prints `ego-browser ready`, then retry"), nil
+			}
 		}
 		res.Use = Egolite
 	case Aside:
