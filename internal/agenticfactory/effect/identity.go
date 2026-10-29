@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"sort"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
@@ -97,9 +98,10 @@ func atoiPositive(s string) int {
 	return n
 }
 
-// opsOf maps the JSON keys of an Issue PATCH body to core operations. ok is false when the body is not a
-// non-empty JSON object or names a field this policy has no operation for (title, milestone, ...): such a
-// PATCH is not something the factory sends, so it is refused rather than guessed.
+// opsOf maps the JSON keys of an Issue PATCH body to core operations. A field the policy has no operation
+// for (title, milestone, reopening, anything else) is passed to core as an operation it does not define,
+// so core answers op-not-defined and records that reason; this file invents no reason of its own. ok is
+// false only when the body is not a non-empty JSON object.
 func opsOf(body []byte) (ops []core.Op, ok bool) {
 	var m map[string]json.RawMessage
 	if err := json.Unmarshal(body, &m); err != nil || len(m) == 0 {
@@ -112,22 +114,34 @@ func opsOf(body []byte) (ops []core.Op, ok bool) {
 		case "body":
 			op = core.OpEditBody
 		case "state":
-			if !strings.Contains(strings.ToLower(string(v)), "closed") {
-				return nil, false // reopening and other states are not part of this policy
+			if strings.Contains(strings.ToLower(string(v)), "closed") {
+				op = core.OpClose
+			} else {
+				op = core.Op("state:" + strings.ToLower(strings.Trim(string(v), `" `))) // reopening and the like: not defined
 			}
-			op = core.OpClose
 		case "labels":
 			op = core.OpLabel
 		case "assignee", "assignees":
 			op = core.OpAssignee
 		default:
-			return nil, false
+			op = core.Op("field:" + strings.ToLower(k))
 		}
 		if !seen[op] {
 			seen[op] = true
 			ops = append(ops, op)
 		}
 	}
+	// Undefined operations are judged first, so a request that carries one is refused as op-not-defined
+	// whatever else it asks for; the rest keep a stable order so the first refusal is reproducible.
+	defined := func(op core.Op) bool {
+		return !strings.HasPrefix(string(op), "field:") && !strings.HasPrefix(string(op), "state:")
+	}
+	sort.Slice(ops, func(i, j int) bool {
+		if di, dj := defined(ops[i]), defined(ops[j]); di != dj {
+			return !di
+		}
+		return ops[i] < ops[j]
+	})
 	return ops, true
 }
 

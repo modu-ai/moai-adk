@@ -34,6 +34,9 @@ const (
 	ReasonRepoNotAllowed       RefusalReason = "repository-not-allowed"
 	ReasonPermissionNotGranted RefusalReason = "permission-not-granted"
 	ReasonOwnerUnconfirmed     RefusalReason = "owner-unconfirmed"
+	// ReasonOpNotDefined: the operation is one the Issue permission policy does not define (title,
+	// milestone, reopening). Refused, never guessed.
+	ReasonOpNotDefined RefusalReason = "op-not-defined"
 	// ReasonIdentityUnknown: the authenticated user or the author could not be established (lookup failed,
 	// field missing, or no policy wired), so the write is refused rather than guessed.
 	ReasonIdentityUnknown RefusalReason = "identity-unknown"
