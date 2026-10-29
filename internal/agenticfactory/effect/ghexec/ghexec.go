@@ -17,18 +17,16 @@
 package ghexec
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
-	"os"
-	"os/exec"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/effect"
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/effect/internal/procrun"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/forge"
 )
 
@@ -37,7 +35,7 @@ var ErrNotAllowed = errors.New("ghexec: this gh call is not allowed")
 
 // ErrOutputTooLarge is returned when gh printed more than MaxOutput bytes; the process is stopped and
 // nothing is returned as if it were complete.
-var ErrOutputTooLarge = errors.New("ghexec: gh output exceeded the configured limit")
+var ErrOutputTooLarge = fmt.Errorf("ghexec: gh output exceeded the configured limit: %w", procrun.ErrOutputTooLarge)
 
 // Exec runs gh.
 type Exec struct {
@@ -88,30 +86,6 @@ func verbOf(args []string) string {
 	return strings.Join(args, " ")
 }
 
-// capWriter keeps at most max bytes and notes when more arrived; it never errors, so the process is not
-// cut off by a broken pipe before the wrapper decides.
-type capWriter struct {
-	buf  bytes.Buffer
-	max  int64
-	over bool
-	stop func()
-}
-
-func (w *capWriter) Write(p []byte) (int, error) {
-	if room := w.max - int64(w.buf.Len()); int64(len(p)) > room {
-		if room > 0 {
-			w.buf.Write(p[:room])
-		}
-		if !w.over {
-			w.over = true
-			w.stop()
-		}
-		return len(p), nil
-	}
-	w.buf.Write(p)
-	return len(p), nil
-}
-
 // Run runs gh with args. It returns the standard output; on a non-zero exit it returns it together with an
 // *ExitError.
 func (e Exec) Run(ctx context.Context, args ...string) ([]byte, error) {
@@ -125,31 +99,23 @@ func (e Exec) Run(ctx context.Context, args ...string) ([]byte, error) {
 	if bin == "" {
 		bin = "gh"
 	}
-	rctx, stop := context.WithCancel(ctx)
-	defer stop()
-	cmd := exec.CommandContext(rctx, bin, args...)
-	cmd.Dir = e.Dir
-	cmd.Env = append(append(os.Environ(), "GH_PROMPT_DISABLED=1", "GH_NO_UPDATE_NOTIFIER=1", "NO_COLOR=1"), e.Env...)
-	cmd.WaitDelay = e.WaitDelay
-	out, errw := &capWriter{max: e.MaxOutput, stop: stop}, &capWriter{max: e.MaxOutput, stop: stop}
-	cmd.Stdout, cmd.Stderr = out, errw
-	err := cmd.Run()
+	out, err := procrun.Run(ctx, procrun.Spec{
+		Bin: bin, Args: args, Dir: e.Dir, MaxOutput: e.MaxOutput, WaitDelay: e.WaitDelay,
+		Base: []string{"GH_PROMPT_DISABLED=1", "GH_NO_UPDATE_NOTIFIER=1", "NO_COLOR=1"}, Env: e.Env,
+	})
+	var pe *procrun.ExitError
 	switch {
-	case ctx.Err() != nil: // the caller's context ended: the process was stopped
-		return nil, fmt.Errorf("ghexec: gh %s: %w", verbOf(args), ctx.Err())
-	case out.over || errw.over:
-		return nil, fmt.Errorf("%w: gh %s", ErrOutputTooLarge, verbOf(args))
 	case err == nil:
-		return out.buf.Bytes(), nil
-	}
-	var ee *exec.ExitError
-	if errors.As(err, &ee) {
-		x := &ExitError{Verb: verbOf(args), Code: ee.ExitCode(), Stderr: errw.buf.String()}
+		return out, nil
+	case errors.Is(err, procrun.ErrOutputTooLarge):
+		return nil, fmt.Errorf("%w: gh %s", ErrOutputTooLarge, verbOf(args))
+	case errors.As(err, &pe):
+		x := &ExitError{Verb: verbOf(args), Code: pe.Code, Stderr: pe.Stderr}
 		if m := httpStatus.FindStringSubmatch(x.Stderr); m != nil {
 			code, _ := strconv.Atoi(m[1])
-			x.status = &forge.StatusError{Status: code, Body: errw.buf.Bytes()}
+			x.status = &forge.StatusError{Status: code, Body: []byte(x.Stderr)}
 		}
-		return out.buf.Bytes(), x
+		return out, x
 	}
 	return nil, fmt.Errorf("ghexec: gh %s: %w", verbOf(args), err)
 }
