@@ -589,6 +589,7 @@ OD-13·OD-14·OD-17(spec.md §G.1)을 한 표로 묶는다. 출처: 'leader deci
 - 예전 14c(`docstore.modifyRetries = 10`) 행은 지웠다: docstore 재시도 상수가 제거됐고, CAS 재시도 한도는 `claim.UpdateDoc`의 것이다(lane-20 `af72c90458`, 리더 전달, 이 작성자는 다시 읽지 않음).
 - **구현 관찰(요구사항 아님)**: 이 표의 읽기 코드 `internal/config/agentic_factory_settings.go`(시험 포함, 작성자 보고로 mutant 20개 제거)가 커밋 `dc1bff9643`(브랜치 `WT-agentic-factory-settings-keys`)에 있다. 리더 전달이며 이 SPEC 작성자는 다시 읽지 않았다. SPEC이 정하지 않은 동작을 구현이 고른 곳은 spec.md §H 0.6.7에 열린 관찰로 적었다.
 
+- effect 층 쓰기 effect 시간 제한 여섯 개(`IssueCreate` 등)의 키는 이 표에 없으며 열린 결정이다(spec.md §G.1 OD-20).
 - "AF가 설정되었다" 판정(OD-14)과 claim 저장소 디렉터리(OD-13)는 DEC-AF-25 D3·D2로 정해졌다(위 규칙, 표 첫 두 행). 남은 것은 이 파일의 template 배포(OD-19)다.
 - 범위 검사가 코드에 없는 칸(`forge.Adaptive` 세 필드)은 "필요한 규칙"을 적었을 뿐 이 SPEC이 그 규칙을 채택한 것은 아니다. 키 이름은 확정됐지만, 그 검증 규칙의 채택은 리더 결정을 기다린다(OD-17).
 
