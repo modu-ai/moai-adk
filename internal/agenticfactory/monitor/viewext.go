@@ -5,25 +5,64 @@ import (
 	"time"
 )
 
-// IntakeStage is where background acceptance of an Issue stands.
+// IntakeStage is the stored stage of a background intake request. The names are the canonical S51
+// stages, owned by lane 18's claim record; this package only displays them.
 type IntakeStage string
 
 const (
-	StageAck          IntakeStage = "ack"
-	StageIssueCreated IntakeStage = "issue-created"
-	StageWTReady      IntakeStage = "wt-ready"
-	StageStarted      IntakeStage = "started"
-	StageFailed       IntakeStage = "failed"
-	StageParked       IntakeStage = "parked"
+	StageAccepted         IntakeStage = "ACCEPTED"
+	StageIssueConfirmed   IntakeStage = "ISSUE_CONFIRMED"
+	StageBranchRegistered IntakeStage = "BRANCH_REGISTERED"
+	StageAgentReserved    IntakeStage = "AGENT_RESERVED"
+	StageWTPrepared       IntakeStage = "WT_PREPARED"
+	StageReadyAcked       IntakeStage = "READY_ACKED"
 )
 
-// IntakeItem is one Issue's acceptance record.
+// Displayed row states that are not stages. A request that is waiting is PARKED (a wait for capacity,
+// not a failure); BLOCKED needs the recorded resume condition; EFFECT_UNKNOWN means an effect may have
+// happened and must be looked up, never repeated.
+const (
+	StateParked        = "PARKED"
+	StateBlocked       = "BLOCKED"
+	StateEffectUnknown = "EFFECT_UNKNOWN"
+)
+
+// IntakeBlock is the recorded reason a request stopped.
+type IntakeBlock struct {
+	Step      IntakeStage `json:"step"`
+	Detail    string      `json:"detail"`
+	Retryable bool        `json:"retryable"`
+	Unknown   bool        `json:"unknown"`
+	Resume    string      `json:"resume,omitempty"`
+}
+
+// IntakeItem is one background intake request. State is derived here, from the fields, so no reader has
+// to guess: EFFECT_UNKNOWN when Block.Unknown, BLOCKED when Block is set, PARKED when Parked is set,
+// otherwise the stage. Started comes from the claim (an attempt exists), never from the request; it is
+// not a stage, and BUILDING follows READY_ACKED.
 type IntakeItem struct {
-	Issue  int         `json:"issue"`
-	Stage  IntakeStage `json:"stage"`
-	State  string      `json:"state"`
-	Reason string      `json:"reason,omitempty"`
-	At     time.Time   `json:"at"`
+	Key     string       `json:"key"`
+	Issue   int          `json:"issue,omitempty"`
+	Stage   IntakeStage  `json:"stage"`
+	State   string       `json:"state"`
+	Parked  string       `json:"parked,omitempty"` // backpressure | no-slot
+	Block   *IntakeBlock `json:"block,omitempty"`
+	Started bool         `json:"started"`
+	Agent   string       `json:"agent,omitempty"` // reserved agent's session id
+	Slot    string       `json:"slot,omitempty"`
+}
+
+// DeriveIntakeState computes the displayed state of an item.
+func DeriveIntakeState(it IntakeItem) string {
+	switch {
+	case it.Block != nil && it.Block.Unknown:
+		return StateEffectUnknown
+	case it.Block != nil:
+		return StateBlocked
+	case it.Parked != "":
+		return StateParked
+	}
+	return string(it.Stage)
 }
 
 // ContextState tells a stale context item from one that cannot be reached.
@@ -141,8 +180,19 @@ func (c *Collector) fillIntake(ctx context.Context, v *View) {
 	if err != nil {
 		return
 	}
+	now := c.Now()
 	for i := range items {
-		items[i].Reason = textField("reason", items[i].Reason, SrcClaimStore, c.Now()).Value
+		it := &items[i]
+		it.Key = textField("key", it.Key, SrcClaimStore, now).Value
+		it.Slot = textField("slot", it.Slot, SrcClaimStore, now).Value
+		it.Agent = idField(it.Agent, SrcClaimStore, now).Value
+		if it.Block != nil {
+			b := *it.Block
+			b.Detail = textField("detail", b.Detail, SrcClaimStore, now).Value
+			b.Resume = textField("resume", b.Resume, SrcClaimStore, now).Value
+			it.Block = &b
+		}
+		it.State = DeriveIntakeState(*it)
 	}
 	v.Intake = Field[[]IntakeItem]{items, SrcClaimStore, c.Now(), true, false}
 }
