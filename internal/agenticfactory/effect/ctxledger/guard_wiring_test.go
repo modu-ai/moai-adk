@@ -30,9 +30,24 @@ func TestGHRemoteRefusesAPathThatIsNotACommentRoute(t *testing.T) {
 	}
 }
 
+// weOwnEverything is an Identity for which every comment was written by the authenticated user.
+type weOwnEverything struct{}
+
+func (weOwnEverything) CurrentUserID(context.Context) (int64, error)              { return 1001, nil }
+func (weOwnEverything) IssueAuthorID(context.Context, string, int) (int64, error) { return 1001, nil }
+func (weOwnEverything) CommentAuthorID(context.Context, string, int64) (int64, error) {
+	return 1001, nil
+}
+
+func ownEnforcer() *effect.Enforcer {
+	return &effect.Enforcer{Identity: weOwnEverything{}, Judge: func(op effect.IssueOp, s effect.Subject) effect.Decision {
+		return effect.Decision{Allow: s.ActorKnown && s.AuthorKnown && s.ActorID == s.AuthorID && op == effect.OpCommentEdit}
+	}}
+}
+
 func TestEveryGHCallOfTheRemoteIsAnAllowlistedRoute(t *testing.T) {
 	rr := &recRun{}
-	g := GHRemote{Repo: "o/r", Run: rr.run}
+	g := GHRemote{Repo: "o/r", Run: rr.run, Enforcer: ownEnforcer()}
 	_, _, _ = g.Find(t.Context(), 7, "m")
 	_, _ = g.Create(t.Context(), 7, "b")
 	_ = g.Update(t.Context(), 7, 5, "b")
@@ -43,5 +58,15 @@ func TestEveryGHCallOfTheRemoteIsAnAllowlistedRoute(t *testing.T) {
 		if strings.Contains(strings.Join(c, " "), "protection") {
 			t.Errorf("unexpected call %v", c)
 		}
+	}
+}
+
+// Without an identity check wired, a comment edit is refused and gh never runs.
+func TestCommentEditWithoutAnEnforcerIsRefusedAsIdentityUnknown(t *testing.T) {
+	rr := &recRun{}
+	err := (GHRemote{Repo: "o/r", Run: rr.run}).Update(t.Context(), 7, 5, "b")
+	var re *effect.RefusedError
+	if !errors.As(err, &re) || re.Reason != effect.ReasonIdentityUnknown || len(rr.calls) != 0 {
+		t.Errorf("err=%v calls=%v", err, rr.calls)
 	}
 }

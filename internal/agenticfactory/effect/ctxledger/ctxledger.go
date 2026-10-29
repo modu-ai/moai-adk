@@ -435,6 +435,10 @@ type Runner func(ctx context.Context, args ...string) ([]byte, error)
 type GHRemote struct {
 	Repo string
 	Run  Runner
+	// Enforcer decides whether a comment edit is allowed: only a comment we wrote may be edited, so the
+	// edit needs the authenticated user's id and the comment author's id. Without one, every edit is
+	// refused (identity-unknown): the remote fails closed rather than editing a comment it cannot attribute.
+	Enforcer *effect.Enforcer
 }
 
 func (g GHRemote) Find(ctx context.Context, issue int, marker string) (Comment, bool, error) {
@@ -478,7 +482,7 @@ func (g GHRemote) Update(ctx context.Context, issue int, id int64, body string) 
 	if id <= 0 {
 		return errors.New("ctxledger: update needs a comment id")
 	}
-	if err := effect.CheckRequest("PATCH", fmt.Sprintf("/repos/%s/issues/comments/%d", g.Repo, id), nil); err != nil {
+	if err := g.Enforcer.Check(ctx, "PATCH", fmt.Sprintf("/repos/%s/issues/comments/%d", g.Repo, id), nil, nil); err != nil {
 		return err
 	}
 	_, err := g.Run(ctx, "api", "-X", "PATCH", fmt.Sprintf("repos/%s/issues/comments/%d", g.Repo, id), "-f", "body="+body)
