@@ -7,8 +7,9 @@ import (
 )
 
 // Outcome is one result an edge can have. ReasonFromCaller outcomes leave the
-// overlay reason to the caller's classification (canon-unspecified: S46 does not
-// name it for E15 cleanup-unknown, E19, E23 inconclusive). S46 gives some edges two results
+// overlay reason to the caller (canon-unspecified: S46 does not name it for E15
+// cleanup-unknown and E23 inconclusive). ReasonClassified outcomes (E19) accept
+// only a reason from the classification set (canon line 65, guard "실제오류분류"). S46 gives some edges two results
 // (E10, E15, E16, E23); the one marked Default is taken when the caller names none.
 type Outcome struct {
 	Name    string
@@ -21,6 +22,10 @@ type Outcome struct {
 	Park BlockReason
 	// Integrated sets remote_integrated on a MERGING position (E12, E17).
 	Integrated bool
+	// Needs are guard keys this outcome needs on top of the edge's own. A parking
+	// outcome that records an unclear result needs less than the one that claims
+	// the result is known (S46 E15: an unclear cleanup stays parked).
+	Needs []string
 }
 
 // Edge is one S46 transition. Needs are guard evidence keys the caller must
@@ -59,6 +64,18 @@ func (e Edge) allows(p Position) bool {
 	return !e.RequiresIntegrated || p.RemoteIntegrated
 }
 
+// needsFor is the edge's guard plus the needs of the named outcome ("" is the
+// default one).
+func (e Edge) needsFor(outcome string) []string {
+	out := append([]string(nil), e.Needs...)
+	for _, o := range e.Outcomes {
+		if (outcome == "" && o.Default) || (outcome != "" && o.Name == outcome) {
+			out = append(out, o.Needs...)
+		}
+	}
+	return out
+}
+
 func (e Edge) defaultOutcome() *Outcome {
 	for i := range e.Outcomes {
 		if e.Outcomes[i].Default {
@@ -80,7 +97,7 @@ var edges = []Edge{
 	{ID: "E01", From: []Stage{StageReady}, Needs: []string{"contract", "dependencies", "scope", "budget", "no-active-owner", "ready-ack"},
 		Outcomes: []Outcome{{Name: "claim", Default: true, To: StageBuilding, Sub: SubSpec}}},
 	{ID: "E02", From: []Stage{StageReady}, Needs: []string{"dependency-evidence"}, Outcomes: []Outcome{parkWith(ReasonDependency)}},
-	{ID: "E03", From: []Stage{StageBuilding}, Needs: []string{"pr-receipt", "leader-accept", "quiescence", "preserved-worktree"},
+	{ID: "E03", From: []Stage{StageBuilding}, Needs: []string{"pr-remote-head-base", "contract", "spec", "task-results", "check-status", "original-writer", "leader-accept-receipt", "quiescence", "preserved-worktree"},
 		Outcomes: []Outcome{{Name: "handoff", Default: true, To: StageReviewing}}},
 	{ID: "E04", From: []Stage{StageBuilding}, Needs: []string{"incarnation-check"}, Outcomes: []Outcome{parkWith(ReasonStopUnknown)}},
 	// E05: S46 does not name the sub stage after a safe handoff from REVIEWING;
@@ -93,30 +110,32 @@ var edges = []Edge{
 	{ID: "E08", From: []Stage{StageReviewing}, Needs: []string{"same-head-base-contract", "gates", "handoff", "protection", "approval"},
 		Outcomes: []Outcome{{Name: "merge", Default: true, To: StageMerging}}},
 	{ID: "E09", From: []Stage{StageReviewing}, Needs: []string{"provider-fact-diff"}, Outcomes: []Outcome{stay("invalidate")}},
-	{ID: "E10", From: []Stage{StageMerging}, Needs: []string{"remote-not-merged", "sender-cleared"},
-		Outcomes: []Outcome{{Name: "back", Default: true, To: StageReviewing}, {Name: "unknown", Park: ReasonUnknownEffect}}},
+	{ID: "E10", From: []Stage{StageMerging},
+		Outcomes: []Outcome{{Name: "back", Default: true, To: StageReviewing, Needs: []string{"remote-not-merged", "sender-cleared"}}, {Name: "unknown", Park: ReasonUnknownEffect}}},
 	{ID: "E11", From: []Stage{StageMerging}, Needs: []string{"effect-intent", "sender-check"}, Outcomes: []Outcome{parkWith(ReasonUnknownEffect)}},
 	{ID: "E12", From: []Stage{StageMerging}, Needs: []string{"pr-head-merge-target"},
 		Outcomes: []Outcome{{Name: "integrated", Default: true, Integrated: true}}},
 	{ID: "E13", From: []Stage{StageMerging}, RequiresIntegrated: true, Needs: []string{"acceptance-evidence", "merge-commit", "local-sync", "close", "cleanup"},
 		Outcomes: []Outcome{{Name: "done", Default: true, To: StageDone}}},
 	{ID: "E14", From: []Stage{StageMerging}, Needs: []string{"merge-fact"}, Outcomes: []Outcome{parkWith(ReasonPendingEffect)}},
-	{ID: "E15", From: []Stage{StageReady, StageBuilding, StageReviewing}, Needs: []string{"new-grants-blocked", "writers-effects-cleaned"},
-		Outcomes: []Outcome{{Name: "cancel", Default: true, To: StageCancelled}, {Name: "cleanup-unknown", Park: ReasonFromCaller}}},
-	{ID: "E16", From: []Stage{StageMerging}, Needs: []string{"sender-residue-removed", "queue-effects-checked"},
-		Outcomes: []Outcome{{Name: "cancel", Default: true, To: StageCancelled}, {Name: "unknown", Park: ReasonUnknownEffect}}},
+	// E15 (canon line 61): an unclear cleanup stays at the current stage, parked.
+	{ID: "E15", From: []Stage{StageReady, StageBuilding, StageReviewing}, Needs: []string{"new-grants-blocked"},
+		Outcomes: []Outcome{{Name: "cancel", Default: true, To: StageCancelled, Needs: []string{"writers-effects-cleaned"}}, {Name: "cleanup-unknown", Park: ReasonFromCaller}}},
+	{ID: "E16", From: []Stage{StageMerging},
+		Outcomes: []Outcome{{Name: "cancel", Default: true, To: StageCancelled, Needs: []string{"sender-residue-removed", "queue-effects-checked"}}, {Name: "unknown", Park: ReasonUnknownEffect}}},
 	// E17 is a fact: the integration is kept, nothing is reverted.
 	{ID: "E17", From: []Stage{StageMerging, StageDone}, Needs: []string{"provider-merge-fact"}, Outcomes: []Outcome{{Name: "keep", Default: true, Integrated: true}}},
 	// E18: S46 says "PARKED"; contract-change as its reason comes from E24 and
 	// SPEC 0.6.1 (canon-unspecified for E18 itself).
 	{ID: "E18", From: nonterminal, Needs: []string{"contract-diff"}, Outcomes: []Outcome{parkWith(ReasonContractChange)}},
-	{ID: "E19", From: nonterminal, Needs: []string{"error-classification"}, Outcomes: []Outcome{parkWith(ReasonFromCaller)}},
+	// E19 (canon line 65): quota, permission or budget block; the guard is the
+	// classified error, so the reason must come from the classification set.
+	{ID: "E19", From: nonterminal, Needs: []string{"error-classification"}, Outcomes: []Outcome{parkWith(ReasonClassified)}},
 	{ID: "E21", From: []Stage{StageDone, StageCancelled}, Needs: []string{"id-epoch-receipt"}, Outcomes: []Outcome{stay("reject-late")}},
 	{ID: "E22", From: []Stage{StageDone, StageCancelled}, Needs: []string{"new-intent"}, Outcomes: []Outcome{stay("separate-lifecycle")}},
 	{ID: "E23", From: []Stage{StageBuilding}, FromSub: []SubStage{SubSpec}, Needs: []string{"spec-revision", "selected-auditor", "required-coverage"},
 		Outcomes: []Outcome{{Name: "pass", Default: true, To: StageBuilding, Sub: SubImplement}, {Name: "fail", To: StageBuilding, Sub: SubSpec}, {Name: "inconclusive", Park: ReasonFromCaller}}},
-	// E24: S46 writes the current position as "BUILDING/FIX" (read literally here;
-	// canon-unspecified whether IMPLEMENT is meant too).
+	// E24 (canon line 70): the current position is "BUILDING/FIX".
 	{ID: "E24", From: []Stage{StageBuilding}, FromSub: []SubStage{SubFix}, Needs: []string{"contract-impact"}, Outcomes: []Outcome{parkWith(ReasonContractChange)}},
 	{ID: "E25", From: []Stage{StageBuilding}, Needs: []string{"checkpoint", "quiescence", "scope-returned", "full-reservation"}, Outcomes: []Outcome{stay("rereserve")}},
 	{ID: "E26", From: nonterminal, Needs: []string{"launch-key-unknown"}, Outcomes: []Outcome{parkWith(ReasonStartUnknown)}},
@@ -202,7 +221,7 @@ func Transition(pos Position, ev Event) (Position, error) {
 	if out == nil {
 		return pos, fmt.Errorf("%w: %s has no outcome %q", ErrUnknownOutcome, e.ID, ev.Outcome)
 	}
-	if m := missing(e.Needs, ev.Evidence); len(m) > 0 {
+	if m := missing(e.needsFor(out.Name), ev.Evidence); len(m) > 0 {
 		return pos, fmt.Errorf("%w: %s needs %s", ErrGuardMissing, e.ID, strings.Join(m, ", "))
 	}
 	next := pos
@@ -239,6 +258,11 @@ func Transition(pos Position, ev Event) (Position, error) {
 		reason := out.Park
 		if out.Park == ReasonFromCaller {
 			reason = ev.Park.Reason
+		} else if out.Park == ReasonClassified {
+			reason = ev.Park.Reason
+			if !isClassified(reason) {
+				return pos, fmt.Errorf("%w: %s takes a classified error reason, not %q", ErrReasonNotAllowed, e.ID, reason)
+			}
 		} else if ev.Park.Reason != "" && ev.Park.Reason != out.Park {
 			return pos, fmt.Errorf("%w: %s parks with %s, not %q", ErrReasonNotAllowed, e.ID, out.Park, ev.Park.Reason)
 		}

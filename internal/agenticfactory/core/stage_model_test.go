@@ -113,8 +113,12 @@ func pad(i int) string {
 	return string(rune('0'+i/10)) + string(rune('0'+i%10))
 }
 
-// evidenceFor returns every guard key an edge needs.
-func evidenceFor(e Edge) []string { return append([]string(nil), e.Needs...) }
+// evidenceFor returns every guard key an edge needs for its default outcome.
+func evidenceFor(e Edge) []string { return evidenceForOutcome(e, "") }
+
+func evidenceForOutcome(e Edge, outcome string) []string {
+	return e.needsFor(outcome)
+}
 
 func posFor(st Stage, sub SubStage) Position {
 	p := Position{Stage: st, Sub: sub}
@@ -146,7 +150,7 @@ func TestEveryEdgeAcceptsExactlyItsFromStages(t *testing.T) {
 				ev := Event{ID: e.ID, Evidence: evidenceFor(e)}
 				if o := e.defaultOutcome(); o != nil && o.Park != "" {
 					r := o.Park
-					if r == ReasonFromCaller {
+					if r == ReasonFromCaller || r == ReasonClassified {
 						r = ReasonRateLimited
 					}
 					ev.Park = park(r)
@@ -187,7 +191,7 @@ func run(t *testing.T, pos Position, id, outcome string, p Park) (Position, erro
 	if !ok {
 		t.Fatalf("no edge %s", id)
 	}
-	return Transition(pos, Event{ID: id, Outcome: outcome, Evidence: evidenceFor(e), Park: p})
+	return Transition(pos, Event{ID: id, Outcome: outcome, Evidence: evidenceForOutcome(e, outcome), Park: p})
 }
 
 func TestNamedEdgeResults(t *testing.T) {
@@ -490,5 +494,100 @@ func TestFromLegacyRefusesWhatItCannotMap(t *testing.T) {
 		if _, err := FromLegacy(in); !errors.Is(err, ErrLegacyUnmappable) {
 			t.Errorf("case %d: %v", i, err)
 		}
+	}
+}
+
+// S46 E03 (comment 6489610367 line 49): the handoff guard is the whole list.
+func TestE03GuardIsTheWholeCanonList(t *testing.T) {
+	e, _ := EdgeFor("E03")
+	want := []string{"pr-remote-head-base", "contract", "spec", "task-results", "check-status", "original-writer", "leader-accept-receipt", "quiescence", "preserved-worktree"}
+	if strings.Join(sortedCopy(e.Needs), ",") != strings.Join(sortedCopy(want), ",") {
+		t.Errorf("E03 needs %v, canon lists %v", e.Needs, want)
+	}
+	for i := range want {
+		ev := append(append([]string(nil), want[:i]...), want[i+1:]...)
+		_, err := Transition(Position{Stage: StageBuilding, Sub: SubImplement}, Event{ID: "E03", Evidence: ev})
+		if !errors.Is(err, ErrGuardMissing) || !strings.Contains(err.Error(), want[i]) {
+			t.Errorf("E03 without %q: %v", want[i], err)
+		}
+	}
+}
+
+func sortedCopy(in []string) []string {
+	out := append([]string(nil), in...)
+	sort.Strings(out)
+	return out
+}
+
+// S46 E19 (line 65): the guard is the classified error, so the reason is one of
+// the classification set, never free text.
+func TestE19TakesOnlyAClassifiedReason(t *testing.T) {
+	for _, r := range ClassifiedReasons() {
+		if _, err := run(t, Position{Stage: StageReady}, "E19", "", park(r)); err != nil {
+			t.Errorf("classified %s: %v", r, err)
+		}
+	}
+	for _, r := range []BlockReason{ReasonDependency, ReasonOperatorHold, ReasonUserControl, ReasonStopUnknown, ReasonUnknownEffect,
+		ReasonContractChange, ReasonOperatorAckMissing, ReasonNotIssueAuthor, ReasonCheckNotPassed, "free text", ""} {
+		if _, err := run(t, Position{Stage: StageReady}, "E19", "", park(r)); !errors.Is(err, ErrReasonNotAllowed) {
+			t.Errorf("unclassified %q: %v", r, err)
+		}
+	}
+	for _, want := range []BlockReason{ReasonRateLimited, ReasonPermissionDenied, ReasonUnclassified, ReasonBudgetExhausted, ReasonCapacityShort} {
+		found := false
+		for _, r := range ClassifiedReasons() {
+			found = found || r == want
+		}
+		if !found {
+			t.Errorf("%s missing from the classification set", want)
+		}
+	}
+}
+
+// S46 E15 (line 61) / E16: cancel needs the cleanup evidence; an unclear cleanup
+// leaves the position at its stage and parked.
+func TestACancelWithoutCleanupEvidenceStaysParked(t *testing.T) {
+	parked := func(st Stage) Position {
+		return Position{Stage: st, Park: &Park{Reason: ReasonUnknownEffect, Evidence: "send unknown", Resume: "remote fact known"}}
+	}
+	for _, c := range []struct {
+		id, cancelNeeds string
+		stage           Stage
+		unknownOutcome  string
+	}{
+		{"E15", "writers-effects-cleaned", StageReviewing, "cleanup-unknown"},
+		{"E16", "sender-residue-removed", StageMerging, "unknown"},
+	} {
+		e, _ := EdgeFor(c.id)
+		// cancel with the cleanup evidence missing is refused, nothing changes
+		have := []string{}
+		for _, n := range evidenceForOutcome(e, "cancel") {
+			if n != c.cancelNeeds {
+				have = append(have, n)
+			}
+		}
+		in := parked(c.stage)
+		if _, err := Transition(in, Event{ID: c.id, Outcome: "cancel", Evidence: have}); !errors.Is(err, ErrGuardMissing) || !strings.Contains(err.Error(), c.cancelNeeds) {
+			t.Errorf("%s cancel without %s: %v", c.id, c.cancelNeeds, err)
+		}
+		// an unclear cleanup is a legal outcome that keeps the stage and the parked overlay
+		// only the edge's own guard is presented: an unclear cleanup has no cleanup evidence
+		got, err := Transition(in, Event{ID: c.id, Outcome: c.unknownOutcome, Evidence: e.Needs,
+			Park: Park{Reason: ReasonUnknownEffect, Evidence: "cleanup unclear", Resume: "remote fact known"}})
+		if err != nil || got.Stage != c.stage || got.Park == nil || got.Park.Reason != ReasonUnknownEffect || got.Park.Evidence != "cleanup unclear" {
+			t.Errorf("%s unclear cleanup: %+v %v", c.id, got, err)
+		}
+		// with the evidence the cancel goes through and the overlay is resolved
+		done, err := Transition(in, Event{ID: c.id, Outcome: "cancel", Evidence: evidenceForOutcome(e, "cancel")})
+		if err != nil || done.Stage != StageCancelled || done.Park != nil {
+			t.Errorf("%s cancel with evidence: %+v %v", c.id, done, err)
+		}
+	}
+	// the unclear-cleanup outcome cannot be used to overwrite an unknown-family reason
+	e, _ := EdgeFor("E15")
+	_, err := Transition(parked(StageReviewing), Event{ID: "E15", Outcome: "cleanup-unknown", Evidence: e.Needs,
+		Park: park(ReasonRateLimited)})
+	if !errors.Is(err, ErrTransitionInvalid) {
+		t.Errorf("overwrite through an unclear cleanup: %v", err)
 	}
 }

@@ -19,6 +19,10 @@ const (
 // the caller's classification (E15 cleanup unknown, E19, E23 inconclusive).
 const ReasonFromCaller BlockReason = "(caller-supplied)"
 
+// ReasonClassified marks E19: the reason must be one of ClassifiedReasons, the
+// result of classifying the real error (rate limit, permission, budget ...).
+const ReasonClassified BlockReason = "(classified)"
+
 var canonParkReasons = []BlockReason{
 	ReasonDependency, ReasonStopUnknown, ReasonUnknownEffect, ReasonPendingEffect, ReasonContractChange, ReasonStartUnknown,
 }
@@ -91,6 +95,28 @@ func unknownFamily(r BlockReason) bool {
 	switch r {
 	case ReasonUnknownEffect, ReasonPendingEffect, ReasonStopUnknown, ReasonStartUnknown:
 		return true
+	}
+	return false
+}
+
+// classified is the set of overlay reasons that classify an observed error:
+// quota, permission, budget, environment and store failures. The forge Kinds map
+// into it (Limited -> rate-limited, Denied -> permission-denied, Unclassified ->
+// unclassified-403, see mirror). Control reasons such as operator-hold or
+// dependency have their own edges and are not here.
+var classified = []BlockReason{
+	ReasonNotInstalled, ReasonConnectionFailed, ReasonNotLoggedIn, ReasonNotConfigured, ReasonAuthFailed,
+	ReasonPermissionDenied, ReasonRateLimited, ReasonUnclassified, ReasonCapacityShort, ReasonBudgetExhausted,
+	ReasonStoreUnavailable,
+}
+
+func ClassifiedReasons() []BlockReason { return append([]BlockReason(nil), classified...) }
+
+func isClassified(r BlockReason) bool {
+	for _, c := range classified {
+		if c == r {
+			return true
+		}
 	}
 	return false
 }
