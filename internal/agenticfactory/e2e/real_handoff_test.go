@@ -15,7 +15,10 @@ import (
 const branch = "WT-handoff-branch"
 
 func goodHandoff() runner.Handoff {
-	return runner.Handoff{PR: 7, Head: headA, Branch: branch, Worktree: "/tmp/wt", WriterStopped: true, BoundaryHead: headA}
+	return runner.Handoff{
+		HandoffID: "handoff-1", LeaderAccepted: true,
+		PR: 7, Head: headA, Branch: branch, Worktree: "/tmp/wt", WriterStopped: true, BoundaryHead: headA,
+	}
 }
 
 func landingFor(t *testing.T, r *runner.Runner, n int, holder string) runner.Ticket {
@@ -49,8 +52,51 @@ func TestRealHandoff_PRPublished_ReleasesClaimButIsNotDone(t *testing.T) {
 	if _, err := r.Store.Acquire(tk.Issue, "other", "d-other", run); !errors.Is(err, core.ErrRepairOnly) {
 		t.Errorf("fresh claim on a handed-off Issue: %v, want ErrRepairOnly", err)
 	}
-	if _, err := r.HandOff(tk, goodHandoff()); err == nil {
-		t.Error("second handoff by the released ticket was accepted")
+	// A replay of the SAME receipt (same id, same content) converges on the one
+	// stored acceptance: no error, nothing changes (S46 E03).
+	stored, err := r.Store.Read(tk.Issue)
+	if err != nil {
+		t.Fatal(err)
+	}
+	replay, err := r.HandOff(tk, goodHandoff())
+	if err != nil || !reflect.DeepEqual(replay, stored) {
+		t.Errorf("replayed receipt: %+v, %v; want the stored record unchanged", replay, err)
+	}
+	// The same id with other content is a conflict.
+	other := goodHandoff()
+	other.PR = 8
+	if _, err := r.HandOff(tk, other); !errors.Is(err, core.ErrDuplicateHandoff) {
+		t.Errorf("same id, other PR: %v, want ErrDuplicateHandoff", err)
+	}
+	// A new id from the released ticket is not accepted: the claim is gone.
+	fresh := goodHandoff()
+	fresh.HandoffID = "handoff-2"
+	if _, err := r.HandOff(tk, fresh); err == nil {
+		t.Error("a second receipt from the released ticket was accepted")
+	}
+	if after, _ := r.Store.Read(tk.Issue); !reflect.DeepEqual(after, stored) {
+		t.Errorf("record changed by the replay and refusals: %+v -> %+v", stored, after)
+	}
+}
+
+// The claim is returned only after the leader accepted the receipt, and a
+// receipt needs an id.
+func TestRealHandoff_NeedsLeaderAcceptanceAndAnId(t *testing.T) {
+	r, tk := newRunner(t)
+	upTo(t, r, tk, core.StateLanding)
+	before := state(t, r, tk)
+	for name, mod := range map[string]func(*runner.Handoff){
+		"leader-not-accepted": func(h *runner.Handoff) { h.LeaderAccepted = false },
+		"no-id":               func(h *runner.Handoff) { h.HandoffID = "" },
+	} {
+		h := goodHandoff()
+		mod(&h)
+		if _, err := r.HandOff(tk, h); !errors.Is(err, core.ErrEvidenceIncomplete) {
+			t.Errorf("%s: %v, want ErrEvidenceIncomplete", name, err)
+		}
+	}
+	if after := state(t, r, tk); !reflect.DeepEqual(after, before) {
+		t.Errorf("a refused receipt changed the record: %+v -> %+v", before, after)
 	}
 }
 
@@ -132,7 +178,7 @@ func TestRealHandoff_BacklogCap_HoldsNewClaimUntilDone(t *testing.T) {
 	if err := st.SetMaxOpenPRs(1); err != nil {
 		t.Fatal(err)
 	}
-	r := runner.New(st)
+	r := wired(st)
 	first := landingFor(t, r, 1948, "w1")
 	if _, err := r.HandOff(first, goodHandoff()); err != nil {
 		t.Fatal(err)

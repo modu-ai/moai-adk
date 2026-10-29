@@ -17,21 +17,50 @@ const (
 	headB = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
 )
 
-func passAll(head string) runner.Verification {
+// passAll is a complete, all-PASS evidence set for head. The writer handoff
+// carries the holder and epoch the attempt was issued to (as the registering
+// service observes them); the other producer-checked kinds are attributed by
+// the Attributor the runner is wired with.
+func passAll(tk runner.Ticket, head string) runner.Verification {
 	v := runner.Verification{Head: head}
 	for _, k := range []runner.Kind{
 		runner.KindCheck, runner.KindReview, runner.KindAudit,
 		runner.KindHandoffWriter, runner.KindHandoffCoordinator,
 	} {
-		v.Results = append(v.Results, runner.Result{Kind: k, Name: string(k), Head: head, Verdict: runner.VerdictPass})
+		res := runner.Result{Kind: k, Name: string(k), Head: head, Verdict: runner.VerdictPass}
+		if k == runner.KindHandoffWriter {
+			res.Session, res.Epoch = tk.Holder, tk.Epoch
+		}
+		v.Results = append(v.Results, res)
 	}
 	return v
+}
+
+// roleAttributor is a stand-in for the identity SPEC's attribution lookup that
+// attributes every producer-checked result to exactly the role its kind needs.
+// It exists to reach the paths behind the lock; the lock itself is tested
+// with no attributor at all (real_role_attribution_test.go).
+type roleAttributor struct{}
+
+func (roleAttributor) Attribute(res runner.Result) runner.Attribution {
+	role := map[runner.Kind]string{
+		runner.KindReview: core.RoleReviewer, runner.KindAudit: core.RoleAuditor,
+		runner.KindQA: core.RoleQA, runner.KindHandoffCoordinator: core.RoleCoordinator,
+	}[res.Kind]
+	return runner.Attribution{Attributed: true, Role: role, Session: "producer-" + string(res.Kind)}
+}
+
+// wired is a Runner over st with the stand-in attributor.
+func wired(st *claim.Store) *runner.Runner {
+	r := runner.New(st)
+	r.Attributor = roleAttributor{}
+	return r
 }
 
 func newRunner(t *testing.T) (*runner.Runner, runner.Ticket) {
 	t.Helper()
 	st, ref, run := realStore(t)
-	r := runner.New(st)
+	r := wired(st)
 	tk, err := r.Claim(ref, "w1", "d-1", run)
 	if err != nil {
 		t.Fatal(err)
@@ -44,7 +73,7 @@ func upTo(t *testing.T, r *runner.Runner, tk runner.Ticket, stage core.State) {
 	steps := []func() error{
 		func() error { _, err := r.StartAttempt(tk, "att-1", core.DeliveryExecuted); return err },
 		func() error { _, err := r.Submit(tk, headA, false); return err },
-		func() error { _, err := r.Verify(tk, passAll(headA)); return err },
+		func() error { _, err := r.Verify(tk, passAll(tk, headA)); return err },
 		func() error { _, err := r.Land(tk, headA); return err },
 	}
 	want := []core.State{core.StateImplementing, core.StateVerifying, core.StateReady, core.StateLanding}
@@ -84,7 +113,7 @@ func TestReal_AuditBudgetExhausted_BlocksAndResumesToReturnStage(t *testing.T) {
 	if _, err := r.Land(tk, headA); !errors.Is(err, core.ErrTransitionInvalid) {
 		t.Errorf("land while blocked: %v, want ErrTransitionInvalid", err)
 	}
-	if _, err := r.Verify(tk, passAll(headA)); !errors.Is(err, core.ErrTransitionInvalid) {
+	if _, err := r.Verify(tk, passAll(tk, headA)); !errors.Is(err, core.ErrTransitionInvalid) {
 		t.Errorf("verify while blocked: %v, want ErrTransitionInvalid", err)
 	}
 	if _, err := r.Resume(tk, false); !errors.Is(err, core.ErrTransitionInvalid) {
@@ -101,7 +130,7 @@ func TestReal_StaleHeadEvidence_ChangesNothing(t *testing.T) {
 	r, tk := newRunner(t)
 	upTo(t, r, tk, core.StateVerifying)
 	before := state(t, r, tk)
-	if _, err := r.Verify(tk, passAll(headB)); !errors.Is(err, core.ErrStaleHead) {
+	if _, err := r.Verify(tk, passAll(tk, headB)); !errors.Is(err, core.ErrStaleHead) {
 		t.Fatalf("stale evidence: %v, want ErrStaleHead", err)
 	}
 	if after := state(t, r, tk); !reflect.DeepEqual(after, before) {

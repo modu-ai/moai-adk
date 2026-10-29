@@ -23,7 +23,7 @@ func TestReal_LeaderRestart_StateSurvivesReopen(t *testing.T) {
 	}
 	ref, _ := core.NewIssueRef(1948)
 	run, _ := core.ParseRunID("run-1")
-	r := runner.New(st)
+	r := wired(st)
 	tk, err := r.Claim(ref, "w1", "d-1", run)
 	if err != nil {
 		t.Fatal(err)
@@ -46,7 +46,7 @@ func TestReal_LeaderRestart_StateSurvivesReopen(t *testing.T) {
 		t.Errorf("record changed across reopen: %+v -> %+v", before, after)
 	}
 	// The original ticket keeps working against the reopened store.
-	if _, err := runner.New(reopened).Land(tk, headA); err != nil {
+	if _, err := wired(reopened).Land(tk, headA); err != nil {
 		t.Errorf("land after reopen: %v", err)
 	}
 }
@@ -72,7 +72,7 @@ func TestReal_DuplicateHandoff_SecondCompleteRefused(t *testing.T) {
 // ticket cannot write; only the current epoch's holder can.
 func TestReal_RepairContention_StaleTicketRefused(t *testing.T) {
 	st, ref, run := realStore(t)
-	r := runner.New(st)
+	r := wired(st)
 	old, err := r.Claim(ref, "w1", "d-1", run)
 	if err != nil {
 		t.Fatal(err)
