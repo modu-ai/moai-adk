@@ -43,6 +43,9 @@ type PRTrackRowVM struct {
 	Wait WaitVM
 	// Mirror is the claim cache's state (current | stale | blocked(<reason>)).
 	Mirror string
+	// PositionUnknown is the claim store's reason when it could not derive the
+	// S46 position of this record; empty when it could.
+	PositionUnknown string
 	// PRURL is the URL the PR receipt recorded, as text only (never a link).
 	PRURL string
 }
@@ -130,6 +133,8 @@ type monView struct {
 	PRURLs map[string]string `json:"web_pr_urls"`
 	// RepairBacklog is counted from persisted records (record source only).
 	RepairBacklog *int `json:"web_repair_backlog"`
+	// PositionUnknown is read from the record source only.
+	PositionUnknown map[string]string `json:"web_position_unknown"`
 }
 
 func (a *app) buildPRTracking(ctx context.Context) PRTrackingVM {
@@ -189,6 +194,7 @@ func (a *app) buildPRTracking(ctx context.Context) PRTrackingVM {
 		row.Wait = buildWait(r.Wait)
 		row.PRURL = prURLText(doc.PRURLs[itoa(r.Issue)])
 		row.Mirror = gapText(r.MirrorState)
+		row.PositionUnknown = doc.PositionUnknown[itoa(r.Issue)]
 		vm.Rows = append(vm.Rows, row)
 	}
 	return vm

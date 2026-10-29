@@ -322,3 +322,44 @@ func TestRecordRows_BacklogStateIsTheMonitors(t *testing.T) {
 		}
 	}
 }
+
+// fakeRecords is a RecordSource over fixed records, so a test can craft the
+// exact claim.Record a reader would get (PositionUnknown is never stored).
+type fakeRecords struct{ recs []claim.Record }
+
+func (f fakeRecords) List() ([]claim.Record, error) { return f.recs, nil }
+func (f fakeRecords) MaxOpenPRs() int               { return 5 }
+
+// TestRecordRows_PositionUnknownMarker: the claim store's explicit marker, not a
+// guess from an empty Stage, says the position could not be derived.
+func TestRecordRows_PositionUnknownMarker(t *testing.T) {
+	sha := core.HeadSHA(strings.Repeat("a", 40))
+	src := fakeRecords{recs: []claim.Record{
+		// 91: marked unknown although a Stage string is present (a stale value).
+		{Issue: 91, Holder: "s-91", AgentName: "agent-a", State: core.StateLanding, Stage: core.StageMerging, Head: sha,
+			PositionUnknown: "wait: a wait needs its responsible owner"},
+		// 92: no Stage and no marker — a record whose position is derived and empty.
+		{Issue: 92, Holder: "s-92", AgentName: "agent-b", State: core.StateQueued},
+		// 93: a healthy record.
+		{Issue: 93, Holder: "s-93", AgentName: "agent-c", State: core.StateLanding, Stage: core.StageMerging},
+	}}
+	by := map[int]PRTrackRowVM{}
+	for _, r := range recordApp(t, src).buildPRTracking(context.Background()).Rows {
+		by[r.Issue] = r
+	}
+	r := by[91]
+	for name, got := range map[string]string{"stage": r.Stage, "park": r.Park, "gate": r.Gate, "refusal": r.Refusal, "wait": r.Wait.State} {
+		if got != prGap {
+			t.Errorf("91 %s = %q: a marked record confirms no position", name, got)
+		}
+	}
+	if !strings.Contains(r.PositionUnknown, "responsible owner") {
+		t.Errorf("91 must say why: %q", r.PositionUnknown)
+	}
+	if by[92].Park != "none" || by[92].PositionUnknown != "" {
+		t.Errorf("92: without the marker the position counts as derived: %+v", by[92])
+	}
+	if by[93].Stage != "MERGING" || by[93].PositionUnknown != "" {
+		t.Errorf("93 = %+v", by[93])
+	}
+}

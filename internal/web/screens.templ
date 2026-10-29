@@ -676,6 +676,9 @@ templ Monitor(vm ShellVM, m MonitorVM) {
 							<span class="mono panel__meta">{ r.PR }</span>
 							<span class="mono panel__meta">{ "pr url " + r.PRURL }</span>
 							<span class="panel__meta">{ "mirror " + r.Mirror }</span>
+							if r.PositionUnknown != "" {
+								<span class="warn">{ "position unknown: " + r.PositionUnknown }</span>
+							}
 							<span class="panel__meta">{ r.Track + " · " + r.Phase }</span>
 							if r.Completed {
 								@badge("outline", "completed")

@@ -41,6 +41,9 @@ type recordView struct {
 	// RepairBacklog counts open PRs that carry the repair signal or the repair
 	// evidence; nil when not counted. Also a web-local key.
 	RepairBacklog *int `json:"web_repair_backlog,omitempty"`
+	// PositionUnknown holds, by Issue number, the claim store's reason when it
+	// could not derive the S46 position of a record. Also a web-local key.
+	PositionUnknown map[string]string `json:"web_position_unknown,omitempty"`
 }
 
 // RecordRowsFrom builds a MonitorRows source from persisted claim records. A
@@ -59,8 +62,12 @@ func RecordRowsFrom(s RecordSource) func(context.Context) ([]byte, error) {
 		open := 0
 		urls := map[string]string{}
 		repair := 0
+		unknown := map[string]string{}
 		for _, r := range recs {
 			view.Rows = append(view.Rows, recordRow(r, at))
+			if r.PositionUnknown != "" {
+				unknown[strconv.Itoa(r.Issue)] = recText(r.PositionUnknown)
+			}
 			if r.Receipt != nil && r.Receipt.PRURL != "" {
 				urls[strconv.Itoa(r.Issue)] = recText(r.Receipt.PRURL)
 			}
@@ -73,7 +80,7 @@ func RecordRowsFrom(s RecordSource) func(context.Context) ([]byte, error) {
 		}
 		limit := s.MaxOpenPRs()
 		view.Backlog = recField(monitor.Backlog{Open: open, Limit: limit, State: monitor.BacklogStateOf(open, limit)}, at, true)
-		out := recordView{View: view, PRURLs: urls, RepairBacklog: &repair}
+		out := recordView{View: view, PRURLs: urls, RepairBacklog: &repair, PositionUnknown: unknown}
 		return json.Marshal(out)
 	}
 }
@@ -94,10 +101,11 @@ func recordRow(r claim.Record, at time.Time) monitor.Row {
 	// The cached position is shown as confirmed only while the cache matches the
 	// authoritative copy (design §8.1: a stale or blocked mirror confirms
 	// nothing it carries), and the S46 detail only when the position could be
-	// derived: a record with no Stage says nothing about park, gate, refusal or
-	// wait, and an absent value there would be an invented "none".
+	// derived (the claim store marks that with Record.PositionUnknown): such a
+	// record says nothing about park, gate, refusal or wait, and an absent value
+	// there would be an invented "none".
 	fresh := r.Mirror == "" || r.Mirror == "current"
-	derived := fresh && r.Stage != ""
+	derived := fresh && r.PositionUnknown == ""
 	row := monitor.Row{
 		Issue:       r.Issue,
 		Agent:       recField(r.AgentName, at, r.AgentName != ""),
