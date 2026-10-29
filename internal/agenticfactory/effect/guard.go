@@ -26,6 +26,17 @@ const (
 	ReasonWeakensProtection RefusalReason = "weakens-protection"
 	// ReasonNotAllowlisted: any other write that is not one of the few the factory is meant to send.
 	ReasonNotAllowlisted RefusalReason = "not-allowlisted"
+	// ReasonNotIssueAuthor: a write that only the author of the Issue (or of the comment) may make, aimed
+	// at someone else's. Used by the identity policy (see identity.go).
+	ReasonNotIssueAuthor RefusalReason = "not-issue-author"
+	// ReasonRepoNotAllowed, ReasonPermissionNotGranted and ReasonOwnerUnconfirmed are the other denials of
+	// core's authorization function, carried through under the same strings core records.
+	ReasonRepoNotAllowed       RefusalReason = "repository-not-allowed"
+	ReasonPermissionNotGranted RefusalReason = "permission-not-granted"
+	ReasonOwnerUnconfirmed     RefusalReason = "owner-unconfirmed"
+	// ReasonIdentityUnknown: the authenticated user or the author could not be established (lookup failed,
+	// field missing, or no policy wired), so the write is refused rather than guessed.
+	ReasonIdentityUnknown RefusalReason = "identity-unknown"
 	// ReasonMalformed: the method or path is not in a clean form (traversal, double slash, encoded
 	// separators, an absolute URL, control characters).
 	ReasonMalformed RefusalReason = "malformed-request"
@@ -55,7 +66,9 @@ func r(method, pattern string) rule {
 }
 
 // allowedWrites are the only writes the factory sends: create an Issue, post and edit an Issue comment,
-// create and edit a label. Nothing else is permitted, and nothing is added without a decision.
+// create and edit a label. Editing a comment or an Issue body is NOT here: it is permitted only through
+// Enforcer, after the author is checked (identity.go). Nothing else is permitted, and nothing is added
+// without a decision.
 //
 // Path meanings were compared with the GitHub REST documentation on 2026-10-29 (page summaries read with
 // WebFetch, no remote call to GitHub itself):
@@ -71,8 +84,6 @@ func r(method, pattern string) rule {
 // guard lets through as a read anyway.
 var allowedWrites = []rule{
 	r("POST", "/repos/*/*/issues"),
-	r("POST", "/repos/*/*/issues/*/comments"),
-	r("PATCH", "/repos/*/*/issues/comments/*"),
 	r("POST", "/repos/*/*/labels"),
 	r("PATCH", "/repos/*/*/labels/*"),
 }
@@ -121,28 +132,9 @@ func CheckRequest(method, rawPath string, header map[string]string) error {
 		return nil
 	}
 
-	// A clean, rooted path made of non-empty segments. Each segment is decoded on its own, so an encoded
-	// slash stays inside its segment (label names such as "kind/bug" are one segment), while dot
-	// segments, empty segments, trailing slashes, control characters, and absolute URLs are refused.
-	if rawPath == "" || !strings.HasPrefix(rawPath, "/") || strings.ContainsAny(rawPath, "\x00\r\n\t\\") {
+	segs, ok := cleanSegments(rawPath)
+	if !ok {
 		return refuse(ReasonMalformed)
-	}
-	u, err := url.Parse(rawPath)
-	if err != nil || u.Scheme != "" || u.Host != "" {
-		return refuse(ReasonMalformed)
-	}
-	var segs []string
-	for _, raw := range strings.Split(strings.TrimPrefix(u.EscapedPath(), "/"), "/") {
-		seg, err := url.PathUnescape(raw)
-		if err != nil || seg == "" || strings.ContainsAny(seg, "\x00\r\n\t\\") {
-			return refuse(ReasonMalformed)
-		}
-		for _, part := range strings.Split(seg, "/") {
-			if part == "." || part == ".." {
-				return refuse(ReasonMalformed)
-			}
-		}
-		segs = append(segs, seg)
 	}
 	lowered := make([]string, len(segs))
 	for i, s := range segs {
@@ -153,6 +145,9 @@ func CheckRequest(method, rawPath string, header map[string]string) error {
 			return nil
 		}
 	}
+	if _, conditional := classifyConditional(method, lowered, segs); conditional {
+		return refuse(ReasonIdentityUnknown) // allowed only through Enforcer.Check, which establishes who is writing
+	}
 	for _, s := range lowered {
 		for _, part := range strings.Split(s, "/") {
 			if protectedSegments[part] {
@@ -161,4 +156,32 @@ func CheckRequest(method, rawPath string, header map[string]string) error {
 		}
 	}
 	return refuse(ReasonNotAllowlisted)
+}
+
+// cleanSegments parses a request path into decoded segments, or reports that it is not a clean, rooted
+// path: no scheme or host, no control characters, no dot segments, no empty segments, no trailing
+// slash. Each segment is decoded on its own, so an encoded slash stays inside its segment (label names
+// such as "kind/bug" are one segment).
+func cleanSegments(rawPath string) ([]string, bool) {
+	if rawPath == "" || !strings.HasPrefix(rawPath, "/") || strings.ContainsAny(rawPath, "\x00\r\n\t\\") {
+		return nil, false
+	}
+	u, err := url.Parse(rawPath)
+	if err != nil || u.Scheme != "" || u.Host != "" {
+		return nil, false
+	}
+	var segs []string
+	for _, raw := range strings.Split(strings.TrimPrefix(u.EscapedPath(), "/"), "/") {
+		seg, err := url.PathUnescape(raw)
+		if err != nil || seg == "" || strings.ContainsAny(seg, "\x00\r\n\t\\") {
+			return nil, false
+		}
+		for _, part := range strings.Split(seg, "/") {
+			if part == "." || part == ".." {
+				return nil, false
+			}
+		}
+		segs = append(segs, seg)
+	}
+	return segs, true
 }

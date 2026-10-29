@@ -435,6 +435,11 @@ type Runner func(ctx context.Context, args ...string) ([]byte, error)
 type GHRemote struct {
 	Repo string
 	Run  Runner
+	// Enforcer decides whether a comment may be created or edited. Both need the authenticated user's id
+	// and the Issue author's id (and, for an edit, the comment author's id: only a comment we wrote may be
+	// edited). Without one, the call is refused (identity-unknown) before gh runs: the remote fails closed
+	// rather than writing where it cannot attribute the write.
+	Enforcer *effect.Enforcer
 }
 
 func (g GHRemote) Find(ctx context.Context, issue int, marker string) (Comment, bool, error) {
@@ -458,7 +463,7 @@ func (g GHRemote) Find(ctx context.Context, issue int, marker string) (Comment, 
 }
 
 func (g GHRemote) Create(ctx context.Context, issue int, body string) (Comment, error) {
-	if err := effect.CheckRequest("POST", fmt.Sprintf("/repos/%s/issues/%d/comments", g.Repo, issue), nil); err != nil {
+	if err := g.Enforcer.Check(ctx, "POST", fmt.Sprintf("/repos/%s/issues/%d/comments", g.Repo, issue), nil, nil); err != nil {
 		return Comment{}, err
 	}
 	out, err := g.Run(ctx, "api", "-X", "POST", fmt.Sprintf("repos/%s/issues/%d/comments", g.Repo, issue), "-f", "body="+body)
@@ -478,7 +483,7 @@ func (g GHRemote) Update(ctx context.Context, issue int, id int64, body string) 
 	if id <= 0 {
 		return errors.New("ctxledger: update needs a comment id")
 	}
-	if err := effect.CheckRequest("PATCH", fmt.Sprintf("/repos/%s/issues/comments/%d", g.Repo, id), nil); err != nil {
+	if err := g.Enforcer.Check(ctx, "PATCH", fmt.Sprintf("/repos/%s/issues/comments/%d", g.Repo, id), nil, nil); err != nil {
 		return err
 	}
 	_, err := g.Run(ctx, "api", "-X", "PATCH", fmt.Sprintf("repos/%s/issues/comments/%d", g.Repo, id), "-f", "body="+body)
