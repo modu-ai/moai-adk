@@ -438,6 +438,9 @@ type GHRemote struct {
 }
 
 func (g GHRemote) Find(ctx context.Context, issue int, marker string) (Comment, bool, error) {
+	if err := effect.CheckRequest("GET", fmt.Sprintf("/repos/%s/issues/%d/comments", g.Repo, issue), nil); err != nil {
+		return Comment{}, false, err
+	}
 	out, err := g.Run(ctx, "api", fmt.Sprintf("repos/%s/issues/%d/comments", g.Repo, issue), "--paginate", "--jq", ".[] | {id: .id, body: .body}")
 	if err != nil {
 		return Comment{}, false, err
@@ -455,6 +458,9 @@ func (g GHRemote) Find(ctx context.Context, issue int, marker string) (Comment, 
 }
 
 func (g GHRemote) Create(ctx context.Context, issue int, body string) (Comment, error) {
+	if err := effect.CheckRequest("POST", fmt.Sprintf("/repos/%s/issues/%d/comments", g.Repo, issue), nil); err != nil {
+		return Comment{}, err
+	}
 	out, err := g.Run(ctx, "api", "-X", "POST", fmt.Sprintf("repos/%s/issues/%d/comments", g.Repo, issue), "-f", "body="+body)
 	if err != nil {
 		return Comment{}, err
@@ -471,6 +477,9 @@ func (g GHRemote) Create(ctx context.Context, issue int, body string) (Comment, 
 func (g GHRemote) Update(ctx context.Context, issue int, id int64, body string) error {
 	if id <= 0 {
 		return errors.New("ctxledger: update needs a comment id")
+	}
+	if err := effect.CheckRequest("PATCH", fmt.Sprintf("/repos/%s/issues/comments/%d", g.Repo, id), nil); err != nil {
+		return err
 	}
 	_, err := g.Run(ctx, "api", "-X", "PATCH", fmt.Sprintf("repos/%s/issues/comments/%d", g.Repo, id), "-f", "body="+body)
 	return err // a Runner reports HTTP failures as *forge.StatusError; isGone reads the status
