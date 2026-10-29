@@ -457,8 +457,10 @@ type Handoff struct {
 	BoundaryHead   string
 }
 
-// HandOff records the PR receipt and releases the agent's claim in one write,
-// so an agent can take a new Issue while the original worktree and branch stay
+// HandOff records the PR receipt. It does not release the Issue: the agent that
+// published the PR stays its owner until the Issue is closed, so it answers CI
+// and review itself (ReopenOwn) and finishes the merge (Complete). It may take
+// another Issue under the open-PR limit; the original worktree and branch stay
 // untouched. It is refused unless the writer has stopped and the write boundary
 // matches the PR head. The Issue stays in landing: a PR is not done.
 func (r *Runner) HandOff(t Ticket, h Handoff) (claim.Record, error) {
@@ -494,7 +496,7 @@ func (r *Runner) HandOff(t Ticket, h Handoff) (claim.Record, error) {
 		}
 		return claim.Record{}, fmt.Errorf("%w: receipt %s was accepted with other content", core.ErrDuplicateHandoff, h.HandoffID)
 	}
-	return r.Store.UpdateRelease(t.Issue, t.Holder, t.Epoch, func(rec *claim.Record) error {
+	return r.Store.Update(t.Issue, t.Holder, t.Epoch, func(rec *claim.Record) error {
 		if rec.State != core.StateLanding {
 			return fmt.Errorf("%w: %s, handoff needs a published PR (landing)", core.ErrTransitionInvalid, rec.State)
 		}
@@ -570,6 +572,28 @@ func (r *Runner) Reopen(i core.IssueRef, reason string) (claim.Record, error) {
 		return claim.Record{}, fmt.Errorf("%w: a reopen reason is required", core.ErrEvidenceIncomplete)
 	}
 	return r.Store.UpdateReleased(i, func(rec *claim.Record) error {
+		switch {
+		case rec.Receipt == nil:
+			return fmt.Errorf("%w: no PR handoff receipt", core.ErrTransitionInvalid)
+		case rec.State != core.StateLanding:
+			return fmt.Errorf("%w: %s, reopen applies to landing", core.ErrTransitionInvalid, rec.State)
+		case rec.Merged:
+			return fmt.Errorf("%w: merge already observed, not reverted", core.ErrTransitionInvalid)
+		}
+		rec.State, rec.Pending = core.StateVerifying, ""
+		rec.AddEvent(claim.Event{Kind: "reopen", Head: string(rec.Head), PR: rec.Receipt.PR, Note: reason})
+		return nil
+	})
+}
+
+// ReopenOwn is Reopen for the owner: the receipt did not release the Issue, so
+// the same agent that published the PR takes it back to verification when CI or
+// review asks for a repair. The receipt, epoch and holder stay.
+func (r *Runner) ReopenOwn(t Ticket, reason string) (claim.Record, error) {
+	if strings.TrimSpace(reason) == "" {
+		return claim.Record{}, fmt.Errorf("%w: a reopen reason is required", core.ErrEvidenceIncomplete)
+	}
+	return r.Store.Update(t.Issue, t.Holder, t.Epoch, func(rec *claim.Record) error {
 		switch {
 		case rec.Receipt == nil:
 			return fmt.Errorf("%w: no PR handoff receipt", core.ErrTransitionInvalid)
