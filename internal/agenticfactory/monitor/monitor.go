@@ -64,11 +64,11 @@ type LedgerReader interface {
 // Field is one displayed value with where and when it was read. Confirmed is false when the source
 // could not be read; the value is then empty, never a guess.
 type Field[T any] struct {
-	Value     T
-	Source    Source
-	ReadAt    time.Time
-	Confirmed bool
-	Redacted  bool
+	Value     T         `json:"value"`
+	Source    Source    `json:"source"`
+	ReadAt    time.Time `json:"read_at"`
+	Confirmed bool      `json:"confirmed"`
+	Redacted  bool      `json:"redacted"`
 }
 
 // Row is the monitor view of one Issue.

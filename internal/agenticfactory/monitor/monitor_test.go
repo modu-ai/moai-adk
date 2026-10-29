@@ -102,7 +102,7 @@ func TestReadBoundaryHasNoWriteVerbs(t *testing.T) {
 	fset := token.NewFileSet()
 	files, _ := filepath.Glob("*.go")
 	verbs := []string{"Set", "Write", "Put", "Delete", "Remove", "Create", "Update", "Claim", "Send", "Merge", "Push", "Resume", "Hold", "Stop", "Kill", "Dispatch", "Advance", "Renew", "Exec", "Run"}
-	allowedImports := map[string]bool{"context": true, "errors": true, "fmt": true, "regexp": true, "sort": true, "strings": true, "time": true}
+	allowedImports := map[string]bool{"context": true, "encoding/json": true, "errors": true, "fmt": true, "regexp": true, "sort": true, "strings": true, "time": true}
 	for _, f := range files {
 		if strings.HasSuffix(f, "_test.go") {
 			continue
