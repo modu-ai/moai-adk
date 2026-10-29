@@ -59,11 +59,13 @@ func r(method, pattern string) rule {
 //
 // Path meanings were compared with the GitHub REST documentation on 2026-10-29 (page summaries read with
 // WebFetch, no remote call to GitHub itself):
-//   POST  /repos/{owner}/{repo}/issues                          https://docs.github.com/en/rest/issues/issues
-//   POST  /repos/{owner}/{repo}/issues/{issue_number}/comments  https://docs.github.com/en/rest/issues/comments
-//   PATCH /repos/{owner}/{repo}/issues/comments/{comment_id}    https://docs.github.com/en/rest/issues/comments
-//   POST  /repos/{owner}/{repo}/labels                          https://docs.github.com/en/rest/issues/labels
-//   PATCH /repos/{owner}/{repo}/labels/{name}                   https://docs.github.com/en/rest/issues/labels
+//
+//	POST  /repos/{owner}/{repo}/issues                          https://docs.github.com/en/rest/issues/issues
+//	POST  /repos/{owner}/{repo}/issues/{issue_number}/comments  https://docs.github.com/en/rest/issues/comments
+//	PATCH /repos/{owner}/{repo}/issues/comments/{comment_id}    https://docs.github.com/en/rest/issues/comments
+//	POST  /repos/{owner}/{repo}/labels                          https://docs.github.com/en/rest/issues/labels
+//	PATCH /repos/{owner}/{repo}/labels/{name}                   https://docs.github.com/en/rest/issues/labels
+//
 // The same label page also lists DELETE /repos/{owner}/{repo}/labels/{name}, which is deliberately absent
 // here. Not compared: the read route the comment finder uses (GET .../issues/{n}/comments), which this
 // guard lets through as a read anyway.
