@@ -591,3 +591,54 @@ func TestACancelWithoutCleanupEvidenceStaysParked(t *testing.T) {
 		t.Errorf("overwrite through an unclear cleanup: %v", err)
 	}
 }
+
+// E24 parks BUILDING/FIX on contract-change and the stage stays; the way back to
+// SPEC is E18 adopting the approved revision (leader decision, canon rows 70 and
+// 192/2760: "변경없이 PARKED contract-change; E18 후 SPEC단계"). E20 alone never
+// moves the stage.
+func TestContractChangeInFixReturnsToSpecOnlyThroughE18Adoption(t *testing.T) {
+	p := park(ReasonContractChange)
+	fix := Position{Stage: StageBuilding, Sub: SubFix, Park: &p}
+	adopt := Event{ID: "E18", Outcome: "adopt", Evidence: []string{"contract-diff", "approved-revision"}}
+
+	got, err := Transition(fix, adopt)
+	if err != nil {
+		t.Fatalf("adopt: %v", err)
+	}
+	if got.Stage != StageBuilding || got.Sub != SubSpec || got.Park != nil || got.RemoteIntegrated {
+		t.Errorf("adopt must land on BUILDING/SPEC and release the park: %+v", got)
+	}
+
+	// not adopted: the default E18 outcome keeps the position and the park
+	kept, err := Transition(fix, Event{ID: "E18", Evidence: []string{"contract-diff"}, Park: p})
+	if err != nil || kept.Stage != StageBuilding || kept.Sub != SubFix || kept.Park == nil || kept.Park.Reason != ReasonContractChange {
+		t.Errorf("not adopted must leave FIX parked: %+v %v", kept, err)
+	}
+
+	// E20 alone releases the overlay and leaves the stage where it is
+	res, err := Transition(fix, Event{ID: "E20", Evidence: []string{"resume-guard:contract-change"}})
+	if err != nil || res.Stage != StageBuilding || res.Sub != SubFix || res.Park != nil {
+		t.Errorf("E20 must not change the stage: %+v %v", res, err)
+	}
+
+	// adoption needs its own evidence
+	if _, err := Transition(fix, Event{ID: "E18", Outcome: "adopt", Evidence: []string{"contract-diff"}}); !errors.Is(err, ErrGuardMissing) {
+		t.Errorf("adopt without the approved revision: %v", err)
+	}
+}
+
+func TestE18AdoptionIsRefusedOutsideAContractChangeParkInFix(t *testing.T) {
+	cc, rl := park(ReasonContractChange), park(ReasonRateLimited)
+	adopt := Event{ID: "E18", Outcome: "adopt", Evidence: []string{"contract-diff", "approved-revision"}}
+	for name, pos := range map[string]Position{
+		"FIX not parked":              {Stage: StageBuilding, Sub: SubFix},
+		"FIX parked on another cause": {Stage: StageBuilding, Sub: SubFix, Park: &rl},
+		"IMPLEMENT parked":            {Stage: StageBuilding, Sub: SubImplement, Park: &cc},
+		"SPEC parked":                 {Stage: StageBuilding, Sub: SubSpec, Park: &cc},
+		"REVIEWING parked":            {Stage: StageReviewing, Park: &cc},
+	} {
+		if _, err := Transition(pos, adopt); !errors.Is(err, ErrTransitionInvalid) {
+			t.Errorf("%s: adopt must be refused, got %v", name, err)
+		}
+	}
+}
