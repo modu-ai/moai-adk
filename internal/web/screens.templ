@@ -648,7 +648,7 @@ templ Monitor(vm ShellVM, m MonitorVM) {
 			@panel("PR tracking", prMeta(m.PR), "", "", "Read-only. Phases come from the monitor; unconfirmed values show as a gap.", "roomy") {
 				<div class="vlist" id="pr-tracking">
 					if m.PR.Available {
-						<p class="panel__meta">{ "handoff waiting " + m.PR.Backlog.HandoffWaiting + " · oldest wait " + m.PR.Backlog.OldestWait }</p>
+						<p class="panel__meta">{ "handoff waiting " + queueFigure(m.PR.Backlog, m.PR.Backlog.AwaitingHandoff) + " · oldest wait " + oldestWait(m.PR.Backlog) }</p>
 					}
 					if m.PR.Note != "" {
 						<p class="warn">{ m.PR.Note }</p>
@@ -670,6 +670,50 @@ templ Monitor(vm ShellVM, m MonitorVM) {
 								@badge("outline", "completed")
 							}
 						</div>
+					}
+				</div>
+			}
+			@panel("Intake", intakeMeta(m.PR.Intake), "", "", "Read-only. Background acceptance stages from the monitor; a missing stage is left blank.", "roomy") {
+				<div class="vlist" id="intake-stages">
+					if !m.PR.Intake.Known {
+						<p class="panel__meta">not provided</p>
+					}
+					for _, i := range m.PR.Intake.Rows {
+						<div class="vrow">
+							<span class="mono">{ "#" + itoa(i.Issue) }</span>
+							<span class="panel__meta">{ "stage " + i.Stage }</span>
+							<span class="panel__meta">{ i.State }</span>
+							if i.Reason != "" {
+								<span class="warn">{ i.Reason }</span>
+							}
+							<span class="panel__meta">{ i.At }</span>
+						</div>
+					}
+				</div>
+			}
+			@panel("Context ledger", contextMeta(m.PR), "", "", "Read-only. stale means out of date; inaccessible means unreachable. A link opens only after the monitor verified it remotely.", "roomy") {
+				<div class="vlist" id="context-ledger">
+					for _, r := range m.PR.Rows {
+						<div class="vrow">
+							<span class="mono">{ "#" + itoa(r.Issue) }</span>
+							if !r.Context.Known {
+								<span class="panel__meta">not provided</span>
+							}
+						</div>
+						for _, c := range r.Context.Items {
+							<div class="vrow">
+								<span class="panel__meta">{ c.Section }</span>
+								<span class="panel__meta">{ c.State }</span>
+								if c.LinkOpen {
+									<a href={ templ.SafeURL(c.Link) } rel="noopener noreferrer">{ c.Link }</a>
+								} else {
+									<span class="mono panel__meta">{ c.Link }</span>
+								}
+								<span class="panel__meta">{ "link " + c.LinkStatus }</span>
+								<span class="mono panel__meta">{ "head " + c.TargetHead + " · hash " + c.Hash }</span>
+								<span class="panel__meta">{ "owner " + c.Owner + " · " + c.At }</span>
+							</div>
+						}
 					}
 				</div>
 			}

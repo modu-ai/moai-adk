@@ -26,6 +26,7 @@ type PRTrackRowVM struct {
 	Phase       string // the monitor's phase, verbatim
 	Track       string // checks | review | repair | merge | closed | gap
 	Completed   bool
+	Context     ContextVM
 	Agent       string // display name (agent-N); never an identity key
 	SessionID   string // full immutable id, or a gap when unconfirmed
 }
@@ -36,13 +37,12 @@ type PRBacklogVM struct {
 	Open  int
 	Limit int
 	State string // within-limit | at-limit | over-limit | no-limit-set
-	// RepairBacklog counts rows whose confirmed PR phase is repair-needed or
-	// repair-dispatched. It is counted from the rows, not read from a record.
-	RepairBacklog int
-	// HandoffWaiting and OldestWait are S46 PRQueue fields the monitor does not
-	// carry yet; they stay "not provided" instead of being derived.
-	HandoffWaiting string
-	OldestWait     string
+	// QueueKnown mirrors the monitor's queue_known. When false the three figures
+	// below are zero placeholders and render as "not provided", never as 0.
+	QueueKnown        bool
+	AwaitingHandoff   int
+	RepairBacklog     int
+	OldestWaitSeconds int
 }
 
 // PRTrackingVM is the PR panel and /api/pr-tracking payload.
@@ -51,6 +51,7 @@ type PRTrackingVM struct {
 	Note      string
 	Rows      []PRTrackRowVM
 	Backlog   PRBacklogVM
+	Intake    IntakeVM
 }
 
 type monField[T any] struct {
@@ -72,16 +73,22 @@ type monRow struct {
 		Number int    `json:"number"`
 		Phase  string `json:"phase"`
 	}] `json:"pr"`
-	Completed bool `json:"completed"`
+	Completed bool                   `json:"completed"`
+	Context   monField[[]monCtxItem] `json:"context"`
 }
 
 type monView struct {
 	Rows    []monRow `json:"rows"`
 	Backlog monField[struct {
-		Open  int    `json:"open"`
-		Limit int    `json:"limit"`
-		State string `json:"state"`
+		Open              int    `json:"open"`
+		Limit             int    `json:"limit"`
+		State             string `json:"state"`
+		AwaitingHandoff   int    `json:"awaiting_handoff"`
+		RepairBacklog     int    `json:"repair_backlog"`
+		OldestWaitSeconds int    `json:"oldest_wait_seconds"`
+		QueueKnown        bool   `json:"queue_known"`
 	}] `json:"backlog"`
+	Intake monField[[]monIntakeItem] `json:"intake"`
 }
 
 func (a *app) buildPRTracking(ctx context.Context) PRTrackingVM {
@@ -99,9 +106,12 @@ func (a *app) buildPRTracking(ctx context.Context) PRTrackingVM {
 	vm := PRTrackingVM{Available: true}
 	if doc.Backlog.Confirmed {
 		b := doc.Backlog.Value
-		vm.Backlog = PRBacklogVM{Known: true, Open: b.Open, Limit: b.Limit, State: b.State}
+		vm.Backlog = PRBacklogVM{
+			Known: true, Open: b.Open, Limit: b.Limit, State: b.State, QueueKnown: b.QueueKnown,
+			AwaitingHandoff: b.AwaitingHandoff, RepairBacklog: b.RepairBacklog, OldestWaitSeconds: b.OldestWaitSeconds,
+		}
 	}
-	vm.Backlog.HandoffWaiting, vm.Backlog.OldestWait = "not provided", "not provided"
+	vm.Intake = buildIntake(doc.Intake)
 	for _, r := range doc.Rows {
 		row := PRTrackRowVM{
 			Issue: r.Issue, Project: r.Project,
@@ -120,9 +130,7 @@ func (a *app) buildPRTracking(ctx context.Context) PRTrackingVM {
 			row.PR = "#" + itoa(r.PR.Value.Number)
 			row.Phase, row.Track = r.PR.Value.Phase, prTrack(r.PR.Value.Phase)
 		}
-		if row.Track == "repair" {
-			vm.Backlog.RepairBacklog++
-		}
+		row.Context = buildContext(r.Context)
 		vm.Rows = append(vm.Rows, row)
 	}
 	return vm
@@ -192,8 +200,8 @@ func prMeta(vm PRTrackingVM) string {
 	case !vm.Backlog.Known:
 		return "backlog unknown"
 	case vm.Backlog.State == "no-limit-set":
-		return "open PRs " + itoa(vm.Backlog.Open) + " · no limit set · repair " + itoa(vm.Backlog.RepairBacklog)
+		return "open PRs " + itoa(vm.Backlog.Open) + " · no limit set · repair " + queueFigure(vm.Backlog, vm.Backlog.RepairBacklog)
 	}
 	return "open PRs " + itoa(vm.Backlog.Open) + "/" + itoa(vm.Backlog.Limit) + " · " + vm.Backlog.State +
-		" · repair " + itoa(vm.Backlog.RepairBacklog)
+		" · repair " + queueFigure(vm.Backlog, vm.Backlog.RepairBacklog)
 }
