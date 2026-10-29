@@ -19,6 +19,7 @@ var (
 	ErrIdentityMismatch    = errors.New("agenticfactory: session id, agent number and owned claims do not match")
 	ErrBacklogUnset        = errors.New("agenticfactory: open PR backlog limit is not configured, new claim refused")
 	ErrLimitInvalid        = errors.New("agenticfactory: open PR backlog limit must be at least 1")
+	ErrRevisionConflict    = errors.New("agenticfactory: the authoritative copy moved on, write refused")
 	ErrConflict            = errors.New("agenticfactory: the same request key carries a different payload")
 	ErrIntakeFull          = errors.New("agenticfactory: intake is full, request rejected")
 	ErrNoSlot              = errors.New("agenticfactory: no free worktree slot, request parked")

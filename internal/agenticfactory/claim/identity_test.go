@@ -143,7 +143,7 @@ func TestResumeRefusesWrongSessionUnknownNumberAndTamperedBinding(t *testing.T) 
 	// The claim says a different display name than the registry for this session.
 	rec, _ := s.Read(i)
 	rec.AgentName = "agent-9"
-	if err := s.write(i, rec); err != nil {
+	if err := s.writeLocal(i, rec); err != nil {
 		t.Fatal(err)
 	}
 	if _, _, err := s.ResumeAgent(a.SessionID, a.Number); !errors.Is(err, core.ErrIdentityMismatch) {
