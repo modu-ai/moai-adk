@@ -151,17 +151,30 @@ func TestScenario_ClosureThenNextDispatch(t *testing.T) {
 	claimed(t, d)
 	d.ForceState(issue2, "landing")
 
+	full := Completion{RemoteMain: true, LocalSynced: true, DeployNA: "no deploy surface"}
 	if err := d.Complete(issue2, Completion{RemoteMain: true}); err == nil {
 		t.Fatal("done accepted with remote only")
 	}
-	if d.IssueClosed(issue2) {
-		t.Fatal("issue closed before done")
+	// S46 (E13/E14, M34): the close comes BEFORE done. Without it, done is refused.
+	if err := d.Complete(issue2, full); err == nil {
+		t.Fatal("done accepted before the Issue was closed")
 	}
-	if err := d.Complete(issue2, Completion{RemoteMain: true, LocalSynced: true, DeployNA: "no deploy surface"}); err != nil {
-		t.Fatalf("complete: %v", err)
+	// A failed close keeps done at zero.
+	d.FailNextClose()
+	if err := d.CloseIssue(issue2); err == nil {
+		t.Fatal("injected close failure did not surface")
 	}
-	if !d.IssueClosed(issue2) {
-		t.Error("issue not closed after done")
+	if err := d.Complete(issue2, full); err == nil {
+		t.Fatal("done accepted after a failed close")
+	}
+	if st, _ := d.State(issue2); st == "done" {
+		t.Fatal("state is done after a failed close")
+	}
+	if err := d.CloseIssue(issue2); err != nil {
+		t.Fatalf("close: %v", err)
+	}
+	if err := d.Complete(issue2, full); err != nil {
+		t.Fatalf("complete after close: %v", err)
 	}
 	if r, err := d.NextDispatch(context.Background(), "repo#1949", "w2"); err != nil || !r.Won {
 		t.Errorf("next dispatch after done: %+v %v", r, err)

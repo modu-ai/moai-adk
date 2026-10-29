@@ -89,6 +89,8 @@ type ModelDriver struct {
 	issues map[string]*record
 	sends  map[string]int
 	deliv  map[string]Delivery
+
+	failClose bool
 }
 
 // NewModelDriver returns an empty reference driver.
@@ -264,8 +266,28 @@ func (m *ModelDriver) ObserveRemote(issue string, r Remote) string {
 	return m.issues[issue].state
 }
 
-// Complete moves landing to done only with all three records; the Issue
-// closes after done.
+// FailNextClose makes the next CloseIssue call fail (scenario setup only).
+func (m *ModelDriver) FailNextClose() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.failClose = true
+}
+
+// CloseIssue closes the Issue. Per S46 (E13/E14, M34) the close comes BEFORE
+// done; a failed close leaves the Issue not closed and not done.
+func (m *ModelDriver) CloseIssue(issue string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.failClose {
+		m.failClose = false
+		return errors.New("close failed")
+	}
+	m.issues[issue].closed = true
+	return nil
+}
+
+// Complete moves landing to done only with all three records AND a closed
+// Issue; a close that failed keeps done at zero.
 func (m *ModelDriver) Complete(issue string, c Completion) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -273,8 +295,10 @@ func (m *ModelDriver) Complete(issue string, c Completion) error {
 	if !c.RemoteMain || !c.LocalSynced || (!c.Deployed && c.DeployNA == "") {
 		return errors.New("done needs remote main, local sync and deploy record or N/A reason")
 	}
+	if !rec.closed {
+		return errors.New("done needs the Issue closed first")
+	}
 	rec.state = "done"
-	rec.closed = true
 	return nil
 }
 

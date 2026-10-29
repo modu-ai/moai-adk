@@ -137,27 +137,17 @@ func TestRealHandoff_BacklogCap_HoldsNewClaimUntilDone(t *testing.T) {
 	}
 }
 
-// Closure comes after done only, and a handed-off Issue is completed from the
-// merge observation, never by the agent that left.
-func TestRealHandoff_ClosureOnlyAfterDone(t *testing.T) {
+// A handed-off Issue is completed from the merge observation, never by the
+// agent that left. (The earlier "close only after done" assertion was removed
+// on purpose: S46 reverses the order, see real_closure_red_test.go.)
+func TestRealHandoff_CompletedFromMergeObservation(t *testing.T) {
 	r, tk := newRunner(t)
 	upTo(t, r, tk, core.StateLanding)
 	if _, err := r.HandOff(tk, goodHandoff()); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := r.MarkClosed(tk.Issue); !errors.Is(err, core.ErrTransitionInvalid) {
-		t.Errorf("close before done: %v, want ErrTransitionInvalid", err)
-	}
 	if _, err := r.CompleteHandedOff(tk.Issue, runner.Landing{RemoteMerged: false, LocalSyncRecorded: true, Deploy: "N/A: x"}); err == nil {
 		t.Error("handed-off Issue completed without an observed remote merge")
-	}
-	land := runner.Landing{RemoteMerged: true, LocalSyncRecorded: true, Deploy: "N/A: no deploy surface"}
-	if rec, err := r.CompleteHandedOff(tk.Issue, land); err != nil || rec.State != core.StateDone {
-		t.Fatalf("complete handed-off: %+v, %v", rec, err)
-	}
-	rec, err := r.MarkClosed(tk.Issue)
-	if err != nil || !rec.Closed {
-		t.Errorf("close after done: %+v, %v", rec, err)
 	}
 }
 
