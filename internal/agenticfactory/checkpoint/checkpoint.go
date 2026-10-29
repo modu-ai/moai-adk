@@ -347,3 +347,14 @@ func (g GitRemote) Contains(branch, sha string) (bool, error) {
 	}
 	return code == 0, nil
 }
+
+// ParkedReason says whether the checkpoint's push outcome is unknown, which S46
+// E11 turns into PARKED unknown-effect: the push was sent, no readback has
+// shown the commit on the remote, and no lookup has proved it absent. The caller
+// applies the overlay (core.Transition E11); this record only reports the fact.
+func (r Record) ParkedReason() (core.BlockReason, bool) {
+	if r.PushSent && !r.RemoteACK {
+		return core.ReasonUnknownEffect, true
+	}
+	return "", false
+}

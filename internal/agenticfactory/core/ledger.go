@@ -22,8 +22,15 @@ type Evidence struct {
 // Human-owned fields (task name, acceptance criteria, priority, dependencies)
 // live in the Issue body and are intentionally not mirrored here.
 type Ledger struct {
-	Issue         IssueRef    `json:"issue"`
-	State         State       `json:"state"`
+	Issue IssueRef `json:"issue"`
+	State State    `json:"state"`
+	// Stage, Sub, Park, Gate and Refusal are the S46 position; State,
+	// ReturnStage and BlockReason stay for readers that have not moved yet.
+	Stage         Stage       `json:"stage,omitempty"`
+	Sub           SubStage    `json:"sub_stage,omitempty"`
+	Park          *Park       `json:"park,omitempty"`
+	Gate          *Gate       `json:"gate,omitempty"`
+	Refusal       *Refusal    `json:"refusal,omitempty"`
 	ReturnStage   State       `json:"return_stage,omitempty"`
 	BlockReason   BlockReason `json:"block_reason,omitempty"`
 	ResumeCond    string      `json:"resume_condition,omitempty"`

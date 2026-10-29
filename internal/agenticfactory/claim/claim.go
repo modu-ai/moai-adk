@@ -60,6 +60,59 @@ type Record struct {
 	// History is the append-only trail of claims, handoffs and reopenings
 	// under this one Issue key.
 	History []Event `json:"history,omitempty"`
+
+	// Stage, Sub and Park are the S46 position, computed from State, Return,
+	// Reason, the receipt and Merged on every write and every read (step 2 of
+	// the model migration: State stays the runner's progress record). Gate is the
+	// merge-gate record on a stage and Refusal the last refused operation; neither
+	// moves the state. Park is an object under its own key; `parked` is the intake
+	// queue's string key and is not used here.
+	Stage   core.Stage    `json:"stage,omitempty"`
+	Sub     core.SubStage `json:"sub_stage,omitempty"`
+	Park    *core.Park    `json:"park,omitempty"`
+	Gate    *core.Gate    `json:"gate,omitempty"`
+	Refusal *core.Refusal `json:"refusal,omitempty"`
+}
+
+// deriveStage recomputes Stage, Sub and Park from the old fields. A legacy pause
+// whose reason is a gate (G) or refusal (R) reason is read as a Gate or Refusal
+// on the stage it returns to, because only overlay reasons may park. A record that
+// cannot be mapped (a pause without a return stage, for instance) is an error.
+func (r *Record) deriveStage() error {
+	r.Stage, r.Sub, r.Park = "", "", nil
+	if r.Gate != nil {
+		if err := r.Gate.Validate(); err != nil {
+			return err
+		}
+	}
+	if r.Refusal != nil {
+		if err := r.Refusal.Validate(); err != nil {
+			return err
+		}
+	}
+	l := core.Legacy{
+		State: r.State, Return: r.Return, Reason: r.Reason, Resume: r.Resume,
+		HasReceipt: r.Receipt != nil, LeaderAccepted: r.Receipt != nil && r.Receipt.LeaderAccepted, Merged: r.Merged,
+	}
+	if r.State.IsPause() && r.Reason.Valid() && !core.IsParkable(r.Reason) {
+		resume := r.Resume
+		if resume == "" {
+			resume = "see the record"
+		}
+		detail := "migrated from a legacy " + string(r.State) + " record"
+		if core.IsGateReason(r.Reason) && r.Gate == nil {
+			r.Gate = &core.Gate{Reason: r.Reason, Detail: detail, Resume: resume, Head: r.Head}
+		} else if !core.IsGateReason(r.Reason) && r.Refusal == nil {
+			r.Refusal = &core.Refusal{Reason: r.Reason, Detail: detail}
+		}
+		l.State, l.Reason, l.Return = r.Return, "", ""
+	}
+	pos, err := core.FromLegacy(l)
+	if err != nil {
+		return err
+	}
+	r.Stage, r.Sub, r.Park = pos.Stage, pos.Sub, pos.Park
+	return nil
 }
 
 // Event is one entry of an Issue's history.
@@ -206,6 +259,9 @@ func (s *Store) read(i core.IssueRef) (Record, bool, error) {
 	if err := json.Unmarshal(b, &r); err != nil {
 		return Record{}, false, fmt.Errorf("%w: corrupt record: %v", core.ErrStoreUnavailable, err)
 	}
+	// An old record has no S46 position; one that cannot be mapped is still
+	// returned, without a position, so a reader is never locked out.
+	_ = r.deriveStage()
 	return r, true, nil
 }
 
@@ -238,6 +294,9 @@ func (s *Store) writeLocal(i core.IssueRef, r Record) error {
 // (compare-and-swap against the revision this cache holds), then to the
 // cache. A refusal leaves the cache untouched; r.Rev carries the new revision.
 func (s *Store) write(i core.IssueRef, r *Record) error {
+	if err := r.deriveStage(); err != nil {
+		return err
+	}
 	if s.ref != nil {
 		old, _, err := s.read(i)
 		if err != nil {
