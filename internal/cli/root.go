@@ -286,4 +286,8 @@ func init() {
 	// confirmed project key and database paths. It is the source of truth every
 	// instruction surface points at instead of a guessed path.
 	rootCmd.AddCommand(newPathsCmd())
+
+	// Issue #1948: hidden provisional skeleton for the canonical agentic-factory
+	// command; names are fixed later by SPEC-AGENTIC-FACTORY-001.
+	rootCmd.AddCommand(newAgenticFactoryCmd())
 }

@@ -174,3 +174,31 @@ func TestConcurrentDeliveriesAreAllQueued(t *testing.T) {
 		t.Errorf("queued %d of %d concurrent deliveries: %v", len(ids), n, ids)
 	}
 }
+
+// Put and Entries are the inbox half of the queue: payloads are stored durably once per id, in order, and
+// leave only through Commit.
+func TestPutStoresAPayloadOncePerIdUntilCommitted(t *testing.T) {
+	q := newQueue(&memDocs{})
+	if err := q.Put("m1", []byte(`{"a":1}`)); err != nil {
+		t.Fatal(err)
+	}
+	_ = q.Put("m2", []byte(`{"b":2}`))
+	_ = q.Put("m1", []byte(`{"a":999}`)) // the same id again: kept once, first payload wins
+	got, err := q.Entries()
+	if err != nil || len(got) != 2 || got[0].ID != "m1" || string(got[0].Data) != `{"a":1}` || got[1].ID != "m2" {
+		t.Fatalf("entries = %+v %v", got, err)
+	}
+	if err := q.Put("m3", []byte(`not json`)); err == nil {
+		t.Error("a payload that is not JSON was stored")
+	}
+	if err := q.Commit([]string{"m1"}); err != nil {
+		t.Fatal(err)
+	}
+	if left, _ := q.Entries(); len(left) != 1 || left[0].ID != "m2" {
+		t.Errorf("after the commit: %+v", left)
+	}
+	_ = q.Put("m1", []byte(`{"a":2}`)) // consumed: remembered, not queued again
+	if left, _ := q.Entries(); len(left) != 1 {
+		t.Errorf("a consumed id came back: %+v", left)
+	}
+}

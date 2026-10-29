@@ -13,6 +13,8 @@ package runner
 import (
 	"errors"
 	"fmt"
+	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -202,6 +204,14 @@ func (r *Runner) StartAttempt(t Ticket, attempt string, delivery core.Delivery) 
 		// agent acknowledged the preparer's receipt (READY_ACKED).
 		if err := r.Store.ReadyGate(rec.Issue, rec.Holder); err != nil {
 			return err
+		}
+		// Another PR of this agent is open: this Issue is written in its own worktree.
+		if rec.Worktree == "" {
+			if open, err := r.Store.HasOpenHandoff(rec.Holder, core.IssueRef{Number: rec.Issue}); err != nil {
+				return err
+			} else if open {
+				return fmt.Errorf("%w: issue-%d", core.ErrWorktreeUnbound, rec.Issue)
+			}
 		}
 		if !delivery.AtLeast(core.DeliveryExecuted) {
 			return fmt.Errorf("%w: delivery %q has not reached executed", core.ErrTransitionInvalid, delivery)
@@ -403,8 +413,10 @@ func deployOK(d string) bool {
 }
 
 // Pause moves any in-flight stage to blocked or on-hold, recording the stage
-// it left, the reason and the resume condition.
-func (r *Runner) Pause(t Ticket, to core.State, reason core.BlockReason, resume string) (claim.Record, error) {
+// it left, the reason and the resume condition. A park carries a wait record
+// (who answers, the next action, the recheck time, the diagnosis, the retries and
+// the escalation target); a pause without a valid one is refused.
+func (r *Runner) Pause(t Ticket, to core.State, reason core.BlockReason, resume string, w core.Wait) (claim.Record, error) {
 	if err := core.ValidatePause(to, reason); err != nil {
 		return claim.Record{}, err
 	}
@@ -420,6 +432,7 @@ func (r *Runner) Pause(t Ticket, to core.State, reason core.BlockReason, resume 
 			return fmt.Errorf("%w: resume condition is required", core.ErrTransitionInvalid)
 		}
 		pauseIn(rec, to, reason, resume)
+		rec.Wait = &w // a park always carries its wait record (design 2.1c); the store checks it
 		return nil
 	})
 }
@@ -458,6 +471,14 @@ type Handoff struct {
 	Worktree       string
 	WriterStopped  bool
 	BoundaryHead   string
+	// The rest of the receipt (spec 148), all required of a new handoff: the PR's
+	// URL, the base it targets, the spec revision adopted, what the task produced
+	// and the state of the checks.
+	PRURL       string
+	Base        string
+	AdoptedSpec string
+	TaskResult  string
+	CheckStatus string
 }
 
 // HandOff records the PR receipt. It does not release the Issue: the agent that
@@ -484,6 +505,10 @@ func (r *Runner) HandOff(t Ticket, h Handoff) (claim.Record, error) {
 	switch {
 	case h.PR <= 0:
 		return claim.Record{}, fmt.Errorf("%w: PR number is required", core.ErrEvidenceIncomplete)
+	case !validPRURL(h.PRURL, h.PR):
+		return claim.Record{}, fmt.Errorf("%w: the PR URL is missing, not an http(s) URL, or not the URL of PR #%d", core.ErrEvidenceIncomplete, h.PR)
+	case strings.TrimSpace(h.Base) == "" || strings.TrimSpace(h.AdoptedSpec) == "" || strings.TrimSpace(h.TaskResult) == "" || strings.TrimSpace(h.CheckStatus) == "":
+		return claim.Record{}, fmt.Errorf("%w: base, adopted spec, task result and check status are required", core.ErrEvidenceIncomplete)
 	case h.Branch == "" || h.Worktree == "":
 		return claim.Record{}, fmt.Errorf("%w: branch and worktree are required", core.ErrEvidenceIncomplete)
 	case !h.WriterStopped:
@@ -509,10 +534,18 @@ func (r *Runner) HandOff(t Ticket, h Handoff) (claim.Record, error) {
 		if rec.Receipt != nil && rec.Receipt.Head == head {
 			return fmt.Errorf("%w: PR #%d", core.ErrDuplicateHandoff, rec.Receipt.PR)
 		}
-		rec.Repair, rec.Wait = nil, nil // a new receipt ends the repair and what it waited for
+		// The receipt's worktree is held like a bound one: while the PR is open no
+		// other Issue may bind it, and a finished Issue's reservation is taken over.
+		// It is reserved only now, after the owner and every check have passed, so a
+		// refused handoff leaves nothing behind.
+		if err := r.Store.ReserveWorktree(t.Issue, h.Worktree); err != nil {
+			return err
+		}
+		rec.Repair, rec.Wait, rec.Revision = nil, nil, "" // a new receipt ends the repair, the wait and the revision
 		rec.Receipt = &claim.Receipt{
 			HandoffID: h.HandoffID, LeaderAccepted: true, PR: h.PR, Head: head, Branch: h.Branch, Worktree: h.Worktree,
 			Attempt: rec.Attempt, AttemptSeq: rec.AttemptSeq, Agent: rec.AgentName, Session: rec.Holder,
+			PRURL: h.PRURL, Base: h.Base, AdoptedSpec: h.AdoptedSpec, TaskResult: h.TaskResult, CheckStatus: h.CheckStatus,
 		}
 		rec.AddEvent(claim.Event{Kind: "handoff", Agent: rec.AgentName, Session: rec.Holder, Attempt: string(rec.Attempt), Head: string(head), PR: h.PR, Note: "receipt " + h.HandoffID + " accepted by the leader"})
 		return nil
@@ -623,10 +656,102 @@ func (r *Runner) ReopenOwn(t Ticket, reason string, ev RepairEvidence) (claim.Re
 		if !ev.OldWriterEnded {
 			return fmt.Errorf("%w: the previous writer has not ended", core.ErrEvidenceIncomplete)
 		}
-		rec.State, rec.Pending, rec.Repair = core.StateVerifying, "", &rep
+		rec.State, rec.Pending, rec.Repair, rec.RepairNeeded = core.StateVerifying, "", &rep, ""
+		// A repair is a new attempt: the next number and a fresh id, so the earlier
+		// attempt's receipt and this one can be told apart.
+		rec.AttemptSeq++
+		rec.Attempt = core.AttemptID(fmt.Sprintf("repair-%d", rec.AttemptSeq))
 		rec.AddEvent(claim.Event{Kind: "reopen", Head: string(rec.Head), PR: rec.Receipt.PR, Note: reason})
 		return nil
 	})
+}
+
+// Takeover is the evidence that an owner is really gone before its Issue moves.
+// Contract: every field is a FACT THE CALLER SUPPLIES. Nothing in this package
+// probes the owner's process, the worktree or git; the wiring that observes them
+// (the monitor and the integration side, lanes 20 and 22) is what makes the
+// facts true, and a TakeOver call is only as sound as that observation.
+// OwnerGone: the owner's session was observed gone (not merely quiet); SafeStop
+// may stand in for it, one of the two is required.
+// WriterStopped: nothing can still write the branch or the worktree.
+// UncommittedPreserved and PreservedRef: what the owner left uncommitted was
+// committed or snapshotted, and PreservedRef names where. What the store does
+// check is the rest: all four are present, and the owner and epoch the decision
+// was taken about are still the recorded ones.
+// All four are required; a missing one leaves the record as it was.
+type Takeover struct {
+	OwnerGone bool
+	// SafeStop is the reference of a stop record the old owner left (REQ-AF-009):
+	// it stands in for OwnerGone. One of the two is required.
+	SafeStop             string
+	WriterStopped        bool
+	UncommittedPreserved bool
+	PreservedRef         string
+	// Wait is the new holder's wait record, required when the Issue is parked
+	// (design 2.1c) and ignored otherwise; its owner must be the new holder.
+	Wait *core.Wait
+}
+
+// TakeOver reassigns a held Issue after its owner died. old is the ticket of the
+// owner the decision was taken about; the new holder gets the next epoch and the
+// old ticket stops writing. This is not the repair claim: that one serves a
+// released record.
+func (r *Runner) TakeOver(i core.IssueRef, old Ticket, newHolder, dispatch string, run core.RunID, ev Takeover) (claim.Record, error) {
+	switch {
+	case !ev.OwnerGone && strings.TrimSpace(ev.SafeStop) == "":
+		return claim.Record{}, fmt.Errorf("%w: neither the owner's departure nor a safe stop record is given", core.ErrEvidenceIncomplete)
+	case !ev.WriterStopped:
+		return claim.Record{}, fmt.Errorf("%w: writer stop not confirmed", core.ErrEvidenceIncomplete)
+	case !ev.UncommittedPreserved || strings.TrimSpace(ev.PreservedRef) == "":
+		return claim.Record{}, fmt.Errorf("%w: the owner's uncommitted work is not preserved", core.ErrEvidenceIncomplete)
+	}
+	if err := r.guard(i, core.OpTakeOver); err != nil {
+		return claim.Record{}, err
+	}
+	note := "preserved at " + ev.PreservedRef
+	if strings.TrimSpace(ev.SafeStop) != "" {
+		note += "; safe stop " + strings.TrimSpace(ev.SafeStop)
+	}
+	if ev.OwnerGone {
+		note += "; owner gone"
+	}
+	return r.Store.TakeOver(i, old.Holder, old.Epoch, newHolder, dispatch, run, note, ev.Wait)
+}
+
+// ContractRevision is the evidence of canon E18 adopt: what changed in the
+// contract and the revision that was approved.
+type ContractRevision struct {
+	Diff     string
+	Approved string
+}
+
+// AdoptRevision applies an approved contract revision to a NEW attempt of a PR
+// that is parked for contract-change in BUILDING/FIX (canon E24, then E18): the
+// park is released, the attempt is reset and the position becomes BUILDING/SPEC.
+// The receipt, the owner and the epoch stay. Resuming alone (E20) never does
+// this. The position decision is core's: any other position or park is refused.
+func (r *Runner) AdoptRevision(t Ticket, rev ContractRevision) (claim.Record, error) {
+	if strings.TrimSpace(rev.Diff) == "" || strings.TrimSpace(rev.Approved) == "" {
+		return claim.Record{}, fmt.Errorf("%w: adopting needs the contract diff and the approved revision", core.ErrEvidenceIncomplete)
+	}
+	return r.Store.Update(t.Issue, t.Holder, t.Epoch, func(rec *claim.Record) error {
+		pos := core.Position{Stage: rec.Stage, Sub: rec.Sub, Park: rec.Park}
+		if _, err := core.Transition(pos, core.Event{ID: "E18", Outcome: "adopt", Evidence: []string{"contract-diff", "approved-revision"}}); err != nil {
+			return err
+		}
+		rec.State, rec.Return, rec.Reason, rec.Resume = core.StateClaimed, "", "", ""
+		rec.Attempt, rec.Delivery, rec.Repair, rec.Gate, rec.Refusal = "", "", nil, nil, nil
+		rec.Revision = rev.Approved
+		rec.AddEvent(claim.Event{Kind: "revision", Head: string(rec.Head), Note: "approved revision " + rev.Approved + " applied to a new attempt"})
+		return nil
+	})
+}
+
+// BindWorktree binds the write worktree of the ticket's Issue. It is required
+// before writing when the same agent already has another PR open, and it must be
+// a worktree no other open Issue uses.
+func (r *Runner) BindWorktree(t Ticket, path string) (claim.Record, error) {
+	return r.Store.BindWorktree(t.Issue, t.Holder, t.Epoch, path)
 }
 
 // SetWait records what the owner waits for. The wait belongs to the ticket's
@@ -653,12 +778,16 @@ func (r *Runner) RetryWait(t Ticket, diagnosis, next string, recheck time.Time) 
 		if rec.Wait == nil {
 			return fmt.Errorf("%w: no wait is recorded", core.ErrTransitionInvalid)
 		}
+		// Only a retry that makes the wait escalated in THIS call is written. One
+		// against a wait that was already exhausted or escalated is refused and
+		// writes nothing, whatever Retry hands back.
+		exhausted := rec.Wait.Escalated || rec.Wait.Retries >= rec.Wait.MaxRetries
 		w, e := rec.Wait.Retry(diagnosis, next, recheck)
 		if e != nil && !errors.Is(e, core.ErrRetryLimit) {
 			return e
 		}
-		if errors.Is(e, core.ErrRetryLimit) && !w.Escalated {
-			return e // already exhausted: nothing changes
+		if exhausted || (errors.Is(e, core.ErrRetryLimit) && !w.Escalated) {
+			return e
 		}
 		rec.Wait, limit = &w, e
 		return nil
@@ -672,7 +801,7 @@ func (r *Runner) RetryWait(t Ticket, diagnosis, next string, recheck time.Time) 
 // ClearWait drops the wait once what it waited for has happened.
 func (r *Runner) ClearWait(t Ticket) (claim.Record, error) {
 	return r.Store.Update(t.Issue, t.Holder, t.Epoch, func(rec *claim.Record) error {
-		rec.Wait = nil
+		rec.Wait = nil // the store refuses this while the Issue is parked
 		return nil
 	})
 }
@@ -752,4 +881,22 @@ func (r *Runner) mayClose(issue int) string {
 		return string(v)
 	}
 	return ""
+}
+
+// validPRURL accepts an absolute http(s) URL with a host and no blanks whose path
+// ends in the change request's own address with the receipt's number: /pull/<pr>
+// on GitHub, /-/merge_requests/<pr> on GitLab. The receipt's URL is the PR it
+// carries, not another PR, an Issue or a sub-page of one; a trailing slash, a
+// query or a fragment do not change which PR it names.
+func validPRURL(raw string, pr int) bool {
+	if raw == "" || strings.ContainsAny(raw, " \t\r\n") {
+		return false
+	}
+	u, err := url.Parse(raw)
+	if err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" {
+		return false
+	}
+	p := strings.TrimSuffix(u.Path, "/")
+	n := strconv.Itoa(pr)
+	return strings.HasSuffix(p, "/pull/"+n) || strings.HasSuffix(p, "/-/merge_requests/"+n)
 }

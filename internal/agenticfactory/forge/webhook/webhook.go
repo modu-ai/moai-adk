@@ -178,10 +178,12 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case err == nil || acked:
 	case errors.Is(err, docstore.ErrQueueFull):
-		http.Error(w, "queue full; redeliver later", http.StatusServiceUnavailable)
+		http.Error(w, "queue full; try again later", http.StatusServiceUnavailable)
+	case errors.Is(err, core.ErrBusy):
+		http.Error(w, "busy; try again", http.StatusServiceUnavailable)
 	case errors.Is(err, docstore.ErrBadDeliveryID), errors.Is(err, docstore.ErrNoDeliveryID):
 		http.Error(w, "bad delivery id", http.StatusBadRequest)
 	default:
-		http.Error(w, "not queued; redeliver", http.StatusInternalServerError)
+		http.Error(w, "not queued; try again", http.StatusInternalServerError)
 	}
 }

@@ -76,6 +76,14 @@ type Record struct {
 	// evidence while the owner repairs a PR it handed off.
 	Wait   *core.Wait `json:"wait,omitempty"`
 	Repair *Repair    `json:"repair,omitempty"`
+	// RepairNeeded is the signal (CI failed, review asked for changes) that the
+	// owner must repair its open PR before it takes new work. Worktree is the
+	// write worktree bound to this Issue's work.
+	RepairNeeded string `json:"repair_needed,omitempty"`
+	// Revision is the approved contract revision applied to the current attempt
+	// (canon E18 adopt); a new receipt ends it.
+	Revision string `json:"revision,omitempty"`
+	Worktree string `json:"worktree,omitempty"`
 }
 
 // Repair is the canon E06 evidence (REVIEWING -> BUILDING/FIX): the repair
@@ -132,7 +140,7 @@ func (r *Record) deriveStage() error {
 		}
 	}
 	l := core.Legacy{
-		State: r.State, Repair: r.Repair != nil, Return: r.Return, Reason: r.Reason, Resume: r.Resume,
+		State: r.State, Repair: r.Repair != nil, Revision: r.Revision != "", Return: r.Return, Reason: r.Reason, Resume: r.Resume,
 		HasReceipt: r.Receipt != nil, LeaderAccepted: r.Receipt != nil && r.Receipt.LeaderAccepted, Merged: r.Merged,
 	}
 	if r.State.IsPause() && r.Reason.Valid() && !core.IsParkable(r.Reason) {
@@ -184,6 +192,13 @@ type Receipt struct {
 	AttemptSeq     int            `json:"attempt_seq,omitempty"`
 	Agent          string         `json:"agent,omitempty"`   // display name of the agent that published the PR
 	Session        string         `json:"session,omitempty"` // its session id; stays unambiguous after the number is reused
+	// The spec fields of a receipt (spec 148). A receipt stored before they existed
+	// reads with them empty; only a new handoff must supply them.
+	PRURL       string `json:"pr_url,omitempty"`
+	Base        string `json:"base,omitempty"`
+	AdoptedSpec string `json:"adopted_spec,omitempty"`
+	TaskResult  string `json:"task_result,omitempty"`
+	CheckStatus string `json:"check_status,omitempty"`
 }
 
 // Store keeps records under one directory: issue-<n>.json, guarded by
@@ -203,6 +218,9 @@ type Store struct {
 	// sync makes a write durable before it is reported; the zero value syncs
 	// for real, tests inject failures.
 	sync syncer
+	// afterScan is a test seam: it runs between the check of the other records
+	// and the reservation in BindWorktree.
+	afterScan func()
 }
 
 const (
@@ -324,6 +342,20 @@ func (s *Store) write(i core.IssueRef, r *Record) error {
 	if err := r.deriveStage(); err != nil {
 		return err
 	}
+	// A write that puts the Issue into PARKED carries its wait record (design
+	// 2.1c), and while the park stays no write takes that record away. A record
+	// parked before this rule, with no wait record, is rewritten as it is.
+	if r.Park != nil && r.Wait == nil {
+		if prev, had, err := s.read(i); err != nil {
+			return err
+		} else if !had || prev.Park == nil {
+			return fmt.Errorf("%w: a park needs a wait record (owner, next action, recheck time, diagnosis, retry limit, escalation target)", core.ErrEvidenceIncomplete)
+		} else if prev.Wait != nil {
+			// the park stays, so its wait record stays: only a parked record that
+			// never had one (stored before the rule) may be rewritten without
+			return fmt.Errorf("%w: a parked Issue keeps its wait record", core.ErrEvidenceIncomplete)
+		}
+	}
 	if s.ref != nil {
 		old, _, err := s.read(i)
 		if err != nil {
@@ -405,6 +437,12 @@ func (s *Store) acquire(i core.IssueRef, holder, name, dispatch string, run core
 		if ok && cur.Receipt != nil {
 			return fmt.Errorf("%w: %s PR #%d", core.ErrRepairOnly, i.Resource(), cur.Receipt.PR)
 		}
+		if err := s.repairFirst(holder, i); err != nil {
+			return err
+		}
+		if err := s.heldIssuesRecorded(holder, i); err != nil {
+			return err
+		}
 		n, err := s.openPRs()
 		if err != nil {
 			return err
@@ -464,6 +502,11 @@ func (s *Store) acquireRepair(i core.IssueRef, holder, name, dispatch string, ru
 				return fmt.Errorf("%w: %s dispatch %q", core.ErrDuplicateDispatch, i.Resource(), dispatch)
 			}
 			return fmt.Errorf("%w: %s held by %q", core.ErrHeld, i.Resource(), cur.Holder)
+		}
+		if rc := cur.Receipt; rc != nil && rc.Session != "" && rc.Session != holder {
+			// The PR belongs to the agent that published it. A receipt from before
+			// the session was recorded names nobody and stays open to any holder.
+			return fmt.Errorf("%w: issue-%d belongs to session %s", core.ErrNotResponsibleAgent, i.Number, rc.Session)
 		}
 		if cur.Receipt == nil || cur.State != core.StateVerifying || cur.Receipt.Branch != branch {
 			return fmt.Errorf("%w: no reopened PR on branch %q for %s", core.ErrTransitionInvalid, branch, i.Resource())

@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
 )
@@ -35,6 +36,7 @@ func TestRecordCarriesTheS46PositionAndKeepsTheOldState(t *testing.T) {
 	}
 	r := step(func(r *Record) {
 		r.Return, r.State, r.Reason, r.Resume = core.StateVerifying, core.StateBlocked, core.ReasonRateLimited, "after 15:00"
+		r.Wait = &core.Wait{Owner: "w", NextAction: "retry", RecheckAt: time.Date(2026, 10, 30, 15, 0, 0, 0, time.UTC), Diagnosis: "429", MaxRetries: 3, Escalate: "leader"}
 	})
 	if r.Stage != core.StageBuilding || r.Park == nil || r.Park.Reason != core.ReasonRateLimited || r.Park.Resume != "after 15:00" {
 		t.Errorf("blocked becomes a park on the same stage: %+v", r)
@@ -210,5 +212,72 @@ func TestRepairClaimDropsTheGateAndRefusalOfThePreviousAttempt(t *testing.T) {
 	}
 	if got, _ := s.Read(i); got.Gate != nil || got.Refusal != nil {
 		t.Fatalf("stored record keeps them: %+v %+v", got.Gate, got.Refusal)
+	}
+}
+
+// Only the entry into PARKED is checked: a record stored before the rule, already
+// parked and without a wait record, is read and rewritten as it is.
+func TestOnlyTheEntryIntoParkedNeedsAWaitRecord(t *testing.T) {
+	s := open(t)
+	i := ref(t, 1)
+	if _, err := s.Acquire(i, "w", "d", "run-1"); err != nil {
+		t.Fatal(err)
+	}
+	cur, _ := s.Read(i)
+	enter := func(r *Record) error {
+		r.State, r.Return, r.Reason, r.Resume = core.StateBlocked, core.StateClaimed, core.ReasonRateLimited, "later"
+		return nil
+	}
+	if _, err := s.Update(i, "w", cur.Epoch, enter); !errors.Is(err, core.ErrEvidenceIncomplete) {
+		t.Fatalf("entering a park without a wait record: %v", err)
+	}
+	if now, _ := s.Read(i); now.State != core.StateClaimed || now.Park != nil {
+		t.Fatalf("the refused entry changed the record: %+v", now)
+	}
+	// an old record, parked and without a wait, written before the rule
+	if err := writeRaw(s, 2, `{"issue":2,"holder":"w","dispatch":"d2","run":"run-1","epoch":1,"seq":1,"state":"blocked","return_stage":"claimed","block_reason":"rate-limited","resume_condition":"later"}`); err != nil {
+		t.Fatal(err)
+	}
+	two := ref(t, 2)
+	old, err := s.Read(two)
+	if err != nil || old.Park == nil || old.Wait != nil {
+		t.Fatalf("an old parked record must still read: %+v %v", old, err)
+	}
+	if _, err := s.Update(two, "w", old.Epoch, func(r *Record) error { r.Dispatch = "d2b"; return nil }); err != nil {
+		t.Errorf("rewriting an already parked record: %v", err)
+	}
+}
+
+// A receipt stored before the spec fields existed still reads, and the record
+// around it is usable.
+func TestAReceiptWithoutTheSpecFieldsStillReads(t *testing.T) {
+	s := open(t)
+	if err := writeRaw(s, 3, `{"issue":3,"holder":"w","dispatch":"d","run":"run-1","epoch":1,"seq":1,"state":"landing","receipt":{"handoff_id":"h-1","leader_accepted":true,"pr":5,"head":"a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1","branch":"WT-x","worktree":"/wt/x"}}`); err != nil {
+		t.Fatal(err)
+	}
+	rec, err := s.Read(ref(t, 3))
+	if err != nil || rec.Receipt == nil || rec.Receipt.PR != 5 || rec.Receipt.PRURL != "" || rec.Stage != core.StageReviewing {
+		t.Fatalf("an old receipt: %+v %v", rec, err)
+	}
+	if _, err := s.Update(ref(t, 3), "w", rec.Epoch, func(r *Record) error { r.Pending = "deploy"; return nil }); err != nil {
+		t.Errorf("rewriting a record with an old receipt: %v", err)
+	}
+}
+
+// An old parked record has no wait, so the write rule does not stop its hand-over
+// from dropping one; the takeover itself must ask for the new holder's.
+func TestTakingOverAnOldParkedRecordStillNeedsAWait(t *testing.T) {
+	s := open(t)
+	if err := writeRaw(s, 4, `{"issue":4,"holder":"w","dispatch":"d4","run":"run-1","epoch":1,"seq":1,"state":"blocked","return_stage":"claimed","block_reason":"rate-limited","resume_condition":"later"}`); err != nil {
+		t.Fatal(err)
+	}
+	i := ref(t, 4)
+	if _, err := s.TakeOver(i, "w", 1, "w2", "d4b", "run-2", "ref@1", nil); !errors.Is(err, core.ErrEvidenceIncomplete) {
+		t.Fatalf("no wait for the new holder: %v", err)
+	}
+	w := core.Wait{Owner: "w2", NextAction: "retry", RecheckAt: time.Date(2026, 10, 30, 15, 0, 0, 0, time.UTC), Diagnosis: "429", MaxRetries: 3, Escalate: "leader"}
+	rec, err := s.TakeOver(i, "w", 1, "w2", "d4b", "run-2", "ref@1", &w)
+	if err != nil || rec.Holder != "w2" || rec.Wait == nil || rec.Park == nil {
+		t.Errorf("with the new holder's wait: %+v %v", rec, err)
 	}
 }

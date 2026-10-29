@@ -2,6 +2,7 @@ package core
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -227,5 +228,15 @@ func TestPriorityOrderAndNotice(t *testing.T) {
 		if p.String() != name {
 			t.Errorf("%d -> %q, want %q", p, p.String(), name)
 		}
+	}
+}
+
+// An Issue the agent holds that the control ref does not carry is a responsibility
+// whose ownership cannot be verified; it maps to that existing reason, not to a new one.
+func TestReasonForAResponsibilityNotRecorded(t *testing.T) {
+	err := fmt.Errorf("%w: issue-1 is not on the ref", ErrResponsibilityNotRecorded)
+	r, ok := ReasonFor(err)
+	if !ok || r != ReasonOwnershipUnverified {
+		t.Errorf("reason = %q ok=%v, want %q", r, ok, ReasonOwnershipUnverified)
 	}
 }
