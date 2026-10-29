@@ -58,14 +58,15 @@
 ### M4 — 병합 게이트와 증거 분리 [High]
 
 - 병합 수용 조건, 증거 저장소 분리, 병합 결과 미상 처리, `done` 수용 조건(원격 반영 + 로컬 동기화 + 배포 또는 N/A), 종료·다음 dispatch.
-- 시나리오 하네스 `TestScenarioSuite`(acceptance.md §A.1)를 여기서 완성한다. 실제 Issue 쓰기와 보호된 `main` 병합은 운영자 승인 뒤에만 실행한다.
+- 증거 생산자 결속(design §11)과 **공급자 중립 리뷰 경로**(design §11.1: 리뷰 세션 또는 운영자 기록 리뷰)를 여기서 넣는다. 이 경로가 있어야 Codex 미설정 상태에서 병합 게이트가 통과할 수 있고, 시나리오 06·07이 이 마일스톤 뒤 초록이 될 수 있다(spec.md §F.7 D2 개정). M4까지 `internal/agenticfactory`에는 Codex 호출 지점이 없으며, 묶음은 Codex 호출 계수기 0을 함께 단언한다. Codex 명시 설정 관문과 그 계수기 시험(AC-AF-013)은 M5다.
+- 시나리오 하네스 `TestScenarioSuite`(acceptance.md §A.1: 05→06 증거 생산 단계, 분기 사례 격리, 재실행 규칙, 두 번째 Issue 사후 상태 포함)를 여기서 완성한다. 실제 Issue 쓰기와 보호된 `main` 병합은 운영자 승인 뒤에만 실행한다.
 - 대상 AC: AC-AF-018, 시나리오 AC-AF-001~007(이 마일스톤 뒤 초록), AC-AF-019(regression-guard, 시나리오 묶음 전후 측정).
 
 ### M5 — 정책과 설정 초안 [Medium]
 
 - GLM 제외, Codex 명시 설정 관문, 인증·429 처리, 환경 매트릭스, 브라우저 어댑터, 설정 검증.
 - 실제 설정 파일 삽입은 이 마일스톤에 포함하지 않는다(§F.3 2단계 이후, 설정 담당 레인).
-- 실행한 Codex 전환 단계는 progress.md `## §J Codex Migration Stage Record`에 `| CX-<n> |` 행으로 적는다(design.md §9.7).
+- 실행한 Codex 전환 단계는 progress.md `## §J Codex Migration Stage Record`에 `| CX-<n> |` 행으로 적는다(design.md §9.7). 세 단계는 각각 별도 커밋이며, 순서는 커밋 그래프로 증명한다(AC-AF-020).
 - 대상 AC: AC-AF-013, 014, 015, 016, 017, 020.
 
 ### M6 — 명령 계층과 호환 [Medium, 기계적]
@@ -97,6 +98,8 @@ design.md §9.4의 S1 → S2 → S3 → S4(lane-22 대응표와 같은 네 단�
 |---|---|
 | GitHub API 실패·429로 원장 거울이 늦어짐 | 단일 규칙(REQ-AF-014, design.md §2.1a): 실패한 동작에 차단을 기록하고 재시도 고리는 없다. 거울 쓰기만 실패하면 `mirror_state: blocked(<사유>)`로 거울에 기록하고 Issue `state`는 바꾸지 않는다. 실행은 저장소 기준으로 계속한다 |
 | 새 claim과 기존 카드 임대가 같은 작업을 이중으로 소유 | Phase 2 전까지 Issue 경로와 카드 경로가 같은 작업을 동시에 맡지 않도록 claim 시 기존 카드 임대 존재를 읽기 전용으로 확인 |
+| 시나리오 재실행마다 실제 Issue 한 쌍과 실제 병합이 새로 든다 | 시나리오 묶음은 단위 AC가 모두 초록이 된 뒤 한 번 돌린다. 재실행 규칙은 acceptance.md §A.1 |
+| 증거 생산자를 증거 파일이 스스로 주장 | 생산자 결속은 ControlService가 등록 때 관측한 값만 쓴다(design §11) |
 | `slot` 명칭 충돌 | 확정 전까지 새 실행 자리 이름을 코드 식별자로 쓰지 않음(OQ-2) |
 | 시나리오 시험이 실제 Issue에 씀 | 운영자 승인 뒤에만 실행, 시험용 Issue를 하나로 고정 |
 

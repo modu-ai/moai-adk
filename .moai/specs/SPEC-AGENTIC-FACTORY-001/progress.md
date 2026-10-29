@@ -6,28 +6,30 @@ status: draft
 
 ```yaml
 plan_status: audit-ready
-plan_iteration: 2
-spec_version: "0.2.0"
+plan_iteration: 3
+spec_version: "0.3.0"
 plan_complete_at: 2026-10-29
-prior_verdict: ".moai/reports/SPEC-AGENTIC-FACTORY-001/plan-audit-iter1.md (FAIL 0.69)"
-tree_head: e14b5bbac2eb2499cbaa3ae9434595001c91cb39
-judging_build: "moai-tree2 — v3.2.0-tree e14b5bbac built unknown (tree-built; Commit ldflag set by hand to HEAD e14b5bbac2; build date not set; tree carried uncommitted SPEC-doc edits only)"
+prior_verdicts:
+  - ".moai/reports/SPEC-AGENTIC-FACTORY-001/plan-audit-iter1.md (FAIL 0.69)"
+  - ".moai/reports/SPEC-AGENTIC-FACTORY-001/plan-audit-iter2.md (FAIL 0.69, blocking R-D5 N1-N8)"
+tree_head: c14feec16dc800de82b1da1e57a20cb194ffeb98
+judging_build: "moai-tree3 — v3.2.0-tree c14feec16 built unknown (tree-built with go build; Commit ldflag set by hand to HEAD c14feec16d; build date not set; working tree carried uncommitted SPEC-doc edits only — git diff --name-only c14feec16d outside .moai/specs is empty)"
 req_count: 25
 ac_count: 25
 ```
 
-Lint (judging build `e14b5bbac`, tree HEAD `e14b5bbac2` + uncommitted SPEC docs):
+Lint (judging build `c14feec16`, tree HEAD `c14feec16d` + uncommitted SPEC docs):
 
 ```
-$ moai-tree2 spec lint --strict SPEC-AGENTIC-FACTORY-001
-WARNING   REQTableRowsRejected           .../SPEC-AGENTIC-FACTORY-001/spec.md  128   table NOT read as a requirement-definition table (rejected_rows=25): ...
+$ moai-tree3 spec lint --strict SPEC-AGENTIC-FACTORY-001
+WARNING   REQTableRowsRejected           .../SPEC-AGENTIC-FACTORY-001/spec.md  131   table NOT read as a requirement-definition table (rejected_rows=25): ...
 INFO      OwnershipTransitionUnmeasured  .../SPEC-AGENTIC-FACTORY-001/spec.md  1     SPEC SPEC-AGENTIC-FACTORY-001 transition "(none)" → "draft" expected owner "manager-spec" but commit e14b5bbac2... has no Authored-By-Agent trailer — ownership transition unmeasured
 
 0 error(s), 1 warning(s)
 exit=0
 ```
 
-The remaining warning points at the §E REQ→AC trace table (body line 128), which deliberately carries no SHALL text.
+The remaining warning points at the §E REQ→AC trace table (body line 131, file line ~148), which deliberately carries no SHALL text.
 
 ## §E.2 Run-phase Evidence
 

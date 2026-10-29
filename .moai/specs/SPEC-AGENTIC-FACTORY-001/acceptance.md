@@ -21,11 +21,29 @@
 | 02 중복 dispatch | 실제 dispatch 재전송 | 없음 |
 | 03 ACK 유실 | 실제 명령 전송 | 전송 계층 경계에서 ACK만 버림 |
 | 04 중단 복구 | Worker 프로세스를 정상 종료(강제 종료 아님) | 시계를 주입해 lease 만료를 만듦 |
-| 05 감사 예산 소진 | 실제 감사 라운드 기록 | `audit.max_rounds=1` + 고정 FAIL 판정 파일. `blocked(budget-exhausted)` 확인 뒤, 운영자가 승인한 새 라운드를 재개 경로로 넣어 `return_stage`로 돌아가는 것까지 확인 |
-| 06 병합 결과 미상 | 실제 병합 요청 | 병합 응답만 버림 |
-| 07 원격 반영 → 종료 → 다음 dispatch | 원격 반영 확인, 로컬 동기화, Issue 종료, 두 번째 Issue dispatch | 배포 단계가 없는 프로젝트는 `deploy: N/A` 기록 |
+| 05 감사 예산 소진 | 실제 감사 라운드 기록 | `audit.max_rounds=1` + 고정 FAIL 판정 파일(하네스가 감사 역할로 등록한 시험 세션이 등록 — 생산자 결속을 지킴). `blocked(budget-exhausted)` 확인 뒤, 운영자가 승인한 새 라운드를 재개 경로로 넣어 `return_stage`로 돌아가는 것까지 확인 |
+| 06 병합 결과 미상 | 아래 "05→06 증거 생산 단계"를 실제로 거친 뒤 실제 병합 요청 | 병합 응답만 버림 |
+| 07 원격 반영 → 완료 → 종료 → 다음 dispatch | 원격 반영 확인, 로컬 동기화, `done` 기록, Issue 종료, 두 번째 Issue dispatch | 배포 단계가 없는 프로젝트는 사유가 적힌 `deploy: N/A` 기록 |
 
-- **운영자 keep-set**: 06·07의 보호된 `main` 실제 병합과 Issue 종료는 운영자 승인 대상이다. 승인 기록이 없으면 06·07은 `BLOCKED(operator-ack-missing)`로 기록되고 PASS가 아니다. 01~05는 실제 Issue에 원장 댓글을 쓰므로 그것도 운영자 승인 뒤에만 실행한다.
+- **05→06 증거 생산 단계(06의 선행 조건, 별도 AC 아님)**: 05에서 `return_stage`로 돌아온 attempt가 Issue #1948이 말하는 "구현→시험→리뷰→독립감사→양측 인계→정상 병합"의 앞 단계를 **실제로** 거친다. 주입은 없다.
+
+| 단계 | 생산자(§11 결속) | 실제/주입 |
+|---|---|---|
+| 구현 커밋 + 후보 PR | Worker(현재 epoch) | 실제. Issue의 작업은 작은 실제 변경이며 후보 PR은 원격에 열린다 |
+| 필수 검사 3종 | GitHub(원격 조회) | 실제 |
+| 코드 리뷰·보안 리뷰 | 공급자 중립 리뷰 경로(design §11.1 (a) 리뷰 세션 또는 (b) 운영자 기록). Codex 호출 0건 | 실제 |
+| 독립 감사 무부채 PASS | 감사 세션(writer와 다른 세션) | 실제 |
+| QA 판정 PASS | QA 세션(`/moai gate`, §F.5) | 실제 |
+| writer 인계 | Worker | 실제 |
+| coordinator 인계 | Coordinator 세션 | 실제 |
+| `verifying` → `ready` → `landing` 전이 | ControlService | 실제 |
+
+  06은 시작할 때 위 증거가 모두 같은 HEAD로 등록돼 있는지 확인하고, 하나라도 없으면 FAIL로 끝난다(skip 아님).
+- **분기·변형 사례의 격리 실행**: 한 하위 시험 안의 분기와 변형(AC-AF-002 (a)·(b), AC-AF-007 (c)~(e))은 실제 Issue의 진행 상태를 바꾸지 않도록 **격리 사본**에서 돈다. 하네스는 그 시점의 claim 저장소를 임시 디렉터리로 복사하고, GitHub 쓰기 대신 호출을 기록만 하는 원격 기록기를 붙이고, 로컬 동기화 변형은 임시 작업 트리 사본에서 만든다. 격리 사례는 실제 경로의 해당 단계 **직전**에 돌고(AC-AF-007의 변형은 실제 `done` 기록 전), 끝나면 사본을 버린다. 실제 경로의 저장소 순번은 격리 사례 전후로 같아야 한다.
+- **재실행 규칙**: 묶음은 실제 Issue 한 쌍에 대해 **한 번만** 돈다. 하위 시험 하나라도 FAIL이면 그 실행은 FAIL로 기록되고, 다시 돌리려면 (a) 새 실제 Issue 한 쌍과 (b) 새 claim 저장소 디렉터리가 필요하다. 이전 실행의 claim 저장소는 지우지 않고 읽기 전용 증거로 남기며 새 실행에 다시 쓰지 않는다(01의 "claim 없음" 전제는 새 저장소로만 만족한다). 이전 실행의 Issue는 시험이 다시 열거나 닫지 않고 멈춘 상태 그대로 두며, 처분은 운영자가 한다. 06에서 실제 병합이 이미 일어났다면 그 병합은 되돌리지 않는다.
+- **두 번째 Issue의 사후 상태**: 07이 두 번째 Issue를 dispatch해 `claimed`가 되는 것을 확인한 뒤, 하네스는 ControlService를 통해 그 Issue를 `on-hold`(사유 `scenario-suite-end`, `return_stage: claimed`)로 둔다. 07은 두 번째 Issue가 `on-hold`이고 attempt가 시작되지 않았음(`implementing` 아님)을 함께 단언한다. 처분은 운영자가 한다.
+- **운영자 keep-set**: 06·07의 보호된 `main` 실제 병합과 Issue 종료는 운영자 승인 대상이다. 승인 기록이 없으면 06·07은 `BLOCKED(operator-ack-missing)`로 기록되고 PASS가 아니다. 01~05는 실제 Issue에 원장 댓글을 쓰므로 그것도 운영자 승인 뒤에만 실행한다. 실제 병합은 ControlService의 병합 단계로만 하며, 이 저장소의 `auto-merge.yml`(Codex 리뷰 읽기)에 기대지 않는다.
+- **Codex**: 묶음 전체는 `workflow.agentic_factory.codex.enabled` 미설정으로 돈다. 묶음 끝에 Codex 호출 계수기가 0이어야 한다(REQ-AF-013).
 
 ## §B 증거 원장
 
@@ -101,9 +119,9 @@ golden 파일 자체는 M6 첫 커밋에서 따로 만든다(design.md §9.6, VC
 - 초록 경로: M4 완료 뒤
 
 #### AC-AF-003 — ACK 유실 (maps REQ-AF-003)
-- Given 명령이 `sent`이고 ACK가 오지 않았다(전송 계층 경계에서 주입)
-- When 재전송 판단 시점이 된다
-- Then 받는 쪽 상태를 먼저 조회하고, `received` 이상이면 재전송하지 않는다(전송 횟수 1). 전송 성공이나 idle 알림만으로는 `completed`가 되지 않는다
+- Given 명령이 `sent`이고 ACK가 오지 않았다(전송 계층 경계에서 주입). 이어서 증거 다섯 가지를 하나씩 주입한다: ① 전송 결과(성공 응답), ② idle 알림, ③ 받는 쪽의 수신 확인 행, ④ attempt 시작 행 + 트리 HEAD 관측, ⑤ 결과 증거 파일(전체 HEAD SHA 포함)
+- When 재전송 판단 시점이 되고, 각 증거가 들어올 때마다 전달 상태를 읽는다
+- Then 받는 쪽 상태를 먼저 조회하고, `received` 이상이면 재전송하지 않는다(전송 횟수 1). 증거별로: ①·②만으로는 상태가 `sent`에 머문다(`received`·`executed`·`completed` 어느 것도 서지 않음). ③은 `received`만 세운다. ④는 `executed`만 세운다(③ 없이 ④가 오면 `received`도 함께 기록하되 `completed`는 아님). ⑤는 ControlService가 파일을 읽어 확인한 뒤에만 `completed`를 세운다. 어떤 증거도 자기 단계보다 높은 상태를 세우지 않는다
 - 검증: §A.1 명령, 판정 줄 `--- PASS: TestScenarioSuite/03_AckLoss_RequeryNotResend `
 - RED 이유: 재조회 없이 재전송해 전송 횟수가 2가 된다
 - 초록 경로: M4 완료 뒤
@@ -135,9 +153,9 @@ golden 파일 자체는 M6 첫 커밋에서 따로 만든다(design.md §9.6, VC
 #### AC-AF-007 — 원격 반영 → 완료 → 종료 → 다음 dispatch (maps REQ-AF-002, REQ-AF-021)
 - Given 병합이 원격 `main`에 반영됐다. 두 번째 실제 Issue가 `queued`로 대기 중이다
 - When ControlService가 반영을 확인하고 완료를 기록한다
-- Then (a) 로컬 동기화 기록(동기화 전 dirty 경로 목록이 동기화 뒤 목록에 모두 남음)과 배포 기록 또는 사유가 적힌 `deploy: N/A`가 있을 때만 `done`이 기록된다. (b) 순서는 정확히 `done` 기록 → Issue 종료 → 두 번째 Issue dispatch다. (c) 하네스가 로컬 동기화 기록을 지운 변형 실행에서는 Issue가 `landing`에 남고 종료도 다음 dispatch도 없다
+- Then (a) 로컬 동기화 기록(동기화 전 수정·스테이징·미추적 경로마다 내용 digest·인덱스 항목·파일 모드가 동기화 뒤에도 같음)과 배포 기록 또는 사유가 적힌 `deploy: N/A`가 있을 때만 `done`이 기록된다. (b) 순서는 정확히 `done` 기록 → Issue 종료 → 두 번째 Issue dispatch이며, 두 번째 Issue는 그 뒤 `on-hold`이고 attempt가 시작되지 않았다(§A.1). 격리 사본(§A.1)에서 실제 `done` 전에 도는 변형 세 가지는 모두 Issue가 `landing`에 남고 종료도 다음 dispatch도 없다: (c) 로컬 동기화 기록을 지움, (d) 미커밋 파일 하나의 **내용만** 다른 내용으로 덮어 경로 목록은 같지만 digest가 다름, (e) 배포 기록과 `deploy: N/A`를 둘 다 지움
 - 검증: §A.1 명령, 판정 줄 `--- PASS: TestScenarioSuite/07_RemoteConfirmed_CloseThenNextDispatch `
-- RED 이유: 원격 반영만으로 `done`을 기록하거나 종료 전에 다음 dispatch를 한다
+- RED 이유: 원격 반영만으로 `done`을 기록하거나, 경로 목록만 보아 (d)를 통과시키거나, 종료 전에 다음 dispatch를 한다
 - 초록 경로: M4 완료 뒤
 
 ### 상태·원장
@@ -185,9 +203,9 @@ golden 파일 자체는 M6 첫 커밋에서 따로 만든다(design.md §9.6, VC
 ### 정책
 
 #### AC-AF-013 — Codex 미설정 시 호출 0건 (maps REQ-AF-013)
-- Given `workflow.agentic_factory.codex.enabled`가 없다 / `false`다
-- When 전체 사이클(claim → done)을 돈다
-- Then Codex 호출 계수기가 두 경우 모두 0이다. `true`일 때는 계수기가 1 이상이어서 계수기 자체가 작동함을 보인다
+- Given `workflow.agentic_factory.codex.enabled`가 없다 / `false`다. 리뷰는 공급자 중립 경로(design §11.1)로 채운다
+- When 주입 시험 환경에서 전체 사이클(claim → done)을 돈다
+- Then 두 경우 모두 사이클이 `done`에 닿고 Codex 호출 계수기가 0이다. `true`일 때는 Codex 리뷰 경로가 쓰여 계수기가 1 이상이어서 계수기 자체가 작동함을 보인다. 리뷰 증거가 공급자 중립 경로에도 Codex에도 없으면 병합이 `blocked(not-configured)`로 끝난다
 - 검증: `go test ./internal/agenticfactory/policy/ -run '^TestPolicy_CodexUnset_ZeroCalls$' -count=1 -v`
 - RED 이유: 관문이 없어 계수기 연결이 없거나 미설정에서도 호출된다
 - 초록 경로: M5
@@ -234,10 +252,12 @@ golden 파일 자체는 M6 첫 커밋에서 따로 만든다(design.md §9.6, VC
   - 증거 제거: 코드 리뷰 / 보안 리뷰 / 독립 감사 / QA 판정 / writer 인계 / coordinator 인계 각각 하나만 없앤 여섯 사례
   - 검사 결과: 필수 검사가 `skipped` / 누락 / 실패 / 취소인 네 사례
   - 판정 품질: 감사가 `PASS-WITH-DEBT`인 사례, 증거 하나의 판정 HEAD SHA가 후보 HEAD와 다른(stale) 사례
+  - 판정값: 코드 리뷰 / 보안 리뷰 / 독립 감사 / QA 각각의 판정값이 `FAIL`, `BLOCKED`, 읽을 수 없는 값인 열두 사례(증거는 있고 허용된 생산자가 등록함)
+  - 생산자: (i) writer attempt의 Worker 세션이 같은 HEAD로 코드 리뷰·보안 리뷰·감사 PASS·QA PASS·coordinator 인계를 모두 등록한 완전한 묶음, (ii) 나머지는 정상이고 감사 PASS만 Worker 세션이 등록, (iii) 나머지는 정상이고 coordinator 인계만 Worker 세션이 등록, (iv) 증거 파일 안에 생산자 역할을 "auditor"라고 스스로 적었지만 등록한 세션은 Worker인 감사 증거
 - When 병합 게이트가 판정한다
-- Then 완전한 묶음만 통과하고, 나머지 열두 사례는 모두 `blocked`이며 각 사례의 `block_reason`이 기록된다. 증거 기록 전후로 코드 후보 HEAD가 같다
+- Then 완전한 묶음(허용된 생산자가 모두 `PASS`로 등록)만 통과하고, 나머지 스물여덟 사례는 모두 `blocked`이며 각 사례의 `block_reason`(`check-not-passed`, `debt-present`, `verdict-not-pass`, `producer-not-allowed` 등)이 기록된다. 증거 기록 전후로 코드 후보 HEAD가 같다
 - 검증: `go test ./internal/agenticfactory/gate/ -run '^TestGate_NonPassResultsBlocked_EvidenceOutsideCodeHead$' -count=1 -v`
-- RED 이유: 게이트가 없거나 일부 증거만 확인해 빠진 사례가 통과한다
+- RED 이유: 게이트가 없거나, 증거의 존재만 보고 판정값을 보지 않거나, SHA만 보고 생산자를 보지 않아 해당 사례가 통과한다
 - 초록 경로: M4
 
 #### AC-AF-019 — 보호 설정 불변 (maps REQ-AF-019) — regression-guard
@@ -251,9 +271,13 @@ golden 파일 자체는 M6 첫 커밋에서 따로 만든다(design.md §9.6, VC
 #### AC-AF-020 — Codex 기본값 전환 순서의 운영 기록 (maps REQ-AF-022)
 - Given design.md §9.7의 `progress.md` `## §J Codex Migration Stage Record` 절
 - When run 단계가 plan.md §F.3의 단계를 실행하며 행을 적은 뒤 기록을 검사한다
-- Then 다음 명령 출력에 `| CX-1 |`, `| CX-2 |`, `| CX-3 |` 행이 이 순서(줄 번호 오름차순)로 하나씩 있고, CX-2 행에 AC-AF-013 PASS 증거 경로와 HEAD SHA가 있다. CX-2보다 앞에 기본값 변경 행이 없다
-- 검증: `grep -n '^| CX-' .moai/specs/SPEC-AGENTIC-FACTORY-001/progress.md`
-- RED 이유: 지금 progress.md에 §J 절이 없어 출력이 비고 종료 코드가 1이다(run 단계에서 기록)
+- Then (기록) 첫 명령 출력에 `| CX-1 |`, `| CX-2 |`, `| CX-3 |` 행이 하나씩 있고, 행마다 서로 다른 전체 `stage_sha`가 있으며, CX-2 행에 AC-AF-013 PASS 증거 경로와 판정 HEAD가 있다. (순서 — 커밋 그래프가 증인, VCI §2.3) CX-1 → CX-2, CX-2 → CX-3가 각각 엄격한 조상 관계이고(두 `merge-base` 명령 exit 0, 그리고 두 SHA가 다름), §J의 `run_base_sha`부터 CX-2 커밋까지 Codex 기본값 키를 바꾼 커밋이 없다(`git log` 출력이 비어 있음). 줄 순서만 맞고 커밋 그래프가 어긋나면 FAIL이다
+- 검증(네 명령 각각, `<…>`는 §J에 적힌 값):
+  - `grep -n '^| CX-' .moai/specs/SPEC-AGENTIC-FACTORY-001/progress.md`
+  - `git merge-base --is-ancestor <CX-1 stage_sha> <CX-2 stage_sha>`
+  - `git merge-base --is-ancestor <CX-2 stage_sha> <CX-3 stage_sha>`
+  - `git log --format=%H -G 'review_gate|allow_write|ReviewGate|AllowWrite|model: codex|codex: required' <run_base_sha>..<CX-2 stage_sha> -- .moai/config/sections/workflow.yaml internal/config/defaults.go internal/template/templates/.moai/config/sections/workflow.yaml`
+- RED 이유: 지금 progress.md에 §J 절이 없어 첫 명령 출력이 비고 종료 코드가 1이다(run 단계에서 기록). 변형: 기본값을 먼저 바꾼 커밋 뒤에 CX 행을 순서대로 적으면 넷째 명령 출력이 비지 않아 FAIL이다
 - 초록 경로: M5 이후 §F.3 3단계 제안까지
 
 ### 세션 구조·명령·호환 (명칭 미확정)
@@ -267,9 +291,9 @@ golden 파일 자체는 M6 첫 커밋에서 따로 만든다(design.md §9.6, VC
 - 초록 경로: M1
 
 #### AC-AF-022 — 관찰 모니터 표시·무변경과 종료 코드 (maps REQ-AF-005, REQ-AF-024)
-- Given design.md §8의 명령 표, §8.1의 표시 항목, 프로젝트 하나·Issue 둘·owner 둘의 주입 상태
+- Given design.md §8의 명령 표, §8.1의 표시 항목, 프로젝트 둘(각각 Issue 둘·owner 둘)의 주입 상태
 - When 관찰 명령을 실행하고, 각 거절 상황을 일부러 만든다
-- Then (a) 출력에 Issue·owner마다 §8.1 여덟 항목이 있고 항목마다 원천과 읽은 시각이 표시된다. (b) 관찰 명령 전후 상태 키(저장소 순번 + 트리 키)가 같다. (c) 관찰 경로에 쓰기 호출이 0건이다. (d) 거절 상황마다 §8의 종료 코드가 나온다
+- Then (a) 출력이 프로젝트별로 묶이고, 프로젝트·Issue·owner마다 §8.1 여덟 항목이 있으며 항목마다 원천과 읽은 시각이 표시된다. 한 프로젝트의 항목이 다른 프로젝트 묶음에 섞이지 않는다. (b) 관찰 명령 전후 상태 키(저장소 순번 + 트리 키)가 같다. (c) 관찰 경로에 쓰기 호출이 0건이다. (d) 거절 상황마다 §8의 종료 코드가 나온다
 - 검증: `go test ./internal/agenticfactory/state/ -run '^TestCLI_ObserveIsReadOnly_ExitCodesMatchContract$' -count=1 -v`
 - RED 이유: 모니터가 없거나 항목이 빠지거나 실행이 저장소 순번을 바꾼다
 - 초록 경로: M6
@@ -309,7 +333,10 @@ golden 파일 자체는 M6 첫 커밋에서 따로 만든다(design.md §9.6, VC
 
 - AC-AF-013은 미설정 0건만 단언하면 "계수기가 아무것도 세지 않는" 변형이 통과한다. 그래서 `true`일 때 1 이상을 함께 단언한다.
 - AC-AF-008은 거절만 단언하면 "모두 거절" 변형이 통과한다. 그래서 표에 있는 간선의 허용도 함께 단언한다.
-- AC-AF-018은 증거를 하나만 빼면 "그 증거만 확인하는" 변형이 통과한다. 그래서 여섯 증거를 각각 따로 뺀다. "모두 막는" 변형은 완전한 묶음의 통과 단언이 잡는다.
+- AC-AF-018은 증거를 하나만 빼면 "그 증거만 확인하는" 변형이 통과한다. 그래서 여섯 증거를 각각 따로 뺀다. "있기만 하면 통과" 변형은 판정값 열두 사례가, "SHA만 보는" 변형은 생산자 네 사례가 잡는다. "모두 막는" 변형은 완전한 묶음의 통과 단언이 잡는다.
+- AC-AF-003은 `completed`만 보면 "전송 성공으로 `received`·`executed`를 세우는" 변형이 통과한다. 그래서 증거 다섯 가지 각각이 세울 수 있는 상태와 없는 상태를 모두 단언한다.
+- AC-AF-007은 경로 목록만 보는 변형을 (d)가, 배포 증거를 보지 않는 변형을 (e)가 잡는다.
+- AC-AF-020은 줄 순서만 보는 변형을 커밋 그래프 명령 셋이 잡는다.
 - AC-AF-010은 PID만 보는 변형이 (a)·(e)를 맞히고 (d)를 틀린다. "모두 indeterminate" 변형은 (d)·(e)의 인계 단언이 잡는다.
 - AC-AF-007은 순서만 보면 "로컬 동기화 없이 done" 변형이 통과한다. 그래서 동기화 기록을 지운 변형 실행 (c)를 둔다.
 - AC-AF-016은 저장만 보면 "미선택에서 chrome 저장" 변형이 통과한다. 그래서 (f)를 둔다.
@@ -319,6 +346,7 @@ golden 파일 자체는 M6 첫 커밋에서 따로 만든다(design.md §9.6, VC
 ## §E 완료 정의
 
 - AC-AF-019를 뺀 24개 기준 모두 이름 붙은 시험의 `EXPECTED_RED` 기록 → `PASS` 기록이 같은 HEAD 계열에서 있다. AC-AF-019는 시나리오 묶음 전후 불변 확인 기록이 있다.
-- 시나리오 일곱 개는 같은 실제 Issue 하나에서 `TestScenarioSuite` 한 번의 실행으로 측정됐다(07은 두 번째 Issue를 함께 씀).
+- 시나리오 일곱 개는 같은 실제 Issue 하나에서 `TestScenarioSuite` 한 번의 실행으로 측정됐다(07은 두 번째 Issue를 함께 씀). 실패한 실행 뒤의 재실행은 §A.1 재실행 규칙을 따랐다.
+- **이 완료 정의를 채워도 Issue #1948 Phase 1의 "3선택 UI … 테스트" 중 사람이 보는 설정 화면 시험은 끝나지 않는다.** 그 항목은 OQ-18의 후속 작업(선행 조건: PR #1937·#1944 착지)이 끝나야 닫힌다(spec.md §A.3, §I).
 - 독립 감사 무부채 PASS가 있다.
 - 설계 입력 다섯 건은 열린 상태로 남고, 각 Issue에 대체 동작과 시험 이름이 연결돼 있다(처분은 별도).

@@ -57,6 +57,8 @@ GitHub Issue (사람 소유 필드의 권위 + 효과 상태의 거울 댓글 1�
 | `budget-exhausted` | 감사 라운드 상한 소진 | 라운드 기록과 상한 값 | 운영자가 새 라운드를 승인하거나 범위를 나눔 |
 | `check-not-passed` | 필수 검사가 skipped·누락·실패·취소·stale | 검사 이름, 결과, 그 결과가 가리킨 HEAD | 최신 HEAD에서 다시 실행해 성공 |
 | `debt-present` | 감사 판정이 `PASS-WITH-DEBT` | 판정 파일 경로와 HEAD | 부채를 해소한 무부채 PASS |
+| `verdict-not-pass` | 리뷰·감사·QA 증거의 판정값이 `FAIL`, `BLOCKED`, 또는 읽을 수 없음 | 증거 경로, 판정 HEAD, 판정값 원문 | 같은 HEAD의 새 판정이 `PASS` |
+| `producer-not-allowed` | 증거의 생산자가 그 증거에 필요한 역할이 아니거나, 리뷰·감사·QA 증거를 writer attempt의 세션이 만들었다 | 증거 경로와 ControlService가 등록 때 관측한 생산자 결속(역할·세션·attempt·epoch) | 허용된 생산자가 같은 HEAD로 새 증거를 등록 |
 | `ownership-unverified` | 소유권 확인 실패 또는 불가 | 실패한 확인 단계(claim 없음, holder 불일치, 저장소 읽기 실패) | 소유권 확인 성공 |
 | `store-unavailable` | 로컬 claim 저장소가 없거나 읽을 수 없다 | 읽기 오류 원문 | 저장소 복구. 거울에서 재구성하지 않음 |
 | `user-control` | 사용자가 제어권을 가져갔다(예: egolite `task.handOff()`, `EGO_TASK_SPACE_NAME_IN_USE`) | 도구가 낸 해당 표식 | 사용자가 제어권을 돌려줌 |
@@ -78,7 +80,7 @@ GitHub Issue (사람 소유 필드의 권위 + 효과 상태의 거울 댓글 1�
 | `verifying` | `implementing` | 같은 HEAD 검증 중 하나라도 FAIL → 수리 attempt 계속 | ControlService |
 | `verifying` | `ready` | §11의 병합 수용 조건 전부 + writer 인계 + coordinator 인계 | ControlService |
 | `ready` | `landing` | 병합 요청 직전 HEAD 재확인, 증거가 같은 HEAD를 가리킴 | ControlService |
-| `landing` | `done` | 원격 `main`에 병합 반영 확인(GitHub 직접 조회) + 로컬 동기화 기록(동기화 전후 dirty 경로 목록, 앞 목록이 뒤 목록에 모두 남음) + 배포 기록 또는 사유가 적힌 `deploy: N/A`(REQ-AF-002) | ControlService |
+| `landing` | `done` | 원격 `main`에 병합 반영 확인(GitHub 직접 조회) + 로컬 동기화 기록(동기화 전 수정·스테이징·미추적 경로마다 작업 트리 내용 digest·인덱스 항목·파일 모드가 동기화 뒤에도 같음, §4 `local_sync`) + 배포 기록 또는 사유가 적힌 `deploy: N/A`(REQ-AF-002) | ControlService |
 | `landing` | `landing` | 병합 결과 미상 → 원격 재조회(재병합 없음) | ControlService |
 | 진행 상태 아무거나 | `blocked` | 차단 사유 + 정상 재개 조건 기록 | ControlService |
 | 진행 상태 아무거나 | `on-hold` | 보류 사유 + 재개 조건, 요청자 기록 | ControlService (운영자·coordinator 요청) |
@@ -116,13 +118,13 @@ ACK가 오지 않으면 다시 보내지 않고 먼저 받는 쪽 상태를 조�
 | `run_id` / `attempt_id` | 문자열 | 원장 댓글 | ControlService |
 | `head_sha` | 40자 16진수 | 원장 댓글 | ControlService (worker 보고를 확인한 뒤) |
 | `check_links` | 목록(URL) | 원장 댓글 | ControlService (GitHub 조회 결과) |
-| `review_evidence` / `audit_evidence` / `qa_evidence` | 목록(증거 경로 + 판정 HEAD SHA + 판정) | 원장 댓글 | ControlService (증거 저장소에서 읽은 값) |
-| `handoff_writer` / `handoff_coordinator` | 증거 경로 + HEAD SHA | 원장 댓글 | ControlService (각 인계자가 남긴 파일을 읽은 값) |
+| `review_evidence` / `audit_evidence` / `qa_evidence` | 목록(증거 경로 + 판정 HEAD SHA + 판정값 + 생산자 결속{역할, 세션, attempt, epoch}) | 원장 댓글 | ControlService (증거 저장소에서 읽은 값. 생산자 결속은 등록 때 ControlService가 관측한 값, §11) |
+| `handoff_writer` / `handoff_coordinator` | 증거 경로 + HEAD SHA + 생산자 결속 | 원장 댓글 | ControlService (각 인계자가 등록한 파일을 읽은 값. writer 인계는 Worker, coordinator 인계는 Coordinator만, §11) |
 | `next_action` | 문자열 | 원장 댓글 | ControlService (coordinator 제안을 받아 기록) |
 | `block_reason` / `resume_condition` | 문자열 | 원장 댓글 | ControlService |
 | `store_seq` | 정수(단조 증가) | 원장 댓글 | ControlService |
 | `mirror_state` | 열거 `current` \| `stale` \| `blocked(<block_reason>)` | 로컬 claim 저장소(거울 쓰기 결과 기록) | ControlService. 거울 쓰기가 401·403·429로 실패하면 `blocked(<사유>)`. Issue `state`와 별개(§2.1a 단일 규칙) |
-| `local_sync` | 동기화한 원격 SHA + 전후 dirty 경로 목록 | 원장 댓글 | ControlService(REQ-AF-002 (b)) |
+| `local_sync` | 동기화한 원격 SHA + 동기화 전 수정·스테이징·미추적 경로마다 `{path, before: {content_sha256, index_entry, mode}, after: {content_sha256, index_entry, mode}}`. 경로 목록만으로는 판정하지 않음(같은 경로가 다른 내용으로 덮여도 목록은 같기 때문) | 로컬 claim 저장소(원장 댓글에는 경로 수와 전체 digest만) | ControlService(REQ-AF-002 (b)). 경로 하나라도 before ≠ after면 `done` 금지 |
 | `deploy` | 배포 기록 경로 + HEAD SHA, 또는 `N/A` + 사유 | 원장 댓글 | ControlService(REQ-AF-002 (c)) |
 | `last_checked_at` | RFC 3339 UTC | 원장 댓글 | ControlService |
 
@@ -229,7 +231,8 @@ lane-21 보고서가 남긴 확인 공백(그대로 옮김): ① ego-lite `refer
 |---|---|---|---|---|
 | `ControlService` | claim, lease·활성 확인, 배정 epoch, 조정(reconcile), 재개 판단을 규칙대로 결정. 판단에 LLM을 쓰지 않음. 활성 확인은 `homestate.ClassifyOwnerWith` 정본(spec.md §F.2)으로 하고, claim 때 pid와 프로세스 시작 시각을 함께 기록 | claim 저장소, Issue 원장 댓글, 전이 | 코드, SPEC 본문, 사람 소유 필드 | `start`로 떠서 정상 정지까지 상주. 재시작하면 저장소에서 상태를 이어받음 |
 | `Coordinator` | 우선순위 판단, 다음 행동 제안, 운영자 대화 | 자기 판단 기록(제안·인계 파일) | claim·lease·attempt·epoch·전이를 직접 쓰기 | 운영자가 띄운 세션 수명. 끊겨도 실행은 계속 |
-| `Worker` | attempt 하나의 구현·시험·인계 | 자기 attempt의 작업 트리와 증거 파일(자기 epoch로만) | 다른 attempt, claim 저장소, 원장 댓글 | attempt 하나 동안. 끊기면 attempt는 `lapsed` 후보 |
+| `Worker` | attempt 하나의 구현·시험·인계 | 자기 attempt의 작업 트리, 시험 출력, **writer 인계** 증거(자기 epoch로만) | 다른 attempt, claim 저장소, 원장 댓글, 그리고 **코드 리뷰·보안 리뷰·독립 감사·QA 판정·coordinator 인계 증거**(§11 생산자 결속. Worker가 같은 SHA로 만들어도 게이트가 `producer-not-allowed`로 막음) | attempt 하나 동안. 끊기면 attempt는 `lapsed` 후보 |
+| 리뷰·감사·QA 세션 | 같은 HEAD의 코드 리뷰·보안 리뷰(§11.1), 독립 감사, 공식 QA 스킬 실행 | 자기 판정 증거 | 코드, claim 저장소, 다른 역할의 증거 | 판정 하나 동안. writer attempt의 세션이 아니어야 함 |
 | `slot` | Worker가 차지하는 용량 단위 | (주체가 아님) | — | ControlService가 설정값 `slots`만큼 둔다 |
 
 ### 7.3 run과 attempt — 두 정의, 결정 보류
@@ -374,13 +377,15 @@ lane-21 보고서가 남긴 확인 공백(그대로 옮김): ① ego-lite `refer
 
 ### 9.7 Codex 기본값 전환 단계 기록 (AC-AF-020의 운영 기록)
 
-run 단계는 `progress.md`에 `## §J Codex Migration Stage Record` 절을 만들고, plan.md §F.3의 세 단계를 실행할 때마다 한 행씩 적는다. 행은 `| CX-<n> |`로 시작하며 순서가 정해져 있다.
+run 단계는 `progress.md`에 `## §J Codex Migration Stage Record` 절을 만들고, 절 첫 줄에 `run_base_sha: <run 단계 브랜치가 갈라져 나온 main 커밋의 전체 SHA>`를 적은 뒤, plan.md §F.3의 세 단계를 실행할 때마다 한 행씩 적는다. 행은 **백틱 없이** `| CX-1 | <stage_sha> | <evidence> |` 모양으로 적는다(AC-AF-020의 `grep -n '^| CX-'`가 걸리도록).
 
-| 행 | 단계 | 필수 증거 |
-|---|---|---|
-| `CX-1` | 관문 도입 | 관문을 넣은 커밋 SHA |
-| `CX-2` | 미설정 0건 검증 | AC-AF-013 PASS 출력이 있는 증거 경로와 HEAD SHA |
-| `CX-3` | 기본값 변경 제안 | 제안 문서 또는 작업 경로. CX-2 행보다 뒤여야 함 |
+| 행 | 단계 | `stage_sha`(필수) | 필수 증거 |
+|---|---|---|---|
+| CX-1 | 관문 도입 | 관문을 넣은 커밋의 전체 SHA | — |
+| CX-2 | 미설정 0건 검증 | AC-AF-013 PASS를 기록한 커밋의 전체 SHA | AC-AF-013 PASS 출력이 있는 증거 경로와 판정 HEAD |
+| CX-3 | 기본값 변경 제안 | 제안을 담은 커밋의 전체 SHA | 제안 문서 경로 |
+
+**순서는 줄 순서가 아니라 커밋 그래프로 증명한다(VCI §2.3)**: 세 단계는 각각 **별도 커밋**이며, CX-1의 커밋은 CX-2 커밋의 엄격한 조상, CX-2의 커밋은 CX-3 커밋의 엄격한 조상이어야 한다. 또 CX-2 커밋 이전(그 커밋 포함)에 Codex 기본값 파일(`.moai/config/sections/workflow.yaml`, `internal/config/defaults.go`, `internal/template/templates/.moai/config/sections/workflow.yaml`)의 Codex 키를 바꾼 커밋이 이 SPEC 브랜치에 없어야 한다. 표의 행 기록 자체는 단계 커밋과 같은 커밋이 아니어도 된다 — 판정은 행에 적힌 `stage_sha`로 한다.
 
 이 절은 `§E.*` 이름 공간을 쓰지 않는다(era 분류 충돌 방지). 기존 Codex 기능의 제거는 이 세 행 뒤의 별도 작업이며 이 표에 넣지 않는다.
 
@@ -404,7 +409,7 @@ run 단계는 `progress.md`에 `## §J Codex Migration Stage Record` 절을 만�
 | `internal/config`, `internal/settings`, `.moai/config/**`, 템플릿 설정 | 설정 담당 레인 1개 (현재 배정 없음 — t1984·lane-14/16 ACK 뒤) | PR #1937·#1944와 충돌 |
 | `internal/cli/launcher.go`, `internal/cli/cc.go` | launcher 담당 레인 1개 | PR #1916·#1921과 충돌 |
 | `internal/cli/factory_card.go`, `internal/factory/slot_lease.go`, `internal/homestate/factory_lease.go` | factory 담당 레인 1개 | PR #1943과 충돌, 첫 writer 범위 밖 |
-| 명령 계층(`internal/cli`의 새 `factory` 하위 명령) | `state` 범위 레인 | S1 단계에서만 |
+| 명령 계층(`internal/cli`의 새 `factory` 하위 명령) | `state` 범위 레인 | S1 단계에서만. 명령의 판단(후보 선택, 관찰 전용 보장, 종료 코드 결정)은 `state` 범위에 두고 `internal/cli`는 인자를 넘기고 종료 코드를 그대로 돌려주는 얇은 연결만 갖는다. 그래서 AC-AF-022·023 시험이 `internal/agenticfactory/state/`에 있다 |
 
 ## §11 병합·완료 수용 규칙과 증거 저장 분리 (REQ-AF-018 ~ REQ-AF-021)
 
@@ -416,14 +421,38 @@ run 단계는 `progress.md`에 `## §J Codex Migration Stage Record` 절을 만�
 4. 같은 HEAD의 공식 QA 스킬 판정 PASS(spec.md §F.5).
 5. writer 인계와 coordinator 인계가 모두 있음.
 
-통과로 세지 않는 것: `skipped`, 누락, 실패, 취소, stale(다른 HEAD), `PASS-WITH-DEBT`, 감사 예산 소진. 모두 `blocked`로 기록한다.
+통과로 세지 않는 것: `skipped`, 누락, 실패, 취소, stale(다른 HEAD), 판정값 `FAIL`·`BLOCKED`·읽을 수 없음, `PASS-WITH-DEBT`, 허용되지 않은 생산자의 증거, 감사 예산 소진. 모두 `blocked`로 기록한다.
+
+증거 생산자 결속(REQ-AF-018·020):
+
+- 증거는 생산자가 ControlService의 등록 명령으로 올린다. ControlService는 **호출한 세션**의 등록 정보(역할, 세션 식별자, attempt, epoch)를 자기가 관측한 값으로 증거 항목에 붙인다. 증거 파일 안에 생산자가 스스로 적은 역할·세션 값은 판정에 쓰지 않는다.
+- 역할별 허용 생산자:
+
+| 증거 | 허용 생산자 | 추가 조건 |
+|---|---|---|
+| 코드 리뷰·보안 리뷰 | 리뷰 세션(§11.1 (a)) 또는 운영자(§11.1 (b)), Codex 명시 설정 시 Codex 리뷰 | writer attempt의 세션이 아님. GLM 아님 |
+| 독립 감사 | 감사 세션 | writer attempt의 세션이 아님 |
+| QA 판정 | QA 세션(공식 QA 스킬 실행) | writer attempt의 세션이 아님 |
+| writer 인계 | 그 attempt의 Worker | 현재 epoch |
+| coordinator 인계 | Coordinator 세션 | Worker 세션이 아님 |
+
+- 결속이 표와 맞지 않으면 그 증거는 없는 것으로 보고 `blocked(producer-not-allowed)`로 기록한다.
+
+### 11.1 공급자 중립 리뷰 경로 (결정 D2 개정, M4)
+
+Codex가 명시 설정되지 않은 프로젝트에서 "같은 HEAD 코드·보안 리뷰"는 아래 둘 중 하나로 채운다. 어느 쪽도 Codex를 부르지 않는다.
+
+- (a) **리뷰 세션**: ControlService에 리뷰 역할로 등록된 세션이, writer attempt의 세션과 다르고 GLM도 Codex도 아닌 공급자로 후보 HEAD를 리뷰해 판정(`PASS` / `FAIL` / `BLOCKED`)을 등록한다. 어떤 공급자·모델을 쓸지는 운영자 설정이다(명령 이름 미확정).
+- (b) **운영자 기록 리뷰**: 운영자가 ControlService의 운영자 증거 경로로 같은 HEAD의 리뷰 판정을 기록한다. 이 경로는 #1924 대체 동작(운영자 결정 권한은 운영자 증거로만)과 같은 증거 원천을 쓴다.
+
+둘 다 없으면 병합은 `blocked(not-configured)`다. Codex가 명시 설정된 프로젝트는 Codex 리뷰도 (a)와 같은 결속 조건으로 쓸 수 있다.
 
 증거 저장 분리:
 
 - 코드 후보는 card/Issue 브랜치의 커밋이다.
 - 판정 증거(감사·리뷰·QA·인계)는 코드 후보 브랜치 밖에 둔다(spec.md 결정 D4). 제안 위치는 Issue별 증거 전용 ref(`refs/agentic-factory/evidence/<issue>`)이며 파일 배치는 현행 관례(`.moai/reports/<id>/`)를 따른다. 원장 댓글에는 증거 경로·판정 HEAD SHA·내용 digest만 비춘다. 이 ref를 원격에 올리는 것은 외부 공유 동작이라 운영자 확인 대상이다(OQ-14).
 - 현행 사례: 판정 파일이 PR 브랜치 안에 커밋되고, 새 HEAD에 다시 묶는 PR이 실제로 있다(lane-22 G7: #1939 "re-pin the card t1988 verdict to the absorbed head" — PR 제목만 근거).
-- 증거 항목마다 판정한 HEAD 전체 SHA를 적는다. 병합 게이트는 읽기 직전에 후보 HEAD와 대조하며, 다르면 stale로 본다. 증거를 따로 두는 것이 검증 강도를 낮추지 않는다는 뜻이 이것이다.
+- 증거 항목마다 판정한 HEAD 전체 SHA와 생산자 결속을 적는다. 병합 게이트는 읽기 직전에 후보 HEAD와 대조하며, 다르면 stale로 본다. 증거를 따로 두는 것이 검증 강도를 낮추지 않는다는 뜻이 이것이다.
 - 이렇게 하면 감사 결과를 기록하느라 코드 HEAD가 바뀌고, 바뀐 HEAD를 다시 감사해야 하는 순환이 생기지 않는다.
 
 병합 결과 미상: 재병합하지 않고 원격 상태(PR 상태, `main`의 커밋 포함 여부)를 먼저 조회한다. 원격 반영이 확인되면 `done` → Issue 종료 → 다음 dispatch 순서로만 진행한다.

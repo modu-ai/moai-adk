@@ -88,6 +88,15 @@
 | `--leader`는 `-l` 필요: `if !p.LaneRole { return p, errors.New(leaderNeedsLaneEntry) }` | `internal/cli/factory.go:284-286` |
 | `approve` 명령 `Use: "approve <card-id> --run <run-id>"` | `internal/cli/leader_approval_gate.go:286` |
 
+## R10 `cc -l` 리더 검증 위치 (0.3.0, 트리 `c14feec16d`)
+
+| 사실 | 근거 |
+|---|---|
+| `probeIdentity = homestate.ProbeProcessIdentity` | `internal/discovery/factory_discovery.go:82` |
+| `verifyCandidate`는 `probeIdentity(pid)` 결과가 `ProcessIdentityLive`이고 시작 시각이 비어 있지 않을 때만 리더로 받아들인다. 기록된 시작 시각과 비교하지 않는다 | `internal/discovery/factory_discovery.go:147-154` |
+| 패키지 주석은 이를 "the ClassifyOwnerWith predicate family"라 부르지만 `ClassifyOwnerWith`를 부르지는 않는다 | `internal/discovery/factory_discovery.go:10`, `:149` |
+| `ClassifyOwnerWith`의 다른 운영 호출처 | `internal/factorymsg/factory_run_retire.go:99`(iteration-2 감사자 측정을 옮김. 이 세션은 다시 실행하지 않음) |
+
 ## R8 판단에 쓴 해석
 
 - claim을 slot lease와 분리한 결정(spec.md §F.1)은 R4의 REQ-RSL-006 설계 근거("잘못된 비어 있음의 비용은 실행 두 개 겹침뿐")가 writer 중복에는 맞지 않는다는 해석에 기댄다. 이 해석은 코드 주석을 읽은 결과이고, 실제 중복 writer 사고를 재현한 것은 아니다.
