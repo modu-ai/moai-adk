@@ -339,3 +339,30 @@ func TestAgentIdentitySurvivesHandoffAndRepair(t *testing.T) {
 		t.Errorf("identities: %+v", cur)
 	}
 }
+
+// After a handoff the agent no longer holds a claim, so its number can be
+// returned and reused, yet the open PR stays attributed to the old session.
+func TestReceiptStaysAttributedAfterNumberReuse(t *testing.T) {
+	r, ref := newRunner(t)
+	a1, _ := r.Store.RegisterAgent("aaaaaaaa-0000-0000-0000-000000000001")
+	tk, _ := r.ClaimAs(ref, a1, "disp-1", "run-1")
+	_, _ = r.StartAttempt(tk, "attempt-1", core.DeliveryExecuted)
+	_, _ = r.Submit(tk, headA, false)
+	_, _ = r.Verify(tk, passAll(headA))
+	_, _ = r.Land(tk, headA)
+	rec, err := r.HandOff(tk, goodHandoff())
+	if err != nil || rec.Receipt.Session != a1.SessionID {
+		t.Fatalf("receipt session: %+v %v", rec, err)
+	}
+	if err := r.Store.ReleaseAgent(a1.SessionID, a1.Number); err != nil {
+		t.Fatalf("release after handoff: %v", err)
+	}
+	a2, _ := r.Store.RegisterAgent("bbbbbbbb-0000-0000-0000-000000000002")
+	if a2.Number != a1.Number {
+		t.Fatalf("number not reused: %+v", a2)
+	}
+	cur, _ := r.Store.Read(ref)
+	if cur.Receipt.Agent != "agent-1" || cur.Receipt.Session != a1.SessionID || cur.Receipt.Session == a2.SessionID {
+		t.Errorf("attribution after reuse: %+v", cur.Receipt)
+	}
+}

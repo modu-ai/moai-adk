@@ -324,7 +324,7 @@ func (r *Runner) HandOff(t Ticket, h Handoff) (claim.Record, error) {
 		}
 		rec.Receipt = &claim.Receipt{
 			PR: h.PR, Head: head, Branch: h.Branch, Worktree: h.Worktree,
-			Attempt: rec.Attempt, AttemptSeq: rec.AttemptSeq, Agent: rec.AgentName,
+			Attempt: rec.Attempt, AttemptSeq: rec.AttemptSeq, Agent: rec.AgentName, Session: rec.Holder,
 		}
 		return nil
 	})
