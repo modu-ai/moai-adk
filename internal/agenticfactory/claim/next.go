@@ -232,6 +232,11 @@ func (s *Store) TakeOver(i core.IssueRef, oldHolder string, oldEpoch int64, newH
 		out.Holder, out.AgentName, out.Dispatch, out.Run = newHolder, "", dispatch, run
 		out.Epoch, out.Seq = cur.Epoch+1, cur.Seq+1
 		out.Wait, out.Repair = nil, nil
+		if out.Receipt != nil { // the new holder is the one responsible for the PR now
+			rc := *out.Receipt
+			rc.Session, rc.Agent = newHolder, ""
+			out.Receipt = &rc
+		}
 		out.History = append(append([]Event(nil), cur.History...), Event{Kind: "takeover", Session: newHolder, Note: "from " + oldHolder + ", preserved at " + preserved})
 		return s.write(i, &out)
 	})

@@ -221,7 +221,7 @@ func TestReopenThenSingleRepairClaim(t *testing.T) {
 	r, ref := newRunner(t)
 	tk := landed(t, r, ref)
 	_, _ = handOffAndLeave(r, tk, goodHandoff())
-	if _, err := r.ClaimRepair(ref, "sess-b", "disp-r", "run-2", "WT-agentic-x"); !errors.Is(err, core.ErrTransitionInvalid) {
+	if _, err := r.ClaimRepair(ref, "sess-a", "disp-r", "run-2", "WT-agentic-x"); !errors.Is(err, core.ErrTransitionInvalid) {
 		t.Errorf("repair straight from landing: %v", err)
 	}
 	if _, err := r.Reopen(ref, ""); !errors.Is(err, core.ErrEvidenceIncomplete) {
@@ -231,7 +231,7 @@ func TestReopenThenSingleRepairClaim(t *testing.T) {
 	if err != nil || rec.State != core.StateVerifying || rec.Holder != "" || rec.Receipt == nil {
 		t.Fatalf("reopen: %+v %v", rec, err)
 	}
-	if _, err := r.ClaimRepair(ref, "sess-b", "disp-r", "run-2", "WT-agentic-x"); err != nil {
+	if _, err := r.ClaimRepair(ref, "sess-a", "disp-r", "run-2", "WT-agentic-x"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := r.ClaimRepair(ref, "sess-c", "disp-r2", "run-3", "WT-agentic-x"); !errors.Is(err, core.ErrHeld) {
@@ -256,7 +256,6 @@ func TestReopenRefusedAfterMergeOrWithoutHandoff(t *testing.T) {
 func TestHistoryKeptUnderOneIssueAcrossRepair(t *testing.T) {
 	r, ref := newRunner(t)
 	a1, _ := r.Store.RegisterAgent("aaaaaaaa-0000-0000-0000-000000000001")
-	a2, _ := r.Store.RegisterAgent("aaaaaaaa-0000-0000-0000-000000000002")
 	tk, _ := r.ClaimAs(ref, a1, "disp-1", "run-1")
 	_, _ = r.StartAttempt(tk, "attempt-1", core.DeliveryExecuted)
 	_, _ = r.Submit(tk, headA, false)
@@ -266,7 +265,7 @@ func TestHistoryKeptUnderOneIssueAcrossRepair(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, _ = r.Reopen(ref, "ci failed")
-	rep, err := r.ClaimRepairAs(ref, a2, "disp-r", "run-2", "WT-agentic-x")
+	rep, err := r.ClaimRepairAs(ref, a1, "disp-r", "run-2", "WT-agentic-x")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -296,7 +295,7 @@ func TestHistoryKeptUnderOneIssueAcrossRepair(t *testing.T) {
 			t.Fatalf("history = %v, want %v", kinds, want)
 		}
 	}
-	if recs[0].History[0].Agent != "agent-1" || recs[0].History[3].Agent != "agent-2" {
+	if recs[0].History[0].Agent != "agent-1" || recs[0].History[3].Agent != "agent-1" {
 		t.Errorf("provenance lost: %+v", recs[0].History)
 	}
 	if recs[0].Holder != "" {
@@ -324,10 +323,10 @@ func TestRepairIsSingleOwner(t *testing.T) {
 	}
 	mustReopen(t, r, ref)
 	// Repair on the wrong branch is refused.
-	if _, err := r.ClaimRepair(ref, "sess-b", "disp-r", "run-2", "WT-other"); !errors.Is(err, core.ErrTransitionInvalid) {
+	if _, err := r.ClaimRepair(ref, "sess-a", "disp-r", "run-2", "WT-other"); !errors.Is(err, core.ErrTransitionInvalid) {
 		t.Errorf("wrong branch: %v", err)
 	}
-	rep, err := r.ClaimRepair(ref, "sess-b", "disp-r", "run-2", "WT-agentic-x")
+	rep, err := r.ClaimRepair(ref, "sess-a", "disp-r", "run-2", "WT-agentic-x")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -339,18 +338,18 @@ func TestRepairIsSingleOwner(t *testing.T) {
 		t.Errorf("contended repair: %v", err)
 	}
 	// Same dispatch re-arriving is a duplicate, not a second repair.
-	if _, err := r.ClaimRepair(ref, "sess-b", "disp-r", "run-2", "WT-agentic-x"); !errors.Is(err, core.ErrDuplicateDispatch) {
+	if _, err := r.ClaimRepair(ref, "sess-a", "disp-r", "run-2", "WT-agentic-x"); !errors.Is(err, core.ErrDuplicateDispatch) {
 		t.Errorf("duplicate repair dispatch: %v", err)
 	}
 	cur, _ := r.Store.Load(ref)
-	if cur.Holder != "sess-b" || cur.Receipt == nil || cur.State != core.StateClaimed {
+	if cur.Holder != "sess-a" || cur.Receipt == nil || cur.State != core.StateClaimed {
 		t.Errorf("repair record: %+v", cur)
 	}
 }
 
 func TestRepairRequiresAReceipt(t *testing.T) {
 	r, ref := newRunner(t)
-	if _, err := r.ClaimRepair(ref, "sess-b", "d", "run-1", "WT-x"); !errors.Is(err, core.ErrNotHeld) && !errors.Is(err, core.ErrTransitionInvalid) {
+	if _, err := r.ClaimRepair(ref, "sess-a", "d", "run-1", "WT-x"); !errors.Is(err, core.ErrNotHeld) && !errors.Is(err, core.ErrTransitionInvalid) {
 		t.Errorf("repair with no PR: %v", err)
 	}
 }
@@ -360,7 +359,7 @@ func TestRepairCanRepublishNewHead(t *testing.T) {
 	tk := landed(t, r, ref)
 	_, _ = handOffAndLeave(r, tk, goodHandoff())
 	mustReopen(t, r, ref)
-	rep, _ := r.ClaimRepair(ref, "sess-b", "disp-r", "run-2", "WT-agentic-x")
+	rep, _ := r.ClaimRepair(ref, "sess-a", "disp-r", "run-2", "WT-agentic-x")
 	if _, err := r.StartAttempt(rep, "attempt-2", core.DeliveryExecuted); err != nil {
 		t.Fatal(err)
 	}
@@ -402,7 +401,7 @@ func TestBacklogCapHoldsNewClaimsNotRepairs(t *testing.T) {
 		t.Error("held claim must not leave a record")
 	}
 	mustReopen(t, r, ref)
-	if _, err := r.ClaimRepair(ref, "sess-b", "disp-r", "run-2", "WT-agentic-x"); err != nil {
+	if _, err := r.ClaimRepair(ref, "sess-a", "disp-r", "run-2", "WT-agentic-x"); err != nil {
 		t.Errorf("repair must not be blocked by the cap: %v", err)
 	}
 }
@@ -463,7 +462,7 @@ func TestLeaderRestartRestoresClaims(t *testing.T) {
 	if _, err := r2.Claim(ref2, "sess-b", "disp-9", "run-9"); !errors.Is(err, core.ErrDuplicateDispatch) {
 		t.Errorf("re-sent dispatch after restart: %v", err)
 	}
-	if _, err := r2.ClaimRepair(ref1, "sess-c", "disp-r", "run-3", "WT-agentic-x"); err != nil {
+	if _, err := r2.ClaimRepair(ref1, "sess-a", "disp-r", "run-3", "WT-agentic-x"); err != nil {
 		t.Errorf("repair after restart: %v", err)
 	}
 }
@@ -471,7 +470,6 @@ func TestLeaderRestartRestoresClaims(t *testing.T) {
 func TestAgentIdentitySurvivesHandoffAndRepair(t *testing.T) {
 	r, ref := newRunner(t)
 	a1, _ := r.Store.RegisterAgent("aaaaaaaa-0000-0000-0000-000000000001")
-	a2, _ := r.Store.RegisterAgent("aaaaaaaa-0000-0000-0000-000000000002")
 	tk, err := r.ClaimAs(ref, a1, "disp-1", "run-1")
 	if err != nil {
 		t.Fatal(err)
@@ -489,12 +487,12 @@ func TestAgentIdentitySurvivesHandoffAndRepair(t *testing.T) {
 		t.Fatalf("receipt agent: %+v %v", rec, err)
 	}
 	mustReopen(t, r, ref)
-	rep, err := r.ClaimRepairAs(ref, a2, "disp-r", "run-2", "WT-agentic-x")
+	rep, err := r.ClaimRepairAs(ref, a1, "disp-r", "run-2", "WT-agentic-x")
 	if err != nil {
 		t.Fatal(err)
 	}
 	cur, _ := r.Store.Load(ref)
-	if cur.AgentName != "agent-2" || cur.Receipt.Agent != "agent-1" || rep.Holder != a2.SessionID {
+	if cur.AgentName != "agent-1" || cur.Receipt.Agent != "agent-1" || rep.Holder != a1.SessionID {
 		t.Errorf("identities: %+v", cur)
 	}
 }

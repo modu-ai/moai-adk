@@ -479,6 +479,11 @@ func (s *Store) acquireRepair(i core.IssueRef, holder, name, dispatch string, ru
 			}
 			return fmt.Errorf("%w: %s held by %q", core.ErrHeld, i.Resource(), cur.Holder)
 		}
+		if rc := cur.Receipt; rc != nil && rc.Session != "" && rc.Session != holder {
+			// The PR belongs to the agent that published it. A receipt from before
+			// the session was recorded names nobody and stays open to any holder.
+			return fmt.Errorf("%w: issue-%d belongs to session %s", core.ErrNotResponsibleAgent, i.Number, rc.Session)
+		}
 		if cur.Receipt == nil || cur.State != core.StateVerifying || cur.Receipt.Branch != branch {
 			return fmt.Errorf("%w: no reopened PR on branch %q for %s", core.ErrTransitionInvalid, branch, i.Resource())
 		}
