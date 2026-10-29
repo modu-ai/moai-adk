@@ -21,21 +21,25 @@ var (
 type RepairBinding struct {
 	Issue  core.IssueRef
 	Branch string
-	Holder string
+	// HolderSession is the holder's immutable session ID; it is the only
+	// holder field compared. A display name such as agent-N is not an identity.
+	HolderSession string
+	DisplayName   string // informational only, never compared
 }
 
 // RepairResult is what a repair attempt reports back.
 type RepairResult struct {
-	Issue  core.IssueRef
-	Branch string
-	Holder string
-	Head   core.HeadSHA
+	Issue         core.IssueRef
+	Branch        string
+	HolderSession string
+	DisplayName   string // informational only, never compared
+	Head          core.HeadSHA
 }
 
 // Accept returns nil only for a result from the bound Issue, branch, and
 // holder with a full HEAD. A result from another holder is core.ErrForeign.
 func (b RepairBinding) Accept(r RepairResult) error {
-	if b.Issue.Number <= 0 || b.Branch == "" || b.Holder == "" {
+	if b.Issue.Number <= 0 || b.Branch == "" || b.HolderSession == "" {
 		return ErrRepairBinding
 	}
 	switch {
@@ -43,7 +47,7 @@ func (b RepairBinding) Accept(r RepairResult) error {
 		return fmt.Errorf("%w: got #%d, bound #%d", ErrRepairIssue, r.Issue.Number, b.Issue.Number)
 	case r.Branch != b.Branch:
 		return fmt.Errorf("%w: got %q, bound %q", ErrRepairBranch, r.Branch, b.Branch)
-	case r.Holder != b.Holder:
+	case r.HolderSession != b.HolderSession:
 		return fmt.Errorf("%w: result holder differs from the bound holder", core.ErrForeign)
 	}
 	if _, err := core.ParseHeadSHA(string(r.Head)); err != nil {

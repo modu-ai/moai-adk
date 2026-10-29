@@ -22,7 +22,7 @@ func TestAdmitNeutral(t *testing.T) {
 	}{
 		{"claude reviewer", reviewRec(t, ProviderClaude, "code-reviewer", "s-r", KindCodeReview, VerdictPass), false, ReasonNone},
 		{"operator record", reviewRec(t, ProviderOperator, "operator", "s-op", KindSecurityReview, VerdictPass), false, ReasonNone},
-		{"operator provider without operator role", reviewRec(t, ProviderOperator, "worker", "s-op", KindSecurityReview, VerdictPass), false, ReasonProducer},
+		{"operator provider without operator role", reviewRec(t, ProviderOperator, "agent", "s-op", KindSecurityReview, VerdictPass), false, ReasonProducer},
 		{"glm refused", reviewRec(t, ProviderGLM, "code-reviewer", "s-r", KindCodeReview, VerdictPass), false, ReasonProducer},
 		{"codex refused when not opted in", reviewRec(t, ProviderCodex, "code-reviewer", "s-r", KindCodeReview, VerdictPass), false, ReasonProducer},
 		{"codex allowed when opted in", reviewRec(t, ProviderCodex, "code-reviewer", "s-r", KindCodeReview, VerdictPass), true, ReasonNone},
