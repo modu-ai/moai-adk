@@ -20,6 +20,7 @@ var (
 	ErrBacklogUnset        = errors.New("agenticfactory: open PR backlog limit is not configured, new claim refused")
 	ErrLimitInvalid        = errors.New("agenticfactory: open PR backlog limit must be at least 1")
 	ErrRevisionConflict    = errors.New("agenticfactory: the authoritative copy moved on, write refused")
+	ErrEffectUnknown       = errors.New("agenticfactory: an effect may have happened and must be looked up, not repeated")
 	ErrDeferred            = errors.New("agenticfactory: call budget is short, report write deferred")
 	ErrHistoryRewritten    = errors.New("agenticfactory: the control ref history was rewritten, writes refused")
 	ErrConflict            = errors.New("agenticfactory: the same request key carries a different payload")
