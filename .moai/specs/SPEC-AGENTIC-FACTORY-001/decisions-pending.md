@@ -1,0 +1,33 @@
+# SPEC-AGENTIC-FACTORY-001 — 결정 대기 목록
+
+작성일: 2026-10-30 · SPEC 판: 0.6.7 · 작성: manager-spec
+
+## 이 표를 읽는 법
+
+- 이 문서는 **아무것도 정하지 않는다.** 아직 열려 있으면서 코드 경로 하나 이상을 막고 있는 OD·OQ를 한 표에 모아, 한 번에 판단할 수 있게 한 것이다.
+- 각 행의 내용은 아래 "출처" 칸에 적힌 SPEC 행에서 옮겼다. 정본은 그 SPEC 행이며, 이 문서와 SPEC이 어긋나면 SPEC이 이긴다.
+- "현재 코드 동작" 칸에는 이 SPEC(또는 리더 지시문)에 이미 적힌 커밋과 사실만 쓴다. 이 문서 작성자는 그 코드를 다시 읽지 않았다. 모든 코드 사실의 출처는 '리더 세션 경유 전달(relayed via the leader session)'이거나 해당 SPEC 행이다. SPEC에 코드 사실이 없으면 "코드 근거 없음(SPEC에 기록 없음)"이라고 쓴다.
+- 선택지는 중립으로 적었다. 권장 표시나 선호 순서는 없다. 선택지 나열 순서에는 뜻이 없다. SPEC이 선택지를 이름 붙이지 않은 행은 "선택지는 SPEC에 있는 것만"이라고 표시하고, SPEC에 있는 문언만 적었다.
+- "되돌릴 수 있는지"는 yes / partly / no와 한 줄 이유다. 이것은 결정을 바꿀 때의 비용을 적은 것이며 선택지의 좋고 나쁨이 아니다.
+
+## 결정 대기 표
+
+| ID | 결정 대상 | 현재 코드 동작 (근거) | 막고 있는 기능 | 선택지와 각 결과 | 되돌릴 수 있는지 | 출처 |
+|---|---|---|---|---|---|---|
+| OD-12 | `operator-hold`를 PARKED 사유로 둘지 | 코드는 `on-hold`를 쓴다(lane-18 보고, 리더 전달). 정본 S46에는 이에 대응하는 PARKED 사유가 없다 | REQ-AF-001의 PARKED 사유 집합(design §2.1a), design §2.3 옛 상태 대응, design §8 `moai factory hold`, acceptance §A.1 시나리오 묶음 07 | (가) `operator-hold`를 PARKED 사유로 둔다 → 닫힌 사유 집합(design §2.1a)에 값이 하나 늘고, E19·E20과 재개 권한을 정해야 한다. (나) 배차 일시 정지로만 모형화한다 → Issue별 상태가 없고, CLI14 "새 배차만 제어"와 같은 범위가 된다. (다) `on-hold`를 계약 밖 구현 내부 상태로 둔다 → 계약 문언은 바뀌지 않고, 코드의 `on-hold`는 계약 밖 값으로 남는다 | partly — 닫힌 사유 집합에 값을 넣은 뒤 빼면, 그 값으로 이미 기록된 control ref 상태를 따로 옮겨야 한다 | spec §G.1 OD-12 |
+| OD-17a | webhook 경로 서명 비밀을 어디서 읽을지(비밀의 위치) | lane-20 `webhook.Handler.Routes[].Secret`은 전달마다 서명 비밀을 읽는 함수이며, 비어 있으면 500으로 거절한다. lane-20은 값을 어떤 파일에도 쓰지 않는다(lane-20 `efeb3dc87c`, 리더 전달). 설정 읽기 코드는 `webhook.routes[]` 아래 이름이 정확히 `secret`인 키를 거절하고 값을 출력하지 않는다(`dc1bff9643`, 리더 전달, 리더 수용) | 설정 파일로 webhook 수신을 켜는 경로(서명 비밀 없이는 모든 전달이 500) | 선택지는 SPEC에 있는 것만: SPEC은 "커밋되는 설정에는 값이 아닌 참조(어디서 읽을지의 이름)만 둔다"와 "위치는 이 SPEC 소유자의 결정이며 열려 있다"만 적는다. 위치 후보는 SPEC에 없다 | partly — 참조 형식만 바꾸면 설정 파일만 고치면 되지만, 비밀을 이미 둔 저장 위치는 운영자가 따로 옮겨야 한다 | spec §G.1 OD-17 (iii), design §6.1 비밀 규칙·`secret_ref` 행 |
+| OD-17b | 상주 루프의 `Tick` 주기 키 이름과 값 | 코드 없음. design §6.1 행: "키가 정해질 때까지 루프를 쓰지 않음" | 상주 루프 실행 | 선택지는 SPEC에 있는 것만: SPEC은 provisional 이름 `workflow.agentic_factory.loop.tick_period`(duration)와 기본값 "—"만 적는다. 값 후보는 SPEC에 없다 | yes — 아직 루프가 없으므로 이름과 값을 정한 뒤 바꿔도 옮길 기록이 없다 | spec §G.1 OD-17 (i), design §6.1 `Tick` 행 |
+| OD-17c | `secret_ref` 키 이름 | 위 OD-17a와 같음 | 위 OD-17a와 같음 | (가) provisional 이름 `workflow.agentic_factory.webhook.routes[].secret_ref`를 확정한다 → 설정 읽기 코드가 이 이름을 읽게 된다. (나) 다른 이름을 정한다 → 표와 읽기 코드를 같이 고친다 | yes — 아직 확정된 사용자 설정이 없으면 이름만 바꾸면 된다 | spec §G.1 OD-17 (ii), design §6.1 |
+| OD-17d | `forge.Adaptive` 세 필드(`collector.poll.min`·`max`·`safety`)의 검증 규칙 채택 | lane-20 코드에는 검증이 없다(`0`이면 0만큼 기다림; `efeb3dc87c`, 리더 전달). 설정 읽기 코드는 존재와 해석만 검사한다(`dc1bff9643`, 리더 전달, 리더 수용) | 수집 polling 간격의 범위 검사 | (가) design §6.1에 적은 "필요한 규칙"(`Min>0`, `Max>=Min`, `Safety>0`)을 채택한다 → 그 규칙을 읽기 코드나 lane-20 코드가 집행해야 한다. (나) 채택하지 않는다 → 지금처럼 존재와 해석만 검사하며, `0` 값이 그대로 들어간다 | yes — 검증 규칙은 더하거나 빼도 저장된 상태를 바꾸지 않는다 | spec §G.1 OD-17 (iv), design §6.1 `forge.Adaptive` 행·표 아래 bullet |
+| OD-19 | `.moai/config/sections/agentic-factory.yaml`을 template으로 배포할지 | 코드 근거 없음(SPEC에 기록 없음). 알려진 동작: `moai update`는 manifest에 없는 기존 provider template을 `user_created`로 두고 건너뛴다(DEC-AF-24) | 사용자 프로젝트에 AF 설정 파일을 배포하는 경로. 결정 전에는 template 배포 파일을 만들지 않는다 | (가) template으로 배포한다 → `moai update`가 사용자 프로젝트에 그 파일을 쓰게 된다. (나) 배포하지 않는다 → 사용자가 파일을 직접 만든다 | partly — 한 번 배포된 파일은 사용자 프로젝트에 남으며, 배포를 멈춰도 이미 쓴 파일은 지워지지 않는다(DEC-AF-24의 `user_created` 동작) | spec §G.1 OD-19, design §6.1 위치 규칙 |
+| OD-20 | effect 층 쓰기 effect 시간 제한의 설정 키: 이름, 단위, 검증(`0` = 제한 없음 허용 여부 포함) | duration 여섯 개(`IssueCreate`, `BranchPrepare`, `WorktreePrepare`, `CheckObserve`, `LedgerComment`, `LabelApply`), 조회 `For(k)`는 설정되지 않으면 `0`(리더가 `intent.go` 143~145행을 읽음, 리더 전달). 상주 연결 `a4352d55ec`은 이 값들을 연결하지 않아 지금은 `0` = 제한 없음(lane-20 전달, 리더 미확인). 값 자체는 코드 상수로 정해졌다(DEC-AF-26: 30s/30s/30s/10s/60s/120s) | 시간 제한을 설정으로 바꾸는 경로 | (가) 키를 두지 않고 DEC-AF-26 코드 상수만 쓴다 → 값을 바꾸려면 코드를 고친다. (나) 키를 두고 `0` = 제한 없음을 허용한다 → 설정으로 제한을 끌 수 있다. (다) 키를 두고 `max_doc_bytes`처럼 `0`을 거절한다(>= 1) → `0`이 "상한 없음"과 섞이지 않는다 | yes — 아직 확정된 키가 없으므로, 정한 뒤 바꿔도 옮길 사용자 설정이 거의 없다 | spec §G.1 OD-20, §C.7 DEC-AF-26 |
+| OD-21 | 상대 경로로 적은 `claim_store.dir`의 기준, 절대 경로 허용, worktree별 분리 | 읽기 코드(`56462054ed`, `agentic_factory_settings.go` 79·186행)는 문자열을 가공하지 않고 돌려준다. 현재 lane-22 구현(`53366f1ad0`)은 "프로젝트 루트"를 골랐다 — 구현의 선택이며 SPEC 근거가 아니다(둘 다 리더 전달) | claim 저장소(로컬 캐시)의 위치. lane-22 웹 콘솔 연결(OD-13 기록) | (가) 프로젝트 루트 기준 → 여러 worktree에서 "프로젝트 루트"가 주 체크아웃인지 각 worktree인지 함께 정해야 한다. (나) 설정 파일 위치 기준 → 설정 파일이 있는 곳에 따라 저장소 위치가 정해진다. (다) worktree 루트 기준 → worktree마다 저장소가 따로 생긴다. 절대 경로 허용 여부와 worktree별 분리는 각 선택지와 별도로 정한다 | partly — 로컬 캐시는 control ref로 다시 만들 수 있지만(design §1 SYNC12), 기준을 바꾸면 이미 만든 캐시 디렉터리는 따로 정리해야 한다 | spec §G.1 OD-21, OD-13, design §6.1 `claim_store.dir` 행 |
+| OD-22 | webhook 수신기의 listen 주소 설정 키 | 설정 키가 없다. 리더가 `internal/config/agentic_factory_settings.go`를 확인했다(리더 전달). 지금은 실행 플래그로 넣는다 | 설정 파일만으로 webhook 수신기를 띄우는 경로 | (가) 키를 둔다 → 이름·기본값·검증을 정해야 한다. (나) 키를 두지 않고 실행 플래그로 둔다 → 지금 동작 그대로다 | yes — 실행 플래그는 그대로 두고 키를 더하거나 뺄 수 있다 | spec §G.1 OD-22 |
+| OQ-12 | 제안 `moai factory status`와 기존 명령 이름의 충돌 | 코드 근거 없음(SPEC에 기록 없음) | REQ-AF-022(명령 표면) | 선택지는 SPEC에 있는 것만: SPEC은 충돌 문제만 적고 선택지를 적지 않는다 | yes — 공개 전이면 명령 이름만 바꾸면 된다. 공개 뒤에는 기존 사용자의 호출이 깨질 수 있다 | spec §G.2 OQ-12 |
+| OQ-22 | 수치 설정값: `intake.max_concurrent`, `intake.stage_timeout`, polling 간격, backoff 배수·횟수, 예산 reserve, 댓글 묶음 window, checkpoint 상한·보존 기간 | 코드 근거 없음(SPEC에 기록 없음) — 숫자에 대해. 일부 키는 design §6.1에서 이름이 확정됐고 기본값은 모두 "—"이며 필수다(DEC-AF-25 D5) | REQ-AF-002·012·014·023 | 선택지는 SPEC에 있는 것만: SPEC은 "모두 OPEN이며 이 SPEC은 숫자를 정하지 않는다"만 적는다. `intake.max_concurrent` 미설정 동작은 OD-9, `wip_limit` 미설정 동작은 OD-7로 따로 있다 | yes — 숫자는 설정 값이므로 바꿔도 저장된 상태를 옮기지 않는다 | spec §G.2 OQ-22 |
+| control-hold | `refs/heads/moai-control` 운영 쓰기 보류를 풀지 | 원격 `refs/heads/moai-control`은 genesis 커밋 `ae3a4edcaa529bc927357b345051b96cd04605a1`에 있고, 파일은 `control/schema.json` 하나다(sha256 `1fc23184522e104b985bc6a8429a347836aaaab4714526939d5bc9363b290640`, 리더 보고). 사용자가 리더 세션을 통해 만들었다(리더 지시문). SPEC 문언: "control ref는 genesis뿐이다. 운영 쓰기 연결(CAS, fencing)은 lane-18 구현을 기다린다"(plan §C), "운영 쓰기 연결은 lane-18의 몫이며 아직 확인하지 않았다"(design §1). "운영 쓰기 보류"라는 표현 자체는 SPEC 본문에 없고 리더 지시문에서 왔다 | control ref를 권위로 쓰는 모든 쓰기 — claim·부여·완료 기록(REQ-AF-002 (a), design §1) | 선택지는 SPEC에 있는 것만: SPEC은 운영 쓰기 연결이 lane-18 구현(CAS, fencing)을 기다린다고만 적는다. 보류를 푸는 조건이나 순서는 SPEC에 없다 | no — 원격 공유 ref에 한 번 쓴 운영 기록은 git 이력에 남으며, 되돌리려면 새 커밋을 쌓아야 한다 | spec §B.1, design §1, plan §C |
+
+## 이 표에 넣지 않은 것
+
+- 해결된 OD-13·OD-14(DEC-AF-25)는 넣지 않았다.
+- 코드 경로를 직접 막는다는 기록이 SPEC에 없는 다른 OD·OQ는 넣지 않았다. 전체 목록은 spec.md §G.1·§G.2에 있다.
