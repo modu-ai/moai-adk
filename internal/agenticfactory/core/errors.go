@@ -17,6 +17,8 @@ var (
 	ErrDuplicateHandoff    = errors.New("agenticfactory: a handoff receipt for this HEAD already exists")
 	ErrRepairOnly          = errors.New("agenticfactory: issue has a published PR, only a repair claim is allowed")
 	ErrIdentityMismatch    = errors.New("agenticfactory: session id, agent number and owned claims do not match")
+	ErrBacklogUnset        = errors.New("agenticfactory: open PR backlog limit is not configured, new claim refused")
+	ErrLimitInvalid        = errors.New("agenticfactory: open PR backlog limit must be at least 1")
 	ErrBacklogFull         = errors.New("agenticfactory: open PR backlog is at its limit, new claim held")
 )
 
@@ -47,6 +49,8 @@ func ReasonFor(err error) (BlockReason, bool) {
 		return ReasonStoreUnavailable, true
 	case errors.Is(err, ErrBacklogFull):
 		return ReasonCapacityShort, true
+	case errors.Is(err, ErrBacklogUnset):
+		return ReasonNotConfigured, true
 	}
 	return "", false
 }

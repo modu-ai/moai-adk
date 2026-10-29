@@ -3,6 +3,8 @@ package claim
 import (
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sync"
 	"testing"
 
@@ -51,8 +53,8 @@ func TestRegisterRejectsBadSessionID(t *testing.T) {
 // processes) start at once.
 func TestConcurrentRegistrationNeverDuplicatesANumber(t *testing.T) {
 	dir := t.TempDir()
-	s1, _ := Open(dir)
-	s2, _ := Open(dir)
+	s1, _ := OpenWithLimit(dir, 100)
+	s2, _ := OpenWithLimit(dir, 100)
 	const n = 48
 	var wg sync.WaitGroup
 	got := make([]core.Agent, n)
@@ -108,14 +110,14 @@ func TestAcquireForBindsIdentityAndItIsImmutable(t *testing.T) {
 
 func TestResumeKeepsIdentityAndReturnsOwnedClaims(t *testing.T) {
 	dir := t.TempDir()
-	s, _ := Open(dir)
+	s, _ := OpenWithLimit(dir, 100)
 	a, _ := s.RegisterAgent(sid(1))
 	b, _ := s.RegisterAgent(sid(2))
 	_, _ = s.AcquireFor(ref(t, 10), a, "d10", "run-1")
 	_, _ = s.AcquireFor(ref(t, 11), a, "d11", "run-1")
 	_, _ = s.AcquireFor(ref(t, 12), b, "d12", "run-1")
 
-	s2, _ := Open(dir) // restart
+	s2, _ := OpenWithLimit(dir, 100) // restart
 	got, owned, err := s2.ResumeAgent(a.SessionID, a.Number)
 	if err != nil || got != a {
 		t.Fatalf("resume: %+v %v", got, err)
@@ -153,10 +155,86 @@ func TestRepairForRecordsRepairAgent(t *testing.T) {
 	s := open(t)
 	a, _ := s.RegisterAgent(sid(1))
 	b, _ := s.RegisterAgent(sid(2))
-	i := handedOff(t, s, 5, "WT-b")
+	i := reopened(t, s, 5, "WT-b")
 	rec, err := s.AcquireRepairFor(i, b, "dr", "run-2", "WT-b")
 	if err != nil || rec.Holder != b.SessionID || rec.AgentName != "agent-2" {
 		t.Fatalf("repair binding: %+v %v", rec, err)
 	}
 	_ = a
+}
+
+// A lost response leaves the reservation in place: the same session finds its
+// number again, other sessions never receive it, and a session that never
+// comes back keeps its number until ReleaseAgent is called explicitly.
+func TestReservationSurvivesLostResponseAndCrash(t *testing.T) {
+	s := open(t)
+	lost, _ := s.RegisterAgent(sid(1)) // response never reaches the caller
+	other, _ := s.RegisterAgent(sid(2))
+	if other.Number != 2 {
+		t.Fatalf("other got %d", other.Number)
+	}
+	again, err := s.RegisterAgent(sid(1))
+	if err != nil || again != lost {
+		t.Errorf("same request must find its reservation: %+v %v", again, err)
+	}
+	// agent-1's process crashed and never retries; nobody inherits its number.
+	third, _ := s.RegisterAgent(sid(3))
+	if third.Number != 3 {
+		t.Errorf("unreleased number was reused: %+v", third)
+	}
+	if err := s.ReleaseAgent(lost.SessionID, lost.Number); err != nil {
+		t.Fatal(err)
+	}
+	if fourth, _ := s.RegisterAgent(sid(4)); fourth.Number != 1 {
+		t.Errorf("explicit release must free the number: %+v", fourth)
+	}
+}
+
+func TestPartialOrCorruptReservationIsNeverOverwritten(t *testing.T) {
+	s := open(t)
+	if _, err := s.RegisterAgent(sid(1)); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(s.agentPath(1), []byte("{half"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.RegisterAgent(sid(2)); !errors.Is(err, core.ErrStoreUnavailable) {
+		t.Errorf("corrupt reservation must stop registration: %v", err)
+	}
+	b, _ := os.ReadFile(s.agentPath(1))
+	if string(b) != "{half" {
+		t.Errorf("reservation file was overwritten: %q", b)
+	}
+	// Leftover temporary files are not reservations.
+	s2 := open(t)
+	_ = os.MkdirAll(s2.agentsDir(), 0o700)
+	_ = os.WriteFile(filepath.Join(s2.agentsDir(), "agent.tmp-123"), []byte("x"), 0o600)
+	if a, err := s2.RegisterAgent(sid(1)); err != nil || a.Number != 1 {
+		t.Errorf("temp file counted as a reservation: %+v %v", a, err)
+	}
+}
+
+// The window between "is this agent still registered?" and "write the claim"
+// is closed: after a release wins, no claim is left under that identity.
+func TestReleaseAndClaimNeverLeaveAClaimForAReleasedAgent(t *testing.T) {
+	for k := 0; k < 150; k++ {
+		s := open(t)
+		a, _ := s.RegisterAgent(sid(1))
+		i := ref(t, 7)
+		var wg sync.WaitGroup
+		var claimErr, relErr error
+		wg.Add(2)
+		go func() { defer wg.Done(); _, claimErr = s.AcquireFor(i, a, "d", "run-1") }()
+		go func() { defer wg.Done(); relErr = s.ReleaseAgent(a.SessionID, a.Number) }()
+		wg.Wait()
+		registered := s.verifyAgent(a) == nil
+		_, loadErr := s.Load(i)
+		held := loadErr == nil
+		if held && !registered {
+			t.Fatalf("iteration %d: a claim exists for a released agent (claimErr=%v relErr=%v)", k, claimErr, relErr)
+		}
+		if relErr == nil && held {
+			t.Fatalf("iteration %d: release succeeded while a claim exists", k)
+		}
+	}
 }

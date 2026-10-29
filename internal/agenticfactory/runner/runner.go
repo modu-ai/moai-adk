@@ -57,6 +57,7 @@ type Verification struct {
 type Landing struct {
 	RemoteMerged      bool
 	LocalSyncRecorded bool
+	IssueClosed       bool
 	Deploy            string // evidence path, or "N/A: <reason>"
 }
 
@@ -208,29 +209,57 @@ func (r *Runner) Land(t Ticket, head string) (claim.Record, error) {
 	})
 }
 
-// Complete moves landing -> done only with a remote merge, a recorded local
-// sync and a deploy record (or a deploy N/A that states why). Publishing a PR
-// is not any of these.
+// Complete moves landing -> done only when every obligation is met: remote
+// merge, local sync, a deploy record (or a reasoned N/A) and the Issue close.
+// Publishing a PR is none of these. When the merge was observed but another
+// obligation is open, the merge fact is kept, the open obligation is named in
+// the record (the merged-and-pending state) and done stays unreached.
 func (r *Runner) Complete(t Ticket, l Landing) (claim.Record, error) {
-	return r.step(t, core.StateLanding, func(rec *claim.Record) error {
-		if err := checkLanding(l); err != nil {
-			return err
+	var open error
+	rec, err := r.step(t, core.StateLanding, func(rec *claim.Record) error {
+		var e error
+		if open, e = settle(rec, l); e != nil {
+			return e
 		}
-		rec.State, rec.Deploy = core.StateDone, l.Deploy
 		return nil
 	})
+	if err != nil {
+		return rec, err
+	}
+	return rec, open
 }
 
-func checkLanding(l Landing) error {
+// settle applies Landing to rec. It returns (pending, nil) when the merge is
+// observed but an obligation is open (the record is updated and persisted by
+// the caller, who then reports pending), and (nil, err) when nothing may be
+// recorded because the merge itself was not observed.
+func settle(rec *claim.Record, l Landing) (pending error, err error) {
+	name, miss := firstMissing(l)
+	if miss == nil {
+		rec.State, rec.Deploy, rec.Closed, rec.Merged, rec.Pending = core.StateDone, l.Deploy, true, true, ""
+		return nil, nil
+	}
+	if !l.RemoteMerged {
+		return nil, miss
+	}
+	rec.Merged, rec.Pending = true, name
+	return miss, nil
+}
+
+// firstMissing names the first open obligation, in the order they are
+// observed in practice.
+func firstMissing(l Landing) (string, error) {
 	switch {
 	case !l.RemoteMerged:
-		return fmt.Errorf("%w: remote main merge not observed", core.ErrEvidenceIncomplete)
+		return "remote-merge", fmt.Errorf("%w: remote main merge not observed", core.ErrEvidenceIncomplete)
 	case !l.LocalSyncRecorded:
-		return fmt.Errorf("%w: local sync not recorded", core.ErrEvidenceIncomplete)
+		return "local-sync", fmt.Errorf("%w: local sync not recorded", core.ErrEvidenceIncomplete)
 	case !deployOK(l.Deploy):
-		return fmt.Errorf("%w: deploy record or reasoned N/A missing", core.ErrEvidenceIncomplete)
+		return "deploy", fmt.Errorf("%w: deploy record or reasoned N/A missing", core.ErrEvidenceIncomplete)
+	case !l.IssueClosed:
+		return "issue-close", fmt.Errorf("%w: issue close not recorded", core.ErrEvidenceIncomplete)
 	}
-	return nil
+	return "", nil
 }
 
 func deployOK(d string) bool {
@@ -326,6 +355,7 @@ func (r *Runner) HandOff(t Ticket, h Handoff) (claim.Record, error) {
 			PR: h.PR, Head: head, Branch: h.Branch, Worktree: h.Worktree,
 			Attempt: rec.Attempt, AttemptSeq: rec.AttemptSeq, Agent: rec.AgentName, Session: rec.Holder,
 		}
+		rec.AddEvent(claim.Event{Kind: "handoff", Agent: rec.AgentName, Session: rec.Holder, Attempt: string(rec.Attempt), Head: string(head), PR: h.PR})
 		return nil
 	})
 }
@@ -350,32 +380,47 @@ func (r *Runner) ClaimRepairAs(i core.IssueRef, a core.Agent, dispatch string, r
 }
 
 // CompleteHandedOff is Complete for an Issue whose agent already left: the
-// leader or monitor records done once the merge is observed. It refuses a
-// record that is still held or never handed off.
+// leader or monitor records done once every obligation, the Issue close
+// included, is observed. It refuses a record that is still held or never
+// handed off.
 func (r *Runner) CompleteHandedOff(i core.IssueRef, l Landing) (claim.Record, error) {
-	return r.Store.UpdateReleased(i, func(rec *claim.Record) error {
+	var open error
+	rec, err := r.Store.UpdateReleased(i, func(rec *claim.Record) error {
 		if rec.Receipt == nil {
 			return fmt.Errorf("%w: no PR handoff receipt", core.ErrTransitionInvalid)
 		}
 		if rec.State != core.StateLanding {
 			return fmt.Errorf("%w: %s, expected %s", core.ErrTransitionInvalid, rec.State, core.StateLanding)
 		}
-		if err := checkLanding(l); err != nil {
-			return err
-		}
-		rec.State, rec.Deploy = core.StateDone, l.Deploy
-		return nil
+		var e error
+		open, e = settle(rec, l)
+		return e
 	})
+	if err != nil {
+		return rec, err
+	}
+	return rec, open
 }
 
-// MarkClosed records that the Issue was closed. It comes after done, never
-// before: closing is not a substitute for the done evidence.
-func (r *Runner) MarkClosed(i core.IssueRef) (claim.Record, error) {
+// Reopen is the E10 edge: a handed-off PR that is not merged goes back from
+// landing to verifying (head, base or protection changed, or CI/review needs a
+// repair). The merge fact is never reverted, so a merged Issue is refused. The
+// next step is the single repair claim (E06).
+func (r *Runner) Reopen(i core.IssueRef, reason string) (claim.Record, error) {
+	if strings.TrimSpace(reason) == "" {
+		return claim.Record{}, fmt.Errorf("%w: a reopen reason is required", core.ErrEvidenceIncomplete)
+	}
 	return r.Store.UpdateReleased(i, func(rec *claim.Record) error {
-		if rec.State != core.StateDone {
-			return fmt.Errorf("%w: %s, closure is recorded after done", core.ErrTransitionInvalid, rec.State)
+		switch {
+		case rec.Receipt == nil:
+			return fmt.Errorf("%w: no PR handoff receipt", core.ErrTransitionInvalid)
+		case rec.State != core.StateLanding:
+			return fmt.Errorf("%w: %s, reopen applies to landing", core.ErrTransitionInvalid, rec.State)
+		case rec.Merged:
+			return fmt.Errorf("%w: merge already observed, not reverted", core.ErrTransitionInvalid)
 		}
-		rec.Closed = true
+		rec.State, rec.Pending = core.StateVerifying, ""
+		rec.AddEvent(claim.Event{Kind: "reopen", Head: string(rec.Head), PR: rec.Receipt.PR, Note: reason})
 		return nil
 	})
 }

@@ -16,7 +16,7 @@ var (
 
 func newRunner(t *testing.T) (*Runner, core.IssueRef) {
 	t.Helper()
-	st, err := claim.Open(t.TempDir())
+	st, err := claim.OpenWithLimit(t.TempDir(), 100)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,7 +59,7 @@ func TestHappyPathQueuedToDone(t *testing.T) {
 	if rec, err = r.Land(tk, headA); err != nil || rec.State != core.StateLanding {
 		t.Fatalf("land: %+v %v", rec, err)
 	}
-	rec, err = r.Complete(tk, Landing{RemoteMerged: true, LocalSyncRecorded: true, Deploy: "N/A: no deploy target"})
+	rec, err = r.Complete(tk, Landing{RemoteMerged: true, LocalSyncRecorded: true, IssueClosed: true, Deploy: "N/A: no deploy target"})
 	if err != nil || rec.State != core.StateDone {
 		t.Fatalf("complete: %+v %v", rec, err)
 	}
@@ -205,10 +205,11 @@ func TestLandRechecksHead(t *testing.T) {
 
 func TestCompleteNeedsAllThreeRecords(t *testing.T) {
 	cases := map[string]Landing{
-		"no remote merge": {LocalSyncRecorded: true, Deploy: "N/A: x"},
-		"no local sync":   {RemoteMerged: true, Deploy: "N/A: x"},
-		"no deploy":       {RemoteMerged: true, LocalSyncRecorded: true},
-		"bare N/A":        {RemoteMerged: true, LocalSyncRecorded: true, Deploy: "N/A"},
+		"no remote merge": {LocalSyncRecorded: true, IssueClosed: true, Deploy: "N/A: x"},
+		"no issue close":  {RemoteMerged: true, LocalSyncRecorded: true, Deploy: "N/A: x"},
+		"no local sync":   {RemoteMerged: true, IssueClosed: true, Deploy: "N/A: x"},
+		"no deploy":       {RemoteMerged: true, LocalSyncRecorded: true, IssueClosed: true},
+		"bare N/A":        {RemoteMerged: true, LocalSyncRecorded: true, IssueClosed: true, Deploy: "N/A"},
 	}
 	for name, l := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -219,8 +220,13 @@ func TestCompleteNeedsAllThreeRecords(t *testing.T) {
 			if _, err := r.Complete(tk, l); !errors.Is(err, core.ErrEvidenceIncomplete) {
 				t.Errorf("want ErrEvidenceIncomplete, got %v", err)
 			}
-			if cur, _ := r.Store.Load(ref); cur.State != core.StateLanding {
-				t.Errorf("state = %v", cur.State)
+			cur, _ := r.Store.Load(ref)
+			if cur.State != core.StateLanding || cur.Closed {
+				t.Errorf("state = %v closed=%v", cur.State, cur.Closed)
+			}
+			// A merge that was observed is kept as a fact with the open obligation named.
+			if l.RemoteMerged != cur.Merged || (l.RemoteMerged && cur.Pending == "") {
+				t.Errorf("merged=%v pending=%q for %+v", cur.Merged, cur.Pending, l)
 			}
 		})
 	}
@@ -271,7 +277,7 @@ func TestPausedIssueRefusesForwardSteps(t *testing.T) {
 // Session drop: a fresh Runner over the same store sees the persisted state
 // and continues with the original ticket; nothing is replayed.
 func TestReconnectContinuesFromPersistedState(t *testing.T) {
-	st, _ := claim.Open(t.TempDir())
+	st, _ := claim.OpenWithLimit(t.TempDir(), 100)
 	ref, _ := core.NewIssueRef(1948)
 	first := New(st)
 	tk := toVerifying(t, first, ref)
