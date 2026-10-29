@@ -31,6 +31,8 @@ var sanitizeCases = []struct {
 	{"password assignment", "DB_PASSWORD=hunter2hunter2 start", "hunter2hunter2", CategoryCredentialAssignment},
 	{"colon assignment", "api_key: zzz999 ok", "zzz999", CategoryCredentialAssignment},
 	{"json secret", `{"api_key": "zzzz-1234-yyyy-5678"}`, "zzzz-1234-yyyy-5678", CategoryCredentialAssignment},
+	{"aws secret access key", "aws_secret_access_key=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY ok", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY", CategoryCredentialAssignment},
+	{"json password", `{"password": "correct-horse-battery"}`, "correct-horse-battery", CategoryCredentialAssignment},
 	{"private key block", "x\n-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEA0123456789abcdef\n-----END RSA PRIVATE KEY-----\ny", "MIIEowIBAAKCAQEA0123456789abcdef", CategoryPrivateKey},
 	{"openssh private key", "-----BEGIN OPENSSH PRIVATE KEY-----\nb3BlbnNzaC1rZXktdjEAAAAABG5vbmU=\n-----END OPENSSH PRIVATE KEY-----", "b3BlbnNzaC1rZXktdjEAAAAABG5vbmU=", CategoryPrivateKey},
 	{"truncated private key", "head\n-----BEGIN PRIVATE KEY-----\nMIIBVQIBADANBgkqhkiG9w0BAQEFAASC", "MIIBVQIBADANBgkqhkiG9w0BAQEFAASC", CategoryPrivateKey},
@@ -75,6 +77,9 @@ func TestSanitizeLeavesOrdinaryTextAlone(t *testing.T) {
 		".moai/specs/SPEC-AGENTIC-FACTORY-001/spec.md",
 		"-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----",
 		"the key was rotated and the password policy changed",
+		"WT-card-t1995-git-env-recovery-lane-7",                                     // a long dashed identifier with digits is not a secret (the old opaque-blob rule erased it)
+		"~/work/notes.md",                                                           // a tilde path names no user
+		"goroutine 7 [running]:\nmain.main()\n\t/usr/local/go/src/main.go:12 +0x1d", // a stack under a system path is not personal data
 	} {
 		if out, cats := Sanitize(in); out != in || len(cats) != 0 {
 			t.Errorf("over-sanitized %q -> %q %v", in, out, cats)
