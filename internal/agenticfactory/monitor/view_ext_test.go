@@ -88,7 +88,7 @@ func TestMissingOrFailingReadersAreUnconfirmedNotEmpty(t *testing.T) {
 
 func TestLinkIsAvailableOnlyAfterRemoteVerification(t *testing.T) {
 	c := extCollector(fakeExt{ctx: map[int][]ContextItem{7: {
-		{Section: "a", Link: ".moai/evidence/issue-7/a.md", State: CtxCurrent, RemoteVerified: true, Availability: LinkAvailable},
+		{Section: "a", Link: ".moai/evidence/issue-7/a.md", State: CtxCurrent, Stage: StageRemoteVerified, RemoteVerified: true, Availability: LinkAvailable},
 		{Section: "b", Link: ".moai/evidence/issue-7/b.md", State: CtxCurrent, RemoteVerified: false, Availability: LinkAvailable}, // reader claims available without a check
 		{Section: "c", Link: ".moai/evidence/issue-7/c.md", State: CtxInaccessible, RemoteVerified: true},
 	}}})
@@ -98,5 +98,32 @@ func TestLinkIsAvailableOnlyAfterRemoteVerification(t *testing.T) {
 		if it.Availability != want[i] {
 			t.Errorf("item %s: availability = %s, want %s", it.Section, it.Availability, want[i])
 		}
+	}
+}
+
+func TestEvidenceStageIsShownAndOnlyRemoteVerifiedIsAvailable(t *testing.T) {
+	mk := func(stage EvidenceStage, verified bool, st ContextState) ContextItem {
+		return ContextItem{Section: string(stage), Link: "l", State: st, Stage: stage, RemoteVerified: verified}
+	}
+	c := extCollector(fakeExt{ctx: map[int][]ContextItem{7: {
+		mk(StagePrepared, false, CtxCurrent),
+		mk(StageMasked, false, CtxCurrent),
+		mk(StageCommitted, false, CtxCurrent),
+		mk(StagePushed, true, CtxCurrent),          // pushed is not remote-verified, whatever the flag says
+		mk(StageRemoteVerified, true, CtxCurrent),  // the only available one
+		mk(StageRemoteVerified, false, CtxCurrent), // claims verified stage without the lookup flag
+		mk(StageRestricted, true, CtxCurrent),
+		mk(EvidenceStage("bogus"), true, CtxCurrent),
+		mk(StageRemoteVerified, true, CtxInaccessible),
+	}}})
+	items := c.Collect(context.Background(), []int{7})[0].Context.Value
+	want := []LinkAvailability{LinkUnverified, LinkUnverified, LinkUnverified, LinkUnverified, LinkAvailable, LinkUnverified, LinkRestricted, LinkUnverified, LinkInaccessible}
+	for i, it := range items {
+		if it.Availability != want[i] {
+			t.Errorf("#%d stage=%s verified=%v: availability = %s, want %s", i, it.Stage, it.RemoteVerified, it.Availability, want[i])
+		}
+	}
+	if items[7].Stage != StageUnknown {
+		t.Errorf("unknown stage kept as %q", items[7].Stage)
 	}
 }
