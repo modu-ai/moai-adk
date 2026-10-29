@@ -33,6 +33,12 @@ var sanitizeCases = []struct {
 	{"json secret", `{"api_key": "zzzz-1234-yyyy-5678"}`, "zzzz-1234-yyyy-5678", CategoryCredentialAssignment},
 	{"aws secret access key", "aws_secret_access_key=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY ok", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY", CategoryCredentialAssignment},
 	{"json password", `{"password": "correct-horse-battery"}`, "correct-horse-battery", CategoryCredentialAssignment},
+	{"opaque mixed token", "see Zx9Kq2Lm7Pv4Rt8Wn3Yb6Hc1Dj5Fg0Aa2Ss4Dd here", "Zx9Kq2Lm7Pv4Rt8Wn3Yb6Hc1Dj5Fg0Aa2Ss4Dd", CategoryOpaqueToken},
+	{"opaque 34 character token", "value aB3dE5gH7jK9mN1pQ3sT5vW7yZ9bC1dE3f ok", "aB3dE5gH7jK9mN1pQ3sT5vW7yZ9bC1dE3f", CategoryOpaqueToken},
+	{"opaque base64 with padding", "blob dGhpcyBpcyBhIHNlY3JldCB0b2tlbjEyMzQ1Njc4OQ== end", "dGhpcyBpcyBhIHNlY3JldCB0b2tlbjEyMzQ1Njc4OQ==", CategoryOpaqueToken},
+	{"opaque url-safe token with separators", "id Xk3-9Zq_Lm2Pv4Rt8Wn3Yb6Hc1Dj5Fg0Aa7Ss9Bb", "Xk3-9Zq_Lm2Pv4Rt8Wn3Yb6Hc1Dj5Fg0Aa7Ss9Bb", CategoryOpaqueToken},
+	{"opaque run with no separators and few class changes", "see abcdefghijklmnopqrstuvwxyz0123456789 here", "abcdefghijklmnopqrstuvwxyz0123456789", CategoryOpaqueToken},
+	{"long digits and letters, single case", "pin 12345678901234567890abcdefghijklmnop end", "12345678901234567890abcdefghijklmnop", CategoryOpaqueToken},
 	{"private key block", "x\n-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEA0123456789abcdef\n-----END RSA PRIVATE KEY-----\ny", "MIIEowIBAAKCAQEA0123456789abcdef", CategoryPrivateKey},
 	{"openssh private key", "-----BEGIN OPENSSH PRIVATE KEY-----\nb3BlbnNzaC1rZXktdjEAAAAABG5vbmU=\n-----END OPENSSH PRIVATE KEY-----", "b3BlbnNzaC1rZXktdjEAAAAABG5vbmU=", CategoryPrivateKey},
 	{"truncated private key", "head\n-----BEGIN PRIVATE KEY-----\nMIIBVQIBADANBgkqhkiG9w0BAQEFAASC", "MIIBVQIBADANBgkqhkiG9w0BAQEFAASC", CategoryPrivateKey},
@@ -77,8 +83,15 @@ func TestSanitizeLeavesOrdinaryTextAlone(t *testing.T) {
 		".moai/specs/SPEC-AGENTIC-FACTORY-001/spec.md",
 		"-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----",
 		"the key was rotated and the password policy changed",
-		"WT-card-t1995-git-env-recovery-lane-7",                                     // a long dashed identifier with digits is not a secret (the old opaque-blob rule erased it)
-		"~/work/notes.md",                                                           // a tilde path names no user
+		"WT-card-t1995-git-env-recovery-lane-7",                                   // a long dashed identifier with digits is not a secret (the old opaque-blob rule erased it)
+		"issue-1948-attempt-1-repair-3-takeover-4-and-more-words-here",            // a long dashed identifier made of words and numbers
+		"session b18ce9de-77b3-4fb0-a6c8-571892a1826e owns it",                    // a UUID is an id, not a secret
+		"ev-0123456789abcdef0123456789abcdef01234567",                             // a prefixed content hash (40 hex)
+		"digest 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", // a 64-hex digest
+		"WT-agentic-factory-core-claim-runner",
+		"the operation internationalizationconfigurationmanagement completed", // a long word with no digits is a word
+		"0123456789012345678901234567890123456789",                            // digits only: a number, not a mixed token
+		"~/work/notes.md", // a tilde path names no user
 		"goroutine 7 [running]:\nmain.main()\n\t/usr/local/go/src/main.go:12 +0x1d", // a stack under a system path is not personal data
 	} {
 		if out, cats := Sanitize(in); out != in || len(cats) != 0 {
