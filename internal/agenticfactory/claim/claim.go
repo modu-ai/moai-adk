@@ -12,6 +12,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
@@ -35,6 +38,24 @@ type Record struct {
 	Delivery core.Delivery    `json:"delivery,omitempty"`
 	Deploy   string           `json:"deploy,omitempty"`
 	Mirror   string           `json:"mirror_state,omitempty"` // current | stale | blocked(<reason>)
+	// AttemptSeq counts attempts on this Issue (initial plus repairs).
+	AttemptSeq int `json:"attempt_seq,omitempty"`
+	// Receipt is set when the Worker published a PR and handed the Issue off.
+	Receipt *Receipt `json:"receipt,omitempty"`
+	// Closed is set after done, once the Issue itself has been closed.
+	Closed bool `json:"closed,omitempty"`
+}
+
+// Receipt is the PR handoff record. It outlives the Worker's claim: the
+// branch and worktree it names are preserved, and only a repair claim on that
+// branch may write to the Issue again.
+type Receipt struct {
+	PR         int            `json:"pr"`
+	Head       core.HeadSHA   `json:"head"`
+	Branch     string         `json:"branch"`
+	Worktree   string         `json:"worktree"`
+	Attempt    core.AttemptID `json:"attempt,omitempty"`
+	AttemptSeq int            `json:"attempt_seq,omitempty"`
 }
 
 // Store keeps records under one directory: issue-<n>.json, guarded by
@@ -42,6 +63,9 @@ type Record struct {
 type Store struct {
 	dir   string
 	probe func(int) (string, homestate.ProcessIdentityState)
+	// MaxOpenPRs holds new claims while this many handed-off Issues are not
+	// done. Zero means no limit. Repair claims are never held by it.
+	MaxOpenPRs int
 }
 
 const (
@@ -150,7 +174,8 @@ func (s *Store) Load(i core.IssueRef) (Record, error) {
 
 // Acquire admits exactly one holder per Issue inside one critical section.
 // The same dispatch id arriving again is a duplicate; a different holder or a
-// new dispatch on an owned Issue is Held.
+// new dispatch on an owned Issue is Held. An Issue with a published PR takes
+// only a repair claim, and a full PR backlog holds the claim.
 func (s *Store) Acquire(i core.IssueRef, holder, dispatch string, run core.RunID) (Record, error) {
 	if holder == "" || dispatch == "" {
 		return Record{}, fmt.Errorf("%w: holder and dispatch are required", core.ErrIDInvalid)
@@ -167,10 +192,174 @@ func (s *Store) Acquire(i core.IssueRef, holder, dispatch string, run core.RunID
 			}
 			return fmt.Errorf("%w: %s held by %q", core.ErrHeld, i.Resource(), cur.Holder)
 		}
+		if ok && cur.State == core.StateDone {
+			return fmt.Errorf("%w: %s is done", core.ErrTransitionInvalid, i.Resource())
+		}
+		if ok && cur.Receipt != nil {
+			return fmt.Errorf("%w: %s PR #%d", core.ErrRepairOnly, i.Resource(), cur.Receipt.PR)
+		}
+		if s.MaxOpenPRs > 0 {
+			n, err := s.openPRs()
+			if err != nil {
+				return err
+			}
+			if n >= s.MaxOpenPRs {
+				return fmt.Errorf("%w: %d open of %d", core.ErrBacklogFull, n, s.MaxOpenPRs)
+			}
+		}
 		out = Record{
 			Issue: i.Number, Holder: holder, Dispatch: dispatch, Run: run,
 			Epoch: cur.Epoch + 1, Seq: cur.Seq + 1, State: core.StateClaimed,
 		}
+		return s.write(i, out)
+	})
+	if err != nil {
+		return Record{}, err
+	}
+	return out, nil
+}
+
+// AcquireRepair admits one holder to repair a handed-off Issue on the branch
+// its receipt names. Contention is Held, the same dispatch again is a
+// duplicate, and a different branch is refused: a repair never forks.
+func (s *Store) AcquireRepair(i core.IssueRef, holder, dispatch string, run core.RunID, branch string) (Record, error) {
+	if holder == "" || dispatch == "" {
+		return Record{}, fmt.Errorf("%w: holder and dispatch are required", core.ErrIDInvalid)
+	}
+	var out Record
+	err := s.withLock(i, func() error {
+		cur, ok, err := s.read(i)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return core.ErrNotHeld
+		}
+		if cur.Holder != "" {
+			if cur.Dispatch == dispatch {
+				return fmt.Errorf("%w: %s dispatch %q", core.ErrDuplicateDispatch, i.Resource(), dispatch)
+			}
+			return fmt.Errorf("%w: %s held by %q", core.ErrHeld, i.Resource(), cur.Holder)
+		}
+		if cur.Receipt == nil || cur.State == core.StateDone || cur.Receipt.Branch != branch {
+			return fmt.Errorf("%w: no open PR on branch %q for %s", core.ErrTransitionInvalid, branch, i.Resource())
+		}
+		out = cur
+		out.Holder, out.Dispatch, out.Run = holder, dispatch, run
+		out.Epoch, out.Seq, out.State = cur.Epoch+1, cur.Seq+1, core.StateClaimed
+		out.Return, out.Reason, out.Resume = "", "", ""
+		return s.write(i, out)
+	})
+	if err != nil {
+		return Record{}, err
+	}
+	return out, nil
+}
+
+// openPRs counts handed-off Issues that are not done.
+func (s *Store) openPRs() (int, error) {
+	recs, err := s.List()
+	if err != nil {
+		return 0, err
+	}
+	n := 0
+	for _, r := range recs {
+		if r.Receipt != nil && r.State != core.StateDone {
+			n++
+		}
+	}
+	return n, nil
+}
+
+// Read returns the stored record including a released one (holder empty), or
+// ErrNotHeld when the Issue has never been claimed.
+func (s *Store) Read(i core.IssueRef) (Record, error) {
+	r, ok, err := s.read(i)
+	if err != nil {
+		return Record{}, err
+	}
+	if !ok {
+		return Record{}, core.ErrNotHeld
+	}
+	return r, nil
+}
+
+// List returns every stored record (held, released, handed off) ordered by
+// Issue number. A leader that restarts rebuilds its view from it.
+func (s *Store) List() ([]Record, error) {
+	ents, err := os.ReadDir(s.dir)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", core.ErrStoreUnavailable, err)
+	}
+	var out []Record
+	for _, e := range ents {
+		name := e.Name()
+		if e.IsDir() || !strings.HasPrefix(name, "issue-") || !strings.HasSuffix(name, ".json") {
+			continue
+		}
+		n, err := strconv.Atoi(strings.TrimSuffix(strings.TrimPrefix(name, "issue-"), ".json"))
+		if err != nil || n <= 0 {
+			continue
+		}
+		ref, _ := core.NewIssueRef(n)
+		r, ok, err := s.read(ref)
+		if err != nil {
+			return nil, err
+		}
+		if ok {
+			out = append(out, r)
+		}
+	}
+	sort.Slice(out, func(a, b int) bool { return out[a].Issue < out[b].Issue })
+	return out, nil
+}
+
+// UpdateRelease verifies ownership, applies fn, and releases the claim in the
+// same write. A refused or failed update leaves the holder in place.
+func (s *Store) UpdateRelease(i core.IssueRef, holder string, epoch int64, fn func(*Record) error) (Record, error) {
+	var out Record
+	err := s.withLock(i, func() error {
+		cur, err := s.Verify(i, holder, epoch)
+		if err != nil {
+			return err
+		}
+		next := cur
+		if err := fn(&next); err != nil {
+			return err
+		}
+		next.Issue, next.Epoch, next.Seq = cur.Issue, cur.Epoch, cur.Seq+1
+		next.Holder = ""
+		out = next
+		return s.write(i, out)
+	})
+	if err != nil {
+		return Record{}, err
+	}
+	return out, nil
+}
+
+// UpdateReleased applies fn to a record nobody holds (a handed-off or done
+// Issue), for the leader or monitor that tracks the PR. It refuses a held
+// record, so it can never race a Worker's own writes.
+func (s *Store) UpdateReleased(i core.IssueRef, fn func(*Record) error) (Record, error) {
+	var out Record
+	err := s.withLock(i, func() error {
+		cur, ok, err := s.read(i)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return core.ErrNotHeld
+		}
+		if cur.Holder != "" {
+			return fmt.Errorf("%w: %s is held by %q", core.ErrTransitionInvalid, i.Resource(), cur.Holder)
+		}
+		next := cur
+		if err := fn(&next); err != nil {
+			return err
+		}
+		next.Issue, next.Holder, next.Epoch, next.Seq = cur.Issue, "", cur.Epoch, cur.Seq+1
+		out = next
 		return s.write(i, out)
 	})
 	if err != nil {
