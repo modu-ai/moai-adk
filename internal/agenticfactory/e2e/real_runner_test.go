@@ -3,6 +3,8 @@ package e2e
 import (
 	"errors"
 	"reflect"
+	"strconv"
+	"sync"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/claim"
@@ -50,10 +52,51 @@ func (roleAttributor) Attribute(res runner.Result) runner.Attribution {
 	return runner.Attribution{Attributed: true, Role: role, Session: "producer-" + string(res.Kind)}
 }
 
-// wired is a Runner over st with the stand-in attributor.
+// fakeFacts is a fake host for the permission decision: per-Issue facts, with an
+// optional fallback for every Issue not listed (nil = the lookup fails).
+type fakeFacts struct {
+	byIssue  map[int]runner.IssueFacts
+	fallback *runner.IssueFacts
+	err      error
+	mu       sync.Mutex
+	calls    int
+}
+
+func (f *fakeFacts) IssueFacts(i core.IssueRef) (runner.IssueFacts, error) {
+	f.mu.Lock()
+	f.calls++
+	f.mu.Unlock()
+	if f.err != nil {
+		return runner.IssueFacts{}, f.err
+	}
+	if v, ok := f.byIssue[i.Number]; ok {
+		return v, nil
+	}
+	if f.fallback != nil {
+		return *f.fallback, nil
+	}
+	return runner.IssueFacts{}, errors.New("issue lookup failed")
+}
+
+// ownIssueFacts: an Issue I opened, in the repository asked about, unowned.
+func ownIssueFacts() runner.IssueFacts {
+	return runner.IssueFacts{RequestedRepo: repoA, ActualRepo: repoA, UserID: me, AuthorID: me, Owner: core.OwnerNone}
+}
+
+// foreignIssueFacts: an Issue another author opened.
+func foreignIssueFacts(owner core.OwnerState) runner.IssueFacts {
+	return runner.IssueFacts{RequestedRepo: repoA, ActualRepo: repoA, UserID: me, AuthorID: them, Owner: owner}
+}
+
+// myIssuesFacts treats every Issue as mine, which is what the minimum path needs.
+func myIssuesFacts() *fakeFacts { f := ownIssueFacts(); return &fakeFacts{fallback: &f} }
+
+// wired is a Runner over st with the stand-in attributor and a host in which
+// every Issue is mine.
 func wired(st *claim.Store) *runner.Runner {
 	r := runner.New(st)
 	r.Attributor = roleAttributor{}
+	r.Facts = myIssuesFacts()
 	return r
 }
 
@@ -74,7 +117,14 @@ func upTo(t *testing.T, r *runner.Runner, tk runner.Ticket, stage core.State) {
 		func() error { _, err := r.StartAttempt(tk, "att-1", core.DeliveryExecuted); return err },
 		func() error { _, err := r.Submit(tk, headA, false); return err },
 		func() error { _, err := r.Verify(tk, passAll(tk, headA)); return err },
-		func() error { _, err := r.Land(tk, headA); return err },
+		func() error {
+			// The PR text is checked for closing keywords before the PR exists.
+			if _, err := r.PreflightPR(tk, headA, repoA, "Refs #"+issueNumber(tk)); err != nil {
+				return err
+			}
+			_, err := r.Land(tk, headA)
+			return err
+		},
 	}
 	want := []core.State{core.StateImplementing, core.StateVerifying, core.StateReady, core.StateLanding}
 	for i, s := range steps {
@@ -87,6 +137,8 @@ func upTo(t *testing.T, r *runner.Runner, tk runner.Ticket, stage core.State) {
 	}
 	t.Fatalf("unknown stage %s", stage)
 }
+
+func issueNumber(tk runner.Ticket) string { return strconv.Itoa(tk.Issue.Number) }
 
 func state(t *testing.T, r *runner.Runner, tk runner.Ticket) claim.Record {
 	t.Helper()

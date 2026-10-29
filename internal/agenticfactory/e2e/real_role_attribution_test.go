@@ -20,6 +20,7 @@ func lockedRunner(t *testing.T) (*runner.Runner, runner.Ticket) {
 	t.Helper()
 	st, ref, run := realStore(t)
 	r := runner.New(st) // no Attributor: the lock
+	r.Facts = myIssuesFacts()
 	tk, err := r.Claim(ref, "w1", "d-1", run)
 	if err != nil {
 		t.Fatal(err)

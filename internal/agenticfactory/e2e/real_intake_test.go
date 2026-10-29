@@ -19,16 +19,34 @@ import (
 // filesystem effect happens here. Limits and timeouts are test inputs.
 
 type fakePub struct {
-	mu           sync.Mutex
-	publishes    int
-	finds        int
-	created      map[string]int // request key -> issue that now exists on the "remote"
-	next         int
-	publishErr   error // returned by PublishIssue
-	createOnErr  bool  // the Issue DOES get created although PublishIssue returns an error (lost response)
-	findErr      error
-	block        bool // PublishIssue waits for its context
-	hangForeverC chan struct{}
+	mu          sync.Mutex
+	publishes   int
+	finds       int
+	created     map[string]int // request key -> issue that now exists on the "remote"
+	next        int
+	publishErr  error // returned by PublishIssue
+	createOnErr bool  // the Issue DOES get created although PublishIssue returns an error (lost response)
+	findErr     error
+	block       bool // PublishIssue waits for its context
+
+	user       int64 // AuthenticatedUser answer; 0 = cannot be established
+	userErr    error
+	dups       []intake.Candidate // FindDuplicates answer
+	dupErr     error
+	dupLookups int
+}
+
+func (p *fakePub) AuthenticatedUser(context.Context) (int64, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.user, p.userErr
+}
+
+func (p *fakePub) FindDuplicates(context.Context, claim.Request) ([]intake.Candidate, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.dupLookups++
+	return p.dups, p.dupErr
 }
 
 func (p *fakePub) PublishIssue(ctx context.Context, req claim.Request) (int, string, error) {
@@ -120,7 +138,7 @@ func newRig(t *testing.T, cfg intake.Config) *intakeRig {
 	if err != nil {
 		t.Fatal(err)
 	}
-	r := &intakeRig{dir: dir, st: st, pub: &fakePub{}, br: &fakeBrancher{}, prep: &fakePrep{writerStopped: true}, cfg: cfg}
+	r := &intakeRig{dir: dir, st: st, pub: &fakePub{user: me}, br: &fakeBrancher{}, prep: &fakePrep{writerStopped: true}, cfg: cfg}
 	r.in = r.intakeOver(t, st)
 	return r
 }

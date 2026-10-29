@@ -46,7 +46,11 @@ func TestReal_LeaderRestart_StateSurvivesReopen(t *testing.T) {
 		t.Errorf("record changed across reopen: %+v -> %+v", before, after)
 	}
 	// The original ticket keeps working against the reopened store.
-	if _, err := wired(reopened).Land(tk, headA); err != nil {
+	rn := wired(reopened)
+	if _, err := rn.PreflightPR(tk, headA, repoA, "Refs #"+issueNumber(tk)); err != nil {
+		t.Errorf("preflight after reopen: %v", err)
+	}
+	if _, err := rn.Land(tk, headA); err != nil {
 		t.Errorf("land after reopen: %v", err)
 	}
 }
