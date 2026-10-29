@@ -4,6 +4,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/claim"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/runner"
 )
@@ -35,25 +36,51 @@ func TestRealClosure_MissingClose_NeverDone_MergeFactKept_DirectPath(t *testing.
 	}
 }
 
+// Handed off, then completed without the Issue close: never done. Under lane-18's
+// contract the publisher keeps the Issue until it is closed, so there are two
+// ways to finish it: the owner completes it itself, or the owner has released it
+// and the leader/monitor completes it from the observations. Neither reaches done
+// without the close.
 func TestRealClosure_MissingClose_NeverDone_HandedOffPath(t *testing.T) {
-	r, tk := newRunner(t)
-	upTo(t, r, tk, core.StateLanding)
-	if _, err := r.HandOff(tk, goodHandoff()); err != nil {
-		t.Fatal(err)
+	missingThenObserved := func(t *testing.T, complete func(runner.Landing) (claim.Record, error), read func() claim.Record) {
+		t.Helper()
+		l := fullLanding
+		l.IssueClosed = false
+		if _, err := complete(l); !errors.Is(err, core.ErrEvidenceIncomplete) {
+			t.Fatalf("handed-off complete without a close: %v", err)
+		}
+		if rec := read(); rec.State == core.StateDone || rec.Pending != "issue-close" {
+			t.Errorf("record after refusal = %+v", rec)
+		}
+		// The close is then observed: the same call completes it.
+		rec, err := complete(fullLanding)
+		if err != nil || rec.State != core.StateDone || !rec.Closed || rec.Pending != "" {
+			t.Errorf("done after the close: %+v, %v", rec, err)
+		}
 	}
-	l := fullLanding
-	l.IssueClosed = false
-	if _, err := r.CompleteHandedOff(tk.Issue, l); !errors.Is(err, core.ErrEvidenceIncomplete) {
-		t.Fatalf("handed-off complete without a close: %v", err)
-	}
-	if rec, err := r.Store.Read(tk.Issue); err != nil || rec.State == core.StateDone || rec.Pending != "issue-close" {
-		t.Errorf("record after refusal = %+v, %v", rec, err)
-	}
-	// The close is then observed: the same call completes it.
-	rec, err := r.CompleteHandedOff(tk.Issue, fullLanding)
-	if err != nil || rec.State != core.StateDone || !rec.Closed || rec.Pending != "" {
-		t.Errorf("done after the close: %+v, %v", rec, err)
-	}
+	t.Run("owner_completes_after_the_handoff", func(t *testing.T) {
+		r, tk := newRunner(t)
+		upTo(t, r, tk, core.StateLanding)
+		if _, err := r.HandOff(tk, goodHandoff(t)); err != nil {
+			t.Fatal(err)
+		}
+		missingThenObserved(t,
+			func(l runner.Landing) (claim.Record, error) { return r.Complete(tk, l) },
+			func() claim.Record { rec, _ := r.Store.Read(tk.Issue); return rec })
+	})
+	t.Run("monitor_completes_the_released_record", func(t *testing.T) {
+		r, tk := newRunner(t)
+		upTo(t, r, tk, core.StateLanding)
+		if _, err := r.HandOff(tk, goodHandoff(t)); err != nil {
+			t.Fatal(err)
+		}
+		if err := r.Store.Release(tk.Issue, tk.Holder); err != nil {
+			t.Fatal(err)
+		}
+		missingThenObserved(t,
+			func(l runner.Landing) (claim.Record, error) { return r.CompleteHandedOff(tk.Issue, l) },
+			func() claim.Record { rec, _ := r.Store.Read(tk.Issue); return rec })
+	})
 }
 
 // Nothing is recorded as merged when the merge itself was not observed.

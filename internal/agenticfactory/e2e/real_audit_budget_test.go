@@ -81,7 +81,7 @@ func TestAuditBudget_Exhaustion_PausesTheIssue_ThenResumesToVerifying(t *testing
 	if !ok {
 		t.Fatalf("round 2 did not exhaust the budget: %v", err)
 	}
-	rec, perr := r.Pause(tk, core.StateBlocked, reason, "operator approves a new audit round or splits the scope")
+	rec, perr := r.Pause(tk, core.StateBlocked, reason, "operator approves a new audit round or splits the scope", waitOf(tk))
 	if perr != nil {
 		t.Fatal(perr)
 	}

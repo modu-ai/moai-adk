@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/claim"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
@@ -149,13 +150,23 @@ func state(t *testing.T, r *runner.Runner, tk runner.Ticket) claim.Record {
 	return rec
 }
 
+// waitOf is a valid wait record for the ticket's holder. A park carries one
+// (lane-18's Pause now requires it, design 2.1c), so the pause calls here pass
+// it; the assertions on what the pause does are unchanged.
+func waitOf(tk runner.Ticket) core.Wait {
+	return core.Wait{
+		Owner: tk.Holder, NextAction: "re-run the failed step", RecheckAt: t0.Add(time.Hour),
+		Diagnosis: "waiting on the condition named in the pause", MaxRetries: 2, Escalate: "leader",
+	}
+}
+
 // Scenario 5: audit budget exhausted -> blocked(budget-exhausted); the Issue
 // cannot advance, and resumes only to the stage it left, once the condition is met.
 func TestReal_AuditBudgetExhausted_BlocksAndResumesToReturnStage(t *testing.T) {
 	r, tk := newRunner(t)
 	upTo(t, r, tk, core.StateVerifying)
 
-	rec, err := r.Pause(tk, core.StateBlocked, core.ReasonBudgetExhausted, "operator approves a new audit round")
+	rec, err := r.Pause(tk, core.StateBlocked, core.ReasonBudgetExhausted, "operator approves a new audit round", waitOf(tk))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -203,7 +214,7 @@ func TestReal_UnknownMerge_StaysInLandingNeverDone(t *testing.T) {
 	if got := state(t, r, tk).State; got != core.StateLanding {
 		t.Fatalf("state = %s, want landing", got)
 	}
-	rec, err := r.Pause(tk, core.StateBlocked, core.ReasonConnectionFailed, "remote lookup succeeds")
+	rec, err := r.Pause(tk, core.StateBlocked, core.ReasonConnectionFailed, "remote lookup succeeds", waitOf(tk))
 	if err != nil || rec.Return != core.StateLanding {
 		t.Errorf("pause on failed lookup = %+v, %v", rec, err)
 	}
@@ -238,7 +249,7 @@ func TestReal_Done_RequiresAllThreeRecords(t *testing.T) {
 	if err != nil || rec.State != core.StateDone {
 		t.Fatalf("complete = %+v, %v", rec, err)
 	}
-	if _, err := r.Pause(tk, core.StateOnHold, core.ReasonOperatorHold, "late hold"); !errors.Is(err, core.ErrTransitionInvalid) {
+	if _, err := r.Pause(tk, core.StateOnHold, core.ReasonOperatorHold, "late hold", waitOf(tk)); !errors.Is(err, core.ErrTransitionInvalid) {
 		t.Errorf("pause after done: %v, want ErrTransitionInvalid", err)
 	}
 }
