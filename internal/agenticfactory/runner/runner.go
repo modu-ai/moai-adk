@@ -203,6 +203,14 @@ func (r *Runner) StartAttempt(t Ticket, attempt string, delivery core.Delivery) 
 		if err := r.Store.ReadyGate(rec.Issue, rec.Holder); err != nil {
 			return err
 		}
+		// Another PR of this agent is open: this Issue is written in its own worktree.
+		if rec.Worktree == "" {
+			if open, err := r.Store.HasOpenHandoff(rec.Holder, core.IssueRef{Number: rec.Issue}); err != nil {
+				return err
+			} else if open {
+				return fmt.Errorf("%w: issue-%d", core.ErrWorktreeUnbound, rec.Issue)
+			}
+		}
 		if !delivery.AtLeast(core.DeliveryExecuted) {
 			return fmt.Errorf("%w: delivery %q has not reached executed", core.ErrTransitionInvalid, delivery)
 		}
@@ -623,10 +631,17 @@ func (r *Runner) ReopenOwn(t Ticket, reason string, ev RepairEvidence) (claim.Re
 		if !ev.OldWriterEnded {
 			return fmt.Errorf("%w: the previous writer has not ended", core.ErrEvidenceIncomplete)
 		}
-		rec.State, rec.Pending, rec.Repair = core.StateVerifying, "", &rep
+		rec.State, rec.Pending, rec.Repair, rec.RepairNeeded = core.StateVerifying, "", &rep, ""
 		rec.AddEvent(claim.Event{Kind: "reopen", Head: string(rec.Head), PR: rec.Receipt.PR, Note: reason})
 		return nil
 	})
+}
+
+// BindWorktree binds the write worktree of the ticket's Issue. It is required
+// before writing when the same agent already has another PR open, and it must be
+// a worktree no other open Issue uses.
+func (r *Runner) BindWorktree(t Ticket, path string) (claim.Record, error) {
+	return r.Store.BindWorktree(t.Issue, t.Holder, t.Epoch, path)
 }
 
 // SetWait records what the owner waits for. The wait belongs to the ticket's

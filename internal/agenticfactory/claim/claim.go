@@ -76,6 +76,11 @@ type Record struct {
 	// evidence while the owner repairs a PR it handed off.
 	Wait   *core.Wait `json:"wait,omitempty"`
 	Repair *Repair    `json:"repair,omitempty"`
+	// RepairNeeded is the signal (CI failed, review asked for changes) that the
+	// owner must repair its open PR before it takes new work. Worktree is the
+	// write worktree bound to this Issue's work.
+	RepairNeeded string `json:"repair_needed,omitempty"`
+	Worktree     string `json:"worktree,omitempty"`
 }
 
 // Repair is the canon E06 evidence (REVIEWING -> BUILDING/FIX): the repair
@@ -404,6 +409,9 @@ func (s *Store) acquire(i core.IssueRef, holder, name, dispatch string, run core
 		}
 		if ok && cur.Receipt != nil {
 			return fmt.Errorf("%w: %s PR #%d", core.ErrRepairOnly, i.Resource(), cur.Receipt.PR)
+		}
+		if err := s.repairFirst(holder, i); err != nil {
+			return err
 		}
 		n, err := s.openPRs()
 		if err != nil {
