@@ -305,3 +305,39 @@ func TestBackoffMaxBelowTheMinimumIsRejectedAndNeverShortensIt(t *testing.T) {
 		t.Errorf("wait %v is shorter than the minimum %v", d, bad.MinSecondaryWait)
 	}
 }
+
+// GitLab rows of lane-17's table (L1, L2, L4, L5, L6), from the documentation summaries recorded there.
+// These pin the neutral behaviour only; nothing here calls GitLab.
+func TestGitLabRows(t *testing.T) {
+	at := t0.Add(2 * time.Minute).UTC().Format(http.TimeFormat)
+	// L1: 429 with Retry-After wins over the reset date.
+	v := Classify(resp(429, "Retry later", "retry-after", "20", "ratelimit-resettime", at, "ratelimit-name", "throttle_authenticated_api"), t0, cfg(), 0)
+	if v.Kind != KindLimited || v.RetryAt.Sub(t0) != 20*time.Second {
+		t.Errorf("L1: %+v", v)
+	}
+	// L2: 429 with no Retry-After and no reset: the configured minimum, growing with attempts.
+	a0 := Classify(resp(429, ""), t0, cfg(), 0).RetryAt.Sub(t0)
+	a1 := Classify(resp(429, ""), t0, cfg(), 1).RetryAt.Sub(t0)
+	if a0 != cfg().MinSecondaryWait || a1 <= a0 {
+		t.Errorf("L2: %v then %v", a0, a1)
+	}
+	// L4: 404 is never read as a deletion or a permission fact.
+	if k := Classify(resp(404, ""), t0, cfg(), 0).Kind; k != KindOther {
+		t.Errorf("L4: %s", k)
+	}
+	// L5: the named limit gets its own bucket and the remaining count is read.
+	b := &Budget{}
+	b.Observe(resp(200, "", "ratelimit-name", "throttle_authenticated_api", "ratelimit-remaining", "0", "ratelimit-resettime", at), t0)
+	if ok, until := b.AllowFor("throttle_authenticated_api", t0); ok || until.Sub(t0) != 2*time.Minute {
+		t.Errorf("L5: ok=%v until=%v", ok, until.Sub(t0))
+	}
+	if ok, _ := b.AllowFor("other_limit", t0); !ok {
+		t.Error("L5: one named limit blocked another")
+	}
+	// L6: no headers at all (Projects/Groups/Users API): unknown, not exhausted.
+	u := &Budget{}
+	u.Observe(resp(200, ""), t0)
+	if ok, _ := u.Allow(t0); !ok {
+		t.Error("L6: absent headers read as exhausted")
+	}
+}

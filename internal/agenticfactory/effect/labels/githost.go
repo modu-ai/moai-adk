@@ -27,6 +27,8 @@ type GitHubHost struct {
 	PerPage    int // page size for listing; required, comes from configuration
 	Backoff    forge.Backoff
 	Now        func() time.Time
+
+	resource string // host resource the labels calls count against, learned from the first response
 }
 
 func (h *GitHubHost) now() time.Time {
@@ -56,7 +58,7 @@ func (h *GitHubHost) do(ctx context.Context, r forge.Request) (forge.Response, e
 		return forge.Response{}, fmt.Errorf("labels: refusing request %s %s", r.Method, r.Path)
 	}
 	now := h.now()
-	if ok, until := h.B.Allow(now); !ok {
+	if ok, until := h.B.AllowFor(h.resource, now); !ok {
 		return forge.Response{}, &effect.LimitedError{RetryAt: until}
 	}
 	resp, err := h.T.Do(ctx, r)
@@ -64,11 +66,12 @@ func (h *GitHubHost) do(ctx context.Context, r forge.Request) (forge.Response, e
 		return forge.Response{}, err
 	}
 	h.B.Observe(resp, now)
+	h.resource = forge.ResourceOf(resp)
 	switch v := forge.Classify(resp, now, h.Backoff, 0); v.Kind {
 	case forge.KindOK:
 		return resp, nil
 	case forge.KindLimited:
-		h.B.Block(v.RetryAt)
+		h.B.BlockFor(h.resource, v.RetryAt)
 	}
 	return forge.Response{}, &forge.StatusError{Status: resp.Status, Header: resp.Header, Body: resp.Body}
 }

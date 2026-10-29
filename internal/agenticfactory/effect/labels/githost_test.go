@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -47,7 +48,7 @@ func (m *miniGitHub) Do(_ context.Context, r forge.Request) (forge.Response, err
 			all = nil
 		}
 		raw, _ := json.Marshal(all)
-		return forge.Response{Status: 200, Body: raw}, nil
+		return forge.Response{Status: 200, Header: m.header, Body: raw}, nil
 	case r.Method == http.MethodPost && r.Path == base:
 		var b map[string]string
 		_ = json.Unmarshal(r.Body, &b)
@@ -188,5 +189,22 @@ func TestGitHubHostPermissionDenialIsTypedForParking(t *testing.T) {
 	err := ghHost(m, true, t0).Create(t.Context(), Label{Name: "x", Color: "ffffff"})
 	if mapped := forge.ForEffect(err, t0, forge.Backoff{MinSecondaryWait: time.Minute, Base: time.Second, Max: time.Minute, MaxAttempts: 3}); !errors.Is(mapped, effect.ErrDenied) {
 		t.Errorf("mapped = %v", mapped)
+	}
+}
+
+// GitHub names the resource on every response; the exhaustion it reports must stop the next call.
+func TestGitHubHostStopsWhenTheNamedResourceIsExhausted(t *testing.T) {
+	m := newMini()
+	m.header = map[string]string{"x-ratelimit-resource": "core", "x-ratelimit-remaining": "0", "x-ratelimit-reset": strconv.FormatInt(t0.Add(time.Hour).Unix(), 10)}
+	h := ghHost(m, true, t0)
+	if _, err := h.List(t.Context()); err == nil {
+		// the forced header rides on a normal 200 only when no status is forced; List must succeed once
+		_ = err
+	}
+	n := len(m.reqs)
+	err := h.Create(t.Context(), Label{Name: "x", Color: "ffffff"})
+	var le *effect.LimitedError
+	if !errors.As(err, &le) || len(m.reqs) != n {
+		t.Errorf("err=%v requests %d -> %d: an exhausted resource must stop the call before it is sent", err, n, len(m.reqs))
 	}
 }
