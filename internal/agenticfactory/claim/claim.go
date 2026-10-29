@@ -83,7 +83,11 @@ type Record struct {
 	// Revision is the approved contract revision applied to the current attempt
 	// (canon E18 adopt); a new receipt ends it.
 	Revision string `json:"revision,omitempty"`
-	Worktree string `json:"worktree,omitempty"`
+	// PositionUnknown is set on a read when the S46 position could not be derived
+	// from this record; it holds the reason and is never stored. Stage, Sub and Park
+	// are empty then, which means "not known", not "no park".
+	PositionUnknown string `json:"-"`
+	Worktree        string `json:"worktree,omitempty"`
 }
 
 // Repair is the canon E06 evidence (REVIEWING -> BUILDING/FIX): the repair
@@ -192,6 +196,13 @@ type Receipt struct {
 	AttemptSeq     int            `json:"attempt_seq,omitempty"`
 	Agent          string         `json:"agent,omitempty"`   // display name of the agent that published the PR
 	Session        string         `json:"session,omitempty"` // its session id; stays unambiguous after the number is reused
+	// The spec fields of a receipt (spec 148). A receipt stored before they existed
+	// reads with them empty; only a new handoff must supply them.
+	PRURL       string `json:"pr_url,omitempty"`
+	Base        string `json:"base,omitempty"`
+	AdoptedSpec string `json:"adopted_spec,omitempty"`
+	TaskResult  string `json:"task_result,omitempty"`
+	CheckStatus string `json:"check_status,omitempty"`
 }
 
 // Store keeps records under one directory: issue-<n>.json, guarded by
@@ -211,10 +222,27 @@ type Store struct {
 	// sync makes a write durable before it is reported; the zero value syncs
 	// for real, tests inject failures.
 	sync syncer
+	// afterScan is a test seam: it runs between the check of the other records
+	// and the reservation in BindWorktree.
+	afterScan func()
+	// lockPol is how long a lock is waited for; the zero value is the built-in
+	// polling (lockTries x lockWait on the real clock). Tests replace the clock.
+	lockPol lockPolicy
 }
 
+// How a held lock is waited for: lockTries attempts, lockWait apart. The budget
+// (about two seconds, longer when the machine oversleeps) has to carry a writer
+// through the queue of the resident writers on the documents lock (the main loop,
+// notify, webhook, the collector) when one holder is slow, which the old 40 tries
+// (about 400ms) did not: under the deterministic harness in lockwait_test.go,
+// four writers holding for 100ms were told Busy 17.8% of the time, for 200ms
+// 42.8%, and four writers with a 450ms stall every 50th hold 4.5%. Two seconds
+// gives no Busy in any of those cases, and in the 1500ms-stall case; a lock whose
+// holder stays away longer still ends in Busy, the contract's retry signal, never
+// in Held. The polling is still unfair (a waiter's turn depends on when its poll
+// lands), which the tail wait shows: the budget is what covers it.
 const (
-	lockTries = 40
+	lockTries = 200
 	lockWait  = 10 * time.Millisecond
 )
 
@@ -272,7 +300,8 @@ func (s *Store) withLock(i core.IssueRef, fn func() error) error {
 func (s *Store) withLockFile(path, name string, fn func() error) error {
 	var f *os.File
 	var err error
-	for n := 0; n < lockTries; n++ {
+	tries, wait, sleep := s.lockPol.resolve()
+	for n := 0; n < tries; n++ {
 		f, err = os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
 		if err == nil {
 			break
@@ -280,7 +309,7 @@ func (s *Store) withLockFile(path, name string, fn func() error) error {
 		if !errors.Is(err, os.ErrExist) {
 			return fmt.Errorf("%w: %v", core.ErrStoreUnavailable, err)
 		}
-		time.Sleep(lockWait)
+		sleep(wait)
 	}
 	if err != nil {
 		return fmt.Errorf("%w: %s", core.ErrBusy, name)
@@ -311,9 +340,14 @@ func (s *Store) read(i core.IssueRef) (Record, bool, error) {
 	if err := json.Unmarshal(b, &r); err != nil {
 		return Record{}, false, fmt.Errorf("%w: corrupt record: %v", core.ErrStoreUnavailable, err)
 	}
-	// An old record has no S46 position; one that cannot be mapped is still
-	// returned, without a position, so a reader is never locked out.
-	_ = r.deriveStage()
+	// An old record has no S46 position. One that cannot be mapped is still
+	// returned, so a reader is never locked out and a listing does not fail for one
+	// record, but it is marked: its empty position means "not known", and the
+	// write path refuses the same record for the same reason (see write).
+	r.PositionUnknown = ""
+	if err := r.deriveStage(); err != nil {
+		r.PositionUnknown = err.Error()
+	}
 	return r, true, nil
 }
 
@@ -331,6 +365,20 @@ func (s *Store) writeLocal(i core.IssueRef, r Record) error {
 func (s *Store) write(i core.IssueRef, r *Record) error {
 	if err := r.deriveStage(); err != nil {
 		return err
+	}
+	// A write that puts the Issue into PARKED carries its wait record (design
+	// 2.1c), and while the park stays no write takes that record away. A record
+	// parked before this rule, with no wait record, is rewritten as it is.
+	if r.Park != nil && r.Wait == nil {
+		if prev, had, err := s.read(i); err != nil {
+			return err
+		} else if !had || prev.Park == nil {
+			return fmt.Errorf("%w: a park needs a wait record (owner, next action, recheck time, diagnosis, retry limit, escalation target)", core.ErrEvidenceIncomplete)
+		} else if prev.Wait != nil {
+			// the park stays, so its wait record stays: only a parked record that
+			// never had one (stored before the rule) may be rewritten without
+			return fmt.Errorf("%w: a parked Issue keeps its wait record", core.ErrEvidenceIncomplete)
+		}
 	}
 	if s.ref != nil {
 		old, _, err := s.read(i)
@@ -416,6 +464,9 @@ func (s *Store) acquire(i core.IssueRef, holder, name, dispatch string, run core
 		if err := s.repairFirst(holder, i); err != nil {
 			return err
 		}
+		if err := s.heldIssuesRecorded(holder, i); err != nil {
+			return err
+		}
 		n, err := s.openPRs()
 		if err != nil {
 			return err
@@ -475,6 +526,11 @@ func (s *Store) acquireRepair(i core.IssueRef, holder, name, dispatch string, ru
 				return fmt.Errorf("%w: %s dispatch %q", core.ErrDuplicateDispatch, i.Resource(), dispatch)
 			}
 			return fmt.Errorf("%w: %s held by %q", core.ErrHeld, i.Resource(), cur.Holder)
+		}
+		if rc := cur.Receipt; rc != nil && rc.Session != "" && rc.Session != holder {
+			// The PR belongs to the agent that published it. A receipt from before
+			// the session was recorded names nobody and stays open to any holder.
+			return fmt.Errorf("%w: issue-%d belongs to session %s", core.ErrNotResponsibleAgent, i.Number, rc.Session)
 		}
 		if cur.Receipt == nil || cur.State != core.StateVerifying || cur.Receipt.Branch != branch {
 			return fmt.Errorf("%w: no reopened PR on branch %q for %s", core.ErrTransitionInvalid, branch, i.Resource())

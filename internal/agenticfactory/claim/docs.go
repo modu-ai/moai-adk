@@ -27,12 +27,15 @@ const maxDocBytes = 256 << 10
 //	context - the per-Issue context ledger model
 //	checkpoint - the resume manifest of a card branch (safety: never held back)
 //	collector  - lane 20's collector cursors (safety: a lost cursor is a lost change)
+//	worktree   - the reservation of a write worktree by one Issue (safety: create-only, so
+//	             two lanes binding one path cannot both win)
 var docKinds = map[string]core.Priority{
 	"intent":     core.PrioritySafety,
 	"audit":      core.PrioritySafety,
 	"context":    core.PriorityReport,
 	"checkpoint": core.PrioritySafety,
 	"collector":  core.PrioritySafety,
+	"worktree":   core.PrioritySafety,
 }
 
 // Doc is one stored document. Data is opaque JSON owned by the caller.
@@ -58,6 +61,12 @@ func checkDoc(kind, name string) (core.Priority, error) {
 	return p, nil
 }
 
+// withDocs runs fn under the documents lock. Lock order: an Issue lock may be held
+// when this is taken (a bind or a handoff reserves a worktree inside its update),
+// and the documents lock is a leaf: nothing run under it may take the Issue,
+// requests or agent-registry lock, so the order cannot form a cycle.
+// TestTheDocumentsLockIsALeaf reads the source and fails if that stops being true.
+// UpdateDoc runs its caller's function outside the lock for the same reason.
 func (s *Store) withDocs(fn func() error) error {
 	if err := os.MkdirAll(filepath.Join(s.dir, "docs"), 0o700); err != nil {
 		return fmt.Errorf("%w: %v", core.ErrStoreUnavailable, err)

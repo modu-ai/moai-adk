@@ -26,28 +26,31 @@ type Ledger struct {
 	State State    `json:"state"`
 	// Stage, Sub, Park, Gate and Refusal are the S46 position; State,
 	// ReturnStage and BlockReason stay for readers that have not moved yet.
-	Stage         Stage       `json:"stage,omitempty"`
-	Sub           SubStage    `json:"sub_stage,omitempty"`
-	Park          *Park       `json:"park,omitempty"`
-	Gate          *Gate       `json:"gate,omitempty"`
-	Refusal       *Refusal    `json:"refusal,omitempty"`
-	Wait          *Wait       `json:"wait,omitempty"`
-	ReturnStage   State       `json:"return_stage,omitempty"`
-	BlockReason   BlockReason `json:"block_reason,omitempty"`
-	ResumeCond    string      `json:"resume_condition,omitempty"`
-	Owner         string      `json:"owner,omitempty"`
-	Writer        string      `json:"writer,omitempty"`
-	Run           RunID       `json:"run_id,omitempty"`
-	Attempt       AttemptID   `json:"attempt_id,omitempty"`
-	Head          HeadSHA     `json:"head_sha,omitempty"`
-	CheckLinks    []string    `json:"check_links,omitempty"`
-	Review        []Evidence  `json:"review_evidence,omitempty"`
-	Audit         []Evidence  `json:"audit_evidence,omitempty"`
-	QA            []Evidence  `json:"qa_evidence,omitempty"`
-	HandoffWriter *Evidence   `json:"handoff_writer,omitempty"`
-	HandoffCoord  *Evidence   `json:"handoff_coordinator,omitempty"`
-	NextAction    string      `json:"next_action,omitempty"`
-	StoreSeq      int64       `json:"store_seq"`
-	Delivery      Delivery    `json:"delivery,omitempty"`
-	LastCheckedAt string      `json:"last_checked_at,omitempty"`
+	Stage   Stage    `json:"stage,omitempty"`
+	Sub     SubStage `json:"sub_stage,omitempty"`
+	Park    *Park    `json:"park,omitempty"`
+	Gate    *Gate    `json:"gate,omitempty"`
+	Refusal *Refusal `json:"refusal,omitempty"`
+	Wait    *Wait    `json:"wait,omitempty"`
+	// PositionUnknown is set when the position could not be derived from the claim
+	// record: Stage, Sub and Park are empty then and do not mean "no park".
+	PositionUnknown string      `json:"position_unknown,omitempty"`
+	ReturnStage     State       `json:"return_stage,omitempty"`
+	BlockReason     BlockReason `json:"block_reason,omitempty"`
+	ResumeCond      string      `json:"resume_condition,omitempty"`
+	Owner           string      `json:"owner,omitempty"`
+	Writer          string      `json:"writer,omitempty"`
+	Run             RunID       `json:"run_id,omitempty"`
+	Attempt         AttemptID   `json:"attempt_id,omitempty"`
+	Head            HeadSHA     `json:"head_sha,omitempty"`
+	CheckLinks      []string    `json:"check_links,omitempty"`
+	Review          []Evidence  `json:"review_evidence,omitempty"`
+	Audit           []Evidence  `json:"audit_evidence,omitempty"`
+	QA              []Evidence  `json:"qa_evidence,omitempty"`
+	HandoffWriter   *Evidence   `json:"handoff_writer,omitempty"`
+	HandoffCoord    *Evidence   `json:"handoff_coordinator,omitempty"`
+	NextAction      string      `json:"next_action,omitempty"`
+	StoreSeq        int64       `json:"store_seq"`
+	Delivery        Delivery    `json:"delivery,omitempty"`
+	LastCheckedAt   string      `json:"last_checked_at,omitempty"`
 }
