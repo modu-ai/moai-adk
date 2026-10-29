@@ -3,16 +3,21 @@ package e2e
 import (
 	"context"
 	"errors"
+	"fmt"
+	"sort"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/mirror"
 )
 
-// Rate-limit and refusal handling on the real mirror classifier. The stderr
-// texts are test inputs only; they are not claims about real GitHub limits.
+// Rate-limit and refusal handling on the real mirror. A refusal reaches mirror
+// the way `gh api -i` delivers it: a status line, headers, a blank line and the
+// body on stdout, exit 1. Header values and bodies are TEST INPUTS only; they
+// say nothing about a real host's limits.
 
 type scriptExec struct {
 	mu    sync.Mutex
@@ -28,88 +33,132 @@ func (s *scriptExec) Run(_ context.Context, args ...string) ([]byte, []byte, int
 	return out, errb, exit, nil
 }
 
-func failing(stderr string) *scriptExec {
+// failingHTTP answers every call with an HTTP failure in the gh -i shape.
+func failingHTTP(status int, header map[string]string, body string) *scriptExec {
+	keys := make([]string, 0, len(header))
+	for k := range header {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	var hdr strings.Builder
+	for _, k := range keys {
+		fmt.Fprintf(&hdr, "%s: %s\r\n", k, header[k])
+	}
+	out := fmt.Sprintf("HTTP/2.0 %d status\r\n%s\r\n%s", status, hdr.String(), body)
+	errb := fmt.Sprintf("gh: request failed (HTTP %d)", status)
+	return &scriptExec{reply: func([]string) ([]byte, []byte, int) { return []byte(out), []byte(errb), 1 }}
+}
+
+// failingWording answers with wording on stderr only: no status line reached stdout.
+func failingWording(stderr string) *scriptExec {
 	return &scriptExec{reply: func([]string) ([]byte, []byte, int) { return nil, []byte(stderr), 1 }}
 }
 
 func blockedReason(t *testing.T, err error) core.BlockReason {
 	t.Helper()
+	return blockedErr(t, err).Reason
+}
+
+func blockedErr(t *testing.T, err error) *mirror.BlockedError {
+	t.Helper()
 	var be *mirror.BlockedError
 	if !errors.As(err, &be) {
 		t.Fatalf("error %v is not a BlockedError", err)
 	}
-	return be.Reason
+	return be
 }
 
 func writeOnce(x *scriptExec) error {
-	m := &mirror.Mirror{Repo: "o/r", Exec: x, AllowWrite: true}
+	m := &mirror.Mirror{
+		Repo: "o/r", Exec: x, AllowWrite: true,
+		Now: func() time.Time { return t0 }, Backoff: testBackoff,
+	}
 	return m.WriteLedger(context.Background(), ledgerAt(1, core.StateClaimed))
 }
 
-// 429 maps to rate-limited and is not retried by the caller.
-func TestRateLimit_429_BlockedAndNotRetried(t *testing.T) {
-	x := failing("gh: HTTP 429: too many requests")
-	err := writeOnce(x)
-	if got := blockedReason(t, err); got != core.ReasonRateLimited {
-		t.Errorf("429 -> %s, want rate-limited", got)
+// 429 maps to rate-limited, carries the time the host stated, and is not retried.
+func TestRateLimit_429_BlockedWithRetryTime_NotRetried(t *testing.T) {
+	x := failingHTTP(429, map[string]string{"retry-after": "30"}, "")
+	be := blockedErr(t, writeOnce(x))
+	if be.Reason != core.ReasonRateLimited || !be.RetryAt.Equal(t0.Add(30*time.Second)) {
+		t.Errorf("429 -> %s retryAt=%v, want rate-limited at %v", be.Reason, be.RetryAt, t0.Add(30*time.Second))
 	}
 	if len(x.calls) != 1 {
 		t.Errorf("gh calls after a 429 = %d, want 1 (no retry loop)", len(x.calls))
 	}
 }
 
-// A permission-denied 403 maps to permission-denied and is never retried.
-func TestRateLimit_PermissionDenied403_BlockedAndNotRetried(t *testing.T) {
-	x := failing("gh: HTTP 403: Resource not accessible by integration")
-	err := writeOnce(x)
-	if got := blockedReason(t, err); got != core.ReasonPermissionDenied {
-		t.Errorf("403 permission -> %s, want permission-denied", got)
+// A limit-style 403 (Retry-After, or exhausted quota with a reset, or the limit
+// wording in the body) is rate-limited, not a permission denial.
+func TestRateLimit_LimitStyle403_IsRateLimited(t *testing.T) {
+	reset := t0.Add(7 * time.Minute)
+	cases := map[string]*scriptExec{
+		"retry-after":       failingHTTP(403, map[string]string{"retry-after": "60"}, ""),
+		"exhausted+reset":   failingHTTP(403, map[string]string{"x-ratelimit-remaining": "0", "x-ratelimit-reset": fmt.Sprint(reset.Unix())}, ""),
+		"secondary-wording": failingHTTP(403, nil, `{"message":"You have exceeded a secondary rate limit."}`),
 	}
-	if len(x.calls) != 1 {
-		t.Errorf("gh calls after a permission 403 = %d, want 1", len(x.calls))
-	}
-}
-
-// 401 is an authentication failure, blocked and not retried.
-func TestRateLimit_401_AuthFailedAndNotRetried(t *testing.T) {
-	x := failing("gh: HTTP 401: Bad credentials")
-	if got := blockedReason(t, writeOnce(x)); got != core.ReasonAuthFailed {
-		t.Errorf("401 -> %s, want auth-failed", got)
-	}
-	if len(x.calls) != 1 {
-		t.Errorf("gh calls = %d, want 1", len(x.calls))
+	for name, x := range cases {
+		t.Run(name, func(t *testing.T) {
+			if got := blockedReason(t, writeOnce(x)); got != core.ReasonRateLimited {
+				t.Errorf("%s -> %s, want rate-limited", name, got)
+			}
+			if len(x.calls) != 1 {
+				t.Errorf("gh calls = %d, want 1", len(x.calls))
+			}
+		})
 	}
 }
 
-// No refusal ever makes the code switch credentials or accounts: none of the
-// gh invocations carries an auth, token, host or login argument.
+// A permission 403 and a 401 are blocks that are never retried.
+func TestRateLimit_PermissionDenied403_And401_NotRetried(t *testing.T) {
+	cases := []struct {
+		name   string
+		x      *scriptExec
+		reason core.BlockReason
+	}{
+		{"403 permission", failingHTTP(403, nil, `{"message":"Resource not accessible by integration"}`), core.ReasonPermissionDenied},
+		{"401", failingHTTP(401, nil, `{"message":"Bad credentials"}`), core.ReasonAuthFailed},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := blockedReason(t, writeOnce(tc.x)); got != tc.reason {
+				t.Errorf("%s -> %s, want %s", tc.name, got, tc.reason)
+			}
+			if len(tc.x.calls) != 1 {
+				t.Errorf("gh calls = %d, want 1", len(tc.x.calls))
+			}
+		})
+	}
+}
+
+// Wording alone never decides a block: stderr that shouts "rate limit" without a
+// status line on stdout is a plain error, not a BlockedError.
+func TestRateLimit_WordingWithoutStatus_IsAPlainError(t *testing.T) {
+	err := writeOnce(failingWording("HTTP 429: API rate limit exceeded"))
+	var be *mirror.BlockedError
+	if err == nil || errors.As(err, &be) {
+		t.Errorf("wording without a status decided a block: %v", err)
+	}
+}
+
+// No refusal ever makes the code switch credentials or accounts: none of the gh
+// invocations carries an auth, token, host or login argument.
 func TestRateLimit_NoCredentialOrAccountSwitching(t *testing.T) {
 	forbidden := []string{"auth", "login", "--with-token", "--hostname", "GH_TOKEN", "GITHUB_TOKEN", "token"}
-	for _, text := range []string{"gh: HTTP 429: x", "gh: HTTP 403: Resource not accessible", "gh: HTTP 401: Bad credentials"} {
-		x := failing(text)
+	for _, x := range []*scriptExec{
+		failingHTTP(429, map[string]string{"retry-after": "1"}, ""),
+		failingHTTP(403, nil, `{"message":"Resource not accessible by integration"}`),
+		failingHTTP(401, nil, ""),
+	} {
 		_ = writeOnce(x)
 		for _, call := range x.calls {
 			for _, a := range call {
 				for _, f := range forbidden {
 					if strings.EqualFold(a, f) {
-						t.Errorf("%q: gh call carries %q: %v", text, f, call)
+						t.Errorf("gh call carries %q: %v", f, call)
 					}
 				}
 			}
 		}
-	}
-}
-
-// Observation: a 403 whose text says the API rate limit was exceeded. The
-// requirement separates it from a permission 403 (recoverable vs not). What the
-// classifier does today is logged, not assumed.
-func TestRateLimit_LimitStyle403_Observed(t *testing.T) {
-	for _, text := range []string{
-		"gh: HTTP 403: API rate limit exceeded for user (Retry-After: 60)",
-		"gh: HTTP 403: You have exceeded a secondary rate limit",
-	} {
-		x := failing(text)
-		reason := blockedReason(t, writeOnce(x))
-		t.Logf("OBSERVED %q -> %s (calls=%d)", text, reason, len(x.calls))
 	}
 }

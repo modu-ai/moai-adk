@@ -53,7 +53,7 @@ func (c *clock) Now() time.Time { return c.now }
 var t0 = time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC) // a fixed test instant
 
 func newClient(tr forge.Transport, clk *clock, reserve int) *forge.Client {
-	return &forge.Client{T: tr, B: &forge.Budget{Reserve: reserve}, Backoff: testBackoff, Now: clk.Now}
+	return &forge.Client{T: tr, B: &forge.Budget{ReserveCalls: reserve}, Backoff: testBackoff, Now: clk.Now}
 }
 
 // Classify separates a limit (recoverable) from a permission refusal (never retried).

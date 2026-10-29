@@ -114,10 +114,15 @@ func TestProtectionGuard_LabelWrites_OffByDefault_SendNothing(t *testing.T) {
 // No production source file of the AgenticFactory carries a protection-related
 // string literal. Comments are ignored; only string literals count.
 func TestProtectionGuard_NoProductionLiteralMentionsProtectionSettings(t *testing.T) {
-	forbidden := []string{
+	// Setting names match as substrings; command flags match only as whole
+	// words, so a different flag that merely starts with the same letters
+	// (git plumbing's `update-index --force-remove`, which drops a path from a
+	// temporary index) is not mistaken for a force push or an admin override.
+	settingNames := []string{
 		"protection", "enforce_admins", "allow_force_pushes", "allow_deletions",
-		"required_linear_history", "required_status_checks", "--admin", "--force", "force-with-lease",
+		"required_linear_history", "required_status_checks",
 	}
+	flagWords := map[string]bool{"--admin": true, "--force": true, "--force-with-lease": true}
 	root := ".." // internal/agenticfactory
 	fset := token.NewFileSet()
 	files, literals := 0, 0
@@ -147,9 +152,14 @@ func TestProtectionGuard_NoProductionLiteralMentionsProtectionSettings(t *testin
 			}
 			literals++
 			low := strings.ToLower(s)
-			for _, bad := range forbidden {
+			for _, bad := range settingNames {
 				if strings.Contains(low, bad) {
 					t.Errorf("%s: string literal mentions %q: %q", fset.Position(lit.Pos()), bad, s)
+				}
+			}
+			for _, word := range strings.Fields(low) {
+				if flagWords[word] {
+					t.Errorf("%s: string literal carries the flag %q: %q", fset.Position(lit.Pos()), word, s)
 				}
 			}
 			return true

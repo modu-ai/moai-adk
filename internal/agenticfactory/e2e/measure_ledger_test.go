@@ -55,8 +55,14 @@ func (f *fakeGH) Run(_ context.Context, args ...string) ([]byte, []byte, int, er
 	case strings.Contains(joined, "-X PATCH"):
 		f.Patches++
 		f.Bodies = append(f.Bodies, body)
+		path := ""
+		for _, a := range args {
+			if strings.HasPrefix(a, "repos/") {
+				path = a // the endpoint, wherever the flags put it
+			}
+		}
 		for i := range f.comments {
-			if strings.HasSuffix(args[3], fmt.Sprint(f.comments[i].ID)) {
+			if strings.HasSuffix(path, "/"+fmt.Sprint(f.comments[i].ID)) {
 				f.comments[i].Body = body
 			}
 		}
