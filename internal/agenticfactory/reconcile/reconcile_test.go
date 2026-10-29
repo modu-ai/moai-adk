@@ -3,9 +3,11 @@ package reconcile
 import (
 	"context"
 	"errors"
+	"os"
 	"strings"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/effect"
 )
 
@@ -168,7 +170,7 @@ func TestNoDestructiveActionExists(t *testing.T) {
 
 func TestOpenPRMissingFromRecordIsReportedNotActedOn(t *testing.T) {
 	rep := Reconcile(context.Background(), &fakeProber{act: Actual{Liveness: Live, WorktreeHead: headA, Delivery: effect.Executed, PRNumber: 55}},
-		Recorded{Issue: 7, HeadSHA: headA, Delivery: effect.Executed, State: "implementing"})
+		Recorded{Issue: 7, HeadSHA: headA, Delivery: effect.Executed, Stage: core.StageBuilding})
 	if !has(rep, KindPRUnrecorded) {
 		t.Fatalf("kinds = %v", kinds(rep))
 	}
@@ -179,12 +181,29 @@ func TestOpenPRMissingFromRecordIsReportedNotActedOn(t *testing.T) {
 	}
 }
 
-func TestMergedPRWhileRecordNotLandingIsReported(t *testing.T) {
-	for state, want := range map[string]bool{"implementing": true, "verifying": true, "ready": true, "landing": false, "done": false} {
+func TestMergedPRWhileRecordNotMergingIsReported(t *testing.T) {
+	for stage, want := range map[core.Stage]bool{
+		core.StageReady: true, core.StageBuilding: true, core.StageReviewing: true,
+		core.StageMerging: false, core.StageDone: false, "": true, "unheard-of": true,
+	} {
 		rep := Reconcile(context.Background(), &fakeProber{act: Actual{Liveness: Dead, WorktreeHead: headA, Delivery: effect.Executed, PRNumber: 55, PRMerged: true}},
-			Recorded{Issue: 7, HeadSHA: headA, Delivery: effect.Executed, State: state, PRNumber: 55})
+			Recorded{Issue: 7, HeadSHA: headA, Delivery: effect.Executed, Stage: stage, PRNumber: 55})
 		if got := has(rep, KindMergedUnrecorded); got != want {
-			t.Errorf("state %s: merged-unrecorded = %v, want %v", state, got, want)
+			t.Errorf("stage %q: merged-unrecorded = %v, want %v", stage, got, want)
+		}
+	}
+}
+
+// The rule is written against the core stage constants, not state strings, so a
+// later rename in core cannot leave a stale literal behind.
+func TestNoStateStringLiteralsRemain(t *testing.T) {
+	src, err := os.ReadFile("reconcile.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, lit := range []string{`"landing"`, `"done"`, `"implementing"`, `"verifying"`, `"ready"`} {
+		if strings.Contains(string(src), lit) {
+			t.Errorf("reconcile.go still compares against the literal %s", lit)
 		}
 	}
 }

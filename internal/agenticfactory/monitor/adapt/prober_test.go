@@ -71,7 +71,6 @@ func TestLeaderRestartRestoresFromActualAndNeverRedispatches(t *testing.T) {
 			t.Fatal(err)
 		}
 		r := RecordedFrom(rec, true, "")
-		r.State = string(rec.State)
 		return reconcile.Reconcile(t.Context(), src, r)
 	}
 	first, second := pass(), pass()
