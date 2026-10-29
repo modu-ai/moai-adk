@@ -34,6 +34,7 @@ var (
 	ErrIntakeFull           = errors.New("agenticfactory: intake is full, request rejected")
 	ErrNoSlot               = errors.New("agenticfactory: no free worktree slot, request parked")
 	ErrBacklogFull          = errors.New("agenticfactory: open PR backlog is at its limit, new claim held")
+	ErrNotResponsibleAgent  = errors.New("agenticfactory: only the agent responsible for the PR may repair it; another holder needs a takeover")
 	ErrRepairFirst          = errors.New("agenticfactory: an open PR of this agent needs repair, which comes before new work")
 	ErrWorktreeInUse        = errors.New("agenticfactory: the worktree is already used by another open Issue")
 	ErrWorktreeUnbound      = errors.New("agenticfactory: another PR of this agent is open, bind a separate worktree before writing")

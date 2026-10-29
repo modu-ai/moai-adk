@@ -263,11 +263,11 @@ func TestCompleteNeedsAllThreeRecords(t *testing.T) {
 func TestPauseAndResumeReturnOnlyToReturnStage(t *testing.T) {
 	r, ref := newRunner(t)
 	tk := toVerifying(t, r, ref)
-	rec, err := r.Pause(tk, core.StateBlocked, core.ReasonRateLimited, "retry after 15:00")
+	rec, err := r.Pause(tk, core.StateBlocked, core.ReasonRateLimited, "retry after 15:00", wait1())
 	if err != nil || rec.State != core.StateBlocked || rec.Return != core.StateVerifying || rec.Resume == "" {
 		t.Fatalf("pause: %+v %v", rec, err)
 	}
-	if _, err := r.Pause(tk, core.StateBlocked, core.ReasonOperatorHold, "x"); !errors.Is(err, core.ErrReasonNotAllowed) {
+	if _, err := r.Pause(tk, core.StateBlocked, core.ReasonOperatorHold, "x", wait1()); !errors.Is(err, core.ErrReasonNotAllowed) {
 		t.Errorf("operator-hold on blocked: %v", err)
 	}
 	if _, err := r.Resume(tk, false); !errors.Is(err, core.ErrTransitionInvalid) {
@@ -282,13 +282,13 @@ func TestPauseAndResumeReturnOnlyToReturnStage(t *testing.T) {
 func TestPauseRequiresResumeConditionAndCannotNest(t *testing.T) {
 	r, ref := newRunner(t)
 	tk := toVerifying(t, r, ref)
-	if _, err := r.Pause(tk, core.StateOnHold, core.ReasonOperatorHold, ""); !errors.Is(err, core.ErrTransitionInvalid) {
+	if _, err := r.Pause(tk, core.StateOnHold, core.ReasonOperatorHold, "", wait1()); !errors.Is(err, core.ErrTransitionInvalid) {
 		t.Errorf("empty resume condition: %v", err)
 	}
-	if _, err := r.Pause(tk, core.StateOnHold, core.ReasonOperatorHold, "operator resumes"); err != nil {
+	if _, err := r.Pause(tk, core.StateOnHold, core.ReasonOperatorHold, "operator resumes", wait1()); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := r.Pause(tk, core.StateBlocked, core.ReasonRateLimited, "later"); !errors.Is(err, core.ErrTransitionInvalid) {
+	if _, err := r.Pause(tk, core.StateBlocked, core.ReasonRateLimited, "later", wait1()); !errors.Is(err, core.ErrTransitionInvalid) {
 		t.Errorf("pause while paused: %v", err)
 	}
 }
@@ -296,7 +296,7 @@ func TestPauseRequiresResumeConditionAndCannotNest(t *testing.T) {
 func TestPausedIssueRefusesForwardSteps(t *testing.T) {
 	r, ref := newRunner(t)
 	tk := toVerifying(t, r, ref)
-	_, _ = r.Pause(tk, core.StateOnHold, core.ReasonOperatorHold, "operator resumes")
+	_, _ = r.Pause(tk, core.StateOnHold, core.ReasonOperatorHold, "operator resumes", wait1())
 	if _, err := r.Verify(tk, passAllFor(tk, headA)); !errors.Is(err, core.ErrTransitionInvalid) {
 		t.Errorf("verify while on-hold: %v", err)
 	}
@@ -415,11 +415,11 @@ func TestPauseTakesOnlyOverlayReasons(t *testing.T) {
 	r, ref := newRunner(t)
 	tk := toVerifying(t, r, ref)
 	for _, why := range append(core.GateReasons(), core.ReasonForeignClosing, core.ReasonNotIssueAuthor) {
-		if _, err := r.Pause(tk, core.StateBlocked, why, "later"); !errors.Is(err, core.ErrReasonNotAllowed) {
+		if _, err := r.Pause(tk, core.StateBlocked, why, "later", wait1()); !errors.Is(err, core.ErrReasonNotAllowed) {
 			t.Errorf("pause with %s: %v", why, err)
 		}
 	}
-	rec, err := r.Pause(tk, core.StateBlocked, core.ReasonRateLimited, "later")
+	rec, err := r.Pause(tk, core.StateBlocked, core.ReasonRateLimited, "later", wait1())
 	if err != nil || rec.Park == nil || rec.Park.Reason != core.ReasonRateLimited || rec.Stage != core.StageBuilding {
 		t.Errorf("overlay pause: %+v %v", rec, err)
 	}

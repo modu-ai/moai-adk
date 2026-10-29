@@ -1,7 +1,13 @@
 package claim
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
@@ -81,29 +87,172 @@ func (s *Store) MarkRepairNeeded(i core.IssueRef, reason string) (Record, error)
 	return out, nil
 }
 
+// worktreeReservation is the document that holds a path for one Issue.
+type worktreeReservation struct {
+	Path  string `json:"path"`
+	Issue int    `json:"issue"`
+}
+
+// canonWorktree is the one spelling of a worktree path that the comparisons use:
+// absolute, cleaned, symlinks resolved. A path that is not absolute or cannot be
+// resolved (it does not exist) is refused: guessing would let two spellings of one
+// directory be bound twice.
+func canonWorktree(path string) (string, error) {
+	if strings.TrimSpace(path) == "" || !filepath.IsAbs(path) {
+		return "", fmt.Errorf("%w: a worktree path must be absolute: %q", core.ErrEvidenceIncomplete, path)
+	}
+	c, err := filepath.EvalSymlinks(filepath.Clean(path))
+	if err != nil {
+		return "", fmt.Errorf("%w: the worktree path cannot be resolved: %v", core.ErrEvidenceIncomplete, err)
+	}
+	return c, nil
+}
+
+// sameWorktree compares a stored path with the canonical one. A stored path that
+// no longer resolves (its tree is gone) is compared as cleaned text.
+func sameWorktree(stored, canon string) bool {
+	if stored == "" {
+		return false
+	}
+	// the same file is the same worktree, whatever the spelling (case included)
+	if a, err := os.Stat(stored); err == nil {
+		if b, err := os.Stat(canon); err == nil {
+			return os.SameFile(a, b)
+		}
+	}
+	return filepath.Clean(stored) == canon
+}
+
+// WorktreeKey is the document name that reserves path: the hash of the directory's
+// identity (device and inode) where the platform gives one, so spellings that
+// differ only in case on a case-insensitive filesystem share a key; otherwise the
+// hash of its canonical spelling, or of the cleaned text when it cannot be resolved.
+func WorktreeKey(path string) string {
+	name := path
+	if c, err := canonWorktree(path); err == nil {
+		name = c
+		if fi, err := os.Stat(c); err == nil {
+			if id, ok := fileIdentity(fi); ok {
+				name = "id:" + id
+			}
+		}
+	}
+	sum := sha256.Sum256([]byte(name))
+	return "wt-" + hex.EncodeToString(sum[:])[:40]
+}
+
 // BindWorktree records the write worktree of an Issue's work. It must differ
 // from the worktree of every other open Issue (an open PR's receipt worktree, or
-// one another Issue is bound to).
+// one another Issue is bound to). Reading the other records cannot exclude two
+// lanes binding at the same moment, so the path is also reserved by a
+// create-only document write ("worktree" kind), which the store already makes
+// atomic across processes (the documents lock, and the authority's compare and
+// swap when one is attached): the first writer wins, the other gets
+// ErrWorktreeInUse. A reservation whose Issue no longer uses the path (done, or
+// moved to another path) is stale and is taken over by compare and swap on the
+// revision that was read.
 func (s *Store) BindWorktree(i core.IssueRef, holder string, epoch int64, path string) (Record, error) {
-	if strings.TrimSpace(path) == "" {
-		return Record{}, fmt.Errorf("%w: a worktree path is required", core.ErrEvidenceIncomplete)
+	canon, err := canonWorktree(path)
+	if err != nil {
+		return Record{}, err
+	}
+	if err := s.ReserveWorktree(i, canon); err != nil {
+		return Record{}, err
+	}
+	return s.Update(i, holder, epoch, func(rec *Record) error {
+		rec.Worktree = canon
+		return nil
+	})
+}
+
+// ReserveWorktree holds path for Issue i (the scan of the other records, then the
+// create-only reservation). A handoff uses it for the receipt's worktree, so an
+// open PR's path cannot be bound by another Issue.
+//
+// Contract for an abandoned reservation: a reservation stays with its Issue until
+// that Issue is done or moves to another path. An Issue that reserved a path and
+// never wrote it (a crash between the two) keeps holding it; the same Issue
+// retrying is idempotent and releases the doubt, any other Issue is refused with
+// ErrWorktreeInUse. Nothing expires it by time.
+func (s *Store) ReserveWorktree(i core.IssueRef, path string) error {
+	path, err := canonWorktree(path)
+	if err != nil {
+		return err
 	}
 	recs, err := s.List()
 	if err != nil {
-		return Record{}, err
+		return err
 	}
 	for _, r := range recs {
 		if r.Issue == i.Number || r.State == core.StateDone {
 			continue
 		}
-		if r.Worktree == path || (r.Receipt != nil && r.Receipt.Worktree == path) {
-			return Record{}, fmt.Errorf("%w: %s is used by issue-%d", core.ErrWorktreeInUse, path, r.Issue)
+		if sameWorktree(r.Worktree, path) || (r.Receipt != nil && sameWorktree(r.Receipt.Worktree, path)) {
+			return fmt.Errorf("%w: %s is used by issue-%d", core.ErrWorktreeInUse, path, r.Issue)
 		}
 	}
-	return s.Update(i, holder, epoch, func(rec *Record) error {
-		rec.Worktree = path
-		return nil
-	})
+	if s.afterScan != nil {
+		s.afterScan()
+	}
+	return s.reserveWorktree(i, path)
+}
+
+// reserveWorktree takes the path for i, or reports who has it.
+func (s *Store) reserveWorktree(i core.IssueRef, path string) error {
+	name := WorktreeKey(path)
+	data, err := json.Marshal(worktreeReservation{Path: path, Issue: i.Number})
+	if err != nil {
+		return err
+	}
+	for try := 0; try < 4; try++ {
+		_, err := s.PutDoc("worktree", name, 0, data)
+		if err == nil {
+			return nil
+		}
+		if !errors.Is(err, core.ErrRevisionConflict) {
+			return err
+		}
+		cur, gerr := s.GetDoc("worktree", name)
+		if errors.Is(gerr, core.ErrNotHeld) {
+			continue // released between the two reads: try to create it again
+		}
+		if gerr != nil {
+			return gerr
+		}
+		var held worktreeReservation
+		if err := json.Unmarshal(cur.Data, &held); err != nil {
+			return fmt.Errorf("%w: corrupt worktree reservation %s: %v", core.ErrStoreUnavailable, name, err)
+		}
+		if held.Issue == i.Number {
+			return nil // already ours
+		}
+		if s.usesWorktree(held) {
+			return fmt.Errorf("%w: %s is reserved by issue-%d", core.ErrWorktreeInUse, path, held.Issue)
+		}
+		if _, err := s.PutDoc("worktree", name, cur.Rev, data); err == nil {
+			return nil
+		} else if !errors.Is(err, core.ErrRevisionConflict) {
+			return err
+		}
+	}
+	return fmt.Errorf("%w: the reservation of %s kept changing", core.ErrBusy, path)
+}
+
+// usesWorktree reports whether the Issue that holds a reservation still works
+// in that path.
+func (s *Store) usesWorktree(h worktreeReservation) bool {
+	ref, err := core.NewIssueRef(h.Issue)
+	if err != nil {
+		return false
+	}
+	r, ok, err := s.read(ref)
+	if err != nil || !ok {
+		return err != nil // an unreadable record is not proof the path is free
+	}
+	// An Issue that has reserved the path but not yet written it to its record
+	// (Worktree empty) still holds it; only a finished Issue, or one that moved
+	// to another path, lets go.
+	return r.State != core.StateDone && (r.Worktree == "" || sameWorktree(r.Worktree, h.Path) || (r.Receipt != nil && sameWorktree(r.Receipt.Worktree, h.Path)))
 }
 
 // TakeOver moves a held Issue from a dead owner to a new one. The caller has
@@ -111,8 +260,9 @@ func (s *Store) BindWorktree(i core.IssueRef, holder string, epoch int64, path s
 // work preserved (preserved names where); this checks that the owner it decided
 // about is still the recorded one, so a decision made against an owner that has
 // since renewed is refused. The PR, the worktree and the history stay; the old
-// owner's wait and repair claim, which were its alone, do not.
-func (s *Store) TakeOver(i core.IssueRef, oldHolder string, oldEpoch int64, newHolder, dispatch string, run core.RunID, preserved string) (Record, error) {
+// owner's wait and repair claim, which were its alone, do not. A parked Issue
+// needs the new holder's own wait record (owner = newHolder).
+func (s *Store) TakeOver(i core.IssueRef, oldHolder string, oldEpoch int64, newHolder, dispatch string, run core.RunID, preserved string, wait *core.Wait) (Record, error) {
 	if newHolder == "" || dispatch == "" {
 		return Record{}, fmt.Errorf("%w: the new holder and a dispatch are required", core.ErrIDInvalid)
 	}
@@ -129,6 +279,18 @@ func (s *Store) TakeOver(i core.IssueRef, oldHolder string, oldEpoch int64, newH
 		out.Holder, out.AgentName, out.Dispatch, out.Run = newHolder, "", dispatch, run
 		out.Epoch, out.Seq = cur.Epoch+1, cur.Seq+1
 		out.Wait, out.Repair = nil, nil
+		if cur.Park != nil { // a parked Issue keeps a wait record, and it is the new holder's
+			if wait == nil {
+				return fmt.Errorf("%w: a parked Issue needs the new holder's wait record", core.ErrEvidenceIncomplete)
+			}
+			w := *wait
+			out.Wait = &w
+		}
+		if out.Receipt != nil { // the new holder is the one responsible for the PR now
+			rc := *out.Receipt
+			rc.Session, rc.Agent = newHolder, ""
+			out.Receipt = &rc
+		}
 		out.History = append(append([]Event(nil), cur.History...), Event{Kind: "takeover", Session: newHolder, Note: "from " + oldHolder + ", preserved at " + preserved})
 		return s.write(i, &out)
 	})
