@@ -1,0 +1,226 @@
+// Package resident wires the confirmed agentic-factory settings (internal/config) into the components of
+// the resident monitor and runs its loop (Issue #1948). It carries no number of its own: every limit,
+// period and name reaches a component from the settings value, and the two things whose source is still
+// undecided (OD-17) - the loop's tick period and where a webhook secret is read from - are injected by
+// the caller, never read from a key.
+//
+// It builds and runs read-side and queue-side machinery only. It opens no network connection, starts no
+// process and enables no write path: ghintake's AllowWrite stays false, the gh runner it is given is the
+// caller's read-only one, and the webhook handler is returned for the caller to mount.
+package resident
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"time"
+
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/claim"
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/effect"
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/effect/ctxledger"
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/effect/docstore"
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/effect/ghidentity"
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/effect/ghintake"
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/effect/labels"
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/forge"
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/forge/webhook"
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/monitor/adapt"
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/monitor/notify"
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/monitor/notify/ghpr"
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/runner"
+	"github.com/modu-ai/moai-adk/internal/config"
+)
+
+// Deps is what the settings cannot provide.
+type Deps struct {
+	// Store is the claim store, opened by the caller.
+	Store *claim.Store
+	// GHRead runs gh for reads only (ghpr and adapt refuse every other verb before calling it).
+	GHRead ghpr.Runner
+	// Now is the clock every component reads; no component reads the wall clock.
+	Now func() time.Time
+	// Secret returns the signing secret of one webhook route, read from wherever the operator keeps it
+	// (OD-17). It is required when the settings name any route.
+	Secret func(repo string) []byte
+}
+
+// Resident is the wired set.
+type Resident struct {
+	Settings config.AgenticFactorySettings
+
+	Service *notify.Service
+	Inbox   notify.Inbox
+	Webhook *webhook.Handler // mount it; the route for a repository is /hook/<owner>/<name>
+
+	Backoff forge.Backoff
+	Poll    forge.Adaptive
+	Budget  *forge.Budget
+	Cursors docstore.Cursors
+
+	deps   Deps
+	queues map[string]*docstore.Queue // by the repository a webhook route names
+}
+
+// ErrNotConfigured is returned when the settings say Agentic Factory is not configured.
+var ErrNotConfigured = config.ErrAgenticFactoryNotConfigured
+
+// BuildFromProject reads the settings under projectRoot and wires them. A project that has not
+// configured Agentic Factory gets ErrNotConfigured and nothing is built.
+func BuildFromProject(projectRoot string, d Deps) (*Resident, error) {
+	s, err := config.LoadAgenticFactorySettings(projectRoot)
+	if err != nil {
+		return nil, err
+	}
+	return Build(s, d)
+}
+
+// Build wires validated settings. It repeats the checks whose failure would only show at the first use.
+func Build(s config.AgenticFactorySettings, d Deps) (*Resident, error) {
+	switch {
+	case d.Store == nil:
+		return nil, errors.New("resident: Deps.Store is required")
+	case d.GHRead == nil:
+		return nil, errors.New("resident: Deps.GHRead is required")
+	case d.Now == nil:
+		return nil, errors.New("resident: Deps.Now is required")
+	case len(s.WebhookRoutes) > 0 && d.Secret == nil:
+		return nil, errors.New("resident: Deps.Secret is required while webhook routes are configured (where the secret is read from is undecided, OD-17)")
+	}
+	r := &Resident{Settings: s, deps: d, queues: map[string]*docstore.Queue{}}
+	r.Backoff = forge.Backoff{
+		MinSecondaryWait: s.GitHubBackoff.MinSecondaryWait, Base: s.GitHubBackoff.Base,
+		Max: s.GitHubBackoff.Max, MaxAttempts: s.GitHubBackoff.MaxAttempts,
+	}
+	if err := r.Backoff.Validate(); err != nil {
+		return nil, err
+	}
+	r.Poll = forge.Adaptive{Min: s.CollectorPoll.Min, Max: s.CollectorPoll.Max, Safety: s.CollectorPoll.Safety}
+	r.Budget = &forge.Budget{ReserveCalls: s.BudgetReserve, ReportResource: s.BudgetReportResource, Now: d.Now}
+	r.Cursors = docstore.Cursors{Docs: d.Store, Kind: docstore.CollectorKind, MaxDocBytes: s.CursorMaxDocBytes, MaxChunks: s.CursorMaxChunks}
+
+	r.Inbox = notify.Inbox{Docs: d.Store, Kind: docstore.CollectorKind,
+		MaxDocBytes: s.NotifyInbox.MaxDocBytes, SeenLimit: s.NotifyInbox.SeenLimit, MaxIDBytes: s.NotifyInbox.MaxIDBytes}
+
+	h := &webhook.Handler{Provider: s.WebhookProvider, MaxBody: int64(s.WebhookMaxBody)}
+	for _, repo := range s.WebhookRoutes {
+		q := &docstore.Queue{Docs: d.Store, Kind: docstore.CollectorKind, Key: repo + "/hooks",
+			MaxDocBytes: s.WebhookQueue.MaxDocBytes, SeenLimit: s.WebhookQueue.SeenLimit, MaxIDBytes: s.WebhookQueue.MaxIDBytes}
+		if err := q.Validate(); err != nil {
+			return nil, fmt.Errorf("resident: webhook queue of %s: %w", repo, err)
+		}
+		r.queues[core.NormalizeRepo(s.WebhookProvider, repo)] = q
+		h.Routes = append(h.Routes, webhook.Route{Repo: repo, Queue: q, Secret: func() []byte { return d.Secret(repo) }})
+	}
+	r.Webhook = h
+
+	number := func(issue int) (int, bool, error) {
+		ref, err := core.NewIssueRef(issue)
+		if err != nil {
+			return 0, false, err
+		}
+		rec, err := d.Store.Load(ref)
+		if errors.Is(err, core.ErrNotHeld) {
+			return 0, false, nil
+		}
+		if err != nil {
+			return 0, false, err
+		}
+		if rec.Receipt == nil || rec.Receipt.PR <= 0 {
+			return 0, false, nil
+		}
+		return rec.Receipt.PR, true, nil
+	}
+	r.Service = &notify.Service{
+		Records: d.Store, Waits: runner.New(d.Store), Repairs: d.Store,
+		PRs:      ghpr.Source{Repo: s.PRSourceRepository, Run: d.GHRead, Number: number},
+		Notifier: r.Inbox, Escalator: r.Inbox,
+		State: r.Cursors, Now: d.Now, ReNotifyAfter: s.NotifyRenotifyAfter,
+	}
+	return r, nil
+}
+
+// NewWait is a wait record whose retry limit and escalation target come from the settings; the owner
+// supplies the rest.
+func (r *Resident) NewWait(owner, nextAction, diagnosis string, recheckAt time.Time) core.Wait {
+	return core.Wait{
+		Owner: owner, NextAction: nextAction, RecheckAt: recheckAt, Diagnosis: diagnosis,
+		MaxRetries: r.Settings.WaitMaxRetries, Escalate: r.Settings.WaitEscalateTo,
+	}
+}
+
+// Collector is the single collector of one webhook-fed repository path: its backoff-driven client, its
+// polling bounds, its cursor store and its durable queue all come from the settings.
+func (r *Resident) Collector(repo, path string, t forge.Transport, differ forge.Differ) (*forge.Collector, error) {
+	q, ok := r.queues[core.NormalizeRepo(r.Settings.WebhookProvider, repo)]
+	if !ok {
+		return nil, fmt.Errorf("resident: no webhook route is configured for %s", repo)
+	}
+	return &forge.Collector{
+		Client: &forge.Client{T: t, B: r.Budget, Backoff: r.Backoff, Now: r.deps.Now},
+		Path:   path, Interval: r.Poll, Differ: differ,
+		Durable: q, Cursors: r.Cursors, CursorKey: repo + path,
+	}, nil
+}
+
+// Identity is the host-identity lookup with the configured cache age.
+func (r *Resident) Identity(c *forge.Client) *ghidentity.GitHub {
+	return &ghidentity.GitHub{Client: c, MaxAge: r.Settings.IdentityMaxAge, Now: r.deps.Now}
+}
+
+// Labels is the label host with the configured page size. Writes stay off.
+func (r *Resident) Labels(t forge.Transport) labels.GitHubHost {
+	return labels.GitHubHost{Repo: r.Settings.PRSourceRepository, T: t, B: r.Budget, PerPage: r.Settings.LabelsPerPage, Backoff: r.Backoff, Now: r.deps.Now}
+}
+
+// IntakeGH is the gh face of intake with the configured list limit. AllowWrite is false: enabling it is
+// a separate, explicit decision of the caller.
+func (r *Resident) IntakeGH(run ghintake.Runner) ghintake.GH {
+	return ghintake.GH{Repo: r.Settings.PRSourceRepository, Run: run, ListLimit: r.Settings.IntakeListLimit}
+}
+
+// IntakeDuplicateLimit is the most duplicate candidates a search returns.
+func (r *Resident) IntakeDuplicateLimit() int { return r.Settings.IntakeDuplicateSearchLimit }
+
+// PRReader is the monitor's read-only PR reader with the configured list limit.
+func (r *Resident) PRReader(run adapt.GHRunner) adapt.GHReader {
+	return adapt.GHReader{Run: run, PRListLimit: r.Settings.MonitorPRListLimit}
+}
+
+// Ledger is the Issue context ledger with the configured size cap.
+func (r *Resident) Ledger(remote ctxledger.Remote, store effect.IntentStore) *ctxledger.Ledger {
+	return &ctxledger.Ledger{Remote: remote, Store: store, MaxBytes: r.Settings.ContextSummaryMaxBytes, Backoff: r.Backoff, Now: r.deps.Now}
+}
+
+// Pass is the outcome of one pass of the loop.
+type Pass struct {
+	At      time.Time
+	Actions []notify.Action
+	Err     error
+}
+
+// Run does one pass at once and then one per tick, until ctx ends or ticks is closed. The tick period is
+// the caller's (OD-17); passes never overlap. A failing pass is reported and the loop goes on.
+func (r *Resident) Run(ctx context.Context, ticks <-chan time.Time, report func(Pass)) error {
+	pass := func() {
+		acts, err := r.Service.Tick(ctx)
+		if report != nil {
+			report(Pass{At: r.deps.Now(), Actions: acts, Err: err})
+		}
+	}
+	pass()
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case _, ok := <-ticks:
+			if !ok {
+				return nil
+			}
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
+			pass()
+		}
+	}
+}
