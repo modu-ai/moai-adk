@@ -702,7 +702,7 @@ templ Monitor(vm ShellVM, m MonitorVM) {
 						</div>
 						for _, c := range r.Context.Items {
 							<div class="vrow">
-								<span class="panel__meta">{ c.Section }</span>
+								<span class="panel__meta">{ c.Section + " · stage " + c.Stage }</span>
 								<span class="panel__meta">{ c.State }</span>
 								if c.LinkOpen {
 									<a href={ templ.SafeURL(c.Link) } rel="noopener noreferrer">{ c.Link }</a>

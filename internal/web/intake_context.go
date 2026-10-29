@@ -27,6 +27,7 @@ type monCtxItem struct {
 	Hash           string    `json:"hash"`
 	Owner          string    `json:"owner"`
 	State          string    `json:"state"`
+	Stage          string    `json:"stage"`
 	RemoteVerified bool      `json:"remote_verified"`
 	Availability   string    `json:"availability"`
 	At             time.Time `json:"at"`
@@ -58,6 +59,7 @@ type ContextItemVM struct {
 	Hash       string
 	Owner      string
 	State      string // current | stale | inaccessible, as reported
+	Stage      string // how far the evidence travelled, as reported
 	At         string
 }
 
@@ -88,16 +90,16 @@ func buildContext(f monField[[]monCtxItem]) ContextVM {
 	for _, it := range f.Value {
 		item := ContextItemVM{
 			Section: it.Section, Link: it.Link, TargetHead: orGap(it.TargetHead), Hash: orGap(it.Hash),
-			Owner: orGap(it.Owner), State: orGap(it.State), At: timeText(it.At),
+			Owner: orGap(it.Owner), State: orGap(it.State), Stage: orGap(it.Stage), At: timeText(it.At),
 		}
 		switch {
-		case it.Availability == "available" && it.RemoteVerified && strings.HasPrefix(it.Link, "https://"):
+		case it.Availability == "available" && it.RemoteVerified && it.Stage == "remote-verified" && strings.HasPrefix(it.Link, "https://"):
 			item.LinkOpen, item.LinkStatus = true, "available"
-		case it.Availability == "inaccessible":
-			item.LinkStatus = "inaccessible"
+		case it.Availability == "inaccessible", it.Availability == "restricted":
+			item.LinkStatus = it.Availability
 		default:
-			// unverified, an unknown value, or "available" without a remote
-			// check: never an open link.
+			// unverified, an unknown value, or "available" without the remote
+			// check and the remote-verified stage: never an open link.
 			item.LinkStatus = "unverified"
 		}
 		vm.Items = append(vm.Items, item)

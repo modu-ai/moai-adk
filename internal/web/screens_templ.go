@@ -3469,9 +3469,9 @@ func Monitor(vm ShellVM, m MonitorVM) templ.Component {
 							return templ_7745c5c3_Err
 						}
 						var templ_7745c5c3_Var175 string
-						templ_7745c5c3_Var175, templ_7745c5c3_Err = templ.JoinStringErrs(c.Section)
+						templ_7745c5c3_Var175, templ_7745c5c3_Err = templ.JoinStringErrs(c.Section + " · stage " + c.Stage)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `screens.templ`, Line: 705, Col: 45}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `screens.templ`, Line: 705, Col: 70}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var175))
 						if templ_7745c5c3_Err != nil {

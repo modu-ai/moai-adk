@@ -19,12 +19,15 @@ import (
 const intakeCtxJSON = `{"rows":[
  {"Project":"p","Issue":21,"State":{"value":"implementing","confirmed":true},
   "context":{"value":[
-   {"section":"spec","link":"https://example.test/a","target_head":"abc12345","hash":"h1","owner":"agent-1","state":"current","remote_verified":true,"availability":"available","at":"2026-10-29T03:00:00Z"},
-   {"section":"audit","link":"https://example.test/b","target_head":"old00000","hash":"h2","owner":"agent-2","state":"stale","remote_verified":false,"availability":"unverified","at":"2026-10-28T03:00:00Z"},
-   {"section":"qa","link":"https://example.test/c","state":"inaccessible","remote_verified":false,"availability":"inaccessible","at":"2026-10-29T04:00:00Z"},
-   {"section":"claim","link":"https://example.test/d","state":"current","remote_verified":false,"availability":"available","at":"2026-10-29T05:00:00Z"},
-   {"section":"plain","link":"http://example.test/e","state":"current","remote_verified":true,"availability":"available","at":"2026-10-29T05:00:00Z"},
-   {"section":"xss","link":"javascript:alert(1)","state":"current","remote_verified":true,"availability":"available","at":"2026-10-29T05:00:00Z"}
+   {"section":"spec","link":"https://example.test/a","target_head":"abc12345","hash":"h1","owner":"agent-1","state":"current","stage":"remote-verified","remote_verified":true,"availability":"available","at":"2026-10-29T03:00:00Z"},
+   {"section":"audit","link":"https://example.test/b","target_head":"old00000","hash":"h2","owner":"agent-2","state":"stale","stage":"pushed","remote_verified":false,"availability":"unverified","at":"2026-10-28T03:00:00Z"},
+   {"section":"qa","link":"https://example.test/c","state":"inaccessible","stage":"pushed","remote_verified":false,"availability":"inaccessible","at":"2026-10-29T04:00:00Z"},
+   {"section":"claim","link":"https://example.test/d","state":"current","stage":"remote-verified","remote_verified":false,"availability":"available","at":"2026-10-29T05:00:00Z"},
+   {"section":"plain","link":"http://example.test/e","state":"current","stage":"remote-verified","remote_verified":true,"availability":"available","at":"2026-10-29T05:00:00Z"},
+   {"section":"limited","link":"https://example.test/r","state":"current","stage":"restricted","remote_verified":true,"availability":"restricted","at":"2026-10-29T05:00:00Z"},
+   {"section":"early","link":"https://example.test/p","state":"current","stage":"committed","remote_verified":false,"availability":"unverified","at":"2026-10-29T05:00:00Z"},
+   {"section":"weird","link":"https://example.test/w","state":"current","stage":"unknown","remote_verified":true,"availability":"available","at":"2026-10-29T05:00:00Z"},
+   {"section":"xss","link":"javascript:alert(1)","state":"current","stage":"remote-verified","remote_verified":true,"availability":"available","at":"2026-10-29T05:00:00Z"}
   ],"confirmed":true}},
  {"Project":"p","Issue":22,"State":{"value":"queued","confirmed":true},"context":{"value":null,"confirmed":false}}
 ],
@@ -92,7 +95,13 @@ func TestContextLedger_StaleVersusInaccessibleAndLinks(t *testing.T) {
 	if !by["spec"].LinkOpen {
 		t.Errorf("verified https link should open: %+v", by["spec"])
 	}
-	for _, sec := range []string{"audit", "qa", "claim", "plain", "xss"} {
+	if by["spec"].Stage != "remote-verified" || by["audit"].Stage != "pushed" || by["early"].Stage != "committed" {
+		t.Errorf("evidence stage must be shown as reported: %+v", by)
+	}
+	if by["limited"].LinkStatus != "restricted" || by["limited"].LinkOpen {
+		t.Errorf("restricted evidence must never open: %+v", by["limited"])
+	}
+	for _, sec := range []string{"audit", "qa", "claim", "plain", "xss", "limited", "early", "weird"} {
 		if by[sec].LinkOpen {
 			t.Errorf("%s link must not open: %+v", sec, by[sec])
 		}
@@ -120,13 +129,13 @@ func TestMonitorRendersIntakeAndContext(t *testing.T) {
 	for _, want := range []string{
 		`id="intake-stages"`, "stage wt-ready", "stage failed", "token=****",
 		`id="context-ledger"`, `href="https://example.test/a"`, "link unverified", "link inaccessible",
-		"stale", "inaccessible", "owner agent-1", "handoff waiting not provided",
+		"stale", "inaccessible", "owner agent-1", "stage remote-verified", "stage pushed", "link restricted", "handoff waiting not provided",
 	} {
 		if !strings.Contains(html, want) {
 			t.Errorf("monitor missing %q", want)
 		}
 	}
-	for _, bad := range []string{`href="javascript:`, `href="http://example.test/e"`, `href="https://example.test/d"`, `href="https://example.test/b"`} {
+	for _, bad := range []string{`href="javascript:`, `href="http://example.test/e"`, `href="https://example.test/d"`, `href="https://example.test/b"`, `href="https://example.test/r"`, `href="https://example.test/p"`, `href="https://example.test/w"`} {
 		if strings.Contains(html, bad) {
 			t.Errorf("monitor opened a link it must not: %s", bad)
 		}
