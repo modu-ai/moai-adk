@@ -204,3 +204,42 @@ func TestReceiptWorktreeSpellingsAreOneWorktree(t *testing.T) {
 		t.Errorf("the tree behind a handed-off symlink: %v", err)
 	}
 }
+
+// A handoff that the checks refuse (a stale head, an Issue that is not at
+// landing) must not leave a reservation behind: the path was never handed off.
+func TestARefusedHandoffLeavesNoReservation(t *testing.T) {
+	r, ref := newRunner(t)
+	tk := landed(t, r, ref)
+	stale := goodHandoff()
+	stale.Worktree = wtDir("refused-stale")
+	stale.Head, stale.BoundaryHead = headB, headB // not the candidate head
+	if _, err := r.HandOff(tk, stale); !errors.Is(err, core.ErrStaleHead) {
+		t.Fatalf("a handoff on another head: %v", err)
+	}
+	if _, err := r.Store.GetDoc("worktree", claim.WorktreeKey(stale.Worktree)); !errors.Is(err, core.ErrNotHeld) {
+		t.Errorf("a stale-head handoff left a reservation: %v", err)
+	}
+	// the path is free for another Issue
+	next, _ := core.NewIssueRef(2000)
+	nt, err := r.Claim(next, "sess-b", "disp-2", "run-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := r.BindWorktree(nt, stale.Worktree); err != nil {
+		t.Errorf("the path of a refused handoff is free: %v", err)
+	}
+	// and a handoff from an Issue that is not at landing
+	other, _ := core.NewIssueRef(3000)
+	ot, err := r.Claim(other, "sess-c", "disp-3", "run-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	early := goodHandoff()
+	early.HandoffID, early.Worktree = "ho-early", wtDir("refused-early")
+	if _, err := r.HandOff(ot, early); !errors.Is(err, core.ErrTransitionInvalid) {
+		t.Fatalf("a handoff before landing: %v", err)
+	}
+	if _, err := r.Store.GetDoc("worktree", claim.WorktreeKey(early.Worktree)); !errors.Is(err, core.ErrNotHeld) {
+		t.Errorf("a handoff before landing left a reservation: %v", err)
+	}
+}
