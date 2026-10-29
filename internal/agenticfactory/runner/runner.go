@@ -13,6 +13,7 @@ package runner
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"strings"
 	"time"
 
@@ -469,6 +470,14 @@ type Handoff struct {
 	Worktree       string
 	WriterStopped  bool
 	BoundaryHead   string
+	// The rest of the receipt (spec 148), all required of a new handoff: the PR's
+	// URL, the base it targets, the spec revision adopted, what the task produced
+	// and the state of the checks.
+	PRURL       string
+	Base        string
+	AdoptedSpec string
+	TaskResult  string
+	CheckStatus string
 }
 
 // HandOff records the PR receipt. It does not release the Issue: the agent that
@@ -495,6 +504,10 @@ func (r *Runner) HandOff(t Ticket, h Handoff) (claim.Record, error) {
 	switch {
 	case h.PR <= 0:
 		return claim.Record{}, fmt.Errorf("%w: PR number is required", core.ErrEvidenceIncomplete)
+	case !validPRURL(h.PRURL):
+		return claim.Record{}, fmt.Errorf("%w: the PR URL is missing or not an http(s) URL", core.ErrEvidenceIncomplete)
+	case strings.TrimSpace(h.Base) == "" || strings.TrimSpace(h.AdoptedSpec) == "" || strings.TrimSpace(h.TaskResult) == "" || strings.TrimSpace(h.CheckStatus) == "":
+		return claim.Record{}, fmt.Errorf("%w: base, adopted spec, task result and check status are required", core.ErrEvidenceIncomplete)
 	case h.Branch == "" || h.Worktree == "":
 		return claim.Record{}, fmt.Errorf("%w: branch and worktree are required", core.ErrEvidenceIncomplete)
 	case !h.WriterStopped:
@@ -532,6 +545,7 @@ func (r *Runner) HandOff(t Ticket, h Handoff) (claim.Record, error) {
 		rec.Receipt = &claim.Receipt{
 			HandoffID: h.HandoffID, LeaderAccepted: true, PR: h.PR, Head: head, Branch: h.Branch, Worktree: h.Worktree,
 			Attempt: rec.Attempt, AttemptSeq: rec.AttemptSeq, Agent: rec.AgentName, Session: rec.Holder,
+			PRURL: h.PRURL, Base: h.Base, AdoptedSpec: h.AdoptedSpec, TaskResult: h.TaskResult, CheckStatus: h.CheckStatus,
 		}
 		rec.AddEvent(claim.Event{Kind: "handoff", Agent: rec.AgentName, Session: rec.Holder, Attempt: string(rec.Attempt), Head: string(head), PR: h.PR, Note: "receipt " + h.HandoffID + " accepted by the leader"})
 		return nil
@@ -849,4 +863,13 @@ func (r *Runner) mayClose(issue int) string {
 		return string(v)
 	}
 	return ""
+}
+
+// validPRURL accepts an absolute http(s) URL with a host and no blanks.
+func validPRURL(raw string) bool {
+	if raw == "" || strings.ContainsAny(raw, " \t\r\n") {
+		return false
+	}
+	u, err := url.Parse(raw)
+	return err == nil && (u.Scheme == "https" || u.Scheme == "http") && u.Host != ""
 }

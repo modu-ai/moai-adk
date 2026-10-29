@@ -192,6 +192,13 @@ type Receipt struct {
 	AttemptSeq     int            `json:"attempt_seq,omitempty"`
 	Agent          string         `json:"agent,omitempty"`   // display name of the agent that published the PR
 	Session        string         `json:"session,omitempty"` // its session id; stays unambiguous after the number is reused
+	// The spec fields of a receipt (spec 148). A receipt stored before they existed
+	// reads with them empty; only a new handoff must supply them.
+	PRURL       string `json:"pr_url,omitempty"`
+	Base        string `json:"base,omitempty"`
+	AdoptedSpec string `json:"adopted_spec,omitempty"`
+	TaskResult  string `json:"task_result,omitempty"`
+	CheckStatus string `json:"check_status,omitempty"`
 }
 
 // Store keeps records under one directory: issue-<n>.json, guarded by

@@ -247,3 +247,19 @@ func TestOnlyTheEntryIntoParkedNeedsAWaitRecord(t *testing.T) {
 		t.Errorf("rewriting an already parked record: %v", err)
 	}
 }
+
+// A receipt stored before the spec fields existed still reads, and the record
+// around it is usable.
+func TestAReceiptWithoutTheSpecFieldsStillReads(t *testing.T) {
+	s := open(t)
+	if err := writeRaw(s, 3, `{"issue":3,"holder":"w","dispatch":"d","run":"run-1","epoch":1,"seq":1,"state":"landing","receipt":{"handoff_id":"h-1","leader_accepted":true,"pr":5,"head":"a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1","branch":"WT-x","worktree":"/wt/x"}}`); err != nil {
+		t.Fatal(err)
+	}
+	rec, err := s.Read(ref(t, 3))
+	if err != nil || rec.Receipt == nil || rec.Receipt.PR != 5 || rec.Receipt.PRURL != "" || rec.Stage != core.StageReviewing {
+		t.Fatalf("an old receipt: %+v %v", rec, err)
+	}
+	if _, err := s.Update(ref(t, 3), "w", rec.Epoch, func(r *Record) error { r.Pending = "deploy"; return nil }); err != nil {
+		t.Errorf("rewriting a record with an old receipt: %v", err)
+	}
+}

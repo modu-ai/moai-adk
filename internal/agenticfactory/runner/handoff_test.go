@@ -17,7 +17,8 @@ func mustReopen(t *testing.T, r *Runner, ref core.IssueRef) {
 }
 
 func goodHandoff() Handoff {
-	return Handoff{HandoffID: "ho-1", LeaderAccepted: true, PR: 321, Head: headA, Branch: "WT-agentic-x", Worktree: "/wt/x", WriterStopped: true, BoundaryHead: headA}
+	return Handoff{HandoffID: "ho-1", LeaderAccepted: true, PR: 321, Head: headA, Branch: "WT-agentic-x", Worktree: "/wt/x", WriterStopped: true, BoundaryHead: headA,
+		PRURL: "https://github.com/acme/widgets/pull/321", Base: "main", AdoptedSpec: "rev-1", TaskResult: "implemented; 41 tests added", CheckStatus: "passed"}
 }
 
 // landed drives an Issue to landing (PR published) and returns its ticket.

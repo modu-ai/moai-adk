@@ -130,3 +130,41 @@ func TestAPauseNeedsAWaitRecord(t *testing.T) {
 		t.Fatalf("a pause with its wait: %+v %v", rec, err)
 	}
 }
+
+// A receipt names the PR, its base, the adopted spec, what the task produced and
+// the state of the checks (spec 148); a new handoff without any of them is
+// refused and records nothing.
+func TestAHandoffReceiptCarriesTheSpecFields(t *testing.T) {
+	for name, mut := range map[string]func(*Handoff){
+		"PR URL":       func(h *Handoff) { h.PRURL = "" },
+		"PR URL shape": func(h *Handoff) { h.PRURL = "not a url" },
+		"base":         func(h *Handoff) { h.Base = " " },
+		"adopted spec": func(h *Handoff) { h.AdoptedSpec = "" },
+		"task result":  func(h *Handoff) { h.TaskResult = "" },
+		"check status": func(h *Handoff) { h.CheckStatus = "" },
+	} {
+		t.Run(name, func(t *testing.T) {
+			r, ref := newRunner(t)
+			tk := landed(t, r, ref)
+			h := goodHandoff()
+			mut(&h)
+			if _, err := r.HandOff(tk, h); !errors.Is(err, core.ErrEvidenceIncomplete) {
+				t.Fatalf("a handoff without %s: %v", name, err)
+			}
+			if cur, _ := r.Store.Read(ref); cur.Receipt != nil || cur.Holder != tk.Holder {
+				t.Errorf("a refused handoff recorded something: %+v", cur)
+			}
+		})
+	}
+	r, ref := newRunner(t)
+	tk := landed(t, r, ref)
+	rec, err := r.HandOff(tk, goodHandoff())
+	if err != nil {
+		t.Fatal(err)
+	}
+	rc := rec.Receipt
+	if rc.PRURL != "https://github.com/acme/widgets/pull/321" || rc.Base != "main" || rc.AdoptedSpec != "rev-1" || rc.TaskResult == "" || rc.CheckStatus != "passed" {
+		t.Errorf("the receipt must carry them: %+v", rc)
+	}
+	_ = ref
+}
