@@ -215,3 +215,104 @@ func TestTheReminderChainThroughTheInbox(t *testing.T) {
 		t.Errorf("the owner changed: %q epoch %d", rec.Holder, rec.Epoch)
 	}
 }
+
+// The reading side: a message is acknowledged only after it was handled; a failing handler leaves it and
+// the ones behind it queued; a lost acknowledgement means one repeat, never a loss.
+func TestConsumeAcknowledgesOnlyWhatWasHandled(t *testing.T) {
+	e := newEnv(t)
+	in := e.inbox()
+	ctx := context.Background()
+	for i := range 3 {
+		if err := in.Notify(ctx, notice(7, "sess-a", CIFailed, fmt.Sprintf("failure %d", i))); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var seen []string
+	n, err := in.ConsumeNotices("sess-a", func(x Notice) error {
+		if x.Detail == "failure 1" {
+			return errors.New("cannot take this one in")
+		}
+		seen = append(seen, x.Detail)
+		return nil
+	})
+	if n != 1 || err == nil || len(seen) != 1 || seen[0] != "failure 0" {
+		t.Fatalf("n=%d err=%v seen=%v", n, err, seen)
+	}
+	left, _ := in.Notices("sess-a")
+	if len(left) != 2 || left[0].Item.Detail != "failure 1" || left[1].Item.Detail != "failure 2" {
+		t.Fatalf("after the failed pass: %+v", left)
+	}
+	seen = nil
+	n, err = in.ConsumeNotices("sess-a", func(x Notice) error { seen = append(seen, x.Detail); return nil })
+	if n != 2 || err != nil || len(seen) != 2 {
+		t.Fatalf("second pass: n=%d err=%v seen=%v", n, err, seen)
+	}
+	if rest, _ := in.Notices("sess-a"); len(rest) != 0 {
+		t.Errorf("handled notices stayed queued: %+v", rest)
+	}
+	if n, err := in.ConsumeNotices("sess-a", func(Notice) error { t.Error("handler called on an empty inbox"); return nil }); n != 0 || err != nil {
+		t.Errorf("empty inbox: n=%d err=%v", n, err)
+	}
+}
+
+// The acknowledgement's write lands and then the process dies: the notice is gone, it is not handled twice.
+func TestAnAcknowledgementThatLandedBeforeACrashIsNotRepeated(t *testing.T) {
+	e := newEnv(t)
+	in := e.inbox()
+	if err := in.Notify(context.Background(), notice(7, "sess-a", CIFailed, "x")); err != nil {
+		t.Fatal(err)
+	}
+	handled := 0
+	in.Docs = &crashDocs{inner: e.st, crashAt: 1}
+	if _, err := in.ConsumeNotices("sess-a", func(Notice) error { handled++; return nil }); err == nil {
+		t.Fatal("the crash was not reported")
+	}
+	in.Docs = e.st // restart
+	if n, err := in.ConsumeNotices("sess-a", func(Notice) error { handled++; return nil }); n != 0 || err != nil || handled != 1 {
+		t.Errorf("n=%d err=%v handled=%d, want it handled exactly once", n, err, handled)
+	}
+}
+
+type refuseDocs struct {
+	inner *claim.Store
+	puts  int
+}
+
+func (r *refuseDocs) GetDoc(kind, name string) (claim.Doc, error) { return r.inner.GetDoc(kind, name) }
+func (r *refuseDocs) PutDoc(kind, name string, rev int64, data []byte) (claim.Doc, error) {
+	r.puts++
+	return claim.Doc{}, errors.New("store refused the write")
+}
+
+func TestAnAcknowledgementThatCannotBeWrittenLeavesTheMessageForARepeat(t *testing.T) {
+	e := newEnv(t)
+	in := e.inbox()
+	if err := in.Notify(context.Background(), notice(7, "sess-a", CIFailed, "x")); err != nil {
+		t.Fatal(err)
+	}
+	handled := 0
+	in.Docs = &refuseDocs{inner: e.st}
+	if n, err := in.ConsumeNotices("sess-a", func(Notice) error { handled++; return nil }); n != 0 || err == nil {
+		t.Fatalf("n=%d err=%v: an unwritten acknowledgement was counted", n, err)
+	}
+	in.Docs = e.st
+	if n, err := in.ConsumeNotices("sess-a", func(Notice) error { handled++; return nil }); n != 1 || err != nil || handled != 2 {
+		t.Errorf("repeat: n=%d err=%v handled=%d, want the one repeat", n, err, handled)
+	}
+}
+
+func TestTheLeaderConsumesItsEscalations(t *testing.T) {
+	e := newEnv(t)
+	in := e.inbox()
+	esc := Escalation{Issue: 7, Holder: "sess-a", To: "leader", Retries: 3, MaxRetries: 3}
+	if err := in.Escalate(context.Background(), esc); err != nil {
+		t.Fatal(err)
+	}
+	var got []Escalation
+	if n, err := in.ConsumeEscalations("leader", func(x Escalation) error { got = append(got, x); return nil }); n != 1 || err != nil || got[0] != esc {
+		t.Fatalf("n=%d err=%v got=%+v", n, err, got)
+	}
+	if left, _ := in.Escalations("leader"); len(left) != 0 {
+		t.Errorf("left: %+v", left)
+	}
+}

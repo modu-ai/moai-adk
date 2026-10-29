@@ -185,3 +185,23 @@ func TestAnUnconfiguredSourceIsRefused(t *testing.T) {
 		t.Error("a source with no runner was accepted")
 	}
 }
+
+// The shapes below are what a real `gh` printed for open and merged pull requests of this project, read
+// only, as measured and relayed by the leader (this lane did not run gh). The head is padded to 40
+// characters here; the point is the shape: keys in gh's order, and a reviewDecision that is the EMPTY
+// string while no review decision exists. That is "no decision", not an error.
+func TestParseAcceptsTheShapesGhActuallyPrinted(t *testing.T) {
+	pr := `{"headRefOid":"a1d7ba49` + strings.Repeat("0", 32) + `","number":1939,"reviewDecision":"","state":"OPEN"}`
+	checks := `[{"bucket":"pass","name":"Lint"},{"bucket":"pass","name":"Build (linux/amd64)"},{"bucket":"pass","name":"Analyze (Go) (go)"}]`
+	v, err := Parse([]byte(pr), []byte(checks), []byte(`{"state":"OPEN"}`))
+	if err != nil {
+		t.Fatalf("a real open PR with no review decision was refused: %v", err)
+	}
+	if v.Number != 1939 || v.Review != "" || v.CI != "success" || v.Merged || v.IssueClosed || !strings.HasPrefix(v.Head, "a1d7ba49") {
+		t.Errorf("view = %+v", v)
+	}
+	merged := `{"headRefOid":"` + strings.Repeat("b", 40) + `","number":1931,"reviewDecision":"","state":"MERGED"}`
+	if v, err := Parse([]byte(merged), []byte(`[]`), []byte(`{"state":"CLOSED"}`)); err != nil || !v.Merged || !v.IssueClosed || v.Review != "" {
+		t.Errorf("a merged PR: %+v %v", v, err)
+	}
+}

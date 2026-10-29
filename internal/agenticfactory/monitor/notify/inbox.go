@@ -132,3 +132,43 @@ func (in Inbox) AckEscalations(to string, ids []string) error {
 	}
 	return q.Commit(ids)
 }
+
+// ConsumeNotices is the reading side for an agent: it hands each queued notice to handle, oldest first,
+// and acknowledges a notice only after handle returned nil for it. If handle fails the pass stops there
+// and that notice (and the ones behind it) stay queued; if the acknowledgement cannot be written the
+// notice is handled again on the next pass, so handle must tolerate a repeat. It returns how many
+// notices were handled and acknowledged.
+func (in Inbox) ConsumeNotices(holder string, handle func(Notice) error) (int, error) {
+	q, err := in.queue("notice", holder)
+	if err != nil {
+		return 0, err
+	}
+	return consume(q, handle)
+}
+
+// ConsumeEscalations is ConsumeNotices for the escalation target (the leader).
+func (in Inbox) ConsumeEscalations(to string, handle func(Escalation) error) (int, error) {
+	q, err := in.queue("escalation", to)
+	if err != nil {
+		return 0, err
+	}
+	return consume(q, handle)
+}
+
+func consume[T any](q *docstore.Queue, handle func(T) error) (int, error) {
+	msgs, err := receive[T](q)
+	if err != nil {
+		return 0, err
+	}
+	done := 0
+	for _, m := range msgs {
+		if err := handle(m.Item); err != nil {
+			return done, fmt.Errorf("notify: handling message %s: %w", m.ID, err)
+		}
+		if err := q.Commit([]string{m.ID}); err != nil {
+			return done, fmt.Errorf("notify: message %s was handled but not acknowledged: %w", m.ID, err)
+		}
+		done++
+	}
+	return done, nil
+}
