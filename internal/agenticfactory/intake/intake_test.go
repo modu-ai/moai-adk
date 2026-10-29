@@ -488,3 +488,56 @@ func TestPublisherErrorsAreRecordedNotLost(t *testing.T) {
 		t.Errorf("failure not recorded: %+v", cur)
 	}
 }
+
+// ErrBusy is returned to the caller, never retried inside the product path: the
+// store waits a bounded time for the lock and then says "retry". This pins that
+// contract so a Busy retry in a test cannot hide a defect in it.
+func TestAcceptReturnsBusyToTheCallerAfterABoundedWait(t *testing.T) {
+	r := newRig(t, Config{})
+	lock := filepath.Join(r.dir, "requests.lock")
+	if err := os.WriteFile(lock, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	start := time.Now()
+	_, err := r.in.Accept("req-1", []byte("p"), 1)
+	waited := time.Since(start)
+	if !errors.Is(err, core.ErrBusy) {
+		t.Fatalf("want ErrBusy, got %v", err)
+	}
+	if waited > 2*time.Second {
+		t.Errorf("the wait for a held lock is not bounded: %s", waited)
+	}
+	if _, gerr := r.in.Store.GetRequest("req-1"); !errors.Is(gerr, core.ErrNotHeld) {
+		t.Error("a Busy accept left a record")
+	}
+	if r.pub.count() != 0 {
+		t.Error("a Busy accept caused an effect")
+	}
+	// Once the holder is gone the same call succeeds: Busy was a retry signal.
+	if err := os.Remove(lock); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := r.in.Accept("req-1", []byte("p"), 1); err != nil {
+		t.Errorf("accept after the lock cleared: %v", err)
+	}
+}
+
+// A step that cannot record its failure because the store is Busy reports both
+// the cause and the Busy, so neither is lost.
+func TestAdvanceFailureWhileBusyKeepsBothErrors(t *testing.T) {
+	pub := &fakePub{err: errors.New("HTTP 429 secondary rate limit")}
+	r := rigAt(t, t.TempDir(), Config{}, pub, &fakePrep{stopped: true})
+	_, _ = r.in.Accept("req-1", []byte("p"), 1)
+	lock := filepath.Join(r.dir, "requests.lock")
+	// Hold the lock only after the publish call has started, by taking it in the fake.
+	pub.mu.Lock()
+	pub.err = errors.New("HTTP 429 secondary rate limit")
+	pub.mu.Unlock()
+	if err := os.WriteFile(lock, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_, err := r.in.Advance(ctx(), "req-1")
+	if err == nil || !errors.Is(err, core.ErrBusy) || !strings.Contains(err.Error(), "429") {
+		t.Fatalf("both the publish error and the Busy must survive: %v", err)
+	}
+}

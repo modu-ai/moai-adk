@@ -10,12 +10,15 @@ package mirror
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os/exec"
+	"sort"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/claim"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
@@ -69,6 +72,19 @@ type Mirror struct {
 	Repo       string // owner/name
 	Exec       Exec
 	AllowWrite bool
+	// Budget, when set, is asked before a report write that has something to
+	// send. A refusal defers the write (core.ErrDeferred); nothing is sent.
+	Budget core.Budget
+
+	mu      sync.Mutex
+	memos   map[int]memo
+	pending map[int]queued
+	gen     uint64
+}
+
+type queued struct {
+	l   core.Ledger
+	gen uint64
 }
 
 func redact(s string) (string, int) { return core.Redact(s) }
@@ -141,8 +157,68 @@ func (m *Mirror) ReadLedger(ctx context.Context, issue int) (core.Ledger, error)
 	return l, nil
 }
 
+// errCommentGone means the remembered comment no longer exists (HTTP 404).
+var errCommentGone = errors.New("agenticfactory/mirror: remembered ledger comment is gone")
+
+// memo is what the mirror remembers of the last ledger comment it wrote.
+type memo struct {
+	id   int64
+	hash [sha256.Size]byte
+}
+
+// Invalidate forgets the remembered comment of an Issue, so the next write
+// lists the comments and re-sends the body. Use it when the comment may have
+// been changed outside this process.
+func (m *Mirror) Invalidate(issue int) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	delete(m.memos, issue)
+}
+
+func (m *Mirror) recall(issue int) memo {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.memos[issue]
+}
+
+func (m *Mirror) remember(issue int, id int64, hash [sha256.Size]byte) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.memos == nil {
+		m.memos = map[int]memo{}
+	}
+	m.memos[issue] = memo{id: id, hash: hash}
+}
+
+// send runs one gh call and classifies a failure.
+func (m *Mirror) send(ctx context.Context, args ...string) ([]byte, error) {
+	out, errb, exit, err := m.Exec.Run(ctx, args...)
+	return out, classify(errb, exit, err)
+}
+
+func (m *Mirror) patch(ctx context.Context, id int64, body string) error {
+	_, errb, exit, err := m.Exec.Run(ctx, "api", "-X", "PATCH",
+		fmt.Sprintf("repos/%s/issues/comments/%s", m.Repo, strconv.FormatInt(id, 10)), "-f", "body="+body)
+	if err == nil && exit != 0 && strings.Contains(strings.ToLower(string(errb)), "http 404") {
+		return errCommentGone
+	}
+	return classify(errb, exit, err)
+}
+
+// createdID reads the comment id from a create response; 0 when absent.
+func createdID(out []byte) int64 {
+	var c comment
+	if json.Unmarshal(out, &c) != nil {
+		return 0
+	}
+	return c.ID
+}
+
 // WriteLedger creates or updates the ledger comment. Secrets are masked and
-// the masking is disclosed in the comment.
+// the masking is disclosed in the comment. The id and body hash of the last
+// write are remembered per Issue: an unchanged body sends nothing, and a known
+// id skips the comment listing. A 404 on the remembered id falls back to the
+// listing, so exactly one ledger comment is kept.
 func (m *Mirror) WriteLedger(ctx context.Context, l core.Ledger) error {
 	if !m.AllowWrite {
 		return ErrWriteDisabled
@@ -156,16 +232,50 @@ func (m *Mirror) WriteLedger(ctx context.Context, l core.Ledger) error {
 	if n > 0 {
 		body += fmt.Sprintf("<!-- redacted: %d -->\n", n)
 	}
-	c, ok, err := m.ledgerComment(ctx, l.Issue.Number)
+	issue := l.Issue.Number
+	sum := sha256.Sum256([]byte(body))
+
+	mem := m.recall(issue)
+	if mem.id != 0 && mem.hash == sum {
+		return nil
+	}
+	if m.Budget != nil && !m.Budget.Reserve(core.PriorityReport) {
+		return core.ErrDeferred
+	}
+	if mem.id != 0 {
+		err := m.patch(ctx, mem.id, body)
+		if err == nil {
+			m.remember(issue, mem.id, sum)
+			return nil
+		}
+		if !errors.Is(err, errCommentGone) {
+			return err
+		}
+		m.Invalidate(issue)
+	}
+
+	c, ok, err := m.ledgerComment(ctx, issue)
 	if err != nil {
 		return err
 	}
-	args := []string{"api", "-X", "POST", fmt.Sprintf("repos/%s/issues/%d/comments", m.Repo, l.Issue.Number), "-f", "body=" + body}
 	if ok {
-		args = []string{"api", "-X", "PATCH", fmt.Sprintf("repos/%s/issues/comments/%s", m.Repo, strconv.FormatInt(c.ID, 10)), "-f", "body=" + body}
+		if err := m.patch(ctx, c.ID, body); err != nil {
+			if errors.Is(err, errCommentGone) {
+				return fmt.Errorf("agenticfactory/mirror: ledger comment vanished while updating: %w", err)
+			}
+			return err
+		}
+		m.remember(issue, c.ID, sum)
+		return nil
 	}
-	_, errb, exit, err := m.Exec.Run(ctx, args...)
-	return classify(errb, exit, err)
+	out, err := m.send(ctx, "api", "-X", "POST", fmt.Sprintf("repos/%s/issues/%d/comments", m.Repo, issue), "-f", "body="+body)
+	if err != nil {
+		return err
+	}
+	if id := createdID(out); id != 0 {
+		m.remember(issue, id, sum)
+	}
+	return nil
 }
 
 // LedgerFromRecord projects a claim record onto the ledger fields.
@@ -192,6 +302,8 @@ func Publish(ctx context.Context, m *Mirror, st *claim.Store, issue core.IssueRe
 	var be *BlockedError
 	switch {
 	case werr == nil:
+	case errors.Is(werr, core.ErrDeferred):
+		state = "stale" // the authority is ahead of the comment
 	case errors.As(werr, &be):
 		state = "blocked(" + string(be.Reason) + ")"
 	default:
@@ -202,4 +314,55 @@ func Publish(ctx context.Context, m *Mirror, st *claim.Store, issue core.IssueRe
 		return rec, uerr
 	}
 	return out, werr
+}
+
+// Enqueue records the latest ledger of an Issue for a later Flush. A newer
+// ledger for the same Issue replaces the older one, so a burst of state changes
+// becomes one comment update.
+func (m *Mirror) Enqueue(l core.Ledger) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.pending == nil {
+		m.pending = map[int]queued{}
+	}
+	m.gen++
+	m.pending[l.Issue.Number] = queued{l: l, gen: m.gen}
+}
+
+// Pending lists the Issues with an unsent ledger, ascending.
+func (m *Mirror) Pending() []int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	out := make([]int, 0, len(m.pending))
+	for n := range m.pending {
+		out = append(out, n)
+	}
+	sort.Ints(out)
+	return out
+}
+
+// Flush writes each queued ledger once, lowest Issue first, and returns how many
+// were written. It stops at the first failure (a short budget, a block, an
+// error) and leaves the rest queued, so a refusal is never hammered. An entry
+// queued again while its predecessor was being written stays queued.
+func (m *Mirror) Flush(ctx context.Context) (int, error) {
+	written := 0
+	for _, n := range m.Pending() {
+		m.mu.Lock()
+		q, ok := m.pending[n]
+		m.mu.Unlock()
+		if !ok {
+			continue
+		}
+		if err := m.WriteLedger(ctx, q.l); err != nil {
+			return written, err
+		}
+		written++
+		m.mu.Lock()
+		if cur, ok := m.pending[n]; ok && cur.gen == q.gen {
+			delete(m.pending, n)
+		}
+		m.mu.Unlock()
+	}
+	return written, nil
 }

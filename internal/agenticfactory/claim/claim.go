@@ -100,6 +100,8 @@ type Store struct {
 	// ref is the authoritative store when attached; the files under dir are
 	// then a cache that Rebuild can recreate.
 	ref ControlRef
+	// budget is told about every authority write; see core.Budget.
+	budget core.Budget
 }
 
 const (
@@ -244,6 +246,7 @@ func (s *Store) write(i core.IssueRef, r *Record) error {
 		if err != nil {
 			return err
 		}
+		s.announce()
 		rev, err := s.ref.CompareAndSwap(refCtx(), "issue/"+strconv.Itoa(i.Number), old.Rev, data)
 		if err != nil {
 			return refErr(err)

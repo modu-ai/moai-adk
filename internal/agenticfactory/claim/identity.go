@@ -140,6 +140,7 @@ func (s *Store) linkAgent(a core.Agent) (bool, error) {
 	}
 	if s.ref != nil {
 		// The authority decides who owns the number; the file is its cache.
+		s.announce()
 		if _, err := s.ref.CompareAndSwap(refCtx(), fmt.Sprintf("agent/%d", a.Number), 0, b); err != nil {
 			if errors.Is(err, core.ErrRevisionConflict) {
 				return false, nil
@@ -257,6 +258,7 @@ func (s *Store) releaseAgent(sessionID string, number int) error {
 		}
 	}
 	if s.ref != nil {
+		s.announce()
 		if err := s.ref.Delete(refCtx(), fmt.Sprintf("agent/%d", number), rev); err != nil {
 			return refErr(err)
 		}

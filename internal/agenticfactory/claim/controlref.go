@@ -34,6 +34,16 @@ type ControlRef interface {
 // Attach makes ref the authority. Writes go to it first; nil detaches.
 func (s *Store) Attach(ref ControlRef) { s.ref = ref }
 
+// SetBudget lets a shared call budget see every authority write. These are
+// safety-priority writes: the answer is ignored and the write proceeds.
+func (s *Store) SetBudget(b core.Budget) { s.budget = b }
+
+func (s *Store) announce() {
+	if s.budget != nil {
+		_ = s.budget.Reserve(core.PrioritySafety)
+	}
+}
+
 func refCtx() context.Context { return context.Background() }
 
 // refErr keeps a revision conflict recognisable and turns everything else the
