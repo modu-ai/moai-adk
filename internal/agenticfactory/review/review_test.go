@@ -5,6 +5,8 @@ import (
 	"errors"
 	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
 )
 
 const (
@@ -110,10 +112,10 @@ func TestClaudeAuditor_UsesExecutor(t *testing.T) {
 	}
 }
 
-func completed(t *testing.T, v Verdict, head, session string) Record {
+func completed(t *testing.T, v Verdict, head core.HeadSHA, session string) Record {
 	t.Helper()
 	r := Record{HeadSHA: head, Kind: KindAudit, Provider: ProviderClaude, Verdict: v,
-		Producer: Producer{Role: "auditor", Session: session, Attempt: 1, Epoch: 1}}
+		Producer: Producer{Role: "auditor", Session: session, Attempt: "a1", Epoch: 1}}
 	for _, st := range []State{StateSent, StateReceived, StateExecuted, StateCompleted} {
 		if err := r.Mark(st, sourceFor[st]); err != nil {
 			t.Fatal(err)
@@ -145,7 +147,7 @@ func TestAdmit(t *testing.T) {
 	cases := []struct {
 		name string
 		rec  func() Record
-		head string
+		head core.HeadSHA
 		want Reason
 	}{
 		{"pass", func() Record { return completed(t, VerdictPass, headA, "s-audit") }, headA, ReasonNone},
