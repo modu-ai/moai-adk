@@ -43,6 +43,7 @@ d=$(dirname "$0")
 w="$d/work/.tmp/plugins-clone-X/plugins"
 mkdir -p "$w"
 (
+  trap ': > "$d/termed"' TERM
   i=0
   while [ ! -e "$d/stop" ] && [ $i -lt 400 ]; do
     : > "$w/f$i"
@@ -94,6 +95,12 @@ type entryRun struct {
 	cmd     *exec.Cmd
 	dir     string
 	plugins string
+	log     string // the entry process's combined output
+}
+
+func (r *entryRun) output() string {
+	b, _ := os.ReadFile(r.log)
+	return string(b)
 }
 
 func startEntry(t *testing.T, entry string) *entryRun {
@@ -109,6 +116,15 @@ func startEntry(t *testing.T, entry string) *entryRun {
 	r := &entryRun{dir: dir, plugins: filepath.Join(dir, "work", ".tmp", "plugins-clone-X", "plugins")}
 	cmd := exec.Command(os.Args[0], "-test.run=^TestCodexEntrySignalHelper$")
 	cmd.Env = append(os.Environ(), entryHelperEnv+"="+entry, entryHelperEnv+"_DIR="+dir, config.EnvClaudeProjectDir+"="+project)
+	// The entry's own output goes to a file next to the fake, so a failure can
+	// say what the process did.
+	logFile, err := os.Create(filepath.Join(t.TempDir(), "entry.log"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	r.log = logFile.Name()
+	cmd.Stdout, cmd.Stderr = logFile, logFile
+	t.Cleanup(func() { _ = logFile.Close() })
 	if err := cmd.Start(); err != nil {
 		t.Fatalf("start the entry process: %v", err)
 	}
@@ -168,6 +184,56 @@ func TestCodexEntry_VerifyCodexReview_SIGINTEndsTheSessionGroup(t *testing.T) {
 	r.signalAndWait(t, syscall.SIGINT)
 	if r.grows() {
 		t.Errorf("SIGINT to `verify codex-review` left the session's descendant writing")
+	}
+}
+
+// The cleanup after a first Ctrl-C takes about a second here: the fake's helper
+// notes SIGTERM in a marker file and keeps running, so close waits out the SIGTERM
+// bound before SIGKILL. (ctx cancellation already killed the direct child, so the
+// marker is the first sign that the group reap has begun.) A user who presses
+// Ctrl-C again must be able to leave at once: the second SIGINT takes the default
+// action, so the process dies by the signal instead of exiting normally after the
+// cleanup.
+func TestCodexEntry_VerifyCodexReview_SecondSIGINTDoesNotWaitForCleanup(t *testing.T) {
+	r := startEntry(t, "verify")
+	if !r.grows() {
+		t.Fatal("control: the descendant was not writing before the signal, so the test measures nothing")
+	}
+	if err := r.cmd.Process.Signal(syscall.SIGINT); err != nil {
+		t.Fatal(err)
+	}
+	// The helper writes the marker when the group reap signals it: the first signal
+	// has been handled and the cleanup that must not be waited for has begun.
+	closing := filepath.Join(r.dir, "termed")
+	deadline := time.Now().Add(30 * time.Second)
+	for {
+		if _, err := os.Stat(closing); err == nil {
+			break
+		}
+		if time.Now().After(deadline) {
+			es, _ := os.ReadDir(r.dir)
+			names := make([]string, 0, len(es))
+			for _, e := range es {
+				names = append(names, e.Name())
+			}
+			t.Fatalf("the first SIGINT never started the session's close (entry dir: %v)\nentry output:\n%s", names, r.output())
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	time.Sleep(150 * time.Millisecond) // the handler is released on the first signal
+	if err := r.cmd.Process.Signal(syscall.SIGINT); err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan struct{})
+	go func() { _ = r.cmd.Wait(); close(done) }()
+	select {
+	case <-done:
+	case <-time.After(30 * time.Second):
+		t.Fatal("the entry process did not exit after the second SIGINT")
+	}
+	ws, ok := r.cmd.ProcessState.Sys().(syscall.WaitStatus)
+	if !ok || !ws.Signaled() || ws.Signal() != syscall.SIGINT {
+		t.Errorf("the second SIGINT was swallowed: the process exited normally after the cleanup (status %v), want it killed by SIGINT", r.cmd.ProcessState)
 	}
 }
 

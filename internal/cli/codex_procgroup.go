@@ -84,8 +84,16 @@ func shutdownCodexSessions() {
 // codexSignalContext derives a context that SIGINT or SIGTERM cancels. A session
 // in a group of its own gets no Ctrl-C from the terminal, so the entry that
 // opened it must turn the signal into a return that runs close.
+//
+// The handler is released as soon as the first signal ends the context, so a
+// second Ctrl-C during cleanup takes the default action and leaves at once.
 func codexSignalContext(parent context.Context) (context.Context, context.CancelFunc) {
-	return signal.NotifyContext(parent, os.Interrupt, syscall.SIGTERM)
+	ctx, stop := signal.NotifyContext(parent, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-ctx.Done()
+		stop()
+	}()
+	return ctx, stop
 }
 
 // reapCodexGroup ends whatever is still running in the session's process group.
