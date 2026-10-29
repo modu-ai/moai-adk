@@ -118,6 +118,7 @@ func (s *Store) Rebuild(ctx context.Context) (int, error) {
 		rec   Record
 		req   Request
 		agent core.Agent
+		doc   Doc
 		kind  string
 	}
 	var items []item
@@ -159,7 +160,10 @@ func (s *Store) Rebuild(ctx context.Context) (int, error) {
 				return 0, fmt.Errorf("%w: corrupt %s in authority: %v", core.ErrStoreUnavailable, k, err)
 			}
 		default:
-			continue
+			if _, isDoc := docKinds[kind]; !isDoc || !json.Valid(data) {
+				continue
+			}
+			it.doc = Doc{Kind: kind, Name: name, Rev: rev, Data: data}
 		}
 		items = append(items, it)
 	}
@@ -174,6 +178,8 @@ func (s *Store) Rebuild(ctx context.Context) (int, error) {
 			}
 		case "agent":
 			err = s.cacheAgent(it.agent)
+		default:
+			err = s.rebuildDoc(it.doc.Kind, it.doc.Name, it.doc.Data, it.doc.Rev)
 		}
 		if err != nil {
 			return 0, err
