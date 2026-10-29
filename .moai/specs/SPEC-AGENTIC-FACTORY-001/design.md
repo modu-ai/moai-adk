@@ -1,4 +1,4 @@
-# SPEC-AGENTIC-FACTORY-001 — 설계 (0.6.0)
+# SPEC-AGENTIC-FACTORY-001 — 설계 (0.6.1)
 
 이 문서는 `spec.md`의 표 요구사항(REQ-AF-016~025)이 가리키는 표와, 묶음 요구사항(REQ-AF-001~015)의 세부 계약을 담는다. 코드 구조와 함수 이름은 정하지 않는다. 다만 이미 다른 레인이 만든 이름(예: lane-18 `core.Collaboration.Authorize`, lane-17 `NormalizeRepositoryPath`)은 사실로 인용한다.
 
@@ -87,7 +87,24 @@ GitHub Issue (업무 필드의 권위: 제목·수용 기준·우선순위·의�
 | `foreign-closing-keyword` | PR 본문이나 커밋이 닫아서는 안 되는 Issue를 가리키는 종결 키워드를 가짐 | R | 키워드, 대상 Issue, 위치 | 키워드 제거 |
 | `op-not-defined` | 정의되지 않은 Issue 동작(자기 Issue의 제목 편집·마일스톤 변경·다시 열기) | R | 동작 이름 | 없음(정의 안 됨, §H) |
 
-마지막 8행의 문자열은 lane-18이 보고하고 리더가 확인한 `core/state.go`의 임시 상수다(spec.md §B.2, DEC-AF-16). 이 실행은 그 코드를 읽지 않았다.
+`unclassified-403`과 표 끝 7행, 모두 8개 문자열은 lane-18이 보고하고 리더가 확인한 `core/state.go`의 임시 상수다(spec.md §B.2, DEC-AF-16).
+
+**바이트 대조 (0.6.1, 이 SPEC 트리 HEAD `89f4e812a3`)**. 대조 대상은 lane-18 worktree `af-core-claim-runner`의 체크아웃 파일(읽기만 함, 그 트리에 git 실행 없음, 브랜치 ref 파일 값 `fa781ef0e9`)과, 이 트리에서 `git show f9f44e5ecc:<경로>`로 읽은 같은 파일이다. 두 파일은 두 커밋 사이에 바뀌지 않았다(`git diff --stat f9f44e5ecc fa781ef0e9 -- <두 파일>` 출력 없음). 명령은 각 원천에 `grep -n -o -F -e '"<값>"' …`(8개 값을 한 번에), SPEC 쪽은 같은 명령에 따옴표 대신 백틱을 썼다. "따옴표 붙은 값의 개수"는 Go 문자열 리터럴로 정확히 같은 바이트가 나온 횟수다.
+
+| 값 | `state.go` (`f9f44e5ecc`와 체크아웃 같음) | `authz.go` (같음) | SPEC 문자열(이 표, design.md) | 판정 |
+|---|---|---|---|---|
+| `unclassified-403` | 1개, 75행 `ReasonUnclassified` | 0개 | 64행 | 일치 |
+| `not-issue-author` | 1개, 78행 `ReasonNotIssueAuthor` | 1개, 91행 `DenyNotIssueAuthor`(판정 값) | 82행 | 일치 |
+| `identity-unknown` | 1개, 79행 `ReasonIdentityUnknown` | 1개, 92행 `DenyIdentityUnknown` | 83행 | 일치 |
+| `repository-not-allowed` | 1개, 80행 `ReasonRepoNotAllowed` | 1개, 93행 `DenyRepoNotAllowed` | 84행 | 일치 |
+| `permission-not-granted` | 1개, 81행 `ReasonPermissionNotGranted` | 1개, 94행 `DenyPermissionNotGranted` | 85행 | 일치 |
+| `owner-unconfirmed` | 1개, 82행 `ReasonOwnerUnconfirmed` | 1개, 95행 `DenyOwnerUnconfirmed` | 86행 | 일치 |
+| `foreign-closing-keyword` | 1개, 83행 `ReasonForeignClosing` | 0개 | 87행 | 일치 |
+| `op-not-defined` | 1개, 86행 `ReasonOpNotDefined` | 0개(따옴표 문자열 없음. 208행이 상수 이름 `ReasonOpNotDefined`로 씀. 그 판정의 자체 값은 96행 `"unknown-operation"`) | 88행 | 일치 |
+
+- 8개 모두 SPEC 문자열과 Go 상수가 바이트 단위로 같다. 그래서 SPEC 문자열을 고치지 않았다.
+- "`f9f44e5ecc`의 `core/authz.go`에 `op-not-defined`가 있다"는 리더 확인 사실과 이 대조의 차이: 따옴표 붙은 문자열은 `authz.go`에 없고, `authz.go`는 `state.go`의 상수를 이름으로 참조한다. 값의 원천은 `state.go:86` 하나다.
+- lane-18 코드에만 있는 문자열(사유 집합 밖): `AuthzVerdict` 값 `"unknown-operation"`(authz.go:96)과 `"allow"`(authz.go:90). 둘 다 `BlockReason`이 아니며, 기록되는 사유는 `Reason()`이 바꾼 값이다(spec.md §H). `BlockReason` 상수 26개는 모두 이 표 안에 있다.
 
 ### 2.1b 귀속 조회 결과 → 게이트 사유 (단일 표, REQ-AF-007·011)
 
@@ -380,7 +397,9 @@ ACK가 없으면 다시 보내지 않고 받는 쪽 상태를 먼저 조회한�
 | `workflow.agentic_factory.checkpoint.retention` | 보존 기간 | OPEN |
 | `workflow.agentic_factory.checkpoint.max_manifest_bytes` | manifest 하나의 크기 상한 | OPEN |
 
-상한을 넘을 때: 가장 오래된 checkpoint 가운데 "가장 최근 `remote-durable`이 아니고, 확정되지 않은 effect receipt가 참조하지 않는" 것을 manifest 색인에서 뺀다(커밋과 이력은 지우지 않는다). 뺄 수 있는 것이 없으면 새 checkpoint를 `capacity-short`로 거절하고 기존 것은 그대로 둔다. 키가 미설정이면 새 checkpoint를 `not-configured`로 거절하는 쪽을 제안한다(리더 확인 필요, OQ-22).
+상한을 넘을 때: 가장 오래된 checkpoint 가운데 "가장 최근 `remote-durable`이 아니고, 확정되지 않은 effect receipt가 참조하지 않는" 것을 manifest 색인에서 뺀다(커밋과 이력은 지우지 않는다). 뺄 수 있는 것이 없으면 새 checkpoint를 `capacity-short`로 거절하고 기존 것은 그대로 둔다. 키가 미설정일 때의 동작은 정하지 않았다(운영자 결정 대기 OD-8, spec.md §G.1).
+
+**구현 보고(미검증)**: lane-18은 커밋 `e6499b731a`에 상태 `local`·`pending`·`remote-durable`·`recovered`를 구현했다고 보고했다('reported by lane-18 / lane-20, relayed by the leader; commit existence confirmed by the leader via cat-file'). 위 표의 `committed-unacked`·`acked-manifest-unverified`·`durable-link-pending`은 보고에 없다(spec.md §H).
 
 **측정**: checkpoint마다 API 호출 수, 토큰, 걸린 시간을 측정값으로 기록한다. 측정할 수 없는 값(현재 토큰 receipt 경로 없음)은 Gap으로 기록하고 추정값을 쓰지 않는다(REQ-AF-025).
 
@@ -462,7 +481,7 @@ SPEC-ASIDE-BROWSER-001은 aside 부재 시 조용히 기본 도구로 진행(REQ
 | `workflow.agentic_factory.enabled` | bool | `false` | bool 외 거절 | 제안 |
 | `workflow.agentic_factory.codex.enabled` | bool, 미설정 허용 | 미설정(=꺼짐) | bool 외 거절. 미설정·`false`는 호출 0 | ✓ `CodexOptIn` |
 | `workflow.agentic_factory.browser.selected` | `egolite` \| `aside` \| `chrome`, 미설정 허용 | 미설정(=사용 시 `chrome`) | 열거 외 거절. 미설정은 "선택 없음"이지 `chrome` 선택이 아님 | ✓ `ResolveAgenticFactoryBrowser` |
-| `workflow.agentic_factory.pr_queue.wip_limit` | 정수 | 미설정 | 1 이상. `0`·음수·정수 아님·범위 밖 거절. `0`을 "끔"으로 읽지 않음. 미설정이면 새 배차 `not-configured`(제안, OQ-24) | ✓ `WIPLimit` |
+| `workflow.agentic_factory.pr_queue.wip_limit` | 정수 | 미설정 | 1 이상. `0`·음수·정수 아님·범위 밖 거절. `0`을 "끔"으로 읽지 않음. 미설정일 때의 배차는 운영자 결정 대기(OD-7) | ✓ `WIPLimit` |
 | `workflow.agentic_factory.collaboration.enabled` | bool | `false` | bool 외 거절 | ✓ |
 | `workflow.agentic_factory.collaboration.allowed_repositories` | 문자열 목록 | 빈 목록 | §4.1 항목 검증 | ✓ |
 | `workflow.agentic_factory.collaboration.permissions.edit_body` / `.close` / `.labels` / `.assignees` | bool | 각 `false` | bool 외 거절. **남의 Issue에만 적용** | ✓ |

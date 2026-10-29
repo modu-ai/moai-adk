@@ -1,4 +1,4 @@
-# SPEC-AGENTIC-FACTORY-001 — 구현 계획 (0.6.0)
+# SPEC-AGENTIC-FACTORY-001 — 구현 계획 (0.6.1)
 
 순서는 바뀔 가능성이 큰 결정부터 둔다(데이터 모델·권위, effect 경계, 생명주기). 기계적인 단계(CLI·template·행렬)는 뒤에 둔다. 시간 예측은 쓰지 않는다.
 
@@ -36,7 +36,7 @@
 2. `go test ./internal/agenticfactory/... -count=1`로 대상 부재 참고 관측 재측정(EV-REF-0, RED 아님).
 3. AC마다 시험을 먼저 쓰고 의도한 단언 때문의 `EXPECTED_RED`를 기록(acceptance §A 두 칸 채택).
 4. 관련 레인의 브랜치 사실(lane-17 `5c278d8b51`, lane-18 `da7f3a4290`·`f9f44e5ecc`, lane-22 `3c7db03d7b`)을 읽어 §B.2 보고 사실을 확인. 확인 전에는 미검증으로 둔다.
-5. `pr_queue.wip_limit` 미설정 규칙(OQ-24)과 checkpoint 상한 미설정 규칙(OQ-22)에 대한 리더 확인.
+5. `pr_queue.wip_limit` 미설정 동작(OD-7)과 checkpoint 상한 미설정 동작(OD-8)의 운영자 결정. 결정 전에는 두 동작을 구현하지 않는다.
 
 ## §E 제약
 
@@ -127,7 +127,7 @@
 | 잠금 때문에 M7 전 병합이 하나도 안 됨 | 의도한 동작(DEC-AF-02). M7 전 실행은 진단 실행으로만 기록 |
 | 요청별 운영자 인증이 Issue마다 사람 승인이 됨 | 정본 [0]§2와의 잔여 충돌. OD-3에서 운영자 판단 |
 | 중계 경로 위험(하위 OQ-AFI-1) | 잔여 위험으로 남고 OD-4 수용 기록 없이는 M7 불가 |
-| 수치 기본값이 없어 기능이 `not-configured`로 멈춤 | OQ-22·OQ-24의 리더·운영자 결정. 숫자를 지어내지 않음 |
+| 수치 기본값과 미설정 동작이 정해지지 않아 기능이 멈추거나 정의되지 않음 | 숫자는 OQ-22, 미설정 동작은 OD-7·OD-8의 운영자 결정. 숫자를 지어내지 않음 |
 | GitHub 저장소 이름 변경·이전(301) | redirect를 허용으로 보지 않음(`repository-not-allowed`) |
 | 문서 확인이 WebFetch 요약뿐(uncollated) | 설정 스키마에 `collation: uncollated` 표시. 구현 때 원문 대조 |
 | 시나리오 재실행마다 실제 Issue 한 쌍과 실제 병합이 듦 | 단일 실행 원칙(acceptance §A) |

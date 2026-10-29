@@ -1,7 +1,7 @@
 ---
 id: SPEC-AGENTIC-FACTORY-IDENTITY-001
 title: "AgenticFactory 역할 부여·세션 신원·운영자 인증 — 하위 계약"
-version: "0.2.0"
+version: "0.2.1"
 status: draft
 created: 2026-10-29
 updated: 2026-10-29
@@ -24,6 +24,7 @@ related_specs: [SPEC-AGENTIC-FACTORY-001]
 |---|---|---|---|
 | 0.1.0 | 2026-10-29 | manager-spec | 상위 SPEC-AGENTIC-FACTORY-001 0.4.0에서 분할해 새로 만든 하위 SPEC(draft). plan-audit iteration-4(`.moai/reports/SPEC-AGENTIC-FACTORY-001/plan-audit-iter4.md`)의 분할 제안과 운영자 재결정(2026-10-29, 리더 경유)에 따라 상위의 결정 DEC-AF-01, REQ-AF-018의 역할 부여·신원 조항, design §7.2·§11·§11.1·§11.2의 해당 내용, AC-AF-018의 역할 부여 사례 R1~R10, OQ-19를 옮겼다. iteration-4 N1(요청자 확인 부재)은 서버 쪽 요청자 계보 검사(REQ-AFI-003)로, N2(증거 종류와 역할의 일치)는 REQ-AFI-006·AC-AFI-008로, N4(Worker 요청 금지 조항의 단독 시험)는 AC-AFI-003으로 다룬다. |
 | 0.2.0 | 2026-10-29 | manager-spec | plan-audit iteration-1 FAIL(`.moai/reports/SPEC-AGENTIC-FACTORY-IDENTITY-001/plan-audit-iter1.md`)의 D1~D11과 정본 정합을 고치는 판. 범위는 넓히지 않았다(상위 DEC-AF-05): 서버 쪽 요청자 확인으로 iteration-4 N1·N2·N4를 다루고, D2 완화 구현·여러 기준점(D8)·응답자 인증은 범위 밖이다. 정본과 부딪힌 구체화 세 건을 정본 쪽으로 고쳤다(상위 DEC-AF-21, 리더 결정): 역할 배제를 run 단위에서 Issue 단위로(REQ-AFI-005), Coordinator를 부여 대상에서 뺌(REQ-AFI-001), 부여 기록을 온라인 control ref에 두고 재시작 뒤 재구축·재검증(REQ-AFI-001). DEC-AF-01 ②(요청별 운영자 인증)는 문언을 그대로 두고 충돌을 좁게 기록했다(§F.1). D1: 중계 경로 위험을 OQ-AFI-1 잔여 위험으로 명시하고 요청자 연결로 온 응답을 거절(REQ-AFI-002). D2: OQ-AFI-1 운영자 위험 수용 기록을 완료 조건으로(§F.4, 상위 OD-4). D3: PID 재사용 한계를 정직하게 정의(REQ-AFI-004, design §3.3). D4: 사유 코드를 상위 단일 표와 맞춤(design §6, `no-grant` → `grant-not-in-control-ref`). D5: 어떤 AC도 그것을 만드는 마일스톤 전에 초록이 되지 않게 함(plan). D6: 요청 본문의 pid는 쓰지 않음(REQ-AFI-003). D7: 생산자 7 × 증거 종류 6 = 42칸 + 미등록 6 = 48사례의 생성 행렬 시험(AC-AFI-008). D8: 기준점 하나로 결정. D9: 운영자 기록 리뷰의 귀속 유지(REQ-AFI-006). D10: 부모 pid가 살아 있는 프로세스를 가리키지 않으면 모든 플랫폼에서 `requester-outside-operator-anchor`(design §3.2). D11: 잠금 해제는 상위 M7의 코드 변경 하나이며 lane-18 소유. 명칭 Worker → agent(상위 DEC-AF-08). 이 판은 감사받지 않았다. |
+| 0.2.1 | 2026-10-29 | manager-spec | 상위 0.6.1과 맞춘 기록 판. 요구사항·수용 기준·설계 본문은 바뀌지 않았다. 확인한 것: 이 SPEC에는 상위에서 지운 예약 결정 행, 옛 OQ-22·OQ-24, 새 OD-7·OD-8에 해당하는 내용이 없다. 이 SPEC의 사유 코드(design §6)는 상위가 바이트 대조한 사유 문자열 8개와 겹치지 않는다(`grep -rn -F` 8개 값, 출력 없음). progress §E.1의 상위 판 표기를 0.6.1로 고쳤다. 이 판도 감사받지 않았다. |
 
 ## §A 범위와 관계
 

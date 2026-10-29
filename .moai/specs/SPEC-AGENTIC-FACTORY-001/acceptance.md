@@ -1,4 +1,4 @@
-# SPEC-AGENTIC-FACTORY-001 — 수용 기준 (0.6.0)
+# SPEC-AGENTIC-FACTORY-001 — 수용 기준 (0.6.1)
 
 ## §A 측정 규칙
 
@@ -163,9 +163,9 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 
 - 주 REQ: maps REQ-AF-007. 초록: M4.
 - 정본 주 시험 8: M14, M24, M25, M26, M27, M32, M37, M55.
-- 명령: `go test ./internal/agenticfactory/... -run '^TestAcceptanceManifest$/^(M14|M24|M25|M26|M27|M32|M37|M55)$|^(TestGate_ReasonTable_.*|TestPRQueue_.*)$' -count=1 -v` → PASS 줄 = 8 + 표 행 8 + 적체 사례 3.
+- 명령: `go test ./internal/agenticfactory/... -run '^TestAcceptanceManifest$/^(M14|M24|M25|M26|M27|M32|M37|M55)$|^(TestGate_ReasonTable_.*|TestPRQueue_.*)$' -count=1 -v` → PASS 줄 = 8 + 표 행 8 + 적체 사례 2.
 - 게이트 사례(게이트 단위 시험, 귀속 대역 허용): design §2.1b 표의 8행마다 하나. 각 행의 기대 사유는 표와 같고 한 결과는 사유 하나만 남긴다(기록 수 = 1). 여기에 skipped·누락·실패·취소·다른 HEAD 검사 → `check-not-passed`, 감사 예산 소진 → `budget-exhausted`.
-- 적체 사례: (a) 열린 인계 + 수리 적체 = `wip_limit` → 새 Issue dispatch 0, 종결·수리 effect는 계속. (b) 키 값 `0`, `-1`, `"x"`, 범위 밖 정수 → 설정 로드가 키 이름과 허용 범위를 밝혀 거절(`0`을 끔으로 읽는 변형을 죽임). (c) 키 미설정 → 새 dispatch `not-configured`(제안, OQ-24. 리더가 다른 규칙을 정하면 이 사례를 고친다).
+- 적체 사례: (a) 열린 인계 + 수리 적체 = `wip_limit` → 새 Issue dispatch 0, 종결·수리 effect는 계속. (b) 키 값 `0`, `-1`, `"x"`, 범위 밖 정수 → 설정 로드가 키 이름과 허용 범위를 밝혀 거절(`0`을 끔으로 읽는 변형을 죽임). 키 미설정 사례는 두지 않는다. 미설정 동작은 운영자 결정 대기(OD-7)이며, 결정이 나면 manager-spec 재위임으로 사례 (c)를 넣고 기대 PASS 수를 고친다.
 - 변형 단언: `PASS-WITH-DEBT`를 통과로 세는 구현, 귀속 실패를 판정값보다 늦게 보는 구현(한 결과에 사유 둘), `operator-ack-missing`을 역할 부재에 쓰는 구현은 표 행에서 FAIL.
 - RED 이유: 게이트 없음. 초록 경로: M4(lane-18 판정 + lane-20 effect).
 

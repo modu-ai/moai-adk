@@ -1,7 +1,7 @@
 ---
 id: SPEC-AGENTIC-FACTORY-001
 title: "AgenticFactory 실행 계약 — GitHub Issue 원장 기반 소유권·전이·안전 게이트"
-version: "0.6.0"
+version: "0.6.1"
 status: draft
 created: 2026-10-29
 updated: 2026-10-29
@@ -28,6 +28,7 @@ related_specs: [SPEC-ASIDE-BROWSER-001, SPEC-RESOURCE-SLOT-LEASE-001, SPEC-FACTO
 | 0.4.0 | 2026-10-29 | manager-spec | plan-audit iteration-3 FAIL 0.69(`.moai/reports/SPEC-AGENTIC-FACTORY-001/plan-audit-iter3.md`) 뒤의 델타 수리 판. 운영자 결정(2026-10-29, 리더 경유 전달)을 **결정 DEC-AF-01**(§C.5.1, design §11.2)로 기록하고 REQ-AF-018·AC-AF-018에 합쳤다: 증거를 내는 역할은 ControlService만 운영자 인증 아래 부여하고, Worker는 자기에게도 남에게도 역할을 줄 수 없으며, 한 세션은 run 안에서 역할 하나만 갖고, 세션 신원은 ControlService가 관측한 pid·시작 시각·session id·epoch에 묶는다(D1). D2: 격리 사본을 독립 gitdir·인덱스의 별도 클론으로 하고 실제 트리 HEAD·인덱스·경로별 digest 불변을 단언. D3: AC-AF-018에 코드 리뷰·보안 리뷰·QA 각각의 Worker 생산 사례와 이전 attempt Worker의 자기 코드 리뷰 사례 추가. D4: AC-AF-020 넷째 검사를 커밋마다 값 비교로 바꾸고 `llm.yaml` 두 벌 추가. D5: AC-AF-007에 인덱스만·모드만 바뀐 변형 추가. D6: 보류 사유 `operator-hold`를 design §2.1a에 넣고 REQ-AF-001·§A.1을 맞춤. D7: AC-AF-003 ④가 `received`를 세우지 않게 고침. 선택 O1~O5·O7 반영(O6 S4 AC는 남김, OQ-20). 전 AC 변형 점검표(acceptance §D) 추가와 그에 따른 AC 보강. REQ·AC 수는 25/25 그대로이며 ID 집합은 바뀌지 않았다. |
 | 0.5.0 | 2026-10-29 | manager-spec | plan-audit iteration-4 FAIL 0.76(`.moai/reports/SPEC-AGENTIC-FACTORY-001/plan-audit-iter4.md`)의 분할 제안과 운영자 재결정(2026-10-29, 리더 경유)에 따른 델타 판. 역할 부여·세션 신원·운영자 인증(결정 DEC-AF-01, REQ-AF-018의 해당 조항, design §11.2와 §7.2·§11·§11.1의 해당 내용, AC-AF-018 R1~R10, OQ-19)을 하위 SPEC-AGENTIC-FACTORY-IDENTITY-001로 옮기고, 그 자리에 하위 SPEC의 귀속 조회 의존과 **잠금 결정 DEC-AF-02**(§C.5.1: 하위 SPEC 완료 전에는 리뷰·감사·QA·coordinator 증거가 모두 귀속 불가로 막힘)를 넣었다. N3: AC-AF-008을 M1에서 닿는 상태 엔진 조회 수준으로 다시 썼고, 관찰 출력·종료 코드 단언은 M6의 AC-AF-022 (e)로 옮겼다(0.6.0 정정: 이 행은 원래 "AC-AF-024"로 잘못 적혀 있었다 — iteration-5 D6). 변형 점검표(acceptance §D)의 잘못 귀속된 두 행(005 하네스 행, 018 R1/R2 행)과 이관 항목 행을 고쳤다. REQ·AC 수는 25/25 그대로다. |
 | 0.6.0 | 2026-10-29 | manager-spec | 정본 정합 판. 규범 원천을 Issue 본문만에서 **Issue #1948 본문 + 댓글 11개(가장 새 revision 우선)**로 넓혔다(§A.1). plan-audit iteration-5 FAIL(`.moai/reports/SPEC-AGENTIC-FACTORY-001/plan-audit-iter5.md`)의 D1~D6을 원인별로 고쳤다: (a) 잠금을 코드 수준 상수로 정하고 설정·환경 변수로는 풀 수 없게 하며 시나리오 하네스까지 덮음(DEC-AF-04, REQ-AF-011, AC-AF-011·025, plan M7) — D1~D3; (b) 귀속 결과 하나 → 게이트 사유 하나의 단일 표(design §2.1b) — D4; (c) writer 인계의 세션 변경·epoch 변경 분리(AC-AF-009·011) — D5; (d) 위 0.5.0 행 정정과 두 가지 셈 규칙(acceptance §A) — D6. 구조는 리더 결정 K.6 (마)를 따른다: 판단이 날카로운 항목(상태·소유·병합)은 묶음 REQ, 전이표·record·template·시험 manifest는 design 표(DEC-AF-10). **REQ·AC ID의 뜻이 바뀌었다**: REQ-AF-001~015 = 묶음 G01~G15, REQ-AF-016~025 = 표 T01~T10, AC-AF-0NN = 리더 배정표 K.6b의 AC NN. 옛 ID 대응은 research.md R12. 새로 넣은 것: 정본 상태 모형(READY·BUILDING·REVIEWING·MERGING·DONE·CANCELLED + PARKED, E01~E27), 권위 = 온라인 control ref + Issue(로컬 claim 저장소는 재구축 가능한 캐시), PR 인계·수리 단일 소유·PR 적체 상한, 백그라운드 접수·준비 7행, Issue별 맥락 장부·접근성 분류·정제 범주 C1~C5·증거 위치 단계, GitHub/GitLab 호출 효율·429/403 판별, Issue 쓰기 권한 정책과 협업 옵션, checkpoint 복구, 효율 측정 어휘, 명칭(Coordinator 내부 / leader 표시 / agent 실행자). REQ 25 / AC 25(상한과 같음). 이 판은 감사받지 않았다(새 감사 승인 없음). |
+| 0.6.1 | 2026-10-29 | manager-spec | 조정자 후속 지시에 따른 정정 판(REQ·AC 수와 ID는 그대로). (1) 0.6.0이 §C.7에 예약으로 넣었던 운영자 결정 행 하나와 §H·progress의 해당 언급을 지웠다. 그 지시는 잘못 전달된 것이었다. 다른 DEC 번호는 다시 매기지 않았다(깨지는 참조 없음). (2) `pr_queue.wip_limit` 미설정 시 배차 정지와 checkpoint 상한 미설정 시 거절은 새 정책 선택이므로 채택하지 않고 §G.1 OD-7·OD-8(운영자 결정 대기)로 옮겼다. 옛 OQ-24는 OD-7로 옮겨 G.2에서 지웠고, OQ-22는 숫자 값 질문만 남겼다. design §4.6·§6, acceptance AC-AF-007, plan §D·§G를 맞췄다. (3) 닫힌 사유 문자열 8개를 lane-18 트리의 Go 상수와 바이트 단위로 대조해 design §2.1a에 결과를 적었다(8개 모두 일치, 문자열 수정 없음). (4) lane-18·lane-20 보고 사실과 lane-18이 밝힌 공백을 §B.2·§H에 넣었다. |
 
 ## §A 범위와 규범 원천
 
@@ -82,6 +83,8 @@ Issue #1948은 이 문서들이 "상위 착수 원장이지 구현 완료나 실
 - `FactoryProcessAlive`(`internal/factory/factory_alive_unix.go:22-28`)는 PID만 본다(0.2.0 측정).
 - `main` 보호 설정(0.2.0 `gh api` 측정, acceptance EV-AC008-BASE): 필수 검사 3개, `enforce_admins: true`, 강제 푸시·삭제 금지, `required_linear_history: false`.
 - 이 프로젝트의 로컬 `workflow.yaml`은 Codex 기능을 켜 두었고(`audit.model: codex` 등), 코드 기본값과 배포 템플릿은 꺼 둔다(0.1.0 측정).
+- (0.6.1, 트리 HEAD `89f4e812a3`) 닫힌 사유 문자열 8개를 lane-18 트리(worktree `af-core-claim-runner`, 체크아웃된 브랜치 `WT-agentic-factory-core-claim-runner`의 ref 파일 값 `fa781ef0e9`)의 `core/state.go`·`core/authz.go`와 바이트 단위로 대조했다. 그 트리에는 git을 실행하지 않았고 읽기만 했다. 같은 두 파일을 이 트리에서 `git show f9f44e5ecc:<경로>`로도 읽었다. `git merge-base --is-ancestor f9f44e5ecc fa781ef0e9`는 종료 0이었고, `git diff --stat f9f44e5ecc fa781ef0e9 -- <두 파일>`의 출력은 비어 있었다. 결과는 design §2.1a.
+- (0.6.1) `git cat-file -t`로 `da7f3a4290`·`3c7db03d7b`·`f9f44e5ecc`·`e6499b731a`·`51edce26a8`·`fa781ef0e9`가 모두 `commit`임을 이 트리에서 관측했다. 앞의 세 커밋은 리더가 확인한 사실과 같다.
 - lane-17 설정 읽기 코드(worktree `af-settings-keys`, `internal/config/agentic_factory.go`)를 이 실행에서 grep으로 읽었다: 키 `workflow.agentic_factory.browser.selected`·`codex.enabled`·`pr_queue.wip_limit`·`collaboration.enabled`·`collaboration.allowed_repositories`·`collaboration.permissions.{edit_body,close,labels,assignees}`, 함수 `NormalizeRepositoryPath(provider, s)`, `ResolveAgenticFactoryBrowser`, `CodexOptIn`.
 
 ### B.2 리더·레인이 보고한 사실 (이 실행이 검증하지 않음)
@@ -89,7 +92,12 @@ Issue #1948은 이 문서들이 "상위 착수 원장이지 구현 완료나 실
 | 사실 | 출처 | 상태 |
 |---|---|---|
 | 접수 상태 7행을 core에 구현 | lane-18 커밋 `da7f3a4290`, 리더 보고 | 미검증 |
-| 닫힌 사유 문자열 8개(design §2.1a 끝 8행) | lane-18 커밋 `f9f44e5ecc`(브랜치 `WT-agentic-factory-core-claim-runner`), **lane-18 보고·리더 확인, `core/state.go`의 임시 상수** | 미검증 |
+| 닫힌 사유 문자열 8개(design §2.1a의 `unclassified-403`과 표 끝 7행) | lane-18 커밋 `f9f44e5ecc`(브랜치 `WT-agentic-factory-core-claim-runner`), **lane-18 보고·리더 확인, `core/state.go`의 임시 상수** | 0.6.1에서 바이트 대조함: 8개 모두 일치(design §2.1a) |
+| 커밋 `da7f3a4290`, `3c7db03d7b`, `f9f44e5ecc`가 저장소에 있다 | 'reported by lane-18 / lane-20, relayed by the leader; commit existence confirmed by the leader via cat-file' | 리더 확인. 이 실행도 `cat-file -t` → `commit` 관측 |
+| `f9f44e5ecc`에서 `op-not-defined`는 `core/authz.go`에, `foreign-closing-keyword`는 `core/state.go`에 있다 | 'reported by lane-18 / lane-20, relayed by the leader; commit existence confirmed by the leader via cat-file' | 리더 확인. 이 실행의 바이트 대조: `"foreign-closing-keyword"`는 `state.go:83`에 있다. 따옴표 붙은 `"op-not-defined"`는 `state.go:86`에만 있고 `authz.go`에는 0개다. `authz.go`는 상수 이름 `ReasonOpNotDefined`(208행)로 그 값을 쓴다(design §2.1a) |
+| claim 문서 종류 `collector`(Safety 등급) | 커밋 `fa781ef0e9`, 'reported by lane-18 / lane-20, relayed by the leader; commit existence confirmed by the leader via cat-file' | 내용은 미검증. 이 실행도 `cat-file -t fa781ef0e9` → `commit` 관측(lane-18 브랜치 ref 파일 값과 같음) |
+| checkpoint 상태 모형 구현: `local`·`pending`·`remote-durable`·`recovered` | 커밋 `e6499b731a`, 'reported by lane-18 / lane-20, relayed by the leader; commit existence confirmed by the leader via cat-file' | 내용은 미검증. design §4.6의 일곱 상태 가운데 넷(§H) |
+| 약 190 KB를 넘는 collector 스냅숏은 저장되지 않는다(lane-20 한계) | 커밋 `51edce26a8`, 'reported by lane-18 / lane-20, relayed by the leader; commit existence confirmed by the leader via cat-file' | 내용은 미검증(§H) |
 | 협업 판정 규칙은 `core.Collaboration.Authorize` 한 곳. 설정 키 → `core.Collaboration{Provider, Enabled, AllowedRepositories, EditBody, Close, Labels, Assignees}` 연결은 아직 없음(주입 필드만) | lane-18 보고, 리더 전달 | 미검증, 열린 항목(§G.1) |
 | 자동 종결 키워드 목록 = GitHub 문서의 아홉 낱말(close/closes/closed, fix/fixes/fixed, resolve/resolves/resolved). 대소문자 혼합·URL 형태는 문서에 없지만 안전 쪽으로 포함. 문서 확인은 WebFetch 요약이며 원문 대조 안 함(uncollated) | lane-18 보고, 리더 전달 | 미검증 |
 | 설정 읽기 코드 `5c278d8b51`(브랜치 `WT-agentic-factory-settings-keys`): 리더가 독립 재검증(2파일, 깨끗한 트리, 판정 도우미 0, `internal/config` 시험 ok) | 리더 보고 | 이 실행은 grep만 함 |
@@ -179,7 +187,6 @@ Issue #1948은 이 문서들이 "상위 착수 원장이지 구현 완료나 실
 |---|---|---|---|
 | DEC-AF-01 | ① 리뷰·감사 역할은 ControlService만 부여 ② 등록에 운영자 인증 필요 ③ agent는 자기에게도 남에게도 역할을 줄 수 없음 ④ 한 세션이 agent이면서 감사자일 수 없음. 정본과의 충돌 1은 좁게 기록(§C.6 마지막 행) | 운영자 결정 (2026-10-29, 리더 경유. 0.4.0 기록) | 하위 SPEC §F.1 |
 | DEC-AF-02 | 하위 SPEC 완료 전 역할 증거 효력 없음(잠금) | 운영자 결정 (0.5.0 HISTORY의 운영자 재결정) | REQ-AF-011 |
-| DEC-AF-03 | (예약) 지시에는 "운영자 결정"으로 적으라는 번호만 있고 내용이 전달되지 않았다. 내용을 지어내지 않는다 | — | §H Gap |
 | DEC-AF-04 | 잠금은 코드 수준 상수 하나, 설정·환경 변수로 풀 수 없음, 시나리오 하네스 포함, 단일 코드 변경으로만 해제, 해제 때 L1·L2 재작성 | 리더 결정 (리더 세션 경유) | REQ-AF-011, §C.4 |
 | DEC-AF-05 | SPEC은 둘뿐(이 SPEC + IDENTITY-001). IDENTITY-001은 넓히지 않는다 | 리더 결정 (리더 세션 경유) | §I |
 | DEC-AF-06 | 권위 = 온라인 control ref(기술) + Issue(업무). 로컬 claim 저장소는 재구축 가능한 캐시·시험 구현 | 리더 결정 (리더 세션 경유) | REQ-AF-002 |
@@ -282,6 +289,8 @@ TTL·renew는 활성 힌트, epoch가 권위(design §14). 기한이 지난 뒤 
 | OD-4 | 하위 SPEC 중계 경로 잔여 위험(하위 OQ-AFI-1)의 운영자 위험 수용. 수용 기록 없이는 잠금이 풀리지 않는다 | REQ-AF-011 해제, plan M7 |
 | OD-5 | 추가 감사 라운드(새 감사는 지금 승인되지 않았다) | 이 판의 채택 |
 | OD-6 | 실제 Issue 시나리오(AC-AF-025)에 쓸 Issue 한 쌍과 보호된 `main` 실제 병합·Issue 종료 승인(keep-set) | AC-AF-025 |
+| OD-7 | **대상**: `workflow.agentic_factory.pr_queue.wip_limit` 키가 설정되지 않았을 때 새 Issue 배차를 어떻게 할지. **선택지**: (가) 새 배차를 `not-configured`로 막는다. (나) 설정 단계에서 명시 값을 요구하고, 값이 없으면 factory 시작 자체를 거절한다. (다) 문서에 적은 보수적 기본값을 쓰되, 그 값이 운영자가 정하지 않은 기본값임을 설정 스키마와 관찰 보기에 표시한다. **근거**: 정본은 상한 키와 범위 검사(1 이상, `0`=끔 금지)만 정하고 미설정 동작은 정하지 않는다. 어느 쪽이든 새 정책이며, 이 SPEC은 숫자를 지어내지 않는다. (가)·(나)는 배차가 멈출 수 있고 (다)는 근거 없는 숫자가 들어간다. 결정 전에는 미설정 사례를 채택 근거로 쓰지 않는다 | REQ-AF-007, AC-AF-007 적체 사례 |
+| OD-8 | **대상**: `workflow.agentic_factory.checkpoint.{max_per_issue,retention,max_manifest_bytes}`가 설정되지 않았을 때 새 checkpoint를 어떻게 할지. **선택지**: (가) 새 checkpoint를 `not-configured`로 거절한다. (나) 설정 단계에서 명시 값을 요구한다. (다) 문서에 적은 보수적 기본값을 쓰되, 운영자가 정하지 않은 기본값임을 표시한다. **근거**: 정본은 checkpoint의 단계·상태·금지 사항을 정하지만 저장 상한 값과 미설정 동작은 정하지 않는다(숫자 자체는 OQ-22). (가)·(나)는 복구 지점이 생기지 않을 수 있고, (다)는 근거 없는 숫자가 들어간다. 결정 전에는 미설정 사례를 채택 근거로 쓰지 않는다 | REQ-AF-002 (c)~(e), design §4.6 |
 
 ### G.2 그 밖의 미결 질문
 
@@ -301,14 +310,18 @@ TTL·renew는 활성 힌트, epoch가 권위(design §14). 기한이 지난 뒤 
 | OQ-21 | 큐 포화 시 새 접수를 받고 대기시키는지 거절하는지(정본은 "포화를 수락으로 숨기지 않는다"까지만 정함) | REQ-AF-012 |
 | OQ-22 | 수치 설정값: `intake.max_concurrent`, `intake.stage_timeout`, polling 간격, backoff 배수·횟수, 예산 reserve, 댓글 묶음 window, checkpoint 상한·보존 기간. 모두 **OPEN**이며 이 SPEC은 숫자를 정하지 않는다 | REQ-AF-002·012·014·023 |
 | OQ-23 | GitLab을 이 SPEC 범위에 넣을지, 정본 [1]§19 순서 6("승인된 adapter·GitLab·부하를 확대")으로 미룰지 | REQ-AF-014 GitLab 행 |
-| OQ-24 | `pr_queue.wip_limit`이 미설정일 때의 배차. 이 SPEC은 숫자를 지어내지 않고 미설정이면 새 배차를 `not-configured`로 막는 쪽을 제안한다(리더 확인 필요) | REQ-AF-007 |
 | OQ-25 | 자기 Issue 레이블·담당자 변경을 `op-not-defined`가 아닌 `permission-not-granted`로 거절하는 리더 교정은 받았다. 이 동작들을 언젠가 허용할지 | REQ-AF-003 |
 
-해소된 0.5.0 질문: OQ-1(시나리오 Issue → OD-6로 옮김), OQ-3(lane-22 대응표 — 정본 DELTA4와 리더 배정으로 대체), OQ-4(여섯 범위 → 레인 소유 표 design §10), OQ-8(단일 owner → DEC-AF-07), OQ-9(PR #1937 → plan §F.3 순서 안에서 판정), OQ-10(환경 목록 → design §5.1), OQ-14(증거 ref → DEC-AF-13), OQ-16(`slots` 상한 → OQ-22에 합침), OQ-19(하위 OQ-AFI-1).
+해소된 0.5.0 질문: OQ-1(시나리오 Issue → OD-6로 옮김), OQ-3(lane-22 대응표 — 정본 DELTA4와 리더 배정으로 대체), OQ-4(여섯 범위 → 레인 소유 표 design §10), OQ-8(단일 owner → DEC-AF-07), OQ-9(PR #1937 → plan §F.3 순서 안에서 판정), OQ-10(환경 목록 → design §5.1), OQ-14(증거 ref → DEC-AF-13), OQ-16(`slots` 상한 → OQ-22에 합침), OQ-19(하위 OQ-AFI-1). 0.6.1에서 OQ-24(`wip_limit` 미설정 동작)는 OD-7로 옮겼다.
 
 ## §H 확인 공백
 
-- DEC-AF-03은 번호만 지시되었고 내용이 없다. 리더에게 내용을 받아야 한다.
+- lane-18이 밝힌 공백(리더 전달): 실제 GitHub 원격 조회와 댓글 멱등성은 가짜(fake)로만 시험했다. CONTEXT06 "새 대상의 증거가 필요하다"는 **호출자 규칙**이며 모형이 집행하지 않는다.
+- lane-18 코드에 있지만 SPEC 닫힌 사유 집합에 없는 문자열: `core/authz.go:96`의 판정 값 `"unknown-operation"`(`DenyUnknownOp`). 이것은 `BlockReason`이 아니라 `AuthzVerdict` 값이며 `Reason()`이 `op-not-defined`로 바꾼다(authz.go:207-208). 판정 값 `"allow"`(authz.go:90)도 사유가 아니다. `BlockReason` 상수 26개는 모두 SPEC 집합 안에 있다. 반대로 SPEC의 PARKED 전용 사유 6개(`dependency`·`stop-unknown`·`unknown-effect`·`pending-effect`·`contract-change`·`start-unknown`)는 lane-18 코드에 없다.
+- lane-18 코드의 상태 상수는 0.5.0 모형(`queued`…`on-hold`, state.go:9-17)이다. 0.6.0의 READY…PARKED 모형(design §2.1)과 다르다. 이 실행은 그 차이를 고치지 않고 기록만 한다.
+- lane-18 트리에 git을 실행하지 않았으므로 그 트리의 커밋되지 않은 변경 여부는 모른다. 대조한 줄 번호는 체크아웃된 파일과 `f9f44e5ecc`의 파일에서 같았다.
+- checkpoint 상태: lane-18 보고 구현(`e6499b731a`)은 넷(`local`·`pending`·`remote-durable`·`recovered`)이고 design §4.6은 일곱이다(`committed-unacked`·`acked-manifest-unverified`·`durable-link-pending`이 보고에 없음). 이 실행은 그 커밋의 내용을 읽지 않았다.
+- collector 스냅숏 약 190 KB 초과 미저장(lane-20 한계, `51edce26a8`)은 설계에 대응 규칙이 없다. 그 크기에서 수집 상태가 어떻게 복구되는지 확인되지 않았다.
 - 자기 Issue의 레이블·담당자·제목·마일스톤·다시 열기 동작에는 정본 근거가 없다(DEC-AF-19). 결정이 필요해지면 리더에게 보고한다.
 - 설정 키 → `core.Collaboration` 연결은 아직 없다(lane-18 보고). 연결 담당은 lane-18, 읽기는 lane-17.
 - 저장소 이름 정규화: GitHub 경로는 ASCII 소문자로 바꿔 비교한다(GitHub 문서 "The name is not case sensitive.", WebFetch 요약·uncollated). GitLab과 알 수 없는 공급자는 정확히 일치로 비교한다. GitLab의 대소문자 규칙은 2026-10-29에 공식 문장을 찾지 못했고, 실제 인스턴스 관측은 하지 않는다.
