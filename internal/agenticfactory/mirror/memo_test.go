@@ -52,7 +52,7 @@ func TestRepeatedWritesSkipListAndUnchangedBodies(t *testing.T) {
 func TestGoneCommentFallsBackToListAndKeepsOneComment(t *testing.T) {
 	f := &fakeGH{results: []result{
 		{out: ""}, {out: `{"id":777}`}, // first write
-		{errOut: "gh: Not Found (HTTP 404)", exit: 1}, // PATCH of the remembered id
+		httpFail(404),                  // PATCH of the remembered id
 		{out: ""}, {out: `{"id":901}`}, // list finds nothing, then create
 		{out: "{}"}, // next write patches the new id
 	}}
@@ -77,8 +77,8 @@ func TestGoneCommentFallsBackToListAndKeepsOneComment(t *testing.T) {
 func TestFailedWriteIsNotRememberedAsWritten(t *testing.T) {
 	f := &fakeGH{results: []result{
 		{out: ""}, {out: `{"id":777}`}, // first write
-		{errOut: "HTTP 429", exit: 1}, // changed body, rate limited
-		{out: "{}"},                   // same changed body again must be sent
+		httpFail(429), // changed body, rate limited
+		{out: "{}"},   // same changed body again must be sent
 	}}
 	m := writable(f)
 	c := context.Background()
@@ -150,7 +150,7 @@ func TestMemoIsPerIssueAndKeepsSecretsOut(t *testing.T) {
 func TestHumanDeletedTheCommentChangedBodyRecoversInTheSameCall(t *testing.T) {
 	f := &fakeGH{results: []result{
 		{out: ""}, {out: `{"id":777}`}, // first write creates the comment
-		{errOut: "gh: Not Found (HTTP 404)", exit: 1}, // the human deleted it; PATCH finds nothing
+		httpFail(404),                  // the human deleted it; PATCH finds nothing
 		{out: ""}, {out: `{"id":888}`}, // list is empty, so create again
 	}}
 	m := writable(f)
