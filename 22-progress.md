@@ -15,7 +15,10 @@ Tree: WT-agentic-factory-integration. No push.
 | 7 | closure + next dispatch after remote landing | GREEN (model); "next dispatch not allowed before done" deliberately not asserted (contract silent) |
 
 ## Integration merges
-lane-18/19/20/21 branches: none found yet (only lane-17 af-contract-spec and lane-21 agentic-factory-21 trees exist; lane-21 still at 5c3f0ebf27).
+Merged --no-ff locally (no push): lane-18 WT-agentic-factory-core-claim-runner @ca414f1f35, lane-19 WT-agentic-factory-review @9f058f45b7, lane-20 WT-agentic-monitor-effect-reconcile @3c255a16ca.
+After the merges: `go build ./...` ok; `go vet ./internal/agenticfactory/...` ok; `go test -race -count=1 ./internal/agenticfactory/...` ok (8 packages).
+lane-21 WT-browser-contracts-memo still at 5c3f0ebf27 (nothing to merge). Lane-17 WT-agentic-factory-contract (docs only, 3275706cc9) not merged: SPEC docs belong to lane 17.
+CLI: hidden `agentic-factory` skeleton registered in internal/cli/root.go (72264f3db5); name provisional.
 
 ## Gaps
 - Scenarios run against the reference model only; the real packages are not bound yet, so no claim about real behavior.
