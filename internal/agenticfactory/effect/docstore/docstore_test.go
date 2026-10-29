@@ -33,6 +33,10 @@ func TestRoundTripListAndMissing(t *testing.T) {
 		}
 	}
 	got, found, err := s.Get(a.Key)
+	if got.Rev <= 0 {
+		t.Errorf("Get must carry the document revision: %+v", got)
+	}
+	got.Rev = 0 // the revision is the store's, not part of what was written
 	if err != nil || !found || got != a {
 		t.Fatalf("get = %+v found=%v err=%v", got, found, err)
 	}

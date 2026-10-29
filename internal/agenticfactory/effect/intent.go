@@ -10,6 +10,8 @@ import (
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
 )
 
 // This file covers outward effects the factory performs while accepting and preparing work (S46,
@@ -62,6 +64,9 @@ type Intent struct {
 	ParkReason string `json:"park_reason,omitempty"` // why the intent is parked when the cause is a refusal
 	Status     Status `json:"status"`
 	Attempts   int    `json:"attempts"`
+	// Rev is the revision the store held when the intent was read (0: not stored yet). It is never written
+	// into the stored intent; PutIf uses it as the revision the write expects.
+	Rev        int64  `json:"-"`
 	ProviderID string `json:"provider_id,omitempty"`
 	LastError  string `json:"last_error,omitempty"`
 }
@@ -134,8 +139,15 @@ type Lookuper interface {
 // X-RateLimit-* backoff, conditional GET with ETag and the shared call budget are in package forge; this
 // executor honours them through LimitedError and ErrDenied.
 type IntentStore interface {
+	// Get returns the stored intent with Rev set to the revision it was read at.
 	Get(key string) (Intent, bool, error)
+	// Put writes the intent whatever is stored: for a caller that is the only writer of its intents.
 	Put(Intent) error
+	// PutIf writes the intent only if the stored revision is still in.Rev (0: the intent must not be stored
+	// yet) and returns the stored intent with its new Rev. A store that moved on is
+	// core.ErrRevisionConflict and nothing is written. The Executor uses it so that two executors never both
+	// take the right to send.
+	PutIf(Intent) (Intent, error)
 	List() ([]Intent, error)
 }
 
@@ -202,17 +214,29 @@ func (e *Executor) Execute(ctx context.Context, r Request) (Intent, error) {
 		}
 	} else {
 		in = Intent{Key: key, Kind: r.Kind, Issue: r.Issue, Target: r.Target, Digest: r.Digest, Payload: r.Payload, Status: StatusIntended}
-		if err := e.Store.Put(in); err != nil {
+		created, err := e.Store.PutIf(in) // create-only: Rev 0
+		if errors.Is(err, core.ErrRevisionConflict) {
+			return e.follow(ctx, key)
+		}
+		if err != nil {
 			return Intent{}, err
 		}
+		in = created
 	}
 	in.Attempts++
 	in.Status = StatusSent
 	in.LastError = ""
 	in.NotBefore = 0
-	if err := e.Store.Put(in); err != nil {
+	// Winning this write is the right to send: of several executors that read the same state, one revision
+	// matches and the rest follow what is stored. Nothing is sent before it.
+	won, err := e.Store.PutIf(in)
+	if errors.Is(err, core.ErrRevisionConflict) {
+		return e.follow(ctx, key)
+	}
+	if err != nil {
 		return Intent{}, err
 	}
+	in = won
 	sctx, cancel := context.WithTimeout(ctx, to)
 	id, serr := e.Send.Send(sctx, in)
 	cancel()
@@ -235,12 +259,49 @@ func (e *Executor) Execute(ctx context.Context, r Request) (Intent, error) {
 		in.Status, in.LastError = StatusFailed, serr.Error()
 	default:
 		in.LastError = serr.Error()
-		if err := e.Store.Put(in); err != nil {
+		if _, err := e.settle(in); err != nil {
 			return Intent{}, err
 		}
 		return e.Reconcile(ctx, key)
 	}
-	return in, e.Store.Put(in)
+	return e.settle(in)
+}
+
+// follow returns what is stored after losing a compare-and-swap. A sent intent is reconciled from facts;
+// anything else is returned as stored. It never sends: the executor that won the right to send owns it.
+func (e *Executor) follow(ctx context.Context, key string) (Intent, error) {
+	cur, ok, err := e.Store.Get(key)
+	if err != nil {
+		return Intent{}, err
+	}
+	if !ok {
+		return Intent{}, fmt.Errorf("effect: intent %s vanished after a write conflict", key)
+	}
+	if cur.Status == StatusSent {
+		return e.Reconcile(ctx, key)
+	}
+	return cur, nil
+}
+
+// settle writes the outcome of an attempt this executor owns. When the stored intent moved meanwhile (a
+// reconciler resolved it, say) a confirmed outcome already stored stands; otherwise our outcome is written
+// over the fresh revision once — the provider id we hold is a fact the stored copy may lack.
+func (e *Executor) settle(in Intent) (Intent, error) {
+	out, err := e.Store.PutIf(in)
+	if !errors.Is(err, core.ErrRevisionConflict) {
+		return out, err
+	}
+	cur, ok, gerr := e.Store.Get(in.Key)
+	if gerr != nil {
+		return Intent{}, gerr
+	}
+	if ok && cur.Status == StatusConfirmed {
+		return cur, nil
+	}
+	if ok {
+		in.Rev = cur.Rev
+	}
+	return e.Store.PutIf(in)
 }
 
 // Reconcile resolves a sent or parked intent from facts. It never sends.
@@ -269,7 +330,16 @@ func (e *Executor) Reconcile(ctx context.Context, key string) (Intent, error) {
 	default:
 		in.Status = StatusParked
 	}
-	return in, e.Store.Put(in)
+	out, err := e.Store.PutIf(in)
+	if errors.Is(err, core.ErrRevisionConflict) {
+		// Another party resolved it while we looked; what is stored stands.
+		cur, ok, gerr := e.Store.Get(key)
+		if gerr != nil || !ok {
+			return Intent{}, fmt.Errorf("effect: intent %s unreadable after a write conflict: %v", key, gerr)
+		}
+		return cur, nil
+	}
+	return out, err
 }
 
 // RequestObservation records the wish to observe checks and returns at once; the result arrives
@@ -288,7 +358,12 @@ func (e *Executor) Record(r Request) (Intent, error) {
 		return in, err
 	}
 	in := Intent{Key: key, Kind: r.Kind, Issue: r.Issue, Target: r.Target, Digest: r.Digest, Status: StatusIntended}
-	return in, e.Store.Put(in)
+	out, err := e.Store.PutIf(in)
+	if errors.Is(err, core.ErrRevisionConflict) { // recorded by someone else meanwhile: idempotent
+		cur, _, gerr := e.Store.Get(key)
+		return cur, gerr
+	}
+	return out, err
 }
 
 // Tick looks at every pending observation once and returns those that became confirmed. A lookup
@@ -312,17 +387,21 @@ func (e *Executor) Tick(ctx context.Context) ([]Intent, error) {
 		cancel()
 		if lerr != nil {
 			in.LastError = lerr.Error()
-			if err := e.Store.Put(in); err != nil {
+			if _, err := e.Store.PutIf(in); err != nil && !errors.Is(err, core.ErrRevisionConflict) {
 				return done, err
 			}
 			continue
 		}
 		if res.Found {
 			in.Status, in.ProviderID = StatusConfirmed, res.ProviderID
-			if err := e.Store.Put(in); err != nil {
+			out, err := e.Store.PutIf(in)
+			if errors.Is(err, core.ErrRevisionConflict) {
+				continue // resolved by someone else; the next tick sees the stored state
+			}
+			if err != nil {
 				return done, err
 			}
-			done = append(done, in)
+			done = append(done, out)
 		}
 	}
 	return done, nil
@@ -332,15 +411,20 @@ func (e *Executor) Tick(ctx context.Context) ([]Intent, error) {
 type MemIntentStore struct {
 	mu      sync.Mutex
 	m       map[string]Intent
+	rev     map[string]int64
+	next    int64
 	FailPut error
 }
 
-func NewMemIntentStore() *MemIntentStore { return &MemIntentStore{m: map[string]Intent{}} }
+func NewMemIntentStore() *MemIntentStore {
+	return &MemIntentStore{m: map[string]Intent{}, rev: map[string]int64{}}
+}
 
 func (s *MemIntentStore) Get(k string) (Intent, bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	in, ok := s.m[k]
+	in.Rev = s.rev[k]
 	return in, ok, nil
 }
 
@@ -350,8 +434,29 @@ func (s *MemIntentStore) Put(in Intent) error {
 	if s.FailPut != nil {
 		return s.FailPut
 	}
-	s.m[in.Key] = in
+	s.store(in)
 	return nil
+}
+
+func (s *MemIntentStore) PutIf(in Intent) (Intent, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.FailPut != nil {
+		return Intent{}, s.FailPut
+	}
+	if s.rev[in.Key] != in.Rev {
+		return Intent{}, fmt.Errorf("%w: intent %s is at revision %d, not %d", core.ErrRevisionConflict, in.Key, s.rev[in.Key], in.Rev)
+	}
+	return s.store(in), nil
+}
+
+// store writes the intent under a fresh revision; the caller holds the lock.
+func (s *MemIntentStore) store(in Intent) Intent {
+	s.next++
+	in.Rev = s.next
+	s.rev[in.Key] = in.Rev
+	s.m[in.Key] = in
+	return in
 }
 
 func (s *MemIntentStore) List() ([]Intent, error) {

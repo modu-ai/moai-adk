@@ -26,18 +26,21 @@ var ErrNotFound = errors.New("monitor: no claim row")
 
 // ClaimRow is what the local claim store holds for one Issue.
 type ClaimRow struct {
-	Project         string
-	Issue           int
-	Owner           string
-	AgentName       string // display name, e.g. agent-3; not an identity
-	SessionID       string // immutable session id; the identity
-	State           string // the runner's old progress state (still recorded); display only
-	Stage           string // S46 stage: READY, BUILDING, REVIEWING, MERGING, DONE, CANCELLED
-	SubStage        string // SPEC, IMPLEMENT or FIX while BUILDING, else ""
-	Park            *ParkInfo
-	Gate            *GateInfo
-	Refusal         *RefusalInfo
-	Wait            *WaitInfo
+	Project   string
+	Issue     int
+	Owner     string
+	AgentName string // display name, e.g. agent-3; not an identity
+	SessionID string // immutable session id; the identity
+	State     string // the runner's old progress state (still recorded); display only
+	Stage     string // S46 stage: READY, BUILDING, REVIEWING, MERGING, DONE, CANCELLED
+	SubStage  string // SPEC, IMPLEMENT or FIX while BUILDING, else ""
+	Park      *ParkInfo
+	Gate      *GateInfo
+	Refusal   *RefusalInfo
+	Wait      *WaitInfo
+	// PositionUnknown is the reason the record's position (stage, park, gate, refusal, wait) could not be
+	// derived; empty when it could. The position fields are then not known, which is not "no park".
+	PositionUnknown string
 	Attempt         int
 	Epoch           int
 	HeadSHA         string
@@ -128,6 +131,7 @@ type Row struct {
 	Gate            Field[*GateInfo]    `json:"gate"`
 	Refusal         Field[*RefusalInfo] `json:"refusal"`
 	Wait            Field[*WaitInfo]    `json:"wait"`
+	PositionUnknown Field[string]       `json:"position_unknown"`
 	Attempt         Field[int]
 	Epoch           Field[int]
 	HeadSHA         Field[string]
@@ -181,12 +185,21 @@ func (c *Collector) row(ctx context.Context, issue int) Row {
 		r.Agent = textField("agent", cr.AgentName, SrcClaimStore, at)
 		r.SessionID = idField(cr.SessionID, SrcClaimStore, at)
 		r.State = textField("state", cr.State, SrcClaimStore, at)
-		r.Stage = textField("stage", cr.Stage, SrcClaimStore, at)
-		r.SubStage = textField("sub_stage", cr.SubStage, SrcClaimStore, at)
-		r.Park = Field[*ParkInfo]{maskPark(cr.Park, at), SrcClaimStore, at, true, false}
-		r.Gate = Field[*GateInfo]{maskGate(cr.Gate, at), SrcClaimStore, at, true, false}
-		r.Refusal = Field[*RefusalInfo]{maskRefusal(cr.Refusal, at), SrcClaimStore, at, true, false}
-		r.Wait = Field[*WaitInfo]{maskWait(cr.Wait, at), SrcClaimStore, at, true, false}
+		if cr.PositionUnknown != "" {
+			// The position could not be derived, so stage, park, gate, refusal and wait are not known: they are
+			// left unconfirmed and empty (never "no park") and the reason is shown.
+			r.PositionUnknown = textField("position_unknown", cr.PositionUnknown, SrcClaimStore, at)
+			r.Stage.Source, r.SubStage.Source, r.Park.Source = SrcClaimStore, SrcClaimStore, SrcClaimStore
+			r.Gate.Source, r.Refusal.Source, r.Wait.Source = SrcClaimStore, SrcClaimStore, SrcClaimStore
+		} else {
+			r.PositionUnknown = Field[string]{Source: SrcClaimStore, ReadAt: at, Confirmed: true} // empty and confirmed: known
+			r.Stage = textField("stage", cr.Stage, SrcClaimStore, at)
+			r.SubStage = textField("sub_stage", cr.SubStage, SrcClaimStore, at)
+			r.Park = Field[*ParkInfo]{maskPark(cr.Park, at), SrcClaimStore, at, true, false}
+			r.Gate = Field[*GateInfo]{maskGate(cr.Gate, at), SrcClaimStore, at, true, false}
+			r.Refusal = Field[*RefusalInfo]{maskRefusal(cr.Refusal, at), SrcClaimStore, at, true, false}
+			r.Wait = Field[*WaitInfo]{maskWait(cr.Wait, at), SrcClaimStore, at, true, false}
+		}
 		r.Attempt = Field[int]{cr.Attempt, SrcClaimStore, at, true, false}
 		r.Epoch = Field[int]{cr.Epoch, SrcClaimStore, at, true, false}
 		r.HeadSHA = textField("head", cr.HeadSHA, SrcClaimStore, at)
@@ -199,6 +212,7 @@ func (c *Collector) row(ctx context.Context, issue int) Row {
 		r.Agent.Source, r.SessionID.Source = SrcClaimStore, SrcClaimStore
 		r.SubStage.Source, r.Park.Source, r.Gate.Source, r.Refusal.Source = SrcClaimStore, SrcClaimStore, SrcClaimStore, SrcClaimStore
 		r.Wait.Source = SrcClaimStore
+		r.PositionUnknown.Source = SrcClaimStore
 		r.Attempt.Source, r.Epoch.Source, r.HeadSHA.Source = SrcClaimStore, SrcClaimStore, SrcClaimStore
 		r.LastCheckedAt.Source, r.BlockReason.Source = SrcClaimStore, SrcClaimStore
 		r.ResumeCondition.Source, r.MirrorState.Source = SrcClaimStore, SrcClaimStore

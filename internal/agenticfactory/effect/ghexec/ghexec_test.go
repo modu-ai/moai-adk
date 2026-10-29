@@ -324,7 +324,7 @@ func TestAllowWriteOpensCreatingAnIssueAndNothingElse(t *testing.T) {
 // non-zero exit of `pr checks` that still carries its JSON.
 func TestTheGhprSourceReadsThroughTheWrapper(t *testing.T) {
 	newFake(t, "pr")
-	src := ghpr.Source{Repo: "o/r", Run: ex().Run, Number: func(int) (int, bool, error) { return 9, true, nil }}
+	src := ghpr.Source{Repo: "o/r", Run: ex().Run, Timeout: time.Second, Number: func(int) (int, bool, error) { return 9, true, nil }}
 	v, found, err := src.PR(t.Context(), 7)
 	if err != nil || !found || v.Number != 9 || v.CI != "failure" || v.Review != "" {
 		t.Errorf("view=%+v found=%v err=%v", v, found, err)

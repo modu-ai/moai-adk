@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 )
 
 // The outputs below are hand-written to the shape the gh manual documents (fields number, headRefOid,
@@ -92,7 +93,7 @@ func (f *fakeRun) run(_ context.Context, args ...string) ([]byte, error) {
 }
 
 func newSource(f *fakeRun) Source {
-	return Source{Repo: "o/r", Run: f.run, Number: func(issue int) (int, bool, error) {
+	return Source{Repo: "o/r", Run: f.run, Timeout: time.Second, Number: func(issue int) (int, bool, error) {
 		if issue == 7 {
 			return 9, true, nil
 		}
@@ -203,5 +204,47 @@ func TestParseAcceptsTheShapesGhActuallyPrinted(t *testing.T) {
 	merged := `{"headRefOid":"` + strings.Repeat("b", 40) + `","number":1931,"reviewDecision":"","state":"MERGED"}`
 	if v, err := Parse([]byte(merged), []byte(`[]`), []byte(`{"state":"CLOSED"}`)); err != nil || !v.Merged || !v.IssueClosed || v.Review != "" {
 		t.Errorf("a merged PR: %+v %v", v, err)
+	}
+}
+
+// Every gh read of one PR lookup gets its own time limit: a hung call ends at the limit, and the next
+// call starts with a fresh one rather than inheriting what is left.
+func TestEachGHReadHasItsOwnTimeLimit(t *testing.T) {
+	var deadlines []time.Duration
+	run := func(ctx context.Context, args ...string) ([]byte, error) {
+		d, ok := ctx.Deadline()
+		if !ok {
+			t.Errorf("%v ran without a deadline", args)
+			return nil, errors.New("no deadline")
+		}
+		deadlines = append(deadlines, time.Until(d))
+		return nil, errors.New("stop after the first call")
+	}
+	s := Source{Repo: "o/r", Run: run, Timeout: 10 * time.Second, Number: func(int) (int, bool, error) { return 9, true, nil }}
+	if _, _, err := s.PR(t.Context(), 7); err == nil {
+		t.Fatal("want the runner's error")
+	}
+	if len(deadlines) != 1 || deadlines[0] <= 0 || deadlines[0] > 10*time.Second {
+		t.Errorf("deadlines = %v, want one within (0, 10s]", deadlines)
+	}
+}
+
+func TestAHungGHReadEndsAtTheLimit(t *testing.T) {
+	run := func(ctx context.Context, _ ...string) ([]byte, error) {
+		<-ctx.Done()
+		return nil, ctx.Err()
+	}
+	s := Source{Repo: "o/r", Run: run, Timeout: 30 * time.Millisecond, Number: func(int) (int, bool, error) { return 9, true, nil }}
+	start := time.Now()
+	_, _, err := s.PR(t.Context(), 7)
+	if !errors.Is(err, context.DeadlineExceeded) || time.Since(start) > 5*time.Second {
+		t.Errorf("err = %v after %v, want a deadline error well under the test bound", err, time.Since(start))
+	}
+}
+
+func TestAZeroTimeLimitIsRefused(t *testing.T) {
+	s := Source{Repo: "o/r", Run: func(context.Context, ...string) ([]byte, error) { return nil, nil }, Number: func(int) (int, bool, error) { return 9, true, nil }}
+	if _, _, err := s.PR(t.Context(), 7); err == nil {
+		t.Error("a Source with no Timeout must be refused, not run unbounded")
 	}
 }
