@@ -94,6 +94,46 @@ func shortWorktreeRoot(root string) string {
 	return root
 }
 
+// nativeWorktreeDirName is the directory name the backend gives a short -w name:
+// a slash becomes `+` (`feature/foo` enters .claude/worktrees/feature+foo), so
+// the guard inspects the tree claude enters, not a nested path that does not
+// exist (card t1958). No repository helper implements this mapping.
+func nativeWorktreeDirName(name string) string {
+	return strings.ReplaceAll(name, "/", "+")
+}
+
+// nativeWorktreePath is the tree `-w <value>` enters under the backend's own
+// .claude/worktrees. Claude 2.1.309 (Zn in its root resolver) decides "linked"
+// from the checkout's gitdir/commondir pair: a checkout that is not a linked
+// worktree is its own root, whatever its git directory is called; for a linked
+// worktree the root is the directory above a common dir named `.git`, the
+// launch tree's top level when the common dir holds a `.git` of its own, and
+// the common dir itself otherwise (a bare repository, a separate git dir). The
+// guard reads the pair with one read-only `git rev-parse --git-dir
+// --git-common-dir` (repository-scoping variables scrubbed like the other git
+// calls here) and keeps the launch tree's top level (shortWorktreeRoot) when
+// git cannot answer. Not modelled: the bundle's back-link equality, symlink and
+// backslash rejections (follow-up). It does not use worktreeroot.Resolve, which
+// writes a project-key record and can fail for reasons the backend ignores
+// (card t1958).
+func nativeWorktreePath(root, value string) string {
+	base := shortWorktreeRoot(root)
+	cmd := exec.Command("git", "-C", base, "rev-parse", "--path-format=absolute", "--git-dir", "--git-common-dir")
+	cmd.Env = gitenv.Env()
+	if out, err := cmd.Output(); err == nil {
+		if p := strings.Split(strings.TrimSpace(string(out)), "\n"); len(p) == 2 && filepath.IsAbs(p[0]) && filepath.IsAbs(p[1]) && filepath.Clean(p[0]) != filepath.Clean(p[1]) {
+			common := filepath.Clean(p[1])
+			switch _, lerr := os.Lstat(filepath.Join(common, ".git")); {
+			case filepath.Base(common) == ".git":
+				base = filepath.Dir(common)
+			case lerr != nil:
+				base = common
+			}
+		}
+	}
+	return filepath.Join(base, ".claude", "worktrees", nativeWorktreeDirName(value))
+}
+
 // resolveWorktreeLaunchTarget maps a worktree option value to the tree path the
 // backend would launch into: an absolute path names the tree directly; a short
 // name resolves across the three roots (SPEC-WORKTREE-HOME-ROOT-001 M3,
@@ -101,10 +141,18 @@ func shortWorktreeRoot(root string) string {
 // legacy .claude spelling and an ambiguous name falls back to it (the anchor
 // guard reports what it can; REQ-WHR-022's no-guessing rule binds the
 // launching lookups). A value naming no existing tree cannot be an anchor —
-// anchorBranchOfTree reads it as empty.
+// anchorBranchOfTree reads it as empty. A name containing a slash, and a lone
+// `-`, never name a home or legacy-root tree at launch (existingWorktreeEntryDir
+// rejects the slash and reads `-w -` as no value), so they skip the root lookup
+// and resolve to the native directory the backend enters, under the main
+// repository's .claude/worktrees as Claude Code 2.1.309 derives it
+// (nativeWorktreePath, card t1958).
 func resolveWorktreeLaunchTarget(root, value string) string {
 	if filepath.IsAbs(value) {
 		return value
+	}
+	if value == "-" || strings.Contains(value, "/") {
+		return nativeWorktreePath(root, value)
 	}
 	if cands, err := worktreeroot.Candidates(root, value); err == nil && len(cands) == 1 {
 		return cands[0].Path
