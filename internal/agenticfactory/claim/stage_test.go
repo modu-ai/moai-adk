@@ -263,3 +263,21 @@ func TestAReceiptWithoutTheSpecFieldsStillReads(t *testing.T) {
 		t.Errorf("rewriting a record with an old receipt: %v", err)
 	}
 }
+
+// An old parked record has no wait, so the write rule does not stop its hand-over
+// from dropping one; the takeover itself must ask for the new holder's.
+func TestTakingOverAnOldParkedRecordStillNeedsAWait(t *testing.T) {
+	s := open(t)
+	if err := writeRaw(s, 4, `{"issue":4,"holder":"w","dispatch":"d4","run":"run-1","epoch":1,"seq":1,"state":"blocked","return_stage":"claimed","block_reason":"rate-limited","resume_condition":"later"}`); err != nil {
+		t.Fatal(err)
+	}
+	i := ref(t, 4)
+	if _, err := s.TakeOver(i, "w", 1, "w2", "d4b", "run-2", "ref@1", nil); !errors.Is(err, core.ErrEvidenceIncomplete) {
+		t.Fatalf("no wait for the new holder: %v", err)
+	}
+	w := core.Wait{Owner: "w2", NextAction: "retry", RecheckAt: time.Date(2026, 10, 30, 15, 0, 0, 0, time.UTC), Diagnosis: "429", MaxRetries: 3, Escalate: "leader"}
+	rec, err := s.TakeOver(i, "w", 1, "w2", "d4b", "run-2", "ref@1", &w)
+	if err != nil || rec.Holder != "w2" || rec.Wait == nil || rec.Park == nil {
+		t.Errorf("with the new holder's wait: %+v %v", rec, err)
+	}
+}

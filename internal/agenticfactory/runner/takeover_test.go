@@ -80,3 +80,30 @@ func TestTakeoverRefusesAStaleDecision(t *testing.T) {
 		t.Errorf("no new holder: %v", err)
 	}
 }
+
+// A parked Issue handed to a new holder keeps a wait record, and it is the new
+// holder's: the old owner's does not follow, and an Issue that is not parked
+// needs none.
+func TestTakingOverAParkedIssueNeedsTheNewHoldersWait(t *testing.T) {
+	r, tk := parkedForContractChange(t)
+	ev := fullTakeover()
+	if _, err := r.TakeOver(tk.Issue, tk, "sess-new", "disp-t", "run-2", ev); !errors.Is(err, core.ErrEvidenceIncomplete) {
+		t.Fatalf("a parked Issue without the new holder's wait: %v", err)
+	}
+	ev.Wait = ptr(wait1()) // owned by sess-a: the old owner's
+	if _, err := r.TakeOver(tk.Issue, tk, "sess-new", "disp-t", "run-2", ev); !errors.Is(err, core.ErrOwnershipUnverified) {
+		t.Fatalf("the old owner's wait handed to the new holder: %v", err)
+	}
+	if cur, _ := r.Store.Read(tk.Issue); cur.Holder != "sess-a" || cur.Epoch != tk.Epoch {
+		t.Fatalf("a refused takeover moved the Issue: %+v", cur)
+	}
+	w := wait1()
+	w.Owner = "sess-new"
+	ev.Wait = &w
+	rec, err := r.TakeOver(tk.Issue, tk, "sess-new", "disp-t", "run-2", ev)
+	if err != nil || rec.Holder != "sess-new" || rec.Park == nil || rec.Wait == nil || rec.Wait.Owner != "sess-new" {
+		t.Fatalf("takeover of a parked Issue: %+v %v", rec, err)
+	}
+}
+
+func ptr[T any](v T) *T { return &v }

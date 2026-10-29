@@ -248,8 +248,9 @@ func (s *Store) usesWorktree(h worktreeReservation) bool {
 // work preserved (preserved names where); this checks that the owner it decided
 // about is still the recorded one, so a decision made against an owner that has
 // since renewed is refused. The PR, the worktree and the history stay; the old
-// owner's wait and repair claim, which were its alone, do not.
-func (s *Store) TakeOver(i core.IssueRef, oldHolder string, oldEpoch int64, newHolder, dispatch string, run core.RunID, preserved string) (Record, error) {
+// owner's wait and repair claim, which were its alone, do not. A parked Issue
+// needs the new holder's own wait record (owner = newHolder).
+func (s *Store) TakeOver(i core.IssueRef, oldHolder string, oldEpoch int64, newHolder, dispatch string, run core.RunID, preserved string, wait *core.Wait) (Record, error) {
 	if newHolder == "" || dispatch == "" {
 		return Record{}, fmt.Errorf("%w: the new holder and a dispatch are required", core.ErrIDInvalid)
 	}
@@ -266,6 +267,13 @@ func (s *Store) TakeOver(i core.IssueRef, oldHolder string, oldEpoch int64, newH
 		out.Holder, out.AgentName, out.Dispatch, out.Run = newHolder, "", dispatch, run
 		out.Epoch, out.Seq = cur.Epoch+1, cur.Seq+1
 		out.Wait, out.Repair = nil, nil
+		if cur.Park != nil { // a parked Issue keeps a wait record, and it is the new holder's
+			if wait == nil {
+				return fmt.Errorf("%w: a parked Issue needs the new holder's wait record", core.ErrEvidenceIncomplete)
+			}
+			w := *wait
+			out.Wait = &w
+		}
 		if out.Receipt != nil { // the new holder is the one responsible for the PR now
 			rc := *out.Receipt
 			rc.Session, rc.Agent = newHolder, ""

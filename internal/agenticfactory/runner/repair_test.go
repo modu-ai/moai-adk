@@ -168,3 +168,30 @@ func TestAHandoffReceiptCarriesTheSpecFields(t *testing.T) {
 	}
 	_ = ref
 }
+
+// While an Issue stays parked its wait record stays with it (design 2.1c): no
+// write may leave the park in place and take the wait away. An old parked record
+// that never had one is still rewritable.
+func TestAParkedIssueKeepsItsWaitRecord(t *testing.T) {
+	r, tk := parkedForContractChange(t)
+	rec, _ := r.Store.Read(tk.Issue)
+	if rec.Park == nil || rec.Wait == nil {
+		t.Fatalf("setup: %+v", rec)
+	}
+	if _, err := r.ClearWait(tk); !errors.Is(err, core.ErrEvidenceIncomplete) {
+		t.Fatalf("clearing the wait of a parked Issue: %v", err)
+	}
+	if _, err := r.Store.Update(tk.Issue, tk.Holder, tk.Epoch, func(x *claim.Record) error { x.Wait = nil; return nil }); !errors.Is(err, core.ErrEvidenceIncomplete) {
+		t.Fatalf("a write that drops the wait but keeps the park: %v", err)
+	}
+	if cur, _ := r.Store.Read(tk.Issue); cur.Wait == nil || cur.Park == nil {
+		t.Fatalf("a refused write changed the record: %+v", cur)
+	}
+	// resuming ends the park, after which the wait may go
+	if _, err := r.Resume(tk, true); err != nil {
+		t.Fatal(err)
+	}
+	if cleared, err := r.ClearWait(tk); err != nil || cleared.Wait != nil {
+		t.Errorf("after the park: %+v %v", cleared.Wait, err)
+	}
+}

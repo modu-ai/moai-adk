@@ -683,6 +683,9 @@ type Takeover struct {
 	WriterStopped        bool
 	UncommittedPreserved bool
 	PreservedRef         string
+	// Wait is the new holder's wait record, required when the Issue is parked
+	// (design 2.1c) and ignored otherwise; its owner must be the new holder.
+	Wait *core.Wait
 }
 
 // TakeOver reassigns a held Issue after its owner died. old is the ticket of the
@@ -701,7 +704,7 @@ func (r *Runner) TakeOver(i core.IssueRef, old Ticket, newHolder, dispatch strin
 	if err := r.guard(i, core.OpTakeOver); err != nil {
 		return claim.Record{}, err
 	}
-	return r.Store.TakeOver(i, old.Holder, old.Epoch, newHolder, dispatch, run, ev.PreservedRef)
+	return r.Store.TakeOver(i, old.Holder, old.Epoch, newHolder, dispatch, run, ev.PreservedRef, ev.Wait)
 }
 
 // ContractRevision is the evidence of canon E18 adopt: what changed in the
@@ -783,7 +786,7 @@ func (r *Runner) RetryWait(t Ticket, diagnosis, next string, recheck time.Time) 
 // ClearWait drops the wait once what it waited for has happened.
 func (r *Runner) ClearWait(t Ticket) (claim.Record, error) {
 	return r.Store.Update(t.Issue, t.Holder, t.Epoch, func(rec *claim.Record) error {
-		rec.Wait = nil
+		rec.Wait = nil // the store refuses this while the Issue is parked
 		return nil
 	})
 }
