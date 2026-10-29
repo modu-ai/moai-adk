@@ -39,22 +39,24 @@ func newGH(f *fakeT, maxAge time.Duration, now *time.Time) *GitHub {
 	}
 }
 
-func TestIDsComeFromNumericFieldsOfReadOnlyGETs(t *testing.T) {
+func TestFactsComeFromNumericFieldsOfReadOnlyGETs(t *testing.T) {
 	now := t0
 	f := &fakeT{by: map[string]forge.Response{
 		"/user":                        ok(`{"login":"bot","id":1001}`),
-		"/repos/o/r/issues/7":          ok(`{"number":7,"user":{"login":"someone","id":2002}}`),
-		"/repos/o/r/issues/comments/9": ok(`{"id":9,"user":{"login":"bot","id":1001}}`),
+		"/repos/o/r/issues/7":          ok(`{"number":7,"user":{"login":"someone","id":2002},"repository_url":"https://api.github.com/repos/o/r"}`),
+		"/repos/o/r/issues/comments/9": ok(`{"id":9,"user":{"login":"bot","id":1001},"issue_url":"https://api.github.com/repos/o/r/issues/7"}`),
 	}}
 	g := newGH(f, time.Minute, &now)
 	if id, err := g.CurrentUserID(t.Context()); err != nil || id != 1001 {
 		t.Errorf("user = %d, %v", id, err)
 	}
-	if id, err := g.IssueAuthorID(t.Context(), "o/r", 7); err != nil || id != 2002 {
-		t.Errorf("issue author = %d, %v", id, err)
+	iss, err := g.IssueFacts(t.Context(), "o/r", 7)
+	if err != nil || iss.AuthorID != 2002 || iss.ActualRepo != "o/r" || iss.Redirected {
+		t.Errorf("issue facts = %+v, %v", iss, err)
 	}
-	if id, err := g.CommentAuthorID(t.Context(), "o/r", 9); err != nil || id != 1001 {
-		t.Errorf("comment author = %d, %v", id, err)
+	cf, err := g.CommentFacts(t.Context(), "o/r", 9)
+	if err != nil || cf.AuthorID != 1001 || cf.Issue != 7 || cf.ActualRepo != "o/r" {
+		t.Errorf("comment facts = %+v, %v", cf, err)
 	}
 	for _, c := range f.calls {
 		if c.Method != "GET" || len(c.Body) != 0 {
@@ -63,23 +65,44 @@ func TestIDsComeFromNumericFieldsOfReadOnlyGETs(t *testing.T) {
 	}
 }
 
+func TestARedirectedAnswerIsReportedAndStaysReportedWhenServedFrom304(t *testing.T) {
+	now := t0
+	moved := forge.Response{Status: 200, Redirected: true, Header: map[string]string{"etag": `"a"`},
+		Body: []byte(`{"user":{"id":2002},"repository_url":"https://api.github.com/repos/o/new-name"}`)}
+	f := &fakeT{by: map[string]forge.Response{"/repos/o/r/issues/7": moved}}
+	g := newGH(f, 0, &now) // MaxAge 0: every call goes to the client
+	first, err := g.IssueFacts(t.Context(), "o/r", 7)
+	if err != nil || !first.Redirected || first.ActualRepo != "o/new-name" {
+		t.Fatalf("first = %+v, %v", first, err)
+	}
+	f.by["/repos/o/r/issues/7"] = forge.Response{Status: 304}
+	again, err := g.IssueFacts(t.Context(), "o/r", 7)
+	if err != nil || !again.Redirected || again.AuthorID != 2002 {
+		t.Errorf("a 304 must not hide that the body came through a redirect: %+v, %v", again, err)
+	}
+}
+
 func TestALoginWithoutANumericIDIsUnknownNeverCompared(t *testing.T) {
 	now := t0
 	f := &fakeT{by: map[string]forge.Response{
-		"/user":                ok(`{"login":"bot"}`),
-		"/repos/o/r/issues/7":  ok(`{"user":{"login":"someone"}}`),
-		"/repos/o/r/issues/8":  ok(`{"user":null}`),
-		"/repos/o/r/issues/9":  ok(`{"user":{"id":0}}`),
-		"/repos/o/r/issues/10": ok(`not json`),
+		"/user":                        ok(`{"login":"bot"}`),
+		"/repos/o/r/issues/7":          ok(`{"user":{"login":"someone"}}`),
+		"/repos/o/r/issues/8":          ok(`{"user":null}`),
+		"/repos/o/r/issues/9":          ok(`{"user":{"id":0}}`),
+		"/repos/o/r/issues/10":         ok(`not json`),
+		"/repos/o/r/issues/comments/5": ok(`{"user":{"login":"x"}}`),
 	}}
 	g := newGH(f, time.Minute, &now)
 	if _, err := g.CurrentUserID(t.Context()); err == nil {
 		t.Error("a user response with only a login was accepted")
 	}
 	for _, n := range []int{7, 8, 9, 10, 11} {
-		if id, err := g.IssueAuthorID(t.Context(), "o/r", n); err == nil || id != 0 {
-			t.Errorf("issue %d: id=%d err=%v, want unknown", n, id, err)
+		if got, err := g.IssueFacts(t.Context(), "o/r", n); err == nil || got.AuthorID != 0 {
+			t.Errorf("issue %d: %+v err=%v, want unknown", n, got, err)
 		}
+	}
+	if got, err := g.CommentFacts(t.Context(), "o/r", 5); err == nil || got.AuthorID != 0 {
+		t.Errorf("comment: %+v err=%v, want unknown", got, err)
 	}
 }
 

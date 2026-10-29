@@ -29,6 +29,11 @@ const (
 	// ReasonNotIssueAuthor: a write that only the author of the Issue (or of the comment) may make, aimed
 	// at someone else's. Used by the identity policy (see identity.go).
 	ReasonNotIssueAuthor RefusalReason = "not-issue-author"
+	// ReasonRepoNotAllowed, ReasonPermissionNotGranted and ReasonOwnerUnconfirmed are the other denials of
+	// core's authorization function, carried through under the same strings core records.
+	ReasonRepoNotAllowed       RefusalReason = "repository-not-allowed"
+	ReasonPermissionNotGranted RefusalReason = "permission-not-granted"
+	ReasonOwnerUnconfirmed     RefusalReason = "owner-unconfirmed"
 	// ReasonIdentityUnknown: the authenticated user or the author could not be established (lookup failed,
 	// field missing, or no policy wired), so the write is refused rather than guessed.
 	ReasonIdentityUnknown RefusalReason = "identity-unknown"
@@ -79,7 +84,6 @@ func r(method, pattern string) rule {
 // guard lets through as a read anyway.
 var allowedWrites = []rule{
 	r("POST", "/repos/*/*/issues"),
-	r("POST", "/repos/*/*/issues/*/comments"),
 	r("POST", "/repos/*/*/labels"),
 	r("PATCH", "/repos/*/*/labels/*"),
 }
@@ -141,7 +145,7 @@ func CheckRequest(method, rawPath string, header map[string]string) error {
 			return nil
 		}
 	}
-	if _, conditional := classifyConditional(method, lowered); conditional {
+	if _, conditional := classifyConditional(method, lowered, segs); conditional {
 		return refuse(ReasonIdentityUnknown) // allowed only through Enforcer.Check, which establishes who is writing
 	}
 	for _, s := range lowered {

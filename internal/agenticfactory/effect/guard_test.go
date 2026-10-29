@@ -24,7 +24,6 @@ func TestReadsAndTheWritesWeSendAreAllowed(t *testing.T) {
 		{"GET", "/repos/o/r/rulesets"},
 		{"HEAD", "/repos/o/r/hooks"},
 		{"POST", "/repos/o/r/issues"},
-		{"POST", "/repos/o/r/issues/7/comments"},
 		{"POST", "/repos/o/r/labels"},
 		{"PATCH", "/repos/o/r/labels/p0"},
 		{"PATCH", "/repos/o/r/labels/type%3Abug"},

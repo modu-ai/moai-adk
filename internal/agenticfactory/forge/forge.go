@@ -57,6 +57,9 @@ type Response struct {
 	Status int
 	Header map[string]string
 	Body   []byte
+	// Redirected is set by the Transport when it followed a redirect (a renamed or moved repository)
+	// to produce this response. The caller must not treat the answer as being for the repository it asked.
+	Redirected bool
 }
 
 // Transport sends one request. The production implementation (gh api, net/http, or a GitLab client)
@@ -343,6 +346,7 @@ func (b *Budget) allow(res string, now time.Time, floor int) (bool, time.Time) {
 type entry struct {
 	etag, lastMod string
 	body          []byte
+	redirected    bool // the response that produced this body came through a redirect
 }
 
 // Client does conditional GETs through a Transport and a shared Budget.
@@ -367,6 +371,7 @@ type Result struct {
 	Deferred     bool
 	NotBefore    time.Time
 	PollInterval time.Duration // from x-poll-interval, 0 when absent
+	Redirected   bool          // the host answered through a redirect
 }
 
 // Get fetches a path with the stored validators. A permission denial returns ErrDenied.
@@ -407,14 +412,14 @@ func (c *Client) Get(ctx context.Context, path string) (Result, error) {
 	c.mu.Lock()
 	c.learned[path] = resName
 	c.mu.Unlock()
-	res := Result{}
+	res := Result{Redirected: resp.Redirected}
 	if n, err := strconv.Atoi(h["x-poll-interval"]); err == nil && n > 0 {
 		res.PollInterval = time.Duration(n) * time.Second
 	}
 	switch v.Kind {
 	case KindOK:
 		c.mu.Lock()
-		c.cache[path] = entry{etag: h["etag"], lastMod: h["last-modified"], body: resp.Body}
+		c.cache[path] = entry{etag: h["etag"], lastMod: h["last-modified"], body: resp.Body, redirected: resp.Redirected}
 		c.attempts[path] = 0
 		c.mu.Unlock()
 		res.Body, res.Changed = resp.Body, true
@@ -427,6 +432,7 @@ func (c *Client) Get(ctx context.Context, path string) (Result, error) {
 		c.attempts[path] = 0
 		c.mu.Unlock()
 		res.Body, res.FromCache = e.body, true
+		res.Redirected = res.Redirected || e.redirected // the cached body keeps the redirect it arrived with
 		return res, nil
 	case KindLimited:
 		c.B.BlockFor(resName, v.RetryAt)
