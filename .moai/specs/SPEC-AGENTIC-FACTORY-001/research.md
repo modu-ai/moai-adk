@@ -73,6 +73,21 @@
 - t1965: `.moai/reports/t1965` 없음. SPEC-FETCH-WEB-001 spec.md 95·104행이 "t1965 linkage"로 언급.
 - lane-22 대응표: `.moai/reports/agentic-factory/`가 이 트리와 주 체크아웃 모두에 없음.
 
+## R9 활성 판정 함수 (0.2.0, 트리 `e14b5bbac2`)
+
+| 사실 | 근거 |
+|---|---|
+| `FactoryProcessAlive(pid)`: `pid <= 0` → `false`; `syscall.Kill(pid, 0)`이 nil 또는 `EPERM`이면 `true`. 시작 시각을 보지 않음 | `internal/factory/factory_alive_unix.go:22-28` |
+| Windows 짝: `OpenProcess` + `GetExitCodeProcess` | `internal/factory/factory_alive_windows.go:28` |
+| `FactoryProcessAlive` 호출처 | `grep -rn 'FactoryProcessAlive(' internal cmd`(시험·정의 제외) → `internal/cli/factory_card.go:401`, `internal/cli/codex_review_gate.go:363`, `internal/cli/gate_lock.go:242`, `internal/cli/integration_wait.go:286`, `internal/factory/integration_lock.go:232`, `internal/factory/slot_lease.go:183` |
+| slot lease `Stale()`은 `pid <= 0`을 먼저 "살아 있음"으로 처리한 뒤 `FactoryProcessAlive`를 부름 | `internal/factory/slot_lease.go:175-183` |
+| `ClassifyOwnerWith(probe, pid, processStart)`: `live` / `dead` / `indeterminate`. 시작 시각 불일치 = `dead`(PID 재사용) | `internal/homestate/factory_run_retire.go:152-168`, 상수 `:20-22` |
+| `DefaultOwnerClassifier` → `ProbeProcessIdentity` | `internal/homestate/factory_run_retire.go:139-141`, `internal/homestate/profile_lease.go:210-220` |
+| 시작 시각 원천: `ps -o lstart=`(`!windows && !darwin`), macOS `sysctl kern.proc.pid` P_starttime, Windows `GetProcessTimes` | `internal/homestate/process_fingerprint_unix.go:12`, `process_fingerprint_darwin.go`, `process_fingerprint_windows.go` |
+| `moai cc -l` 도움말: 합류 시 리더를 "pid + process-start"로 검증 | `internal/cli/cc.go:69-70` |
+| `--leader`는 `-l` 필요: `if !p.LaneRole { return p, errors.New(leaderNeedsLaneEntry) }` | `internal/cli/factory.go:284-286` |
+| `approve` 명령 `Use: "approve <card-id> --run <run-id>"` | `internal/cli/leader_approval_gate.go:286` |
+
 ## R8 판단에 쓴 해석
 
 - claim을 slot lease와 분리한 결정(spec.md §F.1)은 R4의 REQ-RSL-006 설계 근거("잘못된 비어 있음의 비용은 실행 두 개 겹침뿐")가 writer 중복에는 맞지 않는다는 해석에 기댄다. 이 해석은 코드 주석을 읽은 결과이고, 실제 중복 writer 사고를 재현한 것은 아니다.

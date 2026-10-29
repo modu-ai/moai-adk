@@ -1,7 +1,7 @@
 ---
 id: SPEC-AGENTIC-FACTORY-001
 title: "AgenticFactory 실행 계약 — GitHub Issue 원장 기반 소유권·전이·안전 게이트"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-10-29
 updated: 2026-10-29
@@ -23,6 +23,7 @@ related_specs: [SPEC-ASIDE-BROWSER-001, SPEC-RESOURCE-SLOT-LEASE-001, SPEC-FACTO
 | 버전 | 날짜 | 작성 | 내용 |
 |---|---|---|---|
 | 0.1.0 | 2026-10-29 | manager-spec | 최초 작성 (draft). 규범 원천은 GitHub Issue #1948 하나뿐이다. 조정자 추가 요구(단일 Issue 시나리오 7종·6개 결정 사항, 세션 구조·명칭·CLI 재정의, 명칭 미확정 표시·lane-22 대응표 정렬), 입력 보고서 세 건(lane-22 갭 매트릭스·이관 대응표, lane-21 브라우저 계약), 상위 설계 권고(Agentic Factory / ControlService / Coordinator / Worker, `moai factory start·status·attach`, TTL 대 epoch 교차 점검)를 같은 판에 PROPOSAL로 반영했다. |
+| 0.2.0 | 2026-10-29 | manager-spec | plan-audit iteration-1 FAIL 0.69(`.moai/reports/SPEC-AGENTIC-FACTORY-001/plan-audit-iter1.md`)의 결함 D1~D18을 앞으로 고치는 판. **REQ ID 재사용(상한 25 유지)**: 옛 REQ-AF-002(차단·보류)는 REQ-AF-001에 합치고 REQ-AF-002는 `done` 수용 조건(원격 반영 + 로컬 동기화 + 배포 증거 또는 기록된 N/A)으로, 옛 REQ-AF-005(비밀 가림)는 REQ-AF-004에 합치고 REQ-AF-005는 관찰 모니터 표시 항목으로 다시 썼다. REQ-AF-015는 환경별 단계 실제 실행, REQ-AF-016은 3선택 선택 모델(선택·저장·다시 읽기), REQ-AF-014는 거울 쓰기 실패 규칙 하나로 정리(D2), REQ-AF-010은 활성 판정 정본을 `homestate.ClassifyOwnerWith`로 정함(D12, §F.2), REQ-AF-025는 단계별 호환 기준(D10). AC는 25개 그대로이며 시나리오 하네스 계약(D5), 증거 원장의 "대상 부재 참고 관측" 전환(D1), AC-AF-019·024 기준점(D1·D9), AC-AF-018 여섯 증거 제거 사례(D6), AC-AF-002 미전달 dispatch 사례(D7), AC-AF-020 운영 기록 점검(D8), 마일스톤 재배치(D11)를 반영했다. `factory.go:284-286`·`approve` `Use:` 문자열 사실 정정(D17), progress §E.1 기록(D18). 명칭·명령은 계속 미확정이다. |
 
 ## §A 범위와 규범 원천
 
@@ -44,9 +45,11 @@ related_specs: [SPEC-ASIDE-BROWSER-001, SPEC-RESOURCE-SLOT-LEASE-001, SPEC-FACTO
 8. 기존 결함 다섯 건(#1938, #1926, #1924, #1847, #1813)의 대체 동작과 재현 시험 연결
 9. 세션 구조·역할 명칭·명령 체계의 **미확정(provisional)** 초안과 호환·단계 폐기 계약
 
+이 문서에 나오는 역할 이름(`ControlService`, `Coordinator`, `Worker`), 실행 단위 이름(`run`, `attempt`, `slot`), 명령 이름(`moai factory start` 등)은 모두 **미확정(provisional)**이다. 요구사항은 이름이 아니라 역할의 권한 경계와 명령의 동작 계약을 묶으며, 이름이 확정되면 문서의 이름만 바뀐다(OQ-2).
+
 ### A.3 "구현 완료"의 정의 경계
 
-Issue #1948은 "상위 착수 원장이지 구현 완료나 실행 시작의 증명이 아니다"라고 적는다. 이 SPEC도 같다. 이 SPEC이 PASS를 받아도 AgenticFactory가 구현된 것이 아니며, Phase 2(남은 카드의 Issue 이관)를 수행한 것도 아니다. 이관 자체는 어떤 경우에도 구현 완료로 세지 않는다(REQ-AF-001, §I).
+Issue #1948은 "상위 착수 원장이지 구현 완료나 실행 시작의 증명이 아니다"라고 적는다. 이 SPEC도 같다. 이 SPEC이 PASS를 받아도 AgenticFactory가 구현된 것이 아니며, Phase 2(남은 카드의 Issue 이관)를 수행한 것도 아니다. 이관 자체는 어떤 경우에도 구현 완료로 세지 않는다(REQ-AF-002, §I).
 
 ## §B 배경 — 이 트리에서 읽은 사실
 
@@ -64,24 +67,29 @@ Issue #1948은 "상위 착수 원장이지 구현 완료나 실행 시작의 증
 - 이 트리 어디에도 `egolite` / `ego-lite` / `ego-browser`라는 문자열이 없다.
 - `main` 보호 설정(읽기 전용 `gh api` 조회): 필수 검사 `Lint`, `Build (linux/amd64)`, `Analyze (Go) (go)`, `enforce_admins: true`, `allow_force_pushes: false`, `allow_deletions: false`, **`required_linear_history: false`**. 저장소는 squash와 merge commit 병합을 모두 허용하고 rebase 병합은 막는다. `origin/main`에는 merge commit이 있다(`fc17f49b10 Merge pull request #1862`).
 
+아래 활성 판정 사실은 0.2.0에서 트리 `e14b5bbac2eb2499cbaa3ae9434595001c91cb39`(0.1.0 SPEC 커밋, 코드는 `5c3f0ebf27`과 같음)에서 직접 읽었다.
+
+- 프로세스 활성 판정 함수가 둘 있다. ① `internal/factory/factory_alive_unix.go:22-28` `FactoryProcessAlive(pid)` — `pid <= 0`이면 `false`, 아니면 `kill(pid, 0)`이 성공하거나 `EPERM`이면 `true`. PID만 보고 프로세스 시작 시각은 보지 않는다. Windows 짝은 `factory_alive_windows.go:28`. 호출처는 `internal/factory/slot_lease.go:183`(`Stale()`), `internal/factory/integration_lock.go:232`, `internal/cli/factory_card.go:401`(`factoryWorkerPidAlive`), `internal/cli/gate_lock.go:242`, `internal/cli/integration_wait.go:286`, `internal/cli/codex_review_gate.go:363`. ② `internal/homestate/factory_run_retire.go:152-168` `ClassifyOwnerWith(probe, pid, processStart)` — `live` / `dead` / `indeterminate` 셋을 돌려준다. `pid < 1`이거나 기록된 시작 시각이 비어 있으면 `indeterminate`, 프로세스가 살아 있고 시작 시각이 같으면 `live`, 살아 있지만 시작 시각이 다르면(PID 재사용) `dead`, 프로세스가 없으면 `dead`, 나머지는 `indeterminate`다. 기본 구현 `DefaultOwnerClassifier`(:139-141)는 `ProbeProcessIdentity`(`internal/homestate/profile_lease.go:210-220`)를 쓰고, 이것은 PID 상태를 먼저 본 뒤 플랫폼별 시작 시각(Linux 등 `ps -o lstart=`, macOS `sysctl kern.proc.pid`, Windows `GetProcessTimes`)을 읽으며, 시작 시각을 못 읽으면 `indeterminate`다.
+- `moai cc -l` 도움말은 합류 시 리더를 "pid + process-start"로 검증한다고 적는다(`internal/cli/cc.go:69-70`). 즉 pid + 시작 시각 방식을 구현한 함수는 `homestate` 쪽에 있고(그 도움말의 검증이 어느 함수를 부르는지는 읽지 않음), `FactoryProcessAlive`는 PID만 본다. 0.1.0 §F.2가 둘을 같은 방식으로 적은 것은 틀렸다(D12, 0.2.0에서 고침).
+
 ## §C 요구사항 (GEARS)
 
-요구사항은 25개로 Tier L 상한(25)과 같다. 패턴 열은 GEARS 형식을 가리킨다.
+요구사항은 25개로 Tier L 상한(25)과 같다. 패턴 열은 GEARS 형식을 가리키며, 두 형식 이상을 한 요구사항에 묶은 경우는 `Compound`로 적었다. 0.2.0에서 REQ-AF-002와 REQ-AF-005는 ID를 재사용했다(HISTORY 참조). 옛 내용은 각각 REQ-AF-001과 REQ-AF-004에 그대로 들어 있다.
 
 ### C.1 상태 모델과 전달 상태
 
 | ID | 패턴 | 요구사항 |
 |---|---|---|
-| REQ-AF-001 | Event-driven | When an actor requests an Issue state transition, the state engine SHALL apply it only if the edge appears in the transition table of `design.md` §2, its guard evidence is present, and the requesting role is the edge's listed writer; the engine SHALL refuse every other request, including any request that skips a stage, and SHALL leave the prior state unchanged. Migration of remaining cards (Phase 2) SHALL NOT be recorded as implementation completion. |
-| REQ-AF-002 | State-driven | While an Issue is in `blocked` or `on-hold`, the state engine SHALL record exactly one reason from the `block_reason` set of `design.md` §2.1a together with its trigger evidence and normal resume condition, SHALL NOT report a `blocked` Issue as successful, SHALL keep the stage the Issue left, and SHALL return the Issue only to that stage. |
-| REQ-AF-003 | Ubiquitous | The delivery tracker SHALL record `sent`, `received`, `executed`, and `completed` as four separate states per command, each set only from its own evidence source in `design.md` §3; a successful send result or an idle notice SHALL NOT set `received`, `executed`, or `completed`. When an acknowledgement is missing, the tracker SHALL re-query the recipient state before any re-send and SHALL NOT re-send blindly. |
+| REQ-AF-001 | Compound (Event-driven + State-driven) | When an actor requests an Issue state transition, the state engine SHALL apply it only if the edge appears in the transition table of `design.md` §2.2, its guard evidence is present, and the requesting role is the edge's listed writer; the engine SHALL refuse every other request, including any request that skips a stage, and SHALL leave the prior state unchanged. While an Issue is in `blocked` or `on-hold`, the state engine SHALL record exactly one reason from the `block_reason` set of `design.md` §2.1a together with its trigger evidence and normal resume condition, SHALL NOT report a `blocked` Issue as successful, SHALL keep the stage the Issue left (`return_stage`), and SHALL return the Issue only to that stage. |
+| REQ-AF-002 | Event-driven | When the state engine is asked to record `done`, it SHALL record it only if all three completion evidences are present for the merged HEAD: (a) the merge is reflected on the remote `main`, confirmed by a direct remote query; (b) a local-sync record shows the local integration surface was brought to that remote state without discarding any uncommitted change (the dirty path list before and after is recorded and the before-list is a subset of the after-list); (c) a deploy record for that HEAD, or a recorded `deploy: N/A` with its reason where the project defines no deploy step. Missing any of the three, the engine SHALL keep the Issue in `landing` or move it to `blocked` with the reason, and SHALL NOT close the Issue. Migration of remaining cards (Phase 2) SHALL NOT be recorded as `done` or as implementation completion. |
+| REQ-AF-003 | Compound (Ubiquitous + Event-driven) | The delivery tracker SHALL record `sent`, `received`, `executed`, and `completed` as four separate states per command, each set only from its own evidence source in `design.md` §3; a successful send result or an idle notice SHALL NOT set `received`, `executed`, or `completed`. When an acknowledgement is missing, the tracker SHALL re-query the recipient state before any re-send and SHALL NOT re-send blindly. |
 
 ### C.2 원장
 
 | ID | 패턴 | 요구사항 |
 |---|---|---|
-| REQ-AF-004 | Ubiquitous | The Issue ledger SHALL carry the fields of `design.md` §4 (task name, acceptance criteria, priority, dependencies, owner, execution state, HEAD, check links, review / audit / handoff evidence, next action) with their declared types; the ledger writer SHALL refuse a write to a field by a role that is not that field's declared owner, and observation reads SHALL NOT require or confer execution-control authority. |
-| REQ-AF-005 | Unwanted | The ledger, the delivery records, and every log written by AgenticFactory SHALL NOT contain a secret (token, API key, credential, cookie); when a value matching a secret pattern reaches a write path, the writer SHALL redact it and record the redaction. |
+| REQ-AF-004 | Compound (Ubiquitous + Unwanted) | The Issue ledger SHALL carry the fields of `design.md` §4 (task name, acceptance criteria, priority, dependencies, owner, execution state, HEAD, check links, review / audit / handoff evidence, next action) with their declared types; the ledger writer SHALL refuse a write to a field by a role that is not that field's declared owner, and observation reads SHALL NOT require or confer execution-control authority. The ledger, the delivery records, and every log written by AgenticFactory SHALL NOT contain a secret (token, API key, credential, cookie); when a value matching a secret pattern reaches a write path, the writer SHALL redact it and record the redaction. |
+| REQ-AF-005 | Ubiquitous | The observation monitor SHALL show, for each project, each Issue, and each owner, the items of `design.md` §8.1 — execution state, last-checked time, HEAD SHA, required-check results, progress (current stage and attempt), block reason with resume condition, and next action — each item read from its authoritative source (claim store, Issue ledger, or direct remote query) and marked with the time it was read; the monitor SHALL separate observation from control so that its read path holds no write capability and its output carries no control action, and running it SHALL leave the store sequence number and every tree key unchanged. |
 
 ### C.3 소유권과 복구
 
@@ -91,8 +99,8 @@ Issue #1948은 "상위 착수 원장이지 구현 완료나 실행 시작의 증
 | REQ-AF-007 | Event-driven | When a dispatch names an Issue that already has a live attempt or an undelivered dispatch, the dispatcher SHALL refuse the new dispatch and SHALL record the existing one it collided with. |
 | REQ-AF-008 | Event-driven | When ownership verification fails or cannot be completed (claim absent, holder mismatch, store unreadable), the writer SHALL refuse the write and SHALL NOT fall back to an unverified write. |
 | REQ-AF-009 | Event-driven | When a session disconnects, a lease expires, a run's ControlService is gone, a stale HEAD result arrives, or a step fails partway, the recovery path SHALL first query the actual execution state (process liveness, worktree HEAD and dirty state, delivery state, remote state) and SHALL then resume, re-issue, or block; it SHALL NOT force-kill a process and SHALL NOT start a duplicate attempt. |
-| REQ-AF-010 | State-driven | While an attempt's lease is expired and its holder is still alive, the claim store SHALL refuse a takeover and SHALL mark the attempt `lapsed`; a new attempt SHALL be issued only after the holder is confirmed dead by the liveness probe or the holder records a safe stop, and the prior attempt's worktree, branch, SHA, and dirty state SHALL be preserved and referenced by the new attempt; every attempt SHALL carry an assignment epoch, a takeover SHALL increment it, and the claim store SHALL refuse any write that carries an epoch older than the current one. |
-| REQ-AF-011 | Ubiquitous | The local claim store SHALL be the authoritative store for effect state (claim, lease, attempt, delivery); the Issue ledger comment SHALL be its mirror carrying the store sequence number, and when the two disagree the reconciler SHALL rewrite the mirror from the store. When the store is missing or unreadable, the reconciler SHALL block and SHALL NOT rebuild a claim from the mirror. Human-owned ledger fields SHALL be authoritative on the Issue. |
+| REQ-AF-010 | Compound (State-driven + Ubiquitous) | While an attempt's lease is expired and the liveness classification of its holder (`§F.2`: pid plus the process-start fingerprint recorded at claim time) is `live` or `indeterminate`, the claim store SHALL refuse a takeover and SHALL mark the attempt `lapsed`; a new attempt SHALL be issued only when the classification is `dead` (including a live PID whose start fingerprint differs from the recorded one) or the holder records a safe stop, and the prior attempt's worktree, branch, SHA, and dirty state SHALL be preserved and referenced by the new attempt. Every attempt SHALL carry an assignment epoch, a takeover SHALL increment it, and the claim store SHALL refuse any write that carries an epoch older than the current one. |
+| REQ-AF-011 | Compound (Ubiquitous + Event-driven) | The local claim store SHALL be the authoritative store for effect state (claim, lease, attempt, delivery); the Issue ledger comment SHALL be its mirror carrying the store sequence number, and when the two disagree the reconciler SHALL rewrite the mirror from the store. When the store is missing or unreadable, the reconciler SHALL block and SHALL NOT rebuild a claim from the mirror. Human-owned ledger fields SHALL be authoritative on the Issue. |
 
 ### C.4 정책
 
@@ -100,9 +108,9 @@ Issue #1948은 "상위 착수 원장이지 구현 완료나 실행 시작의 증
 |---|---|---|
 | REQ-AF-012 | Unwanted | AgenticFactory implementation work and local-environment verification SHALL NOT invoke a GLM-managed backend. |
 | REQ-AF-013 | Capability gate | Where the operator has not explicitly set the Codex opt-in key (`design.md` §6), AgenticFactory SHALL make zero Codex calls — no automatic call, no default enablement, no fallback call. |
-| REQ-AF-014 | Event-driven | When a provider or tool returns an authentication failure, a permission denial, or HTTP 429, the caller SHALL NOT bypass it and SHALL NOT retry it in a loop; it SHALL preserve the current state, record the block with its normal resume condition, and SHALL NOT acquire a new key, paid capacity, or additional spend without separate operator approval. |
-| REQ-AF-015 | Event-driven | When a local environment in the matrix is not installed, is denied, or lacks capacity, the environment matrix SHALL record that environment as `BLOCKED` with the observed cause and SHALL NOT record it as a success. |
-| REQ-AF-016 | State-driven | While no browser is selected, the browser adapter SHALL use `chrome`; when a browser is explicitly selected (`egolite`, `aside`, or `chrome`), the adapter SHALL invoke only that browser, SHALL preserve the existing user selection, and, when the selected browser is not installed or its connection fails, SHALL block with a resume condition and SHALL NOT fall back to another browser. |
+| REQ-AF-014 | Event-driven | When a provider or tool returns an authentication failure, a permission denial, or HTTP 429 to an operation, the caller SHALL NOT bypass it and SHALL NOT retry it in a loop; it SHALL preserve the current state, record a block (`auth-failed`, `permission-denied`, or `rate-limited`) with its normal resume condition on the operation that failed, and SHALL NOT acquire a new key, paid capacity, or additional spend without separate operator approval. Where the failed operation is only the Issue-ledger mirror write, the block SHALL be recorded on the mirror (`mirror_state: blocked(<reason>)`, `design.md` §4) and SHALL NOT change the Issue's execution state, because the claim store is authoritative (REQ-AF-011). |
+| REQ-AF-015 | Compound (Ubiquitous + Event-driven) | For each local environment in the matrix of `design.md` §5.1, the environment matrix SHALL record the result of actually executing each step — install check, start, receive a task, run a test, safe hold and resume, collect the result — with the command, its exit code, and an output excerpt per step, and SHALL record the environment as `PASS` only when every step was executed and succeeded. When an environment is not installed, is denied, is unconfigured, or lacks capacity, the matrix SHALL record it as `BLOCKED(<cause>)` with the step at which it stopped and the observed evidence, and SHALL NOT record a step that was not executed as a success. |
+| REQ-AF-016 | Compound (State-driven + Event-driven) | The browser selection SHALL offer exactly three choices (`egolite`, `aside`, `chrome`); when the operator selects one, the selection SHALL be saved as `workflow.agentic_factory.browser.selected` and SHALL read back unchanged after the configuration is re-read, and no code path SHALL pick a browser on the operator's behalf. While no browser is selected, the browser adapter SHALL use `chrome` without saving `chrome` as a selection; when a browser is explicitly selected, the adapter SHALL invoke only that browser, SHALL preserve the existing selection, and, when the selected browser is not installed or its connection fails, SHALL block with a resume condition and SHALL NOT fall back to another browser. |
 | REQ-AF-017 | Event-driven | When a value in the `workflow.agentic_factory.*` draft section is out of range or of the wrong type, the configuration loader SHALL refuse it and name the key, the allowed range, and the file; it SHALL NOT clamp the value. |
 
 ### C.5 병합·완료
@@ -112,7 +120,7 @@ Issue #1948은 "상위 착수 원장이지 구현 완료나 실행 시작의 증
 | REQ-AF-018 | Ubiquitous | The merge gate SHALL admit a merge only when, for the latest HEAD, every required check actually ran and passed, a same-HEAD code review and security review are present, the required independent audit is a debt-free PASS, the official QA skill (§F.5) verdict for that HEAD is PASS, and both the writer's and the coordinator's ready-handoffs are present; a skipped, missing, failed, cancelled, stale, or PASS-WITH-DEBT result, or an exhausted audit budget, SHALL be recorded as `blocked` and SHALL NOT count as a pass. |
 | REQ-AF-019 | Unwanted | AgenticFactory SHALL NOT delete a required check, weaken branch protection, change the repository's current linear-history setting, force-push `main`, or merge through an administrator bypass. |
 | REQ-AF-020 | Ubiquitous | The evidence store SHALL keep SHA-bound evidence (audit, review, QA verdicts) outside the code candidate's commit history so that recording evidence does not change the code HEAD it describes, and every stored evidence item SHALL name the full HEAD SHA it judged and be re-verified against the candidate HEAD before the merge gate reads it. |
-| REQ-AF-021 | Event-driven | When a merge outcome is unknown, the merge step SHALL query the remote state first and SHALL NOT re-merge; when the remote reflection of the merge on `main` is confirmed, the state engine SHALL move the Issue to `done`, close the Issue, and only then admit the next dispatch for the freed slot. |
+| REQ-AF-021 | Event-driven | When a merge outcome is unknown, the merge step SHALL query the remote state first and SHALL NOT re-merge; when the remote reflection of the merge on `main` is confirmed, the state engine SHALL move the Issue to `done` only under the completion evidence of REQ-AF-002, SHALL close the Issue only after `done` is recorded, and SHALL admit the next dispatch for the freed slot only after the Issue is closed. |
 | REQ-AF-022 | Ubiquitous | The Codex default migration SHALL proceed in the order of `plan.md` §F.3 — introduce the explicit opt-in gate, verify zero calls when unset, then change defaults — and no existing Codex feature SHALL be removed before its replacement is verified; inspection, independent audit, and handoff obligations SHALL remain in force at every stage. |
 
 ### C.6 세션 구조·명령·호환 (명칭은 모두 미확정)
@@ -121,21 +129,23 @@ Issue #1948은 "상위 착수 원장이지 구현 완료나 실행 시작의 증
 |---|---|---|
 | REQ-AF-023 | Ubiquitous | The deterministic control role (provisional name `ControlService`) SHALL be the only role that writes claim, lease, liveness, reconciliation, and resume-decision state; the LLM coordination role (provisional `Coordinator`) SHALL NOT write that state and SHALL act on it only through the ControlService's commands; a Worker session SHALL write only within its own attempt. |
 | REQ-AF-024 | Event-driven | When an operator or coordinator reconnects, lists, attaches to, resumes, holds, or stops a run, the command set of `design.md` §8 SHALL query the actual execution first, SHALL require an explicit run or attempt id when more than one candidate matches, SHALL NOT start a duplicate attempt, SHALL NOT force-kill, SHALL NOT widen the caller's permissions on resume, and an observe-only command SHALL NOT mutate any state. |
-| REQ-AF-025 | Ubiquitous | The existing entry commands (`moai cc -f`, `moai cc -l`, and their `glm` / `codex` counterparts as they exist) SHALL keep working unchanged as compatibility aliases through every deprecation stage; no old command SHALL be removed before its replacement passes the stage gate of `design.md` §9.4; running sessions SHALL NOT be restarted by the migration; existing session IDs, permissions, lane labels (addresses), owners, and handles SHALL stay byte-identical before and after the new commands exist; and the compatibility table SHALL stay aligned with lane-22's migration correspondence table (S1–S4, rows C1–C11) at every stage. |
+| REQ-AF-025 | Ubiquitous | The existing entry commands (`moai cc -f`, `moai cc -l`, and their `glm` / `codex` counterparts as they exist) SHALL remain as compatibility aliases through the deprecation stages of `design.md` §9.4 with this per-stage behaviour: at S1 their help text, argument parsing, refusal messages, stdout, stderr, and exit codes SHALL be byte-identical to the baseline golden files captured before S1 (`design.md` §9.6); at S2 and S3 they SHALL stay byte-identical to that baseline except for exactly one added stderr deprecation line naming the replacement; at S4 a command SHALL be removed only when the S4 conditions of §9.4 hold for it. At every stage, running sessions SHALL NOT be restarted by the migration, and existing session IDs, permissions, lane labels (addresses), owners, and handles SHALL stay byte-identical; the compatibility table SHALL stay aligned with lane-22's migration correspondence table (S1–S4, rows C1–C11). |
 
 ## §D 수용 기준 요약
 
-수용 기준은 `acceptance.md`에 25개(AC-AF-001 ~ AC-AF-025)로 있다. 시나리오 일곱 개(AC-AF-001 ~ AC-AF-007)는 **하나의 실제 Issue에서 처음부터 끝까지** 측정한다. 이 측정은 실제 GitHub Issue에 쓰는 외부 공유 동작이므로 운영자 승인 대상이며, 어떤 Issue를 쓸지는 미결 질문 OQ-1이다.
+수용 기준은 `acceptance.md`에 25개(AC-AF-001 ~ AC-AF-025)로 있다. 시나리오 일곱 개(AC-AF-001 ~ AC-AF-007)는 **하나의 실제 Issue에서 처음부터 끝까지** 하나의 순서 있는 시험 묶음(`TestScenarioSuite`)으로 측정한다(acceptance.md §A.1 하네스 계약). 이 측정은 실제 GitHub Issue에 쓰는 외부 공유 동작이므로 운영자 승인 대상이며, 어떤 Issue를 쓸지는 미결 질문 OQ-1이다. 보호된 `main`으로의 실제 병합과 Issue 종료(시나리오 6·7)는 운영자 keep-set 승인 대상이며, 승인이 없으면 그 두 시나리오는 `BLOCKED(operator-ack-missing)`로 기록되고 PASS가 아니다.
+
+모든 AC는 run 단계가 각 AC의 이름 붙은 시험에서 `EXPECTED_RED`를 기록하기 전까지 **채택 전**이며 release-blocking이 아니다(acceptance.md §B). 예외적으로 AC-AF-019는 regression-guard로 분류한다.
 
 ## §E 추적표 (REQ → AC)
 
 | REQ | AC |
 |---|---|
-| REQ-AF-001 | AC-AF-007, AC-AF-008, AC-AF-025 |
-| REQ-AF-002 | AC-AF-008 |
+| REQ-AF-001 | AC-AF-008, AC-AF-025 |
+| REQ-AF-002 | AC-AF-007 |
 | REQ-AF-003 | AC-AF-003 |
 | REQ-AF-004 | AC-AF-012 |
-| REQ-AF-005 | AC-AF-012 |
+| REQ-AF-005 | AC-AF-022 |
 | REQ-AF-006 | AC-AF-001, AC-AF-025 |
 | REQ-AF-007 | AC-AF-002 |
 | REQ-AF-008 | AC-AF-009 |
@@ -168,9 +178,29 @@ Issue #1948은 "상위 착수 원장이지 구현 완료나 실행 시작의 증
 
 ### F.2 "기한은 지났지만 소유자는 살아 있음" — 결정: 인계 금지, `lapsed` 표시
 
-- 활성 확인(liveness probe)은 기록된 PID의 생존 여부와 프로세스 시작 시각 일치로 판정한다(현행 `FactoryProcessAlive`와 `cc -l`의 leader 검증이 쓰는 pid + process-start 방식). PID를 알 수 없으면(`pid <= 0`) 살아 있다고 본다(slot lease의 `Stale()`과 같은 보수적 해석).
-- 살아 있는 소유자의 attempt는 기한이 지나도 인계하지 않는다. attempt를 `lapsed`로 표시하고 조정자에게 알린다.
-- 인계할 수 있는 경우는 둘뿐이다. (a) 활성 확인이 사망을 확정했을 때, (b) 소유자가 안전 정지(현재 SHA, dirty 상태, 실행 중이던 검사, 재개 지점)를 기록했을 때. 인계를 실행하는 주체는 결정적 제어 역할(ControlService)뿐이며, 조정자(LLM)는 요청만 한다.
+**활성 판정 정본(결정)**: claim·인계 규칙의 활성 판정은 `homestate.ClassifyOwnerWith`(`internal/homestate/factory_run_retire.go:152-168`)를 정본으로 삼는다. 기본 구현은 `DefaultOwnerClassifier`(:139-141) → `ProbeProcessIdentity`(`internal/homestate/profile_lease.go:210-220`)다.
+
+| 비교 항목 | `homestate.ClassifyOwnerWith` | `factory.FactoryProcessAlive` |
+|---|---|---|
+| 위치 | `internal/homestate/factory_run_retire.go:152-168` | `internal/factory/factory_alive_unix.go:22-28`, `factory_alive_windows.go:28` |
+| 입력 | pid + claim 때 기록한 프로세스 시작 시각(fingerprint) | pid만 |
+| 결과 | `live` / `dead` / `indeterminate` 셋 | `true` / `false` 둘 |
+| PID 재사용 | 시작 시각이 다르면 `dead`로 구분한다 | 구분하지 못한다(재사용된 PID를 살아 있다고 봄) |
+| 알 수 없음 | `pid < 1`, 시작 시각 미기록, 시작 시각 읽기 실패 → `indeterminate` | `pid <= 0` → `false`(죽었다고 봄). Unix에서 `EPERM`은 `true` |
+| 플랫폼 | 시작 시각: Linux 등 `ps -o lstart=`, macOS `sysctl kern.proc.pid`, Windows `GetProcessTimes` | Unix `kill(pid,0)`, Windows `OpenProcess` |
+| 현행 용도 | factory run 퇴역 판단(죽음이 확정될 때만 퇴역, 함수 주석). 같은 pid + 시작 시각 방식이 `cc -l` 합류 시 리더 검증 도움말에도 적혀 있다(`internal/cli/cc.go:69-70`). 그 검증이 이 함수를 부르는지는 확인하지 않았다 | 자원 slot lease `Stale()`(`slot_lease.go:183`), 통합 잠금(`integration_lock.go:232`), 카드 임대의 worker 생존 확인(`factory_card.go:401`), `gate_lock.go:242`, `integration_wait.go:286`, `codex_review_gate.go:363` |
+
+- 참고: 자원 slot lease의 `Stale()`은 `FactoryProcessAlive`를 부르기 전에 `pid <= 0`을 따로 "살아 있음"으로 막는다(`internal/factory/slot_lease.go:175-183`). 즉 보수적 해석은 호출하는 쪽이 덧붙인 것이지 `FactoryProcessAlive`의 성질이 아니다.
+- **근거**: claim 인계에서 틀린 "죽었음" 판정은 같은 Issue에 writer 둘을 만든다. `ClassifyOwnerWith`는 PID 재사용을 잡아내고, 모르는 경우를 `indeterminate`로 따로 돌려준다. `FactoryProcessAlive`는 두 가지 모두 하지 못한다. 특히 `pid <= 0`을 "죽음"으로 읽으므로 claim 인계에 쓰면 PID를 기록하지 못한 소유자를 바로 인계 대상으로 만든다.
+- **인계 규칙(갱신)**: `dead`일 때만 인계할 수 있다. `live`와 `indeterminate`는 둘 다 인계를 막고 attempt를 `lapsed`로 표시한다. `indeterminate`에서 벗어나는 길은 소유자의 안전 정지 기록이나 운영자 결정 증거뿐이다.
+- **조건(이 결정의 전제)**: claim 때 ControlService가 소유 프로세스의 pid와 시작 시각을 함께 기록해야 한다. 기록하지 못한 attempt는 언제나 `indeterminate`가 되어 자동 인계되지 않는다.
+- **`FactoryProcessAlive`의 자리**: 기존 호출처(자원 slot lease, 통합 잠금, 카드 임대 등)는 그대로 둔다. 이 SPEC은 그 함수를 claim 판정에 쓰지 않을 뿐 고치지 않는다(§I).
+- **확인하지 못한 것(OQ-17)**: Linux의 `ps -o lstart=`는 초 단위라 같은 초 안의 PID 재사용은 구분하지 못할 수 있다(macOS는 마이크로초 단위). Windows 시작 시각 비교의 세부 의미는 끝까지 읽지 않았다. 이 둘이 확인되기 전까지 정본 결정은 위 조건 아래에서만 유효하며, 같은 초 재사용 위험은 epoch fencing(REQ-AF-010)으로 늦은 쓰기를 막는 것으로 보완한다.
+
+규칙:
+
+- 살아 있거나(`live`) 판정할 수 없는(`indeterminate`) 소유자의 attempt는 기한이 지나도 인계하지 않는다. attempt를 `lapsed`로 표시하고 조정자에게 알린다.
+- 인계할 수 있는 경우는 둘뿐이다. (a) 활성 판정이 `dead`일 때(시작 시각이 다른 PID 재사용 포함), (b) 소유자가 안전 정지(현재 SHA, dirty 상태, 실행 중이던 검사, 재개 지점)를 기록했을 때. 인계를 실행하는 주체는 결정적 제어 역할(ControlService)뿐이며, 조정자(LLM)는 요청만 한다.
 - 보존 대상: 옛 attempt의 작업 트리, 브랜치, HEAD SHA, dirty 경로 목록, 마지막 delivery 상태. 새 attempt는 이 기록을 참조로 갖고, 옛 트리를 삭제하거나 초기화하지 않는다. 같은 run에서 살아 있는 attempt는 언제나 하나다.
 
 ### F.3 효과 상태의 저장 위치 — 결정: 로컬 claim 저장소가 권위, Issue는 거울
@@ -244,18 +274,18 @@ lane-22 보고서(`a-merge-gate-gap-matrix.md`)는 D1~D5를 "결정 필요 항�
 상세 비교는 `design.md` §14다.
 
 - 판정: 기존 사용자 결정(카드 TTL 15m, renew 5m)과는 원칙상 충돌하지 않는다. TTL을 활성 힌트로, 배정 epoch를 권위로 읽으면 된다. 자원 slot lease의 "기한이 지나면 살아 있어도 인계" 규칙과는 충돌하므로 claim을 slot lease로 만들지 않는다(F.1).
-- 조정: TTL·renew 값과 범위 검사는 그대로 둔다. 인계는 ControlService만, 사망 확정 또는 안전 정지 기록 뒤에만, epoch+1로 한다. 오래된 epoch의 쓰기는 거절한다(REQ-AF-010).
+- 조정: TTL·renew 값과 범위 검사는 그대로 둔다. 인계는 ControlService만, 활성 판정 `dead`(§F.2 정본) 또는 안전 정지 기록 뒤에만, epoch+1로 한다. 오래된 epoch의 쓰기는 거절한다(REQ-AF-010).
 - 남은 결정: 기한이 지난 뒤 살아 있는 소유자의 renew를 계속 `refused-expired`로 거절할지는 기존 동작을 바꾸는 문제라 사용자에게 묻는다(OQ-11). 답이 오기 전까지는 현행 거절을 유지한다.
 
 ### F.9 현행 진입 명령 확인 결과
 
-`design.md` §9.1에 파일:줄과 함께 적었다. 요약: `-f`는 leader 진입(`internal/cli/cc.go:58`), `-l`은 다음 빈 `lane-<n>` 합류(`cc.go:65-66`), `-f`와 `-l` 동시 입력 거절(`internal/cli/factory.go:271-272`), `--leader`와 `--factory-run` 동시 입력 거절(`factory.go:280-282`), `worker-<n>`·`agent-<n>` 레거시 거절(`factory.go:332-347`, `:259-263`, `internal/factory/bootstrap.go:237-242`). 같은 `--leader`나 같은 `--factory-run`을 두 번 주는 경우의 거절은 읽은 범위(`factory.go:153-189`)에서 찾지 못했다 — 이 코드는 값을 다시 대입한다. 상위 설계 권고의 "중복 `--leader`/`--factory-run` 거절" 서술과 다르므로 확인 공백으로 남긴다.
+`design.md` §9.1에 파일:줄과 함께 적었다. 요약: `-f`는 leader 진입(`internal/cli/cc.go:58`), `-l`은 다음 빈 `lane-<n>` 합류(`cc.go:65-66`), `-f`와 `-l` 동시 입력 거절(`internal/cli/factory.go:271-272`), `--leader`와 `--factory-run` 동시 입력 거절(`factory.go:280-282`), `worker-<n>`·`agent-<n>` 레거시 거절(`factory.go:332-347`, `:259-263`, `internal/factory/bootstrap.go:237-242`). `--leader`는 `-l` 없이 주면 거절된다(`factory.go:284-286`: `if !p.LaneRole { return p, errors.New(leaderNeedsLaneEntry) }`, 문구는 `:102`). 같은 `--leader`나 같은 `--factory-run`을 두 번 주는 경우의 거절은 읽은 범위(`factory.go:153-189`)에서 찾지 못했다 — 이 코드는 값을 다시 대입한다. 상위 설계 권고의 "중복 `--leader`/`--factory-run` 거절" 서술과 다르므로 확인 공백으로 남긴다.
 
 ## §G 미결 질문
 
 | ID | 질문 | 막는 것 |
 |---|---|---|
-| OQ-1 | 시나리오 AC 일곱 개를 처음부터 끝까지 측정할 실제 Issue는 무엇인가? 실제 Issue에 댓글을 쓰는 것은 외부 공유 동작이라 운영자 승인이 필요하다. | AC-AF-001~007 측정 |
+| OQ-1 | 시나리오 AC 일곱 개를 처음부터 끝까지 측정할 실제 Issue는 무엇인가? 시나리오 7의 "다음 dispatch"를 실제로 보이려면 대기 중인 두 번째 실제 Issue가 하나 더 필요하다. 실제 Issue에 댓글을 쓰는 것은 외부 공유 동작이라 운영자 승인이 필요하고, 보호된 `main`으로의 실제 병합과 Issue 종료(시나리오 6·7)는 운영자 keep-set 승인 대상이다. | AC-AF-001~007 측정 |
 | OQ-2 | 상위 설계 권고는 도착해 PROPOSAL로 반영했다(`design.md` §13). 리더·사용자가 명칭(Agentic Factory / ControlService / Coordinator / Worker)과 정식 명령(`start`·`status`·`attach`)을 확정하는가? 또 권고가 정하지 않은 두 가지 — `run`의 범위(`design.md` §7.3), 새 실행 자리 `slot`과 기존 자원 `slot` lease의 이름 충돌 — 는 무엇으로 정하는가? | REQ-AF-023~025 확정 |
 | OQ-3 | lane-22 대응표는 이 트리에는 없고 `agentic-factory-integration` 작업 트리의 미커밋 보고서로 읽었다. 그 내용(S1~S4, C1~C11, PR 착지 순서 후보)을 `design.md` §9.3~§9.5에 옮겨 맞췄다. 보고서가 바뀌면 누가 다시 맞추는가? 또 C1~C11의 "새 명령" 칸은 lane-22와 이 SPEC 모두 미정이다. | S2 이후 단계 진입 |
 | OQ-4 | 조정자가 말한 "여섯 범위(six-scope) 소유 경계"의 정식 목록을 이 트리에서 찾지 못했다. 이 SPEC은 `design.md` §10의 여섯 범위를 제안으로 둔다. | 코드 경계 확정 |
@@ -270,6 +300,9 @@ lane-22 보고서(`a-merge-gate-gap-matrix.md`)는 D1~D5를 "결정 필요 항�
 | OQ-13 | 브라우저: `CI=true`일 때 3선택 모델에서 aside를 어떻게 다루는가(SPEC-ASIDE-BROWSER-001 REQ-ASB-011)? aside `exec`의 권한 기본값(Guard 유지, `full-access` 금지)과 `repl` 사용 범위를 그대로 이어 가는가? | REQ-AF-016 |
 | OQ-14 | 증거 전용 ref(`refs/agentic-factory/evidence/<issue>`)를 원격에 올려도 되는가? 외부 공유 동작이다. 안 된다면 증거를 어디에 둘 것인가(Issue 댓글 첨부, 검사 결과 등)? | REQ-AF-020 |
 | OQ-15 | 필수 검사 집합을 보호 규칙의 세 검사에서 넓힐 것인가? 넓히면 실행 비용·불안정 비용이 따른다(결정 D5). | REQ-AF-018 범위 |
+| OQ-16 | 설정 키 `workflow.agentic_factory.slots`의 상한은 얼마인가? 하한은 1로 정했지만 상한의 근거(기기 용량, 리뷰 처리량)가 이 트리에 없다. 정해지기 전까지 이 키는 "1 이상, 상한 미정"이며 AC-AF-017은 하한 위반과 형식 위반만 시험한다. | REQ-AF-017 범위 |
+| OQ-17 | 활성 판정 정본(§F.2)의 한계: Linux `ps -o lstart=`는 초 단위라 같은 초 안의 PID 재사용을 구분하지 못할 수 있고, Windows `GetProcessTimes` 비교의 세부 의미는 읽지 않았다. 이를 측정해 정본 결정을 확정하거나, 더 정밀한 시작 시각 원천을 요구할 것인가? | REQ-AF-010 확정 |
+| OQ-18 | 브라우저 3선택을 사람이 보는 설정 화면(웹 UI)에 그릴 것인가? 그 화면은 열린 PR #1937·#1944가 고치는 `internal/settings` 영역이라 이 SPEC은 설정 키 저장·다시 읽기 계약만 정하고 화면 표시는 범위 밖으로 둔다(§I). | REQ-AF-016 표시 범위 |
 
 ## §H 확인 공백 (관측하지 못한 것)
 
@@ -280,9 +313,11 @@ lane-22 보고서(`a-merge-gate-gap-matrix.md`)는 D1~D5를 "결정 필요 항�
 - #1926의 두 번째 댓글은 앞부분(약 1,200자)만 읽었다. 해시 불일치 가설이 "측정됐다"는 결론 줄은 읽었다.
 - #1847·#1813의 Codex 연결 수리 커밋(`e8c42a231c`, `fa562e3110`)이 원격에 있는지는 확인하지 않았다.
 
-- 상위 설계 권고가 말한 "중복 `--leader` / `--factory-run` 거절"을 이 트리에서 확인하지 못했다(`internal/cli/factory.go:153-189`는 반복 시 값을 다시 대입). `factory.go:284` 이후의 `--leader` 검사 줄은 끝까지 읽지 않았다.
+- 상위 설계 권고가 말한 "중복 `--leader` / `--factory-run` 거절"을 이 트리에서 확인하지 못했다(`internal/cli/factory.go:153-189`는 반복 시 값을 다시 대입). `--leader`가 `-l`을 요구하는 검사는 0.2.0에서 `factory.go:284-286`을 읽어 확인했다.
+- 도구 출처(VCI §2.2): spec lint는 이 트리에서 빌드한 바이너리로 돌렸다. 빌드 명령은 `go build -ldflags "-X github.com/modu-ai/moai-adk/pkg/version.Version=v3.2.0-tree -X github.com/modu-ai/moai-adk/pkg/version.Commit=e14b5bbac2" -o <scratchpad>/moai-tree2 ./cmd/moai`이고, `version` 출력은 `v3.2.0-tree e14b5bbac built unknown`이다. 커밋 표시는 빌드 시점 HEAD(`e14b5bbac2`)를 손으로 넣은 값이며 자동 기록이 아니다. 빌드 날짜는 넣지 않았고, 빌드 당시 트리에는 커밋되지 않은 SPEC 문서 변경이 있었다(코드 변경은 없음). `Makefile`의 정식 빌드(`make build`)는 쓰지 않았다. 설치된 `moai`(b1806498fe)는 HEAD의 조상이 아니어서(`git merge-base --is-ancestor b1806498fe HEAD` → exit 1) 판정에 쓰지 않았다.
+- 활성 판정의 Windows 구현(`factory_alive_windows.go`, `process_fingerprint_windows.go`, `pid_state_windows.go`)은 함수 머리와 분기만 읽었고 실행해 보지 않았다(OQ-17).
 - lane-22·lane-21 보고서(`/Users/goos/MoAI/moai-adk-go/.moai/worktrees/agentic-factory-integration/.moai/reports/agentic-factory/a-merge-gate-gap-matrix.md`, `c-factory-migration-map.md`, `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/agentic-factory-21/.moai/reports/agentic-factory/21-browser-contracts.md`)는 읽었지만, 그 안의 측정(브라우저 도구 실행, PR 상태, `auto-merge.yml` 186-316행 해석, `a8372b21f5` 커밋 메시지, #1943 검사 집계, worktree 등록부)은 이 세션이 다시 실행하지 않았다. 이 SPEC은 그것을 보고서 출처로만 인용한다.
-- 보고서와 이 트리의 차이: (a) lane-22는 squash를 운영 관행으로 읽었으나 `auto-merge.yml:627-632`는 일부 브랜치만 squash다(D1). (b) lane-22는 Codex 리뷰 게이트를 `auto-merge.yml:392-420`으로 적었고 이 세션은 `:325`와 `:407` 두 곳에서 `codex-review-gate.sh` 호출을 찾았다(범위 차이). (c) lane-22 C8의 `moai factory approve`는 설치 바이너리 `--help` 근거였고, 이 트리에서는 `internal/cli/leader_approval_gate.go`에 `Use: "approve"`가 있음을 확인했다(일치).
+- 보고서와 이 트리의 차이: (a) lane-22는 squash를 운영 관행으로 읽었으나 `auto-merge.yml:627-632`는 일부 브랜치만 squash다(D1). (b) lane-22는 Codex 리뷰 게이트를 `auto-merge.yml:392-420`으로 적었고 이 세션은 `:325`와 `:407` 두 곳에서 `codex-review-gate.sh` 호출을 찾았다(범위 차이). (c) lane-22 C8의 `moai factory approve`는 설치 바이너리 `--help` 근거였고, 이 트리에서는 `internal/cli/leader_approval_gate.go:286`에 `Use: "approve <card-id> --run <run-id>"`가 있음을 확인했다(명령 존재는 일치. 0.1.0이 적은 `Use: "approve"`는 문자열을 줄여 적은 것이라 0.2.0에서 정정).
 - `auto-merge.yml`은 grep으로 일부 줄만 봤다. `scripts/ci/codex-review-gate.sh` 본문은 읽지 않았다.
 
 ## §I 범위 밖
@@ -297,6 +332,7 @@ lane-22 보고서(`a-merge-gate-gap-matrix.md`)는 D1~D5를 "결정 필요 항�
 
 - `.moai/config/**`, `internal/config`, `internal/settings`, 템플릿 트리(`internal/template/templates`)는 이번에 고치지 않는다. 설정 키는 초안일 뿐이며, 실제 삽입은 계약 감사 통과와 해당 레인 ACK 이후다.
 - `internal/cli/factory_card.go`, `internal/factory/slot_lease.go`, `internal/cli/launcher.go`는 첫 writer의 범위 밖이다.
+- `internal/factory/factory_alive_*.go`(`FactoryProcessAlive`)와 그 기존 호출처는 고치지 않는다. claim 판정에 쓰지 않을 뿐이다(§F.2).
 - SPEC-ASIDE-BROWSER-001은 고치지 않는다. 그 "제안 금지 조항"(REQ-ASB-009)은 대체 대상으로만 기록하며, 실제 개정은 대체 동작이 검증된 뒤 별도로 한다.
 
 ### Out of Scope — 기존 결함의 종료와 기존 작업의 처분
@@ -304,6 +340,10 @@ lane-22 보고서(`a-merge-gate-gap-matrix.md`)는 D1~D5를 "결정 필요 항�
 - #1938 / #1926 / #1924 / #1847 / #1813을 자동으로 닫지 않는다. 대체 동작과 재현 시험만 연결하고 처분은 나중에 따로 한다.
 - 기존 PR을 닫거나, 브랜치를 덮어쓰거나, 카드를 일괄 done 처리하지 않는다. 기존 병합 보류도 유지한다.
 - 강제 프로세스 종료, 터미널 종료, 작업 트리 삭제, 미커밋 변경 폐기는 하지 않는다.
+
+### Out of Scope — 설정 화면(웹 UI) 표시
+
+- 브라우저 3선택을 사람이 보는 설정 화면에 그리는 일은 다루지 않는다. 이 SPEC은 선택 저장·다시 읽기·자동 선택 금지 계약(REQ-AF-016)만 정한다. 화면은 열린 PR #1937·#1944의 `internal/settings` 영역과 겹치므로 그 작업이 끝난 뒤 따로 다룬다(OQ-18).
 
 ### Out of Scope — 공급자·비용
 

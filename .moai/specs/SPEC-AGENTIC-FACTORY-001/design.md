@@ -34,7 +34,7 @@ GitHub Issue (사람 소유 필드의 권위 + 효과 상태의 거울 댓글 1�
 | `verifying` | 동일 HEAD 검증 | 후보 HEAD 하나에 대해 검사·리뷰·감사·QA를 모은다 |
 | `ready` | 준비완료 인계 | writer 인계와 coordinator 인계가 모두 있다 |
 | `landing` | 병합/배포 확인 | 병합을 요청했고 원격 반영을 확인하는 중이다 |
-| `done` | 완료 | 원격 `main` 반영을 확인했고 Issue를 닫았다 |
+| `done` | 완료 | 원격 `main` 반영, 로컬 동기화 기록, 배포 기록(또는 사유가 적힌 `deploy: N/A`) 세 가지가 모두 있다(REQ-AF-002). Issue 종료는 `done` 기록 **뒤에** 한다 |
 | `blocked` | 차단 | 정상 진행이 불가능하다(인증 거부, 429, 예산 소진, 미설치, 저장소 불일치 등) |
 | `on-hold` | 보류 | 운영자 또는 정책이 의도적으로 멈췄다 |
 
@@ -64,6 +64,8 @@ GitHub Issue (사람 소유 필드의 권위 + 효과 상태의 거울 댓글 1�
 
 `landing`에서 병합 결과를 모르는 상황은 차단이 아니라 `landing` 자기 전이(원격 재조회)다. 원격 조회 자체가 실패하면 그때 위 사유 중 해당하는 값으로 `blocked`가 된다.
 
+**인증·권한·429의 단일 규칙(REQ-AF-014)**: 401·403·429는 언제나 **실패한 그 동작**에 차단 기록을 남기고, 재시도 고리는 없다. 실패한 동작이 Issue 원장 거울 쓰기뿐이면 차단은 거울에 남는다(§4 `mirror_state: blocked(<사유>)`). Issue의 실행 상태(`state`)는 바뀌지 않는다. 권위는 로컬 claim 저장소이고 거울은 그것을 비출 뿐이기 때문이다(REQ-AF-011). 거울은 같은 사유의 정상 재개 조건이 충족된 뒤 ControlService가 한 번 다시 쓴다. 실행 경로의 동작(병합 요청, 검사 조회, 공급자 호출 등)이 실패하면 Issue가 `blocked`로 간다.
+
 ### 2.2 전이표
 
 "쓰는 역할"에 없는 역할이 요청하면 거절한다. 표에 없는 간선(단계 건너뛰기 포함)도 거절한다.
@@ -76,7 +78,7 @@ GitHub Issue (사람 소유 필드의 권위 + 효과 상태의 거울 댓글 1�
 | `verifying` | `implementing` | 같은 HEAD 검증 중 하나라도 FAIL → 수리 attempt 계속 | ControlService |
 | `verifying` | `ready` | §11의 병합 수용 조건 전부 + writer 인계 + coordinator 인계 | ControlService |
 | `ready` | `landing` | 병합 요청 직전 HEAD 재확인, 증거가 같은 HEAD를 가리킴 | ControlService |
-| `landing` | `done` | 원격 `main`에 병합 반영 확인(GitHub 직접 조회) | ControlService |
+| `landing` | `done` | 원격 `main`에 병합 반영 확인(GitHub 직접 조회) + 로컬 동기화 기록(동기화 전후 dirty 경로 목록, 앞 목록이 뒤 목록에 모두 남음) + 배포 기록 또는 사유가 적힌 `deploy: N/A`(REQ-AF-002) | ControlService |
 | `landing` | `landing` | 병합 결과 미상 → 원격 재조회(재병합 없음) | ControlService |
 | 진행 상태 아무거나 | `blocked` | 차단 사유 + 정상 재개 조건 기록 | ControlService |
 | 진행 상태 아무거나 | `on-hold` | 보류 사유 + 재개 조건, 요청자 기록 | ControlService (운영자·coordinator 요청) |
@@ -97,7 +99,7 @@ GitHub Issue (사람 소유 필드의 권위 + 효과 상태의 거울 댓글 1�
 
 ACK가 오지 않으면 다시 보내지 않고 먼저 받는 쪽 상태를 조회한다. 조회 결과가 `received` 이상이면 재전송하지 않는다. 조회 자체가 불가능하면 `blocked`로 둔다.
 
-## §4 Issue 원장 필드 (REQ-AF-004, REQ-AF-005)
+## §4 Issue 원장 필드 (REQ-AF-004, REQ-AF-002, REQ-AF-014)
 
 원장은 Issue 본문(사람 소유 필드)과 고정 원장 댓글 하나(효과 상태 거울)로 나뉜다.
 
@@ -119,6 +121,9 @@ ACK가 오지 않으면 다시 보내지 않고 먼저 받는 쪽 상태를 조�
 | `next_action` | 문자열 | 원장 댓글 | ControlService (coordinator 제안을 받아 기록) |
 | `block_reason` / `resume_condition` | 문자열 | 원장 댓글 | ControlService |
 | `store_seq` | 정수(단조 증가) | 원장 댓글 | ControlService |
+| `mirror_state` | 열거 `current` \| `stale` \| `blocked(<block_reason>)` | 로컬 claim 저장소(거울 쓰기 결과 기록) | ControlService. 거울 쓰기가 401·403·429로 실패하면 `blocked(<사유>)`. Issue `state`와 별개(§2.1a 단일 규칙) |
+| `local_sync` | 동기화한 원격 SHA + 전후 dirty 경로 목록 | 원장 댓글 | ControlService(REQ-AF-002 (b)) |
+| `deploy` | 배포 기록 경로 + HEAD SHA, 또는 `N/A` + 사유 | 원장 댓글 | ControlService(REQ-AF-002 (c)) |
 | `last_checked_at` | RFC 3339 UTC | 원장 댓글 | ControlService |
 
 - 관찰 명령은 이 필드를 읽기만 하고, 읽기 권한이 실행 제어 권한을 주지 않는다.
@@ -143,6 +148,8 @@ ACK가 오지 않으면 다시 보내지 않고 먼저 받는 쪽 상태를 조�
 | `version` | 실제로 실행한 버전 명령의 출력 |
 | `start` / `receive` / `test` / `hold_resume` / `collect` | 기동, 작업 수신, 시험, 안전 보류·재개, 결과 회수 각각의 실제 실행 결과 |
 | `verdict` | `PASS` 또는 `BLOCKED(<원인>)`. 미설치·권한 거부·용량 부족·미설정은 `BLOCKED`이며 성공으로 쓰지 않는다 |
+
+각 단계 칸(`installable`부터 `collect`까지)은 실제로 실행한 명령, 종료 코드, 출력 일부 세 가지를 담는다(REQ-AF-015). 실행하지 않은 단계는 `not-run`이며 성공이 아니다. `PASS`는 여섯 단계가 모두 실행되고 성공했을 때만이다. `BLOCKED`는 멈춘 단계와 그 관측을 함께 적는다. 매트릭스에는 적어도 하나의 환경이 여섯 단계를 실제로 실행한 기록이 있어야 한다(전부 `BLOCKED`인 매트릭스는 매트릭스 시험을 통과하지 못한다, AC-AF-014).
 
 Codex 환경은 명시 설정이 없으면 `BLOCKED(not-configured)`로 남고, 매트릭스를 채우려고 Codex를 켜지 않는다.
 
@@ -187,8 +194,8 @@ lane-21 보고서가 남긴 확인 공백(그대로 옮김): ① ego-lite `refer
 |---|---|---|---|
 | `workflow.agentic_factory.enabled` | bool | `false` | bool 외 거절 |
 | `workflow.agentic_factory.codex.enabled` | bool, 미설정 허용 | 미설정(=꺼짐) | bool 외 거절. 미설정·`false`는 호출 0건 |
-| `workflow.agentic_factory.browser.selected` | 열거 `egolite` \| `aside` \| `chrome`, 미설정 허용 | 미설정(=사용 시 `chrome`) | 열거 외 거절. 미설정은 "선택 없음"이지 `chrome` 선택이 아니다(기존 선택 보존을 위해 둘을 구분) |
-| `workflow.agentic_factory.slots` | 정수 | `1` | 1 이상, 상한은 OQ로 미정. 범위 밖은 거절 |
+| `workflow.agentic_factory.browser.selected` | 열거 `egolite` \| `aside` \| `chrome`, 미설정 허용 | 미설정(=사용 시 `chrome`) | 열거 외 거절. 미설정은 "선택 없음"이지 `chrome` 선택이 아니다(기존 선택 보존을 위해 둘을 구분). 선택 모델: 세 선택지 중 운영자가 고른 하나를 이 키에 저장하고, 설정을 다시 읽어도 같은 값이 나와야 한다. 어떤 경로도 운영자 대신 고르지 않는다(REQ-AF-016). 화면 표시는 범위 밖(OQ-18) |
+| `workflow.agentic_factory.slots` | 정수 | `1` | 1 이상. 상한은 미정(OQ-16). 하한 위반·형식 위반은 거절 |
 | `workflow.agentic_factory.lease.duration` | duration | `15m` | 0보다 커야 함, 범위 밖은 거절 |
 | `workflow.agentic_factory.lease.renew_interval` | duration | `5m` | 1~59분의 정수 분, duration의 절반 이하. 범위 밖은 거절(현행 `workflow.factory_lease` 규칙과 같음) |
 | `workflow.agentic_factory.audit.max_rounds` | 정수 | `harness.plan_audit_tier_ceilings`를 따름 | 1 이상. 소진 시 `blocked` |
@@ -220,7 +227,7 @@ lane-21 보고서가 남긴 확인 공백(그대로 옮김): ① ego-lite `refer
 
 | 역할 | 하는 일 | 쓸 수 있는 것 | 쓸 수 없는 것 | 수명 |
 |---|---|---|---|---|
-| `ControlService` | claim, lease·활성 확인, 배정 epoch, 조정(reconcile), 재개 판단을 규칙대로 결정. 판단에 LLM을 쓰지 않음 | claim 저장소, Issue 원장 댓글, 전이 | 코드, SPEC 본문, 사람 소유 필드 | `start`로 떠서 정상 정지까지 상주. 재시작하면 저장소에서 상태를 이어받음 |
+| `ControlService` | claim, lease·활성 확인, 배정 epoch, 조정(reconcile), 재개 판단을 규칙대로 결정. 판단에 LLM을 쓰지 않음. 활성 확인은 `homestate.ClassifyOwnerWith` 정본(spec.md §F.2)으로 하고, claim 때 pid와 프로세스 시작 시각을 함께 기록 | claim 저장소, Issue 원장 댓글, 전이 | 코드, SPEC 본문, 사람 소유 필드 | `start`로 떠서 정상 정지까지 상주. 재시작하면 저장소에서 상태를 이어받음 |
 | `Coordinator` | 우선순위 판단, 다음 행동 제안, 운영자 대화 | 자기 판단 기록(제안·인계 파일) | claim·lease·attempt·epoch·전이를 직접 쓰기 | 운영자가 띄운 세션 수명. 끊겨도 실행은 계속 |
 | `Worker` | attempt 하나의 구현·시험·인계 | 자기 attempt의 작업 트리와 증거 파일(자기 epoch로만) | 다른 attempt, claim 저장소, 원장 댓글 | attempt 하나 동안. 끊기면 attempt는 `lapsed` 후보 |
 | `slot` | Worker가 차지하는 용량 단위 | (주체가 아님) | — | ControlService가 설정값 `slots`만큼 둔다 |
@@ -248,9 +255,26 @@ lane-21 보고서가 남긴 확인 공백(그대로 옮김): ① ego-lite `refer
 | 관찰 전용 모니터 | `moai factory status --watch` (제안) | 읽기 전용 | 아무것도 바꾸지 않는다. 실행 전후 상태 키가 같아야 한다 |
 | 다시 붙기 | `moai factory attach --run <id> [--control]` | 기본 읽기 전용, `--control`일 때만 제어 | 실제 실행을 먼저 조회. 권한은 호출자의 기존 권한을 넘지 않는다 |
 | 여러 run 중 선택 | `moai factory status` 후 `attach --run <id>` | 읽기 전용 | 후보가 둘 이상이면 id 없이 붙지 않는다(추측 금지, 종료 코드 12) |
-| 안전 재개 | `moai factory attach --run <id> --resume --attempt <id>` (제안) | 쓰기 | 실제 실행 조회 → 소유자가 살아 있으면 새 attempt 없이 알림 → 사망 확정 또는 안전 정지 기록 시에만 epoch+1로 새 attempt |
+| 안전 재개 | `moai factory attach --run <id> --resume --attempt <id>` (제안) | 쓰기 | 실제 실행 조회 → 소유자 활성 판정이 `live`·`indeterminate`면 새 attempt 없이 알림 → `dead`(spec.md §F.2) 또는 안전 정지 기록 시에만 epoch+1로 새 attempt |
 | 보류 | `moai factory hold --run <id> --reason <text>` (제안) | 쓰기 | `on-hold` + 재개 조건 기록 |
 | 정상 정지 | `moai factory stop [--run <id>]` (제안) | 쓰기 | 안전 지점 기록 후 정지. 강제 종료 없음 |
+
+### 8.1 관찰 모니터 표시 항목 (REQ-AF-005)
+
+관찰 모니터(`moai factory status` / `--watch`, 이름 미확정)는 프로젝트·Issue·owner마다 아래 항목을 보인다. 항목마다 읽은 원천과 읽은 시각을 함께 표시한다.
+
+| 항목 | 원천 |
+|---|---|
+| 실행 상태(`state`, `return_stage`) | 로컬 claim 저장소 |
+| 마지막 확인 시각(`last_checked_at`) | 로컬 claim 저장소 |
+| HEAD SHA | 로컬 claim 저장소(attempt 기록) |
+| 필수 검사 결과 | GitHub 직접 조회 |
+| 진행(현재 단계, attempt 순번, 배정 epoch) | 로컬 claim 저장소 |
+| 차단 사유와 정상 재개 조건 | 로컬 claim 저장소 |
+| 다음 행동(`next_action`) | Issue 원장 댓글 |
+| 거울 상태(`mirror_state`) | 로컬 claim 저장소 |
+
+관찰과 제어의 분리: 모니터의 읽기 경로는 쓰기 능력을 갖지 않고, 출력에 제어 동작(재개·보류·정지 실행)을 담지 않는다. 제어는 §8 표의 쓰기 명령으로만 한다. 모니터 실행 전후로 저장소 순번과 트리 키가 같아야 한다(AC-AF-022).
 
 종료 코드(계약 수준, 미확정):
 
@@ -277,7 +301,7 @@ lane-21 보고서가 남긴 확인 공백(그대로 옮김): ① ego-lite `refer
 | `-l` / `--lane`은 실행 중인 factory에 다음 빈 `lane-<n>`으로 합류, 인자 없음 | `internal/cli/cc.go:65-66`, `:106`; 인자 거절 문구 `internal/cli/factory.go:98` | 확인 |
 | `-f`와 `-l`을 함께 주면 거절("two entry tokens; a launch carries at most one") | `internal/cli/factory.go:100`(문구), `:271-272`(검사) | 확인 |
 | `--leader`와 `--factory-run`을 함께 주면 거절("two different selectors") | `internal/cli/factory.go:280-282` | 확인 |
-| `--leader`는 `-l`과만 함께 쓸 수 있음 | `internal/cli/factory.go:102`(문구) | 문구 확인(검사 줄은 `:284` 이후, 끝까지 읽지 않음) |
+| `--leader`는 `-l`과만 함께 쓸 수 있음 | `internal/cli/factory.go:102`(문구), `:284-286`(검사: `if !p.LaneRole { return p, errors.New(leaderNeedsLaneEntry) }`) | 확인(0.2.0에서 검사 줄 읽음) |
 | 같은 `--leader`나 같은 `--factory-run`을 **두 번** 주면 거절 | `internal/cli/factory.go:153-165`, `:174-189`를 읽었으나 반복 검사는 없고 값을 다시 대입함 | **확인 못 함(Gap)** — 읽은 범위에서는 나중 값이 이긴다. 다른 곳에 검사가 있을 수 있음 |
 | `worker-<n>` / `agent-<n>`(및 bare `worker`/`agent`)는 레거시로 거절 | `--name` 경로 `internal/cli/factory.go:332-347`(`refuseLegacyEntryNames`), 플래그 값 경로 `:259-263`, 판정 함수 `internal/factory/bootstrap.go:237-242`(`IsLegacyFactoryRoleValue`) | 확인 |
 | `lead` / `lead-<suffix>` 리더 이름도 레거시로 거절 | `internal/cli/factory.go:184-186`, `:333-336` | 확인 |
@@ -307,7 +331,7 @@ lane-21 보고서가 남긴 확인 공백(그대로 옮김): ① ego-lite `refer
 | C5 | `moai factory stage <card> <state>` | 단계 전이 기록 | ControlService 전이(이름 미정) | 전달 상태 네 단계와 함께 | `factory_card.go:2728` |
 | C6 | `moai factory complete` | 통합 창 + 착지 기록 | 병합 게이트 + 원격 확인(이름 미정) | gap 문서 G8과 연결 | `factory_card.go:2938` |
 | C7 | `moai factory renew` | 임대 갱신 | attempt 활성 힌트 갱신(§14) | | `factory_card.go:2840` |
-| C8 | `moai factory approve` / `decide` | 리더 수령증 / 운영자 결정 | Coordinator 인계 증거 / 운영자 결정 증거 | 권한 경계(#1924)는 이 SPEC이 정함 | `decide`는 `factory_card.go:4335`; `approve`는 `internal/cli/leader_approval_gate.go`에 `Use: "approve"` 존재 |
+| C8 | `moai factory approve` / `decide` | 리더 수령증 / 운영자 결정 | Coordinator 인계 증거 / 운영자 결정 증거 | 권한 경계(#1924)는 이 SPEC이 정함 | `decide`는 `factory_card.go:4335`; `approve`는 `internal/cli/leader_approval_gate.go:286`에 `Use: "approve <card-id> --run <run-id>"` 존재 |
 | C9 | `moai factory assign` / `bundle` / `status` / `runs` / `relaunch` / `handoff` / `messaging` / `fallback` / `pickup` / `merge` | 배정·묶음·조회·재기동·인계·메시징·폴백·픽업·병합 | 미정 | 조회 계열(`status`, `runs`)은 읽기 전용이라 제거 순서 마지막 | `status` 존재(`factory_card.go:4175`) — 제안 정식 명령과 이름 충돌(OQ-12) |
 | C10 | `moai integration status/acquire/release/policy/remeasure/merge/preflight/resync/candidate` | 통합 창 | 미정 | lane-22 단독 등록 지점. 대체 검증 전 등록 해제 금지 | 미확인 |
 | C11 | `moai todo …` (`moai gtd` 호환 별칭) | 카드 큐 | Issue 원장(Phase 2) | 이관은 Phase 2, 지금은 손대지 않음 | 미확인 |
@@ -318,9 +342,9 @@ lane-21 보고서가 남긴 확인 공백(그대로 옮김): ① ego-lite `refer
 
 | 단계 | 의미 | 다음 단계로 가는 조건 | 증거 |
 |---|---|---|---|
-| S1 별칭 유지 | 구명령이 새 명령과 나란히, 같은 동작으로 계속 동작 | 새 명령 구현·등록 | AC-AF-024 호환 시험 PASS |
-| S2 폐기 예고 | 구명령 실행 시 대체 명령 안내만 추가로 출력, 동작 불변 | 예고가 실제로 출력됨을 시험으로 확인 + 시나리오 AC 7개 PASS | 예고 문구 시험 + AC-AF-001~007 PASS 기록 |
-| S3 대체 검증 | 새 명령이 구명령의 모든 동작·거부 조건을 대체함을 같은 HEAD 시험과 독립 감사로 확인 | 감사 무부채 PASS + writer·Coordinator 인계 | 판정 파일 |
+| S1 별칭 유지 | 구명령이 새 명령과 나란히, 같은 동작으로 계속 동작. 도움말·인자 해석·거절 문구·stdout·stderr·종료 코드가 §9.6 기준 golden 파일과 바이트 단위로 같음 | 새 명령 구현·등록 | AC-AF-024 호환 시험 PASS |
+| S2 폐기 예고 | 구명령 실행 시 대체 명령을 알리는 stderr 한 줄만 추가. 그 한 줄을 뺀 나머지 출력과 종료 코드는 §9.6 기준과 바이트 단위로 같음 | 예고가 실제로 출력됨을 시험으로 확인 + 시나리오 AC 7개 PASS | 예고 문구 시험(AC-AF-024의 S2 사례) + AC-AF-001~007 PASS 기록 |
+| S3 대체 검증 | 새 명령이 구명령의 모든 동작·거부 조건을 대체함을 같은 HEAD 시험과 독립 감사로 확인. 구명령 출력은 S2와 같은 기준(예고 한 줄 외 바이트 동일) | 감사 무부채 PASS + writer·Coordinator 인계 | 판정 파일 |
 | S4 제거 | 구명령 등록 해제 | S3 증거가 디스크에 있는 부분만 + 운영자 승인 | 운영자 승인 기록 |
 
 공통 불변 조건(lane-22 표와 이 SPEC 공통):
@@ -341,18 +365,37 @@ lane-21 보고서가 남긴 확인 공백(그대로 옮김): ① ego-lite `refer
 
 충돌 배정 금지(lane-22 §3, 보고서 그대로): lane-14(t1932, t1979), lane-15(t1984 Codex 철회), lane-16(t1961)은 checkpoint ACK 전까지 새 writer·새 범위에 배정하지 않는다.
 
+### 9.6 호환 기준 golden 파일 (S1 이전에 따로 커밋)
+
+- 위치(제안): `internal/cli/testdata/agentic_factory_compat/`. 0.2.0 시점 이 경로는 없다(`ls internal/cli/testdata/agentic_factory_compat` → `No such file or directory`, exit 1, 트리 `e14b5bbac2`).
+- 내용: 변경 전 빌드로 기록한 ① `moai cc --help`의 `-f`·`-l`·`--leader`·`--factory-run` 도움말, ② 거절 문구와 종료 코드(`-f`+`-l`, `--leader`+`--factory-run`, `--leader` 단독, `worker-<n>`·`agent-<n>`·`lead-<suffix>` 이름), ③ 기존 factory 기록의 lane 레이블·세션 ID·owner·handle·권한 모드 스냅숏.
+- 순서(VCI §2.3): M6의 **첫 커밋**이 이 golden 파일만 담는다. S1 명령 등록은 그 다음 커밋부터다. 기준과 변경이 한 커밋에 섞이면 "변경 전에 측정했다"는 주장을 커밋 그래프가 증명하지 못한다.
+- 현재 소스 문자열 근거(이 세션 측정): `grep -n -F 'are two entry tokens; a launch carries at most one' internal/cli/factory.go` → `100:	entryTokenConflict    = "%s and %s are two entry tokens; a launch carries at most one"`, exit 0, 트리 `e14b5bbac2`.
+
+### 9.7 Codex 기본값 전환 단계 기록 (AC-AF-020의 운영 기록)
+
+run 단계는 `progress.md`에 `## §J Codex Migration Stage Record` 절을 만들고, plan.md §F.3의 세 단계를 실행할 때마다 한 행씩 적는다. 행은 `| CX-<n> |`로 시작하며 순서가 정해져 있다.
+
+| 행 | 단계 | 필수 증거 |
+|---|---|---|
+| `CX-1` | 관문 도입 | 관문을 넣은 커밋 SHA |
+| `CX-2` | 미설정 0건 검증 | AC-AF-013 PASS 출력이 있는 증거 경로와 HEAD SHA |
+| `CX-3` | 기본값 변경 제안 | 제안 문서 또는 작업 경로. CX-2 행보다 뒤여야 함 |
+
+이 절은 `§E.*` 이름 공간을 쓰지 않는다(era 분류 충돌 방지). 기존 Codex 기능의 제거는 이 세 행 뒤의 별도 작업이며 이 표에 넣지 않는다.
+
 ## §10 코드 경계 — 범위별 새 경로 하나 (제안)
 
 각 범위는 새 경로 `internal/agenticfactory/<scope>/` 하나를 갖고, 공유 접점마다 writer 레인은 하나다. 조정자가 말한 "여섯 범위"의 정식 목록을 찾지 못해 아래를 제안으로 둔다(OQ-4).
 
 | 범위 | 경로 | 맡는 요구사항 |
 |---|---|---|
-| `state` | `internal/agenticfactory/state/` | REQ-AF-001, 002 |
+| `state` | `internal/agenticfactory/state/` | REQ-AF-001, 005, 023, 024 |
 | `delivery` | `internal/agenticfactory/delivery/` | REQ-AF-003 |
-| `ledger` | `internal/agenticfactory/ledger/` | REQ-AF-004, 005, 011(거울) |
+| `ledger` | `internal/agenticfactory/ledger/` | REQ-AF-004, 011(거울) |
 | `claim` | `internal/agenticfactory/claim/` | REQ-AF-006~011 |
 | `policy` | `internal/agenticfactory/policy/` | REQ-AF-012~017, 022 |
-| `gate` | `internal/agenticfactory/gate/` | REQ-AF-018~021 |
+| `gate` | `internal/agenticfactory/gate/` | REQ-AF-002, 018~021 |
 
 공유 접점과 단일 writer(제안):
 
@@ -426,7 +469,7 @@ lane-21 보고서가 남긴 확인 공백(그대로 옮김): ① ego-lite `refer
 |---|---|---|---|---|
 | 만료의 뜻 | 기한 경과 → 임대 행이 `leased`·만료 상태로 남음. 자동 인계는 관측되지 않음(#1938: 행이 그대로 남음) | 기한 경과 → 소유자가 살아 있어도 인계 가능 | 기한 경과는 "확인하라"는 신호일 뿐, 배정은 남음 | slot lease와는 **충돌**. 카드 임대와는 직접 충돌 없음 |
 | 갱신 | 5분마다 renew, 기한이 지나면 `refused-expired` | 해당 없음(보유자 선언 기한) | renew는 활성 힌트를 새로 고침. epoch는 바뀌지 않음 | 기한이 지난 뒤 **살아 있는 소유자의 renew**를 받을지가 갈림(아래 14.3) |
-| 누가 인계하나 | 정식 인계 명령 없음(#1938). 우회로 `assign`을 다른 run에 넣음 | 다른 세션이 acquire로 바로 인계 | ControlService만. 사망 확정 또는 안전 정지 기록 뒤 epoch+1 | 카드 쪽은 "경로 없음"을 메우는 것이라 충돌 아님 |
+| 누가 인계하나 | 정식 인계 명령 없음(#1938). 우회로 `assign`을 다른 run에 넣음. 카드 임대의 생존 확인은 PID만 보는 `FactoryProcessAlive`(`factory_card.go:401`) | 다른 세션이 acquire로 바로 인계. `Stale()`은 `FactoryProcessAlive`(`slot_lease.go:183`) | ControlService만. `ClassifyOwnerWith` 판정 `dead` 또는 안전 정지 기록 뒤 epoch+1 | 카드 쪽은 "경로 없음"을 메우는 것이라 충돌 아님 |
 | 이중 writer 방지 | 임대 행 기준. run이 다르면 행이 늘어남(#1938의 행 셋) | 보장 안 함(설계상 감수) | epoch fencing으로 옛 writer의 늦은 쓰기를 거절 | 제안이 더 강함 |
 | 소유자 사망 시 남는 것 | 임대 행, 카드 트리 | 기록 파일 | 배정 기록, epoch, 트리·브랜치·SHA·dirty 목록 | 충돌 없음 |
 | #1938 재발급 경로 | 없음 | 해당 없음 | 같은 claim 아래 epoch+1, 옛 attempt `superseded` | 충돌 없음(새 경로) |
@@ -441,6 +484,6 @@ lane-21 보고서가 남긴 확인 공백(그대로 옮김): ① ego-lite `refer
 
 1. TTL(15m)과 renew(5m)는 활성 힌트다. 기한이 지나면 ControlService가 활성 확인을 시작한다.
 2. 권위는 배정 epoch다. 모든 쓰기는 epoch를 싣고, 현재 epoch보다 작으면 거절한다(종료 코드 15).
-3. 인계는 ControlService만, 사망 확정 또는 안전 정지 기록 뒤에만, epoch+1로 한다.
+3. 인계는 ControlService만, 활성 판정 `dead`(spec.md §F.2의 `homestate.ClassifyOwnerWith` 정본: PID 부재 또는 시작 시각 불일치) 또는 안전 정지 기록 뒤에만, epoch+1로 한다. `indeterminate`는 인계하지 않는다.
 4. 기한이 지난 renew 처리 방식(현행 거절 유지 또는 같은 epoch의 살아 있는 소유자에게 허용)은 OQ-11 답을 따른다. 답이 오기 전에는 현행 거절을 유지한다.
 5. 자원 slot lease와 `workflow.factory_lease` 키는 이 SPEC에서 고치지 않는다.
