@@ -472,3 +472,23 @@ func TestMalformedIdentitiesAreRefusedBeforeAnyGitCall(t *testing.T) {
 		}
 	}
 }
+
+// The keyed documents (intents, audit rounds, the context ledger) use the same
+// compare-and-swap line as claims, and unknown kinds are still refused.
+func TestDocumentKindsAreStoredAndUnknownKindsRefused(t *testing.T) {
+	r := newFixture(t, true).ref()
+	for _, key := range []string{"intent/9f2c0a", "audit/issue-1948", "context/issue-1948"} {
+		if rev, err := r.CompareAndSwap(bg, key, 0, []byte(`{"n":1}`)); err != nil || rev != 1 {
+			t.Errorf("%s: %d %v", key, rev, err)
+		}
+	}
+	keys, _ := r.Keys(bg, "")
+	if strings.Join(keys, ",") != "audit/issue-1948,context/issue-1948,intent/9f2c0a" {
+		t.Errorf("keys = %v", keys)
+	}
+	for _, bad := range []string{"permit/issue-1", "docs/issue-1", "intent/Bad"} {
+		if _, err := r.CompareAndSwap(bg, bad, 0, []byte(`{}`)); !errors.Is(err, core.ErrIDInvalid) {
+			t.Errorf("%s: %v", bad, err)
+		}
+	}
+}

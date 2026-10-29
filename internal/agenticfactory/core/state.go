@@ -73,6 +73,14 @@ const (
 	// two never need a translation. Provisional: the contract's closed reason
 	// set (design 2.1a) has to list it.
 	ReasonUnclassified BlockReason = "unclassified-403"
+	// Issue permission policy (provisional names; the contract's closed reason set
+	// has to list them).
+	ReasonNotIssueAuthor       BlockReason = "not-issue-author"
+	ReasonIdentityUnknown      BlockReason = "identity-unknown"
+	ReasonRepoNotAllowed       BlockReason = "repository-not-allowed"
+	ReasonPermissionNotGranted BlockReason = "permission-not-granted"
+	ReasonOwnerUnconfirmed     BlockReason = "owner-unconfirmed"
+	ReasonForeignClosing       BlockReason = "foreign-closing-keyword"
 	// ReasonOperatorHold is valid for on-hold only.
 	ReasonOperatorHold BlockReason = "operator-hold"
 )
@@ -82,7 +90,7 @@ var allReasons = []BlockReason{
 	ReasonAuthFailed, ReasonPermissionDenied, ReasonRateLimited, ReasonCapacityShort,
 	ReasonBudgetExhausted, ReasonCheckNotPassed, ReasonDebtPresent, ReasonVerdictNotPass,
 	ReasonProducerNotAllowed, ReasonOwnershipUnverified, ReasonStoreUnavailable,
-	ReasonUserControl, ReasonOperatorAckMissing, ReasonUnclassified, ReasonOperatorHold,
+	ReasonUserControl, ReasonOperatorAckMissing, ReasonUnclassified, ReasonNotIssueAuthor, ReasonIdentityUnknown, ReasonRepoNotAllowed, ReasonPermissionNotGranted, ReasonOwnerUnconfirmed, ReasonForeignClosing, ReasonOperatorHold,
 }
 
 // AllReasons returns every reason in declaration order.
