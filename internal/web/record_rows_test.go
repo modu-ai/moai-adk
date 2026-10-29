@@ -23,6 +23,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/claim"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/monitor"
 )
 
 func writeRecord(t *testing.T, dir string, r claim.Record) {
@@ -305,5 +306,19 @@ func TestRecordRows_RepairBacklogFromPersistedFacts(t *testing.T) {
 	// A Collector-shaped JSON without the record key keeps repair 'not provided'.
 	if got := prMeta(prApp(t, prRowsJSON, nil).buildPRTracking(context.Background())); !strings.Contains(got, "repair 3") {
 		t.Errorf("collector backlog must be unchanged: %q", got)
+	}
+}
+
+// TestRecordRows_BacklogStateIsTheMonitors: the open-vs-limit comparison is the
+// monitor's own published function, at every boundary.
+func TestRecordRows_BacklogStateIsTheMonitors(t *testing.T) {
+	for _, limit := range []int{0, 2, 3, 9} {
+		s, dir := recordStore(t, limit)
+		seedRecords(t, dir) // 5 open PRs
+		got := recordApp(t, s).buildPRTracking(context.Background()).Backlog
+		open := 5
+		if exp := string(monitor.BacklogStateOf(open, limit)); got.State != exp || got.Open != open {
+			t.Errorf("limit %d: state %q, want %q (open %d)", limit, got.State, exp, got.Open)
+		}
 	}
 }

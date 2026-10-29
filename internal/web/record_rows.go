@@ -72,7 +72,7 @@ func RecordRowsFrom(s RecordSource) func(context.Context) ([]byte, error) {
 			}
 		}
 		limit := s.MaxOpenPRs()
-		view.Backlog = recField(monitor.Backlog{Open: open, Limit: limit, State: recBacklogState(open, limit)}, at, true)
+		view.Backlog = recField(monitor.Backlog{Open: open, Limit: limit, State: monitor.BacklogStateOf(open, limit)}, at, true)
 		out := recordView{View: view, PRURLs: urls, RepairBacklog: &repair}
 		return json.Marshal(out)
 	}
@@ -152,18 +152,4 @@ func recordPhase(r claim.Record) monitor.PRPhase {
 		return monitor.PhaseRepairNeeded
 	}
 	return ""
-}
-
-// recBacklogState mirrors the monitor's comparison of the open count with the
-// configured cap (its own helper is unexported).
-func recBacklogState(open, limit int) monitor.BacklogState {
-	switch {
-	case limit <= 0:
-		return monitor.BacklogNoLimit
-	case open > limit:
-		return monitor.BacklogOver
-	case open == limit:
-		return monitor.BacklogAtLimit
-	}
-	return monitor.BacklogWithin
 }
