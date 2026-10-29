@@ -529,9 +529,99 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 
 ### G.2 아직 없는 시험 이름 — 담당 lane별
 
-추론 규칙: 패키지 경로로만 정한다(core·claim·runner·checkpoint·gitref → lane-18; effect/*·forge·monitor·resident·reconcile·mirror·ctxmodel → lane-20; web·browser·e2e·intake → lane-21; internal/cli → lane-22). 이 대응은 **추론**이다. 옛 명령은 대부분 `./internal/agenticfactory/...` 전체를 골라 패키지 경로를 담고 있지 않으므로, 경로가 없는 이름은 "lane 미정"으로 둔다.
+- **배정**: lane-17이 리더 판정(relayed)에 따라 정했다. 기준은 각 이름을 고르는 AC의 `maps REQ-…` 줄과, 고정 후보 `4cdaba5d7e`의 패키지 배치(`git ls-tree -d --name-only 4cdaba5d7e internal/agenticfactory/`와 형제 시험 파일 이름)다.
+- **lane 표(리더 판정)**: lane-17 = 계약·설정(`internal/config`, SPEC). lane-18 = core, claim, runner, mirror, checkpoint, ctxmodel, gitref. lane-20 = effect(effect/* 포함), monitor(monitor/* 포함), forge(forge/webhook 포함), resident, reconcile. lane-21 = web, e2e, browser, intake(intake는 추론). lane-22 = `internal/cli`와 통합.
+- **패키지 칸은 제안이다.** lane은 다른 곳에 둘 수 있다. 경로는 `internal/agenticfactory/` 아래이며, 그 밖이면 전체 경로를 적었다.
+- 두 lane에 걸친 이름은 주된 동작의 lane에 두고, 다른 lane을 "zusätzlich"로 적었다.
+- "동작" 칸은 AC 본문 사례 문장에서 옮겼다. AC가 사례 없이 이름만 적은 경우에는 "사례 문장 없음"이라고 적고, 동작을 지어내지 않았다.
+- 이 목록은 사실로서 각 lane에 보낸다.
+- 배정 불가: 없음. 모든 이름의 REQ에 놓을 동작이 있다.
 
-- lane-21(e2e, 추론): `TestProtectionGuard_RefusesEveryWeakeningOperation`(같은 접두 시험 3개가 `e2e`에 있음), `TestScenarioSuite`(§A.1이 `internal/agenticfactory/e2e/`를 적음).
-- lane 미정(명령에 패키지 경로 없음): `TestAcceptanceManifest`와 그 하위 시험 전부(M·SYNC·HANDOFF·PREP·CONTEXT·GH·WT·CLI·EFF id), `TestClaim_DeadOwnerExpiredAttempt_ReissuedUnderSameClaim`, `TestClaim_WorktreeIdentity_NormalizedPathPreventsMismatch`, `TestClaim_SameNameTree_NoDivergentTreeCreated`, `TestAuthority_*`, `TestIssueAuthority_*`, `TestLiveness_*`(`TestLiveness_CrashHandover_ResponsibilityPassesWithEpoch`), `TestDelivery_*`(`TestDelivery_ReplyLoss_RecoveredFromRecordNotReply`), `TestDone_*`, `TestGate_ReasonTable_*`, `TestPRQueue_*`, `TestHandoff_*`, `TestRepair_*`, `TestResponsibility_*`(`TestResponsibility_CIFailure_SameAgentRepairsThroughDone`, `TestResponsibility_SecondIssue_OnlyWhenConditionsHold`), `TestIndependence_*`(`TestIndependence_LeaderDoesNotTakeOverAgentWork`), `TestGate_RoleEvidence_RequiresChildAttribution_AndLockHolds`, `TestLock_*`, `TestRedact_*`(13), `TestLedger_FieldOwner_*`, `TestForgeClassify_*`, `TestBudget_*`, `TestProvider_*`, `TestTransition_Table_*`(`TestTransition_Table_WaitRecordRequiresAllSixFields`), `TestState_SpeclessIssue_TransitionsWithoutSpecHash`, `TestState_OperatorDecision_RequiresOperatorEvidence_CoordinatorRefused`, `TestLedger_*`, `TestEvidenceStage_*`, `TestObservationView_ShowsPrepAndPRBacklogStatesDistinctly_ReadOnly`, `TestEnvMatrix_StepEvidenceRequired_NotRunNeverSuccess`, `TestEfficiencyRecord_*`.
-- lane 미정(두 경로를 함께 고름): `TestAgenticFactoryConfig_*`·`TestBrowserSelect_*`(`internal/config`·AF), `TestCompat_*`·`TestLauncher_*`(`internal/cli`·AF).
-- lane 미정(하위 SPEC, 경로 `internal/agenticfactory/identity/`는 규칙에 없음): G.1의 `TestIdentity_*` 아홉.
+#### lane-18
+
+| 시험 이름 | AC | REQ | 패키지(제안) | 동작 |
+|---|---|---|---|---|
+| `TestClaim_DeadOwnerExpiredAttempt_ReissuedUnderSameClaim` | AC-AF-001 | REQ-AF-001 | `claim/`(`claim_test.go` 옆) | 사례 문장 없음(§12 재현 시험 이름만 적힘) |
+| `TestClaim_WorktreeIdentity_NormalizedPathPreventsMismatch` | AC-AF-001 | REQ-AF-001 | `claim/` | 사례 문장 없음(§12 재현 시험 이름만 적힘) |
+| `TestClaim_SameNameTree_NoDivergentTreeCreated` | AC-AF-001 | REQ-AF-001 | `claim/` | 사례 문장 없음(§12 재현 시험 이름만 적힘) |
+| `TestAuthority_*` | AC-AF-002 | REQ-AF-002 | `claim/`(`controlref_test.go` 옆) | A4: control ref에 없는 claim이 로컬 캐시에만 있음 → claim으로 인정하지 않음 |
+| `TestIssueAuthority_*` | AC-AF-003 | REQ-AF-003 | `core/`(`authz_test.go` 옆) | IA1, IA2, IA5~IA8, IA11, IA13, 정적 단언(`internal/config`에 사유 문자열 0건, `ForeignIssueAllows` 0건). zusätzlich lane-20: IA14 PR effect 전송 0, IA16 새 Issue 0 |
+| `TestLiveness_*` | AC-AF-004 | REQ-AF-004 | `runner/`(`takeover_test.go` 옆) | (d) 재시작·끊김 뒤 실제 실행 조회가 재개·재발급·PARKED 결정보다 먼저, 강제 종료 0, 중복 attempt 0 |
+| `TestLiveness_CrashHandover_ResponsibilityPassesWithEpoch` | AC-AF-004 | REQ-AF-004 | `runner/` | (e) 책임 agent `dead` → 새 agent에 epoch+1로 책임, 책임 기록이 비는 순번 0, 이전 worktree·branch·변경 보존, `live`·`indeterminate`면 이전 0 |
+| `TestDone_*` | AC-AF-006 | REQ-AF-006 | `core/`(`closing_test.go` 옆) | (a) 종료 effect 순번 < DONE 순번 (b) 종료 실패 → MERGING + PARKED `pending-effect` (c) 로컬 동기화 변형 → DONE 거절 (d) `deploy: N/A` 사유 없음 → 거절 (e) DONE 전 다음 dispatch → 거절. zusätzlich lane-20: Issue 종료 effect |
+| `TestGate_ReasonTable_*` | AC-AF-007 | REQ-AF-007 | `core/`(`gate_test.go` 옆) | design §2.1b 8행마다 기대 사유 하나, 기록 수 1. 검사 미통과 → `check-not-passed`, 감사 예산 소진 → `budget-exhausted` |
+| `TestPRQueue_*` | AC-AF-007 | REQ-AF-007 | `runner/`(`next_test.go` 옆) | 적체 (a) 열린 인계 + 수리 적체 = `wip_limit` → 새 dispatch 0, 종결·수리 effect는 계속. zusätzlich lane-17: 적체 (b) 설정 로드 거절 |
+| `TestHandoff_*`, `TestRepair_*`, `TestResponsibility_*` | AC-AF-009 | REQ-AF-009 | `runner/`(`handoff_test.go`·`repair_test.go` 옆) | (a)~(e): receipt 필드 하나씩 빼기 → E03 거절, PR 발행만 → DONE·REVIEWING 아님, E03 뒤 책임 유지·보존, E06 수리 배타 claim, MERGING 중 HEAD 변경 → E10 |
+| `TestResponsibility_CIFailure_SameAgentRepairsThroughDone` | AC-AF-009 | REQ-AF-009 | `runner/` | (f) 실패한 필수 검사 → 같은 agent가 수리부터 DONE까지, leader 커밋 0, 단계 순번 |
+| `TestResponsibility_SecondIssue_OnlyWhenConditionsHold` | AC-AF-009 | REQ-AF-009 | `runner/` | (g) ①~⑤ 두 번째 Issue 배차 조건 |
+| `TestIndependence_*` | AC-AF-010 | REQ-AF-010 | `core/`(`authz_test.go`·`gate_test.go` 옆) | (a)~(e): ControlService 밖 쓰기 거절, Coordinator 직접 상태 쓰기 거절, 같은 Issue writer의 리뷰 불산입, Coordinator 구현의 리뷰 불산입, 다른 Issue writer의 리뷰 산입 |
+| `TestIndependence_LeaderDoesNotTakeOverAgentWork` | AC-AF-010 | REQ-AF-010 | `core/` | (f) Coordinator의 구현·수리·리뷰 대응 쓰기 요청 → 거절, attempt 기록 불변 |
+| `TestGate_RoleEvidence_RequiresChildAttribution_AndLockHolds` | AC-AF-011 | REQ-AF-011 | `runner/`(`attribution_test.go` 옆) | L1 증거 종류 6개 각각 `unattributable{identity-spec-incomplete}`, L2 종류마다 `producer-not-allowed` 하나 |
+| `TestLock_*` | AC-AF-011 | REQ-AF-011 | `runner/` | L3 설정·환경 변수 변경에도 결과 바이트 동일 + 정적 검사, P4a, P4b. zusätzlich lane-21: L4 시나리오 하네스 사전 점검 |
+| `TestRedact_*`(13) | AC-AF-013 | REQ-AF-013 | `core/`(`core_test.go` 옆) | C1 3, C2 1, C3 2, C4 2, C5 1, Restricted 1, Idempotent 1, Negative 2(범주 하나를 뺀 변형에서 FAIL). zusätzlich lane-20: AC 초록 경로의 refiner(M5) |
+| `TestLedger_FieldOwner_*` | AC-AF-013 | REQ-AF-013 | `ctxmodel/` | 필드 owner가 아닌 역할의 장부 쓰기 → 거절 |
+| `TestTransition_Table_*` | AC-AF-016 | REQ-AF-016 | `core/`(`stage_model_test.go` 옆) | (b) 요청자 불일치 → 거절 (c) PARKED 사유 집합 밖 → 거절 (d) E20 → 단계·owner 불변 |
+| `TestTransition_Table_WaitRecordRequiresAllSixFields` | AC-AF-016 | REQ-AF-016 | `core/`(`wait_test.go` 옆) | (e) 필드 하나씩 뺀 대기 기록 여섯 → 각각 거절, 여섯 필드 기록 → 받아들임 |
+| `TestState_SpeclessIssue_TransitionsWithoutSpecHash` | AC-AF-016 | REQ-AF-016 | `core/` | 사례 문장 없음(§12 이름만 적힘) |
+| `TestState_OperatorDecision_RequiresOperatorEvidence_CoordinatorRefused` | AC-AF-016 | REQ-AF-016 | `core/` | 사례 문장 없음(§12 이름만 적힘) |
+
+#### lane-20
+
+| 시험 이름 | AC | REQ | 패키지(제안) | 동작 |
+|---|---|---|---|---|
+| `TestDelivery_*` | AC-AF-005 | REQ-AF-005 | `effect/`(`intent_test.go` 옆) | (a) 전송 성공만 → `sent`만, `received` 이상 0 (b) idle 알림 → `completed` 아님 |
+| `TestDelivery_ReplyLoss_RecoveredFromRecordNotReply` | AC-AF-005 | REQ-AF-005 | `effect/` | (e) 완료 답장 유실 → 기록으로 복구, 재전송 0, 대기 기록 여섯 필드. zusätzlich lane-18: runner의 진행 복구 |
+| `TestProtectionGuard_RefusesEveryWeakeningOperation` | AC-AF-008 | REQ-AF-008 | `effect/`(같은 접두 시험 3개는 `e2e/`) | design §11.3 W1~W7 각각 → 전송 0, 상태 불변, `permission-denied` 사유 1개. zusätzlich lane-18: 사유 타입 |
+| `TestForgeClassify_*` | AC-AF-014 | REQ-AF-014 | `forge/`(`forge_test.go` 옆) | design §4.5 G1~G8·L1~L6 각각 → 표의 분류와 재시도 수 |
+| `TestBudget_*` | AC-AF-014 | REQ-AF-014 | `forge/`(`budget_test.go` 옆) | 예산 (a) 재개 시각 전 요청 0 (b) 헤더 없음 → `UNKNOWN` (c) 설정 기본값 변경에 대기 동작이 따라감 (d) 예비 몫 아래 우선순위, 다른 자격·endpoint 전환 0 |
+| `TestProvider_*` | AC-AF-015 | REQ-AF-015 | `review/`(`call_test.go` 옆; review는 lane 표에 없음) | (a) `codex.enabled` 미설정 → Codex 호출 0 (b) `false` → 0 (c) `true` → 계수 1 이상 (d) GLM 호출 0. zusätzlich lane-17: `codex.enabled` 키 |
+| `TestLedger_*`, `TestEvidenceStage_*` | AC-AF-018 | REQ-AF-019 | `effect/ctxledger/` | (a)~(g): `inaccessible-local`, `inaccessible-unpushed`, HEAD 변경 → `STALE`, blob 변경 → `STALE`, 조회 실패 → `UNKNOWN`, `PUSHED`에서 조회 전 `AVAILABLE` 0, branch 이름 URL 거절 |
+| `TestObservationView_ShowsPrepAndPRBacklogStatesDistinctly_ReadOnly` | AC-AF-019 | REQ-AF-020 | `monitor/`(`view_ext_test.go` 옆) | (a) 항목마다 값·원천·읽은 시각 (b) 준비 7행·PR 적체를 BUILDING 이후와 다른 구역에 (c) 순번·트리 키 동일, 쓰기 0 (d) C1~C5 원값 0 |
+
+#### lane-21
+
+| 시험 이름 | AC | REQ | 패키지(제안) | 동작 |
+|---|---|---|---|---|
+| `TestScenarioSuite`(하위 `01_…`~`07_…`) | AC-AF-025 | REQ-AF-006(보조 REQ-AF-001·004·005·011) | `e2e/` | §A.1 하위 시험 01~07, 실제 Issue 한 쌍, 한 번의 실행 |
+| `TestBrowserSelect_*` | AC-AF-020 | REQ-AF-021 | `browser/`(`resolve_test.go` 옆) | (d) 미선택 → `chrome` (e) `aside` 선택·미설치 → PARKED `not-installed`, `chrome` 호출 0 (f) 선택 저장 뒤 다시 읽기 → 같은 값. zusätzlich lane-17: (f)의 저장 |
+
+#### lane-17
+
+| 시험 이름 | AC | REQ | 패키지(제안) | 동작 |
+|---|---|---|---|---|
+| `TestAgenticFactoryConfig_*` | AC-AF-020 | REQ-AF-021 | `internal/config/`(`agentic_factory_test.go` 옆) | (a) 범위 밖 값 → 키·범위·파일을 밝혀 거절, 깎기 0 (b) 읽기 오류 → 미설정 처리 0 |
+
+#### lane-22
+
+| 시험 이름 | AC | REQ | 패키지(제안) | 동작 |
+|---|---|---|---|---|
+| `TestCompat_*`, `TestLauncher_*` | AC-AF-021 | REQ-AF-022 | `internal/cli/`(`launch_exec_test.go`·`gtd_compat_test.go` 옆) | (a)~(g): golden 바이트 동일, stderr 한 줄, 버전 선언 없는 새 문법 → 종료 2, 혼합 → 호환 오류, 역할 뒤바뀜 0, 모르는 인자 거절, `--` 뒤 전달. golden 순서 점검 |
+| `TestEnvMatrix_StepEvidenceRequired_NotRunNeverSuccess` | AC-AF-023 | REQ-AF-024 | 기존 패키지 없음(새 위치) | (a) 명령·종료 코드·출력 중 하나 없음 → 행 거절 (b) 실행 안 한 단계 → `not-run` (c) 전부 `BLOCKED` → 행렬 FAIL (d) Codex 미설정 → `BLOCKED(not-configured)` |
+| `TestEfficiencyRecord_*` | AC-AF-024 | REQ-AF-025 | 기존 패키지 없음(새 위치) | (a) 필드 누락 → 거절 (b) `estimated`를 `measured` 칸에 → 거절 (c) 품질 회귀 비교 → 향상 보고 0 (d) checkpoint 비용 필드는 측정값 또는 Gap. zusätzlich lane-18: (d) checkpoint |
+| `TestAcceptanceManifest`(실행기) | 전부 | — | 기존 패키지 없음(새 위치) | design §15.1 정본 id를 하위 시험으로 돈다(§A). 각 id의 동작은 AC 본문에 따로 적혀 있지 않다. zusätzlich: 각 id는 그 AC의 lane |
+
+`TestAcceptanceManifest`의 하위 시험(정본 id, 각 AC의 "정본 주 시험" 줄):
+- AC-AF-001: M01~M05
+- AC-AF-002: SYNC12, M47
+- AC-AF-003: M13, M15
+- AC-AF-004: M06~M12
+- AC-AF-005: M18~M20, M29~M31, SYNC03~SYNC05, SYNC11
+- AC-AF-006: M33~M36
+- AC-AF-007: M14, M24~M27, M32, M37, M55
+- AC-AF-009: HANDOFF01~HANDOFF08
+- AC-AF-010: M22, M23
+- AC-AF-012: PREP01~PREP10
+- AC-AF-013: M39, M40, CONTEXT04
+- AC-AF-014: M17, M28, M43, M44, GH05, GH06, SYNC09, SYNC10, WT15, SYNC13~SYNC18
+- AC-AF-015: M21
+- AC-AF-016: M16, M41, M42, M48, M54, M56
+- AC-AF-017: M45, M49~M53, SYNC01, SYNC02, SYNC06~SYNC08
+- AC-AF-018: CONTEXT01~03, CONTEXT05, CONTEXT06
+- AC-AF-020: M38, M46, M46a~M46g
+- AC-AF-021: CLI01~CLI23
+- AC-AF-022: WT01~WT14, WT16, GH01~GH04, GH07~GH15
+- AC-AF-024: EFF01~EFF06
+
+#### IDENTITY
+
+하위 SPEC-AGENTIC-FACTORY-IDENTITY-001 [REF]의 항목은 lane-18이 구현한다(커밋 `6b945fd844` HostFacts. relayed, not read). 하위 SPEC의 `acceptance.md`에는 자체 목록이 아직 필요하며, 다음 작업에서 만든다. G.1의 `TestIdentity_*` 아홉은 이 표에 넣지 않았다.
