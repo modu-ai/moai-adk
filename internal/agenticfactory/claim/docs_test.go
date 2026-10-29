@@ -327,3 +327,51 @@ func TestRebuildSkipsUnknownKindsAndRefusesBadDocs(t *testing.T) {
 		t.Errorf("an authority document with an invalid name: %v", err)
 	}
 }
+
+func TestUpdateDocCreatesAppliesAndAborts(t *testing.T) {
+	s := open(t)
+	d, err := s.UpdateDoc("context", "issue-1", func(cur []byte) ([]byte, error) {
+		if cur != nil {
+			t.Errorf("a missing document is passed as nil, got %q", cur)
+		}
+		return []byte(`{"n":1}`), nil
+	})
+	if err != nil || d.Rev != 1 {
+		t.Fatalf("create: %+v %v", d, err)
+	}
+	d, err = s.UpdateDoc("context", "issue-1", func(cur []byte) ([]byte, error) {
+		if string(cur) != `{"n":1}` {
+			t.Errorf("current data = %q", cur)
+		}
+		return []byte(`{"n":2}`), nil
+	})
+	if err != nil || d.Rev != 2 {
+		t.Fatalf("update: %+v %v", d, err)
+	}
+	boom := errors.New("refused")
+	if _, err := s.UpdateDoc("context", "issue-1", func([]byte) ([]byte, error) { return nil, boom }); !errors.Is(err, boom) {
+		t.Errorf("fn error: %v", err)
+	}
+	if got, _ := s.GetDoc("context", "issue-1"); got.Rev != 2 {
+		t.Errorf("an aborted update changed the document: %+v", got)
+	}
+	if _, err := s.UpdateDoc("nope", "x", func([]byte) ([]byte, error) { return []byte(`{}`), nil }); !errors.Is(err, core.ErrIDInvalid) {
+		t.Errorf("unknown kind: %v", err)
+	}
+}
+
+func TestUpdateDocReadsTheAuthorityAgainOnAConflict(t *testing.T) {
+	m := NewMemoryRef()
+	s1, s2 := attached(t, m), attached(t, m)
+	if _, err := s1.UpdateDoc("context", "issue-1", func([]byte) ([]byte, error) { return []byte(`{"by":"s1"}`), nil }); err != nil {
+		t.Fatal(err)
+	}
+	var seen string
+	d, err := s2.UpdateDoc("context", "issue-1", func(cur []byte) ([]byte, error) {
+		seen = string(cur)
+		return []byte(`{"by":"s2"}`), nil
+	})
+	if err != nil || d.Rev != 2 || seen != `{"by":"s1"}` {
+		t.Fatalf("second machine: %+v %v seen=%q", d, err, seen)
+	}
+}

@@ -282,41 +282,66 @@ func (s *Store) AuditRounds(issue int) ([]string, error) {
 
 // UpdateAuditRounds applies fn to the recorded rounds and stores the result. The
 // decision (does this round count, is the budget spent) is fn's: the store only
-// makes the read-modify-write safe, retrying when another writer moved the
-// revision first. A fn error aborts and leaves the rounds untouched.
+// makes the read-modify-write safe. A fn error aborts and leaves the rounds
+// untouched.
 func (s *Store) UpdateAuditRounds(issue int, fn func(rounds []string) ([]string, error)) ([]string, error) {
 	name, err := auditName(issue)
 	if err != nil {
 		return nil, err
 	}
-	for try := 0; try < 10; try++ {
-		var cur auditDoc
-		var rev int64
-		if d, err := s.GetDoc("audit", name); err == nil {
-			rev = d.Rev
-			if err := json.Unmarshal(d.Data, &cur); err != nil {
+	var next []string
+	_, err = s.UpdateDoc("audit", name, func(cur []byte) ([]byte, error) {
+		var a auditDoc
+		if cur != nil {
+			if err := json.Unmarshal(cur, &a); err != nil {
 				return nil, fmt.Errorf("%w: corrupt audit rounds: %v", core.ErrStoreUnavailable, err)
 			}
-		} else if !errors.Is(err, core.ErrNotHeld) {
+		}
+		var err error
+		if next, err = fn(append([]string(nil), a.Rounds...)); err != nil {
 			return nil, err
 		}
-		next, err := fn(append([]string(nil), cur.Rounds...))
-		if err != nil {
-			return nil, err
-		}
-		b, _ := json.Marshal(auditDoc{Rounds: next})
-		if _, err := s.PutDoc("audit", name, rev, b); err != nil {
-			if errors.Is(err, core.ErrRevisionConflict) {
-				if perr := s.pullDoc("audit", name); perr != nil {
-					return nil, perr
-				}
-				continue
-			}
-			return nil, err
-		}
-		return next, nil
+		return json.Marshal(auditDoc{Rounds: next})
+	})
+	if err != nil {
+		return nil, err
 	}
-	return nil, fmt.Errorf("%w: audit rounds of issue-%d kept moving", core.ErrBusy, issue)
+	return next, nil
+}
+
+// UpdateDoc is a safe read-modify-write of one document: fn gets the current
+// data (nil when the document does not exist yet) and returns the new data. When
+// another writer moved the revision first, the document is read again from the
+// authority and fn runs again on what is there, so no writer's change is lost. A
+// fn error aborts without a write.
+func (s *Store) UpdateDoc(kind, name string, fn func(cur []byte) ([]byte, error)) (Doc, error) {
+	if _, err := checkDoc(kind, name); err != nil {
+		return Doc{}, err
+	}
+	for try := 0; try < 10; try++ {
+		var cur []byte
+		var rev int64
+		if d, err := s.GetDoc(kind, name); err == nil {
+			cur, rev = d.Data, d.Rev
+		} else if !errors.Is(err, core.ErrNotHeld) {
+			return Doc{}, err
+		}
+		data, err := fn(cur)
+		if err != nil {
+			return Doc{}, err
+		}
+		d, err := s.PutDoc(kind, name, rev, data)
+		if err == nil {
+			return d, nil
+		}
+		if !errors.Is(err, core.ErrRevisionConflict) {
+			return Doc{}, err
+		}
+		if perr := s.pullDoc(kind, name); perr != nil {
+			return Doc{}, perr
+		}
+	}
+	return Doc{}, fmt.Errorf("%w: %s/%s kept moving", core.ErrBusy, kind, name)
 }
 
 // Rebuild support for documents.
