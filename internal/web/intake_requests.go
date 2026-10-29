@@ -124,7 +124,7 @@ func (a *app) buildIntakeRequests(ctx context.Context) IntakeRequestsVM {
 	vm := IntakeRequestsVM{Known: true, Source: "claim-store"}
 	for _, r := range reqs {
 		row := IntakeRequestVM{
-			Redacted: anyMasked(r.Key, r.Parked, r.Agent, r.AgentName, r.Slot, r.AckedBy, r.StartedRef, r.Stage),
+			Redacted: anyMasked(r.rawTexts()...),
 			Key:      refineText(r.Key), Status: orGap(r.Stage), Stage: orGap(r.Stage), Parked: refineText(r.Parked), Issue: prGap,
 			AgentName: orGap(r.AgentName), Agent: orGap(r.Agent), Slot: orGap(r.Slot), Ready: prGap,
 			AckedBy: orGap(r.AckedBy), Attempts: r.Attempts, Started: r.Started, StartedRef: refineText(r.StartedRef),
@@ -169,4 +169,23 @@ func requestsMeta(v IntakeRequestsVM) string {
 		return "no data"
 	}
 	return v.Source + " · " + strconv.Itoa(len(v.Rows)) + " requests · parked " + strconv.Itoa(v.ParkedCount) + " · blocked " + strconv.Itoa(v.BlockedCount)
+}
+
+// rawTexts lists every free text of a request record that reaches the page,
+// before refining, so the row can say whether anything was masked.
+func (r monRequest) rawTexts() []string {
+	out := []string{r.Key, r.Stage, r.Parked, r.Agent, r.AgentName, r.Slot, r.AckedBy, r.StartedRef}
+	if b := r.Branch; b != nil {
+		out = append(out, b.Ref)
+	}
+	if rd := r.Ready; rd != nil {
+		out = append(out, rd.Host, rd.Slot, rd.Path, rd.Head)
+	}
+	if b := r.Blocked; b != nil {
+		out = append(out, b.Step, b.Detail, b.Resume)
+	}
+	for _, e := range r.Evidence {
+		out = append(out, e.Stage, e.Ref)
+	}
+	return out
 }

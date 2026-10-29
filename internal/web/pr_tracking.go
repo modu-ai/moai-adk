@@ -187,7 +187,7 @@ func (a *app) buildPRTracking(ctx context.Context) PRTrackingVM {
 			}),
 		}
 		if r.HeadSHA.Confirmed && r.HeadSHA.Value != "" {
-			row.Head = r.HeadSHA.Value[:min(8, len(r.HeadSHA.Value))]
+			row.Head = shortOrGap(r.HeadSHA.Value, 8)
 		}
 		if r.Checks.Confirmed {
 			row.Checks = summarizeChecks(r)

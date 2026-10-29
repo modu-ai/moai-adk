@@ -56,7 +56,7 @@ func (a *app) buildContextModel(ctx context.Context, issue int) ContextModelVM {
 	vm := ContextModelVM{Known: true}
 	for _, it := range led.Items {
 		vm.Items = append(vm.Items, ContextModelItemVM{
-			Redacted: anyMasked(string(it.Section), it.Title, it.Owner, it.Path, it.Revision, it.Verified, it.VerifiedAt, string(it.State)),
+			Redacted: anyMasked(string(it.Section), it.Title, it.Owner, it.Path, it.Commit, it.TargetHead, it.SHA256, it.Revision, it.Verified, it.VerifiedAt, string(it.State)),
 			Section:  orGap(string(it.Section)), Title: masked(it.Title), Owner: masked(it.Owner),
 			Path: orGap(it.Path), Commit: shortOrGap(it.Commit, 12), TargetHead: shortOrGap(it.TargetHead, 12),
 			Hash: shortOrGap(it.SHA256, 12), Revision: orGap(it.Revision), Verified: orGap(it.Verified),
@@ -83,9 +83,14 @@ func modelStatus(it ctxmodel.Item) string {
 
 func masked(s string) string { return orGap(s) }
 
+// shortOrGap cuts a normally-hex value to n characters — after refining it, and
+// never cutting a value the refiner changed (the cut would keep its start).
 func shortOrGap(s string, n int) string {
 	if s == "" {
 		return prGap
+	}
+	if r := refineText(s); r != s {
+		return r
 	}
 	return s[:min(n, len(s))]
 }

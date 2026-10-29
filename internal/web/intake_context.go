@@ -74,7 +74,7 @@ func buildIntake(f monField[[]monIntakeItem]) IntakeRequestsVM {
 	vm := IntakeRequestsVM{Known: true, Source: "monitor"}
 	for _, it := range f.Value {
 		row := IntakeRequestVM{
-			Redacted: anyMasked(it.Key, it.Parked, it.Agent, it.Slot, it.Stage, it.State),
+			Redacted: anyMasked(it.rawTexts()...),
 			Key:      refineText(it.Key), Status: orGap(it.State), Stage: orGap(it.Stage), Parked: refineText(it.Parked), Issue: prGap,
 			AgentName: prGap, Agent: orGap(it.Agent), Slot: orGap(it.Slot), Ready: prGap, AckedBy: prGap,
 			Started: it.Started, Retryable: prGap, Branch: prGap,
@@ -171,4 +171,13 @@ func contextMeta(vm PRTrackingVM) string {
 		n += len(r.Context.Items)
 	}
 	return strconv.Itoa(n) + " items"
+}
+
+// rawTexts lists every free text of a monitor intake item that reaches the page.
+func (it monIntakeItem) rawTexts() []string {
+	out := []string{it.Key, it.Stage, it.State, it.Parked, it.Agent, it.Slot}
+	if b := it.Block; b != nil {
+		out = append(out, b.Step, b.Detail, b.Resume)
+	}
+	return out
 }
