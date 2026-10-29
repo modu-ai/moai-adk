@@ -145,7 +145,7 @@ func TestMonitorRendersIntakeAndContext(t *testing.T) {
 	m, _ := a.buildMonitor(time.Now())
 	html := renderTempl(t, Monitor(tg1ShellVM(), m))
 	for _, want := range []string{
-		`id="intake-requests"`, "PARKED", "BLOCKED", "EFFECT_UNKNOWN", "do not re-issue", "resume wait for the rate limit", "token=****",
+		`id="intake-requests"`, "PARKED", "BLOCKED", "EFFECT_UNKNOWN", "do not re-issue", "resume wait for the rate limit", "token=[REDACTED]",
 		`id="context-ledger"`, `href="https://example.test/a"`, "link unverified", "link inaccessible",
 		"stale", "inaccessible", "owner agent-1", "stage remote-verified", "stage pushed", "link restricted", "handoff waiting not provided",
 	} {

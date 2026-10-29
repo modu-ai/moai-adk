@@ -43,14 +43,14 @@ func (a *app) buildBrowserSelection(ctx context.Context) BrowserSelectionVM {
 	vm := BrowserSelectionVM{}
 	saved, err := a.browserSelected(a.cfg.ProjectRoot)
 	if err != nil {
-		vm.Note = "selection unreadable: " + err.Error()
+		vm.Note = "selection unreadable: " + refineText(err.Error())
 		vm.Choices = browserChoices("")
 		return vm
 	}
 	vm.Choices = browserChoices(saved)
 	res, err := browser.Preflight(ctx, saved, a.browserProbe)
 	if err != nil {
-		vm.Note = "unrecognised selection: " + saved
+		vm.Note = "unrecognised selection: " + refineText(saved)
 		return vm
 	}
 	if res.Blocked() {

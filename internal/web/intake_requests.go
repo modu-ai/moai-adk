@@ -55,6 +55,8 @@ type monRequest struct {
 
 // IntakeRequestVM is one background intake request.
 type IntakeRequestVM struct {
+	// Redacted is set when refining masked something on this row.
+	Redacted    bool
 	Key         string
 	Status      string // stage, or BLOCKED / EFFECT_UNKNOWN when the record is blocked
 	Stage       string // the stored stage
@@ -113,31 +115,32 @@ func (a *app) buildIntakeRequests(ctx context.Context) IntakeRequestsVM {
 	}
 	raw, err := a.intakeRequests(ctx)
 	if err != nil {
-		return IntakeRequestsVM{Note: "intake requests unreadable: " + err.Error()}
+		return IntakeRequestsVM{Note: "intake requests unreadable: " + refineText(err.Error())}
 	}
 	var reqs []monRequest
 	if err := json.Unmarshal(raw, &reqs); err != nil {
-		return IntakeRequestsVM{Note: "intake requests malformed: " + err.Error()}
+		return IntakeRequestsVM{Note: "intake requests malformed: " + refineText(err.Error())}
 	}
 	vm := IntakeRequestsVM{Known: true, Source: "claim-store"}
 	for _, r := range reqs {
 		row := IntakeRequestVM{
-			Key: r.Key, Status: orGap(r.Stage), Stage: orGap(r.Stage), Parked: r.Parked, Issue: prGap,
+			Redacted: anyMasked(r.Key, r.Parked, r.Agent, r.AgentName, r.Slot, r.AckedBy, r.StartedRef, r.Stage),
+			Key:      refineText(r.Key), Status: orGap(r.Stage), Stage: orGap(r.Stage), Parked: refineText(r.Parked), Issue: prGap,
 			AgentName: orGap(r.AgentName), Agent: orGap(r.Agent), Slot: orGap(r.Slot), Ready: prGap,
-			AckedBy: orGap(r.AckedBy), Attempts: r.Attempts, Started: r.Started, StartedRef: r.StartedRef,
+			AckedBy: orGap(r.AckedBy), Attempts: r.Attempts, Started: r.Started, StartedRef: refineText(r.StartedRef),
 			Retryable: prGap, Branch: prGap,
 		}
 		if r.Issue > 0 {
 			row.Issue = "#" + strconv.Itoa(r.Issue)
 		}
 		if r.Branch != nil {
-			row.Branch = r.Branch.Ref
+			row.Branch = refineText(r.Branch.Ref)
 		}
 		if r.Ready != nil {
-			row.Ready = r.Ready.Host + "/" + r.Ready.Slot + " " + r.Ready.Path + " @" + r.Ready.Head
+			row.Ready = refineText(r.Ready.Host + "/" + r.Ready.Slot + " " + r.Ready.Path + " @" + r.Ready.Head)
 		}
 		if b := r.Blocked; b != nil {
-			row.Status, row.BlockStep, row.BlockDetail, row.Resume = "BLOCKED", b.Step, b.Detail, b.Resume
+			row.Status, row.BlockStep, row.BlockDetail, row.Resume = "BLOCKED", refineText(b.Step), refineText(b.Detail), refineText(b.Resume)
 			if b.Unknown {
 				row.Status = "EFFECT_UNKNOWN"
 			}
@@ -154,7 +157,7 @@ func (a *app) buildIntakeRequests(ctx context.Context) IntakeRequestsVM {
 			}
 		}
 		for _, e := range r.Evidence {
-			row.Evidence = append(row.Evidence, e.Stage+": "+e.Ref)
+			row.Evidence = append(row.Evidence, refineText(e.Stage+": "+e.Ref))
 		}
 		vm.Rows = append(vm.Rows, row)
 	}

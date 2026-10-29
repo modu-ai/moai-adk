@@ -96,13 +96,8 @@ func recField[T any](v T, at time.Time, confirmed bool) monitor.Field[T] {
 	return monitor.Field[T]{Value: v, Source: monitor.SrcClaimStore, ReadAt: at, Confirmed: confirmed}
 }
 
-// recText masks a persisted text with core.Redact. It is not the monitor's own
-// mask (which also drops opaque blobs and marks the Field redacted); that
-// function is unexported, and this stays until the monitor publishes it.
-func recText(s string) string {
-	red, _ := core.Redact(s)
-	return red
-}
+// recText masks a persisted text with the one sanitizer (core.Sanitize).
+func recText(s string) string { return refineText(s) }
 
 func recordRow(r claim.Record, at time.Time) monitor.Row {
 	// The cached position is shown as confirmed only while the cache matches the

@@ -1,18 +1,9 @@
-//go:build afred
-
-// screen_redaction_afred_test.go: B4-pre. KNOWN DEFECT REPRODUCTION, BEFORE THE
-// REPAIR (RED). Excluded from the default test run by the afred build tag (the
-// same convention as the lane-17 reproductions) so the default run stays green;
-// run it with:
-//
-//	go test -tags afred -run '^TestScreenTextIsRefined$' ./internal/web/
-//
-// Contract: every text that reaches the Agentic Factory panels passes through
-// one refiner. One value of each category — an e-mail address, a home
-// directory path, a credential token — is put into every text path in turn;
-// the rendered page and the JSON API must never carry the original. The test
-// does not depend on which refiner masks it. When the core refiner lands, the
-// build tag is dropped and this becomes an ordinary test.
+// screen_redaction_test.go: every text that reaches the Agentic Factory panels
+// passes through one refiner (core.Sanitize). One value of each category — an
+// e-mail address, a home directory path, a credential token — is put into every
+// text path in turn; the rendered page and the JSON API must never carry the
+// original, and a row that had something masked says so. Written first as the
+// afred RED (8328fb0e71, 33 failing subtests), green with the refiner wired.
 //
 // Sentinel on failure: AF_SCREEN_REFINE.
 package web
@@ -143,5 +134,43 @@ func TestScreenTextIsRefined(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+// TestScreenRowsSayWhenTheyWereMasked: a row that had text masked carries the
+// marker, a clean row does not.
+func TestScreenRowsSayWhenTheyWereMasked(t *testing.T) {
+	email := screenPayloads["email"]
+	clean := "plain text"
+	// Monitor rows and context model items.
+	a := prApp(t, `{"rows":[{"Issue":1,"agent":{"value":`+jsonQ(email)+`,"confirmed":true}},{"Issue":2,"agent":{"value":`+jsonQ(clean)+`,"confirmed":true}}]}`, nil)
+	a.contextModel = func(_ context.Context, issue int) ([]byte, error) {
+		title := clean
+		if issue == 1 {
+			title = email
+		}
+		l := &ctxmodel.Ledger{Issue: issue, Items: []ctxmodel.Item{{Section: ctxmodel.SectionSpec, Title: title, Owner: "o"}}}
+		return l.Marshal()
+	}
+	vm := a.buildPRTracking(context.Background())
+	if len(vm.Rows) != 2 || !vm.Rows[0].Redacted || vm.Rows[1].Redacted {
+		t.Errorf("monitor rows: %+v", vm.Rows)
+	}
+	if !vm.Rows[0].Ledger.Items[0].Redacted || vm.Rows[1].Ledger.Items[0].Redacted {
+		t.Errorf("context model items: %+v / %+v", vm.Rows[0].Ledger.Items, vm.Rows[1].Ledger.Items)
+	}
+	// Intake requests.
+	b := newApp(Config{ProjectRoot: t.TempDir()})
+	b.intakeRequests = func(context.Context) ([]byte, error) {
+		return []byte(`[{"key":"k1","stage":"ACCEPTED","agent_name":` + jsonQ(email) + `},{"key":"k2","stage":"ACCEPTED","agent_name":` + jsonQ(clean) + `}]`), nil
+	}
+	req := b.buildIntakeRequests(context.Background())
+	if len(req.Rows) != 2 || !req.Rows[0].Redacted || req.Rows[1].Redacted {
+		t.Errorf("intake requests: %+v", req.Rows)
+	}
+	// The page shows the marker.
+	m, _ := a.buildMonitor(time.Now())
+	if html := renderTempl(t, Monitor(tg1ShellVM(), m)); !strings.Contains(html, "masked") {
+		t.Errorf("the page must show that something was masked")
 	}
 }

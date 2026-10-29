@@ -49,6 +49,8 @@ type PRTrackRowVM struct {
 	// HeadSource is where Head came from (receipt | record) when the record
 	// source supplied it.
 	HeadSource string
+	// Redacted is set when refining masked something on this row.
+	Redacted bool
 	// PRURL is the URL the PR receipt recorded, as text only (never a link).
 	PRURL string
 }
@@ -147,17 +149,17 @@ func (a *app) buildPRTracking(ctx context.Context) PRTrackingVM {
 	}
 	raw, err := a.monitorRows(ctx)
 	if err != nil {
-		return PRTrackingVM{Note: "monitor data unreadable: " + err.Error()}
+		return PRTrackingVM{Note: "monitor data unreadable: " + refineText(err.Error())}
 	}
 	var doc monView
 	if err := json.Unmarshal(raw, &doc); err != nil {
-		return PRTrackingVM{Note: "monitor data malformed: " + err.Error()}
+		return PRTrackingVM{Note: "monitor data malformed: " + refineText(err.Error())}
 	}
 	vm := PRTrackingVM{Available: true}
 	if doc.Backlog.Confirmed {
 		b := doc.Backlog.Value
 		vm.Backlog = PRBacklogVM{
-			Known: true, Open: b.Open, Limit: b.Limit, State: b.State, QueueKnown: b.QueueKnown,
+			Known: true, Open: b.Open, Limit: b.Limit, State: refineText(b.State), QueueKnown: b.QueueKnown,
 			AwaitingHandoff: b.AwaitingHandoff, RepairBacklog: b.RepairBacklog, OldestWaitSeconds: b.OldestWaitSeconds,
 		}
 	}
@@ -167,7 +169,8 @@ func (a *app) buildPRTracking(ctx context.Context) PRTrackingVM {
 	vm.Intake = buildIntake(doc.Intake)
 	for _, r := range doc.Rows {
 		row := PRTrackRowVM{
-			Issue: r.Issue, Project: r.Project,
+			Redacted: anyMasked(r.rawTexts()...),
+			Issue:    r.Issue, Project: r.Project,
 			State: gapText(r.State), Stage: gapText(r.Stage), Head: prGap,
 			Checks: "not read", ChecksStale: r.ChecksStale,
 			PR: prGap, Phase: prGap, Track: "gap", Completed: r.Completed,
@@ -209,7 +212,7 @@ func gapText(f monField[string]) string {
 	if !f.Confirmed || f.Value == "" {
 		return prGap
 	}
-	return f.Value
+	return refineText(f.Value)
 }
 
 // detailText renders a confirmed detail record as its non-empty parts joined
@@ -229,7 +232,7 @@ func detailText(confirmed, present bool, parts func() []string) string {
 		if out != "" {
 			out += " · "
 		}
-		out += p
+		out += refineText(p)
 	}
 	if out == "" {
 		return prGap
@@ -319,7 +322,7 @@ func prURLText(u string) string {
 	if !strings.HasPrefix(u, "https://") {
 		return prGap
 	}
-	return u
+	return refineText(u)
 }
 
 // repairFigure is the repair backlog: counted from records when the record
@@ -329,4 +332,26 @@ func repairFigure(b PRBacklogVM) string {
 		return itoa(b.RepairBacklog)
 	}
 	return queueFigure(b, b.RepairBacklog)
+}
+
+// rawTexts lists the free texts of a monitor row, before refining, so a row can
+// say whether anything was masked.
+func (r monRow) rawTexts() []string {
+	out := []string{r.State.Value, r.Stage.Value, r.SubStage.Value, r.Agent.Value, r.SessionID.Value, r.HeadSHA.Value, r.MirrorState.Value, r.PR.Value.Phase}
+	if p := r.Park.Value; p != nil {
+		out = append(out, p.Reason, p.Evidence, p.Resume)
+	}
+	if g := r.Gate.Value; g != nil {
+		out = append(out, g.Reason, g.Detail, g.Resume, g.Head)
+	}
+	if f := r.Refusal.Value; f != nil {
+		out = append(out, f.Reason, f.Detail)
+	}
+	if w := r.Wait.Value; w != nil {
+		out = append(out, w.Owner, w.NextAction, w.Diagnosis, w.EscalateTo)
+	}
+	for _, c := range r.Context.Value {
+		out = append(out, c.Section, c.Link, c.Owner, c.State, c.Stage, c.TargetHead, c.Hash)
+	}
+	return out
 }

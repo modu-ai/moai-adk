@@ -176,7 +176,7 @@ func (a *app) handleMonitor(w http.ResponseWriter, r *http.Request) {
 	}
 	m, err := a.buildMonitor(time.Now())
 	if err != nil {
-		http.Error(w, "monitor unavailable: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, "monitor unavailable: "+refineText(err.Error()), http.StatusInternalServerError)
 		return
 	}
 	vm := a.shellVM(r, "monitor", "Monitor", "sessions · goals · verification")
