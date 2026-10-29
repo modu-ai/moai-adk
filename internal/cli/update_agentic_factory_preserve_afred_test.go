@@ -7,8 +7,9 @@
 //
 //	go test -tags afred -run '^TestAgenticFactoryUpdateCyclePreservesUserTemplates$' ./internal/cli/
 //
-// KNOWN DEFECT REPRODUCTION, BEFORE ANY REPAIR (RED). Measured on this tree:
-// the update cycle overwrites both user-owned templates
+// KNOWN DEFECT REPRODUCTION (RED before the repair in
+// internal/template/user_owned_templates.go, GREEN after it). Measured before
+// the repair: the update cycle overwrote both user-owned templates
 //
 //	.github/ISSUE_TEMPLATE/agentic-factory-01-parent-issue.yml  (user_modified)
 //	.github/ISSUE_TEMPLATE/agentic-factory-02-child-issue.yml   (user_created)

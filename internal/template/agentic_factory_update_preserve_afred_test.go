@@ -1,7 +1,7 @@
 //go:build afred
 
-// agentic_factory_update_preserve_afred_test.go: KNOWN DEFECT REPRODUCTION,
-// BEFORE ANY REPAIR (RED). Excluded from the default test run by the afred
+// agentic_factory_update_preserve_afred_test.go: KNOWN DEFECT REPRODUCTION
+// (RED before the repair, GREEN after it). Excluded from the default test run by the afred
 // build tag; run it with:
 //
 //	go test -tags afred -run '^TestAgenticFactoryUpdatePreservesUserFiles$' ./internal/template/
@@ -16,9 +16,10 @@
 //	.github/ISSUE_TEMPLATE/agentic-factory-02-child-issue.yml   (user_created)
 //
 // A user-only file beside the feature files and the user's default pull
-// request template stay byte-identical. The repair (protect these paths in
-// force mode) touches deployer.go, which another open PR also changes, so it is
-// deferred until that PR lands.
+// request template stay byte-identical. The repair protects Agentic Factory
+// provider templates in force mode (isUserOwnedTemplatePath in
+// user_owned_templates.go, one changed line in deployer.go); with it this test
+// passes.
 //
 // Sentinel on failure: AF_PRESERVE.
 package template_test
