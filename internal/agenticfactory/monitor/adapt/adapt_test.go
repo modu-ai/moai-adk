@@ -74,3 +74,21 @@ func TestLeaseExpiredUsesDurationAndZeroMeansNot(t *testing.T) {
 		t.Error("unknown renewal time must not claim expiry")
 	}
 }
+
+func TestReadClaimCarriesAgentNameAndSessionID(t *testing.T) {
+	s := openStore(t)
+	iss, _ := core.NewIssueRef(7)
+	run, _ := core.ParseRunID("run-1")
+	if _, err := s.Acquire(iss, "agent-3", "cmd-1", run); err != nil {
+		t.Fatal(err)
+	}
+	const sid = "2a8642ba-c7da-448b-a256-444facf4c514"
+	row, err := (ClaimSource{Store: s, Session: func(int, string) (string, error) { return sid, nil }}).ReadClaim(t.Context(), 7)
+	if err != nil || row.AgentName != "agent-3" || row.SessionID != sid {
+		t.Fatalf("row = %+v err = %v", row, err)
+	}
+	row, _ = (ClaimSource{Store: s}).ReadClaim(t.Context(), 7)
+	if row.SessionID != "" {
+		t.Errorf("no resolver must leave session id empty, got %q", row.SessionID)
+	}
+}

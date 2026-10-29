@@ -21,6 +21,8 @@ var maskRules = []maskRule{
 	{regexp.MustCompile(`\b(?:AKIA|ASIA)[A-Z0-9]{16}\b`), redacted},
 }
 
+var uuidRe = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
+
 var (
 	blobRe = regexp.MustCompile(`[A-Za-z0-9_+=\-]{32,}`)
 	hexRe  = regexp.MustCompile(`^(?:[0-9a-f]{40}|[0-9a-f]{64})$`)

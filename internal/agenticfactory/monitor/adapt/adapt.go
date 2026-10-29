@@ -19,6 +19,9 @@ import (
 type ClaimSource struct {
 	Store   *claim.Store
 	Project string
+	// Session resolves the immutable session id of a holder. Nil or an error leaves it empty
+	// (unconfirmed); the holder string is only a display name.
+	Session func(issue int, holder string) (string, error)
 }
 
 func (c ClaimSource) ReadClaim(_ context.Context, issue int) (monitor.ClaimRow, error) {
@@ -33,8 +36,16 @@ func (c ClaimSource) ReadClaim(_ context.Context, issue int) (monitor.ClaimRow, 
 	if err != nil {
 		return monitor.ClaimRow{}, err
 	}
+	sid := ""
+	if c.Session != nil {
+		if v, serr := c.Session(issue, r.Holder); serr == nil {
+			sid = v
+		}
+	}
 	return monitor.ClaimRow{
 		Project:         c.Project,
+		AgentName:       r.Holder,
+		SessionID:       sid,
 		Issue:           r.Issue,
 		Owner:           r.Holder,
 		State:           string(r.State),
