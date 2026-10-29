@@ -110,3 +110,73 @@
 ## R8 판단에 쓴 해석
 
 - claim을 slot lease와 분리한 결정(spec.md §F.1)은 R4의 REQ-RSL-006 설계 근거("잘못된 비어 있음의 비용은 실행 두 개 겹침뿐")가 writer 중복에는 맞지 않는다는 해석에 기댄다. 이 해석은 코드 주석을 읽은 결과이고, 실제 중복 writer 사고를 재현한 것은 아니다.
+
+## R12 0.5.0 → 0.6.0 ID 대응 (0.6.0, 트리 `3275706cc9`)
+
+0.6.0에서 REQ·AC ID의 뜻이 바뀌었다. 옛 판정 파일(iteration-1~5)의 ID는 아래 왼쪽 열의 뜻이다. 0.5.0 뜻은 `git show 3275706cc9:.moai/specs/SPEC-AGENTIC-FACTORY-001/spec.md`의 REQ 행 첫머리로 확인했다.
+
+| 0.5.0 REQ (뜻) | 0.6.0 위치 |
+|---|---|
+| REQ-AF-001 (상태 전이표·차단·보류) | REQ-AF-016 (T01) |
+| REQ-AF-002 (`done` 세 증거) | REQ-AF-006 (G06) |
+| REQ-AF-003 (전달 상태 네 단계) | REQ-AF-005 (G05) |
+| REQ-AF-004 (원장 필드·비밀 가림) | REQ-AF-013 (G13), design §4.0 |
+| REQ-AF-005 (관찰 모니터) | REQ-AF-020 (T05) |
+| REQ-AF-006 (owner·writer 하나) | REQ-AF-001 (G01) |
+| REQ-AF-007 (중복 dispatch 거절) | REQ-AF-001 (G01) |
+| REQ-AF-008 (소유권 확인 실패 시 쓰기 거절) | REQ-AF-003 (G03) |
+| REQ-AF-009 (실제 실행 우선 조회) | REQ-AF-004 (G04) |
+| REQ-AF-010 (활성 판정·인계) | REQ-AF-004 (G04) |
+| REQ-AF-011 (로컬 저장소 권위·거울) | 폐기 → REQ-AF-002 (G02, control ref 권위) |
+| REQ-AF-012 (GLM 제외) | REQ-AF-015 (G15) |
+| REQ-AF-013 (Codex 명시 설정) | REQ-AF-015 (G15) |
+| REQ-AF-014 (인증·권한·429) | REQ-AF-014 (G14, 403 판별 추가) |
+| REQ-AF-015 (환경 행렬) | REQ-AF-024 (T09) |
+| REQ-AF-016 (브라우저 3선택) | REQ-AF-021 (T06) |
+| REQ-AF-017 (설정 검증) | REQ-AF-021 (T06) |
+| REQ-AF-018 (병합 게이트·귀속·잠금) | REQ-AF-007 (G07) + REQ-AF-011 (G11) |
+| REQ-AF-019 (보호 비약화) | REQ-AF-008 (G08) |
+| REQ-AF-020 (증거 저장 분리) | REQ-AF-019 (T04, 정제본 위치) |
+| REQ-AF-021 (병합 미상·done·종료·다음 dispatch) | REQ-AF-005 (미상) + REQ-AF-006 (순서 뒤집힘: 종료가 DONE보다 먼저) |
+| REQ-AF-022 (Codex 이관 순서) | REQ-AF-015 (G15) |
+| REQ-AF-023 (ControlService 단독 쓰기) | REQ-AF-010 (G10) |
+| REQ-AF-024 (재연결·목록·재개 명령) | REQ-AF-022 (T07) |
+| REQ-AF-025 (기존 진입 명령 불변) | REQ-AF-022 (T07) |
+
+| 0.5.0 AC (뜻) | 0.6.0 위치 |
+|---|---|
+| AC-AF-001~007 (시나리오 하위 시험 01~07) | AC-AF-025 하나(하위 시험 01~07) |
+| AC-AF-008 (상태 엔진 조회) | AC-AF-016 |
+| AC-AF-009·010 (claim·활성) | AC-AF-001·004 |
+| AC-AF-011·012 (거울·원장) | AC-AF-002·013 |
+| AC-AF-013 (Codex 계수) | AC-AF-015 |
+| AC-AF-014·015 (GLM·인증) | AC-AF-015·014 |
+| AC-AF-016·017 (브라우저·설정) | AC-AF-020 |
+| AC-AF-018 (병합 게이트·귀속) | AC-AF-007 + AC-AF-011 |
+| AC-AF-019 (보호 기준값) | AC-AF-008 (기준값은 regression-guard) |
+| AC-AF-020 (Codex 이관 기록) | AC-AF-015 |
+| AC-AF-021 (#1926·#1924 시험) | AC-AF-016 |
+| AC-AF-022 (관찰·종료 코드, (e) 포함) | AC-AF-019 + AC-AF-021 |
+| AC-AF-023·024 (명령·호환) | AC-AF-021 |
+| AC-AF-025 (#1938·#1847·#1813 시험) | AC-AF-001 |
+
+0.6.0의 새 AC는 위 행이 덮지 않는 것들이다: AC-AF-003(Issue 쓰기 권한), 009(PR 인계·수리), 012(접수·준비), 017(record), 018(맥락 장부), 022(template), 023(환경 행렬 전용), 024(효율).
+
+## R13 정본 사본과 분석 입력 (0.6.0)
+
+- 정본: `gh issue view 1948 --comments --json comments`(읽기 전용) 사본 v6. 댓글 11개, 마지막 댓글이 S53. 이 실행의 live 사본과 같았다.
+- 전이표 E01~E27의 문장은 S46 댓글([7])의 개정 표를 따랐다(E03·E06이 [0]과 다름).
+- 리더가 준 분석 입력(로컬 scratchpad, 커밋 안 됨): 정본 영향 분석, 접수·준비, 맥락 장부, API 효율, S52 측정, 결함. 이 SPEC에 살아남아야 할 내용은 design.md로 옮겼다. 그 파일들은 이 SPEC의 증거 위치가 아니다.
+- 웹 문서: design §4.5 U1~U8(GitHub·GitLab), GitHub 저장소 문서(https://docs.github.com/en/rest/repos/repos). 모두 2026-10-29 WebFetch 요약이며 원문 대조 안 함(uncollated). 이 실행에서 다시 열지 않았다.
+
+## R14 이 실행의 측정 (0.6.0, 트리 `3275706cc9`)
+
+| 명령 | 결과 |
+|---|---|
+| `git ls-remote origin refs/heads/moai-control` | `ae3a4edcaa529bc927357b345051b96cd04605a1	refs/heads/moai-control`, exit 0 |
+| `internal/homestate/process_fingerprint_unix.go` 읽기 | Linux 등은 `ps -o lstart= -p <pid>` 출력을 trim한 문자열, 비어 있지 않으면 성공 |
+| `internal/homestate/factory_run_retire.go:152-168` 읽기 | `fingerprint == processStart`이면 live, 아니면 dead. 순서 비교 없음 |
+| grep(worktree `af-settings-keys`, `internal/config/agentic_factory.go`) | 키 `browser.selected`, `codex.enabled`, `pr_queue.wip_limit`, `collaboration.*`, 함수 `NormalizeRepositoryPath`, `ResolveAgenticFactoryBrowser`, `CodexOptIn`, `WIPLimit` |
+| SPEC ID 정규식 검사(ID별 한 줄) | `SPEC-AGENTIC-FACTORY-001` PASS, `SPEC-AGENTIC-FACTORY-IDENTITY-001` PASS. 두 ID를 한 줄 반복문으로 검사하려던 명령은 worktree 가드가 거절했다 |
+
+이 실행은 lane-17·18·20·22의 코드를 실행하지 않았다. spec.md §B.2의 사실은 모두 보고이며 미검증이다.

@@ -5,30 +5,35 @@ status: draft
 ## §E.1 Plan-phase Audit-Ready Signal
 
 ```yaml
-plan_status: audit-ready
-plan_iteration: 1
+plan_status: revised-unaudited
+plan_iteration: 2
+plan_iteration_kind: delta (child iteration-1 defects D1-D11 + leader-relayed canon alignment)
+spec_version: "0.2.0"
 plan_complete_at: 2026-10-29
-spec_version: "0.1.0"
 tier: M (+ design.md)
 req_count: 7
 ac_count: 9
-tree_head: 8dc835756b09f8e8dd4669b1ad7b47a46b15e9f3
-parent_spec: SPEC-AGENTIC-FACTORY-001 (0.5.0)
-note: ready for plan-audit; no audit verdict exists for this version yet
-judging_build: "moai-tree5 — v3.2.0-tree 8dc835756 built unknown (go build from this tree; Commit ldflag set by hand to HEAD 8dc835756b; working tree carried uncommitted SPEC-doc edits only)"
+id_set_changed: false
+meanings_changed: true (reason codes, grant authority, per-Issue role exclusion, milestone order)
+tree_head: 3275706cc91a7453488bdaefcdfa73ce55bc0bb5
+parent_spec: SPEC-AGENTIC-FACTORY-001 (0.6.0)
+completion_requires: "parent OD-4 operator risk acceptance (OQ-AFI-1); lock lift is parent M7 (lane-18), not this SPEC"
+note: "revised, unaudited — no audit verdict exists for 0.2.0; a new independent audit was not authorized in this run"
+judging_build: "moai-tree5 — reports v3.2.0-tree 8dc835756 built unknown; the Commit ldflag was set by hand to 8dc835756 when the binary was built, while this tree's HEAD is 3275706cc9 (the build stamp does not name the tree it judged); working tree carried uncommitted SPEC-doc edits only"
 ```
 
-Lint (judging build `8dc835756`, tree HEAD `8dc835756b` + uncommitted SPEC docs):
+Lint (judging build stamp `8dc835756`, hand-set; tree HEAD `3275706cc9` + uncommitted SPEC docs):
 
 ```
-$ moai-tree5 spec lint --strict SPEC-AGENTIC-FACTORY-IDENTITY-001
-WARNING   REQTableRowsRejected  .../SPEC-AGENTIC-FACTORY-IDENTITY-001/spec.md  63    table NOT read as a requirement-definition table (rejected_rows=7
+$ moai-tree5 spec lint --strict .moai/specs/SPEC-AGENTIC-FACTORY-IDENTITY-001/spec.md
+WARNING   REQTableRowsRejected           .../SPEC-AGENTIC-FACTORY-IDENTITY-001/spec.md  64    table NOT read as a requirement-definition table (rejected_rows=7) ...
+INFO      OwnershipTransitionUnmeasured  .../SPEC-AGENTIC-FACTORY-IDENTITY-001/spec.md  1     ... commit 3275706cc9 ... has no Authored-By-Agent trailer — ownership transition unmeasured
 
 0 error(s), 1 warning(s)
 exit=0
 ```
 
-The warning points at the §E REQ→AC trace table (7 rows, deliberately no SHALL text); the seven requirement rows in §C carry SHALL and are collected.
+The warning points at the §E REQ→AC trace table (7 rows, deliberately no SHALL text); the seven requirement rows carry SHALL and are collected. The first lint run of this revision reported 7 `CoverageIncomplete` warnings because acceptance.md declared mappings as "주 REQ: REQ-…" — not a form the sibling-coverage extractor reads (`internal/spec/lint_coverage_sibling.go`). The lines now read "주 REQ: maps REQ-…" and the warnings are gone.
 
 ## §E.2 Run-phase Evidence
 

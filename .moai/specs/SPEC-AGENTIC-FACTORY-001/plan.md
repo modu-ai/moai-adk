@@ -1,109 +1,139 @@
-# SPEC-AGENTIC-FACTORY-001 — 구현 계획
+# SPEC-AGENTIC-FACTORY-001 — 구현 계획 (0.6.0)
 
-순서는 바뀔 가능성이 큰 결정부터 둔다(데이터 모델, 역할·명령 경계, 정책). 기계적인 단계는 뒤에 둔다. 시간 예측은 쓰지 않는다.
+순서는 바뀔 가능성이 큰 결정부터 둔다(데이터 모델·권위, effect 경계, 생명주기). 기계적인 단계(CLI·template·행렬)는 뒤에 둔다. 시간 예측은 쓰지 않는다.
 
 ## §A 맥락
 
-- 규범 원천: Issue #1948(유일). 계약 범위는 계약 + 정책 + 설정 초안이며, 이 lane이 유일한 writer다.
-- 측정 트리: 0.1.0은 `5c3f0ebf27584d2c45deb2d00f9d69a4eea932c4`, 0.2.0의 추가 측정(활성 판정, 보호 설정, 소스 문자열)은 `e14b5bbac2eb2499cbaa3ae9434595001c91cb39`(코드는 같음).
+- 규범 원천: Issue #1948 본문과 댓글 11개(가장 새 revision 우선). spec.md §A.1.
+- 작성 트리: worktree `af-contract-spec`, 브랜치 `WT-agentic-factory-contract`, HEAD `3275706cc9`.
 - 산출물: Tier L 다섯 개(spec.md, plan.md, acceptance.md, design.md, research.md) + progress.md.
+- 하위 SPEC: SPEC-AGENTIC-FACTORY-IDENTITY-001(역할 부여·세션 신원·요청자 계보). 이 SPEC의 M7은 하위 SPEC 완료에 묶인다.
+- 레인 소유: design §10(lane-17 설정, lane-18 core, lane-19 template, lane-20 effect, lane-21 브라우저, lane-22 시험).
 
-## §B 알려진 문제
+## §B 진행 원칙 — 완료까지 지속 개선 (정본 [9] S52, DEC-AF-10)
 
-- 세션 구조·명칭·명령은 상위 설계 권고를 PROPOSAL로 반영했지만 리더·사용자 확인 전까지 미확정이다(design.md §13). 이를 근거로 코드를 쓰지 않는다. 제안 명령 `moai factory status`는 기존 명령과 이름이 겹친다(OQ-12).
-- `run`의 범위 정의가 두 갈래다(design.md §7.3).
-- 설정·Codex 파일에는 쓰기 배정이 없다(t1984, lane-14/16 ACK 대기).
-- 충돌 PR: #1937·#1944(설정), #1943·#1916·#1921(factory, launcher). 카드 t1965는 읽기 전용 설계 입력.
+이 원칙은 REQ가 아니다(REQ로 두면 26이 되어 상한을 넘는다). 모든 마일스톤에 적용한다.
 
-## §C 사전 점검 (run 진입 전)
+1. 개선 루프: 실제 관찰 → 오류·병목 재현과 Issue 기록 → 근본 원인·영향 범위·불변식 분석 → 최소 범위 근본 개선 → 회귀 시험 축적 → 같은 변경의 증거 확인과 전후 비교 누적 → 설계·Issue·구현 정합 갱신.
+2. 금지: 증상만 가리는 부분 패치, 근거 없는 상한 증가, 무한 수리·감사 반복.
+3. 새 방식이 낫다는 결론을 측정 전에 내리지 않는다. 측정 기록은 design §4.7 어휘를 쓴다(REQ-AF-025, AC-AF-024).
+4. 임계값·표본 설계는 `proposed`와 `approved`를 구분하며 승인은 운영자 몫이다(OD-1).
+5. 기록 행위 자체의 비용(장부 갱신, 댓글, checkpoint)도 측정 범위에 넣는다.
 
-1. 기존 리더·writer의 안전 중단 ACK와 단일 owner·writer 확정(OQ-8).
-2. 시나리오용 실제 Issue 선정과 운영자 승인(OQ-1).
-3. 상위 설계 권고(PROPOSAL)의 확정 또는 미확정 상태로 진행할지에 대한 결정(OQ-2).
-4. `go test ./internal/agenticfactory/... -count=1`로 대상 부재 참고 관측 재측정(acceptance.md EV-REF-0). 이것은 RED-now가 아니다. 각 AC의 RED-now는 해당 시험을 먼저 쓰고 `EXPECTED_RED`로 기록한다.
-5. AC-AF-019 기준값 재측정(acceptance.md §B.2 명령).
+## §C 알려진 문제
 
-## §D 제약
+- control ref는 genesis뿐이다. 운영 쓰기 연결(CAS, fencing)은 lane-18 구현을 기다린다.
+- 설정 키 → `core.Collaboration` 연결이 없다(lane-18, lane-17 읽기 코드 사용).
+- 접수 상태 7행은 lane-18이 구현했다고 보고했으나(미검증), lane-20 표시 이름 6개는 정렬 중이다.
+- 보호 약화 거절 경로가 코드에 없다(lane-22 보고). AC-AF-008의 거절 시험은 NOT_RUN.
+- 잠금 상수·귀속 원천이 코드에 없다(lane-22 보고). AC-AF-011은 NOT_RUN.
+- 충돌 PR: #1937·#1944(설정), #1943·#1916·#1921(factory·launcher). 착지 순서 후보는 design §9.5.
+- 미결 운영자 결정 OD-1~OD-6(spec.md §G.1).
 
-- 강제 종료·터미널 종료·작업 트리 삭제·미커밋 변경 폐기 금지.
-- 기존 PR 닫기·브랜치 덮어쓰기·카드 일괄 done 금지.
-- GLM managed 사용 금지, Codex는 명시 설정 시에만.
+## §D 사전 점검 (run 진입 전)
+
+1. `git ls-remote origin refs/heads/moai-control`으로 control ref가 genesis 또는 그 뒤 커밋인지 확인(acceptance EV-CTRL-REF).
+2. `go test ./internal/agenticfactory/... -count=1`로 대상 부재 참고 관측 재측정(EV-REF-0, RED 아님).
+3. AC마다 시험을 먼저 쓰고 의도한 단언 때문의 `EXPECTED_RED`를 기록(acceptance §A 두 칸 채택).
+4. 관련 레인의 브랜치 사실(lane-17 `5c278d8b51`, lane-18 `da7f3a4290`·`f9f44e5ecc`, lane-22 `3c7db03d7b`)을 읽어 §B.2 보고 사실을 확인. 확인 전에는 미검증으로 둔다.
+5. `pr_queue.wip_limit` 미설정 규칙(OQ-24)과 checkpoint 상한 미설정 규칙(OQ-22)에 대한 리더 확인.
+
+## §E 제약
+
+- 강제 종료, 터미널 종료, 작업 트리 삭제, 미커밋 변경 폐기 금지.
+- 기존 PR 닫기, 브랜치 덮어쓰기, 카드 일괄 done 금지.
+- GLM managed 금지. Codex는 `workflow.agentic_factory.codex.enabled: true`일 때만.
 - 검사 삭제·보호 약화·관리자 우회 금지.
+- 남의 Issue 변경 금지(협업 옵션 기록은 승인이 아님).
+- checkpoint 경로의 금지 사항(design §4.6) 준수.
+- 숫자 설정값(OQ-22)을 지어내지 않는다.
 
-## §E 자기 검증
+## §F 마일스톤 (바뀔 가능성 큰 순)
 
-- 산출물마다 `moai spec lint SPEC-AGENTIC-FACTORY-001` 결과를 progress.md §E.1에 남긴다.
+### M1 — 권위·데이터 모델·claim [High, lane-18]
 
-## §F 마일스톤 (우선순위 순)
+- control ref git 구현(CAS 쓰기, readback, 재구축), 로컬 캐시는 재구축 전용.
+- 상태 모형(READY·BUILDING·REVIEWING·MERGING·DONE·CANCELLED + PARKED), E01~E27 전이표, 닫힌 사유 집합(design §2.1a).
+- claim·attempt·epoch fencing, 활성 판정(`homestate.ClassifyOwnerWith`).
+- record(design §4.8): DELTA1 다섯 종.
+- 초록 대상: AC-AF-001, 004, 016, 017. AC-AF-002의 권위 사례(A1~A4).
 
-### M1 — 데이터 모델과 claim 결정 [우선순위 High, 바뀔 가능성 가장 큼]
+### M2 — effect 경계·조정·보호·예산·checkpoint [High, lane-20 + lane-18]
 
-- `state` / `claim` 범위의 상태 열거, 전이표, claim 기록 모양(Issue당 하나, attempt 순번)을 코드 타입으로 굳힌다.
-- 이 단계에서 확정된 명칭과 `run` 범위 정의(OQ-2), 배정 epoch(design.md §14)를 반영한다. 확정이 없으면 미확정 표시를 유지한 채 진행할지 운영자가 정한다.
-- 대상 AC: AC-AF-008, AC-AF-021, AC-AF-025(#1926·#1924 시험).
+- effect intent → 전송 → receipt, 결과 불명 재조회, 전달 상태 네 단계.
+- 응답 분류(design §4.5)와 예산 순서, 공급자 기본값은 설정 스키마로.
+- 보호 약화 일곱 연산 거절(design §11.3, lane-20 집행, lane-18 사유 타입).
+- Issue 쓰기 판정 연결: lane-17 설정 읽기 → `core.Collaboration` 주입 → lane-20 effect 경계.
+- checkpoint 네 단계와 상태(design §4.6). 상태·git·manifest는 lane-18, Issue 링크는 lane-20, 충돌 회귀·측정은 lane-22.
+- 초록 대상: AC-AF-002(checkpoint 사례 포함), 003, 005, 008, 014.
 
-### M2 — 소유권·복구 [High]
+### M3 — 접수·인계·DONE [High, lane-18 + lane-20]
 
-- 원자적 claim, 중복 dispatch 거절, 소유권 확인 실패 시 쓰기 거절, 실제 실행 우선 조회, 살아 있는 소유자 인계 금지.
-- 활성 판정은 `homestate.ClassifyOwnerWith`를 정본으로 쓴다(spec.md §F.2). claim 때 pid와 프로세스 시작 시각을 함께 기록한다. `FactoryProcessAlive`는 claim 판정에 쓰지 않는다.
-- 잠금 기반은 `internal/factory`의 상태 잠금 기반을 재사용 후보로 검토하되, `slot_lease.go` 파일 자체는 수정하지 않는다.
-- 대상 AC: AC-AF-009, 010, 025(#1938·#1847·#1813 시험). 시나리오 AC-AF-001·002·004의 부품은 여기서 만들지만, 시나리오 판정은 묶음이 끝까지 도는 M4 뒤다.
+- 접수·준비 7행(design §4.2), 준비 receipt를 control ref에.
+- PR 인계 E03, 수리 E06, E10 → E06, PR 적체 기록.
+- DONE 순서(E12 → Issue 종료 → E13 DONE, E14 PARKED `pending-effect`), 로컬 동기화 digest.
+- 초록 대상: AC-AF-006, 009, 012.
 
-### M3 — 전달 상태와 원장 [High]
+### M4 — 병합 게이트·독립성·잠금 [High, lane-18 + lane-20]
 
-- 네 단계 전달 상태, 원장 필드 권한, 비밀 가림, 저장소-거울 조정.
-- Issue 쓰기는 기존 `internal/github` 도우미를 넓히지 않고 `ledger` 범위에서 감싼다.
-- 대상 AC: AC-AF-011, 012. 시나리오 AC-AF-003의 부품은 여기서 만든다.
+- 병합 게이트(design §11)와 단일 사유 표(design §2.1b). 게이트 단위 시험에서만 귀속 대역 허용.
+- 역할 쓰기 경계와 Issue 단위 독립성.
+- **잠금 도입**: 컴파일 시점 상수 하나, 설정·환경·파일 입력 없음, 시나리오 하네스 사전 점검(design §11.2).
+- `pr_queue.wip_limit` 검증과 배차 정지.
+- 초록 대상: AC-AF-007, 010, 011(잠긴 형태).
 
-### M4 — 병합 게이트와 증거 분리 [High]
+### M5 — 장부·정제·관찰·효율 [Medium, lane-20 + lane-22]
 
-- 병합 수용 조건, 증거 저장소 분리, 병합 결과 미상 처리, `done` 수용 조건(원격 반영 + 로컬 동기화 + 배포 또는 N/A), 종료·다음 dispatch.
-- 증거 생산자 귀속(design §11: 리뷰·감사·QA·coordinator 증거는 SPEC-AGENTIC-FACTORY-IDENTITY-001의 귀속 조회로만 판정), **잠금 결정 DEC-AF-02**(spec.md §C.5.1: 하위 SPEC 완료 전에는 시험 밖 귀속 원천이 모두 귀속 불가를 돌려줘 게이트가 막힘. 역할 부여·세션 신원·운영자 인증의 구현은 하위 SPEC의 마일스톤 몫)과 **공급자 중립 리뷰 경로**(design §11.1: 리뷰 세션 또는 운영자 기록 리뷰)를 여기서 넣는다. 이 경로가 있어야 Codex 미설정 상태에서 병합 게이트가 통과할 수 있다(spec.md §F.7 D2 개정). 시나리오 05~07이 초록이 되려면 이 마일스톤에 더해 하위 SPEC의 완료가 필요하다(acceptance §E). M4까지 `internal/agenticfactory`에는 Codex 호출 지점이 없으며, 묶음은 Codex 호출 계수기 0을 함께 단언한다. 다만 계수기가 실제로 세는지는 M5의 AC-AF-013 `true` 사례가 보이므로, M4 시점의 이 "0"은 공허하며 채택 근거는 M5 뒤 실행이다. Codex 명시 설정 관문과 그 계수기 시험(AC-AF-013)은 M5다.
-- 시나리오 하네스 `TestScenarioSuite`(acceptance.md §A.1: 05→06 증거 생산 단계와 운영자 역할 부여 확인 두 번, 독립 gitdir 클론을 쓰는 분기 사례 격리와 실제 트리 불변 단언, 재실행 규칙, 두 번째 Issue의 `on-hold(operator-hold)` 사후 상태 포함)를 여기서 완성한다. 실제 Issue 쓰기와 보호된 `main` 병합은 운영자 승인 뒤에만 실행한다.
-- 대상 AC: AC-AF-018, 시나리오 AC-AF-001~007(이 마일스톤 뒤 초록), AC-AF-019(regression-guard, 시나리오 묶음 전후 측정).
+- Issue 맥락 장부, 접근성 분류, STALE 계기, 증거 단계(`.moai/evidence/issue-<N>/`).
+- 정제 C1~C5와 결정적 마지막 관문, `RESTRICTED`.
+- 관찰 보기(준비 상태·PR 적체 구분, 읽기 전용).
+- 효율 기록 형식과 checkpoint 비용 측정.
+- 초록 대상: AC-AF-013, 018, 019, 024.
 
-### M5 — 정책과 설정 초안 [Medium]
+### M6 — 설정·브라우저·CLI·template·행렬·공급자 [Medium, 기계적]
 
-- GLM 제외, Codex 명시 설정 관문, 인증·429 처리, 환경 매트릭스, 브라우저 어댑터, 설정 검증.
-- 실제 설정 파일 삽입은 이 마일스톤에 포함하지 않는다(§F.3 2단계 이후, 설정 담당 레인).
-- 실행한 Codex 전환 단계는 progress.md `## §J Codex Migration Stage Record`에 `| CX-<n> |` 행으로 적는다(design.md §9.7). 세 단계는 각각 별도 커밋이며, 순서는 커밋 그래프로 증명하고, CX-2까지 커밋마다 Codex 기본값 값(`workflow.yaml`·`defaults.go`·`llm.yaml`, 로컬과 템플릿)이 `run_base_sha`와 같음을 파싱 비교로 보인다(AC-AF-020).
-- 대상 AC: AC-AF-013, 014, 015, 016, 017, 020.
+- **첫 커밋은 호환 golden 파일만**(design §9.6). S1 등록은 그 다음 커밋부터.
+- 설정 검증(design §6), 브라우저 3선택.
+- CLI(design §9.0), OD-2 결정을 반영. 결정 전에는 버전 선언 없이 새 문법을 받지 않는다.
+- template 참조·`not supported` 보고·댓글 묶음.
+- 환경 행렬.
+- Codex 관문과 이관 단계 기록(§F.3, design §9.7).
+- 초록 대상: AC-AF-015, 020, 021, 022, 023.
 
-### M6 — 명령 계층과 호환 [Medium, 기계적]
+### M7 — 잠금 해제와 실제 Issue 시나리오 [High, 운영자 승인 필요]
 
-- **첫 커밋은 호환 기준 golden 파일만** 담는다(`internal/cli/testdata/agentic_factory_compat/`, design.md §9.6): 도움말·거절 문구·종료 코드·lane 레이블/세션 ID/owner/handle 스냅숏을 변경 전 빌드로 기록한다. S1 명령 등록은 그 다음 커밋부터다(VCI §2.3).
-- §8 명령의 S1 도입(기존 명령 불변), 관찰 모니터 표시 항목(§8.1)과 무변경, 재연결·선택·재개 계약.
-- 호환 시험은 launcher 담당 레인이 `internal/cli`에 쓴다.
-- 대상 AC: AC-AF-022, 023, 024.
+- 선행: 하위 SPEC `completed`와 그 AC 전부 PASS, 하위 OQ-AFI-1 운영자 위험 수용 기록(OD-4), 시나리오 keep-set 승인(OD-6).
+- 잠금 상수 한 곳을 바꾸는 코드 변경 하나(lane-18). 같은 착지에서 AC-AF-011 L1·L2를 해제 뒤 형태로 다시 쓴다(manager-spec 재위임).
+- 시나리오 묶음 단일 실행(acceptance §A.1).
+- 초록 대상: AC-AF-025, AC-AF-011 해제 뒤 형태.
 
 ### F.3 기존 Codex 기본값의 전환 순서 (지금은 끄지 않음)
 
-1. **관문 도입**: AgenticFactory 경로에 `workflow.agentic_factory.codex.enabled` 관문을 넣는다. 기존 `workflow.codex.*`, `audit.model: codex`, `audit.gates.codex: required`는 그대로다.
-2. **미설정 0건 검증**: AC-AF-013 PASS를 기록한다.
-3. **기본값 변경**: 그 뒤에만 기존 Codex 기본값(이 저장소의 로컬 설정과 PR #1937이 다루는 출시 기본값 포함)의 변경을 별도 작업으로 제안한다. 기존 기능은 대체 동작이 검증된 뒤에만 제거한다.
+1. 관문 도입: `workflow.agentic_factory.codex.enabled` 관문. 기존 `workflow.codex.*`, `audit.model: codex`, `audit.gates.codex`는 그대로.
+2. 미설정 0건 검증: AC-AF-015 PASS 기록.
+3. 기본값 변경 제안: 그 뒤에만 별도 작업으로. 기존 기능은 대체 검증 뒤에만 제거.
 
-모든 단계에서 점검, 독립 감사, 인계 의무는 그대로 유지한다. PR #1937과의 관계는 OQ-9다.
+각 단계는 별도 커밋이며 `progress.md` §J에 CX 행으로 적는다(design §9.7).
 
-### F.4 호환·단계 폐기 (미확정)
+### F.4 Phase 2 경계
 
-design.md §9.4의 S1 → S2 → S3 → S4(lane-22 대응표와 같은 네 단계)를 따른다. 각 단계는 진입 조건과 증거가 있어야 하고, 이관 행 C1~C11과 PR 착지 순서 후보는 design.md §9.3·§9.5에 있다. 명칭은 상위 설계 권고를 PROPOSAL로 반영했으며 확정 전이다(OQ-2).
-
-### F.5 Phase 2 경계
-
-남은 카드의 Issue 이관은 이 SPEC의 마일스톤이 아니다. AgenticFactory 수용 기준 충족과 재개 승인 뒤의 하위 단계이며, 이관 자체는 구현 완료로 세지 않는다.
+남은 카드의 Issue 이관은 이 SPEC의 마일스톤이 아니다. 이관 자체는 구현 완료로 세지 않는다.
 
 ## §G 위험
 
 | 위험 | 대응 |
 |---|---|
-| GitHub API 실패·429로 원장 거울이 늦어짐 | 단일 규칙(REQ-AF-014, design.md §2.1a): 실패한 동작에 차단을 기록하고 재시도 고리는 없다. 거울 쓰기만 실패하면 로컬 claim 저장소에 거울 상태 `mirror_state: blocked(<사유>)`로 기록하고 Issue `state`는 바꾸지 않는다. 실행은 저장소 기준으로 계속한다 |
-| 새 claim과 기존 카드 임대가 같은 작업을 이중으로 소유 | Phase 2 전까지 Issue 경로와 카드 경로가 같은 작업을 동시에 맡지 않도록 claim 시 기존 카드 임대 존재를 읽기 전용으로 확인 |
-| 시나리오 재실행마다 실제 Issue 한 쌍과 실제 병합이 새로 든다 | 시나리오 묶음은 단위 AC가 모두 초록이 된 뒤 한 번 돌린다. 재실행 규칙은 acceptance.md §A.1 |
-| 증거 생산자를 증거 파일이 스스로 주장 | 생산자 결속은 ControlService가 등록 때 관측한 값만 쓴다(design §11) |
-| `slot` 명칭 충돌 | 확정 전까지 새 실행 자리 이름을 코드 식별자로 쓰지 않음(OQ-2) |
-| 시나리오 시험이 실제 Issue에 씀 | 운영자 승인 뒤에만 실행, 시험용 Issue를 하나로 고정 |
+| control ref 쓰기가 늦어 모든 전이가 막힘 | `store-unavailable`로 멈추고 로컬 캐시로 진행하지 않음. 이것은 의도한 동작 |
+| 잠금 때문에 M7 전 병합이 하나도 안 됨 | 의도한 동작(DEC-AF-02). M7 전 실행은 진단 실행으로만 기록 |
+| 요청별 운영자 인증이 Issue마다 사람 승인이 됨 | 정본 [0]§2와의 잔여 충돌. OD-3에서 운영자 판단 |
+| 중계 경로 위험(하위 OQ-AFI-1) | 잔여 위험으로 남고 OD-4 수용 기록 없이는 M7 불가 |
+| 수치 기본값이 없어 기능이 `not-configured`로 멈춤 | OQ-22·OQ-24의 리더·운영자 결정. 숫자를 지어내지 않음 |
+| GitHub 저장소 이름 변경·이전(301) | redirect를 허용으로 보지 않음(`repository-not-allowed`) |
+| 문서 확인이 WebFetch 요약뿐(uncollated) | 설정 스키마에 `collation: uncollated` 표시. 구현 때 원문 대조 |
+| 시나리오 재실행마다 실제 Issue 한 쌍과 실제 병합이 듦 | 단일 실행 원칙(acceptance §A) |
 
 ## §H 참조
 
 - `spec.md`, `design.md`, `acceptance.md`, `research.md`
+- 하위 SPEC-AGENTIC-FACTORY-IDENTITY-001
 - `.claude/rules/moai/workflow/factory-dispatch*.md`, `.claude/rules/local/repo-local-pr-policy.md`
