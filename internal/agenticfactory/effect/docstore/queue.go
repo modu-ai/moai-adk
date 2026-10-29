@@ -11,7 +11,10 @@ import (
 )
 
 // ErrQueueFull marks an event that cannot be queued without breaking the document limit. The event is not
-// queued and not acknowledged, so the host redelivers it later; nothing is dropped to make room.
+// queued and not acknowledged, so the delivery counts as failed on the host; nothing is dropped to make
+// room. GitHub does not redeliver a failed delivery by itself (it can be redelivered by hand or by a script
+// that reads the deliveries API), so a change that is never retried reaches the collector through its
+// safety poll.
 var ErrQueueFull = errors.New("docstore: the webhook queue is full")
 
 // ErrQueueConfig marks a queue whose configuration cannot work (for example a memory of consumed ids that

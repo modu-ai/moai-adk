@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/claim"
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/effect/docstore"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/forge"
 )
@@ -348,4 +349,32 @@ type noCalls struct{}
 
 func (noCalls) Do(context.Context, forge.Request) (forge.Response, error) {
 	panic("the collector polled the host")
+}
+
+type busyDocs struct{}
+
+func (busyDocs) GetDoc(string, string) (claim.Doc, error) { return claim.Doc{}, core.ErrNotHeld }
+func (busyDocs) PutDoc(string, string, int64, []byte) (claim.Doc, error) {
+	return claim.Doc{}, fmt.Errorf("%w: documents", core.ErrBusy)
+}
+
+// A busy document lock is not a server fault: the delivery is answered 503 (try again), not acknowledged.
+func TestABusyQueueAnswers503NotAFault(t *testing.T) {
+	q := &docstore.Queue{Docs: busyDocs{}, Kind: docstore.CollectorKind, Key: "o/a/hooks"}
+	h := &Handler{Provider: "github", MaxBody: 4 << 10, Routes: []Route{{Repo: "o/a", Secret: func() []byte { return []byte("s") }, Queue: q}}}
+	srv := httptest.NewServer(h)
+	t.Cleanup(srv.Close)
+	body := issueBody("o/a", 7, "edited")
+	req, _ := http.NewRequest(http.MethodPost, srv.URL+"/hook/o/a", bytes.NewReader(body))
+	req.Header.Set("X-Hub-Signature-256", Sign([]byte("s"), body))
+	req.Header.Set("X-GitHub-Delivery", "d1")
+	req.Header.Set("X-GitHub-Event", "issues")
+	resp, err := (&http.Client{Timeout: 5 * time.Second, Transport: &http.Transport{Proxy: nil}}).Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusServiceUnavailable {
+		t.Errorf("status = %d, want 503", resp.StatusCode)
+	}
 }
