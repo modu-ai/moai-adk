@@ -91,7 +91,8 @@ type worktreeReservation struct {
 	Issue int    `json:"issue"`
 }
 
-func worktreeKey(path string) string {
+// WorktreeKey is the document name that reserves path.
+func WorktreeKey(path string) string {
 	sum := sha256.Sum256([]byte(path))
 	return "wt-" + hex.EncodeToString(sum[:])[:40]
 }
@@ -110,22 +111,7 @@ func (s *Store) BindWorktree(i core.IssueRef, holder string, epoch int64, path s
 	if strings.TrimSpace(path) == "" {
 		return Record{}, fmt.Errorf("%w: a worktree path is required", core.ErrEvidenceIncomplete)
 	}
-	recs, err := s.List()
-	if err != nil {
-		return Record{}, err
-	}
-	for _, r := range recs {
-		if r.Issue == i.Number || r.State == core.StateDone {
-			continue
-		}
-		if r.Worktree == path || (r.Receipt != nil && r.Receipt.Worktree == path) {
-			return Record{}, fmt.Errorf("%w: %s is used by issue-%d", core.ErrWorktreeInUse, path, r.Issue)
-		}
-	}
-	if s.afterScan != nil {
-		s.afterScan()
-	}
-	if err := s.reserveWorktree(i, path); err != nil {
+	if err := s.ReserveWorktree(i, path); err != nil {
 		return Record{}, err
 	}
 	return s.Update(i, holder, epoch, func(rec *Record) error {
@@ -134,9 +120,40 @@ func (s *Store) BindWorktree(i core.IssueRef, holder string, epoch int64, path s
 	})
 }
 
+// ReserveWorktree holds path for Issue i (the scan of the other records, then the
+// create-only reservation). A handoff uses it for the receipt's worktree, so an
+// open PR's path cannot be bound by another Issue.
+//
+// Contract for an abandoned reservation: a reservation stays with its Issue until
+// that Issue is done or moves to another path. An Issue that reserved a path and
+// never wrote it (a crash between the two) keeps holding it; the same Issue
+// retrying is idempotent and releases the doubt, any other Issue is refused with
+// ErrWorktreeInUse. Nothing expires it by time.
+func (s *Store) ReserveWorktree(i core.IssueRef, path string) error {
+	if strings.TrimSpace(path) == "" {
+		return fmt.Errorf("%w: a worktree path is required", core.ErrEvidenceIncomplete)
+	}
+	recs, err := s.List()
+	if err != nil {
+		return err
+	}
+	for _, r := range recs {
+		if r.Issue == i.Number || r.State == core.StateDone {
+			continue
+		}
+		if r.Worktree == path || (r.Receipt != nil && r.Receipt.Worktree == path) {
+			return fmt.Errorf("%w: %s is used by issue-%d", core.ErrWorktreeInUse, path, r.Issue)
+		}
+	}
+	if s.afterScan != nil {
+		s.afterScan()
+	}
+	return s.reserveWorktree(i, path)
+}
+
 // reserveWorktree takes the path for i, or reports who has it.
 func (s *Store) reserveWorktree(i core.IssueRef, path string) error {
-	name := worktreeKey(path)
+	name := WorktreeKey(path)
 	data, err := json.Marshal(worktreeReservation{Path: path, Issue: i.Number})
 	if err != nil {
 		return err
@@ -189,7 +206,7 @@ func (s *Store) usesWorktree(h worktreeReservation) bool {
 	// An Issue that has reserved the path but not yet written it to its record
 	// (Worktree empty) still holds it; only a finished Issue, or one that moved
 	// to another path, lets go.
-	return r.State != core.StateDone && (r.Worktree == "" || r.Worktree == h.Path)
+	return r.State != core.StateDone && (r.Worktree == "" || r.Worktree == h.Path || (r.Receipt != nil && r.Receipt.Worktree == h.Path))
 }
 
 // TakeOver moves a held Issue from a dead owner to a new one. The caller has

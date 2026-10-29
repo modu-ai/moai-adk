@@ -507,6 +507,14 @@ func (r *Runner) HandOff(t Ticket, h Handoff) (claim.Record, error) {
 		}
 		return claim.Record{}, fmt.Errorf("%w: receipt %s was accepted with other content", core.ErrDuplicateHandoff, h.HandoffID)
 	}
+	// The receipt's worktree is held like a bound one: while the PR is open no other
+	// Issue may bind it, and a finished Issue's reservation is taken over.
+	if _, err := r.Store.Verify(t.Issue, t.Holder, t.Epoch); err != nil {
+		return claim.Record{}, err // only the owner may park a path on the Issue
+	}
+	if err := r.Store.ReserveWorktree(t.Issue, h.Worktree); err != nil {
+		return claim.Record{}, err
+	}
 	return r.Store.Update(t.Issue, t.Holder, t.Epoch, func(rec *claim.Record) error {
 		if rec.State != core.StateLanding {
 			return fmt.Errorf("%w: %s, handoff needs a published PR (landing)", core.ErrTransitionInvalid, rec.State)

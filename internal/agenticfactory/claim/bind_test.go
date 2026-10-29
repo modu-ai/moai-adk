@@ -130,3 +130,62 @@ func TestAReservationNotYetWrittenToItsRecordStillHoldsThePath(t *testing.T) {
 		t.Errorf("the half-done bind lost its path: %v", err)
 	}
 }
+
+// A handoff reserves the receipt's worktree through the same path as a bind, so a
+// handoff and a bind of one path at the same moment have exactly one winner.
+func TestAHandoffReservationAndABindOfOnePathHaveExactlyOneWinner(t *testing.T) {
+	sa, sb := twoStores(t)
+	if _, err := sa.Acquire(ref(t, 1), "w1", "d1", "run-1"); err != nil {
+		t.Fatal(err)
+	}
+	rb, _ := sb.Acquire(ref(t, 2), "w2", "d2", "run-1")
+	var arrive sync.WaitGroup
+	arrive.Add(2)
+	gate := make(chan struct{})
+	hold := func() { arrive.Done(); <-gate }
+	sa.afterScan, sb.afterScan = hold, hold
+	go func() { arrive.Wait(); close(gate) }()
+	var wg sync.WaitGroup
+	errs := make([]error, 2)
+	wg.Add(2)
+	go func() { defer wg.Done(); errs[0] = sa.ReserveWorktree(ref(t, 1), "/wt/pr") }()
+	go func() { defer wg.Done(); _, errs[1] = sb.BindWorktree(ref(t, 2), "w2", rb.Epoch, "/wt/pr") }()
+	wg.Wait()
+	won, lost := 0, 0
+	for _, e := range errs {
+		switch {
+		case e == nil:
+			won++
+		case errors.Is(e, core.ErrWorktreeInUse):
+			lost++
+		default:
+			t.Errorf("unexpected: %v", e)
+		}
+	}
+	if won != 1 || lost != 1 {
+		t.Fatalf("winners=%d losers=%d (%v)", won, lost, errs)
+	}
+}
+
+// An Issue works in one worktree and hands its PR off from another: both paths
+// are in use, and only a finished Issue lets either go.
+func TestAReceiptPathIsInUseEvenWhenTheIssueIsBoundElsewhere(t *testing.T) {
+	s := open(t)
+	rec, err := s.Acquire(ref(t, 1), "w1", "d1", "run-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Update(ref(t, 1), "w1", rec.Epoch, func(r *Record) error {
+		r.Worktree = "/wt/a"
+		r.Receipt = &Receipt{HandoffID: "ho-1", PR: 1, Head: core.HeadSHA("a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"), Branch: "WT-x", Worktree: "/wt/b"}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if !s.usesWorktree(worktreeReservation{Path: "/wt/b", Issue: 1}) || !s.usesWorktree(worktreeReservation{Path: "/wt/a", Issue: 1}) {
+		t.Error("both the bound and the receipt path are in use")
+	}
+	if s.usesWorktree(worktreeReservation{Path: "/wt/other", Issue: 1}) {
+		t.Error("a path the Issue neither uses nor reserved is not in use")
+	}
+}
