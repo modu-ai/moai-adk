@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 	"unicode/utf8"
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/effect"
@@ -42,6 +43,9 @@ type Comment struct {
 	Body string
 }
 
+// ErrGone is returned by Remote.Update when the comment no longer exists (HTTP 404).
+var ErrGone = errors.New("ctxledger: comment no longer exists")
+
 // Remote is the comment API. The only production implementation is GHRemote.
 type Remote interface {
 	Find(ctx context.Context, issue int, marker string) (Comment, bool, error)
@@ -55,6 +59,39 @@ type Ledger struct {
 	Store    effect.IntentStore
 	MaxBytes int
 	Timeouts effect.Timeouts
+
+	// cache holds, per Issue, the comment id and body hash of the last write known to have landed.
+	// With it a write skips the marker list GET, and an unchanged body skips the write. It is only a
+	// hint: it is dropped on any ambiguous outcome or a 404, and the marker lookup is the fallback.
+	mu    sync.Mutex
+	cache map[int]cached
+}
+
+type cached struct {
+	id   int64
+	hash string
+}
+
+func (l *Ledger) cacheGet(issue int) (cached, bool) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	c, ok := l.cache[issue]
+	return c, ok
+}
+
+func (l *Ledger) cachePut(issue int, c cached) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.cache == nil {
+		l.cache = map[int]cached{}
+	}
+	l.cache[issue] = c
+}
+
+func (l *Ledger) cacheDrop(issue int) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	delete(l.cache, issue)
 }
 
 func digest(s string) string {
@@ -146,7 +183,7 @@ func (l *Ledger) Flush(ctx context.Context) error {
 			newest[in.Issue] = in
 		}
 	}
-	ex := &effect.Executor{Store: l.Store, Send: sender{l.Remote}, Lookup: lookup{l.Remote}, Timeouts: l.Timeouts}
+	ex := &effect.Executor{Store: l.Store, Send: sender{l.Remote, l}, Lookup: lookup{l.Remote}, Timeouts: l.Timeouts}
 	var first error
 	for _, in := range all {
 		if in.Kind != effect.LedgerComment {
@@ -168,27 +205,53 @@ func (l *Ledger) Flush(ctx context.Context) error {
 	return first
 }
 
-type sender struct{ r Remote }
+type sender struct {
+	r Remote
+	l *Ledger
+}
 
 func (s sender) Send(ctx context.Context, in effect.Intent) (string, error) {
+	id, err := s.send(ctx, in)
+	if err != nil {
+		s.l.cacheDrop(in.Issue) // outcome unknown: do not trust a remembered id or hash
+		return "", err
+	}
+	s.l.cachePut(in.Issue, cached{id: id, hash: digest(in.Payload)})
+	return strconv.FormatInt(id, 10), nil
+}
+
+func (s sender) send(ctx context.Context, in effect.Intent) (int64, error) {
+	if c, ok := s.l.cacheGet(in.Issue); ok {
+		if c.hash == digest(in.Payload) {
+			return c.id, nil // already on the remote: send nothing
+		}
+		err := s.r.Update(ctx, in.Issue, c.id, in.Payload)
+		if err == nil {
+			return c.id, nil
+		}
+		if !errors.Is(err, ErrGone) {
+			return 0, err
+		}
+		s.l.cacheDrop(in.Issue) // the comment is gone: fall back to the marker lookup
+	}
 	c, found, err := s.r.Find(ctx, in.Issue, Marker(in.Issue))
 	if err != nil {
-		return "", err
+		return 0, err
 	}
 	switch {
 	case found && c.Body == in.Payload:
-		return strconv.FormatInt(c.ID, 10), nil
+		return c.ID, nil
 	case found:
 		if err := s.r.Update(ctx, in.Issue, c.ID, in.Payload); err != nil {
-			return "", err
+			return 0, err
 		}
-		return strconv.FormatInt(c.ID, 10), nil
+		return c.ID, nil
 	}
 	nc, err := s.r.Create(ctx, in.Issue, in.Payload)
 	if err != nil {
-		return "", err
+		return 0, err
 	}
-	return strconv.FormatInt(nc.ID, 10), nil
+	return nc.ID, nil
 }
 
 type lookup struct{ r Remote }
@@ -249,5 +312,8 @@ func (g GHRemote) Update(ctx context.Context, issue int, id int64, body string) 
 		return errors.New("ctxledger: update needs a comment id")
 	}
 	_, err := g.Run(ctx, "api", "-X", "PATCH", fmt.Sprintf("repos/%s/issues/comments/%d", g.Repo, id), "-f", "body="+body)
+	if err != nil && (strings.Contains(err.Error(), "404") || strings.Contains(strings.ToLower(err.Error()), "not found")) {
+		return ErrGone
+	}
 	return err
 }
