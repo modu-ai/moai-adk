@@ -320,11 +320,15 @@ func judge(results []Result) (core.BlockReason, bool) {
 	return reason, false
 }
 
-// Land moves ready -> landing after re-confirming the HEAD.
+// Land moves ready -> landing after re-confirming the HEAD and that the PR text
+// was checked on it (PreflightPR). Publishing the PR is this step.
 func (r *Runner) Land(t Ticket, head string) (claim.Record, error) {
 	return r.step(t, core.StateReady, func(rec *claim.Record) error {
 		if head != string(rec.Head) {
 			return fmt.Errorf("%w: landing %.12s, ready %.12s", core.ErrStaleHead, head, rec.Head)
+		}
+		if string(rec.PreflightHead) != head {
+			return fmt.Errorf("%w: the PR text was not checked for closing keywords on %.12s (PreflightPR)", core.ErrEvidenceIncomplete, head)
 		}
 		rec.State = core.StateLanding
 		return nil
@@ -570,4 +574,77 @@ func (r *Runner) Reopen(i core.IssueRef, reason string) (claim.Record, error) {
 		rec.AddEvent(claim.Event{Kind: "reopen", Head: string(rec.Head), PR: rec.Receipt.PR, Note: reason})
 		return nil
 	})
+}
+
+// PreflightPR checks the PR text (description and commit messages) before the PR
+// is published. A closing keyword (close/fix/resolve and their forms) that would
+// close an Issue the acting user may not close stops the PR: the Issue becomes
+// blocked with the reason foreign-closing-keyword and the Issues are named. Each
+// target is decided by the same permission decision as any other close
+// (core.Authorize with OpClose), so there is no second rule: your own Issues pass,
+// another author's Issue passes only where collaboration allows closing it. A
+// target that cannot be checked (another repository, an unknown author, no host
+// lookup) blocks. Passing records the HEAD; Land needs it. ownRepo is the PR's
+// repository, used to tell same-repository references from others.
+func (r *Runner) PreflightPR(t Ticket, head, ownRepo string, texts ...string) (claim.Record, error) {
+	h, err := core.ParseHeadSHA(head)
+	if err != nil {
+		return claim.Record{}, err
+	}
+	var problems []string
+	for _, c := range core.ClosingTargets(texts...) {
+		if c.Repo != "" && core.NormalizeRepo(r.Collab.Provider, c.Repo) != core.NormalizeRepo(r.Collab.Provider, ownRepo) {
+			problems = append(problems, fmt.Sprintf("%s#%d is in another repository", c.Repo, c.Issue))
+			continue
+		}
+		if c.Issue == t.Issue.Number {
+			continue
+		}
+		if why := r.mayClose(c.Issue); why != "" {
+			problems = append(problems, fmt.Sprintf("#%d (%s)", c.Issue, why))
+		}
+	}
+	var refused error
+	rec, err := r.step(t, core.StateReady, func(rec *claim.Record) error {
+		if h != rec.Head {
+			return fmt.Errorf("%w: preflight on %.12s, candidate %.12s", core.ErrStaleHead, h, rec.Head)
+		}
+		if len(problems) == 0 {
+			rec.PreflightHead = h
+			return nil
+		}
+		detail := "PR text would close: " + strings.Join(problems, ", ")
+		pauseIn(rec, core.StateBlocked, core.ReasonForeignClosing, detail+"; reword the keyword to Refs #N and resume")
+		rec.PreflightHead = ""
+		rec.AddEvent(claim.Event{Kind: "preflight-refused", Head: string(h), Note: detail})
+		refused = fmt.Errorf("%w: %s", core.ErrForeignClosing, detail)
+		return nil
+	})
+	if err != nil {
+		return rec, err
+	}
+	return rec, refused
+}
+
+// mayClose returns why the acting user may not close the Issue, or "" when the
+// permission decision allows it.
+func (r *Runner) mayClose(issue int) string {
+	ref, err := core.NewIssueRef(issue)
+	if err != nil {
+		return "not a valid issue number"
+	}
+	if r.Facts == nil {
+		return "no host lookup to check the author"
+	}
+	f, err := r.Facts.IssueFacts(ref)
+	if err != nil {
+		return "the host lookup failed"
+	}
+	if v := r.Collab.Authorize(core.AuthzRequest{
+		Op: core.OpClose, RequestedRepo: f.RequestedRepo, ActualRepo: f.ActualRepo, Redirected: f.Redirected,
+		UserID: f.UserID, IssueAuthorID: f.AuthorID, Owner: f.Owner,
+	}); v != core.Allow {
+		return string(v)
+	}
+	return ""
 }
