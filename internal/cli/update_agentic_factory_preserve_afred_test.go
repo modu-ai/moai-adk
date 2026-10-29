@@ -72,23 +72,40 @@ func TestAgenticFactoryUpdateCyclePreservesUserTemplates(t *testing.T) {
 	if err != nil {
 		t.Fatalf("getwd: %v", err)
 	}
-	if err := os.Chdir(root); err != nil {
-		t.Fatalf("chdir to fixture: %v", err)
-	}
 	t.Cleanup(func() { _ = os.Chdir(origDir) })
 
-	cmd := &cobra.Command{Use: "test"}
-	cmd.Flags().Bool("force", false, "")
-	cmd.Flags().Bool("yes", true, "")
-	cmd.Flags().Bool("config", false, "")
-	_ = cmd.Flags().Set("yes", "true")
-	var buf bytes.Buffer
-	cmd.SetOut(&buf)
-	cmd.SetContext(context.Background())
-
-	if err := runTemplateSyncWithReporter(cmd, nil, true, nil); err != nil {
-		t.Fatalf("AF_UPDATE_CYCLE: runTemplateSyncWithReporter: %v\noutput: %s", err, buf.String())
+	runCycle := func(dir string) {
+		t.Helper()
+		if err := os.Chdir(dir); err != nil {
+			t.Fatalf("chdir to fixture: %v", err)
+		}
+		cmd := &cobra.Command{Use: "test"}
+		cmd.Flags().Bool("force", false, "")
+		cmd.Flags().Bool("yes", true, "")
+		cmd.Flags().Bool("config", false, "")
+		_ = cmd.Flags().Set("yes", "true")
+		var buf bytes.Buffer
+		cmd.SetOut(&buf)
+		cmd.SetContext(context.Background())
+		if err := runTemplateSyncWithReporter(cmd, nil, true, nil); err != nil {
+			t.Fatalf("AF_UPDATE_CYCLE: runTemplateSyncWithReporter: %v\noutput: %s", err, buf.String())
+		}
 	}
+
+	// positive control: with no user file at those paths, the same cycle does
+	// deploy them, so a build that ships no Agentic Factory templates cannot
+	// pass this test
+	control := t.TempDir()
+	writeTestFile(t, control, ".moai/config/sections/system.yaml",
+		"system:\n  template_version: \"0.0.0\"\n")
+	runCycle(control)
+	for _, rel := range []string{edited, created} {
+		if _, err := os.Stat(filepath.Join(control, filepath.FromSlash(rel))); err != nil {
+			t.Fatalf("AF_UPDATE_CYCLE: positive control failed, %s was not deployed to a project without it: %v", rel, err)
+		}
+	}
+
+	runCycle(root)
 
 	var changed []string
 	for rel, want := range content {

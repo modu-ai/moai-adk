@@ -25,6 +25,8 @@ package template_test
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
@@ -69,6 +71,22 @@ func TestAgenticFactoryUpdatePreservesUserFiles(t *testing.T) {
 
 	if err := template.NewDeployerWithForceUpdate(sub, true).Deploy(context.Background(), root, mgr, nil); err != nil {
 		t.Fatalf("AF_PRESERVE: Deploy(force): %v", err)
+	}
+
+	// positive control: with no user file at those paths, the same force
+	// deploy does create them, so an empty deploy list cannot pass this test
+	control := t.TempDir()
+	controlMgr := manifest.NewManager()
+	if _, err := controlMgr.Load(control); err != nil {
+		t.Fatalf("AF_PRESERVE: control manifest load: %v", err)
+	}
+	if err := template.NewDeployerWithForceUpdate(sub, true).Deploy(context.Background(), control, controlMgr, nil); err != nil {
+		t.Fatalf("AF_PRESERVE: control Deploy(force): %v", err)
+	}
+	for _, rel := range []string{userEdited, userCreated} {
+		if _, err := os.Stat(filepath.Join(control, filepath.FromSlash(rel))); err != nil {
+			t.Fatalf("AF_PRESERVE: positive control failed, %s was not deployed to an empty project: %v", rel, err)
+		}
 	}
 
 	var changed []string
