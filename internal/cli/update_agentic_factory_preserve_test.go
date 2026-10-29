@@ -1,22 +1,17 @@
-//go:build afred
-
-// update_agentic_factory_preserve_afred_test.go: OBSERVATION of the real
-// template-sync update cycle (runTemplateSyncWithReporter) over a t.TempDir()
-// project that holds user-owned Agentic Factory issue templates. Excluded from
-// the default run by the afred build tag; run it with:
+// update_agentic_factory_preserve_test.go: the real template-sync update cycle
+// (runTemplateSyncWithReporter) over a t.TempDir() project that holds
+// user-owned Agentic Factory issue templates must leave them byte-identical.
+// Regression guard for a defect reproduced before the repair.
 //
-//	go test -tags afred -run '^TestAgenticFactoryUpdateCyclePreservesUserTemplates$' ./internal/cli/
-//
-// KNOWN DEFECT REPRODUCTION (RED before the repair in
-// internal/template/user_owned_templates.go, GREEN after it). Measured before
-// the repair: the update cycle overwrote both user-owned templates
+// Defect (fixed by internal/template/user_owned_templates.go): before the repair
+// the update cycle overwrote both user-owned templates
 //
 //	.github/ISSUE_TEMPLATE/agentic-factory-01-parent-issue.yml  (user_modified)
 //	.github/ISSUE_TEMPLATE/agentic-factory-02-child-issue.yml   (user_created)
 //
-// and leaves the user-only template untouched. This is the same defect the
-// Deployer-level reproduction in internal/template records. The update code
-// path is also reworked by another open PR, so re-run this after it lands.
+// and left the user-only template untouched. It is the same defect the
+// Deployer-level guard in internal/template covers. The update code path is
+// also reworked by another open PR, so re-run this after it lands.
 //
 // Sentinel on failure: AF_UPDATE_CYCLE.
 package cli

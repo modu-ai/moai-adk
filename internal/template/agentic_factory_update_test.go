@@ -9,11 +9,11 @@
 // update path (internal/cli/update.go) is not driven here and must be re-run
 // after the PR that reworks it lands.
 //
-// User-file preservation under force-update is asserted by the afred-tagged
-// reproductions (agentic_factory_update_preserve_afred_test.go in this package
-// and update_agentic_factory_preserve_afred_test.go in internal/cli); the
-// deployer protects Agentic Factory provider templates through
-// isUserOwnedTemplatePath (user_owned_templates.go).
+// User-file preservation under force-update is asserted by
+// agentic_factory_update_preserve_test.go in this package and
+// update_agentic_factory_preserve_test.go in internal/cli; the deployer
+// protects Agentic Factory provider templates through isUserOwnedTemplatePath
+// (user_owned_templates.go).
 //
 // Sentinels on failure: AF_INSTALL / AF_UPDATE.
 package template_test
