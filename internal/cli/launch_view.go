@@ -38,6 +38,7 @@ package cli
 import (
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -242,9 +243,53 @@ func existingWorktreeEntryDir(args []string) string {
 	return cands[0].Path
 }
 
-// stripWorktreeSelection removes the argv's first -w selection (both
-// spellings, its value included): the entry-by-directory form starts the
-// backend inside the tree, so the backend must receive no worktree
+// refuseShadowedMoaiTreeName refuses the launch when the backend's worktree
+// selection — the LAST -w value the view resolved, not the first flag —
+// names a .moai/worktrees/<name> tree that already exists at the launcher's
+// own project root while the native .claude/worktrees/<name> tree does not:
+// claude would resolve the name against THIS root and silently create a
+// duplicate branch tree beside the MoAI tree (the 2026-10-08 lane-12
+// incident, GH #1813). The base is deliberately findProjectRootFn — the
+// same root every other launcher check reads and the exact directory claude
+// would create the tree in — NOT a git-layout resolver: audits r2-r5
+// measured the resolver shapes (common-dir parent, worktree-list record,
+// file-link scan) wrong or hijackable on exotic layouts, and the launcher's
+// byte-equality contract requires no probe side effects on the launch path.
+// Where the root itself cannot be resolved there is no repository for
+// claude to create a worktree in either, so nothing can be duplicated.
+// The refusal is pre-launch and argv-preserving — nothing is stripped,
+// entered, or rewritten; the error guides into the existing tree by
+// directory (`cd '<path>' && moai <verb>`, the path shellSingleQuoted —
+// audit r1 P2-1 measured claude 2.1.309 rejecting an absolute path as a
+// --worktree value with "Invalid worktree name", so `-w <path>` is never
+// guided). The native side is judged by its own existence (a native path
+// aliasing the MoAI tree keeps the existing behavior). Every non-judgment
+// answers nil: no selection or a bare one, an absolute or path-shaped
+// value, an unresolvable root.
+func refuseShadowedMoaiTreeName(view launchView, verb string) error {
+	if !view.Selection.Present || !view.Selection.HasValue {
+		return nil
+	}
+	value := view.Selection.Value
+	if filepath.IsAbs(value) || value == "." || value == ".." || strings.ContainsAny(value, `/\`) {
+		return nil
+	}
+	root, err := findProjectRootFn()
+	if err != nil {
+		return nil // no root, no repository for claude to create a worktree in
+	}
+	moaiDir := filepath.Join(root, ".moai", "worktrees", value)
+	if fi, err := os.Stat(moaiDir); err != nil || !fi.IsDir() {
+		return nil
+	}
+	nativeDir := filepath.Join(root, ".claude", "worktrees", value)
+	if _, err := os.Stat(nativeDir); err == nil {
+		return nil // the native tree exists (aliases included); claude re-enters it natively
+	}
+	return fmt.Errorf("refusing -w %s: a MoAI worktree already exists at %s and no native .claude/worktrees/%s tree does; launching with -w %s would silently create a duplicate tree beside it (GH #1813). Enter the existing tree instead:\n  cd %s && moai %s",
+		value, moaiDir, value, value, shellSingleQuoted(moaiDir), verb)
+}
+
 // selection at all — a surviving short name would resolve against the
 // tree's own .claude/worktrees and create a duplicate inside it.
 func stripWorktreeSelection(args []string) []string {
