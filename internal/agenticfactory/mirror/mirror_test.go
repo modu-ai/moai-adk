@@ -141,19 +141,28 @@ func TestReadWithoutLedgerComment(t *testing.T) {
 	}
 }
 
-func TestSecretsAreRedactedAndCounted(t *testing.T) {
+// A ledger that holds a secret or personal data is refused, not masked and posted
+// (design 4.4): nothing is sent, and the error names the categories without the values.
+func TestASensitiveLedgerIsRefusedAndNothingIsSent(t *testing.T) {
 	l := ledger()
 	l.NextAction = "use ghp_abcdefghijklmnopqrstuvwxyz0123456789 and password=hunter2 then continue"
-	f := &fakeGH{results: []result{{out: ""}, {out: "{}"}}}
-	if err := writable(f).WriteLedger(context.Background(), l); err != nil {
-		t.Fatal(err)
+	f := &fakeGH{}
+	err := writable(f).WriteLedger(context.Background(), l)
+	if !errors.Is(err, core.ErrUnsanitized) {
+		t.Fatalf("want ErrUnsanitized, got %v", err)
 	}
-	body := strings.Join(f.calls[1], " ")
-	if strings.Contains(body, "ghp_abcdef") || strings.Contains(body, "hunter2") {
-		t.Errorf("secret leaked into body: %s", body)
+	if len(f.calls) != 0 {
+		t.Errorf("a refused ledger caused gh calls: %v", f.calls)
 	}
-	if !strings.Contains(body, "redacted") {
-		t.Errorf("redaction must be disclosed: %s", body)
+	for _, leak := range []string{"ghp_abcdef", "hunter2"} {
+		if strings.Contains(err.Error(), leak) {
+			t.Errorf("the refusal repeats %q: %v", leak, err)
+		}
+	}
+	for _, name := range []string{"token", "credential-assignment"} {
+		if !strings.Contains(err.Error(), name) {
+			t.Errorf("the refusal must name %q: %v", name, err)
+		}
 	}
 }
 
@@ -318,5 +327,30 @@ func TestLedgerFromRecordCarriesAnUnknownPosition(t *testing.T) {
 	}
 	if h := LedgerFromRecord(claim.Record{Issue: 7, Holder: "h", State: core.StateClaimed}); h.PositionUnknown != "" {
 		t.Errorf("a known position carries no marker: %+v", h)
+	}
+}
+
+// Publish records that the ledger was refused, leaves the execution state alone and
+// returns the refusal; nothing reaches gh.
+func TestPublishRecordsARefusedLedger(t *testing.T) {
+	st, _ := claim.OpenWithLimit(t.TempDir(), 100)
+	ref, _ := core.NewIssueRef(1948)
+	rec, err := st.Acquire(ref, "sess-a", "d1", "run-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.Update(ref, "sess-a", rec.Epoch, func(r *claim.Record) error { r.Resume = "ask dev@example.com"; return nil }); err != nil {
+		t.Fatal(err)
+	}
+	f := &fakeGH{}
+	out, err := Publish(context.Background(), writable(f), st, ref, "sess-a", rec.Epoch)
+	if !errors.Is(err, core.ErrUnsanitized) {
+		t.Fatalf("want ErrUnsanitized, got %v", err)
+	}
+	if len(f.calls) != 0 {
+		t.Errorf("a refused ledger reached gh: %v", f.calls)
+	}
+	if out.Mirror != "refused" || out.State != core.StateClaimed {
+		t.Errorf("record after the refusal: mirror=%q state=%s", out.Mirror, out.State)
 	}
 }

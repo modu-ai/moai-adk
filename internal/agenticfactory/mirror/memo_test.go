@@ -123,24 +123,31 @@ func TestReadNeverUsesTheMemo(t *testing.T) {
 	}
 }
 
-func TestMemoIsPerIssueAndKeepsSecretsOut(t *testing.T) {
+func TestMemoIsPerIssueAndASensitiveLedgerNeverReachesGh(t *testing.T) {
 	f := &fakeGH{results: []result{{out: ""}, {out: `{"id":10}`}, {out: ""}, {out: `{"id":20}`}}}
 	m := writable(f)
 	c := context.Background()
 	a := ledgerWith("password=hunter2 and ghp_abcdefghijklmnopqrstuvwxyz0123")
 	b := ledgerWith("x")
 	b.Issue = core.IssueRef{Number: 2000}
-	if err := m.WriteLedger(c, a); err != nil {
-		t.Fatal(err)
+	d := ledgerWith("y")
+	if err := m.WriteLedger(c, a); !errors.Is(err, core.ErrUnsanitized) {
+		t.Fatalf("a sensitive ledger must be refused: %v", err)
+	}
+	if len(f.calls) != 0 {
+		t.Fatalf("a refused ledger reached gh: %v", calls(f))
 	}
 	if err := m.WriteLedger(c, b); err != nil {
+		t.Fatal(err)
+	}
+	if err := m.WriteLedger(c, d); err != nil {
 		t.Fatal(err)
 	}
 	all := strings.Join(calls(f), "\n")
 	if strings.Contains(all, "hunter2") || strings.Contains(all, "ghp_abcdef") {
 		t.Errorf("secret reached a gh call:\n%s", all)
 	}
-	if !strings.Contains(calls(f)[3], "issues/2000/comments") {
+	if !strings.Contains(calls(f)[1], "issues/2000/comments") || !strings.Contains(calls(f)[3], "issues/1948/comments") {
 		t.Errorf("each issue needs its own comment: %v", calls(f))
 	}
 }
@@ -197,20 +204,25 @@ func TestHumanDeletedTheCommentUnchangedBodyIsNotRepairedUntilInvalidated(t *tes
 	}
 }
 
-func TestEmailAndHomePathNeverReachGh(t *testing.T) {
-	f := &fakeGH{results: []result{{out: ""}, {out: `{"id":1}`}}}
+func TestEmailAndHomePathAreRefusedAndNeverReachGh(t *testing.T) {
+	f := &fakeGH{}
 	m := writable(f)
 	l := ledgerWith("mail dev.person@example.co.kr, log /Users/goos/MoAI/x.log")
-	if err := m.WriteLedger(context.Background(), l); err != nil {
-		t.Fatal(err)
+	err := m.WriteLedger(context.Background(), l)
+	if !errors.Is(err, core.ErrUnsanitized) {
+		t.Fatalf("want ErrUnsanitized, got %v", err)
 	}
-	all := strings.Join(calls(f), "\n")
+	if len(f.calls) != 0 {
+		t.Fatalf("a refused ledger reached gh: %v", calls(f))
+	}
 	for _, leak := range []string{"example.co.kr", "dev.person", "/Users/goos"} {
-		if strings.Contains(all, leak) {
-			t.Errorf("%q reached a gh call:\n%s", leak, all)
+		if strings.Contains(err.Error(), leak) {
+			t.Errorf("the refusal repeats %q: %v", leak, err)
 		}
 	}
-	if !strings.Contains(all, "redacted") {
-		t.Error("masking must be disclosed")
+	for _, name := range []string{"email", "home-path"} {
+		if !strings.Contains(err.Error(), name) {
+			t.Errorf("the refusal must name %q: %v", name, err)
+		}
 	}
 }
