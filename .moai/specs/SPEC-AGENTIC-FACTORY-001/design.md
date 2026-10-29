@@ -1,4 +1,4 @@
-# SPEC-AGENTIC-FACTORY-001 — 설계 (0.6.4)
+# SPEC-AGENTIC-FACTORY-001 — 설계 (0.6.5)
 
 이 문서는 `spec.md`의 표 요구사항(REQ-AF-016~025)이 가리키는 표와, 묶음 요구사항(REQ-AF-001~015)의 세부 계약을 담는다. 코드 구조와 함수 이름은 정하지 않는다. 다만 이미 다른 레인이 만든 이름(예: lane-18 `core.Collaboration.Authorize`, lane-17 `NormalizeRepositoryPath`)은 사실로 인용한다.
 
