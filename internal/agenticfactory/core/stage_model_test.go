@@ -276,10 +276,11 @@ func TestResumeClearsOnlyTheOverlay(t *testing.T) {
 	}
 }
 
-func TestOnlyOneReasonAtATimeAndNoParkOnTerminals(t *testing.T) {
+func TestAParkedPositionHasExactlyOneReasonAndTerminalsAreNeverParked(t *testing.T) {
 	parked := Position{Stage: StageReady, Park: ptr(park(ReasonDependency))}
-	if _, err := run(t, parked, "E19", "", park(ReasonRateLimited)); !errors.Is(err, ErrAlreadyParked) {
-		t.Errorf("second overlay: %v", err)
+	got, err := run(t, parked, "E19", "", park(ReasonRateLimited))
+	if err != nil || got.Park == nil || got.Park.Reason != ReasonRateLimited || got.Stage != StageReady {
+		t.Errorf("a park update replaces the reason, never stacks a second one: %+v %v", got, err)
 	}
 	for _, id := range []string{"E18", "E19", "E26"} {
 		for _, st := range []Stage{StageDone, StageCancelled} {
@@ -287,6 +288,61 @@ func TestOnlyOneReasonAtATimeAndNoParkOnTerminals(t *testing.T) {
 				t.Errorf("%s on %s: %v", id, st, err)
 			}
 		}
+	}
+}
+
+// Fail closed: an Issue stopped for unknown-effect must not slide into MERGING.
+func TestAParkedPositionRefusesEdgesThatChangeTheStage(t *testing.T) {
+	parkedAt := func(st Stage, sub SubStage, integrated bool) Position {
+		return Position{Stage: st, Sub: sub, RemoteIntegrated: integrated, Park: ptr(park(ReasonUnknownEffect))}
+	}
+	refused := []struct {
+		id, outcome string
+		from        Position
+	}{
+		{"E01", "", parkedAt(StageReady, "", false)},
+		{"E03", "", parkedAt(StageBuilding, SubImplement, false)},
+		{"E05", "", parkedAt(StageReviewing, "", false)},
+		{"E06", "", parkedAt(StageReviewing, "", false)},
+		{"E08", "", parkedAt(StageReviewing, "", false)},
+		{"E10", "", parkedAt(StageMerging, "", false)},
+		{"E13", "", parkedAt(StageMerging, "", true)},
+		{"E23", "pass", parkedAt(StageBuilding, SubSpec, false)},
+	}
+	for _, c := range refused {
+		_, err := run(t, c.from, c.id, c.outcome, park(ReasonUnknownEffect))
+		if !errors.Is(err, ErrTransitionInvalid) || !strings.Contains(err.Error(), "parked") {
+			t.Errorf("%s while parked: %v", c.id, err)
+		}
+	}
+	allowed := []struct {
+		id, outcome string
+		from        Position
+		check       func(Position) bool
+	}{
+		{"E15", "", parkedAt(StageBuilding, SubFix, false), func(p Position) bool { return p.Stage == StageCancelled && p.Park == nil }},
+		{"E16", "", parkedAt(StageMerging, "", false), func(p Position) bool { return p.Stage == StageCancelled && p.Park == nil }},
+		{"E07", "", parkedAt(StageReviewing, "", false), func(p Position) bool { return p.Park != nil && p.Stage == StageReviewing }},
+		{"E09", "", parkedAt(StageReviewing, "", false), func(p Position) bool { return p.Park != nil }},
+		{"E25", "", parkedAt(StageBuilding, SubImplement, false), func(p Position) bool { return p.Park != nil }},
+		{"E27", "", parkedAt(StageReady, "", false), func(p Position) bool { return p.Park != nil }},
+		{"E12", "", parkedAt(StageMerging, "", false), func(p Position) bool { return p.RemoteIntegrated && p.Park != nil }},
+		{"E05", "", parkedAt(StageBuilding, SubFix, false), func(p Position) bool { return p.Stage == StageBuilding && p.Sub == SubFix && p.Park != nil }},
+		{"E19", "", parkedAt(StageMerging, "", false), func(p Position) bool { return p.Park != nil && p.Park.Reason == ReasonRateLimited }},
+	}
+	for _, c := range allowed {
+		got, err := run(t, c.from, c.id, c.outcome, park(ReasonRateLimited))
+		if err != nil || !c.check(got) {
+			t.Errorf("%s while parked: %+v %v", c.id, got, err)
+		}
+	}
+	// resume is always allowed, then the stage edge works
+	resumed, err := Transition(parkedAt(StageReviewing, "", false), Event{ID: "E20", Evidence: []string{"resume-guard:unknown-effect"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := run(t, resumed, "E08", "", Park{}); err != nil {
+		t.Errorf("after the resume: %v", err)
 	}
 }
 

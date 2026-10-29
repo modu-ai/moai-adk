@@ -6,7 +6,9 @@ import (
 	"strings"
 )
 
-// Outcome is one result an edge can have. S46 gives some edges two results
+// Outcome is one result an edge can have. ReasonFromCaller outcomes leave the
+// overlay reason to the caller's classification (canon-unspecified: S46 does not
+// name it for E15 cleanup-unknown, E19, E23 inconclusive). S46 gives some edges two results
 // (E10, E15, E16, E23); the one marked Default is taken when the caller names none.
 type Outcome struct {
 	Name    string
@@ -82,7 +84,7 @@ var edges = []Edge{
 		Outcomes: []Outcome{{Name: "handoff", Default: true, To: StageReviewing}}},
 	{ID: "E04", From: []Stage{StageBuilding}, Needs: []string{"incarnation-check"}, Outcomes: []Outcome{parkWith(ReasonStopUnknown)}},
 	// E05: S46 does not name the sub stage after a safe handoff from REVIEWING;
-	// IMPLEMENT is this code's choice (canon unconfirmed).
+	// IMPLEMENT is this code's choice (canon-unspecified).
 	{ID: "E05", From: []Stage{StageBuilding, StageReviewing}, Needs: []string{"quiescence", "remaining-effects-cleared", "original-preserved"},
 		Outcomes: []Outcome{{Name: "reassign", Default: true, To: StageBuilding}}},
 	{ID: "E06", From: []Stage{StageReviewing}, Needs: []string{"repair-decision", "exclusive-owner", "scope-reserved", "old-writer-ended"},
@@ -106,14 +108,15 @@ var edges = []Edge{
 	// E17 is a fact: the integration is kept, nothing is reverted.
 	{ID: "E17", From: []Stage{StageMerging, StageDone}, Needs: []string{"provider-merge-fact"}, Outcomes: []Outcome{{Name: "keep", Default: true, Integrated: true}}},
 	// E18: S46 says "PARKED"; contract-change as its reason comes from E24 and
-	// SPEC 0.6.1 (canon unconfirmed for E18 itself).
+	// SPEC 0.6.1 (canon-unspecified for E18 itself).
 	{ID: "E18", From: nonterminal, Needs: []string{"contract-diff"}, Outcomes: []Outcome{parkWith(ReasonContractChange)}},
 	{ID: "E19", From: nonterminal, Needs: []string{"error-classification"}, Outcomes: []Outcome{parkWith(ReasonFromCaller)}},
 	{ID: "E21", From: []Stage{StageDone, StageCancelled}, Needs: []string{"id-epoch-receipt"}, Outcomes: []Outcome{stay("reject-late")}},
 	{ID: "E22", From: []Stage{StageDone, StageCancelled}, Needs: []string{"new-intent"}, Outcomes: []Outcome{stay("separate-lifecycle")}},
 	{ID: "E23", From: []Stage{StageBuilding}, FromSub: []SubStage{SubSpec}, Needs: []string{"spec-revision", "selected-auditor", "required-coverage"},
 		Outcomes: []Outcome{{Name: "pass", Default: true, To: StageBuilding, Sub: SubImplement}, {Name: "fail", To: StageBuilding, Sub: SubSpec}, {Name: "inconclusive", Park: ReasonFromCaller}}},
-	// E24: S46 writes the current position as "BUILDING/FIX".
+	// E24: S46 writes the current position as "BUILDING/FIX" (read literally here;
+	// canon-unspecified whether IMPLEMENT is meant too).
 	{ID: "E24", From: []Stage{StageBuilding}, FromSub: []SubStage{SubFix}, Needs: []string{"contract-impact"}, Outcomes: []Outcome{parkWith(ReasonContractChange)}},
 	{ID: "E25", From: []Stage{StageBuilding}, Needs: []string{"checkpoint", "quiescence", "scope-returned", "full-reservation"}, Outcomes: []Outcome{stay("rereserve")}},
 	{ID: "E26", From: nonterminal, Needs: []string{"launch-key-unknown"}, Outcomes: []Outcome{parkWith(ReasonStartUnknown)}},
@@ -219,13 +222,20 @@ func Transition(pos Position, ev Event) (Position, error) {
 	if next.Stage != StageMerging {
 		next.RemoteIntegrated = false
 	}
+	// Fail closed (leader decision): a parked position may not move to another
+	// stage, so a run stopped for unknown-effect cannot slide into MERGING. The
+	// way out is E20, cancellation (E15/E16), or an edge that leaves the stage as
+	// it is (facts, and a park update). E13 (DONE) is refused too, because DONE
+	// needs the parked obligation resolved first; S46 is silent here (canon-unspecified).
+	if pos.Park != nil && (next.Stage != pos.Stage || next.Sub != pos.Sub) && next.Stage != StageCancelled {
+		return pos, fmt.Errorf("%w: %s moves %s/%s on while parked (%s); resume with E20 first",
+			ErrTransitionInvalid, e.ID, pos.Stage, pos.Sub, pos.Park.Reason)
+	}
 	if next.Stage.terminal() {
-		next.Park = nil // finishing or cancelling resolves the overlay
+		next.Park = nil // canon-unspecified: finishing or cancelling resolves the overlay
 	}
 	if out.Park != "" {
-		if pos.Park != nil {
-			return pos, ErrAlreadyParked
-		}
+		// A park edge on a parked position replaces the overlay: one reason at a time.
 		reason := out.Park
 		if out.Park == ReasonFromCaller {
 			reason = ev.Park.Reason

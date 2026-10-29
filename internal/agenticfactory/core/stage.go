@@ -32,7 +32,6 @@ var (
 	ErrGuardMissing     = errors.New("agenticfactory: a transition guard has no evidence")
 	ErrUnknownEdge      = errors.New("agenticfactory: no such transition")
 	ErrUnknownOutcome   = errors.New("agenticfactory: no such transition outcome")
-	ErrAlreadyParked    = errors.New("agenticfactory: already parked; one reason at a time")
 	ErrNotParked        = errors.New("agenticfactory: the position is not parked")
 	ErrLegacyUnmappable = errors.New("agenticfactory: legacy record cannot be mapped to the S46 model")
 )

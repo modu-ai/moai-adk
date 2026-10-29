@@ -30,8 +30,9 @@ var canonUnconfirmedParkReasons = []BlockReason{ReasonOperatorHold}
 
 // parkable are the reasons that may sit in an overlay besides the canon six:
 // the E19 classifications (quota, permission, budget, environment) and the
-// control reasons SPEC 0.6.1 §2.1a marks "P". Refusal (R) and merge-gate (G)
-// reasons never become an overlay.
+// control reasons of the UNAUDITED SPEC 0.6.1 §2.1a column "P". It rests on that
+// SPEC column, not on the canon: do not extend it until the SPEC is audited.
+// Refusal (R) and merge-gate (G) reasons never become an overlay.
 var parkable = map[BlockReason]bool{
 	ReasonNotInstalled: true, ReasonConnectionFailed: true, ReasonNotLoggedIn: true, ReasonNotConfigured: true,
 	ReasonAuthFailed: true, ReasonPermissionDenied: true, ReasonRateLimited: true, ReasonUnclassified: true,
