@@ -375,3 +375,13 @@ func TestUpdateDocReadsTheAuthorityAgainOnAConflict(t *testing.T) {
 		t.Fatalf("second machine: %+v %v seen=%q", d, err, seen)
 	}
 }
+
+func TestCheckpointDocumentIsASafetyKind(t *testing.T) {
+	s := open(t)
+	if _, err := s.PutDoc("checkpoint", "issue-5", 0, []byte(`{"branch":"WT-x"}`)); err != nil {
+		t.Fatalf("checkpoint kind: %v", err)
+	}
+	if p := docKinds["checkpoint"]; p != core.PrioritySafety {
+		t.Errorf("a checkpoint must never be held back by the call budget, got priority %v", p)
+	}
+}

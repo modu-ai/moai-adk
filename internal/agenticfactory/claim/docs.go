@@ -25,10 +25,12 @@ const maxDocBytes = 256 << 10
 //	intent  - effect intents (lane 20's IntentStore keeps its records here)
 //	audit   - audit round ids per Issue (lane 19 decides, the store persists)
 //	context - the per-Issue context ledger model
+//	checkpoint - the resume manifest of a card branch (safety: never held back)
 var docKinds = map[string]core.Priority{
-	"intent":  core.PrioritySafety,
-	"audit":   core.PrioritySafety,
-	"context": core.PriorityReport,
+	"intent":     core.PrioritySafety,
+	"audit":      core.PrioritySafety,
+	"context":    core.PriorityReport,
+	"checkpoint": core.PrioritySafety,
 }
 
 // Doc is one stored document. Data is opaque JSON owned by the caller.
