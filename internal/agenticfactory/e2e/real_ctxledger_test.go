@@ -61,9 +61,10 @@ func (r *ctxRemote) Update(_ context.Context, _ int, id int64, body string) erro
 	for i := range r.comments {
 		if r.comments[i].ID == id {
 			r.comments[i].Body = body
+			return nil
 		}
 	}
-	return nil
+	return errors.New("HTTP 404: comment not found") // as GitHub answers an unknown comment id
 }
 
 func (r *ctxRemote) calls() int { return r.Finds + r.Creates + r.Updates }
