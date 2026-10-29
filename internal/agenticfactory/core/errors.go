@@ -26,6 +26,12 @@ var (
 	ErrReasonNotAllowed = errors.New("agenticfactory: reason not allowed for this state")
 )
 
+// Flow errors.
+var (
+	ErrTransitionInvalid  = errors.New("agenticfactory: transition not allowed from the current state")
+	ErrEvidenceIncomplete = errors.New("agenticfactory: required evidence is missing")
+)
+
 // ReasonFor maps an error to the block reason it records when the Issue must
 // pause. Busy and Held are not blocks: Busy is a retry and Held is a
 // statement about another owner.

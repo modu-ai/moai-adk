@@ -32,6 +32,7 @@ type Record struct {
 	Resume   string           `json:"resume_condition,omitempty"`
 	Head     core.HeadSHA     `json:"head,omitempty"`
 	Delivery core.Delivery    `json:"delivery,omitempty"`
+	Deploy   string           `json:"deploy,omitempty"`
 }
 
 // Store keeps records under one directory: issue-<n>.json, guarded by
