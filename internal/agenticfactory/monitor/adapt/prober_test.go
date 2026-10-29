@@ -3,6 +3,7 @@ package adapt
 import (
 	"context"
 	"errors"
+	"reflect"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/claim"
@@ -51,7 +52,7 @@ func TestProbeErrorMeansUnconfirmedPath(t *testing.T) {
 // remain. Reconciling twice from fresh objects restores the same view and changes nothing — no
 // re-dispatch, no new attempt for a live holder, no write to the store.
 func TestLeaderRestartRestoresFromActualAndNeverRedispatches(t *testing.T) {
-	store, err := claim.Open(t.TempDir())
+	store, err := claim.OpenWithLimit(t.TempDir(), 100)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,7 +96,7 @@ func TestLeaderRestartRestoresFromActualAndNeverRedispatches(t *testing.T) {
 		t.Errorf("open PR on the remote was not restored into the view: %v", first.Divergences)
 	}
 	after, _ := store.Load(iss)
-	if after != before {
+	if !reflect.DeepEqual(after, before) {
 		t.Errorf("claim changed across reconcile: %+v -> %+v", before, after)
 	}
 }
