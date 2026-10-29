@@ -308,3 +308,104 @@ func TestNoCursorStoreKeepsTheOldInMemoryBehaviour(t *testing.T) {
 		t.Errorf("ack without a store: %v", err)
 	}
 }
+
+// --- durable push channel: events leave the queue only after the consumer acknowledged them -----------
+
+type memDurable struct {
+	healthy    bool
+	events     []PendingChange
+	pendingErr error
+	commitErr  error
+	commits    [][]string
+}
+
+func (d *memDurable) Healthy() bool { return d.healthy }
+
+func (d *memDurable) Pending() ([]PendingChange, error) {
+	if d.pendingErr != nil {
+		return nil, d.pendingErr
+	}
+	return append([]PendingChange(nil), d.events...), nil
+}
+
+func (d *memDurable) Commit(ids []string) error {
+	if d.commitErr != nil {
+		return d.commitErr
+	}
+	d.commits = append(d.commits, ids)
+	var keep []PendingChange
+	for _, e := range d.events {
+		drop := false
+		for _, id := range ids {
+			drop = drop || e.ID == id
+		}
+		if !drop {
+			keep = append(keep, e)
+		}
+	}
+	d.events = keep
+	return nil
+}
+
+func durableCollector(d DurableFeed) (*Collector, *time.Time) {
+	now := t0
+	col := collectorWith(&fakeT{resps: []Response{resp(200, `[]`)}}, &now, nil)
+	col.Durable = d
+	return col, &now
+}
+
+func TestDurableEventsAreRepeatedUntilAcknowledgedThenCommitted(t *testing.T) {
+	d := &memDurable{healthy: true, events: []PendingChange{{ID: "d1", Change: Change{Key: "7", Kind: ChangeModified}}}}
+	col, now := durableCollector(d)
+	r1 := col.Tick(t.Context(), *now)
+	r2 := col.Tick(t.Context(), now.Add(time.Second)) // not acknowledged
+	if len(r1.Changes) != 1 || len(r2.Changes) != 1 || len(d.commits) != 0 {
+		t.Fatalf("r1=%v r2=%v commits=%v", r1.Changes, r2.Changes, d.commits)
+	}
+	if err := col.Ack(r2); err != nil {
+		t.Fatal(err)
+	}
+	if len(d.commits) != 1 || d.commits[0][0] != "d1" {
+		t.Errorf("commits = %v, want d1 committed after the ack", d.commits)
+	}
+	if r3 := col.Tick(t.Context(), now.Add(2*time.Second)); len(r3.Changes) != 0 {
+		t.Errorf("committed event repeated: %v", r3.Changes)
+	}
+}
+
+// A commit that fails is reported, and the event stays queued: it comes back, it is never dropped.
+func TestAFailedCommitKeepsTheEventQueued(t *testing.T) {
+	d := &memDurable{healthy: true, events: []PendingChange{{ID: "d1", Change: Change{Key: "7", Kind: ChangeModified}}}, commitErr: errors.New("store down")}
+	col, now := durableCollector(d)
+	rep := col.Tick(t.Context(), *now)
+	if err := col.Ack(rep); err == nil {
+		t.Fatal("a failed commit was reported as acknowledged")
+	}
+	d.commitErr = nil
+	if again := col.Tick(t.Context(), now.Add(time.Second)); len(again.Changes) != 1 {
+		t.Errorf("the event must come back: %v", again.Changes)
+	}
+}
+
+// A queue that cannot be read is said so; the collector does not pretend there is nothing pending.
+func TestAnUnreadableDurableQueueIsReported(t *testing.T) {
+	d := &memDurable{healthy: true, pendingErr: errors.New("corrupt queue")}
+	col, now := durableCollector(d)
+	rep := col.Tick(t.Context(), *now)
+	if !strings.Contains(rep.Reason, "corrupt queue") {
+		t.Errorf("reason = %q, want the queue error", rep.Reason)
+	}
+}
+
+// A healthy durable channel turns polling into a safety net, like the in-memory feed.
+func TestAHealthyDurableFeedMakesThePollASafetyNet(t *testing.T) {
+	d := &memDurable{healthy: true}
+	now := t0
+	f := &fakeT{resps: []Response{resp(200, `[]`)}}
+	col := collectorWith(f, &now, nil)
+	col.Durable = d
+	rep := col.Tick(t.Context(), now)
+	if len(f.calls) != 0 || rep.Next.Sub(now) != adaptive().Safety {
+		t.Errorf("calls=%d next=%v, want no call and the safety interval", len(f.calls), rep.Next.Sub(now))
+	}
+}
