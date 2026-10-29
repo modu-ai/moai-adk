@@ -63,7 +63,7 @@ var (
 // statement about another owner.
 func ReasonFor(err error) (BlockReason, bool) {
 	switch {
-	case errors.Is(err, ErrOwnershipUnverified):
+	case errors.Is(err, ErrOwnershipUnverified), errors.Is(err, ErrResponsibilityNotRecorded):
 		return ReasonOwnershipUnverified, true
 	case errors.Is(err, ErrStoreUnavailable):
 		return ReasonStoreUnavailable, true
