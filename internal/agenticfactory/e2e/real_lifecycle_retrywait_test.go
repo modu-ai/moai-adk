@@ -1,5 +1,3 @@
-//go:build afred
-
 package e2e
 
 import (
@@ -11,21 +9,12 @@ import (
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
 )
 
-// RED, not counted as a pass (Issue #1948). A retry past the limit is refused with
-// ErrRetryLimit, and runner.RetryWait's own comment says "nothing changes" for an
-// exhausted wait. It does change one thing: the closure guards that case with
-// `&& !w.Escalated`, so a wait that is ALREADY escalated falls through and the
-// record is written again with the same content and Seq+1.
-//
-// Observed: Seq 10 -> 11 on a refused RetryWait. Harmless to the notify service
-// (an escalated wait is handled before its progress logic), but the revision number
-// is the signal other readers take as "someone wrote the record", and a refusal
-// should write nothing. Owner: lane-18 (internal/agenticfactory/runner/runner.go,
-// RetryWait). Fix: return the error before writing when the wait is already
-// escalated.
-//
-// Run: go test -tags afred -run TestAFRED_RetryWaitPastTheLimitWritesNothing ./internal/agenticfactory/e2e/
-func TestAFRED_RetryWaitPastTheLimitWritesNothing(t *testing.T) {
+// A retry past the limit is refused with ErrRetryLimit and writes nothing (Issue #1948).
+// Before the runner fix, a wait that was ALREADY escalated fell through the closure's
+// `&& !w.Escalated` guard and the record was rewritten with the same content and Seq+1;
+// the revision number is the signal other readers take as "someone wrote the record",
+// so a refusal must leave it alone.
+func TestRetryWaitPastTheLimitWritesNothing(t *testing.T) {
 	r, tk := newRunner(t)
 	upTo(t, r, tk, core.StateLanding)
 	if _, err := r.HandOff(tk, goodHandoff(t)); err != nil {
@@ -51,7 +40,7 @@ func TestAFRED_RetryWaitPastTheLimitWritesNothing(t *testing.T) {
 	}
 	after := state(t, r, tk)
 	if after.Seq != before.Seq {
-		t.Errorf("RED: a refused retry wrote the record again: Seq %d -> %d", before.Seq, after.Seq)
+		t.Errorf("a refused retry wrote the record again: Seq %d -> %d", before.Seq, after.Seq)
 	}
 	if !reflect.DeepEqual(after.Wait, before.Wait) {
 		t.Errorf("a refused retry changed the wait: %+v -> %+v", before.Wait, after.Wait)

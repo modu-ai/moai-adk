@@ -42,6 +42,11 @@ package homestate
 //
 // Known limit: git also reads the user's and the system's configuration
 // (safe.directory, for one). A change there is not in the fingerprint.
+//
+// @MX:DEBT: user/system git config is not part of the location fingerprint
+// @MX:CEILING: valid while no run changes safe.directory or similar mid-process
+// @MX:UPGRADE: add the global/system config stamps if a long-lived process must
+// see such a change without restarting
 
 import (
 	"io"
