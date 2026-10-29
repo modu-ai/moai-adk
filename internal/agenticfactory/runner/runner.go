@@ -637,6 +637,36 @@ func (r *Runner) ReopenOwn(t Ticket, reason string, ev RepairEvidence) (claim.Re
 	})
 }
 
+// Takeover is the evidence that an owner is really gone before its Issue moves:
+// its session is confirmed gone, its writer has stopped, and what it left
+// uncommitted is preserved at PreservedRef. All four are required; a missing one
+// leaves the record as it was.
+type Takeover struct {
+	OwnerGone            bool
+	WriterStopped        bool
+	UncommittedPreserved bool
+	PreservedRef         string
+}
+
+// TakeOver reassigns a held Issue after its owner died. old is the ticket of the
+// owner the decision was taken about; the new holder gets the next epoch and the
+// old ticket stops writing. This is not the repair claim: that one serves a
+// released record.
+func (r *Runner) TakeOver(i core.IssueRef, old Ticket, newHolder, dispatch string, run core.RunID, ev Takeover) (claim.Record, error) {
+	switch {
+	case !ev.OwnerGone:
+		return claim.Record{}, fmt.Errorf("%w: the owner's session is not confirmed gone", core.ErrEvidenceIncomplete)
+	case !ev.WriterStopped:
+		return claim.Record{}, fmt.Errorf("%w: writer stop not confirmed", core.ErrEvidenceIncomplete)
+	case !ev.UncommittedPreserved || strings.TrimSpace(ev.PreservedRef) == "":
+		return claim.Record{}, fmt.Errorf("%w: the owner's uncommitted work is not preserved", core.ErrEvidenceIncomplete)
+	}
+	if err := r.guard(i, core.OpTakeOver); err != nil {
+		return claim.Record{}, err
+	}
+	return r.Store.TakeOver(i, old.Holder, old.Epoch, newHolder, dispatch, run, ev.PreservedRef)
+}
+
 // BindWorktree binds the write worktree of the ticket's Issue. It is required
 // before writing when the same agent already has another PR open, and it must be
 // a worktree no other open Issue uses.
