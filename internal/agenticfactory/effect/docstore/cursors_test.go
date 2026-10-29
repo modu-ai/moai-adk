@@ -2,6 +2,7 @@ package docstore
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -164,8 +165,8 @@ func TestAnOversizeSnapshotIsRefusedAtTheAckAndNothingAdvances(t *testing.T) {
 		Differ: forge.DiffByKey("number"), Cursors: CollectorCursors(st), CursorKey: "o/r/big",
 	}
 	rep := col.Tick(t.Context(), now)
-	if err := col.Ack(rep); err == nil {
-		t.Fatal("an oversize snapshot was reported as saved")
+	if err := col.Ack(rep); !errors.Is(err, ErrCursorTooLarge) {
+		t.Fatalf("ack err = %v, want ErrCursorTooLarge for an oversize snapshot with chunking off", err)
 	}
 	again := col.Tick(t.Context(), rep.Next)
 	if len(again.Changes) != 1 || !again.Baseline {
