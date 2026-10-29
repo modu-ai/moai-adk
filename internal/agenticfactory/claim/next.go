@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
@@ -91,8 +92,39 @@ type worktreeReservation struct {
 	Issue int    `json:"issue"`
 }
 
-// WorktreeKey is the document name that reserves path.
+// canonWorktree is the one spelling of a worktree path that the comparisons use:
+// absolute, cleaned, symlinks resolved. A path that is not absolute or cannot be
+// resolved (it does not exist) is refused: guessing would let two spellings of one
+// directory be bound twice.
+func canonWorktree(path string) (string, error) {
+	if strings.TrimSpace(path) == "" || !filepath.IsAbs(path) {
+		return "", fmt.Errorf("%w: a worktree path must be absolute: %q", core.ErrEvidenceIncomplete, path)
+	}
+	c, err := filepath.EvalSymlinks(filepath.Clean(path))
+	if err != nil {
+		return "", fmt.Errorf("%w: the worktree path cannot be resolved: %v", core.ErrEvidenceIncomplete, err)
+	}
+	return c, nil
+}
+
+// sameWorktree compares a stored path with the canonical one. A stored path that
+// no longer resolves (its tree is gone) is compared as cleaned text.
+func sameWorktree(stored, canon string) bool {
+	if stored == "" {
+		return false
+	}
+	if c, err := filepath.EvalSymlinks(filepath.Clean(stored)); err == nil {
+		return c == canon
+	}
+	return filepath.Clean(stored) == canon
+}
+
+// WorktreeKey is the document name that reserves path: the hash of its canonical
+// spelling, or of the cleaned text when it cannot be resolved.
 func WorktreeKey(path string) string {
+	if c, err := canonWorktree(path); err == nil {
+		path = c
+	}
 	sum := sha256.Sum256([]byte(path))
 	return "wt-" + hex.EncodeToString(sum[:])[:40]
 }
@@ -108,14 +140,15 @@ func WorktreeKey(path string) string {
 // moved to another path) is stale and is taken over by compare and swap on the
 // revision that was read.
 func (s *Store) BindWorktree(i core.IssueRef, holder string, epoch int64, path string) (Record, error) {
-	if strings.TrimSpace(path) == "" {
-		return Record{}, fmt.Errorf("%w: a worktree path is required", core.ErrEvidenceIncomplete)
+	canon, err := canonWorktree(path)
+	if err != nil {
+		return Record{}, err
 	}
-	if err := s.ReserveWorktree(i, path); err != nil {
+	if err := s.ReserveWorktree(i, canon); err != nil {
 		return Record{}, err
 	}
 	return s.Update(i, holder, epoch, func(rec *Record) error {
-		rec.Worktree = path
+		rec.Worktree = canon
 		return nil
 	})
 }
@@ -130,8 +163,9 @@ func (s *Store) BindWorktree(i core.IssueRef, holder string, epoch int64, path s
 // retrying is idempotent and releases the doubt, any other Issue is refused with
 // ErrWorktreeInUse. Nothing expires it by time.
 func (s *Store) ReserveWorktree(i core.IssueRef, path string) error {
-	if strings.TrimSpace(path) == "" {
-		return fmt.Errorf("%w: a worktree path is required", core.ErrEvidenceIncomplete)
+	path, err := canonWorktree(path)
+	if err != nil {
+		return err
 	}
 	recs, err := s.List()
 	if err != nil {
@@ -141,7 +175,7 @@ func (s *Store) ReserveWorktree(i core.IssueRef, path string) error {
 		if r.Issue == i.Number || r.State == core.StateDone {
 			continue
 		}
-		if r.Worktree == path || (r.Receipt != nil && r.Receipt.Worktree == path) {
+		if sameWorktree(r.Worktree, path) || (r.Receipt != nil && sameWorktree(r.Receipt.Worktree, path)) {
 			return fmt.Errorf("%w: %s is used by issue-%d", core.ErrWorktreeInUse, path, r.Issue)
 		}
 	}
@@ -206,7 +240,7 @@ func (s *Store) usesWorktree(h worktreeReservation) bool {
 	// An Issue that has reserved the path but not yet written it to its record
 	// (Worktree empty) still holds it; only a finished Issue, or one that moved
 	// to another path, lets go.
-	return r.State != core.StateDone && (r.Worktree == "" || r.Worktree == h.Path || (r.Receipt != nil && r.Receipt.Worktree == h.Path))
+	return r.State != core.StateDone && (r.Worktree == "" || sameWorktree(r.Worktree, h.Path) || (r.Receipt != nil && sameWorktree(r.Receipt.Worktree, h.Path)))
 }
 
 // TakeOver moves a held Issue from a dead owner to a new one. The caller has

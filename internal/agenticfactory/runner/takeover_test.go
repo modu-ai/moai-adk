@@ -40,14 +40,14 @@ func TestTakeoverHandsTheIssueToTheNewOwnerAndKeepsTheWork(t *testing.T) {
 	if _, err := r.SetWait(tk, wait1()); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := r.BindWorktree(tk, "/wt/bound"); err != nil {
+	if _, err := r.BindWorktree(tk, wtDir("bound")); err != nil {
 		t.Fatal(err)
 	}
 	rec, err := r.TakeOver(ref, tk, "sess-new", "disp-t", "run-2", fullTakeover())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if rec.Holder != "sess-new" || rec.Epoch != tk.Epoch+1 || rec.Receipt == nil || rec.State != core.StateLanding || rec.Worktree != "/wt/bound" {
+	if rec.Holder != "sess-new" || rec.Epoch != tk.Epoch+1 || rec.Receipt == nil || rec.State != core.StateLanding || rec.Worktree != wtDir("bound") {
 		t.Errorf("new owner, next epoch, PR and worktree kept: %+v", rec)
 	}
 	if rec.Wait != nil || rec.Repair != nil {

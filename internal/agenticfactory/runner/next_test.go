@@ -2,6 +2,8 @@ package runner
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -84,7 +86,7 @@ func TestNewWorkAfterAPRNeedsItsOwnWorktree(t *testing.T) {
 	if _, err := r.BindWorktree(nt, goodHandoff().Worktree); !errors.Is(err, core.ErrWorktreeInUse) {
 		t.Errorf("the open PR's worktree: %v", err)
 	}
-	if _, err := r.BindWorktree(nt, "/wt/second"); err != nil {
+	if _, err := r.BindWorktree(nt, wtDir("second")); err != nil {
 		t.Fatalf("a separate worktree: %v", err)
 	}
 	if _, err := r.StartAttempt(nt, "attempt-9", core.DeliveryExecuted); err != nil {
@@ -95,7 +97,7 @@ func TestNewWorkAfterAPRNeedsItsOwnWorktree(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := r.BindWorktree(t3, "/wt/second"); !errors.Is(err, core.ErrWorktreeInUse) {
+	if _, err := r.BindWorktree(t3, wtDir("second")); !errors.Is(err, core.ErrWorktreeInUse) {
 		t.Errorf("a worktree another open Issue uses: %v", err)
 	}
 }
@@ -159,11 +161,46 @@ func TestAStrangersHandoffReservesNothing(t *testing.T) {
 	r, ref := newRunner(t)
 	tk := landed(t, r, ref)
 	h := goodHandoff()
-	h.Worktree = "/wt/stranger"
+	h.Worktree = wtDir("stranger")
 	if _, err := r.HandOff(Ticket{Issue: ref, Holder: "someone", Epoch: tk.Epoch}, h); !errors.Is(err, core.ErrOwnershipUnverified) {
 		t.Fatalf("a stranger's handoff: %v", err)
 	}
-	if _, err := r.Store.GetDoc("worktree", claim.WorktreeKey("/wt/stranger")); !errors.Is(err, core.ErrNotHeld) {
+	if _, err := r.Store.GetDoc("worktree", claim.WorktreeKey(wtDir("stranger"))); !errors.Is(err, core.ErrNotHeld) {
 		t.Errorf("a refused handoff left a reservation: %v", err)
+	}
+}
+
+// The receipt's worktree is compared by what it is, not how it is spelled: a PR
+// handed off from a symlink to a tree blocks binding the tree itself. A worktree
+// that does not exist, or is not absolute, cannot be handed off from.
+func TestReceiptWorktreeSpellingsAreOneWorktree(t *testing.T) {
+	r, ref := newRunner(t)
+	tk := landed(t, r, ref)
+	real := wtDir("spelled")
+	link := filepath.Join(t.TempDir(), "alias")
+	if err := os.Symlink(real, link); err != nil {
+		t.Fatal(err)
+	}
+	h := goodHandoff()
+	for name, p := range map[string]string{"missing": filepath.Join(wtRoot, "does-not-exist"), "relative": "wt/rel"} {
+		h.Worktree = p
+		if _, err := r.HandOff(tk, h); !errors.Is(err, core.ErrEvidenceIncomplete) {
+			t.Errorf("%s worktree: %v", name, err)
+		}
+		if cur, _ := r.Store.Read(ref); cur.Receipt != nil {
+			t.Fatalf("%s: a refused handoff recorded a receipt", name)
+		}
+	}
+	h.Worktree = link
+	if _, err := r.HandOff(tk, h); err != nil {
+		t.Fatal(err)
+	}
+	next, _ := core.NewIssueRef(2000)
+	nt, err := r.Claim(next, "sess-b", "disp-2", "run-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := r.BindWorktree(nt, real); !errors.Is(err, core.ErrWorktreeInUse) {
+		t.Errorf("the tree behind a handed-off symlink: %v", err)
 	}
 }
