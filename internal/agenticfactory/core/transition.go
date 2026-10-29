@@ -246,6 +246,13 @@ func Transition(pos Position, ev Event) (Position, error) {
 		if err := p.Validate(); err != nil {
 			return pos, err
 		}
+		// A reason that says "an outcome or state is unknown" is settled only by
+		// its own resume (E20). Another reason must not overwrite the flag; the
+		// same reason may refresh its evidence (leader decision).
+		if pos.Park != nil && unknownFamily(pos.Park.Reason) && reason != pos.Park.Reason {
+			return pos, fmt.Errorf("%w: %s cannot replace the parked %s with %s; resume with E20 first",
+				ErrTransitionInvalid, e.ID, pos.Park.Reason, reason)
+		}
 		next.Park = &p
 	}
 	if err := next.Validate(); err != nil {

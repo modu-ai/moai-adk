@@ -84,3 +84,13 @@ func (p Park) Validate() error {
 	}
 	return nil
 }
+
+// unknownFamily are the overlay reasons that record an unknown outcome or state.
+// They are never overwritten by another reason, only resumed.
+func unknownFamily(r BlockReason) bool {
+	switch r {
+	case ReasonUnknownEffect, ReasonPendingEffect, ReasonStopUnknown, ReasonStartUnknown:
+		return true
+	}
+	return false
+}

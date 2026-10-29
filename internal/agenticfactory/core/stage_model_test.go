@@ -277,9 +277,9 @@ func TestResumeClearsOnlyTheOverlay(t *testing.T) {
 }
 
 func TestAParkedPositionHasExactlyOneReasonAndTerminalsAreNeverParked(t *testing.T) {
-	parked := Position{Stage: StageReady, Park: ptr(park(ReasonDependency))}
-	got, err := run(t, parked, "E19", "", park(ReasonRateLimited))
-	if err != nil || got.Park == nil || got.Park.Reason != ReasonRateLimited || got.Stage != StageReady {
+	parked := Position{Stage: StageReady, Park: ptr(park(ReasonRateLimited))}
+	got, err := run(t, parked, "E19", "", park(ReasonCapacityShort))
+	if err != nil || got.Park == nil || got.Park.Reason != ReasonCapacityShort || got.Stage != StageReady {
 		t.Errorf("a park update replaces the reason, never stacks a second one: %+v %v", got, err)
 	}
 	for _, id := range []string{"E18", "E19", "E26"} {
@@ -288,6 +288,40 @@ func TestAParkedPositionHasExactlyOneReasonAndTerminalsAreNeverParked(t *testing
 				t.Errorf("%s on %s: %v", id, st, err)
 			}
 		}
+	}
+}
+
+// An unknown outcome or state is only ever settled by its own resume: another
+// reason must not overwrite the flag, the same reason may refresh its evidence.
+func TestAnUnknownFamilyReasonIsNotReplacedByAnotherReason(t *testing.T) {
+	for _, sticky := range []BlockReason{ReasonUnknownEffect, ReasonPendingEffect, ReasonStopUnknown, ReasonStartUnknown} {
+		base := Position{Stage: StageBuilding, Sub: SubImplement, Park: &Park{Reason: sticky, Evidence: "first", Resume: "resume when known"}}
+		_, err := run(t, base, "E19", "", park(ReasonRateLimited))
+		if !errors.Is(err, ErrTransitionInvalid) || !strings.Contains(err.Error(), string(sticky)) {
+			t.Errorf("E19 over %s: %v", sticky, err)
+		}
+		if base.Park.Reason != sticky || base.Park.Evidence != "first" {
+			t.Errorf("%s: the refused edge changed the overlay", sticky)
+		}
+	}
+	// the same reason may refresh its evidence
+	base := Position{Stage: StageMerging, Park: &Park{Reason: ReasonUnknownEffect, Evidence: "first", Resume: "r"}}
+	got, err := run(t, base, "E11", "", Park{Reason: ReasonUnknownEffect, Evidence: "second", Resume: "r2"})
+	if err != nil || got.Park == nil || got.Park.Evidence != "second" || got.Park.Reason != ReasonUnknownEffect {
+		t.Errorf("same-reason evidence update: %+v %v", got, err)
+	}
+	// reasons outside that family may be replaced by any parkable reason
+	for _, plain := range []BlockReason{ReasonRateLimited, ReasonDependency, ReasonContractChange, ReasonStoreUnavailable} {
+		base := Position{Stage: StageReady, Park: ptr(park(plain))}
+		got, err := run(t, base, "E19", "", park(ReasonCapacityShort))
+		if err != nil || got.Park == nil || got.Park.Reason != ReasonCapacityShort {
+			t.Errorf("E19 over %s: %+v %v", plain, got, err)
+		}
+	}
+	// rate-limited may become an unknown-family reason
+	base = Position{Stage: StageBuilding, Sub: SubImplement, Park: ptr(park(ReasonRateLimited))}
+	if got, err := run(t, base, "E26", "", park(ReasonStartUnknown)); err != nil || got.Park.Reason != ReasonStartUnknown {
+		t.Errorf("rate-limited -> start_unknown: %+v %v", got, err)
 	}
 }
 
@@ -328,10 +362,10 @@ func TestAParkedPositionRefusesEdgesThatChangeTheStage(t *testing.T) {
 		{"E27", "", parkedAt(StageReady, "", false), func(p Position) bool { return p.Park != nil }},
 		{"E12", "", parkedAt(StageMerging, "", false), func(p Position) bool { return p.RemoteIntegrated && p.Park != nil }},
 		{"E05", "", parkedAt(StageBuilding, SubFix, false), func(p Position) bool { return p.Stage == StageBuilding && p.Sub == SubFix && p.Park != nil }},
-		{"E19", "", parkedAt(StageMerging, "", false), func(p Position) bool { return p.Park != nil && p.Park.Reason == ReasonRateLimited }},
+		{"E11", "", parkedAt(StageMerging, "", false), func(p Position) bool { return p.Park != nil && p.Park.Reason == ReasonUnknownEffect }},
 	}
 	for _, c := range allowed {
-		got, err := run(t, c.from, c.id, c.outcome, park(ReasonRateLimited))
+		got, err := run(t, c.from, c.id, c.outcome, park(ReasonUnknownEffect))
 		if err != nil || !c.check(got) {
 			t.Errorf("%s while parked: %+v %v", c.id, got, err)
 		}
