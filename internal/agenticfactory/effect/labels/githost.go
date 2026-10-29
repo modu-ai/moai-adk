@@ -54,6 +54,9 @@ func (h *GitHubHost) allowed(r forge.Request) bool {
 }
 
 func (h *GitHubHost) do(ctx context.Context, r forge.Request) (forge.Response, error) {
+	if err := effect.CheckRequest(r.Method, r.Path, r.Header); err != nil { // the protection guard, before anything else
+		return forge.Response{}, err
+	}
 	if !h.allowed(r) {
 		return forge.Response{}, fmt.Errorf("labels: refusing request %s %s", r.Method, r.Path)
 	}
