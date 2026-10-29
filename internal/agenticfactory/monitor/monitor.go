@@ -37,6 +37,7 @@ type ClaimRow struct {
 	Park            *ParkInfo
 	Gate            *GateInfo
 	Refusal         *RefusalInfo
+	Wait            *WaitInfo
 	Attempt         int
 	Epoch           int
 	HeadSHA         string
@@ -66,6 +67,20 @@ type GateInfo struct {
 type RefusalInfo struct {
 	Reason string `json:"reason"`
 	Detail string `json:"detail"`
+}
+
+// WaitInfo is what the assigned agent waits for (CI, a review, a host answer): who is responsible, what
+// happens next on its own, when it is looked at again, why it waits, how many retries are spent of how
+// many are allowed, and who is told when they run out. It sits beside Park and Gate and moves nothing.
+type WaitInfo struct {
+	Owner      string    `json:"owner"`
+	NextAction string    `json:"next_action"`
+	RecheckAt  time.Time `json:"recheck_at"`
+	Diagnosis  string    `json:"diagnosis"`
+	Retries    int       `json:"retries"`
+	MaxRetries int       `json:"max_retries"`
+	EscalateTo string    `json:"escalate_to"`
+	Escalated  bool      `json:"escalated"`
 }
 
 // CheckRun is one required check as the remote reports it.
@@ -112,6 +127,7 @@ type Row struct {
 	Park            Field[*ParkInfo]    `json:"park"`
 	Gate            Field[*GateInfo]    `json:"gate"`
 	Refusal         Field[*RefusalInfo] `json:"refusal"`
+	Wait            Field[*WaitInfo]    `json:"wait"`
 	Attempt         Field[int]
 	Epoch           Field[int]
 	HeadSHA         Field[string]
@@ -170,6 +186,7 @@ func (c *Collector) row(ctx context.Context, issue int) Row {
 		r.Park = Field[*ParkInfo]{maskPark(cr.Park, at), SrcClaimStore, at, true, false}
 		r.Gate = Field[*GateInfo]{maskGate(cr.Gate, at), SrcClaimStore, at, true, false}
 		r.Refusal = Field[*RefusalInfo]{maskRefusal(cr.Refusal, at), SrcClaimStore, at, true, false}
+		r.Wait = Field[*WaitInfo]{maskWait(cr.Wait, at), SrcClaimStore, at, true, false}
 		r.Attempt = Field[int]{cr.Attempt, SrcClaimStore, at, true, false}
 		r.Epoch = Field[int]{cr.Epoch, SrcClaimStore, at, true, false}
 		r.HeadSHA = textField("head", cr.HeadSHA, SrcClaimStore, at)
@@ -181,6 +198,7 @@ func (c *Collector) row(ctx context.Context, issue int) Row {
 		r.Owner.Source, r.State.Source, r.Stage.Source = SrcClaimStore, SrcClaimStore, SrcClaimStore
 		r.Agent.Source, r.SessionID.Source = SrcClaimStore, SrcClaimStore
 		r.SubStage.Source, r.Park.Source, r.Gate.Source, r.Refusal.Source = SrcClaimStore, SrcClaimStore, SrcClaimStore, SrcClaimStore
+		r.Wait.Source = SrcClaimStore
 		r.Attempt.Source, r.Epoch.Source, r.HeadSHA.Source = SrcClaimStore, SrcClaimStore, SrcClaimStore
 		r.LastCheckedAt.Source, r.BlockReason.Source = SrcClaimStore, SrcClaimStore
 		r.ResumeCondition.Source, r.MirrorState.Source = SrcClaimStore, SrcClaimStore
@@ -248,6 +266,17 @@ func maskGate(g *GateInfo, at time.Time) *GateInfo {
 		return nil
 	}
 	return &GateInfo{Reason: g.Reason, Detail: maskText("detail", g.Detail, at), Resume: maskText("resume", g.Resume, at), Head: g.Head}
+}
+
+func maskWait(w *WaitInfo, at time.Time) *WaitInfo {
+	if w == nil {
+		return nil
+	}
+	return &WaitInfo{
+		Owner: w.Owner, NextAction: maskText("next_action", w.NextAction, at), RecheckAt: w.RecheckAt,
+		Diagnosis: maskText("diagnosis", w.Diagnosis, at), Retries: w.Retries, MaxRetries: w.MaxRetries,
+		EscalateTo: w.EscalateTo, Escalated: w.Escalated,
+	}
 }
 
 func maskRefusal(r *RefusalInfo, at time.Time) *RefusalInfo {
