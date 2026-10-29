@@ -308,3 +308,15 @@ func TestLedgerFromRecord(t *testing.T) {
 		t.Errorf("projection: %+v", l)
 	}
 }
+
+// A record whose position could not be derived reaches the ledger marked, not as a
+// confirmed "no park".
+func TestLedgerFromRecordCarriesAnUnknownPosition(t *testing.T) {
+	l := LedgerFromRecord(claim.Record{Issue: 7, Holder: "h", State: core.StateBlocked, PositionUnknown: "blocked needs an in-flight return stage"})
+	if l.PositionUnknown == "" || l.Stage != "" || l.Park != nil {
+		t.Errorf("the marker must reach the ledger: %+v", l)
+	}
+	if h := LedgerFromRecord(claim.Record{Issue: 7, Holder: "h", State: core.StateClaimed}); h.PositionUnknown != "" {
+		t.Errorf("a known position carries no marker: %+v", h)
+	}
+}

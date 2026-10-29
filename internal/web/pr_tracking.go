@@ -9,6 +9,7 @@ package web
 import (
 	"context"
 	"encoding/json"
+	"strings"
 )
 
 const prGap = "—"
@@ -40,6 +41,18 @@ type PRTrackRowVM struct {
 	// Wait is the agent's wait record, shown beside the position and never
 	// changing it.
 	Wait WaitVM
+	// Mirror is the claim cache's state (current | stale | blocked(<reason>)).
+	Mirror string
+	// PositionUnknown is the claim store's reason when it could not derive the
+	// S46 position of this record; empty when it could.
+	PositionUnknown string
+	// HeadSource is where Head came from (receipt | record) when the record
+	// source supplied it.
+	HeadSource string
+	// Redacted is set when refining masked something on this row.
+	Redacted bool
+	// PRURL is the URL the PR receipt recorded, as text only (never a link).
+	PRURL string
 }
 
 // PRBacklogVM is the open-PR count against its limit.
@@ -50,7 +63,10 @@ type PRBacklogVM struct {
 	State string // within-limit | at-limit | over-limit | no-limit-set
 	// QueueKnown mirrors the monitor's queue_known. When false the three figures
 	// below are zero placeholders and render as "not provided", never as 0.
-	QueueKnown        bool
+	QueueKnown bool
+	// RepairKnown is set when the repair figure was counted from persisted
+	// records although the rest of the queue was not provided.
+	RepairKnown       bool
 	AwaitingHandoff   int
 	RepairBacklog     int
 	OldestWaitSeconds int
@@ -102,7 +118,8 @@ type monRow struct {
 		Reason string `json:"reason"`
 		Detail string `json:"detail"`
 	}] `json:"refusal"`
-	Wait monField[*monWait] `json:"wait"`
+	Wait        monField[*monWait] `json:"wait"`
+	MirrorState monField[string]
 }
 
 type monView struct {
@@ -117,6 +134,13 @@ type monView struct {
 		QueueKnown        bool   `json:"queue_known"`
 	}] `json:"backlog"`
 	Intake monField[[]monIntakeItem] `json:"intake"`
+	// PRURLs is read from the record source only (see record_rows.go).
+	PRURLs map[string]string `json:"web_pr_urls"`
+	// RepairBacklog is counted from persisted records (record source only).
+	RepairBacklog *int `json:"web_repair_backlog"`
+	// PositionUnknown is read from the record source only.
+	PositionUnknown map[string]string `json:"web_position_unknown"`
+	HeadSource      map[string]string `json:"web_head_source"`
 }
 
 func (a *app) buildPRTracking(ctx context.Context) PRTrackingVM {
@@ -125,24 +149,28 @@ func (a *app) buildPRTracking(ctx context.Context) PRTrackingVM {
 	}
 	raw, err := a.monitorRows(ctx)
 	if err != nil {
-		return PRTrackingVM{Note: "monitor data unreadable: " + err.Error()}
+		return PRTrackingVM{Note: "monitor data unreadable: " + refineText(err.Error())}
 	}
 	var doc monView
 	if err := json.Unmarshal(raw, &doc); err != nil {
-		return PRTrackingVM{Note: "monitor data malformed: " + err.Error()}
+		return PRTrackingVM{Note: "monitor data malformed: " + refineText(err.Error())}
 	}
 	vm := PRTrackingVM{Available: true}
 	if doc.Backlog.Confirmed {
 		b := doc.Backlog.Value
 		vm.Backlog = PRBacklogVM{
-			Known: true, Open: b.Open, Limit: b.Limit, State: b.State, QueueKnown: b.QueueKnown,
+			Known: true, Open: b.Open, Limit: b.Limit, State: refineText(b.State), QueueKnown: b.QueueKnown,
 			AwaitingHandoff: b.AwaitingHandoff, RepairBacklog: b.RepairBacklog, OldestWaitSeconds: b.OldestWaitSeconds,
 		}
+	}
+	if doc.RepairBacklog != nil {
+		vm.Backlog.RepairBacklog, vm.Backlog.RepairKnown = *doc.RepairBacklog, true
 	}
 	vm.Intake = buildIntake(doc.Intake)
 	for _, r := range doc.Rows {
 		row := PRTrackRowVM{
-			Issue: r.Issue, Project: r.Project,
+			Redacted: anyMasked(r.rawTexts()...),
+			Issue:    r.Issue, Project: r.Project,
 			State: gapText(r.State), Stage: gapText(r.Stage), Head: prGap,
 			Checks: "not read", ChecksStale: r.ChecksStale,
 			PR: prGap, Phase: prGap, Track: "gap", Completed: r.Completed,
@@ -159,18 +187,22 @@ func (a *app) buildPRTracking(ctx context.Context) PRTrackingVM {
 			}),
 		}
 		if r.HeadSHA.Confirmed && r.HeadSHA.Value != "" {
-			row.Head = r.HeadSHA.Value[:min(8, len(r.HeadSHA.Value))]
+			row.Head = shortOrGap(r.HeadSHA.Value, 8)
 		}
 		if r.Checks.Confirmed {
 			row.Checks = summarizeChecks(r)
 		}
 		if r.PR.Confirmed {
 			row.PR = "#" + itoa(r.PR.Value.Number)
-			row.Phase, row.Track = r.PR.Value.Phase, prTrack(r.PR.Value.Phase)
+			row.Phase, row.Track = orGap(r.PR.Value.Phase), prTrack(r.PR.Value.Phase)
 		}
 		row.Context = buildContext(r.Context)
 		row.Ledger = a.buildContextModel(ctx, r.Issue)
 		row.Wait = buildWait(r.Wait)
+		row.PRURL = prURLText(doc.PRURLs[itoa(r.Issue)])
+		row.Mirror = gapText(r.MirrorState)
+		row.PositionUnknown = doc.PositionUnknown[itoa(r.Issue)]
+		row.HeadSource = orGap(doc.HeadSource[itoa(r.Issue)])
 		vm.Rows = append(vm.Rows, row)
 	}
 	return vm
@@ -180,7 +212,7 @@ func gapText(f monField[string]) string {
 	if !f.Confirmed || f.Value == "" {
 		return prGap
 	}
-	return f.Value
+	return refineText(f.Value)
 }
 
 // detailText renders a confirmed detail record as its non-empty parts joined
@@ -200,7 +232,7 @@ func detailText(confirmed, present bool, parts func() []string) string {
 		if out != "" {
 			out += " · "
 		}
-		out += p
+		out += refineText(p)
 	}
 	if out == "" {
 		return prGap
@@ -279,8 +311,47 @@ func prMeta(vm PRTrackingVM) string {
 	case !vm.Backlog.Known:
 		return "backlog unknown"
 	case vm.Backlog.State == "no-limit-set":
-		return "open PRs " + itoa(vm.Backlog.Open) + " · no limit set · repair " + queueFigure(vm.Backlog, vm.Backlog.RepairBacklog)
+		return "open PRs " + itoa(vm.Backlog.Open) + " · no limit set · repair " + repairFigure(vm.Backlog)
 	}
 	return "open PRs " + itoa(vm.Backlog.Open) + "/" + itoa(vm.Backlog.Limit) + " · " + vm.Backlog.State +
-		" · repair " + queueFigure(vm.Backlog, vm.Backlog.RepairBacklog)
+		" · repair " + repairFigure(vm.Backlog)
+}
+
+// prURLText accepts only an https URL, shown as text; anything else is a gap.
+func prURLText(u string) string {
+	if !strings.HasPrefix(u, "https://") {
+		return prGap
+	}
+	return refineText(u)
+}
+
+// repairFigure is the repair backlog: counted from records when the record
+// source supplied it, else the monitor's queue figure, else "not provided".
+func repairFigure(b PRBacklogVM) string {
+	if b.RepairKnown {
+		return itoa(b.RepairBacklog)
+	}
+	return queueFigure(b, b.RepairBacklog)
+}
+
+// rawTexts lists the free texts of a monitor row, before refining, so a row can
+// say whether anything was masked.
+func (r monRow) rawTexts() []string {
+	out := []string{r.State.Value, r.Stage.Value, r.SubStage.Value, r.Agent.Value, r.SessionID.Value, r.HeadSHA.Value, r.MirrorState.Value, r.PR.Value.Phase}
+	if p := r.Park.Value; p != nil {
+		out = append(out, p.Reason, p.Evidence, p.Resume)
+	}
+	if g := r.Gate.Value; g != nil {
+		out = append(out, g.Reason, g.Detail, g.Resume, g.Head)
+	}
+	if f := r.Refusal.Value; f != nil {
+		out = append(out, f.Reason, f.Detail)
+	}
+	if w := r.Wait.Value; w != nil {
+		out = append(out, w.Owner, w.NextAction, w.Diagnosis, w.EscalateTo)
+	}
+	for _, c := range r.Context.Value {
+		out = append(out, c.Section, c.Link, c.Owner, c.State, c.Stage, c.TargetHead, c.Hash)
+	}
+	return out
 }

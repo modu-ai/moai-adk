@@ -74,7 +74,8 @@ func buildIntake(f monField[[]monIntakeItem]) IntakeRequestsVM {
 	vm := IntakeRequestsVM{Known: true, Source: "monitor"}
 	for _, it := range f.Value {
 		row := IntakeRequestVM{
-			Key: it.Key, Status: orGap(it.State), Stage: orGap(it.Stage), Parked: it.Parked, Issue: prGap,
+			Redacted: anyMasked(it.rawTexts()...),
+			Key:      refineText(it.Key), Status: orGap(it.State), Stage: orGap(it.Stage), Parked: refineText(it.Parked), Issue: prGap,
 			AgentName: prGap, Agent: orGap(it.Agent), Slot: orGap(it.Slot), Ready: prGap, AckedBy: prGap,
 			Started: it.Started, Retryable: prGap, Branch: prGap,
 		}
@@ -82,7 +83,7 @@ func buildIntake(f monField[[]monIntakeItem]) IntakeRequestsVM {
 			row.Issue = "#" + strconv.Itoa(it.Issue)
 		}
 		if b := it.Block; b != nil {
-			row.BlockStep, row.BlockDetail, row.Resume, row.Retryable = b.Step, b.Detail, b.Resume, "no"
+			row.BlockStep, row.BlockDetail, row.Resume, row.Retryable = refineText(b.Step), refineText(b.Detail), refineText(b.Resume), "no"
 			if b.Retryable {
 				row.Retryable = "yes"
 			}
@@ -112,11 +113,11 @@ func buildContext(f monField[[]monCtxItem]) ContextVM {
 	vm := ContextVM{Known: true}
 	for _, it := range f.Value {
 		item := ContextItemVM{
-			Section: it.Section, Link: it.Link, TargetHead: orGap(it.TargetHead), Hash: orGap(it.Hash),
+			Section: refineText(it.Section), Link: refineText(it.Link), TargetHead: orGap(it.TargetHead), Hash: orGap(it.Hash),
 			Owner: orGap(it.Owner), State: orGap(it.State), Stage: orGap(it.Stage), At: timeText(it.At),
 		}
 		switch {
-		case it.Availability == "available" && it.RemoteVerified && it.Stage == "remote-verified" && strings.HasPrefix(it.Link, "https://"):
+		case it.Availability == "available" && it.RemoteVerified && it.Stage == "remote-verified" && strings.HasPrefix(it.Link, "https://") && item.Link == it.Link:
 			item.LinkOpen, item.LinkStatus = true, "available"
 		case it.Availability == "inaccessible", it.Availability == "restricted":
 			item.LinkStatus = it.Availability
@@ -134,7 +135,7 @@ func orGap(s string) string {
 	if s == "" {
 		return prGap
 	}
-	return s
+	return refineText(s)
 }
 
 func timeText(t time.Time) string {
@@ -170,4 +171,13 @@ func contextMeta(vm PRTrackingVM) string {
 		n += len(r.Context.Items)
 	}
 	return strconv.Itoa(n) + " items"
+}
+
+// rawTexts lists every free text of a monitor intake item that reaches the page.
+func (it monIntakeItem) rawTexts() []string {
+	out := []string{it.Key, it.Stage, it.State, it.Parked, it.Agent, it.Slot}
+	if b := it.Block; b != nil {
+		out = append(out, b.Step, b.Detail, b.Resume)
+	}
+	return out
 }

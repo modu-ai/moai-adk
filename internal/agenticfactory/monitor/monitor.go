@@ -227,11 +227,8 @@ func (c *Collector) row(ctx context.Context, issue int) Row {
 
 // textField masks the text and omits it entirely when it still looks like a credential.
 func textField(_ string, s string, src Source, at time.Time) Field[string] {
-	out, masked := Mask(s)
-	if looksOpaque(out) {
-		return Field[string]{Source: src, ReadAt: at, Confirmed: true, Redacted: true}
-	}
-	return Field[string]{Value: out, Source: src, ReadAt: at, Confirmed: true, Redacted: masked}
+	v, masked := MaskField(s)
+	return Field[string]{Value: v, Source: src, ReadAt: at, Confirmed: true, Redacted: masked}
 }
 
 // idField carries an identifier verbatim when it is a UUID; anything else goes through textField.
