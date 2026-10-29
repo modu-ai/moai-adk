@@ -91,13 +91,90 @@ func TestCardEngagementStart(t *testing.T) {
 		insert("run-y", `{"card_id":"t1"}`, "2026-10-26T09:00:05Z")
 		insert("run-y", `{"card_id":"t1"}`, "not a time")
 		insert("run-y", `{"card_id":"t2"}`, "2026-10-01T00:00:00Z")
-		insert("run-z", `{"card_id":"t1"}`, "2026-10-02T00:00:00Z")
 		got, found, err := db.CardEngagementStart(ctx, "run-y", "t1")
 		if err != nil || !found {
 			t.Fatalf("found=%v err=%v, want the engagement start", found, err)
 		}
 		if want := time.Date(2026, 10, 26, 9, 0, 5, 0, time.UTC); !got.Equal(want) {
-			t.Fatalf("start = %s, want %s (the other run's and the other card's events must not count)", got, want)
+			t.Fatalf("start = %s, want %s (the other card's events must not count)", got, want)
+		}
+	})
+
+	t.Run("an_unrelated_runs_events_do_not_count", func(t *testing.T) {
+		// run-v holds an earlier event for the same card id, but no consolidation
+		// record ties run-v to run-u: it is another issuance of the card, not
+		// history that was moved into run-u (contrast the moved-card subtest below).
+		insert("run-v", `{"card_id":"t3"}`, "2026-10-02T00:00:00Z")
+		insert("run-u", `{"card_id":"t3"}`, "2026-10-05T00:00:00Z")
+		got, found, err := db.CardEngagementStart(ctx, "run-u", "t3")
+		if err != nil || !found {
+			t.Fatalf("found=%v err=%v, want the engagement start", found, err)
+		}
+		if want := time.Date(2026, 10, 5, 0, 0, 0, 0, time.UTC); !got.Equal(want) {
+			t.Fatalf("start = %s, want %s (an unrelated run's events must not count)", got, want)
+		}
+	})
+
+	// REQ-FCR-025 (card t1963, audit finding M1): a consolidation re-keys a card
+	// into the target run but leaves its earlier events under the SOURCE run, so a
+	// card moved in by consolidation has its history read from the run(s) it was
+	// moved from. Before this, only the target run's own events counted and the
+	// engagement start of a moved card came out too late.
+	t.Run("a_card_moved_in_by_consolidation_keeps_its_source_run_history", func(t *testing.T) {
+		mdb := openSandboxFactory(t)
+		rbRun(t, mdb, "run-old", rbPIDDead)
+		rbRun(t, mdb, "run-new", rbPIDLive)
+		rbCard(t, mdb, "run-old", "c1", CardRun)
+		lceEvent(t, mdb, "run-old", "card.transition", map[string]any{"card_id": "c1", "from": "", "to": CardPicked}, "2026-01-01T00:00:00Z")
+		lceRebind(t, mdb, rbOpts(), "run-old", "run-new")
+		lceEvent(t, mdb, "run-new", "card.transition", map[string]any{"card_id": "c1", "from": CardPicked, "to": CardRun}, "2026-06-01T00:00:00Z")
+
+		got, found, err := mdb.CardEngagementStart(ctx, "run-new", "c1")
+		if err != nil || !found {
+			t.Fatalf("found=%v err=%v, want the engagement start", found, err)
+		}
+		if want := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC); !got.Equal(want) {
+			t.Fatalf("start = %s, want %s (the history the card carries from its source run, REQ-FCR-025)", got, want)
+		}
+	})
+
+	t.Run("an_abandoned_or_left_behind_card_contributes_nothing_from_the_source_run", func(t *testing.T) {
+		// lceSeedConsolidated: c1 moved, c4 abandoned (run-new already held it),
+		// c5 terminal and left behind. Source events: c4 at +6m, target c4 at +7m.
+		mdb, _, _, _, _, _ := lceSeedConsolidated(t)
+		got, found, err := mdb.CardEngagementStart(ctx, "run-new", "c4")
+		if err != nil || !found {
+			t.Fatalf("c4: found=%v err=%v, want the target's own engagement start", found, err)
+		}
+		if want := lceBase.Add(7 * time.Minute); !got.Equal(want) {
+			t.Fatalf("c4 start = %s, want %s (the abandoned source copy at +6m must not count)", got, want)
+		}
+		if _, found, err := mdb.CardEngagementStart(ctx, "run-new", "c5"); err != nil || found {
+			t.Fatalf("c5: found=%v err=%v, want not found (the left-behind card has no history on run-new)", found, err)
+		}
+	})
+
+	t.Run("a_chain_of_consolidations_returns_the_earliest_over_the_whole_chain", func(t *testing.T) {
+		// lceSeedChain: c1 moves run-a -> run-b -> run-c (its first event is in
+		// run-a at +0m); c9 moves run-b -> run-c (+31m); c2 is abandoned on the
+		// second hop (run-c's own c2 event at +32m).
+		mdb, _, _, _, _, _, _ := lceSeedChain(t)
+		for _, tc := range []struct {
+			run, card string
+			want      time.Time
+		}{
+			{"run-c", "c1", lceBase},
+			{"run-b", "c1", lceBase},
+			{"run-c", "c9", lceBase.Add(31 * time.Minute)},
+			{"run-c", "c2", lceBase.Add(32 * time.Minute)},
+		} {
+			got, found, err := mdb.CardEngagementStart(ctx, tc.run, tc.card)
+			if err != nil || !found {
+				t.Fatalf("%s/%s: found=%v err=%v", tc.run, tc.card, found, err)
+			}
+			if !got.Equal(tc.want) {
+				t.Errorf("%s/%s start = %s, want %s", tc.run, tc.card, got, tc.want)
+			}
 		}
 	})
 }

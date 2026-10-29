@@ -245,6 +245,7 @@ func TestJevCallPath_HasExactlyTheDeclaredConsumers(t *testing.T) {
 		"jev_skill_suggest.go": "SPEC-JEV-CONSUMERS-001 M6 — Consumer B, skill suggestion (gate-unrun)",
 		"mcp_jev.go":           "SPEC-JEV-GOAL-DIST-001 M8a — the MCP tool wrapper (thin caller, inert behind workflow.jev.enabled; gate off constructs no request)",
 		"todo_auto_rank.go":    "SPEC-TODO-AUTO-PRIORITY-001 M2 — the `todo --auto` selection-order consumer (inert behind workflow.jev.enabled; a Jev answer orders candidates and nothing else; no ordering accuracy is claimed)",
+		"fetch_web.go":         "SPEC-FETCH-WEB-001 — the fetch-web CLI command (pipeline consumer: constructs the gated client for page-block scoring; output is the filtered page a user reads — no completion verdict, merge approval, or queue mutation reach)",
 	}
 
 	hits := jevImporters(t, ".")

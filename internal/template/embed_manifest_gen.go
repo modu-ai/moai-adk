@@ -308,6 +308,7 @@ import "embed"
 //go:embed templates/.claude/skills/moai-domain-svg-infographic/scripts/render.mjs
 //go:embed templates/.claude/skills/moai-domain-svg-infographic/scripts/test-check-svg.mjs
 //go:embed templates/.claude/skills/moai-factory-foreman/SKILL.md
+//go:embed templates/.claude/skills/moai-fetch-web/SKILL.md
 //go:embed templates/.claude/skills/moai-foundation-cc/SKILL.md
 //go:embed templates/.claude/skills/moai-foundation-cc/reference/advanced-agent-patterns.md
 //go:embed templates/.claude/skills/moai-foundation-cc/reference/best-practices-checklist.md

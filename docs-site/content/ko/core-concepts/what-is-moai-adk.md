@@ -438,7 +438,7 @@ MoAI 오케스트레이터는 작업 복잡도를 분석해 실행 형태를 선
 
 ### CG 폐기와 설정 이전
 
-`moai cg`는 폐기되었습니다. Claude나 GLM을 실행하지 않고 설정 이전 안내와 함께 종료합니다. `moai cc`의 별칭이 아닙니다. `llm.team_mode: cg`가 남은 프로젝트는 세션을 실행하기 전에 이전할 구성을 명시적으로 선택해야 합니다.
+CG 런처는 폐기되었습니다. 이전 절차와 안내는 [CG 폐기와 설정 이전](/ko/multi-llm/cg-mode/) 문서를 참고하세요.
 
 `llm.team_mode: claude`, `llm.gateway.teammate_mode: in-process`, `llm.gateway.teammate_provider: inherit`을 저장합니다. 기존 혼합 역할 배정을 없애는 변경이며, Claude 리더와 GLM 팀원 창의 분업을 보존하는 이전이 아닙니다.
 

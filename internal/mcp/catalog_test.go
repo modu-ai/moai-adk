@@ -23,7 +23,8 @@ import (
 // (card t1909) retired the four codex_task/codex_job_* tools, bringing it to
 // 35. Card t1632 (SPEC-MCP-NEUTRALITY-001) added todo_claim (REQ-MN-006, M3)
 // and codex_role_audit_cancel (REQ-MN-014, M4), which brings it to 37.
-const wantCatalogSize = 37
+// SPEC-FETCH-WEB-001 (REQ-FW-009) adds fetch_web, which brings it to 38.
+const wantCatalogSize = 38
 
 // TestMoaiMCPTools_CatalogSize asserts the catalog declares exactly
 // wantCatalogSize tools, matching the registration count in

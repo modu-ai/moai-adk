@@ -1517,3 +1517,60 @@ func TestCIRequiredNamesSatisfied(t *testing.T) {
 		t.Logf("control (b) observed red: %s", got[0])
 	})
 }
+
+// rpcEvalRefExpr evaluates the only expression shape the concurrency block may
+// use: `${{ github.ref <op> '<literal>' [&& ...] }}` with op in {==, !=}.
+// Anything else is an error, so a rewritten expression cannot pass unnoticed.
+func rpcEvalRefExpr(expr, ref string) (bool, error) {
+	s := strings.TrimSpace(expr)
+	if !strings.HasPrefix(s, "${{") || !strings.HasSuffix(s, "}}") {
+		return false, fmt.Errorf("not a ${{ }} expression: %q", expr)
+	}
+	s = strings.TrimSpace(s[3 : len(s)-2])
+	term := regexp.MustCompile(`^github\.ref\s*(==|!=)\s*'([^']*)'$`)
+	result := true
+	for _, part := range strings.Split(s, "&&") {
+		m := term.FindStringSubmatch(strings.TrimSpace(part))
+		if m == nil {
+			return false, fmt.Errorf("unsupported term %q in %q", part, expr)
+		}
+		if (m[1] == "==") != (ref == m[2]) {
+			result = false
+		}
+	}
+	return result, nil
+}
+
+// TestCodeQLConcurrencyNeverCancelsMain (card t1960): a cancelled check run on
+// a main landing SHA is read by scripts/release.sh as a CI gate failure, so the
+// CodeQL workflow must never cancel a run for a push to main (nor for the
+// weekly schedule, which runs on the default-branch ref). Pull-request runs
+// keep cancelling superseded runs.
+func TestCodeQLConcurrencyNeverCancelsMain(t *testing.T) {
+	wf := rpcLoadWorkflow(t, rpcCodeQLWorkflowRel)
+	if wf.Concurrency.Group != "codeql-${{ github.ref }}" {
+		t.Fatalf("CODEQL_CANCEL_VIOLATION: concurrency group is %q, want %q", wf.Concurrency.Group, "codeql-${{ github.ref }}")
+	}
+	expr, ok := wf.Concurrency.CancelInProgress.(string)
+	if !ok {
+		t.Fatalf("CODEQL_CANCEL_VIOLATION: cancel-in-progress is %T(%v), want a ref-conditional expression (a bare boolean cancels main runs)", wf.Concurrency.CancelInProgress, wf.Concurrency.CancelInProgress)
+	}
+	cases := []struct {
+		name, ref string
+		want      bool
+	}{
+		{"push to main", "refs/heads/main", false},
+		{"weekly schedule (default-branch ref)", "refs/heads/main", false},
+		{"develop", "refs/heads/develop", false},
+		{"pull_request merge ref", "refs/pull/1234/merge", true},
+	}
+	for _, c := range cases {
+		got, err := rpcEvalRefExpr(expr, c.ref)
+		if err != nil {
+			t.Fatalf("CODEQL_CANCEL_VIOLATION: %v", err)
+		}
+		if got != c.want {
+			t.Errorf("CODEQL_CANCEL_VIOLATION: %s (ref %s): cancel-in-progress evaluates to %v, want %v", c.name, c.ref, got, c.want)
+		}
+	}
+}

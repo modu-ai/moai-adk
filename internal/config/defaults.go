@@ -198,6 +198,15 @@ const (
 	// references MUST use this const (CLAUDE.local.md §14 — no hardcoding).
 	DefaultAgenticLoopMaxIterations = 10
 
+	// Hook-process Jev time budget (SPEC-JEV-LEDGER-001 REQ-JEVL-013). The host
+	// kills a hook past its timeout (Stop and SubagentStop 5 s on Claude Code);
+	// the margin is held back for time outside the moai process clock. Both are
+	// decisions, not measurements, until SPEC-JEV-LEDGER-002 measures the
+	// wrapper-start-to-exit clock. The deadline offset is derived by
+	// JevHookDeadlineOffset, never stored as a third value.
+	DefaultJevHookBudget = 5 * time.Second
+	DefaultJevHookMargin = 1 * time.Second
+
 	// workflow.autonomy.* defaults (SPEC-AUTONOMY-CONTRACT-001
 	// REQ-CONTRACT-015). ResolveAutonomy is the only reader; the kickoff
 	// decider has no stored default (it derives from the effective mode).

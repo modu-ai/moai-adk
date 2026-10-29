@@ -128,14 +128,24 @@ func TestAdoptResumedLeaderRunSkipsWhenNotResumeShaped(t *testing.T) {
 	}
 }
 
-// Several live-records runs with dead owners are ambiguous: nothing is
-// adopted, the minted id stands, and every candidate is named in the warn
-// output with its re-adoption command.
+// Several live-records runs with dead owners no longer stop the adoption
+// (SPEC-FACTORY-COMPLETION-RECOVERY-001 REQ-FCR-017/018, decision Q2 — the one
+// expectation this card reverses): the NEWEST is adopted, the other's cards
+// move under it, and the other run retires. The warn output names the moved
+// card; the ambiguity-refusal this test used to pin is replaced by the guards
+// in TestLeaderStartAutoAdoptGuards.
 func TestAdoptResumedLeaderRunWarnsOnMultipleCandidates(t *testing.T) {
 	root := adoptSandbox(t)
 	db := openAdoptFactory(t, root)
 	seedDeadRunWithLiveRecords(t, db, "run-a")
 	seedDeadRunWithLiveRecords(t, db, "run-b")
+	// run-b is the newer run: pin the creation times so the order is stated,
+	// not left to the clock.
+	for id, at := range map[string]string{"run-a": "2026-10-01T00:00:00Z", "run-b": "2026-10-02T00:00:00Z"} {
+		if _, err := db.DB.Exec(`UPDATE runs SET created_at=? WHERE run_id=?`, at, id); err != nil {
+			t.Fatalf("pin created_at of %s: %v", id, err)
+		}
+	}
 	if err := db.Close(); err != nil {
 		t.Fatalf("close seeding handle: %v", err)
 	}
@@ -146,20 +156,26 @@ func TestAdoptResumedLeaderRunWarnsOnMultipleCandidates(t *testing.T) {
 	if err != nil {
 		t.Fatalf("adopt: %v", err)
 	}
-	if adopted != "" {
-		t.Fatalf("adopted = %q, want none (ambiguous)", adopted)
+	if adopted != "run-b" {
+		t.Fatalf("adopted = %q, want run-b (the newest dead-owner run)", adopted)
 	}
-	if got := os.Getenv(config.EnvFactoryRunID); got != "minted01" {
-		t.Fatalf("env %s = %q, want minted01 (untouched)", config.EnvFactoryRunID, got)
+	if got := os.Getenv(config.EnvFactoryRunID); got != "run-b" {
+		t.Fatalf("env %s = %q, want run-b", config.EnvFactoryRunID, got)
 	}
 	out := warn.String()
-	for _, id := range []string{"run-a", "run-b"} {
-		if !strings.Contains(out, id) {
-			t.Fatalf("warn %q does not name candidate %s", out, id)
-		}
+	if !strings.Contains(out, "run-a") || !strings.Contains(out, "card-run-a") {
+		t.Fatalf("warn %q does not name the consolidated run and its moved card", out)
 	}
-	if !strings.Contains(out, "--factory-run") {
-		t.Fatalf("warn %q does not offer the re-adoption command", out)
+
+	db = openAdoptFactory(t, root)
+	defer func() { _ = db.Close() }()
+	var status string
+	if err := db.DB.QueryRow(`SELECT status FROM runs WHERE run_id='run-a'`).Scan(&status); err != nil || status != "retired" {
+		t.Fatalf("run-a status = %q (%v), want retired", status, err)
+	}
+	var owner string
+	if err := db.DB.QueryRow(`SELECT run_id FROM cards WHERE card_id='card-run-a'`).Scan(&owner); err != nil || owner != "run-b" {
+		t.Fatalf("card-run-a lives under %q (%v), want run-b", owner, err)
 	}
 }
 
@@ -218,31 +234,6 @@ func TestAdoptResumedLeaderRunWarnsCodexLedCandidate(t *testing.T) {
 	}
 	if !strings.Contains(warn.String(), "codex") {
 		t.Fatalf("warn %q does not name the codex-led refusal", warn.String())
-	}
-}
-
-// Card-review round 2 + codex_audit round 3 — the adoption adjudication
-// judges only EXPLICIT resume spellings: `--debug --resume <id>` carries one
-// (a flag-shaped token is its own option), while `-derror` — an 'r' inside a
-// short cluster's attached value — does not, and must never hand a
-// brand-new session an existing run.
-func TestStrictResumeCarrierSeen(t *testing.T) {
-	cases := []struct {
-		args []string
-		want bool
-	}{
-		{[]string{"--debug", "--resume", "sess-1"}, true},
-		{[]string{"-derror"}, false}, // codex_audit round 3: an 'r' inside a cluster value is not a resume
-		{[]string{"--resume=sess-1"}, true},
-		{[]string{"-rsess-1"}, true}, // the attached-value short form
-		{[]string{"-r"}, true},
-		{[]string{"--session", "sess-1", "--resume"}, true},    // a required-value option's value is never judged
-		{[]string{"--", "resume the work", "--", "-r"}, false}, // prompt text after the second separator
-	}
-	for _, tc := range cases {
-		if got := strictResumeCarrierSeen(tc.args); got != tc.want {
-			t.Fatalf("strictResumeCarrierSeen(%q) = %v, want %v", tc.args, got, tc.want)
-		}
 	}
 }
 

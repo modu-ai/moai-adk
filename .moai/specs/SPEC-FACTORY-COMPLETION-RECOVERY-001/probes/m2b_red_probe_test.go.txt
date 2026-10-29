@@ -1,0 +1,67 @@
+package homestate
+
+import (
+	"context"
+	"testing"
+	"time"
+)
+
+// t1963 plan-phase RED probes (overlay only, never committed). Each test
+// asserts the target behavior of SPEC-FACTORY-COMPLETION-RECOVERY-001 M2-B and
+// is expected to FAIL on the pre-implementation tree.
+
+func TestT1963RedTwoDeadRunsOneLeaderStart(t *testing.T) {
+	db := openSandboxFactory(t)
+	mustRecordRun(t, db, FactoryRun{RunID: "run-d1", ManifestJSON: "{}", LeadPID: 20, LeadProcessStart: "gone"})
+	mustRecordRun(t, db, FactoryRun{RunID: "run-d2", ManifestJSON: "{}", LeadPID: 21, LeadProcessStart: "gone"})
+	mustInsertCard(t, db, "run-d1", "c1", "run")
+	mustInsertCard(t, db, "run-d1", "c2", "picked")
+	mustInsertCard(t, db, "run-d2", "c3", "assigned")
+	opts := ReconcileOptions{Classify: fixedClassifier(OwnerDead)}
+	adopt, candidates, err := db.FindResumableRun(context.Background(), opts)
+	if err != nil {
+		t.Fatalf("find: %v", err)
+	}
+	if adopt.RunID == "" {
+		t.Errorf("RED adopt: adopt=%q candidates=%d, want one dead-owner run adopted", adopt.RunID, len(candidates))
+	}
+	rec, err := db.ReconcileActiveRuns(context.Background(), opts)
+	if err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	if len(rec.Remaining) != 1 {
+		t.Errorf("RED ambiguity: remaining active runs=%d preserved=%d, want 1", len(rec.Remaining), len(rec.Preserved))
+	}
+}
+
+func TestT1963RedGhostWorkerKeepsRunAlive(t *testing.T) {
+	db := openSandboxFactory(t)
+	mustRecordRun(t, db, FactoryRun{RunID: "run-ghost", ManifestJSON: "{}", LeadPID: 20, LeadProcessStart: "gone"})
+	if _, err := db.DB.Exec(`INSERT INTO workers(label,pid,run_id,registered_at,heartbeat_at) VALUES('lane-x',2147480000,'run-ghost','2026-10-14T00:00:00Z','2026-10-14T00:00:00Z')`); err != nil {
+		t.Fatalf("insert worker: %v", err)
+	}
+	rec, err := db.ReconcileActiveRuns(context.Background(), ReconcileOptions{Classify: fixedClassifier(OwnerDead)})
+	if err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	if got := runStatus(t, db, "run-ghost"); got != "retired" {
+		t.Errorf("RED ghost worker: status=%q preserved=%d, want retired (worker pid is dead)", got, len(rec.Preserved))
+	}
+}
+
+func TestT1963RedLeaseLeavesDeadRowNonTerminal(t *testing.T) {
+	db := openSandboxFactory(t)
+	mustRecordRun(t, db, FactoryRun{RunID: "run-dead", ManifestJSON: "{}", LeadPID: 20, LeadProcessStart: "gone"})
+	mustRecordRun(t, db, FactoryRun{RunID: "run-new", ManifestJSON: "{}", LeadPID: 22, LeadProcessStart: "live"})
+	mustInsertCard(t, db, "run-dead", "c9", "run")
+	if _, err := db.RecordPicked(context.Background(), "run-new", "c9", CardFields{}, "lane-1", time.Now()); err != nil {
+		t.Fatalf("record picked: %v", err)
+	}
+	var state string
+	if err := db.DB.QueryRow(`SELECT state FROM cards WHERE run_id='run-dead' AND card_id='c9'`).Scan(&state); err != nil {
+		t.Fatalf("read: %v", err)
+	}
+	if state != "done" && state != "failed" && state != "abandoned" {
+		t.Errorf("RED duplicate: dead-run row state=%q after lease in run-new, want terminal or re-keyed", state)
+	}
+}
