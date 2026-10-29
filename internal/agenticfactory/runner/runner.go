@@ -33,18 +33,51 @@ const (
 	KindCheck              Kind = "check"
 	KindReview             Kind = "review"
 	KindAudit              Kind = "audit"
+	KindQA                 Kind = "qa"
 	KindHandoffWriter      Kind = "handoff-writer"
 	KindHandoffCoordinator Kind = "handoff-coordinator"
 )
 
 var requiredKinds = []Kind{KindCheck, KindReview, KindAudit, KindHandoffWriter, KindHandoffCoordinator}
 
-// Result is one observed outcome tied to the HEAD it judged.
+// Result is one observed outcome tied to the HEAD it judged. Session and Epoch
+// are what the registering service observed for the writer handoff; they are never
+// read from the evidence file, and for the other producer-checked kinds they are
+// ignored in favour of the attribution lookup.
 type Result struct {
 	Kind    Kind
 	Name    string
 	Head    string
 	Verdict string
+	Session string
+	Epoch   int64
+}
+
+// Attribution is the answer of the read-only attribution lookup of
+// SPEC-AGENTIC-FACTORY-001's identity sub-SPEC: either who produced a result
+// and in which role, or why that cannot be said.
+type Attribution struct {
+	Attributed bool
+	Role       string
+	Session    string
+	Attempt    string
+	Epoch      int64
+	Reason     string // set when not attributed
+}
+
+// Attributor looks up the producer of a result. The implementation belongs to
+// the identity SPEC; until it exists the Runner has none, and every
+// producer-checked result is unattributable.
+type Attributor interface {
+	Attribute(res Result) Attribution
+}
+
+// roleFor is the role design 11 requires for each producer-checked kind.
+var roleFor = map[Kind]string{
+	KindReview:             core.RoleReviewer,
+	KindAudit:              core.RoleAuditor,
+	KindQA:                 core.RoleQA,
+	KindHandoffCoordinator: core.RoleCoordinator,
 }
 
 // Verification is the evidence set for one candidate HEAD.
@@ -68,8 +101,12 @@ type Ticket struct {
 	Epoch  int64
 }
 
-// Runner applies transitions to claims in Store.
-type Runner struct{ Store *claim.Store }
+// Runner applies transitions to claims in Store. With no Attributor every
+// review, audit, QA and coordinator result is unattributable and is refused.
+type Runner struct {
+	Store      *claim.Store
+	Attributor Attributor
+}
 
 // New returns a Runner over st.
 func New(st *claim.Store) *Runner { return &Runner{Store: st} }
@@ -162,6 +199,10 @@ func (r *Runner) Verify(t Ticket, v Verification) (claim.Record, error) {
 				return fmt.Errorf("%w: no %s result", core.ErrEvidenceIncomplete, k)
 			}
 		}
+		if detail := r.producerProblem(t, v.Results); detail != "" {
+			pauseIn(rec, core.StateBlocked, core.ReasonProducerNotAllowed, detail)
+			return nil
+		}
 		reason, failed := judge(v.Results)
 		switch {
 		case failed:
@@ -173,6 +214,34 @@ func (r *Runner) Verify(t Ticket, v Verification) (claim.Record, error) {
 		}
 		return nil
 	})
+}
+
+// producerProblem returns why some result must not be counted, or "" when every
+// producer is allowed. Review, audit, QA and coordinator results need the
+// lookup to say "attributed" with the right role; the writer handoff must come
+// from the holder and epoch the attempt was issued to. Nothing the evidence says
+// about its own producer is used.
+func (r *Runner) producerProblem(t Ticket, results []Result) string {
+	for _, res := range results {
+		switch res.Kind {
+		case KindHandoffWriter:
+			if res.Session == "" || res.Session != t.Holder || res.Epoch != t.Epoch {
+				return fmt.Sprintf("writer handoff %q is not from the issued holder and epoch (%s)", res.Name, core.ReasonProducerNotAllowed)
+			}
+		case KindReview, KindAudit, KindQA, KindHandoffCoordinator:
+			att := Attribution{Reason: core.AttributionLocked}
+			if r.Attributor != nil {
+				att = r.Attributor.Attribute(res)
+			}
+			switch {
+			case !att.Attributed:
+				return fmt.Sprintf("%s %q is unattributable (%s); a producer in the required role must register it on the same HEAD", res.Kind, res.Name, att.Reason)
+			case att.Role != roleFor[res.Kind]:
+				return fmt.Sprintf("%s %q was produced in role %q, %q is required", res.Kind, res.Name, att.Role, roleFor[res.Kind])
+			}
+		}
+	}
+	return ""
 }
 
 // judge returns (reason, false) for a pause, ("", true) when any result is a
@@ -315,12 +384,17 @@ func (r *Runner) Resume(t Ticket, conditionMet bool) (claim.Record, error) {
 // BoundaryHead is the branch HEAD observed after the writer stopped; it must
 // equal the PR head, which proves nothing was written after publication.
 type Handoff struct {
-	PR            int
-	Head          string
-	Branch        string
-	Worktree      string
-	WriterStopped bool
-	BoundaryHead  string
+	// HandoffID names the receipt; delivering the same id again is a replay and
+	// converges on one acceptance. LeaderAccepted is true only when the leader
+	// has accepted the receipt: the claim is returned after that, not before.
+	HandoffID      string
+	LeaderAccepted bool
+	PR             int
+	Head           string
+	Branch         string
+	Worktree       string
+	WriterStopped  bool
+	BoundaryHead   string
 }
 
 // HandOff records the PR receipt and releases the agent's claim in one write,
@@ -328,6 +402,12 @@ type Handoff struct {
 // untouched. It is refused unless the writer has stopped and the write boundary
 // matches the PR head. The Issue stays in landing: a PR is not done.
 func (r *Runner) HandOff(t Ticket, h Handoff) (claim.Record, error) {
+	if _, err := core.ParseRunID(h.HandoffID); err != nil {
+		return claim.Record{}, fmt.Errorf("%w: a handoff id is required", core.ErrEvidenceIncomplete)
+	}
+	if !h.LeaderAccepted {
+		return claim.Record{}, fmt.Errorf("%w: the claim is returned only after the leader accepted the receipt", core.ErrEvidenceIncomplete)
+	}
 	head, err := core.ParseHeadSHA(h.Head)
 	if err != nil {
 		return claim.Record{}, err
@@ -346,6 +426,14 @@ func (r *Runner) HandOff(t Ticket, h Handoff) (claim.Record, error) {
 	case boundary != head:
 		return claim.Record{}, fmt.Errorf("%w: branch moved to %.12s after PR head %.12s", core.ErrStaleHead, boundary, head)
 	}
+	// A receipt that was already accepted is a replay: same id and same content
+	// converge on the stored record, a different content under that id conflicts.
+	if cur, err := r.Store.Read(t.Issue); err == nil && cur.Receipt != nil && cur.Receipt.HandoffID == h.HandoffID {
+		if cur.Receipt.PR == h.PR && cur.Receipt.Head == head && cur.Receipt.Branch == h.Branch {
+			return cur, nil
+		}
+		return claim.Record{}, fmt.Errorf("%w: receipt %s was accepted with other content", core.ErrDuplicateHandoff, h.HandoffID)
+	}
 	return r.Store.UpdateRelease(t.Issue, t.Holder, t.Epoch, func(rec *claim.Record) error {
 		if rec.State != core.StateLanding {
 			return fmt.Errorf("%w: %s, handoff needs a published PR (landing)", core.ErrTransitionInvalid, rec.State)
@@ -357,10 +445,10 @@ func (r *Runner) HandOff(t Ticket, h Handoff) (claim.Record, error) {
 			return fmt.Errorf("%w: PR #%d", core.ErrDuplicateHandoff, rec.Receipt.PR)
 		}
 		rec.Receipt = &claim.Receipt{
-			PR: h.PR, Head: head, Branch: h.Branch, Worktree: h.Worktree,
+			HandoffID: h.HandoffID, LeaderAccepted: true, PR: h.PR, Head: head, Branch: h.Branch, Worktree: h.Worktree,
 			Attempt: rec.Attempt, AttemptSeq: rec.AttemptSeq, Agent: rec.AgentName, Session: rec.Holder,
 		}
-		rec.AddEvent(claim.Event{Kind: "handoff", Agent: rec.AgentName, Session: rec.Holder, Attempt: string(rec.Attempt), Head: string(head), PR: h.PR})
+		rec.AddEvent(claim.Event{Kind: "handoff", Agent: rec.AgentName, Session: rec.Holder, Attempt: string(rec.Attempt), Head: string(head), PR: h.PR, Note: "receipt " + h.HandoffID + " accepted by the leader"})
 		return nil
 	})
 }
