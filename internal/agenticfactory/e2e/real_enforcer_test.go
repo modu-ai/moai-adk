@@ -184,12 +184,23 @@ func TestEnforcer_IssuePatch_AllOperationsMustBeAllowed(t *testing.T) {
 	refusedWith(t, check(e, "PATCH", pathIssueOwn, `{"body":"ok","labels":["p0"]}`), effect.ReasonPermissionNotGranted)
 }
 
-// A PATCH shape the factory does not send is refused as malformed, not guessed:
-// reopening, other fields, an empty or non-object body.
-func TestEnforcer_IssuePatch_UnknownShapes_AreMalformed(t *testing.T) {
+// A PATCH body that is not a recognizable edit (empty, non-object, not JSON) is
+// refused as malformed, not guessed.
+func TestEnforcer_IssuePatch_UnreadableBodies_AreMalformed(t *testing.T) {
 	e := &effect.Enforcer{Identity: host()}
-	for _, body := range []string{`{"state":"open"}`, `{"title":"x"}`, `{"milestone":3}`, `{}`, `[]`, `not json`, ``} {
+	for _, body := range []string{`{}`, `[]`, `not json`, ``} {
 		refusedWith(t, check(e, "PATCH", pathIssueOwn, body), effect.ReasonMalformed)
+	}
+}
+
+// An operation the Issue permission policy does not define (reopening, title,
+// milestone) gets its own reason, on my Issue and on another author's alike.
+func TestEnforcer_IssuePatch_UndefinedOperations_AreOpNotDefined(t *testing.T) {
+	e := &effect.Enforcer{Identity: host()}
+	for _, path := range []string{pathIssueOwn, pathIssueForeign} {
+		for _, body := range []string{`{"state":"open"}`, `{"title":"x"}`, `{"milestone":3}`} {
+			refusedWith(t, check(e, "PATCH", path, body), effect.ReasonOpNotDefined)
+		}
 	}
 }
 
