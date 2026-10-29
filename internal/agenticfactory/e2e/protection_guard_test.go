@@ -126,6 +126,7 @@ func TestProtectionGuard_NoProductionLiteralMentionsProtectionSettings(t *testin
 	root := ".." // internal/agenticfactory
 	fset := token.NewFileSet()
 	files, literals := 0, 0
+	sawGuard := false
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -134,6 +135,13 @@ func TestProtectionGuard_NoProductionLiteralMentionsProtectionSettings(t *testin
 			return filepath.SkipDir
 		}
 		if d.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+			return nil
+		}
+		// The weakening-refusal guard IS the list of settings areas to refuse, so
+		// those words are its content. It is the one exempt file; the test below
+		// fails if it ever disappears, so the exemption cannot hide anything else.
+		if filepath.ToSlash(path) == "../effect/guard.go" {
+			sawGuard = true
 			return nil
 		}
 		f, perr := parser.ParseFile(fset, path, nil, 0)
@@ -168,6 +176,9 @@ func TestProtectionGuard_NoProductionLiteralMentionsProtectionSettings(t *testin
 	})
 	if err != nil {
 		t.Fatal(err)
+	}
+	if !sawGuard {
+		t.Error("effect/guard.go (the one exempt file) was not found: the refusal guard is missing")
 	}
 	// Positive control: an empty scan is not a pass.
 	if files < 10 || literals < 100 {
