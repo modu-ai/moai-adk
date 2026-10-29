@@ -98,6 +98,11 @@ type Backlog struct {
 	Open  int          `json:"open"`
 	Limit int          `json:"limit"`
 	State BacklogState `json:"state"`
+	// Queue figures; zero and QueueKnown=false when the queue reader is absent or failed.
+	AwaitingHandoff   int  `json:"awaiting_handoff"`
+	RepairBacklog     int  `json:"repair_backlog"`
+	OldestWaitSeconds int  `json:"oldest_wait_seconds"`
+	QueueKnown        bool `json:"queue_known"`
 }
 
 func backlogState(open, limit int) BacklogState {
@@ -114,8 +119,9 @@ func backlogState(open, limit int) BacklogState {
 
 // View is the whole monitor output: one row per Issue plus the PR backlog.
 type View struct {
-	Rows    []Row          `json:"rows"`
-	Backlog Field[Backlog] `json:"backlog"`
+	Rows    []Row               `json:"rows"`
+	Backlog Field[Backlog]      `json:"backlog"`
+	Intake  Field[[]IntakeItem] `json:"intake"`
 }
 
 // View collects rows and the backlog.
@@ -124,9 +130,12 @@ func (c *Collector) View(ctx context.Context, issues []int) View {
 	v.Backlog.Source = SrcRemote
 	if c.PRs != nil {
 		if n, err := c.PRs.CountOpenPRs(ctx); err == nil {
-			v.Backlog = Field[Backlog]{Backlog{n, c.BacklogLimit, backlogState(n, c.BacklogLimit)}, SrcRemote, c.Now(), true, false}
+			b := Backlog{Open: n, Limit: c.BacklogLimit, State: backlogState(n, c.BacklogLimit)}
+			c.fillQueue(ctx, &b)
+			v.Backlog = Field[Backlog]{b, SrcRemote, c.Now(), true, false}
 		}
 	}
+	c.fillIntake(ctx, &v)
 	return v
 }
 
