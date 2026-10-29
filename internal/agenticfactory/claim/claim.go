@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/rand/v2"
 	"os"
 	"path/filepath"
 	"sort"
@@ -97,7 +98,7 @@ type Store struct {
 }
 
 const (
-	lockTries = 5
+	lockTries = 40
 	lockWait  = 10 * time.Millisecond
 )
 
@@ -163,7 +164,8 @@ func (s *Store) withLockFile(path, name string, fn func() error) error {
 		if !errors.Is(err, os.ErrExist) {
 			return fmt.Errorf("%w: %v", core.ErrStoreUnavailable, err)
 		}
-		time.Sleep(lockWait)
+		// Jitter keeps many contenders from polling in lockstep.
+		time.Sleep(lockWait + time.Duration(rand.Int64N(int64(lockWait))))
 	}
 	if err != nil {
 		return fmt.Errorf("%w: %s", core.ErrBusy, name)
