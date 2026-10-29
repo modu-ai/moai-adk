@@ -31,6 +31,7 @@ type Request struct {
 	Method string
 	Path   string
 	Header map[string]string
+	Body   []byte // request body for writes; empty for GET
 }
 
 // Response is a host-neutral response. Header keys are lower-case.
@@ -365,4 +366,26 @@ func ClassifyError(err error, now time.Time, b Backoff, attempt int) (Verdict, b
 		return Verdict{}, false
 	}
 	return Classify(Response{Status: se.Status, Header: se.Header, Body: se.Body}, now, b, attempt), true
+}
+
+// ForEffect maps a failed call to what the effect executor understands: a rate limit waits for its
+// RetryAt (when a valid Backoff is configured), a permission or missing-repository answer parks the
+// intent, and anything else is returned unchanged. The decision uses the status code only.
+func ForEffect(err error, now time.Time, b Backoff) error {
+	var se *StatusError
+	if !errors.As(err, &se) {
+		return err
+	}
+	if b.Validate() == nil {
+		if v, ok := ClassifyError(err, now, b, 0); ok {
+			if mapped := EffectError(v); mapped != nil {
+				return mapped
+			}
+		}
+	}
+	switch se.Status {
+	case 401, 403, 404:
+		return fmt.Errorf("%w: http %d", effect.ErrDenied, se.Status)
+	}
+	return err
 }
