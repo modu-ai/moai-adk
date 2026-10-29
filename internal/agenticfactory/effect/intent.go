@@ -127,10 +127,12 @@ type Lookuper interface {
 	Lookup(ctx context.Context, in Intent) (LookupResult, error)
 }
 
-// IntentStore persists intents. It is a local cache behind this interface: the authority is the
-// online control ref. Not implemented yet: the collector contract's consumer ACK and cursor.
-// (Retry-After / X-RateLimit-* backoff, conditional GET with ETag, and the shared call budget ARE
-// implemented, in package forge; this executor honours them through LimitedError and ErrDenied.)
+// IntentStore persists intents. effect/docstore keeps them in the claim store's "intent" documents, which
+// is where the authority (the online control ref, when attached) comes first. The collector's consumer
+// ACK is forge.Collector.Ack and its cursor is forge.CursorStore; the claim store has no document kind
+// for a collector cursor yet, so until lane 18 names one the cursor lives in memory only. Retry-After /
+// X-RateLimit-* backoff, conditional GET with ETag and the shared call budget are in package forge; this
+// executor honours them through LimitedError and ErrDenied.
 type IntentStore interface {
 	Get(key string) (Intent, bool, error)
 	Put(Intent) error

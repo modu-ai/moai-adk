@@ -100,6 +100,15 @@ type Report struct {
 	feedN int    // how many pushed (webhook) events this report carries
 }
 
+// CursorStore persists the consumer-acknowledged baseline (the collector contract's cursor), so a restart
+// resumes from it instead of reporting everything again. The production implementation keeps it in the
+// claim store's documents; a store unavailable at load time pauses the collector rather than inventing
+// a baseline, because replacing a real cursor with the current snapshot would lose changes.
+type CursorStore interface {
+	LoadCursor(key string) (body []byte, found bool, err error)
+	SaveCursor(key string, body []byte) error
+}
+
 // Collector is the single collector of one repository: it fetches one path, remembers what it last
 // saw and what the consumer last acknowledged, passes on only the difference, and picks its own next
 // wake time. The acknowledged baseline lives in memory only; persisting it (the collector contract's
@@ -110,8 +119,14 @@ type Collector struct {
 	Interval Adaptive
 	Differ   Differ
 	Feed     WebhookFeed
+	// Cursors and CursorKey persist the acknowledged baseline. Optional: without a store the baseline
+	// lives in memory only and the first report after a restart is a Baseline. Pushed (webhook) events
+	// that were not yet acknowledged are NOT persisted; the safety poll covers them.
+	Cursors   CursorStore
+	CursorKey string
 
 	mu       sync.Mutex
+	loaded   bool   // the cursor has been read from Cursors (or there is none to read)
 	last     []byte // acknowledged by the consumer
 	seen     []byte // latest observed from the host
 	feedBuf  []Change
@@ -121,9 +136,17 @@ type Collector struct {
 }
 
 // Ack confirms that the consumer received everything in rep. Until then the same changes come back.
-func (c *Collector) Ack(rep Report) {
+//
+// With a CursorStore the acknowledgement is saved first, and only a saved one advances the baseline: a
+// failed save is returned and the same changes come back on the next Tick.
+func (c *Collector) Ack(rep Report) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	if rep.snap != nil && c.Cursors != nil {
+		if err := c.Cursors.SaveCursor(c.CursorKey, rep.snap); err != nil {
+			return fmt.Errorf("forge: the acknowledgement could not be saved: %w", err)
+		}
+	}
 	if rep.snap != nil {
 		c.last = rep.snap
 	}
@@ -131,12 +154,24 @@ func (c *Collector) Ack(rep Report) {
 		n := min(rep.feedN, len(c.feedBuf))
 		c.feedBuf = append([]Change(nil), c.feedBuf[n:]...)
 	}
+	return nil
 }
 
 // Tick runs the collector at `now`. Before its own next time it makes no call.
 func (c *Collector) Tick(ctx context.Context, now time.Time) Report {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	if !c.loaded && c.Cursors != nil {
+		body, found, err := c.Cursors.LoadCursor(c.CursorKey)
+		if err != nil {
+			// Do not poll and do not report: with the real cursor unknown, any report could be wrong.
+			return Report{Reason: "the cursor could not be read: " + err.Error(), Next: now.Add(c.Interval.Min)}
+		}
+		if found {
+			c.last = body
+		}
+	}
+	c.loaded = true
 	rep := c.tick(ctx, now)
 	rep.Changes = append(rep.Changes, c.feedBuf...)
 	rep.feedN = len(c.feedBuf)
