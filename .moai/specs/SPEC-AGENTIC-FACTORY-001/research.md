@@ -97,6 +97,16 @@
 | 패키지 주석은 이를 "the ClassifyOwnerWith predicate family"라 부르지만 `ClassifyOwnerWith`를 부르지는 않는다 | `internal/discovery/factory_discovery.go:10`, `:149` |
 | `ClassifyOwnerWith`의 다른 운영 호출처 | `internal/factorymsg/factory_run_retire.go:99`(iteration-2 감사자 측정을 옮김. 이 세션은 다시 실행하지 않음) |
 
+## R11 역할 부여·Codex 기본값 위치 (0.4.0, 트리 `f0a2f86e51`)
+
+| 사실 | 근거(이번 실행의 grep·sed) |
+|---|---|
+| 대화형 서명 방식 상수 `MethodInteractiveTTY = "interactive-tty"` | `internal/contract/seal.go:47`. `signer_kind` 필드는 `internal/contract/contract.go:82`. 서명 흐름 본문은 읽지 않음 |
+| 로컬 `workflow.yaml`의 Codex 키: `audit.model: codex`(L26), `audit.gates.codex: required`(L38), `codex:`(L349) 아래 `review_gate:`(L350)·`enabled: true`(L351)가 다른 줄 | `.moai/config/sections/workflow.yaml` |
+| 템플릿 `workflow.yaml`: `audit:`(L169-178)는 `claude`·`codex`·`glm` 하위 블록의 `model`·`effort`만 있고 `audit.model`·`gates` 없음. `codex:`(L189-192)는 `review_gate.enabled: false`만 있고 `task.allow_write` 없음 | `internal/template/templates/.moai/config/sections/workflow.yaml` |
+| `defaults.go`: `ReviewGate: CodexReviewGateConfig{`(L1732) 아래 `Enabled: false,`(L1733), `AllowWrite: false,`(L1744) | `internal/config/defaults.go` |
+| `llm.yaml`의 codex 세션 기본값 경로는 두 벌 모두 `llm.defaults.sessions.codex.{leader,lane}.{model,effort}`(값 `gpt-6.1-sol`, `high`/`medium`) | `.moai/config/sections/llm.yaml:27-29`, `internal/template/templates/.moai/config/sections/llm.yaml:71-82` |
+
 ## R8 판단에 쓴 해석
 
 - claim을 slot lease와 분리한 결정(spec.md §F.1)은 R4의 REQ-RSL-006 설계 근거("잘못된 비어 있음의 비용은 실행 두 개 겹침뿐")가 writer 중복에는 맞지 않는다는 해석에 기댄다. 이 해석은 코드 주석을 읽은 결과이고, 실제 중복 writer 사고를 재현한 것은 아니다.

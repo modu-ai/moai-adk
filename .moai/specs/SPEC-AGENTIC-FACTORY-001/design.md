@@ -42,7 +42,7 @@ GitHub Issue (사람 소유 필드의 권위 + 효과 상태의 거울 댓글 1�
 
 ### 2.1a 차단 사유 열거값 (`block_reason`)
 
-`blocked`는 어떤 사유로도 성공이 아니다. 사유는 아래 집합 중 하나만 쓰며, 집합 밖 값은 거절한다. "근거"는 사유를 기록할 때 함께 남겨야 하는 관측이다.
+`blocked`는 어떤 사유로도 성공이 아니다. 사유는 아래 집합 중 하나만 쓰며, 집합 밖 값은 거절한다. 이 집합은 `blocked`와 `on-hold`가 함께 쓴다. `operator-hold`는 `on-hold`에만 쓰고, 나머지 값은 둘 다에 쓸 수 있다(REQ-AF-001). "근거"는 사유를 기록할 때 함께 남겨야 하는 관측이다.
 
 | 값 | 뜻 | 기록에 필요한 근거 | 정상 재개 조건 |
 |---|---|---|---|
@@ -62,11 +62,12 @@ GitHub Issue (사람 소유 필드의 권위 + 효과 상태의 거울 댓글 1�
 | `ownership-unverified` | 소유권 확인 실패 또는 불가 | 실패한 확인 단계(claim 없음, holder 불일치, 저장소 읽기 실패) | 소유권 확인 성공 |
 | `store-unavailable` | 로컬 claim 저장소가 없거나 읽을 수 없다 | 읽기 오류 원문 | 저장소 복구. 거울에서 재구성하지 않음 |
 | `user-control` | 사용자가 제어권을 가져갔다(예: egolite `task.handOff()`, `EGO_TASK_SPACE_NAME_IN_USE`) | 도구가 낸 해당 표식 | 사용자가 제어권을 돌려줌 |
-| `operator-ack-missing` | 기존 리더·writer의 안전 중단 ACK 같은 운영자 측 확인이 없다 | 확인 대기 기록 | 해당 ACK 수신 |
+| `operator-ack-missing` | 기존 리더·writer의 안전 중단 ACK 같은 운영자 측 확인이 없다. 증거를 내는 역할에 필요한 운영자 인증(§11.2)이 없거나 만료·재사용·불일치라 역할이 없는 경우도 이 값이다 | 확인 대기 기록. 역할의 경우 필요한 역할 이름과 부여 거절 기록 | 해당 ACK 수신. 역할의 경우 유효한 운영자 인증으로 부여 |
+| `operator-hold` | 운영자가(또는 운영자가 승인한 시험 하네스가) 진행을 멈춰 두라고 요청했다. **`on-hold` 전용**이며 `blocked`에는 쓸 수 없다 | 요청자 기록과 요청 사유 원문(예: 시험 묶음 종료 `scenario-suite-end`) | 운영자의 재개 요청 기록 |
 
 `landing`에서 병합 결과를 모르는 상황은 차단이 아니라 `landing` 자기 전이(원격 재조회)다. 원격 조회 자체가 실패하면 그때 위 사유 중 해당하는 값으로 `blocked`가 된다.
 
-**인증·권한·429의 단일 규칙(REQ-AF-014)**: 401·403·429는 언제나 **실패한 그 동작**에 차단 기록을 남기고, 재시도 고리는 없다. 실패한 동작이 Issue 원장 거울 쓰기뿐이면 차단은 거울에 남는다(§4 `mirror_state: blocked(<사유>)`). Issue의 실행 상태(`state`)는 바뀌지 않는다. 권위는 로컬 claim 저장소이고 거울은 그것을 비출 뿐이기 때문이다(REQ-AF-011). 거울은 같은 사유의 정상 재개 조건이 충족된 뒤 ControlService가 한 번 다시 쓴다. 실행 경로의 동작(병합 요청, 검사 조회, 공급자 호출 등)이 실패하면 Issue가 `blocked`로 간다.
+**인증·권한·429의 단일 규칙(REQ-AF-014)**: 401·403·429는 언제나 **실패한 그 동작**에 차단 기록을 남기고, 재시도 고리는 없다. 실패한 동작이 Issue 원장 거울 쓰기뿐이면 차단은 로컬 claim 저장소에 거울 상태로 기록한다(§4 `mirror_state: blocked(<사유>)`. 429를 받은 거울 자체에는 쓸 수 없기 때문이다). Issue의 실행 상태(`state`)는 바뀌지 않는다. 권위는 로컬 claim 저장소이고 거울은 그것을 비출 뿐이기 때문이다(REQ-AF-011). 거울은 같은 사유의 정상 재개 조건이 충족된 뒤 ControlService가 한 번 다시 쓴다. 실행 경로의 동작(병합 요청, 검사 조회, 공급자 호출 등)이 실패하면 Issue가 `blocked`로 간다.
 
 ### 2.2 전이표
 
@@ -229,10 +230,10 @@ lane-21 보고서가 남긴 확인 공백(그대로 옮김): ① ego-lite `refer
 
 | 역할 | 하는 일 | 쓸 수 있는 것 | 쓸 수 없는 것 | 수명 |
 |---|---|---|---|---|
-| `ControlService` | claim, lease·활성 확인, 배정 epoch, 조정(reconcile), 재개 판단을 규칙대로 결정. 판단에 LLM을 쓰지 않음. 활성 확인은 `homestate.ClassifyOwnerWith` 정본(spec.md §F.2)으로 하고, claim 때 pid와 프로세스 시작 시각을 함께 기록 | claim 저장소, Issue 원장 댓글, 전이 | 코드, SPEC 본문, 사람 소유 필드 | `start`로 떠서 정상 정지까지 상주. 재시작하면 저장소에서 상태를 이어받음 |
+| `ControlService` | claim, lease·활성 확인, 배정 epoch, 조정(reconcile), 재개 판단을 규칙대로 결정. 판단에 LLM을 쓰지 않음. 활성 확인은 `homestate.ClassifyOwnerWith` 정본(spec.md §F.2)으로 하고, claim 때 pid와 프로세스 시작 시각을 함께 기록 | claim 저장소, Issue 원장 댓글, 전이, **역할 부여**(유일한 부여자. 운영자 인증 아래서만, §11.2) | 코드, SPEC 본문, 사람 소유 필드, 운영자 인증 없는 역할 부여 | `start`로 떠서 정상 정지까지 상주. 재시작하면 저장소에서 상태를 이어받음 |
 | `Coordinator` | 우선순위 판단, 다음 행동 제안, 운영자 대화 | 자기 판단 기록(제안·인계 파일) | claim·lease·attempt·epoch·전이를 직접 쓰기 | 운영자가 띄운 세션 수명. 끊겨도 실행은 계속 |
-| `Worker` | attempt 하나의 구현·시험·인계 | 자기 attempt의 작업 트리, 시험 출력, **writer 인계** 증거(자기 epoch로만) | 다른 attempt, claim 저장소, 원장 댓글, 그리고 **코드 리뷰·보안 리뷰·독립 감사·QA 판정·coordinator 인계 증거**(§11 생산자 결속. Worker가 같은 SHA로 만들어도 게이트가 `producer-not-allowed`로 막음) | attempt 하나 동안. 끊기면 attempt는 `lapsed` 후보 |
-| 리뷰·감사·QA 세션 | 같은 HEAD의 코드 리뷰·보안 리뷰(§11.1), 독립 감사, 공식 QA 스킬 실행 | 자기 판정 증거 | 코드, claim 저장소, 다른 역할의 증거 | 판정 하나 동안. writer attempt의 세션이 아니어야 함 |
+| `Worker` | attempt 하나의 구현·시험·인계 | 자기 attempt의 작업 트리, 시험 출력, **writer 인계** 증거(자기 epoch로만) | 다른 attempt, claim 저장소, 원장 댓글, 그리고 **코드 리뷰·보안 리뷰·독립 감사·QA 판정·coordinator 인계 증거**(§11 생산자 결속. Worker가 같은 SHA로 만들어도 게이트가 `producer-not-allowed`로 막음). **역할 부여 요청**은 자기 것이든 다른 세션 것이든 거절된다(§11.2) | attempt 하나 동안. 끊기면 attempt는 `lapsed` 후보. Worker였던 세션은 그 run에서 다른 역할을 받지 못한다 |
+| 리뷰·감사·QA 세션 | 같은 HEAD의 코드 리뷰·보안 리뷰(§11.1), 독립 감사, 공식 QA 스킬 실행 | 자기 판정 증거(부여받은 역할 하나의 증거만) | 코드, claim 저장소, 다른 역할의 증거, 역할 부여 | 판정 하나 동안. 역할은 ControlService가 운영자 인증 아래 부여한 것만 유효(§11.2). 한 세션은 run 안에서 역할 하나뿐이며 writer attempt의 세션이 아니어야 함 |
 | `slot` | Worker가 차지하는 용량 단위 | (주체가 아님) | — | ControlService가 설정값 `slots`만큼 둔다 |
 
 ### 7.3 run과 attempt — 두 정의, 결정 보류
@@ -385,7 +386,7 @@ run 단계는 `progress.md`에 `## §J Codex Migration Stage Record` 절을 만�
 | CX-2 | 미설정 0건 검증 | AC-AF-013 PASS를 기록한 커밋의 전체 SHA | AC-AF-013 PASS 출력이 있는 증거 경로와 판정 HEAD |
 | CX-3 | 기본값 변경 제안 | 제안을 담은 커밋의 전체 SHA | 제안 문서 경로 |
 
-**순서는 줄 순서가 아니라 커밋 그래프로 증명한다(VCI §2.3)**: 세 단계는 각각 **별도 커밋**이며, CX-1의 커밋은 CX-2 커밋의 엄격한 조상, CX-2의 커밋은 CX-3 커밋의 엄격한 조상이어야 한다. 또 CX-2 커밋 이전(그 커밋 포함)에 Codex 기본값 파일(`.moai/config/sections/workflow.yaml`, `internal/config/defaults.go`, `internal/template/templates/.moai/config/sections/workflow.yaml`)의 Codex 키를 바꾼 커밋이 이 SPEC 브랜치에 없어야 한다. 표의 행 기록 자체는 단계 커밋과 같은 커밋이 아니어도 된다 — 판정은 행에 적힌 `stage_sha`로 한다.
+**순서는 줄 순서가 아니라 커밋 그래프로 증명한다(VCI §2.3)**: 세 단계는 각각 **별도 커밋**이며, CX-1의 커밋은 CX-2 커밋의 엄격한 조상, CX-2의 커밋은 CX-3 커밋의 엄격한 조상이어야 한다. 또 `run_base_sha` 다음 커밋부터 CX-2 커밋까지(포함) **모든 커밋 각각에서** Codex 기본값의 **값**이 `run_base_sha`의 값과 같아야 한다. 줄 단위 정규식이 아니라 파일을 파싱해 값을 비교한다. 키와 값이 다른 줄에 있기 때문이다(`workflow.yaml:350` `review_gate:` / `:351` `enabled: true`, `defaults.go:1732` `ReviewGate: CodexReviewGateConfig{` / `:1733` `Enabled: false,`). 대상: `.moai/config/sections/workflow.yaml`와 `internal/template/templates/.moai/config/sections/workflow.yaml`의 `codex.review_gate.enabled`·`codex.task.allow_write`·`audit.model`·`audit.gates.codex`, `internal/config/defaults.go`의 `Codex.ReviewGate.Enabled`·`Codex.Task.AllowWrite`, `.moai/config/sections/llm.yaml`와 `internal/template/templates/.moai/config/sections/llm.yaml`의 `llm.defaults.sessions.codex.leader`·`.lane`의 `model`·`effort`(PR #1937이 다루는 출시 세션 기본값). 비교하는 것은 키마다 **(있음/없음, 값)의 짝**이다. 템플릿 `workflow.yaml`에는 `audit.model`·`audit.gates.codex` 키가 없고(이번 실행에서 읽음: 템플릿 `audit:` 블록 L169-178은 `claude`·`codex`·`glm` 하위 블록의 `model`·`effort`만 갖고 `audit.model`·`gates:` 줄이 없다. `codex:` 블록 L189-192는 `review_gate.enabled: false`만 있고 `task.allow_write` 줄이 없다), 그 "없음"도 기준값이다. 그래서 키를 새로 넣거나 지워도 변경으로 잡힌다. 커밋마다 보는 이유는 중간에 바꿨다가 CX-2 전에 되돌린 경우도 잡기 위해서다. 어느 커밋에서 파일을 파싱하지 못하면 "바뀌지 않음"이 아니라 FAIL이다. 표의 행 기록 자체는 단계 커밋과 같은 커밋이 아니어도 된다 — 판정은 행에 적힌 `stage_sha`로 한다.
 
 이 절은 `§E.*` 이름 공간을 쓰지 않는다(era 분류 충돌 방지). 기존 Codex 기능의 제거는 이 세 행 뒤의 별도 작업이며 이 표에 넣지 않는다.
 
@@ -425,25 +426,26 @@ run 단계는 `progress.md`에 `## §J Codex Migration Stage Record` 절을 만�
 
 증거 생산자 결속(REQ-AF-018·020):
 
-- 증거는 생산자가 ControlService의 등록 명령으로 올린다. ControlService는 **호출한 세션**의 등록 정보(역할, 세션 식별자, attempt, epoch)를 자기가 관측한 값으로 증거 항목에 붙인다. 증거 파일 안에 생산자가 스스로 적은 역할·세션 값은 판정에 쓰지 않는다.
-- 역할별 허용 생산자:
+- 증거는 생산자가 ControlService의 등록 명령으로 올린다. ControlService는 **등록 연결에서 직접 관측한 호출 프로세스**를 §11.2의 신원 결속(session id, pid + 프로세스 시작 시각, run, epoch)과 대조하고, 맞을 때만 그 세션의 부여 역할·attempt·epoch를 증거 항목에 붙인다. 증거 파일 안에 생산자가 스스로 적은 역할·세션 값은 판정에 쓰지 않는다.
+- 역할별 허용 생산자(역할은 모두 §11.2의 부여로만 생긴다):
 
 | 증거 | 허용 생산자 | 추가 조건 |
 |---|---|---|
-| 코드 리뷰·보안 리뷰 | 리뷰 세션(§11.1 (a)) 또는 운영자(§11.1 (b)), Codex 명시 설정 시 Codex 리뷰 | writer attempt의 세션이 아님. GLM 아님 |
-| 독립 감사 | 감사 세션 | writer attempt의 세션이 아님 |
-| QA 판정 | QA 세션(공식 QA 스킬 실행) | writer attempt의 세션이 아님 |
+| 코드 리뷰 | 코드 리뷰 역할을 부여받은 세션(§11.1 (a)) 또는 운영자 기록(§11.1 (b)), Codex 명시 설정 시 Codex 리뷰 | 그 run에서 Worker였던 세션이 아님(현재·이전 attempt 모두). GLM 아님 |
+| 보안 리뷰 | 보안 리뷰 역할을 부여받은 세션 또는 운영자 기록, Codex 명시 설정 시 Codex 리뷰 | 코드 리뷰와 같음. 코드 리뷰 세션과도 다른 세션(한 세션 한 역할) |
+| 독립 감사 | 감사 역할을 부여받은 세션 | 그 run의 Worker·Coordinator·리뷰·QA 세션이 아님 |
+| QA 판정 | QA 역할을 부여받은 세션(공식 QA 스킬 실행) | 그 run의 Worker였던 세션이 아님 |
 | writer 인계 | 그 attempt의 Worker | 현재 epoch |
-| coordinator 인계 | Coordinator 세션 | Worker 세션이 아님 |
+| coordinator 인계 | Coordinator 역할을 부여받은 세션 | Worker였던 세션이 아님 |
 
-- 결속이 표와 맞지 않으면 그 증거는 없는 것으로 보고 `blocked(producer-not-allowed)`로 기록한다.
+- 결속이 표와 맞지 않으면 그 증거는 없는 것으로 보고 `blocked(producer-not-allowed)`로 기록한다. 필요한 역할이 아예 부여되지 않았으면(운영자 인증 부재) `blocked(operator-ack-missing)`이다.
 
 ### 11.1 공급자 중립 리뷰 경로 (결정 D2 개정, M4)
 
 Codex가 명시 설정되지 않은 프로젝트에서 "같은 HEAD 코드·보안 리뷰"는 아래 둘 중 하나로 채운다. 어느 쪽도 Codex를 부르지 않는다.
 
-- (a) **리뷰 세션**: ControlService에 리뷰 역할로 등록된 세션이, writer attempt의 세션과 다르고 GLM도 Codex도 아닌 공급자로 후보 HEAD를 리뷰해 판정(`PASS` / `FAIL` / `BLOCKED`)을 등록한다. 어떤 공급자·모델을 쓸지는 운영자 설정이다(명령 이름 미확정).
-- (b) **운영자 기록 리뷰**: 운영자가 ControlService의 운영자 증거 경로로 같은 HEAD의 리뷰 판정을 기록한다. 이 경로는 #1924 대체 동작(운영자 결정 권한은 운영자 증거로만)과 같은 증거 원천을 쓴다.
+- (a) **리뷰 세션**: ControlService가 운영자 인증 아래 코드 리뷰 또는 보안 리뷰 역할을 부여한 세션(§11.2)이, writer attempt의 세션과 다르고 GLM도 Codex도 아닌 공급자로 후보 HEAD를 리뷰해 판정(`PASS` / `FAIL` / `BLOCKED`)을 등록한다. 어떤 공급자·모델을 쓸지는 운영자 설정이다(명령 이름 미확정).
+- (b) **운영자 기록 리뷰**: 운영자가 ControlService의 운영자 증거 경로로 같은 HEAD의 리뷰 판정을 기록한다. 이 기록도 §11.2와 같은 대화형 단말 확인(`interactive-tty`)을 거쳐야 하며, 확인 없이 들어온 "운영자" 기록은 `producer-not-allowed`다. 이 경로는 #1924 대체 동작(운영자 결정 권한은 운영자 증거로만)과 같은 증거 원천을 쓴다.
 
 둘 다 없으면 병합은 `blocked(not-configured)`다. Codex가 명시 설정된 프로젝트는 Codex 리뷰도 (a)와 같은 결속 조건으로 쓸 수 있다.
 
@@ -456,6 +458,45 @@ Codex가 명시 설정되지 않은 프로젝트에서 "같은 HEAD 코드·보�
 - 이렇게 하면 감사 결과를 기록하느라 코드 HEAD가 바뀌고, 바뀐 HEAD를 다시 감사해야 하는 순환이 생기지 않는다.
 
 병합 결과 미상: 재병합하지 않고 원격 상태(PR 상태, `main`의 커밋 포함 여부)를 먼저 조회한다. 원격 반영이 확인되면 `done` → Issue 종료 → 다음 dispatch 순서로만 진행한다.
+
+### 11.2 역할 부여·세션 신원·운영자 인증 (결정 DEC-AF-01, M4)
+
+spec.md §C.5.1의 결정을 동작 계약으로 적는다. 명령 이름은 미확정이다.
+
+**부여 대상과 주체**
+
+- 대상 역할: 코드 리뷰, 보안 리뷰, 독립 감사, QA, Coordinator. Worker 역할은 ControlService가 attempt를 발급할 때 운영자 인증 없이 준다.
+- 부여자는 ControlService 하나다. 판정에 쓰는 부여 목록은 ControlService가 이번 기동에서 부여 명령으로 만든 것뿐이며, 프로세스 안에만 둔다. claim 저장소의 `role_grant` 기록은 감사·관찰용 사본이고, 판정 때 다시 읽어 권한으로 쓰지 않는다. 그래서 저장소 파일에 다른 writer가 써 넣은 기록은 역할을 만들지 못한다. ControlService는 그런 기록을 발견하면 무결성 위반으로 남긴다.
+- ControlService가 재시작하면 이전 기동의 부여는 이어받지 않는다. claim·lease·attempt는 저장소에서 이어받는다(§7.2). 재시작 뒤 역할이 필요한 게이트 판정은 다시 부여받기 전까지 `blocked(operator-ack-missing)`이다.
+
+**운영자 인증(`operator_ack`)**
+
+- 방식: 대화형 단말 확인. `moai contract` 서명과 같은 부류다(`internal/contract/seal.go:47` `MethodInteractiveTTY = "interactive-tty"`). 운영자가 표준 입력이 단말인 상태에서 부여 명령을 실행하면, ControlService가 대상 run·역할·session id·pid·프로세스 시작 시각을 보인다. 운영자는 그 session id를 직접 입력해 확인한다. 파이프나 파일로 들어온 입력은 인증이 아니다.
+- 기록 위치와 내용: claim 저장소의 `operator_ack{operator, method, run_id, role, target_session_id, target_pid, target_process_start, issued_at, used}`. 이 기록은 ControlService가 부여 명령 안에서만 만든다. 세션이 저장소에 써 넣은 ack 파일은 프로세스 안 부여 목록에 들어가지 않으므로 효력이 없다.
+- 검사(모두 통과해야 부여):
+  1. `method`가 `interactive-tty`다.
+  2. ack의 대상 필드(run, 역할, session id, pid, 시작 시각)가 부여하려는 세션의 등록 값과 모두 같다.
+  3. 아직 쓰이지 않았다. ack 하나로 부여 하나만 하며, 두 번째 사용은 거절한다.
+  4. 만료되지 않았다. 대상 세션의 활성 판정이 `dead`이거나 run이 끝났으면 만료다.
+- 실패 시: 부여하지 않고 거절 기록을 남긴다. 필요한 역할이 없는 게이트는 `blocked(operator-ack-missing)`가 된다. 기본 부여는 없다.
+
+**세션 신원**
+
+- 등록: ControlService가 직접 기동한 프로세스이거나, 등록 요청 연결에서 ControlService가 OS로부터 직접 얻은 호출 프로세스 pid로 한다. 호출자가 적어 보낸 pid는 쓰지 않는다. ControlService는 그 pid의 시작 시각을 `ProbeProcessIdentity`로 읽어 함께 기록하고(spec.md §F.2), session id를 발급한다. 시작 시각을 읽지 못하면 등록하지 않는다.
+- 사용 때마다 검사: 증거 등록과 역할 사용 때마다 호출 연결의 pid를 다시 관측한다. 관측 pid가 기록 pid와 같고 `ClassifyOwnerWith(기록 pid, 기록 시작 시각)`가 `live`여야 한다. 아니면 거절하고 `producer-not-allowed`다.
+- 걸리는 경우:
+  - 위조: 다른 프로세스가 등록된 session id를 복사해 보낸다 → 관측 pid가 다르다.
+  - PID 재사용: 같은 pid, 다른 시작 시각 → `dead`.
+  - 중복: 살아 있는 프로세스에 이미 묶인 session id로 다시 등록한다 → 거절. 한 프로세스는 session id 하나만 갖는다.
+  - Worker가 띄운 추가 세션: 등록이 없으면 증거 등록 자체가 거절된다. 등록은 했어도 역할 부여가 없으면(운영자가 화면에서 그 pid·시작 시각을 보고 확인하지 않는 한 부여는 없다) 그 세션의 리뷰·감사·QA 증거는 `producer-not-allowed`다.
+- 플랫폼별로 호출 프로세스 pid를 얻는 방법(예: Unix 소켓 상대 자격 증명)과 Windows 대응은 미확정이다(spec.md §H).
+
+**역할 분리와 요청 제한**
+
+- 한 세션은 run 안에서 역할 하나만 갖는다. 그 run에서 Worker였던 세션(이전 attempt 포함), Coordinator 세션, 이미 다른 역할을 가진 세션에는 운영자 인증이 유효해도 부여를 거절한다.
+- 부여 요청이 등록된 세션의 프로세스(Worker·Coordinator·리뷰·감사·QA 세션)에서 오면 인증이 붙어 있어도 거절한다. Worker는 자기에게도 다른 세션에게도 역할을 줄 수 없다.
+
+**잔여 위험**: 대화형 단말 확인은 사람과 pty를 조작하는 프로그램을 구분하지 못한다(spec.md OQ-19).
 
 ## §12 설계 입력 다섯 건 → 대체 동작 → 재현 시험
 
