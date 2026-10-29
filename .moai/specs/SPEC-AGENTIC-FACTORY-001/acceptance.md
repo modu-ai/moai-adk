@@ -483,6 +483,16 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 
 ## §G 시험 이름 점검 (4cdaba5d7e 기준)
 
+**읽는 법 (F2d)**: IDENTITY·귀속에 기대는 기준과 사례는 행동 축과 시험 축을 따로 적는다(G.0, G.1, 하위 §F). 표지는 셋이다.
+
+- `잠금 유지 — REQ-AF-011에 따른 의도된 상태(미충족 아님)`: 계약이 잠금 동안 원하는 동작이다(귀속 fail-closed, 게이트 `producer-not-allowed`). 리뷰어에게 이 표지는 통과도 실패도 아니다. 그 동작의 시험이 생긴 뒤에야 잠금이 계약대로 버틴다는 증거가 된다. 이 표지는 코드가 그렇게 동작한다는 관측이 아니다. 계약이 그것을 의도하고, 감사가 그렇게 보고했을 뿐이다(아래).
+- `미충족 — 구현 없음`: 잠금이 풀린 뒤에만 있는 동작이다(하위 SPEC의 실제 귀속 조회, `runner.Attributor`·`runner.Facts` 구현). lane-18이 구현 중이다(`6b945fd844` HostFacts, 리더 전달, 이 작성자는 읽지 않음).
+- `시험 있음` / `시험 없음`: 시험 축. 지금까지처럼 `git grep`으로 존재만 확인한 값이다. 의도된 잠금 동작이라도 그 시험이 없으면 `시험 없음`으로 남는다 — 동작이 의도된 것이라고 시험 공백이 지워지지 않는다.
+- 잠금과 상관없는 사례는 "나누지 않음"으로 두고 기존 표지를 그대로 쓴다.
+- 근거 1 — REQ-AF-011(`spec.md` 150행) 원문: "Until the lock is lifted, the production attribution source SHALL be a fixed implementation whose behaviour is selected by a single compile-time constant and by no configuration key, environment variable, file, or flag, and SHALL return `unattributable` with reason `identity-spec-incomplete` for every evidence kind, so that the gate records `producer-not-allowed`"; "the lock SHALL cover every caller including the scenario harness, attribution stubs SHALL be confined to gate unit tests"; "the lock SHALL be lifted only by a single code change that lands together with SPEC-AGENTIC-FACTORY-IDENTITY-001 `completed`, its acceptance criteria green, and the operator's recorded risk acceptance of its relay-path residual risk".
+- 근거 2 — 감사 판정 문구(audit verdict wording relayed by the leader, not read by this SPEC's author): 'F2: production runner.guard always rejects identity-unknown and the merge gate is always blocked by AttributionLocked; fail-closed'.
+- 분류 출처: leader ruling (relayed via the leader session; lane-19 observation) — 운영에서 병합 게이트가 늘 `AttributionLocked`로 막힌다는 감사 지적은 rc.39 범위에서 REQ-AF-011이 의도한 fail-closed 상태이며 결함이 아니다. 이 판정은 감사 문구의 병합 게이트 쪽만 다룬다. 같은 문구의 앞쪽(`runner.guard`가 identity-unknown을 늘 거절함)은 REQ-AF-011이 말하지 않으므로 이 표들에서 분류하지 않았다.
+
 - 배경: 고정 후보 `4cdaba5d7e`의 독립 코드 감사(판정 FAIL 0.67)가, 이 파일의 명령이 고르는 시험 이름·접두 48개 중 47개가 `internal/` 어디에도 `func <이름>(`으로 없음을 찾았다(audit verdict relayed by the leader). 그러면 §E 1번의 "빈 선택 0" 때문에 어느 기준도 PASS 줄을 낼 수 없다.
 - 택한 길: 선택지 (나) — 명령을 실제로 있는 시험만 고르도록 다시 쓰고, manifest 시험은 만들지 않는다. 출처: lane-17 decision under the autonomous-judgment procedure (leader dispatch relayed).
 - 방법: 이름마다 `git grep -n -E '^func (<이름>)\(' 4cdaba5d7e -- '*_test.go'`(접두는 `git grep -c`)로 존재를 확인했다. 없는 이름은 같은 동작을 다루는 실제 시험 후보를 찾아 **본문을 읽고**, 기준의 동작을 단언할 때만 연결했다. 연결한 시험의 패키지 경로는 그 시험 파일의 디렉터리와 같다.
@@ -499,9 +509,9 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 | 006 | 없음 | 미충족-시험 없음 | `git grep -c -E '^func (TestLiveness_\|TestDelivery_\|TestDone_\|TestGate_\|TestPRQueue_)' …` → 출력 없음(exit 1) |
 | 007 | 없음 | 미충족-시험 없음 | 위와 같은 명령 → 출력 없음 |
 | 008 | `e2e` `TestProtectionGuard_` 3 | 시험 있음(일부) | `…e2e/protection_guard_test.go:3` |
-| 009 | 없음 | 미충족-시험 없음 | `git grep -c -E '^func (TestProtectionGuard_RefusesEveryWeakeningOperation\|TestHandoff_\|TestRepair_\|TestResponsibility_\|TestIndependence_\|…\|TestLock_)' … -- 'internal/agenticfactory/*_test.go'` → 출력 없음(exit 1) |
-| 010 | 없음 | 미충족-시험 없음 | 위와 같은 명령 → 출력 없음 |
-| 011 | `e2e` 1 | 시험 있음(일부); 해제 뒤 형태는 미충족-구현 없음 | `…e2e/real_role_attribution_test.go:55:func TestRoleLock_NoAttributor_BlocksACompletePassSet(t *testing.T) {` |
+| 009 | 없음 | 미충족-시험 없음 (사례 (f)의 두 축: G.0) | `git grep -c -E '^func (TestProtectionGuard_RefusesEveryWeakeningOperation\|TestHandoff_\|TestRepair_\|TestResponsibility_\|TestIndependence_\|…\|TestLock_)' … -- 'internal/agenticfactory/*_test.go'` → 출력 없음(exit 1) |
+| 010 | 없음 | 미충족-시험 없음 (사례 (c)(d)(e)의 두 축: G.0) | 위와 같은 명령 → 출력 없음 |
+| 011 | `e2e` 1 | 시험 축: 시험 있음(일부). 행동 축: 잠긴 형태(L1·L2·L3·L4·P4a·P4b)는 잠금 유지 — REQ-AF-011에 따른 의도된 상태(미충족 아님), 해제 뒤 형태(L1·L2)는 미충족 — 구현 없음. 사례별: G.0 | `…e2e/real_role_attribution_test.go:55:func TestRoleLock_NoAttributor_BlocksACompletePassSet(t *testing.T) {` |
 | 012 | `e2e` `TestIntake_` 12 | 시험 있음(일부) | `…e2e/real_intake_test.go:12` |
 | 013 | `core` 2 | 시험 있음(일부) | `…core/core_test.go:166:func TestRedactMasksSecretsAndCounts(t *testing.T) {` |
 | 014 | `forge` 2 | 시험 있음(일부) | `…forge/forge_test.go:42:func TestClassifyTable(t *testing.T) {` |
@@ -515,17 +525,59 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 | 022 | 없음 | 미충족-시험 없음 | manifest 실행기 없음(001 행의 `TestAcceptanceManifest` 출력 없음) |
 | 023 | 없음 | 미충족-시험 없음 | 018 행과 같은 명령 → 출력 없음 |
 | 024 | 없음 | 미충족-시험 없음 | 018 행과 같은 명령 → 출력 없음 |
-| 025 | 없음(§A.1 명령은 실행 대상 아님) | 미충족-시험 없음 | 018 행과 같은 명령(`TestScenarioSuite` 포함) → 출력 없음 |
+| 025 | 없음(§A.1 명령은 실행 대상 아님) | 미충족-시험 없음 (진단 실행 05·06과 채택 실행의 두 축: G.0) | 018 행과 같은 명령(`TestScenarioSuite` 포함) → 출력 없음 |
 
 셈: 시험이 있는 기준 15개(전부 "일부"), 시험이 없는 기준 10개. 고른 시험은 모두 60개다(2+16+6+3+2+3+1+12+2+2+1+2+6+1+1). 이 수는 존재를 센 것이며 통과 수가 아니다.
 
+### G.0 IDENTITY·귀속에 기대는 기준 — 행동 축과 시험 축
+
+대상은 본문이 귀속·역할 증거를 말하는 기준이다(이 파일에서 `귀속`·`producer-not-allowed`·`identity-spec-incomplete`를 찾아 고름). 시험 축은 위 표의 값을 옮겼고 바꾸지 않았다.
+
+| 기준·사례 | 행동 축 | 시험 축 | 근거 |
+|---|---|---|---|
+| 011 L1 제품 귀속 원천, 증거 종류 6개 | 잠금 유지 — REQ-AF-011에 따른 의도된 상태(미충족 아님) | 시험 있음(일부: `TestRoleLock_NoAttributor_BlocksACompletePassSet`가 관문 문장의 `identity-spec-incomplete`까지 봄). 종류별 6사례는 시험 없음 | REQ-AF-011 "SHALL return `unattributable` with reason `identity-spec-incomplete` for every evidence kind"; 감사 문구(리더 전달) |
+| 011 L2 게이트 기록 | 잠금 유지 — REQ-AF-011에 따른 의도된 상태(미충족 아님) | 시험 있음(일부, 같은 시험). 종류마다 하나씩은 시험 없음 | REQ-AF-011 "so that the gate records `producer-not-allowed`"; 감사 문구 "the merge gate is always blocked by AttributionLocked"(리더 전달) |
+| 011 L3 설정·환경 변수로 풀리지 않음 | 잠금 유지 — REQ-AF-011에 따른 의도된 상태(미충족 아님) | 시험 없음 | REQ-AF-011 "selected by a single compile-time constant and by no configuration key, environment variable, file, or flag" |
+| 011 L4 하네스의 귀속 대역 거절 | 잠금 유지 — REQ-AF-011에 따른 의도된 상태(미충족 아님). 해제 뒤에도 같음 | 시험 없음 | REQ-AF-011 "the lock SHALL cover every caller including the scenario harness, attribution stubs SHALL be confined to gate unit tests" |
+| 011 P4a 다른 세션의 writer 인계 | 잠금 유지 — REQ-AF-011에 따른 의도된 상태(미충족 아님). AC 본문상 해제 뒤에도 같은 거절 | 시험 없음 | AC 본문 P4a "(잠금 중에도, 해제 뒤에도)" |
+| 011 P4b 옛 epoch, 귀속 조회 전 거절 | 잠금 유지 — REQ-AF-011에 따른 의도된 상태(미충족 아님). AC 본문상 해제 뒤 그대로 | 시험 없음 | AC 본문 "L3·L4·P4a·P4b는 그대로" |
+| 011 해제 뒤 형태 L1·L2(`attributed{필요한 역할}`, "통과로 셈") | 미충족 — 구현 없음 | 시험 없음 | REQ-AF-011 "the lock SHALL be lifted only by a single code change that lands together with SPEC-AGENTIC-FACTORY-IDENTITY-001 `completed`, its acceptance criteria green, and the operator's recorded risk acceptance"; lane-18 구현 중(`6b945fd844`, 리더 전달, 읽지 않음) |
+| 025 진단 실행(M7 전)의 05·06 | 잠금 유지 — REQ-AF-011에 따른 의도된 상태(미충족 아님): 05·06이 `producer-not-allowed`로 막힘 | 시험 없음 | §A.1 "M7 전의 실행은 진단 실행이며 05·06에서 `producer-not-allowed`로 막히는 것이 정상"; REQ-AF-011 "including the scenario harness" |
+| 025 채택 실행(M7 뒤) 01~07 | 미충족 — 구현 없음 | 시험 없음 | §A.1 "채택 실행은 M7(잠금 해제) 뒤의 실행뿐" |
+| 009 (f) CI 실패 수리부터 DONE — 잠금 중 운영 경로 | 잠금 유지 — REQ-AF-011에 따른 의도된 상태(미충족 아님): 리뷰 증거가 `producer-not-allowed`라 병합 단계에 닿지 않음 | 시험 없음 | REQ-AF-011 "for every evidence kind" |
+| 009 (f) 리뷰 PASS → 병합 → DONE(해제 뒤) | 미충족 — 구현 없음 | 시험 없음 | 같은 REQ의 해제 조건 |
+| 009 (a)~(e)·(g) | 나누지 않음(귀속에 기대지 않음) | 시험 없음 | — |
+| 010 (c)(d)(e) 리뷰 증거 산입 — 잠금 중 운영 경로 | 잠금 유지 — REQ-AF-011에 따른 의도된 상태(미충족 아님): 리뷰 증거는 모두 `producer-not-allowed` | 시험 없음 | REQ-AF-011 "for every evidence kind" |
+| 010 (c)(d)(e) 실제 생산자로 세고 빼는 형태(해제 뒤) | 미충족 — 구현 없음 | 시험 없음 | 같은 REQ의 해제 조건 |
+| 010 (c)(d)(e) 게이트 단위 시험(귀속 대역) 형태 | 나누지 않음(대역은 게이트 단위 시험에서 허용되므로 잠금이 정하지 않음) | 시험 없음 | REQ-AF-011 "attribution stubs SHALL be confined to gate unit tests"; AC 본문 "(e)는 귀속 대역으로 게이트 단위 시험 안에서만 돈다" |
+| 010 (a)(b)(f) | 나누지 않음 | 시험 없음 | — |
+| 007 게이트 표 8행(귀속 대역 허용 단위 시험) | 나누지 않음(같은 이유) | 시험 없음 | AC 본문 "게이트 단위 시험, 귀속 대역 허용" |
+
+`잠금 유지` 칸은 계약이 지금 원하는 상태라는 분류다. 그 동작을 코드에서 관측한 것은 감사 보고(리더 전달)뿐이며, 그 보고는 병합 게이트 쪽만 말한다. L3·L4·P4a·P4b와 025 진단 실행의 코드 동작은 이 작성자가 관측하지 않았다.
+
 ### G.1 하위 SPEC-AGENTIC-FACTORY-IDENTITY-001 [REF] 명령
 
-하위 SPEC의 `acceptance.md`는 이 작업에서 고치지 않았다(이 작업은 이 디렉터리만 고친다). 대신 여기에 적는다. 하위 SPEC의 아홉 기준 명령은 모두 `./internal/agenticfactory/identity/` 패키지의 `TestIdentity_*` 시험을 고른다.
+F2 작업 당시에는 하위 SPEC의 `acceptance.md`를 고치지 않고 여기에 적었다. 그 뒤 F2b에서 하위 `acceptance.md` §F에 같은 점검과 원장을 적었다. 하위 SPEC의 아홉 기준 명령은 모두 `./internal/agenticfactory/identity/` 패키지의 `TestIdentity_*` 시험을 고른다.
 
 - `git grep -c -E '^func TestIdentity_' 4cdaba5d7e -- '*_test.go'` → 출력 없음(exit 1).
 - `git ls-tree --name-only 4cdaba5d7e internal/agenticfactory/identity` → 출력 없음.
-- 그래서 아홉 명령(`TestIdentity_GrantAuthority_ControlRefOnly`, `TestIdentity_OperatorAuth_ServerObservedOnly`, `TestIdentity_Ancestry_RegisteredDescendantRefused`, `TestIdentity_Ancestry_OperatorAnchorAndOrphans`, `TestIdentity_Ancestry_IndeterminateAndBodyPid`, `TestIdentity_SessionBinding_ReobservedOnEveryRegistration`, `TestIdentity_RoleExclusion_PerIssueWriter`, `TestIdentity_AttributionMatrix_Generated`·`_ExtraConditions`, `TestIdentity_AttributionQuery_ReadOnlyClosedReasons`)은 지금 아무것도 고르지 않으며, 아홉 기준 모두 미충족이다. 귀속 조회(AC-AFI-008 [REF], AC-AFI-009 [REF])는 미충족-구현 없음이다: 감사 보고상 `runner.Attributor`·`runner.Facts` 구현이 0개다(리더 전달. 이 작성자는 그 밖을 읽지 않았다). 나머지 일곱은 대상 패키지 경로가 후보에 없다는 사실만 확인했다.
+- 그래서 아홉 명령(`TestIdentity_GrantAuthority_ControlRefOnly`, `TestIdentity_OperatorAuth_ServerObservedOnly`, `TestIdentity_Ancestry_RegisteredDescendantRefused`, `TestIdentity_Ancestry_OperatorAnchorAndOrphans`, `TestIdentity_Ancestry_IndeterminateAndBodyPid`, `TestIdentity_SessionBinding_ReobservedOnEveryRegistration`, `TestIdentity_RoleExclusion_PerIssueWriter`, `TestIdentity_AttributionMatrix_Generated`·`_ExtraConditions`, `TestIdentity_AttributionQuery_ReadOnlyClosedReasons`)은 지금 아무것도 고르지 않으며, 아홉 기준 모두 미충족이다. 귀속 조회(AC-AFI-008 [REF], AC-AFI-009 [REF])는 미충족-구현 없음이다: 감사 보고상 `runner.Attributor`·`runner.Facts` 구현이 0개다(리더 전달. 이 작성자는 그 밖을 읽지 않았다). 나머지 일곱은 대상 패키지 경로가 후보에 없다는 사실만 확인했다. (F2b에서 이 작성자가 `runner/runner.go`를 읽었다. 두 인터페이스는 선언만 있고 메서드 구현은 `_test.go`에만 있다 — 하위 §F 원장 L13·L14.)
+
+두 축(F2d). 아홉 기준은 모두 하위 SPEC 자신의 동작이며 상위 잠금의 동작이 아니다. 잠금 상태(`identity-spec-incomplete`)는 상위 REQ-AF-011과 AC-AF-011이 가진다(G.0). 하위 AC-AFI-009 [REF]의 Q4도 그 값을 하위 구현이 스스로 내지 않는다는 단언이다.
+
+| 하위 기준 | 행동 축 | 시험 축 |
+|---|---|---|
+| AC-AFI-001 [REF] 부여 권한 | 미충족 — 구현 없음 | 시험 없음 |
+| AC-AFI-002 [REF] 운영자 인증 | 미충족 — 구현 없음 | 시험 없음 |
+| AC-AFI-003 [REF] 등록 세션 자손 거절 | 미충족 — 구현 없음 | 시험 없음 |
+| AC-AFI-004 [REF] 기준점·고아 | 미충족 — 구현 없음 | 시험 없음 |
+| AC-AFI-005 [REF] 판정 불가·본문 pid | 미충족 — 구현 없음 | 시험 없음 |
+| AC-AFI-006 [REF] 세션 결속 | 미충족 — 구현 없음 | 시험 없음 |
+| AC-AFI-007 [REF] 역할 배제 | 미충족 — 구현 없음 | 시험 없음 |
+| AC-AFI-008 [REF] 귀속 행렬 | 미충족 — 구현 없음(`runner.Attributor` 테스트 밖 구현 없음) | 시험 없음 |
+| AC-AFI-009 [REF] 읽기 전용 귀속 조회 | 미충족 — 구현 없음(같음) | 시험 없음 |
+
+근거: 하위 `acceptance.md` §F(F2b 원장 L01~L14), lane-18 구현 중(`6b945fd844` HostFacts, 리더 전달, 읽지 않음).
 
 ### G.2 아직 없는 시험 이름 — 담당 lane별
 

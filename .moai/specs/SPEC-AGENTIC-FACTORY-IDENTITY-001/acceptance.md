@@ -157,17 +157,24 @@ classification: 대상 부재 참고 관측 — EXPECTED_RED 아님
 
 ### F.1 기준별 상태
 
-| AC | 상태 | 증거(원장 id: 명령 → 첫 출력 줄) |
-|---|---|---|
-| AC-AFI-001 | 미충족 — 구현 없음 / 시험 없음 | L01 → 출력 없음; L10 → identity 없음 |
-| AC-AFI-002 | 미충족 — 구현 없음 / 시험 없음 | L02 → 출력 없음; L10 |
-| AC-AFI-003 | 미충족 — 구현 없음 / 시험 없음 | L03 → 출력 없음; L10 |
-| AC-AFI-004 | 미충족 — 구현 없음 / 시험 없음 | L04 → 출력 없음; L10 |
-| AC-AFI-005 | 미충족 — 구현 없음 / 시험 없음 | L05 → 출력 없음; L10 |
-| AC-AFI-006 | 미충족 — 구현 없음 / 시험 없음 | L06 → 출력 없음; L10 |
-| AC-AFI-007 | 미충족 — 구현 없음 / 시험 없음 | L07 → 출력 없음; L10 |
-| AC-AFI-008 | 미충족 — 구현 없음 / 시험 없음 | L08 → 출력 없음; L10; L13·L14(테스트 밖 `Attribute` 구현 없음) |
-| AC-AFI-009 | 미충족 — 구현 없음 / 시험 없음 | L09 → 출력 없음; L10; L13·L14 |
+행동 축과 시험 축을 따로 적는다(F2d, 표지의 뜻은 상위 `acceptance.md` §G 첫머리).
+
+- 표지 `잠금 유지 — REQ-AF-011에 따른 의도된 상태(미충족 아님)`는 이 표에 쓰지 않는다. 아홉 기준은 모두 이 SPEC 자신의 동작(부여, 인증, 계보, 결속, 배제, 귀속 행렬, 귀속 조회)이고, 상위 잠금의 동작이 아니다. 잠금 상태(`unattributable{identity-spec-incomplete}` → 게이트 `producer-not-allowed`)는 상위 REQ-AF-011과 AC-AF-011 [REF]의 것이며, Q4도 그 값을 이 SPEC의 구현이 스스로 내지 않는다는 단언이다.
+- 근거: 상위 REQ-AF-011(상위 `spec.md` 150행) 원문 "the lock SHALL be lifted only by a single code change that lands together with SPEC-AGENTIC-FACTORY-IDENTITY-001 `completed`, its acceptance criteria green, and the operator's recorded risk acceptance of its relay-path residual risk". 곧 이 아홉 기준의 동작은 잠금 해제의 선행 조건이며, 잠금 중에는 운영 경로에 쓰이지 않는다.
+- 감사 판정 문구(audit verdict wording relayed by the leader, not read by this SPEC's author): 'F2: production runner.guard always rejects identity-unknown and the merge gate is always blocked by AttributionLocked; fail-closed'. 리더 판정(relayed; lane-19 observation)은 병합 게이트 쪽을 rc.39 범위에서 의도된 상태로 본다. 이 표는 그 판정이 아니라 이 SPEC 구현의 부재를 적는다.
+- 의도된 상태라도 시험이 없으면 `시험 없음`으로 남는다. 이 표의 시험 축 값은 F2b 그대로다.
+
+| AC | 행동 축 | 시험 축 | 증거(원장 id: 명령 → 첫 출력 줄) |
+|---|---|---|---|
+| AC-AFI-001 | 미충족 — 구현 없음 | 시험 없음 | L01 → 출력 없음; L10 → identity 없음 |
+| AC-AFI-002 | 미충족 — 구현 없음 | 시험 없음 | L02 → 출력 없음; L10 |
+| AC-AFI-003 | 미충족 — 구현 없음 | 시험 없음 | L03 → 출력 없음; L10 |
+| AC-AFI-004 | 미충족 — 구현 없음 | 시험 없음 | L04 → 출력 없음; L10 |
+| AC-AFI-005 | 미충족 — 구현 없음 | 시험 없음 | L05 → 출력 없음; L10 |
+| AC-AFI-006 | 미충족 — 구현 없음 | 시험 없음 | L06 → 출력 없음; L10 |
+| AC-AFI-007 | 미충족 — 구현 없음 | 시험 없음 | L07 → 출력 없음; L10 |
+| AC-AFI-008 | 미충족 — 구현 없음(실제 귀속 조회, `runner.Attributor` 테스트 밖 구현 없음) | 시험 없음 | L08 → 출력 없음; L10; L13·L14(테스트 밖 `Attribute` 구현 없음) |
+| AC-AFI-009 | 미충족 — 구현 없음(같음) | 시험 없음 | L09 → 출력 없음; L10; L13·L14 |
 
 셈: 명령이 있는 기준 0, 고른 시험 0, 지금 기대 PASS 0. 다른 패키지의 기존 시험(L11에 나온 `claim`·`effect`·`homestate` 등의 Identity 이름 시험)은 본문을 읽지 않았으므로 어느 사례에도 연결하지 않았다.
 
