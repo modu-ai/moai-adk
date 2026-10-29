@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
 )
 
 type fakePRs struct {
@@ -25,7 +27,7 @@ func (f fakePRs) CountOpenPRs(context.Context) (int, error) { return f.open, f.c
 
 func withPR(prs PRReader, limit int) *Collector {
 	c := collector(
-		fakeClaims{rows: map[int]ClaimRow{7: {Issue: 7, State: "verifying", HeadSHA: head}, 8: {Issue: 8, State: "done", HeadSHA: head}}},
+		fakeClaims{rows: map[int]ClaimRow{7: {Issue: 7, State: "verifying", Stage: string(core.StageBuilding), HeadSHA: head}, 8: {Issue: 8, State: "done", Stage: string(core.StageDone), HeadSHA: head}}},
 		fakeRemote{}, fakeLedger{},
 	)
 	c.PRs, c.BacklogLimit = prs, limit

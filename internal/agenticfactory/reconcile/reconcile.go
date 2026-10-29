@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/effect"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/monitor"
 )
@@ -29,9 +30,9 @@ type Recorded struct {
 	HeadSHA         string
 	LeaseExpired    bool
 	Delivery        effect.Stage
-	PendingDispatch string // a dispatch waiting to be sent for this Issue, if any
-	State           string // recorded execution state (queued ... done)
-	PRNumber        int    // PR the record knows about, 0 if none
+	PendingDispatch string     // a dispatch waiting to be sent for this Issue, if any
+	Stage           core.Stage // recorded S46 stage; empty or unknown reads as not merging
+	PRNumber        int        // PR the record knows about, 0 if none
 }
 
 // Actual is what a read-only probe observed.
@@ -121,8 +122,8 @@ func Reconcile(ctx context.Context, p Prober, rec Recorded) Report {
 	if act.PRNumber > 0 && act.PRNumber != rec.PRNumber {
 		add(KindPRUnrecorded, ActionNone, "remote has PR #%d, record has #%d", act.PRNumber, rec.PRNumber)
 	}
-	if act.PRMerged && rec.State != "landing" && rec.State != "done" {
-		add(KindMergedUnrecorded, ActionNone, "PR #%d is merged but record state is %q; completion needs the done evidence, not the merge alone", act.PRNumber, rec.State)
+	if act.PRMerged && rec.Stage != core.StageMerging && rec.Stage != core.StageDone {
+		add(KindMergedUnrecorded, ActionNone, "PR #%d is merged but record stage is %q; completion needs the done evidence, not the merge alone", act.PRNumber, rec.Stage)
 	}
 	return Report{Divergences: out}
 }
