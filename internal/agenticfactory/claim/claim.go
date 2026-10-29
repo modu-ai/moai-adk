@@ -83,7 +83,11 @@ type Record struct {
 	// Revision is the approved contract revision applied to the current attempt
 	// (canon E18 adopt); a new receipt ends it.
 	Revision string `json:"revision,omitempty"`
-	Worktree string `json:"worktree,omitempty"`
+	// PositionUnknown is set on a read when the S46 position could not be derived
+	// from this record; it holds the reason and is never stored. Stage, Sub and Park
+	// are empty then, which means "not known", not "no park".
+	PositionUnknown string `json:"-"`
+	Worktree        string `json:"worktree,omitempty"`
 }
 
 // Repair is the canon E06 evidence (REVIEWING -> BUILDING/FIX): the repair
@@ -336,9 +340,14 @@ func (s *Store) read(i core.IssueRef) (Record, bool, error) {
 	if err := json.Unmarshal(b, &r); err != nil {
 		return Record{}, false, fmt.Errorf("%w: corrupt record: %v", core.ErrStoreUnavailable, err)
 	}
-	// An old record has no S46 position; one that cannot be mapped is still
-	// returned, without a position, so a reader is never locked out.
-	_ = r.deriveStage()
+	// An old record has no S46 position. One that cannot be mapped is still
+	// returned, so a reader is never locked out and a listing does not fail for one
+	// record, but it is marked: its empty position means "not known", and the
+	// write path refuses the same record for the same reason (see write).
+	r.PositionUnknown = ""
+	if err := r.deriveStage(); err != nil {
+		r.PositionUnknown = err.Error()
+	}
 	return r, true, nil
 }
 
