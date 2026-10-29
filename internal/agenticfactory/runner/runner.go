@@ -69,6 +69,13 @@ type Attribution struct {
 	Reason     string // set when not attributed
 }
 
+// TicketAttributor is an Attributor that needs to know the Issue: the lookup of
+// the identity records is per Issue (a grant is for one Issue, a writer is a writer
+// of one). The runner prefers it to Attribute when the Attributor has it.
+type TicketAttributor interface {
+	AttributeFor(t Ticket, res Result) Attribution
+}
+
 // Attributor looks up the producer of a result. The implementation belongs to
 // the identity SPEC; until it exists the Runner has none, and every
 // producer-checked result is unattributable.
@@ -294,7 +301,9 @@ func (r *Runner) producerProblem(t Ticket, results []Result) string {
 			}
 		case KindReview, KindAudit, KindQA, KindHandoffCoordinator:
 			att := Attribution{Reason: core.AttributionLocked}
-			if r.Attributor != nil {
+			if ta, ok := r.Attributor.(TicketAttributor); ok {
+				att = ta.AttributeFor(t, res)
+			} else if r.Attributor != nil {
 				att = r.Attributor.Attribute(res)
 			}
 			switch {
