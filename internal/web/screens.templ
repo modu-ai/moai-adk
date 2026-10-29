@@ -674,6 +674,7 @@ templ Monitor(vm ShellVM, m MonitorVM) {
 								@badge("outline", "checks stale")
 							}
 							<span class="mono panel__meta">{ r.PR }</span>
+							<span class="mono panel__meta">{ "pr url " + r.PRURL }</span>
 							<span class="panel__meta">{ r.Track + " · " + r.Phase }</span>
 							if r.Completed {
 								@badge("outline", "completed")

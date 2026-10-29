@@ -9,6 +9,7 @@ package web
 import (
 	"context"
 	"encoding/json"
+	"strings"
 )
 
 const prGap = "—"
@@ -40,6 +41,8 @@ type PRTrackRowVM struct {
 	// Wait is the agent's wait record, shown beside the position and never
 	// changing it.
 	Wait WaitVM
+	// PRURL is the URL the PR receipt recorded, as text only (never a link).
+	PRURL string
 }
 
 // PRBacklogVM is the open-PR count against its limit.
@@ -117,6 +120,8 @@ type monView struct {
 		QueueKnown        bool   `json:"queue_known"`
 	}] `json:"backlog"`
 	Intake monField[[]monIntakeItem] `json:"intake"`
+	// PRURLs is read from the record source only (see record_rows.go).
+	PRURLs map[string]string `json:"web_pr_urls"`
 }
 
 func (a *app) buildPRTracking(ctx context.Context) PRTrackingVM {
@@ -171,6 +176,7 @@ func (a *app) buildPRTracking(ctx context.Context) PRTrackingVM {
 		row.Context = buildContext(r.Context)
 		row.Ledger = a.buildContextModel(ctx, r.Issue)
 		row.Wait = buildWait(r.Wait)
+		row.PRURL = prURLText(doc.PRURLs[itoa(r.Issue)])
 		vm.Rows = append(vm.Rows, row)
 	}
 	return vm
@@ -283,4 +289,12 @@ func prMeta(vm PRTrackingVM) string {
 	}
 	return "open PRs " + itoa(vm.Backlog.Open) + "/" + itoa(vm.Backlog.Limit) + " · " + vm.Backlog.State +
 		" · repair " + queueFigure(vm.Backlog, vm.Backlog.RepairBacklog)
+}
+
+// prURLText accepts only an https URL, shown as text; anything else is a gap.
+func prURLText(u string) string {
+	if !strings.HasPrefix(u, "https://") {
+		return prGap
+	}
+	return u
 }

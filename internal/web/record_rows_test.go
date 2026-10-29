@@ -52,13 +52,14 @@ func recordStore(t *testing.T, limit int) (*claim.Store, string) {
 }
 
 func seedRecords(t *testing.T, dir string) {
+	defer seedRepairRecords(t, dir)
 	t.Helper()
 	sha := core.HeadSHA(strings.Repeat("a", 40))
 	secret := "ghp_" + strings.Repeat("b", 36)
 	// 71: handed off, waiting — has a receipt, a wait record, a gate.
 	writeRecord(t, dir, claim.Record{
 		Issue: 71, Holder: "11111111-2222-3333-4444-555555555555", AgentName: "agent-3", State: core.StateLanding, Head: sha,
-		Receipt: &claim.Receipt{HandoffID: "h1", LeaderAccepted: true, PR: 501, Head: sha},
+		Receipt: &claim.Receipt{HandoffID: "h1", LeaderAccepted: true, PR: 501, Head: sha, PRURL: "https://example.test/pr/501"},
 		Wait: &core.Wait{Owner: "11111111-2222-3333-4444-555555555555", NextAction: "re-run checks " + secret, RecheckAt: time.Date(2026, 10, 30, 8, 0, 0, 0, time.UTC),
 			Diagnosis: "ci queue", Retries: 1, MaxRetries: 3, Escalate: "leader"},
 	})
@@ -83,10 +84,10 @@ func recordApp(t *testing.T, src RecordSource) *app {
 }
 
 func TestRecordRows_FromPersistedRecords(t *testing.T) {
-	s, dir := recordStore(t, 4)
+	s, dir := recordStore(t, 6)
 	seedRecords(t, dir)
 	vm := recordApp(t, s).buildPRTracking(context.Background())
-	if !vm.Available || len(vm.Rows) != 5 {
+	if !vm.Available || len(vm.Rows) != 7 {
 		t.Fatalf("vm = %+v", vm)
 	}
 	by := map[int]PRTrackRowVM{}
@@ -121,8 +122,8 @@ func TestRecordRows_FromPersistedRecords(t *testing.T) {
 	if by[75].Phase != "repair-dispatched" || by[75].Track != "repair" {
 		t.Errorf("row 75 = %+v", by[75])
 	}
-	// The store's own open-PR rule: handed off and not done → 71, 72, 75.
-	if b := vm.Backlog; !b.Known || b.Open != 3 || b.Limit != 4 || b.State != "within-limit" || b.QueueKnown {
+	// The store's own open-PR rule: handed off and not done → 71, 72, 75, 76, 77.
+	if b := vm.Backlog; !b.Known || b.Open != 5 || b.Limit != 6 || b.State != "within-limit" || b.QueueKnown {
 		t.Errorf("backlog = %+v", b)
 	}
 }
@@ -130,7 +131,7 @@ func TestRecordRows_FromPersistedRecords(t *testing.T) {
 func TestRecordRows_NoLimitAndFailures(t *testing.T) {
 	s, dir := recordStore(t, 0)
 	seedRecords(t, dir)
-	if b := recordApp(t, s).buildPRTracking(context.Background()).Backlog; b.State != "no-limit-set" || b.Open != 3 {
+	if b := recordApp(t, s).buildPRTracking(context.Background()).Backlog; b.State != "no-limit-set" || b.Open != 5 {
 		t.Errorf("a store with no limit set must read no-limit-set: %+v", b)
 	}
 	if vm := recordApp(t, nil).buildPRTracking(context.Background()); vm.Available || !strings.Contains(vm.Note, "not configured") {
@@ -152,13 +153,13 @@ func (f failingSource) List() ([]claim.Record, error) { return nil, f.err }
 func (f failingSource) MaxOpenPRs() int               { return 0 }
 
 func TestRecordRows_ReadOnlyAndRendered(t *testing.T) {
-	s, dir := recordStore(t, 4)
+	s, dir := recordStore(t, 6)
 	seedRecords(t, dir)
 	before := dirSnapshot(t, dir)
 	a := recordApp(t, s)
 	m, _ := a.buildMonitor(time.Now())
 	html := renderTempl(t, Monitor(tg1ShellVM(), m))
-	for _, want := range []string{"#501", "agent-3", "wait recorded", "open PRs 3/4", "merged-issue-open"} {
+	for _, want := range []string{"#501", "agent-3", "wait recorded", "open PRs 5/6", "merged-issue-open"} {
 		if !strings.Contains(html, want) {
 			t.Errorf("monitor missing %q", want)
 		}
@@ -182,4 +183,41 @@ func dirSnapshot(t *testing.T, dir string) string {
 		return nil
 	})
 	return sb.String()
+}
+
+// seedRepairRecords adds the records of the later claim fields: the repair
+// signal and the PR URL.
+func seedRepairRecords(t *testing.T, dir string) {
+	t.Helper()
+	sha := core.HeadSHA(strings.Repeat("a", 40))
+	// 76: handed off, CI failed → the owner must repair (signal, no E06 evidence yet).
+	writeRecord(t, dir, claim.Record{Issue: 76, Holder: "s-76", AgentName: "agent-8", State: core.StateLanding, RepairNeeded: "ci failed",
+		Receipt: &claim.Receipt{HandoffID: "h6", LeaderAccepted: true, PR: 506, Head: sha, PRURL: "https://example.test/pr/506"}})
+	// 77: a receipt URL that is not https is never shown as a URL.
+	writeRecord(t, dir, claim.Record{Issue: 77, Holder: "s-77", AgentName: "agent-9", State: core.StateLanding,
+		Receipt: &claim.Receipt{HandoffID: "h7", LeaderAccepted: true, PR: 507, Head: sha, PRURL: "javascript:alert(1)"}})
+}
+
+func TestRecordRows_RepairNeededAndPRURL(t *testing.T) {
+	s, dir := recordStore(t, 9)
+	seedRecords(t, dir)
+	vm := recordApp(t, s).buildPRTracking(context.Background())
+	by := map[int]PRTrackRowVM{}
+	for _, r := range vm.Rows {
+		by[r.Issue] = r
+	}
+	if r := by[76]; r.Phase != "repair-needed" || r.Track != "repair" || r.PRURL != "https://example.test/pr/506" {
+		t.Errorf("row 76 = %+v", r)
+	}
+	if by[75].Phase != "repair-dispatched" {
+		t.Errorf("repair evidence wins over the signal: %+v", by[75])
+	}
+	if by[71].PRURL != "https://example.test/pr/501" || by[74].PRURL != prGap || by[77].PRURL != prGap {
+		t.Errorf("urls: 71=%q 74=%q 77=%q", by[71].PRURL, by[74].PRURL, by[77].PRURL)
+	}
+	m, _ := recordApp(t, s).buildMonitor(time.Now())
+	html := renderTempl(t, Monitor(tg1ShellVM(), m))
+	if !strings.Contains(html, "https://example.test/pr/506") || strings.Contains(html, `href="https://example.test/pr/506"`) || strings.Contains(html, "javascript:") {
+		t.Errorf("a PR URL is shown as text only, never as a link, and a non-https value never reaches the page")
+	}
 }

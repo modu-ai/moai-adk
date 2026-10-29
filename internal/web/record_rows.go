@@ -5,7 +5,7 @@
 // no network, no store creation, no write. A fact the store does not persist is
 // left unconfirmed, so the panel shows a gap instead of a guess:
 //   - the PR phase is derived only from persisted facts (closed, merged, repair
-//     evidence recorded); a PR that is merely handed off has no persisted live phase;
+//     evidence recorded, repair signal); a PR that is merely handed off has no persisted live phase;
 //   - the checks and the review verdict are remote facts and stay unconfirmed;
 //   - the open-PR count follows the store's own rule (handed off, not done).
 //
@@ -15,7 +15,9 @@ package web
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"strconv"
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/claim"
@@ -27,6 +29,15 @@ import (
 type RecordSource interface {
 	List() ([]claim.Record, error)
 	MaxOpenPRs() int
+}
+
+// recordView is the monitor View plus the one thing the monitor Row has no key
+// for: the PR URL the receipt records, by Issue number. The key is this
+// package's own (producer and decoder both live here); a Collector's JSON does
+// not carry it, so that source shows the URL as a gap.
+type recordView struct {
+	monitor.View
+	PRURLs map[string]string `json:"web_pr_urls,omitempty"`
 }
 
 // RecordRowsFrom builds a MonitorRows source from persisted claim records. A
@@ -43,15 +54,20 @@ func RecordRowsFrom(s RecordSource) func(context.Context) ([]byte, error) {
 		at := time.Now()
 		view := monitor.View{Rows: make([]monitor.Row, 0, len(recs))}
 		open := 0
+		urls := map[string]string{}
 		for _, r := range recs {
 			view.Rows = append(view.Rows, recordRow(r, at))
+			if r.Receipt != nil && r.Receipt.PRURL != "" {
+				urls[strconv.Itoa(r.Issue)] = recText(r.Receipt.PRURL)
+			}
 			if r.Receipt != nil && r.State != core.StateDone {
 				open++
 			}
 		}
 		limit := s.MaxOpenPRs()
 		view.Backlog = recField(monitor.Backlog{Open: open, Limit: limit, State: recBacklogState(open, limit)}, at, true)
-		return monitor.MarshalView(view)
+		out := recordView{View: view, PRURLs: urls}
+		return json.Marshal(out)
 	}
 }
 
@@ -115,6 +131,8 @@ func recordPhase(r claim.Record) monitor.PRPhase {
 		return monitor.PhaseMergedIssueOpen
 	case r.Repair != nil:
 		return monitor.PhaseRepairDispatched
+	case r.RepairNeeded != "":
+		return monitor.PhaseRepairNeeded
 	}
 	return ""
 }
