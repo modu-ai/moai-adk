@@ -159,11 +159,16 @@ workflow:
     # pin (effort alone pins nothing). On the codex side an unservable model
     # id falls back to the SSOT path; the GLM side sends a non-empty pin
     # verbatim (a wrong id degrades via the z.ai fail-open to inconclusive,
-    # never a hard error). codex effort vocabulary: low|medium|high|xhigh|max.
+    # never a hard error). codex effort vocabulary (gpt-6.1-terra
+    # reasoning.effort): none|low|medium|high|xhigh|max — 'none' disables
+    # reasoning; codex_audit / audit_multi accept a per-call effort override.
+    # codex model closed set (web console select): gpt-6.1-terra (default) |
+    # gpt-6.1-sol | gpt-5.6-sol | gpt-5.6 — any other non-empty id falls back
+    # to the SSOT path. Requires codex CLI >= 0.159.0 for terra.
     # glm effort vocabulary (z.ai reasoning states, verbatim): low|high|max —
     # any other non-empty value omits the reasoning directive while the model
     # pin still applies. Claude ships at claude-opus-5-5/high and Codex at
-    # gpt-6.1-sol/high (deliberate non-empty pins; an earlier empty-pin
+    # gpt-6.1-terra/xhigh (deliberate non-empty pins; an earlier empty-pin
     # neutrality default was superseded by operator directive); the
     # GLM pin ships glm-5.3/max and may be set per project.
     audit:
@@ -171,8 +176,8 @@ workflow:
             model: claude-opus-5-5
             effort: high
         codex:
-            model: gpt-6.1-sol
-            effort: high
+            model: gpt-6.1-terra
+            effort: xhigh
         glm:
             model: glm-5.3
             effort: max

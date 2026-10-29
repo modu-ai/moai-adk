@@ -42,7 +42,7 @@ func TestAuditResolverTerminalFallbacks_OperatorTable(t *testing.T) {
 	if codexErr != nil {
 		t.Fatalf("resolveCodexAuditModelEffort on an absent workflow.yaml: %v", codexErr)
 	}
-	if codex.Model != "gpt-6.1-sol" || codex.Effort != "high" {
-		t.Errorf("codex terminal fallback = {%s %s}, want {gpt-6.1-sol high}", codex.Model, codex.Effort)
+	if codex.Model != "gpt-6.1-terra" || codex.Effort != "xhigh" {
+		t.Errorf("codex terminal fallback = {%s %s}, want {gpt-6.1-terra xhigh} (card t1980 scope expansion)", codex.Model, codex.Effort)
 	}
 }

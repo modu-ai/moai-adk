@@ -89,20 +89,50 @@ func ValidAuditModels() []string {
 	return []string{AuditModelClaude, AuditModelCodex, AuditModelGLM, AuditModelMulti}
 }
 
-// DefaultCodexAuditModel is the codex audit pin default — the same id the
-// DefaultAuditConfig Codex cell writes (SPEC-MODEL-MATRIX-UPDATE-001
-// REQ-MMU-001/002). Declared here so the web closed set derives from the
-// constant the resolver writes instead of restating the literal.
-const DefaultCodexAuditModel = "gpt-6.1-sol"
-
 // Codex model ids the agent dual-publication emitter and the `moai codex`
-// launcher use (card t1808, operator per-role defaults). CodexModelSol is the
-// same id as the audit pin; luna and astra are the lighter and Fable-tier ids.
+// launcher use (card t1808, operator per-role defaults). CodexModelSol keeps
+// its own literal: the audit pin DEFAULT moved to terra (card t1980 scope
+// expansion), so the former alias to DefaultCodexAuditModel is decoupled —
+// sol stays a selectable closed-set member and the opus/sonnet emitter target.
+// luna and astra are the lighter and Fable-tier ids.
 const (
-	CodexModelSol   = DefaultCodexAuditModel
+	CodexModelSol   = "gpt-6.1-sol"
 	CodexModelLuna  = "gpt-6-luna"
 	CodexModelAstra = "gpt-6-astra"
+	CodexModelTerra = "gpt-6.1-terra"
 )
+
+// DefaultCodexAuditModel is the codex audit pin default — gpt-6.1-terra
+// (card t1980 scope expansion, operator directive; supersedes the
+// SPEC-MODEL-MATRIX-UPDATE-001 {gpt-6.1-sol, high} pin). Terra serves with
+// codex CLI >= 0.159.0 and carries 1,050,000-token context.
+const DefaultCodexAuditModel = CodexModelTerra
+
+// DefaultCodexAuditEffort is the codex audit effort default — xhigh (card
+// t1980 scope expansion). A member of ValidCodexAuditEfforts, terra's
+// reasoning.effort vocabulary.
+const DefaultCodexAuditEffort = "xhigh"
+
+// ValidCodexAuditEfforts returns the closed set for
+// workflow.audit.codex.effort (card t1980 scope expansion): terra's
+// reasoning.effort vocabulary — none|low|medium|high|xhigh|max. This is the
+// codex-side set ONLY; the claude pin keeps the v4 effort vocabulary, whose
+// values these largely overlap but whose source and consumer differ.
+func ValidCodexAuditEfforts() []string {
+	return []string{"none", "low", "medium", "high", "xhigh", "max"}
+}
+
+// ValidCodexAuditEffort reports whether e is a member of the codex audit
+// effort closed set. Single-sourced beside the accessor so the resolver's
+// membership check and the web console's option list cannot drift.
+func ValidCodexAuditEffort(e string) bool {
+	for _, v := range ValidCodexAuditEfforts() {
+		if v == e {
+			return true
+		}
+	}
+	return false
+}
 
 // CodexAgentModel maps a Claude model alias from an agent definition's
 // frontmatter to the Codex model id its emitted role file pins: opus and
@@ -150,13 +180,15 @@ const (
 )
 
 // ValidCodexAuditModels returns the closed set for workflow.audit.codex.model
-// (card t1278): the runtime default first, then the two ids with real
-// stored-value evidence (gpt-5.6-sol — operator screenshot 2026-09-30 ·
-// primary-checkout workflow.yaml; gpt-5.6 — the schema example). A stored
-// foreign id keeps round-tripping through the RC2 passthrough-preserve in
-// parseSchemaForm; widening is a one-line change here.
+// (card t1278): the runtime default (gpt-6.1-terra since the card t1980 scope
+// expansion) first, then gpt-6.1-sol — kept as a literal member after the
+// default flip — and the two ids with real stored-value evidence
+// (gpt-5.6-sol — operator screenshot 2026-09-30 · primary-checkout
+// workflow.yaml; gpt-5.6 — the schema example). A stored foreign id keeps
+// round-tripping through the RC2 passthrough-preserve in parseSchemaForm;
+// widening is a one-line change here.
 func ValidCodexAuditModels() []string {
-	return []string{DefaultCodexAuditModel, "gpt-5.6-sol", "gpt-5.6"}
+	return []string{DefaultCodexAuditModel, CodexModelSol, "gpt-5.6-sol", "gpt-5.6"}
 }
 
 // ValidProjectContinuations returns the closed set for

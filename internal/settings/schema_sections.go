@@ -421,9 +421,13 @@ func seamSectionFields() []FieldDef {
 		// (the workflow.audit. prefix routes them there via isAuditFieldName)
 		// and persisted through the same workflow.yaml seam the audit
 		// resolvers read. All six pins render as closed sets (t1278 — the two
-		// former free-text model fields graduated to radio groups: claude pins
+		// former free-text model fields graduated to closed widgets: claude pins
 		// reuse the launch model-alias SSOT, codex pins the operator-confirmed
-		// ValidCodexAuditModels pair). The remaining sets come from the SSOT
+		// ValidCodexAuditModels set — a select since t1980, when terra grew it
+		// to 4 ids; the codex effort pin is a select over terra's
+		// reasoning.effort vocabulary (ValidCodexAuditEfforts — none through
+		// max; the claude pin keeps the v4 effort vocabulary). The remaining
+		// sets come from the SSOT
 		// accessors (v4 effort vocabulary / ValidGLMModels /
 		// GLMReasoningStateNames — the z.ai state names, single reading).
 		// Empty = no pin: the resolver falls back to the SSOT sync-auditor
@@ -434,10 +438,10 @@ func seamSectionFields() []FieldDef {
 			"f.model.opt.", template.ModelAliasPickerValues(), emptyLabelUnset, "opt.unset")),
 		withEmptySubmits(withRadio(s(SectionWorkflow, "workflow", TypeRadio, "workflow", "audit", "claude", "effort"),
 			"f.workflow.audit.claude.effort.opt.", v4EffortValues(), emptyLabelUnset, "opt.unset")),
-		withEmptySubmits(withRadio(s(SectionWorkflow, "workflow", TypeRadio, "workflow", "audit", "codex", "model"),
+		withEmptySubmits(withSelect(s(SectionWorkflow, "workflow", TypeSelect, "workflow", "audit", "codex", "model"),
 			"f.workflow.audit.codex.model.opt.", config.ValidCodexAuditModels(), emptyLabelUnset, "opt.unset")),
-		withEmptySubmits(withRadio(s(SectionWorkflow, "workflow", TypeRadio, "workflow", "audit", "codex", "effort"),
-			"f.workflow.audit.codex.effort.opt.", v4EffortValues(), emptyLabelUnset, "opt.unset")),
+		withEmptySubmits(withSelect(s(SectionWorkflow, "workflow", TypeSelect, "workflow", "audit", "codex", "effort"),
+			"f.workflow.audit.codex.effort.opt.", config.ValidCodexAuditEfforts(), emptyLabelUnset, "opt.unset")),
 		withEmptySubmits(withRadio(s(SectionWorkflow, "workflow", TypeRadio, "workflow", "audit", "glm", "model"),
 			"f.workflow.audit.glm.model.opt.", config.ValidGLMModels(), emptyLabelUnset, "opt.unset")),
 		withEmptySubmits(withRadio(s(SectionWorkflow, "workflow", TypeRadio, "workflow", "audit", "glm", "effort"),

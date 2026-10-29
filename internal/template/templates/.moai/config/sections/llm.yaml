@@ -78,8 +78,8 @@ llm:
         leader: { model: "opus", effort: "high" }     # moai glm -f (glm-5.3 opus slot; z.ai max)
         lane: { model: "sonnet", effort: "medium" }   # moai glm -l (glm-5.3 sonnet slot; z.ai high)
       codex:
-        leader: { model: "gpt-6.1-sol", effort: "high" }    # reserved: future moai codex -f
-        lane: { model: "gpt-6.1-sol", effort: "medium" }    # moai codex -l
+        leader: { model: "gpt-6.1-terra", effort: "xhigh" }    # reserved: future moai codex -f
+        lane: { model: "gpt-6.1-terra", effort: "xhigh" }      # moai codex -l
   # Main-session reasoning effort comes from the preference profile
   # (`moai profile setup`), never from this file.
   #

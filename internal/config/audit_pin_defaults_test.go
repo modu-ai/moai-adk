@@ -17,8 +17,8 @@ func TestDefaultWorkflowConfig_AuditPinsOperatorTable(t *testing.T) {
 	if a.Claude.Model != "claude-opus-5-5" || a.Claude.Effort != "high" {
 		t.Errorf("default Claude pin = {%s %s}, want {claude-opus-5-5 high}", a.Claude.Model, a.Claude.Effort)
 	}
-	if a.Codex.Model != "gpt-6.1-sol" || a.Codex.Effort != "high" {
-		t.Errorf("default Codex pin = {%s %s}, want {gpt-6.1-sol high}", a.Codex.Model, a.Codex.Effort)
+	if a.Codex.Model != "gpt-6.1-terra" || a.Codex.Effort != "xhigh" {
+		t.Errorf("default Codex pin = {%s %s}, want {gpt-6.1-terra xhigh} (card t1980 scope expansion)", a.Codex.Model, a.Codex.Effort)
 	}
 	if a.GLM.Model != "glm-5.3" || a.GLM.Effort != "max" {
 		t.Errorf("default GLM pin = {%s %s}, want {glm-5.3 max} (non-empty per REQ-TIER-006)", a.GLM.Model, a.GLM.Effort)
