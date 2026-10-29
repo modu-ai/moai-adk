@@ -265,7 +265,7 @@ func (s *Store) usesWorktree(h worktreeReservation) bool {
 // since renewed is refused. The PR, the worktree and the history stay; the old
 // owner's wait and repair claim, which were its alone, do not. A parked Issue
 // needs the new holder's own wait record (owner = newHolder).
-func (s *Store) TakeOver(i core.IssueRef, oldHolder string, oldEpoch int64, newHolder, dispatch string, run core.RunID, preserved string, wait *core.Wait) (Record, error) {
+func (s *Store) TakeOver(i core.IssueRef, oldHolder string, oldEpoch int64, newHolder, dispatch string, run core.RunID, note string, wait *core.Wait) (Record, error) {
 	if newHolder == "" || dispatch == "" {
 		return Record{}, fmt.Errorf("%w: the new holder and a dispatch are required", core.ErrIDInvalid)
 	}
@@ -294,7 +294,11 @@ func (s *Store) TakeOver(i core.IssueRef, oldHolder string, oldEpoch int64, newH
 			rc.Session, rc.Agent = newHolder, ""
 			out.Receipt = &rc
 		}
-		out.History = append(append([]Event(nil), cur.History...), Event{Kind: "takeover", Session: newHolder, Note: "from " + oldHolder + ", preserved at " + preserved})
+		// Design E05: a takeover is a new attempt. The attempt that was running is
+		// kept in the history event and on the receipt it published.
+		out.AttemptSeq = cur.AttemptSeq + 1
+		out.Attempt = core.AttemptID(fmt.Sprintf("takeover-%d", out.AttemptSeq))
+		out.History = append(append([]Event(nil), cur.History...), Event{Kind: "takeover", Session: newHolder, Attempt: string(cur.Attempt), Note: "from " + oldHolder + ", " + note})
 		return s.write(i, &out)
 	})
 	if err != nil {
