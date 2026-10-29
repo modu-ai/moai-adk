@@ -227,10 +227,11 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 - 주 REQ: maps REQ-AF-010. 초록: M4.
 - 정본 주 시험 2: M22, M23.
 - 명령(F2): 없음 — 이 기준의 사례를 단언하는 시험을 찾지 못했다.
-- 미충족 — 시험 없음: (a)~(f) 전부, 정본 M22·M23.
-- 목표 시험 이름(아직 없음, 실행 대상 아님): `TestAcceptanceManifest/M22`, `TestAcceptanceManifest/M23`, `TestIndependence_*`(0개), `TestIndependence_LeaderDoesNotTakeOverAgentWork`.
+- 미충족 — 시험 없음: (a)~(g) 전부, 정본 M22·M23.
+- 목표 시험 이름(아직 없음, 실행 대상 아님): `TestAcceptanceManifest/M22`, `TestAcceptanceManifest/M23`, `TestIndependence_*`(0개), `TestIndependence_LeaderDoesNotTakeOverAgentWork`, `TestIndependence_LaneEscalatesOnlyFourCategories`.
 - 사례: (a) ControlService가 아닌 쓰기 주체의 claim·lease·liveness·resume 쓰기 → 거절. (b) Coordinator의 직접 상태 쓰기 → 거절. (c) 같은 Issue의 어느 attempt writer였던 세션의 리뷰 증거 → 세지 않음. (d) Coordinator가 직접 구현한 변경의 리뷰 → 세지 않음. (e) 다른 Issue의 writer였던 세션이 이 Issue를 리뷰 → 셈(정본 [2]§21).
 - (f) leader 역할 경계(0.6.7, DEC-AF-23, 제안 이름 `TestIndependence_LeaderDoesNotTakeOverAgentWork`): Coordinator가 agent에 배정된 Issue의 구현·수리·리뷰 대응 쓰기를 요청 → 거절, 그 Issue의 attempt 기록 불변. 변경 알림·실패 복구·배정 조정·통합 지원 요청 → ControlService 명령으로 받아들여짐. 이 사례는 위 PASS 줄 수에 1을 더한다.
+- (g) leader로 보내는 범주(0.6.7 B8a, DEC-AF-27, **제안 사례**, 제안 이름 `TestIndependence_LaneEscalatesOnlyFourCategories`. `4cdaba5d7e`에 이 시험은 없다): lane이 leader에 보내는 항목의 집합은 정확히 사용자 승인 게이트·lane 사이 충돌·외부 또는 되돌릴 수 없는 쓰기·실제 오류 넷이다. 네 범주 각각 → 보냄 1. 그 밖의 항목 → 보냄 0, lane의 기록에 결정·이유·되돌리는 법이 남음.
 - 변형 단언: run 전체를 막는 과잉 구현은 (e)에서 FAIL, Issue 범위를 보지 않는 구현은 (c)에서 FAIL, leader가 agent 일을 대신하는 구현은 (f)에서 FAIL.
 - RED 이유: 역할 경계 없음. 초록 경로: M4. (e)는 귀속 대역으로 게이트 단위 시험 안에서만 돈다.
 
@@ -315,10 +316,11 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 - 명령(F2, 있는 시험만 고름): `go test ./internal/agenticfactory/core/ -run '^(TestEdgeTableIsExactlyE01ToE27|TestEveryEdgeAcceptsExactlyItsFromStages)$' -count=1 -v`.
 - 기대: 시험이 있는 사례만 센다 — 고른 시험 2개, 각 `--- PASS:` 한 줄. 존재만 확인했고 실행하지 않았다.
 - 본문을 읽고 연결함: (a) 일부 — `TestEdgeTableIsExactlyE01ToE27`(간선 id가 정확히 E01~E27), `TestEveryEdgeAcceptsExactlyItsFromStages`(간선마다 시작 단계만 받음, E20 제외). 쌍 수 출력은 단언하지 않음.
-- 미충족 — 시험 없음: (b)~(e), 정본 M16·M41·M42·M48·M54·M56. `core`에 다른 후보가 있으나 본문을 읽지 않아 연결하지 않았다.
-- 목표 시험 이름(아직 없음, 실행 대상 아님): `TestTransition_Table_*`(0개), `TestTransition_Table_WaitRecordRequiresAllSixFields`, `TestState_SpeclessIssue_TransitionsWithoutSpecHash`, `TestState_OperatorDecision_RequiresOperatorEvidence_CoordinatorRefused`, 위 정본 id의 `TestAcceptanceManifest/<id>`.
+- 미충족 — 시험 없음: (b)~(f), 정본 M16·M41·M42·M48·M54·M56. `core`에 다른 후보가 있으나 본문을 읽지 않아 연결하지 않았다.
+- 목표 시험 이름(아직 없음, 실행 대상 아님): `TestTransition_Table_*`(0개), `TestTransition_Table_WaitRecordRequiresAllSixFields`, `TestTransition_Table_WaitRecordRefusesFixedIntervalNextAction`, `TestLaneWake_SelfPacedWithTime_NoFixedIntervalJob`, `TestState_SpeclessIssue_TransitionsWithoutSpecHash`, `TestState_OperatorDecision_RequiresOperatorEvidence_CoordinatorRefused`, 위 정본 id의 `TestAcceptanceManifest/<id>`.
 - 사례: (a) 상태 7 × 사건 전부의 표 구동 시험: E01~E27에 있는 쌍만 적용, 나머지는 거절하고 상태 불변(쌍 수를 출력에 기록하고 0이 아님을 단언). (b) 요청자가 맞지 않음 → 거절. (c) PARKED 사유 집합 밖 값 → 거절. (d) E20 → 단계·owner 불변. (e) 대기 기록 여섯 필드(design §2.1c, 0.6.7, 제안 이름 `TestTransition_Table_WaitRecordRequiresAllSixFields`): 필드를 하나씩 뺀 대기 기록 여섯 개 → 각각 무효로 거절, 이전 상태 불변. 여섯 필드가 모두 있는 기록 → 받아들여짐.
-- 변형 단언: 표에 없는 간선 하나를 허용하는 구현은 (a), owner를 바꾸는 재개는 (d), 필드가 빠진 대기 기록을 받는 구현은 (e)에서 FAIL.
+- (f) 다음 자동 동작의 형태(0.6.7 B8a, DEC-AF-27, **제안 사례**. 아래 두 제안 이름의 시험은 `4cdaba5d7e`에 없다): 대기 기록 규칙(제안 이름 `TestTransition_Table_WaitRecordRefusesFixedIntervalNextAction`) — 다음 자동 동작이 고정 간격 반복 작업인 대기 기록 → 무효로 거절, 이전 상태 불변. 시각을 밝힌 자기 페이스 깨어남인 기록 → 받아들여짐. 깨어남 형태 점검(제안 이름 `TestLaneWake_SelfPacedWithTime_NoFixedIntervalJob`) — lane의 대기가 남기는 깨어남은 시각을 밝힌 한 번의 자기 페이스 깨어남이고 고정 간격 반복 작업 등록은 0, 남은 일이 없으면 다시 걸지 않음.
+- 변형 단언: 표에 없는 간선 하나를 허용하는 구현은 (a), owner를 바꾸는 재개는 (d), 필드가 빠진 대기 기록을 받는 구현은 (e), 고정 간격 반복 작업을 다음 자동 동작으로 받는 구현은 (f)에서 FAIL.
 - RED 이유: 상태 엔진 없음. 초록 경로: M1(lane-18).
 
 #### AC-AF-017 — record와 수집기
@@ -608,12 +610,14 @@ F2 작업 당시에는 하위 SPEC의 `acceptance.md`를 고치지 않고 여기
 | `TestResponsibility_SecondIssue_OnlyWhenConditionsHold` | AC-AF-009 | REQ-AF-009 | `runner/` | (g) ①~⑤ 두 번째 Issue 배차 조건 |
 | `TestIndependence_*` | AC-AF-010 | REQ-AF-010 | `core/`(`authz_test.go`·`gate_test.go` 옆) | (a)~(e): ControlService 밖 쓰기 거절, Coordinator 직접 상태 쓰기 거절, 같은 Issue writer의 리뷰 불산입, Coordinator 구현의 리뷰 불산입, 다른 Issue writer의 리뷰 산입 |
 | `TestIndependence_LeaderDoesNotTakeOverAgentWork` | AC-AF-010 | REQ-AF-010 | `core/` | (f) Coordinator의 구현·수리·리뷰 대응 쓰기 요청 → 거절, attempt 기록 불변 |
+| `TestIndependence_LaneEscalatesOnlyFourCategories` (B8a 제안, 기존 `TestIndependence_*` 배치를 따름) | AC-AF-010 | REQ-AF-010 | `core/` | (g) 네 범주 각각 → 보냄 1, 그 밖 → 보냄 0이고 lane 기록에 결정·이유·되돌리는 법 |
 | `TestGate_RoleEvidence_RequiresChildAttribution_AndLockHolds` | AC-AF-011 | REQ-AF-011 | `runner/`(`attribution_test.go` 옆) | L1 증거 종류 6개 각각 `unattributable{identity-spec-incomplete}`, L2 종류마다 `producer-not-allowed` 하나 |
 | `TestLock_*` | AC-AF-011 | REQ-AF-011 | `runner/` | L3 설정·환경 변수 변경에도 결과 바이트 동일 + 정적 검사, P4a, P4b. zusätzlich lane-21: L4 시나리오 하네스 사전 점검 |
 | `TestRedact_*`(13) | AC-AF-013 | REQ-AF-013 | `core/`(`core_test.go` 옆) | C1 3, C2 1, C3 2, C4 2, C5 1, Restricted 1, Idempotent 1, Negative 2(범주 하나를 뺀 변형에서 FAIL). zusätzlich lane-20: AC 초록 경로의 refiner(M5) |
 | `TestLedger_FieldOwner_*` | AC-AF-013 | REQ-AF-013 | `ctxmodel/` | 필드 owner가 아닌 역할의 장부 쓰기 → 거절 |
 | `TestTransition_Table_*` | AC-AF-016 | REQ-AF-016 | `core/`(`stage_model_test.go` 옆) | (b) 요청자 불일치 → 거절 (c) PARKED 사유 집합 밖 → 거절 (d) E20 → 단계·owner 불변 |
 | `TestTransition_Table_WaitRecordRequiresAllSixFields` | AC-AF-016 | REQ-AF-016 | `core/`(`wait_test.go` 옆) | (e) 필드 하나씩 뺀 대기 기록 여섯 → 각각 거절, 여섯 필드 기록 → 받아들임 |
+| `TestTransition_Table_WaitRecordRefusesFixedIntervalNextAction` (B8a 제안) | AC-AF-016 | REQ-AF-016 | `core/`(`wait_test.go` 옆) | (f) 다음 자동 동작이 고정 간격 반복 작업 → 무효로 거절·상태 불변, 시각을 밝힌 자기 페이스 깨어남 → 받아들임 |
 | `TestState_SpeclessIssue_TransitionsWithoutSpecHash` | AC-AF-016 | REQ-AF-016 | `core/` | 사례 문장 없음(§12 이름만 적힘) |
 | `TestState_OperatorDecision_RequiresOperatorEvidence_CoordinatorRefused` | AC-AF-016 | REQ-AF-016 | `core/` | 사례 문장 없음(§12 이름만 적힘) |
 
@@ -650,6 +654,7 @@ F2 작업 당시에는 하위 SPEC의 `acceptance.md`를 고치지 않고 여기
 | `TestCompat_*`, `TestLauncher_*` | AC-AF-021 | REQ-AF-022 | `internal/cli/`(`launch_exec_test.go`·`gtd_compat_test.go` 옆) | (a)~(g): golden 바이트 동일, stderr 한 줄, 버전 선언 없는 새 문법 → 종료 2, 혼합 → 호환 오류, 역할 뒤바뀜 0, 모르는 인자 거절, `--` 뒤 전달. golden 순서 점검 |
 | `TestEnvMatrix_StepEvidenceRequired_NotRunNeverSuccess` | AC-AF-023 | REQ-AF-024 | 기존 패키지 없음(새 위치) | (a) 명령·종료 코드·출력 중 하나 없음 → 행 거절 (b) 실행 안 한 단계 → `not-run` (c) 전부 `BLOCKED` → 행렬 FAIL (d) Codex 미설정 → `BLOCKED(not-configured)` |
 | `TestEfficiencyRecord_*` | AC-AF-024 | REQ-AF-025 | 기존 패키지 없음(새 위치) | (a) 필드 누락 → 거절 (b) `estimated`를 `measured` 칸에 → 거절 (c) 품질 회귀 비교 → 향상 보고 0 (d) checkpoint 비용 필드는 측정값 또는 Gap. zusätzlich lane-18: (d) checkpoint |
+| `TestLaneWake_SelfPacedWithTime_NoFixedIntervalJob` (B8a 제안) | AC-AF-016 | REQ-AF-016 | `internal/cli/` 또는 통합(새 위치) | (f) 깨어남 형태: 시각을 밝힌 한 번의 자기 페이스 깨어남, 고정 간격 반복 작업 등록 0, 남은 일이 없으면 다시 걸지 않음. zusätzlich lane-18: 대기 기록 규칙 |
 | `TestAcceptanceManifest`(실행기) | 전부 | — | 기존 패키지 없음(새 위치) | design §15.1 정본 id를 하위 시험으로 돈다(§A). 각 id의 동작은 AC 본문에 따로 적혀 있지 않다. zusätzlich: 각 id는 그 AC의 lane |
 
 `TestAcceptanceManifest`의 하위 시험(정본 id, 각 AC의 "정본 주 시험" 줄):
