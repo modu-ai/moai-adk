@@ -166,7 +166,7 @@ func (a *app) buildPRTracking(ctx context.Context) PRTrackingVM {
 		}
 		if r.PR.Confirmed {
 			row.PR = "#" + itoa(r.PR.Value.Number)
-			row.Phase, row.Track = r.PR.Value.Phase, prTrack(r.PR.Value.Phase)
+			row.Phase, row.Track = orGap(r.PR.Value.Phase), prTrack(r.PR.Value.Phase)
 		}
 		row.Context = buildContext(r.Context)
 		row.Ledger = a.buildContextModel(ctx, r.Issue)
