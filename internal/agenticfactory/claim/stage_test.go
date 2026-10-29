@@ -188,3 +188,27 @@ func TestHandoffAcceptanceAndMergeMoveThePosition(t *testing.T) {
 		t.Errorf("done: %+v", r)
 	}
 }
+
+// A repair claim starts the work over: a gate or refusal left on the reopened
+// record belongs to the previous attempt and must not follow the new holder.
+func TestRepairClaimDropsTheGateAndRefusalOfThePreviousAttempt(t *testing.T) {
+	s := open(t)
+	i := reopened(t, s, 5, "WT-b")
+	if _, err := s.UpdateReleased(i, func(r *Record) error {
+		r.Gate = &core.Gate{Reason: core.ReasonDebtPresent, Detail: "old", Resume: "rerun", Head: r.Head}
+		r.Refusal = &core.Refusal{Reason: core.ReasonForeignClosing, Detail: "old"}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	rec, err := s.AcquireRepair(i, "r", "dr", "run-2", "WT-b")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rec.Gate != nil || rec.Refusal != nil {
+		t.Fatalf("stale gate/refusal followed the repair claim: %+v %+v", rec.Gate, rec.Refusal)
+	}
+	if got, _ := s.Read(i); got.Gate != nil || got.Refusal != nil {
+		t.Fatalf("stored record keeps them: %+v %+v", got.Gate, got.Refusal)
+	}
+}
