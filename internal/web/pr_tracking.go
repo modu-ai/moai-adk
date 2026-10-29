@@ -51,7 +51,7 @@ type PRTrackingVM struct {
 	Note      string
 	Rows      []PRTrackRowVM
 	Backlog   PRBacklogVM
-	Intake    IntakeVM
+	Intake    IntakeRequestsVM
 }
 
 type monField[T any] struct {

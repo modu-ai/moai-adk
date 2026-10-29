@@ -91,7 +91,7 @@ func TestIntakeRequests_RoundTripFromRealStore(t *testing.T) {
 	if r := by["req-unknown"]; r.Status != "EFFECT_UNKNOWN" || r.Retryable != "no" {
 		t.Errorf("effect-unknown must be distinct from blocked: %+v", r)
 	}
-	if r := by["req-parked"]; r.Parked != "backpressure" || r.Status != "ACCEPTED" {
+	if r := by["req-parked"]; r.Parked != "backpressure" || r.Status != "PARKED" || r.Stage != "ACCEPTED" {
 		t.Errorf("parked = %+v", r)
 	}
 	if vm.ParkedCount != 1 || vm.BlockedCount != 2 {
@@ -142,7 +142,7 @@ func TestMonitorRendersIntakeRequests(t *testing.T) {
 	m, _ := a.buildMonitor(time.Now())
 	html := renderTempl(t, Monitor(tg1ShellVM(), m))
 	for _, want := range []string{
-		`id="intake-requests"`, "BLOCKED", "EFFECT_UNKNOWN", "parked backpressure", "agent agent-2", "session sess-1111-aaaa",
+		`id="intake-requests"`, "BLOCKED", "EFFECT_UNKNOWN", "parked backpressure", "PARKED", "agent agent-2", "session sess-1111-aaaa",
 		"retryable yes", "gh returned 429", "attempts 2", "issue#77",
 	} {
 		if !strings.Contains(html, want) {

@@ -33,9 +33,11 @@ const intakeCtxJSON = `{"rows":[
 ],
 "backlog":{"value":{"open":1,"limit":5,"state":"within-limit","awaiting_handoff":0,"repair_backlog":0,"oldest_wait_seconds":0,"queue_known":false},"confirmed":true},
 "intake":{"value":[
- {"issue":21,"stage":"wt-ready","state":"queued","at":"2026-10-29T02:00:00Z"},
- {"issue":23,"stage":"failed","state":"blocked","reason":"token=****","at":"2026-10-29T02:30:00Z"},
- {"issue":24,"stage":"parked","state":"on-hold","reason":"rate-limited","at":"2026-10-29T02:40:00Z"}
+ {"key":"k21","issue":21,"stage":"WT_PREPARED","state":"WT_PREPARED","agent":"sess-aaaa","slot":"slot-1","started":false},
+ {"key":"k23","issue":23,"stage":"ACCEPTED","state":"BLOCKED","block":{"step":"ACCEPTED","detail":"token=****","retryable":true,"unknown":false,"resume":"wait for the rate limit"}},
+ {"key":"k24","issue":24,"stage":"ACCEPTED","state":"EFFECT_UNKNOWN","block":{"step":"ACCEPTED","detail":"send reply lost","retryable":false,"unknown":true,"resume":"FindIssue decides"}},
+ {"key":"k25","stage":"ACCEPTED","state":"PARKED","parked":"backpressure"},
+ {"key":"k26","issue":26,"stage":"READY_ACKED","state":"READY_ACKED","started":true,"agent":"sess-bbbb"}
 ],"confirmed":true}}`
 
 func TestQueueUnknownIsNotZero(t *testing.T) {
@@ -51,22 +53,38 @@ func TestQueueUnknownIsNotZero(t *testing.T) {
 	}
 }
 
-func TestIntakeStages(t *testing.T) {
-	vm := prApp(t, intakeCtxJSON, nil).buildPRTracking(context.Background())
-	if !vm.Intake.Known || len(vm.Intake.Rows) != 3 {
-		t.Fatalf("intake = %+v", vm.Intake)
+func TestIntakeFromMonitor_S51States(t *testing.T) {
+	vm := prApp(t, intakeCtxJSON, nil).buildPRTracking(context.Background()).Intake
+	if !vm.Known || vm.Source != "monitor" || len(vm.Rows) != 5 {
+		t.Fatalf("intake = %+v", vm)
 	}
-	stages := map[int]string{}
-	for _, r := range vm.Intake.Rows {
-		stages[r.Issue] = r.Stage
+	by := map[string]IntakeRequestVM{}
+	for _, r := range vm.Rows {
+		by[r.Key] = r
 	}
-	if stages[21] != "wt-ready" || stages[23] != "failed" || stages[24] != "parked" {
-		t.Errorf("stages = %v", stages)
+	if r := by["k23"]; r.Status != "BLOCKED" || r.Resume != "wait for the rate limit" || r.Retryable != "yes" {
+		t.Errorf("blocked = %+v", r)
 	}
-	for _, r := range vm.Intake.Rows {
-		if r.Stage == "started" {
-			t.Errorf("a started stage the monitor did not report was invented: %+v", r)
+	if r := by["k24"]; r.Status != "EFFECT_UNKNOWN" || r.Retryable != "no" {
+		t.Errorf("effect unknown = %+v", r)
+	}
+	if r := by["k25"]; r.Status != "PARKED" || r.Parked != "backpressure" || r.Issue != "—" {
+		t.Errorf("parked is a wait, not a failure: %+v", r)
+	}
+	if r := by["k26"]; !r.Started || r.Stage != "READY_ACKED" {
+		t.Errorf("started is a flag next to the stage: %+v", r)
+	}
+	if by["k21"].Agent != "sess-aaaa" || by["k21"].Slot != "slot-1" || by["k21"].AgentName != "—" {
+		t.Errorf("monitor intake carries a session id only: %+v", by["k21"])
+	}
+	for _, r := range vm.Rows {
+		switch r.Status {
+		case "ack", "issue-created", "wt-ready", "started", "failed", "parked":
+			t.Errorf("retired lowercase stage shown: %+v", r)
 		}
+	}
+	if vm.ParkedCount != 1 || vm.BlockedCount != 2 {
+		t.Errorf("counts parked=%d blocked=%d", vm.ParkedCount, vm.BlockedCount)
 	}
 	none := prApp(t, `{"rows":[],"backlog":{"value":{},"confirmed":false},"intake":{"value":null,"confirmed":false}}`, nil).buildPRTracking(context.Background())
 	if none.Intake.Known {
@@ -127,7 +145,7 @@ func TestMonitorRendersIntakeAndContext(t *testing.T) {
 	m, _ := a.buildMonitor(time.Now())
 	html := renderTempl(t, Monitor(tg1ShellVM(), m))
 	for _, want := range []string{
-		`id="intake-stages"`, "stage wt-ready", "stage failed", "token=****",
+		`id="intake-requests"`, "PARKED", "BLOCKED", "EFFECT_UNKNOWN", "do not re-issue", "resume wait for the rate limit", "token=****",
 		`id="context-ledger"`, `href="https://example.test/a"`, "link unverified", "link inaccessible",
 		"stale", "inaccessible", "owner agent-1", "stage remote-verified", "stage pushed", "link restricted", "handoff waiting not provided",
 	} {

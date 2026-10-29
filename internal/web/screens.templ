@@ -673,7 +673,7 @@ templ Monitor(vm ShellVM, m MonitorVM) {
 					}
 				</div>
 			}
-			@panel("Intake requests", requestsMeta(m.Requests), "", "", "Read-only. Stages come from the intake request record; BLOCKED and EFFECT_UNKNOWN come from its blocked block, and started is derived from the claim.", "roomy") {
+			@panel("Intake requests", requestsMeta(m.Requests), "", "", "Read-only. Stages come from the intake request record; PARKED is a wait for capacity, not a failure; BLOCKED and EFFECT_UNKNOWN come from its blocked block, and started is derived from the claim.", "roomy") {
 				<div class="vlist" id="intake-requests">
 					if m.Requests.Note != "" {
 						<p class="warn">{ m.Requests.Note }</p>
@@ -695,27 +695,12 @@ templ Monitor(vm ShellVM, m MonitorVM) {
 								<span class="warn">{ q.BlockStep + ": " + q.BlockDetail + " · retryable " + q.Retryable }</span>
 								<span class="panel__meta">{ "resume " + q.Resume }</span>
 							}
+							if q.Status == "EFFECT_UNKNOWN" {
+								<span class="warn">do not re-issue · look up only</span>
+							}
 							for _, e := range q.Evidence {
 								<span class="mono panel__meta">{ e }</span>
 							}
-						</div>
-					}
-				</div>
-			}
-			@panel("Intake effects", intakeMeta(m.PR.Intake), "", "", "Read-only. Background acceptance stages from the monitor; a missing stage is left blank.", "roomy") {
-				<div class="vlist" id="intake-stages">
-					if !m.PR.Intake.Known {
-						<p class="panel__meta">not provided</p>
-					}
-					for _, i := range m.PR.Intake.Rows {
-						<div class="vrow">
-							<span class="mono">{ "#" + itoa(i.Issue) }</span>
-							<span class="panel__meta">{ "stage " + i.Stage }</span>
-							<span class="panel__meta">{ i.State }</span>
-							if i.Reason != "" {
-								<span class="warn">{ i.Reason }</span>
-							}
-							<span class="panel__meta">{ i.At }</span>
 						</div>
 					}
 				</div>

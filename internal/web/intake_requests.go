@@ -79,6 +79,7 @@ type IntakeRequestVM struct {
 // IntakeRequestsVM is the panel; Known is false when the record is unavailable.
 type IntakeRequestsVM struct {
 	Known        bool
+	Source       string // claim-store | monitor
 	Note         string
 	Rows         []IntakeRequestVM
 	ParkedCount  int
@@ -100,8 +101,14 @@ func IntakeRequestsFrom(s *claim.Store) func(context.Context) ([]byte, error) {
 	}
 }
 
+// buildIntakeRequests prefers the claim store's request records, which carry
+// attempts, evidence and the ready receipt. Without that source it falls back
+// to the monitor's intake items; the panel names which one it shows.
 func (a *app) buildIntakeRequests(ctx context.Context) IntakeRequestsVM {
 	if a.intakeRequests == nil {
+		if m := a.buildPRTracking(ctx).Intake; m.Known {
+			return m
+		}
 		return IntakeRequestsVM{Note: "intake requests are not connected"}
 	}
 	raw, err := a.intakeRequests(ctx)
@@ -112,7 +119,7 @@ func (a *app) buildIntakeRequests(ctx context.Context) IntakeRequestsVM {
 	if err := json.Unmarshal(raw, &reqs); err != nil {
 		return IntakeRequestsVM{Note: "intake requests malformed: " + err.Error()}
 	}
-	vm := IntakeRequestsVM{Known: true}
+	vm := IntakeRequestsVM{Known: true, Source: "claim-store"}
 	for _, r := range reqs {
 		row := IntakeRequestVM{
 			Key: r.Key, Status: orGap(r.Stage), Stage: orGap(r.Stage), Parked: r.Parked, Issue: prGap,
@@ -142,6 +149,9 @@ func (a *app) buildIntakeRequests(ctx context.Context) IntakeRequestsVM {
 		}
 		if r.Parked != "" {
 			vm.ParkedCount++
+			if r.Blocked == nil {
+				row.Status = "PARKED"
+			}
 		}
 		for _, e := range r.Evidence {
 			row.Evidence = append(row.Evidence, e.Stage+": "+e.Ref)
@@ -155,5 +165,5 @@ func requestsMeta(v IntakeRequestsVM) string {
 	if !v.Known {
 		return "no data"
 	}
-	return strconv.Itoa(len(v.Rows)) + " requests · parked " + strconv.Itoa(v.ParkedCount) + " · blocked " + strconv.Itoa(v.BlockedCount)
+	return v.Source + " · " + strconv.Itoa(len(v.Rows)) + " requests · parked " + strconv.Itoa(v.ParkedCount) + " · blocked " + strconv.Itoa(v.BlockedCount)
 }

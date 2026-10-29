@@ -12,12 +12,23 @@ import (
 	"time"
 )
 
+// monIntakeItem is the monitor's S51 intake item (lane-20 View.intake).
 type monIntakeItem struct {
-	Issue  int       `json:"issue"`
-	Stage  string    `json:"stage"`
-	State  string    `json:"state"`
-	Reason string    `json:"reason"`
-	At     time.Time `json:"at"`
+	Key    string `json:"key"`
+	Issue  int    `json:"issue"`
+	Stage  string `json:"stage"`
+	State  string `json:"state"`
+	Parked string `json:"parked"`
+	Block  *struct {
+		Step      string `json:"step"`
+		Detail    string `json:"detail"`
+		Retryable bool   `json:"retryable"`
+		Unknown   bool   `json:"unknown"`
+		Resume    string `json:"resume"`
+	} `json:"block"`
+	Started bool   `json:"started"`
+	Agent   string `json:"agent"`
+	Slot    string `json:"slot"`
 }
 
 type monCtxItem struct {
@@ -31,22 +42,6 @@ type monCtxItem struct {
 	RemoteVerified bool      `json:"remote_verified"`
 	Availability   string    `json:"availability"`
 	At             time.Time `json:"at"`
-}
-
-// IntakeRowVM is one Issue's acceptance record.
-type IntakeRowVM struct {
-	Issue  int
-	Stage  string // as reported; empty when the monitor gave none
-	State  string
-	Reason string // already masked by the monitor
-	At     string
-}
-
-// IntakeVM is the intake panel; Known is false when the monitor did not
-// provide the record at all.
-type IntakeVM struct {
-	Known bool
-	Rows  []IntakeRowVM
 }
 
 // ContextItemVM is one context-ledger entry.
@@ -69,15 +64,43 @@ type ContextVM struct {
 	Items []ContextItemVM
 }
 
-func buildIntake(f monField[[]monIntakeItem]) IntakeVM {
+// buildIntake maps the monitor's intake items to the request rows. The monitor
+// derives State (EFFECT_UNKNOWN, BLOCKED, PARKED, else the stage); an empty
+// State is derived here from the same fields rather than shown blank.
+func buildIntake(f monField[[]monIntakeItem]) IntakeRequestsVM {
 	if !f.Confirmed {
-		return IntakeVM{}
+		return IntakeRequestsVM{}
 	}
-	vm := IntakeVM{Known: true}
+	vm := IntakeRequestsVM{Known: true, Source: "monitor"}
 	for _, it := range f.Value {
-		vm.Rows = append(vm.Rows, IntakeRowVM{
-			Issue: it.Issue, Stage: it.Stage, State: it.State, Reason: it.Reason, At: timeText(it.At),
-		})
+		row := IntakeRequestVM{
+			Key: it.Key, Status: orGap(it.State), Stage: orGap(it.Stage), Parked: it.Parked, Issue: prGap,
+			AgentName: prGap, Agent: orGap(it.Agent), Slot: orGap(it.Slot), Ready: prGap, AckedBy: prGap,
+			Started: it.Started, Retryable: prGap, Branch: prGap,
+		}
+		if it.Issue > 0 {
+			row.Issue = "#" + strconv.Itoa(it.Issue)
+		}
+		if b := it.Block; b != nil {
+			row.BlockStep, row.BlockDetail, row.Resume, row.Retryable = b.Step, b.Detail, b.Resume, "no"
+			if b.Retryable {
+				row.Retryable = "yes"
+			}
+			vm.BlockedCount++
+			if row.Status == prGap {
+				row.Status = "BLOCKED"
+				if b.Unknown {
+					row.Status = "EFFECT_UNKNOWN"
+				}
+			}
+		}
+		if it.Parked != "" {
+			vm.ParkedCount++
+			if row.Status == prGap {
+				row.Status = "PARKED"
+			}
+		}
+		vm.Rows = append(vm.Rows, row)
 	}
 	return vm
 }
@@ -136,13 +159,6 @@ func oldestWait(b PRBacklogVM) string {
 		return "not provided"
 	}
 	return (time.Duration(b.OldestWaitSeconds) * time.Second).String()
-}
-
-func intakeMeta(v IntakeVM) string {
-	if !v.Known {
-		return "no data"
-	}
-	return strconv.Itoa(len(v.Rows)) + " issues"
 }
 
 func contextMeta(vm PRTrackingVM) string {
