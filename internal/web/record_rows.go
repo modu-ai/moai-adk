@@ -44,6 +44,9 @@ type recordView struct {
 	// PositionUnknown holds, by Issue number, the claim store's reason when it
 	// could not derive the S46 position of a record. Also a web-local key.
 	PositionUnknown map[string]string `json:"web_position_unknown,omitempty"`
+	// HeadSource says, by Issue number, whether the shown HEAD came from the PR
+	// receipt or from the claim record. Also a web-local key.
+	HeadSource map[string]string `json:"web_head_source,omitempty"`
 }
 
 // RecordRowsFrom builds a MonitorRows source from persisted claim records. A
@@ -63,8 +66,12 @@ func RecordRowsFrom(s RecordSource) func(context.Context) ([]byte, error) {
 		urls := map[string]string{}
 		repair := 0
 		unknown := map[string]string{}
+		headSrc := map[string]string{}
 		for _, r := range recs {
 			view.Rows = append(view.Rows, recordRow(r, at))
+			if src := headSource(r); src != "" {
+				headSrc[strconv.Itoa(r.Issue)] = src
+			}
 			if r.PositionUnknown != "" {
 				unknown[strconv.Itoa(r.Issue)] = recText(r.PositionUnknown)
 			}
@@ -80,7 +87,7 @@ func RecordRowsFrom(s RecordSource) func(context.Context) ([]byte, error) {
 		}
 		limit := s.MaxOpenPRs()
 		view.Backlog = recField(monitor.Backlog{Open: open, Limit: limit, State: monitor.BacklogStateOf(open, limit)}, at, true)
-		out := recordView{View: view, PRURLs: urls, RepairBacklog: &repair, PositionUnknown: unknown}
+		out := recordView{View: view, PRURLs: urls, RepairBacklog: &repair, PositionUnknown: unknown, HeadSource: headSrc}
 		return json.Marshal(out)
 	}
 }
@@ -135,10 +142,7 @@ func recordRow(r claim.Record, at time.Time) monitor.Row {
 			Retries: w.Retries, MaxRetries: w.MaxRetries, EscalateTo: w.Escalate, Escalated: w.Escalated,
 		}
 	}
-	head := string(r.Head)
-	if r.Receipt != nil && r.Receipt.Head != "" {
-		head = string(r.Receipt.Head)
-	}
+	head := recordHead(r)
 	row.HeadSHA = recField(head, at, fresh && head != "")
 	if rc := r.Receipt; fresh && rc != nil {
 		row.PR = recField(monitor.PRStatus{Number: rc.PR, Phase: recordPhase(r)}, at, true)
@@ -158,6 +162,26 @@ func recordPhase(r claim.Record) monitor.PRPhase {
 		return monitor.PhaseRepairDispatched
 	case r.RepairNeeded != "":
 		return monitor.PhaseRepairNeeded
+	}
+	return ""
+}
+
+// recordHead is the HEAD shown for a record: the PR receipt's when it has one,
+// else the claim record's.
+func recordHead(r claim.Record) string {
+	if r.Receipt != nil && r.Receipt.Head != "" {
+		return string(r.Receipt.Head)
+	}
+	return string(r.Head)
+}
+
+// headSource names where recordHead read from, "" when there is no head.
+func headSource(r claim.Record) string {
+	switch {
+	case r.Receipt != nil && r.Receipt.Head != "":
+		return "receipt"
+	case r.Head != "":
+		return "record"
 	}
 	return ""
 }

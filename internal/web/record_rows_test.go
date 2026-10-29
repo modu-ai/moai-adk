@@ -363,3 +363,29 @@ func TestRecordRows_PositionUnknownMarker(t *testing.T) {
 		t.Errorf("93 = %+v", by[93])
 	}
 }
+
+// TestRecordRows_HeadSource: the HEAD shown names where it came from — the PR
+// receipt or the claim record — and the choice itself (receipt first) is unchanged.
+func TestRecordRows_HeadSource(t *testing.T) {
+	recHead := core.HeadSHA(strings.Repeat("b", 40))
+	rcHead := core.HeadSHA(strings.Repeat("c", 40))
+	src := fakeRecords{recs: []claim.Record{
+		{Issue: 95, Holder: "s", AgentName: "a", State: core.StateLanding, Stage: core.StageMerging, Head: recHead,
+			Receipt: &claim.Receipt{HandoffID: "h", PR: 1, Head: rcHead}},
+		{Issue: 96, Holder: "s", AgentName: "a", State: core.StateImplementing, Stage: core.StageBuilding, Head: recHead},
+		{Issue: 97, Holder: "s", AgentName: "a", State: core.StateQueued},
+	}}
+	by := map[int]PRTrackRowVM{}
+	for _, r := range recordApp(t, src).buildPRTracking(context.Background()).Rows {
+		by[r.Issue] = r
+	}
+	if r := by[95]; r.Head != "cccccccc" || r.HeadSource != "receipt" {
+		t.Errorf("95 = %q from %q: the receipt head wins and says so", r.Head, r.HeadSource)
+	}
+	if r := by[96]; r.Head != "bbbbbbbb" || r.HeadSource != "record" {
+		t.Errorf("96 = %q from %q", r.Head, r.HeadSource)
+	}
+	if r := by[97]; r.Head != prGap || r.HeadSource != prGap {
+		t.Errorf("97: no head, no source: %+v", r)
+	}
+}

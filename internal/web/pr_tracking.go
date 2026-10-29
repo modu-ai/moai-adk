@@ -46,6 +46,9 @@ type PRTrackRowVM struct {
 	// PositionUnknown is the claim store's reason when it could not derive the
 	// S46 position of this record; empty when it could.
 	PositionUnknown string
+	// HeadSource is where Head came from (receipt | record) when the record
+	// source supplied it.
+	HeadSource string
 	// PRURL is the URL the PR receipt recorded, as text only (never a link).
 	PRURL string
 }
@@ -135,6 +138,7 @@ type monView struct {
 	RepairBacklog *int `json:"web_repair_backlog"`
 	// PositionUnknown is read from the record source only.
 	PositionUnknown map[string]string `json:"web_position_unknown"`
+	HeadSource      map[string]string `json:"web_head_source"`
 }
 
 func (a *app) buildPRTracking(ctx context.Context) PRTrackingVM {
@@ -195,6 +199,7 @@ func (a *app) buildPRTracking(ctx context.Context) PRTrackingVM {
 		row.PRURL = prURLText(doc.PRURLs[itoa(r.Issue)])
 		row.Mirror = gapText(r.MirrorState)
 		row.PositionUnknown = doc.PositionUnknown[itoa(r.Issue)]
+		row.HeadSource = orGap(doc.HeadSource[itoa(r.Issue)])
 		vm.Rows = append(vm.Rows, row)
 	}
 	return vm

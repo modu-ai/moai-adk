@@ -668,7 +668,7 @@ templ Monitor(vm ShellVM, m MonitorVM) {
 								<span class="panel__meta">{ "wait owner " + r.Wait.Owner + " · next " + r.Wait.NextAction + " · recheck " + r.Wait.RecheckAt }</span>
 								<span class="panel__meta">{ "wait diagnosis " + r.Wait.Diagnosis + " · retries " + r.Wait.Retries + " · escalate to " + r.Wait.EscalateTo + " · escalated " + r.Wait.Escalated }</span>
 							}
-							<span class="mono panel__meta">{ r.Head }</span>
+							<span class="mono panel__meta">{ r.Head + " (" + r.HeadSource + ")" }</span>
 							<span class="panel__meta">{ "checks " + r.Checks }</span>
 							if r.ChecksStale {
 								@badge("outline", "checks stale")
