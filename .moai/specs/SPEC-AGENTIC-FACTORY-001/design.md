@@ -530,56 +530,65 @@ SPEC-ASIDE-BROWSER-001은 aside 부재 시 조용히 기본 도구로 진행(REQ
 | `workflow.agentic_factory.budget.reserve` | 안전 쓰기 예비 몫 | OPEN | 0 이상 | 제안 |
 | `workflow.agentic_factory.comments.batch_window` | duration | OPEN | 0보다 큼 | 제안 |
 
-아직 이름이 없는 키(0.6.7): lane-20 코드에만 있는 `MaxChunks`(chunk 상한, `0` = 나누기 끔)와 `SeenLimit`(webhook 중복 제거 창, 커밋 `527ca7e3a7`)의 키 이름은 OD-17(spec.md §G.1)이다. "AF가 설정되었다"를 판정하는 키는 OD-14이며, 위 표의 `workflow.agentic_factory.enabled`(제안)가 그 키인지도 정해지지 않았다. 이 표에 행을 더하지 않았다. 새 키는 새 파일에만 넣고 기존 설정 파일은 바꾸지 않는다(리더 결정).
+아직 이름이 없던 키(0.6.7): lane-20 코드에만 있는 `MaxChunks`·`SeenLimit` 등의 키 이름과 "AF가 설정되었다" 판정 키는 이제 아래 §6.1 표에 있다(DEC-AF-25). 이 표에는 행을 더하지 않았다. 새 키는 새 파일 `.moai/config/sections/agentic-factory.yaml`에만 넣고 기존 설정 파일은 바꾸지 않는다(리더 결정).
 
 Template-First 연동: 실제 삽입 때 로컬 `.moai/config/sections/*.yaml`과 `internal/template/templates/.moai/config/sections/*.yaml`을 함께 바꾸고 `internal/config` 타입·기본값과 `internal/settings` 스키마를 맞춘다. 템플릿에 `codex.enabled: true`를 넣지 않는다.
 
-### 6.1 제안 설정 키 표 (리더 결정 대기)
+### 6.1 설정 키 표 (DEC-AF-25로 대부분 확정, 남은 행은 리더 결정 대기)
 
-OD-13·OD-14·OD-17(spec.md §G.1)을 한 표로 묶는다. 출처: 'leader decision, relayed via the leader session'. 행의 코드 사실은 lane-20의 사실 통지(커밋 `efeb3dc87c`, 브랜치 `WT-agentic-monitor-effect-reconcile`)를 리더가 전달한 것이며, **이 작성자는 그 커밋을 다시 읽지 않았다**.
+OD-13·OD-14·OD-17(spec.md §G.1)을 한 표로 묶는다. 출처: 'leader decision, relayed via the leader session'. 행의 코드 사실은 lane-20의 사실 통지(커밋 `efeb3dc87c`, 브랜치 `WT-agentic-monitor-effect-reconcile`)를 리더가 전달한 것이며, **이 작성자는 그 커밋을 다시 읽지 않았다**. 확정은 DEC-AF-25(spec.md §C.7, 'leader decision (Jev consultation; relayed via the leader session)')이다. Jev 점수는 확인 id가 다른 빌드에서 나온 참고 신호(advisory signal)일 뿐 결정이 아니다.
 
 규칙:
 - **기본값은 하나도 정하지 않는다.** 모든 행의 기본값 칸은 `—`다. 코드가 `0`에 주는 뜻은 "검증 규칙" 칸에 코드 사실로만 적는다.
-- **키 이름은 모두 제안(provisional)이다.** 기존 접두사 `workflow.agentic_factory.*` 아래에 둔다. lane-17 읽기 코드에 이미 있는 키(browser·codex 키, `pr_queue.wip_limit`, `collaboration.*`)는 이 표에 다시 넣지 않았다. 위 §6 표의 기존 제안 행 `provider.<…>.backoff.*`·`budget.reserve`와 이름을 맞췄다.
-- **위치**: 이 표의 키는 모두 **새 설정 파일에만** 둔다. 기존 설정 파일, `defaults.go`, `closed_sets.go`, `session_defaults.go`, `schema_sections.go`, `i18n.js`는 바꾸지 않는다(리더 결정). 그래서 바로 위 Template-First 문단의 "기존 sections 파일을 함께 바꾼다"는 이 표의 키에 적용하지 않는다. 새 파일의 이름과 위치는 열린 결정이다(OD-13·OD-14).
+- **필수(DEC-AF-25 D5)**: 상태가 "confirmed (leader decision)"인 키는 모두 필수이며, 없으면 거절한다. 이 규칙은 키가 **있어야 한다**는 것이며, 값의 허용 범위는 "검증 규칙" 칸 그대로다(예: `ghidentity.GitHub.MaxAge`의 `0` 허용). 이름이 정해지지 않은 행(상태 "리더 결정 대기")에는 아직 적용하지 않는다.
+- **키 이름**: 기존 접두사 `workflow.agentic_factory.*` 아래에 둔다. 상태가 "confirmed (leader decision)"인 행의 이름은 확정이다(DEC-AF-25 D5). 상태가 "리더 결정 대기"인 행(webhook 비밀 참조, `Tick` 주기, 14a·14b·14c)의 이름만 아직 제안(provisional)이다. lane-17 읽기 코드에 이미 있는 키(browser·codex 키, `pr_queue.wip_limit`, `collaboration.*`)는 이 표에 다시 넣지 않았다. 위 §6 표의 기존 제안 행 `provider.<…>.backoff.*`·`budget.reserve`와 이름을 맞췄다.
+- **위치(DEC-AF-25 D1)**: 이 표의 키는 모두 **새 파일 `.moai/config/sections/agentic-factory.yaml`에만** 둔다. 기존 설정 파일, `defaults.go`, `closed_sets.go`, `session_defaults.go`, `schema_sections.go`, `i18n.js`는 바꾸지 않는다. 그래서 바로 위 Template-First 문단의 "기존 sections 파일을 함께 바꾼다"는 이 표의 키에 적용하지 않는다. 이 파일을 template으로 배포할지는 따로 열린 결정이다(OD-19). 결정 전에는 template 배포 파일을 만들지 않는다 — 만들면 `moai update`가 사용자 프로젝트에 그 파일을 쓴다.
+- **"AF가 설정되었다"(DEC-AF-25 D3)**: 새 파일이 있고, `workflow.agentic_factory.enabled: true`이고, 필수 키가 모두 검증을 통과할 때만 설정된 것으로 본다. 하나라도 어긋나면 설정되지 않은 것으로 다루고 실패 이유를 보여 준다.
+- **inbox 키 분리(DEC-AF-25 D4)**: webhook 큐와 agent inbox는 크기 요구가 다른 별개 인스턴스다. 그래서 `notify.inbox.{max_doc_bytes,seen_limit,max_id_bytes}`는 따로 두고, `queue.webhook.*`은 webhook 큐에만 쓴다.
 - **비밀**: webhook 경로 서명 비밀은 값이 아니라 **참조**(어디서 읽을지의 이름)로만 둔다. 커밋되는 설정에 비밀 값을 넣지 않는다. 비밀을 어디에 둘지는 이 SPEC 소유자의 결정이며 열려 있다(OD-17).
+- **위 §6 표와의 차이(기록, 위 표는 고치지 않음)**: 위 §6 표의 `workflow.agentic_factory.enabled` 행은 기본값을 `false`로 적었다(0.6.0의 제안). 이 표의 같은 키는 DEC-AF-25 D5에 따라 기본값 `—`·필수다. 두 문언 가운데 어느 것을 남길지는 이 판에서 고치지 않았다.
 - **기준 목록**: lane-20은 자기 코드를 다시 읽은 뒤 처음 통지를 스스로 정정했고, 아래 표가 그 정정을 반영한 기준이다(lane-20 정정, 리더 전달, 이 작성자는 다시 읽지 않음). 표에 지금 하드코딩된 값 세 가지(14a·14b·14c)가 들어 있다. 이 밖에 lane-20 코드에 남은 숫자는 forge host가 `Retry-After`·reset 헤더로 주는 값이며, host가 준 값이지 정책 상수가 아니다.
 
-| 코드 필드(소관 lane/패키지) | 제안 키 이름 | 위치 | 단위 | 검증 규칙(코드가 현재 하는 것) | 기본값 | 상태 |
+| 코드 필드(소관 lane/패키지) | 키 이름 | 위치 | 단위 | 검증 규칙(코드가 현재 하는 것) | 기본값 | 상태 |
 |---|---|---|---|---|---|---|
-| `forge.Backoff.MinSecondaryWait` (lane-20 `forge`) | `workflow.agentic_factory.provider.github.backoff.min_secondary_wait` (provisional) | 새 파일(미정) | duration | 기본값 없음. `Validate`가 `<=0` 거절, `Max < MinSecondaryWait`면 거절 | — | 리더 결정 대기 |
-| `forge.Backoff.Base` (lane-20 `forge`) | `workflow.agentic_factory.provider.github.backoff.base` (provisional) | 새 파일(미정) | duration | 기본값 없음. `<=0` 거절, `Max < Base`면 거절 | — | 리더 결정 대기 |
-| `forge.Backoff.Max` (lane-20 `forge`) | `workflow.agentic_factory.provider.github.backoff.max` (provisional) | 새 파일(미정) | duration | 기본값 없음. `<=0` 거절, `MinSecondaryWait`·`Base`보다 작으면 거절 | — | 리더 결정 대기 |
-| `forge.Backoff.MaxAttempts` (lane-20 `forge`) | `workflow.agentic_factory.provider.github.backoff.max_attempts` (provisional) | 새 파일(미정) | 정수 | 기본값 없음. `<=0` 거절 | — | 리더 결정 대기 |
-| `forge.Adaptive.Min` (lane-20 `forge`, 수집 polling) | `workflow.agentic_factory.collector.poll.min` (provisional) | 새 파일(미정) | duration | 간격은 Min~Max 사이에서 반으로 줄거나 두 배가 된다. 기본값 없음. **검증 코드 없음**(`0`이면 0만큼 기다림). 필요한 규칙 `Min>0`은 lane-20이 아직 집행하지 않음 | — | 리더 결정 대기 |
-| `forge.Adaptive.Max` (lane-20 `forge`) | `workflow.agentic_factory.collector.poll.max` (provisional) | 새 파일(미정) | duration | 기본값 없음. 검증 코드 없음. 필요한 규칙 `Max>=Min`은 아직 집행 안 함 | — | 리더 결정 대기 |
-| `forge.Adaptive.Safety` (lane-20 `forge`) | `workflow.agentic_factory.collector.poll.safety` (provisional) | 새 파일(미정) | duration | push 경로가 정상인 동안의 안전망 polling 간격. 기본값 없음. 검증 코드 없음. 필요한 규칙 `Safety>0`은 아직 집행 안 함 | — | 리더 결정 대기 |
-| `forge.Budget.ReserveCalls` (lane-20 `forge`) | `workflow.agentic_factory.budget.reserve` (provisional) | 새 파일(미정) | 정수(호출 수) | 급한 쓰기를 위해 남겨 두는 호출 수. 검증 없음. `0` = 예비 몫 없음 | — | 리더 결정 대기 |
-| `forge.Budget.ReportResource` (lane-20 `forge`) | `workflow.agentic_factory.budget.report_resource` (provisional) | 새 파일(미정) | 문자열 | 보고 쓰기가 쓰는 host 자원 이름. `''` = 기본 버킷 | — | 리더 결정 대기 |
-| `ghidentity.GitHub.MaxAge` (lane-20 `ghidentity`) | `workflow.agentic_factory.identity.max_age` (provisional) | 새 파일(미정) | duration | 조회한 사실의 재사용 시간. `0` 허용 = 매번 조회 | — | 리더 결정 대기 |
-| `labels.GitHubHost.PerPage` (lane-20 `labels`) | `workflow.agentic_factory.labels.per_page` (provisional) | 새 파일(미정) | 정수 | 목록 페이지 크기. 필수, `0`은 오류 | — | 리더 결정 대기 |
-| `ghintake.Publisher.Limit` (lane-20 `ghintake`) | `workflow.agentic_factory.intake.duplicate_search_limit` (provisional) | 새 파일(미정) | 정수 | 중복 후보 검색 상한. `0`이면 `FindDuplicates`가 거절 | — | 리더 결정 대기 |
-| `docstore.Cursors.MaxDocBytes` (lane-20 `docstore`) | `workflow.agentic_factory.cursor.max_doc_bytes` (provisional) | 새 파일(미정) | bytes | `0` = claim 문서 한도(256 KiB)의 사본. 이 사본은 시험이 실제 저장소 값에 고정한다. claim 한도를 넘으면 저장 때 거절, 설정 시점 검증 없음 | — | 리더 결정 대기 |
-| `docstore.Cursors.MaxChunks` (lane-20 `docstore`) | `workflow.agentic_factory.cursor.max_chunks` (provisional) | 새 파일(미정) | 정수 | `0` = 나누기 끔(한도를 넘는 cursor는 `ErrCursorTooLarge`로 거절). 양수 = 그 수까지 chunk로 나눔, 넘으면 거절 | — | 리더 결정 대기 |
-| `docstore.Queue.MaxDocBytes` / `notify.Inbox.MaxDocBytes` (lane-20 `docstore`·`notify`) | `workflow.agentic_factory.queue.webhook.max_doc_bytes` / `workflow.agentic_factory.queue.inbox.max_doc_bytes` (provisional) | 새 파일(미정) | bytes | cursor의 `MaxDocBytes`와 같음(`0` = 256 KiB claim 문서 한도의 사본, 시험이 실제 저장소 값에 고정). 음수 거절 | — | 리더 결정 대기 |
-| `docstore.Queue.SeenLimit` / `notify.Inbox.SeenLimit` (lane-20) | `workflow.agentic_factory.queue.webhook.seen_limit` / `workflow.agentic_factory.queue.inbox.seen_limit` (provisional) | 새 파일(미정) | 정수 | 기억하는 소비된 전달 id 수. `0` = 기억하지 않음. 음수 거절. `SeenLimit*(MaxIDBytes+3)*2 <= MaxDocBytes`가 아니면 `ErrQueueConfig` | — | 리더 결정 대기 |
-| `docstore.Queue.MaxIDBytes` / `notify.Inbox.MaxIDBytes` (lane-20) | `workflow.agentic_factory.queue.webhook.max_id_bytes` / `workflow.agentic_factory.queue.inbox.max_id_bytes` (provisional) | 새 파일(미정) | 정수(bytes) | id 최대 길이. `SeenLimit>0`이면 필수. 음수 거절. 참고 길이: webhook 전달 id = UUID 36, inbox 메시지 id = 32 | — | 리더 결정 대기 |
-| `webhook.Handler.MaxBody` (lane-20 `webhook`) | `workflow.agentic_factory.webhook.max_body` (provisional) | 새 파일(미정) | bytes | `0`이면 모든 전달이 503 | — | 리더 결정 대기 |
-| `webhook.Handler.Provider` (lane-20 `webhook`) | `workflow.agentic_factory.webhook.provider` (provisional) | 새 파일(미정) | 문자열 | `github`면 저장소 이름을 대소문자 무시로 비교, 그 밖은 정확히 일치 | — | 리더 결정 대기 |
-| `webhook.Handler.Routes[].Repo` (lane-20 `webhook`) | `workflow.agentic_factory.webhook.routes[].repository` (provisional) | 새 파일(미정) | `owner/name` | 경로마다 저장소 하나 | — | 리더 결정 대기 |
-| `webhook.Handler.Routes[].Secret` (lane-20 `webhook`) | `workflow.agentic_factory.webhook.routes[].secret_ref` (provisional) | 새 파일(미정). **값이 아닌 참조만** | 참조(이름) | 전달마다 서명 비밀을 읽는 함수. 비어 있으면 500 거절. lane-20은 값을 어떤 파일에도 쓰지 않음. 비밀의 위치는 열림(OD-17) | — | 리더 결정 대기 |
-| `notify.Service.ReNotifyAfter` (lane-20 `notify`) | `workflow.agentic_factory.notify.renotify_after` (provisional) | 새 파일(미정) | duration | 다시 알린 뒤 다음 재확인까지의 시간. 필수, `<=0`이면 `Tick`이 거절 | — | 리더 결정 대기 |
-| 대기 기록 `MaxRetries` (lane-18 `core.Wait`가 요구, 기록하는 쪽이 설정에서 읽어야 함) | `workflow.agentic_factory.wait.max_retries` (provisional) | 새 파일(미정) | 정수 | 기본값 없음. `<1` 거절. design §2.1c "재시도 상한" 필드의 값 | — | 리더 결정 대기 |
-| 대기 기록 `escalate_to` (lane-18 `core.Wait`가 요구) | `workflow.agentic_factory.wait.escalate_to` (provisional) | 새 파일(미정) | 문자열 | 필수. design §2.1c "상승 대상" 필드의 값 | — | 리더 결정 대기 |
-| `ghpr.Source.Repo` (lane-20 `ghpr`) | `workflow.agentic_factory.pr_source.repository` (provisional) | 새 파일(미정) | `owner/name` | 필수 | — | 리더 결정 대기 |
-| (아직 코드 없음) 상주 루프의 `Tick` 주기 | `workflow.agentic_factory.loop.tick_period` (provisional) | 새 파일(미정) | duration | 코드 없음. 키가 정해질 때까지 루프를 쓰지 않음 | — | 리더 결정 대기 |
-| `ctxledger` 요약 `MaxBytes` (lane-20 `ctxledger`) | `workflow.agentic_factory.context.summary_max_bytes` (provisional) | 새 파일(미정) | bytes | Issue 맥락 요약 본문의 상한. `<=0` = 상한 없음 | — | 리더 결정 대기 |
-| 14a. `ghintake` 검색 호출 `--limit 100`(조회)과 `max(Limit,100)`(중복 후보 검색의 읽기 하한) (lane-20 `ghintake`) | `workflow.agentic_factory.intake.search_limit` / `workflow.agentic_factory.intake.search_read_floor` (provisional) | 새 파일(미정) | 정수 | **현재 하드코딩**. lane-20이 설정으로 옮길 예정. 이름·값은 이 SPEC 소유자의 결정이며 열려 있다 | — | 리더 결정 대기 |
-| 14b. 열린 PR 목록 `--limit 1000` (lane-20 `monitor`/`adapt`/`ghread`) | `workflow.agentic_factory.monitor.open_pr_list_limit` (provisional) | 새 파일(미정) | 정수 | **현재 하드코딩**. lane-20이 설정으로 옮길 예정. 이름·값은 열려 있다 | — | 리더 결정 대기 |
-| 14c. `docstore.modifyRetries = 10` — CAS 충돌 재시도 횟수, `claim.UpdateDoc`의 한도와 같게 둠 (lane-20 `docstore`) | `workflow.agentic_factory.docstore.modify_retries` (provisional) | 새 파일(미정) | 정수 | **현재 하드코딩**. lane-20이 설정으로 옮길 예정. 이름·값은 열려 있다 | — | 리더 결정 대기 |
+| (이 SPEC, "AF가 설정되었다" 판정 입력, DEC-AF-25 D3) | `workflow.agentic_factory.enabled` | `.moai/config/sections/agentic-factory.yaml` | bool | 코드에 읽기 없음(lane-17 읽기 코드에 없음, OD-14 기록). 필수. 판정은 파일 존재 + 이 키 `true` + 필수 키 전부 검증 통과. 어긋나면 설정되지 않음으로 다루고 실패 이유를 보임 | — | confirmed (leader decision) |
+| (이 SPEC, claim 저장소 디렉터리, DEC-AF-25 D2) | `workflow.agentic_factory.claim_store.dir` | `.moai/config/sections/agentic-factory.yaml` | 경로 | 코드에 읽기 없음(lane-21 보고: `claim.Open`에 시험 밖 호출자 없음, OD-13 기록). 필수 | — | confirmed (leader decision) |
+| `forge.Backoff.MinSecondaryWait` (lane-20 `forge`) | `workflow.agentic_factory.provider.github.backoff.min_secondary_wait` | `.moai/config/sections/agentic-factory.yaml` | duration | 기본값 없음. `Validate`가 `<=0` 거절, `Max < MinSecondaryWait`면 거절 | — | confirmed (leader decision) |
+| `forge.Backoff.Base` (lane-20 `forge`) | `workflow.agentic_factory.provider.github.backoff.base` | `.moai/config/sections/agentic-factory.yaml` | duration | 기본값 없음. `<=0` 거절, `Max < Base`면 거절 | — | confirmed (leader decision) |
+| `forge.Backoff.Max` (lane-20 `forge`) | `workflow.agentic_factory.provider.github.backoff.max` | `.moai/config/sections/agentic-factory.yaml` | duration | 기본값 없음. `<=0` 거절, `MinSecondaryWait`·`Base`보다 작으면 거절 | — | confirmed (leader decision) |
+| `forge.Backoff.MaxAttempts` (lane-20 `forge`) | `workflow.agentic_factory.provider.github.backoff.max_attempts` | `.moai/config/sections/agentic-factory.yaml` | 정수 | 기본값 없음. `<=0` 거절 | — | confirmed (leader decision) |
+| `forge.Adaptive.Min` (lane-20 `forge`, 수집 polling) | `workflow.agentic_factory.collector.poll.min` | `.moai/config/sections/agentic-factory.yaml` | duration | 간격은 Min~Max 사이에서 반으로 줄거나 두 배가 된다. 기본값 없음. **검증 코드 없음**(`0`이면 0만큼 기다림). 필요한 규칙 `Min>0`은 lane-20이 아직 집행하지 않음 | — | confirmed (leader decision) |
+| `forge.Adaptive.Max` (lane-20 `forge`) | `workflow.agentic_factory.collector.poll.max` | `.moai/config/sections/agentic-factory.yaml` | duration | 기본값 없음. 검증 코드 없음. 필요한 규칙 `Max>=Min`은 아직 집행 안 함 | — | confirmed (leader decision) |
+| `forge.Adaptive.Safety` (lane-20 `forge`) | `workflow.agentic_factory.collector.poll.safety` | `.moai/config/sections/agentic-factory.yaml` | duration | push 경로가 정상인 동안의 안전망 polling 간격. 기본값 없음. 검증 코드 없음. 필요한 규칙 `Safety>0`은 아직 집행 안 함 | — | confirmed (leader decision) |
+| `forge.Budget.ReserveCalls` (lane-20 `forge`) | `workflow.agentic_factory.budget.reserve` | `.moai/config/sections/agentic-factory.yaml` | 정수(호출 수) | 급한 쓰기를 위해 남겨 두는 호출 수. 검증 없음. `0` = 예비 몫 없음 | — | confirmed (leader decision) |
+| `forge.Budget.ReportResource` (lane-20 `forge`) | `workflow.agentic_factory.budget.report_resource` | `.moai/config/sections/agentic-factory.yaml` | 문자열 | 보고 쓰기가 쓰는 host 자원 이름. `''` = 기본 버킷 | — | confirmed (leader decision) |
+| `ghidentity.GitHub.MaxAge` (lane-20 `ghidentity`) | `workflow.agentic_factory.identity.max_age` | `.moai/config/sections/agentic-factory.yaml` | duration | 조회한 사실의 재사용 시간. `0` 허용 = 매번 조회 | — | confirmed (leader decision) |
+| `labels.GitHubHost.PerPage` (lane-20 `labels`) | `workflow.agentic_factory.labels.per_page` | `.moai/config/sections/agentic-factory.yaml` | 정수 | 목록 페이지 크기. 필수, `0`은 오류 | — | confirmed (leader decision) |
+| `ghintake.Publisher.Limit` (lane-20 `ghintake`) | `workflow.agentic_factory.intake.duplicate_search_limit` | `.moai/config/sections/agentic-factory.yaml` | 정수 | 중복 후보 검색 상한. `0`이면 `FindDuplicates`가 거절 | — | confirmed (leader decision) |
+| `docstore.Cursors.MaxDocBytes` (lane-20 `docstore`) | `workflow.agentic_factory.cursor.max_doc_bytes` | `.moai/config/sections/agentic-factory.yaml` | bytes | `0` = claim 문서 한도(256 KiB)의 사본. 이 사본은 시험이 실제 저장소 값에 고정한다. claim 한도를 넘으면 저장 때 거절, 설정 시점 검증 없음 | — | confirmed (leader decision) |
+| `docstore.Cursors.MaxChunks` (lane-20 `docstore`) | `workflow.agentic_factory.cursor.max_chunks` | `.moai/config/sections/agentic-factory.yaml` | 정수 | `0` = 나누기 끔(한도를 넘는 cursor는 `ErrCursorTooLarge`로 거절). 양수 = 그 수까지 chunk로 나눔, 넘으면 거절 | — | confirmed (leader decision) |
+| `docstore.Queue.MaxDocBytes` (lane-20 `docstore`, webhook 큐) | `workflow.agentic_factory.queue.webhook.max_doc_bytes` | `.moai/config/sections/agentic-factory.yaml` | bytes | cursor의 `MaxDocBytes`와 같음(`0` = 256 KiB claim 문서 한도의 사본, 시험이 실제 저장소 값에 고정). 음수 거절 | — | confirmed (leader decision) |
+| `docstore.Queue.SeenLimit` (lane-20 `docstore`, webhook 큐) | `workflow.agentic_factory.queue.webhook.seen_limit` | `.moai/config/sections/agentic-factory.yaml` | 정수 | 기억하는 소비된 전달 id 수. `0` = 기억하지 않음. 음수 거절. `SeenLimit*(MaxIDBytes+3)*2 <= MaxDocBytes`가 아니면 `ErrQueueConfig` | — | confirmed (leader decision) |
+| `docstore.Queue.MaxIDBytes` (lane-20 `docstore`, webhook 큐) | `workflow.agentic_factory.queue.webhook.max_id_bytes` | `.moai/config/sections/agentic-factory.yaml` | 정수(bytes) | id 최대 길이. `SeenLimit>0`이면 필수. 음수 거절. 참고 길이: webhook 전달 id = UUID 36 | — | confirmed (leader decision) |
+| `notify.Inbox.MaxDocBytes` (lane-20 `notify`, agent inbox) | `workflow.agentic_factory.notify.inbox.max_doc_bytes` | `.moai/config/sections/agentic-factory.yaml` | bytes | webhook 큐와 같은 규칙(`0` = 256 KiB claim 문서 한도의 사본, 시험이 실제 저장소 값에 고정). 음수 거절. webhook 큐와 다른 인스턴스(DEC-AF-25 D4) | — | confirmed (leader decision) |
+| `notify.Inbox.SeenLimit` (lane-20 `notify`, agent inbox) | `workflow.agentic_factory.notify.inbox.seen_limit` | `.moai/config/sections/agentic-factory.yaml` | 정수 | webhook 큐와 같은 규칙. `0` = 기억하지 않음. 음수 거절. `SeenLimit*(MaxIDBytes+3)*2 <= MaxDocBytes`가 아니면 `ErrQueueConfig` | — | confirmed (leader decision) |
+| `notify.Inbox.MaxIDBytes` (lane-20 `notify`, agent inbox) | `workflow.agentic_factory.notify.inbox.max_id_bytes` | `.moai/config/sections/agentic-factory.yaml` | 정수(bytes) | id 최대 길이. `SeenLimit>0`이면 필수. 음수 거절. 참고 길이: inbox 메시지 id = 32 | — | confirmed (leader decision) |
+| `webhook.Handler.MaxBody` (lane-20 `webhook`) | `workflow.agentic_factory.webhook.max_body` | `.moai/config/sections/agentic-factory.yaml` | bytes | `0`이면 모든 전달이 503 | — | confirmed (leader decision) |
+| `webhook.Handler.Provider` (lane-20 `webhook`) | `workflow.agentic_factory.webhook.provider` | `.moai/config/sections/agentic-factory.yaml` | 문자열 | `github`면 저장소 이름을 대소문자 무시로 비교, 그 밖은 정확히 일치 | — | confirmed (leader decision) |
+| `webhook.Handler.Routes[].Repo` (lane-20 `webhook`) | `workflow.agentic_factory.webhook.routes[].repository` | `.moai/config/sections/agentic-factory.yaml` | `owner/name` | 경로마다 저장소 하나 | — | confirmed (leader decision) |
+| `webhook.Handler.Routes[].Secret` (lane-20 `webhook`) | `workflow.agentic_factory.webhook.routes[].secret_ref` (provisional) | `.moai/config/sections/agentic-factory.yaml`. **값이 아닌 참조만** | 참조(이름) | 전달마다 서명 비밀을 읽는 함수. 비어 있으면 500 거절. lane-20은 값을 어떤 파일에도 쓰지 않음. 비밀의 위치는 열림(OD-17) | — | 리더 결정 대기 |
+| `notify.Service.ReNotifyAfter` (lane-20 `notify`) | `workflow.agentic_factory.notify.renotify_after` | `.moai/config/sections/agentic-factory.yaml` | duration | 다시 알린 뒤 다음 재확인까지의 시간. 필수, `<=0`이면 `Tick`이 거절 | — | confirmed (leader decision) |
+| 대기 기록 `MaxRetries` (lane-18 `core.Wait`가 요구, 기록하는 쪽이 설정에서 읽어야 함) | `workflow.agentic_factory.wait.max_retries` | `.moai/config/sections/agentic-factory.yaml` | 정수 | 기본값 없음. `<1` 거절. design §2.1c "재시도 상한" 필드의 값 | — | confirmed (leader decision) |
+| 대기 기록 `escalate_to` (lane-18 `core.Wait`가 요구) | `workflow.agentic_factory.wait.escalate_to` | `.moai/config/sections/agentic-factory.yaml` | 문자열 | 필수. design §2.1c "상승 대상" 필드의 값 | — | confirmed (leader decision) |
+| `ghpr.Source.Repo` (lane-20 `ghpr`) | `workflow.agentic_factory.pr_source.repository` | `.moai/config/sections/agentic-factory.yaml` | `owner/name` | 필수 | — | confirmed (leader decision) |
+| (아직 코드 없음) 상주 루프의 `Tick` 주기 | `workflow.agentic_factory.loop.tick_period` (provisional) | `.moai/config/sections/agentic-factory.yaml` | duration | 코드 없음. 키가 정해질 때까지 루프를 쓰지 않음 | — | 리더 결정 대기 |
+| `ctxledger` 요약 `MaxBytes` (lane-20 `ctxledger`) | `workflow.agentic_factory.context.summary_max_bytes` | `.moai/config/sections/agentic-factory.yaml` | bytes | Issue 맥락 요약 본문의 상한. `<=0` = 상한 없음 | — | confirmed (leader decision) |
+| 14a. `ghintake` 검색 호출 `--limit 100`(조회)과 `max(Limit,100)`(중복 후보 검색의 읽기 하한) (lane-20 `ghintake`) | `workflow.agentic_factory.intake.search_limit` / `workflow.agentic_factory.intake.search_read_floor` (provisional) | `.moai/config/sections/agentic-factory.yaml` | 정수 | **현재 하드코딩**. lane-20이 설정으로 옮길 예정. 이름·값은 이 SPEC 소유자의 결정이며 열려 있다 | — | 리더 결정 대기 |
+| 14b. 열린 PR 목록 `--limit 1000` (lane-20 `monitor`/`adapt`/`ghread`) | `workflow.agentic_factory.monitor.open_pr_list_limit` (provisional) | `.moai/config/sections/agentic-factory.yaml` | 정수 | **현재 하드코딩**. lane-20이 설정으로 옮길 예정. 이름·값은 열려 있다 | — | 리더 결정 대기 |
+| 14c. `docstore.modifyRetries = 10` — CAS 충돌 재시도 횟수, `claim.UpdateDoc`의 한도와 같게 둠 (lane-20 `docstore`) | `workflow.agentic_factory.docstore.modify_retries` (provisional) | `.moai/config/sections/agentic-factory.yaml` | 정수 | **현재 하드코딩**. lane-20이 설정으로 옮길 예정. 이름·값은 열려 있다 | — | 리더 결정 대기 |
 
-- 이 표는 "AF가 설정되었다" 판정 키(OD-14)와 claim 저장소 디렉터리(OD-13)를 정하지 않는다. 둘은 lane-22 웹 콘솔 연결을 막은 채 열려 있다.
-- 행 이름의 범위 검사가 코드에 없는 칸(`forge.Adaptive` 세 필드)은 "필요한 규칙"을 적었을 뿐 이 SPEC이 그 규칙을 채택한 것은 아니다. 채택은 키 이름과 함께 리더 결정을 기다린다.
+- "AF가 설정되었다" 판정(OD-14)과 claim 저장소 디렉터리(OD-13)는 DEC-AF-25 D3·D2로 정해졌다(위 규칙, 표 첫 두 행). 남은 것은 이 파일의 template 배포(OD-19)다.
+- 범위 검사가 코드에 없는 칸(`forge.Adaptive` 세 필드)은 "필요한 규칙"을 적었을 뿐 이 SPEC이 그 규칙을 채택한 것은 아니다. 키 이름은 확정됐지만, 그 검증 규칙의 채택은 리더 결정을 기다린다(OD-17).
 
 ## §7 역할 (REQ-AF-010)
 
