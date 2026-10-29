@@ -159,6 +159,9 @@ type Store struct {
 	ref ControlRef
 	// budget is told about every authority write; see core.Budget.
 	budget core.Budget
+	// sync makes a write durable before it is reported; the zero value syncs
+	// for real, tests inject failures.
+	sync syncer
 }
 
 const (
@@ -270,24 +273,7 @@ func (s *Store) writeLocal(i core.IssueRef, r Record) error {
 	if err != nil {
 		return err
 	}
-	tmp, err := os.CreateTemp(s.dir, i.Resource()+".tmp-*")
-	if err != nil {
-		return fmt.Errorf("%w: %v", core.ErrStoreUnavailable, err)
-	}
-	if _, err := tmp.Write(b); err != nil {
-		_ = tmp.Close()
-		_ = os.Remove(tmp.Name())
-		return fmt.Errorf("%w: %v", core.ErrStoreUnavailable, err)
-	}
-	if err := tmp.Close(); err != nil {
-		_ = os.Remove(tmp.Name())
-		return fmt.Errorf("%w: %v", core.ErrStoreUnavailable, err)
-	}
-	if err := os.Rename(tmp.Name(), s.path(i)); err != nil {
-		_ = os.Remove(tmp.Name())
-		return fmt.Errorf("%w: %v", core.ErrStoreUnavailable, err)
-	}
-	return nil
+	return s.writeAtomic(s.dir, i.Resource()+".tmp-*", s.path(i), b)
 }
 
 // write persists r: to the authoritative copy first when one is attached
