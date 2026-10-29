@@ -291,6 +291,13 @@ func (l *Ledger) Flush(ctx context.Context) error {
 // remembered id it is one conditional read (a 304 means unchanged); otherwise it is the marker lookup.
 // When drift is found the remembered hash is cleared so the sender writes to the known id at once.
 func (l *Ledger) drifted(ctx context.Context, in effect.Intent) (bool, error) {
+	// The Executor bounds the writes with Timeouts.For; this read runs outside it, so it takes the same bound
+	// (the ledger comment's). With no timeout configured the caller's context is the only limit.
+	if to := l.Timeouts.For(effect.LedgerComment); to > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, to)
+		defer cancel()
+	}
 	c, have := l.cacheGet(in.Issue)
 	if f, ok := l.Remote.(Fetcher); ok && have {
 		cm, tag, notModified, err := f.Fetch(ctx, in.Issue, c.id, c.etag)
