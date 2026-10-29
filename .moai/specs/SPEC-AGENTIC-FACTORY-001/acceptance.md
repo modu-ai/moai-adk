@@ -1,4 +1,4 @@
-# SPEC-AGENTIC-FACTORY-001 — 수용 기준 (0.6.1)
+# SPEC-AGENTIC-FACTORY-001 — 수용 기준 (0.6.2)
 
 ## §A 측정 규칙
 
@@ -37,7 +37,7 @@
 - **격리 실행**: 실제 Issue에서 돌지 않는 분기·변형(AC-AF-006 로컬 동기화 변형 등)은 격리 사본에서 돈다. control ref 대신 시험용 임시 ref를 쓰고, GitHub 쓰기 대신 호출 기록기를 붙인다. 로컬 동기화 변형은 독립 gitdir·독립 인덱스의 별도 클론에서 만든다(디렉터리 복사·`git worktree add` 금지).
 - **격리 불변 단언**(격리 사례마다 전후 비교): ① 클론의 `git rev-parse --absolute-git-dir`이 실제 트리와 다름 ② 실제 트리의 `git rev-parse HEAD`, `git symbolic-ref HEAD`, `git status --porcelain=v2 -z`가 바이트 동일 ③ 실제 gitdir `index` SHA-256 동일 ④ 실제 트리 미커밋 경로마다 내용 SHA-256·인덱스 항목·모드 동일 ⑤ control ref 순번 동일.
 - **재실행**: 묶음은 실제 Issue 한 쌍에 한 번만. FAIL이면 새 Issue 한 쌍과 새 control 시험 ref가 필요하다. 이전 실행의 기록은 읽기 전용으로 남긴다. 06에서 실제 병합이 일어났다면 되돌리지 않는다.
-- **두 번째 Issue**: 07은 두 번째 Issue가 E01까지 간 뒤 하네스가 PARKED `operator-hold`(근거 원문 `scenario-suite-end`)로 두고, attempt가 실행되지 않았음을 단언한다.
+- **두 번째 Issue**: 07은 두 번째 Issue가 E01까지 간 뒤 하네스가 PARKED `operator-hold`(근거 원문 `scenario-suite-end`)로 두고, attempt가 실행되지 않았음을 단언한다. `operator-hold`를 PARKED 사유로 둘지는 운영자 결정 대기 OD-12(spec.md §G.1)이며, 결정이 이 값을 두지 않는 쪽이면 이 단언은 manager-spec 재위임으로 다시 쓴다.
 - **운영자 keep-set**: 실제 Issue 댓글 쓰기(01~05), 보호된 `main` 실제 병합과 Issue 종료(06·07)는 운영자 승인 대상이다(OD-6). 승인 기록이 없으면 PARKED `operator-ack-missing`이며 PASS가 아니다.
 - **Codex**: `workflow.agentic_factory.codex.enabled` 미설정으로 돈다. 끝에 Codex 호출 계수기 = 0. 계수기가 실제로 센다는 증거는 AC-AF-015의 `true` 사례다.
 
@@ -218,7 +218,7 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 - 연결: maps REQ-AF-012, REQ-AF-018. 주 REQ는 REQ-AF-012이고, REQ-AF-018은 보조 연결이다(REQ-AF-018에는 주 AC가 없다 — spec.md §E). 초록: M3.
 - 정본 주 시험 10: PREP01~PREP10.
 - 명령: `go test ./internal/agenticfactory/... -run '^TestAcceptanceManifest$/^(PREP(0[1-9]|10))$|^(TestIntake_.*)$' -count=1 -v` → PASS 줄 = 10 + 사례 5.
-- 사례: (a) control ref 기록 전 충돌 → 수락 응답 0. (b) 상태가 design §4.2의 7행 밖으로 이동 요청 → 거절. 6단계 이름만 가진 구현은 `BRANCH_REGISTERED`가 없어 FAIL. (c) READY ACK 전 개발 launch → 0. (d) `intake.max_concurrent` 미설정 → 거절. 설정값 N에서 동시 준비 N+1번째 → 대기. (e) 기한 초과 → 예약 해제.
+- 사례: (a) control ref 기록 전 충돌 → 수락 응답 0. (b) 상태가 design §4.2의 7행 밖으로 이동 요청 → 거절. 6단계 이름만 가진 구현은 `BRANCH_REGISTERED`가 없어 FAIL. (c) READY ACK 전 개발 launch → 0. (d) `intake.max_concurrent`를 N으로 설정했을 때 동시 준비 N+1번째 → 대기. (e) 기한 초과 → 예약 해제. 키 미설정 사례는 두지 않는다. 미설정 동작은 운영자 결정 대기(OD-9)이며, 결정이 나면 manager-spec 재위임으로 사례를 넣고 기대 PASS 수를 고친다.
 - 변형 단언: 수락을 먼저 돌려주는 구현은 (a), 무한 하위 작업은 (d)에서 FAIL.
 - RED 이유: 접수 서비스 없음. 초록 경로: M3(lane-18 상태, lane-20 Issue 발행).
 

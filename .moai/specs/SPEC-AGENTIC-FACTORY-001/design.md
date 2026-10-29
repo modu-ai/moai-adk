@@ -1,4 +1,4 @@
-# SPEC-AGENTIC-FACTORY-001 — 설계 (0.6.1)
+# SPEC-AGENTIC-FACTORY-001 — 설계 (0.6.2)
 
 이 문서는 `spec.md`의 표 요구사항(REQ-AF-016~025)이 가리키는 표와, 묶음 요구사항(REQ-AF-001~015)의 세부 계약을 담는다. 코드 구조와 함수 이름은 정하지 않는다. 다만 이미 다른 레인이 만든 이름(예: lane-18 `core.Collaboration.Authorize`, lane-17 `NormalizeRepositoryPath`)은 사실로 인용한다.
 
@@ -72,13 +72,13 @@ GitHub Issue (업무 필드의 권위: 제목·수용 기준·우선순위·의�
 | `store-unavailable` | control ref 읽기 실패 또는 CAS 실패 | P, R | 읽기·CAS 오류 원문 | control ref 읽기·CAS 성공. 로컬 캐시만으로 진행하지 않음 |
 | `user-control` | 사용자가 제어권을 가져감 | P | 도구 표식 | 사용자가 돌려줌 |
 | `operator-ack-missing` | 운영자 keep-set 동작 또는 기존 writer의 안전 정지 ACK가 없음. **역할 부여 부재에는 쓰지 않는다**(그것은 G의 `producer-not-allowed`) | P, R | 확인 대기 기록 | 해당 ACK 수신 |
-| `operator-hold` | 운영자(또는 운영자가 승인한 시험 하네스)가 멈춤 | P | 요청자와 사유 원문 | 운영자 재개 기록 |
+| `operator-hold` | 운영자(또는 운영자가 승인한 시험 하네스)가 멈춤. **이 값을 PARKED 사유로 둘지는 운영자 결정 대기 OD-12**(spec.md §G.1). 정본 S46에는 이에 대응하는 PARKED 사유가 없다 | P | 요청자와 사유 원문 | 운영자 재개 기록 |
 | `dependency` | 의존 Issue 미완료(E02) | P | 원격 의존 증거 | 의존 DONE |
-| `stop-unknown` | heartbeat·stop 불명, quiescence 부족(E04) | P | incarnation 확인 기록 | quiescence 확인 또는 안전 정지 기록 |
+| `stop_unknown` | heartbeat·stop 불명, quiescence 부족(E04) | P | incarnation 확인 기록 | quiescence 확인 또는 안전 정지 기록 |
 | `unknown-effect` | 외부 효과 결과 불명(E11, E16) | P | effect intent와 sender 확인 기록 | 원격 사실 확정 |
 | `pending-effect` | 병합 뒤 sync·close 실패(E14) | P | merge 사실과 실패한 의무 | 실패한 의무만 다시 수행해 성공 |
 | `contract-change` | 계약·설정·정책 변경(E18, E24) | P | proposed/adopted 차이 | 새 attempt에 승인 revision 적용 |
-| `start-unknown` | supervisor 기동 불명(E26) | P | launch key 생존 불명 기록 | 기동 사실 확정. 새 launch 금지 |
+| `start_unknown` | supervisor 기동 불명(E26) | P | launch key 생존 불명 기록 | 기동 사실 확정. 새 launch 금지 |
 | `not-issue-author` | 자기 Issue 전용 동작을 남의 Issue에 요청(본문 편집·종료, 협업 허락 없음) | R | 인증 사용자 숫자 id, 작성자 숫자 id | 해당 Issue에 맞는 경로(댓글, 협업 옵션) |
 | `identity-unknown` | 인증 사용자 또는 작성자의 숫자 id를 얻지 못함 | R | 실패한 조회 | 두 id 모두 관측 |
 | `repository-not-allowed` | 저장소가 허용 목록에 없음, 또는 요청한 저장소와 응답한 저장소가 다름, 또는 301 등 어떤 redirect든 | R | 요청 저장소, 응답 저장소·상태 코드 | 운영자가 허용 목록을 바꿈. redirect는 허용으로 보지 않음 |
@@ -86,6 +86,8 @@ GitHub Issue (업무 필드의 권위: 제목·수용 기준·우선순위·의�
 | `owner-unconfirmed` | 남의 Issue 인수에 기존 owner가 없거나 인계가 확인되지 않음 | R | owner 조회 결과 | 기존 owner의 인계 확인 |
 | `foreign-closing-keyword` | PR 본문이나 커밋이 닫아서는 안 되는 Issue를 가리키는 종결 키워드를 가짐 | R | 키워드, 대상 Issue, 위치 | 키워드 제거 |
 | `op-not-defined` | 정의되지 않은 Issue 동작(자기 Issue의 제목 편집·마일스톤 변경·다시 열기) | R | 동작 이름 | 없음(정의 안 됨, §H) |
+
+**PARKED 전용 사유의 철자는 정본을 따른다(0.6.2).** 정본 S46(댓글 6489610367) 본문 48·50·57·60·70·72행은 `dependency`, `stop_unknown`, `unknown-effect`, `pending-effect`, `contract-change`, `start_unknown`으로 적는다. `stop_unknown`·`start_unknown` 두 값만 밑줄이고 나머지 넷은 하이픈이다. 0.6.1까지 이 표는 두 값을 하이픈으로 적었고 0.6.2에서 정본 철자로 바꿨다. 같은 두 철자는 정본 댓글 6487471042(167·189행)에도 있다.
 
 `unclassified-403`과 표 끝 7행, 모두 8개 문자열은 lane-18이 보고하고 리더가 확인한 `core/state.go`의 임시 상수다(spec.md §B.2, DEC-AF-16).
 
@@ -100,11 +102,11 @@ GitHub Issue (업무 필드의 권위: 제목·수용 기준·우선순위·의�
 | `permission-not-granted` | 1개, 81행 `ReasonPermissionNotGranted` | 1개, 94행 `DenyPermissionNotGranted` | 85행 | 일치 |
 | `owner-unconfirmed` | 1개, 82행 `ReasonOwnerUnconfirmed` | 1개, 95행 `DenyOwnerUnconfirmed` | 86행 | 일치 |
 | `foreign-closing-keyword` | 1개, 83행 `ReasonForeignClosing` | 0개 | 87행 | 일치 |
-| `op-not-defined` | 1개, 86행 `ReasonOpNotDefined` | 0개(따옴표 문자열 없음. 208행이 상수 이름 `ReasonOpNotDefined`로 씀. 그 판정의 자체 값은 96행 `"unknown-operation"`) | 88행 | 일치 |
+| `op-not-defined` | 1개, 86행 `ReasonOpNotDefined` | 0개(따옴표 문자열 없음. 208행은 상수 `ReasonOpNotDefined`를 반환할 뿐이다) | 88행 | 일치 |
 
 - 8개 모두 SPEC 문자열과 Go 상수가 바이트 단위로 같다. 그래서 SPEC 문자열을 고치지 않았다.
-- "`f9f44e5ecc`의 `core/authz.go`에 `op-not-defined`가 있다"는 리더 확인 사실과 이 대조의 차이: 따옴표 붙은 문자열은 `authz.go`에 없고, `authz.go`는 `state.go`의 상수를 이름으로 참조한다. 값의 원천은 `state.go:86` 하나다.
-- lane-18 코드에만 있는 문자열(사유 집합 밖): `AuthzVerdict` 값 `"unknown-operation"`(authz.go:96)과 `"allow"`(authz.go:90). 둘 다 `BlockReason`이 아니며, 기록되는 사유는 `Reason()`이 바꾼 값이다(spec.md §H). `BlockReason` 상수 26개는 모두 이 표 안에 있다.
+- `op-not-defined`의 위치(리더 정정 반영): `authz.go:208`은 상수 `ReasonOpNotDefined`를 **반환할 뿐이다**. 따옴표 붙은 문자열 `"op-not-defined"`는 `state.go:86`에만 있다.
+- `authz.go:96`의 `"unknown-operation"`과 `authz.go:90`의 `"allow"`는 `AuthzVerdict` 값이며 `BlockReason`이 아니다. `BlockReason` 상수 26개는 모두 이 표 안에 있다. 관찰 기록은 spec.md §H(공백).
 
 ### 2.1b 귀속 조회 결과 → 게이트 사유 (단일 표, REQ-AF-007·011)
 
@@ -134,7 +136,7 @@ GitHub Issue (업무 필드의 권위: 제목·수용 기준·우선순위·의�
 | E01 | READY | claim | 채택 계약·의존·scope·예산, 활성 owner 없음, 준비 receipt와 READY ACK(§4.2) | BUILDING/SPEC. epoch·attempt·예약을 원자적으로 확정 | ControlService(dispatcher) |
 | E02 | READY | 의존 미완료 | 원격 의존 증거 | READY + PARKED `dependency` | ControlService |
 | E03 | BUILDING | PR 인계 | PR 원격 HEAD/base, 계약, SPEC, task 결과, 검사 상태, 원 writer, leader 수락 receipt, quiescence, 보존 확인(§4.8 PRHandoff) | REVIEWING. 종결 책임 leader로, agent claim·slot 반환 | ControlService(agent, leader) |
-| E04 | BUILDING | heartbeat·stop 불명 | incarnation 확인, quiescence 부족 | 같은 단계 + PARKED `stop-unknown` | ControlService |
+| E04 | BUILDING | heartbeat·stop 불명 | incarnation 확인, quiescence 부족 | 같은 단계 + PARKED `stop_unknown` | ControlService |
 | E05 | BUILDING/REVIEWING | 안전 인계 | process·tool·원격 quiescence, 잔여 send·write 정리, 원본 보존 | 새 epoch·attempt로 BUILDING, 보존 후 재검증 | ControlService |
 | E06 | REVIEWING | 수리 결정 | finding·예산, 원 Issue·branch의 배타 owner, scope 재예약, 기존 writer 종료 | BUILDING/FIX, 새 attempt. 가용 agent에 배차, 그 agent의 다른 Issue를 덮어쓰지 않음 | ControlService(leader) |
 | E07 | REVIEWING | advisory 무응답 | 정책 fallback 허용 | 단계 유지, leader 판단 receipt. 감사 게이트 불변 | ControlService |
@@ -156,24 +158,31 @@ GitHub Issue (업무 필드의 권위: 제목·수용 기준·우선순위·의�
 | E23 | BUILDING/SPEC | SPEC 감사 결과 | 같은 SPEC revision, 선택된 감사자, 요구 범위 | PASS → IMPLEMENT, FAIL → SPEC 수정, INCONCLUSIVE → PARKED | ControlService |
 | E24 | BUILDING/FIX | SPEC 변경 제안 | 실제 계약 영향 | PARKED `contract-change`, E18 뒤 SPEC 단계 | ControlService |
 | E25 | BUILDING | scope 확대 충돌 | 전체 확대 원자 실패 | checkpoint·quiescence·기존 scope 반환 후 전체 재예약. Issue 독점 유지 | ControlService |
-| E26 | 비종결 | supervisor 기동 불명 | launch key 생존 불명 | PARKED `start-unknown`. 새 launch 금지 | ControlService |
+| E26 | 비종결 | supervisor 기동 불명 | launch key 생존 불명 | PARKED `start_unknown`. 새 launch 금지 | ControlService |
 | E27 | 아무 상태 | 관찰 사실 수집 | 서명·권한·생산자 검증 | receipt 기록. 사실만으로 허가를 주지 않음 | ControlService |
 
 - 표에 없는 간선과 요청자가 맞지 않는 요청은 거절하고 상태를 바꾸지 않는다.
 - E13의 순서: Issue 종료가 DONE 기록보다 먼저다(DEC-AF-07, 시험 M34). 다음 dispatch는 DONE 뒤.
 - 0.5.0에 없던 간선 `landing → verifying`은 E10이 메운다. 수리는 E10 → E06이다(DEC-AF-07).
 
-### 2.3 0.5.0 상태 이름 대응
+### 2.3 옛 상태 이름 대응 (0.4.0·0.5.0 → 정본 값)
 
-| 0.5.0 | 0.6.0 |
-|---|---|
-| `queued` | `READY` |
-| `claimed` | (E01 안의 원자 단계, 별도 상태 없음) |
-| `implementing` | `BUILDING/IMPLEMENT` 또는 `BUILDING/FIX` |
-| `verifying`, `ready` | `REVIEWING` |
-| `landing` | `MERGING` |
-| `done` | `DONE` |
-| `blocked`, `on-hold` | 현 단계 + `PARKED`(사유는 §2.1a) |
+오른쪽 열은 정본 값(§2.1의 단계·하위 단계, §2.1a 사유)만 쓴다. "출처" 열이 '리더 결정'인 행은 0.6.2에서 'leader decision, relayed via the leader session'으로 받은 대응이다. 나머지 행은 0.6.0 판의 대응이 그대로다.
+
+| 옛 상태 | 정본 값 | 출처 |
+|---|---|---|
+| `queued` | `READY` | 0.6.0 |
+| `claimed` | (E01 안의 원자 단계, 별도 상태 없음) | 0.6.0 |
+| `implementing` | `BUILDING/IMPLEMENT` 또는 `BUILDING/FIX` | 0.6.0 |
+| `verifying`, `ready` | `BUILDING/IMPLEMENT` + 검사 증거. 새 하위 단계는 만들지 않는다 | 리더 결정 |
+| `landing` | 인계 receipt(E03)가 있으면 `REVIEWING`, 병합 의무가 진행 중이면 `MERGING` | 리더 결정 |
+| `done` | `DONE` | 0.6.0 |
+| `blocked` | 현 단계 + `PARKED`(사유 하나, §2.1a) | 리더 결정 |
+| `on-hold` | 정하지 않음. `operator-hold`를 PARKED 사유로 둘지와 함께 운영자 결정 대기 OD-12(spec.md §G.1) | — |
+
+- 0.6.1까지 이 표는 `verifying`·`ready` → `REVIEWING`, `landing` → `MERGING`, `blocked`·`on-hold` → 현 단계 + `PARKED`였다. 0.6.2에서 리더 결정으로 바꿨다.
+- `landing`에서 인계 receipt도 없고 병합 의무도 진행 중이 아닌 경우는 리더 결정에 없다(spec.md §H).
+- 옛 상태 키의 이전은 세 단계로 나란히 진행된다고 기록한다: 새 키 추가 → 전환(옛 값을 새 값에서 파생) → 옛 키 제거. 출처: 'leader decision / lane-18 implementation in progress'. 관찰로만 기록하며 이 SPEC은 코드에 무엇도 요구하지 않는다(spec.md §B.2).
 
 ## §3 전달 상태 네 단계 (REQ-AF-005)
 
@@ -253,7 +262,7 @@ ACK가 없으면 다시 보내지 않고 받는 쪽 상태를 먼저 조회한�
 
 - 7행이다. 이름으로는 8개(`BLOCKED`와 `EFFECT_UNKNOWN`이 한 행). lane-18이 이 7행을 구현했다고 보고했다(커밋 `da7f3a4290`, 미검증). lane-20의 표시 이름 6개는 이 표에 맞추는 중인 표시 이름이며, 코드 단계 수를 뜻하지 않는다.
 - 준비 receipt 필드: request_id, Issue id, branch/base/remote OID, host와 worktree 식별, 준비 grant와 종료 증거, 예약 agent·session, 설정 revision, 점검 결과, READY ACK.
-- 실행 규칙: 큐는 동시 준비 수 `intake.max_concurrent`(1 이상, 미설정 거절), 단계 기한 `intake.stage_timeout`, 우선순위 후 접수 시각 순서, 요청당 준비자 하나, 기한이 지나면 예약 해제. 재시작 때는 기록된 요청만 재조정한다. 포화 때 수락 후 대기할지 거절할지는 OQ-21.
+- 실행 규칙: 큐는 동시 준비 수 `intake.max_concurrent`(1 이상. 미설정일 때의 동작은 운영자 결정 대기 OD-9), 단계 기한 `intake.stage_timeout`, 우선순위 후 접수 시각 순서, 요청당 준비자 하나, 기한이 지나면 예약 해제. 재시작 때는 기록된 요청만 재조정한다. 포화 때 수락 후 대기할지 거절할지는 OQ-21.
 - 금지: 새 원장 저장소, 무한 하위 작업, 상시 레인.
 
 ### 4.3 Issue 맥락 장부 (REQ-AF-019, [8] S51)
@@ -364,7 +373,7 @@ ACK가 없으면 다시 보내지 않고 받는 쪽 상태를 먼저 조회한�
 |---|---|---|---|
 | `local` | K1만 끝남, push 의도 없음 | — | K2부터 |
 | `pending` | push 의도 기록, ACK 미관측 | — | 아래 `committed-unacked`와 같음 |
-| `committed-unacked` | K1 뒤 ACK 전에 충돌·실패 | `pending` | push 전에 원격 ref를 조회. ref = SHA면 ACK 관측으로 보고 K3, 아니면 한 번 push. 결과 불명이면 PARKED `unknown-effect` |
+| `committed-unacked` | K1 뒤 ACK 전에 충돌·실패 | `pending` | push 전에 원격 ref를 조회. ref = SHA면 ACK 관측으로 보고 K3, 아니면 push. push 횟수는 운영자 결정 대기 OD-11(0.6.1까지의 문언은 "한 번"). 결과 불명이면 PARKED `unknown-effect` |
 | `acked-manifest-unverified` | ACK는 있으나 manifest CAS 실패·불일치 | `pending` | `remote-durable` 아님, `recovered` 불가. control ref를 다시 읽고 현재 epoch로 CAS 재기록 |
 | `remote-durable` | K2 ACK와 K3 manifest 검증 둘 다 관측 | — | 재사용 가능 |
 | `durable-link-pending` | K4 실패 | `remote-durable` | 복구를 취소하지 않음. 링크를 보고 등급 쓰기로 예산 규칙 아래 재시도 |
@@ -399,7 +408,9 @@ ACK가 없으면 다시 보내지 않고 받는 쪽 상태를 먼저 조회한�
 
 상한을 넘을 때: 가장 오래된 checkpoint 가운데 "가장 최근 `remote-durable`이 아니고, 확정되지 않은 effect receipt가 참조하지 않는" 것을 manifest 색인에서 뺀다(커밋과 이력은 지우지 않는다). 뺄 수 있는 것이 없으면 새 checkpoint를 `capacity-short`로 거절하고 기존 것은 그대로 둔다. 키가 미설정일 때의 동작은 정하지 않았다(운영자 결정 대기 OD-8, spec.md §G.1).
 
-**구현 보고(미검증)**: lane-18은 커밋 `e6499b731a`에 상태 `local`·`pending`·`remote-durable`·`recovered`를 구현했다고 보고했다('reported by lane-18 / lane-20, relayed by the leader; commit existence confirmed by the leader via cat-file'). 위 표의 `committed-unacked`·`acked-manifest-unverified`·`durable-link-pending`은 보고에 없다(spec.md §H).
+**구현 보고(미검증)**: lane-18은 커밋 `e6499b731a`에 상태 `local`·`pending`·`remote-durable`·`recovered`를 구현했다고 보고했다('reported by lane-18 / lane-20, relayed by the leader; commit existence confirmed by the leader via cat-file'). 위 표의 `committed-unacked`·`acked-manifest-unverified`·`durable-link-pending`은 그 보고에 없다. 관찰로만 기록한다(spec.md §H 공백 (d)).
+
+**정본과의 관계(0.6.2, 관찰)**: 위 네 단계 K1~K4와 상태 일곱 개는 이 SPEC이 DEC-AF-20을 풀어 쓴 것이며, 정본 댓글에는 이 이름들이 없다(spec.md §H 공백 (f)). lane-18은 코드의 상태 넷과 필드로 같은 정보를 나타낼 수 있다고 보고했다(`checkpoint.go:125-146`, spec.md §B.2). 이 SPEC은 어느 쪽에 맞추지도 않는다.
 
 **측정**: checkpoint마다 API 호출 수, 토큰, 걸린 시간을 측정값으로 기록한다. 측정할 수 없는 값(현재 토큰 receipt 경로 없음)은 Gap으로 기록하고 추정값을 쓰지 않는다(REQ-AF-025).
 
@@ -485,7 +496,7 @@ SPEC-ASIDE-BROWSER-001은 aside 부재 시 조용히 기본 도구로 진행(REQ
 | `workflow.agentic_factory.collaboration.enabled` | bool | `false` | bool 외 거절 | ✓ |
 | `workflow.agentic_factory.collaboration.allowed_repositories` | 문자열 목록 | 빈 목록 | §4.1 항목 검증 | ✓ |
 | `workflow.agentic_factory.collaboration.permissions.edit_body` / `.close` / `.labels` / `.assignees` | bool | 각 `false` | bool 외 거절. **남의 Issue에만 적용** | ✓ |
-| `workflow.agentic_factory.intake.max_concurrent` | 정수 | 미설정 | 1 이상, 미설정 거절 | 제안. 숫자 OPEN |
+| `workflow.agentic_factory.intake.max_concurrent` | 정수 | 미설정 | 1 이상. 미설정일 때의 동작은 운영자 결정 대기(OD-9) | 제안. 숫자 OPEN |
 | `workflow.agentic_factory.intake.stage_timeout` | duration | 미설정 | 0보다 큼 | 제안. 숫자 OPEN |
 | `workflow.agentic_factory.checkpoint.*` | §4.6 | OPEN | §4.6 | 제안 |
 | `workflow.agentic_factory.provider.<github\|gitlab>.rate_limits.*` | 공급자 문서값 | 문서값 + `source_url`, `fetched_at`, `collation: uncollated` | 값이 없으면 `UNKNOWN` | 제안 |
@@ -516,7 +527,7 @@ Template-First 연동: 실제 삽입 때 로컬 `.moai/config/sections/*.yaml`�
 | 관찰 | `moai factory status --watch` | 읽기 | 실행 전후 control ref 순번과 트리 키 불변 |
 | 다시 붙기 | `moai factory attach --run <id> [--control]` | 기본 읽기 | 후보 둘 이상이면 id 없이 붙지 않음(12) |
 | 안전 재개 | `moai factory attach --run <id> --resume` | 쓰기 | 실제 실행 조회 → `dead` 또는 안전 정지만 epoch+1 |
-| 보류·정지 | `moai factory hold` / `stop` | 쓰기 | PARKED `operator-hold` / 안전 지점 기록 후 정지 |
+| 보류·정지 | `moai factory hold` / `stop` | 쓰기 | PARKED `operator-hold`(이 사유의 채택 여부는 OD-12 결정 대기) / 안전 지점 기록 후 정지 |
 
 ### 8.1 관찰 보기 항목
 
