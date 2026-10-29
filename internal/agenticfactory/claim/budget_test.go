@@ -56,11 +56,11 @@ func TestStaleRevisionIsRefusedForRequestsToo(t *testing.T) {
 	s := attached(t, m)
 	_, _, _ = s.PutRequest("req-1", "h", 1, pol)
 	m.Bump("request/req-1")
-	_, err := s.UpdateRequest("req-1", func(r *Request) error { r.Stage = StageIssuePublished; r.Issue = 9; return nil })
+	_, err := s.UpdateRequest("req-1", func(r *Request) error { r.Stage = StageIssueConfirmed; r.Issue = 9; return nil })
 	if !errors.Is(err, core.ErrRevisionConflict) {
 		t.Fatalf("want ErrRevisionConflict, got %v", err)
 	}
-	if cur, _ := s.GetRequest("req-1"); cur.Stage != StageACK {
+	if cur, _ := s.GetRequest("req-1"); cur.Stage != StageAccepted {
 		t.Errorf("cache changed on a stale write: %+v", cur)
 	}
 }
