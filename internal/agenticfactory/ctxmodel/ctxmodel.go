@@ -107,16 +107,20 @@ func validSection(s Section) bool {
 	return false
 }
 
-func checkPath(p string) error {
+// checkPath admits the two tracked locations: SPEC artifacts under .moai/specs,
+// and the masked public evidence copy of this Issue under .moai/evidence/issue-N.
+// Raw material stays in the ignored .moai/reports and is never linked.
+func (l *Ledger) checkPath(p string) error {
 	switch {
 	case strings.HasPrefix(p, "/") || strings.Contains(p, `\`):
 		return blocked("local or absolute path")
 	case strings.Contains(p, ".."):
-		return blocked("path escapes the specs tree")
-	case !strings.HasPrefix(p, ".moai/specs/"):
-		return blocked("only tracked .moai/specs paths can be linked")
+		return blocked("path escapes the tracked tree")
+	case strings.HasPrefix(p, ".moai/specs/"),
+		strings.HasPrefix(p, fmt.Sprintf(".moai/evidence/issue-%d/", l.Issue)):
+		return nil
 	}
-	return nil
+	return blocked("only .moai/specs and this Issue's .moai/evidence paths can be linked")
 }
 
 // Add validates and stores an item. A pending item has no link at all; every
@@ -133,7 +137,7 @@ func (l *Ledger) Add(it Item) error {
 		l.Items = append(l.Items, it)
 		return nil
 	}
-	if err := checkPath(it.Path); err != nil {
+	if err := l.checkPath(it.Path); err != nil {
 		return err
 	}
 	if !sha40.MatchString(it.Commit) {

@@ -92,6 +92,10 @@ func TestAddRejectsUnpinnedOrUntrackedLinks(t *testing.T) {
 		"branch ref":    func(i *Item) { i.Commit = "main" },
 		"short sha":     func(i *Item) { i.Commit = "a1a1a1a" },
 		"reports dir":   func(i *Item) { i.Path = ".moai/reports/t1/verdict.md" },
+		"other issue":   func(i *Item) { i.Path = ".moai/evidence/issue-2/audit.md" },
+		"evidence root": func(i *Item) { i.Path = ".moai/evidence/audit.md" },
+		"evidence dots": func(i *Item) { i.Path = ".moai/evidence/issue-1/../issue-2/a.md" },
+		"issue prefix":  func(i *Item) { i.Path = ".moai/evidence/issue-10/audit.md" },
 		"absolute path": func(i *Item) { i.Path = "/Users/x/.moai/specs/a.md" },
 		"dotdot":        func(i *Item) { i.Path = ".moai/specs/../../etc/passwd" },
 		"bad hash":      func(i *Item) { i.SHA256 = "zz" },
@@ -287,5 +291,18 @@ func TestUpdatePersistsThroughTheContextDocument(t *testing.T) {
 	d, _ := s.GetDoc("context", "issue-5")
 	if d.Rev != 2 {
 		t.Errorf("each successful update is one revision, got %d", d.Rev)
+	}
+}
+
+func TestTrackedEvidenceDirOfTheSameIssueIsLinkable(t *testing.T) {
+	l := &Ledger{Issue: 1}
+	it := item()
+	it.Path = ".moai/evidence/issue-1/audit-r1.md"
+	if err := l.Add(it); err != nil {
+		t.Fatalf("same-issue evidence path: %v", err)
+	}
+	it.Path = ".moai/specs/SPEC-X/spec.md"
+	if err := l.Add(it); err != nil {
+		t.Fatalf("specs path stays linkable: %v", err)
 	}
 }
