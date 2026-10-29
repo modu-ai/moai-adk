@@ -277,7 +277,7 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 - 본문을 읽고 연결함: C1 일부 — `TestRedactMasksSecretsAndCounts`(토큰·Bearer·`api_key=` 세 값 가림, 가린 수 3, 일반 문장 불변. 표시는 `[REDACTED]`이며 `[REDACTED:C1]`이 아님). C2·C3 일부 — `TestRedactMasksEmailsAndAbsoluteHomePaths`(이메일·ssh 원격·macOS·Linux·Windows 홈 경로가 남지 않음. C2의 이름·전화번호는 없음).
 - 미충족 — 시험 없음: C4, C5, Restricted, 범주별 게시 거절(Negative), 필드 owner 쓰기 거절, 관찰 읽기 쓰기 0, 정본 M39·M40·CONTEXT04.
 - 목표 시험 이름(아직 없음, 실행 대상 아님): `TestRedact_*` 13개(0개 있음), `TestLedger_FieldOwner_*`(0개), `TestAcceptanceManifest/M39`·`M40`·`CONTEXT04`.
-- 사례: 범주별 가림 출력, `RESTRICTED`는 상태·요약·SHA-256 세 필드만, 범주 하나씩 꺼 둔 변형 refiner에서 게시 거절이 다섯 번 모두 일어남, 게시 산출물 전체 원값 검색 0. 필드 owner가 아닌 역할의 장부 쓰기 → 거절. 관찰 읽기 경로에 쓰기 호출 0.
+- 사례: 범주별 가림 출력, `RESTRICTED`는 상태·요약·SHA-256 세 필드만(0.6.7, DEC-AF-28, **제안 단언**: 그 SHA-256은 항목의 가린 장부 형태의 SHA-256과 같고 원값의 SHA-256과 다름, 공개 산출물 전체에서 원값의 SHA-256 검색 0. `4cdaba5d7e`에 이 단언을 하는 시험은 없다 — `ctxmodel`의 `TestRestrictedKeepsOnlySummaryAndHash`는 본문을 읽었고 고정 hash 값의 표시 형태만 보며 hash를 무엇으로 계산했는지는 단언하지 않는다), 범주 하나씩 꺼 둔 변형 refiner에서 게시 거절이 다섯 번 모두 일어남, 게시 산출물 전체 원값 검색 0. 필드 owner가 아닌 역할의 장부 쓰기 → 거절. 관찰 읽기 경로에 쓰기 호출 0.
 - 변형 단언: 범주 하나를 빠뜨린 구현은 Negative 시험에서 FAIL.
 - RED 이유: refiner 없음. 초록 경로: M5(lane-20).
 
@@ -614,7 +614,7 @@ F2 작업 당시에는 하위 SPEC의 `acceptance.md`를 고치지 않고 여기
 | `TestIndependence_LaneEscalatesOnlyFourCategories` (B8a 제안, 기존 `TestIndependence_*` 배치를 따름) | AC-AF-010 | REQ-AF-010 | `core/` | (g) 네 범주 각각 → 보냄 1, 그 밖 → 보냄 0이고 lane 기록에 결정·이유·되돌리는 법 |
 | `TestGate_RoleEvidence_RequiresChildAttribution_AndLockHolds` | AC-AF-011 | REQ-AF-011 | `runner/`(`attribution_test.go` 옆) | L1 증거 종류 6개 각각 `unattributable{identity-spec-incomplete}`, L2 종류마다 `producer-not-allowed` 하나 |
 | `TestLock_*` | AC-AF-011 | REQ-AF-011 | `runner/` | L3 설정·환경 변수 변경에도 결과 바이트 동일 + 정적 검사, P4a, P4b. zusätzlich lane-21: L4 시나리오 하네스 사전 점검 |
-| `TestRedact_*`(13) | AC-AF-013 | REQ-AF-013 | `core/`(`core_test.go` 옆) | C1 3, C2 1, C3 2, C4 2, C5 1, Restricted 1, Idempotent 1, Negative 2(범주 하나를 뺀 변형에서 FAIL). zusätzlich lane-20: AC 초록 경로의 refiner(M5) |
+| `TestRedact_*`(13) | AC-AF-013 | REQ-AF-013 | `core/`(`core_test.go` 옆) | C1 3, C2 1, C3 2, C4 2, C5 1, Restricted 1, Idempotent 1, Negative 2(범주 하나를 뺀 변형에서 FAIL). Restricted 1에는 DEC-AF-28 제안 단언(SHA-256 = 가린 장부 형태의 hash, 원값의 hash 아님)이 들어간다. 담당 lane은 그대로 lane-18이며, 이 단언은 장부 쓰기 쪽(`mirror/`, lane-18 소관 — 구현 위치는 리더 전달)에 놓일 수도 있다. zusätzlich lane-20: AC 초록 경로의 refiner(M5) |
 | `TestLedger_FieldOwner_*` | AC-AF-013 | REQ-AF-013 | `ctxmodel/` | 필드 owner가 아닌 역할의 장부 쓰기 → 거절 |
 | `TestTransition_Table_*` | AC-AF-016 | REQ-AF-016 | `core/`(`stage_model_test.go` 옆) | (b) 요청자 불일치 → 거절 (c) PARKED 사유 집합 밖 → 거절 (d) E20 → 단계·owner 불변 |
 | `TestTransition_Table_WaitRecordRequiresAllSixFields` | AC-AF-016 | REQ-AF-016 | `core/`(`wait_test.go` 옆) | (e) 필드 하나씩 뺀 대기 기록 여섯 → 각각 거절, 여섯 필드 기록 → 받아들임 |

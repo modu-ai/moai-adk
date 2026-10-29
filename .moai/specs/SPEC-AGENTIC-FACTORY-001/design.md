@@ -327,9 +327,9 @@ ACK가 없으면 다시 보내지 않고 받는 쪽 상태를 먼저 조회한�
 | C4 원시 로그·스택 | 원시 실행 로그, 패닉·예외 스택, 환경 변수 덤프, 프로세스 목록 | 블록 전체 `[REDACTED:C4]`, 요약 한 줄 |
 | C5 비공개 원격 내용 | 비공개 저장소·링크 본문, 접근 제한 artifact 내용 | `[REDACTED:C5]`, 항목 `LINK_BLOCKED` |
 
-- 원값과 원값의 hash는 공개 쪽 어디에도 남기지 않는다.
+- 원값과 원값의 hash는 공개 쪽 어디에도 남기지 않는다(`RESTRICTED`의 SHA-256도 원값의 hash가 아니다, 아래 줄).
 - 마지막 관문은 LLM이 아닌 결정적 검사다. 범주 하나라도 남으면 게시 전체를 거절한다.
-- 게시할 수 없는 자료는 `RESTRICTED`: 상태, 짧은 요약, SHA-256 세 필드만.
+- 게시할 수 없는 자료는 `RESTRICTED`: 상태, 짧은 요약, SHA-256 세 필드만. SHA-256은 그 항목의 가린 장부 형태에 대해 계산하며, 원값에 대해 계산하지 않는다(DEC-AF-28).
 - 적용 대상: 장부 행, 댓글, checkpoint manifest, Issue 요약, 정제 증거 파일, 관찰 출력.
 
 **증거 위치와 단계(DEC-AF-13)**: 원본은 `.moai/reports`(ignore 규칙 그대로). 공개 안전 정제본만 추적 디렉터리 `.moai/evidence/issue-<N>/`. 단계 `PREPARED → MASKED → COMMITTED → PUSHED → REMOTE_VERIFIED`. `AVAILABLE`은 원격 조회가 확인한 뒤에만 붙는다. 링크는 전체 커밋 SHA 고정.
