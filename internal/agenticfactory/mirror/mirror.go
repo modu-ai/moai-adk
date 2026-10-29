@@ -10,12 +10,14 @@ package mirror
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os/exec"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/claim"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
@@ -69,6 +71,9 @@ type Mirror struct {
 	Repo       string // owner/name
 	Exec       Exec
 	AllowWrite bool
+
+	mu    sync.Mutex
+	memos map[int]memo
 }
 
 func redact(s string) (string, int) { return core.Redact(s) }
@@ -141,8 +146,68 @@ func (m *Mirror) ReadLedger(ctx context.Context, issue int) (core.Ledger, error)
 	return l, nil
 }
 
+// errCommentGone means the remembered comment no longer exists (HTTP 404).
+var errCommentGone = errors.New("agenticfactory/mirror: remembered ledger comment is gone")
+
+// memo is what the mirror remembers of the last ledger comment it wrote.
+type memo struct {
+	id   int64
+	hash [sha256.Size]byte
+}
+
+// Invalidate forgets the remembered comment of an Issue, so the next write
+// lists the comments and re-sends the body. Use it when the comment may have
+// been changed outside this process.
+func (m *Mirror) Invalidate(issue int) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	delete(m.memos, issue)
+}
+
+func (m *Mirror) recall(issue int) memo {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.memos[issue]
+}
+
+func (m *Mirror) remember(issue int, id int64, hash [sha256.Size]byte) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.memos == nil {
+		m.memos = map[int]memo{}
+	}
+	m.memos[issue] = memo{id: id, hash: hash}
+}
+
+// send runs one gh call and classifies a failure.
+func (m *Mirror) send(ctx context.Context, args ...string) ([]byte, error) {
+	out, errb, exit, err := m.Exec.Run(ctx, args...)
+	return out, classify(errb, exit, err)
+}
+
+func (m *Mirror) patch(ctx context.Context, id int64, body string) error {
+	_, errb, exit, err := m.Exec.Run(ctx, "api", "-X", "PATCH",
+		fmt.Sprintf("repos/%s/issues/comments/%s", m.Repo, strconv.FormatInt(id, 10)), "-f", "body="+body)
+	if err == nil && exit != 0 && strings.Contains(strings.ToLower(string(errb)), "http 404") {
+		return errCommentGone
+	}
+	return classify(errb, exit, err)
+}
+
+// createdID reads the comment id from a create response; 0 when absent.
+func createdID(out []byte) int64 {
+	var c comment
+	if json.Unmarshal(out, &c) != nil {
+		return 0
+	}
+	return c.ID
+}
+
 // WriteLedger creates or updates the ledger comment. Secrets are masked and
-// the masking is disclosed in the comment.
+// the masking is disclosed in the comment. The id and body hash of the last
+// write are remembered per Issue: an unchanged body sends nothing, and a known
+// id skips the comment listing. A 404 on the remembered id falls back to the
+// listing, so exactly one ledger comment is kept.
 func (m *Mirror) WriteLedger(ctx context.Context, l core.Ledger) error {
 	if !m.AllowWrite {
 		return ErrWriteDisabled
@@ -156,16 +221,46 @@ func (m *Mirror) WriteLedger(ctx context.Context, l core.Ledger) error {
 	if n > 0 {
 		body += fmt.Sprintf("<!-- redacted: %d -->\n", n)
 	}
-	c, ok, err := m.ledgerComment(ctx, l.Issue.Number)
+	issue := l.Issue.Number
+	sum := sha256.Sum256([]byte(body))
+
+	if mem := m.recall(issue); mem.id != 0 {
+		if mem.hash == sum {
+			return nil
+		}
+		err := m.patch(ctx, mem.id, body)
+		if err == nil {
+			m.remember(issue, mem.id, sum)
+			return nil
+		}
+		if !errors.Is(err, errCommentGone) {
+			return err
+		}
+		m.Invalidate(issue)
+	}
+
+	c, ok, err := m.ledgerComment(ctx, issue)
 	if err != nil {
 		return err
 	}
-	args := []string{"api", "-X", "POST", fmt.Sprintf("repos/%s/issues/%d/comments", m.Repo, l.Issue.Number), "-f", "body=" + body}
 	if ok {
-		args = []string{"api", "-X", "PATCH", fmt.Sprintf("repos/%s/issues/comments/%s", m.Repo, strconv.FormatInt(c.ID, 10)), "-f", "body=" + body}
+		if err := m.patch(ctx, c.ID, body); err != nil {
+			if errors.Is(err, errCommentGone) {
+				return fmt.Errorf("agenticfactory/mirror: ledger comment vanished while updating: %w", err)
+			}
+			return err
+		}
+		m.remember(issue, c.ID, sum)
+		return nil
 	}
-	_, errb, exit, err := m.Exec.Run(ctx, args...)
-	return classify(errb, exit, err)
+	out, err := m.send(ctx, "api", "-X", "POST", fmt.Sprintf("repos/%s/issues/%d/comments", m.Repo, issue), "-f", "body="+body)
+	if err != nil {
+		return err
+	}
+	if id := createdID(out); id != 0 {
+		m.remember(issue, id, sum)
+	}
+	return nil
 }
 
 // LedgerFromRecord projects a claim record onto the ledger fields.
