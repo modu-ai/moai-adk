@@ -175,6 +175,7 @@ func newApp(cfg Config) *app {
 
 		codexStateProbe: defaultCodexStateProbe,
 
+		monitorRows:     cfg.MonitorRows,
 		browserSelected: readBrowserSelected,
 		browserProbe:    browser.ExecProbe{},
 
