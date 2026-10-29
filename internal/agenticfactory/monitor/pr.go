@@ -107,7 +107,9 @@ type Backlog struct {
 	QueueKnown        bool `json:"queue_known"`
 }
 
-func backlogState(open, limit int) BacklogState {
+// BacklogStateOf classifies the open pull request count against the configured limit: no limit set,
+// within it, at it, or over it.
+func BacklogStateOf(open, limit int) BacklogState {
 	switch {
 	case limit <= 0:
 		return BacklogNoLimit
@@ -118,6 +120,8 @@ func backlogState(open, limit int) BacklogState {
 	}
 	return BacklogWithin
 }
+
+func backlogState(open, limit int) BacklogState { return BacklogStateOf(open, limit) }
 
 // View is the whole monitor output: one row per Issue plus the PR backlog.
 type View struct {

@@ -37,6 +37,18 @@ func Mask(s string) (string, bool) {
 	return out, out != s
 }
 
+// MaskField masks one displayed value the way every field of a Row is masked: known credential shapes
+// are replaced, and text that still looks like an unknown credential (a long mixed letter/digit run that
+// is not a full commit SHA) is dropped altogether. redacted reports that anything was replaced or dropped;
+// a dropped value is the empty string.
+func MaskField(s string) (value string, redacted bool) {
+	out, masked := Mask(s)
+	if looksOpaque(out) {
+		return "", true
+	}
+	return out, masked
+}
+
 // looksOpaque reports a long mixed letter/digit run that is not a full commit SHA. Such text could
 // be a credential in a shape Mask does not know, so the caller drops it (fail-closed).
 func looksOpaque(s string) bool {

@@ -471,7 +471,8 @@ func (g GHRemote) Find(ctx context.Context, issue int, marker string) (Comment, 
 }
 
 func (g GHRemote) Create(ctx context.Context, issue int, body string) (Comment, error) {
-	if err := g.Enforcer.Check(ctx, "POST", fmt.Sprintf("/repos/%s/issues/%d/comments", g.Repo, issue), nil, nil); err != nil {
+	ctx, err := g.Enforcer.Approve(ctx, "POST", fmt.Sprintf("/repos/%s/issues/%d/comments", g.Repo, issue), nil, nil)
+	if err != nil { // the approval rides the context to a runner that wants proof (ghexec)
 		return Comment{}, err
 	}
 	out, err := g.Run(ctx, "api", "-X", "POST", fmt.Sprintf("repos/%s/issues/%d/comments", g.Repo, issue), "-f", "body="+body)
@@ -491,10 +492,11 @@ func (g GHRemote) Update(ctx context.Context, issue int, id int64, body string) 
 	if id <= 0 {
 		return errors.New("ctxledger: update needs a comment id")
 	}
-	if err := g.Enforcer.Check(ctx, "PATCH", fmt.Sprintf("/repos/%s/issues/comments/%d", g.Repo, id), nil, nil); err != nil {
+	ctx, err := g.Enforcer.Approve(ctx, "PATCH", fmt.Sprintf("/repos/%s/issues/comments/%d", g.Repo, id), nil, nil)
+	if err != nil {
 		return err
 	}
-	_, err := g.Run(ctx, "api", "-X", "PATCH", fmt.Sprintf("repos/%s/issues/comments/%d", g.Repo, id), "-f", "body="+body)
+	_, err = g.Run(ctx, "api", "-X", "PATCH", fmt.Sprintf("repos/%s/issues/comments/%d", g.Repo, id), "-f", "body="+body)
 	return err // a Runner reports HTTP failures as *forge.StatusError; isGone reads the status
 }
 

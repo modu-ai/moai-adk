@@ -3,12 +3,12 @@
 //
 // It is off by default in every sense that matters. Nothing wires it in; the caller passes it where a
 // Runner is wanted. It refuses, before any process exists, every gh call that is not on its read
-// allowlist, and the one write it can ever run - creating an Issue, through the protection guard - only
-// when AllowWrite is set. Comment writes are never run here: the protection guard leaves them to the
-// author policy (effect.Enforcer), which needs an identity this layer does not have, so the context
-// ledger's comment writes cannot go through this wrapper (its reads can). The components in front of it
-// keep their own allowlists and guards; this is the last gate, not the only one. Real use against GitHub,
-// writes above all, needs the user's approval.
+// allowlist, and the two writes it can ever run only when AllowWrite is set: creating an Issue (through the
+// protection guard) and creating or editing a comment, which runs only when the context carries the
+// Issue-author policy's approval of exactly that call (effect.Enforcer.Approve; this layer has no
+// identity of its own to decide with). The components in front of it keep their own allowlists and guards;
+// this is the last gate, not the only one. Real use against GitHub, writes above all, needs the user's
+// approval.
 //
 // Arguments are passed to the process as they are, never through a shell. Standard output and standard
 // error are kept apart and both are capped. A non-zero exit is an error, returned together with whatever
@@ -51,8 +51,9 @@ type Exec struct {
 	// WaitDelay bounds how long to wait for the output pipes after the process was stopped. Zero waits as
 	// long as the pipes stay open.
 	WaitDelay time.Duration
-	// AllowWrite lets `gh issue create` run (with a --repo that passes the protection guard). It is false
-	// by default; no other write is ever allowed.
+	// AllowWrite lets `gh issue create` run (with a --repo that passes the protection guard) and a comment
+	// create/update run when the context carries the policy's approval of that exact call. It is false by
+	// default; no other write is ever allowed.
 	AllowWrite bool
 }
 
@@ -92,7 +93,7 @@ func (e Exec) Run(ctx context.Context, args ...string) ([]byte, error) {
 	if e.MaxOutput <= 0 {
 		return nil, errors.New("ghexec: MaxOutput must come from configuration")
 	}
-	if !e.allowed(args) {
+	if !e.allowed(ctx, args) {
 		return nil, fmt.Errorf("%w: gh %s", ErrNotAllowed, verbOf(args))
 	}
 	bin := e.Bin
@@ -123,6 +124,7 @@ func (e Exec) Run(ctx context.Context, args ...string) ([]byte, error) {
 // --- the allowlist -----------------------------------------------------------------------------------
 
 var (
+	commentsPath = regexp.MustCompile(`^repos/[^/]+/[^/]+/issues/(\d+/comments|comments/\d+)$`)
 	// flags of `gh api` this wrapper understands; the value says whether the flag takes a value.
 	apiFlags = map[string]bool{
 		"--paginate": false, "--slurp": false, "--silent": false, "-i": false, "--include": false,
@@ -133,7 +135,7 @@ var (
 	bodyFlags = map[string]bool{"-f": true, "-F": true, "--field": true, "--raw-field": true, "--input": true}
 )
 
-func (e Exec) allowed(args []string) bool {
+func (e Exec) allowed(ctx context.Context, args []string) bool {
 	if len(args) < 2 {
 		return false
 	}
@@ -143,11 +145,17 @@ func (e Exec) allowed(args []string) bool {
 		}
 	}
 	if args[0] == "api" { // its second argument is a path or a flag, so it cannot be matched as a pair
-		method, _, hasBody, ok := parseAPI(args)
+		method, path, hasBody, ok := parseAPI(args)
 		if !ok {
 			return false
 		}
-		return method == "GET" && !hasBody // any other method, or any body flag (-f turns a call into a POST), is a write
+		if method == "GET" && !hasBody {
+			return true
+		}
+		// any other method, or any body flag (-f turns a call into a POST), is a write: only a comment
+		// create/update the author policy approved for exactly this call
+		return e.AllowWrite && (method == "POST" || method == "PATCH") && commentsPath.MatchString(path) &&
+			effect.Approved(ctx, method, path)
 	}
 	switch args[0] + " " + args[1] {
 	case "pr view", "pr list", "pr checks", "issue view", "issue list":
