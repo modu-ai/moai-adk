@@ -155,3 +155,6 @@ func (s *MemStore) Seq() int {
 	defer s.mu.Unlock()
 	return s.seq
 }
+
+// Rank orders the stages (0 for an unknown or empty stage).
+func (s Stage) Rank() int { return order[s] }
