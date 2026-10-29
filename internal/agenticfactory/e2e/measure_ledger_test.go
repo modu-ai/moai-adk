@@ -104,6 +104,43 @@ func TestMeasure_LedgerWrite_CallsPerUpdate(t *testing.T) {
 	}
 }
 
+// Observation: the state-ledger comment is deleted on GitHub between two
+// updates. What does the first update after the deletion leave behind?
+func TestMeasure_LedgerWrite_DeletedRemotely_Observed(t *testing.T) {
+	f := &fakeGH{}
+	m := newMirror(f)
+	ctx := context.Background()
+	if err := m.WriteLedger(ctx, ledgerAt(1, core.StateClaimed)); err != nil {
+		t.Fatal(err)
+	}
+	f.mu.Lock()
+	f.comments = nil // deleted by a person
+	f.mu.Unlock()
+	err := m.WriteLedger(ctx, ledgerAt(2, core.StateImplementing))
+	t.Logf("OBSERVED deleted-remotely first update: err=%v comments=%d gets=%d posts=%d patches=%d",
+		err, len(f.comments), f.Gets, f.Posts, f.Patches)
+}
+
+// Observation: a person edits the ledger comment, then the SAME ledger is
+// written again. Is the comment brought back to the authoritative content, or
+// does an unchanged-content shortcut leave the person's edit in place?
+func TestMeasure_LedgerWrite_ExternalEdit_Observed(t *testing.T) {
+	f := &fakeGH{}
+	m := newMirror(f)
+	ctx := context.Background()
+	l := ledgerAt(1, core.StateClaimed)
+	if err := m.WriteLedger(ctx, l); err != nil {
+		t.Fatal(err)
+	}
+	authoritative := f.comments[0].Body
+	f.mu.Lock()
+	f.comments[0].Body = mirror.Marker + "\n```json\n{\"state\":\"done\"}\n```\n" // edited by a person
+	f.mu.Unlock()
+	callsBefore := f.calls()
+	err := m.WriteLedger(ctx, l)
+	t.Logf("OBSERVED external edit then same ledger: err=%v restored=%v extra-calls=%d", err, f.comments[0].Body == authoritative, f.calls()-callsBefore)
+}
+
 // Safety: the same update twice never creates a second comment. The cost of the
 // repeat (gh calls spent on an unchanged ledger) is measured, not asserted.
 func TestMeasure_LedgerWrite_SameUpdateTwice(t *testing.T) {
