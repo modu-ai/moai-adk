@@ -26,11 +26,13 @@ const maxDocBytes = 256 << 10
 //	audit   - audit round ids per Issue (lane 19 decides, the store persists)
 //	context - the per-Issue context ledger model
 //	checkpoint - the resume manifest of a card branch (safety: never held back)
+//	collector  - lane 20's collector cursors (safety: a lost cursor is a lost change)
 var docKinds = map[string]core.Priority{
 	"intent":     core.PrioritySafety,
 	"audit":      core.PrioritySafety,
 	"context":    core.PriorityReport,
 	"checkpoint": core.PrioritySafety,
+	"collector":  core.PrioritySafety,
 }
 
 // Doc is one stored document. Data is opaque JSON owned by the caller.

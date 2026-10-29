@@ -385,3 +385,13 @@ func TestCheckpointDocumentIsASafetyKind(t *testing.T) {
 		t.Errorf("a checkpoint must never be held back by the call budget, got priority %v", p)
 	}
 }
+
+func TestCollectorCursorDocumentIsASafetyKind(t *testing.T) {
+	s := open(t)
+	if _, err := s.PutDoc("collector", "cursor-main", 0, []byte(`{"since":"2026-10-29T00:00:00Z"}`)); err != nil {
+		t.Fatalf("collector kind: %v", err)
+	}
+	if p := docKinds["collector"]; p != core.PrioritySafety {
+		t.Errorf("a lost cursor is a lost change, so the write is never held back; got priority %v", p)
+	}
+}
