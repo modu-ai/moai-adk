@@ -1,4 +1,4 @@
-# SPEC-AGENTIC-FACTORY-001 — 수용 기준 (0.6.3)
+# SPEC-AGENTIC-FACTORY-001 — 수용 기준 (0.6.4)
 
 ## §A 측정 규칙
 
