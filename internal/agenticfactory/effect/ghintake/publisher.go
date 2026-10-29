@@ -78,20 +78,25 @@ func (p *Publisher) PublishIssue(ctx context.Context, req claim.Request) (int, s
 	return n, ref, nil
 }
 
-func (p *Publisher) search(ctx context.Context, term string) ([]listed, error) {
-	out, err := p.GH.read(ctx, "issue", "list", "--repo", p.GH.Repo, "--state", "all", "--search", term, "--json", "number,title,body,url", "--limit", strconv.Itoa(max(p.Limit, 100)))
+// search lists Issues matching term. truncated is true when the list reached the configured limit, so
+// that an Issue absent from it proves nothing.
+func (p *Publisher) search(ctx context.Context, term string) (items []listed, truncated bool, err error) {
+	limit, err := p.GH.listLimit()
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
-	var items []listed
+	out, err := p.GH.read(ctx, "issue", "list", "--repo", p.GH.Repo, "--state", "all", "--search", term, "--json", "number,title,body,url", "--limit", limit)
+	if err != nil {
+		return nil, false, err
+	}
 	if err := json.Unmarshal(out, &items); err != nil {
-		return nil, fmt.Errorf("ghintake: issue list output: %w", err)
+		return nil, false, fmt.Errorf("ghintake: issue list output: %w", err)
 	}
-	return items, nil
+	return items, len(items) >= p.GH.ListLimit, nil
 }
 
 func (p *Publisher) FindIssue(ctx context.Context, req claim.Request) (int, string, bool, error) {
-	items, err := p.search(ctx, req.Key+" in:body")
+	items, truncated, err := p.search(ctx, req.Key+" in:body")
 	if err != nil {
 		return 0, "", false, err
 	}
@@ -99,6 +104,9 @@ func (p *Publisher) FindIssue(ctx context.Context, req claim.Request) (int, stri
 		if strings.Contains(it.Body, RequestMarker(req.Key)) {
 			return it.Number, it.URL, true, nil
 		}
+	}
+	if truncated {
+		return 0, "", false, errCutShort
 	}
 	return 0, "", false, nil
 }
@@ -126,9 +134,12 @@ func (p *Publisher) FindDuplicates(ctx context.Context, req claim.Request) ([]in
 	if err != nil || strings.TrimSpace(title) == "" {
 		return nil, errors.New("ghintake: no title to search duplicates for")
 	}
-	items, err := p.search(ctx, fmt.Sprintf("%q in:title", title))
+	items, truncated, err := p.search(ctx, fmt.Sprintf("%q in:title", title))
 	if err != nil {
 		return nil, err
+	}
+	if truncated { // a duplicate may be missing from a cut-short list, and a missed duplicate is a second Issue
+		return nil, errCutShort
 	}
 	var out []intake.Candidate
 	for _, it := range items {

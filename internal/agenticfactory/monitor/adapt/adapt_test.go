@@ -109,7 +109,7 @@ func legacyRecord(t *testing.T, dir string, mutate func(m map[string]any)) {
 	if err := json.Unmarshal(raw, &m); err != nil {
 		t.Fatal(err)
 	}
-	for _, k := range []string{"stage", "sub_stage", "park", "gate", "refusal"} {
+	for _, k := range []string{"stage", "sub_stage", "park", "gate", "refusal", "wait"} {
 		delete(m, k)
 	}
 	if mutate != nil {
@@ -182,6 +182,26 @@ func TestReadClaimCarriesParkGateAndRefusalFromTheRecord(t *testing.T) {
 	}
 	if row.State != "implementing" {
 		t.Errorf("legacy state must stay for display, got %q", row.State)
+	}
+}
+
+func TestReadClaimCarriesTheWaitRecordAndAbsentMeansNone(t *testing.T) {
+	recheck := time.Date(2026, 10, 30, 9, 0, 0, 0, time.UTC)
+	r := claim.Record{Issue: 7, State: core.StateImplementing, Holder: "agent-3", Wait: &core.Wait{
+		Owner: "agent-3", NextAction: "re-run the failed check", RecheckAt: recheck, Diagnosis: "CI red on the latest head",
+		Retries: 1, MaxRetries: 3, Escalate: "leader", Escalated: false,
+	}}
+	w := rowFrom(r, "p", "").Wait
+	if w == nil || w.Owner != "agent-3" || w.NextAction != "re-run the failed check" || !w.RecheckAt.Equal(recheck) ||
+		w.Diagnosis != "CI red on the latest head" || w.Retries != 1 || w.MaxRetries != 3 || w.EscalateTo != "leader" || w.Escalated {
+		t.Errorf("wait = %+v", w)
+	}
+	r.Wait.Escalated = true
+	if w := rowFrom(r, "p", "").Wait; w == nil || !w.Escalated {
+		t.Errorf("escalated flag lost: %+v", w)
+	}
+	if w := rowFrom(claim.Record{Issue: 7, State: core.StateImplementing}, "p", "").Wait; w != nil {
+		t.Errorf("a record with no wait shows one: %+v", w)
 	}
 }
 

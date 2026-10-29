@@ -20,6 +20,17 @@ type GHReader struct {
 	Run     GHRunner
 	Verdict func(issue int, head string) string
 	Repair  func(issue int) bool
+	// PRListLimit is the most pull requests one list call reads. It comes from configuration and is
+	// required: gh's own default is silent, and a list that reaches the limit may be cut short, which is
+	// reported as an error and never as a count or a "not found".
+	PRListLimit int
+}
+
+func (g GHReader) listLimit() (string, int, error) {
+	if g.PRListLimit <= 0 {
+		return "", 0, fmt.Errorf("adapt: GHReader.PRListLimit must come from configuration")
+	}
+	return strconv.Itoa(g.PRListLimit), g.PRListLimit, nil
 }
 
 // readOnlyGH admits only `pr list` and `issue view` with no web/edit flags.
@@ -63,7 +74,11 @@ type ghPR struct {
 
 // ReadPR returns the newest PR that closes the Issue (open first, else the newest merged one).
 func (g GHReader) ReadPR(ctx context.Context, issue int) (monitor.PRInfo, bool, error) {
-	out, err := g.run(ctx, "pr", "list", "--state", "all", "--search", "#"+strconv.Itoa(issue),
+	limit, max, err := g.listLimit()
+	if err != nil {
+		return monitor.PRInfo{}, false, err
+	}
+	out, err := g.run(ctx, "pr", "list", "--state", "all", "--search", "#"+strconv.Itoa(issue), "--limit", limit,
 		"--json", "number,state,headRefOid,statusCheckRollup,closingIssuesReferences")
 	if err != nil {
 		return monitor.PRInfo{}, false, err
@@ -71,6 +86,9 @@ func (g GHReader) ReadPR(ctx context.Context, issue int) (monitor.PRInfo, bool, 
 	var prs []ghPR
 	if err := json.Unmarshal(out, &prs); err != nil {
 		return monitor.PRInfo{}, false, fmt.Errorf("adapt: gh pr list output: %w", err)
+	}
+	if len(prs) >= max {
+		return monitor.PRInfo{}, false, fmt.Errorf("adapt: gh pr list returned %d pull requests, the configured limit: the result may be cut short", len(prs))
 	}
 	var pick *ghPR
 	for i := range prs {
@@ -126,13 +144,20 @@ func closes(p *ghPR, issue int) bool {
 
 // CountOpenPRs counts open PRs in the repository.
 func (g GHReader) CountOpenPRs(ctx context.Context) (int, error) {
-	out, err := g.run(ctx, "pr", "list", "--state", "open", "--limit", "1000", "--json", "number")
+	limit, max, err := g.listLimit()
+	if err != nil {
+		return 0, err
+	}
+	out, err := g.run(ctx, "pr", "list", "--state", "open", "--limit", limit, "--json", "number")
 	if err != nil {
 		return 0, err
 	}
 	var prs []struct{ Number int }
 	if err := json.Unmarshal(out, &prs); err != nil {
 		return 0, fmt.Errorf("adapt: gh pr list output: %w", err)
+	}
+	if len(prs) >= max {
+		return 0, fmt.Errorf("adapt: gh pr list returned %d pull requests, the configured limit: the count may be too low", len(prs))
 	}
 	return len(prs), nil
 }

@@ -31,6 +31,7 @@ type Ledger struct {
 	Park          *Park       `json:"park,omitempty"`
 	Gate          *Gate       `json:"gate,omitempty"`
 	Refusal       *Refusal    `json:"refusal,omitempty"`
+	Wait          *Wait       `json:"wait,omitempty"`
 	ReturnStage   State       `json:"return_stage,omitempty"`
 	BlockReason   BlockReason `json:"block_reason,omitempty"`
 	ResumeCond    string      `json:"resume_condition,omitempty"`

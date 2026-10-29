@@ -393,7 +393,7 @@ func LedgerFromRecord(r claim.Record) core.Ledger {
 	ref := core.IssueRef{Number: r.Issue}
 	return core.Ledger{
 		Issue: ref, State: r.State, ReturnStage: r.Return, BlockReason: r.Reason, ResumeCond: r.Resume,
-		Stage: r.Stage, Sub: r.Sub, Park: r.Park, Gate: r.Gate, Refusal: r.Refusal,
+		Stage: r.Stage, Sub: r.Sub, Park: r.Park, Gate: r.Gate, Refusal: r.Refusal, Wait: r.Wait,
 		Owner: r.Holder, Writer: r.Holder, Run: r.Run, Attempt: r.Attempt, Head: r.Head,
 		Delivery: r.Delivery, StoreSeq: r.Seq,
 	}

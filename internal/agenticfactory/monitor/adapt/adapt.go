@@ -73,6 +73,12 @@ func rowFrom(r claim.Record, project, sid string) monitor.ClaimRow {
 	if f := r.Refusal; f != nil {
 		row.Refusal = &monitor.RefusalInfo{Reason: string(f.Reason), Detail: f.Detail}
 	}
+	if w := r.Wait; w != nil {
+		row.Wait = &monitor.WaitInfo{
+			Owner: w.Owner, NextAction: w.NextAction, RecheckAt: w.RecheckAt, Diagnosis: w.Diagnosis,
+			Retries: w.Retries, MaxRetries: w.MaxRetries, EscalateTo: w.Escalate, Escalated: w.Escalated,
+		}
+	}
 	return row
 }
 

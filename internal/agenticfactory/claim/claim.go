@@ -72,6 +72,42 @@ type Record struct {
 	Park    *core.Park    `json:"park,omitempty"`
 	Gate    *core.Gate    `json:"gate,omitempty"`
 	Refusal *core.Refusal `json:"refusal,omitempty"`
+	// Wait is what the owner waits for and what happens next; Repair is the E06
+	// evidence while the owner repairs a PR it handed off.
+	Wait   *core.Wait `json:"wait,omitempty"`
+	Repair *Repair    `json:"repair,omitempty"`
+	// RepairNeeded is the signal (CI failed, review asked for changes) that the
+	// owner must repair its open PR before it takes new work. Worktree is the
+	// write worktree bound to this Issue's work.
+	RepairNeeded string `json:"repair_needed,omitempty"`
+	// Revision is the approved contract revision applied to the current attempt
+	// (canon E18 adopt); a new receipt ends it.
+	Revision string `json:"revision,omitempty"`
+	Worktree string `json:"worktree,omitempty"`
+}
+
+// Repair is the canon E06 evidence (REVIEWING -> BUILDING/FIX): the repair
+// decision, the exclusive owner, the scope reserved again and the previous
+// writer ended. All four are required.
+type Repair struct {
+	Decision       string `json:"decision"`
+	Owner          string `json:"exclusive_owner"`
+	ScopeReserved  bool   `json:"scope_reserved"`
+	OldWriterEnded bool   `json:"old_writer_ended"`
+}
+
+func (p Repair) validate(holder string) error {
+	switch {
+	case strings.TrimSpace(p.Decision) == "":
+		return fmt.Errorf("%w: the repair decision is missing", core.ErrEvidenceIncomplete)
+	case p.Owner == "" || (holder != "" && p.Owner != holder):
+		return fmt.Errorf("%w: the repair needs the exclusive owner", core.ErrEvidenceIncomplete)
+	case !p.ScopeReserved:
+		return fmt.Errorf("%w: the scope was not reserved again", core.ErrEvidenceIncomplete)
+	case !p.OldWriterEnded:
+		return fmt.Errorf("%w: the previous writer has not ended", core.ErrEvidenceIncomplete)
+	}
+	return nil
 }
 
 // deriveStage recomputes Stage, Sub and Park from the old fields. A legacy pause
@@ -90,8 +126,21 @@ func (r *Record) deriveStage() error {
 			return err
 		}
 	}
+	if r.Wait != nil {
+		if err := r.Wait.Validate(); err != nil {
+			return err
+		}
+		if r.Holder != "" && r.Wait.Owner != r.Holder {
+			return fmt.Errorf("%w: the wait is owned by %q, the Issue by %q", core.ErrOwnershipUnverified, r.Wait.Owner, r.Holder)
+		}
+	}
+	if r.Repair != nil {
+		if err := r.Repair.validate(r.Holder); err != nil {
+			return err
+		}
+	}
 	l := core.Legacy{
-		State: r.State, Return: r.Return, Reason: r.Reason, Resume: r.Resume,
+		State: r.State, Repair: r.Repair != nil, Revision: r.Revision != "", Return: r.Return, Reason: r.Reason, Resume: r.Resume,
 		HasReceipt: r.Receipt != nil, LeaderAccepted: r.Receipt != nil && r.Receipt.LeaderAccepted, Merged: r.Merged,
 	}
 	if r.State.IsPause() && r.Reason.Valid() && !core.IsParkable(r.Reason) {
@@ -159,6 +208,9 @@ type Store struct {
 	ref ControlRef
 	// budget is told about every authority write; see core.Budget.
 	budget core.Budget
+	// sync makes a write durable before it is reported; the zero value syncs
+	// for real, tests inject failures.
+	sync syncer
 }
 
 const (
@@ -270,24 +322,7 @@ func (s *Store) writeLocal(i core.IssueRef, r Record) error {
 	if err != nil {
 		return err
 	}
-	tmp, err := os.CreateTemp(s.dir, i.Resource()+".tmp-*")
-	if err != nil {
-		return fmt.Errorf("%w: %v", core.ErrStoreUnavailable, err)
-	}
-	if _, err := tmp.Write(b); err != nil {
-		_ = tmp.Close()
-		_ = os.Remove(tmp.Name())
-		return fmt.Errorf("%w: %v", core.ErrStoreUnavailable, err)
-	}
-	if err := tmp.Close(); err != nil {
-		_ = os.Remove(tmp.Name())
-		return fmt.Errorf("%w: %v", core.ErrStoreUnavailable, err)
-	}
-	if err := os.Rename(tmp.Name(), s.path(i)); err != nil {
-		_ = os.Remove(tmp.Name())
-		return fmt.Errorf("%w: %v", core.ErrStoreUnavailable, err)
-	}
-	return nil
+	return s.writeAtomic(s.dir, i.Resource()+".tmp-*", s.path(i), b)
 }
 
 // write persists r: to the authoritative copy first when one is attached
@@ -377,6 +412,9 @@ func (s *Store) acquire(i core.IssueRef, holder, name, dispatch string, run core
 		}
 		if ok && cur.Receipt != nil {
 			return fmt.Errorf("%w: %s PR #%d", core.ErrRepairOnly, i.Resource(), cur.Receipt.PR)
+		}
+		if err := s.repairFirst(holder, i); err != nil {
+			return err
 		}
 		n, err := s.openPRs()
 		if err != nil {

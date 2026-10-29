@@ -59,7 +59,7 @@ func jsonStr(s string) string {
 }
 
 func newExec(f *fakeExec, allow bool) *effect.Executor {
-	g := GH{Repo: "o/r", Run: f.run, AllowWrite: allow}
+	g := GH{Repo: "o/r", Run: f.run, AllowWrite: allow, ListLimit: 100}
 	return &effect.Executor{
 		Store: effect.NewMemIntentStore(), Send: g, Lookup: Lookup{GH: g, Git: Git{Run: f.run}},
 		Timeouts: effect.Timeouts{IssueCreate: time.Second, BranchPrepare: time.Second, WorktreePrepare: time.Second},
@@ -105,7 +105,7 @@ func TestAbsentAfterErrorIsRetryableAndUnsureIsParked(t *testing.T) {
 			return nil, errors.New("HTTP 502")
 		}
 		return []byte("[]"), nil
-	}, AllowWrite: true}
+	}, AllowWrite: true, ListLimit: 100}
 	ex := &effect.Executor{Store: effect.NewMemIntentStore(), Send: g, Lookup: Lookup{GH: g}, Timeouts: effect.Timeouts{IssueCreate: time.Second}}
 	if in, _ := ex.Execute(t.Context(), IssueRequest(7, "o/r", "t", "b")); in.Status != effect.StatusFailed {
 		t.Errorf("absent: %s", in.Status)
@@ -144,7 +144,7 @@ func TestBranchAndWorktreeFactLookups(t *testing.T) {
 		"ls-remote --heads": "abc123\trefs/heads/WT-x\n",
 		"worktree list":     "worktree /w/a\nHEAD abc\nbranch refs/heads/WT-a\n\nworktree /w/b\nHEAD def\nbranch refs/heads/WT-b\n",
 	}}
-	lk := Lookup{GH: GH{Repo: "o/r", Run: f.run}, Git: Git{Run: f.run}}
+	lk := Lookup{GH: GH{Repo: "o/r", Run: f.run, ListLimit: 100}, Git: Git{Run: f.run}}
 	r, err := lk.Lookup(t.Context(), effect.Intent{Kind: effect.BranchPrepare, Target: "WT-x"})
 	if err != nil || !r.Found {
 		t.Fatalf("branch found: %+v err=%v", r, err)
@@ -167,5 +167,27 @@ func TestBranchAndWorktreeFactLookups(t *testing.T) {
 		if !readOnly(c) {
 			t.Errorf("lookup issued non-read-only call %v", c)
 		}
+	}
+}
+
+// The list limit is configuration: without it no list is asked for, and a list that reaches it proves
+// nothing about what is absent.
+func TestTheIssueListLimitIsRequiredAndALimitReachedIsNotAbsence(t *testing.T) {
+	calls := 0
+	run := func(_ context.Context, args ...string) ([]byte, error) {
+		calls++
+		return []byte(`[{"number":1,"body":"x"},{"number":2,"body":"y"}]`), nil
+	}
+	in := effect.Intent{Kind: effect.IssueCreate, Key: "k-not-there"}
+	if _, err := (Lookup{GH: GH{Repo: "o/r", Run: run}}).Lookup(t.Context(), in); err == nil || calls != 0 {
+		t.Errorf("without a ListLimit: err=%v calls=%d", err, calls)
+	}
+	res, err := (Lookup{GH: GH{Repo: "o/r", Run: run, ListLimit: 2}}).Lookup(t.Context(), in)
+	if err == nil || res.Authoritative {
+		t.Errorf("a list at its limit with no match was taken as absence: %+v %v", res, err)
+	}
+	res, err = (Lookup{GH: GH{Repo: "o/r", Run: run, ListLimit: 3}}).Lookup(t.Context(), in)
+	if err != nil || !res.Authoritative || res.Found {
+		t.Errorf("a list below its limit is authoritative absence: %+v %v", res, err)
 	}
 }

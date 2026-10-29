@@ -25,6 +25,47 @@ type docRemover interface {
 	DeleteDoc(kind, name string, expectRev int64) error
 }
 
+// docUpdater is claim.Store's safe read-modify-write: when a revision conflict shows the cache is behind
+// the authority, it reads the document from the authority again and runs fn on what is there.
+type docUpdater interface {
+	UpdateDoc(kind, name string, fn func(cur []byte) ([]byte, error)) (claim.Doc, error)
+}
+
+// errNoWrite is what a modify callback returns to say that nothing needs writing.
+var errNoWrite = errors.New("docstore: nothing to write")
+
+// modify applies fn to a document's current data (nil when absent) and stores the result. On a claim
+// store this is UpdateDoc, so a cache that fell behind the authority (a crash between the authority write
+// and the cache write) is repaired by the next write instead of conflicting forever; its retry bound is
+// the claim store's. Docs without UpdateDoc (test doubles) get one plain read-modify-write attempt, and a
+// revision conflict is returned to the caller.
+func modify(d Docs, kind, name string, fn func(cur []byte) ([]byte, error)) error {
+	if u, ok := d.(docUpdater); ok {
+		_, err := u.UpdateDoc(kind, name, fn)
+		if errors.Is(err, errNoWrite) {
+			return nil
+		}
+		return err
+	}
+	var cur []byte
+	var rev int64
+	switch doc, err := d.GetDoc(kind, name); {
+	case err == nil:
+		cur, rev = doc.Data, doc.Rev
+	case !errors.Is(err, core.ErrNotHeld):
+		return err
+	}
+	data, err := fn(cur)
+	if errors.Is(err, errNoWrite) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	_, err = d.PutDoc(kind, name, rev, data)
+	return err
+}
+
 // CollectorKind is the claim store's document kind for collector cursors (lane 18, safety priority).
 const CollectorKind = "collector"
 
@@ -82,7 +123,10 @@ type Cursors struct {
 	MaxChunks int
 }
 
-var _ forge.CursorStore = Cursors{}
+var (
+	_ forge.CursorStore      = Cursors{}
+	_ forge.NotedCursorStore = Cursors{}
+)
 
 // docName turns a free-form cursor key (repository and path) into a document name.
 func docName(key string) string {
@@ -128,36 +172,50 @@ func (c Cursors) limit() int {
 }
 
 func (c Cursors) LoadCursor(key string) ([]byte, bool, error) {
+	body, found, _, err := c.LoadCursorNoted(key)
+	return body, found, err
+}
+
+// FallbackNote is what LoadCursorNoted says when it had to use the previous generation.
+const FallbackNote = "the newest stored cursor generation is incomplete; resumed from the previous one, so changes since it may be reported again"
+
+// LoadCursorNoted is LoadCursor that also says when the cursor it returned is not the newest one. The
+// previous generation is a safe cursor (it can only make changes come back), but silently going backwards
+// would hide that the newest write was lost.
+func (c Cursors) LoadCursorNoted(key string) (body []byte, found bool, note string, err error) {
 	if c.Kind == "" {
-		return nil, false, errors.New("docstore: the cursor document kind is not configured")
+		return nil, false, "", errors.New("docstore: the cursor document kind is not configured")
 	}
 	d, err := c.Docs.GetDoc(c.Kind, docName(key))
 	if errors.Is(err, core.ErrNotHeld) {
-		return nil, false, nil
+		return nil, false, "", nil
 	}
 	if err != nil {
-		return nil, false, err
+		return nil, false, "", err
 	}
 	var cd cursorDoc
 	if err := json.Unmarshal(d.Data, &cd); err != nil {
-		return nil, false, fmt.Errorf("docstore: the cursor document is not readable: %w", err)
+		return nil, false, "", fmt.Errorf("docstore: the cursor document is not readable: %w", err)
 	}
 	if cd.Key != key {
-		return nil, false, fmt.Errorf("docstore: the cursor document holds key %q, not %q", cd.Key, key)
+		return nil, false, "", fmt.Errorf("docstore: the cursor document holds key %q, not %q", cd.Key, key)
 	}
 	if cd.Chunked == nil {
-		return cd.Body, true, nil
+		return cd.Body, true, "", nil
 	}
 	for set := cd.Chunked; set != nil; set = set.Prev {
 		body, ok, err := c.assemble(key, set)
 		if err != nil {
-			return nil, false, err
+			return nil, false, "", err
 		}
 		if ok {
-			return body, true, nil
+			if set != cd.Chunked {
+				note = FallbackNote
+			}
+			return body, true, note, nil
 		}
 	}
-	return nil, false, fmt.Errorf("%w: key %q", ErrCursorIncomplete, key)
+	return nil, false, "", fmt.Errorf("%w: key %q", ErrCursorIncomplete, key)
 }
 
 // assemble joins one generation's chunks and checks every digest. ok=false means the generation is not
@@ -189,25 +247,16 @@ func hexSum(b []byte) string {
 	return hex.EncodeToString(h[:])
 }
 
-// stored is what is currently filed under a cursor's name.
-type stored struct {
-	rev int64
-	set *chunkSet // the current manifest's generation, nil for a plain or absent cursor
-}
-
-func (c Cursors) current(key string) (stored, error) {
-	d, err := c.Docs.GetDoc(c.Kind, docName(key))
-	if errors.Is(err, core.ErrNotHeld) {
-		return stored{}, nil
-	}
-	if err != nil {
-		return stored{}, err
+// setOf reads the chunk set a stored cursor document describes (nil for a plain, absent or unreadable one).
+func setOf(cur []byte) *chunkSet {
+	if cur == nil {
+		return nil
 	}
 	var cd cursorDoc
-	if json.Unmarshal(d.Data, &cd) != nil { // unreadable: overwrite it, keep the revision
-		return stored{rev: d.Rev}, nil
+	if json.Unmarshal(cur, &cd) != nil {
+		return nil
 	}
-	return stored{rev: d.Rev, set: cd.Chunked}, nil
+	return cd.Chunked
 }
 
 func (c Cursors) SaveCursor(key string, body []byte) error {
@@ -218,21 +267,22 @@ func (c Cursors) SaveCursor(key string, body []byte) error {
 	if err != nil {
 		return err
 	}
-	cur, err := c.current(key)
-	if err != nil {
+	if len(single) > c.limit() {
+		return c.saveChunked(key, body, len(single))
+	}
+	var old *chunkSet
+	if err := modify(c.Docs, c.Kind, docName(key), func(cur []byte) ([]byte, error) {
+		old = setOf(cur)
+		return single, nil
+	}); err != nil {
 		return err
 	}
-	if len(single) <= c.limit() {
-		if _, err := c.Docs.PutDoc(c.Kind, docName(key), cur.rev, single); err != nil {
-			return err
-		}
-		c.drop(cur.set, nil) // the plain document is complete on its own; the old chunks are garbage
-		if cur.set != nil {
-			c.drop(cur.set.Prev, nil)
-		}
-		return nil
+	// The plain document is complete on its own; the old chunks are garbage.
+	c.drop(old, nil)
+	if old != nil {
+		c.drop(old.Prev, nil)
 	}
-	return c.saveChunked(key, body, len(single), cur)
+	return nil
 }
 
 // chunkSize is the most raw bytes one chunk document can carry within the limit.
@@ -248,7 +298,7 @@ func (c Cursors) chunkSize(key string) (int, error) {
 	return avail / 4 * 3, nil // base64: 4 output bytes per 3 input bytes
 }
 
-func (c Cursors) saveChunked(key string, body []byte, encoded int, cur stored) error {
+func (c Cursors) saveChunked(key string, body []byte, encoded int) error {
 	tooLarge := func(what string, n, chunks int) error {
 		return &TooLargeError{Key: key, What: what, Encoded: n, Limit: c.limit(), Chunks: chunks, MaxChunks: c.MaxChunks}
 	}
@@ -279,17 +329,32 @@ func (c Cursors) saveChunked(key string, body []byte, encoded int, cur stored) e
 		set.Chunks = append(set.Chunks, ref)
 		raws = append(raws, raw)
 	}
-	if cur.set != nil {
-		prev := *cur.set
-		prev.Prev = nil
-		set.Prev = &prev
+	manifestFor := func(cur []byte) (*chunkSet, []byte, error) {
+		s := *set
+		old := setOf(cur)
+		if old != nil {
+			prev := *old
+			prev.Prev = nil
+			s.Prev = &prev
+		}
+		m, err := json.Marshal(cursorDoc{Key: key, Chunked: &s})
+		if err != nil {
+			return nil, nil, err
+		}
+		if len(m) > c.limit() {
+			return nil, nil, tooLarge("manifest", len(m), n)
+		}
+		return old, m, nil
 	}
-	manifest, err := json.Marshal(cursorDoc{Key: key, Chunked: set})
-	if err != nil {
+	// Refuse before the first write when the manifest, as the cache sees it, would not fit.
+	var seen []byte
+	if d, err := c.Docs.GetDoc(c.Kind, docName(key)); err == nil {
+		seen = d.Data
+	} else if !errors.Is(err, core.ErrNotHeld) {
 		return err
 	}
-	if len(manifest) > c.limit() { // checked before the first chunk is written
-		return tooLarge("manifest", len(manifest), n)
+	if _, _, err := manifestFor(seen); err != nil {
+		return err
 	}
 	for i, ref := range set.Chunks {
 		if err := c.putSame(ref.Name, raws[i]); err != nil {
@@ -297,29 +362,29 @@ func (c Cursors) saveChunked(key string, body []byte, encoded int, cur stored) e
 		}
 	}
 	// The manifest is written last: this one document is what adopts the new cursor.
-	if _, err := c.Docs.PutDoc(c.Kind, docName(key), cur.rev, manifest); err != nil {
+	var old *chunkSet
+	if err := modify(c.Docs, c.Kind, docName(key), func(cur []byte) ([]byte, error) {
+		var m []byte
+		var err error
+		old, m, err = manifestFor(cur)
+		return m, err
+	}); err != nil {
 		return err
 	}
-	if cur.set != nil {
-		c.drop(cur.set.Prev, set, cur.set) // the generation before the previous one
+	if old != nil {
+		c.drop(old.Prev, set, old) // the generation before the previous one
 	}
 	return nil
 }
 
 // putSame writes a content-addressed document; one already holding exactly these bytes is left alone.
 func (c Cursors) putSame(name string, raw []byte) error {
-	var rev int64
-	switch d, err := c.Docs.GetDoc(c.Kind, name); {
-	case err == nil:
-		if bytes.Equal(d.Data, raw) {
-			return nil
+	return modify(c.Docs, c.Kind, name, func(cur []byte) ([]byte, error) {
+		if bytes.Equal(cur, raw) {
+			return nil, errNoWrite
 		}
-		rev = d.Rev
-	case !errors.Is(err, core.ErrNotHeld):
-		return err
-	}
-	_, err := c.Docs.PutDoc(c.Kind, name, rev, raw)
-	return err
+		return raw, nil
+	})
 }
 
 // drop removes the chunks of old that none of keep use. It is best effort: a chunk left behind is garbage

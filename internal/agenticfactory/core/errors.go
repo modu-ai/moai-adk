@@ -34,6 +34,9 @@ var (
 	ErrIntakeFull           = errors.New("agenticfactory: intake is full, request rejected")
 	ErrNoSlot               = errors.New("agenticfactory: no free worktree slot, request parked")
 	ErrBacklogFull          = errors.New("agenticfactory: open PR backlog is at its limit, new claim held")
+	ErrRepairFirst          = errors.New("agenticfactory: an open PR of this agent needs repair, which comes before new work")
+	ErrWorktreeInUse        = errors.New("agenticfactory: the worktree is already used by another open Issue")
+	ErrWorktreeUnbound      = errors.New("agenticfactory: another PR of this agent is open, bind a separate worktree before writing")
 )
 
 // Validation errors.
@@ -50,6 +53,7 @@ var (
 var (
 	ErrTransitionInvalid  = errors.New("agenticfactory: transition not allowed from the current state")
 	ErrEvidenceIncomplete = errors.New("agenticfactory: required evidence is missing")
+	ErrRetryLimit         = errors.New("agenticfactory: the retry limit is reached, the wait escalates")
 )
 
 // ReasonFor maps an error to the block reason it records when the Issue must
