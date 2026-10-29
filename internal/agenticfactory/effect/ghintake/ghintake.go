@@ -41,7 +41,19 @@ type GH struct {
 	Repo       string
 	Run        Runner
 	AllowWrite bool // default false: the sender then makes no call
+	// ListLimit is the most Issues one list call reads. It comes from configuration and is required: a
+	// list that reaches it may be cut short, so it is reported as an error and never as "not found".
+	ListLimit int
 }
+
+func (g GH) listLimit() (string, error) {
+	if g.ListLimit <= 0 {
+		return "", fmt.Errorf("ghintake: GH.ListLimit must come from configuration")
+	}
+	return strconv.Itoa(g.ListLimit), nil
+}
+
+var errCutShort = fmt.Errorf("ghintake: the issue list reached the configured limit and may be cut short")
 
 // Send creates the Issue, with the idempotency marker appended to its body.
 func (g GH) Send(ctx context.Context, in effect.Intent) (string, error) {
@@ -130,7 +142,11 @@ func (l Lookup) Lookup(ctx context.Context, in effect.Intent) (effect.LookupResu
 }
 
 func (l Lookup) issue(ctx context.Context, in effect.Intent) (effect.LookupResult, error) {
-	out, err := l.GH.read(ctx, "issue", "list", "--repo", l.GH.Repo, "--state", "all", "--search", in.Key+" in:body", "--json", "number,body", "--limit", "100")
+	limit, err := l.GH.listLimit()
+	if err != nil {
+		return effect.LookupResult{}, err
+	}
+	out, err := l.GH.read(ctx, "issue", "list", "--repo", l.GH.Repo, "--state", "all", "--search", in.Key+" in:body", "--json", "number,body", "--limit", limit)
 	if err != nil {
 		return effect.LookupResult{}, err
 	}
@@ -145,6 +161,9 @@ func (l Lookup) issue(ctx context.Context, in effect.Intent) (effect.LookupResul
 		if effect.KeyFromMarker(it.Body) == in.Key {
 			return effect.LookupResult{Found: true, ProviderID: strconv.Itoa(it.Number), Authoritative: true}, nil
 		}
+	}
+	if len(items) >= l.GH.ListLimit { // absent from a list that may have been cut short proves nothing
+		return effect.LookupResult{}, errCutShort
 	}
 	return effect.LookupResult{Authoritative: true}, nil
 }

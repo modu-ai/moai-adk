@@ -34,13 +34,11 @@ type docUpdater interface {
 // errNoWrite is what a modify callback returns to say that nothing needs writing.
 var errNoWrite = errors.New("docstore: nothing to write")
 
-// modifyRetries bounds the compare-and-swap rounds of the fallback below. It matches claim.UpdateDoc's bound.
-const modifyRetries = 10
-
 // modify applies fn to a document's current data (nil when absent) and stores the result. On a claim
 // store this is UpdateDoc, so a cache that fell behind the authority (a crash between the authority write
-// and the cache write) is repaired by the next write instead of conflicting forever. Docs without
-// UpdateDoc (test doubles) get a plain read-modify-write loop.
+// and the cache write) is repaired by the next write instead of conflicting forever; its retry bound is
+// the claim store's. Docs without UpdateDoc (test doubles) get one plain read-modify-write attempt, and a
+// revision conflict is returned to the caller.
 func modify(d Docs, kind, name string, fn func(cur []byte) ([]byte, error)) error {
 	if u, ok := d.(docUpdater); ok {
 		_, err := u.UpdateDoc(kind, name, fn)
@@ -49,29 +47,23 @@ func modify(d Docs, kind, name string, fn func(cur []byte) ([]byte, error)) erro
 		}
 		return err
 	}
-	for try := 0; try < modifyRetries; try++ {
-		var cur []byte
-		var rev int64
-		switch doc, err := d.GetDoc(kind, name); {
-		case err == nil:
-			cur, rev = doc.Data, doc.Rev
-		case !errors.Is(err, core.ErrNotHeld):
-			return err
-		}
-		data, err := fn(cur)
-		if errors.Is(err, errNoWrite) {
-			return nil
-		}
-		if err != nil {
-			return err
-		}
-		_, err = d.PutDoc(kind, name, rev, data)
-		if errors.Is(err, core.ErrRevisionConflict) {
-			continue
-		}
+	var cur []byte
+	var rev int64
+	switch doc, err := d.GetDoc(kind, name); {
+	case err == nil:
+		cur, rev = doc.Data, doc.Rev
+	case !errors.Is(err, core.ErrNotHeld):
 		return err
 	}
-	return fmt.Errorf("%w: %s/%s kept moving", core.ErrBusy, kind, name)
+	data, err := fn(cur)
+	if errors.Is(err, errNoWrite) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	_, err = d.PutDoc(kind, name, rev, data)
+	return err
 }
 
 // CollectorKind is the claim store's document kind for collector cursors (lane 18, safety priority).

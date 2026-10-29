@@ -31,7 +31,7 @@ const prJSON = `[
 
 func TestReadPRPicksNewestOpenPRForTheIssue(t *testing.T) {
 	g := &fakeGH{out: map[string]string{"pr list": prJSON, "issue view": `{"state":"OPEN"}`}}
-	r := GHReader{Run: g.run, Verdict: func(int, string) string { return "PASS" }, Repair: func(int) bool { return false }}
+	r := GHReader{PRListLimit: 100, Run: g.run, Verdict: func(int, string) string { return "PASS" }, Repair: func(int) bool { return false }}
 	info, found, err := r.ReadPR(t.Context(), 7)
 	if err != nil || !found {
 		t.Fatalf("found=%v err=%v", found, err)
@@ -46,14 +46,14 @@ func TestReadPRPicksNewestOpenPRForTheIssue(t *testing.T) {
 
 func TestReadPRNoneAndMerged(t *testing.T) {
 	g := &fakeGH{out: map[string]string{"pr list": `[]`}}
-	if _, found, err := (GHReader{Run: g.run}).ReadPR(t.Context(), 7); err != nil || found {
+	if _, found, err := (GHReader{PRListLimit: 100, Run: g.run}).ReadPR(t.Context(), 7); err != nil || found {
 		t.Fatalf("found=%v err=%v", found, err)
 	}
 	g = &fakeGH{out: map[string]string{
 		"pr list":    `[{"number":60,"state":"MERGED","headRefOid":"` + head + `","statusCheckRollup":[],"closingIssuesReferences":[{"number":7}]}]`,
 		"issue view": `{"state":"CLOSED"}`,
 	}}
-	info, found, err := (GHReader{Run: g.run}).ReadPR(t.Context(), 7)
+	info, found, err := (GHReader{PRListLimit: 100, Run: g.run}).ReadPR(t.Context(), 7)
 	if err != nil || !found || !info.Merged || !info.IssueClosed {
 		t.Fatalf("info=%+v found=%v err=%v", info, found, err)
 	}
@@ -61,7 +61,7 @@ func TestReadPRNoneAndMerged(t *testing.T) {
 
 func TestCountOpenPRs(t *testing.T) {
 	g := &fakeGH{out: map[string]string{"pr list": `[{"number":1},{"number":2},{"number":3}]`}}
-	n, err := (GHReader{Run: g.run}).CountOpenPRs(t.Context())
+	n, err := (GHReader{PRListLimit: 100, Run: g.run}).CountOpenPRs(t.Context())
 	if err != nil || n != 3 {
 		t.Fatalf("n=%d err=%v", n, err)
 	}
@@ -69,18 +69,18 @@ func TestCountOpenPRs(t *testing.T) {
 
 func TestGHErrorsPropagateAsErrors(t *testing.T) {
 	g := &fakeGH{err: errors.New("429")}
-	if _, _, err := (GHReader{Run: g.run}).ReadPR(t.Context(), 7); err == nil {
+	if _, _, err := (GHReader{PRListLimit: 100, Run: g.run}).ReadPR(t.Context(), 7); err == nil {
 		t.Error("gh error swallowed")
 	}
 	g = &fakeGH{out: map[string]string{"pr list": `not json`}}
-	if _, _, err := (GHReader{Run: g.run}).ReadPR(t.Context(), 7); err == nil {
+	if _, _, err := (GHReader{PRListLimit: 100, Run: g.run}).ReadPR(t.Context(), 7); err == nil {
 		t.Error("bad json accepted")
 	}
 }
 
 func TestOnlyReadOnlyGHCommandsAreIssued(t *testing.T) {
 	g := &fakeGH{out: map[string]string{"pr list": prJSON, "issue view": `{"state":"OPEN"}`}}
-	r := GHReader{Run: g.run}
+	r := GHReader{PRListLimit: 100, Run: g.run}
 	_, _, _ = r.ReadPR(t.Context(), 7)
 	_, _ = r.CountOpenPRs(t.Context())
 	for _, c := range g.calls {
@@ -97,4 +97,30 @@ func TestOnlyReadOnlyGHCommandsAreIssued(t *testing.T) {
 		t.Error("expected machine-readable output")
 	}
 	var _ monitor.PRReader = r
+}
+
+// The list limit is configuration: without it nothing is asked, and a list that reaches it is not trusted.
+func TestAListLimitIsRequiredAndAListThatReachesItIsAnError(t *testing.T) {
+	g := &fakeGH{out: map[string]string{"pr list": `[{"number":1}]`}}
+	if _, _, err := (GHReader{Run: g.run}).ReadPR(t.Context(), 7); err == nil {
+		t.Error("ReadPR ran without a configured limit")
+	}
+	if _, err := (GHReader{Run: g.run}).CountOpenPRs(t.Context()); err == nil {
+		t.Error("CountOpenPRs ran without a configured limit")
+	}
+	if len(g.calls) != 0 {
+		t.Errorf("gh was called %d times with no limit configured", len(g.calls))
+	}
+	g = &fakeGH{out: map[string]string{"pr list": `[{"number":1},{"number":2},{"number":3}]`}}
+	r := GHReader{PRListLimit: 3, Run: g.run}
+	if _, err := r.CountOpenPRs(t.Context()); err == nil {
+		t.Error("a count at the limit was reported as exact")
+	}
+	if _, found, err := r.ReadPR(t.Context(), 7); err == nil || found {
+		t.Errorf("a list at the limit gave found=%v err=%v: it may have been cut short", found, err)
+	}
+	joined := strings.Join(g.calls[0], " ")
+	if !strings.Contains(joined, "--limit 3") {
+		t.Errorf("the configured limit was not passed to gh: %v", g.calls[0])
+	}
 }

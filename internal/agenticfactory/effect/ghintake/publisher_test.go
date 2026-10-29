@@ -91,7 +91,7 @@ func (fixedIdentity) CommentFacts(context.Context, string, int64) (effect.Commen
 
 func newPub(h *hub, allow bool) *Publisher {
 	return &Publisher{
-		GH:       GH{Repo: "o/r", Run: h.run, AllowWrite: allow},
+		GH:       GH{Repo: "o/r", Run: h.run, AllowWrite: allow, ListLimit: 100},
 		Identity: fixedIdentity{user: 1001, authors: map[int]int64{}},
 		Content:  func(context.Context, claim.Request) (string, string, error) { return "Add the thing", "Details.", nil },
 		Limit:    5,
@@ -225,5 +225,27 @@ func TestFindDuplicatesNeedsAConfiguredLimitAndFailsLoudly(t *testing.T) {
 	p.Limit = 0
 	if _, err := p.FindDuplicates(t.Context(), request()); err == nil {
 		t.Error("an unconfigured candidate limit was accepted")
+	}
+}
+
+// A search that reaches the list limit may have missed the Issue or a duplicate: both are errors, never a
+// confident "not found" that would create a second Issue.
+func TestASearchAtTheListLimitIsAnErrorForFindIssueAndFindDuplicates(t *testing.T) {
+	run := func(_ context.Context, args ...string) ([]byte, error) {
+		return []byte(`[{"number":1,"title":"other","body":"x","url":"u1"},{"number":2,"title":"other","body":"y","url":"u2"}]`), nil
+	}
+	p := &Publisher{GH: GH{Repo: "o/r", Run: run, ListLimit: 2}, Limit: 5, Content: func(context.Context, claim.Request) (string, string, error) {
+		return "wanted title", "body", nil
+	}}
+	req := claim.Request{Key: "k"}
+	if _, _, found, err := p.FindIssue(t.Context(), req); err == nil || found {
+		t.Errorf("FindIssue: found=%v err=%v", found, err)
+	}
+	if _, err := p.FindDuplicates(t.Context(), req); err == nil {
+		t.Error("FindDuplicates answered from a list that reached the limit")
+	}
+	p.GH.ListLimit = 0
+	if _, _, _, err := p.FindIssue(t.Context(), req); err == nil {
+		t.Error("FindIssue ran without a configured ListLimit")
 	}
 }
