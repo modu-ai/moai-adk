@@ -113,7 +113,8 @@ type Lookuper interface {
 	Lookup(ctx context.Context, in Intent) (LookupResult, error)
 }
 
-// IntentStore persists intents (the claim store provides the production implementation).
+// IntentStore persists intents. It is a local cache behind this interface: the authority is the
+// online control ref, and consumer ACK and cursor (the collector contract) are not implemented yet.
 type IntentStore interface {
 	Get(key string) (Intent, bool, error)
 	Put(Intent) error
