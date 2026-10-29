@@ -778,12 +778,16 @@ func (r *Runner) RetryWait(t Ticket, diagnosis, next string, recheck time.Time) 
 		if rec.Wait == nil {
 			return fmt.Errorf("%w: no wait is recorded", core.ErrTransitionInvalid)
 		}
+		// Only a retry that makes the wait escalated in THIS call is written. One
+		// against a wait that was already exhausted or escalated is refused and
+		// writes nothing, whatever Retry hands back.
+		exhausted := rec.Wait.Escalated || rec.Wait.Retries >= rec.Wait.MaxRetries
 		w, e := rec.Wait.Retry(diagnosis, next, recheck)
 		if e != nil && !errors.Is(e, core.ErrRetryLimit) {
 			return e
 		}
-		if errors.Is(e, core.ErrRetryLimit) && !w.Escalated {
-			return e // already exhausted: nothing changes
+		if exhausted || (errors.Is(e, core.ErrRetryLimit) && !w.Escalated) {
+			return e
 		}
 		rec.Wait, limit = &w, e
 		return nil

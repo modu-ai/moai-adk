@@ -68,3 +68,42 @@ func TestRetryingAWaitEscalatesAtTheLimit(t *testing.T) {
 		t.Errorf("clear: %+v %v", cleared.Wait, err)
 	}
 }
+
+// A refused retry writes nothing. The retry that reaches the limit is recorded
+// once, as escalated; every retry after that is refused with ErrRetryLimit and
+// leaves the stored record (its Seq and its wait) exactly as it was.
+func TestARetryPastTheLimitWritesNothing(t *testing.T) {
+	r, ref := newRunner(t)
+	tk := landed(t, r, ref)
+	if _, err := r.SetWait(tk, wait1()); err != nil { // MaxRetries 2
+		t.Fatal(err)
+	}
+	at := time.Date(2026, 10, 30, 10, 0, 0, 0, time.UTC)
+	if _, err := r.RetryWait(tk, "still red", "re-run once more", at); err != nil {
+		t.Fatal(err)
+	}
+	before, _ := r.Store.Read(ref)
+	// regression: the retry that reaches the limit is recorded, once, escalated
+	rec, err := r.RetryWait(tk, "still red", "ask for help", at)
+	if !errors.Is(err, core.ErrRetryLimit) || rec.Wait == nil || !rec.Wait.Escalated || rec.Wait.Retries != 2 {
+		t.Fatalf("the limit-reaching retry: %+v %v", rec.Wait, err)
+	}
+	if rec.Seq != before.Seq+1 {
+		t.Fatalf("the limit-reaching retry is one write: Seq %d -> %d", before.Seq, rec.Seq)
+	}
+	escalated, _ := r.Store.Read(ref)
+	for i := 0; i < 2; i++ {
+		got, err := r.RetryWait(tk, "again", "again", at.Add(time.Hour))
+		if !errors.Is(err, core.ErrRetryLimit) {
+			t.Fatalf("retry past the limit #%d: %v", i+1, err)
+		}
+		cur, _ := r.Store.Read(ref)
+		if cur.Seq != escalated.Seq {
+			t.Errorf("a refused retry wrote the record again: Seq %d -> %d", escalated.Seq, cur.Seq)
+		}
+		if cur.Wait == nil || *cur.Wait != *escalated.Wait {
+			t.Errorf("a refused retry changed the wait: %+v -> %+v", escalated.Wait, cur.Wait)
+		}
+		_ = got // a refused call returns no record, as every other refusal here does
+	}
+}
