@@ -61,6 +61,7 @@ type Request struct {
 	LastError   string          `json:"last_error,omitempty"`
 	Evidence    []StageEvidence `json:"evidence"`
 	Ready       *Ready          `json:"ready,omitempty"`
+	Rev         int64           `json:"rev,omitempty"`
 }
 
 // Policy bounds intake: requests in flight, and requests parked behind them.
@@ -98,7 +99,7 @@ func (s *Store) readRequest(key string) (Request, bool, error) {
 	return r, true, nil
 }
 
-func (s *Store) writeRequest(r Request) error {
+func (s *Store) writeRequestLocal(r Request) error {
 	b, err := json.MarshalIndent(r, "", "  ")
 	if err != nil {
 		return err
@@ -146,6 +147,28 @@ func (s *Store) listRequests() ([]Request, error) {
 	}
 	sort.Slice(out, func(a, b int) bool { return out[a].Seq < out[b].Seq })
 	return out, nil
+}
+
+// writeRequest persists r: authority first when attached, then the cache.
+func (s *Store) writeRequest(r *Request) error {
+	if s.ref != nil {
+		old, _, err := s.readRequest(r.Key)
+		if err != nil {
+			return err
+		}
+		pushed := *r
+		pushed.Rev = 0
+		data, err := json.Marshal(pushed)
+		if err != nil {
+			return err
+		}
+		rev, err := s.ref.CompareAndSwap(refCtx(), "request/"+r.Key, old.Rev, data)
+		if err != nil {
+			return refErr(err)
+		}
+		r.Rev = rev
+	}
+	return s.writeRequestLocal(*r)
 }
 
 // started reports whether the request's Issue has begun an attempt, and the
@@ -232,7 +255,7 @@ func (s *Store) PutRequest(key, payloadHash string, priority int, p Policy) (Req
 			return fmt.Errorf("%w: %d in flight, %d parked", core.ErrIntakeFull, s.inFlight(all), parked)
 		}
 		created = true
-		return s.writeRequest(out)
+		return s.writeRequest(&out)
 	})
 	if err != nil {
 		return Request{}, false, err
@@ -311,7 +334,7 @@ func (s *Store) UpdateRequest(key string, fn func(*Request) error) (Request, err
 			return fmt.Errorf("%w: request stage %s -> %s", core.ErrTransitionInvalid, cur.Stage, next.Stage)
 		}
 		out = next
-		return s.writeRequest(out)
+		return s.writeRequest(&out)
 	})
 	if err != nil {
 		return Request{}, err
@@ -358,7 +381,7 @@ func (s *Store) PromoteParked(p Policy, freeSlots int) ([]Request, error) {
 				continue
 			}
 			r.Parked = ""
-			if err := s.writeRequest(r); err != nil {
+			if err := s.writeRequest(&r); err != nil {
 				return err
 			}
 			promoted = append(promoted, r)
