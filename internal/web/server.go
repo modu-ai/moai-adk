@@ -62,6 +62,10 @@ type Config struct {
 	// Console reads and writes via SyncToProjectConfig. Required.
 	ProjectRoot string
 
+	// MonitorRows supplies the monitor JSON (monitor.MarshalView output) for the
+	// PR tracking, intake and context panels. Nil leaves them "not provided".
+	MonitorRows func(ctx context.Context) ([]byte, error)
+
 	// ProfileBaseDir overrides the profile store base directory
 	// (~/.moai/claude-profiles by default). When empty, the process default is
 	// used. Tests set this to a temp dir for isolation.
