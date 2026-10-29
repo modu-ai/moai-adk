@@ -15,7 +15,7 @@ const head = "0123456789abcdef0123456789abcdef01234567"
 
 func openStore(t *testing.T) *claim.Store {
 	t.Helper()
-	s, err := claim.Open(t.TempDir())
+	s, err := claim.OpenWithLimit(t.TempDir(), 100)
 	if err != nil {
 		t.Fatal(err)
 	}

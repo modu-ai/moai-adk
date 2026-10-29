@@ -43,16 +43,39 @@ const (
 	LinkUnverified   LinkAvailability = "unverified"
 	LinkAvailable    LinkAvailability = "available"
 	LinkInaccessible LinkAvailability = "inaccessible"
+	LinkRestricted   LinkAvailability = "restricted" // limited material: never shown as an open link
 )
+
+// EvidenceStage is how far an evidence item has travelled toward being publicly checkable.
+type EvidenceStage string
+
+const (
+	StagePrepared       EvidenceStage = "prepared"
+	StageMasked         EvidenceStage = "masked"
+	StageCommitted      EvidenceStage = "committed"
+	StagePushed         EvidenceStage = "pushed"
+	StageRemoteVerified EvidenceStage = "remote-verified"
+	StageRestricted     EvidenceStage = "restricted"
+	StageUnknown        EvidenceStage = "unknown"
+)
+
+func (s EvidenceStage) valid() bool {
+	switch s {
+	case StagePrepared, StageMasked, StageCommitted, StagePushed, StageRemoteVerified, StageRestricted:
+		return true
+	}
+	return false
+}
 
 // ContextItem is one entry of an Issue's context ledger.
 type ContextItem struct {
-	Section    string       `json:"section"`
-	Link       string       `json:"link"`
-	TargetHead string       `json:"target_head,omitempty"`
-	Hash       string       `json:"hash,omitempty"`
-	Owner      string       `json:"owner,omitempty"`
-	State      ContextState `json:"state"`
+	Section    string        `json:"section"`
+	Link       string        `json:"link"`
+	TargetHead string        `json:"target_head,omitempty"`
+	Hash       string        `json:"hash,omitempty"`
+	Owner      string        `json:"owner,omitempty"`
+	State      ContextState  `json:"state"`
+	Stage      EvidenceStage `json:"stage"`
 	// RemoteVerified is set by the reader only when a remote lookup found the link. The collector
 	// derives Availability from it and ignores whatever the reader put in Availability.
 	RemoteVerified bool             `json:"remote_verified"`
@@ -92,10 +115,15 @@ func (c *Collector) fillContext(ctx context.Context, r *Row, at time.Time) {
 	for i := range items {
 		items[i].Link, _ = Mask(items[i].Link)
 		items[i].Owner, _ = Mask(items[i].Owner)
+		if !items[i].Stage.valid() {
+			items[i].Stage = StageUnknown
+		}
 		switch {
 		case items[i].State == CtxInaccessible:
 			items[i].Availability = LinkInaccessible
-		case items[i].RemoteVerified:
+		case items[i].Stage == StageRestricted:
+			items[i].Availability = LinkRestricted
+		case items[i].Stage == StageRemoteVerified && items[i].RemoteVerified:
 			items[i].Availability = LinkAvailable
 		default:
 			items[i].Availability = LinkUnverified

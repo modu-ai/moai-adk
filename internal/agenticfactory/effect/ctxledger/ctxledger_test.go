@@ -18,11 +18,14 @@ type fakeRemote struct {
 	lostAfterCreate  bool // create lands, response is lost
 	lostAfterUpdate  bool
 	findErr          error
+	finds            int
+	gone             map[int64]bool // ids that no longer exist
 }
 
 func newRemote() *fakeRemote { return &fakeRemote{comments: map[int][]Comment{}, nextID: 100} }
 
 func (f *fakeRemote) Find(_ context.Context, issue int, marker string) (Comment, bool, error) {
+	f.finds++
 	if f.findErr != nil {
 		return Comment{}, false, f.findErr
 	}
@@ -47,6 +50,9 @@ func (f *fakeRemote) Create(_ context.Context, issue int, body string) (Comment,
 
 func (f *fakeRemote) Update(_ context.Context, issue int, id int64, body string) error {
 	f.updates++
+	if f.gone[id] {
+		return ErrGone
+	}
 	if f.lostAfterUpdate {
 		f.lostAfterUpdate = false
 		return errors.New("timeout")
@@ -229,5 +235,81 @@ func TestRevertToOlderTextIsSentAgain(t *testing.T) {
 	}
 	if len(r.comments[7]) != 1 || !strings.HasSuffix(r.comments[7][0].Body, "v1") {
 		t.Errorf("remote holds %v, want the latest submitted text v1", r.comments[7])
+	}
+}
+
+func submitFlush(t *testing.T, l *Ledger, text string) {
+	t.Helper()
+	if _, err := l.Submit(t.Context(), body(text)); err != nil {
+		t.Fatal(err)
+	}
+	if err := l.Flush(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// S52 M1: after the first write the comment id and body hash are kept, so later writes skip the list GET.
+func TestCachedIDSkipsTheListLookup(t *testing.T) {
+	r := newRemote()
+	l, _ := newLedger(r, 4096)
+	for _, text := range []string{"v1", "v2", "v3", "v4"} {
+		submitFlush(t, l, text)
+	}
+	if r.finds != 1 {
+		t.Errorf("list GETs = %d, want 1 (only the first write needs the marker lookup)", r.finds)
+	}
+	if r.creates != 1 || r.updates != 3 || len(r.comments[7]) != 1 || !strings.HasSuffix(r.comments[7][0].Body, "v4") {
+		t.Errorf("creates=%d updates=%d comments=%v", r.creates, r.updates, r.comments[7])
+	}
+}
+
+func TestSameBodyAsCachedIsNotSentAtAll(t *testing.T) {
+	r := newRemote()
+	l, _ := newLedger(r, 4096)
+	submitFlush(t, l, "v1")
+	in := mustList(l.Store.(*effect.MemIntentStore))[0]
+	before := r.finds + r.creates + r.updates
+	id, err := (sender{r, l}).Send(t.Context(), in)
+	if err != nil || id == "" {
+		t.Fatalf("id=%q err=%v", id, err)
+	}
+	if after := r.finds + r.creates + r.updates; after != before {
+		t.Errorf("remote calls %d -> %d for an unchanged body", before, after)
+	}
+}
+
+func TestCommentGoneFallsBackToMarkerLookupAndStaysOneComment(t *testing.T) {
+	r := newRemote()
+	l, _ := newLedger(r, 4096)
+	submitFlush(t, l, "v1")
+	gone := r.comments[7][0].ID
+	r.gone = map[int64]bool{gone: true}
+	r.comments[7] = nil // someone deleted it
+	submitFlush(t, l, "v2")
+	if len(r.comments[7]) != 1 || !strings.HasSuffix(r.comments[7][0].Body, "v2") || r.creates != 2 {
+		t.Errorf("comments=%v creates=%d", r.comments[7], r.creates)
+	}
+}
+
+func TestFreshLedgerWithoutCacheStillFindsByMarker(t *testing.T) {
+	r := newRemote()
+	l1, st := newLedger(r, 4096)
+	submitFlush(t, l1, "v1")
+	l2 := &Ledger{Remote: r, Store: st, MaxBytes: 4096, Timeouts: effect.Timeouts{LedgerComment: time.Second}} // restart: no cache
+	submitFlush(t, l2, "v2")
+	if len(r.comments[7]) != 1 || r.creates != 1 {
+		t.Errorf("restart made a second comment: %v creates=%d", r.comments[7], r.creates)
+	}
+}
+
+func TestAmbiguousUpdateDropsTheCacheSoReconcileReadsTheRemote(t *testing.T) {
+	r := newRemote()
+	l, _ := newLedger(r, 4096)
+	submitFlush(t, l, "v1")
+	r.lostAfterUpdate = true
+	submitFlush(t, l, "v2")
+	submitFlush(t, l, "v3")
+	if len(r.comments[7]) != 1 || !strings.HasSuffix(r.comments[7][0].Body, "v3") {
+		t.Errorf("comments = %v", r.comments[7])
 	}
 }
