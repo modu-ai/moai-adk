@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
@@ -265,7 +266,7 @@ func (s *Store) usesWorktree(h worktreeReservation) bool {
 // since renewed is refused. The PR, the worktree and the history stay; the old
 // owner's wait and repair claim, which were its alone, do not. A parked Issue
 // needs the new holder's own wait record (owner = newHolder).
-func (s *Store) TakeOver(i core.IssueRef, oldHolder string, oldEpoch int64, newHolder, dispatch string, run core.RunID, preserved string, wait *core.Wait) (Record, error) {
+func (s *Store) TakeOver(i core.IssueRef, oldHolder string, oldEpoch int64, newHolder, dispatch string, run core.RunID, note string, wait *core.Wait) (Record, error) {
 	if newHolder == "" || dispatch == "" {
 		return Record{}, fmt.Errorf("%w: the new holder and a dispatch are required", core.ErrIDInvalid)
 	}
@@ -294,11 +295,52 @@ func (s *Store) TakeOver(i core.IssueRef, oldHolder string, oldEpoch int64, newH
 			rc.Session, rc.Agent = newHolder, ""
 			out.Receipt = &rc
 		}
-		out.History = append(append([]Event(nil), cur.History...), Event{Kind: "takeover", Session: newHolder, Note: "from " + oldHolder + ", preserved at " + preserved})
+		// Design E05: a takeover is a new attempt. The attempt that was running is
+		// kept in the history event and on the receipt it published.
+		out.AttemptSeq = cur.AttemptSeq + 1
+		out.Attempt = core.AttemptID(fmt.Sprintf("takeover-%d", out.AttemptSeq))
+		out.History = append(append([]Event(nil), cur.History...), Event{Kind: "takeover", Session: newHolder, Attempt: string(cur.Attempt), Note: "from " + oldHolder + ", " + note})
 		return s.write(i, &out)
 	})
 	if err != nil {
 		return Record{}, err
 	}
 	return out, nil
+}
+
+// heldIssuesRecorded is the condition for a new claim when a control ref is the
+// authority: every unfinished Issue the same holder already holds must have that
+// responsibility on the ref (the ref carries the Issue under this holder and
+// epoch). A record that only the local cache knows, or that the ref gives to
+// someone else, stops the new claim. A store with no control ref has nothing to
+// record on, so the check is skipped there on purpose. A ref that cannot be read
+// fails the claim: an unknown is not a yes.
+func (s *Store) heldIssuesRecorded(holder string, next core.IssueRef) error {
+	if s.ref == nil {
+		return nil
+	}
+	recs, err := s.List()
+	if err != nil {
+		return err
+	}
+	for _, r := range recs {
+		if r.Holder != holder || r.State == core.StateDone || r.Issue == next.Number {
+			continue
+		}
+		data, _, err := s.ref.Read(refCtx(), "issue/"+strconv.Itoa(r.Issue))
+		if errors.Is(err, core.ErrNotHeld) {
+			return fmt.Errorf("%w: issue-%d is not on the ref", core.ErrResponsibilityNotRecorded, r.Issue)
+		}
+		if err != nil {
+			return refErr(err)
+		}
+		var onRef Record
+		if err := json.Unmarshal(data, &onRef); err != nil {
+			return fmt.Errorf("%w: corrupt ref record for issue-%d: %v", core.ErrStoreUnavailable, r.Issue, err)
+		}
+		if onRef.Holder != r.Holder || onRef.Epoch != r.Epoch {
+			return fmt.Errorf("%w: the ref has issue-%d under %q epoch %d, not %q epoch %d", core.ErrResponsibilityNotRecorded, r.Issue, onRef.Holder, onRef.Epoch, r.Holder, r.Epoch)
+		}
+	}
+	return nil
 }

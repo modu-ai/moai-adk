@@ -671,7 +671,8 @@ func (r *Runner) ReopenOwn(t Ticket, reason string, ev RepairEvidence) (claim.Re
 // probes the owner's process, the worktree or git; the wiring that observes them
 // (the monitor and the integration side, lanes 20 and 22) is what makes the
 // facts true, and a TakeOver call is only as sound as that observation.
-// OwnerGone: the owner's session was observed gone (not merely quiet).
+// OwnerGone: the owner's session was observed gone (not merely quiet); SafeStop
+// may stand in for it, one of the two is required.
 // WriterStopped: nothing can still write the branch or the worktree.
 // UncommittedPreserved and PreservedRef: what the owner left uncommitted was
 // committed or snapshotted, and PreservedRef names where. What the store does
@@ -679,7 +680,10 @@ func (r *Runner) ReopenOwn(t Ticket, reason string, ev RepairEvidence) (claim.Re
 // was taken about are still the recorded ones.
 // All four are required; a missing one leaves the record as it was.
 type Takeover struct {
-	OwnerGone            bool
+	OwnerGone bool
+	// SafeStop is the reference of a stop record the old owner left (REQ-AF-009):
+	// it stands in for OwnerGone. One of the two is required.
+	SafeStop             string
 	WriterStopped        bool
 	UncommittedPreserved bool
 	PreservedRef         string
@@ -694,8 +698,8 @@ type Takeover struct {
 // released record.
 func (r *Runner) TakeOver(i core.IssueRef, old Ticket, newHolder, dispatch string, run core.RunID, ev Takeover) (claim.Record, error) {
 	switch {
-	case !ev.OwnerGone:
-		return claim.Record{}, fmt.Errorf("%w: the owner's session is not confirmed gone", core.ErrEvidenceIncomplete)
+	case !ev.OwnerGone && strings.TrimSpace(ev.SafeStop) == "":
+		return claim.Record{}, fmt.Errorf("%w: neither the owner's departure nor a safe stop record is given", core.ErrEvidenceIncomplete)
 	case !ev.WriterStopped:
 		return claim.Record{}, fmt.Errorf("%w: writer stop not confirmed", core.ErrEvidenceIncomplete)
 	case !ev.UncommittedPreserved || strings.TrimSpace(ev.PreservedRef) == "":
@@ -704,7 +708,14 @@ func (r *Runner) TakeOver(i core.IssueRef, old Ticket, newHolder, dispatch strin
 	if err := r.guard(i, core.OpTakeOver); err != nil {
 		return claim.Record{}, err
 	}
-	return r.Store.TakeOver(i, old.Holder, old.Epoch, newHolder, dispatch, run, ev.PreservedRef, ev.Wait)
+	note := "preserved at " + ev.PreservedRef
+	if strings.TrimSpace(ev.SafeStop) != "" {
+		note += "; safe stop " + strings.TrimSpace(ev.SafeStop)
+	}
+	if ev.OwnerGone {
+		note += "; owner gone"
+	}
+	return r.Store.TakeOver(i, old.Holder, old.Epoch, newHolder, dispatch, run, note, ev.Wait)
 }
 
 // ContractRevision is the evidence of canon E18 adopt: what changed in the

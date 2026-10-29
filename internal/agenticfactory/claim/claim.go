@@ -440,6 +440,9 @@ func (s *Store) acquire(i core.IssueRef, holder, name, dispatch string, run core
 		if err := s.repairFirst(holder, i); err != nil {
 			return err
 		}
+		if err := s.heldIssuesRecorded(holder, i); err != nil {
+			return err
+		}
 		n, err := s.openPRs()
 		if err != nil {
 			return err
