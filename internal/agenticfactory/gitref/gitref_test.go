@@ -410,3 +410,65 @@ func TestContextCancellationStopsTheCall(t *testing.T) {
 		t.Errorf("cancelled read: %v", err)
 	}
 }
+
+// With no identity configured the commit is written as the noreply machine
+// identity, never as whatever user.name/user.email the git configuration holds.
+func TestDefaultCommitIdentityIsNoreplyNotThePersonalGitConfig(t *testing.T) {
+	fx := newFixture(t, true)
+	cfg := filepath.Join(t.TempDir(), "gitconfig")
+	if err := os.WriteFile(cfg, []byte("[user]\n\tname = Real Person\n\temail = real.person@example.com\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	r := fx.ref()
+	// A personal configuration, not the hermetic one, and no GIT_* identity variables.
+	r.Env = []string{"GIT_CONFIG_GLOBAL=" + cfg, "GIT_CONFIG_NOSYSTEM=1",
+		"GIT_AUTHOR_NAME=", "GIT_AUTHOR_EMAIL=", "GIT_COMMITTER_NAME=", "GIT_COMMITTER_EMAIL="}
+	if _, err := r.CompareAndSwap(bg, "issue/1", 0, []byte(`{}`)); err != nil {
+		t.Fatal(err)
+	}
+	got := run(t, fx.remote, "log", "-1", "--format=%an|%ae|%cn|%ce", "refs/heads/moai-control")
+	if strings.Contains(got, "Real Person") || strings.Contains(got, "real.person") {
+		t.Fatalf("the personal git identity leaked into the commit: %s", got)
+	}
+	want := DefaultIdentity
+	name, email, _ := strings.Cut(strings.TrimSuffix(want, ">"), " <")
+	if got != fmt.Sprintf("%s|%s|%s|%s", name, email, name, email) {
+		t.Errorf("default identity = %q, want %q", got, want)
+	}
+	if !strings.Contains(email, "noreply") {
+		t.Errorf("the default must be a noreply address, got %q", email)
+	}
+}
+
+func TestAuthorAndCommitterAreConfigurableSeparately(t *testing.T) {
+	fx := newFixture(t, true)
+	r := fx.ref()
+	r.Author = "Control Bot <bot@users.noreply.invalid>"
+	r.Committer = "Control Service <svc@users.noreply.invalid>"
+	if _, err := r.CompareAndSwap(bg, "issue/1", 0, []byte(`{}`)); err != nil {
+		t.Fatal(err)
+	}
+	got := run(t, fx.remote, "log", "-1", "--format=%an|%ae|%cn|%ce", "refs/heads/moai-control")
+	if got != "Control Bot|bot@users.noreply.invalid|Control Service|svc@users.noreply.invalid" {
+		t.Errorf("identities = %q", got)
+	}
+}
+
+func TestMalformedIdentitiesAreRefusedBeforeAnyGitCall(t *testing.T) {
+	for _, bad := range []string{"just a name", "Name <>", "<a@b.invalid>", "Name <a@b.invalid", "Name <a@b.invalid>\nInjected: x", "Na<me <a@b.invalid>"} {
+		r := newFixture(t, true).ref()
+		r.Author = bad
+		before := r.Invocations()
+		if _, err := r.CompareAndSwap(bg, "issue/1", 0, []byte(`{}`)); !errors.Is(err, core.ErrIDInvalid) {
+			t.Errorf("author %q: %v", bad, err)
+		}
+		if r.Invocations() != before {
+			t.Errorf("author %q: git ran before the identity was validated", bad)
+		}
+		r2 := newFixture(t, true).ref()
+		r2.Committer = bad
+		if _, err := r2.CompareAndSwap(bg, "issue/1", 0, []byte(`{}`)); !errors.Is(err, core.ErrIDInvalid) {
+			t.Errorf("committer %q: %v", bad, err)
+		}
+	}
+}

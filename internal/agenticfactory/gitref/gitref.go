@@ -49,11 +49,63 @@ type Ref struct {
 	Remote string   // remote name or URL
 	Branch string   // branch name, default moai-control
 	Env    []string // extra environment, e.g. a hermetic git config in tests
-	Author string   // "Name <email>" for commits; empty uses the git configuration
+	// Author and Committer are the "Name <email>" strings written into the
+	// commits this Ref creates. Empty means DefaultIdentity (Committer empty
+	// means the same as Author); the git configuration is never consulted, so a
+	// personal user.email cannot end up in the history. They are commit
+	// metadata only: no signature is made and nothing is authenticated by them,
+	// and the credentials used to push are untouched.
+	Author    string
+	Committer string
 
 	mu       sync.Mutex
 	lastHead string
 	runs     int
+}
+
+// DefaultIdentity is the machine identity used when none is configured. The
+// address is a noreply one on a reserved (.invalid) domain, not a mailbox.
+const DefaultIdentity = "MoAI Control <noreply@moai-control.invalid>"
+
+type identity struct{ name, email string }
+
+// parseIdentity checks a "Name <email>" string: one name, one angle-bracketed
+// address, no control characters (so a value cannot inject another header).
+func parseIdentity(s string) (identity, error) {
+	bad := func() (identity, error) {
+		return identity{}, fmt.Errorf("%w: commit identity %q must look like \"Name <noreply@host>\"", core.ErrIDInvalid, s)
+	}
+	for _, c := range s {
+		if c < 0x20 || c == 0x7f {
+			return bad()
+		}
+	}
+	open := strings.Index(s, " <")
+	if open <= 0 || !strings.HasSuffix(s, ">") || strings.Count(s, "<") != 1 || strings.Count(s, ">") != 1 {
+		return bad()
+	}
+	name, email := strings.TrimSpace(s[:open]), strings.TrimSpace(s[open+2:len(s)-1])
+	if name == "" || email == "" || !strings.Contains(email, "@") || strings.ContainsAny(email, " \t") {
+		return bad()
+	}
+	return identity{name, email}, nil
+}
+
+// identities resolves the author and committer, validating both.
+func (r *Ref) identities() (author, committer identity, err error) {
+	a := r.Author
+	if a == "" {
+		a = DefaultIdentity
+	}
+	if author, err = parseIdentity(a); err != nil {
+		return
+	}
+	c := r.Committer
+	if c == "" {
+		return author, author, nil
+	}
+	committer, err = parseIdentity(c)
+	return
 }
 
 // New returns a Ref for dir and remote.
@@ -268,6 +320,9 @@ func (r *Ref) Delete(ctx context.Context, key string, expectRev int64) error {
 // mutate is the shared write loop. build returns the new file content; a nil
 // build removes the file.
 func (r *Ref) mutate(ctx context.Context, key, path string, expectRev int64, build func(entry, bool) ([]byte, error)) error {
+	if _, _, err := r.identities(); err != nil {
+		return err
+	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	for try := 0; try < maxTries; try++ {
@@ -362,12 +417,13 @@ func (r *Ref) commit(ctx context.Context, head, path string, content []byte, key
 	if err != nil {
 		return "", err
 	}
-	ident := []string{}
-	if r.Author != "" {
-		name, email, _ := strings.Cut(strings.TrimSuffix(r.Author, ">"), " <")
-		ident = []string{"GIT_AUTHOR_NAME=" + name, "GIT_AUTHOR_EMAIL=" + email, "GIT_COMMITTER_NAME=" + name, "GIT_COMMITTER_EMAIL=" + email}
+	author, committer, err := r.identities()
+	if err != nil {
+		return "", err
 	}
-	env = append(env, ident...)
+	env = append(env,
+		"GIT_AUTHOR_NAME="+author.name, "GIT_AUTHOR_EMAIL="+author.email,
+		"GIT_COMMITTER_NAME="+committer.name, "GIT_COMMITTER_EMAIL="+committer.email)
 	msg := "control: " + key + "\n\nIssue #1948\n\n🗿 MoAI"
 	return step(nil, "commit-tree", tree, "-p", head, "-m", msg)
 }
