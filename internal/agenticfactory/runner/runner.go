@@ -517,7 +517,7 @@ func (r *Runner) HandOff(t Ticket, h Handoff) (claim.Record, error) {
 		if rec.Receipt != nil && rec.Receipt.Head == head {
 			return fmt.Errorf("%w: PR #%d", core.ErrDuplicateHandoff, rec.Receipt.PR)
 		}
-		rec.Repair, rec.Wait = nil, nil // a new receipt ends the repair and what it waited for
+		rec.Repair, rec.Wait, rec.Revision = nil, nil, "" // a new receipt ends the repair, the wait and the revision
 		rec.Receipt = &claim.Receipt{
 			HandoffID: h.HandoffID, LeaderAccepted: true, PR: h.PR, Head: head, Branch: h.Branch, Worktree: h.Worktree,
 			Attempt: rec.Attempt, AttemptSeq: rec.AttemptSeq, Agent: rec.AgentName, Session: rec.Holder,
@@ -665,6 +665,35 @@ func (r *Runner) TakeOver(i core.IssueRef, old Ticket, newHolder, dispatch strin
 		return claim.Record{}, err
 	}
 	return r.Store.TakeOver(i, old.Holder, old.Epoch, newHolder, dispatch, run, ev.PreservedRef)
+}
+
+// ContractRevision is the evidence of canon E18 adopt: what changed in the
+// contract and the revision that was approved.
+type ContractRevision struct {
+	Diff     string
+	Approved string
+}
+
+// AdoptRevision applies an approved contract revision to a NEW attempt of a PR
+// that is parked for contract-change in BUILDING/FIX (canon E24, then E18): the
+// park is released, the attempt is reset and the position becomes BUILDING/SPEC.
+// The receipt, the owner and the epoch stay. Resuming alone (E20) never does
+// this. The position decision is core's: any other position or park is refused.
+func (r *Runner) AdoptRevision(t Ticket, rev ContractRevision) (claim.Record, error) {
+	if strings.TrimSpace(rev.Diff) == "" || strings.TrimSpace(rev.Approved) == "" {
+		return claim.Record{}, fmt.Errorf("%w: adopting needs the contract diff and the approved revision", core.ErrEvidenceIncomplete)
+	}
+	return r.Store.Update(t.Issue, t.Holder, t.Epoch, func(rec *claim.Record) error {
+		pos := core.Position{Stage: rec.Stage, Sub: rec.Sub, Park: rec.Park}
+		if _, err := core.Transition(pos, core.Event{ID: "E18", Outcome: "adopt", Evidence: []string{"contract-diff", "approved-revision"}}); err != nil {
+			return err
+		}
+		rec.State, rec.Return, rec.Reason, rec.Resume = core.StateClaimed, "", "", ""
+		rec.Attempt, rec.Delivery, rec.Repair, rec.Gate, rec.Refusal = "", "", nil, nil, nil
+		rec.Revision = rev.Approved
+		rec.AddEvent(claim.Event{Kind: "revision", Head: string(rec.Head), Note: "approved revision " + rev.Approved + " applied to a new attempt"})
+		return nil
+	})
 }
 
 // BindWorktree binds the write worktree of the ticket's Issue. It is required

@@ -94,6 +94,8 @@ var allReasons = []BlockReason{
 	ReasonBudgetExhausted, ReasonCheckNotPassed, ReasonDebtPresent, ReasonVerdictNotPass,
 	ReasonProducerNotAllowed, ReasonOwnershipUnverified, ReasonStoreUnavailable,
 	ReasonUserControl, ReasonOperatorAckMissing, ReasonUnclassified, ReasonNotIssueAuthor, ReasonIdentityUnknown, ReasonRepoNotAllowed, ReasonPermissionNotGranted, ReasonOwnerUnconfirmed, ReasonForeignClosing, ReasonOpNotDefined, ReasonOperatorHold,
+	// the six canon park reasons (park.go), so a pause can record them
+	ReasonDependency, ReasonStopUnknown, ReasonUnknownEffect, ReasonPendingEffect, ReasonContractChange, ReasonStartUnknown,
 }
 
 // AllReasons returns every reason in declaration order.

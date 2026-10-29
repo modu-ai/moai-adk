@@ -80,7 +80,10 @@ type Record struct {
 	// owner must repair its open PR before it takes new work. Worktree is the
 	// write worktree bound to this Issue's work.
 	RepairNeeded string `json:"repair_needed,omitempty"`
-	Worktree     string `json:"worktree,omitempty"`
+	// Revision is the approved contract revision applied to the current attempt
+	// (canon E18 adopt); a new receipt ends it.
+	Revision string `json:"revision,omitempty"`
+	Worktree string `json:"worktree,omitempty"`
 }
 
 // Repair is the canon E06 evidence (REVIEWING -> BUILDING/FIX): the repair
@@ -137,7 +140,7 @@ func (r *Record) deriveStage() error {
 		}
 	}
 	l := core.Legacy{
-		State: r.State, Repair: r.Repair != nil, Return: r.Return, Reason: r.Reason, Resume: r.Resume,
+		State: r.State, Repair: r.Repair != nil, Revision: r.Revision != "", Return: r.Return, Reason: r.Reason, Resume: r.Resume,
 		HasReceipt: r.Receipt != nil, LeaderAccepted: r.Receipt != nil && r.Receipt.LeaderAccepted, Merged: r.Merged,
 	}
 	if r.State.IsPause() && r.Reason.Valid() && !core.IsParkable(r.Reason) {

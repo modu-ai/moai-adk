@@ -13,7 +13,11 @@ type Legacy struct {
 	HasReceipt bool
 	// Repair is true while the owner repairs a PR it handed off (canon E06 evidence
 	// is recorded): the accepted receipt then reads as BUILDING/FIX, not REVIEWING.
-	Repair         bool
+	Repair bool
+	// Revision is true while an approved contract revision is applied to a new
+	// attempt (canon E18 adopt): claimed reads as BUILDING/SPEC, later states as
+	// BUILDING/IMPLEMENT, whatever receipt the Issue holds.
+	Revision       bool
 	LeaderAccepted bool
 	Merged         bool
 }
@@ -57,6 +61,10 @@ func legacyByEvidence(l Legacy) Position {
 	switch {
 	case l.Merged:
 		return Position{Stage: StageMerging, RemoteIntegrated: true}
+	case l.Revision && l.State == StateClaimed:
+		return Position{Stage: StageBuilding, Sub: SubSpec}
+	case l.Revision:
+		return Position{Stage: StageBuilding, Sub: SubImplement}
 	case l.HasReceipt && l.Repair:
 		return Position{Stage: StageBuilding, Sub: SubFix}
 	case l.HasReceipt && l.LeaderAccepted:

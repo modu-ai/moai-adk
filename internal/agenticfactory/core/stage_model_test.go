@@ -446,6 +446,8 @@ func TestFromLegacyMapping(t *testing.T) {
 		{"verifying with a merge seen is MERGING", Legacy{State: StateVerifying, HasReceipt: true, LeaderAccepted: true, Merged: true}, Position{Stage: StageMerging, RemoteIntegrated: true}, ""},
 		{"accepted receipt under repair is FIX (canon E06)", Legacy{State: StateVerifying, HasReceipt: true, LeaderAccepted: true, Repair: true}, Position{Stage: StageBuilding, Sub: SubFix}, ""},
 		{"a merge seen outranks a repair mark", Legacy{State: StateLanding, HasReceipt: true, LeaderAccepted: true, Repair: true, Merged: true}, Position{Stage: StageMerging, RemoteIntegrated: true}, ""},
+		{"an adopted revision on a fresh attempt is SPEC (canon E18)", Legacy{State: StateClaimed, HasReceipt: true, LeaderAccepted: true, Revision: true}, Position{Stage: StageBuilding, Sub: SubSpec}, ""},
+		{"an adopted revision being implemented is IMPLEMENT", Legacy{State: StateImplementing, HasReceipt: true, LeaderAccepted: true, Revision: true}, Position{Stage: StageBuilding, Sub: SubImplement}, ""},
 		{"landing before the leader accepted", Legacy{State: StateLanding}, Position{Stage: StageBuilding, Sub: SubImplement}, ""},
 		{"landing with accepted receipt", Legacy{State: StateLanding, HasReceipt: true, LeaderAccepted: true}, Position{Stage: StageReviewing}, ""},
 		{"landing merged", Legacy{State: StateLanding, HasReceipt: true, LeaderAccepted: true, Merged: true}, Position{Stage: StageMerging, RemoteIntegrated: true}, ""},
@@ -641,6 +643,22 @@ func TestE18AdoptionIsRefusedOutsideAContractChangeParkInFix(t *testing.T) {
 	} {
 		if _, err := Transition(pos, adopt); !errors.Is(err, ErrTransitionInvalid) {
 			t.Errorf("%s: adopt must be refused, got %v", name, err)
+		}
+	}
+}
+
+// The legacy closed reason set must accept the six canon park reasons, or the
+// runner's pause could never record a canon park (it refused contract-change).
+func TestEveryCanonParkReasonIsInTheClosedSetAndParkable(t *testing.T) {
+	for _, r := range CanonParkReasons() {
+		if !r.Valid() {
+			t.Errorf("%s is a canon park reason but not in the closed reason set", r)
+		}
+		if !IsParkable(r) {
+			t.Errorf("%s is a canon park reason but not parkable", r)
+		}
+		if err := ValidatePause(StateBlocked, r); err != nil {
+			t.Errorf("%s cannot be recorded as a blocked pause: %v", r, err)
 		}
 	}
 }
