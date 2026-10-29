@@ -301,7 +301,7 @@ func TestClaimStoreOnTheGitRefAcrossTwoCaches(t *testing.T) {
 	if _, err := s2.Update(issue, "holder-a", rec.Epoch, func(r *claim.Record) error { r.State = core.StateVerifying; return nil }); err != nil {
 		t.Fatal(err)
 	}
-	_, err = s1.Update(issue, "holder-a", rec.Epoch, func(r *claim.Record) error { r.State = core.StateBlocked; return nil })
+	_, err = s1.Update(issue, "holder-a", rec.Epoch, func(r *claim.Record) error { r.State = core.StateReady; return nil })
 	if !errors.Is(err, core.ErrRevisionConflict) {
 		t.Errorf("a stale cache must be refused: %v", err)
 	}

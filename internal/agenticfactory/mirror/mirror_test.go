@@ -286,6 +286,17 @@ func TestPublishPlainFailureLeavesMirrorStateAlone(t *testing.T) {
 	}
 }
 
+func TestLedgerFromRecordCarriesTheS46Position(t *testing.T) {
+	park := &core.Park{Reason: core.ReasonRateLimited, Evidence: "429", Resume: "after 15:00"}
+	gate := &core.Gate{Reason: core.ReasonDebtPresent, Detail: "debt", Resume: "rerun"}
+	ref := &core.Refusal{Reason: core.ReasonForeignClosing, Detail: "would close #3000"}
+	l := LedgerFromRecord(claim.Record{Issue: 7, Holder: "h", State: core.StateVerifying, Stage: core.StageBuilding, Sub: core.SubImplement,
+		Park: park, Gate: gate, Refusal: ref, Seq: 4})
+	if l.Stage != core.StageBuilding || l.Sub != core.SubImplement || l.Park != park || l.Gate != gate || l.Refusal != ref || l.State != core.StateVerifying {
+		t.Errorf("projection: %+v", l)
+	}
+}
+
 func TestLedgerFromRecord(t *testing.T) {
 	l := LedgerFromRecord(claim.Record{Issue: 7, Holder: "h", State: core.StateBlocked, Return: core.StateVerifying, Reason: core.ReasonDebtPresent, Seq: 4})
 	if l.Issue.Number != 7 || l.Owner != "h" || l.ReturnStage != core.StateVerifying || l.BlockReason != core.ReasonDebtPresent || l.StoreSeq != 4 {

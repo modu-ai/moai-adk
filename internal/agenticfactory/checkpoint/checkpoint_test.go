@@ -311,3 +311,29 @@ func TestGitRemoteReadsTheBareFixture(t *testing.T) {
 	}
 	_ = second
 }
+
+// S46 E11: a push whose outcome is unknown parks the Issue as unknown-effect.
+func TestAnUnknownPushOutcomeParksAsUnknownEffect(t *testing.T) {
+	r := NewRecord(manifest())
+	if _, ok := r.ParkedReason(); ok {
+		t.Error("a local-only checkpoint has no unknown effect")
+	}
+	r.MarkPushSent()
+	if reason, ok := r.ParkedReason(); !ok || reason != core.ReasonUnknownEffect {
+		t.Errorf("push sent, outcome unknown: %v %v", reason, ok)
+	}
+	boom := errors.New("net down")
+	_ = r.ConfirmRemote(&fakeRemote{headErr: boom})
+	if reason, ok := r.ParkedReason(); !ok || reason != core.ReasonUnknownEffect {
+		t.Errorf("a failed lookup does not settle the outcome: %v %v", reason, ok)
+	}
+	_ = r.ConfirmRemote(&fakeRemote{found: false})
+	if _, ok := r.ParkedReason(); ok {
+		t.Error("a lookup that proved the commit absent settles the outcome")
+	}
+	r.MarkPushSent()
+	_ = r.ConfirmRemote(&fakeRemote{sha: shaA, found: true, contains: true})
+	if _, ok := r.ParkedReason(); ok {
+		t.Error("an acknowledged push has no unknown effect")
+	}
+}
