@@ -52,8 +52,10 @@ var _ forge.DurableFeed = (*Queue)(nil)
 
 type queuedEvent struct {
 	ID   string           `json:"id"`
-	Key  string           `json:"key"`
-	Kind forge.ChangeKind `json:"kind"`
+	Key  string           `json:"key,omitempty"`
+	Kind forge.ChangeKind `json:"kind,omitempty"`
+	// Data is the payload of an inbox entry (Put); a pushed change (Enqueue) carries Key and Kind instead.
+	Data json.RawMessage `json:"data,omitempty"`
 }
 
 type queueDoc struct {
@@ -152,6 +154,40 @@ func (q *Queue) update(fn func(*queueDoc) (write bool, err error)) error {
 // Enqueue stores one pushed event. It returns nil only once the event is durably in the queue (or was
 // already there); any error means it is not, and the host must not be acknowledged.
 func (q *Queue) Enqueue(id string, ch forge.Change) error {
+	return q.add(queuedEvent{ID: id, Key: ch.Key, Kind: ch.Kind})
+}
+
+// Entry is one queued payload.
+type Entry struct {
+	ID   string
+	Data json.RawMessage
+}
+
+// Put stores one payload under an id, the same way Enqueue stores a change: durably before it returns,
+// once per id (a repeated id, pending or recently consumed, is a no-op), refused rather than dropped when
+// the queue is full. It is the writing half of an inbox; Entries and Commit are the reading half.
+func (q *Queue) Put(id string, data []byte) error {
+	if !json.Valid(data) {
+		return errors.New("docstore: a queued payload must be JSON")
+	}
+	return q.add(queuedEvent{ID: id, Data: append(json.RawMessage(nil), data...)})
+}
+
+// Entries lists the queued payloads, oldest first, without removing them.
+func (q *Queue) Entries() ([]Entry, error) {
+	qd, _, err := q.read()
+	if err != nil {
+		return nil, err
+	}
+	out := make([]Entry, 0, len(qd.Events))
+	for _, e := range qd.Events {
+		out = append(out, Entry{ID: e.ID, Data: e.Data})
+	}
+	return out, nil
+}
+
+func (q *Queue) add(ev queuedEvent) error {
+	id := ev.ID
 	if id == "" {
 		return ErrNoDeliveryID
 	}
@@ -162,7 +198,7 @@ func (q *Queue) Enqueue(id string, ch forge.Change) error {
 		if slices.Contains(qd.Seen, id) || slices.ContainsFunc(qd.Events, func(e queuedEvent) bool { return e.ID == id }) {
 			return false, nil
 		}
-		qd.Events = append(qd.Events, queuedEvent{ID: id, Key: ch.Key, Kind: ch.Kind})
+		qd.Events = append(qd.Events, ev)
 		return true, nil
 	})
 }

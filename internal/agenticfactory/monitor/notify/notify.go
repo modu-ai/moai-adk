@@ -69,12 +69,12 @@ const (
 
 // Notice is one message to the Issue's holder.
 type Notice struct {
-	Issue   int
-	Holder  string // the session id of the agent that owns the Issue: the only addressee
-	Agent   string // its display name
-	Kind    Kind
-	Detail  string
-	Attempt int // for WaitOverdue: which retry this notice is
+	Issue   int    `json:"issue"`
+	Holder  string `json:"holder"` // the session id of the agent that owns the Issue: the only addressee
+	Agent   string `json:"agent"`  // its display name
+	Kind    Kind   `json:"kind"`
+	Detail  string `json:"detail"`
+	Attempt int    `json:"attempt"` // for WaitOverdue: which retry this notice is
 }
 
 // Notifier delivers a notice to the holder. An error means it is known not to have been delivered; a
@@ -85,13 +85,13 @@ type Notifier interface {
 
 // Escalation tells the escalation target that the retries ran out. It carries facts; the target decides.
 type Escalation struct {
-	Issue      int
-	Holder     string
-	To         string
-	Retries    int
-	MaxRetries int
-	Diagnosis  string
-	NextAction string
+	Issue      int    `json:"issue"`
+	Holder     string `json:"holder"`
+	To         string `json:"to"`
+	Retries    int    `json:"retries"`
+	MaxRetries int    `json:"max_retries"`
+	Diagnosis  string `json:"diagnosis"`
+	NextAction string `json:"next_action"`
 }
 
 // Escalator delivers an escalation.
