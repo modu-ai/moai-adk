@@ -153,7 +153,7 @@ func TestRepairForRecordsRepairAgent(t *testing.T) {
 	s := open(t)
 	a, _ := s.RegisterAgent(sid(1))
 	b, _ := s.RegisterAgent(sid(2))
-	i := handedOff(t, s, 5, "WT-b")
+	i := reopened(t, s, 5, "WT-b")
 	rec, err := s.AcquireRepairFor(i, b, "dr", "run-2", "WT-b")
 	if err != nil || rec.Holder != b.SessionID || rec.AgentName != "agent-2" {
 		t.Fatalf("repair binding: %+v %v", rec, err)

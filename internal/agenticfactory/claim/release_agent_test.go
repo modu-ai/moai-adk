@@ -96,7 +96,7 @@ func TestReleasedOrReusedIdentityCannotClaim(t *testing.T) {
 func TestReleasedIdentityCannotRepairEither(t *testing.T) {
 	s := open(t)
 	old, _ := s.RegisterAgent(sid(1))
-	i := handedOff(t, s, 5, "WT-b")
+	i := reopened(t, s, 5, "WT-b")
 	_ = s.ReleaseAgent(old.SessionID, old.Number)
 	if _, err := s.AcquireRepairFor(i, old, "dr", "run-2", "WT-b"); err == nil {
 		t.Error("released identity took a repair claim")

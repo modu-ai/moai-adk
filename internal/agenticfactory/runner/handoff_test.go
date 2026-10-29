@@ -8,6 +8,13 @@ import (
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
 )
 
+func mustReopen(t *testing.T, r *Runner, ref core.IssueRef) {
+	t.Helper()
+	if _, err := r.Reopen(ref, "ci failed on latest head"); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func goodHandoff() Handoff {
 	return Handoff{PR: 321, Head: headA, Branch: "WT-agentic-x", Worktree: "/wt/x", WriterStopped: true, BoundaryHead: headA}
 }
@@ -109,6 +116,7 @@ func TestDuplicateHandoffRejected(t *testing.T) {
 		t.Errorf("retry by released agent: %v", err)
 	}
 	// A repair holder re-publishing the same head is a duplicate receipt.
+	mustReopen(t, r, ref)
 	rep, err := r.ClaimRepair(ref, "sess-b", "disp-r", "run-2", "WT-agentic-x")
 	if err != nil {
 		t.Fatal(err)
@@ -131,22 +139,129 @@ func TestPRPublishedIsNotDone(t *testing.T) {
 	if _, err := r.CompleteHandedOff(ref, Landing{LocalSyncRecorded: true, Deploy: "N/A: x"}); !errors.Is(err, core.ErrEvidenceIncomplete) {
 		t.Errorf("done without remote merge: %v", err)
 	}
-	rec, err := r.CompleteHandedOff(ref, Landing{RemoteMerged: true, LocalSyncRecorded: true, Deploy: "N/A: x"})
-	if err != nil || rec.State != core.StateDone {
+	rec, err := r.CompleteHandedOff(ref, Landing{RemoteMerged: true, LocalSyncRecorded: true, IssueClosed: true, Deploy: "N/A: x"})
+	if err != nil || rec.State != core.StateDone || !rec.Closed {
 		t.Fatalf("complete after merge: %+v %v", rec, err)
-	}
-	// Issue closure is recorded after done, never before.
-	if _, err := r.MarkClosed(ref); err != nil {
-		t.Errorf("closure after done: %v", err)
 	}
 }
 
-func TestMarkClosedRefusedBeforeDone(t *testing.T) {
+// Done includes closing the Issue (S46 E13). A failed close keeps the merge
+// fact, names the open obligation and leaves done at zero (E14).
+func TestDoneNeedsIssueCloseAndPendingEffectKeepsMergeFact(t *testing.T) {
 	r, ref := newRunner(t)
 	tk := landed(t, r, ref)
 	_, _ = r.HandOff(tk, goodHandoff())
-	if _, err := r.MarkClosed(ref); !errors.Is(err, core.ErrTransitionInvalid) {
-		t.Errorf("closure before done: %v", err)
+	noClose := Landing{RemoteMerged: true, LocalSyncRecorded: true, Deploy: "N/A: x"}
+	if _, err := r.CompleteHandedOff(ref, noClose); !errors.Is(err, core.ErrEvidenceIncomplete) {
+		t.Fatalf("close missing: %v", err)
+	}
+	cur, _ := r.Store.Read(ref)
+	if cur.State != core.StateLanding || !cur.Merged || cur.Pending != "issue-close" || cur.Closed {
+		t.Errorf("pending effect not recorded: %+v", cur)
+	}
+	noClose.IssueClosed = true
+	rec, err := r.CompleteHandedOff(ref, noClose)
+	if err != nil || rec.State != core.StateDone || rec.Pending != "" || !rec.Closed {
+		t.Errorf("retry after close: %+v %v", rec, err)
+	}
+}
+
+func TestUnmergedAttemptRecordsNoMergeFact(t *testing.T) {
+	r, ref := newRunner(t)
+	tk := landed(t, r, ref)
+	_, _ = r.HandOff(tk, goodHandoff())
+	_, _ = r.CompleteHandedOff(ref, Landing{LocalSyncRecorded: true, IssueClosed: true, Deploy: "N/A: x"})
+	if cur, _ := r.Store.Read(ref); cur.Merged || cur.Pending != "" {
+		t.Errorf("merge fact invented: %+v", cur)
+	}
+}
+
+// E10 then E06: a PR that is not merged goes back to verifying, and only from
+// there can a single repair claim be taken; the merge fact is never reverted.
+func TestReopenThenSingleRepairClaim(t *testing.T) {
+	r, ref := newRunner(t)
+	tk := landed(t, r, ref)
+	_, _ = r.HandOff(tk, goodHandoff())
+	if _, err := r.ClaimRepair(ref, "sess-b", "disp-r", "run-2", "WT-agentic-x"); !errors.Is(err, core.ErrTransitionInvalid) {
+		t.Errorf("repair straight from landing: %v", err)
+	}
+	if _, err := r.Reopen(ref, ""); !errors.Is(err, core.ErrEvidenceIncomplete) {
+		t.Errorf("reopen needs a reason: %v", err)
+	}
+	rec, err := r.Reopen(ref, "ci failed on latest head")
+	if err != nil || rec.State != core.StateVerifying || rec.Holder != "" || rec.Receipt == nil {
+		t.Fatalf("reopen: %+v %v", rec, err)
+	}
+	if _, err := r.ClaimRepair(ref, "sess-b", "disp-r", "run-2", "WT-agentic-x"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := r.ClaimRepair(ref, "sess-c", "disp-r2", "run-3", "WT-agentic-x"); !errors.Is(err, core.ErrHeld) {
+		t.Errorf("second repair claim: %v", err)
+	}
+}
+
+func TestReopenRefusedAfterMergeOrWithoutHandoff(t *testing.T) {
+	r, ref := newRunner(t)
+	tk := landed(t, r, ref)
+	if _, err := r.Reopen(ref, "x"); !errors.Is(err, core.ErrTransitionInvalid) {
+		t.Errorf("reopen while still held: %v", err)
+	}
+	_, _ = r.HandOff(tk, goodHandoff())
+	_, _ = r.CompleteHandedOff(ref, Landing{RemoteMerged: true, LocalSyncRecorded: true, Deploy: "N/A: x"}) // pending: close
+	if _, err := r.Reopen(ref, "x"); !errors.Is(err, core.ErrTransitionInvalid) {
+		t.Errorf("a merged PR must not be reverted by reopen: %v", err)
+	}
+}
+
+// History stays under the one Issue key; at most one active claim exists.
+func TestHistoryKeptUnderOneIssueAcrossRepair(t *testing.T) {
+	r, ref := newRunner(t)
+	a1, _ := r.Store.RegisterAgent("aaaaaaaa-0000-0000-0000-000000000001")
+	a2, _ := r.Store.RegisterAgent("aaaaaaaa-0000-0000-0000-000000000002")
+	tk, _ := r.ClaimAs(ref, a1, "disp-1", "run-1")
+	_, _ = r.StartAttempt(tk, "attempt-1", core.DeliveryExecuted)
+	_, _ = r.Submit(tk, headA, false)
+	_, _ = r.Verify(tk, passAll(headA))
+	_, _ = r.Land(tk, headA)
+	if _, err := r.HandOff(tk, goodHandoff()); err != nil {
+		t.Fatal(err)
+	}
+	_, _ = r.Reopen(ref, "ci failed")
+	rep, err := r.ClaimRepairAs(ref, a2, "disp-r", "run-2", "WT-agentic-x")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _ = r.StartAttempt(rep, "attempt-2", core.DeliveryExecuted)
+	_, _ = r.Submit(rep, headB, false)
+	_, _ = r.Verify(rep, passAll(headB))
+	_, _ = r.Land(rep, headB)
+	h := goodHandoff()
+	h.Head, h.BoundaryHead = headB, headB
+	if _, err := r.HandOff(rep, h); err != nil {
+		t.Fatal(err)
+	}
+	recs, _ := r.Store.List()
+	if len(recs) != 1 {
+		t.Fatalf("one record per issue key, got %d", len(recs))
+	}
+	var kinds []string
+	for _, e := range recs[0].History {
+		kinds = append(kinds, e.Kind)
+	}
+	want := []string{"claim", "handoff", "reopen", "repair-claim", "handoff"}
+	if len(kinds) != len(want) {
+		t.Fatalf("history = %v", kinds)
+	}
+	for i := range want {
+		if kinds[i] != want[i] {
+			t.Fatalf("history = %v, want %v", kinds, want)
+		}
+	}
+	if recs[0].History[0].Agent != "agent-1" || recs[0].History[3].Agent != "agent-2" {
+		t.Errorf("provenance lost: %+v", recs[0].History)
+	}
+	if recs[0].Holder != "" {
+		t.Errorf("no active claim expected after the second handoff: %+v", recs[0])
 	}
 }
 
@@ -168,6 +283,7 @@ func TestRepairIsSingleOwner(t *testing.T) {
 	if _, err := r.Claim(ref, "sess-b", "disp-x", "run-2"); !errors.Is(err, core.ErrRepairOnly) {
 		t.Errorf("plain claim on published issue: %v", err)
 	}
+	mustReopen(t, r, ref)
 	// Repair on the wrong branch is refused.
 	if _, err := r.ClaimRepair(ref, "sess-b", "disp-r", "run-2", "WT-other"); !errors.Is(err, core.ErrTransitionInvalid) {
 		t.Errorf("wrong branch: %v", err)
@@ -204,6 +320,7 @@ func TestRepairCanRepublishNewHead(t *testing.T) {
 	r, ref := newRunner(t)
 	tk := landed(t, r, ref)
 	_, _ = r.HandOff(tk, goodHandoff())
+	mustReopen(t, r, ref)
 	rep, _ := r.ClaimRepair(ref, "sess-b", "disp-r", "run-2", "WT-agentic-x")
 	if _, err := r.StartAttempt(rep, "attempt-2", core.DeliveryExecuted); err != nil {
 		t.Fatal(err)
@@ -245,6 +362,7 @@ func TestBacklogCapHoldsNewClaimsNotRepairs(t *testing.T) {
 	if _, err := r.Store.Load(other); !errors.Is(err, core.ErrNotHeld) {
 		t.Error("held claim must not leave a record")
 	}
+	mustReopen(t, r, ref)
 	if _, err := r.ClaimRepair(ref, "sess-b", "disp-r", "run-2", "WT-agentic-x"); err != nil {
 		t.Errorf("repair must not be blocked by the cap: %v", err)
 	}
@@ -255,7 +373,7 @@ func TestBacklogCapFreedByDone(t *testing.T) {
 	r.Store.MaxOpenPRs = 1
 	tk := landed(t, r, ref)
 	_, _ = r.HandOff(tk, goodHandoff())
-	if _, err := r.CompleteHandedOff(ref, Landing{RemoteMerged: true, LocalSyncRecorded: true, Deploy: "N/A: x"}); err != nil {
+	if _, err := r.CompleteHandedOff(ref, Landing{RemoteMerged: true, LocalSyncRecorded: true, IssueClosed: true, Deploy: "N/A: x"}); err != nil {
 		t.Fatal(err)
 	}
 	other, _ := core.NewIssueRef(2000)
@@ -302,6 +420,7 @@ func TestLeaderRestartRestoresClaims(t *testing.T) {
 		t.Errorf("restored ownership: %+v", recs)
 	}
 	r2 := New(st2)
+	mustReopen(t, r2, ref1)
 	if _, err := r2.Claim(ref2, "sess-b", "disp-9", "run-9"); !errors.Is(err, core.ErrDuplicateDispatch) {
 		t.Errorf("re-sent dispatch after restart: %v", err)
 	}
@@ -330,6 +449,7 @@ func TestAgentIdentitySurvivesHandoffAndRepair(t *testing.T) {
 	if err != nil || rec.Receipt.Agent != "agent-1" {
 		t.Fatalf("receipt agent: %+v %v", rec, err)
 	}
+	mustReopen(t, r, ref)
 	rep, err := r.ClaimRepairAs(ref, a2, "disp-r", "run-2", "WT-agentic-x")
 	if err != nil {
 		t.Fatal(err)

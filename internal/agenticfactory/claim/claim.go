@@ -45,9 +45,31 @@ type Record struct {
 	AttemptSeq int `json:"attempt_seq,omitempty"`
 	// Receipt is set when the agent published a PR and handed the Issue off.
 	Receipt *Receipt `json:"receipt,omitempty"`
-	// Closed is set after done, once the Issue itself has been closed.
+	// Closed is set with done: closing the Issue is part of finishing it.
 	Closed bool `json:"closed,omitempty"`
+	// Merged is the preserved fact that the PR reached the remote; it is
+	// never reverted. Pending names the obligation (local-sync, deploy,
+	// issue-close) that still keeps a merged Issue out of done.
+	Merged  bool   `json:"merged,omitempty"`
+	Pending string `json:"pending_effect,omitempty"`
+	// History is the append-only trail of claims, handoffs and reopenings
+	// under this one Issue key.
+	History []Event `json:"history,omitempty"`
 }
+
+// Event is one entry of an Issue's history.
+type Event struct {
+	Kind    string `json:"kind"` // claim | handoff | reopen | repair-claim
+	Agent   string `json:"agent,omitempty"`
+	Session string `json:"session,omitempty"`
+	Attempt string `json:"attempt,omitempty"`
+	Head    string `json:"head,omitempty"`
+	PR      int    `json:"pr,omitempty"`
+	Note    string `json:"note,omitempty"`
+}
+
+// AddEvent appends to the history; entries are never removed or rewritten.
+func (r *Record) AddEvent(e Event) { r.History = append(r.History, e) }
 
 // Receipt is the PR handoff record. It outlives the agent's claim: the
 // branch and worktree it names are preserved, and only a repair claim on that
@@ -229,6 +251,7 @@ func (s *Store) acquire(i core.IssueRef, holder, name, dispatch string, run core
 			Issue: i.Number, Holder: holder, AgentName: name, Dispatch: dispatch, Run: run,
 			Epoch: cur.Epoch + 1, Seq: cur.Seq + 1, State: core.StateClaimed,
 		}
+		out.History = append(append([]Event(nil), cur.History...), Event{Kind: "claim", Agent: name, Session: holder})
 		return s.write(i, out)
 	})
 	if err != nil {
@@ -271,13 +294,14 @@ func (s *Store) acquireRepair(i core.IssueRef, holder, name, dispatch string, ru
 			}
 			return fmt.Errorf("%w: %s held by %q", core.ErrHeld, i.Resource(), cur.Holder)
 		}
-		if cur.Receipt == nil || cur.State == core.StateDone || cur.Receipt.Branch != branch {
-			return fmt.Errorf("%w: no open PR on branch %q for %s", core.ErrTransitionInvalid, branch, i.Resource())
+		if cur.Receipt == nil || cur.State != core.StateVerifying || cur.Receipt.Branch != branch {
+			return fmt.Errorf("%w: no reopened PR on branch %q for %s", core.ErrTransitionInvalid, branch, i.Resource())
 		}
 		out = cur
 		out.Holder, out.AgentName, out.Dispatch, out.Run = holder, name, dispatch, run
 		out.Epoch, out.Seq, out.State = cur.Epoch+1, cur.Seq+1, core.StateClaimed
 		out.Return, out.Reason, out.Resume = "", "", ""
+		out.History = append(append([]Event(nil), cur.History...), Event{Kind: "repair-claim", Agent: name, Session: holder})
 		return s.write(i, out)
 	})
 	if err != nil {

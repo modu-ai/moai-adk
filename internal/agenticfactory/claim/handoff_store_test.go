@@ -66,9 +66,27 @@ func TestUpdateReleasedRefusesHeldAndMissing(t *testing.T) {
 	}
 }
 
-func TestAcquireRepairRules(t *testing.T) {
+// reopened is handedOff followed by the reopen edge landing -> verifying.
+func reopened(t *testing.T, s *Store, n int, branch string) core.IssueRef {
+	t.Helper()
+	i := handedOff(t, s, n, branch)
+	if _, err := s.UpdateReleased(i, func(r *Record) error { r.State = core.StateVerifying; return nil }); err != nil {
+		t.Fatal(err)
+	}
+	return i
+}
+
+func TestRepairClaimNeedsReopenedIssue(t *testing.T) {
 	s := open(t)
 	i := handedOff(t, s, 5, "WT-b")
+	if _, err := s.AcquireRepair(i, "r", "dr", "run-2", "WT-b"); !errors.Is(err, core.ErrTransitionInvalid) {
+		t.Errorf("repair from landing: %v", err)
+	}
+}
+
+func TestAcquireRepairRules(t *testing.T) {
+	s := open(t)
+	i := reopened(t, s, 5, "WT-b")
 	if _, err := s.AcquireRepair(ref(t, 99), "r", "dr", "run-2", "WT-b"); !errors.Is(err, core.ErrNotHeld) {
 		t.Errorf("unknown issue: %v", err)
 	}
