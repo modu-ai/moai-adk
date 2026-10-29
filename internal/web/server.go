@@ -66,6 +66,11 @@ type Config struct {
 	// PR tracking, intake and context panels. Nil leaves them "not provided".
 	MonitorRows func(ctx context.Context) ([]byte, error)
 
+	// IntakeRequests supplies the background intake request records (JSON array
+	// of claim.Request from the claim store's ViewRequests). Nil leaves the
+	// intake request panel "not provided".
+	IntakeRequests func(ctx context.Context) ([]byte, error)
+
 	// ProfileBaseDir overrides the profile store base directory
 	// (~/.moai/claude-profiles by default). When empty, the process default is
 	// used. Tests set this to a temp dir for isolation.

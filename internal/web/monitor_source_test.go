@@ -51,7 +51,7 @@ func (rtPRs) CountOpenPRs(context.Context) (int, error) { return 4, nil }
 type rtIntake struct{}
 
 func (rtIntake) ReadIntake(context.Context) ([]monitor.IntakeItem, error) {
-	return []monitor.IntakeItem{{Issue: 30, Stage: monitor.StageWTReady, State: "confirmed"}}, nil
+	return []monitor.IntakeItem{{Key: "k30", Issue: 30, Stage: monitor.StageWTPrepared, State: string(monitor.StageWTPrepared)}}, nil
 }
 
 type rtContext struct{}
@@ -99,7 +99,7 @@ func TestMonitorRowsRoundTripThroughRealMarshalView(t *testing.T) {
 	if !b.Known || b.Open != 4 || b.Limit != 5 || !b.QueueKnown || b.AwaitingHandoff != 2 || b.RepairBacklog != 1 || b.OldestWaitSeconds != 600 {
 		t.Errorf("backlog = %+v", b)
 	}
-	if !vm.Intake.Known || len(vm.Intake.Rows) != 1 || vm.Intake.Rows[0].Stage != "wt-ready" {
+	if !vm.Intake.Known || len(vm.Intake.Rows) != 1 || vm.Intake.Rows[0].Stage != "WT_PREPARED" {
 		t.Errorf("intake = %+v", vm.Intake)
 	}
 }

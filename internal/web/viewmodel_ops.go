@@ -179,6 +179,7 @@ type MonitorVM struct {
 	Cwd        string
 	Browser    BrowserSelectionVM
 	PR         PRTrackingVM
+	Requests   IntakeRequestsVM
 }
 
 // ─── 상태 판정 ───────────────────────────────────────────────────────────────
@@ -632,6 +633,7 @@ func (a *app) buildMonitor(now time.Time) (MonitorVM, error) {
 		Cwd:        root,
 		Browser:    a.buildBrowserSelection(context.Background()),
 		PR:         a.buildPRTracking(context.Background()),
+		Requests:   a.buildIntakeRequests(context.Background()),
 	}, nil
 }
 
