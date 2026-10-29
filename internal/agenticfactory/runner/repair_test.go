@@ -4,6 +4,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/claim"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
 )
 
@@ -63,5 +64,37 @@ func TestAfterATakeoverTheNewHolderIsTheResponsibleAgent(t *testing.T) {
 	}
 	if _, err := r.ClaimRepair(ref, "sess-new", "disp-r", "run-3", goodHandoff().Branch); err != nil {
 		t.Errorf("the new holder: %v (epoch was %d)", err, rec.Epoch)
+	}
+}
+
+// A repair is a new attempt (spec, design E06): the owner's reopen takes the next
+// attempt number and a fresh attempt id, so the old attempt's receipt and the
+// repair's can be told apart.
+func TestReopenOwnStartsANewAttempt(t *testing.T) {
+	r, ref, tk := handedOffOwner(t)
+	before, _ := r.Store.Read(ref)
+	if before.AttemptSeq != 1 || before.Attempt != "attempt-1" {
+		t.Fatalf("setup: %q seq %d", before.Attempt, before.AttemptSeq)
+	}
+	rec, err := r.ReopenOwn(tk, "ci failed on latest head", RepairEvidence{ScopeReserved: true, OldWriterEnded: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rec.AttemptSeq != before.AttemptSeq+1 || rec.Attempt == "" || rec.Attempt == before.Attempt {
+		t.Errorf("a repair is a new attempt: %q seq %d (was %q seq %d)", rec.Attempt, rec.AttemptSeq, before.Attempt, before.AttemptSeq)
+	}
+	if _, err := core.ParseAttemptID(string(rec.Attempt)); err != nil {
+		t.Errorf("the attempt id must be a valid id: %v", err)
+	}
+	if rec.Receipt == nil || rec.Receipt.Attempt != before.Attempt || rec.Receipt.AttemptSeq != before.AttemptSeq {
+		t.Errorf("the earlier receipt keeps its own attempt: %+v", rec.Receipt)
+	}
+	// a second reopen is a third attempt
+	if _, err := r.Store.Update(ref, tk.Holder, tk.Epoch, func(x *claim.Record) error { x.State = core.StateLanding; return nil }); err != nil {
+		t.Fatal(err)
+	}
+	again, err := r.ReopenOwn(tk, "review asked for changes", RepairEvidence{ScopeReserved: true, OldWriterEnded: true})
+	if err != nil || again.AttemptSeq != before.AttemptSeq+2 || again.Attempt == rec.Attempt {
+		t.Errorf("third attempt: %q seq %d %v", again.Attempt, again.AttemptSeq, err)
 	}
 }

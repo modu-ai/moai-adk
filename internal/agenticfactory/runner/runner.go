@@ -640,6 +640,10 @@ func (r *Runner) ReopenOwn(t Ticket, reason string, ev RepairEvidence) (claim.Re
 			return fmt.Errorf("%w: the previous writer has not ended", core.ErrEvidenceIncomplete)
 		}
 		rec.State, rec.Pending, rec.Repair, rec.RepairNeeded = core.StateVerifying, "", &rep, ""
+		// A repair is a new attempt: the next number and a fresh id, so the earlier
+		// attempt's receipt and this one can be told apart.
+		rec.AttemptSeq++
+		rec.Attempt = core.AttemptID(fmt.Sprintf("repair-%d", rec.AttemptSeq))
 		rec.AddEvent(claim.Event{Kind: "reopen", Head: string(rec.Head), PR: rec.Receipt.PR, Note: reason})
 		return nil
 	})
