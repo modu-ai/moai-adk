@@ -335,6 +335,16 @@ func (s *Store) write(i core.IssueRef, r *Record) error {
 	if err := r.deriveStage(); err != nil {
 		return err
 	}
+	// A write that puts the Issue into PARKED carries its wait record (design
+	// 2.1c). A record that is already parked, and one stored before this rule, is
+	// read and rewritten as it is: only the entry is checked.
+	if r.Park != nil && r.Wait == nil {
+		if prev, had, err := s.read(i); err != nil {
+			return err
+		} else if !had || prev.Park == nil {
+			return fmt.Errorf("%w: a park needs a wait record (owner, next action, recheck time, diagnosis, retry limit, escalation target)", core.ErrEvidenceIncomplete)
+		}
+	}
 	if s.ref != nil {
 		old, _, err := s.read(i)
 		if err != nil {

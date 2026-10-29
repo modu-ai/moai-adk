@@ -15,7 +15,7 @@ func parkedForContractChange(t *testing.T) (*Runner, Ticket) {
 	if _, err := r.ReopenOwn(tk, "ci failed on latest head", RepairEvidence{ScopeReserved: true, OldWriterEnded: true}); err != nil {
 		t.Fatal(err)
 	}
-	rec, err := r.Pause(tk, core.StateBlocked, core.ReasonContractChange, "approved revision")
+	rec, err := r.Pause(tk, core.StateBlocked, core.ReasonContractChange, "approved revision", wait1())
 	if err != nil || rec.Stage != core.StageBuilding || rec.Sub != core.SubFix || rec.Park == nil || rec.Park.Reason != core.ReasonContractChange {
 		t.Fatalf("setup: %+v %v", rec, err)
 	}
@@ -72,7 +72,7 @@ func TestAdoptionIsRefusedWithoutAContractChangePark(t *testing.T) {
 	if _, err := r.ReopenOwn(tk, "x", RepairEvidence{ScopeReserved: true, OldWriterEnded: true}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := r.Pause(tk, core.StateBlocked, core.ReasonRateLimited, "later"); err != nil {
+	if _, err := r.Pause(tk, core.StateBlocked, core.ReasonRateLimited, "later", wait1()); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := r.AdoptRevision(tk, ContractRevision{Diff: "d", Approved: "rev-2"}); !errors.Is(err, core.ErrTransitionInvalid) {

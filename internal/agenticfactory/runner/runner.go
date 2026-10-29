@@ -411,8 +411,10 @@ func deployOK(d string) bool {
 }
 
 // Pause moves any in-flight stage to blocked or on-hold, recording the stage
-// it left, the reason and the resume condition.
-func (r *Runner) Pause(t Ticket, to core.State, reason core.BlockReason, resume string) (claim.Record, error) {
+// it left, the reason and the resume condition. A park carries a wait record
+// (who answers, the next action, the recheck time, the diagnosis, the retries and
+// the escalation target); a pause without a valid one is refused.
+func (r *Runner) Pause(t Ticket, to core.State, reason core.BlockReason, resume string, w core.Wait) (claim.Record, error) {
 	if err := core.ValidatePause(to, reason); err != nil {
 		return claim.Record{}, err
 	}
@@ -428,6 +430,7 @@ func (r *Runner) Pause(t Ticket, to core.State, reason core.BlockReason, resume 
 			return fmt.Errorf("%w: resume condition is required", core.ErrTransitionInvalid)
 		}
 		pauseIn(rec, to, reason, resume)
+		rec.Wait = &w // a park always carries its wait record (design 2.1c); the store checks it
 		return nil
 	})
 }

@@ -98,3 +98,35 @@ func TestReopenOwnStartsANewAttempt(t *testing.T) {
 		t.Errorf("third attempt: %q seq %d %v", again.Attempt, again.AttemptSeq, err)
 	}
 }
+
+// A park needs a wait record (design 2.1c): who answers, what happens next, when
+// it is looked at again, why, how many retries and who is told. A pause without
+// one is refused and the record does not move.
+func TestAPauseNeedsAWaitRecord(t *testing.T) {
+	r, ref := newRunner(t)
+	tk, err := r.Claim(ref, "sess-a", "disp-1", "run-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := r.StartAttempt(tk, "attempt-1", core.DeliveryExecuted); err != nil {
+		t.Fatal(err)
+	}
+	before, _ := r.Store.Read(ref)
+	bad := wait1()
+	bad.Escalate = ""
+	if _, err := r.Pause(tk, core.StateBlocked, core.ReasonRateLimited, "later", bad); !errors.Is(err, core.ErrEvidenceIncomplete) {
+		t.Fatalf("a pause with an incomplete wait: %v", err)
+	}
+	foreign := wait1()
+	foreign.Owner = "someone-else"
+	if _, err := r.Pause(tk, core.StateBlocked, core.ReasonRateLimited, "later", foreign); !errors.Is(err, core.ErrOwnershipUnverified) {
+		t.Fatalf("a pause whose wait is owned by another session: %v", err)
+	}
+	if cur, _ := r.Store.Read(ref); cur.State != before.State || cur.Seq != before.Seq || cur.Park != nil {
+		t.Fatalf("a refused pause changed the record: %+v", cur)
+	}
+	rec, err := r.Pause(tk, core.StateBlocked, core.ReasonRateLimited, "later", wait1())
+	if err != nil || rec.Park == nil || rec.Wait == nil || rec.Wait.Owner != "sess-a" {
+		t.Fatalf("a pause with its wait: %+v %v", rec, err)
+	}
+}
