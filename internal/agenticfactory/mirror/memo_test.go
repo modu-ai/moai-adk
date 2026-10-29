@@ -144,3 +144,73 @@ func TestMemoIsPerIssueAndKeepsSecretsOut(t *testing.T) {
 		t.Errorf("each issue needs its own comment: %v", calls(f))
 	}
 }
+
+// A person deleted the ledger comment. The next changed update must recover in
+// the same call (not report success and leave nothing), keeping exactly one comment.
+func TestHumanDeletedTheCommentChangedBodyRecoversInTheSameCall(t *testing.T) {
+	f := &fakeGH{results: []result{
+		{out: ""}, {out: `{"id":777}`}, // first write creates the comment
+		{errOut: "gh: Not Found (HTTP 404)", exit: 1}, // the human deleted it; PATCH finds nothing
+		{out: ""}, {out: `{"id":888}`}, // list is empty, so create again
+	}}
+	m := writable(f)
+	c := context.Background()
+	if err := m.WriteLedger(c, ledgerWith("before")); err != nil {
+		t.Fatal(err)
+	}
+	if err := m.WriteLedger(c, ledgerWith("after")); err != nil {
+		t.Fatalf("the update after a deletion must succeed by recreating: %v", err)
+	}
+	cs := calls(f)
+	posts := 0
+	for _, c := range cs {
+		if strings.Contains(c, "-X POST") {
+			posts++
+		}
+	}
+	if len(cs) != 5 || posts != 2 || !strings.Contains(cs[4], "-X POST") {
+		t.Fatalf("recovery sequence: %v", cs)
+	}
+	if !strings.Contains(cs[4], "after") {
+		t.Errorf("the recreated comment must carry the new body: %s", cs[4])
+	}
+}
+
+// Honest limit: with an unchanged body nothing is sent, so a deleted comment
+// stays deleted until the memo is invalidated. The test pins that fact so the
+// before/after comparison cannot mistake it for a silent success.
+func TestHumanDeletedTheCommentUnchangedBodyIsNotRepairedUntilInvalidated(t *testing.T) {
+	f := &fakeGH{results: []result{{out: ""}, {out: `{"id":777}`}, {out: ""}, {out: `{"id":888}`}}}
+	m := writable(f)
+	c := context.Background()
+	_ = m.WriteLedger(c, ledgerWith("same"))
+	_ = m.WriteLedger(c, ledgerWith("same"))
+	if len(f.calls) != 2 {
+		t.Fatalf("an unchanged body sends nothing, calls=%v", calls(f))
+	}
+	m.Invalidate(1948)
+	if err := m.WriteLedger(c, ledgerWith("same")); err != nil {
+		t.Fatal(err)
+	}
+	if last := calls(f)[len(f.calls)-1]; !strings.Contains(last, "-X POST") {
+		t.Errorf("after Invalidate the missing comment must be recreated: %s", last)
+	}
+}
+
+func TestEmailAndHomePathNeverReachGh(t *testing.T) {
+	f := &fakeGH{results: []result{{out: ""}, {out: `{"id":1}`}}}
+	m := writable(f)
+	l := ledgerWith("mail dev.person@example.co.kr, log /Users/goos/MoAI/x.log")
+	if err := m.WriteLedger(context.Background(), l); err != nil {
+		t.Fatal(err)
+	}
+	all := strings.Join(calls(f), "\n")
+	for _, leak := range []string{"example.co.kr", "dev.person", "/Users/goos"} {
+		if strings.Contains(all, leak) {
+			t.Errorf("%q reached a gh call:\n%s", leak, all)
+		}
+	}
+	if !strings.Contains(all, "redacted") {
+		t.Error("masking must be disclosed")
+	}
+}
