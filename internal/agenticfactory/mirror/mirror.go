@@ -114,9 +114,17 @@ func parseHTTP(out []byte) (status int, header map[string]string, body []byte, o
 	if !strings.HasPrefix(text, "HTTP/") {
 		return 0, nil, out, false
 	}
-	head, rest, _ := strings.Cut(text, "\n\n")
-	if cr := strings.Index(text, "\r\n\r\n"); cr >= 0 && (cr < len(head) || !strings.Contains(text, "\n\n")) {
-		head, rest, _ = strings.Cut(text, "\r\n\r\n")
+	// gh ends the status line with a bare newline and the header lines with
+	// CRLF. The first blank line, whichever form, ends the headers.
+	head, rest := text, ""
+	cut, width := -1, 0
+	for _, sep := range []string{"\r\n\r\n", "\n\n"} {
+		if at := strings.Index(text, sep); at >= 0 && (cut < 0 || at < cut) {
+			cut, width = at, len(sep)
+		}
+	}
+	if cut >= 0 {
+		head, rest = text[:cut], text[cut+width:]
 	}
 	lines := strings.Split(head, "\n")
 	fields := strings.Fields(strings.TrimSpace(lines[0]))
