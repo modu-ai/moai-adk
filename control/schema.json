@@ -1,0 +1,10 @@
+{
+  "schema": "moai-control",
+  "schema_version": 1,
+  "init_version": "genesis-1",
+  "repo": "modu-ai/moai-adk",
+  "ref": "refs/heads/moai-control",
+  "purpose": "Technical state only: claims, handoffs, effects, consumer ACKs. The business canon is the GitHub Issue.",
+  "origin": "Issue #1948 (AgenticFactory); branch name and creation explicitly approved by the operator on 2026-10-29.",
+  "state_note": "Genesis carries no owner, claim, or effect records. The absence of a record here is not evidence that no owner or effect exists; existing state is not imported or reset by this commit."
+}
