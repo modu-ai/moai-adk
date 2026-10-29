@@ -77,14 +77,16 @@ func (r *Record) AddEvent(e Event) { r.History = append(r.History, e) }
 // branch and worktree it names are preserved, and only a repair claim on that
 // branch may write to the Issue again.
 type Receipt struct {
-	PR         int            `json:"pr"`
-	Head       core.HeadSHA   `json:"head"`
-	Branch     string         `json:"branch"`
-	Worktree   string         `json:"worktree"`
-	Attempt    core.AttemptID `json:"attempt,omitempty"`
-	AttemptSeq int            `json:"attempt_seq,omitempty"`
-	Agent      string         `json:"agent,omitempty"`   // display name of the agent that published the PR
-	Session    string         `json:"session,omitempty"` // its session id; stays unambiguous after the number is reused
+	HandoffID      string         `json:"handoff_id"`
+	LeaderAccepted bool           `json:"leader_accepted"`
+	PR             int            `json:"pr"`
+	Head           core.HeadSHA   `json:"head"`
+	Branch         string         `json:"branch"`
+	Worktree       string         `json:"worktree"`
+	Attempt        core.AttemptID `json:"attempt,omitempty"`
+	AttemptSeq     int            `json:"attempt_seq,omitempty"`
+	Agent          string         `json:"agent,omitempty"`   // display name of the agent that published the PR
+	Session        string         `json:"session,omitempty"` // its session id; stays unambiguous after the number is reused
 }
 
 // Store keeps records under one directory: issue-<n>.json, guarded by
