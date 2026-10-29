@@ -162,6 +162,7 @@ func (s *Store) writeRequest(r *Request) error {
 		if err != nil {
 			return err
 		}
+		s.announce()
 		rev, err := s.ref.CompareAndSwap(refCtx(), "request/"+r.Key, old.Rev, data)
 		if err != nil {
 			return refErr(err)

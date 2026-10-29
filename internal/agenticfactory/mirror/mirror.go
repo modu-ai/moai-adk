@@ -15,6 +15,7 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -71,9 +72,19 @@ type Mirror struct {
 	Repo       string // owner/name
 	Exec       Exec
 	AllowWrite bool
+	// Budget, when set, is asked before a report write that has something to
+	// send. A refusal defers the write (core.ErrDeferred); nothing is sent.
+	Budget core.Budget
 
-	mu    sync.Mutex
-	memos map[int]memo
+	mu      sync.Mutex
+	memos   map[int]memo
+	pending map[int]queued
+	gen     uint64
+}
+
+type queued struct {
+	l   core.Ledger
+	gen uint64
 }
 
 func redact(s string) (string, int) { return core.Redact(s) }
@@ -224,10 +235,14 @@ func (m *Mirror) WriteLedger(ctx context.Context, l core.Ledger) error {
 	issue := l.Issue.Number
 	sum := sha256.Sum256([]byte(body))
 
-	if mem := m.recall(issue); mem.id != 0 {
-		if mem.hash == sum {
-			return nil
-		}
+	mem := m.recall(issue)
+	if mem.id != 0 && mem.hash == sum {
+		return nil
+	}
+	if m.Budget != nil && !m.Budget.Reserve(core.PriorityReport) {
+		return core.ErrDeferred
+	}
+	if mem.id != 0 {
 		err := m.patch(ctx, mem.id, body)
 		if err == nil {
 			m.remember(issue, mem.id, sum)
@@ -287,6 +302,8 @@ func Publish(ctx context.Context, m *Mirror, st *claim.Store, issue core.IssueRe
 	var be *BlockedError
 	switch {
 	case werr == nil:
+	case errors.Is(werr, core.ErrDeferred):
+		state = "stale" // the authority is ahead of the comment
 	case errors.As(werr, &be):
 		state = "blocked(" + string(be.Reason) + ")"
 	default:
@@ -297,4 +314,55 @@ func Publish(ctx context.Context, m *Mirror, st *claim.Store, issue core.IssueRe
 		return rec, uerr
 	}
 	return out, werr
+}
+
+// Enqueue records the latest ledger of an Issue for a later Flush. A newer
+// ledger for the same Issue replaces the older one, so a burst of state changes
+// becomes one comment update.
+func (m *Mirror) Enqueue(l core.Ledger) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.pending == nil {
+		m.pending = map[int]queued{}
+	}
+	m.gen++
+	m.pending[l.Issue.Number] = queued{l: l, gen: m.gen}
+}
+
+// Pending lists the Issues with an unsent ledger, ascending.
+func (m *Mirror) Pending() []int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	out := make([]int, 0, len(m.pending))
+	for n := range m.pending {
+		out = append(out, n)
+	}
+	sort.Ints(out)
+	return out
+}
+
+// Flush writes each queued ledger once, lowest Issue first, and returns how many
+// were written. It stops at the first failure (a short budget, a block, an
+// error) and leaves the rest queued, so a refusal is never hammered. An entry
+// queued again while its predecessor was being written stays queued.
+func (m *Mirror) Flush(ctx context.Context) (int, error) {
+	written := 0
+	for _, n := range m.Pending() {
+		m.mu.Lock()
+		q, ok := m.pending[n]
+		m.mu.Unlock()
+		if !ok {
+			continue
+		}
+		if err := m.WriteLedger(ctx, q.l); err != nil {
+			return written, err
+		}
+		written++
+		m.mu.Lock()
+		if cur, ok := m.pending[n]; ok && cur.gen == q.gen {
+			delete(m.pending, n)
+		}
+		m.mu.Unlock()
+	}
+	return written, nil
 }
