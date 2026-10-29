@@ -606,6 +606,7 @@ func (realCodexSessionRunner) start(ctx context.Context, binaryPath string, args
 	if err := cmd.Start(); err != nil {
 		return nil, fmt.Errorf("codex start: %w", err)
 	}
+	trackCodexGroup(cmd.Process.Pid)
 	c := &realCodexConn{cmd: cmd, stdin: stdin, stdout: stdout, stderr: stderr, lines: make(chan string, 128)}
 	go c.readLoop(ctx)
 	return c, nil
@@ -683,7 +684,7 @@ func (c *realCodexConn) close() error {
 	}
 	// The direct child is gone; the helpers it started may not be. Do not return
 	// while they still hold the session's directories (Issue #1948).
-	c.reap.Do(func() { reapCodexGroup(c.pid()) })
+	c.reap.Do(func() { endCodexSessionGroup(c.pid()) })
 	return err
 }
 
