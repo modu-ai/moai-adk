@@ -23,6 +23,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/effect"
 )
 
@@ -190,54 +191,116 @@ func Classify(r Response, now time.Time, b Backoff, attempt int) Verdict {
 	return Verdict{Kind: KindOther, Reason: fmt.Sprintf("status %d", r.Status)}
 }
 
-// Budget is one call budget shared by every caller using the same credential. It learns the limit
-// from response headers; it never assumes one.
-type Budget struct {
-	Reserve int // calls to keep unspent; from configuration
-
-	mu           sync.Mutex
+// bucket is the budget state of one host resource (GitHub reports the resource in
+// x-ratelimit-resource; "" is the bucket for responses and requests that name none).
+type bucket struct {
 	remaining    int
 	known        bool
 	resetAt      time.Time
 	blockedUntil time.Time
 }
 
-// Observe reads the rate-limit headers of a response.
+// Budget is the call budget shared by every caller using the same credential, kept per host resource
+// so an exhausted search quota does not stop ordinary calls. It learns limits from response headers;
+// it never assumes one. ReserveCalls is the number of calls kept unspent for writes more urgent than a
+// report. Budget implements core.Budget, the hook lane 18's writers call before a report write.
+type Budget struct {
+	ReserveCalls   int              // from configuration
+	ReportResource string           // host resource report writes count against ("" = default bucket)
+	Now            func() time.Time // optional clock for Reserve; defaults to time.Now
+
+	mu sync.Mutex
+	b  map[string]*bucket
+}
+
+func (b *Budget) at(res string) *bucket {
+	if b.b == nil {
+		b.b = map[string]*bucket{}
+	}
+	if x, ok := b.b[res]; ok {
+		return x
+	}
+	x := &bucket{}
+	b.b[res] = x
+	return x
+}
+
+// ResourceOf returns the host resource a response was counted against ("" when it names none).
+func ResourceOf(r Response) string { return resourceOf(lower(r.Header)) }
+
+func resourceOf(h map[string]string) string {
+	return firstOf(h, "x-ratelimit-resource", "ratelimit-name")
+}
+
+// Observe reads the rate-limit headers of a response into the bucket the response names.
 func (b *Budget) Observe(r Response, now time.Time) {
 	h := lower(r.Header)
 	b.mu.Lock()
 	defer b.mu.Unlock()
+	x := b.at(resourceOf(h))
 	if v := firstOf(h, "x-ratelimit-remaining", "ratelimit-remaining"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil {
-			b.remaining, b.known = n, true
+			x.remaining, x.known = n, true
 		}
 	}
 	if t, ok := parseReset(h); ok {
-		b.resetAt = t
+		x.resetAt = t
 	}
 }
 
-// Block forbids calls until the given time.
-func (b *Budget) Block(until time.Time) {
+// Block forbids calls on the default bucket until the given time; BlockFor does it for one resource.
+func (b *Budget) Block(until time.Time) { b.BlockFor("", until) }
+
+func (b *Budget) BlockFor(res string, until time.Time) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	if until.After(b.blockedUntil) {
-		b.blockedUntil = until
+	if x := b.at(res); until.After(x.blockedUntil) {
+		x.blockedUntil = until
 	}
 }
 
-// Allow says whether a call may go out now, and otherwise when to look again.
-func (b *Budget) Allow(now time.Time) (bool, time.Time) {
+// Allow says whether an ordinary call may go out now on the default bucket, and otherwise when to look again.
+func (b *Budget) Allow(now time.Time) (bool, time.Time) { return b.AllowFor("", now) }
+
+// AllowFor is Allow for one resource. Ordinary calls stop at the reserve.
+func (b *Budget) AllowFor(res string, now time.Time) (bool, time.Time) {
+	return b.allow(res, now, b.ReserveCalls)
+}
+
+// Reserve implements core.Budget. A report write is told to wait (false) when ordinary calls are
+// stopped for its resource; anything more urgent than a report is never held, so it reports true.
+func (b *Budget) Reserve(p core.Priority) bool {
+	if p < core.PriorityReport {
+		return true
+	}
+	now := time.Now()
+	if b.Now != nil {
+		now = b.Now()
+	}
+	ok, _ := b.AllowFor(b.ReportResource, now)
+	return ok
+}
+
+var _ core.Budget = (*Budget)(nil)
+
+// AllowReserved is AllowFor for state and safety writes: they may spend the reserve, down to the
+// host's own zero.
+func (b *Budget) AllowReserved(res string, now time.Time) (bool, time.Time) {
+	return b.allow(res, now, 0)
+}
+
+func (b *Budget) allow(res string, now time.Time, floor int) (bool, time.Time) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	if now.Before(b.blockedUntil) {
-		return false, b.blockedUntil
+	x := b.at(res)
+	if now.Before(x.blockedUntil) {
+		return false, x.blockedUntil
 	}
-	if b.known && b.remaining <= b.Reserve && now.Before(b.resetAt) {
-		return false, b.resetAt
+	if x.known && x.remaining <= floor && now.Before(x.resetAt) {
+		return false, x.resetAt
 	}
-	if b.known && !now.Before(b.resetAt) && !b.resetAt.IsZero() {
-		b.known = false // the window rolled over; forget the stale count
+	if x.known && !x.resetAt.IsZero() && !now.Before(x.resetAt) {
+		x.known = false // the window rolled over; forget the stale count
 	}
 	return true, time.Time{}
 }
@@ -257,6 +320,7 @@ type Client struct {
 	mu       sync.Mutex
 	cache    map[string]entry
 	attempts map[string]int
+	learned  map[string]string // path -> host resource, from the last response for that path
 }
 
 // Result is the outcome of one Get. When Deferred is set nothing usable came back and the caller
@@ -273,13 +337,16 @@ type Result struct {
 // Get fetches a path with the stored validators. A permission denial returns ErrDenied.
 func (c *Client) Get(ctx context.Context, path string) (Result, error) {
 	now := c.Now()
-	if ok, until := c.B.Allow(now); !ok {
+	c.mu.Lock()
+	if c.cache == nil {
+		c.cache, c.attempts, c.learned = map[string]entry{}, map[string]int{}, map[string]string{}
+	}
+	res0 := c.learned[path]
+	c.mu.Unlock()
+	if ok, until := c.B.AllowFor(res0, now); !ok {
 		return Result{Deferred: true, NotBefore: until}, nil
 	}
 	c.mu.Lock()
-	if c.cache == nil {
-		c.cache, c.attempts = map[string]entry{}, map[string]int{}
-	}
 	e, have := c.cache[path]
 	attempt := c.attempts[path]
 	c.mu.Unlock()
@@ -299,6 +366,10 @@ func (c *Client) Get(ctx context.Context, path string) (Result, error) {
 	c.B.Observe(resp, now)
 	v := Classify(resp, now, c.Backoff, attempt)
 	h := lower(resp.Header)
+	resName := resourceOf(h)
+	c.mu.Lock()
+	c.learned[path] = resName
+	c.mu.Unlock()
 	res := Result{}
 	if n, err := strconv.Atoi(h["x-poll-interval"]); err == nil && n > 0 {
 		res.PollInterval = time.Duration(n) * time.Second
@@ -321,7 +392,7 @@ func (c *Client) Get(ctx context.Context, path string) (Result, error) {
 		res.Body, res.FromCache = e.body, true
 		return res, nil
 	case KindLimited:
-		c.B.Block(v.RetryAt)
+		c.B.BlockFor(resName, v.RetryAt)
 		c.bump(path)
 		res.Deferred, res.NotBefore = true, v.RetryAt
 		return res, nil
@@ -339,7 +410,7 @@ func (c *Client) bump(path string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.attempts == nil {
-		c.cache, c.attempts = map[string]entry{}, map[string]int{}
+		c.cache, c.attempts, c.learned = map[string]entry{}, map[string]int{}, map[string]string{}
 	}
 	c.attempts[path]++
 }
