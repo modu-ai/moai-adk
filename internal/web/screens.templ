@@ -673,7 +673,36 @@ templ Monitor(vm ShellVM, m MonitorVM) {
 					}
 				</div>
 			}
-			@panel("Intake", intakeMeta(m.PR.Intake), "", "", "Read-only. Background acceptance stages from the monitor; a missing stage is left blank.", "roomy") {
+			@panel("Intake requests", requestsMeta(m.Requests), "", "", "Read-only. Stages come from the intake request record; BLOCKED and EFFECT_UNKNOWN come from its blocked block, and started is derived from the claim.", "roomy") {
+				<div class="vlist" id="intake-requests">
+					if m.Requests.Note != "" {
+						<p class="warn">{ m.Requests.Note }</p>
+					}
+					for _, q := range m.Requests.Rows {
+						<div class="vrow">
+							<span class="mono">{ q.Key }</span>
+							<span class="panel__meta">{ q.Status }</span>
+							if q.Parked != "" {
+								@badge("outline", "parked "+q.Parked)
+							}
+							if q.Started {
+								@badge("outline", "started")
+							}
+							<span class="panel__meta">{ q.Issue + " · attempts " + itoa(q.Attempts) }</span>
+							<span class="panel__meta">{ "agent " + q.AgentName }</span>
+							<span class="mono panel__meta">{ "session " + q.Agent }</span>
+							if q.BlockDetail != "" {
+								<span class="warn">{ q.BlockStep + ": " + q.BlockDetail + " · retryable " + q.Retryable }</span>
+								<span class="panel__meta">{ "resume " + q.Resume }</span>
+							}
+							for _, e := range q.Evidence {
+								<span class="mono panel__meta">{ e }</span>
+							}
+						</div>
+					}
+				</div>
+			}
+			@panel("Intake effects", intakeMeta(m.PR.Intake), "", "", "Read-only. Background acceptance stages from the monitor; a missing stage is left blank.", "roomy") {
 				<div class="vlist" id="intake-stages">
 					if !m.PR.Intake.Known {
 						<p class="panel__meta">not provided</p>
