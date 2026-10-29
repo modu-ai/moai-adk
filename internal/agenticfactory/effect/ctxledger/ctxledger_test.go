@@ -19,6 +19,7 @@ type fakeRemote struct {
 	lostAfterUpdate  bool
 	findErr          error
 	finds            int
+	plain404         bool           // Update reports a missing comment as a plain error, not ErrGone
 	gone             map[int64]bool // ids that no longer exist
 }
 
@@ -52,6 +53,17 @@ func (f *fakeRemote) Update(_ context.Context, issue int, id int64, body string)
 	f.updates++
 	if f.gone[id] {
 		return ErrGone
+	}
+	if f.plain404 {
+		found := false
+		for _, c := range f.comments[issue] {
+			if c.ID == id {
+				found = true
+			}
+		}
+		if !found {
+			return errors.New("HTTP 404: comment not found")
+		}
 	}
 	if f.lostAfterUpdate {
 		f.lostAfterUpdate = false
@@ -307,9 +319,70 @@ func TestAmbiguousUpdateDropsTheCacheSoReconcileReadsTheRemote(t *testing.T) {
 	l, _ := newLedger(r, 4096)
 	submitFlush(t, l, "v1")
 	r.lostAfterUpdate = true
-	submitFlush(t, l, "v2")
+	_, _ = l.Submit(t.Context(), body("v2"))
+	_ = l.Flush(t.Context()) // update lost: reported, not silent
 	submitFlush(t, l, "v3")
 	if len(r.comments[7]) != 1 || !strings.HasSuffix(r.comments[7][0].Body, "v3") {
 		t.Errorf("comments = %v", r.comments[7])
+	}
+}
+
+// A person deletes the comment; the remembered id now answers 404 in whatever words the host uses.
+// The first Flush must leave one comment at the newest text, or return an error — never look fine
+// with the comment missing.
+func TestDeletedCommentIsRecreatedInTheSameFlushEvenWithoutErrGone(t *testing.T) {
+	r := newRemote()
+	l, _ := newLedger(r, 4096)
+	submitFlush(t, l, "first")
+	r.comments[7] = nil
+	r.plain404 = true // Update answers errors.New("HTTP 404: comment not found"), not ErrGone
+	if _, err := l.Submit(t.Context(), body("second")); err != nil {
+		t.Fatal(err)
+	}
+	err := l.Flush(t.Context())
+	if err == nil && (len(r.comments[7]) != 1 || !strings.HasSuffix(r.comments[7][0].Body, "second")) {
+		t.Errorf("Flush returned nil but comments = %v", r.comments[7])
+	}
+}
+
+func TestFlushReportsAnIntentThatDidNotLand(t *testing.T) {
+	r := newRemote()
+	r.findErr = errors.New("gh 502")
+	l, _ := newLedger(r, 4096)
+	_, _ = l.Submit(t.Context(), body("v1"))
+	if err := l.Flush(t.Context()); err == nil {
+		t.Error("Flush returned nil although the comment did not land (parked)")
+	}
+}
+
+func TestEmailAndHomePathNeverPublishEvenWithTheFlag(t *testing.T) {
+	email := "person" + "@" + "example.org"
+	for _, text := range []string{
+		"owner " + email,
+		"worktree /Us" + "ers/someone/project",
+		"worktree /ho" + "me/someone/project",
+		`worktree C:\Us` + `ers\someone\project`,
+	} {
+		r := newRemote()
+		l, st := newLedger(r, 4096)
+		if _, err := l.Submit(t.Context(), body(text)); !errors.Is(err, ErrNotMasked) {
+			t.Errorf("%q: submit err = %v", text, err)
+		}
+		// Even if an intent reached the store by another path, the sender's last check refuses it.
+		in := effect.Intent{Key: "k", Kind: effect.LedgerComment, Issue: 7, Payload: Marker(7) + "\n" + text, Status: effect.StatusIntended, Seq: 1}
+		_ = st.Put(in)
+		_ = l.Flush(t.Context())
+		if r.creates+r.updates != 0 {
+			t.Errorf("%q: published", text)
+		}
+	}
+}
+
+func TestRelativeEvidencePathsStillPass(t *testing.T) {
+	r := newRemote()
+	l, _ := newLedger(r, 4096)
+	submitFlush(t, l, "see .moai/evidence/issue-7/audit.md and internal/agenticfactory/effect")
+	if len(r.comments[7]) != 1 {
+		t.Errorf("relative path text was refused: %v", r.comments[7])
 	}
 }

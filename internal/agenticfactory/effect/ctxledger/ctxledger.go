@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -45,6 +46,15 @@ type Comment struct {
 
 // ErrGone is returned by Remote.Update when the comment no longer exists (HTTP 404).
 var ErrGone = errors.New("ctxledger: comment no longer exists")
+
+var (
+	emailRe = regexp.MustCompile(`[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}`)
+	homeRe  = regexp.MustCompile(`(?:/Users|/home)/[^/\s]+|[A-Za-z]:\\Users\\[^\\\s]+`)
+)
+
+// personalData reports an email address or an absolute home path. The masking step upstream does not
+// cover these, so the sender refuses them whatever the flag says.
+func personalData(s string) bool { return emailRe.MatchString(s) || homeRe.MatchString(s) }
 
 // Remote is the comment API. The only production implementation is GHRemote.
 type Remote interface {
@@ -140,7 +150,7 @@ func (l *Ledger) Submit(_ context.Context, b Body) (effect.Intent, error) {
 	if !b.MaskPassed {
 		return effect.Intent{}, ErrNotMasked
 	}
-	if _, changed := monitor.Mask(b.Text); changed {
+	if _, changed := monitor.Mask(b.Text); changed || personalData(b.Text) {
 		return effect.Intent{}, ErrNotMasked
 	}
 	full := l.compose(b)
@@ -198,8 +208,14 @@ func (l *Ledger) Flush(ctx context.Context) error {
 			}
 			continue
 		}
-		if _, err := ex.Execute(ctx, effect.Request{Kind: in.Kind, Issue: in.Issue, Target: in.Target, Digest: in.Digest, Payload: in.Payload}); err != nil && first == nil {
-			first = err
+		got, err := ex.Execute(ctx, effect.Request{Kind: in.Kind, Issue: in.Issue, Target: in.Target, Digest: in.Digest, Payload: in.Payload})
+		if first == nil {
+			switch {
+			case err != nil:
+				first = err
+			case got.Status != effect.StatusConfirmed:
+				first = fmt.Errorf("ctxledger: issue %d comment did not land (%s): %s", got.Issue, got.Status, got.LastError)
+			}
 		}
 	}
 	return first
@@ -211,6 +227,12 @@ type sender struct {
 }
 
 func (s sender) Send(ctx context.Context, in effect.Intent) (string, error) {
+	if personalData(in.Payload) {
+		return "", fmt.Errorf("%w: body holds an email address or a home path", effect.ErrNotSent)
+	}
+	if _, changed := monitor.Mask(in.Payload); changed {
+		return "", fmt.Errorf("%w: body still holds a secret", effect.ErrNotSent)
+	}
 	id, err := s.send(ctx, in)
 	if err != nil {
 		s.l.cacheDrop(in.Issue) // outcome unknown: do not trust a remembered id or hash
@@ -229,7 +251,7 @@ func (s sender) send(ctx context.Context, in effect.Intent) (int64, error) {
 		if err == nil {
 			return c.id, nil
 		}
-		if !errors.Is(err, ErrGone) {
+		if !isGone(err) {
 			return 0, err
 		}
 		s.l.cacheDrop(in.Issue) // the comment is gone: fall back to the marker lookup
@@ -252,6 +274,15 @@ func (s sender) send(ctx context.Context, in effect.Intent) (int64, error) {
 		return 0, err
 	}
 	return nc.ID, nil
+}
+
+// isGone reports a missing comment: the documented ErrGone, or any error that says the host answered 404.
+func isGone(err error) bool {
+	if errors.Is(err, ErrGone) {
+		return true
+	}
+	t := strings.ToLower(err.Error())
+	return strings.Contains(t, "404") || strings.Contains(t, "not found")
 }
 
 type lookup struct{ r Remote }
