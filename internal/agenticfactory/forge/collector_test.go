@@ -1,6 +1,7 @@
 package forge
 
 import (
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -201,5 +202,109 @@ func TestWebhookEventsSurviveUntilAcknowledged(t *testing.T) {
 	col.Ack(r2)
 	if r3 := col.Tick(t.Context(), now.Add(2*time.Second)); len(r3.Changes) != 0 {
 		t.Errorf("acknowledged event repeated: %v", r3.Changes)
+	}
+}
+
+// --- persisted cursor: the acknowledged baseline survives a restart --------------------------------
+
+type memCursors struct {
+	m       map[string][]byte
+	saves   int
+	loadErr error
+	saveErr error
+}
+
+func (s *memCursors) LoadCursor(key string) ([]byte, bool, error) {
+	if s.loadErr != nil {
+		return nil, false, s.loadErr
+	}
+	b, ok := s.m[key]
+	return b, ok, nil
+}
+
+func (s *memCursors) SaveCursor(key string, body []byte) error {
+	if s.saveErr != nil {
+		return s.saveErr
+	}
+	if s.m == nil {
+		s.m = map[string][]byte{}
+	}
+	s.m[key] = append([]byte(nil), body...)
+	s.saves++
+	return nil
+}
+
+func withCursors(f *fakeT, now *time.Time, cs CursorStore) *Collector {
+	col := collectorWith(f, now, nil)
+	col.Cursors, col.CursorKey = cs, "o/r/pulls"
+	return col
+}
+
+func TestARestartResumesFromTheAcknowledgedCursorAndReportsOnlyWhatChanged(t *testing.T) {
+	now := t0
+	cs := &memCursors{}
+	first := withCursors(&fakeT{resps: []Response{resp(200, `[{"number":1,"s":"open"},{"number":2,"s":"open"}]`, "etag", `"a"`)}}, &now, cs)
+	rep := first.Tick(t.Context(), now)
+	if err := first.Ack(rep); err != nil || cs.saves != 1 {
+		t.Fatalf("ack err=%v saves=%d", err, cs.saves)
+	}
+
+	// a new process: no memory, same cursor store; the host now shows one change
+	restarted := withCursors(&fakeT{resps: []Response{resp(200, `[{"number":1,"s":"merged"},{"number":2,"s":"open"}]`, "etag", `"b"`)}}, &now, cs)
+	r2 := restarted.Tick(t.Context(), now)
+	if r2.Baseline {
+		t.Error("a restart with an acknowledged cursor must not report a baseline")
+	}
+	if len(r2.Changes) != 1 || r2.Changes[0].Key != "1" || r2.Changes[0].Kind != ChangeModified {
+		t.Errorf("changes = %+v, want only issue 1 modified", r2.Changes)
+	}
+}
+
+func TestACursorIsSavedOnlyWhenTheConsumerAcknowledges(t *testing.T) {
+	now := t0
+	cs := &memCursors{}
+	col := withCursors(&fakeT{resps: []Response{resp(200, `[{"number":1}]`)}}, &now, cs)
+	col.Tick(t.Context(), now)
+	if cs.saves != 0 {
+		t.Fatalf("a cursor was saved before any acknowledgement (%d saves)", cs.saves)
+	}
+}
+
+func TestAFailedSaveKeepsTheChangesComingBack(t *testing.T) {
+	now := t0
+	cs := &memCursors{saveErr: errors.New("disk full")}
+	col := withCursors(&fakeT{resps: []Response{resp(200, `[{"number":1}]`, "etag", `"a"`), resp(304, "")}}, &now, cs)
+	rep := col.Tick(t.Context(), now)
+	if err := col.Ack(rep); err == nil {
+		t.Fatal("a failed save was reported as acknowledged")
+	}
+	now = rep.Next
+	again := col.Tick(t.Context(), now)
+	if len(again.Changes) != 1 || !again.Baseline {
+		t.Errorf("an unsaved acknowledgement must not advance the cursor: %+v", again)
+	}
+}
+
+func TestAnUnreadableCursorPausesInsteadOfInventingABaseline(t *testing.T) {
+	now := t0
+	cs := &memCursors{loadErr: errors.New("store unavailable")}
+	f := &fakeT{resps: []Response{resp(200, `[{"number":1}]`)}}
+	rep := withCursors(f, &now, cs).Tick(t.Context(), now)
+	if len(f.calls) != 0 || len(rep.Changes) != 0 || rep.Reason == "" || rep.Next.IsZero() {
+		t.Errorf("rep=%+v calls=%d: with the cursor unreadable nothing may be reported or polled", rep, len(f.calls))
+	}
+	cs.loadErr = nil // the store recovers; the next tick loads it and proceeds
+	later := withCursors(f, &now, cs)
+	if r := later.Tick(t.Context(), rep.Next); r.Reason != "" || len(f.calls) != 1 {
+		t.Errorf("after recovery: %+v calls=%d", r, len(f.calls))
+	}
+}
+
+func TestNoCursorStoreKeepsTheOldInMemoryBehaviour(t *testing.T) {
+	now := t0
+	col := collectorWith(&fakeT{resps: []Response{resp(200, `[{"number":1}]`)}}, &now, nil)
+	rep := col.Tick(t.Context(), now)
+	if err := col.Ack(rep); err != nil {
+		t.Errorf("ack without a store: %v", err)
 	}
 }
