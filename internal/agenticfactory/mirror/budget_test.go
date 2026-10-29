@@ -133,7 +133,7 @@ func TestFlushStopsAtAShortBudgetAndKeepsEverythingQueued(t *testing.T) {
 }
 
 func TestFlushStopsAtABlockAndDoesNotHammer(t *testing.T) {
-	f := &fakeGH{results: []result{{errOut: "HTTP 429", exit: 1}}}
+	f := &fakeGH{results: []result{httpFail(429)}}
 	m := writable(f)
 	m.Enqueue(ledgerWith("a"))
 	other := ledgerWith("x")
