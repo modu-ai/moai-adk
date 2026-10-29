@@ -34,6 +34,7 @@ type Record struct {
 	Head     core.HeadSHA     `json:"head,omitempty"`
 	Delivery core.Delivery    `json:"delivery,omitempty"`
 	Deploy   string           `json:"deploy,omitempty"`
+	Mirror   string           `json:"mirror_state,omitempty"` // current | stale | blocked(<reason>)
 }
 
 // Store keeps records under one directory: issue-<n>.json, guarded by
