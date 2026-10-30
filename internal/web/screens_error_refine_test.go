@@ -1,12 +1,7 @@
-//go:build afred
-
-// screens_error_refine_afred_test.go: B13 RED, committed before the repair. A
-// failed SPEC scan reaches the 500 body of /, /factory and /specs through
-// err.Error() unrefined (handleMonitor already refines). Excluded from the
-// default run by the afred build tag (the same convention as B4-pre); run it
-// with:
-//
-//	go test -tags afred -run '^TestScreenScanErrorIsRefined$' ./internal/web/
+// screens_error_refine_test.go: B13. A failed SPEC scan reached the 500 body of
+// /, /factory and /specs through err.Error() unrefined (handleMonitor already
+// refined). Written first as the afred RED (nine failing subtests), green with
+// the three bodies passing through refineText.
 //
 // Contract: a value of each category (e-mail, home path, token) inside the scan
 // error must not appear in the response body; the status and the prefix stay.
