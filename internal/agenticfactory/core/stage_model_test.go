@@ -29,15 +29,22 @@ func TestParkReasonsCanonSixAreExactStrings(t *testing.T) {
 	}
 }
 
-func TestOperatorHoldIsParkableButMarkedCanonUnconfirmed(t *testing.T) {
-	if IsCanonParkReason(ReasonOperatorHold) {
-		t.Error("operator-hold is not in S46 (OD-12); it must not read as canon")
+func TestUnconfirmedParkReasonsAreParkableButNeverReadAsCanon(t *testing.T) {
+	want := []BlockReason{ReasonOperatorHold, ReasonFixLimit, ReasonReclaimCap}
+	got := CanonUnconfirmedParkReasons()
+	if len(got) != len(want) {
+		t.Fatalf("unconfirmed set = %v, want %v", got, want)
 	}
-	if got := CanonUnconfirmedParkReasons(); len(got) != 1 || got[0] != ReasonOperatorHold {
-		t.Errorf("unconfirmed set = %v", got)
-	}
-	if err := park(ReasonOperatorHold).Validate(); err != nil {
-		t.Errorf("operator-hold is still a valid overlay reason until OD-12: %v", err)
+	for i, r := range want {
+		if got[i] != r {
+			t.Errorf("unconfirmed[%d] = %v, want %v", i, got[i], r)
+		}
+		if IsCanonParkReason(r) {
+			t.Errorf("%s is not in S46 (operator-hold: OD-12; the others are the local ledger's); it must not read as canon", r)
+		}
+		if err := park(r).Validate(); err != nil {
+			t.Errorf("%s is a valid overlay reason: %v", r, err)
+		}
 	}
 }
 

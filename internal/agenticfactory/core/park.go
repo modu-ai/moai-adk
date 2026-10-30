@@ -30,7 +30,7 @@ var canonParkReasons = []BlockReason{
 // canonUnconfirmedParkReasons are overlay reasons the code uses that S46 does not
 // name. operator-hold is one: S46 has the CLI pause/resume only (operator
 // decision OD-12 is open).
-var canonUnconfirmedParkReasons = []BlockReason{ReasonOperatorHold}
+var canonUnconfirmedParkReasons = []BlockReason{ReasonOperatorHold, ReasonFixLimit, ReasonReclaimCap}
 
 // parkable are the reasons that may sit in an overlay besides the canon six:
 // the E19 classifications (quota, permission, budget, environment) and the
