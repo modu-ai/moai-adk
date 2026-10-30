@@ -525,9 +525,9 @@ func locked(err error) bool {
 
 // repoReadable says whether the repository itself can be read with the access in use:
 // one read of the repository, nothing written.
-func (m *Mirror) repoReadable(ctx context.Context) bool {
+func (m *Mirror) repoReadable(ctx context.Context) error {
 	_, err := m.call(ctx, fmt.Sprintf("repos/%s", m.Repo))
-	return err == nil
+	return err
 }
 
 // Flush writes each queued ledger once, lowest Issue first, and returns how many
@@ -581,8 +581,11 @@ func (m *Mirror) Flush(ctx context.Context) (int, error) {
 			continue
 		}
 		state, perm, verify := permanent(err)
-		if perm && verify && !m.repoReadable(ctx) {
-			perm = false // nothing is known about the Issue: treat it as a failure that may pass
+		if perm && verify {
+			if perr := m.repoReadable(ctx); perr != nil {
+				perm = false // nothing is known about the Issue: treat it as a failure that may pass
+				errs = append(errs, fmt.Errorf("issue-%d: the repository could not be read to tell this Issue's failure from a hidden repository: %w", n, perr))
+			}
 		}
 		if !perm {
 			return written, errors.Join(errs...)

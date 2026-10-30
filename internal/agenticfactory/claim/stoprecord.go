@@ -22,9 +22,11 @@ type StopRecord struct {
 	// At and OwnerSeq place the stop in the owner's history: the time it was recorded
 	// and the count of the owner's own writes then. An owner that writes its record
 	// or beats again after that has not stopped, so the record goes stale (see
-	// CheckSafeStop). Writes by the mirror or a monitor do not count.
+	// CheckSafeStop). Writes by the mirror or a monitor do not count. OwnerSeq is a
+	// pointer so a document without the key (an older format) is told apart from a
+	// recorded 0 and refused rather than read as a match.
 	At       time.Time `json:"at"`
-	OwnerSeq int64     `json:"owner_seq"`
+	OwnerSeq *int64    `json:"owner_seq"`
 }
 
 func stopName(i core.IssueRef, epoch int64) string {
@@ -46,7 +48,7 @@ func (s *Store) RecordSafeStop(i core.IssueRef, holder string, epoch int64, note
 		return "", err
 	}
 	name := stopName(i, epoch)
-	b, err := json.Marshal(StopRecord{Issue: i.Number, Holder: holder, Epoch: epoch, Note: strings.TrimSpace(note), At: s.clock(), OwnerSeq: rec.OwnerSeq})
+	b, err := json.Marshal(StopRecord{Issue: i.Number, Holder: holder, Epoch: epoch, Note: strings.TrimSpace(note), At: s.clock(), OwnerSeq: &rec.OwnerSeq})
 	if err != nil {
 		return "", err
 	}
@@ -98,7 +100,10 @@ func (s *Store) CheckSafeStop(i core.IssueRef, holder string, epoch int64, ref s
 	if err != nil {
 		return err
 	}
-	if !ok || cur.OwnerSeq != r.OwnerSeq {
+	if r.OwnerSeq == nil {
+		return bad("it carries no owner_seq, so it cannot be placed in the owner's history; record the stop again")
+	}
+	if !ok || cur.OwnerSeq != *r.OwnerSeq {
 		return bad("the owner wrote its record after it; record the stop again")
 	}
 	p, st, err := s.readPresence(i)
