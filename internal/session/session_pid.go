@@ -41,6 +41,10 @@ var wrapperProcessNames = map[string]bool{
 	"sh": true, "bash": true, "zsh": true, "dash": true,
 	"ksh": true, "fish": true, "csh": true, "tcsh": true,
 	"env": true, "moai": true,
+	// Process wrappers that stay the parent for the life of the call, like a shell (`timeout 30 moai ...`).
+	// Not "node": the session itself can run as a node process.
+	"timeout": true, "gtimeout": true, "nohup": true, "sudo": true, "xargs": true,
+	"script": true, "npx": true, "nice": true, "stdbuf": true,
 	// Windows hook runners wrap the moai binary in cmd.exe (`cmd /c`) or
 	// PowerShell; proc_info_windows.go strips the ".exe" suffix, so these
 	// match the same lowercase bare-name keys.

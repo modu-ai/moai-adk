@@ -1,0 +1,690 @@
+package mergeq
+
+// Defect answer: these tests catch a landing that overwrites a trunk that moved while the gates ran, a ref
+// update that is not a compare-and-swap, gates run while the landing lock is held, a failed or conflicting
+// candidate that still moves the trunk, a lock that leaks on any path, a restart that re-lands or loses a
+// card, and a candidate that touches main or a remote. Every test uses a real temporary git repository; the
+// ledger is a fake that records the calls it received.
+
+import (
+	"context"
+	"errors"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+)
+
+// --- fixtures -------------------------------------------------------------------------------------------
+
+func git(t *testing.T, dir string, args ...string) string {
+	t.Helper()
+	cmd := exec.Command("git", append([]string{"-C", dir}, args...)...)
+	cmd.Env = append(os.Environ(),
+		"GIT_CONFIG_GLOBAL="+os.DevNull, "GIT_CONFIG_SYSTEM="+os.DevNull,
+		"GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@example.test", "GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@example.test")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("git %s: %v: %s", strings.Join(args, " "), err, out)
+	}
+	return strings.TrimSpace(string(out))
+}
+
+// repo makes a repository whose trunk ref (refs/heads/trunk) is NOT checked out anywhere (HEAD is on "work"),
+// like a landing target that nobody edits.
+func repo(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	git(t, dir, "init", "-q", "-b", "work")
+	write(t, dir, "base.txt", "base\n")
+	git(t, dir, "add", "-A")
+	git(t, dir, "commit", "-q", "-m", "base")
+	git(t, dir, "branch", "trunk")
+	return dir
+}
+
+func write(t *testing.T, dir, name, body string) {
+	t.Helper()
+	if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// candidate commits file=body on a branch off the trunk and returns that commit.
+func candidate(t *testing.T, dir, branch, file, body string) string {
+	t.Helper()
+	git(t, dir, "checkout", "-q", "-b", branch, "trunk")
+	write(t, dir, file, body)
+	git(t, dir, "add", "-A")
+	git(t, dir, "commit", "-q", "-m", "card "+branch)
+	sha := git(t, dir, "rev-parse", "HEAD")
+	git(t, dir, "checkout", "-q", "work")
+	return sha
+}
+
+// advanceTrunk lands an unrelated commit directly on the trunk ref and returns the new trunk commit.
+func advanceTrunk(t *testing.T, dir, file, body string) string {
+	t.Helper()
+	sha := candidate(t, dir, "other-"+file, file, body)
+	git(t, dir, "update-ref", "refs/heads/trunk", sha, git(t, dir, "rev-parse", "refs/heads/trunk"))
+	return sha
+}
+
+type fakeQueue struct {
+	mu         sync.Mutex
+	states     []State
+	failReason string
+	locks      int
+	unlocks    int
+	held       bool
+	notes      []string
+	heldBy     error // when set, AcquireLock returns it
+	releaseErr error // when set, ReleaseLock returns it (after releasing)
+	inLock     func() bool
+	verifiedIn []bool // for each state set, was the lock held
+}
+
+func (q *fakeQueue) AcquireLock(_ context.Context, name string, _ Holder, _ time.Duration) (int64, error) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	if name != LandingLock {
+		return 0, errors.New("unexpected lock " + name)
+	}
+	if q.heldBy != nil {
+		return 0, q.heldBy
+	}
+	q.locks++
+	q.held = true
+	return int64(q.locks), nil
+}
+
+func (q *fakeQueue) ReleaseLock(_ context.Context, _ string, _ int64) error {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	q.unlocks++
+	q.held = false
+	return q.releaseErr
+}
+
+func (q *fakeQueue) SetState(_ context.Context, _, _ string, _ int64, st State, _, reason string) error {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	q.states = append(q.states, st)
+	q.verifiedIn = append(q.verifiedIn, q.held)
+	if reason != "" {
+		q.failReason = reason
+	}
+	return nil
+}
+
+func (q *fakeQueue) RowState(context.Context, string) (State, error) { return StateWaiting, nil }
+
+func (q *fakeQueue) AddNote(_ context.Context, kind, card, text string) error {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	q.notes = append(q.notes, kind+"|"+card+"|"+text)
+	return nil
+}
+
+func (q *fakeQueue) lockHeld() bool {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	return q.held
+}
+
+func newMerger(t *testing.T, dir string, q *fakeQueue, verify Verify) *Merger {
+	t.Helper()
+	g := GitCLI{Repo: dir, ScratchD: t.TempDir(), Who: Identity{Name: "mergeq", Email: "mergeq@example.test"}}
+	return &Merger{
+		Git: g, Queue: q, Trunk: "refs/heads/trunk", Verify: verify,
+		Holder:  Holder{Session: "s1", PID: os.Getpid()},
+		LockTTL: DefaultLockTTL, MaxRetries: DefaultMaxRetries,
+		Message: func(card string) string { return "merge(" + card + "): land" },
+	}
+}
+
+func passing(_ context.Context, _ string) error { return nil }
+
+// --- tests ----------------------------------------------------------------------------------------------
+
+func TestLand_CleanCandidateMovesTheTrunkToTheMergeResult(t *testing.T) {
+	dir := repo(t)
+	cand := candidate(t, dir, "c1", "a.txt", "a\n")
+	before := git(t, dir, "rev-parse", "refs/heads/trunk")
+	q := &fakeQueue{}
+	m := newMerger(t, dir, q, passing)
+
+	res, err := m.Land(context.Background(), "t1", cand)
+	if err != nil {
+		t.Fatal(err)
+	}
+	after := git(t, dir, "rev-parse", "refs/heads/trunk")
+	if res.Outcome != OutcomeLanded || res.TrunkAfter != after || res.TrunkBefore != before {
+		t.Fatalf("result %+v, trunk %s -> %s", res, before, after)
+	}
+	if after == before || git(t, dir, "show", "refs/heads/trunk:a.txt") != "a" {
+		t.Errorf("the trunk did not receive the candidate's change")
+	}
+	if got := git(t, dir, "log", "-1", "--format=%s", "refs/heads/trunk"); got != "merge(t1): land" {
+		t.Errorf("merge commit subject = %q, want it to carry the card id", got)
+	}
+	want := []State{StateVerifying, StateLanding, StateLanded}
+	if strings.Join(statesToStrings(q.states), ",") != strings.Join(statesToStrings(want), ",") {
+		t.Errorf("states %v, want %v", q.states, want)
+	}
+	if q.locks != 1 || q.unlocks != 1 || q.held {
+		t.Errorf("lock acquired %d released %d held %v, want 1, 1, false", q.locks, q.unlocks, q.held)
+	}
+	landed := 0
+	for _, n := range q.notes {
+		if strings.HasPrefix(n, "landed|t1|") {
+			landed++
+		}
+	}
+	if landed != 1 {
+		t.Errorf("landed notes = %d (%v), want exactly 1", landed, q.notes)
+	}
+	// the candidate worktree is gone
+	if out := git(t, dir, "worktree", "list", "--porcelain"); strings.Count(out, "worktree ") != 1 {
+		t.Errorf("a candidate worktree was left behind:\n%s", out)
+	}
+}
+
+func statesToStrings(s []State) []string {
+	out := make([]string, len(s))
+	for i, v := range s {
+		out[i] = string(v)
+	}
+	return out
+}
+
+func TestLand_GatesRunOutsideTheLock(t *testing.T) {
+	dir := repo(t)
+	cand := candidate(t, dir, "c1", "a.txt", "a\n")
+	q := &fakeQueue{}
+	sawLock := false
+	m := newMerger(t, dir, q, func(context.Context, string) error {
+		sawLock = q.lockHeld()
+		return nil
+	})
+	if _, err := m.Land(context.Background(), "t1", cand); err != nil {
+		t.Fatal(err)
+	}
+	if sawLock {
+		t.Error("the gates ran while the landing lock was held")
+	}
+	if q.locks != 1 {
+		t.Fatalf("control: the lock was taken %d times, want 1 (so the check above could have fired)", q.locks)
+	}
+}
+
+func TestLand_FailedGatesLeaveTheTrunkAndTakeNoLock(t *testing.T) {
+	dir := repo(t)
+	cand := candidate(t, dir, "c1", "a.txt", "a\n")
+	before := git(t, dir, "rev-parse", "refs/heads/trunk")
+	q := &fakeQueue{}
+	m := newMerger(t, dir, q, func(context.Context, string) error { return errors.New("go test failed") })
+	res, err := m.Land(context.Background(), "t1", cand)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Outcome != OutcomeFailed || !strings.Contains(res.Reason, "go test failed") {
+		t.Errorf("result %+v", res)
+	}
+	if git(t, dir, "rev-parse", "refs/heads/trunk") != before {
+		t.Error("the trunk moved for a candidate whose gates failed")
+	}
+	if q.locks != 0 {
+		t.Errorf("the lock was taken %d times for a failed candidate", q.locks)
+	}
+	if last := q.states[len(q.states)-1]; last != StateFailed || !strings.Contains(q.failReason, "go test failed") {
+		t.Errorf("final state %v reason %q", last, q.failReason)
+	}
+}
+
+func TestLand_AConflictingCandidateFailsAndTheTrunkStays(t *testing.T) {
+	dir := repo(t)
+	// both sides change base.txt differently
+	git(t, dir, "checkout", "-q", "-b", "c1", "trunk")
+	write(t, dir, "base.txt", "candidate\n")
+	git(t, dir, "commit", "-q", "-am", "c1")
+	cand := git(t, dir, "rev-parse", "HEAD")
+	git(t, dir, "checkout", "-q", "work")
+	git(t, dir, "checkout", "-q", "-b", "o1", "trunk")
+	write(t, dir, "base.txt", "trunk side\n")
+	git(t, dir, "commit", "-q", "-am", "o1")
+	other := git(t, dir, "rev-parse", "HEAD")
+	git(t, dir, "checkout", "-q", "work")
+	git(t, dir, "update-ref", "refs/heads/trunk", other, git(t, dir, "rev-parse", "refs/heads/trunk"))
+
+	q := &fakeQueue{}
+	calls := 0
+	m := newMerger(t, dir, q, func(context.Context, string) error { calls++; return nil })
+	res, err := m.Land(context.Background(), "t1", cand)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Outcome != OutcomeFailed || !strings.Contains(strings.ToLower(res.Reason), "merge") {
+		t.Errorf("result %+v", res)
+	}
+	if calls != 0 {
+		t.Errorf("the gates ran %d times on a candidate that does not merge", calls)
+	}
+	if git(t, dir, "rev-parse", "refs/heads/trunk") != other {
+		t.Error("the trunk moved for a conflicting candidate")
+	}
+}
+
+func TestLand_ATrunkThatMovesDuringTheGatesIsRebuiltNotOverwritten(t *testing.T) {
+	dir := repo(t)
+	cand := candidate(t, dir, "c1", "a.txt", "a\n")
+	q := &fakeQueue{}
+	runs := 0
+	var moved string
+	m := newMerger(t, dir, q, func(context.Context, string) error {
+		runs++
+		if runs == 1 {
+			moved = advanceTrunk(t, dir, "b.txt", "b\n") // someone else lands while the gates run
+		}
+		return nil
+	})
+	res, err := m.Land(context.Background(), "t1", cand)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Outcome != OutcomeLanded || res.Verified != 2 || runs != 2 {
+		t.Fatalf("result %+v, gate runs %d, want landed after 2 verifications", res, runs)
+	}
+	if git(t, dir, "show", "refs/heads/trunk:a.txt") != "a" || git(t, dir, "show", "refs/heads/trunk:b.txt") != "b" {
+		t.Error("the landed trunk lost one side: a candidate overwrote the trunk that moved")
+	}
+	if ok, err := (GitCLI{Repo: dir}).IsAncestor(context.Background(), moved, "refs/heads/trunk"); err != nil || !ok {
+		t.Errorf("the commit that landed meanwhile is not an ancestor of the new trunk (%v, %v)", ok, err)
+	}
+	if res.TrunkBefore != moved {
+		t.Errorf("TrunkBefore = %s, want the moved trunk %s", res.TrunkBefore, moved)
+	}
+}
+
+// movingGit moves the trunk once, right before the first UpdateRef, to prove the update is a CAS.
+type movingGit struct {
+	Git
+	t     *testing.T
+	dir   string
+	moved bool
+}
+
+func (g *movingGit) UpdateRef(ctx context.Context, ref, newSHA, oldSHA string) error {
+	if !g.moved {
+		g.moved = true
+		advanceTrunk(g.t, g.dir, "late.txt", "late\n")
+	}
+	return g.Git.UpdateRef(ctx, ref, newSHA, oldSHA)
+}
+
+func TestLand_ATrunkThatMovesAfterTheRecheckIsCaughtByTheCompareAndSwap(t *testing.T) {
+	dir := repo(t)
+	cand := candidate(t, dir, "c1", "a.txt", "a\n")
+	q := &fakeQueue{}
+	m := newMerger(t, dir, q, passing)
+	m.Git = &movingGit{Git: m.Git, t: t, dir: dir}
+	res, err := m.Land(context.Background(), "t1", cand)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Outcome != OutcomeLanded {
+		t.Fatalf("result %+v", res)
+	}
+	if git(t, dir, "show", "refs/heads/trunk:late.txt") != "late" || git(t, dir, "show", "refs/heads/trunk:a.txt") != "a" {
+		t.Error("the compare-and-swap did not protect the commit that landed in the window")
+	}
+	if q.locks != q.unlocks || q.held {
+		t.Errorf("the lock leaked: acquired %d released %d held %v", q.locks, q.unlocks, q.held)
+	}
+}
+
+func TestLand_ATrunkThatNeverStopsMovingEndsAsFailedAfterTheRetryCap(t *testing.T) {
+	dir := repo(t)
+	cand := candidate(t, dir, "c1", "a.txt", "a\n")
+	q := &fakeQueue{}
+	n := 0
+	m := newMerger(t, dir, q, func(context.Context, string) error {
+		n++
+		advanceTrunk(t, dir, "x"+string(rune('a'+n))+".txt", "x\n")
+		return nil
+	})
+	res, err := m.Land(context.Background(), "t1", cand)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Outcome != OutcomeFailed || !strings.Contains(res.Reason, "moved") {
+		t.Errorf("result %+v", res)
+	}
+	if n != DefaultMaxRetries {
+		t.Errorf("the gates ran %d times, want the cap %d", n, DefaultMaxRetries)
+	}
+	if q.locks != q.unlocks || q.held {
+		t.Errorf("the lock leaked: acquired %d released %d held %v", q.locks, q.unlocks, q.held)
+	}
+}
+
+func TestLand_ALockHeldByAnotherLanderIsWaitingNotFailure(t *testing.T) {
+	dir := repo(t)
+	cand := candidate(t, dir, "c1", "a.txt", "a\n")
+	before := git(t, dir, "rev-parse", "refs/heads/trunk")
+	q := &fakeQueue{heldBy: ErrLockHeld}
+	m := newMerger(t, dir, q, passing)
+	res, err := m.Land(context.Background(), "t1", cand)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Outcome != OutcomeWaiting {
+		t.Errorf("result %+v, want waiting", res)
+	}
+	if git(t, dir, "rev-parse", "refs/heads/trunk") != before {
+		t.Error("the trunk moved without the lock")
+	}
+	for _, s := range q.states {
+		if s == StateFailed {
+			t.Error("a held lock was recorded as a failure")
+		}
+	}
+}
+
+func TestLand_ACandidateAlreadyInTheTrunkLandsWithoutAnotherMerge(t *testing.T) {
+	dir := repo(t)
+	cand := candidate(t, dir, "c1", "a.txt", "a\n")
+	git(t, dir, "update-ref", "refs/heads/trunk", cand, git(t, dir, "rev-parse", "refs/heads/trunk"))
+	before := git(t, dir, "rev-parse", "refs/heads/trunk")
+	q := &fakeQueue{}
+	runs := 0
+	m := newMerger(t, dir, q, func(context.Context, string) error { runs++; return nil })
+	res, err := m.Land(context.Background(), "t1", cand)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Outcome != OutcomeLanded || git(t, dir, "rev-parse", "refs/heads/trunk") != before || runs != 0 {
+		t.Errorf("result %+v, trunk changed %v, gate runs %d: an already-landed candidate was merged again",
+			res, git(t, dir, "rev-parse", "refs/heads/trunk") != before, runs)
+	}
+}
+
+// Leader decision: the trunk is a dedicated ref that no worktree has checked out. Moving a checked-out branch
+// with update-ref would leave that tree's index and files behind the ref, so landing is refused.
+func TestLand_RefusesATrunkThatIsCheckedOutInAWorktree(t *testing.T) {
+	dir := repo(t)
+	cand := candidate(t, dir, "c1", "a.txt", "a\n")
+	holder := filepath.Join(t.TempDir(), "holder")
+	git(t, dir, "worktree", "add", "-q", holder, "trunk") // trunk is now checked out in holder
+	before := git(t, dir, "rev-parse", "refs/heads/trunk")
+	q := &fakeQueue{}
+	gateRuns := 0
+	m := newMerger(t, dir, q, func(context.Context, string) error { gateRuns++; return nil })
+
+	_, err := m.Land(context.Background(), "t1", cand)
+	if !errors.Is(err, ErrTrunkCheckedOut) {
+		t.Fatalf("Land = %v, want ErrTrunkCheckedOut", err)
+	}
+	if !strings.Contains(err.Error(), holder) && !strings.Contains(err.Error(), filepath.Base(holder)) {
+		t.Errorf("the refusal does not say which worktree holds the trunk: %v", err)
+	}
+	if git(t, dir, "rev-parse", "refs/heads/trunk") != before || gateRuns != 0 || q.locks != 0 {
+		t.Errorf("a refused landing still acted: trunk moved %v, gate runs %d, locks %d",
+			git(t, dir, "rev-parse", "refs/heads/trunk") != before, gateRuns, q.locks)
+	}
+	// control: with the holder tree gone the same candidate lands, so the refusal above was the checkout.
+	git(t, dir, "worktree", "remove", "--force", holder)
+	if res, err := m.Land(context.Background(), "t1", cand); err != nil || res.Outcome != OutcomeLanded {
+		t.Errorf("control: after the holder tree is removed Land = %+v, %v", res, err)
+	}
+}
+
+func TestDefaultTrunkIsADedicatedRef(t *testing.T) {
+	if DefaultTrunk != "refs/heads/af/trunk" {
+		t.Errorf("DefaultTrunk = %q, want the dedicated ref refs/heads/af/trunk", DefaultTrunk)
+	}
+}
+
+// --- lane-19 review 19 --------------------------------------------------------------------------------
+
+// checkoutLater reports a holder only from the second CheckedOutAt call on: the trunk gets checked out after
+// the first look, which is before the lock, and only the look under the lock can see it.
+type checkoutLater struct {
+	Git
+	calls int
+}
+
+func (g *checkoutLater) CheckedOutAt(ctx context.Context, ref string) (string, error) {
+	g.calls++
+	if g.calls >= 2 {
+		return "/late/holder", nil
+	}
+	return g.Git.CheckedOutAt(ctx, ref)
+}
+
+func TestLand_TheCheckoutIsLookedForAgainUnderTheLock(t *testing.T) {
+	dir := repo(t)
+	cand := candidate(t, dir, "c1", "a.txt", "a\n")
+	before := git(t, dir, "rev-parse", "refs/heads/trunk")
+	q := &fakeQueue{}
+	m := newMerger(t, dir, q, passing)
+	g := &checkoutLater{Git: m.Git}
+	m.Git = g
+	_, err := m.Land(context.Background(), "t1", cand)
+	if !errors.Is(err, ErrTrunkCheckedOut) {
+		t.Fatalf("Land = %v, want ErrTrunkCheckedOut from the look under the lock", err)
+	}
+	if g.calls < 2 {
+		t.Errorf("CheckedOutAt was called %d times, want a second look under the lock", g.calls)
+	}
+	if git(t, dir, "rev-parse", "refs/heads/trunk") != before {
+		t.Error("the trunk moved although a worktree had it checked out by then")
+	}
+	if q.locks != q.unlocks || q.held {
+		t.Errorf("the lock leaked: acquired %d released %d held %v", q.locks, q.unlocks, q.held)
+	}
+}
+
+func TestLand_AFailedLockReleaseIsReturnedNotDropped(t *testing.T) {
+	dir := repo(t)
+	cand := candidate(t, dir, "c1", "a.txt", "a\n")
+	q := &fakeQueue{releaseErr: errors.New("ledger unavailable")}
+	m := newMerger(t, dir, q, passing)
+	res, err := m.Land(context.Background(), "t1", cand)
+	if err == nil || !strings.Contains(err.Error(), "ledger unavailable") {
+		t.Fatalf("Land err = %v, want the release failure", err)
+	}
+	if res.Outcome != OutcomeLanded {
+		t.Errorf("outcome %q: the card did land, the caller must still be told so alongside the error", res.Outcome)
+	}
+}
+
+func TestTrunkMustBeAFullBranchNameAndNotTheDefaultBranch(t *testing.T) {
+	dir := repo(t)
+	cand := candidate(t, dir, "c1", "a.txt", "a\n")
+	for _, bad := range []string{"trunk", "heads/trunk", "refs/tags/v1", "refs/heads/main", "refs/heads/master", "", "refs/remotes/origin/main"} {
+		m := newMerger(t, dir, &fakeQueue{}, passing)
+		m.Trunk = bad
+		if _, err := m.Land(context.Background(), "t1", cand); !errors.Is(err, ErrBadTrunk) {
+			t.Errorf("trunk %q: %v, want ErrBadTrunk", bad, err)
+		}
+	}
+	m := newMerger(t, dir, &fakeQueue{}, passing)
+	m.Trunk = DefaultTrunk
+	git(t, dir, "update-ref", DefaultTrunk, git(t, dir, "rev-parse", "refs/heads/trunk"))
+	if _, err := m.Land(context.Background(), "t1", cand); err != nil {
+		t.Errorf("control: the dedicated default trunk is refused: %v", err)
+	}
+}
+
+func TestGitCLI_OnlyAValueMismatchIsErrRefMoved(t *testing.T) {
+	dir := repo(t)
+	g := GitCLI{Repo: dir, Who: Identity{Name: "m", Email: "m@example.test"}}
+	head := git(t, dir, "rev-parse", "HEAD")
+	wrong := candidate(t, dir, "c1", "a.txt", "a\n")
+	if err := g.UpdateRef(context.Background(), "refs/heads/trunk", head, wrong); !errors.Is(err, ErrRefMoved) {
+		t.Errorf("a stale old value: %v, want ErrRefMoved", err)
+	}
+	err := g.UpdateRef(context.Background(), "refs/heads/bad..name", head, head)
+	if err == nil || errors.Is(err, ErrRefMoved) {
+		t.Errorf("an invalid ref name: %v, want an error that is not ErrRefMoved", err)
+	}
+	err = g.UpdateRef(context.Background(), "refs/heads/trunk", strings.Repeat("0", 40)[:39]+"1", git(t, dir, "rev-parse", "refs/heads/trunk"))
+	if err == nil || errors.Is(err, ErrRefMoved) {
+		t.Errorf("a new value that is not an object: %v, want an error that is not ErrRefMoved", err)
+	}
+}
+
+// The operating locale is Korean. git translates its messages, so classifying an error by its wording is only
+// sound if every git subprocess is pinned to the C locale. The stand-in git below answers in Korean unless it
+// is run with LC_ALL=C, like a git with the Korean catalogue installed.
+func TestGitCLI_EveryGitSubprocessIsPinnedToTheCLocale(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the stand-in git is a shell script")
+	}
+	bin := t.TempDir()
+	script := "#!/bin/sh\n" +
+		"if [ \"$LC_ALL\" = \"C\" ] && [ \"$LANG\" = \"C\" ]; then\n" +
+		"  echo \"fatal: cannot lock ref 'refs/heads/trunk': is at aaaa but expected bbbb\" >&2\n" +
+		"else\n" +
+		"  echo \"치명적 오류: 'refs/heads/trunk' 참조를 잠글 수 없음: aaaa 이지만 bbbb 이어야 함\" >&2\n" +
+		"fi\n" +
+		"exit 128\n"
+	if err := os.WriteFile(filepath.Join(bin, "git"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	t.Setenv("LC_ALL", "ko_KR.UTF-8")
+	t.Setenv("LANG", "ko_KR.UTF-8")
+	g := GitCLI{Repo: t.TempDir(), Who: Identity{Name: "m", Email: "m@example.test"}}
+	err := g.UpdateRef(context.Background(), "refs/heads/trunk", "bbbb", "aaaa")
+	if !errors.Is(err, ErrRefMoved) {
+		t.Errorf("UpdateRef under a Korean environment = %v, want ErrRefMoved (the subprocess must run in the C locale)", err)
+	}
+}
+
+// A trunk that is the branch origin/HEAD points at is the default branch under another name.
+func TestLand_RefusesTheBranchThatOriginHeadPointsAt(t *testing.T) {
+	dir := repo(t)
+	cand := candidate(t, dir, "c1", "a.txt", "a\n")
+	git(t, dir, "remote", "add", "origin", dir)
+	git(t, dir, "update-ref", "refs/remotes/origin/trunk", git(t, dir, "rev-parse", "refs/heads/trunk"))
+	m := newMerger(t, dir, &fakeQueue{}, passing)
+	// control: no origin/HEAD yet, the trunk lands.
+	if res, err := m.Land(context.Background(), "t1", cand); err != nil || res.Outcome != OutcomeLanded {
+		t.Fatalf("control: Land = %+v, %v", res, err)
+	}
+	git(t, dir, "symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/trunk")
+	cand2 := candidate(t, dir, "c2", "b.txt", "b\n")
+	if _, err := m.Land(context.Background(), "t2", cand2); !errors.Is(err, ErrBadTrunk) {
+		t.Errorf("Land with the trunk equal to origin/HEAD's branch = %v, want ErrBadTrunk", err)
+	}
+}
+
+func TestReconcile_PutsARowBackToWaitingOnlyWhileHoldingTheLandingLock(t *testing.T) {
+	dir := repo(t)
+	notLanded := candidate(t, dir, "c2", "b.txt", "b\n")
+	items := []Item{{CardID: "t2", CandidateSHA: notLanded, State: StateLanding}}
+
+	held := &fakeQueue{heldBy: ErrLockHeld}
+	m := newMerger(t, dir, held, passing)
+	acts, err := m.Reconcile(context.Background(), items)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(acts) != 0 || len(held.states) != 0 {
+		t.Errorf("without the lock: actions %+v states %v, want the row left alone", acts, held.states)
+	}
+
+	free := &fakeQueue{}
+	m = newMerger(t, dir, free, passing)
+	acts, err = m.Reconcile(context.Background(), items)
+	if err != nil || len(acts) != 1 || acts[0].To != StateWaiting {
+		t.Fatalf("with the lock: actions %+v err %v, want one move to waiting", acts, err)
+	}
+	if free.locks != 1 || free.unlocks != 1 || free.held {
+		t.Errorf("lock acquired %d released %d held %v", free.locks, free.unlocks, free.held)
+	}
+}
+
+func TestLand_NeverTouchesMainOrAnyOtherRef(t *testing.T) {
+	dir := repo(t)
+	git(t, dir, "branch", "main", "trunk")
+	cand := candidate(t, dir, "c1", "a.txt", "a\n")
+	refsBefore := git(t, dir, "for-each-ref", "--format=%(refname) %(objectname)", "refs/heads/main", "refs/heads/work")
+	m := newMerger(t, dir, &fakeQueue{}, passing)
+	if _, err := m.Land(context.Background(), "t1", cand); err != nil {
+		t.Fatal(err)
+	}
+	if got := git(t, dir, "for-each-ref", "--format=%(refname) %(objectname)", "refs/heads/main", "refs/heads/work"); got != refsBefore {
+		t.Errorf("a ref other than the trunk changed:\nbefore %s\nafter  %s", refsBefore, got)
+	}
+	if out := git(t, dir, "remote"); out != "" {
+		t.Errorf("a remote appeared: %q", out)
+	}
+}
+
+func TestReconcile_UsesGitAncestryNotTheRecordedState(t *testing.T) {
+	dir := repo(t)
+	landed := candidate(t, dir, "c1", "a.txt", "a\n")
+	notLanded := candidate(t, dir, "c2", "b.txt", "b\n")
+	git(t, dir, "update-ref", "refs/heads/trunk", landed, git(t, dir, "rev-parse", "refs/heads/trunk"))
+	m := newMerger(t, dir, &fakeQueue{}, passing)
+
+	acts, err := m.Reconcile(context.Background(), []Item{
+		{CardID: "t1", CandidateSHA: landed, State: StateLanding},    // crashed after update-ref
+		{CardID: "t2", CandidateSHA: notLanded, State: StateLanding}, // crashed before update-ref
+		{CardID: "t3", CandidateSHA: notLanded, State: StateVerifying},
+		{CardID: "t4", CandidateSHA: notLanded, State: StateWaiting}, // untouched
+		{CardID: "t5", CandidateSHA: landed, State: StateLanded},     // already settled
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]State{}
+	for _, a := range acts {
+		got[a.CardID] = a.To
+	}
+	want := map[string]State{"t1": StateLanded, "t2": StateWaiting, "t3": StateWaiting}
+	for id, st := range want {
+		if got[id] != st {
+			t.Errorf("%s -> %q, want %q (all actions: %+v)", id, got[id], st, acts)
+		}
+	}
+	if _, touched := got["t4"]; touched {
+		t.Error("a waiting row was changed")
+	}
+	if _, touched := got["t5"]; touched {
+		t.Error("a landed row was changed")
+	}
+}
+
+func TestReconcile_RecordsOneLandedNoteAndIsIdempotent(t *testing.T) {
+	dir := repo(t)
+	landed := candidate(t, dir, "c1", "a.txt", "a\n")
+	git(t, dir, "update-ref", "refs/heads/trunk", landed, git(t, dir, "rev-parse", "refs/heads/trunk"))
+	q := &fakeQueue{}
+	m := newMerger(t, dir, q, passing)
+	items := []Item{{CardID: "t1", CandidateSHA: landed, State: StateLanding}}
+	if _, err := m.Reconcile(context.Background(), items); err != nil {
+		t.Fatal(err)
+	}
+	// a second pass over the same (now settled) row changes nothing more
+	items[0].State = StateLanded
+	if acts, err := m.Reconcile(context.Background(), items); err != nil || len(acts) != 0 {
+		t.Errorf("second pass: actions %+v err %v, want none", acts, err)
+	}
+	n := 0
+	for _, note := range q.notes {
+		if strings.HasPrefix(note, "landed|t1|") {
+			n++
+		}
+	}
+	if n != 1 {
+		t.Errorf("landed notes = %d, want 1", n)
+	}
+}

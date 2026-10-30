@@ -156,6 +156,10 @@ func (h *postToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOu
 	}
 	observeEscalation(escCfg, string(EventPostToolUse), input)
 
+	// Ledger lease renewal: a lane driven by a loop has no user prompt between
+	// turns, so tool completions carry the beat too (30s throttle, inert unbound).
+	LedgerHeartbeatSeam(input)
+
 	slog.Debug("collecting post-tool metrics",
 		"tool_name", input.ToolName,
 		"session_id", input.SessionID,
