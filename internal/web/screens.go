@@ -108,13 +108,21 @@ func (a *app) readOnly(w http.ResponseWriter, r *http.Request) bool {
 	return true
 }
 
-func (a *app) handleOverview(w http.ResponseWriter, r *http.Request) {
+// handleRoot sends the bare root to the local board, the landing screen. Any
+// other path the mux hands to "/" is an unregistered one and answers 404.
+func (a *app) handleRoot(w http.ResponseWriter, r *http.Request) {
 	if !a.readOnly(w, r) {
 		return
 	}
-	// "/" 는 정확히 일치할 때만 개요다. 그 밖의 미등록 경로는 404 로 둔다.
 	if r.URL.Path != "/" {
 		http.NotFound(w, r)
+		return
+	}
+	http.Redirect(w, r, "/board", http.StatusFound)
+}
+
+func (a *app) handleOverview(w http.ResponseWriter, r *http.Request) {
+	if !a.readOnly(w, r) {
 		return
 	}
 	o, err := a.buildOverview(time.Now())
@@ -189,14 +197,6 @@ func (a *app) handleBrowserAPI(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(a.buildBrowserSelection(r.Context()))
-}
-
-func (a *app) handlePRTrackingAPI(w http.ResponseWriter, r *http.Request) {
-	if !a.readOnly(w, r) {
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(a.buildPRTracking(r.Context()))
 }
 
 func (a *app) handleSpecs(w http.ResponseWriter, r *http.Request) {

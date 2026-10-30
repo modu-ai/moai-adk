@@ -34,7 +34,7 @@ func TestCheckMoveAllowsStayAndSingleEdges(t *testing.T) {
 		{"E23 spec passes", bSpec, bImpl, nil},
 		{"E03 accepted handoff", bImpl, review, []string{FactReceipt, FactReceiptAccepted}},
 		{"E06 repair", review, bFix, nil},
-		{"E08 merge", review, merge, nil},
+		{"E08 merge", review, merge, []string{FactQueued}},
 		{"E12 integrated", merge, mergeI, []string{FactMerged}},
 		{"E13 done", mergeI, done, []string{FactMerged, FactClosed, FactSettled}},
 		{"E15 cancel", bImpl, Position{Stage: StageCancelled}, nil},

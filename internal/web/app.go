@@ -8,8 +8,10 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/browser"
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/monitor/flow"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/glmcred"
 	"github.com/modu-ai/moai-adk/internal/jevcred"
@@ -134,13 +136,12 @@ type app struct {
 	browserSelected func(projectRoot string) (string, error)
 	browserProbe    browser.Probe
 
-	// monitorRows returns the monitor's JSON rows for the PR tracking panel
-	// (Issue #1948 DELTA4). Nil until the monitor data source is wired.
-	monitorRows    func(ctx context.Context) ([]byte, error)
-	intakeRequests func(ctx context.Context) ([]byte, error)
-	// contextModel returns one Issue's ctxmodel.Ledger JSON (Ledger.Marshal);
-	// nil leaves the model view "not provided".
-	contextModel func(ctx context.Context, issue int) ([]byte, error)
+	// flowProbe judges whether a lease holder's process is alive for the board's
+	// flow panel. Nil reads every holder as Unknown (monitor/flow's rule).
+	flowProbe flow.Probe
+
+	// nowFunc replaces the wall clock for the board (tests); nil means time.Now.
+	nowFunc func() time.Time
 
 	// triggerShutdown is 페이지 내 서버 종료 버튼(/__shutdown__)이 호출하는
 	// injectable seam 이다. openBrowser 와 동일한 패턴이지만 app 에 두는 이유는 —
@@ -179,9 +180,6 @@ func newApp(cfg Config) *app {
 
 		codexStateProbe: defaultCodexStateProbe,
 
-		monitorRows:     cfg.MonitorRows,
-		intakeRequests:  cfg.IntakeRequests,
-		contextModel:    cfg.ContextModel,
 		browserSelected: readBrowserSelected,
 		browserProbe:    browser.ExecProbe{},
 
@@ -217,13 +215,13 @@ func (a *app) routes() http.Handler {
 	// 재설계본 라우트. "/" 는 개요로 올라가고, 설정 편집기는 /settings 로 내려간다
 	// — 세션을 열었을 때 먼저 보고 싶은 것은 설정값이 아니라 현재 상태이기 때문이다.
 	// 모니터링 라우트(개요·팩토리·모니터·SPEC)는 GET 외 메서드를 405 로 거부한다.
-	mux.HandleFunc("/", a.handleOverview)
+	mux.HandleFunc("/", a.handleRoot)
+	mux.HandleFunc("/overview", a.handleOverview)
 	mux.HandleFunc("/factory", a.handleFactory)
 	registerLegacyRoutes(mux)
 	mux.HandleFunc("/monitor", a.handleMonitor)
 	// REQ-AF-016: read-only browser selection data for the monitor panel.
 	mux.HandleFunc("/api/browser", a.handleBrowserAPI)
-	mux.HandleFunc("/api/pr-tracking", a.handlePRTrackingAPI)
 	mux.HandleFunc("/board", a.handleBoard)
 	mux.HandleFunc("/api/board", a.handleBoardAPI)
 	// SPEC-WEB-TODO-QUEUE-001 M2 (REQ-WTQ-002): /todo renders the backlog queue

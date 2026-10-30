@@ -3,6 +3,7 @@ package mergeq
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/ledger"
@@ -12,8 +13,9 @@ import (
 type ledgerAPI interface {
 	AcquireLock(ctx context.Context, name string, holder ledger.LockHolder, ttl time.Duration) (int64, error)
 	ReleaseLock(ctx context.Context, name string, epoch int64) error
-	QueueUpdate(ctx context.Context, cardID string, lockEpoch int64, state ledger.QueueState, trunkBefore, failReason string) error
+	QueueUpdate(ctx context.Context, cardID string, epoch ledger.QueueEpoch, state ledger.QueueState, trunkBefore, failReason string) error
 	AddNote(ctx context.Context, n ledger.Note) error
+	Queue(ctx context.Context) ([]ledger.QueueItem, error)
 }
 
 var _ ledgerAPI = (*ledger.Store)(nil)
@@ -42,9 +44,31 @@ func (q LedgerQueue) ReleaseLock(ctx context.Context, name string, epoch int64) 
 	return q.L.ReleaseLock(ctx, name, epoch)
 }
 
-// SetState records the queue row's state.
+// SetState records the queue row's state. The ledger checks the card epoch the row was queued at for
+// waiting, verifying and failed, and the lock epoch for landing, landed and a waiting row sent back by a
+// reconcile; this adapter passes the row's own item.CardEpoch as a ledger.CardEpoch for the first group and
+// lockEpoch as a ledger.LockEpoch for the second, so the two numbers can never be mistaken for each other.
+// The card epoch is read from the queue row, never from cards.epoch: it is unverified here against the lease,
+// and the ledger fences a stale row itself (ErrStaleEpoch).
 func (q LedgerQueue) SetState(ctx context.Context, cardID string, lockEpoch int64, st State, trunkBefore, failReason string) error {
-	return q.L.QueueUpdate(ctx, cardID, lockEpoch, ledger.QueueState(st), trunkBefore, failReason)
+	epoch := ledger.LockEpoch(lockEpoch)
+	if st == StateVerifying || st == StateFailed || (st == StateWaiting && lockEpoch == 0) {
+		items, err := q.L.Queue(ctx)
+		if err != nil {
+			return err
+		}
+		found := false
+		for _, it := range items {
+			if it.CardID == cardID {
+				epoch, found = ledger.CardEpoch(it.CardEpoch), true
+				break
+			}
+		}
+		if !found {
+			return fmt.Errorf("mergeq: %s is not in the queue", cardID)
+		}
+	}
+	return q.L.QueueUpdate(ctx, cardID, epoch, ledger.QueueState(st), trunkBefore, failReason)
 }
 
 // AddNote appends a note of the given kind.

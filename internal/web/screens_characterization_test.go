@@ -81,10 +81,10 @@ func TestReadOnlyGateRefusesWritesAndBadProfileNames(t *testing.T) {
 	}
 }
 
-func TestOverviewAnswersOnlyTheRootPath(t *testing.T) {
+func TestOverviewAnswersOnlyItsOwnPath(t *testing.T) {
 	a := newApp(Config{ProjectRoot: t.TempDir()})
-	if rec := serveGet(t, a.routes(), "/"); rec.Code != http.StatusOK {
-		t.Errorf("GET / = %d", rec.Code)
+	if rec := serveGet(t, a.routes(), "/overview"); rec.Code != http.StatusOK {
+		t.Errorf("GET /overview = %d", rec.Code)
 	}
 	if rec := serveGet(t, a.routes(), "/no-such-screen"); rec.Code != http.StatusNotFound {
 		t.Errorf("an unregistered path = %d, want 404", rec.Code)
@@ -93,9 +93,9 @@ func TestOverviewAnswersOnlyTheRootPath(t *testing.T) {
 
 func TestScreensTurnAFailedSpecScanIntoA500(t *testing.T) {
 	for path, prefix := range map[string]string{
-		"/":        "overview unavailable",
-		"/factory": "factory unavailable",
-		"/specs":   "spec list unavailable",
+		"/overview": "overview unavailable",
+		"/factory":  "factory unavailable",
+		"/specs":    "spec list unavailable",
 	} {
 		rec := serveGet(t, failingSpecApp(t).routes(), path)
 		if rec.Code != http.StatusInternalServerError || !strings.HasPrefix(rec.Body.String(), prefix) {

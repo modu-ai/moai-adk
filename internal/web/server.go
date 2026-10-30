@@ -64,22 +64,9 @@ type Config struct {
 	// Console reads and writes via SyncToProjectConfig. Required.
 	ProjectRoot string
 
-	// MonitorRows supplies the monitor JSON (monitor.MarshalView output) for the
-	// PR tracking, intake and context panels. Nil leaves them "not provided".
-	MonitorRows func(ctx context.Context) ([]byte, error)
-
 	// Ledger supplies the read-only local ledger the /board screen renders. Nil
 	// leaves the board "not provided".
 	Ledger ledger.Reader
-
-	// IntakeRequests supplies the background intake request records (JSON array
-	// of claim.Request from the claim store's ViewRequests). Nil leaves the
-	// intake request panel "not provided".
-	IntakeRequests func(ctx context.Context) ([]byte, error)
-
-	// ContextModel supplies one Issue's context-ledger model (ctxmodel.Ledger
-	// JSON). Nil leaves the model view "not provided".
-	ContextModel func(ctx context.Context, issue int) ([]byte, error)
 
 	// ProfileBaseDir overrides the profile store base directory
 	// (~/.moai/claude-profiles by default). When empty, the process default is

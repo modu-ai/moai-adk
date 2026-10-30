@@ -126,7 +126,7 @@ func TestBoard_LeasesShowSessionEpochHeartbeatNextWake(t *testing.T) {
 	if l.Session != "sess-a" || l.Epoch != "4" || l.Heartbeat != "2026-10-30 11:59:20Z" || l.NextWake != "2026-10-30 12:05Z" || l.Expires != "2026-10-30 12:10Z" || l.Expired {
 		t.Errorf("c2 lease = %+v", l)
 	}
-	if by["c3"].NextWake != prGap || !by["c3"].Expired {
+	if by["c3"].NextWake != boardGap || !by["c3"].Expired {
 		t.Errorf("a lease with no next wake shows a gap and one past its expiry says so: %+v", by["c3"])
 	}
 }
@@ -148,7 +148,7 @@ func TestBoard_QueueAndNotes(t *testing.T) {
 	if len(vm.Queue) != 2 || vm.Queue[0].CardID != "c8" || vm.Queue[0].FailReason != "vet failed in the candidate worktree" || vm.Queue[0].Candidate != "fedcba98" {
 		t.Errorf("the queue is oldest first and a failure keeps its reason: %+v", vm.Queue)
 	}
-	if vm.Queue[1].State != "waiting" || vm.Queue[1].FailReason != prGap {
+	if vm.Queue[1].State != "waiting" || vm.Queue[1].FailReason != boardGap {
 		t.Errorf("queue[1] = %+v", vm.Queue[1])
 	}
 	if len(vm.Landed) != 1 || vm.Landed[0].CardID != "c6" {
@@ -164,9 +164,12 @@ func TestBoard_QueueAndNotes(t *testing.T) {
 	if len(f.notesSince) != 1 || f.notesSince[0] != 0 {
 		t.Errorf("the board reads all notes (since 0), got %v", f.notesSince)
 	}
-	if vm.Flow.Known {
-		t.Errorf("flow metrics are not provided yet and must not be invented: %+v", vm.Flow)
+	// Flow is measured by monitor/flow from the same cards and leases; it is no
+	// longer "not provided" once a ledger is wired (see board_flow_test.go).
+	if !vm.Flow.Known {
+		t.Errorf("flow = %+v, want measured once a ledger is wired", vm.Flow)
 	}
+
 }
 
 func TestBoard_UnwiredOrFailingReaderIsNotAnEmptyBoard(t *testing.T) {

@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -533,6 +534,52 @@ func TestGitCLI_OnlyAValueMismatchIsErrRefMoved(t *testing.T) {
 	err = g.UpdateRef(context.Background(), "refs/heads/trunk", strings.Repeat("0", 40)[:39]+"1", git(t, dir, "rev-parse", "refs/heads/trunk"))
 	if err == nil || errors.Is(err, ErrRefMoved) {
 		t.Errorf("a new value that is not an object: %v, want an error that is not ErrRefMoved", err)
+	}
+}
+
+// The operating locale is Korean. git translates its messages, so classifying an error by its wording is only
+// sound if every git subprocess is pinned to the C locale. The stand-in git below answers in Korean unless it
+// is run with LC_ALL=C, like a git with the Korean catalogue installed.
+func TestGitCLI_EveryGitSubprocessIsPinnedToTheCLocale(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the stand-in git is a shell script")
+	}
+	bin := t.TempDir()
+	script := "#!/bin/sh\n" +
+		"if [ \"$LC_ALL\" = \"C\" ] && [ \"$LANG\" = \"C\" ]; then\n" +
+		"  echo \"fatal: cannot lock ref 'refs/heads/trunk': is at aaaa but expected bbbb\" >&2\n" +
+		"else\n" +
+		"  echo \"치명적 오류: 'refs/heads/trunk' 참조를 잠글 수 없음: aaaa 이지만 bbbb 이어야 함\" >&2\n" +
+		"fi\n" +
+		"exit 128\n"
+	if err := os.WriteFile(filepath.Join(bin, "git"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	t.Setenv("LC_ALL", "ko_KR.UTF-8")
+	t.Setenv("LANG", "ko_KR.UTF-8")
+	g := GitCLI{Repo: t.TempDir(), Who: Identity{Name: "m", Email: "m@example.test"}}
+	err := g.UpdateRef(context.Background(), "refs/heads/trunk", "bbbb", "aaaa")
+	if !errors.Is(err, ErrRefMoved) {
+		t.Errorf("UpdateRef under a Korean environment = %v, want ErrRefMoved (the subprocess must run in the C locale)", err)
+	}
+}
+
+// A trunk that is the branch origin/HEAD points at is the default branch under another name.
+func TestLand_RefusesTheBranchThatOriginHeadPointsAt(t *testing.T) {
+	dir := repo(t)
+	cand := candidate(t, dir, "c1", "a.txt", "a\n")
+	git(t, dir, "remote", "add", "origin", dir)
+	git(t, dir, "update-ref", "refs/remotes/origin/trunk", git(t, dir, "rev-parse", "refs/heads/trunk"))
+	m := newMerger(t, dir, &fakeQueue{}, passing)
+	// control: no origin/HEAD yet, the trunk lands.
+	if res, err := m.Land(context.Background(), "t1", cand); err != nil || res.Outcome != OutcomeLanded {
+		t.Fatalf("control: Land = %+v, %v", res, err)
+	}
+	git(t, dir, "symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/trunk")
+	cand2 := candidate(t, dir, "c2", "b.txt", "b\n")
+	if _, err := m.Land(context.Background(), "t2", cand2); !errors.Is(err, ErrBadTrunk) {
+		t.Errorf("Land with the trunk equal to origin/HEAD's branch = %v, want ErrBadTrunk", err)
 	}
 }
 

@@ -142,18 +142,10 @@ func runWeb(cmd *cobra.Command, _ []string) (err error) {
 		emitWorktreeAdvisory(cmd.OutOrStdout(), projectRoot)
 	}
 
-	// Issue #1948: the Agentic Factory panels read the claim store the project's
-	// settings name. Nil (not set up) leaves them "not provided"; a set-up project
-	// that cannot be read shows the reason (web_agentic_factory.go). MonitorRows
-	// is not wired: the console has no remote reader to build the collector with.
-	afSources := agenticFactoryWebSourcesFor(projectRoot)
-
 	return webRunFn(cmd.Context(), web.Config{
-		Port:           webPort,
-		NoOpen:         webNoOpen,
-		ProjectRoot:    projectRoot,
-		IntakeRequests: afSources.IntakeRequests,
-		ContextModel:   afSources.ContextModel,
+		Port:        webPort,
+		NoOpen:      webNoOpen,
+		ProjectRoot: projectRoot,
 		// Project-scoped read (SPEC-PROFILE-MEMORY-001 REQ-PM-024) to match the
 		// project-scoped write wired in web.newApp. CLAUDE_CONFIG_DIR still wins
 		// when set, so a console launched inside a `moai cc -p X` session is
