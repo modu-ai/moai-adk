@@ -98,7 +98,7 @@ _<pending sync-phase>_
 - 판: 하위 0.4.0, 상위 0.7.3 — 둘 다 revised, unaudited. 감사·리뷰 도구는 부르지 않았다.
 - 원천 계약 sha256 `f2c1078b7add847b93926ba3356eda62e4fbc44d8aa77221f059f44f6b059acb` — 작업 전에 두 번 다시 재어 같음을 확인했다.
 - 코드 사실의 commit: integration tip `1a552af405`(`git branch --list WT-agentic-factory-integration --format='%(refname:short) %(objectname:short)'` → `WT-agentic-factory-integration 1a552af405`; 조정자가 적은 `915a6524cb`에서 움직임 — `git log --oneline 915a6524cb..1a552af405`는 merge(lane-20) 퇴역과 merge(lane-18) GREEN 묶음 등 16줄). lane-18 커밋 `607bd17804`(`git log -1 --format='%h %s' 607bd17804` → `607bd17804 [AF-18] test(ledger): SPEC AC-named tests for lane-17 N1, N2, N14`; `git branch --contains 607bd17804 --list WT-agentic-factory-integration WT-agentic-factory-core-claim-runner` → `+ WT-agentic-factory-core-claim-runner`, integration에는 없음).
-- commit: `pending-backfill`
+- commit: `50119a13da9520dc2f9cf1177b6a21663e419ad6` (이 줄을 채우는 것은 그 뒤의 별도 커밋)
 - "고치기 전" 줄은 `c83fdc04ff`의 줄, "고친 뒤" 줄은 이 작업 트리의 줄이다.
 
 | defect | before file:line | change | after file:line | note |
