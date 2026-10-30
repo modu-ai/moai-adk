@@ -15,6 +15,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
@@ -265,6 +266,12 @@ type Store struct {
 	// lockPol is how long a lock is waited for; the zero value is the built-in
 	// polling (lockTries x lockWait on the real clock). Tests replace the clock.
 	lockPol lockPolicy
+	// beforeReissueRemove is a test seam: it runs between the check of a stale lock
+	// and its removal.
+	beforeReissueRemove func()
+	// busy counts, per lock file, the waits that ended in Busy in a row.
+	busyMu sync.Mutex
+	busy   map[string]int
 }
 
 // How a held lock is waited for: lockTries attempts, lockWait apart. The budget
@@ -355,8 +362,12 @@ func (s *Store) withLockFile(path, name string, fn func() error) error {
 		sleep(wait)
 	}
 	if err != nil {
+		if n := s.noteBusy(path); n > 1 {
+			return fmt.Errorf("%w: %s (%d consecutive)", core.ErrBusy, name, n)
+		}
 		return fmt.Errorf("%w: %s", core.ErrBusy, name)
 	}
+	s.noteTaken(path)
 	// Record who holds the lock so a crashed owner can later be told apart
 	// from a live one. An unprovable identity is written empty and is never
 	// recoverable (it classifies indeterminate).
