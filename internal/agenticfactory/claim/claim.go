@@ -764,6 +764,13 @@ func (s *Store) RecordMirror(i core.IssueRef, state string) error {
 // wait, written by a monitor under the owner's holder and epoch so the record stays
 // the owner's. It verifies the same ownership and moves Seq, but not OwnerSeq, so it
 // never stales the owner's safe stop (see CheckSafeStop).
+//
+// What fn may change is narrowed to the wait: every other field is put back to its
+// stored value, so a monitor holding the owner's ticket cannot move the state, the
+// head, the receipt or anything else the owner decides. Known limit: the monitor
+// still presents the OWNER's holder and epoch, so nothing proves it is a monitor and
+// not the owner; the narrowing reduces what a mistaken or hostile caller can do, it
+// does not authenticate it. Revisit when the identity lock of REQ-AF-011 lands.
 func (s *Store) UpdateAsMonitor(i core.IssueRef, holder string, epoch int64, fn func(*Record) error) (Record, error) {
 	var out Record
 	err := s.withLock(i, func() error {
@@ -771,11 +778,13 @@ func (s *Store) UpdateAsMonitor(i core.IssueRef, holder string, epoch int64, fn 
 		if err != nil {
 			return err
 		}
-		next := cur
-		if err := fn(&next); err != nil {
+		work := cur
+		if err := fn(&work); err != nil {
 			return err
 		}
-		next.Issue, next.Holder, next.AgentName, next.Epoch, next.Seq, next.OwnerSeq = cur.Issue, cur.Holder, cur.AgentName, cur.Epoch, cur.Seq+1, cur.OwnerSeq
+		next := cur
+		next.Wait = work.Wait
+		next.Seq = cur.Seq + 1
 		out = next
 		return s.write(i, &out)
 	})

@@ -3,6 +3,7 @@ package claim
 import (
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
 )
@@ -63,8 +64,8 @@ func TestUpdateAsMonitorDoesNotCountAsTheOwnerActing(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := s.UpdateAsMonitor(i, "sess-a", rec.Epoch, func(r *Record) error { r.Resume = "reminded"; return nil })
-	if err != nil || got.Resume != "reminded" || got.Seq != rec.Seq+1 || got.OwnerSeq != rec.OwnerSeq {
+	got, err := s.UpdateAsMonitor(i, "sess-a", rec.Epoch, func(r *Record) error { r.Wait = monitorWait(); return nil })
+	if err != nil || got.Wait == nil || got.Wait.NextAction != "ask again" || got.Seq != rec.Seq+1 || got.OwnerSeq != rec.OwnerSeq {
 		t.Fatalf("a monitor write moves Seq and not OwnerSeq: %+v %v", got, err)
 	}
 	if err := s.CheckSafeStop(i, "sess-a", rec.Epoch, stop); err != nil {
@@ -76,4 +77,37 @@ func TestUpdateAsMonitorDoesNotCountAsTheOwnerActing(t *testing.T) {
 	if _, err := s.UpdateAsMonitor(i, "sess-a", rec.Epoch+1, func(*Record) error { return nil }); !errors.Is(err, core.ErrOwnershipUnverified) {
 		t.Errorf("another epoch: %v", err)
 	}
+}
+
+// A monitor writes under the owner's ticket, so what it may change is narrowed to
+// the wait itself: whatever else fn touches is put back. This limits the damage a
+// monitor can do with the ticket; it does not make the write the owner's, and the
+// monitor is still trusted to be the monitor (REQ-AF-011's identity lock closes that).
+func TestUpdateAsMonitorChangesOnlyTheWait(t *testing.T) {
+	s := open(t)
+	i := ref(t, 1948)
+	rec, _ := s.Acquire(i, "sess-a", "d1", "run-1")
+	got, err := s.UpdateAsMonitor(i, "sess-a", rec.Epoch, func(r *Record) error {
+		r.State, r.Return, r.Head, r.Resume, r.Closed, r.Merged, r.Pending = core.StateDone, core.StateBlocked, "deadbeef", "x", true, true, "deploy"
+		r.Wait = monitorWait()
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Wait == nil || got.Wait.NextAction != "ask again" {
+		t.Errorf("the wait is what a monitor may write: %+v", got.Wait)
+	}
+	if got.State != rec.State || got.Return != rec.Return || got.Head != rec.Head || got.Resume != rec.Resume ||
+		got.Closed != rec.Closed || got.Merged != rec.Merged || got.Pending != rec.Pending {
+		t.Errorf("a monitor changed more than the wait: %+v -> %+v", rec, got)
+	}
+	stored, _ := s.Read(i)
+	if stored.State != rec.State || stored.Closed {
+		t.Errorf("the stored record carries the monitor's extra changes: %+v", stored)
+	}
+}
+
+func monitorWait() *core.Wait {
+	return &core.Wait{Owner: "sess-a", NextAction: "ask again", RecheckAt: time.Date(2026, 10, 30, 9, 0, 0, 0, time.UTC), Diagnosis: "d", MaxRetries: 2, Escalate: "leader"}
 }
