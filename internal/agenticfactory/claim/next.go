@@ -267,6 +267,23 @@ func (s *Store) usesWorktree(h worktreeReservation) bool {
 // owner's wait and repair claim, which were its alone, do not. A parked Issue
 // needs the new holder's own wait record (owner = newHolder).
 func (s *Store) TakeOver(i core.IssueRef, oldHolder string, oldEpoch int64, newHolder, dispatch string, run core.RunID, note string, wait *core.Wait) (Record, error) {
+	return s.takeOver(i, oldHolder, oldEpoch, newHolder, dispatch, run, note, wait, "")
+}
+
+// TakeOverOnStop is TakeOver resting on the old owner's safe-stop record. The record
+// is checked (CheckSafeStop) inside the Issue lock, in the same critical section
+// that moves the claim, so a write of the record or a Heartbeat that lands between
+// an earlier check and the move cannot go unseen: both take this lock.
+//
+// Known limit: the clock behind the stop's time and the owner's beats is the host
+// clock of the store; one that steps backwards can make an old beat look as if it
+// preceded a stop. The claim record's Seq, which only grows, still catches a write
+// of the record in that case.
+func (s *Store) TakeOverOnStop(i core.IssueRef, oldHolder string, oldEpoch int64, newHolder, dispatch string, run core.RunID, note string, wait *core.Wait, safeStop string) (Record, error) {
+	return s.takeOver(i, oldHolder, oldEpoch, newHolder, dispatch, run, note, wait, safeStop)
+}
+
+func (s *Store) takeOver(i core.IssueRef, oldHolder string, oldEpoch int64, newHolder, dispatch string, run core.RunID, note string, wait *core.Wait, safeStop string) (Record, error) {
 	if newHolder == "" || dispatch == "" {
 		return Record{}, fmt.Errorf("%w: the new holder and a dispatch are required", core.ErrIDInvalid)
 	}
@@ -275,6 +292,11 @@ func (s *Store) TakeOver(i core.IssueRef, oldHolder string, oldEpoch int64, newH
 		cur, err := s.Verify(i, oldHolder, oldEpoch)
 		if err != nil {
 			return err
+		}
+		if strings.TrimSpace(safeStop) != "" {
+			if err := s.CheckSafeStop(i, oldHolder, oldEpoch, safeStop); err != nil {
+				return err
+			}
 		}
 		if cur.Dispatch == dispatch {
 			return fmt.Errorf("%w: %s dispatch %q", core.ErrDuplicateDispatch, i.Resource(), dispatch)

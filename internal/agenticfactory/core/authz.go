@@ -90,7 +90,8 @@ const (
 	Allow                    AuthzVerdict = "allow"
 	DenyNotIssueAuthor       AuthzVerdict = "not-issue-author"
 	DenyIdentityUnknown      AuthzVerdict = "identity-unknown"
-	DenyRepoNotAllowed       AuthzVerdict = "repository-not-allowed"
+	DenyRepoNotAllowed       AuthzVerdict = "repository-not-allowed" // answered for the right repository; it is not on the list
+	DenyRepoUnverified       AuthzVerdict = "repository-unverified"  // the host did not answer for the repository that was asked about
 	DenyPermissionNotGranted AuthzVerdict = "permission-not-granted"
 	DenyOwnerUnconfirmed     AuthzVerdict = "owner-unconfirmed"
 	DenyUnknownOp            AuthzVerdict = "unknown-operation"
@@ -162,7 +163,7 @@ func (c Collaboration) Authorize(r AuthzRequest) AuthzVerdict {
 	// asked about. A repository that moved, was renamed or was reached through a
 	// redirect gives no allowance on any branch below (audit F20).
 	if !c.repoMatches(r) {
-		return DenyRepoNotAllowed
+		return DenyRepoUnverified
 	}
 	// A comment is edited only by its own author, on any Issue.
 	if r.Op == OpCommentEdit && r.CommentAuthorID != r.UserID {
@@ -225,6 +226,8 @@ func (v AuthzVerdict) Reason() (BlockReason, bool) {
 		return ReasonIdentityUnknown, true
 	case DenyRepoNotAllowed:
 		return ReasonRepoNotAllowed, true
+	case DenyRepoUnverified:
+		return ReasonRepoUnverified, true
 	case DenyPermissionNotGranted:
 		return ReasonPermissionNotGranted, true
 	case DenyOwnerUnconfirmed:
@@ -247,6 +250,8 @@ func (v AuthzVerdict) Err() error {
 		base = ErrIdentityUnknown
 	case DenyRepoNotAllowed:
 		base = ErrRepoNotAllowed
+	case DenyRepoUnverified:
+		base = ErrRepoUnverified
 	case DenyPermissionNotGranted:
 		base = ErrPermissionNotGranted
 	case DenyOwnerUnconfirmed:

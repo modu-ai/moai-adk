@@ -283,3 +283,26 @@ func TestTakeoverRefusesAStopTheOwnerHasActedAfter(t *testing.T) {
 		t.Errorf("the owner stopped again: %v", err)
 	}
 }
+
+// What the owner does after TakeOver has decided and before the claim moves is
+// caught by the store's check under the lock.
+func TestTakeoverRefusesAStopTheOwnerActsAfterBeforeTheClaimMoves(t *testing.T) {
+	r, ref, tk := handedOffOwner(t)
+	stop, err := r.RecordSafeStop(tk, "owner stopped")
+	if err != nil {
+		t.Fatal(err)
+	}
+	r.beforeClaimMoves = func() {
+		if _, err := r.SetWait(tk, wait1()); err != nil { // the owner resumes right here
+			t.Error(err)
+		}
+	}
+	ev := fullTakeover()
+	ev.OwnerGone, ev.SafeStop = false, stop
+	if _, err := r.TakeOver(ref, tk, "sess-new", "disp-t", "run-2", ev); !errors.Is(err, core.ErrEvidenceIncomplete) {
+		t.Fatalf("an owner that acted between the checks: %v", err)
+	}
+	if cur, _ := r.Store.Read(ref); cur.Holder != "sess-a" {
+		t.Errorf("the record moved: %+v", cur)
+	}
+}

@@ -143,6 +143,10 @@ type Runner struct {
 	Attributor Attributor
 	Facts      Facts
 	Collab     core.Collaboration
+
+	// beforeClaimMoves is a test seam: it runs after TakeOver has decided and before
+	// the store moves the claim, where the owner could still act.
+	beforeClaimMoves func()
 }
 
 // guard decides whether the acting user may perform op on the Issue, through the
@@ -721,11 +725,11 @@ func (r *Runner) TakeOver(i core.IssueRef, old Ticket, newHolder, dispatch strin
 	// recorded its process the departure is read from the process and the caller's
 	// OwnerGone is not consulted (REQ-AF-009).
 	note := "preserved at " + ev.PreservedRef
-	if strings.TrimSpace(ev.SafeStop) != "" {
-		if err := r.Store.CheckSafeStop(i, old.Holder, old.Epoch, ev.SafeStop); err != nil {
-			return claim.Record{}, err
-		}
-		note += "; safe stop " + strings.TrimSpace(ev.SafeStop)
+	stop := strings.TrimSpace(ev.SafeStop)
+	if stop != "" {
+		// The store checks the stop under the Issue lock, in the critical section that
+		// moves the claim (TakeOverOnStop); no earlier check here could be relied on.
+		note += "; safe stop " + stop
 	} else {
 		st, err := r.Store.OwnerLiveness(i)
 		if err != nil {
@@ -746,7 +750,10 @@ func (r *Runner) TakeOver(i core.IssueRef, old Ticket, newHolder, dispatch strin
 			return claim.Record{}, fmt.Errorf("%w: neither the owner's departure nor a safe stop record is given", core.ErrEvidenceIncomplete)
 		}
 	}
-	return r.Store.TakeOver(i, old.Holder, old.Epoch, newHolder, dispatch, run, note, ev.Wait)
+	if r.beforeClaimMoves != nil {
+		r.beforeClaimMoves()
+	}
+	return r.Store.TakeOverOnStop(i, old.Holder, old.Epoch, newHolder, dispatch, run, note, ev.Wait, stop)
 }
 
 // RecordSafeStop writes the ticket holder's safe-stop record, the evidence that
