@@ -510,7 +510,7 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 		if errors.As(llmTypeErr, &cte) && cte.Key != "" {
 			field = cte.Key
 		}
-		fieldErrs[field] = llmTypeErr.Error()
+		fieldErrs[field] = refineText(llmTypeErr.Error())
 	}
 	if len(fieldErrs) > 0 {
 		view := a.rejectedProjectView(prefs, selected, devMode, convention, nestedForm)
