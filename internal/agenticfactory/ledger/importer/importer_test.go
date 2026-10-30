@@ -249,6 +249,40 @@ func TestPlanCheck_ComparesTheCountsWithWhatIsExpected(t *testing.T) {
 	}
 }
 
+// The shape of the operator's held set (101 picked + 64 queued = 165) at full size: the totals check passes,
+// every card is READY and unparked, and every card id appears once.
+func TestDry_TheHeldSetAtFullSize(t *testing.T) {
+	var stmts []string
+	for i := 1; i <= 165; i++ {
+		state := "queued"
+		if i <= 101 {
+			state = "picked"
+		}
+		stmts = append(stmts, item(i, fmt.Sprintf("t%d", 1000+i), "held card", state, ""))
+	}
+	bl := mkdb(t, "backlog.db", backlogDDL, stmts...)
+	plan, err := Dry(context.Background(), Sources{BacklogDB: bl})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bad := plan.Check(map[string]int{"backlog:picked": 101, "backlog:queued": 64}); len(bad) != 0 {
+		t.Errorf("totals mismatch: %v", bad)
+	}
+	seen := map[string]bool{}
+	for _, pr := range plan.Proposals {
+		if seen[pr.Card.ID] {
+			t.Errorf("card %s proposed twice", pr.Card.ID)
+		}
+		seen[pr.Card.ID] = true
+		if pr.Card.Position.Stage != core.StageReady || pr.Card.Position.Park != nil {
+			t.Errorf("%s -> %+v, want READY unparked", pr.Card.ID, pr.Card.Position)
+		}
+	}
+	if len(plan.Proposals) != 165 {
+		t.Errorf("proposals %d, want 165", len(plan.Proposals))
+	}
+}
+
 func TestDry_ASourceWithoutItsTableIsAnErrorNotAnEmptyPlan(t *testing.T) {
 	bl := mkdb(t, "backlog.db", `CREATE TABLE unrelated (x INTEGER)`)
 	if _, err := Dry(context.Background(), Sources{BacklogDB: bl}); err == nil {
