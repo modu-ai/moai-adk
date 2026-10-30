@@ -52,3 +52,28 @@ func TestRecordMirrorOfAnUnknownIssueIsNotHeld(t *testing.T) {
 		t.Errorf("%v", err)
 	}
 }
+
+// A monitor's write under the owner's holder and epoch (a reminder on a wait) moves
+// Seq but is not the owner acting, so it leaves OwnerSeq and any safe stop alone.
+func TestUpdateAsMonitorDoesNotCountAsTheOwnerActing(t *testing.T) {
+	s := open(t)
+	i := ref(t, 1948)
+	rec, _ := s.Acquire(i, "sess-a", "d1", "run-1")
+	stop, err := s.RecordSafeStop(i, "sess-a", rec.Epoch, "owner stopped")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := s.UpdateAsMonitor(i, "sess-a", rec.Epoch, func(r *Record) error { r.Resume = "reminded"; return nil })
+	if err != nil || got.Resume != "reminded" || got.Seq != rec.Seq+1 || got.OwnerSeq != rec.OwnerSeq {
+		t.Fatalf("a monitor write moves Seq and not OwnerSeq: %+v %v", got, err)
+	}
+	if err := s.CheckSafeStop(i, "sess-a", rec.Epoch, stop); err != nil {
+		t.Errorf("the stop must survive a monitor write: %v", err)
+	}
+	if _, err := s.UpdateAsMonitor(i, "sess-b", rec.Epoch, func(*Record) error { return nil }); !errors.Is(err, core.ErrOwnershipUnverified) {
+		t.Errorf("another holder: %v", err)
+	}
+	if _, err := s.UpdateAsMonitor(i, "sess-a", rec.Epoch+1, func(*Record) error { return nil }); !errors.Is(err, core.ErrOwnershipUnverified) {
+		t.Errorf("another epoch: %v", err)
+	}
+}

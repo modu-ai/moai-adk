@@ -837,8 +837,18 @@ func (r *Runner) SetWait(t Ticket, w core.Wait) (claim.Record, error) {
 // limit is recorded with Escalated set and reported as ErrRetryLimit; nothing is
 // retried past it.
 func (r *Runner) RetryWait(t Ticket, diagnosis, next string, recheck time.Time) (claim.Record, error) {
+	return r.spendRetry(r.Store.Update, t, diagnosis, next, recheck)
+}
+
+// RemindWait is RetryWait written as a monitor: the reminder keeps the owner's
+// ticket but is not the owner acting, so it never stales the owner's safe stop.
+func (r *Runner) RemindWait(t Ticket, diagnosis, next string, recheck time.Time) (claim.Record, error) {
+	return r.spendRetry(r.Store.UpdateAsMonitor, t, diagnosis, next, recheck)
+}
+
+func (r *Runner) spendRetry(update func(core.IssueRef, string, int64, func(*claim.Record) error) (claim.Record, error), t Ticket, diagnosis, next string, recheck time.Time) (claim.Record, error) {
 	var limit error
-	rec, err := r.Store.Update(t.Issue, t.Holder, t.Epoch, func(rec *claim.Record) error {
+	rec, err := update(t.Issue, t.Holder, t.Epoch, func(rec *claim.Record) error {
 		if rec.Wait == nil {
 			return fmt.Errorf("%w: no wait is recorded", core.ErrTransitionInvalid)
 		}
