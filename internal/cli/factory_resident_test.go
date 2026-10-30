@@ -12,6 +12,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -329,3 +330,36 @@ func TestResident_PrintedFieldsNeverCarryASecretAnEmailOrAHomePath(t *testing.T)
 	writeResidentPass(&b, resident.Pass{At: fixedNow(), Actions: []notify.Action{{What: "reminder", Issue: 7, Err: errors.New(dirty)}}})
 	check("action error", b.String())
 }
+
+// The error the command RETURNS is printed by the CLI too, so it is sanitized once at the return boundary,
+// with the %w chain intact for errors.Is.
+func TestResident_ReturnedErrorsAreSanitizedAndKeepTheirChain(t *testing.T) {
+	secret := "ghp_abcdefghijklmnopqrstuvwxyz0123456789"
+	dirty := fmt.Errorf("boom %s for someone@example.com at /Users/someone/work: %w", secret, errResidentProbe)
+	got := sanitizeResidentErr(dirty)
+	for _, bad := range []string{secret, "someone@example.com", "/Users/someone"} {
+		if strings.Contains(got.Error(), bad) {
+			t.Errorf("the returned error still carries %q: %s", bad, got)
+		}
+	}
+	if !errors.Is(got, errResidentProbe) {
+		t.Error("the %w chain was cut: errors.Is no longer finds the cause")
+	}
+	if sanitizeResidentErr(nil) != nil {
+		t.Error("a nil error became non-nil")
+	}
+
+	// path: a real failure of the command comes back through the same boundary. (A home path is masked only
+	// where it STARTS - core's rule - so a temp directory cannot stand in for one; the text check above is the
+	// sanitizer's, this one shows the boundary is on the command's own return path.)
+	root := t.TempDir()
+	afwWrite(t, root, afwDoc(filepath.Join(root, "absent-store")))
+	calls := 0
+	err := runFactoryResidentCmd(context.Background(), residentOptions{ProjectRoot: root, GHRead: residentGH(&calls), Now: fixedNow, Once: true})
+	var ce *cleanedError
+	if err == nil || !strings.Contains(err.Error(), "does not create") || !errors.As(err, &ce) {
+		t.Fatalf("missing store through the command boundary: %v (cleaned=%v)", err, ce != nil)
+	}
+}
+
+var errResidentProbe = errors.New("probe cause")

@@ -119,7 +119,7 @@ func newFactoryResidentCommand() *cobra.Command {
 			}
 			ctx, stop := codexSignalContext(cmd.Context())
 			defer stop()
-			return runFactoryResident(ctx, o)
+			return runFactoryResidentCmd(ctx, o)
 		},
 	}
 	cmd.Flags().StringVar(&o.ProjectRoot, "project-root", "", "project directory (default: the current directory)")
@@ -128,6 +128,29 @@ func newFactoryResidentCommand() *cobra.Command {
 	cmd.Flags().BoolVar(&o.Once, "once", false, "run one pass and exit")
 	return cmd
 }
+
+// runFactoryResidentCmd is the command's return boundary. The error it returns is printed by the CLI, so
+// it leaves the process: sanitize it once here (RED stub: not yet).
+func runFactoryResidentCmd(ctx context.Context, o residentOptions) error {
+	return sanitizeResidentErr(runFactoryResident(ctx, o))
+}
+
+// sanitizeResidentErr returns an error whose text passes the core sanitizer and whose chain still reaches the
+// original cause (errors.Is / errors.As work through Unwrap).
+func sanitizeResidentErr(err error) error {
+	if err == nil {
+		return nil
+	}
+	return &cleanedError{msg: outStr(err.Error()), err: err}
+}
+
+type cleanedError struct {
+	msg string
+	err error
+}
+
+func (e *cleanedError) Error() string { return e.msg }
+func (e *cleanedError) Unwrap() error { return e.err }
 
 // runFactoryResident validates, wires and runs. It returns nil when the project has not set Agentic
 // Factory up (a notice is printed) and when ctx ends the loop; every refusal is an error that says why.

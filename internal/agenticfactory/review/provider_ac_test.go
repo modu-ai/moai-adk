@@ -39,12 +39,36 @@ func TestProvider_Codex_TrueCallsAtLeastOnce(t *testing.T) {
 	}
 }
 
-func TestProvider_GLM_IsNeverEnabled(t *testing.T) {
-	everything := func(string) (any, bool) { return true, true } // every key set to true
+// countingProvider is a Provider that only counts how often it is actually called.
+type countingProvider struct{ calls int }
+
+func (c *countingProvider) Review(context.Context, Request) (Result, error) {
+	c.calls++
+	return Result{HeadSHA: headA, Verdict: VerdictPass}, nil
+}
+
+// callIfEnabled is how a caller uses the activation predicate: a provider is called only when enabled.
+func callIfEnabled(name string, lk Lookup, p Provider) {
+	if ProviderEnabled(name, lk) {
+		_, _, _ = CallOnce(context.Background(), p, Request{HeadSHA: headA, Kind: KindCodeReview})
+	}
+}
+
+// (d) GLM calls: zero, counted. A positive control (codex with its key, claude without any) shows the counter
+// does move when a provider is enabled, so a zero is a measurement and not a broken counter.
+func TestProvider_GLM_CallsAreZeroEvenWithEveryKeyTrue(t *testing.T) {
+	everything := func(string) (any, bool) { return true, true }
+	glm, codex, claude := &countingProvider{}, &countingProvider{}, &countingProvider{}
 	for _, name := range []string{ProviderGLM, "glm-managed", "zai", ""} {
-		if ProviderEnabled(name, everything) {
-			t.Errorf("provider %q reported enabled", name)
-		}
+		callIfEnabled(name, everything, glm)
+	}
+	callIfEnabled(ProviderCodex, everything, codex)
+	callIfEnabled(ProviderClaude, nil, claude)
+	if glm.calls != 0 {
+		t.Errorf("GLM calls = %d, want 0", glm.calls)
+	}
+	if codex.calls != 1 || claude.calls != 1 {
+		t.Errorf("positive control: codex=%d claude=%d, want 1 and 1", codex.calls, claude.calls)
 	}
 }
 
