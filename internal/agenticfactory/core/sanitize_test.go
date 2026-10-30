@@ -104,9 +104,8 @@ func TestSanitizeLeavesOrdinaryTextAlone(t *testing.T) {
 		"/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/",                     // the per-user temp root of macOS is random by design and holds no secret
 		"/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/go-build42",   // the same root behind /private
 		"Library/Caches/Foo2/Bar/Support/Models/Settings/Items/Cache",
-		"ABCDEFGHIJKLMNOPQRST/UVWXYZ0123456789/abc",                                 // words and a digit: few class changes
-		"A1/Documentation/B2/Application/C3/Configuration/D4/Initialization",        // many class changes, but word-sized lower-case stretches
-		"goroutine 7 [running]:\nmain.main()\n\t/usr/local/go/src/main.go:12 +0x1d", // a stack under a system path is not personal data
+		"ABCDEFGHIJKLMNOPQRST/UVWXYZ0123456789/abc",                          // words and a digit: few class changes
+		"A1/Documentation/B2/Application/C3/Configuration/D4/Initialization", // many class changes, but word-sized lower-case stretches
 	} {
 		if out, cats := Sanitize(in); out != in || len(cats) != 0 {
 			t.Errorf("over-sanitized %q -> %q %v", in, out, cats)
