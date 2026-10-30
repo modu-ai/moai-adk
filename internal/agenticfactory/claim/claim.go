@@ -93,6 +93,78 @@ type Record struct {
 	// are empty then, which means "not known", not "no park".
 	PositionUnknown string `json:"-"`
 	Worktree        string `json:"worktree,omitempty"`
+	// Evidence is what the writer of THIS write carries for the edges it takes: the
+	// guard keys the record cannot show itself, "resume-guard:<reason>" for a write
+	// that resolves a park (E20). It is never stored and write clears it; a fact the
+	// record does hold (receipt, merge, close) is derived from the record, not asserted.
+	Evidence []string `json:"-"`
+}
+
+// position is the S46 position the record's derived fields describe. A MERGING
+// record is one whose merge was seen, which is how the legacy fields derive it.
+func (r Record) position() core.Position {
+	return core.Position{Stage: r.Stage, Sub: r.Sub, Park: r.Park, RemoteIntegrated: r.Stage == core.StageMerging}
+}
+
+// moveEvidence is what this write shows for the edges it takes: the facts its own
+// fields hold, and what the writer carried in Evidence.
+func (r Record) moveEvidence() []string {
+	have := append([]string(nil), r.Evidence...)
+	if r.Receipt != nil {
+		have = append(have, core.FactReceipt)
+		if r.Receipt.LeaderAccepted {
+			have = append(have, core.FactReceiptAccepted)
+		}
+	}
+	if r.Merged {
+		have = append(have, core.FactMerged)
+	}
+	if r.Closed {
+		have = append(have, core.FactClosed)
+	}
+	if r.Pending == "" {
+		have = append(have, core.FactSettled)
+	}
+	return have
+}
+
+// clone is a copy of r that shares no memory with it: every pointer target and the
+// History slice are duplicated, so a function given the copy cannot change the
+// original in place. A reference-typed field added to Record must be added here;
+// TestRecordCloneKnowsEveryReferenceField fails until it is.
+func (r Record) clone() Record {
+	c := r
+	if r.Receipt != nil {
+		v := *r.Receipt
+		c.Receipt = &v
+	}
+	if r.Park != nil {
+		v := *r.Park
+		c.Park = &v
+	}
+	if r.Gate != nil {
+		v := *r.Gate
+		c.Gate = &v
+	}
+	if r.Refusal != nil {
+		v := *r.Refusal
+		c.Refusal = &v
+	}
+	if r.Wait != nil {
+		v := *r.Wait
+		c.Wait = &v
+	}
+	if r.Repair != nil {
+		v := *r.Repair
+		c.Repair = &v
+	}
+	if r.History != nil {
+		c.History = append([]Event(nil), r.History...)
+	}
+	if r.Evidence != nil {
+		c.Evidence = append([]string(nil), r.Evidence...)
+	}
+	return c
 }
 
 // Repair is the canon E06 evidence (REVIEWING -> BUILDING/FIX): the repair
@@ -426,6 +498,18 @@ func (s *Store) write(i core.IssueRef, r *Record) error {
 	if err := r.deriveStage(); err != nil {
 		return err
 	}
+	// The position this write leaves must be one an S46 edge reaches from the
+	// stored one (or the same). A stored record whose position is not known has no
+	// Stage (deriveStage empties it when it fails) and is not compared: it is the
+	// write that repairs it.
+	if prev, had, err := s.read(i); err != nil {
+		return err
+	} else if had && prev.Stage != "" {
+		if err := core.CheckMove(prev.position(), r.position(), r.moveEvidence()); err != nil {
+			return err
+		}
+	}
+	r.Evidence = nil
 	// A write that puts the Issue into PARKED carries its wait record (design
 	// 2.1c), and while the park stays no write takes that record away. A record
 	// parked before this rule, with no wait record, is rewritten as it is.
@@ -764,6 +848,13 @@ func (s *Store) RecordMirror(i core.IssueRef, state string) error {
 // wait, written by a monitor under the owner's holder and epoch so the record stays
 // the owner's. It verifies the same ownership and moves Seq, but not OwnerSeq, so it
 // never stales the owner's safe stop (see CheckSafeStop).
+//
+// What fn may change is narrowed to the wait: every other field is put back to its
+// stored value, so a monitor holding the owner's ticket cannot move the state, the
+// head, the receipt or anything else the owner decides. Known limit: the monitor
+// still presents the OWNER's holder and epoch, so nothing proves it is a monitor and
+// not the owner; the narrowing reduces what a mistaken or hostile caller can do, it
+// does not authenticate it. Revisit when the identity lock of REQ-AF-011 lands.
 func (s *Store) UpdateAsMonitor(i core.IssueRef, holder string, epoch int64, fn func(*Record) error) (Record, error) {
 	var out Record
 	err := s.withLock(i, func() error {
@@ -771,11 +862,13 @@ func (s *Store) UpdateAsMonitor(i core.IssueRef, holder string, epoch int64, fn 
 		if err != nil {
 			return err
 		}
-		next := cur
-		if err := fn(&next); err != nil {
+		work := cur.clone()
+		if err := fn(&work); err != nil {
 			return err
 		}
-		next.Issue, next.Holder, next.AgentName, next.Epoch, next.Seq, next.OwnerSeq = cur.Issue, cur.Holder, cur.AgentName, cur.Epoch, cur.Seq+1, cur.OwnerSeq
+		next := cur.clone()
+		next.Wait = work.Wait
+		next.Seq = cur.Seq + 1
 		out = next
 		return s.write(i, &out)
 	})

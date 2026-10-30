@@ -11,6 +11,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/claim"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
@@ -490,5 +491,42 @@ func TestDocumentKindsAreStoredAndUnknownKindsRefused(t *testing.T) {
 		if _, err := r.CompareAndSwap(bg, bad, 0, []byte(`{}`)); !errors.Is(err, core.ErrIDInvalid) {
 			t.Errorf("%s: %v", bad, err)
 		}
+	}
+}
+
+// A git call that never answers must not hold the caller (and the Issue lock above
+// it) forever: each call is bounded by Ref.Timeout, and a child that keeps the
+// output pipes open after the kill does not delay the return past WaitDelay.
+func TestAHungGitCallIsBoundedByTheRefTimeout(t *testing.T) {
+	f := newFixture(t, true)
+	r := f.ref()
+	r.Remote = "hang"
+	r.Env = append(append([]string{}, hermetic...),
+		"GIT_CONFIG_COUNT=2",
+		"GIT_CONFIG_KEY_0=remote.hang.url", "GIT_CONFIG_VALUE_0="+f.remote,
+		"GIT_CONFIG_KEY_1=remote.hang.uploadpack", "GIT_CONFIG_VALUE_1=sleep 8 #",
+	)
+	r.Timeout = 500 * time.Millisecond
+	start := time.Now()
+	_, _, err := r.Read(bg, "issue/1")
+	if !errors.Is(err, core.ErrStoreUnavailable) {
+		t.Fatalf("a hung fetch: %v", err)
+	}
+	// 500ms plus the 2s wait delay is about 2.5s; the hung child would hold the call for 8s.
+	if d := time.Since(start); d > 5*time.Second {
+		t.Errorf("the call returned after %v, the bound is 500ms plus the wait delay", d)
+	}
+}
+
+// Only file, https and ssh are spoken by default: an unauthenticated transport
+// (git://, plain http) is refused before any connection is made.
+func TestOnlyFileHttpsAndSshAreAllowedByDefault(t *testing.T) {
+	requireGit(t)
+	r := New(filepath.Join(t.TempDir(), "clone"), "git://127.0.0.1:1/never.git")
+	r.Env = hermetic
+	run(t, filepath.Dir(r.Dir), "init", "--initial-branch=main", r.Dir)
+	_, _, err := r.Read(bg, "issue/1")
+	if !errors.Is(err, core.ErrStoreUnavailable) || !strings.Contains(err.Error(), "not allowed") {
+		t.Fatalf("git:// must be refused as a transport, got: %v", err)
 	}
 }

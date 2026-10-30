@@ -590,7 +590,7 @@ func TestACancelWithoutCleanupEvidenceStaysParked(t *testing.T) {
 	// the unclear-cleanup outcome cannot be used to overwrite an unknown-family reason
 	e, _ := EdgeFor("E15")
 	_, err := Transition(parked(StageReviewing), Event{ID: "E15", Outcome: "cleanup-unknown", Evidence: e.Needs,
-		Park: park(ReasonRateLimited)})
+		Park: park(ReasonPendingEffect)})
 	if !errors.Is(err, ErrTransitionInvalid) {
 		t.Errorf("overwrite through an unclear cleanup: %v", err)
 	}

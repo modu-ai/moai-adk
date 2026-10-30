@@ -52,7 +52,7 @@ func TestADoneIssueAndALocalOnlyStoreAreNotChecked(t *testing.T) {
 	// a finished Issue holds no responsibility
 	s := open(t)
 	rec, _ := s.Acquire(ref(t, 1), "w", "d1", "run-1")
-	if _, err := s.Update(ref(t, 1), "w", rec.Epoch, func(r *Record) error { r.State = core.StateDone; r.Closed = true; return nil }); err != nil {
+	if _, err := s.Update(ref(t, 1), "w", rec.Epoch, func(r *Record) error { finish(r); return nil }); err != nil {
 		t.Fatal(err)
 	}
 	s.Attach(NewMemoryRef())

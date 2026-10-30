@@ -169,7 +169,38 @@ func (m *Mirror) call(ctx context.Context, args ...string) ([]byte, error) {
 		return nil, m.fromStatus(&forge.StatusError{Status: status, Header: header, Body: body})
 	}
 	text, _ := redact(string(errb))
-	return nil, fmt.Errorf("agenticfactory/mirror: gh exit %d: %s", exit, text)
+	return nil, &ghExitError{exit: exit, text: text}
+}
+
+// ghExitError is gh failing without a parsed HTTP answer. Its text is gh's own stderr,
+// redacted; probeReason leaves it out because it can quote what the host wrote.
+type ghExitError struct {
+	exit int
+	text string
+}
+
+func (e *ghExitError) Error() string {
+	return fmt.Sprintf("agenticfactory/mirror: gh exit %d: %s", e.exit, e.text)
+}
+
+// probeReason says why a repository read failed without repeating anything the host
+// wrote: the status and the class of the failure, or that gh did not run. A response
+// body or gh's stderr can reach logs and Actions through the joined error, and the
+// sanitizer only knows secrets, not everything a host may say.
+func probeReason(err error) string {
+	var se *forge.StatusError
+	var be *BlockedError
+	var ge *ghExitError
+	switch {
+	case errors.As(err, &se):
+		return fmt.Sprintf("host answered status %d", se.Status)
+	case errors.As(err, &be):
+		return fmt.Sprintf("host answered status %d (%s)", be.Status, be.Reason)
+	case errors.As(err, &ge):
+		return fmt.Sprintf("gh exited %d without a parsed answer", ge.exit)
+	}
+	text, _ := redact(err.Error())
+	return text
 }
 
 // fromStatus turns a typed HTTP failure into a block or a plain status error.
@@ -584,7 +615,7 @@ func (m *Mirror) Flush(ctx context.Context) (int, error) {
 		if perm && verify {
 			if perr := m.repoReadable(ctx); perr != nil {
 				perm = false // nothing is known about the Issue: treat it as a failure that may pass
-				errs = append(errs, fmt.Errorf("issue-%d: the repository could not be read to tell this Issue's failure from a hidden repository: %w", n, perr))
+				errs = append(errs, fmt.Errorf("issue-%d: the repository could not be read to tell this Issue's failure from a hidden repository: %s", n, probeReason(perr)))
 			}
 		}
 		if !perm {

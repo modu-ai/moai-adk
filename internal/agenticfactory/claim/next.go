@@ -320,6 +320,14 @@ func (s *Store) takeOver(i core.IssueRef, oldHolder string, oldEpoch int64, newH
 			}
 			w := *wait
 			out.Wait = &w
+			// A parked position does not change its sub stage, and dropping a repair
+			// claim would (BUILDING/FIX reads as REVIEWING without it): the new holder
+			// takes the repair over, exclusive owner and all.
+			if cur.Repair != nil {
+				rp := *cur.Repair
+				rp.Owner = newHolder
+				out.Repair = &rp
+			}
 		}
 		if out.Receipt != nil { // the new holder is the one responsible for the PR now
 			rc := *out.Receipt

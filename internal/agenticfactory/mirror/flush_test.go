@@ -363,3 +363,42 @@ func TestFlushNamesWhyTheRepositoryProbeFailed(t *testing.T) {
 		t.Fatalf("the probe's reason must be in the error: %v", err)
 	}
 }
+
+// The reason joined into the error names the status and the class, never what the
+// host wrote: a response body or gh's stderr would reach logs and Actions.
+func TestFlushProbeReasonCarriesNoHostText(t *testing.T) {
+	for name, probe := range map[string]result{
+		"typed status with a body": httpFail(503, "body", `{"message":"HOST-SAID-THIS"}`),
+		"blocked with a body":      httpFail(403, "body", `{"message":"HOST-SAID-THIS, Resource not accessible by integration"}`),
+		"gh exit with stderr":      {errOut: "gh: HOST-SAID-THIS (HTTP 500)", exit: 1},
+	} {
+		t.Run(name, func(t *testing.T) {
+			f := &fakeGH{results: []result{httpFail(404), probe}}
+			m := writable(f)
+			m.Enqueue(ledgerFor(1, "ordinary"))
+			_, err := m.Flush(context.Background())
+			if err == nil || !strings.Contains(err.Error(), "issue-1") {
+				t.Fatalf("expected the run to stop with the probe named: %v", err)
+			}
+			if strings.Contains(err.Error(), "HOST-SAID-THIS") {
+				t.Errorf("host text reached the error: %v", err)
+			}
+		})
+	}
+}
+
+// The remaining reasons (gh did not run, a transport failure) are local text, but
+// they still go through the sanitizer: a token-shaped string never reaches the error.
+func TestFlushProbeReasonIsSanitizedWhenItIsLocalText(t *testing.T) {
+	tok := "ghp_" + strings.Repeat("a1B2c3D4e", 4)
+	f := &fakeGH{results: []result{httpFail(404), {err: errors.New("dial failed for " + tok)}}}
+	m := writable(f)
+	m.Enqueue(ledgerFor(1, "ordinary"))
+	_, err := m.Flush(context.Background())
+	if err == nil || !strings.Contains(err.Error(), "dial failed") {
+		t.Fatalf("the local reason should remain: %v", err)
+	}
+	if strings.Contains(err.Error(), tok) {
+		t.Errorf("a token reached the error: %v", err)
+	}
+}

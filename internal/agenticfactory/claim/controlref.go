@@ -16,8 +16,9 @@ import (
 // ControlRef is the persistence boundary. The authoritative copy of claims,
 // intake requests and agent numbers lives behind it (the online control ref
 // and the Issue); the files under Store's directory are a cache that Rebuild
-// can recreate from it. No remote implementation exists yet: it waits for the
-// user's decision, and tests use MemoryRef.
+// can recreate from it. gitref.Ref is the git-branch implementation (each of its
+// calls is time-bounded there, which is why refCtx carries no deadline); tests use
+// MemoryRef.
 type ControlRef interface {
 	// Read returns the data and revision of key, or ErrNotHeld.
 	Read(ctx context.Context, key string) (data []byte, rev int64, err error)
