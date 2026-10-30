@@ -164,7 +164,7 @@ internal/agenticfactory/effect/testdata
 - 판: 하위 0.5.0, 상위 0.7.4 — 둘 다 audited-FAIL 0.70 → revised (A-na delta), unaudited. PASS라고 적지 않는다.
 - 원천 계약 sha256 `f2c1078b7add847b93926ba3356eda62e4fbc44d8aa77221f059f44f6b059acb` — 작업 전에 `shasum -a 256 /Users/goos/MoAI/moai-adk-go/.moai/reports/issue-1948/local-adk-design-20261030.md`로 다시 재어 같음.
 - 코드 사실의 commit: integration tip `db02401ad1`(`git branch --list WT-agentic-factory-integration --format='%(refname:short) %(objectname:short)'` → `WT-agentic-factory-integration db02401ad1`; 감사가 인용한 `c83013938a`에서 움직였고, 이 작업 중 한 번 더 움직였다 — 앞서 읽은 `3df062a63e`의 `pickTx`·상수 줄은 `db02401ad1`에서 다시 읽어 같음을 확인). lane-18 커밋 `607bd17804`의 `ac_names_test.go`는 tip에 있다(acceptance §B.2 [L-names]).
-- commit: `pending-backfill` (이 줄을 채우는 것은 그 뒤의 별도 커밋)
+- commit: `fc207c901d72c35c70cdc53995187483d56eae3c` (이 줄을 채우는 것은 그 뒤의 별도 커밋)
 - "고치기 전" 줄은 `2acdddeba4`의 줄, "고친 뒤" 줄은 이 작업 트리의 줄이다. 약어는 §K와 같다.
 
 | item | before file:line | change | after file:line | note |
