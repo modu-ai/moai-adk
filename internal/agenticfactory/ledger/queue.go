@@ -115,6 +115,9 @@ func (s *Store) Enqueue(ctx context.Context, cardID string, epoch int64, candida
 			return fmt.Errorf("ledger: %w", err)
 		case cur == string(QueueLanded):
 			return fmt.Errorf("%w: %s has landed", ErrInvalid, cardID)
+		case cur == string(QueueLanding):
+			// A lander may be working under the merge lock; its row is settled, not replaced.
+			return fmt.Errorf("%w: %s is landing (card epoch %d); the merge lock holder settles it first", ErrInvalid, cardID, oldEpoch)
 		case cur != string(QueueFailed) && oldEpoch == card.Epoch:
 			return fmt.Errorf("%w: %s is already in the queue (%s)", ErrInvalid, cardID, cur)
 		default:
@@ -194,11 +197,24 @@ func (s *Store) QueueUpdate(ctx context.Context, cardID string, presented QueueE
 		if err := tx.QueryRowContext(ctx, `SELECT epoch FROM cards WHERE id=?`, cardID).Scan(&cardEpoch); err != nil {
 			return fmt.Errorf("ledger: %w", err)
 		}
-		// A row of an older card epoch belongs to a holder that was fenced: no one writes it.
-		if rowEpoch != cardEpoch {
-			return fmt.Errorf("%w: %s was claimed again (queued at epoch %d, now %d)", ErrStaleEpoch, cardID, rowEpoch, cardEpoch)
-		}
 		curState := QueueState(cur)
+		// A row of an older card epoch belongs to a holder that was fenced: no one writes it,
+		// with one exception. A landing row may have a lander still working under the merge
+		// lock, so the live holder of that lock, and only it, settles the row to landed or
+		// failed from the trunk ancestry result. The row keeps its epoch.
+		settlesOlder := false
+		if rowEpoch != cardEpoch {
+			if curState == QueueLanding && presented.Kind == EpochLock && (state == QueueLanded || state == QueueFailed) {
+				held, err := lockHeldAt(ctx, tx, LockMerge, epoch)
+				if err != nil {
+					return err
+				}
+				settlesOlder = held
+			}
+			if !settlesOlder {
+				return fmt.Errorf("%w: %s was claimed again (queued at epoch %d, now %d)", ErrStaleEpoch, cardID, rowEpoch, cardEpoch)
+			}
+		}
 		lockStates := state == QueueLanding || state == QueueLanded ||
 			(state == QueueWaiting && (curState == QueueVerifying || curState == QueueLanding))
 		// The caller says which epoch it holds; the table row says which one the write needs.
@@ -207,10 +223,15 @@ func (s *Store) QueueUpdate(ctx context.Context, cardID string, presented QueueE
 		if lockStates {
 			want = EpochLock
 		}
+		if settlesOlder {
+			want = EpochLock // the lock was just checked above
+		}
 		if presented.Kind != want {
 			return fmt.Errorf("%w: %s from %s needs a %s epoch, not a %s epoch", ErrStaleEpoch, state, curState, want, presented.Kind)
 		}
-		if lockStates {
+		if settlesOlder {
+			// nothing more to check: the live lock holder is the authority
+		} else if lockStates {
 			held, err := lockHeldAt(ctx, tx, LockMerge, epoch)
 			if err != nil {
 				return err
@@ -236,6 +257,15 @@ func (s *Store) QueueUpdate(ctx context.Context, cardID string, presented QueueE
 			string(state), trunkBefore, fail, cardID)
 		if err != nil {
 			return fmt.Errorf("ledger: %w", err)
+		}
+		if settlesOlder {
+			text := fmt.Sprintf("card %s: landing row of card epoch %d settled as %s by the merge lock holder (the card is at epoch %d now)", cardID, rowEpoch, state, cardEpoch)
+			if state == QueueFailed {
+				text += ": " + failReason
+			}
+			if _, err := tx.ExecContext(ctx, `INSERT INTO notes(kind,card_id,text,at) VALUES('decision',?,?,`+nowSQL+`)`, cardID, text); err != nil {
+				return fmt.Errorf("ledger: %w", err)
+			}
 		}
 		return nil
 	})
