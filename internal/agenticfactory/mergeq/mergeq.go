@@ -123,7 +123,7 @@ func (m *Merger) Land(ctx context.Context, cardID, candidateSHA string) (Result,
 	}
 	settle := context.WithoutCancel(ctx) // releasing the lock and removing the worktree must survive a cancelled ctx
 
-	if err := m.validTrunk(); err != nil {
+	if err := m.validTrunk(ctx); err != nil {
 		return Result{}, err
 	}
 	if err := m.noCheckout(ctx); err != nil {
@@ -232,13 +232,20 @@ func (m *Merger) landUnderLock(ctx context.Context, cardID string, epoch int64, 
 }
 
 // validTrunk refuses a trunk that is not a full branch name or that is the project's default branch.
-func (m *Merger) validTrunk() error {
+func (m *Merger) validTrunk(ctx context.Context) error {
 	t := m.Trunk
 	switch {
 	case !strings.HasPrefix(t, "refs/heads/") || len(t) == len("refs/heads/"):
 		return fmt.Errorf("%w: %q", ErrBadTrunk, t)
 	case t == "refs/heads/main" || t == "refs/heads/master":
 		return fmt.Errorf("%w: %q is the default branch", ErrBadTrunk, t)
+	}
+	def, err := m.Git.OriginHeadBranch(ctx)
+	if err != nil {
+		return fmt.Errorf("mergeq: read origin/HEAD: %w", err)
+	}
+	if def != "" && def == t {
+		return fmt.Errorf("%w: %q is the branch origin/HEAD points at", ErrBadTrunk, t)
 	}
 	return nil
 }
