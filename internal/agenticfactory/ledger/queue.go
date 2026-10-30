@@ -108,15 +108,22 @@ func (s *Store) Enqueue(ctx context.Context, cardID string, epoch int64, candida
 		}
 		var cur string
 		var oldSHA, oldReason sql.NullString
-		switch err := tx.QueryRowContext(ctx, `SELECT state,candidate_sha,fail_reason FROM merge_queue WHERE card_id=?`, cardID).Scan(&cur, &oldSHA, &oldReason); {
+		var oldEpoch int64
+		switch err := tx.QueryRowContext(ctx, `SELECT state,candidate_sha,fail_reason,card_epoch FROM merge_queue WHERE card_id=?`, cardID).Scan(&cur, &oldSHA, &oldReason, &oldEpoch); {
 		case err == sql.ErrNoRows:
 		case err != nil:
 			return fmt.Errorf("ledger: %w", err)
-		case cur != string(QueueFailed):
+		case cur == string(QueueLanded):
+			return fmt.Errorf("%w: %s has landed", ErrInvalid, cardID)
+		case cur != string(QueueFailed) && oldEpoch == card.Epoch:
 			return fmt.Errorf("%w: %s is already in the queue (%s)", ErrInvalid, cardID, cur)
 		default:
-			// The restart overwrites the row, so the earlier failure is kept as a note.
+			// The restart overwrites the row, so what it said is kept as a note: a failure, or
+			// an open row of an older card epoch, which the epoch fence leaves nobody able to write.
 			text := fmt.Sprintf("card %s: candidate %s failed in the merge queue (%s); queued again as %s", cardID, oldSHA.String, oldReason.String, candidateSHA)
+			if cur != string(QueueFailed) {
+				text = fmt.Sprintf("card %s: candidate %s was %s at card epoch %d when the card was claimed again at epoch %d; queued again as %s", cardID, oldSHA.String, cur, oldEpoch, card.Epoch, candidateSHA)
+			}
 			if _, err := tx.ExecContext(ctx, `INSERT INTO notes(kind,card_id,text,at) VALUES('decision',?,?,`+nowSQL+`)`, cardID, text); err != nil {
 				return fmt.Errorf("ledger: %w", err)
 			}
@@ -156,9 +163,9 @@ var queueNext = map[QueueState][]QueueState{
 }
 
 // QueueUpdate moves a queue item to state. The caller presents its epoch with its kind:
-// waiting (from nothing), verifying and failed need the card epoch the row was queued at,
-// which must still be the card's; landing, landed and the reconcile of a verifying or
-// landing row back to waiting need the epoch of the landing lock. A kind the table row
+// verifying and failed need the card epoch the row was queued at, which must still be the
+// card's; landing, landed and the reconcile of a verifying or landing row back to waiting
+// need the epoch of the landing lock (a waiting target from any other state is no edge). A kind the table row
 // does not want is ErrStaleEpoch, even when the numbers coincide.
 func (s *Store) QueueUpdate(ctx context.Context, cardID string, presented QueueEpoch, state QueueState, trunkBefore, failReason string) error {
 	epoch := presented.N
