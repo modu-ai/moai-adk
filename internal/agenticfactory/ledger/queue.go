@@ -169,7 +169,10 @@ var queueNext = map[QueueState][]QueueState{
 // verifying and failed need the card epoch the row was queued at, which must still be the
 // card's; landing, landed and the reconcile of a verifying or landing row back to waiting
 // need the epoch of the landing lock (a waiting target from any other state is no edge). A kind the table row
-// does not want is ErrStaleEpoch, even when the numbers coincide.
+// does not want is ErrStaleEpoch, even when the numbers coincide. A landing-lock write also
+// names the candidate its lander verified (ErrInvalid when it names none, ErrStaleEpoch when
+// the row was restarted with another). Known cost: the live holder of the one merge lock may
+// settle any card's older landing row; the candidate it names is the only check on which.
 func (s *Store) QueueUpdate(ctx context.Context, cardID string, presented QueueEpoch, state QueueState, trunkBefore, failReason string) error {
 	epoch := presented.N
 	if presented.Kind != EpochCard && presented.Kind != EpochLock {
@@ -185,9 +188,9 @@ func (s *Store) QueueUpdate(ctx context.Context, cardID string, presented QueueE
 		return fmt.Errorf("%w: queue state %q", ErrInvalid, state)
 	}
 	return s.write(ctx, func(tx *sql.Tx) error {
-		var cur string
+		var cur, rowCandidate string
 		var rowEpoch int64
-		switch err := tx.QueryRowContext(ctx, `SELECT state,card_epoch FROM merge_queue WHERE card_id=?`, cardID).Scan(&cur, &rowEpoch); {
+		switch err := tx.QueryRowContext(ctx, `SELECT state,card_epoch,candidate_sha FROM merge_queue WHERE card_id=?`, cardID).Scan(&cur, &rowEpoch, &rowCandidate); {
 		case err == sql.ErrNoRows:
 			return fmt.Errorf("%w: %s is not in the queue", ErrNotFound, cardID)
 		case err != nil:
@@ -229,6 +232,14 @@ func (s *Store) QueueUpdate(ctx context.Context, cardID string, presented QueueE
 		if presented.Kind != want {
 			return fmt.Errorf("%w: %s from %s needs a %s epoch, not a %s epoch", ErrStaleEpoch, state, curState, want, presented.Kind)
 		}
+		// A landing-lock write names the candidate its lander verified; a row restarted with
+		// another candidate is not the lander's to move (subject_sha is the authority).
+		if presented.Kind == EpochLock && presented.Candidate != rowCandidate {
+			if strings.TrimSpace(presented.Candidate) == "" {
+				return fmt.Errorf("%w: a landing-lock write names the candidate it verified", ErrInvalid)
+			}
+			return fmt.Errorf("%w: %s is queued with candidate %s, not %s", ErrStaleEpoch, cardID, rowCandidate, presented.Candidate)
+		}
 		if settlesOlder {
 			// nothing more to check: the live lock holder is the authority
 		} else if lockStates {
@@ -253,13 +264,22 @@ func (s *Store) QueueUpdate(ctx context.Context, cardID string, presented QueueE
 		if state == QueueFailed {
 			fail = failReason
 		}
-		_, err := tx.ExecContext(ctx, `UPDATE merge_queue SET state=?, trunk_before=COALESCE(NULLIF(?,''),trunk_before), fail_reason=?, updated_at=`+nowSQL+` WHERE card_id=?`,
-			string(state), trunkBefore, fail, cardID)
+		// A landed settlement of an older row follows the card to its current epoch, so the
+		// merged, closed and settled facts show for the card as it is now.
+		newEpoch := rowEpoch
+		if settlesOlder && state == QueueLanded {
+			newEpoch = cardEpoch
+		}
+		_, err := tx.ExecContext(ctx, `UPDATE merge_queue SET state=?, trunk_before=COALESCE(NULLIF(?,''),trunk_before), fail_reason=?, card_epoch=?, updated_at=`+nowSQL+` WHERE card_id=?`,
+			string(state), trunkBefore, fail, newEpoch, cardID)
 		if err != nil {
 			return fmt.Errorf("ledger: %w", err)
 		}
 		if settlesOlder {
 			text := fmt.Sprintf("card %s: landing row of card epoch %d settled as %s by the merge lock holder (the card is at epoch %d now)", cardID, rowEpoch, state, cardEpoch)
+			if state == QueueLanded {
+				text += "; the row now carries the card's current epoch"
+			}
 			if state == QueueFailed {
 				text += ": " + failReason
 			}

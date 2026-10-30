@@ -76,7 +76,12 @@ func TestQueueUpdate_LockHolderSettlesAnOlderLandingRow(t *testing.T) {
 		if err := s.QueueUpdate(bg, "a", LockEpoch(lock, "c1"), to, "", reason); err != nil {
 			t.Fatalf("%s: %v", to, err)
 		}
-		if it := rowOf(t, s); it.State != to || it.CardEpoch != 1 || it.CandidateSHA != "c1" {
+		// a failed settlement keeps the row's epoch; a landed one follows the card to its own
+		wantEpoch := int64(1)
+		if to == QueueLanded {
+			wantEpoch = e2
+		}
+		if it := rowOf(t, s); it.State != to || it.CardEpoch != wantEpoch || it.CandidateSHA != "c1" {
 			t.Errorf("%s: %+v", to, it)
 		}
 		notes, _ := s.NotesSince(bg, 0)
@@ -101,12 +106,12 @@ func TestQueueUpdate_LockHolderSettlesAnOlderLandingRow(t *testing.T) {
 		for _, step := range []struct {
 			ep    QueueEpoch
 			state QueueState
-		}{{CardEpoch(e2), QueueVerifying}, {LockEpoch(lock, "c1"), QueueLanding}, {LockEpoch(lock, "c1"), QueueLanded}} {
+		}{{CardEpoch(e2), QueueVerifying}, {LockEpoch(lock, "c2"), QueueLanding}, {LockEpoch(lock, "c2"), QueueLanded}} {
 			if err := s.QueueUpdate(bg, "a", step.ep, step.state, "t1", ""); err != nil {
 				t.Fatalf("%s: %v", step.state, err)
 			}
 		}
-		if err := s.QueueUpdate(bg, "a", LockEpoch(lock, "c1"), QueueLanded, "", ""); !errors.Is(err, ErrInvalid) {
+		if err := s.QueueUpdate(bg, "a", LockEpoch(lock, "c2"), QueueLanded, "", ""); !errors.Is(err, ErrInvalid) {
 			t.Errorf("landing twice: %v", err)
 		}
 	}
