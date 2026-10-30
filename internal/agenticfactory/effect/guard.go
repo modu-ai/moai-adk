@@ -31,7 +31,12 @@ const (
 	ReasonNotIssueAuthor RefusalReason = "not-issue-author"
 	// ReasonRepoNotAllowed, ReasonPermissionNotGranted and ReasonOwnerUnconfirmed are the other denials of
 	// core's authorization function, carried through under the same strings core records.
-	ReasonRepoNotAllowed       RefusalReason = "repository-not-allowed"
+	ReasonRepoNotAllowed RefusalReason = "repository-not-allowed"
+	// ReasonRepoUnverified: the host did not answer for the repository that was asked about (a redirect, a
+	// move, a name it does not know), so nothing is known about whether it is on the list. Distinct from
+	// ReasonRepoNotAllowed: there the answering repository is known and is simply not listed. It is the
+	// effect-side name of core's repository-unverified verdict (Enforcer.Check casts the verdict's reason).
+	ReasonRepoUnverified       RefusalReason = "repository-unverified"
 	ReasonPermissionNotGranted RefusalReason = "permission-not-granted"
 	ReasonOwnerUnconfirmed     RefusalReason = "owner-unconfirmed"
 	// ReasonOpNotDefined: the operation is one the Issue permission policy does not define (title,
