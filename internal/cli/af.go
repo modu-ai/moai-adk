@@ -33,7 +33,7 @@ func newAFCmd() *cobra.Command {
 		Short:        "Agentic factory card flow over the local ledger",
 		SilenceUsage: true,
 	}
-	af.AddCommand(newAFClaimCmd(), newAFMoveCmd(), newAFEvidenceCmd(), newAFEnqueueCmd(), newAFReleaseCmd(), newAFReapCmd())
+	af.AddCommand(newAFClaimCmd(), newAFMoveCmd(), newAFEvidenceCmd(), newAFEnqueueCmd(), newAFReleaseCmd(), newAFReapCmd(), newAFLandCmd(), newAFReconcileCmd())
 	return af
 }
 
