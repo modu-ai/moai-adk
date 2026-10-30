@@ -165,6 +165,71 @@ func TestRunnerFactsAreBounded(t *testing.T) {
 	}
 }
 
+// A monitor pass makes no host request: the Facts exist but only an authority check (a claim) reads them. A
+// Waiter or notify method that starts calling the guard would otherwise begin using the network quietly.
+func TestAPassMakesNoHostRequest(t *testing.T) {
+	host := &fakeHost{user: userBody, issue: issueBody}
+	r := buildWithTransport(t, host)
+	if r.Runner.Facts == nil {
+		t.Fatal("control: the Facts are wired")
+	}
+	if _, err := r.Service.Tick(context.Background()); err != nil {
+		t.Fatalf("a pass: %v", err)
+	}
+	if got := host.paths(); len(got) != 0 {
+		t.Errorf("a pass made host requests %v, want none", got)
+	}
+	// positive control: the same fake does see a request when the Facts are read.
+	if _, err := r.Runner.Facts.IssueFacts(issue7(t)); err != nil {
+		t.Fatal(err)
+	}
+	if len(host.paths()) == 0 {
+		t.Error("control: reading the Facts made no request, so the zero above proves nothing")
+	}
+}
+
+// The acting user is looked up once while the identity cache holds it: a second authority check does not
+// repeat GET /user (audit lane-19 point 3: no extra reduction is needed, the cache age does it).
+func TestTheActingUserIsLookedUpOnceWithinTheCacheAge(t *testing.T) {
+	host := &fakeHost{user: userBody, issue: issueBody}
+	r := buildWithTransport(t, host)
+	for i := 0; i < 3; i++ {
+		if _, err := r.Runner.Facts.IssueFacts(issue7(t)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	users := 0
+	for _, p := range host.paths() {
+		if p == "GET /user" {
+			users++
+		}
+	}
+	if users != 1 {
+		t.Errorf("GET /user was made %d times over 3 authority checks, want 1 (identity.max_age holds it)", users)
+	}
+}
+
+// A lookup with no time limit is refused before any request is made (the wired Timeout is non-zero, and a
+// zero one cannot reach the host).
+func TestAZeroLookupTimeoutIsRefusedBeforeAnyRequest(t *testing.T) {
+	host := &fakeHost{user: userBody, issue: issueBody}
+	r := buildWithTransport(t, host)
+	hf, ok := r.Runner.Facts.(runner.HostFacts)
+	if !ok {
+		t.Fatalf("Facts = %T, want runner.HostFacts", r.Runner.Facts)
+	}
+	if hf.Timeout <= 0 {
+		t.Fatalf("control: the wired Timeout is %v, want positive", hf.Timeout)
+	}
+	hf.Timeout = 0
+	if _, err := hf.IssueFacts(issue7(t)); err == nil {
+		t.Error("a zero Timeout was accepted")
+	}
+	if got := host.paths(); len(got) != 0 {
+		t.Errorf("a refused lookup still made requests %v", got)
+	}
+}
+
 // The Attributor stays at its lock constant: identity.Book is not connected (REQ-AF-011).
 func TestRunnerAttributorStaysAtTheLockConstant(t *testing.T) {
 	r := buildWithTransport(t, &fakeHost{user: userBody, issue: issueBody})
