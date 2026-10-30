@@ -351,3 +351,15 @@ func TestFlushSkipsRecordingForALockedIssueNoClaimHolds(t *testing.T) {
 		t.Errorf("the lock is reported, the missing claim is not: %v", ferr)
 	}
 }
+
+// When the repository read that tells an Issue's 404 from a hidden repository fails,
+// the run stops, and the error says why that read failed rather than dropping it.
+func TestFlushNamesWhyTheRepositoryProbeFailed(t *testing.T) {
+	f := &fakeGH{results: []result{httpFail(404), {err: errors.New("network down")}}}
+	m := writable(f)
+	m.Enqueue(ledgerFor(1, "ordinary"))
+	_, err := m.Flush(context.Background())
+	if err == nil || !strings.Contains(err.Error(), "network down") || !strings.Contains(err.Error(), "issue-1") {
+		t.Fatalf("the probe's reason must be in the error: %v", err)
+	}
+}

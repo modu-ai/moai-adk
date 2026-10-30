@@ -2,6 +2,7 @@ package claim
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -245,5 +246,32 @@ func TestTakeOverOnStopSurvivesTheMirrorsWrites(t *testing.T) {
 	}
 	if _, err := s.TakeOverOnStop(i, "sess-a", rec.Epoch, "sess-b", "d2", "run-2", "note", nil, name); err != nil {
 		t.Errorf("%v", err)
+	}
+}
+
+// A stop document that carries no owner_seq (the old "seq" key, or none) cannot be
+// placed in the owner's history, so it proves nothing: fail closed. An owner that
+// has never written since acquiring (OwnerSeq 0 on both sides) must not make a
+// missing key read as a match.
+func TestAStopWithoutOwnerSeqIsStale(t *testing.T) {
+	s := open(t)
+	i := ref(t, 1948)
+	rec, _ := s.Acquire(i, "sess-a", "d1", "run-1")
+	name := stopName(i, rec.Epoch)
+	old := fmt.Sprintf(`{"issue":%d,"holder":"sess-a","epoch":%d,"note":"old format","at":%q,"seq":%d}`,
+		i.Number, rec.Epoch, s.clock().Format(time.RFC3339Nano), rec.OwnerSeq)
+	if _, err := s.PutDoc("stop", name, 0, []byte(old)); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.CheckSafeStop(i, "sess-a", rec.Epoch, name); !errors.Is(err, core.ErrEvidenceIncomplete) {
+		t.Fatalf("a stop with no owner_seq must be refused: %v", err)
+	}
+	// recording again replaces it with a record that carries owner_seq
+	again, err := s.RecordSafeStop(i, "sess-a", rec.Epoch, "re-recorded")
+	if err != nil || again != name {
+		t.Fatalf("re-record: %q %v", again, err)
+	}
+	if err := s.CheckSafeStop(i, "sess-a", rec.Epoch, name); err != nil {
+		t.Errorf("the re-recorded stop is fresh: %v", err)
 	}
 }
