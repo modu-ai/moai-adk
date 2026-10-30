@@ -127,7 +127,7 @@ func newAFClaimCmd() *cobra.Command {
 			}
 			pid, start := afHolder()
 			return afRun(f.db, func(ctx context.Context, st *ledger.Store) error {
-				c, err := st.Claim(ctx, ledger.ClaimRequest{SessionID: sessionID, Worktree: worktree, PID: pid, PIDStart: start})
+				c, err := st.Claim(ctx, ledger.ClaimRequest{SessionID: sessionID, Worktree: worktree, PID: pid, PIDStart: start, Alive: afAlive})
 				if err != nil {
 					return err
 				}

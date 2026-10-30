@@ -34,3 +34,9 @@ so a lane that really died holding one is visible to the operator.
 - Item 1's RED was run and observed only for the first failing wrapper in the list (stdbuf was the last line of the
   failure output; all nine share one assertion).
 - `moai af reap` is not wired to run on a schedule or at lane start; it is a verb.
+
+## Lazy reap on claim (leader's last item)
+- `moai af claim` passes `afAlive` as `ClaimRequest.Alive`, so every claim first reaps holders judged Dead (the ledger runs the
+  reap at the start of Claim). No periodic job and no new hook. RED `b85a719d5b`: `TestAFClaim_ReapsADeadSessionsCardForTheNextSession` failed with
+  `ledger: no card can be claimed`; `TestAFClaim_DoesNotTakeALiveSessionsCard` passed before and after.
+- Why `node` is not in the wrapper list: the Claude Code session itself can run as a node process, so skipping `node` would walk past the session.
