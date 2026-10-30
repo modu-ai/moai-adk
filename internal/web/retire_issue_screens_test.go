@@ -1,5 +1,3 @@
-//go:build afred
-
 package web
 
 // retire_issue_screens_test.go — P2 retirement of the Issue/mirror screens in
