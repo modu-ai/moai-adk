@@ -48,6 +48,8 @@ func afGit(t *testing.T, dir string, args ...string) string {
 
 func TestCardFlow_ClaimToDone_ThroughMergeQueue(t *testing.T) {
 	ctx := context.Background()
+	// the claim verb binds the session's heartbeat under the project directory; keep that out of the real one
+	t.Setenv("CLAUDE_PROJECT_DIR", t.TempDir())
 	db := filepath.Join(t.TempDir(), "af", "ledger.db")
 	st, err := ledger.Open(ctx, db)
 	if err != nil {
