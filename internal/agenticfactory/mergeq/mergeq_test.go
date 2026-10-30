@@ -409,6 +409,42 @@ func TestLand_ACandidateAlreadyInTheTrunkLandsWithoutAnotherMerge(t *testing.T) 
 	}
 }
 
+// Leader decision: the trunk is a dedicated ref that no worktree has checked out. Moving a checked-out branch
+// with update-ref would leave that tree's index and files behind the ref, so landing is refused.
+func TestLand_RefusesATrunkThatIsCheckedOutInAWorktree(t *testing.T) {
+	dir := repo(t)
+	cand := candidate(t, dir, "c1", "a.txt", "a\n")
+	holder := filepath.Join(t.TempDir(), "holder")
+	git(t, dir, "worktree", "add", "-q", holder, "trunk") // trunk is now checked out in holder
+	before := git(t, dir, "rev-parse", "refs/heads/trunk")
+	q := &fakeQueue{}
+	gateRuns := 0
+	m := newMerger(t, dir, q, func(context.Context, string) error { gateRuns++; return nil })
+
+	_, err := m.Land(context.Background(), "t1", cand)
+	if !errors.Is(err, ErrTrunkCheckedOut) {
+		t.Fatalf("Land = %v, want ErrTrunkCheckedOut", err)
+	}
+	if !strings.Contains(err.Error(), holder) && !strings.Contains(err.Error(), filepath.Base(holder)) {
+		t.Errorf("the refusal does not say which worktree holds the trunk: %v", err)
+	}
+	if git(t, dir, "rev-parse", "refs/heads/trunk") != before || gateRuns != 0 || q.locks != 0 {
+		t.Errorf("a refused landing still acted: trunk moved %v, gate runs %d, locks %d",
+			git(t, dir, "rev-parse", "refs/heads/trunk") != before, gateRuns, q.locks)
+	}
+	// control: with the holder tree gone the same candidate lands, so the refusal above was the checkout.
+	git(t, dir, "worktree", "remove", "--force", holder)
+	if res, err := m.Land(context.Background(), "t1", cand); err != nil || res.Outcome != OutcomeLanded {
+		t.Errorf("control: after the holder tree is removed Land = %+v, %v", res, err)
+	}
+}
+
+func TestDefaultTrunkIsADedicatedRef(t *testing.T) {
+	if DefaultTrunk != "refs/heads/af/trunk" {
+		t.Errorf("DefaultTrunk = %q, want the dedicated ref refs/heads/af/trunk", DefaultTrunk)
+	}
+}
+
 func TestLand_NeverTouchesMainOrAnyOtherRef(t *testing.T) {
 	dir := repo(t)
 	git(t, dir, "branch", "main", "trunk")

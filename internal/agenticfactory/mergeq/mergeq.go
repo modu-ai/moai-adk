@@ -33,6 +33,14 @@ const (
 	DefaultMaxRetries = 3
 )
 
+// DefaultTrunk is the dedicated trunk ref: no worktree has it checked out (leader decision). Lane trees follow it
+// by merging it.
+const DefaultTrunk = "refs/heads/af/trunk"
+
+// ErrTrunkCheckedOut is returned, before anything is verified or locked, when a worktree has the trunk ref
+// checked out: moving it with update-ref would leave that tree's index and files behind the ref.
+var ErrTrunkCheckedOut = errors.New("mergeq: the trunk ref is checked out in a worktree; landing is refused")
+
 // ErrLockHeld is what AcquireLock returns when another holder has a live lock.
 var ErrLockHeld = errors.New("mergeq: the landing lock is held")
 
@@ -110,6 +118,11 @@ func (m *Merger) Land(ctx context.Context, cardID, candidateSHA string) (Result,
 	}
 	settle := context.WithoutCancel(ctx) // releasing the lock and removing the worktree must survive a cancelled ctx
 
+	if holder, err := m.Git.CheckedOutAt(ctx, m.Trunk); err != nil {
+		return Result{}, fmt.Errorf("mergeq: look for a worktree holding %s: %w", m.Trunk, err)
+	} else if holder != "" {
+		return Result{}, fmt.Errorf("%w: %s holds %s", ErrTrunkCheckedOut, holder, m.Trunk)
+	}
 	trunk, err := m.Git.RevParse(ctx, m.Trunk)
 	if err != nil {
 		return Result{}, fmt.Errorf("mergeq: read the trunk %s: %w", m.Trunk, err)

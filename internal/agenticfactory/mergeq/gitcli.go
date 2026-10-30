@@ -45,6 +45,8 @@ type Git interface {
 	// (no fast-forward), so the gates see the real merge result. Nothing it does touches the trunk ref.
 	PrepareCandidate(ctx context.Context, trunkSHA, candidateSHA, message string) (Candidate, error)
 	Discard(ctx context.Context, c Candidate) error
+	// CheckedOutAt returns the worktree that has ref checked out, or "" when none does.
+	CheckedOutAt(ctx context.Context, ref string) (string, error)
 	// UpdateRef moves ref from oldSHA to newSHA only if it still points at oldSHA (`git update-ref ref new old`).
 	UpdateRef(ctx context.Context, ref, newSHA, oldSHA string) error
 }
@@ -143,6 +145,27 @@ func (g GitCLI) Discard(ctx context.Context, c Candidate) error {
 	}
 	_, err := g.run(ctx, g.Repo, "worktree", "prune")
 	return err
+}
+
+// CheckedOutAt returns the directory of a worktree that has ref checked out, or "" when none does. It reads
+// `git worktree list --porcelain` for the repository, so a bare repository and every linked tree are covered.
+func (g GitCLI) CheckedOutAt(ctx context.Context, ref string) (string, error) {
+	out, err := g.run(ctx, g.Repo, "worktree", "list", "--porcelain")
+	if err != nil {
+		return "", err
+	}
+	var dir string
+	for _, line := range strings.Split(out, "\n") {
+		switch {
+		case strings.HasPrefix(line, "worktree "):
+			dir = strings.TrimPrefix(line, "worktree ")
+		case strings.HasPrefix(line, "branch "):
+			if strings.TrimPrefix(line, "branch ") == ref {
+				return dir, nil
+			}
+		}
+	}
+	return "", nil
 }
 
 // UpdateRef is the compare-and-swap that lands a card: it succeeds only if ref still names oldSHA.
