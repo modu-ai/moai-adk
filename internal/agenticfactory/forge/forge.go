@@ -480,7 +480,9 @@ func EffectError(v Verdict) error {
 type StatusError struct {
 	Status int
 	Header map[string]string
-	Body   []byte
+	// Body is the host's own answer, raw: Redact it before it is recorded anywhere. Error() prints the
+	// status only.
+	Body []byte
 }
 
 func (e *StatusError) Error() string { return fmt.Sprintf("forge: http status %d", e.Status) }

@@ -74,3 +74,16 @@ func TestAnExitErrorNeverEchoesACredentialOrPersonalData(t *testing.T) {
 		t.Errorf("the verb and code are lost: %s", err.Error())
 	}
 }
+
+// A bundle of short options can hide -w: `-cw` is `-c -w`.
+func TestBundledShortOptionsCannotHideTheWebFlag(t *testing.T) {
+	e := ex()
+	for _, a := range []string{"-cw", "-wc", "-aw"} {
+		if e.allowed(t.Context(), []string{"pr", "view", "9", a}) {
+			t.Errorf("%s was allowed", a)
+		}
+	}
+	if !e.allowed(t.Context(), []string{"pr", "view", "9", "-R", "o/r"}) {
+		t.Error("a plain -R was refused")
+	}
+}

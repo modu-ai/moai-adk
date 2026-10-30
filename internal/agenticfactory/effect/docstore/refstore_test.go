@@ -247,7 +247,7 @@ func TestAReaderWithAnOlderListingFallsBackToThePreviousWholeCursor(t *testing.T
 				t.Fatalf("k=%d: %v", k, err)
 			}
 		}
-		listing, err := fr.ControlRef.Keys(context.Background(), "") // the reader lists now ...
+		listing, err := fr.Keys(context.Background(), "") // the reader lists now ...
 		if err != nil {
 			t.Fatal(err)
 		}

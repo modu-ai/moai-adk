@@ -2,6 +2,8 @@ package ghintake
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"strings"
@@ -267,5 +269,48 @@ func TestACleanIssuePassesAdmit(t *testing.T) {
 	}
 	if err := Admit(effect.Request{Kind: effect.LedgerComment, Payload: "ghp_abcdefghijklmnopqrstuvwxyz0123456789"}); err != nil {
 		t.Errorf("Admit judges only issue-create: %v", err)
+	}
+}
+
+// DEC-AF-28 / design 4.4: no hash of the raw text may be kept. The refusal record's Key and Digest come
+// from the sanitized form, so nothing stored lets the raw text be confirmed by hashing a guess.
+func TestARefusalRecordHoldsNoHashOfTheRawPayload(t *testing.T) {
+	f := &fakeExec{}
+	g := GH{Repo: "o/r", Run: f.run, AllowWrite: true, ListLimit: 100}
+	mem := effect.NewMemIntentStore()
+	ex := &effect.Executor{Store: mem, Send: g, Lookup: Lookup{GH: g}, Timeouts: effect.Timeouts{IssueCreate: time.Second}, Admit: Admit}
+	req := IssueRequest(7, "o/r", "title", "see ghp_abcdefghijklmnopqrstuvwxyz0123456789")
+	rawSum := sha256.Sum256([]byte(req.Payload))
+	rawHex := hex.EncodeToString(rawSum[:])
+	rawKey := effect.Key(req.Kind, req.Target, req.Digest)
+	if _, err := ex.Execute(t.Context(), req); err != nil {
+		t.Fatal(err)
+	}
+	all, _ := mem.List()
+	if len(all) != 1 {
+		t.Fatalf("intents = %d, want the one refusal record", len(all))
+	}
+	raw, _ := json.Marshal(all[0])
+	for _, bad := range []string{rawHex, req.Digest, rawKey} {
+		if strings.Contains(string(raw), bad) || all[0].Key == bad {
+			t.Errorf("the stored refusal holds a hash of the raw payload (%s): %s", bad, raw)
+		}
+	}
+	if again, err := ex.Execute(t.Context(), req); err != nil || again.Status != effect.StatusParked {
+		t.Errorf("repeat: %+v %v", again, err)
+	}
+	if all2, _ := mem.List(); len(all2) != 1 {
+		t.Errorf("a repeated refusal added a record: %d", len(all2))
+	}
+}
+
+// P3-2: a payload that is not readable JSON is still checked as text.
+func TestAdmitChecksAnUnreadablePayloadAsText(t *testing.T) {
+	r := effect.Request{Kind: effect.IssueCreate, Payload: `{"title":"x", "body": "token ghp_abcdefghijklmnopqrstuvwxyz0123456789` /* broken: unterminated */}
+	if err := Admit(r); err == nil {
+		t.Error("an unreadable payload holding a token was admitted")
+	}
+	if err := Admit(effect.Request{Kind: effect.IssueCreate, Payload: `not json at all`}); err != nil {
+		t.Errorf("clean unreadable text was refused: %v", err)
 	}
 }

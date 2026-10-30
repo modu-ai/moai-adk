@@ -336,3 +336,18 @@ func TestAStoredLastErrorNeverHoldsASecretOrPersonalData(t *testing.T) {
 		}
 	}
 }
+
+// A SentAt stored in seconds (the unit before nanoseconds) is still read as a time, not as an instant in
+// 1970: otherwise the window would be over at once.
+func TestASentAtStoredInSecondsIsReadAsSeconds(t *testing.T) {
+	mem := NewMemIntentStore()
+	now := time.Unix(1_000_000, 0)
+	key := Key(IssueCreate, "repo:o/r", "d1")
+	if err := mem.Put(Intent{Key: key, Kind: IssueCreate, Issue: 7, Target: "repo:o/r", Digest: "d1", Status: StatusSent, Attempts: 1, SentAt: now.Unix()}); err != nil {
+		t.Fatal(err)
+	}
+	e := &Executor{Store: mem, Send: &countSender{}, Lookup: notFoundLookup{}, Timeouts: casTimeouts(), Now: func() time.Time { return now.Add(500 * time.Millisecond) }}
+	if got, _ := e.Reconcile(t.Context(), key); got.Status != StatusSent {
+		t.Errorf("a seconds-valued SentAt was read as long past: %+v", got)
+	}
+}

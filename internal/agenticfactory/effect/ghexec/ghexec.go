@@ -63,8 +63,9 @@ type Exec struct {
 
 // ExitError is a non-zero exit of gh.
 type ExitError struct {
-	Verb   string // the first two arguments only: the rest may carry text that must not be echoed
-	Code   int
+	Verb string // the first two arguments only: the rest may carry text that must not be echoed
+	Code int
+	// Stderr is gh's own text, raw: Redact it before it is recorded anywhere (Error() already does).
 	Stderr string
 	status *forge.StatusError
 }
@@ -145,7 +146,7 @@ func (e Exec) allowed(ctx context.Context, args []string) bool {
 		return false
 	}
 	for _, a := range args {
-		if name, _, _ := strings.Cut(a, "="); name == "--web" || name == "-w" { // opens a browser, whatever follows "="
+		if name, _, _ := strings.Cut(a, "="); name == "--web" || name == "-w" || bundlesW(name) { // opens a browser
 			return false
 		}
 	}
@@ -216,6 +217,11 @@ func parseAPI(a []string) (method, path string, hasBody, ok bool) {
 }
 
 // flagValue returns the value of --name given as "--name value" or "--name=value".
+// bundlesW reports a bundle of short options that contains -w (`-cw` is `-c -w`).
+func bundlesW(name string) bool {
+	return len(name) > 2 && name[0] == '-' && name[1] != '-' && strings.ContainsRune(name[1:], 'w')
+}
+
 // repoFlags returns every value given for the repository selector, whichever spelling: --repo, --repo=,
 // -R, -R=.
 func repoFlags(args []string) []string {
@@ -234,16 +240,4 @@ func repoFlags(args []string) []string {
 		out = append(out, val)
 	}
 	return out
-}
-
-func flagValue(args []string, name string) string {
-	for i, a := range args {
-		if a == name && i+1 < len(args) {
-			return args[i+1]
-		}
-		if v, ok := strings.CutPrefix(a, name+"="); ok {
-			return v
-		}
-	}
-	return ""
 }
