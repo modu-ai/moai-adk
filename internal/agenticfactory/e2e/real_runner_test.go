@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"context"
 	"errors"
 	"reflect"
 	"strconv"
@@ -63,7 +64,7 @@ type fakeFacts struct {
 	calls    int
 }
 
-func (f *fakeFacts) IssueFacts(i core.IssueRef) (runner.IssueFacts, error) {
+func (f *fakeFacts) IssueFacts(_ context.Context, i core.IssueRef) (runner.IssueFacts, error) {
 	f.mu.Lock()
 	f.calls++
 	f.mu.Unlock()

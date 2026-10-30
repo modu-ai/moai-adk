@@ -94,7 +94,7 @@ func TestRealHandoff_PRPublished_KeepsTheOwnerButIsNotDone(t *testing.T) {
 	}
 	// Once the owner releases, a new claimant is told it is repair-only (the
 	// original rule, now reached through the release).
-	if err := r.Store.Release(tk.Issue, tk.Holder); err != nil {
+	if err := r.Store.Release(tk.Issue, tk.Holder, tk.Epoch); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := r.Store.Acquire(tk.Issue, "other", "d-other", run); !errors.Is(err, core.ErrRepairOnly) {
@@ -176,7 +176,7 @@ func TestRealHandoff_RepairClaim_BranchBoundAndSingleHolder(t *testing.T) {
 	if _, err := r.ClaimRepair(tk.Issue, "fixer", "d-fix", run, branch); !errors.Is(err, core.ErrHeld) {
 		t.Errorf("repair claim while the publisher owns the Issue: %v, want ErrHeld", err)
 	}
-	if err := r.Store.Release(tk.Issue, tk.Holder); err != nil {
+	if err := r.Store.Release(tk.Issue, tk.Holder, tk.Epoch); err != nil {
 		t.Fatal(err)
 	}
 	// Released: the PR still belongs to the session that published it.
@@ -281,7 +281,7 @@ func TestRealHandoff_CompletedFromMergeObservation(t *testing.T) {
 		t.Errorf("owner completed without an observed remote merge: %v, want ErrEvidenceIncomplete", err)
 	}
 	// Released: the monitor path applies, and still needs the observed merge.
-	if err := r.Store.Release(tk.Issue, tk.Holder); err != nil {
+	if err := r.Store.Release(tk.Issue, tk.Holder, tk.Epoch); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := r.CompleteHandedOff(tk.Issue, unobserved); !errors.Is(err, core.ErrEvidenceIncomplete) {

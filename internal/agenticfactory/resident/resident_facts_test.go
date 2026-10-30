@@ -110,7 +110,7 @@ func TestRunnerFactsComeFromTheHostLookups(t *testing.T) {
 	if r.Runner.Facts == nil {
 		t.Fatal("Facts are nil although a transport was given")
 	}
-	f, err := r.Runner.Facts.IssueFacts(issue7(t))
+	f, err := r.Runner.Facts.IssueFacts(context.Background(), issue7(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -143,7 +143,7 @@ func TestRunnerFactsRefuseAShortfall(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			r := buildWithTransport(t, host)
-			if _, err := r.Runner.Facts.IssueFacts(issue7(t)); err == nil {
+			if _, err := r.Runner.Facts.IssueFacts(context.Background(), issue7(t)); err == nil {
 				t.Error("a shortfall was answered as a fact")
 			}
 		})
@@ -180,7 +180,7 @@ func TestAPassMakesNoHostRequest(t *testing.T) {
 		t.Errorf("a pass made host requests %v, want none", got)
 	}
 	// positive control: the same fake does see a request when the Facts are read.
-	if _, err := r.Runner.Facts.IssueFacts(issue7(t)); err != nil {
+	if _, err := r.Runner.Facts.IssueFacts(context.Background(), issue7(t)); err != nil {
 		t.Fatal(err)
 	}
 	if len(host.paths()) == 0 {
@@ -231,7 +231,7 @@ func TestTheActingUserIsLookedUpOnceWithinTheCacheAge(t *testing.T) {
 	host := &fakeHost{user: userBody, issue: issueBody}
 	r := buildWithTransport(t, host)
 	for i := 0; i < 3; i++ {
-		if _, err := r.Runner.Facts.IssueFacts(issue7(t)); err != nil {
+		if _, err := r.Runner.Facts.IssueFacts(context.Background(), issue7(t)); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -259,7 +259,7 @@ func TestAZeroLookupTimeoutIsRefusedBeforeAnyRequest(t *testing.T) {
 		t.Fatalf("control: the wired Timeout is %v, want positive", hf.Timeout)
 	}
 	hf.Timeout = 0
-	if _, err := hf.IssueFacts(issue7(t)); err == nil {
+	if _, err := hf.IssueFacts(context.Background(), issue7(t)); err == nil {
 		t.Error("a zero Timeout was accepted")
 	}
 	if got := host.paths(); len(got) != 0 {

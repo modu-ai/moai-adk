@@ -409,7 +409,7 @@ func TestAFailedPullRequestNoticeIsRetriedNotLost(t *testing.T) {
 func TestNobodyIsToldAboutAnIssueNobodyHolds(t *testing.T) {
 	e := newEnv(t)
 	tk := e.acquire(7)
-	if err := e.st.Release(tk.Issue, tk.Holder); err != nil {
+	if err := e.st.Release(tk.Issue, tk.Holder, tk.Epoch); err != nil {
 		t.Fatal(err)
 	}
 	e.prs.found, e.prs.view = true, PRView{Number: 9, Head: "a", CI: "failure"}
