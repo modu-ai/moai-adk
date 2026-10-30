@@ -215,7 +215,7 @@ func TestHandoffAcceptanceAndMergeMoveThePosition(t *testing.T) {
 	if r := up(func(r *Record) { r.Merged, r.Pending = true, "deploy" }); r.Stage != core.StageMerging {
 		t.Errorf("merge observed: %+v", r)
 	}
-	if r := up(func(r *Record) { r.State = core.StateDone; r.Closed = true }); r.Stage != core.StageDone {
+	if r := up(func(r *Record) { finish(r) }); r.Stage != core.StageDone {
 		t.Errorf("done: %+v", r)
 	}
 }

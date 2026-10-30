@@ -93,12 +93,39 @@ type Record struct {
 	// are empty then, which means "not known", not "no park".
 	PositionUnknown string `json:"-"`
 	Worktree        string `json:"worktree,omitempty"`
+	// Evidence is what the writer of THIS write carries for the edges it takes: the
+	// guard keys the record cannot show itself, "resume-guard:<reason>" for a write
+	// that resolves a park (E20). It is never stored and write clears it; a fact the
+	// record does hold (receipt, merge, close) is derived from the record, not asserted.
+	Evidence []string `json:"-"`
 }
 
 // position is the S46 position the record's derived fields describe. A MERGING
 // record is one whose merge was seen, which is how the legacy fields derive it.
 func (r Record) position() core.Position {
 	return core.Position{Stage: r.Stage, Sub: r.Sub, Park: r.Park, RemoteIntegrated: r.Stage == core.StageMerging}
+}
+
+// moveEvidence is what this write shows for the edges it takes: the facts its own
+// fields hold, and what the writer carried in Evidence.
+func (r Record) moveEvidence() []string {
+	have := append([]string(nil), r.Evidence...)
+	if r.Receipt != nil {
+		have = append(have, core.FactReceipt)
+		if r.Receipt.LeaderAccepted {
+			have = append(have, core.FactReceiptAccepted)
+		}
+	}
+	if r.Merged {
+		have = append(have, core.FactMerged)
+	}
+	if r.Closed {
+		have = append(have, core.FactClosed)
+	}
+	if r.Pending == "" {
+		have = append(have, core.FactSettled)
+	}
+	return have
 }
 
 // clone is a copy of r that shares no memory with it: every pointer target and the
@@ -133,6 +160,9 @@ func (r Record) clone() Record {
 	}
 	if r.History != nil {
 		c.History = append([]Event(nil), r.History...)
+	}
+	if r.Evidence != nil {
+		c.Evidence = append([]string(nil), r.Evidence...)
 	}
 	return c
 }
@@ -475,10 +505,11 @@ func (s *Store) write(i core.IssueRef, r *Record) error {
 	if prev, had, err := s.read(i); err != nil {
 		return err
 	} else if had && prev.Stage != "" {
-		if err := core.CheckMove(prev.position(), r.position()); err != nil {
+		if err := core.CheckMove(prev.position(), r.position(), r.moveEvidence()); err != nil {
 			return err
 		}
 	}
+	r.Evidence = nil
 	// A write that puts the Issue into PARKED carries its wait record (design
 	// 2.1c), and while the park stays no write takes that record away. A record
 	// parked before this rule, with no wait record, is rewritten as it is.

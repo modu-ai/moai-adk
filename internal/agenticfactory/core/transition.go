@@ -26,6 +26,9 @@ type Outcome struct {
 	Adopt bool
 	// Integrated sets remote_integrated on a MERGING position (E12, E17).
 	Integrated bool
+	// Reasons, when set, limits the caller's park reason of a ReasonFromCaller
+	// outcome to these (E15 cleanup-unknown: a reason about the cleanup).
+	Reasons []BlockReason
 	// Needs are guard keys this outcome needs on top of the edge's own. A parking
 	// outcome that records an unclear result needs less than the one that claims
 	// the result is known (S46 E15: an unclear cleanup stays parked).
@@ -124,7 +127,7 @@ var edges = []Edge{
 	{ID: "E14", From: []Stage{StageMerging}, Needs: []string{"merge-fact"}, Outcomes: []Outcome{parkWith(ReasonPendingEffect)}},
 	// E15 (canon line 61): an unclear cleanup stays at the current stage, parked.
 	{ID: "E15", From: []Stage{StageReady, StageBuilding, StageReviewing}, Needs: []string{"new-grants-blocked"},
-		Outcomes: []Outcome{{Name: "cancel", Default: true, To: StageCancelled, Needs: []string{"writers-effects-cleaned"}}, {Name: "cleanup-unknown", Park: ReasonFromCaller}}},
+		Outcomes: []Outcome{{Name: "cancel", Default: true, To: StageCancelled, Needs: []string{"writers-effects-cleaned"}}, {Name: "cleanup-unknown", Park: ReasonFromCaller, Reasons: []BlockReason{ReasonUnknownEffect, ReasonPendingEffect, ReasonStopUnknown}}}},
 	{ID: "E16", From: []Stage{StageMerging},
 		Outcomes: []Outcome{{Name: "cancel", Default: true, To: StageCancelled, Needs: []string{"sender-residue-removed", "queue-effects-checked"}}, {Name: "unknown", Park: ReasonUnknownEffect}}},
 	// E17 is a fact: the integration is kept, nothing is reverted.
@@ -273,6 +276,9 @@ func Transition(pos Position, ev Event) (Position, error) {
 		reason := out.Park
 		if out.Park == ReasonFromCaller {
 			reason = ev.Park.Reason
+			if len(out.Reasons) > 0 && !reasonIn(reason, out.Reasons) {
+				return pos, fmt.Errorf("%w: %s %s parks with a reason about its subject, not %q", ErrReasonNotAllowed, e.ID, out.Name, reason)
+			}
 		} else if out.Park == ReasonClassified {
 			reason = ev.Park.Reason
 			if !isClassified(reason) {
@@ -298,4 +304,13 @@ func Transition(pos Position, ev Event) (Position, error) {
 		return pos, err
 	}
 	return next, nil
+}
+
+func reasonIn(r BlockReason, set []BlockReason) bool {
+	for _, c := range set {
+		if c == r {
+			return true
+		}
+	}
+	return false
 }

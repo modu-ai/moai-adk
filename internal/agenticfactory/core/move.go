@@ -1,83 +1,170 @@
 package core
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
-// maxChain is the most table edges one write may stand for. The old State collapses
-// whole stretches of the lifecycle into one write (landing to done is E08, E12 and
-// E13; a claimed record that already holds a receipt is E03 and E06), and the
-// longest stretch the runner writes at once is claimed to done: E03, E08, E12, E13
-// (E03 leaves BUILDING from any sub stage). A queued record never reaches done in
-// one write (E01 comes first), which five edges would allow.
-const maxChain = 4
+// Fact keys a record can show about itself. A write carries them (derived from the
+// record it writes) as the evidence of the edges it absorbs; they are facts, so the
+// writer cannot assert one the record does not hold.
+const (
+	FactReceipt         = "receipt"          // a PR receipt is on the record
+	FactReceiptAccepted = "receipt-accepted" // the leader accepted that receipt
+	FactMerged          = "merged"           // the remote merge was seen
+	FactClosed          = "closed"           // the Issue was closed
+	FactSettled         = "settled"          // no obligation (local sync, deploy, close) is pending
+)
+
+// GuardOperatorHold is the evidence a write carries for the operator's hold.
+const GuardOperatorHold = "operator-hold"
+
+// edgeFacts are the facts a single edge needs on the record on top of its guard keys,
+// for the edges whose keys the record can show.
+var edgeFacts = map[string][]string{
+	"E03": {FactReceipt, FactReceiptAccepted},
+	"E12": {FactMerged},
+	"E17": {FactMerged}, // the same position as E12, so the same fact
+	"E13": {FactMerged, FactClosed, FactSettled},
+}
+
+// composition is a move the old State makes in one write that stands for several
+// edges. The list below is closed: a composition not in it is refused. Each one
+// needs the facts of the edges it absorbed on the record it writes.
+type composition struct {
+	name     string
+	from, to func(Position) bool
+	needs    []string
+}
+
+func atStage(p Position, ss ...Stage) bool {
+	for _, s := range ss {
+		if p.Stage == s {
+			return true
+		}
+	}
+	return false
+}
+
+// noHandoff is BUILDING before any receipt reads as FIX: a FIX position holds a receipt
+// the leader has not accepted, and finishing from it would skip that acceptance.
+func noHandoff(p Position) bool { return atStage(p, StageBuilding) && !isFix(p) }
+
+func isFix(p Position) bool     { return p.Stage == StageBuilding && p.Sub == SubFix }
+func isDone(p Position) bool    { return p.Stage == StageDone }
+func isMergedP(p Position) bool { return p.Stage == StageMerging && p.RemoteIntegrated }
+
+// compositions are the legacy compositions, named:
+//   - an unaccepted receipt reads as BUILDING/FIX (E03, E06);
+//   - an accepted receipt finished in one write (E08, E12, E13);
+//   - an accepted receipt with the merge seen (E08, E12);
+//   - a record finished or merged with no handoff on it (E03, E08, E12, E13 / E03, E08,
+//     E12): the runner's local path, which skips the leader's acceptance. These two are
+//     a named gap, kept so the runner can finish an Issue without a PR until its steps
+//     carry that evidence.
+var compositions = []composition{
+	{"published-receipt", func(p Position) bool { return atStage(p, StageBuilding) && !isFix(p) }, isFix, []string{FactReceipt}},
+	{"accepted-receipt-finished", func(p Position) bool { return atStage(p, StageReviewing) }, isDone,
+		[]string{FactReceipt, FactReceiptAccepted, FactMerged, FactClosed, FactSettled}},
+	{"accepted-receipt-merge-seen", func(p Position) bool { return atStage(p, StageReviewing) }, isMergedP,
+		[]string{FactReceipt, FactReceiptAccepted, FactMerged}},
+	{"no-handoff-finished", noHandoff, isDone,
+		[]string{FactMerged, FactClosed, FactSettled}},
+	{"no-handoff-merge-seen", noHandoff, isMergedP,
+		[]string{FactMerged}},
+}
 
 // CheckMove says whether a record may go from one S46 position to another in a
-// single write: it may stay where it is, or a chain of at most maxChain table edges
-// (E01-E27, E20 resume included) must lead from the first to the second. It is a
-// table-membership test and nothing more: it supplies every guard key itself, so
-// it never judges the evidence an edge needs, only that the way exists. The park
-// text may change while the reason stays (a refreshed evidence or resume line).
+// single write. It may stay where it is; or one table edge leads there (E01-E27); or
+// the move is one of the named legacy compositions. Evidence:
 //
-// What it refuses is a write the table has no way to make: a finished position
-// opening again, a sub stage going backwards, a parked position moving on, a queued
-// record finishing in one write. It does not say WHICH edges a write stands for;
-// a runner step that must be exact about that checks its own edge.
+//   - E20 (resume) is the one edge whose guard the writer must carry: have holds
+//     "resume-guard:<reason>" for the reason being resolved, and none is invented here,
+//     the unknown family included.
+//   - E03, E12 and E13 and every composition need facts the record shows (the Fact
+//     constants); the other edges' guard keys are supplied here, because the record
+//     holds nothing to test them against and the table only checks they are present.
+//
+// A parked position leaves by a single edge only: resumed in place, cancelled, or an
+// E18 adopt to BUILDING/SPEC. A write that moves the stage and parks in the same
+// write has no edge. What this does not say is which of the absorbed edges' other
+// guards held; that stays with the runner step that makes the write.
 //
 // The runner keeps the old State as its progress record (step 2 of the model
 // migration) and derives the position from it. This is the point where a derived
 // position that the table cannot reach is refused, instead of being stored.
-func CheckMove(from, to Position) error {
+func CheckMove(from, to Position, have []string) error {
 	if sameSpot(from, to) {
 		return nil
 	}
-	seen := map[string]bool{spot(from): true}
-	frontier := []Position{from}
-	for depth := 0; depth < maxChain && len(frontier) > 0; depth++ {
-		var next []Position
-		for _, p := range frontier {
-			for _, m := range successors(p, to) {
-				n := m.pos
-				if sameSpot(n, to) {
-					return nil
-				}
-				// Resuming a parked position is a write of its own: E20 as a step
-				// on the way to another place would be a way round the rule that a
-				// parked position does not move on (Transition's fail-closed rule).
-				if m.edge == "E20" {
-					continue
-				}
-				if k := spot(n); !seen[k] {
-					seen[k] = true
-					next = append(next, n)
-				}
+	has := map[string]bool{}
+	for _, h := range have {
+		has[h] = true
+	}
+	var missingErr error
+	lacks := func(what string, needs []string) bool {
+		var m []string
+		for _, n := range needs {
+			if !has[n] {
+				m = append(m, n)
 			}
 		}
-		frontier = next
+		if len(m) == 0 {
+			return false
+		}
+		if missingErr == nil {
+			missingErr = fmt.Errorf("%w: %s needs %s", ErrGuardMissing, what, strings.Join(m, ", "))
+		}
+		return true
 	}
-	return fmt.Errorf("%w: no chain of S46 edges (at most %d) moves %s to %s", ErrTransitionInvalid, maxChain, spot(from), spot(to))
-}
-
-type step struct {
-	pos  Position
-	edge string
-}
-
-// successors are the positions one table edge reaches from p. A park outcome parks
-// with the target's park, since that is the only one a chain could end on.
-func successors(p, to Position) []step {
-	var out []step
+	// The operator's hold has no S46 edge (OD-12, unconfirmed). It is a named in-place
+	// park, from a position that is neither finished nor already parked, and the writer
+	// carries "operator-hold" for it. sameSpot with the park stripped from to also
+	// requires that from carries none.
+	if to.Park != nil && to.Park.Reason == ReasonOperatorHold && !from.Stage.terminal() && sameSpot(from, withoutPark(to)) {
+		if lacks("operator-hold", []string{GuardOperatorHold}) {
+			return missingErr
+		}
+		return nil
+	}
+	// E20 resolves a park in place and nothing else.
+	if from.Park != nil && sameSpot(withoutPark(from), to) {
+		_, err := Transition(from, Event{ID: "E20", Evidence: have})
+		return err
+	}
 	for _, e := range Edges() {
+		if e.ID == "E20" {
+			continue
+		}
 		for _, o := range moveOutcomes(e) {
-			ev := Event{ID: e.ID, Outcome: o, Evidence: moveEvidence(e, o, p)}
+			ev := Event{ID: e.ID, Outcome: o, Evidence: e.needsFor(o)}
 			if to.Park != nil {
 				ev.Park = *to.Park
 			}
-			if n, err := Transition(p, ev); err == nil {
-				out = append(out, step{n, e.ID})
+			next, err := Transition(from, ev)
+			if err != nil || !sameSpot(next, to) {
+				continue
+			}
+			if lacks(e.ID, edgeFacts[e.ID]) {
+				continue
+			}
+			return nil
+		}
+	}
+	if from.Park == nil && to.Park == nil {
+		for _, c := range compositions {
+			if c.from(from) && c.to(to) && !lacks(c.name, c.needs) {
+				return nil
 			}
 		}
 	}
-	return out
+	if missingErr != nil {
+		return missingErr
+	}
+	return fmt.Errorf("%w: no S46 edge or named composition moves %s to %s", ErrTransitionInvalid, spot(from), spot(to))
 }
+
+func withoutPark(p Position) Position { p.Park = nil; return p }
 
 func moveOutcomes(e Edge) []string {
 	if len(e.Outcomes) == 0 {
@@ -88,18 +175,6 @@ func moveOutcomes(e Edge) []string {
 		out = append(out, o.Name)
 	}
 	return out
-}
-
-// moveEvidence names every guard key of the edge and outcome, so the table's own
-// existence and position rules are the only thing left to fail.
-func moveEvidence(e Edge, outcome string, from Position) []string {
-	if e.ID == "E20" {
-		if from.Park == nil {
-			return nil
-		}
-		return []string{"resume-guard:" + string(from.Park.Reason)}
-	}
-	return e.needsFor(outcome)
 }
 
 func sameSpot(a, b Position) bool {

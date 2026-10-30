@@ -38,3 +38,42 @@ func TestAWriteTheTableCannotMakeIsRefusedAndNothingIsStored(t *testing.T) {
 		t.Errorf("a done Issue reopening: %v", err)
 	}
 }
+
+// The facts a finishing write shows come from the record it writes, so a write that
+// finishes while something is pending, or while it takes the leader's acceptance
+// back, has no composition to stand on.
+func TestAFinishingWriteMustShowSettledAndAcceptedFacts(t *testing.T) {
+	s := open(t)
+	i := ref(t, 1948)
+	rec, _ := s.Acquire(i, "sess-a", "d1", "run-1")
+	steps := []func(*Record) error{
+		func(r *Record) error { r.State = core.StateImplementing; return nil },
+		func(r *Record) error {
+			r.Receipt = &Receipt{HandoffID: "h1", PR: 7, Branch: "b", Worktree: "w"}
+			return nil
+		},
+		func(r *Record) error { accept(r); return nil },
+	}
+	for n, fn := range steps {
+		if _, err := s.Update(i, "sess-a", rec.Epoch, fn); err != nil {
+			t.Fatalf("step %d: %v", n, err)
+		}
+	}
+	before, _ := s.Read(i)
+	if before.Stage != core.StageReviewing {
+		t.Fatalf("setup: %+v", before)
+	}
+	if _, err := s.Update(i, "sess-a", rec.Epoch, func(r *Record) error { finish(r); r.Pending = "deploy"; return nil }); !errors.Is(err, core.ErrGuardMissing) {
+		t.Errorf("finishing with an obligation pending: %v", err)
+	}
+	if _, err := s.Update(i, "sess-a", rec.Epoch, func(r *Record) error { finish(r); r.Receipt.LeaderAccepted = false; return nil }); err == nil {
+		t.Error("finishing while taking the leader's acceptance back")
+	}
+	after, _ := s.Read(i)
+	if after.Seq != before.Seq || after.State != before.State {
+		t.Errorf("a refused write stored something: %+v -> %+v", before, after)
+	}
+	if _, err := s.Update(i, "sess-a", rec.Epoch, func(r *Record) error { finish(r); return nil }); err != nil {
+		t.Errorf("the same finish with everything shown: %v", err)
+	}
+}
