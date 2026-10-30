@@ -25,7 +25,7 @@ _<pending sync-phase>_
 
 - 원천: 감사 verdict `.moai/reports/issue-1948/plan-audit-local-001-c445ce9559/verdict.md`(FAIL 0.62, 막는 결함 D1 D2 D3 D8 D9 D10). 고정한 계약 sha256 `f2c1078b7add847b93926ba3356eda62e4fbc44d8aa77221f059f44f6b059acb`(spec §A.4).
 - 판: 하위 0.2.0, 상위 0.7.1 — 둘 다 revised, unaudited. 감사·리뷰 도구는 부르지 않았다(외부 리뷰 호출 보류 지시).
-- repair commit SHA: `pending-backfill`
+- repair commit SHA: `db3cde6a30811bf2d4971e1d63206cec75452d17` (이 줄을 채우는 것은 그 뒤의 별도 커밋)
 - "고치기 전" 줄은 `c445ce9559`의 줄, "고친 뒤" 줄은 이 작업 트리의 줄이다.
 
 | defect id | file:line before | change | new file:line | OD | note |
