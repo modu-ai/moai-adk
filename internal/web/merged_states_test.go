@@ -84,3 +84,24 @@ func TestMirrorRefusedIsShownAndConfirmsNothing(t *testing.T) {
 		t.Errorf("the page must show 'mirror refused'")
 	}
 }
+
+// mirror_state rejected(<status>) (lane-18 7ef22d33b1: the host refused the
+// Issue's comment) is not "current" either: it is shown as written and, like
+// stale, blocked and refused, confirms none of the cached position.
+func TestMirrorRejectedIsShownAndConfirmsNothing(t *testing.T) {
+	sha := core.HeadSHA(strings.Repeat("a", 40))
+	src := fakeRecords{recs: []claim.Record{
+		{Issue: 63, Holder: "s-63", AgentName: "agent-j", State: core.StateLanding, Stage: core.StageMerging, Head: sha, Mirror: "rejected(403)",
+			Receipt: &claim.Receipt{HandoffID: "h", PR: 603, Head: sha}},
+	}}
+	r := recordApp(t, src).buildPRTracking(context.Background()).Rows[0]
+	if r.Mirror != "rejected(403)" {
+		t.Errorf("mirror = %q, want rejected(403)", r.Mirror)
+	}
+	if r.State != prGap || r.Stage != prGap || r.Head != prGap || r.PR != prGap || r.Completed {
+		t.Errorf("a rejected mirror must not present the cached position as confirmed: %+v", r)
+	}
+	if r.Agent != "agent-j" {
+		t.Errorf("identity stays shown: %q", r.Agent)
+	}
+}
