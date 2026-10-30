@@ -155,9 +155,16 @@ var queueNext = map[QueueState][]QueueState{
 	QueueLanding:   {QueueLanded, QueueFailed, QueueWaiting},
 }
 
-// QueueUpdate moves a queue item to state; see the API for which epoch each state checks.
+// QueueUpdate moves a queue item to state. The caller presents its epoch with its kind:
+// waiting (from nothing), verifying and failed need the card epoch the row was queued at,
+// which must still be the card's; landing, landed and the reconcile of a verifying or
+// landing row back to waiting need the epoch of the landing lock. A kind the table row
+// does not want is ErrStaleEpoch, even when the numbers coincide.
 func (s *Store) QueueUpdate(ctx context.Context, cardID string, presented QueueEpoch, state QueueState, trunkBefore, failReason string) error {
-	epoch := presented.N // kind not checked yet
+	epoch := presented.N
+	if presented.Kind != EpochCard && presented.Kind != EpochLock {
+		return fmt.Errorf("%w: epoch kind %q", ErrInvalid, presented.Kind)
+	}
 	switch state {
 	case QueueWaiting, QueueVerifying, QueueLanding, QueueLanded:
 	case QueueFailed:
@@ -187,6 +194,15 @@ func (s *Store) QueueUpdate(ctx context.Context, cardID string, presented QueueE
 		curState := QueueState(cur)
 		lockStates := state == QueueLanding || state == QueueLanded ||
 			(state == QueueWaiting && (curState == QueueVerifying || curState == QueueLanding))
+		// The caller says which epoch it holds; the table row says which one the write needs.
+		// A number that happens to match the other table is no authority.
+		want := EpochCard
+		if lockStates {
+			want = EpochLock
+		}
+		if presented.Kind != want {
+			return fmt.Errorf("%w: %s from %s needs a %s epoch, not a %s epoch", ErrStaleEpoch, state, curState, want, presented.Kind)
+		}
 		if lockStates {
 			held, err := lockHeldAt(ctx, tx, LockMerge, epoch)
 			if err != nil {

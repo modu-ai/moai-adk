@@ -183,7 +183,7 @@ func TestQueueUpdateChecksTheEpochItsStateCallsFor(t *testing.T) {
 			t.Fatalf("%s: %v", step.state, err)
 		}
 	}
-	if err := s.QueueUpdate(bg, "a", LockEpoch(c.Epoch), QueueWaiting, "", ""); !errors.Is(err, ErrInvalid) {
+	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch), QueueWaiting, "", ""); !errors.Is(err, ErrInvalid) {
 		t.Errorf("landed is final: %v", err)
 	}
 }
