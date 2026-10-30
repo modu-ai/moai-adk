@@ -80,6 +80,42 @@ func TestLand_RealLedger_ACandidateAlreadyInTheTrunkSettlesAsLanded(t *testing.T
 	}
 }
 
+// The whole path through the mergeq call: Land moves the trunk and settles the row, after which the card's holder
+// moves the card to DONE (the ledger shows it the merged, closed and settled facts) and cannot queue a second
+// candidate for it.
+func TestLand_RealLedger_ALandedCardGoesToDoneAndTakesNoSecondCandidate(t *testing.T) {
+	ctx := context.Background()
+	dir := repo(t)
+	cand := candidate(t, dir, "c1", "a.txt", "a\n")
+	s := queuedCard(t, "t1", cand)
+	rows, err := s.Queue(ctx)
+	if err != nil || len(rows) != 1 {
+		t.Fatalf("queue: %+v %v", rows, err)
+	}
+	cardEpoch := rows[0].CardEpoch
+
+	res, err := realMerger(t, dir, s).Land(ctx, "t1", cand)
+	if err != nil || res.Outcome != OutcomeLanded {
+		t.Fatalf("result %+v err %v, want landed", res, err)
+	}
+	if err := s.Move(ctx, "t1", cardEpoch, core.Position{Stage: core.StageMerging, RemoteIntegrated: true}, "mergeq", "merge seen"); err != nil {
+		t.Fatalf("recording the integration: %v", err)
+	}
+	if err := s.Move(ctx, "t1", cardEpoch, core.Position{Stage: core.StageDone}, "mergeq", "landed"); err != nil {
+		t.Fatalf("moving the landed card to DONE: %v", err)
+	}
+	cards, err := s.Cards(ctx)
+	if err != nil || len(cards) != 1 || cards[0].Position.Stage != core.StageDone {
+		t.Fatalf("cards %+v %v, want the card DONE", cards, err)
+	}
+	if err := s.Enqueue(ctx, "t1", cardEpoch, "a-second-candidate"); err == nil {
+		t.Error("a second candidate was queued for a card that already landed")
+	}
+	if got := rowState(t, s, "t1"); got != ledger.QueueLanded {
+		t.Errorf("the row is %s after the refused second candidate, want landed", got)
+	}
+}
+
 // After a restart a row left in landing is judged by git ancestry: a candidate in the trunk is landed, one that
 // is not goes back to waiting.
 func TestReconcile_RealLedger_ALandingRowIsSettledByAncestry(t *testing.T) {
