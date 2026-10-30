@@ -16,6 +16,8 @@ type ledgerAPI interface {
 	QueueUpdate(ctx context.Context, cardID string, epoch ledger.QueueEpoch, state ledger.QueueState, trunkBefore, failReason string) error
 	AddNote(ctx context.Context, n ledger.Note) error
 	Queue(ctx context.Context) ([]ledger.QueueItem, error)
+	Cards(ctx context.Context) ([]ledger.Card, error)
+	Leases(ctx context.Context) ([]ledger.Lease, error)
 }
 
 var _ ledgerAPI = (*ledger.Store)(nil)
@@ -44,15 +46,16 @@ func (q LedgerQueue) ReleaseLock(ctx context.Context, name string, epoch int64) 
 	return q.L.ReleaseLock(ctx, name, epoch)
 }
 
-// SetState records the queue row's state. The ledger checks the card epoch the row was queued at for
-// waiting, verifying and failed, and the lock epoch for landing, landed and a waiting row sent back by a
-// reconcile; this adapter passes the row's own item.CardEpoch as a ledger.CardEpoch for the first group and
-// lockEpoch as a ledger.LockEpoch for the second, so the two numbers can never be mistaken for each other.
-// The card epoch is read from the queue row, never from cards.epoch: it is unverified here against the lease,
-// and the ledger fences a stale row itself (ErrStaleEpoch).
-func (q LedgerQueue) SetState(ctx context.Context, cardID string, lockEpoch int64, st State, trunkBefore, failReason string) error {
-	epoch := ledger.LockEpoch(lockEpoch)
-	if st == StateVerifying || st == StateFailed || (st == StateWaiting && lockEpoch == 0) {
+// SetState records the queue row's state. A write that holds the landing lock (lockEpoch != 0: landing, landed,
+// a reconcile's waiting, a stale landing row's settlement) presents it as a ledger.LockEpoch; one that does not
+// (verifying, failed, a first waiting) presents the row's own CardEpoch, read from the queue row and never from
+// cards.epoch: it is unverified here against the lease, and the ledger fences a stale row itself. Both kinds name
+// the card's candidate commit the caller verified, so the two epoch numbers can never be mistaken for each other
+// and a lander whose row was restarted with another candidate cannot move it. The ledger's ErrStaleEpoch is
+// returned as ErrStaleRow.
+func (q LedgerQueue) SetState(ctx context.Context, cardID, candidate string, lockEpoch int64, st State, trunkBefore, failReason string) error {
+	epoch := ledger.LockEpoch(lockEpoch, candidate)
+	if lockEpoch == 0 {
 		items, err := q.L.Queue(ctx)
 		if err != nil {
 			return err
@@ -60,7 +63,7 @@ func (q LedgerQueue) SetState(ctx context.Context, cardID string, lockEpoch int6
 		found := false
 		for _, it := range items {
 			if it.CardID == cardID {
-				epoch, found = ledger.CardEpoch(it.CardEpoch), true
+				epoch, found = ledger.CardEpoch(it.CardEpoch, candidate), true
 				break
 			}
 		}
@@ -68,7 +71,59 @@ func (q LedgerQueue) SetState(ctx context.Context, cardID string, lockEpoch int6
 			return fmt.Errorf("mergeq: %s is not in the queue", cardID)
 		}
 	}
-	return q.L.QueueUpdate(ctx, cardID, epoch, ledger.QueueState(st), trunkBefore, failReason)
+	err := q.L.QueueUpdate(ctx, cardID, epoch, ledger.QueueState(st), trunkBefore, failReason)
+	if errors.Is(err, ledger.ErrStaleEpoch) {
+		return fmt.Errorf("%w: %v", ErrStaleRow, err)
+	}
+	return err
+}
+
+// RowState reads the card's queue row state.
+func (q LedgerQueue) RowState(ctx context.Context, cardID string) (State, error) {
+	items, err := q.L.Queue(ctx)
+	if err != nil {
+		return "", err
+	}
+	for _, it := range items {
+		if it.CardID == cardID {
+			return State(it.State), nil
+		}
+	}
+	return "", fmt.Errorf("mergeq: %s is not in the queue", cardID)
+}
+
+// Items reads the queue rows for Reconcile, each joined with its card's current epoch and whether the card holds
+// a live lease at that epoch (a lease whose expiry has not passed): the facts that decide whether a verifying
+// row may still belong to a live lander.
+func (q LedgerQueue) Items(ctx context.Context, now time.Time) ([]Item, error) {
+	rows, err := q.L.Queue(ctx)
+	if err != nil {
+		return nil, err
+	}
+	cards, err := q.L.Cards(ctx)
+	if err != nil {
+		return nil, err
+	}
+	leases, err := q.L.Leases(ctx)
+	if err != nil {
+		return nil, err
+	}
+	current := map[string]int64{}
+	for _, c := range cards {
+		current[c.ID] = c.Epoch
+	}
+	live := map[string]bool{}
+	for _, l := range leases {
+		if l.Epoch == current[l.CardID] && l.ExpiresAt.After(now) {
+			live[l.CardID] = true
+		}
+	}
+	out := make([]Item, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, Item{CardID: r.CardID, CandidateSHA: r.CandidateSHA, State: State(r.State),
+			CardEpoch: r.CardEpoch, CurrentEpoch: current[r.CardID], LeaseLive: live[r.CardID]})
+	}
+	return out, nil
 }
 
 // AddNote appends a note of the given kind.

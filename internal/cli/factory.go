@@ -60,7 +60,10 @@ const (
 	factoryFlagShort = "-f"
 	laneFlagLong     = "--lane"
 	laneFlagShort    = "-l"
-	leadFlagLong     = "--leader"
+	// agentFlagShort is the design vocabulary for the lane entry (DEC-AF-09: the agent entry; a
+	// lane-<n> session is an agent). It desugars into the lane entry exactly as -l/--lane does.
+	agentFlagShort = "-a"
+	leadFlagLong   = "--leader"
 
 	// factoryLaneRoleToken is the canonical lane role value
 	// (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-002), kept as the lane role's name
@@ -95,11 +98,12 @@ const factoryFlagUsageError = "-f/--factory takes no argument (bare -f starts th
 // one-line refusals of the lane entry (REQ-002): an argument after -l/--lane,
 // an operator --name beside it, and a second entry token.
 const (
-	laneFlagArgumentError = "-l/--lane takes no argument (it joins the running factory as the next free lane); --leader <name> selects the leader session"
-	laneFlagNameError     = "-l/--lane already names the role; drop the --name/-n flag"
-	entryTokenConflict    = "%s and %s are two entry tokens; a launch carries at most one"
-	laneNameUnderFactory  = "--name lane-<n> does not select a lane under -f/--factory (-f starts the factory leader); the lane entry is -l or --lane"
-	leaderNeedsLaneEntry  = "--leader names the leader session a lane join targets; it composes with -l or --lane only"
+	laneFlagArgumentError  = "-l/--lane takes no argument (it joins the running factory as the next free lane); --leader <name> selects the leader session"
+	laneFlagNameError      = "-l/--lane already names the role; drop the --name/-n flag"
+	agentFlagArgumentError = "-a takes no argument (it joins the running factory as the next free agent, the lane entry); --leader <name> selects the leader session"
+	entryTokenConflict     = "%s and %s are two entry tokens; a launch carries at most one"
+	laneNameUnderFactory   = "--name lane-<n> does not select a lane under -f/--factory (-f starts the factory leader); the lane entry is -l or --lane"
+	leaderNeedsLaneEntry   = "--leader names the leader session a lane join targets; it composes with -l or --lane only"
 )
 
 // factoryFlagParse is the entry parse of the factory surface. Two entry
@@ -141,7 +145,7 @@ type factoryFlagParse struct {
 // manual parser is the only mechanism available.
 func parseFactoryFlag(args []string) (p factoryFlagParse, err error) {
 	p.Rest = make([]string, 0, len(args))
-	sawFactoryFlag := false
+	sawFactoryFlag, sawLaneToken, sawAgentToken := false, false, false
 
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
@@ -229,6 +233,22 @@ func parseFactoryFlag(args []string) (p factoryFlagParse, err error) {
 			}
 			p.Enabled = true
 			p.LaneRole = true
+			sawLaneToken = true
+			continue
+		}
+
+		// -a: the agent entry (DEC-AF-09), the short spelling of the lane role. It is the lane entry under another
+		// spelling, so it takes no argument either and desugars the same way; carrying -a with -l or -f is two
+		// entry tokens and refuses below. The long `--agent <name>` is deliberately NOT an entry token: Claude
+		// Code has its own --agent option, and a user who passes it keeps it (leader decision, Jev p=0.86), so
+		// it reaches the backend untouched like any other unknown flag.
+		if arg == agentFlagShort || strings.HasPrefix(arg, agentFlagShort+"=") {
+			if strings.Contains(arg, "=") || (i+1 < len(args) && args[i+1] != "--" && !strings.HasPrefix(args[i+1], "-")) {
+				return p, errors.New(agentFlagArgumentError)
+			}
+			p.Enabled = true
+			p.LaneRole = true
+			sawAgentToken = true
 			continue
 		}
 
@@ -268,8 +288,14 @@ func parseFactoryFlag(args []string) (p factoryFlagParse, err error) {
 
 	// One entry token per launch: -f and -l each name a different role, and a
 	// launch carrying both would have to drop one silently.
-	if sawFactoryFlag && p.LaneRole {
+	if sawFactoryFlag && sawLaneToken {
 		return p, fmt.Errorf(entryTokenConflict, "-f/--factory", "-l/--lane")
+	}
+	if sawFactoryFlag && sawAgentToken {
+		return p, fmt.Errorf(entryTokenConflict, "-f/--factory", "-a")
+	}
+	if sawLaneToken && sawAgentToken {
+		return p, fmt.Errorf(entryTokenConflict, "-l/--lane", "-a")
 	}
 
 	// The --leader surface gates (REQ-004, REQ-008): the flag names a TARGET

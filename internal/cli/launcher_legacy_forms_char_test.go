@@ -93,9 +93,9 @@ func TestLegacyForms_GlmL_SharesTheCcEntryParse(t *testing.T) {
 	}
 }
 
-// `--agent <x>` is not a launcher token today: it is neither a factory entry
+// `--agent <x>` is not a launcher token: it is neither a factory entry
 // nor consumed, and it reaches the launch argv unchanged, with or without the
-// `--` pass-through marker.
+// `--` pass-through marker. (Claude Code has its own --agent option; only the short `-a` is the lane entry.)
 func TestLegacyForms_AgentFlag_PassesThroughUnchanged(t *testing.T) {
 	for _, args := range [][]string{
 		{"--agent", "x"},

@@ -29,6 +29,18 @@ func TestQueueUpdate_TransitionTable_EveryPair(t *testing.T) {
 		QueueVerifying: {QueueVerifying, QueueLanding, QueueFailed, QueueWaiting},
 		QueueLanding:   {QueueLanded, QueueFailed, QueueWaiting},
 	}
+	// the 12 pairs that need the landing lock's epoch, written out: landing and landed from
+	// any state (10), and the reconcile back to waiting from verifying and landing (2)
+	lockPairs := map[[2]QueueState]bool{}
+	for _, f := range states {
+		lockPairs[[2]QueueState{f, QueueLanding}] = true
+		lockPairs[[2]QueueState{f, QueueLanded}] = true
+	}
+	lockPairs[[2]QueueState{QueueVerifying, QueueWaiting}] = true
+	lockPairs[[2]QueueState{QueueLanding, QueueWaiting}] = true
+	if len(lockPairs) != 12 {
+		t.Fatalf("lock pairs: %d", len(lockPairs))
+	}
 	isAllowed := func(from, to QueueState) bool {
 		for _, n := range allowed[from] {
 			if n == to {
@@ -39,9 +51,9 @@ func TestQueueUpdate_TransitionTable_EveryPair(t *testing.T) {
 	}
 	for _, from := range states {
 		for _, to := range states {
-			ep, wrong := CardEpoch(c.Epoch), LockEpoch(lock)
-			if to == QueueLanding || to == QueueLanded || (to == QueueWaiting && (from == QueueVerifying || from == QueueLanding)) {
-				ep, wrong = LockEpoch(lock), CardEpoch(c.Epoch)
+			ep, wrong := CardEpoch(c.Epoch, "c1"), LockEpoch(lock, "c1")
+			if lockPairs[[2]QueueState{from, to}] {
+				ep, wrong = LockEpoch(lock, "c1"), CardEpoch(c.Epoch, "c1")
 			}
 			reason := ""
 			if to == QueueFailed {
