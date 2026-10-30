@@ -262,7 +262,7 @@ func (e *Executor) Execute(ctx context.Context, r Request) (Intent, error) {
 		in.Status, in.LastError = StatusParked, safeErr(serr)
 		var re *RefusedError
 		if errors.As(serr, &re) {
-			in.ParkReason = string(re.Reason)
+			in.ParkReason = parkReasonOf(re.Reason)
 		}
 	case errors.Is(serr, ErrDenied):
 		in.Status, in.LastError = StatusParked, safeErr(serr)
@@ -290,6 +290,18 @@ func sentAtNanos(v int64) int64 {
 		return v * int64(time.Second)
 	}
 	return v
+}
+
+// parkReasonOf is the reason an intent is recorded under when the guard refused it. Design 11.3 records
+// every protection-weakening refusal under the single reason permission-denied; the guard's finer code
+// (weakens-protection, not-allowlisted, malformed-request) stays in LastError, so the record carries one
+// reason and the detail is not lost. Refusals about identity or repository keep their own code.
+func parkReasonOf(r RefusalReason) string {
+	switch r {
+	case ReasonWeakensProtection, ReasonNotAllowlisted, ReasonMalformed:
+		return string(core.ReasonPermissionDenied)
+	}
+	return string(r)
 }
 
 // safeErr is the error text as it may be stored: through the one core sanitizer, so a credential or
