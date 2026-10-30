@@ -460,6 +460,9 @@ func (r *Runner) Pause(t Ticket, to core.State, reason core.BlockReason, resume 
 			return fmt.Errorf("%w: resume condition is required", core.ErrTransitionInvalid)
 		}
 		pauseIn(rec, to, reason, resume)
+		if reason == core.ReasonOperatorHold {
+			rec.Evidence = []string{core.GuardOperatorHold} // S46 has no edge for it; the move is a named exception
+		}
 		rec.Wait = &w // a park always carries its wait record (design 2.1c); the store checks it
 		return nil
 	})
@@ -478,6 +481,9 @@ func (r *Runner) Resume(t Ticket, conditionMet bool) (claim.Record, error) {
 		}
 		if !conditionMet {
 			return fmt.Errorf("%w: resume condition not met: %s", core.ErrTransitionInvalid, rec.Resume)
+		}
+		if rec.Park != nil {
+			rec.Evidence = []string{"resume-guard:" + string(rec.Park.Reason)} // E20 carries its guard
 		}
 		rec.State, rec.Return, rec.Reason, rec.Resume = rec.Return, "", "", ""
 		return nil

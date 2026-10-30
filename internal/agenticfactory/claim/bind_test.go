@@ -112,7 +112,7 @@ func TestAReservationOfADoneIssueIsTakenOver(t *testing.T) {
 	if _, err := sa.BindWorktree(ref(t, 1), "w1", ra.Epoch, wt_one); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := sa.Update(ref(t, 1), "w1", ra.Epoch, func(r *Record) error { r.State = core.StateDone; r.Closed = true; return nil }); err != nil {
+	if _, err := sa.Update(ref(t, 1), "w1", ra.Epoch, func(r *Record) error { finish(r); return nil }); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := sb.BindWorktree(ref(t, 2), "w2", rb.Epoch, wt_one); err != nil {

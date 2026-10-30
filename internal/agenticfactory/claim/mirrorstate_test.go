@@ -154,7 +154,7 @@ func TestUpdateAsMonitorCannotChangeSharedPartsInPlace(t *testing.T) {
 // it deeply and the lists below name it. time.Time is a value: its location pointer
 // is immutable and shared on purpose.
 func TestRecordCloneKnowsEveryReferenceField(t *testing.T) {
-	topKnown := map[string]bool{"Receipt": true, "Park": true, "Gate": true, "Refusal": true, "Wait": true, "Repair": true, "History": true}
+	topKnown := map[string]bool{"Receipt": true, "Park": true, "Gate": true, "Refusal": true, "Wait": true, "Repair": true, "History": true, "Evidence": true}
 	var nestedKnown = map[string]bool{} // "Receipt.Field" paths clone() copies deeply
 	isRef := func(k reflect.Kind) bool {
 		switch k {
@@ -164,21 +164,46 @@ func TestRecordCloneKnowsEveryReferenceField(t *testing.T) {
 		return false
 	}
 	timeType := reflect.TypeOf(time.Time{})
+	flag := func(p string) {
+		if !nestedKnown[p] {
+			t.Errorf("%s is a reference field inside a type clone() copies with a shallow `*p`: copy it deeply and add %q to nestedKnown", p, p)
+		}
+	}
+	// walk looks inside typ for reference-typed members. The container itself (a
+	// pointer, slice, array or map) is judged by the caller; its element is judged
+	// here, and so are the members of an element that is a struct.
 	var walk func(typ reflect.Type, path string)
 	walk = func(typ reflect.Type, path string) {
-		for typ.Kind() == reflect.Pointer || typ.Kind() == reflect.Slice {
-			typ = typ.Elem()
-		}
-		if typ.Kind() != reflect.Struct || typ == timeType {
-			return
-		}
-		for n := 0; n < typ.NumField(); n++ {
-			f := typ.Field(n)
-			p := path + "." + f.Name
-			if isRef(f.Type.Kind()) && !nestedKnown[p] {
-				t.Errorf("%s is a reference field inside a type clone() copies with a shallow `*p`: copy it deeply and add %q to nestedKnown", p, p)
+		switch typ.Kind() {
+		case reflect.Pointer:
+			walk(typ.Elem(), path)
+		case reflect.Slice:
+			if isRef(typ.Elem().Kind()) {
+				flag(path + "[]")
 			}
-			walk(f.Type, p)
+			walk(typ.Elem(), path)
+		case reflect.Array:
+			if isRef(typ.Elem().Kind()) {
+				flag(path + "[]")
+			}
+			walk(typ.Elem(), path+"[]")
+		case reflect.Map:
+			if isRef(typ.Elem().Kind()) {
+				flag(path + "[value]")
+			}
+			walk(typ.Elem(), path+"[value]")
+		case reflect.Struct:
+			if typ == timeType {
+				return
+			}
+			for n := 0; n < typ.NumField(); n++ {
+				f := typ.Field(n)
+				p := path + "." + f.Name
+				if isRef(f.Type.Kind()) {
+					flag(p)
+				}
+				walk(f.Type, p)
+			}
 		}
 	}
 	typ := reflect.TypeOf(Record{})
@@ -204,13 +229,14 @@ func TestRecordCloneSharesNoMemory(t *testing.T) {
 	r := Record{
 		Receipt: &Receipt{PR: 1}, Park: &core.Park{Reason: "a"}, Gate: &core.Gate{Detail: "a"},
 		Refusal: &core.Refusal{Detail: "a"}, Wait: &core.Wait{Diagnosis: "a"}, Repair: &Repair{Decision: "a"},
-		History: []Event{{Note: "a"}},
+		History: []Event{{Note: "a"}}, Evidence: []string{"a"},
 	}
 	c := r.clone()
 	c.Receipt.PR, c.Park.Reason, c.Gate.Detail, c.Refusal.Detail, c.Wait.Diagnosis, c.Repair.Decision, c.History[0].Note = 2, "b", "b", "b", "b", "b", "b"
 	c.History = append(c.History, Event{Kind: "x"})
+	c.Evidence[0] = "b"
 	if r.Receipt.PR != 1 || r.Park.Reason != "a" || r.Gate.Detail != "a" || r.Refusal.Detail != "a" ||
-		r.Wait.Diagnosis != "a" || r.Repair.Decision != "a" || r.History[0].Note != "a" || len(r.History) != 1 {
+		r.Wait.Diagnosis != "a" || r.Repair.Decision != "a" || r.History[0].Note != "a" || len(r.History) != 1 || r.Evidence[0] != "a" {
 		t.Errorf("the clone shares memory with its original: %+v", r)
 	}
 	if (Record{}).clone().History != nil {
