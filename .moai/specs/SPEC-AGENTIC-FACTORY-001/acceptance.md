@@ -685,6 +685,216 @@ F2 작업 당시에는 하위 SPEC의 `acceptance.md`를 고치지 않고 여기
 - AC-AF-022: WT01~WT14, WT16, GH01~GH04, GH07~GH15
 - AC-AF-024: EFF01~EFF06
 
+#### 정본 id별 동작 표 (`TestAcceptanceManifest`, 0.6.7 서른세 번째 후속)
+
+- 계기(리더 전달, relayed, not read by this author): lane-22 보고 "AC 본문에 정본 id별 동작이 없다". 아래 표는 그 보고를 이 SPEC 안에서 확인한 결과다. 기존 표와 목록은 바꾸지 않았다.
+- id와 AC 열은 design §15.1(`design.md:832-863`, 165건)의 "주 시험" 칸 그대로다. 행 수 165는 생성한 행 파일의 `wc -l` 값이다.
+- **기대 동작 칸**: design.md·spec.md·acceptance.md·plan.md·research.md에서 정본 id 모양(`M01`~`M56`, `M46a`~`g`, `CLI`·`SYNC`·`WT`·`GH`·`HANDOFF`·`PREP`·`CONTEXT`·`EFF` + 두 자리)을 `grep -n -o -E`로 찾고, id를 부르며 동작을 적은 문장만 옮겼다. 그런 문장은 SYNC12·SYNC13·SYNC15·M34·CLI14·CONTEXT06 여섯 개뿐이다. 나머지 159개는 SPEC 어디에도 id별 동작이 없어 **미정**이다. AC 본문의 사례 (a)~(g)는 정본 id와 짝지어 있지 않아 어느 id의 동작으로도 옮기지 않았다.
+- **관찰 방법 칸**: 통합 끝 `70e28a5a78`에서 `git grep -n -e "TestAcceptanceManifest" 70e28a5a78`는 SPEC 문서 줄만 출력했다(실행기 없음). `git grep -n -w -E <정본 id 패턴> 70e28a5a78 -- '*_test.go'`와 AF 시험 파일 검색에서 정본 뜻으로 id를 부르는 시험 주석은 M34·HANDOFF01·HANDOFF02·HANDOFF03·HANDOFF08뿐이다. 그 시험들은 `TestAcceptanceManifest/<id>` 하위 시험이 아니며 실행하지 않았다. `M10`은 시험 파일 두 곳에 나오지만 다른 SPEC의 milestone(`internal/cli/factory_skill_assertions_test.go:3`, SPEC-LAUNCHER-ENTRY-FLAGS-001 M10)과 옛 시험 이름(`internal/web/autonomy_console_test.go:12`)이라 정본 M10으로 세지 않았다.
+- **충족 칸**: 시험을 돌리지 않아 전부 `not measured`다. M34 한 행에만 코드 읽기를 덧붙였다(측정이 아님).
+
+| 정본 id | AC | 기대 동작 (SPEC 원문·위치, 없으면 미정) | 관찰 방법 (`70e28a5a78`) | 지금 충족? |
+|---|---|---|---|---|
+| M01 | AC-AF-001 | 미정 | no observation method written | not measured |
+| M02 | AC-AF-001 | 미정 | no observation method written | not measured |
+| M03 | AC-AF-001 | 미정 | no observation method written | not measured |
+| M04 | AC-AF-001 | 미정 | no observation method written | not measured |
+| M05 | AC-AF-001 | 미정 | no observation method written | not measured |
+| SYNC12 | AC-AF-002 | "로컬 캐시는 control ref와 승인된 immutable 원본으로 재구축할 수 있어야 하고, 혼자서는 claim·부여·완료를 만들지 않는다(SYNC12)"(`design.md:32`); 정본 인용 "local cache 소실·비LLM 서비스 재시작 → online control ref와 원본 artifact로 복구"(`spec.md:196`) | no observation method written | not measured |
+| M47 | AC-AF-002 | 미정 | no observation method written | not measured |
+| M13 | AC-AF-003 | 미정 | no observation method written | not measured |
+| M15 | AC-AF-003 | 미정 | no observation method written | not measured |
+| M06 | AC-AF-004 | 미정 | no observation method written | not measured |
+| M07 | AC-AF-004 | 미정 | no observation method written | not measured |
+| M08 | AC-AF-004 | 미정 | no observation method written | not measured |
+| M09 | AC-AF-004 | 미정 | no observation method written | not measured |
+| M10 | AC-AF-004 | 미정 | no observation method written | not measured |
+| M11 | AC-AF-004 | 미정 | no observation method written | not measured |
+| M12 | AC-AF-004 | 미정 | no observation method written | not measured |
+| M18 | AC-AF-005 | 미정 | no observation method written | not measured |
+| M19 | AC-AF-005 | 미정 | no observation method written | not measured |
+| M20 | AC-AF-005 | 미정 | no observation method written | not measured |
+| M29 | AC-AF-005 | 미정 | no observation method written | not measured |
+| M30 | AC-AF-005 | 미정 | no observation method written | not measured |
+| M31 | AC-AF-005 | 미정 | no observation method written | not measured |
+| SYNC03 | AC-AF-005 | 미정 | no observation method written | not measured |
+| SYNC04 | AC-AF-005 | 미정 | no observation method written | not measured |
+| SYNC05 | AC-AF-005 | 미정 | no observation method written | not measured |
+| SYNC11 | AC-AF-005 | 미정 | no observation method written | not measured |
+| M33 | AC-AF-006 | 미정 | no observation method written | not measured |
+| M34 | AC-AF-006 | "Issue 종료가 DONE 기록보다 먼저다(DEC-AF-07, 시험 M34). 다음 dispatch는 DONE 뒤"(`design.md:183`); DEC-AF-07 "Issue 종료가 DONE보다 먼저(E13/E14, 시험 M34)"(`spec.md:216`) | `TestAcceptanceManifest/M34` 없음. 주석이 M34를 부르는 시험(실행 안 함): `TestScenario_ClosureThenNextDispatch`(`internal/agenticfactory/e2e/scenario2_test.go:149`, 주석 `:158`), 파일 주석 `e2e/real_closure_test.go:12` 아래 `TestRealClosure_MissingClose_NeverDone_MergeFactKept_DirectPath`(`:21`)·`TestRealClosure_MissingClose_NeverDone_HandedOffPath`(`:44`) | not measured. 코드 읽기: `internal/agenticfactory/runner/runner.go:412-413`이 Issue 종료 기록이 없으면 `issue close not recorded`로 거절한다(DONE 쪽 거절 경로가 있음; 시험은 돌리지 않음) |
+| M35 | AC-AF-006 | 미정 | no observation method written | not measured |
+| M36 | AC-AF-006 | 미정 | no observation method written | not measured |
+| M14 | AC-AF-007 | 미정 | no observation method written | not measured |
+| M24 | AC-AF-007 | 미정 | no observation method written | not measured |
+| M25 | AC-AF-007 | 미정 | no observation method written | not measured |
+| M26 | AC-AF-007 | 미정 | no observation method written | not measured |
+| M27 | AC-AF-007 | 미정 | no observation method written | not measured |
+| M32 | AC-AF-007 | 미정 | no observation method written | not measured |
+| M37 | AC-AF-007 | 미정 | no observation method written | not measured |
+| M55 | AC-AF-007 | 미정 | no observation method written | not measured |
+| HANDOFF01 | AC-AF-009 | 미정 | `TestAcceptanceManifest/HANDOFF01` 없음. 주석이 HANDOFF01을 부르는 시험(실행 안 함): `TestPublishedPRWithLostAcceptanceHoldsEverything`(`internal/agenticfactory/reconcile/handoff_test.go:36`, 주석 `:35`). reconcile 인계 모형은 운영 경로에 연결되지 않았다(`audit-r1-disposition.md` F15 행) | not measured |
+| HANDOFF02 | AC-AF-009 | 미정 | `TestAcceptanceManifest/HANDOFF02` 없음. 주석이 부르는 시험(실행 안 함): `TestReleaseHappensOnceAcrossDuplicatesAndOrder`(`reconcile/handoff_test.go:47`, 주석 `:46`) | not measured |
+| HANDOFF03 | AC-AF-009 | 미정 | `TestAcceptanceManifest/HANDOFF03` 없음. 주석이 부르는 시험(실행 안 함): `TestCrashAroundAcceptanceRecoversWithoutDuplicateWriter`(`reconcile/handoff_test.go:67`, 주석 `:66`) | not measured |
+| HANDOFF04 | AC-AF-009 | 미정 | no observation method written | not measured |
+| HANDOFF05 | AC-AF-009 | 미정 | no observation method written | not measured |
+| HANDOFF06 | AC-AF-009 | 미정 | no observation method written | not measured |
+| HANDOFF07 | AC-AF-009 | 미정 | no observation method written | not measured |
+| HANDOFF08 | AC-AF-009 | 미정 | `TestAcceptanceManifest/HANDOFF08` 없음. 주석이 부르는 시험(실행 안 함): `TestHeadChangedAfterHandoffInvalidatesIt`(`reconcile/handoff_test.go:79`, 주석 `:78`), `TestHandoff08_HeadChangeInvalidatesPriorEvidence`(`review/fresh_test.go:12`, 주석 `:10`); `review/audit_entry_test.go:13` 주석 아래 `TestAuditEntry_FieldsAndStale`(`:14`) | not measured |
+| M22 | AC-AF-010 | 미정 | no observation method written | not measured |
+| M23 | AC-AF-010 | 미정 | no observation method written | not measured |
+| PREP01 | AC-AF-012 | 미정 | no observation method written | not measured |
+| PREP02 | AC-AF-012 | 미정 | no observation method written | not measured |
+| PREP03 | AC-AF-012 | 미정 | no observation method written | not measured |
+| PREP04 | AC-AF-012 | 미정 | no observation method written | not measured |
+| PREP05 | AC-AF-012 | 미정 | no observation method written | not measured |
+| PREP06 | AC-AF-012 | 미정 | no observation method written | not measured |
+| PREP07 | AC-AF-012 | 미정 | no observation method written | not measured |
+| PREP08 | AC-AF-012 | 미정 | no observation method written | not measured |
+| PREP09 | AC-AF-012 | 미정 | no observation method written | not measured |
+| PREP10 | AC-AF-012 | 미정 | no observation method written | not measured |
+| M39 | AC-AF-013 | 미정 | no observation method written | not measured |
+| M40 | AC-AF-013 | 미정 | no observation method written | not measured |
+| CONTEXT04 | AC-AF-013 | 미정 | no observation method written | not measured |
+| M17 | AC-AF-014 | 미정 | no observation method written | not measured |
+| M28 | AC-AF-014 | 미정 | no observation method written | not measured |
+| M43 | AC-AF-014 | 미정 | no observation method written | not measured |
+| M44 | AC-AF-014 | 미정 | no observation method written | not measured |
+| GH05 | AC-AF-014 | 미정 | no observation method written | not measured |
+| GH06 | AC-AF-014 | 미정 | no observation method written | not measured |
+| SYNC09 | AC-AF-014 | 미정 | no observation method written | not measured |
+| SYNC10 | AC-AF-014 | 미정 | no observation method written | not measured |
+| WT15 | AC-AF-014 | 미정 | no observation method written | not measured |
+| SYNC13 | AC-AF-014 | 정본 인용 "GitHub primary/secondary 403·429와 권한 403 → 오류 분류·정상 재개 조건 분리"(`spec.md:202`) | no observation method written | not measured |
+| SYNC14 | AC-AF-014 | 미정 | no observation method written | not measured |
+| SYNC15 | AC-AF-014 | "변경 요청은 직렬. 공유 예산 아래 우선순위: 상태 안전 쓰기 > 안전 알림 > 진척·보고 댓글(SYNC15)"(`design.md:380`) | no observation method written | not measured |
+| SYNC16 | AC-AF-014 | 미정 | no observation method written | not measured |
+| SYNC17 | AC-AF-014 | 미정 | no observation method written | not measured |
+| SYNC18 | AC-AF-014 | 미정 | no observation method written | not measured |
+| M21 | AC-AF-015 | 미정 | no observation method written | not measured |
+| M16 | AC-AF-016 | 미정 | no observation method written | not measured |
+| M41 | AC-AF-016 | 미정 | no observation method written | not measured |
+| M42 | AC-AF-016 | 미정 | no observation method written | not measured |
+| M48 | AC-AF-016 | 미정 | no observation method written | not measured |
+| M54 | AC-AF-016 | 미정 | no observation method written | not measured |
+| M56 | AC-AF-016 | 미정 | no observation method written | not measured |
+| M45 | AC-AF-017 | 미정 | no observation method written | not measured |
+| M49 | AC-AF-017 | 미정 | no observation method written | not measured |
+| M50 | AC-AF-017 | 미정 | no observation method written | not measured |
+| M51 | AC-AF-017 | 미정 | no observation method written | not measured |
+| M52 | AC-AF-017 | 미정 | no observation method written | not measured |
+| M53 | AC-AF-017 | 미정 | no observation method written | not measured |
+| SYNC01 | AC-AF-017 | 미정 | no observation method written | not measured |
+| SYNC02 | AC-AF-017 | 미정 | no observation method written | not measured |
+| SYNC06 | AC-AF-017 | 미정 | no observation method written | not measured |
+| SYNC07 | AC-AF-017 | 미정 | no observation method written | not measured |
+| SYNC08 | AC-AF-017 | 미정 | no observation method written | not measured |
+| CONTEXT01 | AC-AF-018 | 미정 | no observation method written | not measured |
+| CONTEXT02 | AC-AF-018 | 미정 | no observation method written | not measured |
+| CONTEXT03 | AC-AF-018 | 미정 | no observation method written | not measured |
+| CONTEXT05 | AC-AF-018 | 미정 | no observation method written | not measured |
+| CONTEXT06 | AC-AF-018 | "CONTEXT06 '새 대상의 증거가 필요하다'는 **호출자 규칙**이며 모형이 집행하지 않는다"(`spec.md:369`, lane-18이 밝힌 공백, 리더 전달) | no observation method written | not measured |
+| M38 | AC-AF-020 | 미정 | no observation method written | not measured |
+| M46 | AC-AF-020 | 미정 | no observation method written | not measured |
+| M46a | AC-AF-020 | 미정 | no observation method written | not measured |
+| M46b | AC-AF-020 | 미정 | no observation method written | not measured |
+| M46c | AC-AF-020 | 미정 | no observation method written | not measured |
+| M46d | AC-AF-020 | 미정 | no observation method written | not measured |
+| M46e | AC-AF-020 | 미정 | no observation method written | not measured |
+| M46f | AC-AF-020 | 미정 | no observation method written | not measured |
+| M46g | AC-AF-020 | 미정 | no observation method written | not measured |
+| CLI01 | AC-AF-021 | 미정 | no observation method written | not measured |
+| CLI02 | AC-AF-021 | 미정 | no observation method written | not measured |
+| CLI03 | AC-AF-021 | 미정 | no observation method written | not measured |
+| CLI04 | AC-AF-021 | 미정 | no observation method written | not measured |
+| CLI05 | AC-AF-021 | 미정 | no observation method written | not measured |
+| CLI06 | AC-AF-021 | 미정 | no observation method written | not measured |
+| CLI07 | AC-AF-021 | 미정 | no observation method written | not measured |
+| CLI08 | AC-AF-021 | 미정 | no observation method written | not measured |
+| CLI09 | AC-AF-021 | 미정 | no observation method written | not measured |
+| CLI10 | AC-AF-021 | 미정 | no observation method written | not measured |
+| CLI11 | AC-AF-021 | 미정 | no observation method written | not measured |
+| CLI12 | AC-AF-021 | 미정 | no observation method written | not measured |
+| CLI13 | AC-AF-021 | 미정 | no observation method written | not measured |
+| CLI14 | AC-AF-021 | 정본 S46 CLI14 행의 두 칸 원문 "pause/resume"과 "새 배차만 제어, 강제 종료 0, HOLD/보호 우회 0"(`spec.md:327`, OD-12 사실 칸; OD-12는 OPEN) | no observation method written | not measured |
+| CLI15 | AC-AF-021 | 미정 | no observation method written | not measured |
+| CLI16 | AC-AF-021 | 미정 | no observation method written | not measured |
+| CLI17 | AC-AF-021 | 미정 | no observation method written | not measured |
+| CLI18 | AC-AF-021 | 미정 | no observation method written | not measured |
+| CLI19 | AC-AF-021 | 미정 | no observation method written | not measured |
+| CLI20 | AC-AF-021 | 미정 | no observation method written | not measured |
+| CLI21 | AC-AF-021 | 미정 | no observation method written | not measured |
+| CLI22 | AC-AF-021 | 미정 | no observation method written | not measured |
+| CLI23 | AC-AF-021 | 미정 | no observation method written | not measured |
+| WT01 | AC-AF-022 | 미정 | no observation method written | not measured |
+| WT02 | AC-AF-022 | 미정 | no observation method written | not measured |
+| WT03 | AC-AF-022 | 미정 | no observation method written | not measured |
+| WT04 | AC-AF-022 | 미정 | no observation method written | not measured |
+| WT05 | AC-AF-022 | 미정 | no observation method written | not measured |
+| WT06 | AC-AF-022 | 미정 | no observation method written | not measured |
+| WT07 | AC-AF-022 | 미정 | no observation method written | not measured |
+| WT08 | AC-AF-022 | 미정 | no observation method written | not measured |
+| WT09 | AC-AF-022 | 미정 | no observation method written | not measured |
+| WT10 | AC-AF-022 | 미정 | no observation method written | not measured |
+| WT11 | AC-AF-022 | 미정 | no observation method written | not measured |
+| WT12 | AC-AF-022 | 미정 | no observation method written | not measured |
+| WT13 | AC-AF-022 | 미정 | no observation method written | not measured |
+| WT14 | AC-AF-022 | 미정 | no observation method written | not measured |
+| WT16 | AC-AF-022 | 미정 | no observation method written | not measured |
+| GH01 | AC-AF-022 | 미정 | no observation method written | not measured |
+| GH02 | AC-AF-022 | 미정 | no observation method written | not measured |
+| GH03 | AC-AF-022 | 미정 | no observation method written | not measured |
+| GH04 | AC-AF-022 | 미정 | no observation method written | not measured |
+| GH07 | AC-AF-022 | 미정 | no observation method written | not measured |
+| GH08 | AC-AF-022 | 미정 | no observation method written | not measured |
+| GH09 | AC-AF-022 | 미정 | no observation method written | not measured |
+| GH10 | AC-AF-022 | 미정 | no observation method written | not measured |
+| GH11 | AC-AF-022 | 미정 | no observation method written | not measured |
+| GH12 | AC-AF-022 | 미정 | no observation method written | not measured |
+| GH13 | AC-AF-022 | 미정 | no observation method written | not measured |
+| GH14 | AC-AF-022 | 미정 | no observation method written | not measured |
+| GH15 | AC-AF-022 | 미정 | no observation method written | not measured |
+| EFF01 | AC-AF-024 | 미정 | no observation method written | not measured |
+| EFF02 | AC-AF-024 | 미정 | no observation method written | not measured |
+| EFF03 | AC-AF-024 | 미정 | no observation method written | not measured |
+| EFF04 | AC-AF-024 | 미정 | no observation method written | not measured |
+| EFF05 | AC-AF-024 | 미정 | no observation method written | not measured |
+| EFF06 | AC-AF-024 | 미정 | no observation method written | not measured |
+
+셈(이 표): 동작이 적힌 id 6 · 미정 159 · 관찰 방법(주석이 id를 부르는 시험)이 있는 id 5(M34, HANDOFF01, HANDOFF02, HANDOFF03, HANDOFF08) · 충족을 측정한 id 0. HANDOFF01~03·08은 동작이 미정인데 시험 주석에는 동작이 적혀 있다. 그 주석 문장은 SPEC 조항이 아니어서 동작 칸에 옮기지 않았다.
+
+#### golden 파일 형식 — AC-AF-021 (`TestCompat_*`·`TestLauncher_*`)
+
+- 근거: design §9.6(`design.md:716-720`) — 위치 제안 `internal/cli/testdata/agentic_factory_compat/`, 내용 "변경 전 빌드로 기록한 `moai cc --help`의 진입 플래그 도움말, 거절 문구와 종료 코드, 기존 factory 기록의 lane 레이블·세션 id·owner·handle·권한 모드 스냅숏", 순서 "M6의 첫 커밋이 golden 파일만 담는다". AC-AF-021 (a)·(b)와 golden 순서 점검(`acceptance.md` AC-AF-021 사례 줄). 형식의 네 요소는 `.claude/rules/moai/development/verification-completeness.md` §2.1.
+- **형식(이 절은 형식만 정한다)**: golden 항목 하나는 명령 하나다. 항목마다 다음을 따로 담는다.
+  1. 명령 줄 — 파이프·리디렉션·`&&`·`;`·subshell 없는 한 번의 읽기 전용 호출(§2.1 첫 요소).
+  2. 기대 stdout — 렌더링한 모습이 아닌 원시 바이트(§2.1 둘째 요소).
+  3. 기대 stderr — 원시 바이트. §2.1의 네 요소에는 없지만 AC-AF-021 (b) "stderr 한 줄만 추가"를 바이트로 비교하려면 필요하다고 이 작성자가 읽었다.
+  4. 종료 코드 — 출력과 다른 별도 필드(§2.1 셋째 요소). 출력이 비고 종료 코드가 0이 아닌 항목도 완전한 기록이다.
+  5. 기록한 빌드의 트리 SHA — 전체 commit SHA, 브랜치 이름이 아님(§2.1 넷째 요소, §4). 빌드한 바이너리의 commit도 함께 적는다(`verification-claim-integrity.md` §2.2).
+  - design §9.6의 "factory 기록 스냅숏"은 명령 출력이 아니라 기록 파일이다. 같은 형식으로 담으려면 그 스냅숏을 만든 읽기 명령과 트리 SHA를 함께 적는다.
+- 사실: `git ls-tree --name-only 70e28a5a78 -- internal/cli/testdata/agentic_factory_compat` 출력 없음 — **no golden file exists at 70e28a5a78**(§9.6 제안 위치 기준). 다른 SPEC의 golden `internal/config/testdata/lane_entry_env_golden.json`(SPEC-LAUNCHER-ENTRY-FLAGS-001 AC-004, `internal/cli/lane_entry_golden_m1_test.go:3-10`, lane 환경 표지)은 있으나 §9.6 golden이 아니어서 세지 않았다.
+- **content waits for OD-29**(어느 명령 이름과 문법을 golden에 담을지). 문법 네 건은 OD-2에 그대로 열려 있다.
+
+#### `TestLaneWake_SelfPacedWithTime_NoFixedIntervalJob` — 깨어남 형태 계약 (제안)
+
+- 이미 있는 문장(이 작성자가 이 트리 HEAD `0f90ffc0bf`에서 읽음):
+  - REQ-AF-016(`spec.md:160`): "The next automatic action of a wait record SHALL be a self-paced wake at a stated time that is not re-armed when no work remains, and the state engine SHALL refuse as invalid a wait record whose next automatic action is a fixed-interval recurring job."
+  - DEC-AF-27 (3)(`spec.md:236`): "다른 lane을 기다릴 때는 자기 페이스 `/loop`(ScheduleWakeup)로 스스로 깰 시각을 정하고, 남은 일이 없으면 stop으로 끝난다. 고정 간격 cron은 쓰지 않는다." (2): 이어지는 작업은 `/moai goal` 조건(열린 일감 수 0 + 턴 상한). (1)과 REQ-AF-010(`spec.md:149`): 일감은 자기 progress 기록에서 가져온다.
+  - design §2.1c(`design.md:144`): 다음 자동 동작은 시각을 밝힌 자기 페이스 깨어남, 남은 일이 없으면 다시 걸지 않음, 시각 값은 SPEC이 정하지 않음.
+  - AC-AF-016 (f)(`acceptance.md` AC-AF-016 사례 줄): 이 시험의 제안 사례 문장. AC-AF-010 (g)는 leader로 보내는 범주이며 깨어남 형태를 말하지 않는다.
+  - `spec.md:441`(리더 전달): 배포 규칙 문서는 아직 카드마다 recheck cron을 적고 있고, 사용자 승인 게이트에서 보류 중이다.
+- **제안 계약 문장** — lane-17 제안 문장; 리더 요청에 따라 리더 잠정 결정으로 표시(리더 세션 경유, 되돌릴 수 있음, 운영자·사용자 결정 아님):
+  - lane 세션은 세션 시작 때 주입된 지시에 따라 다음에 깰 시각을 밝힌 한 번의 자기 페이스 깨어남만 걸고 고정 간격 반복 작업은 등록하지 않으며, 자기 일감 목록에 남은 일이 없어 유휴가 되면 다음 깨어남을 다시 걸지 않고 끝난다.
+  - 보조 1: 다른 lane을 기다리는 동안의 유휴는 남은 일이 있는 상태라 끝이 아니며, 그동안의 깨어남은 대기 기록의 "다음 자동 동작"·"재확인 시각"에 적힌 시각을 밝힌 자기 페이스 깨어남이다(REQ-AF-016, DEC-AF-27 (3)).
+  - 보조 2: 유휴로 끝났다는 사실은 일의 완료 증거가 아니며, 완료는 기록과 증거에서 읽는다(design §3 `received`·`completed` 행이 idle 알림을 증거로 받지 않는 것과 같은 규칙).
+- 계기(리더 전달, relayed, not read by this author): lane-20 B6은 "session-start injection, idle exit"이다. 이 작성자는 B6 코드를 읽지 않았다.
+- **기존 문장과 어긋나는 곳(정리하지 않고 그대로 적음)**:
+  - "세션 시작 주입": SPEC의 어느 조항도 깨어남 지시가 세션 시작 때 주입된다고 적지 않는다. DEC-AF-27 (3)은 깨어남 수단으로 `/loop`(ScheduleWakeup)만 든다. 이 부분은 SPEC에 없던 내용이며, 위 문장이 새로 들인다.
+  - 배포 규칙과 정면으로 어긋난다: `.claude/rules/moai/workflow/auto-semantics.md:113-125`(§5.1)는 카드 접수 때 `CronCreate`로 `cron: "*/N * * * *"`, `recurring: true`인 상시 깨움을 걸어 카드 실행 내내 두라고 하고, 절대 시각의 한 번짜리 깨움을 금지한다("Never a one-shot at an absolute clock time", `:124`). `factory-dispatch-core.md:28`도 recurring recheck cron을 적는다. 이 작성자 세션의 SessionStart 주입 문구도 "a recurring `CronCreate` recheck armed before the first stage"를 담고 있었다 — 지금의 세션 시작 주입이 고정 간격 반복 작업을 싣고 있다. 이 어긋남은 `spec.md:441`에 이미 적혀 있고 사용자 승인 게이트에서 보류 중이며, 이 편집으로 풀리지 않는다.
+  - 같은 규칙 `auto-semantics.md:392-396`은 leader를 기다리는 동안 `recurring: false`인 한 번짜리 재확인을 "지금부터" 상대 시간으로 걸고, 대기가 풀리면 다시 걸지 않는다고 적는다. 이것은 위 문장의 모양과 가깝지만 상대 시간이다. 위 문장의 "다음에 깰 시각을 밝힌"이 절대 시각을 뜻하면 `:124`의 금지와 부딪힌다. 이 작성자는 둘 중 무엇인지 정하지 않았다.
+  - "유휴 종료": DEC-AF-27 (3)의 "남은 일이 없으면 stop으로 끝난다"와 맞는 것은 유휴를 "남은 일 없음"으로 읽을 때뿐이다. 유휴가 다른 lane을 기다리는 상태까지 포함하면 (3)과 어긋난다. 위 문장은 앞의 뜻으로 적었다(보조 1). 이것은 이 작성자의 선택이다.
+
 #### IDENTITY
 
 하위 SPEC-AGENTIC-FACTORY-IDENTITY-001 [REF]의 항목은 lane-18이 구현한다(커밋 `6b945fd844` HostFacts. relayed, not read). 하위 SPEC의 `acceptance.md`에는 자체 목록이 아직 필요하며, 다음 작업에서 만든다. G.1의 `TestIdentity_*` 아홉은 이 표에 넣지 않았다.
