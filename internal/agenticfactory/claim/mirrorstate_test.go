@@ -137,30 +137,63 @@ func TestUpdateAsMonitorCannotChangeSharedPartsInPlace(t *testing.T) {
 		t.Fatal(err)
 	}
 	after, _ := s.Read(i)
-	if after.Receipt == nil || *after.Receipt != *before.Receipt {
+	if after.Receipt == nil || !reflect.DeepEqual(after.Receipt, before.Receipt) {
 		t.Errorf("the receipt changed in place: %+v -> %+v", before.Receipt, after.Receipt)
 	}
-	if len(after.History) != len(before.History) || after.History[0] != before.History[0] {
+	if !reflect.DeepEqual(after.History, before.History) {
 		t.Errorf("the history changed in place: %+v -> %+v", before.History, after.History)
 	}
 }
 
-// The reference-typed fields of Record are the ones clone() must copy. A new one
-// fails here until clone handles it and this list names it.
+// clone() copies the targets of Record's own reference fields with `v := *p`, which
+// is a full copy only while those targets hold values. This walks the type: a
+// reference-typed field of Record that clone() does not name fails, and so does a
+// reference-typed field anywhere inside what it points to (a slice, map, pointer or
+// interface in Receipt, Event, Repair, Park, Gate, Refusal or Wait), because a
+// shallow copy of that target would share it. A new one fails until clone() copies
+// it deeply and the lists below name it. time.Time is a value: its location pointer
+// is immutable and shared on purpose.
 func TestRecordCloneKnowsEveryReferenceField(t *testing.T) {
-	known := map[string]bool{"Receipt": true, "Park": true, "Gate": true, "Refusal": true, "Wait": true, "Repair": true, "History": true}
+	topKnown := map[string]bool{"Receipt": true, "Park": true, "Gate": true, "Refusal": true, "Wait": true, "Repair": true, "History": true}
+	var nestedKnown = map[string]bool{} // "Receipt.Field" paths clone() copies deeply
+	isRef := func(k reflect.Kind) bool {
+		switch k {
+		case reflect.Pointer, reflect.Slice, reflect.Map, reflect.Interface, reflect.Chan, reflect.Func:
+			return true
+		}
+		return false
+	}
+	timeType := reflect.TypeOf(time.Time{})
+	var walk func(typ reflect.Type, path string)
+	walk = func(typ reflect.Type, path string) {
+		for typ.Kind() == reflect.Pointer || typ.Kind() == reflect.Slice {
+			typ = typ.Elem()
+		}
+		if typ.Kind() != reflect.Struct || typ == timeType {
+			return
+		}
+		for n := 0; n < typ.NumField(); n++ {
+			f := typ.Field(n)
+			p := path + "." + f.Name
+			if isRef(f.Type.Kind()) && !nestedKnown[p] {
+				t.Errorf("%s is a reference field inside a type clone() copies with a shallow `*p`: copy it deeply and add %q to nestedKnown", p, p)
+			}
+			walk(f.Type, p)
+		}
+	}
 	typ := reflect.TypeOf(Record{})
 	for n := 0; n < typ.NumField(); n++ {
 		f := typ.Field(n)
-		switch f.Type.Kind() {
-		case reflect.Pointer, reflect.Slice, reflect.Map, reflect.Interface, reflect.Chan, reflect.Func:
-			if !known[f.Name] {
-				t.Errorf("Record.%s is a reference field clone() does not copy: add it to clone and to this list", f.Name)
-			}
-			delete(known, f.Name)
+		if !isRef(f.Type.Kind()) {
+			continue
 		}
+		if !topKnown[f.Name] {
+			t.Errorf("Record.%s is a reference field clone() does not copy: add it to clone and to this list", f.Name)
+		}
+		delete(topKnown, f.Name)
+		walk(f.Type, f.Name)
 	}
-	for n := range known {
+	for n := range topKnown {
 		t.Errorf("clone() lists %s but Record has no such reference field", n)
 	}
 }
