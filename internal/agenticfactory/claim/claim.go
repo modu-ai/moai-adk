@@ -760,6 +760,31 @@ func (s *Store) RecordMirror(i core.IssueRef, state string) error {
 	})
 }
 
+// UpdateAsMonitor is Update for a write that is not the owner acting: a reminder on a
+// wait, written by a monitor under the owner's holder and epoch so the record stays
+// the owner's. It verifies the same ownership and moves Seq, but not OwnerSeq, so it
+// never stales the owner's safe stop (see CheckSafeStop).
+func (s *Store) UpdateAsMonitor(i core.IssueRef, holder string, epoch int64, fn func(*Record) error) (Record, error) {
+	var out Record
+	err := s.withLock(i, func() error {
+		cur, err := s.Verify(i, holder, epoch)
+		if err != nil {
+			return err
+		}
+		next := cur
+		if err := fn(&next); err != nil {
+			return err
+		}
+		next.Issue, next.Holder, next.AgentName, next.Epoch, next.Seq, next.OwnerSeq = cur.Issue, cur.Holder, cur.AgentName, cur.Epoch, cur.Seq+1, cur.OwnerSeq
+		out = next
+		return s.write(i, &out)
+	})
+	if err != nil {
+		return Record{}, err
+	}
+	return out, nil
+}
+
 // Update verifies ownership, applies fn to a copy, and persists it with Seq+1.
 // A refused or failed update leaves the stored record untouched.
 func (s *Store) Update(i core.IssueRef, holder string, epoch int64, fn func(*Record) error) (Record, error) {

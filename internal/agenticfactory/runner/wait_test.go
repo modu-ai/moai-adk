@@ -107,3 +107,50 @@ func TestARetryPastTheLimitWritesNothing(t *testing.T) {
 		_ = got // a refused call returns no record, as every other refusal here does
 	}
 }
+
+// wait3 leaves room for a reminder and an owner retry without reaching the limit.
+func wait3() core.Wait {
+	w := wait1()
+	w.MaxRetries = 3
+	return w
+}
+
+// A reminder is the monitor writing the owner's wait, not the owner acting: it must
+// not undo the safe stop a dead owner left, while the owner's own retry does.
+func TestARemindedWaitKeepsTheDeadOwnersStopAndTheOwnersRetryDoesNot(t *testing.T) {
+	r, ref, tk := handedOffOwner(t)
+	if _, err := r.SetWait(tk, wait3()); err != nil {
+		t.Fatal(err)
+	}
+	stop, err := r.RecordSafeStop(tk, "owner stopped")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := r.RemindWait(tk, "the wait elapsed", "ask again", time.Now().Add(time.Hour)); err != nil {
+		t.Fatalf("remind: %v", err)
+	}
+	ev := fullTakeover()
+	ev.OwnerGone, ev.SafeStop = false, stop
+	if err := r.Store.CheckSafeStop(ref, tk.Holder, tk.Epoch, stop); err != nil {
+		t.Fatalf("the reminder undid the stop: %v", err)
+	}
+	if _, err := r.RetryWait(tk, "the owner itself", "next", time.Now().Add(time.Hour)); err != nil {
+		t.Fatalf("retry: %v", err)
+	}
+	if err := r.Store.CheckSafeStop(ref, tk.Holder, tk.Epoch, stop); err == nil {
+		t.Error("the owner's own retry is the owner acting and must stale the stop")
+	}
+	// and the takeover on the surviving stop goes through when only a reminder came
+	r2, ref2, tk2 := handedOffOwner(t)
+	if _, err := r2.SetWait(tk2, wait3()); err != nil {
+		t.Fatal(err)
+	}
+	stop2, _ := r2.RecordSafeStop(tk2, "owner stopped")
+	if _, err := r2.RemindWait(tk2, "the wait elapsed", "ask again", time.Now().Add(time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	ev.SafeStop = stop2
+	if _, err := r2.TakeOver(ref2, tk2, "sess-new", "disp-t", "run-2", ev); err != nil {
+		t.Errorf("a stop that only a reminder followed: %v", err)
+	}
+}
