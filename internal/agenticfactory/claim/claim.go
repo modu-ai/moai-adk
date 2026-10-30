@@ -95,6 +95,12 @@ type Record struct {
 	Worktree        string `json:"worktree,omitempty"`
 }
 
+// position is the S46 position the record's derived fields describe. A MERGING
+// record is one whose merge was seen, which is how the legacy fields derive it.
+func (r Record) position() core.Position {
+	return core.Position{Stage: r.Stage, Sub: r.Sub, Park: r.Park, RemoteIntegrated: r.Stage == core.StageMerging}
+}
+
 // clone is a copy of r that shares no memory with it: every pointer target and the
 // History slice are duplicated, so a function given the copy cannot change the
 // original in place. A reference-typed field added to Record must be added here;
@@ -461,6 +467,17 @@ func (s *Store) writeLocal(i core.IssueRef, r Record) error {
 func (s *Store) write(i core.IssueRef, r *Record) error {
 	if err := r.deriveStage(); err != nil {
 		return err
+	}
+	// The position this write leaves must be one an S46 edge reaches from the
+	// stored one (or the same). A stored record whose position is not known has no
+	// Stage (deriveStage empties it when it fails) and is not compared: it is the
+	// write that repairs it.
+	if prev, had, err := s.read(i); err != nil {
+		return err
+	} else if had && prev.Stage != "" {
+		if err := core.CheckMove(prev.position(), r.position()); err != nil {
+			return err
+		}
 	}
 	// A write that puts the Issue into PARKED carries its wait record (design
 	// 2.1c), and while the park stays no write takes that record away. A record
