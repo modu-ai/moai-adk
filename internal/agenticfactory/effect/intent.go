@@ -189,7 +189,10 @@ type Executor struct {
 	Now      func() time.Time // defaults to time.Now
 	// Admit, when set, judges a new request BEFORE anything is stored. A refusal is recorded as a Parked
 	// intent without the payload, so refused text never reaches the intent store (and, in ref mode, the
-	// control ref) and the same refusal is not repeated every pass.
+	// control ref). The record is filed under a key made from the sanitized text, not the request's own
+	// key: the request's key is a hash of the raw text. So a repeated request is judged again on each pass
+	// (cheap, nothing is sent) and lands on the same record; the record cannot be found by the original
+	// key, by design (DEC-AF-28).
 	Admit func(Request) error
 }
 
@@ -312,7 +315,8 @@ func safeErr(err error) string {
 }
 
 // parkRefused records a request Admit refused as a Parked intent WITHOUT its payload: the refused text is
-// never stored, and the same refusal is read back as Parked on the next pass instead of being judged again.
+// never stored. Admit runs again on the next pass (the record sits under a masked key, not the request's
+// own), and that pass finds this same record through the create-only write.
 // The error text is the refusal's own (categories, never values).
 //
 // Its Key and Digest are made from the sanitized form of the payload, never from the raw text: the intent

@@ -299,7 +299,7 @@ func (s *Service) see(rec claim.Record, st *state) []Action {
 	return nil
 }
 
-func (s *Service) remind(ctx context.Context, rec claim.Record, w core.Wait, st *state, now time.Time) []Action {
+func (s *Service) remind(ctx context.Context, rec claim.Record, w core.Wait, st *state, now time.Time) (out []Action) {
 	attempt := w.Retries + 1
 	n := Notice{
 		Issue: rec.Issue, Holder: rec.Holder, Agent: rec.AgentName, Kind: WaitOverdue, Attempt: attempt,
@@ -322,7 +322,17 @@ func (s *Service) remind(ctx context.Context, rec claim.Record, w core.Wait, st 
 		return acts
 	}
 	if st.BusyRuns != 0 {
-		st.BusyRuns = 0 // saved with the state the retry below records
+		// A pass whose delivery was not held back ends the busy run, and the end is saved now: the code
+		// below can return before it saves anything (a record that moved), and a run left uncleared would
+		// join the next, separate run.
+		st.BusyRuns = 0
+		if err := s.save(rec.Issue, *st); err != nil {
+			// The reminder below WAS delivered; losing its accounting would send it again next pass. So the
+			// failure is reported alongside the pass's own actions, and the retry write that follows
+			// records the delivery (and saves this state again).
+			failed := Action{Issue: rec.Issue, What: "state-error", Err: err}
+			defer func() { out = append([]Action{failed}, out...) }()
+		}
 	}
 	if notifyErr != nil {
 		// A reminder that is known not to have been delivered still spends the retry, so a broken
