@@ -13,7 +13,7 @@ func TestEvidenceIsStoredWithTheEpochAndTheDatabaseClock(t *testing.T) {
 	if err := s.AddEvidence(bg, "a", c.Epoch, in); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.AddEvidence(bg, "a", c.Epoch, Evidence{Kind: KindRed, TreeSHA: "tree0", SubjectSHA: "tree0", Result: ResultFail, Guards: []string{"ignored"}}); err != nil {
+	if err := s.AddEvidence(bg, "a", c.Epoch, Evidence{Kind: KindRed, TreeSHA: "tree0", SubjectSHA: "commit0", Result: ResultFail, Guards: []string{"ignored"}}); err != nil {
 		t.Fatal(err)
 	}
 	got, err := s.EvidenceFor(bg, "a")
@@ -27,7 +27,7 @@ func TestEvidenceIsStoredWithTheEpochAndTheDatabaseClock(t *testing.T) {
 	if got[0].Epoch != c.Epoch || got[0].CardID != "a" || time.Since(got[0].At) > time.Minute || got[0].ID >= got[1].ID {
 		t.Errorf("stamps: %+v", got[0])
 	}
-	if got[1].Kind != KindRed || got[1].SubjectSHA != "" || got[1].Guards != nil {
+	if got[1].Kind != KindRed || got[1].SubjectSHA != "commit0" || got[1].Guards != nil {
 		t.Errorf("a red row: %+v", got[1])
 	}
 	if other, _ := s.EvidenceFor(bg, "nobody"); len(other) != 0 {
