@@ -162,6 +162,22 @@ func (m *Merger) Land(ctx context.Context, cardID, candidateSHA string) (Result,
 	}
 
 	res := Result{TrunkBefore: trunk}
+	// A row a dead lander left in landing (its candidate is not in the trunk, checked above) cannot be written
+	// verifying; reset it under the lock first.
+	from, err := m.Queue.RowState(ctx, cardID)
+	if err != nil {
+		return res, err
+	}
+	if from == StateLanding {
+		waiting, err := m.resetLanding(ctx, cardID, candidateSHA, trunk)
+		if err != nil {
+			return res, err
+		}
+		if waiting {
+			res.Outcome, res.Reason = OutcomeWaiting, "the landing lock is held by another lander"
+			return res, nil
+		}
+	}
 	for attempt := 0; attempt < maxTries; attempt++ {
 		if err := m.Queue.SetState(ctx, cardID, candidateSHA, 0, StateVerifying, trunk, ""); err != nil {
 			return res, err
@@ -232,19 +248,24 @@ func (m *Merger) landUnderLock(ctx context.Context, cardID, candidateSHA string,
 		return "", false, err
 	}
 	if err := m.Git.UpdateRef(ctx, m.Trunk, cand.Result, trunk); err != nil {
-		if !errors.Is(err, ErrRefMoved) {
-			return "", false, err
-		}
+		// Whatever the error says, the trunk says what happened: read it.
 		now, rerr := m.Git.RevParse(ctx, m.Trunk)
-		if rerr != nil {
-			return "", false, rerr
+		switch {
+		case rerr != nil:
+			// The trunk cannot be read, so nothing can be judged; the row stays landing for Reconcile.
+			return "", false, errors.Join(err, rerr)
+		case now == cand.Result:
+			// The swap took effect and only reported an error (git killed after it wrote the ref): the card
+			// is landed, and the writes below say so.
+		case errors.Is(err, ErrRefMoved):
+			// The row is landing and the retry will write verifying, which the ledger refuses from landing: send
+			// it back to waiting now, while the lock is still held (only the lock holder may).
+			return now, false, m.leaveLanding(ctx, cardID, candidateSHA, epoch, trunk, nil)
+		default:
+			// The swap failed for another reason (a stale .lock file, a full disk): the trunk did not move, the
+			// row must not stay landing.
+			return "", false, m.leaveLanding(ctx, cardID, candidateSHA, epoch, trunk, err)
 		}
-		// The row is landing and the retry will write verifying, which the ledger refuses from landing: send it
-		// back to waiting now, while the lock is still held (only the lock holder may).
-		if err := m.Queue.SetState(ctx, cardID, candidateSHA, epoch, StateWaiting, trunk, ""); err != nil {
-			return "", false, err
-		}
-		return now, false, nil
 	}
 	if err := m.Queue.SetState(ctx, cardID, candidateSHA, epoch, StateLanded, trunk, ""); err != nil {
 		return "", false, err
@@ -253,6 +274,43 @@ func (m *Merger) landUnderLock(ctx context.Context, cardID, candidateSHA string,
 		return "", false, err
 	}
 	return cand.Result, true, nil
+}
+
+// leaveLanding takes a landing row off landing while the lock is held: back to waiting, or, when even that write
+// fails, to failed with the reason, so the row is never left where the next Land cannot start from. cause is the
+// error that made the landing give up (nil when the trunk simply moved); it is returned, joined with any write
+// error.
+func (m *Merger) leaveLanding(ctx context.Context, cardID, candidateSHA string, epoch int64, trunk string, cause error) error {
+	werr := m.Queue.SetState(ctx, cardID, candidateSHA, epoch, StateWaiting, trunk, "")
+	if werr == nil {
+		return cause
+	}
+	reason := "the landing could not be undone: " + werr.Error()
+	if cause != nil {
+		reason = "the landing failed (" + cause.Error() + ") and could not be undone: " + werr.Error()
+	}
+	if ferr := m.Queue.SetState(ctx, cardID, candidateSHA, epoch, StateFailed, trunk, reason); ferr != nil {
+		return errors.Join(cause, werr, ferr)
+	}
+	return errors.Join(cause, werr)
+}
+
+// resetLanding takes a row left in landing by a lander that is gone back to waiting, under the lock, so that the
+// verifying write that starts a new landing is allowed. It reports waiting=true when another lander holds the lock.
+func (m *Merger) resetLanding(ctx context.Context, cardID, candidateSHA, trunk string) (waiting bool, err error) {
+	epoch, err := m.Queue.AcquireLock(ctx, LandingLock, m.Holder, m.lockTTL())
+	if errors.Is(err, ErrLockHeld) {
+		return true, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	defer func() {
+		if relErr := m.Queue.ReleaseLock(context.WithoutCancel(ctx), LandingLock, epoch); relErr != nil {
+			err = errors.Join(err, fmt.Errorf("mergeq: releasing the landing lock failed: %w", relErr))
+		}
+	}()
+	return false, m.Queue.SetState(ctx, cardID, candidateSHA, epoch, StateWaiting, trunk, "")
 }
 
 // validTrunk refuses a trunk that is not a full branch name or that is the project's default branch.
