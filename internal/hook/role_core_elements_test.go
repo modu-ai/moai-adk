@@ -27,7 +27,13 @@ func TestInjectedCoreCarriesObligationElements(t *testing.T) {
 	}{
 		{"ALB-0276 (disk wait: the three required items)", true, []string{"reason, whom, recheck point"}},
 		{"ALB-0276 (watchdog first)", true, []string{"moai-lane-watchdog"}},
-		{"ALB-0276 (recurring cron)", true, []string{"CronCreate"}},
+		// The user chose a self-paced wake (2026-10-30): no repeating job and no absolute one-shot, exactly one
+		// next wake at a delay relative to now while work remains, and an idle record when none does. The old
+		// row only looked for the token CronCreate, which the new sentence still contains inside its own
+		// prohibition, so it could not tell the two designs apart.
+		{"ALB-0276 (no recurring cron, no absolute one-shot)", true, []string{"no recurring `CronCreate` and no absolute-clock one-shot"}},
+		{"ALB-0276 (one relative next wake)", true, []string{"`ScheduleWakeup`, a delay relative to now"}},
+		{"ALB-0276 (idle record when nothing remains)", true, []string{"`idle: backlog empty <time>`"}},
 		{"ALB-0276 (leader only at gate boundary)", true, []string{"gate boundary"}},
 		{"ALB-0276 (disk evidence before replying)", true, []string{"disk evidence"}},
 		{"ALB-0272 (Class B spec omission condition)", false, []string{"not Class B"}},

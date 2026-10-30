@@ -207,7 +207,11 @@ func laneWakeBound() string {
 			renew = configured
 		}
 	}
-	return fmt.Sprintf("renew_interval=%dm", int(renew/time.Minute))
+	minutes := int(renew / time.Minute)
+	if minutes < 1 {
+		minutes = 1 // ScheduleWakeup cannot sleep under 60 seconds; the factory already refuses sub-minute periods, this keeps the bound sane if that ever changes
+	}
+	return fmt.Sprintf("renew_interval=%dm", minutes)
 }
 
 // factoryLanesEnv reads the run's fan-out size from the environment the

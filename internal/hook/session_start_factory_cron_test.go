@@ -13,6 +13,13 @@ import (
 // relative to now, and none when no work remains. No repeating job is registered and no absolute-clock
 // one-shot is used. The tool, command and ladder tokens stay verbatim in every locale.
 
+var armOnly = map[string]string{
+	"en": "arming starts no work of its own",
+	"ko": "걸기만으로는 일이 시작되지 않으니",
+	"ja": "設定しただけでは作業は始まらないので",
+	"zh": "仅设置并不会开始任何工作",
+}
+
 var ladderTokens = []string{"jev_ask", "codex_task", "claude_audit"}
 
 // selfPaced are the verbatim tokens of the new wake contract.
@@ -89,6 +96,16 @@ func TestLaneWake_SelfPacedWithTime_NoFixedIntervalJob(t *testing.T) {
 		}
 		if !strings.Contains(lane, "/moai goal") {
 			t.Errorf("%s lane: no /moai goal continuation", lang)
+		}
+		// The goal condition names which tier is meant (a bare non-English claim reads as a shell command that
+		// never exits 0 and blocks every turn until the bound), and arming starts no work of its own.
+		for _, tok := range []string{"`cmd:`", "`model:`"} {
+			if !strings.Contains(lane, tok) {
+				t.Errorf("%s lane: the /moai goal sentence lacks the condition prefix %s", lang, tok)
+			}
+		}
+		if !strings.Contains(lane, armOnly[lang]) {
+			t.Errorf("%s lane: the /moai goal sentence does not say arming starts no work (want %q)", lang, armOnly[lang])
 		}
 	}
 }
