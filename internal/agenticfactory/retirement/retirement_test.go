@@ -5,12 +5,14 @@ package retirement
 
 import (
 	"bytes"
+	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
+	"time"
 )
 
 // rootEnv points the test at another checkout of the module (for example a tree extracted from an
@@ -46,11 +48,20 @@ func moduleRoot(t *testing.T) string {
 	}
 }
 
-// goList runs go list at root and returns stdout; stderr is part of the failure message.
-func goList(t *testing.T, root string, args ...string) string {
+// goListTimeout bounds one go list so a stuck module download cannot hang the suite.
+const goListTimeout = 3 * time.Minute
+
+// goList runs go list at root and returns stdout; stderr is part of the failure message. goos, when not
+// empty, sets GOOS so files that only build on another platform are listed too.
+func goList(t *testing.T, root, goos string, args ...string) string {
 	t.Helper()
-	cmd := exec.Command("go", append([]string{"list"}, args...)...)
+	ctx, cancel := context.WithTimeout(context.Background(), goListTimeout)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "go", append([]string{"list"}, args...)...)
 	cmd.Dir = root
+	if goos != "" {
+		cmd.Env = append(os.Environ(), "GOOS="+goos)
+	}
 	var out, errb bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &out, &errb
 	if err := cmd.Run(); err != nil {
@@ -64,24 +75,28 @@ func goList(t *testing.T, root string, args ...string) string {
 // registered, and the packages outside the retirement are still there.
 func TestRetirement_NoImportOfForgeMirrorGitref(t *testing.T) {
 	root := moduleRoot(t)
-	module := strings.TrimSpace(goList(t, root, "-m"))
+	module := strings.TrimSpace(goList(t, root, "", "-m"))
 	base := module + "/internal/agenticfactory/"
 
-	// (a) imports: go list's Imports field is the non-test import set of each package.
-	listing := goList(t, root, "-e", "-f", `{{.ImportPath}} {{join .Imports " "}}`, "./internal/...")
+	// (a) imports: go list's Imports field is the non-test import set of each package. It is read for the
+	// host platform and for the release platforms, because a file built only on windows or linux can import
+	// a retired package without the host listing showing it.
 	var edgesToCore int
-	for _, line := range strings.Split(strings.TrimSpace(listing), "\n") {
-		fields := strings.Fields(line)
-		if len(fields) == 0 {
-			continue
-		}
-		for _, imp := range fields[1:] {
-			if imp == base+"core" {
-				edgesToCore++
+	for _, goos := range []string{"", "windows", "linux", "darwin"} {
+		listing := goList(t, root, goos, "-e", "-f", `{{.ImportPath}} {{join .Imports " "}}`, "./internal/...")
+		for _, line := range strings.Split(strings.TrimSpace(listing), "\n") {
+			fields := strings.Fields(line)
+			if len(fields) == 0 {
+				continue
 			}
-			for _, r := range retired {
-				if imp == base+r || strings.HasPrefix(imp, base+r+"/") {
-					t.Errorf("%s imports the retired package %s", fields[0], imp)
+			for _, imp := range fields[1:] {
+				if imp == base+"core" {
+					edgesToCore++
+				}
+				for _, r := range retired {
+					if imp == base+r || strings.HasPrefix(imp, base+r+"/") {
+						t.Errorf("GOOS=%q: %s imports the retired package %s", goos, fields[0], imp)
+					}
 				}
 			}
 		}
@@ -122,7 +137,7 @@ func TestRetirement_NoImportOfForgeMirrorGitref(t *testing.T) {
 	}
 
 	// Positive control: the packages outside the retirement remain and are part of the listing.
-	listed := goList(t, root, "-e", "-f", "{{.ImportPath}}", "./internal/agenticfactory/...")
+	listed := goList(t, root, "", "-e", "-f", "{{.ImportPath}}", "./internal/agenticfactory/...")
 	paths := strings.Fields(listed)
 	for _, k := range kept {
 		if !slices.Contains(paths, base+k) {
