@@ -106,9 +106,15 @@ func TestAbsentAfterErrorIsRetryableAndUnsureIsParked(t *testing.T) {
 		}
 		return []byte("[]"), nil
 	}, AllowWrite: true, ListLimit: 100}
-	ex := &effect.Executor{Store: effect.NewMemIntentStore(), Send: g, Lookup: Lookup{GH: g}, Timeouts: effect.Timeouts{IssueCreate: time.Second}}
-	if in, _ := ex.Execute(t.Context(), IssueRequest(7, "o/r", "t", "b")); in.Status != effect.StatusFailed {
-		t.Errorf("absent: %s", in.Status)
+	now := time.Unix(1_000_000, 0)
+	ex := &effect.Executor{Store: effect.NewMemIntentStore(), Send: g, Lookup: Lookup{GH: g}, Timeouts: effect.Timeouts{IssueCreate: time.Second}, Now: func() time.Time { return now }}
+	in, _ := ex.Execute(t.Context(), IssueRequest(7, "o/r", "t", "b"))
+	if in.Status != effect.StatusSent {
+		t.Errorf("absent inside the window: %s, want sent (the create may still land)", in.Status)
+	}
+	now = now.Add(time.Hour)
+	if in, _ := ex.Reconcile(t.Context(), in.Key); in.Status != effect.StatusFailed {
+		t.Errorf("absent past the window: %s", in.Status)
 	}
 	f2 := &fakeExec{failCreateAfterLanding: true, listErr: errors.New("HTTP 429")}
 	if in, _ := newExec(f2, true).Execute(t.Context(), IssueRequest(8, "o/r", "t", "b")); in.Status != effect.StatusParked {

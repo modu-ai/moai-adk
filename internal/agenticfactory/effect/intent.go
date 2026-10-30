@@ -64,8 +64,9 @@ type Intent struct {
 	ParkReason string `json:"park_reason,omitempty"` // why the intent is parked when the cause is a refusal
 	Status     Status `json:"status"`
 	Attempts   int    `json:"attempts"`
-	// SentAt is when the intent last went to Sent (unix seconds, 0 for records written before the field).
-	// A reconciler reads it to tell a send still in flight from one that never happened.
+	// SentAt is when the executor stamped the intent Sent, in unix nanoseconds (0 for a record written
+	// before the field). It is stamped just before the compare-and-swap that grants the right to send, so a
+	// reconciler's window starts a little before the send does; the window's second timeout covers that.
 	SentAt int64 `json:"sent_at,omitempty"`
 	// Rev is the revision the store held when the intent was read (0: not stored yet). It is never written
 	// into the stored intent; PutIf uses it as the revision the write expects.
@@ -144,12 +145,13 @@ type Lookuper interface {
 type IntentStore interface {
 	// Get returns the stored intent with Rev set to the revision it was read at.
 	Get(key string) (Intent, bool, error)
-	// Put writes the intent whatever is stored: for a caller that is the only writer of its intents.
-	Put(Intent) error
 	// PutIf writes the intent only if the stored revision is still in.Rev (0: the intent must not be stored
 	// yet) and returns the stored intent with its new Rev. A store that moved on is
 	// core.ErrRevisionConflict and nothing is written. The Executor uses it so that two executors never both
 	// take the right to send.
+	//
+	// There is deliberately no unconditional Put in this interface: a write that ignores the revision is
+	// the double-send window itself. The concrete stores keep a Put for seeding fixtures only.
 	PutIf(Intent) (Intent, error)
 	List() ([]Intent, error)
 }
@@ -228,7 +230,7 @@ func (e *Executor) Execute(ctx context.Context, r Request) (Intent, error) {
 	}
 	in.Attempts++
 	in.Status = StatusSent
-	in.SentAt = e.now().Unix()
+	in.SentAt = e.now().UnixNano()
 	in.LastError = ""
 	in.NotBefore = 0
 	// Winning this write is the right to send: of several executors that read the same state, one revision
@@ -266,7 +268,7 @@ func (e *Executor) Execute(ctx context.Context, r Request) (Intent, error) {
 		if _, err := e.settle(in); err != nil {
 			return Intent{}, err
 		}
-		return e.reconcile(ctx, key, true)
+		return e.Reconcile(ctx, key)
 	}
 	return e.settle(in)
 }
@@ -310,16 +312,13 @@ func (e *Executor) settle(in Intent) (Intent, error) {
 
 // Reconcile resolves a sent or parked intent from facts. It never sends.
 //
-// An authoritative "nothing there" is not read as failure while another executor's send may still be in
-// flight: until the send's own time limit has passed since SentAt the intent stays Sent, so a third
-// executor never finds Failed and resends. The limit is the kind's configured timeout, the same bound the
+// An authoritative "nothing there" is not read as failure while a send may still be in flight — another
+// executor's, or this one's whose outcome came back unknown (a timeout, a reset connection: the request
+// may still land). The intent stays Sent, and a retry therefore cannot duplicate it, until SentAt plus two
+// of the kind's configured timeouts have passed: one for the send's own limit, one for the write that
+// stamped SentAt and for delivery lag. No new constant: the window is derived from the same timeout the
 // sender runs under.
 func (e *Executor) Reconcile(ctx context.Context, key string) (Intent, error) {
-	return e.reconcile(ctx, key, false)
-}
-
-// reconcile is Reconcile; ownSend is true when the caller's own send has already ended, so no grace applies.
-func (e *Executor) reconcile(ctx context.Context, key string, ownSend bool) (Intent, error) {
 	in, ok, err := e.Store.Get(key)
 	if err != nil || !ok {
 		return Intent{}, fmt.Errorf("effect: no intent %s: %v", key, err)
@@ -340,7 +339,7 @@ func (e *Executor) reconcile(ctx context.Context, key string, ownSend bool) (Int
 	case res.Found:
 		in.Status, in.ProviderID = StatusConfirmed, res.ProviderID
 	case res.Authoritative:
-		if !ownSend && in.Status == StatusSent && in.SentAt > 0 && e.now().Unix() < in.SentAt+int64(to/time.Second) {
+		if in.Status == StatusSent && in.SentAt > 0 && e.now().UnixNano() < in.SentAt+2*int64(to) {
 			return in, nil // the sender may still be mid-flight: look again later, write nothing
 		}
 		in.Status = StatusFailed
