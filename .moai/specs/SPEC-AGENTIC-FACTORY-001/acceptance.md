@@ -1,5 +1,7 @@
 # SPEC-AGENTIC-FACTORY-001 — 수용 기준 (0.6.7)
 
+> **0.7.0 가리킴.** 권위는 로컬 SQLite 원장 하나다(spec DEC-AF-06 개정, SPEC-AGENTIC-FACTORY-LOCAL-001). Issue·control ref·PR에 기대는 AC는 제목 끝에 처분 표시를 달았고 처분표는 spec.md §J다. 새 로컬 원장 AC는 하위 SPEC의 AC-AFL-001~021이다.
+
 ## §A 측정 규칙
 
 - 수용 기준은 25개다(Tier L 상한 25). AC-AF-0NN의 주 REQ는 spec.md §E 표에 있다. 기준마다 주 REQ는 하나다.
@@ -88,7 +90,7 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 
 ## §C 수용 기준
 
-#### AC-AF-001 — 활성 claim·fencing·중복 dispatch
+#### AC-AF-001 — 활성 claim·fencing·중복 dispatch [SUPERSEDED by AC-AFL-002·AC-AFL-010]
 
 - 주 REQ: maps REQ-AF-001. 초록: M1.
 - 정본 주 시험 5: M01~M05. 전용: §12 재현 시험 `TestClaim_DeadOwnerExpiredAttempt_ReissuedUnderSameClaim`, `TestClaim_WorktreeIdentity_NormalizedPathPreventsMismatch`, `TestClaim_SameNameTree_NoDivergentTreeCreated`.
@@ -101,7 +103,7 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 - 변형을 죽이는 단언: 두 claim이 모두 성공하는 구현, 재발급이 새 키를 만드는 구현, epoch를 비교하지 않는 구현, 충돌 기록을 남기지 않는 구현은 각각 (a)(b)(c)(a)에서 FAIL.
 - RED 이유: claim 저장 구현이 없어 (a)에서 단언 실패. 초록 경로: M1 lane-18 claim·fencing.
 
-#### AC-AF-002 — 권위·재구축·checkpoint 복구
+#### AC-AF-002 — 권위·재구축·checkpoint 복구 [SUPERSEDED by AC-AFL-001]
 
 - 주 REQ: maps REQ-AF-002. 초록: M2.
 - 정본 주 시험 2: SYNC12, M47. 전용(제안): `TestCheckpoint_*`, `TestAuthority_*`.
@@ -115,7 +117,7 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 - 변형 단언: ACK 없이 `remote-durable`을 세우는 구현은 CK1, manifest를 검증하지 않는 구현은 CK2, 링크 실패로 durable을 취소하는 구현은 CK3, 중복 검사 없는 구현은 CK4(push 호출 계수 1), 활성 판정 없는 복구는 CK5, `git add -A`식 스테이징은 CK6, 상한 무시는 CK10에서 FAIL.
 - RED 이유: control ref git 구현과 checkpoint 상태 기계가 없음. 초록 경로: M1 control ref(lane-18), M2 checkpoint·Issue 링크(lane-18·20).
 
-#### AC-AF-003 — 소유 확인과 Issue 쓰기 권한
+#### AC-AF-003 — 소유 확인과 Issue 쓰기 권한 [SUPERSEDED — no local counterpart]
 
 - 주 REQ: maps REQ-AF-003. 초록: M2.
 - 정본 주 시험 2: M13, M15. 전용(제안): `TestIssueAuthority_*`.
@@ -159,7 +161,7 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 - 변형 단언: PID만 보는 판정은 (c)에서 FAIL(재사용된 pid를 `live`로 봄). TTL만으로 인계하는 구현은 (a)에서 FAIL. crash 뒤 책임 기록을 비워 두는 구현은 (e)에서 FAIL.
 - RED 이유: 판정 연결 없음. 초록 경로: M1(lane-18, `homestate.ClassifyOwnerWith` 사용).
 
-#### AC-AF-005 — effect 불명 재조회·전달 상태
+#### AC-AF-005 — effect 불명 재조회·전달 상태 [PARTLY SUPERSEDED — OD-32]
 
 - 주 REQ: maps REQ-AF-005. 초록: M2.
 - 정본 주 시험 10: M18, M19, M20, M29, M30, M31, SYNC03, SYNC04, SYNC05, SYNC11.
@@ -173,7 +175,7 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 - 변형 단언: 답장으로 `completed`를 세우는 구현은 (b), 불명 시 재전송하는 구현은 (c), 답장이 올 때까지 멈추는 구현은 (e)에서 FAIL.
 - RED 이유: effect 경계 없음. 초록 경로: M2(lane-20).
 
-#### AC-AF-006 — DONE 순서
+#### AC-AF-006 — DONE 순서 [SUPERSEDED by AC-AFL-013·AC-AFL-014]
 
 - 주 REQ: maps REQ-AF-006. 초록: M3.
 - 정본 주 시험 4: M33, M34, M35, M36.
@@ -184,7 +186,7 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 - 변형 단언: DONE 뒤 종료하는 구현(0.5.0 순서)은 (a)에서 FAIL. 경로 목록만 비교하는 구현은 (c)에서 FAIL.
 - RED 이유: 상태 엔진의 E13·E14 없음. 초록 경로: M3(lane-18). lane-18 기존 시험(이름 미전달)은 보조 근거다.
 
-#### AC-AF-007 — 병합 게이트·PR 적체 상한
+#### AC-AF-007 — 병합 게이트·PR 적체 상한 [PARTLY SUPERSEDED — OD-37; 0.7.0 표지: SUPERSEDED by AC-AFL-014]
 
 - 주 REQ: maps REQ-AF-007. 초록: M4.
 - 정본 주 시험 8: M14, M24, M25, M26, M27, M32, M37, M55.
@@ -196,7 +198,7 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 - 변형 단언: `PASS-WITH-DEBT`를 통과로 세는 구현, 귀속 실패를 판정값보다 늦게 보는 구현(한 결과에 사유 둘), `operator-ack-missing`을 역할 부재에 쓰는 구현은 표 행에서 FAIL.
 - RED 이유: 게이트 없음. 초록 경로: M4(lane-18 판정 + lane-20 effect).
 
-#### AC-AF-008 — 보호 비약화
+#### AC-AF-008 — 보호 비약화 [SUPERSEDED — no local counterpart]
 
 - 주 REQ: maps REQ-AF-008. 초록: M2.
 - 정본 주 시험 0. 전용: lane-22 `TestProtectionGuard_*` 3개 + 약화 거절 시험(제안 `TestProtectionGuard_RefusesEveryWeakeningOperation`).
@@ -209,7 +211,7 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 - 변형 단언: 일곱 중 하나라도 보내는 구현, 사유를 두 개 남기는 구현이 FAIL.
 - RED 이유: 거절 경로가 코드에 없음(lane-22 보고). 초록 경로: M2(lane-20 집행, lane-18 사유 타입).
 
-#### AC-AF-009 — PR 인계·수리 단일 소유
+#### AC-AF-009 — PR 인계·수리 단일 소유 [SUPERSEDED by AC-AFL-014]
 
 - 주 REQ: maps REQ-AF-009. 초록: M3.
 - 정본 주 시험 8: HANDOFF01~HANDOFF08.
@@ -222,7 +224,7 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 - 변형 단언: 필드 하나 없이 인계를 받는 구현은 (a), 수리를 새 Issue로 여는 구현은 (d), 바쁜 agent의 Issue를 덮는 구현은 (d), PR 인계로 책임을 끝내는 구현은 (c)·(f), 수리를 다른 agent에 주는 구현은 (d)·(f), worktree를 같이 쓰는 구현은 (g) ③에서 FAIL.
 - RED 이유: E03·E06·E10 없음. 초록 경로: M3(lane-18).
 
-#### AC-AF-010 — 독립성과 역할 쓰기 경계
+#### AC-AF-010 — 독립성과 역할 쓰기 경계 [PARTLY SUPERSEDED — OD-32]
 
 - 주 REQ: maps REQ-AF-010. 초록: M4.
 - 정본 주 시험 2: M22, M23.
@@ -235,7 +237,7 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 - 변형 단언: run 전체를 막는 과잉 구현은 (e)에서 FAIL, Issue 범위를 보지 않는 구현은 (c)에서 FAIL, leader가 agent 일을 대신하는 구현은 (f)에서 FAIL.
 - RED 이유: 역할 경계 없음. 초록 경로: M4. (e)는 귀속 대역으로 게이트 단위 시험 안에서만 돈다.
 
-#### AC-AF-011 — 역할 귀속과 잠금
+#### AC-AF-011 — 역할 귀속과 잠금 [PARTLY SUPERSEDED — OD-38]
 
 - 주 REQ: maps REQ-AF-011. 초록: M4(잠긴 형태). M7에서 L1·L2를 다시 쓴다.
 - 정본 주 시험 0. 전용(제안): `TestGate_RoleEvidence_RequiresChildAttribution_AndLockHolds`, `TestLock_*`.
@@ -256,7 +258,7 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 - 변형 단언: 환경 변수로 풀리는 구현(L3), 시나리오에서 대역을 쓰는 구현(L4), fencing보다 귀속을 먼저 보는 구현(P4b 귀속 호출 1)이 FAIL.
 - RED 이유: 잠금 상수도 귀속 원천도 없음(lane-22 보고). 초록 경로: M4 잠금 도입(lane-18). M7 해제(lane-18, 하위 SPEC 완료와 같은 착지).
 
-#### AC-AF-012 — 접수·준비
+#### AC-AF-012 — 접수·준비 [SUPERSEDED — no local counterpart]
 
 - 연결: maps REQ-AF-012, REQ-AF-018. 주 REQ는 REQ-AF-012이고, REQ-AF-018은 보조 연결이다(REQ-AF-018에는 주 AC가 없다 — spec.md §E). 초록: M3.
 - 정본 주 시험 10: PREP01~PREP10.
@@ -268,7 +270,7 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 - 변형 단언: 수락을 먼저 돌려주는 구현은 (a), 무한 하위 작업은 (d)에서 FAIL.
 - RED 이유: 접수 서비스 없음. 초록 경로: M3(lane-18 상태, lane-20 Issue 발행).
 
-#### AC-AF-013 — 비밀·공개 검토
+#### AC-AF-013 — 비밀·공개 검토 [PARTLY SUPERSEDED — OD-32]
 
 - 주 REQ: maps REQ-AF-013. 초록: M5.
 - 정본 주 시험 3: M39, M40, CONTEXT04. 전용: `TestRedact_*` 13개(C1 3, C2 1, C3 2, C4 2, C5 1, Restricted 1, Idempotent 1, Negative 2).
@@ -282,7 +284,7 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 - 적용 범위 부채(DEC-AF-29, relayed): (i) 한국어 이름 + 전화번호(C2), (ii) 패닉·goroutine 스택(C4), (iii) 물결표 `~/...` 경로(C3 범위 모호, OD-23), (iv) 대시로 이은 passphrase 형태(C1)는 정제기가 아직 잡지 못한다(lane-19가 core 커밋 `9e34d6bb87`에서 측정, 리더 전달, 이 작성자는 읽지 않음). `4cdaba5d7e`에는 이 네 갈래를 다루는 시험이 없고, 위 사례 문장에도 이 네 갈래를 가리키는 제안 사례가 없다. 부채로 기록하며 범위 밖으로 선언하지 않는다.
 - RED 이유: refiner 없음. 초록 경로: M5(lane-20).
 
-#### AC-AF-014 — 인증·rate limit·예산
+#### AC-AF-014 — 인증·rate limit·예산 [SUPERSEDED — no local counterpart]
 
 - 주 REQ: maps REQ-AF-014. 초록: M2.
 - 정본 주 시험 15: M17, M28, M43, M44, GH05, GH06, SYNC09, SYNC10, WT15, SYNC13~SYNC18. 전용(제안): `TestForgeClassify_*`.
@@ -310,7 +312,7 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 - 변형 단언: 계수기가 늘 0인 구현은 (c)에서 FAIL.
 - RED 이유: 관문 없음. 초록 경로: M6(lane-17 키, lane-20 호출 경계).
 
-#### AC-AF-016 — 전이표
+#### AC-AF-016 — 전이표 [PARTLY SUPERSEDED — OD-32]
 
 - 주 REQ: maps REQ-AF-016. 초록: M1.
 - 정본 주 시험 6: M16, M41, M42, M48, M54, M56. 전용: `TestTransition_Table_*`, §12 `TestState_SpeclessIssue_TransitionsWithoutSpecHash`, `TestState_OperatorDecision_RequiresOperatorEvidence_CoordinatorRefused`.
@@ -324,7 +326,7 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 - 변형 단언: 표에 없는 간선 하나를 허용하는 구현은 (a), owner를 바꾸는 재개는 (d), 필드가 빠진 대기 기록을 받는 구현은 (e), 고정 간격 반복 작업을 다음 자동 동작으로 받는 구현은 (f)에서 FAIL.
 - RED 이유: 상태 엔진 없음. 초록 경로: M1(lane-18).
 
-#### AC-AF-017 — record와 수집기
+#### AC-AF-017 — record와 수집기 [SUPERSEDED by AC-AFL-009]
 
 - 주 REQ: maps REQ-AF-017. 초록: M1.
 - 정본 주 시험 11: M45, M49, M50, M51, M52, M53, SYNC01, SYNC02, SYNC06, SYNC07, SYNC08.
@@ -335,7 +337,7 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 - 사례: (a) 같은 저장소에 수집기 둘 시작 → 하나만 활성. (b) agent 패키지에서 polling 경로 호출 0(정적).
 - RED 이유: record 없음. 초록 경로: M1(lane-18).
 
-#### AC-AF-018 — 맥락 장부와 증거 위치
+#### AC-AF-018 — 맥락 장부와 증거 위치 [SUPERSEDED by AC-AFL-008]
 
 - 주 REQ: maps REQ-AF-019. 초록: M5.
 - 정본 주 시험 5: CONTEXT01, CONTEXT02, CONTEXT03, CONTEXT05, CONTEXT06. 전용: `TestLedger_*`, `TestEvidenceStage_*`.
@@ -346,7 +348,7 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 - 변형 단언: 로컬 브랜치 정보로 `accessible`을 내는 구현은 (b), STALE 항목을 지우는 구현은 (c)에서 FAIL.
 - RED 이유: 장부 없음. 초록 경로: M5(lane-20).
 
-#### AC-AF-019 — 관찰 보기
+#### AC-AF-019 — 관찰 보기 [SUPERSEDED by AC-AFL-020]
 
 - 주 REQ: maps REQ-AF-020. 초록: M5.
 - 정본 주 시험 0. 전용(제안): `TestObservationView_ShowsPrepAndPRBacklogStatesDistinctly_ReadOnly`.
@@ -383,7 +385,7 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 - golden 순서 점검: golden 커밋이 S1 등록 커밋의 엄격한 조상.
 - RED 이유: 새 명령 없음. 초록 경로: M6(launcher 담당). OD-2의 4건이 정해지면 (c)(d)의 문법을 고친다.
 
-#### AC-AF-022 — template·분류·setup
+#### AC-AF-022 — template·분류·setup [SUPERSEDED — no local counterpart]
 
 - 주 REQ: maps REQ-AF-023. 초록: M6.
 - 정본 주 시험 28: WT01~WT14, WT16, GH01~GH04, GH07~GH15.
@@ -413,7 +415,7 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 - 사례: (a) design §4.7 필드 누락 → 기록 거절. (b) `estimated` 값을 `measured` 칸에 넣음 → 거절. (c) 품질 회귀가 있는 비교 → 효율 향상 보고 0. (d) checkpoint 기록의 비용 필드는 측정값이거나 Gap 표시, 추정값 0.
 - RED 이유: 기록 형식 없음. 초록 경로: M5(lane-22).
 
-#### AC-AF-025 — 실제 Issue 시나리오
+#### AC-AF-025 — 실제 Issue 시나리오 [SUPERSEDED by AC-AFL-013·AC-AFL-014]
 
 - 주 REQ: maps REQ-AF-006(보조: REQ-AF-001·004·005·011). 초록: M7 뒤 단일 실행.
 - 정본 주 시험 0. 전용: `TestScenarioSuite`(§A.1).
@@ -887,17 +889,17 @@ F2 작업 당시에는 하위 SPEC의 `acceptance.md`를 고치지 않고 여기
   - design §2.1c(`design.md:144`): 다음 자동 동작은 시각을 밝힌 자기 페이스 깨어남, 남은 일이 없으면 다시 걸지 않음, 시각 값은 SPEC이 정하지 않음.
   - AC-AF-016 (f)(`acceptance.md` AC-AF-016 사례 줄): 이 시험의 제안 사례 문장. AC-AF-010 (g)는 leader로 보내는 범주이며 깨어남 형태를 말하지 않는다.
   - `spec.md:442 @0659c71de4`(이 판에서는 OD-30 행이 더해져 `:443`; 서른세 번째 후속은 `:441`로 적었으나 `0659c71de4`에서 그 줄은 이미 `:442`였다 — OD-29 행 추가로 밀림): 배포 규칙 문서는 아직 카드마다 recheck cron을 적고 있다. 서른다섯 번째 후속: cron이냐 자기 페이스냐는 사용자에게 물었고 전달된 답은 자기 페이스다(같은 줄, 이 판 `:443`).
-- **제안 계약 문장** — lane-17 제안 문장. **사용자 결정(자기 페이스) 반영, 효력 있음**. 출처: user decision via leader AskUserQuestion, transcribed by the leader in that file; original not read by this author — 그 파일은 `/Users/goos/MoAI/moai-adk-go/.moai/reports/issue-1948/user-decision-lane-wake-20261030.md`이며, 이 작성자가 읽은 것은 그 파일뿐이다(답 원문 "자기 페이스로 전환"; 고른 선택지에 적힌 범위: "레인이 'N분 뒤' 같은 상대 시간으로 다음 깨어날 때를 정한다"). 사용자 결정이 정한 것: 상대 시간(지금 + N), 반복 cron은 쓰지 않음, 자기 페이스로 다시 걸기. 그 파일의 "Leader's derived rules (provisional, reversible)"에 적힌 "한 번에 하나의 깨어남, 남은 일이 없으면 걸지 않음"과 "절대 시각 한 번짜리는 여전히 금지"는 리더가 사용자 답에서 끌어낸 잠정 규칙이다. 규칙 문서와 훅 주입 문구는 아직 반복 cron을 적고 있다(아래 "기존 문장과 어긋나는 곳"; 지금 상태는 `spec.md` §H "DEC-AF-27 관련" 줄) — 이 문장의 효력은 SPEC 안에서의 효력이며, 규칙 문서나 훅이 바뀌었다는 뜻이 아니다:
+- **제안 계약 문장** — lane-17 제안 문장. **사용자 결정(자기 페이스) 반영, 효력 있음**. 출처: user decision via leader AskUserQuestion, transcribed by the leader in that file; original not read by this author — 그 파일은 `/Users/goos/MoAI/moai-adk-go/.moai/reports/issue-1948/user-decision-lane-wake-20261030.md`이며, 이 작성자가 읽은 것은 그 파일뿐이다(답 원문 "자기 페이스로 전환"; 고른 선택지에 적힌 범위: "레인이 'N분 뒤' 같은 상대 시간으로 다음 깨어날 때를 정한다"). 사용자 결정이 정한 것: 상대 시간(지금 + N), 반복 cron은 쓰지 않음, 자기 페이스로 다시 걸기. 그 파일의 "Leader's derived rules (provisional, reversible)"에 적힌 "한 번에 하나의 깨어남, 남은 일이 없으면 걸지 않음"과 "절대 시각 한 번짜리는 여전히 금지"는 리더가 사용자 답에서 끌어낸 잠정 규칙이다. 규칙 문서와 훅 주입 문구의 상태는 아래 "기존 문장과 어긋나는 곳"에 두 시점으로 적었다(작성 때 `@937a60ee95`: 둘 다 반복 cron; 지금: 규칙 문서는 `ed15692414`까지, 훅은 lane-20 `dd9247890c`까지 자기 페이스 문구 — 0.6.7 서른일곱 번째 후속) — 이 문장의 효력은 SPEC 안에서의 효력이며, 이 SPEC 편집이 규칙 문서나 훅을 바꾼 것은 아니다:
   - lane 세션은 세션 시작 때 주입된 지시에 따라 지금부터 N분 뒤(상대 시간, 시계의 절대 시각이 아님) 다시 깨는 한 번의 자기 페이스 깨어남만 걸고 고정 간격 반복 작업은 등록하지 않으며, 자기 일감 목록에 남은 일이 없어 유휴가 되면 다음 깨어남을 다시 걸지 않고 끝난다.
   - 위 문장의 "지금부터 N분 뒤(상대 시간)" — 위 사용자 결정이 정한 부분이다(user decision via leader AskUserQuestion, transcribed by the leader in that file; original not read by this author). 서른네 번째 후속에서 리더 잠정 결정으로 달았던 표시는 이 결정으로 대신했다. 이 읽기는 `auto-semantics.md:392-396`의 "지금부터" 한 번짜리 재확인과 모양이 가깝고, `auto-semantics.md` §5.1 `:124`의 절대 시각 한 번짜리 금지("Never a one-shot at an absolute clock time")와 부딪히지 않는다. N의 값은 이 SPEC이 정하지 않는다(design §2.1c `design.md:144 @0659c71de4`, 이 판에서도 같은 줄).
   - "유휴"의 뜻 — 리더가 "유휴 = 남은 일 없음" 읽기를 받아들였다(리더 잠정 수용, relayed via the leader session, 되돌릴 수 있음). 위 사용자 결정의 답과 선택지 문구는 이 뜻을 말하지 않으므로 이 표시는 그대로 둔다(결정 기록 파일의 "Leader's derived rules"도 리더의 잠정 규칙이다). 다른 lane을 기다리는 상태는 이 뜻의 유휴가 아니며, 보조 1이 그 구별을 맡는다.
   - 보조 1: 다른 lane을 기다리는 동안의 유휴는 남은 일이 있는 상태라 끝이 아니며, 그동안의 깨어남은 대기 기록의 "다음 자동 동작"·"재확인 시각"에 적힌 시각을 밝힌 자기 페이스 깨어남이다(REQ-AF-016, DEC-AF-27 (3)).
   - 보조 2: 유휴로 끝났다는 사실은 일의 완료 증거가 아니며, 완료는 기록과 증거에서 읽는다(design §3 `received`·`completed` 행이 idle 알림을 증거로 받지 않는 것과 같은 규칙).
-- 계기(리더 전달, relayed): lane-20 B6은 "session-start injection, idle exit"이다. **서른네 번째 후속 정정**: 이 작성자가 B6 커밋 `914ea8064b`를 읽었다 — 세션당 반복 `CronCreate` 하나를 걸고 할 일이 없으면 `CronDelete`로 지운다(`internal/hook/session_start_factory_i18n.go:148`, `:150 @914ea8064b`). 이것은 위 제안 문장의 자기 페이스 깨어남과 같은 설계가 아니다. 사실과 출처는 `spec.md:442 @0659c71de4`(이 판 `:443`) 줄.
+- 계기(리더 전달, relayed): lane-20 B6은 "session-start injection, idle exit"이다. **서른네 번째 후속 정정**: 이 작성자가 B6 커밋 `914ea8064b`를 읽었다 — 세션당 반복 `CronCreate` 하나를 걸고 할 일이 없으면 `CronDelete`로 지운다(`internal/hook/session_start_factory_i18n.go:148`, `:150 @914ea8064b`). 이것은 위 제안 문장의 자기 페이스 깨어남과 같은 설계가 아니다. 사실과 출처는 `spec.md:442 @0659c71de4`(이 판 `:443`) 줄. 위는 작성 때의 관측이다. 지금(0.6.7 서른일곱 번째 후속): lane-20의 뒤 커밋 `863d7a388d`·`dd9247890c`는 자기 페이스 주입 문구를 적는다 — 아래 "배포 규칙과 정면으로 어긋난다" 항목의 (나).
 - **기존 문장과 어긋나는 곳(정리하지 않고 그대로 적음; 규칙 문서 줄 번호는 `@0659c71de4`에서 git grep -n으로 다시 읽음)**:
   - "세션 시작 주입": SPEC의 어느 조항도 깨어남 지시가 세션 시작 때 주입된다고 적지 않는다. DEC-AF-27 (3)은 깨어남 수단으로 `/loop`(ScheduleWakeup)만 든다. 이 부분은 SPEC에 없던 내용이며, 위 문장이 새로 들인다.
-  - 배포 규칙과 정면으로 어긋난다: `.claude/rules/moai/workflow/auto-semantics.md:113-125`(§5.1)는 카드 접수 때 `CronCreate`로 `cron: "*/N * * * *"`, `recurring: true`인 상시 깨움을 걸어 카드 실행 내내 두라고 하고, 절대 시각의 한 번짜리 깨움을 금지한다("Never a one-shot at an absolute clock time", `:124`). `factory-dispatch-core.md:28`도 recurring recheck cron을 적는다. 이 작성자 세션의 SessionStart 주입 문구도 "a recurring `CronCreate` recheck armed before the first stage"를 담고 있었다 — 지금의 세션 시작 주입이 고정 간격 반복 작업을 싣고 있다. 이 어긋남은 `spec.md:442 @0659c71de4`(이 판 `:443`)에 이미 적혀 있다. 서른다섯 번째 후속: 사용자 결정은 자기 페이스 쪽이지만(위 출처), `937a60ee95`에서 다시 읽은 규칙 문서(`auto-semantics.md:119`·`:121`, `factory-dispatch-core.md:28`, `factory-dispatch.md:123`·`:126`)와 이 브랜치의 훅 주입 문구(`internal/hook/session_start_factory_i18n.go:143`)는 그대로 반복 cron을 적고 있어 이 어긋남은 이 편집으로 풀리지 않는다. 규칙 문서 수정은 따로 진행된다.
-  - 같은 규칙 `auto-semantics.md:392-396`은 leader를 기다리는 동안 `recurring: false`인 한 번짜리 재확인을 "지금부터" 상대 시간으로 걸고, 대기가 풀리면 다시 걸지 않는다고 적는다. 이것은 위 문장의 모양과 가깝지만 상대 시간이다. 위 문장의 "다음에 깰 시각을 밝힌"이 절대 시각을 뜻하면 `:124`의 금지와 부딪힌다. → 상대 시간으로 읽고, 계약 문장에 "지금부터 N분 뒤(상대 시간)"로 적었다(서른넷째에는 리더 잠정 결정, 서른다섯째부터 위 사용자 결정이 정한 부분). 이 결정으로 `:124`와의 충돌은 없어지지만, 고정 간격 반복 `CronCreate`를 요구하는 `:113-125`·`factory-dispatch-core.md:28`과의 충돌은 그대로 남는다(바로 위 항목).
+  - 배포 규칙과 정면으로 어긋난다 — **(가) 작성 때(`@0659c71de4`, 서른다섯째 후속에서 `@937a60ee95`로 다시 읽음; 역사로 남김)**: `.claude/rules/moai/workflow/auto-semantics.md:113-125`(§5.1)는 카드 접수 때 `CronCreate`로 `cron: "*/N * * * *"`, `recurring: true`인 상시 깨움을 걸어 카드 실행 내내 두라고 하고, 절대 시각의 한 번짜리 깨움을 금지한다("Never a one-shot at an absolute clock time", `:124`). `factory-dispatch-core.md:28`도 recurring recheck cron을 적는다. 이 작성자 세션의 SessionStart 주입 문구도 "a recurring `CronCreate` recheck armed before the first stage"를 담고 있었다 — 지금의 세션 시작 주입이 고정 간격 반복 작업을 싣고 있다. 이 어긋남은 `spec.md:442 @0659c71de4`(이 판 `:443`)에 이미 적혀 있다. 서른다섯 번째 후속: 사용자 결정은 자기 페이스 쪽이지만(위 출처), `937a60ee95`에서 다시 읽은 규칙 문서(`auto-semantics.md:119`·`:121`, `factory-dispatch-core.md:28`, `factory-dispatch.md:123`·`:126`)와 이 브랜치의 훅 주입 문구(`internal/hook/session_start_factory_i18n.go:143`)는 그대로 반복 cron을 적고 있어 이 어긋남은 이 편집으로 풀리지 않는다. 규칙 문서 수정은 따로 진행된다. **(나) 지금(2026-10-30T02:32Z, 0.6.7 서른일곱 번째 후속; 확인 범위는 규칙 문서 `ed15692414`까지, 훅은 lane-20 `dd9247890c`까지 — 리더가 밝힌 범위)**: 규칙 문서는 자기 페이스 깨어남을 적는다. `git log -1 --format='%h %s' e52640d5d1` → "e52640d5d1 docs(rules): lane wake switches from a recurring CronCreate to one self-paced relative-time wake (auto-semantics 5.1, factory-dispatch-core, factory-dispatch), template source and local copies (Issue #1948)"; `git log -1 --format='%h %s' ed15692414` → "ed15692414 docs(rules): remaining standing-cron wording in auto-semantics, factory-dispatch-mechanics and the lane-watchdog skill follows the self-paced wake; the leader-wait recheck uses one relative-time wake and the nonexistent wait_recheck_minutes key is removed (Issue #1948)"; `git grep -n -i -E 'standing recheck|standing carrier|next cron fire|recheck cron|session cron tool|wait_recheck_minutes' ed15692414 -- .claude/rules .claude/skills/moai-lane-watchdog internal/template/templates/.claude/rules internal/template/templates/.claude/skills/moai-lane-watchdog` → 출력 없음(종료 코드 1; 맞은 줄이 0인 검사라 이것만으로는 증명이 아니고, 같은 패턴이 `937a60ee95`에서 맞았다는 progress.md 서른다섯째 목록이 대조다). `auto-semantics.md:119 @ed15692414`는 "No recurring `CronCreate`"로 시작하고, 절대 시각 한 번짜리 금지는 `:126 @ed15692414`에 남아 있다. `factory-dispatch-core.md:28 @ed15692414`는 "no recurring `CronCreate` and no absolute-clock one-shot"을 적는다. 훅 쪽: `git log -1 --format='%h %s' dd9247890c` → "dd9247890c test+fix(hook): pin the self-paced wake in the rule-body test; goal wording; wake-bound floor (B6 review bundle, Issue #1948)"; `git show --stat`: 5개 파일(`lane_renew_fallback_test.go`, `role_core_elements_test.go`, `session_start_factory.go`, `session_start_factory_cron_test.go`, `session_start_factory_i18n.go`), +50/−6. `git grep -n 'recurring' dd9247890c -- internal/hook/session_start_factory_i18n.go` → `:147`(laneRecheckRule)과 `:148`(leaderWatchRule) 두 줄만 나오며, 둘 다 "Never register a fixed-interval repeating job (no recurring `CronCreate`) and never an absolute-clock one-shot" 안의 금지 문구다. 그러므로 "주입 문구가 아직 반복 cron을 싣는다"는 `dd9247890c`에서는 맞지 않는다(이 브랜치 `session_start_factory_i18n.go:143 @ed15692414`에서는 여전히 맞다). `role_core_elements_test.go` ALB-0276: `git show dd9247890c -- internal/hook/role_core_elements_test.go`의 diff는 `{"ALB-0276 (recurring cron)", true, []string{"CronCreate"}}` 한 행을 지우고 세 행을 넣는다(`:34-36 @dd9247890c`) — 찾는 글자열은 "no recurring `CronCreate` and no absolute-clock one-shot", "`ScheduleWakeup`, a delay relative to now", "`idle: backlog empty <time>`"이다(diff가 보여 주는 것만 적음; 시험은 돌리지 않음). "wake-bound floor": `session_start_factory.go:210-214 @dd9247890c`의 `laneWakeBound` 바뀐 줄은 `minutes := int(renew / time.Minute)`, `if minutes < 1 {`, `minutes = 1 // ScheduleWakeup cannot sleep under 60 seconds; the factory already refuses sub-minute periods, this keeps the bound sane if that ever changes`, `return fmt.Sprintf("renew_interval=%dm", minutes)`이다(예전 줄 `return fmt.Sprintf("renew_interval=%dm", int(renew/time.Minute))`). `git branch --contains dd9247890c --list WT-agentic-factory-integration WT-agentic-monitor-effect-reconcile` → "+ WT-agentic-monitor-effect-reconcile"만 나옴(2026-10-30T02:32Z, 통합 끝 `a0a7121868`; 이 관측에서는 통합에 들지 않음). 빈 곳: 통합 결합 측정은 lane-20 코드 통합 뒤; 이 작성자는 시험을 돌리지 않았다; cron이냐 자기 페이스냐는 기록된 사용자 결정이다(user decision via leader AskUserQuestion, transcribed by the leader in that file; original not read by this author).
+  - 같은 규칙 `auto-semantics.md:392-396`은 leader를 기다리는 동안 `recurring: false`인 한 번짜리 재확인을 "지금부터" 상대 시간으로 걸고, 대기가 풀리면 다시 걸지 않는다고 적는다. 이것은 위 문장의 모양과 가깝지만 상대 시간이다. 위 문장의 "다음에 깰 시각을 밝힌"이 절대 시각을 뜻하면 `:124`의 금지와 부딪힌다. → 상대 시간으로 읽고, 계약 문장에 "지금부터 N분 뒤(상대 시간)"로 적었다(서른넷째에는 리더 잠정 결정, 서른다섯째부터 위 사용자 결정이 정한 부분). 이 결정으로 `:124`와의 충돌은 없어지지만, 고정 간격 반복 `CronCreate`를 요구하는 `:113-125`·`factory-dispatch-core.md:28`과의 충돌은 그대로 남는다(바로 위 항목) — 여기까지가 작성 때(`@0659c71de4`/`@937a60ee95`)의 기록이다. 지금(`@ed15692414`)은 그 요구가 없고(바로 위 항목 (나)), leader를 기다리는 동안의 재확인도 `auto-semantics.md:393 @ed15692414`에서 "one relative-time wake (`ScheduleWakeup`, a delay from now …)"로 적힌다.
   - "유휴 종료": DEC-AF-27 (3)의 "남은 일이 없으면 stop으로 끝난다"와 맞는 것은 유휴를 "남은 일 없음"으로 읽을 때뿐이다. 유휴가 다른 lane을 기다리는 상태까지 포함하면 (3)과 어긋난다. 위 문장은 앞의 뜻으로 적었다(보조 1). 이 작성자가 고른 이 읽기를 리더가 잠정 수용했다(relayed via the leader session, 되돌릴 수 있음).
 
 #### IDENTITY

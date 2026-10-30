@@ -226,6 +226,8 @@ ACK가 없으면 다시 보내지 않고 받는 쪽 상태를 먼저 조회한�
 
 ### 4.0 권위 배치
 
+> **0.7.0 가리킴 — 아래 표는 superseded다.** 권위는 프로젝트당 로컬 SQLite 원장 하나이며(spec DEC-AF-06 개정), 그 표·필드는 SPEC-AGENTIC-FACTORY-LOCAL-001 design.md §2다. 아래 표는 0.6.7까지의 Issue·control ref 배치 기록으로 남긴다.
+
 | 필드·record | 위치(권위) | 쓰기 권한 |
 |---|---|---|
 | `task_name`, `acceptance_criteria`, `priority`, `depends_on` | Issue 본문(업무 권위) | 사용자. AgenticFactory는 자기 Issue에서만 §4.1 규칙으로 |
@@ -335,7 +337,7 @@ ACK가 없으면 다시 보내지 않고 받는 쪽 상태를 먼저 조회한�
   - on a lane branch at writing; later also in integration (commit `6e44b1b2aa`) — C2: `redact.go:22` `phone`(한국·+82 전화번호), `:23` `person-name`(전화번호 옆 한국어 이름). 이름만 있을 때 가리지 않는다는 것은 lane-18 통지(리더 전달)이고 이 작성자는 시험을 돌리지 않았다. 부채 (i)은 닫지 않는다.
   - on a lane branch at writing; later also in integration (commit `6e44b1b2aa`) — C4: `redact.go:24` `stack`(패닉 줄·goroutine 스택). 같은 커밋이 `sanitize_test.go`의 "보통 글" 목록에서 goroutine 스택 한 줄을 뺐다. 부채 (ii)는 닫지 않는다.
   - on a lane branch at writing; later also in integration (commit `6e44b1b2aa`) — C1: `redact.go:69-70` credential-assignment 규칙에 `pass(?:phrase|w(?:or)?d)`가 들어 `passphrase: …`·`PASSPHRASE=…`·JSON `"passphrase"`·`ssh_passphrase = '…'` 형태를 잡는다(시험 입력 `sanitize_s2_test.go:164-167`). 이름 없는 대시 연결 낱말열은 구현하지 않았다(lane-18 통지, 리더 전달; 이 작성자의 grep도 그런 규칙을 찾지 못함) — 부채 (iv)의 그 부분은 OD-30. 부채 (iv)는 닫지 않는다.
-  - 리더가 전한 커밋 `1aa99d4504`(S1 후속)는 위 범주를 담지 않는다. 그 커밋은 통합 브랜치에 든다. `6e44b1b2aa`는 작성 때(HEAD `0659c71de4`, 통합 끝 `a6f1e93c4f`) 들지 않았고, 2026-10-30T01:50Z(HEAD `937a60ee95`, 통합 끝 `b8a90f33e2`) 든다 — 두 번 모두 `git branch --contains 6e44b1b2aa --list WT-agentic-factory-integration`. 그 뒤 `6ee1da00f4`(통합에 듦)가 범주 이름은 두고 규칙을 넓혔다(Python·Java/Node 스택, hex 안 전화번호 제외, 직함 붙은 이름; spec DEC-AF-29). 시험은 돌리지 않았고 부채 (i)·(ii)·(iv)는 닫지 않는다. C3 물결표는 OD-23 그대로.
+  - 리더가 전한 커밋 `1aa99d4504`(S1 후속)는 위 범주를 담지 않는다. 그 커밋은 통합 브랜치에 든다. `6e44b1b2aa`는 작성 때(HEAD `0659c71de4`, 통합 끝 `a6f1e93c4f`) 들지 않았고, 2026-10-30T01:50Z(HEAD `937a60ee95`, 통합 끝 `b8a90f33e2`; 다시 2026-10-30T02:27Z, HEAD `ed15692414`, 통합 끝 `a0a7121868`에서도 같은 출력) 든다 — 두 번 모두 `git branch --contains 6e44b1b2aa --list WT-agentic-factory-integration`. 그 뒤 `6ee1da00f4`(통합에 듦)가 범주 이름은 두고 규칙을 넓혔다(Python·Java/Node 스택, hex 안 전화번호 제외, 직함 붙은 이름; spec DEC-AF-29). 시험은 돌리지 않았고 부채 (i)·(ii)·(iv)는 닫지 않는다. C3 물결표는 OD-23 그대로.
 
 **증거 위치와 단계(DEC-AF-13)**: 원본은 `.moai/reports`(ignore 규칙 그대로). 공개 안전 정제본만 추적 디렉터리 `.moai/evidence/issue-<N>/`. 단계 `PREPARED → MASKED → COMMITTED → PUSHED → REMOTE_VERIFIED`. `AVAILABLE`은 원격 조회가 확인한 뒤에만 붙는다. 링크는 전체 커밋 SHA 고정.
 

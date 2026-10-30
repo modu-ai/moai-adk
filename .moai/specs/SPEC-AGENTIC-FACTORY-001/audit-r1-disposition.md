@@ -1,5 +1,7 @@
 # 코드 감사 1회차 처분표 — 재감사 전 (B9)
 
+> 0.7.0 머리말: 이 표는 로컬 전용 재설계 이전의 계약(0.6.7까지, Issue·control ref 권위)을 기록한다. 재설계 뒤의 처분은 spec.md §J다.
+
 - 작성일: 2026-10-30
 - 감사 대상: `4cdaba5d7e` (`4cdaba5d7e6821aa9751d100cf75a328b4726704`), 판정 FAIL 0.67
 - 판정서: `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/agentic-factory-integration/.moai/reports/issue-1948/code-audit-4cdaba5d7e/verdict.md` (이 작성자가 읽음, 읽기만 함)

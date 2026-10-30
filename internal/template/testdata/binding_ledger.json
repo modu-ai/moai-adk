@@ -5017,7 +5017,7 @@
     "start_line": 39
    },
    "before_text": "[HARD] **The leader may attach a finding; it may not act on one.** Analysis records a relation between two cards (`moai gtd relate`); the record is evidence the operator reads, never a mandate — the leader never folds the related card away, never reorders the queue around it, and never drops or edits it. Analysis changes exactly one thing on its own authority: it refuses the admission of a card whose normalized text is identical to one already queued or picked.",
-   "after_text": "[HARD] The leader records relations (`moai gtd relate`) as evidence for the operator, never a mandate: it never folds away, reorders around, drops, or edits a related card; its one self-authority act is refusing a card whose normalized text is identical to one queued or picked.",
+   "after_text": "[HARD] Relations (`moai gtd relate`) are evidence for the operator, never a mandate: the leader never folds away, reorders around, drops, or edits a related card; its one self-authority act is refusing a card whose normalized text is identical to one queued or picked.",
    "location": "role-core:workflow/factory-dispatch.md",
    "processing": "rewrite",
    "entry_points": [
@@ -5091,7 +5091,7 @@
     "start_line": 43
    },
    "before_text": "[HARD] **The cross-check also asks whether a completed SPEC already covers the work.** A card id cannot answer \"has someone else already done this\" — where the card names an issue or a subsystem, the leader also reads whether a covering SPEC is already `completed` and reports that alongside the PR and landed state. Neither read is conclusive: the final discriminator stays reproduction.",
-   "after_text": "[HARD] The cross-check also reports completed-SPEC coverage; neither read is conclusive — the final discriminator stays reproduction.",
+   "after_text": "[HARD] The cross-check also reports completed-SPEC coverage; neither read is conclusive — reproduction decides.",
    "location": "role-core:workflow/factory-dispatch.md",
    "processing": "rewrite",
    "entry_points": [
@@ -5128,7 +5128,7 @@
     "start_line": 45
    },
    "before_text": "[HARD] **The cross-check reports; it never vetoes.** Where the card carries an open pull request or is already landed, the leader surfaces that and the operator **confirms or withdraws** it. The leader never withholds a picked card on its own authority. Why the wording is the only available control: `factory-dispatch-cards.md` § The pre-dispatch cross-check.",
-   "after_text": "[HARD] The cross-check reports, never vetoes — the operator confirms or withdraws; never withhold a picked card.",
+   "after_text": "[HARD] The cross-check reports, never vetoes: the operator confirms or withdraws; never withhold a picked card.",
    "location": "role-core:workflow/factory-dispatch.md",
    "processing": "rewrite",
    "entry_points": [
@@ -5377,7 +5377,7 @@
     "start_line": 71
    },
    "before_text": "[HARD] A dispatch is written in the operator's `conversation_language` — the operator watches it scroll past, which makes it user-facing output rather than internal agent traffic. The boundary is **who reads it**: an `Agent()` subagent prompt reaches no human and stays English. What stays verbatim in every language: SPEC IDs, command names and their flags, file paths, session names, and technical identifiers. (Classification rationale: `factory-dispatch-detail.md` § Dispatch language.)",
-   "after_text": "[HARD] Dispatches go in the operator's `conversation_language`; `Agent()` prompts stay English; identifiers verbatim.",
+   "after_text": "[HARD] Dispatches use the operator's `conversation_language`; `Agent()` prompts stay English; identifiers verbatim.",
    "location": "role-core:workflow/factory-dispatch.md",
    "processing": "rewrite",
    "entry_points": [
@@ -5503,7 +5503,7 @@
     "start_line": 98
    },
    "before_text": "[HARD] Between run-exit verification and integration every lane runs a `card-review` stage: a card-scope self-review through `codex_review` (`glm_review` optional) whose result is written to `.moai/reports/<card-id>/card-review.md` — advisory only, never a replacement for the leader's evidence read or an independent audit. With `tree_scope: skip` configured for the leader's checkout, the leader session carries no turn-end codex review gate and reviews its own internal output directly with the same tools. Stage order, evidence fields, and the re-review ceiling: `factory-dispatch-detail.md` § The card-review stage.",
-   "after_text": "[HARD] Between run-exit verification and integration every lane runs `card-review`: `codex_review` (`glm_review` optional) into `.moai/reports/<card-id>/card-review.md`, advisory, never replacing the leader evidence read or an independent audit; under `tree_scope: skip` the leader self-reviews with the same tools.",
+   "after_text": "[HARD] Every lane runs `card-review` between run-exit verification and integration: `codex_review` (`glm_review` optional) into `.moai/reports/<card-id>/card-review.md` — advisory, never replacing the leader evidence read; under `tree_scope: skip` the leader self-reviews.",
    "location": "role-core:workflow/factory-dispatch.md",
    "processing": "rewrite",
    "entry_points": [
@@ -5540,7 +5540,7 @@
     "start_line": 102
    },
    "before_text": "[HARD] A lane that cannot proceed records an explicit wait on disk — reason, whom, recheck point — and ends its turn; it never idles open-ended on a reply. On its next awaken the lane runs the stall watchdog first — invoke Skill(\"moai-lane-watchdog\") and follow it — which measures progress, classifies the stall cause, and resolves the judgment through the decision ladder (doctrine: `.claude/rules/moai/workflow/auto-semantics.md` §6). The ladder's terminal step is the lane's own judgment + decision record — the lane never asks the leader and waits on a judgment; reaching the leader is a gate boundary (a keep-set category or a cross-card conflict), not a ladder step. The lead's decision board carries leader-level rulings only — cross-card conflicts, serial-slot policy calls, keep-set gate relays — never a lane's in-card judgment. A lane also arms a standing recheck cron (`CronCreate`, recurring, every 20 minutes) before its first stage and keeps it until its completion report: a lane stopped by an API error (429) or by a delegate's report that never comes wakes without outside help only if something armed before it stopped fires, and every wake reads the disk evidence (progress record, reports, commits, the delegate's deliverable) before it replies (`.claude/rules/moai/workflow/auto-semantics.md` §5.1).",
-   "after_text": "[HARD] A stuck lane writes a disk wait (reason, whom, recheck point), ends its turn, never idles on a reply; on wake: `moai-lane-watchdog` first, then the `auto-semantics.md` §6 ladder ending in its own judgment + decision record, never ask-and-wait; the leader only at a gate boundary (keep-set, cross-card conflict); a recurring `CronCreate` recheck armed before the first stage, kept while the lane executes the card; each wake reads disk evidence before replying.",
+   "after_text": "[HARD] A stuck lane writes a disk wait (reason, whom, recheck point), ends its turn, never idles on a reply; on wake: `moai-lane-watchdog` first, then the `auto-semantics.md` §6 ladder (own judgment + decision record; the leader only at a gate boundary); no recurring `CronCreate` and no absolute-clock one-shot: each wake schedules exactly one next wake (`ScheduleWakeup`, a delay relative to now, at most `renew_interval`) while work remains, else records `idle: backlog empty <time>` once and stops; read disk evidence before replying.",
    "location": "role-core:workflow/factory-dispatch.md",
    "processing": "rewrite",
    "entry_points": [
@@ -5614,7 +5614,7 @@
     "start_line": 108
    },
    "before_text": "[HARD] **A completion report reaches the leader as a `RECOMMEND:` summary, not as raw reading batches** — turn occupancy moves; the leader's own evidence-read before advancing a card does not (§ Completion is read, never trusted).",
-   "after_text": "[HARD] Completion reports arrive as `RECOMMEND:` summaries — occupancy moves; the leader's evidence read does not.",
+   "after_text": "[HARD] Completion reports arrive as `RECOMMEND:` summaries — occupancy moves, the evidence read does not.",
    "location": "role-core:workflow/factory-dispatch.md",
    "processing": "rewrite",
    "entry_points": [
@@ -5688,7 +5688,7 @@
     "start_line": 114
    },
    "before_text": "[HARD] The leader advances a card on **evidence it read**, not on a lane's reply. Before moving a card out of a working stage, the leader reads the card's `progress.md` and the verification evidence path the phase declares; a missing, unreadable, or stale evidence file is a **gap** — the card stays put and the leader reports why. Absence of a failure signal is not a pass.",
-   "after_text": "[HARD] The leader advances a card only on evidence it read, never a lane reply: `progress.md` + the declared verification path; missing, unreadable, or stale evidence is a gap: the card stays, the leader says why; no failure signal is not a pass.",
+   "after_text": "[HARD] The leader advances a card only on evidence it read, never a lane reply: `progress.md` + the declared verification path; missing, unreadable, or stale evidence is a gap and the card stays; no failure signal is not a pass.",
    "location": "role-core:workflow/factory-dispatch.md",
    "processing": "rewrite",
    "entry_points": [
@@ -5883,7 +5883,7 @@
     "start_line": 141
    },
    "before_text": "[HARD] On a card transition inside a lane session, `/clear` happens exactly once, **after** the session has moved into the next card's worktree — not before the move. The count is not reduced: one card transition, one `/clear`.",
-   "after_text": "[HARD] `ExitWorktree(keep)`, lease, `EnterWorktree(path)`; a Codex lane moves in-session via `/cd`; conversation context never carries.",
+   "after_text": "[HARD] `ExitWorktree(keep)`, lease, `EnterWorktree(path)`; a Codex lane uses `/cd`; conversation context never carries.",
    "location": "role-core:workflow/factory-dispatch.md",
    "processing": "rewrite",
    "entry_points": [
@@ -5962,7 +5962,7 @@
     "start_line": 149
    },
    "before_text": "[HARD] A card's work happens inside a worktree, and that worktree is **entered through the launcher** — never created with a bare `git worktree add`. Launcher table (per-harness forms): `factory-dispatch-mechanics.md` § Isolation.",
-   "after_text": "[HARD] Card work happens in a launcher-entered worktree — never a bare `git worktree add` (mechanics § Isolation).",
+   "after_text": "[HARD] Card work happens in a launcher-entered worktree, never a bare `git worktree add`.",
    "location": "role-core:workflow/factory-dispatch.md",
    "processing": "rewrite",
    "entry_points": [
@@ -6221,7 +6221,7 @@
     "start_line": 163
    },
    "before_text": "[HARD] **Inside a worktree session that `<path>` is the worktree's own absolute path** — the guard refuses `-C .`, relative paths, runtime-computed paths, and paths outside this worktree; plain `git`, `git -C <own absolute path>`, and `--git-dir=<own .git>` pass.",
-   "after_text": "[HARD] In a worktree session `<path>` is that worktree's absolute path — relative, computed, and outside forms are refused.",
+   "after_text": "[HARD] In a worktree session `<path>` is that worktree's absolute path; relative, computed, and outside forms are refused.",
    "location": "role-core:workflow/factory-dispatch.md",
    "processing": "rewrite",
    "entry_points": [
@@ -6258,7 +6258,7 @@
     "start_line": 167
    },
    "before_text": "[HARD] **Lane-local verification is scoped to the card.** A lane runs the tests its own change can affect, then pushes and lets CI run the full suite. (Incident record: `factory-dispatch-gates.md` § Verification load incident record.)",
-   "after_text": "[HARD] Verification is lane-local — only what the change can affect; CI runs the full suite (gates § incident record).",
+   "after_text": "[HARD] Verification is lane-local — only what the change can affect; CI runs the full suite.",
    "location": "role-core:workflow/factory-dispatch.md",
    "processing": "rewrite",
    "entry_points": [
@@ -6295,7 +6295,7 @@
     "start_line": 169
    },
    "before_text": "[HARD] **Never spawn background load.** Where a verification genuinely needs contention, the load must be cleanup-guaranteed — kills registered with the test framework's cleanup hook, or a `timeout` wrapper bounding the process from outside.",
-   "after_text": "[HARD] Never spawn background load — contention needs cleanup-guaranteed kills or a `timeout` wrapper.",
+   "after_text": "[HARD] Never spawn background load without cleanup-guaranteed kills or a `timeout` wrapper.",
    "location": "role-core:workflow/factory-dispatch.md",
    "processing": "rewrite",
    "entry_points": [
@@ -6332,7 +6332,7 @@
     "start_line": 173
    },
    "before_text": "[HARD] Inside a worktree, an environment-scrubbed verification runs as one compound `unset … && <command>` invocation — each Bash call is a fresh process, so a separate `unset` does not carry into the next command; the scrub and the command travel together, or the scrub does nothing:\n\n```bash\nunset MOAI_KANBAN_ID MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test ./...\n```",
-   "after_text": "[HARD] Env-scrubbed verification is one compound `unset … && <command>` call — a separate `unset` carries nothing.",
+   "after_text": "[HARD] Env-scrubbed verification is one compound `unset … && <command>` call.",
    "location": "role-core:workflow/factory-dispatch.md",
    "processing": "rewrite",
    "entry_points": [
@@ -6399,7 +6399,7 @@
     "start_line": 185
    },
    "before_text": "[HARD] A lane whose card has passed verification does not wait for the leader to integrate it: the lane merges its own branch into the batch's release branch (`release/vX.Y.Z`) itself. The window is taken with `moai integration acquire --name <lane> --card <card-id>` BEFORE entering the release worktree, released after the completion report is sent; the lane enters the release worktree with `EnterWorktree` (a cross-tree `git -C` is refused), merges `--no-ff`, re-reads `HEAD` before the commit and again before the push, pushes `release/vX.Y.Z` (never force), and leaves the batch pull request with the leader. The full window procedure: `factory-dispatch-mechanics.md` § Integration into the release branch is self-served · the `acquire` settings-drift assertion: `factory-dispatch-gates.md` § The pre-merge settings-drift assertion.",
-   "after_text": "[HARD] git-flow only: a verified lane merges its branch into `release/vX.Y.Z` itself: `moai integration acquire --name <lane> --card <card-id>` before entry, release after the completion report; `EnterWorktree` in (cross-tree `git -C` refused; Codex: `git -C <absolute release worktree path>`); `--no-ff`; re-read `HEAD` before the commit and again before the push; push, never force; the batch PR stays with the leader.",
+   "after_text": "[HARD] git-flow only: a lane merges its verified branch into `release/vX.Y.Z` itself: `moai integration acquire --name <lane> --card <card-id>` first, release after the report; `EnterWorktree` in (Codex: `git -C <absolute release worktree path>`); `--no-ff`; re-read `HEAD` before commit and push; never force; the batch PR stays with the leader.",
    "location": "role-core:workflow/factory-dispatch.md",
    "processing": "rewrite",
    "entry_points": [
