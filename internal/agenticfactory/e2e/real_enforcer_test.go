@@ -248,9 +248,8 @@ func TestEnforcer_Collaboration_RedirectOrRename_IsRefused(t *testing.T) {
 			c.Enabled, c.AllowedRepositories, c.EditBody = true, []string{repoA}, true
 		})}
 		// Behavior change (lane-18 F20): the host not answering for the repository asked about is refused as
-		// repository-unverified, a reason of its own; effect has no named constant for it, so the recorded
-		// string is pinned.
-		refusedWith(t, check(e, "PATCH", pathIssueForeign, `{"body":"x"}`), effect.RefusalReason("repository-unverified"))
+		// repository-unverified, a reason of its own (named constant added by lane-20 549ef06ac9).
+		refusedWith(t, check(e, "PATCH", pathIssueForeign, `{"body":"x"}`), effect.ReasonRepoUnverified)
 		t.Logf("%s: refused as repository-unverified", name)
 	}
 }
