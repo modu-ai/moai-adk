@@ -378,6 +378,9 @@ func factoryLeaderNotice(runID string, lanes int, lang string) string {
 	// (card t1603).
 	blocks = append(blocks, strings.Join([]string{m.autoModeGuideLeader, m.docsPointer}, "\n"))
 
+	// (g) the leader's standing watch cron and the judgment ladder (B6).
+	blocks = append(blocks, fmt.Sprintf(m.leaderWatchRule, laneArmExpression()))
+
 	return strings.Join(blocks, "\n\n") + "\n"
 }
 
