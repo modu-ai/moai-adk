@@ -177,3 +177,12 @@ func TestAMovedRepositoryIsCaughtByTheActualRepoComparison(t *testing.T) {
 		t.Errorf("verdict = %s, want %s: an answer for another repository must not authorize", v, core.DenyRepoNotAllowed)
 	}
 }
+
+// The fallback built from the exit text keeps the body, so a secondary limit is still told from a denial.
+func TestTheTypedStatusFallbackKeepsTheBodyForRateLimitDetection(t *testing.T) {
+	newAPI(t, "", "gh: You have exceeded a secondary rate limit (HTTP 403)", "1")
+	res, err := Transport{Exec: ex()}.Do(t.Context(), get("/repos/o/r/issues/7", nil))
+	if err != nil || res.Status != 403 {
+		t.Errorf("res=%+v err=%v, want the 403 passed through as a limit", res, err)
+	}
+}

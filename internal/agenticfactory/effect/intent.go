@@ -282,6 +282,16 @@ func (e *Executor) Execute(ctx context.Context, r Request) (Intent, error) {
 	return e.settle(in)
 }
 
+// sentAtNanos reads a SentAt as nanoseconds. A record stored while the field still held unix SECONDS
+// (a value far below any nanosecond instant since 1970 + 1000 s) is scaled up, so it is not read as long past.
+func sentAtNanos(v int64) int64 {
+	const secondsCeiling = 1_000_000_000_000 // 1e12 s is year ~33658; 1e12 ns is 17 minutes after 1970
+	if v > 0 && v < secondsCeiling {
+		return v * int64(time.Second)
+	}
+	return v
+}
+
 // safeErr is the error text as it may be stored: through the one core sanitizer, so a credential or
 // personal data an error message echoes never lands in an intent (and, in ref mode, on the control ref).
 func safeErr(err error) string {
@@ -292,8 +302,16 @@ func safeErr(err error) string {
 // parkRefused records a request Admit refused as a Parked intent WITHOUT its payload: the refused text is
 // never stored, and the same refusal is read back as Parked on the next pass instead of being judged again.
 // The error text is the refusal's own (categories, never values).
-func (e *Executor) parkRefused(ctx context.Context, key string, r Request, why error) (Intent, error) {
-	in := Intent{Key: key, Kind: r.Kind, Issue: r.Issue, Target: r.Target, Digest: r.Digest,
+//
+// Its Key and Digest are made from the sanitized form of the payload, never from the raw text: the intent
+// document is named by its key and the control ref may be pushed, so a hash of the raw text would let the
+// refused text be confirmed by hashing a guess (design 4.4, DEC-AF-28).
+func (e *Executor) parkRefused(ctx context.Context, _ string, r Request, why error) (Intent, error) {
+	masked, _ := core.Redact(r.Payload)
+	sum := sha256.Sum256([]byte(masked))
+	digest := hex.EncodeToString(sum[:])
+	key := Key(r.Kind, r.Target, digest)
+	in := Intent{Key: key, Kind: r.Kind, Issue: r.Issue, Target: r.Target, Digest: digest,
 		Status: StatusParked, ParkReason: string(ReasonSensitiveContent), LastError: safeErr(why)}
 	out, err := e.Store.PutIf(in)
 	if errors.Is(err, core.ErrRevisionConflict) {
@@ -368,7 +386,7 @@ func (e *Executor) Reconcile(ctx context.Context, key string) (Intent, error) {
 	case res.Found:
 		in.Status, in.ProviderID = StatusConfirmed, res.ProviderID
 	case res.Authoritative:
-		if in.Status == StatusSent && in.SentAt > 0 && e.now().UnixNano() < in.SentAt+2*int64(to) {
+		if in.Status == StatusSent && in.SentAt > 0 && e.now().UnixNano() < sentAtNanos(in.SentAt)+2*int64(to) {
 			return in, nil // the sender may still be mid-flight: look again later, write nothing
 		}
 		in.Status = StatusFailed

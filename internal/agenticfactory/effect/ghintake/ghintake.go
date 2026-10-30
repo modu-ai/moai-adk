@@ -207,10 +207,11 @@ func Admit(r effect.Request) error {
 		return nil
 	}
 	var p issuePayload
-	if err := json.Unmarshal([]byte(r.Payload), &p); err != nil {
-		return nil // an unreadable payload is refused later by Send as invalid; it holds no readable text
+	text := r.Payload // an unreadable payload is checked as raw text: Send refuses it later as invalid
+	if err := json.Unmarshal([]byte(r.Payload), &p); err == nil {
+		text = p.Title + "\n" + p.Body
 	}
-	if err := core.RefuseIfSensitive(p.Title + "\n" + p.Body); err != nil {
+	if err := core.RefuseIfSensitive(text); err != nil {
 		return fmt.Errorf("%w: %v", effect.ErrRefused, err)
 	}
 	return nil

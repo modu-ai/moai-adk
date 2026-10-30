@@ -46,8 +46,9 @@ type Exec struct {
 
 // ExitError is a non-zero exit of git.
 type ExitError struct {
-	Verb   string // the subcommand only: the rest of the call is not echoed
-	Code   int
+	Verb string // the subcommand only: the rest of the call is not echoed
+	Code int
+	// Stderr is git's own text, raw: Redact it before it is recorded anywhere (Error() already does).
 	Stderr string
 }
 
