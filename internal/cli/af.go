@@ -134,7 +134,13 @@ func newAFMoveCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "move <card>",
 		Short: "Move a claimed card to a stage",
-		Args:  cobra.ExactArgs(1),
+		Long: `Move a claimed card to a stage.
+
+Limits: the verb carries no guard or evidence arguments. A move that needs a guard key (an operator hold, a
+fix-limit or reclaim-cap park, a resume guard) or evidence handed to the position table is refused by the
+ledger, and this verb cannot supply either; such moves are made through the ledger API. Recording evidence is
+the separate "evidence" verb.`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			to := core.Position{Stage: core.Stage(strings.ToUpper(stage)), Sub: core.SubStage(strings.ToUpper(sub)), RemoteIntegrated: remote}
 			return afRun(f.db, func(ctx context.Context, st *ledger.Store) error {

@@ -72,6 +72,17 @@ named next to it. The judging build is `go test` compiled from that tree (no ins
 - The 3-iteration fix-limit park (REQ-AFL-013) and the `fail_reason` return path are not exercised by this test.
 - The `claim` verb binds the session's hook heartbeat under the project directory; the test isolates that with
   `CLAUDE_PROJECT_DIR`, so the real binding file is not covered.
+- Stand-ins in the flow test (the earlier "nothing is faked" was too strong): the gate runner is a function that
+  returns nil (no build or test runs in the candidate worktree) and the lock holder's process fingerprint is a
+  literal. The evidence rows are written by hand through `moai af evidence`.
+- The red evidence row is recorded with result `pass`. For the `red` kind that means the observation succeeded (the
+  acceptance tests were seen failing before the change); it does not mean they passed. The ledger has one result
+  vocabulary (`pass`/`fail`) for all kinds, so a reader must take the kind into account.
+- `moai af move` carries no guard or evidence arguments; moves that need a guard key are made through the ledger API
+  (stated in the verb's help text).
+- Not covered, recorded as follow-up debt: a stable error code for a ledger refusal (the verbs print the error text
+  and exit 1, so a fencing loss cannot be told from other failures by exit code), and tests of the `release` verb and
+  of refusal paths.
 - Whole `internal/cli` (B1) was not run.
 
 ## Residual-risk
