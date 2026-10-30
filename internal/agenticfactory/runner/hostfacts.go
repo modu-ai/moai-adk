@@ -38,7 +38,7 @@ type HostFacts struct {
 }
 
 // IssueFacts implements Facts.
-func (h HostFacts) IssueFacts(issue core.IssueRef) (IssueFacts, error) {
+func (h HostFacts) IssueFacts(parent context.Context, issue core.IssueRef) (IssueFacts, error) {
 	switch {
 	case h.Repo == "":
 		return IssueFacts{}, errors.New("hostfacts: no repository is configured")
@@ -47,7 +47,10 @@ func (h HostFacts) IssueFacts(issue core.IssueRef) (IssueFacts, error) {
 	case h.User == nil || h.Issue == nil || h.Owner == nil:
 		return IssueFacts{}, errors.New("hostfacts: a lookup is not wired")
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), h.Timeout)
+	if parent == nil {
+		parent = context.Background()
+	}
+	ctx, cancel := context.WithTimeout(parent, h.Timeout)
 	defer cancel()
 	user, err := h.User(ctx)
 	if err != nil {

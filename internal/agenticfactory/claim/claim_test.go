@@ -152,13 +152,13 @@ func TestReleaseOnlyByHolderThenReacquireBumpsEpoch(t *testing.T) {
 	if _, err := s.Acquire(ref(t, 1), "a", "d1", "run-1"); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.Release(ref(t, 1), "b"); !errors.Is(err, core.ErrForeign) {
+	if err := s.Release(ref(t, 1), "b", 1); !errors.Is(err, core.ErrForeign) {
 		t.Errorf("foreign release: %v", err)
 	}
-	if err := s.Release(ref(t, 1), "a"); err != nil {
+	if err := s.Release(ref(t, 1), "a", 1); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.Release(ref(t, 1), "a"); !errors.Is(err, core.ErrNotHeld) {
+	if err := s.Release(ref(t, 1), "a", 1); !errors.Is(err, core.ErrNotHeld) {
 		t.Errorf("double release: %v", err)
 	}
 	rec, err := s.Acquire(ref(t, 1), "b", "d2", "run-2")

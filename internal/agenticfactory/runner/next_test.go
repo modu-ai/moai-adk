@@ -29,7 +29,7 @@ func TestRepairSignalHoldsNewClaimsUntilTheOwnerReopens(t *testing.T) {
 	if _, err := r.Claim(next, "sess-a", "disp-2", "run-1"); err != nil {
 		t.Fatalf("no repair is waiting, so a second Issue is allowed: %v", err)
 	}
-	if err := r.Store.Release(next, "sess-a"); err != nil {
+	if err := releaseHeld(t, r, next, "sess-a"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := r.Store.MarkRepairNeeded(ref, ""); !errors.Is(err, core.ErrEvidenceIncomplete) {
@@ -45,7 +45,7 @@ func TestRepairSignalHoldsNewClaimsUntilTheOwnerReopens(t *testing.T) {
 	if _, err := r.Claim(next, "sess-b", "disp-4", "run-1"); err != nil {
 		t.Errorf("a different agent is not blocked: %v", err)
 	}
-	_ = r.Store.Release(next, "sess-b")
+	_ = releaseHeld(t, r, next, "sess-b")
 	rec, err := r.ReopenOwn(tk, "ci failed on latest head", RepairEvidence{ScopeReserved: true, OldWriterEnded: true})
 	if err != nil || rec.RepairNeeded != "" {
 		t.Fatalf("reopen takes the repair up and clears the signal: %+v %v", rec, err)

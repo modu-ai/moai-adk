@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -11,7 +12,7 @@ import (
 // stubFacts answers per Issue number; unlisted Issues fail the lookup.
 type stubFacts map[int]IssueFacts
 
-func (s stubFacts) IssueFacts(i core.IssueRef) (IssueFacts, error) {
+func (s stubFacts) IssueFacts(_ context.Context, i core.IssueRef) (IssueFacts, error) {
 	f, ok := s[i.Number]
 	if !ok {
 		return IssueFacts{}, errors.New("host lookup failed")

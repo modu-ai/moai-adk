@@ -534,7 +534,7 @@ func handOffAndLeave(r *Runner, t Ticket, h Handoff) (claim.Record, error) {
 	if _, err := r.HandOff(t, h); err != nil {
 		return claim.Record{}, err
 	}
-	if err := r.Store.Release(t.Issue, t.Holder); err != nil {
+	if err := r.Store.Release(t.Issue, t.Holder, t.Epoch); err != nil {
 		return claim.Record{}, err
 	}
 	return r.Store.Read(t.Issue)

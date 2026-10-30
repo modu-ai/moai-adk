@@ -228,7 +228,7 @@ func TestOneAgentOneRequestAtATime(t *testing.T) {
 	if _, err := s.ReserveRequest("r2", a, slots); !errors.Is(err, core.ErrHeld) {
 		t.Errorf("an agent that is still building holds its request: %v", err)
 	}
-	if err := s.Release(ref1, a.SessionID); err != nil {
+	if err := releaseNow(t, s, ref1, a.SessionID); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := s.ReserveRequest("r2", a, slots); err != nil {

@@ -28,20 +28,24 @@ type Record struct {
 	Holder string `json:"holder"` // empty once released
 	// AgentName is the display name (agent-N) of the holder; Holder carries
 	// the immutable session id. Neither is changed by Update.
-	AgentName string           `json:"agent_name,omitempty"`
-	Dispatch  string           `json:"dispatch"`
-	Run       core.RunID       `json:"run"`
-	Attempt   core.AttemptID   `json:"attempt,omitempty"`
-	Epoch     int64            `json:"epoch"`
-	Seq       int64            `json:"seq"`
-	State     core.State       `json:"state"`
-	Return    core.State       `json:"return_stage,omitempty"`
-	Reason    core.BlockReason `json:"block_reason,omitempty"`
-	Resume    string           `json:"resume_condition,omitempty"`
-	Head      core.HeadSHA     `json:"head,omitempty"`
-	Delivery  core.Delivery    `json:"delivery,omitempty"`
-	Deploy    string           `json:"deploy,omitempty"`
-	Mirror    string           `json:"mirror_state,omitempty"` // current | stale | refused | rejected(<status>) | blocked(<reason>)
+	AgentName string         `json:"agent_name,omitempty"`
+	Dispatch  string         `json:"dispatch"`
+	Run       core.RunID     `json:"run"`
+	Attempt   core.AttemptID `json:"attempt,omitempty"`
+	Epoch     int64          `json:"epoch"`
+	Seq       int64          `json:"seq"`
+	// OwnerSeq counts the writes the OWNER made with its ticket (Update, UpdateRelease).
+	// Seq also moves for a monitor or the mirror (RecordMirror, a repair signal); a safe
+	// stop goes stale only when the owner itself acts, so it is judged by this counter.
+	OwnerSeq int64            `json:"owner_seq,omitempty"`
+	State    core.State       `json:"state"`
+	Return   core.State       `json:"return_stage,omitempty"`
+	Reason   core.BlockReason `json:"block_reason,omitempty"`
+	Resume   string           `json:"resume_condition,omitempty"`
+	Head     core.HeadSHA     `json:"head,omitempty"`
+	Delivery core.Delivery    `json:"delivery,omitempty"`
+	Deploy   string           `json:"deploy,omitempty"`
+	Mirror   string           `json:"mirror_state,omitempty"` // current | stale | refused | rejected(<status>) | blocked(<reason>)
 	// AttemptSeq counts attempts on this Issue (initial plus repairs).
 	AttemptSeq int `json:"attempt_seq,omitempty"`
 	// Receipt is set when the agent published a PR and handed the Issue off.
@@ -676,7 +680,7 @@ func (s *Store) UpdateRelease(i core.IssueRef, holder string, epoch int64, fn fu
 		if err := fn(&next); err != nil {
 			return err
 		}
-		next.Issue, next.AgentName, next.Epoch, next.Seq = cur.Issue, cur.AgentName, cur.Epoch, cur.Seq+1
+		next.Issue, next.AgentName, next.Epoch, next.Seq, next.OwnerSeq = cur.Issue, cur.AgentName, cur.Epoch, cur.Seq+1, cur.OwnerSeq+1
 		next.Holder = ""
 		out = next
 		return s.write(i, &out)
@@ -769,7 +773,7 @@ func (s *Store) Update(i core.IssueRef, holder string, epoch int64, fn func(*Rec
 		if err := fn(&next); err != nil {
 			return err
 		}
-		next.Issue, next.Holder, next.AgentName, next.Epoch, next.Seq = cur.Issue, cur.Holder, cur.AgentName, cur.Epoch, cur.Seq+1
+		next.Issue, next.Holder, next.AgentName, next.Epoch, next.Seq, next.OwnerSeq = cur.Issue, cur.Holder, cur.AgentName, cur.Epoch, cur.Seq+1, cur.OwnerSeq+1
 		out = next
 		return s.write(i, &out)
 	})
@@ -779,9 +783,11 @@ func (s *Store) Update(i core.IssueRef, holder string, epoch int64, fn func(*Rec
 	return out, nil
 }
 
-// Release hands the claim back. The record stays as a tombstone so the epoch
-// keeps increasing across holders.
-func (s *Store) Release(i core.IssueRef, holder string) error {
+// Release gives the Issue up. It needs the holder and the epoch the caller holds: a
+// run of the same session that kept an older epoch must not release the newer claim
+// the session took afterwards (audit F14). An Issue nobody holds is ErrNotHeld, a
+// different holder ErrForeign, a different epoch ErrOwnershipUnverified.
+func (s *Store) Release(i core.IssueRef, holder string, epoch int64) error {
 	return s.withLock(i, func() error {
 		cur, ok, err := s.read(i)
 		if err != nil {
@@ -792,6 +798,9 @@ func (s *Store) Release(i core.IssueRef, holder string) error {
 		}
 		if cur.Holder != holder {
 			return fmt.Errorf("%w: %q is not the holder", core.ErrForeign, holder)
+		}
+		if cur.Epoch != epoch {
+			return fmt.Errorf("%w: epoch %d, the claim is at %d", core.ErrOwnershipUnverified, epoch, cur.Epoch)
 		}
 		cur.Holder, cur.Seq = "", cur.Seq+1
 		return s.write(i, &cur)
