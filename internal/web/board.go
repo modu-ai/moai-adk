@@ -9,12 +9,16 @@ import (
 	"encoding/json"
 	"net/http"
 	"sort"
+	"strconv"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/ledger"
 )
 
-// boardStageOrder is the card flow; a stage outside it is kept as written after
-// these, never folded into a known one.
-var boardStageOrder = []string{"READY", "BUILDING", "REVIEWING", "MERGING", "DONE"}
+// boardStageOrder is the card flow, named by core's constants; a stage outside it
+// is kept as written after these, never folded into a known one.
+var boardStageOrder = []core.Stage{core.StageReady, core.StageBuilding, core.StageReviewing, core.StageMerging, core.StageDone, core.StageCancelled}
 
 type BoardCardVM struct {
 	ID, Title, Sub, ParkReason, Priority, Reclaims string
@@ -82,17 +86,22 @@ func (a *app) buildBoard(ctx context.Context, now time.Time) BoardVM {
 	}
 	vm := BoardVM{Available: true}
 
-	by := map[string][]BoardCardVM{}
+	by := map[core.Stage][]BoardCardVM{}
 	for _, c := range cards {
-		by[c.Stage] = append(by[c.Stage], BoardCardVM{
-			ID: c.ID, Title: refineText(c.Title), Sub: refineText(c.SubStage),
-			Parked: c.Parked, ParkReason: refineText(c.ParkReason),
+		pos := c.Position
+		var parkReason string
+		if pos.Park != nil {
+			parkReason = string(pos.Park.Reason)
+		}
+		by[pos.Stage] = append(by[pos.Stage], BoardCardVM{
+			ID: c.ID, Title: refineText(c.Title), Sub: refineText(string(pos.Sub)),
+			Parked: pos.Park != nil, ParkReason: refineText(parkReason),
 			Priority: itoa(c.Priority), Reclaims: itoa(c.ReclaimCount),
-			Redacted: anyMasked(c.Title, c.SubStage, c.ParkReason),
+			Redacted: anyMasked(c.Title, string(pos.Sub), parkReason),
 		})
 	}
-	var extra []string
-	known := map[string]bool{}
+	var extra []core.Stage
+	known := map[core.Stage]bool{}
 	for _, s := range boardStageOrder {
 		known[s] = true
 	}
@@ -101,19 +110,23 @@ func (a *app) buildBoard(ctx context.Context, now time.Time) BoardVM {
 			extra = append(extra, s)
 		}
 	}
-	sort.Strings(extra)
-	for _, s := range append(append([]string{}, boardStageOrder...), extra...) {
+	sort.Slice(extra, func(i, j int) bool { return extra[i] < extra[j] })
+	for _, s := range append(append([]core.Stage{}, boardStageOrder...), extra...) {
 		if len(by[s]) > 0 {
-			vm.Stages = append(vm.Stages, BoardStageVM{Stage: refineText(s), Cards: by[s]})
+			vm.Stages = append(vm.Stages, BoardStageVM{Stage: refineText(string(s)), Cards: by[s]})
 		}
 	}
 
 	for _, l := range leases {
+		var nextWake time.Time
+		if l.NextWakeAt != nil {
+			nextWake = *l.NextWakeAt
+		}
 		vm.Leases = append(vm.Leases, BoardLeaseVM{
-			CardID: l.CardID, Session: refineText(l.SessionID), Epoch: itoa(int(l.Epoch)),
+			CardID: l.CardID, Session: refineText(l.SessionID), Epoch: strconv.FormatInt(l.Epoch, 10),
 			Worktree:  refineText(l.Worktree),
 			Heartbeat: boardTime(l.HeartbeatAt, "2006-01-02 15:04:05Z"),
-			NextWake:  boardTime(l.NextWakeAt, "2006-01-02 15:04Z"),
+			NextWake:  boardTime(nextWake, "2006-01-02 15:04Z"),
 			Expires:   boardTime(l.ExpiresAt, "2006-01-02 15:04Z"),
 			Expired:   !l.ExpiresAt.IsZero() && l.ExpiresAt.Before(now),
 			Redacted:  anyMasked(l.SessionID, l.Worktree),
@@ -134,15 +147,15 @@ func (a *app) buildBoard(ctx context.Context, now time.Time) BoardVM {
 			fail = refineText(q.FailReason)
 		}
 		vm.Queue = append(vm.Queue, BoardQueueVM{
-			CardID: q.CardID, State: refineText(q.State), Candidate: refineText(sha),
-			FailReason: fail, Redacted: anyMasked(q.FailReason, q.State),
+			CardID: q.CardID, State: refineText(string(q.State)), Candidate: refineText(sha),
+			FailReason: fail, Redacted: anyMasked(q.FailReason, string(q.State)),
 		})
 	}
 
 	for _, n := range notes {
-		nv := BoardNoteVM{Seq: n.Seq, Kind: refineText(n.Kind), CardID: n.CardID,
+		nv := BoardNoteVM{Seq: n.Seq, Kind: refineText(string(n.Kind)), CardID: n.CardID,
 			At: boardTime(n.At, "2006-01-02 15:04Z"), Text: refineText(n.Text), Redacted: anyMasked(n.Text)}
-		if n.Kind == "landed" {
+		if n.Kind == ledger.NoteLanded {
 			vm.Landed = append(vm.Landed, nv)
 		} else {
 			vm.Notes = append(vm.Notes, nv)

@@ -22,59 +22,64 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/ledger"
 )
 
 type fakeBoardReader struct {
-	cards      []LedgerCard
-	leases     []LedgerLease
-	queue      []LedgerQueueItem
-	notes      []LedgerNote
+	cards      []ledger.Card
+	leases     []ledger.Lease
+	queue      []ledger.QueueItem
+	notes      []ledger.Note
 	err        error
 	notesSince []int64
 }
 
-func (f *fakeBoardReader) Cards(context.Context) ([]LedgerCard, error)      { return f.cards, f.err }
-func (f *fakeBoardReader) Leases(context.Context) ([]LedgerLease, error)    { return f.leases, f.err }
-func (f *fakeBoardReader) Queue(context.Context) ([]LedgerQueueItem, error) { return f.queue, f.err }
-func (f *fakeBoardReader) Notes(_ context.Context, since int64) ([]LedgerNote, error) {
+func (f *fakeBoardReader) Cards(context.Context) ([]ledger.Card, error)      { return f.cards, f.err }
+func (f *fakeBoardReader) Leases(context.Context) ([]ledger.Lease, error)    { return f.leases, f.err }
+func (f *fakeBoardReader) Queue(context.Context) ([]ledger.QueueItem, error) { return f.queue, f.err }
+func (f *fakeBoardReader) Notes(_ context.Context, since int64) ([]ledger.Note, error) {
 	f.notesSince = append(f.notesSince, since)
 	return f.notes, f.err
 }
+
+func boardPtr(t time.Time) *time.Time { return &t }
 
 var boardNow = time.Date(2026, 10, 30, 12, 0, 0, 0, time.UTC)
 
 func boardFixture() *fakeBoardReader {
 	return &fakeBoardReader{
-		cards: []LedgerCard{
-			{ID: "c1", Title: "ready one", Stage: "READY", Priority: 5},
-			{ID: "c2", Title: "building spec", Stage: "BUILDING", SubStage: "SPEC", Priority: 3},
-			{ID: "c3", Title: "building fix", Stage: "BUILDING", SubStage: "FIX", Priority: 3, ReclaimCount: 2},
-			{ID: "c4", Title: "parked review", Stage: "REVIEWING", Parked: true, ParkReason: "fix-limit", Priority: 1, ReclaimCount: 3},
-			{ID: "c5", Title: "in queue", Stage: "MERGING", Priority: 2},
-			{ID: "c6", Title: "finished", Stage: "DONE"},
-			{ID: "c7", Title: "from a future stage", Stage: "QUARANTINE"},
+		cards: []ledger.Card{
+			{ID: "c1", Title: "ready one", Position: core.Position{Stage: core.StageReady}, Priority: 5},
+			{ID: "c2", Title: "building spec", Position: core.Position{Stage: core.StageBuilding, Sub: core.SubSpec}, Priority: 3},
+			{ID: "c3", Title: "building fix", Position: core.Position{Stage: core.StageBuilding, Sub: core.SubFix}, Priority: 3, ReclaimCount: 2},
+			{ID: "c4", Title: "parked review", Position: core.Position{Stage: core.StageReviewing, Park: &core.Park{Reason: ledger.ParkReasonFixLimit}}, Priority: 1, ReclaimCount: 3},
+			{ID: "c5", Title: "in queue", Position: core.Position{Stage: core.StageMerging}, Priority: 2},
+			{ID: "c6", Title: "finished", Position: core.Position{Stage: core.StageDone}},
+			{ID: "c7", Title: "from a future stage", Position: core.Position{Stage: core.Stage("QUARANTINE")}},
 		},
-		leases: []LedgerLease{
+		leases: []ledger.Lease{
 			{CardID: "c2", SessionID: "sess-a", Epoch: 4, PID: 111, Worktree: "/work/c2",
-				HeartbeatAt: boardNow.Add(-40 * time.Second), NextWakeAt: boardNow.Add(5 * time.Minute), ExpiresAt: boardNow.Add(10 * time.Minute),
+				HeartbeatAt: boardNow.Add(-40 * time.Second), NextWakeAt: boardPtr(boardNow.Add(5 * time.Minute)), ExpiresAt: boardNow.Add(10 * time.Minute),
 				Keys: []string{"pkg:internal/web", "shared:go.mod"}},
 			{CardID: "c3", SessionID: "sess-b", Epoch: 2, PID: 222, Worktree: "/work/c3",
 				HeartbeatAt: boardNow.Add(-20 * time.Minute), ExpiresAt: boardNow.Add(-5 * time.Minute), Keys: []string{"pkg:internal/cli"}},
 		},
-		queue: []LedgerQueueItem{
-			{CardID: "c5", CandidateSHA: "0123456789abcdef0123456789abcdef01234567", State: "waiting", EnqueuedAt: boardNow.Add(-2 * time.Minute)},
-			{CardID: "c8", CandidateSHA: "fedcba9876543210fedcba9876543210fedcba98", State: "failed", FailReason: "vet failed in the candidate worktree", EnqueuedAt: boardNow.Add(-9 * time.Minute)},
+		queue: []ledger.QueueItem{
+			{CardID: "c5", CandidateSHA: "0123456789abcdef0123456789abcdef01234567", State: ledger.QueueWaiting, EnqueuedAt: boardNow.Add(-2 * time.Minute)},
+			{CardID: "c8", CandidateSHA: "fedcba9876543210fedcba9876543210fedcba98", State: ledger.QueueFailed, FailReason: "vet failed in the candidate worktree", EnqueuedAt: boardNow.Add(-9 * time.Minute)},
 		},
-		notes: []LedgerNote{
-			{Seq: 10, Kind: "landed", CardID: "c6", Text: "c6 landed at 89abcdef", At: boardNow.Add(-1 * time.Hour)},
-			{Seq: 11, Kind: "gate_wait", CardID: "c4", Text: "waiting for the operator", At: boardNow.Add(-30 * time.Minute)},
-			{Seq: 12, Kind: "stalled", CardID: "c3", Text: "owner liveness unknown", At: boardNow.Add(-10 * time.Minute)},
-			{Seq: 13, Kind: "decision", Text: "park after three reclaims", At: boardNow.Add(-5 * time.Minute)},
+		notes: []ledger.Note{
+			{Seq: 10, Kind: ledger.NoteLanded, CardID: "c6", Text: "c6 landed at 89abcdef", At: boardNow.Add(-1 * time.Hour)},
+			{Seq: 11, Kind: ledger.NoteGateWait, CardID: "c4", Text: "waiting for the operator", At: boardNow.Add(-30 * time.Minute)},
+			{Seq: 12, Kind: ledger.NoteStalled, CardID: "c3", Text: "owner liveness unknown", At: boardNow.Add(-10 * time.Minute)},
+			{Seq: 13, Kind: ledger.NoteDecision, Text: "park after three reclaims", At: boardNow.Add(-5 * time.Minute)},
 		},
 	}
 }
 
-func boardApp(t *testing.T, r BoardReader) *app {
+func boardApp(t *testing.T, r ledger.Reader) *app {
 	t.Helper()
 	a := newApp(Config{ProjectRoot: t.TempDir(), Ledger: r})
 	a.recordLastProfile = func(string) error { return nil }
@@ -184,10 +189,10 @@ func TestBoard_UnwiredOrFailingReaderIsNotAnEmptyBoard(t *testing.T) {
 func TestBoard_TextIsRefinedAndMarkedMasked(t *testing.T) {
 	p := bannerPayloads
 	f := &fakeBoardReader{
-		cards:  []LedgerCard{{ID: "c1", Title: "mail " + p["email"], Stage: "READY"}, {ID: "c2", Title: "clean", Stage: "READY"}},
-		leases: []LedgerLease{{CardID: "c1", SessionID: "s", Epoch: 1, Worktree: p["home-path"], Keys: []string{"k"}}},
-		queue:  []LedgerQueueItem{{CardID: "c1", CandidateSHA: "abc", State: "failed", FailReason: "tok " + p["token"]}},
-		notes:  []LedgerNote{{Seq: 1, Kind: "landed", CardID: "c1", Text: "call " + p["phone"]}},
+		cards:  []ledger.Card{{ID: "c1", Title: "mail " + p["email"], Position: core.Position{Stage: core.StageReady}}, {ID: "c2", Title: "clean", Position: core.Position{Stage: core.StageReady}}},
+		leases: []ledger.Lease{{CardID: "c1", SessionID: "s", Epoch: 1, Worktree: p["home-path"], Keys: []string{"k"}}},
+		queue:  []ledger.QueueItem{{CardID: "c1", CandidateSHA: "abc", State: ledger.QueueFailed, FailReason: "tok " + p["token"]}},
+		notes:  []ledger.Note{{Seq: 1, Kind: ledger.NoteLanded, CardID: "c1", Text: "call " + p["phone"]}},
 	}
 	a := boardApp(t, f)
 	vm := a.buildBoard(context.Background(), boardNow)
