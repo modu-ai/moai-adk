@@ -181,9 +181,9 @@ its work.
   message revives it as an ownerless writer
   (`cross-session-messaging.md` § Rules). Record which.
 - Deliverable absent and the evidence still moving (the delegate is working) →
-  explicit wait whose recheck point is the next cron fire.
+  explicit wait whose recheck point is the next scheduled wake.
 - Deliverable absent, no sign the delegate ended, and the evidence unchanged
-  across two consecutive fires → structured blocker naming the delegate, what
+  across two consecutive wakes → structured blocker naming the delegate, what
   was asked of it, and the evidence read; do not wait a third time.
 
 ## 4. Decision board protocol
@@ -243,4 +243,4 @@ Every iteration ends in exactly one of:
    evidence records, and the disk board.
 4. Verification is lane-local; no background load.
 5. Hook-independent: awaken-tick only; no hook surface. The scheduler that
-   fires the awaken is the lane's standing recheck cron (doctrine §5.1), armed at card intake and kept while the lane executes the card — this skill is its prompt, not its owner.
+   fires the awaken is the lane's self-paced wake (doctrine §5.1), first scheduled at card intake and re-scheduled at the end of each wake while the lane executes the card — this skill is its prompt, not its owner.
