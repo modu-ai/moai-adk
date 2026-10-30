@@ -92,6 +92,7 @@ type Card struct {
 	Position     core.Position
 	Priority     int
 	Spec         Spec
+	Epoch        int64 // the epoch of the latest claim; 0 before the first
 	ReclaimCount int
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
@@ -258,21 +259,6 @@ type Store struct {
 
 var _ Reader = (*Store)(nil)
 
-// AddCard inserts a card in its Position (READY for a new one). ErrCardExists when the
-// id is taken. Every dependency in Spec.Depends must already exist and not be CANCELLED,
-// and none may be the card itself (ErrDependency); a card is only ever added after what
-// it depends on, so a cycle cannot form.
-func (s *Store) AddCard(ctx context.Context, c Card) error { return ErrNotImplemented }
-
-// Claim is one transaction: it reaps the dead holders (lazily, ClaimRequest.Alive),
-// picks the highest-priority READY, unparked card whose dependencies are DONE and
-// whose conflict keys are all free, inserts its lease and keys, bumps the epoch and
-// moves it READY to BUILDING/SPEC (class C) or BUILDING/IMPLEMENT (A, B). ErrNoWork
-// when nothing qualifies.
-func (s *Store) Claim(ctx context.Context, r ClaimRequest) (Claimed, error) {
-	return Claimed{}, ErrNotImplemented
-}
-
 // Heartbeat renews the lease of the card at epoch and records when the lane plans to
 // wake next. nextWake is information for the board and for stall detection; the
 // lease's expiry is computed from the lease length alone. ErrStaleEpoch when the epoch
@@ -316,15 +302,6 @@ func (s *Store) Release(ctx context.Context, cardID string, epoch int64) error {
 	return ErrNotImplemented
 }
 
-// Reap takes back the leases whose holder alive judges Dead, expired or not. A holder
-// judged Alive is left alone; one judged Unknown is never reclaimed either, and gets a
-// stalled note once its lease has expired (I5). The ReclaimCap-th reclaim of a card
-// parks it for the operator (I7). alive is required (a nil one is ErrInvalid) and is
-// called before the write transaction opens, never inside it.
-func (s *Store) Reap(ctx context.Context, alive func(pid int, start string) Liveness) ([]Reclaimed, error) {
-	return nil, ErrNotImplemented
-}
-
 // AddNote appends a note.
 func (s *Store) AddNote(ctx context.Context, n Note) error { return ErrNotImplemented }
 
@@ -364,9 +341,7 @@ func (s *Store) QueueUpdate(ctx context.Context, cardID string, lockEpoch int64,
 // then rename).
 func (s *Store) Snapshot(ctx context.Context, dst string) error { return ErrNotImplemented }
 
-// Cards, Leases, Queue and Notes are the Reader methods.
-func (s *Store) Cards(ctx context.Context) ([]Card, error)      { return nil, ErrNotImplemented }
-func (s *Store) Leases(ctx context.Context) ([]Lease, error)    { return nil, ErrNotImplemented }
+// Cards and Leases (cards.go), Queue and Notes are the Reader methods.
 func (s *Store) Queue(ctx context.Context) ([]QueueItem, error) { return nil, ErrNotImplemented }
 func (s *Store) Notes(ctx context.Context, sinceSeq int64) ([]Note, error) {
 	return nil, ErrNotImplemented
