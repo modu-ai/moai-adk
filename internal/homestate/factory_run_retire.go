@@ -349,12 +349,33 @@ UNION ALL SELECT created_at FROM dead_letters WHERE run_id=?1`
 // ReconcileActiveRuns retires every active run whose owner is classified dead
 // and reports what remains. It only ever reduces the active set — it never
 // selects among survivors, so fail-closed resolution is preserved.
+//
+// A dead run that still holds unfinished cards is retired by MOVING those cards
+// to the one live run (consolidateIntoLive), but only when exactly one owner is
+// Live and none is Indeterminate: an indeterminate owner may be a live leader,
+// and with none or several live runs there is no single place to move them, so
+// the run stays active with its cards in place. The move re-keys the cards and
+// removes the run's positively-dead worker rows; leader_approvals do not follow
+// (REQ-FCR-023: a moved card needs a fresh approval), and the source's
+// run.retired event names the moved card ids so that loss is visible.
 func (f *FactoryDB) ReconcileActiveRuns(ctx context.Context, opts ReconcileOptions) (Reconciliation, error) {
 	owners, err := f.classifyRuns(ctx, opts, "active")
 	if err != nil {
 		return Reconciliation{}, err
 	}
 	result := Reconciliation{}
+	// The one live run is where a dead run's unfinished cards go; with none or
+	// several there is no unambiguous target and the cards stay where they are.
+	var live []RunOwner
+	indeterminate := false
+	for _, o := range owners {
+		switch o.Classification {
+		case OwnerLive:
+			live = append(live, o)
+		case OwnerIndeterminate:
+			indeterminate = true
+		}
+	}
 	for _, o := range owners {
 		if !retirable(o.Classification) {
 			continue
@@ -368,6 +389,12 @@ func (f *FactoryDB) ReconcileActiveRuns(ctx context.Context, opts ReconcileOptio
 		retired, err := f.retireRunUnlessLive(ctx, o.RunID, o.Classification, o.Basis, opts.workerProbe())
 		if err != nil {
 			return Reconciliation{}, err
+		}
+		if !retired && len(live) == 1 && !indeterminate {
+			retired, err = f.consolidateIntoLive(ctx, o, live[0], opts)
+			if err != nil {
+				return Reconciliation{}, err
+			}
 		}
 		if !retired {
 			o.Status = "active"
@@ -494,6 +521,9 @@ func (f *FactoryDB) retireRunUnlessLive(ctx context.Context, runID string, c Own
 	}
 	if live {
 		return false, nil
+	}
+	if err := reapDeadWorkers(ctx, tx, runID, probe, time.Now().UTC()); err != nil {
+		return false, err
 	}
 	if _, err := tx.ExecContext(ctx, `UPDATE runs SET status='retired', updated_at=? WHERE run_id=? AND status='active'`, now, runID); err != nil {
 		return false, err
