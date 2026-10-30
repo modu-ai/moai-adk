@@ -41,6 +41,10 @@ const DefaultTrunk = "refs/heads/af/trunk"
 // checked out: moving it with update-ref would leave that tree's index and files behind the ref.
 var ErrTrunkCheckedOut = errors.New("mergeq: the trunk ref is checked out in a worktree; landing is refused")
 
+// ErrBadTrunk is returned for a trunk that is not a full refs/heads/ branch name, or that names the project's
+// default branch (main or master): this queue never moves the default branch.
+var ErrBadTrunk = errors.New("mergeq: the trunk must be a full refs/heads/ name other than the default branch")
+
 // ErrLockHeld is what AcquireLock returns when another holder has a live lock.
 var ErrLockHeld = errors.New("mergeq: the landing lock is held")
 
