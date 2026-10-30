@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/ledger"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
@@ -22,65 +23,21 @@ type Thresholds struct{ HeartbeatStale time.Duration }
 // Defaults returns the contract defaults.
 func Defaults() Thresholds { return Thresholds{HeartbeatStale: DefaultHeartbeatStale} }
 
-// Card and Lease carry the ledger columns this package reads. They mirror
-// ledger.Card / ledger.Lease and are filled by the Source adapter.
-type Card struct {
-	ID        string
-	Stage     core.Stage
-	Sub       core.SubStage
-	Parked    bool
-	UpdatedAt time.Time
-}
-
-type Lease struct {
-	CardID      string
-	PID         int
-	PIDStart    string
-	HeartbeatAt time.Time
-	NextWakeAt  *time.Time
-}
-
-// Source is the slice of ledger.Reader the flow read model needs.
-type Source interface {
-	Cards(ctx context.Context) ([]Card, error)
-	Leases(ctx context.Context) ([]Lease, error)
-}
-
-// Liveness is what a probe says about a lease holder's process.
-type Liveness int
-
-const (
-	// Unknown is the zero value: no knowledge never reads as alive.
-	Unknown Liveness = iota
-	Alive
-	Dead
-)
-
-func (l Liveness) String() string {
-	switch l {
-	case Alive:
-		return "alive"
-	case Dead:
-		return "dead"
-	}
-	return "unknown"
-}
-
 // Probe classifies the process a lease recorded (pid plus start fingerprint).
-type Probe func(pid int, start string) Liveness
+type Probe func(pid int, start string) ledger.Liveness
 
 // ProcessProbe adapts a platform process probe to Probe through the same
 // classification the claim presence uses, so pid reuse reads as Dead and every
 // absence of knowledge reads as Unknown.
 func ProcessProbe(probe func(int) (string, homestate.ProcessIdentityState)) Probe {
-	return func(pid int, start string) Liveness {
+	return func(pid int, start string) ledger.Liveness {
 		switch homestate.ClassifyOwnerWith(probe, pid, start) {
 		case homestate.OwnerLive:
-			return Alive
+			return ledger.LivenessAlive
 		case homestate.OwnerDead:
-			return Dead
+			return ledger.LivenessDead
 		}
-		return Unknown
+		return ledger.LivenessUnknown
 	}
 }
 
@@ -101,7 +58,7 @@ func (g *Group) add(age time.Duration) {
 type Stalled struct {
 	CardID       string
 	HeartbeatAge time.Duration
-	Liveness     Liveness
+	Liveness     ledger.Liveness
 }
 
 // Snapshot is one measurement.
@@ -116,16 +73,17 @@ type Snapshot struct {
 	Stalled []Stalled
 }
 
-func stageKey(c Card) string {
-	if c.Sub != "" {
-		return string(c.Stage) + "/" + string(c.Sub)
+func stageKey(c ledger.Card) string {
+	p := c.Position
+	if p.Sub != "" {
+		return string(p.Stage) + "/" + string(p.Sub)
 	}
-	return string(c.Stage)
+	return string(p.Stage)
 }
 
 // Measure reads the ledger once and computes the snapshot at now. A nil probe
 // reads every holder as Unknown.
-func Measure(ctx context.Context, src Source, probe Probe, now time.Time, th Thresholds) (Snapshot, error) {
+func Measure(ctx context.Context, src ledger.Reader, probe Probe, now time.Time, th Thresholds) (Snapshot, error) {
 	cards, err := src.Cards(ctx)
 	if err != nil {
 		return Snapshot{}, err
@@ -136,7 +94,7 @@ func Measure(ctx context.Context, src Source, probe Probe, now time.Time, th Thr
 	}
 	s := Snapshot{At: now, Stages: map[string]Group{}, Waiting: map[string]Group{}}
 	for _, c := range cards {
-		if c.Stage == core.StageDone || c.Stage == core.StageCancelled {
+		if c.Position.Stage == core.StageDone || c.Position.Stage == core.StageCancelled {
 			continue
 		}
 		age := now.Sub(c.UpdatedAt)
@@ -144,11 +102,11 @@ func Measure(ctx context.Context, src Source, probe Probe, now time.Time, th Thr
 		g.add(age)
 		s.Stages[stageKey(c)] = g
 		switch {
-		case c.Parked:
+		case c.Position.Park != nil:
 			w := s.Waiting["parked"]
 			w.add(age)
 			s.Waiting["parked"] = w
-		case c.Stage == core.StageReady:
+		case c.Position.Stage == core.StageReady:
 			w := s.Waiting["ready"]
 			w.add(age)
 			s.Waiting["ready"] = w
@@ -164,11 +122,11 @@ func Measure(ctx context.Context, src Source, probe Probe, now time.Time, th Thr
 		if l.NextWakeAt != nil && now.Before(*l.NextWakeAt) {
 			continue
 		}
-		live := Unknown
+		live := ledger.LivenessUnknown
 		if probe != nil {
 			live = probe(l.PID, l.PIDStart)
 		}
-		if live == Alive {
+		if live == ledger.LivenessAlive {
 			continue
 		}
 		s.Stalled = append(s.Stalled, Stalled{CardID: l.CardID, HeartbeatAge: hb, Liveness: live})

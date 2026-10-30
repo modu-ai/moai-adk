@@ -7,34 +7,44 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/ledger"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
 var t0 = time.Date(2026, 10, 30, 12, 0, 0, 0, time.UTC)
 
 type fakeSource struct {
-	cards  []Card
-	leases []Lease
+	cards  []ledger.Card
+	leases []ledger.Lease
 	err    error
 }
 
-func (f fakeSource) Cards(context.Context) ([]Card, error)   { return f.cards, f.err }
-func (f fakeSource) Leases(context.Context) ([]Lease, error) { return f.leases, f.err }
+func (f fakeSource) Cards(context.Context) ([]ledger.Card, error)   { return f.cards, f.err }
+func (f fakeSource) Leases(context.Context) ([]ledger.Lease, error) { return f.leases, f.err }
+func (f fakeSource) Queue(context.Context) ([]ledger.QueueItem, error) {
+	return nil, f.err
+}
+func (f fakeSource) Notes(context.Context, int64) ([]ledger.Note, error) { return nil, f.err }
 
-func probeOf(l Liveness) Probe { return func(int, string) Liveness { return l } }
+func probeOf(l ledger.Liveness) Probe { return func(int, string) ledger.Liveness { return l } }
+
+// card builds a ledger card; park non-nil marks it parked.
+func card(id string, stage core.Stage, sub core.SubStage, updated time.Time, park *core.Park) ledger.Card {
+	return ledger.Card{ID: id, Position: core.Position{Stage: stage, Sub: sub, Park: park}, UpdatedAt: updated}
+}
 
 func ptr(t time.Time) *time.Time { return &t }
 
 func TestSnapshot_WIPAndStageAge(t *testing.T) {
-	src := fakeSource{cards: []Card{
-		{ID: "a", Stage: core.StageReady, UpdatedAt: t0.Add(-10 * time.Minute)},
-		{ID: "b", Stage: core.StageBuilding, Sub: core.SubImplement, UpdatedAt: t0.Add(-30 * time.Minute)},
-		{ID: "c", Stage: core.StageBuilding, Sub: core.SubImplement, UpdatedAt: t0.Add(-5 * time.Minute)},
-		{ID: "d", Stage: core.StageMerging, UpdatedAt: t0.Add(-1 * time.Minute)},
-		{ID: "e", Stage: core.StageDone, UpdatedAt: t0.Add(-99 * time.Hour)},
-		{ID: "f", Stage: core.StageBuilding, Sub: core.SubFix, Parked: true, UpdatedAt: t0.Add(-2 * time.Hour)},
+	src := fakeSource{cards: []ledger.Card{
+		card("a", core.StageReady, "", t0.Add(-10*time.Minute), nil),
+		card("b", core.StageBuilding, core.SubImplement, t0.Add(-30*time.Minute), nil),
+		card("c", core.StageBuilding, core.SubImplement, t0.Add(-5*time.Minute), nil),
+		card("d", core.StageMerging, "", t0.Add(-1*time.Minute), nil),
+		card("e", core.StageDone, "", t0.Add(-99*time.Hour), nil),
+		card("f", core.StageBuilding, core.SubFix, t0.Add(-2*time.Hour), &core.Park{}),
 	}}
-	s, err := Measure(context.Background(), src, probeOf(Alive), t0, Defaults())
+	s, err := Measure(context.Background(), src, probeOf(ledger.LivenessAlive), t0, Defaults())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,8 +69,8 @@ func TestSnapshot_WIPAndStageAge(t *testing.T) {
 	}
 }
 
-func lease(hb time.Duration, wake *time.Time) Lease {
-	return Lease{CardID: "b", PID: 42, PIDStart: "S", HeartbeatAt: t0.Add(-hb), NextWakeAt: wake}
+func lease(hb time.Duration, wake *time.Time) ledger.Lease {
+	return ledger.Lease{CardID: "b", PID: 42, PIDStart: "S", HeartbeatAt: t0.Add(-hb), NextWakeAt: wake}
 }
 
 func TestStalled_Rule(t *testing.T) {
@@ -68,20 +78,20 @@ func TestStalled_Rule(t *testing.T) {
 	fresh := time.Minute
 	cases := []struct {
 		name  string
-		l     Lease
-		live  Liveness
+		l     ledger.Lease
+		live  ledger.Liveness
 		stall bool
 	}{
-		{"all three: stale, wake past, dead", lease(stale, ptr(t0.Add(-time.Minute))), Dead, true},
-		{"all three: stale, wake past, unknown", lease(stale, ptr(t0.Add(-time.Minute))), Unknown, true},
-		{"no promised wake counts as past", lease(stale, nil), Dead, true},
-		{"process alive is never stalled", lease(stale, ptr(t0.Add(-time.Minute))), Alive, false},
-		{"fresh heartbeat", lease(fresh, ptr(t0.Add(-time.Minute))), Dead, false},
-		{"wake still ahead", lease(stale, ptr(t0.Add(time.Minute))), Dead, false},
-		{"wake exactly now is past", lease(stale, ptr(t0)), Dead, true},
+		{"all three: stale, wake past, dead", lease(stale, ptr(t0.Add(-time.Minute))), ledger.LivenessDead, true},
+		{"all three: stale, wake past, unknown", lease(stale, ptr(t0.Add(-time.Minute))), ledger.LivenessUnknown, true},
+		{"no promised wake counts as past", lease(stale, nil), ledger.LivenessDead, true},
+		{"process alive is never stalled", lease(stale, ptr(t0.Add(-time.Minute))), ledger.LivenessAlive, false},
+		{"fresh heartbeat", lease(fresh, ptr(t0.Add(-time.Minute))), ledger.LivenessDead, false},
+		{"wake still ahead", lease(stale, ptr(t0.Add(time.Minute))), ledger.LivenessDead, false},
+		{"wake exactly now is past", lease(stale, ptr(t0)), ledger.LivenessDead, true},
 	}
 	for _, c := range cases {
-		src := fakeSource{cards: []Card{{ID: "b", Stage: core.StageBuilding, UpdatedAt: t0}}, leases: []Lease{c.l}}
+		src := fakeSource{cards: []ledger.Card{card("b", core.StageBuilding, "", t0, nil)}, leases: []ledger.Lease{c.l}}
 		s, err := Measure(context.Background(), src, probeOf(c.live), t0, Defaults())
 		if err != nil {
 			t.Fatal(err)
@@ -94,25 +104,25 @@ func TestStalled_Rule(t *testing.T) {
 
 func TestStalled_ReportsEvidence(t *testing.T) {
 	l := lease(20*time.Minute, nil)
-	src := fakeSource{cards: []Card{{ID: "b", Stage: core.StageBuilding, UpdatedAt: t0}}, leases: []Lease{l}}
-	s, _ := Measure(context.Background(), src, probeOf(Unknown), t0, Defaults())
+	src := fakeSource{cards: []ledger.Card{card("b", core.StageBuilding, "", t0, nil)}, leases: []ledger.Lease{l}}
+	s, _ := Measure(context.Background(), src, probeOf(ledger.LivenessUnknown), t0, Defaults())
 	got := s.Stalled[0]
-	if got.CardID != "b" || got.HeartbeatAge != 20*time.Minute || got.Liveness != Unknown {
+	if got.CardID != "b" || got.HeartbeatAge != 20*time.Minute || got.Liveness != ledger.LivenessUnknown {
 		t.Fatalf("stalled evidence = %+v", got)
 	}
 }
 
 func TestMeasure_SourceErrorIsReturned(t *testing.T) {
 	boom := errors.New("boom")
-	if _, err := Measure(context.Background(), fakeSource{err: boom}, probeOf(Alive), t0, Defaults()); !errors.Is(err, boom) {
+	if _, err := Measure(context.Background(), fakeSource{err: boom}, probeOf(ledger.LivenessAlive), t0, Defaults()); !errors.Is(err, boom) {
 		t.Fatalf("err = %v", err)
 	}
 }
 
 func TestMeasure_NilProbeReadsUnknown(t *testing.T) {
-	src := fakeSource{cards: []Card{{ID: "b", Stage: core.StageBuilding, UpdatedAt: t0}}, leases: []Lease{lease(time.Hour, nil)}}
+	src := fakeSource{cards: []ledger.Card{card("b", core.StageBuilding, "", t0, nil)}, leases: []ledger.Lease{lease(time.Hour, nil)}}
 	s, _ := Measure(context.Background(), src, nil, t0, Defaults())
-	if len(s.Stalled) != 1 || s.Stalled[0].Liveness != Unknown {
+	if len(s.Stalled) != 1 || s.Stalled[0].Liveness != ledger.LivenessUnknown {
 		t.Fatalf("a missing probe must not read as alive: %+v", s.Stalled)
 	}
 }
@@ -126,14 +136,14 @@ func TestProcessProbe_Mapping(t *testing.T) {
 		probe func(int) (string, homestate.ProcessIdentityState)
 		pid   int
 		start string
-		want  Liveness
+		want  ledger.Liveness
 	}{
-		{"same process", mk("S", homestate.ProcessIdentityLive), 7, "S", Alive},
-		{"pid reused by another process", mk("OTHER", homestate.ProcessIdentityLive), 7, "S", Dead},
-		{"process gone", mk("", homestate.ProcessIdentityDead), 7, "S", Dead},
-		{"cannot tell", mk("", homestate.ProcessIdentityIndeterminate), 7, "S", Unknown},
-		{"no fingerprint recorded", mk("S", homestate.ProcessIdentityLive), 7, "", Unknown},
-		{"no pid recorded", mk("S", homestate.ProcessIdentityLive), 0, "S", Unknown},
+		{"same process", mk("S", homestate.ProcessIdentityLive), 7, "S", ledger.LivenessAlive},
+		{"pid reused by another process", mk("OTHER", homestate.ProcessIdentityLive), 7, "S", ledger.LivenessDead},
+		{"process gone", mk("", homestate.ProcessIdentityDead), 7, "S", ledger.LivenessDead},
+		{"cannot tell", mk("", homestate.ProcessIdentityIndeterminate), 7, "S", ledger.LivenessUnknown},
+		{"no fingerprint recorded", mk("S", homestate.ProcessIdentityLive), 7, "", ledger.LivenessUnknown},
+		{"no pid recorded", mk("S", homestate.ProcessIdentityLive), 0, "S", ledger.LivenessUnknown},
 	}
 	for _, c := range cases {
 		if got := ProcessProbe(c.probe)(c.pid, c.start); got != c.want {
