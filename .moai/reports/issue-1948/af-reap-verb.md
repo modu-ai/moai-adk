@@ -26,7 +26,7 @@ so a lane that really died holding one is visible to the operator.
    it never reclaims them. (Correction of af-lease-holder-pid.md: an unknown holder is NOT replaced by
    "heartbeat + expiry" reclaim; the ledger only writes a stalled note after expiry.)
 4. claim's local `session` renamed `sessionID`.
-5. AC-AFL-015: the import-edge control is asserted per GOOS (retirement test).
+5. AC-AFL-015: the import-edge control is asserted per GOOS inside the loop (`edgesToCore == 0` → `t.Fatalf` with the GOOS). An earlier commit (af1314d4fc) lost that check while moving the variable; lane-19 found it and it is restored. Mutant observed: a root with go.mod and no packages under internal/ → `GOOS="": no package imports agenticfactory/core, the import scan sees nothing`. (A tree with the core directory removed does NOT trip it: go list still names the unresolved import, so the control detects an empty listing, not a missing package.)
 
 ## Gaps
 - The claim process-tree test uses the `afOwnerPID` seam to name the real child as the session; the ancestry walk

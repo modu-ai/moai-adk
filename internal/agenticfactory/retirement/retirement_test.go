@@ -84,7 +84,7 @@ func TestRetirement_NoImportOfForgeMirrorGitref(t *testing.T) {
 	for _, goos := range []string{"", "windows", "linux", "darwin"} {
 		var edgesToCore int
 		listing := goList(t, root, goos, "-e", "-f", `{{.ImportPath}} {{join .Imports " "}}`, "./internal/...")
-		for _, line := range strings.Split(strings.TrimSpace(listing), "\n") {
+		for line := range strings.SplitSeq(strings.TrimSpace(listing), "\n") {
 			fields := strings.Fields(line)
 			if len(fields) == 0 {
 				continue
@@ -99,6 +99,11 @@ func TestRetirement_NoImportOfForgeMirrorGitref(t *testing.T) {
 					}
 				}
 			}
+		}
+		// Control, per platform: the scan sees import edges at all. An empty listing (go list -e swallows load
+		// errors) would pass the import check vacuously, and a sum over platforms would hide one that is empty.
+		if edgesToCore == 0 {
+			t.Fatalf("GOOS=%q: no package imports agenticfactory/core, the import scan sees nothing", goos)
 		}
 	}
 	// (b) and (c): a directory that is left behind fails even when nothing imports it.
