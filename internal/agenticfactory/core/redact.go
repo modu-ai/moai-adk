@@ -19,6 +19,9 @@ const (
 	CategoryPrivateKey           Category = "private-key"           // a PEM private key block
 	CategoryEmail                Category = "email"                 // an e-mail address, ssh user@host included
 	CategoryHomePath             Category = "home-path"             // an absolute home directory and what is under it
+	CategoryPhone                Category = "phone"                 // a Korean or +82 telephone number
+	CategoryPersonName           Category = "person-name"           // a Korean name written beside a telephone number
+	CategoryStack                Category = "stack"                 // a panic line or a goroutine stack trace
 	CategoryOpaqueToken          Category = "opaque-token"          // a long mixed letter-and-digit run no other rule knows
 )
 
@@ -63,8 +66,8 @@ var sanRules = []sanRule{
 	{CategoryAuthorization, regexp.MustCompile(`(?i)bearer\s+[A-Za-z0-9._~+/=-]{8,}`), whole},
 	{CategoryCookie, regexp.MustCompile(`(?i)((?:set-)?cookie\s*:\s*)([^\n]+)`), keepGroups(2)},
 	{CategoryURLCredential, regexp.MustCompile(`(?i)(https?://[^/\s:@]+:)([^@\s/]+)(@)`), keepGroups(2)},
-	{CategoryCredentialAssignment, regexp.MustCompile(`(?i)("[a-z_]*(?:api_?key|token|secret|passw(?:or)?d|credential)[a-z_]*"\s*:\s*")([^"]*)(")`), keepGroups(2)},
-	{CategoryCredentialAssignment, regexp.MustCompile(`(?i)\b([a-z0-9_]*(?:token|secret|passw(?:or)?d|api[_-]?key|credential|cookie)[a-z0-9_]*\s*[:=]\s*)("[^"]*"|'[^']*'|[^\s",}]+)`), keepGroups(2)},
+	{CategoryCredentialAssignment, regexp.MustCompile(`(?i)("[a-z_]*(?:api_?key|token|secret|pass(?:phrase|w(?:or)?d)|credential)[a-z_]*"\s*:\s*")([^"]*)(")`), keepGroups(2)},
+	{CategoryCredentialAssignment, regexp.MustCompile(`(?i)\b([a-z0-9_]*(?:token|secret|pass(?:phrase|w(?:or)?d)|api[_-]?key|credential|cookie)[a-z0-9_]*\s*[:=]\s*)("[^"]*"|'[^']*'|[^\s",}]+)`), keepGroups(2)},
 	{CategoryCredentialAssignment, regexp.MustCompile(`(?i)\b([a-z0-9_]*key[a-z0-9_]*=)("[^"]*"|'[^']*'|\S+)`), keepGroups(2)},
 	{CategoryToken, regexp.MustCompile(`gh[pousr]_[A-Za-z0-9]{20,}`), whole},
 	{CategoryToken, regexp.MustCompile(`github_pat_[A-Za-z0-9_]{20,}`), whole},
@@ -75,6 +78,16 @@ var sanRules = []sanRule{
 	// An absolute home directory and everything under it. The pattern matches one
 	// character of left context so a path is only masked where it starts; that
 	// character is put back.
+	// A panic and goroutine stack: frame arguments, absolute paths and the panic text
+	// can carry values and user names, so the whole block goes. A lone "panic:" line
+	// at the start of a line goes too; prose that merely mentions a panic stays.
+	{CategoryStack, stackBlock, func(g []string) (string, bool) {
+		if strings.HasSuffix(g[0], "\n") {
+			return redacted + "\n", true
+		}
+		return redacted, true
+	}},
+	{CategoryStack, regexp.MustCompile(`(?m)^panic: [^\n]*`), whole},
 	{CategoryHomePath, regexp.MustCompile(`(?:^|[^A-Za-z0-9_./-])/(?:Users|home)/[^\s"'/\\]+(?:/[^\s"']*)?`), func(g []string) (string, bool) {
 		if g[0] != "" && g[0][0] != '/' {
 			return g[0][:1] + redacted, true
@@ -98,6 +111,7 @@ func sanitize(s string) (string, map[Category]int) {
 			return out
 		})
 	}
+	s = maskContacts(s, found)
 	// Last, so every named shape has had its turn: a long mixed run that no rule
 	// knows may still be a credential in a shape nobody listed, and is masked.
 	s = opaqueRun.ReplaceAllStringFunc(s, func(m string) string {
@@ -114,10 +128,11 @@ func sanitize(s string) (string, map[Category]int) {
 }
 
 var (
-	cutRun    = regexp.MustCompile(`[A-Za-z0-9/+]{40,}`)
-	opaqueRun = regexp.MustCompile(`[A-Za-z0-9_+=\-]{32,}`)
-	hexDigest = regexp.MustCompile(`^(?:[0-9a-f]{40}|[0-9a-f]{64})$`)
-	uuidShape = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
+	stackBlock = regexp.MustCompile(`(?m)(?:^panic: [^\n]*\n(?:\[signal [^\n]*\n)?\n?)?^goroutine \d+ \[[^\]\n]*\]:\n(?:(?:\t[^\n]*|[A-Za-z_][^\n ]*\([^\n]*\)|created by [^\n]*|exit status \d+)(?:\n|$))*`)
+	cutRun     = regexp.MustCompile(`[A-Za-z0-9/+]{40,}`)
+	opaqueRun  = regexp.MustCompile(`[A-Za-z0-9_+=\-]{32,}`)
+	hexDigest  = regexp.MustCompile(`^(?:[0-9a-f]{40}|[0-9a-f]{64})$`)
+	uuidShape  = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 )
 
 // opaqueTransitionRatio is where an identifier made of words stops and a random
@@ -259,20 +274,21 @@ func wordShare(s string) float64 {
 const maxWordShare = 0.80
 
 // looksCutSecret reports a run of [A-Za-z0-9/+] that is a secret cut into short
-// pieces by '/' or '+'. It is deliberately narrow, because a path is made of the
-// same characters: it must be a single standalone token (not a piece of a longer
-// path, URL or identifier, so no '.', '-' or '_' beside it and no leading or
-// trailing '/'), hold a '/' or '+', mix upper case, lower case and digits, read as
-// words for less than maxWordShare of it, and change character class like random
-// text does once the '/' and '+' are taken out. A bare hex hash holds no '/' or '+' and is
+// pieces by '/' or '+'. A path is made of the same characters, so it is judged by
+// what the text is and not by where it stands: it must hold a '/' or '+', mix upper
+// case, lower case and digits, read as words for less than maxWordShare of it, and
+// change character class like random text does once the '/' and '+' are taken out.
+// What stands beside it decides nothing, because a secret is written after a
+// sentence's last word and a full stop, after "key-" or "key_", inside a URL path
+// and behind a leading or trailing '/'. A bare hex hash holds no '/' or '+' and is
 // not touched.
-func looksCutSecret(run string, before, after byte) bool {
-	for _, c := range []byte{before, after} {
-		if c == '.' || c == '-' || c == '_' {
-			return false
-		}
+func looksCutSecret(run string) bool {
+	if !strings.ContainsAny(run, "/+") {
+		return false
 	}
-	if run[0] == '/' || run[len(run)-1] == '/' || !strings.ContainsAny(run, "/+") {
+	// The per-user temp root of macOS is a directory named at random on purpose; it
+	// holds no secret and every test and build tool prints it.
+	if strings.HasPrefix(run, "/var/folders/") || strings.HasPrefix(run, "/private/var/folders/") {
 		return false
 	}
 	body := strings.Map(func(r rune) rune {
@@ -320,14 +336,7 @@ func maskCutSecrets(s string, found map[Category]int) string {
 		for end < len(s) && s[end] == '=' && end-m[1] < 2 { // base64 padding belongs to the token
 			end++
 		}
-		var before, after byte
-		if start > 0 {
-			before = s[start-1]
-		}
-		if end < len(s) {
-			after = s[end]
-		}
-		if !looksCutSecret(s[m[0]:m[1]], before, after) {
+		if !looksCutSecret(s[m[0]:m[1]]) {
 			continue
 		}
 		b.WriteString(s[last:start])
@@ -337,4 +346,48 @@ func maskCutSecrets(s string, found map[Category]int) string {
 	}
 	b.WriteString(s[last:])
 	return b.String()
+}
+
+// A Korean or +82 telephone number. The left and right context characters are
+// captured so a number inside a longer digit run (an id, a timestamp) is left alone;
+// the area part is one of the real prefixes, so an arbitrary ten-digit number is not
+// a phone number.
+var (
+	phoneRe = regexp.MustCompile(`(^|\D)((?:\+?82[-. ]?(?:10|1[16-9]|2|3[1-3]|4[1-4]|5[1-5]|6[1-4]|70|80)|0(?:1[016789]|2|3[1-3]|4[1-4]|5[1-5]|6[1-4]|70|80))[-. ]?\d{3,4}[-. ]?\d{4})(\D|$)`)
+	nameRe  = regexp.MustCompile(`(^|[^가-힣])([가-힣]{2,4})((?:님|씨)?[\s:,(]*)\x00PHONE\x00`)
+)
+
+// notNames are words that label a number and are not a person: a name rule that
+// took them would mask the label and report a person that is not there.
+var notNames = map[string]bool{
+	"전화": true, "연락": true, "연락처": true, "휴대폰": true, "핸드폰": true, "전화번호": true,
+	"번호": true, "문의": true, "대표": true, "팩스": true, "모바일": true,
+}
+
+// maskContacts masks telephone numbers, and a Korean name written directly before
+// one. A name alone cannot be told from any other Korean word, so only a name beside
+// a number is touched.
+func maskContacts(s string, found map[Category]int) string {
+	const ph = "\x00PHONE\x00"
+	for pass := 0; pass < 3; pass++ { // a shared separator hides the next number from one pass
+		next := phoneRe.ReplaceAllString(s, "${1}"+ph+"${3}")
+		if next == s {
+			break
+		}
+		s = next
+	}
+	phones := strings.Count(s, ph)
+	if phones == 0 {
+		return s
+	}
+	found[CategoryPhone] += phones
+	s = nameRe.ReplaceAllStringFunc(s, func(m string) string {
+		g := nameRe.FindStringSubmatch(m)
+		if notNames[g[2]] {
+			return m
+		}
+		found[CategoryPersonName]++
+		return g[1] + ph
+	})
+	return strings.ReplaceAll(s, ph, redacted)
 }
