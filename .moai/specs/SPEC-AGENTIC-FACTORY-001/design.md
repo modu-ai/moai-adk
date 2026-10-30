@@ -331,6 +331,7 @@ ACK가 없으면 다시 보내지 않고 받는 쪽 상태를 먼저 조회한�
 - 마지막 관문은 LLM이 아닌 결정적 검사다. 범주 하나라도 남으면 게시 전체를 거절한다.
 - 게시할 수 없는 자료는 `RESTRICTED`: 상태, 짧은 요약, SHA-256 세 필드만. SHA-256은 그 항목의 가린 장부 형태에 대해 계산하며, 원값에 대해 계산하지 않는다(DEC-AF-28).
 - 적용 대상: 장부 행, 댓글, checkpoint manifest, Issue 요약, 정제 증거 파일, 관찰 출력.
+- 알려진 적용 범위 부채(relayed, DEC-AF-29): 정제기가 아직 잡지 못하는 네 갈래 — (i) 한국어 이름 + 전화번호(C2), (ii) 패닉·goroutine 스택(C4), (iii) 물결표 `~/...` 경로(C3 문언이 "`~` 전개값"이라 드는지 모호, OD-23의 질문), (iv) 낱말과 숫자를 대시로 이은 passphrase 형태(C1). 측정은 lane-19가 core 커밋 `9e34d6bb87`에서 했다(리더 전달, 이 SPEC 작성자는 읽지 않음). 위 표와 범주는 바뀌지 않는다.
 
 **증거 위치와 단계(DEC-AF-13)**: 원본은 `.moai/reports`(ignore 규칙 그대로). 공개 안전 정제본만 추적 디렉터리 `.moai/evidence/issue-<N>/`. 단계 `PREPARED → MASKED → COMMITTED → PUSHED → REMOTE_VERIFIED`. `AVAILABLE`은 원격 조회가 확인한 뒤에만 붙는다. 링크는 전체 커밋 SHA 고정.
 
