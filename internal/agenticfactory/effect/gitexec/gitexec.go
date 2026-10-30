@@ -19,6 +19,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/effect/internal/procrun"
 )
 
@@ -51,7 +52,8 @@ type ExitError struct {
 }
 
 func (e *ExitError) Error() string {
-	return fmt.Sprintf("gitexec: git %s exited %d: %s", e.Verb, e.Code, strings.TrimSpace(e.Stderr))
+	msg, _ := core.Redact(strings.TrimSpace(e.Stderr)) // stored and logged: through the one sanitizer
+	return fmt.Sprintf("gitexec: git %s exited %d: %s", e.Verb, e.Code, msg)
 }
 
 // remoteName is a configured remote's name; anything with a scheme, a colon, a slash or a leading dash is

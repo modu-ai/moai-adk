@@ -83,7 +83,7 @@ func (f *fake) args() []string {
 	return strings.Split(strings.TrimSuffix(string(raw), "\x00"), "\x00")
 }
 
-func ex() Exec { return Exec{MaxOutput: 50_000, WaitDelay: time.Second} }
+func ex() Exec { return Exec{MaxOutput: 50_000, WaitDelay: time.Second, Repo: "o/r"} }
 
 // Arguments reach the process exactly as given - spaces, quotes, dollar signs, newlines - because no shell
 // is involved.

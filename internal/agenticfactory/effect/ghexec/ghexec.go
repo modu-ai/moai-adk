@@ -25,6 +25,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/effect"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/effect/internal/procrun"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/forge"
@@ -55,6 +56,9 @@ type Exec struct {
 	// create/update run when the context carries the policy's approval of that exact call. It is false by
 	// default; no other write is ever allowed.
 	AllowWrite bool
+	// Repo is the configured repository (owner/name). A write is pinned to it: `issue create` runs only
+	// for this repository, whichever flag spells it. Empty refuses every write.
+	Repo string
 }
 
 // ExitError is a non-zero exit of gh.
@@ -66,7 +70,8 @@ type ExitError struct {
 }
 
 func (e *ExitError) Error() string {
-	return fmt.Sprintf("ghexec: gh %s exited %d: %s", e.Verb, e.Code, strings.TrimSpace(e.Stderr))
+	msg, _ := core.Redact(strings.TrimSpace(e.Stderr)) // the error is stored and logged: through the one sanitizer
+	return fmt.Sprintf("ghexec: gh %s exited %d: %s", e.Verb, e.Code, msg)
 }
 
 // Unwrap exposes the typed HTTP failure when gh reported one, so callers decide on the status and never
@@ -140,7 +145,7 @@ func (e Exec) allowed(ctx context.Context, args []string) bool {
 		return false
 	}
 	for _, a := range args {
-		if a == "--web" || a == "-w" { // opens a browser
+		if name, _, _ := strings.Cut(a, "="); name == "--web" || name == "-w" { // opens a browser, whatever follows "="
 			return false
 		}
 	}
@@ -161,8 +166,16 @@ func (e Exec) allowed(ctx context.Context, args []string) bool {
 	case "pr view", "pr list", "pr checks", "issue view", "issue list":
 		return true
 	case "issue create":
-		repo := flagValue(args, "--repo")
-		return e.AllowWrite && repo != "" && effect.CheckRequest("POST", "/repos/"+repo+"/issues", nil) == nil
+		repos := repoFlags(args)
+		if !e.AllowWrite || e.Repo == "" || len(repos) == 0 {
+			return false
+		}
+		for _, r := range repos { // every spelling must name the configured repository
+			if !strings.EqualFold(r, e.Repo) {
+				return false
+			}
+		}
+		return effect.CheckRequest("POST", "/repos/"+repos[0]+"/issues", nil) == nil
 	}
 	return false
 }
@@ -203,6 +216,26 @@ func parseAPI(a []string) (method, path string, hasBody, ok bool) {
 }
 
 // flagValue returns the value of --name given as "--name value" or "--name=value".
+// repoFlags returns every value given for the repository selector, whichever spelling: --repo, --repo=,
+// -R, -R=.
+func repoFlags(args []string) []string {
+	var out []string
+	for i, a := range args {
+		name, val, hasEq := strings.Cut(a, "=")
+		if name != "--repo" && name != "-R" {
+			continue
+		}
+		if !hasEq {
+			if i+1 >= len(args) {
+				return append(out, "") // a selector with no value never matches the configured repository
+			}
+			val = args[i+1]
+		}
+		out = append(out, val)
+	}
+	return out
+}
+
 func flagValue(args []string, name string) string {
 	for i, a := range args {
 		if a == name && i+1 < len(args) {
