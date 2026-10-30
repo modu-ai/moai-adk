@@ -13,13 +13,13 @@ func TestQueueUpdate_VerifyingReentry_AtCardEpoch(t *testing.T) {
 	if err := s.Enqueue(bg, "a", c.Epoch, "c1"); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.QueueUpdate(bg, "a", c.Epoch, QueueVerifying, "", ""); err != nil {
+	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch), QueueVerifying, "", ""); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.QueueUpdate(bg, "a", c.Epoch, QueueVerifying, "", ""); err != nil {
+	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch), QueueVerifying, "", ""); err != nil {
 		t.Errorf("verifying -> verifying at the card epoch: %v", err)
 	}
-	if err := s.QueueUpdate(bg, "a", c.Epoch+1, QueueVerifying, "", ""); !errors.Is(err, ErrStaleEpoch) {
+	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch+1), QueueVerifying, "", ""); !errors.Is(err, ErrStaleEpoch) {
 		t.Errorf("verifying -> verifying with another epoch: %v", err)
 	}
 	items, _ := s.Queue(bg)
@@ -31,10 +31,10 @@ func TestQueueUpdate_VerifyingReentry_AtCardEpoch(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := s.QueueUpdate(bg, "a", lock, QueueLanding, "t0", ""); err != nil {
+	if err := s.QueueUpdate(bg, "a", LockEpoch(lock), QueueLanding, "t0", ""); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.QueueUpdate(bg, "a", c.Epoch, QueueVerifying, "", ""); !errors.Is(err, ErrInvalid) {
+	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch), QueueVerifying, "", ""); !errors.Is(err, ErrInvalid) {
 		t.Errorf("landing -> verifying: %v", err)
 	}
 }

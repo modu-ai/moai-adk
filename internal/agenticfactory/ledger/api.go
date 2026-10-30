@@ -232,6 +232,26 @@ const (
 	QueueFailed    QueueState = "failed"
 )
 
+// EpochKind says which number a QueueUpdate caller holds: the card's epoch from its lease,
+// or the epoch of the landing lock. The two count independently and can coincide, so the
+// number alone never says which one it is.
+type EpochKind string
+
+const (
+	EpochCard EpochKind = "card"
+	EpochLock EpochKind = "lock"
+)
+
+// QueueEpoch is the epoch a QueueUpdate caller presents, with its kind.
+type QueueEpoch struct {
+	Kind EpochKind
+	N    int64
+}
+
+// CardEpoch is the card epoch n; LockEpoch is the landing-lock epoch n.
+func CardEpoch(n int64) QueueEpoch { return QueueEpoch{Kind: EpochCard, N: n} }
+func LockEpoch(n int64) QueueEpoch { return QueueEpoch{Kind: EpochLock, N: n} }
+
 // QueueItem is one row of merge_queue. The row is not tied to the card's position: a
 // queued card that is moved elsewhere (cancelled, say) leaves its row behind, so the
 // merge queue's owner is expected to read the card before acting on a row (P3-6; the

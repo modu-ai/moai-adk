@@ -156,7 +156,8 @@ var queueNext = map[QueueState][]QueueState{
 }
 
 // QueueUpdate moves a queue item to state; see the API for which epoch each state checks.
-func (s *Store) QueueUpdate(ctx context.Context, cardID string, epoch int64, state QueueState, trunkBefore, failReason string) error {
+func (s *Store) QueueUpdate(ctx context.Context, cardID string, presented QueueEpoch, state QueueState, trunkBefore, failReason string) error {
+	epoch := presented.N // kind not checked yet
 	switch state {
 	case QueueWaiting, QueueVerifying, QueueLanding, QueueLanded:
 	case QueueFailed:
