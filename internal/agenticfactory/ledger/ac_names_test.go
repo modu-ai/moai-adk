@@ -196,19 +196,19 @@ func TestQueueUpdate_EpochSource_FencesByKind(t *testing.T) {
 	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch), QueueVerifying, "", ""); err != nil {
 		t.Fatalf("verifying with the row's card epoch: %v", err)
 	}
-	if err := s.QueueUpdate(bg, "a", LockEpoch(c.Epoch), QueueLanding, "t0", ""); !errors.Is(err, ErrStaleEpoch) {
+	if err := s.QueueUpdate(bg, "a", LockEpoch(c.Epoch, "c1"), QueueLanding, "t0", ""); !errors.Is(err, ErrStaleEpoch) {
 		t.Errorf("landing with the card epoch: %v", err)
 	}
-	if err := s.QueueUpdate(bg, "a", LockEpoch(lock+1), QueueLanding, "t0", ""); !errors.Is(err, ErrStaleEpoch) {
+	if err := s.QueueUpdate(bg, "a", LockEpoch(lock+1, "c1"), QueueLanding, "t0", ""); !errors.Is(err, ErrStaleEpoch) {
 		t.Errorf("landing with another lock epoch: %v", err)
 	}
-	if err := s.QueueUpdate(bg, "a", LockEpoch(lock), QueueLanding, "t0", ""); err != nil {
+	if err := s.QueueUpdate(bg, "a", LockEpoch(lock, "c1"), QueueLanding, "t0", ""); err != nil {
 		t.Fatalf("landing with the lock epoch: %v", err)
 	}
-	if err := s.QueueUpdate(bg, "a", LockEpoch(c.Epoch), QueueLanded, "", ""); !errors.Is(err, ErrStaleEpoch) {
+	if err := s.QueueUpdate(bg, "a", LockEpoch(c.Epoch, "c1"), QueueLanded, "", ""); !errors.Is(err, ErrStaleEpoch) {
 		t.Errorf("landed with the card epoch: %v", err)
 	}
-	if err := s.QueueUpdate(bg, "a", LockEpoch(lock), QueueLanded, "", ""); err != nil {
+	if err := s.QueueUpdate(bg, "a", LockEpoch(lock, "c1"), QueueLanded, "", ""); err != nil {
 		t.Errorf("landed with the lock epoch: %v", err)
 	}
 	// a row of an older card epoch belongs to a fenced holder, whatever epoch it brings

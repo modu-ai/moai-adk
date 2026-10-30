@@ -18,7 +18,7 @@ func TestQueueUpdate_CoincidingEpochs_KindDecidesWhichTableIsChecked(t *testing.
 	if err != nil || lock != c.Epoch {
 		t.Fatalf("the two epochs must coincide for this case: card %d lock %d %v", c.Epoch, lock, err)
 	}
-	if err := s.QueueUpdate(bg, "a", LockEpoch(lock), QueueVerifying, "", ""); !errors.Is(err, ErrStaleEpoch) {
+	if err := s.QueueUpdate(bg, "a", LockEpoch(lock, "c1"), QueueVerifying, "", ""); !errors.Is(err, ErrStaleEpoch) {
 		t.Errorf("verifying with a lock epoch of the same number: %v", err)
 	}
 	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch), QueueVerifying, "", ""); err != nil {
@@ -30,14 +30,14 @@ func TestQueueUpdate_CoincidingEpochs_KindDecidesWhichTableIsChecked(t *testing.
 	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch), QueueWaiting, "", ""); !errors.Is(err, ErrStaleEpoch) {
 		t.Errorf("an old holder's waiting write with its card epoch: %v", err)
 	}
-	if err := s.QueueUpdate(bg, "a", LockEpoch(lock), QueueFailed, "", "red"); !errors.Is(err, ErrStaleEpoch) {
+	if err := s.QueueUpdate(bg, "a", LockEpoch(lock, "c1"), QueueFailed, "", "red"); !errors.Is(err, ErrStaleEpoch) {
 		t.Errorf("failed with a lock epoch of the same number: %v", err)
 	}
 	items, _ := s.Queue(bg)
 	if len(items) != 1 || items[0].State != QueueVerifying {
 		t.Errorf("a refused write must leave the row verifying: %+v", items)
 	}
-	if err := s.QueueUpdate(bg, "a", LockEpoch(lock), QueueLanding, "t0", ""); err != nil {
+	if err := s.QueueUpdate(bg, "a", LockEpoch(lock, "c1"), QueueLanding, "t0", ""); err != nil {
 		t.Errorf("landing with the lock epoch: %v", err)
 	}
 }

@@ -31,7 +31,7 @@ func TestQueueUpdate_VerifyingReentry_AtCardEpoch(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := s.QueueUpdate(bg, "a", LockEpoch(lock), QueueLanding, "t0", ""); err != nil {
+	if err := s.QueueUpdate(bg, "a", LockEpoch(lock, "c1"), QueueLanding, "t0", ""); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch), QueueVerifying, "", ""); !errors.Is(err, ErrInvalid) {

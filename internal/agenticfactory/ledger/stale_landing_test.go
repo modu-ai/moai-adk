@@ -25,7 +25,7 @@ func staleLanding(t *testing.T) (s *Store, epoch2, lock int64) {
 	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch), QueueVerifying, "", ""); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.QueueUpdate(bg, "a", LockEpoch(lock), QueueLanding, "t0", ""); err != nil {
+	if err := s.QueueUpdate(bg, "a", LockEpoch(lock, "c1"), QueueLanding, "t0", ""); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.Move(bg, "a", c.Epoch, core.Position{Stage: core.StageReviewing}, "lane", "back out of the queue"); err != nil {
@@ -73,7 +73,7 @@ func TestQueueUpdate_LockHolderSettlesAnOlderLandingRow(t *testing.T) {
 		if to == QueueFailed {
 			reason = "candidate c1 is not an ancestor of trunk"
 		}
-		if err := s.QueueUpdate(bg, "a", LockEpoch(lock), to, "", reason); err != nil {
+		if err := s.QueueUpdate(bg, "a", LockEpoch(lock, "c1"), to, "", reason); err != nil {
 			t.Fatalf("%s: %v", to, err)
 		}
 		if it := rowOf(t, s); it.State != to || it.CardEpoch != 1 || it.CandidateSHA != "c1" {
@@ -101,12 +101,12 @@ func TestQueueUpdate_LockHolderSettlesAnOlderLandingRow(t *testing.T) {
 		for _, step := range []struct {
 			ep    QueueEpoch
 			state QueueState
-		}{{CardEpoch(e2), QueueVerifying}, {LockEpoch(lock), QueueLanding}, {LockEpoch(lock), QueueLanded}} {
+		}{{CardEpoch(e2), QueueVerifying}, {LockEpoch(lock, "c1"), QueueLanding}, {LockEpoch(lock, "c1"), QueueLanded}} {
 			if err := s.QueueUpdate(bg, "a", step.ep, step.state, "t1", ""); err != nil {
 				t.Fatalf("%s: %v", step.state, err)
 			}
 		}
-		if err := s.QueueUpdate(bg, "a", LockEpoch(lock), QueueLanded, "", ""); !errors.Is(err, ErrInvalid) {
+		if err := s.QueueUpdate(bg, "a", LockEpoch(lock, "c1"), QueueLanded, "", ""); !errors.Is(err, ErrInvalid) {
 			t.Errorf("landing twice: %v", err)
 		}
 	}
@@ -121,10 +121,10 @@ func TestQueueUpdate_OlderLandingRowSettlementNeedsTheLiveLock(t *testing.T) {
 	}{
 		"old card epoch":      {CardEpoch(1), QueueFailed},
 		"current card epoch":  {CardEpoch(e2), QueueFailed},
-		"a stale lock epoch":  {LockEpoch(lock + 1), QueueFailed},
+		"a stale lock epoch":  {LockEpoch(lock+1, "c1"), QueueFailed},
 		"card kind landed":    {CardEpoch(1), QueueLanded},
-		"lock holder waiting": {LockEpoch(lock), QueueWaiting},
-		"lock holder verify":  {LockEpoch(lock), QueueVerifying},
+		"lock holder waiting": {LockEpoch(lock, "c1"), QueueWaiting},
+		"lock holder verify":  {LockEpoch(lock, "c1"), QueueVerifying},
 	} {
 		if err := s.QueueUpdate(bg, "a", c.ep, c.state, "", "x"); !errors.Is(err, ErrStaleEpoch) {
 			t.Errorf("%s: %v", name, err)
@@ -133,7 +133,7 @@ func TestQueueUpdate_OlderLandingRowSettlementNeedsTheLiveLock(t *testing.T) {
 	if err := s.ReleaseLock(bg, LockMerge, lock); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.QueueUpdate(bg, "a", LockEpoch(lock), QueueFailed, "", "x"); !errors.Is(err, ErrStaleEpoch) {
+	if err := s.QueueUpdate(bg, "a", LockEpoch(lock, "c1"), QueueFailed, "", "x"); !errors.Is(err, ErrStaleEpoch) {
 		t.Errorf("a released lock settles nothing: %v", err)
 	}
 	if it := rowOf(t, s); it.State != QueueLanding {
