@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -26,6 +27,33 @@ import (
 type Sources struct {
 	BacklogDB string // backlog.db: the operator queue (items)
 	FactoryDB string // factory.db: the card table (cards)
+	// HeldIDs is the global-hold checkpoint (held-ids.txt, card id to the state it had before the hold:
+	// "picked" or "queued"). A backlog row that is still in hold and listed here imports as that original state
+	// instead of as a parked card: the hold was an operator pause, not a decision about the card. Empty means
+	// every hold row imports parked.
+	HeldIDs map[string]string
+}
+
+// ReadHeldIDs parses a held-ids.txt file: one "<card id> <original state>" pair per line. A line that is not a
+// pair, or that names a state other than picked or queued, is an error — a half-read checkpoint would restore
+// the wrong cards.
+func ReadHeldIDs(path string) (map[string]string, error) {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	out := map[string]string{}
+	for n, line := range strings.Split(strings.TrimSpace(string(raw)), "\n") {
+		f := strings.Fields(line)
+		if len(f) != 2 || (f[1] != "picked" && f[1] != "queued") {
+			return nil, fmt.Errorf("%s line %d: want \"<id> picked|queued\", got %q", path, n+1, line)
+		}
+		if _, dup := out[f[0]]; dup {
+			return nil, fmt.Errorf("%s line %d: card %s is listed twice", path, n+1, f[0])
+		}
+		out[f[0]] = f[1]
+	}
+	return out, nil
 }
 
 // Proposal is one card the ledger would receive.
@@ -77,7 +105,14 @@ func Dry(ctx context.Context, src Sources) (Plan, error) {
 		}
 		for rank, it := range items {
 			p.Counts["backlog:"+it.state]++
+			restored := ""
+			if orig, ok := src.HeldIDs[it.id]; ok && it.state == "hold" {
+				it.state, restored = orig, orig
+			}
 			prop, skip := fromBacklog(it, len(items)-rank)
+			if prop != nil && restored != "" {
+				prop.Notes = append(prop.Notes, "restored from hold to "+restored+" using the global-hold checkpoint")
+			}
 			if skip != nil {
 				p.Skips = append(p.Skips, *skip)
 				continue
