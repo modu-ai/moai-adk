@@ -726,7 +726,7 @@ func (a *app) projectView(prefs profile.ProfilePreferences, selected, devMode, c
 // @MX:REASON: fan_in 9 (every seam's error path); since SPEC-WEB-CONSOLE-017 it answers 2xx, not 500, so the boosted htmx swap delivers the reason to the inline slot
 func (a *app) renderErrorPage(w http.ResponseWriter, prefs profile.ProfilePreferences, selected, devMode, convention, msg string) {
 	view := a.projectView(prefs, selected, devMode, convention)
-	view.Banner = msg
+	view.Banner = refineText(msg)
 	view.BannerKind = "error"
 	a.render(w, http.StatusOK, view)
 }

@@ -1,16 +1,13 @@
-//go:build afred
-
-// banner_error_refine_afred_test.go: B14 RED, committed before the repair. Error
-// banners and error pages are built from raw error text: renderPage's "render
-// failed", the form-parse failures, the settings-save failure banner
-// (handleSave → renderErrorPage) and the profile CRUD failure banners
-// (renderProfileResult). renderError only HTML-escapes, which is not
-// refining. Excluded from the default run by the afred build tag; run it with:
+// banner_error_refine_test.go: B14. Error banners and error pages were built
+// from raw error text: renderPage's "render failed", the form-parse failures, the
+// settings-save failure banner (handleSave -> renderErrorPage) and the profile
+// CRUD failure banners (renderProfileResult); renderError only HTML-escaped, which
+// is not refining. Written first as the afred RED (20 failing subtests), green
+// with renderError, renderErrorPage and renderProfileResult passing their message
+// through refineText.
 //
-//	go test -tags afred -run '^TestErrorBannersAreRefined$' ./internal/web/
-//
-// One value of each of five categories — e-mail, home path, token, telephone
-// number, panic stack — goes into the error of each path; none may appear in the
+// One value of each of five categories - e-mail, home path, token, telephone
+// number, panic stack - goes into the error of each path; none may appear in the
 // response. Sentinel on failure: AF_BANNER_REFINE.
 package web
 
