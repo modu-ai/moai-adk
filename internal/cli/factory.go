@@ -60,9 +60,8 @@ const (
 	factoryFlagShort = "-f"
 	laneFlagLong     = "--lane"
 	laneFlagShort    = "-l"
-	// agentFlagLong/-Short are the design vocabulary for the lane entry (DEC-AF-09: the agent entry; a
-	// lane-<n> session is an agent). They desugar into the lane entry exactly as -l/--lane does.
-	agentFlagLong  = "--agent"
+	// agentFlagShort is the design vocabulary for the lane entry (DEC-AF-09: the agent entry; a
+	// lane-<n> session is an agent). It desugars into the lane entry exactly as -l/--lane does.
 	agentFlagShort = "-a"
 	leadFlagLong   = "--leader"
 
@@ -101,7 +100,7 @@ const factoryFlagUsageError = "-f/--factory takes no argument (bare -f starts th
 const (
 	laneFlagArgumentError  = "-l/--lane takes no argument (it joins the running factory as the next free lane); --leader <name> selects the leader session"
 	laneFlagNameError      = "-l/--lane already names the role; drop the --name/-n flag"
-	agentFlagArgumentError = "-a/--agent takes no argument (it joins the running factory as the next free agent, the lane entry); --leader <name> selects the leader session"
+	agentFlagArgumentError = "-a takes no argument (it joins the running factory as the next free agent, the lane entry); --leader <name> selects the leader session"
 	entryTokenConflict     = "%s and %s are two entry tokens; a launch carries at most one"
 	laneNameUnderFactory   = "--name lane-<n> does not select a lane under -f/--factory (-f starts the factory leader); the lane entry is -l or --lane"
 	leaderNeedsLaneEntry   = "--leader names the leader session a lane join targets; it composes with -l or --lane only"
@@ -238,11 +237,12 @@ func parseFactoryFlag(args []string) (p factoryFlagParse, err error) {
 			continue
 		}
 
-		// -a / --agent: the agent entry (DEC-AF-09), the design name for the lane role. It is the lane entry
-		// under another spelling, so it takes no argument either and desugars the same way; carrying both
-		// spellings is two entry tokens and refuses below.
-		if arg == agentFlagShort || arg == agentFlagLong ||
-			strings.HasPrefix(arg, agentFlagShort+"=") || strings.HasPrefix(arg, agentFlagLong+"=") {
+		// -a: the agent entry (DEC-AF-09), the short spelling of the lane role. It is the lane entry under another
+		// spelling, so it takes no argument either and desugars the same way; carrying -a with -l or -f is two
+		// entry tokens and refuses below. The long `--agent <name>` is deliberately NOT an entry token: Claude
+		// Code has its own --agent option, and a user who passes it keeps it (leader decision, Jev p=0.86), so
+		// it reaches the backend untouched like any other unknown flag.
+		if arg == agentFlagShort || strings.HasPrefix(arg, agentFlagShort+"=") {
 			if strings.Contains(arg, "=") || (i+1 < len(args) && args[i+1] != "--" && !strings.HasPrefix(args[i+1], "-")) {
 				return p, errors.New(agentFlagArgumentError)
 			}
@@ -292,10 +292,10 @@ func parseFactoryFlag(args []string) (p factoryFlagParse, err error) {
 		return p, fmt.Errorf(entryTokenConflict, "-f/--factory", "-l/--lane")
 	}
 	if sawFactoryFlag && sawAgentToken {
-		return p, fmt.Errorf(entryTokenConflict, "-f/--factory", "-a/--agent")
+		return p, fmt.Errorf(entryTokenConflict, "-f/--factory", "-a")
 	}
 	if sawLaneToken && sawAgentToken {
-		return p, fmt.Errorf(entryTokenConflict, "-l/--lane", "-a/--agent")
+		return p, fmt.Errorf(entryTokenConflict, "-l/--lane", "-a")
 	}
 
 	// The --leader surface gates (REQ-004, REQ-008): the flag names a TARGET
