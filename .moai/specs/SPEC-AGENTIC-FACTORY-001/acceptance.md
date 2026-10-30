@@ -320,7 +320,7 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 - 미충족 — 시험 없음: (b)~(f), 정본 M16·M41·M42·M48·M54·M56. `core`에 다른 후보가 있으나 본문을 읽지 않아 연결하지 않았다.
 - 목표 시험 이름(아직 없음, 실행 대상 아님): `TestTransition_Table_*`(0개), `TestTransition_Table_WaitRecordRequiresAllSixFields`, `TestTransition_Table_WaitRecordRefusesFixedIntervalNextAction`, `TestLaneWake_SelfPacedWithTime_NoFixedIntervalJob`, `TestState_SpeclessIssue_TransitionsWithoutSpecHash`, `TestState_OperatorDecision_RequiresOperatorEvidence_CoordinatorRefused`, 위 정본 id의 `TestAcceptanceManifest/<id>`.
 - 사례: (a) 상태 7 × 사건 전부의 표 구동 시험: E01~E27에 있는 쌍만 적용, 나머지는 거절하고 상태 불변(쌍 수를 출력에 기록하고 0이 아님을 단언). (b) 요청자가 맞지 않음 → 거절. (c) PARKED 사유 집합 밖 값 → 거절. (d) E20 → 단계·owner 불변. (e) 대기 기록 여섯 필드(design §2.1c, 0.6.7, 제안 이름 `TestTransition_Table_WaitRecordRequiresAllSixFields`): 필드를 하나씩 뺀 대기 기록 여섯 개 → 각각 무효로 거절, 이전 상태 불변. 여섯 필드가 모두 있는 기록 → 받아들여짐.
-- (f) 다음 자동 동작의 형태(0.6.7 B8a, DEC-AF-27, **제안 사례**. 아래 두 제안 이름의 시험은 `4cdaba5d7e`에 없다): 대기 기록 규칙(제안 이름 `TestTransition_Table_WaitRecordRefusesFixedIntervalNextAction`) — 다음 자동 동작이 고정 간격 반복 작업인 대기 기록 → 무효로 거절, 이전 상태 불변. 시각을 밝힌 자기 페이스 깨어남인 기록 → 받아들여짐. 깨어남 형태 점검(제안 이름 `TestLaneWake_SelfPacedWithTime_NoFixedIntervalJob`) — lane의 대기가 남기는 깨어남은 시각을 밝힌 한 번의 자기 페이스 깨어남이고 고정 간격 반복 작업 등록은 0, 남은 일이 없으면 다시 걸지 않음.
+- (f) 다음 자동 동작의 형태(0.6.7 B8a, DEC-AF-27, **제안 사례**. 아래 두 제안 이름의 시험은 `4cdaba5d7e`에 없다): 대기 기록 규칙(제안 이름 `TestTransition_Table_WaitRecordRefusesFixedIntervalNextAction`) — 다음 자동 동작이 고정 간격 반복 작업인 대기 기록 → 무효로 거절, 이전 상태 불변. 시각을 밝힌 자기 페이스 깨어남인 기록 → 받아들여짐. 깨어남 형태 점검(제안 이름 `TestLaneWake_SelfPacedWithTime_NoFixedIntervalJob` (effect pending a user decision — 사용자 결정 전 효력 없음; §G.2 같은 이름 절)) — lane의 대기가 남기는 깨어남은 시각을 밝힌 한 번의 자기 페이스 깨어남이고 고정 간격 반복 작업 등록은 0, 남은 일이 없으면 다시 걸지 않음.
 - 변형 단언: 표에 없는 간선 하나를 허용하는 구현은 (a), owner를 바꾸는 재개는 (d), 필드가 빠진 대기 기록을 받는 구현은 (e), 고정 간격 반복 작업을 다음 자동 동작으로 받는 구현은 (f)에서 FAIL.
 - RED 이유: 상태 엔진 없음. 초록 경로: M1(lane-18).
 
@@ -692,6 +692,7 @@ F2 작업 당시에는 하위 SPEC의 `acceptance.md`를 고치지 않고 여기
 - **기대 동작 칸**: design.md·spec.md·acceptance.md·plan.md·research.md에서 정본 id 모양(`M01`~`M56`, `M46a`~`g`, `CLI`·`SYNC`·`WT`·`GH`·`HANDOFF`·`PREP`·`CONTEXT`·`EFF` + 두 자리)을 `grep -n -o -E`로 찾고, id를 부르며 동작을 적은 문장만 옮겼다. 그런 문장은 SYNC12·SYNC13·SYNC15·M34·CLI14·CONTEXT06 여섯 개뿐이다. 나머지 159개는 SPEC 어디에도 id별 동작이 없어 **미정**이다. AC 본문의 사례 (a)~(g)는 정본 id와 짝지어 있지 않아 어느 id의 동작으로도 옮기지 않았다.
 - **관찰 방법 칸**: 통합 끝 `70e28a5a78`에서 `git grep -n -e "TestAcceptanceManifest" 70e28a5a78`는 SPEC 문서 줄만 출력했다(실행기 없음). `git grep -n -w -E <정본 id 패턴> 70e28a5a78 -- '*_test.go'`와 AF 시험 파일 검색에서 정본 뜻으로 id를 부르는 시험 주석은 M34·HANDOFF01·HANDOFF02·HANDOFF03·HANDOFF08뿐이다. 그 시험들은 `TestAcceptanceManifest/<id>` 하위 시험이 아니며 실행하지 않았다. `M10`은 시험 파일 두 곳에 나오지만 다른 SPEC의 milestone(`internal/cli/factory_skill_assertions_test.go:3`, SPEC-LAUNCHER-ENTRY-FLAGS-001 M10)과 옛 시험 이름(`internal/web/autonomy_console_test.go:12`)이라 정본 M10으로 세지 않았다.
 - **충족 칸**: 시험을 돌리지 않아 전부 `not measured`다. M34 한 행에만 코드 읽기를 덧붙였다(측정이 아님).
+- **줄 번호 고정(서른네 번째 후속)**: 이 절의 `spec.md:NNN`·`design.md:NNN`은 `0f90ffc0bf`에서 읽었고 모두 `@0659c71de4`에서도 같은 줄이다(그 커밋은 design.md를 바꾸지 않았고 spec.md는 OD-29 행(344) 아래만 밀었다) — 단 CONTEXT06 칸은 `spec.md:370 @0659c71de4`로 고쳤다(`0f90ffc0bf`의 `:369`). 이 판(커밋 전)에서는 design §4.4에 네 줄을 더해 `design.md`의 335 이후 줄이 4씩 밀리므로(예 §15.1 `:832-863 @0659c71de4` = 이 판 `:836-867`), 이 절의 design 줄 번호는 `@0659c71de4`로 읽는다.
 
 | 정본 id | AC | 기대 동작 (SPEC 원문·위치, 없으면 미정) | 관찰 방법 (`70e28a5a78`) | 지금 충족? |
 |---|---|---|---|---|
@@ -793,7 +794,7 @@ F2 작업 당시에는 하위 SPEC의 `acceptance.md`를 고치지 않고 여기
 | CONTEXT02 | AC-AF-018 | 미정 | no observation method written | not measured |
 | CONTEXT03 | AC-AF-018 | 미정 | no observation method written | not measured |
 | CONTEXT05 | AC-AF-018 | 미정 | no observation method written | not measured |
-| CONTEXT06 | AC-AF-018 | "CONTEXT06 '새 대상의 증거가 필요하다'는 **호출자 규칙**이며 모형이 집행하지 않는다"(`spec.md:369`, lane-18이 밝힌 공백, 리더 전달) | no observation method written | not measured |
+| CONTEXT06 | AC-AF-018 | "새 대상의 증거가 필요하다"(`spec.md:370 @0659c71de4`) | no observation method written | not measured |
 | M38 | AC-AF-020 | 미정 | no observation method written | not measured |
 | M46 | AC-AF-020 | 미정 | no observation method written | not measured |
 | M46a | AC-AF-020 | 미정 | no observation method written | not measured |
@@ -863,9 +864,11 @@ F2 작업 당시에는 하위 SPEC의 `acceptance.md`를 고치지 않고 여기
 
 셈(이 표): 동작이 적힌 id 6 · 미정 159 · 관찰 방법(주석이 id를 부르는 시험)이 있는 id 5(M34, HANDOFF01, HANDOFF02, HANDOFF03, HANDOFF08) · 충족을 측정한 id 0. HANDOFF01~03·08은 동작이 미정인데 시험 주석에는 동작이 적혀 있다. 그 주석 문장은 SPEC 조항이 아니어서 동작 칸에 옮기지 않았다.
 
+- CONTEXT06 — implementation gap, not part of the expected behavior(서른네 번째 후속에 동작 칸에서 옮김): "CONTEXT06 '새 대상의 증거가 필요하다'는 **호출자 규칙**이며 모형이 집행하지 않는다"(`spec.md:370 @0659c71de4`, "lane-18이 밝힌 공백(리더 전달)" 줄). 출처는 리더 전달(relayed)이며 이 작성자는 lane-18 코드를 읽지 않았다.
+
 #### golden 파일 형식 — AC-AF-021 (`TestCompat_*`·`TestLauncher_*`)
 
-- 근거: design §9.6(`design.md:716-720`) — 위치 제안 `internal/cli/testdata/agentic_factory_compat/`, 내용 "변경 전 빌드로 기록한 `moai cc --help`의 진입 플래그 도움말, 거절 문구와 종료 코드, 기존 factory 기록의 lane 레이블·세션 id·owner·handle·권한 모드 스냅숏", 순서 "M6의 첫 커밋이 golden 파일만 담는다". AC-AF-021 (a)·(b)와 golden 순서 점검(`acceptance.md` AC-AF-021 사례 줄). 형식의 네 요소는 `.claude/rules/moai/development/verification-completeness.md` §2.1.
+- 근거: design §9.6(`design.md:716-720 @0659c71de4`, 이 판 `:720-724`) — 위치 제안 `internal/cli/testdata/agentic_factory_compat/`, 내용 "변경 전 빌드로 기록한 `moai cc --help`의 진입 플래그 도움말, 거절 문구와 종료 코드, 기존 factory 기록의 lane 레이블·세션 id·owner·handle·권한 모드 스냅숏", 순서 "M6의 첫 커밋이 golden 파일만 담는다". AC-AF-021 (a)·(b)와 golden 순서 점검(`acceptance.md` AC-AF-021 사례 줄). 형식의 네 요소는 `.claude/rules/moai/development/verification-completeness.md` §2.1.
 - **형식(이 절은 형식만 정한다)**: golden 항목 하나는 명령 하나다. 항목마다 다음을 따로 담는다.
   1. 명령 줄 — 파이프·리디렉션·`&&`·`;`·subshell 없는 한 번의 읽기 전용 호출(§2.1 첫 요소).
   2. 기대 stdout — 렌더링한 모습이 아닌 원시 바이트(§2.1 둘째 요소).
@@ -876,24 +879,26 @@ F2 작업 당시에는 하위 SPEC의 `acceptance.md`를 고치지 않고 여기
 - 사실: `git ls-tree --name-only 70e28a5a78 -- internal/cli/testdata/agentic_factory_compat` 출력 없음 — **no golden file exists at 70e28a5a78**(§9.6 제안 위치 기준). 다른 SPEC의 golden `internal/config/testdata/lane_entry_env_golden.json`(SPEC-LAUNCHER-ENTRY-FLAGS-001 AC-004, `internal/cli/lane_entry_golden_m1_test.go:3-10`, lane 환경 표지)은 있으나 §9.6 golden이 아니어서 세지 않았다.
 - **content waits for OD-29**(어느 명령 이름과 문법을 golden에 담을지). 문법 네 건은 OD-2에 그대로 열려 있다.
 
-#### `TestLaneWake_SelfPacedWithTime_NoFixedIntervalJob` — 깨어남 형태 계약 (제안)
+#### `TestLaneWake_SelfPacedWithTime_NoFixedIntervalJob` (effect pending a user decision — 사용자 결정 전 효력 없음) — 깨어남 형태 계약 (제안)
 
-- 이미 있는 문장(이 작성자가 이 트리 HEAD `0f90ffc0bf`에서 읽음):
+- 이미 있는 문장(이 작성자가 이 트리 HEAD `0f90ffc0bf`에서 읽음; 아래 줄 번호는 모두 `@0f90ffc0bf`이며 `0659c71de4`에서도 같은 줄이다):
   - REQ-AF-016(`spec.md:160`): "The next automatic action of a wait record SHALL be a self-paced wake at a stated time that is not re-armed when no work remains, and the state engine SHALL refuse as invalid a wait record whose next automatic action is a fixed-interval recurring job."
   - DEC-AF-27 (3)(`spec.md:236`): "다른 lane을 기다릴 때는 자기 페이스 `/loop`(ScheduleWakeup)로 스스로 깰 시각을 정하고, 남은 일이 없으면 stop으로 끝난다. 고정 간격 cron은 쓰지 않는다." (2): 이어지는 작업은 `/moai goal` 조건(열린 일감 수 0 + 턴 상한). (1)과 REQ-AF-010(`spec.md:149`): 일감은 자기 progress 기록에서 가져온다.
   - design §2.1c(`design.md:144`): 다음 자동 동작은 시각을 밝힌 자기 페이스 깨어남, 남은 일이 없으면 다시 걸지 않음, 시각 값은 SPEC이 정하지 않음.
   - AC-AF-016 (f)(`acceptance.md` AC-AF-016 사례 줄): 이 시험의 제안 사례 문장. AC-AF-010 (g)는 leader로 보내는 범주이며 깨어남 형태를 말하지 않는다.
-  - `spec.md:441`(리더 전달): 배포 규칙 문서는 아직 카드마다 recheck cron을 적고 있고, 사용자 승인 게이트에서 보류 중이다.
-- **제안 계약 문장** — lane-17 제안 문장; 리더 요청에 따라 리더 잠정 결정으로 표시(리더 세션 경유, 되돌릴 수 있음, 운영자·사용자 결정 아님):
-  - lane 세션은 세션 시작 때 주입된 지시에 따라 다음에 깰 시각을 밝힌 한 번의 자기 페이스 깨어남만 걸고 고정 간격 반복 작업은 등록하지 않으며, 자기 일감 목록에 남은 일이 없어 유휴가 되면 다음 깨어남을 다시 걸지 않고 끝난다.
+  - `spec.md:442 @0659c71de4`(이 판에서는 OD-30 행이 더해져 `:443`; 서른세 번째 후속은 `:441`로 적었으나 `0659c71de4`에서 그 줄은 이미 `:442`였다 — OD-29 행 추가로 밀림): 배포 규칙 문서는 아직 카드마다 recheck cron을 적고 있고, 사용자 승인 게이트에서 보류 중이다.
+- **제안 계약 문장** — lane-17 제안 문장; 리더 요청에 따라 리더 잠정 결정으로 표시(리더 세션 경유, 되돌릴 수 있음, 운영자·사용자 결정 아님). **effect pending a user decision — 사용자 결정 전 효력 없음**. 까닭: 아래 "기존 문장과 어긋나는 곳" 둘째 항목의 배포 규칙 충돌은 규칙 문서를 고쳐야만 풀리고, 규칙 문서 수정은 사용자 승인 사항이며 리더는 규칙 파일을 고치지 않는다. 또 cron을 둘지 자기 페이스 깨어남을 쓸지는 리더가 사용자에게 물을 열린 질문이다(open, user decision; `spec.md:442 @0659c71de4`, 이 판 `:443`):
+  - lane 세션은 세션 시작 때 주입된 지시에 따라 지금부터 N분 뒤(상대 시간, 시계의 절대 시각이 아님) 다시 깨는 한 번의 자기 페이스 깨어남만 걸고 고정 간격 반복 작업은 등록하지 않으며, 자기 일감 목록에 남은 일이 없어 유휴가 되면 다음 깨어남을 다시 걸지 않고 끝난다.
+  - 위 문장의 "지금부터 N분 뒤(상대 시간)" — 리더 잠정 결정(leader provisional decision, relayed via the leader session, reversible; 운영자·사용자 결정 아님). 서른세 번째 후속의 "다음에 깰 시각을 밝힌"을 상대 시간으로 읽기로 하고 그 뜻을 문장 안에 적었다. 이 읽기는 `auto-semantics.md:392-396`의 "지금부터" 한 번짜리 재확인과 모양이 가깝고, `auto-semantics.md` §5.1 `:124`의 절대 시각 한 번짜리 금지("Never a one-shot at an absolute clock time")와 부딪히지 않는다. N의 값은 이 SPEC이 정하지 않는다(design §2.1c `design.md:144 @0659c71de4`, 이 판에서도 같은 줄).
+  - "유휴"의 뜻 — 리더가 "유휴 = 남은 일 없음" 읽기를 받아들였다(리더 잠정 수용, relayed via the leader session, 되돌릴 수 있음). 다른 lane을 기다리는 상태는 이 뜻의 유휴가 아니며, 보조 1이 그 구별을 맡는다.
   - 보조 1: 다른 lane을 기다리는 동안의 유휴는 남은 일이 있는 상태라 끝이 아니며, 그동안의 깨어남은 대기 기록의 "다음 자동 동작"·"재확인 시각"에 적힌 시각을 밝힌 자기 페이스 깨어남이다(REQ-AF-016, DEC-AF-27 (3)).
   - 보조 2: 유휴로 끝났다는 사실은 일의 완료 증거가 아니며, 완료는 기록과 증거에서 읽는다(design §3 `received`·`completed` 행이 idle 알림을 증거로 받지 않는 것과 같은 규칙).
-- 계기(리더 전달, relayed, not read by this author): lane-20 B6은 "session-start injection, idle exit"이다. 이 작성자는 B6 코드를 읽지 않았다.
-- **기존 문장과 어긋나는 곳(정리하지 않고 그대로 적음)**:
+- 계기(리더 전달, relayed): lane-20 B6은 "session-start injection, idle exit"이다. **서른네 번째 후속 정정**: 이 작성자가 B6 커밋 `914ea8064b`를 읽었다 — 세션당 반복 `CronCreate` 하나를 걸고 할 일이 없으면 `CronDelete`로 지운다(`internal/hook/session_start_factory_i18n.go:148`, `:150 @914ea8064b`). 이것은 위 제안 문장의 자기 페이스 깨어남과 같은 설계가 아니다. 사실과 출처는 `spec.md:442 @0659c71de4`(이 판 `:443`) 줄.
+- **기존 문장과 어긋나는 곳(정리하지 않고 그대로 적음; 규칙 문서 줄 번호는 `@0659c71de4`에서 git grep -n으로 다시 읽음)**:
   - "세션 시작 주입": SPEC의 어느 조항도 깨어남 지시가 세션 시작 때 주입된다고 적지 않는다. DEC-AF-27 (3)은 깨어남 수단으로 `/loop`(ScheduleWakeup)만 든다. 이 부분은 SPEC에 없던 내용이며, 위 문장이 새로 들인다.
-  - 배포 규칙과 정면으로 어긋난다: `.claude/rules/moai/workflow/auto-semantics.md:113-125`(§5.1)는 카드 접수 때 `CronCreate`로 `cron: "*/N * * * *"`, `recurring: true`인 상시 깨움을 걸어 카드 실행 내내 두라고 하고, 절대 시각의 한 번짜리 깨움을 금지한다("Never a one-shot at an absolute clock time", `:124`). `factory-dispatch-core.md:28`도 recurring recheck cron을 적는다. 이 작성자 세션의 SessionStart 주입 문구도 "a recurring `CronCreate` recheck armed before the first stage"를 담고 있었다 — 지금의 세션 시작 주입이 고정 간격 반복 작업을 싣고 있다. 이 어긋남은 `spec.md:441`에 이미 적혀 있고 사용자 승인 게이트에서 보류 중이며, 이 편집으로 풀리지 않는다.
-  - 같은 규칙 `auto-semantics.md:392-396`은 leader를 기다리는 동안 `recurring: false`인 한 번짜리 재확인을 "지금부터" 상대 시간으로 걸고, 대기가 풀리면 다시 걸지 않는다고 적는다. 이것은 위 문장의 모양과 가깝지만 상대 시간이다. 위 문장의 "다음에 깰 시각을 밝힌"이 절대 시각을 뜻하면 `:124`의 금지와 부딪힌다. 이 작성자는 둘 중 무엇인지 정하지 않았다.
-  - "유휴 종료": DEC-AF-27 (3)의 "남은 일이 없으면 stop으로 끝난다"와 맞는 것은 유휴를 "남은 일 없음"으로 읽을 때뿐이다. 유휴가 다른 lane을 기다리는 상태까지 포함하면 (3)과 어긋난다. 위 문장은 앞의 뜻으로 적었다(보조 1). 이것은 이 작성자의 선택이다.
+  - 배포 규칙과 정면으로 어긋난다: `.claude/rules/moai/workflow/auto-semantics.md:113-125`(§5.1)는 카드 접수 때 `CronCreate`로 `cron: "*/N * * * *"`, `recurring: true`인 상시 깨움을 걸어 카드 실행 내내 두라고 하고, 절대 시각의 한 번짜리 깨움을 금지한다("Never a one-shot at an absolute clock time", `:124`). `factory-dispatch-core.md:28`도 recurring recheck cron을 적는다. 이 작성자 세션의 SessionStart 주입 문구도 "a recurring `CronCreate` recheck armed before the first stage"를 담고 있었다 — 지금의 세션 시작 주입이 고정 간격 반복 작업을 싣고 있다. 이 어긋남은 `spec.md:442 @0659c71de4`(이 판 `:443`)에 이미 적혀 있고 사용자 승인 게이트에서 보류 중이며, 이 편집으로 풀리지 않는다.
+  - 같은 규칙 `auto-semantics.md:392-396`은 leader를 기다리는 동안 `recurring: false`인 한 번짜리 재확인을 "지금부터" 상대 시간으로 걸고, 대기가 풀리면 다시 걸지 않는다고 적는다. 이것은 위 문장의 모양과 가깝지만 상대 시간이다. 위 문장의 "다음에 깰 시각을 밝힌"이 절대 시각을 뜻하면 `:124`의 금지와 부딪힌다. → 리더 잠정 결정(relayed, 되돌릴 수 있음): 상대 시간으로 읽고, 계약 문장에 "지금부터 N분 뒤(상대 시간)"로 적었다. 이 결정으로 `:124`와의 충돌은 없어지지만, 고정 간격 반복 `CronCreate`를 요구하는 `:113-125`·`factory-dispatch-core.md:28`과의 충돌은 그대로 남는다(바로 위 항목).
+  - "유휴 종료": DEC-AF-27 (3)의 "남은 일이 없으면 stop으로 끝난다"와 맞는 것은 유휴를 "남은 일 없음"으로 읽을 때뿐이다. 유휴가 다른 lane을 기다리는 상태까지 포함하면 (3)과 어긋난다. 위 문장은 앞의 뜻으로 적었다(보조 1). 이 작성자가 고른 이 읽기를 리더가 잠정 수용했다(relayed via the leader session, 되돌릴 수 있음).
 
 #### IDENTITY
 

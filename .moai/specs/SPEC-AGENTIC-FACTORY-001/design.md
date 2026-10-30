@@ -332,6 +332,10 @@ ACK가 없으면 다시 보내지 않고 받는 쪽 상태를 먼저 조회한�
 - 게시할 수 없는 자료는 `RESTRICTED`: 상태, 짧은 요약, SHA-256 세 필드만. SHA-256은 그 항목의 가린 장부 형태에 대해 계산하며, 원값에 대해 계산하지 않는다(DEC-AF-28).
 - 적용 대상: 장부 행, 댓글, checkpoint manifest, Issue 요약, 정제 증거 파일, 관찰 출력.
 - 알려진 적용 범위 부채(relayed, DEC-AF-29): 정제기가 아직 잡지 못하는 네 갈래 — (i) 한국어 이름 + 전화번호(C2), (ii) 패닉·goroutine 스택(C4), (iii) 물결표 `~/...` 경로(C3 문언이 "`~` 전개값"이라 드는지 모호, OD-23의 질문), (iv) 낱말과 숫자를 대시로 이은 passphrase 형태(C1). 측정은 lane-19가 core 커밋 `9e34d6bb87`에서 했다(리더 전달, 이 SPEC 작성자는 읽지 않음). 위 표와 범주는 바뀌지 않는다.
+  - branch fact (not integration, commit `6e44b1b2aa`) — C2: `redact.go:22` `phone`(한국·+82 전화번호), `:23` `person-name`(전화번호 옆 한국어 이름). 이름만 있을 때 가리지 않는다는 것은 lane-18 통지(리더 전달)이고 이 작성자는 시험을 돌리지 않았다. 부채 (i)은 닫지 않는다.
+  - branch fact (not integration, commit `6e44b1b2aa`) — C4: `redact.go:24` `stack`(패닉 줄·goroutine 스택). 같은 커밋이 `sanitize_test.go`의 "보통 글" 목록에서 goroutine 스택 한 줄을 뺐다. 부채 (ii)는 닫지 않는다.
+  - branch fact (not integration, commit `6e44b1b2aa`) — C1: `redact.go:69-70` credential-assignment 규칙에 `pass(?:phrase|w(?:or)?d)`가 들어 `passphrase: …`·`PASSPHRASE=…`·JSON `"passphrase"`·`ssh_passphrase = '…'` 형태를 잡는다(시험 입력 `sanitize_s2_test.go:164-167`). 이름 없는 대시 연결 낱말열은 구현하지 않았다(lane-18 통지, 리더 전달; 이 작성자의 grep도 그런 규칙을 찾지 못함) — 부채 (iv)의 그 부분은 OD-30. 부채 (iv)는 닫지 않는다.
+  - 리더가 전한 커밋 `1aa99d4504`(S1 후속)는 위 범주를 담지 않는다. 그 커밋은 통합 브랜치에 들고, `6e44b1b2aa`는 들지 않는다. C3 물결표는 OD-23 그대로.
 
 **증거 위치와 단계(DEC-AF-13)**: 원본은 `.moai/reports`(ignore 규칙 그대로). 공개 안전 정제본만 추적 디렉터리 `.moai/evidence/issue-<N>/`. 단계 `PREPARED → MASKED → COMMITTED → PUSHED → REMOTE_VERIFIED`. `AVAILABLE`은 원격 조회가 확인한 뒤에만 붙는다. 링크는 전체 커밋 SHA 고정.
 
