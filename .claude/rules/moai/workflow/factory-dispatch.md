@@ -128,7 +128,7 @@ With `tree_scope: skip` configured for the leader's checkout, the leader session
 ### A hold names its scope, its exit, and its recheck
 
 <!-- moai:role-core-start -->
-[HARD] When the operator holds work, the leader writes a hold record before replying — the held categories as the operator named them, the exit condition, and a recheck point — and freezes only those categories; every lane whose next item lies outside them keeps running. A hold whose exit waits on someone else's reply is never waited out: at the first recheck the leader asks the operator through `AskUserQuestion` whether to keep, narrow, or lift it. If a native `/goal` is armed when a hold lands, the leader tells the operator in that same turn that the goal will re-fire every turn and that only the operator can stop it (`/goal clear`); it never answers the re-fires with bare "still held" replies.
+[HARD] On a hold the leader writes a hold record (categories as named, exit, recheck point) and freezes only those; other lanes keep running. An exit awaiting another's reply is never waited out: at the first recheck ask via `AskUserQuestion` to keep, narrow, or lift. With a native `/goal` armed, say that turn it re-fires and only `/goal clear` stops it; never answer with bare "still held".
 <!-- moai:role-core-end -->
 
 ## Deputy dispatch surface
