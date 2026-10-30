@@ -240,10 +240,18 @@ func TestAuthz_RedirectOrRename_IsRefused(t *testing.T) {
 	renamed.ActualRepo = repoB
 	missing := foreignIssue(core.OpEditBody)
 	missing.ActualRepo = ""
+	// Behavior change (lane-18 F20): the host not answering for the repository that was asked about is its own
+	// verdict, repository-unverified, and it is decided before any allowance, on one's own Issue as well. An
+	// answered repository that is simply not on the allow list stays repository-not-allowed (below).
 	for name, r := range map[string]core.AuthzRequest{"redirect": redirected, "rename": renamed, "no answer": missing} {
-		if got := c.Authorize(r); got != core.DenyRepoNotAllowed {
-			t.Errorf("%s -> %s, want repository-not-allowed", name, got)
+		if got := c.Authorize(r); got != core.DenyRepoUnverified {
+			t.Errorf("%s -> %s, want repository-unverified", name, got)
 		}
+	}
+	unlisted := foreignIssue(core.OpEditBody)
+	unlisted.RequestedRepo, unlisted.ActualRepo = repoB, repoB // answered correctly, but not on the list
+	if got := c.Authorize(unlisted); got != core.DenyRepoNotAllowed {
+		t.Errorf("an answered repository that is not allowed -> %s, want repository-not-allowed", got)
 	}
 }
 

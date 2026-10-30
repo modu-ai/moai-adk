@@ -188,6 +188,43 @@ func TestAPassMakesNoHostRequest(t *testing.T) {
 	}
 }
 
+// The same property on a pass that really walks the reminder path: an overdue wait record is planted, the
+// Waiter retries it (the path that calls into the Runner), and still no host request is made. An empty store
+// would not reach that path (lane-19 P3).
+func TestAPassOverAnOverdueWaitMakesNoHostRequest(t *testing.T) {
+	host := &fakeHost{user: `{"id": 42}`, issue: `{"user": {"id": 42}, "repository_url": "https://api.github.com/repos/o/a"}`}
+	r := buildWithTransport(t, host)
+	run, _ := core.ParseRunID("run-1")
+	tk, err := r.Runner.Claim(issue7(t), "w1", "d-1", run) // own Issue: author 42 == user 42
+	if err != nil {
+		t.Fatalf("claim over the fake host: %v", err)
+	}
+	claimRequests := len(host.paths())
+	if claimRequests == 0 {
+		t.Fatal("control: the claim made no host request, so the guard did not run")
+	}
+	w := r.NewWait("w1", "tell the owner", "waiting on a reply", t0.Add(-time.Hour))
+	if _, err := r.Runner.SetWait(tk, w); err != nil {
+		t.Fatalf("plant the overdue wait: %v", err)
+	}
+	acts, err := r.Service.Tick(context.Background())
+	if err != nil {
+		t.Fatalf("a pass: %v", err)
+	}
+	walked := false
+	for _, a := range acts {
+		if a.Issue == tk.Issue.Number {
+			walked = true
+		}
+	}
+	if !walked {
+		t.Fatalf("control: the pass did nothing for the overdue wait (actions %+v), so the reminder path was not walked", acts)
+	}
+	if got := len(host.paths()); got != claimRequests {
+		t.Errorf("the pass made %d host requests beyond the claim's %d", got-claimRequests, claimRequests)
+	}
+}
+
 // The acting user is looked up once while the identity cache holds it: a second authority check does not
 // repeat GET /user (audit lane-19 point 3: no extra reduction is needed, the cache age does it).
 func TestTheActingUserIsLookedUpOnceWithinTheCacheAge(t *testing.T) {
