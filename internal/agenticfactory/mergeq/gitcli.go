@@ -16,6 +16,9 @@ import (
 // gitTimeout bounds every git call of the merge queue; a hung git must not hold the landing lock.
 const gitTimeout = 2 * time.Minute
 
+// gitWaitDelay is how long to wait for git's output pipes after its context ended.
+const gitWaitDelay = 5 * time.Second
+
 // maxGitOutput bounds what one git call may return, so a runaway command cannot fill memory.
 const maxGitOutput = 8 << 20
 
@@ -63,6 +66,7 @@ func (g GitCLI) run(ctx context.Context, dir string, args ...string) (string, er
 	ctx, cancel := context.WithTimeout(ctx, gitTimeout)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "git", append([]string{"-C", dir}, args...)...)
+	cmd.WaitDelay = gitWaitDelay // a descendant that keeps the pipes open must not outlive the timeout
 	cmd.Env = append(gitenv.Env(),
 		"GIT_TERMINAL_PROMPT=0",
 		"GIT_AUTHOR_NAME="+g.Who.Name, "GIT_AUTHOR_EMAIL="+g.Who.Email,
@@ -171,7 +175,12 @@ func (g GitCLI) CheckedOutAt(ctx context.Context, ref string) (string, error) {
 // UpdateRef is the compare-and-swap that lands a card: it succeeds only if ref still names oldSHA.
 func (g GitCLI) UpdateRef(ctx context.Context, ref, newSHA, oldSHA string) error {
 	if _, err := g.run(ctx, g.Repo, "update-ref", ref, newSHA, oldSHA); err != nil {
-		return fmt.Errorf("%w: %v", ErrRefMoved, err)
+		// Only a value mismatch means the trunk moved; an invalid name, a missing object or a lock failure is a
+		// different problem and must not be retried as if another lander had won.
+		if strings.Contains(err.Error(), "but expected") {
+			return fmt.Errorf("%w: %v", ErrRefMoved, err)
+		}
+		return err
 	}
 	return nil
 }
