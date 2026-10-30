@@ -296,7 +296,7 @@ func TestARestartDoesNotRepeatAReminder(t *testing.T) {
 
 type movedWaiter struct{ spent int }
 
-func (m *movedWaiter) RetryWait(runner.Ticket, string, string, time.Time) (claim.Record, error) {
+func (m *movedWaiter) RemindWait(runner.Ticket, string, string, time.Time) (claim.Record, error) {
 	m.spent++
 	return claim.Record{}, fmt.Errorf("%w: epoch moved", core.ErrOwnershipUnverified)
 }
@@ -615,7 +615,7 @@ func TestALockBusyPassAfterPassIsReportedAsStuckWithoutSpendingARetry(t *testing
 
 type movedWaits struct{ Waiter }
 
-func (movedWaits) RetryWait(runner.Ticket, string, string, time.Time) (claim.Record, error) {
+func (movedWaits) RemindWait(runner.Ticket, string, string, time.Time) (claim.Record, error) {
 	return claim.Record{}, core.ErrOwnershipUnverified
 }
 
@@ -685,5 +685,32 @@ func TestAFailedSaveOfTheBusyResetDoesNotLoseTheDeliveredReminder(t *testing.T) 
 	e.tickAt(s, t0.Add(time.Hour+2*time.Minute)) // inside ReNotifyAfter: nothing more is due
 	if b.sent != 1 {
 		t.Errorf("sent = %d after the next pass, want the notice not resent", b.sent)
+	}
+}
+
+// A reminder is the monitor writing the owner's wait, not the owner acting: a dead owner's recorded safe stop
+// must survive it. (Before RemindWait the reminder went through RetryWait, which counts as the owner's own
+// write and made the stop stale.)
+func TestAReminderKeepsTheDeadOwnersSafeStop(t *testing.T) {
+	e := newEnv(t)
+	tk := e.acquire(7)
+	if _, err := e.rn.SetWait(tk, waitAt(t0.Add(time.Hour), 3)); err != nil {
+		t.Fatal(err)
+	}
+	stop, err := e.rn.RecordSafeStop(tk, "owner stopped")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := e.service()
+	e.tickAt(s, t0.Add(time.Hour+time.Minute)) // the wait is overdue: a reminder goes out
+	if e.n.count(WaitOverdue) != 1 {
+		t.Fatalf("reminders sent = %d, want 1", e.n.count(WaitOverdue))
+	}
+	if got := e.record(7).Wait; got == nil || got.Retries != 1 {
+		t.Fatalf("wait after the reminder = %+v, want one retry spent", got)
+	}
+	ref, _ := core.NewIssueRef(7)
+	if err := e.st.CheckSafeStop(ref, tk.Holder, tk.Epoch, stop); err != nil {
+		t.Errorf("the reminder undid the dead owner's safe stop: %v", err)
 	}
 }

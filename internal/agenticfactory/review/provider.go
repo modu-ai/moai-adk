@@ -134,16 +134,3 @@ func NewClaudeAuditor(exec Executor) *ClaudeAuditor { return &ClaudeAuditor{exec
 func (a *ClaudeAuditor) Review(ctx context.Context, req Request) (Result, error) {
 	return a.exec.Execute(ctx, req)
 }
-
-// FakeExecutor is a recording Executor for tests of callers.
-type FakeExecutor struct {
-	Result Result
-	Err    error
-	Calls  []Request
-}
-
-// Execute records the request and returns the canned result.
-func (f *FakeExecutor) Execute(_ context.Context, req Request) (Result, error) {
-	f.Calls = append(f.Calls, req)
-	return f.Result, f.Err
-}

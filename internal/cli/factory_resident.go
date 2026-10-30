@@ -39,6 +39,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/claim"
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/effect/ghexec"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/effect/gitexec"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/forge"
@@ -140,7 +141,7 @@ func runFactoryResident(ctx context.Context, o residentOptions) error {
 		if res.Err != nil {
 			return fmt.Errorf("agentic factory settings are broken: %s", res.Reason)
 		}
-		fmt.Fprintf(out, "Agentic Factory is not configured for this project: %s\n", res.Reason)
+		writeResidentNotConfigured(out, res.Reason)
 		return nil
 	}
 	s, err := config.LoadAgenticFactorySettings(o.ProjectRoot)
@@ -196,7 +197,7 @@ func runFactoryResident(ctx context.Context, o residentOptions) error {
 		return err
 	}
 
-	fmt.Fprintf(out, "agentic factory resident: claim store %s, %d webhook route(s)\n", dir, routes)
+	writeResidentHeader(out, dir, routes)
 	fmt.Fprintln(out, "  local writes: claim records (waits, repair marks) and inbox/cursor documents in the claim store")
 	fmt.Fprintln(out, "  external writes: none wired (Issue creation off; context-ledger comment writes not wired, path undecided)")
 	fmt.Fprintln(out, "  git: not called on the default path")
@@ -218,7 +219,7 @@ func runFactoryResident(ctx context.Context, o residentOptions) error {
 			err := srv.Serve(ln)
 			if err != nil && !errors.Is(err, http.ErrServerClosed) {
 				// A server that stopped on its own must not leave the loop running unobserved.
-				fmt.Fprintf(out, "webhook server stopped: %v\n", err)
+				writeResidentServerStopped(out, err)
 				cancelRun()
 			}
 			serveDone <- err
@@ -257,13 +258,35 @@ func runFactoryResident(ctx context.Context, o residentOptions) error {
 	return runErr
 }
 
+// What this command prints leaves the process (a terminal, a log, a report file), so every field that can
+// carry text from outside - a path, a configuration reason, an error - goes through the one core sanitizer
+// first. Fixed words and numbers are not sanitized.
+
+// outStr is the text as it may be printed.
+func outStr(s string) string {
+	out, _ := core.Redact(s)
+	return out
+}
+
+func writeResidentNotConfigured(out io.Writer, reason string) {
+	fmt.Fprintf(out, "Agentic Factory is not configured for this project: %s\n", outStr(reason))
+}
+
+func writeResidentHeader(out io.Writer, dir string, routes int) {
+	fmt.Fprintf(out, "agentic factory resident: claim store %s, %d webhook route(s)\n", outStr(dir), routes)
+}
+
+func writeResidentServerStopped(out io.Writer, err error) {
+	fmt.Fprintf(out, "webhook server stopped: %s\n", outStr(err.Error()))
+}
+
 // writeResidentPass prints one pass: the action count by kind, and every action that carries an error
 // with its Issue. A silent failure is the defect this exists for (audit F3): a stuck record must show
 // on screen, not only in the claim store.
 func writeResidentPass(out io.Writer, p resident.Pass) {
 	at := p.At.UTC().Format(time.RFC3339)
 	if p.Err != nil {
-		fmt.Fprintf(out, "pass %s: error: %v\n", at, p.Err)
+		fmt.Fprintf(out, "pass %s: error: %s\n", at, outStr(p.Err.Error()))
 		return
 	}
 	counts := map[string]int{}
@@ -282,7 +305,7 @@ func writeResidentPass(out io.Writer, p resident.Pass) {
 	fmt.Fprintf(out, "pass %s: %d action(s) %s\n", at, len(p.Actions), strings.Join(parts, " "))
 	for _, a := range p.Actions {
 		if a.Err != nil {
-			fmt.Fprintf(out, "  %s issue #%d: error: %v\n", a.What, a.Issue, a.Err)
+			fmt.Fprintf(out, "  %s issue #%d: error: %s\n", a.What, a.Issue, outStr(a.Err.Error()))
 		}
 	}
 }

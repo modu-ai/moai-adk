@@ -89,3 +89,20 @@ func TestLaneArmExpressionReadsWorkingDirectoryWhenProjectDirUnset(t *testing.T)
 		t.Errorf("with CLAUDE_PROJECT_DIR unset the rule does not carry the working directory's renewal period %q:\n%s", "renew_interval=7m", rule)
 	}
 }
+
+// A renewal period under a minute must never render as "renew_interval=0m": the wake bound has a floor of one
+// minute (ScheduleWakeup's own lower bound is 60 seconds).
+func TestLaneWakeBoundNeverRendersZeroMinutes(t *testing.T) {
+	for _, v := range []string{"30s", "0s", "0", "59s"} {
+		root := writeLaneWorkflow(t, v)
+		t.Setenv(config.EnvClaudeProjectDir, root)
+		setLaneEnv(t)
+		rule := factoryLaneRuleForSource("startup", "en")
+		if strings.Contains(rule, "renew_interval=0m") {
+			t.Errorf("renew_interval %q rendered a zero-minute bound", v)
+		}
+		if !strings.Contains(rule, "renew_interval=") {
+			t.Errorf("renew_interval %q: no bound rendered at all", v)
+		}
+	}
+}

@@ -292,3 +292,40 @@ func TestResident_IsRegisteredBesideStatus(t *testing.T) {
 		t.Errorf("--tick must exist with no default, got %+v", f)
 	}
 }
+
+// B4 (2): every field this command prints that can carry outside text goes through the one sanitizer. One
+// case per field.
+func TestResident_PrintedFieldsNeverCarryASecretAnEmailOrAHomePath(t *testing.T) {
+	secret := "ghp_abcdefghijklmnopqrstuvwxyz0123456789"
+	dirty := "boom " + secret + " for someone@example.com under /Users/someone/work"
+	check := func(field, got string) {
+		t.Helper()
+		for _, bad := range []string{secret, "someone@example.com", "/Users/someone"} {
+			if strings.Contains(got, bad) {
+				t.Errorf("%s prints %q: %s", field, bad, got)
+			}
+		}
+		if strings.TrimSpace(got) == "" {
+			t.Errorf("%s printed nothing", field)
+		}
+	}
+	var b strings.Builder
+	writeResidentNotConfigured(&b, dirty)
+	check("not-configured reason", b.String())
+
+	b.Reset()
+	writeResidentHeader(&b, "/Users/someone/.moai/state/claims", 2)
+	check("claim store directory", b.String())
+
+	b.Reset()
+	writeResidentServerStopped(&b, errors.New(dirty))
+	check("webhook server error", b.String())
+
+	b.Reset()
+	writeResidentPass(&b, resident.Pass{At: fixedNow(), Err: errors.New(dirty)})
+	check("pass error", b.String())
+
+	b.Reset()
+	writeResidentPass(&b, resident.Pass{At: fixedNow(), Actions: []notify.Action{{What: "reminder", Issue: 7, Err: errors.New(dirty)}}})
+	check("action error", b.String())
+}

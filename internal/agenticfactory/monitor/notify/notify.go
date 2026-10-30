@@ -5,7 +5,7 @@
 // the owner: reassignment is the leader's decision, and nothing here can make it.
 //
 // It reads claim records and pull-request views and writes only through the interfaces it is given: the
-// notifier, the escalator, the retry of the wait record (the runner's RetryWait, which verifies holder
+// notifier, the escalator, the retry of the wait record (the runner's RemindWait, which verifies holder
 // and epoch), and its own small per-Issue memory. A forge is read, never written.
 package notify
 
@@ -31,7 +31,9 @@ type Records interface {
 // Waiter spends one retry of a wait record (runner.Runner). The ticket is the record's own holder and
 // epoch, so a write for a record that has moved on is refused.
 type Waiter interface {
-	RetryWait(t runner.Ticket, diagnosis, next string, recheck time.Time) (claim.Record, error)
+	// RemindWait spends one retry of the wait as a MONITOR write: the reminder is not the owner acting, so it
+	// must not stale the safe stop a dead owner left (the owner's own RetryWait would).
+	RemindWait(t runner.Ticket, diagnosis, next string, recheck time.Time) (claim.Record, error)
 }
 
 // Repairs records the signal that an open pull request needs a repair (claim.Store.MarkRepairNeeded). It
@@ -340,7 +342,7 @@ func (s *Service) remind(ctx context.Context, rec claim.Record, w core.Wait, st 
 		diag = fmt.Sprintf("no progress by %s; the reminder could not be delivered (%d of %d): %v", w.RecheckAt.Format(time.RFC3339), attempt, w.MaxRetries, notifyErr)
 	}
 	ref, _ := core.NewIssueRef(rec.Issue)
-	next, err := s.Waits.RetryWait(runner.Ticket{Issue: ref, Holder: rec.Holder, Epoch: rec.Epoch}, diag,
+	next, err := s.Waits.RemindWait(runner.Ticket{Issue: ref, Holder: rec.Holder, Epoch: rec.Epoch}, diag,
 		"wait for the owner's progress; escalate to "+w.Escalate+" when the retries run out", now.Add(s.ReNotifyAfter))
 	act := Action{Issue: rec.Issue, What: "reminder", Kind: WaitOverdue, Detail: n.Detail, Err: notifyErr}
 	acts := []Action{act}
