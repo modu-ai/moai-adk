@@ -22,5 +22,5 @@
 ## Gaps / residual risk
 - The margin is 21 UTF-16 units: the next English addition to the lane rule or the role core breaks the cap again; the lane_en_glm budget has no room left.
 - `role_composite_budget_meas_test.go` logs `lane_en_estimated: composite utf16=10878 (over=878)`; it is a measurement line of a differently-assumed
-  estimate, not an assertion, and was already over before this change (not re-measured on the old tree).
+  estimate, not an assertion. Whether it was over before this change was not measured.
 - ko/ja/zh sentences are unchanged.
