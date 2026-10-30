@@ -256,3 +256,98 @@ func TestFlushAsksNothingElseForA410Or422(t *testing.T) {
 		}
 	}
 }
+
+// A locked Issue answers 403 with no limit signal and no permission wording, which
+// arrives as an unclassified block. It is not dropped (the same answer can be a real
+// denial, and dropping would empty the queue one Issue at a time) but it does not
+// hold the Issues behind it either: it stays queued, is reported with its number and
+// the run goes on.
+func lockedIssue() result {
+	return httpFail(403, "body", `{"message":"Unable to create comment because issue is locked."}`)
+}
+
+func TestFlushGoesPastALockedIssueAndKeepsItQueued(t *testing.T) {
+	st, err := claim.OpenWithLimit(t.TempDir(), 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	i1, _ := core.NewIssueRef(1)
+	if _, err := st.Acquire(i1, "sess-a", "d1", "run-1"); err != nil {
+		t.Fatal(err)
+	}
+	f := &fakeGH{results: append([]result{lockedIssue()}, okWrites(2)...)}
+	m := writable(f)
+	m.Store = st
+	m.Enqueue(ledgerFor(1, "locked"))
+	m.Enqueue(ledgerFor(2, "ordinary"))
+	m.Enqueue(ledgerFor(3, "ordinary too"))
+
+	n, err := m.Flush(context.Background())
+	var be *BlockedError
+	if n != 2 || !errors.As(err, &be) || be.Reason != core.ReasonUnclassified || !strings.Contains(err.Error(), "issue-1") {
+		t.Fatalf("written=%d err=%v", n, err)
+	}
+	if p := m.Pending(); len(p) != 1 || p[0] != 1 {
+		t.Errorf("the locked Issue stays queued, the others are gone: %v", p)
+	}
+	if rec, _ := st.Read(i1); rec.Mirror != "blocked(unclassified-403)" {
+		t.Errorf("mirror_state = %q", rec.Mirror)
+	}
+}
+
+// Three of them in a row are not one locked Issue: the token is probably refused for
+// the whole repository, so the run stops and the rest stays queued untouched.
+func TestFlushStopsWhenTheSame403KeepsComing(t *testing.T) {
+	f := &fakeGH{results: []result{lockedIssue(), lockedIssue(), lockedIssue(), lockedIssue()}}
+	m := writable(f)
+	for n := 1; n <= 5; n++ {
+		m.Enqueue(ledgerFor(n, "ordinary"))
+	}
+	if _, err := m.Flush(context.Background()); err == nil {
+		t.Fatal("reported")
+	}
+	if len(f.calls) != 3 {
+		t.Errorf("the run must stop after the third 403, made %d calls: %v", len(f.calls), calls(f))
+	}
+	if p := m.Pending(); len(p) != 5 {
+		t.Errorf("nothing is dropped: %v", p)
+	}
+}
+
+// A success in between starts the count again.
+func TestFlushCountsOnlyConsecutive403s(t *testing.T) {
+	var seq []result
+	for i := 0; i < 3; i++ {
+		seq = append(seq, lockedIssue())
+		seq = append(seq, okWrites(1)...)
+	}
+	f := &fakeGH{results: seq}
+	m := writable(f)
+	for n := 1; n <= 6; n++ {
+		m.Enqueue(ledgerFor(n, "ordinary"))
+	}
+	n, err := m.Flush(context.Background())
+	if n != 3 || err == nil {
+		t.Fatalf("written=%d err=%v", n, err)
+	}
+	if p := m.Pending(); len(p) != 3 || p[0] != 1 || p[1] != 3 || p[2] != 5 {
+		t.Errorf("the three locked Issues stay, in order: %v", p)
+	}
+}
+
+// An Issue the store has no claim for has no mirror_state to record; that is skipped
+// without an error of its own.
+func TestFlushSkipsRecordingForALockedIssueNoClaimHolds(t *testing.T) {
+	st, err := claim.OpenWithLimit(t.TempDir(), 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f := &fakeGH{results: []result{lockedIssue()}}
+	m := writable(f)
+	m.Store = st
+	m.Enqueue(ledgerFor(7, "locked"))
+	_, ferr := m.Flush(context.Background())
+	if ferr == nil || strings.Contains(ferr.Error(), "recording") {
+		t.Errorf("the lock is reported, the missing claim is not: %v", ferr)
+	}
+}

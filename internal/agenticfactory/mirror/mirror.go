@@ -510,6 +510,19 @@ func permanent(err error) (state string, ok, verify bool) {
 	return "", false, false
 }
 
+// maxConsecutiveLocked is how many unclassified 403s in a row Flush goes past before it
+// treats them as one fact about the whole repository and stops. A locked Issue answers
+// 403 with no limit signal and no permission wording; one of them says nothing about
+// the Issues behind it, three in a row say the token is probably refused as a whole.
+const maxConsecutiveLocked = 3
+
+// locked reports an unclassified 403 (see forge.KindUnclassified): the answer a locked
+// Issue gives, and also what a denial with unusual wording gives. It is not dropped.
+func locked(err error) bool {
+	var be *BlockedError
+	return errors.As(err, &be) && be.Reason == core.ReasonUnclassified && be.Status == 403
+}
+
 // repoReadable says whether the repository itself can be read with the access in use:
 // one read of the repository, nothing written.
 func (m *Mirror) repoReadable(ctx context.Context) bool {
@@ -523,10 +536,13 @@ func (m *Mirror) repoReadable(ctx context.Context) bool {
 // Issue never holds the Issues behind it; where a Store is attached the refusal is
 // also recorded as the Issue's mirror_state. Any other failure (a short budget, a
 // block, an error) stops the run and leaves the rest queued, so a refusal is never
-// hammered. What went wrong comes back joined, each error named with its Issue. An
+// hammered. An unclassified 403 (a locked Issue) is gone past, kept queued and recorded
+// as blocked(unclassified-403); maxConsecutiveLocked of them in a row stop the run. What
+// went wrong comes back joined, each error named with its Issue. An
 // entry queued again while its predecessor was being written stays queued.
 func (m *Mirror) Flush(ctx context.Context) (int, error) {
 	written := 0
+	consecutiveLocked := 0
 	var errs []error
 	drop := func(n int, gen uint64) {
 		m.mu.Lock()
@@ -545,10 +561,25 @@ func (m *Mirror) Flush(ctx context.Context) (int, error) {
 		err := m.WriteLedger(ctx, q.l)
 		if err == nil {
 			written++
+			consecutiveLocked = 0
 			drop(n, q.gen)
 			continue
 		}
 		errs = append(errs, fmt.Errorf("issue-%d: %w", n, err))
+		if locked(err) {
+			// Stays queued: the same answer can be a real denial, and dropping would empty
+			// the queue Issue by Issue. It does not hold the Issues behind it, though.
+			consecutiveLocked++
+			if m.Store != nil {
+				if rerr := m.Store.RecordMirror(q.l.Issue, "blocked(unclassified-403)"); rerr != nil && !errors.Is(rerr, core.ErrNotHeld) {
+					errs = append(errs, fmt.Errorf("issue-%d: recording blocked(unclassified-403): %w", n, rerr))
+				}
+			}
+			if consecutiveLocked >= maxConsecutiveLocked {
+				return written, errors.Join(errs...)
+			}
+			continue
+		}
 		state, perm, verify := permanent(err)
 		if perm && verify && !m.repoReadable(ctx) {
 			perm = false // nothing is known about the Issue: treat it as a failure that may pass
