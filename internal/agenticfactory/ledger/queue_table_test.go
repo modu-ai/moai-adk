@@ -39,9 +39,9 @@ func TestQueueUpdate_TransitionTable_EveryPair(t *testing.T) {
 	}
 	for _, from := range states {
 		for _, to := range states {
-			ep, wrong := c.Epoch, lock
+			ep, wrong := CardEpoch(c.Epoch), LockEpoch(lock)
 			if to == QueueLanding || to == QueueLanded || (to == QueueWaiting && (from == QueueVerifying || from == QueueLanding)) {
-				ep, wrong = lock, c.Epoch
+				ep, wrong = LockEpoch(lock), CardEpoch(c.Epoch)
 			}
 			reason := ""
 			if to == QueueFailed {

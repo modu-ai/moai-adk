@@ -144,46 +144,46 @@ func TestQueueUpdateChecksTheEpochItsStateCallsFor(t *testing.T) {
 	if err != nil || s.ReleaseLock(bg, LockMerge, warm) != nil {
 		t.Fatalf("warm-up lock: %d %v", warm, err)
 	}
-	if err := s.QueueUpdate(bg, "a", c.Epoch+7, QueueVerifying, "", ""); !errors.Is(err, ErrStaleEpoch) {
+	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch+7), QueueVerifying, "", ""); !errors.Is(err, ErrStaleEpoch) {
 		t.Errorf("verifying with a wrong card epoch: %v", err)
 	}
-	if err := s.QueueUpdate(bg, "a", c.Epoch, QueueVerifying, "", ""); err != nil {
+	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch), QueueVerifying, "", ""); err != nil {
 		t.Fatal(err)
 	}
 	// landing is the lock's
-	if err := s.QueueUpdate(bg, "a", c.Epoch, QueueLanding, "trunk0", ""); !errors.Is(err, ErrStaleEpoch) {
+	if err := s.QueueUpdate(bg, "a", LockEpoch(c.Epoch), QueueLanding, "trunk0", ""); !errors.Is(err, ErrStaleEpoch) {
 		t.Errorf("landing with the card epoch and no lock: %v", err)
 	}
 	lock, err := s.AcquireLock(bg, LockMerge, LockHolder{SessionID: "mq", PID: 1, PIDStart: "t"}, LandingLockTTL)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := s.QueueUpdate(bg, "a", lock+5, QueueLanding, "trunk0", ""); !errors.Is(err, ErrStaleEpoch) {
+	if err := s.QueueUpdate(bg, "a", LockEpoch(lock+5), QueueLanding, "trunk0", ""); !errors.Is(err, ErrStaleEpoch) {
 		t.Errorf("landing with another lock epoch: %v", err)
 	}
-	if err := s.QueueUpdate(bg, "a", lock, QueueLanding, "trunk0", ""); err != nil {
+	if err := s.QueueUpdate(bg, "a", LockEpoch(lock), QueueLanding, "trunk0", ""); err != nil {
 		t.Fatal(err)
 	}
 	if it, _ := queueRow(t, s, "a"); it.State != QueueLanding || it.TrunkBefore != "trunk0" {
 		t.Errorf("landing recorded: %+v", it)
 	}
 	// a reconcile sends a landing row back to waiting, under the lock
-	if err := s.QueueUpdate(bg, "a", c.Epoch, QueueWaiting, "", ""); !errors.Is(err, ErrStaleEpoch) {
+	if err := s.QueueUpdate(bg, "a", LockEpoch(c.Epoch), QueueWaiting, "", ""); !errors.Is(err, ErrStaleEpoch) {
 		t.Errorf("waiting from landing with the card epoch: %v", err)
 	}
-	if err := s.QueueUpdate(bg, "a", lock, QueueWaiting, "", ""); err != nil {
+	if err := s.QueueUpdate(bg, "a", LockEpoch(lock), QueueWaiting, "", ""); err != nil {
 		t.Errorf("waiting from landing with the lock epoch: %v", err)
 	}
 	// and a normal run to the end
 	for _, step := range []struct {
-		epoch int64
+		epoch QueueEpoch
 		state QueueState
-	}{{c.Epoch, QueueVerifying}, {lock, QueueLanding}, {lock, QueueLanded}} {
+	}{{CardEpoch(c.Epoch), QueueVerifying}, {LockEpoch(lock), QueueLanding}, {LockEpoch(lock), QueueLanded}} {
 		if err := s.QueueUpdate(bg, "a", step.epoch, step.state, "", ""); err != nil {
 			t.Fatalf("%s: %v", step.state, err)
 		}
 	}
-	if err := s.QueueUpdate(bg, "a", c.Epoch, QueueWaiting, "", ""); !errors.Is(err, ErrInvalid) {
+	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch), QueueWaiting, "", ""); !errors.Is(err, ErrInvalid) {
 		t.Errorf("landed is final: %v", err)
 	}
 }
@@ -195,22 +195,22 @@ func TestQueueUpdateRefusesStatesThatDoNotFollowAndAFailureWithoutAReason(t *tes
 		t.Fatal(err)
 	}
 	lock, _ := s.AcquireLock(bg, LockMerge, LockHolder{SessionID: "mq"}, LandingLockTTL)
-	if err := s.QueueUpdate(bg, "a", lock, QueueLanded, "", ""); !errors.Is(err, ErrInvalid) {
+	if err := s.QueueUpdate(bg, "a", LockEpoch(lock), QueueLanded, "", ""); !errors.Is(err, ErrInvalid) {
 		t.Errorf("waiting to landed: %v", err)
 	}
-	if err := s.QueueUpdate(bg, "a", c.Epoch, QueueVerifying, "", ""); err != nil {
+	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch), QueueVerifying, "", ""); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.QueueUpdate(bg, "a", c.Epoch, QueueFailed, "", ""); !errors.Is(err, ErrInvalid) {
+	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch), QueueFailed, "", ""); !errors.Is(err, ErrInvalid) {
 		t.Errorf("failed with no reason: %v", err)
 	}
-	if err := s.QueueUpdate(bg, "a", c.Epoch, QueueFailed, "", "gate red on the merge result"); err != nil {
+	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch), QueueFailed, "", "gate red on the merge result"); err != nil {
 		t.Fatal(err)
 	}
 	if it, _ := queueRow(t, s, "a"); it.State != QueueFailed || it.FailReason != "gate red on the merge result" {
 		t.Errorf("failed recorded: %+v", it)
 	}
-	if err := s.QueueUpdate(bg, "nobody", 1, QueueVerifying, "", ""); !errors.Is(err, ErrNotFound) {
+	if err := s.QueueUpdate(bg, "nobody", CardEpoch(1), QueueVerifying, "", ""); !errors.Is(err, ErrNotFound) {
 		t.Errorf("no such queue row: %v", err)
 	}
 }
@@ -224,16 +224,16 @@ func TestAReclaimedCardFencesItsStaleLander(t *testing.T) {
 		t.Fatal(err)
 	}
 	lock, _ := s.AcquireLock(bg, LockMerge, LockHolder{SessionID: "mq"}, LandingLockTTL)
-	if err := s.QueueUpdate(bg, "a", c.Epoch, QueueVerifying, "", ""); err != nil {
+	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch), QueueVerifying, "", ""); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := s.db.ExecContext(bg, `UPDATE cards SET epoch=epoch+1 WHERE id='a'`); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.QueueUpdate(bg, "a", lock, QueueLanding, "t", ""); !errors.Is(err, ErrStaleEpoch) {
+	if err := s.QueueUpdate(bg, "a", LockEpoch(lock), QueueLanding, "t", ""); !errors.Is(err, ErrStaleEpoch) {
 		t.Errorf("a lander of the old card epoch: %v", err)
 	}
-	if err := s.QueueUpdate(bg, "a", c.Epoch, QueueFailed, "", "stale"); !errors.Is(err, ErrStaleEpoch) {
+	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch), QueueFailed, "", "stale"); !errors.Is(err, ErrStaleEpoch) {
 		t.Errorf("a verifier of the old card epoch: %v", err)
 	}
 }
@@ -244,10 +244,10 @@ func TestAFailedCardCanBeEnqueuedAgainWithANewCandidate(t *testing.T) {
 	if err := s.Enqueue(bg, "a", c.Epoch, "c1"); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.QueueUpdate(bg, "a", c.Epoch, QueueVerifying, "", ""); err != nil {
+	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch), QueueVerifying, "", ""); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.QueueUpdate(bg, "a", c.Epoch, QueueFailed, "", "red"); err != nil {
+	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch), QueueFailed, "", "red"); err != nil {
 		t.Fatal(err)
 	}
 	// the lane fixes it: back to BUILDING/FIX, new commit, new gate evidence
@@ -286,16 +286,16 @@ func TestAQueueRowKeepsItsTrunkAndOnlyAFailureKeepsAReason(t *testing.T) {
 		t.Fatal(err)
 	}
 	lock, _ := s.AcquireLock(bg, LockMerge, LockHolder{SessionID: "mq"}, LandingLockTTL)
-	if err := s.QueueUpdate(bg, "a", c.Epoch, QueueVerifying, "", "a reason on a state that is not a failure"); err != nil {
+	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch), QueueVerifying, "", "a reason on a state that is not a failure"); err != nil {
 		t.Fatal(err)
 	}
 	if it, _ := queueRow(t, s, "a"); it.FailReason != "" {
 		t.Errorf("only a failed row has a reason: %+v", it)
 	}
-	if err := s.QueueUpdate(bg, "a", lock, QueueLanding, "trunk0", ""); err != nil {
+	if err := s.QueueUpdate(bg, "a", LockEpoch(lock), QueueLanding, "trunk0", ""); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.QueueUpdate(bg, "a", lock, QueueLanded, "", ""); err != nil {
+	if err := s.QueueUpdate(bg, "a", LockEpoch(lock), QueueLanded, "", ""); err != nil {
 		t.Fatal(err)
 	}
 	if it, _ := queueRow(t, s, "a"); it.TrunkBefore != "trunk0" {
