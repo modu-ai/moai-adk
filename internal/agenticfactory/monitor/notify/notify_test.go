@@ -640,3 +640,50 @@ func TestTheBusyRunIsResetAndSavedEvenWhenTheRetryCannotBeRecorded(t *testing.T)
 		t.Fatalf("saved state = %+v err=%v, want BusyRuns reset to 0", st, err)
 	}
 }
+
+// failingSave fails the next n saves, then behaves.
+type failingSave struct {
+	forge.CursorStore
+	n *int
+}
+
+func (f failingSave) SaveCursor(key string, body []byte) error {
+	if *f.n > 0 {
+		*f.n--
+		return errors.New("disk full")
+	}
+	return f.CursorStore.SaveCursor(key, body)
+}
+
+// If saving the end of a busy run fails, the reminder that WAS delivered in that pass is still accounted
+// for: its retry is recorded, so the next pass does not send the same notice again.
+func TestAFailedSaveOfTheBusyResetDoesNotLoseTheDeliveredReminder(t *testing.T) {
+	e := newEnv(t)
+	tk := e.acquire(7)
+	if _, err := e.rn.SetWait(tk, waitAt(t0.Add(time.Hour), 3)); err != nil {
+		t.Fatal(err)
+	}
+	b := &busyNotifier{busy: true}
+	s := e.service()
+	s.Notifier = b
+	e.tickAt(s, t0.Add(time.Hour)) // BusyRuns = 1, saved
+	b.busy = false
+	fails := 1
+	s.State = failingSave{CursorStore: s.State, n: &fails}
+	acts := e.tickAt(s, t0.Add(time.Hour+time.Minute))
+	delivered, stateErr := false, false
+	for _, a := range acts {
+		delivered = delivered || (a.What == "reminder" && a.Err == nil)
+		stateErr = stateErr || a.What == "state-error"
+	}
+	if !delivered || !stateErr {
+		t.Fatalf("actions = %+v, want the delivered reminder AND the state error both reported", acts)
+	}
+	if b.sent != 1 || e.record(7).Wait.Retries != 1 {
+		t.Fatalf("sent=%d retries=%d, want the one delivery recorded as a spent retry", b.sent, e.record(7).Wait.Retries)
+	}
+	e.tickAt(s, t0.Add(time.Hour+2*time.Minute)) // inside ReNotifyAfter: nothing more is due
+	if b.sent != 1 {
+		t.Errorf("sent = %d after the next pass, want the notice not resent", b.sent)
+	}
+}

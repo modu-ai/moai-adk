@@ -299,7 +299,7 @@ func (s *Service) see(rec claim.Record, st *state) []Action {
 	return nil
 }
 
-func (s *Service) remind(ctx context.Context, rec claim.Record, w core.Wait, st *state, now time.Time) []Action {
+func (s *Service) remind(ctx context.Context, rec claim.Record, w core.Wait, st *state, now time.Time) (out []Action) {
 	attempt := w.Retries + 1
 	n := Notice{
 		Issue: rec.Issue, Holder: rec.Holder, Agent: rec.AgentName, Kind: WaitOverdue, Attempt: attempt,
@@ -327,7 +327,11 @@ func (s *Service) remind(ctx context.Context, rec claim.Record, w core.Wait, st 
 		// join the next, separate run.
 		st.BusyRuns = 0
 		if err := s.save(rec.Issue, *st); err != nil {
-			return []Action{{Issue: rec.Issue, What: "state-error", Err: err}}
+			// The reminder below WAS delivered; losing its accounting would send it again next pass. So the
+			// failure is reported alongside the pass's own actions, and the retry write that follows
+			// records the delivery (and saves this state again).
+			failed := Action{Issue: rec.Issue, What: "state-error", Err: err}
+			defer func() { out = append([]Action{failed}, out...) }()
 		}
 	}
 	if notifyErr != nil {

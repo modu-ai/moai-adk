@@ -237,6 +237,11 @@ func parseAPI(a []string) (method, path string, hasBody, ok bool) {
 // valueFlags are the gh flags (of the verbs this wrapper allows) that take a value, in addition to the
 // `gh api` flags in apiFlags. Only flags that really take a value belong here: a boolean flag listed as a
 // value flag would hide the argument after it from the --web check.
+//
+// Limit: this list is kept by hand, not derived from gh. A flag that takes a value but is missing here
+// has its value treated as a flag (so a value that looks like "--web" is refused: the safe direction); a
+// boolean flag listed here by mistake would hide the next argument from the check (the unsafe direction).
+// When a verb or a gh version is added, review the list against `gh <verb> --help`.
 var valueFlags = map[string]bool{
 	"--repo": true, "-R": true, "--title": true, "-t": true, "--body": true, "-b": true, "--body-file": true, "-F": true,
 	"--json": true, "--jq": true, "-q": true, "--template": true, "--limit": true, "-L": true, "--state": true, "-s": true,
