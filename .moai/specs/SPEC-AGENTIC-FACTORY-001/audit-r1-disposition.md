@@ -41,8 +41,8 @@
 | F12 | MINOR | ghexec 허용 목록의 틈(`--web=true`, `-R`, 저장소 고정 없음) — `effect/ghexec/ghexec.go:140-157` | lane-20 | 없음 | — | 미착수 | 해당 커밋 없음 |
 | F13 | MINOR | `ReissueLock` 확인-삭제 사이 TOCTOU — `claim/lock.go:76-90` | lane-18 | `9e34d6bb87` | yes | 수리됨 | 제목이 "(F3, F13)"을 부름; stat `claim/lock.go`·`claim/claim.go`·`claim/globallock_test.go` — 판정서가 짚은 `lock.go` 포함. 동작 확인은 안 함 |
 | F14 | MINOR | `Release`가 epoch 미확인 — `claim/claim.go:681-696` | lane-18 | 없음 | — | 미착수 | 해당 커밋 없음 |
-| F15 | MINOR | 인계 모델 두 벌 — `reconcile/handoff.go:62-102` 대 `runner/runner.go:484-490` | lane-18/20 | 없음 | — | 미착수 | 해당 커밋 없음 |
-| F16 | MINOR | 브라우저 선택 키 위치·파서 중복 — `web/browser_select.go:74-95` | lane-21/17 | 없음 | — | 미착수 | lane-21 기록에 F16을 부르는 커밋 없음. `e196a35ff2`("AC-AF-020 cases … under the TestBrowserSelect_ names")는 시험 추가이며 파서 중복 고침을 말하지 않음. lane-17 설정·template 기록에도 없음 |
+| F15 | MINOR | 인계 모델 두 벌 — `reconcile/handoff.go:62-102` 대 `runner/runner.go:484-490` | lane-20 (with lane-18) — 5회 배차 후보 표 기준 | 없음 | — | 미착수 | 해당 커밋 없음 |
+| F16 | MINOR | 브라우저 선택 키 위치·파서 중복 — `web/browser_select.go:74-95` | lane-21 — 5회 배차 후보 표 기준 | 없음 | — | 미착수 | lane-21 기록에 F16을 부르는 커밋 없음. `e196a35ff2`("AC-AF-020 cases … under the TestBrowserSelect_ names")는 시험 추가이며 파서 중복 고침을 말하지 않음. lane-17 설정·template 기록에도 없음 |
 | F17 | MINOR | 상주 명령 시작 문구가 사실과 다름 — `cli/factory_resident.go:185` | lane-22 | `81a9214cf3` | yes | 수리됨 | 제목 "resident reports failed actions, states local writes, surfaces Serve errors; drop duplicate comment; …"은 F 번호를 부르지 않는다. "states local writes"를 이 발견(시작 문구가 사실과 다름)에 대응시킨 것은 이 작성자가 발견 문장에 비추어 읽은 것이고, `81a9214cf3`이 F17을 고친다는 것은 리더 전달(relayed, not verified by this author)이다. stat `cli/factory_resident.go`(+시험) 포함. 동작 확인은 안 함 |
 | F18 | MINOR | 주석 중복 — `cli/codex_review_receipt.go:245-248` | lane-22 | `81a9214cf3` | yes | 수리됨 | 제목의 "drop duplicate comment"가 발견 문장과 맞고, stat에 `cli/codex_review_receipt.go`(2줄 삭제)가 있다. F18 대응은 리더 전달(relayed, not verified by this author) |
 | F19 | MINOR(가설) | 위치 메모 키·지문의 빈틈 — `homestate/location_memo.go:104-113,170-198` | lane-22 | `548999a5c5` | yes | 수리됨 | 제목이 "audit F19"를 부름; stat `homestate/location_memo.go`·`location_memo_test.go`. 통합 브랜치의 직접 커밋. 동작 확인은 안 함 |
@@ -58,6 +58,34 @@
 
 - 지시에서 "F2 계약 쪽"으로 받은 일곱 커밋 가운데 `b9db20533b`(B8a, lane 자율 운영)와 `a09a08e1df`(DEC-AF-28, RESTRICTED SHA-256)는 제목이 F2를 부르지도 F2의 고침을 말하지도 않아, 위 규칙에 따라 F2 증거로 세지 않았다. 원장에는 남겼다.
 - lane-22 브랜치(`WT-agentic-factory-integration`)의 끝이 `70e28a5a78`에서 움직이면 F2 (다)·F3·F5와 "integration 반영" 열 전체를 다시 읽는다.
+
+## 배차 후보 표 (미착수 13행)
+
+- 작성: 5회 갱신(2026-10-30T00:53:41Z UTC, `date -u`로 읽음), 이 작성자의 HEAD `ed964cb98f`. 인용 위치는 통합 끝 `70e28a5a78`(`git rev-parse --short WT-agentic-factory-integration`로 다시 읽음)에서 `git grep -n … 70e28a5a78 -- <경로>`로 읽었다. 시험·빌드·lint는 돌리지 않았다. 그래서 "있음"은 코드 문장이 판정서 설명대로 남아 있다는 읽기이며, lint·시험 결과가 같다는 뜻이 아니다.
+- 경로는 판정서 표기에 `internal/agenticfactory/`를 붙여 읽었다(F16만 `internal/web/`).
+- 담당 lane 기준(리더 전달, relayed): lane-18 = claim, runner, core, mirror, identity, checkpoint; lane-20 = monitor, effect, reconcile, ghpr, ghexec, review, resident logic; lane-21 = web; lane-22 = cli, integration, homestate. 두 패키지에 걸치면 첫 인용 위치의 패키지가 담당이고 나머지는 with다.
+- 지도 밖 패키지: `gitref`(F7·F10)와 `config`(F16)는 위 지도에 없다. `gitref`는 판정서 담당 줄(lane-18)을 그대로 적고 "지도 밖"으로 표시했다. `config`는 판정서가 lane-17을 들지만 lane-17은 지도의 선택지(18/20/21/22)에 없어 with 칸에 "지도 밖"으로만 적었다.
+- 판정서(`verdict.md` 69~109줄)의 이 13개 항목에는 "Required fix" 문구가 없다(`grep -n -i -e "required fix" -e "수정안" -e "고칠 것"` 출력 없음). 그래서 마지막 열은 "없음"이고, 괄호 안은 판정서 발견 문장의 원문 일부다(이 작성자의 지시가 아님).
+- 이 표는 상태를 바꾸지 않는다. 셈은 그대로 9 / 4 / 1 / 13이다.
+
+| 항목 | 심각도 | 담당 lane | with | 인용 위치 현재 상태 (`70e28a5a78`) | OD/범위 밖 근거(없으면 —) | 판정서 Required fix (원문 요지) |
+|---|---|---|---|---|---|---|
+| F6 | SHOULD-FIX | lane-18 | — | `runner/runner.go:186-193` 옮겨짐 — 옛 `State` 비교는 `step` 함수 `:194-201`(`if rec.State != from` `:196`). `:739` 옮겨짐 — runner.go 안의 `core.Transition` 호출은 여전히 하나뿐이고 E18 자리 `:772`에 있다 | — | 없음 (원문: "runner는 옛 `State` 비교로 전이하고 `core.Transition`은 E18 한 곳에서만 부른다") |
+| F7 | SHOULD-FIX | lane-18 | — (`gitref`는 지도 밖, 판정서 담당 lane-18) | `claim/controlref.go:16-20` 있음(`:19` "No remote implementation exists yet"). `:47` 있음(`refCtx()`가 `context.Background()`). `gitref/gitref.go:127-131` 있음(`:129` `exec.CommandContext`; gitref.go에 `GIT_TERMINAL_PROMPT`·`GIT_ALLOW_PROTOCOL` 없음). 시험 밖 `.Attach(` 호출은 `internal/lsp/core/client.go:254` 하나뿐(claim 저장소 호출 아님), `agenticfactory/gitref` 시험 밖 import 없음 | 일부만: `decisions-pending.md:28` control-hold 행 — "ControlRef·Attach는 어떤 명령에도 연결돼 있지 않다 — 이 상태는 사용자의 moai-control 운영 쓰기 보류와 일치한다"(리더 전달). 이 근거는 "미배선" 절반만 다루고, 시간 제한·환경 변수 절반은 다루지 않는다 | 없음 (원문: "`refCtx()`가 `context.Background()`라, gitref를 붙이면 fetch/push가 시간 제한 없이 Issue 잠금 안에서 돈다") |
+| F8 | SHOULD-FIX | lane-20 | lane-18 (`core/redact.go`) | `effect/intent.go:223,229,233,235,237,264` 옮겨짐 — `LastError` 대입은 `:247,253,257,259,261`(그리고 `:325`, `:389`), 비우기 `:228`; effect 시험 밖 `Redact(`·`Mask(` 호출은 `effect/ctxledger`뿐이고 intent.go에는 없음. `effect/ghexec/ghexec.go:67-69` 있음(`:69`가 `Stderr`를 담음). `effect/gitexec/gitexec.go:53-55` 있음(`:54`). `core/redact.go:13-24` 바뀜 — 규칙 표가 `:61-84`로 옮겨졌고 AWS 키 규칙(`:72`)이 들어 있어 판정서의 예("AWS 키 규칙은 Mask에만")는 더 맞지 않음; 엔진 두 벌은 그대로(`Redact` `:202`, `Mask` `monitor/mask.go:32`). `monitor/mask.go:12-22` 있음(`:13-21`) | — | 없음 (원문: "ghexec/gitexec 오류 문자열은 stderr를 그대로 담고, Executor는 이를 의도 문서에 저장한다") |
+| F10 | SHOULD-FIX | lane-18 (`gitref`, 지도 밖) | lane-20 (`effect/labels`) | `gitref/gitref.go:388,389,391` 있음(`idx.Close()` `:388`, `defer os.Remove(idx.Name())` `:389`, `os.Remove(idx.Name())` `:391`). `effect/labels/githost.go:115` 있음(`ghLabel{Name: l.Name, Color: l.Color, Description: l.Description}`). lint는 돌리지 않았다 | — | 없음 (원문: "production lint 4건") |
+| F11 | SHOULD-FIX | lane-18 | — | not re-measured (no test run in this task) | — (spec.md·acceptance.md에서 `coverage`·`커버리지`·`85%` 검색 출력 없음) | 없음 (원문: "`coverage: 84.4% of statements`") |
+| F12 | MINOR | lane-20 | — | `effect/ghexec/ghexec.go:140-157` 바뀜(줄 이동) — `:143`은 `--web`·`-w`와 정확히 같은 인자만 거절하므로 `--web=true`는 이 줄에 걸리지 않는다(코드 읽기, 실행 안 함); ghexec.go에 `"-R"` 처리 없음; `issue create`는 `:163-165`에서 `--repo` 값과 `effect.CheckRequest`만 보고 설정된 저장소와 비교하지 않음 | — | 없음 (원문: "`--web=true`가 통과하고(브라우저 열림), `-R`을 해석하지 않으며, `issue create`가 설정된 저장소로 고정되지 않는다") |
+| F14 | MINOR | lane-18 | — | `claim/claim.go:681-696` 옮겨짐 — `Release`는 `:761-775`, 서명 `Release(i core.IssueRef, holder string)`에 epoch가 없고 본문도 epoch를 보지 않음. 시험 밖 `.Release(` 검색에 claim 저장소 호출 없음(나온 것은 잠금·프로세스 `Release`) | — | 없음 (원문: "같은 세션의 낡은 epoch 실행이 새 claim을 놓을 수 있다") |
+| F15 | MINOR | lane-20 | lane-18 (`runner`) | `reconcile/handoff.go:62-102` 있음(`ReleaseClaim` `:66`, `ClosureOwner` `:71`, 수락 시 `ClosureOwner: OwnerLeader` `:102`). `runner/runner.go:484-490` 옮겨짐 — `HandOff` 주석 `:494-499`("stays its owner until the Issue is closed"). 배선: `reconcile` 패키지는 `monitor/adapt/adapt.go:15`·`prober.go:7`이 import하지만, 시험 밖 `ReconcileHandoff(` 호출은 정의(`handoff.go:76`) 말고 없음 | — | 없음 (원문: "인계 모델이 두 벌 … reconcile은 미배선") |
+| F16 | MINOR | lane-21 | — (`config`는 지도 밖, 판정서는 lane-17) | `web/browser_select.go:74-95` 있음(`workflow.yaml`을 `os.ReadFile` `:75`, `yaml.Unmarshal` `:91`). `config/agentic_factory.go`에 같은 키 `workflow.agentic_factory.browser.selected`(`:44`)와 `LoadAgenticFactory`(`:158`)가 있음; 그 읽기가 검증하는지는 이번에 읽지 않음 | OD-27 (`spec.md:342`, `decisions-pending.md:60`) — 선택 저장을 누가 구현하고 어느 파일·키에 쓰는지 열린 질문. DEC-AF-25 D1 (`spec.md:234`, AF 키는 새 파일에만) — 판정서도 이 관계를 "SPEC 모호"로 적음 | 없음 (원문: "`workflow.yaml`을 검증 없는 별도 구조체로 다시 읽는다") |
+| F20 | MINOR(가설) | lane-18 | — | `core/authz.go:156-165` 있음 — 자기 Issue 갈래가 `:164`에서 `Allow`를 돌려주며, 저장소·redirect를 보는 `repoAllowed`(`:122`)는 다른 작성자 갈래 `:174`에서만 불림. claim 키는 `issue-<n>.json`(`claim/claim.go:246-247`)으로 저장소가 없음 | — | 없음 (원문: "claim 키에 저장소가 없어(`issue-N`) 다른 저장소의 같은 번호와 섞일 여지") |
+| F21 | MINOR(가설) | lane-18 | — | `claim/request.go:478-497` 있음 — Issue가 같은 첫 요청에서 `return nil` 또는 오류로 끝난다(`:483-495`) | — | 없음 (원문: "`ReadyGate`가 Issue를 가리키는 첫 요청만 본다") |
+| F22 | MINOR | lane-20 | — | `review/provider.go:136-149` 있음(`FakeExecutor` `:138-146`; 쓰는 곳은 `review_test.go:108`) | — | 없음 (원문: "시험용 `FakeExecutor`가 production 파일에 있다") |
+| F24 | MINOR(가설) | lane-20 | — | `monitor/notify/ghpr/ghpr.go:69-72` 옮겨짐 — `--required` 호출 `:78`, `cerr != nil && len(checksJSON) == 0`이면 오류 `:79-80`. gh 동작은 관측하지 않음 | — | 없음 (원문: "빈 출력과 비0 종료를 내면 매 pass `pr-read-error`") |
+
+- 위 표의 "—"(OD/범위 밖 근거) 가운데 확인한 것: F8 — DEC-AF-29(`spec.md:238`)는 정제 부채를 범위 밖으로 선언하지 않는다고 적으며, OD-25(`spec.md:340`)의 쓸 때/읽을 때 질문은 claim 기록이 대상이라 effect 의도의 `LastError`를 다루지 않는다. F15 — DEC-AF-23(`spec.md:232`, PR 인계로 책임이 끝나지 않음)은 판정서가 말한 "0.6.7 리더 결정" 쪽 계약이며, 범위 밖 근거가 아니다. F6 — 판정서가 "SPEC 해석 모호"라고 적었지만, 이 작성자는 그 모호함을 다루는 SPEC 조항을 찾지 않았다.
+- 표 위 기존 표의 담당 lane 칸에서 바뀐 것: F15 `lane-18/20` → `lane-20 (with lane-18)`(첫 인용 위치가 reconcile), F16 `lane-21/17` → `lane-21`(lane-17은 지도 선택지 밖). F10 `lane-18, lane-20`은 같은 내용이라 그대로 두었다. 나머지 10행은 지도와 같다. 상태 칸은 바꾸지 않았다.
 
 ## 원장 (실행한 git 명령과 첫 출력 줄)
 
@@ -199,3 +227,54 @@ git branch --contains <sha> --list WT-agentic-factory-integration → 출력 없
 ```
 
 lane-17 확인용 SHA(`git show -s --format='%h %s' <sha>`): 4회 추가 `70e28a5a78`, `548999a5c5`, `81a9214cf3`, `9e34d6bb87`, `e58e362926`, `6b61a2cc07`, `aa194b23c7`, `cb55457588`, `8a3920354f`; 3회 추가 `f80a6b2a1f`, `8616665dd7`, `a415460ab3`, `4588c3bdf3`, `5619ec1fb8`; 기존: `ba56671f20`, `89770eaa47`, `e478302354`, `6b945fd844`, `2e2a714e3c`, `17c1401810`, `546f7af570`, `11822055ad`, `3a3392ddc7`, `269bfe502e`.
+
+5회 갱신 — 배차 후보 표(2026-10-30T00:53:41Z UTC, HEAD `ed964cb98f`)에서 실행한 명령(모두 따로 실행한 단순 읽기 전용 명령; 첫 출력 줄). `git show 70e28a5a78:<경로> > <scratch 파일>` 형태 15개는 worktree 가드가 "too complex"로 거절해 실행되지 않았고, 아래 `git grep`으로 대신 읽었다:
+
+```
+git rev-parse --short HEAD → ed964cb98f
+git rev-parse --short WT-agentic-factory-integration → 70e28a5a78
+date -u +%Y-%m-%dT%H:%M:%SZ → 2026-10-30T00:53:41Z
+grep -n -i -e "required fix" -e "수정안" -e "고칠 것" <verdict.md> → (출력 없음)
+git grep -n -e "core.Transition" -e "model migration step" 70e28a5a78 -- internal/agenticfactory/runner/runner.go → 70e28a5a78:internal/agenticfactory/runner/runner.go:772:		if _, err := core.Transition(pos, core.Event{ID: "E18", …   (1줄)
+git grep -n -B3 -A9 "if rec.State != from" 70e28a5a78 -- internal/agenticfactory/runner/runner.go → 70e28a5a78:internal/agenticfactory/runner/runner.go-193-// step applies fn when the record is in state from; otherwise it refuses.
+git grep -n -e "No remote implementation" -e "context.Background" -e "func refCtx" 70e28a5a78 -- internal/agenticfactory/claim/controlref.go → …controlref.go:19:// can recreate from it. No remote implementation exists yet: it waits for the
+git grep -n -e "GIT_TERMINAL_PROMPT" -e "GIT_ALLOW_PROTOCOL" -e "exec.Command" 70e28a5a78 -- internal/agenticfactory/gitref/gitref.go → …gitref.go:129:	cmd := exec.CommandContext(ctx, "git", append([]string{"-C", r.Dir}, args...)...)   (1줄)
+git grep -n -e "\.Attach(" -e "gitref\." 70e28a5a78 -- internal ':!*_test.go' → 70e28a5a78:internal/lsp/core/client.go:254:	c.router.Attach(c.tr)   (1줄)
+git grep -n -e "agenticfactory/gitref" 70e28a5a78 -- internal cmd ':!*_test.go' → (출력 없음)
+git grep -n -e "LastError" 70e28a5a78 -- internal/agenticfactory/effect/intent.go → …intent.go:71:	LastError  string `json:"last_error,omitempty"`   (9줄)
+git grep -n -e "stderr" -e "Stderr" 70e28a5a78 -- …/ghexec/ghexec.go …/gitexec/gitexec.go → …ghexec.go:64:	Stderr string
+git grep -n -e "func Redact" -e "func Mask" -e "AKIA" -e "regexp.MustCompile" 70e28a5a78 -- …/core/redact.go …/monitor/mask.go → …redact.go:61:	{CategoryPrivateKey, regexp.MustCompile(…
+git grep -n -e "Redact(" -e "Mask(" 70e28a5a78 -- internal/agenticfactory/effect ':!*_test.go' → …effect/ctxledger/ctxledger.go:185:	if _, changed := monitor.Mask(b.Text); …   (4줄, 모두 ctxledger)
+git grep -n -e "defer" -e "Close()" -e "Remove(" -e "Run()" 70e28a5a78 -- internal/agenticfactory/gitref/gitref.go → …gitref.go:117:	defer r.mu.Unlock()
+git grep -n -e "return .*{" -e "Label{" 70e28a5a78 -- internal/agenticfactory/effect/labels/githost.go → …githost.go:58:		return forge.Response{}, err
+git grep -n -e "func (s \*Store) Release" -e "Epoch" 70e28a5a78 -- internal/agenticfactory/claim/claim.go → …claim.go:35:	Epoch     int64            `json:"epoch"`
+git grep -n -A14 "func (s \*Store) Release(" 70e28a5a78 -- internal/agenticfactory/claim/claim.go → …claim.go:761:func (s *Store) Release(i core.IssueRef, holder string) error {
+git grep -n -e "\.Release(" 70e28a5a78 -- internal cmd ':!*_test.go' ':!internal/lsp' ':!internal/agenticfactory/claim/claim.go' → 70e28a5a78:internal/cli/bundle.go:88:	defer func() { _ = lock.Release() }()   (claim 저장소 호출 없음)
+git grep -n -e "ReleaseClaim" -e "ClosureOwner" 70e28a5a78 -- …/reconcile/handoff.go …/runner/runner.go → …handoff.go:66:	ReleaseClaim     bool …
+git grep -n -e "agenticfactory/reconcile" 70e28a5a78 -- internal cmd ':!*_test.go' → …monitor/adapt/adapt.go:15:	"github.com/modu-ai/moai-adk/internal/agenticfactory/reconcile"   (2줄)
+git grep -n -e "reconcile\.[A-Z][A-Za-z]*Handoff" -e "reconcile\.Decide" -e "reconcile\.Handoff" 70e28a5a78 -- internal cmd ':!*_test.go' → (출력 없음)
+git grep -n -e "ReconcileHandoff(" 70e28a5a78 -- internal cmd ':!*_test.go' → …handoff.go:76:func ReconcileHandoff(ctx context.Context, …   (정의 1줄뿐)
+git grep -n -e "holder" -e "Holder" 70e28a5a78 -- internal/agenticfactory/runner/runner.go → …runner.go:109:// Ticket names a claim: issue, holder and the epoch the holder was admitted at.
+git grep -n -i -e "closed" -e "close" 70e28a5a78 -- internal/agenticfactory/runner/runner.go → …runner.go:105:	IssueClosed       bool
+git grep -n -B2 -A8 "stays its owner until the Issue is closed" 70e28a5a78 -- …/runner/runner.go → …runner.go-493-
+git grep -n -B3 -A12 "func checkAllowed\|--web\|\"-R\"" 70e28a5a78 -- …/ghexec/ghexec.go → …ghexec.go-140-		return false
+git grep -n -e "\"-R\"" -e "\"--repo\"" -e "\"create\"" -e "issue create" 70e28a5a78 -- …/ghexec/ghexec.go → …ghexec.go:54:	// AllowWrite lets `gh issue create` run (with a --repo that passes the protection guard) and a comment
+git grep -n -A12 "case \"issue create\":" 70e28a5a78 -- …/ghexec/ghexec.go → …ghexec.go:163:	case "issue create":
+git grep -n -e "workflow.yaml" -e "yaml.Unmarshal" -e "type .* struct" 70e28a5a78 -- internal/web/browser_select.go → …browser_select.go:23:type BrowserChoiceVM struct {
+git grep -n -e "func Load" -e "browser" 70e28a5a78 -- internal/config/agentic_factory.go → …agentic_factory.go:37:// AgenticFactoryDefaultBrowser is the effective browser only while no browser
+git grep -n -e "issue-" -e "Redirect" -e "redirect" -e "Repo" 70e28a5a78 -- …/core/authz.go → …authz.go:59:	AllowedRepositories []string
+git grep -n -e "^func" 70e28a5a78 -- …/core/authz.go …/reconcile/handoff.go → …authz.go:101:func ParseID(s string) (int64, bool) {
+git grep -n -A32 "func (c Collaboration) Authorize" 70e28a5a78 -- …/core/authz.go → …authz.go:139:func (c Collaboration) Authorize(r AuthzRequest) AuthzVerdict {
+git grep -n -B2 -A6 "if !c.Enabled" 70e28a5a78 -- …/core/authz.go → …authz.go-169-		return Allow
+git grep -n -e "issue-" 70e28a5a78 -- internal/agenticfactory/claim/claim.go → …claim.go:58:	// issue-close) that still keeps a merged Issue out of done.
+git grep -n -e "\"issue-%d" 70e28a5a78 -- internal/agenticfactory/claim ':!*_test.go' → (출력 없음)
+git grep -n -A22 "func ReadyGate\|func (.*) ReadyGate" 70e28a5a78 -- …/claim/request.go → …request.go:478:func (s *Store) ReadyGate(issue int, holder string) error {
+git grep -n -e "FakeExecutor" 70e28a5a78 -- internal/agenticfactory/review → …review/provider.go:138:// FakeExecutor is a recording Executor for tests of callers.
+git grep -n -e "--required" -e "pr-read-error" -e "\"checks\"" 70e28a5a78 -- …/monitor/notify/ghpr/ghpr.go → …ghpr.go:78:	checksJSON, cerr := s.read(ctx, "pr", "checks", num, "--repo", s.Repo, "--required", "--json", "name,bucket")
+git grep -n -A10 "\"--required\"" 70e28a5a78 -- …/ghpr/ghpr.go → …ghpr.go:78:	checksJSON, cerr := …
+git grep -n -l "pr checks" 70e28a5a78 -- internal/agenticfactory → 70e28a5a78:internal/agenticfactory/effect/ghexec/ghexec.go
+grep -n -i -e "coverage" -e "커버리지" -e "85%" spec.md acceptance.md → (출력 없음)
+grep -n -i -e "moai-control" -e "control ref" -e "control-ref" decisions-pending.md → 17:| OD-12 | …   (control-hold 행은 28줄)
+```
+
+`…`는 `70e28a5a78:internal/agenticfactory/`(또는 같은 디렉터리)를 줄인 것이다. 출력 줄을 줄인 곳은 `…`로 표시했다.
