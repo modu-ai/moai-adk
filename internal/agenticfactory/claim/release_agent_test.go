@@ -18,7 +18,7 @@ func TestReleaseAgentRefusedWhileHoldingAClaim(t *testing.T) {
 	if _, _, err := s.ResumeAgent(a.SessionID, a.Number); err != nil {
 		t.Errorf("identity must survive a refused release: %v", err)
 	}
-	if err := s.Release(i, a.SessionID); err != nil {
+	if err := releaseNow(t, s, i, a.SessionID); err != nil {
 		t.Fatal(err)
 	}
 	_ = rec

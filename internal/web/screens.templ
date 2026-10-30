@@ -645,6 +645,145 @@ templ Monitor(vm ShellVM, m MonitorVM) {
 					}
 				</div>
 			}
+			@panel("PR tracking", prMeta(m.PR), "", "", "Read-only. Phases come from the monitor; unconfirmed values show as a gap.", "roomy") {
+				<div class="vlist" id="pr-tracking">
+					if m.PR.Available {
+						<p class="panel__meta">{ "handoff waiting " + queueFigure(m.PR.Backlog, m.PR.Backlog.AwaitingHandoff) + " · oldest wait " + oldestWait(m.PR.Backlog) }</p>
+					}
+					if m.PR.Note != "" {
+						<p class="warn">{ m.PR.Note }</p>
+					}
+					for _, r := range m.PR.Rows {
+						<div class="vrow">
+							<span class="mono">{ "#" + itoa(r.Issue) }</span>
+							<span class="panel__meta">{ "agent " + r.Agent }</span>
+							<span class="mono panel__meta">{ "session " + r.SessionID }</span>
+							<span class="panel__meta">{ r.State + " · " + r.Stage }</span>
+							<span class="panel__meta">{ "sub-stage " + r.SubStage }</span>
+							<span class="panel__meta">{ "park " + r.Park }</span>
+							<span class="panel__meta">{ "gate " + r.Gate }</span>
+							<span class="panel__meta">{ "refusal " + r.Refusal }</span>
+							<span class="panel__meta">{ "wait " + r.Wait.State }</span>
+							if r.Wait.State == "recorded" {
+								<span class="panel__meta">{ "wait owner " + r.Wait.Owner + " · next " + r.Wait.NextAction + " · recheck " + r.Wait.RecheckAt }</span>
+								<span class="panel__meta">{ "wait diagnosis " + r.Wait.Diagnosis + " · retries " + r.Wait.Retries + " · escalate to " + r.Wait.EscalateTo + " · escalated " + r.Wait.Escalated }</span>
+							}
+							<span class="mono panel__meta">{ r.Head + " (" + r.HeadSource + ")" }</span>
+							<span class="panel__meta">{ "checks " + r.Checks }</span>
+							if r.ChecksStale {
+								@badge("outline", "checks stale")
+							}
+							<span class="mono panel__meta">{ r.PR }</span>
+							<span class="mono panel__meta">{ "pr url " + r.PRURL }</span>
+							<span class="panel__meta">{ "mirror " + r.Mirror }</span>
+							if r.Redacted {
+								<span class="warn">masked</span>
+							}
+							if r.PositionUnknown != "" {
+								<span class="warn">{ "position unknown: " + r.PositionUnknown }</span>
+							}
+							<span class="panel__meta">{ r.Track + " · " + r.Phase }</span>
+							if r.Completed {
+								@badge("outline", "completed")
+							}
+						</div>
+					}
+				</div>
+			}
+			@panel("Intake requests", requestsMeta(m.Requests), "", "", "Read-only. Stages come from the intake request record; PARKED is a wait for capacity, not a failure; BLOCKED and EFFECT_UNKNOWN come from its blocked block, and started is derived from the claim.", "roomy") {
+				<div class="vlist" id="intake-requests">
+					if m.Requests.Note != "" {
+						<p class="warn">{ m.Requests.Note }</p>
+					}
+					for _, q := range m.Requests.Rows {
+						<div class="vrow">
+							<span class="mono">{ q.Key }</span>
+							if q.Redacted {
+								<span class="warn">masked</span>
+							}
+							<span class="panel__meta">{ q.Status }</span>
+							if q.Parked != "" {
+								@badge("outline", "parked "+q.Parked)
+							}
+							if q.Started {
+								@badge("outline", "started")
+							}
+							<span class="panel__meta">{ q.Issue + " · attempts " + itoa(q.Attempts) }</span>
+							<span class="panel__meta">{ "agent " + q.AgentName }</span>
+							<span class="mono panel__meta">{ "session " + q.Agent }</span>
+							if q.BlockDetail != "" {
+								<span class="warn">{ q.BlockStep + ": " + q.BlockDetail + " · retryable " + q.Retryable }</span>
+								<span class="panel__meta">{ "resume " + q.Resume }</span>
+							}
+							if q.Status == "EFFECT_UNKNOWN" {
+								<span class="warn">do not re-issue · look up only</span>
+							}
+							for _, e := range q.Evidence {
+								<span class="mono panel__meta">{ e }</span>
+							}
+						</div>
+					}
+				</div>
+			}
+			@panel("Context ledger", contextMeta(m.PR), "", "", "Read-only. stale means out of date; inaccessible means unreachable. A link opens only after the monitor verified it remotely.", "roomy") {
+				<div class="vlist" id="context-ledger">
+					for _, r := range m.PR.Rows {
+						<div class="vrow">
+							<span class="mono">{ "#" + itoa(r.Issue) }</span>
+							if !r.Context.Known {
+								<span class="panel__meta">not provided</span>
+							}
+						</div>
+						for _, c := range r.Context.Items {
+							<div class="vrow">
+								<span class="panel__meta">{ c.Section + " · stage " + c.Stage }</span>
+								<span class="panel__meta">{ c.State }</span>
+								if c.LinkOpen {
+									<a href={ templ.SafeURL(c.Link) } rel="noopener noreferrer">{ c.Link }</a>
+								} else {
+									<span class="mono panel__meta">{ c.Link }</span>
+								}
+								<span class="panel__meta">{ "link " + c.LinkStatus }</span>
+								<span class="mono panel__meta">{ "head " + c.TargetHead + " · hash " + c.Hash }</span>
+								<span class="panel__meta">{ "owner " + c.Owner + " · " + c.At }</span>
+							</div>
+						}
+						if !r.Ledger.Known {
+							<span class="panel__meta">{ "model " + r.Ledger.Note }</span>
+						}
+						for _, m := range r.Ledger.Items {
+							<div class="vrow">
+								<span class="panel__meta">{ "model " + m.Section + " · " + m.Title + " · " + m.Status }</span>
+								if m.Redacted {
+									<span class="warn">masked</span>
+								}
+								<span class="panel__meta">{ "state " + m.State + " · owner " + m.Owner }</span>
+								<span class="mono panel__meta">{ m.Path + " @ " + m.Commit + " · head " + m.TargetHead + " · sha256 " + m.Hash }</span>
+								<span class="panel__meta">{ "rev " + m.Revision + " · verified " + m.Verified + " " + m.VerifiedAt }</span>
+							</div>
+						}
+					}
+				</div>
+			}
+			@panel("Browser", browserMeta(m.Browser), "", "", "Read-only. The adapter calls only the saved choice and never falls back to another.", "roomy") {
+				<div class="vlist" id="browser-selection">
+					for _, c := range m.Browser.Choices {
+						<div class="vrow">
+							<span class="mono">{ c.ID }</span>
+							if c.Selected {
+								@badge("outline", "selected")
+							}
+						</div>
+					}
+					if m.Browser.BlockReason != "" {
+						<p class="warn">{ "blocked: " + m.Browser.BlockReason }</p>
+						<p class="panel__meta">{ m.Browser.Resume }</p>
+					}
+					if m.Browser.Note != "" {
+						<p class="warn">{ m.Browser.Note }</p>
+					}
+				</div>
+			}
 		</div>
 	}
 }

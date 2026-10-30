@@ -300,7 +300,9 @@ func TestAgenticFactorySettings_Ranges(t *testing.T) {
 }
 
 func TestAgenticFactorySettings_QueueLimits(t *testing.T) {
-	for _, q := range []string{"queue.webhook", "notify.inbox"} {
+	// Only the webhook queue is table-tested here: it carries no minimum max_id_bytes.
+	// The inbox has its own minimum and its own test below.
+	for _, q := range []string{"queue.webhook"} {
 		set := func(doc, seen, id any) afsDoc {
 			d := afsValidDoc()
 			afsSet(d, q+".max_doc_bytes", doc)
@@ -341,6 +343,58 @@ func TestAgenticFactorySettings_QueueLimits(t *testing.T) {
 			})
 		}
 	}
+}
+
+func TestAgenticFactorySettings_InboxMinIDBytes(t *testing.T) {
+	const key = "notify.inbox.max_id_bytes"
+	set := func(doc, seen, id int) string {
+		d := afsValidDoc()
+		afsSet(d, "notify.inbox.max_doc_bytes", doc)
+		afsSet(d, "notify.inbox.seen_limit", seen)
+		afsSet(d, key, id)
+		return afsWriteDoc(t, d)
+	}
+	// seen*(id+3)*2: 1*(32+3)*2 = 70, 1*(33+3)*2 = 72.
+	tests := []struct {
+		name          string
+		doc, seen, id int
+		key           string
+	}{
+		{"id 0 rejected", 262144, 0, 0, key},
+		{"id 0 rejected with seen_limit", 262144, 5, 0, key},
+		{"id 1 rejected", 262144, 1, 1, key},
+		{"id 16 rejected", 262144, 1, 16, key},
+		{"id 16 rejected with seen 0", 262144, 0, 16, key},
+		{"id 31 rejected", 262144, 1, 31, key},
+		{"id 31 rejected with seen 0", 262144, 0, 31, key},
+		{"id 32 accepted at equality", 70, 1, 32, ""},
+		{"id 32 one byte over rejected", 69, 1, 32, "notify.inbox.seen_limit"},
+		{"id 32 accepted with seen 0", 1, 0, 32, ""},
+		{"id 33 accepted", 72, 1, 33, ""},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			root := set(tc.doc, tc.seen, tc.id)
+			if tc.key == "" {
+				afsWantValid(t, root)
+				return
+			}
+			afsWantInvalid(t, root, tc.key)
+		})
+	}
+	t.Run("error states the minimum and its reason", func(t *testing.T) {
+		_, err := LoadAgenticFactorySettings(set(262144, 1, 31))
+		if err == nil || !strings.Contains(err.Error(), "must be an integer >= 32 (agent inbox message ids are 32 bytes)") {
+			t.Fatalf("error = %v", err)
+		}
+	})
+	t.Run("webhook queue keeps no minimum", func(t *testing.T) {
+		d := afsValidDoc()
+		afsSet(d, "queue.webhook.max_doc_bytes", 262144)
+		afsSet(d, "queue.webhook.seen_limit", 100)
+		afsSet(d, "queue.webhook.max_id_bytes", 16)
+		afsWantValid(t, afsWriteDoc(t, d))
+	})
 }
 
 func TestAgenticFactorySettings_Routes(t *testing.T) {

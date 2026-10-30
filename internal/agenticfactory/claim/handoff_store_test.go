@@ -55,7 +55,7 @@ func TestUpdateReleasedRefusesHeldAndMissing(t *testing.T) {
 	if _, err := s.UpdateReleased(i, func(*Record) error { return nil }); !errors.Is(err, core.ErrTransitionInvalid) {
 		t.Errorf("held record must not be written by the tracker: %v", err)
 	}
-	_ = s.Release(i, "w")
+	_ = releaseNow(t, s, i, "w")
 	boom := errors.New("boom")
 	if _, err := s.UpdateReleased(i, func(*Record) error { return boom }); !errors.Is(err, boom) {
 		t.Errorf("fn error: %v", err)
