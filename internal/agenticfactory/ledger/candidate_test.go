@@ -65,7 +65,7 @@ func TestQueueUpdate_OldLanderCannotMoveARestartedRow(t *testing.T) {
 	if err := s.Enqueue(bg, "a", c2.Epoch, "c2"); err != nil { // restart with c2
 		t.Fatal(err)
 	}
-	if err := s.QueueUpdate(bg, "a", CardEpoch(c2.Epoch, "c1"), QueueVerifying, "", ""); err != nil { // new lander B
+	if err := s.QueueUpdate(bg, "a", CardEpoch(c2.Epoch, "c2"), QueueVerifying, "", ""); err != nil { // new lander B
 		t.Fatal(err)
 	}
 	lock, err := s.AcquireLock(bg, LockMerge, LockHolder{SessionID: "A"}, LandingLockTTL)

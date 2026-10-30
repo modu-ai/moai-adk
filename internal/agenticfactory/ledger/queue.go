@@ -169,9 +169,12 @@ var queueNext = map[QueueState][]QueueState{
 // verifying and failed need the card epoch the row was queued at, which must still be the
 // card's; landing, landed and the reconcile of a verifying or landing row back to waiting
 // need the epoch of the landing lock (a waiting target from any other state is no edge). A kind the table row
-// does not want is ErrStaleEpoch, even when the numbers coincide. A landing-lock write also
-// names the candidate its lander verified (ErrInvalid when it names none, ErrStaleEpoch when
-// the row was restarted with another). Known cost: the live holder of the one merge lock may
+// does not want is ErrStaleEpoch, even when the numbers coincide. Every write also
+// names the candidate its caller verified (ErrInvalid when it names none, ErrStaleEpoch when
+// the row was restarted with another). Naming the candidate shows the caller read
+// the row, not that the candidate reached trunk; a landed settlement makes the row final, so
+// the card holder who then finishes the card is judging that the landed candidate satisfied
+// it. Known cost: the live holder of the one merge lock may
 // settle any card's older landing row; the candidate it names is the only check on which.
 func (s *Store) QueueUpdate(ctx context.Context, cardID string, presented QueueEpoch, state QueueState, trunkBefore, failReason string) error {
 	epoch := presented.N
@@ -232,9 +235,9 @@ func (s *Store) QueueUpdate(ctx context.Context, cardID string, presented QueueE
 		if presented.Kind != want {
 			return fmt.Errorf("%w: %s from %s needs a %s epoch, not a %s epoch", ErrStaleEpoch, state, curState, want, presented.Kind)
 		}
-		// A landing-lock write names the candidate its lander verified; a row restarted with
-		// another candidate is not the lander's to move (subject_sha is the authority).
-		if presented.Kind == EpochLock && presented.Candidate != rowCandidate {
+		// A write names the candidate its caller verified; a row restarted with another
+		// candidate is not that caller's to move (subject_sha is the authority).
+		if presented.Candidate != rowCandidate {
 			if strings.TrimSpace(presented.Candidate) == "" {
 				return fmt.Errorf("%w: a landing-lock write names the candidate it verified", ErrInvalid)
 			}

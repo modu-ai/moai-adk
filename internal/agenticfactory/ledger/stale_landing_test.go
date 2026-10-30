@@ -106,7 +106,7 @@ func TestQueueUpdate_LockHolderSettlesAnOlderLandingRow(t *testing.T) {
 		for _, step := range []struct {
 			ep    QueueEpoch
 			state QueueState
-		}{{CardEpoch(e2, "c1"), QueueVerifying}, {LockEpoch(lock, "c2"), QueueLanding}, {LockEpoch(lock, "c2"), QueueLanded}} {
+		}{{CardEpoch(e2, "c2"), QueueVerifying}, {LockEpoch(lock, "c2"), QueueLanding}, {LockEpoch(lock, "c2"), QueueLanded}} {
 			if err := s.QueueUpdate(bg, "a", step.ep, step.state, "t1", ""); err != nil {
 				t.Fatalf("%s: %v", step.state, err)
 			}
