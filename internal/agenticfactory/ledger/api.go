@@ -159,13 +159,14 @@ const (
 // evidence cannot show, such as "resume-guard:<reason>" for a write that resolves a
 // park, or core.GuardOperatorHold.
 type Evidence struct {
-	Kind    string
-	TreeSHA string
-	BaseSHA string
-	Command string
-	Result  string
-	Path    string
-	Guards  []string
+	Kind       string
+	TreeSHA    string
+	SubjectSHA string // the commit SHA that was measured; Enqueue compares it with its candidate
+	BaseSHA    string
+	Command    string
+	Result     string
+	Path       string
+	Guards     []string
 }
 
 // EvidenceRecord is a stored evidence row.
