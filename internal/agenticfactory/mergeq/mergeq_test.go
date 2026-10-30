@@ -110,7 +110,7 @@ func (q *fakeQueue) ReleaseLock(_ context.Context, _ string, _ int64) error {
 	return q.releaseErr
 }
 
-func (q *fakeQueue) SetState(_ context.Context, _ string, _ int64, st State, _, reason string) error {
+func (q *fakeQueue) SetState(_ context.Context, _, _ string, _ int64, st State, _, reason string) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	q.states = append(q.states, st)

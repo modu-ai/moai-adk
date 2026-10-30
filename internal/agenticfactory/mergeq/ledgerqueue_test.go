@@ -24,8 +24,9 @@ type fakeLedger struct {
 		state       ledger.QueueState
 		trunk, fail string
 	}
-	note  ledger.Note
-	items []ledger.QueueItem
+	note      ledger.Note
+	updateErr error
+	items     []ledger.QueueItem
 }
 
 func (f *fakeLedger) Queue(context.Context) ([]ledger.QueueItem, error) { return f.items, nil }
@@ -37,7 +38,7 @@ func (f *fakeLedger) AcquireLock(_ context.Context, name string, h ledger.LockHo
 func (f *fakeLedger) ReleaseLock(context.Context, string, int64) error { return nil }
 func (f *fakeLedger) QueueUpdate(_ context.Context, card string, epoch ledger.QueueEpoch, st ledger.QueueState, trunk, fail string) error {
 	f.update.card, f.update.epoch, f.update.state, f.update.trunk, f.update.fail = card, epoch, st, trunk, fail
-	return nil
+	return f.updateErr
 }
 func (f *fakeLedger) AddNote(_ context.Context, n ledger.Note) error { f.note = n; return nil }
 
@@ -59,31 +60,38 @@ func TestLedgerQueue_MapsStatesHoldersAndNotes(t *testing.T) {
 	if f.gotHolder != (ledger.LockHolder{SessionID: "s1", PID: 42, PIDStart: "t0"}) || f.gotTTL != DefaultLockTTL {
 		t.Errorf("holder %+v ttl %v", f.gotHolder, f.gotTTL)
 	}
-	f.items = []ledger.QueueItem{{CardID: "t1", CardEpoch: 5}}
-	// The ledger checks the card epoch for verifying and failed and the lock epoch for the rest; the adapter
-	// passes the queue row's own CardEpoch (5) for the first group and the caller's lock epoch (9) for the second.
-	for in, c := range map[State]struct {
+	f.items = []ledger.QueueItem{{CardID: "t1", CardEpoch: 5, CandidateSHA: "c1"}}
+	// A write holding the landing lock (lockEpoch 9) is presented as a lock epoch, one without it (0) as the
+	// queue row's own CardEpoch (5); both name the candidate the caller verified (c1).
+	for name, c := range map[string]struct {
+		lock  int64
+		state State
 		want  ledger.QueueState
 		epoch ledger.QueueEpoch
 	}{
-		StateWaiting: {ledger.QueueWaiting, ledger.LockEpoch(9)}, StateVerifying: {ledger.QueueVerifying, ledger.CardEpoch(5)},
-		StateLanding: {ledger.QueueLanding, ledger.LockEpoch(9)}, StateLanded: {ledger.QueueLanded, ledger.LockEpoch(9)},
-		StateFailed: {ledger.QueueFailed, ledger.CardEpoch(5)},
+		"first waiting":         {0, StateWaiting, ledger.QueueWaiting, ledger.CardEpoch(5, "c1")},
+		"verifying":             {0, StateVerifying, ledger.QueueVerifying, ledger.CardEpoch(5, "c1")},
+		"failed outside lock":   {0, StateFailed, ledger.QueueFailed, ledger.CardEpoch(5, "c1")},
+		"reconcile waiting":     {9, StateWaiting, ledger.QueueWaiting, ledger.LockEpoch(9, "c1")},
+		"landing":               {9, StateLanding, ledger.QueueLanding, ledger.LockEpoch(9, "c1")},
+		"landed":                {9, StateLanded, ledger.QueueLanded, ledger.LockEpoch(9, "c1")},
+		"stale landing settled": {9, StateFailed, ledger.QueueFailed, ledger.LockEpoch(9, "c1")},
 	} {
-		if err := q.SetState(ctx, "t1", 9, in, "abc", "why"); err != nil {
-			t.Fatal(err)
+		if err := q.SetState(ctx, "t1", "c1", c.lock, c.state, "abc", "why"); err != nil {
+			t.Fatalf("%s: %v", name, err)
 		}
 		if f.update.state != c.want || f.update.card != "t1" || f.update.epoch != c.epoch || f.update.trunk != "abc" || f.update.fail != "why" {
-			t.Errorf("%s -> %+v, want state %s epoch %+v with the other fields passed through", in, f.update, c.want, c.epoch)
+			t.Errorf("%s -> %+v, want state %s epoch %+v with the other fields passed through", name, f.update, c.want, c.epoch)
 		}
 	}
-	// A waiting write with no lock (epoch 0) is the card-epoch kind.
-	if err := q.SetState(ctx, "t1", 0, StateWaiting, "abc", ""); err != nil || f.update.epoch != ledger.CardEpoch(5) {
-		t.Errorf("waiting without a lock: epoch %+v err %v, want the row's card epoch 5", f.update.epoch, err)
-	}
-	if err := q.SetState(ctx, "ghost", 0, StateVerifying, "abc", ""); err == nil {
+	if err := q.SetState(ctx, "ghost", "c1", 0, StateVerifying, "abc", ""); err == nil {
 		t.Error("a card that is not in the queue must be refused, not written with a guessed epoch")
 	}
+	f.updateErr = ledger.ErrStaleEpoch
+	if err := q.SetState(ctx, "t1", "c1", 9, StateLanded, "abc", ""); !errors.Is(err, ErrStaleRow) {
+		t.Errorf("a ledger ErrStaleEpoch came back as %v, want ErrStaleRow", err)
+	}
+	f.updateErr = nil
 	if err := q.AddNote(ctx, "landed", "t1", "text"); err != nil {
 		t.Fatal(err)
 	}

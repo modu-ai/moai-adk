@@ -131,13 +131,13 @@ func TestLedgerQueue_RealLedger_ACardStateCarriesTheRowsCardEpochAsACardEpoch(t 
 	cardEpoch := items[0].CardEpoch
 
 	// Control: the same number as a lock epoch is refused for a card state.
-	if err := s.QueueUpdate(ctx, "t1", ledger.LockEpoch(cardEpoch), ledger.QueueVerifying, "", ""); !errors.Is(err, ledger.ErrStaleEpoch) {
+	if err := s.QueueUpdate(ctx, "t1", ledger.LockEpoch(cardEpoch, cand), ledger.QueueVerifying, "", ""); !errors.Is(err, ledger.ErrStaleEpoch) {
 		t.Fatalf("a card state written with a lock-kind epoch: %v, want ErrStaleEpoch", err)
 	}
 	if got := rowState(t, s, "t1"); got != ledger.QueueWaiting {
 		t.Fatalf("the refused write moved the row to %s", got)
 	}
-	if err := NewLedgerQueue(s).SetState(ctx, "t1", 0, StateVerifying, "", ""); err != nil {
+	if err := NewLedgerQueue(s).SetState(ctx, "t1", cand, 0, StateVerifying, "", ""); err != nil {
 		t.Fatalf("the adapter's verifying write: %v", err)
 	}
 	if got := rowState(t, s, "t1"); got != ledger.QueueVerifying {
