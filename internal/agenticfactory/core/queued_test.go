@@ -14,7 +14,6 @@ func TestEnteringMergingNeedsTheQueuedFact(t *testing.T) {
 	}{
 		{"E08 from REVIEWING", review, merge},
 		{"a card with no review step (E03, E08)", bImpl, merge},
-		{"the same from spec", bSpec, merge},
 	}
 	for _, c := range cases {
 		if err := CheckMove(c.from, c.to, []string{FactQueued}); err != nil {

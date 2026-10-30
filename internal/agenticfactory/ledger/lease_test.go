@@ -69,7 +69,7 @@ func TestEveryWriteAfterClaimNeedsTheCurrentEpoch(t *testing.T) {
 		"heartbeat": s.Heartbeat(bg, "a", c.Epoch+1, nil),
 		"release":   s.Release(bg, "a", c.Epoch+1),
 		"expand":    s.ExpandKeys(bg, "a", c.Epoch+1, []string{"pkg:internal/z"}),
-		"evidence":  s.AddEvidence(bg, "a", c.Epoch+1, Evidence{Kind: KindRed, TreeSHA: "t", Result: ResultFail}),
+		"evidence":  s.AddEvidence(bg, "a", c.Epoch+1, Evidence{Kind: KindRed, TreeSHA: "t", SubjectSHA: "t", Result: ResultFail}),
 		"no card":   s.Heartbeat(bg, "nobody", 1, nil),
 	} {
 		if !errors.Is(err, ErrStaleEpoch) {

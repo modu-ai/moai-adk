@@ -22,8 +22,8 @@ func (s *Store) AddEvidence(ctx context.Context, cardID string, epoch int64, e E
 		return fmt.Errorf("%w: evidence kind %q", ErrInvalid, e.Kind)
 	case e.Result != ResultPass && e.Result != ResultFail:
 		return fmt.Errorf("%w: evidence result %q", ErrInvalid, e.Result)
-	case strings.TrimSpace(e.TreeSHA) == "":
-		return fmt.Errorf("%w: evidence is bound to a tree SHA", ErrInvalid)
+	case strings.TrimSpace(e.SubjectSHA) == "":
+		return fmt.Errorf("%w: evidence is bound to the commit SHA it measured", ErrInvalid)
 	}
 	return s.write(ctx, func(tx *sql.Tx) error {
 		if err := leaseTx(ctx, tx, cardID, epoch); err != nil {

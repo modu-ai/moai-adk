@@ -65,6 +65,10 @@ func atStage(p Position, ss ...Stage) bool {
 // the leader has not accepted, and finishing from it would skip that acceptance.
 func noHandoff(p Position) bool { return atStage(p, StageBuilding) && !isFix(p) }
 
+// isImplement is BUILDING/IMPLEMENT: a card whose design step is behind it. Entering MERGING
+// on the queued fact alone is for that position; BUILDING/SPEC has an unaudited design.
+func isImplement(p Position) bool { return p.Stage == StageBuilding && p.Sub == SubImplement }
+
 func isMerging(p Position) bool { return p.Stage == StageMerging && !p.RemoteIntegrated }
 
 func isFix(p Position) bool     { return p.Stage == StageBuilding && p.Sub == SubFix }
@@ -89,7 +93,7 @@ var compositions = []composition{
 		[]string{FactMerged, FactClosed, FactSettled}},
 	{"no-handoff-merge-seen", noHandoff, isMergedP,
 		[]string{FactMerged}},
-	{"no-handoff-enqueued", noHandoff, isMerging,
+	{"no-handoff-enqueued", isImplement, isMerging,
 		[]string{FactQueued}},
 }
 

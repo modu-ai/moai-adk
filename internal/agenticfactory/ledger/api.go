@@ -160,8 +160,8 @@ const (
 // park, or core.GuardOperatorHold.
 type Evidence struct {
 	Kind       string
-	TreeSHA    string
-	SubjectSHA string // the commit SHA that was measured; Enqueue compares it with its candidate
+	TreeSHA    string // informational; nothing judges evidence by it
+	SubjectSHA string // required: the commit SHA that was measured. Every judgment (Move facts, Enqueue) keys on it
 	BaseSHA    string
 	Command    string
 	Result     string
@@ -232,7 +232,9 @@ const (
 	QueueFailed    QueueState = "failed"
 )
 
-// QueueItem is one row of merge_queue.
+// QueueItem is one row of merge_queue. The row is not tied to the card's position: a
+// queued card that is moved elsewhere (cancelled, say) leaves its row behind, and the
+// merge queue's owner reads the card before acting on a row (P3-6).
 type QueueItem struct {
 	CardID       string
 	CardEpoch    int64 // the card epoch the row was queued at; waiting, verifying and failed writes carry it
@@ -262,10 +264,3 @@ type Store struct {
 var _ Reader = (*Store)(nil)
 
 // The Reader methods are Cards and Leases (cards.go), Queue (queue.go) and Notes (notes.go).
-
-// RenewLock extends a live lock held at epoch by ttl from now (a lander that needs longer
-// than it asked for). ErrStaleEpoch when the lock is not live at that epoch: one that ran
-// out is taken again with AcquireLock, not renewed.
-func (s *Store) RenewLock(ctx context.Context, name string, epoch int64, ttl time.Duration) error {
-	return ErrNotImplemented
-}

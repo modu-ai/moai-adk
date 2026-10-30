@@ -57,15 +57,35 @@ func (s *Store) AcquireLock(ctx context.Context, name string, holder LockHolder,
 
 // ReleaseLock gives the lock up: its expiry is set in the past and the row stays, so the
 // next AcquireLock has a higher epoch. ErrStaleEpoch when the epoch is not the lock's, or
-// the lock was already released.
+// the lock was already released (or expired by Reap). A lock whose ttl merely ran out is
+// still its holder's to release at its own epoch until someone takes it over: the epoch,
+// not the clock, says whose it is.
 func (s *Store) ReleaseLock(ctx context.Context, name string, epoch int64) error {
 	return s.write(ctx, func(tx *sql.Tx) error {
-		res, err := tx.ExecContext(ctx, `UPDATE locks SET expires_at=`+expiredSQL+` WHERE name=? AND epoch=? AND expires_at > `+nowSQL, name, epoch)
+		res, err := tx.ExecContext(ctx, `UPDATE locks SET expires_at=`+expiredSQL+` WHERE name=? AND epoch=? AND expires_at<>`+expiredSQL, name, epoch)
 		if err != nil {
 			return fmt.Errorf("ledger: %w", err)
 		}
 		if n, _ := res.RowsAffected(); n == 0 {
 			return fmt.Errorf("%w: lock %s is not held at epoch %d", ErrStaleEpoch, name, epoch)
+		}
+		return nil
+	})
+}
+
+// RenewLock extends a live lock held at epoch to ttl from now. ErrStaleEpoch when the
+// lock is not live at that epoch: one that ran out is taken again, not renewed.
+func (s *Store) RenewLock(ctx context.Context, name string, epoch int64, ttl time.Duration) error {
+	if ttl <= 0 {
+		return fmt.Errorf("%w: a renewal needs a ttl", ErrInvalid)
+	}
+	return s.write(ctx, func(tx *sql.Tx) error {
+		res, err := tx.ExecContext(ctx, `UPDATE locks SET expires_at=`+offsetSQL(ttl)+` WHERE name=? AND epoch=? AND expires_at > `+nowSQL, name, epoch)
+		if err != nil {
+			return fmt.Errorf("ledger: %w", err)
+		}
+		if n, _ := res.RowsAffected(); n == 0 {
+			return fmt.Errorf("%w: lock %s is not live at epoch %d", ErrStaleEpoch, name, epoch)
 		}
 		return nil
 	})

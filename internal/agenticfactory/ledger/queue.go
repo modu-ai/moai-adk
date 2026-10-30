@@ -25,23 +25,24 @@ func latestResult(ctx context.Context, q querier, cardID, kind, subject string) 
 }
 
 // factsTx are the core facts the ledger's own tables show for the card at its current
-// epoch: receipt from its newest green evidence, receipt-accepted from gate evidence for
-// the same tree, queued and (once landed) merged, closed and settled from its queue row
+// epoch: receipt from its newest green evidence, receipt-accepted when the newest gate
+// evidence for the commit that green run measured passes, queued and (once landed) merged, closed and settled from its queue row
 // of the current card epoch. A note is information and stands for nothing.
 func factsTx(ctx context.Context, q querier, card Card) ([]string, error) {
 	var have []string
-	var tree, result string
-	switch err := q.QueryRowContext(ctx, `SELECT tree_sha,result FROM evidence WHERE card_id=? AND kind=? ORDER BY id DESC LIMIT 1`, card.ID, KindGreen).Scan(&tree, &result); {
+	var subject, result string
+	switch err := q.QueryRowContext(ctx, `SELECT subject_sha,result FROM evidence WHERE card_id=? AND kind=? ORDER BY id DESC LIMIT 1`, card.ID, KindGreen).Scan(&subject, &result); {
 	case err == sql.ErrNoRows:
 	case err != nil:
 		return nil, fmt.Errorf("ledger: %w", err)
 	case result == ResultPass:
 		have = append(have, core.FactReceipt)
-		var n int
-		if err := q.QueryRowContext(ctx, `SELECT count(*) FROM evidence WHERE card_id=? AND kind=? AND result=? AND tree_sha=?`, card.ID, KindGate, ResultPass, tree).Scan(&n); err != nil {
-			return nil, fmt.Errorf("ledger: %w", err)
+		// The newest gate row for that commit decides, as it does at Enqueue.
+		gate, err := latestResult(ctx, q, card.ID, KindGate, subject)
+		if err != nil {
+			return nil, err
 		}
-		if n > 0 {
+		if gate == ResultPass {
 			have = append(have, core.FactReceiptAccepted)
 		}
 	}
@@ -58,6 +59,16 @@ func factsTx(ctx context.Context, q querier, card Card) ([]string, error) {
 		}
 	}
 	return have, nil
+}
+
+// queueSettledAt says whether the card's queue row was queued at that card epoch and has
+// ended, landed or failed.
+func queueSettledAt(ctx context.Context, q querier, cardID string, cardEpoch int64) (bool, error) {
+	var n int
+	if err := q.QueryRowContext(ctx, `SELECT count(*) FROM merge_queue WHERE card_id=? AND card_epoch=? AND state IN ('landed','failed')`, cardID, cardEpoch).Scan(&n); err != nil {
+		return false, fmt.Errorf("ledger: %w", err)
+	}
+	return n > 0, nil
 }
 
 // Enqueue puts the card's candidate on the merge queue and moves the card into MERGING;
@@ -93,12 +104,19 @@ func (s *Store) Enqueue(ctx context.Context, cardID string, epoch int64, candida
 			}
 		}
 		var cur string
-		switch err := tx.QueryRowContext(ctx, `SELECT state FROM merge_queue WHERE card_id=?`, cardID).Scan(&cur); {
+		var oldSHA, oldReason sql.NullString
+		switch err := tx.QueryRowContext(ctx, `SELECT state,candidate_sha,fail_reason FROM merge_queue WHERE card_id=?`, cardID).Scan(&cur, &oldSHA, &oldReason); {
 		case err == sql.ErrNoRows:
 		case err != nil:
 			return fmt.Errorf("ledger: %w", err)
 		case cur != string(QueueFailed):
 			return fmt.Errorf("%w: %s is already in the queue (%s)", ErrInvalid, cardID, cur)
+		default:
+			// The restart overwrites the row, so the earlier failure is kept as a note.
+			text := fmt.Sprintf("card %s: candidate %s failed in the merge queue (%s); queued again as %s", cardID, oldSHA.String, oldReason.String, candidateSHA)
+			if _, err := tx.ExecContext(ctx, `INSERT INTO notes(kind,card_id,text,at) VALUES('decision',?,?,`+nowSQL+`)`, cardID, text); err != nil {
+				return fmt.Errorf("ledger: %w", err)
+			}
 		}
 		if _, err := tx.ExecContext(ctx, `INSERT INTO merge_queue(card_id,candidate_sha,state,card_epoch,enqueued_at,updated_at) VALUES(?,?,'waiting',?,`+nowSQL+`,`+nowSQL+`)
 			ON CONFLICT(card_id) DO UPDATE SET candidate_sha=excluded.candidate_sha, trunk_before=NULL, state='waiting', fail_reason=NULL, card_epoch=excluded.card_epoch, enqueued_at=excluded.enqueued_at, updated_at=excluded.updated_at`,
@@ -193,7 +211,7 @@ func (s *Store) QueueUpdate(ctx context.Context, cardID string, epoch int64, sta
 
 // Queue lists the merge queue, oldest first.
 func (s *Store) Queue(ctx context.Context) ([]QueueItem, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT card_id,candidate_sha,trunk_before,state,fail_reason,enqueued_at,updated_at FROM merge_queue ORDER BY enqueued_at, card_id`)
+	rows, err := s.db.QueryContext(ctx, `SELECT card_id,card_epoch,candidate_sha,trunk_before,state,fail_reason,enqueued_at,updated_at FROM merge_queue ORDER BY enqueued_at, card_id`)
 	if err != nil {
 		return nil, fmt.Errorf("ledger: %w", err)
 	}
@@ -205,7 +223,7 @@ func (s *Store) Queue(ctx context.Context) ([]QueueItem, error) {
 			trunk, fail         sql.NullString
 			state, enq, updated string
 		)
-		if err := rows.Scan(&it.CardID, &it.CandidateSHA, &trunk, &state, &fail, &enq, &updated); err != nil {
+		if err := rows.Scan(&it.CardID, &it.CardEpoch, &it.CandidateSHA, &trunk, &state, &fail, &enq, &updated); err != nil {
 			return nil, err
 		}
 		it.TrunkBefore, it.FailReason, it.State = trunk.String, fail.String, QueueState(state)

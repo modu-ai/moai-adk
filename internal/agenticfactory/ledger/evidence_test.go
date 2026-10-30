@@ -13,7 +13,7 @@ func TestEvidenceIsStoredWithTheEpochAndTheDatabaseClock(t *testing.T) {
 	if err := s.AddEvidence(bg, "a", c.Epoch, in); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.AddEvidence(bg, "a", c.Epoch, Evidence{Kind: KindRed, TreeSHA: "tree0", Result: ResultFail, Guards: []string{"ignored"}}); err != nil {
+	if err := s.AddEvidence(bg, "a", c.Epoch, Evidence{Kind: KindRed, TreeSHA: "tree0", SubjectSHA: "tree0", Result: ResultFail, Guards: []string{"ignored"}}); err != nil {
 		t.Fatal(err)
 	}
 	got, err := s.EvidenceFor(bg, "a")
@@ -39,8 +39,8 @@ func TestEvidenceNeedsAKnownKindAResultAndATree(t *testing.T) {
 	s := openTemp(t)
 	c := claimOne(t, s, "a", "internal/a/x.go")
 	for name, e := range map[string]Evidence{
-		"kind":   {Kind: "vibes", TreeSHA: "t", Result: ResultPass},
-		"result": {Kind: KindGate, TreeSHA: "t", Result: "maybe"},
+		"kind":   {Kind: "vibes", TreeSHA: "t", SubjectSHA: "t", Result: ResultPass},
+		"result": {Kind: KindGate, TreeSHA: "t", SubjectSHA: "t", Result: "maybe"},
 		"tree":   {Kind: KindGate, Result: ResultPass},
 	} {
 		if err := s.AddEvidence(bg, "a", c.Epoch, e); !errors.Is(err, ErrInvalid) {

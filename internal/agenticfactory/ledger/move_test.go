@@ -24,19 +24,19 @@ func TestMoveNeedsTheLeaseEpochAndTheFactsTheLedgerHolds(t *testing.T) {
 	if err := s.Move(bg, "a", c.Epoch, posReview, "lane", "r"); !errors.Is(err, core.ErrGuardMissing) {
 		t.Fatalf("no evidence: %v", err)
 	}
-	if err := s.AddEvidence(bg, "a", c.Epoch, Evidence{Kind: KindGreen, TreeSHA: "t1", Result: ResultPass}); err != nil {
+	if err := s.AddEvidence(bg, "a", c.Epoch, Evidence{Kind: KindGreen, TreeSHA: "t1", SubjectSHA: "t1", Result: ResultPass}); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.Move(bg, "a", c.Epoch, posReview, "lane", "r"); !errors.Is(err, core.ErrGuardMissing) {
 		t.Fatalf("green but no gate: %v", err)
 	}
-	if err := s.AddEvidence(bg, "a", c.Epoch, Evidence{Kind: KindGate, TreeSHA: "other", Result: ResultPass}); err != nil {
+	if err := s.AddEvidence(bg, "a", c.Epoch, Evidence{Kind: KindGate, TreeSHA: "other", SubjectSHA: "other", Result: ResultPass}); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.Move(bg, "a", c.Epoch, posReview, "lane", "r"); !errors.Is(err, core.ErrGuardMissing) {
 		t.Fatalf("a gate for another tree: %v", err)
 	}
-	if err := s.AddEvidence(bg, "a", c.Epoch, Evidence{Kind: KindGate, TreeSHA: "t1", Result: ResultPass}); err != nil {
+	if err := s.AddEvidence(bg, "a", c.Epoch, Evidence{Kind: KindGate, TreeSHA: "t1", SubjectSHA: "t1", Result: ResultPass}); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.Move(bg, "a", c.Epoch, posReview, "lane-1", "reviewable"); err != nil {
@@ -67,7 +67,7 @@ func TestGuardsCarryGuardKeysAndNeverFacts(t *testing.T) {
 	s := openTemp(t)
 	c := claimOne(t, s, "a", "internal/a/x.go")
 	for _, g := range []string{"merged", "closed", "settled", "receipt", "receipt-accepted", "queued", ""} {
-		err := s.Move(bg, "a", c.Epoch, posBuilding, "lane", "r", Evidence{Kind: KindGate, TreeSHA: "t", Result: ResultPass, Guards: []string{g}})
+		err := s.Move(bg, "a", c.Epoch, posBuilding, "lane", "r", Evidence{Kind: KindGate, TreeSHA: "t", SubjectSHA: "t", Result: ResultPass, Guards: []string{g}})
 		if !errors.Is(err, ErrInvalid) {
 			t.Errorf("guard %q: %v", g, err)
 		}
@@ -75,7 +75,7 @@ func TestGuardsCarryGuardKeysAndNeverFacts(t *testing.T) {
 	if got, _ := s.EvidenceFor(bg, "a"); len(got) != 0 {
 		t.Errorf("a refused move stored evidence: %+v", got)
 	}
-	if err := s.Move(bg, "a", c.Epoch, posBuilding, "lane", "r", Evidence{Kind: KindGate, TreeSHA: "t", Result: ResultPass, Guards: []string{"resume-guard:x"}}); err != nil {
+	if err := s.Move(bg, "a", c.Epoch, posBuilding, "lane", "r", Evidence{Kind: KindGate, TreeSHA: "t", SubjectSHA: "t", Result: ResultPass, Guards: []string{"resume-guard:x"}}); err != nil {
 		t.Errorf("a resume guard key: %v", err)
 	}
 }
@@ -186,7 +186,7 @@ func TestAnOperatorResumeOfAReclaimCapParkNeedsNoLeaseAndClearsTheCount(t *testi
 	}
 	free := core.Position{Stage: parked.Position.Stage, Sub: parked.Position.Sub}
 	resume := func(epoch int64, to core.Position, g ...string) error {
-		return s.Move(bg, "a", epoch, to, "operator", "resume", Evidence{Kind: KindGate, TreeSHA: "n/a", Result: ResultPass, Guards: g})
+		return s.Move(bg, "a", epoch, to, "operator", "resume", Evidence{Kind: KindGate, TreeSHA: "n/a", SubjectSHA: "n/a", Result: ResultPass, Guards: g})
 	}
 	if err := resume(parked.Epoch, free); !errors.Is(err, core.ErrGuardMissing) {
 		t.Errorf("without the resume guard: %v", err)
@@ -216,7 +216,7 @@ func TestAnInPlaceParkNeedsItsOwnGuard(t *testing.T) {
 	if err := s.Move(bg, "a", c.Epoch, to, "lane", "fix-limit"); !errors.Is(err, core.ErrGuardMissing) {
 		t.Fatalf("no guard: %v", err)
 	}
-	if err := s.Move(bg, "a", c.Epoch, to, "lane", "fix-limit", Evidence{Kind: KindGate, TreeSHA: "t", Result: ResultFail, Guards: []string{core.GuardFixLimit}}); err != nil {
+	if err := s.Move(bg, "a", c.Epoch, to, "lane", "fix-limit", Evidence{Kind: KindGate, TreeSHA: "t", SubjectSHA: "t", Result: ResultFail, Guards: []string{core.GuardFixLimit}}); err != nil {
 		t.Fatal(err)
 	}
 	if got := cardOf(t, s, "a").Position.Park; got == nil || got.Reason != ParkReasonFixLimit {
@@ -229,8 +229,8 @@ func TestAFailingGreenRunIsNoReceipt(t *testing.T) {
 	s := openTemp(t)
 	c := claimOne(t, s, "a", "internal/a/x.go")
 	for _, e := range []Evidence{
-		{Kind: KindGreen, TreeSHA: "t1", Result: ResultFail},
-		{Kind: KindGate, TreeSHA: "t1", Result: ResultPass},
+		{Kind: KindGreen, TreeSHA: "t1", SubjectSHA: "t1", Result: ResultFail},
+		{Kind: KindGate, TreeSHA: "t1", SubjectSHA: "t1", Result: ResultPass},
 	} {
 		if err := s.AddEvidence(bg, "a", c.Epoch, e); err != nil {
 			t.Fatal(err)
@@ -245,8 +245,8 @@ func TestMoveStoresNoEvidenceItWouldRefuseToAdd(t *testing.T) {
 	s := openTemp(t)
 	c := claimOne(t, s, "a", "internal/a/x.go")
 	for name, e := range map[string]Evidence{
-		"kind":   {Kind: "vibes", TreeSHA: "t", Result: ResultPass},
-		"result": {Kind: KindGate, TreeSHA: "t", Result: "maybe"},
+		"kind":   {Kind: "vibes", TreeSHA: "t", SubjectSHA: "t", Result: ResultPass},
+		"result": {Kind: KindGate, TreeSHA: "t", SubjectSHA: "t", Result: "maybe"},
 		"tree":   {Kind: KindGate, Result: ResultPass},
 	} {
 		if err := s.Move(bg, "a", c.Epoch, posBuilding, "lane", "r", e); !errors.Is(err, ErrInvalid) {

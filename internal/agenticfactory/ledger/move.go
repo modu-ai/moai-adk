@@ -34,13 +34,17 @@ func checkEvidence(e Evidence) error {
 		return fmt.Errorf("%w: evidence kind %q", ErrInvalid, e.Kind)
 	case e.Result != ResultPass && e.Result != ResultFail:
 		return fmt.Errorf("%w: evidence result %q", ErrInvalid, e.Result)
-	case strings.TrimSpace(e.TreeSHA) == "":
-		return fmt.Errorf("%w: evidence is bound to a tree SHA", ErrInvalid)
+	case strings.TrimSpace(e.SubjectSHA) == "":
+		return fmt.Errorf("%w: evidence is bound to the commit SHA it measured", ErrInvalid)
 	}
 	return nil
 }
 
 // Move changes the card's position; see the API for the epoch, the facts and the guards.
+// A move without a lease is authorised by the card's public epoch number alone, which is
+// not a secret: it is allowed only for the in-place resume of a ledger-made park and for
+// settling a MERGING card from its landed or failed queue row, and the position table
+// still has to accept the move (P3-7).
 func (s *Store) Move(ctx context.Context, cardID string, epoch int64, to core.Position, actor, reason string, ev ...Evidence) error {
 	if strings.TrimSpace(actor) == "" {
 		return fmt.Errorf("%w: a move needs its actor", ErrInvalid)
@@ -72,9 +76,17 @@ func (s *Store) Move(ctx context.Context, cardID string, epoch int64, to core.Po
 			}
 		} else {
 			// A park the ledger made holds no lease. Only the resume of that park, in
-			// place, at the card's own epoch, is a move without one.
+			// place, at the card's own epoch, is a move without one; so is the settling
+			// of a MERGING card whose holder died, once its queue row of the card's own
+			// epoch is landed or failed: the row, not a lease, is the authority then.
 			inPlace := card.Position.Park != nil && to.Park == nil && to.Stage == card.Position.Stage && to.Sub == card.Position.Sub
-			if !inPlace || epoch != card.Epoch {
+			settles := false
+			if !inPlace && epoch == card.Epoch && card.Position.Stage == core.StageMerging && card.Position.Park == nil {
+				if settles, err = queueSettledAt(ctx, tx, cardID, card.Epoch); err != nil {
+					return err
+				}
+			}
+			if (!inPlace && !settles) || epoch != card.Epoch {
 				return fmt.Errorf("%w: %s holds no lease", ErrStaleEpoch, cardID)
 			}
 		}
