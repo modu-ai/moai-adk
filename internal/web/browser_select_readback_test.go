@@ -10,8 +10,10 @@ package web
 // operator's choice, and a missing file or key that is read as a selection.
 
 import (
+	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
@@ -51,6 +53,12 @@ func TestBrowserSelect_SavedValueReadsBack(t *testing.T) {
 // answer as the config package's loader for every input the loader handles,
 // including the ones the loader refuses — an invalid value or a wrong type is an
 // error naming the key, never a selection the page then reports as unrecognised.
+//
+// Limit, stated plainly (audit P3-1): the page now calls the loader, so for the
+// value itself this comparison is close to a tautology. What it still pins is
+// the contract at the seam — the loader's refusal reaches the page as an error
+// with no selection beside it — and it fails if a private parser that disagrees
+// with the loader is ever reintroduced.
 func TestBrowserSelect_ReadsThroughTheConfigLoader(t *testing.T) {
 	cases := map[string]string{
 		"egolite":        "workflow:\n  agentic_factory:\n    browser:\n      selected: egolite\n",
@@ -90,5 +98,44 @@ func TestBrowserSelect_ReadsThroughTheConfigLoader(t *testing.T) {
 				t.Errorf("an error must not come with a selection, got %q", got)
 			}
 		})
+	}
+}
+
+// TestBrowserSelect_UnrelatedInvalidKeyBlocksTheWholePanelOnPurpose pins a
+// behavior that is intended, not incidental (audit P2-1): the loader validates
+// the whole workflow.agentic_factory block, so one invalid key that has nothing
+// to do with the browser (here codex.enabled) makes the selection unreadable.
+// The page then names the offending key, offers the three choices with none
+// marked selected, and runs no preflight — it neither guesses the operator's
+// browser nor calls one. That is the safe direction (REQ-AF-016: an explicit
+// choice is never replaced); a loader entry point that reads only the browser
+// key would belong to the config package and would change this test.
+func TestBrowserSelect_UnrelatedInvalidKeyBlocksTheWholePanelOnPurpose(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, ".moai", "config", "sections")
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	doc := "workflow:\n  agentic_factory:\n    browser:\n      selected: aside\n    codex:\n      enabled: maybe\n"
+	if err := os.WriteFile(filepath.Join(dir, "workflow.yaml"), []byte(doc), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	probe := &webFakeProbe{installed: map[string]bool{"aside": true}}
+	a := newApp(Config{ProjectRoot: root})
+	a.browserProbe = probe
+	vm := a.buildBrowserSelection(context.Background())
+	if !strings.Contains(vm.Note, "selection unreadable") || !strings.Contains(vm.Note, "codex.enabled") {
+		t.Errorf("the note must say the selection is unreadable and name the offending key: %q", vm.Note)
+	}
+	if vm.Effective != "" || vm.BlockReason != "" {
+		t.Errorf("no browser may be chosen or blocked on a config that cannot be trusted: %+v", vm)
+	}
+	for _, c := range vm.Choices {
+		if c.Selected {
+			t.Errorf("%s is marked selected although the config was unreadable", c.ID)
+		}
+	}
+	if len(probe.ran) != 0 {
+		t.Errorf("no preflight may run: %v", probe.ran)
 	}
 }

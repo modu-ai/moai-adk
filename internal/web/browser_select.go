@@ -40,6 +40,10 @@ func (a *app) buildBrowserSelection(ctx context.Context) BrowserSelectionVM {
 	vm := BrowserSelectionVM{}
 	saved, err := a.browserSelected(a.cfg.ProjectRoot)
 	if err != nil {
+		// Includes an invalid key unrelated to the browser: the loader validates the
+		// whole agentic_factory block, and on a config that cannot be trusted the page
+		// chooses nothing and runs no preflight (pinned by
+		// TestBrowserSelect_UnrelatedInvalidKeyBlocksTheWholePanelOnPurpose).
 		vm.Note = "selection unreadable: " + refineText(err.Error())
 		vm.Choices = browserChoices("")
 		return vm
@@ -47,6 +51,11 @@ func (a *app) buildBrowserSelection(ctx context.Context) BrowserSelectionVM {
 	vm.Choices = browserChoices(saved)
 	res, err := browser.Preflight(ctx, saved, a.browserProbe)
 	if err != nil {
+		// Defense in depth (audit P3-2): the config loader already refuses a value
+		// outside the three choices, so the real read never reaches this branch.
+		// It stays because the selection source is an injectable seam and a future
+		// reader that stops validating must not make the page call a browser it
+		// does not know — it reports the value and picks nothing.
 		vm.Note = "unrecognised selection: " + refineText(saved)
 		return vm
 	}
