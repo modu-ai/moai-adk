@@ -33,9 +33,13 @@ const schemaDDL = `
 CREATE TABLE IF NOT EXISTS cards(
   id TEXT PRIMARY KEY, title TEXT NOT NULL, stage TEXT NOT NULL, sub_stage TEXT,
   parked INTEGER NOT NULL DEFAULT 0, park_reason TEXT, park_evidence TEXT, park_resume TEXT,
-  priority INTEGER NOT NULL DEFAULT 0, spec_json TEXT NOT NULL,
+  priority INTEGER NOT NULL DEFAULT 0, spec_json TEXT NOT NULL, epoch INTEGER NOT NULL DEFAULT 0,
+  integrated INTEGER NOT NULL DEFAULT 0, -- a MERGING card whose remote merge was seen
   reclaim_count INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS cards_pick ON cards(stage, parked, priority DESC);
+-- transitions: one row per change of position. The first row of a card is its adding
+-- (from_stage NULL). A row whose from and to are the same position is not an edge: it
+-- records a claim again, a reclaim, or a park in place.
 CREATE TABLE IF NOT EXISTS transitions(
   seq INTEGER PRIMARY KEY AUTOINCREMENT, card_id TEXT NOT NULL, from_stage TEXT, from_sub TEXT,
   to_stage TEXT NOT NULL, to_sub TEXT, epoch INTEGER NOT NULL, actor TEXT NOT NULL, reason TEXT, at TEXT NOT NULL);
@@ -47,12 +51,12 @@ CREATE TABLE IF NOT EXISTS lease_keys(key TEXT PRIMARY KEY, card_id TEXT NOT NUL
 CREATE INDEX IF NOT EXISTS lease_keys_card ON lease_keys(card_id);
 CREATE TABLE IF NOT EXISTS evidence(
   id INTEGER PRIMARY KEY AUTOINCREMENT, card_id TEXT NOT NULL, kind TEXT NOT NULL, tree_sha TEXT NOT NULL,
-  base_sha TEXT, command TEXT, result TEXT NOT NULL, path TEXT, epoch INTEGER NOT NULL, at TEXT NOT NULL);
+  subject_sha TEXT, base_sha TEXT, command TEXT, result TEXT NOT NULL, path TEXT, epoch INTEGER NOT NULL, at TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS evidence_card ON evidence(card_id);
 CREATE TABLE IF NOT EXISTS merge_queue(
   card_id TEXT PRIMARY KEY, candidate_sha TEXT NOT NULL, trunk_before TEXT,
   state TEXT NOT NULL CHECK(state IN ('waiting','verifying','landing','landed','failed')),
-  fail_reason TEXT, enqueued_at TEXT NOT NULL, updated_at TEXT NOT NULL);
+  fail_reason TEXT, card_epoch INTEGER NOT NULL DEFAULT 0, enqueued_at TEXT NOT NULL, updated_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS locks(
   name TEXT PRIMARY KEY, session_id TEXT NOT NULL, epoch INTEGER NOT NULL, pid INTEGER, pid_start TEXT,
   expires_at TEXT NOT NULL);
@@ -60,6 +64,11 @@ CREATE TABLE IF NOT EXISTS notes(
   seq INTEGER PRIMARY KEY AUTOINCREMENT,
   kind TEXT NOT NULL CHECK(kind IN ('landed','decision','gate_wait','stalled')),
   card_id TEXT, text TEXT NOT NULL, at TEXT NOT NULL);
+-- I7: the history is never deleted, by anyone holding the file
+CREATE TRIGGER IF NOT EXISTS cards_no_delete BEFORE DELETE ON cards BEGIN SELECT RAISE(ABORT,'ledger rows are never deleted'); END;
+CREATE TRIGGER IF NOT EXISTS transitions_no_delete BEFORE DELETE ON transitions BEGIN SELECT RAISE(ABORT,'ledger rows are never deleted'); END;
+CREATE TRIGGER IF NOT EXISTS evidence_no_delete BEFORE DELETE ON evidence BEGIN SELECT RAISE(ABORT,'ledger rows are never deleted'); END;
+CREATE TRIGGER IF NOT EXISTS notes_no_delete BEFORE DELETE ON notes BEGIN SELECT RAISE(ABORT,'ledger rows are never deleted'); END;
 `
 
 // Open opens or creates the ledger at path: its directory (0700), WAL mode, the
@@ -72,7 +81,8 @@ func Open(ctx context.Context, path string) (*Store, error) {
 	q := url.Values{}
 	q.Add("_pragma", fmt.Sprintf("busy_timeout(%d)", BusyTimeout.Milliseconds()))
 	q.Add("_pragma", "journal_mode(WAL)")
-	q.Add("_pragma", "synchronous(NORMAL)")
+	q.Add("_pragma", "synchronous(FULL)")
+	q.Add("_pragma", "recursive_triggers(1)") // so INSERT OR REPLACE fires the delete triggers
 	q.Set("_txlock", "immediate")
 	u := url.URL{Scheme: "file", Path: path, RawQuery: strings.ReplaceAll(q.Encode(), "%28", "(")}
 	db, err := sql.Open("sqlite", u.String())

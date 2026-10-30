@@ -16,6 +16,9 @@ import (
 // gitTimeout bounds every git call of the merge queue; a hung git must not hold the landing lock.
 const gitTimeout = 2 * time.Minute
 
+// gitWaitDelay is how long to wait for git's output pipes after its context ended.
+const gitWaitDelay = 5 * time.Second
+
 // maxGitOutput bounds what one git call may return, so a runaway command cannot fill memory.
 const maxGitOutput = 8 << 20
 
@@ -45,6 +48,8 @@ type Git interface {
 	// (no fast-forward), so the gates see the real merge result. Nothing it does touches the trunk ref.
 	PrepareCandidate(ctx context.Context, trunkSHA, candidateSHA, message string) (Candidate, error)
 	Discard(ctx context.Context, c Candidate) error
+	// OriginHeadBranch is the local branch name origin/HEAD points at, or "" when there is no origin/HEAD.
+	OriginHeadBranch(ctx context.Context) (string, error)
 	// CheckedOutAt returns the worktree that has ref checked out, or "" when none does.
 	CheckedOutAt(ctx context.Context, ref string) (string, error)
 	// UpdateRef moves ref from oldSHA to newSHA only if it still points at oldSHA (`git update-ref ref new old`).
@@ -63,7 +68,12 @@ func (g GitCLI) run(ctx context.Context, dir string, args ...string) (string, er
 	ctx, cancel := context.WithTimeout(ctx, gitTimeout)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "git", append([]string{"-C", dir}, args...)...)
+	cmd.WaitDelay = gitWaitDelay // a descendant that keeps the pipes open must not outlive the timeout
+	// The C locale, always: errors are classified by git's wording ("but expected"), and git translates its
+	// messages when the operator's locale (Korean here) has a catalogue. LANGUAGE is cleared because gettext
+	// consults it before the other variables.
 	cmd.Env = append(gitenv.Env(),
+		"LC_ALL=C", "LANG=C", "LANGUAGE=",
 		"GIT_TERMINAL_PROMPT=0",
 		"GIT_AUTHOR_NAME="+g.Who.Name, "GIT_AUTHOR_EMAIL="+g.Who.Email,
 		"GIT_COMMITTER_NAME="+g.Who.Name, "GIT_COMMITTER_EMAIL="+g.Who.Email,
@@ -147,6 +157,24 @@ func (g GitCLI) Discard(ctx context.Context, c Candidate) error {
 	return err
 }
 
+// OriginHeadBranch returns the local branch name that refs/remotes/origin/HEAD points at (refs/heads/<name>),
+// or "" when the repository has no origin/HEAD.
+func (g GitCLI) OriginHeadBranch(ctx context.Context) (string, error) {
+	out, err := g.run(ctx, g.Repo, "symbolic-ref", "--quiet", "refs/remotes/origin/HEAD")
+	if err != nil {
+		var ee *exec.ExitError
+		if errors.As(err, &ee) && ee.ExitCode() == 1 {
+			return "", nil
+		}
+		return "", err
+	}
+	name, ok := strings.CutPrefix(out, "refs/remotes/origin/")
+	if !ok || name == "" {
+		return "", nil
+	}
+	return "refs/heads/" + name, nil
+}
+
 // CheckedOutAt returns the directory of a worktree that has ref checked out, or "" when none does. It reads
 // `git worktree list --porcelain` for the repository, so a bare repository and every linked tree are covered.
 func (g GitCLI) CheckedOutAt(ctx context.Context, ref string) (string, error) {
@@ -171,7 +199,12 @@ func (g GitCLI) CheckedOutAt(ctx context.Context, ref string) (string, error) {
 // UpdateRef is the compare-and-swap that lands a card: it succeeds only if ref still names oldSHA.
 func (g GitCLI) UpdateRef(ctx context.Context, ref, newSHA, oldSHA string) error {
 	if _, err := g.run(ctx, g.Repo, "update-ref", ref, newSHA, oldSHA); err != nil {
-		return fmt.Errorf("%w: %v", ErrRefMoved, err)
+		// Only a value mismatch means the trunk moved; an invalid name, a missing object or a lock failure is a
+		// different problem and must not be retried as if another lander had won.
+		if strings.Contains(err.Error(), "but expected") {
+			return fmt.Errorf("%w: %v", ErrRefMoved, err)
+		}
+		return err
 	}
 	return nil
 }

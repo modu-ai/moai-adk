@@ -24,8 +24,11 @@ type fakeLedger struct {
 		state       ledger.QueueState
 		trunk, fail string
 	}
-	note ledger.Note
+	note  ledger.Note
+	items []ledger.QueueItem
 }
+
+func (f *fakeLedger) Queue(context.Context) ([]ledger.QueueItem, error) { return f.items, nil }
 
 func (f *fakeLedger) AcquireLock(_ context.Context, name string, h ledger.LockHolder, ttl time.Duration) (int64, error) {
 	f.gotName, f.gotHolder, f.gotTTL = name, h, ttl
@@ -56,16 +59,29 @@ func TestLedgerQueue_MapsStatesHoldersAndNotes(t *testing.T) {
 	if f.gotHolder != (ledger.LockHolder{SessionID: "s1", PID: 42, PIDStart: "t0"}) || f.gotTTL != DefaultLockTTL {
 		t.Errorf("holder %+v ttl %v", f.gotHolder, f.gotTTL)
 	}
-	for in, want := range map[State]ledger.QueueState{
-		StateWaiting: ledger.QueueWaiting, StateVerifying: ledger.QueueVerifying, StateLanding: ledger.QueueLanding,
-		StateLanded: ledger.QueueLanded, StateFailed: ledger.QueueFailed,
+	f.items = []ledger.QueueItem{{CardID: "t1", CardEpoch: 5}}
+	// The ledger checks the card epoch for verifying and failed and the lock epoch for the rest; the adapter
+	// passes the queue row's own CardEpoch (5) for the first group and the caller's lock epoch (9) for the second.
+	for in, c := range map[State]struct {
+		want  ledger.QueueState
+		epoch int64
+	}{
+		StateWaiting: {ledger.QueueWaiting, 9}, StateVerifying: {ledger.QueueVerifying, 5}, StateLanding: {ledger.QueueLanding, 9},
+		StateLanded: {ledger.QueueLanded, 9}, StateFailed: {ledger.QueueFailed, 5},
 	} {
 		if err := q.SetState(ctx, "t1", 9, in, "abc", "why"); err != nil {
 			t.Fatal(err)
 		}
-		if f.update.state != want || f.update.card != "t1" || f.update.epoch != 9 || f.update.trunk != "abc" || f.update.fail != "why" {
-			t.Errorf("%s -> %+v, want state %s with the other fields passed through", in, f.update, want)
+		if f.update.state != c.want || f.update.card != "t1" || f.update.epoch != c.epoch || f.update.trunk != "abc" || f.update.fail != "why" {
+			t.Errorf("%s -> %+v, want state %s epoch %d with the other fields passed through", in, f.update, c.want, c.epoch)
 		}
+	}
+	// A waiting write with no lock (epoch 0) is the card-epoch kind.
+	if err := q.SetState(ctx, "t1", 0, StateWaiting, "abc", ""); err != nil || f.update.epoch != 5 {
+		t.Errorf("waiting without a lock: epoch %d err %v, want the row's card epoch 5", f.update.epoch, err)
+	}
+	if err := q.SetState(ctx, "ghost", 0, StateVerifying, "abc", ""); err == nil {
+		t.Error("a card that is not in the queue must be refused, not written with a guessed epoch")
 	}
 	if err := q.AddNote(ctx, "landed", "t1", "text"); err != nil {
 		t.Fatal(err)

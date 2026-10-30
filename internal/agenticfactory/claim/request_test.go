@@ -290,15 +290,16 @@ func TestReadyGateNeedsTheWholeChainAndTheSameAgent(t *testing.T) {
 	_, _, _ = s.PutRequest("r", "h", 1, pol)
 	_, _ = s.UpdateRequest("r", func(r *Request) error { r.Issue = 42; return nil })
 	for _, st := range []Stage{StageIssueConfirmed, StageBranchRegistered, StageAgentReserved, StageWTPrepared} {
-		if st == StageAgentReserved {
+		switch st {
+		case StageAgentReserved:
 			a, _ := s.RegisterAgent(sid(42))
 			_, _ = s.ReserveRequest("r", a, slots)
-		} else if st == StageWTPrepared {
+		case StageWTPrepared:
 			_, _ = s.UpdateRequest("r", func(r *Request) error {
 				r.Stage, r.Ready = st, &Ready{Host: "h", Slot: r.Slot, Path: "/wt", Head: sha40, WriterStopped: true}
 				return nil
 			})
-		} else {
+		default:
 			_, _ = s.UpdateRequest("r", func(r *Request) error { r.Stage = st; r.Branch = &Branch{Ref: "WT-x", BaseOID: sha40}; return nil })
 		}
 		if err := s.ReadyGate(42, sid(42)); !errors.Is(err, core.ErrTransitionInvalid) {

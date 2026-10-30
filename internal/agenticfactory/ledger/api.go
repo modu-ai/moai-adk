@@ -92,6 +92,7 @@ type Card struct {
 	Position     core.Position
 	Priority     int
 	Spec         Spec
+	Epoch        int64 // the epoch of the latest claim; 0 before the first
 	ReclaimCount int
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
@@ -158,13 +159,14 @@ const (
 // evidence cannot show, such as "resume-guard:<reason>" for a write that resolves a
 // park, or core.GuardOperatorHold.
 type Evidence struct {
-	Kind    string
-	TreeSHA string
-	BaseSHA string
-	Command string
-	Result  string
-	Path    string
-	Guards  []string
+	Kind       string
+	TreeSHA    string // informational; nothing judges evidence by it
+	SubjectSHA string // required: the commit SHA that was measured. Every judgment (Move facts, Enqueue) keys on it
+	BaseSHA    string
+	Command    string
+	Result     string
+	Path       string
+	Guards     []string
 }
 
 // EvidenceRecord is a stored evidence row.
@@ -230,9 +232,13 @@ const (
 	QueueFailed    QueueState = "failed"
 )
 
-// QueueItem is one row of merge_queue.
+// QueueItem is one row of merge_queue. The row is not tied to the card's position: a
+// queued card that is moved elsewhere (cancelled, say) leaves its row behind, so the
+// merge queue's owner is expected to read the card before acting on a row (P3-6; the
+// mergeq adapter owes that read).
 type QueueItem struct {
 	CardID       string
+	CardEpoch    int64 // the card epoch the row was queued at; waiting, verifying and failed writes carry it
 	CandidateSHA string
 	TrunkBefore  string
 	State        QueueState
@@ -258,116 +264,4 @@ type Store struct {
 
 var _ Reader = (*Store)(nil)
 
-// AddCard inserts a card in its Position (READY for a new one). ErrCardExists when the
-// id is taken. Every dependency in Spec.Depends must already exist and not be CANCELLED,
-// and none may be the card itself (ErrDependency); a card is only ever added after what
-// it depends on, so a cycle cannot form.
-func (s *Store) AddCard(ctx context.Context, c Card) error { return ErrNotImplemented }
-
-// Claim is one transaction: it reaps the dead holders (lazily, ClaimRequest.Alive),
-// picks the highest-priority READY, unparked card whose dependencies are DONE and
-// whose conflict keys are all free, inserts its lease and keys, bumps the epoch and
-// moves it READY to BUILDING/SPEC (class C) or BUILDING/IMPLEMENT (A, B). ErrNoWork
-// when nothing qualifies.
-func (s *Store) Claim(ctx context.Context, r ClaimRequest) (Claimed, error) {
-	return Claimed{}, ErrNotImplemented
-}
-
-// Heartbeat renews the lease of the card at epoch and records when the lane plans to
-// wake next. nextWake is information for the board and for stall detection; the
-// lease's expiry is computed from the lease length alone. ErrStaleEpoch when the epoch
-// is not the lease's.
-func (s *Store) Heartbeat(ctx context.Context, cardID string, epoch int64, nextWake *time.Time) error {
-	return ErrNotImplemented
-}
-
-// Move changes the card's position. The epoch must be the lease's (ErrStaleEpoch) and
-// core.CheckMove must accept the move. The facts it needs come from the ledger's own
-// tables, never from the caller: receipt from this tree's green evidence,
-// receipt-accepted from its gate evidence, merged from merge_queue.state = landed,
-// closed and settled from the landed note mergeq writes. ev adds evidence rows and its
-// Guards carry only the guard keys no table can show (resume-guard:<reason>,
-// core.GuardOperatorHold, core.GuardFixLimit, core.GuardReclaimCap); a Guards entry
-// that names a fact is ErrInvalid. A move into MERGING from another stage is refused:
-// Enqueue is the only way in. The transition is recorded with the actor and the reason.
-func (s *Store) Move(ctx context.Context, cardID string, epoch int64, to core.Position, actor, reason string, ev ...Evidence) error {
-	return ErrNotImplemented
-}
-
-// ExpandKeys adds conflict keys to the lease before an out-of-scope edit. ErrKeyConflict
-// when another card holds one; nothing is added then, and nothing is parked.
-func (s *Store) ExpandKeys(ctx context.Context, cardID string, epoch int64, keys []string) error {
-	return ErrNotImplemented
-}
-
-// AddEvidence records evidence for the card at epoch.
-func (s *Store) AddEvidence(ctx context.Context, cardID string, epoch int64, e Evidence) error {
-	return ErrNotImplemented
-}
-
-// EvidenceFor lists the card's evidence, oldest first. It is on Store only, not on
-// Reader.
-func (s *Store) EvidenceFor(ctx context.Context, cardID string) ([]EvidenceRecord, error) {
-	return nil, ErrNotImplemented
-}
-
-// Release drops the card's lease and keys; the card row stays (I7).
-func (s *Store) Release(ctx context.Context, cardID string, epoch int64) error {
-	return ErrNotImplemented
-}
-
-// Reap takes back the leases whose holder alive judges Dead, expired or not. A holder
-// judged Alive is left alone; one judged Unknown is never reclaimed either, and gets a
-// stalled note once its lease has expired (I5). The ReclaimCap-th reclaim of a card
-// parks it for the operator (I7). alive is required (a nil one is ErrInvalid) and is
-// called before the write transaction opens, never inside it.
-func (s *Store) Reap(ctx context.Context, alive func(pid int, start string) Liveness) ([]Reclaimed, error) {
-	return nil, ErrNotImplemented
-}
-
-// AddNote appends a note.
-func (s *Store) AddNote(ctx context.Context, n Note) error { return ErrNotImplemented }
-
-// NotesSince lists the notes with a Seq above seq, oldest first.
-func (s *Store) NotesSince(ctx context.Context, seq int64) ([]Note, error) {
-	return nil, ErrNotImplemented
-}
-
-// AcquireLock takes the named lock for ttl and returns its epoch. ErrLockHeld when
-// another live holder has it; a lock whose holder is Dead or whose ttl ran out is taken
-// over with a higher epoch.
-func (s *Store) AcquireLock(ctx context.Context, name string, holder LockHolder, ttl time.Duration) (int64, error) {
-	return 0, ErrNotImplemented
-}
-
-// ReleaseLock gives the lock up; ErrStaleEpoch when the epoch is not the lock's.
-func (s *Store) ReleaseLock(ctx context.Context, name string, epoch int64) error {
-	return ErrNotImplemented
-}
-
-// Enqueue puts the card's candidate on the merge queue in the waiting state and moves
-// the card into MERGING, the only way in. The candidate SHA must be the tree SHA of
-// passing gate evidence recorded for the card (I8); without it ErrEvidenceStale. A card
-// whose Spec.Risk is not empty must also be in REVIEWING with passing review evidence
-// for that tree.
-func (s *Store) Enqueue(ctx context.Context, cardID string, epoch int64, candidateSHA string) error {
-	return ErrNotImplemented
-}
-
-// QueueUpdate moves a queue item to state under the landing lock; lockEpoch is the
-// epoch AcquireLock returned. trunkBefore and failReason are recorded as given.
-func (s *Store) QueueUpdate(ctx context.Context, cardID string, lockEpoch int64, state QueueState, trunkBefore, failReason string) error {
-	return ErrNotImplemented
-}
-
-// Snapshot writes a consistent copy of the ledger to dst (VACUUM INTO a temporary file,
-// then rename).
-func (s *Store) Snapshot(ctx context.Context, dst string) error { return ErrNotImplemented }
-
-// Cards, Leases, Queue and Notes are the Reader methods.
-func (s *Store) Cards(ctx context.Context) ([]Card, error)      { return nil, ErrNotImplemented }
-func (s *Store) Leases(ctx context.Context) ([]Lease, error)    { return nil, ErrNotImplemented }
-func (s *Store) Queue(ctx context.Context) ([]QueueItem, error) { return nil, ErrNotImplemented }
-func (s *Store) Notes(ctx context.Context, sinceSeq int64) ([]Note, error) {
-	return nil, ErrNotImplemented
-}
+// The Reader methods are Cards and Leases (cards.go), Queue (queue.go) and Notes (notes.go).
