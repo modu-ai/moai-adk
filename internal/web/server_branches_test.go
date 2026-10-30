@@ -35,7 +35,10 @@ func TestNewServerUsesTheInjectedCodexProbe(t *testing.T) {
 	called := false
 	s, err := NewServer(Config{
 		ProjectRoot: t.TempDir(), NoOpen: true,
-		CodexStateProbe: func(context.Context) CodexStateView { called = true; return CodexStateView{Installed: true, Version: "9.9"} },
+		CodexStateProbe: func(context.Context) CodexStateView {
+			called = true
+			return CodexStateView{Installed: true, Version: "9.9"}
+		},
 	})
 	if err != nil {
 		t.Fatal(err)
