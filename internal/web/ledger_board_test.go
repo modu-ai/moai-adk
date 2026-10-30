@@ -164,9 +164,12 @@ func TestBoard_QueueAndNotes(t *testing.T) {
 	if len(f.notesSince) != 1 || f.notesSince[0] != 0 {
 		t.Errorf("the board reads all notes (since 0), got %v", f.notesSince)
 	}
-	if vm.Flow.Known {
-		t.Errorf("flow metrics are not provided yet and must not be invented: %+v", vm.Flow)
+	// Flow is measured by monitor/flow from the same cards and leases; it is no
+	// longer "not provided" once a ledger is wired (see board_flow_test.go).
+	if !vm.Flow.Known {
+		t.Errorf("flow = %+v, want measured once a ledger is wired", vm.Flow)
 	}
+
 }
 
 func TestBoard_UnwiredOrFailingReaderIsNotAnEmptyBoard(t *testing.T) {

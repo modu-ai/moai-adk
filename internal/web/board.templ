@@ -90,8 +90,23 @@ templ Board(vm ShellVM, b BoardVM) {
 					}
 				</div>
 				<div id="board-flow">
-					@panel("Flow", "not provided", "", "", "Flow metrics are not provided yet.", "roomy") {
-						<p class="panel__help">—</p>
+					if b.Flow.Known {
+						@panel("Flow", "WIP "+b.Flow.WIP, "", "", "Work in progress, the age of each stage, what waits, and holders gone quiet.", "roomy") {
+							<p class="panel__meta">{ "WIP " + b.Flow.WIP }</p>
+							for _, g := range b.Flow.Stages {
+								<div class="tr"><span class="mono">{ g.Key }</span><span>{ g.Count }</span><span class="panel__meta">{ "oldest " + g.Oldest }</span></div>
+							}
+							for _, g := range b.Flow.Waiting {
+								<div class="tr"><span class="mono">{ g.Key }</span><span>{ g.Count }</span><span class="panel__meta">{ "waiting, oldest " + g.Oldest }</span></div>
+							}
+							for _, s := range b.Flow.Stalled {
+								<div class="tr"><span class="mono">{ s.CardID }</span><span>stalled</span><span class="panel__meta">{ "heartbeat " + s.HeartbeatAge + " · " + s.Liveness }</span></div>
+							}
+						}
+					} else {
+						@panel("Flow", "not provided", "", "", "Flow metrics are not provided yet.", "roomy") {
+							<p class="panel__help">{ b.Flow.Note }</p>
+						}
 					}
 				</div>
 			</div>

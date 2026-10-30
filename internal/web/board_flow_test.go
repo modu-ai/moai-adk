@@ -1,5 +1,3 @@
-//go:build afred
-
 package web
 
 // board_flow_test.go — the board's flow panel (Issue #1948, local-only redesign,
@@ -20,6 +18,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/ledger"
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/monitor/flow"
 )
 
 func flowFixture() *fakeBoardReader {
@@ -98,6 +97,7 @@ func TestBoardFlow_UnrecordedUpdateTimeIsAGapNotAnAge(t *testing.T) {
 
 func TestBoardFlow_PanelShowsTheMeasurementOrSaysItIsNotProvided(t *testing.T) {
 	a := boardApp(t, flowFixture())
+	a.nowFunc = func() time.Time { return boardNow }
 	body := serveGet(t, a.routes(), "/board").Body.String()
 	i := strings.Index(body, `id="board-flow"`)
 	if i < 0 {
@@ -119,5 +119,39 @@ func TestBoardFlow_PanelShowsTheMeasurementOrSaysItIsNotProvided(t *testing.T) {
 	noBody := serveGet(t, none.routes(), "/board").Body.String()
 	if strings.Contains(noBody, `id="board-flow"`) && strings.Contains(noBody, "WIP") {
 		t.Errorf("with no ledger wired no flow figure may appear")
+	}
+}
+
+func TestBoardFlow_AgeText(t *testing.T) {
+	for _, c := range []struct {
+		d    time.Duration
+		want string
+	}{
+		{-time.Minute, boardGap}, // a time in the future is not an age
+		{30 * time.Second, "<1m"},
+		{20 * time.Minute, "20m"},
+		{3*time.Hour + 5*time.Minute, "3h05m"},
+		{51 * time.Hour, "2d03h"},
+		{200 * 365 * 24 * time.Hour, boardGap}, // never recorded
+	} {
+		if got := boardAge(c.d); got != c.want {
+			t.Errorf("boardAge(%v) = %q, want %q", c.d, got, c.want)
+		}
+	}
+}
+
+// A stage the flow order does not know is kept, after the known ones and in name
+// order, never dropped or folded into a known stage.
+func TestBoardFlow_UnknownStageSortsAfterTheKnownOnes(t *testing.T) {
+	g := flow.Group{Count: 1, Oldest: time.Hour}
+	got := boardFlow(flow.Snapshot{Stages: map[string]flow.Group{
+		"ZETA": g, "MERGING": g, "QUARANTINE": g, "READY": g, "BUILDING/FIX": g,
+	}})
+	var order []string
+	for _, s := range got.Stages {
+		order = append(order, s.Key)
+	}
+	if want := "READY,BUILDING/FIX,MERGING,QUARANTINE,ZETA"; strings.Join(order, ",") != want {
+		t.Errorf("stage groups = %v, want %s", order, want)
 	}
 }
