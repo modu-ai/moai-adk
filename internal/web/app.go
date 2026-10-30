@@ -345,6 +345,10 @@ func (a *app) selectedProfile(r *http.Request) string {
 // renderError writes a readable inline error page (REQ-WC-010) — never blank,
 // never a panic.
 func (a *app) renderError(w http.ResponseWriter, status int, msg string) {
+	// HTML escaping is not refining: error text built from err.Error() may carry a
+	// path, an address, a token, a number or a stack. Every banner and error page
+	// goes through the one refiner (Issue #1948, B14).
+	msg = refineText(msg)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
 	_, _ = fmt.Fprintf(w,

@@ -119,7 +119,7 @@ func (a *app) handleOverview(w http.ResponseWriter, r *http.Request) {
 	}
 	o, err := a.buildOverview(time.Now())
 	if err != nil {
-		http.Error(w, "overview unavailable: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, "overview unavailable: "+refineText(err.Error()), http.StatusInternalServerError)
 		return
 	}
 	// The other three screens carry a descriptive crumb; overview carried none,
@@ -136,7 +136,7 @@ func (a *app) handleFactory(w http.ResponseWriter, r *http.Request) {
 	}
 	k, err := a.buildFactory(time.Now())
 	if err != nil {
-		http.Error(w, "factory unavailable: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, "factory unavailable: "+refineText(err.Error()), http.StatusInternalServerError)
 		return
 	}
 	vm := a.shellVM(r, "factory", "Factory", "lanes + pipeline")
@@ -206,7 +206,7 @@ func (a *app) handleSpecs(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	l, err := a.buildSpecList(q.Get("q"), q.Get("status"), q.Get("id"))
 	if err != nil {
-		http.Error(w, "spec list unavailable: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, "spec list unavailable: "+refineText(err.Error()), http.StatusInternalServerError)
 		return
 	}
 	vm := a.shellVM(r, "specs", "Specs", itoa(len(l.Rows))+" shown")
