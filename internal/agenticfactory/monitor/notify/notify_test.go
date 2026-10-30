@@ -574,3 +574,41 @@ func TestABusyInboxDoesNotSpendARetry(t *testing.T) {
 		t.Errorf("after the lock cleared: sent=%d retries=%d, want the reminder delivered and one retry spent", b.sent, e.record(7).Wait.Retries)
 	}
 }
+
+// F3 (notify side): contention alone never spends a retry, but a lock that stays busy pass after pass is
+// reported — it may be a crashed holder's leftover, and silence would hide the lost reminders for good.
+func TestALockBusyPassAfterPassIsReportedAsStuckWithoutSpendingARetry(t *testing.T) {
+	e := newEnv(t)
+	tk := e.acquire(7)
+	if _, err := e.rn.SetWait(tk, waitAt(t0.Add(time.Hour), 2)); err != nil {
+		t.Fatal(err)
+	}
+	b := &busyNotifier{busy: true}
+	s := e.service()
+	s.Notifier = b
+	stuck := func(acts []Action) bool {
+		for _, a := range acts {
+			if a.What == "inbox-lock-stuck" && errors.Is(a.Err, core.ErrBusy) {
+				return true
+			}
+		}
+		return false
+	}
+	if stuck(e.tickAt(s, t0.Add(time.Hour))) {
+		t.Fatal("one busy pass was reported as stuck")
+	}
+	for i := 1; i < 4; i++ {
+		if !stuck(e.tickAt(s, t0.Add(time.Hour+time.Duration(i)*time.Minute))) {
+			t.Fatalf("pass %d: the lock has been busy for %d passes (the wait's own retry count) and was not reported", i, i+1)
+		}
+	}
+	if rec := e.record(7); rec.Wait.Retries != 0 || rec.Wait.Escalated {
+		t.Fatalf("contention spent retries: %+v", rec.Wait)
+	}
+	b.busy = false
+	e.tickAt(s, t0.Add(time.Hour+10*time.Minute))
+	b.busy = true
+	if stuck(e.tickAt(s, t0.Add(time.Hour+20*time.Minute))) {
+		t.Error("the busy run was not reset by a delivery that went through")
+	}
+}
