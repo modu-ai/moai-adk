@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/browser"
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/monitor/flow"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/glmcred"
 	"github.com/modu-ai/moai-adk/internal/jevcred"
@@ -133,6 +134,10 @@ type app struct {
 	// value is owned by the settings layer; this console only reads it.
 	browserSelected func(projectRoot string) (string, error)
 	browserProbe    browser.Probe
+
+	// flowProbe judges whether a lease holder's process is alive for the board's
+	// flow panel. Nil reads every holder as Unknown (monitor/flow's rule).
+	flowProbe flow.Probe
 
 	// triggerShutdown is 페이지 내 서버 종료 버튼(/__shutdown__)이 호출하는
 	// injectable seam 이다. openBrowser 와 동일한 패턴이지만 app 에 두는 이유는 —

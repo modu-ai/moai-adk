@@ -52,7 +52,23 @@ type BoardNoteVM struct {
 	Redacted         bool
 }
 
-type BoardFlowVM struct{ Known bool }
+// BoardGroupVM is one flow group: how many cards sit in it and how long the
+// longest has been there.
+type BoardGroupVM struct{ Key, Count, Oldest string }
+
+// BoardStalledVM is one lease whose holder shows no sign of life.
+type BoardStalledVM struct{ CardID, HeartbeatAge, Liveness string }
+
+// BoardFlowVM is the flow read model of the same ledger (monitor/flow). Known is
+// false when it was not measured; nothing in it is then to be read as zero.
+type BoardFlowVM struct {
+	Known   bool
+	Note    string
+	WIP     string
+	Stages  []BoardGroupVM
+	Waiting []BoardGroupVM
+	Stalled []BoardStalledVM
+}
 
 type BoardVM struct {
 	Available bool
