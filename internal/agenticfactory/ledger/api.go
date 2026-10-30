@@ -268,7 +268,11 @@ var _ Reader = (*Store)(nil)
 // Guards carry only the guard keys no table can show (resume-guard:<reason>,
 // core.GuardOperatorHold, core.GuardFixLimit, core.GuardReclaimCap); a Guards entry
 // that names a fact is ErrInvalid. A move into MERGING from another stage is refused:
-// Enqueue is the only way in. The transition is recorded with the actor and the reason.
+// Enqueue is the only way in. A move to DONE or CANCELLED releases the lease and keys in
+// the same transaction. A card the ledger parked for the operator holds no lease: for it
+// alone, a Move at the card's own epoch that resumes the park in place (with its
+// resume-guard) is allowed without one, and resuming a reclaim-cap park clears the
+// reclaim count. The transition is recorded with the actor and the reason.
 func (s *Store) Move(ctx context.Context, cardID string, epoch int64, to core.Position, actor, reason string, ev ...Evidence) error {
 	return ErrNotImplemented
 }

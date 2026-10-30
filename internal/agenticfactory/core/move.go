@@ -14,6 +14,7 @@ const (
 	FactMerged          = "merged"           // the remote merge was seen
 	FactClosed          = "closed"           // the Issue was closed
 	FactSettled         = "settled"          // no obligation (local sync, deploy, close) is pending
+	FactQueued          = "queued"           // the candidate is on the merge queue (local ledger)
 )
 
 // The evidence a write carries for each of the named in-place parks.
