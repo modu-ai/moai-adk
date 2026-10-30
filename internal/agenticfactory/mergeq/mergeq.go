@@ -289,6 +289,11 @@ func (m *Merger) fail(ctx context.Context, res Result, cardID, candidateSHA, tru
 // settleLanded records a card whose candidate is already reachable from the trunk as landed. The ref is not
 // touched; the lock is taken only because the landed state is written under it.
 func (m *Merger) settleLanded(ctx context.Context, cardID, candidateSHA string, from State, trunk, why string) (res Result, err error) {
+	if from == StateLanded {
+		// Settled already (a retry after a landed result that came back with a lock-release error): nothing to
+		// write, and the table would refuse landed -> landing.
+		return Result{Outcome: OutcomeLanded, TrunkBefore: trunk, TrunkAfter: trunk, Reason: "already settled as landed"}, nil
+	}
 	epoch, err := m.Queue.AcquireLock(ctx, LandingLock, m.Holder, m.lockTTL())
 	if errors.Is(err, ErrLockHeld) {
 		return Result{Outcome: OutcomeWaiting, TrunkBefore: trunk, Reason: "the landing lock is held by another lander"}, nil
@@ -332,6 +337,8 @@ type Item struct {
 	// card holds a live lease at CurrentEpoch. Reconcile sends a verifying row back to waiting only when the row is
 	// from an older epoch or the card has no live lease: verifying is outside the landing lock, so a free lock does
 	// not say no lander is alive. Zero values (no lease information) read as "no live lease".
+	// Liveness is judged from the caller's clock against the lease expiry (not the database clock), and a dead
+	// lane's verifying row stays as it is until its lease expires or is reaped: intended.
 	CardEpoch, CurrentEpoch int64
 	LeaseLive               bool
 }

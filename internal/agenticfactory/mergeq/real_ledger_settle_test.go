@@ -98,6 +98,17 @@ func TestLand_RealLedger_ALandedCardGoesToDoneAndTakesNoSecondCandidate(t *testi
 	if err != nil || res.Outcome != OutcomeLanded {
 		t.Fatalf("result %+v err %v, want landed", res, err)
 	}
+	// While the holder still has its lease and a passing gate for a second candidate, the landed row refuses it
+	// for the row's own reason (ErrInvalid: already queued, landed), not for a missing lease or missing evidence.
+	if err := s.AddEvidence(ctx, "t1", cardEpoch, ledger.Evidence{Kind: ledger.KindGate, TreeSHA: "tree-c2", SubjectSHA: "c2", Command: "go test ./...", Result: ledger.ResultPass}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Enqueue(ctx, "t1", cardEpoch, "c2"); !errors.Is(err, ledger.ErrInvalid) {
+		t.Fatalf("a second candidate for a landed card: %v, want ErrInvalid from the landed row", err)
+	}
+	if got := rowState(t, s, "t1"); got != ledger.QueueLanded {
+		t.Fatalf("the row is %s after the refused second candidate, want landed", got)
+	}
 	if err := s.Move(ctx, "t1", cardEpoch, core.Position{Stage: core.StageMerging, RemoteIntegrated: true}, "mergeq", "merge seen"); err != nil {
 		t.Fatalf("recording the integration: %v", err)
 	}
@@ -108,11 +119,25 @@ func TestLand_RealLedger_ALandedCardGoesToDoneAndTakesNoSecondCandidate(t *testi
 	if err != nil || len(cards) != 1 || cards[0].Position.Stage != core.StageDone {
 		t.Fatalf("cards %+v %v, want the card DONE", cards, err)
 	}
-	if err := s.Enqueue(ctx, "t1", cardEpoch, "a-second-candidate"); err == nil {
-		t.Error("a second candidate was queued for a card that already landed")
+}
+
+// A retry of Land for a row that is already landed answers landed instead of failing on a landed -> landing
+// write the table refuses (it can follow a landed result that came back with a lock-release error).
+func TestLand_RealLedger_ARowAlreadyLandedAnswersLanded(t *testing.T) {
+	ctx := context.Background()
+	dir := repo(t)
+	cand := candidate(t, dir, "c1", "a.txt", "a\n")
+	s := queuedCard(t, "t1", cand)
+	m := realMerger(t, dir, s)
+	if res, err := m.Land(ctx, "t1", cand); err != nil || res.Outcome != OutcomeLanded {
+		t.Fatalf("first Land: %+v %v", res, err)
+	}
+	res, err := m.Land(ctx, "t1", cand)
+	if err != nil || res.Outcome != OutcomeLanded {
+		t.Fatalf("second Land: %+v %v, want landed", res, err)
 	}
 	if got := rowState(t, s, "t1"); got != ledger.QueueLanded {
-		t.Errorf("the row is %s after the refused second candidate, want landed", got)
+		t.Errorf("the row is %s, want landed", got)
 	}
 }
 
