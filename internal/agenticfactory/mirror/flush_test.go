@@ -122,7 +122,11 @@ func TestFlushKeepsANewerLedgerQueuedWhileTheRefusedOneWasWritten(t *testing.T) 
 func TestFlushContinuesPastAnIssueTheHostRefusesForGood(t *testing.T) {
 	for _, status := range []int{404, 410, 422} {
 		t.Run(statusName(status), func(t *testing.T) {
-			f := &fakeGH{results: append([]result{httpFail(status)}, okWrites(2)...)}
+			first := []result{httpFail(status)}
+			if status == 404 { // a 404 is only about this Issue when the repository itself can be read
+				first = append(first, result{out: "{}"})
+			}
+			f := &fakeGH{results: append(first, okWrites(2)...)}
 			m := writable(f)
 			m.Enqueue(ledgerFor(1, "ordinary"))
 			m.Enqueue(ledgerFor(2, "ordinary too"))
@@ -183,7 +187,7 @@ func TestFlushRecordsTheRefusalInTheClaimMirrorState(t *testing.T) {
 	}
 	f := &fakeGH{results: []result{
 		{out: ""}, {out: `{"id":1}`}, // issue 1: the RESTRICTED record
-		httpFail(404),                // issue 2: gone
+		httpFail(404), {out: "{}"}, // issue 2: gone, and the repository answers
 		{out: ""}, {out: `{"id":3}`}, // issue 3: fine
 	}}
 	m := writable(f)
@@ -207,6 +211,48 @@ func TestFlushRecordsTheRefusalInTheClaimMirrorState(t *testing.T) {
 		rec, err := st.Read(i)
 		if err != nil || rec.Mirror != w {
 			t.Errorf("issue-%d mirror_state = %q (%v), want %q", n, rec.Mirror, err, w)
+		}
+	}
+}
+
+// A 404 is also what the host answers when the token cannot see the repository at
+// all. It is the Issue's own failure only if the repository can be read; when the
+// repository read fails too, nothing is known about the Issue and the run stops with
+// the rest queued.
+func TestFlushDoesNotTakeA404ForAGoneIssueWhenTheRepositoryCannotBeRead(t *testing.T) {
+	for name, probe := range map[string]result{
+		"repository 404":      httpFail(404),
+		"repository 403":      httpFail(403, "body", `{"message":"Resource not accessible by integration"}`),
+		"repository 5xx":      httpFail(503),
+		"repository no reply": {err: errors.New("network down")},
+	} {
+		t.Run(name, func(t *testing.T) {
+			f := &fakeGH{results: []result{httpFail(404), probe}}
+			m := writable(f)
+			m.Enqueue(ledgerFor(1, "ordinary"))
+			m.Enqueue(ledgerFor(2, "ordinary too"))
+			n, err := m.Flush(context.Background())
+			if n != 0 || err == nil {
+				t.Fatalf("written=%d err=%v", n, err)
+			}
+			if p := m.Pending(); len(p) != 2 {
+				t.Errorf("both stay queued: %v", p)
+			}
+		})
+	}
+}
+
+// 410 and 422 are the Issue's own answer and need no repository read.
+func TestFlushAsksNothingElseForA410Or422(t *testing.T) {
+	for _, status := range []int{410, 422} {
+		f := &fakeGH{results: []result{httpFail(status)}}
+		m := writable(f)
+		m.Enqueue(ledgerFor(1, "ordinary"))
+		if _, err := m.Flush(context.Background()); err == nil {
+			t.Fatal("reported")
+		}
+		if len(f.calls) != 1 {
+			t.Errorf("status %d made %d calls, want only the failed one: %v", status, len(f.calls), calls(f))
 		}
 	}
 }

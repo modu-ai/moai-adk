@@ -488,19 +488,33 @@ func (m *Mirror) Pending() []int {
 
 // permanent reports a failure that belongs to one Issue for good, and the
 // mirror_state to record for it: a ledger refused as holding a secret or personal
-// data (its RESTRICTED record is up), or the host saying the Issue is gone (404, 410)
-// or refuses its content (422). Retrying cannot change either answer, and neither
-// says anything about the other Issues. A rate limit, a permission denial and a
-// server error are not of this kind: they may pass, or hit every Issue alike.
-func permanent(err error) (state string, ok bool) {
+// data (its RESTRICTED record is up), or the host saying the Issue is gone (410) or
+// refuses its content (422). Retrying cannot change either answer, and neither says
+// anything about the other Issues. A 404 is permanent only if the repository itself
+// can be read (verify is set): the host answers 404 as well when the token cannot see
+// the repository at all. A rate limit, a permission denial and a server error are not
+// of this kind: they may pass, or hit every Issue alike.
+func permanent(err error) (state string, ok, verify bool) {
 	if errors.Is(err, core.ErrUnsanitized) {
-		return "refused", true
+		return "refused", true, false
 	}
 	var se *forge.StatusError
-	if errors.As(err, &se) && (se.Status == 404 || se.Status == 410 || se.Status == 422) {
-		return fmt.Sprintf("rejected(%d)", se.Status), true
+	if errors.As(err, &se) {
+		switch se.Status {
+		case 410, 422:
+			return fmt.Sprintf("rejected(%d)", se.Status), true, false
+		case 404:
+			return "rejected(404)", true, true
+		}
 	}
-	return "", false
+	return "", false, false
+}
+
+// repoReadable says whether the repository itself can be read with the access in use:
+// one read of the repository, nothing written.
+func (m *Mirror) repoReadable(ctx context.Context) bool {
+	_, err := m.call(ctx, fmt.Sprintf("repos/%s", m.Repo))
+	return err == nil
 }
 
 // Flush writes each queued ledger once, lowest Issue first, and returns how many
@@ -535,7 +549,10 @@ func (m *Mirror) Flush(ctx context.Context) (int, error) {
 			continue
 		}
 		errs = append(errs, fmt.Errorf("issue-%d: %w", n, err))
-		state, perm := permanent(err)
+		state, perm, verify := permanent(err)
+		if perm && verify && !m.repoReadable(ctx) {
+			perm = false // nothing is known about the Issue: treat it as a failure that may pass
+		}
 		if !perm {
 			return written, errors.Join(errs...)
 		}
