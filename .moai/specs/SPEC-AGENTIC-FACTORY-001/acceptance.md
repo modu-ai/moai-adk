@@ -1,5 +1,7 @@
 # SPEC-AGENTIC-FACTORY-001 — 수용 기준 (0.6.7)
 
+> **0.7.0 가리킴.** 권위는 로컬 SQLite 원장 하나다(spec DEC-AF-06 개정, SPEC-AGENTIC-FACTORY-LOCAL-001). Issue·control ref·PR에 기대는 AC는 제목 끝에 처분 표시를 달았고 처분표는 spec.md §J다. 새 로컬 원장 AC는 하위 SPEC의 AC-AFL-001~021이다.
+
 ## §A 측정 규칙
 
 - 수용 기준은 25개다(Tier L 상한 25). AC-AF-0NN의 주 REQ는 spec.md §E 표에 있다. 기준마다 주 REQ는 하나다.
@@ -88,7 +90,7 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 
 ## §C 수용 기준
 
-#### AC-AF-001 — 활성 claim·fencing·중복 dispatch
+#### AC-AF-001 — 활성 claim·fencing·중복 dispatch [SUPERSEDED by AC-AFL-002·AC-AFL-010]
 
 - 주 REQ: maps REQ-AF-001. 초록: M1.
 - 정본 주 시험 5: M01~M05. 전용: §12 재현 시험 `TestClaim_DeadOwnerExpiredAttempt_ReissuedUnderSameClaim`, `TestClaim_WorktreeIdentity_NormalizedPathPreventsMismatch`, `TestClaim_SameNameTree_NoDivergentTreeCreated`.
@@ -101,7 +103,7 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 - 변형을 죽이는 단언: 두 claim이 모두 성공하는 구현, 재발급이 새 키를 만드는 구현, epoch를 비교하지 않는 구현, 충돌 기록을 남기지 않는 구현은 각각 (a)(b)(c)(a)에서 FAIL.
 - RED 이유: claim 저장 구현이 없어 (a)에서 단언 실패. 초록 경로: M1 lane-18 claim·fencing.
 
-#### AC-AF-002 — 권위·재구축·checkpoint 복구
+#### AC-AF-002 — 권위·재구축·checkpoint 복구 [SUPERSEDED by AC-AFL-001]
 
 - 주 REQ: maps REQ-AF-002. 초록: M2.
 - 정본 주 시험 2: SYNC12, M47. 전용(제안): `TestCheckpoint_*`, `TestAuthority_*`.
@@ -115,7 +117,7 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 - 변형 단언: ACK 없이 `remote-durable`을 세우는 구현은 CK1, manifest를 검증하지 않는 구현은 CK2, 링크 실패로 durable을 취소하는 구현은 CK3, 중복 검사 없는 구현은 CK4(push 호출 계수 1), 활성 판정 없는 복구는 CK5, `git add -A`식 스테이징은 CK6, 상한 무시는 CK10에서 FAIL.
 - RED 이유: control ref git 구현과 checkpoint 상태 기계가 없음. 초록 경로: M1 control ref(lane-18), M2 checkpoint·Issue 링크(lane-18·20).
 
-#### AC-AF-003 — 소유 확인과 Issue 쓰기 권한
+#### AC-AF-003 — 소유 확인과 Issue 쓰기 권한 [SUPERSEDED — no local counterpart]
 
 - 주 REQ: maps REQ-AF-003. 초록: M2.
 - 정본 주 시험 2: M13, M15. 전용(제안): `TestIssueAuthority_*`.
@@ -159,7 +161,7 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 - 변형 단언: PID만 보는 판정은 (c)에서 FAIL(재사용된 pid를 `live`로 봄). TTL만으로 인계하는 구현은 (a)에서 FAIL. crash 뒤 책임 기록을 비워 두는 구현은 (e)에서 FAIL.
 - RED 이유: 판정 연결 없음. 초록 경로: M1(lane-18, `homestate.ClassifyOwnerWith` 사용).
 
-#### AC-AF-005 — effect 불명 재조회·전달 상태
+#### AC-AF-005 — effect 불명 재조회·전달 상태 [PARTLY SUPERSEDED — OD-32]
 
 - 주 REQ: maps REQ-AF-005. 초록: M2.
 - 정본 주 시험 10: M18, M19, M20, M29, M30, M31, SYNC03, SYNC04, SYNC05, SYNC11.
@@ -173,7 +175,7 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 - 변형 단언: 답장으로 `completed`를 세우는 구현은 (b), 불명 시 재전송하는 구현은 (c), 답장이 올 때까지 멈추는 구현은 (e)에서 FAIL.
 - RED 이유: effect 경계 없음. 초록 경로: M2(lane-20).
 
-#### AC-AF-006 — DONE 순서
+#### AC-AF-006 — DONE 순서 [SUPERSEDED by AC-AFL-013·AC-AFL-014]
 
 - 주 REQ: maps REQ-AF-006. 초록: M3.
 - 정본 주 시험 4: M33, M34, M35, M36.
@@ -184,7 +186,7 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 - 변형 단언: DONE 뒤 종료하는 구현(0.5.0 순서)은 (a)에서 FAIL. 경로 목록만 비교하는 구현은 (c)에서 FAIL.
 - RED 이유: 상태 엔진의 E13·E14 없음. 초록 경로: M3(lane-18). lane-18 기존 시험(이름 미전달)은 보조 근거다.
 
-#### AC-AF-007 — 병합 게이트·PR 적체 상한
+#### AC-AF-007 — 병합 게이트·PR 적체 상한 [SUPERSEDED by AC-AFL-014]
 
 - 주 REQ: maps REQ-AF-007. 초록: M4.
 - 정본 주 시험 8: M14, M24, M25, M26, M27, M32, M37, M55.
@@ -196,7 +198,7 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 - 변형 단언: `PASS-WITH-DEBT`를 통과로 세는 구현, 귀속 실패를 판정값보다 늦게 보는 구현(한 결과에 사유 둘), `operator-ack-missing`을 역할 부재에 쓰는 구현은 표 행에서 FAIL.
 - RED 이유: 게이트 없음. 초록 경로: M4(lane-18 판정 + lane-20 effect).
 
-#### AC-AF-008 — 보호 비약화
+#### AC-AF-008 — 보호 비약화 [SUPERSEDED — no local counterpart]
 
 - 주 REQ: maps REQ-AF-008. 초록: M2.
 - 정본 주 시험 0. 전용: lane-22 `TestProtectionGuard_*` 3개 + 약화 거절 시험(제안 `TestProtectionGuard_RefusesEveryWeakeningOperation`).
@@ -209,7 +211,7 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 - 변형 단언: 일곱 중 하나라도 보내는 구현, 사유를 두 개 남기는 구현이 FAIL.
 - RED 이유: 거절 경로가 코드에 없음(lane-22 보고). 초록 경로: M2(lane-20 집행, lane-18 사유 타입).
 
-#### AC-AF-009 — PR 인계·수리 단일 소유
+#### AC-AF-009 — PR 인계·수리 단일 소유 [SUPERSEDED by AC-AFL-014]
 
 - 주 REQ: maps REQ-AF-009. 초록: M3.
 - 정본 주 시험 8: HANDOFF01~HANDOFF08.
@@ -222,7 +224,7 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 - 변형 단언: 필드 하나 없이 인계를 받는 구현은 (a), 수리를 새 Issue로 여는 구현은 (d), 바쁜 agent의 Issue를 덮는 구현은 (d), PR 인계로 책임을 끝내는 구현은 (c)·(f), 수리를 다른 agent에 주는 구현은 (d)·(f), worktree를 같이 쓰는 구현은 (g) ③에서 FAIL.
 - RED 이유: E03·E06·E10 없음. 초록 경로: M3(lane-18).
 
-#### AC-AF-010 — 독립성과 역할 쓰기 경계
+#### AC-AF-010 — 독립성과 역할 쓰기 경계 [PARTLY SUPERSEDED — OD-32]
 
 - 주 REQ: maps REQ-AF-010. 초록: M4.
 - 정본 주 시험 2: M22, M23.
@@ -256,7 +258,7 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 - 변형 단언: 환경 변수로 풀리는 구현(L3), 시나리오에서 대역을 쓰는 구현(L4), fencing보다 귀속을 먼저 보는 구현(P4b 귀속 호출 1)이 FAIL.
 - RED 이유: 잠금 상수도 귀속 원천도 없음(lane-22 보고). 초록 경로: M4 잠금 도입(lane-18). M7 해제(lane-18, 하위 SPEC 완료와 같은 착지).
 
-#### AC-AF-012 — 접수·준비
+#### AC-AF-012 — 접수·준비 [SUPERSEDED — no local counterpart]
 
 - 연결: maps REQ-AF-012, REQ-AF-018. 주 REQ는 REQ-AF-012이고, REQ-AF-018은 보조 연결이다(REQ-AF-018에는 주 AC가 없다 — spec.md §E). 초록: M3.
 - 정본 주 시험 10: PREP01~PREP10.
@@ -268,7 +270,7 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 - 변형 단언: 수락을 먼저 돌려주는 구현은 (a), 무한 하위 작업은 (d)에서 FAIL.
 - RED 이유: 접수 서비스 없음. 초록 경로: M3(lane-18 상태, lane-20 Issue 발행).
 
-#### AC-AF-013 — 비밀·공개 검토
+#### AC-AF-013 — 비밀·공개 검토 [PARTLY SUPERSEDED — OD-32]
 
 - 주 REQ: maps REQ-AF-013. 초록: M5.
 - 정본 주 시험 3: M39, M40, CONTEXT04. 전용: `TestRedact_*` 13개(C1 3, C2 1, C3 2, C4 2, C5 1, Restricted 1, Idempotent 1, Negative 2).
@@ -282,7 +284,7 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 - 적용 범위 부채(DEC-AF-29, relayed): (i) 한국어 이름 + 전화번호(C2), (ii) 패닉·goroutine 스택(C4), (iii) 물결표 `~/...` 경로(C3 범위 모호, OD-23), (iv) 대시로 이은 passphrase 형태(C1)는 정제기가 아직 잡지 못한다(lane-19가 core 커밋 `9e34d6bb87`에서 측정, 리더 전달, 이 작성자는 읽지 않음). `4cdaba5d7e`에는 이 네 갈래를 다루는 시험이 없고, 위 사례 문장에도 이 네 갈래를 가리키는 제안 사례가 없다. 부채로 기록하며 범위 밖으로 선언하지 않는다.
 - RED 이유: refiner 없음. 초록 경로: M5(lane-20).
 
-#### AC-AF-014 — 인증·rate limit·예산
+#### AC-AF-014 — 인증·rate limit·예산 [SUPERSEDED — no local counterpart]
 
 - 주 REQ: maps REQ-AF-014. 초록: M2.
 - 정본 주 시험 15: M17, M28, M43, M44, GH05, GH06, SYNC09, SYNC10, WT15, SYNC13~SYNC18. 전용(제안): `TestForgeClassify_*`.
@@ -310,7 +312,7 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 - 변형 단언: 계수기가 늘 0인 구현은 (c)에서 FAIL.
 - RED 이유: 관문 없음. 초록 경로: M6(lane-17 키, lane-20 호출 경계).
 
-#### AC-AF-016 — 전이표
+#### AC-AF-016 — 전이표 [PARTLY SUPERSEDED — OD-32]
 
 - 주 REQ: maps REQ-AF-016. 초록: M1.
 - 정본 주 시험 6: M16, M41, M42, M48, M54, M56. 전용: `TestTransition_Table_*`, §12 `TestState_SpeclessIssue_TransitionsWithoutSpecHash`, `TestState_OperatorDecision_RequiresOperatorEvidence_CoordinatorRefused`.
@@ -324,7 +326,7 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 - 변형 단언: 표에 없는 간선 하나를 허용하는 구현은 (a), owner를 바꾸는 재개는 (d), 필드가 빠진 대기 기록을 받는 구현은 (e), 고정 간격 반복 작업을 다음 자동 동작으로 받는 구현은 (f)에서 FAIL.
 - RED 이유: 상태 엔진 없음. 초록 경로: M1(lane-18).
 
-#### AC-AF-017 — record와 수집기
+#### AC-AF-017 — record와 수집기 [SUPERSEDED by AC-AFL-009]
 
 - 주 REQ: maps REQ-AF-017. 초록: M1.
 - 정본 주 시험 11: M45, M49, M50, M51, M52, M53, SYNC01, SYNC02, SYNC06, SYNC07, SYNC08.
@@ -335,7 +337,7 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 - 사례: (a) 같은 저장소에 수집기 둘 시작 → 하나만 활성. (b) agent 패키지에서 polling 경로 호출 0(정적).
 - RED 이유: record 없음. 초록 경로: M1(lane-18).
 
-#### AC-AF-018 — 맥락 장부와 증거 위치
+#### AC-AF-018 — 맥락 장부와 증거 위치 [SUPERSEDED by AC-AFL-008]
 
 - 주 REQ: maps REQ-AF-019. 초록: M5.
 - 정본 주 시험 5: CONTEXT01, CONTEXT02, CONTEXT03, CONTEXT05, CONTEXT06. 전용: `TestLedger_*`, `TestEvidenceStage_*`.
@@ -346,7 +348,7 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 - 변형 단언: 로컬 브랜치 정보로 `accessible`을 내는 구현은 (b), STALE 항목을 지우는 구현은 (c)에서 FAIL.
 - RED 이유: 장부 없음. 초록 경로: M5(lane-20).
 
-#### AC-AF-019 — 관찰 보기
+#### AC-AF-019 — 관찰 보기 [SUPERSEDED by AC-AFL-020]
 
 - 주 REQ: maps REQ-AF-020. 초록: M5.
 - 정본 주 시험 0. 전용(제안): `TestObservationView_ShowsPrepAndPRBacklogStatesDistinctly_ReadOnly`.
@@ -383,7 +385,7 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 - golden 순서 점검: golden 커밋이 S1 등록 커밋의 엄격한 조상.
 - RED 이유: 새 명령 없음. 초록 경로: M6(launcher 담당). OD-2의 4건이 정해지면 (c)(d)의 문법을 고친다.
 
-#### AC-AF-022 — template·분류·setup
+#### AC-AF-022 — template·분류·setup [SUPERSEDED — no local counterpart]
 
 - 주 REQ: maps REQ-AF-023. 초록: M6.
 - 정본 주 시험 28: WT01~WT14, WT16, GH01~GH04, GH07~GH15.
@@ -413,7 +415,7 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 - 사례: (a) design §4.7 필드 누락 → 기록 거절. (b) `estimated` 값을 `measured` 칸에 넣음 → 거절. (c) 품질 회귀가 있는 비교 → 효율 향상 보고 0. (d) checkpoint 기록의 비용 필드는 측정값이거나 Gap 표시, 추정값 0.
 - RED 이유: 기록 형식 없음. 초록 경로: M5(lane-22).
 
-#### AC-AF-025 — 실제 Issue 시나리오
+#### AC-AF-025 — 실제 Issue 시나리오 [SUPERSEDED by AC-AFL-013·AC-AFL-014]
 
 - 주 REQ: maps REQ-AF-006(보조: REQ-AF-001·004·005·011). 초록: M7 뒤 단일 실행.
 - 정본 주 시험 0. 전용: `TestScenarioSuite`(§A.1).

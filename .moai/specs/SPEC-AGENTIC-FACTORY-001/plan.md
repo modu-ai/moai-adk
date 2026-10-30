@@ -52,6 +52,8 @@
 
 ### M1 — 권위·데이터 모델·claim [High, lane-18]
 
+> **0.7.0 가리킴.** 권위·데이터 모델·claim의 새 경로는 로컬 SQLite 원장이며 SPEC-AGENTIC-FACTORY-LOCAL-001 plan M1이 맡는다. 아래 control ref·Issue 기반 항목은 0.6.7까지의 계획 기록이다(spec §J).
+
 - control ref git 구현(CAS 쓰기, readback, 재구축), 로컬 캐시는 재구축 전용.
 - 상태 모형(READY·BUILDING·REVIEWING·MERGING·DONE·CANCELLED + PARKED), E01~E27 전이표, 닫힌 사유 집합(design §2.1a).
 - claim·attempt·epoch fencing, 활성 판정(`homestate.ClassifyOwnerWith`).

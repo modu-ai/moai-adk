@@ -226,6 +226,8 @@ ACK가 없으면 다시 보내지 않고 받는 쪽 상태를 먼저 조회한�
 
 ### 4.0 권위 배치
 
+> **0.7.0 가리킴 — 아래 표는 superseded다.** 권위는 프로젝트당 로컬 SQLite 원장 하나이며(spec DEC-AF-06 개정), 그 표·필드는 SPEC-AGENTIC-FACTORY-LOCAL-001 design.md §2다. 아래 표는 0.6.7까지의 Issue·control ref 배치 기록으로 남긴다.
+
 | 필드·record | 위치(권위) | 쓰기 권한 |
 |---|---|---|
 | `task_name`, `acceptance_criteria`, `priority`, `depends_on` | Issue 본문(업무 권위) | 사용자. AgenticFactory는 자기 Issue에서만 §4.1 규칙으로 |
