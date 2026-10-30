@@ -100,18 +100,18 @@ func TestCardFlow_ClaimToDone_ThroughMergeQueue(t *testing.T) {
 	}
 	runAF(t, append([]string{"enqueue", "t1", "--candidate", cand}, ep...)...)
 
-	// landing is the merge queue's
-	m := &mergeq.Merger{
-		Git:   mergeq.GitCLI{Repo: repo, ScratchD: t.TempDir(), Who: mergeq.Identity{Name: "mergeq", Email: "mergeq@example.test"}},
-		Queue: mergeq.NewLedgerQueue(st), Trunk: "refs/heads/trunk",
-		Verify:  func(context.Context, string) error { return nil },
-		Holder:  mergeq.Holder{Session: "mq", PID: os.Getpid(), PIDStart: "start-mq"},
-		LockTTL: mergeq.DefaultLockTTL, MaxRetries: mergeq.DefaultMaxRetries,
-		Message: func(card string) string { return "merge(" + card + "): land" },
+	// landing is the merge queue's, reached through `moai af land`; the gate is a command run in the candidate
+	// worktree (here `true`, a stand-in: no build or test runs)
+	var landRes struct {
+		CardID  string `json:"card_id"`
+		Outcome string `json:"outcome"`
 	}
-	res, err := m.Land(ctx, "t1", cand)
-	if err != nil || res.Outcome != mergeq.OutcomeLanded {
-		t.Fatalf("Land: %+v %v", res, err)
+	out := runAF(t, "land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/trunk", "--gate", "true")
+	if err := json.Unmarshal([]byte(out), &landRes); err != nil || landRes.CardID != "t1" || landRes.Outcome != string(mergeq.OutcomeLanded) {
+		t.Fatalf("af land output %q: %+v %v, want outcome landed", out, landRes, err)
+	}
+	if got := afGit(t, repo, "rev-parse", "refs/heads/trunk"); got == afGit(t, repo, "rev-parse", "refs/heads/work") {
+		t.Error("the trunk did not move from the base")
 	}
 
 	// the landed note is on the ledger; the card goes DONE and holds no lease

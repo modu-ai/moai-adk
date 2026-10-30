@@ -34,12 +34,14 @@ func TestAFCommand_VerbsRegistered(t *testing.T) {
 		t.Error("`moai af` must be visible: it is the card flow's command")
 	}
 	for verb, step := range map[string]string{
-		"claim":    "claim",
-		"move":     "stage move",
-		"evidence": "evidence record",
-		"enqueue":  "Enqueue",
-		"release":  "Release",
-		"reap":     "reap",
+		"claim":     "claim",
+		"move":      "stage move",
+		"evidence":  "evidence record",
+		"enqueue":   "Enqueue",
+		"release":   "Release",
+		"reap":      "reap",
+		"land":      "land",
+		"reconcile": "reconcile",
 	} {
 		c := afVerb(af, verb)
 		if c == nil {
