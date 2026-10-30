@@ -39,6 +39,7 @@ func TestAFCommand_VerbsRegistered(t *testing.T) {
 		"evidence": "evidence record",
 		"enqueue":  "Enqueue",
 		"release":  "Release",
+		"reap":     "reap",
 	} {
 		c := afVerb(af, verb)
 		if c == nil {

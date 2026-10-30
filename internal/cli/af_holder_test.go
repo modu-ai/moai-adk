@@ -39,3 +39,12 @@ func TestAFHolder_UnresolvedSessionIsUnknownNotTheWrapper(t *testing.T) {
 		t.Fatalf("holder = (%d, %q), want (0, \"\"): the wrapper must not be recorded", pid, start)
 	}
 }
+
+// A resolved pid whose fingerprint cannot be read (probe indeterminate) is recorded as unknown too.
+func TestAFHolder_NoFingerprintIsUnknown(t *testing.T) {
+	holderSeams(t, 4242, true)
+	afProbe = func(int) (string, homestate.ProcessIdentityState) { return "", homestate.ProcessIdentityIndeterminate }
+	if pid, start := afHolder(); pid != 0 || start != "" {
+		t.Fatalf("holder = (%d, %q), want (0, \"\")", pid, start)
+	}
+}
