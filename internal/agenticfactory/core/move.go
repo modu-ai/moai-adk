@@ -16,8 +16,21 @@ const (
 	FactSettled         = "settled"          // no obligation (local sync, deploy, close) is pending
 )
 
-// GuardOperatorHold is the evidence a write carries for the operator's hold.
-const GuardOperatorHold = "operator-hold"
+// The evidence a write carries for each of the named in-place parks.
+const (
+	GuardOperatorHold = "operator-hold"
+	GuardFixLimit     = "fix-limit"
+	GuardReclaimCap   = "reclaim-cap"
+)
+
+// inPlaceParks are the parks S46 has no edge for: the operator's hold (OD-12,
+// unconfirmed) and the two the local ledger makes. Each is taken in place, from a
+// position that is neither finished nor parked, with its own guard.
+var inPlaceParks = map[BlockReason]string{
+	ReasonOperatorHold: GuardOperatorHold,
+	ReasonFixLimit:     GuardFixLimit,
+	ReasonReclaimCap:   GuardReclaimCap,
+}
 
 // edgeFacts are the facts a single edge needs on the record on top of its guard keys,
 // for the edges whose keys the record can show.
@@ -117,15 +130,15 @@ func CheckMove(from, to Position, have []string) error {
 		}
 		return true
 	}
-	// The operator's hold has no S46 edge (OD-12, unconfirmed). It is a named in-place
-	// park, from a position that is neither finished nor already parked, and the writer
-	// carries "operator-hold" for it. sameSpot with the park stripped from to also
-	// requires that from carries none.
-	if to.Park != nil && to.Park.Reason == ReasonOperatorHold && !from.Stage.terminal() && sameSpot(from, withoutPark(to)) {
-		if lacks("operator-hold", []string{GuardOperatorHold}) {
-			return missingErr
+	// The named in-place parks have no S46 edge. sameSpot with the park stripped from to
+	// also requires that from carries none.
+	if to.Park != nil && !from.Stage.terminal() && sameSpot(from, withoutPark(to)) {
+		if guard, ok := inPlaceParks[to.Park.Reason]; ok {
+			if lacks(string(to.Park.Reason), []string{guard}) {
+				return missingErr
+			}
+			return nil
 		}
-		return nil
 	}
 	// E20 resolves a park in place and nothing else.
 	if from.Park != nil && sameSpot(withoutPark(from), to) {

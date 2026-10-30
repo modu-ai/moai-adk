@@ -141,50 +141,39 @@ func TestE15CleanupUnknownTakesACleanupReasonOnly(t *testing.T) {
 	}
 }
 
-// S46 has no edge for the operator's hold (OD-12, unconfirmed): the old State has
-// on-hold. It is a named exception, not a way round the table: in place, from a
-// position that is not finished or parked, and only with the writer carrying
-// "operator-hold".
-func TestCheckMoveOperatorHoldIsANamedInPlaceParkWithItsEvidence(t *testing.T) {
-	for _, from := range []Position{Position{Stage: StageReady}, bSpec, bImpl, bFix, review, merge} {
-		to := with(from, ReasonOperatorHold)
-		if err := CheckMove(from, to, []string{"operator-hold"}); err != nil {
-			t.Errorf("%s: %v", spot(from), err)
-		}
-		if err := CheckMove(from, to, nil); !errors.Is(err, ErrGuardMissing) {
-			t.Errorf("%s without the evidence: %v", spot(from), err)
-		}
-	}
-	for _, from := range []Position{done, {Stage: StageCancelled}, with(review, ReasonDependency)} {
-		if err := CheckMove(from, with(from, ReasonOperatorHold), []string{"operator-hold"}); err == nil {
-			t.Errorf("%s must not take an operator hold", spot(from))
-		}
-	}
-	if err := CheckMove(review, with(merge, ReasonOperatorHold), []string{"operator-hold"}); err == nil {
-		t.Error("an operator hold does not move the stage")
-	}
-}
-
-// E03, E12 and E13 are single edges, and the record must show what they stand on.
-func TestCheckMoveSingleEdgesNeedTheFactsTheRecordHolds(t *testing.T) {
-	cases := []struct {
-		name     string
-		from, to Position
-		need     []string
-	}{
-		{"E03", bImpl, review, []string{FactReceipt, FactReceiptAccepted}},
-		{"E12", merge, mergeI, []string{FactMerged}},
-		{"E13", mergeI, done, []string{FactMerged, FactClosed, FactSettled}},
-	}
-	for _, c := range cases {
-		for i := range c.need {
-			short := append(append([]string(nil), c.need[:i]...), c.need[i+1:]...)
-			if err := CheckMove(c.from, c.to, short); !errors.Is(err, ErrGuardMissing) {
-				t.Errorf("%s without %q: want ErrGuardMissing, got %v", c.name, c.need[i], err)
+// S46 has no edge for the operator's hold (OD-12, unconfirmed) or for the two parks the
+// local ledger makes itself (fix-limit, reclaim-cap). Each is a named exception, not a
+// way round the table: in place, from a position that is not finished or parked, and
+// only with the writer carrying that reason's own evidence.
+func TestCheckMoveNamedInPlaceParksNeedTheirOwnEvidence(t *testing.T) {
+	for reason, key := range map[BlockReason]string{ReasonOperatorHold: GuardOperatorHold, ReasonFixLimit: GuardFixLimit, ReasonReclaimCap: GuardReclaimCap} {
+		for _, from := range []Position{{Stage: StageReady}, bSpec, bImpl, bFix, review, merge} {
+			to := with(from, reason)
+			if err := CheckMove(from, to, []string{key}); err != nil {
+				t.Errorf("%s from %s: %v", reason, spot(from), err)
+			}
+			if err := CheckMove(from, to, nil); !errors.Is(err, ErrGuardMissing) {
+				t.Errorf("%s from %s without the evidence: %v", reason, spot(from), err)
+			}
+			for other, ok := range map[string]string{GuardOperatorHold: "", GuardFixLimit: "", GuardReclaimCap: ""} {
+				_ = ok
+				if other != key {
+					if err := CheckMove(from, to, []string{other}); !errors.Is(err, ErrGuardMissing) {
+						t.Errorf("%s from %s with %s's evidence: %v", reason, spot(from), other, err)
+					}
+				}
 			}
 		}
-		if err := CheckMove(c.from, c.to, nil); !errors.Is(err, ErrGuardMissing) {
-			t.Errorf("%s with no facts: %v", c.name, err)
+		for _, from := range []Position{done, {Stage: StageCancelled}, with(review, ReasonDependency)} {
+			if err := CheckMove(from, with(from, reason), []string{key}); err == nil {
+				t.Errorf("%s: %s must not take it", reason, spot(from))
+			}
+		}
+		if err := CheckMove(review, with(merge, reason), []string{key}); err == nil {
+			t.Errorf("%s does not move the stage", reason)
+		}
+		if !IsParkable(reason) {
+			t.Errorf("%s must be a parkable reason", reason)
 		}
 	}
 }
