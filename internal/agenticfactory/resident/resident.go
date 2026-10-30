@@ -171,7 +171,7 @@ func (r *Resident) Timeouts() effect.Timeouts { return r.timeouts }
 
 // Executor is the effect executor with these timeouts and the intents kept in the claim store.
 func (r *Resident) Executor(send effect.Sender, lookup effect.Lookuper) *effect.Executor {
-	return &effect.Executor{Store: docstore.Store{C: r.deps.Store}, Send: send, Lookup: lookup, Timeouts: r.timeouts, Now: r.deps.Now}
+	return &effect.Executor{Store: docstore.Store{C: r.deps.Store}, Send: send, Lookup: lookup, Timeouts: r.timeouts, Now: r.deps.Now, Admit: ghintake.Admit}
 }
 
 // NewWait is a wait record whose retry limit and escalation target come from the settings; the owner

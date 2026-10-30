@@ -187,6 +187,10 @@ type Executor struct {
 	Lookup   Lookuper
 	Timeouts Timeouts
 	Now      func() time.Time // defaults to time.Now
+	// Admit, when set, judges a new request BEFORE anything is stored. A refusal is recorded as a Parked
+	// intent without the payload, so refused text never reaches the intent store (and, in ref mode, the
+	// control ref) and the same refusal is not repeated every pass.
+	Admit func(Request) error
 }
 
 func (e *Executor) now() time.Time {
@@ -218,6 +222,11 @@ func (e *Executor) Execute(ctx context.Context, r Request) (Intent, error) {
 			return in, nil // rate limited: not yet
 		}
 	} else {
+		if e.Admit != nil {
+			if aerr := e.Admit(r); aerr != nil {
+				return e.parkRefused(ctx, key, r, aerr)
+			}
+		}
 		in = Intent{Key: key, Kind: r.Kind, Issue: r.Issue, Target: r.Target, Digest: r.Digest, Payload: r.Payload, Status: StatusIntended}
 		created, err := e.Store.PutIf(in) // create-only: Rev 0
 		if errors.Is(err, core.ErrRevisionConflict) {
@@ -271,6 +280,19 @@ func (e *Executor) Execute(ctx context.Context, r Request) (Intent, error) {
 		return e.Reconcile(ctx, key)
 	}
 	return e.settle(in)
+}
+
+// parkRefused records a request Admit refused as a Parked intent WITHOUT its payload: the refused text is
+// never stored, and the same refusal is read back as Parked on the next pass instead of being judged again.
+// The error text is the refusal's own (categories, never values).
+func (e *Executor) parkRefused(ctx context.Context, key string, r Request, why error) (Intent, error) {
+	in := Intent{Key: key, Kind: r.Kind, Issue: r.Issue, Target: r.Target, Digest: r.Digest,
+		Status: StatusParked, ParkReason: string(ReasonSensitiveContent), LastError: why.Error()}
+	out, err := e.Store.PutIf(in)
+	if errors.Is(err, core.ErrRevisionConflict) {
+		return e.follow(ctx, key)
+	}
+	return out, err
 }
 
 // follow returns what is stored after losing a compare-and-swap. A sent intent is reconciled from facts;

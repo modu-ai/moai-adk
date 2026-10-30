@@ -2,6 +2,7 @@ package ghintake
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"strings"
 	"testing"
@@ -222,5 +223,49 @@ func TestASensitiveTitleOrBodyIsRefusedBeforeGHRuns(t *testing.T) {
 				t.Errorf("the refusal repeats the sensitive value: %q", in.LastError)
 			}
 		})
+	}
+}
+
+// B4 follow-up: the refusal comes BEFORE storage. A sensitive title or body never lands in the intent
+// store (in ref mode that store is pushed), the intent is recorded as Parked without the payload, and the
+// same refusal is not repeated on the next pass.
+func TestASensitiveIssueIsRefusedBeforeItIsStored(t *testing.T) {
+	f := &fakeExec{}
+	g := GH{Repo: "o/r", Run: f.run, AllowWrite: true, ListLimit: 100}
+	mem := effect.NewMemIntentStore()
+	ex := &effect.Executor{Store: mem, Send: g, Lookup: Lookup{GH: g}, Timeouts: effect.Timeouts{IssueCreate: time.Second}, Admit: Admit}
+	secret := "ghp_abcdefghijklmnopqrstuvwxyz0123456789"
+	in, err := ex.Execute(t.Context(), IssueRequest(7, "o/r", "title", "see "+secret))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if in.Status != effect.StatusParked || in.ParkReason != string(effect.ReasonSensitiveContent) || in.Payload != "" {
+		t.Errorf("intent = %+v, want Parked, reason sensitive-content, no payload", in)
+	}
+	all, _ := mem.List()
+	for _, st := range all {
+		raw, _ := json.Marshal(st)
+		if strings.Contains(string(raw), secret) || st.Payload != "" {
+			t.Errorf("the stored intent holds the sensitive text: %s", raw)
+		}
+	}
+	if len(f.calls) != 0 {
+		t.Errorf("gh ran: %v", f.calls)
+	}
+	again, err := ex.Execute(t.Context(), IssueRequest(7, "o/r", "title", "see "+secret))
+	if err != nil || again.Status != effect.StatusParked || again.Attempts != in.Attempts {
+		t.Errorf("repeat: %+v %v, want the same Parked intent, untouched", again, err)
+	}
+	if len(f.calls) != 0 {
+		t.Errorf("gh ran on the repeat: %v", f.calls)
+	}
+}
+
+func TestACleanIssuePassesAdmit(t *testing.T) {
+	if err := Admit(IssueRequest(7, "o/r", "title", "plain body")); err != nil {
+		t.Errorf("Admit refused clean text: %v", err)
+	}
+	if err := Admit(effect.Request{Kind: effect.LedgerComment, Payload: "ghp_abcdefghijklmnopqrstuvwxyz0123456789"}); err != nil {
+		t.Errorf("Admit judges only issue-create: %v", err)
 	}
 }

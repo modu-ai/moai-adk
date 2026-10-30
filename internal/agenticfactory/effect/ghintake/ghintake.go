@@ -199,3 +199,19 @@ func (l Lookup) worktree(ctx context.Context, in effect.Intent) (effect.LookupRe
 	}
 	return effect.LookupResult{Authoritative: true}, nil
 }
+
+// Admit is the pre-storage check for an Issue request (effect.Executor.Admit): nothing sensitive may be
+// stored as the payload of an intent, masked or not.
+func Admit(r effect.Request) error {
+	if r.Kind != effect.IssueCreate {
+		return nil
+	}
+	var p issuePayload
+	if err := json.Unmarshal([]byte(r.Payload), &p); err != nil {
+		return nil // an unreadable payload is refused later by Send as invalid; it holds no readable text
+	}
+	if err := core.RefuseIfSensitive(p.Title + "\n" + p.Body); err != nil {
+		return fmt.Errorf("%w: %v", effect.ErrRefused, err)
+	}
+	return nil
+}
