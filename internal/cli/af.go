@@ -13,6 +13,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/ledger"
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/monitor/flow"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/hook"
 	"github.com/modu-ai/moai-adk/internal/session"
@@ -101,12 +102,17 @@ func afHolder() (pid int, start string) {
 		return 0, ""
 	}
 	start, _ = afProbe(owner)
+	if start == "" {
+		// A pid without its fingerprint cannot be judged (a reused pid would pass for the session), so the
+		// holder is recorded as unknown rather than leaving the verdict to the judge.
+		return 0, ""
+	}
 	return owner, start
 }
 
 func newAFClaimCmd() *cobra.Command {
 	var f afFlags
-	var session, worktree string
+	var sessionID, worktree string
 	cmd := &cobra.Command{
 		Use:   "claim",
 		Short: "Claim the next card and print its id and fencing epoch",
@@ -121,13 +127,13 @@ func newAFClaimCmd() *cobra.Command {
 			}
 			pid, start := afHolder()
 			return afRun(f.db, func(ctx context.Context, st *ledger.Store) error {
-				c, err := st.Claim(ctx, ledger.ClaimRequest{SessionID: session, Worktree: worktree, PID: pid, PIDStart: start})
+				c, err := st.Claim(ctx, ledger.ClaimRequest{SessionID: sessionID, Worktree: worktree, PID: pid, PIDStart: start})
 				if err != nil {
 					return err
 				}
 				if path, perr := afLedgerPath(f.db); perr == nil {
 					// the session's hooks renew the lease from this binding; a failure only costs the renewal
-					if berr := hook.BindLedgerHeartbeat(resolveProjectDir(), session, hook.LedgerBinding{DB: path, CardID: c.CardID, Epoch: c.Epoch}); berr != nil {
+					if berr := hook.BindLedgerHeartbeat(resolveProjectDir(), sessionID, hook.LedgerBinding{DB: path, CardID: c.CardID, Epoch: c.Epoch}); berr != nil {
 						_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "af: the lease will not be renewed by hooks: %v\n", berr)
 					}
 				}
@@ -139,7 +145,7 @@ func newAFClaimCmd() *cobra.Command {
 		},
 	}
 	f.bind(cmd, false)
-	cmd.Flags().StringVar(&session, "session", "", "the claiming session id")
+	cmd.Flags().StringVar(&sessionID, "session", "", "the claiming session id")
 	cmd.Flags().StringVar(&worktree, "worktree", "", "the worktree the card is worked in (default: the working directory)")
 	_ = cmd.MarkFlagRequired("session")
 	return cmd
@@ -244,7 +250,14 @@ func newAFReleaseCmd() *cobra.Command {
 	return cmd
 }
 
-// newAFReapCmd is `moai af reap`: it takes back the cards whose holder is gone. STUB: reaps nothing yet.
+// afAlive judges a lease holder by the identity the claim recorded (pid plus start fingerprint). Only a
+// positively dead process is Dead; a missing pid or fingerprint, or a probe that cannot decide, is Unknown,
+// which the ledger never reclaims (I5). It is the flow read model's adapter over homestate's classification,
+// the one rule `claim` presence also uses.
+func afAlive(pid int, start string) ledger.Liveness { return flow.ProcessProbe(afProbe)(pid, start) }
+
+// newAFReapCmd is `moai af reap`: it takes back the cards whose holder process is gone (the ledger's Reap, judged
+// by afAlive). A live holder keeps its card; the third reclaim of a card parks it for the operator.
 func newAFReapCmd() *cobra.Command {
 	var f afFlags
 	cmd := &cobra.Command{
@@ -252,11 +265,41 @@ func newAFReapCmd() *cobra.Command {
 		Short: "Take back the cards whose holder process is gone",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return afRun(f.db, func(_ context.Context, _ *ledger.Store) error {
-				return afPrint(cmd, map[string]any{"reclaimed": []ledger.Reclaimed{}})
+			return afRun(f.db, func(ctx context.Context, st *ledger.Store) error {
+				got, err := st.Reap(ctx, afAlive)
+				if err != nil {
+					return err
+				}
+				if got == nil {
+					got = []ledger.Reclaimed{}
+				}
+				leases, err := st.Leases(ctx)
+				if err != nil {
+					return err
+				}
+				return afPrint(cmd, map[string]any{"reclaimed": got, "unknown_expired": afUnknownExpired(leases, time.Now())})
 			})
 		},
 	}
 	f.bind(cmd, false)
 	return cmd
+}
+
+// afUnknownLease is a lease whose holder is unknown and whose time has run out: the ledger will not reclaim it by
+// liveness, so a lane that really died while holding it stays there until the operator looks.
+type afUnknownLease struct {
+	CardID    string    `json:"card_id"`
+	Epoch     int64     `json:"epoch"`
+	ExpiresAt time.Time `json:"expires_at"`
+}
+
+// afUnknownExpired lists the expired leases that carry no usable holder identity (no pid or no fingerprint).
+func afUnknownExpired(leases []ledger.Lease, now time.Time) []afUnknownLease {
+	out := []afUnknownLease{}
+	for _, l := range leases {
+		if (l.PID < 1 || l.PIDStart == "") && !l.ExpiresAt.After(now) {
+			out = append(out, afUnknownLease{CardID: l.CardID, Epoch: l.Epoch, ExpiresAt: l.ExpiresAt})
+		}
+	}
+	return out
 }

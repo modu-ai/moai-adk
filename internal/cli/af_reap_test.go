@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/ledger"
@@ -86,5 +87,19 @@ func TestAFReap_DeadSessionLosesItsCard(t *testing.T) {
 	leases, err := st.Leases(context.Background())
 	if err != nil || len(leases) != 0 {
 		t.Fatalf("the lease must be gone: %+v %v", leases, err)
+	}
+}
+
+// An expired lease without a usable holder identity is shown to the operator, not reclaimed.
+func TestAFUnknownExpired_ListsOnlyExpiredUnknownLeases(t *testing.T) {
+	now := time.Date(2026, 10, 31, 12, 0, 0, 0, time.UTC)
+	got := afUnknownExpired([]ledger.Lease{
+		{CardID: "no-pid", ExpiresAt: now.Add(-time.Minute)},
+		{CardID: "no-print", PID: 7, ExpiresAt: now.Add(-time.Minute)},
+		{CardID: "unexpired-unknown", ExpiresAt: now.Add(time.Minute)},
+		{CardID: "known", PID: 7, PIDStart: "fp", ExpiresAt: now.Add(-time.Hour)},
+	}, now)
+	if len(got) != 2 || got[0].CardID != "no-pid" || got[1].CardID != "no-print" {
+		t.Fatalf("unknown expired = %+v, want no-pid and no-print", got)
 	}
 }
