@@ -15,11 +15,17 @@ import (
 	"testing"
 )
 
+var screenPayloads = map[string]string{
+	"email":     "alice.private@example.com",
+	"home-path": "/Users/alice/secret-project/notes",
+	"token":     "ghp_" + strings.Repeat("Z", 36),
+}
+
 func TestScreenScanErrorIsRefined(t *testing.T) {
 	for path, prefix := range map[string]string{
-		"/":        "overview unavailable",
-		"/factory": "factory unavailable",
-		"/specs":   "spec list unavailable",
+		"/overview": "overview unavailable",
+		"/factory":  "factory unavailable",
+		"/specs":    "spec list unavailable",
 	} {
 		for cat, payload := range screenPayloads {
 			t.Run(path+"/"+cat, func(t *testing.T) {

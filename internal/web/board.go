@@ -16,6 +16,9 @@ import (
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/ledger"
 )
 
+// boardGap marks a value the ledger did not give.
+const boardGap = "—"
+
 // boardStageOrder is the card flow, named by core's constants; a stage outside it
 // is kept as written after these, never folded into a known one.
 var boardStageOrder = []core.Stage{core.StageReady, core.StageBuilding, core.StageReviewing, core.StageMerging, core.StageDone, core.StageCancelled}
@@ -65,7 +68,7 @@ type BoardVM struct {
 
 func boardTime(t time.Time, layout string) string {
 	if t.IsZero() {
-		return prGap
+		return boardGap
 	}
 	return t.UTC().Format(layout)
 }
@@ -142,7 +145,7 @@ func (a *app) buildBoard(ctx context.Context, now time.Time) BoardVM {
 		if len(sha) > 8 {
 			sha = sha[:8]
 		}
-		fail := prGap
+		fail := boardGap
 		if q.FailReason != "" {
 			fail = refineText(q.FailReason)
 		}
