@@ -88,6 +88,10 @@ var sanRules = []sanRule{
 		return redacted, true
 	}},
 	{CategoryStack, regexp.MustCompile(`(?m)^panic: [^\n]*`), whole},
+	// Python: the header line, the indented File/code lines and the unindented exception line.
+	{CategoryStack, regexp.MustCompile(`(?m)^Traceback \(most recent call last\):\n(?:[ \t]+[^\n]*\n)*[^\s][^\n]*(?:\n|$)`), keepNewline},
+	// Java and Node: an optional error line, frame lines ("at ..."), and "Caused by:" groups.
+	{CategoryStack, javaNodeStack, keepNewline},
 	{CategoryHomePath, regexp.MustCompile(`(?:^|[^A-Za-z0-9_./-])/(?:Users|home)/[^\s"'/\\]+(?:/[^\s"']*)?`), func(g []string) (string, bool) {
 		if g[0] != "" && g[0][0] != '/' {
 			return g[0][:1] + redacted, true
@@ -151,7 +155,7 @@ func looksOpaque(run string) bool {
 	if uuidShape.MatchString(run) {
 		return false
 	}
-	segs := strings.FieldsFunc(run, func(r rune) bool { return r == '-' || r == '_' })
+	segs := strings.FieldsFunc(run, func(r rune) bool { return r == '-' || r == '_' || r == '=' })
 	var keep []string
 	for _, sg := range segs {
 		if !hexDigest.MatchString(sg) {
@@ -286,11 +290,6 @@ func looksCutSecret(run string) bool {
 	if !strings.ContainsAny(run, "/+") {
 		return false
 	}
-	// The per-user temp root of macOS is a directory named at random on purpose; it
-	// holds no secret and every test and build tool prints it.
-	if strings.HasPrefix(run, "/var/folders/") || strings.HasPrefix(run, "/private/var/folders/") {
-		return false
-	}
 	body := strings.Map(func(r rune) rune {
 		if r == '/' || r == '+' {
 			return -1
@@ -322,6 +321,43 @@ func looksCutSecret(run string) bool {
 	return float64(flips)/float64(pairs) >= opaqueTransitionRatio
 }
 
+// tempRoot is the per-user temp root of macOS, /var/folders/xx/<random>/T/ (also C/
+// or 0/, also behind /private): a directory named at random on purpose, printed by
+// every test and build tool, holding no secret. Only this shape is exempt; whatever
+// follows it is judged like any other text.
+var tempRoot = regexp.MustCompile(`^(?:/private)?/var/folders/[a-z0-9]{2}/[a-z0-9_]{20,40}/[A-Za-z0-9](?:/|$)`)
+
+// maxSuffixTries bounds the '/' boundaries tried in one run, so a very long path of
+// many segments costs a bounded number of judgements.
+const maxSuffixTries = 32
+
+// cutSecretStart returns the index in run from which the text is a cut secret, or -1.
+// The run is judged whole and then from after each '/', so a secret written behind a
+// path of words (whose own share of words would otherwise lift the whole run above
+// maxWordShare) is found; a macOS temp root at the start is skipped. The earliest
+// start wins, and what precedes it stays.
+//
+// Known limit: a secret that is itself mostly readable words and digits (the
+// documentation example keys are such samples) can still pass when it stands in a
+// path of words; random secrets do not.
+func cutSecretStart(run string) int {
+	i := 0
+	if loc := tempRoot.FindStringIndex(run); loc != nil {
+		i = loc[1]
+	}
+	for try := 0; try < maxSuffixTries && len(run)-i >= 40; try++ {
+		if looksCutSecret(run[i:]) {
+			return i
+		}
+		j := strings.IndexByte(run[i:], '/')
+		if j < 0 {
+			break
+		}
+		i += j + 1
+	}
+	return -1
+}
+
 // maskCutSecrets masks the runs looksCutSecret accepts and counts them as opaque
 // tokens.
 func maskCutSecrets(s string, found map[Category]int) string {
@@ -336,9 +372,11 @@ func maskCutSecrets(s string, found map[Category]int) string {
 		for end < len(s) && s[end] == '=' && end-m[1] < 2 { // base64 padding belongs to the token
 			end++
 		}
-		if !looksCutSecret(s[m[0]:m[1]]) {
+		k := cutSecretStart(s[m[0]:m[1]])
+		if k < 0 {
 			continue
 		}
+		start += k
 		b.WriteString(s[last:start])
 		b.WriteString(redacted)
 		last = end
@@ -348,20 +386,46 @@ func maskCutSecrets(s string, found map[Category]int) string {
 	return b.String()
 }
 
+// javaFrame is one stack-frame line of a Java or Node trace: "at fn (file:line:col)",
+// "at Class.method(File.java:12)", "at /path/file.js:10:15" or "... 2 more". The shapes
+// need a file position or a known marker, so indented prose that starts with "at" is
+// not one.
+const javaFrame = `(?:[ \t]+(?:at (?:[^\n(]+ \([^)\n]*[:.<][^)\n]*\)|[^\s(]+\([^)\n]*(?:[:.]|Native Method|Unknown Source)[^)\n]*\)|[^\s(]+:\d+(?::\d+)?)|\.\.\. \d+ (?:more|common frames omitted))[^\n]*(?:\n|$))`
+
+// javaNodeStack is an optional error line, frame lines, and "Caused by:" groups.
+var javaNodeStack = regexp.MustCompile(`(?m)(?:^[^\n]*(?:Error|Exception)[^\n]*\n)?` + javaFrame + `+(?:^Caused by: [^\n]*\n` + javaFrame + `*)*`)
+
+// keepNewline masks a matched block and keeps the line break that ended it.
+func keepNewline(g []string) (string, bool) {
+	if strings.HasSuffix(g[0], "\n") {
+		return redacted + "\n", true
+	}
+	return redacted, true
+}
+
 // A Korean or +82 telephone number. The left and right context characters are
-// captured so a number inside a longer digit run (an id, a timestamp) is left alone;
+// captured and must not be ASCII letters or digits, so a number inside a longer digit
+// run (an id, a timestamp) and one inside a hex digest are left alone;
 // the area part is one of the real prefixes, so an arbitrary ten-digit number is not
 // a phone number.
 var (
-	phoneRe = regexp.MustCompile(`(^|\D)((?:\+?82[-. ]?(?:10|1[16-9]|2|3[1-3]|4[1-4]|5[1-5]|6[1-4]|70|80)|0(?:1[016789]|2|3[1-3]|4[1-4]|5[1-5]|6[1-4]|70|80))[-. ]?\d{3,4}[-. ]?\d{4})(\D|$)`)
-	nameRe  = regexp.MustCompile(`(^|[^가-힣])([가-힣]{2,4})((?:님|씨)?[\s:,(]*)\x00PHONE\x00`)
+	phoneRe = regexp.MustCompile(`(^|[^0-9A-Za-z])((?:\+?82[-. ]?(?:10|1[16-9]|2|3[1-3]|4[1-4]|5[1-5]|6[1-4]|70|80)|0(?:1[016789]|2|3[1-3]|4[1-4]|5[1-5]|6[1-4]|70|80)\)?)[-. ]?\d{3,4}[-. ]?\d{4})([^0-9A-Za-z]|$)`)
+	nameRe  = regexp.MustCompile(`(^|[^가-힣])([가-힣]{2,4})((?:\s*(?:대리|과장|차장|부장|팀장|실장|본부장|센터장|사원|주임|대표|이사|사장|교수|박사|선생|매니저|연구원|위원|의원))?(?:님|씨)?[\s:,(]*)\x00PHONE\x00`)
 )
 
 // notNames are words that label a number and are not a person: a name rule that
 // took them would mask the label and report a person that is not there.
+// Debt, not handled: a label or title this list does not name, placed straight before a
+// number, is read as a name and masked (harmless, and reported as a person-name).
 var notNames = map[string]bool{
 	"전화": true, "연락": true, "연락처": true, "휴대폰": true, "핸드폰": true, "전화번호": true,
-	"번호": true, "문의": true, "대표": true, "팩스": true, "모바일": true,
+	"번호": true, "문의": true, "대표": true, "팩스": true, "모바일": true, "고객센터": true, "본사": true,
+	"지사": true, "지점": true, "상담": true, "상담센터": true, "콜센터": true, "대표번호": true,
+	"문의처": true, "담당": true, "담당자": true, "직통": true, "사무실": true, "회사": true, "자택": true,
+	"비상연락망": true, "긴급연락": true, "휴대전화": true, "유선": true, "무선": true, "대리": true,
+	"과장": true, "차장": true, "부장": true, "팀장": true, "실장": true, "본부장": true, "센터장": true,
+	"사원": true, "주임": true, "이사": true, "사장": true, "교수": true, "박사": true, "매니저": true,
+	"연구원": true, "위원": true, "의원": true,
 }
 
 // maskContacts masks telephone numbers, and a Korean name written directly before

@@ -1,6 +1,7 @@
 package core
 
 import (
+	"math/rand"
 	"reflect"
 	"strings"
 	"testing"
@@ -206,5 +207,176 @@ func TestSanitizeStackReplacementKeepsTheLineStructure(t *testing.T) {
 	out, _ := Sanitize(sampleStack)
 	if out != "run failed:\n[REDACTED]\nafter the stack\n" {
 		t.Errorf("got %q", out)
+	}
+}
+
+// A commit or content hash is full of digit runs that look like telephone numbers.
+// The characters beside a number must not be ASCII letters or digits, so no digit run
+// inside a hex token is one; ledgers and evidence carry the full head SHA, and a
+// masked SHA would turn every one of them into a refusal.
+func TestSanitizeNeverTouchesAHexDigest(t *testing.T) {
+	rng := rand.New(rand.NewSource(11))
+	const hex = "0123456789abcdef"
+	digest := func(n int) string {
+		b := make([]byte, n)
+		for i := range b {
+			b[i] = hex[rng.Intn(16)]
+		}
+		return string(b)
+	}
+	// digests that carry a number-shaped digit run by construction
+	fixed := []string{
+		"a01012345678b0123456789abcdef01234567890",
+		"ff0212345678ab0123456789abcdef0123456701",
+		"0101234567890123456789abcdef0123456789ab",
+		"abcdef0123456789abcdef0101234567890123ab",
+		"c0311234567d0123456789abcdef0123456789ab",
+	}
+	// digests that start with a number-shaped digit run
+	fixed = append(fixed,
+		"01012345678abcdef0123456789abcdef0123456",
+		"0212345678abcdef0123456789abcdef01234567",
+		("01012345678" + strings.Repeat("abcdef0123456789", 4))[:64],
+	)
+	for i := 0; i < 4000; i++ {
+		fixed = append(fixed, digest(40))
+	}
+	for i := 0; i < 1000; i++ {
+		fixed = append(fixed, digest(64))
+	}
+	contexts := []string{"%s", "head %s ok", "sha:%s", "(%s)", "%s.", "refs/heads/x@%s", "rev=%s;"}
+	changed := 0
+	for _, d := range fixed {
+		for _, c := range contexts {
+			in := strings.Replace(c, "%s", d, 1)
+			if out, cats := Sanitize(in); out != in || len(cats) != 0 {
+				if changed < 5 {
+					t.Errorf("a hex digest was touched: %q -> %q %v", in, out, cats)
+				}
+				changed++
+			}
+		}
+	}
+	if changed > 0 {
+		t.Errorf("%d of %d digest sightings changed", changed, len(fixed)*len(contexts))
+	}
+}
+
+func TestSanitizeMasksAParenthesisedAreaCode(t *testing.T) {
+	for _, in := range []string{"call (02) 123-4567 now", "call (031)123-4567 now", "call (02)1234-5678 now", "call (010) 1234-5678 now"} {
+		out, cats := Sanitize(in)
+		if strings.ContainsAny(out, "0123456789") || !reflect.DeepEqual(cats, []Category{CategoryPhone}) {
+			t.Errorf("%q -> %q %v", in, out, cats)
+		}
+	}
+}
+
+// A job title between the name and the number does not hide the name.
+func TestSanitizeMasksANameBehindATitle(t *testing.T) {
+	for _, c := range []struct{ in, person string }{
+		{"담당 홍길동 대리 010-1234-5678", "홍길동"},
+		{"연락 김철수 과장님 010-1234-5678", "김철수"},
+		{"이영희 팀장 (010-1234-5678)", "이영희"},
+		{"박민준 센터장: 02-123-4567", "박민준"},
+	} {
+		out, cats := Sanitize(c.in)
+		if strings.Contains(out, c.person) || strings.ContainsAny(out, "0123456789") || !reflect.DeepEqual(cats, []Category{CategoryPersonName, CategoryPhone}) {
+			t.Errorf("%q -> %q %v", c.in, out, cats)
+		}
+	}
+}
+
+// Words that label a number, or a title standing alone, are not a person.
+func TestSanitizeKeepsMoreLabelsBesideANumber(t *testing.T) {
+	for _, label := range []string{"고객센터", "본사", "지점", "콜센터", "대표번호", "문의처", "담당자", "사무실", "자택", "휴대전화", "비상연락망", "대리", "팀장"} {
+		in := label + " 010-1234-5678"
+		out, cats := Sanitize(in)
+		if !strings.Contains(out, label) || !reflect.DeepEqual(cats, []Category{CategoryPhone}) {
+			t.Errorf("%q -> %q %v", in, out, cats)
+		}
+	}
+}
+
+const pythonStack = "run failed:\n" +
+	"Traceback (most recent call last):\n" +
+	"  File \"/home/ci/app/main.py\", line 10, in <module>\n" +
+	"    run(secret_token)\n" +
+	"  File \"/home/ci/app/lib.py\", line 4, in run\n" +
+	"    raise ValueError(token)\n" +
+	"ValueError: bad token abc123\n" +
+	"after the stack\n"
+
+const javaStack = "run failed:\n" +
+	"Exception in thread \"main\" java.lang.IllegalStateException: boom user=bob\n" +
+	"\tat com.acme.App.run(App.java:42)\n" +
+	"\tat com.acme.App.main(App.java:10)\n" +
+	"Caused by: java.io.IOException: disk /srv/data\n" +
+	"\tat com.acme.Io.read(Io.java:7)\n" +
+	"\t... 2 more\n" +
+	"after the stack\n"
+
+const nodeStack = "run failed:\n" +
+	"TypeError: Cannot read properties of undefined (reading 'secret')\n" +
+	"    at Object.<anonymous> (/home/ci/app/index.js:10:15)\n" +
+	"    at Module._compile (node:internal/modules/cjs/loader:1256:14)\n" +
+	"    at /home/ci/app/run.js:3:1\n" +
+	"after the stack\n"
+
+func TestSanitizeMasksPythonJavaAndNodeStacks(t *testing.T) {
+	for _, c := range []struct {
+		name, in string
+		leaks    []string
+	}{
+		{"python", pythonStack, []string{"/home/ci", "secret_token", "abc123", "ValueError"}},
+		{"java", javaStack, []string{"com.acme", "user=bob", "/srv/data", "IllegalState"}},
+		{"node", nodeStack, []string{"/home/ci", "secret", "Module._compile"}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			out, cats := Sanitize(c.in)
+			for _, leak := range c.leaks {
+				if strings.Contains(out, leak) {
+					t.Errorf("%q survived: %q", leak, out)
+				}
+			}
+			if out != "run failed:\n[REDACTED]\nafter the stack\n" {
+				t.Errorf("one block replaced, the lines around it kept: %q", out)
+			}
+			found := false
+			for _, k := range cats {
+				if k == CategoryStack {
+					found = true
+				}
+			}
+			if !found {
+				t.Errorf("categories = %v, want the stack", cats)
+			}
+			if again, more := Sanitize(out); again != out || len(more) != 0 {
+				t.Errorf("not idempotent: %q -> %q %v", out, again, more)
+			}
+		})
+	}
+}
+
+func TestSanitizeLeavesIndentedProseAndErrorNamesAlone(t *testing.T) {
+	for _, in := range []string{
+		"the handler throws a ValueError: bad input when it is called",
+		"steps:\n   at the beginning\n   at the end\n",
+		"Traceback is the word for it",
+		"  at home (office)\n",
+		"java.lang.NullPointerException is thrown by the helper",
+		"  File names are listed below",
+	} {
+		if out, cats := Sanitize(in); out != in || len(cats) != 0 {
+			t.Errorf("over-sanitized %q -> %q %v", in, out, cats)
+		}
+	}
+}
+
+// A Java trace without a cause, ending in an elision line.
+func TestSanitizeMasksAJavaTraceWithoutACause(t *testing.T) {
+	in := "start\njava.lang.IllegalStateException: boom\n\tat com.acme.App.run(App.java:42)\n\t... 3 more\nend\n"
+	out, cats := Sanitize(in)
+	if out != "start\n[REDACTED]\nend\n" || len(cats) != 1 || cats[0] != CategoryStack {
+		t.Errorf("got %q %v", out, cats)
 	}
 }
