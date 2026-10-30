@@ -188,7 +188,7 @@ func columns(ctx context.Context, db *sql.DB, table string) (map[string]bool, er
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }() // read-only source: a close error loses nothing
 	cols := map[string]bool{}
 	for rows.Next() {
 		var cid int
@@ -208,7 +208,7 @@ func readBacklog(ctx context.Context, path string) ([]backlogItem, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }() // read-only source: a close error loses nothing
 	cols, err := columns(ctx, db, "items")
 	if err != nil {
 		return nil, err
@@ -228,7 +228,7 @@ func readBacklog(ctx context.Context, path string) ([]backlogItem, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }() // read-only source: a close error loses nothing
 	var out []backlogItem
 	for rows.Next() {
 		var it backlogItem
@@ -247,7 +247,7 @@ func readFactory(ctx context.Context, path string) ([]factoryCard, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }() // read-only source: a close error loses nothing
 	cols, err := columns(ctx, db, "cards")
 	if err != nil {
 		return nil, err
@@ -267,7 +267,7 @@ func readFactory(ctx context.Context, path string) ([]factoryCard, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }() // read-only source: a close error loses nothing
 	latest := map[string]factoryCard{}
 	var ids []string
 	for rows.Next() {
