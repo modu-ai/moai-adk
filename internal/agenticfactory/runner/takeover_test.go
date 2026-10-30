@@ -137,6 +137,10 @@ func TestTakeoverStartsANewAttemptAndKeepsTheOldOneInTheHistory(t *testing.T) {
 // a stop record the old owner left (a safe stop); one of the two is required.
 func TestTakeoverAcceptsASafeStopInsteadOfOwnerGone(t *testing.T) {
 	r, ref, tk := handedOffOwner(t)
+	stop, err := r.RecordSafeStop(tk, "owner stopped itself")
+	if err != nil {
+		t.Fatal(err)
+	}
 	none := fullTakeover()
 	none.OwnerGone, none.SafeStop = false, ""
 	if _, err := r.TakeOver(ref, tk, "sess-new", "disp-t", "run-2", none); !errors.Is(err, core.ErrEvidenceIncomplete) {
@@ -153,19 +157,100 @@ func TestTakeoverAcceptsASafeStopInsteadOfOwnerGone(t *testing.T) {
 		"not preserved":      func(x *Takeover) { x.UncommittedPreserved = false },
 	} {
 		ev := none
-		ev.SafeStop = "stop-record-7"
+		ev.SafeStop = stop
 		mut(&ev)
 		if _, err := r.TakeOver(ref, tk, "sess-new", "disp-t", "run-2", ev); !errors.Is(err, core.ErrEvidenceIncomplete) {
 			t.Errorf("with a safe stop but %s: %v", name, err)
 		}
 	}
 	ok := none
-	ok.SafeStop = "stop-record-7"
+	ok.SafeStop = stop
 	rec, err := r.TakeOver(ref, tk, "sess-new", "disp-t", "run-2", ok)
 	if err != nil || rec.Holder != "sess-new" {
 		t.Fatalf("a safe stop in place of owner-gone: %+v %v", rec, err)
 	}
-	if last := rec.History[len(rec.History)-1]; !strings.Contains(last.Note, "stop-record-7") {
+	if last := rec.History[len(rec.History)-1]; !strings.Contains(last.Note, stop) {
 		t.Errorf("the history must name the safe stop: %+v", last)
+	}
+}
+
+// A reference that names no stop record of this owner at this epoch is not a safe
+// stop, however it is spelled: a string is not evidence (REQ-AF-009, design 412).
+func TestTakeoverRefusesASafeStopThatIsNotARecordOfThisOwner(t *testing.T) {
+	r, ref, tk := handedOffOwner(t)
+	other, _ := core.NewIssueRef(2000)
+	otherTk, err := r.Claim(other, "sess-b", "disp-o", "run-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	foreign, err := r.RecordSafeStop(otherTk, "another owner's stop")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, stop := range map[string]string{
+		"an invented reference":              "stop-record-7",
+		"a well-formed name nobody wrote":    "issue-1948-e1",
+		"another Issue's stop record":        foreign,
+		"a name that is not a valid doc key": "../etc/passwd",
+	} {
+		ev := fullTakeover()
+		ev.OwnerGone, ev.SafeStop = false, stop
+		if _, err := r.TakeOver(ref, tk, "sess-new", "disp-t", "run-2", ev); !errors.Is(err, core.ErrEvidenceIncomplete) {
+			t.Errorf("%s: %v", name, err)
+		}
+	}
+	if cur, _ := r.Store.Read(ref); cur.Holder != "sess-a" {
+		t.Errorf("a refused takeover moved the record: %+v", cur)
+	}
+}
+
+// A stop record belongs to one owner and one epoch: after a takeover the new
+// owner's epoch needs its own.
+func TestASafeStopOfAnEarlierEpochDoesNotStandForTheNextOwner(t *testing.T) {
+	r, ref, tk := handedOffOwner(t)
+	stop, err := r.RecordSafeStop(tk, "first owner stopped")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ev := fullTakeover()
+	ev.OwnerGone, ev.SafeStop = false, stop
+	rec, err := r.TakeOver(ref, tk, "sess-new", "disp-t", "run-2", ev)
+	if err != nil {
+		t.Fatal(err)
+	}
+	newTk := Ticket{Issue: ref, Holder: "sess-new", Epoch: rec.Epoch}
+	ev2 := fullTakeover()
+	ev2.OwnerGone, ev2.SafeStop = false, stop
+	if _, err := r.TakeOver(ref, newTk, "sess-third", "disp-u", "run-3", ev2); !errors.Is(err, core.ErrEvidenceIncomplete) {
+		t.Errorf("the earlier owner's stop record must not carry the next takeover: %v", err)
+	}
+}
+
+// The next owner records its own stop under its own epoch: the reference differs
+// from the first owner's and a takeover resting on it goes through.
+func TestEachOwnersSafeStopIsItsOwnRecord(t *testing.T) {
+	r, ref, tk := handedOffOwner(t)
+	first, err := r.RecordSafeStop(tk, "first owner")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ev := fullTakeover()
+	ev.OwnerGone, ev.SafeStop = false, first
+	rec, err := r.TakeOver(ref, tk, "sess-new", "disp-t", "run-2", ev)
+	if err != nil {
+		t.Fatal(err)
+	}
+	newTk := Ticket{Issue: ref, Holder: "sess-new", Epoch: rec.Epoch}
+	second, err := r.RecordSafeStop(newTk, "second owner")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if second == first {
+		t.Fatalf("two epochs, one record name %q", first)
+	}
+	ev2 := fullTakeover()
+	ev2.OwnerGone, ev2.SafeStop = false, second
+	if _, err := r.TakeOver(ref, newTk, "sess-third", "disp-u", "run-3", ev2); err != nil {
+		t.Errorf("the second owner's own stop record: %v", err)
 	}
 }

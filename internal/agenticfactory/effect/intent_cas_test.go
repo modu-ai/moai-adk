@@ -198,3 +198,57 @@ func TestMemIntentStoreRevisionsAndCompareAndSwap(t *testing.T) {
 		t.Errorf("the revision is stored in the intent: %s", raw)
 	}
 }
+
+type notFoundLookup struct{}
+
+func (notFoundLookup) Lookup(context.Context, Intent) (LookupResult, error) {
+	return LookupResult{Found: false, Authoritative: true}, nil
+}
+
+// F1b (b): the executor that lost the right to send reconciles from facts, but the winner's send may not
+// have reached the provider yet. An authoritative "nothing there" inside the send's own time limit is not
+// evidence of failure: the loser leaves the intent Sent, so a third executor never sees Failed and resends.
+func TestALoserDoesNotWriteFailedWhileTheWinnersSendIsInFlight(t *testing.T) {
+	mem := NewMemIntentStore()
+	now := time.Unix(1_000_000, 0)
+	entered, release := make(chan struct{}), make(chan struct{})
+	sa := &countSender{id: "issue-9", onSend: func(Intent) { close(entered); <-release }}
+	a := &Executor{Store: mem, Send: sa, Lookup: foundLookup{"issue-9"}, Timeouts: casTimeouts(), Now: func() time.Time { return now }}
+	done := make(chan struct{})
+	go func() { defer close(done); _, _ = a.Execute(t.Context(), casReq()) }()
+	<-entered
+
+	sb, sc := &countSender{id: "issue-10"}, &countSender{id: "issue-11"}
+	b := &Executor{Store: mem, Send: sb, Lookup: notFoundLookup{}, Timeouts: casTimeouts(), Now: func() time.Time { return now.Add(time.Millisecond) }}
+	c := &Executor{Store: mem, Send: sc, Lookup: notFoundLookup{}, Timeouts: casTimeouts(), Now: func() time.Time { return now.Add(2 * time.Millisecond) }}
+	got, err := b.Execute(t.Context(), casReq())
+	if err != nil || got.Status != StatusSent {
+		t.Fatalf("B: %+v %v, want the intent left Sent while A's send is in flight", got, err)
+	}
+	if got, err := c.Execute(t.Context(), casReq()); err != nil || got.Status != StatusSent {
+		t.Fatalf("C: %+v %v, want Sent", got, err)
+	}
+	close(release)
+	<-done
+	if n := sa.n.Load() + sb.n.Load() + sc.n.Load(); n != 1 {
+		t.Fatalf("sends = %d, want exactly one", n)
+	}
+	if st, _, _ := mem.Get(Key(IssueCreate, "repo:o/r", "d1")); st.Status != StatusConfirmed {
+		t.Errorf("stored = %+v, want Confirmed", st)
+	}
+}
+
+// Past the send's time limit the same reading is evidence: the intent is Failed and may be retried.
+func TestAnAuthoritativeNothingAfterTheSendLimitIsFailed(t *testing.T) {
+	mem := NewMemIntentStore()
+	now := time.Unix(1_000_000, 0)
+	key := Key(IssueCreate, "repo:o/r", "d1")
+	if err := mem.Put(Intent{Key: key, Kind: IssueCreate, Issue: 7, Target: "repo:o/r", Digest: "d1", Status: StatusSent, Attempts: 1, SentAt: now.Unix()}); err != nil {
+		t.Fatal(err)
+	}
+	e := &Executor{Store: mem, Send: &countSender{}, Lookup: notFoundLookup{}, Timeouts: casTimeouts(), Now: func() time.Time { return now.Add(2 * time.Second) }}
+	got, err := e.Reconcile(t.Context(), key)
+	if err != nil || got.Status != StatusFailed {
+		t.Errorf("%+v %v, want Failed once the send limit has passed", got, err)
+	}
+}

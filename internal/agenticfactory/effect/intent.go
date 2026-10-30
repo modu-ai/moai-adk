@@ -64,6 +64,9 @@ type Intent struct {
 	ParkReason string `json:"park_reason,omitempty"` // why the intent is parked when the cause is a refusal
 	Status     Status `json:"status"`
 	Attempts   int    `json:"attempts"`
+	// SentAt is when the intent last went to Sent (unix seconds, 0 for records written before the field).
+	// A reconciler reads it to tell a send still in flight from one that never happened.
+	SentAt int64 `json:"sent_at,omitempty"`
 	// Rev is the revision the store held when the intent was read (0: not stored yet). It is never written
 	// into the stored intent; PutIf uses it as the revision the write expects.
 	Rev        int64  `json:"-"`
@@ -225,6 +228,7 @@ func (e *Executor) Execute(ctx context.Context, r Request) (Intent, error) {
 	}
 	in.Attempts++
 	in.Status = StatusSent
+	in.SentAt = e.now().Unix()
 	in.LastError = ""
 	in.NotBefore = 0
 	// Winning this write is the right to send: of several executors that read the same state, one revision
@@ -262,7 +266,7 @@ func (e *Executor) Execute(ctx context.Context, r Request) (Intent, error) {
 		if _, err := e.settle(in); err != nil {
 			return Intent{}, err
 		}
-		return e.Reconcile(ctx, key)
+		return e.reconcile(ctx, key, true)
 	}
 	return e.settle(in)
 }
@@ -305,7 +309,17 @@ func (e *Executor) settle(in Intent) (Intent, error) {
 }
 
 // Reconcile resolves a sent or parked intent from facts. It never sends.
+//
+// An authoritative "nothing there" is not read as failure while another executor's send may still be in
+// flight: until the send's own time limit has passed since SentAt the intent stays Sent, so a third
+// executor never finds Failed and resends. The limit is the kind's configured timeout, the same bound the
+// sender runs under.
 func (e *Executor) Reconcile(ctx context.Context, key string) (Intent, error) {
+	return e.reconcile(ctx, key, false)
+}
+
+// reconcile is Reconcile; ownSend is true when the caller's own send has already ended, so no grace applies.
+func (e *Executor) reconcile(ctx context.Context, key string, ownSend bool) (Intent, error) {
 	in, ok, err := e.Store.Get(key)
 	if err != nil || !ok {
 		return Intent{}, fmt.Errorf("effect: no intent %s: %v", key, err)
@@ -326,6 +340,9 @@ func (e *Executor) Reconcile(ctx context.Context, key string) (Intent, error) {
 	case res.Found:
 		in.Status, in.ProviderID = StatusConfirmed, res.ProviderID
 	case res.Authoritative:
+		if !ownSend && in.Status == StatusSent && in.SentAt > 0 && e.now().Unix() < in.SentAt+int64(to/time.Second) {
+			return in, nil // the sender may still be mid-flight: look again later, write nothing
+		}
 		in.Status = StatusFailed
 	default:
 		in.Status = StatusParked
@@ -463,7 +480,8 @@ func (s *MemIntentStore) List() ([]Intent, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	out := make([]Intent, 0, len(s.m))
-	for _, in := range s.m {
+	for k, in := range s.m {
+		in.Rev = s.rev[k]
 		out = append(out, in)
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Key < out[j].Key })

@@ -29,6 +29,8 @@ const maxDocBytes = 256 << 10
 //	collector  - lane 20's collector cursors (safety: a lost cursor is a lost change)
 //	session / grant / evidence - the identity records: a registered session, a role
 //	             grant the ControlService wrote, a registered piece of evidence (safety)
+//	stop       - the safe-stop record an owner leaves for its Issue and epoch (safety: a
+//	             takeover is allowed on it)
 //	worktree   - the reservation of a write worktree by one Issue (safety: create-only, so
 //	             two lanes binding one path cannot both win)
 var docKinds = map[string]core.Priority{
@@ -41,6 +43,7 @@ var docKinds = map[string]core.Priority{
 	"session":    core.PrioritySafety,
 	"grant":      core.PrioritySafety,
 	"evidence":   core.PrioritySafety,
+	"stop":       core.PrioritySafety,
 }
 
 // Doc is one stored document. Data is opaque JSON owned by the caller.

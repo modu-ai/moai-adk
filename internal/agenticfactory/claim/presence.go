@@ -91,8 +91,14 @@ func (s *Store) OwnerLiveness(i core.IssueRef) (OwnerState, error) {
 		return OwnerState{}, fmt.Errorf("%w: %v", core.ErrStoreUnavailable, err)
 	}
 	var p Presence
-	if json.Unmarshal(b, &p) != nil || p.Holder != rec.Holder || p.Epoch != rec.Epoch {
-		return OwnerState{}, nil
+	if json.Unmarshal(b, &p) != nil || p.PID < 1 || strings.TrimSpace(p.Start) == "" {
+		// Something was recorded and cannot be read: that is not "nothing recorded",
+		// which would let a takeover go ahead on the caller's word. It cannot be told
+		// running from gone.
+		return OwnerState{HasPresence: true, PID: p.PID, Class: homestate.OwnerIndeterminate}, nil
+	}
+	if p.Holder != rec.Holder || p.Epoch != rec.Epoch {
+		return OwnerState{}, nil // an earlier holder's record; the current holder has recorded none
 	}
 	return OwnerState{
 		HasPresence:  true,

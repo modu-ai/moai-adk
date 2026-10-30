@@ -2,6 +2,7 @@ package claim
 
 import (
 	"errors"
+	"os"
 	"testing"
 	"time"
 
@@ -108,5 +109,52 @@ func TestAnOlderHoldersHeartbeatDoesNotDescribeTheNewHolder(t *testing.T) {
 	}
 	if st, _ := s.OwnerLiveness(i); st.HasPresence {
 		t.Errorf("the new holder inherited the old one's process: %+v", st)
+	}
+}
+
+// P3: what cannot be read is not "nothing recorded".
+func TestAPresenceThatCannotBeReadIsIndeterminateNotAbsent(t *testing.T) {
+	cases := map[string]string{
+		"garbage":       "{not json",
+		"empty file":    "",
+		"no process id": `{"holder":"sess-a","epoch":1,"pid":0,"start":"fp","lease_until":"2030-01-01T00:00:00Z"}`,
+		"no start":      `{"holder":"sess-a","epoch":1,"pid":4242,"start":" ","lease_until":"2030-01-01T00:00:00Z"}`,
+		// damage is damage whoever's file it claims to be
+		"no process id of another holder": `{"holder":"sess-z","epoch":9,"pid":0,"start":"fp","lease_until":"2030-01-01T00:00:00Z"}`,
+		"no start of another holder":      `{"holder":"sess-z","epoch":9,"pid":4242,"start":"","lease_until":"2030-01-01T00:00:00Z"}`,
+	}
+	for name, body := range cases {
+		t.Run(name, func(t *testing.T) {
+			s := open(t)
+			s.probe = probeOf(homestate.ProcessIdentityDead, "")
+			i := ref(t, 1948)
+			if _, err := s.Acquire(i, "sess-a", "d1", "run-1"); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(s.presencePath(i), []byte(body), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			st, err := s.OwnerLiveness(i)
+			if err != nil || !st.HasPresence || st.Class != homestate.OwnerIndeterminate {
+				t.Errorf("a damaged presence must block a takeover, not allow it: %+v %v", st, err)
+			}
+		})
+	}
+}
+
+// A presence that names an earlier holder is that holder's, not damage: the
+// current holder simply has not recorded one yet.
+func TestAnotherHoldersPresenceFileIsAbsentNotDamaged(t *testing.T) {
+	s := open(t)
+	i := ref(t, 1948)
+	if _, err := s.Acquire(i, "sess-a", "d1", "run-1"); err != nil {
+		t.Fatal(err)
+	}
+	body := `{"holder":"sess-z","epoch":9,"pid":4242,"start":"fp","lease_until":"2030-01-01T00:00:00Z"}`
+	if err := os.WriteFile(s.presencePath(i), []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if st, err := s.OwnerLiveness(i); err != nil || st.HasPresence {
+		t.Errorf("%+v %v", st, err)
 	}
 }

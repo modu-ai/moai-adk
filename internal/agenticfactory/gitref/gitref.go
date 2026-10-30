@@ -40,7 +40,7 @@ const (
 	retryWait     = 10 * time.Millisecond
 )
 
-var keyPattern = regexp.MustCompile(`^(issue|request|agent|intent|audit|context|checkpoint|collector|worktree|session|grant|evidence)/[a-z0-9-]{1,64}$`)
+var keyPattern = regexp.MustCompile(`^(issue|request|agent|intent|audit|context|checkpoint|collector|worktree|session|grant|evidence|stop)/[a-z0-9-]{1,64}$`)
 
 // Ref reads and writes the control branch through a local working repository
 // (Dir), which is only used for plumbing: it is never checked out.
