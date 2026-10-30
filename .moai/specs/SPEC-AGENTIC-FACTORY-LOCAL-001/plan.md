@@ -1,4 +1,6 @@
-# SPEC-AGENTIC-FACTORY-LOCAL-001 — 구현 계획 (0.1.0)
+# SPEC-AGENTIC-FACTORY-LOCAL-001 — 구현 계획 (0.4.0)
+
+> 0.4.0: 머리 판 번호를 SPEC 판에 맞췄다(이전 문구 «구현 계획 (0.1.0)» — 0.2.0·0.3.0 개정이 이 파일 머리를 고치지 않았다, plan-audit N17). M6을 계약 §10 P2 revision과 REQ-AFL-015에 맞췄다(N3).
 
 순서는 바뀔 가능성이 큰 결정부터 둔다(데이터 모델·API, 병합 큐, 흐름). 기계적인 단계(퇴역·상수)는 뒤에 둔다. 시간 예측은 쓰지 않는다. 단계 묶음은 리더의 구현 계약 §7(P1~P4)을 따른다.
 
@@ -43,10 +45,12 @@
 - 동사 이름은 OD-33이 정해진 뒤.
 - 초록 대상: AC-AFL-013, 017, 021.
 
-### M6 — Issue·원격 코드 퇴역 (Priority Low, lane-22 배선 + lane-18 claim/controlref, 계약 P2)
+### M6 — Issue·원격 코드 퇴역 (Priority Low, lane-20 한 변경, 계약 §10 P2 retirement plan revision)
 
-- 새 경로가 green이 된 뒤. import를 먼저 지우고 패키지는 마지막에, 패키지마다 검토된 커밋 하나.
-- 초록 대상: AC-AFL-015.
+- lane-20이 원격 퇴역 전부를 한 변경으로 한다(다른 lane을 기다리지 않기 위해). 대상 집합은 REQ-AFL-015에 적은 것: `moai factory resident`(파일·시험·등록), resident, monitor/notify의 원격 부분, forge(+webhook), mirror, gitref, effect/{ghintake, ctxledger, labels, ghexec, ghidentity, gitexec}, docstore cursors/queue, 그 패키지들만 다루는 e2e 파일. 게이트: integration에서 `go build ./... && go vet ./...`. OD-42 leader decision (leader-decisions-od36-42-20261030.md, 2026-10-30T05:56Z; reversible).
+- 착지 사실(0.4.0, 시험 아님): integration tip `1a552af405`가 `merge(lane-20): retire the remote code, guard-test positive control (3fd9ab6456, 7797e088a0, Issue #1948)`이다(`git log --oneline 915a6524cb..1a552af405`). 이 판이 쓰일 때 퇴역은 이미 착지했다.
+- 초록 대상: AC-AFL-015 — 코드가 착지했으므로 regression-guard(acceptance §A 0.4.0).
+- 이전 문구(0.1.0~0.3.0): 제목 «M6 — Issue·원격 코드 퇴역 (Priority Low, lane-22 배선 + lane-18 claim/controlref, 계약 P2)», 본문 «새 경로가 green이 된 뒤. import를 먼저 지우고 패키지는 마지막에, 패키지마다 검토된 커밋 하나.»
 
 ## §D 제약
 
@@ -56,8 +60,9 @@
 ## §E 자체 확인
 
 - AC마다 시험 이름이 정확히 하나인지, 그 이름이 아직 없을 때 실행 명령을 두지 않았는지.
-- RED 커밋과 GREEN 커밋이 따로 있는지(커밋 그래프로).
+- RED 커밋과 GREEN 커밋이 따로 있는지(커밋 그래프로) — 0.4.0부터 이 확인은 코드가 아직 착지하지 않은 AC-AFL-013·017에만 건다. 나머지 19개는 착지 시험을 regression-guard로 쓴다(acceptance §A 0.4.0, §F).
+- 이전 문구(0.1.0~0.3.0): «RED 커밋과 GREEN 커밋이 따로 있는지(커밋 그래프로).»
 
 ## §F 상위 SPEC과의 연결
 
-- 상위 SPEC-AGENTIC-FACTORY-001 0.7.0 §J 처분표가 이 SPEC의 REQ-AFL id를 가리킨다. 상위 DEC-AF-06/07/17/18(개정)·DEC-AF-30~33, OD-31~35.
+- 상위 SPEC-AGENTIC-FACTORY-001 0.7.3 §J 처분표가 이 SPEC의 REQ-AFL id를 가리킨다(이전 문구 «0.7.0 §J»). 상위 DEC-AF-06/07/17/18(개정)·DEC-AF-30~33, OD-31~35.

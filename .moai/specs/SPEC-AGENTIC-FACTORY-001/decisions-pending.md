@@ -1,6 +1,6 @@
 # SPEC-AGENTIC-FACTORY-001 — 결정 대기 목록
 
-작성일: 2026-10-30 · SPEC 판: 0.7.2 · 작성: manager-spec
+작성일: 2026-10-30 · SPEC 판: 0.7.3(행 내용은 0.7.2와 같음; 이전 문구 «SPEC 판: 0.7.2») · 작성: manager-spec
 
 ## 이 표를 읽는 법
 
