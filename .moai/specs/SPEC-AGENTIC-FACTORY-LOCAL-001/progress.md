@@ -78,7 +78,7 @@ _<pending sync-phase>_
 - 원천: leader decision (leader-decisions-od36-42-20261030.md, 2026-10-30T05:56Z; reversible). 파일 `/Users/goos/MoAI/moai-adk-go/.moai/reports/issue-1948/leader-decisions-od36-42-20261030.md`. 사용자·운영자 결정이 아니다. `hold-20261030.md` "Hold lifted" 절의 사용자 답은 리더가 옮겨 적은 것이며 원문은 읽지 않았다.
 - 판: 하위 0.3.0, 상위 0.7.2 — 둘 다 revised, unaudited.
 - 원천 계약 sha256 `f2c1078b7add847b93926ba3356eda62e4fbc44d8aa77221f059f44f6b059acb` — 작업 전에 다시 재어 같음을 확인했다.
-- commit: `pending-backfill`
+- commit: `457b61967c4b54fc7c7bbfa896ec684de2bd7d63` (이 줄을 채우는 것은 그 뒤의 별도 커밋)
 
 | OD | decision | files:lines changed | note |
 |---|---|---|---|
