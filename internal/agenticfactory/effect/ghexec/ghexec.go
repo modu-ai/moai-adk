@@ -145,9 +145,26 @@ func (e Exec) allowed(ctx context.Context, args []string) bool {
 	if len(args) < 2 {
 		return false
 	}
+	// Only the flag position is inspected. The argument after a flag that takes a value is that value
+	// (a title such as "-wip fix" is text), and everything after "--" is positional.
+	valueNext, positional := false, false
 	for _, a := range args {
-		if name, _, _ := strings.Cut(a, "="); name == "--web" || name == "-w" || bundlesW(name) { // opens a browser
+		switch {
+		case positional:
+			continue
+		case valueNext:
+			valueNext = false
+			continue
+		case a == "--":
+			positional = true
+			continue
+		}
+		name, _, hasEq := strings.Cut(a, "=")
+		if name == "--web" || name == "-w" || bundlesW(name) { // opens a browser
 			return false
+		}
+		if !hasEq && strings.HasPrefix(a, "-") && takesValue(name) {
+			valueNext = true
 		}
 	}
 	if args[0] == "api" { // its second argument is a path or a flag, so it cannot be matched as a pair
@@ -217,6 +234,19 @@ func parseAPI(a []string) (method, path string, hasBody, ok bool) {
 }
 
 // flagValue returns the value of --name given as "--name value" or "--name=value".
+// valueFlags are the gh flags (of the verbs this wrapper allows) that take a value, in addition to the
+// `gh api` flags in apiFlags. Only flags that really take a value belong here: a boolean flag listed as a
+// value flag would hide the argument after it from the --web check.
+var valueFlags = map[string]bool{
+	"--repo": true, "-R": true, "--title": true, "-t": true, "--body": true, "-b": true, "--body-file": true, "-F": true,
+	"--json": true, "--jq": true, "-q": true, "--template": true, "--limit": true, "-L": true, "--state": true, "-s": true,
+	"--author": true, "-A": true, "--assignee": true, "-a": true, "--label": true, "-l": true, "--search": true, "-S": true,
+	"--head": true, "--base": true, "--milestone": true, "-m": true, "--project": true, "-p": true, "--app": true,
+	"--mention": true,
+}
+
+func takesValue(name string) bool { return valueFlags[name] || apiFlags[name] }
+
 // bundlesW reports a bundle of short options that contains -w (`-cw` is `-c -w`).
 func bundlesW(name string) bool {
 	return len(name) > 2 && name[0] == '-' && name[1] != '-' && strings.ContainsRune(name[1:], 'w')

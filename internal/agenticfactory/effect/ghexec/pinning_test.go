@@ -87,3 +87,31 @@ func TestBundledShortOptionsCannotHideTheWebFlag(t *testing.T) {
 		t.Error("a plain -R was refused")
 	}
 }
+
+// Only the flag position is inspected: the same text as a VALUE (a title, a body) is just text.
+func TestAValueThatLooksLikeAWebFlagIsNotRefused(t *testing.T) {
+	e := ex()
+	e.AllowWrite = true
+	for name, args := range map[string][]string{
+		"title -wip":        {"issue", "create", "--repo", "o/r", "--title", "-wip fix", "--body", "b"},
+		"title -w":          {"issue", "create", "--repo", "o/r", "--title", "-w", "--body", "b"},
+		"body --web":        {"issue", "create", "--repo", "o/r", "--title", "t", "--body", "--web"},
+		"short -t value":    {"issue", "create", "-R", "o/r", "-t", "-cw notes", "-b", "b"},
+		"title= form":       {"issue", "create", "--repo", "o/r", "--title=-wip fix", "--body=b"},
+		"search value":      {"issue", "list", "--search", "-wip"},
+		"after the -- mark": {"issue", "create", "--repo", "o/r", "--title", "t", "--body", "b", "--", "-wip"},
+	} {
+		if !e.allowed(t.Context(), args) {
+			t.Errorf("%s: refused: %v", name, args)
+		}
+	}
+	for name, args := range map[string][]string{
+		"bundle after a boolean flag": {"pr", "view", "9", "-c", "-cw"},
+		"-w after a boolean flag":     {"pr", "view", "9", "--comments", "-w"},
+		"--web after a value flag":    {"issue", "list", "--search", "x", "--web"},
+	} {
+		if e.allowed(t.Context(), args) {
+			t.Errorf("%s: allowed: %v", name, args)
+		}
+	}
+}

@@ -322,7 +322,13 @@ func (s *Service) remind(ctx context.Context, rec claim.Record, w core.Wait, st 
 		return acts
 	}
 	if st.BusyRuns != 0 {
-		st.BusyRuns = 0 // saved with the state the retry below records
+		// A pass whose delivery was not held back ends the busy run, and the end is saved now: the code
+		// below can return before it saves anything (a record that moved), and a run left uncleared would
+		// join the next, separate run.
+		st.BusyRuns = 0
+		if err := s.save(rec.Issue, *st); err != nil {
+			return []Action{{Issue: rec.Issue, What: "state-error", Err: err}}
+		}
 	}
 	if notifyErr != nil {
 		// A reminder that is known not to have been delivered still spends the retry, so a broken
