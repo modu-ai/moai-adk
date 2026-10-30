@@ -259,20 +259,21 @@ func wordShare(s string) float64 {
 const maxWordShare = 0.80
 
 // looksCutSecret reports a run of [A-Za-z0-9/+] that is a secret cut into short
-// pieces by '/' or '+'. It is deliberately narrow, because a path is made of the
-// same characters: it must be a single standalone token (not a piece of a longer
-// path, URL or identifier, so no '.', '-' or '_' beside it and no leading or
-// trailing '/'), hold a '/' or '+', mix upper case, lower case and digits, read as
-// words for less than maxWordShare of it, and change character class like random
-// text does once the '/' and '+' are taken out. A bare hex hash holds no '/' or '+' and is
+// pieces by '/' or '+'. A path is made of the same characters, so it is judged by
+// what the text is and not by where it stands: it must hold a '/' or '+', mix upper
+// case, lower case and digits, read as words for less than maxWordShare of it, and
+// change character class like random text does once the '/' and '+' are taken out.
+// What stands beside it decides nothing, because a secret is written after a
+// sentence's last word and a full stop, after "key-" or "key_", inside a URL path
+// and behind a leading or trailing '/'. A bare hex hash holds no '/' or '+' and is
 // not touched.
-func looksCutSecret(run string, before, after byte) bool {
-	for _, c := range []byte{before, after} {
-		if c == '.' || c == '-' || c == '_' {
-			return false
-		}
+func looksCutSecret(run string) bool {
+	if !strings.ContainsAny(run, "/+") {
+		return false
 	}
-	if run[0] == '/' || run[len(run)-1] == '/' || !strings.ContainsAny(run, "/+") {
+	// The per-user temp root of macOS is a directory named at random on purpose; it
+	// holds no secret and every test and build tool prints it.
+	if strings.HasPrefix(run, "/var/folders/") || strings.HasPrefix(run, "/private/var/folders/") {
 		return false
 	}
 	body := strings.Map(func(r rune) rune {
@@ -320,14 +321,7 @@ func maskCutSecrets(s string, found map[Category]int) string {
 		for end < len(s) && s[end] == '=' && end-m[1] < 2 { // base64 padding belongs to the token
 			end++
 		}
-		var before, after byte
-		if start > 0 {
-			before = s[start-1]
-		}
-		if end < len(s) {
-			after = s[end]
-		}
-		if !looksCutSecret(s[m[0]:m[1]], before, after) {
+		if !looksCutSecret(s[m[0]:m[1]]) {
 			continue
 		}
 		b.WriteString(s[last:start])

@@ -2,6 +2,7 @@ package runner
 
 import (
 	"errors"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -94,6 +95,41 @@ func TestARunningOwnerIsNotTakenOverOnAnInventedStopReference(t *testing.T) {
 	ev.SafeStop = "stop-record-9"
 	if _, err := r.TakeOver(ref, tk, "sess-new", "disp-t", "run-2", ev); !errors.Is(err, core.ErrEvidenceIncomplete) {
 		t.Fatalf("an invented reference: %v", err)
+	}
+	if cur, _ := r.Store.Read(ref); cur.Holder != "sess-a" {
+		t.Errorf("the record moved: %+v", cur)
+	}
+}
+
+// A presence file that cannot be read blocks the takeover and the refusal names
+// the file and the way out.
+func TestADamagedPresenceBlocksATakeoverAndNamesTheRecovery(t *testing.T) {
+	r, ref, tk := handedOffOwner(t)
+	beat(t, r, tk, homestate.ProcessIdentityLive)
+	path := r.Store.PresenceFile(ref)
+	if err := os.WriteFile(path, []byte("{not json"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_, err := r.TakeOver(ref, tk, "sess-new", "disp-t", "run-2", fullTakeover())
+	if !errors.Is(err, core.ErrOwnerUnconfirmed) || !strings.Contains(err.Error(), "remove") || !strings.Contains(err.Error(), "issue-1948.presence") {
+		t.Errorf("a damaged presence: %v", err)
+	}
+}
+
+// The reverse of a stop recorded after the last beat: the owner beats AGAIN after
+// recording its stop, so it has resumed and the stop no longer stands for it.
+func TestARunningOwnerThatBeatsAfterItsStopIsNotTakenOver(t *testing.T) {
+	r, ref, tk := handedOffOwner(t)
+	beat(t, r, tk, homestate.ProcessIdentityLive)
+	stop, err := r.RecordSafeStop(tk, "owner stopped")
+	if err != nil {
+		t.Fatal(err)
+	}
+	beat(t, r, tk, homestate.ProcessIdentityLive) // resumed
+	ev := notGone()
+	ev.SafeStop = stop
+	if _, err := r.TakeOver(ref, tk, "sess-new", "disp-t", "run-2", ev); !errors.Is(err, core.ErrEvidenceIncomplete) {
+		t.Fatalf("a stop the owner has beaten after: %v", err)
 	}
 	if cur, _ := r.Store.Read(ref); cur.Holder != "sess-a" {
 		t.Errorf("the record moved: %+v", cur)

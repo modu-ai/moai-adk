@@ -2,6 +2,7 @@ package core
 
 import (
 	"errors"
+	"math/rand"
 	"reflect"
 	"strings"
 	"testing"
@@ -97,12 +98,14 @@ func TestSanitizeLeavesOrdinaryTextAlone(t *testing.T) {
 		"internal/agenticfactory/claim/ControlRef2/PresenceStoreHeartbeat",      // a camel-case path with a digit
 		"refs/heads/0123456789abcdef0123456789abcdef01234567",                   // a commit hash behind a path prefix
 		"internal/agenticfactory/claim/presence_test_for_the_owner_record",      // long, slashes, no digits
-		"https://example.com/Ab1Cd2Ef3Gh4/Ij5Kl6Mn7Op8Qr9St0/Uv1Wx2Yz3",         // a piece of a URL: a '.' sits beside the run
+		"AB1CD2EF3GH4IJ5KL6MN7/OP8QR9ST0UV1WX2YZ3/AB4CD5EF6GH7",                 // upper case and digits only: not the mix of a random token
+		"ab1cd2ef3gh4ij5kl6mn7/op8qr9st0uv1wx2yz3/ab4cd5ef6gh7",                 // lower case and digits only
+		"AbCdEfGhIjKlMnOpQrStUvWx/YzAbCdEfGhIj/KlMnOpQrStUvWxYz",                // letters of both cases and no digit
+		"/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/",                     // the per-user temp root of macOS is random by design and holds no secret
+		"/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/go-build42",   // the same root behind /private
 		"Library/Caches/Foo2/Bar/Support/Models/Settings/Items/Cache",
 		"ABCDEFGHIJKLMNOPQRST/UVWXYZ0123456789/abc",                                 // words and a digit: few class changes
 		"A1/Documentation/B2/Application/C3/Configuration/D4/Initialization",        // many class changes, but word-sized lower-case stretches
-		"/wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",                                 // a leading '/' is a path root, not a bare token
-		"build-wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",                            // joined to an identifier by '-'
 		"goroutine 7 [running]:\nmain.main()\n\t/usr/local/go/src/main.go:12 +0x1d", // a stack under a system path is not personal data
 	} {
 		if out, cats := Sanitize(in); out != in || len(cats) != 0 {
@@ -184,5 +187,62 @@ func TestSanitizeCutSecretIsReplacedWholeWithItsPadding(t *testing.T) {
 	out, cats := Sanitize("val aB3dE5gH7jK9/mN1pQ3sT5vW7yZ9bC1dE/3fG5hJ7kL9x== end")
 	if out != "val [REDACTED] end" || len(cats) != 1 || cats[0] != CategoryOpaqueToken {
 		t.Errorf("got %q %v", out, cats)
+	}
+}
+
+// Where a cut secret stands does not decide whether it is one: a full stop that
+// ends a sentence, a label joined by '-' or '_', a URL path or a leading '/' are all
+// places a secret is written. A path of words stays, by its word share.
+func TestSanitizeMasksACutSecretWhereverItStands(t *testing.T) {
+	const k = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+	for _, c := range []struct{ name, in string }{
+		{"sentence full stop", "the value is " + k + "."},
+		{"full stop then more text", "the value is " + k + ". Next sentence."},
+		{"comma", "values " + k + ", and more"},
+		{"parentheses", "(" + k + ")"},
+		{"semicolon", "x " + k + "; y"},
+		{"label joined by dash", "key-" + k},
+		{"label joined by underscore", "key_" + k},
+		{"after a host in a URL", "https://example.com/" + k},
+		{"leading slash", "/" + k},
+		{"trailing slash", k + "/"},
+		{"joined to an identifier", "build-" + k},
+		{"dotted extension after", k + ".txt"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			out, cats := Sanitize(c.in)
+			if strings.Contains(out, "K7MDENG") || strings.Contains(out, "bPxRfiCY") || strings.Contains(out, "wJalrXUt") {
+				t.Errorf("the secret survived: %q", out)
+			}
+			if len(cats) == 0 {
+				t.Errorf("nothing reported for %q", c.in)
+			}
+		})
+	}
+}
+
+// The measured pass rate of a random secret of this alphabet, with the secret in
+// the middle of a line and at the end of a sentence. 100000 seeded runs: the rate
+// must stay under 0.6% in both places.
+func TestSanitizeCutSecretPassRateStaysLow(t *testing.T) {
+	const alpha = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/+"
+	rng := rand.New(rand.NewSource(7))
+	const n = 20000
+	mid, end := 0, 0
+	for i := 0; i < n; i++ {
+		b := make([]byte, 40)
+		for j := range b {
+			b[j] = alpha[rng.Intn(len(alpha))]
+		}
+		in := string(b)
+		if out, _ := Sanitize("the value is " + in + " ok"); strings.Contains(out, in[10:30]) {
+			mid++
+		}
+		if out, _ := Sanitize("the value is " + in + "."); strings.Contains(out, in[10:30]) {
+			end++
+		}
+	}
+	if float64(mid)/n > 0.006 || float64(end)/n > 0.006 {
+		t.Errorf("pass rate mid-line %.3f%%, sentence end %.3f%%, want both under 0.6%%", 100*float64(mid)/n, 100*float64(end)/n)
 	}
 }

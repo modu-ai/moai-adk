@@ -483,11 +483,23 @@ func (m *Mirror) Pending() []int {
 }
 
 // Flush writes each queued ledger once, lowest Issue first, and returns how many
-// were written. It stops at the first failure (a short budget, a block, an
-// error) and leaves the rest queued, so a refusal is never hammered. An entry
+// were written. A ledger that is refused for good (ErrUnsanitized: the RESTRICTED
+// record has been written in its place, and trying again cannot change the answer)
+// leaves the queue and the run goes on with the next Issue, so one Issue's secret
+// never holds the Issues behind it. Any other failure (a short budget, a block, an
+// error) stops the run and leaves the rest queued, so a refusal is never hammered.
+// What went wrong comes back joined, each error named with its Issue. An entry
 // queued again while its predecessor was being written stays queued.
 func (m *Mirror) Flush(ctx context.Context) (int, error) {
 	written := 0
+	var errs []error
+	drop := func(n int, gen uint64) {
+		m.mu.Lock()
+		if cur, ok := m.pending[n]; ok && cur.gen == gen {
+			delete(m.pending, n)
+		}
+		m.mu.Unlock()
+	}
 	for _, n := range m.Pending() {
 		m.mu.Lock()
 		q, ok := m.pending[n]
@@ -495,15 +507,18 @@ func (m *Mirror) Flush(ctx context.Context) (int, error) {
 		if !ok {
 			continue
 		}
-		if err := m.WriteLedger(ctx, q.l); err != nil {
-			return written, err
+		err := m.WriteLedger(ctx, q.l)
+		switch {
+		case err == nil:
+			written++
+			drop(n, q.gen)
+		case errors.Is(err, core.ErrUnsanitized):
+			errs = append(errs, fmt.Errorf("issue-%d: %w", n, err))
+			drop(n, q.gen)
+		default:
+			errs = append(errs, fmt.Errorf("issue-%d: %w", n, err))
+			return written, errors.Join(errs...)
 		}
-		written++
-		m.mu.Lock()
-		if cur, ok := m.pending[n]; ok && cur.gen == q.gen {
-			delete(m.pending, n)
-		}
-		m.mu.Unlock()
 	}
-	return written, nil
+	return written, errors.Join(errs...)
 }
