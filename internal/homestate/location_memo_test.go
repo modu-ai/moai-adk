@@ -206,6 +206,42 @@ func TestLocationMemo_LinkedWorktreeReplacedByAStandaloneRepository(t *testing.T
 	}
 }
 
+// Audit F19: a linked worktree's `.git` FILE is unchanged when the primary repository drops the
+// worktree's administrative directory (`git worktree prune`, or the directory removed by hand). The
+// answer then changes (git no longer finds a repository there) while everything the fingerprint reads
+// at the worktree itself stays the same.
+func TestLocationMemo_LinkedWorktreeAdminDirRemovedUnderARememberedAnswer(t *testing.T) {
+	primary := lmRepo(t)
+	wt := filepath.Join(lmDir(t), "wt")
+	lmGit(t, primary, "worktree", "add", "-q", "-b", "linked", wt)
+	resetLocationMemo()
+	if got := CanonicalProjectRoot(wt); got != primary {
+		t.Fatalf("control: a linked worktree answers %q, want its primary checkout %q", got, primary)
+	}
+	admin := filepath.Join(primary, ".git", "worktrees")
+	entries, err := os.ReadDir(admin)
+	if err != nil || len(entries) != 1 {
+		t.Fatalf("control: expected one administrative directory under %s, got %v (err %v)", admin, entries, err)
+	}
+	if err := os.RemoveAll(filepath.Join(admin, entries[0].Name())); err != nil {
+		t.Fatal(err)
+	}
+	if got := CanonicalProjectRoot(wt); got == primary {
+		t.Errorf("after the worktree's administrative directory was removed, CanonicalProjectRoot still answers the primary checkout %q (a stale remembered answer)", got)
+	}
+}
+
+// Audit F19: a variable that changes how git discovers a repository, and that callers do not scrub,
+// belongs to the key.
+func TestLocationMemo_KeyCarriesTheDiscoveryEnvironment(t *testing.T) {
+	t.Setenv("GIT_DISCOVERY_ACROSS_FILESYSTEM", "")
+	a := locEnvKey()
+	t.Setenv("GIT_DISCOVERY_ACROSS_FILESYSTEM", "1")
+	if b := locEnvKey(); a == b {
+		t.Error("the key ignores GIT_DISCOVERY_ACROSS_FILESYSTEM")
+	}
+}
+
 // A repository whose metadata is removed.
 func TestLocationMemo_RepositoryRemovedUnderARememberedAnswer(t *testing.T) {
 	repo := lmRepo(t)
