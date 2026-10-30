@@ -11,7 +11,7 @@ import (
 
 func TestBudget_NoRequestIsSentBeforeTheResumeTime(t *testing.T) {
 	d := newDriver(resp(429, "", "retry-after", "300"))
-	d.c.Get(t.Context(), "/repos/o/r/issues")
+	_, _ = d.c.Get(t.Context(), "/repos/o/r/issues")
 	for _, at := range []time.Duration{time.Second, 100 * time.Second, 299 * time.Second} {
 		d.now = t0.Add(at)
 		res, _ := d.c.Get(t.Context(), "/repos/o/r/issues")
@@ -72,9 +72,9 @@ func TestBudget_TheReserveBelongsToStateAndSafetyWrites_AndALimitNeverSwitchesCr
 
 	// A limited call is retried on the SAME path with the same credential-free headers: nothing is switched.
 	d := newDriver(resp(429, "", "retry-after", "5"))
-	d.c.Get(t.Context(), "/repos/o/r/issues")
+	_, _ = d.c.Get(t.Context(), "/repos/o/r/issues")
 	d.now = t0.Add(10 * time.Second)
-	d.c.Get(t.Context(), "/repos/o/r/issues")
+	_, _ = d.c.Get(t.Context(), "/repos/o/r/issues")
 	if len(d.f.calls) != 2 {
 		t.Fatalf("calls = %d, want the retry after the wait", len(d.f.calls))
 	}

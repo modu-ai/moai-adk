@@ -37,12 +37,12 @@ func TestForgeClassify_G1_RetryAfterIsASecondaryLimit_NoCallBeforeTheSecondsPass
 			t.Fatalf("%d: res=%+v err=%v", status, res, err)
 		}
 		d.now = t0.Add(60 * time.Second)
-		d.c.Get(t.Context(), "/x")
+		_, _ = d.c.Get(t.Context(), "/x")
 		if len(d.f.calls) != 1 {
 			t.Errorf("%d: calls = %d inside the retry-after, want 0 more", status, len(d.f.calls))
 		}
 		d.now = t0.Add(121 * time.Second)
-		d.c.Get(t.Context(), "/x")
+		_, _ = d.c.Get(t.Context(), "/x")
 		if len(d.f.calls) != 2 {
 			t.Errorf("%d: calls = %d after the seconds passed, want the next call", status, len(d.f.calls))
 		}
@@ -57,9 +57,9 @@ func TestForgeClassify_G2_ExhaustedRemainingWaitsForTheReset_AndNamesTheResource
 		t.Fatalf("verdict = %+v, want rate-limited until the reset time", v)
 	}
 	d := newDriver(r)
-	d.c.Get(t.Context(), "/search/issues")
+	_, _ = d.c.Get(t.Context(), "/search/issues")
 	d.now = t0.Add(10 * time.Minute)
-	d.c.Get(t.Context(), "/search/issues")
+	_, _ = d.c.Get(t.Context(), "/search/issues")
 	if len(d.f.calls) != 1 {
 		t.Errorf("calls = %d before the reset, want 0 more", len(d.f.calls))
 	}
@@ -166,9 +166,9 @@ func TestForgeClassify_L1_GitLab429WithRetryAfter_WaitsThatLong(t *testing.T) {
 		t.Fatalf("verdict = %+v, want rate-limited until Retry-After", v)
 	}
 	d := newDriver(r)
-	d.c.Get(t.Context(), "/api/v4/projects")
+	_, _ = d.c.Get(t.Context(), "/api/v4/projects")
 	d.now = t0.Add(20 * time.Second)
-	d.c.Get(t.Context(), "/api/v4/projects")
+	_, _ = d.c.Get(t.Context(), "/api/v4/projects")
 	if len(d.f.calls) != 1 {
 		t.Errorf("calls = %d inside Retry-After, want 0 more", len(d.f.calls))
 	}
