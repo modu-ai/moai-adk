@@ -239,7 +239,7 @@ func (s *Store) QueueUpdate(ctx context.Context, cardID string, presented QueueE
 		// candidate is not that caller's to move (subject_sha is the authority).
 		if presented.Candidate != rowCandidate {
 			if strings.TrimSpace(presented.Candidate) == "" {
-				return fmt.Errorf("%w: a landing-lock write names the candidate it verified", ErrInvalid)
+				return fmt.Errorf("%w: a write names the candidate it verified", ErrInvalid)
 			}
 			return fmt.Errorf("%w: %s is queued with candidate %s, not %s", ErrStaleEpoch, cardID, rowCandidate, presented.Candidate)
 		}
