@@ -36,7 +36,7 @@ func (s *Store) NotesSince(ctx context.Context, seq int64) ([]Note, error) {
 	if err != nil {
 		return nil, fmt.Errorf("ledger: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var out []Note
 	for rows.Next() {
 		var (

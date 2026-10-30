@@ -52,7 +52,7 @@ func evidenceFor(ctx context.Context, q querier, cardID string) ([]EvidenceRecor
 	if err != nil {
 		return nil, fmt.Errorf("ledger: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var out []EvidenceRecord
 	for rows.Next() {
 		var (

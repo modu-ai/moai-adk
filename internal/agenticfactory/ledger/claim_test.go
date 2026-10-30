@@ -353,7 +353,7 @@ func TestConcurrentClaimsNeverShareACard(t *testing.T) {
 				t.Error(err)
 				return
 			}
-			defer s.Close()
+			defer func() { _ = s.Close() }()
 			for {
 				c, err := s.Claim(context.Background(), req("w"+string(rune('0'+w)), 1000+w))
 				if errors.Is(err, ErrNoWork) {

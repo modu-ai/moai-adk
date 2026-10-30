@@ -119,13 +119,13 @@ func (s *Store) reapLocks(ctx context.Context, alive func(pid int, start string)
 		var l lk
 		var start sql.NullString
 		if err := rows.Scan(&l.name, &l.epoch, &l.pid, &start); err != nil {
-			rows.Close()
+			_ = rows.Close()
 			return err
 		}
 		l.start = start.String
 		all = append(all, l)
 	}
-	rows.Close()
+	_ = rows.Close()
 	if err := rows.Err(); err != nil {
 		return err
 	}

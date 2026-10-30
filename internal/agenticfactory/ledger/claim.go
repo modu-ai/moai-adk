@@ -48,13 +48,13 @@ func (s *Store) probeLeases(ctx context.Context, alive func(pid int, start strin
 			start sql.NullString
 		)
 		if err := rows.Scan(&r.p.cardID, &r.p.epoch, &pid, &start, &r.p.heartbeat, &r.expired); err != nil {
-			rows.Close()
+			_ = rows.Close()
 			return nil, nil, err
 		}
 		r.pid, r.start = int(pid.Int64), start.String
 		all = append(all, r)
 	}
-	rows.Close()
+	_ = rows.Close()
 	if err := rows.Err(); err != nil {
 		return nil, nil, err
 	}
@@ -368,13 +368,13 @@ func (s *Store) pickTx(ctx context.Context, tx *sql.Tx) (Card, []string, error) 
 		case errors.As(err, &ce):
 			broken = append(broken, ce) // this card alone; it is skipped below
 		case err != nil:
-			rows.Close()
+			_ = rows.Close()
 			return Card{}, nil, err
 		default:
 			cands = append(cands, c)
 		}
 	}
-	rows.Close()
+	_ = rows.Close()
 	if err := rows.Err(); err != nil {
 		return Card{}, nil, err
 	}

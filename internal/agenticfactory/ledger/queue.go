@@ -220,7 +220,7 @@ func (s *Store) Queue(ctx context.Context) ([]QueueItem, error) {
 	if err != nil {
 		return nil, fmt.Errorf("ledger: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var out []QueueItem
 	for rows.Next() {
 		var (

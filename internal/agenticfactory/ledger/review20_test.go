@@ -12,7 +12,7 @@ func stalledNotes(t *testing.T, s *Store, card string) []string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var out []string
 	for rows.Next() {
 		var x string
