@@ -162,9 +162,8 @@ func (m *Merger) Land(ctx context.Context, cardID, candidateSHA string) (Result,
 		epoch, err := m.Queue.AcquireLock(ctx, LandingLock, m.Holder, m.lockTTL())
 		if errors.Is(err, ErrLockHeld) {
 			_ = m.Git.Discard(settle, cand)
-			if err := m.Queue.SetState(ctx, cardID, 0, StateWaiting, trunk, ""); err != nil {
-				return res, err
-			}
+			// The row stays verifying: the ledger lets only a lock holder send verifying back to waiting, and a
+			// later Land writes verifying again at the card epoch (verifying -> verifying is allowed).
 			res.Outcome, res.Reason = OutcomeWaiting, "the landing lock is held by another lander"
 			return res, nil
 		}
