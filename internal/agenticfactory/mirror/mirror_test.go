@@ -198,6 +198,12 @@ func TestASensitiveLedgerIsPostedAsARestrictedRecordAndReportedRefused(t *testin
 	if rec["sha256"] != hex.EncodeToString(wantSum[:]) || rec["sha256"] == hex.EncodeToString(origSum[:]) {
 		t.Errorf("the SHA-256 must be of the masked ledger: %s", rec["sha256"])
 	}
+	// DEC-AF-28: the hash of the original text appears nowhere in what gh was sent
+	for _, c := range f.calls {
+		if strings.Contains(strings.Join(c, " "), hex.EncodeToString(origSum[:])) {
+			t.Errorf("the hash of the original ledger reached gh: %v", c)
+		}
+	}
 	for _, name := range []string{"token", "credential-assignment"} {
 		if !strings.Contains(rec["summary"], name) {
 			t.Errorf("the summary must name %q: %q", name, rec["summary"])
