@@ -52,7 +52,9 @@ type Git interface {
 	OriginHeadBranch(ctx context.Context) (string, error)
 	// CheckedOutAt returns the worktree that has ref checked out, or "" when none does.
 	CheckedOutAt(ctx context.Context, ref string) (string, error)
-	// UpdateRef moves ref from oldSHA to newSHA only if it still points at oldSHA (`git update-ref ref new old`).
+	// IsSymbolicRef says whether ref is a symbolic ref (it names another ref instead of a commit).
+	IsSymbolicRef(ctx context.Context, ref string) (bool, error)
+	// UpdateRef moves ref from oldSHA to newSHA only if it still points at oldSHA (`git update-ref --no-deref ref new old`).
 	UpdateRef(ctx context.Context, ref, newSHA, oldSHA string) error
 }
 
@@ -196,9 +198,21 @@ func (g GitCLI) CheckedOutAt(ctx context.Context, ref string) (string, error) {
 	return "", nil
 }
 
-// UpdateRef is the compare-and-swap that lands a card: it succeeds only if ref still names oldSHA.
+// IsSymbolicRef reports whether ref is a symbolic ref. `for-each-ref` prints the target of a symbolic ref and
+// nothing for a plain one (or a missing one), and exits 0 either way, so the answer never rests on an exit code.
+func (g GitCLI) IsSymbolicRef(ctx context.Context, ref string) (bool, error) {
+	out, err := g.run(ctx, g.Repo, "for-each-ref", "--format=%(symref)", ref)
+	if err != nil {
+		return false, err
+	}
+	return out != "", nil
+}
+
+// UpdateRef is the compare-and-swap that lands a card: it succeeds only if ref still names oldSHA. It never
+// follows a symbolic ref (--no-deref): the trunk is a plain branch, and a link that points at another branch must
+// not move that branch.
 func (g GitCLI) UpdateRef(ctx context.Context, ref, newSHA, oldSHA string) error {
-	if _, err := g.run(ctx, g.Repo, "update-ref", ref, newSHA, oldSHA); err != nil {
+	if _, err := g.run(ctx, g.Repo, "update-ref", "--no-deref", ref, newSHA, oldSHA); err != nil {
 		// Only a value mismatch means the trunk moved; an invalid name, a missing object or a lock failure is a
 		// different problem and must not be retried as if another lander had won.
 		if strings.Contains(err.Error(), "but expected") {

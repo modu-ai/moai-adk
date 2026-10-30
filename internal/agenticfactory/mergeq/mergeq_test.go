@@ -82,9 +82,8 @@ type fakeQueue struct {
 	unlocks    int
 	held       bool
 	notes      []string
-	heldBy     error // when set, AcquireLock returns it
-	releaseErr error // when set, ReleaseLock returns it (after releasing)
-	inLock     func() bool
+	heldBy     error  // when set, AcquireLock returns it
+	releaseErr error  // when set, ReleaseLock returns it (after releasing)
 	verifiedIn []bool // for each state set, was the lock held
 }
 
@@ -122,6 +121,10 @@ func (q *fakeQueue) SetState(_ context.Context, _, _ string, _ int64, st State, 
 }
 
 func (q *fakeQueue) RowState(context.Context, string) (State, error) { return StateWaiting, nil }
+
+func (q *fakeQueue) Item(_ context.Context, cardID string, _ time.Time) (Item, error) {
+	return Item{CardID: cardID, State: StateVerifying}, nil
+}
 
 func (q *fakeQueue) AddNote(_ context.Context, kind, card, text string) error {
 	q.mu.Lock()

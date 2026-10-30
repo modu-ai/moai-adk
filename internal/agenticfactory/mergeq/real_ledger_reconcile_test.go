@@ -41,6 +41,7 @@ func TestReconcile_RealLedger_AVerifyingRowWithALiveLeaseIsLeftAlone(t *testing.
 	if err != nil || len(dead) != 1 || dead[0].LeaseLive {
 		t.Fatalf("items %+v err %v, want one row without a live lease", dead, err)
 	}
+	m.Now = func() time.Time { return time.Now().Add(24 * time.Hour) } // the lease read under the lock is judged by this clock too
 	if acts, err := m.Reconcile(ctx, dead); err != nil || len(acts) != 1 {
 		t.Fatalf("an abandoned row: actions %+v err %v, want one", acts, err)
 	}

@@ -126,6 +126,20 @@ func (q LedgerQueue) Items(ctx context.Context, now time.Time) ([]Item, error) {
 	return out, nil
 }
 
+// Item reads one queue row joined with its card's epoch and lease (see Items).
+func (q LedgerQueue) Item(ctx context.Context, cardID string, now time.Time) (Item, error) {
+	items, err := q.Items(ctx, now)
+	if err != nil {
+		return Item{}, err
+	}
+	for _, it := range items {
+		if it.CardID == cardID {
+			return it, nil
+		}
+	}
+	return Item{}, fmt.Errorf("mergeq: %s is not in the queue", cardID)
+}
+
 // AddNote appends a note of the given kind.
 func (q LedgerQueue) AddNote(ctx context.Context, kind, cardID, text string) error {
 	return q.L.AddNote(ctx, ledger.Note{Kind: ledger.NoteKind(kind), CardID: cardID, Text: text})

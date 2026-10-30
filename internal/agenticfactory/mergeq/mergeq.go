@@ -75,6 +75,9 @@ type Queue interface {
 	AddNote(ctx context.Context, kind, cardID, text string) error
 	// RowState reads the card's queue row state, for the one path that settles a row without verifying it.
 	RowState(ctx context.Context, cardID string) (State, error)
+	// Item reads the card's queue row again with its card epoch and lease, as of now: Reconcile reads it under
+	// the landing lock, so a lease renewed since the items were collected is seen.
+	Item(ctx context.Context, cardID string, now time.Time) (Item, error)
 }
 
 // Verify runs the gates in dir, a worktree holding the merge result. A non-nil error fails the card.
@@ -108,6 +111,7 @@ type Merger struct {
 	LockTTL    time.Duration
 	MaxRetries int
 	Message    func(cardID string) string // the merge commit message; must carry the card id
+	Now        func() time.Time           // the clock Reconcile judges leases by; nil means time.Now
 }
 
 func (m *Merger) lockTTL() time.Duration {
@@ -235,6 +239,11 @@ func (m *Merger) landUnderLock(ctx context.Context, cardID, candidateSHA string,
 		if rerr != nil {
 			return "", false, rerr
 		}
+		// The row is landing and the retry will write verifying, which the ledger refuses from landing: send it
+		// back to waiting now, while the lock is still held (only the lock holder may).
+		if err := m.Queue.SetState(ctx, cardID, candidateSHA, epoch, StateWaiting, trunk, ""); err != nil {
+			return "", false, err
+		}
 		return now, false, nil
 	}
 	if err := m.Queue.SetState(ctx, cardID, candidateSHA, epoch, StateLanded, trunk, ""); err != nil {
@@ -254,6 +263,14 @@ func (m *Merger) validTrunk(ctx context.Context) error {
 		return fmt.Errorf("%w: %q", ErrBadTrunk, t)
 	case t == "refs/heads/main" || t == "refs/heads/master":
 		return fmt.Errorf("%w: %q is the default branch", ErrBadTrunk, t)
+	}
+	// A symbolic trunk would make every later check look at the link and every write land on its target.
+	sym, err := m.Git.IsSymbolicRef(ctx, t)
+	if err != nil {
+		return fmt.Errorf("mergeq: look at whether %s is a symbolic ref: %w", t, err)
+	}
+	if sym {
+		return fmt.Errorf("%w: %q is a symbolic ref", ErrBadTrunk, t)
 	}
 	def, err := m.Git.OriginHeadBranch(ctx)
 	if err != nil {
@@ -425,6 +442,21 @@ func (m *Merger) backToWaiting(ctx context.Context, it Item, trunk string) (to S
 			err = errors.Join(err, fmt.Errorf("mergeq: releasing the landing lock failed: %w", relErr))
 		}
 	}()
+	if it.State == StateVerifying {
+		// The items were collected before the lock; a lander may have renewed its lease since. Judge by a read
+		// taken now, under the lock.
+		now := time.Now
+		if m.Now != nil {
+			now = m.Now
+		}
+		fresh, ierr := m.Queue.Item(ctx, it.CardID, now())
+		if ierr != nil {
+			return "", "", ierr
+		}
+		if fresh.landerMayBeAlive() {
+			return "", "", nil
+		}
+	}
 	switch err := m.Queue.SetState(ctx, it.CardID, it.CandidateSHA, epoch, StateWaiting, trunk, ""); {
 	case err == nil:
 		return StateWaiting, "the candidate is not in the trunk; it is verified again", nil
