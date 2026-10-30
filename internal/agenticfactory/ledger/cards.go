@@ -69,9 +69,9 @@ func (s *Store) AddCard(ctx context.Context, c Card) error {
 	if p := c.Position.Park; p != nil {
 		reason, ev, res = string(p.Reason), p.Evidence, p.Resume
 	}
-	_, err = tx.ExecContext(ctx, `INSERT INTO cards(id,title,stage,sub_stage,parked,park_reason,park_evidence,park_resume,priority,spec_json,reclaim_count,created_at,updated_at)
-		VALUES(?,?,?,?,?,?,?,?,?,?,0,`+nowSQL+`,`+nowSQL+`)`,
-		c.ID, c.Title, string(c.Position.Stage), nullIfEmpty(string(c.Position.Sub)), boolInt(c.Position.Park != nil), reason, ev, res, c.Priority, string(spec))
+	_, err = tx.ExecContext(ctx, `INSERT INTO cards(id,title,stage,sub_stage,parked,park_reason,park_evidence,park_resume,priority,spec_json,integrated,reclaim_count,created_at,updated_at)
+		VALUES(?,?,?,?,?,?,?,?,?,?,?,0,`+nowSQL+`,`+nowSQL+`)`,
+		c.ID, c.Title, string(c.Position.Stage), nullIfEmpty(string(c.Position.Sub)), boolInt(c.Position.Park != nil), reason, ev, res, c.Priority, string(spec), boolInt(c.Position.RemoteIntegrated))
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
 			return fmt.Errorf("%w: %s", ErrCardExists, c.ID)
@@ -98,20 +98,20 @@ func boolInt(b bool) int {
 	return 0
 }
 
-const cardCols = `id,title,stage,sub_stage,parked,park_reason,park_evidence,park_resume,priority,spec_json,epoch,reclaim_count,created_at,updated_at`
+const cardCols = `id,title,stage,sub_stage,parked,park_reason,park_evidence,park_resume,priority,spec_json,epoch,integrated,reclaim_count,created_at,updated_at`
 
 func scanCard(r interface{ Scan(...any) error }) (Card, error) {
 	var (
 		c                       Card
 		stage                   string
 		sub, reason, evid, resu sql.NullString
-		parked                  int
+		parked, integrated      int
 		spec, created, updated  string
 	)
-	if err := r.Scan(&c.ID, &c.Title, &stage, &sub, &parked, &reason, &evid, &resu, &c.Priority, &spec, &c.Epoch, &c.ReclaimCount, &created, &updated); err != nil {
+	if err := r.Scan(&c.ID, &c.Title, &stage, &sub, &parked, &reason, &evid, &resu, &c.Priority, &spec, &c.Epoch, &integrated, &c.ReclaimCount, &created, &updated); err != nil {
 		return Card{}, &scanError{err: err}
 	}
-	c.Position = core.Position{Stage: core.Stage(stage), Sub: core.SubStage(sub.String), RemoteIntegrated: false}
+	c.Position = core.Position{Stage: core.Stage(stage), Sub: core.SubStage(sub.String), RemoteIntegrated: integrated == 1}
 	if parked == 1 {
 		c.Position.Park = &core.Park{Reason: core.BlockReason(reason.String), Evidence: evid.String, Resume: resu.String}
 	}

@@ -1,5 +1,3 @@
-//go:build afred
-
 package core
 
 import (

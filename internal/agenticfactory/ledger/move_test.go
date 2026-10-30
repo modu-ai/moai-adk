@@ -1,5 +1,3 @@
-//go:build afred
-
 package ledger
 
 import (
@@ -223,5 +221,39 @@ func TestAnInPlaceParkNeedsItsOwnGuard(t *testing.T) {
 	}
 	if got := cardOf(t, s, "a").Position.Park; got == nil || got.Reason != ParkReasonFixLimit {
 		t.Errorf("parked: %+v", got)
+	}
+}
+
+// A failing green run is not a receipt.
+func TestAFailingGreenRunIsNoReceipt(t *testing.T) {
+	s := openTemp(t)
+	c := claimOne(t, s, "a", "internal/a/x.go")
+	for _, e := range []Evidence{
+		{Kind: KindGreen, TreeSHA: "t1", Result: ResultFail},
+		{Kind: KindGate, TreeSHA: "t1", Result: ResultPass},
+	} {
+		if err := s.AddEvidence(bg, "a", c.Epoch, e); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := s.Move(bg, "a", c.Epoch, posReview, "lane", "r"); !errors.Is(err, core.ErrGuardMissing) {
+		t.Errorf("%v", err)
+	}
+}
+
+func TestMoveStoresNoEvidenceItWouldRefuseToAdd(t *testing.T) {
+	s := openTemp(t)
+	c := claimOne(t, s, "a", "internal/a/x.go")
+	for name, e := range map[string]Evidence{
+		"kind":   {Kind: "vibes", TreeSHA: "t", Result: ResultPass},
+		"result": {Kind: KindGate, TreeSHA: "t", Result: "maybe"},
+		"tree":   {Kind: KindGate, Result: ResultPass},
+	} {
+		if err := s.Move(bg, "a", c.Epoch, posBuilding, "lane", "r", e); !errors.Is(err, ErrInvalid) {
+			t.Errorf("%s: %v", name, err)
+		}
+	}
+	if got, _ := s.EvidenceFor(bg, "a"); len(got) != 0 {
+		t.Errorf("stored: %+v", got)
 	}
 }

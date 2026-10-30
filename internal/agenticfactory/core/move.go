@@ -37,6 +37,7 @@ var inPlaceParks = map[BlockReason]string{
 // for the edges whose keys the record can show.
 var edgeFacts = map[string][]string{
 	"E03": {FactReceipt, FactReceiptAccepted},
+	"E08": {FactQueued}, // entering MERGING, the local ledger's queue
 	"E12": {FactMerged},
 	"E17": {FactMerged}, // the same position as E12, so the same fact
 	"E13": {FactMerged, FactClosed, FactSettled},
@@ -64,6 +65,8 @@ func atStage(p Position, ss ...Stage) bool {
 // the leader has not accepted, and finishing from it would skip that acceptance.
 func noHandoff(p Position) bool { return atStage(p, StageBuilding) && !isFix(p) }
 
+func isMerging(p Position) bool { return p.Stage == StageMerging && !p.RemoteIntegrated }
+
 func isFix(p Position) bool     { return p.Stage == StageBuilding && p.Sub == SubFix }
 func isDone(p Position) bool    { return p.Stage == StageDone }
 func isMergedP(p Position) bool { return p.Stage == StageMerging && p.RemoteIntegrated }
@@ -86,6 +89,8 @@ var compositions = []composition{
 		[]string{FactMerged, FactClosed, FactSettled}},
 	{"no-handoff-merge-seen", noHandoff, isMergedP,
 		[]string{FactMerged}},
+	{"no-handoff-enqueued", noHandoff, isMerging,
+		[]string{FactQueued}},
 }
 
 // CheckMove says whether a record may go from one S46 position to another in a

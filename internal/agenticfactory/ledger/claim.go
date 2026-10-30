@@ -207,6 +207,9 @@ func (s *Store) Reap(ctx context.Context, alive func(pid int, start string) Live
 	if err != nil {
 		return nil, err
 	}
+	if err := s.reapLocks(ctx, alive); err != nil {
+		return nil, err
+	}
 	if len(dead) == 0 && len(stale) == 0 {
 		return nil, nil
 	}
@@ -236,8 +239,8 @@ func setPosition(ctx context.Context, q querier, cardID string, pos core.Positio
 	if p := pos.Park; p != nil {
 		reason, ev, res = string(p.Reason), p.Evidence, p.Resume
 	}
-	_, err := q.ExecContext(ctx, `UPDATE cards SET stage=?, sub_stage=?, parked=?, park_reason=?, park_evidence=?, park_resume=?, updated_at=`+nowSQL+` WHERE id=?`,
-		string(pos.Stage), nullIfEmpty(string(pos.Sub)), boolInt(pos.Park != nil), reason, ev, res, cardID)
+	_, err := q.ExecContext(ctx, `UPDATE cards SET stage=?, sub_stage=?, integrated=?, parked=?, park_reason=?, park_evidence=?, park_resume=?, updated_at=`+nowSQL+` WHERE id=?`,
+		string(pos.Stage), nullIfEmpty(string(pos.Sub)), boolInt(pos.RemoteIntegrated), boolInt(pos.Park != nil), reason, ev, res, cardID)
 	if err != nil {
 		return fmt.Errorf("ledger: %w", err)
 	}

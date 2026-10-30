@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS cards(
   id TEXT PRIMARY KEY, title TEXT NOT NULL, stage TEXT NOT NULL, sub_stage TEXT,
   parked INTEGER NOT NULL DEFAULT 0, park_reason TEXT, park_evidence TEXT, park_resume TEXT,
   priority INTEGER NOT NULL DEFAULT 0, spec_json TEXT NOT NULL, epoch INTEGER NOT NULL DEFAULT 0,
+  integrated INTEGER NOT NULL DEFAULT 0, -- a MERGING card whose remote merge was seen
   reclaim_count INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS cards_pick ON cards(stage, parked, priority DESC);
 -- transitions: one row per change of position. The first row of a card is its adding
@@ -55,7 +56,7 @@ CREATE INDEX IF NOT EXISTS evidence_card ON evidence(card_id);
 CREATE TABLE IF NOT EXISTS merge_queue(
   card_id TEXT PRIMARY KEY, candidate_sha TEXT NOT NULL, trunk_before TEXT,
   state TEXT NOT NULL CHECK(state IN ('waiting','verifying','landing','landed','failed')),
-  fail_reason TEXT, enqueued_at TEXT NOT NULL, updated_at TEXT NOT NULL);
+  fail_reason TEXT, card_epoch INTEGER NOT NULL DEFAULT 0, enqueued_at TEXT NOT NULL, updated_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS locks(
   name TEXT PRIMARY KEY, session_id TEXT NOT NULL, epoch INTEGER NOT NULL, pid INTEGER, pid_start TEXT,
   expires_at TEXT NOT NULL);

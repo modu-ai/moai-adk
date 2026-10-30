@@ -1,5 +1,3 @@
-//go:build afred
-
 package ledger
 
 import (
@@ -141,6 +139,11 @@ func TestQueueUpdateChecksTheEpochItsStateCallsFor(t *testing.T) {
 	if err := s.Enqueue(bg, "a", c.Epoch, "c1"); err != nil {
 		t.Fatal(err)
 	}
+	// the lock's epoch is not the card's, or the checks below could not tell them apart
+	warm, err := s.AcquireLock(bg, LockMerge, LockHolder{SessionID: "warm"}, LandingLockTTL)
+	if err != nil || s.ReleaseLock(bg, LockMerge, warm) != nil {
+		t.Fatalf("warm-up lock: %d %v", warm, err)
+	}
 	if err := s.QueueUpdate(bg, "a", c.Epoch+7, QueueVerifying, "", ""); !errors.Is(err, ErrStaleEpoch) {
 		t.Errorf("verifying with a wrong card epoch: %v", err)
 	}
@@ -263,5 +266,39 @@ func TestAFailedCardCanBeEnqueuedAgainWithANewCandidate(t *testing.T) {
 	}
 	if it, _ := queueRow(t, s, "a"); it.State != QueueWaiting || it.CandidateSHA != "c2" || it.FailReason != "" {
 		t.Errorf("the row starts over: %+v", it)
+	}
+}
+
+// Passing gate evidence for another commit does not stand for this one, even when it is
+// the card's newest.
+func TestGateEvidenceForAnotherCommitDoesNotStandForThisOne(t *testing.T) {
+	s := openTemp(t)
+	c := gated(t, s, "a", "c1")
+	if err := s.Enqueue(bg, "a", c.Epoch, "c2"); !errors.Is(err, ErrEvidenceStale) {
+		t.Errorf("%v", err)
+	}
+}
+
+func TestAQueueRowKeepsItsTrunkAndOnlyAFailureKeepsAReason(t *testing.T) {
+	s := openTemp(t)
+	c := gated(t, s, "a", "c1")
+	if err := s.Enqueue(bg, "a", c.Epoch, "c1"); err != nil {
+		t.Fatal(err)
+	}
+	lock, _ := s.AcquireLock(bg, LockMerge, LockHolder{SessionID: "mq"}, LandingLockTTL)
+	if err := s.QueueUpdate(bg, "a", c.Epoch, QueueVerifying, "", "a reason on a state that is not a failure"); err != nil {
+		t.Fatal(err)
+	}
+	if it, _ := queueRow(t, s, "a"); it.FailReason != "" {
+		t.Errorf("only a failed row has a reason: %+v", it)
+	}
+	if err := s.QueueUpdate(bg, "a", lock, QueueLanding, "trunk0", ""); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.QueueUpdate(bg, "a", lock, QueueLanded, "", ""); err != nil {
+		t.Fatal(err)
+	}
+	if it, _ := queueRow(t, s, "a"); it.TrunkBefore != "trunk0" {
+		t.Errorf("an empty trunk does not erase the one recorded: %+v", it)
 	}
 }
