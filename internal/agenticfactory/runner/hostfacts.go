@@ -24,9 +24,8 @@ type HostIssue struct {
 // to the host (the GitHub identity reader) is wired in where it is built: its
 // CurrentUserID is User, and its IssueFacts, with the fields copied into HostIssue,
 // is Issue. Every shortfall is an error, which the guard reads as an unknown
-// identity, and every host lookup (the user, the Issue) is cut off by its own Timeout. The claim-store owner
-// read is local and unbounded here. The Facts interface carries no caller context, so the bound starts from
-// context.Background(); threading a pass context through would change that interface.
+// identity, and every host lookup (the user, the Issue) is cut off by its own Timeout, derived from the
+// caller's context (Runner.Ctx; Background when nil). The claim-store owner read is local and unbounded here.
 type HostFacts struct {
 	// Repo is the repository this store works in ("owner/name").
 	Repo string
@@ -40,7 +39,7 @@ type HostFacts struct {
 }
 
 // IssueFacts implements Facts.
-func (h HostFacts) IssueFacts(issue core.IssueRef) (IssueFacts, error) {
+func (h HostFacts) IssueFacts(parent context.Context, issue core.IssueRef) (IssueFacts, error) {
 	switch {
 	case h.Repo == "":
 		return IssueFacts{}, errors.New("hostfacts: no repository is configured")
@@ -49,9 +48,12 @@ func (h HostFacts) IssueFacts(issue core.IssueRef) (IssueFacts, error) {
 	case h.User == nil || h.Issue == nil || h.Owner == nil:
 		return IssueFacts{}, errors.New("hostfacts: a lookup is not wired")
 	}
-	// Each host lookup gets the whole Timeout to itself: a slow user lookup must not shorten the Issue lookup.
-	// The Facts interface carries no caller context, so the bound starts from Background.
-	uctx, ucancel := context.WithTimeout(context.Background(), h.Timeout)
+	if parent == nil {
+		parent = context.Background()
+	}
+	// Each host lookup gets the whole Timeout to itself, derived from the caller's context: a slow user
+	// lookup must not shorten the Issue lookup, and cancelling the caller's context reaches both.
+	uctx, ucancel := context.WithTimeout(parent, h.Timeout)
 	defer ucancel()
 	user, err := h.User(uctx)
 	if err != nil {
@@ -60,7 +62,7 @@ func (h HostFacts) IssueFacts(issue core.IssueRef) (IssueFacts, error) {
 	if user <= 0 {
 		return IssueFacts{}, errors.New("hostfacts: the acting user has no numeric id")
 	}
-	ictx, icancel := context.WithTimeout(context.Background(), h.Timeout)
+	ictx, icancel := context.WithTimeout(parent, h.Timeout)
 	defer icancel()
 	hi, err := h.Issue(ictx, h.Repo, issue.Number)
 	if err != nil {

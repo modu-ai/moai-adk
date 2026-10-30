@@ -193,7 +193,7 @@ func rigAt(t *testing.T, dir string, cfg Config, pub *fakePub, br *fakeBr, pr *f
 // ownIssues is a host where every Issue was opened by the acting user.
 type ownIssues struct{}
 
-func (ownIssues) IssueFacts(core.IssueRef) (runner.IssueFacts, error) {
+func (ownIssues) IssueFacts(context.Context, core.IssueRef) (runner.IssueFacts, error) {
 	return runner.IssueFacts{RequestedRepo: "acme/widgets", ActualRepo: "acme/widgets", UserID: 7, AuthorID: 7, Owner: core.OwnerNone}, nil
 }
 

@@ -65,9 +65,20 @@ func TestTakeOverOnStopChecksTheStopItself(t *testing.T) {
 			t.Fatalf("an invented reference: %v", err)
 		}
 	})
-	t.Run("the plain takeover still checks nothing about a stop", func(t *testing.T) {
+	t.Run("a takeover that relies on a stop needs one", func(t *testing.T) {
 		s, i, epoch, _, _ := setup(t)
-		if _, err := s.TakeOver(i, "sess-a", epoch, "sess-b", "d2", "run-2", "note", nil); err != nil {
+		for _, ref := range []string{"", "  "} {
+			if _, err := s.TakeOverOnStop(i, "sess-a", epoch, "sess-b", "d2", "run-2", "note", nil, ref); !errors.Is(err, core.ErrEvidenceIncomplete) {
+				t.Errorf("an empty stop reference %q: %v", ref, err)
+			}
+		}
+		if cur, _ := s.Read(i); cur.Holder != "sess-a" {
+			t.Errorf("the record moved: %+v", cur)
+		}
+	})
+	t.Run("the unverified takeover is a separate call that says so", func(t *testing.T) {
+		s, i, epoch, _, _ := setup(t)
+		if _, err := s.TakeOverUnverified(i, "sess-a", epoch, "sess-b", "d2", "run-2", "note", nil); err != nil {
 			t.Fatalf("%v", err)
 		}
 	})

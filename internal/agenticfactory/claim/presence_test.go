@@ -104,7 +104,7 @@ func TestAnOlderHoldersHeartbeatDoesNotDescribeTheNewHolder(t *testing.T) {
 	if err := s.Heartbeat(i, "sess-a", rec.Epoch, 4242, "fp-owner", time.Hour); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.TakeOver(i, "sess-a", rec.Epoch, "sess-b", "d2", "run-2", "test", nil); err != nil {
+	if _, err := s.TakeOverUnverified(i, "sess-a", rec.Epoch, "sess-b", "d2", "run-2", "test", nil); err != nil {
 		t.Fatal(err)
 	}
 	if st, _ := s.OwnerLiveness(i); st.HasPresence {

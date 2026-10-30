@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"context"
 	"errors"
 	"strings"
 	"testing"
@@ -58,7 +59,7 @@ func withRoles(r *Runner) *Runner {
 // ownIssues is a host where every Issue was opened by the acting user.
 type ownIssues struct{}
 
-func (ownIssues) IssueFacts(core.IssueRef) (IssueFacts, error) {
+func (ownIssues) IssueFacts(context.Context, core.IssueRef) (IssueFacts, error) {
 	return IssueFacts{RequestedRepo: "acme/widgets", ActualRepo: "acme/widgets", UserID: 7, AuthorID: 7, Owner: core.OwnerNone}, nil
 }
 

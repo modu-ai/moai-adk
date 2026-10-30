@@ -474,25 +474,33 @@ func (s *Store) PromoteParked(p Policy, freeSlots int) ([]Request, error) {
 // ReadyGate refuses to let an agent begin writing before the whole readiness
 // chain is done: the request must be READY_ACKED, not parked, not blocked, the
 // preparer's receipt must say it stopped writing, and the agent that acked must
-// be the one now starting. An Issue that no intake request names is not gated.
+// be the one now starting. An Issue that no intake request names is not gated. When
+// several requests name the Issue the newest one is read (audit F21).
 func (s *Store) ReadyGate(issue int, holder string) error {
 	all, err := s.listRequests()
 	if err != nil {
 		return err
 	}
-	for _, r := range all {
-		if r.Issue != issue {
-			continue
+	// Several requests can name one Issue. The newest (highest Seq; listRequests sorts
+	// by it) is the current attempt and the one the gate reads; an older one is history
+	// and neither blocks a newer, acknowledged request nor passes a newer one that is
+	// not ready.
+	var r *Request
+	for k := range all {
+		if all[k].Issue == issue {
+			r = &all[k]
 		}
-		switch {
-		case r.Parked != "" || r.Blocked != nil || r.Stage != StageReadyAcked:
-			return fmt.Errorf("%w: worktree for issue-%d is not ready (%s)", core.ErrTransitionInvalid, issue, r.Stage)
-		case r.Ready == nil || !r.Ready.WriterStopped:
-			return fmt.Errorf("%w: the preparer has not stopped writing for issue-%d", core.ErrTransitionInvalid, issue)
-		case r.AckedBy == "" || r.AckedBy != holder:
-			return fmt.Errorf("%w: issue-%d was acknowledged by another agent", core.ErrTransitionInvalid, issue)
-		}
+	}
+	if r == nil {
 		return nil
+	}
+	switch {
+	case r.Parked != "" || r.Blocked != nil || r.Stage != StageReadyAcked:
+		return fmt.Errorf("%w: worktree for issue-%d is not ready (%s)", core.ErrTransitionInvalid, issue, r.Stage)
+	case r.Ready == nil || !r.Ready.WriterStopped:
+		return fmt.Errorf("%w: the preparer has not stopped writing for issue-%d", core.ErrTransitionInvalid, issue)
+	case r.AckedBy == "" || r.AckedBy != holder:
+		return fmt.Errorf("%w: issue-%d was acknowledged by another agent", core.ErrTransitionInvalid, issue)
 	}
 	return nil
 }

@@ -34,7 +34,7 @@ func TestHostFactsAnswersTheFactsTheGuardNeeds(t *testing.T) {
 		}
 		return HostIssue{AuthorID: 99, ActualRepo: "acme/gadgets", Redirected: true}, nil
 	}
-	got, err := h.IssueFacts(ref)
+	got, err := h.IssueFacts(context.Background(), ref)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +69,7 @@ func TestHostFactsFailsClosed(t *testing.T) {
 	for name, mut := range cases {
 		h := hostWithAuthor(99)
 		mut(&h)
-		if _, err := h.IssueFacts(ref); err == nil {
+		if _, err := h.IssueFacts(context.Background(), ref); err == nil {
 			t.Errorf("%s: want an error", name)
 		}
 	}
@@ -84,7 +84,7 @@ func TestHostFactsLookupsAreTimeLimited(t *testing.T) {
 		<-ctx.Done()
 		return HostIssue{}, ctx.Err()
 	}
-	if _, err := h.IssueFacts(ref); !errors.Is(err, context.DeadlineExceeded) {
+	if _, err := h.IssueFacts(context.Background(), ref); !errors.Is(err, context.DeadlineExceeded) {
 		t.Errorf("a lookup that never answers: %v", err)
 	}
 }

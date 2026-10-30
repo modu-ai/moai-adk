@@ -11,6 +11,7 @@
 package runner
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/url"
@@ -127,9 +128,11 @@ type IssueFacts struct {
 }
 
 // Facts looks an Issue up on the host. The implementation lives with the forge
-// code; it makes no write.
+// code; it makes no write. The context is the caller's: cancelling the pass that
+// holds it must cancel the lookup, so an implementation derives its own time limit
+// from it and never from context.Background().
 type Facts interface {
-	IssueFacts(issue core.IssueRef) (IssueFacts, error)
+	IssueFacts(ctx context.Context, issue core.IssueRef) (IssueFacts, error)
 }
 
 // Runner applies transitions to claims in Store.
@@ -143,10 +146,21 @@ type Runner struct {
 	Attributor Attributor
 	Facts      Facts
 	Collab     core.Collaboration
+	// Ctx is the context of the pass this Runner serves; a pass takes its own copy of
+	// the Runner and sets it. Nil means context.Background(). It reaches the host
+	// lookups (Facts) and nothing else: store operations stay local and short.
+	Ctx context.Context
 
 	// beforeClaimMoves is a test seam: it runs after TakeOver has decided and before
 	// the store moves the claim, where the owner could still act.
 	beforeClaimMoves func()
+}
+
+func (r *Runner) ctx() context.Context {
+	if r.Ctx != nil {
+		return r.Ctx
+	}
+	return context.Background()
 }
 
 // guard decides whether the acting user may perform op on the Issue, through the
@@ -156,7 +170,7 @@ func (r *Runner) guard(i core.IssueRef, op core.Op) error {
 	if r.Facts == nil {
 		return core.DenyIdentityUnknown.Err()
 	}
-	f, err := r.Facts.IssueFacts(i)
+	f, err := r.Facts.IssueFacts(r.ctx(), i)
 	if err != nil {
 		return fmt.Errorf("%w: host lookup of issue-%d failed: %v", core.ErrIdentityUnknown, i.Number, err)
 	}
@@ -753,6 +767,11 @@ func (r *Runner) TakeOver(i core.IssueRef, old Ticket, newHolder, dispatch strin
 	if r.beforeClaimMoves != nil {
 		r.beforeClaimMoves()
 	}
+	if stop == "" {
+		// The departure was established above from the owner's process (or the caller's
+		// word, marked in the note); the store checks holder and epoch only.
+		return r.Store.TakeOverUnverified(i, old.Holder, old.Epoch, newHolder, dispatch, run, note, ev.Wait)
+	}
 	return r.Store.TakeOverOnStop(i, old.Holder, old.Epoch, newHolder, dispatch, run, note, ev.Wait, stop)
 }
 
@@ -915,7 +934,7 @@ func (r *Runner) mayClose(issue int) string {
 	if r.Facts == nil {
 		return "no host lookup to check the author"
 	}
-	f, err := r.Facts.IssueFacts(ref)
+	f, err := r.Facts.IssueFacts(r.ctx(), ref)
 	if err != nil {
 		return "the host lookup failed"
 	}
