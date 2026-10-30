@@ -144,10 +144,10 @@ func TestQueueUpdateChecksTheEpochItsStateCallsFor(t *testing.T) {
 	if err != nil || s.ReleaseLock(bg, LockMerge, warm) != nil {
 		t.Fatalf("warm-up lock: %d %v", warm, err)
 	}
-	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch+7), QueueVerifying, "", ""); !errors.Is(err, ErrStaleEpoch) {
+	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch+7, "c1"), QueueVerifying, "", ""); !errors.Is(err, ErrStaleEpoch) {
 		t.Errorf("verifying with a wrong card epoch: %v", err)
 	}
-	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch), QueueVerifying, "", ""); err != nil {
+	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch, "c1"), QueueVerifying, "", ""); err != nil {
 		t.Fatal(err)
 	}
 	// landing is the lock's
@@ -178,12 +178,12 @@ func TestQueueUpdateChecksTheEpochItsStateCallsFor(t *testing.T) {
 	for _, step := range []struct {
 		epoch QueueEpoch
 		state QueueState
-	}{{CardEpoch(c.Epoch), QueueVerifying}, {LockEpoch(lock, "c1"), QueueLanding}, {LockEpoch(lock, "c1"), QueueLanded}} {
+	}{{CardEpoch(c.Epoch, "c1"), QueueVerifying}, {LockEpoch(lock, "c1"), QueueLanding}, {LockEpoch(lock, "c1"), QueueLanded}} {
 		if err := s.QueueUpdate(bg, "a", step.epoch, step.state, "", ""); err != nil {
 			t.Fatalf("%s: %v", step.state, err)
 		}
 	}
-	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch), QueueWaiting, "", ""); !errors.Is(err, ErrInvalid) {
+	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch, "c1"), QueueWaiting, "", ""); !errors.Is(err, ErrInvalid) {
 		t.Errorf("landed is final: %v", err)
 	}
 }
@@ -198,19 +198,19 @@ func TestQueueUpdateRefusesStatesThatDoNotFollowAndAFailureWithoutAReason(t *tes
 	if err := s.QueueUpdate(bg, "a", LockEpoch(lock, "c1"), QueueLanded, "", ""); !errors.Is(err, ErrInvalid) {
 		t.Errorf("waiting to landed: %v", err)
 	}
-	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch), QueueVerifying, "", ""); err != nil {
+	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch, "c1"), QueueVerifying, "", ""); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch), QueueFailed, "", ""); !errors.Is(err, ErrInvalid) {
+	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch, "c1"), QueueFailed, "", ""); !errors.Is(err, ErrInvalid) {
 		t.Errorf("failed with no reason: %v", err)
 	}
-	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch), QueueFailed, "", "gate red on the merge result"); err != nil {
+	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch, "c1"), QueueFailed, "", "gate red on the merge result"); err != nil {
 		t.Fatal(err)
 	}
 	if it, _ := queueRow(t, s, "a"); it.State != QueueFailed || it.FailReason != "gate red on the merge result" {
 		t.Errorf("failed recorded: %+v", it)
 	}
-	if err := s.QueueUpdate(bg, "nobody", CardEpoch(1), QueueVerifying, "", ""); !errors.Is(err, ErrNotFound) {
+	if err := s.QueueUpdate(bg, "nobody", CardEpoch(1, "c1"), QueueVerifying, "", ""); !errors.Is(err, ErrNotFound) {
 		t.Errorf("no such queue row: %v", err)
 	}
 }
@@ -224,7 +224,7 @@ func TestAReclaimedCardFencesItsStaleLander(t *testing.T) {
 		t.Fatal(err)
 	}
 	lock, _ := s.AcquireLock(bg, LockMerge, LockHolder{SessionID: "mq"}, LandingLockTTL)
-	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch), QueueVerifying, "", ""); err != nil {
+	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch, "c1"), QueueVerifying, "", ""); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := s.db.ExecContext(bg, `UPDATE cards SET epoch=epoch+1 WHERE id='a'`); err != nil {
@@ -233,7 +233,7 @@ func TestAReclaimedCardFencesItsStaleLander(t *testing.T) {
 	if err := s.QueueUpdate(bg, "a", LockEpoch(lock, "c1"), QueueLanding, "t", ""); !errors.Is(err, ErrStaleEpoch) {
 		t.Errorf("a lander of the old card epoch: %v", err)
 	}
-	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch), QueueFailed, "", "stale"); !errors.Is(err, ErrStaleEpoch) {
+	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch, "c1"), QueueFailed, "", "stale"); !errors.Is(err, ErrStaleEpoch) {
 		t.Errorf("a verifier of the old card epoch: %v", err)
 	}
 }
@@ -244,10 +244,10 @@ func TestAFailedCardCanBeEnqueuedAgainWithANewCandidate(t *testing.T) {
 	if err := s.Enqueue(bg, "a", c.Epoch, "c1"); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch), QueueVerifying, "", ""); err != nil {
+	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch, "c1"), QueueVerifying, "", ""); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch), QueueFailed, "", "red"); err != nil {
+	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch, "c1"), QueueFailed, "", "red"); err != nil {
 		t.Fatal(err)
 	}
 	// the lane fixes it: back to BUILDING/FIX, new commit, new gate evidence
@@ -286,7 +286,7 @@ func TestAQueueRowKeepsItsTrunkAndOnlyAFailureKeepsAReason(t *testing.T) {
 		t.Fatal(err)
 	}
 	lock, _ := s.AcquireLock(bg, LockMerge, LockHolder{SessionID: "mq"}, LandingLockTTL)
-	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch), QueueVerifying, "", "a reason on a state that is not a failure"); err != nil {
+	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch, "c1"), QueueVerifying, "", "a reason on a state that is not a failure"); err != nil {
 		t.Fatal(err)
 	}
 	if it, _ := queueRow(t, s, "a"); it.FailReason != "" {

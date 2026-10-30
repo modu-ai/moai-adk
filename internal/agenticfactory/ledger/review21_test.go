@@ -51,10 +51,10 @@ func TestAFailedRowOfAStrandedCardSendsItBackToReviewingWhereItCanBeClaimed(t *t
 	if _, err := s.Reap(bg, alwaysDead); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.QueueUpdate(bg, "b", CardEpoch(c.Epoch), QueueVerifying, "", ""); err != nil {
+	if err := s.QueueUpdate(bg, "b", CardEpoch(c.Epoch, "c1"), QueueVerifying, "", ""); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.QueueUpdate(bg, "b", CardEpoch(c.Epoch), QueueFailed, "", "gate red on the merge result"); err != nil {
+	if err := s.QueueUpdate(bg, "b", CardEpoch(c.Epoch, "c1"), QueueFailed, "", "gate red on the merge result"); err != nil {
 		t.Fatal(err)
 	}
 	// a Move that is no edge is still refused, with the table's error, not as a missing lease
@@ -81,7 +81,7 @@ func TestAQueueItemCarriesTheCardEpochItWasQueuedAt(t *testing.T) {
 	if !ok || it.CardEpoch != c.Epoch {
 		t.Fatalf("%+v", it)
 	}
-	if err := s.QueueUpdate(bg, "a", CardEpoch(it.CardEpoch), QueueVerifying, "", ""); err != nil {
+	if err := s.QueueUpdate(bg, "a", CardEpoch(it.CardEpoch, "c1"), QueueVerifying, "", ""); err != nil {
 		t.Errorf("a write with the epoch the item carries: %v", err)
 	}
 }
@@ -155,10 +155,10 @@ func TestRequeueingAFailedCardKeepsTheEarlierReasonInANote(t *testing.T) {
 	if err := s.Enqueue(bg, "a", c.Epoch, "c1"); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch), QueueVerifying, "", ""); err != nil {
+	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch, "c1"), QueueVerifying, "", ""); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch), QueueFailed, "trunk9", "merge result red: TestX"); err != nil {
+	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch, "c1"), QueueFailed, "trunk9", "merge result red: TestX"); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.AddEvidence(bg, "a", c.Epoch, Evidence{Kind: KindGate, SubjectSHA: "c2", Result: ResultPass}); err != nil {

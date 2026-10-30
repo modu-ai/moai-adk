@@ -131,7 +131,7 @@ func landOne(t *testing.T, s *Store, id string, cardEpoch int64) {
 	for _, step := range []struct {
 		epoch QueueEpoch
 		state QueueState
-	}{{CardEpoch(cardEpoch), QueueVerifying}, {LockEpoch(lock, cand), QueueLanding}, {LockEpoch(lock, cand), QueueLanded}} {
+	}{{CardEpoch(cardEpoch, cand), QueueVerifying}, {LockEpoch(lock, cand), QueueLanding}, {LockEpoch(lock, cand), QueueLanded}} {
 		if err := s.QueueUpdate(bg, id, step.epoch, step.state, "trunk", ""); err != nil {
 			t.Fatalf("%s: %v", step.state, err)
 		}

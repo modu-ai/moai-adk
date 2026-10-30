@@ -21,13 +21,13 @@ func TestQueueUpdate_CoincidingEpochs_KindDecidesWhichTableIsChecked(t *testing.
 	if err := s.QueueUpdate(bg, "a", LockEpoch(lock, "c1"), QueueVerifying, "", ""); !errors.Is(err, ErrStaleEpoch) {
 		t.Errorf("verifying with a lock epoch of the same number: %v", err)
 	}
-	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch), QueueVerifying, "", ""); err != nil {
+	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch, "c1"), QueueVerifying, "", ""); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch), QueueLanding, "t0", ""); !errors.Is(err, ErrStaleEpoch) {
+	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch, "c1"), QueueLanding, "t0", ""); !errors.Is(err, ErrStaleEpoch) {
 		t.Errorf("landing with the card epoch, the lock's number being the same: %v", err)
 	}
-	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch), QueueWaiting, "", ""); !errors.Is(err, ErrStaleEpoch) {
+	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch, "c1"), QueueWaiting, "", ""); !errors.Is(err, ErrStaleEpoch) {
 		t.Errorf("an old holder's waiting write with its card epoch: %v", err)
 	}
 	if err := s.QueueUpdate(bg, "a", LockEpoch(lock, "c1"), QueueFailed, "", "red"); !errors.Is(err, ErrStaleEpoch) {

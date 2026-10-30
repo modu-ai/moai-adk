@@ -187,13 +187,13 @@ func TestQueueUpdate_EpochSource_FencesByKind(t *testing.T) {
 	if err != nil || lock == c.Epoch {
 		t.Fatalf("lock epoch %d must differ from card epoch %d: %v", lock, c.Epoch, err)
 	}
-	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch+1), QueueVerifying, "", ""); !errors.Is(err, ErrStaleEpoch) {
+	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch+1, "c1"), QueueVerifying, "", ""); !errors.Is(err, ErrStaleEpoch) {
 		t.Errorf("verifying with another card epoch: %v", err)
 	}
-	if err := s.QueueUpdate(bg, "a", CardEpoch(lock), QueueVerifying, "", ""); !errors.Is(err, ErrStaleEpoch) {
+	if err := s.QueueUpdate(bg, "a", CardEpoch(lock, "c1"), QueueVerifying, "", ""); !errors.Is(err, ErrStaleEpoch) {
 		t.Errorf("verifying with the lock epoch: %v", err)
 	}
-	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch), QueueVerifying, "", ""); err != nil {
+	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch, "c1"), QueueVerifying, "", ""); err != nil {
 		t.Fatalf("verifying with the row's card epoch: %v", err)
 	}
 	if err := s.QueueUpdate(bg, "a", LockEpoch(c.Epoch, "c1"), QueueLanding, "t0", ""); !errors.Is(err, ErrStaleEpoch) {
@@ -216,7 +216,7 @@ func TestQueueUpdate_EpochSource_FencesByKind(t *testing.T) {
 		t.Fatal(err)
 	}
 	for name, ep := range map[string]int64{"card": c.Epoch, "lock": lock} {
-		if err := s.QueueUpdate(bg, "a", CardEpoch(ep), QueueFailed, "", "late"); !errors.Is(err, ErrStaleEpoch) {
+		if err := s.QueueUpdate(bg, "a", CardEpoch(ep, "c1"), QueueFailed, "", "late"); !errors.Is(err, ErrStaleEpoch) {
 			t.Errorf("a write for the old card epoch with the %s epoch: %v", name, err)
 		}
 	}

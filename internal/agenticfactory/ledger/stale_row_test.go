@@ -20,7 +20,7 @@ func TestEnqueue_RestartsARowOfAnOlderCardEpoch(t *testing.T) {
 			t.Fatal(err)
 		}
 		if state == QueueVerifying {
-			if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch), QueueVerifying, "", ""); err != nil {
+			if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch, "c1"), QueueVerifying, "", ""); err != nil {
 				t.Fatal(err)
 			}
 		}
@@ -35,7 +35,7 @@ func TestEnqueue_RestartsARowOfAnOlderCardEpoch(t *testing.T) {
 			t.Fatalf("%s: claimed again: %+v %v", state, c2, err)
 		}
 		// the old row cannot be written by anyone
-		if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch), QueueFailed, "", "x"); !errors.Is(err, ErrStaleEpoch) {
+		if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch, "c1"), QueueFailed, "", "x"); !errors.Is(err, ErrStaleEpoch) {
 			t.Fatalf("%s: the old row is fenced: %v", state, err)
 		}
 		for _, e := range []Evidence{{Kind: KindGate, TreeSHA: "t2", SubjectSHA: "c2", Result: ResultPass}} {

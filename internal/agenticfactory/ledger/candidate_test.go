@@ -18,7 +18,7 @@ func TestQueueUpdate_LockKindWriteNamesTheVerifiedCandidate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch), QueueVerifying, "", ""); err != nil {
+	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch, "c1"), QueueVerifying, "", ""); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.QueueUpdate(bg, "a", LockEpoch(lock, ""), QueueLanding, "t0", ""); !errors.Is(err, ErrInvalid) {
@@ -46,7 +46,7 @@ func TestQueueUpdate_OldLanderCannotMoveARestartedRow(t *testing.T) {
 	if err := s.Enqueue(bg, "a", c.Epoch, "c1"); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch), QueueVerifying, "", ""); err != nil { // old lander A
+	if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch, "c1"), QueueVerifying, "", ""); err != nil { // old lander A
 		t.Fatal(err)
 	}
 	if err := s.Move(bg, "a", c.Epoch, core.Position{Stage: core.StageReviewing}, "lane", "back out"); err != nil {
@@ -65,7 +65,7 @@ func TestQueueUpdate_OldLanderCannotMoveARestartedRow(t *testing.T) {
 	if err := s.Enqueue(bg, "a", c2.Epoch, "c2"); err != nil { // restart with c2
 		t.Fatal(err)
 	}
-	if err := s.QueueUpdate(bg, "a", CardEpoch(c2.Epoch), QueueVerifying, "", ""); err != nil { // new lander B
+	if err := s.QueueUpdate(bg, "a", CardEpoch(c2.Epoch, "c1"), QueueVerifying, "", ""); err != nil { // new lander B
 		t.Fatal(err)
 	}
 	lock, err := s.AcquireLock(bg, LockMerge, LockHolder{SessionID: "A"}, LandingLockTTL)

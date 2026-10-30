@@ -246,14 +246,16 @@ const (
 type QueueEpoch struct {
 	Kind EpochKind
 	N    int64
-	// Candidate is the commit SHA the caller verified. A landing-lock write names it, so a
-	// lander that verified an older candidate cannot move a row that was restarted with another.
+	// Candidate is the commit SHA the caller verified. Every write names it, so a verifier or
+	// lander of an older candidate cannot move a row that was restarted with another.
 	Candidate string
 }
 
-// CardEpoch is the card epoch n; LockEpoch is the landing-lock epoch n together with the
-// candidate SHA the lander verified.
-func CardEpoch(n int64) QueueEpoch { return QueueEpoch{Kind: EpochCard, N: n} }
+// CardEpoch is the card epoch n and LockEpoch is the landing-lock epoch n, each together
+// with the candidate SHA the caller verified.
+func CardEpoch(n int64, candidate string) QueueEpoch {
+	return QueueEpoch{Kind: EpochCard, N: n, Candidate: candidate}
+}
 func LockEpoch(n int64, candidate string) QueueEpoch {
 	return QueueEpoch{Kind: EpochLock, N: n, Candidate: candidate}
 }
