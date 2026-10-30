@@ -134,7 +134,7 @@ func TestSomeoneElsesIssueNeedsTheOptionTheRepositoryAndTheExactPermission(t *te
 	if r := reasonOf(t, patch(e, "/repos/o/r/issues/8", `{"body":"x"}`)); r != ReasonNotIssueAuthor {
 		t.Errorf("option off: reason = %s", r)
 	}
-	// repository not on the list
+	// repository not on the list: the answering repository is known, and it is not listed
 	e.Collaboration = core.Collaboration{Provider: "github", Enabled: true, AllowedRepositories: []string{"elsewhere/x"}, EditBody: true}
 	if r := reasonOf(t, patch(e, "/repos/o/r/issues/8", `{"body":"x"}`)); r != ReasonRepoNotAllowed {
 		t.Errorf("repository not listed: reason = %s", r)
@@ -146,19 +146,19 @@ func TestARedirectOrADifferentAnsweringRepositoryBlocksForeignWrites(t *testing.
 	moved := world()
 	moved.issues[8] = IssueFacts{AuthorID: other, ActualRepo: "o/r", Redirected: true}
 	e := &Enforcer{Identity: moved, Collaboration: collab}
-	if r := reasonOf(t, patch(e, "/repos/o/r/issues/8", `{"body":"x"}`)); r != ReasonRepoNotAllowed {
+	if r := reasonOf(t, patch(e, "/repos/o/r/issues/8", `{"body":"x"}`)); r != ReasonRepoUnverified {
 		t.Errorf("redirected: reason = %s", r)
 	}
 	renamed := world()
 	renamed.issues[8] = IssueFacts{AuthorID: other, ActualRepo: "o/new-name"}
 	e = &Enforcer{Identity: renamed, Collaboration: collab}
-	if r := reasonOf(t, patch(e, "/repos/o/r/issues/8", `{"body":"x"}`)); r != ReasonRepoNotAllowed {
+	if r := reasonOf(t, patch(e, "/repos/o/r/issues/8", `{"body":"x"}`)); r != ReasonRepoUnverified {
 		t.Errorf("answered for another repository: reason = %s", r)
 	}
 	unknownRepo := world()
 	unknownRepo.issues[8] = IssueFacts{AuthorID: other}
 	e = &Enforcer{Identity: unknownRepo, Collaboration: collab}
-	if r := reasonOf(t, patch(e, "/repos/o/r/issues/8", `{"body":"x"}`)); r != ReasonRepoNotAllowed {
+	if r := reasonOf(t, patch(e, "/repos/o/r/issues/8", `{"body":"x"}`)); r != ReasonRepoUnverified {
 		t.Errorf("answering repository unknown: reason = %s", r)
 	}
 }
@@ -320,5 +320,19 @@ func TestCheckRequestAloneNeverLetsAConditionalRoutePass(t *testing.T) {
 		if r := reasonOf(t, CheckRequest(c[0], c[1], nil)); r != ReasonIdentityUnknown {
 			t.Errorf("%s %s: reason = %s", c[0], c[1], r)
 		}
+	}
+}
+
+// The two repository refusals are two named reasons: "the host did not answer for this repository"
+// (unverified) is not "this repository is not on the list" (not allowed).
+func TestTheTwoRepositoryRefusalsHaveTheirOwnReasonConstants(t *testing.T) {
+	if ReasonRepoUnverified == ReasonRepoNotAllowed || string(ReasonRepoUnverified) != "repository-unverified" {
+		t.Errorf("unverified = %q, not allowed = %q", ReasonRepoUnverified, ReasonRepoNotAllowed)
+	}
+	if string(ReasonRepoUnverified) != string(core.ReasonRepoUnverified) {
+		t.Errorf("the effect constant %q differs from core's block reason %q", ReasonRepoUnverified, core.ReasonRepoUnverified)
+	}
+	if v, ok := core.DenyRepoUnverified.Reason(); !ok || RefusalReason(v) != ReasonRepoUnverified {
+		t.Errorf("core verdict maps to %q (has=%v), want %q", v, ok, ReasonRepoUnverified)
 	}
 }

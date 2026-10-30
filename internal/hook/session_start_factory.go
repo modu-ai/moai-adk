@@ -153,7 +153,7 @@ func factoryLaneRuleForSourceInDir(source, lang, dir string) string {
 		// owned-card rule below does not, because that harness has no session
 		// cron tool.
 		m := factoryMessagesFor(lang)
-		recheck := fmt.Sprintf(m.laneRecheckRule, laneArmExpression())
+		recheck := fmt.Sprintf(m.laneRecheckRule, laneWakeBound())
 		if os.Getenv(config.EnvFactoryAutoDispatch) == config.FactoryDispatchManual {
 			return m.laneManualDispatchRule + "\n\n" + recheck
 		}
@@ -188,16 +188,15 @@ func factoryLaneRuleForSourceInDir(source, lang, dir string) string {
 	}
 }
 
-// laneArmExpression renders the arm expression of the standing recheck, `*/N * * * *`,
-// for the effective watchdog renewal period, workflow.factory_lease.renew_interval
-// (SPEC-FACTORY-LEASE-RENEW-001 REQ-FLR-012). The configuration is read from the
-// project root the factory opens: the launch base, CLAUDE_PROJECT_DIR or else the
-// working directory, resolved through factory.ResolveTodoQueueRoot. That is the
-// resolution the factory's own root uses (internal/cli factoryCardRoot), so the
-// rendered period is the one the factory enforces. A configuration the factory
-// refuses renders the default period, because a session-start hook must not block;
-// the factory's own open names the refused key.
-func laneArmExpression() string {
+// laneWakeBound renders the longest delay a self-paced wake may be scheduled at, `renew_interval=Nm`, for
+// the effective watchdog renewal period, workflow.factory_lease.renew_interval
+// (SPEC-FACTORY-LEASE-RENEW-001 REQ-FLR-012): a lane that sleeps longer than the lease renewal period would
+// lose its lease. The configuration is read from the project root the factory opens: the launch base,
+// CLAUDE_PROJECT_DIR or else the working directory, resolved through factory.ResolveTodoQueueRoot. That is
+// the resolution the factory's own root uses (internal/cli factoryCardRoot), so the rendered period is the
+// one the factory enforces. A configuration the factory refuses renders the default period, because a
+// session-start hook must not block; the factory's own open names the refused key.
+func laneWakeBound() string {
 	renew := config.DefaultFactoryLeaseRenewInterval
 	base := os.Getenv(config.EnvClaudeProjectDir)
 	if base == "" {
@@ -208,7 +207,7 @@ func laneArmExpression() string {
 			renew = configured
 		}
 	}
-	return fmt.Sprintf("*/%d * * * *", int(renew/time.Minute))
+	return fmt.Sprintf("renew_interval=%dm", int(renew/time.Minute))
 }
 
 // factoryLanesEnv reads the run's fan-out size from the environment the
@@ -384,7 +383,7 @@ func factoryLeaderNotice(runID string, lanes int, lang string) string {
 	// (g) the leader's standing watch cron and the judgment ladder (B6).
 	// The watch period is the lane renewal period on purpose: the leader's pass reads the same evidence the
 	// lanes renew on, so one configured interval (workflow.factory_lease.renew_interval) governs both.
-	blocks = append(blocks, fmt.Sprintf(m.leaderWatchRule, laneArmExpression()))
+	blocks = append(blocks, fmt.Sprintf(m.leaderWatchRule, laneWakeBound()))
 
 	return strings.Join(blocks, "\n\n") + "\n"
 }

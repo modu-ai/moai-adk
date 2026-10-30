@@ -153,13 +153,11 @@ func TestATypedStatusWithNoPrintedHeadersStillClassifies(t *testing.T) {
 	}
 }
 
-// B10 point 4, through the real components. Scope, read from core/authz.go: the comparison runs only on
-// the branch for another author's Issue with collaboration on (edit, close, take over, label, assign).
-// Own-Issue operations and comments on others' Issues return Allow before it, so a moved repository is not
-// stopped there — a finding for the core owner, not something this adapter can fix.
-// gh follows a redirect and shows only the final answer, so
+// B10 point 4, through the real components. gh follows a redirect and shows only the final answer, so
 // Redirected stays false — but the repository the response names differs from the one asked about, and
-// the permission guard denies on that comparison.
+// the permission guard refuses on that comparison. Since lane-18's F20 follow-ups the repository check comes
+// before every allowance, so this holds on another author's Issue and on the user's own Issue alike, and the
+// verdict is the named "repository-unverified" (the host did not answer for the repository asked about).
 func TestAMovedRepositoryIsCaughtByTheActualRepoComparison(t *testing.T) {
 	newAPI(t, `HTTP/2.0 200 OK\r\nEtag: "a"\r\n\r\n{"user":{"id":2002},"repository_url":"https://api.github.com/repos/o/new-name"}`, "", "0")
 	now := time.Unix(1_700_000_000, 0)
@@ -173,8 +171,12 @@ func TestAMovedRepositoryIsCaughtByTheActualRepoComparison(t *testing.T) {
 	}
 	c := core.Collaboration{Provider: "github", Enabled: true, AllowedRepositories: []string{"o/r", "o/new-name"}, Close: true}
 	v := c.Authorize(core.AuthzRequest{Op: core.OpClose, RequestedRepo: "o/r", ActualRepo: facts.ActualRepo, Redirected: facts.Redirected, UserID: 1001, IssueAuthorID: facts.AuthorID}) // another author's Issue: the branch that compares repositories
-	if v != core.DenyRepoNotAllowed {
-		t.Errorf("verdict = %s, want %s: an answer for another repository must not authorize", v, core.DenyRepoNotAllowed)
+	if v != core.DenyRepoUnverified {
+		t.Errorf("verdict = %s, want %s: an answer for another repository must not authorize", v, core.DenyRepoUnverified)
+	}
+	own := c.Authorize(core.AuthzRequest{Op: core.OpClose, RequestedRepo: "o/r", ActualRepo: facts.ActualRepo, Redirected: facts.Redirected, UserID: facts.AuthorID, IssueAuthorID: facts.AuthorID})
+	if own != core.DenyRepoUnverified {
+		t.Errorf("own Issue: verdict = %s, want %s", own, core.DenyRepoUnverified)
 	}
 }
 
