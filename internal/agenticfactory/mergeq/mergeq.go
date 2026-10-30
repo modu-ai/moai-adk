@@ -10,6 +10,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -122,10 +123,11 @@ func (m *Merger) Land(ctx context.Context, cardID, candidateSHA string) (Result,
 	}
 	settle := context.WithoutCancel(ctx) // releasing the lock and removing the worktree must survive a cancelled ctx
 
-	if holder, err := m.Git.CheckedOutAt(ctx, m.Trunk); err != nil {
-		return Result{}, fmt.Errorf("mergeq: look for a worktree holding %s: %w", m.Trunk, err)
-	} else if holder != "" {
-		return Result{}, fmt.Errorf("%w: %s holds %s", ErrTrunkCheckedOut, holder, m.Trunk)
+	if err := m.validTrunk(); err != nil {
+		return Result{}, err
+	}
+	if err := m.noCheckout(ctx); err != nil {
+		return Result{}, err
 	}
 	trunk, err := m.Git.RevParse(ctx, m.Trunk)
 	if err != nil {
@@ -172,14 +174,21 @@ func (m *Merger) Land(ctx context.Context, cardID, candidateSHA string) (Result,
 		}
 
 		next, landed, err := m.landUnderLock(ctx, cardID, epoch, trunk, cand)
-		_ = m.Queue.ReleaseLock(settle, LandingLock, epoch)
+		relErr := m.Queue.ReleaseLock(settle, LandingLock, epoch)
 		_ = m.Git.Discard(settle, cand)
-		if err != nil {
-			return res, err
+		if relErr != nil {
+			relErr = fmt.Errorf("mergeq: releasing the landing lock failed: %w", relErr)
 		}
 		if landed {
+			// the trunk moved and the card is landed; a lock that could not be released is reported next to that
 			res.Outcome, res.TrunkAfter = OutcomeLanded, cand.Result
-			return res, nil
+			return res, relErr
+		}
+		if err != nil {
+			return res, errors.Join(err, relErr)
+		}
+		if relErr != nil {
+			return res, relErr
 		}
 		trunk, res.TrunkBefore = next, next // the trunk moved: rebuild on where it is now
 	}
@@ -190,6 +199,9 @@ func (m *Merger) Land(ctx context.Context, cardID, candidateSHA string) (Result,
 // built it records landing, swaps the ref, records landed and the note. When the trunk moved (at the re-check
 // or between it and the swap) it writes nothing and returns the trunk's new commit so the caller rebuilds.
 func (m *Merger) landUnderLock(ctx context.Context, cardID string, epoch int64, trunk string, cand Candidate) (next string, landed bool, err error) {
+	if err := m.noCheckout(ctx); err != nil {
+		return "", false, err
+	}
 	now, err := m.Git.RevParse(ctx, m.Trunk)
 	if err != nil {
 		return "", false, err
@@ -219,6 +231,31 @@ func (m *Merger) landUnderLock(ctx context.Context, cardID string, epoch int64, 
 	return cand.Result, true, nil
 }
 
+// validTrunk refuses a trunk that is not a full branch name or that is the project's default branch.
+func (m *Merger) validTrunk() error {
+	t := m.Trunk
+	switch {
+	case !strings.HasPrefix(t, "refs/heads/") || len(t) == len("refs/heads/"):
+		return fmt.Errorf("%w: %q", ErrBadTrunk, t)
+	case t == "refs/heads/main" || t == "refs/heads/master":
+		return fmt.Errorf("%w: %q is the default branch", ErrBadTrunk, t)
+	}
+	return nil
+}
+
+// noCheckout fails when a worktree has the trunk checked out. It runs before anything is verified and again
+// under the lock, because a tree can be made after the first look.
+func (m *Merger) noCheckout(ctx context.Context) error {
+	holder, err := m.Git.CheckedOutAt(ctx, m.Trunk)
+	if err != nil {
+		return fmt.Errorf("mergeq: look for a worktree holding %s: %w", m.Trunk, err)
+	}
+	if holder != "" {
+		return fmt.Errorf("%w: %s holds %s", ErrTrunkCheckedOut, holder, m.Trunk)
+	}
+	return nil
+}
+
 func (m *Merger) fail(ctx context.Context, res Result, cardID, trunk, reason string) (Result, error) {
 	if err := m.Queue.SetState(ctx, cardID, 0, StateFailed, trunk, reason); err != nil {
 		return res, err
@@ -229,7 +266,7 @@ func (m *Merger) fail(ctx context.Context, res Result, cardID, trunk, reason str
 
 // settleLanded records a card whose candidate is already reachable from the trunk as landed. The ref is not
 // touched; the lock is taken only because the landed state is written under it.
-func (m *Merger) settleLanded(ctx context.Context, cardID, trunk, why string) (Result, error) {
+func (m *Merger) settleLanded(ctx context.Context, cardID, trunk, why string) (res Result, err error) {
 	epoch, err := m.Queue.AcquireLock(ctx, LandingLock, m.Holder, m.lockTTL())
 	if errors.Is(err, ErrLockHeld) {
 		return Result{Outcome: OutcomeWaiting, TrunkBefore: trunk, Reason: "the landing lock is held by another lander"}, nil
@@ -238,7 +275,11 @@ func (m *Merger) settleLanded(ctx context.Context, cardID, trunk, why string) (R
 		return Result{}, err
 	}
 	settle := context.WithoutCancel(ctx)
-	defer func() { _ = m.Queue.ReleaseLock(settle, LandingLock, epoch) }()
+	defer func() {
+		if relErr := m.Queue.ReleaseLock(settle, LandingLock, epoch); relErr != nil {
+			err = errors.Join(err, fmt.Errorf("mergeq: releasing the landing lock failed: %w", relErr))
+		}
+	}()
 	if err := m.Queue.SetState(ctx, cardID, epoch, StateLanded, trunk, ""); err != nil {
 		return Result{}, err
 	}
@@ -289,10 +330,35 @@ func (m *Merger) Reconcile(ctx context.Context, items []Item) ([]Action, error) 
 			}
 			continue
 		}
-		if err := m.Queue.SetState(ctx, it.CardID, 0, StateWaiting, trunk, ""); err != nil {
+		moved, err := m.backToWaiting(ctx, it, trunk)
+		if err != nil {
 			return acts, err
 		}
-		acts = append(acts, Action{CardID: it.CardID, From: it.State, To: StateWaiting, Why: "the candidate is not in the trunk; it is verified again"})
+		if moved {
+			acts = append(acts, Action{CardID: it.CardID, From: it.State, To: StateWaiting, Why: "the candidate is not in the trunk; it is verified again"})
+		}
 	}
 	return acts, nil
+}
+
+// backToWaiting returns a row that is not in the trunk to waiting, and only while holding the landing lock: a
+// row in verifying or landing may belong to a lander that is alive and about to finish, and the lock is what says
+// no lander is. When the lock is held the row is left as it is.
+func (m *Merger) backToWaiting(ctx context.Context, it Item, trunk string) (moved bool, err error) {
+	epoch, err := m.Queue.AcquireLock(ctx, LandingLock, m.Holder, m.lockTTL())
+	if errors.Is(err, ErrLockHeld) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	defer func() {
+		if relErr := m.Queue.ReleaseLock(context.WithoutCancel(ctx), LandingLock, epoch); relErr != nil {
+			err = errors.Join(err, fmt.Errorf("mergeq: releasing the landing lock failed: %w", relErr))
+		}
+	}()
+	if err := m.Queue.SetState(ctx, it.CardID, epoch, StateWaiting, trunk, ""); err != nil {
+		return false, err
+	}
+	return true, nil
 }
