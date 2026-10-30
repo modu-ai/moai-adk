@@ -1,4 +1,6 @@
-# SPEC-AGENTIC-FACTORY-LOCAL-001 — 구현 계획 (0.5.0 — audited-FAIL 0.70 → revised (A-na delta), unaudited)
+# SPEC-AGENTIC-FACTORY-LOCAL-001 — 구현 계획 (0.5.1 — audited-FAIL 0.74 (plan debt accepted by leader decision), no re-audit)
+
+> 0.5.1: 머리 상태 표지만 바꿨다(progress §M). 이전 문구(머리): «# SPEC-AGENTIC-FACTORY-LOCAL-001 — 구현 계획 (0.5.0 — audited-FAIL 0.70 → revised (A-na delta), unaudited)»
 
 > 0.5.0: 'regression-guard' 표지를 지웠다(감사 B1). 착지한 AC는 acceptance §N 사후 관측(release 게이트 밖)이고, release 게이트는 AC-AFL-013·015·017이다. 이전 문구(머리): «# SPEC-AGENTIC-FACTORY-LOCAL-001 — 구현 계획 (0.4.0)»
 
@@ -69,4 +71,4 @@
 
 ## §F 상위 SPEC과의 연결
 
-- 상위 SPEC-AGENTIC-FACTORY-001 0.7.4(이전 문구 «0.7.3») §J 처분표가 이 SPEC의 REQ-AFL id를 가리킨다(이전 문구 «0.7.0 §J»). 상위 DEC-AF-06/07/17/18(개정)·DEC-AF-30~33, OD-31~35.
+- 상위 SPEC-AGENTIC-FACTORY-001 0.7.5(이전 문구 «0.7.4», 그 전 «0.7.3») §J 처분표가 이 SPEC의 REQ-AFL id를 가리킨다(이전 문구 «0.7.0 §J»). 상위 DEC-AF-06/07/17/18(개정)·DEC-AF-30~33, OD-31~35.

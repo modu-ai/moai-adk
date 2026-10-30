@@ -1,10 +1,10 @@
 ---
 id: SPEC-AGENTIC-FACTORY-001
 title: "AgenticFactory 실행 계약 — 소유권·전이·안전 게이트 (0.7.0부터 권위는 로컬 원장: SPEC-AGENTIC-FACTORY-LOCAL-001; 0.6.7까지 GitHub Issue 원장)"
-version: "0.7.4"
+version: "0.7.5"
 status: draft
 created: 2026-10-29
-updated: 2026-10-30
+updated: 2026-10-31
 author: GOOS
 priority: P0
 phase: "v3.3.0 target"
@@ -40,6 +40,7 @@ related_specs: [SPEC-ASIDE-BROWSER-001, SPEC-RESOURCE-SLOT-LEASE-001, SPEC-FACTO
 | 0.7.2 | 2026-10-30 | manager-spec | revised, unaudited. 후보 OD-36~42를 leader decision (leader-decisions-od36-42-20261030.md, 2026-10-30T05:56Z; reversible)대로 닫았다(사용자·운영자 결정이 아니다). 각 행에 결정과 날짜를 적고 열려 있던 때의 문언을 기록으로 남겼다. §J의 REQ-AF-007·AC-AF-007(OD-37)과 REQ-AF-011·AC-AF-011(OD-38) 처분 칸을 결정대로 고쳤다. OD-35는 열린 채 그대로다((a)는 0.7.1에서 이미 닫힘; 이번 결정으로 닫힌 항목 없음). SPEC-AGENTIC-FACTORY-IDENTITY-001은 고치지 않았다. 새 REQ·AC id 없음, 25/25 그대로. 감사는 하위 SPEC의 FAIL 0.62 @c445ce9559 하나뿐이며 PASS라고 적지 않는다. |
 | 0.7.3 | 2026-10-30 | manager-spec | revised, unaudited. 하위 SPEC-AGENTIC-FACTORY-LOCAL-001의 plan-audit FAIL 0.72(`.moai/reports/issue-1948/plan-audit-local-001-081eacf037/verdict.md`, @081eacf037) 가운데 상위 몫을 고쳤다: (N4) §J 집계 줄을 표의 행에서 다시 세어 REQ 7/5/6/7·AC 8/5/6/6(superseded / no local counterpart / unchanged / 혼합)으로 고치고 센 방법을 적었다 — 0.7.1 재분류가 그 줄에 반영되지 않았었다; HISTORY 0.7.0과 progress.md 노트의 수에는 0.7.0 시점의 수라는 덧붙임만 달았다. (N3) DEC-AF-30의 퇴역 순서 문장(import 먼저·패키지마다 커밋 하나, 계약 §4)을 계약 §10 P2 revision(lane-20 한 변경, REQ-AFL-015 대상, `go build ./... && go vet ./...`; OD-42 결정)으로 맞췄다. 옛 문장은 그 칸에 남겼다. decisions-pending.md 머리 판 번호만 고쳤다(행 내용 그대로). OD-36~42는 다시 열지 않았다. 새 REQ·AC id 없음, 25/25 그대로. 마지막 감사는 하위 SPEC의 FAIL 0.72 @081eacf037이며 PASS라고 적지 않는다. 대응표는 하위 progress.md §K. |
 | 0.7.4 | 2026-10-30 | manager-spec | audited-FAIL 0.70 → revised (A-na delta), unaudited. 하위 SPEC-AGENTIC-FACTORY-LOCAL-001의 plan-audit FAIL 0.70(`.moai/reports/issue-1948/plan-audit-local-001-2acdddeba4/verdict.md`, @2acdddeba4) 축소 델타 가운데 상위 몫: §G.1에 OD-43(회수된 카드가 `Claim` 대상이 되는 집합; 계약이 적지 않음; 후보 OD, neutral·reversible)을 더했고, OD-35 (d)(원장 밖 §6 상수의 패키지)를 착지 코드로 답한 것으로 적었다(answered by landed code @db02401ad1: 여덟 상수 모두 `internal/agenticfactory/ledger/api.go:41-48`; OD-35의 다른 항목은 열림). decisions-pending.md에 같은 두 변경과 행 수를 맞췄다. 새 REQ·AC id 없음, 25/25 그대로. 이 판 뒤 감사는 없다(리더 결정: A-na 축소 델타 뒤 멈춤). PASS라고 적지 않는다. 대응표는 하위 progress.md §L. |
+| 0.7.5 | 2026-10-31 | manager-spec | audited-FAIL 0.74 (plan debt accepted by leader decision), no re-audit. 하위 SPEC-AGENTIC-FACTORY-LOCAL-001 0.5.1에 맞춘 판 번호 개정이다: 하위의 plan-audit FAIL 0.74(`.moai/reports/issue-1948/plan-audit-ana-delta.md`, @4a2123c8e7)는 리더 결정 D-spec-disposition = C(SPEC 유지, 분할·축소 없음, 추가 plan 감사 없음)로 plan 부채로 받아들여졌고, 코드 판정은 고정한 integration SHA 위의 마지막 sync 감사가 한다(하위 progress §M). 이 판은 상위의 REQ·AC·OD 행을 바꾸지 않았다. PASS가 아니다. |
 
 ## §A 범위와 규범 원천
 

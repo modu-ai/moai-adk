@@ -11,6 +11,7 @@ status: draft
 - 0.3.0 (2026-10-30, HEAD `0c1cb1853f` 위 작업 트리): revised, unaudited — OD-36~42를 leader decision (leader-decisions-od36-42-20261030.md, 2026-10-30T05:56Z; reversible)대로 닫음. 있는 감사는 FAIL 0.62 @c445ce9559 하나이며 재감사는 coordinator가 돌린다. PASS라고 적지 않는다. 대응표는 §J.
 - 0.4.0 (2026-10-30, HEAD `c83fdc04ff` 위 작업 트리): revised, unaudited — plan-audit FAIL 0.72 @081eacf037 수리. 마지막 감사는 그 FAIL이며 재감사는 coordinator가 돌린다. PASS라고 적지 않는다. 대응표는 §K.
 - 0.5.0 (2026-10-30, HEAD `2acdddeba4` 위 작업 트리): audited-FAIL 0.70 → revised (A-na delta), unaudited — plan-audit FAIL 0.70 @2acdddeba4의 축소 델타. 리더 결정(A-na 축소 델타 뒤 멈춤)으로 이 판 뒤 감사는 없다. PASS라고 적지 않는다. 대응표·남은 부채·hold 기록·분할 제안은 §L.
+- 0.5.1 (2026-10-31, HEAD `4a2123c8e7` 위 작업 트리): audited-FAIL 0.74 (plan debt accepted by leader decision), no re-audit — plan-audit FAIL 0.74 @4a2123c8e7(`.moai/reports/issue-1948/plan-audit-ana-delta.md`)의 N1·N2·N3·N4·N6 기록 수리. 결정 D-spec-disposition = C로 추가 plan 감사는 없다. PASS라고 적지 않는다. 결정 기록·plan 부채 목록·대응표는 §M.
 
 ## §E.2 Run-phase Evidence
 
@@ -235,3 +236,90 @@ $ git -C <worktree> diff --stat 607bd17804 db02401ad1 -- ac_names_test.go verify
 ```
 
 AC-AFL-015 RED-now의 `ls-tree` 출력과 013·017·015의 단일 이름 grep은 acceptance §B.2에 있다. 종료 코드는 어느 명령에서도 관측하지 못했다(acceptance §B.2).
+
+## §M plan-audit FAIL 0.74 @4a2123c8e7 — plan debt accepted by leader decision
+
+- 결정(그대로): "plan-audit FAIL 0.74 accepted as plan debt (leader, operator delegation + Jev); code verdict = final sync audit on the frozen integration SHA"
+- 출처: leader decision relayed via the leader session (message of this date); operator delegation and the Jev result are the leader's statements, originals not read by this author. 날짜: 2026-10-31(조정자가 이 작업에 실어 보낸 메시지).
+- 결정 이름: D-spec-disposition = C — SPEC kept; no split, no reduction; no further plan audit. §L의 분할 제안 가운데 선택지 C에 해당한다(§L 선택지 목록은 지우지 않았다).
+- 감사: `.moai/reports/issue-1948/plan-audit-ana-delta.md`(FAIL 0.74 @4a2123c8e7; 막는 결함 N1 N2 N3, 선택 N4 N5 N6 N7 N8 N10, 이월 묶음 "N9 (carried)"). 이 판은 감사·리뷰 도구를 부르지 않았고 plan 감사를 다시 돌리지 않았다.
+- 상태 표지(하위·상위 판이 적힌 곳): audited-FAIL 0.74 (plan debt accepted by leader decision), no re-audit. PASS가 아니다. 판: 하위 0.5.1, 상위 0.7.5.
+- 원천 계약 sha256 `f2c1078b7add847b93926ba3356eda62e4fbc44d8aa77221f059f44f6b059acb` — 작업 전과 끝에 `shasum -a 256 /Users/goos/MoAI/moai-adk-go/.moai/reports/issue-1948/local-adk-design-20261030.md`로 다시 재어 같음.
+- 코드 사실의 commit: integration tip `b28a31d9dc`(AC-AFL-015 시험 병합). §L·§N·§F의 다른 코드 사실은 여전히 `db02401ad1`에 고정되어 있다(감사 N8, plan 부채).
+- commit: `pending-backfill`
+
+### plan 부채로 받아들인 감사 id
+
+- 리더가 이름을 댄 것(FAIL 0.74 감사): N5(§D 완료 정의가 REQ 18개를 뺌), N6(`api.go` 줄 범위 — 글자 실수라 이 판에서 41-48로 통일했으나 목록에는 리더가 적은 대로 둔다), N7(OD-43과 REQ-AFL-007), N10(§N AC-AFL-002 요약의 heartbeat — 착지 시험이 `heartbeat_at`을 단언하지 않음; 고치지 않았다).
+- 이월(리더가 적은 대로): N9, N11, N12, N8, D7.
+- §L에서 이월한 목록(그대로 옮김): FAIL 0.72 감사의 N7, N9, N10, N11, N12, N15, N16, N17, N18; FAIL 0.62 감사의 D4, D7, D11, D12, D15, D17.
+- 주의: N 번호는 감사마다 다시 매겨진다 — FAIL 0.74 감사의 N7·N10과 FAIL 0.72 감사의 N7·N10은 다른 결함이다. 리더 메시지의 "carried N9, N11, N12"가 어느 감사의 번호인지는 메시지가 적지 않았다; FAIL 0.74 감사의 "N9 (carried)"는 §L 목록 전체를 묶은 항목이다.
+- 이 판에서 고친 것(부채 목록 밖): N1(기록), N2, N4(이탈로 기록), N6. N3은 "not resolved by the report"로 적었다 — 고친 것이 아니다.
+
+### 대응표 (이 작업)
+
+약어는 §K와 같다(SL spec.md, ACC acceptance.md, PL plan.md, PS 상위 spec.md, DP 상위 decisions-pending.md). "고치기 전"은 `4a2123c8e7`의 줄, "고친 뒤"는 이 작업 트리의 줄이다.
+
+| item | before | change | after | note |
+|---|---|---|---|---|
+| N2 AC-014 사례 (d) | ACC:285-286 | 사례를 (d1) 저장소 층, (d2) 저장소+병합 큐 층, (d2′) 병합 큐 층 반대 사례(현재 epoch·살아 있는 lease의 verifying 행은 그대로, 동작 0), (d3) 병합 큐 층으로 나눔; 계약 §10 20th review lane-22 (a) 256-257행 인용; 변이 둘 더함; 착지 사실 `b28a31d9dc:…/mergeq/real_ledger_reconcile_test.go:16`(본문 읽음, 돌리지 않음); 옛 (d)·변이 줄은 이전 문구(0.5.0) | ACC:298-302 | 시험 이름 하나 그대로 |
+| N2 REQ-AFL-014 일관성 | SL:106 | SHALL 문장은 그대로; "언제나 되돌림"이 아니라는 메모 한 문장과 20th (a) 인용 | SL:107 | REQ-AFL-014는 원래도 "always reverts"라고 쓰지 않았다 |
+| N1 AC-013 RED | ACC:275 | 'unwritten test' 칸 → lane report RED 기록(명령은 lane report af-verbs-ac017-ac013.md L32를 가리키는 포인터, 그대로 옮긴 FAIL 출력, `95e100e754`, 종료 코드 칸 없음 문장)과 이 작성자의 커밋 그래프 확인; 옛 칸 이전 문구. 후속(조정자 결정, 선택지 2): 실행할 수 있는 `go test … -run <Name> ./internal/cli/` 줄을 지우고 줄 번호 포인터로 바꿈; 앵커 없는 `-run` 패턴에 대한 발견 한 문장(`verification-completeness.md` §1.1, 기록만 함); 그 앞의 메모는 이전 문구 | ACC:277-286 | strict lint의 `VacuousTestAssertion`이 사라짐; lint.skip·우회 문구 없음 |
+| N1 AC-013 GREEN | (없음) | GREEN 기록(`b58b1566b6`, lane report, 이 작성자 미관측)과 lane report의 Gaps | ACC:287 | 명령은 L44 포인터; Then의 REVIEWING 생략은 덮지 않음 |
+| N1 AC-017 RED·GREEN | ACC:325 | AC-013과 같은 형식(`5a9370f894`; RED 명령 포인터 L20, GREEN 포인터 L50; 같은 발견 문장) | ACC:345-354 | AC-015 블록은 `-run`이 없는 명령이라 lint가 짚지 않아 그대로 둠 |
+| N1·N4·N3 AC-015 | ACC:305-306 | lane-20 lane report RED·GREEN·변이 기록; 기록한 이탈(DEVIATION) 줄; N3 상태 줄(not resolved by the report, `8d0c47a7f3` ls-tree 부분 증거); 옛 RED-now·green path 이전 문구 | ACC:321-326 | |
+| N1·N5 §D 완료 정의 | ACC:373 | 완료 = 기록된 RED(순서 포함, 015는 이탈) + GREEN 기록이 함께 있을 때; 판정이 아니라는 문장; 옛 문구 이전 문구 | ACC:403-404 | N5(REQ 18개 제외)는 고치지 않음 — plan 부채 |
+| N6 줄 범위 | ACC:422 | `api.go:41-50` → `41-48`, `b28a31d9dc` `git grep -n` 재확인 | ACC:453 | |
+| 판·상태 표지 | SL:4, SL:7, ACC:1, PL:1, PL:74, PS:4, PS:7, DP:3 | 하위 0.5.1, 상위 0.7.5, `updated: 2026-10-31`; 표지 "audited-FAIL 0.74 (plan debt accepted by leader decision), no re-audit"; 옛 머리는 이전 문구 | SL:4, SL:7, SL:30, ACC:1-3, PL:1-3, PL:74, PS:4, PS:7, PS:43, DP:3 | design.md·research.md 손대지 않음 |
+| §E.1·§M | PS(하위 progress):13 | 0.5.1 줄; 이 §M | 하위 progress:14, §M | |
+
+### 측정 출력 (이번 실행, 이 트리)
+
+```text
+$ git -C <worktree> log -1 --format='%h %s' <sha>   (sha마다 한 번)
+5a9370f894 test(cli): RED - TestAFCommand_VerbsRegistered (AC-AFL-017, Issue #1948)
+95e100e754 test(cli): RED - TestCardFlow_ClaimToDone_ThroughMergeQueue over a skeleton `moai af` (AC-AFL-013, Issue #1948)
+b58b1566b6 feat(cli): `moai af` verbs - claim, move, evidence, enqueue, release (AC-AFL-017, AC-AFL-013, Issue #1948)
+d649512ed7 [issue-1948-af] test(agenticfactory/retirement): TestRetirement_NoImportOfForgeMirrorGitref (AC-AFL-015)
+b28a31d9dc merge(lane-20): AC-AFL-015 retirement import test (d649512ed7, Issue #1948)
+
+$ git -C <worktree> branch --contains <sha> --list WT-agentic-factory-integration   (위 다섯 sha 각각)
++ WT-agentic-factory-integration
+
+$ git -C <worktree> merge-base --is-ancestor 5a9370f894 b58b1566b6; echo "exit=$?"   → exit=0
+$ git -C <worktree> merge-base --is-ancestor 95e100e754 b58b1566b6; echo "exit=$?"   → exit=0
+$ git -C <worktree> merge-base --is-ancestor 5a9370f894 95e100e754; echo "exit=$?"   → exit=0
+$ git -C <worktree> merge-base --is-ancestor b58b1566b6 5a9370f894; echo "exit=$?"   → exit=1   (반대 방향 대조)
+$ git -C <worktree> merge-base --is-ancestor d649512ed7 b28a31d9dc; echo "exit=$?"   → exit=0
+
+$ git -C <worktree> log -1 --format='%h %p %s' 3fd9ab6456
+3fd9ab6456 8d0c47a7f3 [issue-1948] refactor(agenticfactory): retire the Issue/remote code under the local-only design (P2, OD-42)
+
+$ git -C <worktree> grep -n -e HeartbeatThrottle -e SnapshotEvery -e MinSQLite b28a31d9dc -- internal/agenticfactory/ledger/api.go; echo "exit=$?"
+b28a31d9dc:internal/agenticfactory/ledger/api.go:41:	HeartbeatThrottle = 30 * time.Second // a session writes its heartbeat at most this often
+b28a31d9dc:internal/agenticfactory/ledger/api.go:48:	SnapshotEvery     = 30 * time.Minute // while the store is open
+b28a31d9dc:internal/agenticfactory/ledger/api.go:50:	MinSQLite         = "3.35"           // Open refuses an older engine
+b28a31d9dc:internal/agenticfactory/ledger/api.go:72:	ErrSQLiteTooOld   = errors.New("ledger: the SQLite engine is older than " + MinSQLite)
+exit=0
+```
+
+- 종료 코드: §L의 "종료 코드는 어느 명령에서도 관측하지 못했다"는 그 실행의 명령 모양에 대한 기록이다. 이 작업에서는 git 명령 하나 뒤에 `; echo "exit=$?"`를 붙인 형태가 받아들여져 종료 코드를 관측했다. §L 문장은 고치지 않았다.
+- lane report 두 개는 integration 트리의 gitignore된 `.moai/reports`에 있는 lane이 쓴 기록이며, 이 작성자는 읽기만 했고 그 안의 명령을 다시 돌리지 않았다.
+
+### 후속 측정 (조정자 결정 선택지 2 뒤, 이번 실행, 이 트리)
+
+```text
+$ <scratchpad>/moai-tree5 spec lint --strict <worktree>/.moai/specs/SPEC-AGENTIC-FACTORY-LOCAL-001/spec.md > <scratchpad>/lint-child4.txt 2>&1; echo "exit=$?"
+exit=0
+(파일 안) WARNING   REQTableRowsRejected   …/SPEC-AGENTIC-FACTORY-LOCAL-001/spec.md   139   …
+(파일 안) 0 error(s), 1 warning(s)
+
+$ <scratchpad>/moai-tree5 spec lint --strict <worktree>/.moai/specs/SPEC-AGENTIC-FACTORY-001/spec.md > <scratchpad>/lint-parent4.txt 2>&1; echo "exit=$?"
+exit=0
+(파일 안) WARNING   REQTableRowsRejected   …/SPEC-AGENTIC-FACTORY-001/spec.md   244   …
+(파일 안) 0 error(s), 1 warning(s)
+```
+
+- 바로 앞 실행(포인터로 바꾸기 전)의 하위 strict lint는 `exit=1`, `0 error(s), 3 warning(s)`(REQTableRowsRejected 1, `VacuousTestAssertion` 2 — AC-013·AC-017 RED 블록)였다.
+- 수: AC 제목 상위 25·하위 21, REQ 고유 상위 25·하위 21, 시험 이름이 정확히 하나인 하위 AC 21/21.
+

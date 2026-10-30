@@ -1,6 +1,6 @@
 # SPEC-AGENTIC-FACTORY-001 — 결정 대기 목록
 
-작성일: 2026-10-30 · SPEC 판: 0.7.4(audited-FAIL 0.70 → revised (A-na delta), unaudited; OD-35 (d) 표시와 OD-43 행을 더함; 이전 문구 «SPEC 판: 0.7.3(행 내용은 0.7.2와 같음; 이전 문구 «SPEC 판: 0.7.2»)») · 작성: manager-spec
+작성일: 2026-10-30 · SPEC 판: 0.7.5(audited-FAIL 0.74 (plan debt accepted by leader decision), no re-audit; 행 내용은 0.7.4와 같음; 이전 문구 «SPEC 판: 0.7.4(audited-FAIL 0.70 → revised (A-na delta), unaudited; OD-35 (d) 표시와 OD-43 행을 더함; 이전 문구 «SPEC 판: 0.7.3(행 내용은 0.7.2와 같음; 이전 문구 «SPEC 판: 0.7.2»)»)») · 작성: manager-spec
 
 ## 이 표를 읽는 법
 
