@@ -32,6 +32,8 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -182,10 +184,13 @@ func runFactoryResident(ctx context.Context, o residentOptions) error {
 	}
 
 	fmt.Fprintf(out, "agentic factory resident: claim store %s, %d webhook route(s)\n", dir, routes)
-	fmt.Fprintln(out, "  writes: none wired (Issue creation off; context-ledger comment writes not wired, path undecided)")
+	fmt.Fprintln(out, "  local writes: claim records (waits, repair marks) and inbox/cursor documents in the claim store")
+	fmt.Fprintln(out, "  external writes: none wired (Issue creation off; context-ledger comment writes not wired, path undecided)")
 	fmt.Fprintln(out, "  git: not called on the default path")
 	fmt.Fprintln(out, "  running against a real repository is an operation the user approves")
 
+	ctx, cancelRun := context.WithCancel(ctx)
+	defer cancelRun()
 	var srv *http.Server
 	serveDone := make(chan error, 1)
 	if routes > 0 && !o.Once {
@@ -196,7 +201,15 @@ func runFactoryResident(ctx context.Context, o residentOptions) error {
 		mux := http.NewServeMux()
 		mux.Handle("/hook/", r.Webhook)
 		srv = &http.Server{Handler: mux, ReadHeaderTimeout: 10 * time.Second}
-		go func() { serveDone <- srv.Serve(ln) }()
+		go func() {
+			err := srv.Serve(ln)
+			if err != nil && !errors.Is(err, http.ErrServerClosed) {
+				// A server that stopped on its own must not leave the loop running unobserved.
+				fmt.Fprintf(out, "webhook server stopped: %v\n", err)
+				cancelRun()
+			}
+			serveDone <- err
+		}()
 		fmt.Fprintf(out, "  webhook: listening on %s\n", ln.Addr())
 		if o.Ready != nil {
 			o.Ready(ln.Addr().String())
@@ -213,15 +226,7 @@ func runFactoryResident(ctx context.Context, o residentOptions) error {
 		defer t.Stop()
 		ticks = t.C
 	}
-	report := func(p resident.Pass) {
-		if p.Err != nil {
-			fmt.Fprintf(out, "pass %s: error: %v\n", p.At.UTC().Format(time.RFC3339), p.Err)
-			return
-		}
-		fmt.Fprintf(out, "pass %s: %d action(s)\n", p.At.UTC().Format(time.RFC3339), len(p.Actions))
-	}
-
-	runErr := r.Run(ctx, ticks, report)
+	runErr := r.Run(ctx, ticks, func(p resident.Pass) { writeResidentPass(out, p) })
 
 	if srv != nil {
 		sctx, cancel := context.WithTimeout(context.Background(), residentShutdownGrace)
@@ -237,4 +242,34 @@ func runFactoryResident(ctx context.Context, o residentOptions) error {
 		return nil
 	}
 	return runErr
+}
+
+// writeResidentPass prints one pass: the action count by kind, and every action that carries an error
+// with its Issue. A silent failure is the defect this exists for (audit F3): a stuck record must show
+// on screen, not only in the claim store.
+func writeResidentPass(out io.Writer, p resident.Pass) {
+	at := p.At.UTC().Format(time.RFC3339)
+	if p.Err != nil {
+		fmt.Fprintf(out, "pass %s: error: %v\n", at, p.Err)
+		return
+	}
+	counts := map[string]int{}
+	for _, a := range p.Actions {
+		counts[a.What]++
+	}
+	kinds := make([]string, 0, len(counts))
+	for k := range counts {
+		kinds = append(kinds, k)
+	}
+	sort.Strings(kinds)
+	parts := make([]string, 0, len(kinds))
+	for _, k := range kinds {
+		parts = append(parts, fmt.Sprintf("%s=%d", k, counts[k]))
+	}
+	fmt.Fprintf(out, "pass %s: %d action(s) %s\n", at, len(p.Actions), strings.Join(parts, " "))
+	for _, a := range p.Actions {
+		if a.Err != nil {
+			fmt.Fprintf(out, "  %s issue #%d: error: %v\n", a.What, a.Issue, a.Err)
+		}
+	}
 }

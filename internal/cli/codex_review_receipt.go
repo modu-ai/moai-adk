@@ -244,8 +244,6 @@ when the codex binary is not on PATH.`,
 			}
 			// The review session runs in a process group the terminal's Ctrl-C does
 			// not reach, so a signal here must become a return that closes it.
-			// The review session runs in a process group the terminal's Ctrl-C does
-			// not reach, so a signal here must become a return that closes it.
 			ctx, stop := codexSignalContext(verifyReceiptContext(c))
 			defer stop()
 			defer shutdownCodexSessions()

@@ -11,6 +11,7 @@ package cli
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"os"
@@ -20,6 +21,8 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/forge/webhook"
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/monitor/notify"
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/resident"
 )
 
 // residentProject is a temp project whose settings name an existing claim store.
@@ -149,8 +152,41 @@ func TestResident_OnceRunsOnePassAndReportsIt(t *testing.T) {
 	if n := strings.Count(out.String(), "pass 2026-10-30T04:00:00Z"); n != 1 {
 		t.Errorf("passes reported = %d, want 1:\n%s", n, out.String())
 	}
-	if !strings.Contains(out.String(), "writes: none wired") {
-		t.Errorf("the unwired write paths are not stated at start:\n%s", out.String())
+	if !strings.Contains(out.String(), "external writes: none wired") {
+		t.Errorf("the unwired external write paths are not stated at start:\n%s", out.String())
+	}
+	if !strings.Contains(out.String(), "local writes: claim records") {
+		t.Errorf("the local claim-store writes are not stated at start (audit F17):\n%s", out.String())
+	}
+}
+
+// Audit F3: an action that failed is printed with its Issue, so a stuck record shows on screen.
+func TestResident_PassReportShowsActionErrors(t *testing.T) {
+	var out bytes.Buffer
+	writeResidentPass(&out, resident.Pass{
+		At: fixedNow(),
+		Actions: []notify.Action{
+			{Issue: 7, What: "reminder-deferred"},
+			{Issue: 9, What: "state-error", Err: errors.New("claim store busy")},
+			{Issue: 7, What: "reminder-deferred"},
+		},
+	})
+	got := out.String()
+	for _, want := range []string{"3 action(s) reminder-deferred=2 state-error=1", "state-error issue #9: error: claim store busy"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("report lacks %q:\n%s", want, got)
+		}
+	}
+	// control: a pass without errors prints no error line.
+	out.Reset()
+	writeResidentPass(&out, resident.Pass{At: fixedNow(), Actions: []notify.Action{{Issue: 1, What: "pr-notice"}}})
+	if strings.Contains(out.String(), "error") {
+		t.Errorf("a clean pass printed an error line:\n%s", out.String())
+	}
+	out.Reset()
+	writeResidentPass(&out, resident.Pass{At: fixedNow(), Err: errors.New("tick failed")})
+	if !strings.Contains(out.String(), "pass 2026-10-30T04:00:00Z: error: tick failed") {
+		t.Errorf("a failed pass is not reported:\n%s", out.String())
 	}
 }
 
