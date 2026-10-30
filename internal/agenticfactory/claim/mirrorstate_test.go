@@ -2,6 +2,7 @@ package claim
 
 import (
 	"errors"
+	"reflect"
 	"testing"
 	"time"
 
@@ -110,4 +111,76 @@ func TestUpdateAsMonitorChangesOnlyTheWait(t *testing.T) {
 
 func monitorWait() *core.Wait {
 	return &core.Wait{Owner: "sess-a", NextAction: "ask again", RecheckAt: time.Date(2026, 10, 30, 9, 0, 0, 0, time.UTC), Diagnosis: "d", MaxRetries: 2, Escalate: "leader"}
+}
+
+// fn gets a copy it may change in place: a pointer field's target or a History
+// element changed through it must not reach the stored record, because only the
+// wait is kept.
+func TestUpdateAsMonitorCannotChangeSharedPartsInPlace(t *testing.T) {
+	s := open(t)
+	i := ref(t, 1948)
+	rec, _ := s.Acquire(i, "sess-a", "d1", "run-1")
+	if _, err := s.Update(i, "sess-a", rec.Epoch, func(r *Record) error {
+		r.Receipt = &Receipt{HandoffID: "h1", PR: 7, Branch: "b", Worktree: "w"}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	before, _ := s.Read(i)
+	if _, err := s.UpdateAsMonitor(i, "sess-a", rec.Epoch, func(r *Record) error {
+		r.Receipt.PR = 0
+		r.Receipt.LeaderAccepted = true
+		r.History[0].Note = "rewritten"
+		r.History = append(r.History, Event{Kind: "forged"})
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	after, _ := s.Read(i)
+	if after.Receipt == nil || *after.Receipt != *before.Receipt {
+		t.Errorf("the receipt changed in place: %+v -> %+v", before.Receipt, after.Receipt)
+	}
+	if len(after.History) != len(before.History) || after.History[0] != before.History[0] {
+		t.Errorf("the history changed in place: %+v -> %+v", before.History, after.History)
+	}
+}
+
+// The reference-typed fields of Record are the ones clone() must copy. A new one
+// fails here until clone handles it and this list names it.
+func TestRecordCloneKnowsEveryReferenceField(t *testing.T) {
+	known := map[string]bool{"Receipt": true, "Park": true, "Gate": true, "Refusal": true, "Wait": true, "Repair": true, "History": true}
+	typ := reflect.TypeOf(Record{})
+	for n := 0; n < typ.NumField(); n++ {
+		f := typ.Field(n)
+		switch f.Type.Kind() {
+		case reflect.Pointer, reflect.Slice, reflect.Map, reflect.Interface, reflect.Chan, reflect.Func:
+			if !known[f.Name] {
+				t.Errorf("Record.%s is a reference field clone() does not copy: add it to clone and to this list", f.Name)
+			}
+			delete(known, f.Name)
+		}
+	}
+	for n := range known {
+		t.Errorf("clone() lists %s but Record has no such reference field", n)
+	}
+}
+
+// A clone shares no memory with its original: a change through the copy of any
+// pointer target or of a History element is invisible in the original.
+func TestRecordCloneSharesNoMemory(t *testing.T) {
+	r := Record{
+		Receipt: &Receipt{PR: 1}, Park: &core.Park{Reason: "a"}, Gate: &core.Gate{Detail: "a"},
+		Refusal: &core.Refusal{Detail: "a"}, Wait: &core.Wait{Diagnosis: "a"}, Repair: &Repair{Decision: "a"},
+		History: []Event{{Note: "a"}},
+	}
+	c := r.clone()
+	c.Receipt.PR, c.Park.Reason, c.Gate.Detail, c.Refusal.Detail, c.Wait.Diagnosis, c.Repair.Decision, c.History[0].Note = 2, "b", "b", "b", "b", "b", "b"
+	c.History = append(c.History, Event{Kind: "x"})
+	if r.Receipt.PR != 1 || r.Park.Reason != "a" || r.Gate.Detail != "a" || r.Refusal.Detail != "a" ||
+		r.Wait.Diagnosis != "a" || r.Repair.Decision != "a" || r.History[0].Note != "a" || len(r.History) != 1 {
+		t.Errorf("the clone shares memory with its original: %+v", r)
+	}
+	if (Record{}).clone().History != nil {
+		t.Error("a nil History stays nil")
+	}
 }
