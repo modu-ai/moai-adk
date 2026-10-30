@@ -25,7 +25,7 @@ A card the operator chose to start when it was issued is not a silent promotion:
 
 [HARD] A dispatch is a fixed-field block (`card:` `spec:` `cmd:` `wt:` `evidence:`; `lens:` optional) — never prose, ≤10 lines. [HARD] Read the send result: `routing` = lost (re-send `name [ref]`); a delivery notice = held or refused.
 
-[HARD] A stuck lane records a disk wait and ends its turn — never idles on a reply; on awaken: stall watchdog first (`moai-lane-watchdog`), then the `auto-semantics.md` §6 ladder; a recurring recheck cron (`CronCreate`, every renewal period of `workflow.factory_lease.renew_interval`) is kept while the lane executes the card.
+[HARD] A stuck lane records a disk wait and ends its turn — never idles on a reply; on awaken: stall watchdog first (`moai-lane-watchdog`), then the `auto-semantics.md` §6 ladder; no recurring `CronCreate` and no absolute-clock one-shot — each wake ends by scheduling exactly one next wake (`ScheduleWakeup`, a delay relative to now, never longer than `renew_interval`) while work remains; with none remaining it schedules nothing, records `idle: backlog empty <time>` once, and stops.
 
 ## Card classes — not every card needs every stage
 
