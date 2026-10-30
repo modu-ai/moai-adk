@@ -93,12 +93,16 @@ func TestLegacyForms_GlmL_SharesTheCcEntryParse(t *testing.T) {
 	}
 }
 
-// `--agent <x>` is not a launcher token today: it is neither a factory entry
-// nor consumed, and it reaches the launch argv unchanged, with or without the
-// `--` pass-through marker.
+// `--agent` is the agent entry now (DEC-AF-09: the lane entry under another spelling), so `--agent x` is
+// refused like `-l x`; after the `--` pass-through marker it is not a launcher token: it is neither a
+// factory entry nor consumed, and it reaches the launch argv unchanged. (Behavior change: before the
+// agent entry landed, `--agent x` also passed through unchanged.)
 func TestLegacyForms_AgentFlag_PassesThroughUnchanged(t *testing.T) {
+	t.Setenv("CLAUDE_PROJECT_DIR", t.TempDir())
+	if _, err := parseLauncherEntry([]string{"--agent", "x"}); err == nil {
+		t.Error("--agent x was accepted; the agent entry takes no argument")
+	}
 	for _, args := range [][]string{
-		{"--agent", "x"},
 		{"--", "--agent", "x"},
 	} {
 		e, branch := legacyEntry(t, args...)
