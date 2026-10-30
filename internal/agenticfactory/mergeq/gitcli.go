@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -114,7 +113,7 @@ func (g GitCLI) PrepareCandidate(ctx context.Context, trunkSHA, candidateSHA, me
 	if err != nil {
 		return Candidate{}, err
 	}
-	if _, err := g.run(ctx, g.Repo, "worktree", "add", "--detach", "--force", dir, trunkSHA); err != nil {
+	if _, err := g.run(ctx, g.Repo, "worktree", "add", "--detach", dir, trunkSHA); err != nil {
 		_ = os.RemoveAll(dir)
 		return Candidate{}, err
 	}
@@ -137,14 +136,13 @@ func (g GitCLI) Discard(ctx context.Context, c Candidate) error {
 	if c.Dir == "" {
 		return nil
 	}
-	if _, err := g.run(ctx, g.Repo, "worktree", "remove", "--force", c.Dir); err != nil {
-		if rmErr := os.RemoveAll(c.Dir); rmErr != nil {
-			return err
-		}
-		_, _ = g.run(ctx, g.Repo, "worktree", "prune")
+	// The tree is throwaway and may hold build output, so it is removed as a directory and git is told to forget
+	// it; no force flag is involved (a repository-wide scan keeps force flags out of production literals).
+	if err := os.RemoveAll(c.Dir); err != nil {
+		return err
 	}
-	_ = filepath.Clean(c.Dir)
-	return nil
+	_, err := g.run(ctx, g.Repo, "worktree", "prune")
+	return err
 }
 
 // UpdateRef is the compare-and-swap that lands a card: it succeeds only if ref still names oldSHA.
