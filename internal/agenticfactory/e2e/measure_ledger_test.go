@@ -198,8 +198,15 @@ func TestMeasure_LedgerWrite_SecretsNeverPublished(t *testing.T) {
 	m := newMirror(f)
 	l := ledgerAt(1, core.StateBlocked)
 	l.NextAction = "retry with token=" + tokenLike + " and pass" + "word: " + pwLike
-	if err := m.WriteLedger(context.Background(), l); err != nil {
-		t.Fatal(err)
+	// Design 4.4 (lane-18 7196d0b5ea): a ledger that holds a secret is refused with
+	// core.ErrUnsanitized and a RESTRICTED record is posted in its place; it used to be masked and posted.
+	// The safety claim is unchanged: no published body carries the value.
+	err := m.WriteLedger(context.Background(), l)
+	if !errors.Is(err, core.ErrUnsanitized) {
+		t.Fatalf("WriteLedger = %v, want core.ErrUnsanitized", err)
+	}
+	if len(f.Bodies) != 1 || !strings.Contains(f.Bodies[0], `"status": "RESTRICTED"`) {
+		t.Fatalf("published bodies = %q, want exactly one RESTRICTED record", f.Bodies)
 	}
 	for _, b := range f.Bodies {
 		for _, secret := range []string{tokenLike, pwLike} {
