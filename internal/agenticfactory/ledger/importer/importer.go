@@ -97,6 +97,7 @@ func Dry(ctx context.Context, src Sources) (Plan, error) {
 	p := Plan{Counts: map[string]int{}}
 	byID := map[string]*Proposal{}
 	var order []string
+	checkpointed := map[string]bool{}
 
 	if src.BacklogDB != "" {
 		items, err := readBacklog(ctx, src.BacklogDB)
@@ -112,6 +113,7 @@ func Dry(ctx context.Context, src Sources) (Plan, error) {
 			prop, skip := fromBacklog(it, len(items)-rank)
 			if prop != nil && restored != "" {
 				prop.Notes = append(prop.Notes, "restored from hold to "+restored+" using the global-hold checkpoint")
+				checkpointed[it.id] = true
 			}
 			if skip != nil {
 				p.Skips = append(p.Skips, *skip)
@@ -129,6 +131,13 @@ func Dry(ctx context.Context, src Sources) (Plan, error) {
 		for _, c := range cards {
 			p.Counts["factory:"+c.state]++
 			if existing, ok := byID[c.id]; ok {
+				if checkpointed[c.id] && c.state == "abandoned" {
+					// The operator had picked or queued it at the checkpoint (decision OD-36..42, 2026-10-30): it stays
+					// READY and triage after the import decides its fate.
+					existing.Source = "backlog+factory"
+					existing.Notes = append(existing.Notes, "factory state abandoned, but the card was picked or queued at the global-hold checkpoint: imports as READY, triage decides")
+					continue
+				}
 				refine(existing, c)
 				continue
 			}

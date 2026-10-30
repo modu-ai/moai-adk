@@ -313,6 +313,33 @@ func TestDry_TheHeldCheckpointRestoresOnlyTheCardsItLists(t *testing.T) {
 	}
 }
 
+// The operator picked or queued these at the checkpoint, so a factory "abandoned" does not cancel them (decision
+// OD-36..42): they come back READY with a note and triage decides. Without the checkpoint, abandoned still cancels.
+func TestDry_ACheckpointedCardTheFactoryAbandonedStaysReady(t *testing.T) {
+	bl := mkdb(t, "backlog.db", backlogDDL,
+		item(1, "t1", "picked at the checkpoint, abandoned by the factory", "hold", ""),
+		item(2, "t2", "not in the checkpoint, abandoned by the factory", "hold", ""),
+	)
+	fa := mkdb(t, "factory.db", factoryDDL,
+		"INSERT INTO cards(run_id,card_id,state,updated_at) VALUES('r1','t1','abandoned','2026-10-02T00:00:00Z')",
+		"INSERT INTO cards(run_id,card_id,state,updated_at) VALUES('r1','t2','abandoned','2026-10-02T00:00:00Z')",
+	)
+	plan, err := Dry(context.Background(), Sources{BacklogDB: bl, FactoryDB: fa, HeldIDs: map[string]string{"t1": "picked"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := byID(plan)
+	if m["t1"].Card.Position.Stage != core.StageReady || m["t1"].Card.Position.Park != nil {
+		t.Errorf("t1 %+v, want READY unparked", m["t1"].Card.Position)
+	}
+	if !strings.Contains(strings.Join(m["t1"].Notes, " "), "triage decides") {
+		t.Errorf("t1 notes %v: the override must be recorded", m["t1"].Notes)
+	}
+	if m["t2"].Card.Position.Stage != core.StageCancelled {
+		t.Errorf("t2 %+v: a card outside the checkpoint stays CANCELLED (control)", m["t2"].Card.Position)
+	}
+}
+
 func TestReadHeldIDs_RefusesAHalfReadCheckpoint(t *testing.T) {
 	dir := t.TempDir()
 	write := func(name, body string) string {
