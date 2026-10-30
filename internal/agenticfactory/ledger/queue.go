@@ -143,7 +143,10 @@ func (s *Store) Enqueue(ctx context.Context, cardID string, epoch int64, candida
 
 // queueNext is the states a queue row may go to from each state. A verifying row may be
 // entered again at the card epoch: a lander that could not take the landing lock leaves it
-// verifying and the next Land comes back. A reconcile sends a verifying or landing row back
+// verifying and the next Land comes back. This also means verifying is no longer a
+// one-at-a-time marker: two processes landing the same card may both verify outside the
+// lock; the landing lock and the ancestry reconcile still serialise the landing itself, so
+// the cost is a duplicate verification and an overwritten trunk_before, not a double landing. A reconcile sends a verifying or landing row back
 // to waiting; landed and failed are final (a failed card is
 // queued again by Enqueue, which starts the row over).
 var queueNext = map[QueueState][]QueueState{
