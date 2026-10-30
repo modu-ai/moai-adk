@@ -87,6 +87,11 @@ const (
 	ReasonOpNotDefined BlockReason = "op-not-defined"
 	// ReasonOperatorHold is valid for on-hold only.
 	ReasonOperatorHold BlockReason = "operator-hold"
+	// ReasonFixLimit and ReasonReclaimCap are the two parks the local ledger makes
+	// itself, for the operator: the fix loop ran out, or the card's holders kept
+	// dying. S46 names neither (canon unconfirmed, like operator-hold).
+	ReasonFixLimit   BlockReason = "fix-limit"
+	ReasonReclaimCap BlockReason = "reclaim-cap"
 )
 
 var allReasons = []BlockReason{
@@ -94,7 +99,7 @@ var allReasons = []BlockReason{
 	ReasonAuthFailed, ReasonPermissionDenied, ReasonRateLimited, ReasonCapacityShort,
 	ReasonBudgetExhausted, ReasonCheckNotPassed, ReasonDebtPresent, ReasonVerdictNotPass,
 	ReasonProducerNotAllowed, ReasonOwnershipUnverified, ReasonStoreUnavailable,
-	ReasonUserControl, ReasonOperatorAckMissing, ReasonUnclassified, ReasonNotIssueAuthor, ReasonIdentityUnknown, ReasonRepoNotAllowed, ReasonRepoUnverified, ReasonPermissionNotGranted, ReasonOwnerUnconfirmed, ReasonForeignClosing, ReasonOpNotDefined, ReasonOperatorHold,
+	ReasonUserControl, ReasonOperatorAckMissing, ReasonUnclassified, ReasonNotIssueAuthor, ReasonIdentityUnknown, ReasonRepoNotAllowed, ReasonRepoUnverified, ReasonPermissionNotGranted, ReasonOwnerUnconfirmed, ReasonForeignClosing, ReasonOpNotDefined, ReasonOperatorHold, ReasonFixLimit, ReasonReclaimCap,
 	// the six canon park reasons (park.go), so a pause can record them
 	ReasonDependency, ReasonStopUnknown, ReasonUnknownEffect, ReasonPendingEffect, ReasonContractChange, ReasonStartUnknown,
 }

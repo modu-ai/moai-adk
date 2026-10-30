@@ -19,7 +19,12 @@
 //   - I4 time is the database clock, never the caller's.
 //   - I5 a live process is never reclaimed; unknown liveness counts as alive.
 //   - I6 every stage change goes through core.CheckMove.
-//   - I7 rows are never deleted.
+//   - I7 cards, transitions, evidence and notes rows are never deleted; the lease and
+//     lease_keys rows of a card are removed by Release and by Reap.
+//   - I3 (again) a liveness callback is never called inside a transaction: Claim and
+//     Reap collect their candidates and probe them first, then open the write
+//     transaction and re-check that a candidate's epoch and heartbeat_at are what the
+//     probe saw before reclaiming it.
 package ledger
 
 import (
@@ -48,8 +53,8 @@ const (
 // ParkReasonFixLimit and ParkReasonReclaimCap are the reasons the ledger itself parks
 // a card with; both are operator-facing and resolve through E20.
 const (
-	ParkReasonFixLimit   core.BlockReason = "fix-limit"
-	ParkReasonReclaimCap core.BlockReason = "reclaim-cap"
+	ParkReasonFixLimit   = core.ReasonFixLimit
+	ParkReasonReclaimCap = core.ReasonReclaimCap
 )
 
 // LockMerge is the name of the landing lock (contract §5).
@@ -61,9 +66,12 @@ var (
 	ErrStaleEpoch     = errors.New("ledger: stale epoch; the card was claimed again")
 	ErrKeyConflict    = errors.New("ledger: a conflict key is held by another card")
 	ErrNotFound       = errors.New("ledger: no such card")
+	ErrInvalid        = errors.New("ledger: invalid argument")
 	ErrCardExists     = errors.New("ledger: the card already exists")
 	ErrLockHeld       = errors.New("ledger: the lock is held")
 	ErrSQLiteTooOld   = errors.New("ledger: the SQLite engine is older than " + MinSQLite)
+	ErrEvidenceStale  = errors.New("ledger: no evidence for this tree SHA")
+	ErrDependency     = errors.New("ledger: a dependency is missing, cancelled, or the card's own")
 )
 
 // Spec is spec_json: what the card must show and where it may write.
@@ -98,7 +106,9 @@ type ClaimRequest struct {
 	PIDStart  string        // the process start fingerprint
 	Lease     time.Duration // 0 means LeaseDuration
 	// Alive judges a holder for the lazy reap at the start of Claim. nil judges every
-	// holder alive: nothing is reclaimed (I5).
+	// holder alive: nothing is reclaimed (I5). It is called before the write
+	// transaction opens, never inside it; the reclaim then happens only for a lease whose
+	// epoch and heartbeat_at are still what the probe saw.
 	Alive func(pid int, start string) Liveness
 }
 
@@ -248,15 +258,10 @@ type Store struct {
 
 var _ Reader = (*Store)(nil)
 
-// Open opens or creates the ledger at path, applies the schema and checks the engine
-// version (ErrSQLiteTooOld).
-func Open(ctx context.Context, path string) (*Store, error) { return nil, ErrNotImplemented }
-
-// Close closes the ledger.
-func (s *Store) Close() error { return ErrNotImplemented }
-
 // AddCard inserts a card in its Position (READY for a new one). ErrCardExists when the
-// id is taken.
+// id is taken. Every dependency in Spec.Depends must already exist and not be CANCELLED,
+// and none may be the card itself (ErrDependency); a card is only ever added after what
+// it depends on, so a cycle cannot form.
 func (s *Store) AddCard(ctx context.Context, c Card) error { return ErrNotImplemented }
 
 // Claim is one transaction: it reaps the dead holders (lazily, ClaimRequest.Alive),
@@ -269,15 +274,22 @@ func (s *Store) Claim(ctx context.Context, r ClaimRequest) (Claimed, error) {
 }
 
 // Heartbeat renews the lease of the card at epoch and records when the lane plans to
-// wake next. ErrStaleEpoch when the epoch is not the lease's.
+// wake next. nextWake is information for the board and for stall detection; the
+// lease's expiry is computed from the lease length alone. ErrStaleEpoch when the epoch
+// is not the lease's.
 func (s *Store) Heartbeat(ctx context.Context, cardID string, epoch int64, nextWake *time.Time) error {
 	return ErrNotImplemented
 }
 
 // Move changes the card's position. The epoch must be the lease's (ErrStaleEpoch) and
-// core.CheckMove must accept the move: the facts it needs are derived from the stored
-// evidence plus ev, and ev's Guards are the guard keys the stored rows cannot show.
-// The transition is recorded with the actor and the reason.
+// core.CheckMove must accept the move. The facts it needs come from the ledger's own
+// tables, never from the caller: receipt from this tree's green evidence,
+// receipt-accepted from its gate evidence, merged from merge_queue.state = landed,
+// closed and settled from the landed note mergeq writes. ev adds evidence rows and its
+// Guards carry only the guard keys no table can show (resume-guard:<reason>,
+// core.GuardOperatorHold, core.GuardFixLimit, core.GuardReclaimCap); a Guards entry
+// that names a fact is ErrInvalid. A move into MERGING from another stage is refused:
+// Enqueue is the only way in. The transition is recorded with the actor and the reason.
 func (s *Store) Move(ctx context.Context, cardID string, epoch int64, to core.Position, actor, reason string, ev ...Evidence) error {
 	return ErrNotImplemented
 }
@@ -307,7 +319,8 @@ func (s *Store) Release(ctx context.Context, cardID string, epoch int64) error {
 // Reap takes back the leases whose holder alive judges Dead, expired or not. A holder
 // judged Alive is left alone; one judged Unknown is never reclaimed either, and gets a
 // stalled note once its lease has expired (I5). The ReclaimCap-th reclaim of a card
-// parks it for the operator (I7).
+// parks it for the operator (I7). alive is required (a nil one is ErrInvalid) and is
+// called before the write transaction opens, never inside it.
 func (s *Store) Reap(ctx context.Context, alive func(pid int, start string) Liveness) ([]Reclaimed, error) {
 	return nil, ErrNotImplemented
 }
@@ -332,7 +345,11 @@ func (s *Store) ReleaseLock(ctx context.Context, name string, epoch int64) error
 	return ErrNotImplemented
 }
 
-// Enqueue puts the card's candidate on the merge queue in the waiting state.
+// Enqueue puts the card's candidate on the merge queue in the waiting state and moves
+// the card into MERGING, the only way in. The candidate SHA must be the tree SHA of
+// passing gate evidence recorded for the card (I8); without it ErrEvidenceStale. A card
+// whose Spec.Risk is not empty must also be in REVIEWING with passing review evidence
+// for that tree.
 func (s *Store) Enqueue(ctx context.Context, cardID string, epoch int64, candidateSHA string) error {
 	return ErrNotImplemented
 }
