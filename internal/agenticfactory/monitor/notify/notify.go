@@ -139,6 +139,10 @@ type state struct {
 	// else wrote the record since: progress.
 	Seen int64  `json:"seen_seq,omitempty"`
 	PR   prMark `json:"pr"`
+	// BusyRuns counts the passes in a row whose reminder was held back by a busy lock. At the wait's own
+	// retry count the lock is reported as stuck (it may be a crashed holder's leftover); a delivery that
+	// goes through resets it. It never spends a retry.
+	BusyRuns int `json:"busy_runs,omitempty"`
 	// QuietUntil holds reminders back after progress was seen: the owner is working, and a wait it has
 	// not yet updated gets one more period before it is reminded.
 	QuietUntil time.Time `json:"quiet_until,omitempty"`
@@ -306,7 +310,19 @@ func (s *Service) remind(ctx context.Context, rec claim.Record, w core.Wait, st 
 	if errors.Is(notifyErr, core.ErrBusy) {
 		// A held lock is "retry", not a failed delivery: the same reminder is tried on the next pass and
 		// no retry of the wait is spent, so contention alone never walks a wait to its escalation.
-		return []Action{{Issue: rec.Issue, What: "reminder-deferred", Kind: WaitOverdue, Detail: n.Detail, Err: notifyErr}}
+		acts := []Action{{Issue: rec.Issue, What: "reminder-deferred", Kind: WaitOverdue, Detail: n.Detail, Err: notifyErr}}
+		st.BusyRuns++
+		if err := s.save(rec.Issue, *st); err != nil {
+			acts = append(acts, Action{Issue: rec.Issue, What: "state-error", Err: err})
+		}
+		if st.BusyRuns >= w.MaxRetries {
+			acts = append(acts, Action{Issue: rec.Issue, What: "inbox-lock-stuck", Kind: WaitOverdue, Err: notifyErr,
+				Detail: fmt.Sprintf("the inbox lock was busy for %d passes in a row; reminders are not reaching the owner. A crashed holder may have left it behind: inspect it with the claim store's lock inspection", st.BusyRuns)})
+		}
+		return acts
+	}
+	if st.BusyRuns != 0 {
+		st.BusyRuns = 0 // saved with the state the retry below records
 	}
 	if notifyErr != nil {
 		// A reminder that is known not to have been delivered still spends the retry, so a broken
