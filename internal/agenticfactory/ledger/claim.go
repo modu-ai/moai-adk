@@ -3,6 +3,7 @@ package ledger
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -13,6 +14,7 @@ import (
 const (
 	actorClaim = "claim"
 	actorReap  = "reap"
+	actorAdd   = "add"
 )
 
 // probed is a lease a liveness probe looked at: what it saw, so the write transaction
@@ -21,6 +23,7 @@ type probed struct {
 	cardID    string
 	epoch     int64
 	heartbeat string
+	alive     bool // the stale lease's holder is alive but has not renewed it
 }
 
 // probeLeases asks alive about every lease, outside any transaction (I3). dead are the
@@ -65,6 +68,9 @@ func (s *Store) probeLeases(ctx context.Context, alive func(pid int, start strin
 			dead = append(dead, r.p)
 		case verdict == LivenessUnknown && r.expired:
 			stale = append(stale, r.p)
+		case verdict == LivenessAlive && r.expired:
+			r.p.alive = true
+			stale = append(stale, r.p)
 		}
 	}
 	return dead, stale, nil
@@ -91,9 +97,30 @@ func (s *Store) reapTx(ctx context.Context, tx *sql.Tx, dead, stale []probed) ([
 		} else if !ok {
 			continue // the holder renewed, or the card was claimed again, since the probe
 		}
+		// A card whose reclaim fails is skipped alone: its savepoint rolls back what the
+		// attempt did, a note says so once, and the other leases are still reclaimed.
+		if _, err := tx.ExecContext(ctx, `SAVEPOINT reclaim`); err != nil {
+			return nil, fmt.Errorf("ledger: %w", err)
+		}
 		r, err := s.reclaimTx(ctx, tx, d)
 		if err != nil {
-			return nil, err
+			var ce *cardError
+			if !errors.As(err, &ce) {
+				return nil, err
+			}
+			if _, rerr := tx.ExecContext(ctx, `ROLLBACK TO reclaim`); rerr != nil {
+				return nil, fmt.Errorf("ledger: %w", rerr)
+			}
+			if _, rerr := tx.ExecContext(ctx, `RELEASE reclaim`); rerr != nil {
+				return nil, fmt.Errorf("ledger: %w", rerr)
+			}
+			if nerr := noteOnce(ctx, tx, d.cardID, fmt.Sprintf("card %s epoch %d: %v; skipped", d.cardID, d.epoch, ce.err)); nerr != nil {
+				return nil, nerr
+			}
+			continue
+		}
+		if _, err := tx.ExecContext(ctx, `RELEASE reclaim`); err != nil {
+			return nil, fmt.Errorf("ledger: %w", err)
 		}
 		out = append(out, r)
 	}
@@ -104,17 +131,30 @@ func (s *Store) reapTx(ctx context.Context, tx *sql.Tx, dead, stale []probed) ([
 			continue
 		}
 		text := fmt.Sprintf("lease epoch %d expired; the holder's liveness is unknown, so it was not reclaimed", st.epoch)
-		var n int
-		if err := tx.QueryRowContext(ctx, `SELECT count(*) FROM notes WHERE kind='stalled' AND card_id=? AND text=?`, st.cardID, text).Scan(&n); err != nil {
-			return nil, fmt.Errorf("ledger: %w", err)
+		if st.alive {
+			text = fmt.Sprintf("lease epoch %d expired; the holder is alive but has not renewed it, so it was not reclaimed", st.epoch)
 		}
-		if n == 0 {
-			if _, err := tx.ExecContext(ctx, `INSERT INTO notes(kind,card_id,text,at) VALUES('stalled',?,?,`+nowSQL+`)`, st.cardID, text); err != nil {
-				return nil, fmt.Errorf("ledger: %w", err)
-			}
+		if err := noteOnce(ctx, tx, st.cardID, text); err != nil {
+			return nil, err
 		}
 	}
 	return out, nil
+}
+
+// noteOnce writes a stalled note unless this card already has one with this text. The
+// text carries the epoch, so a note is once per card and epoch.
+func noteOnce(ctx context.Context, q querier, cardID, text string) error {
+	var n int
+	if err := q.QueryRowContext(ctx, `SELECT count(*) FROM notes WHERE kind='stalled' AND card_id=? AND text=?`, cardID, text).Scan(&n); err != nil {
+		return fmt.Errorf("ledger: %w", err)
+	}
+	if n > 0 {
+		return nil
+	}
+	if _, err := q.ExecContext(ctx, `INSERT INTO notes(kind,card_id,text,at) VALUES('stalled',?,?,`+nowSQL+`)`, cardID, text); err != nil {
+		return fmt.Errorf("ledger: %w", err)
+	}
+	return nil
 }
 
 // reclaimTx takes a card back from its dead holder: the lease and its keys go, the
@@ -184,7 +224,7 @@ func (s *Store) Reap(ctx context.Context, alive func(pid int, start string) Live
 
 func insertTransition(ctx context.Context, q querier, cardID string, from, to core.Position, epoch int64, actor, reason string) error {
 	_, err := q.ExecContext(ctx, `INSERT INTO transitions(card_id,from_stage,from_sub,to_stage,to_sub,epoch,actor,reason,at) VALUES(?,?,?,?,?,?,?,?,`+nowSQL+`)`,
-		cardID, string(from.Stage), nullIfEmpty(string(from.Sub)), string(to.Stage), nullIfEmpty(string(to.Sub)), epoch, actor, nullIfEmpty(reason))
+		cardID, nullIfEmpty(string(from.Stage)), nullIfEmpty(string(from.Sub)), string(to.Stage), nullIfEmpty(string(to.Sub)), epoch, actor, nullIfEmpty(reason))
 	if err != nil {
 		return fmt.Errorf("ledger: %w", err)
 	}
@@ -317,29 +357,50 @@ func (s *Store) pickTx(ctx context.Context, tx *sql.Tx) (Card, []string, error) 
 		return Card{}, nil, fmt.Errorf("ledger: %w", err)
 	}
 	var cands []Card
+	var broken []*cardError
 	for rows.Next() {
 		c, err := scanCard(rows)
-		if err != nil {
+		var ce *cardError
+		switch {
+		case errors.As(err, &ce):
+			broken = append(broken, ce) // this card alone; it is skipped below
+		case err != nil:
 			rows.Close()
 			return Card{}, nil, err
+		default:
+			cands = append(cands, c)
 		}
-		cands = append(cands, c)
 	}
 	rows.Close()
 	if err := rows.Err(); err != nil {
 		return Card{}, nil, err
 	}
+	for _, ce := range broken {
+		if err := noteOnce(ctx, tx, ce.id, fmt.Sprintf("card %s epoch %d: %v; skipped", ce.id, ce.epoch, ce.err)); err != nil {
+			return Card{}, nil, err
+		}
+	}
 	for _, c := range cands {
-		ok, err := depsDone(ctx, tx, c.Spec.Depends)
+		ok, cancelled, err := depsDone(ctx, tx, c.Spec.Depends)
 		if err != nil {
 			return Card{}, nil, err
+		}
+		if cancelled != "" {
+			text := fmt.Sprintf("card %s waits on %s, which is cancelled, so it can never run; skipped", c.ID, cancelled)
+			if err := noteOnce(ctx, tx, c.ID, text); err != nil {
+				return Card{}, nil, err
+			}
+			continue
 		}
 		if !ok {
 			continue
 		}
 		keys, err := KeysFor(c.Spec.Paths)
 		if err != nil {
-			return Card{}, nil, err
+			if nerr := noteOnce(ctx, tx, c.ID, fmt.Sprintf("card %s epoch %d: %v; skipped", c.ID, c.Epoch, err)); nerr != nil {
+				return Card{}, nil, nerr
+			}
+			continue
 		}
 		free, err := keysFree(ctx, tx, keys)
 		if err != nil {
@@ -352,19 +413,24 @@ func (s *Store) pickTx(ctx context.Context, tx *sql.Tx) (Card, []string, error) 
 	return Card{}, nil, ErrNoWork
 }
 
-func depsDone(ctx context.Context, q querier, deps []string) (bool, error) {
+// depsDone says whether every dependency is DONE, and names the first one that is
+// CANCELLED (a card waiting on it can never run).
+func depsDone(ctx context.Context, q querier, deps []string) (done bool, cancelled string, err error) {
+	done = true
 	for _, d := range deps {
 		var stage string
 		switch err := q.QueryRowContext(ctx, `SELECT stage FROM cards WHERE id=?`, d).Scan(&stage); {
 		case err == sql.ErrNoRows:
-			return false, nil
+			done = false
 		case err != nil:
-			return false, fmt.Errorf("ledger: %w", err)
+			return false, "", fmt.Errorf("ledger: %w", err)
+		case stage == string(core.StageCancelled):
+			return false, d, nil
 		case stage != string(core.StageDone):
-			return false, nil
+			done = false
 		}
 	}
-	return true, nil
+	return done, "", nil
 }
 
 func keysFree(ctx context.Context, q querier, keys []string) (bool, error) {

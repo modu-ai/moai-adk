@@ -1,5 +1,3 @@
-//go:build afred
-
 package ledger
 
 import (
@@ -67,6 +65,14 @@ func TestOneBrokenLeaseDoesNotStopTheReclaimOfTheOthers(t *testing.T) {
 	}
 	if n := stalledNotes(t, s, "x"); len(n) != 1 {
 		t.Errorf("x is noted once: %v", n)
+	}
+	// what the failed attempt on x did is rolled back: its lease, keys and count stand
+	if ls, _ := s.Leases(bg); len(ls) != 1 || ls[0].CardID != "x" || len(ls[0].Keys) != 1 {
+		t.Errorf("x keeps its lease and keys: %+v", ls)
+	}
+	var count int
+	if err := s.db.QueryRowContext(bg, `SELECT reclaim_count FROM cards WHERE id='x'`).Scan(&count); err != nil || count != 0 {
+		t.Errorf("x was not reclaimed, so not counted: %d %v", count, err)
 	}
 	if _, err := s.Reap(bg, alwaysDead); err != nil {
 		t.Fatal(err)
@@ -168,4 +174,25 @@ func errString(err error) string {
 		return ""
 	}
 	return err.Error()
+}
+
+// Paths that KeysFor refuses can only get into the file by hand; the card is skipped
+// and noted like any other it cannot read, and the others are still claimed.
+func TestACardWithPathsThatLeaveTheRepositoryIsSkippedAndNoted(t *testing.T) {
+	s := openTemp(t)
+	addCard(t, s, "odd", 9, "A", nil, "internal/o/x.go")
+	addCard(t, s, "fine", 1, "A", nil, "internal/f/x.go")
+	if _, err := s.db.ExecContext(bg, `UPDATE cards SET spec_json='{"class":"A","paths":["/etc/passwd"]}' WHERE id='odd'`); err != nil {
+		t.Fatal(err)
+	}
+	c, err := s.Claim(bg, req("s1", 1))
+	if err != nil || c.CardID != "fine" {
+		t.Fatalf("%+v %v", c, err)
+	}
+	if _, err := s.Claim(bg, req("s2", 2)); err == nil {
+		t.Fatal("only the odd card is left")
+	}
+	if n := stalledNotes(t, s, "odd"); len(n) != 1 || !strings.Contains(n[0], "skipped") {
+		t.Errorf("one note: %v", n)
+	}
 }

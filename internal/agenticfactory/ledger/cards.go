@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -77,6 +78,9 @@ func (s *Store) AddCard(ctx context.Context, c Card) error {
 		}
 		return fmt.Errorf("ledger: %w", err)
 	}
+	if err := insertTransition(ctx, tx, c.ID, core.Position{}, c.Position, 0, actorAdd, "added"); err != nil {
+		return err
+	}
 	return tx.Commit()
 }
 
@@ -105,24 +109,45 @@ func scanCard(r interface{ Scan(...any) error }) (Card, error) {
 		spec, created, updated  string
 	)
 	if err := r.Scan(&c.ID, &c.Title, &stage, &sub, &parked, &reason, &evid, &resu, &c.Priority, &spec, &c.Epoch, &c.ReclaimCount, &created, &updated); err != nil {
-		return Card{}, err
+		return Card{}, &scanError{err: err}
 	}
 	c.Position = core.Position{Stage: core.Stage(stage), Sub: core.SubStage(sub.String), RemoteIntegrated: false}
 	if parked == 1 {
 		c.Position.Park = &core.Park{Reason: core.BlockReason(reason.String), Evidence: evid.String, Resume: resu.String}
 	}
+	// From here on a failure is about this card alone, and the card (its id and epoch
+	// are known) comes back with it so a caller can skip and note it.
 	if err := json.Unmarshal([]byte(spec), &c.Spec); err != nil {
-		return Card{}, fmt.Errorf("ledger: card %s: unreadable spec: %w", c.ID, err)
+		return c, &cardError{id: c.ID, epoch: c.Epoch, err: fmt.Errorf("unreadable spec: %w", err)}
 	}
 	var err error
 	if c.CreatedAt, err = parseTime(created); err != nil {
-		return Card{}, fmt.Errorf("ledger: card %s: %w", c.ID, err)
+		return c, &cardError{id: c.ID, epoch: c.Epoch, err: err}
 	}
 	if c.UpdatedAt, err = parseTime(updated); err != nil {
-		return Card{}, fmt.Errorf("ledger: card %s: %w", c.ID, err)
+		return c, &cardError{id: c.ID, epoch: c.Epoch, err: err}
 	}
 	return c, nil
 }
+
+// scanError is a failure to read a row at all: the database, not one card.
+type scanError struct{ err error }
+
+func (e *scanError) Error() string { return "ledger: " + e.err.Error() }
+func (e *scanError) Unwrap() error { return e.err }
+
+// cardError is a failure that belongs to one card. Claim and Reap skip the card and note
+// it once per card and epoch; the rest of the transaction goes on.
+type cardError struct {
+	id    string
+	epoch int64
+	err   error
+}
+
+func (e *cardError) Error() string {
+	return fmt.Sprintf("ledger: card %s epoch %d: %v", e.id, e.epoch, e.err)
+}
+func (e *cardError) Unwrap() error { return e.err }
 
 // Cards lists every card, oldest first.
 func (s *Store) Cards(ctx context.Context) ([]Card, error) {
@@ -145,7 +170,8 @@ func (s *Store) Cards(ctx context.Context) ([]Card, error) {
 // cardTx reads one card inside a transaction.
 func cardTx(ctx context.Context, q querier, id string) (Card, error) {
 	c, err := scanCard(q.QueryRowContext(ctx, `SELECT `+cardCols+` FROM cards WHERE id=?`, id))
-	if err == sql.ErrNoRows {
+	var se *scanError
+	if errors.As(err, &se) && errors.Is(se.err, sql.ErrNoRows) {
 		return Card{}, fmt.Errorf("%w: %s", ErrNotFound, id)
 	}
 	return c, err

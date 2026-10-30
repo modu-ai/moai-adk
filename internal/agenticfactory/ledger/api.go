@@ -260,14 +260,6 @@ type Store struct {
 
 var _ Reader = (*Store)(nil)
 
-// Heartbeat renews the lease of the card at epoch and records when the lane plans to
-// wake next. nextWake is information for the board and for stall detection; the
-// lease's expiry is computed from the lease length alone. ErrStaleEpoch when the epoch
-// is not the lease's.
-func (s *Store) Heartbeat(ctx context.Context, cardID string, epoch int64, nextWake *time.Time) error {
-	return ErrNotImplemented
-}
-
 // Move changes the card's position. The epoch must be the lease's (ErrStaleEpoch) and
 // core.CheckMove must accept the move. The facts it needs come from the ledger's own
 // tables, never from the caller: receipt from this tree's green evidence,
@@ -279,36 +271,6 @@ func (s *Store) Heartbeat(ctx context.Context, cardID string, epoch int64, nextW
 // Enqueue is the only way in. The transition is recorded with the actor and the reason.
 func (s *Store) Move(ctx context.Context, cardID string, epoch int64, to core.Position, actor, reason string, ev ...Evidence) error {
 	return ErrNotImplemented
-}
-
-// ExpandKeys adds conflict keys to the lease before an out-of-scope edit. ErrKeyConflict
-// when another card holds one; nothing is added then, and nothing is parked.
-func (s *Store) ExpandKeys(ctx context.Context, cardID string, epoch int64, keys []string) error {
-	return ErrNotImplemented
-}
-
-// AddEvidence records evidence for the card at epoch.
-func (s *Store) AddEvidence(ctx context.Context, cardID string, epoch int64, e Evidence) error {
-	return ErrNotImplemented
-}
-
-// EvidenceFor lists the card's evidence, oldest first. It is on Store only, not on
-// Reader.
-func (s *Store) EvidenceFor(ctx context.Context, cardID string) ([]EvidenceRecord, error) {
-	return nil, ErrNotImplemented
-}
-
-// Release drops the card's lease and keys; the card row stays (I7).
-func (s *Store) Release(ctx context.Context, cardID string, epoch int64) error {
-	return ErrNotImplemented
-}
-
-// AddNote appends a note.
-func (s *Store) AddNote(ctx context.Context, n Note) error { return ErrNotImplemented }
-
-// NotesSince lists the notes with a Seq above seq, oldest first.
-func (s *Store) NotesSince(ctx context.Context, seq int64) ([]Note, error) {
-	return nil, ErrNotImplemented
 }
 
 // AcquireLock takes the named lock for ttl and returns its epoch. ErrLockHeld when
@@ -342,8 +304,5 @@ func (s *Store) QueueUpdate(ctx context.Context, cardID string, lockEpoch int64,
 // then rename).
 func (s *Store) Snapshot(ctx context.Context, dst string) error { return ErrNotImplemented }
 
-// Cards and Leases (cards.go), Queue and Notes are the Reader methods.
+// Cards and Leases (cards.go), Notes (notes.go) and Queue are the Reader methods.
 func (s *Store) Queue(ctx context.Context) ([]QueueItem, error) { return nil, ErrNotImplemented }
-func (s *Store) Notes(ctx context.Context, sinceSeq int64) ([]Note, error) {
-	return nil, ErrNotImplemented
-}
