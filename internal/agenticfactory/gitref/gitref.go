@@ -49,6 +49,10 @@ type Ref struct {
 	Remote string   // remote name or URL
 	Branch string   // branch name, default moai-control
 	Env    []string // extra environment, e.g. a hermetic git config in tests
+	// Timeout bounds each git call (a fetch, a commit step, a push); zero means
+	// DefaultTimeout. A caller's own earlier deadline still wins. One write makes
+	// several calls, so the bound is per call, not per write.
+	Timeout time.Duration
 	// Author and Committer are the "Name <email>" strings written into the
 	// commits this Ref creates. Empty means DefaultIdentity (Committer empty
 	// means the same as Author); the git configuration is never consulted, so a
@@ -62,6 +66,14 @@ type Ref struct {
 	lastHead string
 	runs     int
 }
+
+const (
+	// DefaultTimeout bounds one git call when Ref.Timeout is zero.
+	DefaultTimeout = 60 * time.Second
+	// waitDelay is how long a call waits for a killed git's children to let go of
+	// the output pipes before it returns anyway.
+	waitDelay = 2 * time.Second
+)
 
 // DefaultIdentity is the machine identity used when none is configured. The
 // address is a noreply one on a reserved (.invalid) domain, not a mailbox.
@@ -126,8 +138,20 @@ type result struct {
 // git runs one git command. A non-zero exit is returned in result, not as an error.
 func (r *Ref) git(ctx context.Context, stdin []byte, env []string, args ...string) (result, error) {
 	r.runs++
+	timeout := r.Timeout
+	if timeout <= 0 {
+		timeout = DefaultTimeout
+	}
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
 	cmd := exec.CommandContext(ctx, "git", append([]string{"-C", r.Dir}, args...)...)
-	cmd.Env = append(append(os.Environ(), r.Env...), env...)
+	// A child that outlives the kill (a transport helper) must not hold the call
+	// open through the output pipes.
+	cmd.WaitDelay = waitDelay
+	// Defaults first so Env and env can still override them: git never asks a person
+	// for a credential here, and speaks only file, https and ssh (no git://, no
+	// plain http, no helper transports).
+	cmd.Env = append(append(append(os.Environ(), "GIT_TERMINAL_PROMPT=0", "GIT_ALLOW_PROTOCOL=file:https:ssh"), r.Env...), env...)
 	var out, errb bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &out, &errb
 	if stdin != nil {
@@ -385,10 +409,17 @@ func (r *Ref) commit(ctx context.Context, head, path string, content []byte, key
 	if err != nil {
 		return "", unavailable("temp index: %v", err)
 	}
-	idx.Close()
-	defer os.Remove(idx.Name())
-	env := []string{"GIT_INDEX_FILE=" + idx.Name()}
-	os.Remove(idx.Name()) // git creates it
+	name := idx.Name()
+	if err := idx.Close(); err != nil {
+		_ = os.Remove(name) // best effort: the file is ours and empty
+		return "", unavailable("temp index: %v", err)
+	}
+	defer func() { _ = os.Remove(name) }() // best effort: a leftover temp file is harmless
+	env := []string{"GIT_INDEX_FILE=" + name}
+	// git creates the index itself; an empty file in its place is not a valid index.
+	if err := os.Remove(name); err != nil {
+		return "", unavailable("temp index: %v", err)
+	}
 
 	step := func(stdin []byte, args ...string) (string, error) {
 		res, err := r.git(ctx, stdin, env, args...)
