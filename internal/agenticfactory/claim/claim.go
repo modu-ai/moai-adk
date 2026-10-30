@@ -266,6 +266,8 @@ type Store struct {
 	// lockPol is how long a lock is waited for; the zero value is the built-in
 	// polling (lockTries x lockWait on the real clock). Tests replace the clock.
 	lockPol lockPolicy
+	// now is the clock; nil is time.Now. Tests replace it.
+	now func() time.Time
 	// beforeReissueRemove is a test seam: it runs between the check of a stale lock
 	// and its removal.
 	beforeReissueRemove func()
