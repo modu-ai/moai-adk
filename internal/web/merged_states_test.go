@@ -105,3 +105,43 @@ func TestMirrorRejectedIsShownAndConfirmsNothing(t *testing.T) {
 		t.Errorf("identity stays shown: %q", r.Agent)
 	}
 }
+
+// lane-18 61e5b492c6: an Issue that answers 403 unclassified no longer holds the
+// Issues behind it in Flush; its mirror_state becomes blocked(unclassified-403)
+// while the Issues behind it are written and read "current". The web shows the
+// blocked Issue with that reason and does not read its cached position as
+// confirmed; the Issues behind it display normally.
+func TestMirrorUnclassified403BlocksOnlyItsOwnIssue(t *testing.T) {
+	sha := core.HeadSHA(strings.Repeat("a", 40))
+	mk := func(issue int, mirror string) claim.Record {
+		return claim.Record{Issue: issue, Holder: "s-" + itoa(issue), AgentName: "agent-" + itoa(issue), State: core.StateLanding,
+			Stage: core.StageMerging, Head: sha, Mirror: mirror, Receipt: &claim.Receipt{HandoffID: "h", PR: 700 + issue, Head: sha}}
+	}
+	src := fakeRecords{recs: []claim.Record{
+		mk(71, "blocked(unclassified-403)"), // the locked Issue
+		mk(72, "current"),                   // behind it, written by the same Flush
+		mk(73, "current"),
+	}}
+	a := recordApp(t, src)
+	by := map[int]PRTrackRowVM{}
+	for _, r := range a.buildPRTracking(context.Background()).Rows {
+		by[r.Issue] = r
+	}
+	locked := by[71]
+	if locked.Mirror != "blocked(unclassified-403)" {
+		t.Errorf("the blocked Issue must show its reason: %q", locked.Mirror)
+	}
+	if locked.State != prGap || locked.Stage != prGap || locked.Head != prGap || locked.PR != prGap || locked.Completed {
+		t.Errorf("a blocked Issue's cached position must not read as confirmed: %+v", locked)
+	}
+	for _, n := range []int{72, 73} {
+		r := by[n]
+		if r.Mirror != "current" || r.PR != "#"+itoa(700+n) || r.Stage != "MERGING" || r.State != "landing" || r.Head != "aaaaaaaa" {
+			t.Errorf("Issue %d behind the locked one must display normally: %+v", n, r)
+		}
+	}
+	m, _ := a.buildMonitor(time.Now())
+	if html := renderTempl(t, Monitor(tg1ShellVM(), m)); !strings.Contains(html, "mirror blocked(unclassified-403)") {
+		t.Errorf("the page must show 'mirror blocked(unclassified-403)'")
+	}
+}
