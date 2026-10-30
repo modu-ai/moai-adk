@@ -259,21 +259,21 @@ func (e *Executor) Execute(ctx context.Context, r Request) (Intent, error) {
 	case serr == nil:
 		in.Status, in.ProviderID = StatusConfirmed, id
 	case errors.Is(serr, ErrRefused):
-		in.Status, in.LastError = StatusParked, serr.Error()
+		in.Status, in.LastError = StatusParked, safeErr(serr)
 		var re *RefusedError
 		if errors.As(serr, &re) {
 			in.ParkReason = string(re.Reason)
 		}
 	case errors.Is(serr, ErrDenied):
-		in.Status, in.LastError = StatusParked, serr.Error()
+		in.Status, in.LastError = StatusParked, safeErr(serr)
 	case errors.As(serr, new(*LimitedError)):
 		var le *LimitedError
 		errors.As(serr, &le)
-		in.Status, in.LastError, in.NotBefore = StatusFailed, serr.Error(), le.RetryAt.Unix()
+		in.Status, in.LastError, in.NotBefore = StatusFailed, safeErr(serr), le.RetryAt.Unix()
 	case errors.Is(serr, ErrNotSent):
-		in.Status, in.LastError = StatusFailed, serr.Error()
+		in.Status, in.LastError = StatusFailed, safeErr(serr)
 	default:
-		in.LastError = serr.Error()
+		in.LastError = safeErr(serr)
 		if _, err := e.settle(in); err != nil {
 			return Intent{}, err
 		}
@@ -282,12 +282,19 @@ func (e *Executor) Execute(ctx context.Context, r Request) (Intent, error) {
 	return e.settle(in)
 }
 
+// safeErr is the error text as it may be stored: through the one core sanitizer, so a credential or
+// personal data an error message echoes never lands in an intent (and, in ref mode, on the control ref).
+func safeErr(err error) string {
+	out, _ := core.Redact(err.Error())
+	return out
+}
+
 // parkRefused records a request Admit refused as a Parked intent WITHOUT its payload: the refused text is
 // never stored, and the same refusal is read back as Parked on the next pass instead of being judged again.
 // The error text is the refusal's own (categories, never values).
 func (e *Executor) parkRefused(ctx context.Context, key string, r Request, why error) (Intent, error) {
 	in := Intent{Key: key, Kind: r.Kind, Issue: r.Issue, Target: r.Target, Digest: r.Digest,
-		Status: StatusParked, ParkReason: string(ReasonSensitiveContent), LastError: why.Error()}
+		Status: StatusParked, ParkReason: string(ReasonSensitiveContent), LastError: safeErr(why)}
 	out, err := e.Store.PutIf(in)
 	if errors.Is(err, core.ErrRevisionConflict) {
 		return e.follow(ctx, key)
@@ -357,7 +364,7 @@ func (e *Executor) Reconcile(ctx context.Context, key string) (Intent, error) {
 	cancel()
 	switch {
 	case lerr != nil:
-		in.Status, in.LastError = StatusParked, lerr.Error()
+		in.Status, in.LastError = StatusParked, safeErr(lerr)
 	case res.Found:
 		in.Status, in.ProviderID = StatusConfirmed, res.ProviderID
 	case res.Authoritative:
@@ -424,7 +431,7 @@ func (e *Executor) Tick(ctx context.Context) ([]Intent, error) {
 		res, lerr := e.Lookup.Lookup(lctx, in)
 		cancel()
 		if lerr != nil {
-			in.LastError = lerr.Error()
+			in.LastError = safeErr(lerr)
 			if _, err := e.Store.PutIf(in); err != nil && !errors.Is(err, core.ErrRevisionConflict) {
 				return done, err
 			}

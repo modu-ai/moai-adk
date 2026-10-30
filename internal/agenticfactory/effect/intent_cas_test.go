@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -298,5 +299,40 @@ func TestASubSecondTimeoutHasAWindow(t *testing.T) {
 	clock = now.Add(time.Second)
 	if got, _ := e.Reconcile(t.Context(), key); got.Status != StatusFailed {
 		t.Errorf("past the window: %+v, want Failed", got)
+	}
+}
+
+type errSender struct{ err error }
+
+func (e errSender) Send(context.Context, Intent) (string, error) { return "", e.err }
+
+type errLookup struct{ err error }
+
+func (e errLookup) Lookup(context.Context, Intent) (LookupResult, error) {
+	return LookupResult{}, e.err
+}
+
+// F8: an error text can carry a credential (a failing gh call echoing its URL or header). It is stored
+// through the one sanitizer, whichever path recorded it.
+func TestAStoredLastErrorNeverHoldsASecretOrPersonalData(t *testing.T) {
+	secret := "ghp_abcdefghijklmnopqrstuvwxyz0123456789"
+	cases := map[string]*Executor{
+		"not sent":     {Send: errSender{fmt.Errorf("%w: POST https://x:%s@github.com failed", ErrNotSent, secret)}, Lookup: notFoundLookup{}},
+		"denied":       {Send: errSender{fmt.Errorf("%w: token %s someone@example.com", ErrDenied, secret)}, Lookup: notFoundLookup{}},
+		"unknown":      {Send: errSender{fmt.Errorf("reset while using %s at /Users/someone/work", secret)}, Lookup: notFoundLookup{}},
+		"lookup error": {Send: errSender{errors.New("reset")}, Lookup: errLookup{fmt.Errorf("gh said Authorization: Bearer %s", secret)}},
+	}
+	for name, e := range cases {
+		e.Store, e.Timeouts = NewMemIntentStore(), casTimeouts()
+		in, _ := e.Execute(t.Context(), casReq())
+		stored, _, _ := e.Store.Get(in.Key)
+		for _, bad := range []string{secret, "someone@example.com", "/Users/someone"} {
+			if strings.Contains(stored.LastError, bad) || strings.Contains(in.LastError, bad) {
+				t.Errorf("%s: LastError holds %q: %q", name, bad, stored.LastError)
+			}
+		}
+		if stored.LastError == "" {
+			t.Errorf("%s: LastError is empty, the failure left no trace", name)
+		}
 	}
 }
