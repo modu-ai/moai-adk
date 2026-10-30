@@ -5,6 +5,7 @@ package cli
 // wrapper that ran the claim is never recorded and its exit changes nothing.
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"os/exec"
@@ -101,5 +102,42 @@ func TestAFUnknownExpired_ListsOnlyExpiredUnknownLeases(t *testing.T) {
 	}, now)
 	if len(got) != 2 || got[0].CardID != "no-pid" || got[1].CardID != "no-print" {
 		t.Fatalf("unknown expired = %+v, want no-pid and no-print", got)
+	}
+}
+
+// The claim reaps lazily: a card whose session died is taken back by the next claim, whoever makes it, so
+// nothing has to call `moai af reap` for the zombie to go.
+func TestAFClaim_ReapsADeadSessionsCardForTheNextSession(t *testing.T) {
+	first := startSession(t)
+	db, _ := claimedBySession(t, first)
+	_ = first.Process.Kill()
+	_ = first.Wait()
+
+	second := startSession(t)
+	afOwnerPID = func() (int, bool) { return second.Process.Pid, true } // restored by claimedBySession's cleanup
+	var got struct {
+		CardID string `json:"card_id"`
+		Epoch  int64  `json:"epoch"`
+	}
+	if err := json.Unmarshal([]byte(runAF(t, "claim", "--db", db, "--session", "s-second", "--worktree", t.TempDir())), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.CardID != "t1" || got.Epoch < 2 {
+		t.Fatalf("second claim = %+v, want t1 at a later epoch (reclaimed from the dead session)", got)
+	}
+}
+
+// And a live session's card is not taken by another claim.
+func TestAFClaim_DoesNotTakeALiveSessionsCard(t *testing.T) {
+	first := startSession(t)
+	db, _ := claimedBySession(t, first)
+	second := startSession(t)
+	afOwnerPID = func() (int, bool) { return second.Process.Pid, true }
+	cmd := newAFCmd()
+	cmd.SetArgs([]string{"claim", "--db", db, "--session", "s-second", "--worktree", t.TempDir()})
+	cmd.SetOut(&bytes.Buffer{})
+	cmd.SetErr(&bytes.Buffer{})
+	if err := cmd.Execute(); err == nil {
+		t.Fatal("the second claim got a card the live first session holds")
 	}
 }
