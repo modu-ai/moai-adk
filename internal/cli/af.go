@@ -83,6 +83,21 @@ func (f *afFlags) bind(cmd *cobra.Command, needEpoch bool) {
 	}
 }
 
+// afParentPID and afProbe are the seams of afHolder.
+var (
+	afParentPID = os.Getppid
+	afOwnerPID  = func() (int, bool) { return 0, false }
+	afProbe     = homestate.ProbeProcessIdentity
+)
+
+// afHolder is the process the lease records as the holder of the card. This command exits at once, so the
+// holder is the process that ran it: the parent.
+func afHolder() (pid int, start string) {
+	pid = afParentPID()
+	start, _ = afProbe(pid)
+	return pid, start
+}
+
 func newAFClaimCmd() *cobra.Command {
 	var f afFlags
 	var session, worktree string
@@ -98,10 +113,7 @@ func newAFClaimCmd() *cobra.Command {
 				}
 				worktree = wd
 			}
-			// The lease records the process that holds the card. This command exits at once, so the holder is the
-			// session that ran it: the parent process.
-			pid := os.Getppid()
-			start, _ := homestate.ProbeProcessIdentity(pid)
+			pid, start := afHolder()
 			return afRun(f.db, func(ctx context.Context, st *ledger.Store) error {
 				c, err := st.Claim(ctx, ledger.ClaimRequest{SessionID: session, Worktree: worktree, PID: pid, PIDStart: start})
 				if err != nil {
