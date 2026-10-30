@@ -155,7 +155,7 @@ func (s *Store) Cards(ctx context.Context) ([]Card, error) {
 	if err != nil {
 		return nil, fmt.Errorf("ledger: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var out []Card
 	for rows.Next() {
 		c, err := scanCard(rows)
@@ -183,7 +183,7 @@ func (s *Store) Leases(ctx context.Context) ([]Lease, error) {
 	if err != nil {
 		return nil, fmt.Errorf("ledger: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var out []Lease
 	for rows.Next() {
 		var (
@@ -229,7 +229,7 @@ func keysOf(ctx context.Context, q querier, cardID string) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("ledger: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	keys := []string{}
 	for rows.Next() {
 		var k string

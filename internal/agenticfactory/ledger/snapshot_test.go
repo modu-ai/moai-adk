@@ -73,7 +73,7 @@ func TestSnapshotWhileWritersWorkStaysIntact(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer snap.Close()
+	defer func() { _ = snap.Close() }()
 	var ok string
 	if err := snap.db.QueryRowContext(bg, `PRAGMA integrity_check`).Scan(&ok); err != nil || ok != "ok" {
 		t.Errorf("integrity_check: %q %v", ok, err)

@@ -26,7 +26,7 @@ func TestOpenCreatesTheDirectoryTheSchemaAndTheSettings(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer s.Close()
+	defer func() { _ = s.Close() }()
 	if _, err := os.Stat(path); err != nil {
 		t.Fatalf("the file: %v", err)
 	}
@@ -63,7 +63,7 @@ func TestOpenTwiceIsTheSameLedger(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer b.Close()
+	defer func() { _ = b.Close() }()
 	var n int
 	if err := b.db.QueryRowContext(bg, `SELECT count(*) FROM notes`).Scan(&n); err != nil || n != 1 {
 		t.Errorf("reopened ledger lost its rows: %d %v", n, err)

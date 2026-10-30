@@ -221,7 +221,7 @@ func TestRedactLeavesOrdinaryTextAlone(t *testing.T) {
 }
 
 func TestPriorityOrderAndNotice(t *testing.T) {
-	if !(PrioritySafety < PriorityNotice && PriorityNotice < PriorityReport) {
+	if PrioritySafety >= PriorityNotice || PriorityNotice >= PriorityReport {
 		t.Fatal("order must be safety, notice, report")
 	}
 	for p, name := range map[Priority]string{PrioritySafety: "safety", PriorityNotice: "notice", PriorityReport: "report", Priority(99): "unknown"} {
