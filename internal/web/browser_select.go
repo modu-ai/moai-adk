@@ -11,12 +11,9 @@ package web
 
 import (
 	"context"
-	"os"
-	"path/filepath"
-
-	"gopkg.in/yaml.v3"
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/browser"
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // BrowserChoiceVM is one of the three selectable browsers.
@@ -69,29 +66,20 @@ func browserChoices(saved string) []BrowserChoiceVM {
 	return out
 }
 
-// readBrowserSelected reads workflow.agentic_factory.browser.selected from the
-// project's workflow section. A missing file or key means "no selection".
+// readBrowserSelected reads workflow.agentic_factory.browser.selected through
+// the config package's loader (audit F16): the key path, the file and the
+// validation live there, not here. A missing file or an unset key means "no
+// selection"; an invalid value or a file that cannot be parsed is the loader's
+// error, which names the key, and is never turned into a selection.
 func readBrowserSelected(projectRoot string) (string, error) {
-	data, err := os.ReadFile(filepath.Join(projectRoot, ".moai", "config", "sections", "workflow.yaml"))
-	if os.IsNotExist(err) {
-		return "", nil
-	}
+	cfg, err := config.LoadAgenticFactory(projectRoot)
 	if err != nil {
 		return "", err
 	}
-	var doc struct {
-		Workflow struct {
-			AgenticFactory struct {
-				Browser struct {
-					Selected string `yaml:"selected"`
-				} `yaml:"browser"`
-			} `yaml:"agentic_factory"`
-		} `yaml:"workflow"`
+	if cfg.BrowserSelected == nil {
+		return "", nil
 	}
-	if err := yaml.Unmarshal(data, &doc); err != nil {
-		return "", err
-	}
-	return doc.Workflow.AgenticFactory.Browser.Selected, nil
+	return *cfg.BrowserSelected, nil
 }
 
 // browserMeta is the panel's one-line summary: what the adapter would call, or
