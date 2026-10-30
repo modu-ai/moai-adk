@@ -261,7 +261,7 @@ func TestResident_WebhookAcceptsSignedAndRefusesBadlySigned(t *testing.T) {
 }
 
 func TestResident_ExecRunnersCarryTheirBounds(t *testing.T) {
-	e := newResidentExecs("/p")
+	e := newResidentExecs("/p", "o/a")
 	if e.GH.MaxOutput != 8<<20 || e.GH.WaitDelay != time.Second || e.GH.AllowWrite {
 		t.Errorf("gh runner = %+v, want 8MiB, 1s, no writes", e.GH)
 	}

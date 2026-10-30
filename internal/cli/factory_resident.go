@@ -41,6 +41,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/claim"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/effect/ghexec"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/effect/gitexec"
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/forge"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/monitor/notify/ghpr"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/resident"
 	"github.com/modu-ai/moai-adk/internal/config"
@@ -64,9 +65,11 @@ type residentExecs struct {
 	Git gitexec.Exec
 }
 
-func newResidentExecs(projectRoot string) residentExecs {
+func newResidentExecs(projectRoot, repo string) residentExecs {
 	return residentExecs{
-		GH: ghexec.Exec{Dir: projectRoot, MaxOutput: residentExecMaxOutput, WaitDelay: residentExecWaitDelay},
+		// Repo pins the one write gh can ever run (`issue create`, refused anyway while AllowWrite is false)
+		// to the configured repository; the reads do not depend on it.
+		GH: ghexec.Exec{Dir: projectRoot, Repo: repo, MaxOutput: residentExecMaxOutput, WaitDelay: residentExecWaitDelay},
 		Git: gitexec.Exec{
 			Dir: projectRoot, MaxOutput: residentExecMaxOutput, WaitDelay: residentExecWaitDelay,
 			Env: []string{residentGitAllowProtocol},
@@ -85,8 +88,10 @@ type residentOptions struct {
 	Secret func(repo string) []byte
 	// GHRead overrides the gh runner (tests); nil means the read-only ghexec runner.
 	GHRead ghpr.Runner
-	Now    func() time.Time
-	Out    io.Writer
+	// Transport overrides the gh-backed host lookup transport (tests); nil means ghexec.Transport.
+	Transport forge.Transport
+	Now       func() time.Time
+	Out       io.Writer
 	// Ready is called with the address the HTTP server listens on (tests that pass ":0").
 	Ready func(addr string)
 }
@@ -166,9 +171,17 @@ func runFactoryResident(ctx context.Context, o residentOptions) error {
 	if err != nil {
 		return fmt.Errorf("claim store directory %q cannot be opened: %w", dir, err)
 	}
+	execs := newResidentExecs(o.ProjectRoot, s.PRSourceRepository)
 	ghRead := o.GHRead
 	if ghRead == nil {
-		ghRead = newResidentExecs(o.ProjectRoot).GH.Run
+		ghRead = execs.GH.Run
+	}
+	// The Runner's host Facts read through gh (GET only). Nothing in the loop calls them yet: they are used
+	// by the authority checks of a claim, which has no production caller; wiring them does not add a network
+	// call to a pass.
+	transport := o.Transport
+	if transport == nil {
+		transport = ghexec.Transport{Exec: execs.GH}
 	}
 	now := o.Now
 	if now == nil {
@@ -178,7 +191,7 @@ func runFactoryResident(ctx context.Context, o residentOptions) error {
 	if routes > 0 && o.Once {
 		secret = func(string) []byte { return nil } // Build needs a source; --once serves no route
 	}
-	r, err := resident.Build(s, resident.Deps{Store: st, GHRead: ghRead, Now: now, Secret: secret})
+	r, err := resident.Build(s, resident.Deps{Store: st, GHRead: ghRead, Now: now, Secret: secret, Transport: transport})
 	if err != nil {
 		return err
 	}
