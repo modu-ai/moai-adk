@@ -724,6 +724,11 @@ func (r *Runner) TakeOver(i core.IssueRef, old Ticket, newHolder, dispatch strin
 		return claim.Record{}, err
 	}
 	safeStop := strings.TrimSpace(ev.SafeStop) != ""
+	if safeStop { // a string is not a stop record: it must be this owner's, at this epoch
+		if err := r.Store.CheckSafeStop(i, old.Holder, old.Epoch, ev.SafeStop); err != nil {
+			return claim.Record{}, err
+		}
+	}
 	gone := ev.OwnerGone
 	departure := "owner gone (caller-asserted, no process on record)"
 	if st.HasPresence {
@@ -749,6 +754,13 @@ func (r *Runner) TakeOver(i core.IssueRef, old Ticket, newHolder, dispatch strin
 		note += "; " + departure
 	}
 	return r.Store.TakeOver(i, old.Holder, old.Epoch, newHolder, dispatch, run, note, ev.Wait)
+}
+
+// RecordSafeStop writes the ticket holder's safe-stop record, the evidence that
+// lets a later takeover go ahead on a process that is still running (REQ-AF-009),
+// and returns its reference.
+func (r *Runner) RecordSafeStop(t Ticket, note string) (string, error) {
+	return r.Store.RecordSafeStop(t.Issue, t.Holder, t.Epoch, note)
 }
 
 // ContractRevision is the evidence of canon E18 adopt: what changed in the

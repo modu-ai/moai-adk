@@ -59,14 +59,18 @@ func TestTakeoverReadsTheRecordedProcessInsteadOfTheCallersWord(t *testing.T) {
 	t.Run("a stop record the owner left stands in even for a live process", func(t *testing.T) {
 		r, ref, tk := handedOffOwner(t)
 		beat(t, r, tk, homestate.ProcessIdentityLive)
+		stop, err := r.RecordSafeStop(tk, "owner stopped itself")
+		if err != nil {
+			t.Fatal(err)
+		}
 		ev := fullTakeover() // the caller also claims the owner is gone; the process says it is not
-		ev.SafeStop = "stop-record-9"
+		ev.SafeStop = stop
 		rec, err := r.TakeOver(ref, tk, "sess-new", "disp-t", "run-2", ev)
 		if err != nil {
 			t.Fatalf("a safe stop: %v", err)
 		}
 		note := rec.History[len(rec.History)-1].Note
-		if !strings.Contains(note, "safe stop stop-record-9") || strings.Contains(note, "is gone") {
+		if !strings.Contains(note, "safe stop "+stop) || strings.Contains(note, "is gone") {
 			t.Errorf("history must not call a running owner gone: %q", note)
 		}
 	})
@@ -80,4 +84,18 @@ func TestTakeoverReadsTheRecordedProcessInsteadOfTheCallersWord(t *testing.T) {
 			t.Errorf("an unverified departure must be marked: %q", note)
 		}
 	})
+}
+
+// A running owner is not taken over on the strength of an unverified string.
+func TestARunningOwnerIsNotTakenOverOnAnInventedStopReference(t *testing.T) {
+	r, ref, tk := handedOffOwner(t)
+	beat(t, r, tk, homestate.ProcessIdentityLive)
+	ev := notGone()
+	ev.SafeStop = "stop-record-9"
+	if _, err := r.TakeOver(ref, tk, "sess-new", "disp-t", "run-2", ev); !errors.Is(err, core.ErrEvidenceIncomplete) {
+		t.Fatalf("an invented reference: %v", err)
+	}
+	if cur, _ := r.Store.Read(ref); cur.Holder != "sess-a" {
+		t.Errorf("the record moved: %+v", cur)
+	}
 }
