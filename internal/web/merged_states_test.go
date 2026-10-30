@@ -91,12 +91,12 @@ func TestMirrorRefusedIsShownAndConfirmsNothing(t *testing.T) {
 func TestMirrorRejectedIsShownAndConfirmsNothing(t *testing.T) {
 	sha := core.HeadSHA(strings.Repeat("a", 40))
 	src := fakeRecords{recs: []claim.Record{
-		{Issue: 63, Holder: "s-63", AgentName: "agent-j", State: core.StateLanding, Stage: core.StageMerging, Head: sha, Mirror: "rejected(403)",
+		{Issue: 63, Holder: "s-63", AgentName: "agent-j", State: core.StateLanding, Stage: core.StageMerging, Head: sha, Mirror: "rejected(404)",
 			Receipt: &claim.Receipt{HandoffID: "h", PR: 603, Head: sha}},
 	}}
 	r := recordApp(t, src).buildPRTracking(context.Background()).Rows[0]
-	if r.Mirror != "rejected(403)" {
-		t.Errorf("mirror = %q, want rejected(403)", r.Mirror)
+	if r.Mirror != "rejected(404)" {
+		t.Errorf("mirror = %q, want rejected(404)", r.Mirror)
 	}
 	if r.State != prGap || r.Stage != prGap || r.Head != prGap || r.PR != prGap || r.Completed {
 		t.Errorf("a rejected mirror must not present the cached position as confirmed: %+v", r)
