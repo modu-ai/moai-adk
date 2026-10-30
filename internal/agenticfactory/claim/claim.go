@@ -41,7 +41,7 @@ type Record struct {
 	Head      core.HeadSHA     `json:"head,omitempty"`
 	Delivery  core.Delivery    `json:"delivery,omitempty"`
 	Deploy    string           `json:"deploy,omitempty"`
-	Mirror    string           `json:"mirror_state,omitempty"` // current | stale | refused | blocked(<reason>)
+	Mirror    string           `json:"mirror_state,omitempty"` // current | stale | refused | rejected(<status>) | blocked(<reason>)
 	// AttemptSeq counts attempts on this Issue (initial plus repairs).
 	AttemptSeq int `json:"attempt_seq,omitempty"`
 	// Receipt is set when the agent published a PR and handed the Issue off.
@@ -731,6 +731,29 @@ func (s *Store) Verify(i core.IssueRef, holder string, epoch int64) (Record, err
 		return Record{}, fmt.Errorf("%w: epoch %d, record at %d", core.ErrOwnershipUnverified, epoch, r.Epoch)
 	}
 	return r, nil
+}
+
+// RecordMirror sets the Issue's mirror_state without the owner's ticket: the mirror
+// is a monitor reporting what became of the comment, not the owner's work, and it
+// changes nothing else. A record that already reads the state is left alone; an
+// Issue the store does not know is core.ErrNotHeld. Like every record write it moves
+// Seq, which is what makes a safe stop recorded before it go stale.
+func (s *Store) RecordMirror(i core.IssueRef, state string) error {
+	return s.withLock(i, func() error {
+		cur, ok, err := s.read(i)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return core.ErrNotHeld
+		}
+		if cur.Mirror == state {
+			return nil
+		}
+		next := cur
+		next.Mirror, next.Seq = state, cur.Seq+1
+		return s.write(i, &next)
+	})
 }
 
 // Update verifies ownership, applies fn to a copy, and persists it with Seq+1.

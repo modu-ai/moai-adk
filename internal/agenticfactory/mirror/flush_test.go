@@ -6,7 +6,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/claim"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/forge"
 )
 
 func ledgerFor(n int, next string) core.Ledger {
@@ -112,5 +114,99 @@ func TestFlushKeepsANewerLedgerQueuedWhileTheRefusedOneWasWritten(t *testing.T) 
 	}
 	if p := m.Pending(); len(p) != 1 || p[0] != 1 {
 		t.Errorf("the newer ledger must stay queued: %v", p)
+	}
+}
+
+// A failure that belongs to one Issue for good (it is gone, or the host refuses its
+// content) is a refusal like a secret: it leaves the queue and the run goes on.
+func TestFlushContinuesPastAnIssueTheHostRefusesForGood(t *testing.T) {
+	for _, status := range []int{404, 410, 422} {
+		t.Run(statusName(status), func(t *testing.T) {
+			f := &fakeGH{results: append([]result{httpFail(status)}, okWrites(2)...)}
+			m := writable(f)
+			m.Enqueue(ledgerFor(1, "ordinary"))
+			m.Enqueue(ledgerFor(2, "ordinary too"))
+			m.Enqueue(ledgerFor(3, "and a third"))
+
+			n, err := m.Flush(context.Background())
+			var se *forge.StatusError
+			if n != 2 || !errors.As(err, &se) || se.Status != status || !strings.Contains(err.Error(), "issue-1") {
+				t.Errorf("written=%d err=%v", n, err)
+			}
+			if p := m.Pending(); len(p) != 0 {
+				t.Errorf("nothing may stay queued behind it: %v", p)
+			}
+		})
+	}
+}
+
+func statusName(n int) string {
+	return map[int]string{404: "gone", 410: "deleted", 422: "unprocessable"}[n]
+}
+
+// Failures that are not about this Issue still stop the run: a permission or rate
+// block, and a server that may recover.
+func TestFlushStillStopsAtAGlobalOrTransientFailure(t *testing.T) {
+	for name, fail := range map[string]result{
+		"server error": httpFail(503),
+		"forbidden":    httpFail(403, "body", `{"message":"Resource not accessible by integration"}`),
+		"bad gateway":  httpFail(502),
+	} {
+		t.Run(name, func(t *testing.T) {
+			f := &fakeGH{results: []result{fail}}
+			m := writable(f)
+			m.Enqueue(ledgerFor(1, "ordinary"))
+			m.Enqueue(ledgerFor(2, "ordinary too"))
+			if _, err := m.Flush(context.Background()); err == nil {
+				t.Fatal("the failure must be reported")
+			}
+			if p := m.Pending(); len(p) != 2 {
+				t.Errorf("both stay queued: %v", p)
+			}
+		})
+	}
+}
+
+// With a store attached, a permanent refusal is also written to the Issue's
+// mirror_state: refused for a secret, rejected(<status>) for the host's answer. An
+// Issue the store does not know is skipped without an error of its own.
+func TestFlushRecordsTheRefusalInTheClaimMirrorState(t *testing.T) {
+	st, err := claim.OpenWithLimit(t.TempDir(), 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, n := range []int{1, 2, 3} {
+		i, _ := core.NewIssueRef(n)
+		if _, err := st.Acquire(i, "sess-a", "d"+string(rune('0'+n)), "run-1"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	f := &fakeGH{results: []result{
+		{out: ""}, {out: `{"id":1}`}, // issue 1: the RESTRICTED record
+		httpFail(404),                // issue 2: gone
+		{out: ""}, {out: `{"id":3}`}, // issue 3: fine
+	}}
+	m := writable(f)
+	m.Store = st
+	m.Enqueue(ledgerFor(1, sensitive))
+	m.Enqueue(ledgerFor(2, "ordinary"))
+	m.Enqueue(ledgerFor(3, "and a third"))
+	m.Enqueue(ledgerFor(9, sensitive)) // no claim record behind it
+	f.results = append(f.results, result{out: ""}, result{out: `{"id":9}`})
+
+	_, ferr := m.Flush(context.Background())
+	if ferr == nil {
+		t.Fatal("the refusals must be reported")
+	}
+	if strings.Contains(ferr.Error(), "recording") {
+		t.Errorf("an Issue the store does not know is skipped, not reported: %v", ferr)
+	}
+	want := map[int]string{1: "refused", 2: "rejected(404)", 3: ""}
+	for n, w := range want {
+		i, _ := core.NewIssueRef(n)
+		rec, err := st.Read(i)
+		if err != nil || rec.Mirror != w {
+			t.Errorf("issue-%d mirror_state = %q (%v), want %q", n, rec.Mirror, err, w)
+		}
 	}
 }

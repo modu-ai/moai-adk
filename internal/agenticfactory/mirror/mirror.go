@@ -87,6 +87,10 @@ type Mirror struct {
 	// Now is the clock; nil means time.Now.
 	Now func() time.Time
 
+	// Store, when set, is where Flush records an Issue's mirror_state after a
+	// permanent refusal; unset, nothing is recorded.
+	Store *claim.Store
+
 	mu      sync.Mutex
 	memos   map[int]memo
 	pending map[int]queued
@@ -482,14 +486,31 @@ func (m *Mirror) Pending() []int {
 	return out
 }
 
+// permanent reports a failure that belongs to one Issue for good, and the
+// mirror_state to record for it: a ledger refused as holding a secret or personal
+// data (its RESTRICTED record is up), or the host saying the Issue is gone (404, 410)
+// or refuses its content (422). Retrying cannot change either answer, and neither
+// says anything about the other Issues. A rate limit, a permission denial and a
+// server error are not of this kind: they may pass, or hit every Issue alike.
+func permanent(err error) (state string, ok bool) {
+	if errors.Is(err, core.ErrUnsanitized) {
+		return "refused", true
+	}
+	var se *forge.StatusError
+	if errors.As(err, &se) && (se.Status == 404 || se.Status == 410 || se.Status == 422) {
+		return fmt.Sprintf("rejected(%d)", se.Status), true
+	}
+	return "", false
+}
+
 // Flush writes each queued ledger once, lowest Issue first, and returns how many
-// were written. A ledger that is refused for good (ErrUnsanitized: the RESTRICTED
-// record has been written in its place, and trying again cannot change the answer)
-// leaves the queue and the run goes on with the next Issue, so one Issue's secret
-// never holds the Issues behind it. Any other failure (a short budget, a block, an
-// error) stops the run and leaves the rest queued, so a refusal is never hammered.
-// What went wrong comes back joined, each error named with its Issue. An entry
-// queued again while its predecessor was being written stays queued.
+// were written. A ledger that is refused for good (see permanent) leaves the queue
+// and the run goes on with the next Issue, so one Issue's secret or one deleted
+// Issue never holds the Issues behind it; where a Store is attached the refusal is
+// also recorded as the Issue's mirror_state. Any other failure (a short budget, a
+// block, an error) stops the run and leaves the rest queued, so a refusal is never
+// hammered. What went wrong comes back joined, each error named with its Issue. An
+// entry queued again while its predecessor was being written stays queued.
 func (m *Mirror) Flush(ctx context.Context) (int, error) {
 	written := 0
 	var errs []error
@@ -508,16 +529,22 @@ func (m *Mirror) Flush(ctx context.Context) (int, error) {
 			continue
 		}
 		err := m.WriteLedger(ctx, q.l)
-		switch {
-		case err == nil:
+		if err == nil {
 			written++
 			drop(n, q.gen)
-		case errors.Is(err, core.ErrUnsanitized):
-			errs = append(errs, fmt.Errorf("issue-%d: %w", n, err))
-			drop(n, q.gen)
-		default:
-			errs = append(errs, fmt.Errorf("issue-%d: %w", n, err))
+			continue
+		}
+		errs = append(errs, fmt.Errorf("issue-%d: %w", n, err))
+		state, perm := permanent(err)
+		if !perm {
 			return written, errors.Join(errs...)
+		}
+		drop(n, q.gen)
+		if m.Store != nil {
+			// An Issue the store does not know has no state to record; that is not an error.
+			if rerr := m.Store.RecordMirror(q.l.Issue, state); rerr != nil && !errors.Is(rerr, core.ErrNotHeld) {
+				errs = append(errs, fmt.Errorf("issue-%d: recording %s: %w", n, state, rerr))
+			}
 		}
 	}
 	return written, errors.Join(errs...)
