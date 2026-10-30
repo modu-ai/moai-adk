@@ -246,7 +246,7 @@ AC-AFL-015 RED-now의 `ls-tree` 출력과 013·017·015의 단일 이름 grep은
 - 상태 표지(하위·상위 판이 적힌 곳): audited-FAIL 0.74 (plan debt accepted by leader decision), no re-audit. PASS가 아니다. 판: 하위 0.5.1, 상위 0.7.5.
 - 원천 계약 sha256 `f2c1078b7add847b93926ba3356eda62e4fbc44d8aa77221f059f44f6b059acb` — 작업 전과 끝에 `shasum -a 256 /Users/goos/MoAI/moai-adk-go/.moai/reports/issue-1948/local-adk-design-20261030.md`로 다시 재어 같음.
 - 코드 사실의 commit: integration tip `b28a31d9dc`(AC-AFL-015 시험 병합). §L·§N·§F의 다른 코드 사실은 여전히 `db02401ad1`에 고정되어 있다(감사 N8, plan 부채).
-- commit: `pending-backfill`
+- commit: `d036ee30b0e885d0936cf86694ddc2cbae89c7cd` (이 줄을 채우는 것은 그 뒤의 별도 커밋)
 
 ### plan 부채로 받아들인 감사 id
 
