@@ -60,3 +60,62 @@ func TestLeaderNoticeCarriesTheWatchCronAndTheLadder(t *testing.T) {
 		}
 	}
 }
+
+// An idle exit per locale: with no card and no backlog the cron records once, deletes itself and stops, so
+// it can never keep spending turns on nothing. The advisory model is named only "if configured and
+// available". Neither text may promise a CronDelete at a moment the session cannot act (its end).
+var idleExit = map[string]string{
+	"en": "`idle: backlog empty <time>`",
+	"ko": "`idle: backlog empty <시각>`",
+	"ja": "`idle: backlog empty <時刻>`",
+	"zh": "`idle: backlog empty <时间>`",
+}
+
+var advisoryCondition = map[string]string{
+	"en": "only if configured and available",
+	"ko": "설정돼 있고 쓸 수 있을 때만",
+	"ja": "設定済みで利用できる場合に限り",
+	"zh": "仅在已配置且可用时",
+}
+
+var endOfSessionDelete = []string{"only when the session ends", "only when the run ends", "세션이 끝날 때만", "실행이 끝날 때만", "セッションが終わるときだけ", "実行が終わるときだけ", "只在会话结束时", "只在本次运行结束时"}
+
+func TestTheCronsStopWhenThereIsNothingLeftAndTheLadderNamesTheAdvisoryConditionally(t *testing.T) {
+	for _, lang := range []string{"en", "ko", "ja", "zh"} {
+		sdScrubRuleEnv(t)
+		t.Setenv(config.EnvMoaiFactoryWorker, "lane-2")
+		t.Setenv(config.EnvFactoryBackend, factory.BackendClaude)
+		lane := factoryLaneRuleForSource("startup", lang)
+		leader := factoryLeaderNotice("run-1", 2, lang)
+		for name, text := range map[string]string{"lane": lane, "leader": leader} {
+			if !strings.Contains(text, idleExit[lang]) || !strings.Contains(text, "CronDelete") {
+				t.Errorf("%s %s: no idle exit (want %q and CronDelete)", lang, name, idleExit[lang])
+			}
+			if !strings.Contains(text, advisoryCondition[lang]) {
+				t.Errorf("%s %s: the advisory model is not conditional (want %q)", lang, name, advisoryCondition[lang])
+			}
+			for _, bad := range endOfSessionDelete {
+				if strings.Contains(text, bad) {
+					t.Errorf("%s %s: still promises a delete at session end (%q)", lang, name, bad)
+				}
+			}
+		}
+	}
+}
+
+// Which session-start sources carry the lane rule. Pinned so a change is deliberate: it rides startup and
+// clear (and an unset source), not resume or compact.
+func TestTheLaneRuleSourceSet(t *testing.T) {
+	for _, tc := range []struct {
+		source string
+		want   bool
+	}{{"startup", true}, {"clear", true}, {"", true}, {"resume", false}, {"compact", false}} {
+		sdScrubRuleEnv(t)
+		t.Setenv(config.EnvMoaiFactoryWorker, "lane-2")
+		t.Setenv(config.EnvFactoryBackend, factory.BackendClaude)
+		got := factoryLaneRuleForSource(tc.source, "en") != ""
+		if got != tc.want {
+			t.Errorf("source %q: rule present = %v, want %v", tc.source, got, tc.want)
+		}
+	}
+}

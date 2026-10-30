@@ -147,13 +147,13 @@ var factoryLocales = map[string]factoryMessages{
 			"When a card is routed to you, work it in the current worktree and record its stages with `moai factory stage`.",
 		laneRecheckRule: "Stall recovery: arm ONE recurring `CronCreate` recheck for this session (cron `%[1]s`, recurring) — once per session, not per card — " +
 			"whose prompt runs the stall watchdog first — Skill(\"moai-lane-watchdog\") — then resumes the current card from its progress record; " +
-			"check it with `CronList` at session start, at card takeover (intake, or the in-session transition to a newly leased card) and after any session reset (re-arm only if missing or expired); it stays armed across cards and is deleted with `CronDelete` only when the session ends. " +
+			"check it with `CronList` at session start, at card takeover (intake, or the in-session transition to a newly leased card) and after any session reset (re-arm only if missing or expired); it stays armed across cards. When there is no current card and no backlog is left, record `idle: backlog empty <time>` once, delete it with `CronDelete`, and stop — a cron with nothing to do must not keep spending turns. " +
 			"It wakes a lane stalled on an API error (e.g. 429) or a delegate report that never comes — an ended turn cannot arm anything. " +
 			"Whatever wakes you (cron, leader message, idle notice), read disk evidence first (progress record, reports, commits, delegate deliverable) before replying: " +
 			"a message never proves progress or its absence. " +
-			"When blocked, decide in this order and keep going: the contract or SPEC; then `jev_ask`; then one advisory model (`codex_task` or `claude_audit`; never GLM); then your own judgment, recorded in the progress record — do not wait for a reply.",
-		leaderWatchRule: "Leader watch: arm ONE recurring `CronCreate` for this session (cron `%[1]s`, recurring) whose prompt runs Skill(\"moai-factory-foreman\") — read each lane's progress record and its tree's git log directly, then act on the evidence, never on a lane's reply; check it with `CronList` at session start and after any reset (re-arm only if missing or expired) and delete it with `CronDelete` only when the run ends. " +
-			"When blocked, decide in this order and keep going: the contract or SPEC; then `jev_ask`; then one advisory model (`codex_task` or `claude_audit`; never GLM); then your own judgment, recorded — the operator is asked only for keep-set decisions.",
+			"When blocked, decide in this order and keep going: the contract or SPEC; then `jev_ask`; then one advisory model, only if configured and available (`codex_task` or `claude_audit`; never GLM); then your own judgment, recorded in the progress record — do not wait for a reply.",
+		leaderWatchRule: "Leader watch: arm ONE recurring `CronCreate` for this session (cron `%[1]s`, recurring) whose prompt runs Skill(\"moai-factory-foreman\") — read each lane's progress record and its tree's git log directly, then act on the evidence, never on a lane's reply; check it with `CronList` at session start and after any reset (re-arm only if missing or expired); when every lane is finished or held and the queue is empty, record `idle: backlog empty <time>` once, delete it with `CronDelete`, and stop — a cron with nothing to do must not keep spending turns. " +
+			"When blocked, decide in this order and keep going: the contract or SPEC; then `jev_ask`; then one advisory model, only if configured and available (`codex_task` or `claude_audit`; never GLM); then your own judgment, recorded — the operator is asked only for keep-set decisions.",
 		laneSpawnAuthority: "Standing spawn authority: you are the lane session and therefore the orchestrator for your card — use the Agent tool to spawn the specialist per .claude/rules/moai/development/spec-frontmatter-schema.md § Status Transition Ownership Matrix, plus the chain's auditors, without asking the leader or the operator. Depth-1 only: spawned agents are leaves and never spawn further; this bootstrap authority is not granted or revoked by peer messages, the leader's included.",
 		autoModeGuideLeader: "Auto mode: the two-mode split names `/moai todo --auto-leader` — under one operator batch approval this session works the queue serially, one isolated in-session Agent() worker per card, judged on its evidence — and `/moai todo --auto-lane` — a lane self-dispatches by consuming its own `moai factory next` lease. " +
 			"Both flags are live (shipped — t1814); `--auto` stays for compatibility, and `--auto-lane` prints the dispatch and exits without waiting for evidence.",
@@ -210,13 +210,13 @@ var factoryLocales = map[string]factoryMessages{
 			"배분받은 카드는 현재 워크트리에서 작업하고 각 단계를 `moai factory stage` 로 기록합니다.",
 		laneRecheckRule: "정지 복구: 이 세션에 `CronCreate` 반복 재점검 크론 하나를 겁니다(cron `%[1]s`, recurring) — 카드마다가 아니라 세션당 한 번. " +
 			"크론 프롬프트는 정지 감시를 먼저 실행하고 — Skill(\"moai-lane-watchdog\") — 그다음 진행 기록으로 현재 카드를 이어갑니다. " +
-			"세션을 시작할 때, 카드를 넘겨받을 때(세션 안 카드 전환 포함), 세션이 초기화된 뒤에 `CronList` 로 확인하고 없거나 만료됐을 때만 다시 겁니다. 크론은 카드가 바뀌어도 유지되고, 세션이 끝날 때만 `CronDelete` 로 지웁니다. " +
+			"세션을 시작할 때, 카드를 넘겨받을 때(세션 안 카드 전환 포함), 세션이 초기화된 뒤에 `CronList` 로 확인하고 없거나 만료됐을 때만 다시 겁니다. 크론은 카드가 바뀌어도 유지됩니다. 현재 카드가 없고 백로그도 비면 `idle: backlog empty <시각>` 을 한 번 기록하고 `CronDelete` 로 크론을 지운 뒤 멈춥니다 — 할 일이 없는 크론이 턴을 계속 쓰면 안 됩니다. " +
 			"API 오류(429 등)로 멈춘 레인이나 끝내 오지 않는 위임 결과를 기다리다 멈춘 레인은 이 크론이 깨웁니다 — 이미 끝난 턴은 아무것도 걸 수 없기 때문입니다. " +
 			"무엇이 깨웠든(크론, 리더 메시지, 유휴 알림) 답하기 전에 디스크 증거(진행 기록, 보고서, 커밋, 위임 산출물)를 먼저 읽으세요. " +
 			"메시지는 진행이 있었는지 없었는지를 증명하지 않습니다. " +
-			"막히면 이 순서로 정하고 계속 진행합니다: 계약/SPEC → `jev_ask` → 자문 모델 하나(`codex_task` 또는 `claude_audit`, GLM 제외) → 진행 기록에 남기는 자기 판단. 답장을 기다리지 않습니다.",
-		leaderWatchRule: "리더 감시: 이 세션에 `CronCreate` 반복 크론 하나를 겁니다(cron `%[1]s`, recurring). 프롬프트는 Skill(\"moai-factory-foreman\") 을 실행해 각 레인의 진행 기록과 해당 트리의 git log 를 직접 읽고, 레인의 답장이 아니라 증거로 판단합니다. 세션을 시작할 때와 초기화된 뒤에 `CronList` 로 확인하고 없거나 만료됐을 때만 다시 걸며, 실행이 끝날 때만 `CronDelete` 로 지웁니다. " +
-			"막히면 이 순서로 정하고 계속 진행합니다: 계약/SPEC → `jev_ask` → 자문 모델 하나(`codex_task` 또는 `claude_audit`, GLM 제외) → 기록을 남기는 자기 판단. 운영자에게는 keep-set 결정만 묻습니다.",
+			"막히면 이 순서로 정하고 계속 진행합니다: 계약/SPEC → `jev_ask` → 설정돼 있고 쓸 수 있을 때만 자문 모델 하나(`codex_task` 또는 `claude_audit`, GLM 제외) → 진행 기록에 남기는 자기 판단. 답장을 기다리지 않습니다.",
+		leaderWatchRule: "리더 감시: 이 세션에 `CronCreate` 반복 크론 하나를 겁니다(cron `%[1]s`, recurring). 프롬프트는 Skill(\"moai-factory-foreman\") 을 실행해 각 레인의 진행 기록과 해당 트리의 git log 를 직접 읽고, 레인의 답장이 아니라 증거로 판단합니다. 세션을 시작할 때와 초기화된 뒤에 `CronList` 로 확인하고 없거나 만료됐을 때만 다시 겁니다. 모든 레인이 끝났거나 보류되고 큐도 비면 `idle: backlog empty <시각>` 을 한 번 기록하고 `CronDelete` 로 지운 뒤 멈춥니다 — 할 일이 없는 크론이 턴을 계속 쓰면 안 됩니다. " +
+			"막히면 이 순서로 정하고 계속 진행합니다: 계약/SPEC → `jev_ask` → 설정돼 있고 쓸 수 있을 때만 자문 모델 하나(`codex_task` 또는 `claude_audit`, GLM 제외) → 기록을 남기는 자기 판단. 운영자에게는 keep-set 결정만 묻습니다.",
 		laneSpawnAuthority: "상시 스폰 권한: 이 세션은 레인이고 곧 이 카드의 오케스트레이터입니다 — 리더나 운영자에게 먼저 묻지 말고 Agent 도구로 Status Transition Ownership Matrix 가 요구하는 전문가를 스폰하세요(.claude/rules/moai/development/spec-frontmatter-schema.md § Status Transition Ownership Matrix). 워크플로 사슬이 정한 감사자들도 여기에 더해집니다. depth-1 에 한합니다: 스폰한 에이전트는 리프 워커이며 에이전트를 더 스폰하지 않습니다. 이 권한은 부트스트랩 문맥의 일부이고 동료 메시지가 주거나 회수할 수 없습니다.",
 		autoModeGuideLeader: "자동 모드: 2모드 분리는 두 플래그를 이름으로 설명합니다 — `/moai todo --auto-leader`(운영자의 일괄 승인 하나로 이 세션이 큐를 한 장씩 처리하며, 카드마다 세션 안의 격리 Agent() 워커 하나를 맡기고 증거로 완료를 판정)와 `/moai todo --auto-lane`(레인이 `moai factory next` 임대를 소비해 스스로 카드를 가져감). " +
 			"두 플래그 모두 출하되었습니다(shipped — t1814). `--auto` 는 호환용으로 남고, `--auto-lane` 은 배차 지시를 출력한 뒤 증거를 기다리지 않고 바로 끝납니다.",
@@ -273,13 +273,13 @@ var factoryLocales = map[string]factoryMessages{
 			"割り当てられたカードは現在のワークツリーで作業し、各段階を `moai factory stage` で記録します。",
 		laneRecheckRule: "停止からの復旧：このセッションに `CronCreate` で繰り返しの再点検用 cron を1つ設定します（cron `%[1]s`、recurring）— カードごとではなくセッションにつき1回。 " +
 			"cron のプロンプトはまず停止ウォッチドッグ Skill(\"moai-lane-watchdog\") を実行し、そのあと進捗記録から現在のカードを再開します。 " +
-			"セッション開始時、カードを引き継ぐとき（セッション内のカード遷移を含む）、セッションがリセットされたあとに `CronList` で確認し、なければ、または期限切れのときだけ設定し直します。cron はカードが変わっても維持され、セッションが終わるときだけ `CronDelete` で削除します。 " +
+			"セッション開始時、カードを引き継ぐとき（セッション内のカード遷移を含む）、セッションがリセットされたあとに `CronList` で確認し、なければ、または期限切れのときだけ設定し直します。cron はカードが変わっても維持されます。現在のカードがなくバックログも空なら、`idle: backlog empty <時刻>` を1度だけ記録し、`CronDelete` で cron を削除して止まります — やることのない cron がターンを使い続けてはいけません。 " +
 			"API エラー（429 など）で止まったレーンや、永久に届かない委任先の報告を待って止まったレーンは、この cron が起こします — すでに終わったターンは何も設定できないためです。 " +
 			"何に起こされた場合（cron、リーダーのメッセージ、アイドル通知）でも、返信する前にまずディスク上の証拠（進捗記録、レポート、コミット、委任先の成果物）を読んでください。 " +
 			"メッセージは、進捗があったこともなかったことも証明しません。 " +
-			"行き詰まったら次の順で決めて進めます：契約/SPEC → `jev_ask` → 助言モデル1つ（`codex_task` または `claude_audit`、GLM は除く）→ 進捗記録に残す自分の判断。返信を待ちません。",
-		leaderWatchRule: "リーダー監視：このセッションに `CronCreate` で繰り返し cron を1つ設定します（cron `%[1]s`、recurring）。プロンプトは Skill(\"moai-factory-foreman\") を実行し、各レーンの進捗記録とそのツリーの git log を直接読み、レーンの返信ではなく証拠に基づいて動きます。セッション開始時とリセット後に `CronList` で確認し、なければ、または期限切れのときだけ設定し直し、実行が終わるときだけ `CronDelete` で削除します。 " +
-			"行き詰まったら次の順で決めて進めます：契約/SPEC → `jev_ask` → 助言モデル1つ（`codex_task` または `claude_audit`、GLM は除く）→ 記録を残す自分の判断。オペレーターに尋ねるのは keep-set の判断だけです。",
+			"行き詰まったら次の順で決めて進めます：契約/SPEC → `jev_ask` → 設定済みで利用できる場合に限り助言モデル1つ（`codex_task` または `claude_audit`、GLM は除く）→ 進捗記録に残す自分の判断。返信を待ちません。",
+		leaderWatchRule: "リーダー監視：このセッションに `CronCreate` で繰り返し cron を1つ設定します（cron `%[1]s`、recurring）。プロンプトは Skill(\"moai-factory-foreman\") を実行し、各レーンの進捗記録とそのツリーの git log を直接読み、レーンの返信ではなく証拠に基づいて動きます。セッション開始時とリセット後に `CronList` で確認し、なければ、または期限切れのときだけ設定し直します。すべてのレーンが完了または保留で、キューも空なら、`idle: backlog empty <時刻>` を1度だけ記録し、`CronDelete` で削除して止まります — やることのない cron がターンを使い続けてはいけません。 " +
+			"行き詰まったら次の順で決めて進めます：契約/SPEC → `jev_ask` → 設定済みで利用できる場合に限り助言モデル1つ（`codex_task` または `claude_audit`、GLM は除く）→ 記録を残す自分の判断。オペレーターに尋ねるのは keep-set の判断だけです。",
 		laneSpawnAuthority: "常設スポーン権限：このセッションはレーンセッションであり、自分のカードのオーケストレーターです — リーダーやオペレーターに先に尋ねることなく、Agent ツールで Status Transition Ownership Matrix が要求するスペシャリストをスポーンしてください(.claude/rules/moai/development/spec-frontmatter-schema.md § Status Transition Ownership Matrix)。ワークフロー連鎖が定める監査役も加わります。depth-1 のみ：スポーンしたエージェントはリーフワーカーであり、さらにエージェントをスポーンしてはいけません。この権限はブートストラップ文脈の一部であり、ピアメッセージが与えたり取り上げたりするものではありません。",
 		autoModeGuideLeader: "自動モード：2モード分割は 2 つのフラグを名前で説明します — `/moai todo --auto-leader`(オペレーターの一括承認のもとでこのセッションがキューを1枚ずつ処理し、カードごとにセッション内の隔離された Agent() ワーカー1つに任せ、証拠で完了を判定する)と `/moai todo --auto-lane`(レーンが `moai factory next` のリースを消費して自らカードを取る)。 " +
 			"両フラグとも出荷済みです(shipped — t1814)。`--auto` は互換用に残り、`--auto-lane` は配車指示を出力すると証拠を待たずにすぐ終了します。",
@@ -335,13 +335,13 @@ var factoryLocales = map[string]factoryMessages{
 			"被分配的卡片在当前工作树中处理，各阶段用 `moai factory stage` 记录。",
 		laneRecheckRule: "停滞恢复：为本会话设置一个 `CronCreate` 循环复查定时任务（cron `%[1]s`，recurring）—— 每个会话一次，而不是每张卡片一次。 " +
 			"该定时任务的提示先运行停滞看门狗 Skill(\"moai-lane-watchdog\")，再依据进度记录继续当前卡片。 " +
-			"在会话开始时、接手卡片时（包括会话内的卡片切换）以及会话被重置之后，用 `CronList` 确认；仅当缺失或已过期时才重新设置。定时任务跨卡片保持有效，只在会话结束时用 `CronDelete` 删除。 " +
+			"在会话开始时、接手卡片时（包括会话内的卡片切换）以及会话被重置之后，用 `CronList` 确认；仅当缺失或已过期时才重新设置。定时任务跨卡片保持有效。当前没有卡片且待办已空时，只记录一次 `idle: backlog empty <时间>`，用 `CronDelete` 删除该定时任务并停止 —— 无事可做的定时任务不得继续消耗回合。 " +
 			"因 API 错误（如 429）停住的泳道，或在等一份永远不会到来的委派报告而停住的泳道，由这个定时任务唤醒 —— 已结束的回合无法设置任何东西。 " +
 			"无论是什么唤醒了你（定时任务、leader 消息、空闲通知），回复前先读磁盘上的证据（进度记录、报告、提交、委派产物）。 " +
 			"消息既不能证明有进展，也不能证明没有进展。 " +
-			"受阻时按此顺序决定并继续推进：合同/SPEC → `jev_ask` → 一个顾问模型（`codex_task` 或 `claude_audit`，不含 GLM）→ 记入进度记录的自行判断。不要等待回复。",
-		leaderWatchRule: "Leader 监视：为本会话设置一个 `CronCreate` 循环定时任务（cron `%[1]s`，recurring），其提示运行 Skill(\"moai-factory-foreman\")，直接读取各泳道的进度记录及其工作树的 git log，依据证据而不是泳道的回复行动。在会话开始时和重置之后用 `CronList` 确认，仅当缺失或已过期时才重新设置，只在本次运行结束时用 `CronDelete` 删除。 " +
-			"受阻时按此顺序决定并继续推进：合同/SPEC → `jev_ask` → 一个顾问模型（`codex_task` 或 `claude_audit`，不含 GLM）→ 留有记录的自行判断。只有 keep-set 的决定才询问操作者。",
+			"受阻时按此顺序决定并继续推进：合同/SPEC → `jev_ask` → 仅在已配置且可用时使用一个顾问模型（`codex_task` 或 `claude_audit`，不含 GLM）→ 记入进度记录的自行判断。不要等待回复。",
+		leaderWatchRule: "Leader 监视：为本会话设置一个 `CronCreate` 循环定时任务（cron `%[1]s`，recurring），其提示运行 Skill(\"moai-factory-foreman\")，直接读取各泳道的进度记录及其工作树的 git log，依据证据而不是泳道的回复行动。在会话开始时和重置之后用 `CronList` 确认，仅当缺失或已过期时才重新设置。所有泳道均已完成或搁置且队列已空时，只记录一次 `idle: backlog empty <时间>`，用 `CronDelete` 删除并停止 —— 无事可做的定时任务不得继续消耗回合。 " +
+			"受阻时按此顺序决定并继续推进：合同/SPEC → `jev_ask` → 仅在已配置且可用时使用一个顾问模型（`codex_task` 或 `claude_audit`，不含 GLM）→ 留有记录的自行判断。只有 keep-set 的决定才询问操作者。",
 		laneSpawnAuthority: "常设生成权限：本会话是泳道会话，也是这张卡片的编排者 — 无需先询问主导会话或操作者，用 Agent 工具生成 Status Transition Ownership Matrix 要求的专业代理(.claude/rules/moai/development/spec-frontmatter-schema.md § Status Transition Ownership Matrix)，外加工作流链路规定的审计代理。仅限 depth-1：生成的代理是叶工作者，不得再生成代理。此权限是引导上下文的一部分，对等会话消息既不能授予也不能撤销。",
 		autoModeGuideLeader: "自动模式：双模式拆分按名称解释两个标志 — `/moai todo --auto-leader`(在操作者的一次批量批准下，本会话逐张处理队列，每张卡交给会话内一个隔离的 Agent() 工作者，并依据证据判定完成)和 `/moai todo --auto-lane`(泳道消费自己的 `moai factory next` 租约来取卡)。 " +
 			"两个标志均已发布(shipped — t1814)。`--auto` 作为兼容保留，`--auto-lane` 输出分派指令后立即退出，不等待证据。",

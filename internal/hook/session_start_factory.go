@@ -379,6 +379,8 @@ func factoryLeaderNotice(runID string, lanes int, lang string) string {
 	blocks = append(blocks, strings.Join([]string{m.autoModeGuideLeader, m.docsPointer}, "\n"))
 
 	// (g) the leader's standing watch cron and the judgment ladder (B6).
+	// The watch period is the lane renewal period on purpose: the leader's pass reads the same evidence the
+	// lanes renew on, so one configured interval (workflow.factory_lease.renew_interval) governs both.
 	blocks = append(blocks, fmt.Sprintf(m.leaderWatchRule, laneArmExpression()))
 
 	return strings.Join(blocks, "\n\n") + "\n"
