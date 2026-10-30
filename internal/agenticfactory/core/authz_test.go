@@ -276,11 +276,16 @@ func TestARedirectedLookupIsNeverAllowed(t *testing.T) {
 			t.Errorf("%s through a redirect: %s", op, v)
 		}
 	}
-	// Comments on another author's Issue need no repository check at all.
+	// A comment on another author's Issue needs no entry in the allow list, but it
+	// is still a write to the repository the host answered for, so a redirected
+	// lookup refuses it too (audit F20).
 	r := req(OpCommentCreate)
-	r.Redirected = true
 	if v := (Collaboration{}).Authorize(r); v != Allow {
 		t.Errorf("a comment does not depend on the allow list: %s", v)
+	}
+	r.Redirected = true
+	if v := (Collaboration{}).Authorize(r); v != DenyRepoNotAllowed {
+		t.Errorf("a comment through a redirect: %s", v)
 	}
 }
 
@@ -355,5 +360,69 @@ func TestUndefinedOperationHasItsOwnReason(t *testing.T) {
 		if err := v.Err(); !errors.Is(err, ErrOpNotDefined) || errors.Is(err, ErrNotIssueAuthor) {
 			t.Errorf("%q err = %v", op, err)
 		}
+	}
+}
+
+// Audit F20: whether the host answered for the repository that was asked about is
+// checked before ANY allowance, on one's own Issue and for a comment on another
+// author's as much as for the collaboration operations. A repository that moved,
+// was renamed or was reached through a redirect gives no allowance, and neither
+// does a lookup that left either name unknown.
+func TestAMovedRepositoryRefusesEveryOperationOnEveryBranch(t *testing.T) {
+	branches := map[string]func(*AuthzRequest){
+		"own issue":                  func(r *AuthzRequest) { r.IssueAuthorID = r.UserID },
+		"comment on another's issue": func(r *AuthzRequest) {},
+		"own comment on another's":   func(r *AuthzRequest) { r.CommentAuthorID = r.UserID },
+	}
+	breaks := map[string]func(*AuthzRequest){
+		"redirected":           func(r *AuthzRequest) { r.Redirected = true },
+		"answered for another": func(r *AuthzRequest) { r.ActualRepo = "acme/gadgets" },
+		"actual unknown":       func(r *AuthzRequest) { r.ActualRepo = "" },
+		"requested unknown":    func(r *AuthzRequest) { r.RequestedRepo = "" },
+		"both unknown":         func(r *AuthzRequest) { r.RequestedRepo, r.ActualRepo = "", "" },
+	}
+	cfgs := map[string]Collaboration{"default": {}, "collaboration on": collab()}
+	for cname, c := range cfgs {
+		for bname, branch := range branches {
+			ops := []Op{OpCommentCreate, OpCommentEdit}
+			if bname == "own issue" {
+				ops = allOps
+			}
+			for _, op := range ops {
+				for kname, brk := range breaks {
+					r := req(op)
+					branch(&r)
+					brk(&r)
+					if v := c.Authorize(r); v != DenyRepoNotAllowed {
+						t.Errorf("%s / %s / %s / %s: %s, want repo-not-allowed", cname, bname, op, kname, v)
+					}
+				}
+			}
+		}
+	}
+}
+
+// What the check does not ask: the allow list. One's own Issue, and a comment on
+// another's, need only that the host answered for the repository asked about.
+func TestTheAllowListStillOnlyGovernsCollaboration(t *testing.T) {
+	own := func(op Op) AuthzRequest { r := req(op); r.IssueAuthorID = r.UserID; return r }
+	for _, op := range []Op{OpEditBody, OpCommentCreate, OpCommentEdit, OpClose, OpTakeOver} {
+		if v := (Collaboration{}).Authorize(own(op)); v != Allow {
+			t.Errorf("own issue %s with no allow list: %s", op, v)
+		}
+	}
+	if v := (Collaboration{}).Authorize(req(OpCommentCreate)); v != Allow {
+		t.Errorf("comment on another's issue with no allow list: %s", v)
+	}
+	r := req(OpCommentCreate)
+	r.RequestedRepo, r.ActualRepo = "ACME/Widgets", "acme/widgets"
+	if v := (Collaboration{Provider: "github"}).Authorize(r); v != Allow {
+		t.Errorf("github names compare without case: %s", v)
+	}
+	// the unknown identity is still reported first
+	r = req(OpCommentCreate)
+	r.UserID, r.Redirected = 0, true
+	if v := (Collaboration{}).Authorize(r); v != DenyIdentityUnknown {
+		t.Errorf("identity before repository: %s", v)
 	}
 }
