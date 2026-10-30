@@ -32,7 +32,7 @@ func newAFCmd() *cobra.Command {
 		Short:        "Agentic factory card flow over the local ledger",
 		SilenceUsage: true,
 	}
-	af.AddCommand(newAFClaimCmd(), newAFMoveCmd(), newAFEvidenceCmd(), newAFEnqueueCmd(), newAFReleaseCmd())
+	af.AddCommand(newAFClaimCmd(), newAFMoveCmd(), newAFEvidenceCmd(), newAFEnqueueCmd(), newAFReleaseCmd(), newAFReapCmd())
 	return af
 }
 
@@ -241,5 +241,22 @@ func newAFReleaseCmd() *cobra.Command {
 		},
 	}
 	f.bind(cmd, true)
+	return cmd
+}
+
+// newAFReapCmd is `moai af reap`: it takes back the cards whose holder is gone. STUB: reaps nothing yet.
+func newAFReapCmd() *cobra.Command {
+	var f afFlags
+	cmd := &cobra.Command{
+		Use:   "reap",
+		Short: "Take back the cards whose holder process is gone",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return afRun(f.db, func(_ context.Context, _ *ledger.Store) error {
+				return afPrint(cmd, map[string]any{"reclaimed": []ledger.Reclaimed{}})
+			})
+		},
+	}
+	f.bind(cmd, false)
 	return cmd
 }
