@@ -108,7 +108,9 @@ func TestAmbiguousSendIsReconciledNeverResent(t *testing.T) {
 		want Status
 	}{
 		{"found remotely", &fakeLookup{found: true, id: "n9", authoritative: true}, StatusConfirmed},
-		{"authoritatively absent", &fakeLookup{authoritative: true}, StatusFailed},
+		// Absent right after an unknown outcome is not yet failure: the request may still land, so the intent
+		// stays Sent until the window passes (see the "after the window" case below).
+		{"authoritatively absent", &fakeLookup{authoritative: true}, StatusSent},
 		{"lookup unsure", &fakeLookup{authoritative: false}, StatusParked},
 		{"lookup error", &fakeLookup{err: errors.New("gh 502")}, StatusParked},
 	}
@@ -121,6 +123,18 @@ func TestAmbiguousSendIsReconciledNeverResent(t *testing.T) {
 		if s.calls != 1 || c.lk.calls != 1 {
 			t.Errorf("%s: sends=%d lookups=%d, want 1/1", c.name, s.calls, c.lk.calls)
 		}
+	}
+
+	// After the window an authoritative absence is failure, and a retry may send again.
+	now := time.Unix(1_000_000, 0)
+	s := &fakeSender{err: errors.New("connection reset")}
+	ex := newExec(s, &fakeLookup{authoritative: true}, NewMemIntentStore())
+	ex.Now = func() time.Time { return now }
+	in, _ := ex.Execute(t.Context(), req())
+	now = now.Add(time.Hour)
+	in, err := ex.Reconcile(t.Context(), in.Key)
+	if err != nil || in.Status != StatusFailed {
+		t.Errorf("after the window: %+v err=%v, want Failed", in, err)
 	}
 }
 
@@ -160,10 +174,16 @@ func TestNotSentErrorIsRetryableWithoutLookup(t *testing.T) {
 func TestStageTimeoutIsAmbiguousAndReconciled(t *testing.T) {
 	ex := newExec(&fakeSender{block: true}, &fakeLookup{authoritative: true}, NewMemIntentStore())
 	ex.Timeouts.IssueCreate = 20 * time.Millisecond
+	now := time.Unix(1_000_000, 0)
+	ex.Now = func() time.Time { return now }
 	start := time.Now()
 	in, _ := ex.Execute(t.Context(), req())
-	if in.Status != StatusFailed || time.Since(start) > time.Second {
-		t.Errorf("status=%s elapsed=%v", in.Status, time.Since(start))
+	if in.Status != StatusSent || time.Since(start) > time.Second {
+		t.Errorf("status=%s elapsed=%v, want Sent (ambiguous, inside the window) without waiting past the stage limit", in.Status, time.Since(start))
+	}
+	now = now.Add(time.Hour)
+	if in, err := ex.Reconcile(t.Context(), in.Key); err != nil || in.Status != StatusFailed {
+		t.Errorf("after the window: %+v err=%v, want Failed", in, err)
 	}
 	ex.Timeouts.IssueCreate = 0
 	if _, err := ex.Execute(t.Context(), Request{Kind: IssueCreate, Issue: 7, Target: "x", Digest: "y"}); err == nil {

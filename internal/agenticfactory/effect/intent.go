@@ -64,8 +64,9 @@ type Intent struct {
 	ParkReason string `json:"park_reason,omitempty"` // why the intent is parked when the cause is a refusal
 	Status     Status `json:"status"`
 	Attempts   int    `json:"attempts"`
-	// SentAt is when the intent last went to Sent (unix seconds, 0 for records written before the field).
-	// A reconciler reads it to tell a send still in flight from one that never happened.
+	// SentAt is when the executor stamped the intent Sent, in unix nanoseconds (0 for a record written
+	// before the field). It is stamped just before the compare-and-swap that grants the right to send, so a
+	// reconciler's window starts a little before the send does; the window's second timeout covers that.
 	SentAt int64 `json:"sent_at,omitempty"`
 	// Rev is the revision the store held when the intent was read (0: not stored yet). It is never written
 	// into the stored intent; PutIf uses it as the revision the write expects.
@@ -144,12 +145,13 @@ type Lookuper interface {
 type IntentStore interface {
 	// Get returns the stored intent with Rev set to the revision it was read at.
 	Get(key string) (Intent, bool, error)
-	// Put writes the intent whatever is stored: for a caller that is the only writer of its intents.
-	Put(Intent) error
 	// PutIf writes the intent only if the stored revision is still in.Rev (0: the intent must not be stored
 	// yet) and returns the stored intent with its new Rev. A store that moved on is
 	// core.ErrRevisionConflict and nothing is written. The Executor uses it so that two executors never both
 	// take the right to send.
+	//
+	// There is deliberately no unconditional Put in this interface: a write that ignores the revision is
+	// the double-send window itself. The concrete stores keep a Put for seeding fixtures only.
 	PutIf(Intent) (Intent, error)
 	List() ([]Intent, error)
 }
@@ -185,6 +187,10 @@ type Executor struct {
 	Lookup   Lookuper
 	Timeouts Timeouts
 	Now      func() time.Time // defaults to time.Now
+	// Admit, when set, judges a new request BEFORE anything is stored. A refusal is recorded as a Parked
+	// intent without the payload, so refused text never reaches the intent store (and, in ref mode, the
+	// control ref) and the same refusal is not repeated every pass.
+	Admit func(Request) error
 }
 
 func (e *Executor) now() time.Time {
@@ -216,6 +222,11 @@ func (e *Executor) Execute(ctx context.Context, r Request) (Intent, error) {
 			return in, nil // rate limited: not yet
 		}
 	} else {
+		if e.Admit != nil {
+			if aerr := e.Admit(r); aerr != nil {
+				return e.parkRefused(ctx, key, r, aerr)
+			}
+		}
 		in = Intent{Key: key, Kind: r.Kind, Issue: r.Issue, Target: r.Target, Digest: r.Digest, Payload: r.Payload, Status: StatusIntended}
 		created, err := e.Store.PutIf(in) // create-only: Rev 0
 		if errors.Is(err, core.ErrRevisionConflict) {
@@ -228,7 +239,7 @@ func (e *Executor) Execute(ctx context.Context, r Request) (Intent, error) {
 	}
 	in.Attempts++
 	in.Status = StatusSent
-	in.SentAt = e.now().Unix()
+	in.SentAt = e.now().UnixNano()
 	in.LastError = ""
 	in.NotBefore = 0
 	// Winning this write is the right to send: of several executors that read the same state, one revision
@@ -248,27 +259,47 @@ func (e *Executor) Execute(ctx context.Context, r Request) (Intent, error) {
 	case serr == nil:
 		in.Status, in.ProviderID = StatusConfirmed, id
 	case errors.Is(serr, ErrRefused):
-		in.Status, in.LastError = StatusParked, serr.Error()
+		in.Status, in.LastError = StatusParked, safeErr(serr)
 		var re *RefusedError
 		if errors.As(serr, &re) {
 			in.ParkReason = string(re.Reason)
 		}
 	case errors.Is(serr, ErrDenied):
-		in.Status, in.LastError = StatusParked, serr.Error()
+		in.Status, in.LastError = StatusParked, safeErr(serr)
 	case errors.As(serr, new(*LimitedError)):
 		var le *LimitedError
 		errors.As(serr, &le)
-		in.Status, in.LastError, in.NotBefore = StatusFailed, serr.Error(), le.RetryAt.Unix()
+		in.Status, in.LastError, in.NotBefore = StatusFailed, safeErr(serr), le.RetryAt.Unix()
 	case errors.Is(serr, ErrNotSent):
-		in.Status, in.LastError = StatusFailed, serr.Error()
+		in.Status, in.LastError = StatusFailed, safeErr(serr)
 	default:
-		in.LastError = serr.Error()
+		in.LastError = safeErr(serr)
 		if _, err := e.settle(in); err != nil {
 			return Intent{}, err
 		}
-		return e.reconcile(ctx, key, true)
+		return e.Reconcile(ctx, key)
 	}
 	return e.settle(in)
+}
+
+// safeErr is the error text as it may be stored: through the one core sanitizer, so a credential or
+// personal data an error message echoes never lands in an intent (and, in ref mode, on the control ref).
+func safeErr(err error) string {
+	out, _ := core.Redact(err.Error())
+	return out
+}
+
+// parkRefused records a request Admit refused as a Parked intent WITHOUT its payload: the refused text is
+// never stored, and the same refusal is read back as Parked on the next pass instead of being judged again.
+// The error text is the refusal's own (categories, never values).
+func (e *Executor) parkRefused(ctx context.Context, key string, r Request, why error) (Intent, error) {
+	in := Intent{Key: key, Kind: r.Kind, Issue: r.Issue, Target: r.Target, Digest: r.Digest,
+		Status: StatusParked, ParkReason: string(ReasonSensitiveContent), LastError: safeErr(why)}
+	out, err := e.Store.PutIf(in)
+	if errors.Is(err, core.ErrRevisionConflict) {
+		return e.follow(ctx, key)
+	}
+	return out, err
 }
 
 // follow returns what is stored after losing a compare-and-swap. A sent intent is reconciled from facts;
@@ -310,16 +341,13 @@ func (e *Executor) settle(in Intent) (Intent, error) {
 
 // Reconcile resolves a sent or parked intent from facts. It never sends.
 //
-// An authoritative "nothing there" is not read as failure while another executor's send may still be in
-// flight: until the send's own time limit has passed since SentAt the intent stays Sent, so a third
-// executor never finds Failed and resends. The limit is the kind's configured timeout, the same bound the
+// An authoritative "nothing there" is not read as failure while a send may still be in flight — another
+// executor's, or this one's whose outcome came back unknown (a timeout, a reset connection: the request
+// may still land). The intent stays Sent, and a retry therefore cannot duplicate it, until SentAt plus two
+// of the kind's configured timeouts have passed: one for the send's own limit, one for the write that
+// stamped SentAt and for delivery lag. No new constant: the window is derived from the same timeout the
 // sender runs under.
 func (e *Executor) Reconcile(ctx context.Context, key string) (Intent, error) {
-	return e.reconcile(ctx, key, false)
-}
-
-// reconcile is Reconcile; ownSend is true when the caller's own send has already ended, so no grace applies.
-func (e *Executor) reconcile(ctx context.Context, key string, ownSend bool) (Intent, error) {
 	in, ok, err := e.Store.Get(key)
 	if err != nil || !ok {
 		return Intent{}, fmt.Errorf("effect: no intent %s: %v", key, err)
@@ -336,11 +364,11 @@ func (e *Executor) reconcile(ctx context.Context, key string, ownSend bool) (Int
 	cancel()
 	switch {
 	case lerr != nil:
-		in.Status, in.LastError = StatusParked, lerr.Error()
+		in.Status, in.LastError = StatusParked, safeErr(lerr)
 	case res.Found:
 		in.Status, in.ProviderID = StatusConfirmed, res.ProviderID
 	case res.Authoritative:
-		if !ownSend && in.Status == StatusSent && in.SentAt > 0 && e.now().Unix() < in.SentAt+int64(to/time.Second) {
+		if in.Status == StatusSent && in.SentAt > 0 && e.now().UnixNano() < in.SentAt+2*int64(to) {
 			return in, nil // the sender may still be mid-flight: look again later, write nothing
 		}
 		in.Status = StatusFailed
@@ -403,7 +431,7 @@ func (e *Executor) Tick(ctx context.Context) ([]Intent, error) {
 		res, lerr := e.Lookup.Lookup(lctx, in)
 		cancel()
 		if lerr != nil {
-			in.LastError = lerr.Error()
+			in.LastError = safeErr(lerr)
 			if _, err := e.Store.PutIf(in); err != nil && !errors.Is(err, core.ErrRevisionConflict) {
 				return done, err
 			}

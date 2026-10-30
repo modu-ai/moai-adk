@@ -2,6 +2,7 @@ package ghintake
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"strings"
 	"testing"
@@ -106,9 +107,15 @@ func TestAbsentAfterErrorIsRetryableAndUnsureIsParked(t *testing.T) {
 		}
 		return []byte("[]"), nil
 	}, AllowWrite: true, ListLimit: 100}
-	ex := &effect.Executor{Store: effect.NewMemIntentStore(), Send: g, Lookup: Lookup{GH: g}, Timeouts: effect.Timeouts{IssueCreate: time.Second}}
-	if in, _ := ex.Execute(t.Context(), IssueRequest(7, "o/r", "t", "b")); in.Status != effect.StatusFailed {
-		t.Errorf("absent: %s", in.Status)
+	now := time.Unix(1_000_000, 0)
+	ex := &effect.Executor{Store: effect.NewMemIntentStore(), Send: g, Lookup: Lookup{GH: g}, Timeouts: effect.Timeouts{IssueCreate: time.Second}, Now: func() time.Time { return now }}
+	in, _ := ex.Execute(t.Context(), IssueRequest(7, "o/r", "t", "b"))
+	if in.Status != effect.StatusSent {
+		t.Errorf("absent inside the window: %s, want sent (the create may still land)", in.Status)
+	}
+	now = now.Add(time.Hour)
+	if in, _ := ex.Reconcile(t.Context(), in.Key); in.Status != effect.StatusFailed {
+		t.Errorf("absent past the window: %s", in.Status)
 	}
 	f2 := &fakeExec{failCreateAfterLanding: true, listErr: errors.New("HTTP 429")}
 	if in, _ := newExec(f2, true).Execute(t.Context(), IssueRequest(8, "o/r", "t", "b")); in.Status != effect.StatusParked {
@@ -189,5 +196,76 @@ func TestTheIssueListLimitIsRequiredAndALimitReachedIsNotAbsence(t *testing.T) {
 	res, err = (Lookup{GH: GH{Repo: "o/r", Run: run, ListLimit: 3}}).Lookup(t.Context(), in)
 	if err != nil || !res.Authoritative || res.Found {
 		t.Errorf("a list below its limit is authoritative absence: %+v %v", res, err)
+	}
+}
+
+// B4: nothing sensitive leaves in an Issue title or body, masked or not — it is refused before gh runs.
+func TestASensitiveTitleOrBodyIsRefusedBeforeGHRuns(t *testing.T) {
+	for name, tc := range map[string]struct{ title, body string }{
+		"token in the body":   {"title", "see ghp_abcdefghijklmnopqrstuvwxyz0123456789 for access"},
+		"email in the body":   {"title", "reported by someone@example.com"},
+		"home path in body":   {"title", "log at /Users/someone/project/out.log"},
+		"credential in title": {"password=hunter2hunter2", "body"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			f := &fakeExec{}
+			in, err := newExec(f, true).Execute(t.Context(), IssueRequest(7, "o/r", tc.title, tc.body))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(f.calls) != 0 || len(f.created) != 0 {
+				t.Errorf("gh ran for a sensitive issue: calls=%v", f.calls)
+			}
+			if in.Status == effect.StatusConfirmed {
+				t.Errorf("intent = %+v, want it not confirmed", in)
+			}
+			if strings.Contains(in.LastError, "ghp_") || strings.Contains(in.LastError, "someone@") || strings.Contains(in.LastError, "hunter2") {
+				t.Errorf("the refusal repeats the sensitive value: %q", in.LastError)
+			}
+		})
+	}
+}
+
+// B4 follow-up: the refusal comes BEFORE storage. A sensitive title or body never lands in the intent
+// store (in ref mode that store is pushed), the intent is recorded as Parked without the payload, and the
+// same refusal is not repeated on the next pass.
+func TestASensitiveIssueIsRefusedBeforeItIsStored(t *testing.T) {
+	f := &fakeExec{}
+	g := GH{Repo: "o/r", Run: f.run, AllowWrite: true, ListLimit: 100}
+	mem := effect.NewMemIntentStore()
+	ex := &effect.Executor{Store: mem, Send: g, Lookup: Lookup{GH: g}, Timeouts: effect.Timeouts{IssueCreate: time.Second}, Admit: Admit}
+	secret := "ghp_abcdefghijklmnopqrstuvwxyz0123456789"
+	in, err := ex.Execute(t.Context(), IssueRequest(7, "o/r", "title", "see "+secret))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if in.Status != effect.StatusParked || in.ParkReason != string(effect.ReasonSensitiveContent) || in.Payload != "" {
+		t.Errorf("intent = %+v, want Parked, reason sensitive-content, no payload", in)
+	}
+	all, _ := mem.List()
+	for _, st := range all {
+		raw, _ := json.Marshal(st)
+		if strings.Contains(string(raw), secret) || st.Payload != "" {
+			t.Errorf("the stored intent holds the sensitive text: %s", raw)
+		}
+	}
+	if len(f.calls) != 0 {
+		t.Errorf("gh ran: %v", f.calls)
+	}
+	again, err := ex.Execute(t.Context(), IssueRequest(7, "o/r", "title", "see "+secret))
+	if err != nil || again.Status != effect.StatusParked || again.Attempts != in.Attempts {
+		t.Errorf("repeat: %+v %v, want the same Parked intent, untouched", again, err)
+	}
+	if len(f.calls) != 0 {
+		t.Errorf("gh ran on the repeat: %v", f.calls)
+	}
+}
+
+func TestACleanIssuePassesAdmit(t *testing.T) {
+	if err := Admit(IssueRequest(7, "o/r", "title", "plain body")); err != nil {
+		t.Errorf("Admit refused clean text: %v", err)
+	}
+	if err := Admit(effect.Request{Kind: effect.LedgerComment, Payload: "ghp_abcdefghijklmnopqrstuvwxyz0123456789"}); err != nil {
+		t.Errorf("Admit judges only issue-create: %v", err)
 	}
 }

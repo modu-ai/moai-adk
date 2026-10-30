@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -243,12 +244,95 @@ func TestAnAuthoritativeNothingAfterTheSendLimitIsFailed(t *testing.T) {
 	mem := NewMemIntentStore()
 	now := time.Unix(1_000_000, 0)
 	key := Key(IssueCreate, "repo:o/r", "d1")
-	if err := mem.Put(Intent{Key: key, Kind: IssueCreate, Issue: 7, Target: "repo:o/r", Digest: "d1", Status: StatusSent, Attempts: 1, SentAt: now.Unix()}); err != nil {
+	if err := mem.Put(Intent{Key: key, Kind: IssueCreate, Issue: 7, Target: "repo:o/r", Digest: "d1", Status: StatusSent, Attempts: 1, SentAt: now.UnixNano()}); err != nil {
 		t.Fatal(err)
 	}
-	e := &Executor{Store: mem, Send: &countSender{}, Lookup: notFoundLookup{}, Timeouts: casTimeouts(), Now: func() time.Time { return now.Add(2 * time.Second) }}
+	e := &Executor{Store: mem, Send: &countSender{}, Lookup: notFoundLookup{}, Timeouts: casTimeouts(), Now: func() time.Time { return now.Add(3 * time.Second) }}
 	got, err := e.Reconcile(t.Context(), key)
 	if err != nil || got.Status != StatusFailed {
 		t.Errorf("%+v %v, want Failed once the send limit has passed", got, err)
+	}
+}
+
+type failingSender struct{ n atomic.Int32 }
+
+func (f *failingSender) Send(context.Context, Intent) (string, error) {
+	f.n.Add(1)
+	return "", errors.New("connection reset") // the outcome is unknown: the request may still land
+}
+
+// F1b P2-1: an unknown send outcome is not failure inside the window either. The same executor's own
+// reconcile leaves the intent Sent, so a retry cannot create a duplicate; past the window it is Failed.
+func TestAnUnknownSendOutcomeStaysSentInsideTheWindow(t *testing.T) {
+	mem := NewMemIntentStore()
+	now := time.Unix(1_000_000, 0)
+	clock := now
+	fs := &failingSender{}
+	e := &Executor{Store: mem, Send: fs, Lookup: notFoundLookup{}, Timeouts: casTimeouts(), Now: func() time.Time { return clock }}
+	got, err := e.Execute(t.Context(), casReq())
+	if err != nil || got.Status != StatusSent {
+		t.Fatalf("%+v %v, want Sent: the outcome is unknown", got, err)
+	}
+	if again, err := e.Execute(t.Context(), casReq()); err != nil || again.Status != StatusSent || fs.n.Load() != 1 {
+		t.Fatalf("retry inside the window: %+v %v sends=%d, want Sent and no second send", again, err, fs.n.Load())
+	}
+	clock = now.Add(10 * time.Second)
+	if late, err := e.Reconcile(t.Context(), got.Key); err != nil || late.Status != StatusFailed {
+		t.Errorf("past the window: %+v %v, want Failed", late, err)
+	}
+}
+
+// F1b P2-2: the window is kept in nanoseconds, so a timeout under a second is honoured.
+func TestASubSecondTimeoutHasAWindow(t *testing.T) {
+	mem := NewMemIntentStore()
+	now := time.Unix(1_000_000, 0)
+	key := Key(IssueCreate, "repo:o/r", "d1")
+	if err := mem.Put(Intent{Key: key, Kind: IssueCreate, Issue: 7, Target: "repo:o/r", Digest: "d1", Status: StatusSent, Attempts: 1, SentAt: now.UnixNano()}); err != nil {
+		t.Fatal(err)
+	}
+	short := Timeouts{IssueCreate: 100 * time.Millisecond}
+	clock := now.Add(50 * time.Millisecond)
+	e := &Executor{Store: mem, Send: &countSender{}, Lookup: notFoundLookup{}, Timeouts: short, Now: func() time.Time { return clock }}
+	if got, _ := e.Reconcile(t.Context(), key); got.Status != StatusSent {
+		t.Errorf("inside the window: %+v, want Sent", got)
+	}
+	clock = now.Add(time.Second)
+	if got, _ := e.Reconcile(t.Context(), key); got.Status != StatusFailed {
+		t.Errorf("past the window: %+v, want Failed", got)
+	}
+}
+
+type errSender struct{ err error }
+
+func (e errSender) Send(context.Context, Intent) (string, error) { return "", e.err }
+
+type errLookup struct{ err error }
+
+func (e errLookup) Lookup(context.Context, Intent) (LookupResult, error) {
+	return LookupResult{}, e.err
+}
+
+// F8: an error text can carry a credential (a failing gh call echoing its URL or header). It is stored
+// through the one sanitizer, whichever path recorded it.
+func TestAStoredLastErrorNeverHoldsASecretOrPersonalData(t *testing.T) {
+	secret := "ghp_abcdefghijklmnopqrstuvwxyz0123456789"
+	cases := map[string]*Executor{
+		"not sent":     {Send: errSender{fmt.Errorf("%w: POST https://x:%s@github.com failed", ErrNotSent, secret)}, Lookup: notFoundLookup{}},
+		"denied":       {Send: errSender{fmt.Errorf("%w: token %s someone@example.com", ErrDenied, secret)}, Lookup: notFoundLookup{}},
+		"unknown":      {Send: errSender{fmt.Errorf("reset while using %s at /Users/someone/work", secret)}, Lookup: notFoundLookup{}},
+		"lookup error": {Send: errSender{errors.New("reset")}, Lookup: errLookup{fmt.Errorf("gh said Authorization: Bearer %s", secret)}},
+	}
+	for name, e := range cases {
+		e.Store, e.Timeouts = NewMemIntentStore(), casTimeouts()
+		in, _ := e.Execute(t.Context(), casReq())
+		stored, _, _ := e.Store.Get(in.Key)
+		for _, bad := range []string{secret, "someone@example.com", "/Users/someone"} {
+			if strings.Contains(stored.LastError, bad) || strings.Contains(in.LastError, bad) {
+				t.Errorf("%s: LastError holds %q: %q", name, bad, stored.LastError)
+			}
+		}
+		if stored.LastError == "" {
+			t.Errorf("%s: LastError is empty, the failure left no trace", name)
+		}
 	}
 }
