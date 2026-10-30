@@ -151,3 +151,22 @@ func TestProcessProbe_Mapping(t *testing.T) {
 		}
 	}
 }
+
+// WIP is BUILDING, REVIEWING and MERGING only: a stage the model does not know
+// (a newer ledger, a hand edit) is listed under its own key but is not work in progress.
+func TestSnapshot_UnknownStageIsNotWIP(t *testing.T) {
+	src := fakeSource{cards: []ledger.Card{
+		card("a", core.StageReviewing, "", t0, nil),
+		card("q", core.Stage("QUARANTINE"), "", t0.Add(-time.Hour), nil),
+	}}
+	s, err := Measure(context.Background(), src, probeOf(ledger.LivenessAlive), t0, Defaults())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.WIP != 1 {
+		t.Fatalf("WIP = %d, want 1 (only the REVIEWING card)", s.WIP)
+	}
+	if g := s.Stages["QUARANTINE"]; g.Count != 1 {
+		t.Fatalf("the unknown stage must still be visible: %+v", g)
+	}
+}

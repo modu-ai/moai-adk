@@ -73,6 +73,12 @@ type Snapshot struct {
 	Stalled []Stalled
 }
 
+// inProgress reports whether a stage counts as work in progress: BUILDING, REVIEWING and MERGING.
+// A stage this model does not know is listed under its own key but is not counted.
+func inProgress(s core.Stage) bool {
+	return s == core.StageBuilding || s == core.StageReviewing || s == core.StageMerging
+}
+
 func stageKey(c ledger.Card) string {
 	p := c.Position
 	if p.Sub != "" {
@@ -110,7 +116,7 @@ func Measure(ctx context.Context, src ledger.Reader, probe Probe, now time.Time,
 			w := s.Waiting["ready"]
 			w.add(age)
 			s.Waiting["ready"] = w
-		default:
+		case inProgress(c.Position.Stage):
 			s.WIP++
 		}
 	}
