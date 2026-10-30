@@ -347,8 +347,9 @@ UNION ALL SELECT heartbeat_at FROM workers WHERE run_id=?1
 UNION ALL SELECT created_at FROM dead_letters WHERE run_id=?1`
 
 // ReconcileActiveRuns retires every active run whose owner is classified dead
-// and reports what remains. It only ever reduces the active set — it never
-// selects among survivors, so fail-closed resolution is preserved.
+// and reports what remains. It only ever reduces the active set and never picks
+// one survivor over another, so fail-closed resolution is preserved; but it is
+// not a read: retiring a run can move its cards and delete its dead worker rows.
 //
 // A dead run that still holds unfinished cards is retired by MOVING those cards
 // to the one live run (consolidateIntoLive), but only when exactly one owner is

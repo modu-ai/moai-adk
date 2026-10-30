@@ -1,35 +1,33 @@
 package e2e
 
 import (
-	"context"
 	"errors"
 	"reflect"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/claim"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
-	"github.com/modu-ai/moai-adk/internal/agenticfactory/effect/docstore"
-	"github.com/modu-ai/moai-adk/internal/agenticfactory/monitor/notify"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/runner"
 )
 
 // The three lifecycle scenarios the operator fixed for the Agentic Factory
-// (Issue #1948), on the real claim store, runner and notify service, with a fake
+// (Issue #1948), on the real claim store and runner, with a fake
 // host (no real GitHub, no network):
 //
 //	(a) a failing CI, the SAME agent repairs it, CI runs again, a review asks for
 //	    changes, the same agent answers, the PR merges, the Issue is done and closed;
 //	(b) the owner crashes: what it left is preserved and its writer is stopped
 //	    before anyone else may take the Issue over, and the old owner stops writing;
-//	(c) the owner's reply is lost: reminders go to the holder, and when the retries
-//	    run out the escalation target is told once.
+//	(c) the reply-lost reminder scenario retired with the notify service (local-only redesign).
 //
 // They were written RED first and fixed behind the afred tag until lane-18 and
 // lane-20 delivered ReopenOwn, SetWait/RetryWait, TakeOver, MarkRepairNeeded and
 // the notify service; those are merged, so these run in the default suite.
+
+// t0 is a fixed test instant.
+var t0 = time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
 
 const headC = "cccccccccccccccccccccccccccccccccccccccc"
 
@@ -275,180 +273,4 @@ func TestLifecycle_OwnerCrash_PreservedAndStopped_ThenSafeTakeover(t *testing.T)
 			}
 		})
 	}
-}
-
-// recordingNotifier keeps every notice; fail makes it report non-delivery.
-type recordingNotifier struct {
-	mu      sync.Mutex
-	notices []notify.Notice
-	fail    bool
-}
-
-func (n *recordingNotifier) Notify(_ context.Context, x notify.Notice) error {
-	n.mu.Lock()
-	defer n.mu.Unlock()
-	n.notices = append(n.notices, x)
-	if n.fail {
-		return errors.New("channel down")
-	}
-	return nil
-}
-
-// recordingEscalator keeps every escalation; failFirst makes the first one fail.
-type recordingEscalator struct {
-	mu        sync.Mutex
-	told      []notify.Escalation
-	failFirst bool
-	attempts  int
-}
-
-func (e *recordingEscalator) Escalate(_ context.Context, x notify.Escalation) error {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	e.attempts++
-	if e.failFirst && e.attempts == 1 {
-		return errors.New("escalation channel down")
-	}
-	e.told = append(e.told, x)
-	return nil
-}
-
-// (c) The owner's reply is lost. The holder (and only the holder) is reminded; each
-// reminder spends a retry; when the retries run out the escalation target is told
-// exactly once and nobody retries past the limit.
-func TestLifecycle_ReplyLost_Reminders_ThenEscalationOnce(t *testing.T) {
-	const gap = 30 * time.Minute
-	run := func(t *testing.T, n *recordingNotifier, esc *recordingEscalator) (*runner.Runner, runner.Ticket, *notify.Service, *time.Time) {
-		t.Helper()
-		r, tk := newRunner(t)
-		upTo(t, r, tk, core.StateLanding)
-		if _, err := r.HandOff(tk, goodHandoff(t)); err != nil {
-			t.Fatal(err)
-		}
-		w := waitOf(tk)
-		w.RecheckAt, w.MaxRetries, w.Escalate = t0.Add(10*time.Minute), 2, "leader"
-		if _, err := r.SetWait(tk, w); err != nil {
-			t.Fatal(err)
-		}
-		now := t0
-		svc := &notify.Service{
-			Records: r.Store, Waits: r, Notifier: n, Escalator: esc,
-			State: docstore.CollectorCursors(r.Store), Now: func() time.Time { return now }, ReNotifyAfter: gap,
-		}
-		return r, tk, svc, &now
-	}
-	tick := func(t *testing.T, svc *notify.Service) []notify.Action {
-		t.Helper()
-		acts, err := svc.Tick(context.Background())
-		if err != nil {
-			t.Fatal(err)
-		}
-		return acts
-	}
-	count := func(acts []notify.Action, what string) int {
-		n := 0
-		for _, a := range acts {
-			if a.What == what {
-				n++
-			}
-		}
-		return n
-	}
-
-	t.Run("lost_reply", func(t *testing.T) {
-		n, esc := &recordingNotifier{}, &recordingEscalator{}
-		r, tk, svc, now := run(t, n, esc)
-
-		if acts := tick(t, svc); count(acts, "reminder") != 0 {
-			t.Fatalf("before the recheck time nobody is reminded: %+v", acts)
-		}
-		*now = t0.Add(10 * time.Minute)
-		if acts := tick(t, svc); count(acts, "reminder") != 1 || count(acts, "escalation") != 0 {
-			t.Fatalf("first overdue pass: %+v, want one reminder and no escalation", acts)
-		}
-		if acts := tick(t, svc); len(acts) != 0 {
-			t.Fatalf("a second pass at the same moment must do nothing: %+v", acts)
-		}
-		*now = now.Add(gap)
-		acts := tick(t, svc)
-		if count(acts, "reminder") != 1 || count(acts, "escalation") != 1 {
-			t.Fatalf("the reminder that spends the last retry also escalates: %+v", acts)
-		}
-		*now = now.Add(gap)
-		if acts := tick(t, svc); len(acts) != 0 {
-			t.Fatalf("after the escalation nothing is sent again: %+v", acts)
-		}
-
-		if len(n.notices) != 2 {
-			t.Fatalf("notices = %d, want 2 (one per retry)", len(n.notices))
-		}
-		for i, x := range n.notices {
-			if x.Holder != tk.Holder || x.Kind != notify.WaitOverdue || x.Attempt != i+1 || x.Issue != tk.Issue.Number {
-				t.Errorf("notice %d = %+v; want the holder %q, wait-overdue, attempt %d", i, x, tk.Holder, i+1)
-			}
-		}
-		if len(esc.told) != 1 {
-			t.Fatalf("escalations = %d, want exactly 1", len(esc.told))
-		}
-		if e := esc.told[0]; e.To != "leader" || e.Holder != tk.Holder || e.Retries != 2 || e.MaxRetries != 2 || e.Issue != tk.Issue.Number {
-			t.Errorf("escalation = %+v", e)
-		}
-		rec := state(t, r, tk)
-		sameOwner(t, rec, tk, "after the escalation")
-		if rec.Wait == nil || !rec.Wait.Escalated || rec.Wait.Retries != 2 {
-			t.Errorf("the wait must be recorded as escalated at 2 of 2: %+v", rec.Wait)
-		}
-		if rec.State != core.StateLanding {
-			t.Errorf("the monitor must not move the Issue: state %s", rec.State)
-		}
-		// Nobody retries past the limit, the owner included: the wait, the owner and
-		// the state stay as they were. (The record's revision number still moves on
-		// such a call; that is lane-18's, pinned RED in real_lifecycle_afred_test.go.)
-		before := state(t, r, tk)
-		if _, err := r.RetryWait(tk, "again", "again", t0.Add(24*time.Hour)); !errors.Is(err, core.ErrRetryLimit) {
-			t.Errorf("a retry past the limit: %v, want ErrRetryLimit", err)
-		}
-		after := state(t, r, tk)
-		sameOwner(t, after, tk, "after a retry past the limit")
-		if after.State != before.State || !reflect.DeepEqual(after.Wait, before.Wait) {
-			t.Errorf("a retry past the limit changed the wait or the state:\nbefore %+v %+v\nafter  %+v %+v", before.State, before.Wait, after.State, after.Wait)
-		}
-	})
-
-	// A channel known to be down still ends in an escalation instead of looping.
-	t.Run("broken_channel_still_escalates", func(t *testing.T) {
-		n, esc := &recordingNotifier{fail: true}, &recordingEscalator{}
-		_, _, svc, now := run(t, n, esc)
-		*now = t0.Add(10 * time.Minute)
-		acts := tick(t, svc)
-		*now = now.Add(gap)
-		acts = append(acts, tick(t, svc)...)
-		failed := 0
-		for _, a := range acts {
-			if a.What == "reminder" && a.Err != nil {
-				failed++
-			}
-		}
-		if failed != 2 || len(esc.told) != 1 {
-			t.Errorf("reminders reported undelivered = %d (want 2), escalations = %d (want 1); actions %+v", failed, len(esc.told), acts)
-		}
-	})
-
-	// An escalation that could not be delivered is tried again, then sent once.
-	t.Run("escalation_retried_until_delivered_then_once", func(t *testing.T) {
-		n, esc := &recordingNotifier{}, &recordingEscalator{failFirst: true}
-		_, _, svc, now := run(t, n, esc)
-		*now = t0.Add(10 * time.Minute)
-		tick(t, svc)
-		*now = now.Add(gap)
-		acts := tick(t, svc)
-		if count(acts, "escalation") != 1 || len(esc.told) != 0 {
-			t.Fatalf("the first escalation attempt must fail and be reported: %+v (told %d)", acts, len(esc.told))
-		}
-		tick(t, svc)
-		tick(t, svc)
-		if len(esc.told) != 1 {
-			t.Errorf("escalations delivered = %d, want exactly 1 (attempts %d)", len(esc.told), esc.attempts)
-		}
-	})
 }
