@@ -16,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/effect"
 )
 
@@ -69,6 +70,11 @@ func (g GH) Send(ctx context.Context, in effect.Intent) (string, error) {
 	var p issuePayload
 	if err := json.Unmarshal([]byte(in.Payload), &p); err != nil || p.Title == "" {
 		return "", fmt.Errorf("%w: issue payload invalid", effect.ErrNotSent)
+	}
+	// Nothing sensitive leaves in an Issue, masked or not: refuse before gh runs. The error names the
+	// categories found, never the values.
+	if err := core.RefuseIfSensitive(p.Title + "\n" + p.Body); err != nil {
+		return "", fmt.Errorf("%w: %v", effect.ErrNotSent, err)
 	}
 	body := p.Body + "\n\n" + effect.Marker(in.Key)
 	out, err := g.Run(ctx, "issue", "create", "--repo", g.Repo, "--title", p.Title, "--body", body)

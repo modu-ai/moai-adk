@@ -191,3 +191,30 @@ func TestTheIssueListLimitIsRequiredAndALimitReachedIsNotAbsence(t *testing.T) {
 		t.Errorf("a list below its limit is authoritative absence: %+v %v", res, err)
 	}
 }
+
+// B4: nothing sensitive leaves in an Issue title or body, masked or not — it is refused before gh runs.
+func TestASensitiveTitleOrBodyIsRefusedBeforeGHRuns(t *testing.T) {
+	for name, tc := range map[string]struct{ title, body string }{
+		"token in the body":   {"title", "see ghp_abcdefghijklmnopqrstuvwxyz0123456789 for access"},
+		"email in the body":   {"title", "reported by someone@example.com"},
+		"home path in body":   {"title", "log at /Users/someone/project/out.log"},
+		"credential in title": {"password=hunter2hunter2", "body"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			f := &fakeExec{}
+			in, err := newExec(f, true).Execute(t.Context(), IssueRequest(7, "o/r", tc.title, tc.body))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(f.calls) != 0 || len(f.created) != 0 {
+				t.Errorf("gh ran for a sensitive issue: calls=%v", f.calls)
+			}
+			if in.Status == effect.StatusConfirmed {
+				t.Errorf("intent = %+v, want it not confirmed", in)
+			}
+			if strings.Contains(in.LastError, "ghp_") || strings.Contains(in.LastError, "someone@") || strings.Contains(in.LastError, "hunter2") {
+				t.Errorf("the refusal repeats the sensitive value: %q", in.LastError)
+			}
+		})
+	}
+}

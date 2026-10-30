@@ -57,7 +57,18 @@ var (
 
 // personalData reports an email address or an absolute home path. The masking step upstream does not
 // cover these, so the sender refuses them whatever the flag says.
-func personalData(s string) bool { return emailRe.MatchString(s) || homeRe.MatchString(s) }
+func personalData(s string) bool {
+	if emailRe.MatchString(s) || homeRe.MatchString(s) { // the Windows form and the bare patterns stay here
+		return true
+	}
+	_, cats := core.Sanitize(s)
+	for _, c := range cats {
+		if c == core.CategoryEmail || c == core.CategoryHomePath {
+			return true
+		}
+	}
+	return false
+}
 
 // ErrNoConditionalRead is returned by a wrapper whose inner Remote cannot read conditionally. The drift
 // check then falls back to the marker lookup instead of treating it as a failed check.
