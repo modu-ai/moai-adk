@@ -355,6 +355,14 @@ func (f *FactoryDB) ReconcileActiveRuns(ctx context.Context, opts ReconcileOptio
 		return Reconciliation{}, err
 	}
 	result := Reconciliation{}
+	// The one live run is where a dead run's unfinished cards go; with none or
+	// several there is no unambiguous target and the cards stay where they are.
+	var live []RunOwner
+	for _, o := range owners {
+		if o.Classification == OwnerLive {
+			live = append(live, o)
+		}
+	}
 	for _, o := range owners {
 		if !retirable(o.Classification) {
 			continue
@@ -368,6 +376,12 @@ func (f *FactoryDB) ReconcileActiveRuns(ctx context.Context, opts ReconcileOptio
 		retired, err := f.retireRunUnlessLive(ctx, o.RunID, o.Classification, o.Basis, opts.workerProbe())
 		if err != nil {
 			return Reconciliation{}, err
+		}
+		if !retired && len(live) == 1 {
+			retired, err = f.consolidateIntoLive(ctx, o, live[0], opts)
+			if err != nil {
+				return Reconciliation{}, err
+			}
 		}
 		if !retired {
 			o.Status = "active"
@@ -494,6 +508,9 @@ func (f *FactoryDB) retireRunUnlessLive(ctx context.Context, runID string, c Own
 	}
 	if live {
 		return false, nil
+	}
+	if err := reapDeadWorkers(ctx, tx, runID, probe, time.Now().UTC()); err != nil {
+		return false, err
 	}
 	if _, err := tx.ExecContext(ctx, `UPDATE runs SET status='retired', updated_at=? WHERE run_id=? AND status='active'`, now, runID); err != nil {
 		return false, err

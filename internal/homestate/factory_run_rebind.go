@@ -303,6 +303,11 @@ func (f *FactoryDB) RebindRun(ctx context.Context, req RebindRequest, opts Recon
 	if err := rebindInject(rebindPointAfterCards); err != nil {
 		return RebindResult{}, err
 	}
+	// refuseLiveWorker passed, so every worker row of the source is positively
+	// dead: they leave with the run instead of outliving it.
+	if err := reapDeadWorkers(ctx, tx, src.RunID, opts.workerProbe(), now); err != nil {
+		return RebindResult{}, err
+	}
 	// Step 5 — the binding of every card step 4 moved, re-keyed or abandoned with
 	// a pointer. A card that stays behind in the retired source (a terminal one)
 	// keeps its binding: its row still lives in the source run, and a binding
