@@ -186,7 +186,7 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 - 변형 단언: DONE 뒤 종료하는 구현(0.5.0 순서)은 (a)에서 FAIL. 경로 목록만 비교하는 구현은 (c)에서 FAIL.
 - RED 이유: 상태 엔진의 E13·E14 없음. 초록 경로: M3(lane-18). lane-18 기존 시험(이름 미전달)은 보조 근거다.
 
-#### AC-AF-007 — 병합 게이트·PR 적체 상한 [SUPERSEDED by AC-AFL-014]
+#### AC-AF-007 — 병합 게이트·PR 적체 상한 [PARTLY SUPERSEDED — OD-37; 0.7.0 표지: SUPERSEDED by AC-AFL-014]
 
 - 주 REQ: maps REQ-AF-007. 초록: M4.
 - 정본 주 시험 8: M14, M24, M25, M26, M27, M32, M37, M55.
@@ -237,7 +237,7 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 - 변형 단언: run 전체를 막는 과잉 구현은 (e)에서 FAIL, Issue 범위를 보지 않는 구현은 (c)에서 FAIL, leader가 agent 일을 대신하는 구현은 (f)에서 FAIL.
 - RED 이유: 역할 경계 없음. 초록 경로: M4. (e)는 귀속 대역으로 게이트 단위 시험 안에서만 돈다.
 
-#### AC-AF-011 — 역할 귀속과 잠금
+#### AC-AF-011 — 역할 귀속과 잠금 [PARTLY SUPERSEDED — OD-38]
 
 - 주 REQ: maps REQ-AF-011. 초록: M4(잠긴 형태). M7에서 L1·L2를 다시 쓴다.
 - 정본 주 시험 0. 전용(제안): `TestGate_RoleEvidence_RequiresChildAttribution_AndLockHolds`, `TestLock_*`.

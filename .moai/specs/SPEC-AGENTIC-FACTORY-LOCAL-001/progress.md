@@ -7,6 +7,7 @@ status: draft
 - plan_status: drafted (not audited) — 0.1.0 작성(2026-10-30, HEAD `d87913b6a3`, 코드 사실 기준 `37b67f6d39`). 감사는 coordinator가 돌린다.
 - Tier L 선택: REQ 21개가 Tier M 상한 16을 넘음(spec HISTORY 0.1.0).
 - 측정은 상위 progress.md `revision_0_7_0_local_ledger` 노트에 있다.
+- 0.2.0 (2026-10-30, HEAD `c445ce9559` 위 작업 트리): revised, unaudited — plan-audit FAIL 0.62 수리. 감사는 coordinator가 돌린다. PASS라고 적지 않는다. 대응표는 §G.
 
 ## §E.2 Run-phase Evidence
 
@@ -19,3 +20,54 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §G Repair of plan-audit FAIL 0.62 @c445ce9559
+
+- 원천: 감사 verdict `.moai/reports/issue-1948/plan-audit-local-001-c445ce9559/verdict.md`(FAIL 0.62, 막는 결함 D1 D2 D3 D8 D9 D10). 고정한 계약 sha256 `f2c1078b7add847b93926ba3356eda62e4fbc44d8aa77221f059f44f6b059acb`(spec §A.4).
+- 판: 하위 0.2.0, 상위 0.7.1 — 둘 다 revised, unaudited. 감사·리뷰 도구는 부르지 않았다(외부 리뷰 호출 보류 지시).
+- repair commit SHA: `pending-backfill`
+- "고치기 전" 줄은 `c445ce9559`의 줄, "고친 뒤" 줄은 이 작업 트리의 줄이다.
+
+| defect id | file:line before | change | new file:line | OD | note |
+|---|---|---|---|---|---|
+| PIN-1 | (없음) | 원천 계약 sha256 고정 섹션 신설(경로·sha256·측정 명령·`date -u` 시각·재정렬 문장) | .moai/specs/SPEC-AGENTIC-FACTORY-LOCAL-001/spec.md:51 (§A.4), .moai/specs/SPEC-AGENTIC-FACTORY-LOCAL-001/design.md:3-8 | — | D13(SHOULD-FIX) 가운데 고정 부분; 고정이 이 수리의 첫 단계 |
+| PIN-2 | .moai/specs/SPEC-AGENTIC-FACTORY-LOCAL-001/design.md:27-130 (§1~§6) | 고정한 계약 9~112행과 줄 단위 비교: 104줄 대 104줄 같음, 0.1.0 사본에서 바뀐 것 없음 | 같은 줄(머리말이 늘어 위치만 이동) | — | 0.1.0 사본에도 지금의 I7 문장이 이미 있었다 |
+| PIN-3 | (없음) | 계약 §9·§10을 제목부터 파일 끝까지 바꾸지 않고 덧붙임(105줄, 계약 157~261행과 같음); §8은 범위 줄만 | .moai/specs/SPEC-AGENTIC-FACTORY-LOCAL-001/design.md:142 (§8 범위 줄), :146-250 (§9·§10) | — | §8은 옛 factory 경로(lane-20), 이 SPEC 밖 |
+| PIN-4 | .moai/specs/SPEC-AGENTIC-FACTORY-LOCAL-001/spec.md:72 (REQ-AFL-008) | I8 결속: tree SHA → `evidence.subject_sha`(commit SHA) == `candidateSHA`, 어기면 `ErrEvidenceStale`, MERGING은 `Enqueue`로만, store는 git을 부르지 않음 | .moai/specs/SPEC-AGENTIC-FACTORY-LOCAL-001/spec.md:80; 이전 문구 §C.6 | OD-40 | 계약 §10 lane-22 항목의 문언 |
+| PIN-5 | .moai/specs/SPEC-AGENTIC-FACTORY-LOCAL-001/spec.md:71 (REQ-AFL-007), :70 (REQ-AFL-006) | 셋째 회수 park 사유 `reclaim-cap`; `fix-limit`·`reclaim-cap`이 core의 park 가능 집합 | .moai/specs/SPEC-AGENTIC-FACTORY-LOCAL-001/spec.md:79, :78; 이전 문구 §C.6 | OD-35 (a) 고침 | 계약 I7·§10 |
+| PIN-6 | .moai/specs/SPEC-AGENTIC-FACTORY-LOCAL-001/spec.md:79 (REQ-AFL-010) | Claim의 lazy reap: 트랜잭션 밖에서 활성 판정, `BEGIN IMMEDIATE` 안에서 epoch·`heartbeat_at` 불변일 때만 회수; `Reap(nil)` 오류 | .moai/specs/SPEC-AGENTIC-FACTORY-LOCAL-001/spec.md:87; 이전 문구 §C.6 | — | 계약 §10 첫 항목 |
+| PIN-7 | .moai/specs/SPEC-AGENTIC-FACTORY-LOCAL-001/spec.md:88 (REQ-AFL-014) | QueueUpdate epoch 원천(waiting·verifying·failed = Enqueue 때 기록한 card epoch == `cards.epoch`, landing·landed = landing 잠금 epoch) | .moai/specs/SPEC-AGENTIC-FACTORY-LOCAL-001/spec.md:96; 이전 문구 §C.6 | OD-40 | §10 19th 문언을 씀(18th와 다름) |
+| PIN-8 | .moai/specs/SPEC-AGENTIC-FACTORY-LOCAL-001/spec.md:88 (REQ-AFL-014) | merged·closed·settled 사실은 store가 자기 표에서 끌어냄, 호출자 값·쪽지에서 아님 | .moai/specs/SPEC-AGENTIC-FACTORY-LOCAL-001/spec.md:96 | OD-40 | §10 19th 문언을 씀(18th와 다름) |
+| PIN-9 | .moai/specs/SPEC-AGENTIC-FACTORY-LOCAL-001/spec.md:88 (REQ-AFL-014) | trunk는 어느 worktree에도 checkout되지 않은 전용 ref(기본 `refs/heads/af/trunk`), checkout되어 있으면 착지 거절 | .moai/specs/SPEC-AGENTIC-FACTORY-LOCAL-001/spec.md:96 | OD-35 (l) | 설정 수단은 미정 |
+| PIN-10 | .moai/specs/SPEC-AGENTIC-FACTORY-LOCAL-001/spec.md:69 (REQ-AFL-005) | 기한 지난 lease 소유자가 살아 있으면 card·epoch마다 `stalled` 쪽지 하나 | .moai/specs/SPEC-AGENTIC-FACTORY-LOCAL-001/spec.md:77; 이전 문구 §C.6 | OD-41 | 계약 §10 20th (d); 수리 지시 사례표와 다름 |
+| D1 | .moai/specs/SPEC-AGENTIC-FACTORY-LOCAL-001/spec.md:71 (REQ-AFL-007) | "never delete a row" → `cards`·`transitions`·`evidence`·`notes`·`merge_queue` 행은 지우지 않고 `leases`·`lease_keys`만 `Release`·`Reap`으로만 지움, 셋째 회수 `reclaim-cap`. author's reconciliation of a contract conflict (I7 vs §3 Release), reversible | .moai/specs/SPEC-AGENTIC-FACTORY-LOCAL-001/spec.md:79; 이전 문구 §C.6; .moai/specs/SPEC-AGENTIC-FACTORY-LOCAL-001/acceptance.md:88 (AC-AFL-007 Then 갱신, 이전 문구 bullet) | OD-36; OD-35 (a) 고침(.moai/specs/SPEC-AGENTIC-FACTORY-001/spec.md:357 → :358) | 고정한 I7에 `merge_queue`는 없다 — 조정자가 더한 것 |
+| D2 | .moai/specs/SPEC-AGENTIC-FACTORY-001/spec.md:393 (§J REQ-AF-007), :418 (AC-AF-007), :149 (REQ-AF-007 표지), .moai/specs/SPEC-AGENTIC-FACTORY-001/acceptance.md:189 | superseded → 혼합: 원격 부분(PR receipt·PR 적체 상한)만 superseded(REQ-AFL-014), 원격 무관 의무(같은 HEAD 코드·보안 리뷰 PASS, 빚 없는 독립 감사 PASS, QA PASS 등)는 no local counterpart yet; 표지 `[PARTLY SUPERSEDED — OD-37]`, 0.7.0 처분은 칸에 남김. AC-AF-009는 다시 읽고 처분 그대로 | .moai/specs/SPEC-AGENTIC-FACTORY-001/spec.md:403, :428, :430(AC-AF-009 재확인), :150; .moai/specs/SPEC-AGENTIC-FACTORY-001/acceptance.md:189 | OD-37 | 하위 REQ를 지어내지 않음 |
+| D3 | .moai/specs/SPEC-AGENTIC-FACTORY-001/spec.md:397 (§J REQ-AF-011), :422 (AC-AF-011), :153 (REQ-AF-011), .moai/specs/SPEC-AGENTIC-FACTORY-001/acceptance.md:240 | unchanged → 혼합; IDENTITY REQ-AFI-001(online control ref) 의존을 §J에 적음; 표지 `[PARTLY SUPERSEDED — OD-38]` | .moai/specs/SPEC-AGENTIC-FACTORY-001/spec.md:407, :432, :154; .moai/specs/SPEC-AGENTIC-FACTORY-001/acceptance.md:240 | OD-38 | IDENTITY-001은 고치지 않음 |
+| D8 | .moai/specs/SPEC-AGENTIC-FACTORY-LOCAL-001/acceptance.md:58-64 (AC-AFL-005) | Live·Unknown·Dead 사례표, 죽여야 할 변이(Live 소유자 회수), 시험 이름 하나 `TestReap_LivenessCases_ReclaimOnlyDead`; RED-now·green path 유지 | .moai/specs/SPEC-AGENTIC-FACTORY-LOCAL-001/acceptance.md:63-79 | OD-41 | Live 행의 쪽지는 계약 문언(하나)을 씀 |
+| D9 | .moai/specs/SPEC-AGENTIC-FACTORY-LOCAL-001/acceptance.md:50-56 (AC-AFL-004) | `ledger` 디렉터리의 시험 아닌 .go 파일 정적 검사(SQL 리터럴의 다섯 시각 열이 `strftime(...,'now')`, `time.Now`·`Since`·`Until`·`After` 0건), 허용 예외 명시(e1 `nextWake` — OD-35 (f)), 빈 집합 확인, 시험 이름 하나 `TestLedgerSource_TimestampColumnsUseDBClock` | .moai/specs/SPEC-AGENTIC-FACTORY-LOCAL-001/acceptance.md:51-62 | OD 추가 없음(검사를 적을 수 있었음); OD-35 (f) 참조 | `importer` 하위 디렉터리는 덮지 않음(§E) |
+| D10 | .moai/specs/SPEC-AGENTIC-FACTORY-LOCAL-001/acceptance.md:178-184 (AC-AFL-020), .moai/specs/SPEC-AGENTIC-FACTORY-LOCAL-001/spec.md:104 (REQ-AFL-020) | (i) 가짜 Reader 표지값으로 카드·lease·queue·쪽지 렌더 단언, (ii) `internal/web` 시험 아닌 .go 파일에서 `ledger.Store`·`ledger.Open` 0건; keys 출처 '미정'; 시험 이름 하나 `TestBoard_ReaderOnly_NoStoreReference` | .moai/specs/SPEC-AGENTIC-FACTORY-LOCAL-001/acceptance.md:195-205; .moai/specs/SPEC-AGENTIC-FACTORY-LOCAL-001/spec.md:112; 이전 문구 §C.6 | OD-39 | 흐름 지표 표시는 판정하지 않음(§E) |
+| D16(지시 밖, 이름 변경 때문에 함께) | .moai/specs/SPEC-AGENTIC-FACTORY-LOCAL-001/acceptance.md:13 | 자리표시자 명령 → 21개 이름을 펼친 명령, 다시 돌린 출력·종료 코드 | .moai/specs/SPEC-AGENTIC-FACTORY-LOCAL-001/acceptance.md:13-20 | — | SHOULD-FIX/MINOR D16; 이름 넷이 바뀌어 다시 적어야 했다 |
+| D13(고정만) | .moai/specs/SPEC-AGENTIC-FACTORY-LOCAL-001/research.md:8 | 읽은 범위 줄 뒤에 0.2.0 재독 기록(§1~§10, sha256) 추가 | .moai/specs/SPEC-AGENTIC-FACTORY-LOCAL-001/research.md:15 | — | D13의 §8~§10 처분은 PIN-3·아래 목록 |
+| OD-42(충돌 기록) | (없음) | 계약 §4 Retirement ↔ §10 P2 retirement plan 차이를 OD로 기록, REQ-AFL-015는 바꾸지 않음 | .moai/specs/SPEC-AGENTIC-FACTORY-LOCAL-001/spec.md:176; .moai/specs/SPEC-AGENTIC-FACTORY-001/spec.md:365 | OD-42 | 수리 지시의 §10 여섯 항목 밖 |
+
+### 반영하지 않은 §10 항목 (not reflected)
+
+- B1(전체 CLI 실행은 P3에 lane-22 세션의 사용자 확인이 필요) — not reflected: P3 배포 단계이며 spec §I 범위 밖이다.
+- "AddCard refuses missing, CANCELLED or cyclic dependencies" — not reflected: AddCard 검증을 싣는 하위 REQ가 없고, 의존 필드의 원천은 여전히 계약 §2에 없다(OD-34).
+- BEFORE DELETE 트리거(RAISE(ABORT)), `synchronous=FULL`, DSN `recursive_triggers=ON` — not reflected: REQ-AFL-007·003이 정한 결과를 이루는 수단(HOW)이다. REQ-AFL-003에 넣으면 새 의무가 되어 지시 범위를 넘는다.
+- KeysFor의 `ErrInvalid`(절대 경로·`..`·역슬래시), `testdata`/`fixtures`의 소유 패키지 키, 공백 든 DSN 시험, 서명 `KeysFor(paths) ([]string, error)` — not reflected: REQ-AFL-011에 새 의무가 된다. OD-35 (i)는 이것으로 답해지지 않는다.
+- mergeq 세부(ErrRefMoved는 old 값 불일치에만, Trunk는 전체 `refs/heads/` 이름이고 기본 브랜치 거절, 잠금 안에서 checkout 재확인, `cmd.WaitDelay`, ReleaseLock 실패 기록; 20th lane-22 (a) verifying 되돌림 규칙, (b) `LC_ALL=C`·`LANG=C`, (c) trunk ≠ `refs/remotes/origin/HEAD` 대상) — not reflected: 구현 수준이며 REQ-AFL-014의 결과 문장 밖이다.
+- 19th "Reconcile reverts verifying/landing rows to waiting only while it holds the `merge-queue:landing` lock" — not reflected: REQ-AFL-014는 "reconcile against git ancestry"까지만 적는다.
+- 19th "Reap on a card already parked at its third reclaim: count increments, park stays, no error" — not reflected: AC-AFL-007은 셋째 회수만 본다.
+- 19th "the 400-line review trigger is enforced by the runner, not the store", "an ancestor candidate settles as landed only behind its I8 evidence at Enqueue" — not reflected: REQ-AFL-013은 집행 주체를 적지 않고, 후자는 REQ-AFL-008의 결과에 이미 걸린다.
+- 18th "receipt / receipt-accepted are unused on the local path …" — 문장 그대로는 not reflected; REQ-AFL-014의 "no leader approval receipt SHALL be required"가 결과를 싣는다.
+- 20th lane-18 (a) 한 카드의 오류는 그 카드만 건너뛰고 `stalled` 쪽지, (b) DONE/CANCELLED로의 Move가 같은 트랜잭션에서 lease·키를 풂(OD-36에서만 다룸), (c) `reclaim-cap`에서 재개하면 `reclaim_count` 초기화, (e) CANCELLED 의존 카드 건너뛰고 쪽지, (f) AddCard가 첫 transition(`added`)을 씀 — not reflected: 지시가 정한 여섯 항목 밖의 새 의무다.
+- contract correction: `cards.epoch` 열(OD-40 (4)), RED 커밋의 build tag와 bundle 1의 같은 커밋 RED 편차 — not reflected: 표 열은 OD-40, build tag는 수단(HOW)이고 AC green path의 "RED 커밋이 GREEN보다 먼저"와 어긋나지 않는다.
+- P2 retirement plan과 그 revision(lane-20이 원격 퇴역 전부) — not reflected: REQ-AFL-015와의 차이를 OD-42에 적었다.
+- zombie-fix 결정(56e32db128 검토)과 20th lane-20 — not reflected: §8 옛 factory 경로, 이 SPEC 밖.
+
+### 손댄 SHOULD-FIX
+
+- D13: 고정(PIN-1~3)과 research.md 한 줄. §8~§10 처분은 위 목록.
+- D16: 시험 이름 넷이 바뀌어 §B 명령을 펼쳐 다시 적음.
+- D4·D5·D6·D7·D11·D12·D14·D15·D17: 손대지 않음.

@@ -1,4 +1,4 @@
-# SPEC-AGENTIC-FACTORY-LOCAL-001 — 수용 기준 (0.1.0)
+# SPEC-AGENTIC-FACTORY-LOCAL-001 — 수용 기준 (0.2.0)
 
 ## §A 측정 규칙
 
@@ -10,11 +10,12 @@
 ## §B 증거 원장 — 시험 이름 부재 확인
 
 ```text
-명령: git grep -n -e 'func <이름1>' … -e 'func <이름21>' 37b67f6d39 -- internal   (21개 -e를 한 번에, 이름은 §C)
+명령: git grep -n -e 'func TestLedgerImportGraph_NoIssueOrRemoteClient' -e 'func TestStore_StaleEpochWrite_ReturnsErrStaleEpoch' -e 'func TestOpen_SetsBusyTimeoutAndChecksSQLiteVersion' -e 'func TestLedgerSource_TimestampColumnsUseDBClock' -e 'func TestReap_LivenessCases_ReclaimOnlyDead' -e 'func TestMove_RefusesEdgeRejectedByCheckMove' -e 'func TestReap_ThirdReclaim_ParksCard' -e 'func TestEnqueue_EvidenceSubjectSHAMismatch_ReturnsErrEvidenceStale' -e 'func TestSchema_CheckConstraints_RejectUnknownQueueStateAndNoteKind' -e 'func TestClaim_SingleTransaction_ReadyToBuildingByClass' -e 'func TestExpandKeys_Conflict_ReturnsErrKeyConflict' -e 'func TestClaim_DisjointConflictKeys_ClaimInParallel' -e 'func TestCardFlow_ClaimToDone_ThroughMergeQueue' -e 'func TestMergeq_Land_CASUpdateRefThenLandedNote' -e 'func TestRetirement_NoImportOfForgeMirrorGitref' -e 'func TestImporter_DryRun_SourcesUnchanged' -e 'func TestAFCommand_VerbsRegistered' -e 'func TestLedgerDefaults_MatchContract' -e 'func TestFlow_StalledDetection_FromReader' -e 'func TestBoard_ReaderOnly_NoStoreReference' -e 'func TestHeartbeatWriter_SkipsWriteWhenStampFresh' 37b67f6d39 -- internal
 출력: (없음)
 종료 코드: 1
 tree: 37b67f6d39
-대조(같은 형식이 찾을 수 있음을 보임): git grep -n -e 'func TestClaim_DeadOwnerExpiredAttempt_ReissuedUnderSameClaim' -e 'func TestLiveOwnerExpiredLockStaysBusy' 37b67f6d39 -- internal
+측정: 0.2.0 작성 중 이 워크트리(HEAD c445ce9559)에서 다시 돌림. 이름 넷(AC-AFL-004·005·008·020)은 0.2.0에서 바뀐 이름이다.
+대조(같은 형식이 찾을 수 있음을 보임): git grep -n -e 'func TestLiveOwnerExpiredLockStaysBusy' 37b67f6d39 -- internal
 대조 출력: 37b67f6d39:internal/agenticfactory/claim/lock_test.go:63:func TestLiveOwnerExpiredLockStaysBusy(t *testing.T) {
 대조 종료 코드: 0
 ```
@@ -50,18 +51,31 @@ tree: 37b67f6d39
 #### AC-AFL-004 — 사건 시각은 DB 시계
 
 - 주 REQ: maps REQ-AFL-004.
-- Given 호출자 쪽 시계를 먼 과거로 돌린 시험 환경, When `AddCard`·`Move`·`Heartbeat`·`Enqueue`를 부를 때, Then `created_at`·`updated_at`·`at`·`heartbeat_at`·`enqueued_at`이 호출자 시각이 아니라 DB의 `strftime('%Y-%m-%dT%H:%M:%fZ','now')` 값이다.
-- 시험 이름(하나): `TestStore_Timestamps_UseDBClock` — 소유 lane-18, 패키지 `internal/agenticfactory/ledger`. unwritten at 37b67f6d39(§B).
-- RED-now: `TestStore_Timestamps_UseDBClock`가 `37b67f6d39`에 없다(§B). 이 기준은 지금 판정할 수 없어 통과로 적지 않는다.
+- Given `internal/agenticfactory/ledger` 디렉터리 바로 아래의 `_test.go`가 아닌 `.go` 파일 전부(하위 디렉터리 `importer`는 넣지 않음), When 시험이 그 파일들을 `go/parser`로 읽어 (i) 문자열 리터럴 가운데 `INSERT`·`UPDATE` 문이 다섯 시각 열 `created_at`·`updated_at`·`at`·`heartbeat_at`·`enqueued_at` 가운데 하나에 값을 넣는 자리와 (ii) `time.Now`·`time.Since`·`time.Until`·`time.After` 선택자 호출을 모을 때, Then (i)의 모든 자리가 `strftime('%Y-%m-%dT%H:%M:%fZ','now')`로 값을 넣고(자리표시자 `?`나 Go 쪽 값이 아님), (ii)는 아래 허용 예외 밖에서 0건이다.
+- 시험이 읽는 것: 위 파일들의 Go 구문 트리(선택자 식과 문자열 리터럴). DB를 열지 않는다. 빈 집합 확인: 시험은 먼저 (i)에서 다섯 열 각각에 대해 모은 자리가 1개 이상임을 단언한다 — 아무것도 모으지 못하고 통과하는 것을 막는다(`verification-completeness.md` §1.1).
+- 허용 예외(명시 목록, 이 밖은 없다): (e1) `Heartbeat`의 호출자 인자 `nextWake` — `next_wake_at`에 들어간다. 다섯 시각 열이 아니며, 계약 §10은 "nextWake is informational only"라고 적지만 I4와의 관계는 열린 예외로 둔다(OD-35 (f)). 다섯 열 밖인 `expires_at`(leases·locks)의 원천도 OD-35 (f)에 열려 있다. 30분 snapshot 주기의 타이머(`time.NewTicker`·`time.AfterFunc`)는 (ii)의 네 선택자와 이름이 달라 세지 않는다. 새 예외는 SPEC 개정으로만 이 목록에 들어간다.
+- 죽여야 할 변이: Go `time.Now()` 값을 문자열로 만들어 `?`로 `at`에 넣는 구현 → (i)에서 FAIL; Go 시계를 다른 계산에 쓰는 구현 → (ii)에서 FAIL.
+- 시험 이름(하나): `TestLedgerSource_TimestampColumnsUseDBClock` — 소유 lane-18, 패키지 `internal/agenticfactory/ledger`. unwritten at 37b67f6d39(§B).
+- RED-now: `TestLedgerSource_TimestampColumnsUseDBClock`가 `37b67f6d39`에 없다(§B). 원장 패키지도 없다. 이 기준은 지금 판정할 수 없어 통과로 적지 않는다.
 - green path: lane-18의 schema·쓰기 구현 커밋이 이 시험을 RED로 먼저 넣고(계약 머리말: RED 커밋이 GREEN보다 먼저) 같은 lane의 GREEN 커밋이 뒤집는다.
+- 이전 문구(0.1.0): Given 호출자 쪽 시계를 먼 과거로 돌린 시험 환경, When `AddCard`·`Move`·`Heartbeat`·`Enqueue`를 부를 때, Then `created_at`·`updated_at`·`at`·`heartbeat_at`·`enqueued_at`이 호출자 시각이 아니라 DB의 `strftime('%Y-%m-%dT%H:%M:%fZ','now')` 값이다. 시험 이름 `TestStore_Timestamps_UseDBClock`.
 
 #### AC-AFL-005 — 살아 있는 소유자는 회수하지 않음
 
 - 주 REQ: maps REQ-AFL-005.
-- Given lease 기한이 지난 카드와, 그 소유자에 대해 판정 불명을 돌려주는 `alive` 함수, When `Reap`을 부를 때, Then lease와 키가 그대로 남고 `reclaim_count`가 늘지 않으며 `stalled` 쪽지가 하나 기록된다.
-- 시험 이름(하나): `TestReap_UnknownLiveness_KeepsLeaseAndWritesStalledNote` — 소유 lane-18, 패키지 `internal/agenticfactory/ledger`. unwritten at 37b67f6d39(§B).
-- RED-now: `TestReap_UnknownLiveness_KeepsLeaseAndWritesStalledNote`가 `37b67f6d39`에 없다(§B). 이 기준은 지금 판정할 수 없어 통과로 적지 않는다.
+- Given lease 기한이 지난 카드 셋(소유자가 서로 다름)과, 소유자마다 아래 표의 판정을 돌려주는 `alive` 함수, When `Reap`을 한 번 부를 때, Then 사례마다 아래 표와 같다(한 시험 안의 하위 사례 셋).
+
+| 사례 | `alive` 판정 | lease·키 | `reclaim_count` | `stalled` 쪽지 |
+|---|---|---|---|---|
+| Live | 살아 있음(계약 §10의 `Alive`) | 그대로 | 그대로 | 그 card·epoch에 하나(계약 §10 20th (d); 조정자 지시 "no `stalled` note"와 다름 — OD-41) |
+| Unknown | 판정 불명 | 그대로(살아 있는 것으로 다룸) | 그대로 | 하나 |
+| Dead | 죽음 | 없어짐(한 번 회수, `Reap` 반환값에 그 카드 하나) | +1 | 단언하지 않음 |
+
+- 죽여야 할 변이: 기한 지난 Live 소유자를 회수하는 구현 → Live 행에서 FAIL(I5 "A live process is never reclaimed automatically"). 그 밖에 Unknown을 회수하는 구현은 Unknown 행, Dead를 회수하지 않는 구현은 Dead 행에서 FAIL.
+- 시험 이름(하나): `TestReap_LivenessCases_ReclaimOnlyDead` — 소유 lane-18, 패키지 `internal/agenticfactory/ledger`. unwritten at 37b67f6d39(§B).
+- RED-now: `TestReap_LivenessCases_ReclaimOnlyDead`가 `37b67f6d39`에 없다(§B). 이 기준은 지금 판정할 수 없어 통과로 적지 않는다.
 - green path: lane-18의 Reap 구현 커밋(활성 판정 어댑터는 lane-20)이 이 시험을 RED로 먼저 넣고(계약 머리말: RED 커밋이 GREEN보다 먼저) 같은 lane의 GREEN 커밋이 뒤집는다.
+- 이전 문구(0.1.0): Given lease 기한이 지난 카드와, 그 소유자에 대해 판정 불명을 돌려주는 `alive` 함수, When `Reap`을 부를 때, Then lease와 키가 그대로 남고 `reclaim_count`가 늘지 않으며 `stalled` 쪽지가 하나 기록된다. 시험 이름 `TestReap_UnknownLiveness_KeepsLeaseAndWritesStalledNote`.
 
 #### AC-AFL-006 — 단계 쓰기는 core.CheckMove를 거침
 
@@ -74,18 +88,21 @@ tree: 37b67f6d39
 #### AC-AFL-007 — 행을 지우지 않음·세 번째 회수에서 park
 
 - 주 REQ: maps REQ-AFL-007.
-- Given 이미 두 번 회수된 카드와 Dead를 돌려주는 `alive` 함수, When 세 번째 회수가 일어날 때, Then `reclaim_count`가 3이고 카드가 park되며, 앞선 `transitions` 행이 하나도 지워지지 않았다.
+- Given 이미 두 번 회수된 카드와 Dead를 돌려주는 `alive` 함수, When 세 번째 회수가 일어날 때, Then `reclaim_count`가 3이고 카드가 park 사유 `reclaim-cap`으로 park되며, 앞선 `transitions` 행이 하나도 지워지지 않았고, 회수된 소유자의 `leases`·`lease_keys` 행은 없다(`Reap`이 지운 것; REQ-AFL-007, OD-36).
+- 이전 문구(0.1.0): Given 이미 두 번 회수된 카드와 Dead를 돌려주는 `alive` 함수, When 세 번째 회수가 일어날 때, Then `reclaim_count`가 3이고 카드가 park되며, 앞선 `transitions` 행이 하나도 지워지지 않았다.
 - 시험 이름(하나): `TestReap_ThirdReclaim_ParksCard` — 소유 lane-18, 패키지 `internal/agenticfactory/ledger`. unwritten at 37b67f6d39(§B).
 - RED-now: `TestReap_ThirdReclaim_ParksCard`가 `37b67f6d39`에 없다(§B). 이 기준은 지금 판정할 수 없어 통과로 적지 않는다.
 - green path: lane-18의 Reap 구현 커밋이 이 시험을 RED로 먼저 넣고(계약 머리말: RED 커밋이 GREEN보다 먼저) 같은 lane의 GREEN 커밋이 뒤집는다.
 
-#### AC-AFL-008 — 증거는 tree SHA에 묶임
+#### AC-AFL-008 — Enqueue는 같은 commit SHA의 관문 증거를 요구함
 
 - 주 REQ: maps REQ-AFL-008.
-- Given tree SHA A로 기록된 증거 행, When tree SHA B를 판정할 때 그 증거를 셀 때, Then 그 증거는 세어지지 않는다.
-- 시험 이름(하나): `TestEvidence_DifferentTreeSHA_IsInvalid` — 소유 lane-18, 패키지 `internal/agenticfactory/ledger`. unwritten at 37b67f6d39(§B).
-- RED-now: `TestEvidence_DifferentTreeSHA_IsInvalid`가 `37b67f6d39`에 없다(§B). 이 기준은 지금 판정할 수 없어 통과로 적지 않는다.
-- green path: lane-18의 AddEvidence 구현 커밋이 이 시험을 RED로 먼저 넣고(계약 머리말: RED 커밋이 GREEN보다 먼저) 같은 lane의 GREEN 커밋이 뒤집는다.
+- Given 관문 증거 행(`subject_sha` = 커밋 A)을 가진 카드 P와 Q, When (i) P에 `Enqueue(candidateSHA=A)`, (ii) Q에 `Enqueue(candidateSHA=B)`, (iii) 증거가 있는 다른 카드를 `Move`로 MERGING에 바로 옮기려 할 때, Then (i) 받아들여져 P가 MERGING이고, (ii) `ErrEvidenceStale`이 돌아오며 Q의 단계는 그대로이고, (iii) 거절되어 단계가 그대로다.
+- 죽여야 할 변이: SHA를 비교하지 않는 구현 → (ii)에서 FAIL; 아무 Enqueue도 받지 않는 구현 → (i)에서 FAIL; Move로 MERGING을 허용하는 구현 → (iii)에서 FAIL.
+- 시험 이름(하나): `TestEnqueue_EvidenceSubjectSHAMismatch_ReturnsErrEvidenceStale` — 소유 lane-18, 패키지 `internal/agenticfactory/ledger`. unwritten at 37b67f6d39(§B).
+- RED-now: `TestEnqueue_EvidenceSubjectSHAMismatch_ReturnsErrEvidenceStale`가 `37b67f6d39`에 없다(§B). 이 기준은 지금 판정할 수 없어 통과로 적지 않는다.
+- green path: lane-18의 AddEvidence·Enqueue 구현 커밋이 이 시험을 RED로 먼저 넣고(계약 머리말: RED 커밋이 GREEN보다 먼저) 같은 lane의 GREEN 커밋이 뒤집는다.
+- 이전 문구(0.1.0): 제목 "증거는 tree SHA에 묶임"; Given tree SHA A로 기록된 증거 행, When tree SHA B를 판정할 때 그 증거를 셀 때, Then 그 증거는 세어지지 않는다. 시험 이름 `TestEvidence_DifferentTreeSHA_IsInvalid`.
 
 #### AC-AFL-009 — 스키마와 CHECK 제약
 
@@ -178,10 +195,13 @@ tree: 37b67f6d39
 #### AC-AFL-020 — 보드는 읽기 전용
 
 - 주 REQ: maps REQ-AFL-020.
-- Given 카드·lease·키·queue·쪽지를 담은 가짜 `ledger.Reader`, When 보드 페이지를 그릴 때, Then 여섯 항목(카드, lease, 키, queue, 쪽지, 흐름 지표)이 보이고 Reader에 쓰기 호출이 하나도 없다.
-- 시험 이름(하나): `TestBoard_FakeReader_RendersReadOnly` — 소유 lane-21, 패키지 `internal/web`. unwritten at 37b67f6d39(§B).
-- RED-now: `TestBoard_FakeReader_RendersReadOnly`가 `37b67f6d39`에 없다(§B). 이 기준은 지금 판정할 수 없어 통과로 적지 않는다.
+- Given 카드·lease·queue·쪽지마다 서로 다른 표지값을 담은 가짜 `ledger.Reader`, When (i) 보드 페이지를 그릴 때, Then 네 범주의 표지값이 모두 페이지에 나온다; 그리고 When (ii) 같은 시험이 `internal/web` 디렉터리(하위 포함)의 `_test.go`가 아닌 `.go` 파일을 `go/parser`로 읽을 때, Then `ledger.Store` 선택자와 `ledger.Open` 호출이 0건이다.
+- 판정하지 않는 것: lease 키(출처 미정, OD-39)와 흐름 지표 표시. §E에 적었다.
+- 죽여야 할 변이: 보드가 따로 `*ledger.Store`를 열어 읽거나 쓰는 구현 → (ii)에서 FAIL; Reader 값을 쓰지 않고 고정 내용을 그리는 구현 → (i)에서 FAIL.
+- 시험 이름(하나): `TestBoard_ReaderOnly_NoStoreReference` — 소유 lane-21, 패키지 `internal/web`. unwritten at 37b67f6d39(§B).
+- RED-now: `TestBoard_ReaderOnly_NoStoreReference`가 `37b67f6d39`에 없다(§B). 이 기준은 지금 판정할 수 없어 통과로 적지 않는다.
 - green path: lane-21의 보드 커밋이 이 시험을 RED로 먼저 넣고(계약 머리말: RED 커밋이 GREEN보다 먼저) 같은 lane의 GREEN 커밋이 뒤집는다.
+- 이전 문구(0.1.0): Given 카드·lease·키·queue·쪽지를 담은 가짜 `ledger.Reader`, When 보드 페이지를 그릴 때, Then 여섯 항목(카드, lease, 키, queue, 쪽지, 흐름 지표)이 보이고 Reader에 쓰기 호출이 하나도 없다. 시험 이름 `TestBoard_FakeReader_RendersReadOnly`.
 
 #### AC-AFL-021 — 훅 heartbeat 30 s 조절
 
@@ -201,3 +221,7 @@ tree: 37b67f6d39
 - REQ-AFL-003의 "트랜잭션 안 외부 명령 없음, 에이전트 턴을 넘는 트랜잭션 없음": AC-AFL-003의 시험은 Open 쪽만 본다. 확인 방법 미정(OD-35 (j)).
 - REQ-AFL-018: 원장 밖 상수(heartbeat 30 s, fix-loop 3, review 400, landing TTL 10 min)의 패키지 미정(OD-35) — AC-AFL-018은 원장 상수만 본다.
 - REQ-AFL-013의 REVIEWING 경로(교차 모델 리뷰): AC-AFL-013은 REVIEWING을 거치지 않는 경우만 본다. 리뷰 수단 미정(OD-35).
+- (0.2.0) AC-AFL-004의 정적 검사는 `ledger` 디렉터리 바로 아래 파일만 읽는다. `importer` 하위 디렉터리는 덮지 않고, SQL 문을 리터럴이 아닌 방법(문자열 조합 등)으로 만들면 (i)의 수집이 놓친다.
+- (0.2.0) REQ-AFL-020의 lease 키(출처 미정, OD-39)와 흐름 지표 표시는 AC-AFL-020이 판정하지 않는다.
+- (0.2.0) REQ-AFL-014의 trunk 전용 ref, QueueUpdate epoch 원천, merged·closed·settled 사실 원천은 AC-AFL-014의 시험 하나가 단언하지 않는다(AC-AFL-014는 0.1.0 그대로).
+- (0.2.0) REQ-AFL-010의 "probe 밖, 트랜잭션 안 재확인"과 `Reap(nil)` 오류, REQ-AFL-006의 park 사유 집합은 AC-AFL-010·006이 단언하지 않는다(두 AC는 0.1.0 그대로).

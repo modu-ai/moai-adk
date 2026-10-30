@@ -1,4 +1,4 @@
-# SPEC-AGENTIC-FACTORY-LOCAL-001 — 조사 메모 (0.1.0)
+# SPEC-AGENTIC-FACTORY-LOCAL-001 — 조사 메모 (0.2.0)
 
 짧은 안내 메모다. 깊은 코드 조사는 하지 않았다.
 
@@ -12,6 +12,7 @@
   - `git grep -n 'CheckMove' 37b67f6d39 -- internal` → `internal/agenticfactory/core/move.go:28` 정의, `claim/claim.go:478` 호출.
   - `git ls-tree --name-only 37b67f6d39 internal/agenticfactory/claim/presence.go` → 있음.
   - 시험 이름 21개 부재(acceptance.md §B).
+- (0.2.0) 같은 계약을 다시 읽었다: §1~§10 전문, sha256 `f2c1078b7add847b93926ba3356eda62e4fbc44d8aa77221f059f44f6b059acb`(spec §A.4). 위 0.1.0 줄의 "전문(§1~§7)"은 그때 읽은 범위의 기록이다. 그때 파일에 §8~§10이 있었는지는 옛 판이 없어 확인할 수 없다.
 
 ## 읽지 않은 것
 

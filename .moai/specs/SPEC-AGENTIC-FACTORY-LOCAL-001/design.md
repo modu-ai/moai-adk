@@ -1,5 +1,11 @@
-# SPEC-AGENTIC-FACTORY-LOCAL-001 — 설계 자료 (0.1.0)
+# SPEC-AGENTIC-FACTORY-LOCAL-001 — 설계 자료 (0.2.0)
 
+> **원천 고정(0.2.0).** 계약 경로 `/Users/goos/MoAI/moai-adk-go/.moai/reports/issue-1948/local-adk-design-20261030.md`, sha256 `f2c1078b7add847b93926ba3356eda62e4fbc44d8aa77221f059f44f6b059acb`
+> (측정 명령 `shasum -a 256 /Users/goos/MoAI/moai-adk-go/.moai/reports/issue-1948/local-adk-design-20261030.md`, 측정 시각 `2026-10-30T05:28:04Z`, `date -u`).
+> this SPEC revision tracks the contract as pinned; a different hash means the SPEC must be re-aligned.
+> 고정한 판의 `## 1.`~`## 6.` 구간(계약 9~112행)과 아래 §1~§6을 줄 단위로 비교했다: 104줄 대 104줄, 차이 없음(progress.md §G).
+> 0.1.0 사본에서 바뀐 것은 없다(0.1.0 사본에도 지금의 I7 문장이 이미 들어 있었다).
+>
 > **출처 머리말.** 아래 §1~§6은 리더의 구현 계약(leader's implementation contract)
 > `/Users/goos/MoAI/moai-adk-go/.moai/reports/issue-1948/local-adk-design-20261030.md`의 `## 1. Invariants`부터
 > `## 6. Defaults`까지를 **바꾸지 않고 옮긴 것**이다(영어 원문 그대로). 이 작성자는 그 파일을 읽었고, 그 파일이
@@ -7,6 +13,7 @@
 > user decision (the /goal typed in the leader session, per the leader's transcription; original not read by this author),
 > `/Users/goos/MoAI/moai-adk-go/.moai/reports/issue-1948/user-decision-local-adk-20261030.md`.
 > 계약 머리말의 기준 커밋은 `agentic-factory-integration` @ `37b67f6d39`이다. 계약 §7(단계)은 plan.md에 요약했다.
+> 0.2.0에서 고정한 판의 §9와 §10(제목부터 파일 끝까지)을 이 문서 끝에 바꾸지 않고 덧붙였다. §8은 아래 범위 줄만 두고 옮기지 않았다.
 > 이 문서가 spec.md와 어긋나면 spec.md의 REQ 문장이 이긴다. 계약이 말하지 않는 곳은 spec.md·상위 OD-33~35에 '미정'으로 적었다.
 
 ## REQ 대응
@@ -21,6 +28,9 @@
 | §4 Retirement | REQ-AFL-015 |
 | §5 Card flow | REQ-AFL-013, REQ-AFL-014 |
 | §6 Defaults | REQ-AFL-018 |
+| §8 Zombie factory runs | 없음 — 이 SPEC 밖(옛 factory 경로, lane-20) |
+| §9 P4 input | 없음 — P4는 spec §I 범위 밖 |
+| §10 Leader decisions | REQ-AFL-005·006·007·008·010·014(반영분), 반영하지 않은 항목은 progress.md §G |
 
 ---
 
@@ -128,3 +138,113 @@ landed note, Move -> DONE, Release. Failure returns the card to BUILDING/FIX wit
 
 heartbeat throttle 30 s; lease 15 min; renew 5 min; reclaim cap 3; fix-loop cap 3; review trigger
 400 changed lines; landing lock TTL 10 min; snapshot every 30 min while the store is open.
+
+## 8. (범위 줄 — 옮기지 않음)
+
+> 고정한 계약 §8 "Zombie factory runs in the `-l` chooser"는 이 하위 SPEC 밖이다: 옛 factory 경로(legacy factory path)의 수리이며 소유는 lane-20이다. 본문을 옮기지 않았다.
+
+## 9. P4 input (leader read, 2026-10-30)
+
+Checkpoint `.moai/state/checkpoint/20261029T031506Z/`: `held-ids.txt` lists 165 held cards with their
+original state — 101 `picked`, 64 `queued`; snapshots `backlog.json`, `factory-status.json`.
+RESTORE.md's legacy path is `moai todo unhold <id>` (+ `pick` for originally picked). Under the new
+design the importer reads the hold rows and `held-ids.txt` directly and creates READY ledger cards
+(original `picked` → higher priority band), so the old store is not mutated card by card. Triage
+(drop obsolete with a recorded reason, reprioritize) runs on the ledger after import, with Jev and
+Codex as advisory input and the leader recording each decision as a `decision` note.
+
+## 10. Leader decisions on the API review (lane-19 18th review, 2026-10-30)
+
+- Claim's lazy reap probes liveness OUTSIDE the transaction, then inside BEGIN IMMEDIATE re-checks
+  that epoch and heartbeat_at are unchanged before reclaiming. Reap(nil) returns an error.
+- Tree-SHA binding (I8) happens at Enqueue: it requires gate evidence with tree_sha == candidateSHA,
+  else ErrEvidenceStale. MERGING is entered only through Enqueue.
+- Local-path facts are derived by the store from its own tables, never from caller fields:
+  merged <- merge_queue.state = landed for the card; closed/settled <- the DONE move mergeq makes after
+  writing the landed note. receipt / receipt-accepted are unused on the local path, so the named
+  no-handoff compositions are the normal path with external (queue-table) facts.
+- Park reasons `fix-limit` and `reclaim-cap` are added to core's parkable set. nextWake is
+  informational only. AddCard refuses missing, CANCELLED or cyclic dependencies.
+- QueueUpdate epoch source: waiting/verifying/failed check the card lease epoch; landing/landed check
+  the `merge-queue:landing` lock epoch.
+- The merge-queue trunk is a dedicated ref checked out in no worktree (default `refs/heads/af/trunk`,
+  configurable); mergeq refuses to land when `git worktree list --porcelain` shows it checked out.
+- B1 (full CLI run) needs the user's own confirmation inside lane-22's session at P3; the leader's
+  reading of the goal does not lift a standing instruction given in that session.
+- (lane-22 question, 2026-10-30) `candidateSHA` is a **commit** SHA everywhere (Enqueue, merge_queue.candidate_sha,
+  mergeq ancestry). The I8 "tree-SHA binding" means: the gate evidence row records the commit SHA it measured
+  (`evidence.subject_sha`), and Enqueue requires `subject_sha == candidateSHA`, else ErrEvidenceStale. The store
+  never shells out to git; any amend/rebase yields a new commit SHA and therefore needs fresh gate evidence.
+
+### Leader decisions on lane-19's 19th review (2026-10-30)
+
+- Queue fencing (P2): `merge_queue` records `card_epoch` at Enqueue. waiting/verifying/failed writes carry that
+  card epoch and the store requires it to equal `cards.epoch` (a reclaimed card fences its stale lander).
+  landing/landed writes carry the landing-lock epoch. Reconcile reverts verifying/landing rows to waiting only
+  while it holds the `merge-queue:landing` lock, checked by that lock epoch. (lane-18 store, lane-22 mergeq)
+- Facts `closed`/`settled` come from the `merge_queue` row of the current card epoch, never from notes; notes
+  are informational only. (lane-18)
+- Reap on a card already parked at its third reclaim: count increments, park stays, no error. (lane-18)
+- I7 at the DB level: BEFORE DELETE triggers on cards, transitions, evidence, notes that RAISE(ABORT). (lane-18)
+- `synchronous=FULL`, not NORMAL: a lost epoch bump after power loss would let two claims share one epoch. (lane-18)
+- KeysFor rejects absolute paths, `..`, backslashes (ErrInvalid); a `testdata`/`fixtures` segment maps to its
+  owning package key. Add a DSN test with a space in the path. (lane-18)
+- mergeq: UpdateRef returns ErrRefMoved only for the old-value mismatch, other git failures surface as-is;
+  Trunk must be a full `refs/heads/` name and the default branch is refused; the checked-out check is repeated
+  inside the lock; `cmd.WaitDelay` set; ReleaseLock failures are logged/returned. (lane-22)
+- Accepted as is: the 400-line review trigger is enforced by the runner, not the store; an ancestor candidate
+  settles as landed only behind its I8 evidence at Enqueue.
+
+### P2 retirement plan — Issue/remote code (leader, 2026-10-30)
+
+Importer graph measured on integration cef5e75ac7 (`grep` of `"github.com/modu-ai/moai-adk/internal/<pkg>"`):
+forge <- e2e, effect/{ctxledger,docstore,ghexec,ghidentity,ghintake,labels}, mirror, monitor/notify, resident, internal/cli;
+mirror <- e2e; ghintake <- effect/{ghexec,gitexec}, resident; ctxledger <- e2e, effect/ghexec, resident;
+labels <- e2e, resident; gitref <- effect/docstore.
+
+- Order: wiring first, packages last. lane-20 removes remote wiring from resident, monitor/notify, effect/gitexec,
+  effect/docstore; lane-22 removes it from internal/cli and e2e. lane-20 deletes the packages only after both land
+  in integration and `go build ./... && go vet ./...` is clean there.
+- Candidates for deletion: forge, mirror, gitref, effect/{ghintake,ctxledger,labels,ghexec,ghidentity}, and
+  effect/docstore if it is remote-only. Each package's role is read before deletion; any local-only piece moves
+  rather than disappears.
+- `moai factory`/todo old paths stay until the `moai af` verbs replace them (P2 CLI); nothing outside
+  internal/agenticfactory and its CLI wiring is retired in this step.
+
+### Leader decisions on lane-19's review of 56e32db128 (zombie fix, 2026-10-30)
+
+- Automatic card transfer to the single live run is the §8 intent. Comments that say otherwise
+  (ReconcileActiveRuns, factorymsg/store.go caller, RebindRun "No row is deleted") are corrected to fact.
+- leader_approvals do not follow moved cards (REQ-FCR-023 kept; D3 retires receipts in the new AF). The comment
+  says so, and the transfer event names the card ids so the loss of approval is visible.
+- Transfer only when exactly one owner is Live and none is Indeterminate; an Indeterminate owner preserves the
+  dead runs' cards in place.
+- Add the missing tests: card-less dead run with dead worker rows (reap in retireRunUnlessLive); RequireStampBasis
+  with a peer/boot-dead source; consolidateIntoLive swallowing only ErrRebindRefused; injected failure at
+  rebindPointBeforeCommit rolls back worker deletion and the reaped event. The unreachable non-Dead `continue`
+  and the double probe are accepted (safe direction).
+- (revision, after lane-20's role read) To avoid a cross-lane wait, lane-20 owns the whole remote retirement in one
+  change: `moai factory resident` (internal/cli/factory_resident.go, its test, its registration), resident,
+  monitor/notify remote parts (ghpr/Inbox/forge cursors), forge (+webhook), mirror, gitref, effect/{ghintake,
+  ctxledger,labels,ghexec,ghidentity,gitexec}, docstore cursors/queue, and e2e files whose only subject is those
+  packages. effect itself and docstore.Store retire too unless reconcile or monitor/adapt has a non-remote use;
+  ghintake.Admit is not moved (no remote publish remains). Out of lane-20's scope: ledger, mergeq, claim, core,
+  runner, mergeq e2e, and every other internal/cli file (lane-22). Gate: integration `go build ./... && go vet ./...`.
+- (contract correction, lane-18 80a885ca0b) `cards.epoch` is a column of `cards` (Claim bumps it; reclaim does not).
+  `KeysFor(paths) ([]string, error)`. RED commits from bundle 2 on carry a build tag so the default build stays green
+  while the commit graph witnesses test-first order; bundle 1's same-commit RED is a recorded deviation.
+
+### Leader decisions on lane-19's 20th review (2026-10-30)
+
+- lane-18: (a) one card's error in reapTx/pickTx no longer fails the whole Claim/Reap — that card is skipped with a
+  `stalled` note (once per card+epoch) and the rest commits; (b) a Move into DONE/CANCELLED releases the lease and its
+  keys in the same tx, pinned by a test; (c) operator resume out of `reclaim-cap` resets `reclaim_count`; (d) an
+  expired lease whose holder is Alive also gets one `stalled` note per card+epoch; (e) a card whose dependency is
+  CANCELLED is skipped with one note; (f) AddCard writes the first transition row (from empty, reason `added`);
+  same-position rows are documented as non-edge kinds; (g) DSN sets `recursive_triggers=ON`.
+- lane-22: (a) Reconcile reverts a `verifying` row only when its `card_epoch` differs from `cards.epoch` or the card
+  has no live lease — a live lander's verification is left alone; (b) every git subprocess in mergeq/gitcli runs with
+  `LC_ALL=C` (and `LANG=C`) so "but expected" matching is locale-independent, with a test under a non-English locale;
+  (c) the trunk also may not equal the target of `refs/remotes/origin/HEAD`. The check-to-update-ref gap is accepted.
+- lane-20: the global Indeterminate block stays (conservative, operator bypass exists); fix the first sentence of the
+  ReconcileActiveRuns doc in the retirement change.
