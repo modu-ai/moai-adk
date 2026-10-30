@@ -522,14 +522,16 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 | 017 | `e2e` `TestCollector_` 6 | 시험 있음(일부) | `…e2e/real_collector_test.go:6` |
 | 018 | 없음 | 미충족-시험 없음 | `git grep -c -E '^func (TestRedact_\|TestLedger_\|…\|TestScenarioSuite)' … -- 'internal/agenticfactory/*_test.go' 'internal/config/*_test.go' 'internal/cli/*_test.go'` → 출력 없음(exit 1) |
 | 019 | `e2e` 1 | 시험 있음(일부) | `…e2e/real_observation_test.go:156:func TestObservation_Reading_ChangesNothing(t *testing.T) {` |
-| 020 | `browser` 1 | 시험 있음(일부) | `…browser/resolve_test.go:177:func TestChoices_ExactlyThree(t *testing.T) {` |
+| 020 | `browser` 1 | 시험 있음(일부) | `…browser/resolve_test.go:177:func TestChoices_ExactlyThree(t *testing.T) {`. 브랜치 사실(lane-21 branch WT-browser-select, relayed, not read/not run; `4cdaba5d7e` 기준 아님 — 왼쪽 두 칸과 아래 셈은 바뀌지 않음): (d)·(e)·(f) resolver 쪽 `TestBrowserSelect_NoSelectionUsesChrome`·`_AsideNotInstalledBlocksAndNeverFallsBack`·`_SelectionIsEchoedUnchanged`(`e196a35ff2`), (f) 읽기 쪽 `TestBrowserSelect_SavedValueReadsBack`(`47d5abcb99`). lane-21 보고: 앞의 셋은 PASS이고 미설치 `aside`를 `chrome`으로 바꾸는 변형에서 FAIL. (f) 저장 쪽은 시험·코드 없음(OD-27) |
 | 021 | 없음 | 미충족-시험 없음 | 018 행과 같은 명령 → 출력 없음 |
 | 022 | 없음 | 미충족-시험 없음 | manifest 실행기 없음(001 행의 `TestAcceptanceManifest` 출력 없음) |
 | 023 | 없음 | 미충족-시험 없음 | 018 행과 같은 명령 → 출력 없음 |
 | 024 | 없음 | 미충족-시험 없음 | 018 행과 같은 명령 → 출력 없음 |
-| 025 | 없음(§A.1 명령은 실행 대상 아님) | 미충족-시험 없음 (진단 실행 05·06과 채택 실행의 두 축: G.0) | 018 행과 같은 명령(`TestScenarioSuite` 포함) → 출력 없음 |
+| 025 | 없음(§A.1 명령은 실행 대상 아님) | 미충족-시험 없음 (진단 실행 05·06과 채택 실행의 두 축: G.0) | 018 행과 같은 명령(`TestScenarioSuite` 포함) → 출력 없음. 브랜치 사실(lane-21 branch WT-browser-select, relayed, not read/not run; `4cdaba5d7e` 기준 아님): `internal/agenticfactory/e2e/scenario_suite_af_e2e_test.go`(`988e6e2b80`)에 `TestScenarioSuite`가 있고, build tag `af_e2e`(기본 실행에 영향 없음), `MOAI_AF_E2E_ISSUE`·`MOAI_AF_E2E_NEXT_ISSUE` 없으면 FAIL. lane-21 보고로는 하위 시험 00·01~07 중 `01_competing_claim`만 PASS(실제 `claim.Store`)이고 00·02~07은 이유를 적은 의도된 미충족 FAIL이다. 그래서 AC-AF-025는 여전히 미충족 |
 
 셈: 시험이 있는 기준 15개(전부 "일부"), 시험이 없는 기준 10개. 고른 시험은 모두 60개다(2+16+6+3+2+3+1+12+2+2+1+2+6+1+1). 이 수는 존재를 센 것이며 통과 수가 아니다.
+
+브랜치 사실 메모(위 셈과 따로): 020·025 행의 "브랜치 사실"은 lane-21 브랜치 `WT-browser-select`(가장 새 lane-21 커밋 `47d5abcb99`)의 것이며, relayed, not read/not run이다. 이 작성자는 그 브랜치에서 `func Test` 줄 다섯 개(`browser_select_ac_test.go:20,36,57`, `browser_select_readback_test.go:18`, `scenario_suite_af_e2e_test.go:63`)의 존재만 `git grep`으로 보았다. 위 셈은 `4cdaba5d7e` 기준이며 이 메모로 바뀌지 않는다.
 
 ### G.0 IDENTITY·귀속에 기대는 기준 — 행동 축과 시험 축
 
@@ -544,8 +546,8 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 | 011 P4a 다른 세션의 writer 인계 | 잠금 유지 — REQ-AF-011에 따른 의도된 상태(미충족 아님). AC 본문상 해제 뒤에도 같은 거절 | 시험 없음 | AC 본문 P4a "(잠금 중에도, 해제 뒤에도)" |
 | 011 P4b 옛 epoch, 귀속 조회 전 거절 | 잠금 유지 — REQ-AF-011에 따른 의도된 상태(미충족 아님). AC 본문상 해제 뒤 그대로 | 시험 없음 | AC 본문 "L3·L4·P4a·P4b는 그대로" |
 | 011 해제 뒤 형태 L1·L2(`attributed{필요한 역할}`, "통과로 셈") | 미충족 — 구현 없음 | 시험 없음 | REQ-AF-011 "the lock SHALL be lifted only by a single code change that lands together with SPEC-AGENTIC-FACTORY-IDENTITY-001 `completed`, its acceptance criteria green, and the operator's recorded risk acceptance"; lane-18 구현 중(`6b945fd844`, 리더 전달, 읽지 않음) |
-| 025 진단 실행(M7 전)의 05·06 | 잠금 유지 — REQ-AF-011에 따른 의도된 상태(미충족 아님): 05·06이 `producer-not-allowed`로 막힘 | 시험 없음 | §A.1 "M7 전의 실행은 진단 실행이며 05·06에서 `producer-not-allowed`로 막히는 것이 정상"; REQ-AF-011 "including the scenario harness" |
-| 025 채택 실행(M7 뒤) 01~07 | 미충족 — 구현 없음 | 시험 없음 | §A.1 "채택 실행은 M7(잠금 해제) 뒤의 실행뿐" |
+| 025 진단 실행(M7 전)의 05·06 | 잠금 유지 — REQ-AF-011에 따른 의도된 상태(미충족 아님): 05·06이 `producer-not-allowed`로 막힘 | 시험 없음(`4cdaba5d7e`). 브랜치 사실(lane-21 branch WT-browser-select, relayed, not read/not run; `4cdaba5d7e` 기준 아님): 05는 "실제 audit-round 기록기와 M7 해제가 필요", 06은 "증거 생산 사슬과 병합 응답을 떨어뜨릴 수 있는 요청이 필요, 보호된 main 병합은 운영자 keep-set(OD-6)"이라는 이유를 적은 의도된 FAIL이다(lane-21 보고). 그 FAIL이 `producer-not-allowed`에서 오는지는 이 작성자가 관측하지 않았다 | §A.1 "M7 전의 실행은 진단 실행이며 05·06에서 `producer-not-allowed`로 막히는 것이 정상"; REQ-AF-011 "including the scenario harness" |
+| 025 채택 실행(M7 뒤) 01~07 | 미충족 — 구현 없음 | 시험 없음(`4cdaba5d7e`). 브랜치 사실(lane-21 branch WT-browser-select, relayed, not read/not run; `4cdaba5d7e` 기준 아님): `TestScenarioSuite`(`988e6e2b80`)의 01만 PASS(lane-21 보고), 00·02~07은 의도된 미충족 FAIL. 실제 GitHub 접근 없음 | §A.1 "채택 실행은 M7(잠금 해제) 뒤의 실행뿐" |
 | 009 (f) CI 실패 수리부터 DONE — 잠금 중 운영 경로 | 잠금 유지 — REQ-AF-011에 따른 의도된 상태(미충족 아님): 리뷰 증거가 `producer-not-allowed`라 병합 단계에 닿지 않음 | 시험 없음 | REQ-AF-011 "for every evidence kind" |
 | 009 (f) 리뷰 PASS → 병합 → DONE(해제 뒤) | 미충족 — 구현 없음 | 시험 없음 | 같은 REQ의 해제 조건 |
 | 009 (a)~(e)·(g) | 나누지 않음(귀속에 기대지 않음) | 시험 없음 | — |
@@ -639,8 +641,10 @@ F2 작업 당시에는 하위 SPEC의 `acceptance.md`를 고치지 않고 여기
 
 | 시험 이름 | AC | REQ | 패키지(제안) | 동작 |
 |---|---|---|---|---|
-| `TestScenarioSuite`(하위 `01_…`~`07_…`) | AC-AF-025 | REQ-AF-006(보조 REQ-AF-001·004·005·011) | `e2e/` | §A.1 하위 시험 01~07, 실제 Issue 한 쌍, 한 번의 실행 |
-| `TestBrowserSelect_*` | AC-AF-020 | REQ-AF-021 | `browser/`(`resolve_test.go` 옆) | (d) 미선택 → `chrome` (e) `aside` 선택·미설치 → PARKED `not-installed`, `chrome` 호출 0 (f) 선택 저장 뒤 다시 읽기 → 같은 값. zusätzlich lane-17: (f)의 저장. 현황(2026-10-30): (d), (e)와 (f)의 resolver 절반은 이제 `WT-browser-select` 브랜치의 커밋 `e196a35ff2`에 시험이 있다 — 그 브랜치 기준이며 `4cdaba5d7e` 기준은 아니다(위 `4cdaba5d7e` 기준 현황은 바뀌지 않음). 근거는 커밋 제목(lane-17이 `git show -s`로 확인, 리더 전달)뿐이고, lane-17은 그 시험을 읽지도 실행하지도 않았다. (f)의 나머지(선택 저장)는 아직 열려 있다 |
+| `TestScenarioSuite`(하위 `01_…`~`07_…`) | AC-AF-025 | REQ-AF-006(보조 REQ-AF-001·004·005·011) | `e2e/` | §A.1 하위 시험 01~07, 실제 Issue 한 쌍, 한 번의 실행. 현황(lane-21 branch WT-browser-select, relayed, not read/not run; `4cdaba5d7e` 기준 아님): `internal/agenticfactory/e2e/scenario_suite_af_e2e_test.go`(`988e6e2b80`), build tag `af_e2e`(기본 실행에 영향 없음), `MOAI_AF_E2E_ISSUE`·`MOAI_AF_E2E_NEXT_ISSUE` 필수(없으면 FAIL). 하위 시험 00(사전 점검)과 01~07. lane-21 보고로는 `01_competing_claim`만 PASS(실제 `claim.Store`)이고 나머지는 이유를 시험 문자열에 적은 의도된 미충족 FAIL이다 — 00 귀속 원천 종류를 알려 주는 제품 API 없음, 02 하네스에서 부를 dispatch 재전송 API 없음, 03 ACK만 떨어뜨릴 수 있는 주입 가능한 전송 없음, 04 시계 주입과 checkpoint 원격 보존 재개 연결 없음, 05 실제 audit-round 기록기와 M7 해제 필요, 06 증거 생산 사슬과 병합 응답을 떨어뜨릴 수 있는 요청 필요·보호된 main 병합은 운영자 keep-set(OD-6), 07 E12·로컬 동기화·Issue 종료·DONE·두 번째 dispatch 필요·OD-12 대기. 실제 GitHub 접근 없음. AC-AF-025는 미충족 |
+| `TestBrowserSelect_*` | AC-AF-020 | REQ-AF-021 | `browser/`(`resolve_test.go` 옆) | (d) 미선택 → `chrome` (e) `aside` 선택·미설치 → PARKED `not-installed`, `chrome` 호출 0 (f) 선택 저장 뒤 다시 읽기 → 같은 값. zusätzlich lane-17: (f)의 저장. 현황(lane-21 branch WT-browser-select, relayed, not read/not run; `4cdaba5d7e` 기준 아님 — 위 `4cdaba5d7e` 기준 현황은 바뀌지 않음): `internal/agenticfactory/browser/browser_select_ac_test.go`(`e196a35ff2`)에 `TestBrowserSelect_NoSelectionUsesChrome`(d)·`TestBrowserSelect_AsideNotInstalledBlocksAndNeverFallsBack`(e)·`TestBrowserSelect_SelectionIsEchoedUnchanged`((f) resolver 쪽). lane-21 보고: PASS, 미설치 `aside`를 `chrome`으로 바꾸는 변형에서 FAIL. (f) 읽기 쪽 `internal/web/browser_select_readback_test.go`의 `TestBrowserSelect_SavedValueReadsBack`(`47d5abcb99`): `workflow.yaml`의 `workflow.agentic_factory.browser.selected`에 쓴 세 값이 그대로 읽히고, 파일·키가 없으면 선택 없음(lane-21 보고). (f) 저장 쪽은 lane-21이 만들지 않았고(lane-21은 계약·설정 lane의 일로 봄) 계약에 주인이 없다 — spec §G.1 후보 OD-27(OPEN). lane-17은 이 시험들을 읽지도 실행하지도 않았다 |
+
+`TestProtectionGuard_RefusesEveryWeakeningOperation`(AC-AF-008)은 위 lane-20 표에 그대로 있다. lane-21은 그 시험을 만들지 않았다(lane-21 보고, 리더 전달).
 
 #### lane-17
 
