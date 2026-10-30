@@ -7,6 +7,9 @@ import (
 	"path/filepath"
 )
 
+// syncPath makes a file or a directory durable. A variable so a case can see it called.
+var syncPath = func(string) error { return nil }
+
 // Snapshot writes a consistent copy of the ledger to dst: VACUUM INTO a temporary file in
 // the same directory, then a rename over dst, so a reader never sees half a snapshot. The
 // file is private to its owner.

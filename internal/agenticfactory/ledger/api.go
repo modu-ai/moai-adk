@@ -235,6 +235,7 @@ const (
 // QueueItem is one row of merge_queue.
 type QueueItem struct {
 	CardID       string
+	CardEpoch    int64 // the card epoch the row was queued at; waiting, verifying and failed writes carry it
 	CandidateSHA string
 	TrunkBefore  string
 	State        QueueState
@@ -261,3 +262,10 @@ type Store struct {
 var _ Reader = (*Store)(nil)
 
 // The Reader methods are Cards and Leases (cards.go), Queue (queue.go) and Notes (notes.go).
+
+// RenewLock extends a live lock held at epoch by ttl from now (a lander that needs longer
+// than it asked for). ErrStaleEpoch when the lock is not live at that epoch: one that ran
+// out is taken again with AcquireLock, not renewed.
+func (s *Store) RenewLock(ctx context.Context, name string, epoch int64, ttl time.Duration) error {
+	return ErrNotImplemented
+}
