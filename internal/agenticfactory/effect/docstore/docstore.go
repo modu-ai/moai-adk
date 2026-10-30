@@ -73,6 +73,7 @@ func (s Store) List() ([]effect.Intent, error) {
 		if err := json.Unmarshal(d.Data, &in); err != nil {
 			return nil, fmt.Errorf("docstore: intent %s is not readable: %w", d.Name, err)
 		}
+		in.Rev = d.Rev
 		out = append(out, in)
 	}
 	return out, nil

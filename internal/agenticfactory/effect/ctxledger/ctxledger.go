@@ -20,6 +20,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/effect"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/forge"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/monitor"
@@ -207,10 +208,28 @@ func (l *Ledger) Submit(_ context.Context, b Body) (effect.Intent, error) {
 			return in, nil
 		}
 		in.Status, in.Attempts, in.ProviderID, in.LastError, in.Seq = effect.StatusIntended, 0, "", "", latest+1
-		return in, l.Store.Put(in) // older text submitted again: re-arm so the remote is brought back to it
+		// Older text submitted again: re-arm so the remote is brought back to it. Compare-and-swap on the
+		// revision just read: if another executor moved the intent (Sent, say) meanwhile, what is stored
+		// stands and nothing is rewound.
+		return l.putFollowing(in)
 	}
 	in := effect.Intent{Key: key, Kind: effect.LedgerComment, Issue: b.Issue, Target: target(b.Issue), Digest: dg, Payload: full, Status: effect.StatusIntended, Seq: latest + 1}
-	return in, l.Store.Put(in)
+	return l.putFollowing(in)
+}
+
+// putFollowing writes the intent with PutIf; on a revision conflict it returns the stored intent instead.
+func (l *Ledger) putFollowing(in effect.Intent) (effect.Intent, error) {
+	out, err := l.Store.PutIf(in)
+	if errors.Is(err, core.ErrRevisionConflict) {
+		cur, ok, gerr := l.Store.Get(in.Key)
+		if gerr != nil {
+			return effect.Intent{}, gerr
+		}
+		if ok {
+			return cur, nil
+		}
+	}
+	return out, err
 }
 
 // Flush sends the newest pending intent of every Issue, one at a time. Older pending intents are
@@ -235,8 +254,8 @@ func (l *Ledger) Flush(ctx context.Context) error {
 		if newest[in.Issue].Key != in.Key {
 			if in.Status != effect.StatusConfirmed && in.Status != effect.StatusSuperseded {
 				in.Status = effect.StatusSuperseded
-				if err := l.Store.Put(in); err != nil && first == nil {
-					first = err
+				if _, err := l.Store.PutIf(in); err != nil && !errors.Is(err, core.ErrRevisionConflict) && first == nil {
+					first = err // a conflict means someone else moved it; the next Flush looks again
 				}
 			}
 			continue
@@ -270,8 +289,12 @@ func (l *Ledger) Flush(ctx context.Context) error {
 			continue
 		}
 		in.Status, in.Attempts, in.ProviderID = effect.StatusIntended, 0, ""
-		if err := l.Store.Put(in); err != nil && first == nil {
-			first = err
+		if _, err := l.Store.PutIf(in); err != nil {
+			if errors.Is(err, core.ErrRevisionConflict) {
+				l.markRecheck(in.Issue, true) // moved meanwhile: check the comment again on the next Flush
+			} else if first == nil {
+				first = err
+			}
 			continue
 		}
 		got, err := ex.Execute(ctx, effect.Request{Kind: in.Kind, Issue: in.Issue, Target: in.Target, Digest: in.Digest, Payload: in.Payload})

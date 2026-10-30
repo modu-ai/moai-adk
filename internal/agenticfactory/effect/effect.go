@@ -112,6 +112,9 @@ func (t *Tracker) Advance(commandID string, issue int, to Stage, ev Evidence) (R
 		return Record{}, fmt.Errorf("%w: completed needs the full 40-hex HEAD SHA", ErrEvidence)
 	}
 	rec := Record{CommandID: commandID, Issue: issue, Stage: to, Evidence: ev}
+	// Put stays unconditional on purpose: this is the stage record (Store above), not an intent. The
+	// transition was validated against the record read just above and a stage only moves forward by one; the
+	// single production writer is the lane that owns the command. Revisit if a second writer appears.
 	if err := t.store.Put(rec); err != nil {
 		return Record{}, err
 	}
