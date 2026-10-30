@@ -49,10 +49,10 @@ func TestLaneRuleFallsBackToDefaultOnRefusedRenewInterval(t *testing.T) {
 	cases := []struct {
 		name    string
 		value   string
-		refused string // the arm expression the refused value would have rendered
+		refused string // the wake bound the refused value would have rendered
 	}{
-		{name: "over-bound-8m", value: "8m", refused: "*/8 * * * *"},
-		{name: "not-whole-minute-7m30s", value: "7m30s", refused: "*/7 * * * *"},
+		{name: "over-bound-8m", value: "8m", refused: "renew_interval=8m"},
+		{name: "not-whole-minute-7m30s", value: "7m30s", refused: "renew_interval=7m"},
 		{name: "unparseable", value: "banana", refused: ""},
 	}
 	for _, c := range cases {
@@ -65,11 +65,11 @@ func TestLaneRuleFallsBackToDefaultOnRefusedRenewInterval(t *testing.T) {
 				if rule == "" {
 					t.Fatalf("a refused renew_interval must not suppress the lane rule (session start must not block)")
 				}
-				if !strings.Contains(rule, "*/5 * * * *") {
-					t.Errorf("rendered rule lacks the default arm expression %q after a refused renew_interval %q:\n%s", "*/5 * * * *", c.value, rule)
+				if !strings.Contains(rule, "renew_interval=5m") {
+					t.Errorf("rendered rule lacks the default wake bound %q after a refused renew_interval %q:\n%s", "renew_interval=5m", c.value, rule)
 				}
 				if c.refused != "" && strings.Contains(rule, c.refused) {
-					t.Errorf("rendered rule carries the refused arm expression %q", c.refused)
+					t.Errorf("rendered rule carries the refused wake bound %q", c.refused)
 				}
 			})
 		}
@@ -85,7 +85,7 @@ func TestLaneArmExpressionReadsWorkingDirectoryWhenProjectDirUnset(t *testing.T)
 	t.Chdir(root)
 	setLaneEnv(t)
 	rule := factoryLaneRuleForSource("startup", "en")
-	if !strings.Contains(rule, "*/7 * * * *") {
-		t.Errorf("with CLAUDE_PROJECT_DIR unset the rule does not carry the working directory's renewal period %q:\n%s", "*/7 * * * *", rule)
+	if !strings.Contains(rule, "renew_interval=7m") {
+		t.Errorf("with CLAUDE_PROJECT_DIR unset the rule does not carry the working directory's renewal period %q:\n%s", "renew_interval=7m", rule)
 	}
 }
