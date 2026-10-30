@@ -11,6 +11,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -324,9 +325,10 @@ func createdID(out []byte) int64 {
 	return c.ID
 }
 
-// WriteLedger creates or updates the ledger comment. Secrets are masked and
-// the masking is disclosed in the comment. The id and body hash of the last
-// write are remembered per Issue: an unchanged body sends nothing, and a known
+// WriteLedger creates or updates the ledger comment. A ledger that holds a secret
+// or personal data is refused with core.ErrUnsanitized and nothing is sent; it is
+// not masked and posted. The id and body hash of the last write are remembered
+// per Issue: an unchanged body sends nothing, and a known
 // id skips the comment listing. A 404 on the remembered id falls back to the
 // listing, so exactly one ledger comment is kept.
 func (m *Mirror) WriteLedger(ctx context.Context, l core.Ledger) error {
@@ -337,12 +339,38 @@ func (m *Mirror) WriteLedger(ctx context.Context, l core.Ledger) error {
 	if err != nil {
 		return err
 	}
-	masked, n := redact(string(raw))
-	body := Marker + "\n```json\n" + masked + "\n```\n"
-	if n > 0 {
-		body += fmt.Sprintf("<!-- redacted: %d -->\n", n)
+	// A ledger that holds a secret or personal data is not posted (design 4.4):
+	// a RESTRICTED record takes its place, with exactly a status, a short summary
+	// naming the categories, and the SHA-256 of the masked form. The caller still
+	// gets the refusal.
+	var refused error
+	body := Marker + "\n```json\n" + string(raw) + "\n```\n"
+	if masked, cats := core.Sanitize(string(raw)); len(cats) > 0 {
+		names := make([]string, len(cats))
+		for i, c := range cats {
+			names[i] = string(c)
+		}
+		digest := sha256.Sum256([]byte(masked))
+		rec, err := json.MarshalIndent(map[string]string{
+			"status":  "RESTRICTED",
+			"summary": "ledger withheld, it carries: " + strings.Join(names, ", "),
+			"sha256":  hex.EncodeToString(digest[:]),
+		}, "", "  ")
+		if err != nil {
+			return err
+		}
+		body = Marker + "\n```json\n" + string(rec) + "\n```\n"
+		refused = fmt.Errorf("%w: found %s", core.ErrUnsanitized, strings.Join(names, ", "))
 	}
-	issue := l.Issue.Number
+	if err := m.postLedger(ctx, l.Issue.Number, body); err != nil {
+		return err
+	}
+	return refused
+}
+
+// postLedger writes body as the Issue's ledger comment: nothing when the memo
+// says it is already there, a patch when the comment is known, else a create.
+func (m *Mirror) postLedger(ctx context.Context, issue int, body string) error {
 	sum := sha256.Sum256([]byte(body))
 
 	mem := m.recall(issue)
@@ -415,6 +443,8 @@ func Publish(ctx context.Context, m *Mirror, st *claim.Store, issue core.IssueRe
 	case werr == nil:
 	case errors.Is(werr, core.ErrDeferred):
 		state = "stale" // the authority is ahead of the comment
+	case errors.Is(werr, core.ErrUnsanitized):
+		state = "refused" // the ledger holds a secret or personal data and was not sent
 	case errors.As(werr, &be):
 		state = "blocked(" + string(be.Reason) + ")"
 	default:
