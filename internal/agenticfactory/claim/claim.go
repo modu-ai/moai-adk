@@ -95,6 +95,42 @@ type Record struct {
 	Worktree        string `json:"worktree,omitempty"`
 }
 
+// clone is a copy of r that shares no memory with it: every pointer target and the
+// History slice are duplicated, so a function given the copy cannot change the
+// original in place. A reference-typed field added to Record must be added here;
+// TestRecordCloneKnowsEveryReferenceField fails until it is.
+func (r Record) clone() Record {
+	c := r
+	if r.Receipt != nil {
+		v := *r.Receipt
+		c.Receipt = &v
+	}
+	if r.Park != nil {
+		v := *r.Park
+		c.Park = &v
+	}
+	if r.Gate != nil {
+		v := *r.Gate
+		c.Gate = &v
+	}
+	if r.Refusal != nil {
+		v := *r.Refusal
+		c.Refusal = &v
+	}
+	if r.Wait != nil {
+		v := *r.Wait
+		c.Wait = &v
+	}
+	if r.Repair != nil {
+		v := *r.Repair
+		c.Repair = &v
+	}
+	if r.History != nil {
+		c.History = append([]Event(nil), r.History...)
+	}
+	return c
+}
+
 // Repair is the canon E06 evidence (REVIEWING -> BUILDING/FIX): the repair
 // decision, the exclusive owner, the scope reserved again and the previous
 // writer ended. All four are required.
@@ -778,11 +814,11 @@ func (s *Store) UpdateAsMonitor(i core.IssueRef, holder string, epoch int64, fn 
 		if err != nil {
 			return err
 		}
-		work := cur
+		work := cur.clone()
 		if err := fn(&work); err != nil {
 			return err
 		}
-		next := cur
+		next := cur.clone()
 		next.Wait = work.Wait
 		next.Seq = cur.Seq + 1
 		out = next
