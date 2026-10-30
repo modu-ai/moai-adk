@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 )
 
 // syncPath makes a file or a directory durable. A variable so a case can see it called.
@@ -51,7 +52,8 @@ func (s *Store) Snapshot(ctx context.Context, dst string) error {
 	if err := os.Rename(name, dst); err != nil {
 		return fmt.Errorf("ledger: %w", err)
 	}
-	if err := syncPath(dir); err != nil {
+	// Windows cannot open a directory to sync it; there the directory sync is best effort.
+	if err := syncPath(dir); err != nil && runtime.GOOS != "windows" {
 		return fmt.Errorf("ledger: sync snapshot directory: %w", err)
 	}
 	return nil

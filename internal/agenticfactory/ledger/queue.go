@@ -30,15 +30,18 @@ func latestResult(ctx context.Context, q querier, cardID, kind, subject string) 
 // of the current card epoch. A note is information and stands for nothing.
 func factsTx(ctx context.Context, q querier, card Card) ([]string, error) {
 	var have []string
-	var subject, result string
-	switch err := q.QueryRowContext(ctx, `SELECT subject_sha,result FROM evidence WHERE card_id=? AND kind=? ORDER BY id DESC LIMIT 1`, card.ID, KindGreen).Scan(&subject, &result); {
+	var subject sql.NullString
+	var result string
+	// Only a run of the card's current epoch is a receipt: after a FIX or a reclaim the
+	// earlier green and gate pair, even for the same commit, is not this holder's.
+	switch err := q.QueryRowContext(ctx, `SELECT subject_sha,result FROM evidence WHERE card_id=? AND kind=? AND epoch=? ORDER BY id DESC LIMIT 1`, card.ID, KindGreen, card.Epoch).Scan(&subject, &result); {
 	case err == sql.ErrNoRows:
 	case err != nil:
 		return nil, fmt.Errorf("ledger: %w", err)
 	case result == ResultPass:
 		have = append(have, core.FactReceipt)
 		// The newest gate row for that commit decides, as it does at Enqueue.
-		gate, err := latestResult(ctx, q, card.ID, KindGate, subject)
+		gate, err := latestResult(ctx, q, card.ID, KindGate, subject.String)
 		if err != nil {
 			return nil, err
 		}

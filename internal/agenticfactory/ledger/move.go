@@ -44,7 +44,9 @@ func checkEvidence(e Evidence) error {
 // A move without a lease is authorised by the card's public epoch number alone, which is
 // not a secret: it is allowed only for the in-place resume of a ledger-made park and for
 // settling a MERGING card from its landed or failed queue row, and the position table
-// still has to accept the move (P3-7).
+// still has to accept the move (P3-7). A MERGING card whose holder died and whose queue
+// row is still waiting, verifying or landing cannot be moved or cancelled by anyone until
+// the queue's owner settles the row.
 func (s *Store) Move(ctx context.Context, cardID string, epoch int64, to core.Position, actor, reason string, ev ...Evidence) error {
 	if strings.TrimSpace(actor) == "" {
 		return fmt.Errorf("%w: a move needs its actor", ErrInvalid)

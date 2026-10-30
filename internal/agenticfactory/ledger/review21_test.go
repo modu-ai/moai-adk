@@ -254,3 +254,36 @@ func TestSnapshotSyncsTheFileThenTheDirectory(t *testing.T) {
 		t.Errorf("dst was replaced although the sync failed: %q", b)
 	}
 }
+
+// N2: a receipt is a run of the card's current epoch.
+func TestAReceiptFromAnEarlierEpochIsNoReceipt(t *testing.T) {
+	s := openTemp(t)
+	c := claimOne(t, s, "a", "internal/a/x.go")
+	for _, k := range []string{KindGreen, KindGate} {
+		if err := s.AddEvidence(bg, "a", c.Epoch, Evidence{Kind: k, SubjectSHA: "s1", Result: ResultPass}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := s.Reap(bg, alwaysDead); err != nil {
+		t.Fatal(err)
+	}
+	c2, err := s.Claim(bg, req("next", 78))
+	if err != nil || c2.Epoch != c.Epoch+1 {
+		t.Fatalf("%+v %v", c2, err)
+	}
+	if err := s.Move(bg, "a", c2.Epoch, posReview, "lane", "r"); !errors.Is(err, core.ErrGuardMissing) {
+		t.Errorf("the earlier holder's green/gate pair must not count: %v", err)
+	}
+}
+
+// N4: a row an older build wrote without a subject_sha must not break Move.
+func TestAGreenRowWithNoSubjectDoesNotBreakMove(t *testing.T) {
+	s := openTemp(t)
+	c := claimOne(t, s, "a", "internal/a/x.go")
+	if _, err := s.db.ExecContext(bg, `INSERT INTO evidence(card_id,kind,tree_sha,result,epoch,at) VALUES('a','green','t','pass',?,strftime('%Y-%m-%dT%H:%M:%fZ','now'))`, c.Epoch); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Move(bg, "a", c.Epoch, posReview, "lane", "r"); !errors.Is(err, core.ErrGuardMissing) {
+		t.Errorf("a NULL subject is a receipt with no accepted gate, not a scan error: %v", err)
+	}
+}

@@ -233,8 +233,9 @@ const (
 )
 
 // QueueItem is one row of merge_queue. The row is not tied to the card's position: a
-// queued card that is moved elsewhere (cancelled, say) leaves its row behind, and the
-// merge queue's owner reads the card before acting on a row (P3-6).
+// queued card that is moved elsewhere (cancelled, say) leaves its row behind, so the
+// merge queue's owner is expected to read the card before acting on a row (P3-6; the
+// mergeq adapter owes that read).
 type QueueItem struct {
 	CardID       string
 	CardEpoch    int64 // the card epoch the row was queued at; waiting, verifying and failed writes carry it
