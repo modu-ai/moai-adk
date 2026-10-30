@@ -99,7 +99,7 @@ func (s *site) post(path, event, id string, body []byte, secret, sig string) int
 	if err != nil {
 		s.t.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	return resp.StatusCode
 }
 
@@ -160,7 +160,7 @@ func TestForgedAndUnsignedDeliveriesAreRefused(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		if resp.StatusCode != http.StatusUnauthorized {
 			t.Errorf("%s: status = %d, want 401", name, resp.StatusCode)
 		}
@@ -283,7 +283,7 @@ func TestMalformedRequestsAreRefused(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resp.Body.Close()
+	_ = resp.Body.Close()
 	if resp.StatusCode != http.StatusMethodNotAllowed {
 		t.Errorf("GET: %d", resp.StatusCode)
 	}
@@ -308,7 +308,7 @@ func TestARouteWithoutASecretOrALimitRefusesEverything(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		if resp.StatusCode < 500 {
 			t.Errorf("%s: status %d, want a refusal", name, resp.StatusCode)
 		}
@@ -373,7 +373,7 @@ func TestABusyQueueAnswers503NotAFault(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resp.Body.Close()
+	_ = resp.Body.Close()
 	if resp.StatusCode != http.StatusServiceUnavailable {
 		t.Errorf("status = %d, want 503", resp.StatusCode)
 	}

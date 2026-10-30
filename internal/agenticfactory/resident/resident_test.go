@@ -322,7 +322,7 @@ func TestAWebhookDeliveryReachesTheWiredCollectorUnderTheConfiguredLimits(t *tes
 		if err != nil {
 			t.Fatal(err)
 		}
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		return resp.StatusCode
 	}
 	good := []byte(`{"action":"edited","issue":{"number":7},"repository":{"full_name":"o/a"}}`)

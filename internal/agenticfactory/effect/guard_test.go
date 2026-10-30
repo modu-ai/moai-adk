@@ -106,7 +106,7 @@ func TestMatchingIsBySegmentNotBySubstring(t *testing.T) {
 	if err := CheckRequest("PATCH", "/repos/o/r/labels/protection", nil); err != nil {
 		t.Errorf("a label named protection was refused: %v", err)
 	}
-	refusal(t, "PATCH", "/repos/o/r/hooks")
+	_ = refusal(t, "PATCH", "/repos/o/r/hooks")
 }
 
 func TestMethodOverrideHeadersAreRefused(t *testing.T) {

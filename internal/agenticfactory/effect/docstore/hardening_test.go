@@ -134,7 +134,7 @@ func TestASaveIsToldBusyWhileTheDocumentLockIsHeldAndSucceedsWhenItIsFree(t *tes
 	if err != nil {
 		t.Fatal(err)
 	}
-	f.Close()
+	_ = f.Close()
 	released := false
 	t.Cleanup(func() {
 		if !released {

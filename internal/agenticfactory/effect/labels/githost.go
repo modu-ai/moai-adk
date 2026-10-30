@@ -112,7 +112,7 @@ func (h *GitHubHost) Create(ctx context.Context, l Label) error {
 	if !h.AllowWrite {
 		return ErrWriteDisabled
 	}
-	body, _ := json.Marshal(ghLabel{Name: l.Name, Color: l.Color, Description: l.Description})
+	body, _ := json.Marshal(ghLabel(l))
 	_, err := h.do(ctx, forge.Request{Method: http.MethodPost, Path: h.base(), Body: body})
 	return err
 }

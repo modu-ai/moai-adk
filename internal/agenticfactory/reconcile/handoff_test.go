@@ -12,7 +12,6 @@ type fakeHandoff struct {
 	recErr   error
 	pr       RemotePR
 	prErr    error
-	releases int
 }
 
 func (f *fakeHandoff) LookupHandoff(context.Context, string) (Receipt, bool, error) {
@@ -27,7 +26,8 @@ func decide(f *fakeHandoff) HandoffDecision {
 }
 
 func TestHandoffIDIsDeterministic(t *testing.T) {
-	if HandoffID(7, 55, headA) != HandoffID(7, 55, headA) || HandoffID(7, 55, headA) == HandoffID(7, 55, headB) {
+	first, second := HandoffID(7, 55, headA), HandoffID(7, 55, headA) // two calls, one input
+	if first != second || first == HandoffID(7, 55, headB) {
 		t.Error("handoff id must depend on issue, PR and head only")
 	}
 }

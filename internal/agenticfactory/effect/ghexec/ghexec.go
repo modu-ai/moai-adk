@@ -241,15 +241,3 @@ func repoFlags(args []string) []string {
 	}
 	return out
 }
-
-func flagValue(args []string, name string) string {
-	for i, a := range args {
-		if a == name && i+1 < len(args) {
-			return args[i+1]
-		}
-		if v, ok := strings.CutPrefix(a, name+"="); ok {
-			return v
-		}
-	}
-	return ""
-}
