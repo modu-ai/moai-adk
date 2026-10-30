@@ -126,7 +126,10 @@ func factoryLaneRuleForSource(source, lang string) string {
 // the owned-card rule instead of misdirecting it at the parent-checkout
 // queue verb). dir may be empty; an empty dir resolves env-only.
 func factoryLaneRuleForSourceInDir(source, lang, dir string) string {
-	if source != "" && source != "startup" && source != "clear" {
+	// startup, clear and compact (and an unset source) carry the rule: after a compact only a summary of
+	// the conversation remains, so the rule text must be injected again. Resume does not — the transcript
+	// still holds the earlier injection.
+	if source != "" && source != "startup" && source != "clear" && source != "compact" {
 		return ""
 	}
 	label := os.Getenv(config.EnvMoaiFactoryWorker)

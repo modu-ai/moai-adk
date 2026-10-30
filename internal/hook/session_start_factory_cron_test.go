@@ -103,13 +103,15 @@ func TestTheCronsStopWhenThereIsNothingLeftAndTheLadderNamesTheAdvisoryCondition
 	}
 }
 
-// Which session-start sources carry the lane rule. Pinned so a change is deliberate: it rides startup and
-// clear (and an unset source), not resume or compact.
-func TestTheLaneRuleSourceSet(t *testing.T) {
+// Which session-start sources carry the lane rule (leader decision): startup, clear and compact, plus an
+// unset source. After a compact only a conversation summary remains, so the rule text is gone and must be
+// injected again — the same three sources the factory role-injection rules already use. Resume does not
+// carry it: the transcript still holds the earlier injection verbatim.
+func TestTheLaneRuleIsInjectedOnStartupClearAndCompactButNotResume(t *testing.T) {
 	for _, tc := range []struct {
 		source string
 		want   bool
-	}{{"startup", true}, {"clear", true}, {"", true}, {"resume", false}, {"compact", false}} {
+	}{{"startup", true}, {"clear", true}, {"compact", true}, {"", true}, {"resume", false}} {
 		sdScrubRuleEnv(t)
 		t.Setenv(config.EnvMoaiFactoryWorker, "lane-2")
 		t.Setenv(config.EnvFactoryBackend, factory.BackendClaude)
