@@ -107,10 +107,14 @@ func sanitize(s string) (string, map[Category]int) {
 		}
 		return m
 	})
+	// And a mixed run that '/' or '+' cuts into pieces under 32 characters, such as an
+	// unnamed AWS secret access key.
+	s = maskCutSecrets(s, found)
 	return s, found
 }
 
 var (
+	cutRun    = regexp.MustCompile(`[A-Za-z0-9/+]{40,}`)
 	opaqueRun = regexp.MustCompile(`[A-Za-z0-9_+=\-]{32,}`)
 	hexDigest = regexp.MustCompile(`^(?:[0-9a-f]{40}|[0-9a-f]{64})$`)
 	uuidShape = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
@@ -221,4 +225,116 @@ func RefuseIfSensitive(s string) error {
 		names[i] = string(c)
 	}
 	return fmt.Errorf("%w: found %s", ErrUnsanitized, strings.Join(names, ", "))
+}
+
+// wordShare is the share of s that reads as words: an optional capital followed by
+// two or more lower-case letters. A path or an identifier made of words is mostly
+// that; random text of this alphabet is about a third (99% of 40-character random
+// runs sit under 0.65), a title-case path 0.86 and up.
+func wordShare(s string) float64 {
+	if s == "" {
+		return 0
+	}
+	inWord := 0
+	for i := 0; i < len(s); {
+		j := i
+		if s[j] >= 'A' && s[j] <= 'Z' {
+			j++
+		}
+		k := j
+		for k < len(s) && s[k] >= 'a' && s[k] <= 'z' {
+			k++
+		}
+		if k-j >= 2 {
+			inWord += k - i
+			i = k
+			continue
+		}
+		i++
+	}
+	return float64(inWord) / float64(len(s))
+}
+
+// maxWordShare is where a run stops being a secret and becomes a path of words.
+const maxWordShare = 0.80
+
+// looksCutSecret reports a run of [A-Za-z0-9/+] that is a secret cut into short
+// pieces by '/' or '+'. It is deliberately narrow, because a path is made of the
+// same characters: it must be a single standalone token (not a piece of a longer
+// path, URL or identifier, so no '.', '-' or '_' beside it and no leading or
+// trailing '/'), hold a '/' or '+', mix upper case, lower case and digits, read as
+// words for less than maxWordShare of it, and change character class like random
+// text does once the '/' and '+' are taken out. A bare hex hash holds no '/' or '+' and is
+// not touched.
+func looksCutSecret(run string, before, after byte) bool {
+	for _, c := range []byte{before, after} {
+		if c == '.' || c == '-' || c == '_' {
+			return false
+		}
+	}
+	if run[0] == '/' || run[len(run)-1] == '/' || !strings.ContainsAny(run, "/+") {
+		return false
+	}
+	body := strings.Map(func(r rune) rune {
+		if r == '/' || r == '+' {
+			return -1
+		}
+		return r
+	}, run)
+	var lower, upper, digit bool
+	pairs, flips := 0, 0
+	for i := 0; i < len(body); i++ {
+		c := classOf(body[i])
+		switch c {
+		case 'l':
+			lower = true
+		case 'u':
+			upper = true
+		case 'd':
+			digit = true
+		}
+		if i > 0 {
+			pairs++
+			if c != classOf(body[i-1]) {
+				flips++
+			}
+		}
+	}
+	if !lower || !upper || !digit || wordShare(body) >= maxWordShare || pairs == 0 {
+		return false
+	}
+	return float64(flips)/float64(pairs) >= opaqueTransitionRatio
+}
+
+// maskCutSecrets masks the runs looksCutSecret accepts and counts them as opaque
+// tokens.
+func maskCutSecrets(s string, found map[Category]int) string {
+	idx := cutRun.FindAllStringIndex(s, -1)
+	if len(idx) == 0 {
+		return s
+	}
+	var b strings.Builder
+	last := 0
+	for _, m := range idx {
+		start, end := m[0], m[1]
+		for end < len(s) && s[end] == '=' && end-m[1] < 2 { // base64 padding belongs to the token
+			end++
+		}
+		var before, after byte
+		if start > 0 {
+			before = s[start-1]
+		}
+		if end < len(s) {
+			after = s[end]
+		}
+		if !looksCutSecret(s[m[0]:m[1]], before, after) {
+			continue
+		}
+		b.WriteString(s[last:start])
+		b.WriteString(redacted)
+		last = end
+		found[CategoryOpaqueToken]++
+	}
+	b.WriteString(s[last:])
+	return b.String()
 }
