@@ -72,7 +72,16 @@ const (
 	CtxCurrent      ContextState = "current"
 	CtxStale        ContextState = "stale"
 	CtxInaccessible ContextState = "inaccessible"
+	// The two reasons an item cannot be reached yet, told apart: the evidence exists only as a local
+	// file (prepared or masked, nothing committed), or only as a local commit that was never pushed.
+	// Both are "inaccessible" to a reader: no link is shown and nothing is offered as accessible.
+	CtxInaccessibleLocal    ContextState = "inaccessible-local"
+	CtxInaccessibleUnpushed ContextState = "inaccessible-unpushed"
 )
+
+func (s ContextState) inaccessible() bool {
+	return s == CtxInaccessible || s == CtxInaccessibleLocal || s == CtxInaccessibleUnpushed
+}
 
 // LinkAvailability is the state of an evidence link. It is "available" only after a remote lookup
 // confirmed it; uploading (pushing) alone proves nothing.
@@ -158,7 +167,7 @@ func (c *Collector) fillContext(ctx context.Context, r *Row, at time.Time) {
 			items[i].Stage = StageUnknown
 		}
 		switch {
-		case items[i].State == CtxInaccessible:
+		case items[i].State.inaccessible():
 			items[i].Availability = LinkInaccessible
 		case items[i].Stage == StageRestricted:
 			items[i].Availability = LinkRestricted

@@ -247,8 +247,10 @@ func TestEnforcer_Collaboration_RedirectOrRename_IsRefused(t *testing.T) {
 		e := &effect.Enforcer{Identity: h, Collaboration: collab(func(c *core.Collaboration) {
 			c.Enabled, c.AllowedRepositories, c.EditBody = true, []string{repoA}, true
 		})}
-		refusedWith(t, check(e, "PATCH", pathIssueForeign, `{"body":"x"}`), effect.ReasonRepoNotAllowed)
-		t.Logf("%s: refused as repository-not-allowed", name)
+		// Behavior change (lane-18 F20): the host not answering for the repository asked about is refused as
+		// repository-unverified, a reason of its own (named constant added by lane-20 549ef06ac9).
+		refusedWith(t, check(e, "PATCH", pathIssueForeign, `{"body":"x"}`), effect.ReasonRepoUnverified)
+		t.Logf("%s: refused as repository-unverified", name)
 	}
 }
 

@@ -81,7 +81,7 @@ func TestReal_RepairContention_StaleTicketRefused(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := st.Release(ref, "w1"); err != nil {
+	if err := st.Release(ref, "w1", old.Epoch); err != nil {
 		t.Fatal(err)
 	}
 	cur, err := r.Claim(ref, "w2", "d-2", run)

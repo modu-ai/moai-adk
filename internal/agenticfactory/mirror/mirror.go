@@ -87,6 +87,10 @@ type Mirror struct {
 	// Now is the clock; nil means time.Now.
 	Now func() time.Time
 
+	// Store, when set, is where Flush records an Issue's mirror_state after a
+	// permanent refusal; unset, nothing is recorded.
+	Store *claim.Store
+
 	mu      sync.Mutex
 	memos   map[int]memo
 	pending map[int]queued
@@ -165,7 +169,38 @@ func (m *Mirror) call(ctx context.Context, args ...string) ([]byte, error) {
 		return nil, m.fromStatus(&forge.StatusError{Status: status, Header: header, Body: body})
 	}
 	text, _ := redact(string(errb))
-	return nil, fmt.Errorf("agenticfactory/mirror: gh exit %d: %s", exit, text)
+	return nil, &ghExitError{exit: exit, text: text}
+}
+
+// ghExitError is gh failing without a parsed HTTP answer. Its text is gh's own stderr,
+// redacted; probeReason leaves it out because it can quote what the host wrote.
+type ghExitError struct {
+	exit int
+	text string
+}
+
+func (e *ghExitError) Error() string {
+	return fmt.Sprintf("agenticfactory/mirror: gh exit %d: %s", e.exit, e.text)
+}
+
+// probeReason says why a repository read failed without repeating anything the host
+// wrote: the status and the class of the failure, or that gh did not run. A response
+// body or gh's stderr can reach logs and Actions through the joined error, and the
+// sanitizer only knows secrets, not everything a host may say.
+func probeReason(err error) string {
+	var se *forge.StatusError
+	var be *BlockedError
+	var ge *ghExitError
+	switch {
+	case errors.As(err, &se):
+		return fmt.Sprintf("host answered status %d", se.Status)
+	case errors.As(err, &be):
+		return fmt.Sprintf("host answered status %d (%s)", be.Status, be.Reason)
+	case errors.As(err, &ge):
+		return fmt.Sprintf("gh exited %d without a parsed answer", ge.exit)
+	}
+	text, _ := redact(err.Error())
+	return text
 }
 
 // fromStatus turns a typed HTTP failure into a block or a plain status error.
@@ -482,16 +517,63 @@ func (m *Mirror) Pending() []int {
 	return out
 }
 
+// permanent reports a failure that belongs to one Issue for good, and the
+// mirror_state to record for it: a ledger refused as holding a secret or personal
+// data (its RESTRICTED record is up), or the host saying the Issue is gone (410) or
+// refuses its content (422). Retrying cannot change either answer, and neither says
+// anything about the other Issues. A 404 is permanent only if the repository itself
+// can be read (verify is set): the host answers 404 as well when the token cannot see
+// the repository at all. A rate limit, a permission denial and a server error are not
+// of this kind: they may pass, or hit every Issue alike.
+func permanent(err error) (state string, ok, verify bool) {
+	if errors.Is(err, core.ErrUnsanitized) {
+		return "refused", true, false
+	}
+	var se *forge.StatusError
+	if errors.As(err, &se) {
+		switch se.Status {
+		case 410, 422:
+			return fmt.Sprintf("rejected(%d)", se.Status), true, false
+		case 404:
+			return "rejected(404)", true, true
+		}
+	}
+	return "", false, false
+}
+
+// maxConsecutiveLocked is how many unclassified 403s in a row Flush goes past before it
+// treats them as one fact about the whole repository and stops. A locked Issue answers
+// 403 with no limit signal and no permission wording; one of them says nothing about
+// the Issues behind it, three in a row say the token is probably refused as a whole.
+const maxConsecutiveLocked = 3
+
+// locked reports an unclassified 403 (see forge.KindUnclassified): the answer a locked
+// Issue gives, and also what a denial with unusual wording gives. It is not dropped.
+func locked(err error) bool {
+	var be *BlockedError
+	return errors.As(err, &be) && be.Reason == core.ReasonUnclassified && be.Status == 403
+}
+
+// repoReadable says whether the repository itself can be read with the access in use:
+// one read of the repository, nothing written.
+func (m *Mirror) repoReadable(ctx context.Context) error {
+	_, err := m.call(ctx, fmt.Sprintf("repos/%s", m.Repo))
+	return err
+}
+
 // Flush writes each queued ledger once, lowest Issue first, and returns how many
-// were written. A ledger that is refused for good (ErrUnsanitized: the RESTRICTED
-// record has been written in its place, and trying again cannot change the answer)
-// leaves the queue and the run goes on with the next Issue, so one Issue's secret
-// never holds the Issues behind it. Any other failure (a short budget, a block, an
-// error) stops the run and leaves the rest queued, so a refusal is never hammered.
-// What went wrong comes back joined, each error named with its Issue. An entry
-// queued again while its predecessor was being written stays queued.
+// were written. A ledger that is refused for good (see permanent) leaves the queue
+// and the run goes on with the next Issue, so one Issue's secret or one deleted
+// Issue never holds the Issues behind it; where a Store is attached the refusal is
+// also recorded as the Issue's mirror_state. Any other failure (a short budget, a
+// block, an error) stops the run and leaves the rest queued, so a refusal is never
+// hammered. An unclassified 403 (a locked Issue) is gone past, kept queued and recorded
+// as blocked(unclassified-403); maxConsecutiveLocked of them in a row stop the run. What
+// went wrong comes back joined, each error named with its Issue. An
+// entry queued again while its predecessor was being written stays queued.
 func (m *Mirror) Flush(ctx context.Context) (int, error) {
 	written := 0
+	consecutiveLocked := 0
 	var errs []error
 	drop := func(n int, gen uint64) {
 		m.mu.Lock()
@@ -508,16 +590,43 @@ func (m *Mirror) Flush(ctx context.Context) (int, error) {
 			continue
 		}
 		err := m.WriteLedger(ctx, q.l)
-		switch {
-		case err == nil:
+		if err == nil {
 			written++
+			consecutiveLocked = 0
 			drop(n, q.gen)
-		case errors.Is(err, core.ErrUnsanitized):
-			errs = append(errs, fmt.Errorf("issue-%d: %w", n, err))
-			drop(n, q.gen)
-		default:
-			errs = append(errs, fmt.Errorf("issue-%d: %w", n, err))
+			continue
+		}
+		errs = append(errs, fmt.Errorf("issue-%d: %w", n, err))
+		if locked(err) {
+			// Stays queued: the same answer can be a real denial, and dropping would empty
+			// the queue Issue by Issue. It does not hold the Issues behind it, though.
+			consecutiveLocked++
+			if m.Store != nil {
+				if rerr := m.Store.RecordMirror(q.l.Issue, "blocked(unclassified-403)"); rerr != nil && !errors.Is(rerr, core.ErrNotHeld) {
+					errs = append(errs, fmt.Errorf("issue-%d: recording blocked(unclassified-403): %w", n, rerr))
+				}
+			}
+			if consecutiveLocked >= maxConsecutiveLocked {
+				return written, errors.Join(errs...)
+			}
+			continue
+		}
+		state, perm, verify := permanent(err)
+		if perm && verify {
+			if perr := m.repoReadable(ctx); perr != nil {
+				perm = false // nothing is known about the Issue: treat it as a failure that may pass
+				errs = append(errs, fmt.Errorf("issue-%d: the repository could not be read to tell this Issue's failure from a hidden repository: %s", n, probeReason(perr)))
+			}
+		}
+		if !perm {
 			return written, errors.Join(errs...)
+		}
+		drop(n, q.gen)
+		if m.Store != nil {
+			// An Issue the store does not know has no state to record; that is not an error.
+			if rerr := m.Store.RecordMirror(q.l.Issue, state); rerr != nil && !errors.Is(rerr, core.ErrNotHeld) {
+				errs = append(errs, fmt.Errorf("issue-%d: recording %s: %w", n, state, rerr))
+			}
 		}
 	}
 	return written, errors.Join(errs...)

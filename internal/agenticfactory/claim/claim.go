@@ -28,20 +28,24 @@ type Record struct {
 	Holder string `json:"holder"` // empty once released
 	// AgentName is the display name (agent-N) of the holder; Holder carries
 	// the immutable session id. Neither is changed by Update.
-	AgentName string           `json:"agent_name,omitempty"`
-	Dispatch  string           `json:"dispatch"`
-	Run       core.RunID       `json:"run"`
-	Attempt   core.AttemptID   `json:"attempt,omitempty"`
-	Epoch     int64            `json:"epoch"`
-	Seq       int64            `json:"seq"`
-	State     core.State       `json:"state"`
-	Return    core.State       `json:"return_stage,omitempty"`
-	Reason    core.BlockReason `json:"block_reason,omitempty"`
-	Resume    string           `json:"resume_condition,omitempty"`
-	Head      core.HeadSHA     `json:"head,omitempty"`
-	Delivery  core.Delivery    `json:"delivery,omitempty"`
-	Deploy    string           `json:"deploy,omitempty"`
-	Mirror    string           `json:"mirror_state,omitempty"` // current | stale | refused | blocked(<reason>)
+	AgentName string         `json:"agent_name,omitempty"`
+	Dispatch  string         `json:"dispatch"`
+	Run       core.RunID     `json:"run"`
+	Attempt   core.AttemptID `json:"attempt,omitempty"`
+	Epoch     int64          `json:"epoch"`
+	Seq       int64          `json:"seq"`
+	// OwnerSeq counts the writes the OWNER made with its ticket (Update, UpdateRelease).
+	// Seq also moves for a monitor or the mirror (RecordMirror, a repair signal); a safe
+	// stop goes stale only when the owner itself acts, so it is judged by this counter.
+	OwnerSeq int64            `json:"owner_seq,omitempty"`
+	State    core.State       `json:"state"`
+	Return   core.State       `json:"return_stage,omitempty"`
+	Reason   core.BlockReason `json:"block_reason,omitempty"`
+	Resume   string           `json:"resume_condition,omitempty"`
+	Head     core.HeadSHA     `json:"head,omitempty"`
+	Delivery core.Delivery    `json:"delivery,omitempty"`
+	Deploy   string           `json:"deploy,omitempty"`
+	Mirror   string           `json:"mirror_state,omitempty"` // current | stale | refused | rejected(<status>) | blocked(<reason>)
 	// AttemptSeq counts attempts on this Issue (initial plus repairs).
 	AttemptSeq int `json:"attempt_seq,omitempty"`
 	// Receipt is set when the agent published a PR and handed the Issue off.
@@ -89,6 +93,78 @@ type Record struct {
 	// are empty then, which means "not known", not "no park".
 	PositionUnknown string `json:"-"`
 	Worktree        string `json:"worktree,omitempty"`
+	// Evidence is what the writer of THIS write carries for the edges it takes: the
+	// guard keys the record cannot show itself, "resume-guard:<reason>" for a write
+	// that resolves a park (E20). It is never stored and write clears it; a fact the
+	// record does hold (receipt, merge, close) is derived from the record, not asserted.
+	Evidence []string `json:"-"`
+}
+
+// position is the S46 position the record's derived fields describe. A MERGING
+// record is one whose merge was seen, which is how the legacy fields derive it.
+func (r Record) position() core.Position {
+	return core.Position{Stage: r.Stage, Sub: r.Sub, Park: r.Park, RemoteIntegrated: r.Stage == core.StageMerging}
+}
+
+// moveEvidence is what this write shows for the edges it takes: the facts its own
+// fields hold, and what the writer carried in Evidence.
+func (r Record) moveEvidence() []string {
+	have := append([]string(nil), r.Evidence...)
+	if r.Receipt != nil {
+		have = append(have, core.FactReceipt)
+		if r.Receipt.LeaderAccepted {
+			have = append(have, core.FactReceiptAccepted)
+		}
+	}
+	if r.Merged {
+		have = append(have, core.FactMerged)
+	}
+	if r.Closed {
+		have = append(have, core.FactClosed)
+	}
+	if r.Pending == "" {
+		have = append(have, core.FactSettled)
+	}
+	return have
+}
+
+// clone is a copy of r that shares no memory with it: every pointer target and the
+// History slice are duplicated, so a function given the copy cannot change the
+// original in place. A reference-typed field added to Record must be added here;
+// TestRecordCloneKnowsEveryReferenceField fails until it is.
+func (r Record) clone() Record {
+	c := r
+	if r.Receipt != nil {
+		v := *r.Receipt
+		c.Receipt = &v
+	}
+	if r.Park != nil {
+		v := *r.Park
+		c.Park = &v
+	}
+	if r.Gate != nil {
+		v := *r.Gate
+		c.Gate = &v
+	}
+	if r.Refusal != nil {
+		v := *r.Refusal
+		c.Refusal = &v
+	}
+	if r.Wait != nil {
+		v := *r.Wait
+		c.Wait = &v
+	}
+	if r.Repair != nil {
+		v := *r.Repair
+		c.Repair = &v
+	}
+	if r.History != nil {
+		c.History = append([]Event(nil), r.History...)
+	}
+	if r.Evidence != nil {
+		c.Evidence = append([]string(nil), r.Evidence...)
+	}
+	return c
 }
 
 // Repair is the canon E06 evidence (REVIEWING -> BUILDING/FIX): the repair
@@ -422,6 +498,18 @@ func (s *Store) write(i core.IssueRef, r *Record) error {
 	if err := r.deriveStage(); err != nil {
 		return err
 	}
+	// The position this write leaves must be one an S46 edge reaches from the
+	// stored one (or the same). A stored record whose position is not known has no
+	// Stage (deriveStage empties it when it fails) and is not compared: it is the
+	// write that repairs it.
+	if prev, had, err := s.read(i); err != nil {
+		return err
+	} else if had && prev.Stage != "" {
+		if err := core.CheckMove(prev.position(), r.position(), r.moveEvidence()); err != nil {
+			return err
+		}
+	}
+	r.Evidence = nil
 	// A write that puts the Issue into PARKED carries its wait record (design
 	// 2.1c), and while the park stays no write takes that record away. A record
 	// parked before this rule, with no wait record, is rewritten as it is.
@@ -676,7 +764,7 @@ func (s *Store) UpdateRelease(i core.IssueRef, holder string, epoch int64, fn fu
 		if err := fn(&next); err != nil {
 			return err
 		}
-		next.Issue, next.AgentName, next.Epoch, next.Seq = cur.Issue, cur.AgentName, cur.Epoch, cur.Seq+1
+		next.Issue, next.AgentName, next.Epoch, next.Seq, next.OwnerSeq = cur.Issue, cur.AgentName, cur.Epoch, cur.Seq+1, cur.OwnerSeq+1
 		next.Holder = ""
 		out = next
 		return s.write(i, &out)
@@ -733,6 +821,63 @@ func (s *Store) Verify(i core.IssueRef, holder string, epoch int64) (Record, err
 	return r, nil
 }
 
+// RecordMirror sets the Issue's mirror_state without the owner's ticket: the mirror
+// is a monitor reporting what became of the comment, not the owner's work, and it
+// changes nothing else. A record that already reads the state is left alone; an
+// Issue the store does not know is core.ErrNotHeld. Like every record write it moves
+// Seq, which is what makes a safe stop recorded before it go stale.
+func (s *Store) RecordMirror(i core.IssueRef, state string) error {
+	return s.withLock(i, func() error {
+		cur, ok, err := s.read(i)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return core.ErrNotHeld
+		}
+		if cur.Mirror == state {
+			return nil
+		}
+		next := cur
+		next.Mirror, next.Seq = state, cur.Seq+1
+		return s.write(i, &next)
+	})
+}
+
+// UpdateAsMonitor is Update for a write that is not the owner acting: a reminder on a
+// wait, written by a monitor under the owner's holder and epoch so the record stays
+// the owner's. It verifies the same ownership and moves Seq, but not OwnerSeq, so it
+// never stales the owner's safe stop (see CheckSafeStop).
+//
+// What fn may change is narrowed to the wait: every other field is put back to its
+// stored value, so a monitor holding the owner's ticket cannot move the state, the
+// head, the receipt or anything else the owner decides. Known limit: the monitor
+// still presents the OWNER's holder and epoch, so nothing proves it is a monitor and
+// not the owner; the narrowing reduces what a mistaken or hostile caller can do, it
+// does not authenticate it. Revisit when the identity lock of REQ-AF-011 lands.
+func (s *Store) UpdateAsMonitor(i core.IssueRef, holder string, epoch int64, fn func(*Record) error) (Record, error) {
+	var out Record
+	err := s.withLock(i, func() error {
+		cur, err := s.Verify(i, holder, epoch)
+		if err != nil {
+			return err
+		}
+		work := cur.clone()
+		if err := fn(&work); err != nil {
+			return err
+		}
+		next := cur.clone()
+		next.Wait = work.Wait
+		next.Seq = cur.Seq + 1
+		out = next
+		return s.write(i, &out)
+	})
+	if err != nil {
+		return Record{}, err
+	}
+	return out, nil
+}
+
 // Update verifies ownership, applies fn to a copy, and persists it with Seq+1.
 // A refused or failed update leaves the stored record untouched.
 func (s *Store) Update(i core.IssueRef, holder string, epoch int64, fn func(*Record) error) (Record, error) {
@@ -746,7 +891,7 @@ func (s *Store) Update(i core.IssueRef, holder string, epoch int64, fn func(*Rec
 		if err := fn(&next); err != nil {
 			return err
 		}
-		next.Issue, next.Holder, next.AgentName, next.Epoch, next.Seq = cur.Issue, cur.Holder, cur.AgentName, cur.Epoch, cur.Seq+1
+		next.Issue, next.Holder, next.AgentName, next.Epoch, next.Seq, next.OwnerSeq = cur.Issue, cur.Holder, cur.AgentName, cur.Epoch, cur.Seq+1, cur.OwnerSeq+1
 		out = next
 		return s.write(i, &out)
 	})
@@ -756,9 +901,11 @@ func (s *Store) Update(i core.IssueRef, holder string, epoch int64, fn func(*Rec
 	return out, nil
 }
 
-// Release hands the claim back. The record stays as a tombstone so the epoch
-// keeps increasing across holders.
-func (s *Store) Release(i core.IssueRef, holder string) error {
+// Release gives the Issue up. It needs the holder and the epoch the caller holds: a
+// run of the same session that kept an older epoch must not release the newer claim
+// the session took afterwards (audit F14). An Issue nobody holds is ErrNotHeld, a
+// different holder ErrForeign, a different epoch ErrOwnershipUnverified.
+func (s *Store) Release(i core.IssueRef, holder string, epoch int64) error {
 	return s.withLock(i, func() error {
 		cur, ok, err := s.read(i)
 		if err != nil {
@@ -769,6 +916,9 @@ func (s *Store) Release(i core.IssueRef, holder string) error {
 		}
 		if cur.Holder != holder {
 			return fmt.Errorf("%w: %q is not the holder", core.ErrForeign, holder)
+		}
+		if cur.Epoch != epoch {
+			return fmt.Errorf("%w: epoch %d, the claim is at %d", core.ErrOwnershipUnverified, epoch, cur.Epoch)
 		}
 		cur.Holder, cur.Seq = "", cur.Seq+1
 		return s.write(i, &cur)

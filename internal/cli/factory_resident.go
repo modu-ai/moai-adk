@@ -32,13 +32,17 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/claim"
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/effect/ghexec"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/effect/gitexec"
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/forge"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/monitor/notify/ghpr"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/resident"
 	"github.com/modu-ai/moai-adk/internal/config"
@@ -62,9 +66,11 @@ type residentExecs struct {
 	Git gitexec.Exec
 }
 
-func newResidentExecs(projectRoot string) residentExecs {
+func newResidentExecs(projectRoot, repo string) residentExecs {
 	return residentExecs{
-		GH: ghexec.Exec{Dir: projectRoot, MaxOutput: residentExecMaxOutput, WaitDelay: residentExecWaitDelay},
+		// Repo pins the one write gh can ever run (`issue create`, refused anyway while AllowWrite is false)
+		// to the configured repository; the reads do not depend on it.
+		GH: ghexec.Exec{Dir: projectRoot, Repo: repo, MaxOutput: residentExecMaxOutput, WaitDelay: residentExecWaitDelay},
 		Git: gitexec.Exec{
 			Dir: projectRoot, MaxOutput: residentExecMaxOutput, WaitDelay: residentExecWaitDelay,
 			Env: []string{residentGitAllowProtocol},
@@ -83,8 +89,10 @@ type residentOptions struct {
 	Secret func(repo string) []byte
 	// GHRead overrides the gh runner (tests); nil means the read-only ghexec runner.
 	GHRead ghpr.Runner
-	Now    func() time.Time
-	Out    io.Writer
+	// Transport overrides the gh-backed host lookup transport (tests); nil means ghexec.Transport.
+	Transport forge.Transport
+	Now       func() time.Time
+	Out       io.Writer
 	// Ready is called with the address the HTTP server listens on (tests that pass ":0").
 	Ready func(addr string)
 }
@@ -111,7 +119,7 @@ func newFactoryResidentCommand() *cobra.Command {
 			}
 			ctx, stop := codexSignalContext(cmd.Context())
 			defer stop()
-			return runFactoryResident(ctx, o)
+			return runFactoryResidentCmd(ctx, o)
 		},
 	}
 	cmd.Flags().StringVar(&o.ProjectRoot, "project-root", "", "project directory (default: the current directory)")
@@ -120,6 +128,29 @@ func newFactoryResidentCommand() *cobra.Command {
 	cmd.Flags().BoolVar(&o.Once, "once", false, "run one pass and exit")
 	return cmd
 }
+
+// runFactoryResidentCmd is the command's return boundary. The error it returns is printed by the CLI, so
+// it leaves the process: sanitize it once here (RED stub: not yet).
+func runFactoryResidentCmd(ctx context.Context, o residentOptions) error {
+	return sanitizeResidentErr(runFactoryResident(ctx, o))
+}
+
+// sanitizeResidentErr returns an error whose text passes the core sanitizer and whose chain still reaches the
+// original cause (errors.Is / errors.As work through Unwrap).
+func sanitizeResidentErr(err error) error {
+	if err == nil {
+		return nil
+	}
+	return &cleanedError{msg: outStr(err.Error()), err: err}
+}
+
+type cleanedError struct {
+	msg string
+	err error
+}
+
+func (e *cleanedError) Error() string { return e.msg }
+func (e *cleanedError) Unwrap() error { return e.err }
 
 // runFactoryResident validates, wires and runs. It returns nil when the project has not set Agentic
 // Factory up (a notice is printed) and when ctx ends the loop; every refusal is an error that says why.
@@ -133,7 +164,7 @@ func runFactoryResident(ctx context.Context, o residentOptions) error {
 		if res.Err != nil {
 			return fmt.Errorf("agentic factory settings are broken: %s", res.Reason)
 		}
-		fmt.Fprintf(out, "Agentic Factory is not configured for this project: %s\n", res.Reason)
+		writeResidentNotConfigured(out, res.Reason)
 		return nil
 	}
 	s, err := config.LoadAgenticFactorySettings(o.ProjectRoot)
@@ -164,9 +195,17 @@ func runFactoryResident(ctx context.Context, o residentOptions) error {
 	if err != nil {
 		return fmt.Errorf("claim store directory %q cannot be opened: %w", dir, err)
 	}
+	execs := newResidentExecs(o.ProjectRoot, s.PRSourceRepository)
 	ghRead := o.GHRead
 	if ghRead == nil {
-		ghRead = newResidentExecs(o.ProjectRoot).GH.Run
+		ghRead = execs.GH.Run
+	}
+	// The Runner's host Facts read through gh (GET only). Nothing in the loop calls them yet: they are used
+	// by the authority checks of a claim, which has no production caller; wiring them does not add a network
+	// call to a pass.
+	transport := o.Transport
+	if transport == nil {
+		transport = ghexec.Transport{Exec: execs.GH}
 	}
 	now := o.Now
 	if now == nil {
@@ -176,16 +215,19 @@ func runFactoryResident(ctx context.Context, o residentOptions) error {
 	if routes > 0 && o.Once {
 		secret = func(string) []byte { return nil } // Build needs a source; --once serves no route
 	}
-	r, err := resident.Build(s, resident.Deps{Store: st, GHRead: ghRead, Now: now, Secret: secret})
+	r, err := resident.Build(s, resident.Deps{Store: st, GHRead: ghRead, Now: now, Secret: secret, Transport: transport})
 	if err != nil {
 		return err
 	}
 
-	fmt.Fprintf(out, "agentic factory resident: claim store %s, %d webhook route(s)\n", dir, routes)
-	fmt.Fprintln(out, "  writes: none wired (Issue creation off; context-ledger comment writes not wired, path undecided)")
+	writeResidentHeader(out, dir, routes)
+	fmt.Fprintln(out, "  local writes: claim records (waits, repair marks) and inbox/cursor documents in the claim store")
+	fmt.Fprintln(out, "  external writes: none wired (Issue creation off; context-ledger comment writes not wired, path undecided)")
 	fmt.Fprintln(out, "  git: not called on the default path")
 	fmt.Fprintln(out, "  running against a real repository is an operation the user approves")
 
+	ctx, cancelRun := context.WithCancel(ctx)
+	defer cancelRun()
 	var srv *http.Server
 	serveDone := make(chan error, 1)
 	if routes > 0 && !o.Once {
@@ -196,7 +238,15 @@ func runFactoryResident(ctx context.Context, o residentOptions) error {
 		mux := http.NewServeMux()
 		mux.Handle("/hook/", r.Webhook)
 		srv = &http.Server{Handler: mux, ReadHeaderTimeout: 10 * time.Second}
-		go func() { serveDone <- srv.Serve(ln) }()
+		go func() {
+			err := srv.Serve(ln)
+			if err != nil && !errors.Is(err, http.ErrServerClosed) {
+				// A server that stopped on its own must not leave the loop running unobserved.
+				writeResidentServerStopped(out, err)
+				cancelRun()
+			}
+			serveDone <- err
+		}()
 		fmt.Fprintf(out, "  webhook: listening on %s\n", ln.Addr())
 		if o.Ready != nil {
 			o.Ready(ln.Addr().String())
@@ -213,15 +263,7 @@ func runFactoryResident(ctx context.Context, o residentOptions) error {
 		defer t.Stop()
 		ticks = t.C
 	}
-	report := func(p resident.Pass) {
-		if p.Err != nil {
-			fmt.Fprintf(out, "pass %s: error: %v\n", p.At.UTC().Format(time.RFC3339), p.Err)
-			return
-		}
-		fmt.Fprintf(out, "pass %s: %d action(s)\n", p.At.UTC().Format(time.RFC3339), len(p.Actions))
-	}
-
-	runErr := r.Run(ctx, ticks, report)
+	runErr := r.Run(ctx, ticks, func(p resident.Pass) { writeResidentPass(out, p) })
 
 	if srv != nil {
 		sctx, cancel := context.WithTimeout(context.Background(), residentShutdownGrace)
@@ -237,4 +279,56 @@ func runFactoryResident(ctx context.Context, o residentOptions) error {
 		return nil
 	}
 	return runErr
+}
+
+// What this command prints leaves the process (a terminal, a log, a report file), so every field that can
+// carry text from outside - a path, a configuration reason, an error - goes through the one core sanitizer
+// first. Fixed words and numbers are not sanitized.
+
+// outStr is the text as it may be printed.
+func outStr(s string) string {
+	out, _ := core.Redact(s)
+	return out
+}
+
+func writeResidentNotConfigured(out io.Writer, reason string) {
+	fmt.Fprintf(out, "Agentic Factory is not configured for this project: %s\n", outStr(reason))
+}
+
+func writeResidentHeader(out io.Writer, dir string, routes int) {
+	fmt.Fprintf(out, "agentic factory resident: claim store %s, %d webhook route(s)\n", outStr(dir), routes)
+}
+
+func writeResidentServerStopped(out io.Writer, err error) {
+	fmt.Fprintf(out, "webhook server stopped: %s\n", outStr(err.Error()))
+}
+
+// writeResidentPass prints one pass: the action count by kind, and every action that carries an error
+// with its Issue. A silent failure is the defect this exists for (audit F3): a stuck record must show
+// on screen, not only in the claim store.
+func writeResidentPass(out io.Writer, p resident.Pass) {
+	at := p.At.UTC().Format(time.RFC3339)
+	if p.Err != nil {
+		fmt.Fprintf(out, "pass %s: error: %s\n", at, outStr(p.Err.Error()))
+		return
+	}
+	counts := map[string]int{}
+	for _, a := range p.Actions {
+		counts[a.What]++
+	}
+	kinds := make([]string, 0, len(counts))
+	for k := range counts {
+		kinds = append(kinds, k)
+	}
+	sort.Strings(kinds)
+	parts := make([]string, 0, len(kinds))
+	for _, k := range kinds {
+		parts = append(parts, fmt.Sprintf("%s=%d", k, counts[k]))
+	}
+	fmt.Fprintf(out, "pass %s: %d action(s) %s\n", at, len(p.Actions), strings.Join(parts, " "))
+	for _, a := range p.Actions {
+		if a.Err != nil {
+			fmt.Fprintf(out, "  %s issue #%d: error: %s\n", a.What, a.Issue, outStr(a.Err.Error()))
+		}
+	}
 }

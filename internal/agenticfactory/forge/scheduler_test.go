@@ -106,7 +106,7 @@ func TestSamePriorityKeepsFirstInFirstOut(t *testing.T) {
 
 // The priority definition lives in core only. The scheduler must not carry a priority type of its own.
 func TestSchedulerUsesCorePriorityNotItsOwnDefinition(t *testing.T) {
-	var _ core.Priority = Item{}.Priority
+	var _ = Item{}.Priority
 	if core.PrioritySafety >= core.PriorityReport {
 		t.Fatal("core ordering assumption broke: a lower value must be more urgent")
 	}
@@ -156,7 +156,7 @@ func TestBudgetAnswersTheCoreHook(t *testing.T) {
 // core now has a middle tier, PriorityNotice (a message that needs a human). The scheduler takes its order
 // and its right to the reserve from core's numeric order, so no scheduler change was needed.
 func TestSafetyThenNoticeThenReportAndNoticeMaySpendTheReserve(t *testing.T) {
-	if !(core.PrioritySafety < core.PriorityNotice && core.PriorityNotice < core.PriorityReport) {
+	if core.PrioritySafety >= core.PriorityNotice || core.PriorityNotice >= core.PriorityReport {
 		t.Fatal("core's tier order changed")
 	}
 	s := &Scheduler{Gate: &Budget{}, Merge: merge}

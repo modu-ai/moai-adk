@@ -63,8 +63,9 @@ type Exec struct {
 
 // ExitError is a non-zero exit of gh.
 type ExitError struct {
-	Verb   string // the first two arguments only: the rest may carry text that must not be echoed
-	Code   int
+	Verb string // the first two arguments only: the rest may carry text that must not be echoed
+	Code int
+	// Stderr is gh's own text, raw: Redact it before it is recorded anywhere (Error() already does).
 	Stderr string
 	status *forge.StatusError
 }
@@ -144,9 +145,26 @@ func (e Exec) allowed(ctx context.Context, args []string) bool {
 	if len(args) < 2 {
 		return false
 	}
+	// Only the flag position is inspected. The argument after a flag that takes a value is that value
+	// (a title such as "-wip fix" is text), and everything after "--" is positional.
+	valueNext, positional := false, false
 	for _, a := range args {
-		if name, _, _ := strings.Cut(a, "="); name == "--web" || name == "-w" { // opens a browser, whatever follows "="
+		switch {
+		case positional:
+			continue
+		case valueNext:
+			valueNext = false
+			continue
+		case a == "--":
+			positional = true
+			continue
+		}
+		name, _, hasEq := strings.Cut(a, "=")
+		if name == "--web" || name == "-w" || bundlesW(name) { // opens a browser
 			return false
+		}
+		if !hasEq && strings.HasPrefix(a, "-") && takesValue(name) {
+			valueNext = true
 		}
 	}
 	if args[0] == "api" { // its second argument is a path or a flag, so it cannot be matched as a pair
@@ -216,6 +234,29 @@ func parseAPI(a []string) (method, path string, hasBody, ok bool) {
 }
 
 // flagValue returns the value of --name given as "--name value" or "--name=value".
+// valueFlags are the gh flags (of the verbs this wrapper allows) that take a value, in addition to the
+// `gh api` flags in apiFlags. Only flags that really take a value belong here: a boolean flag listed as a
+// value flag would hide the argument after it from the --web check.
+//
+// Limit: this list is kept by hand, not derived from gh. A flag that takes a value but is missing here
+// has its value treated as a flag (so a value that looks like "--web" is refused: the safe direction); a
+// boolean flag listed here by mistake would hide the next argument from the check (the unsafe direction).
+// When a verb or a gh version is added, review the list against `gh <verb> --help`.
+var valueFlags = map[string]bool{
+	"--repo": true, "-R": true, "--title": true, "-t": true, "--body": true, "-b": true, "--body-file": true, "-F": true,
+	"--json": true, "--jq": true, "-q": true, "--template": true, "--limit": true, "-L": true, "--state": true, "-s": true,
+	"--author": true, "-A": true, "--assignee": true, "-a": true, "--label": true, "-l": true, "--search": true, "-S": true,
+	"--head": true, "--base": true, "--milestone": true, "-m": true, "--project": true, "-p": true, "--app": true,
+	"--mention": true,
+}
+
+func takesValue(name string) bool { return valueFlags[name] || apiFlags[name] }
+
+// bundlesW reports a bundle of short options that contains -w (`-cw` is `-c -w`).
+func bundlesW(name string) bool {
+	return len(name) > 2 && name[0] == '-' && name[1] != '-' && strings.ContainsRune(name[1:], 'w')
+}
+
 // repoFlags returns every value given for the repository selector, whichever spelling: --repo, --repo=,
 // -R, -R=.
 func repoFlags(args []string) []string {
@@ -234,16 +275,4 @@ func repoFlags(args []string) []string {
 		out = append(out, val)
 	}
 	return out
-}
-
-func flagValue(args []string, name string) string {
-	for i, a := range args {
-		if a == name && i+1 < len(args) {
-			return args[i+1]
-		}
-		if v, ok := strings.CutPrefix(a, name+"="); ok {
-			return v
-		}
-	}
-	return ""
 }

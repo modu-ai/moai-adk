@@ -55,7 +55,7 @@ func TestUpdateReleasedRefusesHeldAndMissing(t *testing.T) {
 	if _, err := s.UpdateReleased(i, func(*Record) error { return nil }); !errors.Is(err, core.ErrTransitionInvalid) {
 		t.Errorf("held record must not be written by the tracker: %v", err)
 	}
-	_ = s.Release(i, "w")
+	_ = releaseNow(t, s, i, "w")
 	boom := errors.New("boom")
 	if _, err := s.UpdateReleased(i, func(*Record) error { return boom }); !errors.Is(err, boom) {
 		t.Errorf("fn error: %v", err)
@@ -114,7 +114,10 @@ func TestAcquireRefusesPublishedAndDoneIssues(t *testing.T) {
 	if _, err := s.Acquire(i, "z", "dz", "run-9"); !errors.Is(err, core.ErrRepairOnly) {
 		t.Errorf("published: %v", err)
 	}
-	if _, err := s.UpdateReleased(i, func(r *Record) error { r.State = core.StateDone; return nil }); err != nil {
+	if _, err := s.UpdateReleased(i, func(r *Record) error { accept(r); return nil }); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.UpdateReleased(i, func(r *Record) error { finish(r); return nil }); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := s.Acquire(i, "z", "dz", "run-9"); !errors.Is(err, core.ErrTransitionInvalid) {
@@ -136,7 +139,8 @@ func TestBacklogCountAndReadAndList(t *testing.T) {
 	if _, err := s.Acquire(ref(t, 3), "w", "d3", "run-1"); !errors.Is(err, core.ErrBacklogFull) {
 		t.Errorf("cap: %v", err)
 	}
-	_, _ = s.UpdateReleased(ref(t, 1), func(r *Record) error { r.State = core.StateDone; return nil })
+	_, _ = s.UpdateReleased(ref(t, 1), func(r *Record) error { accept(r); return nil })
+	_, _ = s.UpdateReleased(ref(t, 1), func(r *Record) error { finish(r); return nil })
 	if _, err := s.Acquire(ref(t, 3), "w", "d3", "run-1"); err != nil {
 		t.Errorf("after one is done: %v", err)
 	}

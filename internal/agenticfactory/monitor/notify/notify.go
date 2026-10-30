@@ -5,7 +5,7 @@
 // the owner: reassignment is the leader's decision, and nothing here can make it.
 //
 // It reads claim records and pull-request views and writes only through the interfaces it is given: the
-// notifier, the escalator, the retry of the wait record (the runner's RetryWait, which verifies holder
+// notifier, the escalator, the retry of the wait record (the runner's RemindWait, which verifies holder
 // and epoch), and its own small per-Issue memory. A forge is read, never written.
 package notify
 
@@ -31,7 +31,9 @@ type Records interface {
 // Waiter spends one retry of a wait record (runner.Runner). The ticket is the record's own holder and
 // epoch, so a write for a record that has moved on is refused.
 type Waiter interface {
-	RetryWait(t runner.Ticket, diagnosis, next string, recheck time.Time) (claim.Record, error)
+	// RemindWait spends one retry of the wait as a MONITOR write: the reminder is not the owner acting, so it
+	// must not stale the safe stop a dead owner left (the owner's own RetryWait would).
+	RemindWait(t runner.Ticket, diagnosis, next string, recheck time.Time) (claim.Record, error)
 }
 
 // Repairs records the signal that an open pull request needs a repair (claim.Store.MarkRepairNeeded). It
@@ -139,6 +141,10 @@ type state struct {
 	// else wrote the record since: progress.
 	Seen int64  `json:"seen_seq,omitempty"`
 	PR   prMark `json:"pr"`
+	// BusyRuns counts the passes in a row whose reminder was held back by a busy lock. At the wait's own
+	// retry count the lock is reported as stuck (it may be a crashed holder's leftover); a delivery that
+	// goes through resets it. It never spends a retry.
+	BusyRuns int `json:"busy_runs,omitempty"`
 	// QuietUntil holds reminders back after progress was seen: the owner is working, and a wait it has
 	// not yet updated gets one more period before it is reminded.
 	QuietUntil time.Time `json:"quiet_until,omitempty"`
@@ -295,7 +301,7 @@ func (s *Service) see(rec claim.Record, st *state) []Action {
 	return nil
 }
 
-func (s *Service) remind(ctx context.Context, rec claim.Record, w core.Wait, st *state, now time.Time) []Action {
+func (s *Service) remind(ctx context.Context, rec claim.Record, w core.Wait, st *state, now time.Time) (out []Action) {
 	attempt := w.Retries + 1
 	n := Notice{
 		Issue: rec.Issue, Holder: rec.Holder, Agent: rec.AgentName, Kind: WaitOverdue, Attempt: attempt,
@@ -306,7 +312,29 @@ func (s *Service) remind(ctx context.Context, rec claim.Record, w core.Wait, st 
 	if errors.Is(notifyErr, core.ErrBusy) {
 		// A held lock is "retry", not a failed delivery: the same reminder is tried on the next pass and
 		// no retry of the wait is spent, so contention alone never walks a wait to its escalation.
-		return []Action{{Issue: rec.Issue, What: "reminder-deferred", Kind: WaitOverdue, Detail: n.Detail, Err: notifyErr}}
+		acts := []Action{{Issue: rec.Issue, What: "reminder-deferred", Kind: WaitOverdue, Detail: n.Detail, Err: notifyErr}}
+		st.BusyRuns++
+		if err := s.save(rec.Issue, *st); err != nil {
+			acts = append(acts, Action{Issue: rec.Issue, What: "state-error", Err: err})
+		}
+		if st.BusyRuns >= w.MaxRetries {
+			acts = append(acts, Action{Issue: rec.Issue, What: "inbox-lock-stuck", Kind: WaitOverdue, Err: notifyErr,
+				Detail: fmt.Sprintf("the inbox lock was busy for %d passes in a row; reminders are not reaching the owner. A crashed holder may have left it behind: inspect it with the claim store's lock inspection", st.BusyRuns)})
+		}
+		return acts
+	}
+	if st.BusyRuns != 0 {
+		// A pass whose delivery was not held back ends the busy run, and the end is saved now: the code
+		// below can return before it saves anything (a record that moved), and a run left uncleared would
+		// join the next, separate run.
+		st.BusyRuns = 0
+		if err := s.save(rec.Issue, *st); err != nil {
+			// The reminder below WAS delivered; losing its accounting would send it again next pass. So the
+			// failure is reported alongside the pass's own actions, and the retry write that follows
+			// records the delivery (and saves this state again).
+			failed := Action{Issue: rec.Issue, What: "state-error", Err: err}
+			defer func() { out = append([]Action{failed}, out...) }()
+		}
 	}
 	if notifyErr != nil {
 		// A reminder that is known not to have been delivered still spends the retry, so a broken
@@ -314,7 +342,7 @@ func (s *Service) remind(ctx context.Context, rec claim.Record, w core.Wait, st 
 		diag = fmt.Sprintf("no progress by %s; the reminder could not be delivered (%d of %d): %v", w.RecheckAt.Format(time.RFC3339), attempt, w.MaxRetries, notifyErr)
 	}
 	ref, _ := core.NewIssueRef(rec.Issue)
-	next, err := s.Waits.RetryWait(runner.Ticket{Issue: ref, Holder: rec.Holder, Epoch: rec.Epoch}, diag,
+	next, err := s.Waits.RemindWait(runner.Ticket{Issue: ref, Holder: rec.Holder, Epoch: rec.Epoch}, diag,
 		"wait for the owner's progress; escalate to "+w.Escalate+" when the retries run out", now.Add(s.ReNotifyAfter))
 	act := Action{Issue: rec.Issue, What: "reminder", Kind: WaitOverdue, Detail: n.Detail, Err: notifyErr}
 	acts := []Action{act}

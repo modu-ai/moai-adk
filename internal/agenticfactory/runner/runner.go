@@ -11,6 +11,7 @@
 package runner
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/url"
@@ -127,9 +128,11 @@ type IssueFacts struct {
 }
 
 // Facts looks an Issue up on the host. The implementation lives with the forge
-// code; it makes no write.
+// code; it makes no write. The context is the caller's: cancelling the pass that
+// holds it must cancel the lookup, so an implementation derives its own time limit
+// from it and never from context.Background().
 type Facts interface {
-	IssueFacts(issue core.IssueRef) (IssueFacts, error)
+	IssueFacts(ctx context.Context, issue core.IssueRef) (IssueFacts, error)
 }
 
 // Runner applies transitions to claims in Store.
@@ -143,6 +146,21 @@ type Runner struct {
 	Attributor Attributor
 	Facts      Facts
 	Collab     core.Collaboration
+	// Ctx is the context of the pass this Runner serves; a pass takes its own copy of
+	// the Runner and sets it. Nil means context.Background(). It reaches the host
+	// lookups (Facts) and nothing else: store operations stay local and short.
+	Ctx context.Context
+
+	// beforeClaimMoves is a test seam: it runs after TakeOver has decided and before
+	// the store moves the claim, where the owner could still act.
+	beforeClaimMoves func()
+}
+
+func (r *Runner) ctx() context.Context {
+	if r.Ctx != nil {
+		return r.Ctx
+	}
+	return context.Background()
 }
 
 // guard decides whether the acting user may perform op on the Issue, through the
@@ -152,7 +170,7 @@ func (r *Runner) guard(i core.IssueRef, op core.Op) error {
 	if r.Facts == nil {
 		return core.DenyIdentityUnknown.Err()
 	}
-	f, err := r.Facts.IssueFacts(i)
+	f, err := r.Facts.IssueFacts(r.ctx(), i)
 	if err != nil {
 		return fmt.Errorf("%w: host lookup of issue-%d failed: %v", core.ErrIdentityUnknown, i.Number, err)
 	}
@@ -442,6 +460,9 @@ func (r *Runner) Pause(t Ticket, to core.State, reason core.BlockReason, resume 
 			return fmt.Errorf("%w: resume condition is required", core.ErrTransitionInvalid)
 		}
 		pauseIn(rec, to, reason, resume)
+		if reason == core.ReasonOperatorHold {
+			rec.Evidence = []string{core.GuardOperatorHold} // S46 has no edge for it; the move is a named exception
+		}
 		rec.Wait = &w // a park always carries its wait record (design 2.1c); the store checks it
 		return nil
 	})
@@ -460,6 +481,9 @@ func (r *Runner) Resume(t Ticket, conditionMet bool) (claim.Record, error) {
 		}
 		if !conditionMet {
 			return fmt.Errorf("%w: resume condition not met: %s", core.ErrTransitionInvalid, rec.Resume)
+		}
+		if rec.Park != nil {
+			rec.Evidence = []string{"resume-guard:" + string(rec.Park.Reason)} // E20 carries its guard
 		}
 		rec.State, rec.Return, rec.Reason, rec.Resume = rec.Return, "", "", ""
 		return nil
@@ -721,11 +745,11 @@ func (r *Runner) TakeOver(i core.IssueRef, old Ticket, newHolder, dispatch strin
 	// recorded its process the departure is read from the process and the caller's
 	// OwnerGone is not consulted (REQ-AF-009).
 	note := "preserved at " + ev.PreservedRef
-	if strings.TrimSpace(ev.SafeStop) != "" {
-		if err := r.Store.CheckSafeStop(i, old.Holder, old.Epoch, ev.SafeStop); err != nil {
-			return claim.Record{}, err
-		}
-		note += "; safe stop " + strings.TrimSpace(ev.SafeStop)
+	stop := strings.TrimSpace(ev.SafeStop)
+	if stop != "" {
+		// The store checks the stop under the Issue lock, in the critical section that
+		// moves the claim (TakeOverOnStop); no earlier check here could be relied on.
+		note += "; safe stop " + stop
 	} else {
 		st, err := r.Store.OwnerLiveness(i)
 		if err != nil {
@@ -746,7 +770,15 @@ func (r *Runner) TakeOver(i core.IssueRef, old Ticket, newHolder, dispatch strin
 			return claim.Record{}, fmt.Errorf("%w: neither the owner's departure nor a safe stop record is given", core.ErrEvidenceIncomplete)
 		}
 	}
-	return r.Store.TakeOver(i, old.Holder, old.Epoch, newHolder, dispatch, run, note, ev.Wait)
+	if r.beforeClaimMoves != nil {
+		r.beforeClaimMoves()
+	}
+	if stop == "" {
+		// The departure was established above from the owner's process (or the caller's
+		// word, marked in the note); the store checks holder and epoch only.
+		return r.Store.TakeOverUnverified(i, old.Holder, old.Epoch, newHolder, dispatch, run, note, ev.Wait)
+	}
+	return r.Store.TakeOverOnStop(i, old.Holder, old.Epoch, newHolder, dispatch, run, note, ev.Wait, stop)
 }
 
 // RecordSafeStop writes the ticket holder's safe-stop record, the evidence that
@@ -811,8 +843,18 @@ func (r *Runner) SetWait(t Ticket, w core.Wait) (claim.Record, error) {
 // limit is recorded with Escalated set and reported as ErrRetryLimit; nothing is
 // retried past it.
 func (r *Runner) RetryWait(t Ticket, diagnosis, next string, recheck time.Time) (claim.Record, error) {
+	return r.spendRetry(r.Store.Update, t, diagnosis, next, recheck)
+}
+
+// RemindWait is RetryWait written as a monitor: the reminder keeps the owner's
+// ticket but is not the owner acting, so it never stales the owner's safe stop.
+func (r *Runner) RemindWait(t Ticket, diagnosis, next string, recheck time.Time) (claim.Record, error) {
+	return r.spendRetry(r.Store.UpdateAsMonitor, t, diagnosis, next, recheck)
+}
+
+func (r *Runner) spendRetry(update func(core.IssueRef, string, int64, func(*claim.Record) error) (claim.Record, error), t Ticket, diagnosis, next string, recheck time.Time) (claim.Record, error) {
 	var limit error
-	rec, err := r.Store.Update(t.Issue, t.Holder, t.Epoch, func(rec *claim.Record) error {
+	rec, err := update(t.Issue, t.Holder, t.Epoch, func(rec *claim.Record) error {
 		if rec.Wait == nil {
 			return fmt.Errorf("%w: no wait is recorded", core.ErrTransitionInvalid)
 		}
@@ -908,7 +950,7 @@ func (r *Runner) mayClose(issue int) string {
 	if r.Facts == nil {
 		return "no host lookup to check the author"
 	}
-	f, err := r.Facts.IssueFacts(ref)
+	f, err := r.Facts.IssueFacts(r.ctx(), ref)
 	if err != nil {
 		return "the host lookup failed"
 	}

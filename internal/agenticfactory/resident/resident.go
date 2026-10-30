@@ -68,12 +68,19 @@ type Deps struct {
 	// Secret returns the signing secret of one webhook route, read from wherever the operator keeps it
 	// (OD-17). It is required when the settings name any route.
 	Secret func(repo string) []byte
+	// Transport answers the read-only host lookups behind the permission decision (the acting user's id
+	// and an Issue's author). It is nil until a gh-backed transport is wired; while it is nil the Runner has
+	// no Facts, and every authority check ends as an unknown identity - the fail-closed state, not an error.
+	Transport forge.Transport
 }
 
 // Resident is the wired set.
 type Resident struct {
 	Settings config.AgenticFactorySettings
 
+	// Runner is the one Runner this process builds. Its Facts are the host lookups of Deps.Transport; its
+	// Attributor is left at the lock constant (REQ-AF-011): identity.Book is not connected.
+	Runner  *runner.Runner
 	Service *notify.Service
 	Inbox   notify.Inbox
 	Webhook *webhook.Handler // mount it; the route for a repository is /hook/<owner>/<name>
@@ -140,6 +147,11 @@ func Build(s config.AgenticFactorySettings, d Deps) (*Resident, error) {
 	}
 	r.Webhook = h
 
+	r.Runner = runner.New(d.Store)
+	if d.Transport != nil {
+		r.Runner.Facts = r.hostFacts(d.Transport)
+	}
+
 	number := func(issue int) (int, bool, error) {
 		ref, err := core.NewIssueRef(issue)
 		if err != nil {
@@ -158,12 +170,33 @@ func Build(s config.AgenticFactorySettings, d Deps) (*Resident, error) {
 		return rec.Receipt.PR, true, nil
 	}
 	r.Service = &notify.Service{
-		Records: d.Store, Waits: runner.New(d.Store), Repairs: d.Store,
+		Records: d.Store, Waits: r.Runner, Repairs: d.Store,
 		PRs:      ghpr.Source{Repo: s.PRSourceRepository, Run: d.GHRead, Timeout: checkObserveTimeout, Number: number},
 		Notifier: r.Inbox, Escalator: r.Inbox,
 		State: r.Cursors, Now: d.Now, ReNotifyAfter: s.NotifyRenotifyAfter,
 	}
 	return r, nil
+}
+
+// hostFacts connects the GitHub identity reader to the Runner's permission decision: the acting user is the
+// reader's CurrentUserID, an Issue's author and real repository are its IssueFacts (fields copied into
+// runner.HostIssue), and who owns the work now is read from the claim store. Every lookup is bounded by the
+// named gh-read timeout (checkObserveTimeout). Reads only; nothing here writes to the host.
+func (r *Resident) hostFacts(t forge.Transport) runner.HostFacts {
+	id := r.Identity(&forge.Client{T: t, B: r.Budget, Backoff: r.Backoff, Now: r.deps.Now})
+	return runner.HostFacts{
+		Repo:    r.Settings.PRSourceRepository,
+		Timeout: r.timeouts.CheckObserve,
+		User:    id.CurrentUserID,
+		Issue: func(ctx context.Context, repo string, issue int) (runner.HostIssue, error) {
+			f, err := id.IssueFacts(ctx, repo, issue)
+			if err != nil {
+				return runner.HostIssue{}, err
+			}
+			return runner.HostIssue{AuthorID: f.AuthorID, ActualRepo: f.ActualRepo, Redirected: f.Redirected}, nil
+		},
+		Owner: runner.StoreOwner(r.deps.Store),
+	}
 }
 
 // Timeouts is the bound on each external effect.

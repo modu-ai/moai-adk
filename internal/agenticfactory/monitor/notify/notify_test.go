@@ -296,7 +296,7 @@ func TestARestartDoesNotRepeatAReminder(t *testing.T) {
 
 type movedWaiter struct{ spent int }
 
-func (m *movedWaiter) RetryWait(runner.Ticket, string, string, time.Time) (claim.Record, error) {
+func (m *movedWaiter) RemindWait(runner.Ticket, string, string, time.Time) (claim.Record, error) {
 	m.spent++
 	return claim.Record{}, fmt.Errorf("%w: epoch moved", core.ErrOwnershipUnverified)
 }
@@ -409,7 +409,7 @@ func TestAFailedPullRequestNoticeIsRetriedNotLost(t *testing.T) {
 func TestNobodyIsToldAboutAnIssueNobodyHolds(t *testing.T) {
 	e := newEnv(t)
 	tk := e.acquire(7)
-	if err := e.st.Release(tk.Issue, tk.Holder); err != nil {
+	if err := e.st.Release(tk.Issue, tk.Holder, tk.Epoch); err != nil {
 		t.Fatal(err)
 	}
 	e.prs.found, e.prs.view = true, PRView{Number: 9, Head: "a", CI: "failure"}
@@ -572,5 +572,145 @@ func TestABusyInboxDoesNotSpendARetry(t *testing.T) {
 	e.tickAt(s, t0.Add(time.Hour+10*time.Minute))
 	if b.sent != 1 || e.record(7).Wait.Retries != 1 {
 		t.Errorf("after the lock cleared: sent=%d retries=%d, want the reminder delivered and one retry spent", b.sent, e.record(7).Wait.Retries)
+	}
+}
+
+// F3 (notify side): contention alone never spends a retry, but a lock that stays busy pass after pass is
+// reported — it may be a crashed holder's leftover, and silence would hide the lost reminders for good.
+func TestALockBusyPassAfterPassIsReportedAsStuckWithoutSpendingARetry(t *testing.T) {
+	e := newEnv(t)
+	tk := e.acquire(7)
+	if _, err := e.rn.SetWait(tk, waitAt(t0.Add(time.Hour), 2)); err != nil {
+		t.Fatal(err)
+	}
+	b := &busyNotifier{busy: true}
+	s := e.service()
+	s.Notifier = b
+	stuck := func(acts []Action) bool {
+		for _, a := range acts {
+			if a.What == "inbox-lock-stuck" && errors.Is(a.Err, core.ErrBusy) {
+				return true
+			}
+		}
+		return false
+	}
+	if stuck(e.tickAt(s, t0.Add(time.Hour))) {
+		t.Fatal("one busy pass was reported as stuck")
+	}
+	for i := 1; i < 4; i++ {
+		if !stuck(e.tickAt(s, t0.Add(time.Hour+time.Duration(i)*time.Minute))) {
+			t.Fatalf("pass %d: the lock has been busy for %d passes (the wait's own retry count) and was not reported", i, i+1)
+		}
+	}
+	if rec := e.record(7); rec.Wait.Retries != 0 || rec.Wait.Escalated {
+		t.Fatalf("contention spent retries: %+v", rec.Wait)
+	}
+	b.busy = false
+	e.tickAt(s, t0.Add(time.Hour+10*time.Minute))
+	b.busy = true
+	if stuck(e.tickAt(s, t0.Add(time.Hour+20*time.Minute))) {
+		t.Error("the busy run was not reset by a delivery that went through")
+	}
+}
+
+type movedWaits struct{ Waiter }
+
+func (movedWaits) RemindWait(runner.Ticket, string, string, time.Time) (claim.Record, error) {
+	return claim.Record{}, core.ErrOwnershipUnverified
+}
+
+// A delivery that went through resets the busy run even when the retry that follows it cannot be recorded:
+// otherwise two busy runs separated by a working pass would be counted as one.
+func TestTheBusyRunIsResetAndSavedEvenWhenTheRetryCannotBeRecorded(t *testing.T) {
+	e := newEnv(t)
+	tk := e.acquire(7)
+	if _, err := e.rn.SetWait(tk, waitAt(t0.Add(time.Hour), 3)); err != nil {
+		t.Fatal(err)
+	}
+	b := &busyNotifier{busy: true}
+	s := e.service()
+	s.Notifier = b
+	e.tickAt(s, t0.Add(time.Hour))
+	e.tickAt(s, t0.Add(time.Hour+time.Minute)) // two busy passes: BusyRuns = 2 of 3
+	b.busy = false
+	s.Waits = movedWaits{s.Waits} // the delivery succeeds, the retry write is refused: an early return
+	e.tickAt(s, t0.Add(time.Hour+2*time.Minute))
+	st, err := s.load(7)
+	if err != nil || st.BusyRuns != 0 {
+		t.Fatalf("saved state = %+v err=%v, want BusyRuns reset to 0", st, err)
+	}
+}
+
+// failingSave fails the next n saves, then behaves.
+type failingSave struct {
+	forge.CursorStore
+	n *int
+}
+
+func (f failingSave) SaveCursor(key string, body []byte) error {
+	if *f.n > 0 {
+		*f.n--
+		return errors.New("disk full")
+	}
+	return f.CursorStore.SaveCursor(key, body)
+}
+
+// If saving the end of a busy run fails, the reminder that WAS delivered in that pass is still accounted
+// for: its retry is recorded, so the next pass does not send the same notice again.
+func TestAFailedSaveOfTheBusyResetDoesNotLoseTheDeliveredReminder(t *testing.T) {
+	e := newEnv(t)
+	tk := e.acquire(7)
+	if _, err := e.rn.SetWait(tk, waitAt(t0.Add(time.Hour), 3)); err != nil {
+		t.Fatal(err)
+	}
+	b := &busyNotifier{busy: true}
+	s := e.service()
+	s.Notifier = b
+	e.tickAt(s, t0.Add(time.Hour)) // BusyRuns = 1, saved
+	b.busy = false
+	fails := 1
+	s.State = failingSave{CursorStore: s.State, n: &fails}
+	acts := e.tickAt(s, t0.Add(time.Hour+time.Minute))
+	delivered, stateErr := false, false
+	for _, a := range acts {
+		delivered = delivered || (a.What == "reminder" && a.Err == nil)
+		stateErr = stateErr || a.What == "state-error"
+	}
+	if !delivered || !stateErr {
+		t.Fatalf("actions = %+v, want the delivered reminder AND the state error both reported", acts)
+	}
+	if b.sent != 1 || e.record(7).Wait.Retries != 1 {
+		t.Fatalf("sent=%d retries=%d, want the one delivery recorded as a spent retry", b.sent, e.record(7).Wait.Retries)
+	}
+	e.tickAt(s, t0.Add(time.Hour+2*time.Minute)) // inside ReNotifyAfter: nothing more is due
+	if b.sent != 1 {
+		t.Errorf("sent = %d after the next pass, want the notice not resent", b.sent)
+	}
+}
+
+// A reminder is the monitor writing the owner's wait, not the owner acting: a dead owner's recorded safe stop
+// must survive it. (Before RemindWait the reminder went through RetryWait, which counts as the owner's own
+// write and made the stop stale.)
+func TestAReminderKeepsTheDeadOwnersSafeStop(t *testing.T) {
+	e := newEnv(t)
+	tk := e.acquire(7)
+	if _, err := e.rn.SetWait(tk, waitAt(t0.Add(time.Hour), 3)); err != nil {
+		t.Fatal(err)
+	}
+	stop, err := e.rn.RecordSafeStop(tk, "owner stopped")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := e.service()
+	e.tickAt(s, t0.Add(time.Hour+time.Minute)) // the wait is overdue: a reminder goes out
+	if e.n.count(WaitOverdue) != 1 {
+		t.Fatalf("reminders sent = %d, want 1", e.n.count(WaitOverdue))
+	}
+	if got := e.record(7).Wait; got == nil || got.Retries != 1 {
+		t.Fatalf("wait after the reminder = %+v, want one retry spent", got)
+	}
+	ref, _ := core.NewIssueRef(7)
+	if err := e.st.CheckSafeStop(ref, tk.Holder, tk.Epoch, stop); err != nil {
+		t.Errorf("the reminder undid the dead owner's safe stop: %v", err)
 	}
 }

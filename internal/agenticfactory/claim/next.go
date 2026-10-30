@@ -259,14 +259,40 @@ func (s *Store) usesWorktree(h worktreeReservation) bool {
 	return r.State != core.StateDone && (r.Worktree == "" || sameWorktree(r.Worktree, h.Path) || (r.Receipt != nil && sameWorktree(r.Receipt.Worktree, h.Path)))
 }
 
-// TakeOver moves a held Issue from a dead owner to a new one. The caller has
-// already confirmed the owner is gone, its writer stopped and its uncommitted
-// work preserved (preserved names where); this checks that the owner it decided
-// about is still the recorded one, so a decision made against an owner that has
-// since renewed is refused. The PR, the worktree and the history stay; the old
-// owner's wait and repair claim, which were its alone, do not. A parked Issue
-// needs the new holder's own wait record (owner = newHolder).
-func (s *Store) TakeOver(i core.IssueRef, oldHolder string, oldEpoch int64, newHolder, dispatch string, run core.RunID, note string, wait *core.Wait) (Record, error) {
+// TakeOverUnverified reassigns a held Issue to a new holder checking ONLY that the
+// old holder and epoch are the recorded ones. It does not look at whether the owner
+// is gone: the caller has to have established that itself (the runner reads the
+// owner's recorded process before it calls) and must not use this on a guess. When
+// the departure rests on the owner's safe-stop record, use TakeOverOnStop, which
+// checks the record where the claim moves.
+//
+// The caller has also confirmed the owner's writer stopped and its uncommitted work
+// preserved (note says where). A decision made against an owner that has since
+// renewed is refused. The PR, the worktree and the history stay; the old owner's wait
+// and repair claim, which were its alone, do not. A parked Issue needs the new
+// holder's own wait record (owner = newHolder).
+func (s *Store) TakeOverUnverified(i core.IssueRef, oldHolder string, oldEpoch int64, newHolder, dispatch string, run core.RunID, note string, wait *core.Wait) (Record, error) {
+	return s.takeOver(i, oldHolder, oldEpoch, newHolder, dispatch, run, note, wait, "")
+}
+
+// TakeOverOnStop is the takeover that rests on the old owner's safe-stop record, and
+// it needs one: an empty reference is ErrEvidenceIncomplete. The record is checked
+// (CheckSafeStop) inside the Issue lock, in the same critical section that moves the
+// claim, so a write of the record or a Heartbeat that lands between an earlier check
+// and the move cannot go unseen: both take this lock.
+//
+// Known limit: the clock behind the stop's time and the owner's beats is the host
+// clock of the store; one that steps backwards can make an old beat look as if it
+// preceded a stop. The owner's write count (Record.OwnerSeq), which only grows, still
+// catches a write of the record in that case.
+func (s *Store) TakeOverOnStop(i core.IssueRef, oldHolder string, oldEpoch int64, newHolder, dispatch string, run core.RunID, note string, wait *core.Wait, safeStop string) (Record, error) {
+	if strings.TrimSpace(safeStop) == "" {
+		return Record{}, fmt.Errorf("%w: a takeover on a safe stop needs the stop record", core.ErrEvidenceIncomplete)
+	}
+	return s.takeOver(i, oldHolder, oldEpoch, newHolder, dispatch, run, note, wait, safeStop)
+}
+
+func (s *Store) takeOver(i core.IssueRef, oldHolder string, oldEpoch int64, newHolder, dispatch string, run core.RunID, note string, wait *core.Wait, safeStop string) (Record, error) {
 	if newHolder == "" || dispatch == "" {
 		return Record{}, fmt.Errorf("%w: the new holder and a dispatch are required", core.ErrIDInvalid)
 	}
@@ -275,6 +301,11 @@ func (s *Store) TakeOver(i core.IssueRef, oldHolder string, oldEpoch int64, newH
 		cur, err := s.Verify(i, oldHolder, oldEpoch)
 		if err != nil {
 			return err
+		}
+		if strings.TrimSpace(safeStop) != "" {
+			if err := s.CheckSafeStop(i, oldHolder, oldEpoch, safeStop); err != nil {
+				return err
+			}
 		}
 		if cur.Dispatch == dispatch {
 			return fmt.Errorf("%w: %s dispatch %q", core.ErrDuplicateDispatch, i.Resource(), dispatch)
@@ -289,6 +320,14 @@ func (s *Store) TakeOver(i core.IssueRef, oldHolder string, oldEpoch int64, newH
 			}
 			w := *wait
 			out.Wait = &w
+			// A parked position does not change its sub stage, and dropping a repair
+			// claim would (BUILDING/FIX reads as REVIEWING without it): the new holder
+			// takes the repair over, exclusive owner and all.
+			if cur.Repair != nil {
+				rp := *cur.Repair
+				rp.Owner = newHolder
+				out.Repair = &rp
+			}
 		}
 		if out.Receipt != nil { // the new holder is the one responsible for the PR now
 			rc := *out.Receipt

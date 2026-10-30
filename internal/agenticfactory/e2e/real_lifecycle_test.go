@@ -201,6 +201,12 @@ func TestLifecycle_OwnerCrash_PreservedAndStopped_ThenSafeTakeover(t *testing.T)
 		if _, err := r.TakeOver(tk.Issue, tk, "w2", "d-1", run, full); !errors.Is(err, core.ErrDuplicateDispatch) {
 			t.Errorf("the dispatch the owner already has: %v, want ErrDuplicateDispatch", err)
 		}
+		// An invented stop reference stands in for nothing (behavior change: the reference is checked
+		// against the recorded stop records).
+		invented := runner.Takeover{SafeStop: "stop-record-1", WriterStopped: true, UncommittedPreserved: true, PreservedRef: full.PreservedRef}
+		if _, err := r.TakeOver(tk.Issue, tk, "w2", "d-w2", run, invented); !errors.Is(err, core.ErrEvidenceIncomplete) {
+			t.Errorf("an invented stop reference: %v, want ErrEvidenceIncomplete", err)
+		}
 		if after := state(t, r, tk); !reflect.DeepEqual(after, before) {
 			t.Errorf("a refused takeover changed the record:\nbefore %+v\nafter  %+v", before, after)
 		}
@@ -212,6 +218,15 @@ func TestLifecycle_OwnerCrash_PreservedAndStopped_ThenSafeTakeover(t *testing.T)
 	} {
 		t.Run(name, func(t *testing.T) {
 			r, tk, run := setup(t)
+			if ev.SafeStop != "" {
+				// A stop record must exist and speak for this Issue, holder and epoch (lane-18 F5): the
+				// owner leaves one on purpose, so the test has the owner leave it.
+				ref, serr := r.Store.RecordSafeStop(tk.Issue, tk.Holder, tk.Epoch, "stopped on purpose")
+				if serr != nil {
+					t.Fatal(serr)
+				}
+				ev.SafeStop = ref
+			}
 			before := state(t, r, tk)
 			rec, err := r.TakeOver(tk.Issue, tk, "w2", "d-w2", run, ev)
 			if err != nil {
@@ -243,6 +258,9 @@ func TestLifecycle_OwnerCrash_PreservedAndStopped_ThenSafeTakeover(t *testing.T)
 				t.Errorf("the old owner reopening: %v, want ErrOwnershipUnverified", err)
 			}
 			// A second takeover decided about the old owner cannot be applied again.
+			// Since lane-18 52725aab26 (TakeOver TOCTOU) the ticket's ownership is checked before the safe-stop
+			// record's freshness, so a replay is refused as an unverified owner whether or not it rests on a stop
+			// record. (Between 4381200572 and that fix the stop-record case ended as ErrEvidenceIncomplete.)
 			if _, err := r.TakeOver(tk.Issue, tk, "w3", "d-w3", run, ev); !errors.Is(err, core.ErrOwnershipUnverified) {
 				t.Errorf("a replayed takeover: %v, want ErrOwnershipUnverified", err)
 			}

@@ -1,6 +1,7 @@
 package identity
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -299,7 +300,7 @@ func TestTheLookupChangesNothing(t *testing.T) {
 // when one is not.
 type ownIssues struct{}
 
-func (ownIssues) IssueFacts(core.IssueRef) (runner.IssueFacts, error) {
+func (ownIssues) IssueFacts(context.Context, core.IssueRef) (runner.IssueFacts, error) {
 	return runner.IssueFacts{RequestedRepo: "acme/widgets", ActualRepo: "acme/widgets", UserID: 7, AuthorID: 7, Owner: core.OwnerNone}, nil
 }
 

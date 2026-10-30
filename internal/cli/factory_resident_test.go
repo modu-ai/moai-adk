@@ -11,6 +11,8 @@ package cli
 import (
 	"bytes"
 	"context"
+	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -20,6 +22,8 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/forge/webhook"
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/monitor/notify"
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/resident"
 )
 
 // residentProject is a temp project whose settings name an existing claim store.
@@ -149,8 +153,41 @@ func TestResident_OnceRunsOnePassAndReportsIt(t *testing.T) {
 	if n := strings.Count(out.String(), "pass 2026-10-30T04:00:00Z"); n != 1 {
 		t.Errorf("passes reported = %d, want 1:\n%s", n, out.String())
 	}
-	if !strings.Contains(out.String(), "writes: none wired") {
-		t.Errorf("the unwired write paths are not stated at start:\n%s", out.String())
+	if !strings.Contains(out.String(), "external writes: none wired") {
+		t.Errorf("the unwired external write paths are not stated at start:\n%s", out.String())
+	}
+	if !strings.Contains(out.String(), "local writes: claim records") {
+		t.Errorf("the local claim-store writes are not stated at start (audit F17):\n%s", out.String())
+	}
+}
+
+// Audit F3: an action that failed is printed with its Issue, so a stuck record shows on screen.
+func TestResident_PassReportShowsActionErrors(t *testing.T) {
+	var out bytes.Buffer
+	writeResidentPass(&out, resident.Pass{
+		At: fixedNow(),
+		Actions: []notify.Action{
+			{Issue: 7, What: "reminder-deferred"},
+			{Issue: 9, What: "state-error", Err: errors.New("claim store busy")},
+			{Issue: 7, What: "reminder-deferred"},
+		},
+	})
+	got := out.String()
+	for _, want := range []string{"3 action(s) reminder-deferred=2 state-error=1", "state-error issue #9: error: claim store busy"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("report lacks %q:\n%s", want, got)
+		}
+	}
+	// control: a pass without errors prints no error line.
+	out.Reset()
+	writeResidentPass(&out, resident.Pass{At: fixedNow(), Actions: []notify.Action{{Issue: 1, What: "pr-notice"}}})
+	if strings.Contains(out.String(), "error") {
+		t.Errorf("a clean pass printed an error line:\n%s", out.String())
+	}
+	out.Reset()
+	writeResidentPass(&out, resident.Pass{At: fixedNow(), Err: errors.New("tick failed")})
+	if !strings.Contains(out.String(), "pass 2026-10-30T04:00:00Z: error: tick failed") {
+		t.Errorf("a failed pass is not reported:\n%s", out.String())
 	}
 }
 
@@ -225,7 +262,7 @@ func TestResident_WebhookAcceptsSignedAndRefusesBadlySigned(t *testing.T) {
 }
 
 func TestResident_ExecRunnersCarryTheirBounds(t *testing.T) {
-	e := newResidentExecs("/p")
+	e := newResidentExecs("/p", "o/a")
 	if e.GH.MaxOutput != 8<<20 || e.GH.WaitDelay != time.Second || e.GH.AllowWrite {
 		t.Errorf("gh runner = %+v, want 8MiB, 1s, no writes", e.GH)
 	}
@@ -256,3 +293,73 @@ func TestResident_IsRegisteredBesideStatus(t *testing.T) {
 		t.Errorf("--tick must exist with no default, got %+v", f)
 	}
 }
+
+// B4 (2): every field this command prints that can carry outside text goes through the one sanitizer. One
+// case per field.
+func TestResident_PrintedFieldsNeverCarryASecretAnEmailOrAHomePath(t *testing.T) {
+	secret := "ghp_abcdefghijklmnopqrstuvwxyz0123456789"
+	dirty := "boom " + secret + " for someone@example.com under /Users/someone/work"
+	check := func(field, got string) {
+		t.Helper()
+		for _, bad := range []string{secret, "someone@example.com", "/Users/someone"} {
+			if strings.Contains(got, bad) {
+				t.Errorf("%s prints %q: %s", field, bad, got)
+			}
+		}
+		if strings.TrimSpace(got) == "" {
+			t.Errorf("%s printed nothing", field)
+		}
+	}
+	var b strings.Builder
+	writeResidentNotConfigured(&b, dirty)
+	check("not-configured reason", b.String())
+
+	b.Reset()
+	writeResidentHeader(&b, "/Users/someone/.moai/state/claims", 2)
+	check("claim store directory", b.String())
+
+	b.Reset()
+	writeResidentServerStopped(&b, errors.New(dirty))
+	check("webhook server error", b.String())
+
+	b.Reset()
+	writeResidentPass(&b, resident.Pass{At: fixedNow(), Err: errors.New(dirty)})
+	check("pass error", b.String())
+
+	b.Reset()
+	writeResidentPass(&b, resident.Pass{At: fixedNow(), Actions: []notify.Action{{What: "reminder", Issue: 7, Err: errors.New(dirty)}}})
+	check("action error", b.String())
+}
+
+// The error the command RETURNS is printed by the CLI too, so it is sanitized once at the return boundary,
+// with the %w chain intact for errors.Is.
+func TestResident_ReturnedErrorsAreSanitizedAndKeepTheirChain(t *testing.T) {
+	secret := "ghp_abcdefghijklmnopqrstuvwxyz0123456789"
+	dirty := fmt.Errorf("boom %s for someone@example.com at /Users/someone/work: %w", secret, errResidentProbe)
+	got := sanitizeResidentErr(dirty)
+	for _, bad := range []string{secret, "someone@example.com", "/Users/someone"} {
+		if strings.Contains(got.Error(), bad) {
+			t.Errorf("the returned error still carries %q: %s", bad, got)
+		}
+	}
+	if !errors.Is(got, errResidentProbe) {
+		t.Error("the %w chain was cut: errors.Is no longer finds the cause")
+	}
+	if sanitizeResidentErr(nil) != nil {
+		t.Error("a nil error became non-nil")
+	}
+
+	// path: a real failure of the command comes back through the same boundary. (A home path is masked only
+	// where it STARTS - core's rule - so a temp directory cannot stand in for one; the text check above is the
+	// sanitizer's, this one shows the boundary is on the command's own return path.)
+	root := t.TempDir()
+	afwWrite(t, root, afwDoc(filepath.Join(root, "absent-store")))
+	calls := 0
+	err := runFactoryResidentCmd(context.Background(), residentOptions{ProjectRoot: root, GHRead: residentGH(&calls), Now: fixedNow, Once: true})
+	var ce *cleanedError
+	if err == nil || !strings.Contains(err.Error(), "does not create") || !errors.As(err, &ce) {
+		t.Fatalf("missing store through the command boundary: %v (cleaned=%v)", err, ce != nil)
+	}
+}
+
+var errResidentProbe = errors.New("probe cause")

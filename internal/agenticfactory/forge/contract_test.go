@@ -75,13 +75,13 @@ func TestNotAccessibleWordingChangesTheReasonNeverTheBehaviour(t *testing.T) {
 	if vd.Kind != KindDenied || vo.Kind != KindUnclassified || vd.Reason == vo.Reason {
 		t.Fatalf("kinds/reasons: %+v / %+v", vd, vo)
 	}
-	run := func(r Response) (error, int) {
+	run := func(r Response) (int, error) {
 		f := &fakeT{resps: []Response{r}}
 		_, err := client(f, t0).Get(t.Context(), "/x")
-		return err, len(f.calls)
+		return len(f.calls), err
 	}
-	ed, nd := run(denied)
-	eo, no := run(other)
+	nd, ed := run(denied)
+	no, eo := run(other)
 	if !errors.Is(ed, ErrDenied) || !errors.Is(eo, ErrDenied) || nd != no || nd != 1 {
 		t.Errorf("behaviour differs: %v/%d vs %v/%d", ed, nd, eo, no)
 	}

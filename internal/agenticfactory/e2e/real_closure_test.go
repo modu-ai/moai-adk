@@ -74,7 +74,7 @@ func TestRealClosure_MissingClose_NeverDone_HandedOffPath(t *testing.T) {
 		if _, err := r.HandOff(tk, goodHandoff(t)); err != nil {
 			t.Fatal(err)
 		}
-		if err := r.Store.Release(tk.Issue, tk.Holder); err != nil {
+		if err := r.Store.Release(tk.Issue, tk.Holder, tk.Epoch); err != nil {
 			t.Fatal(err)
 		}
 		missingThenObserved(t,

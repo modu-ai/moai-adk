@@ -180,5 +180,5 @@ func TestTheCountingRemoteCountsEveryKindOfCall(t *testing.T) {
 	if c.Snapshot().Total() != 0 {
 		t.Error("reset did not clear the counts")
 	}
-	var _ error = errors.New("keep the import honest")
+	var _ = errors.New("keep the import honest")
 }

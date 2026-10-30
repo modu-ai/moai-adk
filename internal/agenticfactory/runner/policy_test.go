@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -11,7 +12,7 @@ import (
 // stubFacts answers per Issue number; unlisted Issues fail the lookup.
 type stubFacts map[int]IssueFacts
 
-func (s stubFacts) IssueFacts(i core.IssueRef) (IssueFacts, error) {
+func (s stubFacts) IssueFacts(_ context.Context, i core.IssueRef) (IssueFacts, error) {
 	f, ok := s[i.Number]
 	if !ok {
 		return IssueFacts{}, errors.New("host lookup failed")
@@ -91,8 +92,8 @@ func TestForeignClaimNeedsEveryCondition(t *testing.T) {
 		{"owner handed over", func(f *IssueFacts) { f.Owner = core.OwnerHandedOver }, nil, nil},
 		{"option off", nil, func(c *core.Collaboration) { c.Enabled = false }, core.ErrNotIssueAuthor},
 		{"repository not listed", nil, func(c *core.Collaboration) { c.AllowedRepositories = []string{"acme/other"} }, core.ErrRepoNotAllowed},
-		{"renamed repository", func(f *IssueFacts) { f.ActualRepo = "acme/renamed" }, nil, core.ErrRepoNotAllowed},
-		{"redirected lookup", func(f *IssueFacts) { f.Redirected = true }, nil, core.ErrRepoNotAllowed},
+		{"renamed repository", func(f *IssueFacts) { f.ActualRepo = "acme/renamed" }, nil, core.ErrRepoUnverified},
+		{"redirected lookup", func(f *IssueFacts) { f.Redirected = true }, nil, core.ErrRepoUnverified},
 		{"owner active", func(f *IssueFacts) { f.Owner = core.OwnerActive }, nil, core.ErrOwnerUnconfirmed},
 		{"owner unknown", func(f *IssueFacts) { f.Owner = core.OwnerUnknown }, nil, core.ErrOwnerUnconfirmed},
 		{"user unknown", func(f *IssueFacts) { f.UserID = 0 }, nil, core.ErrIdentityUnknown},
@@ -158,6 +159,7 @@ func TestRefusalsMapToBlockReasons(t *testing.T) {
 		core.ErrNotIssueAuthor:       core.ReasonNotIssueAuthor,
 		core.ErrIdentityUnknown:      core.ReasonIdentityUnknown,
 		core.ErrRepoNotAllowed:       core.ReasonRepoNotAllowed,
+		core.ErrRepoUnverified:       core.ReasonRepoUnverified,
 		core.ErrPermissionNotGranted: core.ReasonPermissionNotGranted,
 		core.ErrOwnerUnconfirmed:     core.ReasonOwnerUnconfirmed,
 		core.ErrForeignClosing:       core.ReasonForeignClosing,

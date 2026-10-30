@@ -286,6 +286,16 @@ func (b *Budget) Observe(r Response, now time.Time) {
 	}
 }
 
+// RemainingFor reports the remaining call count the host last stated for a resource. known is false when
+// the host has not stated one - no header was seen, or the window it described has rolled over - and the
+// caller must then read it as UNKNOWN, never as "some are left" and never as a number of its own.
+func (b *Budget) RemainingFor(res string) (n int, known bool) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	x := b.at(res)
+	return x.remaining, x.known
+}
+
 // Block forbids calls on the default bucket until the given time; BlockFor does it for one resource.
 func (b *Budget) Block(until time.Time) { b.BlockFor("", until) }
 
@@ -480,7 +490,9 @@ func EffectError(v Verdict) error {
 type StatusError struct {
 	Status int
 	Header map[string]string
-	Body   []byte
+	// Body is the host's own answer, raw: Redact it before it is recorded anywhere. Error() prints the
+	// status only.
+	Body []byte
 }
 
 func (e *StatusError) Error() string { return fmt.Sprintf("forge: http status %d", e.Status) }

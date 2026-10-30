@@ -215,7 +215,7 @@ func TestHandoffAcceptanceAndMergeMoveThePosition(t *testing.T) {
 	if r := up(func(r *Record) { r.Merged, r.Pending = true, "deploy" }); r.Stage != core.StageMerging {
 		t.Errorf("merge observed: %+v", r)
 	}
-	if r := up(func(r *Record) { r.State = core.StateDone; r.Closed = true }); r.Stage != core.StageDone {
+	if r := up(func(r *Record) { finish(r) }); r.Stage != core.StageDone {
 		t.Errorf("done: %+v", r)
 	}
 }
@@ -301,11 +301,11 @@ func TestTakingOverAnOldParkedRecordStillNeedsAWait(t *testing.T) {
 		t.Fatal(err)
 	}
 	i := ref(t, 4)
-	if _, err := s.TakeOver(i, "w", 1, "w2", "d4b", "run-2", "ref@1", nil); !errors.Is(err, core.ErrEvidenceIncomplete) {
+	if _, err := s.TakeOverUnverified(i, "w", 1, "w2", "d4b", "run-2", "ref@1", nil); !errors.Is(err, core.ErrEvidenceIncomplete) {
 		t.Fatalf("no wait for the new holder: %v", err)
 	}
 	w := core.Wait{Owner: "w2", NextAction: "retry", RecheckAt: time.Date(2026, 10, 30, 15, 0, 0, 0, time.UTC), Diagnosis: "429", MaxRetries: 3, Escalate: "leader"}
-	rec, err := s.TakeOver(i, "w", 1, "w2", "d4b", "run-2", "ref@1", &w)
+	rec, err := s.TakeOverUnverified(i, "w", 1, "w2", "d4b", "run-2", "ref@1", &w)
 	if err != nil || rec.Holder != "w2" || rec.Wait == nil || rec.Park == nil {
 		t.Errorf("with the new holder's wait: %+v %v", rec, err)
 	}

@@ -49,10 +49,10 @@ package homestate
 // see such a change without restarting
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
 
@@ -100,10 +100,14 @@ func resetLocationMemo() {
 	locationMemo.Unlock()
 }
 
+// discoveryVars change how git WALKS UP to find a repository but are not in gitenv.RepoScopingVars
+// (the callers do not scrub them, so a child sees them): audit F19.
+var discoveryVars = []string{"GIT_DISCOVERY_ACROSS_FILESYSTEM"}
+
 // locEnvKey is the value of every repository-locating variable, in a fixed order.
 func locEnvKey() string {
 	var b strings.Builder
-	for _, name := range gitenv.RepoScopingVars {
+	for _, name := range append(append([]string(nil), gitenv.RepoScopingVars...), discoveryVars...) {
 		b.WriteString(name)
 		b.WriteByte('=')
 		b.WriteString(os.Getenv(name))
@@ -193,8 +197,32 @@ func stampDotGit(b *strings.Builder, path string) {
 			content, _ := io.ReadAll(io.LimitReader(f, 4096))
 			_ = f.Close()
 			b.Write(content)
+			stampGitdirTarget(b, path, content)
 		}
 	}
+}
+
+// stampGitdirTarget records whether the git directory a `.git` file names still exists. The file is
+// unchanged when the primary repository drops a linked worktree's administrative directory (`git
+// worktree prune`), yet git then no longer finds a repository there (audit F19).
+func stampGitdirTarget(b *strings.Builder, dotGit string, content []byte) {
+	target, ok := strings.CutPrefix(strings.TrimSpace(string(content)), "gitdir:")
+	if !ok {
+		return
+	}
+	target = strings.TrimSpace(target)
+	if !filepath.IsAbs(target) {
+		target = filepath.Join(filepath.Dir(dotGit), target)
+	}
+	b.WriteString("{")
+	for _, n := range []string{"HEAD", "commondir"} {
+		if _, err := os.Lstat(filepath.Join(target, n)); err == nil {
+			b.WriteString(n[:1])
+		} else {
+			b.WriteString("-")
+		}
+	}
+	b.WriteString("}")
 }
 
 // stampFile records the size and modification time of path, or its absence.
@@ -204,5 +232,5 @@ func stampFile(b *strings.Builder, path string) {
 		b.WriteString("[-]")
 		return
 	}
-	b.WriteString("[" + strconv.FormatInt(info.Size(), 10) + ":" + strconv.FormatInt(info.ModTime().UnixNano(), 10) + "]")
+	fmt.Fprintf(b, "[%d:%d]", info.Size(), info.ModTime().UnixNano())
 }

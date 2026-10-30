@@ -141,6 +141,7 @@ GitHub Issue (업무 필드의 권위: 제목·수용 기준·우선순위·의�
 | 상승 대상 | 상한에 닿거나 재확인 시각을 넘겼을 때 넘길 대상 |
 
 - 값(시각, 횟수, 상승 대상의 기본값)은 이 SPEC이 정하지 않는다. 필드의 존재만 정한다(spec.md §H 0.6.7).
+- "다음 자동 동작"의 형태(리더 결정, 리더 세션 경유, DEC-AF-27): 상대 시간(지금 + N)으로 시각을 밝힌 한 번의 자기 페이스 깨어남이며, 남은 일이 없으면 다시 걸지 않는다. 고정 간격으로 되풀이되는 작업이면 그 기록은 무효다(REQ-AF-016). 반복 cron은 쓰지 않는다 — 상대 시간과 반복 cron 배제는 사용자 결정(user decision via leader AskUserQuestion, transcribed by the leader in that file; original not read by this author — `/Users/goos/MoAI/moai-adk-go/.moai/reports/issue-1948/user-decision-lane-wake-20261030.md`, 0.6.7 서른다섯 번째 후속)이고, "한 번에 하나, 남은 일이 없으면 걸지 않음"과 "절대 시각 한 번짜리 금지"는 그 파일의 리더 잠정 규칙이다. N 값은 여전히 이 SPEC이 정하지 않는다.
 - lane-18 구현 관찰(0.6.7, 커밋 `deb7551aac`, 리더 전달·이 작성자는 다시 읽지 않음): 새 `PARKED` 상태로 들어가는 쓰기는 Wait 기록을 요구한다. 그 Wait 기록이 위 여섯 필드를 모두 갖는지는 확인하지 않았다(알려진 것은 `MaxRetries`·`escalate_to` 요구뿐, §6.1). spec.md §H 0.6.7.
 - `PARKED` overlay의 기존 세 요소(사유, 근거, 정상 재개 조건)는 그대로이며, 여섯 필드가 함께 있어야 한다. "진단"이 근거를, "다음 자동 동작"·"재확인 시각"이 재개 조건을 대신하지 않는다.
 
@@ -326,10 +327,15 @@ ACK가 없으면 다시 보내지 않고 받는 쪽 상태를 먼저 조회한�
 | C4 원시 로그·스택 | 원시 실행 로그, 패닉·예외 스택, 환경 변수 덤프, 프로세스 목록 | 블록 전체 `[REDACTED:C4]`, 요약 한 줄 |
 | C5 비공개 원격 내용 | 비공개 저장소·링크 본문, 접근 제한 artifact 내용 | `[REDACTED:C5]`, 항목 `LINK_BLOCKED` |
 
-- 원값과 원값의 hash는 공개 쪽 어디에도 남기지 않는다.
+- 원값과 원값의 hash는 공개 쪽 어디에도 남기지 않는다(`RESTRICTED`의 SHA-256도 원값의 hash가 아니다, 아래 줄).
 - 마지막 관문은 LLM이 아닌 결정적 검사다. 범주 하나라도 남으면 게시 전체를 거절한다.
-- 게시할 수 없는 자료는 `RESTRICTED`: 상태, 짧은 요약, SHA-256 세 필드만.
+- 게시할 수 없는 자료는 `RESTRICTED`: 상태, 짧은 요약, SHA-256 세 필드만. SHA-256은 그 항목의 가린 장부 형태에 대해 계산하며, 원값에 대해 계산하지 않는다(DEC-AF-28).
 - 적용 대상: 장부 행, 댓글, checkpoint manifest, Issue 요약, 정제 증거 파일, 관찰 출력.
+- 알려진 적용 범위 부채(relayed, DEC-AF-29): 정제기가 아직 잡지 못하는 네 갈래 — (i) 한국어 이름 + 전화번호(C2), (ii) 패닉·goroutine 스택(C4), (iii) 물결표 `~/...` 경로(C3 문언이 "`~` 전개값"이라 드는지 모호, OD-23의 질문), (iv) 낱말과 숫자를 대시로 이은 passphrase 형태(C1). 측정은 lane-19가 core 커밋 `9e34d6bb87`에서 했다(리더 전달, 이 SPEC 작성자는 읽지 않음). 위 표와 범주는 바뀌지 않는다.
+  - on a lane branch at writing; later also in integration (commit `6e44b1b2aa`) — C2: `redact.go:22` `phone`(한국·+82 전화번호), `:23` `person-name`(전화번호 옆 한국어 이름). 이름만 있을 때 가리지 않는다는 것은 lane-18 통지(리더 전달)이고 이 작성자는 시험을 돌리지 않았다. 부채 (i)은 닫지 않는다.
+  - on a lane branch at writing; later also in integration (commit `6e44b1b2aa`) — C4: `redact.go:24` `stack`(패닉 줄·goroutine 스택). 같은 커밋이 `sanitize_test.go`의 "보통 글" 목록에서 goroutine 스택 한 줄을 뺐다. 부채 (ii)는 닫지 않는다.
+  - on a lane branch at writing; later also in integration (commit `6e44b1b2aa`) — C1: `redact.go:69-70` credential-assignment 규칙에 `pass(?:phrase|w(?:or)?d)`가 들어 `passphrase: …`·`PASSPHRASE=…`·JSON `"passphrase"`·`ssh_passphrase = '…'` 형태를 잡는다(시험 입력 `sanitize_s2_test.go:164-167`). 이름 없는 대시 연결 낱말열은 구현하지 않았다(lane-18 통지, 리더 전달; 이 작성자의 grep도 그런 규칙을 찾지 못함) — 부채 (iv)의 그 부분은 OD-30. 부채 (iv)는 닫지 않는다.
+  - 리더가 전한 커밋 `1aa99d4504`(S1 후속)는 위 범주를 담지 않는다. 그 커밋은 통합 브랜치에 든다. `6e44b1b2aa`는 작성 때(HEAD `0659c71de4`, 통합 끝 `a6f1e93c4f`) 들지 않았고, 2026-10-30T01:50Z(HEAD `937a60ee95`, 통합 끝 `b8a90f33e2`) 든다 — 두 번 모두 `git branch --contains 6e44b1b2aa --list WT-agentic-factory-integration`. 그 뒤 `6ee1da00f4`(통합에 듦)가 범주 이름은 두고 규칙을 넓혔다(Python·Java/Node 스택, hex 안 전화번호 제외, 직함 붙은 이름; spec DEC-AF-29). 시험은 돌리지 않았고 부채 (i)·(ii)·(iv)는 닫지 않는다. C3 물결표는 OD-23 그대로.
 
 **증거 위치와 단계(DEC-AF-13)**: 원본은 `.moai/reports`(ignore 규칙 그대로). 공개 안전 정제본만 추적 디렉터리 `.moai/evidence/issue-<N>/`. 단계 `PREPARED → MASKED → COMMITTED → PUSHED → REMOTE_VERIFIED`. `AVAILABLE`은 원격 조회가 확인한 뒤에만 붙는다. 링크는 전체 커밋 SHA 고정.
 

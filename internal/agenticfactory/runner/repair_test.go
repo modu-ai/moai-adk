@@ -55,7 +55,7 @@ func TestAfterATakeoverTheNewHolderIsTheResponsibleAgent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := r.Store.Release(ref, "sess-new"); err != nil {
+	if err := r.Store.Release(ref, "sess-new", rec.Epoch); err != nil {
 		t.Fatal(err)
 	}
 	mustReopen(t, r, ref)

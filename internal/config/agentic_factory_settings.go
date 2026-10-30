@@ -223,8 +223,10 @@ func readAgenticFactorySettings(projectRoot string) (AgenticFactorySettings, str
 	s.CursorMaxChunks = r.integer("cursor.max_chunks")
 	r.check(s.CursorMaxChunks >= 0, "cursor.max_chunks", "must be an integer >= 0", s.CursorMaxChunks)
 
-	s.WebhookQueue = r.queue("queue.webhook")
-	s.NotifyInbox = r.queue("notify.inbox")
+	// The webhook delivery id reference length is 36 (design section 6.1), but no
+	// minimum is adopted for it: only the inbox ids are evidenced, so 0 is the floor here.
+	s.WebhookQueue = r.queue("queue.webhook", 0)
+	s.NotifyInbox = r.queue("notify.inbox", afsInboxMinIDBytes)
 
 	s.WebhookMaxBody = r.integer("webhook.max_body")
 	r.check(s.WebhookMaxBody >= 0, "webhook.max_body", "must be an integer >= 0", s.WebhookMaxBody)
@@ -340,8 +342,15 @@ func (r *afsReader) duration(rel string) time.Duration {
 	return d
 }
 
-// queue reads and validates one doc-backed queue block.
-func (r *afsReader) queue(rel string) AgenticFactoryQueueLimits {
+// afsInboxMinIDBytes is the smallest notify.inbox.max_id_bytes the agent inbox can work
+// with: its message ids are 32 bytes (messageID in internal/agenticfactory/monitor/notify/inbox.go,
+// hex of 16 bytes). Below it every Notify fails as "not delivered" and burns retries.
+// This duplicates that value and must change together with it.
+const afsInboxMinIDBytes = 32
+
+// queue reads and validates one doc-backed queue block. minIDBytes > 0 sets a floor
+// for max_id_bytes (0 is then rejected too); 0 keeps the generic rule.
+func (r *afsReader) queue(rel string, minIDBytes int) AgenticFactoryQueueLimits {
 	q := AgenticFactoryQueueLimits{
 		MaxDocBytes: r.integer(rel + ".max_doc_bytes"),
 		SeenLimit:   r.integer(rel + ".seen_limit"),
@@ -351,6 +360,9 @@ func (r *afsReader) queue(rel string) AgenticFactoryQueueLimits {
 	r.check(q.MaxDocBytes >= 1, rel+".max_doc_bytes", "must be an integer >= 1", q.MaxDocBytes)
 	r.check(q.SeenLimit >= 0, rel+".seen_limit", "must be an integer >= 0", q.SeenLimit)
 	r.check(q.MaxIDBytes >= 0, rel+".max_id_bytes", "must be an integer >= 0", q.MaxIDBytes)
+	if minIDBytes > 0 {
+		r.check(q.MaxIDBytes >= minIDBytes, rel+".max_id_bytes", fmt.Sprintf("must be an integer >= %d (agent inbox message ids are %d bytes)", minIDBytes, minIDBytes), q.MaxIDBytes)
+	}
 	r.check(q.SeenLimit == 0 || q.MaxIDBytes > 0, rel+".max_id_bytes", "must be > 0 when "+afsPrefix+rel+".seen_limit > 0", q.MaxIDBytes)
 	// The inequality is always evaluated (big-int safe against overflow).
 	if r.err == nil {

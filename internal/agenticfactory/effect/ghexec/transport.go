@@ -56,7 +56,7 @@ func (t Transport) Do(ctx context.Context, r forge.Request) (forge.Response, err
 	case err != nil:
 		var se *forge.StatusError
 		if errors.As(err, &se) { // no headers were printed, but the exit text named the status
-			res, perr = forge.Response{Status: se.Status}, nil
+			res = forge.Response{Status: se.Status, Header: se.Header, Body: se.Body}
 		} else {
 			return forge.Response{}, err
 		}

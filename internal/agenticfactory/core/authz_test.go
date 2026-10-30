@@ -195,17 +195,17 @@ func TestARenamedRepositoryIsNotTreatedAsTheAllowedOne(t *testing.T) {
 	c := collab()
 	r := req(OpClose)
 	r.ActualRepo = "acme/renamed"
-	if v := c.Authorize(r); v != DenyRepoNotAllowed {
+	if v := c.Authorize(r); v != DenyRepoUnverified {
 		t.Errorf("redirected to another name: %s", v)
 	}
 	r = req(OpClose)
 	r.ActualRepo = ""
-	if v := c.Authorize(r); v != DenyRepoNotAllowed {
+	if v := c.Authorize(r); v != DenyRepoUnverified {
 		t.Errorf("no answered repository to compare: %s", v)
 	}
 	r = req(OpClose)
 	r.RequestedRepo = ""
-	if v := c.Authorize(r); v != DenyRepoNotAllowed {
+	if v := c.Authorize(r); v != DenyRepoUnverified {
 		t.Errorf("no requested repository: %s", v)
 	}
 	// The allowed list is matched against the repository the host answered for.
@@ -234,6 +234,7 @@ func TestVerdictMapsToReasonAndError(t *testing.T) {
 		DenyNotIssueAuthor:       {ReasonNotIssueAuthor, ErrNotIssueAuthor},
 		DenyIdentityUnknown:      {ReasonIdentityUnknown, ErrIdentityUnknown},
 		DenyRepoNotAllowed:       {ReasonRepoNotAllowed, ErrRepoNotAllowed},
+		DenyRepoUnverified:       {ReasonRepoUnverified, ErrRepoUnverified},
 		DenyPermissionNotGranted: {ReasonPermissionNotGranted, ErrPermissionNotGranted},
 		DenyOwnerUnconfirmed:     {ReasonOwnerUnconfirmed, ErrOwnerUnconfirmed},
 		DenyUnknownOp:            {ReasonOpNotDefined, ErrOpNotDefined},
@@ -256,7 +257,7 @@ func TestVerdictMapsToReasonAndError(t *testing.T) {
 }
 
 func TestNewBlockReasonsAreInTheClosedSet(t *testing.T) {
-	for _, r := range []BlockReason{ReasonNotIssueAuthor, ReasonIdentityUnknown, ReasonRepoNotAllowed, ReasonPermissionNotGranted, ReasonOwnerUnconfirmed, ReasonForeignClosing, ReasonOpNotDefined} {
+	for _, r := range []BlockReason{ReasonNotIssueAuthor, ReasonIdentityUnknown, ReasonRepoNotAllowed, ReasonRepoUnverified, ReasonPermissionNotGranted, ReasonOwnerUnconfirmed, ReasonForeignClosing, ReasonOpNotDefined} {
 		if !r.Valid() {
 			t.Errorf("%q is not a valid reason", r)
 		}
@@ -272,7 +273,7 @@ func TestARedirectedLookupIsNeverAllowed(t *testing.T) {
 	for _, op := range []Op{OpEditBody, OpLabel, OpAssignee, OpClose, OpTakeOver} {
 		r := req(op)
 		r.Redirected = true
-		if v := collab().Authorize(r); v != DenyRepoNotAllowed {
+		if v := collab().Authorize(r); v != DenyRepoUnverified {
 			t.Errorf("%s through a redirect: %s", op, v)
 		}
 	}
@@ -284,7 +285,7 @@ func TestARedirectedLookupIsNeverAllowed(t *testing.T) {
 		t.Errorf("a comment does not depend on the allow list: %s", v)
 	}
 	r.Redirected = true
-	if v := (Collaboration{}).Authorize(r); v != DenyRepoNotAllowed {
+	if v := (Collaboration{}).Authorize(r); v != DenyRepoUnverified {
 		t.Errorf("a comment through a redirect: %s", v)
 	}
 }
@@ -296,7 +297,7 @@ func TestOldNameStillListedAfterARename(t *testing.T) {
 	c.AllowedRepositories = []string{"acme/widgets"} // the old name
 	r := req(OpClose)
 	r.RequestedRepo, r.ActualRepo = "acme/widgets", "acme/gadgets"
-	if v := c.Authorize(r); v != DenyRepoNotAllowed {
+	if v := c.Authorize(r); v != DenyRepoUnverified {
 		t.Errorf("old name, new answer: %s", v)
 	}
 	// Asking for the new name and getting it, but only the old name is listed.
@@ -393,8 +394,8 @@ func TestAMovedRepositoryRefusesEveryOperationOnEveryBranch(t *testing.T) {
 					r := req(op)
 					branch(&r)
 					brk(&r)
-					if v := c.Authorize(r); v != DenyRepoNotAllowed {
-						t.Errorf("%s / %s / %s / %s: %s, want repo-not-allowed", cname, bname, op, kname, v)
+					if v := c.Authorize(r); v != DenyRepoUnverified {
+						t.Errorf("%s / %s / %s / %s: %s, want repository-unverified", cname, bname, op, kname, v)
 					}
 				}
 			}
@@ -424,5 +425,26 @@ func TestTheAllowListStillOnlyGovernsCollaboration(t *testing.T) {
 	r.UserID, r.Redirected = 0, true
 	if v := (Collaboration{}).Authorize(r); v != DenyIdentityUnknown {
 		t.Errorf("identity before repository: %s", v)
+	}
+}
+
+// The two refusals about the repository are told apart: "the host did not answer for
+// the repository that was asked about" (a redirect, a move, an unknown name) and "it
+// did, and it is not on the allow list". They are different facts with different
+// remedies, so they carry different names (audit F20).
+func TestUnverifiedAndNotListedAreDifferentVerdicts(t *testing.T) {
+	r := req(OpClose)
+	r.RequestedRepo, r.ActualRepo = "acme/other", "acme/other" // answered correctly, not listed
+	if v := collab().Authorize(r); v != DenyRepoNotAllowed {
+		t.Errorf("not listed: %s", v)
+	}
+	r = req(OpClose)
+	r.Redirected = true // not answered correctly, would be listed
+	if v := collab().Authorize(r); v != DenyRepoUnverified {
+		t.Errorf("unverified: %s", v)
+	}
+	if DenyRepoNotAllowed.Err() == nil || DenyRepoUnverified.Err() == nil ||
+		errors.Is(DenyRepoUnverified.Err(), ErrRepoNotAllowed) || errors.Is(DenyRepoNotAllowed.Err(), ErrRepoUnverified) {
+		t.Error("the two verdicts must not share a sentinel")
 	}
 }

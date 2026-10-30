@@ -2,6 +2,7 @@ package effect
 
 import (
 	"errors"
+	"strings"
 	"testing"
 )
 
@@ -106,7 +107,7 @@ func TestMatchingIsBySegmentNotBySubstring(t *testing.T) {
 	if err := CheckRequest("PATCH", "/repos/o/r/labels/protection", nil); err != nil {
 		t.Errorf("a label named protection was refused: %v", err)
 	}
-	refusal(t, "PATCH", "/repos/o/r/hooks")
+	_ = refusal(t, "PATCH", "/repos/o/r/hooks")
 }
 
 func TestMethodOverrideHeadersAreRefused(t *testing.T) {
@@ -130,8 +131,9 @@ func TestRefusalParksTheIntentWithoutLookupOrResend(t *testing.T) {
 	if in.Status != StatusParked || lk.calls != 0 || s.calls != 1 {
 		t.Fatalf("in=%+v lookups=%d sends=%d", in, lk.calls, s.calls)
 	}
-	if in.ParkReason != string(ReasonWeakensProtection) {
-		t.Errorf("park reason = %q", in.ParkReason)
+	if in.ParkReason != "permission-denied" || !strings.Contains(in.LastError, string(ReasonWeakensProtection)) {
+		// one recorded reason (design 11.3); the guard's finer code stays in the error text
+		t.Errorf("park reason = %q, last error = %q", in.ParkReason, in.LastError)
 	}
 	if again, _ := ex.Execute(t.Context(), req()); again.Status != StatusParked || s.calls != 1 {
 		t.Errorf("a refused operation was sent again: calls=%d", s.calls)
