@@ -25,7 +25,7 @@ func mkdb(t *testing.T, name, ddl string, stmts ...string) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	if _, err := db.Exec(ddl); err != nil {
 		t.Fatal(err)
 	}
@@ -127,7 +127,7 @@ func TestDry_PickedClaimsBeforeQueuedAndTheOldOrderStands(t *testing.T) {
 	}
 	m := byID(plan)
 	pr := func(id string) int { return m[id].Card.Priority }
-	if !(pr("p1") > pr("p2") && pr("p2") > pr("q1") && pr("q1") > pr("q2")) {
+	if pr("p1") <= pr("p2") || pr("p2") <= pr("q1") || pr("q1") <= pr("q2") {
 		t.Errorf("priorities p1=%d p2=%d q1=%d q2=%d: want every picked above every queued and the earlier row above the later",
 			pr("p1"), pr("p2"), pr("q1"), pr("q2"))
 	}
@@ -148,7 +148,7 @@ func TestDry_NeverWritesToASource(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	if _, err := db.Exec("UPDATE items SET text='y'"); err == nil {
 		t.Error("control: the read-only connection accepted a write, so the check above proves nothing")
 	}
