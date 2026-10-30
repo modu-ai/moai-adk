@@ -78,6 +78,7 @@ const (
 	ReasonNotIssueAuthor       BlockReason = "not-issue-author"
 	ReasonIdentityUnknown      BlockReason = "identity-unknown"
 	ReasonRepoNotAllowed       BlockReason = "repository-not-allowed"
+	ReasonRepoUnverified       BlockReason = "repository-unverified"
 	ReasonPermissionNotGranted BlockReason = "permission-not-granted"
 	ReasonOwnerUnconfirmed     BlockReason = "owner-unconfirmed"
 	ReasonForeignClosing       BlockReason = "foreign-closing-keyword"
@@ -93,7 +94,7 @@ var allReasons = []BlockReason{
 	ReasonAuthFailed, ReasonPermissionDenied, ReasonRateLimited, ReasonCapacityShort,
 	ReasonBudgetExhausted, ReasonCheckNotPassed, ReasonDebtPresent, ReasonVerdictNotPass,
 	ReasonProducerNotAllowed, ReasonOwnershipUnverified, ReasonStoreUnavailable,
-	ReasonUserControl, ReasonOperatorAckMissing, ReasonUnclassified, ReasonNotIssueAuthor, ReasonIdentityUnknown, ReasonRepoNotAllowed, ReasonPermissionNotGranted, ReasonOwnerUnconfirmed, ReasonForeignClosing, ReasonOpNotDefined, ReasonOperatorHold,
+	ReasonUserControl, ReasonOperatorAckMissing, ReasonUnclassified, ReasonNotIssueAuthor, ReasonIdentityUnknown, ReasonRepoNotAllowed, ReasonRepoUnverified, ReasonPermissionNotGranted, ReasonOwnerUnconfirmed, ReasonForeignClosing, ReasonOpNotDefined, ReasonOperatorHold,
 	// the six canon park reasons (park.go), so a pause can record them
 	ReasonDependency, ReasonStopUnknown, ReasonUnknownEffect, ReasonPendingEffect, ReasonContractChange, ReasonStartUnknown,
 }

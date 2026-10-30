@@ -48,7 +48,7 @@ func TestParkValidate(t *testing.T) {
 		}
 	}
 	// refusal (R) and merge-gate (G) reasons never become an overlay
-	for _, r := range []BlockReason{ReasonNotIssueAuthor, ReasonIdentityUnknown, ReasonRepoNotAllowed, ReasonPermissionNotGranted,
+	for _, r := range []BlockReason{ReasonNotIssueAuthor, ReasonIdentityUnknown, ReasonRepoNotAllowed, ReasonRepoUnverified, ReasonPermissionNotGranted,
 		ReasonOwnerUnconfirmed, ReasonForeignClosing, ReasonOpNotDefined, ReasonCheckNotPassed, ReasonDebtPresent,
 		ReasonVerdictNotPass, ReasonProducerNotAllowed, ReasonOwnershipUnverified, "made-up"} {
 		if err := park(r).Validate(); !errors.Is(err, ErrReasonNotAllowed) {

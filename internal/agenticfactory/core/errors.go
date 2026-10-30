@@ -22,7 +22,8 @@ var (
 	ErrRevisionConflict          = errors.New("agenticfactory: the authoritative copy moved on, write refused")
 	ErrNotIssueAuthor            = errors.New("agenticfactory: the authenticated user is not the Issue's author for this operation")
 	ErrIdentityUnknown           = errors.New("agenticfactory: the user, the author or the comment author could not be established")
-	ErrRepoNotAllowed            = errors.New("agenticfactory: the repository is not on the collaboration allow list, or the host answered for another one")
+	ErrRepoNotAllowed            = errors.New("agenticfactory: the repository is not on the collaboration allow list")
+	ErrRepoUnverified            = errors.New("agenticfactory: the host did not answer for the repository that was asked about (a redirect, a move, or a name that is not known)")
 	ErrPermissionNotGranted      = errors.New("agenticfactory: collaboration does not grant this write")
 	ErrOwnerUnconfirmed          = errors.New("agenticfactory: the Issue's current owner is not confirmed handed over or absent")
 	ErrOpNotDefined              = errors.New("agenticfactory: the operation is not defined by the Issue permission policy")
@@ -78,6 +79,8 @@ func ReasonFor(err error) (BlockReason, bool) {
 		return ReasonIdentityUnknown, true
 	case errors.Is(err, ErrRepoNotAllowed):
 		return ReasonRepoNotAllowed, true
+	case errors.Is(err, ErrRepoUnverified):
+		return ReasonRepoUnverified, true
 	case errors.Is(err, ErrPermissionNotGranted):
 		return ReasonPermissionNotGranted, true
 	case errors.Is(err, ErrOwnerUnconfirmed):
