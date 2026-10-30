@@ -156,12 +156,18 @@ func TestLostCreateResponseIsReconciledByMarker(t *testing.T) {
 func TestLostUpdateResponseRetriesUpdateNotCreate(t *testing.T) {
 	r := newRemote()
 	l, _ := newLedger(r, 4096)
+	now := time.Unix(1_000_000, 0)
+	l.Now = func() time.Time { return now }
 	_, _ = l.Submit(t.Context(), body("v1"))
 	_ = l.Flush(t.Context())
 	r.lostAfterUpdate = true
 	_, _ = l.Submit(t.Context(), body("v2"))
 	_ = l.Flush(t.Context())
-	_ = l.Flush(t.Context())
+	// The update timed out, so it may still land: the intent stays Sent through the window and only then
+	// is the update retried.
+	now = now.Add(time.Hour)
+	_ = l.Flush(t.Context()) // reconciles the Sent intent to Failed (the text is not there)
+	_ = l.Flush(t.Context()) // and the next pass retries the update
 	if r.creates != 1 || len(r.comments[7]) != 1 || !strings.Contains(r.comments[7][0].Body, "v2") {
 		t.Errorf("creates=%d comments=%v", r.creates, r.comments[7])
 	}

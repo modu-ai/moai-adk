@@ -38,6 +38,7 @@ func (s Store) Get(key string) (effect.Intent, bool, error) {
 	if in.Key != key {
 		return effect.Intent{}, false, fmt.Errorf("docstore: document %s holds intent %q", key, in.Key)
 	}
+	in.Rev = d.Rev
 	return in, true, nil
 }
 
@@ -72,7 +73,23 @@ func (s Store) List() ([]effect.Intent, error) {
 		if err := json.Unmarshal(d.Data, &in); err != nil {
 			return nil, fmt.Errorf("docstore: intent %s is not readable: %w", d.Name, err)
 		}
+		in.Rev = d.Rev
 		out = append(out, in)
 	}
 	return out, nil
+}
+
+// PutIf writes the intent only if the stored revision is still in.Rev (0: not stored yet), with no re-read
+// in between: the revision the caller read is the one the claim store compares.
+func (s Store) PutIf(in effect.Intent) (effect.Intent, error) {
+	raw, err := json.Marshal(in)
+	if err != nil {
+		return effect.Intent{}, err
+	}
+	d, err := s.C.PutDoc(kind, in.Key, in.Rev, raw)
+	if err != nil {
+		return effect.Intent{}, err
+	}
+	in.Rev = d.Rev
+	return in, nil
 }

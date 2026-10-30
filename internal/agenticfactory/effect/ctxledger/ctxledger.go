@@ -20,6 +20,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/effect"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/forge"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/monitor"
@@ -56,7 +57,18 @@ var (
 
 // personalData reports an email address or an absolute home path. The masking step upstream does not
 // cover these, so the sender refuses them whatever the flag says.
-func personalData(s string) bool { return emailRe.MatchString(s) || homeRe.MatchString(s) }
+func personalData(s string) bool {
+	if emailRe.MatchString(s) || homeRe.MatchString(s) { // the Windows form and the bare patterns stay here
+		return true
+	}
+	_, cats := core.Sanitize(s)
+	for _, c := range cats {
+		if c == core.CategoryEmail || c == core.CategoryHomePath {
+			return true
+		}
+	}
+	return false
+}
 
 // ErrNoConditionalRead is returned by a wrapper whose inner Remote cannot read conditionally. The drift
 // check then falls back to the marker lookup instead of treating it as a failed check.
@@ -207,10 +219,28 @@ func (l *Ledger) Submit(_ context.Context, b Body) (effect.Intent, error) {
 			return in, nil
 		}
 		in.Status, in.Attempts, in.ProviderID, in.LastError, in.Seq = effect.StatusIntended, 0, "", "", latest+1
-		return in, l.Store.Put(in) // older text submitted again: re-arm so the remote is brought back to it
+		// Older text submitted again: re-arm so the remote is brought back to it. Compare-and-swap on the
+		// revision just read: if another executor moved the intent (Sent, say) meanwhile, what is stored
+		// stands and nothing is rewound.
+		return l.putFollowing(in)
 	}
 	in := effect.Intent{Key: key, Kind: effect.LedgerComment, Issue: b.Issue, Target: target(b.Issue), Digest: dg, Payload: full, Status: effect.StatusIntended, Seq: latest + 1}
-	return in, l.Store.Put(in)
+	return l.putFollowing(in)
+}
+
+// putFollowing writes the intent with PutIf; on a revision conflict it returns the stored intent instead.
+func (l *Ledger) putFollowing(in effect.Intent) (effect.Intent, error) {
+	out, err := l.Store.PutIf(in)
+	if errors.Is(err, core.ErrRevisionConflict) {
+		cur, ok, gerr := l.Store.Get(in.Key)
+		if gerr != nil {
+			return effect.Intent{}, gerr
+		}
+		if ok {
+			return cur, nil
+		}
+	}
+	return out, err
 }
 
 // Flush sends the newest pending intent of every Issue, one at a time. Older pending intents are
@@ -235,8 +265,8 @@ func (l *Ledger) Flush(ctx context.Context) error {
 		if newest[in.Issue].Key != in.Key {
 			if in.Status != effect.StatusConfirmed && in.Status != effect.StatusSuperseded {
 				in.Status = effect.StatusSuperseded
-				if err := l.Store.Put(in); err != nil && first == nil {
-					first = err
+				if _, err := l.Store.PutIf(in); err != nil && !errors.Is(err, core.ErrRevisionConflict) && first == nil {
+					first = err // a conflict means someone else moved it; the next Flush looks again
 				}
 			}
 			continue
@@ -270,8 +300,12 @@ func (l *Ledger) Flush(ctx context.Context) error {
 			continue
 		}
 		in.Status, in.Attempts, in.ProviderID = effect.StatusIntended, 0, ""
-		if err := l.Store.Put(in); err != nil && first == nil {
-			first = err
+		if _, err := l.Store.PutIf(in); err != nil {
+			if errors.Is(err, core.ErrRevisionConflict) {
+				l.markRecheck(in.Issue, true) // moved meanwhile: check the comment again on the next Flush
+			} else if first == nil {
+				first = err
+			}
 			continue
 		}
 		got, err := ex.Execute(ctx, effect.Request{Kind: in.Kind, Issue: in.Issue, Target: in.Target, Digest: in.Digest, Payload: in.Payload})
@@ -291,6 +325,13 @@ func (l *Ledger) Flush(ctx context.Context) error {
 // remembered id it is one conditional read (a 304 means unchanged); otherwise it is the marker lookup.
 // When drift is found the remembered hash is cleared so the sender writes to the known id at once.
 func (l *Ledger) drifted(ctx context.Context, in effect.Intent) (bool, error) {
+	// The Executor bounds the writes with Timeouts.For; this read runs outside it, so it takes the same bound
+	// (the ledger comment's). With no timeout configured the caller's context is the only limit.
+	if to := l.Timeouts.For(effect.LedgerComment); to > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, to)
+		defer cancel()
+	}
 	c, have := l.cacheGet(in.Issue)
 	if f, ok := l.Remote.(Fetcher); ok && have {
 		cm, tag, notModified, err := f.Fetch(ctx, in.Issue, c.id, c.etag)

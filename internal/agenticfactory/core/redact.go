@@ -19,6 +19,7 @@ const (
 	CategoryPrivateKey           Category = "private-key"           // a PEM private key block
 	CategoryEmail                Category = "email"                 // an e-mail address, ssh user@host included
 	CategoryHomePath             Category = "home-path"             // an absolute home directory and what is under it
+	CategoryOpaqueToken          Category = "opaque-token"          // a long mixed letter-and-digit run no other rule knows
 )
 
 const redacted = "[REDACTED]"
@@ -97,7 +98,89 @@ func sanitize(s string) (string, map[Category]int) {
 			return out
 		})
 	}
+	// Last, so every named shape has had its turn: a long mixed run that no rule
+	// knows may still be a credential in a shape nobody listed, and is masked.
+	s = opaqueRun.ReplaceAllStringFunc(s, func(m string) string {
+		if looksOpaque(m) {
+			found[CategoryOpaqueToken]++
+			return redacted
+		}
+		return m
+	})
 	return s, found
+}
+
+var (
+	opaqueRun = regexp.MustCompile(`[A-Za-z0-9_+=\-]{32,}`)
+	hexDigest = regexp.MustCompile(`^(?:[0-9a-f]{40}|[0-9a-f]{64})$`)
+	uuidShape = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
+)
+
+// opaqueTransitionRatio is where an identifier made of words stops and a random
+// run begins, for runs that have separators: words change character class rarely
+// (a number after a letter), random text almost every other character.
+const opaqueTransitionRatio = 0.30
+
+// looksOpaque reports a run of 32 or more characters that mixes letters and digits
+// and is not a known harmless shape: a full commit or content hash (40 or 64 hex,
+// also as a segment behind a prefix such as "ev-"), a UUID, or an identifier made
+// of words and numbers separated by '-' or '_' (a branch, a card or a run name).
+// A run without separators that mixes letters and digits is opaque; one with
+// separators is opaque only when its segments change character class like random
+// text does.
+func looksOpaque(run string) bool {
+	if uuidShape.MatchString(run) {
+		return false
+	}
+	segs := strings.FieldsFunc(run, func(r rune) bool { return r == '-' || r == '_' })
+	var keep []string
+	for _, sg := range segs {
+		if !hexDigest.MatchString(sg) {
+			keep = append(keep, sg)
+		}
+	}
+	var letters, digits bool
+	pairs, flips, n := 0, 0, 0
+	for _, sg := range keep {
+		prev := byte(0)
+		for i := 0; i < len(sg); i++ {
+			c := classOf(sg[i])
+			switch c {
+			case 'l', 'u':
+				letters = true
+			case 'd':
+				digits = true
+			}
+			n++
+			if i > 0 {
+				pairs++
+				if c != prev {
+					flips++
+				}
+			}
+			prev = c
+		}
+	}
+	if n < 32-len(segs) || !letters || !digits { // too little left after the harmless parts, or not mixed
+		return false
+	}
+	if len(segs) == 1 {
+		return true
+	}
+	return pairs > 0 && float64(flips)/float64(pairs) >= opaqueTransitionRatio
+}
+
+// classOf is the character class a run changes between: lower, upper, digit, other.
+func classOf(c byte) byte {
+	switch {
+	case c >= 'a' && c <= 'z':
+		return 'l'
+	case c >= 'A' && c <= 'Z':
+		return 'u'
+	case c >= '0' && c <= '9':
+		return 'd'
+	}
+	return 'o'
 }
 
 // Sanitize masks every secret and piece of personal data it knows and reports

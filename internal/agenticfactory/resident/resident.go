@@ -159,7 +159,7 @@ func Build(s config.AgenticFactorySettings, d Deps) (*Resident, error) {
 	}
 	r.Service = &notify.Service{
 		Records: d.Store, Waits: runner.New(d.Store), Repairs: d.Store,
-		PRs:      ghpr.Source{Repo: s.PRSourceRepository, Run: d.GHRead, Number: number},
+		PRs:      ghpr.Source{Repo: s.PRSourceRepository, Run: d.GHRead, Timeout: checkObserveTimeout, Number: number},
 		Notifier: r.Inbox, Escalator: r.Inbox,
 		State: r.Cursors, Now: d.Now, ReNotifyAfter: s.NotifyRenotifyAfter,
 	}
@@ -171,7 +171,7 @@ func (r *Resident) Timeouts() effect.Timeouts { return r.timeouts }
 
 // Executor is the effect executor with these timeouts and the intents kept in the claim store.
 func (r *Resident) Executor(send effect.Sender, lookup effect.Lookuper) *effect.Executor {
-	return &effect.Executor{Store: docstore.Store{C: r.deps.Store}, Send: send, Lookup: lookup, Timeouts: r.timeouts, Now: r.deps.Now}
+	return &effect.Executor{Store: docstore.Store{C: r.deps.Store}, Send: send, Lookup: lookup, Timeouts: r.timeouts, Now: r.deps.Now, Admit: ghintake.Admit}
 }
 
 // NewWait is a wait record whose retry limit and escalation target come from the settings; the owner

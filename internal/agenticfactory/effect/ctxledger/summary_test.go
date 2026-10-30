@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 )
 
 const (
@@ -108,11 +109,15 @@ func TestANewCheckpointUpdatesTheSameCommentInPlace(t *testing.T) {
 func TestAFailedCommentOnlyFailsItsOwnStepAndARetryCompletesIt(t *testing.T) {
 	l, _, r := counted()
 	r.createErr = status(502)
+	now := time.Unix(1_000_000, 0)
+	l.Now = func() time.Time { return now }
 	res := l.PublishSummaryLink(t.Context(), durable())
 	if res.Status != StepFailed || res.Err == nil || res.Link != "" {
 		t.Fatalf("res = %+v", res)
 	}
 	r.createErr = nil
+	now = now.Add(time.Hour)                     // a 502 is an unknown outcome: the retry waits out the window
+	l.PublishSummaryLink(t.Context(), durable()) // this pass reconciles the Sent intent to Failed
 	res = l.PublishSummaryLink(t.Context(), durable())
 	if res.Status != StepPublished || len(r.comments[7]) != 1 {
 		t.Errorf("retry: %+v comments=%d", res, len(r.comments[7]))

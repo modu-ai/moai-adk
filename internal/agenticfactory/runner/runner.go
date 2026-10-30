@@ -20,6 +20,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/claim"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
+	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
 // Verdict values a result may carry. Anything else (skipped, cancelled,
@@ -67,6 +68,13 @@ type Attribution struct {
 	Attempt    string
 	Epoch      int64
 	Reason     string // set when not attributed
+}
+
+// TicketAttributor is an Attributor that needs to know the Issue: the lookup of
+// the identity records is per Issue (a grant is for one Issue, a writer is a writer
+// of one). The runner prefers it to Attribute when the Attributor has it.
+type TicketAttributor interface {
+	AttributeFor(t Ticket, res Result) Attribution
 }
 
 // Attributor looks up the producer of a result. The implementation belongs to
@@ -294,7 +302,9 @@ func (r *Runner) producerProblem(t Ticket, results []Result) string {
 			}
 		case KindReview, KindAudit, KindQA, KindHandoffCoordinator:
 			att := Attribution{Reason: core.AttributionLocked}
-			if r.Attributor != nil {
+			if ta, ok := r.Attributor.(TicketAttributor); ok {
+				att = ta.AttributeFor(t, res)
+			} else if r.Attributor != nil {
 				att = r.Attributor.Attribute(res)
 			}
 			switch {
@@ -698,8 +708,6 @@ type Takeover struct {
 // released record.
 func (r *Runner) TakeOver(i core.IssueRef, old Ticket, newHolder, dispatch string, run core.RunID, ev Takeover) (claim.Record, error) {
 	switch {
-	case !ev.OwnerGone && strings.TrimSpace(ev.SafeStop) == "":
-		return claim.Record{}, fmt.Errorf("%w: neither the owner's departure nor a safe stop record is given", core.ErrEvidenceIncomplete)
 	case !ev.WriterStopped:
 		return claim.Record{}, fmt.Errorf("%w: writer stop not confirmed", core.ErrEvidenceIncomplete)
 	case !ev.UncommittedPreserved || strings.TrimSpace(ev.PreservedRef) == "":
@@ -708,14 +716,51 @@ func (r *Runner) TakeOver(i core.IssueRef, old Ticket, newHolder, dispatch strin
 	if err := r.guard(i, core.OpTakeOver); err != nil {
 		return claim.Record{}, err
 	}
+	// Where the owner recorded its process, the departure is read from the process
+	// and the caller's OwnerGone is not consulted; a stop record the owner left
+	// stands in for the departure either way (REQ-AF-009).
+	st, err := r.Store.OwnerLiveness(i)
+	if err != nil {
+		return claim.Record{}, err
+	}
+	safeStop := strings.TrimSpace(ev.SafeStop) != ""
+	if safeStop { // a string is not a stop record: it must be this owner's, at this epoch
+		if err := r.Store.CheckSafeStop(i, old.Holder, old.Epoch, ev.SafeStop); err != nil {
+			return claim.Record{}, err
+		}
+	}
+	gone := ev.OwnerGone
+	departure := "owner gone (caller-asserted, no process on record)"
+	if st.HasPresence {
+		gone = st.Class == homestate.OwnerDead
+		departure = fmt.Sprintf("owner process %d is gone", st.PID)
+		if !safeStop {
+			switch st.Class {
+			case homestate.OwnerLive:
+				return claim.Record{}, fmt.Errorf("%w: the owner's process %d is still running", core.ErrHeld, st.PID)
+			case homestate.OwnerIndeterminate:
+				return claim.Record{}, fmt.Errorf("%w: the owner's process %d cannot be told running or gone", core.ErrOwnerUnconfirmed, st.PID)
+			}
+		}
+	}
+	if !gone && !safeStop {
+		return claim.Record{}, fmt.Errorf("%w: neither the owner's departure nor a safe stop record is given", core.ErrEvidenceIncomplete)
+	}
 	note := "preserved at " + ev.PreservedRef
-	if strings.TrimSpace(ev.SafeStop) != "" {
+	if safeStop {
 		note += "; safe stop " + strings.TrimSpace(ev.SafeStop)
 	}
-	if ev.OwnerGone {
-		note += "; owner gone"
+	if gone {
+		note += "; " + departure
 	}
 	return r.Store.TakeOver(i, old.Holder, old.Epoch, newHolder, dispatch, run, note, ev.Wait)
+}
+
+// RecordSafeStop writes the ticket holder's safe-stop record, the evidence that
+// lets a later takeover go ahead on a process that is still running (REQ-AF-009),
+// and returns its reference.
+func (r *Runner) RecordSafeStop(t Ticket, note string) (string, error) {
+	return r.Store.RecordSafeStop(t.Issue, t.Holder, t.Epoch, note)
 }
 
 // ContractRevision is the evidence of canon E18 adopt: what changed in the

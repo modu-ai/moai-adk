@@ -43,6 +43,9 @@ const (
 	// ReasonMalformed: the method or path is not in a clean form (traversal, double slash, encoded
 	// separators, an absolute URL, control characters).
 	ReasonMalformed RefusalReason = "malformed-request"
+	// ReasonSensitiveContent: the text to send holds a secret or personal data, so it is refused before it
+	// is stored or sent.
+	ReasonSensitiveContent RefusalReason = "sensitive-content"
 )
 
 // RefusedError is a refusal with its reason.

@@ -10,6 +10,8 @@ import (
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
 )
 
 // This file covers outward effects the factory performs while accepting and preparing work (S46,
@@ -62,6 +64,13 @@ type Intent struct {
 	ParkReason string `json:"park_reason,omitempty"` // why the intent is parked when the cause is a refusal
 	Status     Status `json:"status"`
 	Attempts   int    `json:"attempts"`
+	// SentAt is when the executor stamped the intent Sent, in unix nanoseconds (0 for a record written
+	// before the field). It is stamped just before the compare-and-swap that grants the right to send, so a
+	// reconciler's window starts a little before the send does; the window's second timeout covers that.
+	SentAt int64 `json:"sent_at,omitempty"`
+	// Rev is the revision the store held when the intent was read (0: not stored yet). It is never written
+	// into the stored intent; PutIf uses it as the revision the write expects.
+	Rev        int64  `json:"-"`
 	ProviderID string `json:"provider_id,omitempty"`
 	LastError  string `json:"last_error,omitempty"`
 }
@@ -134,8 +143,16 @@ type Lookuper interface {
 // X-RateLimit-* backoff, conditional GET with ETag and the shared call budget are in package forge; this
 // executor honours them through LimitedError and ErrDenied.
 type IntentStore interface {
+	// Get returns the stored intent with Rev set to the revision it was read at.
 	Get(key string) (Intent, bool, error)
-	Put(Intent) error
+	// PutIf writes the intent only if the stored revision is still in.Rev (0: the intent must not be stored
+	// yet) and returns the stored intent with its new Rev. A store that moved on is
+	// core.ErrRevisionConflict and nothing is written. The Executor uses it so that two executors never both
+	// take the right to send.
+	//
+	// There is deliberately no unconditional Put in this interface: a write that ignores the revision is
+	// the double-send window itself. The concrete stores keep a Put for seeding fixtures only.
+	PutIf(Intent) (Intent, error)
 	List() ([]Intent, error)
 }
 
@@ -170,6 +187,10 @@ type Executor struct {
 	Lookup   Lookuper
 	Timeouts Timeouts
 	Now      func() time.Time // defaults to time.Now
+	// Admit, when set, judges a new request BEFORE anything is stored. A refusal is recorded as a Parked
+	// intent without the payload, so refused text never reaches the intent store (and, in ref mode, the
+	// control ref) and the same refusal is not repeated every pass.
+	Admit func(Request) error
 }
 
 func (e *Executor) now() time.Time {
@@ -201,18 +222,36 @@ func (e *Executor) Execute(ctx context.Context, r Request) (Intent, error) {
 			return in, nil // rate limited: not yet
 		}
 	} else {
+		if e.Admit != nil {
+			if aerr := e.Admit(r); aerr != nil {
+				return e.parkRefused(ctx, key, r, aerr)
+			}
+		}
 		in = Intent{Key: key, Kind: r.Kind, Issue: r.Issue, Target: r.Target, Digest: r.Digest, Payload: r.Payload, Status: StatusIntended}
-		if err := e.Store.Put(in); err != nil {
+		created, err := e.Store.PutIf(in) // create-only: Rev 0
+		if errors.Is(err, core.ErrRevisionConflict) {
+			return e.follow(ctx, key)
+		}
+		if err != nil {
 			return Intent{}, err
 		}
+		in = created
 	}
 	in.Attempts++
 	in.Status = StatusSent
+	in.SentAt = e.now().UnixNano()
 	in.LastError = ""
 	in.NotBefore = 0
-	if err := e.Store.Put(in); err != nil {
+	// Winning this write is the right to send: of several executors that read the same state, one revision
+	// matches and the rest follow what is stored. Nothing is sent before it.
+	won, err := e.Store.PutIf(in)
+	if errors.Is(err, core.ErrRevisionConflict) {
+		return e.follow(ctx, key)
+	}
+	if err != nil {
 		return Intent{}, err
 	}
+	in = won
 	sctx, cancel := context.WithTimeout(ctx, to)
 	id, serr := e.Send.Send(sctx, in)
 	cancel()
@@ -220,30 +259,94 @@ func (e *Executor) Execute(ctx context.Context, r Request) (Intent, error) {
 	case serr == nil:
 		in.Status, in.ProviderID = StatusConfirmed, id
 	case errors.Is(serr, ErrRefused):
-		in.Status, in.LastError = StatusParked, serr.Error()
+		in.Status, in.LastError = StatusParked, safeErr(serr)
 		var re *RefusedError
 		if errors.As(serr, &re) {
 			in.ParkReason = string(re.Reason)
 		}
 	case errors.Is(serr, ErrDenied):
-		in.Status, in.LastError = StatusParked, serr.Error()
+		in.Status, in.LastError = StatusParked, safeErr(serr)
 	case errors.As(serr, new(*LimitedError)):
 		var le *LimitedError
 		errors.As(serr, &le)
-		in.Status, in.LastError, in.NotBefore = StatusFailed, serr.Error(), le.RetryAt.Unix()
+		in.Status, in.LastError, in.NotBefore = StatusFailed, safeErr(serr), le.RetryAt.Unix()
 	case errors.Is(serr, ErrNotSent):
-		in.Status, in.LastError = StatusFailed, serr.Error()
+		in.Status, in.LastError = StatusFailed, safeErr(serr)
 	default:
-		in.LastError = serr.Error()
-		if err := e.Store.Put(in); err != nil {
+		in.LastError = safeErr(serr)
+		if _, err := e.settle(in); err != nil {
 			return Intent{}, err
 		}
 		return e.Reconcile(ctx, key)
 	}
-	return in, e.Store.Put(in)
+	return e.settle(in)
+}
+
+// safeErr is the error text as it may be stored: through the one core sanitizer, so a credential or
+// personal data an error message echoes never lands in an intent (and, in ref mode, on the control ref).
+func safeErr(err error) string {
+	out, _ := core.Redact(err.Error())
+	return out
+}
+
+// parkRefused records a request Admit refused as a Parked intent WITHOUT its payload: the refused text is
+// never stored, and the same refusal is read back as Parked on the next pass instead of being judged again.
+// The error text is the refusal's own (categories, never values).
+func (e *Executor) parkRefused(ctx context.Context, key string, r Request, why error) (Intent, error) {
+	in := Intent{Key: key, Kind: r.Kind, Issue: r.Issue, Target: r.Target, Digest: r.Digest,
+		Status: StatusParked, ParkReason: string(ReasonSensitiveContent), LastError: safeErr(why)}
+	out, err := e.Store.PutIf(in)
+	if errors.Is(err, core.ErrRevisionConflict) {
+		return e.follow(ctx, key)
+	}
+	return out, err
+}
+
+// follow returns what is stored after losing a compare-and-swap. A sent intent is reconciled from facts;
+// anything else is returned as stored. It never sends: the executor that won the right to send owns it.
+func (e *Executor) follow(ctx context.Context, key string) (Intent, error) {
+	cur, ok, err := e.Store.Get(key)
+	if err != nil {
+		return Intent{}, err
+	}
+	if !ok {
+		return Intent{}, fmt.Errorf("effect: intent %s vanished after a write conflict", key)
+	}
+	if cur.Status == StatusSent {
+		return e.Reconcile(ctx, key)
+	}
+	return cur, nil
+}
+
+// settle writes the outcome of an attempt this executor owns. When the stored intent moved meanwhile (a
+// reconciler resolved it, say) a confirmed outcome already stored stands; otherwise our outcome is written
+// over the fresh revision once — the provider id we hold is a fact the stored copy may lack.
+func (e *Executor) settle(in Intent) (Intent, error) {
+	out, err := e.Store.PutIf(in)
+	if !errors.Is(err, core.ErrRevisionConflict) {
+		return out, err
+	}
+	cur, ok, gerr := e.Store.Get(in.Key)
+	if gerr != nil {
+		return Intent{}, gerr
+	}
+	if ok && cur.Status == StatusConfirmed {
+		return cur, nil
+	}
+	if ok {
+		in.Rev = cur.Rev
+	}
+	return e.Store.PutIf(in)
 }
 
 // Reconcile resolves a sent or parked intent from facts. It never sends.
+//
+// An authoritative "nothing there" is not read as failure while a send may still be in flight — another
+// executor's, or this one's whose outcome came back unknown (a timeout, a reset connection: the request
+// may still land). The intent stays Sent, and a retry therefore cannot duplicate it, until SentAt plus two
+// of the kind's configured timeouts have passed: one for the send's own limit, one for the write that
+// stamped SentAt and for delivery lag. No new constant: the window is derived from the same timeout the
+// sender runs under.
 func (e *Executor) Reconcile(ctx context.Context, key string) (Intent, error) {
 	in, ok, err := e.Store.Get(key)
 	if err != nil || !ok {
@@ -261,15 +364,27 @@ func (e *Executor) Reconcile(ctx context.Context, key string) (Intent, error) {
 	cancel()
 	switch {
 	case lerr != nil:
-		in.Status, in.LastError = StatusParked, lerr.Error()
+		in.Status, in.LastError = StatusParked, safeErr(lerr)
 	case res.Found:
 		in.Status, in.ProviderID = StatusConfirmed, res.ProviderID
 	case res.Authoritative:
+		if in.Status == StatusSent && in.SentAt > 0 && e.now().UnixNano() < in.SentAt+2*int64(to) {
+			return in, nil // the sender may still be mid-flight: look again later, write nothing
+		}
 		in.Status = StatusFailed
 	default:
 		in.Status = StatusParked
 	}
-	return in, e.Store.Put(in)
+	out, err := e.Store.PutIf(in)
+	if errors.Is(err, core.ErrRevisionConflict) {
+		// Another party resolved it while we looked; what is stored stands.
+		cur, ok, gerr := e.Store.Get(key)
+		if gerr != nil || !ok {
+			return Intent{}, fmt.Errorf("effect: intent %s unreadable after a write conflict: %v", key, gerr)
+		}
+		return cur, nil
+	}
+	return out, err
 }
 
 // RequestObservation records the wish to observe checks and returns at once; the result arrives
@@ -288,7 +403,12 @@ func (e *Executor) Record(r Request) (Intent, error) {
 		return in, err
 	}
 	in := Intent{Key: key, Kind: r.Kind, Issue: r.Issue, Target: r.Target, Digest: r.Digest, Status: StatusIntended}
-	return in, e.Store.Put(in)
+	out, err := e.Store.PutIf(in)
+	if errors.Is(err, core.ErrRevisionConflict) { // recorded by someone else meanwhile: idempotent
+		cur, _, gerr := e.Store.Get(key)
+		return cur, gerr
+	}
+	return out, err
 }
 
 // Tick looks at every pending observation once and returns those that became confirmed. A lookup
@@ -311,18 +431,22 @@ func (e *Executor) Tick(ctx context.Context) ([]Intent, error) {
 		res, lerr := e.Lookup.Lookup(lctx, in)
 		cancel()
 		if lerr != nil {
-			in.LastError = lerr.Error()
-			if err := e.Store.Put(in); err != nil {
+			in.LastError = safeErr(lerr)
+			if _, err := e.Store.PutIf(in); err != nil && !errors.Is(err, core.ErrRevisionConflict) {
 				return done, err
 			}
 			continue
 		}
 		if res.Found {
 			in.Status, in.ProviderID = StatusConfirmed, res.ProviderID
-			if err := e.Store.Put(in); err != nil {
+			out, err := e.Store.PutIf(in)
+			if errors.Is(err, core.ErrRevisionConflict) {
+				continue // resolved by someone else; the next tick sees the stored state
+			}
+			if err != nil {
 				return done, err
 			}
-			done = append(done, in)
+			done = append(done, out)
 		}
 	}
 	return done, nil
@@ -332,15 +456,20 @@ func (e *Executor) Tick(ctx context.Context) ([]Intent, error) {
 type MemIntentStore struct {
 	mu      sync.Mutex
 	m       map[string]Intent
+	rev     map[string]int64
+	next    int64
 	FailPut error
 }
 
-func NewMemIntentStore() *MemIntentStore { return &MemIntentStore{m: map[string]Intent{}} }
+func NewMemIntentStore() *MemIntentStore {
+	return &MemIntentStore{m: map[string]Intent{}, rev: map[string]int64{}}
+}
 
 func (s *MemIntentStore) Get(k string) (Intent, bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	in, ok := s.m[k]
+	in.Rev = s.rev[k]
 	return in, ok, nil
 }
 
@@ -350,15 +479,37 @@ func (s *MemIntentStore) Put(in Intent) error {
 	if s.FailPut != nil {
 		return s.FailPut
 	}
-	s.m[in.Key] = in
+	s.store(in)
 	return nil
+}
+
+func (s *MemIntentStore) PutIf(in Intent) (Intent, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.FailPut != nil {
+		return Intent{}, s.FailPut
+	}
+	if s.rev[in.Key] != in.Rev {
+		return Intent{}, fmt.Errorf("%w: intent %s is at revision %d, not %d", core.ErrRevisionConflict, in.Key, s.rev[in.Key], in.Rev)
+	}
+	return s.store(in), nil
+}
+
+// store writes the intent under a fresh revision; the caller holds the lock.
+func (s *MemIntentStore) store(in Intent) Intent {
+	s.next++
+	in.Rev = s.next
+	s.rev[in.Key] = in.Rev
+	s.m[in.Key] = in
+	return in
 }
 
 func (s *MemIntentStore) List() ([]Intent, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	out := make([]Intent, 0, len(s.m))
-	for _, in := range s.m {
+	for k, in := range s.m {
+		in.Rev = s.rev[k]
 		out = append(out, in)
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Key < out[j].Key })

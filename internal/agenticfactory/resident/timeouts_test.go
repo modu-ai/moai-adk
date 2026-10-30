@@ -115,9 +115,9 @@ type recordingStore struct {
 	statuses []effect.Status
 }
 
-func (s *recordingStore) Put(in effect.Intent) error {
+func (s *recordingStore) PutIf(in effect.Intent) (effect.Intent, error) {
 	s.statuses = append(s.statuses, in.Status)
-	return s.IntentStore.Put(in)
+	return s.IntentStore.PutIf(in)
 }
 
 // The expiry leaves the intent recorded as Sent (with the error) before the lookup resolves it, so a

@@ -24,6 +24,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/effect"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/forge"
 )
@@ -249,7 +250,8 @@ func (a *Applier) Apply(ctx context.Context, m Manifest, ap Approval) (Result, e
 		// same op is stale: arm it again rather than trusting it.
 		if old, ok, _ := a.Store.Get(effect.Key(req.Kind, req.Target, req.Digest)); ok && old.Status == effect.StatusConfirmed {
 			old.Status, old.Attempts, old.ProviderID = effect.StatusIntended, 0, ""
-			if err := a.Store.Put(old); err != nil {
+			// A conflict means another executor moved the record; Execute follows what is stored.
+			if _, err := a.Store.PutIf(old); err != nil && !errors.Is(err, core.ErrRevisionConflict) {
 				return res, err
 			}
 		}

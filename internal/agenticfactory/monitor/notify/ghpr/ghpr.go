@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/monitor/notify"
 )
@@ -25,6 +26,9 @@ type Runner func(ctx context.Context, args ...string) ([]byte, error)
 type Source struct {
 	Repo string
 	Run  Runner
+	// Timeout bounds each gh call on its own (zero is refused: no read runs unbounded). The caller names
+	// it from its configured read limit; nothing here chooses a number.
+	Timeout time.Duration
 	// Number returns the pull request number recorded for the Issue (the claim record's receipt).
 	Number func(issue int) (pr int, ok bool, err error)
 }
@@ -47,7 +51,12 @@ func (s Source) read(ctx context.Context, args ...string) ([]byte, error) {
 	if !readOnly(args) {
 		return nil, fmt.Errorf("ghpr: refusing non-read-only call %v", args)
 	}
-	return s.Run(ctx, args...)
+	if s.Timeout <= 0 {
+		return nil, errors.New("ghpr: no time limit configured for gh reads")
+	}
+	cctx, cancel := context.WithTimeout(ctx, s.Timeout)
+	defer cancel()
+	return s.Run(cctx, args...)
 }
 
 var sha40 = regexp.MustCompile(`^[0-9a-f]{40}$`)
