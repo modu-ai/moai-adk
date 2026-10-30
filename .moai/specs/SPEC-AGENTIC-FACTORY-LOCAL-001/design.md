@@ -1,10 +1,14 @@
-# SPEC-AGENTIC-FACTORY-LOCAL-001 — 설계 자료 (0.2.0)
+# SPEC-AGENTIC-FACTORY-LOCAL-001 — 설계 자료 (0.3.0)
 
 > **원천 고정(0.2.0).** 계약 경로 `/Users/goos/MoAI/moai-adk-go/.moai/reports/issue-1948/local-adk-design-20261030.md`, sha256 `f2c1078b7add847b93926ba3356eda62e4fbc44d8aa77221f059f44f6b059acb`
 > (측정 명령 `shasum -a 256 /Users/goos/MoAI/moai-adk-go/.moai/reports/issue-1948/local-adk-design-20261030.md`, 측정 시각 `2026-10-30T05:28:04Z`, `date -u`).
 > this SPEC revision tracks the contract as pinned; a different hash means the SPEC must be re-aligned.
 > 고정한 판의 `## 1.`~`## 6.` 구간(계약 9~112행)과 아래 §1~§6을 줄 단위로 비교했다: 104줄 대 104줄, 차이 없음(progress.md §G).
 > 0.1.0 사본에서 바뀐 것은 없다(0.1.0 사본에도 지금의 I7 문장이 이미 들어 있었다).
+>
+> **읽기 메모(0.3.0, OD-40 — leader decision (leader-decisions-od36-42-20261030.md, 2026-10-30T05:56Z; reversible)).** 아래 계약 사본은 한 글자도 바꾸지 않는다. 그 사본의 I8과 §2 `evidence.tree_sha`는
+> §10이 대신한다: 결속 대상은 `evidence.subject_sha`(증거가 잰 commit SHA)다. §2 표는 `cards.epoch`, `merge_queue.card_epoch`,
+> `evidence.subject_sha`를 포함한 것으로 읽는다. QueueUpdate epoch와 closed/settled 원천은 §10 19th review 문장을 따른다. spec.md §A.5와 같다.
 >
 > **출처 머리말.** 아래 §1~§6은 리더의 구현 계약(leader's implementation contract)
 > `/Users/goos/MoAI/moai-adk-go/.moai/reports/issue-1948/local-adk-design-20261030.md`의 `## 1. Invariants`부터

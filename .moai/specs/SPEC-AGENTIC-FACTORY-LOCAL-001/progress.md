@@ -8,6 +8,7 @@ status: draft
 - Tier L 선택: REQ 21개가 Tier M 상한 16을 넘음(spec HISTORY 0.1.0).
 - 측정은 상위 progress.md `revision_0_7_0_local_ledger` 노트에 있다.
 - 0.2.0 (2026-10-30, HEAD `c445ce9559` 위 작업 트리): revised, unaudited — plan-audit FAIL 0.62 수리. 감사는 coordinator가 돌린다. PASS라고 적지 않는다. 대응표는 §G.
+- 0.3.0 (2026-10-30, HEAD `0c1cb1853f` 위 작업 트리): revised, unaudited — OD-36~42를 leader decision (leader-decisions-od36-42-20261030.md, 2026-10-30T05:56Z; reversible)대로 닫음. 있는 감사는 FAIL 0.62 @c445ce9559 하나이며 재감사는 coordinator가 돌린다. PASS라고 적지 않는다. 대응표는 §J.
 
 ## §E.2 Run-phase Evidence
 
@@ -71,3 +72,21 @@ _<pending sync-phase>_
 - D13: 고정(PIN-1~3)과 research.md 한 줄. §8~§10 처분은 위 목록.
 - D16: 시험 이름 넷이 바뀌어 §B 명령을 펼쳐 다시 적음.
 - D4·D5·D6·D7·D11·D12·D14·D15·D17: 손대지 않음.
+
+## §J OD-36..42 closed
+
+- 원천: leader decision (leader-decisions-od36-42-20261030.md, 2026-10-30T05:56Z; reversible). 파일 `/Users/goos/MoAI/moai-adk-go/.moai/reports/issue-1948/leader-decisions-od36-42-20261030.md`. 사용자·운영자 결정이 아니다. `hold-20261030.md` "Hold lifted" 절의 사용자 답은 리더가 옮겨 적은 것이며 원문은 읽지 않았다.
+- 판: 하위 0.3.0, 상위 0.7.2 — 둘 다 revised, unaudited.
+- 원천 계약 sha256 `f2c1078b7add847b93926ba3356eda62e4fbc44d8aa77221f059f44f6b059acb` — 작업 전에 다시 재어 같음을 확인했다.
+- commit: `pending-backfill`
+
+| OD | decision | files:lines changed | note |
+|---|---|---|---|
+| OD-36 | Release·Reap만 lease·lease_keys 행을 지움; DONE/CANCELLED Move는 같은 트랜잭션 안에서 Release 경로를 부름(셋째 경로 아님); cards·transitions·evidence·notes·merge_queue 행은 안 지움; 0.2.0 조정 유지 | .moai/specs/SPEC-AGENTIC-FACTORY-LOCAL-001/spec.md:87 (REQ-AFL-007: Move 문장 추가, 표지 "leader decision OD-36"), :123-139 (§C.6 0.2.0 문장); .moai/specs/SPEC-AGENTIC-FACTORY-LOCAL-001/acceptance.md:89-99 (AC-AFL-007 사례 (ii) DONE·CANCELLED Move, 변이, 이전 문구) | AC-AFL-007 시험 이름은 `TestReap_ThirdReclaim_ParksCard` 하나 그대로 |
+| OD-37 | 하위에 새 REQ 없음; REQ-AF-007의 원격 무관 의무는 Enqueue 전 관문 증거가 싣는 절차 의무; 증거 종류 모형화는 배포 뒤 후속 카드 | .moai/specs/SPEC-AGENTIC-FACTORY-LOCAL-001/spec.md:88 (REQ-AFL-008 괄호 메모 — SHALL 문장은 그대로); .moai/specs/SPEC-AGENTIC-FACTORY-001/spec.md:404 (§J REQ-AF-007), :429 (§J AC-AF-007); .moai/specs/SPEC-AGENTIC-FACTORY-LOCAL-001/acceptance.md §E 한 줄 | 계약은 이 의무를 적지 않으므로 SHALL에 넣지 않음 |
+| OD-38 | IDENTITY-001은 이번에 개정하지 않음; online control ref 의존은 로컬 경로에서 superseded로 기록; 배포 뒤 후속 카드가 개정 | .moai/specs/SPEC-AGENTIC-FACTORY-001/spec.md:408 (§J REQ-AF-011), :433 (§J AC-AF-011) | IDENTITY-001은 건드리지 않음 |
+| OD-39 | `Lease`가 `Keys []string`을 실음; Reader에 키 접근자 없음; 보드는 Lease에서 키를 읽음 | .moai/specs/SPEC-AGENTIC-FACTORY-LOCAL-001/spec.md:120 (REQ-AFL-020, 미정 지움); .moai/specs/SPEC-AGENTIC-FACTORY-LOCAL-001/acceptance.md:202-213 (AC-AFL-020 가짜 Reader에 Keys 실은 Lease, 판정에 키 넣음, 이전 문구) | AC-AFL-020 시험 이름은 `TestBoard_ReaderOnly_NoStoreReference` 하나 그대로 |
+| OD-40 | `evidence.subject_sha`가 권위, I8·§2 tree_sha 문언은 §10이 대신함; §2는 cards.epoch·merge_queue.card_epoch·evidence.subject_sha 포함으로 읽음; QueueUpdate epoch·closed/settled는 19th | .moai/specs/SPEC-AGENTIC-FACTORY-LOCAL-001/spec.md:59-64 (§A.5 읽기 메모), :88 (REQ-AFL-008 묶음 이름·괄호), :94 (REQ-AFL-009 읽기 괄호), :104 (REQ-AFL-014 괄호); .moai/specs/SPEC-AGENTIC-FACTORY-LOCAL-001/design.md:9-11 (사본 밖 읽기 메모; 사본은 그대로) | REQ/AC 본문의 `tree_sha` 0건(아래 grep) |
+| OD-41 | §10 20th (d): 기한 지난 Live 소유자의 lease에 card+epoch마다 `stalled` 쪽지 정확히 하나 | .moai/specs/SPEC-AGENTIC-FACTORY-LOCAL-001/spec.md:85 (REQ-AFL-005 표지만); .moai/specs/SPEC-AGENTIC-FACTORY-LOCAL-001/acceptance.md:70 (Live 행, 어긋남 표시 지움), 이전 문구 bullet 한 줄 | 문장 자체는 0.2.0에서 이미 계약 문언 |
+| OD-42 | §10 P2 retirement plan: lane-20이 퇴역 전부를 한 변경으로, 넓은 대상 집합 | .moai/specs/SPEC-AGENTIC-FACTORY-LOCAL-001/spec.md:110 (REQ-AFL-015 대상·순서·게이트·범위 밖 목록), §C.6 0.1.0 문장; .moai/specs/SPEC-AGENTIC-FACTORY-LOCAL-001/acceptance.md:158-169 (AC-AFL-015 대상·소유 lane-20·계약 인용·양성 대조·이전 문구) | `identity` GitHub 조회·`intake` GitHub 검색 포함 여부만 미정; 시험 이름 하나 그대로 |
+| 공통 | 각 OD 행을 "닫힘(2026-10-30): decided by leader, reversible"로 표시, 열려 있던 문언은 history로 남김 | .moai/specs/SPEC-AGENTIC-FACTORY-LOCAL-001/spec.md:184-190 (§G), .moai/specs/SPEC-AGENTIC-FACTORY-001/spec.md:360-366 (§G.1), .moai/specs/SPEC-AGENTIC-FACTORY-001/decisions-pending.md:69-75, :79 (행 수 59, 열린 행 52); HISTORY .moai/specs/SPEC-AGENTIC-FACTORY-LOCAL-001/spec.md:27 (0.3.0), .moai/specs/SPEC-AGENTIC-FACTORY-001/spec.md:40 (0.7.2) | OD-35는 그대로(이번 결정으로 닫힌 항목 없음, (a)는 0.7.1에서 이미 닫힘) |

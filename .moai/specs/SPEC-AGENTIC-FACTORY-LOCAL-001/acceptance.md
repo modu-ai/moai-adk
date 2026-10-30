@@ -1,4 +1,4 @@
-# SPEC-AGENTIC-FACTORY-LOCAL-001 — 수용 기준 (0.2.0)
+# SPEC-AGENTIC-FACTORY-LOCAL-001 — 수용 기준 (0.3.0)
 
 ## §A 측정 규칙
 
@@ -67,10 +67,11 @@ tree: 37b67f6d39
 
 | 사례 | `alive` 판정 | lease·키 | `reclaim_count` | `stalled` 쪽지 |
 |---|---|---|---|---|
-| Live | 살아 있음(계약 §10의 `Alive`) | 그대로 | 그대로 | 그 card·epoch에 하나(계약 §10 20th (d); 조정자 지시 "no `stalled` note"와 다름 — OD-41) |
+| Live | 살아 있음(계약 §10의 `Alive`) | 그대로 | 그대로 | 그 card·epoch에 정확히 하나(계약 §10 20th (d); OD-41 leader decision (leader-decisions-od36-42-20261030.md, 2026-10-30T05:56Z; reversible)) |
 | Unknown | 판정 불명 | 그대로(살아 있는 것으로 다룸) | 그대로 | 하나 |
 | Dead | 죽음 | 없어짐(한 번 회수, `Reap` 반환값에 그 카드 하나) | +1 | 단언하지 않음 |
 
+- 이전 문구(0.2.0, Live 행 쪽지 칸): «그 card·epoch에 하나(계약 §10 20th (d); 조정자 지시 "no `stalled` note"와 다름 — OD-41)». OD-41이 닫혀 그 어긋남 표시를 지웠다.
 - 죽여야 할 변이: 기한 지난 Live 소유자를 회수하는 구현 → Live 행에서 FAIL(I5 "A live process is never reclaimed automatically"). 그 밖에 Unknown을 회수하는 구현은 Unknown 행, Dead를 회수하지 않는 구현은 Dead 행에서 FAIL.
 - 시험 이름(하나): `TestReap_LivenessCases_ReclaimOnlyDead` — 소유 lane-18, 패키지 `internal/agenticfactory/ledger`. unwritten at 37b67f6d39(§B).
 - RED-now: `TestReap_LivenessCases_ReclaimOnlyDead`가 `37b67f6d39`에 없다(§B). 이 기준은 지금 판정할 수 없어 통과로 적지 않는다.
@@ -88,7 +89,9 @@ tree: 37b67f6d39
 #### AC-AFL-007 — 행을 지우지 않음·세 번째 회수에서 park
 
 - 주 REQ: maps REQ-AFL-007.
-- Given 이미 두 번 회수된 카드와 Dead를 돌려주는 `alive` 함수, When 세 번째 회수가 일어날 때, Then `reclaim_count`가 3이고 카드가 park 사유 `reclaim-cap`으로 park되며, 앞선 `transitions` 행이 하나도 지워지지 않았고, 회수된 소유자의 `leases`·`lease_keys` 행은 없다(`Reap`이 지운 것; REQ-AFL-007, OD-36).
+- Given 이미 두 번 회수된 카드 X와 Dead를 돌려주는 `alive` 함수, 그리고 lease와 키를 쥔 카드 Y·Z, When (i) X의 세 번째 회수가 일어나고, (ii) Y를 DONE으로, Z를 CANCELLED로 `Move`할 때, Then (i) X의 `reclaim_count`가 3이고 X가 park 사유 `reclaim-cap`으로 park되며, 앞선 `transitions` 행이 하나도 지워지지 않았고, 회수된 소유자의 `leases`·`lease_keys` 행은 없다(`Reap`이 지운 것); (ii) Y·Z의 `leases`·`lease_keys` 행이 각 Move와 같은 트랜잭션 안에서 `Release` 경로로 지워졌고, Y·Z의 `cards`·`transitions` 행은 남아 있다(REQ-AFL-007, OD-36 leader decision (leader-decisions-od36-42-20261030.md, 2026-10-30T05:56Z; reversible)).
+- 죽여야 할 변이: DONE·CANCELLED로 옮긴 뒤 lease를 남기는 구현 → (ii)에서 FAIL; Move가 `cards`나 `transitions` 행을 지우는 구현 → (ii)에서 FAIL; 셋째 회수에서 park하지 않는 구현 → (i)에서 FAIL.
+- 이전 문구(0.2.0): Given 이미 두 번 회수된 카드와 Dead를 돌려주는 `alive` 함수, When 세 번째 회수가 일어날 때, Then `reclaim_count`가 3이고 카드가 park 사유 `reclaim-cap`으로 park되며, 앞선 `transitions` 행이 하나도 지워지지 않았고, 회수된 소유자의 `leases`·`lease_keys` 행은 없다(`Reap`이 지운 것; REQ-AFL-007, OD-36).
 - 이전 문구(0.1.0): Given 이미 두 번 회수된 카드와 Dead를 돌려주는 `alive` 함수, When 세 번째 회수가 일어날 때, Then `reclaim_count`가 3이고 카드가 park되며, 앞선 `transitions` 행이 하나도 지워지지 않았다.
 - 시험 이름(하나): `TestReap_ThirdReclaim_ParksCard` — 소유 lane-18, 패키지 `internal/agenticfactory/ledger`. unwritten at 37b67f6d39(§B).
 - RED-now: `TestReap_ThirdReclaim_ParksCard`가 `37b67f6d39`에 없다(§B). 이 기준은 지금 판정할 수 없어 통과로 적지 않는다.
@@ -155,10 +158,14 @@ tree: 37b67f6d39
 #### AC-AFL-015 — Issue·원격 코드 퇴역
 
 - 주 REQ: maps REQ-AFL-015.
-- Given 퇴역이 끝난 트리, When AgenticFactory 패키지 그래프를 훑을 때, Then `forge`·`mirror`·`effect/ghintake`·`effect/ctxledger`·`effect/labels`·`gitref`를 가져오는 패키지가 없다.
-- 시험 이름(하나): `TestRetirement_NoImportOfForgeMirrorGitref` — 소유 lane-22, 패키지 미정(OD-35). unwritten at 37b67f6d39(§B).
+- Given 퇴역 변경이 착지한 트리, When `internal/` 아래의 `_test.go`가 아닌 `.go` 파일의 import와 `moai` 명령 등록을 훑을 때, Then `forge`·`mirror`·`gitref`·`effect/ghintake`·`effect/ctxledger`·`effect/labels`·`effect/ghexec`·`effect/ghidentity`·`effect/gitexec`를 가져오는 파일이 없고, `moai factory resident` 하위 명령이 등록되어 있지 않으며, 같은 트리에 `ledger`·`mergeq`·`claim`·`core`·`runner` 패키지는 남아 있다(양성 대조: 범위 밖 패키지가 지워지는 구현을 잡음).
+- 계약 문장(고정한 계약 §10 P2 retirement plan, revision 항목): "To avoid a cross-lane wait, lane-20 owns the whole remote retirement in one change: `moai factory resident` (internal/cli/factory_resident.go, its test, its registration), resident, monitor/notify remote parts (ghpr/Inbox/forge cursors), forge (+webhook), mirror, gitref, effect/{ghintake, ctxledger,labels,ghexec,ghidentity,gitexec}, docstore cursors/queue, and e2e files whose only subject is those packages." (OD-42 leader decision (leader-decisions-od36-42-20261030.md, 2026-10-30T05:56Z; reversible))
+- 판정하지 않는 것: `effect` 자체와 `docstore.Store`의 퇴역(계약이 "unless reconcile or monitor/adapt has a non-remote use"라는 조건을 달았다), `identity`의 GitHub 조회와 `intake`의 GitHub 검색(§10에 없어 미정). §E에 적었다.
+- 죽여야 할 변이: 패키지 하나라도 남기는 구현, `factory resident`를 등록해 두는 구현 → FAIL; 범위 밖 `ledger`·`mergeq`·`claim`·`core`·`runner`를 지우는 구현 → 양성 대조에서 FAIL.
+- 시험 이름(하나): `TestRetirement_NoImportOfForgeMirrorGitref` — 소유 lane-20, 패키지 미정(OD-35 (h)). unwritten at 37b67f6d39(§B).
 - RED-now: `TestRetirement_NoImportOfForgeMirrorGitref`가 `37b67f6d39`에 없다(§B). 이 기준은 지금 판정할 수 없어 통과로 적지 않는다.
-- green path: lane-22의 퇴역 커밋(패키지마다 한 커밋; claim·controlref는 lane-18)이 이 시험을 RED로 먼저 넣고(계약 머리말: RED 커밋이 GREEN보다 먼저) 같은 lane의 GREEN 커밋이 뒤집는다.
+- green path: lane-20의 퇴역 변경 하나(계약 §10: 게이트 integration `go build ./... && go vet ./...`)가 이 시험을 RED로 먼저 넣고(계약 머리말: RED 커밋이 GREEN보다 먼저) 같은 lane의 GREEN 커밋이 뒤집는다.
+- 이전 문구(0.1.0): Given 퇴역이 끝난 트리, When AgenticFactory 패키지 그래프를 훑을 때, Then `forge`·`mirror`·`effect/ghintake`·`effect/ctxledger`·`effect/labels`·`gitref`를 가져오는 패키지가 없다. 소유 lane-22, green path "lane-22의 퇴역 커밋(패키지마다 한 커밋; claim·controlref는 lane-18)".
 
 #### AC-AFL-016 — importer는 원천을 읽기만 함
 
@@ -195,8 +202,9 @@ tree: 37b67f6d39
 #### AC-AFL-020 — 보드는 읽기 전용
 
 - 주 REQ: maps REQ-AFL-020.
-- Given 카드·lease·queue·쪽지마다 서로 다른 표지값을 담은 가짜 `ledger.Reader`, When (i) 보드 페이지를 그릴 때, Then 네 범주의 표지값이 모두 페이지에 나온다; 그리고 When (ii) 같은 시험이 `internal/web` 디렉터리(하위 포함)의 `_test.go`가 아닌 `.go` 파일을 `go/parser`로 읽을 때, Then `ledger.Store` 선택자와 `ledger.Open` 호출이 0건이다.
-- 판정하지 않는 것: lease 키(출처 미정, OD-39)와 흐름 지표 표시. §E에 적었다.
+- Given 카드·lease·queue·쪽지마다 서로 다른 표지값을 담고, lease 하나가 `Keys []string`에 표지 키 둘을 싣는 가짜 `ledger.Reader`, When (i) 보드 페이지를 그릴 때, Then 카드·lease·키·queue·쪽지 다섯 범주의 표지값이 모두 페이지에 나오고, 키 표지값은 그 `Lease.Keys`에서 온 것이다; 그리고 When (ii) 같은 시험이 `internal/web` 디렉터리(하위 포함)의 `_test.go`가 아닌 `.go` 파일을 `go/parser`로 읽을 때, Then `ledger.Store` 선택자와 `ledger.Open` 호출이 0건이다(OD-39 leader decision (leader-decisions-od36-42-20261030.md, 2026-10-30T05:56Z; reversible)).
+- 이전 문구(0.2.0): Given 카드·lease·queue·쪽지마다 서로 다른 표지값을 담은 가짜 `ledger.Reader`, When (i) 보드 페이지를 그릴 때, Then 네 범주의 표지값이 모두 페이지에 나온다; 그리고 When (ii) 같은 시험이 `internal/web` 디렉터리(하위 포함)의 `_test.go`가 아닌 `.go` 파일을 `go/parser`로 읽을 때, Then `ledger.Store` 선택자와 `ledger.Open` 호출이 0건이다.
+- 판정하지 않는 것: 흐름 지표 표시. §E에 적었다. (이전 문구(0.2.0): "lease 키(출처 미정, OD-39)와 흐름 지표 표시")
 - 죽여야 할 변이: 보드가 따로 `*ledger.Store`를 열어 읽거나 쓰는 구현 → (ii)에서 FAIL; Reader 값을 쓰지 않고 고정 내용을 그리는 구현 → (i)에서 FAIL.
 - 시험 이름(하나): `TestBoard_ReaderOnly_NoStoreReference` — 소유 lane-21, 패키지 `internal/web`. unwritten at 37b67f6d39(§B).
 - RED-now: `TestBoard_ReaderOnly_NoStoreReference`가 `37b67f6d39`에 없다(§B). 이 기준은 지금 판정할 수 없어 통과로 적지 않는다.
@@ -222,6 +230,8 @@ tree: 37b67f6d39
 - REQ-AFL-018: 원장 밖 상수(heartbeat 30 s, fix-loop 3, review 400, landing TTL 10 min)의 패키지 미정(OD-35) — AC-AFL-018은 원장 상수만 본다.
 - REQ-AFL-013의 REVIEWING 경로(교차 모델 리뷰): AC-AFL-013은 REVIEWING을 거치지 않는 경우만 본다. 리뷰 수단 미정(OD-35).
 - (0.2.0) AC-AFL-004의 정적 검사는 `ledger` 디렉터리 바로 아래 파일만 읽는다. `importer` 하위 디렉터리는 덮지 않고, SQL 문을 리터럴이 아닌 방법(문자열 조합 등)으로 만들면 (i)의 수집이 놓친다.
-- (0.2.0) REQ-AFL-020의 lease 키(출처 미정, OD-39)와 흐름 지표 표시는 AC-AFL-020이 판정하지 않는다.
+- (0.3.0) REQ-AFL-020의 흐름 지표 표시는 AC-AFL-020이 판정하지 않는다. lease 키는 0.3.0에서 판정에 들었다(OD-39 결정; 이전 문구(0.2.0): "lease 키(출처 미정, OD-39)와 흐름 지표 표시는 AC-AFL-020이 판정하지 않는다").
+- (0.3.0) REQ-AFL-015의 `effect` 자체·`docstore.Store` 조건부 퇴역, 원격 wiring을 먼저 걷어내는 순서, 지우기 전 역할 읽기, local-only 부분 이동, 빌드·vet 게이트는 AC-AFL-015가 단언하지 않는다. `identity` GitHub 조회와 `intake` GitHub 검색의 포함 여부는 미정이다.
+- (0.3.0) REQ-AFL-008 메모의 절차 의무(같은 HEAD 리뷰, 독립 감사, QA PASS)는 AC가 없다 — 메모는 새 의무가 아니다(OD-37 결정).
 - (0.2.0) REQ-AFL-014의 trunk 전용 ref, QueueUpdate epoch 원천, merged·closed·settled 사실 원천은 AC-AFL-014의 시험 하나가 단언하지 않는다(AC-AFL-014는 0.1.0 그대로).
 - (0.2.0) REQ-AFL-010의 "probe 밖, 트랜잭션 안 재확인"과 `Reap(nil)` 오류, REQ-AFL-006의 park 사유 집합은 AC-AFL-010·006이 단언하지 않는다(두 AC는 0.1.0 그대로).
