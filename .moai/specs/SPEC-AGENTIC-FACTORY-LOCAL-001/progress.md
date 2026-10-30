@@ -10,6 +10,7 @@ status: draft
 - 0.2.0 (2026-10-30, HEAD `c445ce9559` 위 작업 트리): revised, unaudited — plan-audit FAIL 0.62 수리. 감사는 coordinator가 돌린다. PASS라고 적지 않는다. 대응표는 §G.
 - 0.3.0 (2026-10-30, HEAD `0c1cb1853f` 위 작업 트리): revised, unaudited — OD-36~42를 leader decision (leader-decisions-od36-42-20261030.md, 2026-10-30T05:56Z; reversible)대로 닫음. 있는 감사는 FAIL 0.62 @c445ce9559 하나이며 재감사는 coordinator가 돌린다. PASS라고 적지 않는다. 대응표는 §J.
 - 0.4.0 (2026-10-30, HEAD `c83fdc04ff` 위 작업 트리): revised, unaudited — plan-audit FAIL 0.72 @081eacf037 수리. 마지막 감사는 그 FAIL이며 재감사는 coordinator가 돌린다. PASS라고 적지 않는다. 대응표는 §K.
+- 0.5.0 (2026-10-30, HEAD `2acdddeba4` 위 작업 트리): audited-FAIL 0.70 → revised (A-na delta), unaudited — plan-audit FAIL 0.70 @2acdddeba4의 축소 델타. 리더 결정(A-na 축소 델타 뒤 멈춤)으로 이 판 뒤 감사는 없다. PASS라고 적지 않는다. 대응표·남은 부채·hold 기록·분할 제안은 §L.
 
 ## §E.2 Run-phase Evidence
 
@@ -156,3 +157,81 @@ internal/agenticfactory/effect/testdata
 ```
 
 21개 이름 부재 확인(기준 `37b67f6d39`, tip `1a552af405`, `607bd17804`)의 명령·출력은 acceptance §B.1에 있다.
+
+## §L A-na delta after FAIL 0.70 @2acdddeba4
+
+- 원천: 감사 verdict `.moai/reports/issue-1948/plan-audit-local-001-2acdddeba4/verdict.md`(FAIL 0.70 @2acdddeba4; 막는 결함 B1~B4, 선택 D5·D6·D7·D8). 이 판은 조정자가 정한 항목만 고쳤다(A-na 축소 델타). 감사·리뷰 도구는 부르지 않았다.
+- 판: 하위 0.5.0, 상위 0.7.4 — 둘 다 audited-FAIL 0.70 → revised (A-na delta), unaudited. PASS라고 적지 않는다.
+- 원천 계약 sha256 `f2c1078b7add847b93926ba3356eda62e4fbc44d8aa77221f059f44f6b059acb` — 작업 전에 `shasum -a 256 /Users/goos/MoAI/moai-adk-go/.moai/reports/issue-1948/local-adk-design-20261030.md`로 다시 재어 같음.
+- 코드 사실의 commit: integration tip `db02401ad1`(`git branch --list WT-agentic-factory-integration --format='%(refname:short) %(objectname:short)'` → `WT-agentic-factory-integration db02401ad1`; 감사가 인용한 `c83013938a`에서 움직였고, 이 작업 중 한 번 더 움직였다 — 앞서 읽은 `3df062a63e`의 `pickTx`·상수 줄은 `db02401ad1`에서 다시 읽어 같음을 확인). lane-18 커밋 `607bd17804`의 `ac_names_test.go`는 tip에 있다(acceptance §B.2 [L-names]).
+- commit: `pending-backfill` (이 줄을 채우는 것은 그 뒤의 별도 커밋)
+- "고치기 전" 줄은 `2acdddeba4`의 줄, "고친 뒤" 줄은 이 작업 트리의 줄이다. 약어는 §K와 같다.
+
+| item | before file:line | change | after file:line | note |
+|---|---|---|---|---|
+| (2) B2 재claim 조건 | SL:96 (REQ-AFL-010), SL:88 (REQ-AFL-007), ACC:58 (AC-AFL-002 Given), ACC:133 (AC-AFL-007 Given (i)), ACC:167 (AC-AFL-010 Given) | REQ-AFL-010: "READY or that a reclaim has returned to the claimable set"; 그 집합은 미정(OD-43); 계약 §3·I7·§10 인용; `pickTx` 코드 사실(`db02401ad1:internal/agenticfactory/ledger/claim.go:351-358`, `:296`, `:311`)은 요구사항이 아닌 사실로; REQ-AFL-007은 메모 한 문장; AC-002·007·010에 '전제(0.5.0)' 줄; 새 OD-43(neutral, reversible) | SL:97, SL:89, SL:141 (0.4.0 문장), ACC:121, ACC:197, ACC:232; SL:196 (§G OD-43); PS:369; DP:76 | 계약은 회수된 BUILDING·REVIEWING 카드의 재claim을 적지 않는다 — 새 의무를 만들지 않았다 |
+| (3) B3 reconcile 예외 | SL:105 (REQ-AFL-014), ACC:216-218 (AC-AFL-014) | REQ-AFL-014에 "a reconcile write that reverts a `verifying` or `landing` row to `waiting` SHALL be accepted only while the merge queue holds the `merge-queue:landing` lock and SHALL carry that lock epoch instead of the card epoch"(계약 §10 19th review L194-195 인용); AC-AFL-014 사례 (d1)(d2)(d3)과 변이 둘; 착지 시험 `queue_test.go:170-176`·`mergeq_test.go:586`을 사실로 인용 | SL:106, SL:142 (0.4.0 문장), ACC:285-288 | 시험 이름 하나 그대로. verifying 행 되돌림과 lane-22 (a) 조건은 AC 밖(ACC §E 0.5.0) |
+| (4) B4 §F 낮춤 | ACC:318-344 (§F) | 머리말을 tip `db02401ad1` 기준·본문 판정 규칙으로; S-ExpandKeys·S-Enqueue "partly: future-epoch only; stale (older) epoch not asserted"; L-Unknown "partly: asserts lease count only, no other READY card"; AC-AFL-021 fully → partly(30 s 고정 없음, stamp 파일 단언 없음, 1 s 변이 통과); L-Changed-epoch 착지 시험 없음; AC-014 사례 (d) 착지 시험 추가; commit 접두를 tip으로, 보드 줄 213 → 216 | ACC:395-425 | 다른 행은 본문을 다시 보고 그대로 둠(이미 partly/not). AC-005 fully는 tip 본문 diff 없음으로 유지 |
+| D5 §6 상수 | SL:198 (§H), ACC:307 (§E REQ-AFL-018) | '미정'을 착지 사실로: 여덟 상수 `db02401ad1:internal/agenticfactory/ledger/api.go:41-48`; 훅의 별도 `LedgerHeartbeatEvery`(`internal/hook/ledger_heartbeat.go:20`); 상위 OD-35 (d)를 "answered by landed code @db02401ad1"로 표시, 다른 항목은 열림 | SL:203, ACC:381; SL:188 (§G OD-35 행); PS:361; DP:68 | AC-AFL-018의 Then(상수 넷)은 바꾸지 않음 |
+| D6 부재 주장 날짜 | SL:72, SL:144, SL:196, SL:202; ACC:6 | "at 37b67f6d39"를 달고, tip에 있는 이름 셋을 file:line으로; tip에서 22개 이름 grep 한 번 다시 돌림 | SL:73, SL:148, SL:201-207 일대; ACC:7; ACC:47 (§B.2) | tip에 있는 이름: `ac_names_test.go:30`, `:117`, `internal/hook/ledger_heartbeat_test.go:58` |
+| D8 L-Changed 나눔 | ACC:175, ACC:177 | L-Changed-epoch·L-Changed-heartbeat 두 행, 변이도 둘; 옛 행은 이전 문구 | ACC:240-241, ACC:243-245 | heartbeat 쪽만 착지 시험(`reap_test.go:95`) |
+| (1) B1 regression-guard 제거·§N | ACC:8 (§A), ACC:300 (§D), 19개 AC의 RED-now·green path 줄, PL:52, PL:63 | 'regression-guard' 표지를 지움; 착지한 AC 18개(001~012·014·016·018~021)의 두 칸을 "§N 사후 관측, RED 미관측, 완료 계산에 들지 않음" 한 줄로 바꾸고 옛 두 칸은 AC마다 이전 문구; 새 §N(AC마다 착지 시험·단언·덮음·통과 증거·'RED 미관측' 줄); §D 완료 정의는 release 게이트 AC 셋(013·015·017)만 셈; AC-AFL-015는 release 게이트에 두고 RED-now를 `37b67f6d39`의 퇴역 대상 디렉터리 열 개 존재로(트리를 읽음, 실행 아님); 013·017은 "unwritten test" 상태 | ACC:10-11, ACC:373-374, 각 AC 블록, ACC:427 이하 (§N), ACC:305-307 (AC-015), ACC:275·:325 (013·017), PL:54-55, PL:66-67 | 시험 이름 하나·제목은 21개 모두 그대로. 남은 'regression-guard' 줄은 모두 이전 문구·HISTORY 기록(이 판의 측정 출력) |
+| 판·상태 표지 | SL:4, ACC:1, PL:1, PS:4, PS:41, DP:3, DP:79 | 하위 0.5.0, 상위 0.7.4, 상태 표지 "audited-FAIL 0.70 → revised (A-na delta), unaudited"; decisions-pending 행 수 60/열림 53 | SL:4, SL:29, ACC:1, PL:1, PS:4, PS:42, DP:3, DP:80 | design.md·research.md는 손대지 않음 |
+
+### 남은 부채 (not repaired)
+
+- N7 (FAIL 0.72 감사) — AC-AFL-020 (ii)가 쓰기 경로를 이름으로만 막음: AC를 넓히는 일이며 이 델타 밖.
+- N9 (FAIL 0.72 감사) — 상위 REQ-AF-011 잠금 문장의 로컬 적용 범위: 상위 처분의 판단이 필요해 이 델타 밖(리더 결정 대상).
+- N10 (FAIL 0.72 감사) — OD-37 "gate evidence" 집행 문장 없음: OD-37 결정이 새 의무를 두지 않기로 했고(leader decision), 바꾸려면 리더 결정이 필요.
+- N11 (FAIL 0.72 감사) — Claim의 의존 조건 원천 없음: OD-34가 열려 있다.
+- N12 (FAIL 0.72 감사) — `evidence.tree_sha` 열의 존폐 모호: OD-40 결정의 `tree_sha` 처분 해석이 열려 있다.
+- N15 (FAIL 0.72 감사) — `identity`·`intake` GitHub 퇴역 포함 여부가 OD 없이 '미정': 새 OD를 올리는 일이 이 델타 목록 밖.
+- N16 (FAIL 0.72 감사) — REQ-AFL-002 보편 문장과 REQ-AFL-014 잠금 epoch의 관계: 이 델타는 REQ-AFL-014에 reconcile 예외만 더했고 REQ-AFL-002는 손대지 않았다.
+- N17 (FAIL 0.72 감사, 나머지) — design.md 교차 참조표: design.md(계약 사본 포함)는 손대지 않는다는 조건.
+- N18 (FAIL 0.72 감사) — DONE 이동 뒤 `Release` 이중 호출 흐름: 이 델타 밖.
+- D4 (FAIL 0.62 감사) — 상위 §J가 REQ-AF-008 보호 금지를 "no local counterpart"로 분류: 상위 처분의 판단이라 이 델타 밖.
+- D7 (FAIL 0.62 감사; FAIL 0.70 감사의 선택 D7은 AC-005 Claim 경로 쪽지 중복 제거 시험 방향) — 상위 design.md §1 구조도의 권위 선언, 그리고 AC-005의 Claim 경로 방향: 앞의 것은 design.md를 손대지 않는다는 조건, 뒤의 것은 AC를 넓히는 일이라 이 델타 밖.
+- D11 (FAIL 0.62 감사) — 나머지 AC의 한 방향 시험(변이 통과): AC를 넓히는 일이며, 그 AC 대부분이 이제 §N(release 게이트 밖)이다.
+- D12 (FAIL 0.62 감사) — REQ-AFL-013이 계약 §5 의무(RED 증거 커밋, REVIEWING의 교차 모델 리뷰)를 줄임: REVIEWING 수단이 OD-35 (c)로 열려 있다.
+- D15 (FAIL 0.62 감사) — GEARS·명확성 소소한 점(REQ-AFL-012의 `Where` 등): 이 델타 목록 밖.
+- D17 (FAIL 0.62 감사) — 상위 frontmatter tags에 `github-issues, control-ref, context-ledger`가 남음: 이 델타 목록 밖.
+- D5 (FAIL 0.70 감사) — 고쳤다(위 표). D6·D8도 고쳤다.
+
+### hold 기록과 분할 제안 (`harness.plan_audit_ceiling_policy`)
+
+- 근거 설정: `.moai/config/sections/harness.yaml`의 `plan_audit_tier_ceilings.L: 3`과 `plan_audit_ceiling_policy.on_final_hit: hold-and-split`(같은 파일 82-84행).
+- 천장 도달 기록: 이 하위 SPEC(Tier L)의 plan-audit은 세 번이었다 — FAIL 0.62 @c445ce9559 → FAIL 0.72 @081eacf037 → FAIL 0.70 @2acdddeba4. 마지막 회는 점수가 내려갔다(0.72 → 0.70). Tier L 천장 3에 닿았다.
+- 묶어 둔 것(hold): 이 SPEC은 PASS가 아니며, 이 판(0.5.0)도 감사받지 않았다. 리더 결정(A-na 축소 델타 뒤 멈춤)으로 추가 감사는 없다. 구현은 리더 결정에 따라 lane에서 계속된다 — 이 SPEC의 판정 상태가 그 구현을 승인하거나 막는다고 적지 않는다.
+- 풀리는 조건: 이 판에서 정하지 않았다(리더·운영자 몫).
+- 분할 제안(선택지일 뿐, 순서에 뜻 없음, 권장 표시 없음):
+  - 선택지 A — 원장 핵심 SPEC(I1~I8, §2 스키마, §3 API, Claim·회수·fencing, 충돌 키; 지금의 REQ-AFL-001~012·018, AC 같은 번호)과 흐름·표면 SPEC(카드 흐름, 보드·flow, `moai af` 명령, 병합 큐, importer, 퇴역, 훅 heartbeat; REQ-AFL-013~017·019~021)으로 나눔. 비용: 두 SPEC 모두 새 id·새 plan-audit 한 번씩; REQ·AC id를 옮기며 이전 문구·대응표를 다시 써야 함; 원장 쪽은 착지한 코드가 많아 대부분 §N 사후 관측이 되고, 흐름·표면 쪽에 release 게이트 AC(013·015·017)가 모임; 상위 §J 처분표와 OD 행의 하위 참조를 두 SPEC으로 갈라 적어야 함.
+  - 선택지 B — 착지한 18개 AC를 사후 관측 문서(SPEC 밖 기록)로 옮기고, release 게이트 AC 셋(013·015·017)과 그 REQ만 남긴 작은 SPEC으로 줄임. 비용: REQ 18개가 SPEC 밖으로 나가 요구사항 추적이 끊긴다; AC·REQ 삭제가 필요해 지금의 '지우지 않음' 조건과 부딪친다(운영자 결정 필요); 상위 §J가 가리키는 REQ-AFL id 다수를 다시 적어야 함.
+  - 선택지 C — 나누지 않고 지금 SPEC을 유지하며 hold를 기록으로만 둠. 비용: 막는 결함 판정(감사 B1~B4가 이 판에서 고쳐졌는지)이 감사 없이 남는다; N7·N9~N12·D7이 세 회 연속 그대로라는 감사의 정체 신호가 풀리지 않는다.
+
+### 측정 출력 (이번 실행, 이 트리)
+
+```text
+$ git -C <worktree> grep -n -e 'func TestLedgerImportGraph_NoIssueOrRemoteClient' -e 'func TestStore_StaleEpochWrite_ReturnsErrStaleEpoch' -e 'func TestOpen_SetsBusyTimeoutAndChecksSQLiteVersion' -e 'func TestLedgerSource_TimestampColumnsUseDBClock' -e 'func TestReap_LivenessCases_ReclaimOnlyDead' -e 'func TestMove_RefusesEdgeRejectedByCheckMove' -e 'func TestReap_ThirdReclaim_ParksCard' -e 'func TestEnqueue_EvidenceSubjectSHAMismatch_ReturnsErrEvidenceStale' -e 'func TestSchema_CheckConstraints_RejectUnknownQueueStateAndNoteKind' -e 'func TestClaim_SingleTransaction_ReadyToBuildingByClass' -e 'func TestExpandKeys_Conflict_ReturnsErrKeyConflict' -e 'func TestClaim_DisjointConflictKeys_ClaimInParallel' -e 'func TestCardFlow_ClaimToDone_ThroughMergeQueue' -e 'func TestMergeq_Land_CASUpdateRefThenLandedNote' -e 'func TestRetirement_NoImportOfForgeMirrorGitref' -e 'func TestImporter_DryRun_SourcesUnchanged' -e 'func TestAFCommand_VerbsRegistered' -e 'func TestLedgerDefaults_MatchContract' -e 'func TestFlow_StalledDetection_FromReader' -e 'func TestBoard_ReaderOnly_NoStoreReference' -e 'func TestLedgerHeartbeat_ThrottlesToTheStampFile' -e 'func TestHeartbeatWriter_SkipsWriteWhenStampFresh' db02401ad1 -- internal
+db02401ad1:internal/agenticfactory/ledger/ac_names_test.go:30:func TestReap_LivenessCases_ReclaimOnlyDead(t *testing.T) {
+db02401ad1:internal/agenticfactory/ledger/ac_names_test.go:117:func TestStore_StaleEpochWrite_ReturnsErrStaleEpoch(t *testing.T) {
+db02401ad1:internal/hook/ledger_heartbeat_test.go:58:func TestLedgerHeartbeat_ThrottlesToTheStampFile(t *testing.T) {
+
+$ git -C <worktree> grep -n -e 'LedgerHeartbeatEvery *=' -e 'HeartbeatThrottle' db02401ad1 -- internal
+db02401ad1:internal/agenticfactory/ledger/api.go:41:	HeartbeatThrottle = 30 * time.Second // a session writes its heartbeat at most this often
+db02401ad1:internal/hook/ledger_heartbeat.go:20:const LedgerHeartbeatEvery = 30 * time.Second
+
+$ git -C <worktree> show db02401ad1:internal/agenticfactory/ledger/claim.go  (줄 351-358 발췌)
+// pickTx is the highest-priority card nobody holds that can be claimed: READY, or
+// BUILDING or REVIEWING with its holder gone; not parked; every dependency DONE; every
+// conflict key free. A card that fails a test is skipped and changed in no way.
+		WHERE parked=0 AND stage IN ('READY','BUILDING','REVIEWING')
+		  AND NOT EXISTS (SELECT 1 FROM leases l WHERE l.card_id=c.id)
+
+$ git -C <worktree> diff --stat 1a552af405 db02401ad1 -- (§F가 인용한 시험 파일 12개)
+ claim_test.go 2 +-, move_test.go 12 +++++-, open_test.go 4 +-, queue_test.go 46 ++++----, review20_test.go 2 +-, mergeq_test.go 2 +-, flow_test.go 19 ++++, ledger_board_test.go 11 ++++--
+$ git -C <worktree> diff --stat 607bd17804 db02401ad1 -- ac_names_test.go verifying_reentry_test.go
+ ac_names_test.go 18 ++++----, verifying_reentry_test.go 10 +++---
+(바뀐 곳: QueueUpdate epoch 인자 형식, Close 오류 처리, 가짜 큐 SetState 서명, 보드 flow 단언 — §F가 인용한 단언은 그대로)
+```
+
+AC-AFL-015 RED-now의 `ls-tree` 출력과 013·017·015의 단일 이름 grep은 acceptance §B.2에 있다. 종료 코드는 어느 명령에서도 관측하지 못했다(acceptance §B.2).
