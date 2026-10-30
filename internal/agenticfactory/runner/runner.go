@@ -143,6 +143,10 @@ type Runner struct {
 	Attributor Attributor
 	Facts      Facts
 	Collab     core.Collaboration
+
+	// beforeClaimMoves is a test seam: it runs after TakeOver has decided and before
+	// the store moves the claim, where the owner could still act.
+	beforeClaimMoves func()
 }
 
 // guard decides whether the acting user may perform op on the Issue, through the
@@ -716,44 +720,40 @@ func (r *Runner) TakeOver(i core.IssueRef, old Ticket, newHolder, dispatch strin
 	if err := r.guard(i, core.OpTakeOver); err != nil {
 		return claim.Record{}, err
 	}
-	// Where the owner recorded its process, the departure is read from the process
-	// and the caller's OwnerGone is not consulted; a stop record the owner left
-	// stands in for the departure either way (REQ-AF-009).
-	st, err := r.Store.OwnerLiveness(i)
-	if err != nil {
-		return claim.Record{}, err
-	}
-	safeStop := strings.TrimSpace(ev.SafeStop) != ""
-	if safeStop { // a string is not a stop record: it must be this owner's, at this epoch
-		if err := r.Store.CheckSafeStop(i, old.Holder, old.Epoch, ev.SafeStop); err != nil {
+	// A safe stop is checked first and settles it: the owner said it stopped and has
+	// not acted since, so its process is not consulted. Without one, where the owner
+	// recorded its process the departure is read from the process and the caller's
+	// OwnerGone is not consulted (REQ-AF-009).
+	note := "preserved at " + ev.PreservedRef
+	stop := strings.TrimSpace(ev.SafeStop)
+	if stop != "" {
+		// The store checks the stop under the Issue lock, in the critical section that
+		// moves the claim (TakeOverOnStop); no earlier check here could be relied on.
+		note += "; safe stop " + stop
+	} else {
+		st, err := r.Store.OwnerLiveness(i)
+		if err != nil {
 			return claim.Record{}, err
 		}
-	}
-	gone := ev.OwnerGone
-	departure := "owner gone (caller-asserted, no process on record)"
-	if st.HasPresence {
-		gone = st.Class == homestate.OwnerDead
-		departure = fmt.Sprintf("owner process %d is gone", st.PID)
-		if !safeStop {
-			switch st.Class {
-			case homestate.OwnerLive:
-				return claim.Record{}, fmt.Errorf("%w: the owner's process %d is still running", core.ErrHeld, st.PID)
-			case homestate.OwnerIndeterminate:
-				return claim.Record{}, fmt.Errorf("%w: the owner's process %d cannot be told running or gone", core.ErrOwnerUnconfirmed, st.PID)
-			}
+		switch {
+		case st.HasPresence && st.Class == homestate.OwnerLive:
+			return claim.Record{}, fmt.Errorf("%w: the owner's process %d is still running", core.ErrHeld, st.PID)
+		case st.HasPresence && st.Damaged:
+			return claim.Record{}, fmt.Errorf("%w: the presence file %s cannot be read: once the owner's process is confirmed gone, remove that file (the owner's next Heartbeat writes a new one)", core.ErrOwnerUnconfirmed, st.File)
+		case st.HasPresence && st.Class == homestate.OwnerIndeterminate:
+			return claim.Record{}, fmt.Errorf("%w: the owner's process %d cannot be told running or gone", core.ErrOwnerUnconfirmed, st.PID)
+		case st.HasPresence:
+			note += fmt.Sprintf("; owner process %d is gone", st.PID)
+		case ev.OwnerGone:
+			note += "; owner gone (caller-asserted, no process on record)"
+		default:
+			return claim.Record{}, fmt.Errorf("%w: neither the owner's departure nor a safe stop record is given", core.ErrEvidenceIncomplete)
 		}
 	}
-	if !gone && !safeStop {
-		return claim.Record{}, fmt.Errorf("%w: neither the owner's departure nor a safe stop record is given", core.ErrEvidenceIncomplete)
+	if r.beforeClaimMoves != nil {
+		r.beforeClaimMoves()
 	}
-	note := "preserved at " + ev.PreservedRef
-	if safeStop {
-		note += "; safe stop " + strings.TrimSpace(ev.SafeStop)
-	}
-	if gone {
-		note += "; " + departure
-	}
-	return r.Store.TakeOver(i, old.Holder, old.Epoch, newHolder, dispatch, run, note, ev.Wait)
+	return r.Store.TakeOverOnStop(i, old.Holder, old.Epoch, newHolder, dispatch, run, note, ev.Wait, stop)
 }
 
 // RecordSafeStop writes the ticket holder's safe-stop record, the evidence that

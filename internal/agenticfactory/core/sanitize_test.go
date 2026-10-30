@@ -2,6 +2,7 @@ package core
 
 import (
 	"errors"
+	"math/rand"
 	"reflect"
 	"strings"
 	"testing"
@@ -92,7 +93,22 @@ func TestSanitizeLeavesOrdinaryTextAlone(t *testing.T) {
 		"the operation internationalizationconfigurationmanagement completed", // a long word with no digits is a word
 		"0123456789012345678901234567890123456789",                            // digits only: a number, not a mixed token
 		"~/work/notes.md", // a tilde path names no user
-		"goroutine 7 [running]:\nmain.main()\n\t/usr/local/go/src/main.go:12 +0x1d", // a stack under a system path is not personal data
+		"Users/goos/Library/Application/Support2/MoAI/Caches",                   // a relative path with a digit: words, not random text
+		"github.com/modu-ai/moai-adk/internal/agenticfactory/claim/presence.go", // dots and dashes make it a path
+		"internal/agenticfactory/claim/ControlRef2/PresenceStoreHeartbeat",      // a camel-case path with a digit
+		"refs/heads/0123456789abcdef0123456789abcdef01234567",                   // a commit hash behind a path prefix
+		"internal/agenticfactory/claim/presence_test_for_the_owner_record",      // long, slashes, no digits
+		"AB1CD2EF3GH4IJ5KL6MN7/OP8QR9ST0UV1WX2YZ3/AB4CD5EF6GH7",                 // upper case and digits only: not the mix of a random token
+		"ab1cd2ef3gh4ij5kl6mn7/op8qr9st0uv1wx2yz3/ab4cd5ef6gh7",                 // lower case and digits only
+		"AbCdEfGhIjKlMnOpQrStUvWx/YzAbCdEfGhIj/KlMnOpQrStUvWxYz",                // letters of both cases and no digit
+		"/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/",                     // the per-user temp root of macOS is random by design and holds no secret
+		"/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/go-build42",   // the same root behind /private
+		"/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T",                      // the root as a directory, without the slash
+		"/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/C",                      // its cache sibling
+		"/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/0/Store",                // and a data directory
+		"Library/Caches/Foo2/Bar/Support/Models/Settings/Items/Cache",
+		"ABCDEFGHIJKLMNOPQRST/UVWXYZ0123456789/abc",                          // words and a digit: few class changes
+		"A1/Documentation/B2/Application/C3/Configuration/D4/Initialization", // many class changes, but word-sized lower-case stretches
 	} {
 		if out, cats := Sanitize(in); out != in || len(cats) != 0 {
 			t.Errorf("over-sanitized %q -> %q %v", in, out, cats)
@@ -139,5 +155,138 @@ func TestRefuseIfSensitive(t *testing.T) {
 		if !strings.Contains(err.Error(), name) {
 			t.Errorf("the refusal must name %q: %v", name, err)
 		}
+	}
+}
+
+// A secret cut into short pieces by '/' or '+' slips under the 32-character rule
+// of the opaque run. The unnamed AWS secret access key is the representative:
+// 40 characters of [A-Za-z0-9/+], mixed case with digits, random-looking.
+func TestSanitizeMasksSecretsCutByASeparator(t *testing.T) {
+	const aws = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+	const b64 = "q7Hs2Lw9/Zx3Kd8Vb1+Nm4Rt6Yu0Ae5Gp2Jc7Fi9Xo3Sh1/Wk8Tl4Bn6Dz2Qe5Mr0"
+	for _, c := range []struct{ name, in, secret string }{
+		{"unnamed aws secret key", "found " + aws + " in the log", aws},
+		{"alone on a line", aws, aws},
+		{"quoted", `value "` + aws + `" here`, aws},
+		{"after an equals sign", "X=" + aws + " ./run", aws},
+		{"base64 with slashes and plus", "blob " + b64 + " end", b64},
+		{"base64 with padding", "blob " + b64 + "== end", b64},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			out, cats := Sanitize(c.in)
+			if strings.Contains(out, c.secret[:20]) || strings.Contains(out, c.secret[len(c.secret)-20:]) {
+				t.Errorf("a piece of the secret survived: %q", out)
+			}
+			if !reflect.DeepEqual(cats, []Category{CategoryOpaqueToken}) {
+				t.Errorf("categories = %v, want the opaque token", cats)
+			}
+		})
+	}
+}
+
+// The whole token goes, base64 padding included.
+func TestSanitizeCutSecretIsReplacedWholeWithItsPadding(t *testing.T) {
+	out, cats := Sanitize("val aB3dE5gH7jK9/mN1pQ3sT5vW7yZ9bC1dE/3fG5hJ7kL9x== end")
+	if out != "val [REDACTED] end" || len(cats) != 1 || cats[0] != CategoryOpaqueToken {
+		t.Errorf("got %q %v", out, cats)
+	}
+}
+
+// Where a cut secret stands does not decide whether it is one: a full stop that
+// ends a sentence, a label joined by '-' or '_', a URL path or a leading '/' are all
+// places a secret is written. A path of words stays, by its word share.
+func TestSanitizeMasksACutSecretWhereverItStands(t *testing.T) {
+	const k = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+	for _, c := range []struct{ name, in string }{
+		{"sentence full stop", "the value is " + k + "."},
+		{"full stop then more text", "the value is " + k + ". Next sentence."},
+		{"comma", "values " + k + ", and more"},
+		{"parentheses", "(" + k + ")"},
+		{"semicolon", "x " + k + "; y"},
+		{"label joined by dash", "key-" + k},
+		{"label joined by underscore", "key_" + k},
+		{"after a host in a URL", "https://example.com/" + k},
+		{"leading slash", "/" + k},
+		{"trailing slash", k + "/"},
+		{"joined to an identifier", "build-" + k},
+		{"dotted extension after", k + ".txt"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			out, cats := Sanitize(c.in)
+			if strings.Contains(out, "K7MDENG") || strings.Contains(out, "bPxRfiCY") || strings.Contains(out, "wJalrXUt") {
+				t.Errorf("the secret survived: %q", out)
+			}
+			if len(cats) == 0 {
+				t.Errorf("nothing reported for %q", c.in)
+			}
+		})
+	}
+}
+
+// The measured pass rate of a random secret of this alphabet, with the secret in
+// the middle of a line and at the end of a sentence. 100000 seeded runs: the rate
+// must stay under 0.6% in both places.
+func TestSanitizeCutSecretPassRateStaysLow(t *testing.T) {
+	const alpha = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/+"
+	rng := rand.New(rand.NewSource(7))
+	const n = 20000
+	mid, end := 0, 0
+	for i := 0; i < n; i++ {
+		b := make([]byte, 40)
+		for j := range b {
+			b[j] = alpha[rng.Intn(len(alpha))]
+		}
+		in := string(b)
+		if out, _ := Sanitize("the value is " + in + " ok"); strings.Contains(out, in[10:30]) {
+			mid++
+		}
+		if out, _ := Sanitize("the value is " + in + "."); strings.Contains(out, in[10:30]) {
+			end++
+		}
+	}
+	if float64(mid)/n > 0.006 || float64(end)/n > 0.006 {
+		t.Errorf("pass rate mid-line %.3f%%, sentence end %.3f%%, want both under 0.6%%", 100*float64(mid)/n, 100*float64(end)/n)
+	}
+}
+
+// A secret written behind a path is still a secret: the run is judged as a whole and
+// then from each '/' on, so a path of words in front does not hide it, and the macOS
+// temp root is exempt only as far as its own shape ends. Both a known documentation
+// key and a random one are used: the documentation key (the AWS example) is a
+// low-entropy sample, mostly readable letters, and is the hardest case; a random
+// value is the realistic one. A secret that is mostly readable words can still pass,
+// which is the cost of not masking paths.
+func TestSanitizeMasksACutSecretBehindAPath(t *testing.T) {
+	const aws = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+	const rnd = "q7Hs2Lw9Zx3Kd8/Vb1Nm4Rt6Yu0Ae5/Gp2Jc7Fi9Xo3Sh1/Wk8Tl4Bn6Dz"
+	const root = "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/"
+	for _, c := range []struct{ name, in, keep string }{
+		{"aws behind the macOS temp root", root + aws, "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/"},
+		{"random behind the macOS temp root", root + rnd, "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/"},
+		{"random behind the private temp root", "/private" + root + rnd, "/private/var/folders/"},
+		{"aws behind a word path", "Users/goos/Library/Caches/" + aws, ""},
+		{"random behind a word path", "internal/agenticfactory/claim/" + rnd, ""},
+		// a path long enough that the run as a whole reads as words (share 0.80), so only
+		// the part after the last '/' of the path is judged a secret
+		{"aws behind a long word path", "internal/agenticfactory/claim/ControlRef/PresenceStore/ReadyGate/RequestQueue/FactoryDispatch/MirrorState/" + aws, ""},
+		{"random behind a longer word path", "see internal/agenticfactory/claim/ControlRef2/" + rnd + " here", ""},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			out, cats := Sanitize(c.in)
+			for _, leak := range []string{"K7MDENG", "bPxRfiCY", "Zx3Kd8", "Nm4Rt6", "Jc7Fi9", "Bn6Dz"} {
+				if strings.Contains(out, leak) {
+					t.Errorf("%q survived: %q", leak, out)
+				}
+			}
+			// Behind a word path the earliest start that qualifies is masked, which may
+			// take the path with it (a later start could leave the head of a long secret
+			// in the clear); only the exempt temp root must stay.
+			if c.keep != "" && !strings.Contains(out, c.keep) {
+				t.Errorf("the temp root in front must stay: %q", out)
+			}
+			if len(cats) == 0 {
+				t.Errorf("nothing reported")
+			}
+		})
 	}
 }

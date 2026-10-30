@@ -23,6 +23,7 @@ type Presence struct {
 	Epoch      int64     `json:"epoch"`
 	PID        int       `json:"pid"`
 	Start      string    `json:"start"`
+	At         time.Time `json:"at"` // when it was recorded
 	LeaseUntil time.Time `json:"lease_until"`
 }
 
@@ -35,6 +36,9 @@ type OwnerState struct {
 	// its pid belongs to another process now; live only when it is the same
 	// process; anything else is indeterminate.
 	Class homestate.OwnerClassification
+	// Damaged is set when a presence file exists and cannot be read; File names it.
+	Damaged bool
+	File    string
 	// LeaseExpired is information for the monitor. It never decides: a live
 	// process whose lease ran out is still live.
 	LeaseExpired bool
@@ -43,6 +47,9 @@ type OwnerState struct {
 func (s *Store) presencePath(i core.IssueRef) string {
 	return filepath.Join(s.dir, i.Resource()+".presence")
 }
+
+// PresenceFile is where the presence of the Issue's holder is recorded.
+func (s *Store) PresenceFile(i core.IssueRef) string { return s.presencePath(i) }
 
 func (s *Store) clock() time.Time {
 	if s.now != nil {
@@ -65,12 +72,41 @@ func (s *Store) Heartbeat(i core.IssueRef, holder string, epoch int64, pid int, 
 		if _, err := s.Verify(i, holder, epoch); err != nil {
 			return err
 		}
-		b, err := json.Marshal(Presence{Holder: holder, Epoch: epoch, PID: pid, Start: start, LeaseUntil: s.clock().Add(lease)})
+		b, err := json.Marshal(Presence{Holder: holder, Epoch: epoch, PID: pid, Start: start, At: s.clock(), LeaseUntil: s.clock().Add(lease)})
 		if err != nil {
 			return err
 		}
 		return s.writeAtomic(s.dir, i.Resource()+".presence.tmp-*", s.presencePath(i), b)
 	})
+}
+
+// presenceState is what readPresence found.
+type presenceState int
+
+const (
+	presenceAbsent  presenceState = iota // no file
+	presenceDamaged                      // a file that cannot be read or is incomplete
+	presenceOK
+)
+
+func (s *Store) readPresence(i core.IssueRef) (Presence, presenceState, error) {
+	b, err := os.ReadFile(s.presencePath(i))
+	if errors.Is(err, os.ErrNotExist) {
+		return Presence{}, presenceAbsent, nil
+	}
+	if err != nil {
+		return Presence{}, presenceAbsent, fmt.Errorf("%w: %v", core.ErrStoreUnavailable, err)
+	}
+	var p Presence
+	if json.Unmarshal(b, &p) != nil || p.PID < 1 || strings.TrimSpace(p.Start) == "" {
+		return p, presenceDamaged, nil
+	}
+	return p, presenceOK, nil
+}
+
+// recoverHint is the one line an operator needs when a presence file is damaged.
+func (s *Store) recoverHint(i core.IssueRef) string {
+	return fmt.Sprintf("the presence file %s cannot be read: once the owner's process is confirmed gone, remove that file (the owner's next Heartbeat writes a new one)", s.presencePath(i))
 }
 
 // OwnerLiveness reads the presence the current holder recorded and classifies its
@@ -83,19 +119,18 @@ func (s *Store) OwnerLiveness(i core.IssueRef) (OwnerState, error) {
 	if !ok {
 		return OwnerState{}, core.ErrNotHeld
 	}
-	b, err := os.ReadFile(s.presencePath(i))
-	if errors.Is(err, os.ErrNotExist) {
-		return OwnerState{}, nil
-	}
+	p, st, err := s.readPresence(i)
 	if err != nil {
-		return OwnerState{}, fmt.Errorf("%w: %v", core.ErrStoreUnavailable, err)
+		return OwnerState{}, err
 	}
-	var p Presence
-	if json.Unmarshal(b, &p) != nil || p.PID < 1 || strings.TrimSpace(p.Start) == "" {
+	switch st {
+	case presenceAbsent:
+		return OwnerState{}, nil
+	case presenceDamaged:
 		// Something was recorded and cannot be read: that is not "nothing recorded",
 		// which would let a takeover go ahead on the caller's word. It cannot be told
 		// running from gone.
-		return OwnerState{HasPresence: true, PID: p.PID, Class: homestate.OwnerIndeterminate}, nil
+		return OwnerState{HasPresence: true, PID: p.PID, Class: homestate.OwnerIndeterminate, Damaged: true, File: s.presencePath(i)}, nil
 	}
 	if p.Holder != rec.Holder || p.Epoch != rec.Epoch {
 		return OwnerState{}, nil // an earlier holder's record; the current holder has recorded none

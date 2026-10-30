@@ -90,7 +90,8 @@ const (
 	Allow                    AuthzVerdict = "allow"
 	DenyNotIssueAuthor       AuthzVerdict = "not-issue-author"
 	DenyIdentityUnknown      AuthzVerdict = "identity-unknown"
-	DenyRepoNotAllowed       AuthzVerdict = "repository-not-allowed"
+	DenyRepoNotAllowed       AuthzVerdict = "repository-not-allowed" // answered for the right repository; it is not on the list
+	DenyRepoUnverified       AuthzVerdict = "repository-unverified"  // the host did not answer for the repository that was asked about
 	DenyPermissionNotGranted AuthzVerdict = "permission-not-granted"
 	DenyOwnerUnconfirmed     AuthzVerdict = "owner-unconfirmed"
 	DenyUnknownOp            AuthzVerdict = "unknown-operation"
@@ -117,16 +118,25 @@ func NormalizeRepo(provider, path string) string {
 	return path
 }
 
-// repoAllowed reports whether the repository the host really answered for is
-// the one asked about, was reached without a redirect, and is on the list.
-func (c Collaboration) repoAllowed(r AuthzRequest) bool {
+// repoMatches reports whether the host answered for the repository that was asked
+// about: both names are known, the lookup was not redirected (a moved or renamed
+// repository), and the two names are the same. It is the first thing every
+// operation needs, on one's own Issue and on another author's alike; it says
+// nothing about the allow list.
+func (c Collaboration) repoMatches(r AuthzRequest) bool {
 	if r.Redirected || r.RequestedRepo == "" || r.ActualRepo == "" {
 		return false
 	}
-	asked, got := NormalizeRepo(c.Provider, r.RequestedRepo), NormalizeRepo(c.Provider, r.ActualRepo)
-	if asked != got {
+	return NormalizeRepo(c.Provider, r.RequestedRepo) == NormalizeRepo(c.Provider, r.ActualRepo)
+}
+
+// repoAllowed is repoMatches and, in addition, the repository is on the allow list.
+// Only the collaboration operations on another author's Issue ask for the list.
+func (c Collaboration) repoAllowed(r AuthzRequest) bool {
+	if !c.repoMatches(r) {
 		return false
 	}
+	got := NormalizeRepo(c.Provider, r.ActualRepo)
 	for _, a := range c.AllowedRepositories {
 		if NormalizeRepo(c.Provider, a) == got {
 			return true
@@ -148,6 +158,12 @@ func (c Collaboration) Authorize(r AuthzRequest) AuthzVerdict {
 	}
 	if r.UserID <= 0 || r.IssueAuthorID <= 0 || (r.Op == OpCommentEdit && r.CommentAuthorID <= 0) {
 		return DenyIdentityUnknown
+	}
+	// Before any allowance: the host must have answered for the repository that was
+	// asked about. A repository that moved, was renamed or was reached through a
+	// redirect gives no allowance on any branch below (audit F20).
+	if !c.repoMatches(r) {
+		return DenyRepoUnverified
 	}
 	// A comment is edited only by its own author, on any Issue.
 	if r.Op == OpCommentEdit && r.CommentAuthorID != r.UserID {
@@ -210,6 +226,8 @@ func (v AuthzVerdict) Reason() (BlockReason, bool) {
 		return ReasonIdentityUnknown, true
 	case DenyRepoNotAllowed:
 		return ReasonRepoNotAllowed, true
+	case DenyRepoUnverified:
+		return ReasonRepoUnverified, true
 	case DenyPermissionNotGranted:
 		return ReasonPermissionNotGranted, true
 	case DenyOwnerUnconfirmed:
@@ -232,6 +250,8 @@ func (v AuthzVerdict) Err() error {
 		base = ErrIdentityUnknown
 	case DenyRepoNotAllowed:
 		base = ErrRepoNotAllowed
+	case DenyRepoUnverified:
+		base = ErrRepoUnverified
 	case DenyPermissionNotGranted:
 		base = ErrPermissionNotGranted
 	case DenyOwnerUnconfirmed:

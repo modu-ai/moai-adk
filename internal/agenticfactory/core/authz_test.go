@@ -195,17 +195,17 @@ func TestARenamedRepositoryIsNotTreatedAsTheAllowedOne(t *testing.T) {
 	c := collab()
 	r := req(OpClose)
 	r.ActualRepo = "acme/renamed"
-	if v := c.Authorize(r); v != DenyRepoNotAllowed {
+	if v := c.Authorize(r); v != DenyRepoUnverified {
 		t.Errorf("redirected to another name: %s", v)
 	}
 	r = req(OpClose)
 	r.ActualRepo = ""
-	if v := c.Authorize(r); v != DenyRepoNotAllowed {
+	if v := c.Authorize(r); v != DenyRepoUnverified {
 		t.Errorf("no answered repository to compare: %s", v)
 	}
 	r = req(OpClose)
 	r.RequestedRepo = ""
-	if v := c.Authorize(r); v != DenyRepoNotAllowed {
+	if v := c.Authorize(r); v != DenyRepoUnverified {
 		t.Errorf("no requested repository: %s", v)
 	}
 	// The allowed list is matched against the repository the host answered for.
@@ -234,6 +234,7 @@ func TestVerdictMapsToReasonAndError(t *testing.T) {
 		DenyNotIssueAuthor:       {ReasonNotIssueAuthor, ErrNotIssueAuthor},
 		DenyIdentityUnknown:      {ReasonIdentityUnknown, ErrIdentityUnknown},
 		DenyRepoNotAllowed:       {ReasonRepoNotAllowed, ErrRepoNotAllowed},
+		DenyRepoUnverified:       {ReasonRepoUnverified, ErrRepoUnverified},
 		DenyPermissionNotGranted: {ReasonPermissionNotGranted, ErrPermissionNotGranted},
 		DenyOwnerUnconfirmed:     {ReasonOwnerUnconfirmed, ErrOwnerUnconfirmed},
 		DenyUnknownOp:            {ReasonOpNotDefined, ErrOpNotDefined},
@@ -256,7 +257,7 @@ func TestVerdictMapsToReasonAndError(t *testing.T) {
 }
 
 func TestNewBlockReasonsAreInTheClosedSet(t *testing.T) {
-	for _, r := range []BlockReason{ReasonNotIssueAuthor, ReasonIdentityUnknown, ReasonRepoNotAllowed, ReasonPermissionNotGranted, ReasonOwnerUnconfirmed, ReasonForeignClosing, ReasonOpNotDefined} {
+	for _, r := range []BlockReason{ReasonNotIssueAuthor, ReasonIdentityUnknown, ReasonRepoNotAllowed, ReasonRepoUnverified, ReasonPermissionNotGranted, ReasonOwnerUnconfirmed, ReasonForeignClosing, ReasonOpNotDefined} {
 		if !r.Valid() {
 			t.Errorf("%q is not a valid reason", r)
 		}
@@ -272,15 +273,20 @@ func TestARedirectedLookupIsNeverAllowed(t *testing.T) {
 	for _, op := range []Op{OpEditBody, OpLabel, OpAssignee, OpClose, OpTakeOver} {
 		r := req(op)
 		r.Redirected = true
-		if v := collab().Authorize(r); v != DenyRepoNotAllowed {
+		if v := collab().Authorize(r); v != DenyRepoUnverified {
 			t.Errorf("%s through a redirect: %s", op, v)
 		}
 	}
-	// Comments on another author's Issue need no repository check at all.
+	// A comment on another author's Issue needs no entry in the allow list, but it
+	// is still a write to the repository the host answered for, so a redirected
+	// lookup refuses it too (audit F20).
 	r := req(OpCommentCreate)
-	r.Redirected = true
 	if v := (Collaboration{}).Authorize(r); v != Allow {
 		t.Errorf("a comment does not depend on the allow list: %s", v)
+	}
+	r.Redirected = true
+	if v := (Collaboration{}).Authorize(r); v != DenyRepoUnverified {
+		t.Errorf("a comment through a redirect: %s", v)
 	}
 }
 
@@ -291,7 +297,7 @@ func TestOldNameStillListedAfterARename(t *testing.T) {
 	c.AllowedRepositories = []string{"acme/widgets"} // the old name
 	r := req(OpClose)
 	r.RequestedRepo, r.ActualRepo = "acme/widgets", "acme/gadgets"
-	if v := c.Authorize(r); v != DenyRepoNotAllowed {
+	if v := c.Authorize(r); v != DenyRepoUnverified {
 		t.Errorf("old name, new answer: %s", v)
 	}
 	// Asking for the new name and getting it, but only the old name is listed.
@@ -355,5 +361,90 @@ func TestUndefinedOperationHasItsOwnReason(t *testing.T) {
 		if err := v.Err(); !errors.Is(err, ErrOpNotDefined) || errors.Is(err, ErrNotIssueAuthor) {
 			t.Errorf("%q err = %v", op, err)
 		}
+	}
+}
+
+// Audit F20: whether the host answered for the repository that was asked about is
+// checked before ANY allowance, on one's own Issue and for a comment on another
+// author's as much as for the collaboration operations. A repository that moved,
+// was renamed or was reached through a redirect gives no allowance, and neither
+// does a lookup that left either name unknown.
+func TestAMovedRepositoryRefusesEveryOperationOnEveryBranch(t *testing.T) {
+	branches := map[string]func(*AuthzRequest){
+		"own issue":                  func(r *AuthzRequest) { r.IssueAuthorID = r.UserID },
+		"comment on another's issue": func(r *AuthzRequest) {},
+		"own comment on another's":   func(r *AuthzRequest) { r.CommentAuthorID = r.UserID },
+	}
+	breaks := map[string]func(*AuthzRequest){
+		"redirected":           func(r *AuthzRequest) { r.Redirected = true },
+		"answered for another": func(r *AuthzRequest) { r.ActualRepo = "acme/gadgets" },
+		"actual unknown":       func(r *AuthzRequest) { r.ActualRepo = "" },
+		"requested unknown":    func(r *AuthzRequest) { r.RequestedRepo = "" },
+		"both unknown":         func(r *AuthzRequest) { r.RequestedRepo, r.ActualRepo = "", "" },
+	}
+	cfgs := map[string]Collaboration{"default": {}, "collaboration on": collab()}
+	for cname, c := range cfgs {
+		for bname, branch := range branches {
+			ops := []Op{OpCommentCreate, OpCommentEdit}
+			if bname == "own issue" {
+				ops = allOps
+			}
+			for _, op := range ops {
+				for kname, brk := range breaks {
+					r := req(op)
+					branch(&r)
+					brk(&r)
+					if v := c.Authorize(r); v != DenyRepoUnverified {
+						t.Errorf("%s / %s / %s / %s: %s, want repository-unverified", cname, bname, op, kname, v)
+					}
+				}
+			}
+		}
+	}
+}
+
+// What the check does not ask: the allow list. One's own Issue, and a comment on
+// another's, need only that the host answered for the repository asked about.
+func TestTheAllowListStillOnlyGovernsCollaboration(t *testing.T) {
+	own := func(op Op) AuthzRequest { r := req(op); r.IssueAuthorID = r.UserID; return r }
+	for _, op := range []Op{OpEditBody, OpCommentCreate, OpCommentEdit, OpClose, OpTakeOver} {
+		if v := (Collaboration{}).Authorize(own(op)); v != Allow {
+			t.Errorf("own issue %s with no allow list: %s", op, v)
+		}
+	}
+	if v := (Collaboration{}).Authorize(req(OpCommentCreate)); v != Allow {
+		t.Errorf("comment on another's issue with no allow list: %s", v)
+	}
+	r := req(OpCommentCreate)
+	r.RequestedRepo, r.ActualRepo = "ACME/Widgets", "acme/widgets"
+	if v := (Collaboration{Provider: "github"}).Authorize(r); v != Allow {
+		t.Errorf("github names compare without case: %s", v)
+	}
+	// the unknown identity is still reported first
+	r = req(OpCommentCreate)
+	r.UserID, r.Redirected = 0, true
+	if v := (Collaboration{}).Authorize(r); v != DenyIdentityUnknown {
+		t.Errorf("identity before repository: %s", v)
+	}
+}
+
+// The two refusals about the repository are told apart: "the host did not answer for
+// the repository that was asked about" (a redirect, a move, an unknown name) and "it
+// did, and it is not on the allow list". They are different facts with different
+// remedies, so they carry different names (audit F20).
+func TestUnverifiedAndNotListedAreDifferentVerdicts(t *testing.T) {
+	r := req(OpClose)
+	r.RequestedRepo, r.ActualRepo = "acme/other", "acme/other" // answered correctly, not listed
+	if v := collab().Authorize(r); v != DenyRepoNotAllowed {
+		t.Errorf("not listed: %s", v)
+	}
+	r = req(OpClose)
+	r.Redirected = true // not answered correctly, would be listed
+	if v := collab().Authorize(r); v != DenyRepoUnverified {
+		t.Errorf("unverified: %s", v)
+	}
+	if DenyRepoNotAllowed.Err() == nil || DenyRepoUnverified.Err() == nil ||
+		errors.Is(DenyRepoUnverified.Err(), ErrRepoNotAllowed) || errors.Is(DenyRepoNotAllowed.Err(), ErrRepoUnverified) {
+		t.Error("the two verdicts must not share a sentinel")
 	}
 }
