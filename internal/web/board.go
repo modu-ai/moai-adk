@@ -10,10 +10,12 @@ import (
 	"net/http"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/ledger"
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/monitor/flow"
 )
 
 // boardGap marks a value the ledger did not give.
@@ -52,7 +54,23 @@ type BoardNoteVM struct {
 	Redacted         bool
 }
 
-type BoardFlowVM struct{ Known bool }
+// BoardGroupVM is one flow group: how many cards sit in it and how long the
+// longest has been there.
+type BoardGroupVM struct{ Key, Count, Oldest string }
+
+// BoardStalledVM is one lease whose holder shows no sign of life.
+type BoardStalledVM struct{ CardID, HeartbeatAge, Liveness string }
+
+// BoardFlowVM is the flow read model of the same ledger (monitor/flow). Known is
+// false when it was not measured; nothing in it is then to be read as zero.
+type BoardFlowVM struct {
+	Known   bool
+	Note    string
+	WIP     string
+	Stages  []BoardGroupVM
+	Waiting []BoardGroupVM
+	Stalled []BoardStalledVM
+}
 
 type BoardVM struct {
 	Available bool
@@ -164,7 +182,111 @@ func (a *app) buildBoard(ctx context.Context, now time.Time) BoardVM {
 			vm.Notes = append(vm.Notes, nv)
 		}
 	}
+	// The flow panel measures the cards and leases already read above, so the two
+	// panels cannot disagree about one moment of the ledger.
+	snap, err := flow.Measure(ctx, boardRead{cards: cards, leases: leases}, a.flowProbe, now, flow.Defaults())
+	if err != nil {
+		vm.Flow = BoardFlowVM{Note: "flow unreadable: " + refineText(err.Error())}
+	} else {
+		vm.Flow = boardFlow(snap)
+	}
 	return vm
+}
+
+// boardRead hands monitor/flow the cards and leases the board already read; it
+// has no queue or notes because the flow model reads neither.
+type boardRead struct {
+	cards  []ledger.Card
+	leases []ledger.Lease
+}
+
+func (b boardRead) Cards(context.Context) ([]ledger.Card, error)    { return b.cards, nil }
+func (b boardRead) Leases(context.Context) ([]ledger.Lease, error)  { return b.leases, nil }
+func (boardRead) Queue(context.Context) ([]ledger.QueueItem, error) { return nil, nil }
+func (boardRead) Notes(context.Context, int64) ([]ledger.Note, error) {
+	return nil, nil
+}
+
+// boardAge renders a duration as minutes, hours or days. A zero update time makes
+// monitor/flow report an age of centuries; that is an unrecorded time, shown as the
+// gap, never as a number.
+func boardAge(d time.Duration) string {
+	switch {
+	case d < 0, d >= 100*365*24*time.Hour:
+		return boardGap // a time in the future or never recorded is not an age
+	case d < time.Minute:
+		return "<1m"
+	case d < time.Hour:
+		return strconv.Itoa(int(d/time.Minute)) + "m"
+	case d < 24*time.Hour:
+		return strconv.Itoa(int(d/time.Hour)) + "h" + pad2(int(d%time.Hour/time.Minute)) + "m"
+	}
+	return strconv.Itoa(int(d/(24*time.Hour))) + "d" + pad2(int(d%(24*time.Hour)/time.Hour)) + "h"
+}
+
+func pad2(n int) string {
+	if n < 10 {
+		return "0" + strconv.Itoa(n)
+	}
+	return strconv.Itoa(n)
+}
+
+func livenessText(l ledger.Liveness) string {
+	switch l {
+	case ledger.LivenessAlive:
+		return "alive"
+	case ledger.LivenessDead:
+		return "dead"
+	}
+	return "unknown"
+}
+
+// boardFlow turns one monitor/flow snapshot into display text: stage groups in the
+// card flow order, then the two waiting kinds, then the quiet holders.
+func boardFlow(s flow.Snapshot) BoardFlowVM {
+	out := BoardFlowVM{Known: true, WIP: itoa(s.WIP)}
+	rank := map[string]int{}
+	for i, st := range boardStageOrder {
+		rank[string(st)] = i
+	}
+	keys := make([]string, 0, len(s.Stages))
+	for k := range s.Stages {
+		keys = append(keys, k)
+	}
+	stageOf := func(k string) string { return strings.SplitN(k, "/", 2)[0] }
+	sort.Slice(keys, func(i, j int) bool {
+		ri, iok := rank[stageOf(keys[i])]
+		rj, jok := rank[stageOf(keys[j])]
+		switch {
+		case iok != jok:
+			return iok // known stages first
+		case ri != rj:
+			return ri < rj
+		}
+		return keys[i] < keys[j]
+	})
+	for _, k := range keys {
+		g := s.Stages[k]
+		out.Stages = append(out.Stages, BoardGroupVM{Key: refineText(k), Count: itoa(g.Count), Oldest: boardAge(g.Oldest)})
+	}
+	for _, k := range []string{"ready", "parked"} {
+		if g, ok := s.Waiting[k]; ok {
+			out.Waiting = append(out.Waiting, BoardGroupVM{Key: k, Count: itoa(g.Count), Oldest: boardAge(g.Oldest)})
+		}
+	}
+	for _, st := range s.Stalled {
+		out.Stalled = append(out.Stalled, BoardStalledVM{CardID: st.CardID, HeartbeatAge: boardAge(st.HeartbeatAge), Liveness: livenessText(st.Liveness)})
+	}
+	return out
+}
+
+// boardClock is the board's notion of now: the injected clock in tests, the wall
+// clock otherwise.
+func (a *app) boardClock() time.Time {
+	if a.nowFunc != nil {
+		return a.nowFunc()
+	}
+	return time.Now()
 }
 
 func (a *app) handleBoard(w http.ResponseWriter, r *http.Request) {
@@ -172,7 +294,7 @@ func (a *app) handleBoard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	vm := a.shellVM(r, "board", "Board", "local ledger")
-	a.renderPage(w, Board(vm, a.buildBoard(r.Context(), time.Now())))
+	a.renderPage(w, Board(vm, a.buildBoard(r.Context(), a.boardClock())))
 }
 
 func (a *app) handleBoardAPI(w http.ResponseWriter, r *http.Request) {
@@ -180,5 +302,5 @@ func (a *app) handleBoardAPI(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(a.buildBoard(r.Context(), time.Now()))
+	_ = json.NewEncoder(w).Encode(a.buildBoard(r.Context(), a.boardClock()))
 }
