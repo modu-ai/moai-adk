@@ -224,6 +224,8 @@ func (a *app) routes() http.Handler {
 	// REQ-AF-016: read-only browser selection data for the monitor panel.
 	mux.HandleFunc("/api/browser", a.handleBrowserAPI)
 	mux.HandleFunc("/api/pr-tracking", a.handlePRTrackingAPI)
+	mux.HandleFunc("/board", a.handleBoard)
+	mux.HandleFunc("/api/board", a.handleBoardAPI)
 	// SPEC-WEB-TODO-QUEUE-001 M2 (REQ-WTQ-002): /todo renders the backlog queue
 	// read-only. Writes and id issuance belong to `moai todo`; this route only
 	// reads, and like the other monitoring routes it answers 405 to non-GET.

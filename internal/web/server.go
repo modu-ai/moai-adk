@@ -66,6 +66,10 @@ type Config struct {
 	// PR tracking, intake and context panels. Nil leaves them "not provided".
 	MonitorRows func(ctx context.Context) ([]byte, error)
 
+	// Ledger supplies the read-only local ledger the /board screen renders. Nil
+	// leaves the board "not provided".
+	Ledger BoardReader
+
 	// IntakeRequests supplies the background intake request records (JSON array
 	// of claim.Request from the claim store's ViewRequests). Nil leaves the
 	// intake request panel "not provided".

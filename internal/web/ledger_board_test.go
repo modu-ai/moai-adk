@@ -1,5 +1,3 @@
-//go:build afred
-
 package web
 
 // board_test.go — the read-only local board (Issue #1948, local-only redesign,
@@ -219,8 +217,17 @@ func TestBoard_RouteIsReadOnlyAndRendersEveryPanel(t *testing.T) {
 			t.Errorf("board page missing %q", want)
 		}
 	}
+	// The shell's profile popover follows the content and is not the board; the
+	// board is everything from its first panel to that popover.
+	boardHTML := body[strings.Index(body, `id="board-cards"`):]
+	if end := strings.Index(boardHTML, `class="pop"`); end > 0 {
+		boardHTML = boardHTML[:end]
+	}
+	if !strings.Contains(boardHTML, `id="board-flow"`) {
+		t.Fatalf("the display-only check must cover the last panel; board section ends early")
+	}
 	for _, bad := range []string{"<input", "<select", "<button", "<form"} {
-		if strings.Contains(body[strings.Index(body, `id="board-cards"`):], bad) {
+		if strings.Contains(boardHTML, bad) {
 			t.Errorf("the board must be display-only; found %q", bad)
 		}
 	}
