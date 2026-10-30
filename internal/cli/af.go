@@ -15,6 +15,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/ledger"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/hook"
+	"github.com/modu-ai/moai-adk/internal/session"
 )
 
 // afOpTimeout bounds one verb: the ledger write is short and a verb never waits on a person.
@@ -83,19 +84,24 @@ func (f *afFlags) bind(cmd *cobra.Command, needEpoch bool) {
 	}
 }
 
-// afParentPID and afProbe are the seams of afHolder.
+// afOwnerPID and afProbe are the seams of afHolder.
 var (
-	afParentPID = os.Getppid
-	afOwnerPID  = func() (int, bool) { return 0, false }
-	afProbe     = homestate.ProbeProcessIdentity
+	afOwnerPID = session.ResolveOwnerPID
+	afProbe    = homestate.ProbeProcessIdentity
 )
 
-// afHolder is the process the lease records as the holder of the card. This command exits at once, so the
-// holder is the process that ran it: the parent.
+// afHolder is the process the lease records as the holder of the card. The command exits at once and is usually
+// started through a shell wrapper that exits with it, so neither this process nor its parent can be the holder:
+// a lease naming either reads as a dead holder at the next reap and the card is taken from a live session. The
+// holder is the long-lived session that owns this process (the same resolution the session registry uses). When
+// it cannot be resolved the holder is recorded as unknown (pid 0): the ledger never reclaims an unknown holder.
 func afHolder() (pid int, start string) {
-	pid = afParentPID()
-	start, _ = afProbe(pid)
-	return pid, start
+	owner, ok := afOwnerPID()
+	if !ok || owner < 1 {
+		return 0, ""
+	}
+	start, _ = afProbe(owner)
+	return owner, start
 }
 
 func newAFClaimCmd() *cobra.Command {
