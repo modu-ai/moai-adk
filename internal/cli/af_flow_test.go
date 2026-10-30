@@ -3,7 +3,11 @@ package cli
 // AC-AFL-013 (SPEC-AGENTIC-FACTORY-LOCAL-001): a class A card goes claim -> RED evidence -> GREEN -> gates ->
 // MERGING (Enqueue) -> landed -> DONE, with its lease released, and without passing REVIEWING (spec.risk is empty
 // and the diff is under 400 lines). The steps are driven through the `moai af` verbs over a real ledger; landing
-// is the merge queue (mergeq) on a real git repository. Nothing is faked.
+// is the merge queue (mergeq) on a real git repository. The ledger, the verbs, the git repository and the merge
+// queue are real; two things are stand-ins: the gate runner (Verify is a function that returns nil, so no build
+// or test runs in the candidate worktree) and the lock holder's process fingerprint ("start-mq" is a literal, not
+// a probe result). The evidence records are written by hand through the verb, and the red record's result "pass"
+// means the observation succeeded (the acceptance tests were seen failing), not that they passed.
 
 import (
 	"bytes"
