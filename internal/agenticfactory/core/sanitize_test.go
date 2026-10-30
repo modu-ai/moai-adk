@@ -92,6 +92,17 @@ func TestSanitizeLeavesOrdinaryTextAlone(t *testing.T) {
 		"the operation internationalizationconfigurationmanagement completed", // a long word with no digits is a word
 		"0123456789012345678901234567890123456789",                            // digits only: a number, not a mixed token
 		"~/work/notes.md", // a tilde path names no user
+		"Users/goos/Library/Application/Support2/MoAI/Caches",                   // a relative path with a digit: words, not random text
+		"github.com/modu-ai/moai-adk/internal/agenticfactory/claim/presence.go", // dots and dashes make it a path
+		"internal/agenticfactory/claim/ControlRef2/PresenceStoreHeartbeat",      // a camel-case path with a digit
+		"refs/heads/0123456789abcdef0123456789abcdef01234567",                   // a commit hash behind a path prefix
+		"internal/agenticfactory/claim/presence_test_for_the_owner_record",      // long, slashes, no digits
+		"https://example.com/Ab1Cd2Ef3Gh4/Ij5Kl6Mn7Op8Qr9St0/Uv1Wx2Yz3",         // a piece of a URL: a '.' sits beside the run
+		"Library/Caches/Foo2/Bar/Support/Models/Settings/Items/Cache",
+		"ABCDEFGHIJKLMNOPQRST/UVWXYZ0123456789/abc",                                 // words and a digit: few class changes
+		"A1/Documentation/B2/Application/C3/Configuration/D4/Initialization",        // many class changes, but word-sized lower-case stretches
+		"/wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",                                 // a leading '/' is a path root, not a bare token
+		"build-wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",                            // joined to an identifier by '-'
 		"goroutine 7 [running]:\nmain.main()\n\t/usr/local/go/src/main.go:12 +0x1d", // a stack under a system path is not personal data
 	} {
 		if out, cats := Sanitize(in); out != in || len(cats) != 0 {
@@ -139,5 +150,39 @@ func TestRefuseIfSensitive(t *testing.T) {
 		if !strings.Contains(err.Error(), name) {
 			t.Errorf("the refusal must name %q: %v", name, err)
 		}
+	}
+}
+
+// A secret cut into short pieces by '/' or '+' slips under the 32-character rule
+// of the opaque run. The unnamed AWS secret access key is the representative:
+// 40 characters of [A-Za-z0-9/+], mixed case with digits, random-looking.
+func TestSanitizeMasksSecretsCutByASeparator(t *testing.T) {
+	const aws = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+	const b64 = "q7Hs2Lw9/Zx3Kd8Vb1+Nm4Rt6Yu0Ae5Gp2Jc7Fi9Xo3Sh1/Wk8Tl4Bn6Dz2Qe5Mr0"
+	for _, c := range []struct{ name, in, secret string }{
+		{"unnamed aws secret key", "found " + aws + " in the log", aws},
+		{"alone on a line", aws, aws},
+		{"quoted", `value "` + aws + `" here`, aws},
+		{"after an equals sign", "X=" + aws + " ./run", aws},
+		{"base64 with slashes and plus", "blob " + b64 + " end", b64},
+		{"base64 with padding", "blob " + b64 + "== end", b64},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			out, cats := Sanitize(c.in)
+			if strings.Contains(out, c.secret[:20]) || strings.Contains(out, c.secret[len(c.secret)-20:]) {
+				t.Errorf("a piece of the secret survived: %q", out)
+			}
+			if !reflect.DeepEqual(cats, []Category{CategoryOpaqueToken}) {
+				t.Errorf("categories = %v, want the opaque token", cats)
+			}
+		})
+	}
+}
+
+// The whole token goes, base64 padding included.
+func TestSanitizeCutSecretIsReplacedWholeWithItsPadding(t *testing.T) {
+	out, cats := Sanitize("val aB3dE5gH7jK9/mN1pQ3sT5vW7yZ9bC1dE/3fG5hJ7kL9x== end")
+	if out != "val [REDACTED] end" || len(cats) != 1 || cats[0] != CategoryOpaqueToken {
+		t.Errorf("got %q %v", out, cats)
 	}
 }
