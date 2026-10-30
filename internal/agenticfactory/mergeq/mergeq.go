@@ -73,6 +73,8 @@ type Queue interface {
 	// settlement, and zero for the states that are set without the lock.
 	SetState(ctx context.Context, cardID, candidate string, lockEpoch int64, st State, trunkBefore, failReason string) error
 	AddNote(ctx context.Context, kind, cardID, text string) error
+	// RowState reads the card's queue row state, for the one path that settles a row without verifying it.
+	RowState(ctx context.Context, cardID string) (State, error)
 }
 
 // Verify runs the gates in dir, a worktree holding the merge result. A non-nil error fails the card.
@@ -147,7 +149,12 @@ func (m *Merger) Land(ctx context.Context, cardID, candidateSHA string) (Result,
 		return Result{}, err
 	}
 	if in {
-		return m.settleLanded(ctx, cardID, candidateSHA, StateWaiting, trunk, "already in the trunk")
+		// The row's state decides which steps remain: a row already landing must not be written verifying.
+		from, err := m.Queue.RowState(ctx, cardID)
+		if err != nil {
+			return Result{}, err
+		}
+		return m.settleLanded(ctx, cardID, candidateSHA, from, trunk, "already in the trunk")
 	}
 
 	res := Result{TrunkBefore: trunk}
@@ -321,6 +328,18 @@ type Item struct {
 	CardID       string
 	CandidateSHA string
 	State        State
+	// CardEpoch is the card epoch the row was queued at; CurrentEpoch is the card's epoch now; LeaseLive says the
+	// card holds a live lease at CurrentEpoch. Reconcile sends a verifying row back to waiting only when the row is
+	// from an older epoch or the card has no live lease: verifying is outside the landing lock, so a free lock does
+	// not say no lander is alive. Zero values (no lease information) read as "no live lease".
+	CardEpoch, CurrentEpoch int64
+	LeaseLive               bool
+}
+
+// landerMayBeAlive says a verifying row still belongs to a live card holder at the same epoch: its lander may be
+// about to write landing, and sending the row back would make that write fail.
+func (it Item) landerMayBeAlive() bool {
+	return it.State == StateVerifying && it.CardEpoch == it.CurrentEpoch && it.LeaseLive
 }
 
 // Action is what Reconcile decided for one row.
@@ -339,33 +358,43 @@ func (m *Merger) Reconcile(ctx context.Context, items []Item) ([]Action, error) 
 		return nil, fmt.Errorf("mergeq: read the trunk %s: %w", m.Trunk, err)
 	}
 	var acts []Action
+	var errs []error // one failing row does not stop the others
 	for _, it := range items {
 		if it.State != StateVerifying && it.State != StateLanding {
 			continue
 		}
 		in, err := m.Git.IsAncestor(ctx, it.CandidateSHA, trunk)
 		if err != nil {
-			return acts, err
+			errs = append(errs, fmt.Errorf("mergeq: %s: %w", it.CardID, err))
+			continue
 		}
 		if in {
 			res, err := m.settleLanded(ctx, it.CardID, it.CandidateSHA, it.State, trunk, "found in the trunk after a restart")
-			if err != nil {
-				return acts, err
+			switch {
+			case errors.Is(err, ErrStaleRow):
+				continue // not this queue's to move: left for the card's holder
+			case err != nil:
+				errs = append(errs, fmt.Errorf("mergeq: %s: %w", it.CardID, err))
+				continue
 			}
 			if res.Outcome == OutcomeLanded {
 				acts = append(acts, Action{CardID: it.CardID, From: it.State, To: StateLanded, Why: "the candidate is reachable from the trunk"})
 			}
 			continue
 		}
+		if it.landerMayBeAlive() {
+			continue
+		}
 		to, why, err := m.backToWaiting(ctx, it, trunk)
 		if err != nil {
-			return acts, err
+			errs = append(errs, fmt.Errorf("mergeq: %s: %w", it.CardID, err))
+			continue
 		}
 		if to != "" {
 			acts = append(acts, Action{CardID: it.CardID, From: it.State, To: to, Why: why})
 		}
 	}
-	return acts, nil
+	return acts, errors.Join(errs...)
 }
 
 // backToWaiting returns a row that is not in the trunk to waiting, and only while holding the landing lock: a

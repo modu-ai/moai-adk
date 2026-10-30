@@ -27,9 +27,13 @@ type fakeLedger struct {
 	note      ledger.Note
 	updateErr error
 	items     []ledger.QueueItem
+	cards     []ledger.Card
+	leases    []ledger.Lease
 }
 
 func (f *fakeLedger) Queue(context.Context) ([]ledger.QueueItem, error) { return f.items, nil }
+func (f *fakeLedger) Cards(context.Context) ([]ledger.Card, error)      { return f.cards, nil }
+func (f *fakeLedger) Leases(context.Context) ([]ledger.Lease, error)    { return f.leases, nil }
 
 func (f *fakeLedger) AcquireLock(_ context.Context, name string, h ledger.LockHolder, ttl time.Duration) (int64, error) {
 	f.gotName, f.gotHolder, f.gotTTL = name, h, ttl

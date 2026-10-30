@@ -16,6 +16,8 @@ type ledgerAPI interface {
 	QueueUpdate(ctx context.Context, cardID string, epoch ledger.QueueEpoch, state ledger.QueueState, trunkBefore, failReason string) error
 	AddNote(ctx context.Context, n ledger.Note) error
 	Queue(ctx context.Context) ([]ledger.QueueItem, error)
+	Cards(ctx context.Context) ([]ledger.Card, error)
+	Leases(ctx context.Context) ([]ledger.Lease, error)
 }
 
 var _ ledgerAPI = (*ledger.Store)(nil)
@@ -74,6 +76,54 @@ func (q LedgerQueue) SetState(ctx context.Context, cardID, candidate string, loc
 		return fmt.Errorf("%w: %v", ErrStaleRow, err)
 	}
 	return err
+}
+
+// RowState reads the card's queue row state.
+func (q LedgerQueue) RowState(ctx context.Context, cardID string) (State, error) {
+	items, err := q.L.Queue(ctx)
+	if err != nil {
+		return "", err
+	}
+	for _, it := range items {
+		if it.CardID == cardID {
+			return State(it.State), nil
+		}
+	}
+	return "", fmt.Errorf("mergeq: %s is not in the queue", cardID)
+}
+
+// Items reads the queue rows for Reconcile, each joined with its card's current epoch and whether the card holds
+// a live lease at that epoch (a lease whose expiry has not passed): the facts that decide whether a verifying
+// row may still belong to a live lander.
+func (q LedgerQueue) Items(ctx context.Context, now time.Time) ([]Item, error) {
+	rows, err := q.L.Queue(ctx)
+	if err != nil {
+		return nil, err
+	}
+	cards, err := q.L.Cards(ctx)
+	if err != nil {
+		return nil, err
+	}
+	leases, err := q.L.Leases(ctx)
+	if err != nil {
+		return nil, err
+	}
+	current := map[string]int64{}
+	for _, c := range cards {
+		current[c.ID] = c.Epoch
+	}
+	live := map[string]bool{}
+	for _, l := range leases {
+		if l.Epoch == current[l.CardID] && l.ExpiresAt.After(now) {
+			live[l.CardID] = true
+		}
+	}
+	out := make([]Item, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, Item{CardID: r.CardID, CandidateSHA: r.CandidateSHA, State: State(r.State),
+			CardEpoch: r.CardEpoch, CurrentEpoch: current[r.CardID], LeaseLive: live[r.CardID]})
+	}
+	return out, nil
 }
 
 // AddNote appends a note of the given kind.

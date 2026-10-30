@@ -121,6 +121,8 @@ func (q *fakeQueue) SetState(_ context.Context, _, _ string, _ int64, st State, 
 	return nil
 }
 
+func (q *fakeQueue) RowState(context.Context, string) (State, error) { return StateWaiting, nil }
+
 func (q *fakeQueue) AddNote(_ context.Context, kind, card, text string) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
