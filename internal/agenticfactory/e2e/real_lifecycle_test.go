@@ -258,8 +258,17 @@ func TestLifecycle_OwnerCrash_PreservedAndStopped_ThenSafeTakeover(t *testing.T)
 				t.Errorf("the old owner reopening: %v, want ErrOwnershipUnverified", err)
 			}
 			// A second takeover decided about the old owner cannot be applied again.
-			if _, err := r.TakeOver(tk.Issue, tk, "w3", "d-w3", run, ev); !errors.Is(err, core.ErrOwnershipUnverified) {
-				t.Errorf("a replayed takeover: %v, want ErrOwnershipUnverified", err)
+			// Behavior change (lane-18 F5): a safe stop is only good until the claim record is written again, and
+			// the takeover itself wrote it, so a replay that rests on the stop record is refused as stale
+			// evidence (ErrEvidenceIncomplete) before the stale ticket is looked at. A replay without a stop
+			// record still ends at the ownership check. Either way nothing is applied; the unchanged record is
+			// asserted just below.
+			wantReplay := core.ErrOwnershipUnverified
+			if strings.TrimSpace(ev.SafeStop) != "" {
+				wantReplay = core.ErrEvidenceIncomplete
+			}
+			if _, err := r.TakeOver(tk.Issue, tk, "w3", "d-w3", run, ev); !errors.Is(err, wantReplay) {
+				t.Errorf("a replayed takeover: %v, want %v", err, wantReplay)
 			}
 			if got := state(t, r, runner.Ticket{Issue: tk.Issue, Holder: "w2", Epoch: rec.Epoch}); !reflect.DeepEqual(got, beforeWrites) {
 				t.Errorf("refused writes changed the record:\nbefore %+v\nafter  %+v", beforeWrites, got)
