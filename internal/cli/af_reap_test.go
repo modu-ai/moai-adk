@@ -141,3 +141,46 @@ func TestAFClaim_DoesNotTakeALiveSessionsCard(t *testing.T) {
 		t.Fatal("the second claim got a card the live first session holds")
 	}
 }
+
+// An unknown holder (the session could not be resolved: pid 0) is judged Unknown, and Unknown is never reclaimed:
+// neither `moai af reap` nor another session's claim takes its card.
+func TestAFUnknownHolder_KeepsItsCardAgainstReapAndClaim(t *testing.T) {
+	t.Setenv("CLAUDE_PROJECT_DIR", t.TempDir())
+	ctx := context.Background()
+	db := filepath.Join(t.TempDir(), "af", "ledger.db")
+	st, err := ledger.Open(ctx, db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+	if err := st.AddCard(ctx, ledger.Card{ID: "t1", Title: "t1", Position: core.Position{Stage: core.StageReady}, Priority: 1,
+		Spec: ledger.Spec{Class: "A", Paths: []string{"a.txt"}}}); err != nil {
+		t.Fatal(err)
+	}
+	origOwner := afOwnerPID
+	t.Cleanup(func() { afOwnerPID = origOwner })
+	afOwnerPID = func() (int, bool) { return 0, false } // unresolved: recorded as pid 0
+	runAF(t, "claim", "--db", db, "--session", "s-unknown", "--worktree", t.TempDir())
+
+	var out reapOut
+	if err := json.Unmarshal([]byte(runAF(t, "reap", "--db", db)), &out); err != nil {
+		t.Fatal(err)
+	}
+	if len(out.Reclaimed) != 0 {
+		t.Fatalf("reap took an unknown holder's card: %+v", out.Reclaimed)
+	}
+
+	second := startSession(t)
+	afOwnerPID = func() (int, bool) { return second.Process.Pid, true }
+	cmd := newAFCmd()
+	cmd.SetArgs([]string{"claim", "--db", db, "--session", "s-second", "--worktree", t.TempDir()})
+	cmd.SetOut(&bytes.Buffer{})
+	cmd.SetErr(&bytes.Buffer{})
+	if err := cmd.Execute(); err == nil {
+		t.Fatal("another session's claim took an unknown holder's card")
+	}
+	leases, err := st.Leases(ctx)
+	if err != nil || len(leases) != 1 || leases[0].CardID != "t1" {
+		t.Fatalf("the unknown holder's lease must remain: %+v %v", leases, err)
+	}
+}
