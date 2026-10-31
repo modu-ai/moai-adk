@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -82,12 +83,20 @@ func afGate(gate string, timeout time.Duration) mergeq.Verify {
 		var out bytes.Buffer
 		w := mergeq.NewLimitedWriter(&out)
 		cmd.Stdout, cmd.Stderr = w, w
-		if err := cmd.Run(); err != nil {
-			tail := strings.TrimSpace(out.String())
+		err := cmd.Run()
+		// Whatever the gate returned, nothing it started may outlive it: a server it left running holds the output
+		// pipes, and the group is the only thing that reaches it.
+		afGateKillGroup(cmd)
+		if errors.Is(err, exec.ErrWaitDelay) && cmd.ProcessState != nil && cmd.ProcessState.Success() {
+			err = nil // the gate exited 0; only a child kept the pipes open
+		}
+		if err != nil {
+			// mask first, cut second: a cut through a secret's value would leave its end unmasked
+			masked, _ := core.Redact(strings.TrimSpace(out.String()))
+			tail := masked
 			if len(tail) > afGateTail {
 				tail = tail[len(tail)-afGateTail:]
 			}
-			tail, _ = core.Redact(tail)
 			if ctx.Err() != nil {
 				err = fmt.Errorf("%w (the gate ran past %s)", err, timeout)
 			}
@@ -169,8 +178,10 @@ again. The result is one JSON line (outcome: landed, failed or waiting).
 
 The card must be in MERGING at the epoch its queue row was made at; a card its holder moved out of the merge queue
 is refused. The gate runs with sh -c (native Windows has no sh: run this verb from WSL or Git Bash there), in its
-own process group that is killed when --gate-timeout ends, with GIT_DIR and the other repository-scoping
-variables removed from its environment. The gate text is recorded in the landed note, so do not put a secret in it.
+own process group that is killed when the gate returns or --gate-timeout ends.
+The gate receives the caller's full environment except GIT_DIR and the other repository-scoping variables, so a
+credential in the caller's environment is visible to it. The gate text is recorded in the landed note, so do not put
+a secret in it.
 A landing lock whose holder process is gone is taken back first.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
