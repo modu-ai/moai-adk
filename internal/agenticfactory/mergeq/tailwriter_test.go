@@ -120,6 +120,8 @@ func TestTailWriter_MaskedPrefixCoversTheKeptPartOfAMarkedLine(t *testing.T) {
 		{"a content line is the only value", 16, []string{"password=\nthe value\n", strings.Repeat("Q", 40)}, 0},
 		{"escape sequence split between writes", 16, []string{"pass\x1b[3", "1mword=", strings.Repeat("Q", 40)}, 16},
 		{"private-key block with no END", 16, []string{pemBegin + "\n", strings.Repeat(strings.Repeat("Q", 15)+"\n", 6)}, 16},
+		{"a bare bearer word ends the line", 16, []string{"Bearer\n", strings.Repeat("Q", 40)}, 16},
+		{"a marker line wholly inside the window after clean text", 24, []string{strings.Repeat("x", 33) + "\n", "password=ab"}, 0},
 		{"private-key block ended, plain text after", 16, []string{pemBegin + "\n", "QQ\n", pemEnd + "\n", strings.Repeat("Q", 40)}, 0},
 	} {
 		w := NewTailWriter(tc.max)

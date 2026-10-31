@@ -119,7 +119,7 @@ var (
 	// URL credential, or a self-describing token prefix. Text it rejects cannot hold a marker, so the sanitizer (about
 	// 1 MB/s) is not run on it: the common case of a long run of output is not slowed down. Every credential rule
 	// in core.Redact must be represented here; the parity table in internal/cli keeps this honest.
-	tailCandidate = regexp.MustCompile(`(?i)(?:token|secret|pass|key|credential|cookie|authorization)[a-z0-9_-]*["']?\s*[:=]|bearer\s|-----BEGIN|https?://[^/\s:@]+:|gh[pousr]_|github_pat_|sk-|akia|asia`)
+	tailCandidate = regexp.MustCompile(`(?i)(?:token|secret|pass|key|credential|cookie|authorization)[a-z0-9_-]*["']?\s*[:=]|bearer|-----BEGIN|https?://[^/\s:@]+:|gh[pousr]_|github_pat_|sk-|akia|asia`)
 	// tailMarkerEnd is a marker that ends its line, so the value is on the next one.
 	tailMarkerEnd = regexp.MustCompile(`(?i)(?:` + SecretMarkerPattern + `|authorization[ \t]*:(?:[ \t]*(?:bearer|basic|token))?)[ \t]*$`)
 	tailCSIDone   = regexp.MustCompile(`^\x1b\[[0-?]*[ -/]*[@-~]`)
@@ -178,7 +178,8 @@ func holdsSecretMarker(text string) (marked, pem bool) {
 	if !tailMayHoldSecret(text) {
 		return false, false
 	}
-	for _, probe := range [2]string{text, text + tailSentinel} {
+	// as it is; with its value still to come; with its value on the next line (a scheme word such as Bearer ends the line)
+	for _, probe := range [3]string{text, text + tailSentinel, text + "\n" + tailSentinel} {
 		_, cats := core.Sanitize(probe)
 		for _, c := range cats {
 			switch c {

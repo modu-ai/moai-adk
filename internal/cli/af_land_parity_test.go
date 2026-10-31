@@ -29,6 +29,10 @@ func afParityRows() []afParityRow {
 	}
 	// the bare `key` rule takes only a directly attached `=`
 	rows = append(rows, afParityRow{prefix: "monkey_key=", secret: true}, afParityRow{prefix: "monkey_key: "})
+	// the value on a later line: a bare scheme word, a name with its separator at the end of the line, blank lines
+	for _, p := range []string{"Bearer\n", "Authorization: Bearer\n", "pass" + "word=\n", "api_key:\n\n \n", "Cookie:\n"} {
+		rows = append(rows, afParityRow{prefix: p, secret: true})
+	}
 	for _, p := range []string{"Authorization: Bearer ", "Authorization: Basic ", "Authorization: Token ", "Bearer ", "bearer ",
 		"gh" + "p_", "gh" + "o_", "gh" + "u_", "gh" + "s_", "gh" + "r_", "github" + "_pat_", "s" + "k-", afPEMBegin + "\n"} {
 		rows = append(rows, afParityRow{prefix: p, secret: true})
