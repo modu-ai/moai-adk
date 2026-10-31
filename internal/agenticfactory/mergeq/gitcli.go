@@ -89,9 +89,34 @@ func (g GitCLI) run(ctx context.Context, dir string, args ...string) (string, er
 	return strings.TrimSpace(out.String()), nil
 }
 
-// NewLimitedWriter is a writer into b that refuses output past the same limit every git call of the queue has, so
-// a runaway child of the merge queue (a gate command) cannot fill memory either.
-func NewLimitedWriter(b *bytes.Buffer) io.Writer { return &limited{b: b} }
+// NewTailWriter is a writer that keeps the LAST max bytes written to it and never fails: for the output of a child
+// whose end matters more than its start (a gate command: the failure is the last thing it prints) and whose
+// volume must not fill memory. It is not the limit git calls have (that one refuses runaway output with an error).
+func NewTailWriter(max int) *TailWriter { return &TailWriter{max: max} }
+
+// TailWriter holds the last max bytes written to it; Bytes returns them.
+type TailWriter struct {
+	max int
+	buf []byte
+}
+
+func (w *TailWriter) Write(p []byte) (int, error) {
+	n := len(p)
+	if len(p) >= w.max {
+		w.buf = append(w.buf[:0], p[len(p)-w.max:]...)
+		return n, nil
+	}
+	if over := len(w.buf) + len(p) - w.max; over > 0 {
+		w.buf = append(w.buf[:0], w.buf[over:]...)
+	}
+	w.buf = append(w.buf, p...)
+	return n, nil
+}
+
+// Bytes is what the writer kept.
+func (w *TailWriter) Bytes() []byte { return w.buf }
+
+var _ io.Writer = (*TailWriter)(nil)
 
 type limited struct{ b *bytes.Buffer }
 

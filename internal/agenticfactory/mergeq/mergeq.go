@@ -281,23 +281,18 @@ func (m *Merger) landUnderLock(ctx context.Context, cardID, candidateSHA string,
 	return cand.Result, true, nil
 }
 
-// leaveLanding takes a landing row off landing while the lock is held: back to waiting, or, when even that write
-// fails, to failed with the reason, so the row is never left where the next Land cannot start from. cause is the
-// error that made the landing give up (nil when the trunk simply moved); it is returned, joined with any write
-// error.
+// leaveLanding takes a landing row back to waiting while the lock is held. When that write fails, the row stays
+// landing and the error says so (see below). cause is the error that made the landing give up (nil when the trunk
+// simply moved); it is returned, joined with any write error.
 func (m *Merger) leaveLanding(ctx context.Context, cardID, candidateSHA string, epoch int64, trunk string, cause error) error {
 	werr := m.Queue.SetState(ctx, cardID, candidateSHA, epoch, StateWaiting, trunk, "")
 	if werr == nil {
 		return cause
 	}
-	reason := "the landing could not be undone: " + werr.Error()
-	if cause != nil {
-		reason = "the landing failed (" + cause.Error() + ") and could not be undone: " + werr.Error()
-	}
-	if ferr := m.Queue.SetState(ctx, cardID, candidateSHA, epoch, StateFailed, trunk, reason); ferr != nil {
-		return errors.Join(cause, werr, ferr)
-	}
-	return errors.Join(cause, werr)
+	// The row stays landing. It is not written failed: the ledger takes failed with a card-kind epoch, not the lock
+	// epoch held here, and a failed row is final, which a transient write error does not deserve. The next Land
+	// resets a landing row under the lock (resetLanding) and Reconcile settles it by ancestry.
+	return errors.Join(cause, fmt.Errorf("mergeq: the row of %s stays landing until the next Land or Reconcile resets it: %w", cardID, werr))
 }
 
 // resetLanding takes a row left in landing by a lander that is gone back to waiting, under the lock, so that the

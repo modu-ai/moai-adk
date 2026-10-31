@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -25,6 +24,10 @@ const afLandTimeout = 30 * time.Minute
 
 // afGateTail is how much of a failed gate's output goes into the card's fail reason.
 const afGateTail = 2048
+
+// afGateKeep is how much of the end of a gate's output is kept in memory; the part past afGateTail exists so that a
+// secret straddling the cut is masked whole before the cut.
+const afGateKeep = 64 << 10
 
 // The merge queue's operational entry points (AC-AFL-014): `af land` lands an enqueued card through the queue's
 // compare-and-swap of the trunk ref, and `af reconcile` settles the rows a restart left in verifying or landing
@@ -80,9 +83,9 @@ func afGate(gate string, timeout time.Duration) mergeq.Verify {
 		cmd.Env = gitenv.Env()
 		cmd.WaitDelay = afGateWaitDelay
 		afGateProcessGroup(cmd)
-		var out bytes.Buffer
-		w := mergeq.NewLimitedWriter(&out)
-		cmd.Stdout, cmd.Stderr = w, w
+		// the end of the output is what explains a failure, so keep the end and never fail on volume
+		out := mergeq.NewTailWriter(afGateKeep)
+		cmd.Stdout, cmd.Stderr = out, out
 		err := cmd.Run()
 		// Whatever the gate returned, nothing it started may outlive it: a server it left running holds the output
 		// pipes, and the group is the only thing that reaches it.
@@ -92,7 +95,7 @@ func afGate(gate string, timeout time.Duration) mergeq.Verify {
 		}
 		if err != nil {
 			// mask first, cut second: a cut through a secret's value would leave its end unmasked
-			masked, _ := core.Redact(strings.TrimSpace(out.String()))
+			masked, _ := core.Redact(strings.TrimSpace(string(out.Bytes())))
 			tail := masked
 			if len(tail) > afGateTail {
 				tail = tail[len(tail)-afGateTail:]
@@ -127,9 +130,14 @@ func afCardMayLand(ctx context.Context, st *ledger.Store, item mergeq.Item) erro
 		if c.ID != item.CardID {
 			continue
 		}
+		if c.Position.Park != nil {
+			return fmt.Errorf("af land: %s is parked in %s (%s): a parked card does not land until its park is resolved",
+				item.CardID, c.Position.Stage, c.Position.Park.Reason)
+		}
 		if c.Position.Stage != core.StageMerging || c.Position.RemoteIntegrated || c.Epoch != item.CardEpoch {
 			return fmt.Errorf("af land: %s is not in MERGING at the epoch its queue row was made at (stage %s, epoch %d; row epoch %d): "+
-				"the holder moved it out of the merge queue, so it is not landed", item.CardID, c.Position.Stage, c.Epoch, item.CardEpoch)
+				"the holder moved it out of the merge queue, so it is not landed; if its row is left in landing, "+
+				"`moai af reconcile` settles it", item.CardID, c.Position.Stage, c.Epoch, item.CardEpoch)
 		}
 		return nil
 	}
@@ -159,8 +167,10 @@ again. The result is one JSON line (outcome: landed, failed or waiting).
 
 The card must be in MERGING at the epoch its queue row was made at; a card its holder moved out of the merge queue
 is refused. The gate runs with sh -c (native Windows has no sh: run this verb from WSL or Git Bash there), in its
-own process group that is killed when the gate returns or --gate-timeout ends.
-The gate receives the caller's full environment except GIT_DIR and the other repository-scoping variables, so a
+own process group that is killed when the gate returns or --gate-timeout ends: a background process the gate left
+running is killed, not waited for, and does not fail a gate that exited 0. Under Git Bash a native Windows binary
+has no process group, so this verb does not kill what the gate started there; run it from WSL when the gate starts
+long-lived processes. The gate receives the caller's full environment except GIT_DIR and the other repository-scoping variables, so a
 credential in the caller's environment is visible to it. The gate text is recorded in the landed note, so do not put
 a secret in it.
 A landing lock whose holder process is gone is taken back first.`,
