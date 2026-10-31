@@ -118,14 +118,18 @@ func (s *Store) Enqueue(ctx context.Context, cardID string, epoch int64, candida
 		case cur == string(QueueLanding):
 			// A lander may be working under the merge lock; its row is settled, not replaced.
 			return fmt.Errorf("%w: %s is landing (card epoch %d); the merge lock holder settles it first", ErrInvalid, cardID, oldEpoch)
-		case cur != string(QueueFailed) && oldEpoch == card.Epoch:
+		case cur != string(QueueFailed) && oldEpoch == card.Epoch && (cur != string(QueueWaiting) || card.Position.Stage == core.StageMerging):
+			// A waiting row of a card that is no longer in MERGING was withdrawn: no lander has
+			// taken it (verifying and landing need the card in MERGING), so it is restarted below.
 			return fmt.Errorf("%w: %s is already in the queue (%s)", ErrInvalid, cardID, cur)
 		default:
 			// The restart overwrites the row, so what it said is kept as a note: a failure, or
 			// an open row of an older card epoch, which the epoch fence leaves nobody able to write.
 			text := fmt.Sprintf("card %s: candidate %s failed in the merge queue (%s); queued again as %s", cardID, oldSHA.String, oldReason.String, candidateSHA)
-			if cur != string(QueueFailed) {
+			if cur != string(QueueFailed) && oldEpoch != card.Epoch {
 				text = fmt.Sprintf("card %s: candidate %s was %s at card epoch %d when the card was claimed again at epoch %d; queued again as %s", cardID, oldSHA.String, cur, oldEpoch, card.Epoch, candidateSHA)
+			} else if cur != string(QueueFailed) {
+				text = fmt.Sprintf("card %s: candidate %s was left %s when the card was withdrawn from MERGING at epoch %d; queued again as %s", cardID, oldSHA.String, cur, oldEpoch, candidateSHA)
 			}
 			if _, err := tx.ExecContext(ctx, `INSERT INTO notes(kind,card_id,text,at) VALUES('decision',?,?,`+nowSQL+`)`, cardID, text); err != nil {
 				return fmt.Errorf("ledger: %w", err)
@@ -263,8 +267,15 @@ func (s *Store) QueueUpdate(ctx context.Context, cardID string, presented QueueE
 		// the one other exception: the trunk may have moved under the lock, so the lock holder
 		// can still say so after the card backed out, and the mismatch is noted below.
 		var stage string
-		if err := tx.QueryRowContext(ctx, `SELECT stage FROM cards WHERE id=?`, cardID).Scan(&stage); err != nil {
+		var parked int
+		if err := tx.QueryRowContext(ctx, `SELECT stage,parked FROM cards WHERE id=?`, cardID).Scan(&stage, &parked); err != nil {
 			return fmt.Errorf("ledger: %w", err)
+		}
+		// A hold that lands mid-gate also stops the row from being taken further: verifying and
+		// landing offer the card's work to the trunk. Landed after landing, failing and the
+		// reconcile back to waiting stay possible, because the trunk may already have moved.
+		if parked == 1 && (state == QueueVerifying || state == QueueLanding) {
+			return fmt.Errorf("%w: %s for %s at epoch %d refused: the card is parked", ErrStaleEpoch, state, cardID, rowEpoch)
 		}
 		landedAfterLanding := state == QueueLanded && curState == QueueLanding
 		if !settlesOlder && !landedAfterLanding && (state == QueueVerifying || state == QueueLanding || state == QueueLanded) {
