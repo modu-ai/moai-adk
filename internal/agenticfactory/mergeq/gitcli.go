@@ -164,7 +164,7 @@ func tailMayHoldSecret(text string) bool {
 		}
 		return false
 	}
-	if !has(tailSelfDescribing) && !(strings.ContainsAny(lower, ":=") && has(tailSecretWords)) {
+	if !has(tailSelfDescribing) && (!strings.ContainsAny(lower, ":=") || !has(tailSecretWords)) {
 		return false
 	}
 	return tailCandidate.MatchString(text)
@@ -178,8 +178,9 @@ func holdsSecretMarker(text string) (marked, pem bool) {
 	if !tailMayHoldSecret(text) {
 		return false, false
 	}
-	// as it is; with its value still to come; with its value on the next line (a scheme word such as Bearer ends the line)
-	for _, probe := range [3]string{text, text + tailSentinel, text + "\n" + tailSentinel} {
+	// as it is; with its value still to come; with its value on the next line (a scheme word such as Bearer ends the
+	// line); with a quoted value on the next line (a JSON field pretty-printed across two lines)
+	for _, probe := range [4]string{text, text + tailSentinel, text + "\n" + tailSentinel, text + "\n\"" + tailSentinel} {
 		_, cats := core.Sanitize(probe)
 		for _, c := range cats {
 			switch c {
@@ -205,8 +206,12 @@ func endsWithMarker(text string) bool {
 	if t := strings.TrimRight(text, " \t\r"); t == "" || !strings.ContainsAny(t[len(t)-1:], ":=\"") && !strings.HasSuffix(strings.ToLower(t), "bearer") {
 		return false
 	}
-	out, _ := core.Sanitize(text + "\n" + tailSentinel)
-	return !strings.Contains(out, "ZqZqZqZq")
+	for _, next := range [2]string{"\n" + tailSentinel, "\n\"" + tailSentinel} {
+		if out, _ := core.Sanitize(text + next); !strings.Contains(out, "ZqZqZqZq") {
+			return true
+		}
+	}
+	return false
 }
 
 // incompleteEscape is where an escape sequence that raw ends in the middle of starts, or len(raw) when it ends on a
