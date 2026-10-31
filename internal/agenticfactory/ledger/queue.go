@@ -49,19 +49,48 @@ func factsTx(ctx context.Context, q querier, card Card) ([]string, error) {
 			have = append(have, core.FactReceiptAccepted)
 		}
 	}
-	var state string
+	var state, candidate string
 	var qe int64
-	switch err := q.QueryRowContext(ctx, `SELECT state,card_epoch FROM merge_queue WHERE card_id=?`, card.ID).Scan(&state, &qe); {
+	switch err := q.QueryRowContext(ctx, `SELECT state,card_epoch,candidate_sha FROM merge_queue WHERE card_id=?`, card.ID).Scan(&state, &qe, &candidate); {
 	case err == sql.ErrNoRows:
 	case err != nil:
 		return nil, fmt.Errorf("ledger: %w", err)
 	case qe == card.Epoch:
 		have = append(have, core.FactQueued)
 		if state == string(QueueLanded) {
-			have = append(have, core.FactMerged, core.FactClosed, core.FactSettled)
+			// The row says its candidate reached the trunk. That completes the card only while
+			// the candidate is still the card's newest work: if the newest green evidence
+			// names another commit, the landed one is not what the card now offers,
+			// and the trunk does not hold the newer one. The ledger holds no git history, so
+			// it asks for the same commit rather than for one that contains the other.
+			same, err := newestWorkIs(ctx, q, card.ID, candidate)
+			if err != nil {
+				return nil, err
+			}
+			// A card back in the build stage after its candidate landed was taken back for
+			// rework, and the record shows none of it: the landed row alone cannot finish it
+			// through the no-handoff composition. It leaves BUILDING by the receipt path.
+			if same && card.Position.Stage != core.StageBuilding {
+				have = append(have, core.FactMerged, core.FactClosed, core.FactSettled)
+			}
 		}
 	}
 	return have, nil
+}
+
+// newestWorkIs says whether the card's newest green evidence, the receipt of what it built, is
+// about commit sha. A card with no green has no newer work to contradict the row. A gate row
+// alone does not decide: a holder may gate a second candidate that was refused, and still finish
+// the card on the one that landed.
+func newestWorkIs(ctx context.Context, q querier, cardID, sha string) (bool, error) {
+	var subject sql.NullString
+	switch err := q.QueryRowContext(ctx, `SELECT subject_sha FROM evidence WHERE card_id=? AND kind=? ORDER BY id DESC LIMIT 1`, cardID, KindGreen).Scan(&subject); {
+	case err == sql.ErrNoRows:
+		return true, nil
+	case err != nil:
+		return false, fmt.Errorf("ledger: %w", err)
+	}
+	return subject.String == sha, nil
 }
 
 // queueSettledAt says whether the card's queue row was queued at that card epoch and has
