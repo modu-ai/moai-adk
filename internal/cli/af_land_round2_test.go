@@ -90,6 +90,7 @@ func TestAFFailureTail_ARound2ShapesSplitAcrossWrites(t *testing.T) {
 		{"BEL_run_between_the_halves", []string{"pass", strings.Repeat("\a", 600), "word=", q}},
 		{"BEL_run_inside_one_write", []string{"pass" + strings.Repeat("\a", 600) + "word=" + q}},
 		{"escape_sequence_split_between_writes", []string{"pass\x1b[3", "1mword=", q}},
+		{"C1_CSI_split_between_writes", []string{"pass\u009b3", "1mword=", q}},
 		{"OSC_sequence_split_between_writes", []string{"pass\x1b]0;ti", "tle\aword=", q}},
 	}
 	for _, c := range cases {

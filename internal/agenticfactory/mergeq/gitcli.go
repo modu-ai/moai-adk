@@ -123,6 +123,7 @@ var (
 	// tailMarkerEnd is a marker that ends its line, so the value is on the next one.
 	tailMarkerEnd = regexp.MustCompile(`(?i)(?:` + SecretMarkerPattern + `|authorization[ \t]*:(?:[ \t]*(?:bearer|basic|token))?)[ \t]*$`)
 	tailCSIDone   = regexp.MustCompile(`^\x1b\[[0-?]*[ -/]*[@-~]`)
+	tailC1Done    = regexp.MustCompile(`^[0-?]*[ -/]*[@-~]`)
 	// tailEscapes finds the sequences a terminal acts on: CSI (ESC [ ... final byte, or the single-byte C1 form),
 	// OSC (ESC ] ... BEL or ESC \) and the remaining two-byte escapes.
 	tailEscapes = regexp.MustCompile(`\x1b\[[0-?]*[ -/]*[@-~]|\x{9b}[0-?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)?|\x1b[@-_]`)
@@ -217,6 +218,13 @@ func endsWithMarker(text string) bool {
 // incompleteEscape is where an escape sequence that raw ends in the middle of starts, or len(raw) when it ends on a
 // whole one: the held-back part is joined to the next write, so a sequence two writes split is stripped whole.
 func incompleteEscape(raw []byte) int {
+	// the single-byte CSI introducer (U+009B, written C2 9B) opens the same parameter-and-final-byte sequence as ESC [
+	if c1 := bytes.LastIndex(raw, []byte{0xc2, 0x9b}); c1 >= 0 && c1 > bytes.LastIndexByte(raw, 0x1b) && len(raw)-c1 <= tailPending {
+		if !tailC1Done.Match(raw[c1+2:]) {
+			return c1
+		}
+		return len(raw)
+	}
 	i := bytes.LastIndexByte(raw, 0x1b)
 	if i < 0 || len(raw)-i > tailPending {
 		return len(raw)
