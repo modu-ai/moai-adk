@@ -100,12 +100,13 @@ func newestWorkIs(ctx context.Context, q querier, cardID, sha string) (bool, err
 
 // landingStands says whether the landed candidate may still finish the card. It does unless the
 // card went back into the build stage after that candidate was last offered to the queue (the
-// card's newest Enqueue transition) and has recorded no passing green or gate run of the same
-// commit since its latest such move. Going back means the holder took the work back; the old
-// receipt and the landed row are older than that, so nothing in the record says the rework was
-// done. The same commit measured again does count (the trunk holds exactly what was
-// measured, and Enqueue would refuse it a second time), and a different commit is
-// the newest-work check's business. The order of the move and the evidence is the move's
+// card's newest Enqueue transition) and has not measured the same commit again since its latest
+// such move. Going back means the holder took the work back; the old receipt and the landed row
+// are older than that, so nothing in the record says the rework was done. The same commit
+// measured again does count (the trunk holds exactly what was measured, and Enqueue would
+// refuse it a second time), but only while the newest run of every kind that was run again
+// (green, gate) passed, and at least one did; a different commit is the newest-work check's
+// business. The order of the move and the evidence is the move's
 // evidence_mark, a count in the ledger itself, so the answer does not depend on the process
 // that asks or on the clock.
 func landingStands(ctx context.Context, q querier, cardID, candidate string) (bool, error) {
@@ -113,12 +114,31 @@ func landingStands(ctx context.Context, q querier, cardID, candidate string) (bo
 	if err != nil || !reworked {
 		return true, err
 	}
-	var n int
-	if err := q.QueryRowContext(ctx, `SELECT count(*) FROM evidence WHERE card_id=? AND kind IN (?,?) AND result=? AND subject_sha=? AND id>?`,
-		cardID, KindGreen, KindGate, ResultPass, candidate, mark).Scan(&n); err != nil {
+	// For each kind that was run again, the newest run decides, as it does for the receipt and at
+	// Enqueue: a pass followed by a failure leaves a failure, a failure followed by a pass is
+	// repaired. At least one kind must have been run again, and none may end failing.
+	rows, err := q.QueryContext(ctx, `SELECT e.result FROM evidence e WHERE e.card_id=? AND e.kind IN (?,?) AND e.subject_sha=? AND e.id>?
+		AND e.id=(SELECT MAX(x.id) FROM evidence x WHERE x.card_id=e.card_id AND x.kind=e.kind AND x.subject_sha=e.subject_sha AND x.id>?)`,
+		cardID, KindGreen, KindGate, candidate, mark, mark)
+	if err != nil {
 		return false, fmt.Errorf("ledger: %w", err)
 	}
-	return n > 0, nil
+	defer func() { _ = rows.Close() }()
+	passed := false
+	for rows.Next() {
+		var res string
+		if err := rows.Scan(&res); err != nil {
+			return false, fmt.Errorf("ledger: %w", err)
+		}
+		if res != ResultPass {
+			return false, nil
+		}
+		passed = true
+	}
+	if err := rows.Err(); err != nil {
+		return false, fmt.Errorf("ledger: %w", err)
+	}
+	return passed, nil
 }
 
 // reworkMark says whether the card went back into the build stage after its candidate was last
