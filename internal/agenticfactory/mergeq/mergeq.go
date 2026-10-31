@@ -246,6 +246,13 @@ func (m *Merger) landUnderLock(ctx context.Context, cardID, candidateSHA string,
 		return now, false, nil
 	}
 	if err := m.Queue.SetState(ctx, cardID, candidateSHA, epoch, StateLanding, trunk, ""); err != nil {
+		if errors.Is(err, ErrStaleRow) {
+			// The card left MERGING (or was parked) while the gates ran. The lock is held now, so the row goes back
+			// to waiting here; left verifying, it could not be queued again by its holder.
+			if werr := m.Queue.SetState(ctx, cardID, candidateSHA, epoch, StateWaiting, trunk, ""); werr != nil {
+				return "", false, errors.Join(err, fmt.Errorf("mergeq: the row of %s stays verifying until Reconcile resets it: %w", cardID, werr))
+			}
+		}
 		return "", false, err
 	}
 	if err := m.Git.UpdateRef(ctx, m.Trunk, cand.Result, trunk); err != nil {

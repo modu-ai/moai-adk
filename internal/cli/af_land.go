@@ -96,7 +96,7 @@ func afGate(gate string, timeout time.Duration) mergeq.Verify {
 		if err != nil {
 			// mask first, cut second: a cut through a secret's value would leave its end unmasked
 			masked, _ := core.Redact(strings.TrimSpace(string(out.Bytes())))
-			tail := masked
+			tail := afStripControls(masked)
 			if len(tail) > afGateTail {
 				tail = tail[len(tail)-afGateTail:]
 			}
@@ -107,6 +107,18 @@ func afGate(gate string, timeout time.Duration) mergeq.Verify {
 		}
 		return nil
 	}
+}
+
+// afStripControls removes the control characters other than newline and tab (escape, carriage return, bell,
+// backspace, delete and the C1 range): the failure tail goes to the ledger and to a terminal, where an escape
+// sequence would be executed by whoever reads it.
+func afStripControls(s string) string {
+	return strings.Map(func(r rune) rune {
+		if (r < 0x20 && r != '\n' && r != '\t') || (r >= 0x7f && r <= 0x9f) {
+			return -1
+		}
+		return r
+	}, s)
 }
 
 // afRedactedGate is the gate text as it may be recorded: a secret written into the command line is not kept.
@@ -166,11 +178,12 @@ A gate that fails fails the card with the tail of its output; a trunk that moved
 again. The result is one JSON line (outcome: landed, failed or waiting).
 
 The card must be in MERGING at the epoch its queue row was made at; a card its holder moved out of the merge queue
-is refused. The gate runs with sh -c (native Windows has no sh: run this verb from WSL or Git Bash there), in its
+is refused. The gate runs with sh -c (native Windows has no sh: run this verb from WSL (or Git Bash, without process-group kill) there), in its
 own process group that is killed when the gate returns or --gate-timeout ends: a background process the gate left
 running is killed, not waited for, and does not fail a gate that exited 0. Under Git Bash a native Windows binary
 has no process group, so this verb does not kill what the gate started there; run it from WSL when the gate starts
-long-lived processes. The gate receives the caller's full environment except GIT_DIR and the other repository-scoping variables, so a
+long-lived processes. A gate that prints without end is not an error: it runs until --gate-timeout (default 20m) ends it.
+The gate receives the caller's full environment except GIT_DIR and the other repository-scoping variables, so a
 credential in the caller's environment is visible to it. The gate text is recorded in the landed note, so do not put
 a secret in it.
 A landing lock whose holder process is gone is taken back first.`,
