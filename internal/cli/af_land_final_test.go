@@ -6,6 +6,7 @@ package cli
 
 import (
 	"context"
+	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -54,8 +55,16 @@ func TestAFLand_ALoudFailingGateKeepsItsLastLine(t *testing.T) {
 	if outcome != "failed" {
 		t.Fatalf("outcome %q, want failed", outcome)
 	}
-	if !strings.Contains(reason, "REAL-FAILURE-LINE") {
-		t.Errorf("the gate's last line is not in the reason (%d bytes)", len(reason))
+	// D1: the output is not in the reason; the last line is the end of the log file the reason names
+	if strings.Contains(reason, "REAL-FAILURE-LINE") {
+		t.Errorf("the gate's output is in the reason (%d bytes): %.200q", len(reason), reason)
+	}
+	m := afD1LogPath.FindStringSubmatch(reason)
+	if m == nil {
+		t.Fatalf("the reason names no log file: %.300q", reason)
+	}
+	if log, err := os.ReadFile(m[1]); err != nil || !strings.Contains(string(log), "REAL-FAILURE-LINE") {
+		t.Errorf("the gate's last line is not in the log %s: %v", m[1], err)
 	}
 }
 

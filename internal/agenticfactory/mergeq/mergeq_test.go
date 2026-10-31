@@ -235,7 +235,8 @@ func TestLand_FailedGatesLeaveTheTrunkAndTakeNoLock(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res.Outcome != OutcomeFailed || !strings.Contains(res.Reason, "go test failed") {
+	// D1: what a Verify returned is output, not a reason: the reason names the failure and not its text
+	if res.Outcome != OutcomeFailed || !strings.HasPrefix(res.Reason, "gates failed") || strings.Contains(res.Reason, "go test failed") {
 		t.Errorf("result %+v", res)
 	}
 	if git(t, dir, "rev-parse", "refs/heads/trunk") != before {
@@ -244,7 +245,7 @@ func TestLand_FailedGatesLeaveTheTrunkAndTakeNoLock(t *testing.T) {
 	if q.locks != 0 {
 		t.Errorf("the lock was taken %d times for a failed candidate", q.locks)
 	}
-	if last := q.states[len(q.states)-1]; last != StateFailed || !strings.Contains(q.failReason, "go test failed") {
+	if last := q.states[len(q.states)-1]; last != StateFailed || !strings.HasPrefix(q.failReason, "gates failed") || strings.Contains(q.failReason, "go test failed") {
 		t.Errorf("final state %v reason %q", last, q.failReason)
 	}
 }

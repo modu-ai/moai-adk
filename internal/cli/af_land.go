@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"regexp"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -23,12 +23,9 @@ import (
 // ledger write.
 const afLandTimeout = 30 * time.Minute
 
-// afGateTail is how much of a failed gate's output goes into the card's fail reason.
-const afGateTail = 2048
-
-// afGateKeep is how much of the end of a gate's output is kept in memory; the part past afGateTail exists so that a
-// secret straddling the cut is masked whole before the cut.
-const afGateKeep = 64 << 10
+// afGateKeep is how much of the end of a gate's output is kept in memory and, from there, in the failure log: the end
+// is what explains a failure, and the volume must not fill memory.
+const afGateKeep = mergeq.DefaultFailureLogCap
 
 // The merge queue's operational entry points (AC-AFL-014): `af land` lands an enqueued card through the queue's
 // compare-and-swap of the trunk ref, and `af reconcile` settles the rows a restart left in verifying or landing
@@ -54,7 +51,13 @@ func afMerger(f afMergeFlags, st *ledger.Store, scratch string, verify mergeq.Ve
 	}
 	pid := os.Getpid() // the lock is held while this command runs, so this process is the holder
 	start, _ := homestate.ProbeProcessIdentity(pid)
+	// the failure logs sit beside the ledger, in a directory of their own
+	var failLog *mergeq.FailureLog
+	if path, err := afLedgerPath(f.db); err == nil {
+		failLog = &mergeq.FailureLog{Dir: filepath.Join(filepath.Dir(path), "gate-logs"), Cap: mergeq.DefaultFailureLogCap}
+	}
 	return &mergeq.Merger{
+		Log:    failLog,
 		Git:    mergeq.GitCLI{Repo: repo, ScratchD: scratch, Who: mergeq.Identity{Name: "moai af", Email: "af@moai.invalid"}},
 		Queue:  mergeq.NewLedgerQueue(st),
 		Trunk:  f.trunk,
@@ -74,7 +77,8 @@ const afGateTimeout = 20 * time.Minute
 // afGate runs the gate command in the candidate worktree, under a timeout, in its own process group (killed whole
 // when the timeout ends), with the repository-scoping variables removed from its environment and its output bounded
 // by the merge queue's writer. A non-zero exit fails the card with the tail of what the command printed, with
-// secrets in it redacted: the tail goes to the ledger and to the operator.
+// the output is NOT part of the error: it goes to a failure log file (mergeq.FailureLog), and the ledger and the
+// verb's output carry only the failure kind, the gate, the exit status, the byte count and that file's path.
 func afGate(gate string, timeout time.Duration) mergeq.Verify {
 	return func(ctx context.Context, dir string) error {
 		ctx, cancel := context.WithTimeout(ctx, timeout)
@@ -95,63 +99,15 @@ func afGate(gate string, timeout time.Duration) mergeq.Verify {
 			err = nil // the gate exited 0; only a child kept the pipes open
 		}
 		if err != nil {
-			tail := afFailureTail(out)
 			if ctx.Err() != nil {
 				err = fmt.Errorf("%w (the gate ran past %s)", err, timeout)
 			}
-			return fmt.Errorf("gate %q: %w: %s", afRedactedGate(gate), err, tail)
+			// What the gate printed does not go into the error: the merge queue puts it in the failure log.
+			return &mergeq.GateError{Gate: afRedactedGate(gate), Cause: err, Output: append([]byte(nil), out.Bytes()...), Total: out.Total()}
 		}
 		return nil
 	}
 }
-
-// afFailureTail is what a failed gate's output becomes before it is recorded and shown, in this order: a first
-// kept line the writer cut into is dropped when other lines follow it (its marker may be gone while its value stays;
-// when it is the only line it is also the gate's last line, which explains the failure, and stays); escape
-// sequences and control characters are removed whole, so a marker or a value they split is whole again; a marker
-// that ends its line is joined to the value on the next line, which the Cookie rule would otherwise leave without a
-// marker; the secrets are masked; and only then is the end cut to afGateTail, so a cut never lands inside a
-// secret's value.
-//
-// A line a secret marker introduced whose start the writer dropped (MaskedPrefix) is a value without its marker, so
-// the masking above cannot see it: those leading bytes are replaced by afMaskNotice, which the cut keeps.
-func afFailureTail(out *mergeq.TailWriter) string {
-	text := string(out.Bytes())
-	lost := out.MaskedPrefix()
-	switch {
-	case lost > 0:
-		text = text[lost:]
-	case out.Truncated():
-		if i := strings.IndexByte(text, '\n'); i >= 0 && strings.TrimSpace(text[i+1:]) != "" {
-			text = text[i+1:]
-		}
-	}
-	text = afMarkerAtLineEnd.ReplaceAllString(afStripControls(text), "$1")
-	masked, _ := core.Redact(strings.TrimSpace(text))
-	if lost == 0 {
-		if len(masked) > afGateTail {
-			masked = masked[len(masked)-afGateTail:]
-		}
-		return masked
-	}
-	if room := afGateTail - len(afMaskNotice) - 1; len(masked) > room {
-		masked = masked[len(masked)-room:]
-	}
-	if masked == "" {
-		return afMaskNotice
-	}
-	return afMaskNotice + "\n" + masked
-}
-
-// afMaskNotice replaces the part of the output that was a secret value whose marker the writer no longer holds.
-const afMaskNotice = "[a secret value was masked: its marker is outside the captured output]"
-
-// afMarkerAtLineEnd finds a secret-named marker (`password=`, `API_KEY:`) that ends its line; group 1 is the marker.
-var afMarkerAtLineEnd = regexp.MustCompile(`(?i)(` + mergeq.SecretMarkerPattern + `)[ \t]*\r?\n[ \t]*`)
-
-// afStripControls removes escape sequences and control characters (mergeq.StripControls): the failure tail goes to
-// the ledger and to a terminal, where an escape sequence would be executed by whoever reads it.
-func afStripControls(s string) string { return mergeq.StripControls(s) }
 
 // afRedactedGate is the gate text as it may be recorded: a secret written into the command line is not kept.
 func afRedactedGate(gate string) string {

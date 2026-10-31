@@ -10,6 +10,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -83,6 +84,61 @@ type Queue interface {
 // Verify runs the gates in dir, a worktree holding the merge result. A non-nil error fails the card.
 type Verify func(ctx context.Context, dir string) error
 
+// GateError is a gate that failed. Error() names the gate, the cause (an exit status, a timeout) and how much the
+// gate printed, and nothing it printed: the output is in Output, for a log file. Anything else a Verify returns is
+// treated the same way: its text goes to the log, not into the reason.
+type GateError struct {
+	Gate   string // the gate as it may be recorded (already redacted by the caller)
+	Cause  error
+	Output []byte // the end of what the gate printed
+	Total  int64  // how many bytes it printed in all
+}
+
+func (e *GateError) Error() string {
+	return fmt.Sprintf("gate %q: %v (output %d bytes)", e.Gate, e.Cause, e.Total)
+}
+
+func (e *GateError) Unwrap() error { return e.Cause }
+
+var completeSHA = regexp.MustCompile(`^(?:[0-9a-f]{40}|[0-9a-f]{64})$`)
+
+// IsCompleteSHA reports whether s is a complete lowercase hex object name (40 characters, or 64 for SHA-256).
+func IsCompleteSHA(s string) bool { return completeSHA.MatchString(s) }
+
+// ErrBadCandidate marks a candidate that is not the complete name of a commit that exists in the repository.
+var ErrBadCandidate = errors.New("mergeq: the candidate is not a complete lowercase hex SHA of a commit that exists")
+
+// validCandidate refuses anything but a complete lowercase hex SHA that names a commit: an abbreviation, HEAD or a
+// branch name can name another commit tomorrow, and a leading '-' reads as an option.
+func (m *Merger) validCandidate(ctx context.Context, candidateSHA string) error {
+	if !IsCompleteSHA(candidateSHA) {
+		return fmt.Errorf("%w: %q", ErrBadCandidate, candidateSHA)
+	}
+	got, err := m.Git.RevParse(ctx, candidateSHA)
+	if err != nil || got != candidateSHA {
+		return fmt.Errorf("%w: %q names no commit here", ErrBadCandidate, candidateSHA)
+	}
+	return nil
+}
+
+// failReason is the reason of a failed landing: the kind, what failed, the byte count of the output and the log file
+// that holds it. The output itself is never in it. A log that cannot be written is said to be missing and the failure
+// is recorded all the same.
+func (m *Merger) failReason(cardID, candidateSHA, kind, summary string, output []byte, total int64) string {
+	if total < int64(len(output)) {
+		total = int64(len(output))
+	}
+	where := "no log is kept"
+	if m.Log != nil {
+		if path, err := m.Log.Write(cardID, candidateSHA, kind, output); err != nil {
+			where = "logging failed"
+		} else {
+			where = "log: " + path
+		}
+	}
+	return fmt.Sprintf("%s (output %d bytes; %s)", summary, total, where)
+}
+
 // Outcome is how one Land call ended.
 type Outcome string
 
@@ -113,6 +169,7 @@ type Merger struct {
 	Message    func(cardID string) string // the merge commit message; must carry the card id
 	Now        func() time.Time           // the clock Reconcile judges leases by; nil means time.Now
 	Gate       string                     // what Verify runs, for the landed note (already redacted by the caller); may be empty
+	Log        *FailureLog                // where the output of a failed gate or merge goes; nil keeps none
 }
 
 func (m *Merger) lockTTL() time.Duration {
@@ -140,6 +197,9 @@ func (m *Merger) Land(ctx context.Context, cardID, candidateSHA string) (Result,
 	settle := context.WithoutCancel(ctx) // releasing the lock and removing the worktree must survive a cancelled ctx
 
 	if err := m.validTrunk(ctx); err != nil {
+		return Result{}, err
+	}
+	if err := m.validCandidate(ctx, candidateSHA); err != nil {
 		return Result{}, err
 	}
 	if err := m.noCheckout(ctx); err != nil {
@@ -186,14 +246,27 @@ func (m *Merger) Land(ctx context.Context, cardID, candidateSHA string) (Result,
 		cand, err := m.Git.PrepareCandidate(ctx, trunk, candidateSHA, msg)
 		if err != nil {
 			if errors.Is(err, ErrMerge) {
-				return m.fail(ctx, res, cardID, candidateSHA, trunk, err.Error())
+				var me *MergeError
+				var out []byte
+				if errors.As(err, &me) {
+					out = me.Output
+				}
+				return m.fail(ctx, res, cardID, candidateSHA, trunk,
+					m.failReason(cardID, candidateSHA, "merge", "the candidate does not merge into the trunk", out, int64(len(out))))
 			}
 			return res, err
 		}
 		res.Verified++
 		if err := m.Verify(ctx, cand.Dir); err != nil {
 			_ = m.Git.Discard(settle, cand)
-			return m.fail(ctx, res, cardID, candidateSHA, trunk, "gates failed: "+err.Error())
+			var ge *GateError
+			if errors.As(err, &ge) {
+				return m.fail(ctx, res, cardID, candidateSHA, trunk,
+					m.failReason(cardID, candidateSHA, "gate", fmt.Sprintf("gates failed: gate %q: %v", ge.Gate, ge.Cause), ge.Output, ge.Total))
+			}
+			text := []byte(err.Error())
+			return m.fail(ctx, res, cardID, candidateSHA, trunk,
+				m.failReason(cardID, candidateSHA, "gate", "gates failed", text, int64(len(text))))
 		}
 
 		epoch, err := m.Queue.AcquireLock(ctx, LandingLock, m.Holder, m.lockTTL())

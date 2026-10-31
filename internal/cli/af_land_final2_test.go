@@ -6,6 +6,7 @@ package cli
 
 import (
 	"context"
+	"os"
 	"strings"
 	"testing"
 )
@@ -24,6 +25,7 @@ func TestAFLand_ControlCharactersInAFailedGatesOutputAreNotKept(t *testing.T) {
 	if len(rows) == 1 {
 		ledgerReason = rows[0].FailReason
 	}
+	// D1: the output is not in the reason; the reason carries no control character either way
 	for name, text := range map[string]string{"the reported reason": reason, "the ledger's fail reason": ledgerReason} {
 		for _, r := range text {
 			if (r < 0x20 && r != '\n' && r != '\t') || (r >= 0x7f && r <= 0x9f) {
@@ -31,12 +33,29 @@ func TestAFLand_ControlCharactersInAFailedGatesOutputAreNotKept(t *testing.T) {
 				break
 			}
 		}
-		if !strings.Contains(text, "kept") || !strings.Contains(text, "end") {
-			t.Errorf("%s lost the readable text around the controls: %.300q", name, text)
+	}
+	// the log file holds the readable text, with the controls removed and the tab kept
+	m := afD1LogPath.FindStringSubmatch(reason)
+	if m == nil {
+		t.Fatalf("the reason names no log file: %.300q", reason)
+	}
+	log, err := os.ReadFile(m[1])
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(log)
+	for _, r := range text {
+		if (r < 0x20 && r != '\n' && r != '\t') || (r >= 0x7f && r <= 0x9f) {
+			t.Errorf("the log keeps the control character %U: %.200q", r, text)
+			break
 		}
 	}
-	if !strings.Contains(ledgerReason, "\tkept") {
-		t.Errorf("a tab was removed from the ledger's fail reason: %.300q", ledgerReason)
+	// (the 8-bit CSI introducer takes the 'e' after it as its final byte, as a terminal would: "end" reads "nd")
+	if !strings.Contains(text, "red") || !strings.Contains(text, "nd") {
+		t.Errorf("the log lost the readable text around the controls: %.300q", text)
+	}
+	if !strings.Contains(text, "\tkept") {
+		t.Errorf("a tab was removed from the log: %.300q", text)
 	}
 }
 

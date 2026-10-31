@@ -214,7 +214,7 @@ func TestAFLand_D1MarkerOffTheWindowNeverReachesTheLedgerOrStdout(t *testing.T) 
 // the failure tail.
 func TestAFLand_D1MergeHookStderrNeverReachesTheLedgerOrStdout(t *testing.T) {
 	afSkipWithoutSh(t)
-	db, repo, _, _, _ := afQueuedCard(t)
+	db, repo, _, st, _ := afQueuedCard(t)
 	hook := filepath.Join(repo, ".git", "hooks", "pre-merge-commit")
 	body := afD1Words.Replace("#!/bin/sh\nA=hunter2; B=super\nprintf 'deploy check: @PW@=%s%s\\033[31m red\\033[0m\\n' \"$A\" \"$B\" >&2\nexit 1\n")
 	if err := os.WriteFile(hook, []byte(body), 0o755); err != nil {
@@ -225,6 +225,13 @@ func TestAFLand_D1MergeHookStderrNeverReachesTheLedgerOrStdout(t *testing.T) {
 		if strings.Contains(text, afD1Value) {
 			t.Errorf("the hook's value is in the %s", where)
 		}
+	}
+	// an escape character in the text a reader sees (the ledger file is binary: a 0x1b byte there proves nothing)
+	rows, qerr := st.Queue(context.Background())
+	if qerr != nil || len(rows) != 1 {
+		t.Fatalf("queue %+v %v", rows, qerr)
+	}
+	for where, text := range map[string]string{"stdout": out, "stderr": errOut, "fail reason": rows[0].FailReason} {
 		if strings.Contains(text, "\x1b") {
 			t.Errorf("an escape character is in the %s", where)
 		}
