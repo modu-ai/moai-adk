@@ -79,6 +79,41 @@ reproduction files were copied in temporarily to read their results and removed 
 - Native Windows is compiled, not run. `internal/web`, `internal/homestate`, `internal/hook`, `internal/template` and
   the whole `internal/cli` package were not re-run.
 
+## Addendum — lane-19 37th review (non-blocking 1–4)
+
+Commit graph: RED `080a9f29b6` → GREEN `9b8c929043`. Base: `8c58e97f30`.
+
+RED at `080a9f29b6` (anchored, `-v`; long reasons shortened with `...`):
+
+```
+    the reported reason keeps the control character U+001B: "gates failed: gate ...: exit status 1: before\n\x1b[31mred..."
+    the ledger's fail reason keeps the control character U+001B: ...
+--- FAIL: TestAFLand_ControlCharactersInAFailedGatesOutputAreNotKept (0.33s)
+    the help of `af land` lacks "WSL (or Git Bash, without process-group kill)":
+    the help of `af land` lacks "prints without end is not an error: it runs until --gate-timeout":
+--- FAIL: TestAFLand_HelpSaysWhatWindowsAndAnEndlessGateGet (0.00s)
+    withdrawn_requeue_test.go:35: the row is verifying, want waiting (a verifying row cannot be queued again)
+--- FAIL: TestLand_RealLedger_AWithdrawnCardsRowGoesBackToWaitingAndTheCardCanBeQueuedAgain (0.34s)
+```
+
+GREEN at `9b8c929043` (same commands):
+
+```
+--- PASS: TestAFLand_ControlCharactersInAFailedGatesOutputAreNotKept (0.34s)
+--- PASS: TestAFLand_HelpSaysWhatWindowsAndAnEndlessGateGet (0.00s)
+--- PASS: TestLand_RealLedger_AWithdrawnCardsRowGoesBackToWaitingAndTheCardCanBeQueuedAgain (0.43s)
+--- PASS: TestLand_RealLedger_ACardWithdrawnDuringTheGatesIsNotLanded (0.61s)
+```
+
+At the final tree: `go test -count=1 -cover -p 2 ./internal/agenticfactory/mergeq/` →
+`ok ... 30.620s coverage: 85.6% of statements`; `-run '^(TestAF|TestCardFlow)' ./internal/cli/` → `ok 14.4s`, no
+`--- FAIL`; `go test -count=1 -race -p 2 ./internal/agenticfactory/...` → 21 packages `ok`; `go build ./...`,
+`GOOS=windows GOARCH=amd64 go build ./internal/cli/`, `go vet ./internal/cli/ ./internal/agenticfactory/...` print nothing.
+
+Gaps of the addendum: the control-character test covers escape, CR, bell, backspace, DEL and one C1 byte pair, not
+every code point; the help sentences are asserted as text, not rendered by a terminal. (4) states that an endless
+gate runs until `--gate-timeout` — the 20m default was not run.
+
 ## Residual-risk
 
 A park that the ledger lets a card carry in a stage other than MERGING is refused by the stage check; a park resolved
