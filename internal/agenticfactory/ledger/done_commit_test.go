@@ -1,5 +1,3 @@
-//go:build afred
-
 package ledger
 
 import (
@@ -57,6 +55,15 @@ func TestMove_DoneNeedsTheLandedCandidateToBeTheNewestWork(t *testing.T) {
 			t.Fatalf("DONE from BUILDING/IMPLEMENT with c2 as the newest work: %v", err)
 		}
 	})
+	t.Run("a gate on another commit alone does not decide", func(t *testing.T) {
+		s, e := landedThenWithdrawn(t)
+		if err := s.AddEvidence(bg, "a", e, Evidence{Kind: KindGate, TreeSHA: "tree-c2", SubjectSHA: "c2", Result: ResultPass}); err != nil {
+			t.Fatal(err)
+		}
+		if err := s.Move(bg, "a", e, core.Position{Stage: core.StageDone}, "lane", "done"); err != nil {
+			t.Fatalf("a gated but never built second candidate must not block finishing on the landed one: %v", err)
+		}
+	})
 	t.Run("the same candidate still finishes", func(t *testing.T) {
 		s, e := landedThenWithdrawn(t)
 		if err := s.Move(bg, "a", e, core.Position{Stage: core.StageDone}, "lane", "done"); err != nil {
@@ -70,4 +77,24 @@ func TestMove_DoneNeedsTheLandedCandidateToBeTheNewestWork(t *testing.T) {
 			t.Fatalf("DONE after fresh evidence on c1: %v", err)
 		}
 	})
+}
+
+// A card built without a green receipt (the no-handoff path: a gate on the candidate is all
+// Enqueue asks for) has no newer work to contradict its landed row, so it still finishes.
+func TestMove_DoneStillWorksForACardWithOnlyAGateOnItsCandidate(t *testing.T) {
+	s := openTemp(t)
+	c := claimOne(t, s, "a", "internal/a/x.go")
+	if err := s.AddEvidence(bg, "a", c.Epoch, Evidence{Kind: KindGate, TreeSHA: "tree-c1", SubjectSHA: "c1", Result: ResultPass}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Enqueue(bg, "a", c.Epoch, "c1"); err != nil {
+		t.Fatal(err)
+	}
+	landOne(t, s, "a", c.Epoch)
+	if err := s.Move(bg, "a", c.Epoch, core.Position{Stage: core.StageMerging, RemoteIntegrated: true}, "mergeq", "merge seen"); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Move(bg, "a", c.Epoch, core.Position{Stage: core.StageDone}, "mergeq", "landed"); err != nil {
+		t.Fatalf("a card with no green must still finish on its landed candidate: %v", err)
+	}
 }
