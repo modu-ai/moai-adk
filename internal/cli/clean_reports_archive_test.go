@@ -73,7 +73,7 @@ func setupReportsScaffold(t *testing.T) string {
 	mustWrite("historical/kept.md", "historical evidence\n")
 	mustWrite("plan-audit/.gitkeep", "")
 	mustWrite("worktrees/wt-slug/evidence.md", "hoisted evidence\n")
-	mustWrite("archive/2026-08/t-older/evidence.md", "already archived\n")
+	mustWrite("archive/2000-01/t-older/evidence.md", "already archived\n")
 	// Tracked fixture: evidence-shaped, old — protected by the tracked rule.
 	mustWrite("t338/ac-count-baseline.txt", "tracked fixture\n")
 	backdate("t338")
@@ -106,14 +106,14 @@ func TestCleanReportsArchive_MovesOnlyEligibleCandidates(t *testing.T) {
 		}
 	}
 	// A NEW shard (the candidate's backdated mtime month) holds the moved
-	// content; the scaffold's pre-existing 2026-08 shard is fixture noise.
+	// content; the scaffold's pre-existing 2000-01 shard is fixture noise.
 	moved, err := os.ReadDir(reportsPath(root, "archive"))
 	if err != nil {
 		t.Fatalf("archive dir: %v", err)
 	}
 	var shard string
 	for _, e := range moved {
-		if e.IsDir() && e.Name() != "2026-08" {
+		if e.IsDir() && e.Name() != "2000-01" {
 			shard = e.Name()
 		}
 	}
@@ -149,7 +149,7 @@ func TestCleanReportsArchive_DryRunMovesNothing(t *testing.T) {
 	if _, err := os.Stat(reportsPath(root, "t100")); err != nil {
 		t.Error("dry-run must not move the candidate")
 	}
-	// No NEW shard may appear (the scaffold's pre-existing archive/2026-08 is
+	// No NEW shard may appear (the scaffold's pre-existing archive/2000-01 is
 	// part of the fixture, not an action output).
 	if _, err := os.Stat(reportsPath(root, "archive/2026-06")); !os.IsNotExist(err) {
 		t.Error("dry-run must not create an archive shard")
@@ -173,7 +173,7 @@ func TestCleanReportsArchive_ProtectedEntriesUntouched(t *testing.T) {
 		"historical/kept.md",
 		"plan-audit/.gitkeep",
 		"worktrees/wt-slug/evidence.md",
-		"archive/2026-08/t-older/evidence.md",
+		"archive/2000-01/t-older/evidence.md",
 	} {
 		if _, statErr := os.Stat(reportsPath(root, rel)); statErr != nil {
 			t.Errorf("protected entry %s was affected", rel)
