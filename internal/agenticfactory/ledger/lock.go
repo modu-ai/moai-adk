@@ -101,6 +101,17 @@ func lockHeldAt(ctx context.Context, q querier, name string, epoch int64) (bool,
 	return n > 0, nil
 }
 
+// ReapLocks expires the locks whose holder alive judges Dead and nothing else: no card
+// lease is reclaimed and no note is written, so the landing and its reconcile can free a
+// dead lander's merge lock without taking other cards' work back. alive is required (a nil
+// one is ErrInvalid) and is called before the write transaction opens.
+func (s *Store) ReapLocks(ctx context.Context, alive func(pid int, start string) Liveness) error {
+	if alive == nil {
+		return fmt.Errorf("%w: ReapLocks needs a liveness judge", ErrInvalid)
+	}
+	return s.reapLocks(ctx, alive)
+}
+
 // reapLocks expires the locks whose holder alive judges Dead, outside any transaction for
 // the judging (I3) and checking in the transaction that the lock is still the one judged.
 func (s *Store) reapLocks(ctx context.Context, alive func(pid int, start string) Liveness) error {
