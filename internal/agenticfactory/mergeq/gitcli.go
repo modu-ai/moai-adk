@@ -96,17 +96,20 @@ func NewTailWriter(max int) *TailWriter { return &TailWriter{max: max} }
 
 // TailWriter holds the last max bytes written to it; Bytes returns them.
 type TailWriter struct {
-	max int
-	buf []byte
+	max     int
+	buf     []byte
+	dropped bool
 }
 
 func (w *TailWriter) Write(p []byte) (int, error) {
 	n := len(p)
 	if len(p) >= w.max {
+		w.dropped = w.dropped || len(p) > w.max || len(w.buf) > 0
 		w.buf = append(w.buf[:0], p[len(p)-w.max:]...)
 		return n, nil
 	}
 	if over := len(w.buf) + len(p) - w.max; over > 0 {
+		w.dropped = true
 		w.buf = append(w.buf[:0], w.buf[over:]...)
 	}
 	w.buf = append(w.buf, p...)
@@ -115,6 +118,9 @@ func (w *TailWriter) Write(p []byte) (int, error) {
 
 // Bytes is what the writer kept.
 func (w *TailWriter) Bytes() []byte { return w.buf }
+
+// Truncated reports that the start of the output was dropped, so the first kept line may be a fragment.
+func (w *TailWriter) Truncated() bool { return w.dropped }
 
 var _ io.Writer = (*TailWriter)(nil)
 

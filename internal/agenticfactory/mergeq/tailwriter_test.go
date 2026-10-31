@@ -8,6 +8,36 @@ import (
 	"testing"
 )
 
+// Truncated says whether the start of the output was dropped, so a caller knows the first kept line may be a
+// fragment. Everything that fits is not truncated, whatever the number of writes.
+func TestTailWriter_TruncatedSaysWhetherTheStartWasDropped(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		max    int
+		writes []string
+		want   bool
+	}{
+		{"nothing written", 4, nil, false},
+		{"under the limit", 6, []string{"abc", "d"}, false},
+		{"exactly the limit in one write", 4, []string{"abcd"}, false},
+		{"exactly the limit in two writes", 4, []string{"ab", "cd"}, false},
+		{"one write over the limit", 4, []string{"abcde"}, true},
+		{"a second write pushes the first out", 4, []string{"abc", "de"}, true},
+		{"a full-size write after earlier bytes", 4, []string{"a", "bcde"}, true},
+		{"a full-size write onto an empty buffer", 4, []string{"", "abcd"}, false},
+	} {
+		w := NewTailWriter(tc.max)
+		for _, s := range tc.writes {
+			if _, err := w.Write([]byte(s)); err != nil {
+				t.Fatalf("%s: Write(%q): %v", tc.name, s, err)
+			}
+		}
+		if got := w.Truncated(); got != tc.want {
+			t.Errorf("%s: Truncated() = %v, want %v (kept %q)", tc.name, got, tc.want, w.Bytes())
+		}
+	}
+}
+
 func TestTailWriter_KeepsTheLastBytesAndNeverFails(t *testing.T) {
 	for _, tc := range []struct {
 		name   string

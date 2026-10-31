@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 	"time"
 
@@ -94,12 +95,7 @@ func afGate(gate string, timeout time.Duration) mergeq.Verify {
 			err = nil // the gate exited 0; only a child kept the pipes open
 		}
 		if err != nil {
-			// mask first, cut second: a cut through a secret's value would leave its end unmasked
-			masked, _ := core.Redact(strings.TrimSpace(string(out.Bytes())))
-			tail := afStripControls(masked)
-			if len(tail) > afGateTail {
-				tail = tail[len(tail)-afGateTail:]
-			}
+			tail := afFailureTail(out)
 			if ctx.Err() != nil {
 				err = fmt.Errorf("%w (the gate ran past %s)", err, timeout)
 			}
@@ -109,16 +105,45 @@ func afGate(gate string, timeout time.Duration) mergeq.Verify {
 	}
 }
 
-// afStripControls removes the control characters other than newline and tab (escape, carriage return, bell,
-// backspace, delete and the C1 range): the failure tail goes to the ledger and to a terminal, where an escape
-// sequence would be executed by whoever reads it.
+// afFailureTail is what a failed gate's output becomes before it is recorded and shown, in this order: a first
+// kept line the writer cut into is dropped when other lines follow it (its marker may be gone while its value stays;
+// when it is the only line it is also the gate's last line, which explains the failure, and stays); escape
+// sequences and control characters are removed whole, so a marker or a value they split is whole again; a marker
+// that ends its line is joined to the value on the next line, which the Cookie rule would otherwise leave without a
+// marker; the secrets are masked; and only then is the end cut to afGateTail, so a cut never lands inside a
+// secret's value.
+func afFailureTail(out *mergeq.TailWriter) string {
+	text := string(out.Bytes())
+	if out.Truncated() {
+		if i := strings.IndexByte(text, '\n'); i >= 0 && strings.TrimSpace(text[i+1:]) != "" {
+			text = text[i+1:]
+		}
+	}
+	text = afMarkerAtLineEnd.ReplaceAllString(afStripControls(text), "$1")
+	masked, _ := core.Redact(strings.TrimSpace(text))
+	if len(masked) > afGateTail {
+		masked = masked[len(masked)-afGateTail:]
+	}
+	return masked
+}
+
+// afMarkerAtLineEnd finds a secret-named marker (`password=`, `API_KEY:`) that ends its line; group 1 is the marker.
+var afMarkerAtLineEnd = regexp.MustCompile(`(?i)(\b[a-z0-9_]*(?:token|secret|pass(?:phrase|w(?:or)?d)|api[_-]?key|credential|cookie|key)[a-z0-9_]*[ \t]*[:=])[ \t]*\r?\n[ \t]*`)
+
+// afEscapes finds the sequences a terminal acts on: CSI (ESC [ ... final byte, or the single-byte C1 form), OSC (ESC ]
+// ... BEL or ESC \) and the remaining two-byte escapes.
+var afEscapes = regexp.MustCompile(`\x1b\[[0-?]*[ -/]*[@-~]|\x{9b}[0-?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)?|\x1b[@-_]`)
+
+// afStripControls removes escape sequences whole, then the control characters other than newline and tab
+// (carriage return, bell, backspace, form feed, NUL, delete and the C1 range): the failure tail goes to the ledger
+// and to a terminal, where an escape sequence would be executed by whoever reads it.
 func afStripControls(s string) string {
 	return strings.Map(func(r rune) rune {
 		if (r < 0x20 && r != '\n' && r != '\t') || (r >= 0x7f && r <= 0x9f) {
 			return -1
 		}
 		return r
-	}, s)
+	}, afEscapes.ReplaceAllString(s, ""))
 }
 
 // afRedactedGate is the gate text as it may be recorded: a secret written into the command line is not kept.
