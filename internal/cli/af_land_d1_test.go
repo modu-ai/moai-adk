@@ -384,3 +384,29 @@ func TestAFVerbs_D4BranchNameReworkEndsInARefusal(t *testing.T) {
 		t.Errorf("cards %+v %v: the card must not be finished on a branch name", cards, err)
 	}
 }
+
+// --repo names the repository the commit is looked up in; the object name of an annotated tag is not a commit's.
+func TestAFVerbs_D4TheRepositoryFlagAndTheObjectNameOfATag(t *testing.T) {
+	afSkipWithoutSh(t)
+	db, repo, cand, _, epoch := afQueuedCard(t)
+	e := strconv.FormatInt(epoch, 10)
+	afGit(t, repo, "tag", "-a", "v1", "-m", "release", cand)
+	tagObject := afGit(t, repo, "rev-parse", "refs/tags/v1")
+	evidence := func(sha string, extra ...string) error {
+		args := append([]string{"evidence", "t1", "--db", db, "--epoch", e, "--kind", "green", "--subject-sha", sha, "--result", "pass"}, extra...)
+		_, _, err := afRunBoth(args...)
+		return err
+	}
+	if err := evidence(cand, "--repo", repo); err != nil {
+		t.Errorf("--repo with the real commit: %v", err)
+	}
+	if err := evidence(cand, "--repo", t.TempDir()); err == nil {
+		t.Error("a commit looked up in a repository that does not hold it was accepted")
+	}
+	if err := evidence(tagObject, "--repo", repo); err == nil {
+		t.Errorf("the object name %s of an annotated tag was accepted as a commit", tagObject)
+	}
+	if _, _, err := afRunBoth("enqueue", "t1", "--db", db, "--epoch", e, "--candidate", tagObject, "--repo", repo); err == nil {
+		t.Error("enqueue accepted the object name of an annotated tag")
+	}
+}

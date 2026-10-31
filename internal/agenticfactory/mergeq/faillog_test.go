@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -194,6 +195,57 @@ func TestLand_RefusesACandidateThatIsNotACompleteSHAOfAnExistingCommit(t *testin
 	}
 }
 
+// spyGit counts the ref lookups, so a test can tell whether text reached git at all.
+type spyGit struct {
+	GitCLI
+	revParses int
+}
+
+func (s *spyGit) RevParse(ctx context.Context, ref string) (string, error) {
+	s.revParses++
+	return s.GitCLI.RevParse(ctx, ref)
+}
+
+// A text that is not a complete SHA never reaches git: it could be read there as an option.
+func TestLand_ATextThatIsNotACompleteSHAIsNotGivenToGit(t *testing.T) {
+	dir := repo(t)
+	candidate(t, dir, "c1", "a.txt", "a\n")
+	m := newMerger(t, dir, &fakeQueue{}, passing)
+	spy := &spyGit{GitCLI: m.Git.(GitCLI)}
+	m.Git = spy
+	for _, bad := range []string{"--help", "-h", "--exec-path", "HEAD", "c1", "abc"} {
+		if _, err := m.Land(context.Background(), "t1", bad); !errors.Is(err, ErrBadCandidate) {
+			t.Fatalf("candidate %q: %v", bad, err)
+		}
+	}
+	// the candidate check is where a candidate text is looked up: a text that is no SHA costs one lookup fewer than a
+	// well-formed SHA that names nothing
+	spy.revParses = 0
+	_, _ = m.Land(context.Background(), "t1", "--help")
+	withBad := spy.revParses
+	spy.revParses = 0
+	_, _ = m.Land(context.Background(), "t1", strings.Repeat("a", 40))
+	withMissing := spy.revParses
+	if withBad >= withMissing {
+		t.Errorf("a text that is no SHA cost %d ref lookups, a missing SHA %d: the first must cost fewer (none for the candidate)", withBad, withMissing)
+	}
+}
+
+// The object name of an annotated tag is a complete SHA that git peels to a commit; it is not the commit's name.
+func TestLand_TheObjectNameOfAnAnnotatedTagIsNotACandidate(t *testing.T) {
+	dir := repo(t)
+	cand := candidate(t, dir, "c1", "a.txt", "a\n")
+	git(t, dir, "tag", "-a", "v1", "-m", "release", cand)
+	tagObject := git(t, dir, "rev-parse", "refs/tags/v1")
+	if tagObject == cand {
+		t.Fatal("the tag object has the commit's name; the fixture is wrong")
+	}
+	q := &fakeQueue{}
+	if _, err := newMerger(t, dir, q, passing).Land(context.Background(), "t1", tagObject); !errors.Is(err, ErrBadCandidate) {
+		t.Errorf("the tag object %s: %v, want ErrBadCandidate", tagObject, err)
+	}
+}
+
 func TestLand_AGateErrorsOutputIsInTheLogAndNotInTheReason(t *testing.T) {
 	dir := repo(t)
 	cand := candidate(t, dir, "c1", "a.txt", "a\n")
@@ -236,6 +288,10 @@ func TestLand_AVerifyErrorOfAnyOtherKindIsAlsoOnlyAByteCountInTheReason(t *testi
 	}
 	if !strings.Contains(res.Reason, "no log is kept") {
 		t.Errorf("a merger with no log should say so: %q", res.Reason)
+	}
+	want := "output " + strconv.Itoa(len("boom pass"+"word="+logSecret)) + " bytes"
+	if !strings.Contains(res.Reason, want) {
+		t.Errorf("the reason lacks the byte count %q: %q", want, res.Reason)
 	}
 }
 
