@@ -150,7 +150,8 @@ accepted `key:`, rule 8 takes only `key=`).
 - `go test ... -run '^(TestAFGate_ARound2...|TestAFFailureTail_ARound2...|TestAFLand_ARound2...)$' -v`: all 7 shapes FAIL at
   gate level, 7 at verb level (stdout JSON and ledger), 10 of 13 split-write rows; the 3 passing split rows
   (`BEL_run_inside_one_write`, `escape_sequence_split_between_writes`, `OSC_sequence_split_between_writes`) are guards.
-- parity table: 16 rows FAIL at RED (the tokens, Bearer, PEM, the three JSON spellings, `monkey_key: `); the rest pass.
+- parity table: 17 rows FAIL at RED (`monkey_key: `, Bearer, bearer, the six token prefixes, the PEM header, and the six JSON
+  spellings); the rest pass. (The rows for a value on a later line were added after RED, in 19aba37706 and 946d6dfa39.)
 - the round-1 tests were unchanged and passing at RED.
 
 ### (c) Fix (commits 7a3049313f, 19aba37706, 946d6dfa39, 0ab88b8ca9)
