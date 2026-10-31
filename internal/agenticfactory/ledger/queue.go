@@ -256,6 +256,19 @@ func (s *Store) QueueUpdate(ctx context.Context, cardID string, presented QueueE
 		} else if epoch != rowEpoch {
 			return fmt.Errorf("%w: %s is at card epoch %d, not %d", ErrStaleEpoch, cardID, rowEpoch, epoch)
 		}
+		// Taking a row into verifying, landing or landed offers the card's work to the trunk, so
+		// the card must still be in MERGING at the row's epoch. Failing a row and the reconcile
+		// back to waiting only end an attempt, and the settlement of an older landing row is the
+		// exception above; none of those is guarded.
+		if !settlesOlder && (state == QueueVerifying || state == QueueLanding || state == QueueLanded) {
+			var stage string
+			if err := tx.QueryRowContext(ctx, `SELECT stage FROM cards WHERE id=?`, cardID).Scan(&stage); err != nil {
+				return fmt.Errorf("ledger: %w", err)
+			}
+			if stage != string(core.StageMerging) {
+				return fmt.Errorf("%w: %s for %s at epoch %d needs the card in MERGING, but it is at %s", ErrStaleEpoch, state, cardID, rowEpoch, stage)
+			}
+		}
 		ok := false
 		for _, n := range queueNext[curState] {
 			ok = ok || n == state
