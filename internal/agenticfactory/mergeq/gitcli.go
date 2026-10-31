@@ -208,8 +208,9 @@ func (w *TailWriter) MaskedPrefix() int {
 	if front == 0 {
 		return 0
 	}
+	// prune keeps every closed span's end ahead of front, so a span that starts before the window covers its front.
 	for _, s := range w.spans {
-		if s.start < front && (s.end < 0 || front < s.end) {
+		if s.start < front {
 			end := w.total
 			if s.end >= 0 && s.end < end {
 				end = s.end

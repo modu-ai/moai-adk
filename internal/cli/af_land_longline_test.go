@@ -49,6 +49,7 @@ func TestAFGate_ALongValueWhoseMarkerIsOutsideTheKeptWindowIsMasked(t *testing.T
 		{"no_newline_after_value", `printf 'password='; ` + afQ(70000) + `; exit 1`, true},
 		{"trailing_newline", `printf 'password='; ` + afQ(70000) + `; printf '\n'; exit 1`, true},
 		{"other_lines_follow", `printf 'password='; ` + afQ(70000) + `; printf '\nnext line\n'; exit 1`, true},
+		{"long_output_follows", `printf 'password='; ` + afQ(70000) + `; printf '\n'; yes 'filler line' | head -n 400; exit 1`, true},
 		{"upper_case_marker", `printf 'PASSWORD='; ` + afQ(70000) + `; exit 1`, true},
 		{"api_key_colon_space", `printf 'Api_Key: '; ` + afQ(70000) + `; exit 1`, true},
 		{"token_marker", `printf 'auth_token='; ` + afQ(70000) + `; exit 1`, true},
@@ -77,6 +78,9 @@ func TestAFGate_ALongValueWhoseMarkerIsOutsideTheKeptWindowIsMasked(t *testing.T
 			}
 			if c.lost && !strings.Contains(strings.ToLower(tail), afMaskd) {
 				t.Errorf("the value was masked for want of its marker but the reason does not say so: %.200q", tail)
+			}
+			if len(tail) > afGateTail {
+				t.Errorf("the tail is %d bytes, over the %d the reason may hold", len(tail), afGateTail)
 			}
 		})
 	}
