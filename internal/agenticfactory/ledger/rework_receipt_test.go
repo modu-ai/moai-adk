@@ -280,6 +280,20 @@ func TestRework_ANewCommitGoesThroughTheQueueLandsAndFinishes(t *testing.T) {
 	}
 }
 
+// A landed row is replaced only by new work after a move back into BUILDING: a card that left
+// MERGING straight to REVIEWING offering another commit is refused as before.
+func TestEnqueue_ALandedRowIsNotReplacedByACardNotTakenBackForRework(t *testing.T) {
+	s, _, e := landedBackedOutAt(t)
+	evidenceOn(t, s, e, "c2")
+	err := s.Enqueue(bg, "a", e, "c2")
+	if !errors.Is(err, ErrInvalid) || !strings.Contains(err.Error(), "has landed") {
+		t.Fatalf("Enqueue of c2 from REVIEWING with no move back into BUILDING: %v", err)
+	}
+	if it, _ := queueRow(t, s, "a"); it.State != QueueLanded || it.CandidateSHA != "c1" {
+		t.Errorf("the row changed: %+v", it)
+	}
+}
+
 // The landed candidate itself is still not queued again: the trunk has it, and the way to finish
 // is the landed row, not a second landing.
 func TestEnqueue_TheLandedCandidateItselfStaysRefused(t *testing.T) {
