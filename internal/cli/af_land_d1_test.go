@@ -20,6 +20,10 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/ledger"
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/mergeq"
 )
 
 const afD1Value = "hunter2" + "super"
@@ -355,6 +359,16 @@ func TestAFVerbs_D4OnlyACompleteExistingCommitSHAIsAccepted(t *testing.T) {
 				out, _, err := afRunBoth(args...)
 				if err == nil {
 					t.Errorf("%s accepted %q: %.120s", verb, v, out)
+					return
+				}
+				// a text that is no SHA is refused for that, before git is asked; a well-formed one that names no
+				// commit is refused for that
+				want := "complete lowercase hex"
+				if mergeq.IsCompleteSHA(v) {
+					want = "names no commit"
+				}
+				if !strings.Contains(err.Error(), want) {
+					t.Errorf("%s %q: refused with %q, want a refusal that says %q", verb, v, err, want)
 				}
 			})
 		}
@@ -382,6 +396,73 @@ func TestAFVerbs_D4BranchNameReworkEndsInARefusal(t *testing.T) {
 	cards, err := st.Cards(context.Background())
 	if err != nil || len(cards) != 1 || string(cards[0].Position.Stage) == "DONE" {
 		t.Errorf("cards %+v %v: the card must not be finished on a branch name", cards, err)
+	}
+}
+
+// afUnqueuedCard is afQueuedCard without the queue entry: a claimed card whose commit has green and gate evidence.
+func afUnqueuedCard(t *testing.T) (db, repo, cand string, st *ledger.Store, epoch int64) {
+	t.Helper()
+	ctx := context.Background()
+	t.Setenv("CLAUDE_PROJECT_DIR", t.TempDir())
+	db = filepath.Join(t.TempDir(), "af", "ledger.db")
+	var err error
+	st, err = ledger.Open(ctx, db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+	repo = t.TempDir()
+	afGit(t, repo, "init", "-q", "-b", "work")
+	if err := os.WriteFile(filepath.Join(repo, "base.txt"), []byte("base\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	afGit(t, repo, "add", "-A")
+	afGit(t, repo, "commit", "-q", "-m", "base")
+	afGit(t, repo, "branch", "trunk")
+	afGit(t, repo, "checkout", "-q", "-b", "c1", "trunk")
+	if err := os.WriteFile(filepath.Join(repo, "a.txt"), []byte("a\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	afGit(t, repo, "add", "-A")
+	afGit(t, repo, "commit", "-q", "-m", "card t1")
+	cand = afGit(t, repo, "rev-parse", "HEAD")
+	afGit(t, repo, "checkout", "-q", "work")
+	if err := st.AddCard(ctx, ledger.Card{ID: "t1", Title: "t1", Position: core.Position{Stage: core.StageReady}, Priority: 1,
+		Spec: ledger.Spec{Class: "A", Paths: []string{"a.txt"}}}); err != nil {
+		t.Fatal(err)
+	}
+	c, err := st.Claim(ctx, ledger.ClaimRequest{SessionID: "s-t1", Worktree: repo, PID: os.Getpid(), PIDStart: "start-t1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return db, repo, cand, st, c.Epoch
+}
+
+// The queue refuses a name that is not a commit's even when the ledger holds passing evidence under that name (the
+// ledger takes any non-empty string; the verb is the trust boundary), and accepts the real commit.
+func TestAFVerbs_D4EnqueueRefusesAnEvidencedNameThatIsNotACommit(t *testing.T) {
+	afSkipWithoutSh(t)
+	db, repo, cand, st, epoch := afUnqueuedCard(t)
+	ctx := context.Background()
+	e := strconv.FormatInt(epoch, 10)
+	afGit(t, repo, "tag", "-a", "v1", "-m", "release", cand)
+	tagObject := afGit(t, repo, "rev-parse", "refs/tags/v1")
+	for _, name := range []string{"HEAD", "c1", "trunk", cand[:12], strings.ToUpper(cand), "--no-verify", strings.Repeat("0", 40), tagObject} {
+		if err := st.AddEvidence(ctx, "t1", epoch, ledger.Evidence{Kind: ledger.KindGate, TreeSHA: "t", SubjectSHA: name, Result: ledger.ResultPass}); err != nil {
+			t.Fatalf("the ledger refused evidence for %q: %v", name, err)
+		}
+		if _, _, err := afRunBoth("enqueue", "t1", "--db", db, "--epoch", e, "--candidate", name); err == nil {
+			t.Errorf("enqueue accepted %q although the ledger holds a passing gate for it", name)
+		}
+	}
+	if rows, err := st.Queue(ctx); err != nil || len(rows) != 0 {
+		t.Fatalf("queue %+v %v, want it empty after the refusals", rows, err)
+	}
+	if err := st.AddEvidence(ctx, "t1", epoch, ledger.Evidence{Kind: ledger.KindGate, TreeSHA: "t", SubjectSHA: cand, Result: ledger.ResultPass}); err != nil {
+		t.Fatal(err)
+	}
+	if out, errOut, err := afRunBoth("enqueue", "t1", "--db", db, "--epoch", e, "--candidate", cand); err != nil {
+		t.Errorf("enqueue refused the real commit: %v %s %s", err, out, errOut)
 	}
 }
 

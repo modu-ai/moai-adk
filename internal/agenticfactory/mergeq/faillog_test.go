@@ -277,6 +277,19 @@ func TestLand_AGateErrorsOutputIsInTheLogAndNotInTheReason(t *testing.T) {
 	}
 }
 
+// A total that is smaller than the output kept cannot be true; the reason states at least what the log holds.
+func TestLand_TheByteCountIsNeverLessThanWhatWasKept(t *testing.T) {
+	dir := repo(t)
+	cand := candidate(t, dir, "c1", "a.txt", "a\n")
+	m := newMerger(t, dir, &fakeQueue{}, func(context.Context, string) error {
+		return &GateError{Gate: "g", Cause: errors.New("exit status 1"), Output: []byte("four"), Total: 1}
+	})
+	res, _ := m.Land(context.Background(), "t1", cand)
+	if !strings.Contains(res.Reason, "output 4 bytes") {
+		t.Errorf("reason %q, want it to count the 4 bytes kept", res.Reason)
+	}
+}
+
 func TestLand_AVerifyErrorOfAnyOtherKindIsAlsoOnlyAByteCountInTheReason(t *testing.T) {
 	dir := repo(t)
 	cand := candidate(t, dir, "c1", "a.txt", "a\n")
