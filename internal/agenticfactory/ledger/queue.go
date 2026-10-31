@@ -67,7 +67,10 @@ func factsTx(ctx context.Context, q querier, card Card) ([]string, error) {
 			if err != nil {
 				return nil, err
 			}
-			if same {
+			// A card back in the build stage after its candidate landed was taken back for
+			// rework, and the record shows none of it: the landed row alone cannot finish it
+			// through the no-handoff composition. It leaves BUILDING by the receipt path.
+			if same && card.Position.Stage != core.StageBuilding {
 				have = append(have, core.FactMerged, core.FactClosed, core.FactSettled)
 			}
 		}
