@@ -146,8 +146,12 @@ func landingStands(ctx context.Context, q querier, cardID, candidate string) (bo
 // of its latest such transition. A move inside BUILDING (a sub-stage change, a park) is not going
 // back; neither is a card that has never been offered.
 func reworkMark(ctx context.Context, q querier, cardID string) (mark int64, reworked bool, err error) {
+	// The offer is the card's latest entry into MERGING. Only Enqueue enters MERGING (Move refuses
+	// it), so this is a fact of the ledger's own structure; the actor column is the caller's free
+	// text and says nothing about which transition is the offer.
 	var offered int64
-	switch err := q.QueryRowContext(ctx, `SELECT seq FROM transitions WHERE card_id=? AND actor=? ORDER BY seq DESC LIMIT 1`, cardID, actorEnqueue).Scan(&offered); {
+	switch err := q.QueryRowContext(ctx, `SELECT seq FROM transitions WHERE card_id=? AND to_stage=? AND COALESCE(from_stage,'')<>? ORDER BY seq DESC LIMIT 1`,
+		cardID, string(core.StageMerging), string(core.StageMerging)).Scan(&offered); {
 	case err == sql.ErrNoRows:
 		return 0, false, nil
 	case err != nil:
