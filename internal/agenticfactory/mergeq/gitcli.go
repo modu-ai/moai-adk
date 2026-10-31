@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 	"time"
 
@@ -92,16 +93,150 @@ func (g GitCLI) run(ctx context.Context, dir string, args ...string) (string, er
 // NewTailWriter is a writer that keeps the LAST max bytes written to it and never fails: for the output of a child
 // whose end matters more than its start (a gate command: the failure is the last thing it prints) and whose
 // volume must not fill memory. It is not the limit git calls have (that one refuses runaway output with an error).
-func NewTailWriter(max int) *TailWriter { return &TailWriter{max: max} }
+func NewTailWriter(max int) *TailWriter { return &TailWriter{max: max, span: -1} }
 
-// TailWriter holds the last max bytes written to it; Bytes returns them.
+// SecretMarkerPattern is a secret-named field that introduces a value (`password=`, `API_KEY:`); it carries no
+// case flag and no capture group, so a caller wraps it as it needs.
+const SecretMarkerPattern = `\b[a-z0-9_]*(?:token|secret|pass(?:phrase|w(?:or)?d)|api[_-]?key|credential|cookie|key)[a-z0-9_]*[ \t]*[:=]`
+
+// tailCarry is how many raw bytes of the line being written the watch keeps between writes, so a marker (or the
+// escape sequence or control character inside it) that two writes split is still seen whole. It is a ceiling: a
+// marker whose raw form is longer than this is not recognised.
+const tailCarry = 512
+
+var (
+	// tailMarker finds what introduces a secret value: a secret-named field, an Authorization header, a PEM
+	// private-key header, the user part of a URL credential. A bare `Bearer <token>` with no header is not watched.
+	tailMarker = regexp.MustCompile(`(?i)` + SecretMarkerPattern + `|authorization[ \t]*:|-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----|https?://[^/\s:@]+:`)
+	// tailMarkerEnd is a marker that ends its line, so the value is on the next one.
+	tailMarkerEnd = regexp.MustCompile(`(?i)(?:` + SecretMarkerPattern + `|authorization[ \t]*:(?:[ \t]*(?:bearer|basic|token))?)[ \t]*$`)
+	// tailEscapes finds the sequences a terminal acts on: CSI (ESC [ ... final byte, or the single-byte C1 form),
+	// OSC (ESC ] ... BEL or ESC \) and the remaining two-byte escapes.
+	tailEscapes = regexp.MustCompile(`\x1b\[[0-?]*[ -/]*[@-~]|\x{9b}[0-?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)?|\x1b[@-_]`)
+)
+
+// StripControls removes escape sequences whole, then the control characters other than newline and tab (carriage
+// return, bell, backspace, form feed, NUL, delete and the C1 range).
+func StripControls(s string) string {
+	plain := true
+	for i := 0; i < len(s) && plain; i++ {
+		plain = s[i] >= 0x20 && s[i] < 0x7f || s[i] == '\t' || s[i] == '\n' // printable ASCII: nothing to strip
+	}
+	if plain {
+		return s
+	}
+	return strings.Map(func(r rune) rune {
+		if (r < 0x20 && r != '\n' && r != '\t') || (r >= 0x7f && r <= 0x9f) {
+			return -1
+		}
+		return r
+	}, tailEscapes.ReplaceAllString(s, ""))
+}
+
+// markSpan is a region of the stream (absolute offsets) whose text a secret marker introduces: the line that holds
+// the marker, extended over the next line when the marker ends its line. end < 0 while the span is still open.
+type markSpan struct{ start, end int64 }
+
+// TailWriter holds the last max bytes written to it; Bytes returns them. It also watches the whole stream, in
+// bounded state, for lines introduced by a secret marker, so that after the start of a line has been dropped it can
+// still say that the kept part of that line is a secret value whose marker is gone (MaskedPrefix).
 type TailWriter struct {
 	max     int
 	buf     []byte
 	dropped bool
+
+	total     int64      // bytes written so far
+	lineStart int64      // absolute offset of the line being written
+	carry     []byte     // the last tailCarry raw bytes of that line
+	curMarked bool       // that line holds a marker
+	spans     []markSpan // marker spans not yet wholly behind the kept window
+	span      int        // index of the open span, or -1
+	chain     bool       // the open span continues over the next line (a marker ended this one)
+}
+
+// watch feeds the writer's secret-marker bookkeeping with p, which has not been stored yet.
+func (w *TailWriter) watch(p []byte) {
+	base := w.total
+	for off := 0; off < len(p); {
+		end, nl := len(p), false
+		if i := bytes.IndexByte(p[off:], '\n'); i >= 0 {
+			end, nl = off+i, true
+		}
+		w.line(p[off:end], nl, base+int64(end))
+		off = end
+		if nl {
+			off++
+		}
+	}
+	w.total += int64(len(p))
+}
+
+// line takes one piece of the current line; nl says that a newline follows it, at absolute offset nlAt.
+func (w *TailWriter) line(seg []byte, nl bool, nlAt int64) {
+	raw := append(append(make([]byte, 0, len(w.carry)+len(seg)), w.carry...), seg...)
+	// Every marker holds ':', '=' or the dashes of a PEM header (or an ESC/control split of them, which the carry and
+	// StripControls bring back together), so text with none of those needs no regular expression: the common
+	// case of a long run of output is not slowed down.
+	if !w.curMarked && bytes.ContainsAny(raw, ":=-") && tailMarker.MatchString(StripControls(string(raw))) {
+		w.curMarked = true
+		if w.span < 0 {
+			w.spans = append(w.spans, markSpan{start: w.lineStart, end: -1})
+			w.span = len(w.spans) - 1
+		}
+	}
+	if !nl {
+		w.carry = append(w.carry[:0], raw[max(0, len(raw)-tailCarry):]...)
+		return
+	}
+	endsMarker := tailMarkerEnd.MatchString(StripControls(string(raw[max(0, len(raw)-2*tailCarry):])))
+	switch {
+	case w.chain && endsMarker: // the value line is itself introducing another value: stay open
+	case w.chain || (w.curMarked && !endsMarker):
+		w.spans[w.span].end, w.span, w.chain = nlAt+1, -1, false
+	case w.curMarked: // the marker ends the line: the next line is its value
+		w.chain = true
+	}
+	w.lineStart, w.curMarked, w.carry = nlAt+1, false, w.carry[:0]
+}
+
+// MaskedPrefix is how many leading bytes of Bytes() belong to a line that a secret marker introduced and whose
+// start has been dropped, so the kept bytes are (part of) a value and the marker that would have masked them is
+// outside the window. It errs toward masking: a line whose marker is in the dropped part or may straddle the cut
+// counts, and so does the value line after a line that ends in a marker.
+func (w *TailWriter) MaskedPrefix() int {
+	front := w.total - int64(len(w.buf))
+	if front == 0 {
+		return 0
+	}
+	for _, s := range w.spans {
+		if s.start < front && (s.end < 0 || front < s.end) {
+			end := w.total
+			if s.end >= 0 && s.end < end {
+				end = s.end
+			}
+			return int(end - front)
+		}
+	}
+	return 0
+}
+
+// prune forgets the spans that lie wholly behind the kept window.
+func (w *TailWriter) prune() {
+	front, k := w.total-int64(len(w.buf)), 0
+	for k < len(w.spans) && w.spans[k].end >= 0 && w.spans[k].end <= front {
+		k++
+	}
+	if k > 0 {
+		w.spans = append(w.spans[:0], w.spans[k:]...)
+		if w.span >= 0 {
+			w.span -= k
+		}
+	}
 }
 
 func (w *TailWriter) Write(p []byte) (int, error) {
+	w.watch(p)
+	defer w.prune()
 	n := len(p)
 	if len(p) >= w.max {
 		w.dropped = w.dropped || len(p) > w.max || len(w.buf) > 0

@@ -5,6 +5,7 @@ package mergeq
 
 import (
 	"bytes"
+	"strings"
 	"testing"
 )
 
@@ -81,5 +82,56 @@ func TestTailWriter_NineMegabytesStayWithinTheLimit(t *testing.T) {
 	}
 	if len(w.Bytes()) != 64<<10 || !bytes.HasSuffix(w.Bytes(), []byte("xLAST")) {
 		t.Errorf("kept %d bytes ending %q", len(w.Bytes()), w.Bytes()[len(w.Bytes())-6:])
+	}
+}
+
+// MaskedPrefix says how many leading kept bytes are a secret value whose marker the window no longer holds.
+func TestTailWriter_MaskedPrefixCoversTheKeptPartOfAMarkedLine(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		max    int
+		writes []string
+		want   int
+	}{
+		{"nothing dropped, marker kept", 64, []string{"password=abc\n"}, 0},
+		{"value past the window, no newline", 16, []string{"password=", strings.Repeat("Q", 40)}, 16},
+		{"marker exactly the dropped part", 16, []string{"password=", strings.Repeat("Q", 16)}, 16},
+		{"marker cut by one byte", 16, []string{"password=", strings.Repeat("Q", 8)}, 16},
+		{"marker wholly kept at the front", 16, []string{"password=", strings.Repeat("Q", 7)}, 0},
+		{"the marked line ends inside the window", 20, []string{"password=xx\nlast line ok\n"}, 7},
+		{"marker split across writes", 16, []string{"pa", "ssword=", strings.Repeat("Q", 40)}, 16},
+		{"marker split by a control character", 16, []string{"pass\a", "word=", strings.Repeat("Q", 40)}, 16},
+		{"marker ends its line, value line is cut", 16, []string{"password=\n", strings.Repeat("Q", 40)}, 16},
+		{"marker ends its line, value line starts the window", 16, []string{"password=\n", strings.Repeat("Q", 16)}, 16},
+		{"a line with no marker", 16, []string{"plain ", strings.Repeat("Q", 40)}, 0},
+		{"the line before the window was marked, this one is not", 16, []string{"password=x\n", "plain ", strings.Repeat("Q", 40)}, 0},
+	} {
+		w := NewTailWriter(tc.max)
+		for _, s := range tc.writes {
+			_, _ = w.Write([]byte(s))
+		}
+		if got := w.MaskedPrefix(); got != tc.want {
+			t.Errorf("%s: MaskedPrefix() = %d, want %d (kept %q)", tc.name, got, tc.want, w.Bytes())
+		}
+	}
+}
+
+// The watch keeps bounded state however much is written: spans only for lines still in the window, and a carry of at
+// most tailCarry bytes. A marker whose raw form is longer than that carry is not recognised (the stated ceiling).
+func TestTailWriter_WatchStateIsBounded(t *testing.T) {
+	w := NewTailWriter(64)
+	for range 3000 {
+		_, _ = w.Write([]byte("key=1\n"))
+	}
+	_, _ = w.Write([]byte(strings.Repeat("Z", 5000)))
+	if len(w.spans) > 64 || len(w.carry) > tailCarry {
+		t.Errorf("state grew: %d spans, %d carry bytes", len(w.spans), len(w.carry))
+	}
+	w = NewTailWriter(16)
+	for _, s := range []string{"pass", strings.Repeat("\a", tailCarry+88), "word=" + strings.Repeat("Q", 40)} {
+		_, _ = w.Write([]byte(s))
+	}
+	if w.MaskedPrefix() != 0 {
+		t.Errorf("a marker spread over more than %d raw bytes is documented as unseen", tailCarry)
 	}
 }
