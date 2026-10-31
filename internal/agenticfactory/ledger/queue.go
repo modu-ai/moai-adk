@@ -83,19 +83,31 @@ func factsTx(ctx context.Context, q querier, card Card) ([]string, error) {
 	return have, nil
 }
 
-// newestWorkIs says whether the card's newest green evidence, the receipt of what it built, is
-// about commit sha. A card with no green has no newer work to contradict the row. A gate row
-// alone does not decide: a holder may gate a second candidate that was refused, and still finish
-// the card on the one that landed.
+// newestWorkIs says whether the landed commit sha is still the card's newest work: the card's
+// newest green evidence, the receipt of what it built, is about sha, or was recorded no later than
+// the moment sha was first offered to the queue. A green about another commit that is OLDER than
+// that offer is work the holder chose to leave behind (it withdrew c1 and offered a gate-only c2,
+// which REQ-AFL-008 accepts); one NEWER than the offer is work the landing does not hold. A card
+// with no green has no newer work to contradict the row. A gate row alone does not decide: a
+// holder may gate a second candidate that was refused, and still finish the card on the one that
+// landed. The order is the evidence ids against the offer's evidence_mark, counts in the ledger.
 func newestWorkIs(ctx context.Context, q querier, cardID, sha string) (bool, error) {
+	var id int64
 	var subject sql.NullString
-	switch err := q.QueryRowContext(ctx, `SELECT subject_sha FROM evidence WHERE card_id=? AND kind=? ORDER BY id DESC LIMIT 1`, cardID, KindGreen).Scan(&subject); {
+	switch err := q.QueryRowContext(ctx, `SELECT id,subject_sha FROM evidence WHERE card_id=? AND kind=? ORDER BY id DESC LIMIT 1`, cardID, KindGreen).Scan(&id, &subject); {
 	case err == sql.ErrNoRows:
 		return true, nil
 	case err != nil:
 		return false, fmt.Errorf("ledger: %w", err)
 	}
-	return subject.String == sha, nil
+	if subject.String == sha {
+		return true, nil
+	}
+	_, mark, found, err := offerOf(ctx, q, cardID, sha)
+	if err != nil {
+		return false, err
+	}
+	return found && id <= mark, nil
 }
 
 // landingStands says whether the landed candidate may still finish the card. It does unless the
