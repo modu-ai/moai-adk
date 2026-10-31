@@ -137,29 +137,10 @@ func afCardMayLand(ctx context.Context, st *ledger.Store, item mergeq.Item) erro
 }
 
 // afReapDeadLocks expires the locks held by a process that is gone, so a landing lock whose holder died does not
-// keep the queue for its whole ttl. It goes through Reap, but the judge it passes never calls a card's lease holder
-// Dead (those pairs are answered Unknown, which the ledger never reclaims): only locks are taken back here; taking
-// cards back is `moai af reap`.
+// keep the queue for its whole ttl. ReapLocks frees locks and nothing else: no card lease is reclaimed and no note
+// is written; taking cards back is `moai af reap`.
 func afReapDeadLocks(ctx context.Context, st *ledger.Store) error {
-	leases, err := st.Leases(ctx)
-	if err != nil {
-		return err
-	}
-	type holder struct {
-		pid   int
-		start string
-	}
-	leased := map[holder]bool{}
-	for _, l := range leases {
-		leased[holder{l.PID, l.PIDStart}] = true
-	}
-	_, err = st.Reap(ctx, func(pid int, start string) ledger.Liveness {
-		if leased[holder{pid, start}] {
-			return ledger.LivenessUnknown
-		}
-		return afAlive(pid, start)
-	})
-	return err
+	return st.ReapLocks(ctx, afAlive)
 }
 
 func newAFLandCmd() *cobra.Command {
