@@ -112,6 +112,7 @@ type Merger struct {
 	MaxRetries int
 	Message    func(cardID string) string // the merge commit message; must carry the card id
 	Now        func() time.Time           // the clock Reconcile judges leases by; nil means time.Now
+	Gate       string                     // what Verify runs, for the landed note (already redacted by the caller); may be empty
 }
 
 func (m *Merger) lockTTL() time.Duration {
@@ -270,7 +271,11 @@ func (m *Merger) landUnderLock(ctx context.Context, cardID, candidateSHA string,
 	if err := m.Queue.SetState(ctx, cardID, candidateSHA, epoch, StateLanded, trunk, ""); err != nil {
 		return "", false, err
 	}
-	if err := m.Queue.AddNote(ctx, "landed", cardID, fmt.Sprintf("%s -> %s on %s", trunk, cand.Result, m.Trunk)); err != nil {
+	note := fmt.Sprintf("%s -> %s on %s", trunk, cand.Result, m.Trunk)
+	if m.Gate != "" {
+		note += fmt.Sprintf(" (verified by gate: %s)", m.Gate)
+	}
+	if err := m.Queue.AddNote(ctx, "landed", cardID, note); err != nil {
 		return "", false, err
 	}
 	return cand.Result, true, nil

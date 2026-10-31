@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"strings"
@@ -87,6 +88,10 @@ func (g GitCLI) run(ctx context.Context, dir string, args ...string) (string, er
 	}
 	return strings.TrimSpace(out.String()), nil
 }
+
+// NewLimitedWriter is a writer into b that refuses output past the same limit every git call of the queue has, so
+// a runaway child of the merge queue (a gate command) cannot fill memory either.
+func NewLimitedWriter(b *bytes.Buffer) io.Writer { return &limited{b: b} }
 
 type limited struct{ b *bytes.Buffer }
 
