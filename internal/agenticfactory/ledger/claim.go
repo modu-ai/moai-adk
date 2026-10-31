@@ -226,8 +226,11 @@ func (s *Store) Reap(ctx context.Context, alive func(pid int, start string) Live
 }
 
 func insertTransition(ctx context.Context, q querier, cardID string, from, to core.Position, epoch int64, actor, reason string) error {
-	_, err := q.ExecContext(ctx, `INSERT INTO transitions(card_id,from_stage,from_sub,to_stage,to_sub,epoch,actor,reason,at) VALUES(?,?,?,?,?,?,?,?,`+nowSQL+`)`,
-		cardID, nullIfEmpty(string(from.Stage)), nullIfEmpty(string(from.Sub)), string(to.Stage), nullIfEmpty(string(to.Sub)), epoch, actor, nullIfEmpty(reason))
+	// evidence_mark: the card's newest evidence at this moment, so that "recorded after this move" is
+	// a comparison of ids in the ledger. Evidence a Move carries is inserted before its transition,
+	// so it falls before the mark: it belongs to the move, not to what follows it.
+	_, err := q.ExecContext(ctx, `INSERT INTO transitions(card_id,from_stage,from_sub,to_stage,to_sub,epoch,actor,reason,at,evidence_mark) VALUES(?,?,?,?,?,?,?,?,`+nowSQL+`,(SELECT COALESCE(MAX(id),0) FROM evidence WHERE card_id=?))`,
+		cardID, nullIfEmpty(string(from.Stage)), nullIfEmpty(string(from.Sub)), string(to.Stage), nullIfEmpty(string(to.Sub)), epoch, actor, nullIfEmpty(reason), cardID)
 	if err != nil {
 		return fmt.Errorf("ledger: %w", err)
 	}

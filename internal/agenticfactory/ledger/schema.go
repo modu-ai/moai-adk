@@ -14,8 +14,9 @@ import (
 	_ "modernc.org/sqlite" // the pure Go driver: no cgo, one binary
 )
 
-// SchemaVersion is PRAGMA user_version of a ledger this code wrote.
-const SchemaVersion = 1
+// SchemaVersion is PRAGMA user_version of a ledger this code wrote. Version 2 adds
+// transitions.evidence_mark (see migrateEvidenceMark).
+const SchemaVersion = 2
 
 // timeLayout is how the database clock writes a time (I4).
 const timeLayout = "2006-01-02T15:04:05.000Z"
@@ -39,10 +40,13 @@ CREATE TABLE IF NOT EXISTS cards(
 CREATE INDEX IF NOT EXISTS cards_pick ON cards(stage, parked, priority DESC);
 -- transitions: one row per change of position. The first row of a card is its adding
 -- (from_stage NULL). A row whose from and to are the same position is not an edge: it
--- records a claim again, a reclaim, or a park in place.
+-- records a claim again, a reclaim, or a park in place. evidence_mark is the id of the card's
+-- newest evidence row when the move was made: evidence and transitions count in separate
+-- sequences, so this is what says which came first.
 CREATE TABLE IF NOT EXISTS transitions(
   seq INTEGER PRIMARY KEY AUTOINCREMENT, card_id TEXT NOT NULL, from_stage TEXT, from_sub TEXT,
-  to_stage TEXT NOT NULL, to_sub TEXT, epoch INTEGER NOT NULL, actor TEXT NOT NULL, reason TEXT, at TEXT NOT NULL);
+  to_stage TEXT NOT NULL, to_sub TEXT, epoch INTEGER NOT NULL, actor TEXT NOT NULL, reason TEXT, at TEXT NOT NULL,
+  evidence_mark INTEGER);
 CREATE INDEX IF NOT EXISTS transitions_card ON transitions(card_id);
 CREATE TABLE IF NOT EXISTS leases(
   card_id TEXT PRIMARY KEY, session_id TEXT NOT NULL, epoch INTEGER NOT NULL, pid INTEGER, pid_start TEXT,
@@ -116,9 +120,48 @@ func (s *Store) init(ctx context.Context) error {
 		return fmt.Errorf("ledger: schema: %w", err)
 	}
 	if have < SchemaVersion {
-		if _, err := s.db.ExecContext(ctx, fmt.Sprintf(`PRAGMA user_version=%d`, SchemaVersion)); err != nil {
-			return fmt.Errorf("ledger: %w", err)
+		return s.migrate(ctx)
+	}
+	return nil
+}
+
+// migrate brings a ledger written by older code to SchemaVersion in one write transaction, so a
+// second process opening the same file at the same moment waits and then finds it done.
+func (s *Store) migrate(ctx context.Context) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("ledger: %w", err)
+	}
+	defer tx.Rollback() //nolint:errcheck // nothing to undo after a commit
+	if err := migrateEvidenceMark(ctx, tx); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, fmt.Sprintf(`PRAGMA user_version=%d`, SchemaVersion)); err != nil {
+		return fmt.Errorf("ledger: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("ledger: %w", err)
+	}
+	return nil
+}
+
+// migrateEvidenceMark adds transitions.evidence_mark to a version 1 ledger. Its rows are given the
+// mark the old data supports: the newest evidence the card had at or before the moment of the
+// move. The two clocks only share the database's own millisecond timestamps, so evidence written
+// in the very same millisecond counts as before the move, the side that withholds a DONE. A fresh
+// ledger already has the column and no rows to mark.
+func migrateEvidenceMark(ctx context.Context, q querier) error {
+	var n int
+	if err := q.QueryRowContext(ctx, `SELECT count(*) FROM pragma_table_info('transitions') WHERE name='evidence_mark'`).Scan(&n); err != nil {
+		return fmt.Errorf("ledger: %w", err)
+	}
+	if n == 0 {
+		if _, err := q.ExecContext(ctx, `ALTER TABLE transitions ADD COLUMN evidence_mark INTEGER`); err != nil {
+			return fmt.Errorf("ledger: migrate: %w", err)
 		}
+	}
+	if _, err := q.ExecContext(ctx, `UPDATE transitions SET evidence_mark=COALESCE((SELECT MAX(e.id) FROM evidence e WHERE e.card_id=transitions.card_id AND e.at<=transitions.at),0) WHERE evidence_mark IS NULL`); err != nil {
+		return fmt.Errorf("ledger: migrate: %w", err)
 	}
 	return nil
 }

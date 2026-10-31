@@ -67,11 +67,16 @@ func factsTx(ctx context.Context, q querier, card Card) ([]string, error) {
 			if err != nil {
 				return nil, err
 			}
-			// A card back in the build stage after its candidate landed was taken back for
-			// rework, and the record shows none of it: the landed row alone cannot finish it
-			// through the no-handoff composition. It leaves BUILDING by the receipt path.
-			if same && card.Position.Stage != core.StageBuilding {
-				have = append(have, core.FactMerged, core.FactClosed, core.FactSettled)
+			if same {
+				// A card taken back for rework since its candidate was offered needs work
+				// recorded after that move; the landed row and the old receipt are older.
+				stands, err := landingStands(ctx, q, card.ID, candidate)
+				if err != nil {
+					return nil, err
+				}
+				if stands {
+					have = append(have, core.FactMerged, core.FactClosed, core.FactSettled)
+				}
 			}
 		}
 	}
@@ -91,6 +96,73 @@ func newestWorkIs(ctx context.Context, q querier, cardID, sha string) (bool, err
 		return false, fmt.Errorf("ledger: %w", err)
 	}
 	return subject.String == sha, nil
+}
+
+// landingStands says whether the landed candidate may still finish the card. It does unless the
+// card went back into the build stage after that candidate was last offered to the queue (the
+// card's newest Enqueue transition) and has not measured the same commit again since its latest
+// such move. Going back means the holder took the work back; the old receipt and the landed row
+// are older than that, so nothing in the record says the rework was done. The same commit
+// measured again does count (the trunk holds exactly what was measured, and Enqueue would
+// refuse it a second time), but only while the newest run of every kind that was run again
+// (green, gate) passed, and at least one did; a different commit is the newest-work check's
+// business. The order of the move and the evidence is the move's
+// evidence_mark, a count in the ledger itself, so the answer does not depend on the process
+// that asks or on the clock.
+func landingStands(ctx context.Context, q querier, cardID, candidate string) (bool, error) {
+	mark, reworked, err := reworkMark(ctx, q, cardID)
+	if err != nil || !reworked {
+		return true, err
+	}
+	// For each kind that was run again, the newest run decides, as it does for the receipt and at
+	// Enqueue: a pass followed by a failure leaves a failure, a failure followed by a pass is
+	// repaired. At least one kind must have been run again, and none may end failing.
+	rows, err := q.QueryContext(ctx, `SELECT e.result FROM evidence e WHERE e.card_id=? AND e.kind IN (?,?) AND e.subject_sha=? AND e.id>?
+		AND e.id=(SELECT MAX(x.id) FROM evidence x WHERE x.card_id=e.card_id AND x.kind=e.kind AND x.subject_sha=e.subject_sha AND x.id>?)`,
+		cardID, KindGreen, KindGate, candidate, mark, mark)
+	if err != nil {
+		return false, fmt.Errorf("ledger: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	passed := false
+	for rows.Next() {
+		var res string
+		if err := rows.Scan(&res); err != nil {
+			return false, fmt.Errorf("ledger: %w", err)
+		}
+		if res != ResultPass {
+			return false, nil
+		}
+		passed = true
+	}
+	if err := rows.Err(); err != nil {
+		return false, fmt.Errorf("ledger: %w", err)
+	}
+	return passed, nil
+}
+
+// reworkMark says whether the card went back into the build stage after its candidate was last
+// offered to the queue, and if so how much evidence it had when it last did: the evidence_mark
+// of its latest such transition. A move inside BUILDING (a sub-stage change, a park) is not going
+// back; neither is a card that has never been offered.
+func reworkMark(ctx context.Context, q querier, cardID string) (mark int64, reworked bool, err error) {
+	var offered int64
+	switch err := q.QueryRowContext(ctx, `SELECT seq FROM transitions WHERE card_id=? AND actor=? ORDER BY seq DESC LIMIT 1`, cardID, actorEnqueue).Scan(&offered); {
+	case err == sql.ErrNoRows:
+		return 0, false, nil
+	case err != nil:
+		return 0, false, fmt.Errorf("ledger: %w", err)
+	}
+	// A move without a mark cannot say what came after it, so it counts all the evidence as older.
+	switch err := q.QueryRowContext(ctx, `SELECT COALESCE(evidence_mark,(SELECT COALESCE(MAX(id),0) FROM evidence WHERE card_id=?)) FROM transitions
+		WHERE card_id=? AND seq>? AND to_stage=? AND COALESCE(from_stage,'')<>? ORDER BY seq DESC LIMIT 1`,
+		cardID, cardID, offered, string(core.StageBuilding), string(core.StageBuilding)).Scan(&mark); {
+	case err == sql.ErrNoRows:
+		return 0, false, nil
+	case err != nil:
+		return 0, false, fmt.Errorf("ledger: %w", err)
+	}
+	return mark, true, nil
 }
 
 // queueSettledAt says whether the card's queue row was queued at that card epoch and has
@@ -135,6 +207,10 @@ func (s *Store) Enqueue(ctx context.Context, cardID string, epoch int64, candida
 				return fmt.Errorf("%w: no passing review evidence for commit %s", ErrEvidenceStale, candidateSHA)
 			}
 		}
+		_, reworked, err := reworkMark(ctx, tx, cardID)
+		if err != nil {
+			return err
+		}
 		var cur string
 		var oldSHA, oldReason sql.NullString
 		var oldEpoch int64
@@ -142,8 +218,22 @@ func (s *Store) Enqueue(ctx context.Context, cardID string, epoch int64, candida
 		case err == sql.ErrNoRows:
 		case err != nil:
 			return fmt.Errorf("ledger: %w", err)
-		case cur == string(QueueLanded):
+		case cur == string(QueueLanded) && (oldSHA.String == candidateSHA || oldEpoch != card.Epoch || !reworked):
+			// A landed row is history: the same commit is never landed twice, a holder of a
+			// later card epoch does not replace the row of an earlier one (N3 stays as it was),
+			// and neither does a card that was not taken back for rework.
 			return fmt.Errorf("%w: %s has landed", ErrInvalid, cardID)
+		case cur == string(QueueLanded):
+			// The holder that landed c1, at the epoch it still holds, offers a different commit
+			// after the card went back into the build stage: new work. Refusing it would leave the
+			// card no way to the trunk at all. It goes through the queue like any other and
+			// takes the row, so the landing that is already in the trunk stays on record as
+			// a note, and the card cannot finish on it any more, since this commit is now its
+			// newest work.
+			text := fmt.Sprintf("card %s: candidate %s had landed at card epoch %d; queued again as new work %s", cardID, oldSHA.String, oldEpoch, candidateSHA)
+			if _, err := tx.ExecContext(ctx, `INSERT INTO notes(kind,card_id,text,at) VALUES('decision',?,?,`+nowSQL+`)`, cardID, text); err != nil {
+				return fmt.Errorf("ledger: %w", err)
+			}
 		case cur == string(QueueLanding):
 			// A lander may be working under the merge lock; its row is settled, not replaced.
 			return fmt.Errorf("%w: %s is landing (card epoch %d); the merge lock holder settles it first", ErrInvalid, cardID, oldEpoch)
