@@ -54,7 +54,10 @@ func TestQueueUpdate_RowOfACardOutsideMergingCannotAdvance(t *testing.T) {
 			t.Errorf("landing for a card at REVIEWING: %v", err)
 		}
 	})
-	t.Run("landed", func(t *testing.T) {
+	// landed is guarded when the row is not yet landing: a row that is only verifying cannot jump
+	// there (not an edge). Once a row IS landing the trunk may have moved, so landed after the
+	// card backed out is allowed and noted (TestQueueUpdate_LandedForAnAlreadyLanding...).
+	t.Run("landed from verifying", func(t *testing.T) {
 		s := openTemp(t)
 		c := gated(t, s, "a", "c1")
 		if err := s.Enqueue(bg, "a", c.Epoch, "c1"); err != nil {
@@ -64,17 +67,12 @@ func TestQueueUpdate_RowOfACardOutsideMergingCannotAdvance(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		for _, st := range []struct {
-			ep    QueueEpoch
-			state QueueState
-		}{{CardEpoch(c.Epoch, "c1"), QueueVerifying}, {LockEpoch(lock, "c1"), QueueLanding}} {
-			if err := s.QueueUpdate(bg, "a", st.ep, st.state, "t0", ""); err != nil {
-				t.Fatal(err)
-			}
+		if err := s.QueueUpdate(bg, "a", CardEpoch(c.Epoch, "c1"), QueueVerifying, "", ""); err != nil {
+			t.Fatal(err)
 		}
 		backOut(t, s, c.Epoch)
 		if err := s.QueueUpdate(bg, "a", LockEpoch(lock, "c1"), QueueLanded, "", ""); !errors.Is(err, ErrStaleEpoch) {
-			t.Errorf("landed for a card at REVIEWING: %v", err)
+			t.Errorf("landed for a verifying row of a card at REVIEWING: %v", err)
 		}
 	})
 }

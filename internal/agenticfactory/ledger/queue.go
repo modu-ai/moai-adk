@@ -259,12 +259,15 @@ func (s *Store) QueueUpdate(ctx context.Context, cardID string, presented QueueE
 		// Taking a row into verifying, landing or landed offers the card's work to the trunk, so
 		// the card must still be in MERGING at the row's epoch. Failing a row and the reconcile
 		// back to waiting only end an attempt, and the settlement of an older landing row is the
-		// exception above; none of those is guarded.
-		if !settlesOlder && (state == QueueVerifying || state == QueueLanding || state == QueueLanded) {
-			var stage string
-			if err := tx.QueryRowContext(ctx, `SELECT stage FROM cards WHERE id=?`, cardID).Scan(&stage); err != nil {
-				return fmt.Errorf("ledger: %w", err)
-			}
+		// exception above; none of those is guarded. Landed for a row that is ALREADY landing is
+		// the one other exception: the trunk may have moved under the lock, so the lock holder
+		// can still say so after the card backed out, and the mismatch is noted below.
+		var stage string
+		if err := tx.QueryRowContext(ctx, `SELECT stage FROM cards WHERE id=?`, cardID).Scan(&stage); err != nil {
+			return fmt.Errorf("ledger: %w", err)
+		}
+		landedAfterLanding := state == QueueLanded && curState == QueueLanding
+		if !settlesOlder && !landedAfterLanding && (state == QueueVerifying || state == QueueLanding || state == QueueLanded) {
 			if stage != string(core.StageMerging) {
 				return fmt.Errorf("%w: %s for %s at epoch %d needs the card in MERGING, but it is at %s", ErrStaleEpoch, state, cardID, rowEpoch, stage)
 			}
@@ -299,6 +302,12 @@ func (s *Store) QueueUpdate(ctx context.Context, cardID string, presented QueueE
 			if state == QueueFailed {
 				text += ": " + failReason
 			}
+			if _, err := tx.ExecContext(ctx, `INSERT INTO notes(kind,card_id,text,at) VALUES('decision',?,?,`+nowSQL+`)`, cardID, text); err != nil {
+				return fmt.Errorf("ledger: %w", err)
+			}
+		}
+		if landedAfterLanding && !settlesOlder && stage != string(core.StageMerging) {
+			text := fmt.Sprintf("card %s: row of card epoch %d landed while the card was at %s, not MERGING; the trunk had moved under the lock, so the row says what happened and the card is the holder's to reconcile", cardID, rowEpoch, stage)
 			if _, err := tx.ExecContext(ctx, `INSERT INTO notes(kind,card_id,text,at) VALUES('decision',?,?,`+nowSQL+`)`, cardID, text); err != nil {
 				return fmt.Errorf("ledger: %w", err)
 			}

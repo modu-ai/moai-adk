@@ -293,11 +293,3 @@ type Store struct {
 var _ Reader = (*Store)(nil)
 
 // The Reader methods are Cards and Leases (cards.go), Queue (queue.go) and Notes (notes.go).
-
-// ReapLocks expires the locks whose holder alive judges Dead and touches nothing else: no
-// card lease is reclaimed and no note is written, so a caller that only needs a free merge
-// lock (the landing and its reconcile) does not take other cards' work back. alive is
-// required (a nil one is ErrInvalid) and is called before the write transaction opens.
-func (s *Store) ReapLocks(ctx context.Context, alive func(pid int, start string) Liveness) error {
-	return ErrNotImplemented
-}
