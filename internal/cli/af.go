@@ -13,6 +13,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/ledger"
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/mergeq"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/monitor/flow"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/hook"
@@ -64,6 +65,34 @@ func afRun(db string, fn func(ctx context.Context, st *ledger.Store) error) erro
 	}
 	defer func() { _ = st.Close() }()
 	return fn(ctx, st)
+}
+
+// afCheckCommit refuses a commit name that is not the complete lowercase hex SHA (40, or 64 for SHA-256) of a commit
+// that exists in the repository: an abbreviation, HEAD or a branch name can name another commit tomorrow, so
+// evidence or a queue entry bound to one is not bound to anything, and a value that starts with '-' reads as an
+// option to git. The repository is --repo, else the worktree of the card's lease, else the project directory.
+func afCheckCommit(ctx context.Context, st *ledger.Store, card, repoFlag, sha, what string) error {
+	if !mergeq.IsCompleteSHA(sha) {
+		return fmt.Errorf("af: %s %q is not a complete lowercase hex commit SHA (40 or 64 characters)", what, sha)
+	}
+	repo := repoFlag
+	if repo == "" {
+		if leases, err := st.Leases(ctx); err == nil {
+			for _, l := range leases {
+				if l.CardID == card && l.Worktree != "" {
+					repo = l.Worktree
+					break
+				}
+			}
+		}
+	}
+	if repo == "" {
+		repo = resolveProjectDir()
+	}
+	if got, err := (mergeq.GitCLI{Repo: repo}).RevParse(ctx, sha); err != nil || got != sha {
+		return fmt.Errorf("af: %s %s names no commit in %s", what, sha, repo)
+	}
+	return nil
 }
 
 func afPrint(cmd *cobra.Command, v any) error {
@@ -188,12 +217,16 @@ the separate "evidence" verb.`,
 func newAFEvidenceCmd() *cobra.Command {
 	var f afFlags
 	var ev ledger.Evidence
+	var repo string
 	cmd := &cobra.Command{
 		Use:   "evidence <card>",
 		Short: "Record evidence (red, green, gate, review, merge) bound to a commit",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return afRun(f.db, func(ctx context.Context, st *ledger.Store) error {
+				if err := afCheckCommit(ctx, st, args[0], repo, ev.SubjectSHA, "--subject-sha"); err != nil {
+					return err
+				}
 				if err := st.AddEvidence(ctx, args[0], f.epoch, ev); err != nil {
 					return err
 				}
@@ -203,7 +236,8 @@ func newAFEvidenceCmd() *cobra.Command {
 	}
 	f.bind(cmd, true)
 	cmd.Flags().StringVar(&ev.Kind, "kind", "", "red, green, gate, review or merge")
-	cmd.Flags().StringVar(&ev.SubjectSHA, "subject-sha", "", "the commit SHA that was measured")
+	cmd.Flags().StringVar(&ev.SubjectSHA, "subject-sha", "", "the complete lowercase hex SHA (40 or 64 characters) of the commit that was measured; it must exist in the repository")
+	cmd.Flags().StringVar(&repo, "repo", "", "the git repository the commit is looked up in (default: the card's lease worktree, else the project directory)")
 	cmd.Flags().StringVar(&ev.TreeSHA, "tree-sha", "", "the tree SHA (informational)")
 	cmd.Flags().StringVar(&ev.BaseSHA, "base-sha", "", "the base commit SHA")
 	cmd.Flags().StringVar(&ev.Command, "command", "", "the command that was run")
@@ -217,13 +251,16 @@ func newAFEvidenceCmd() *cobra.Command {
 
 func newAFEnqueueCmd() *cobra.Command {
 	var f afFlags
-	var candidate string
+	var candidate, repo string
 	cmd := &cobra.Command{
 		Use:   "enqueue <card>",
 		Short: "Put the card's candidate commit on the merge queue",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return afRun(f.db, func(ctx context.Context, st *ledger.Store) error {
+				if err := afCheckCommit(ctx, st, args[0], repo, candidate, "--candidate"); err != nil {
+					return err
+				}
 				if err := st.Enqueue(ctx, args[0], f.epoch, candidate); err != nil {
 					return err
 				}
@@ -232,7 +269,8 @@ func newAFEnqueueCmd() *cobra.Command {
 		},
 	}
 	f.bind(cmd, true)
-	cmd.Flags().StringVar(&candidate, "candidate", "", "the commit SHA the gates passed for")
+	cmd.Flags().StringVar(&candidate, "candidate", "", "the complete lowercase hex SHA (40 or 64 characters) of the commit the gates passed for; it must exist in the repository")
+	cmd.Flags().StringVar(&repo, "repo", "", "the git repository the commit is looked up in (default: the card's lease worktree, else the project directory)")
 	_ = cmd.MarkFlagRequired("candidate")
 	return cmd
 }
