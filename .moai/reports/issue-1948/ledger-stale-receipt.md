@@ -51,3 +51,47 @@ All commands ran in this run in this worktree (`WT-agentic-factory-core-claim-ru
 - Rolling back to a binary that knows only schema 1 now fails to open a ledger written by this code (`the file has schema 2, this code knows 1`). The deploy of this build to a ledger that already exists is a one-way step.
 - The migration orders old evidence against old moves by the database's millisecond timestamps, and counts same-millisecond evidence as before the move (withholds DONE). A pre-migration card moved back and re-measured within one millisecond would need one more measurement; no such card is expected.
 - A holder that moves back, re-measures c1 and finishes is accepted by decision (c); the ledger cannot tell a real rework that changed nothing from none at all.
+
+---
+
+# Rework 2: a failing newest re-measurement of the landed commit (issue-1948)
+
+Start HEAD `8acfe434ad`. RED `d3a1b6cfd2`, GREEN `9ab1303b30`. Local only, nothing pushed. Scope: `internal/agenticfactory/ledger/**` (`core/**` not touched). Files: `internal/agenticfactory/ledger/queue.go` (`landingStands`), new `internal/agenticfactory/ledger/rework_newest_run_test.go`. No schema change.
+
+## Claim
+1. **Reproduced: yes.** After landing, REVIEWING and BUILDING/IMPLEMENT, c1 measured again in the orders green pass then green fail, gate pass then gate fail, green pass then gate fail, gate pass then green fail (and green fail then gate pass, gate fail then green pass) finished with `<nil>`.
+2. **Root cause (confirmed in code, not assumed).** `landingStands` ended in `SELECT count(*) ... AND result=? (pass) AND subject_sha=? AND id>? ; return n > 0`. It counted passing green or gate runs of the landed commit above the move-back mark and never looked at a run that came after the passing one, so one earlier pass outvoted any later failure. `reworkMark`, `evidence_mark` and the persistence were correct; only the final predicate was wrong.
+3. **Rule chosen: per kind.** For the landed commit, among runs recorded after the move back, the newest run of each kind (green, gate) decides; at least one kind must have a passing newest run and none may have a failing one. Why per kind and not "the newest of all": it is the ledger's existing "what counts". `factsTx` takes the newest green for the receipt and the newest gate for the commit for receipt-accepted, and `Enqueue` uses `latestResult` per kind, so one kind's pass has never covered for the other kind's failure. Consequences: a failing run followed by a passing run of the same kind finishes; green fail followed by gate pass, and gate fail followed by green pass, are refused (the failed kind has no later pass; the holder re-runs it); a gate alone (no green after the move back) still finishes, as `TestMove_DoneStillWorksForACardWithOnlyAGateOnItsCandidate` requires.
+4. **Same verdict on every path and across restart.** Table `TestMove_DoneRefusedWhenTheNewestRemeasurementOfTheLandedCommitFailed`: 12 evidence orders x 3 paths (straight from BUILDING; runs, then the hand-off, then REVIEWING; hand-off on the old receipt, then the runs in REVIEWING) x {same process, after `Close`+`Open`} = 72 subtests. The verdict is a function of rows of the ledger file only (`evidence`, `transitions.evidence_mark`).
+5. **Kept:** same commit measured again and passing finishes; evidence before the move back, a gate on another commit, a failing run alone and a review of c1 do not count; `Enqueue` and schema 2 untouched.
+
+## Evidence
+- RED at `d3a1b6cfd2` (test file only, pre-fix tree), `go test -count=1 -v -run '^TestMove_DoneRefusedWhenTheNewestRemeasurementOfTheLandedCommitFailed$' ./internal/agenticfactory/ledger` (file): exit 1, 24 subtests `--- FAIL` (6 refused orders x 2 paths x 2 restart modes), 48 `--- PASS`; failure text: `rework_newest_run_test.go:111: DONE although the newest re-measurement of c1 failed (handed off=false): <nil>` for `green pass, then green fail`, `gate pass, then gate fail`, `green pass, then gate fail`, `gate pass, then green fail`, `green fail, then gate pass`, `gate fail, then green pass`. The third path (hand-off first) already passed on the old code: with a failing newest green or gate in REVIEWING the receipt facts are missing, so DONE was already refused there; it stays in the table as a guard.
+- GREEN at `9ab1303b30`: same command, tail `PASS` / `ok  	github.com/modu-ai/moai-adk/internal/agenticfactory/ledger	0.946s`, 0 `--- FAIL`.
+- Keep-green, one anchored `-run '^(...)$' -v` (15 test functions): every one `--- PASS`, among them `TestMove_DoneRefusedForALandedCardBackInBuilding`, `TestMove_DoneNeedsTheLandedCandidateToBeTheNewestWork`, `TestMove_DoneStillWorksForACardWithOnlyAGateOnItsCandidate`, `TestMove_DoneNeedsWorkRecordedAfterTheMoveBack`, `TestOpen_MigratesALedgerWrittenBeforeEvidenceMarks`, `TestEnqueue_NeverReplacesALandedRow`, `TestQueueUpdate_LockHolderSettlesAnOlderLandingRow`; final `ok  	.../ledger	0.398s`.
+- Mutation: in `landingStands`, `if res != ResultPass {` changed to `if false && res != ResultPass {`; the same RED test: exit 1, 29 `--- FAIL` lines, `FAIL	github.com/modu-ai/moai-adk/internal/agenticfactory/ledger`. Restored by hand; `git status --short` afterwards listed only `18-progress.md`; the green runs below are after the restore.
+- `go test -race -count=1 -cover ./internal/agenticfactory/ledger/... ./internal/agenticfactory/core/...` (file, exit 0):
+```
+ok  	github.com/modu-ai/moai-adk/internal/agenticfactory/ledger	11.530s	coverage: 85.2% of statements
+ok  	github.com/modu-ai/moai-adk/internal/agenticfactory/ledger/importer	1.562s	coverage: 89.6% of statements
+ok  	github.com/modu-ai/moai-adk/internal/agenticfactory/core	34.953s	coverage: 96.1% of statements
+```
+- `go test -p 4 -count=1 ./internal/agenticfactory/...` (file, exit 0, no error line): 21 packages `ok`, tail `ok  	.../mergeq	19.445s`, `ok  	.../review	0.284s`, `ok  	.../runner	11.213s`.
+- `golangci-lint run ./internal/agenticfactory/ledger/... ./internal/agenticfactory/core/... ./internal/agenticfactory/mergeq/...` -> `0 issues.`; `gofmt -l internal/agenticfactory` -> no output.
+- Audit repro (file copied temporarily into `internal/agenticfactory/mergeq/zz_audit_a1ec_test.go`, run, deleted, never staged): `go test -count=1 -v -run '^TestA1Done_' ./internal/agenticfactory/mergeq` -> `--- PASS` for `WithdrawnLanded_Direct`, `...NewCommitNeverLands`, `...ThroughBuilding`, `LandedThenMovedBack_NoWindow`, `Controls` (waiting, failed, landing); `--- FAIL: TestA1Done_WithdrawnLanded_ReclaimedStrands` (N3). `go test -count=1 -v -run '^TestLand_RealLedger_' ./internal/agenticfactory/mergeq`: 12 `--- PASS`, 0 FAIL.
+- **N3 unchanged:** same output as in the first section: `enqueue: ledger: invalid argument: t1 has landed`, `REVIEWING -> DONE: ... accepted-receipt-finished needs merged, closed, settled`, `FINDING: work in the trunk, row landed, card REVIEWING: no path to DONE at the new epoch`.
+
+## Baseline-attribution
+All commands ran in this run, in worktree `WT-agentic-factory-core-claim-runner`, RED against `8acfe434ad` plus the new test file, GREEN/verification against `9ab1303b30`. `go`, `golangci-lint`, `gofmt` are the installed toolchain, not builds from this tree. The coverage figure 85.2% for ledger equals the previous report (the new branch is covered by the table).
+
+## Gaps
+- The `verify` pre-commit skill was not run before the GREEN commit; the verification above is the one the task prescribed (no full `./internal/cli` run, no independent audit).
+- The audit repro file is not in this worktree (`.moai/reports/issue-1948/final-code-audit-a1ec370195/repro/` does not exist here); it was copied from the primary checkout's copy at the same relative path under `/Users/goos/MoAI/moai-adk-go/.moai/reports/`, read-only, and the scratch copy was deleted.
+- Two refusals/oddities handled without retry of the refused form: a compound command (`go test ...; echo exit=$?`) was refused by the worktree guard ("too complex to verify"), rerun as a plain command with the output redirected to a scratchpad file and the exit read from the tool result; the first two RED runs carried `-o /dev/null` (they ran and printed the failures); the evidence quoted above is from the later runs without that flag.
+- No test of a ledger migrated from schema 1 for this change: no schema change was made, and `TestOpen_MigratesALedgerWrittenBeforeEvidenceMarks` stays green.
+- Evidence rows are matched by commit and kind only, as before; the epoch of the evidence is not part of the rule (not changed).
+
+## Residual-risk
+- **Stricter than "any pass after the move back" for the cross-kind orders.** A holder who fails green and then passes only the gate cannot finish until green passes again. The alternative reading ("the newest run of all kinds") would allow it; I took the per-kind reading because it is what `factsTx` and `Enqueue` already do. If the leader wants the other reading, only the `rows` loop in `landingStands` and the two cross-kind rows of the table change.
+- **N3 unchanged** (see Evidence); a reclaimed card that also went through BUILDING is still stranded.
+- The rule judges the newest run per kind by `evidence.id`; two writers racing on the same ledger are ordered by the database's id sequence, which is the order the ledger itself treats as "newest" everywhere else.
