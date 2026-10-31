@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
 	"github.com/modu-ai/moai-adk/internal/gitenv"
 )
 
@@ -99,17 +100,29 @@ func NewTailWriter(max int) *TailWriter { return &TailWriter{max: max, span: -1}
 // case flag and no capture group, so a caller wraps it as it needs.
 const SecretMarkerPattern = `\b[a-z0-9_]*(?:token|secret|pass(?:phrase|w(?:or)?d)|api[_-]?key|credential|cookie|key)[a-z0-9_]*[ \t]*[:=]`
 
-// tailCarry is how many raw bytes of the line being written the watch keeps between writes, so a marker (or the
-// escape sequence or control character inside it) that two writes split is still seen whole. It is a ceiling: a
-// marker whose raw form is longer than this is not recognised.
-const tailCarry = 512
+// tailCarry is how many NORMALISED bytes (escape sequences and control characters already removed) of the line being
+// written the watch keeps between writes, so a marker that two writes split is still seen whole. It is a ceiling: a
+// marker whose visible text spans more than this is not recognised. Controls cost nothing against it. A control
+// sequence that a write ends in the middle of is held back raw, up to tailPending bytes, until it completes.
+const (
+	tailCarry   = 512
+	tailPending = 256
+)
+
+// tailSentinel stands for the value that follows a marker at the end of the text seen so far. It carries a closing
+// quote and an @ so that the rules which need an end to their value (a JSON string, a URL credential) fire on it.
+const tailSentinel = `ZqZqZqZq"@x`
 
 var (
-	// tailMarker finds what introduces a secret value: a secret-named field, an Authorization header, a PEM
-	// private-key header, the user part of a URL credential. A bare `Bearer <token>` with no header is not watched.
-	tailMarker = regexp.MustCompile(`(?i)` + SecretMarkerPattern + `|authorization[ \t]*:|-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----|https?://[^/\s:@]+:`)
+	// tailCandidate is a cheap necessary condition for any credential rule of core.Redact to match: a secret word
+	// followed by a separator (a field, a header, a JSON key), a bearer scheme word, a PEM header, the user part of a
+	// URL credential, or a self-describing token prefix. Text it rejects cannot hold a marker, so the sanitizer (about
+	// 1 MB/s) is not run on it: the common case of a long run of output is not slowed down. Every credential rule
+	// in core.Redact must be represented here; the parity table in internal/cli keeps this honest.
+	tailCandidate = regexp.MustCompile(`(?i)(?:token|secret|pass|key|credential|cookie|authorization)[a-z0-9_-]*["']?\s*[:=]|bearer\s|-----BEGIN|https?://[^/\s:@]+:|gh[pousr]_|github_pat_|sk-|akia|asia`)
 	// tailMarkerEnd is a marker that ends its line, so the value is on the next one.
 	tailMarkerEnd = regexp.MustCompile(`(?i)(?:` + SecretMarkerPattern + `|authorization[ \t]*:(?:[ \t]*(?:bearer|basic|token))?)[ \t]*$`)
+	tailCSIDone   = regexp.MustCompile(`^\x1b\[[0-?]*[ -/]*[@-~]`)
 	// tailEscapes finds the sequences a terminal acts on: CSI (ESC [ ... final byte, or the single-byte C1 form),
 	// OSC (ESC ] ... BEL or ESC \) and the remaining two-byte escapes.
 	tailEscapes = regexp.MustCompile(`\x1b\[[0-?]*[ -/]*[@-~]|\x{9b}[0-?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)?|\x1b[@-_]`)
@@ -133,6 +146,87 @@ func StripControls(s string) string {
 	}, tailEscapes.ReplaceAllString(s, ""))
 }
 
+// Literal gates in front of tailCandidate, which is an order of magnitude slower than a substring search: text with
+// none of the self-describing words, and none of the secret words together with a separator, is rejected by them.
+var (
+	tailSelfDescribing = []string{"bearer", "-----begin", "://", "ghp_", "gho_", "ghu_", "ghs_", "ghr_", "github_pat_", "sk-", "akia", "asia"}
+	tailSecretWords    = []string{"token", "secret", "pass", "key", "credential", "cookie", "authorization"}
+)
+
+// tailMayHoldSecret is the necessary condition for holdsSecretMarker to find anything.
+func tailMayHoldSecret(text string) bool {
+	lower := strings.ToLower(text)
+	has := func(words []string) bool {
+		for _, s := range words {
+			if strings.Contains(lower, s) {
+				return true
+			}
+		}
+		return false
+	}
+	if !has(tailSelfDescribing) && !(strings.ContainsAny(lower, ":=") && has(tailSecretWords)) {
+		return false
+	}
+	return tailCandidate.MatchString(text)
+}
+
+// holdsSecretMarker says whether core's own sanitizer treats text as holding a credential, or as ending where one
+// begins (the sentinel value then stands in for what the next write brings). The marker rules are core.Redact's, not
+// a copy of them: a rule added there is followed here as soon as its keyword is in tailKeywords. pem says that it
+// is a private-key block, which runs on over lines until its END line.
+func holdsSecretMarker(text string) (marked, pem bool) {
+	if !tailMayHoldSecret(text) {
+		return false, false
+	}
+	for _, probe := range [2]string{text, text + tailSentinel} {
+		_, cats := core.Sanitize(probe)
+		for _, c := range cats {
+			switch c {
+			case core.CategoryPrivateKey:
+				marked, pem = true, true
+			case core.CategoryToken, core.CategoryAuthorization, core.CategoryCookie, core.CategoryURLCredential, core.CategoryCredentialAssignment:
+				marked = true
+			}
+		}
+		if marked {
+			return marked, pem
+		}
+	}
+	return false, false
+}
+
+// endsWithMarker says whether the last line of text ends in a marker whose value is on the next line.
+func endsWithMarker(text string) bool {
+	if tailMarkerEnd.MatchString(text) {
+		return true
+	}
+	// a value can wait on the next line only after a separator or a bare scheme word; nothing else needs the sanitizer
+	if t := strings.TrimRight(text, " \t\r"); t == "" || !strings.ContainsAny(t[len(t)-1:], ":=\"") && !strings.HasSuffix(strings.ToLower(t), "bearer") {
+		return false
+	}
+	out, _ := core.Sanitize(text + "\n" + tailSentinel)
+	return !strings.Contains(out, "ZqZqZqZq")
+}
+
+// incompleteEscape is where an escape sequence that raw ends in the middle of starts, or len(raw) when it ends on a
+// whole one: the held-back part is joined to the next write, so a sequence two writes split is stripped whole.
+func incompleteEscape(raw []byte) int {
+	i := bytes.LastIndexByte(raw, 0x1b)
+	if i < 0 || len(raw)-i > tailPending {
+		return len(raw)
+	}
+	s := raw[i:]
+	switch {
+	case len(s) == 1:
+		return i
+	case s[1] == '[' && !tailCSIDone.Match(s):
+		return i
+	case s[1] == ']' && !bytes.Contains(s[2:], []byte{0x07}) && !bytes.Contains(s[2:], []byte{0x1b, '\\'}):
+		return i
+	}
+	return len(raw)
+}
+
 // markSpan is a region of the stream (absolute offsets) whose text a secret marker introduces: the line that holds
 // the marker, extended over the next line when the marker ends its line. end < 0 while the span is still open.
 type markSpan struct{ start, end int64 }
@@ -147,16 +241,23 @@ type TailWriter struct {
 
 	total     int64      // bytes written so far
 	lineStart int64      // absolute offset of the line being written
-	carry     []byte     // the last tailCarry raw bytes of that line
+	carry     []byte     // the last tailCarry normalised bytes of that line
+	pend      []byte     // raw bytes of an escape sequence a write ended in the middle of
 	curMarked bool       // that line holds a marker
+	content   bool       // that line has a character that is not whitespace
 	spans     []markSpan // marker spans not yet wholly behind the kept window
 	span      int        // index of the open span, or -1
-	chain     bool       // the open span continues over the next line (a marker ended this one)
+	chain     bool       // the open span continues over the next content line (a marker ended this one)
+	pem       bool       // the open span is a private-key block: it runs until a line with its END
 }
 
 // watch feeds the writer's secret-marker bookkeeping with p, which has not been stored yet.
 func (w *TailWriter) watch(p []byte) {
 	base := w.total
+	if w.skippable(p) {
+		w.total += int64(len(p))
+		return
+	}
 	for off := 0; off < len(p); {
 		end, nl := len(p), false
 		if i := bytes.IndexByte(p[off:], '\n'); i >= 0 {
@@ -171,32 +272,72 @@ func (w *TailWriter) watch(p []byte) {
 	w.total += int64(len(p))
 }
 
+// skippable handles a write that cannot change any marker state, without looking at it line by line: no span is open,
+// no marker is pending on the line being written, and core's sanitizer sees no credential in the carry plus the
+// write (nor one that would start at its end). Only the position and the carry are brought up to date. It reports
+// whether it did so.
+func (w *TailWriter) skippable(p []byte) bool {
+	if w.curMarked || w.chain || w.pem || w.span >= 0 || len(w.pend) > 0 || incompleteEscape(p) != len(p) {
+		return false
+	}
+	text := string(w.carry) + StripControls(string(p))
+	if marked, _ := holdsSecretMarker(text); marked {
+		return false
+	}
+	if i := strings.LastIndexByte(text, '\n'); i >= 0 {
+		w.lineStart = w.total + int64(bytes.LastIndexByte(p, '\n')) + 1
+		text, w.content = text[i+1:], false
+	}
+	w.content = w.content || strings.TrimSpace(text) != ""
+	w.carry = append(w.carry[:0], text[max(0, len(text)-tailCarry):]...)
+	return true
+}
+
 // line takes one piece of the current line; nl says that a newline follows it, at absolute offset nlAt.
 func (w *TailWriter) line(seg []byte, nl bool, nlAt int64) {
-	raw := append(append(make([]byte, 0, len(w.carry)+len(seg)), w.carry...), seg...)
-	// Every marker holds ':', '=' or the dashes of a PEM header (or an ESC/control split of them, which the carry and
-	// StripControls bring back together), so text with none of those needs no regular expression: the common
-	// case of a long run of output is not slowed down.
-	if !w.curMarked && bytes.ContainsAny(raw, ":=-") && tailMarker.MatchString(StripControls(string(raw))) {
-		w.curMarked = true
-		if w.span < 0 {
-			w.spans = append(w.spans, markSpan{start: w.lineStart, end: -1})
-			w.span = len(w.spans) - 1
+	raw := seg
+	if len(w.pend) > 0 {
+		raw = append(append(make([]byte, 0, len(w.pend)+len(seg)), w.pend...), seg...)
+	}
+	cut := len(raw)
+	if !nl {
+		cut = incompleteEscape(raw)
+	}
+	w.pend = append(w.pend[:0], raw[cut:]...)
+	piece := StripControls(string(raw[:cut]))
+	if !w.content && strings.TrimSpace(piece) != "" {
+		w.content = true
+	}
+	text := string(w.carry) + piece
+	if !w.curMarked {
+		if marked, pem := holdsSecretMarker(text); marked {
+			w.curMarked = true
+			if w.span < 0 {
+				w.spans = append(w.spans, markSpan{start: w.lineStart, end: -1})
+				w.span = len(w.spans) - 1
+			}
+			w.pem = w.pem || pem
 		}
 	}
 	if !nl {
-		w.carry = append(w.carry[:0], raw[max(0, len(raw)-tailCarry):]...)
+		w.carry = append(w.carry[:0], text[max(0, len(text)-tailCarry):]...)
 		return
 	}
-	endsMarker := tailMarkerEnd.MatchString(StripControls(string(raw[max(0, len(raw)-2*tailCarry):])))
+	ends := (w.curMarked || w.chain) && endsWithMarker(text[max(0, len(text)-2*tailCarry):])
+	closeSpan := func() { w.spans[w.span].end, w.span, w.chain, w.pem = nlAt+1, -1, false, false }
 	switch {
-	case w.chain && endsMarker: // the value line is itself introducing another value: stay open
-	case w.chain || (w.curMarked && !endsMarker):
-		w.spans[w.span].end, w.span, w.chain = nlAt+1, -1, false
-	case w.curMarked: // the marker ends the line: the next line is its value
+	case w.pem: // inside a private-key block: it runs until its END line
+		if strings.Contains(text, "-----END") {
+			closeSpan()
+		}
+	case w.chain && !w.content: // a blank line between a marker and its value
+	case w.chain && ends: // the value line is itself introducing another value: stay open
+	case w.chain || (w.curMarked && !ends):
+		closeSpan()
+	case w.curMarked: // the marker ends the line: the next content line is its value
 		w.chain = true
 	}
-	w.lineStart, w.curMarked, w.carry = nlAt+1, false, w.carry[:0]
+	w.lineStart, w.curMarked, w.content, w.carry, w.pend = nlAt+1, false, false, w.carry[:0], w.pend[:0]
 }
 
 // MaskedPrefix is how many leading bytes of Bytes() belong to a line that a secret marker introduced and whose

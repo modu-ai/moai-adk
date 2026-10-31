@@ -85,6 +85,12 @@ func TestTailWriter_NineMegabytesStayWithinTheLimit(t *testing.T) {
 	}
 }
 
+// The PEM lines are assembled so that no whole header sits in this source file.
+const (
+	pemBegin = "-----BEGIN " + "RSA PRIVATE" + " KEY-----"
+	pemEnd   = "-----END " + "RSA PRIVATE" + " KEY-----"
+)
+
 // MaskedPrefix says how many leading kept bytes are a secret value whose marker the window no longer holds.
 func TestTailWriter_MaskedPrefixCoversTheKeptPartOfAMarkedLine(t *testing.T) {
 	for _, tc := range []struct {
@@ -105,6 +111,16 @@ func TestTailWriter_MaskedPrefixCoversTheKeptPartOfAMarkedLine(t *testing.T) {
 		{"marker ends its line, value line starts the window", 16, []string{"password=\n", strings.Repeat("Q", 16)}, 16},
 		{"a line with no marker", 16, []string{"plain ", strings.Repeat("Q", 40)}, 0},
 		{"the line before the window was marked, this one is not", 16, []string{"password=x\n", "plain ", strings.Repeat("Q", 40)}, 0},
+		// round 2: the markers core.Redact knows beyond name=value
+		{"bearer credential", 16, []string{"Bearer ", strings.Repeat("Q", 40)}, 16},
+		{"service token prefix", 16, []string{"gh" + "p_", strings.Repeat("Q", 40)}, 16},
+		{"sk token prefix", 16, []string{"s" + "k-", strings.Repeat("Q", 40)}, 16},
+		{"JSON field, value closes in a later write", 16, []string{`{"password": "`, strings.Repeat("Q", 40), `"}`}, 16},
+		{"blank lines between the marker and its value", 16, []string{"password=\n\n \n", strings.Repeat("Q", 40)}, 16},
+		{"a content line is the only value", 16, []string{"password=\nthe value\n", strings.Repeat("Q", 40)}, 0},
+		{"escape sequence split between writes", 16, []string{"pass\x1b[3", "1mword=", strings.Repeat("Q", 40)}, 16},
+		{"private-key block with no END", 16, []string{pemBegin + "\n", strings.Repeat(strings.Repeat("Q", 15)+"\n", 6)}, 16},
+		{"private-key block ended, plain text after", 16, []string{pemBegin + "\n", "QQ\n", pemEnd + "\n", strings.Repeat("Q", 40)}, 0},
 	} {
 		w := NewTailWriter(tc.max)
 		for _, s := range tc.writes {
@@ -128,10 +144,20 @@ func TestTailWriter_WatchStateIsBounded(t *testing.T) {
 		t.Errorf("state grew: %d spans, %d carry bytes", len(w.spans), len(w.carry))
 	}
 	w = NewTailWriter(16)
-	for _, s := range []string{"pass", strings.Repeat("\a", tailCarry+88), "word=" + strings.Repeat("Q", 40)} {
+	// Round 2: controls are removed before they enter the carry, so a run of them costs nothing against it (the BEL
+	// run that round 1 documented as unseen is now seen). The ceiling is on visible text: a name and its separator
+	// more than tailCarry normalised bytes apart, in separate writes, are not joined.
+	for _, s := range []string{"password", strings.Repeat(" ", tailCarry+88), "=" + strings.Repeat("Q", 40)} {
 		_, _ = w.Write([]byte(s))
 	}
 	if w.MaskedPrefix() != 0 {
-		t.Errorf("a marker spread over more than %d raw bytes is documented as unseen", tailCarry)
+		t.Errorf("a marker whose visible text spans more than %d bytes is documented as unseen", tailCarry)
+	}
+	w = NewTailWriter(16)
+	for _, s := range []string{"pass", strings.Repeat("\a", 5*tailCarry), "word=" + strings.Repeat("Q", 40)} {
+		_, _ = w.Write([]byte(s))
+	}
+	if w.MaskedPrefix() == 0 {
+		t.Errorf("a run of control bytes inside a marker must cost nothing against the %d-byte carry", tailCarry)
 	}
 }
