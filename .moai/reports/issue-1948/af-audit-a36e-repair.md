@@ -686,3 +686,137 @@ Measured in this run on the tree at HEAD (the commit list below) and on `git arc
 - N56 treats two spellings as one repository by `os.SameFile` of the recorded identity and the computed one; a link left at the old place of a moved repository therefore also reads as the same repository for the other verbs (the move verb keeps its refusal and now names the link).
 - N71 is checked in the verb; `AddCard` in the ledger still accepts any id (the importer and the tests add ids through it).
 - N46 changes the migration only for the MERGING to REVIEWING move of a version 1 file; the neighbouring `TestOpen_ASameMillisecond*` tests stay green.
+
+## N55, the case "reap with nothing to reap" restored (operator ruling: a deleted test is not a resolution)
+
+Superseded in part: the paragraph "Change to a RED test" above (the case was deleted in `92c50018c1`) is kept as written; this section records what was found when the case was put back. The operator ruled that deleting a user test is not acceptable. Decision: **neither (a) nor (b) closes it. The restored case fails on HEAD, no existing test pins the same branch, and no minimal fix satisfies it without making five permanent tests fail. The case is restored and left failing; nothing was deleted, skipped or weakened, and no fix was committed.**
+
+### The deletion, before and after (`git diff 00577464b0 92c50018c1 -- internal/cli/af_residual_n55_test.go`)
+
+```diff
+ 		{"release of a card that does not exist", []string{"release", "nosuch", "--epoch", "1"}},
+ 		{"resume of a card that does not exist", []string{"resume", "nosuch", "--epoch", "1", "--guard", "reclaim-cap", "--reason", "x"}},
+-		{"reap with nothing to reap", []string{"reap"}},
++		// "reap with nothing to reap" is not a case: a verb that completes binds, and reap is the verb the identity tests and
++		// the N56, N69 and N70 tests use to bind a ledger (`reap --bind-repo`), so it binds by design.
+```
+
+Restored in `709d9fd9d4` (`test(af): N55 restore the reap-with-nothing-to-reap case RED`): `git diff 00577464b0 -- internal/cli/af_residual_n55_test.go` is empty, so the file is byte-identical to the RED of `00577464b0`.
+
+### The case's criterion and failure meaning (N55, audits 1c05083f71 and a36ea8c368)
+
+Criterion: a verb that is refused, or that writes nothing, does not bind the ledger to a repository. The case: `moai af reap --db O/.moai-af/reap.db` with `CLAUDE_PROJECT_DIR=O`, one READY card, nothing to reap, no `--bind-repo`; expected `bound == ""`. Failure meaning: the help says "the first verb that writes it binds", yet the verb bound before its own work (observed `bound=".../O/.git"`), and a binding is never undone, so a call that did nothing fixed the ledger to the repository it happened to run in.
+
+### Step 1, RED check on `1c8ee551e2` (verbatim, cut to the deciding lines)
+
+`go test -count=1 -v -run '^TestAFResidual_N55' ./internal/cli/`:
+
+```
+    af_residual_n55_test.go:32: [reap]: err=<nil> bound=".../TestAFResidual_N55.../001/O/.git" ({"reclaimed":[],"unknown_expired":[]}
+    af_residual_n55_test.go:34: the verb "reap" changed nothing and the ledger is bound to ".../O/.git" all the same
+--- FAIL: TestAFResidual_N55ARefusedVerbThatWroteNothingDoesNotBindTheLedger (0.26s)
+    --- PASS: .../release_of_a_card_that_does_not_exist
+    --- PASS: .../resume_of_a_card_that_does_not_exist
+    --- FAIL: .../reap_with_nothing_to_reap
+```
+
+### The observable difference between a plain `reap` that finds nothing and `reap --bind-repo <P>`
+
+Read in `internal/cli/af.go` (`afPrepareBinding`, `afCheckKnownRepositories`) and in the tests: `--bind-repo` is a declaration. It changes (1) what the first bind is compared with (a declared repository is the clue, N51 clone form, N70), and (2) whether a ledger that knows nothing (file in no repository, no lease worktree, no commit) may bind at all: without a declaration it is refused ("not bound yet ... --bind-repo"). On a ledger that does have a clue (the file sits in the project's repository, the default location, a lease worktree that is a repository) a plain `reap` and `reap --bind-repo P` write the same thing, which is nothing, and the ledger has the same clue; the only observable difference is the declaration.
+
+A fix that distinguishes them is easy: `afPendingBinding` gets `declared` (`place.bindRepo != ""`) and `wroteNothing`; `reap` calls `afWroteNothing(ctx)` when it reclaimed nothing; `afRun` skips the flush when `wroteNothing && !declared && !done`. The attempt (kept for the record; it is not committed) is this diff:
+
+```diff
+@@ afRun
+-	if err == nil {
++	if err == nil && !pending.skippable() {
+ 		err = pending.flush(ctx)
+ 	}
+@@
+ type afPendingBinding struct {
+-	finish func(context.Context) error
+-	done   bool
++	finish       func(context.Context) error
++	done         bool
++	declared     bool
++	wroteNothing bool
++}
++
++func (p *afPendingBinding) skippable() bool { return p.wroteNothing && !p.declared && !p.done }
++
++func afWroteNothing(ctx context.Context) {
++	if p, ok := ctx.Value(afPendingKey{}).(*afPendingBinding); ok {
++		p.wroteNothing = true
++	}
+ }
+@@ afPrepareBinding
+-		return &afPendingBinding{finish: bind}, nil
++		return &afPendingBinding{finish: bind, declared: place.bindRepo != ""}, nil
+@@ reap
+-				if got == nil {
++				if len(got) == 0 {
+ 					got = []ledger.Reclaimed{}
++					afWroteNothing(ctx)
+ 				}
+```
+
+plus, in `af_move_repository.go`, the unbound branch given the same "fresh ... --from" answer as `afStillThere` (needed to keep N64 green, see below).
+
+### Step 2a, does it contradict a requirement in another test: yes, five permanent tests
+
+With the attempt applied, the N55 test passes (`bound=""` for the reap case, all three subtests PASS), the families `TestAFResidual_|TestAFIdentity_|TestAFTransition_|TestAFLandingWindow_|TestAFHeartbeatFrom_` pass (55.131s) after the `af_move_repository.go` adjustment (before it, `TestAFIdentity_N64AFreshLedgerAtTheNewKeyIsNotCalledTheRepositoryThatDidNotMove` failed: `the refusal does not say "fresh"` and `... "--from"`), and the adjacent run `go test -count=1 -run '^(TestAFReap_|TestAFUnknownExpired_|TestAFUnknownHolder_|TestAFHolder_|TestAFCommand_|TestAFVerbs_|TestAFClaim_|TestAFMessage_)' ./internal/cli/` fails five permanent tests (verbatim):
+
+```
+--- FAIL: TestAFVerbs_N38FirstBindLedgerFileInsideAnotherRepositoryIsRefused
+    af_repo_n38_firstbind_test.go:294: bound "", want ".../001/.git"
+    af_repo_n38_firstbind_test.go:305: bound "" from the linked worktree, want ".../001/.git"
+--- FAIL: TestAFVerbs_N50TheDefaultLedgerLocationIsNoFileClue
+    af_repo_n50_test.go:65: bound "", want the project's git directory ".../002/.git"
+--- FAIL: TestAFVerbs_N51bRowsNameCommitsTheCallerDoesNotHave (evidence_rows_only, evidence_rows_and_a_queue_row)
+    af_repo_n51b_test.go:49: bound "", want ".../002/.git"
+--- FAIL: TestAFVerbs_N51cASymlinkedLedgerFileIsAskedWhereItReallyIs
+    af_repo_n51c_test.go:37: bound "", want ".../001/.git"
+--- FAIL: TestAFVerbs_N51ADeclarationIsNotAskedWhereAnythingElseSaysWhereTheLedgerBelongs (the_ledger_file_sits_in_the_repository, the_default_location)
+    af_repo_n51clone_test.go:90: bound "", want ".../001/.git"
+    af_repo_n51clone_test.go:109: bound "", want ".../001/.git"
+```
+
+The two requirements, named exactly:
+
+- R-A (restored N55 case, `af_residual_n55_test.go`, RED `00577464b0`): `moai af reap --db <ledger file inside the project's repository>`, project directory that repository, an empty-handed reap, no declaration: afterwards `bound == ""`.
+- R-B (permanent tests, all earlier than R-A, all from the same card): the same call shape, afterwards `bound == <the project's git directory>`. The sharpest pair: `TestAFVerbs_N51ADeclarationIsNotAskedWhereAnythingElseSaysWhereTheLedgerBelongs/the_ledger_file_sits_in_the_repository` (`af_repo_n51clone_test.go:83-92`: ledger at `repo/.moai/af/ledger.db`, `CLAUDE_PROJECT_DIR=repo`, `reap --db`, expects `bound == id`) and the restored case (ledger at `O/.moai-af/reap.db`, `CLAUDE_PROJECT_DIR=O`, `reap --db`, expects `bound == ""`). The inputs differ only in the file name of the ledger inside the same repository; nothing a verb can observe tells them apart. The other four use the same plain empty-handed `reap` as the verb that makes the first bind: `_N50...` (`af_repo_n50_test.go:55-65`, default location), `_N38FirstBind...` (`af_repo_n38_firstbind_test.go:290-306`), `_N51b...` (`af_repo_n51b_test.go:47-49`), `_N51c...` (`af_repo_n51c_test.go:33-37`), and the second subtest `the_default_location` of the N51 test above.
+- Commits at which R-B entered (test files added by the RED commits): `b5932a8bfb` (N38 first-bind), `f6674dc628` (N50), `220da0d4a9` (N51 b), `b3c9104ee1` (N51 c), `95e81a2e74` (N51 clone form, the pair above, including `the_ledger_file_sits_in_the_repository` and `the_default_location`). R-A entered at `00577464b0`, later than all five.
+
+The attempt satisfies R-A only by making R-B false; keeping R-B means R-A cannot hold for the plain verb. Neither requirement was changed. This is the contradiction `92c50018c1` hit, now with the five tests named (that commit's note named the identity group, N56, N69 and N70; N56, N69 and N70 in fact pass with the attempt, because they bind with `reap --bind-repo`, so the conflict is with the five above and not with those three).
+
+### Step 2b, is the same coverage already pinned
+
+Restored case run on HEAD: FAIL (above). The existing tests that touch the same branch (a plain empty-handed `reap` completing against an unbound ledger) pin the opposite outcome, `bound == <git directory>`, in the five tests above. No existing test pins `bound == ""` after a verb that completed without writing. So the coverage the case gives is not duplicated elsewhere, and the case cannot be left out with a proof; it is left restored and failing. This is a real gap in the sense of the brief: the requirement stands unmet and is recorded.
+
+### Mutation check
+
+Not applicable: no fix is kept. The attempt itself was the mutation in the other direction: applied, R-A passes and five R-B tests fail; reverted (`git checkout -- internal/cli/af.go internal/cli/af_move_repository.go`), the five pass and R-A fails (run on HEAD `709d9fd9d4`: `--- PASS` N38, N50, N51b, N51c, N51 clone with its four subtests; `--- FAIL ... /reap_with_nothing_to_reap`).
+
+### Old build vs final build (`AF_TEST_BIN` seam)
+
+Not run: the fix changed no committed behaviour, so the old and final builds are the same behaviour for this case (the seam would show FAIL on both).
+
+### What the operator can decide (no choice is made here)
+
+1. Keep R-B and treat R-A as satisfied by the other half of N55 (a refused verb binds nothing, already green), accepting that a completed empty-handed verb binds; the restored case then has to change, which the operator has ruled against.
+2. Keep R-A and change the five R-B tests to bind with `reap --bind-repo` (or a verb that writes); this edits five permanent tests and the first-bind contract of N50 and N51 (the default location "needs no declaration", `af_repo_n51clone_test.go:8-9`), so it lowers a stated requirement of those tests.
+3. Make the first bind an explicit act (a flag or verb that binds and nothing else) so that no empty-handed verb binds implicitly: a new interface, outside this item, and outside the brief ("no new verb").
+
+### Gaps
+
+- The worktree guard refused nothing in this run; every command was a plain single command (`git add`, `git commit`, `go test`, `go vet`, `gofmt`, `git diff`, `git checkout --`).
+- Not run, because no fix is kept: `go test -race ./internal/agenticfactory/...` (no agenticfactory file changed), `golangci-lint run`, `GOOS=windows|linux go vet`, and the old/final build comparison. `gofmt -l internal/cli/ internal/agenticfactory/` and `go vet ./internal/cli/ ./internal/agenticfactory/...` were run on the attempt (no output) and not repeated on HEAD, which differs from `1c8ee551e2` by the test file alone.
+- `/verify` before a commit was not run for the RED commit (tests only) and no source commit was made.
+- The adjacent run of `TestAFReap_|TestAFUnknownExpired_|TestAFUnknownHolder_|TestAFHolder_|TestAFCommand_|TestAFVerbs_|TestAFClaim_|TestAFMessage_` was made with the attempt applied, once; it is a subset of `./internal/cli/` and not the full package. `TestAFLand_|TestAFAdd_|TestAFReconcile_` were not run with the attempt.
+- The attempt diff exists only in this report: its scratch copy is machine-local.
+
+### Residual-risk
+
+- HEAD carries a failing test (`TestAFResidual_N55.../reap_with_nothing_to_reap`) by decision, until the operator rules; CI on any push of this branch fails on it.
+- The line "a verb that completes without writing (reap with nothing to reap) still binds, as the help now says" in the phase 2 Gaps stays true on HEAD.
+- Verbs other than `reap` that can complete without writing (a `claim` with nothing ready, a `reconcile` with nothing to do) were not examined for the same binding; the attempt covered `reap` only.
