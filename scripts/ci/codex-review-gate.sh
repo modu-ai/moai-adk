@@ -112,6 +112,11 @@ def app_ok:
 # Occurrences of a JSON key in raw marker text. jq keeps the LAST of two equal keys, so a duplicated key can
 # hide an earlier value; the adapter counts keys in the text and accepts only the exact single-use shape.
 def keyn($s; $k): [($s // "") | scan("\"" + $k + "\"\\s*:")] | length;
+# True when any KEY string of the raw marker text carries a backslash escape. A key written with an escape is
+# the same key to the JSON parser but not to the raw count above, so the adapter is not applied to such text.
+# String tokens are consumed whole, left to right, so a closing quote never starts a false token; a token
+# followed by a colon is a key. Escapes inside VALUES do not matter and are left alone.
+def escaped_key($s): [($s // "") | match("\"(?:[^\"\\\\]|\\\\.)*\"(\\s*:)?"; "g") | select(.captures[0].string != null) | .string | select(contains("\\"))] | length > 0;
 # Only trusted Codex issue comments are candidates; untrusted marker text is not parsed.
 ($issues | map(select(ident))) as $native
 | ($native | map(select((.body // "") | contains("<!-- codex-review-state:v1")))) as $states
@@ -151,6 +156,7 @@ def keyn($s; $k): [($s // "") | scan("\"" + $k + "\"\\s*:")] | length;
     and $state_occurrences == 1 and $security_occurrences == 1
     and ($state | type) == "object" and ($code | type) == "object" and ($security | type) == "object"
     and ($security_marker | type) == "object"
+    and (escaped_key($state_lines[0]) | not) and (escaped_key($security_lines[0]) | not)
     and keyn($state_lines[0]; "code_review") == 1 and keyn($state_lines[0]; "security_review") == 1
     and keyn($state_lines[0]; "has_any_findings") == 2 and keyn($state_lines[0]; "has_unresolved_findings") == 2
     and keyn($state_lines[0]; "commit_sha") == 2 and keyn($state_lines[0]; "status") == 2
