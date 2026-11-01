@@ -104,6 +104,14 @@ func afRun(f afFlags, fn func(ctx context.Context, st *ledger.Store) error) erro
 	return err
 }
 
+// afSameDirectory says that a and b are one directory on disk (os.SameFile), whatever the spelling. Anything that cannot be
+// looked at is not the same.
+func afSameDirectory(a, b string) bool {
+	fa, aerr := os.Stat(a)
+	fb, berr := os.Stat(b)
+	return aerr == nil && berr == nil && os.SameFile(fa, fb)
+}
+
 // afPendingBinding is the binding of a repository that waits for the first write of the verb that checked it.
 type afPendingBinding struct {
 	finish func(context.Context) error
@@ -153,6 +161,11 @@ func afPrepareBinding(ctx context.Context, st *ledger.Store, place afPlace, dir 
 			return nil, nil
 		}
 		return nil, fmt.Errorf("af: cannot tell which repository %q belongs to (%w); nothing was changed", dir, err)
+	}
+	// The identity is a string the ledger compares as written, and one directory can be spelled two ways that differ as
+	// strings (another case on a case-insensitive volume): the spelling already on record stands for it (N56).
+	if bound, rerr := st.Repository(ctx); rerr == nil && bound != "" && bound != id && afSameDirectory(bound, id) {
+		id = bound
 	}
 	bind := func(ctx context.Context) error {
 		if err := st.BindRepository(ctx, id); err != nil {
