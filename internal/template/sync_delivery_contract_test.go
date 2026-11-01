@@ -133,6 +133,24 @@ func TestSyncStopHookDescriptionMatchesTheHook(t *testing.T) {
 	}
 }
 
+// TestSyncGracefulExitFollowsMutationContract (S06): an abort after the Phase 13
+// commit leaves that commit behind, so the exit section may not promise "no
+// changes" unconditionally; it follows graceful-exit-mutation-contract.md.
+func TestSyncGracefulExitFollowsMutationContract(t *testing.T) {
+	t.Parallel()
+	doc := readTemplateDoc(t, ".claude/skills/moai/workflows/sync/delivery.md")
+
+	section := sectionBetween(t, doc, "## Graceful Exit", "## Completion Criteria")
+	if strings.Contains(section, "No changes made to documents, Git history, or branch state") {
+		t.Error("SYNC_EXIT_NO_CHANGES_UNCONDITIONAL: Graceful Exit still promises no changes whatever the abort point")
+	}
+	for _, required := range []string{"graceful-exit-mutation-contract", "before_tree_key", "after_tree_key", "partial changes remain"} {
+		if !strings.Contains(section, required) {
+			t.Errorf("SYNC_EXIT_CONTRACT_UNBOUND: Graceful Exit does not carry %q", required)
+		}
+	}
+}
+
 func TestSyncDocExecutionPreservesApprovedSpecBody(t *testing.T) {
 	t.Parallel()
 	doc := readTemplateDoc(t, ".claude/skills/moai/workflows/sync/doc-execution.md")

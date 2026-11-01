@@ -450,12 +450,12 @@ Where `workflow.autonomy.mode: contract` — no next-step question is asked; clo
 
 ## Graceful Exit
 
-When user aborts at any decision point:
+When the user aborts at any decision point, `.claude/rules/moai/workflow/graceful-exit-mutation-contract.md` governs what the report may say:
 
-- No changes made to documents, Git history, or branch state
-- Project remains in current state
-- Display retry command: /moai sync [mode]
-- Exit with code 0
+- Capture `before_tree_key` at sync entry and `after_tree_key` at the abort, and report the path-level mutation list
+- Say "no changes" only when the two keys are equal and the mutation list is empty. Otherwise report each applied operation and path, each unapplied operation, and whether a rollback was attempted and verified; report "partial changes remain" when the keys differ, even if a rollback was requested but not verified. An abort after the Step 3.1 commit leaves that commit in place by design (Step 3.1.5.4's Abort preserves it)
+- Display the abort reason, the current status, and the retry command: /moai sync [mode]
+- Exit with code 0 is a control-flow outcome and never downgrades a mutation into "no changes"
 
 ---
 
