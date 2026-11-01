@@ -82,6 +82,15 @@ func m6NewWorld(t *testing.T) *m6World {
 	if err := os.MkdirAll(repo, 0o755); err != nil {
 		t.Fatalf("mkdir repo: %v", err)
 	}
+	// The process-cwd probe shells out to lsof, which a Windows host does not
+	// have (and a minimal PATH may not carry): a failing probe makes every
+	// moai-made tree skip, so the tests that expect moves would fail on the
+	// host rather than on the code. Inject a probe that reports no active
+	// process.
+	origProbe := activeProcessCWDProbe
+	activeProcessCWDProbe = func() ([]string, error) { return nil, nil }
+	t.Cleanup(func() { activeProcessCWDProbe = origProbe })
+
 	m6Git(t, repo, "init", "-q", "--template=", "-b", "dev")
 	m6Git(t, repo, "config", "user.email", "m6@example.com")
 	m6Git(t, repo, "config", "user.name", "M6 Test")
