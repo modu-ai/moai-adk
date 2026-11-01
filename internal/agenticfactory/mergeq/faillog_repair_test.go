@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"sync"
@@ -116,6 +117,71 @@ func TestFailureLog_WritersOfTheSameKeyAllSucceedAndNeverMixTheirContent(t *test
 		if ln != lines[0] {
 			t.Fatalf("the log mixes the content of two writers: %q and %q", lines[0], ln)
 		}
+	}
+}
+
+// N30: the output of a git step that is not the merge (worktree add, update-ref, ...) was withheld from the error and
+// kept nowhere, so the operator got a byte count and no way to the reason. It goes to the same log as a gate's, under
+// the kind git, and the error names the file. A failed worktree add leaves no registered worktree behind.
+func TestLand_AFailingGitStepKeepsItsOutputInTheLogAndNotInTheError(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the hooks are sh scripts")
+	}
+	const phrase = "this git step explains itself here"
+	for _, c := range []struct{ name, hook, script string }{
+		{"worktree_add", "post-checkout", "#!/bin/sh\necho '" + phrase + "' >&2\nexit 7\n"},
+		{"update_ref", "reference-transaction", "#!/bin/sh\nif [ \"$1\" = prepared ] && grep -q refs/heads/trunk; then echo '" + phrase + "' >&2; exit 1; fi\nexit 0\n"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			dir := repo(t)
+			cand := candidate(t, dir, "c1", "a.txt", "a\n")
+			if err := os.WriteFile(filepath.Join(dir, ".git", "hooks", c.hook), []byte(c.script), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			m := newMerger(t, dir, &fakeQueue{}, passing)
+			m.Log = &FailureLog{Dir: filepath.Join(t.TempDir(), "gate-logs")}
+			_, err := m.Land(context.Background(), "t1", cand)
+			var ge *GitError
+			if !errors.As(err, &ge) || !strings.Contains(string(ge.Output), phrase) {
+				t.Fatalf("the fixture is wrong: want a *GitError that holds the hook's line, got %v", err)
+			}
+			if strings.Contains(err.Error(), phrase) {
+				t.Errorf("the error text holds git's output: %q", err)
+			}
+			m2 := regexp.MustCompile(`log: (\S+-git\.log)`).FindStringSubmatch(err.Error())
+			if m2 == nil {
+				t.Fatalf("the error names no git log file: %q", err)
+			}
+			if body, rerr := os.ReadFile(m2[1]); rerr != nil || !strings.Contains(string(body), phrase) {
+				t.Errorf("the log %s: %q %v, want git's output in it", m2[1], body, rerr)
+			}
+		})
+	}
+}
+
+// N30: a worktree add that fails after git registered the tree (a post-checkout hook that exits non-zero) left the
+// registration and the directory behind.
+func TestGitCLI_AFailedWorktreeAddLeavesNoRegisteredWorktreeAndNoDirectory(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the hook is an sh script")
+	}
+	dir := repo(t)
+	cand := candidate(t, dir, "c1", "a.txt", "a\n")
+	if err := os.WriteFile(filepath.Join(dir, ".git", "hooks", "post-checkout"), []byte("#!/bin/sh\nexit 7\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	scratch := t.TempDir()
+	g := GitCLI{Repo: dir, ScratchD: scratch, Who: Identity{Name: "mergeq", Email: "mergeq@example.test"}}
+	_, err := g.PrepareCandidate(context.Background(), git(t, dir, "rev-parse", "trunk"), cand, "merge")
+	var ge *GitError
+	if !errors.As(err, &ge) || ge.Sub != "worktree" {
+		t.Fatalf("the fixture is wrong: want a worktree *GitError, got %v", err)
+	}
+	if out := git(t, dir, "worktree", "list"); strings.Count(out, "\n") != 0 {
+		t.Errorf("a worktree stays registered after the failure:\n%s", out)
+	}
+	if entries, _ := os.ReadDir(scratch); len(entries) != 0 {
+		t.Errorf("the scratch directory holds %v, want nothing", entries)
 	}
 }
 
