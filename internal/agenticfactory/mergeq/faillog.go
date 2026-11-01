@@ -38,6 +38,9 @@ const DefaultFailureLogTotalCap = 4 * DefaultFailureLogCap
 // failureLogExt ends the name of every log file; the retention pass looks at these and nothing else.
 const failureLogExt = ".log"
 
+// failureLogTmpPrefix starts the name of the file a log is written into before it is renamed onto its name.
+const failureLogTmpPrefix = ".tmp-"
+
 // Write stores out for the failure of kind (gate, merge, git) of card's candidate and returns the file's path.
 func (l *FailureLog) Write(card, candidate, kind string, out []byte) (string, error) {
 	if l == nil || l.Dir == "" {
@@ -78,20 +81,28 @@ func (l *FailureLog) Write(card, candidate, kind string, out []byte) (string, er
 		text = fmt.Sprintf("[%d earlier bytes of output are not kept]\n%s", dropped, text)
 	}
 
-	// A file already at the path is removed, never followed: a link left there must not redirect the write.
-	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
-		return "", err
-	}
-	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	// The text goes into a file of its own (a name no other writer has, mode 0600) and is renamed onto the log's name:
+	// two landers of one key never meet in the same file, and a reader sees the old log or the new one whole. Renaming
+	// replaces what is at the path, a link included, and never follows it.
+	tmp, err := os.CreateTemp(l.Dir, failureLogTmpPrefix+"*")
 	if err != nil {
 		return "", err
 	}
-	_ = f.Chmod(0o600)
-	if _, err := f.WriteString(text); err != nil {
-		_ = f.Close()
+	discard := func() { _ = tmp.Close(); _ = os.Remove(tmp.Name()) }
+	if err := tmp.Chmod(0o600); err != nil {
+		discard()
 		return "", err
 	}
-	if err := f.Close(); err != nil {
+	if _, err := tmp.WriteString(text); err != nil {
+		discard()
+		return "", err
+	}
+	if err := tmp.Close(); err != nil {
+		_ = os.Remove(tmp.Name())
+		return "", err
+	}
+	if err := os.Rename(tmp.Name(), path); err != nil {
+		_ = os.Remove(tmp.Name())
 		return "", err
 	}
 	l.prune(path)
