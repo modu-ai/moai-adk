@@ -86,3 +86,13 @@ Pre-push conditions (list for the leader; none executed):
 
 Gaps: logs of the other CI jobs not read; no fetch, no test, no CI rerun in this pass; origin/main CI state not read; the date arithmetic is hand-computed, not run.
 Residual risk: the repaired ledger text and the rule file must stay byte-equal to each other; any later wording edit to directives 1-10 or the reference intro sentence re-opens ALB-0195/0197.
+
+### Handoff record (PR #1954; supersedes the "Pre-push conditions" list above, which predates the push)
+
+decision record: decided_by=lane-7 (claude, lane orchestrator) evidence_refs=leader message (hand-off record, no code change),this section ladder_path=gate boundary (leader ruling, auto-semantics.md §6)
+
+- Code head before this record: `e739a8bd36d9d8d1e4f84c3c6cfb4ee0df9822b1`; the branch is already pushed (the earlier "3 ahead of origin" no longer holds). This record is the only change in its commit (no code change), pushed once without force.
+- State: PR #1954 draft, no hold. CI at e739a8bd36 (run 41332759419): the only failing jobs are Test (ubuntu-latest) and Race Test (internal/cli 1 of 4), both on `TestCleanReportsArchive_MovesOnlyEligibleCandidates` (the #1956 calendar defect, non-required per the leader). The card's own failure, `TestBindingLedgerIntegrity`, is fixed and passes in CI. Required-check rows (Lint, Build, Analyze) were not individually re-read in this record.
+- origin/main was not absorbed into this branch; no independent audit exists for this PR (not requested by the leader at this point).
+- Open items: the Gaps and Residual risk lists above; the ledger text and the rule file must stay byte-equal.
+- Ready-for-review and merge are the leader's.
