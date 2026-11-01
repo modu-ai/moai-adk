@@ -1,4 +1,6 @@
-# SPEC-AGENTIC-FACTORY-LOCAL-001 — 설계 자료 (0.3.0)
+# SPEC-AGENTIC-FACTORY-LOCAL-001 — 설계 자료 (0.6.0)
+
+> 이전 문구(머리, 0.3.0): «# SPEC-AGENTIC-FACTORY-LOCAL-001 — 설계 자료 (0.3.0)». 0.6.0은 문서 끝에 "0.6.0 부록"을 더했을 뿐 아래 계약 사본(§1~§6, §9, §10)은 한 글자도 바꾸지 않았다. 감사받지 않은 판이다.
 
 > **원천 고정(0.2.0).** 계약 경로 `/Users/goos/MoAI/moai-adk-go/.moai/reports/issue-1948/local-adk-design-20261030.md`, sha256 `f2c1078b7add847b93926ba3356eda62e4fbc44d8aa77221f059f44f6b059acb`
 > (측정 명령 `shasum -a 256 /Users/goos/MoAI/moai-adk-go/.moai/reports/issue-1948/local-adk-design-20261030.md`, 측정 시각 `2026-10-30T05:28:04Z`, `date -u`).
@@ -35,6 +37,7 @@
 | §8 Zombie factory runs | 없음 — 이 SPEC 밖(옛 factory 경로, lane-20) |
 | §9 P4 input | 없음 — P4는 spec §I 범위 밖 |
 | §10 Leader decisions | REQ-AFL-005·006·007·008·010·014(반영분), 반영하지 않은 항목은 progress.md §G |
+| 0.6.0 부록(계약 사본 밖, 착지 코드) | REQ-AFL-001(저장소 묶음)·007(reclaim-cap 출구)·008(Enqueue 거절)·009(evidence_mark, 스키마 2판)·014(trunk 고정, gate-logs, merged 사실, OnTrunk, DONE의 trunk 확인) |
 
 ---
 
@@ -252,3 +255,53 @@ labels <- e2e, resident; gitref <- effect/docstore.
   (c) the trunk also may not equal the target of `refs/remotes/origin/HEAD`. The check-to-update-ref gap is accepted.
 - lane-20: the global Indeterminate block stays (conservative, operator bypass exists); fix the first sentence of the
   ReconcileActiveRuns doc in the retirement change.
+
+---
+
+## 0.6.0 부록 — 착지 코드가 하는 일 (계약 사본 밖)
+
+> 이 부록은 위 계약 사본의 일부가 아니다. 원천은 감사 N19와 리더 지시("SPEC 개정: gate-logs·FailureLog·evidence_mark, REQ-AFL-014 트렁크 고정, 저장소 묶음을 반영")이며, 아래 모든 문장은 이 작성자가 `WT-agentic-factory-integration` HEAD `12eaa6c23f`에서 읽은 파일과 줄에 기댄다. 시험은 돌리지 않았고, 감사도 돌리지 않았다. 의무는 spec.md의 REQ 문장이 정하며, 이 부록은 그 REQ가 가리키는 동작을 설명할 뿐이다. 이 문서와 spec.md가 어긋나면 spec.md가 이긴다(머리말 그대로).
+
+### A. `transitions.evidence_mark` — 두 수열의 순서를 원장 안에서 정함 (REQ-AFL-008·009·014)
+
+- **무엇인가.** `evidence`와 `transitions`는 따로 세는 수열이다. `evidence_mark`는 transition이 쓰인 순간 그 카드의 가장 새 evidence 행 id다. 그래서 "어떤 증거가 어떤 이동 뒤에 기록되었는가"를 시계가 아니라 원장 안의 수로 정한다(`internal/agenticfactory/ledger/schema.go:41-49` 주석과 열).
+- **쓰는 곳.** 새 transition은 그 순간 카드의 최대 evidence id를 mark로 쓴다(`claim.go:228-238`). Move가 함께 싣는 증거는 transition보다 먼저 들어가 mark 앞에 놓인다(같은 곳). mark가 없는 행(이전 판의 행)은 카드의 모든 증거를 더 오래된 것으로 센다(`queue.go:241-243` `offerMarkSQL`, `:292-293`).
+- **이전(판 1 → 2).** `Open`은 `PRAGMA user_version`이 코드의 판(2)보다 크면 거절하고(`schema.go:123-125`), 작으면 한 쓰기 트랜잭션 안에서 열을 더하고 채운 뒤 판을 2로 쓴다(`:129-131`, `:137-153`). 채우는 값은 그 transition의 시각 이전에 기록된 카드의 가장 새 evidence id이며, 같은 밀리초의 증거는 MERGING으로 가는 이동에서는 뒤로, 다른 이동에서는 앞으로 센다(`:155-177`, 규칙은 `:173`). 까닭(코드 주석 `:158-162`): BUILDING으로 되돌아간 이동에서는 같은 밀리초 증거를 앞으로 세는 쪽이 DONE을 막는 쪽이고, 제출(MERGING) 이동에서는 같은 밀리초의 green을 뒤로 세어야 더 새 작업이 더 오래된 것으로 보이지 않는다.
+- **제출(offer)이란.** 후보가 큐에 처음 나온 transition이다: MERGING으로 가며 사유가 `enqueued <sha>`인 첫 행(`queue.go:238-239`, `:245-257`); 그런 행이 없으면 MERGING으로 들어간 가장 늦은 행(`:259-281`). 같은 커밋을 다시 내도 첫 제출의 mark는 움직이지 않는다(`:263-264` 주석).
+- **mark를 쓰는 판단.**
+  - 가장 새 작업(`newestWorkIs`, `queue.go:86-111`): 카드의 가장 새 green이 착지한 커밋에 대한 것이거나, 그 green id가 첫 제출의 mark 이하일 때만 착지한 커밋이 아직 카드의 가장 새 작업이다. green이 없으면 반박할 작업이 없다.
+  - 착지가 서 있음(`landingStands`, `:113-155`): (1) 후보에 대한 green·gate·review 각각의 가장 새 기록이 실패가 아니다(`noFailingNewestRun`, `:207-221`); (2) 제출 뒤 BUILDING으로 되돌아갔다면 가장 늦은 그런 이동의 mark보다 큰 id의 통과 green·gate가 있다(`reworkMark`, `:283-302`; BUILDING 안의 이동은 되돌아감이 아님); (3) 제출 뒤 다른 커밋에 대한 실패가 있었거나, 제출 뒤 MERGING을 떠나 다른 커밋의 증거를 남겼다면, 그 증거보다 큰 id의 통과 green과 통과 gate가 후보에 있다(`measuredAfterOtherWork`, `:157-205`; MERGING을 떠나지 않은 동안 다른 커밋의 통과 기록은 아무 의무도 만들지 않는다).
+  - 현재 epoch 측정(`measuredInEpoch`, `:223-236`): 그 카드 epoch로 기록된 통과 green·gate가 하나 이상 있고 가장 새 실행이 실패가 아니다. 이전 epoch의 실행은 이전 보유자의 것이다.
+- **누가 그 판단을 쓰나.** merged·closed·settled 사실을 원장 표에서 끌어내는 `factsTx`(`queue.go:31-84`)와 `Enqueue`(`:329-507`: 최신 증거 `:441-459`, 실패한 최신 실행 `:460-466`, 재제출 `:467-483`, 이전 epoch에 착지한 행 `:379-405`·`:484-488`).
+- **이어받기와 OnTrunk.** 이전 카드 epoch에 landed가 된 행을 현재 보유자가 같은 커밋으로 다시 낼 때, 저장소는 호출자가 `OnTrunk(true)`를 넘긴 경우에만 행을 landed로 두고 현재 epoch로 옮긴다; 아니면 행은 `waiting`으로 다시 시작한다(`queue.go:319-325`, `:379-405`, `:484-488`). 원장은 git을 부르지 않으므로(REQ-AFL-008) trunk 질문은 동사가 한다(아래 C).
+
+### B. 실패 기록 — `FailureLog`와 `gate-logs` (REQ-AFL-014 0.6.0 (ii))
+
+- **무엇이 원장에 남나.** 관문·병합·다른 git 단계가 실패하면 원장·쪽지·실패 사유·동사 출력에는 실패 종류(`gate`·`merge`·`git`), 관문 id, 원인(종료 상태나 시간 초과), 출력 바이트 수, 로그 파일 경로(쓰지 못했으면 "logging failed")만 남는다(`internal/agenticfactory/mergeq/mergeq.go:90-101` `GateError`는 관문 id만, `:127-144` `failReason`, `:204-214` 종류 `git`, `:283` 종류 `merge`, `:293`·`:297` 종류 `gate`). git 출력은 오류 문자열에 들어가지 않는다(`gitcli.go:73-83` `GitError`, `:118-128` `MergeError`).
+- **관문 id.** `gate-` + 관문 글의 SHA-256 앞 12 hex(`internal/cli/af_land.go:119-122` `afGateID`). 동사는 관문 글과 id를 병합 큐에 넘긴다(`af_land.go:226`).
+- **어디에.** 원장 파일 옆 디렉터리 `gate-logs`(`af_land.go:58-61`; 파일당 상한은 기본값, 합계 상한은 비워 두어 기본값).
+- **디렉터리.** Lstat로 보아 링크이거나 디렉터리가 아니면 거절하고, ACL을 지운 뒤 0700으로 둔다(`faillog.go:171-190` `prepareDir`).
+- **파일.** 임시 파일(`.tmp-` 접두, `faillog.go:56`)을 만들어 0600으로 바꾸고, ACL을 지운 뒤에 쓰고, 로그 이름(`.log`, `:53`)으로 rename한다(`:103-164`). 이름은 카드·후보·종류마다 하나이며 다음 실패가 덮어쓴다(`:284-302`).
+- **가림과 상한.** 글은 `core.Redact` → 제어 문자·escape 제거(`StripControls`, `:272-279`) → `core.Redact` → `core.Redact` 순으로 지난다(`:69-74`). 파일당 출력은 마지막 256 KiB(`:19`), 관문 글 머리는 처음 2 KiB(`:59`).
+- **디렉터리 합계.** 로그와 살아 있는 임시 파일을 합쳐 1 MiB(`:50`, `4 * DefaultFailureLogCap`). 넘으면 가장 오래된 `*.log`부터 지우고 방금 쓴 파일은 지우지 않는다; 1분이 지난 임시 파일은 지우고(`:195`), 새 임시 파일은 남겨 합계에 넣는다(`:202-262` `prune`).
+- **ACL.** macOS는 `/bin/chmod -N`을 절대 경로로 부른다(`faillog_acl_darwin.go:14-19`); 다른 플랫폼은 아무것도 하지 않는다(`faillog_acl_other.go:8`). 지우기에 실패하면 출력을 버리고 사유가 그렇게 말한다(REQ-AFL-014 (ii); 시험 이름은 acceptance AC-AFL-014 (f)).
+
+### C. trunk 고정과 trunk 질문 (REQ-AFL-014 0.6.0 (i)(iv)(v))
+
+- 병합 큐 라이브러리는 바꿀 수 있는 trunk 칸을 갖는다(`mergeq.go:168` `Merger.Trunk`, 기본 `mergeq.go:40` `DefaultTrunk = "refs/heads/af/trunk"`). 신뢰 경계는 동사다: `moai af land`·`reconcile`은 `--trunk`(`af_land.go:45`)가 전용 ref가 아니면 아무것도 착지하기 전에 거절한다(`internal/cli/af.go:229-238` `afCheckTrunk`, 호출 `af_land.go:294`). 이로써 상위 OD-35 (l)이 착지 코드로 닫혔다(spec §G).
+- `enqueue` 동사는 후보가 trunk의 조상인지 저장소에 물어 `OnTrunk`로 넘기고, 저장소가 답하지 못하면 아무것도 바꾸지 않고 거절한다(`af.go:569-583`, `:179-185` `afInTrunk`).
+- `move`가 DONE으로 옮길 때 큐 행이 landed면, 동사는 그 커밋이 trunk에 있는지 묻고 없거나 답이 없으면 거절한다(`af.go:420-424`, `:187-211` `afCheckLandedInTrunk`).
+- 읽지 않은 것: 계약 §10 20th lane-22 (c)("the trunk also may not equal the target of `refs/remotes/origin/HEAD`")를 코드가 검사하는지는 확인하지 않았다(progress §O).
+
+### D. 저장소 묶음 (REQ-AFL-001 0.6.0)
+
+- **원장 쪽.** 한 행짜리 `repository` 표(`schema.go:71-77`)에 첫 호출자가 정체를 쓰고, 같은 값은 변화 없음, 다른 값은 `ErrWrongRepository`(`repository.go:13`, `:22-39`). 묶이기 전 `Repository`는 ""를 돌려준다(`:42-51`). 갱신·삭제는 트리거가 거절한다. 표는 `CREATE TABLE IF NOT EXISTS`로 Open마다 생기며 판을 올리지 않는다(`schema.go:71-73` 주석).
+- **정체.** symlink를 푼 절대 git common dir(`af.go:245-268` `afGitCommonPath`). 그래서 linked worktree는 주 저장소와 같은 정체다.
+- **동사 쪽.** `afRun`이 모든 동사에서 묶는다(`af.go:72`, `:85-107`). 묶이기 전에는 원장이 이미 아는 저장소 — lease worktree들의 저장소와 원장 파일이 놓인 디렉터리의 저장소 — 와 먼저 비교하고, 어긋나면 둘을 이름 대어 거절한다(`:113-138`). 커밋을 찾거나 착지하는 동사는 쓰는 저장소(`--repo`, 없으면 카드의 lease worktree, 없으면 프로젝트 디렉터리)도 묶는다(`:161-175`; land·reconcile은 `af_land.go:292-316`). `--repo`는 프로젝트 디렉터리와 git common dir가 같은 경로만 받는다(`af.go:284-302`, `os.SameFile`). 도움말은 `af.go:219-227`.
+- **예외.** 프로젝트 디렉터리가 git 저장소가 아니면, git을 부르지 않는 동사는 아무것도 묶지 않고 진행한다(`af.go:86-90`).
+- **열린 위험(이 부록이 닫지 않음).** 원장이 아무것도 모를 때 첫 호출자가 묶음을 정한다; 저장소를 디스크에서 옮기면 뒤의 호출이 거절된다; 훅 heartbeat 기록기(`internal/hook/ledger_heartbeat.go`)는 저장소를 확인하지 않는다. progress §O.
+
+### E. reclaim-cap park의 출구 (REQ-AFL-007 0.6.0)
+
+- reclaim-cap park에서 park 없이 나가는 이동은 같은 트랜잭션에서 `reclaim_count`를 0으로 한다(`ledger/move.go:126-130`). DONE·CANCELLED 이동은 lease와 키를 지운다(`:118-125`).
+- `moai af resume`은 `--guard reclaim-cap`만(`af.go:468-470`, 상수 `core/move.go:24`), 비지 않은 `--reason`만 받고(`:471-473`), reclaim-cap park가 아닌 카드는 거절하며(`:483-485`), 같은 단계·park 없음으로 `resume-guard:` 증거를 실어 `Move`한다(`:486-490`). 동사 정의 전체는 `af.go:446-506`.

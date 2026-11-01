@@ -12,6 +12,7 @@ status: draft
 - 0.4.0 (2026-10-30, HEAD `c83fdc04ff` 위 작업 트리): revised, unaudited — plan-audit FAIL 0.72 @081eacf037 수리. 마지막 감사는 그 FAIL이며 재감사는 coordinator가 돌린다. PASS라고 적지 않는다. 대응표는 §K.
 - 0.5.0 (2026-10-30, HEAD `2acdddeba4` 위 작업 트리): audited-FAIL 0.70 → revised (A-na delta), unaudited — plan-audit FAIL 0.70 @2acdddeba4의 축소 델타. 리더 결정(A-na 축소 델타 뒤 멈춤)으로 이 판 뒤 감사는 없다. PASS라고 적지 않는다. 대응표·남은 부채·hold 기록·분할 제안은 §L.
 - 0.5.1 (2026-10-31, HEAD `4a2123c8e7` 위 작업 트리): audited-FAIL 0.74 (plan debt accepted by leader decision), no re-audit — plan-audit FAIL 0.74 @4a2123c8e7(`.moai/reports/issue-1948/plan-audit-ana-delta.md`)의 N1·N2·N3·N4·N6 기록 수리. 결정 D-spec-disposition = C로 추가 plan 감사는 없다. PASS라고 적지 않는다. 결정 기록·plan 부채 목록·대응표는 §M.
+- 0.6.0 (2026-11-01, HEAD `12eaa6c23f` 위 작업 트리): revised from landed code, unaudited, no re-audit — 감사 N19와 리더 지시로 착지 코드(저장소 묶음, reclaim-cap 출구, Enqueue 거절, evidence_mark·스키마 2판, trunk 고정·gate-logs·merged 사실·OnTrunk·DONE의 trunk 확인)를 SPEC에 적음. 직전 코드 감사는 46dbcce0d4에 대한 FAIL 0.76(receipt `rcpt-08a37bf592a0ccc3e932a935`, 리더가 전한 값; 이 작성자는 verdict를 읽지 않음)이고 그 뒤 수리가 있었다. 이 판에 대한 감사는 없다. PASS라고 적지 않는다. 대응표·남긴 문장·열린 부채는 §O.
 
 ## §E.2 Run-phase Evidence
 
@@ -322,4 +323,68 @@ exit=0
 
 - 바로 앞 실행(포인터로 바꾸기 전)의 하위 strict lint는 `exit=1`, `0 error(s), 3 warning(s)`(REQTableRowsRejected 1, `VacuousTestAssertion` 2 — AC-013·AC-017 RED 블록)였다.
 - 수: AC 제목 상위 25·하위 21, REQ 고유 상위 25·하위 21, 시험 이름이 정확히 하나인 하위 AC 21/21.
+
+## §O 0.6.0 amendment from landed code (N19)
+
+- 원천: 감사 N19와 리더 지시 "SPEC 개정: gate-logs·FailureLog·evidence_mark, REQ-AFL-014 트렁크 고정, 저장소 묶음을 반영". 운영자·사용자 결정이 아니다.
+- 기준: `WT-agentic-factory-integration` HEAD `12eaa6c23f`. 아래 모든 코드 사실은 이 작성자가 그 트리에서 읽은 파일과 줄이다.
+- 감사 상태: 직전 코드 감사는 46dbcce0d4에 대한 FAIL 0.76(receipt `rcpt-08a37bf592a0ccc3e932a935`)이며 그 값은 리더가 전한 것이다 — 이 작성자는 그 verdict를 읽지 않았고, `.moai/reports/issue-1948`에서 receipt 문자열을 grep했으나 아무것도 찍히지 않았다(종료 코드 관측 못 함). 이 판(0.6.0)에 대한 감사는 돌리지 않았다. PASS라고 적지 않는다. SPEC 상태는 `draft` 그대로다.
+
+### 대응표 (문장 → 코드 → REQ/AC)
+
+| 기록한 동작 | 착지 코드(file:line) | REQ | AC(0.6.0 사례) |
+|---|---|---|---|
+| 원장은 저장소 정체를 한 번 묶고 바꾸지 않음, 다른 정체는 `ErrWrongRepository` | `ledger/repository.go:13`, `:22-39`, `:42-51`; `ledger/schema.go:71-77` | 001 | 001 (e1) |
+| 동사가 저장소를 묶거나 비교, 묶이기 전 아는 저장소와 비교, `--repo`는 같은 git common dir만 | `cli/af.go:72`, `:85-107`, `:113-138`, `:161-175`, `:245-268`, `:284-302`; `cli/af_land.go:292-316` | 001 | 001 (e2)(e3)(e4) |
+| git 저장소가 아닌 디렉터리에서 git을 부르지 않는 동사는 묶지 않음 | `cli/af.go:86-90` | 001(예외) | 001 줄의 착지 시험 `af_repo_n38_test.go:321` |
+| reclaim-cap park를 나가면 `reclaim_count` 0 | `ledger/move.go:126-130` | 007 | 007 (iv) |
+| `moai af resume` | `cli/af.go:446-506`(`:468-470`, `:471-473`, `:483-485`, `:486-490`); `core/move.go:24` | 007 | 007 (iv)(v) |
+| Enqueue의 최신 증거·실패한 최신 실행·재제출 거절, 이전 epoch 착지 행의 현재 epoch 측정 | `ledger/queue.go:441-459`, `:460-466`, `:467-483`, `:379-390`, `:223-236`, `:283-302`, `:207-221` | 008 | 008 (iv)~(vii) |
+| `transitions.evidence_mark` 열과 쓰기 | `ledger/schema.go:41-49`; `ledger/claim.go:228-238` | 009 | 009 (b) |
+| 스키마 판 2, 더 새 판 거절, 판 1 이전(같은 밀리초 규칙) | `ledger/schema.go:17-19`, `:123-125`, `:137-153`, `:155-177`(`:173`) | 009 | 009 (b)(c)(d) |
+| trunk를 동사에서 고정, 다른 `--trunk` 거절 | `cli/af.go:229-238`; `cli/af_land.go:45`, `:294`; `mergeq/mergeq.go:40`, `:168` | 014 (i) | 014 (e) |
+| 실패 기록 `FailureLog`·`gate-logs` | `mergeq/faillog.go:19`, `:32-38`, `:50`, `:53`, `:56`, `:59`, `:69-74`, `:103-164`, `:171-190`, `:195`, `:202-262`, `:272-279`, `:284-302`; `faillog_acl_darwin.go:14-19`; `faillog_acl_other.go:8`; `mergeq.go:90-101`, `:127-144`, `:204-214`, `:283`, `:293`, `:297`; `gitcli.go:73-83`, `:118-128`; `cli/af_land.go:58-61`, `:85-113`, `:119-122`, `:226` | 014 (ii) | 014 (f) |
+| merged 사실: 가장 새 작업 + 착지가 서 있음 | `ledger/queue.go:31-84`, `:86-111`, `:113-155`, `:157-205`, `:241-243`, `:245-281` | 014 (iii) | 014 (g) |
+| 이전 epoch 착지의 이어받기와 `OnTrunk`, `enqueue`의 trunk 질문 | `ledger/queue.go:319-325`, `:379-405`, `:484-488`; `cli/af.go:569-583`, `:179-185` | 014 (iv) | 014 (h) |
+| DONE 이동의 trunk 확인 | `cli/af.go:420-424`, `:187-211` | 014 (v) | 014 (i) |
+
+### 새 id 없음 (결정과 까닭)
+
+- 리더는 새 id 하나까지 허락했으나 쓰지 않았다: 저장소 묶음은 REQ-AFL-001(단일 로컬 권위)에, resume은 REQ-AFL-007(재회수 상한)에 붙였고 AC는 각 AC의 "0.6.0 사례" 줄로 더했다. REQ 21·AC 21 그대로다. 그래서 release 게이트 AC 셋(013·015·017)과 §D 완료 계산은 바뀌지 않는다.
+- 표가 아홉이 된 것(REQ-AFL-009)과 merged 사실의 조건이 좁아진 것(REQ-AFL-014 (iii))은 리더가 그 기록을 지시했으므로 지시된 개정으로 다뤘다 — 코드와 REQ의 충돌로 보고하지 않았다. 이전 문장은 spec §C.6에 남겼다.
+
+### OD-35 (l) 닫힘
+
+- spec §G의 OD-35 행에서 (l)을 닫았다: trunk는 착지 코드 @`12eaa6c23f`에서 동사가 `refs/heads/af/trunk`로 고정한다. 닫은 근거는 착지 코드와 리더 지시(N19)이며 운영자 결정이 아니다. 상위 SPEC(`SPEC-AGENTIC-FACTORY-001`)의 OD-35 행은 고치지 않았다.
+
+### 손대지 않은 파일
+
+- `plan.md`, `research.md`(리더가 준 파일 목록 밖), 상위 SPEC 디렉터리, 모든 코드.
+
+### 확인하지 않아 적지 않은 문장 (left out as unverified)
+
+- FAIL 0.76 verdict와 receipt의 내용 — 읽지 않음.
+- 각 착지 시험의 본문이 0.6.0 사례를 얼마나 덮는지 — 본문을 읽은 넷(`af_land_repair_test.go:188`, `af_trunk_n39_test.go:130`, `:171`, `move_test.go:178`의 `:212` 단언) 말고는 이름과 줄만 확인. 어떤 시험도 돌리지 않음.
+- 계약 §10 20th lane-22 (c)("the trunk also may not equal the target of `refs/remotes/origin/HEAD`")를 코드가 검사하는지 — 확인하지 않음; SPEC에 적지 않음.
+- 원장 경로 `<moaiHome>/db/<projectKey>/af/ledger.db`가 착지 코드의 경로 계산과 같은지 — 확인하지 않음; REQ-AFL-001의 그 구절은 0.5.1 그대로 둠.
+- 실패 출력을 담는 tail writer의 보존 크기(`afGateKeep`)와 git 출력 상한(`maxGitOutput`) — 읽지 않음; SPEC에 수치를 적지 않음.
+- `resume`의 다른 epoch 거절이 원장 층에서 나는지 — 확인하지 않음(동사 도움말과 시험 이름만).
+- 저장소가 답하지 못할 때의 DONE 거절을 단언하는 시험 — 찾지 못함(AC-AFL-014 (i)에 no test found).
+- 훅 heartbeat 기록기에 저장소 확인이 없다는 것 — `grep -n -e repositor -e Repo internal/hook/ledger_heartbeat.go`가 아무것도 찍지 않은 것에 기댐; 종료 코드 관측 못 함.
+- 아래 열린 부채 id의 내용 — 리더가 준 목록 그대로이며 이 작성자는 그 항목을 읽지 않았다.
+
+### 열린 부채와 잔여 위험 (residual risk)
+
+- 리더가 넘긴 열린 감사 항목: N4, N5, N6, N7, N8, N10, N20, F8, F9, F12, E6, N37, N44(나머지), N46, N47, N48. 이 판은 그 어느 것도 닫지 않는다.
+- 원장이 아무것도 모를 때(묶이지 않음, lease worktree 없음, 원장 파일 자리가 git 저장소 아님) 첫 호출자가 묶음을 정한다 — 틀린 저장소에서 처음 부르면 그 저장소에 묶인다.
+- 저장소를 디스크에서 옮기면 정체(symlink를 푼 절대 git common dir)가 바뀌어 뒤의 모든 동사가 거절된다; 묶음은 갱신·삭제가 트리거로 막혀 있어 복구 경로가 REQ에 없다.
+- `internal/hook/ledger_heartbeat.go`는 저장소를 확인하지 않는다(위 grep).
+- 0.6.0 사례 줄은 §N(release 게이트 밖)에 있어, 그 시험이 깨져도 release 판정은 바뀌지 않는다.
+
+### 측정 명령 (이번 작업, 이 트리)
+
+- 시험 이름 확인: `grep -n '^func Test' <파일>`을 이 작업이 인용한 시험 파일마다 돌림. 덧붙여 acceptance.md가 인용한 모든 `Test…` 이름(129개)을 `internal/agenticfactory`·`internal/cli`의 `^func Test…` 선언과 `comm -23`으로 비교 — 선언에 없는 이름은 25개였고, 모두 0.6.0 이전 판의 "unwritten" 이름이거나 다른 패키지(`internal/web`, `internal/hook`)의 이름이거나 산문 토큰(`TestName`, `TestAssertion`)이다; 0.6.0 사례 줄의 이름은 모두 선언에 있다.
+- receipt grep: `grep -rn rcpt-08a37bf592a0ccc3e932a935 .moai/reports/issue-1948` → 출력 없음(종료 코드 관측 못 함).
+- heartbeat grep: 위와 같음.
+- spec lint(편집 뒤, 커밋 전 작업 트리): `moai spec lint --strict <worktree>/.moai/specs/SPEC-AGENTIC-FACTORY-LOCAL-001/spec.md` → `exit=0`, `0 error(s), 1 warning(s)`(`REQTableRowsRejected`, spec.md 150행 — §M의 0.5.1 측정과 같은 경고 종류) 그리고 INFO `OwnershipTransitionUnmeasured` 하나. 판정한 빌드: 설치된 `moai` v3.2.0-rc.38, 커밋 `b1806498fe`(`moai version`) — 이 트리(HEAD `12eaa6c23f`)에서 만든 빌드가 아니다(`verification-claim-integrity.md` §2.2). 그래서 이 줄은 그 빌드의 lint 규칙에 대한 관측이며, 이 트리의 lint 규칙으로 잰 것이 아니다.
 
