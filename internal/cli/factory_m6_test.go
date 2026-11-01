@@ -330,15 +330,16 @@ func TestFactoryClearPolicyManualDispatch(t *testing.T) {
 			if !strings.Contains(out, "ExitWorktree(keep)") {
 				t.Fatalf("manual %s: output %q does not name the exit step", policy, out)
 			}
-			if !strings.Contains(out, "wait for the leader") {
-				t.Errorf("manual %s: output %q does not tell the lane to wait for the leader's dispatch", policy, out)
+			// Card t2013 (decisions R22) supersedes the "wait for the leader" and
+			// "no /clear" shape: manual dispatch now ends by asking the leader for
+			// the next card, after the operator's /clear step.
+			if !strings.Contains(out, "ask the leader for the next card") {
+				t.Errorf("manual %s: output %q does not tell the lane to ask the leader for the next card", policy, out)
 			}
 			if strings.Contains(out, "factory next") {
 				t.Errorf("manual %s: output %q tells a manual-dispatch lane to lease a card", policy, out)
 			}
-			if strings.Contains(out, "/clear") {
-				t.Errorf("manual %s: output %q carries a clear instruction", policy, out)
-			}
+			t2013WantCompletionGuidance(t, out)
 		})
 	}
 	t.Run("auto dispatch keeps the lease line", func(t *testing.T) {
