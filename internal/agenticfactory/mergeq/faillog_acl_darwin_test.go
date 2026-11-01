@@ -38,6 +38,21 @@ func repairACLParent(t *testing.T) string {
 	return parent
 }
 
+// chmod -N on a path that does not exist fails, and the failure is returned (not swallowed): the caller then drops the
+// output. A path without an ACL is not an error.
+func TestClearExtendedACL_AMissingPathIsAnErrorAndAPathWithoutAnACLIsNot(t *testing.T) {
+	if err := clearExtendedACL(filepath.Join(t.TempDir(), "missing")); err == nil {
+		t.Error("clearing the ACL of a path that does not exist reported success")
+	}
+	plain := filepath.Join(t.TempDir(), "plain")
+	if err := os.WriteFile(plain, []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := clearExtendedACL(plain); err != nil {
+		t.Errorf("a file without an ACL: %v", err)
+	}
+}
+
 func TestFailureLog_TheLogAndItsDirectoryEndWithoutAnInheritedACL(t *testing.T) {
 	parent := repairACLParent(t)
 	ledgerDir := filepath.Join(parent, "af")
