@@ -491,6 +491,15 @@ func afCheckCommit(ctx context.Context, st *ledger.Store, f afFlags, card, repoF
 		return "", fmt.Errorf("af: %s %q is not a complete lowercase hex commit SHA (40 or 64 characters)", what, sha)
 	}
 	repo := afCommitRepo(ctx, st, card, repoFlag)
+	fromLease := repoFlag == "" && repo != resolveProjectDir()
+	if fromLease {
+		// The lease keeps the path its holder claimed with, and the worktree can be gone since (removed, cleaned up, or the
+		// repository moved): the way on is the flag (N37, N69).
+		if _, serr := os.Stat(repo); serr != nil {
+			return "", fmt.Errorf("af: the worktree %s of the lease on %s is gone (%v), so %s cannot be looked up there; name the repository "+
+				"with --repo <a path inside it>; nothing was changed", repo, card, serr, what)
+		}
+	}
 	// afRun bound the ledger to the project directory's repository before this (when that is a repository); when the
 	// project directory is none, this call is the first bind, and it asks the same questions
 	if err := afBindRepository(ctx, st, f.place(), repo, false); err != nil {
