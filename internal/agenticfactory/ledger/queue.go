@@ -331,7 +331,6 @@ func (s *Store) Enqueue(ctx context.Context, cardID string, epoch int64, candida
 	for _, o := range opts {
 		o(&opt)
 	}
-	_ = opt
 	if strings.TrimSpace(candidateSHA) == "" {
 		return fmt.Errorf("%w: a candidate needs its commit SHA", ErrInvalid)
 	}
@@ -391,8 +390,15 @@ func (s *Store) Enqueue(ctx context.Context, cardID string, epoch int64, candida
 			}
 			text := fmt.Sprintf("card %s: candidate %s had landed at card epoch %d; queued again as new work %s at card epoch %d", cardID, oldSHA.String, oldEpoch, candidateSHA, card.Epoch)
 			if oldSHA.String == candidateSHA {
-				takeOver = true
-				text = fmt.Sprintf("card %s: candidate %s had landed at card epoch %d; taken over at card epoch %d after it was measured again", cardID, candidateSHA, oldEpoch, card.Epoch)
+				// The row's word that it landed is checked by the caller against the trunk: a row
+				// that landed on another trunk, or a trunk that lost the commit since, is not a
+				// landing the card may finish on, so the row starts over below.
+				takeOver = opt.onTrunk
+				if takeOver {
+					text = fmt.Sprintf("card %s: candidate %s had landed at card epoch %d; taken over at card epoch %d after it was measured again", cardID, candidateSHA, oldEpoch, card.Epoch)
+				} else {
+					text = fmt.Sprintf("card %s: candidate %s had landed at card epoch %d but is not on the trunk as far as the caller found; queued again at card epoch %d, to land for real", cardID, candidateSHA, oldEpoch, card.Epoch)
+				}
 			}
 			if _, err := tx.ExecContext(ctx, `INSERT INTO notes(kind,card_id,text,at) VALUES('decision',?,?,`+nowSQL+`)`, cardID, text); err != nil {
 				return fmt.Errorf("ledger: %w", err)
