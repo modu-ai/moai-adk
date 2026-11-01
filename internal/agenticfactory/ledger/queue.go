@@ -660,12 +660,12 @@ func (s *Store) QueueUpdate(ctx context.Context, cardID string, presented QueueE
 		// landing offer the card's work to the trunk. Landed after landing, failing and the
 		// reconcile back to waiting stay possible, because the trunk may already have moved.
 		if parked == 1 && (state == QueueVerifying || state == QueueLanding) {
-			return fmt.Errorf("%w: %s for %s at epoch %d refused: the card is parked", ErrStaleEpoch, state, cardID, rowEpoch)
+			return staleBecause(fmt.Sprintf("%s for %s at epoch %d refused: the card is parked", state, cardID, rowEpoch))
 		}
 		landedAfterLanding := state == QueueLanded && curState == QueueLanding
 		if !settlesOlder && !landedAfterLanding && (state == QueueVerifying || state == QueueLanding || state == QueueLanded) {
 			if stage != string(core.StageMerging) {
-				return fmt.Errorf("%w: %s for %s at epoch %d needs the card in MERGING, but it is at %s", ErrStaleEpoch, state, cardID, rowEpoch, stage)
+				return staleBecause(fmt.Sprintf("%s for %s at epoch %d needs the card in MERGING, but it is at %s", state, cardID, rowEpoch, stage))
 			}
 		}
 		ok := false

@@ -77,6 +77,14 @@ var (
 	ErrLanding = errors.New("ledger: the commit is being landed")
 )
 
+// staleBecause is a refusal that errors.Is ErrStaleEpoch (callers treat it as "the row is not yours to move") but whose
+// text is its own: ErrStaleEpoch's text says the card was claimed again, which is false for a card that was parked or moved
+// out of MERGING (N10).
+type staleBecause string
+
+func (e staleBecause) Error() string        { return "ledger: " + string(e) }
+func (e staleBecause) Is(target error) bool { return target == ErrStaleEpoch }
+
 // Spec is spec_json: what the card must show and where it may write.
 type Spec struct {
 	Acceptance []string `json:"acceptance"`        // test names or commands
