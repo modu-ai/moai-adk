@@ -133,11 +133,29 @@ func afCheckKnownRepositories(ctx context.Context, st *ledger.Store, dbPath, id,
 		}
 	}
 	if dbPath != "" {
-		if abs, err := filepath.Abs(dbPath); err == nil {
-			return check(filepath.Dir(abs), "the ledger file "+abs+" sits in it")
+		if loc, err := afLedgerFileLocation(dbPath); err == nil {
+			return check(filepath.Dir(loc), "the ledger file "+loc+" sits in it")
 		}
 	}
 	return nil
+}
+
+// afLedgerFileLocation is where the ledger file really is: absolute, with symbolic links resolved. A link outside any
+// repository to a file inside one would otherwise be asked about the link's directory (N51 c). A file that does not
+// exist yet has its directory resolved instead.
+func afLedgerFileLocation(dbPath string) (string, error) {
+	abs, err := filepath.Abs(dbPath)
+	if err != nil {
+		return "", err
+	}
+	if real, err := filepath.EvalSymlinks(abs); err == nil {
+		return real, nil
+	}
+	dir, err := filepath.EvalSymlinks(filepath.Dir(abs))
+	if err != nil {
+		return abs, nil
+	}
+	return filepath.Join(dir, filepath.Base(abs)), nil
 }
 
 // afCommitRepo is the directory a verb looks a card's commit up in: --repo, else the worktree of the card's lease, else
