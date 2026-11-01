@@ -86,21 +86,22 @@ func TestQueueUpdate_UnknownEpochKindIsInvalid(t *testing.T) {
 	}
 }
 
-// A landed row is history: not even a higher card epoch replaces it.
-func TestEnqueue_NeverReplacesALandedRow(t *testing.T) {
+// A landed row is history: a higher card epoch does not replace it with a commit it did not measure
+// itself (a commit measured in the new epoch does: enqueue_reclaimed_landed_test.go, N3).
+func TestEnqueue_ADifferentEpochDoesNotReplaceALandedRowWithACommitMeasuredBeforeIt(t *testing.T) {
 	s := openTemp(t)
 	c := gated(t, s, "a", "c1")
 	if err := s.Enqueue(bg, "a", c.Epoch, "c1"); err != nil {
 		t.Fatal(err)
 	}
 	landOne(t, s, "a", c.Epoch)
+	if err := s.AddEvidence(bg, "a", c.Epoch, Evidence{Kind: KindGate, TreeSHA: "t9", SubjectSHA: "c9", Result: ResultPass}); err != nil {
+		t.Fatal(err)
+	}
 	for _, q := range []string{`UPDATE cards SET epoch=2 WHERE id='a'`, `UPDATE leases SET epoch=2 WHERE card_id='a'`} {
 		if _, err := s.db.ExecContext(bg, q); err != nil {
 			t.Fatal(err)
 		}
-	}
-	if err := s.AddEvidence(bg, "a", 2, Evidence{Kind: KindGate, TreeSHA: "t9", SubjectSHA: "c9", Result: ResultPass}); err != nil {
-		t.Fatal(err)
 	}
 	if err := s.Enqueue(bg, "a", 2, "c9"); !errors.Is(err, ErrInvalid) {
 		t.Errorf("a landed row is not replaced: %v", err)

@@ -55,13 +55,22 @@ func TestMove_DoneNeedsTheLandedCandidateToBeTheNewestWork(t *testing.T) {
 			t.Fatalf("DONE from BUILDING/IMPLEMENT with c2 as the newest work: %v", err)
 		}
 	})
-	t.Run("a gate on another commit alone does not decide", func(t *testing.T) {
+	// Until audit db0a69698a N28 became a blocker this subtest read "a gate on another commit alone
+	// does not decide" and expected DONE: a gated but never built second candidate was not to
+	// block finishing on the landed one. That premise is withdrawn (operator order, repair note
+	// 1-B): after the card left MERGING, evidence about another commit means the landed commit has to
+	// be measured again, in full, to stand. The way out is asserted here too.
+	t.Run("a gate on another commit after the withdrawal is evidence the card moved on", func(t *testing.T) {
 		s, e := landedThenWithdrawn(t)
 		if err := s.AddEvidence(bg, "a", e, Evidence{Kind: KindGate, TreeSHA: "tree-c2", SubjectSHA: "c2", Result: ResultPass}); err != nil {
 			t.Fatal(err)
 		}
+		if err := s.Move(bg, "a", e, core.Position{Stage: core.StageDone}, "lane", "done"); !errors.Is(err, core.ErrGuardMissing) {
+			t.Fatalf("DONE with a gate of a second candidate recorded after the withdrawal and the landed one not measured again: %v", err)
+		}
+		evidenceOn(t, s, e, "c1")
 		if err := s.Move(bg, "a", e, core.Position{Stage: core.StageDone}, "lane", "done"); err != nil {
-			t.Fatalf("a gated but never built second candidate must not block finishing on the landed one: %v", err)
+			t.Fatalf("the landed commit measured again after the second candidate, and the card is refused: %v", err)
 		}
 	})
 	t.Run("the same candidate still finishes", func(t *testing.T) {
