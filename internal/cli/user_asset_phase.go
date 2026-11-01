@@ -165,7 +165,28 @@ func runUserAssetUpdatePhase(homeDir string, out io.Writer) error {
 		}
 	}
 	announceUnselectedOptionalPacks(".", saved.Bundles, out)
+	recordUserAssetFailures(ensureRes, pruneRes)
 	return nil
+}
+
+// recordUserAssetFailures puts refused or failed user-asset files into the
+// closing "Post-update actions" block (card t2014). The per-file rows above
+// scroll away, and the "Up to date" line that ends a same-version run judges
+// the project templates only, so without this row a run with refusals reads as
+// fully current. It records only: no refusal is lifted, no file or record is
+// touched, and the phase's return value is unchanged.
+func recordUserAssetFailures(results ...*userassets.Result) {
+	n := 0
+	for _, r := range results {
+		if r != nil {
+			n += len(r.Failures)
+		}
+	}
+	if n == 0 {
+		return
+	}
+	updateLedger.requiref(sevWarn,
+		"user-asset update: %d file(s) refused or failed (see the failure rows above); they were left as they were, and the 'Up to date' line covers the project templates only", n)
 }
 
 // announceUnselectedOptionalPacks names each optional pack the recorded
