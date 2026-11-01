@@ -869,3 +869,5 @@ New tests (`af_n55_firstbind_test.go`, each over a `--db` file inside the reposi
 - `evidence` and `enqueue` still bind before their commit lookup (`afCheckCommit`), so an `evidence` naming a commit the repository does not have refuses after binding. Untouched.
 - An existing script that relied on an empty-handed `reap` to bind a ledger now leaves it unbound until a writing verb runs or `reap --bind-repo` is used; `move-repository` on such a ledger says the ledger is unbound (or fresh, at the default location).
 - The error text of an unbound, non-empty ledger in `move-repository` changed ("the first verb that completes and writes binds it (or a verb that writes nothing with --bind-repo)"); no test pins the old wording.
+
+- Leader ruling R96 on the N55 residual: the pre-binding of reconcile, evidence and enqueue is not covered by the rule, left to a later judgment; no code change.
