@@ -65,7 +65,14 @@ func TestContractModeOutsideBlocksVsBase(t *testing.T) {
 					t.Error(f)
 				}
 			}
-			for _, f := range grPreservationFindings(rel, got, want) {
+			findings := grPreservationFindings(rel, got, want)
+			// The same pinned approvals as TestContractModeGuidedPreservation: one
+			// table, so the two guards cannot disagree about an explained edit.
+			if ok, item := grOutsideEditApproved(grApprovedOutsideEdits, rel, got, findings); ok {
+				t.Logf("%s: outside-block edit approved by %s", rel, item)
+				continue
+			}
+			for _, f := range findings {
 				t.Error(f)
 			}
 		}
