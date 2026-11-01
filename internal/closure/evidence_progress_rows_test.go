@@ -2,6 +2,51 @@ package closure
 
 import "testing"
 
+// TestParseProgressRowsKeepsE2DepthAcrossSubheadings: a sub-heading under the
+// §E.2 heading that itself names §E.2 (for example "### §E.2.1") must not move
+// the section's reference depth, or the next sibling sub-heading closes the
+// section early and AC rows that still belong to §E.2 go unreported (card
+// review finding on the S13 repair).
+func TestParseProgressRowsKeepsE2DepthAcrossSubheadings(t *testing.T) {
+	t.Parallel()
+
+	const doc = `# Progress
+
+## §E.2 Run-phase Evidence
+
+| AC-1 | PASS | top of the matrix |
+
+### §E.2.1 Details
+
+| AC-2 | PASS | under the E.2.1 sub-heading |
+
+### Further detail
+
+| AC-3 | PASS | sibling sub-heading, still inside E.2 |
+
+## §E.4 Sync-phase Signal
+
+| AC-9 | PASS | outside the matrix |
+`
+	rows, found := ParseProgressRows([]byte(doc))
+	if !found {
+		t.Fatal("the §E.2 heading exists and must be found")
+	}
+	var ids []string
+	for _, r := range rows {
+		ids = append(ids, r.ID)
+	}
+	want := []string{"AC-1", "AC-2", "AC-3"}
+	if len(ids) != len(want) {
+		t.Fatalf("S13_SUBHEADING_CLOSES_E2: rows = %v, want %v", ids, want)
+	}
+	for i := range want {
+		if ids[i] != want[i] {
+			t.Fatalf("S13_SUBHEADING_CLOSES_E2: rows = %v, want %v", ids, want)
+		}
+	}
+}
+
 // TestParseProgressRowsStaysInsideE2 (card t2009, S13): the AC matrix is the
 // table under the §E.2 heading. Tables elsewhere in progress.md (a later
 // section's reference table, an appendix) and a body sentence that merely

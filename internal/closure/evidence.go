@@ -144,7 +144,12 @@ func ParseProgressRows(progressMD []byte) ([]ProgressRow, bool) {
 		if lv := markdownHeadingLevel(line); lv > 0 {
 			switch {
 			case strings.Contains(line, "§E.2"):
-				level, found = lv, true
+				// A deeper heading that also names §E.2 (for example "### §E.2.1")
+				// stays inside the open section and must not move its depth.
+				if level == 0 || lv <= level {
+					level = lv
+				}
+				found = true
 			case level > 0 && lv <= level:
 				level = 0
 			}
