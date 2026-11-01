@@ -209,7 +209,7 @@ ambiguity resolution. There is nothing to "score" about whether the project has 
 or which test command it runs — so subjecting them to the Stage A clarity loop, or to
 its round cap, would be a category error and would leave them uncollected.
 
-Topic: How is the project verified, what does it surface, what does it integrate with, and who runs it? Elicit these four axes (later recorded into `harness-spec.yaml` — see `doc-generation.md`). Present each as a separate AskUserQuestion with up to 4 options:
+Topic: How is the project verified, what does it surface, what does it integrate with, and who runs it? Elicit these four axes (later recorded into `harness-spec.yaml` — see `doc-generation.md`). Collect them in one batched AskUserQuestion call carrying the four questions (the call limit is 4 questions), each with up to 4 options. Do not issue four sequential question calls; the batch response count as one user round. An axis the user leaves unanswered in the batch is recorded as an explicit empty value, and the axes the user did answer are never asked again:
 
 - **Verification method** — the test / e2e command or verification method (e.g., `go test ./...`, `pytest`, an e2e suite, or "manual verification"). Recorded as the `verification` field.
 - **UI surface** — whether the project has a user-facing UI or is headless: `has-ui` (web / desktop / mobile front-end) vs `headless` (CLI / API / library / service). Recorded as the `ui_surface` field.
