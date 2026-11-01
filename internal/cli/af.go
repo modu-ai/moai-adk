@@ -260,8 +260,15 @@ func afCheckKnownRepositories(ctx context.Context, st *ledger.Store, place afPla
 			}
 			return nil
 		}
+		out := ""
+		if !proof {
+			// The way out of two leases in two repositories (N53): the release binds nothing where there is no repository.
+			out = "; if the leases of this ledger name worktrees of two repositories and none of them is the ledger's, a release run from a " +
+				"directory that is no git repository (set CLAUDE_PROJECT_DIR to one) binds nothing and is accepted: release the leases there, " +
+				"then claim the cards again from the repository"
+		}
 		return fmt.Errorf("af: refused: this ledger is not bound yet, but it already belongs to the repository %s (%s) and this call would bind "+
-			"%s (the git directory of %s); nothing was changed", got, why, id, dir)
+			"%s (the git directory of %s); nothing was changed%s", got, why, id, dir, out)
 	}
 	if place.bindRepo != "" {
 		declared, err := afGitCommonPath(ctx, place.bindRepo)
