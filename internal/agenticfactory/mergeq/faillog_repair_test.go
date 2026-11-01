@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -113,6 +114,47 @@ func TestFailureLog_WritersOfTheSameKeyAllSucceedAndNeverMixTheirContent(t *test
 		if ln != lines[0] {
 			t.Fatalf("the log mixes the content of two writers: %q and %q", lines[0], ln)
 		}
+	}
+}
+
+// N23: a log directory that is a link was followed: the mode of the link's target was changed and the unmasked output
+// was written into it. A link, and anything that is not a directory, is refused and left alone.
+func TestFailureLog_ADirectoryThatIsALinkIsRefusedAndItsTargetIsLeftAlone(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symbolic links need privileges on native Windows")
+	}
+	target := filepath.Join(t.TempDir(), "elsewhere")
+	if err := os.MkdirAll(target, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(target, "keep.txt"), []byte("keep me\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(t.TempDir(), "gate-logs")
+	if err := os.Symlink(target, link); err != nil {
+		t.Fatal(err)
+	}
+	if path, err := (&FailureLog{Dir: link}).Write("t1", "c", "gate", []byte("output\n")); err == nil {
+		t.Errorf("a log was written through the link: %s", path)
+	}
+	fi, err := os.Stat(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fi.Mode().Perm() != 0o755 {
+		t.Errorf("the link's target has mode %v, want it untouched at 0755", fi.Mode().Perm())
+	}
+	entries, _ := os.ReadDir(target)
+	if len(entries) != 1 || entries[0].Name() != "keep.txt" {
+		t.Errorf("the link's target holds %v, want only keep.txt", entries)
+	}
+
+	plain := filepath.Join(t.TempDir(), "gate-logs")
+	if err := os.WriteFile(plain, []byte("not a directory\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := (&FailureLog{Dir: plain}).Write("t1", "c", "gate", []byte("output\n")); err == nil {
+		t.Error("a regular file was accepted as the log directory")
 	}
 }
 
