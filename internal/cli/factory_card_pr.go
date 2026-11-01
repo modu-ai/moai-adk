@@ -501,8 +501,16 @@ func factoryDeliverByPR(ctx context.Context, out io.Writer, db *homestate.Factor
 	if strings.EqualFold(pr.State, "MERGED") {
 		return factoryObservePRMerge(ctx, out, db, root, runID, open, cardBranch, target, lane)
 	}
+	// Printed only on the genuine pr-open edge (a PR not yet merged): the
+	// review-start and ready-conversion guidance. Text only; no record or exit
+	// status depends on it.
+	_, _ = fmt.Fprintln(out, "  "+factoryPREdgeReviewGuidance)
 	return nil
 }
+
+// factoryPREdgeReviewGuidance is the short form of the standard-landing rule's
+// two sentences on draft pull requests and non-required check failures.
+const factoryPREdgeReviewGuidance = "a draft PR does not start the native review: once the handoff evidence is complete, the leader's ready conversion (or a leader request) starts it, and leaving the PR in draft while waiting is not a wait reason; a failing check outside the protected required set (Lint, Build, Analyze) does not block the ready conversion — when the cause is on main, record it in Gaps and proceed"
 
 func errOr(err error, fallback string) string {
 	if err != nil {

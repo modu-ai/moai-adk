@@ -153,8 +153,13 @@ file the completion report names:
    distributed default) the verb runs the merge-readiness triple against
    the integration target, pushes the card branch, opens the pull request
    (its title carries the card id — the traceability carrier), and requests
-   auto-merge; a re-run after the PR merges records `merged-pr`. The
-   git-flow variant (integration window, `--no-ff` merge, release-branch
+   auto-merge; a re-run after the PR merges records `merged-pr`. A draft PR
+   does not start the native review; once the handoff evidence is complete,
+   the leader's ready conversion (or a leader request) is the review starting
+   point, and leaving the PR in draft while waiting is not a wait reason. A
+   failing check outside the protected required set (Lint, Build, Analyze)
+   does not block the ready conversion; when the cause is on main, record it
+   in Gaps and proceed. The git-flow variant (integration window, `--no-ff` merge, release-branch
    push) is the section above and applies only where the project's git
    strategy names git-flow.
 4. **Close** — the merged-pr record closes the lane's own queue card by the
