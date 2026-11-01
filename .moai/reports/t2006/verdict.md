@@ -37,3 +37,17 @@ Verdict: PASS for the wording change; delivery stops at a draft PR (operator rul
 
 - The wording relies on quoted upstream values that the provider may change; the reference says to re-quote before relying on one.
 - A reader on a session where idle compaction is on gets a summary instead of the full conversation; this change documents that, it does not add any mitigation or setting.
+
+## Post-repair re-measurement (appended 2026-11-01 by lane-7; local, not yet pushed)
+
+Tree: `.moai/worktrees/t2006`, branch WT-cache-aware-execution, HEAD `d6c8e9fee03306111bdefcf164a4ef08c384517c` (contains the ledger repair `75c24561b3`; working tree clean at measurement). PR head on origin is still `ae1035f539`. Judging build: `go test` from this tree's source.
+
+- CI failure being answered: run 41283513901, head `ae1035f539`, jobs 124780129207 (Test ubuntu-latest), 124780129389 (Race Test remainder packages): `TestBindingLedgerIntegrity` fails with `after-text absent for row ALB-0195 / ALB-0197 ... (obligation lost)`, `failures=2`.
+- `go test -count=1 -run '^TestBindingLedgerIntegrity$' ./internal/template/` -> `ok github.com/modu-ai/moai-adk/internal/template 1.108s`.
+- `go test -count=1 -run 'Mirror|Rule|Embed|Manifest|DateProvenance|BindingLedger' ./internal/template/` -> `ok github.com/modu-ai/moai-adk/internal/template 6.699s`.
+- Remaining CI failure on the old head: `TestCleanReportsArchive_MovesOnlyEligibleCandidates` (jobs 124780129207, 124780129202). Not this PR's diff; main fixture date defect (91 days before 2026-11-01 is 2026-08-02, colliding with fixture shard `2026-08`); repair is card t2012, not applied here. Pushing before the t2012 merge SHA is absorbed would rerun CI into the same failure.
+- Lease recovery (leader-approved, official verbs only, one call each, run tnsei4): `moai factory renew t2006 --json` -> `refused-expired` (07:16:57Z); `moai factory next --card t2006 --run tnsei4` -> exit 4 `refused owned ... leased (holder lane-7)`; then, in the tree, `moai factory stage t2006 run --run tnsei4` -> refused (`card lease expired`, expected); `moai factory status --run tnsei4` -> `t2006 state=assigned owner=lane-7 lease=none version=5`; from the parent checkout `moai factory next --card t2006 --run tnsei4` -> `t2006 stage=- worktree=t2006`; in the tree `moai factory stage t2006 run --run tnsei4` -> `t2006 run v7 lease renewed`. Same owner throughout; no takeover.
+- Earlier base-test caveat (progress.md, Claim 4) stands: the base ledger text equals the base rule block, so the two ledger rows failed only because of this PR's wording change.
+
+Gaps: CI on the repaired head does not exist (nothing pushed); the full `./internal/template/` and any other package were not run; this section is uncommitted until the single pre-push commit after the origin/main absorb.
+
