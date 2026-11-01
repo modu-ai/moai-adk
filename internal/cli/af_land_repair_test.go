@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -25,6 +26,50 @@ func afRepairLand(t *testing.T, db, repo, gate string) (outcome, reason, stdout 
 		t.Fatalf("stdout %.200q is not the verb's JSON line", out)
 	}
 	return res.Outcome, res.Reason, out
+}
+
+// afRepairACLEntries is the ACL entries `ls -lde` prints under the permission line of path (none when it has no ACL).
+func afRepairACLEntries(t *testing.T, path string) []string {
+	t.Helper()
+	out, err := exec.Command("ls", "-lde", path).Output()
+	if err != nil {
+		t.Fatalf("ls -lde %s: %v", path, err)
+	}
+	return strings.Split(strings.TrimSpace(string(out)), "\n")[1:]
+}
+
+// N22: the ledger lives below a directory with an inheritable ACL (TMPDIR points inside it, as a project under a
+// shared directory would). The log of a failed gate may hold unmasked output, so the file and its directory must end
+// without the ACL the 0600 mode does not remove.
+func TestAFLand_TheLogFileEndsWithoutAnInheritedACL(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("macOS inheritable ACLs")
+	}
+	afSkipWithoutSh(t)
+	parent, err := os.MkdirTemp("", "moai-af-acl-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(parent) })
+	acl := "everyone allow read,execute,list,search,readattr,readextattr,readsecurity,file_inherit,directory_inherit"
+	if out, cerr := exec.Command("chmod", "+a", acl, parent).CombinedOutput(); cerr != nil {
+		t.Fatalf("chmod +a: %v %s", cerr, out)
+	}
+	t.Setenv("TMPDIR", parent) // before the first t.TempDir(), which makes its root below TMPDIR
+	db, repo, _, _, _ := afQueuedCard(t)
+	if got := afRepairACLEntries(t, filepath.Dir(db)); len(got) == 0 {
+		t.Fatal("the fixture is wrong: the ledger directory inherited no ACL")
+	}
+	_, reason, _ := afRepairLand(t, db, repo, "printf 'hello from the gate\\n'; exit 1")
+	m := afD1LogPath.FindStringSubmatch(reason)
+	if m == nil {
+		t.Fatalf("the reason names no log file: %.300q", reason)
+	}
+	for _, p := range []string{filepath.Dir(m[1]), m[1]} {
+		if got := afRepairACLEntries(t, p); len(got) != 0 {
+			t.Errorf("%s has an ACL: %q", p, got)
+		}
+	}
 }
 
 // N23: gate-logs is a symbolic link. The verb must not follow it: no log in the target, its mode unchanged, and the
