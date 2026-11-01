@@ -266,3 +266,30 @@ Tree: HEAD 68d8078a35 plus the GREEN edit (committed as 76b3df294c); results fro
 - The wording test checks markers, not meaning.
 - Customer projects keep the old deployed rule until `moai update`.
 - A lane that never reads the full factory-dispatch.md body does not see the paragraph; the stub still says only "records a disk wait".
+
+## Follow-up 5: merge of origin/main and pre-push verification (2026-11-02)
+
+### Claim
+Merging origin/main (merge commit, no rebase/reset/amend/force) into WT-agent-trunk-factory produced no conflict, and the card's affected tests and lint pass on the merged tree.
+
+### Evidence
+- Lease: `moai factory renew t2013 --json` -> `refused-expired` (expired 2026-11-01T11:31:50Z). 8859 recovery: `moai factory stage t2013 run --run tnsei4` (refused, expired), `moai factory next --card t2013 --run tnsei4` from the primary checkout, then `moai factory renew t2013 --json` -> `renewed`. Record version 4 -> 6, stage field empty before and after.
+- `git rev-list --count --left-right origin/main...HEAD` before merge: `14 13` (behind 14, ahead 13).
+- `git merge --no-ff origin/main` -> merge commit 68ea579390, no conflict output, `git status --short` empty afterwards. Conflict content to preserve: none (t2009/AF overlaps in factory_card.go, factory-dispatch rules and binding_ledger.json merged cleanly at the textual level).
+- `go test ./internal/cli/ -run TestFactoryWake -count=1` -> ok 0.935s
+- `go test ./internal/homestate/ -run Wait -count=1` -> ok 4.791s
+- `go test ./internal/template/ -run 'TestT2013|TestBindingLedgerIntegrity|Mirror|Parity' -count=1` -> ok 87.193s
+- `golangci-lint run --allow-parallel-runners ./internal/homestate/... ./internal/cli/... ./internal/template/...` -> `0 issues.`, exit 0.
+
+### Baseline-attribution
+All commands ran in this run against the merged tree at 68ea579390. The moai binary used for factory verbs is the installed one (build not compared to tree HEAD); the Go tests and lint do not use it.
+
+### Gaps
+- `TestT2013` pattern was matched by `-run` alone; I did not list which tests it selected.
+- Textually clean merge does not prove semantic compatibility with t2009's factory_card.go or AF's rule/ledger changes; only the scoped tests above were run. Full ./internal/cli/... not run.
+- First `golangci-lint run` was refused by golangci-lint itself ("parallel golangci-lint is running", exit 3, another session's run); the passing run used `--allow-parallel-runners`.
+- One `rev-parse --short origin/main FETCH_HEAD` returned exit 128 (two-arg form); the divergence count was read separately instead.
+- One compound git command was refused by the worktree guard; rerun as plain separate commands.
+
+### Residual-risk
+- CI on the PR may fail in jobs not covered by the scoped tests (rules budget, mirror, full suite).
