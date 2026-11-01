@@ -233,3 +233,91 @@ All ten caught.
 - A first verb run in a directory that is itself a different repository from the one the ledger was meant for (an operator typo in `CLAUDE_PROJECT_DIR`) binds the wrong one; the refusal message names both repositories so the mistake is visible, but nothing here undoes it.
 - The trunk question is asked of the working repository at the moment of the call. A trunk ref moved after `enqueue` and before `land` is the landing's business (the Merger rebuilds against the current trunk), not this check's.
 - DONE after the guard rests on the same equality of commit ids the ledger uses; it proves the commit is an ancestor of `refs/heads/af/trunk`, not that the gate that approved it still holds (E6, open).
+
+---
+
+# Follow-up 2: N38 first bind (leader's re-measurement, card issue-1948)
+
+Start HEAD `54e7161211`. Same single writer, same tree. No push, no PR, no `MOAI_*_LIVE`, no run of the whole `./internal/cli/...` package, no independent audit. `internal/agenticfactory/ledger/**` untouched (its API was sufficient: `Repository`, `BindRepository`, `Leases`). No SPEC file touched.
+
+## Claim
+
+1. Before a verb binds a ledger that has no binding yet, it compares the repository it would bind (same identity: symlink-resolved git common directory) with what the ledger already knows, and refuses a disagreement with a message naming both, a non-zero exit and the ledger unchanged and still unbound (`afCheckKnownRepositories`, called by `afBindRepository` only while `st.Repository` is empty). What the ledger knows: (a) the repository of every lease worktree in `st.Leases`, a worktree that is gone, is no repository or that git cannot answer for being skipped; (b) the repository the `--db` file sits in (its directory), when it is inside one.
+2. A bound ledger behaves as before (compared with the binding). Same-repository linked worktrees and symlinked spellings pass. When the ledger knows nothing (no lease with a worktree that is a repository, a file outside any repository) the first call decides, as before: a documented residual risk, pinned by a test.
+3. `afRun` and `afMergeRun` pass the ledger path; `afCheckCommit` passes "" (the path is not at hand there; `afRun` has already tried to bind the project directory, and the lease worktrees are still compared). The `afBindHelp` paragraph of all nine verbs says it.
+
+## Evidence
+
+Commits on top of `54e7161211`, oldest first (RED, RED, GREEN):
+
+```
+b5932a8bfb test(af): N38 first-bind RED, a ledger that is not bound yet is refused a repository that disagrees ...
+ea9b27f010 test(af): N38 first-bind RED, the help of the verbs says what an unbound ledger is compared with ...
+7f957917ab fix(af): N38 first-bind GREEN, before a verb binds an unbound ledger it compares the repository ...
+```
+(the commit adding this section follows; the final HEAD is reported with the hand-over)
+
+RED (`go test -count=1 -run '^TestAFVerbs_N38FirstBind' ./internal/cli/`, tree before the fix): `FAIL` for `WorkingDirectoryNamesAnotherRepository`, `EnvNamesAnotherRepositoryRefusesEveryVerb/*` (9), `WorkingDirectoryRefusesEveryVerb/*` (9), `LandFromASecondCloneOfTheProjectIsRefused`, `ReconcileFromAnotherRepositoryIsRefused`, `LeaseWorktreeNamesAnotherRepositoryRefusesEveryVerb/*` (9), `LedgerFileInsideAnotherRepositoryIsRefused`; `WithNothingKnownBindsAsBefore` and `LinkedWorktreeOfTheProjectPasses` passed (guards against over-refusal). The help test failed for all nine verbs.
+
+GREEN, `-run '^TestAFVerbs_N38FirstBind'` -> `ok`. Every test in the next list `--- PASS`, run with `-v`:
+
+- Port of the audit's `TestA3Repo_WorkingDirectoryNamesAnotherRepository`: `TestAFVerbs_N38FirstBindWorkingDirectoryNamesAnotherRepository`. Evidence green, evidence gate, enqueue, land, finish (MERGING then DONE) are all refused, each with the ledger snapshot unchanged and `Repository()==""`; the card is not DONE; the project repository does not hold `x`; the queue is empty; the control from the project binds the project.
+- The five tests of the §2 N38 row exist as permanent tests from the last round under these names (the audit's `TestA3Repo_*` names do not exist in the tree). Verbatim result lines of the run:
+  ```
+  --- PASS: TestAFVerbs_N38LandFromASecondCloneOfTheProjectIsRefused (1.04s)
+  --- PASS: TestAFVerbs_N38EveryVerbIsRefusedWhenTheProjectDirectoryNamesAnotherRepository (0.94s)
+  --- PASS: TestAFVerbs_N38EveryVerbIsRefusedWhenTheWorkingDirectoryIsAnotherRepository (0.66s)
+  --- PASS: TestAFVerbs_N38ReconcileFromAnotherRepositoryIsRefused (0.65s)
+  --- PASS: TestAFVerbs_N38ALeaseWorktreeInAnotherRepositoryIsRefusedWhereItIsUsed (0.62s)
+  ```
+  Those five bind the ledger first through a verb in the project (`afN38Card`), so they pin the bound-ledger refusal. Their first-bind counterparts, added now on an UNBOUND ledger (card claimed and rows written through the store): `TestAFVerbs_N38FirstBindEnvNamesAnotherRepositoryRefusesEveryVerb`, `...WorkingDirectoryRefusesEveryVerb`, `...LandFromASecondCloneOfTheProjectIsRefused`, `...ReconcileFromAnotherRepositoryIsRefused`, `...LeaseWorktreeNamesAnotherRepositoryRefusesEveryVerb` (all nine verbs each where the original does).
+- (3) `TestAFVerbs_N38FirstBindLedgerFileInsideAnotherRepositoryIsRefused`: file in repository A, project B -> `reap` refused naming both, still unbound; project A binds A; a linked worktree of A as project binds A.
+- (4) `TestAFVerbs_N38FirstBindWithNothingKnownBindsAsBefore`: no lease / lease worktree gone / lease worktree no repository, file outside any repository, project another repository -> binds it (residual risk, explicit).
+- (5) `TestAFVerbs_N38FirstBindLinkedWorktreeOfTheProjectPasses`: lease in a linked worktree, first call from the project, the linked worktree and a symlink to the project, each on a fresh unbound ledger -> binds the project's git directory.
+- Help: `TestAFVerbs_N38FirstBindHelpSaysWhatAnUnboundLedgerIsComparedWith` (all nine verbs).
+
+Mutation contrasts (break, observe `FAIL`, restore; `git status --short` was empty afterwards):
+
+| Mutant | Failing |
+|---|---|
+| lease clue skipped (`\|\| true` on the worktree test) | `WorkingDirectoryNamesAnotherRepository`, `EnvNames...`, `WorkingDirectoryRefuses...`, `LandFromASecondClone...`, `ReconcileFromAnother...`, `LeaseWorktreeNames...` |
+| ledger-file clue skipped (`&& false`) | `LedgerFileInsideAnotherRepositoryIsRefused` only |
+| an unanswerable clue refused instead of skipped (`err == nil && got == id`) | `WithNothingKnownBindsAsBefore` (3 subtests), `LinkedWorktreeOfTheProjectPasses` (3), `WorkingDirectoryNamesAnotherRepository` (its control) |
+| help sentence reworded | the help test |
+
+Verification, run from the worktree root on the final code (the report commit changes no code):
+
+```
+gofmt -l internal/agenticfactory internal/cli         -> (no output)
+go build ./...                                        -> rc=0
+go vet ./internal/agenticfactory/... ./internal/cli/  -> rc=0
+GOOS=windows go build ./...                           -> rc=0
+GOOS=linux go build ./...                             -> rc=0
+go test -race -count=1 -p 4 ./internal/agenticfactory/...   -> all 21 packages ok (ledger 52.330s, mergeq 68.440s)
+go test -count=1 -p 4 -run '^(TestAF|TestCardFlow)' ./internal/cli/  -> ok  github.com/modu-ai/moai-adk/internal/cli  86.180s
+go test -race -count=1 -cover ./internal/agenticfactory/mergeq/  -> ok  .../mergeq  57.497s  coverage: 88.2% of statements
+golangci-lint run ./internal/agenticfactory/... ./internal/cli/   -> 1 finding: internal/cli/codex_close_entry_signal_test.go:89:17 errcheck (pw.Close), a file this work did not touch
+```
+`go test -list 'TestAFVerbs_N38'` lists 18 tests (10 new, 8 from the last round); the anchored AF run covers all of them. The unmodified N3, N28, N39, N42, N38 and repair tests are in that run and green.
+
+## Baseline-attribution
+
+Tree `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/agentic-factory-integration`, start `54e7161211`, code HEAD `7f957917ab`. Every number and line above is from this run on this tree. Judging build: `go` compiled the tree in place; no installed `moai` binary measured anything. The audit's repro file was read, not run.
+
+## Gaps
+
+- Refused or not run, by instruction: the whole `./internal/cli/...` package (only the anchored `^(TestAF|TestCardFlow)` and narrower anchored subsets), push, PR, any `MOAI_*_LIVE`, independent audit. `go test -race` was not run for `./internal/cli/`. `internal/cli` coverage was not measured.
+- Refused by the worktree guard in this session: one `sed -i` in a plain command (redone with Edit), one compound `go test` call with a redirect into `/tmp`, and one compound `cat >>` append of this section (all redone as plain commands or with Edit); no result depends on them.
+- Windows and Linux by `go build` only; the CLI tests skip on native Windows. Identity behaviour of `EvalSymlinks` on Windows and case-insensitive volumes is untested.
+- `afCheckCommit` has no ledger path, so the ledger-file clue is checked only where `afRun` and `afMergeRun` bind. In the one route where `afRun` could not bind (project directory is no repository) and `afCheckCommit` binds first, only the lease clue applies; `--repo` is refused earlier there (`afCheckRepoFlag` needs a project repository), so a lease-less ledger whose file sits in repository A, with a `--repo`-less `evidence` from a non-repository project directory, is the uncovered corner.
+- `internal/hook/ledger_heartbeat.go` still opens the ledger with no repository comparison (not a `moai af` verb; unchanged).
+- Not measured: two processes first-binding the same fresh ledger from two repositories at the same instant. The known-identity read and the `BindRepository` write are not one transaction; the write stays atomic and refuses a different identity, but the pre-check can let a call through that a just-written lease would have refused.
+- The unbound fixtures write evidence, queue rows and claims through the store, never through a verb, to leave the ledger unbound.
+- The audit's own `TestA3Repo_*` file was not copied into the tree and not run; its scenarios are covered by the permanent tests named above.
+
+## Residual-risk
+
+- A ledger that knows nothing (no lease worktree that is a repository, file outside any repository: the usual state of the default `<home state>/af/ledger.db` before the first claim) is still bound by the first call; a wrong first call (an operator typo in `CLAUDE_PROJECT_DIR`) binds the wrong repository, later refusals name both repositories, and nothing undoes it.
+- A lease whose worktree is in another repository now makes EVERY verb refuse at first bind (claim, release and reap included) until the ledger is edited by hand; that is the reading of the brief, and it means a mis-claimed worktree cannot be cleaned up through the verbs while the ledger is unbound.
+- A ledger file in a directory that happens to be a repository (the default path is not) is taken as a clue and can refuse a legitimate project that is a different repository.
+- Identity is the symlink-resolved git directory path, so a repository moved on disk reads as another repository.
