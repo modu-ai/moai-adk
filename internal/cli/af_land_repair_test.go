@@ -9,7 +9,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -26,6 +28,102 @@ func afRepairLand(t *testing.T, db, repo, gate string) (outcome, reason, stdout 
 		t.Fatalf("stdout %.200q is not the verb's JSON line", out)
 	}
 	return res.Outcome, res.Reason, out
+}
+
+// afGateID is the short id the reason and the landed note carry in place of the gate text: "gate-" and 12 hex digits.
+var afGateID = regexp.MustCompile(`gate-[0-9a-f]{12}`)
+
+// N29: the gate TEXT used to be quoted in the failure reason, the stdout line, the note the next enqueue copies the
+// reason into, and the landed note, with core.Redact as the only protection; a credential written into the command
+// line stayed in 6 of 9 shapes. The reason, the stdout, the memo and the landed note now carry a short id of the gate
+// text; the text itself goes to the failure log only.
+func TestAFLand_TheGateTextIsNotInTheReasonTheStdoutOrTheLedgerButTheLogHoldsIt(t *testing.T) {
+	afSkipWithoutSh(t)
+	// every command is replaced by a built-in that does nothing, so no shape starts a client or reaches a network
+	const tail = ": the-tail-of-the-gate-text; exit 1"
+	rows := []struct{ name, gate string }{
+		{"assign", `@PW@=` + afD1Value + ` true`},
+		{"pass_assign", `pass=` + afD1Value + ` true`},
+		{"mysql_p", `: mysql -uroot -p` + afD1Value + ` db`},
+		{"flag_space", `: mysqldump --@PW@ ` + afD1Value + ` db`},
+		{"token_flag", `: gh --@TK@ ` + afD1Value + ` api`},
+		{"url_no_dot", `: psql postgres@UC@` + afD1Value + `@db:5432/x`},
+		{"curl_u", `: curl -u user:` + afD1Value + ` https://example.test`},
+		{"glpat", `CI_@TK@=@GL@` + afD1Value + ` true`},
+		{"plain_env", `SECRET_FOO=` + afD1Value + ` true`},
+	}
+	for _, r := range rows {
+		t.Run(r.name, func(t *testing.T) {
+			db, repo, cand, st, epoch := afQueuedCard(t)
+			gate := afD1Words.Replace(r.gate) + "\n" + tail
+			out, errOut, err := afRunBoth("land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/trunk", "--gate", gate)
+			if err != nil {
+				t.Fatalf("the verb failed: %v", err)
+			}
+			if _, _, eerr := afRunBoth("enqueue", "t1", "--db", db, "--epoch", strconv.FormatInt(epoch, 10), "--candidate", cand, "--repo", repo); eerr != nil {
+				t.Fatalf("enqueue after the failure: %v", eerr)
+			}
+			if strings.Contains(out+errOut, afD1Value) {
+				t.Errorf("the value is in the stdout or stderr: %.300q", out)
+			}
+			if strings.Contains(string(afLedgerBytes(t, db)), afD1Value) {
+				t.Error("the value is in the ledger file")
+			}
+			notes, nerr := st.Notes(context.Background(), 0)
+			if nerr != nil {
+				t.Fatal(nerr)
+			}
+			for _, n := range notes {
+				if strings.Contains(n.Text, afD1Value) {
+					t.Errorf("the value is in a note: %.200q", n.Text)
+				}
+			}
+			var res struct{ Outcome, Reason string }
+			if jerr := json.Unmarshal([]byte(out), &res); jerr != nil || res.Outcome != "failed" {
+				t.Fatalf("stdout %.200q: want outcome failed", out)
+			}
+			if !afGateID.MatchString(res.Reason) {
+				t.Errorf("the reason carries no gate id: %.300q", res.Reason)
+			}
+			m := afD1LogPath.FindStringSubmatch(res.Reason)
+			if m == nil {
+				t.Fatalf("the reason names no log file: %.300q", res.Reason)
+			}
+			if log, rerr := os.ReadFile(m[1]); rerr != nil || !strings.Contains(string(log), "the-tail-of-the-gate-text") {
+				t.Errorf("the log %s does not hold the gate text: %.300q %v", m[1], log, rerr)
+			}
+		})
+	}
+}
+
+// N29: the same on a gate that passes: the landed note carries the id, not the text.
+func TestAFLand_TheLandedNoteCarriesTheGateIDAndNotTheGateText(t *testing.T) {
+	afSkipWithoutSh(t)
+	db, repo, _, st, _ := afQueuedCard(t)
+	gate := afD1Words.Replace(`pass=` + afD1Value + ` true`)
+	out, errOut, err := afRunBoth("land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/trunk", "--gate", gate)
+	if err != nil {
+		t.Fatalf("the verb failed: %v", err)
+	}
+	if strings.Contains(out+errOut, afD1Value) || strings.Contains(string(afLedgerBytes(t, db)), afD1Value) {
+		t.Error("the gate text's value is in the stdout or the ledger")
+	}
+	notes, nerr := st.Notes(context.Background(), 0)
+	if nerr != nil {
+		t.Fatal(nerr)
+	}
+	landed := false
+	for _, n := range notes {
+		if n.Kind == "landed" {
+			landed = true
+			if !afGateID.MatchString(n.Text) {
+				t.Errorf("the landed note carries no gate id: %.300q", n.Text)
+			}
+		}
+	}
+	if !landed {
+		t.Errorf("no landed note: %.300q", out)
+	}
 }
 
 // afRepairACLEntries is the ACL entries `ls -lde` prints under the permission line of path (none when it has no ACL).
