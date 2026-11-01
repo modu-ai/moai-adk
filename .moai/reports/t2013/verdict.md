@@ -183,3 +183,54 @@ Tree: HEAD 66ce5c8ba9 plus the uncommitted edits listed above, measured in this 
 - The sweep exemption is whole-line equality: a future edit that makes the body line equal to a ledger line again would re-trigger AC-ALB-021(2).
 - The wording test checks markers (`audited_sha`, `HEAD`, absence of the old phrase), not meaning.
 - Customer projects keep the old deployed sentence until `moai update`.
+
+
+## Follow-up 3: lane wait record and wake (2026-11-01)
+
+### Claim
+
+1. A lane's wait is recorded mechanically (additive `card_waits` table, `moai factory wait` verb) with waker and condition. 2. The `moai factory complete` landing edges (merged-local via completeTransitions, merged-pr via factoryCompleteGitHubFlow) print, once, `wake: lane=<waker> card=<id> reason=<...>` for each wait the landing satisfies; re-run prints nothing; operator waker prints a leader note only; unmet condition or lease expiry prints nothing. 3. The wake output points the reader at `moai factory status` lease holder and the card progress record. 4. Base-branch question investigated, no code changed.
+
+### Evidence
+
+- RED commit 54be323517, `go test ./internal/cli -run TestFactoryWake -count=1`, verbatim tail: `--- FAIL: TestFactoryWakeOnLanding/predecessor_landed_local,_lane_waker:_one_wake,_rerun_silent` ... `factory_wait_test.go:96: first print: want 1 wake line(s), got 0:` ... `--- FAIL: TestFactoryWakeTwoWaitsOnePredecessor` ... `want 2 wake lines, got 0:` ... `FAIL github.com/modu-ai/moai-adk/internal/cli 1.296s`.
+- GREEN commit 61c9c1e9f0: same command, 7 subtests PASS (`ok github.com/modu-ai/moai-adk/internal/cli 1.034s`).
+- `go test ./internal/homestate -count=1`: `ok github.com/modu-ai/moai-adk/internal/homestate 179.903s`.
+- `go test ./internal/cli -run 'TestFactoryComplete|TestMWQ|TestFactoryGitHubFlow|TestFactoryWake|TestComplete|TestFactoryPR|TestS03' -count=1`: `ok ... 157.388s`.
+- `go vet ./internal/cli ./internal/homestate`: no output. `gofmt -l internal/cli internal/homestate`: no output (after removing a trailing comment that gofmt realigned).
+- Mutants via `go test -overlay` copies in the scratchpad (tree untouched), all `-run TestFactoryWake`:
+  - M1 drop the woken_at guard (SELECT and UPDATE): FAIL `rerun 1 must print nothing, got: wake: lane=lane-3 card=t2020 ...` (3 subtests). A first attempt dropping only the SELECT guard SURVIVED (`ok`), because the UPDATE `WHERE woken_at=''` re-guards; that is double protection, not a test hole.
+  - M2 ignore waker=operator: FAIL `operator_waker_on_a_predecessor_wait ... want 0 wake line(s), got 1: wake: lane=operator card=t2020`.
+  - M3 remove the landed-state guard (print on a lease-expired, unlanded predecessor): FAIL `predecessor_only_has_an_expired_lease,_not_landed ... want 0 wake line(s), got 1`.
+  - M4 ignore the predecessor ref: FAIL `a_different_card_landed ... want 0 wake line(s), got 1: wake: lane=lane-3 card=t2020 reason=r (predecessor t2011 landed)`.
+
+### Design
+
+Reused: the existing `after` hint is the default predecessor of `moai factory wait` (no restated dependency); the additive-table precedent of `card_metadata_events`. New: `card_waits` (card_id, cond_kind, cond_ref, waker, reason, recorded_by, recorded_at, woken_at), created by `CREATE TABLE IF NOT EXISTS` in factoryDDL, so no schema version bump and no existing row touched. Not reused: `decision_*` columns hold one gate per card and are a card state (needs-decision), not a per-condition wake target.
+
+### (4) Base branch: investigation only, no code changed
+
+- Chosen at `internal/cli/session_worktree.go:241` `base := config.LoadWorktreeBaseBranch(projectRoot)` (`git_strategy.worktree_base_branch: main`), reached from `factoryCreateAndRenameWorktree` (factory_card.go:997) via `worktree.WorktreeCreator` = `materializeSessionWorktree`.
+- Operand: `gitWorktreeAddArgs` appends the BARE name (`main`) so git resolves LOCAL `refs/heads/main`.
+- Fetch: none on this path (grep of `"fetch"` in session_worktree.go and the factory next path finds no call; fetches exist only in factory_card_pr.go:236, 337, 566 for the PR edge). Local main is therefore as stale as the last manual resync, matching the leader's 14-behind observation.
+- Resolve check: `hook.WorktreeBaseBranchResolvable` = `git show-ref --verify refs/remotes/origin/<base>` (internal/hook/worktree_base_branch.go:194). It tests the REMOTE-tracking ref, while the operand is the LOCAL ref: the two can disagree. If `origin/main` is absent (no remote, never fetched, shallow), `base` is silently set to `""` (session_worktree.go:242-244) and the tree is cut from the invoking tree's HEAD, with no warning (the planned warning is t1847 per gitflow-lane-protocol.md section 1).
+- Minimal change (a) refuse on unresolvable base: at session_worktree.go:242-244 return an error instead of `base = ""` when `base != "" && !resolvable`; touches the plan D4 decision (SPEC-WORKTREE-BASEREF-001 chose fall back, "a tree on the wrong base is recoverable"), and existing tests of that fallback would flip, so it is not "clearly bounded"; not implemented.
+- Minimal change (b) follow origin: a `git fetch origin <base>` before the add and operand `origin/<base>`. This CONTRADICTS the local rule `.claude/rules/local/gitflow-lane-protocol.md` section 1 (local main is deliberately both base and landing surface; origin/main advances only by release batches). Leader's decision; not implemented.
+
+### Baseline-attribution
+
+Tree: HEAD 61c9c1e9f0 plus this evidence commit; all results from `go test`/`go vet` built from this tree in this session; no installed `moai` binary judged anything. Interaction with t2009: commit 2d4a257875 (branch-local, not in this HEAD) edits `completePostMergeConflict` at about factory_card.go:3341; this card edits `completeTransitions` (one line after the `Fprintf` at about line 3295) and factory_card_pr.go `factoryCompleteGitHubFlow` (one line before `factoryPrintClearPolicyLine`, about line 584), plus factory_handoff_recover.go (one `AddCommand` line) and factory.go DDL. Adjacent but non-overlapping hunks in factory_card.go (about 45 lines apart).
+
+### Gaps
+
+- NOT executed: any real cross-session wake or send, any live session, `moai factory wait` through the real cobra tree against a live run (the verb's `--on` default via the card `after` hint is untested), the MCP surface (no MCP tool added for `wait`).
+- Not run: full `./internal/cli/...`, `moai update`, `make build`.
+- Refused command: one compound Bash (variable assignments plus `cp` and `sed -i` chain with `$S`/`$T`) was refused by the worktree guard ("runs sed with a value computed at runtime"); I redid the copies and edits as plain single commands and Edit calls. No result depends on the refused command.
+- No wake path exists for lease expiry (no code calls the printer there); the lease-expiry case tests that a not-landed, lease-expired predecessor prints nothing, i.e. the guard, not a lease-expiry hook.
+- Wake recording at `moai factory next`/lease-expiry recovery (8859) is not wired; a wait on a lease-expired card is not woken.
+
+### Residual-risk
+
+- Printed wake can be missed if the completing session's output is not read; the record (`woken_at`) marks it handed out, so a lost wake is not re-printed. The leader reads `card_waits` (via future status surface) or the progress record.
+- `woken_at` is stamped before the session sends; a crash between print and send loses the nudge (queue-and-evidence reads still cover it, per factory-dispatch).
+- Always-loaded rule text growth for this follow-up: 0 bytes (no rule file touched).
