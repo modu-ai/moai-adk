@@ -71,15 +71,13 @@ func sdWantTransitionLine(t *testing.T, out, policy string) {
 	if strings.Contains(trimmed, "\n") {
 		t.Fatalf("policy %s: printed more than one line:\n%s", policy, out)
 	}
-	if strings.Contains(out, "/clear") {
-		t.Fatalf("policy %s: output %q carries a clear instruction", policy, out)
-	}
-	if !strings.Contains(out, "ExitWorktree(keep)") {
-		t.Fatalf("policy %s: output %q does not name the in-session transition step", policy, out)
-	}
 	if !strings.Contains(out, policy) {
 		t.Fatalf("policy %s: output %q does not name the policy", policy, out)
 	}
+	// Card t2013 (decisions R22) supersedes the REQ-LNC-007/009 "no clear
+	// instruction" shape: the guidance names ExitWorktree, the default-branch
+	// check, the operator's /clear, and the next-card request, in that order.
+	t2013WantCompletionGuidance(t, out)
 }
 
 // AC-SD-020 — each policy with an injected context-usage record; no policy
@@ -226,12 +224,7 @@ func TestSD_AC020_ClearPolicies(t *testing.T) {
 		if err != nil {
 			t.Fatalf("cli complete: %v", err)
 		}
-		if n := strings.Count(out, "/clear"); n != 0 {
-			t.Fatalf("complete output carries %d /clear requests, want 0:\n%s", n, out)
-		}
-		if !strings.Contains(out, "ExitWorktree(keep)") {
-			t.Errorf("complete output does not name the in-session transition step:\n%s", out)
-		}
+		t2013WantCompletionGuidance(t, out)
 		if !strings.Contains(out, config.FactoryClearPolicyEach) {
 			t.Errorf("complete output does not name the policy:\n%s", out)
 		}
