@@ -20,3 +20,15 @@ The handoff items are a static survey of 5c3f0ebf27; each is a hypothesis until 
 - Mirrors before the edit: `cmp` live vs `internal/template/templates/` for run.md, run/phase-execution.md, run/task-decomposition.md -> identical (exit 0 each).
 
 Gaps: the survey's claim that this misleads a real run is not exercised (no workflow run was performed); the test runs only against the live tree.
+
+### RUN-03 repair (commit after 1624cd7e6c)
+
+- Test first: `.claude/hooks/tests/test-tdd-result-contract.sh` gains 9 lines requiring `tdd-result-contract.md` in task-decomposition.md, and `tdd-result-contract.md`, `EXPECTED_RED`, `REGRESSION_FAILURE` in run.md and run/phase-execution.md. The existing literal checks are untouched, so the test is stricter, not weaker.
+- Edits (each mirrored byte-identical to `internal/template/templates/`): task-decomposition.md Phase 12 gets one requirement bullet naming the contract with the three literals; run.md ac_converge prompt and run/phase-execution.md semantic-failure bullet each state that `EXPECTED_RED` is not a semantic failure and `REGRESSION_FAILURE` is.
+- `bash .claude/hooks/tests/test-tdd-result-contract.sh` -> `PASS: TDD distinguishes expected RED from regression and tool failures` (was exit 1 at baseline).
+- Mutation (scratch copy under the session scratchpad, only run.md reverted to `git show 5c3f0ebf27:.claude/skills/moai/workflows/run.md`): the strengthened test -> exit 1. The new run.md check bites.
+- Catalog hash: after the skill edit `go test -count=1 -run 'Mirror|Embed|Manifest|DateProvenance|BindingLedger' ./internal/template/` -> `TestManifestHashFormat` FAIL (`CATALOG_HASH_UNSTABLE`, stored 18df0ebd... vs computed f3f8912d...). `go run ./internal/template/scripts/gen-catalog-hashes.go --all` (the Makefile `build` step) changed one line of `internal/template/catalog.yaml`. Same command rerun -> `ok github.com/modu-ai/moai-adk/internal/template 3.290s`.
+- Customer templates: only files that already have a mirror changed, in the same commit; no `moai update` forced.
+
+Gaps: no whole-file semantic test of the new clauses (literal greps only, plus the one mutation); `make build` was not run (only its hash step); no Go package other than internal/template was run.
+Residual risk: the three docs still describe `go test ./...` exit 0 as an ac_converge predicate (RUN-07, out of the stated order for this pass).

@@ -67,6 +67,7 @@ Requirements:
 - Initialize task tracking for progress across TDD cycles
 - Execute the complete RED-GREEN-REFACTOR cycle for each feature
 - Write tests before implementation (test-first discipline)
+- Record a semantic result for every TDD command, not only an exit code, per `.claude/rules/moai/workflow/tdd-result-contract.md`: `EXPECTED_RED` is allowed only in RED for the new AC test, after it reached its intended assertion; Compile errors, discovery, fixture, tool, or timeout failures are `TOOL_FAILURE` and never count as RED; an existing test failing, or a RED test failing again after GREEN, is `REGRESSION_FAILURE` and blocks the cycle. GREEN runs the new AC test and the regression set together, and REFACTOR must preserve both results
 - Ensure minimum 80% coverage per commit (85% recommended for new code)
 
 ### RED-stage Drafter Pool (read-only, conditional)
