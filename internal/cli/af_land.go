@@ -184,7 +184,11 @@ recorded all the same.
 Which trunk and which repository. The trunk is %s and cannot be changed: --trunk takes that value or nothing, and
 any other value is refused before anything is landed, with the ledger unchanged. --repo takes the project directory or
 any path with the same git directory (a linked worktree of the project's repository qualifies) and refuses every
-other path the same way: a landing row says "merged" without asking where, so the verb does not let the caller choose.
+other path the same way: a landing row says "merged" without asking where. Without --repo the repository is the project
+directory (CLAUDE_PROJECT_DIR, else the working directory), and it too must be the repository the ledger is bound to: a
+second clone of the project, or another repository, is refused with the ledger unchanged.
+
+%s
 
 What is recorded as given. Nothing masks the text of the free-input flags: --session here, and --command, --reason,
 --path and --actor of the other af verbs are recorded as given, so put no secret in them.
@@ -197,7 +201,7 @@ has no process group, so this verb does not kill what the gate started there; ru
 long-lived processes. A gate that prints without end is not an error: it runs until --gate-timeout (default 20m) ends it.
 The gate receives the caller's full environment except GIT_DIR and the other repository-scoping variables, so a
 credential in the caller's environment is visible to it.
-A landing lock whose holder process is gone is taken back first.`, mergeq.DefaultFailureLogCap>>10, mergeq.DefaultFailureLogTotalCap>>20, mergeq.DefaultTrunk),
+A landing lock whose holder process is gone is taken back first.`, mergeq.DefaultFailureLogCap>>10, mergeq.DefaultFailureLogTotalCap>>20, mergeq.DefaultTrunk, afBindHelp),
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if strings.TrimSpace(gate) == "" {
@@ -251,7 +255,12 @@ others. The result is one JSON line listing the actions taken; a failed row is r
 
 The trunk is ` + mergeq.DefaultTrunk + ` and cannot be changed: --trunk takes that value or nothing, and any other value is
 refused with the ledger unchanged. --repo takes the project directory or any path with the same git directory (a
-linked worktree of the project's repository qualifies) and refuses every other path the same way.`,
+linked worktree of the project's repository qualifies) and refuses every other path the same way. Without --repo the
+repository is the project directory (CLAUDE_PROJECT_DIR, else the working directory), and it must be the repository the
+ledger is bound to: a reconcile from another repository would settle the rows from that repository's ancestry, so it is
+refused with the ledger unchanged.
+
+` + afBindHelp,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return afMergeRun(cmd, f, func(ctx context.Context, st *ledger.Store, scratch string) error {

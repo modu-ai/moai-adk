@@ -171,7 +171,15 @@ func afCheckLandedInTrunk(ctx context.Context, st *ledger.Store, card string) er
 
 // afRepoFlagHelp is what --repo says of the verbs that look a commit up; the land verbs say the same in their own words.
 const afRepoFlagHelp = "the git repository the commit is looked up in: the project's own (default: the card's lease worktree, " +
-	"else the project directory), or any path with the same git directory, a linked worktree of it included; any other path is refused"
+	"else the project directory), or any path with the same git directory, a linked worktree of it included; any other path is refused, " +
+	"and so is a repository other than the one the ledger is bound to"
+
+// afBindHelp closes the help of every verb that opens the ledger: what the repository binding is and what it refuses.
+const afBindHelp = `The ledger is bound to one repository: the first verb that writes it binds the git directory of the repository it
+runs in (a linked worktree has the git directory of its repository, and two spellings of one path are one repository). That
+is the project directory, which CLAUDE_PROJECT_DIR or else the working directory names; evidence and enqueue also use --repo
+or the card's lease worktree. Afterwards a call that would use another repository is refused with the ledger unchanged, the
+message naming both. A project directory that is no git repository binds nothing, for the verbs that run no git.`
 
 // afCheckTrunk refuses every --trunk but the dedicated one. A landing row says "merged" without asking which trunk or
 // which repository it landed in, so a verb that took another ref (the candidate's own branch, say) ended the card DONE
@@ -298,7 +306,13 @@ func newAFClaimCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "claim",
 		Short: "Claim the next card and print its id and fencing epoch",
-		Args:  cobra.NoArgs,
+		Long: `Claim the next card and print its id and fencing epoch.
+
+--worktree is recorded in the lease as given and is not checked here: evidence and enqueue look a commit up in it when
+--repo is left out, and refuse it there when it is in a repository other than the ledger's.
+
+` + afBindHelp,
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if worktree == "" {
 				wd, err := os.Getwd()
@@ -345,7 +359,15 @@ func newAFMoveCmd() *cobra.Command {
 Limits: the verb carries no guard or evidence arguments. A move that needs a guard key (an operator hold, a
 fix-limit or reclaim-cap park, a resume guard) or evidence handed to the position table is refused by the
 ledger, and this verb cannot supply either; such moves are made through the ledger API, except the resume of a
-reclaim-cap park, which is the separate "resume" verb. Recording evidence is the separate "evidence" verb.`,
+reclaim-cap park, which is the separate "resume" verb. Recording evidence is the separate "evidence" verb.
+
+Moving to DONE: when the card's queue row says landed, the verb asks the repository whether that commit is in ` + mergeq.DefaultTrunk + `
+and refuses when it is not, or when the repository cannot say; nothing is changed. The row alone says "merged" without
+asking where, so a trunk that lost the commit, or a row that landed on another trunk, is not a landing the card can finish
+on. The way out is a real landing: move the card to REVIEWING, release it, and the next holder measures the commit again
+and offers it with enqueue; the row starts again as waiting and "moai af land" lands it.
+
+` + afBindHelp,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			to := core.Position{Stage: core.Stage(strings.ToUpper(stage)), Sub: core.SubStage(strings.ToUpper(sub)), RemoteIntegrated: remote}
@@ -393,7 +415,9 @@ and the reclaim cap itself is untouched.
 --guard must be ` + core.GuardReclaimCap + ` (the only park this verb resolves; any other value is refused) and --reason is required and
 must say what the operator looked at. A card that is not parked at reclaim-cap, or an --epoch that is not the card's
 own, is refused with the ledger unchanged. --actor and --reason are recorded as given, in the card's transition
-history: nothing masks them, put no secret in them.`,
+history: nothing masks them, put no secret in them.
+
+` + afBindHelp,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if guard != core.GuardReclaimCap {
@@ -443,7 +467,13 @@ func newAFEvidenceCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "evidence <card>",
 		Short: "Record evidence (red, green, gate, review, merge) bound to a commit",
-		Args:  cobra.ExactArgs(1),
+		Long: `Record evidence (red, green, gate, review, merge) bound to a commit.
+
+The commit is looked up in --repo, else in the worktree of the card's lease, else in the project directory; it must name a
+complete commit SHA that exists there, and that repository must be the one the ledger is bound to.
+
+` + afBindHelp,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := afCheckRepoFlag(cmd.Context(), repo); err != nil {
 				return err
@@ -480,7 +510,16 @@ func newAFEnqueueCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "enqueue <card>",
 		Short: "Put the card's candidate commit on the merge queue",
-		Args:  cobra.ExactArgs(1),
+		Long: `Put the card's candidate commit on the merge queue.
+
+The commit is looked up as evidence does (--repo, else the card's lease worktree, else the project directory). The verb
+then asks that repository whether the candidate is in ` + mergeq.DefaultTrunk + ` and tells the ledger. A queue row that landed
+under an earlier holder of the card, for this same commit, is taken over only when the commit is in the trunk; otherwise
+the row starts again as waiting, to be landed for real. When the repository cannot answer (the trunk ref does not exist,
+say) the offer is refused and nothing is changed: the verb does not guess.
+
+` + afBindHelp,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := afCheckRepoFlag(cmd.Context(), repo); err != nil {
 				return err
@@ -514,6 +553,7 @@ func newAFReleaseCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "release <card>",
 		Short: "Let go of a claimed card",
+		Long:  "Let go of a claimed card.\n\n" + afBindHelp,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return afRun(f.db, func(ctx context.Context, st *ledger.Store) error {
@@ -541,6 +581,7 @@ func newAFReapCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "reap",
 		Short: "Take back the cards whose holder process is gone",
+		Long:  "Take back the cards whose holder process is gone.\n\n" + afBindHelp,
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return afRun(f.db, func(ctx context.Context, st *ledger.Store) error {
