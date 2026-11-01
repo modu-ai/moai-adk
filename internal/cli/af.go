@@ -86,42 +86,92 @@ func afRun(f afFlags, fn func(ctx context.Context, st *ledger.Store) error) erro
 	// every verb binds the ledger to the repository of the project directory it runs in; the verbs that look commits up
 	// bind the repository they use as well (afCheckCommit), and a project directory that is no repository has none to bind.
 	// The ledger file is a clue only when the caller placed it with --db (N50): the default place is the tool's choice.
-	if err := afBindRepository(ctx, st, f.place(), resolveProjectDir(), true); err != nil {
+	pending, err := afPrepareBinding(ctx, st, f.place(), resolveProjectDir(), true)
+	if err != nil {
 		return err
 	}
-	return fn(ctx, st)
+	if pending == nil {
+		return fn(ctx, st)
+	}
+	// The ledger is not bound yet and the first verb that COMPLETES binds it (N55): a verb the ledger refuses (no such card,
+	// a stale epoch) has done nothing, and a ledger it leaves bound to the repository it happened to run in is bound for
+	// good. A verb that binds on its own (afCheckCommit) flushes this first, so the project's repository is still the first
+	// one bound.
+	err = fn(context.WithValue(ctx, afPendingKey{}, pending), st)
+	if err == nil {
+		err = pending.flush(ctx)
+	}
+	return err
+}
+
+// afPendingBinding is the binding of a repository that waits for the first write of the verb that checked it.
+type afPendingBinding struct {
+	finish func(context.Context) error
+	done   bool
+}
+
+// afPendingKey is the context key under which afRun hands the waiting binding to the code the verb calls.
+type afPendingKey struct{}
+
+// flush binds now, once.
+func (p *afPendingBinding) flush(ctx context.Context) error {
+	if p.done {
+		return nil
+	}
+	p.done = true
+	return p.finish(ctx)
 }
 
 // afBindRepository binds the ledger to the repository that dir belongs to (its git directory, which a linked worktree
-// shares) or checks that it is the repository the ledger is already bound to. A call that would use another repository
-// is refused with the ledger unchanged. A directory that is no git repository has no repository to compare:
-// optionalRepo lets a verb that runs no git carry on there (a refusal for anything git could not answer).
+// shares) or checks that it is the repository the ledger is already bound to, now. A binding that afRun put off is made
+// first. A call that would use another repository is refused with the ledger unchanged. A directory that is no git
+// repository has no repository to compare: optionalRepo lets a verb that runs no git carry on there (a refusal for
+// anything git could not answer).
 //
 // While the ledger is not bound yet the first call would decide, so before it binds it is compared with what the ledger
 // already knows (afCheckKnownRepositories); place says whether the caller placed the ledger file (--db) and which
 // repository it declared (--bind-repo).
 func afBindRepository(ctx context.Context, st *ledger.Store, place afPlace, dir string, optionalRepo bool) error {
-	id, err := afGitCommonPath(ctx, dir)
-	if err != nil {
-		if optionalRepo && errors.Is(err, errAFNotARepository) {
-			return nil
-		}
-		return fmt.Errorf("af: cannot tell which repository %q belongs to (%w); nothing was changed", dir, err)
-	}
-	if bound, rerr := st.Repository(ctx); rerr == nil && bound == "" {
-		if err := afCheckKnownRepositories(ctx, st, place, id, dir); err != nil {
+	if p, ok := ctx.Value(afPendingKey{}).(*afPendingBinding); ok {
+		if err := p.flush(ctx); err != nil {
 			return err
 		}
 	}
-	if err := st.BindRepository(ctx, id); err != nil {
-		if !errors.Is(err, ledger.ErrWrongRepository) {
-			return fmt.Errorf("af: bind the ledger to the repository %s: %w", id, err)
-		}
-		bound, _ := st.Repository(ctx)
-		return fmt.Errorf("af: refused: this ledger is bound to the repository %s and this call would use %s (the git directory of %s); "+
-			"nothing was changed", bound, id, dir)
+	pending, err := afPrepareBinding(ctx, st, place, dir, optionalRepo)
+	if err != nil || pending == nil {
+		return err
 	}
-	return afCheckMarker(ctx, st, id, dir)
+	return pending.flush(ctx)
+}
+
+// afPrepareBinding does every check of afBindRepository and, when the ledger is not bound yet, leaves the binding itself
+// to the caller: it returns the waiting binding (nil when there is nothing to bind or the binding was made already).
+func afPrepareBinding(ctx context.Context, st *ledger.Store, place afPlace, dir string, optionalRepo bool) (*afPendingBinding, error) {
+	id, err := afGitCommonPath(ctx, dir)
+	if err != nil {
+		if optionalRepo && errors.Is(err, errAFNotARepository) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("af: cannot tell which repository %q belongs to (%w); nothing was changed", dir, err)
+	}
+	bind := func(ctx context.Context) error {
+		if err := st.BindRepository(ctx, id); err != nil {
+			if !errors.Is(err, ledger.ErrWrongRepository) {
+				return fmt.Errorf("af: bind the ledger to the repository %s: %w", id, err)
+			}
+			bound, _ := st.Repository(ctx)
+			return fmt.Errorf("af: refused: this ledger is bound to the repository %s and this call would use %s (the git directory of %s); "+
+				"nothing was changed", bound, id, dir)
+		}
+		return afCheckMarker(ctx, st, id, dir)
+	}
+	if bound, rerr := st.Repository(ctx); rerr == nil && bound == "" {
+		if err := afCheckKnownRepositories(ctx, st, place, id, dir); err != nil {
+			return nil, err
+		}
+		return &afPendingBinding{finish: bind}, nil
+	}
+	return nil, bind(ctx)
 }
 
 // afCheckMarker settles the repository identity marker once the identity (the git directory) is the ledger's (N61 N65
@@ -468,8 +518,8 @@ const afRepoFlagHelp = "the git repository the commit is looked up in: the proje
 	"and so is a repository other than the one the ledger is bound to"
 
 // afBindHelp closes the help of every verb that opens the ledger: what the repository binding is and what it refuses.
-const afBindHelp = `The ledger is bound to one repository: the first verb that writes it binds the git directory of the repository it
-runs in (a linked worktree has the git directory of its repository, and two spellings of one path are one repository). That
+const afBindHelp = `The ledger is bound to one repository: the first verb that completes binds the git directory of the repository it
+runs in (a verb the ledger refuses binds nothing; a linked worktree has the git directory of its repository, and two spellings of one path are one repository). That
 is the project directory, which CLAUDE_PROJECT_DIR or else the working directory names; evidence and enqueue also use --repo
 or the card's lease worktree. Afterwards a call that would use another repository is refused with the ledger unchanged, the
 message naming both. While the ledger is not bound yet, the repository a call would bind is first compared with what the

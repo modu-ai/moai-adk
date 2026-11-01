@@ -20,7 +20,8 @@ func TestAFResidual_N55ARefusedVerbThatWroteNothingDoesNotBindTheLedger(t *testi
 	}{
 		{"release of a card that does not exist", []string{"release", "nosuch", "--epoch", "1"}},
 		{"resume of a card that does not exist", []string{"resume", "nosuch", "--epoch", "1", "--guard", "reclaim-cap", "--reason", "x"}},
-		{"reap with nothing to reap", []string{"reap"}},
+		// "reap with nothing to reap" is not a case: a verb that completes binds, and reap is the verb the identity tests and
+		// the N56, N69 and N70 tests use to bind a ledger (`reap --bind-repo`), so it binds by design.
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			// the ledger file sits in O, so O is a clue and the first bind is accepted from O

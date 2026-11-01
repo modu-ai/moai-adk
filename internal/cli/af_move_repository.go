@@ -142,7 +142,7 @@ func afMoveRepository(cmd *cobra.Command, f afFlags, reason, from string) error 
 	}
 	if current == "" {
 		return errors.New("af: refused: this ledger is not bound to a repository yet, so there is no repository to move; " +
-			"the first verb that writes it binds it; nothing was changed")
+			"the first verb that completes binds it; nothing was changed")
 	}
 	// (a) the old repository is gone: only a path that is positively not there counts, an error git or the file system
 	// gives for another reason does not
