@@ -91,7 +91,9 @@ ToolSearch(query: "select:mcp__web_reader__webReader")
 ToolSearch(query: "select:mcp__zai-mcp-server__analyze_image")
 ```
 
-On `ENABLE_TOOL_SEARCH`: the official env-vars values are unset or `true` (defers MCP tools), `auto` (on at 10% of context), `auto:N` (custom percentage, e.g. `auto:5`), and `false` (loads all upfront); MoAI's `settings.json.tmpl` sets `"1"`, which is not among them, and how Claude Code interprets it is unmeasured. Multiple tools may be selected in one call: `ToolSearch(query: "select:mcp__web_search_prime__webSearchPrime,mcp__web_reader__webReader")`.
+On `ENABLE_TOOL_SEARCH`: the official env-vars values are unset or `true` (defers MCP tools), `auto` (on at 10% of context), `auto:N` (custom percentage, e.g. `auto:5`), and `false` (loads all upfront); MoAI's `settings.json.tmpl` sets `"1"`, which is not among them, and how Claude Code interprets it is unmeasured.
+
+Multiple tools may be selected in one call: `ToolSearch(query: "select:mcp__web_search_prime__webSearchPrime,mcp__web_reader__webReader")`.
 
 ---
 

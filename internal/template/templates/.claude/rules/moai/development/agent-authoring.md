@@ -63,7 +63,7 @@ All agent definitions use YAML frontmatter. The following fields are available:
 | effort | No | inherit | Session effort override: low, medium, high, xhigh, max (xhigh/max require Opus 4.7+) |
 | initialPrompt | No | None | Auto-submitted first user turn when agent runs as main session agent via --agent flag (v2.1.83+) |
 | isolation | No | none | Isolation mode: "worktree" creates isolated git worktree (v2.1.49+) |
-| autoCompactWindow | No | Session default | Per-agent auto-compact window in tokens (v2.1.296+). Write a plain integer (e.g. `300000`), never a `"200k"`-style value — the suffix is dropped and the leading number is read, so `"200k"` parses as `200`. Accepted range: 100000–1000000. Lower-only: it can shrink the window, never raise it; when `CLAUDE_CODE_AUTO_COMPACT_WINDOW` is set the subagent uses that variable's window and the field has no effect (nor when the whole session runs as that agent via `--agent` / the `agent` setting) |
+| autoCompactWindow | No | Session default | Per-agent auto-compact window in tokens (v2.1.296+). Write a plain integer (e.g. `300000`), never a `"200k"`-style value — the suffix is dropped and the leading number is read, so `"200k"` parses as `200`. Accepted range: 100000–1000000. Lower-only: it can shrink the window, never raise it. Since v2.1.312 it lowers the window set by `CLAUDE_CODE_AUTO_COMPACT_WINDOW` (2.1.312 changelog; the official sub-agents page still describes the earlier no-effect behavior, and which one a given build follows is not measured here). It has no effect when the whole session runs as that agent via `--agent` / the `agent` setting |
 
 ### Field Details
 
