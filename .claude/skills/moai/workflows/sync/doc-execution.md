@@ -175,19 +175,13 @@ All document updates use conversation_language setting.
 
 ##### Step 2.2.1: SPEC Document Update (Based on Divergence Report)
 
-Apply updates based on the SPEC `lifecycle` value detected in Phase 11:
+The sync phase never rewrites an approved SPEC body. `manager-docs` owns only the `spec.md` frontmatter `status:` transition, the `updated:` refresh, and the progress.md Sync-phase section (`manager-docs.md` § SPEC Artifact Ownership). Handle the Phase 11 divergence by the SPEC `lifecycle` value:
 
-spec-anchored (default):
-- Update spec.md requirements to reflect actual implementation
-- Add new GEARS/EARS-format requirements for features implemented beyond original scope
-- Update plan.md with actual implementation steps taken
-- Update acceptance.md with new acceptance criteria for added features
-- Preserve original requirements with "as-implemented" annotations where changed
-
-spec-lite:
-- Append "Implementation Notes" section to spec.md summarizing actual implementation
-- Record scope changes: features added beyond plan, items deferred
-- Mark SPEC as completed (no ongoing maintenance expected)
+spec-anchored (default) and spec-lite:
+- Record each divergence (an unmet AC, a feature beyond the original scope, a deferred item) with its evidence in the sync report and in the progress.md Sync-phase section
+- Leave the spec.md, plan.md and acceptance.md bodies unchanged: an unmet AC keeps its original text, so the criterion that judges the work does not move with the work
+- A needed body change is a change request: return a structured blocker report (`.claude/rules/moai/core/agent-common-protocol.md` § Blocker Report Format) and the orchestrator re-delegates the body edit to manager-spec, which goes back through re-approval and re-audit before closure
+- Mark the SPEC completed only when every AC is met; a partial implementation (spec-lite included) stays `in-progress` until the change request lands
 
 exploratory:
 - Do NOT modify SPEC content

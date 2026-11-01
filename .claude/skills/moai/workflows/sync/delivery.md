@@ -47,7 +47,7 @@ When both the canonical key and the legacy key are present, the canonical key wi
 
 **Tier-based Route gate** (per `.claude/rules/moai/workflow/spec-workflow.md` § SPEC Phase Discipline): read the SPEC's `tier` field (S/M/L) and whether `--pr` was passed.
 
-- **Route A (Tier S/M default, no `--pr`)**: Agent: manager-docs subagent. manager-docs creates the single sync commit directly on `main` — no `manager-git` spawn, no feature branch, no PR.
+- **Route A (Tier S/M default, no `--pr`)**: Agent: manager-docs subagent. manager-docs creates the single sync commit with no `manager-git` spawn, no sync feature branch and no PR. Where the strategy resolved in Step 3.0 is `agentic-trunk` or `git-flow` and the session is on a `WT-*` branch, the commit stays on that branch and Step 3.2's `WT-*` route delivers it; the commit goes onto `main` itself only when the session already works on the trunk branch and the strategy permits it. A Tier never grants a push: manager-docs does not push, and any push is decided by Step 3.2 under `git_strategy.{mode}.push_to_remote` and `.claude/rules/moai/workflow/delivery-policy.md`.
 - **Route B (Tier L OR explicit `--pr`)**: Agent: manager-git subagent. ENTRY PRECONDITION: manager-git's role body ships in the opt-in `delivery` bundle, not L0 — verify it is installed (`~/.claude/agents/manager-git.md` for Claude, `~/.codex/agents/manager-git.toml` for Codex) BEFORE delegating; when it is absent, refuse with the named remediation `moai bundle add delivery` (C4: actionable report — never a missing-file error mid-flow). With the bundle installed, manager-git creates the same single sync commit on the sync feature branch (`sync/SPEC-XXX` or `chore/SPEC-XXX-sync`), delivered via PR in Step 3.2.
 
 Both routes:
@@ -148,20 +148,30 @@ go vet ./...
 go test -race -coverprofile=coverage.out -covermode=atomic ./...
 
 # Check 3: golangci-lint (mirrors CI lint job)
-# Auto-detect if golangci-lint is available
-which golangci-lint && golangci-lint run --timeout=5m \
- || echo "SKIP: golangci-lint not installed (install via your project's pinned version)"
+# Tool presence and the check's exit status are two separate facts: a missing
+# tool is NOT_RUN, an installed tool that exits non-zero is FAIL — never SKIP.
+if command -v golangci-lint >/dev/null 2>&1; then
+ golangci-lint run --timeout=5m || echo "FAIL: golangci-lint exit $?"
+else
+ echo "NOT_RUN: golangci-lint not installed (install via your project's pinned version)"
+fi
 
 # Check 4: Cross-compile all CI targets (mirrors CI build job)
 # Replace <your-module> with your main package path (e.g. ./cmd/<your-binary>/).
 # Replicate whatever GOOS/GOARCH targets your CI build matrix declares; the
 # example below shows the common 5-target matrix — run them in parallel, CGO_ENABLED=0 for all.
-GOOS=linux  GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-linux-amd64   ./<your-module>/ &
-GOOS=linux  GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-linux-arm64   ./<your-module>/ &
-GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-darwin-amd64  ./<your-module>/ &
-GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-darwin-arm64  ./<your-module>/ &
-GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-windows-amd64.exe ./<your-module>/ &
-wait
+# Each build keeps its own PID and its own exit status; a bare `wait` would
+# return 0 whatever the individual builds did.
+pids=""
+for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64; do
+ GOOS="${target%/*}" GOARCH="${target#*/}" CGO_ENABLED=0 go build -ldflags="-s -w" -o "/tmp/ci-build-${target%/*}-${target#*/}" ./<your-module>/ &
+ pids="$pids $!:$target"
+done
+build_failed=0
+for entry in $pids; do
+ pid="${entry%%:*}"
+ wait "$pid" || { echo "FAIL: build ${entry#*:} exit $?"; build_failed=1; }
+done
 ```
 
 **Python project** (detected via `pyproject.toml`):
@@ -196,7 +206,9 @@ CI Mirror: Skipped checks
 
 ##### Step 3.1.5.4: Evaluate Results
 
-**All checks pass**: Proceed to Step 3.2 automatically. Log "Local CI mirror: PASS".
+Classify every check as exactly one of PASS (ran, exit 0), FAIL (ran, non-zero exit or timeout), NOT_RUN (the tool is absent or the command was refused) or SKIPPED (a documented skip such as the Windows job). A NOT_RUN or SKIPPED check is never reported or promoted as PASS.
+
+**Every executed check is PASS and none is FAIL**: Proceed to Step 3.2 automatically. Log "Local CI mirror: PASS" together with the NOT_RUN and SKIPPED entries by name.
 
 **Any check fails**: Present failure summary via AskUserQuestion:
 
@@ -204,7 +216,7 @@ CI Mirror: Skipped checks
 - Push anyway — proceed to Step 3.2 with warning embedded in PR description
 - Abort — exit sync workflow, preserve commit (allow local fix and re-run)
 
-**golangci-lint not installed**: Treat as warning (not failure). Proceed to Step 3.2 with a note in the PR description: "Local lint check skipped: golangci-lint not installed."
+**golangci-lint not installed**: NOT_RUN, recorded as a warning rather than a failure. Proceed to Step 3.2 with a note in the PR description: "Local lint check NOT_RUN: golangci-lint not installed." An installed golangci-lint that exits non-zero is FAIL and follows the failure options above.
 
 ##### Step 3.1.5.5: Embed Results in PR Description
 
@@ -253,9 +265,9 @@ Detect current branch:
 5. Display PR URL to user
 
 **Main branch** (direct commit):
-- Push directly: `git push origin {main_branch}`
-- Display push confirmation
-- Note: Direct main commits are the Route A default for Tier S/M SPECs; feature branches apply to Route B (Tier L or explicit `--pr`)
+- Push directly (`git push origin {main_branch}`) only when `git_strategy.{mode}.push_to_remote` is `true` AND the delivery decision of `.claude/rules/moai/workflow/delivery-policy.md` allows a direct push. When `push_to_remote` is `false`, or the route metadata is missing or contradictory, leave the commit local, push nothing, and report that nothing was pushed together with the resolved policy
+- Display the push confirmation, or the not-pushed report
+- Note: a commit on the trunk branch applies only where the Route A bullet in Step 3.1 permits it; feature branches apply to Route B (Tier L or explicit `--pr`)
 
 **Worktree context** (detected from git directory structure):
 - Push worktree branch to remote
