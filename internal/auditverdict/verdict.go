@@ -67,6 +67,32 @@ type Fields struct {
 	// the receipt vocabulary (pass|fail|inconclusive); any entry makes the
 	// file inadmissible.
 	MalformedReceipts int
+	// ScoreSeen, MustPassSeen and BlockingSeen record that the decision key
+	// appeared at all, so a value that failed to parse (or sat outside the
+	// score's [0, 1] range) is told apart from a key the file never carried.
+	ScoreSeen, MustPassSeen, BlockingSeen bool
+	// BodyMustPassUnmet counts the distinct MP-n rows of the body
+	// ("- [STATE] MP-n ...") recorded as unmet: any state other than PASS or
+	// N/A, or an N/A row whose own text calls the check unverified or not run.
+	BodyMustPassUnmet int
+}
+
+// mpRow matches one must-pass row of the plan-audit report body, in the
+// format the plan-auditor's output template writes: "- [PASS|FAIL|N/A] MP-n ...".
+var mpRow = regexp.MustCompile(`(?i)^[-*]\s*\[\s*([A-Za-z][A-Za-z /_-]*?)\s*\]\s*(MP-\d+)\b(.*)$`)
+
+// mpRowUnmet reports whether one MP row records an unmet check. An N/A row is
+// unmet only when its own text says the check was unverified or not run — a
+// genuine non-applicability carries neither wording.
+func mpRowUnmet(state, rest string) bool {
+	switch strings.ToUpper(strings.TrimSpace(state)) {
+	case "PASS":
+		return false
+	case "N/A", "NA":
+		low := strings.ToLower(rest)
+		return strings.Contains(low, "unverified") || strings.Contains(low, "not run") || strings.Contains(low, "not_run")
+	}
+	return true
 }
 
 // Receipt is the convergence receipt a required-backend tree's verdict file
@@ -91,8 +117,14 @@ var (
 func Parse(raw []byte) Fields {
 	var f Fields
 	seen := map[string]string{}
+	mpUnmet := map[string]bool{}
 	for _, line := range strings.Split(string(raw), "\n") {
 		line = strings.TrimSpace(strings.TrimRight(line, "\r"))
+		if m := mpRow.FindStringSubmatch(line); m != nil {
+			id := strings.ToUpper(m[2])
+			mpUnmet[id] = mpUnmet[id] || mpRowUnmet(m[1], m[3])
+			continue
+		}
 		if m := debtLine.FindStringSubmatch(line); m != nil {
 			if d := debtWellForm.FindStringSubmatch(strings.TrimSpace(m[1])); d != nil {
 				f.Debts = append(f.Debts, Debt{ID: d[1], DisposeIn: d[2], Description: strings.TrimSpace(d[3])})
@@ -136,16 +168,19 @@ func Parse(raw []byte) Fields {
 		case "verdict":
 			f.Label = value
 		case "overall_score", "score":
+			f.ScoreSeen = true
 			// A score is a finite number in [0, 1]; NaN, ±Inf, and out-of-range
 			// values stay unparsed so the threshold comparison never sees them.
 			if s, err := strconv.ParseFloat(value, 64); err == nil && !math.IsNaN(s) && !math.IsInf(s, 0) && s >= 0 && s <= 1 {
 				f.Score, f.ScoreOK = s, true
 			}
 		case "must_pass_failed":
+			f.MustPassSeen = true
 			if n, err := strconv.Atoi(value); err == nil {
 				f.MustPassFailed, f.MustPassKnown = n, true
 			}
 		case "blocking_count":
+			f.BlockingSeen = true
 			if n, err := strconv.Atoi(value); err == nil {
 				f.BlockingCount, f.BlockingKnown = n, true
 			}
@@ -182,6 +217,11 @@ func Parse(raw []byte) Fields {
 				f.Receipt.Backends = map[string]string{}
 			}
 			f.Receipt.Backends[name] = verdict
+		}
+	}
+	for _, unmet := range mpUnmet {
+		if unmet {
+			f.BodyMustPassUnmet++
 		}
 	}
 	return f
@@ -302,6 +342,32 @@ func admitBase(f Fields, phase Phase, threshold float64, hashOK bool) (bool, str
 			return false, "no verdict"
 		}
 		return false, "verdict " + f.Label
+	}
+	// A decision field the file does carry binds in every phase. The sync phase
+	// stays label-only for a file that carries none of them (the legacy shape),
+	// but a present must_pass_failed or blocking_count that is non-zero or
+	// unparseable, and a present score outside [0, 1], refuse (card t2011).
+	switch {
+	case f.ScoreSeen && !f.ScoreOK:
+		return false, "score is unparseable or outside [0, 1]"
+	case f.MustPassSeen && !f.MustPassKnown:
+		return false, "must_pass_failed is not an integer"
+	case f.MustPassKnown && f.MustPassFailed != 0:
+		return false, fmt.Sprintf("must_pass_failed %d", f.MustPassFailed)
+	case f.BlockingSeen && !f.BlockingKnown:
+		return false, "blocking_count is not an integer"
+	case f.BlockingKnown && f.BlockingCount != 0:
+		return false, fmt.Sprintf("blocking_count %d", f.BlockingCount)
+	}
+	// The body's must-pass rows are a second witness to the declared count: an
+	// unmet row beyond what must_pass_failed declares means a check was not run
+	// or failed without being counted.
+	declared := 0
+	if f.MustPassKnown {
+		declared = f.MustPassFailed
+	}
+	if f.BodyMustPassUnmet > declared {
+		return false, fmt.Sprintf("%d must-pass row(s) in the body are unmet (FAIL, unverified, or not run) but must_pass_failed declares %d", f.BodyMustPassUnmet, declared)
 	}
 	if phase == PhaseSync {
 		return true, ""

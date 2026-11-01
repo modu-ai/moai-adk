@@ -11,7 +11,7 @@ import (
 // frontmatterProject builds a MoAI-shaped project root whose agent file for
 // agent carries the given frontmatter model line ("" omits the line), and
 // exports it as the project root the way the runtime does.
-func frontmatterProject(t *testing.T, agent, modelLine string) {
+func frontmatterProject(t *testing.T, agent, modelLine string) string {
 	t.Helper()
 	root := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(root, ".moai"), 0o755); err != nil {
@@ -28,6 +28,45 @@ func frontmatterProject(t *testing.T, agent, modelLine string) {
 		}
 	}
 	t.Setenv(config.EnvClaudeProjectDir, root)
+	return root
+}
+
+// With the served-model gate off (its default), an auditor's PASS verdict says
+// nothing about which model produced it. The observation row stays what the
+// transcript supports: unknown when no model is declared, drift when the
+// declared model and the served model differ — a PASS line in the final message
+// never turns either into ok (card t2011).
+func TestServedModel_GateOffPassVerdictIsNotModelConfirmation(t *testing.T) {
+	const passMsg = "auditor-model: claude-opus-5-5\nAUDIT-VERDICT: PASS spec=SPEC-T2011-001 receipts=rcpt-none"
+	cases := []struct {
+		name      string
+		modelLine string
+		agent     string
+		served    string
+		want      string
+	}{
+		{"a_undeclared_stays_unknown_despite_PASS", "", "", "claude-opus-5-5", ServedVerdictUnknown},
+		{"b_declared_opus_served_glm_stays_drift_despite_PASS", "model: opus\n", "plan-auditor", "glm-5.3-flash", ServedVerdictDrift},
+		{"c_control_declared_opus_served_opus_is_ok", "model: opus\n", "plan-auditor", "claude-opus-5-5", ServedVerdictOK},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			root := frontmatterProject(t, tc.agent, tc.modelLine)
+			tr := writeSubagentTranscript(t, filepath.Join(t.TempDir(), "subagents"), "a9",
+				repeatRows(assistantRow(tc.served), 2), map[string]string{"agentType": "plan-auditor"})
+			runServedStop(t, staticConfigProvider{cfg: &config.Config{}}, &HookInput{
+				CWD: root, SessionID: "s-9", AgentID: "a9", AgentType: "plan-auditor",
+				AgentTranscriptPath: tr, LastAssistantMessage: passMsg, HookEventName: string(EventSubagentStop),
+			})
+			rows, _ := readServedAuditRows(t, root)
+			if len(rows) != 1 {
+				t.Fatalf("audit rows = %d, want 1", len(rows))
+			}
+			if rows[0]["verdict"] != tc.want {
+				t.Fatalf("served verdict = %v, want %q (a PASS audit verdict is not model confirmation)", rows[0]["verdict"], tc.want)
+			}
+		})
+	}
 }
 
 // A bare plan-auditor spawn passes no model argument, so the sibling meta.json

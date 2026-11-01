@@ -33,15 +33,22 @@ audited_sha: 0123456789ab
 `
 
 func TestAdmit_BodyCriterionLinesAreNotParsed(t *testing.T) {
-	// A body line that says N/A for an applicable-but-unrun check does not stop
-	// admission: nothing in the consumer looks at it.
+	// An N/A body row whose text does not call the check unverified or not run
+	// does not stop admission (see the CHANGED note below for the FAIL row).
 	if ok, reason := admitPlan(planPassWithBody, true); !ok {
 		t.Fatalf("a PASS verdict with must_pass_failed 0 and an N/A body line must admit (the consumer does not parse the body): %s", reason)
 	}
-	// Even a body line that says FAIL does not refuse by itself.
+	// CHANGED (card t2011, leader order (c)): a body MP row recorded FAIL while
+	// must_pass_failed declares 0 used to admit because the body was ignored. The
+	// predicate now reads the existing "- [STATE] MP-n" row format and refuses
+	// when unmet rows outnumber the declared count. The [N/A] row above still
+	// admits: a genuine non-applicability and an unrun applicable check that is
+	// worded as N/A without the words "unverified" / "not run" remain
+	// indistinguishable to the consumer — that residual is held by the
+	// plan-auditor instruction text only.
 	failedBody := strings.Replace(planPassWithBody, "- [N/A] MP-5 D7 cross-SPEC reconciliation: verb not executable", "- [FAIL] MP-5 D7 cross-SPEC reconciliation: unverified, verb not run", 1)
-	if ok, _ := admitPlan(failedBody, true); !ok {
-		t.Fatal("the consumer reads only the machine fields; a FAIL body line with must_pass_failed 0 is not a refusal signal")
+	if ok, reason := admitPlan(failedBody, true); ok || !strings.Contains(reason, "must-pass row") {
+		t.Fatalf("a FAIL body row with must_pass_failed 0 must now refuse with the row reason, got admit=%v reason=%q", ok, reason)
 	}
 }
 
