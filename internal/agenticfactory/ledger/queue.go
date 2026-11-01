@@ -129,14 +129,8 @@ func landingStands(ctx context.Context, q querier, cardID, candidate string) (bo
 	if err != nil || !reworked {
 		return true, err
 	}
-	for _, kind := range []string{KindGreen, KindGate} {
-		res, err := latestResult(ctx, q, cardID, kind, candidate)
-		if err != nil {
-			return false, err
-		}
-		if res != "" && res != ResultPass {
-			return false, nil
-		}
+	if ok, err := noFailingNewestRun(ctx, q, cardID, candidate); err != nil || !ok {
+		return false, err
 	}
 	var passes int
 	if err := q.QueryRowContext(ctx, `SELECT count(*) FROM evidence WHERE card_id=? AND kind IN (?,?) AND subject_sha=? AND result=? AND id>?`,
@@ -144,6 +138,36 @@ func landingStands(ctx context.Context, q querier, cardID, candidate string) (bo
 		return false, fmt.Errorf("ledger: %w", err)
 	}
 	return passes > 0, nil
+}
+
+// noFailingNewestRun says whether the newest green run and the newest gate run about the commit
+// (whenever they were recorded) are not failures. A kind never run for it is not a failure.
+func noFailingNewestRun(ctx context.Context, q querier, cardID, sha string) (bool, error) {
+	for _, kind := range []string{KindGreen, KindGate} {
+		res, err := latestResult(ctx, q, cardID, kind, sha)
+		if err != nil {
+			return false, err
+		}
+		if res != "" && res != ResultPass {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
+// measuredInEpoch says whether the commit was measured in that card epoch: at least one passing
+// green or gate run recorded under it, and no failing newest run of either kind. A run of an
+// earlier epoch is the earlier holder's.
+func measuredInEpoch(ctx context.Context, q querier, cardID, sha string, epoch int64) (bool, error) {
+	var n int
+	if err := q.QueryRowContext(ctx, `SELECT count(*) FROM evidence WHERE card_id=? AND kind IN (?,?) AND subject_sha=? AND result=? AND epoch=?`,
+		cardID, KindGreen, KindGate, sha, ResultPass, epoch).Scan(&n); err != nil {
+		return false, fmt.Errorf("ledger: %w", err)
+	}
+	if n == 0 {
+		return false, nil
+	}
+	return noFailingNewestRun(ctx, q, cardID, sha)
 }
 
 // enqueueReason is the reason Enqueue records on the transition that offers a candidate.
@@ -260,6 +284,7 @@ func (s *Store) Enqueue(ctx context.Context, cardID string, epoch int64, candida
 		rowErr := tx.QueryRowContext(ctx, `SELECT state,candidate_sha,fail_reason,card_epoch FROM merge_queue WHERE card_id=?`, cardID).Scan(&cur, &oldSHA, &oldReason, &oldEpoch)
 		// Whether the card was taken back for rework since the landed candidate was offered.
 		reworked := false
+		takeOver := false // the landed row of an earlier epoch is kept and follows the card to this one
 		if rowErr == nil && cur == string(QueueLanded) {
 			if _, reworked, err = reworkMark(ctx, tx, cardID, oldSHA.String); err != nil {
 				return err
@@ -269,10 +294,29 @@ func (s *Store) Enqueue(ctx context.Context, cardID string, epoch int64, candida
 		case err == sql.ErrNoRows:
 		case err != nil:
 			return fmt.Errorf("ledger: %w", err)
-		case cur == string(QueueLanded) && (oldSHA.String == candidateSHA || oldEpoch != card.Epoch || !reworked):
-			// A landed row is history: the same commit is never landed twice, a holder of a
-			// later card epoch does not replace the row of an earlier one (N3 stays as it was),
-			// and neither does a card that was not taken back for rework.
+		case cur == string(QueueLanded) && oldEpoch != card.Epoch:
+			// The row landed under an earlier holder (a lower card epoch). The landing is a fact
+			// about the trunk, so the holder of this epoch may take it over, if the offer is that
+			// same commit, or replace it with a new commit; either way only after it has measured
+			// the commit itself, in its own epoch. Without that the card stays as it is.
+			measured, err := measuredInEpoch(ctx, tx, cardID, candidateSHA, card.Epoch)
+			if err != nil {
+				return err
+			}
+			if !measured {
+				return fmt.Errorf("%w: %s has landed at card epoch %d; commit %s needs a passing run in epoch %d, with no failing newest run, before it takes the card on", ErrInvalid, cardID, oldEpoch, candidateSHA, card.Epoch)
+			}
+			text := fmt.Sprintf("card %s: candidate %s had landed at card epoch %d; queued again as new work %s at card epoch %d", cardID, oldSHA.String, oldEpoch, candidateSHA, card.Epoch)
+			if oldSHA.String == candidateSHA {
+				takeOver = true
+				text = fmt.Sprintf("card %s: candidate %s had landed at card epoch %d; taken over at card epoch %d after it was measured again", cardID, candidateSHA, oldEpoch, card.Epoch)
+			}
+			if _, err := tx.ExecContext(ctx, `INSERT INTO notes(kind,card_id,text,at) VALUES('decision',?,?,`+nowSQL+`)`, cardID, text); err != nil {
+				return fmt.Errorf("ledger: %w", err)
+			}
+		case cur == string(QueueLanded) && (oldSHA.String == candidateSHA || !reworked):
+			// A landed row of this epoch is history: the same commit is never landed twice, and a
+			// card that was not taken back for rework does not replace it.
 			return fmt.Errorf("%w: %s has landed", ErrInvalid, cardID)
 		case cur == string(QueueLanded):
 			// The holder that landed c1, at the epoch it still holds, offers a different commit
@@ -337,7 +381,12 @@ func (s *Store) Enqueue(ctx context.Context, cardID string, epoch int64, candida
 				return fmt.Errorf("%w: commit %s was offered before %s was taken back for rework and needs a passing run recorded since, with no failing newest run", ErrEvidenceStale, candidateSHA, cardID)
 			}
 		}
-		if _, err := tx.ExecContext(ctx, `INSERT INTO merge_queue(card_id,candidate_sha,state,card_epoch,enqueued_at,updated_at) VALUES(?,?,'waiting',?,`+nowSQL+`,`+nowSQL+`)
+		if takeOver {
+			// The commit already is in the trunk: the row stays landed and only follows the card.
+			if _, err := tx.ExecContext(ctx, `UPDATE merge_queue SET card_epoch=?, updated_at=`+nowSQL+` WHERE card_id=?`, card.Epoch, cardID); err != nil {
+				return fmt.Errorf("ledger: %w", err)
+			}
+		} else if _, err := tx.ExecContext(ctx, `INSERT INTO merge_queue(card_id,candidate_sha,state,card_epoch,enqueued_at,updated_at) VALUES(?,?,'waiting',?,`+nowSQL+`,`+nowSQL+`)
 			ON CONFLICT(card_id) DO UPDATE SET candidate_sha=excluded.candidate_sha, trunk_before=NULL, state='waiting', fail_reason=NULL, card_epoch=excluded.card_epoch, enqueued_at=excluded.enqueued_at, updated_at=excluded.updated_at`,
 			cardID, candidateSHA, card.Epoch); err != nil {
 			return fmt.Errorf("ledger: %w", err)
