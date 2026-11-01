@@ -11,6 +11,8 @@ package template_test
 import (
 	"archive/tar"
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -169,6 +171,24 @@ func TestContractModeGuidedPreservation(t *testing.T) {
 			t.Fatalf("preservation check rejected a clean additive block: %v", f)
 		}
 	})
+	t.Run("falsifier/approved-edit-is-pinned", func(t *testing.T) {
+		base := "alpha\nbeta\n"
+		approved := "alpha\nbeta2\n"
+		table := map[string]struct{ sha, item string }{"fixture.md": {grSHA(approved), "S99"}}
+		f := grPreservationFindings("fixture.md", approved, base)
+		if ok, _ := grOutsideEditApproved(table, "fixture.md", approved, f); !ok {
+			t.Fatal("the pinned outside-block edit was not approved")
+		}
+		// One more word changed outside the block: the pin no longer matches.
+		later := "alpha\nbeta3\n"
+		if ok, _ := grOutsideEditApproved(table, "fixture.md", later, grPreservationFindings("fixture.md", later, base)); ok {
+			t.Fatal("APPROVAL_NOT_PINNED: a further outside-block change was approved")
+		}
+		// A file with no entry has no allowance, even with identical text.
+		if ok, _ := grOutsideEditApproved(table, "other.md", approved, f); ok {
+			t.Fatal("APPROVAL_NOT_PINNED: a file absent from the table was approved")
+		}
+	})
 	t.Run("falsifier/relocated-line-changed", func(t *testing.T) {
 		r := grRelocation{pointer: "-> see dst", dstHeader: "## moved"}
 		base := "alpha\nbeta\ngamma\n"
@@ -188,21 +208,33 @@ func TestContractModeGuidedPreservation(t *testing.T) {
 			cur := grRead(t, root, rel)
 			blocks, _ := grParse(rel, cur)
 			stripped += len(blocks)
-			want, ok := grShow(t, root, base, rel)
+			baseText, ok := grShow(t, root, base, rel)
 			if !ok {
 				t.Errorf("%s: absent at the base ref", rel)
 				continue
 			}
+			// The base is stripped too: a base that already carries blocks (any
+			// main after the rewiring landed) would otherwise differ from every
+			// block-bearing copy whatever was edited. Stripping a base without
+			// blocks changes nothing, so the check is unchanged for that case.
 			got := grStrip(cur)
-			if r, prefix, ok := grRelocationFor(rel); ok {
+			want := grStrip(baseText)
+			// A relocation is undone only when the base predates it; a base that
+			// already holds the pointer line holds the relocated form.
+			if r, prefix, ok := grRelocationFor(rel); ok && !strings.Contains(want, r.pointer) {
 				var rf []string
 				got, rf = grRestore(rel, got, grRead(t, root, prefix+r.dst), r)
 				for _, f := range rf {
 					t.Error(f)
 				}
 			}
-			for _, f := range grPreservationFindings(rel, got, want) {
-				t.Error(f)
+			findings := grPreservationFindings(rel, got, want)
+			if ok, item := grOutsideEditApproved(grApprovedOutsideEdits, rel, got, findings); ok {
+				t.Logf("%s: outside-block edit approved by %s (outside-block sha256 matches)", rel, item)
+				continue
+			}
+			for _, f := range findings {
+				t.Errorf("%s [outside-block sha256=%s]", f, grSHA(got))
 			}
 		}
 		if stripped == 0 {
@@ -210,6 +242,37 @@ func TestContractModeGuidedPreservation(t *testing.T) {
 		}
 		t.Logf("stripped %d blocks across %d copies", stripped, len(grAllCopies()))
 	})
+}
+
+// grApprovedOutsideEdits names outside-block edits that a card made on purpose,
+// each tied to its item and pinned to the exact outside-block text (sha256 of
+// the stripped copy). It is not a path allowance: any further outside-block
+// change to the same file changes the hash and fails the guard again, and a
+// file absent from this table has no allowance. The entries are card t2009's
+// sync-document repairs (verdict.md, "GuidedPreservation, file by file").
+var grApprovedOutsideEdits = map[string]struct{ sha, item string }{
+	".claude/skills/moai/workflows/sync.md":               {"d645876fa0f069d369794391b2e8ed3d0e9836f3f702b6ab92c6eacf93a5eea8", "S07 (Stop-hook description)"},
+	".claude/skills/moai/workflows/sync/doc-execution.md": {"a9bfcf57796791023f3bca9b164148f31024dd49e90873f6312f3d2c1147fa25", "S02 (approved SPEC bodies are not rewritten)"},
+	".claude/skills/moai/workflows/sync/delivery.md":      {"3727b45e9065fb5e9e1eff77281a8c92d420373d8afbec8f6aacf54d3579d039", "S01/S04/S06 (Route A, CI mirror, Graceful Exit)"},
+}
+
+// grOutsideEditApproved reports whether findings are covered by a table entry
+// for rel whose pinned hash equals the copy's outside-block text.
+func grOutsideEditApproved(table map[string]struct{ sha, item string }, rel, got string, findings []string) (bool, string) {
+	if len(findings) == 0 {
+		return false, ""
+	}
+	ap, ok := table[strings.TrimPrefix(rel, grTemplatePrefix)]
+	if !ok || ap.sha != grSHA(got) {
+		return false, ""
+	}
+	return true, ap.item
+}
+
+// grSHA is the hex sha256 of a document's outside-block text.
+func grSHA(s string) string {
+	sum := sha256.Sum256([]byte(s))
+	return hex.EncodeToString(sum[:])
 }
 
 // grLineDelta is the multiset difference a−b of two documents' lines, sorted.
