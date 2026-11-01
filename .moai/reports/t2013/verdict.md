@@ -234,3 +234,35 @@ Tree: HEAD 61c9c1e9f0 plus this evidence commit; all results from `go test`/`go 
 - Printed wake can be missed if the completing session's output is not read; the record (`woken_at`) marks it handed out, so a lost wake is not re-printed. The leader reads `card_waits` (via future status surface) or the progress record.
 - `woken_at` is stamped before the session sends; a crash between print and send loses the nudge (queue-and-evidence reads still cover it, per factory-dispatch).
 - Always-loaded rule text growth for this follow-up: 0 bytes (no rule file touched).
+
+
+## Follow-up 4: wait verb reaches lanes through the rule
+
+### Claim
+
+The lane-wait section of the factory-dispatch rule body now tells a lane to record a wait with `moai factory wait <card> [--on <predecessor card>|--operator] --waker <lane|leader|operator> --reason "<why>"`, and tells the session whose `moai factory complete` printed a `wake:` line to send ONE message to the named lane; the verb sends nothing, and a lane confirms start from the lease holder (`moai factory status`) and the progress record, never from a reply. Placement is body-only: factory-dispatch.md (template source plus live mirror), one [HARD] paragraph after the long lane-wait paragraph, outside the role-core markers. The always-loaded stub factory-dispatch-core.md is unchanged.
+
+### Evidence
+
+- RED commit 68d8078a35, `go test -run TestT2013_WaitVerbReachesLanesThroughRule -count=1 ./internal/template/`, verbatim tail: `lane-wait section lacks marker "moai factory wait"` / `"`wake:` line"` / `"--waker"` / `"sends nothing"` for template and local, `FAIL github.com/modu-ai/moai-adk/internal/template 0.352s`. (A first RED run also showed the bare marker `wake:` already matched the existing words "on wake:"; the marker was tightened to the backticked `wake:` line before the RED commit.)
+- GREEN commit 76b3df294c, `go test -run 'TestBindingLedgerIntegrity|TestRuleTemplateMirrorDrift|TestDeclaredRuleMirrorForks|TestT2013|TestDeployedAlwaysLoaded' -count=1 ./internal/template/`: `ok  	github.com/modu-ai/moai-adk/internal/template	2.971s`. One earlier run failed only on my own marker (`wake:` line) because my first wording said `a `wake: lane=...` line`; the wording was adjusted, not the test.
+- `make build`: exit 0, ended with `go build ... -o bin/moai ./cmd/moai`; `git status --short` afterwards listed only the two intended rule files, so no regenerated tracked file needs inclusion.
+- Byte growth: template factory-dispatch.md 28035 to 28521 (+486 bytes, via `git cat-file -s HEAD:...` and `wc -c`); live mirror +486 (28357 at HEAD to 28843 by the same added paragraph); factory-dispatch-core.md 10245 unchanged. Below the 1,000-byte rule-authoring threshold, and none of it in the always-loaded surface. No ledger row, anchor SHA or test of the ledger touched.
+- Why body-only: lanes read factory-dispatch.md in full by the [HARD] read directive (the role-core injection ends with "read factory-dispatch.md to the end"), so the paragraph reaches them; a stub edit would add bytes to every session and need an ALB row after_text update.
+
+### Baseline-attribution
+
+Tree: HEAD 68d8078a35 plus the GREEN edit (committed as 76b3df294c); results from `go test` and `make build` built from this tree in this session; no installed `moai` binary judged anything.
+
+### Gaps
+
+- Base-branch finding carried verbatim from Follow-up 3 item 4: (a) refuse on an unresolvable base (return an error at session_worktree.go:242-244 instead of `base = ""`) and (b) follow origin default (a `git fetch origin <base>` before the add and operand `origin/<base>`). Option (b) CONTRADICTS `.claude/rules/local/gitflow-lane-protocol.md` section 1 (local main is deliberately both base and landing surface; origin/main advances only by release batches), and option (a) touches the SPEC-WORKTREE-BASEREF-001 D4 fallback decision and would flip its existing tests. NEITHER (a) nor (b) is implemented. The leader decided not to implement it and not to create a card.
+- Not run: full ./internal/cli/..., `moai update`, any live-session wake or send, `moai factory wait` through the real cobra tree against a live run.
+- The live and template factory-dispatch.md are byte-identical in my added paragraph but not as whole files: `diff` shows a pre-existing difference at line 228 (the live copy keeps a longer sentence tail on the git-flow integration paragraph). TestRuleTemplateMirrorDrift and TestDeclaredRuleMirrorForks pass, so it is a declared fork; I did not touch it.
+- Refused commands: none in this follow-up. One `git show HEAD:<path> --no-patch` printed the whole file instead of a size (the flag is ignored for blobs); it was a wasted read, not a refusal.
+
+### Residual-risk
+
+- The wording test checks markers, not meaning.
+- Customer projects keep the old deployed rule until `moai update`.
+- A lane that never reads the full factory-dispatch.md body does not see the paragraph; the stub still says only "records a disk wait".
