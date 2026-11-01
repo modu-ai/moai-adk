@@ -297,9 +297,9 @@ labels <- e2e, resident; gitref <- effect/docstore.
 
 - **원장 쪽.** 한 행짜리 `repository` 표(`schema.go:71-77`)에 첫 호출자가 정체를 쓰고, 같은 값은 변화 없음, 다른 값은 `ErrWrongRepository`(`repository.go:13`, `:22-39`). 묶이기 전 `Repository`는 ""를 돌려준다(`:42-51`). 갱신·삭제는 트리거가 거절한다. 표는 `CREATE TABLE IF NOT EXISTS`로 Open마다 생기며 판을 올리지 않는다(`schema.go:71-73` 주석).
 - **정체.** symlink를 푼 절대 git common dir(`af.go:245-268` `afGitCommonPath`). 그래서 linked worktree는 주 저장소와 같은 정체다.
-- **동사 쪽.** `afRun`이 모든 동사에서 묶는다(`af.go:72`, `:85-107`). 묶이기 전에는 원장이 이미 아는 저장소 — lease worktree들의 저장소와 원장 파일이 놓인 디렉터리의 저장소 — 와 먼저 비교하고, 어긋나면 둘을 이름 대어 거절한다(`:113-138`). 커밋을 찾거나 착지하는 동사는 쓰는 저장소(`--repo`, 없으면 카드의 lease worktree, 없으면 프로젝트 디렉터리)도 묶는다(`:161-175`; land·reconcile은 `af_land.go:292-316`). `--repo`는 프로젝트 디렉터리와 git common dir가 같은 경로만 받는다(`af.go:284-302`, `os.SameFile`). 도움말은 `af.go:219-227`.
+- **동사 쪽.** `afRun`이 모든 동사에서 묶는다(`af.go:62-78`, `:92-`). 묶이기 전에는 원장이 이미 아는 저장소 — lease worktree들의 저장소, `--db`로 준 원장 파일이 (symlink를 푼 자리로) 놓인 디렉터리의 저장소, 행이 이름 대는 커밋을 가진 저장소 — 와 먼저 비교하고, 어긋나면 둘을 이름 대어 거절한다(`:125-`; 기본 위치의 원장 파일 자리는 단서가 아니고, 상대 경로 lease worktree는 거절하며, 단서가 없는 `--db` 원장은 `--bind-repo`를 요구한다). 커밋을 찾거나 착지하는 동사는 쓰는 저장소(`--repo`, 없으면 카드의 lease worktree, 없으면 프로젝트 디렉터리)도 묶는다(`:161-175`; land·reconcile은 `af_land.go:292-316`). `--repo`는 프로젝트 디렉터리와 git common dir가 같은 경로만 받는다(`af.go:284-302`, `os.SameFile`). 도움말은 `af.go:219-227`.
 - **예외.** 프로젝트 디렉터리가 git 저장소가 아니면, git을 부르지 않는 동사는 아무것도 묶지 않고 진행한다(`af.go:86-90`).
-- **열린 위험(이 부록이 닫지 않음).** 원장이 아무것도 모를 때 첫 호출자가 묶음을 정한다; 저장소를 디스크에서 옮기면 뒤의 호출이 거절된다; 훅 heartbeat 기록기(`internal/hook/ledger_heartbeat.go`)는 저장소를 확인하지 않는다. progress §O.
+- **열린 위험(이 부록이 닫지 않음).** 원장이 아무것도 모르는 기본 위치 원장은 첫 호출자가 묶음을 정한다(`--db` 원장은 `--bind-repo`를 요구); 저장소를 디스크에서 옮기면 뒤의 호출이 거절된다; 훅 heartbeat 기록기(`internal/hook/ledger_heartbeat.go`)는 저장소를 확인하지 않는다. progress §O.
 
 ### E. reclaim-cap park의 출구 (REQ-AFL-007 0.6.0)
 
