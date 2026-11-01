@@ -75,5 +75,11 @@ Gaps: the survey's acceptance matrix (whitespace-only edit, decision-index-only 
 - The survey's wording is kept: this is a missing link, not a proven un-verified resume (other gates may cover it).
 - RED test (new, `internal/template/run_resume_identity_test.go`): `go test -count=1 -run TestRunResumeIdentity ./internal/template/` -> exit 1, `TestRunResumeIdentity_Deployed` FAIL, five findings (missing `repository root`, `HEAD`, `plan_artifact_hash`, `card`, `invalidate`); `TestRunResumeIdentity_Mutants` passes.
 
+### RUN-06 repair (commit after 0c498dc3b3)
+
+- `run/context-loading.md` Resume Check (+ byte-identical mirror, catalog hash regenerated): before skipping a completed phase the orchestrator re-verifies repository root and worktree path, card id and lease owner, HEAD (equal or descended with only expected commits), a clean working tree beyond recorded changes, and the recomputed `plan_artifact_hash`; it skips only phases whose identity matches, invalidates a differing phase and every later phase that consumed it, never resumes a cancelled or revoked run from its checkpoint, and logs the differing field. The no-progress.md branch is unchanged.
+- `go test -count=1 -run 'TestRunPlan|TestRunResumeIdentity|TestSkillsContainPlanAuditGateMarkers|Mirror|Embed|Manifest|DateProvenance|BindingLedger' ./internal/template/` -> `ok github.com/modu-ai/moai-adk/internal/template 3.324s`; `bash .claude/hooks/tests/test-tdd-result-contract.sh` -> PASS.
+- Gaps: no resume was executed; the survey's matrix (other repo/card/head, expired reassignment, cancel then retry, crash between write and checkpoint, duplicate complete, stale owner return) is not run.
+
 Gaps: no whole-file semantic test of the new clauses (literal greps only, plus the one mutation); `make build` was not run (only its hash step); no Go package other than internal/template was run.
 Residual risk: the three docs still describe `go test ./...` exit 0 as an ac_converge predicate (RUN-07, out of the stated order for this pass).

@@ -154,7 +154,7 @@ Before spawning implementation agents, load relevant lessons from auto-memory:
 ### Resume Check
 
 Before Phase 5, check if `.moai/specs/SPEC-{ID}/progress.md` exists:
-- If it exists: Load content, identify last completed phase checkpoint, skip all completed phases, resume from the next pending phase. Log: "Resuming SPEC-{ID} from Phase {N}"
+- If it exists: Load content and identify the last completed phase checkpoint. Before skipping any completed phase, re-verify that the record still belongs to this work: the repository root and worktree path equal the ones recorded, the card id (when the run is a factory card) and its lease owner are unchanged, `git rev-parse HEAD` equals the recorded HEAD or descends from it with only expected commits, the working tree carries no unrecorded changes, and the recomputed `plan_artifact_hash` of the SPEC equals the recorded one (the card's assigned SPEC revision and git commit are already recorded at assignment). Skip only the completed phases whose recorded identity still matches; invalidate a phase whose identity differs, and every later phase that consumed its output, and re-run them. A cancelled or revoked run is never resumed from its checkpoint. Then resume from the first pending or invalidated phase. Log: "Resuming SPEC-{ID} from Phase {N}" and, for each invalidated phase, the identity field that differed
 - If it does not exist: Create the file now with initial entry:
   ```
   ## SPEC-{ID} Progress
