@@ -328,7 +328,7 @@ func afMissingCommits(ctx context.Context, dir string, shas []string) ([]string,
 		in.WriteString(sha + "^{commit}\n")
 	}
 	cmd := exec.CommandContext(ctx, "git", "-C", dir, "cat-file", "--batch-check")
-	cmd.Env = append(gitenv.Env(), "GIT_TERMINAL_PROMPT=0")
+	cmd.Env = append(gitenv.Env(), "GIT_TERMINAL_PROMPT=0", "GIT_NO_REPLACE_OBJECTS=1") // a replace ref must not stand in for a commit (N37)
 	cmd.Stdin = strings.NewReader(in.String())
 	out, err := cmd.Output()
 	if err != nil {

@@ -93,6 +93,9 @@ func (g GitCLI) run(ctx context.Context, dir string, args ...string) (string, er
 	cmd.Env = append(gitenv.Env(),
 		"LC_ALL=C", "LANG=C", "LANGUAGE=",
 		"GIT_TERMINAL_PROMPT=0",
+		// A replace ref makes every git call read another commit where it reads the candidate (N37): the queue lands
+		// the commit the evidence is about, so it reads objects as they are stored.
+		"GIT_NO_REPLACE_OBJECTS=1",
 		"GIT_AUTHOR_NAME="+g.Who.Name, "GIT_AUTHOR_EMAIL="+g.Who.Email,
 		"GIT_COMMITTER_NAME="+g.Who.Name, "GIT_COMMITTER_EMAIL="+g.Who.Email,
 	)
