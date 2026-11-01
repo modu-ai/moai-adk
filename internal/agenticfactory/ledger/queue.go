@@ -110,34 +110,84 @@ func newestWorkIs(ctx context.Context, q querier, cardID, sha string) (bool, err
 	return found && id <= mark, nil
 }
 
-// landingStands says whether the landed candidate may still finish the card. It does unless the
-// card went back into the build stage after that candidate was first offered to the queue (see
-// offerOf) and has not measured the same commit again since its latest such move. Going back
-// means the holder took the work back; the old receipt and the landed row are older than that, so
-// nothing in the record says the rework was done. The same commit measured again does count (the
-// trunk holds exactly what was measured; Enqueue refuses to take a commit that fails this check, so
-// a landed row has normally passed it already), under two conditions. At least one passing run (green or gate) of it must follow the move back. And the
-// newest run of each kind about it decides, whenever that run was recorded, as it does for the
-// receipt and at Enqueue: a pass followed by a failure leaves a failure, a failure followed by a
-// pass is repaired, a kind never run for the commit is not a failure. A run that failed before
-// the move back, the reason the holder took the card back, is therefore not undone by a pass of
-// the other kind. A different commit is the newest-work check's business. The order of the move
-// and the evidence is the move's evidence_mark, a count in the ledger itself, so the answer does
-// not depend on the process that asks or on the clock.
+// landingStands says whether the landed candidate may still finish the card. Three things must hold.
+//
+//  1. The newest run of each kind (green, gate) about it is not a failure, whenever that run was
+//     recorded and whether or not the card was ever taken back, as it is for the receipt and at
+//     Enqueue: a pass followed by a failure leaves a failure, a failure followed by a pass is
+//     repaired, a kind never run for the commit is not a failure.
+//  2. If the card went back into the build stage after the candidate was first offered to the
+//     queue (see offerOf), at least one passing run (green or gate) of it follows the latest such
+//     move. Going back means the holder took the work back; the old receipt and the landed row
+//     are older than that, so nothing in the record says the rework was done. The same commit
+//     measured again counts (the trunk holds exactly what was measured; Enqueue refuses to take a
+//     commit that fails this check, so a landed row has normally passed it already).
+//  3. If the card left MERGING after the offer and has recorded evidence about another commit
+//     since its latest such move, the candidate was measured again after that evidence, with a
+//     passing green and a passing gate. The card did other work in between, the ledger cannot
+//     tell whether that work was given up, and a gate of the landed commit alone would be a way
+//     to finish on it regardless. A different commit as the newest GREEN is the newest-work
+//     check's business.
+//
+// The order of the moves and the evidence is the moves' evidence_mark, a count in the ledger
+// itself, so the answer does not depend on the process that asks or on the clock.
 func landingStands(ctx context.Context, q querier, cardID, candidate string) (bool, error) {
-	mark, reworked, err := reworkMark(ctx, q, cardID, candidate)
-	if err != nil || !reworked {
-		return true, err
-	}
 	if ok, err := noFailingNewestRun(ctx, q, cardID, candidate); err != nil || !ok {
 		return false, err
 	}
-	var passes int
-	if err := q.QueryRowContext(ctx, `SELECT count(*) FROM evidence WHERE card_id=? AND kind IN (?,?) AND subject_sha=? AND result=? AND id>?`,
-		cardID, KindGreen, KindGate, candidate, ResultPass, mark).Scan(&passes); err != nil {
+	mark, reworked, err := reworkMark(ctx, q, cardID, candidate)
+	if err != nil {
+		return false, err
+	}
+	if reworked {
+		var passes int
+		if err := q.QueryRowContext(ctx, `SELECT count(*) FROM evidence WHERE card_id=? AND kind IN (?,?) AND subject_sha=? AND result=? AND id>?`,
+			cardID, KindGreen, KindGate, candidate, ResultPass, mark).Scan(&passes); err != nil {
+			return false, fmt.Errorf("ledger: %w", err)
+		}
+		if passes == 0 {
+			return false, nil
+		}
+	}
+	return measuredAfterOtherWork(ctx, q, cardID, candidate)
+}
+
+// measuredAfterOtherWork is the third condition of landingStands.
+func measuredAfterOtherWork(ctx context.Context, q querier, cardID, candidate string) (bool, error) {
+	offered, _, found, err := offerOf(ctx, q, cardID, candidate)
+	if err != nil || !found {
+		return true, err
+	}
+	// The latest move out of MERGING after the offer, to anything but a terminal stage. A move
+	// without a mark counts all the evidence as older.
+	var left int64
+	switch err := q.QueryRowContext(ctx, `SELECT `+offerMarkSQL+` FROM transitions
+		WHERE card_id=? AND seq>? AND from_stage=? AND to_stage NOT IN (?,?,?) ORDER BY seq DESC LIMIT 1`,
+		cardID, cardID, offered, string(core.StageMerging), string(core.StageMerging), string(core.StageDone), string(core.StageCancelled)).Scan(&left); {
+	case err == sql.ErrNoRows:
+		return true, nil
+	case err != nil:
 		return false, fmt.Errorf("ledger: %w", err)
 	}
-	return passes > 0, nil
+	var other int64
+	if err := q.QueryRowContext(ctx, `SELECT COALESCE(MAX(id),0) FROM evidence WHERE card_id=? AND kind IN (?,?,?) AND subject_sha<>? AND id>?`,
+		cardID, KindGreen, KindGate, KindReview, candidate, left).Scan(&other); err != nil {
+		return false, fmt.Errorf("ledger: %w", err)
+	}
+	if other == 0 {
+		return true, nil
+	}
+	for _, kind := range []string{KindGreen, KindGate} {
+		var passes int
+		if err := q.QueryRowContext(ctx, `SELECT count(*) FROM evidence WHERE card_id=? AND kind=? AND subject_sha=? AND result=? AND id>?`,
+			cardID, kind, candidate, ResultPass, other).Scan(&passes); err != nil {
+			return false, fmt.Errorf("ledger: %w", err)
+		}
+		if passes == 0 {
+			return false, nil
+		}
+	}
+	return true, nil
 }
 
 // noFailingNewestRun says whether the newest green run and the newest gate run about the commit
@@ -363,6 +413,13 @@ func (s *Store) Enqueue(ctx context.Context, cardID string, epoch int64, candida
 			return fmt.Errorf("ledger: %w", err)
 		case lastSubject.Valid && lastSubject.String != candidateSHA:
 			return fmt.Errorf("%w: the newest evidence of %s is about commit %s, not %s; measure %s again first", ErrEvidenceStale, cardID, lastSubject.String, candidateSHA, candidateSHA)
+		}
+		// A commit whose newest green run failed cannot finish the card (landingStands), so it is
+		// not taken either; its gate is already known to pass.
+		if ok, err := noFailingNewestRun(ctx, tx, cardID, candidateSHA); err != nil {
+			return err
+		} else if !ok {
+			return fmt.Errorf("%w: the newest run of commit %s failed; measure it again first", ErrEvidenceStale, candidateSHA)
 		}
 		// A commit this card already offered, and was then taken back for rework, is taken again
 		// only with the run that finishing needs already recorded (see landingStands). Refusing it
