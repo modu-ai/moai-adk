@@ -30,6 +30,9 @@ sub-criterion: it extends AC-CCR-008, 013c, 019a, 022, and 006a in place (per-ru
 `TestAutoMergeNoQueueCancelledOrHeldFailureOnDefaultBranch`, `TestAutoMergeAlreadyMergedIsSuccess` in
 `internal/template/auto_merge_codex_test.go` — are **to be created** by `plan.md` M8 and do not exist on tree `53fbc2d206` (ledger
 R39). Their RED-now cells are R36 to R39 on that tree; green path M8.
+**Plan revision 15** (Amendment 8, the operator-approved work order of 2026-11-02, decision-index Q33) adds one lettered sub-criterion,
+AC-CCR-004a (the security-null adapter of REQ-CCR-001), inside AC-CCR-004; no logical criterion is added and none is changed in meaning.
+Its RED-now cells are R40 (tree `5c3f0ebf27`, measured) and R41 (to be recorded by M9); green path M9.
 
 **Document pin.** Every RED-now observation below was re-measured on tree `e11af67632` (full
 `e11af676320604bb1f7cf07f14aa457b3437a9ec`, branch `WT-ci-codex-review`, clean) on 2026-10-18 and binds every
@@ -252,6 +255,22 @@ R39 $ grep -c -E 'TestAutoMergeCommentPathRunScopedConcurrency|TestAutoMergeNoQu
     exit: 1   (the three revision-14 pins do not exist yet; they are to be created by M8)
 ```
 
+**Revision 15 ledger (tree `5c3f0ebf27`, full `5c3f0ebf27584d2c45deb2d00f9d69a4eea932c4`, branch `WT-codex-security-null-adapter`,
+clean, equal to `origin/main` per the delegation; measured 2026-11-02 by manager-spec, a single read-only invocation, exit code
+observed separately).** Why it is red for the right reason: the line refuses every completed security leg whose `has_any_findings`
+is not boolean, with no exception, so the #1956 shape cannot pass on this tree; M9 guards exactly that refusal (and its
+`has_unresolved_findings` sibling) with the adapter predicate. The grep cell is necessary, never sufficient; R41 is the behavioral
+cell.
+
+```
+R40 $ grep -n -F '$security.status != "running" and ($security.has_any_findings | type) != "boolean"' scripts/ci/codex-review-gate.sh
+    stdout: 184:    elif $security.status != "running" and ($security.has_any_findings | type) != "boolean" then {c: 1, r: "review-not-complete:security_review:has_any_findings"}
+    exit: 0   (the refusal is unconditional on this tree)
+R41 (to be recorded by the run phase, M9 RED step) main's `read-native-review` on the stored `F-security-null` fixture
+    expected per the work order: exit 1, stdout reason `review-not-complete:security_review:has_any_findings`
+    (command, verbatim stdout, exit code, and tree SHA are not recorded yet; until they are, AC-CCR-004a is unadopted)
+```
+
 Tool provenance (verification-claim-integrity §2.2): the cells are `grep` and `git` measurements, not moai-tool output. The
 `moai spec lint` run of this revision used the installed build `b1806498fe` (v3.2.0-rc.38); `git merge-base --is-ancestor
 b1806498fe HEAD` exited 1, so that build is not a strict ancestor of the measured HEAD.
@@ -378,6 +397,57 @@ the RED-now pin of tree `b2af3db9a1` (ledger R18 to R23).
   `two_state_comments_one_clean_refused` red; one that scans the whole body for the marker without a position turns
   `state_marker_in_identity_prose_only_refused` red; one that ignores the security marker turns the six `security_marker_*` rows red.
 - RED-now: R18 and R20. Green path: M6.
+
+**AC-CCR-004a** — REQ-CCR-001 (security-null adapter), REQ-CCR-004 — release-blocking once R41 is recorded (revision 15, Amendment 8)
+- Given the fixture `F-security-null`, stored by the run phase from the real #1956 objects (head `a755592815`, the leading-block
+  marker lines and receipt lines only): one state comment of the identity with `code_review` `completed`, `commit_sha` = H, both
+  flags `false`, and `security_review` `completed`, `commit_sha` = H, both flags JSON null; a security marker `completed` with
+  `headSha` = H; one clean current-head code receipt and one clean current-head security receipt of the identity; the comments
+  carrying `performed_via_github_app` slug `chatgpt-codex-connector`; empty review and review-comment lists; and each refusal row
+  below, which changes exactly one thing in that fixture,
+- When `read-native-review` runs with `--draft false` and `--wait-closed false` and `true`,
+- Then the pass row exits 0 and every refusal row exits with the result in its row, never 0. The "Expected" column of the refusal rows
+  is derived by reading the gate chain of tree `5c3f0ebf27` (REQ-CCR-001: a missing adapter condition leaves the existing refusal and
+  reason unchanged); it is not yet a measured output, and the run phase records each verbatim. Where two rows share an existing
+  reason, the row is told apart by its fixture and its mutant, not by its reason text.
+
+| Row | Change from `F-security-null` | Expected (derived; to be recorded) | RED-now cell | Green path |
+|-----|-------------------------------|------------------------------------|--------------|------------|
+| P | none (the #1956 shape) | exit 0; the reason contains `native-review-clean` and names the adapter path; the printed summary keeps the security flags null | main's gate exits 1 with `review-not-complete:security_review:has_any_findings` on the #1956 shape (R41, to be recorded; R40 shows the refusing line) | M9 flips it to exit 0 |
+| N1a | security `has_any_findings` null, `has_unresolved_findings` `false` (one null only) | exit 1 `review-not-complete:security_review:has_any_findings` | red against mutant M5 (the adapter without condition 5's both-null test) | M9; stays exit 1 |
+| N1b | security `has_any_findings` `false`, `has_unresolved_findings` null | exit 1 `review-not-complete:security_review:has_unresolved_findings` | red against M5 | M9; stays exit 1 |
+| N2 | security `has_any_findings` `true`, `has_unresolved_findings` `false` (the #1940 `c770e9bc` form) | exit 1 `finding:reported:security_review` | red against M0 (the adapter as an early pass ahead of the existing chain) | M9; stays exit 1 |
+| N3 | security `has_any_findings` `true`, `has_unresolved_findings` `true` (the #1828 `b088e842` form) | exit 1 `finding:unresolved:security_review` | red against M0 | M9; stays exit 1 |
+| N4a | security key `has_any_findings` absent | exit 1 `review-not-complete:security_review:has_any_findings` | red against M5 (key presence dropped) | M9; stays exit 1 |
+| N4b | security key `has_unresolved_findings` absent | exit 1 `review-not-complete:security_review:has_unresolved_findings` | red against M5 | M9; stays exit 1 |
+| N5 | security `commit_sha` null (the #1828 final form) | exit 1 `review-not-complete:security_review:has_any_findings` | red against M3 (no security `commit_sha` test) | M9; stays exit 1 |
+| N6 | security leg `status` `running` | exit 10 `pending:running` (window open); exit 1 `review-not-complete:running` (closed) | red against M4 (no completed-status test) | M9; unchanged |
+| N7 | code `has_any_findings` null | exit 1 `review-not-complete:code_review:has_any_findings` | red against M6 (the null tolerance extended to the code leg) | M9; stays exit 1 |
+| N8 | security marker `status` `running` | exit 1 `review-not-complete:security_review:has_any_findings` | red against M4 (no marker-status test) | M9; stays exit 1 |
+| N9 | security marker `headSha` = O | exit 1 `stale-review:<O prefix>` | red against M0 | M9; unchanged |
+| N10 | security receipt absent | exit 1 `native-receipt-missing:security_review` | red against M7 (no receipt test) | M9; unchanged |
+| N11 | security receipt sentence not the exact clean sentence | exit 1 `native-receipt-not-clean:security_review` | red against M7 | M9; unchanged |
+| N12 | security receipt reviewed commit = O | exit 1 `stale-review:<O prefix>` | red against M7 | M9; unchanged |
+| N13 | two security receipts bound to H | exit 1 `native-receipt-ambiguous:security_review` | red against M7 | M9; unchanged |
+| N14a / N14b / N14c | security receipt with a forged login / a forged id / type `User` (each its own subtest) | exit 1 `native-receipt-missing:security_review` | red against M1 (the receipt read without the identity filter) | M9; unchanged |
+| N15 | state comment with a forged identity | exit 10 `pending:no-review` (open); exit 11 `not-run:review-absent` (closed) | red against M1 | M9; unchanged |
+| N16 | a review comment of the identity bound to O only | exit 1 `review-not-complete:security_review:has_any_findings` | red against M8 (findings checked on H only) | M9; stays exit 1 |
+| N17 | a COMMENTED review of the identity bound to O only | exit 1 `review-not-complete:security_review:has_any_findings` | red against M8 | M9; stays exit 1 |
+| N18 | `performed_via_github_app` slug other than `chatgpt-codex-connector` on the state comment or the security receipt | exit 1 `review-not-complete:security_review:has_any_findings` | red against M1 (no slug test) | M9; stays exit 1 |
+| N19 | a second marker version (for example `codex-security-review:v2`) present beside v1 | exit 1 `review-not-complete:security_review:has_any_findings` | red against M2 (no version test) | M9; stays exit 1 |
+
+- Mutants: `M0` is the adapter returning a pass ahead of the existing chain; `M1` to `M8` are the adapter with condition 1 to 8 of
+  REQ-CCR-001 removed (M5 also covers a test of one null instead of both, or of the value without the key). Each refusal row must be
+  red against its mutant; the run phase records each red verbatim, condition 8 and condition 5 at least (the work order), and names
+  any mutant it did not run as a Gap.
+- Controls: every row of AC-CCR-001 to AC-CCR-005 keeps its result; in particular a review comment or review bound only to an older
+  head still leaves a boolean-path clean comment at exit 0 (AC-CCR-005 `finding_bound_to_older_head_ignored`), because condition 8
+  binds the adapter path only.
+- Verify: a name-exact selector over the new gate test that lists each row's `--- PASS` line (the test and subtest names are the run
+  phase's to choose and record), plus `go test -count=1 -v -run '^(TestCodexNative.*|TestCodexGate.*)$' ./internal/template/` with
+  every existing `--- PASS` line kept (the work order: no existing test weakened). A run that lists fewer named lines is a Gap.
+- Consumer note: whether the auto-merge collection path keeps `performed_via_github_app` on the issue comments it hands the gate is to
+  be recorded by the run phase; where it does not, condition 1's slug test is vacuous on that path, and that is reported as a Gap.
 
 **AC-CCR-005** — REQ-CCR-005 — release-blocking
 - Given a clean state comment of the identity plus, in turn: a completed leg with `has_any_findings` true and
@@ -1232,7 +1302,7 @@ and by a mutant that a weaker implementation would satisfy.
 | Condition | Observable verdict | Pinned by | Mutant that turns it red |
 |-----------|--------------------|-----------|--------------------------|
 | Missing review | `read-native-review` exits 10 (`pending:no-state-comment`) while the window is open, never 0; at window close it exits 11 `not-run:review-absent` (the script's NOT RUN class; the `review` step ends in failure on it, never success, AC-CCR-021); the merge is withheld and never authorized | AC-CCR-007 (`empty_comments_pending`, `expiry_never_merges`), AC-CCR-008 (`review_absent_window_closed_exit_11`, `not_run_message_review_absent_names_cause`), AC-CCR-003 (forged artifacts do not fill the gap), AC-CCR-019 (`review_absent_expiry_zero_merge_calls`, `release_base_absent_zero_merge_calls`) | A script that reads an empty list as clean; a loop that merges on expiry; an absent comment left at 10 or read as success |
-| Missing output | A leg or the `security_review` object missing; a leg `status` missing or null; a completed leg with a null `commit_sha` or a null, missing, or non-boolean `has_any_findings` or `has_unresolved_findings` (the #1842 and #1839 forms); a security marker missing: exit 1; a missing input file: `input-invalid`; a list that cannot be read at the end of the window: failure `review-unreadable` | AC-CCR-004 (`code_review_leg_missing_refused`, `security_review_leg_missing_refused`, `status_null_refused`, `completed_with_has_unresolved_null_refused`, `completed_code_missing_has_any_findings_refused`, `completed_security_missing_has_any_findings_refused`, `completed_code_null_has_any_findings_refused`, `completed_security_nonboolean_has_any_findings_refused`, `completed_leg_commit_sha_null_security_marker_completed_refused`, `security_leg_all_null_refused_f_null_security_leg`, `completed_legs_without_security_marker_refused`, `input_files_missing_refused`), AC-CCR-007 (`unreadable_to_end_of_window_fails_review_unreadable`) | A script that treats null as false, a missing field as pass, or reads only one leg |
+| Missing output | A leg or the `security_review` object missing; a leg `status` missing or null; a completed leg with a null `commit_sha` or a null, missing, or non-boolean `has_any_findings` or `has_unresolved_findings` (the #1842 and #1839 forms; revision 15: the one exception is a security leg with both flags null that passes all eight conditions of the security-null adapter, AC-CCR-004a, and null is still never read as false); a security marker missing: exit 1; a missing input file: `input-invalid`; a list that cannot be read at the end of the window: failure `review-unreadable` | AC-CCR-004 (`code_review_leg_missing_refused`, `security_review_leg_missing_refused`, `status_null_refused`, `completed_with_has_unresolved_null_refused`, `completed_code_missing_has_any_findings_refused`, `completed_security_missing_has_any_findings_refused`, `completed_code_null_has_any_findings_refused`, `completed_security_nonboolean_has_any_findings_refused`, `completed_leg_commit_sha_null_security_marker_completed_refused`, `security_leg_all_null_refused_f_null_security_leg`, `completed_legs_without_security_marker_refused`, `input_files_missing_refused`), AC-CCR-007 (`unreadable_to_end_of_window_fails_review_unreadable`) | A script that treats null as false, a missing field as pass, or reads only one leg |
 | Failed review | A completed leg reports `has_any_findings` true even when `has_unresolved_findings` is false; a leg reports `has_unresolved_findings` true; a status other than `completed` (`failed`, `cancelled`, unknown); or a corroborating review comment or COMMENTED or CHANGES_REQUESTED review on the head: exit 1 | AC-CCR-004, AC-CCR-005 | A script that reads `completed` alone as a pass, treats reported findings as clean, or ignores the review comments |
 | Stale SHA | Either leg or the security marker's `headSha` is bound to a commit other than the head (a push after the review started, the #1842 move): exit 1 `stale-review`, also when the stale state is still `running` | AC-CCR-002 (`both_legs_bound_to_older_head_f_stale`, `old_head_state_never_counts_for_new_head_f_moved_head`), AC-CCR-019 (`old_head_state_zero_merge_calls_f_moved_head`) | A script that ignores `commit_sha`, compares a prefix, checks only the code leg, or reads the security marker's `headSha` as optional |
 | Running | A leg or the security marker reads `running`: exit 10 while the window is open, exit 1 `review-not-complete:running` on the last pass; never a pass, on any base | AC-CCR-007 (`running_both_legs_pending_f_running`, `running_window_closed_exit_1_not_complete`, `running_on_last_pass_fails_review_not_complete_running`), AC-CCR-019 (`review_running_last_pass_zero_merge_calls`, `release_base_running_zero_merge_calls`) | A loop that merges while running; a running state read as NOT RUN or as a pass |

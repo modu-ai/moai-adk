@@ -412,6 +412,24 @@ branch without the head comparison, an unreadable re-read read as merged). Affec
 at exit: landed locally only; R14-1 to R14-4 of the design delta stay as stated, and the remote conclusions stay UNOBSERVED until the
 change runs on the default branch.
 
+### M9 — The security-null adapter (rev 15, Priority High)
+
+REQ/AC: REQ-CCR-001 (second pass path), REQ-CCR-004 (qualified); spec Amendment 8, decision-index Q33 / AC-CCR-004a; no requirement
+and no logical criterion added. Ordered by decision-reversibility:
+
+1. **The predicate** (most likely to change): the eight conditions of REQ-CCR-001's adapter, evaluated together; it guards only the
+   type refusal of a completed security leg's two flags (acceptance R40 and its `has_unresolved_findings` sibling) and leaves every
+   other refusal of the chain where it is. Null is never converted; the pass reason keeps `native-review-clean` and names the adapter.
+2. **Condition 8 and the app slug:** the identity's review comments and review objects are counted over the whole pull request, not
+   only the head; the slug is required where the input carries `performed_via_github_app`, and whether the auto-merge collection path
+   keeps that field is recorded.
+
+Files (gate path; human merge under REQ-CCR-009): E `scripts/ci/codex-review-gate.sh`, a new fixture from the real #1956 objects, and
+the gate tests in `internal/template/`. RED first: the stored fixture on the unchanged script, quoted verbatim (R41). GREEN: the
+predicate. Exit: every AC-CCR-004a row and every existing `TestCodexNative*` / `TestCodexGate*` row swept by name (`-v` lists each
+`--- PASS`); the M1 to M8 mutants of AC-CCR-004a recorded verbatim (conditions 8 and 5 at least); "no independent audit" recorded as a
+Gap. State at exit: landed locally only; the remote behavior stays UNOBSERVED until the change runs on the default branch.
+
 ### Landing scope (plan §F rule: changed packages plus direct importers plus readers of changed non-Go files)
 
 | Group | Packages | How |

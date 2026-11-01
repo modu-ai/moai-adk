@@ -1,10 +1,10 @@
 ---
 id: SPEC-CI-CODEX-REVIEW-001
 title: "CI review switch — fail-closed native Codex review gate replaces the CodeRabbit and GitHub Claude review surfaces"
-version: "0.12.0"
+version: "0.13.0"
 status: in-progress
 created: 2026-10-18
-updated: 2026-10-25
+updated: 2026-11-02
 author: "Goos Kim"
 priority: P1
 phase: "v3.2.0 target"
@@ -38,8 +38,46 @@ related_specs: [SPEC-V3R6-CODERABBIT-ADOPTION-001, SPEC-CI-VERDICT-INTEGRITY-001
 | 0.11.1 | 2026-10-23 | manager-spec (card t1868) | Revision 13.1, the lane ruling on the revision-13 defaults: decision-index Q31(a) is REVERSED — on the comment path a pending review pass (a `running` leg or marker, or no state comment yet) is a "not yet" hold with exit 0 and a `pending` `auto-merge` status (`review-not-complete:running`), never a failed job; only a merge step reached and not executed is non-zero. Q31(b) stands, clarified in design. The concurrency key is specified: the pull request number for the `workflow_run` path and the identity's comments, the run id for any other comment author. Reworded REQ-CCR-012, 018, 019, 023, 024; no requirement or criterion added. |
 | 0.11.2 | 2026-10-24 | manager-spec (card t1868) | Revision 13.2, documents aligned to the landed implementation after sync audit 3 (`.moai/reports/t1868/sync-audit-3.md`, FAIL 0.72 at `60997114fe`, findings F1, F2, F6); leader and operator ruling: the documents follow the code, the permissions are not reduced. REQ-CCR-025: exactly four permissions — `actions: read` (read-only; the comment path lists the `CI` workflow's runs of the evaluated head) added beside `statuses: write`. `design.md` item 4 defines `checks` on the comment path as the required checks plus the current-head `CI` conclusion; `T-STATUS` gains the `ci-*` hold descriptions; item 6, §5, `plan.md` M7, and AC-CCR-006 / 006a restated to four scopes; the new pin tests are added to the Verify lists of AC-CCR-013c, 019a, and 020. No requirement or criterion added; no plan-audit re-entry (ruling). |
 | 0.12.0 | 2026-10-25 | manager-spec (card t1956, parent t1868) | Plan revision 14, an in-place amendment of the completed SPEC (Amendment 7) under the operator and leader ruling of 2026-10-25 (decision-index Q32): no run of `auto-merge.yml` ends `cancelled` or `failure` on a default-branch SHA because of queueing or a held evaluation. REQ-CCR-023: the identity's `issue_comment` path moves to a per-run concurrency group (the run id); the `workflow_run` path keeps the per-pull-request group; serialization on the comment path is replaced by the head re-read before the merge, `--match-head-commit`, and idempotent evaluations. REQ-CCR-024 refined: a `gh pr merge` that fails because the pull request is already merged at the verified head ends the merge step with exit 0. REQ-CCR-008, 018, 025 and the §2/§3/§4 draft wording: a draft is a "not yet" hold — `review` step exit 0, state `not-run:draft`, status `pending` `not yet: draft`, no merge — instead of a failed step (decision-index Q21 superseded). No requirement or logical criterion added (header count stays at the Q30 exception); AC-CCR-008, 013c, 019a, 022, 006a extended with three to-be-created pin tests. No plan-audit re-entry (ruling). |
+| 0.13.0 | 2026-11-02 | manager-spec (card t2012, parent t1868) | Plan revision 15, an in-place amendment (Amendment 8) under the operator-approved work order of 2026-11-02 (decision-index Q33): the recognition-contract amendment §5 promises for an observed new shape. On PR #1956 the native security leg reads `completed` and bound to the head with both finding flags JSON null, beside a clean current-head security receipt; the gate refuses it. REQ-CCR-001 gains a second, narrow pass path, the **security-null adapter**, which passes only when eight conditions hold together; REQ-CCR-004 and the §5 stated fact and §6 exclusion are qualified to point at it. "Null is not false" stays the rule: the adapter does not convert null. No requirement added (the count stays at the Tier L ceiling of 25); one lettered sub-criterion AC-CCR-004a added inside AC-CCR-004 (the Q30 convention), logical criterion count unchanged. Exit classes, branch protection, required checks, security checks, admin bypass, and REQ-CCR-009 unchanged. |
 
 ## Amendments
+
+### Amendment 8 — the security-null adapter (plan revision 15)
+
+- prior_completed_version: 0.11.2
+- prior_completed_sha: 9286f6b6ba88a73521c896e2d5bd536c29631c97   # the `sync_commit_sha` of `progress.md` §E.4, unchanged since Amendment 7
+- rationale (the observed shape; relayed in the operator-approved work order, not re-observed by this plan edit): on PR #1956 at heads
+  `9fff5fb832`, `8c116c7d3a`, and `a755592815` the identity's state comment reports `code_review` `{status completed, has_any_findings
+  false, has_unresolved_findings false}` and `security_review` `{status completed, commit_sha = head, has_any_findings null,
+  has_unresolved_findings null}`, with a `codex-security-review:v1` marker `{status completed, headSha = head}` and a clean security receipt
+  "Security review completed. No security issues were found in this pull request."; the comments carry `performed_via_github_app` with
+  slug `chatgpt-codex-connector` (app id 1144995). Recently landed pull requests (#1947, #1936, #1932, #1918) carried `false`/`false` on
+  both legs. The gate refuses the #1956 shape at its type check of a completed security leg's flags
+  (`review-not-complete:security_review:has_any_findings`), so §5's clause applies: "the gate withholds until the recognition contract is
+  amended". This is that amendment.
+- why a receipt alone is insufficient (relayed measurements): #1828 at `b088e842` carried a clean receipt beside `has_any_findings` true
+  and `has_unresolved_findings` true on the same SHA; #1940 at `c770e9bc` carried a clean receipt beside `has_any_findings` true and
+  `has_unresolved_findings` false; the final state of #1828 read the security leg `completed` with null flags and a null `commit_sha`
+  while two unresolved security threads (`74659b93`, `8989b7eb`) remained. A null leg is therefore not evidence of "no findings" on its
+  own, so the adapter requires the exact-null shape bound to the current head, the clean current-head receipt (condition 7), and the
+  whole-pull-request absence of the identity's findings (condition 8) together.
+- the contract (new; REQ-CCR-001, second pass path): the adapter passes only when all eight conditions of REQ-CCR-001 hold. Any one
+  missing leaves the existing refusal with its existing reason unchanged. The boolean path is unchanged. The adapter suspends exactly
+  one refusal — the type refusal of a completed security leg whose two finding flags are not boolean — and every other check of the
+  chain runs unchanged and in its order. The pass reason keeps the existing clean summary and names the adapter path, so a verdict
+  basis is distinguishable from a boolean pass; the summary marker keeps the null values as read.
+- non-goals (kept): "null is not false" stays the rule everywhere; the adapter never converts null to false, and nothing outside it
+  reads null as clean. No change to the exit classes 0, 1, 10, 11, branch protection, required checks, the security checks, admin
+  bypass, or the auto-merge exclusion of the gate paths (REQ-CCR-009): the change itself edits a gate path, so it is a human-merged pull
+  request.
+- scope: REQ-CCR-001 (second pass path), REQ-CCR-004 (qualified), the §3 term "bound" (pointer), §5 stated fact, §6 exclusion "Any
+  change to the gate script's behavior" (qualified); `acceptance.md` AC-CCR-004a and the §3.1 "Missing output" row; `design.md` reader
+  pass row and step 12, `T-CHAIN` rows 1 and 2c (pointers); `plan.md` M9; decision-index Q33. Not changed: every other requirement, the
+  consumer workflow, the exit-class mapping (`T-CHAIN`), the author policy, the permissions.
+- evidence: one grep cell on tree `5c3f0ebf27` (`acceptance.md` R40). The behavior on the real #1956 input on main and on the amended
+  gate, the mutant reds, and whether the consumer's collection path preserves `performed_via_github_app` are to be recorded by the
+  run phase (R41).
+- plan audit: no re-entry, by the work order (no additional audit); the run phase records "no independent audit" as a Gap.
 
 ### Amendment 7 — no queue-cancelled or held-failed run on a default-branch SHA (plan revision 14)
 
@@ -326,7 +364,8 @@ the pull request, and its verdict carrier is the **state comment**: an issue com
   `commit_sha`, `has_any_findings`, and `has_unresolved_findings` and for nothing else; the **security marker** is the line
 `<!-- codex-security-review:v1 {JSON} -->` in the same leading block, read for its `status` and `headSha`
 only; a leg is **bound** to a commit when its `commit_sha` equals that commit (a null `commit_sha` is bound
-to nothing, and a null `has_any_findings` or `has_unresolved_findings` is not `false`); a **corroborating finding** is a review comment of the identity bound to the
+to nothing, and a null `has_any_findings` or `has_unresolved_findings` is not `false` — the security-null adapter of REQ-CCR-001
+reads null as null too); a **corroborating finding** is a review comment of the identity bound to the
 head commit, or a review object of the identity bound to the head commit in state COMMENTED or
 CHANGES_REQUESTED, and it can only refuse, never pass; the **eligible author** is the account with login `GoosLab`, numeric user id 6458969, and account type User (all three must
 match), and an **eligible pull request** is one it authored whose head repository is the base repository (compared by repository id; a
@@ -342,7 +381,7 @@ reports for the `review` step and its job; **a pass** is the one case where the 
 ### 3.1 Native review verification
 
 - **REQ-CCR-001** (Ubiquitous) The gate script shall report a pull request's native review as clean only when
-  exactly one state comment of the Codex app identity exists on the pull request, its state marker parses as
+  either the security-null adapter below holds or (the boolean path) exactly one state comment of the Codex app identity exists on the pull request, its state marker parses as
   one JSON object, and for each of the two legs the `status` is `completed`, the `commit_sha` equals the
   exact head commit under review, and both `has_any_findings` and `has_unresolved_findings` are the boolean
   `false` (a `completed` status alone, or both legs reading `completed`, is never enough, and null is not
@@ -353,6 +392,23 @@ reports for the `review` step and its job; **a pass** is the one case where the 
   corroborating artifacts alone, so that prose, table rows, the summary marker, and reactions, in either
   direction, change no pass, and so that no review object or review comment of any state can grant a pass: such an artifact can only add a
   refusal (REQ-CCR-005).
+  - *Security-null adapter (revision 15, Amendment 8).* Where the security leg is `completed` with both finding flags exactly JSON
+    null, the gate script shall report the review clean only when all of the following hold together, and otherwise shall refuse
+    with the reason the existing chain gives that input — every condition of the boolean path other than the security leg's two
+    `false` flags still holds, and in addition: (1) the state comment and the security receipt are each authored by the
+    Codex app identity (login, id, and type) and, where the collected artifact carries `performed_via_github_app`, its slug is
+    `chatgpt-codex-connector`; (2) the state marker `codex-review-state:v1`, the security marker `codex-security-review:v1`, and
+    the receipt marker `codex-review-receipt:v1` each stand exactly once as the existing reader parses them, and no other version
+    of any of them is present; (3) the security leg's `commit_sha`, the code leg's `commit_sha`, and the security marker's
+    `headSha` each equal the full 40-character head; (4) both legs and the security marker read `completed`; (5) the security
+    leg carries both keys `has_any_findings` and `has_unresolved_findings` and both are exactly JSON null (one null alone is
+    refused); (6) the code leg's two flags are the boolean `false` (a null on the code leg stays refused); (7) exactly one
+    security receipt of the identity is bound to the current head, it is also the latest security receipt, its reviewed-commit
+    prefix of 10 to 40 hexadecimal characters matches the head, its clean sentence is exactly `Security review completed. No
+    security issues were found in this pull request.`, and the existing receipt checks report no error; and (8) the pull request
+    carries zero review comments and zero review objects of the identity, in any state and on any head. The adapter shall not
+    convert null to `false`: null stays not `false` everywhere, the summary it prints keeps the null values, and its pass reason
+    keeps the existing clean summary and names the adapter path. The boolean path above is unchanged.
 - **REQ-CCR-002** (Event-driven) When either leg of the state comment is bound to a commit other than the head
   commit under review — including a head that moved after the review started — the gate script shall refuse
   and name the stale commit, never read it as pending and never as NOT RUN.
@@ -364,7 +420,8 @@ reports for the `review` step and its job; **a pass** is the one case where the 
   the state marker (REQ-CCR-001).
 - **REQ-CCR-004** (Event-driven) When the state comment is not clean — a leg `status` other than `completed`
   (`running` is pending, REQ-CCR-007; `failed` is a review run that failed, which is neither a pass nor a finding: the gate script refuses it with the reason `review-failed:<leg>`, as a gate refusal that fails the step and the job, before it interprets any finding flag of that leg, so the flags of a failed leg are never read as findings, and the reason names the re-request that starts a new run; any other value, a missing or null `status`, a missing leg, or a completed leg with a missing,
-  null, or non-boolean `has_any_findings` or `has_unresolved_findings`, or a `commit_sha` that is not 40 hexadecimal characters
+  null, or non-boolean `has_any_findings` or `has_unresolved_findings` — except the one security-leg shape the security-null adapter
+  of REQ-CCR-001 admits when all eight of its conditions hold — or a `commit_sha` that is not 40 hexadecimal characters
   refuses), a marker whose JSON is malformed or altered so that it no longer parses to the required shape, a
   marker string that stands outside the marker position of a comment of the identity, a body that carries the
   state marker or the security marker twice, a malformed or misplaced security marker, a security marker that is missing
@@ -609,7 +666,8 @@ not approved and are never a deliverable of this card.
 
 **Stated fact.** The gate passes only when the Codex app identity's single state comment reports both legs
 `completed`, each bound to the head commit, each with `has_any_findings` and `has_unresolved_findings` false, and no corroborating
-finding of the identity exists on that commit. No pull-request review object (an APPROVED one included), no
+finding of the identity exists on that commit — or (revision 15) when the security-null adapter of REQ-CCR-001 holds in all eight of
+its conditions, the one shape observed on #1956 that Amendment 8 adds to the contract. No pull-request review object (an APPROVED one included), no
 prose, no absence of a comment, a `running` leg, and no elapsed time is ever a pass. The form was read on
 five real pull requests (DS-1, below), so the contract no longer rests on an unobserved artifact; what stays
 unobserved is listed under DS-1 to DS-3 and in `research.md` E39. Until a pull request shows a state comment
@@ -736,7 +794,8 @@ depends on the observation (its local criteria are AC-CCR-001 to AC-CCR-025 on t
 - (revision 14) Filtering the identity's redundant comment edits before the job (the D78 option B): not built — it needs a marker in
   the comment body the gate does not read, and it could drop the edit that completes a review. Cancelling a superseded
   `workflow_run` evaluation (`cancel-in-progress: true`): not built — a cancelled run is itself a non-success conclusion.
-- Any change to the gate script's behavior or exit classes (0, 1, 10, 11) and to its recognition contract.
+- Any change to the gate script's behavior or exit classes (0, 1, 10, 11) and to its recognition contract, other than the
+  security-null adapter of REQ-CCR-001 that Amendment 8 adds (the exit classes stay unchanged under it).
 
 ### Out of Scope — what the comment path and the status context do not do
 

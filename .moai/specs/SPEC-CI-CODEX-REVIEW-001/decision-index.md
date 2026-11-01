@@ -557,6 +557,17 @@ Resolution: (1) the `workflow_run` path keeps the per-pull-request group; every 
 Alternate: filter the identity's redundant comment edits before the job so they end `skipped` (lane option B) — not chosen: it needs a marker in the comment body the gate does not read and risks dropping the completing edit; leave the draft failing — withdrawn by the ruling
 Operator verdict: OPERATOR-SETTLED 2026-10-25 operator and leader ruling, transcribed from the leader's delegation message
 
+### Q33: How does the gate treat a completed, head-bound security leg whose two finding flags are JSON null (the #1956 shape)?
+
+Label: FOUNDER
+Class: product-level (changes which native-review shape the shipped gate passes)
+Authority anchor: none in the committed register — the settlement is the operator-approved work order of 2026-11-02, relayed in the delegation to manager-spec; its file under `.moai/reports/` is local material and never an authority anchor
+Why unresolved: §5 of the spec says another shape withholds until the recognition contract is amended; #1956 shows the security leg `completed`, bound to the head, with both flags null beside a clean current-head receipt, and the gate refuses it; a receipt alone has been observed beside real findings (#1828, #1940)
+Default: not applied (settled by the work order)
+Resolution: a narrow security-null adapter in REQ-CCR-001 with eight conditions that must all hold; any one missing keeps the existing refusal and reason; null is never converted to false; the boolean path, the exit classes, branch protection, required checks, security checks, admin bypass, and REQ-CCR-009 unchanged. In-place amendment (Amendment 8), no plan-audit re-entry
+Alternate: read null as false (prohibited by the work order); keep withholding every null leg (the state before this amendment)
+Operator verdict: OPERATOR-SETTLED 2026-11-02 operator-approved work order, transcribed from the leader's delegation message
+
 ## Follow-up candidates (recorded, not issued)
 
 Revision 3 records these as candidates only; no card is issued by this plan. Each row names the files and the
