@@ -42,9 +42,10 @@ func TestAFVerbs_N51bRowsNameCommitsTheCallerDoesNotHave(t *testing.T) {
 			idOther := afN38GitDir(t, other)
 			a.refusedAtFirstBind("reap from a repository without the commits", a.c1, idOther, "reap")
 			a.refusedAtFirstBind("move from a repository without the commits", a.c1, idOther, "move", "t1", "--epoch", a.e2, "--stage", "REVIEWING")
-			// the control: from the repository that has them the ledger binds, and the others are refused afterwards
+			// the control: from the repository that has them the ledger binds, and the others are refused afterwards. The
+			// reap has nothing to reap, so it binds only by declaring the repository (N55, the explicit first bind).
 			t.Setenv("CLAUDE_PROJECT_DIR", a.repo)
-			a.mustRun("reap")
+			a.mustRun("reap", "--bind-repo", a.repo)
 			if got, want := a.bound(), afN38GitDir(t, a.repo); got != want {
 				t.Fatalf("bound %q, want %q", got, want)
 			}

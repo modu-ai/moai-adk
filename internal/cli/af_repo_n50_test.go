@@ -5,12 +5,9 @@ package cli
 // legitimate project's first call a refusal.
 
 import (
-	"context"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/modu-ai/moai-adk/internal/agenticfactory/ledger"
 )
 
 // The default ledger location lies under MoaiHome. When that is itself a git repository (dotfiles, say), the location is
@@ -42,11 +39,9 @@ func TestAFVerbs_N50TheDefaultLedgerLocationIsNoFileClue(t *testing.T) {
 			}
 		}
 	}
-	st, err := ledger.Open(context.Background(), db)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = st.Close() })
+	// the ledger at the default location holds one ready card, so that a writing verb has something to write (N55: a verb
+	// that wrote nothing binds nothing without a declaration, so a first bind here is made by a verb that writes)
+	st := afN49Ledger(t, db)
 	if got := afN49Bound(t, st); got != "" {
 		t.Fatalf("the refused --db call bound the ledger to %q", got)
 	}
@@ -54,11 +49,8 @@ func TestAFVerbs_N50TheDefaultLedgerLocationIsNoFileClue(t *testing.T) {
 	// the default location, no --db: the project binds
 	for _, args := range [][]string{{"reap"}, {"claim", "--session", "s"}} {
 		out, errOut, err := afRunBoth(args...)
-		if err != nil && args[0] == "reap" {
+		if err != nil {
 			t.Fatalf("%v with the default ledger under a home repository: %v\n%.300s %.300s", args, err, out, errOut)
-		}
-		if err != nil && strings.Contains(err.Error(), "refused") {
-			t.Fatalf("%v with the default ledger under a home repository was refused: %v", args, err)
 		}
 	}
 	if got := afN49Bound(t, st); got != idProject {

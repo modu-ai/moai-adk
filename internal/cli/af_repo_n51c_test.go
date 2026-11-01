@@ -28,9 +28,10 @@ func TestAFVerbs_N51cASymlinkedLedgerFileIsAskedWhereItReallyIs(t *testing.T) {
 	// the same file by its direct path is refused the same way
 	afN49Refused(t, st, "reap by the direct path from O", wants, "reap", "--db", real)
 
-	// the control: the project is the repository the file really sits in, reached through the link
+	// the control: the project is the repository the file really sits in, reached through the link. The reap has nothing to
+	// reap, so it binds only by declaring the repository (N55, the explicit first bind).
 	t.Setenv("CLAUDE_PROJECT_DIR", p)
-	if out, errOut, err := afRunBoth("reap", "--db", link); err != nil {
+	if out, errOut, err := afRunBoth("reap", "--db", link, "--bind-repo", p); err != nil {
 		t.Fatalf("reap through the link from P: %v\n%.300s %.300s", err, out, errOut)
 	}
 	if got := afN49Bound(t, st); got != idP {

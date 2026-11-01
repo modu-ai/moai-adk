@@ -285,9 +285,10 @@ func TestAFVerbs_N38FirstBindLedgerFileInsideAnotherRepositoryIsRefused(t *testi
 	if got := boundOf(db); got != "" {
 		t.Fatalf("the refused call bound the ledger to %q", got)
 	}
-	// the control: the project is the repository the file sits in
+	// the control: the project is the repository the file sits in. A reap with nothing to reap writes nothing, so it binds
+	// only when it declares the repository (N55, the explicit first bind).
 	t.Setenv("CLAUDE_PROJECT_DIR", repoA)
-	if _, _, err := afRunBoth("reap", "--db", db); err != nil {
+	if _, _, err := afRunBoth("reap", "--db", db, "--bind-repo", repoA); err != nil {
 		t.Fatalf("reap from repository A: %v", err)
 	}
 	if got := boundOf(db); got != idA {
@@ -298,7 +299,7 @@ func TestAFVerbs_N38FirstBindLedgerFileInsideAnotherRepositoryIsRefused(t *testi
 	afGit(t, repoA, "worktree", "add", "-q", "--detach", wt)
 	db2 := filepath.Join(repoA, "af2", "ledger.db")
 	t.Setenv("CLAUDE_PROJECT_DIR", wt)
-	if _, _, err := afRunBoth("reap", "--db", db2); err != nil {
+	if _, _, err := afRunBoth("reap", "--db", db2, "--bind-repo", wt); err != nil {
 		t.Fatalf("reap from a linked worktree of repository A: %v", err)
 	}
 	if got := boundOf(db2); got != idA {

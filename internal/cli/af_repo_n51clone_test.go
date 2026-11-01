@@ -83,8 +83,9 @@ func TestAFVerbs_N51ADeclarationIsNotAskedWhereAnythingElseSaysWhereTheLedgerBel
 	t.Run("the ledger file sits in the repository", func(t *testing.T) {
 		db := filepath.Join(repo, ".moai", "af", "ledger.db")
 		st := afN49Ledger(t, db)
-		if out, errOut, err := afRunBoth("reap", "--db", db); err != nil {
-			t.Fatalf("reap: %v\n%.300s %.300s", err, out, errOut)
+		// a verb that writes (N55: one that wrote nothing binds only with a declaration): the claim takes the ready card
+		if out, errOut, err := afRunBoth("claim", "--db", db, "--session", "s1", "--worktree", repo); err != nil {
+			t.Fatalf("claim: %v\n%.300s %.300s", err, out, errOut)
 		}
 		if got := afN49Bound(t, st); got != id {
 			t.Errorf("bound %q, want %q", got, id)
@@ -97,14 +98,10 @@ func TestAFVerbs_N51ADeclarationIsNotAskedWhereAnythingElseSaysWhereTheLedgerBel
 		if err != nil {
 			t.Fatal(err)
 		}
-		if out, errOut, err := afRunBoth("reap"); err != nil {
-			t.Fatalf("reap at the default location: %v\n%.300s %.300s", err, out, errOut)
+		st := afN49Ledger(t, db)
+		if out, errOut, err := afRunBoth("claim", "--session", "s1", "--worktree", repo); err != nil {
+			t.Fatalf("claim at the default location: %v\n%.300s %.300s", err, out, errOut)
 		}
-		st, err := ledger.Open(ctx, db)
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer func() { _ = st.Close() }()
 		if got := afN49Bound(t, st); got != id {
 			t.Errorf("bound %q, want %q", got, id)
 		}
