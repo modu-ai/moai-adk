@@ -152,3 +152,34 @@ Tree: HEAD 00c3162cb897cf846f48f4a87842ddfbaf05e878 plus the uncommitted edits l
 
 - Substring-order test: a future edit keeping the markers but changing meaning would still pass.
 - Customer projects keep the old deployed rule text ("no clear") until `moai update`; the binary's printed line and their deployed rules disagree until then. Template files changed: factory-dispatch.md, factory-dispatch-core.md, factory-dispatch-cards.md, plus testdata/binding_ledger.json (test fixture, not deployed). No forced sync was run.
+
+## Follow-up 2: verdict-file gap wording
+
+### Claim
+
+The rule sentence "an absent, unreadable, or uncommitted verdict file is a gap" contradicted `.gitignore` (`.moai/reports/*`): verdict files cannot be committed, and the consumers (`internal/homestate/card_evidence_readers.go`, `internal/factorylane/merge_specless.go`) read them from disk and bind `audited_sha:` to the card's HEAD ancestry. The stub sentence (factory-dispatch-core.md, live and template) now reads: "an absent or unreadable verdict file, or one whose `audited_sha` is not bound to the card's HEAD (not an ancestor of it, or stale), is a gap exactly like a missing progress record." The body copy (factory-dispatch.md, live and template) carries the same sentence plus a rationale tail: the file is read from disk, not git; verdict files are gitignored and never committed, so commit state is not part of the test. The requirement is not lowered.
+
+### Evidence
+
+- RED, commit 66ce5c8ba9: `go test ./internal/template/ -run TestT2013_VerdictGapWording` FAIL on all four file subtests (stale phrase present, `audited_sha` and `HEAD` markers missing).
+- GREEN, `go test -run 'TestBindingLedgerIntegrity|TestRuleTemplateMirrorDrift|TestDeclaredRuleMirrorForks|TestT2013|TestDeployedAlwaysLoaded' -count=1 -v ./internal/template/`: PASS for TestDeployedAlwaysLoadedCharBudget, TestDeployedAlwaysLoadedSurfaceDerivation, TestBindingLedgerIntegrity, TestT2013_RuleWordingMatchesCompletionOrder, TestT2013_VerdictGapWordingDropsUncommitted, TestDeclaredRuleMirrorForks, TestRuleTemplateMirrorDrift; `ok github.com/modu-ai/moai-adk/internal/template 3.003s`.
+- `gofmt -l` on the new test file: no output. `go vet ./internal/template/`: no output, exit 0.
+- Ledger: only ALB-0281 `after_text` changed (the stub sentence); `git diff --numstat` shows 1/1 on the ledger. Stub growth is about 76 bytes (core file 10245 bytes after edit), below the 1,000-byte threshold.
+
+### Baseline-attribution
+
+Tree: HEAD 66ce5c8ba9 plus the uncommitted edits listed above, measured in this session by `go test`, which builds from the tree; no installed `moai` binary judged anything.
+
+### Gaps
+
+- No "clone environment" procedure for TestBindingLedgerIntegrity was found in verdict.md or progress.md; the earlier runs there used a plain scoped `go test -run ... ./internal/template/`, and this follow-up did the same.
+- AC-ALB-021(2) failed once on the stub-only edit: ALB-0281 (always: stub row) matched the changed full-body line in the on-demand file, and the anchor-copy exemption no longer applied. Verbatim: `ledger integrity: AC-ALB-021(2): binding fragment of row ALB-0281 appears in on-demand file .claude/rules/moai/workflow/factory-dispatch.md`.
+- A new ledger row ALB-0364 (rule-body copy) was tried and rejected, verbatim: `row coverage: row ALB-0364 duplicates a claim on unit workflow/factory-dispatch.md:116 — exactly one row per unit`. It was removed; the removal used `sed -i` plus a `printf` re-append of the file's closing braces (confirmed by `git diff --numstat` showing only the ALB-0281 line changed). One stray empty `python3` heredoc was run during that step and did nothing.
+- Resolution: the coordinator's third route. The stub sentence stays exactly as in the ledger; the body copy is made a superset line (rationale tail appended), so the whole-line sweep no longer matches. No ledger row, test, or anchor change beyond ALB-0281 `after_text`.
+- Not run: the full `./internal/template/` package, `./internal/cli/...`, `make build`, `moai update`. `.claude/rules/moai/workflow/gitflow-lane-protocol.md` and SPEC-FACTORY-LANE-NO-CLEAR-001 were not touched.
+
+### Residual-risk
+
+- The sweep exemption is whole-line equality: a future edit that makes the body line equal to a ledger line again would re-trigger AC-ALB-021(2).
+- The wording test checks markers (`audited_sha`, `HEAD`, absence of the old phrase), not meaning.
+- Customer projects keep the old deployed sentence until `moai update`.
