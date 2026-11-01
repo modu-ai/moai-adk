@@ -405,9 +405,13 @@ func (s *Store) Enqueue(ctx context.Context, cardID string, epoch int64, candida
 		// may have failed, is not in it. The ledger cannot tell whether one commit contains the
 		// other, so it asks for the same commit; measuring the older one again makes it the
 		// newest. Red and merge evidence are about other commits by design and do not count.
+		// Only a passing green or gate of the candidate measures it again: a review of it is a
+		// reading, not a run, and a failing record is no measurement at all, so neither is the
+		// newest evidence (a review of ANOTHER commit still is, as before).
 		var lastSubject sql.NullString
-		switch err := tx.QueryRowContext(ctx, `SELECT subject_sha FROM evidence WHERE card_id=? AND kind IN (?,?,?) ORDER BY id DESC LIMIT 1`,
-			cardID, KindGreen, KindGate, KindReview).Scan(&lastSubject); {
+		switch err := tx.QueryRowContext(ctx, `SELECT subject_sha FROM evidence WHERE card_id=? AND kind IN (?,?,?)
+			AND NOT (COALESCE(subject_sha,'')=? AND (kind=? OR result<>?)) ORDER BY id DESC LIMIT 1`,
+			cardID, KindGreen, KindGate, KindReview, candidateSHA, KindReview, ResultPass).Scan(&lastSubject); {
 		case err == sql.ErrNoRows:
 		case err != nil:
 			return fmt.Errorf("ledger: %w", err)
