@@ -150,6 +150,14 @@ func TestRaceScopeSelectsEveryShardItCannotProveIndependent(t *testing.T) {
 		{"exec_command", `"os/exec"`, `_ = exec.Command("true")`},
 		{"runtime_caller", `"runtime"`, `_, _, _, _ = runtime.Caller(0)`},
 		{"testdata_literal", ``, `_ = "testdata/golden.txt"`},
+		// Audit round 3, F2: readers the first pattern list missed.
+		{"filepath_glob", `"path/filepath"`, `_, _ = filepath.Glob("*")`},
+		{"template_parsefiles", `"text/template"`, `_, _ = template.ParseFiles("x")`},
+		{"os_startprocess", `"os"`, `_, _ = os.StartProcess("x", nil, nil)`},
+		{"aliased_os_import", `sys "os"`, `_, _ = sys.ReadFile("x")`},
+		{"dot_imported_os", `. "os"`, `_, _ = ReadFile("x")`},
+		{"ioutil_import_only", `"io/ioutil"`, `_ = ioutil.Discard`},
+		{"syscall_exec", `"syscall"`, `_ = syscall.Exec`},
 	}
 	// The primitive sits in a TEST file of the shard's own package.
 	for _, p := range prims {
@@ -224,6 +232,41 @@ func TestRaceScopeSelectsEveryShardItCannotProveIndependent(t *testing.T) {
 			t.Errorf("shards = %q (exit %d), want %q\n%s", shards, exit, "shards="+want, stderr)
 		}
 	})
+}
+
+// TestRaceScopeSeesWhatGoListHidesByDefault (audit round 3, F1): files a plain
+// `go list` does not report must still count, because the shard builds them or a
+// scan that splits on spaces drops them. Each row plants one such file in internal/cli
+// and changes a package the cli shards do not import; cli must be selected (a pure
+// cli group stays out, as the control in the table above shows).
+func TestRaceScopeSeesWhatGoListHidesByDefault(t *testing.T) {
+	want := ",cli-1,cli-2,cli-3,cli-4,rosterguard,remainder,"
+	rows := []struct{ name, file, body string }{
+		{"race_tagged_file_reads_files", "zz_race.go",
+			"//go:build race\n\npackage cli\n\nimport \"os\"\n\nfunc zzRace() { _, _ = os.ReadFile(\"x\") }\n"},
+		{"race_tagged_file_adds_an_import_edge", "zz_race_edge.go",
+			"//go:build race\n\npackage cli\n\nimport _ \"example.com/fx/internal/leaf\"\n"},
+		{"other_tag_file_reads_files", "zz_other_tag.go",
+			"//go:build zzunusedtag\n\npackage cli\n\nimport \"os\"\n\nfunc zzTag() { _, _ = os.ReadFile(\"x\") }\n"},
+		{"cgo_file", "zz_cgo.go",
+			"package cli\n\n// #include <stdio.h>\nimport \"C\"\n"},
+		{"file_name_with_a_space", "zz space_test.go",
+			"package cli\n\nimport (\n\t\"os\"\n\t\"testing\"\n)\n\nfunc TestZZSpace(t *testing.T) { _, _ = os.ReadFile(\"x\") }\n"},
+		{"file_name_with_a_glob_character", "zz[1]_test.go",
+			"package cli\n\nimport (\n\t\"os\"\n\t\"testing\"\n)\n\nfunc TestZZGlob(t *testing.T) { _, _ = os.ReadFile(\"x\") }\n"},
+	}
+	for _, row := range rows {
+		t.Run(row.name, func(t *testing.T) {
+			shards, stderr, exit := rsRun(t, rsFixture(t), []string{"internal/leaf/leaf.go"}, func(dir string) {
+				if err := os.WriteFile(filepath.Join(dir, "internal/cli", row.file), []byte(row.body), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			})
+			if exit != 0 || shards != "shards="+want {
+				t.Errorf("shards = %q (exit %d), want %q\n%s", shards, exit, "shards="+want, stderr)
+			}
+		})
+	}
 }
 
 // TestRaceScopeClosesToAllSixWhenItCannotJudge: every row the script must not
