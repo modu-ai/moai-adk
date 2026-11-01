@@ -17,6 +17,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"sort"
 	"strings"
@@ -348,18 +349,103 @@ func TestContractModeChangeSetAllowlist(t *testing.T) {
 	t.Run("tree", func(t *testing.T) {
 		base := grBase(t)
 		root := grRoot(t)
-		changed := strings.Fields(string(grGit(t, root, "diff", "--name-only", base)))
-		changed = append(changed, strings.Fields(string(grGit(t, root, "ls-files", "--others", "--exclude-standard")))...)
-		if len(changed) == 0 {
+		var commits []grCommit
+		for _, h := range strings.Fields(string(grGit(t, root, "log", "--format=%H", base+"..HEAD"))) {
+			commits = append(commits, grCommit{
+				msg:   string(grGit(t, root, "show", "-s", "--format=%B", h)),
+				paths: strings.Fields(string(grGit(t, root, "diff-tree", "--no-commit-id", "--name-only", "-r", h))),
+			})
+		}
+		untracked := strings.Fields(string(grGit(t, root, "ls-files", "--others", "--exclude-standard")))
+		if len(commits) == 0 && len(untracked) == 0 {
 			t.Fatal("no changed path since the base — the sweep measured nothing")
 		}
-		for _, p := range changed {
+		inScope, outScope := grSplitChangeSet(commits, untracked)
+		for _, p := range inScope {
 			if !grAllowed(p) {
 				t.Errorf("changed path outside the allowlist: %s", p)
 			}
 		}
-		t.Logf("%d changed paths checked", len(changed))
+		// Not a silent pass: what this guard did not judge is named.
+		t.Logf("%d paths in the %s change set judged; %d paths from other cards or uncommitted not judged: %v",
+			len(inScope), grScopeCard, len(outScope), outScope)
 	})
+}
+
+// grScopeCard is the card whose change set the allowlist describes. The
+// allowlist is SPEC-AUTONOMY-GATE-REWIRE-001's design.md §2 (AC-GR-003); applying
+// it to another card's commits measures the wrong thing.
+const grScopeCard = "t1236"
+
+var grScopeRe = regexp.MustCompile(`\b` + grScopeCard + `\b|SPEC-AUTONOMY-GATE-REWIRE-001`)
+
+type grCommit struct {
+	msg   string
+	paths []string
+}
+
+// grSplitChangeSet separates the paths changed by commits that belong to the
+// allowlist's own card from every other changed path (other cards' commits and
+// untracked files). Both lists are sorted and de-duplicated; a path touched by
+// both an in-scope and an out-of-scope commit is in scope.
+func grSplitChangeSet(commits []grCommit, untracked []string) (inScope, outScope []string) {
+	in := map[string]bool{}
+	out := map[string]bool{}
+	for _, c := range commits {
+		for _, p := range c.paths {
+			if grScopeRe.MatchString(c.msg) {
+				in[p] = true
+			} else {
+				out[p] = true
+			}
+		}
+	}
+	for _, p := range untracked {
+		out[p] = true
+	}
+	for p := range in {
+		inScope = append(inScope, p)
+		delete(out, p)
+	}
+	for p := range out {
+		outScope = append(outScope, p)
+	}
+	sort.Strings(inScope)
+	sort.Strings(outScope)
+	return inScope, outScope
+}
+
+// TestContractModeChangeSetScope pins the scoping: a t1236 commit touching a
+// forbidden path is still judged and fails, another card's commit is reported
+// but not judged, and a selector that matched every commit would put the other
+// card's path in scope (this test then fails). It needs no base ref.
+func TestContractModeChangeSetScope(t *testing.T) {
+	const forbidden = ".claude/rules/moai/core/moai-constitution.md"
+	commits := []grCommit{
+		{msg: "[t1236] feat(contract): kickoff-check\n", paths: []string{"internal/cli/contract_kickoff_check.go", forbidden}},
+		{msg: "[t2009] fix(sync): route A\n", paths: []string{"internal/closure/evidence.go", forbidden + ".other"}},
+		{msg: "[t12360] unrelated card id sharing the prefix\n", paths: []string{"internal/factory/backlog.go"}},
+	}
+	in, out := grSplitChangeSet(commits, []string{"scratch.txt"})
+	var failing []string
+	for _, p := range in {
+		if !grAllowed(p) {
+			failing = append(failing, p)
+		}
+	}
+	if len(failing) != 1 || failing[0] != forbidden {
+		t.Errorf("CHANGESET_SCOPE: the t1236 commit's forbidden path was not judged and failed: failing=%v in=%v", failing, in)
+	}
+	wantOut := []string{"internal/closure/evidence.go", forbidden + ".other", "internal/factory/backlog.go", "scratch.txt"}
+	sort.Strings(wantOut)
+	if strings.Join(out, ",") != strings.Join(wantOut, ",") {
+		t.Errorf("CHANGESET_SCOPE: out-of-scope paths = %v, want %v (another card's paths are reported, not judged)", out, wantOut)
+	}
+	// A branch with no t1236 commit has an empty in-scope set and every path named.
+	in2, out2 := grSplitChangeSet(commits[1:2], nil)
+	if len(in2) != 0 || len(out2) != 2 {
+		t.Errorf("CHANGESET_SCOPE: other-card-only branch: in=%v out=%v", in2, out2)
+	}
 }
 
 // grExtract writes the tree at ref into dir with `git archive`.
