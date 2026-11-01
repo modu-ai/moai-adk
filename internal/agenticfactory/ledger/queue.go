@@ -311,9 +311,27 @@ func queueSettledAt(ctx context.Context, q querier, cardID string, cardEpoch int
 	return n > 0, nil
 }
 
+// EnqueueOption is an optional fact the caller of Enqueue brings from outside the ledger.
+type EnqueueOption func(*enqueueOptions)
+
+type enqueueOptions struct{ onTrunk bool }
+
+// OnTrunk tells Enqueue whether the candidate commit is on the trunk, as the caller found out by
+// asking the repository (the ledger never runs the VCS itself, REQ-AFL-008). It matters for one
+// case only: a landed row of an earlier card epoch that the new holder offers again as the same
+// commit. The row's own word that it landed is not taken for the trunk's; with OnTrunk(true) the
+// row is taken over, with OnTrunk(false), or without the option at all (the caller did not say),
+// the row starts over as waiting so that the commit must really land.
+func OnTrunk(on bool) EnqueueOption { return func(o *enqueueOptions) { o.onTrunk = on } }
+
 // Enqueue puts the card's candidate on the merge queue and moves the card into MERGING;
 // see the API.
-func (s *Store) Enqueue(ctx context.Context, cardID string, epoch int64, candidateSHA string) error {
+func (s *Store) Enqueue(ctx context.Context, cardID string, epoch int64, candidateSHA string, opts ...EnqueueOption) error {
+	var opt enqueueOptions
+	for _, o := range opts {
+		o(&opt)
+	}
+	_ = opt
 	if strings.TrimSpace(candidateSHA) == "" {
 		return fmt.Errorf("%w: a candidate needs its commit SHA", ErrInvalid)
 	}
