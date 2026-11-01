@@ -182,6 +182,47 @@ func TestCodexSecurityNullAdapter(t *testing.T) {
 			v[0]["body"] = snBody(v[0]) + "\n<!-- codex-security-review:v2 {\"status\":\"completed\"} -->"
 			return v
 		}, want: 1, reason: "review-not-complete:security_review:has_any_findings"},
+		// R76 rows (leader extras). The string forms are regression guards; the duplicate-key and
+		// duplicate-artifact rows are RED against the first adapter, which read the LAST duplicate key.
+		{name: "R3a_string_null_any", edit: func(v []cgEntry) []cgEntry {
+			return setState(v, `"has_any_findings":null`, `"has_any_findings":"null"`)
+		}, want: 1, reason: "review-not-complete:security_review:has_any_findings"},
+		{name: "R3b_string_null_unresolved", edit: func(v []cgEntry) []cgEntry {
+			return setState(v, `"has_unresolved_findings":null`, `"has_unresolved_findings":"null"`)
+		}, want: 1, reason: "review-not-complete:security_review:has_unresolved_findings"},
+		{name: "R3c_string_false_security", edit: func(v []cgEntry) []cgEntry {
+			return setState(v, secLeg, strings.Replace(strings.Replace(secLeg, `"has_any_findings":null`, `"has_any_findings":"false"`, 1), `"has_unresolved_findings":null`, `"has_unresolved_findings":"false"`, 1))
+		}, want: 1, reason: "review-not-complete:security_review:has_any_findings"},
+		{name: "R3d_string_false_code", edit: func(v []cgEntry) []cgEntry {
+			return setState(v, `"code_review":{"commit_sha":"`+snHead+`","has_any_findings":false`, `"code_review":{"commit_sha":"`+snHead+`","has_any_findings":"false"`)
+		}, want: 1, reason: "review-not-complete:code_review:has_any_findings"},
+		{name: "R4a_duplicate_key_hides_true_any", edit: func(v []cgEntry) []cgEntry {
+			return setState(v, `"security_review":{"commit_sha":"`+snHead+`","has_any_findings":null`, `"security_review":{"commit_sha":"`+snHead+`","has_any_findings":true,"has_any_findings":null`)
+		}, want: 1, reason: "review-not-complete:security_review:has_any_findings"},
+		{name: "R4b_duplicate_key_hides_true_unresolved", edit: func(v []cgEntry) []cgEntry {
+			return setState(v, `"has_unresolved_findings":null`, `"has_unresolved_findings":true,"has_unresolved_findings":null`)
+		}, want: 1, reason: "review-not-complete:security_review:has_unresolved_findings"},
+		{name: "R4c_duplicate_security_leg_object", edit: func(v []cgEntry) []cgEntry {
+			return setState(v, `"security_review":{`, `"security_review":{"commit_sha":"`+snHead+`","has_any_findings":true,"has_unresolved_findings":true,"status":"completed"},"security_review":{`)
+		}, want: 1, reason: "review-not-complete:security_review:has_any_findings"},
+		{name: "R4d_duplicate_commit_sha_hides_stale", edit: func(v []cgEntry) []cgEntry {
+			return setState(v, `"security_review":{"commit_sha":"`+snHead+`"`, `"security_review":{"commit_sha":"`+snOther+`","commit_sha":"`+snHead+`"`)
+		}, want: 1, reason: "review-not-complete:security_review:has_any_findings"},
+		{name: "R4e_second_security_marker_same_version", edit: func(v []cgEntry) []cgEntry {
+			v[0]["body"] = snBody(v[0]) + "\n<!-- codex-security-review:v1 {\"headSha\":\"" + snHead + "\",\"status\":\"completed\"} -->"
+			return v
+		}, want: 1, reason: "security-marker-duplicated"},
+		{name: "R4f_second_state_marker_same_version", edit: func(v []cgEntry) []cgEntry {
+			v[0]["body"] = snBody(v[0]) + "\n<!-- codex-review-state:v1 {\"code_review\":{\"status\":\"completed\"}} -->"
+			return v
+		}, want: 1, reason: "state-marker-duplicated"},
+		{name: "R4g_second_state_comment", edit: func(v []cgEntry) []cgEntry {
+			n := snClone(v[0])
+			n["id"] = 9999999002
+			n["created_at"] = "2026-11-01T17:41:00Z"
+			n["updated_at"] = "2026-11-01T17:41:00Z"
+			return append(v, n)
+		}, want: 1, reason: "state-comment-duplicated"},
 	}
 	for _, row := range rows {
 		t.Run(row.name, func(t *testing.T) {
@@ -309,4 +350,107 @@ func TestCodexSecurityNullAdapterCollectionKeepsAppField(t *testing.T) {
 	if n := strings.Count(string(data), `"slug":"`+snApp+`"`); n != 3 {
 		t.Fatalf("collected list keeps performed_via_github_app on %d of 3 comments:\n%s", n, data)
 	}
+}
+
+// snStubGH writes a gh double that answers `gh api <endpoint>?per_page=N&page=P` from the given page
+// bodies (an absent page answers an empty list) and returns the environment that puts it on PATH.
+func snStubGH(t *testing.T, dir string, pages map[int]string) []string {
+	t.Helper()
+	bin := filepath.Join(dir, "bin")
+	if err := os.MkdirAll(bin, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	var sh strings.Builder
+	sh.WriteString("#!/bin/sh\ncase \"$2\" in\n")
+	for n, body := range pages {
+		p := filepath.Join(dir, "page"+string(rune('0'+n))+".json")
+		if err := os.WriteFile(p, []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		sh.WriteString("*page=" + string(rune('0'+n)) + ") cat \"" + p + "\" ;;\n")
+	}
+	sh.WriteString("*) echo '[]' ;;\nesac\n")
+	if err := os.WriteFile(filepath.Join(bin, "gh"), []byte(sh.String()), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	return []string{"PATH=" + bin + string(os.PathListSeparator) + os.Getenv("PATH")}
+}
+
+// TestCodexSecurityNullAdapterPaginationSeesPageTwo (R76-1): an identity finding that sits only on
+// page 2 of the review-comment list must reach the gate, and the adapter must then refuse. Page 1 is a
+// full page of other users' comments, so fetch-pages has to take the second page.
+func TestCodexSecurityNullAdapterPaginationSeesPageTwo(t *testing.T) {
+	cgTools(t)
+	dir := t.TempDir()
+	var p1 []map[string]any
+	for i := 0; i < 100; i++ {
+		p1 = append(p1, map[string]any{"id": 8000 + i, "user": map[string]any{"login": "someone", "id": 1, "type": "User"}, "commit_id": snHead, "original_commit_id": snHead, "path": "x.go", "body": "note"})
+	}
+	b1, _ := json.Marshal(p1)
+	b2, _ := json.Marshal([]cgEntry{cgComment(7003, snOther, snOther)})
+	env := snStubGH(t, dir, map[int]string{1: string(b1), 2: string(b2)})
+	out := filepath.Join(dir, "comments.ndjson")
+	got := cgExec(t, cgScriptPath(t), env, "fetch-pages", "--endpoint", "repos/modu-ai/moai-adk/pulls/1956/comments", "--out", out, "--expect-count", "101")
+	if got.code != 0 {
+		t.Fatalf("fetch-pages exit=%d\n%s", got.code, got.all())
+	}
+	data, err := os.ReadFile(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var comments []any
+	for _, line := range strings.Split(strings.TrimSpace(string(data)), "\n") {
+		var e map[string]any
+		if err := json.Unmarshal([]byte(line), &e); err != nil {
+			t.Fatalf("collected line is not JSON: %v", err)
+		}
+		comments = append(comments, e)
+	}
+	if len(comments) != 101 {
+		t.Fatalf("collected %d comments, want 101 (both pages)", len(comments))
+	}
+	res := snRun(t, snFixture(t), nil, comments, "true")
+	if res.code != 1 || strings.Contains(res.all(), "security-null-adapter") {
+		t.Fatalf("a finding only on page 2 must refuse the adapter: exit=%d\n%s", res.code, res.all())
+	}
+}
+
+// TestCodexSecurityNullAdapterApiFailureIsNeverAPass (R76-2): a failed or truncated read is a refusal
+// with its own reason, never a pass, on both the collection path and the gate's own input check.
+func TestCodexSecurityNullAdapterApiFailureIsNeverAPass(t *testing.T) {
+	cgTools(t)
+	t.Run("page_one_truncated_json", func(t *testing.T) {
+		dir := t.TempDir()
+		env := snStubGH(t, dir, map[int]string{1: `[{"id":1,"user":`})
+		got := cgExec(t, cgScriptPath(t), env, "fetch-pages", "--endpoint", "repos/modu-ai/moai-adk/issues/1956/comments", "--out", filepath.Join(dir, "o"))
+		if got.code == 0 || !strings.Contains(got.all(), "page-invalid:1") {
+			t.Fatalf("truncated page: exit=%d\n%s", got.code, got.all())
+		}
+	})
+	t.Run("gh_exits_nonzero", func(t *testing.T) {
+		dir := t.TempDir()
+		bin := filepath.Join(dir, "bin")
+		if err := os.MkdirAll(bin, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(bin, "gh"), []byte("#!/bin/sh\nexit 1\n"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		env := []string{"PATH=" + bin + string(os.PathListSeparator) + os.Getenv("PATH")}
+		got := cgExec(t, cgScriptPath(t), env, "fetch-pages", "--endpoint", "repos/modu-ai/moai-adk/issues/1956/comments", "--out", filepath.Join(dir, "o"))
+		if got.code == 0 || !strings.Contains(got.all(), "page-error:1") {
+			t.Fatalf("failed gh: exit=%d\n%s", got.code, got.all())
+		}
+	})
+	t.Run("gate_input_truncated_issue_comments", func(t *testing.T) {
+		dir := t.TempDir()
+		rp := cgWriteList(t, dir, "reviews")
+		cp := cgWriteList(t, dir, "comments")
+		ip := cgWriteList(t, dir, "issues", `{"id":1,"user":`)
+		args := append(cgReadArgs(rp, cp, snHead, "false", "true"), "--issue-comments", ip)
+		got := cgExec(t, cgScriptPath(t), nil, args...)
+		if got.code != 1 || !strings.Contains(got.all(), "input-invalid") {
+			t.Fatalf("truncated gate input: exit=%d\n%s", got.code, got.all())
+		}
+	})
 }
