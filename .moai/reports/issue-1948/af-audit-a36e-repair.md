@@ -820,3 +820,5 @@ Not run: the fix changed no committed behaviour, so the old and final builds are
 - HEAD carries a failing test (`TestAFResidual_N55.../reap_with_nothing_to_reap`) by decision, until the operator rules; CI on any push of this branch fails on it.
 - The line "a verb that completes without writing (reap with nothing to reap) still binds, as the help now says" in the phase 2 Gaps stays true on HEAD.
 - Verbs other than `reap` that can complete without writing (a `claim` with nothing ready, a `reconcile` with nothing to do) were not examined for the same binding; the attempt covered `reap` only.
+
+**Operator ruling on N55 (relayed by the leader, R88): option 3, an explicit first-bind interface; follow-up card pending, the restored case, the five permanent tests and the code stay unchanged, the candidate stays incomplete.**
