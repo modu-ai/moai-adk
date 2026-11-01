@@ -68,8 +68,9 @@ func afRun(db string, fn func(ctx context.Context, st *ledger.Store) error) erro
 	}
 	defer func() { _ = st.Close() }()
 	// every verb binds the ledger to the repository of the project directory it runs in; the verbs that look commits up
-	// bind the repository they use as well (afCheckCommit), and a project directory that is no repository has none to bind
-	if err := afBindRepository(ctx, st, path, resolveProjectDir(), true); err != nil {
+	// bind the repository they use as well (afCheckCommit), and a project directory that is no repository has none to bind.
+	// The ledger file is a clue only when the caller placed it with --db (N50): the default place is the tool's choice.
+	if err := afBindRepository(ctx, st, db, resolveProjectDir(), true); err != nil {
 		return err
 	}
 	return fn(ctx, st)
@@ -81,7 +82,8 @@ func afRun(db string, fn func(ctx context.Context, st *ledger.Store) error) erro
 // optionalRepo lets a verb that runs no git carry on there (a refusal for anything git could not answer).
 //
 // While the ledger is not bound yet the first call would decide, so before it binds it is compared with what the ledger
-// already knows (afCheckKnownRepositories); dbPath is the ledger file, "" for a caller that does not have it.
+// already knows (afCheckKnownRepositories); dbPath is the ledger file when the caller placed it with --db, and "" when
+// the ledger is at its default location, which says nothing about the project (N50).
 func afBindRepository(ctx context.Context, st *ledger.Store, dbPath, dir string, optionalRepo bool) error {
 	id, err := afGitCommonPath(ctx, dir)
 	if err != nil {
@@ -107,7 +109,8 @@ func afBindRepository(ctx context.Context, st *ledger.Store, dbPath, dir string,
 }
 
 // afCheckKnownRepositories refuses to bind id (the repository of dir) while the ledger already knows another one: the
-// repository of any worktree a lease records, and the repository the ledger file itself sits in (dbPath, when given). A
+// repository of any worktree a lease records, and the repository the ledger file itself sits in (dbPath, the --db the
+// caller gave; the default location is no clue). A
 // lease worktree that is gone or is no repository is no clue and is skipped. When nothing is known the caller decides, as
 // before; that remaining case is a documented residual risk and not something to guess.
 func afCheckKnownRepositories(ctx context.Context, st *ledger.Store, dbPath, id, dir string) error {
@@ -223,9 +226,9 @@ runs in (a linked worktree has the git directory of its repository, and two spel
 is the project directory, which CLAUDE_PROJECT_DIR or else the working directory names; evidence and enqueue also use --repo
 or the card's lease worktree. Afterwards a call that would use another repository is refused with the ledger unchanged, the
 message naming both. While the ledger is not bound yet, the repository a call would bind is first compared with what the
-ledger already knows: the repository of every lease worktree it records and the repository the ledger file itself sits in
-(a lease worktree that is gone or is no repository is no clue); a disagreement is refused the same way, and when the
-ledger knows nothing the first call decides. A project directory that is no git repository binds nothing, for the verbs
+ledger already knows: the repository of every lease worktree it records and, for a ledger given with --db, the repository
+the ledger file itself sits in (the default ledger location is not compared; a lease worktree that is gone or is no
+repository is no clue); a disagreement is refused the same way, and when the ledger knows nothing the first call decides. A project directory that is no git repository binds nothing, for the verbs
 that run no git.`
 
 // afCheckTrunk refuses every --trunk but the dedicated one. A landing row says "merged" without asking which trunk or

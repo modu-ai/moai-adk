@@ -313,7 +313,7 @@ func afMergeRun(cmd *cobra.Command, f afMergeFlags, fn func(ctx context.Context,
 	if repo == "" {
 		repo = resolveProjectDir()
 	}
-	if err := afBindRepository(ctx, st, path, repo, false); err != nil {
+	if err := afBindRepository(ctx, st, f.db, repo, false); err != nil {
 		return err
 	}
 	scratch, err := os.MkdirTemp("", "moai-af-land-")
