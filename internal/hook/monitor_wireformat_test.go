@@ -7,7 +7,7 @@ package hook
 // which IsShellTool does not name, so the shell guards would be skipped.
 //
 // Measured on Claude Code 2.1.316 in a fresh `claude -p` process (evidence:
-// .moai/reports/t2001/progress.md, run 2): a hook registered on matcher
+// .moai/reports/t2001/verdict.md, Claim 1, raw hook rows included): a hook registered on matcher
 // "Bash" ONLY received the model's Monitor tool call (the transcript tool_use
 // is named Monitor) with tool_name "Bash" and the command under
 // tool_input.command. Positive control: the Bash call is recorded; negative
