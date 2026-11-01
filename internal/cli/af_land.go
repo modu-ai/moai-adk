@@ -42,7 +42,7 @@ func (f *afMergeFlags) bind(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&f.db, "db", "", "ledger file (default: <project dir>/af/ledger.db)")
 	cmd.Flags().StringVar(&f.repo, "repo", "", "the git repository the trunk lives in (default: the project directory)")
 	cmd.Flags().StringVar(&f.trunk, "trunk", mergeq.DefaultTrunk, "the trunk ref, a full refs/heads/ name checked out in no worktree")
-	cmd.Flags().StringVar(&f.session, "session", "moai-af", "who holds the landing lock (recorded)")
+	cmd.Flags().StringVar(&f.session, "session", "moai-af", "who holds the landing lock (recorded as given)")
 }
 
 // afMerger builds the merge queue over the opened ledger. verify may be nil for a verb that runs no gates.
@@ -78,9 +78,9 @@ const afGateTimeout = 20 * time.Minute
 
 // afGate runs the gate command in the candidate worktree, under a timeout, in its own process group (killed whole
 // when the timeout ends), with the repository-scoping variables removed from its environment and its output bounded
-// by the merge queue's writer. A non-zero exit fails the card with the tail of what the command printed, with
-// the output is NOT part of the error: it goes to a failure log file (mergeq.FailureLog), and the ledger and the
-// verb's output carry only the failure kind, the gate, the exit status, the byte count and that file's path.
+// by the merge queue's writer. A non-zero exit fails the card, and what the command printed is NOT part of the
+// error: it goes to a failure log file (mergeq.FailureLog), and the ledger and the verb's output carry only the
+// failure kind, the gate's short id, the exit status, the byte count and that file's path.
 func afGate(gate string, timeout time.Duration) mergeq.Verify {
 	return func(ctx context.Context, dir string) error {
 		ctx, cancel := context.WithTimeout(ctx, timeout)
@@ -163,12 +163,25 @@ func newAFLandCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "land <card>",
 		Short: "Land an enqueued card: verify the merge outside the lock, then move the trunk under it",
-		Long: `Land an enqueued card.
+		Long: fmt.Sprintf(`Land an enqueued card.
 
 The card's queued candidate commit is merged into the trunk in a throwaway worktree, the gate command runs there
 (outside the landing lock), and only then is the landing lock taken and the trunk ref moved with a compare-and-swap.
-A gate that fails fails the card with the tail of its output; a trunk that moved meanwhile is rebuilt and verified
-again. The result is one JSON line (outcome: landed, failed or waiting).
+A gate that fails fails the card; a trunk that moved meanwhile is rebuilt and verified again. The result is one JSON
+line (outcome: landed, failed or waiting).
+
+What a failure records. The reason, this verb's output, the notes and the ledger carry the failure kind, the gate's
+short id ("gate-" and 12 hex digits of the SHA-256 of the gate text), the exit status or timeout, the number of bytes
+the gate printed and the path of a log file. They never carry the gate text or what the gate or git printed. The gate
+text and the end of the output (at most %d KiB) are written to that log file, in the gate-logs directory beside the
+ledger: mode 0600 in a 0700 directory, one file per card, candidate and kind, and at most %d MiB for the whole
+directory (the oldest files go first). The log is masked as well as a list of shapes can mask it.
+It can still hold secrets, and any process of your user can read it: read it yourself, and do not paste it into a
+conversation or a report. When the log cannot be written the reason says "logging failed" and the failure is
+recorded all the same.
+
+What is recorded as given. Nothing masks the text of the free-input flags: --session here, and --command, --reason,
+--path and --actor of the other af verbs are recorded as given, so put no secret in them.
 
 The card must be in MERGING at the epoch its queue row was made at; a card its holder moved out of the merge queue
 is refused. The gate runs with sh -c (native Windows has no sh: run this verb from WSL (or Git Bash, without process-group kill) there), in its
@@ -177,9 +190,8 @@ running is killed, not waited for, and does not fail a gate that exited 0. Under
 has no process group, so this verb does not kill what the gate started there; run it from WSL when the gate starts
 long-lived processes. A gate that prints without end is not an error: it runs until --gate-timeout (default 20m) ends it.
 The gate receives the caller's full environment except GIT_DIR and the other repository-scoping variables, so a
-credential in the caller's environment is visible to it. The gate text is recorded in the landed note, so do not put
-a secret in it.
-A landing lock whose holder process is gone is taken back first.`,
+credential in the caller's environment is visible to it.
+A landing lock whose holder process is gone is taken back first.`, mergeq.DefaultFailureLogCap>>10, mergeq.DefaultFailureLogTotalCap>>20),
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if strings.TrimSpace(gate) == "" {

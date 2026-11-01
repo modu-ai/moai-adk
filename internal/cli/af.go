@@ -208,8 +208,8 @@ the separate "evidence" verb.`,
 	cmd.Flags().StringVar(&stage, "stage", "", "target stage: READY, BUILDING, REVIEWING, MERGING, DONE or CANCELLED")
 	cmd.Flags().StringVar(&sub, "sub", "", "target sub-stage within BUILDING: SPEC, IMPLEMENT or FIX")
 	cmd.Flags().BoolVar(&remote, "remote-integrated", false, "MERGING with the merge seen")
-	cmd.Flags().StringVar(&actor, "actor", "lane", "who makes the move (recorded)")
-	cmd.Flags().StringVar(&reason, "reason", "", "why (recorded)")
+	cmd.Flags().StringVar(&actor, "actor", "lane", "who makes the move (recorded as given: nothing masks it, put no secret in it)")
+	cmd.Flags().StringVar(&reason, "reason", "", "why (recorded as given: nothing masks it, put no secret in it)")
 	_ = cmd.MarkFlagRequired("stage")
 	return cmd
 }
@@ -240,9 +240,9 @@ func newAFEvidenceCmd() *cobra.Command {
 	cmd.Flags().StringVar(&repo, "repo", "", "the git repository the commit is looked up in (default: the card's lease worktree, else the project directory)")
 	cmd.Flags().StringVar(&ev.TreeSHA, "tree-sha", "", "the tree SHA (informational)")
 	cmd.Flags().StringVar(&ev.BaseSHA, "base-sha", "", "the base commit SHA")
-	cmd.Flags().StringVar(&ev.Command, "command", "", "the command that was run")
+	cmd.Flags().StringVar(&ev.Command, "command", "", "the command that was run (recorded as given: nothing masks it, put no secret in it)")
 	cmd.Flags().StringVar(&ev.Result, "result", "", "pass or fail")
-	cmd.Flags().StringVar(&ev.Path, "path", "", "a file holding the output")
+	cmd.Flags().StringVar(&ev.Path, "path", "", "a file holding the output (the path is recorded as given: nothing masks it)")
 	_ = cmd.MarkFlagRequired("kind")
 	_ = cmd.MarkFlagRequired("subject-sha")
 	_ = cmd.MarkFlagRequired("result")
