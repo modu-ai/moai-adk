@@ -326,6 +326,22 @@ func queueSettledAt(ctx context.Context, q querier, cardID string, cardEpoch int
 	return n > 0, nil
 }
 
+// queueUnlandableAt says whether the card's queue row was queued at that card epoch, still waits, and names a candidate
+// whose newest green, gate or review run failed: the row `moai af land` refuses (N54). Such a row cannot be settled by a
+// landing, so the card it holds would otherwise have no way out once its holder is gone (N63). A row that is verifying or
+// landing belongs to a lander that may be at work and is not this.
+func queueUnlandableAt(ctx context.Context, q querier, cardID string, cardEpoch int64) (bool, error) {
+	var candidate string
+	switch err := q.QueryRowContext(ctx, `SELECT candidate_sha FROM merge_queue WHERE card_id=? AND card_epoch=? AND state='waiting'`, cardID, cardEpoch).Scan(&candidate); {
+	case err == sql.ErrNoRows:
+		return false, nil
+	case err != nil:
+		return false, fmt.Errorf("ledger: %w", err)
+	}
+	kind, err := failingNewestRun(ctx, q, cardID, candidate)
+	return kind != "", err
+}
+
 // EnqueueOption is an optional fact the caller of Enqueue brings from outside the ledger.
 type EnqueueOption func(*enqueueOptions)
 

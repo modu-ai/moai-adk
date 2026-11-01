@@ -134,7 +134,7 @@ func afTrWayOut(card, epoch string) string {
 
 // afTrCarryOn is what follows the way out: a new session claims the card, measures the commit again with real passes,
 // offers it, lands it, and finishes the card.
-func afTrCarryOn(t *testing.T, a afN3Card) {
+func afTrCarryOn(t *testing.T, a afN3Card, alsoPassing ...string) {
 	t.Helper()
 	if out, err := a.try("move", "t1", "--epoch", a.e2, "--stage", "REVIEWING", "--reason", "the holder is gone"); err != nil {
 		t.Fatalf("the way out (%s) is refused: %v (%.200s)", afTrWayOut("t1", a.e2), err, out)
@@ -151,6 +151,9 @@ func afTrCarryOn(t *testing.T, a afN3Card) {
 		t.Errorf("enqueue accepted a commit whose newest run failed and that was not measured again: %.200s", o)
 	}
 	a.measure(a.c1)
+	for _, kind := range alsoPassing {
+		a.record(kind, a.c1, "pass")
+	}
 	a.verb("enqueue", "t1", "--epoch", a.e2, "--candidate", a.c1, "--repo", a.repo)
 	if landed := a.verb("land", "t1", "--repo", a.repo, "--gate", "true"); !strings.Contains(landed, `"outcome":"landed"`) {
 		t.Fatalf("the re-landing: %s", landed)
@@ -352,7 +355,7 @@ func TestAFTransition_N66AFailureRecordedWhileTheGateRunsIsNotLanded(t *testing.
 				// the holder leaves (it went, or released the card) and a successor takes the way out
 				afTrLeave(t, a, how)
 				a = afTrRestart(t, a)
-				afTrCarryOn(t, a)
+				afTrCarryOn(t, a, "review")
 			}
 		})
 	}

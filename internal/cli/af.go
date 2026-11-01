@@ -41,8 +41,19 @@ func newAFCmd() *cobra.Command {
 	return af
 }
 
-// afLedgerPath is the ledger file of this project: <project dir>/af/ledger.db, the location the ledger contract
-// names. --db overrides it (tests, or a ledger kept elsewhere).
+// afDBFlagHelp is what --db says on every verb that opens the ledger. The default is af/ledger.db in the project's state
+// directory, which homestate.ProjectDir keys by the project (<MoAI home>/db/<project name>-<hash>/), not in the project
+// directory itself (N72).
+const afDBFlagHelp = "ledger file (default: <MoAI home>/db/<project name>-<hash>/af/ledger.db, keyed by the project directory; " +
+	"it is not inside the project directory)"
+
+// afDoneHelp is what the verbs that end a card say about DONE (N73, the E6 decision): the guarantee is about the commit,
+// not about the work it holds.
+const afDoneHelp = "DONE guarantees that the candidate commit landed in the trunk; it does not guarantee the card's work content " +
+	"(a candidate that is the trunk's own commit lands as already in the trunk)."
+
+// afLedgerPath is the ledger file of this project: af/ledger.db in the project's state directory
+// (homestate.ProjectDir). --db overrides it (tests, or a ledger kept elsewhere).
 func afLedgerPath(override string) (string, error) {
 	if override != "" {
 		return override, nil
@@ -567,7 +578,7 @@ const afBindRepoFlagHelp = "the repository this ledger belongs to, declared for 
 	"says where it belongs (a lease worktree does not); a path in another repository than the one the call would bind is refused; ignored once the ledger is bound"
 
 func (f *afFlags) bind(cmd *cobra.Command, needEpoch bool) {
-	cmd.Flags().StringVar(&f.db, "db", "", "ledger file (default: <project dir>/af/ledger.db)")
+	cmd.Flags().StringVar(&f.db, "db", "", afDBFlagHelp)
 	cmd.Flags().StringVar(&f.bindRepo, "bind-repo", "", afBindRepoFlagHelp)
 	if needEpoch {
 		cmd.Flags().Int64Var(&f.epoch, "epoch", 0, "the fencing epoch the claim returned")
@@ -673,6 +684,12 @@ and refuses when it is not, or when the repository cannot say; nothing is change
 asking where, so a trunk that lost the commit, or a row that landed on another trunk, is not a landing the card can finish
 on. The way out is a real landing: move the card to REVIEWING, release it, and the next holder measures the commit again
 and offers it with enqueue; the row starts again as waiting and "moai af land" lands it.
+
+` + afDoneHelp + `
+
+A MERGING card whose holder is gone (it holds no lease) and whose queue row waits with a candidate whose newest green,
+gate or review run failed can be moved, at the card's own --epoch, to REVIEWING without a lease: "moai af land" refuses
+such a row, and this move takes the card back so that the next claim measures the commit again.
 
 ` + afBindHelp,
 		Args: cobra.ExactArgs(1),

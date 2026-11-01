@@ -68,7 +68,7 @@ claimed before the move need --repo <a path in the new repository>.`,
 			return afMoveRepository(cmd, f, reason, from)
 		},
 	}
-	cmd.Flags().StringVar(&f.db, "db", "", "ledger file (default: <project dir>/af/ledger.db)")
+	cmd.Flags().StringVar(&f.db, "db", "", afDBFlagHelp)
 	cmd.Flags().StringVar(&f.bindRepo, "bind-repo", "", "the repository the ledger belongs to now: any path inside it (a linked worktree included); "+
 		"default: the project directory. A ledger without an identity marker needs it, and the repository must hold the commits of its queue rows")
 	cmd.Flags().StringVar(&reason, "reason", "", "why the repository moved (required, recorded with the move)")

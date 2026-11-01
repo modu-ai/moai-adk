@@ -175,6 +175,12 @@ type Merger struct {
 	Gate       string                     // a short id of what Verify runs, for the landed note; may be empty. Never the gate text
 	GateText   string                     // what Verify runs: written to the failure log of a failed gate and to nothing else; may be empty
 	Log        *FailureLog                // where the output of a failed gate or merge goes; nil keeps none
+	// LastCheck, when set, is asked once more with the landing lock held, after the row says landing and immediately
+	// before the compare-and-swap of the trunk ref, because the gates ran for as long as they ran and the facts the caller
+	// judged the candidate by can have changed meanwhile (a failing run recorded while they ran, N66). A non-nil error
+	// refuses the landing: the trunk is not touched, the row goes back to waiting, the lock is released and the error is
+	// returned as it is. nil asks nothing.
+	LastCheck func(ctx context.Context, cardID, candidateSHA string) error
 }
 
 func (m *Merger) lockTTL() time.Duration {
@@ -355,6 +361,12 @@ func (m *Merger) landUnderLock(ctx context.Context, cardID, candidateSHA string,
 			}
 		}
 		return "", false, err
+	}
+	if m.LastCheck != nil {
+		if err := m.LastCheck(ctx, cardID, candidateSHA); err != nil {
+			// Nothing has touched the trunk: the row goes back to waiting, while the lock is still held.
+			return "", false, m.leaveLanding(ctx, cardID, candidateSHA, epoch, trunk, err)
+		}
 	}
 	if err := m.Git.UpdateRef(ctx, m.Trunk, cand.Result, trunk); err != nil {
 		// Whatever the error says, the trunk says what happened: read it.
