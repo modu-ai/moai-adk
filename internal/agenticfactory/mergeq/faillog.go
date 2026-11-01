@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"unicode"
 	"unicode/utf8"
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
@@ -274,11 +275,13 @@ func (l *FailureLog) prune(keep string) {
 var controlSequences = regexp.MustCompile(`\x1b\[[0-?]*[ -/]*[@-~]|\x{9b}[0-?]*[ -/]*[@-~]|\x1b\][^\x07\x1b\n]*(?:\x07|\x1b\\)?|\x1b[@-_]`)
 
 // StripControls removes escape sequences whole, then the control characters other than newline and tab (carriage
-// return, bell, backspace, form feed, NUL, delete and the C1 range): a log is read in a terminal, where an escape
-// sequence would be executed by whoever reads it.
+// return, bell, backspace, form feed, NUL, delete and the C1 range) and the Unicode format characters (category Cf:
+// the bidirectional overrides and isolates, the zero-width characters, the byte order mark, the tag characters): a log is
+// read in a terminal, where an escape sequence would be executed by whoever reads it and a format character reorders or
+// hides the text around it (N7).
 func StripControls(s string) string {
 	return strings.Map(func(r rune) rune {
-		if (r < 0x20 && r != '\n' && r != '\t') || (r >= 0x7f && r <= 0x9f) {
+		if (r < 0x20 && r != '\n' && r != '\t') || (r >= 0x7f && r <= 0x9f) || unicode.Is(unicode.Cf, r) {
 			return -1
 		}
 		return r
