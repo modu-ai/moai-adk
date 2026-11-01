@@ -135,7 +135,7 @@ N68 (older builds accept the old path of a moved ledger): written before the cor
 - A first-bind refusal on an unreadable row set (`rerr != nil` in `afCheckKnownRepositories`) has no test and no mutation; it needs a ledger whose `Cards` or `Queue` read fails.
 - A marker write that fails because the git directory is read-only has no test (the code refuses and says the ledger is bound but holds no marker).
 - `--from` with a symbolic-linked spelling of the old directory that cannot be resolved is covered only by `afResolveGone` on a macOS temporary directory; other layouts (the project key for a worktree-root project, `rootLayout`) were not tried.
-- The session's recorded heartbeat binding (`hook.BindLedgerHeartbeat`, the ledger path recorded at `claim`) still names the old default ledger after `--from`; the renewal then fails quietly. Not changed, not tested.
+- [CLOSED by the follow-up `## Follow-up repairs (landing window, heartbeat after --from)` below] The session's recorded heartbeat binding (`hook.BindLedgerHeartbeat`, the ledger path recorded at `claim`) still named the old default ledger after `--from`; the renewal then failed quietly. Not changed, not tested at the time of this section.
 - No Windows run: `os.Link` and the shell-based tests were compiled for windows only (`GOOS=windows go build`).
 
 ### Residual-risk
@@ -152,7 +152,7 @@ N68 (older builds accept the old path of a moved ledger): written before the cor
 | Stage | Call site (file:function) | Classification | Reason |
 |---|---|---|---|
 | claim | `af.go: newAFClaimCmd` -> `afRun` -> `afBindRepository` | repaired | marker compare at every verb; a lease worktree is no clue at the first bind |
-| claim | `hook.BindLedgerHeartbeat` (renewal binding) | out of scope | records the ledger path; stale after `--from` (Gaps) |
+| claim | `hook.BindLedgerHeartbeat` (renewal binding) | repaired in the follow-up | records the ledger path; `--from` now rewrites the bindings that name the moved file (`hook.RebindLedgerHeartbeats`, follow-up section) |
 | run | `af.go: evidence` -> `afCheckCommit` -> `afBindRepository(repo)` | repaired | same check, for the repository the commit is looked up in |
 | run | `af.go: add`, `move`, `release`, `resume` -> `afRun` | repaired | same check through `afRun` |
 | check | `af.go: afCheckLandedInTrunk` (move to DONE) | unaffected | asks the project repository for the trunk; the identity of that repository is enforced by the bind that ran before it |
@@ -177,7 +177,7 @@ N68 (older builds accept the old path of a moved ledger): written before the cor
 | N52 | 1c05083f71 | ledger `4034ebfe87`/`8781b603ac`, verb `baac4dc05c`/`9df79edb2a` | the repository moved on disk and nothing finished the card | `af_repo_n52_test.go` | a plain rename closed; clone, unrelated and pruned-commit forms reopened as N61, N67; default location N64 |
 | N61 | a36ea8c368 | RED `e544228237`, GREEN `19eb2c9cc9` | repository identity decided by path and commit presence | `TestAFIdentity_N61*`, `..._ARepositoryRecreated...`, `..._ACopyIsAMove...` | repaired for marked ledgers; unmarked fallback documented as residual |
 | N62 | a36ea8c368 | same | `afMissingCommit` read a git failure, an empty or short answer as "nothing missing" | `TestAFIdentity_N62*` | repaired (first bind, move-repository, marker read) |
-| N64 | a36ea8c368 | same | default ledger keyed by the project path; no way to carry it over | `TestAFIdentity_N64*` | repaired as `--from` (no discovery); heartbeat binding stays stale |
+| N64 | a36ea8c368 | same | default ledger keyed by the project path; no way to carry it over | `TestAFIdentity_N64*`, `TestAFHeartbeatFrom_*` | repaired as `--from` (no discovery); the heartbeat binding is rewritten by the follow-up (`9654e99cd2`) |
 | N65 | a36ea8c368 | same | a lease worktree counted as proof of ownership | `TestAFIdentity_N65*`, N51 subtest | repaired |
 | N39 N40 N41 N42 N54 N63 N66 | (transition family) | see the Transition group section below: its failure ledger rows | | | |
 
@@ -291,7 +291,7 @@ Every command above ran in this run against this tree (HEAD `222aa8b800`, source
 | N42 | 46dbcce0d4 | RED `5529297d60`, GREEN `7deb693d57` | a reclaim-cap park had no verb out | `af_resume_test.go` | closed; operator-authority limits are N60 |
 | N54 | 1c05083f71 | RED `477938d926`, GREEN `7d6eeb8cc8` | `af land` looked at position, not at a failing newest run | `af_land_n54_test.go` | direct form closed; its two side effects are N63 and N66 below |
 | N63 | a36ea8c368 | RED `36365f2c82`, GREEN `222aa8b800` | the N54 refusal asked the holder to measure again, but a holder that left cannot (every write needs a lease), a MERGING card is not claimable, and a waiting row does not settle the card | `TestAFTransition_N63*`, `TestMove_AMergingCard...`, `TestMove_TheWayOutIsOnly...`, `TestAFMessage_...` | repaired by option (a); mutants M5, M5b, M6, M7 caught |
-| N66 | a36ea8c368 | RED `36365f2c82`, GREEN `222aa8b800` | the failing-run check ran once, before a gate that can take minutes | `TestAFTransition_N66*`, `TestLand_RealLedger_A...LastCheck...` | repaired; mutants M1 to M4 caught; the window between the check and `git update-ref` remains (Residual-risk) |
+| N66 | a36ea8c368 | RED `36365f2c82`, GREEN `222aa8b800` | the failing-run check ran once, before a gate that can take minutes | `TestAFTransition_N66*`, `TestLand_RealLedger_A...LastCheck...` | repaired; mutants M1 to M4 caught; the window between the check and `git update-ref` is closed by the follow-up (`TestLandingWindow_*`, `TestAFLandingWindow_*`, GREEN `9654e99cd2`) |
 
 ### Impact-path table, rows of the transition family (claim -> run -> check -> handoff -> integrate -> sync/close, and recovery)
 
@@ -316,7 +316,7 @@ Every command above ran in this run against this tree (HEAD `222aa8b800`, source
 - The full `./internal/cli/...` suite and `/verify` (`moai gate`, which runs the whole suite) were not run (the spawn forbids the suite); the anchored `^(TestAF|TestCardFlow)` run, `go vet`, `gofmt`, `golangci-lint`, `go test -race ./internal/agenticfactory/...` and the cross builds stand in for it, and that is a substitution. The anchored run was made at `222aa8b800`; the commit after it adds one test (run alone, E7) and this report.
 - Worktree-guard refusals met in this run, each answered by splitting the command into plain ones: a compound `mkdir ... && cat > file <<EOF ... cd ... && python3` for the mutation script ("too complex to verify"), a `go test` with a redirect to the scratchpad and a pipe (same message, seen on the first RED run), and nothing else; no check was dropped because of a refusal, and the script was then written with the Write tool and run as a plain `python3 <script> <ids>`.
 - `move --stage CANCELLED` without a lease on such a row is not tested or documented (only REVIEWING is): the table's own guards (E16) may refuse it.
-- The window between `LastCheck` and `git update-ref` is not closed (evidence writes do not take the landing lock); no test can pin it either way.
+- [CLOSED by the follow-up section below] The window between `LastCheck` and `git update-ref` was not closed (evidence writes do not take the landing lock); no test could pin it either way at the time of this section.
 - `TestAFMessage_` runs in-process only (skipped under `AF_TEST_BIN`); the tie between the printed text and the commands is therefore not proven against the binary, where the way-out command is built by the test from the same words.
 - `afTrRestart` emulates a restart in the in-process run (it closes the setup's ledger connection and opens a new one); the literal process separation is the `AF_TEST_BIN` runs in E7.
 - The rest of N69 (a lease recorded before the move needing `--repo`, a linked worktree needing `git worktree repair`, a case-only rename), N70, N71, N74, the second half of N72 (the "recorded as given" warning on the new input flags) and the SPEC side of N73 were not done; they were not in this spawn's list.
@@ -325,8 +325,150 @@ Every command above ran in this run against this tree (HEAD `222aa8b800`, source
 
 ### Residual-risk
 
-- A failing run recorded after `LastCheck` has read and before `git update-ref` has run still lands (microseconds). Nothing in the ledger can close it without making every evidence write take the landing lock.
+- [SUPERSEDED by the follow-up section below: the ledger refuses the failing run while the row is `landing`, so no evidence write needs the landing lock] A failing run recorded after `LastCheck` has read and before `git update-ref` has run still lands (microseconds). Nothing in the ledger can close it without making every evidence write take the landing lock.
 - The lease-free move is authorised by the card's epoch number, which is not a secret (the same authority the ledger already gives a landed or failed row). Anyone who knows the epoch can take such a card back to REVIEWING while its row waits with a failing candidate; the position table still has to accept the move, and the move is recorded with its actor and reason.
 - After the way out the old row stays `waiting` at the older epoch until the next holder's `enqueue` restarts it (tested); `land` on that card in the meantime is refused by the epoch rule of `afCardMayLand` (the card is not in MERGING).
 - A failure about ANOTHER commit recorded while the row waits is still not a refusal (N74, D5): the landing stands and `DONE` is refused later. Unchanged.
 - `<pass|fail>` in the refusal is text for a person; a script that runs the printed command without replacing it records a literal result and is refused by the verb (`evidence result`), not silently accepted.
+
+## Follow-up repairs (landing window, heartbeat after --from)
+
+Card issue-1948 (AF-22), cycle tdd, tree `WT-agentic-factory-integration`. Commits: RED `fb9fc909f6b251837a1659024d0f2d78a509c003` (tests only, on the source of `8cd1b6a7eb`), GREEN `9654e99cd2782f4189b1a540713f8d69a58b5723` (code, plus the two permanent tests that need the new symbols: `ErrLanding` and `RebindLedgerHeartbeats`), this report in the docs commit after them. Changed existing tests: none (the GREEN commit adds two test files and edits no `_test.go`).
+
+### Design as built
+
+**1. Landing window.** The recommended design was followed, with one narrowing the source forces. `ledger.insertEvidence` (the one insert under both `AddEvidence` and `Move`'s evidence argument) refuses, before inserting, a FAILING run whose `subject_sha` equals `candidate_sha` of the queue row of that same card while that row is in state `landing`. The refusal is `ledger.ErrLanding` (`errors.Is`-able, wrapped, distinct from `ErrStaleEpoch` and `ErrInvalid`); its text says the commit is in landing, to record the run again once `moai af land` has returned, and that `moai af reconcile` settles a row a dead lander left. Evidence transactions are `_txlock=immediate` (`schema.go:121`), so they serialise with the `SetState(landing)` write: the row is `landing` before `LastCheck` reads, hence either the failing run commits first and `LastCheck` sees it, or it commits after and is refused. `af evidence` returns the error unchanged (non-zero exit, nothing recorded) and its help names the rule.
+The narrowing: only kinds `green`, `gate`, `review` (`landingReadKinds`, the same list `failingNewestRun` reads, now one shared variable). `red` and `merge` failing results are not read by any landing, and a failing `red` is the ordinary RED record of a test-first cycle; refusing them would block normal work for no window closed. Passing runs, runs about another commit and runs of another card about the same SHA are not refused.
+**2. Heartbeat after `--from`.** Compared: (a) rewrite the bindings in the `--from` path of `move-repository`; (b) make the seam derive the path from the project key. (b) needs `internal/hook` to know the project-key function and breaks bindings made with an explicit `--db`; (a) touches one verb and one new exported function and keeps the binding format knowledge in `internal/hook`. Taken: (a). `hook.RebindLedgerHeartbeats(root, oldDB, newDB)` scans `<root>/.moai/state/ledger-heartbeat/*.json` of the (new) project directory (`resolveProjectDir()`, which is what `claim` used to write them), rewrites only bindings whose `db` equals the old ledger path after `filepath.Clean`, atomically per file (temp file in the same directory, mode 0600, rename), keeps going after a failure and returns the joined errors. `move-repository --from` calls it after the file move and the recorded move and prints `heartbeat_bindings_rewritten` (a number, `0` when there is nothing to rewrite) and, on failure, `warning_heartbeat_bindings` (text naming the path; the move stands). Without `--from` the verb prints neither field.
+
+### Claim
+
+C1. A failing green, gate or review run about the candidate of a row in `landing` is refused by the ledger and by the verb, so no failing run can be recorded between the last read and the trunk swap; the landing that stands is consistent; the retry after the landing is recorded and the post-landing rule (E12) holds the card.
+C2. A row a dead lander left in `landing` keeps refusing until `moai af reconcile` (or the next `af land`) settles it, and reconcile frees it.
+C3. After `move-repository --from`, the hooks of a session whose project was renamed renew the lease at the new ledger path; bindings of other ledgers are untouched; a project that never moved keeps renewing; a failure to rewrite is a named warning and does not undo the move.
+C4. E6 is unchanged: a candidate already in the trunk lands as "already in the trunk" and the card reaches DONE.
+
+### Evidence (commands run in this run, output verbatim or as cut)
+
+E1 RED, in process, on the tree of `fb9fc909f6` (source of `8cd1b6a7eb`):
+`go test -count=1 -run 'TestLandingWindow_' ./internal/agenticfactory/ledger/ ./internal/agenticfactory/mergeq/` ->
+```
+--- FAIL: TestLandingWindow_AFailingRunAboutTheCandidateOfALandingRowIsRefused (0.02s)
+        evidence_landing_window_test.go:62: a failing green run about the candidate of a landing row was recorded
+        evidence_landing_window_test.go:62: a failing gate run about the candidate of a landing row was recorded
+        evidence_landing_window_test.go:62: a failing review run about the candidate of a landing row was recorded
+--- FAIL: TestLandingWindow_ARowLeftInLandingByADeadLanderKeepsRefusingUntilItIsSettled (0.01s)
+--- FAIL: TestLandingWindow_AMoveCannotCarryTheRefusedRunEither (0.01s)
+FAIL	github.com/modu-ai/moai-adk/internal/agenticfactory/ledger	0.465s
+--- FAIL: TestLandingWindow_AFailureRecordedWhileTheRowIsLandingIsRefusedAndTheLandingStandsConsistent/just_before_the_check_reads_the_ledger
+--- FAIL: TestLandingWindow_AFailureRecordedWhileTheRowIsLandingIsRefusedAndTheLandingStandsConsistent/after_the_check_read_it,_before_the_trunk_ref_moves
+    landing_window_test.go:114: the failing run recorded while the row was landing: <nil>, want the refusal
+--- FAIL: TestLandingWindow_ReconcileFreesARowALanderThatDiedLeftInLanding (0.14s)
+FAIL	github.com/modu-ai/moai-adk/internal/agenticfactory/mergeq	1.656s
+```
+The second mergeq sub-test is the window itself: with the hook placed after the check read and before the swap, the old code records the failing run and lands.
+E2 Both builds through the real CLI binary (`AF_TEST_BIN`). Old: `git archive --format=tar 8cd1b6a7eb`, extracted to a fresh `mktemp -d`, `go build -C <dir> -o .../moai-old ./cmd/moai`. Final: the same for `9654e99cd2` -> `.../moai-new`. `AF_TEST_BIN=<old> go test -count=1 -v -run '^(TestAFLandingWindow_|TestAFHeartbeatFrom_)' ./internal/cli/`:
+```
+--- FAIL: TestAFHeartbeatFrom_AfterTheMoveTheHooksRenewTheLeaseAtTheNewPlace (2.14s)
+--- FAIL: TestAFHeartbeatFrom_OnlyBindingsThatNameTheMovedLedgerAreRewritten (0.60s)
+--- PASS: TestAFHeartbeatFrom_AProjectThatNeverMovedKeepsRenewing (0.43s)
+--- FAIL: TestAFHeartbeatFrom_AFailureToRewriteIsANamedWarningAndTheMoveStands (0.62s)
+--- FAIL: TestAFHeartbeatFrom_AProjectWithoutBindingsHasNothingToRewriteAndNothingToWarnAbout (0.63s)
+--- FAIL: TestAFLandingWindow_TheVerbRefusesAFailingRunAboutTheCandidateOfALandingRow (0.58s)
+--- FAIL: TestAFLandingWindow_ReconcileFreesTheRowAndTheRunIsThenRecorded (0.48s)
+--- FAIL: TestAFLandingWindow_TheRetryAfterTheLandingIsRecordedAndHoldsTheCard (0.69s)
+FAIL	github.com/modu-ai/moai-adk/internal/cli	7.053s
+    af_landing_window_test.go:73: a failing green run about the candidate of a landing row was recorded: {"card_id":"t1","kind":"green","result":"fail","subject_sha":"107c41bd..."}
+    af_heartbeat_from_test.go:112: the hooks of the session did not renew the lease at the new place
+    af_heartbeat_from_test.go:115: a renewal left a ledger at the old place <project key>/af/ledger.db
+```
+`AF_TEST_BIN=<new> go test -count=1 -v -run '^(TestAFLandingWindow_|TestAFHeartbeatFrom_|TestAFTransition_|TestAFMessage_|TestAFIdentity_N64)' ./internal/cli/` (the pattern as run, written with the alternation; the output file is `scratchpad/new-run.txt`):
+```
+--- PASS: TestAFHeartbeatFrom_AfterTheMoveTheHooksRenewTheLeaseAtTheNewPlace (2.45s)
+--- PASS: TestAFHeartbeatFrom_OnlyBindingsThatNameTheMovedLedgerAreRewritten (0.68s)
+--- PASS: TestAFHeartbeatFrom_AProjectThatNeverMovedKeepsRenewing (0.45s)
+--- PASS: TestAFHeartbeatFrom_AFailureToRewriteIsANamedWarningAndTheMoveStands (0.93s)
+--- PASS: TestAFHeartbeatFrom_AProjectWithoutBindingsHasNothingToRewriteAndNothingToWarnAbout (0.95s)
+--- PASS: TestAFLandingWindow_TheVerbRefusesAFailingRunAboutTheCandidateOfALandingRow (1.43s)
+--- PASS: TestAFLandingWindow_ReconcileFreesTheRowAndTheRunIsThenRecorded (0.84s)
+--- PASS: TestAFLandingWindow_TheRetryAfterTheLandingIsRecordedAndHoldsTheCard (1.09s)
+--- PASS: TestAFIdentity_N64TheDefaultLedgerOfAMovedProjectIsMovedWithFrom ... (4 N64 tests PASS)
+--- PASS: TestAFTransition_N63... N66... (3 tests) ... TestAFTransition_E6ACandidateThatIsTheTrunksOwnCommitStillLandsAsAlreadyInTheTrunk (1.53s)
+--- SKIP: TestAFMessage_TheRefusalNamesCommandsThatRunAsPrinted (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	33.109s
+```
+E3 GREEN, in process: `go test -count=1 -run 'TestLandingWindow_' ./internal/agenticfactory/ledger/ ./internal/agenticfactory/mergeq/` -> `ok` both; `go test -count=1 -run 'TestAFLandingWindow_|TestAFHeartbeatFrom_' ./internal/cli/` -> `ok 5.367s`; `go test -count=1 ./internal/hook/ -run 'Heartbeat'` -> `ok 0.862s`.
+E4 `gofmt -l internal/agenticfactory internal/cli` printed nothing (the two files edited afterwards were formatted with `gofmt -w` and the second check printed nothing). `go build ./...` printed nothing. `go vet ./internal/cli/ ./internal/agenticfactory/... ./internal/hook/...` printed nothing. `GOOS=windows go build ./internal/cli/ ./cmd/moai/`, `GOOS=linux go build ./internal/cli/ ./cmd/moai/` and `GOOS=windows go vet ./internal/hook/ ./internal/agenticfactory/ledger/ ./internal/agenticfactory/mergeq/ ./internal/cli/` printed nothing.
+E5 `go test -race -count=1 -p 4 ./internal/agenticfactory/...` -> exit 0, every package `ok` (ledger 45.433s, mergeq 62.647s; file `scratchpad/af-race.txt`).
+E6 Coverage: `go test -count=1 -cover ./internal/agenticfactory/ledger/ ./internal/agenticfactory/mergeq/` -> `ledger 87.7%`, `mergeq 88.3%` (>= 85%).
+E7 `go test -count=1 ./internal/hook/` (whole package, timed) -> `ok github.com/modu-ai/moai-adk/internal/hook 223.581s` (under 5 minutes; run on the tree that GREEN commits).
+E8 `go test -count=1 -run '^TestAF' ./internal/cli/` -> `ok 144.208s`; `go test -count=1 -run '^TestCardFlow' ./internal/cli/` -> `ok 1.383s` (end of GREEN, files `scratchpad/cli-af.txt`, `scratchpad/cli-cardflow.txt`).
+E9 `golangci-lint run ./internal/agenticfactory/ledger/... ./internal/agenticfactory/mergeq/... ./internal/hook/... ./internal/cli/...` -> exit 1 with one issue: `internal/cli/codex_close_entry_signal_test.go:89:17: Error return value of pw.Close is not checked (errcheck)`. That file is not in this diff; no finding in a changed file.
+
+Mutation tables (each applied to the GREEN tree, tests run, mutation reverted; `git diff --stat` empty afterwards).
+
+| Id | Mutation | Caught by |
+|---|---|---|
+| L1 | refusal removed | `TestLandingWindow_AFailingRun...IsRefused` (3 kinds), `..._ErrLanding`, `..._DeadLander...`, `..._AMoveCannotCarry...`, `..._LandingStandsConsistent` (both orders), `..._ReconcileFrees...` |
+| L2 | widened to passing runs | `TestLandingWindow_TheRefusalIsAsNarrow.../a_passing_run_about_the_candidate` |
+| L3a | subject filter dropped (any failing run of the card) | `.../a_failing_run_about_another_commit` |
+| L3b | subject inverted (only other commits refused) | the refusal tests above and `.../a_failing_run_about_another_commit` |
+| L4 | state widened to `verifying` too | `TestLandingWindow_OnlyARowInLandingRefuses/verifying`, `TestLandingWindow_AFailureRecordedBeforeTheRowIsLandingStopsTheLanding` |
+| L5 | kinds widened to red and merge | `.../a_failing_run_of_a_kind_the_landing_does_not_read` |
+| L5b | kinds narrowed to gate only | `TestLandingWindow_AFailingRun...IsRefused/green` and `/review` |
+| L6 | card filter dropped | `.../a_failing_run_of_another_card_about_the_same_commit` |
+| L7 | check only in `AddEvidence`, not in the shared insert | `TestLandingWindow_AMoveCannotCarryTheRefusedRunEither` |
+| L8 | `ErrLanding` not wrapped (`%v`) | `TestLandingWindow_TheRefusalIsTheNamedErrLanding` |
+| H1 | the verb does not call the rewrite | 4 of the 5 `TestAFHeartbeatFrom_*` (all but the never-moved control) |
+| H2 | rewrite regardless of the path a binding names | `TestRebindLedgerHeartbeats_RewritesOnlyTheBindings...`, `TestAFHeartbeatFrom_OnlyBindingsThatName...` |
+| H3 | in-place `WriteFile` instead of temp file and rename | `TestRebindLedgerHeartbeats_AFailureIsReported...`, `TestAFHeartbeatFrom_AFailureToRewriteIsANamedWarning...` |
+| H4 | failure not reported as `warning_heartbeat_bindings` | `TestAFHeartbeatFrom_AFailureToRewrite...` |
+| H5 | failure fatal to the verb (move reported as failed) | `TestAFHeartbeatFrom_AFailureToRewrite...` |
+| H6 | rewritten binding keeps the old path | `TestRebindLedgerHeartbeats_Rewrites...`, `..._TheSeamBeatsAtTheNewPath`, `TestAFHeartbeatFrom_AfterTheMove...`, `..._OnlyBindings...` |
+| H7 | the wrong directory scanned (`--from`'s) | `TestAFHeartbeatFrom_AfterTheMove...`, `..._OnlyBindings...`, `..._AFailureToRewrite...` |
+
+No mutant listed survived. Not mutated (stated, not claimed): dropping `filepath.Clean` on the compared paths (the unit test `s5` has a `..` spelling and would be expected to catch it, not run); dropping the `.json` extension filter (a `.txt` file holding valid binding JSON is not in the tests, so that mutant would survive: see Residual-risk).
+
+### Baseline-attribution
+
+Commands above, in this run. Trees: RED run on `fb9fc909f6` (source = `8cd1b6a7eb`); GREEN runs on the working tree that `9654e99cd2` commits (clean, `git diff --stat` empty after the mutation checks); the old binary is a build of `git archive 8cd1b6a7eb`, the final binary a build of `git archive 9654e99cd2`, both invoked by path through `AF_TEST_BIN` (the installed `moai` on PATH was not used; §2.2). The test process of the `AF_TEST_BIN` runs is built from this worktree: the heartbeat seam (`hook.LedgerHeartbeatSeam`) therefore runs in the test process on both runs, and only `claim`, `move-repository`, `evidence` and `reconcile` are the binary's. Coverage and the race run are on this tree; the 85% figure is the SSOT.
+
+### Failure ledger and impact paths (rows touched)
+
+| Family | Round | Fix SHA | Root cause | Regression test | Status |
+|---|---|---|---|---|---|
+| N66 window | final audit of a36ea8c368 (residual) | RED `fb9fc909f6`, GREEN `9654e99cd2` | evidence writes take no landing lock, so a failing run recorded after `LastCheck` and before `git update-ref` landed | `TestLandingWindow_*` (ledger, mergeq), `TestAFLandingWindow_*` | closed for the green, gate and review kinds; mutants L1 to L8 caught |
+| N64 heartbeat | final audit of a36ea8c368 (residual) | RED `fb9fc909f6`, GREEN `9654e99cd2` | `claim` records the ledger path in the session binding; `--from` moves the file, not the binding | `TestAFHeartbeatFrom_*`, `TestRebindLedgerHeartbeats_*` | closed for sessions started at the new location; mutants H1 to H7 caught |
+
+| Stage | Call site | Classification | Reason |
+|---|---|---|---|
+| run | `af.go: evidence` / `ledger.AddEvidence` | repaired | refuses the failing green, gate, review run of a landing candidate; help says so; the only non-test caller of `AddEvidence` (grep: `af.go:809`) |
+| run | `ledger/move.go: Move` evidence argument | repaired | shares `insertEvidence`; `TestLandingWindow_AMoveCannotCarry...` |
+| check | `mergeq.go: landUnderLock`, `af_land.go: LastCheck` | unaffected (code) | unchanged; protected by the ledger refusal |
+| integrate | row `landing` -> `landed` / `waiting` | unaffected | the refusal ends when the row leaves `landing` |
+| close | `ledger` DONE guard (E12) | unaffected | the retry after the landing is recorded and the guard holds the card (`TestAFLandingWindow_TheRetryAfterTheLanding...`) |
+| recovery | `af reconcile`, `af land` (resetLanding) | unaffected | settle a row a dead lander left; this is the exit the refusal names |
+| claim | `hook.BindLedgerHeartbeat` | unaffected | writes as before |
+| recovery | `af_move_repository.go --from` | repaired | rewrites bindings, prints the count and the warning |
+| renew | `hook.LedgerHeartbeatSeam` | unaffected (code) | reads the rewritten binding; unchanged |
+
+### Gaps (not observed, refused, or not run)
+
+- `/verify` (`moai gate`, which runs the whole suite) was loaded and not executed: the spawn forbids the full `./internal/cli/...` suite; the scoped checks above stand in for it, and that is a substitution.
+- The instant itself (the row in `landing`, an alive lander) is hooked in process (`Merger.LastCheck`, mergeq tests) and not through a binary: a command line cannot hold a row in `landing`. The binary-level tests set up the state a dead lander leaves. The old-binary run covers the CLI tests only; the ledger and mergeq tests failed in process at `fb9fc909f6` (E1).
+- Worktree-guard refusals met (each answered by plain separate commands, no check dropped): a compound `grep ...; sed -i ...; go vet` (sed with a path in its program); `python3 - <<EOF` (heredoc naming a path); `env AF_TEST_BIN=... go test -run '^(A|B)' ... > file; echo exit=$?` twice (old and new run), redone as `AF_TEST_BIN=... go test ... > file` without `env` or `echo`. `go vet ./internal/agenticfactory/` (the path given in the brief) has no Go files; `./internal/agenticfactory/...` was used. The brief's `-run '^(TestAF|TestCardFlow)'` was run as two anchored runs, `^TestAF` and `^TestCardFlow`.
+- `go test -race ./internal/cli/` was not run (forbidden). The full `./internal/cli/...` suite was not run.
+- Windows: compile and `go vet` only; the new CLI tests need `sh` (skipped there) and the unwritable-directory tests skip on Windows and as root.
+- The mutants listed under "Not mutated".
+- The pre-existing lint finding in `codex_close_entry_signal_test.go` is not investigated.
+
+### Residual-risk (numbers and conditions)
+
+1. Kinds: a failing `red` or `merge` run recorded in the window is not refused (0 landings read them today; if a landing ever reads another kind, `landingReadKinds` is the one list to extend, and L5/L5b pin both directions).
+2. Another card's failing run about the same SHA is neither read by `LastCheck` (it asks by card id) nor refused: unchanged, consistent with N74/D5.
+3. The refused run is not queued. A lane that is refused and never retries leaves the commit without that failing record: 1 manual step (re-run the printed command after `moai af land` returned or `moai af reconcile` settled the row). The landing itself stands, as it would have had the run not been measured.
+4. A row left in `landing` refuses for as long as no `af land` or `af reconcile` runs: unbounded in time; condition: the lander died and nobody settles. The refusal text names both exits; `TestAFLandingWindow_ReconcileFrees...` and the mergeq reconcile test pin that the exit works (candidate not in the trunk -> row leaves `landing`; candidate in the trunk -> `landed`, the retry is then recorded and E12 holds the card).
+5. Heartbeat, 3 conditions the repair does not cover: (a) a session that stays alive across the rename keeps `CLAUDE_PROJECT_DIR` of the old path, so `resolveProjectRoot` finds no `.moai` there and its hooks never read a binding, whatever this verb does; only sessions started (or resumed with the new environment) at the new location renew; (b) a binding written with a spelling of the ledger path that is not equal to the `--from` path after `filepath.Clean` (a symlinked spelling) is not rewritten; `claim` and `--from` compute the key the same way, so the default location has 0 known cases; (c) a `claim` writing a binding in the instant `move-repository --from` rewrites bindings (micro-seconds, no lock) may leave a binding with the old path: the last writer wins; rerunning the claim writes the right one.
+6. The `.json` extension filter of `RebindLedgerHeartbeats` is not pinned by a test (one surviving mutant if it is dropped; `json.Unmarshal` still rejects non-JSON files, so only a `.txt` file holding valid binding JSON could differ).
+7. Atomicity is by construction (temp file and rename) and is observed only through H3 (the in-place write fails where the directory is read-only); no test observes a reader seeing a partial file.
+8. Observation, not changed: before this repair the seam, given a stale path, opened a new empty ledger at the old path (`a renewal left a ledger at the old place`, E2); after the repair a renewal opens the right file. A binding that names a path that no longer exists still creates an empty ledger there on the next renewal.
