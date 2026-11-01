@@ -37,7 +37,7 @@ func newAFCmd() *cobra.Command {
 		Short:        "Agentic factory card flow over the local ledger",
 		SilenceUsage: true,
 	}
-	af.AddCommand(newAFClaimCmd(), newAFMoveCmd(), newAFEvidenceCmd(), newAFEnqueueCmd(), newAFReleaseCmd(), newAFReapCmd(), newAFLandCmd(), newAFReconcileCmd())
+	af.AddCommand(newAFClaimCmd(), newAFMoveCmd(), newAFEvidenceCmd(), newAFEnqueueCmd(), newAFReleaseCmd(), newAFReapCmd(), newAFLandCmd(), newAFReconcileCmd(), newAFResumeCmd())
 	return af
 }
 
@@ -252,8 +252,8 @@ func newAFMoveCmd() *cobra.Command {
 
 Limits: the verb carries no guard or evidence arguments. A move that needs a guard key (an operator hold, a
 fix-limit or reclaim-cap park, a resume guard) or evidence handed to the position table is refused by the
-ledger, and this verb cannot supply either; such moves are made through the ledger API. Recording evidence is
-the separate "evidence" verb.`,
+ledger, and this verb cannot supply either; such moves are made through the ledger API, except the resume of a
+reclaim-cap park, which is the separate "resume" verb. Recording evidence is the separate "evidence" verb.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			to := core.Position{Stage: core.Stage(strings.ToUpper(stage)), Sub: core.SubStage(strings.ToUpper(sub)), RemoteIntegrated: remote}
@@ -272,6 +272,70 @@ the separate "evidence" verb.`,
 	cmd.Flags().StringVar(&actor, "actor", "lane", "who makes the move (recorded as given: nothing masks it, put no secret in it)")
 	cmd.Flags().StringVar(&reason, "reason", "", "why (recorded as given: nothing masks it, put no secret in it)")
 	_ = cmd.MarkFlagRequired("stage")
+	return cmd
+}
+
+// newAFResumeCmd is `moai af resume`: the operator's exit from a reclaim-cap park. The third reclaim of a card parks it
+// (core.ReasonReclaimCap) and the ledger resolves that park only by an in-place move at the card's own epoch carrying
+// the evidence "resume-guard:reclaim-cap". The verb reads the card and hands the ledger that move; it adds no rule and
+// does not touch the reclaim cap itself (the ledger clears the count when it accepts the move).
+func newAFResumeCmd() *cobra.Command {
+	var f afFlags
+	var guard, actor, reason string
+	cmd := &cobra.Command{
+		Use:   "resume <card>",
+		Short: "Resume a card the ledger parked at its reclaim cap (an operator decision)",
+		Long: `Resume a card the ledger parked after its holders died the third time (park reason reclaim-cap).
+
+A parked card holds no lease and cannot be claimed, moved or finished until the operator decides it may go on. This
+verb is that decision: it moves the card in place (same stage, no park) at the epoch the park was made at, with the
+ledger's resume guard for that park, and the ledger counts the card's reclaims from zero again. Nothing else changes:
+the card is claimed afterwards like any other, its evidence of the earlier epochs does not count for the new holder,
+and the reclaim cap itself is untouched.
+
+--guard must be ` + core.GuardReclaimCap + ` (the only park this verb resolves; any other value is refused) and --reason is required and
+must say what the operator looked at. A card that is not parked at reclaim-cap, or an --epoch that is not the card's
+own, is refused with the ledger unchanged. --actor and --reason are recorded as given, in the card's transition
+history: nothing masks them, put no secret in them.`,
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if guard != core.GuardReclaimCap {
+				return fmt.Errorf("af resume: --guard %q refused: this verb resolves the %s park only", guard, core.GuardReclaimCap)
+			}
+			if strings.TrimSpace(reason) == "" {
+				return errors.New("af resume: --reason must say why the card may go on; an empty reason is refused")
+			}
+			return afRun(f.db, func(ctx context.Context, st *ledger.Store) error {
+				cards, err := st.Cards(ctx)
+				if err != nil {
+					return err
+				}
+				for _, c := range cards {
+					if c.ID != args[0] {
+						continue
+					}
+					if c.Position.Park == nil || c.Position.Park.Reason != core.ReasonReclaimCap {
+						return fmt.Errorf("af resume: %s is not parked at %s (stage %s); nothing was changed", c.ID, core.GuardReclaimCap, c.Position.Stage)
+					}
+					to := core.Position{Stage: c.Position.Stage, Sub: c.Position.Sub, RemoteIntegrated: c.Position.RemoteIntegrated}
+					// The ledger takes a guard key only inside an Evidence; the row it stores says who resumed, not what was measured.
+					ev := ledger.Evidence{Kind: ledger.KindGate, TreeSHA: "n/a", SubjectSHA: "n/a", Result: ledger.ResultPass,
+						Command: "moai af resume", Guards: []string{"resume-guard:" + guard}}
+					if err := st.Move(ctx, c.ID, f.epoch, to, actor, reason, ev); err != nil {
+						return err
+					}
+					return afPrint(cmd, map[string]any{"card_id": c.ID, "stage": to.Stage, "sub": to.Sub, "resumed": true})
+				}
+				return fmt.Errorf("af resume: card %s does not exist", args[0])
+			})
+		},
+	}
+	f.bind(cmd, true)
+	cmd.Flags().StringVar(&guard, "guard", "", "the park to resolve; only "+core.GuardReclaimCap+" is accepted")
+	cmd.Flags().StringVar(&actor, "actor", "operator", "who resumes the card (recorded as given: nothing masks it, put no secret in it)")
+	cmd.Flags().StringVar(&reason, "reason", "", "why the card may go on (required; recorded as given: nothing masks it, put no secret in it)")
+	_ = cmd.MarkFlagRequired("guard")
+	_ = cmd.MarkFlagRequired("reason")
 	return cmd
 }
 

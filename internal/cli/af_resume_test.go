@@ -103,23 +103,27 @@ func TestAFVerbs_N42TheResumeVerbRefusesWithoutAReasonOrWithAnotherGuardOrEpochA
 	for _, tc := range []struct {
 		name string
 		args []string
+		want string // what the refusal says: a refusal for another cause (a slip in the fixture) does not count
 	}{
-		{"no reason", []string{"resume", "t1", "--epoch", a.e2, "--guard", "reclaim-cap"}},
-		{"an empty reason", []string{"resume", "t1", "--epoch", a.e2, "--guard", "reclaim-cap", "--reason", ""}},
-		{"a reason of blanks", []string{"resume", "t1", "--epoch", a.e2, "--guard", "reclaim-cap", "--reason", "  \t "}},
-		{"the guard of another park", []string{"resume", "t1", "--epoch", a.e2, "--guard", "operator-hold", "--reason", "r"}},
-		{"the guard fix-limit", []string{"resume", "t1", "--epoch", a.e2, "--guard", "fix-limit", "--reason", "r"}},
-		{"the guard spelled as the ledger's key", []string{"resume", "t1", "--epoch", a.e2, "--guard", "resume-guard:reclaim-cap", "--reason", "r"}},
-		{"an empty guard", []string{"resume", "t1", "--epoch", a.e2, "--guard", "", "--reason", "r"}},
-		{"no guard", []string{"resume", "t1", "--epoch", a.e2, "--reason", "r"}},
-		{"a newer epoch", []string{"resume", "t1", "--epoch", epochPlus, "--guard", "reclaim-cap", "--reason", "r"}},
-		{"an older epoch", []string{"resume", "t1", "--epoch", epochMinus, "--guard", "reclaim-cap", "--reason", "r"}},
-		{"another card", []string{"resume", "nope", "--epoch", a.e2, "--guard", "reclaim-cap", "--reason", "r"}},
+		{"no reason", []string{"resume", "t1", "--epoch", a.e2, "--guard", "reclaim-cap"}, `"reason" not set`},
+		{"an empty reason", []string{"resume", "t1", "--epoch", a.e2, "--guard", "reclaim-cap", "--reason", ""}, "--reason must say why"},
+		{"a reason of blanks", []string{"resume", "t1", "--epoch", a.e2, "--guard", "reclaim-cap", "--reason", "  \t "}, "--reason must say why"},
+		{"the guard of another park", []string{"resume", "t1", "--epoch", a.e2, "--guard", "operator-hold", "--reason", "r"}, `--guard "operator-hold" refused`},
+		{"the guard fix-limit", []string{"resume", "t1", "--epoch", a.e2, "--guard", "fix-limit", "--reason", "r"}, `--guard "fix-limit" refused`},
+		{"the guard spelled as the ledger's key", []string{"resume", "t1", "--epoch", a.e2, "--guard", "resume-guard:reclaim-cap", "--reason", "r"}, `--guard "resume-guard:reclaim-cap" refused`},
+		{"an empty guard", []string{"resume", "t1", "--epoch", a.e2, "--guard", "", "--reason", "r"}, `--guard "" refused`},
+		{"no guard", []string{"resume", "t1", "--epoch", a.e2, "--reason", "r"}, `"guard" not set`},
+		{"a newer epoch", []string{"resume", "t1", "--epoch", epochPlus, "--guard", "reclaim-cap", "--reason", "r"}, "stale epoch"},
+		{"an older epoch", []string{"resume", "t1", "--epoch", epochMinus, "--guard", "reclaim-cap", "--reason", "r"}, "stale epoch"},
+		{"another card", []string{"resume", "nope", "--epoch", a.e2, "--guard", "reclaim-cap", "--reason", "r"}, "does not exist"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			out, err := a.try(tc.args...)
 			if err == nil {
 				t.Fatalf("accepted: %.200s", out)
+			}
+			if !strings.Contains(err.Error(), tc.want) {
+				t.Errorf("the refusal %q does not say %q", err, tc.want)
 			}
 			if after := afSnapshot(t, a.st); !reflect.DeepEqual(before, after) {
 				t.Errorf("the refusal changed the ledger:\nbefore %+v\nafter  %+v", before, after)
@@ -140,6 +144,9 @@ func TestAFVerbs_N42TheResumeVerbRefusesACardThatIsNotParkedAndChangesNothing(t 
 	out, err := a.try("resume", "t1", "--epoch", a.e2, "--guard", "reclaim-cap", "--reason", "r")
 	if err == nil {
 		t.Fatalf("a card that is not parked was resumed: %.200s", out)
+	}
+	if !strings.Contains(err.Error(), "is not parked at reclaim-cap") {
+		t.Errorf("the refusal %q does not say that the card is not parked", err)
 	}
 	if after := afSnapshot(t, a.st); !reflect.DeepEqual(before, after) {
 		t.Errorf("the refusal changed the ledger:\nbefore %+v\nafter  %+v", before, after)
