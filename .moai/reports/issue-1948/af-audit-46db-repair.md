@@ -321,3 +321,93 @@ Tree `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/agentic-factory-integration`,
 - A lease whose worktree is in another repository now makes EVERY verb refuse at first bind (claim, release and reap included) until the ledger is edited by hand; that is the reading of the brief, and it means a mis-claimed worktree cannot be cleaned up through the verbs while the ledger is unbound.
 - A ledger file in a directory that happens to be a repository (the default path is not) is taken as a clue and can refuse a legitimate project that is a different repository.
 - Identity is the symlink-resolved git directory path, so a repository moved on disk reads as another repository.
+
+---
+
+# Follow-up 3: repair after the audit of 1c05083f71 (N49, N50, N54, N51 b/c/d and clone form, N59)
+
+Scope change by the operator via the leader: the accepted-risk record (R20) is NOT written into the SPEC; SPEC edits are only corrections of sentences the code made false. N52 (repository-move recovery verb) is NOT started: it needs lane-1's ledger API, which is not merged.
+
+## Claim
+
+1. N49: evidence and enqueue from a lease worktree are refused before the first bind when the `--db` ledger file sits in another repository.
+2. N50: the ledger file is a first-bind clue only for a ledger given with `--db`; a default ledger under a `MOAI_HOME` that is a repository binds the project.
+3. N54: `af land` refuses while the newest green, gate or review run of the candidate failed, names the kind and the way out, and lands after it is measured again; a passing gate of another commit does not block (D5).
+4. N51 (b) rows naming commits the caller's repository lacks, (c) symlinked `--db`, (d) relative lease worktree, and the clone form (`--bind-repo`) are refused at the first bind with the ledger unchanged and unbound.
+5. N59: `moai af add <id>` puts a READY card into the ledger; a card added only by the verb runs claim, evidence, enqueue, land, DONE through the verbs.
+6. Not claimed: N52 (not started), a PASS of any audit, E6 (unchanged).
+
+## Evidence
+
+Commits since `1c05083f71` (RED then GREEN per item; HEAD at the time of writing is the docs commit `693f4a35b3`, the report commit follows it):
+
+```
+2a0c9fb455 test N49 RED   a920857df4 fix N49 GREEN
+f6674dc628 test N50 RED   5c389902ec fix N50 GREEN
+477938d926 test N54 RED   7d6eeb8cc8 fix N54 GREEN (+ Store.FailingNewestRun)
+b3c9104ee1 test N51c RED  7fe486101e fix N51c GREEN
+7fb3ee9507 test N51d RED  5e775c89a5 fix N51d GREEN
+220da0d4a9 test N51b RED  6e02850e3b fix N51b GREEN
+95e81a2e74 test N51 clone RED   d247597ae6 fix N51 clone GREEN (two existing tests changed)
+3034faeade test N59 RED   e15419a87c feat N59 GREEN
+693f4a35b3 docs(spec) corrections only
+```
+
+RED output, verbatim where it decided (each run before the fix, by behavior and not by compile error, except the N59 and clone controls that need the new verb or flag):
+
+```
+N49   evidence green from W: accepted, output {"card_id":"t1","kind":"green","result":"pass",...}
+      enqueue from W: accepted ...   the queue must be empty: [{CardID:t1 ... State:waiting ...}]
+N54   landed with a failing newest gate run: {"card_id":"t1","outcome":"landed",...}   (4 subtests FAIL)
+N51c  reap through the link from O: accepted, output {"reclaimed":[],"unknown_expired":[]}
+N51d  claim --worktree "sub/dir" left a lease: [{CardID:t1 ... Worktree:. ...}]
+      reap with a lease worktree recorded as .: accepted, output {"reclaimed":[{"CardID":"t1",...}]...}
+N51b  reap from a repository without the commits: accepted, output {"reclaimed":[],"unknown_expired":[]}
+N51cl claim declaring the clone: unknown flag: --bind-repo
+N59   moai af add t1 ...: unknown command "add" for "af"
+N50   [reap] with the default ledger under a home repository: af: refused: this ledger is not bound yet, but it already belongs to the repository .../001/.git (the ledger file .../.moai/db/002-92f0daf0/af/ledger.db sits in it) ...
+```
+
+GREEN (this tree, code HEAD `e15419a87c`; the docs commit changes no code):
+
+```
+gofmt -l internal/agenticfactory internal/cli                  -> (no output)
+go build ./...                                                 -> exit 0
+go vet ./internal/agenticfactory/... ./internal/cli/           -> exit 0
+go test -race -count=1 -p 4 ./internal/agenticfactory/...      -> 21 packages ok (ledger 50.311s, mergeq 72.327s)
+go test -count=1 -v -run '^(TestAF|TestCardFlow)' ./internal/cli/  -> 107 top-level "--- PASS", 0 SKIP, 0 FAIL; ok
+```
+
+New permanent tests, each run by anchored name and passing: `TestAFVerbs_N49CommitCheckAsksTheLedgerFileBeforeTheFirstBind`, `TestAFVerbs_N50TheDefaultLedgerLocationIsNoFileClue`, `TestAFVerbs_N50HelpSaysTheFileClueIsForADbFlagOnly`, `TestAFLand_N54AFailingNewestRunWhileTheRowWaitsRefusesTheLanding` (4 subtests), `TestAFLand_N54APassingGateOfAnotherCommitDoesNotBlockTheLanding`, `TestAFVerbs_N51cASymlinkedLedgerFileIsAskedWhereItReallyIs`, `TestAFVerbs_N51dClaimRefusesARelativeWorktree`, `TestAFVerbs_N51dARelativeLeaseWorktreeAlreadyRecordedIsNotTrustedAtTheFirstBind`, `TestAFVerbs_N51bRowsNameCommitsTheCallerDoesNotHave`, `TestAFVerbs_N51bOnlyCompleteShasAreCluesFromTheRows`, `TestAFVerbs_N51WrongFirstCallFromASecondCloneNeedsADeclaration`, `TestAFVerbs_N51ADeclarationIsNotAskedWhereAnythingElseSaysWhereTheLedgerBelongs`, `TestAFAdd_ACardAddedByTheVerbRunsFromClaimToDone`, `TestAFAdd_TheMinimalCallAndTheRefusalsOfTheLedger`, `TestAFAdd_TheHelpSaysWhatTheVerbTakes`, and in the ledger package `TestFailingNewestRun_NamesTheKindWhoseNewestRunFailed` (9 subtests; the one permitted ledger edit, a read-only `Store.FailingNewestRun` over the existing `noFailingNewestRun` rule).
+
+Mutation contrasts (fix broken, test seen failing, fix restored, test passing again): N49 (argument back to `""`), N50 (`path` instead of the flag), N54 (`kind != "" && false`; 4 subtests fail), N51c (symlink resolution disabled), N51d (claim check off; lease check off, each caught by its own test), N51b (`missing` never returned; the SHA filter dropped, caught by the rows test), clone form (refusal disabled; declared-mismatch check disabled), N59 (title default off).
+
+Existing tests changed (each strengthens or follows a rule the operator changed; none weakened, none skipped):
+
+1. `internal/cli/af_flow_test.go` `TestCardFlow_ClaimToDone_ThroughMergeQueue`: the first `claim` on a fresh `--db` outside any repository now passes `--bind-repo <repo>`, because that ledger knows nothing (clone form).
+2. `internal/cli/af_repo_n38_firstbind_test.go`: `TestAFVerbs_N38FirstBindWithNothingKnownBindsAsBefore` renamed `...NeedsADeclaration`; it pinned the residual the operator now closed. It now asserts the refusal without a declaration (naming `--bind-repo` and the repository, ledger unbound and unchanged) and the bind with `--bind-repo`. The header comment was updated to match.
+(No other pre-existing test was touched. One of my own new tests, `af_add_test.go`, was corrected after its RED commit: the "another repository" check now passes `--db`, because the default location is one ledger per project.)
+
+The N51d "justify the smallest place" decision: `claim` (`internal/cli/af.go` `newAFClaimCmd`, the only verb that records a lease worktree) refuses a non-absolute `--worktree`; a relative worktree already recorded by an older build or a direct store write is refused in `afCheckKnownRepositories` at the first bind, because `git -C <relative>` runs in the caller's directory and always agrees with the caller. A bound ledger needs no third check: its comparison is with the bound identity.
+
+The clone form decision: no existing flag declares a repository. `--repo` exists only on evidence, enqueue, land and reconcile (not on claim, move, release, reap, resume, which the repro's first verb is) and `afCheckRepoFlag` (`internal/cli/af.go`) compares it with the project directory's repository, so it declares nothing the project directory has not said. A smaller method does not exist: nothing in an unbound `--db` ledger outside any repository says where it belongs. The new flag is `--bind-repo <path>` on every verb that opens the ledger (`afFlags.bind`, `afMergeFlags.bind`), checked against the repository the call would bind, used for the first bind only, documented in `afBindHelp` and the flag help. The default ledger location needs none.
+
+## Baseline-attribution
+
+Tree `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/agentic-factory-integration`, start `1c05083f71`, code HEAD `e15419a87c`. Every command and output above was run in this session against this tree. The judging build is the `go test` build of the tree itself (no installed `moai` binary was used).
+
+## Gaps
+
+- Not run, by instruction: the whole `./internal/cli/...` package (only the anchored `^(TestAF|TestCardFlow)` and the anchored new-test list), push, PR, any `MOAI_*_LIVE`, independent audit. `golangci-lint` and `GOOS=windows`/`linux` builds were not re-run in this round.
+- The worktree guard refused three compound shell calls (a `cd ... &&` chain with a heredoc, and two chained python heredocs); they were redone as plain calls or with the Edit tool. One scratch file was written under `/tmp` and removed at once.
+- N52 (repository-move recovery verb): not started (pending lane-1's ledger API). E6 unchanged: `TestA2Done_TrunksOwnCommitAsCandidate` is an audit file that is not in this tree and was not run; N54 can only refuse a landing when a newest run failed, so a candidate already in the trunk with passing runs lands as before (not measured against that test).
+- The hook heartbeat recorder still opens the ledger with no repository comparison (unchanged).
+- Windows behaviour (`EvalSymlinks`, `filepath.IsAbs`) and case-insensitive volumes (N56) untested.
+- Two processes first-binding one fresh ledger at the same instant: still not one transaction (unchanged).
+- The row-commit clue reads evidence and queue rows with several store calls and one `git cat-file --batch-check`; its cost on a very large ledger was not measured.
+
+## Residual-risk
+
+- `--bind-repo` is a declaration, not a proof: a caller in the wrong clone who types it binds the wrong repository. It turns a silent first call into a deliberate one; it does not remove the risk. The default location is not asked at all, so a project whose default ledger first-binds from a wrong clone binds the clone (the default location is per project key, so a second clone usually has its own ledger).
+- A first bind is refused when ANY complete SHA in the rows is missing from the caller's repository, including a commit that was legitimately pruned; `--bind-repo` does not lift that refusal (the rows clue is checked whether or not a declaration was given), so the way out is a call from a repository that has the commits. This affects only a ledger that is still unbound.
+- N55 (a refused verb still binds), N56 (case variants), N58 (surviving mutants) and N52 are unchanged. N57 sentences not made false by this round (the REQ-AFL-014 `land` sentence) are untouched.
