@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"context"
+	"errors"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -133,5 +134,87 @@ func TestFactoryWakeTwoWaitsOnePredecessor(t *testing.T) {
 	factoryPrintWakes(ctx, &out, db, homestate.Card{CardID: "t2010", State: homestate.CardMergedPR})
 	if got := len(wakeLines(out.String())); got != 2 {
 		t.Fatalf("want 2 wake lines, got %d:\n%s", got, out.String())
+	}
+}
+
+// runFactoryWaitCmd drives the real verb against a temp project root and
+// returns its combined output and error.
+func runFactoryWaitCmd(t *testing.T, root string, args ...string) (string, error) {
+	t.Helper()
+	t.Setenv("CLAUDE_PROJECT_DIR", root)
+	cmd := newFactoryWaitCommand()
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs(args)
+	err := cmd.Execute()
+	return out.String(), err
+}
+
+func openWaitRoot(t *testing.T, root string) *homestate.FactoryDB {
+	t.Helper()
+	db, err := homestate.OpenFactory(factoryRootOf(root))
+	if err != nil {
+		t.Fatalf("open factory: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	return db
+}
+
+func storedWaitReason(t *testing.T, root, card string) string {
+	t.Helper()
+	waits, err := openWaitRoot(t, root).LoadCardWaits(context.Background(), card)
+	if err != nil || len(waits) != 1 {
+		t.Fatalf("want one wait, got %+v err=%v", waits, err)
+	}
+	return waits[0].Reason
+}
+
+// A wait recorded with --scope stores scope=<value> at the front of the reason
+// and shows it in both the record line and the wake line at the landing edge.
+func TestFactoryWaitScopeStoredAndPrinted(t *testing.T) {
+	root := t.TempDir()
+	scope := "Write internal/x.go denied by worktree guard"
+	out, err := runFactoryWaitCmd(t, root, "t2020", "--on", "t2010", "--waker", "lane-3", "--reason", "needs t2010", "--scope", scope)
+	if err != nil {
+		t.Fatalf("wait with scope: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, "scope="+scope) {
+		t.Errorf("record output lacks scope=%s:\n%s", scope, out)
+	}
+	want := "scope=" + scope + " needs t2010"
+	if got := storedWaitReason(t, root, "t2020"); got != want {
+		t.Errorf("stored reason = %q, want %q", got, want)
+	}
+	var wake bytes.Buffer
+	factoryPrintWakes(context.Background(), &wake, openWaitRoot(t, root), homestate.Card{CardID: "t2010", State: homestate.CardMergedPR})
+	lines := wakeLines(wake.String())
+	if len(lines) != 1 || !strings.Contains(lines[0], "reason="+want) {
+		t.Errorf("wake line must carry reason=%s, got %q", want, lines)
+	}
+}
+
+// Without --scope the call behaves exactly as before.
+func TestFactoryWaitWithoutScopeUnchanged(t *testing.T) {
+	root := t.TempDir()
+	out, err := runFactoryWaitCmd(t, root, "t2020", "--on", "t2010", "--waker", "lane-3", "--reason", "needs t2010")
+	if err != nil {
+		t.Fatalf("wait without scope: %v\n%s", err, out)
+	}
+	if want := "wait recorded: card=t2020 condition=predecessor-landed t2010 waker=lane-3\n"; out != want {
+		t.Errorf("output = %q, want %q", out, want)
+	}
+	if got := storedWaitReason(t, root, "t2020"); got != "needs t2010" {
+		t.Errorf("stored reason = %q, want %q", got, "needs t2010")
+	}
+}
+
+// A given --scope must be one trimmed non-empty line.
+func TestFactoryWaitScopeRejectsMultilineAndEmpty(t *testing.T) {
+	for _, scope := range []string{"line one\nline two", "line one\rline two", "", "   "} {
+		out, err := runFactoryWaitCmd(t, t.TempDir(), "t2020", "--on", "t2010", "--waker", "lane-3", "--reason", "r", "--scope", scope)
+		if !errors.Is(err, homestate.ErrInvalidCardInput) {
+			t.Errorf("scope %q: want ErrInvalidCardInput, got err=%v out=%q", scope, err, out)
+		}
 	}
 }
