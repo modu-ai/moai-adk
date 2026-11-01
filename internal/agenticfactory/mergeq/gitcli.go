@@ -207,7 +207,8 @@ func (g GitCLI) PrepareCandidate(ctx context.Context, trunkSHA, candidateSHA, me
 		return Candidate{}, err
 	}
 	if _, err := g.run(ctx, g.Repo, "worktree", "add", "--detach", dir, trunkSHA); err != nil {
-		_ = os.RemoveAll(dir)
+		// git may have registered the tree before a hook failed: removing the directory and pruning forgets it
+		_ = g.Discard(ctx, Candidate{Dir: dir})
 		return Candidate{}, err
 	}
 	c := Candidate{Dir: dir}

@@ -185,7 +185,30 @@ func (m *Merger) lockTTL() time.Duration {
 // if it moved the merge is rebuilt and the gates run again (at most MaxRetries times) instead of overwriting
 // what landed meanwhile. The one write is `git update-ref <trunk> <new> <old>`, which itself refuses if the
 // trunk moved after the re-check.
+//
+// A git step that fails (anything but the merge, whose output has its own kind) is returned as a *GitError, whose text
+// holds no output; what git printed goes to the failure log under the kind git, and the returned error names the file.
 func (m *Merger) Land(ctx context.Context, cardID, candidateSHA string) (Result, error) {
+	res, err := m.land(ctx, cardID, candidateSHA)
+	return res, m.logGitFailure(cardID, candidateSHA, err)
+}
+
+// logGitFailure writes the output of the git step that made err fail to the failure log and returns err with the
+// file's name (or the fact that logging failed) added. An error that holds no git failure, or a merger with no log,
+// is returned as it is.
+func (m *Merger) logGitFailure(cardID, candidateSHA string, err error) error {
+	var ge *GitError
+	if err == nil || m.Log == nil || !errors.As(err, &ge) {
+		return err
+	}
+	path, werr := m.Log.Write(cardID, candidateSHA, "git", ge.Output)
+	if werr != nil {
+		return fmt.Errorf("%w (logging failed)", err)
+	}
+	return fmt.Errorf("%w (log: %s)", err, path)
+}
+
+func (m *Merger) land(ctx context.Context, cardID, candidateSHA string) (Result, error) {
 	maxTries := m.MaxRetries
 	if maxTries <= 0 {
 		maxTries = DefaultMaxRetries
