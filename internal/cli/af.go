@@ -3,8 +3,10 @@ package cli
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -15,6 +17,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/ledger"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/mergeq"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/monitor/flow"
+	"github.com/modu-ai/moai-adk/internal/gitenv"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/hook"
 	"github.com/modu-ai/moai-adk/internal/session"
@@ -91,6 +94,64 @@ func afCheckCommit(ctx context.Context, st *ledger.Store, card, repoFlag, sha, w
 	}
 	if got, err := (mergeq.GitCLI{Repo: repo}).RevParse(ctx, sha); err != nil || got != sha {
 		return fmt.Errorf("af: %s %s names no commit in %s", what, sha, repo)
+	}
+	return nil
+}
+
+// afRepoFlagHelp is what --repo says of the verbs that look a commit up; the land verbs say the same in their own words.
+const afRepoFlagHelp = "the git repository the commit is looked up in: the project's own (default: the card's lease worktree, " +
+	"else the project directory), or any path with the same git directory, a linked worktree of it included; any other path is refused"
+
+// afCheckTrunk refuses every --trunk but the dedicated one. A landing row says "merged" without asking which trunk or
+// which repository it landed in, so a verb that took another ref (the candidate's own branch, say) ended the card DONE
+// with the real trunk empty. The trunk of this queue is mergeq.DefaultTrunk and cannot be changed; the Merger library
+// keeps its Trunk field, and the verbs are the trust boundary that fixes it.
+func afCheckTrunk(trunk string) error {
+	if trunk != mergeq.DefaultTrunk {
+		return fmt.Errorf("af: --trunk %q refused: the trunk is %s and cannot be changed; nothing was landed and the ledger is unchanged", trunk, mergeq.DefaultTrunk)
+	}
+	return nil
+}
+
+// afGitCommonDir is the git directory shared by dir and every linked worktree of its repository.
+func afGitCommonDir(ctx context.Context, dir string) (os.FileInfo, error) {
+	cmd := exec.CommandContext(ctx, "git", "-C", dir, "rev-parse", "--git-common-dir")
+	cmd.Env = append(gitenv.Env(), "GIT_TERMINAL_PROMPT=0")
+	out, err := cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+	common := strings.TrimSpace(string(out))
+	if common == "" {
+		return nil, errors.New("git printed no git directory")
+	}
+	if !filepath.IsAbs(common) {
+		common = filepath.Join(dir, common) // git prints it relative to the directory it ran in
+	}
+	return os.Stat(common)
+}
+
+// afCheckRepoFlag refuses a --repo that is not the project's own repository: a path whose git directory is the project
+// directory's (a linked worktree of the same repository has it too). Evidence, a queue entry and a landing made against
+// another repository say nothing about the project's, and the card could end DONE without the commit in it. An empty
+// repo (the flag left out) is accepted: the verbs then use the lease's worktree or the project directory themselves.
+// It runs before the ledger is opened, so a refusal changes nothing.
+func afCheckRepoFlag(ctx context.Context, repo string) error {
+	if repo == "" {
+		return nil
+	}
+	project := resolveProjectDir()
+	want, err := afGitCommonDir(ctx, project)
+	if err != nil {
+		return fmt.Errorf("af: --repo %s refused: the project directory %q is not in a git repository, so there is no repository to compare it with", repo, project)
+	}
+	got, err := afGitCommonDir(ctx, repo)
+	if err != nil {
+		return fmt.Errorf("af: --repo %s refused: it is not a directory inside a git repository", repo)
+	}
+	if !os.SameFile(want, got) {
+		return fmt.Errorf("af: --repo %s refused: its git directory is not the project's (the project directory is %s); "+
+			"only the project's repository, or a linked worktree of it, is accepted, and nothing was changed", repo, project)
 	}
 	return nil
 }
@@ -223,6 +284,9 @@ func newAFEvidenceCmd() *cobra.Command {
 		Short: "Record evidence (red, green, gate, review, merge) bound to a commit",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := afCheckRepoFlag(cmd.Context(), repo); err != nil {
+				return err
+			}
 			return afRun(f.db, func(ctx context.Context, st *ledger.Store) error {
 				if err := afCheckCommit(ctx, st, args[0], repo, ev.SubjectSHA, "--subject-sha"); err != nil {
 					return err
@@ -237,7 +301,7 @@ func newAFEvidenceCmd() *cobra.Command {
 	f.bind(cmd, true)
 	cmd.Flags().StringVar(&ev.Kind, "kind", "", "red, green, gate, review or merge")
 	cmd.Flags().StringVar(&ev.SubjectSHA, "subject-sha", "", "the complete lowercase hex SHA (40 or 64 characters) of the commit that was measured; it must exist in the repository")
-	cmd.Flags().StringVar(&repo, "repo", "", "the git repository the commit is looked up in (default: the card's lease worktree, else the project directory)")
+	cmd.Flags().StringVar(&repo, "repo", "", afRepoFlagHelp)
 	cmd.Flags().StringVar(&ev.TreeSHA, "tree-sha", "", "the tree SHA (informational)")
 	cmd.Flags().StringVar(&ev.BaseSHA, "base-sha", "", "the base commit SHA")
 	cmd.Flags().StringVar(&ev.Command, "command", "", "the command that was run (recorded as given: nothing masks it, put no secret in it)")
@@ -257,6 +321,9 @@ func newAFEnqueueCmd() *cobra.Command {
 		Short: "Put the card's candidate commit on the merge queue",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := afCheckRepoFlag(cmd.Context(), repo); err != nil {
+				return err
+			}
 			return afRun(f.db, func(ctx context.Context, st *ledger.Store) error {
 				if err := afCheckCommit(ctx, st, args[0], repo, candidate, "--candidate"); err != nil {
 					return err
@@ -270,7 +337,7 @@ func newAFEnqueueCmd() *cobra.Command {
 	}
 	f.bind(cmd, true)
 	cmd.Flags().StringVar(&candidate, "candidate", "", "the complete lowercase hex SHA (40 or 64 characters) of the commit the gates passed for; it must exist in the repository")
-	cmd.Flags().StringVar(&repo, "repo", "", "the git repository the commit is looked up in (default: the card's lease worktree, else the project directory)")
+	cmd.Flags().StringVar(&repo, "repo", "", afRepoFlagHelp)
 	_ = cmd.MarkFlagRequired("candidate")
 	return cmd
 }

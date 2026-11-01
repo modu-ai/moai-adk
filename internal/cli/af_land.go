@@ -40,8 +40,9 @@ type afMergeFlags struct {
 
 func (f *afMergeFlags) bind(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&f.db, "db", "", "ledger file (default: <project dir>/af/ledger.db)")
-	cmd.Flags().StringVar(&f.repo, "repo", "", "the git repository the trunk lives in (default: the project directory)")
-	cmd.Flags().StringVar(&f.trunk, "trunk", mergeq.DefaultTrunk, "the trunk ref, a full refs/heads/ name checked out in no worktree")
+	cmd.Flags().StringVar(&f.repo, "repo", "", "the git repository the trunk lives in: the project directory (default), or any path with the same git directory, "+
+		"a linked worktree of it included; any other path is refused")
+	cmd.Flags().StringVar(&f.trunk, "trunk", mergeq.DefaultTrunk, "the trunk ref; only the default "+mergeq.DefaultTrunk+" is accepted and it cannot be changed (check out nothing on it)")
 	cmd.Flags().StringVar(&f.session, "session", "moai-af", "who holds the landing lock (recorded as given)")
 }
 
@@ -180,6 +181,11 @@ It can still hold secrets, and any process of your user can read it: read it you
 conversation or a report. When the log cannot be written the reason says "logging failed" and the failure is
 recorded all the same.
 
+Which trunk and which repository. The trunk is %s and cannot be changed: --trunk takes that value or nothing, and
+any other value is refused before anything is landed, with the ledger unchanged. --repo takes the project directory or
+any path with the same git directory (a linked worktree of the project's repository qualifies) and refuses every
+other path the same way: a landing row says "merged" without asking where, so the verb does not let the caller choose.
+
 What is recorded as given. Nothing masks the text of the free-input flags: --session here, and --command, --reason,
 --path and --actor of the other af verbs are recorded as given, so put no secret in them.
 
@@ -191,7 +197,7 @@ has no process group, so this verb does not kill what the gate started there; ru
 long-lived processes. A gate that prints without end is not an error: it runs until --gate-timeout (default 20m) ends it.
 The gate receives the caller's full environment except GIT_DIR and the other repository-scoping variables, so a
 credential in the caller's environment is visible to it.
-A landing lock whose holder process is gone is taken back first.`, mergeq.DefaultFailureLogCap>>10, mergeq.DefaultFailureLogTotalCap>>20),
+A landing lock whose holder process is gone is taken back first.`, mergeq.DefaultFailureLogCap>>10, mergeq.DefaultFailureLogTotalCap>>20, mergeq.DefaultTrunk),
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if strings.TrimSpace(gate) == "" {
@@ -241,7 +247,11 @@ func newAFReconcileCmd() *cobra.Command {
 A row whose candidate is already in the trunk is settled as landed; one whose candidate is not goes back to
 waiting (an older landing row is settled as failed), and only while this command holds the landing lock. A verifying
 row whose card still holds a live lease is left alone. Every row is judged on its own: one failure does not stop the
-others. The result is one JSON line listing the actions taken; a failed row is reported as an error after it.`,
+others. The result is one JSON line listing the actions taken; a failed row is reported as an error after it.
+
+The trunk is ` + mergeq.DefaultTrunk + ` and cannot be changed: --trunk takes that value or nothing, and any other value is
+refused with the ledger unchanged. --repo takes the project directory or any path with the same git directory (a
+linked worktree of the project's repository qualifies) and refuses every other path the same way.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return afMergeRun(cmd, f, func(ctx context.Context, st *ledger.Store, scratch string) error {
@@ -271,6 +281,13 @@ others. The result is one JSON line listing the actions taken; a failed row is r
 // afMergeRun opens the ledger and a scratch directory for the candidate worktrees, runs fn under the landing
 // timeout and cleans up.
 func afMergeRun(cmd *cobra.Command, f afMergeFlags, fn func(ctx context.Context, st *ledger.Store, scratch string) error) error {
+	// The trust boundary: both checks run before the ledger is opened, so a refusal changes nothing.
+	if err := afCheckTrunk(f.trunk); err != nil {
+		return err
+	}
+	if err := afCheckRepoFlag(cmd.Context(), f.repo); err != nil {
+		return err
+	}
 	path, err := afLedgerPath(f.db)
 	if err != nil {
 		return err
