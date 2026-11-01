@@ -150,9 +150,17 @@ func TestCleanReportsArchive_DryRunMovesNothing(t *testing.T) {
 		t.Error("dry-run must not move the candidate")
 	}
 	// No NEW shard may appear (the scaffold's pre-existing archive/2000-01 is
-	// part of the fixture, not an action output).
-	if _, err := os.Stat(reportsPath(root, "archive/2026-06")); !os.IsNotExist(err) {
-		t.Error("dry-run must not create an archive shard")
+	// part of the fixture, not an action output). The candidate's shard month
+	// comes from the clock, so the check is "nothing but 2000-01 under
+	// archive/", never a fixed month.
+	entries, err := os.ReadDir(reportsPath(root, "archive"))
+	if err != nil {
+		t.Fatalf("archive dir: %v", err)
+	}
+	for _, e := range entries {
+		if e.Name() != "2000-01" {
+			t.Errorf("dry-run must not create an archive shard, found archive/%s", e.Name())
+		}
 	}
 }
 
