@@ -231,14 +231,15 @@ func init() {
 // @MX:REASON: Prevents silent loss of existing prefs values in the wizard bindings after the "claude-opus-4-7" option was removed from the picker; the mapping stays owned by template.ModelAliasTable (single SSOT) via normalizeModel.
 func initialProfileResult(existingPrefs profile.ProfilePreferences) wizard.ProfileResult {
 	result := wizard.ProfileResult{
-		UserName:        existingPrefs.UserName,
-		Model:           normalizeModel(existingPrefs.Model),
-		ModelPolicy:     existingPrefs.ModelPolicy,
-		EffortLevel:     existingPrefs.EffortLevel,
-		PermissionMode:  existingPrefs.PermissionMode,
-		GitCommitLang:   existingPrefs.GitCommitLang,
-		CodeCommentLang: existingPrefs.CodeCommentLang,
-		DocLang:         existingPrefs.DocLang,
+		UserName:         existingPrefs.UserName,
+		ConversationLang: existingPrefs.ConversationLang,
+		Model:            normalizeModel(existingPrefs.Model),
+		ModelPolicy:      existingPrefs.ModelPolicy,
+		EffortLevel:      existingPrefs.EffortLevel,
+		PermissionMode:   existingPrefs.PermissionMode,
+		GitCommitLang:    existingPrefs.GitCommitLang,
+		CodeCommentLang:  existingPrefs.CodeCommentLang,
+		DocLang:          existingPrefs.DocLang,
 	}
 	for _, field := range []*string{
 		&result.ConversationLang, &result.GitCommitLang,
