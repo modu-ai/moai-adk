@@ -115,8 +115,8 @@ func newestWorkIs(ctx context.Context, q querier, cardID, sha string) (bool, err
 // offerOf) and has not measured the same commit again since its latest such move. Going back
 // means the holder took the work back; the old receipt and the landed row are older than that, so
 // nothing in the record says the rework was done. The same commit measured again does count (the
-// trunk holds exactly what was measured, and Enqueue would refuse it a second time), under two
-// conditions. At least one passing run (green or gate) of it must follow the move back. And the
+// trunk holds exactly what was measured; Enqueue refuses to take a commit that fails this check, so
+// a landed row has normally passed it already), under two conditions. At least one passing run (green or gate) of it must follow the move back. And the
 // newest run of each kind about it decides, whenever that run was recorded, as it does for the
 // receipt and at Enqueue: a pass followed by a failure leaves a failure, a failure followed by a
 // pass is repaired, a kind never run for the commit is not a failure. A run that failed before
@@ -149,6 +149,24 @@ func landingStands(ctx context.Context, q querier, cardID, candidate string) (bo
 // enqueueReason is the reason Enqueue records on the transition that offers a candidate.
 func enqueueReason(sha string) string { return "enqueued " + sha }
 
+// offerMarkSQL is the evidence_mark of a transition row; a row without one counts all the card's
+// evidence as older (the one placeholder is the card id).
+const offerMarkSQL = `COALESCE(evidence_mark,(SELECT COALESCE(MAX(id),0) FROM evidence WHERE card_id=?))`
+
+// namedOfferOf finds the first transition into MERGING whose reason is Enqueue's reason for that
+// candidate: the proof that this commit was itself offered to the queue.
+func namedOfferOf(ctx context.Context, q querier, cardID, candidate string) (seq, mark int64, found bool, err error) {
+	switch err := q.QueryRowContext(ctx, `SELECT seq,`+offerMarkSQL+` FROM transitions WHERE card_id=? AND to_stage=? AND reason=? ORDER BY seq ASC LIMIT 1`,
+		cardID, cardID, string(core.StageMerging), enqueueReason(candidate)).Scan(&seq, &mark); {
+	case err == nil:
+		return seq, mark, true, nil
+	case err == sql.ErrNoRows:
+		return 0, 0, false, nil
+	default:
+		return 0, 0, false, fmt.Errorf("ledger: %w", err)
+	}
+}
+
 // offerOf finds where the candidate was first offered to the queue: the seq of that transition and
 // the evidence_mark it carries (the card's newest evidence when the offer was made). Only
 // Enqueue moves a card into MERGING (Move refuses it), so a transition into MERGING that names
@@ -160,15 +178,10 @@ func enqueueReason(sha string) string { return "enqueued " + sha }
 // transition names the candidate (a ledger that wrote another reason), the latest entry into
 // MERGING is the offer.
 func offerOf(ctx context.Context, q querier, cardID, candidate string) (seq, mark int64, found bool, err error) {
-	const markSQL = `COALESCE(evidence_mark,(SELECT COALESCE(MAX(id),0) FROM evidence WHERE card_id=?))`
-	switch err := q.QueryRowContext(ctx, `SELECT seq,`+markSQL+` FROM transitions WHERE card_id=? AND to_stage=? AND reason=? ORDER BY seq ASC LIMIT 1`,
-		cardID, cardID, string(core.StageMerging), enqueueReason(candidate)).Scan(&seq, &mark); {
-	case err == nil:
-		return seq, mark, true, nil
-	case err != sql.ErrNoRows:
-		return 0, 0, false, fmt.Errorf("ledger: %w", err)
+	if seq, mark, found, err = namedOfferOf(ctx, q, cardID, candidate); err != nil || found {
+		return seq, mark, found, err
 	}
-	switch err := q.QueryRowContext(ctx, `SELECT seq,`+markSQL+` FROM transitions WHERE card_id=? AND to_stage=? AND COALESCE(from_stage,'')<>? ORDER BY seq DESC LIMIT 1`,
+	switch err := q.QueryRowContext(ctx, `SELECT seq,`+offerMarkSQL+` FROM transitions WHERE card_id=? AND to_stage=? AND COALESCE(from_stage,'')<>? ORDER BY seq DESC LIMIT 1`,
 		cardID, cardID, string(core.StageMerging), string(core.StageMerging)).Scan(&seq, &mark); {
 	case err == sql.ErrNoRows:
 		return 0, 0, false, nil
@@ -290,6 +303,23 @@ func (s *Store) Enqueue(ctx context.Context, cardID string, epoch int64, candida
 			}
 			if _, err := tx.ExecContext(ctx, `INSERT INTO notes(kind,card_id,text,at) VALUES('decision',?,?,`+nowSQL+`)`, cardID, text); err != nil {
 				return fmt.Errorf("ledger: %w", err)
+			}
+		}
+		// A commit this card already offered, and was then taken back for rework, is taken again
+		// only with the run that finishing needs already recorded (see landingStands). Refusing it
+		// here, while the holder is still there to measure it, is the only place a refusal
+		// leaves a way out: after the landing, the same demand would strand the card in MERGING
+		// with the work in the trunk and no one left to answer it. A commit never offered before
+		// carries no mark, and a gate-only one is still taken (REQ-AFL-008).
+		if _, _, offered, err := namedOfferOf(ctx, tx, cardID, candidateSHA); err != nil {
+			return err
+		} else if offered {
+			stands, err := landingStands(ctx, tx, cardID, candidateSHA)
+			if err != nil {
+				return err
+			}
+			if !stands {
+				return fmt.Errorf("%w: commit %s was offered before %s was taken back for rework and needs a passing run recorded since, with no failing newest run", ErrEvidenceStale, candidateSHA, cardID)
 			}
 		}
 		if _, err := tx.ExecContext(ctx, `INSERT INTO merge_queue(card_id,candidate_sha,state,card_epoch,enqueued_at,updated_at) VALUES(?,?,'waiting',?,`+nowSQL+`,`+nowSQL+`)
