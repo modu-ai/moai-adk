@@ -10,11 +10,21 @@
 #
 # Usage (from the module root):  race-scope.sh --changed <file with one path per line>
 #
-# The script narrows ONLY when it can prove the narrowing, and otherwise closes
-# to all six. Narrowing needs every changed file to be a Go file in a package of
-# this module; a shard is selected when a changed package is among the
-# dependencies (test imports included) of the packages that shard tests.
-# Everything else — a non-Go file, go.mod/go.sum, a workflow or this script, a
+# What the answer rests on, stated exactly. The script's evidence is the IMPORT
+# graph (`go list -test -deps`, test imports included) plus a textual scan; it is
+# not a proof of independence. A shard is left out only when BOTH hold: (1) no
+# changed package is among the dependencies of the packages that shard tests, and
+# (2) nothing in the shard's module closure (its test files, and the sources of
+# every module package they depend on) matches READ_PATTERN — file reads or
+# walks, the working directory, commands, go:embed, testdata, "../". A shard
+# that matches (2) is selected for ANY Go change, because tests that read files
+# or run commands depend on things no import shows (audit round 2: rosterguard
+# walks the repository's Go sources). The pattern is textual and broad on
+# purpose; what it cannot recognise (a path built in another way, a generated
+# file, behaviour switched on by the environment) is a residual risk that stays
+# inside the advisory Race Test legs — the required Test job runs every package.
+# Narrowing also needs every changed file to be a Go file in a package of this
+# module. Everything else — a non-Go file, go.mod/go.sum, a workflow or this script, a
 # testdata or vendor path, a main package (tests build and run the command
 # binary), a directory that is no longer a package, an empty or unreadable
 # list, a failing `go list` — prints all six. It always exits 0: the answer,
@@ -118,33 +128,81 @@ hits() { # hits <import paths…>: 0 when a changed package is among the deps, 1
     return 1
 }
 
+# Patterns that mean a package (or a test, or code a test calls) can depend on
+# something an import does not show: files read or walked, the working directory,
+# commands run, files embedded, testdata, a relative parent path. A match is
+# deliberately broad — a false match only selects a shard that could have been
+# skipped, never the reverse.
+READ_PATTERN='filepath\.Walk|os\.(ReadFile|ReadDir|Open|OpenFile|Stat|Lstat|Getwd|Executable|DirFS)\(|ioutil\.|fs\.(WalkDir|ReadFile|ReadDir|Stat)\(|exec\.Command|runtime\.Caller\(|//go:embed|testdata|\.\./'
+
+# reads_outside_imports <import paths…>: 0 when the targets' module closure (their
+# tests and every module package they depend on) may depend on something outside the
+# import graph, 1 when no such sign was found, 2 when the listing failed.
+reads_outside_imports() {
+    local rows ip dir files embeds f
+    rows="$(go list -test -deps -f '{{.ImportPath}}|{{.Dir}}|{{join .GoFiles " "}} {{join .TestGoFiles " "}} {{join .XTestGoFiles " "}}|{{join .EmbedPatterns ","}}' "$@" 2> /dev/null)" || return 2
+    [ -n "$rows" ] || return 2
+    while IFS='|' read -r ip dir files embeds; do
+        case "$ip" in
+            "$mod" | "$mod"/* | "$mod "*) ;;
+            *) continue ;;
+        esac
+        if [ -n "$embeds" ]; then
+            echo "race-scope: $ip embeds files ($embeds)" >&2
+            return 0
+        fi
+        for f in $files; do
+            [ -f "$dir/$f" ] || continue
+            if grep -Eq -- "$READ_PATTERN" "$dir/$f"; then
+                echo "race-scope: $ip: $f matches a file/command/embed pattern" >&2
+                return 0
+            fi
+        done
+    done <<< "$rows"
+    return 1
+}
+
+# needs_shard <label> <import paths…>: 0 select the shard, 1 leave it out. A shard is
+# left out only when its closure shows no sign of reading outside its imports AND no
+# changed package is among its dependencies; a shard that cannot be shown independent
+# is selected for any Go change.
+needs_shard() {
+    local label="$1" rc
+    shift
+    reads_outside_imports "$@"
+    rc=$?
+    case $rc in
+        0)
+            echo "race-scope: $label may depend on more than its imports: selected" >&2
+            return 0
+            ;;
+        1) ;;
+        *) close_all "reading check of $label failed" ;;
+    esac
+    hits "$@"
+    rc=$?
+    case $rc in
+        0 | 1) return $rc ;;
+        *) close_all "dependency listing of $label failed" ;;
+    esac
+}
+
 out=","
 if printf '%s\n' "$test_ips" | grep -qxF -- "$cli_ip"; then
-    hits "$cli_ip"
-    case $? in
-        0) out="${out}cli-1,cli-2,cli-3,cli-4," ;;
-        1) ;;
-        *) close_all "dependency listing of $CLI_PKG failed" ;;
-    esac
+    if needs_shard cli "$cli_ip"; then out="${out}cli-1,cli-2,cli-3,cli-4,"; fi
 fi
 if printf '%s\n' "$test_ips" | grep -qxF -- "$rg_ip"; then
-    hits "$rg_ip"
-    case $? in
-        0) out="${out}rosterguard," ;;
-        1) ;;
-        *) close_all "dependency listing of $RG_PKG failed" ;;
-    esac
+    if needs_shard rosterguard "$rg_ip"; then out="${out}rosterguard,"; fi
 fi
 if [ -n "$rest_ips" ]; then
     # shellcheck disable=SC2086 # one import path per word, by construction
-    hits $rest_ips
-    case $? in
-        0) out="${out}remainder," ;;
-        1) ;;
-        *) close_all "dependency listing of the remainder packages failed" ;;
-    esac
+    if needs_shard remainder $rest_ips; then out="${out}remainder,"; fi
 fi
 
 [ "$out" != "," ] || close_all "no shard depends on the changed packages (not narrowing to nothing)"
-echo "race-scope: narrowed to $out" >&2
+if [ "$out" = "$ALL" ]; then
+    echo "race-scope: all six shards selected (none could be left out)" >&2
+else
+    echo "race-scope: narrowed to $out" >&2
+fi
 echo "shards=$out"

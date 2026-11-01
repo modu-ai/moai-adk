@@ -89,10 +89,15 @@ jobs:
   # PULL REQUEST need? Pull requests only; push, workflow_dispatch and ci/**
   # candidate runs skip this job, and a skipped, failed or empty answer means
   # every shard runs (the shard `if:` below reads an empty `shards` as "all").
-  # scripts/ci/race-scope.sh narrows only when every changed file is a Go file
-  # of a package of this module and the shard's tested packages depend on it;
-  # go.mod, workflows, testdata, non-Go files, main packages and anything it
-  # cannot judge close to all six. The go_code gate stays the shared filter
+  # scripts/ci/race-scope.sh reads the import graph plus a textual scan (it is
+  # not a proof): a shard is left out only when every changed file is a Go file
+  # of a package of this module, no changed package is among the shard's
+  # dependencies, and nothing in the shard's closure reads files, runs commands,
+  # embeds files or touches testdata; a shard that does is selected for any Go
+  # change. go.mod, workflows, testdata, non-Go files, main packages and
+  # anything it cannot judge run all six. What the scan cannot see stays a
+  # residual risk inside these advisory legs; the required Test job runs every
+  # package. The go_code gate stays the shared filter
   # (.github/test-input-filters.yml, read by `detect`); Lint, Build, Test
   # (ubuntu), Analyze and the Windows legs never read this job.
   # ---------------------------------------------------------------------------
