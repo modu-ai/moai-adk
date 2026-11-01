@@ -23,12 +23,26 @@ const DefaultFailureLogCap = 256 << 10
 // to look. It goes to a file in a directory only the user can read; the reason says that file's path.
 //
 // One file per card, candidate and kind, overwritten by the next failure of that kind. The content is stripped of
-// control characters and passed through core.Redact before it is written, as a best effort and not as the guarantee:
-// the guarantee is the file mode and that nothing else points at the content.
+// control characters and passed through core.Redact before it is written. That is a best effort and not a guarantee:
+// a secret can survive it, and any process of the same user can read the file. What this code does set is a 0600 file
+// in a 0700 directory that is not a link, no extended ACL on the file or the directory (macOS only: the output is
+// written after the ACL is cleared, and when clearing fails it is dropped), a cap per file and one cap for the whole
+// directory with the oldest files removed first. It does not cover the directories above Dir, ACLs on other
+// platforms, or a reader of the same user; the verb's help says that the logs can hold secrets.
 type FailureLog struct {
 	Dir      string // created with mode 0700
 	Cap      int    // bytes kept per file; DefaultFailureLogCap when not positive
 	TotalCap int64  // bytes all the *.log files of Dir may hold together; DefaultFailureLogTotalCap when not positive
+
+	clearACL func(path string) error // clearExtendedACL when nil; a test replaces it to make clearing fail
+}
+
+// stripACL removes the extended ACL of path, by the platform's means.
+func (l *FailureLog) stripACL(path string) error {
+	if l.clearACL != nil {
+		return l.clearACL(path)
+	}
+	return clearExtendedACL(path)
 }
 
 // DefaultFailureLogTotalCap is how many bytes all the logs of one directory may hold together: when a write takes
@@ -88,7 +102,13 @@ func (l *FailureLog) Write(card, candidate, kind string, out []byte) (string, er
 		return "", err
 	}
 	discard := func() { _ = tmp.Close(); _ = os.Remove(tmp.Name()) }
+	// The output is written only after the file is known to carry no ACL: when clearing fails, the output is dropped
+	// and the caller records that logging failed.
 	if err := tmp.Chmod(0o600); err != nil {
+		discard()
+		return "", err
+	}
+	if err := l.stripACL(tmp.Name()); err != nil {
 		discard()
 		return "", err
 	}
@@ -126,6 +146,10 @@ func (l *FailureLog) prepareDir() error {
 	}
 	if fi.Mode()&os.ModeSymlink != 0 || !fi.IsDir() {
 		return fmt.Errorf("mergeq: the failure log directory %s is a link or not a directory", l.Dir)
+	}
+	// Before anything is made in the directory: a file made in a directory with an inheritable ACL starts with it.
+	if err := l.stripACL(l.Dir); err != nil {
+		return err
 	}
 	return os.Chmod(l.Dir, 0o700) // MkdirAll honours the umask; an existing directory keeps whatever mode it had
 }

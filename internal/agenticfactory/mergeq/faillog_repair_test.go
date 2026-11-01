@@ -5,6 +5,8 @@ package mergeq
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -114,6 +116,46 @@ func TestFailureLog_WritersOfTheSameKeyAllSucceedAndNeverMixTheirContent(t *test
 		if ln != lines[0] {
 			t.Fatalf("the log mixes the content of two writers: %q and %q", lines[0], ln)
 		}
+	}
+}
+
+// N22: when the ACL of the file or of the directory cannot be cleared, the output is dropped (nothing is written, no
+// temporary file is left), and the failure is recorded with a reason that says logging failed.
+func TestFailureLog_WhenTheACLCannotBeClearedTheOutputIsDroppedAndTheReasonSaysSo(t *testing.T) {
+	for _, c := range []struct {
+		name string
+		fail func(path string) bool
+	}{
+		{"file", func(p string) bool { return strings.HasPrefix(filepath.Base(p), failureLogTmpPrefix) }},
+		{"directory", func(p string) bool { return !strings.HasPrefix(filepath.Base(p), failureLogTmpPrefix) }},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			dir := filepath.Join(t.TempDir(), "gate-logs")
+			clear := func(p string) error {
+				if c.fail(p) {
+					return errors.New("cannot clear")
+				}
+				return nil
+			}
+			l := &FailureLog{Dir: dir, clearACL: clear}
+			if path, err := l.Write("t1", "c", "gate", []byte("output "+logSecret+"\n")); err == nil {
+				t.Errorf("a log was written although the ACL could not be cleared: %s", path)
+			}
+			if entries, _ := os.ReadDir(dir); len(entries) != 0 {
+				t.Errorf("the directory holds %v, want nothing (the output is dropped, no temporary file stays)", entries)
+			}
+
+			repoDir := repo(t)
+			cand := candidate(t, repoDir, "c1", "a.txt", "a\n")
+			m := newMerger(t, repoDir, &fakeQueue{}, func(context.Context, string) error {
+				return &GateError{Gate: "g", Cause: errors.New("exit status 1"), Output: []byte("output " + logSecret + "\n"), Total: 8}
+			})
+			m.Log = &FailureLog{Dir: dir, clearACL: clear}
+			res, err := m.Land(context.Background(), "t1", cand)
+			if err != nil || res.Outcome != OutcomeFailed || !strings.Contains(res.Reason, "logging failed") || strings.Contains(res.Reason, logSecret) {
+				t.Errorf("%+v %v: the failure must be recorded, the reason must say that logging failed and hold no output", res, err)
+			}
+		})
 	}
 }
 
