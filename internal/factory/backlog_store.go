@@ -200,6 +200,17 @@ const (
 	// waits on the related card. Consumed by the same two paths as blocks —
 	// WaitsOnOf is the single direction normalization.
 	BacklogRelationDepends = "depends"
+	// BacklogRelationAttachedText records text a caller attached to an
+	// existing card instead of creating a second card for it (`todo add
+	// --attach`). The subject is the existing card, the related id is empty,
+	// and the text is the note. Not writable through `todo relate`.
+	BacklogRelationAttachedText = "attached-text"
+	// BacklogRelationIndependentScope records the reason a caller gave for
+	// opening a new card although an active card shares its PR/issue number
+	// (`todo add --independent-scope`). The subject is the new card, the
+	// related id the active card, and the reason is the note. Not writable
+	// through `todo relate`.
+	BacklogRelationIndependentScope = "independent-scope"
 )
 
 // Source values a finding may carry.

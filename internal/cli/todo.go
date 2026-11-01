@@ -702,6 +702,11 @@ type todoAddScan struct {
 	haveSizeLines bool
 	files         string
 	haveFiles     bool
+	// Card t2011: the pre-creation lookup's two judgments (todo_add_ref_guard.go).
+	attach           string
+	haveAttach       bool
+	independentScope string
+	haveIndependent  bool
 }
 
 // scanTodoAddArgs separates the known flags from the card text in the raw
@@ -795,6 +800,34 @@ func scanTodoAddArgs(raw []string) (*todoAddScan, error) {
 					}
 					scan.files = raw[i]
 				}
+			case "--attach":
+				if scan.haveAttach {
+					return nil, fmt.Errorf("flag repeated: %s", name)
+				}
+				scan.haveAttach = true
+				if hasValue {
+					scan.attach = value
+				} else {
+					i++
+					if i >= len(raw) {
+						return nil, fmt.Errorf("flag needs an argument: %s", name)
+					}
+					scan.attach = raw[i]
+				}
+			case "--independent-scope":
+				if scan.haveIndependent {
+					return nil, fmt.Errorf("flag repeated: %s", name)
+				}
+				scan.haveIndependent = true
+				if hasValue {
+					scan.independentScope = value
+				} else {
+					i++
+					if i >= len(raw) {
+						return nil, fmt.Errorf("flag needs an argument: %s", name)
+					}
+					scan.independentScope = raw[i]
+				}
 			case "--classification-file":
 				scan.haveClassFile = true
 				if hasValue {
@@ -869,8 +902,23 @@ func newTodoAddCmd() *cobra.Command {
 			// same presentation and writes nothing — the queue file stays
 			// byte-identical, no id is consumed, and an exact duplicate is
 			// reported as a would-be refusal instead of refusing.
+			guard := todoAddGuard{IndependentScope: scan.independentScope, HaveIndependentScope: scan.haveIndependent}
+			if err := guard.validate(); err != nil {
+				return err
+			}
+			if scan.haveAttach {
+				switch {
+				case scan.pick, scan.haveIndependent, scan.force:
+					return fmt.Errorf("todo add: --attach creates no card, so it cannot be combined with --pick, --force or --independent-scope")
+				case strings.TrimSpace(scan.attach) == "":
+					return fmt.Errorf("todo add --attach: a card id is required")
+				}
+			}
 			if scan.dryRun {
-				return runTodoAddDryRun(cmd, text)
+				return runTodoAddDryRun(cmd, text, scan.attach, scan.haveAttach, guard)
+			}
+			if scan.haveAttach {
+				return runTodoAttachRoot(resolveTodoQueueRoot(), cmd, scan.attach, text)
 			}
 			// REQ-TCD-004: the supplied classification is validated BEFORE
 			// the locked write — an out-of-set value or the jev identity is
@@ -917,9 +965,9 @@ func newTodoAddCmd() *cobra.Command {
 				}
 			}
 			if scan.pick {
-				return runTodoAddPick(cmd, newTodoStore(), text, scan.force, dec, iss)
+				return runTodoAddPick(cmd, newTodoStore(), text, scan.force, dec, iss, guard)
 			}
-			return runTodoAddAppendIss(cmd, text, scan.force, dec, iss)
+			return runTodoAddAppendIss(cmd, text, scan.force, dec, iss, guard)
 		},
 	}
 	cmd.Flags().BoolVar(new(bool), "pick", false,
@@ -936,6 +984,10 @@ func newTodoAddCmd() *cobra.Command {
 		"Comma-separated expected files")
 	cmd.Flags().BoolVar(new(bool), "force", false,
 		"Admit a card the analyser reads as an exact duplicate, recording that it was forced")
+	cmd.Flags().StringVar(new(string), "attach", "",
+		"Card id: record the text as one finding on that active card instead of creating a card (changes no card field; a repeat records nothing more)")
+	cmd.Flags().StringVar(new(string), "independent-scope", "",
+		"Reason this text is separate scope from the active card(s) it shares a PR/issue #N with; required to add such a card, recorded as a finding")
 	cmd.Flags().StringVar(new(string), "classification-file", "",
 		"Classification judgement JSON (<path> or - for stdin); validated against the closed value sets before the write")
 	return cmd
@@ -947,14 +999,14 @@ func newTodoAddCmd() *cobra.Command {
 // fallthrough path has no flags. The presentation renders to stderr here;
 // the MCP surface takes the returned text instead.
 func runTodoAddAppend(cmd *cobra.Command, text string, force bool, dec factory.CardDecider) error {
-	return runTodoAddAppendIss(cmd, text, force, dec, nil)
+	return runTodoAddAppendIss(cmd, text, force, dec, nil, todoAddGuard{})
 }
 
 // runTodoAddAppendIss is the issuance-carrying form: the add surface with
 // flags passes the resolved attributes; the fallthrough and MCP surfaces
 // run the nil form.
-func runTodoAddAppendIss(cmd *cobra.Command, text string, force bool, dec factory.CardDecider, iss *factory.BacklogIssuance) error {
-	presentation, err := runTodoAddAppendRoot(resolveTodoQueueRoot(), cmd, text, force, dec, iss)
+func runTodoAddAppendIss(cmd *cobra.Command, text string, force bool, dec factory.CardDecider, iss *factory.BacklogIssuance, guard todoAddGuard) error {
+	presentation, err := runTodoAddAppendRootGuarded(resolveTodoQueueRoot(), cmd, text, force, dec, iss, guard)
 	if err == nil && presentation != "" {
 		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), presentation)
 	}
@@ -969,6 +1021,17 @@ func runTodoAddAppendIss(cmd *cobra.Command, text string, force bool, dec factor
 // REQ-TCI-002/005): the CLI prints it to stderr, the MCP tool appends it
 // after the result's first line; "" means nothing fired.
 func runTodoAddAppendRoot(root string, cmd *cobra.Command, text string, force bool, dec factory.CardDecider, iss *factory.BacklogIssuance) (string, error) {
+	return runTodoAddAppendRootGuarded(root, cmd, text, force, dec, iss, todoAddGuard{})
+}
+
+// runTodoAddAppendRootGuarded is runTodoAddAppendRoot carrying the
+// pre-creation lookup's independent-scope judgment (todo_add_ref_guard.go);
+// the CLI and the MCP todo_add tool both call it, so the two surfaces cannot
+// drift.
+func runTodoAddAppendRootGuarded(root string, cmd *cobra.Command, text string, force bool, dec factory.CardDecider, iss *factory.BacklogIssuance, guard todoAddGuard) (string, error) {
+	if err := guard.validate(); err != nil {
+		return "", err
+	}
 	if dec == nil {
 		// SPEC-TCD-LLM-DECIDER-001 REQ-TLD-002: the MCP todo_add surface
 		// resolves the same standing decider the CLI path resolves, so the
@@ -1018,7 +1081,7 @@ func runTodoAddAppendRoot(root string, cmd *cobra.Command, text string, force bo
 			return err
 		}
 		var mutErr error
-		item, pos, mutErr = appendAnalyzedCard(rec, text, factory.BacklogStateQueued, force)
+		item, pos, mutErr = appendAnalyzedCardGuarded(rec, text, factory.BacklogStateQueued, force, guard)
 		if mutErr != nil {
 			return mutErr
 		}
@@ -1098,7 +1161,7 @@ func attachIssuance(rec *factory.BacklogRecord, cardID string, iss *factory.Back
 // presentation with the floor lifted (design §3.2 — top-3 regardless of
 // score), nothing written, and an exact duplicate reported as a would-be
 // refusal instead of refusing.
-func runTodoAddDryRun(cmd *cobra.Command, text string) error {
+func runTodoAddDryRun(cmd *cobra.Command, text, attach string, haveAttach bool, guard todoAddGuard) error {
 	root := resolveTodoQueueRoot()
 	rec, err := todoStoreAt(root).LoadPure()
 	if err != nil {
@@ -1110,6 +1173,32 @@ func runTodoAddDryRun(cmd *cobra.Command, text string) error {
 	}
 	if match := factory.ClassifyCardText(text, rec.Items); match.Kind == factory.BacklogMatchExact {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "a real add would refuse: %s already holds this card\n", match.ID)
+	}
+	// Card t2011: the same lookup the locked write runs, reported and never
+	// acted on.
+	if haveAttach {
+		switch id := normalizeTodoRef(attach); {
+		case !todoCardExists(rec, id):
+			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "a real --attach would refuse: no card %s in the queue\n", id)
+		default:
+			var state factory.BacklogState
+			for _, it := range rec.Items {
+				if it.ID == id {
+					state = it.State
+				}
+			}
+			if !todoActiveState(state) {
+				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "a real --attach would refuse: card %s is %s, not an active card\n", id, state)
+			} else {
+				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "a real --attach would record one finding on %s (%s) and create no card\n", id, state)
+			}
+		}
+	} else if sharing := activeCardsSharingRef(rec, text); len(sharing) > 0 {
+		if strings.TrimSpace(guard.IndependentScope) == "" {
+			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "a real add would refuse: %v\n", todoRefRefusal(sharing))
+		} else {
+			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "a real add would admit the card on --independent-scope and record the reason against %s\n", sharing[0].ID)
+		}
 	}
 	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "dry-run: nothing was written")
 	return nil
@@ -1126,7 +1215,7 @@ func runTodoAddDryRun(cmd *cobra.Command, text string) error {
 // `--pick` just picked. The issuance attributes ride the same locked write
 // and the same validations as the append path (card t1454 card-review r2
 // finding 7).
-func runTodoAddPick(cmd *cobra.Command, store *factory.BacklogStore, text string, force bool, dec factory.CardDecider, iss *factory.BacklogIssuance) error {
+func runTodoAddPick(cmd *cobra.Command, store *factory.BacklogStore, text string, force bool, dec factory.CardDecider, iss *factory.BacklogIssuance, guard todoAddGuard) error {
 	if dec == nil {
 		dec = todoCardDecider
 	}
@@ -1149,7 +1238,7 @@ func runTodoAddPick(cmd *cobra.Command, store *factory.BacklogStore, text string
 			return err
 		}
 		var mutErr error
-		item, _, mutErr = appendAnalyzedCard(rec, text, factory.BacklogStatePicked, force)
+		item, _, mutErr = appendAnalyzedCardGuarded(rec, text, factory.BacklogStatePicked, force, guard)
 		if mutErr != nil {
 			return mutErr
 		}

@@ -36,11 +36,29 @@ import (
 //
 // The returned position counts queued cards, matching the store's own Add.
 func appendAnalyzedCard(rec *factory.BacklogRecord, text string, state factory.BacklogState, force bool) (factory.BacklogItem, int, error) {
+	return appendAnalyzedCardGuarded(rec, text, state, force, todoAddGuard{})
+}
+
+// appendAnalyzedCardGuarded is appendAnalyzedCard plus the pre-creation
+// lookup (todo_add_ref_guard.go): a text sharing a PR/issue `#N` with an
+// active card is refused — naming that card and its state, before the id is
+// issued — unless the guard carries an independent-scope reason, which is then
+// recorded as a finding on the new card. `force` never bypasses it: it answers
+// the exact-text question only. A text with no `#N` (the codemaps-debt card
+// among them) is untouched by the lookup.
+func appendAnalyzedCardGuarded(rec *factory.BacklogRecord, text string, state factory.BacklogState, force bool, guard todoAddGuard) (factory.BacklogItem, int, error) {
 	match := factory.ClassifyCardText(text, rec.Items)
 	if match.Kind == factory.BacklogMatchExact && !force {
 		return factory.BacklogItem{}, 0, fmt.Errorf(
 			"todo add: %s already holds this card (%q) — pass --force to add it anyway",
 			match.ID, todoTextPrefix(todoCardText(rec, match.ID)))
+	}
+	if err := guard.validate(); err != nil {
+		return factory.BacklogItem{}, 0, err
+	}
+	sharing := activeCardsSharingRef(rec, text)
+	if len(sharing) > 0 && strings.TrimSpace(guard.IndependentScope) == "" {
+		return factory.BacklogItem{}, 0, todoRefRefusal(sharing)
 	}
 
 	rec.LastSeq++
@@ -57,6 +75,19 @@ func appendAnalyzedCard(rec *factory.BacklogRecord, text string, state factory.B
 		item.PickedAt = todoStampNow()
 	}
 	rec.Items = append(rec.Items, item)
+
+	// The caller's independent-scope judgment is recorded against every active
+	// card it was judged independent of — a record, never an inference.
+	for _, s := range sharing {
+		rec.AppendFindingOnce(factory.BacklogFinding{
+			SubjectID: item.ID,
+			RelatedID: s.ID,
+			Relation:  factory.BacklogRelationIndependentScope,
+			Source:    factory.BacklogSourceAgent,
+			Note:      strings.TrimSpace(guard.IndependentScope),
+			At:        item.AddedAt,
+		})
+	}
 
 	// The finding names the NEW card as the subject: it is the card whose
 	// admission the finding explains. A finding is a record and nothing

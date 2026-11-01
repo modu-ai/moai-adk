@@ -29,8 +29,10 @@ import (
 func registerTodoMCPTools(add func(name string, tool mcp.Tool, handler server.ToolHandlerFunc)) {
 	add("todo_add", mcp.NewTool(
 		"todo_add",
-		mcp.WithDescription("Append one card to the backlog queue. Same implementation as `moai todo add` (without --pick/--force). "+projectRootDesc),
+		mcp.WithDescription("Append one card to the backlog queue. Same implementation as `moai todo add` (without --pick/--force). A text pointing at a PR/issue #N that an active card (queued, picked, hold) already points at is refused, naming that card; pass attach to record the text as one finding on that card, or independent_scope with a reason to open a new card anyway. "+projectRootDesc),
 		mcp.WithString("text", mcp.Required(), mcp.Description("The card text.")),
+		mcp.WithString("attach", mcp.Description("Card id: record the text as one finding on that active card instead of creating a card (same as `todo add --attach`).")),
+		mcp.WithString("independent_scope", mcp.Description("Reason the text is separate scope from the active card(s) sharing its #N; required to add such a card, recorded as a finding (same as `todo add --independent-scope`). An empty value is refused.")),
 		projectRootOption(),
 		mcp.WithReadOnlyHintAnnotation(false),
 	), handleTodoAdd)
@@ -103,7 +105,20 @@ func handleTodoAdd(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolRes
 		return toolErr("todo_add", errors.New("todo add: text must be non-empty")), nil
 	}
 	out, errBuf := &bytes.Buffer{}, &bytes.Buffer{}
-	presentation, err := runTodoAddAppendRoot(root, newBufferedCommand(out, errBuf), text, false, todoCardDecider, nil)
+	args := req.GetArguments()
+	attach, haveAttach := args["attach"].(string)
+	scope, haveScope := args["independent_scope"].(string)
+	guard := todoAddGuard{IndependentScope: scope, HaveIndependentScope: haveScope}
+	if haveAttach {
+		if haveScope || strings.TrimSpace(attach) == "" {
+			return toolErr("todo_add", errors.New("todo add: attach needs a card id and cannot be combined with independent_scope")), nil
+		}
+		if err := runTodoAttachRoot(root, newBufferedCommand(out, errBuf), attach, text); err != nil {
+			return toolErr("todo_add", err), nil
+		}
+		return mcp.NewToolResultText(strings.TrimRight(out.String(), "\n")), nil
+	}
+	presentation, err := runTodoAddAppendRootGuarded(root, newBufferedCommand(out, errBuf), text, false, todoCardDecider, nil, guard)
 	if err != nil {
 		return toolErr("todo_add", err), nil
 	}

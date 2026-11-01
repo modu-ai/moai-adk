@@ -157,8 +157,14 @@ var permittedFlagAdditions = map[string][]string{
 	// classifies through the deterministic default decider, behaving as the
 	// frozen surface says.
 	"add <text>": {
-		"classification-file=string()",
-		"dry-run=bool(false)", "files=string()", "origin=string()",
+		// attach / independent-scope — card t2011: the pre-creation lookup's two
+		// stated judgments (todo_add_ref_guard.go). A text sharing a PR/issue
+		// #N with an active card is refused; --attach records it as one finding
+		// on that card, --independent-scope admits a new card and records the
+		// reason. Opt-in: a text with no #N, or whose #N no active card
+		// carries, is added exactly as before.
+		"attach=string()", "classification-file=string()",
+		"dry-run=bool(false)", "files=string()", "independent-scope=string()", "origin=string()",
 		"parent=string()", "size-lines=string()",
 	},
 	// relate --disposition — SPEC-TODO-CARD-ISSUANCE-001 M2/M3
