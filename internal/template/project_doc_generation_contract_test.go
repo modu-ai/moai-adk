@@ -117,6 +117,7 @@ func TestProjectActivationTargetAndMirrors(t *testing.T) {
 	}
 
 	navigator := read(filepath.Join(skills, "moai-workflow-project", "references", "navigator.md"))
+	// home-guard:allow searches a skill document for the literal, touches no home directory
 	if strings.Contains(navigator, `"~/`) {
 		t.Errorf("navigator.md quotes a tilde path; bash does not expand ~ inside double quotes")
 	}
