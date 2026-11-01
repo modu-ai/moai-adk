@@ -386,6 +386,32 @@ func TestAFTransition_N66AFailureAboutAnotherCommitWhileTheGateRunsDoesNotStopTh
 	}
 }
 
+// E6 (decided by the operator, unchanged by the transition group): a candidate that is the trunk's own commit lands as
+// "already in the trunk" and the card reaches DONE. The new last check sits on the path that moves the trunk, which this
+// landing does not take.
+func TestAFTransition_E6ACandidateThatIsTheTrunksOwnCommitStillLandsAsAlreadyInTheTrunk(t *testing.T) {
+	afSkipWithoutSh(t)
+	a := afTrMeasured(t, afTrAlive)
+	// the card is taken back, and offered again with the commit the trunk already is
+	a.verb("move", "t1", "--epoch", a.e2, "--stage", "REVIEWING")
+	base := afGit(t, a.repo, "rev-parse", mergeq.DefaultTrunk)
+	a.measure(base)
+	a.verb("enqueue", "t1", "--epoch", a.e2, "--candidate", base, "--repo", a.repo)
+	out := a.verb("land", "t1", "--repo", a.repo, "--gate", "true")
+	if !strings.Contains(out, `"outcome":"landed"`) || !strings.Contains(out, "already in the trunk") {
+		t.Fatalf("land of the trunk's own commit: %s", out)
+	}
+	if got := afGit(t, a.repo, "rev-parse", mergeq.DefaultTrunk); got != base {
+		t.Errorf("the trunk moved from %s to %s", base, got)
+	}
+	if err := a.tryFinish(); err != nil {
+		t.Fatalf("the card is refused DONE: %v", err)
+	}
+	if got := a.stage(); got != core.StageDone {
+		t.Errorf("stage %s, want DONE", got)
+	}
+}
+
 // ---- N69, first bullet: the refusal names commands that run as printed ----------------------------------------------------
 
 var (
