@@ -25,9 +25,12 @@ The hash subject set and tier-conditional inclusion are owned by the canonical
 contract in .claude/rules/moai/workflow/spec-workflow-detail.md § Report Persistence
 ("Plan-artifact hash subject list (Go verbatim)"); consult that contract for the
 authoritative subject list rather than restating it here. The Go implementation
-is `internal/runtime/audit_cache.go` `ComputeHash`, which hashes the
-whitespace-normalized UTF-8 content of each present subject file (missing files
-are skipped, making inclusion tier-conditional by construction).
+is `internal/runtime/audit_cache.go` `ComputeHash`, which hashes the exact bytes
+of each present subject file, framed by file name, length, and NUL separators
+(missing files are skipped, making inclusion tier-conditional by construction).
+No whitespace or newline normalization is part of the identity: a whitespace-only
+edit to a YAML or shell example changes the hash. Do not compute the hash by hand;
+the Go helper is the single implementation.
 
 Store hash as `plan_artifact_hash` for Step 2 cache lookup.
 
@@ -42,8 +45,21 @@ single authoritative skip contract (the three conditions: verdict PASS, score
 Gate skip policy. This step CITES that contract — it MUST NOT restate a
 divergent condition set.
 
-Read `.moai/reports/plan-audit/<SPEC-ID>-<YYYY-MM-DD>.md` (today's date) and
-apply the canonical three-condition skip predicate. The Go helper
+Read the highest-numbered plan-phase review file
+`.moai/reports/plan-audit/<SPEC-ID>-review-<N>.md`, exactly as
+`internal/runtime.ResolveLatestPlanAudit` selects it (the largest integer N wins; a
+name that does not parse is ignored), and apply the canonical three-condition skip
+predicate to that file's verdict and its recorded `plan_artifact_hash`.
+Three surfaces carry different roles and never substitute for one another:
+
+| Surface | Role |
+|---|---|
+| Date-stamped run-gate report `.moai/reports/plan-audit/<SPEC-ID>-<YYYY-MM-DD>.md` | history only, append-only; never a cache key or a verdict source |
+| Highest-numbered review-N file | the verdict and the cache source |
+| Admission evidence such as the gate receipt | separate; a cache hit does not replace the gate receipt |
+
+Only the highest-numbered review counts, so a later `FAIL` review ends the hit even
+when an earlier review was `PASS`. The Go helper
 `internal/runtime.SkipEligibleByScore(tier, score)` codifies condition 2
 (per-tier PASS threshold: S 0.75 / M 0.80 / L 0.85; the retired flat `≥ 0.90`
 predicate is NOT consulted).
