@@ -1,12 +1,13 @@
 // ci_race_scope_test.go: the PR race-shard scope of ci.yml (card t2012).
 //
 // scripts/ci/race-scope.sh decides which of the six advisory Race Test shards a
-// pull request needs: cli-1..cli-4 (internal/cli), rosterguard, remainder. It
-// narrows only when it can prove the narrowing: every changed file is a Go file
-// that belongs to a package of the module, and a shard runs when the changed
-// package is among the (test-inclusive) dependencies of a package the shard
-// tests. Anything it cannot judge (a non-Go file, go.mod, a workflow, testdata,
-// a deleted package, an empty list, a failing `go list`) runs all six.
+// pull request needs: cli-1..cli-4 (internal/cli), rosterguard, remainder. Its
+// evidence is the import graph plus a textual scan, not a proof: a shard is left
+// out only when no changed package is among its (test-inclusive) dependencies AND
+// nothing in its module closure reads files, runs commands, embeds files or
+// touches testdata (a shard that does is selected for any Go change). Anything
+// it cannot judge (a non-Go file, go.mod, a workflow, testdata, a deleted
+// package, an empty list, a failing `go list`) runs all six.
 //
 // Every row runs the real script inside a scratch Go module that mirrors the
 // shard layout (internal/cli, internal/harness/rosterguard, shared and leaf
@@ -35,13 +36,15 @@ func rsFixture(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
 	files := map[string]string{
-		"go.mod":                                  "module example.com/fx\n\ngo 1.21\n",
-		"internal/shared/shared.go":               "package shared\n\nfunc S() int { return 1 }\n",
-		"internal/shared/shared_test.go":          "package shared\n\nimport \"testing\"\n\nfunc TestS(t *testing.T) { _ = S() }\n",
-		"internal/cli/cli.go":                     "package cli\n\nimport \"example.com/fx/internal/shared\"\n\nfunc C() int { return shared.S() }\n",
-		"internal/cli/cli_test.go":                "package cli\n\nimport \"testing\"\n\nfunc TestC(t *testing.T) { _ = C() }\n",
-		"internal/harness/rosterguard/rg.go":      "package rosterguard\n\nfunc R() int { return 1 }\n",
-		"internal/harness/rosterguard/rg_test.go": "package rosterguard\n\nimport (\n\t\"testing\"\n\n\t\"example.com/fx/internal/tmpl\"\n)\n\nfunc TestR(t *testing.T) { _ = R() + tmpl.T() }\n",
+		"go.mod":                             "module example.com/fx\n\ngo 1.21\n",
+		"internal/shared/shared.go":          "package shared\n\nfunc S() int { return 1 }\n",
+		"internal/shared/shared_test.go":     "package shared\n\nimport \"testing\"\n\nfunc TestS(t *testing.T) { _ = S() }\n",
+		"internal/cli/cli.go":                "package cli\n\nimport \"example.com/fx/internal/shared\"\n\nfunc C() int { return shared.S() }\n",
+		"internal/cli/cli_test.go":           "package cli\n\nimport \"testing\"\n\nfunc TestC(t *testing.T) { _ = C() }\n",
+		"internal/harness/rosterguard/rg.go": "package rosterguard\n\nfunc R() int { return 1 }\n",
+		// rosterguard scans the repository's Go sources, an edge the import graph
+		// cannot see (the real package does this with filepath.WalkDir).
+		"internal/harness/rosterguard/rg_test.go": "package rosterguard\n\nimport (\n\t\"io/fs\"\n\t\"path/filepath\"\n\t\"testing\"\n\n\t\"example.com/fx/internal/tmpl\"\n)\n\nfunc TestR(t *testing.T) {\n\t_ = filepath.WalkDir(\"../../..\", func(string, fs.DirEntry, error) error { return nil })\n\t_ = R() + tmpl.T()\n}\n",
 		"internal/tmpl/tmpl.go":                   "package tmpl\n\nfunc T() int { return 1 }\n",
 		"internal/tmpl/tmpl_test.go":              "package tmpl\n\nimport \"testing\"\n\nfunc TestT(t *testing.T) { _ = T() }\n",
 		"internal/leaf/leaf.go":                   "package leaf\n\nfunc L() int { return 1 }\n",
@@ -102,13 +105,19 @@ func TestRaceScopeNarrowsOnlyWhatItCanProve(t *testing.T) {
 		changed []string
 		want    string
 	}{
-		{"leaf_package_only_remainder", []string{"internal/leaf/leaf.go"}, ",remainder,"},
-		{"leaf_test_file_only_remainder", []string{"internal/leaf/leaf_test.go"}, ",remainder,"},
-		{"cli_package_only_cli_shards", []string{"internal/cli/cli.go"}, rsCLI},
+		// The rosterguard shard is selected for EVERY .go change: rosterguard scans
+		// the whole repository's Go sources with WalkDir, a file-reading edge the
+		// import graph cannot see (audit round 2, codex receipt
+		// rcpt-3fdb738b943e3a856025b27e: changing internal/cli/agentlint/agent_lint.go
+		// dropped it).
+		{"leaf_package_selects_remainder_and_rosterguard", []string{"internal/leaf/leaf.go"}, ",rosterguard,remainder,"},
+		{"leaf_test_file_selects_remainder_and_rosterguard", []string{"internal/leaf/leaf_test.go"}, ",rosterguard,remainder,"},
+		{"cli_package_selects_cli_and_rosterguard", []string{"internal/cli/cli.go"}, ",cli-1,cli-2,cli-3,cli-4,rosterguard,"},
 		{"rosterguard_package_only_rosterguard", []string{"internal/harness/rosterguard/rg.go"}, ",rosterguard,"},
 		{"tmpl_is_a_test_import_of_rosterguard", []string{"internal/tmpl/tmpl.go"}, ",rosterguard,remainder,"},
-		{"shared_package_reaches_cli_and_remainder", []string{"internal/shared/shared.go"}, ",cli-1,cli-2,cli-3,cli-4,remainder,"},
+		{"shared_package_reaches_cli_remainder_and_rosterguard", []string{"internal/shared/shared.go"}, ",cli-1,cli-2,cli-3,cli-4,rosterguard,remainder,"},
 		{"two_packages_union", []string{"internal/leaf/leaf.go", "internal/harness/rosterguard/rg.go"}, ",rosterguard,remainder,"},
+		{"file_read_only_by_rosterguard_still_selects_it", []string{"internal/other/other.go"}, ",rosterguard,remainder,"},
 	}
 	for _, row := range rows {
 		t.Run(row.name, func(t *testing.T) {
@@ -121,6 +130,100 @@ func TestRaceScopeNarrowsOnlyWhatItCanProve(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestRaceScopeSelectsEveryShardItCannotProveIndependent (audit round 2, F1): a
+// shard whose packages, tests or dependencies may read files, run commands, embed
+// files or touch testdata is selected for ANY Go change, because the import graph
+// cannot show what such code reads. Each row plants one such primitive and changes
+// a package the shard does not import; the shard must still be selected. Where no
+// primitive exists (the leaf-only row of the narrowing test) the shard stays out.
+func TestRaceScopeSelectsEveryShardItCannotProveIndependent(t *testing.T) {
+	prims := []struct{ name, imports, stmt string }{
+		{"os_readfile", `"os"`, `_, _ = os.ReadFile("x")`},
+		{"os_readdir", `"os"`, `_, _ = os.ReadDir(".")`},
+		{"os_stat", `"os"`, `_, _ = os.Stat("x")`},
+		{"os_getwd", `"os"`, `_, _ = os.Getwd()`},
+		{"os_open", `"os"`, `_, _ = os.Open("x")`},
+		{"filepath_walk", `"path/filepath"`, `_ = filepath.Walk(".", nil)`},
+		{"filepath_walkdir", `"path/filepath"`, `_ = filepath.WalkDir(".", nil)`},
+		{"exec_command", `"os/exec"`, `_ = exec.Command("true")`},
+		{"runtime_caller", `"runtime"`, `_, _, _, _ = runtime.Caller(0)`},
+		{"testdata_literal", ``, `_ = "testdata/golden.txt"`},
+	}
+	// The primitive sits in a TEST file of the shard's own package.
+	for _, p := range prims {
+		for _, c := range []struct {
+			shard, pkg, name, pkgDir string
+			changed                  string
+			want                     string
+		}{
+			{"cli", "cli", "cli_test_file", "internal/cli", "internal/leaf/leaf.go", ",cli-1,cli-2,cli-3,cli-4,rosterguard,remainder,"},
+			{"remainder", "leaf", "remainder_test_file", "internal/leaf", "internal/cli/cli.go", ",cli-1,cli-2,cli-3,cli-4,rosterguard,remainder,"},
+		} {
+			t.Run(c.name+"/"+p.name, func(t *testing.T) {
+				imp := ""
+				if p.imports != "" {
+					imp = "import (\n\t\"testing\"\n\t" + p.imports + "\n)\n"
+				} else {
+					imp = "import \"testing\"\n"
+				}
+				body := "package " + c.pkg + "\n\n" + imp + "\nfunc TestZZReader(t *testing.T) { " + p.stmt + " }\n"
+				shards, stderr, exit := rsRun(t, rsFixture(t), []string{c.changed}, func(dir string) {
+					if err := os.WriteFile(filepath.Join(dir, c.pkgDir, "zz_reader_test.go"), []byte(body), 0o644); err != nil {
+						t.Fatal(err)
+					}
+				})
+				if exit != 0 || shards != "shards="+c.want {
+					t.Errorf("shards = %q (exit %d), want %q\n%s", shards, exit, "shards="+c.want, stderr)
+				}
+			})
+		}
+	}
+
+	// The primitive sits in NON-test code a shard depends on: shared.go is imported
+	// by internal/cli and internal/other, so a file read there makes both groups
+	// readers although the changed package (leaf) is imported by neither.
+	t.Run("dependency_source_reads_files", func(t *testing.T) {
+		shards, stderr, exit := rsRun(t, rsFixture(t), []string{"internal/leaf/leaf.go"}, func(dir string) {
+			body := "package shared\n\nimport \"os\"\n\nfunc S() int { _, _ = os.ReadFile(\"x\"); return 1 }\n"
+			if err := os.WriteFile(filepath.Join(dir, "internal/shared/shared.go"), []byte(body), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		})
+		want := ",cli-1,cli-2,cli-3,cli-4,rosterguard,remainder,"
+		if exit != 0 || shards != "shards="+want {
+			t.Errorf("shards = %q (exit %d), want %q\n%s", shards, exit, "shards="+want, stderr)
+		}
+	})
+
+	// go:embed in a dependency (a .go file or any file is pulled in without an import).
+	t.Run("dependency_uses_go_embed", func(t *testing.T) {
+		shards, stderr, exit := rsRun(t, rsFixture(t), []string{"internal/leaf/leaf.go"}, func(dir string) {
+			if err := os.WriteFile(filepath.Join(dir, "internal/shared/data.txt"), []byte("x\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			body := "package shared\n\nimport _ \"embed\"\n\n//go:embed data.txt\nvar data string\n\nfunc S() int { return len(data) }\n"
+			if err := os.WriteFile(filepath.Join(dir, "internal/shared/shared.go"), []byte(body), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		})
+		want := ",cli-1,cli-2,cli-3,cli-4,rosterguard,remainder,"
+		if exit != 0 || shards != "shards="+want {
+			t.Errorf("shards = %q (exit %d), want %q\n%s", shards, exit, "shards="+want, stderr)
+		}
+	})
+
+	// Control: with no primitive in the cli group (cli.go and shared.go are pure),
+	// a leaf change does not reach the cli shards. The narrowing still exists where
+	// independence is provable.
+	t.Run("control_pure_cli_group_stays_out", func(t *testing.T) {
+		shards, stderr, exit := rsRun(t, rsFixture(t), []string{"internal/leaf/leaf.go"}, nil)
+		want := ",rosterguard,remainder,"
+		if exit != 0 || shards != "shards="+want {
+			t.Errorf("shards = %q (exit %d), want %q\n%s", shards, exit, "shards="+want, stderr)
+		}
+	})
 }
 
 // TestRaceScopeClosesToAllSixWhenItCannotJudge: every row the script must not
