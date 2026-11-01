@@ -3338,7 +3338,12 @@ func completeTransitions(ctx context.Context, db *homestate.FactoryDB, out io.Wr
 // own, distinct from the thirteen.
 func completePostMergeConflict(out io.Writer, lockRoot, sessionID, cardID, mergeSHA string, transitionErr error) error {
 	if holdErr := factory.CompletePostMergeHold(lockRoot, cardID, mergeSHA); holdErr != nil {
-		_, _ = fmt.Fprintf(out, "  writing the hold also failed (%v) — the merge commit %s stays on the integration branch; moai integration policy hold by hand\n", holdErr, factory.ShortSHA(mergeSHA))
+		// The hold is what keeps the next queued lane off the conflicted merge,
+		// so a failed hold write returns BEFORE any release: the caller's own
+		// window stays held for the leader (the pattern of
+		// factory.holdThenReleaseCauseSeven), and the message claims no hold.
+		_, _ = fmt.Fprintf(out, "  writing the hold also failed (%v) — the merge commit %s stays on the integration branch and this session keeps the window; moai integration policy hold by hand, then moai integration release\n", holdErr, factory.ShortSHA(mergeSHA))
+		return &exitCodeError{code: completePostMergeTransitionConflictExit, msg: fmt.Sprintf("factory complete: %v — the merge commit %s stays on the integration branch; the post-merge-transition-conflict hold was NOT written (%v), so this session keeps the integration window", transitionErr, factory.ShortSHA(mergeSHA), holdErr)}
 	}
 	if _, err := factory.ReleaseIntegrationLock(lockRoot, sessionID, 0, false); err != nil {
 		_, _ = fmt.Fprintf(out, "  releasing the window failed (%v) — release it by hand after reading the hold\n", err)
