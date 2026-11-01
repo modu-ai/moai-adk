@@ -36,4 +36,10 @@ compared byte-for-byte against `codex app-server generate-json-schema` and `code
 installed codex-cli 0.163.0, and all nine are identical. The files stay labelled 0.162.1 because that is
 the version they were captured from.
 
+Compatibility check (2026-11-01, card t2003): re-compared against the installed codex-cli 0.163.0 (`codex app-server
+generate-json-schema` and `codex resume --help`); all eight schemas and `resume-help.txt` are still byte-identical.
+The generator emitted 42 top-level entries this time (the 2026-10-15 note counted 37); the eight consumed schemas are
+unaffected. Nothing was measured against codex-cli 0.166.0 (not installed; the installed build was deliberately not
+raised), so the files stay labelled 0.162.1.
+
 Regenerate them, and re-run the tests, whenever the minimum supported codex version moves.
