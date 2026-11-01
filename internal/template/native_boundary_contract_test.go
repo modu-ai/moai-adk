@@ -86,6 +86,23 @@ func TestNativeReviewBoundaryMatchesOfficialCommandsPage(t *testing.T) {
 		}
 	}
 
+	// Only a genuinely non-applicable criterion is N/A. An applicable must-pass
+	// check whose verb could not run is unverified and is counted in
+	// must_pass_failed: the admission code (internal/auditverdict) reads that
+	// count and never the N/A line, so the wording is the only discriminator.
+	for _, required := range []string{
+		"does not apply",
+		"unverified",
+		"counted in `must_pass_failed`",
+	} {
+		if !strings.Contains(planAuditor, required) {
+			t.Errorf("plan-auditor.md MP-5/MP-6 lack %q", required)
+		}
+	}
+	if strings.Contains(planAuditor, "the criterion does not fail") {
+		t.Error("plan-auditor.md still lets an unexecuted applicable verb pass without failing the criterion")
+	}
+
 	review := render(".claude/skills/moai/workflows/review.md")
 	if strings.Contains(review, "covering the correctness-bug + reuse/simplification/efficiency portion") {
 		t.Error("review.md still claims /code-review always covers reuse/simplification/efficiency")
