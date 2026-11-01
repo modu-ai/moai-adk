@@ -22,6 +22,10 @@ func TestT2013_StandardLandingSaysDraftDoesNotStartReviewAndNonRequiredFailureDo
 		"leaving the PR in draft while waiting is not a wait reason",
 		"outside the protected required set",
 		"does not block the ready conversion",
+		"records its wait with `moai factory wait` and ends its turn",
+		"repaired by the same lane, in the same card worktree, with forward commits",
+		"one-shot recheck",
+		"the wake: line covers predecessor landings only",
 	}
 	for copyName, root := range roots {
 		t.Run(copyName, func(t *testing.T) {

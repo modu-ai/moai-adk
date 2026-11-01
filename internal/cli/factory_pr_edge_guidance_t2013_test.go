@@ -17,6 +17,8 @@ var t2013PREdgeMarkers = []string{
 	"leaving the PR in draft while waiting is not a wait reason",
 	"outside the protected required set",
 	"does not block the ready conversion",
+	"record the wait with `moai factory wait` and end the turn",
+	"repaired by this same lane in this worktree",
 }
 
 func TestT2013_PREdgeGuidanceDraftAndNonRequiredChecks(t *testing.T) {
