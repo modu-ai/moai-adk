@@ -35,6 +35,7 @@ type FailureLog struct {
 	TotalCap int64  // bytes the *.log files of Dir and the temp files of writes in flight may hold together; DefaultFailureLogTotalCap when not positive
 
 	clearACL func(path string) error // clearExtendedACL when nil; a test replaces it to make clearing fail
+	swept    bool                    // the logs already in Dir were cleared of their ACL by this value (N48)
 }
 
 // stripACL removes the extended ACL of path, by the platform's means.
@@ -238,7 +239,13 @@ func (l *FailureLog) prune(keep string) {
 		}
 		files = append(files, logFile{path, fi.Size(), fi.ModTime()})
 		sum += fi.Size()
+		if !l.swept {
+			// A log written before the ACL repair (N22) still carries the ACL it inherited, and the output in it is as
+			// unmasked as any. Cleared once per FailureLog, best effort: a retention pass never fails a write.
+			_ = l.stripACL(path)
+		}
 	}
+	l.swept = true
 	if sum <= limit {
 		return
 	}
