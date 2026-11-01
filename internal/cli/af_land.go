@@ -222,7 +222,9 @@ What is recorded as given. Nothing masks the text of the free-input flags: --ses
 The card must be in MERGING at the epoch its queue row was made at; a card its holder moved out of the merge queue
 is refused. The gate runs with sh -c (native Windows has no sh: run this verb from WSL (or Git Bash, without process-group kill) there), in its
 own process group that is killed when the gate returns or --gate-timeout ends: a background process the gate left
-running is killed, not waited for, and does not fail a gate that exited 0. Under Git Bash a native Windows binary
+running is killed, not waited for, and does not fail a gate that exited 0. The kill reaches the process group and
+nothing else: a process the gate started in a session or group of its own (setsid, a daemon) is outside it and survives
+the landing. Under Git Bash a native Windows binary
 has no process group, so this verb does not kill what the gate started there; run it from WSL when the gate starts
 long-lived processes. A gate that prints without end is not an error: it runs until --gate-timeout (default 20m) ends it.
 The gate receives the caller's full environment except GIT_DIR and the other repository-scoping variables, so a
