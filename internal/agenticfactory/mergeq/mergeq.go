@@ -615,21 +615,26 @@ func (m *Merger) Reconcile(ctx context.Context, items []Item) ([]Action, error) 
 		if in {
 			res, err := m.settleLanded(ctx, it.CardID, it.CandidateSHA, it.State, trunk, "found in the trunk after a restart")
 			switch {
+			case errors.Is(err, ErrStaleRow) && it.State == StateVerifying:
+				// The card left MERGING (withdrawn or parked), so its verifying row cannot become landed. If its
+				// holder is gone the row goes back to waiting below instead of being skipped for ever (N5); the
+				// candidate stays in the trunk and lands as "already in the trunk" when the card is offered again.
 			case errors.Is(err, ErrStaleRow):
 				continue // not this queue's to move: left for the card's holder
 			case err != nil:
 				errs = append(errs, fmt.Errorf("mergeq: %s: %w", it.CardID, err))
 				continue
+			default:
+				if res.Outcome == OutcomeLanded {
+					acts = append(acts, Action{CardID: it.CardID, From: it.State, To: StateLanded, Why: "the candidate is reachable from the trunk"})
+				}
+				continue
 			}
-			if res.Outcome == OutcomeLanded {
-				acts = append(acts, Action{CardID: it.CardID, From: it.State, To: StateLanded, Why: "the candidate is reachable from the trunk"})
-			}
-			continue
 		}
 		if it.landerMayBeAlive() {
 			continue
 		}
-		to, why, err := m.backToWaiting(ctx, it, trunk)
+		to, why, err := m.backToWaiting(ctx, it, trunk, in)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("mergeq: %s: %w", it.CardID, err))
 			continue
@@ -649,7 +654,10 @@ func (m *Merger) Reconcile(ctx context.Context, items []Item) ([]Action, error) 
 // send back: the ledger refuses the write (ErrStaleRow). A landing row of that kind still has the lock holder's
 // settlement, and its candidate is not in the trunk, so it is settled as failed; any other stale row is left for
 // the card's holder, whose Enqueue restarts it.
-func (m *Merger) backToWaiting(ctx context.Context, it Item, trunk string) (to State, why string, err error) {
+//
+// inTrunk says the candidate is in the trunk already (a verifying row of a card that left MERGING, N5); only the
+// reason given for the move depends on it.
+func (m *Merger) backToWaiting(ctx context.Context, it Item, trunk string, inTrunk bool) (to State, why string, err error) {
 	epoch, err := m.Queue.AcquireLock(ctx, LandingLock, m.Holder, m.lockTTL())
 	if errors.Is(err, ErrLockHeld) {
 		return "", "", nil
@@ -678,6 +686,8 @@ func (m *Merger) backToWaiting(ctx context.Context, it Item, trunk string) (to S
 		}
 	}
 	switch err := m.Queue.SetState(ctx, it.CardID, it.CandidateSHA, epoch, StateWaiting, trunk, ""); {
+	case err == nil && inTrunk:
+		return StateWaiting, "the candidate is in the trunk but the card left MERGING; the row waits for the card to be offered again", nil
 	case err == nil:
 		return StateWaiting, "the candidate is not in the trunk; it is verified again", nil
 	case errors.Is(err, ErrStaleRow) && it.State == StateLanding:
