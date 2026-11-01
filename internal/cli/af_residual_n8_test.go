@@ -1,3 +1,5 @@
+//go:build !windows
+
 package cli
 
 // N8 (audit 22a0afd247 onwards, residual classification): the help of `moai af land` says "a background process the gate left
