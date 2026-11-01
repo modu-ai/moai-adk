@@ -156,15 +156,15 @@ const offerMarkSQL = `COALESCE(evidence_mark,(SELECT COALESCE(MAX(id),0) FROM ev
 // namedOfferOf finds the first transition into MERGING whose reason is Enqueue's reason for that
 // candidate: the proof that this commit was itself offered to the queue.
 func namedOfferOf(ctx context.Context, q querier, cardID, candidate string) (seq, mark int64, found bool, err error) {
-	switch err := q.QueryRowContext(ctx, `SELECT seq,`+offerMarkSQL+` FROM transitions WHERE card_id=? AND to_stage=? AND reason=? ORDER BY seq ASC LIMIT 1`,
-		cardID, cardID, string(core.StageMerging), enqueueReason(candidate)).Scan(&seq, &mark); {
-	case err == nil:
-		return seq, mark, true, nil
-	case err == sql.ErrNoRows:
+	err = q.QueryRowContext(ctx, `SELECT seq,`+offerMarkSQL+` FROM transitions WHERE card_id=? AND to_stage=? AND reason=? ORDER BY seq ASC LIMIT 1`,
+		cardID, cardID, string(core.StageMerging), enqueueReason(candidate)).Scan(&seq, &mark)
+	if err == sql.ErrNoRows {
 		return 0, 0, false, nil
-	default:
+	}
+	if err != nil {
 		return 0, 0, false, fmt.Errorf("ledger: %w", err)
 	}
+	return seq, mark, true, nil
 }
 
 // offerOf finds where the candidate was first offered to the queue: the seq of that transition and
