@@ -5846,7 +5846,7 @@
     "start_line": 139
    },
    "before_text": "[HARD] A lane session does not carry one card's context into the next card. When a card reaches `done` and the leader has read its evidence, the leader **asks the operator to `/clear` that lane session** — `/clear` is a user-typed command and cannot be sent as an instruction. The leader's message states, in order: what closed (card, evidence read), which session to `/clear` (by name), and what happens next.",
-   "after_text": "[HARD] No card context crosses to the next: a lane treats the conversation context of earlier cards as non-authoritative and works each newly leased card only from that card's body, its SPEC artifacts, and its progress record. At `done`, evidence read, the leader does not ask the operator to clear the lane session; the leader names what closed (card, evidence read) and the lane moves on by the transition below.",
+   "after_text": "[HARD] No card context crosses to the next: a lane treats the conversation context of earlier cards as non-authoritative and works each newly leased card only from that card's body, its SPEC artifacts, and its progress record. At `done`, evidence read, the leader names what closed (card, evidence read). The completion order is `ExitWorktree(keep)`, a default-branch check of the primary checkout, the operator's `/clear` (a session cannot run `/clear` itself), then the next card request — and only after completion evidence, dirty changes, active checks or handoff, and unsubmitted input are checked and preserved; anything incomplete or pending is resolved first, never force-cleared.",
    "location": "rule-body:.claude/rules/moai/workflow/factory-dispatch.md",
    "processing": "relocated",
    "entry_points": [

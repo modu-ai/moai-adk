@@ -151,9 +151,9 @@ For a lane card the declared evidence list also carries `.moai/reports/<card-id>
 
 [HARD] **Native Codex review evidence.** Read the trusted Codex bot’s current-head review artifacts, not a successful check row. A completed code-review summary must bind the full head SHA, report no findings or unresolved findings, and agree with its clean receipt. Missing, failed, running, stale, malformed, or contradictory evidence withholds integration. Re-read the head and review artifacts before merge; preserve the separate functional and security checks.
 
-## Lane card transition — in-session, no clear
+## Lane card transition — completion order and in-session move
 
-[HARD] No card context crosses to the next: a lane treats the conversation context of earlier cards as non-authoritative and works each newly leased card only from that card's body, its SPEC artifacts, and its progress record. At `done`, evidence read, the leader does not ask the operator to clear the lane session; the leader names what closed (card, evidence read) and the lane moves on by the transition below.
+[HARD] No card context crosses to the next: a lane treats the conversation context of earlier cards as non-authoritative and works each newly leased card only from that card's body, its SPEC artifacts, and its progress record. At `done`, evidence read, the leader names what closed (card, evidence read). The completion order is `ExitWorktree(keep)`, a default-branch check of the primary checkout, the operator's `/clear` (a session cannot run `/clear` itself), then the next card request — and only after completion evidence, dirty changes, active checks or handoff, and unsubmitted input are checked and preserved; anything incomplete or pending is resolved first, never force-cleared.
 
 <!-- moai:role-core-start -->
 [HARD] `ExitWorktree(keep)`, lease, `EnterWorktree(path)`; conversation context never carries.
@@ -165,7 +165,7 @@ When the next card reuses a lane, the leader re-sends the full pointer instructi
 
 The leader session itself is cleared between cards: at `done` the operator is asked to `/clear` it, and the next turn presents the queue again.
 
-Completion guidance (card t2013, operator instruction, later than SPEC-FACTORY-LANE-NO-CLEAR-001 and governing the printed line where it differs from the no-clear statements above): `moai factory complete` prints one guidance line, only after a genuinely completed edge (merged-local or merged-pr) — never for pr-open, a still-open or closed pull request, an audit-pending card, or a refused complete. Its order: first check and preserve completion evidence, dirty changes, active checks or handoff, and unsubmitted input (if any is incomplete or pending, resolve it first and do not clear; a force-clear is never suggested); then `ExitWorktree(keep)`; confirm the primary checkout is back on the default branch; the operator runs `/clear` (a session has no tool that executes it, so the line addresses the operator); then request the next existing card (`moai factory next`, or the leader's dispatch under manual dispatch). The line is text: it is not evidence that any step ran.
+Completion guidance (card t2013, operator instruction, later than SPEC-FACTORY-LANE-NO-CLEAR-001): `moai factory complete` prints one guidance line of the order above, only after a genuinely completed edge (merged-local or merged-pr) — never for pr-open, a still-open or closed pull request, an audit-pending card, or a refused complete. The next card is requested with `moai factory next` from the primary checkout, or from the leader's dispatch under manual dispatch. The line is text: it is not evidence that any step ran.
 
 ## Isolation is provisioned by MoAI, then entered through a launcher
 

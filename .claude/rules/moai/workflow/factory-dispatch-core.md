@@ -49,7 +49,7 @@ For a lane card the declared evidence list also carries `.moai/reports/<card-id>
 
 ## Lane card transition
 
-The leader never asks the operator to clear a lane; the in-session sequence is in the role core of `factory-dispatch.md`.
+At completion: `ExitWorktree(keep)`, a default-branch check, the operator's `/clear` (the session cannot run it), then the next card request — after completion evidence, dirty changes, active checks or handoff, and unsubmitted input are preserved; no card conversation context carries over (`factory-dispatch.md`).
 
 Where the next card reuses a lane, the leader re-sends the full pointer instruction rather than assuming the session remembers.
 

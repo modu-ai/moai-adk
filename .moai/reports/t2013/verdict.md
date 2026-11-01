@@ -100,3 +100,55 @@ SPEC conflict note (for the leader to amend later; `.moai/specs/**` not touched)
 - The tests assert substrings and relative order of the markers; a future edit keeping the markers but changing meaning would still pass.
 - Customers on an older rule text see the contradiction until `moai update`; if the binary ships before the template refresh, lanes there may refuse the operator-/clear instruction on the strength of the old rule.
 - Other docs and tests outside the scoped runs (anything asserting the old `card transition (policy` string) were found by one grep over `internal` and `cmd` (3 files only); a consumer outside those trees would not have been seen.
+
+## Follow-up: rule wording alignment (2026-11-01)
+
+### Claim
+
+1. The three factory-dispatch rule files (local copy and template mirror, six files) no longer carry "asks the operator to clear nothing", "does not ask the operator to clear the lane session", "The leader never asks the operator to clear a lane", or the heading "in-session, no clear". They now state the completion order ExitWorktree(keep), default-branch check, operator /clear (a session cannot run /clear itself), next-card request, with the preserve-first condition; the no-card-context-carries-over clause is kept.
+2. The heading was renamed to "Lane card transition — completion order and in-session move"; no other file cites the old heading.
+3. The one binding-ledger row that pinned the old sentence (ALB-0286, after_text) was updated to the new sentence; no other row changed.
+4. Local and template copies received identical hunks.
+
+### Evidence
+
+Baseline before editing, `go test -run 'TestBindingLedgerIntegrity|TestRuleTemplateMirrorDrift|TestDeclaredRuleMirrorForks|TestAlwaysLoaded' -count=1 -v ./internal/template/` (filtered to result lines): `--- PASS: TestBindingLedgerIntegrity`, `--- PASS: TestDeclaredRuleMirrorForks`, `--- PASS: TestRuleTemplateMirrorDrift`, `ok`. The `TestAlwaysLoaded` pattern matched no test (the real names are `TestDeployedAlwaysLoadedCharBudget` and `TestDeployedAlwaysLoadedSurfaceDerivation`); re-run afterwards, see below.
+
+RED on the unedited rule files, `go test -run TestT2013_RuleWordingMatchesCompletionOrder -count=1 ./internal/template/` (new test `internal/template/factory_completion_order_t2013_test.go`), excerpt:
+```
+--- FAIL: TestT2013_RuleWordingMatchesCompletionOrder (0.00s)
+    --- FAIL: .../template/factory-dispatch.md
+        stale phrase still present: "does not ask the operator to clear the lane session"
+        stale phrase still present: "in-session, no clear"
+        order marker "next card" missing or out of order after offset 19998
+    --- FAIL: .../template/factory-dispatch-core.md
+        stale phrase still present: "The leader never asks the operator to clear a lane"
+    --- FAIL: .../template/factory-dispatch-cards.md
+        stale phrase still present: "asks the operator to clear nothing"
+    (the same three failures for the local copies)
+FAIL	github.com/modu-ai/moai-adk/internal/template
+```
+One intermediate run after the edits failed on my own test (marker "default branch" vs the text's "default-branch"); I corrected the test marker, not the rule text.
+
+GREEN after the edits: `--- PASS: TestBindingLedgerIntegrity`, `--- PASS: TestT2013_RuleWordingMatchesCompletionOrder`, `--- PASS: TestDeclaredRuleMirrorForks`, `--- PASS: TestRuleTemplateMirrorDrift`, `ok ... internal/template`. `go test -run TestDeployedAlwaysLoaded -count=1 ./internal/template/` -> `ok`. `go test -run 'TestSD_AC020_ClearPolicies|TestT2013_' -count=1 ./internal/cli/` -> `ok ... internal/cli 33.212s`. `gofmt -l internal/template/factory_completion_order_t2013_test.go` -> no output. `go vet ./internal/template/` -> no output, exit 0.
+
+Heading citation sweep, `grep -rn "in-session, no clear"` over internal, .claude, .moai/docs, cmd: only the new test (as a forbidden string). `git diff --stat`: 7 files, 13 insertions, 13 deletions.
+
+Byte sizes (local copy, HEAD -> now): factory-dispatch-core.md 9969 -> 10164 (+195, the always-loaded stub); factory-dispatch-cards.md 11671 -> 11760 (+89); factory-dispatch.md 28279 -> 28116 (-163). Net across the three: +121 bytes; always-loaded stub growth +195 < 1,000.
+
+### Baseline-attribution
+
+Tree: HEAD 00c3162cb897cf846f48f4a87842ddfbaf05e878 plus the uncommitted edits listed above, measured in this session by `go test`, which builds from the tree; no installed `moai` binary judged anything. Byte sizes: `wc -c` on the edited files and `git cat-file -s HEAD:<path>` on the originals.
+
+### Gaps
+
+- `.claude/rules/local/gitflow-lane-protocol.md` section 1 ("no operator clear is involved") and `.moai/specs/SPEC-FACTORY-LANE-NO-CLEAR-001` were deliberately not touched (forbidden by the task); they still disagree with the new order.
+- `.claude/agents/moai/manager-todo.md:68` and `.claude/skills/moai/workflows/gtd.md:349` ("receive no clear guidance") were not edited; they describe non-completed edges (no guidance), which is still true, so I judged them consistent but did not change them.
+- The role-core line `[HARD] ExitWorktree(keep), lease, EnterWorktree(path); conversation context never carries.` (ledger-pinned, injected at session start) was left as is; it omits the default-branch check and /clear and is therefore incomplete relative to the new order, not contradictory.
+- I did not run the whole `./internal/template/` or `./internal/cli/...` packages (forbidden/scoped only), no `make build`, no `moai update`.
+- No Bash call was refused by the worktree guard in this follow-up.
+
+### Residual-risk
+
+- Substring-order test: a future edit keeping the markers but changing meaning would still pass.
+- Customer projects keep the old deployed rule text ("no clear") until `moai update`; the binary's printed line and their deployed rules disagree until then. Template files changed: factory-dispatch.md, factory-dispatch-core.md, factory-dispatch-cards.md, plus testdata/binding_ledger.json (test fixture, not deployed). No forced sync was run.
