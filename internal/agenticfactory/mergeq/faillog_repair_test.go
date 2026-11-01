@@ -119,6 +119,34 @@ func TestFailureLog_WritersOfTheSameKeyAllSucceedAndNeverMixTheirContent(t *test
 	}
 }
 
+// N33: Land refuses a candidate that is not the complete SHA of a commit, Reconcile did not ask. A row written by an
+// earlier build or through the ledger API with a branch name was settled as landed by ancestry (the name resolves to
+// the trunk itself), or handed an option-like text to git. A bad row is not touched and is reported as an error; the
+// rows beside it are still judged.
+func TestReconcile_ARowWithACandidateThatIsNoCompleteSHAIsReportedAndNotTouched(t *testing.T) {
+	dir := repo(t)
+	good := candidate(t, dir, "c1", "a.txt", "a\n")
+	for _, name := range []string{"trunk", "HEAD", "--no-such-option", good[:12], strings.ToUpper(good), strings.Repeat("0", 40)} {
+		for _, state := range []State{StateVerifying, StateLanding} {
+			q := &fakeQueue{}
+			m := newMerger(t, dir, q, passing)
+			acts, err := m.Reconcile(context.Background(), []Item{
+				{CardID: "bad", CandidateSHA: name, State: state},
+				{CardID: "good", CandidateSHA: good, State: StateVerifying},
+			})
+			if !errors.Is(err, ErrBadCandidate) {
+				t.Errorf("%s row with candidate %q: error %v, want ErrBadCandidate", state, name, err)
+			}
+			if len(acts) != 1 || acts[0].CardID != "good" {
+				t.Errorf("%s row with candidate %q: actions %+v, want only the good row's", state, name, acts)
+			}
+			if len(q.states) != 1 || q.states[0] != StateWaiting {
+				t.Errorf("%s row with candidate %q: the queue saw states %v, want one write (the good row to waiting)", state, name, q.states)
+			}
+		}
+	}
+}
+
 // N22: when the ACL of the file or of the directory cannot be cleared, the output is dropped (nothing is written, no
 // temporary file is left), and the failure is recorded with a reason that says logging failed.
 func TestFailureLog_WhenTheACLCannotBeClearedTheOutputIsDroppedAndTheReasonSaysSo(t *testing.T) {
