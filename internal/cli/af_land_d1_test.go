@@ -409,6 +409,13 @@ func TestAFVerbs_D4BranchNameReworkEndsInARefusal(t *testing.T) {
 // afUnqueuedCard is afQueuedCard without the queue entry: a claimed card whose commit has green and gate evidence.
 func afUnqueuedCard(t *testing.T) (db, repo, cand string, st *ledger.Store, epoch int64) {
 	t.Helper()
+	return afUnqueuedCardAs(t, ledger.ClaimRequest{SessionID: "s-t1", PID: os.Getpid(), PIDStart: "start-t1"})
+}
+
+// afUnqueuedCardAs is afUnqueuedCard with the claim the caller describes (its holder: a process that is gone, a lease that
+// has already run out); an empty Worktree is the fixture repository.
+func afUnqueuedCardAs(t *testing.T, claim ledger.ClaimRequest) (db, repo, cand string, st *ledger.Store, epoch int64) {
+	t.Helper()
 	ctx := context.Background()
 	db = filepath.Join(t.TempDir(), "af", "ledger.db")
 	var err error
@@ -438,7 +445,10 @@ func afUnqueuedCard(t *testing.T) (db, repo, cand string, st *ledger.Store, epoc
 		Spec: ledger.Spec{Class: "A", Paths: []string{"a.txt"}}}); err != nil {
 		t.Fatal(err)
 	}
-	c, err := st.Claim(ctx, ledger.ClaimRequest{SessionID: "s-t1", Worktree: repo, PID: os.Getpid(), PIDStart: "start-t1"})
+	if claim.Worktree == "" {
+		claim.Worktree = repo
+	}
+	c, err := st.Claim(ctx, claim)
 	if err != nil {
 		t.Fatal(err)
 	}
