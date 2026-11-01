@@ -293,3 +293,27 @@ All commands ran in this run against the merged tree at 68ea579390. The moai bin
 
 ### Residual-risk
 - CI on the PR may fail in jobs not covered by the scoped tests (rules budget, mirror, full suite).
+
+## Follow-up 6: PR #1960 first CI run, failures read and repaired (2026-11-02)
+
+### Claim
+The first CI run of PR #1960 (run 41333008569 and sibling runs, head 5fea52b4c7) failed on six jobs; all failures except one calendar test were caused by this card's own commits and are repaired in local commits 22c3381085, 4a80617a90, a32d3a9b57, a6c9084d8d (not yet pushed at the time of this entry).
+
+### Evidence (job logs read via `gh api repos/modu-ai/moai-adk/actions/jobs/<id>/logs`)
+- Template Neutrality Audit (job 124926876735) and lsel-leak-guard (124926877014): TestTemplateNoInternalContentLeak, `factory-dispatch.md` leaked `SPEC-FACTORY-LANE-NO-CLEAR-001` (C1) and `t2013` (C9) from this card's completion-guidance line; origin/main has 0 occurrences. Fixed by 22c3381085.
+- Race Test (internal/cli 1 of 4) (124926965078): `TestCleanReportsArchive_MovesOnlyEligibleCandidates` ("no new YYYY-MM shard created under archive/") = calendar defect, assigned to PR #1956 by the leader, NOT repaired here; and `TestFactoryClearPolicyManualDispatch` (two subtests) still asserting the pre-t2013 shape. Fixed by 4a80617a90.
+- Race Test (internal/cli 4 of 4) (124926965178): `TestSD_AC022_SchemaStatementsFrozen`, pin not moved for the additive `card_waits` table. Fixed by a32d3a9b57 (same path as t1538/t1840).
+- Race Test (remainder packages) (124926965229) and Test (ubuntu-latest) (124926965126): same failures above plus `TestRoleCoreStubGate`: `factory-dispatch-core.md` 10167 UTF-16 vs budget 10000 (origin/main 9893). Fixed by a6c9084d8d (stub 9988; ledger rows ALB-0246/0257/0281 after_text only).
+- Re-run by me on HEAD a6c9084d8d: `go test ./internal/template/ -run 'TestRoleCoreStubGate|TestBindingLedgerIntegrity|TestTemplateNoInternalContentLeak|TestSplitHarnessNamespaceNoLeak|TestLSELLeakPositiveControl|TestRuleTemplateMirrorDrift|TestDeclaredRuleMirrorForks|TestT2013|TestDeployedAlwaysLoaded' -count=1` -> ok 5.108s; `go test ./internal/cli/ -run 'TestT2013|TestFactoryClearPolicy|TestSD_AC020|TestSD_AC022|TestFactoryWake' -count=1` -> ok 28.641s. Agent-reported (not re-run by me): whole `./internal/template/` package ok 317.082s, go vet, golangci-lint 0 issues.
+
+### Baseline-attribution
+Failures attributed from the job logs above; origin/main baseline for the rule files read with `git show origin/main:<path>` and `git grep` (0 occurrences; stub 9893 UTF-16).
+
+### Gaps
+- Full `./internal/cli/...` and the CI jobs themselves were not re-run locally; the repaired state is judged by the scoped tests only until the next CI run is read.
+- My first scoped runs omitted the whole-package template test, which is why TestRoleCoreStubGate was missed before the first push.
+- Factory structure stages 1-5 are NOT started (leader withdrew the approval relay).
+
+### Residual-risk
+- Stub margin under the role-core budget is 12 UTF-16 units.
+- The calendar test stays red on this PR until #1956 lands.
