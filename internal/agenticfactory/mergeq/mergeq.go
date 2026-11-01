@@ -294,13 +294,23 @@ func (m *Merger) land(ctx context.Context, cardID, candidateSHA string) (Result,
 		if err := m.Verify(ctx, cand.Dir); err != nil {
 			_ = m.Git.Discard(settle, cand)
 			var ge *GateError
+			summary, output, total := "gates failed", []byte(err.Error()), int64(len(err.Error()))
 			if errors.As(err, &ge) {
-				return m.fail(ctx, res, cardID, candidateSHA, trunk,
-					m.failReason(cardID, candidateSHA, "gate", fmt.Sprintf("gates failed: gate %q: %v", ge.Gate, ge.Cause), ge.Output, ge.Total))
+				summary, output, total = fmt.Sprintf("gates failed: gate %q: %v", ge.Gate, ge.Cause), ge.Output, ge.Total
 			}
-			text := []byte(err.Error())
-			return m.fail(ctx, res, cardID, candidateSHA, trunk,
-				m.failReason(cardID, candidateSHA, "gate", "gates failed", text, int64(len(text))))
+			if ctxErr := ctx.Err(); ctxErr != nil {
+				// The context ended while the gates ran, so every write on it would fail with "context canceled" and the
+				// reason would be lost (F9). The gate was cut off, which is no verdict about the candidate: its reason is
+				// told to the caller (a Verify that is no GateError is named by its text) and the row goes back to waiting,
+				// so that the next call lands it.
+				told := summary
+				if ge == nil {
+					told += ": " + err.Error()
+				}
+				return res, errors.Join(fmt.Errorf("mergeq: the landing was cut off (%w) while the gates ran; %s", ctxErr,
+					m.failReason(cardID, candidateSHA, "gate", told, output, total)), m.stepBack(ctx, cardID, candidateSHA, trunk))
+			}
+			return m.fail(ctx, res, cardID, candidateSHA, trunk, m.failReason(cardID, candidateSHA, "gate", summary, output, total))
 		}
 
 		epoch, err := m.Queue.AcquireLock(ctx, LandingLock, m.Holder, m.lockTTL())
@@ -431,6 +441,26 @@ func (m *Merger) resetLanding(ctx context.Context, cardID, candidateSHA, trunk s
 		}
 	}()
 	return false, m.Queue.SetState(ctx, cardID, candidateSHA, epoch, StateWaiting, trunk, "")
+}
+
+// stepBack sends a row this lander left verifying back to waiting, under the landing lock and on a context that
+// outlives ctx. It acts only on a verifying row. A row of a card that was claimed again belongs to the new holder and is
+// left; a row that cannot be sent back (the lock is held, or the write failed) stays verifying and the error says so.
+func (m *Merger) stepBack(ctx context.Context, cardID, candidateSHA, trunk string) error {
+	settle := context.WithoutCancel(ctx)
+	if st, err := m.Queue.RowState(settle, cardID); err != nil || st != StateVerifying {
+		return nil
+	}
+	waiting, err := m.resetLanding(settle, cardID, candidateSHA, trunk)
+	switch {
+	case errors.Is(err, ErrStaleRow):
+		return nil
+	case err != nil:
+		return fmt.Errorf("mergeq: the row of %s stays verifying until Reconcile resets it: %w", cardID, err)
+	case waiting:
+		return fmt.Errorf("mergeq: the row of %s stays verifying until Reconcile resets it: the landing lock is held by another lander", cardID)
+	}
+	return nil
 }
 
 // validTrunk refuses a trunk that is not a full branch name or that is the project's default branch.
