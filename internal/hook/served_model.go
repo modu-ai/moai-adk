@@ -23,6 +23,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	"path/filepath"
 	"slices"
 	"sort"
 	"strings"
@@ -132,6 +133,28 @@ func expectedServedModel(declared, agentType string, cfg *config.Config) (expect
 	return "", "inherit", expectationAbsent
 }
 
+// frontmatterDeclaredModel returns the `model:` an agent definition declares in
+// its frontmatter, or "" when there is no project root, the agent type is not a
+// plain name, the file is absent or unparseable, or it declares none. An empty
+// answer leaves the observation exactly as it was before this fallback.
+func frontmatterDeclaredModel(root, agentType string) string {
+	if root == "" || agentType == "" || agentType != filepath.Base(agentType) || strings.ContainsAny(agentType, `/\`) || strings.HasPrefix(agentType, ".") {
+		return ""
+	}
+	for _, dir := range []string{"moai", ""} {
+		data, err := os.ReadFile(filepath.Join(root, ".claude", "agents", dir, agentType+".md"))
+		if err != nil {
+			continue
+		}
+		fm, err := parseAgentFrontmatter(data)
+		if err != nil {
+			return ""
+		}
+		return strings.TrimSpace(fm.Model)
+	}
+	return ""
+}
+
 // normalizeModelDeclaration trims whitespace and drops a trailing bracketed
 // context-window suffix such as "[1m]": "opus[1m]" and "claude-opus-5[1m]"
 // select the same model as their bare forms, and responses never carry the
@@ -237,6 +260,13 @@ func observeServedModel(transcriptPath, agentTypeHint string, cfg *config.Config
 	obs := ServedObservation{AgentType: agentTypeHint, DeclaredModel: strings.TrimSpace(meta.Model)}
 	if obs.AgentType == "" {
 		obs.AgentType = meta.AgentType
+	}
+
+	// A spawn that passed no model argument leaves meta.json without one, yet
+	// the agent definition declares its role's model in frontmatter, which is
+	// the canonical declaration. An explicit spawn argument still wins.
+	if obs.DeclaredModel == "" {
+		obs.DeclaredModel = frontmatterDeclaredModel(servedAuditRoot(), obs.AgentType)
 	}
 
 	expected, resolved, state := expectedServedModel(obs.DeclaredModel, obs.AgentType, cfg)

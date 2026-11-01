@@ -173,6 +173,9 @@ type agentFrontmatter struct {
 	Retired            bool   `yaml:"retired"`
 	RetiredReplacement string `yaml:"retired_replacement"`
 	RetiredParamHint   string `yaml:"retired_param_hint"`
+	// Model is the agent definition's declared model; the served-model
+	// observation reads it when a spawn passed no model argument.
+	Model string `yaml:"model"`
 }
 
 // @MX:NOTE: [AUTO] agentStartHandler SPEC-V3R3-RETIRED-AGENT-001 5-layer defect chain
