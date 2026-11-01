@@ -150,7 +150,11 @@ func recordAuditorStart(input *HookInput) {
 		SessionID: input.SessionID,
 		TreeRoot:  g.tree,
 	}
-	if err := auditreceipt.WriteStartMarker(g.store, &m); err != nil {
+	// Keep-earliest here too: a second start carrying the same real agent id
+	// (a resumed or re-announced instance) must not move StartedAt forward past
+	// receipts minted since the first start, or the stop refuses them as
+	// "created before the auditor started" (card t1951).
+	if err := auditreceipt.EnsureStartMarker(g.store, &m); err != nil {
 		slog.Warn("auditor start marker not recorded", "agent_id", key, "tree_root", g.tree, "error", err)
 		// The failed marker save leaves a durable trace for this agent id: an
 		// id-bearing (foreground) instance is live WITHOUT a background
