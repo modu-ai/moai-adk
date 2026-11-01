@@ -7,7 +7,8 @@
 #   scripts/release.sh v2.14.1 --hotfix     # Hotfix release
 #   scripts/release.sh v2.15.0 --dry-run    # 검증만 (실제 tag/push 없이)
 #   scripts/release.sh v3.2.0-rc.1          # Release candidate (-rc.N): CHANGELOG 섹션 불필요
-#   scripts/release.sh v3.2.0 --require-matrix-run   # 태그 전에 3-OS 매트릭스(workflow_dispatch) 녹색 확인 (기본 꺼짐)
+#   scripts/release.sh v3.2.0                        # 태그 전에 3-OS 매트릭스(workflow_dispatch) 녹색 확인 (기본 켬; --require-matrix-run 은 같은 뜻의 호환 플래그)
+#   scripts/release.sh v3.2.0 --skip-matrix-run      # 매트릭스 게이트 우회 (요약에 OVERRIDDEN 기록)
 #   scripts/release.sh v3.2.0 --skip-ci-check        # CI 게이트 우회 (origin 의 CI 통과 확인 없이 태그; 요약에 OVERRIDDEN 기록)
 #
 # 전제 조건 (CLAUDE.local.md §18.8):
@@ -53,16 +54,20 @@ VERSION=""
 DRY_RUN=false
 HOTFIX=false
 SKIP_CI_CHECK=false
-REQUIRE_MATRIX_RUN=false
+REQUIRE_MATRIX_RUN=true
+MATRIX_GATE="required"
+MATRIX_EXPLICIT_REQUIRE=false
+MATRIX_EXPLICIT_SKIP=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --dry-run)       DRY_RUN=true; shift ;;
         --hotfix)        HOTFIX=true; shift ;;
         --skip-ci-check) SKIP_CI_CHECK=true; shift ;;
-        --require-matrix-run) REQUIRE_MATRIX_RUN=true; shift ;;
+        --require-matrix-run) MATRIX_EXPLICIT_REQUIRE=true; shift ;;
+        --skip-matrix-run) MATRIX_EXPLICIT_SKIP=true; shift ;;
         -h|--help)
-            sed -n '2,24p' "$0"
+            sed -n '2,25p' "$0"
             exit 0
             ;;
         -*)
@@ -80,6 +85,15 @@ while [[ $# -gt 0 ]]; do
 done
 
 [[ -n "$VERSION" ]] || die "Version argument required (e.g., v2.15.0). Try --help."
+
+# The 3-OS matrix gate is on by default; --skip-matrix-run is the one recorded way past it.
+if [[ "$MATRIX_EXPLICIT_REQUIRE" == true && "$MATRIX_EXPLICIT_SKIP" == true ]]; then
+    die "--require-matrix-run and --skip-matrix-run contradict each other; pass at most one."
+fi
+if [[ "$MATRIX_EXPLICIT_SKIP" == true ]]; then
+    REQUIRE_MATRIX_RUN=false
+    MATRIX_GATE="OVERRIDDEN (--skip-matrix-run)"
+fi
 
 # ─── Validation 1: Version format (SemVer 2.0.0 with v prefix) ─────────────
 # The pre-release and build-metadata groups below are the official SemVer 2.0.0
@@ -317,9 +331,10 @@ else
 fi
 
 # ─── Validation 9b: 3-OS matrix run on this commit (opt-in) ─────────────────
-# Off unless --require-matrix-run is given: with it off nothing below runs and no
-# `gh run` call is made, so the script behaves exactly as it did before the
-# option existed. The multi-OS workflow (release-pr-multi-os.yml) runs on
+# On by default (--require-matrix-run is the same thing spelled out). Only
+# --skip-matrix-run turns it off, and the release summary then records
+# "OVERRIDDEN (--skip-matrix-run)"; skipped, nothing below runs and no `gh run`
+# call is made. The multi-OS workflow (release-pr-multi-os.yml) runs on
 # release/* PR heads and by hand; a release tagged from a main commit no PR head
 # ever tested would otherwise reach macOS and windows untested, and a pushed v*
 # tag cannot be deleted or moved. So the maintainer dispatches the workflow on
@@ -417,6 +432,7 @@ if [[ "$REQUIRE_MATRIX_RUN" == true ]]; then
         fi
         die "Matrix gate: $MATRIX_REASON"
     fi
+    MATRIX_GATE="verified (run $MATRIX_OK_ID)"
     log_ok "Matrix gate: run $MATRIX_OK_ID of $MATRIX_WORKFLOW is green on all three OS legs (${#MATRIX_SHARDS[@]} shards each) for ${LOCAL_SHA:0:12}"
 fi
 
@@ -488,6 +504,7 @@ else
 fi
 echo "  HEAD SHA:    ${LOCAL_SHA:0:12}"
 echo "  CI gate:     $CI_GATE"
+echo "  Matrix gate: $MATRIX_GATE"
 if [[ "$CHANGELOG_HAS_SECTION" == true ]]; then
     echo "  Notes size:  $NOTES_LINES lines (from CHANGELOG.md $CHANGELOG_HEADER)"
 else

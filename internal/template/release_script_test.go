@@ -48,6 +48,15 @@ func rlsRelease(t *testing.T, r *rlsRepo, s *rlsStub, args ...string) rlsResult 
 	return rlsRun(t, r.work, s.env, "bash", append([]string{script}, args...)...)
 }
 
+// rlsReleaseSkipMatrix runs the script with the 3-OS matrix gate explicitly
+// overridden (--skip-matrix-run). The matrix gate is on by default, so tests of
+// the other gates pass the recorded override and keep their own subject; the
+// matrix gate itself is covered by TestReleaseScriptMatrixGate.
+func rlsReleaseSkipMatrix(t *testing.T, r *rlsRepo, s *rlsStub, args ...string) rlsResult {
+	t.Helper()
+	return rlsRelease(t, r, s, append(append([]string{}, args...), "--skip-matrix-run")...)
+}
+
 // TestReleaseScriptCharacterization pins what the script does for invocations
 // this milestone must not change: a formal tag from a synced main, the CHANGELOG
 // heading forms, every refusal on a branch that is not main, a dirty tree, an
@@ -103,7 +112,7 @@ func TestReleaseScriptCharacterization(t *testing.T) {
 			if row.prepare != nil {
 				row.prepare(r)
 			}
-			res := rlsRelease(t, r, s, row.args...)
+			res := rlsReleaseSkipMatrix(t, r, s, row.args...)
 			out := rlsNorm(res.out)
 			t.Logf("exit=%d\n%s", res.exit, out)
 			if res.exit != row.wantExit {
@@ -154,7 +163,7 @@ func TestReleaseScriptHeadAdmission(t *testing.T) {
 			r := rlsBuildReleaseRepo(t, rlsRcChangelog)
 			s := rlsNewStub(t)
 			row.prepare(r)
-			res := rlsRelease(t, r, s, rlsRcTag, "--dry-run")
+			res := rlsReleaseSkipMatrix(t, r, s, rlsRcTag, "--dry-run")
 			t.Logf("exit=%d\n%s", res.exit, rlsNorm(res.out))
 			if res.exit != row.wantExit {
 				t.Errorf("exit code = %d, want %d", res.exit, row.wantExit)
@@ -185,7 +194,7 @@ func TestReleaseScriptRcChangelogSkip(t *testing.T) {
 		t.Run(row.name, func(t *testing.T) {
 			r := rlsBuildReleaseRepo(t, noSection)
 			s := rlsNewStub(t)
-			res := rlsRelease(t, r, s, row.tag, "--dry-run")
+			res := rlsReleaseSkipMatrix(t, r, s, row.tag, "--dry-run")
 			t.Logf("exit=%d\n%s", res.exit, rlsNorm(res.out))
 			if res.exit != row.wantExit {
 				t.Errorf("exit code = %d, want %d", res.exit, row.wantExit)
@@ -379,8 +388,9 @@ func matrixScenarios() []matrixScenario {
 
 // TestReleaseScriptMatrixGate is AC-GFD-010 extended by AC-RVS-011: two switch
 // states times fifteen gh doubles. With the switch off the script must not
-// look at the matrix at all (no `gh run` call is logged); with
-// `--require-matrix-run` only the run that is complete, green on every one of
+// look at the matrix at all (no `gh run` call is logged) and the release
+// summary records the override. The gate is on by default and under
+// `--require-matrix-run`: only the run that is complete, green on every one of
 // the six shards of each of the three OS values (each exactly once), on the
 // target SHA and dispatched by hand passes, and every other double is refused
 // before the tag with the condition named.
@@ -391,8 +401,9 @@ func TestReleaseScriptMatrixGate(t *testing.T) {
 		name string
 		args []string
 	}{
-		{name: "switch_off", args: []string{rlsRcTag, "--dry-run"}},
+		{name: "switch_skip", args: []string{rlsRcTag, "--dry-run", "--skip-matrix-run"}},
 		{name: "switch_on", args: []string{rlsRcTag, "--dry-run", "--require-matrix-run"}},
+		{name: "switch_default", args: []string{rlsRcTag, "--dry-run"}},
 	} {
 		for _, sc := range matrixScenarios() {
 			t.Run(sw.name+"/"+sc.name, func(t *testing.T) {
@@ -405,13 +416,14 @@ func TestReleaseScriptMatrixGate(t *testing.T) {
 				out := rlsNorm(res.out)
 				t.Logf("exit=%d\n%s\ngh calls: %q", res.exit, out, s.calls(t))
 
-				if sw.name == "switch_off" {
+				if sw.name == "switch_skip" {
 					if res.exit != 0 {
-						t.Errorf("switch off: exit code = %d, want 0 (the matrix is not consulted)", res.exit)
+						t.Errorf("switch skip: exit code = %d, want 0 (the matrix is not consulted)", res.exit)
 					}
+					rlsMustContain(t, out, "Matrix gate: OVERRIDDEN (--skip-matrix-run)")
 					for _, c := range s.calls(t) {
 						if strings.HasPrefix(c, "run ") {
-							t.Errorf("switch off: the script called %q; it must not read the matrix at all", c)
+							t.Errorf("switch skip: the script called %q; it must not read the matrix at all", c)
 						}
 					}
 					return
