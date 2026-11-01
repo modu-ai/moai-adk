@@ -339,7 +339,10 @@ MATRIX_OSES=(ubuntu-latest macos-latest windows-latest)
 MATRIX_SHARDS=(cli-1 cli-2 cli-3 cli-4 rosterguard remainder)
 command -v gh >/dev/null 2>&1 || die "Matrix gate: the gh CLI is needed to read the $MATRIX_WORKFLOW run, and gh is not available."
 
-MATRIX_RUNS="$(gh run list --workflow "$MATRIX_WORKFLOW" --commit "$LOCAL_SHA" --limit 50 \
+# Both gh reads name the project's repository, as the CI gate above does: whatever
+# GH_REPO (or a fork remote) resolves to, a green run in another repository must not
+# satisfy this gate.
+MATRIX_RUNS="$(gh run list --repo modu-ai/moai-adk --workflow "$MATRIX_WORKFLOW" --commit "$LOCAL_SHA" --limit 50 \
     --json databaseId,headSha,event,status,conclusion \
     --jq '.[] | select(.headSha == "'"$LOCAL_SHA"'") | "\(.databaseId)|\(.event)|\(.status)|\(.conclusion // "")"')" \
     || die "Matrix gate: could not list runs of $MATRIX_WORKFLOW (gh run list failed)."
@@ -360,7 +363,7 @@ while IFS='|' read -r run_id run_event run_status run_conclusion; do
     elif [[ "$run_conclusion" != "success" ]]; then
         run_problem="run $run_id of $MATRIX_WORKFLOW for $LOCAL_SHA concluded ${run_conclusion:-unknown}, not success."
     else
-        RUN_JOBS="$(gh run view "$run_id" --json jobs --jq '.jobs[] | "\(.name)|\(.conclusion // "")"')" \
+        RUN_JOBS="$(gh run view "$run_id" --repo modu-ai/moai-adk --json jobs --jq '.jobs[] | "\(.name)|\(.conclusion // "")"')" \
             || die "Matrix gate: could not read the jobs of run $run_id (gh run view failed)."
         # Each of the three OS values must carry each of the six declared shards
         # exactly once, every one success (REQ-RVS-011). The names are matched

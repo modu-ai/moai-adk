@@ -174,6 +174,82 @@ func TestReleaseScriptRealTagPathRefusesWithoutAGreenMatrix(t *testing.T) {
 	})
 }
 
+// rlsForkEnv gives the gh stub a second repository (the "fork" any other GH_REPO
+// resolves to) with its own canned runs, and returns the environment entries that
+// point gh at it. When green is true the fork holds a completed, successful,
+// hand-dispatched matrix run on sha; otherwise it holds nothing.
+func rlsForkEnv(t *testing.T, sha string, green bool) []string {
+	t.Helper()
+	dir := t.TempDir()
+	jobs := filepath.Join(dir, "jobs")
+	if err := os.MkdirAll(jobs, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	runs := "[]"
+	if green {
+		runs = "[" + rlsRunJSON(901, sha, "workflow_dispatch", "completed", "success") + "]"
+		if err := os.WriteFile(filepath.Join(jobs, "901.json"), []byte(rlsLegsJSON(nil)), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	runsFile := filepath.Join(dir, "runs.json")
+	if err := os.WriteFile(runsFile, []byte(runs), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return []string{"GH_REPO=someone-else/moai-adk", "GH_STUB_FORK_RUNS=" + runsFile, "GH_STUB_FORK_JOBS_DIR=" + jobs}
+}
+
+// TestReleaseScriptMatrixGateReadsThePinnedRepository (audit F5): the matrix gate
+// reads the project's own repository, as the CI gate does, whatever GH_REPO says.
+// A green run in some other repository must not satisfy the gate, and a missing
+// one there must not block a green run in the pinned repository.
+func TestReleaseScriptMatrixGateReadsThePinnedRepository(t *testing.T) {
+	rlsRequireTools(t, "jq")
+	script := filepath.Join(findProjectRootForMirrorTest(t), filepath.FromSlash(rlsReleaseScriptRel))
+	pinned := func(t *testing.T, s *rlsStub) {
+		t.Helper()
+		reads := 0
+		for _, c := range s.calls(t) {
+			if strings.HasPrefix(c, "run list ") || strings.HasPrefix(c, "run view ") {
+				reads++
+				if !strings.Contains(c, "--repo modu-ai/moai-adk") {
+					t.Errorf("the matrix gate read without pinning the repository: %q", c)
+				}
+			}
+		}
+		if reads == 0 {
+			t.Errorf("the matrix gate made no gh run call; gh calls: %q", s.calls(t))
+		}
+	}
+
+	t.Run("green_run_in_another_repository_does_not_satisfy_the_gate", func(t *testing.T) {
+		r := rlsBuildReleaseRepo(t, rlsRcChangelog)
+		s := rlsNewStub(t) // the pinned repository holds no run
+		env := append(append([]string{}, s.env...), rlsForkEnv(t, r.git("rev-parse", "HEAD"), true)...)
+		res := rlsRun(t, r.work, env, "bash", script, rlsRcTag, "--dry-run")
+		out := rlsNorm(res.out)
+		if res.exit != 1 {
+			t.Errorf("exit = %d, want 1 (the fork's green run must not count)\n%s", res.exit, out)
+		}
+		rlsMustContain(t, out, "Matrix gate:", "no run of "+rlsMatrixFile+" found for")
+		pinned(t, s)
+	})
+
+	t.Run("missing_run_in_another_repository_does_not_block_the_pinned_repository", func(t *testing.T) {
+		r := rlsBuildReleaseRepo(t, rlsRcChangelog)
+		s := rlsNewStub(t)
+		rlsGreenMatrix(t, s, r.git("rev-parse", "HEAD"))
+		env := append(append([]string{}, s.env...), rlsForkEnv(t, r.git("rev-parse", "HEAD"), false)...)
+		res := rlsRun(t, r.work, env, "bash", script, rlsRcTag, "--dry-run")
+		out := rlsNorm(res.out)
+		if res.exit != 0 {
+			t.Errorf("exit = %d, want 0 (the pinned repository's green run counts)\n%s", res.exit, out)
+		}
+		rlsMustContain(t, out, "Matrix gate: run 901 of "+rlsMatrixFile+" is green on all three OS legs")
+		pinned(t, s)
+	})
+}
+
 // TestReleaseScriptNoSwitchTurnsTheMatrixOff: neither the environment nor
 // another gate's override reaches the matrix gate. With no matrix run on the
 // commit every row is refused at Validation 9b.
