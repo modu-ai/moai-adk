@@ -55,6 +55,8 @@ nothing here is checked but what the ledger checks: it refuses an id that exists
 path that is absolute or leaves the repository, and a dependency that does not exist or is cancelled; a refusal changes
 nothing.
 
+` + afAsGivenHelp + `
+
 ` + afBindHelp,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

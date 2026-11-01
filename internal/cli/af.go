@@ -52,6 +52,10 @@ const afDBFlagHelp = "ledger file (default: <MoAI home>/db/<project name>-<hash>
 const afDoneHelp = "DONE guarantees that the candidate commit landed in the trunk; it does not guarantee the card's work content " +
 	"(a candidate that is the trunk's own commit lands as already in the trunk)."
 
+// afAsGivenHelp is what the verbs that record free input say about it (N72), the way `moai af land` does for its own flags.
+const afAsGivenHelp = "What is recorded as given. Nothing masks the text of the free-input flags of this verb, and the ledger keeps it " +
+	"in the card's history: put no secret in them."
+
 // afLedgerPath is the ledger file of this project: af/ledger.db in the project's state directory
 // (homestate.ProjectDir). --db overrides it (tests, or a ledger kept elsewhere).
 func afLedgerPath(override string) (string, error) {
@@ -771,6 +775,8 @@ on. The way out is a real landing: move the card to REVIEWING, release it, and t
 and offers it with enqueue; the row starts again as waiting and "moai af land" lands it.
 
 ` + afDoneHelp + `
+
+` + afAsGivenHelp + `
 
 A MERGING card whose holder is gone (it holds no lease) and whose queue row waits with a candidate whose newest green,
 gate or review run failed can be moved, at the card's own --epoch, to REVIEWING without a lease: "moai af land" refuses

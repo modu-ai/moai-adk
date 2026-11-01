@@ -68,7 +68,9 @@ session that holds a card keep renewing its lease. A binding that names another 
 be rewritten does not undo the recorded move: it is printed as warning_heartbeat_bindings.
 
 A lease records the worktree its holder claimed with, and that path is not rewritten: evidence and enqueue for a card
-claimed before the move need --repo <a path in the new repository>.`,
+claimed before the move need --repo <a path in the new repository>.
+
+` + afAsGivenHelp,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return afMoveRepository(cmd, f, reason, from)
