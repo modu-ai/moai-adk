@@ -334,7 +334,7 @@ exit=0
 
 | 기록한 동작 | 착지 코드(file:line) | REQ | AC(0.6.0 사례) |
 |---|---|---|---|
-| 원장은 저장소 정체를 한 번 묶고 바꾸지 않음, 다른 정체는 `ErrWrongRepository` | `ledger/repository.go:13`, `:22-39`, `:42-51`; `ledger/schema.go:71-77` | 001 | 001 (e1) |
+| 원장은 저장소 정체를 한 번 묶고 바꾸지 않음, 다른 정체는 `ErrWrongRepository` | `ledger/repository.go:13`, `:23-40`, `:42-47`; `ledger/schema.go:71-77` | 001 | 001 (e1) |
 | 동사가 저장소를 묶거나 비교, 묶이기 전 아는 저장소와 비교, `--repo`는 같은 git common dir만 | `cli/af.go:72`, `:85-107`, `:113-138`, `:161-175`, `:245-268`, `:284-302`; `cli/af_land.go:292-316` | 001 | 001 (e2)(e3)(e4) |
 | git 저장소가 아닌 디렉터리에서 git을 부르지 않는 동사는 묶지 않음 | `cli/af.go:86-90` | 001(예외) | 001 줄의 착지 시험 `af_repo_n38_test.go:321` |
 | reclaim-cap park를 나가면 `reclaim_count` 0 | `ledger/move.go:126-130` | 007 | 007 (iv) |
@@ -377,10 +377,11 @@ exit=0
 
 - 리더가 넘긴 열린 감사 항목: N4, N5, N6, N7, N8, N10, N20, F8, F9, F12, E6, N37, N44(나머지), N46, N47, N48. 이 판은 그 어느 것도 닫지 않는다.
 - 원장이 아무것도 모를 때(묶이지 않음, lease worktree 없음, 행의 커밋 없음) 기본 위치의 원장은 첫 호출자가 묶음을 정한다 — 틀린 저장소에서 처음 부르면 그 저장소에 묶인다. `--db`로 준 원장은 파일 자리가 저장소 밖이면 `--bind-repo`를 요구한다(2026-11-01 코드 정정, 아래 정정 줄).
-- 저장소를 디스크에서 옮기면 정체(symlink를 푼 절대 git common dir)가 바뀌어 뒤의 모든 동사가 거절된다; 묶음은 갱신·삭제가 트리거로 막혀 있어 복구 경로가 REQ에 없다.
+- 저장소를 디스크에서 옮기면 정체(symlink를 푼 절대 git common dir)가 바뀌어 `moai af move-repository`를 부르기 전까지 뒤의 모든 동사가 거절된다; 첫 묶음 행은 갱신·삭제가 트리거로 막혀 있고, 복구는 별도의 추가 전용 이동 기록과 그 동사가 한다(2026-11-01 코드 사실, 아래 정정 줄); 그 복구 경로를 요구하는 REQ·AC는 아직 없다.
 - `internal/hook/ledger_heartbeat.go`는 저장소를 확인하지 않는다(위 grep).
 - 0.6.0 사례 줄은 §N(release 게이트 밖)에 있어, 그 시험이 깨져도 release 판정은 바뀌지 않는다.
 - 정정 줄 (2026-11-01, 코드 사실만; 새 REQ·AC id 없음, 상태 변경 없음, PASS 주장 아님): 감사 `1c05083f71`의 N49·N50·N54와 N51 (b)(c)(d)·복제본 형태가 코드에서 고쳐졌고, 그 때문에 거짓이 된 REQ-AFL-001의 원장 파일 비교 문장, acceptance (e3)와 §O 첫 줄, design의 동사 쪽 문단을 같은 사실로 고쳤다. 고친 항목은 `.moai/reports/issue-1948/af-audit-46db-repair.md` 후속 절에 있다. N52(저장소 이동 복구 동사)는 시작하지 않았다.
+- 정정 줄 (2026-11-01, 코드 사실만; 새 REQ·AC id 없음, 상태 변경 없음, PASS 주장 아님, 위험 수용 기록 아님): 위 줄의 "N52는 시작하지 않았다"는 그 시점의 사실이며, 지금은 코드에 있다 — 원장의 `repository_move` 표와 `MoveRepository`·`RepositoryMoves`, 동사 `moai af move-repository`. 그 때문에 거짓이 된 문장(REQ-AFL-001의 "다른 정체"·"모든 동사"·인용 줄 번호, REQ-AFL-009의 표 목록, design 부록 D의 "afRun이 모든 동사에서 묶는다"와 "옮기면 뒤의 호출이 거절된다", §O의 "복구 경로가 REQ에 없다")을 같은 사실로 고쳤다. 고친 항목은 `.moai/reports/issue-1948/af-audit-46db-repair.md` 후속 4절에 있다.
 
 ### 측정 명령 (이번 작업, 이 트리)
 
