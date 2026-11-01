@@ -42,6 +42,7 @@ func TestAFCommand_VerbsRegistered(t *testing.T) {
 		"reap":      "reap",
 		"land":      "land",
 		"reconcile": "reconcile",
+		"resume":    "operator resume of a reclaim-cap park",
 	} {
 		c := afVerb(af, verb)
 		if c == nil {
