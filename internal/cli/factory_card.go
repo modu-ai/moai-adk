@@ -3293,6 +3293,7 @@ func completeTransitions(ctx context.Context, db *homestate.FactoryDB, out io.Wr
 	}
 	_, _ = fmt.Fprintf(out, "%s %s merge=%s branch=%s worktree=%s\n",
 		done.CardID, done.State, done.MergeSHA, branch, integTree)
+	factoryPrintWakes(ctx, out, db, done) // card t2013: wait records the landing satisfies
 	return done, nil
 }
 

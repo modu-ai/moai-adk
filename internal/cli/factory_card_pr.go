@@ -581,6 +581,7 @@ func factoryObservePRMerge(ctx context.Context, out io.Writer, db *homestate.Fac
 	// so the lane closes its own queue card here instead of leaving every
 	// completion to a leader `todo done`.
 	factoryCloseLaneCard(out, root, runID, merged, lane, target)
+	factoryPrintWakes(ctx, out, db, merged) // card t2013: wait records the landing satisfies
 	factoryPrintClearPolicyLine(out, root)
 	return nil
 }
