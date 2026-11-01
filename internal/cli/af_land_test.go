@@ -22,7 +22,6 @@ import (
 func afQueuedCard(t *testing.T) (db, repo, cand string, st *ledger.Store, epoch int64) {
 	t.Helper()
 	ctx := context.Background()
-	t.Setenv("CLAUDE_PROJECT_DIR", t.TempDir())
 	db = filepath.Join(t.TempDir(), "af", "ledger.db")
 	var err error
 	st, err = ledger.Open(ctx, db)
@@ -32,14 +31,16 @@ func afQueuedCard(t *testing.T) (db, repo, cand string, st *ledger.Store, epoch 
 	t.Cleanup(func() { _ = st.Close() })
 
 	repo = t.TempDir()
+	// The verbs take --repo only for the project's own repository, and the project directory is where they look for it.
+	t.Setenv("CLAUDE_PROJECT_DIR", repo)
 	afGit(t, repo, "init", "-q", "-b", "work")
 	if err := os.WriteFile(filepath.Join(repo, "base.txt"), []byte("base\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	afGit(t, repo, "add", "-A")
 	afGit(t, repo, "commit", "-q", "-m", "base")
-	afGit(t, repo, "branch", "trunk")
-	afGit(t, repo, "checkout", "-q", "-b", "c1", "trunk")
+	afGit(t, repo, "branch", "af/trunk")
+	afGit(t, repo, "checkout", "-q", "-b", "c1", "af/trunk")
 	if err := os.WriteFile(filepath.Join(repo, "a.txt"), []byte("a\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -78,16 +79,16 @@ func afRowState(t *testing.T, st *ledger.Store) ledger.QueueState {
 
 func TestAFLand_AGateThatFailsFailsTheCardAndLeavesTheTrunk(t *testing.T) {
 	db, repo, _, st, _ := afQueuedCard(t)
-	before := afGit(t, repo, "rev-parse", "refs/heads/trunk")
+	before := afGit(t, repo, "rev-parse", "refs/heads/af/trunk")
 	var res struct {
 		Outcome string `json:"outcome"`
 		Reason  string `json:"reason"`
 	}
-	out := runAF(t, "land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/trunk", "--gate", "false")
+	out := runAF(t, "land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/af/trunk", "--gate", "false")
 	if err := json.Unmarshal([]byte(out), &res); err != nil || res.Outcome != "failed" || res.Reason == "" {
 		t.Fatalf("output %q: %+v %v, want outcome failed with a reason", out, res, err)
 	}
-	if got := afGit(t, repo, "rev-parse", "refs/heads/trunk"); got != before {
+	if got := afGit(t, repo, "rev-parse", "refs/heads/af/trunk"); got != before {
 		t.Errorf("the trunk moved although the gate failed: %s -> %s", before, got)
 	}
 	if got := afRowState(t, st); got != ledger.QueueFailed {
@@ -98,7 +99,7 @@ func TestAFLand_AGateThatFailsFailsTheCardAndLeavesTheTrunk(t *testing.T) {
 func TestAFLand_RefusesACardThatIsNotQueued(t *testing.T) {
 	db, repo, _, _, _ := afQueuedCard(t)
 	cmd := newAFCmd()
-	cmd.SetArgs([]string{"land", "ghost", "--db", db, "--repo", repo, "--trunk", "refs/heads/trunk", "--gate", "true"})
+	cmd.SetArgs([]string{"land", "ghost", "--db", db, "--repo", repo, "--trunk", "refs/heads/af/trunk", "--gate", "true"})
 	cmd.SetOut(&strings.Builder{})
 	cmd.SetErr(&strings.Builder{})
 	err := cmd.Execute()
@@ -124,7 +125,7 @@ func TestAFReconcile_SettlesALandingRowWhoseCandidateIsInTheTrunk(t *testing.T) 
 	if err := st.ReleaseLock(ctx, ledger.LockMerge, lock); err != nil {
 		t.Fatal(err)
 	}
-	afGit(t, repo, "update-ref", "refs/heads/trunk", cand)
+	afGit(t, repo, "update-ref", "refs/heads/af/trunk", cand)
 
 	var res struct {
 		Actions []struct {
@@ -133,7 +134,7 @@ func TestAFReconcile_SettlesALandingRowWhoseCandidateIsInTheTrunk(t *testing.T) 
 			To     string `json:"to"`
 		} `json:"actions"`
 	}
-	out := runAF(t, "reconcile", "--db", db, "--repo", repo, "--trunk", "refs/heads/trunk")
+	out := runAF(t, "reconcile", "--db", db, "--repo", repo, "--trunk", "refs/heads/af/trunk")
 	if err := json.Unmarshal([]byte(out), &res); err != nil || len(res.Actions) != 1 || res.Actions[0].CardID != "t1" || res.Actions[0].To != "landed" {
 		t.Fatalf("output %q: %+v %v, want one action settling t1 as landed", out, res, err)
 	}

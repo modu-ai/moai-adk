@@ -18,21 +18,21 @@ import (
 func TestAFLand_ACardUnderAParkIsNotLanded(t *testing.T) {
 	ctx := context.Background()
 	db, repo, cand, st, epoch := afQueuedCard(t)
-	before := afGit(t, repo, "rev-parse", "refs/heads/trunk")
+	before := afGit(t, repo, "rev-parse", "refs/heads/af/trunk")
 	park := core.Position{Stage: core.StageMerging, Park: &core.Park{Reason: core.ReasonOperatorHold, Evidence: "operator", Resume: "operator lifts it"}}
 	if err := st.Move(ctx, "t1", epoch, park, "operator", "hold",
 		ledger.Evidence{Kind: ledger.KindReview, TreeSHA: "t", SubjectSHA: cand, Result: ledger.ResultPass, Guards: []string{core.GuardOperatorHold}}); err != nil {
 		t.Skipf("the ledger does not take an operator hold in MERGING: %v", err)
 	}
 	cmd := newAFCmd()
-	cmd.SetArgs([]string{"land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/trunk", "--gate", "true"})
+	cmd.SetArgs([]string{"land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/af/trunk", "--gate", "true"})
 	cmd.SetOut(&strings.Builder{})
 	cmd.SetErr(&strings.Builder{})
 	err := cmd.Execute()
 	if err == nil || !strings.Contains(err.Error(), "parked") {
 		t.Fatalf("landing a parked card: %v, want a refusal saying it is parked", err)
 	}
-	if got := afGit(t, repo, "rev-parse", "refs/heads/trunk"); got != before {
+	if got := afGit(t, repo, "rev-parse", "refs/heads/af/trunk"); got != before {
 		t.Errorf("a card under an operator hold reached the trunk: %s -> %s", before, got)
 	}
 }
@@ -40,7 +40,7 @@ func TestAFLand_ACardUnderAParkIsNotLanded(t *testing.T) {
 func TestAFLand_ALoudPassingGateStillLands(t *testing.T) {
 	afSkipWithoutSh(t)
 	db, repo, _, _, _ := afQueuedCard(t)
-	outcome, reason := afLandJSON(t, "land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/trunk",
+	outcome, reason := afLandJSON(t, "land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/af/trunk",
 		"--gate", "head -c 9000000 /dev/zero | tr '\\0' x; exit 0")
 	if outcome != "landed" {
 		t.Errorf("outcome %q reason %.200q: a gate that exits 0 and prints 9 MB did not land", outcome, reason)
@@ -50,7 +50,7 @@ func TestAFLand_ALoudPassingGateStillLands(t *testing.T) {
 func TestAFLand_ALoudFailingGateKeepsItsLastLine(t *testing.T) {
 	afSkipWithoutSh(t)
 	db, repo, _, _, _ := afQueuedCard(t)
-	outcome, reason := afLandJSON(t, "land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/trunk",
+	outcome, reason := afLandJSON(t, "land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/af/trunk",
 		"--gate", "head -c 9000000 /dev/zero | tr '\\0' x; echo REAL-\"FAILURE\"-LINE; exit 1")
 	if outcome != "failed" {
 		t.Fatalf("outcome %q, want failed", outcome)
@@ -93,7 +93,7 @@ func TestAFLand_TheRefusalOfAWithdrawnCardNamesReconcile(t *testing.T) {
 	db, repo, _, _, epoch := afQueuedCard(t)
 	runAF(t, "move", "t1", "--db", db, "--epoch", strconv.FormatInt(epoch, 10), "--stage", "REVIEWING", "--actor", "lane", "--reason", "withdrawn")
 	cmd := newAFCmd()
-	cmd.SetArgs([]string{"land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/trunk", "--gate", "true"})
+	cmd.SetArgs([]string{"land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/af/trunk", "--gate", "true"})
 	cmd.SetOut(&strings.Builder{})
 	cmd.SetErr(&strings.Builder{})
 	err := cmd.Execute()

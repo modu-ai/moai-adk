@@ -30,7 +30,7 @@ func TestAFLand_ReclaimingALockLeavesOtherCardsLeasesAndNotesAlone(t *testing.T)
 	time.Sleep(50 * time.Millisecond)
 	before, _ := st.NotesSince(ctx, 0)
 
-	if outcome, reason := afLandJSON(t, "land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/trunk", "--gate", "true"); outcome != "landed" {
+	if outcome, reason := afLandJSON(t, "land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/af/trunk", "--gate", "true"); outcome != "landed" {
 		t.Fatalf("outcome %q reason %q", outcome, reason)
 	}
 	after, _ := st.NotesSince(ctx, 0)
@@ -65,13 +65,13 @@ func TestAFReconcile_ALandingRowOfAWithdrawnCardIsSettledLanded(t *testing.T) {
 	if err := st.ReleaseLock(ctx, ledger.LockMerge, lock); err != nil {
 		t.Fatal(err)
 	}
-	afGit(t, repo, "update-ref", "refs/heads/trunk", cand) // the dead lander had moved the trunk
+	afGit(t, repo, "update-ref", "refs/heads/af/trunk", cand) // the dead lander had moved the trunk
 	// and the holder withdrew the card after the lander wrote landing
 	if err := st.Move(ctx, "t1", epoch, core.Position{Stage: core.StageReviewing}, "lane", "withdrawn"); err != nil {
 		t.Fatal(err)
 	}
 
-	out := runAF(t, "reconcile", "--db", db, "--repo", repo, "--trunk", "refs/heads/trunk")
+	out := runAF(t, "reconcile", "--db", db, "--repo", repo, "--trunk", "refs/heads/af/trunk")
 	if got := afRowState(t, st); got != ledger.QueueLanded {
 		t.Errorf("the row is %s after reconcile (output %q), want landed: the candidate is in the trunk", got, out)
 	}

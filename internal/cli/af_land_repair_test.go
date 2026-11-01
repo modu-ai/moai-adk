@@ -19,7 +19,7 @@ import (
 // afRepairLand runs `af land` with the gate on the standard queued card and returns the verb's JSON line.
 func afRepairLand(t *testing.T, db, repo, gate string) (outcome, reason, stdout string) {
 	t.Helper()
-	out, _, err := afRunBoth("land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/trunk", "--gate", gate)
+	out, _, err := afRunBoth("land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/af/trunk", "--gate", gate)
 	if err != nil {
 		t.Fatalf("the verb failed: %v (stdout %.200q)", err, out)
 	}
@@ -56,7 +56,7 @@ func TestAFLand_TheGateTextIsNotInTheReasonTheStdoutOrTheLedgerButTheLogHoldsIt(
 		t.Run(r.name, func(t *testing.T) {
 			db, repo, cand, st, epoch := afQueuedCard(t)
 			gate := afD1Words.Replace(r.gate) + "\n" + tail
-			out, errOut, err := afRunBoth("land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/trunk", "--gate", gate)
+			out, errOut, err := afRunBoth("land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/af/trunk", "--gate", gate)
 			if err != nil {
 				t.Fatalf("the verb failed: %v", err)
 			}
@@ -120,7 +120,7 @@ func TestAFLand_TheLandedNoteCarriesTheGateIDAndNotTheGateText(t *testing.T) {
 	afSkipWithoutSh(t)
 	db, repo, _, st, _ := afQueuedCard(t)
 	gate := afD1Words.Replace(`pass=` + afD1Value + ` true`)
-	out, errOut, err := afRunBoth("land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/trunk", "--gate", gate)
+	out, errOut, err := afRunBoth("land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/af/trunk", "--gate", gate)
 	if err != nil {
 		t.Fatalf("the verb failed: %v", err)
 	}

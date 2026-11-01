@@ -19,7 +19,7 @@ func TestAFLand_AGateThatLeavesABackgroundChildLandsAndTheChildIsKilled(t *testi
 	db, repo, _, _, _ := afQueuedCard(t)
 	pidFile := filepath.Join(t.TempDir(), "server.pid")
 	gate := "sleep 60 & echo $! > '" + pidFile + "'"
-	outcome, reason := afLandJSON(t, "land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/trunk", "--gate", gate)
+	outcome, reason := afLandJSON(t, "land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/af/trunk", "--gate", gate)
 	if outcome != "landed" {
 		t.Fatalf("outcome %q reason %q: a gate that exited 0 failed the card", outcome, reason)
 	}
@@ -45,7 +45,7 @@ func TestAFLand_ASecretCutByTheTailLimitIsStillRedacted(t *testing.T) {
 	afSkipWithoutSh(t)
 	db, repo, _, _, _ := afQueuedCard(t)
 	gate := "echo password=hunter2supersecretvalue; head -c 2035 /dev/zero | tr '\\0' y; echo; exit 1"
-	outcome, reason := afLandJSON(t, "land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/trunk", "--gate", gate)
+	outcome, reason := afLandJSON(t, "land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/af/trunk", "--gate", gate)
 	if outcome != "failed" {
 		t.Fatalf("outcome %q reason %q, want failed", outcome, reason)
 	}

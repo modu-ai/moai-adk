@@ -75,7 +75,7 @@ var afD1LogPath = regexp.MustCompile(`log: (\S+\.log)`)
 func afD1Land(t *testing.T, gate string, extra ...string) (outcome, reason, logPath string) {
 	t.Helper()
 	db, repo, _, _, _ := afQueuedCard(t)
-	args := append([]string{"land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/trunk", "--gate", gate}, extra...)
+	args := append([]string{"land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/af/trunk", "--gate", gate}, extra...)
 	out, errOut, err := afRunBoth(args...)
 	ledgerBytes := afLedgerBytes(t, db)
 	for where, text := range map[string]string{"stdout": out, "stderr": errOut, "ledger file": string(ledgerBytes)} {
@@ -226,7 +226,7 @@ func TestAFLand_D1MergeHookStderrNeverReachesTheLedgerOrStdout(t *testing.T) {
 	if err := os.WriteFile(hook, []byte(body), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	out, errOut, err := afRunBoth("land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/trunk", "--gate", "true")
+	out, errOut, err := afRunBoth("land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/af/trunk", "--gate", "true")
 	for where, text := range map[string]string{"stdout": out, "stderr": errOut, "ledger file": string(afLedgerBytes(t, db))} {
 		if strings.Contains(text, afD1Value) {
 			t.Errorf("the hook's value is in the %s", where)
@@ -263,7 +263,7 @@ func TestAFLand_D1MergeHookVolumeIsBounded(t *testing.T) {
 	if err := os.WriteFile(hook, []byte("#!/bin/sh\nhead -c 5000000 /dev/zero | tr '\\0' 'x' >&2\necho\necho 'LAST HOOK LINE' >&2\nexit 1\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	out, _, _ := afRunBoth("land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/trunk", "--gate", "true")
+	out, _, _ := afRunBoth("land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/af/trunk", "--gate", "true")
 	if len(out) > 4096 {
 		t.Errorf("stdout is %d bytes", len(out))
 	}
@@ -324,7 +324,7 @@ func TestAFLand_D1ALogThatCannotBeWrittenDoesNotBlockTheFailure(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(filepath.Dir(db), "gate-logs"), []byte("not a directory"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	out, _, err := afRunBoth("land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/trunk", "--gate", "echo some output; exit 1")
+	out, _, err := afRunBoth("land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/af/trunk", "--gate", "echo some output; exit 1")
 	if err != nil {
 		t.Fatalf("the verb failed because the log could not be written: %v", err)
 	}
@@ -347,7 +347,7 @@ func TestAFVerbs_D4OnlyACompleteExistingCommitSHAIsAccepted(t *testing.T) {
 	afSkipWithoutSh(t)
 	db, repo, cand, _, epoch := afQueuedCard(t)
 	e := strconv.FormatInt(epoch, 10)
-	bad := []string{"HEAD", "trunk", "c1", cand[:7], cand[:12], cand[:39], cand + "0", strings.ToUpper(cand), "--no-verify", "-Xours",
+	bad := []string{"HEAD", "af/trunk", "c1", cand[:7], cand[:12], cand[:39], cand + "0", strings.ToUpper(cand), "--no-verify", "-Xours",
 		strings.Repeat("0", 40), strings.Repeat("a", 64), "", " " + cand}
 	for _, verb := range []string{"evidence", "enqueue"} {
 		for _, v := range bad {
@@ -405,7 +405,6 @@ func TestAFVerbs_D4BranchNameReworkEndsInARefusal(t *testing.T) {
 func afUnqueuedCard(t *testing.T) (db, repo, cand string, st *ledger.Store, epoch int64) {
 	t.Helper()
 	ctx := context.Background()
-	t.Setenv("CLAUDE_PROJECT_DIR", t.TempDir())
 	db = filepath.Join(t.TempDir(), "af", "ledger.db")
 	var err error
 	st, err = ledger.Open(ctx, db)
@@ -414,14 +413,15 @@ func afUnqueuedCard(t *testing.T) (db, repo, cand string, st *ledger.Store, epoc
 	}
 	t.Cleanup(func() { _ = st.Close() })
 	repo = t.TempDir()
+	t.Setenv("CLAUDE_PROJECT_DIR", repo) // the verbs take --repo only for the project's own repository
 	afGit(t, repo, "init", "-q", "-b", "work")
 	if err := os.WriteFile(filepath.Join(repo, "base.txt"), []byte("base\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	afGit(t, repo, "add", "-A")
 	afGit(t, repo, "commit", "-q", "-m", "base")
-	afGit(t, repo, "branch", "trunk")
-	afGit(t, repo, "checkout", "-q", "-b", "c1", "trunk")
+	afGit(t, repo, "branch", "af/trunk")
+	afGit(t, repo, "checkout", "-q", "-b", "c1", "af/trunk")
 	if err := os.WriteFile(filepath.Join(repo, "a.txt"), []byte("a\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -449,7 +449,7 @@ func TestAFVerbs_D4EnqueueRefusesAnEvidencedNameThatIsNotACommit(t *testing.T) {
 	e := strconv.FormatInt(epoch, 10)
 	afGit(t, repo, "tag", "-a", "v1", "-m", "release", cand)
 	tagObject := afGit(t, repo, "rev-parse", "refs/tags/v1")
-	for _, name := range []string{"HEAD", "c1", "trunk", cand[:12], strings.ToUpper(cand), "--no-verify", strings.Repeat("0", 40), tagObject} {
+	for _, name := range []string{"HEAD", "c1", "af/trunk", cand[:12], strings.ToUpper(cand), "--no-verify", strings.Repeat("0", 40), tagObject} {
 		if err := st.AddEvidence(ctx, "t1", epoch, ledger.Evidence{Kind: ledger.KindGate, TreeSHA: "t", SubjectSHA: name, Result: ledger.ResultPass}); err != nil {
 			t.Fatalf("the ledger refused evidence for %q: %v", name, err)
 		}

@@ -16,7 +16,7 @@ func TestAFLand_ControlCharactersInAFailedGatesOutputAreNotKept(t *testing.T) {
 	db, repo, _, st, _ := afQueuedCard(t)
 	// escape, bell, carriage return, backspace, a C1 control and a delete, around text that must survive
 	gate := `printf 'before\n\033[31mred\033[0m\r\a\b\tkept\177\n'; printf '\302\233end\n'; exit 1`
-	outcome, reason := afLandJSON(t, "land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/trunk", "--gate", gate)
+	outcome, reason := afLandJSON(t, "land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/af/trunk", "--gate", gate)
 	if outcome != "failed" {
 		t.Fatalf("outcome %q reason %q, want failed", outcome, reason)
 	}

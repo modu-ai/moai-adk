@@ -52,8 +52,6 @@ func afGit(t *testing.T, dir string, args ...string) string {
 
 func TestCardFlow_ClaimToDone_ThroughMergeQueue(t *testing.T) {
 	ctx := context.Background()
-	// the claim verb binds the session's heartbeat under the project directory; keep that out of the real one
-	t.Setenv("CLAUDE_PROJECT_DIR", t.TempDir())
 	db := filepath.Join(t.TempDir(), "af", "ledger.db")
 	st, err := ledger.Open(ctx, db)
 	if err != nil {
@@ -67,14 +65,17 @@ func TestCardFlow_ClaimToDone_ThroughMergeQueue(t *testing.T) {
 
 	// a repository whose trunk ref is checked out nowhere, and one commit on a candidate branch
 	repo := t.TempDir()
+	// The claim verb binds the session's heartbeat under the project directory: a temporary one keeps that out of the
+	// real one. It is the repository itself, because the verbs take --repo only for the project's own repository.
+	t.Setenv("CLAUDE_PROJECT_DIR", repo)
 	afGit(t, repo, "init", "-q", "-b", "work")
 	if err := os.WriteFile(filepath.Join(repo, "base.txt"), []byte("base\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	afGit(t, repo, "add", "-A")
 	afGit(t, repo, "commit", "-q", "-m", "base")
-	afGit(t, repo, "branch", "trunk")
-	afGit(t, repo, "checkout", "-q", "-b", "c1", "trunk")
+	afGit(t, repo, "branch", "af/trunk")
+	afGit(t, repo, "checkout", "-q", "-b", "c1", "af/trunk")
 	if err := os.WriteFile(filepath.Join(repo, "a.txt"), []byte("a\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -106,11 +107,11 @@ func TestCardFlow_ClaimToDone_ThroughMergeQueue(t *testing.T) {
 		CardID  string `json:"card_id"`
 		Outcome string `json:"outcome"`
 	}
-	out := runAF(t, "land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/trunk", "--gate", "true")
+	out := runAF(t, "land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/af/trunk", "--gate", "true")
 	if err := json.Unmarshal([]byte(out), &landRes); err != nil || landRes.CardID != "t1" || landRes.Outcome != string(mergeq.OutcomeLanded) {
 		t.Fatalf("af land output %q: %+v %v, want outcome landed", out, landRes, err)
 	}
-	if got := afGit(t, repo, "rev-parse", "refs/heads/trunk"); got == afGit(t, repo, "rev-parse", "refs/heads/work") {
+	if got := afGit(t, repo, "rev-parse", "refs/heads/af/trunk"); got == afGit(t, repo, "rev-parse", "refs/heads/work") {
 		t.Error("the trunk did not move from the base")
 	}
 
