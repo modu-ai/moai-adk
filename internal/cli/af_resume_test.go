@@ -17,6 +17,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/spf13/cobra"
+
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/ledger"
 )
@@ -190,6 +192,35 @@ func TestAFVerbs_N42TheResumeVerbLetsAReclaimCapParkedCardFinishOnItsLandedCommi
 	}
 	if !a.inTrunk(a.c1) {
 		t.Error("the card is DONE and c1 is not in the trunk")
+	}
+}
+
+// N45 (part): the help says what the verbs do. `resume` names the park it resolves and the two flags it insists on,
+// and `move`, which cannot carry a guard, points at `resume` for the one resume it used to send to the ledger API.
+func TestAFVerbs_N45TheHelpOfResumeAndMoveMatchesWhatTheVerbsDo(t *testing.T) {
+	af := newAFCmd()
+	resume := afVerb(af, "resume")
+	if resume == nil {
+		t.Fatal("no resume verb")
+	}
+	for _, want := range []string{"reclaim-cap", "--guard", "--reason", "epoch", "recorded as given"} {
+		if !strings.Contains(resume.Long, want) {
+			t.Errorf("the help of resume does not say %q", want)
+		}
+	}
+	for _, name := range []string{"guard", "reason", "epoch"} {
+		f := resume.Flags().Lookup(name)
+		if f == nil {
+			t.Errorf("resume has no --%s", name)
+			continue
+		}
+		if _, required := f.Annotations[cobra.BashCompOneRequiredFlag]; !required {
+			t.Errorf("--%s is not marked required, and the help says it is", name)
+		}
+	}
+	move := afVerb(af, "move")
+	if !strings.Contains(move.Long, `"resume" verb`) {
+		t.Errorf("the help of move still sends the reclaim-cap resume to the ledger API: %s", move.Long)
 	}
 }
 
