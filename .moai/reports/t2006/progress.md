@@ -30,3 +30,12 @@ card: t2006 | branch: WT-cache-aware-execution | run: tnsei4 | stop: draft PR, n
 
 - D1 (lane judgment): keep the `idleCompaction` default; MoAI sets no key, no code, no config (card text + t1755 policy). Reason: card forbids pinning policy in code/config.
 - D2 (lane judgment): reference TTL table rows 19-20 and the "authentication-mode defaults" paragraph contradict the prompt-caching page (TTL is per request bucket and billing, not auth mode); they are corrected in the same edit because directive 9's reference text cites them.
+
+## Checkpoint (2026-11-01, after leader message: operator priority change, resources go to AF)
+
+decision record: decided_by=lane-7 (claude, lane orchestrator) evidence_refs=leader cross-session message (priority change, not an approval cancellation, no kill/reset/delete),PR#1954 ladder_path=gate boundary (leader ruling, auto-semantics.md §6)
+
+- HEAD ae1035f53955e2b5721a452d6248073c71aae4f0 on WT-cache-aware-execution, working tree clean (`git status --short` empty), pushed to origin.
+- PR https://github.com/modu-ai/moai-adk/pull/1954: state OPEN, isDraft true, autoMergeRequest null, headRefOid equals HEAD (gh pr view, this run).
+- Remaining work: none on the lane side. Merge waits for AF completion, then the same-SHA CI, native Codex receipt and an independent audit, read by the leader. CI was `pending` at the last read; not read to terminal state.
+- Work stopped here by the leader's ruling: no further push, no new card. Tree .moai/worktrees/t2006 preserved (branch exists on origin; remote merge not landed). Standing recheck cron already deleted; lease may expire (harmless; re-lease with `factory next --card t2006`).
