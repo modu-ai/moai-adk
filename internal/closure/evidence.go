@@ -208,11 +208,16 @@ func fenceMarker(line string) (ch byte, n int, rest string) {
 // markdownHeadingLevel returns the ATX heading level of line (1-6), or 0 when
 // the line is not a heading.
 func markdownHeadingLevel(line string) int {
+	// Up to three leading spaces are part of the heading; four make a code block.
+	t := strings.TrimLeft(line, " ")
+	if len(line)-len(t) > 3 {
+		return 0
+	}
 	n := 0
-	for n < len(line) && line[n] == '#' {
+	for n < len(t) && t[n] == '#' {
 		n++
 	}
-	if n == 0 || n > 6 || n >= len(line) || line[n] != ' ' {
+	if n == 0 || n > 6 || n >= len(t) || t[n] != ' ' {
 		return 0
 	}
 	return n

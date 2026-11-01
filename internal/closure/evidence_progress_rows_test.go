@@ -30,6 +30,28 @@ func TestParseProgressRowsIgnoresHeadingsInsideCodeFences(t *testing.T) {
 	}
 }
 
+// TestParseProgressRowsAcceptsIndentedHeadings: Markdown allows up to three
+// leading spaces before an ATX heading, so " ## §E.2 ..." opens the section and
+// an indented following heading closes it (fourth card review finding on the
+// S13 repair); four spaces is an indented code block, not a heading.
+func TestParseProgressRowsAcceptsIndentedHeadings(t *testing.T) {
+	t.Parallel()
+
+	const doc = " ## §E.2 Run-phase Evidence\n\n" +
+		"| AC-1 | PASS | under an indented heading |\n\n" +
+		"   ## §E.4 Sync-phase Signal\n\n" +
+		"| AC-9 | PASS | outside the matrix |\n"
+	rows, found := ParseProgressRows([]byte(doc))
+	if !found || len(rows) != 1 || rows[0].ID != "AC-1" {
+		t.Fatalf("S13_INDENTED_HEADING: found=%v rows=%v, want the one AC-1 row", found, rows)
+	}
+
+	const codeBlock = "    ## §E.2 Run-phase Evidence\n\n| AC-1 | PASS | a four-space code block is not a heading |\n"
+	if rows, found := ParseProgressRows([]byte(codeBlock)); found || len(rows) != 0 {
+		t.Fatalf("S13_INDENTED_CODE_BLOCK: found=%v rows=%v, want no §E.2 section", found, rows)
+	}
+}
+
 // TestParseProgressRowsFenceClosesOnlyOnAMatchingFence: a four-backtick fence
 // that quotes a three-backtick example is closed by a four-backtick line, not by
 // the quoted three-backtick lines (third card review finding on the S13 repair).
