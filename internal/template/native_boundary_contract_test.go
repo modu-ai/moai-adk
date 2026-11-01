@@ -1,6 +1,7 @@
 package template
 
 import (
+	"io/fs"
 	"strings"
 	"testing"
 )
@@ -54,9 +55,43 @@ func TestNativeReviewBoundaryMatchesOfficialCommandsPage(t *testing.T) {
 		t.Error("goal.md states an unobserved generalization about native /goal")
 	}
 
+	// sync-auditor must not say it carries no Write while also mandating that it
+	// writes the verdict file: the digest and contract files belong to the
+	// orchestrator, the verdict export is the one file the auditor writes.
+	// Agent definitions carry shell tokens the renderer refuses, so read them raw.
+	raw := func(path string) string {
+		t.Helper()
+		body, err := fs.ReadFile(embedded, path)
+		if err != nil {
+			t.Fatalf("read %s: %v", path, err)
+		}
+		return string(body)
+	}
+	auditor := raw(".claude/agents/moai/sync-auditor.md")
+	for _, conflict := range []string{"carries no `Write` or `Edit`", "has no Write tool"} {
+		if strings.Contains(auditor, conflict) {
+			t.Errorf("sync-auditor.md still carries the conflicting storage statement %q", conflict)
+		}
+	}
+
+	// plan-auditor MP-5 / MP-6: an unexecutable verification verb is a Gap, so the
+	// text must not tell the auditor that the N/A "auto-passes" for those two.
+	planAuditor := raw(".claude/agents/moai/plan-auditor.md")
+	for _, stale := range []string{
+		"If the D7 verification verb is not executable (e.g., target files absent), mark N/A following the MP-4 precedent (N/A auto-passes)",
+		"If the D8 verification verb is not executable, mark N/A following the MP-4 precedent (N/A auto-passes)",
+	} {
+		if strings.Contains(planAuditor, stale) {
+			t.Errorf("plan-auditor.md still auto-passes an unexecuted verb: %q", stale)
+		}
+	}
+
 	review := render(".claude/skills/moai/workflows/review.md")
 	if strings.Contains(review, "covering the correctness-bug + reuse/simplification/efficiency portion") {
 		t.Error("review.md still claims /code-review always covers reuse/simplification/efficiency")
+	}
+	if !strings.Contains(review, "ahead of its upstream plus uncommitted changes") {
+		t.Error("review.md does not state that the no-flag HEAD~1 scope differs from native /code-review's default")
 	}
 	if !strings.Contains(review, "effort-dependent") {
 		t.Error("review.md compose section does not say the cleanup findings are effort-dependent")

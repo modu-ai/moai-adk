@@ -57,7 +57,7 @@ Determine the scope of code to review:
 If --staged: Use `git diff --staged` to get staged changes.
 If --branch: Use `git diff {BRANCH}...HEAD` to get branch changes.
 If --file: Read the specified file(s) directly.
-If no flag: Use `git diff HEAD~1` for the most recent commit changes.
+If no flag: Use `git diff HEAD~1` for the most recent commit changes. This scope is the last commit only. Native `/code-review` with no target differs: it covers the branch's commits ahead of its upstream plus uncommitted changes (comparing against `main`, or the previous commit, when the branch has no upstream), so a native finding source and this default can cover different diffs.
 
 Collect:
 - List of modified files with change types (added, modified, deleted)
