@@ -4,9 +4,13 @@ package mergeq
 // hostile or merely large output, and how it is written. Values are assembled at run time, never written as literals.
 
 import (
+	"bytes"
+	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
 )
@@ -60,6 +64,49 @@ func TestFailureLog_TheCapHoldsAfterTheMaskingMadeTheTextLonger(t *testing.T) {
 		}
 		if fi.Size() > capBytes+repairNoteSlack {
 			t.Errorf("input %q repeated: the log holds %d bytes, over the cap %d", line, fi.Size(), capBytes)
+		}
+	}
+}
+
+// N31: nothing removed old logs, so five failed candidates left 1.3 MB of output that can hold a secret. The directory
+// keeps one total cap, and the oldest files go first.
+func TestFailureLog_TheDirectoryKeepsOneTotalCapAndTheOldestFilesGoFirst(t *testing.T) {
+	dir := t.TempDir()
+	const totalCap = 4 * DefaultFailureLogCap
+	now := time.Now()
+	var seeded []string
+	for i := 0; i < 5; i++ {
+		p := filepath.Join(dir, fmt.Sprintf("seed-%d.log", i))
+		if err := os.WriteFile(p, bytes.Repeat([]byte("x"), 200<<10), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		mt := now.Add(-time.Duration(5-i) * time.Hour)
+		if err := os.Chtimes(p, mt, mt); err != nil {
+			t.Fatal(err)
+		}
+		seeded = append(seeded, p)
+	}
+	path, err := (&FailureLog{Dir: dir}).Write("t1", "c", "gate", []byte(strings.Repeat("a line of output\n", DefaultFailureLogCap/16)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var sum int64
+	entries, _ := os.ReadDir(dir)
+	for _, e := range entries {
+		if fi, ierr := e.Info(); ierr == nil {
+			sum += fi.Size()
+		}
+	}
+	if sum > totalCap {
+		t.Errorf("the directory holds %d bytes in %d files, over the total cap %d", sum, len(entries), totalCap)
+	}
+	if _, err := os.Stat(path); err != nil {
+		t.Errorf("the log just written is gone: %v", err)
+	}
+	for i, p := range seeded {
+		_, serr := os.Stat(p)
+		if gone := serr != nil; gone != (i < 2) {
+			t.Errorf("seed %d gone=%v, want gone=%v (the two oldest go first and no more)", i, gone, i < 2)
 		}
 	}
 }
