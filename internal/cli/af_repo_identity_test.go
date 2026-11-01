@@ -217,6 +217,9 @@ func TestAFIdentity_ALinkedWorktreeHasTheMarkerOfItsRepository(t *testing.T) {
 	afSkipWithoutSh(t)
 	a := afN28Landed(t)
 	m := afIDMarkerOf(t, a.repo)
+	if !afIDMarkerShape.MatchString(m) {
+		t.Fatalf("the repository holds the marker %q before the linked worktree speaks", m)
+	}
 	wt := filepath.Join(t.TempDir(), "wt")
 	afGit(t, a.repo, "worktree", "add", "-q", "--detach", wt, a.c1)
 	t.Setenv("CLAUDE_PROJECT_DIR", wt)
@@ -253,10 +256,14 @@ func TestAFIdentity_ALedgerBoundBeforeMarkersAdoptsTheMarkerOfItsRepositoryOnThe
 func TestAFIdentity_N61AMoveToACloneWhileTheRepositoryIsAwayIsRefused(t *testing.T) {
 	afSkipWithoutSh(t)
 	a := afN52Renamed(t)
-	for name, args := range map[string][]string{
-		"clone":  {"clone", "-q", "--no-hardlinks", a.moved},
-		"mirror": {"clone", "-q", "--mirror", a.moved},
+	for _, tc := range []struct {
+		name string
+		args []string
+	}{
+		{"clone", []string{"clone", "-q", "--no-hardlinks", a.moved}},
+		{"mirror", []string{"clone", "-q", "--mirror", a.moved}},
 	} {
+		name, args := tc.name, tc.args
 		t.Run(name, func(t *testing.T) {
 			dst := filepath.Join(t.TempDir(), "copy")
 			if out, err := exec.Command("git", append(args, dst)...).CombinedOutput(); err != nil {
@@ -699,7 +706,7 @@ func TestAFIdentity_N64AFromThatWouldOverwriteALedgerAtTheNewKeyIsRefused(t *tes
 		t.Fatalf("--from over an existing ledger was accepted: %s", out)
 	}
 	for _, want := range []string{d.oldLedger, d.newLedger, "nothing was changed"} {
-		if !strings.Contains(err.Error(), want) {
+		if !afIDSays(err.Error(), want) {
 			t.Errorf("the refusal does not say %q: %v", want, err)
 		}
 	}
@@ -783,13 +790,24 @@ func afRunBinary(bin string, args ...string) (stdout, stderr string, err error) 
 	var out, errOut bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &out, &errOut
 	if runErr := cmd.Run(); runErr != nil {
-		msg := strings.TrimSpace(errOut.String())
-		if _, after, found := strings.Cut(msg, "Error: "); found {
-			msg = strings.TrimSpace(strings.SplitN(after, "\n", 2)[0])
+		// the binary prints the error in a framed block (an ERROR banner, the message wrapped to the width of the frame, a
+		// capital first letter): the lines of the message are joined back with a space; a word the frame cut in two keeps a
+		// space inside it, which afIDSays ignores
+		var lines []string
+		for _, line := range strings.Split(errOut.String(), "\n") {
+			if line = strings.TrimSpace(line); line != "" && line != "ERROR" {
+				lines = append(lines, line)
+			}
 		}
-		err = errors.New(msg)
+		err = errors.New(strings.Join(lines, " "))
 	}
 	return out.String(), errOut.String(), err
+}
+
+// afIDSays is whether text says want, with the white space of both left out: the binary's frame may cut a path in two.
+func afIDSays(text, want string) bool {
+	squash := func(s string) string { return strings.Join(strings.Fields(s), "") }
+	return strings.Contains(squash(text), squash(want))
 }
 
 // ---- the normal paths beside the refusals -----------------------------------------------------------------------------------

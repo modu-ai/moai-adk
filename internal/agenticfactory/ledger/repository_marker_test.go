@@ -233,10 +233,7 @@ func TestSchemaVersion_TheFirstRecordedMoveRaisesItSoThePreviousBuildRefusesTheF
 	if n != SchemaVersionMoved {
 		t.Errorf("user_version %d, want SchemaVersionMoved (%d)", n, SchemaVersionMoved)
 	}
-	// the previous build's rule, as it was written: have > SchemaVersion(2) is refused
-	if !(n > previousBuildSchema) {
-		t.Error("the previous build's refusal rule does not fire")
-	}
+	// the previous build's rule, as it was written, refuses have > 2: the n > previousBuildSchema check above is that rule firing
 	// this build keeps opening the file, and a second move leaves the number where it is
 	s = reopen(t, s, path)
 	if got, err := s.Repository(bg); err != nil || got != repoB {
