@@ -33,6 +33,27 @@ func TestNativeReviewBoundaryMatchesOfficialCommandsPage(t *testing.T) {
 		}
 	}
 
+	// Official code-review-local: "Claude can start /code-review on its own"
+	// (flag gate removed in v2.1.246); skills.md lists /init and /security-review
+	// as the built-in commands exposed through the Skill tool, not /review.
+	for _, stale := range []string{
+		"| `/code-review` | HUMAN-ONLY",
+		"| `/review` | HUMAN-ONLY",
+		"including `/init`, `/review`, and `/security-review`",
+	} {
+		if strings.Contains(matrix, stale) {
+			t.Errorf("native-invocation-model.md still carries stale classification %q", stale)
+		}
+	}
+	if !strings.Contains(matrix, "user-invocable-only") {
+		t.Error("native-invocation-model.md does not name the skillOverrides user-invocable-only switch")
+	}
+
+	goal := render(".claude/skills/moai/workflows/goal.md")
+	if strings.Contains(goal, "the model cannot set it") {
+		t.Error("goal.md states an unobserved generalization about native /goal")
+	}
+
 	review := render(".claude/skills/moai/workflows/review.md")
 	if strings.Contains(review, "covering the correctness-bug + reuse/simplification/efficiency portion") {
 		t.Error("review.md still claims /code-review always covers reuse/simplification/efficiency")

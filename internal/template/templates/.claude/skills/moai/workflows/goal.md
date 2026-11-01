@@ -1,9 +1,11 @@
 # /moai goal — Condition-Declared Universal Agentic Loop
 
 > `/moai goal` is the MoAI-owned, PROGRAMMATIC reimplementation of native `/goal`
-> semantics. Native `/goal` is HUMAN-ONLY (the model cannot set it on the user's
-> behalf); `/moai goal` is the only pipeline path to arm a goal-condition loop
-> programmatically. See `.claude/rules/moai/workflow/goal-directive.md` and
+> semantics. Native `/goal` is a user-typed built-in with no `Skill`-tool bridge,
+> so no tool call arms it mid-session (`claude -p "/goal <condition>"` can arm it
+> non-interactively), and its evaluator makes no tool calls, so it cannot judge a
+> mechanical condition; `/moai goal` is the pipeline path to arm a goal-condition
+> loop programmatically, with mechanical conditions decided by exit code. See `.claude/rules/moai/workflow/goal-directive.md` and
 > `.claude/rules/moai/workflow/native-invocation-model.md` § Axis B.
 
 ## What It Is
