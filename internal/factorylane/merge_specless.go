@@ -48,7 +48,7 @@ func checkSyncAuditVerdictFile(git GitRunner, repoDir, card string) (string, boo
 	path := filepath.Join(repoDir, filepath.FromSlash(rel))
 	refuse := func(format string, args ...any) (string, bool) {
 		return fmt.Sprintf("card %s has no SPEC, so its merge evidence is %s — %s. "+
-			"Produce that file on the card branch with the machine lines `verdict: PASS` (or `verdict: PASS-WITH-DEBT`) and `audited_sha: <full commit SHA the audit read>` "+
+			"Produce that file in the card's own tree (it is read from disk there; .moai/reports is untracked, so it is not a commit on the card branch) with the machine lines `verdict: PASS` (or `verdict: PASS-WITH-DEBT`) and `audited_sha: <full commit SHA the audit read>` "+
 			"(the audited commit must be HEAD, or differ from HEAD only under .moai/reports/%s/)",
 			card, rel, fmt.Sprintf(format, args...), card), false
 	}

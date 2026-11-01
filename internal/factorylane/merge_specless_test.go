@@ -360,7 +360,7 @@ func TestMergeTripleSpecLessRefusalText(t *testing.T) {
 	r, _ := newSpecLessRepo(t)
 	run := evalSpecLess(t, r, "")
 	want := "card t9 has no SPEC, so its merge evidence is .moai/reports/t9/verdict.md — " + filepath.Join(r.dir, r.verdictRel()) + " does not exist. " +
-		"Produce that file on the card branch with the machine lines `verdict: PASS` (or `verdict: PASS-WITH-DEBT`) and `audited_sha: <full commit SHA the audit read>` " +
+		"Produce that file in the card's own tree (it is read from disk there; .moai/reports is untracked, so it is not a commit on the card branch) with the machine lines `verdict: PASS` (or `verdict: PASS-WITH-DEBT`) and `audited_sha: <full commit SHA the audit read>` " +
 		"(the audited commit must be HEAD, or differ from HEAD only under .moai/reports/t9/)"
 	if got := run.Checks[0].Detail; got != want {
 		t.Errorf("refusal text:\n got: %s\nwant: %s", got, want)
