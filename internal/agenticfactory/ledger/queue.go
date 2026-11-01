@@ -305,6 +305,21 @@ func (s *Store) Enqueue(ctx context.Context, cardID string, epoch int64, candida
 				return fmt.Errorf("ledger: %w", err)
 			}
 		}
+		// The candidate is the commit the card measured last. A gate-only candidate is that commit
+		// the moment it is gated (REQ-AFL-008), but an older commit offered over a newer one's
+		// green is not: the trunk would hold the old work while the card's newest work, which
+		// may have failed, is not in it. The ledger cannot tell whether one commit contains the
+		// other, so it asks for the same commit; measuring the older one again makes it the
+		// newest. Red and merge evidence are about other commits by design and do not count.
+		var lastSubject sql.NullString
+		switch err := tx.QueryRowContext(ctx, `SELECT subject_sha FROM evidence WHERE card_id=? AND kind IN (?,?,?) ORDER BY id DESC LIMIT 1`,
+			cardID, KindGreen, KindGate, KindReview).Scan(&lastSubject); {
+		case err == sql.ErrNoRows:
+		case err != nil:
+			return fmt.Errorf("ledger: %w", err)
+		case lastSubject.Valid && lastSubject.String != candidateSHA:
+			return fmt.Errorf("%w: the newest evidence of %s is about commit %s, not %s; measure %s again first", ErrEvidenceStale, cardID, lastSubject.String, candidateSHA, candidateSHA)
+		}
 		// A commit this card already offered, and was then taken back for rework, is taken again
 		// only with the run that finishing needs already recorded (see landingStands). Refusing it
 		// here, while the holder is still there to measure it, is the only place a refusal
