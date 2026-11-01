@@ -28,8 +28,10 @@ import (
 
 const afD1Value = "hunter2" + "super"
 
-// afD1LogCapUpper is an upper bound on the log file size the tests accept (the cap itself is the code's).
-const afD1LogCapUpper = 512 << 10
+// afD1LogCapUpper is an upper bound on the log file size the tests accept: the code's cap on the output plus room for
+// the header that holds the gate text (2 KiB at most) and the note that says how much of the start was dropped. It was
+// twice the cap, which let a log that the masking had made 2.5 times longer pass.
+const afD1LogCapUpper = mergeq.DefaultFailureLogCap + 4<<10
 
 var afD1Words = strings.NewReplacer(
 	"@PW@", "pass"+"word", "@PWU@", "PASS"+"WORD", "@TK@", "to"+"ken", "@TKU@", "TO"+"KEN",

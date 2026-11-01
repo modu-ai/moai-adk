@@ -96,6 +96,25 @@ func TestAFLand_TheGateTextIsNotInTheReasonTheStdoutOrTheLedgerButTheLogHoldsIt(
 	}
 }
 
+// N31: a gate whose output the masking makes longer ("key=1" becomes "key=[REDACTED]") must not make the log longer
+// than its cap; the bound is the tightened afD1LogCapUpper.
+func TestAFLand_TheLogStaysUnderItsCapWhenTheMaskingMakesTheOutputLonger(t *testing.T) {
+	afSkipWithoutSh(t)
+	db, repo, _, _, _ := afQueuedCard(t)
+	_, reason, _ := afRepairLand(t, db, repo, `awk 'BEGIN{for(i=0;i<120000;i++)print "key=1"}'; echo REAL-"FAILURE"-LINE; exit 1`)
+	m := afD1LogPath.FindStringSubmatch(reason)
+	if m == nil {
+		t.Fatalf("the reason names no log file: %.300q", reason)
+	}
+	log, err := os.ReadFile(m[1])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(log) > afD1LogCapUpper || !strings.Contains(string(log), "REAL-FAILURE-LINE") {
+		t.Errorf("log: %d bytes (bound %d), last line kept=%v", len(log), afD1LogCapUpper, strings.Contains(string(log), "REAL-FAILURE-LINE"))
+	}
+}
+
 // N29: the same on a gate that passes: the landed note carries the id, not the text.
 func TestAFLand_TheLandedNoteCarriesTheGateIDAndNotTheGateText(t *testing.T) {
 	afSkipWithoutSh(t)
