@@ -144,6 +144,28 @@ func TestAFVerbs_N39EnqueueRefusesWhenTheRepositoryCannotAnswerAndChangesNothing
 	}
 }
 
+// The way out of the refusal above: the same epoch cannot offer the commit again (a landed row of the epoch is history),
+// so the holder withdraws the card and lets go; the next holder measures the commit and offers it, the row starts
+// again as waiting, and the card finishes only after a real landing.
+func TestAFVerbs_N39ACardRefusedDoneBecauseTheTrunkLostItsCommitCanBeLandedAgain(t *testing.T) {
+	afSkipWithoutSh(t)
+	a := afN28Landed(t)
+	afGit(t, a.repo, "update-ref", mergeq.DefaultTrunk, afGit(t, a.repo, "rev-parse", mergeq.DefaultTrunk+"~1"))
+	a.verb("move", "t1", "--epoch", a.e2, "--stage", "MERGING", "--remote-integrated")
+	if err := a.tryDone(); err == nil {
+		t.Fatal("setup: DONE was accepted with the landed commit outside the dedicated trunk")
+	}
+	if _, err := a.try("enqueue", "t1", "--epoch", a.e2, "--candidate", a.c1, "--repo", a.repo); err == nil {
+		t.Error("the epoch that landed c1 offered it again")
+	}
+	a.verb("move", "t1", "--epoch", a.e2, "--stage", "REVIEWING")
+	a.verb("release", "t1", "--epoch", a.e2)
+	b := a.claimAgain("next")
+	b.measure(b.c1)
+	b.verb("enqueue", "t1", "--epoch", b.e2, "--candidate", b.c1)
+	b.wantLandsForReal()
+}
+
 // The move to DONE asks the same of a landed row: the commit that landed left the dedicated trunk, the card is
 // refused, the ledger unchanged, and the card can go back to be offered and landed again.
 func TestAFVerbs_N39TheMoveToDoneAsksWhetherTheLandedCommitIsInTheTrunk(t *testing.T) {
