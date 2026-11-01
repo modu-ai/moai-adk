@@ -237,6 +237,10 @@ the trunk untouched. %s`, mergeq.DefaultFailureLogCap>>10, mergeq.DefaultFailure
 			if strings.TrimSpace(gate) == "" {
 				return fmt.Errorf("af land: --gate is required: a landing without gates would merge unverified work")
 			}
+			if gateTimeout <= 0 {
+				// The gate's context would have ended before the gate starts, and the card would fail with "the gate ran past 0s" (F8).
+				return fmt.Errorf("af land: --gate-timeout %s is refused: a gate needs a positive time to run in (default %s); nothing was changed", gateTimeout, afGateTimeout)
+			}
 			return afMergeRun(cmd, f, func(ctx context.Context, st *ledger.Store, scratch string) error {
 				q := mergeq.NewLedgerQueue(st)
 				item, err := q.Item(ctx, args[0], time.Now())
@@ -278,7 +282,7 @@ the trunk untouched. %s`, mergeq.DefaultFailureLogCap>>10, mergeq.DefaultFailure
 	}
 	f.bind(cmd)
 	cmd.Flags().StringVar(&gate, "gate", "", "the command that verifies the merge result, run with sh -c in the candidate worktree")
-	cmd.Flags().DurationVar(&gateTimeout, "gate-timeout", afGateTimeout, "how long the gate may run before its process group is killed")
+	cmd.Flags().DurationVar(&gateTimeout, "gate-timeout", afGateTimeout, "how long the gate may run before its process group is killed (must be positive)")
 	return cmd
 }
 
