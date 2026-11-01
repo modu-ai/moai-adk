@@ -99,6 +99,19 @@ func TestNativeReviewBoundaryMatchesOfficialCommandsPage(t *testing.T) {
 			t.Errorf("plan-auditor.md MP-5/MP-6 lack %q", required)
 		}
 	}
+	// No must-pass criterion may auto-pass on N/A: MP-4 (single-language SPEC) and
+	// MP-7/8/9 (missing material) take the same split as MP-5/MP-6. MP-5..MP-9 each
+	// state it in the body and in the output template: 10 mentions.
+	if strings.Contains(planAuditor, "auto-passes") {
+		t.Error("plan-auditor.md still says a must-pass N/A auto-passes")
+	}
+	if n := strings.Count(planAuditor, "FAIL (unverified)"); n < 10 {
+		t.Errorf("plan-auditor.md names FAIL (unverified) %d times, want at least 10 (MP-5..MP-9, body and template)", n)
+	}
+	if strings.Contains(planAuditor, "or acceptance.md is absent, with the reason stated") ||
+		strings.Contains(planAuditor, "or where `acceptance.md` is absent, mark MP-8") {
+		t.Error("plan-auditor.md still turns an absent acceptance.md into MP-8 N/A")
+	}
 	if strings.Contains(planAuditor, "the criterion does not fail") {
 		t.Error("plan-auditor.md still lets an unexecuted applicable verb pass without failing the criterion")
 	}
