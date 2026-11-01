@@ -167,7 +167,7 @@ On lane reuse the leader re-sends the full pointer instruction.
 
 The leader session itself is cleared between cards: at `done` the operator is asked to `/clear` it, and the next turn presents the queue again.
 
-Completion guidance (card t2013, operator instruction, later than SPEC-FACTORY-LANE-NO-CLEAR-001): `moai factory complete` prints one guidance line of the order above, only after a genuinely completed edge (merged-local or merged-pr) — never for pr-open, a still-open or closed pull request, an audit-pending card, or a refused complete. The next card is requested with `moai factory next` from the primary checkout, or from the leader's dispatch under manual dispatch. The line is text: it is not evidence that any step ran.
+Completion guidance (an operator instruction that supersedes the earlier no-clear shape): `moai factory complete` prints one guidance line of the order above, only after a genuinely completed edge (merged-local or merged-pr) — never for pr-open, a still-open or closed pull request, an audit-pending card, or a refused complete. The next card is requested with `moai factory next` from the primary checkout, or from the leader's dispatch under manual dispatch. The line is text: it is not evidence that any step ran.
 
 ## Isolation is provisioned by MoAI, then entered through a launcher
 
