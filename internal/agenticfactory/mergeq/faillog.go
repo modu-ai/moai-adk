@@ -48,7 +48,10 @@ func (l *FailureLog) Write(card, candidate, kind string, out []byte) (string, er
 		dropped = len(body) - limit
 		body = body[dropped:]
 	}
-	text, _ := core.Redact(StripControls(string(body)))
+	// The raw text is masked once before the controls are stripped: a marker inside an escape sequence would be
+	// removed with the sequence, and the value after it would no longer have a marker to follow.
+	text, _ := core.Redact(string(body))
+	text, _ = core.Redact(StripControls(text))
 	text, _ = core.Redact(text)
 	if dropped > 0 {
 		text = fmt.Sprintf("[%d earlier bytes of output are not kept]\n%s", dropped, text)
