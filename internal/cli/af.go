@@ -97,12 +97,13 @@ func afRun(f afFlags, fn func(ctx context.Context, st *ledger.Store) error) erro
 	if pending == nil {
 		return fn(ctx, st)
 	}
-	// The ledger is not bound yet and the first verb that COMPLETES binds it (N55): a verb the ledger refuses (no such card,
-	// a stale epoch) has done nothing, and a ledger it leaves bound to the repository it happened to run in is bound for
-	// good. A verb that binds on its own (afCheckCommit) flushes this first, so the project's repository is still the first
-	// one bound.
+	// The ledger is not bound yet and the first verb that COMPLETES and WROTE binds it (N55): a verb the ledger refuses (no
+	// such card, a stale epoch) has done nothing, and a ledger it leaves bound to the repository it happened to run in is
+	// bound for good. A verb that completed but wrote nothing (a reap with nothing to reap) binds only when it declared the
+	// repository with --bind-repo: the explicit first bind. A verb that binds on its own (afCheckCommit) flushes this first,
+	// so the project's repository is still the first one bound.
 	err = fn(context.WithValue(ctx, afPendingKey{}, pending), st)
-	if err == nil {
+	if err == nil && !pending.skippable() {
 		err = pending.flush(ctx)
 	}
 	return err
@@ -120,6 +121,21 @@ func afSameDirectory(a, b string) bool {
 type afPendingBinding struct {
 	finish func(context.Context) error
 	done   bool
+	// declared says the call carried --bind-repo (already checked by afPrepareBinding); wroteNothing says the verb
+	// completed without writing the ledger (afWroteNothing).
+	declared, wroteNothing bool
+}
+
+// skippable says the binding is left for a later verb: the verb wrote nothing, declared no repository, and no one bound
+// the ledger meanwhile.
+func (p *afPendingBinding) skippable() bool { return p.wroteNothing && !p.declared && !p.done }
+
+// afWroteNothing is what a verb that completed without writing the ledger tells afRun: such a verb binds only when it
+// declared the repository (N55).
+func afWroteNothing(ctx context.Context) {
+	if p, ok := ctx.Value(afPendingKey{}).(*afPendingBinding); ok {
+		p.wroteNothing = true
+	}
 }
 
 // afPendingKey is the context key under which afRun hands the waiting binding to the code the verb calls.
@@ -192,7 +208,7 @@ func afPrepareBinding(ctx context.Context, st *ledger.Store, place afPlace, dir 
 		if err := afCheckKnownRepositories(ctx, st, place, id, dir); err != nil {
 			return nil, err
 		}
-		return &afPendingBinding{finish: bind}, nil
+		return &afPendingBinding{finish: bind, declared: place.bindRepo != ""}, nil
 	}
 	return nil, bind(ctx)
 }
@@ -557,8 +573,9 @@ const afRepoFlagHelp = "the git repository the commit is looked up in: the proje
 	"and so is a repository other than the one the ledger is bound to"
 
 // afBindHelp closes the help of every verb that opens the ledger: what the repository binding is and what it refuses.
-const afBindHelp = `The ledger is bound to one repository: the first verb that completes binds the git directory of the repository it
-runs in (a verb the ledger refuses binds nothing; a linked worktree has the git directory of its repository, and two spellings of one path are one repository). That
+const afBindHelp = `The ledger is bound to one repository: the first verb that completes and writes it binds the git directory of the repository it
+runs in (a verb the ledger refuses binds nothing, and so does a verb that wrote nothing, a reap with nothing to reap, unless it declares
+the repository with --bind-repo; a linked worktree has the git directory of its repository, and two spellings of one path are one repository). That
 is the project directory, which CLAUDE_PROJECT_DIR or else the working directory names; evidence and enqueue also use --repo
 or the card's lease worktree. Afterwards a call that would use another repository is refused with the ledger unchanged, the
 message naming both. While the ledger is not bound yet, the repository a call would bind is first compared with what the
@@ -663,8 +680,9 @@ func (f afFlags) place() afPlace { return afPlace{db: f.db, bindRepo: f.bindRepo
 
 // afBindRepoFlagHelp is what --bind-repo says on every verb that opens the ledger.
 const afBindRepoFlagHelp = "the repository this ledger belongs to, declared for its first bind: any path inside it (a linked worktree " +
-	"included). Needed only for a ledger given with --db that sits in no repository and holds no commit that " +
-	"says where it belongs (a lease worktree does not); a path in another repository than the one the call would bind is refused; ignored once the ledger is bound"
+	"included). Needed for a ledger given with --db that sits in no repository and holds no commit that " +
+	"says where it belongs (a lease worktree does not), and for a verb that writes nothing (a reap with nothing to reap) to bind an unbound ledger; " +
+	"a path in another repository than the one the call would bind is refused; ignored once the ledger is bound"
 
 func (f *afFlags) bind(cmd *cobra.Command, needEpoch bool) {
 	cmd.Flags().StringVar(&f.db, "db", "", afDBFlagHelp)
@@ -1019,8 +1037,9 @@ func newAFReapCmd() *cobra.Command {
 				if err != nil {
 					return err
 				}
-				if got == nil {
+				if len(got) == 0 {
 					got = []ledger.Reclaimed{}
+					afWroteNothing(ctx)
 				}
 				leases, err := st.Leases(ctx)
 				if err != nil {

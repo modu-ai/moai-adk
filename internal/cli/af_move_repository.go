@@ -143,8 +143,19 @@ func afMoveRepository(cmd *cobra.Command, f afFlags, reason, from string) error 
 		return err
 	}
 	if current == "" {
+		if from == "" && f.db == "" {
+			// A verb that wrote nothing binds nothing (N55), so the ledger a verb just made at the default location of a project
+			// directory that moved is unbound as well as empty: the same fresh ledger afStillThere describes.
+			cards, cerr := st.Cards(ctx)
+			moves, merr := st.RepositoryMoves(ctx)
+			if cerr == nil && merr == nil && len(cards) == 0 && len(moves) == 0 {
+				return errors.New("af: refused: the ledger at the default location of this project is a fresh one for this place (no cards, no moves, " +
+					"not bound to a repository yet), so there is nothing here to move. If the project directory moved and the ledger with the cards was made " +
+					"at its old place, run this again with --from <old project directory>; nothing was changed")
+			}
+		}
 		return errors.New("af: refused: this ledger is not bound to a repository yet, so there is no repository to move; " +
-			"the first verb that completes binds it; nothing was changed")
+			"the first verb that completes and writes binds it (or a verb that writes nothing with --bind-repo); nothing was changed")
 	}
 	// (a) the old repository is gone: only a path that is positively not there counts, an error git or the file system
 	// gives for another reason does not
