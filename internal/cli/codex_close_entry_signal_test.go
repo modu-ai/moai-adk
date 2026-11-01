@@ -86,7 +86,11 @@ func TestCodexEntrySignalHelper(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer pw.Close() // stdin stays open: the server ends on the signal, not on EOF
+		defer func() { // stdin stays open: the server ends on the signal, not on EOF
+			if cerr := pw.Close(); cerr != nil {
+				t.Errorf("close the server's stdin writer: %v", cerr)
+			}
+		}()
 		_ = runMCPServerWithIOAndExposure(pr, io.Discard, "")
 	}
 }

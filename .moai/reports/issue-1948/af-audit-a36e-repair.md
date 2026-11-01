@@ -472,3 +472,11 @@ Commands above, in this run. Trees: RED run on `fb9fc909f6` (source = `8cd1b6a7e
 6. The `.json` extension filter of `RebindLedgerHeartbeats` is not pinned by a test (one surviving mutant if it is dropped; `json.Unmarshal` still rejects non-JSON files, so only a `.txt` file holding valid binding JSON could differ).
 7. Atomicity is by construction (temp file and rename) and is observed only through H3 (the in-place write fails where the directory is read-only); no test observes a reader seeing a partial file.
 8. Observation, not changed: before this repair the seam, given a stale path, opened a new empty ledger at the old path (`a renewal left a ledger at the old place`, E2); after the repair a renewal opens the right file. A binding that names a path that no longer exists still creates an empty ledger there on the next renewal.
+
+## F12 (codex_close_entry_signal_test.go:89 errcheck), closed
+
+Claim: the audit's F12 finding is closed by handling the return value of pw.Close in the helper process: the deferred close now reports a failure with t.Errorf, which fails the helper (no discard, no nolint, no lint-config change). The earlier sentences of this report that call the finding outside the change describe the tree before this edit.
+Evidence: golangci-lint run ./internal/cli/ -> '0 issues.' lint-exit=0; gofmt -l on the file -> no output; go vet ./internal/cli/ -> exit 0; go test -count=1 -v -run '^(TestCodexEntrySignalHelper|TestCodexEntry_)' ./internal/cli/ -> TestCodexEntrySignalHelper, TestCodexEntry_VerifyCodexReview_SIGINTEndsTheSessionGroup, ..._SecondSIGINTDoesNotWaitForCleanup, TestCodexEntry_MCPServer_SIGTERMEndsAnOpenSessionGroup all PASS, ok 7.064s.
+Baseline-attribution: measured in this run against the tree with the edit, installed golangci-lint on PATH.
+Gaps: the deferred close runs only if the server returns before the process is signalled; in the signal tests the process may end first, so the new check fires only on a close error of the writer; no test forces a close error. No other test was re-run (the two preceding commits changed only the report).
+Residual-risk: none beyond the Gaps.
