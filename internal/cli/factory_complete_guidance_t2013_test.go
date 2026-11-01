@@ -36,7 +36,7 @@ func t2013WantCompletionGuidance(t *testing.T, out string) {
 		last = i
 	}
 	pre := strings.Index(out, "ExitWorktree")
-	for _, m := range []string{"completion evidence", "dirty changes", "active checks", "handoff", "unsubmitted input"} {
+	for _, m := range []string{"completion evidence", "dirty changes", "unpushed commits", "active checks", "handoff", "unsubmitted input"} {
 		i := strings.Index(out, m)
 		if i < 0 || i > pre {
 			t.Errorf("preserve-first item %q must appear before the ExitWorktree step (offset %d vs %d):\n%s", m, i, pre, out)
