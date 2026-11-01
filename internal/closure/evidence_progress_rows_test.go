@@ -30,6 +30,38 @@ func TestParseProgressRowsIgnoresHeadingsInsideCodeFences(t *testing.T) {
 	}
 }
 
+// TestParseProgressRowsFenceClosesOnlyOnAMatchingFence: a four-backtick fence
+// that quotes a three-backtick example is closed by a four-backtick line, not by
+// the quoted three-backtick lines (third card review finding on the S13 repair).
+func TestParseProgressRowsFenceClosesOnlyOnAMatchingFence(t *testing.T) {
+	t.Parallel()
+
+	const doc = "## §E.2 Run-phase Evidence\n\n" +
+		"| AC-1 | PASS | before the fence |\n\n" +
+		"````markdown\n" +
+		"```text\n" +
+		"| AC-7 | PASS | an example row quoted inside the outer fence |\n" +
+		"```\n" +
+		"# quoted, not a heading\n" +
+		"````\n\n" +
+		"| AC-2 | PASS | after the outer fence, still inside E.2 |\n\n" +
+		"## §E.4 Sync-phase Signal\n\n" +
+		"| AC-9 | PASS | outside the matrix |\n"
+
+	rows, found := ParseProgressRows([]byte(doc))
+	if !found {
+		t.Fatal("the §E.2 heading exists and must be found")
+	}
+	var ids []string
+	for _, r := range rows {
+		ids = append(ids, r.ID)
+	}
+	want := []string{"AC-1", "AC-2"}
+	if len(ids) != len(want) || ids[0] != want[0] || ids[1] != want[1] {
+		t.Fatalf("S13_FENCE_KIND_LENGTH: rows = %v, want %v", ids, want)
+	}
+}
+
 // TestParseProgressRowsKeepsE2DepthAcrossSubheadings: a sub-heading under the
 // §E.2 heading that itself names §E.2 (for example "### §E.2.1") must not move
 // the section's reference depth, or the next sibling sub-heading closes the

@@ -139,16 +139,28 @@ type ProgressRow struct {
 func ParseProgressRows(progressMD []byte) ([]ProgressRow, bool) {
 	var rows []ProgressRow
 	found := false
-	level := 0 // heading level of the open §E.2 section; 0 outside it
-	inFence := false
+	// level is the heading level of the open §E.2 section; 0 outside it.
+	level := 0
+	// fenceChar is the opening fence character; 0 outside a fenced block.
+	var fenceChar byte
+	fenceLen := 0
 	for line := range strings.SplitSeq(string(progressMD), "\n") {
 		// A fenced code block is quoted text: its "# comment" lines are not
-		// headings and its table-looking lines are not matrix rows.
-		if t := strings.TrimLeft(line, " "); strings.HasPrefix(t, "```") || strings.HasPrefix(t, "~~~") {
-			inFence = !inFence
-			continue
+		// headings and its table-looking lines are not matrix rows. It opens at a
+		// fence line and closes only at a fence of the same character, at least
+		// as long, with no info string — so a longer outer fence may quote a
+		// shorter one.
+		if ch, n, rest := fenceMarker(line); n > 0 {
+			switch {
+			case fenceChar == 0:
+				fenceChar, fenceLen = ch, n
+				continue
+			case ch == fenceChar && n >= fenceLen && rest == "":
+				fenceChar, fenceLen = 0, 0
+				continue
+			}
 		}
-		if inFence {
+		if fenceChar != 0 {
 			continue
 		}
 		if lv := markdownHeadingLevel(line); lv > 0 {
@@ -174,6 +186,23 @@ func ParseProgressRows(progressMD []byte) ([]ProgressRow, bool) {
 		}
 	}
 	return rows, found
+}
+
+// fenceMarker reports a Markdown code-fence line: the fence character, the
+// length of its run (3 or more), and the text after the run. n is 0 when line
+// is not a fence (more than three leading spaces, or fewer than three marks).
+func fenceMarker(line string) (ch byte, n int, rest string) {
+	t := strings.TrimLeft(line, " ")
+	if len(line)-len(t) > 3 || len(t) < 3 || (t[0] != '`' && t[0] != '~') {
+		return 0, 0, ""
+	}
+	for n < len(t) && t[n] == t[0] {
+		n++
+	}
+	if n < 3 {
+		return 0, 0, ""
+	}
+	return t[0], n, strings.TrimSpace(t[n:])
 }
 
 // markdownHeadingLevel returns the ATX heading level of line (1-6), or 0 when
