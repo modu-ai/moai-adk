@@ -159,7 +159,7 @@ N68 (older builds accept the old path of a moved ledger): written before the cor
 | check | `af.go: afCheckRepoFlag` (`--repo`) | unaffected | compares git directories of the project and `--repo`; independent of the marker, runs before the ledger opens |
 | handoff | `af.go: enqueue` -> `afCheckCommit` + `afInTrunk` | repaired (bind) / unaffected (trunk test) | |
 | integrate | `af_land.go: afBindRepository(repo)` and the land body | repaired (bind) | `mergeq.TrunksOwnCommit` and E6 are untouched |
-| integrate | `af_land.go: afCardMayLand` (N54) | out of scope | the transition group (N63, N66) belongs to the second spawn |
+| integrate | `af_land.go: afCardMayLand` (N54) | repaired (see "Transition group") | N63, N66, N69 first bullet: the second spawn's rows are in the Transition group section below |
 | sync/close | `moai af move ... --stage DONE` | repaired (bind) | the card is closed by the same verbs; the sync-phase documents are not an `af` call |
 | recovery | `af.go: reap`, `reconcile` -> `afRun` | repaired | lane death then restart across a move: `TestAFIdentity_AHolderThatDiedBeforeTheMoveDoesNotStrandTheCard` |
 | recovery | `af_move_repository.go` | repaired (new rules) | marker, fallback, `--from`, fresh-ledger sentence |
@@ -179,4 +179,154 @@ N68 (older builds accept the old path of a moved ledger): written before the cor
 | N62 | a36ea8c368 | same | `afMissingCommit` read a git failure, an empty or short answer as "nothing missing" | `TestAFIdentity_N62*` | repaired (first bind, move-repository, marker read) |
 | N64 | a36ea8c368 | same | default ledger keyed by the project path; no way to carry it over | `TestAFIdentity_N64*` | repaired as `--from` (no discovery); heartbeat binding stays stale |
 | N65 | a36ea8c368 | same | a lease worktree counted as proof of ownership | `TestAFIdentity_N65*`, N51 subtest | repaired |
-| N39 N40 N41 N42 N54 N63 N66 | (transition family) | (second spawn) | (second spawn) | (second spawn) | (second spawn) |
+| N39 N40 N41 N42 N54 N63 N66 | (transition family) | see the Transition group section below: its failure ledger rows | | | |
+
+## Transition group (N63 N66 N69 N72 N73-help N58)
+
+Commits: RED `36365f2c82` (tests only), GREEN `222aa8b800` (source and the `afTrCarryOn` test fix found while going green), test-only follow-up `89e3962a36` (E6 pair test), this report in the docs commit after it. Source files are identical in `222aa8b800` and `89e3962a36`.
+Scope: the leader's list for this spawn (N63, N66, N69 first bullet, N72 false `--db` help, N73 E6 help sentence, N58 for the two BLOCKINGs and `add --risk`). The identity group above, the rest of N69, N70, N71, N74 and the SPEC side of N73 were not touched.
+
+### Design as built, and the N63 choice
+
+N63 was closed by the audit's option (a), the smallest of the three. Compared against source:
+
+- (a) `ledger.Move`, `move.go`: a move without a lease was already allowed for a MERGING card at its own epoch when its queue row of that epoch is `landed` or `failed` (`queueSettledAt`). A waiting row whose candidate's newest green, gate or review run failed is the row `af land` refuses; with the holder gone nothing else settles it. One new query (`queueUnlandableAt`, `queue.go`) and one condition beside `queueSettledAt`; the table (`core.CheckMove`) still decides the move. It writes nothing on a refusal, so the N54 tests that compare the whole ledger before and after a refused `land` (`TestAFLand_N54AFailingNewestRunWhileTheRowWaitsRefusesTheLanding`) hold unchanged.
+- (b) `land` marks the row `failed` on the refusal: `land` would write on a refusal, which breaks "nothing was changed" (the sentence and that test's snapshot compare) and would write the row of a live holder who is in the middle of measuring again.
+- (c) `pickTx` claims a MERGING card with a waiting row: a claim of a MERGING card would give a lease on MERGING and a `claimed again` transition at MERGING, and every consumer of a claim assumes a work stage; it also puts a per-candidate evidence query inside the claim transaction for every card.
+
+The way out is `moai af move <card> --epoch <n> --stage REVIEWING` (the card's own epoch, no lease). The next `moai af claim` takes the card (REVIEWING, no lease), measures again, `enqueue` restarts the waiting row of the older epoch (a decision note is written), `land` lands, the card finishes. The `land` refusal now prints this command next to the measuring command.
+
+N66: `mergeq.Merger.LastCheck func(ctx, cardID, candidateSHA) error` (optional). `landUnderLock` calls it with the landing lock held, after the row says `landing` and immediately before `git update-ref`. An error returns through `leaveLanding`: the trunk is untouched, the row goes back to `waiting` under the lock, the lock is released, the error is returned as it is. `af land` fills it with `Store.FailingNewestRun` and the same refusal text (`afLandRefusal`). `reconcile` never lands and sets none. The already-in-the-trunk path (E6) returns before the gates and never reaches it.
+
+N69 first bullet: the N54 refusal now says `measure the commit again and record what the measurement gives (`moai af evidence <card> --epoch <n> --kind <kind> --subject-sha <sha> --result <pass|fail>`, and the same for the other kinds the card needs), then land again; nothing was changed. If the holder of the card is gone (it holds no lease), `moai af move <card> --epoch <n> --stage REVIEWING` takes the card back, and the next `moai af claim` carries it on`. The epoch is the card's real epoch, and `<pass|fail>` is the one placeholder.
+
+N72: one constant `afDBFlagHelp` (`af.go`) used by every `--db` flag of the 11 verbs: `ledger file (default: <MoAI home>/db/<project name>-<hash>/af/ledger.db, keyed by the project directory; it is not inside the project directory)`. N73-help: one constant `afDoneHelp` in the help of `move` and `land`: `DONE guarantees that the candidate commit landed in the trunk; it does not guarantee the card's work content (a candidate that is the trunk's own commit lands as already in the trunk).` The `move` help also names the lease-free move.
+
+### Claim
+
+1. A card whose holder left (released it, process gone then reaped, lease run out and process gone then reaped) while its waiting row's candidate has a failing newest run is no longer stuck: `move --stage REVIEWING` at its epoch is accepted, a new session claims it, measures again, and the card reaches DONE through a real landing. Every other verb listed by the audit (land, evidence, enqueue, resume, claim, reconcile, reap) was tried first and none moved the card. N63.
+2. The rule is narrow: a waiting row that can land, a failure about another commit, a verifying row and a wrong epoch each still refuse a lease-free move. The ordinary paths hold: no failing run, release in MERGING, land, move back, claim (as before N54); a live holder re-measures and lands; a live holder takes the card back with its lease.
+3. A failing run recorded while the gate of `af land` runs is not landed: the trunk ref does not move, the row is waiting, the card is MERGING, and the same exits work (live holder re-measures and lands; released or gone holder: way out then DONE). With nothing recorded the same `land` lands, and a failure about another commit recorded during the gate does not stop it. N66.
+4. The refusal prints commands that run as printed (the evidence command with `<pass|fail>` filled in with `pass` and with `fail`; the move command as printed). N69 first bullet.
+5. The `--db` help of all 11 verbs is one true sentence; `move` and `land` help carry the DONE sentence. N72, N73-help.
+6. `moai af add --risk` is pinned: a risk card is refused at `enqueue` without a review, and at `integrated`/`DONE` after a failing review; the control without `--risk` is offered with no review. N58.
+7. E6 is unchanged: the trunk's own commit lands as `already in the trunk` and the card reaches DONE, with the same result on the a36ea8c368 binary and on this tree.
+
+### Evidence
+
+All commands were run in this worktree (`/Users/goos/MoAI/moai-adk-go/.moai/worktrees/agentic-factory-integration`).
+
+E1 RED, before any source change (tree `36365f2c82`):
+- `go test -count=1 -run TestAFTransition_ ./internal/cli/`: `--- FAIL: TestAFTransition_N63AHolderThatLeftARefusedRowLeavesAWayOutThatEndsInDone` (all three holder variants: `the way out (moai af move t1 --epoch 1 --stage REVIEWING) is refused: ledger: stale epoch; the card was claimed again: t1 holds no lease`), `--- FAIL: TestAFTransition_N66AFailureRecordedWhileTheGateRunsIsNotLanded` (all three: `land landed a commit whose review failed while the gate ran: {"card_id":"t1","outcome":"landed",...}`).
+- `go test -count=1 -run TestAFMessage_ ./internal/cli/`: `the message tells the reader to type --result pass`, `the message does not say "record what the measurement gives"`, `the printed command [evidence t1 --kind gate ... --result pass --db ...] is refused: required flag(s) "epoch" not set`.
+- `go test -count=1 -run TestAFVerbs_N7 ./internal/cli/`: `moai af land --db still says the default is in the project directory: "ledger file (default: <project dir>/af/ledger.db)"` for 11 verbs; `moai af move --help does not say: DONE guarantees ...`.
+- `go test -count=1 ./internal/agenticfactory/ledger/ -run 'TestMove_(AMergingCard|TheWayOut)'`: `--- FAIL: TestMove_AMergingCardWhoseWaitingRowCannotLandMovesWithoutALease` (green, gate, review): `ledger: stale epoch; the card was claimed again: a holds no lease`.
+- `go vet ./internal/agenticfactory/mergeq/`: `last_check_test.go:30:4: m.LastCheck undefined (type *Merger has no field or method LastCheck)` (a tests-only RED for new API).
+- `go test -count=1 -run TestAFAdd_A ./internal/cli/` passes on the existing source once the test's own expectation was fixed (it first failed on `E12 needs merged`, which is the N40 rule working); the risk tests are pins of existing behaviour, and their RED is the mutation M11 below.
+
+E2 GREEN (tree `222aa8b800`):
+- `go test -count=1 ./internal/agenticfactory/ledger/ -run TestMove_` -> `ok`; `go test -count=1 ./internal/agenticfactory/mergeq/ -run TestLand_RealLedger` -> `ok`.
+- `go test -count=1 -run TestAFTransition_ ./internal/cli/` -> `ok  	github.com/modu-ai/moai-adk/internal/cli	14.754s`; `-run TestAFMessage_` -> `ok`; `-run TestAFVerbs_N7` -> `ok`; `-run TestAFAdd_A` -> `ok`.
+- `go test -count=1 -run 'TestAFLand_|TestAFVerbs_N' ./internal/cli/` -> `ok  	github.com/modu-ai/moai-adk/internal/cli	120.390s` (the neighbouring existing tests, before the commit).
+
+E3 `gofmt -l internal cmd` printed nothing. `go vet ./internal/cli/ ./internal/agenticfactory/...` printed nothing. `go build ./...` printed nothing. `GOOS=windows GOARCH=amd64 go build ./internal/cli/ ./cmd/moai/` and `GOOS=linux GOARCH=amd64 go build ./internal/cli/ ./cmd/moai/` printed nothing.
+
+E4 `go test -race -count=1 -p 4 ./internal/agenticfactory/...`: 21 lines, all `ok` (ledger `53.591s`, mergeq `66.687s`).
+
+E5 `go test -count=1 -cover ./internal/agenticfactory/ledger/ ./internal/agenticfactory/mergeq/`:
+```
+ok  	github.com/modu-ai/moai-adk/internal/agenticfactory/ledger	6.830s	coverage: 87.7% of statements
+ok  	github.com/modu-ai/moai-adk/internal/agenticfactory/mergeq	30.489s	coverage: 88.3% of statements
+```
+(the previous measurement of this tree was 87.8% / 88.2%.)
+
+E6 `go test -count=1 -run '^(TestAF|TestCardFlow)' ./internal/cli/` (tree `222aa8b800`, before the E6 pair test was added; the pair test was run alone, below):
+```
+ok  	github.com/modu-ai/moai-adk/internal/cli	139.899s
+```
+`golangci-lint run ./internal/agenticfactory/ledger/... ./internal/agenticfactory/mergeq/... ./internal/cli/` -> one issue, `internal/cli/codex_close_entry_signal_test.go:89:17: Error return value of `pw.Close` is not checked (errcheck)` (F12 of the audit, outside this change).
+
+E7 the real-CLI cumulative group `TestAFTransition_` (it goes through `afRunBoth`, so with `AF_TEST_BIN` set every verb is a separate process of the named binary). Binaries built in the scratchpad, never from the main checkout: `moai-a36e` from `git archive a36ea8c368` extracted into `/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/b26a325f-a8b4-45a3-8d9a-1a9e774e549b/scratchpad/bin-SJ4Tzm/src` (`go -C <src> build -o ... ./cmd/moai`), sha256 `e49d4af71a2787e263707f97b549bbd6427a381af47f318e3152def5da7461c1`; `moai-final` from this tree at `222aa8b800`, sha256 `6e71f2d878d2213c3eb89319f01cbbe236bba7216e4fc82ad92412a6eb05510d`.
+- a36ea8c368 build, `AF_TEST_BIN=.../moai-a36e go test -count=1 -v -run TestAFTransition_ ./internal/cli/`: `FAIL github.com/modu-ai/moai-adk/internal/cli 10.808s`. `--- FAIL: TestAFTransition_N63AHolderThatLeftARefusedRowLeavesAWayOutThatEndsInDone` (3 subtests: `the way out (moai af move t1 --epoch 1 --stage REVIEWING) is refused: Ledger: stale epoch; the card was claimed again: t1 holds no lease.`), `--- FAIL: TestAFTransition_N66AFailureRecordedWhileTheGateRunsIsNotLanded` (3 subtests: `land landed a commit whose review failed while the gate ran: {"card_id":"t1","outcome":"landed",...}`). The controls pass there: `--- PASS: TestAFTransition_N63TheOrdinaryPathsHoldBesideTheWayOut`, `--- PASS: TestAFTransition_N66WithNothingRecordedWhileTheGateRunsTheCardLands`, `--- PASS: TestAFTransition_N66AFailureAboutAnotherCommitWhileTheGateRunsDoesNotStopTheLanding`.
+- final build, same command: `PASS`, `ok  	github.com/modu-ai/moai-adk/internal/cli	15.356s`; all 6 top-level tests and every subtest `--- PASS`.
+- `TestAFTransition_E6ACandidateThatIsTheTrunksOwnCommitStillLandsAsAlreadyInTheTrunk`, run alone (`-run TestAFTransition_E6`): in-process `ok 1.875s`; with the a36ea8c368 binary `ok 2.076s`; with the final binary `ok 1.931s`. The same behaviour on both builds is the point.
+- the previous group against the final build again: `AF_TEST_BIN=.../moai-final go test -count=1 -run TestAFIdentity_ ./internal/cli/` -> `ok  	github.com/modu-ai/moai-adk/internal/cli	21.494s`.
+- (`TestAFMessage_` is skipped under `AF_TEST_BIN` by design: it reads the in-process message; the binary frames the message and may cut a word. It is outside the `TestAFTransition_` prefix.)
+
+E8 mutation checks. Each rule was broken by a local source edit through a script that restores the file text afterwards (`git status --short` printed nothing after the last one); the named tests were run; none was committed.
+
+| # | Rule | Mutation | Result | Failing test(s) |
+|---|---|---|---|---|
+| M1 | N66: the failing-run question is asked before the swap (library) | `if false && m.LastCheck != nil` in `landUnderLock` | caught | `TestLand_RealLedger_ARefusedLastCheckMovesNothingAndLeavesTheRowWaiting`, `..._ALastCheckThatAgreesIsAskedUnderTheLockBeforeTheSwap`, `..._ALastCheckThatRefusesAfterARebuildLeavesTheRowWaiting` |
+| M2 | N66: a refusal stops the landing | the refusal ignored (`_ = err`) | caught | `..._ARefusedLastCheckMovesNothingAndLeavesTheRowWaiting`, `..._ALastCheckThatRefusesAfterARebuildLeavesTheRowWaiting` |
+| M3 | N66: a refusal puts the row back to waiting | return the error without `leaveLanding` | caught | the same two |
+| M4 | N66: `af land` sets `LastCheck` | `m.LastCheck = func(` -> `_ = func(` | caught | `TestAFTransition_N66AFailureRecordedWhileTheGateRunsIsNotLanded` |
+| M5 | N63: the lease-free move for an unlandable waiting row | the new condition disabled (`if false`) | caught | `TestMove_AMergingCardWhoseWaitingRowCannotLandMovesWithoutALease` |
+| M5b | N63 through the verbs | the same mutation | caught | `TestAFTransition_N63AHolderThatLeftARefusedRowLeavesAWayOutThatEndsInDone` |
+| M6 | N63: only a waiting row | `AND state='waiting'` removed | caught | `TestMove_TheWayOutIsOnlyForAWaitingRowWhoseCandidateCannotLand`      |
+| M7 | N63: only a row whose candidate failed | the answer made `true` for any waiting row | caught | `TestMove_TheWayOutIsOnlyForAWaitingRowWhoseCandidateCannotLand`      |
+| M8 | N69/N63: the way-out command is the printed one | `--stage REVIEWING` -> `--stage BUILDING` in the text | caught | `TestAFMessage_TheRefusalNamesCommandsThatRunAsPrinted` |
+| M9 | N69: no blind `--result pass` | `--result <pass|fail>` -> `--result pass` | caught | `TestAFMessage_TheRefusalNamesCommandsThatRunAsPrinted` |
+| M10 | N69: the printed epoch is the card's | a wrong epoch (0) printed | caught | `TestAFMessage_TheRefusalNamesCommandsThatRunAsPrinted` |
+| M11 | N58: `add --risk` reaches the card | `Risk: risk, ` removed from `af_add.go` | caught | `TestAFAdd_ARiskCardNeedsItsReviewBeforeItIsOfferedAndBeforeDone` |
+| M12 | N72: one true `--db` help on every verb | `af land` keeps the old text | caught | `TestAFVerbs_N72EveryDbFlagSaysWhereTheDefaultLedgerReallyIs` |
+| M13 | N73: `move` help carries the DONE sentence | removed | caught | `TestAFVerbs_N73TheHelpOfTheVerbsThatEndACardSaysWhatDoneGuarantees` |
+| M14 | N73: `land` help carries it | removed | caught | the same |
+
+Two mutants did not compile at first (M7 `declared and not used`, M10 a `go vet` format-type error) and were rewritten into mutants that compile; the table is of the compiled ones. 15 of 15 compiled mutants were caught, none survived.
+
+E9 existing tests changed: none deleted or weakened. One shared fixture helper was split, `afUnqueuedCard` (`af_land_d1_test.go`) now calls `afUnqueuedCardAs` with the claim it always made (`SessionID: "s-t1"`, the test process as holder, `PIDStart: "start-t1"`, the repository as worktree); every existing caller sees the same fixture. No assertion of any existing test changed.
+
+### Baseline-attribution
+
+Every command above ran in this run against this tree (HEAD `222aa8b800`, source unchanged through `89e3962a36`); the a36ea8c368 measurements are of a binary built from `git archive a36ea8c368` of this repository. The 85% coverage baseline is the SSOT figure; the earlier ledger/mergeq measurement (87.8% / 88.2%) is the identity group's, this run measured 87.7% / 88.3%. Tool provenance (§2.2): the binaries named in E7 were built from the trees named there and invoked by path through `AF_TEST_BIN`; `go test` ran from this tree. The installed `moai` on PATH was not used.
+
+### Failure ledger, transition family
+
+| Family | Round (audited SHA) | Fix SHA | Root cause | Regression test | Status |
+|---|---|---|---|---|---|
+| N39 | 46dbcce0d4 | RED `863aeb76f7`/`78fda9263a`, GREEN `fe59cd74ea`; ledger side `ed8ea412b6`/`c054fe62ed` | a landed row was trusted as "in the trunk" without asking the repository | `af_trunk_n39_test.go`, `internal/agenticfactory/ledger` take-over tests | closed (the audit's own re-measure: closed, mutants caught); E6 kept by decision |
+| N40 | 46dbcce0d4 | RED `590f3715f1`, GREEN `6b494aef42` | review was outside the newest-result judgment of a landed candidate | `done_review_and_failures_test.go`; `TestAFAdd_ARiskCard...` (new) pins the input side | closed; the audit's surviving mutant `N59-add-risk` is now caught (M11) |
+| N41 | 46dbcce0d4 | RED `6ed5d24ceb`, GREEN `3ef799ca90`, pins `71904ebb02` | a review or a failing record counted as measuring a commit again | `enqueue_measuring_again_test.go` | closed |
+| N42 | 46dbcce0d4 | RED `5529297d60`, GREEN `7deb693d57` | a reclaim-cap park had no verb out | `af_resume_test.go` | closed; operator-authority limits are N60 |
+| N54 | 1c05083f71 | RED `477938d926`, GREEN `7d6eeb8cc8` | `af land` looked at position, not at a failing newest run | `af_land_n54_test.go` | direct form closed; its two side effects are N63 and N66 below |
+| N63 | a36ea8c368 | RED `36365f2c82`, GREEN `222aa8b800` | the N54 refusal asked the holder to measure again, but a holder that left cannot (every write needs a lease), a MERGING card is not claimable, and a waiting row does not settle the card | `TestAFTransition_N63*`, `TestMove_AMergingCard...`, `TestMove_TheWayOutIsOnly...`, `TestAFMessage_...` | repaired by option (a); mutants M5, M5b, M6, M7 caught |
+| N66 | a36ea8c368 | RED `36365f2c82`, GREEN `222aa8b800` | the failing-run check ran once, before a gate that can take minutes | `TestAFTransition_N66*`, `TestLand_RealLedger_A...LastCheck...` | repaired; mutants M1 to M4 caught; the window between the check and `git update-ref` remains (Residual-risk) |
+
+### Impact-path table, rows of the transition family (claim -> run -> check -> handoff -> integrate -> sync/close, and recovery)
+
+| Stage | Call site (file:function) | Classification | Reason |
+|---|---|---|---|
+| claim | `ledger/claim.go: Claim`, `pickTx` | unaffected | a MERGING card is still not claimable (option (c) was not taken); the claim of the card the way out put in REVIEWING is `TestAFTransition_N63...` |
+| run | `af.go: evidence` (lease) | unaffected | still needs the lease; a gone holder's card goes through the way out first |
+| check | `af_land.go: afCardMayLand`, `afLandRefusal` | repaired | N54 refusal now names the way out and commands that run as printed (N69 first bullet) |
+| check | `ledger/queue.go: FailingNewestRun`, `failingNewestRun` | unaffected | the same rule, now also asked by `queueUnlandableAt` and by `LastCheck` |
+| handoff | `af.go: enqueue` / `ledger.Enqueue` | unaffected | restarts the waiting row of the older epoch after the way out (decision note written); exercised by `afTrCarryOn` |
+| integrate | `mergeq/mergeq.go: landUnderLock` | repaired | N66: `LastCheck` under the lock before the swap; the row returns to waiting through `leaveLanding` |
+| integrate | `mergeq/mergeq.go: land` path "already in the trunk" (`settleLanded`) | unaffected | returns before the gates; E6 pair test passes on both builds |
+| integrate | `af_land.go: reconcile` | unaffected | never lands, sets no `LastCheck` |
+| sync/close | `af.go: move` to DONE (`afCheckLandedInTrunk`) | unaffected (help changed) | N73 help sentence only |
+| recovery | `ledger/move.go: Move` | repaired | the lease-free move for a waiting row that cannot land (N63) |
+| recovery | `af.go: reap`, `ledger.Reap`, `reclaimTx` | unaffected | after a reap the lease is gone and the epoch is unchanged, which is the state the way out serves; the third reap parks the card at reclaim-cap and `resume` is that exit (not combined with this one in a test) |
+| recovery | `af.go: release` | unaffected | the same state through a release |
+| recovery | `hook/ledger_heartbeat.go`, `internal/web` board | unaffected | read and renew by card and epoch; no decision about landing |
+
+### Gaps (not observed, refused, or not run)
+
+- The full `./internal/cli/...` suite and `/verify` (`moai gate`, which runs the whole suite) were not run (the spawn forbids the suite); the anchored `^(TestAF|TestCardFlow)` run, `go vet`, `gofmt`, `golangci-lint`, `go test -race ./internal/agenticfactory/...` and the cross builds stand in for it, and that is a substitution. The anchored run was made at `222aa8b800`; the commit after it adds one test (run alone, E7) and this report.
+- Worktree-guard refusals met in this run, each answered by splitting the command into plain ones: a compound `mkdir ... && cat > file <<EOF ... cd ... && python3` for the mutation script ("too complex to verify"), a `go test` with a redirect to the scratchpad and a pipe (same message, seen on the first RED run), and nothing else; no check was dropped because of a refusal, and the script was then written with the Write tool and run as a plain `python3 <script> <ids>`.
+- `move --stage CANCELLED` without a lease on such a row is not tested or documented (only REVIEWING is): the table's own guards (E16) may refuse it.
+- The window between `LastCheck` and `git update-ref` is not closed (evidence writes do not take the landing lock); no test can pin it either way.
+- `TestAFMessage_` runs in-process only (skipped under `AF_TEST_BIN`); the tie between the printed text and the commands is therefore not proven against the binary, where the way-out command is built by the test from the same words.
+- `afTrRestart` emulates a restart in the in-process run (it closes the setup's ledger connection and opens a new one); the literal process separation is the `AF_TEST_BIN` runs in E7.
+- The rest of N69 (a lease recorded before the move needing `--repo`, a linked worktree needing `git worktree repair`, a case-only rename), N70, N71, N74, the second half of N72 (the "recorded as given" warning on the new input flags) and the SPEC side of N73 were not done; they were not in this spawn's list.
+- Windows: compile only (`GOOS=windows go build`); the tests need `sh` and are skipped there.
+- `go test -race` of `./internal/cli/` was not run.
+
+### Residual-risk
+
+- A failing run recorded after `LastCheck` has read and before `git update-ref` has run still lands (microseconds). Nothing in the ledger can close it without making every evidence write take the landing lock.
+- The lease-free move is authorised by the card's epoch number, which is not a secret (the same authority the ledger already gives a landed or failed row). Anyone who knows the epoch can take such a card back to REVIEWING while its row waits with a failing candidate; the position table still has to accept the move, and the move is recorded with its actor and reason.
+- After the way out the old row stays `waiting` at the older epoch until the next holder's `enqueue` restarts it (tested); `land` on that card in the meantime is refused by the epoch rule of `afCardMayLand` (the card is not in MERGING).
+- A failure about ANOTHER commit recorded while the row waits is still not a refusal (N74, D5): the landing stands and `DONE` is refused later. Unchanged.
+- `<pass|fail>` in the refusal is text for a person; a script that runs the printed command without replacing it records a literal result and is refused by the verb (`evidence result`), not silently accepted.
