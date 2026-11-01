@@ -341,8 +341,9 @@ func TestRepositoryMove_FilesOfEarlierSchemasOpenIntoTheNewOne(t *testing.T) {
 		if got, err := s.Repository(bg); err != nil || got != repoB {
 			t.Fatalf("%q %v", got, err)
 		}
-		if n := count(t, s, `PRAGMA user_version`); n != SchemaVersion {
-			t.Errorf("user_version %d", n)
+		// N68: the first recorded move raises the schema number, so a build that does not know the move refuses the file
+		if n := count(t, s, `PRAGMA user_version`); n != SchemaVersionMoved {
+			t.Errorf("user_version %d, want %d", n, SchemaVersionMoved)
 		}
 	}
 	t.Run("version 1", func(t *testing.T) {
@@ -407,16 +408,16 @@ func TestRepositoryMove_AFileOfANewerSchemaIsStillRefused(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	damage(t, s, `PRAGMA user_version=3`)
+	damage(t, s, `PRAGMA user_version=4`) // 3 is the schema of a ledger that recorded a move (N68)
 	if err := s.Close(); err != nil {
 		t.Fatal(err)
 	}
 	s, err = Open(bg, path)
 	if err == nil {
 		_ = s.Close()
-		t.Fatal("a file of schema 3 opened")
+		t.Fatal("a file of schema 4 opened")
 	}
-	wantLedgerError(t, err, "schema 3")
+	wantLedgerError(t, err, "schema 4")
 }
 
 // Failure paths: every error branch of the new calls comes back as a "ledger: ..." error and leaves

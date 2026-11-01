@@ -180,6 +180,9 @@ func TestAFVerbs_N52TheMoveIsRefusedWhileTheOldRepositoryStillExists(t *testing.
 func TestAFVerbs_N52TheMoveIsRefusedWhenTheNewRepositoryLacksACommitTheRowsName(t *testing.T) {
 	afSkipWithoutSh(t)
 	a := afN52Renamed(t)
+	// A ledger bound before the identity marker existed has no marker to compare, so the commits are its only evidence
+	// (N61: a marked ledger is refused by the marker instead, see af_repo_identity_test.go).
+	afIDForget(t, a.db)
 	other := afN52Fresh(t)
 	t.Setenv("CLAUDE_PROJECT_DIR", other)
 	before := a.state()

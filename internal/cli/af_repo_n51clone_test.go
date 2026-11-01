@@ -63,13 +63,17 @@ func TestAFVerbs_N51ADeclarationIsNotAskedWhereAnythingElseSaysWhereTheLedgerBel
 	repo, _ := afN38Other(t)
 	id := afN38GitDir(t, repo)
 	t.Setenv("CLAUDE_PROJECT_DIR", repo)
-	t.Run("a lease worktree in the repository", func(t *testing.T) {
+	// N65 (audit of a36ea8c368): a lease worktree is the caller's own word (a claim from a directory that is no
+	// repository records whatever worktree it is given), so it is no clue that says where the ledger belongs: the first
+	// bind of such a ledger needs the declaration, and with it the bind goes through.
+	t.Run("a lease worktree in the repository is not a clue", func(t *testing.T) {
 		db := filepath.Join(t.TempDir(), "central", "ledger.db")
 		st := afN49Ledger(t, db)
 		if _, err := st.Claim(ctx, ledger.ClaimRequest{SessionID: "s", Worktree: repo, PID: os.Getpid(), PIDStart: "x"}); err != nil {
 			t.Fatal(err)
 		}
-		if out, errOut, err := afRunBoth("reap", "--db", db); err != nil {
+		afN49Refused(t, st, "reap on a lease alone", []string{"not bound yet", "--bind-repo", id}, "reap", "--db", db)
+		if out, errOut, err := afRunBoth("reap", "--db", db, "--bind-repo", repo); err != nil {
 			t.Fatalf("reap: %v\n%.300s %.300s", err, out, errOut)
 		}
 		if got := afN49Bound(t, st); got != id {
