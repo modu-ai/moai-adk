@@ -214,8 +214,28 @@ func afStillThere(ctx context.Context, st *ledger.Store, f afFlags, current stri
 				"place, run this again with --from <old project directory>; nothing was changed", current)
 		}
 	}
+	if link := afLinkOnPath(current); link != "" {
+		// A link left at the old place (the usual way to keep old paths working) makes the old git directory read as present (N69).
+		return fmt.Errorf("af: refused: the repository this ledger is bound to still exists on disk (%s), but only through the link %s, which "+
+			"stands where it was; a link keeps the old path alive, so it did not move as far as this verb can see. Remove the link, run this "+
+			"verb again and make the link again afterwards; nothing was changed", current, link)
+	}
 	return fmt.Errorf("af: refused: the repository this ledger is bound to still exists on disk (%s), so it did not move; "+
 		"nothing was changed", current)
+}
+
+// afLinkOnPath is the first symbolic link on the way to p (p itself or the nearest ancestor that is one), "" when there is none.
+func afLinkOnPath(p string) string {
+	for cur := p; ; {
+		if fi, err := os.Lstat(cur); err == nil && fi.Mode()&os.ModeSymlink != 0 {
+			return cur
+		}
+		parent := filepath.Dir(cur)
+		if parent == cur {
+			return ""
+		}
+		cur = parent
+	}
 }
 
 // afMoveProof decides that the repository at next (named through dir) is the one the ledger belongs to, and returns the
