@@ -275,6 +275,11 @@ func (m *Merger) land(ctx context.Context, cardID, candidateSHA string) (Result,
 	}
 	for attempt := 0; attempt < maxTries; attempt++ {
 		if err := m.Queue.SetState(ctx, cardID, candidateSHA, 0, StateVerifying, trunk, ""); err != nil {
+			if errors.Is(err, ErrStaleRow) {
+				// The card left MERGING (or was parked) since the last attempt wrote verifying. A row left verifying
+				// under a live lease is taken back by neither enqueue nor reconcile (N4): send it to waiting.
+				return res, errors.Join(err, m.stepBack(ctx, cardID, candidateSHA, trunk))
+			}
 			return res, err
 		}
 		cand, err := m.Git.PrepareCandidate(ctx, trunk, candidateSHA, msg)
