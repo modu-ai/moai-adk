@@ -656,8 +656,23 @@ func TestContractModeAlwaysLoadedBudget(t *testing.T) {
 // THE ABSORBED BASE REF: the pre-rename kanban-dispatch.md key stays because the
 // base still carries that file, and the renamed factory-dispatch.md key is added
 // beside it — never swap one for the other.
+//
+// Re-measured for base 5c3f0ebf27 (card t2009): CLAUDE.md is gone (removed by
+// 5e5ff8e313, "AGENTS.md primary"; AGENTS.md carries no Kickoff text), and five
+// documents that entered the Kickoff set after the table was written are
+// classified R after reading their Kickoff lines — manager-spec.md (which FOUNDER
+// rows block the autonomous Kickoff), factory-dispatch-core.md (boundary note on
+// the default autonomous form), moai-mcp-tools-catalogue.md (the jev_ask
+// llm+jev cross-check), and the two doctrines auto-semantics.md and
+// contract-autonomy.md, which define the gate and carry the contract-mode
+// branch themselves. None instructs a user to approve Kickoff without that
+// branch, so none is an emitter (static reading, not a runtime reproduction).
 var grKickoffClasses = map[string]string{
-	"CLAUDE.md": "E",
+	".claude/agents/moai/manager-spec.md":                         "R",
+	".claude/rules/moai/core/moai-mcp-tools-catalogue.md":         "R",
+	".claude/rules/moai/workflow/auto-semantics.md":               "R",
+	".claude/rules/moai/workflow/contract-autonomy.md":            "R",
+	".claude/rules/moai/workflow/factory-dispatch-core.md":        "R",
 	".claude/rules/moai/workflow/orchestration-mode-selection.md": "E",
 	".claude/rules/moai/core/askuser-protocol.md":                 "E",
 	".claude/rules/moai/workflow/goal-directive.md":               "E",
@@ -721,6 +736,60 @@ func grEmitterFindings(root string, classes map[string]string) (findings []strin
 		}
 	}
 	return findings, copies
+}
+
+// grUnclassifiedDocs returns, sorted, every path in found (either copy) whose
+// document key has no row in classes.
+func grUnclassifiedDocs(found []string, classes map[string]string) []string {
+	var out []string
+	for _, p := range found {
+		if _, ok := classes[strings.TrimPrefix(p, grTemplatePrefix)]; !ok {
+			out = append(out, p)
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
+// TestContractModeKickoffTableCoversLateDocuments pins the table re-measurement
+// for the documents that entered the base's Kickoff set after the table was
+// first written (EmitterSites cause (a)). Each is classified R on a reading of
+// its Kickoff lines (none instructs a user to approve Kickoff outside the
+// autonomous or contract branch), and removing any row makes the classification
+// check report it. The stale CLAUDE.md row (cause (b)) must be gone: the file
+// was removed from the repository, so a row for it can only fail the sweep.
+func TestContractModeKickoffTableCoversLateDocuments(t *testing.T) {
+	late := []string{
+		".claude/agents/moai/manager-spec.md",
+		".claude/rules/moai/core/moai-mcp-tools-catalogue.md",
+		".claude/rules/moai/workflow/auto-semantics.md",
+		".claude/rules/moai/workflow/contract-autonomy.md",
+		".claude/rules/moai/workflow/factory-dispatch-core.md",
+	}
+	var found []string
+	for _, p := range late {
+		found = append(found, p, grTemplatePrefix+p)
+	}
+	if got := grUnclassifiedDocs(found, grKickoffClasses); len(got) != 0 {
+		t.Errorf("KICKOFF_TABLE_LAG: unclassified late documents: %v", got)
+	}
+	for _, p := range late {
+		if c := grKickoffClasses[p]; c != "R" {
+			t.Errorf("%s classified %q, want R", p, c)
+		}
+		mutant := make(map[string]string, len(grKickoffClasses))
+		for k, v := range grKickoffClasses {
+			if k != p {
+				mutant[k] = v
+			}
+		}
+		if got := grUnclassifiedDocs(found, mutant); len(got) != 2 || !strings.HasSuffix(got[0], p) {
+			t.Errorf("dropping the %s row was not reported as exactly its two copies: %v", p, got)
+		}
+	}
+	if _, stale := grKickoffClasses["CLAUDE.md"]; stale {
+		t.Error("KICKOFF_TABLE_STALE_ROW: CLAUDE.md no longer exists in the repository")
+	}
 }
 
 // TestContractModeEmitterSweepContinuesPastMissingFile pins the sweep's
@@ -805,17 +874,15 @@ func TestContractModeEmitterSites(t *testing.T) {
 	if len(found) == 0 {
 		t.Fatal("no Kickoff document found at the base — empty sweep")
 	}
-	for _, p := range found {
-		if _, ok := grKickoffClasses[strings.TrimPrefix(p, grTemplatePrefix)]; !ok {
-			t.Errorf("unclassified Kickoff document at the base: %s", p)
-		}
+	for _, p := range grUnclassifiedDocs(found, grKickoffClasses) {
+		t.Errorf("unclassified Kickoff document at the base: %s", p)
 	}
 	emitterFindings, emitters := grEmitterFindings(root, grKickoffClasses)
 	for _, f := range emitterFindings {
 		t.Error(f)
 	}
 	t.Logf("%d Kickoff documents at the base, %d emitter copies checked", len(found), emitters)
-	if emitters != 20 {
-		t.Errorf("emitter copies = %d, want 20", emitters)
+	if emitters != 18 {
+		t.Errorf("emitter copies = %d, want 18 (9 emitter documents x 2 copies)", emitters)
 	}
 }
