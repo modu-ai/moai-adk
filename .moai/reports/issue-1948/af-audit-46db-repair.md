@@ -411,3 +411,103 @@ Tree `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/agentic-factory-integration`,
 - `--bind-repo` is a declaration, not a proof: a caller in the wrong clone who types it binds the wrong repository. It turns a silent first call into a deliberate one; it does not remove the risk. The default location is not asked at all, so a project whose default ledger first-binds from a wrong clone binds the clone (the default location is per project key, so a second clone usually has its own ledger).
 - A first bind is refused when ANY complete SHA in the rows is missing from the caller's repository, including a commit that was legitimately pruned; `--bind-repo` does not lift that refusal (the rows clue is checked whether or not a declaration was given), so the way out is a call from a repository that has the commits. This affects only a ledger that is still unbound.
 - N55 (a refused verb still binds), N56 (case variants), N58 (surviving mutants) and N52 are unchanged. N57 sentences not made false by this round (the REQ-AFL-014 `land` sentence) are untouched.
+
+---
+
+# Follow-up 4: N52, the repository-move recovery verb `moai af move-repository`
+
+Uses lane-1's ledger API (`Store.MoveRepository`, `Store.RepositoryMoves`, `Repository()` = current identity; report `.moai/reports/issue-1948/ledger-n52-repair.md`), merged at `8b9c87939f`. Nothing under `internal/agenticfactory/ledger/` was edited. Superseded sentence: the "N52 ... not started" lines of Follow-up 3 (Claim 6, Gaps) were true when written and are not true now; the Residual-risk line "N52 ... unchanged" above is likewise superseded by this section.
+
+## Claim
+
+1. `moai af move-repository --reason <why> [--bind-repo <path in the new repository>] [--db <file>]` records that the repository the ledger is bound to moved on disk, and only when it is one: (a) the git directory the ledger is bound to no longer exists on disk, (b) the new repository holds every complete SHA the ledger rows name, (c) `--reason` is not blank. Any other case is refused with the ledger unchanged (rows, current identity and recorded moves compared before and after in the tests).
+2. The verb has its own open path: it does not go through `afRun`/`afBindRepository`. It honours `--db`, binds nothing, compares nothing, reads `Repository()` and calls `MoveRepository(current, new, reason)`. A ledger that is not bound is refused ("no repository to move"), not bound.
+3. After the move the other verbs compare with the current identity (they already did, through `st.BindRepository`): a call from the new location passes, a call from a repository at the old path is refused naming the new bound identity.
+4. The card of TestA4Strand_RepositoryMoved shape runs to DONE: bound to A, A renamed, every verb refused, the verb run, `tryFinish` succeeds, c1 is in `af/trunk` of the new location.
+5. Not claimed: any PASS of an audit; E6 (`TestA2Done_TrunksOwnCommitAsCandidate` is an audit file that is not in this tree and was not run; no landing or DONE code was touched); lease worktree paths recorded before the move are rewritten (they are not, see Residual-risk).
+
+Decisions (with the code they rest on):
+
+- Name `move-repository`: `move` is already the stage-move verb (`internal/cli/af.go:552`), so the unqualified name was taken; the other verbs are single words, so no pattern pointed to another spelling.
+- Flag `--bind-repo`, no new flag: it is the explicit-declaration flag of the N51 clone form (`af.go:455-457`, field `afFlags.bindRepo`, `af.go:446-450`) and means "the repository this ledger belongs to", which is what a move declares. `--repo` does not fit: it exists only on evidence, enqueue, land and reconcile (`af.go:692`, `:743`), its help is "the repository a commit is looked up in" (`af.go:347-349`), and `afCheckRepoFlag` (`af.go:420-438`) only accepts a path whose git directory is the project's, so it can declare nothing the project directory has not said. The verb registers the same flag name and field with its own help text (`internal/cli/af_move_repository.go`), because the shared help says "for its first bind ... ignored once bound". Without the flag the new repository is the project directory (`resolveProjectDir()`).
+- Identity: `afGitCommonPath` (`af.go:381-404`), the function `afBindRepository` uses. Row commits: `afRowCommits` and `afMissingCommit` (`af.go:195-251`), reused, not copied.
+- "Old path gone" is `os.Lstat(current)`: success is a refusal ("still exists"), and so is any error other than `fs.ErrNotExist` (cannot tell).
+- Order of checks in the verb: blank reason (before the ledger file is opened), ledger file exists, ledger bound, old path gone, new location is a git repository, rows' commits present, then the ledger call.
+
+## Evidence
+
+Commits on top of `8b9c87939f`:
+
+```
+baac4dc05c  test(af): N52 RED
+9df79edb2a  feat(af): N52 GREEN   (amended once, unpushed: the first GREEN b542c3bab1 added a second comment line to af.go; trimmed to one line so the af.go line numbers cited by the SPEC do not move)
+2fd9455965  docs(spec): corrections only
+(this report: the commit after 2fd9455965; a file cannot name its own commit)
+```
+
+RED, by anchored name, before the verb existed (`go test -count=1 -run '^TestAFVerbs_N52' ./internal/cli/`): 10 of 10 FAIL, e.g.
+
+```
+--- FAIL: TestAFVerbs_N52ARenamedRepositoryIsRecordedAndTheCardGoesOnToDone
+    af_repo_n52_test.go:136: the move was refused: unknown command "move-repository" for "af"
+--- FAIL: TestAFVerbs_N52TheMoveIsRefusedWhileTheOldRepositoryStillExists
+    af_repo_n52_test.go:169: the refusal does not say "still exists": unknown command "move-repository" for "af" ...
+```
+
+The first test got through its pre-move assertions (every verb refused on the renamed repository, which is existing behaviour) and failed at the move. The refusal tests fail on RED because of the missing verb and the missing words, so the mutation table below is what shows each guard matters.
+
+GREEN, first attempt, code HEAD `9df79edb2a` (final checks re-run on this HEAD after the amend):
+
+```
+gofmt -l internal/agenticfactory internal/cli                 -> (no output)
+go build ./...                                                -> exit 0
+go vet ./internal/agenticfactory/... ./internal/cli/          -> exit 0
+GOOS=windows go build ./...  /  GOOS=linux go build ./...     -> exit 0 / exit 0   (run on the pre-amend code; the amend changed one comment line)
+go test -race -count=1 -p 4 ./internal/agenticfactory/...     -> 21 packages ok (ledger 66.2s, mergeq 89.3s, core 73.2s)   (pre-amend code)
+go test -count=1 -v -run '^(TestAF|TestCardFlow)' ./internal/cli/ -> 117 top-level "--- PASS" (314 with subtests), 0 FAIL, 0 SKIP; ok 98.721s
+golangci-lint run ./internal/agenticfactory/...               -> 0 issues.   (pre-amend code)
+```
+
+The ten new tests, each `--- PASS` by anchored run: `TestAFVerbs_N52ARenamedRepositoryIsRecordedAndTheCardGoesOnToDone`, `...TheMoveIsRefusedWhileTheOldRepositoryStillExists`, `...TheMoveIsRefusedWhenTheNewRepositoryLacksACommitTheRowsName`, `...TheMoveNeedsAReason`, `...AfterTheMoveTheOtherVerbsReadTheCurrentIdentity`, `...TheRecordedMoveIsListedWithItsReason`, `...TheHelpSaysWhatTheMoveChecks`, `...AnUnboundLedgerHasNothingToMove`, `...TheNewLocationMustBeAGitRepository`, `...TheDeclaredRepositoryIsTheNewOneNotTheProjectsOwn`. Each refusal test carries a control: the same call goes through once the one thing it was refused for is put right.
+
+Mutation contrasts (guard broken in the tree file with `sed -i.bak`, `go test -count=1 -run '^TestAFVerbs_N52' ./internal/cli/`, file restored, `cmp` against a saved copy printed "restored" every time):
+
+| # | Mutation | Failing tests |
+|---|---|---|
+| M1 | old-path `Lstat` guard off | 1: TheMoveIsRefusedWhileTheOldRepositoryStillExists |
+| M2 | missing-commit refusal off | 1: ...LacksACommitTheRowsName |
+| M3 | blank-reason refusal off | 1: TheMoveNeedsAReason (the ledger would also refuse a blank reason; the test pins the verb's own `--reason` message and that no ledger file is created) |
+| M4 | `--bind-repo` ignored | 3: LacksACommit, TheNewLocationMustBeAGitRepository, TheDeclaredRepositoryIsTheNewOne |
+| M5 | unbound-ledger refusal off | 1: AnUnboundLedgerHasNothingToMove |
+| M6 | not-a-repository handling off | 1: TheNewLocationMustBeAGitRepository |
+| M7 | ledger called with a fixed reason | 1: TheRecordedMoveIsListedWithItsReason |
+| M8 | ledger call replaced by `error(nil)` | 8 (all but the help and the unbound test) |
+| M9 | one help phrase changed | 1: TheHelpSaysWhatTheMoveChecks |
+
+Existing tests changed: none. Files: new `internal/cli/af_move_repository.go`, new `internal/cli/af_repo_n52_test.go`; `internal/cli/af.go` changed in two lines (one comment, the `AddCommand` list).
+
+`moai spec lint --strict` on `spec.md` after the corrections: `0 error(s), 1 warning(s)` (`REQTableRowsRejected`, line 150, the same warning kind as before) plus INFO `OwnershipTransitionUnmeasured`. Judging build: the installed `moai` v3.2.0-rc.38, commit `b1806498fe`, not a build of this tree.
+
+SPEC corrections (docs commit `2fd9455965`, additive code facts only, no new id, no status change, no PASS claim, no accepted-risk note): REQ-AFL-001 ("a different identity" now "other than the one the ledger answers to now"; "for every verb" now "except `move-repository`"; the cited `repository.go` and `afRun` lines), REQ-AFL-009 (the table list gains `repository_move`), design appendix D (ledger side, verb side, new N52 bullet, the open-risk sentence), progress §O (the "no recovery path" bullet, one new correction line, the traceability row's line numbers).
+
+## Baseline-attribution
+
+Tree `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/agentic-factory-integration`, start `8b9c87939f`. Every command above was run in this session against this tree; the judging build is `go test`/`go build` of the tree itself. Items marked "(pre-amend code)" were measured before the one-comment-line amend of the GREEN commit and were not repeated; the amend changed only a comment line in `af.go`, and the `go build`, `go vet`, `gofmt` and anchored cli runs were repeated after it.
+
+## Gaps
+
+- E6: `TestA2Done_TrunksOwnCommitAsCandidate` was not run (audit file outside the tree). The only behaviour argument is that no landing, enqueue or DONE code was touched.
+- The row-commit check is fail-open in the reused `afMissingCommit`: when git cannot answer it returns "no missing commit", so check (b) then passes. A ledger whose rows name no complete SHA has nothing to check either, so (b) passes vacuously and the new repository is the caller's word.
+- Windows: only the `GOOS=windows` build ran; the tests skip without `sh`. `os.Lstat` not-exist semantics on Windows were not run.
+- A dangling symlink at the old git directory path reads as "exists" under `Lstat` and is refused. Not tested.
+- Two concurrent `move-repository` calls: the ledger refuses the stale one (lane-1's test); no CLI-level concurrency run.
+- Mutation M5/M6/M3 contrasts are on the verb's own refusals. The contrast for "the other verbs read the current identity" (test 5) at the CLI layer is only M8; the ledger-level contrasts for it are lane-1's M2 and M4 in `ledger-n52-repair.md`, not repeated here.
+- The tree file was edited temporarily for the mutations (not an overlay); restored and compared byte for byte with a saved copy each time.
+- No independent audit, no push, no `MOAI_*_LIVE`, no whole-package `./internal/cli/...` run (by instruction).
+
+## Residual-risk
+
+- A lease that was recorded before the move keeps the old worktree path. After the move, evidence and enqueue for that card need `--repo <path in the new repository>`; without it they ask a path that no longer exists and are refused. The help says so. The verb does not rewrite leases.
+- The check is "the old git directory is gone" plus "the new repository has the commits". A copy or a clone of the repository at a new path, with the old one deleted, passes as a move; so does a different repository that happens to contain every commit. The identity is the caller's `--bind-repo` or the project directory.
+- Anyone who can run the verb can re-point the ledger; there is no authorization step (same as lane-1's residual). The reason is free text.
+- N55, N56, N58 are unchanged.
