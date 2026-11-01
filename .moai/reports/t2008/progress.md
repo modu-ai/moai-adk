@@ -126,5 +126,12 @@ decision record: decided_by=lane-7 (claude, lane orchestrator) evidence_refs=lea
 - Local reproduction before the fix: `git show 5c3f0ebf27:.claude/skills/moai/workflows/run.md | wc -l` -> 200; `wc -l` of the live and the template run.md -> 202 each; `go test -count=1 -run TestEntryRouterLOCCeiling ./internal/skills/` -> exit 1, `ENTRY_ROUTER_LOC_VIOLATION: run.md has 202 LOC (ceiling: 200)`.
 - Plan: keep the EXPECTED_RED / REGRESSION_FAILURE qualifier (the RUN-03 hook test requires `tdd-result-contract.md`, `EXPECTED_RED`, `REGRESSION_FAILURE` in run.md) and reflow the ac_converge prompt so run.md is at most 200 lines; mirror, regenerate the catalog hash, rerun the ceiling test and the whole `./internal/skills/` package.
 
+### Repair of the run.md LOC ceiling failure (commit after fb98b58453)
+
+- `run.md` ac_converge prompt reflowed from 5 lines to 2 (the EXPECTED_RED / REGRESSION_FAILURE qualifier and `tdd-result-contract.md` kept verbatim), template mirror copied, catalog hash regenerated. `wc -l .claude/skills/moai/workflows/run.md` -> 199 (base 200, CI-failing 202).
+- `go test -count=1 ./internal/skills/` -> `ok github.com/modu-ai/moai-adk/internal/skills 0.210s` (the ceiling test passes; the whole package ran); `go test -count=1 -run 'TestRunPlan|TestRunResumeIdentity|TestRunPhaseReferences|TestSkillsContainPlanAuditGateMarkers|Mirror|Embed|Manifest|DateProvenance|BindingLedger' ./internal/template/` -> `ok ... 4.756s`; `bash .claude/hooks/tests/test-tdd-result-contract.sh` -> PASS.
+- Scoping rule learned: a skill or router file under `.claude/skills/` is also measured by `./internal/skills/` (LOC ceilings, split rules); include that package whenever a skill file changes.
+- Still red on the PR head by design: `TestCleanReportsArchive_MovesOnlyEligibleCandidates` (the #1956 calendar defect); no change here.
+
 Gaps: no whole-file semantic test of the new clauses (literal greps only, plus the one mutation); `make build` was not run (only its hash step); no Go package other than internal/template was run.
 Residual risk: the three docs still describe `go test ./...` exit 0 as an ac_converge predicate (RUN-07, out of the stated order for this pass).
