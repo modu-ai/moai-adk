@@ -73,6 +73,19 @@ func mask(s string) string {
 	return s
 }
 
+// maskTail is mask for output that is cut to its last limit bytes: it returns the masked tail and how many bytes were
+// cut after the masking began. The first masking can make the text 2.5 times longer ("key=1" becomes "key=[REDACTED]"),
+// and every pass costs time in proportion to the text it sees, so the cut comes right after the first pass (what
+// remains is already masked, and a cut in it uncovers nothing) and the last cut keeps the file within the cap.
+func maskTail(s string, limit int) (string, int) {
+	s, _ = core.Redact(s)
+	s, cut := tailOf(s, limit)
+	s, _ = core.Redact(StripControls(s))
+	s, _ = core.Redact(s)
+	s, more := tailOf(s, limit)
+	return s, cut + more
+}
+
 // tailOf is the last limit bytes of s, cut forward to the start of a character, and how many bytes were cut.
 func tailOf(s string, limit int) (string, int) {
 	if len(s) <= limit {
@@ -103,7 +116,7 @@ func (l *FailureLog) write(card, candidate, kind, header string, out []byte) (st
 	// The cut before the masking bounds the work the masking does; the cut after it bounds the file, because the
 	// masking and the stripping change the length ("key=1" becomes "key=[REDACTED]").
 	body, dropped := tailOf(string(out), limit)
-	text, more := tailOf(mask(body), limit)
+	text, more := maskTail(body, limit)
 	dropped += more
 	if dropped > 0 {
 		text = fmt.Sprintf("[%d earlier bytes of output are not kept]\n%s", dropped, text)
