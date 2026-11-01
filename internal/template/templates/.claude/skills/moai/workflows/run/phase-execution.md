@@ -72,7 +72,10 @@ Timeout: 60 seconds. On timeout, treat as INCONCLUSIVE (Step 4d).
 
 Read the verdict from the report file produced by plan-auditor.
 
+[HARD] Precedence: the plan→run Kickoff gate (`run.md` § Run-phase Autonomy section 1; `.claude/rules/moai/workflow/auto-semantics.md` §9.1) decides run entry. There a `FAIL`, `INCONCLUSIVE`, `BYPASSED`, or an absent verdict is a hard block, and only an admitted `PASS` or `PASS-WITH-DEBT` verdict enters. Branches 4b, 4c, and 4d below are the legacy interactive forms: none of them turns a `FAIL` or an `INCONCLUSIVE` into an entry. A `FAIL_WARNED` record is a historical grace-window label (the grace window is read from `.moai/state/audit-gate-merge-at.txt`, which no Go code reads), never a pass. Where an override or an acknowledgement is requested, it is the operator-form question for a keep-set case, recorded with a decision record.
+
 **4a. PASS**
+- A `PASS-WITH-DEBT` verdict with at least one enumerated debt is admitted the same way: copy every enumerated debt into the SPEC's `progress.md` under a `Binding run conditions` heading before Phase 5 (both sync verdict owners re-read them).
 - Log: `[plan-audit] verdict=PASS, persisted to progress.md, proceeding to Phase 5`
 - Proceed to Step 5 (persist), then continue to Phase 1.
 
@@ -130,6 +133,8 @@ Append format (each audit run is a numbered section):
 When the same SPEC is audited multiple times in the same day, each run appends a new section.
 
 ### When --skip-audit Flag Is Provided
+
+Legacy: the plan-audit bypass flags are retired into the default path (`auto-semantics.md` gate table and §9.1), and `BYPASSED` is a hard block at the Kickoff gate. The steps below describe the library behavior that records a bypass; they do not admit run entry, and an environment variable or a non-interactive session never supplies the operator-form answer.
 
 When the user passes `--skip-audit` flag OR sets `MOAI_SKIP_PLAN_AUDIT=1` env var:
 
@@ -292,7 +297,7 @@ Implementation guard: [HARD] During Phase 5 (Analysis and Planning), the manager
 - [ ] User has approved the approach
 <!-- moai:evolvable-end -->
 
-Tool: AskUserQuestion (at orchestrator level)
+Tool: AskUserQuestion (at orchestrator level) - the operator form. Under the default-autonomous Kickoff (`auto-semantics.md` §9.1) the admitted audit verdict and a written decision record replace this question; it stays for keep-set cases (environment-impossible, operator-held, irreversible external-shared work) and for an explicit operator dialogue.
 
 Before presenting options, verify the plan against these criteria:
 
