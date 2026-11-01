@@ -268,7 +268,7 @@ Each transition below is stated per route (§ SPEC Phase Discipline): Route A tr
 
 Plan to Run:
 - Trigger: (A) plan-phase artifacts committed + pushed to `main`, or (B) plan PR merged (squash) — each AND SPEC approval: under the default-autonomous Kickoff transition (`.claude/rules/moai/workflow/auto-semantics.md` §9.1), the audit-cross evidence path IS the default entry; the operator approval named here is the form keep-set cases keep (annotation cycle completed, user confirmed "Proceed").
-- Pre-condition: plan.md records `plan_complete_at` + `plan_status: audit-ready` in progress.md; on Route B the plan PR is additionally in MERGED state.
+- Pre-condition: plan.md records a bare `audit_ready: true` line (the line the Kickoff gate reads) + `plan_complete_at` + `plan_status: audit-ready` in progress.md; on Route B the plan PR is additionally in MERGED state.
 - Action: Execute /clear, then `/moai run SPEC-XXX` — on `main` (Route A) or `feat/SPEC-XXX` (Route B default), or inside `moai cc -w SPEC-XXX` where the user opted into a worktree (§ SPEC Phase Discipline Step 2).
 - Gate: `/moai run` Phase 1 (Plan Audit Gate) executes automatically before any implementation (details below).
 - [ZONE:Evolvable] Plan Audit Gate skip policy (single authoritative contract):

@@ -2,6 +2,8 @@ package template
 
 import (
 	"io/fs"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -26,6 +28,50 @@ func between(doc, start, end string) (string, bool) {
 		rest = rest[:j]
 	}
 	return rest, true
+}
+
+// TestPlanSignalDocsNameAuditReady guards the two rule docs that describe the
+// plan-phase completion signal: both must name the `audit_ready: true` line the
+// Kickoff gate actually reads, in the embedded copy and in the local .claude
+// tree. Lexical: it proves the wording, not that an agent writes the line.
+func TestPlanSignalDocsNameAuditReady(t *testing.T) {
+	t.Parallel()
+
+	files := []struct{ rel, marker string }{
+		{"rules/moai/workflow/spec-workflow.md", "Pre-condition: plan.md records"},
+		{"rules/moai/development/spec-frontmatter-schema.md", "## §E.1 Plan-phase Audit-Ready Signal"},
+	}
+	roots := []struct{ label, dir string }{
+		{"local", filepath.Join("..", "..", ".claude")},
+		{"template", filepath.Join("templates", ".claude")},
+	}
+	for _, root := range roots {
+		for _, f := range files {
+			path := filepath.Join(root.dir, f.rel)
+			raw, err := os.ReadFile(path)
+			if err != nil {
+				t.Errorf("%s: ReadFile(%q): %v", root.label, path, err)
+				continue
+			}
+			var line string
+			for _, l := range strings.Split(string(raw), "\n") {
+				if strings.Contains(l, f.marker) {
+					line = l
+					break
+				}
+			}
+			if line == "" {
+				t.Errorf("%s %s: line containing %q not found", root.label, f.rel, f.marker)
+				continue
+			}
+			if !strings.Contains(line, "audit_ready: true") {
+				t.Errorf("%s %s: signal description lacks `audit_ready: true`: %.160s", root.label, f.rel, line)
+			}
+			if idx, p := strings.Index(line, "audit_ready: true"), strings.Index(line, "plan_status"); idx >= 0 && p >= 0 && p < idx {
+				t.Errorf("%s %s: `plan_status` is named before `audit_ready: true` (audit_ready must be the first-named signal)", root.label, f.rel)
+			}
+		}
+	}
 }
 
 func TestPlanContractWording(t *testing.T) {
