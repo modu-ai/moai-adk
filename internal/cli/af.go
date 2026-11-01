@@ -158,6 +158,12 @@ func afPrepareBinding(ctx context.Context, st *ledger.Store, place afPlace, dir 
 	id, err := afGitCommonPath(ctx, dir)
 	if err != nil {
 		if optionalRepo && errors.Is(err, errAFNotARepository) {
+			if bound, rerr := st.Repository(ctx); place.bindRepo != "" && rerr == nil && bound == "" {
+				// A declaration is for the first bind, and this call binds nothing: it would be dropped without a word (N70).
+				return nil, fmt.Errorf("af: refused: --bind-repo %q cannot be honoured: the project directory %q is not in a git repository, so this call "+
+					"binds nothing and the declaration would be dropped; run it with CLAUDE_PROJECT_DIR set to a directory inside the repository; "+
+					"nothing was changed", place.bindRepo, dir)
+			}
 			return nil, nil
 		}
 		return nil, fmt.Errorf("af: cannot tell which repository %q belongs to (%w); nothing was changed", dir, err)
