@@ -253,7 +253,7 @@ func TestContractModeGuidedPreservation(t *testing.T) {
 var grApprovedOutsideEdits = map[string]struct{ sha, item string }{
 	".claude/skills/moai/workflows/sync.md":               {"d645876fa0f069d369794391b2e8ed3d0e9836f3f702b6ab92c6eacf93a5eea8", "S07 (Stop-hook description)"},
 	".claude/skills/moai/workflows/sync/doc-execution.md": {"a9bfcf57796791023f3bca9b164148f31024dd49e90873f6312f3d2c1147fa25", "S02 (approved SPEC bodies are not rewritten)"},
-	".claude/skills/moai/workflows/sync/delivery.md":      {"3727b45e9065fb5e9e1eff77281a8c92d420373d8afbec8f6aacf54d3579d039", "S01/S04/S06 (Route A, CI mirror, Graceful Exit)"},
+	".claude/skills/moai/workflows/sync/delivery.md":      {"705c645ec5ef0d7df172c0446a83610558acf99c96e124c7c28c4377480311c0", "S01/S04/S06 (Route A, CI mirror, Graceful Exit)"},
 }
 
 // grOutsideEditApproved reports whether findings are covered by a table entry

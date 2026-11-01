@@ -163,10 +163,16 @@ fi
 # Each build keeps its own PID and its own exit status; a bare `wait` would
 # return 0 whatever the individual builds did.
 pids=""
-for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64; do
- GOOS="${target%/*}" GOARCH="${target#*/}" CGO_ENABLED=0 go build -ldflags="-s -w" -o "/tmp/ci-build-${target%/*}-${target#*/}" ./<your-module>/ &
- pids="$pids $!:$target"
-done
+GOOS=linux  GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-linux-amd64   ./<your-module>/ &
+pids="$pids $!:linux/amd64"
+GOOS=linux  GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-linux-arm64   ./<your-module>/ &
+pids="$pids $!:linux/arm64"
+GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-darwin-amd64  ./<your-module>/ &
+pids="$pids $!:darwin/amd64"
+GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-darwin-arm64  ./<your-module>/ &
+pids="$pids $!:darwin/arm64"
+GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/ci-build-windows-amd64.exe ./<your-module>/ &
+pids="$pids $!:windows/amd64"
 build_failed=0
 for entry in $pids; do
  pid="${entry%%:*}"
