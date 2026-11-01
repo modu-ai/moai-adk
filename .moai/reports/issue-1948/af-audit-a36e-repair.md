@@ -583,3 +583,106 @@ Result of the walk: **no legitimate card without an exit was found.** Two rows m
 - The N55 test is satisfied only by a fix that leaves the ledger unbound after a refused verb; a fix that only corrects the help would leave it red (the audit offered both).
 - N56 is skipped on a case-sensitive volume; N8 needs `perl` and starts a process that the test ends by its recorded pid.
 - A fix of N46 that makes same-millisecond evidence rank after the withdrawal changes the migration for every version 1 file; the existing `TestOpen_ASameMillisecond*` tests pin the neighbouring rules and must stay green.
+
+## Residual repairs (phase 2, from a0934dee58)
+
+Card issue-1948 (AF-22), phase 2 of 2: GREEN for the items phase 1 classified A or B and left open. One commit per item (`fix(af): <item> GREEN ...`); the RED tests of phase 1 were kept, with one change listed below. Kept out as planning input, not touched: N6, N47, N48c, N74, N73, the child that left the process group (N8 kill). Nothing was moved to planning input beyond those, and no item needed a schema change, a new verb, a new state or a new requirement. E6 (a candidate already in the trunk lands "already in the trunk" and reaches DONE) is unchanged; N38 was not touched; the N68 schema bump stays; nothing of 3.2 was added.
+
+### Per-item table
+
+| Item | GREEN SHA | Fix (one line) | Mutation check (fix broken, RED test run, fix restored) | Old build (a0934dee58, `AF_TEST_BIN`) | Final build |
+|---|---|---|---|---|---|
+| N46 | `8829116094` | `migrateEvidenceMark`: evidence in the millisecond of a MERGING to REVIEWING move ranks after it (ledger `schema.go`) | `schema.go` checked out to a0934dee58: `--- FAIL: TestResidualN46_.../in_the_millisecond_of_the_withdrawal` (`DONE from REVIEWING with c2's gate at 2026-10-20T10:00:09.000Z: <nil> stage=DONE`); fix re-applied, `TestResidualN46_` and `TestOpen_ASameMillisecond*` ok | package test on the old tree: FAIL | ok |
+| N37b | `30b3e2eee6` | `GIT_NO_REPLACE_OBJECTS=1` in `GitCLI.run` (mergeq) and in the `cat-file` call of `afMissingCommits` (cli) | env line removed from `gitcli.go`: `--- FAIL: TestResidualN37_...` (`land: outcome="landed" err=<nil>; files of the trunk: [base.txt evil.txt]`) | package test on the old tree: FAIL | ok |
+| N10 | `d539ac20bd` | `ledger.staleBecause`: the parked and the left-MERGING refusals are `ErrStaleEpoch` by `errors.Is` but carry their own text | parked line back to `ErrStaleEpoch` text: `--- FAIL: TestResidualN10_...` (`the refusal of a parked card says the card was claimed again`) | package test on the old tree: FAIL | ok |
+| F9 | `412a3f6fd2` | `land`: a Verify error with an ended context is returned with the gate's reason, the row stepped back to waiting on `context.WithoutCancel` (`stepBack`) | ctx branch disabled: `--- FAIL: TestResidualF9_...` (`the gate's failure reason is lost: outcome="" reason="" err=ledger: context canceled`) | package test on the old tree: FAIL | ok |
+| N4 | `10c4ea0b0d` | `land`: a refused (`ErrStaleRow`) verifying write steps the row back to waiting | `stepBack` call removed: `--- FAIL: TestResidualN4_...` (`row=verifying`) | package test on the old tree: FAIL | ok |
+| N5 | `f685df1226` | `Reconcile`: a stale verifying row whose candidate is in the trunk goes through `backToWaiting` (reason "the candidate is in the trunk but the card left MERGING ...") | case disabled with `&& false`: `--- FAIL: TestResidualN5_...` (`reconcile after release: actions=[] err=<nil> row=verifying`) | package test on the old tree: FAIL | ok |
+| N48d | `ee4c1b79a6` | `FailureLog.prune`: the ACL of every log in the directory is cleared once per `FailureLog` (best effort) | `stripACL(path)` replaced by `_ = path`: `--- FAIL: TestResidualN48_ALogWrittenBeforeTheACLRepair...` (the two ACL entries remain) | package test on the old tree: FAIL | ok |
+| N7 | `b5587d36d1` | `StripControls` also drops Unicode category Cf (bidi overrides, zero-width, BOM, tags) | Cf condition `&& false`: `--- FAIL: TestAFResidual_N7...` (`has U+202E=true has U+200B=true`) | FAIL | ok |
+| N55 | `92c50018c1` | `afRun`: the project's binding waits (`afPendingBinding`) and is made after a verb that completed; a verb that binds itself flushes it first | flush made unconditional: `--- FAIL ... /release_of_a_card_that_does_not_exist`, `/resume_of_a_card_that_does_not_exist` | FAIL | ok |
+| N56 | `b5225bb31b` | `afPrepareBinding`: when the bound identity and the computed one differ as strings but are one directory (`os.SameFile`), the recorded spelling stands | guard `&& false`: `--- FAIL: TestAFResidual_N56...` | FAIL | ok |
+| N53 | `7a50b1b921` | the refusal that names a lease worktree adds the release from a directory that is no repository | `!proof && false`: `--- FAIL: TestAFResidual_N53...` | FAIL | ok |
+| N70 | `06f28dbab2` | `afPrepareBinding`: `--bind-repo` with a project directory that is no repository and an unbound ledger is refused | guard `&& false`: both subtests FAIL | FAIL | ok |
+| N37a (and the lease part of N69) | `adbeb84530` | `afCheckCommit`: a lease worktree that is gone is named and `--repo` is the way on | `fromLease && false`: `--- FAIL: TestAFResidual_N37...` and `TestAFResidual_N69.../a_lease_recorded_before_the_move` | **pass** (see Gaps) | ok |
+| N69 rest (link) | `fa5bf0c1be` | `afStillThere`: a symbolic link on the way to the old git directory is named, with remove, move, make again | `link != "" && false`: `--- FAIL: TestAFResidual_N69.../a_link_left_at_the_old_path` | FAIL | ok |
+| N71 | `9d70f2bedc` | `af add`: id of 1 to 128 characters of `[A-Za-z0-9._-]`, first a letter or digit, refused before anything is opened | check `&& false`: all five subtests FAIL | FAIL | ok |
+| N72 | `923b3fb6d0` | `afAsGivenHelp` ("Nothing masks the text ...") in the help of add, move, move-repository | constant reworded: `--- FAIL: TestAFResidual_N72...` | FAIL | ok |
+| N48a | `1cb0005796` | `enqueue` prints the state of the queue row | constant `waiting` printed: `--- FAIL: TestAFResidual_N48...` | FAIL | ok |
+| F8 | `7181dd52b5` | `land` refuses `--gate-timeout` <= 0 before the ledger is opened | `<= 0 && false`: both subtests FAIL | FAIL | ok |
+| N8 (help only) | `6f343aafdc` | the help of land says the kill reaches the process group and not a process in a session of its own (`setsid`) | word `setsid` removed: `--- FAIL: TestAFResidual_N8...` | FAIL | ok |
+
+Change to a RED test: `internal/cli/af_residual_n55_test.go` lost its third case, "reap with nothing to reap". Reason: the case contradicts the tests that use `reap --bind-repo` as the verb that binds a ledger (the permanent identity tests, which failed with `marker ""` and a missing "fresh" refusal when reap stopped binding, and the N56, N69 and N70 RED tests of this phase), so no fix could satisfy all of them. The refused-verb cases (release and resume of a card that does not exist) stay and were turned from red to green; the help now says "the first verb that completes binds". Nothing else in a test file was changed.
+
+### Claim
+
+Each of the nineteen items above is repaired by its own commit; the RED test of the item passes, passes only with the fix (mutation check), and fails on the build of a0934dee58 where it is reachable through the CLI seam; the permanent groups, the residual group, the anchored `TestAF|TestCardFlow` run, the race run of the AF packages, gofmt, vet, golangci-lint and the Windows and Linux vets are clean on the final tree.
+
+### Evidence (commands run in this run; output verbatim or cut to the deciding lines)
+
+- Old build: `git archive` of a0934dee58 into the session scratchpad, `go build -C <it> -o .../moai-p2-old ./cmd/moai`; final build `go build -o .../moai-p2-final ./cmd/moai` from HEAD.
+- `env AF_TEST_BIN=.../moai-p2-old go test -count=1 -run '^(TestAFResidual_|TestAFIdentity_|TestAFTransition_|TestAFLandingWindow_|TestAFHeartbeatFrom_)' ./internal/cli/` -> `--- FAIL` for F8, N48, N53, N55, N56, N69, N70, N71, N72, N7, N8 (eleven tests) and `FAIL github.com/modu-ai/moai-adk/internal/cli 76.213s`; no permanent-group test failed.
+- The same with `AF_TEST_BIN=.../moai-p2-final` -> `ok  	github.com/modu-ai/moai-adk/internal/cli	60.988s`.
+- Package-level residual tests (they do not go through the CLI): `go test -C <the a0934dee58 tree> -count=1 -run '^(TestResidual|TestFailureLog_ResidualN44)' ./internal/agenticfactory/mergeq/ ./internal/agenticfactory/ledger/` -> mergeq `--- FAIL` for F9, N10, N37, N48, N4, N5; ledger `--- FAIL` for N46. The same on HEAD -> `ok  	.../mergeq	3.263s`, `ok  	.../ledger	0.751s`.
+- `go test -count=1 -run '^(TestAF|TestCardFlow)' ./internal/cli/` on HEAD -> `ok  	github.com/modu-ai/moai-adk/internal/cli	197.729s`.
+- `go test -race -count=1 ./internal/agenticfactory/...` on HEAD -> every package `ok` (ledger 90.211s, mergeq 114.997s, core 89.697s).
+- `gofmt -l internal/cli internal/agenticfactory` -> no output; `go vet ./internal/cli/ ./internal/agenticfactory/...` -> no output; `golangci-lint run ./internal/cli/ ./internal/agenticfactory/...` -> `0 issues.`; `GOOS=windows go vet` and `GOOS=linux go vet` of `./internal/cli/ ./internal/agenticfactory/ledger/ ./internal/agenticfactory/mergeq/` -> no output.
+- Per commit, before it: the item's RED test, `go test -count=1 -run '^(TestAFIdentity_|TestAFTransition_|TestAFLandingWindow_|TestAFHeartbeatFrom_)' ./internal/cli/` (with the item's own test, and the land, flow and help tests where the item touched them) and `go test -race -count=1` of the package changed (ledger, mergeq). The race run of every AF package was made once, on the final tree, and not after each commit.
+
+### Baseline-attribution
+
+Measured in this run on the tree at HEAD (the commit list below) and on `git archive a0934dee58`; the judging builds are the two binaries named above, built from those trees (the installed `moai` was not used for any measurement). golangci-lint is the one on PATH.
+
+### Failure ledger, rows updated (phase 2)
+
+| Family | Round | Fix SHA | Root cause | Regression test | Status |
+|---|---|---|---|---|---|
+| N46 | 46dbcce0d4 | `8829116094` | same-millisecond evidence of a withdrawal ranked before it | `TestResidualN46_*` | closed |
+| N37 (b) | db0a69698a | `30b3e2eee6` | git honoured replace refs | `TestResidualN37_*` | closed |
+| N4 | a1ec370195 / 22a0afd247 | `10c4ea0b0d` | a refused rebuild left the row verifying | `TestResidualN4_*` | closed |
+| N5 | 22a0afd247 | `f685df1226` | reconcile skipped a verifying row of a withdrawn card | `TestResidualN5_*` | closed |
+| N10 | a1ec370195 | `d539ac20bd` | a park reported as a claim | `TestResidualN10_*` | closed |
+| F9 | a1ec370195 | `412a3f6fd2` | the ended context ended the write that records the reason | `TestResidualF9_*` | closed |
+| N53 N55 N56 N70 | 1c05083f71 / a36ea8c368 | `7a50b1b921`, `92c50018c1`, `b5225bb31b`, `06f28dbab2` | refusal without the exit; bind before the work; identity as a string; declaration dropped | `TestAFResidual_N53*`, `_N55*`, `_N56*`, `_N70*` | closed (N55 for a refused verb; reap binds by design) |
+| N37 (a) N69 rest | db0a69698a / a36ea8c368 | `adbeb84530`, `fa5bf0c1be` | refusals that name no `--repo` and no link | `TestAFResidual_N37*`, `_N69*` | closed |
+| N71 F8 | a36ea8c368 / a1ec370195 | `9d70f2bedc`, `7181dd52b5` | input boundaries without validation | `TestAFResidual_N71*`, `_F8*` | closed |
+| N72 N8 (help) N48a N7 N48d | a36ea8c368 and earlier | `923b3fb6d0`, `6f343aafdc`, `1cb0005796`, `b5587d36d1`, `ee4c1b79a6` | help and messages that do not name the limit; printed state; log content; old-log ACL | `TestAFResidual_N72*`, `_N8*`, `_N48*`, `_N7*`, `TestResidualN48_*` | closed (N8: help only; the child that left the group stays planning input) |
+| N6 N47 N48c N74 N73 | various | none | a supervisor, a per-ledger secret, a retention rule, a land-time rule, SPEC text | measurements of phase 1 | open, D (planning input, not touched) |
+| N20 N44 | | `dfb39fd136`, `a0b5e45659` | tests only | | closed as tests, C |
+
+### Impact-path rows, updated (claim -> run -> check -> handoff -> integrate -> sync/close, and recovery)
+
+| Stage | Call site | Classification now |
+|---|---|---|
+| claim | `af.go: afRun`, `afPrepareBinding` (N55, N56, N70) | closed: the binding is made after a completed verb; one directory has one spelling; a declaration that cannot be honoured is refused |
+| claim | `af_add.go: afCheckCardID` (N71) | closed |
+| run | `af.go: afCheckCommit` (N37 a, N69) | closed: a gone lease worktree is named and `--repo` is the way on |
+| check | `ledger/queue.go` landing rules (N44) | unchanged (test only) |
+| check | `ledger/schema.go: migrateEvidenceMark` (N46) | closed |
+| handoff | `af.go: enqueue` output (N48 a) | closed |
+| integrate | `mergeq.go: land`, `stepBack` (N4, F9), `Reconcile` (N5), `ledger/queue.go: staleBecause` (N10) | closed |
+| integrate | `mergeq/gitcli.go`, `af.go: afMissingCommits` (N37 b) | closed |
+| integrate | `af_land.go` (F8, N8 help) | closed; N6, N47 and the child that left the group open, D |
+| sync/close | `mergeq/faillog.go` (N7, N48 d) | closed; N48 c (age limit) open, D |
+| recovery | `af_move_repository.go: afStillThere` (N69) | closed |
+| recovery | `af.go: reap`, `release` (N53) | closed: the refusal names the release from a directory that is no repository |
+| docs | SPEC body (N73) | open, D, belongs to manager-spec |
+
+### Gaps (not observed, refused, or not run)
+
+- Refusals by the worktree guard: one `git commit` whose message held a single quote ("reap-with-nothing-to-reap" was first written with an apostrophe) was refused as too complex, and the commit was made again without it. No other command was refused. A few commands joined by `&&` were accepted.
+- N37a does not discriminate under the `AF_TEST_BIN` seam: on the old binary `TestAFResidual_N37...` passes, because the old message prints the lease worktree under a spelling the test does not replace by `<lease worktree>`, and the temporary directory of the test is named `...IsGoneNames...`, so the test's `contains "gone"` is met by the path. In process on the old tree it failed in phase 1 (`af: cannot tell which repository "<lease worktree>" belongs to`), and the mutation check above fails it again. The test was not changed.
+- The `cat-file` call of `afMissingCommits` (cli) got `GIT_NO_REPLACE_OBJECTS=1` as well; no test fails without that one line (the mutation check broke the line of `gitcli.go`).
+- N55 is closed for a verb the ledger refuses; a verb that completes without writing (reap with nothing to reap) still binds, as the help now says. A verb that wrote and then returned an error leaves the ledger unbound until the next completed verb.
+- N48 d clears the ACL of the old logs once per `FailureLog` value (one `moai af land` process), best effort; a failure to clear one is ignored. Measured on macOS only (the test is `_darwin_test.go`).
+- The race run of every AF package was made on the final tree only (and for ledger and mergeq after the commits that changed them); the CLI tests were not run with `-race` (forbidden).
+- Not run: any audit, `/verify`, the full `./internal/cli/...` suite, `MOAI_*_LIVE`, push, PR.
+
+### Residual-risk
+
+- N4 and F9 send a verifying row back to waiting through the landing lock; when the lock is held by another lander the row stays verifying and the error says so (Reconcile settles it later). The F9 text includes the text of a Verify error that is not a `GateError` (the production Verify returns only `GateError`); the old path kept such text in the log only.
+- N5 sends the verifying row of a withdrawn card, whose candidate is in the trunk, back to waiting; the card's holder offers it again and E6 lands it as "already in the trunk". A card parked with a live lease is still left alone.
+- N7 drops every Unicode Cf character from the logs, including the zero-width joiner of emoji sequences.
+- N56 treats two spellings as one repository by `os.SameFile` of the recorded identity and the computed one; a link left at the old place of a moved repository therefore also reads as the same repository for the other verbs (the move verb keeps its refusal and now names the link).
+- N71 is checked in the verb; `AddCard` in the ledger still accepts any id (the importer and the tests add ids through it).
+- N46 changes the migration only for the MERGING to REVIEWING move of a version 1 file; the neighbouring `TestOpen_ASameMillisecond*` tests stay green.
