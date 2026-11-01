@@ -127,6 +127,13 @@ func afCheckKnownRepositories(ctx context.Context, st *ledger.Store, dbPath, id,
 			if l.Worktree == "" {
 				continue
 			}
+			if !filepath.IsAbs(l.Worktree) {
+				// git -C <relative> runs in the caller's directory, so the comparison would always agree with the
+				// caller (N51 d); a clue that cannot be read the same by everyone is a reason to stop, not to bind
+				return fmt.Errorf("af: refused: this ledger is not bound yet, and the lease on %s records the worktree %q, which is not an absolute path "+
+					"and names whatever directory the caller stands in; release that lease (from a directory that is no git repository, where the release needs no bind) "+
+					"and claim the card again with the absolute worktree; this call would bind %s (the git directory of %s); nothing was changed", l.CardID, l.Worktree, id, dir)
+			}
 			if err := check(l.Worktree, "the worktree "+l.Worktree+" of the lease on "+l.CardID); err != nil {
 				return err
 			}
@@ -376,8 +383,9 @@ func newAFClaimCmd() *cobra.Command {
 		Short: "Claim the next card and print its id and fencing epoch",
 		Long: `Claim the next card and print its id and fencing epoch.
 
---worktree is recorded in the lease as given and is not checked here: evidence and enqueue look a commit up in it when
---repo is left out, and refuse it there when it is in a repository other than the ledger's.
+--worktree must be an absolute path (a relative one is refused: it would name a different directory for every caller) and
+is recorded in the lease as given; it is not checked against a repository here: evidence and enqueue look a commit up in
+it when --repo is left out, and refuse it there when it is in a repository other than the ledger's.
 
 ` + afBindHelp,
 		Args: cobra.NoArgs,
@@ -388,6 +396,12 @@ func newAFClaimCmd() *cobra.Command {
 					return err
 				}
 				worktree = wd
+			}
+			// A lease worktree is looked up later from whichever directory the next verb runs in, so a relative one names
+			// a different place for every caller (N51 d): it is refused here, where it would be recorded.
+			if !filepath.IsAbs(worktree) {
+				return fmt.Errorf("af claim: --worktree %q is not an absolute path: a lease worktree is looked up from the directory "+
+					"of whoever asks next, so a relative one names a different place for each of them; give the absolute path; nothing was changed", worktree)
 			}
 			pid, start := afHolder()
 			return afRun(f.db, func(ctx context.Context, st *ledger.Store) error {
