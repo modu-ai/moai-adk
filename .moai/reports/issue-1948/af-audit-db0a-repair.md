@@ -123,3 +123,77 @@ Every command above was run in `/Users/goos/MoAI/moai-adk-go/.moai/worktrees/age
 - `--repo` and `--trunk` now refuse values existing scripts may pass. No script, doc or template in this tree outside `internal/cli/af*.go` mentions `--trunk` (grep), so none was found; callers outside this tree are not known.
 - The project directory is resolved from `CLAUDE_PROJECT_DIR` or the working directory; a project directory that is not inside the repository the operator means makes every explicit `--repo` fail (the default, flag left out, still works).
 - `go.mod`-level or CI differences between darwin and the Linux runner were not measured.
+
+## Follow-up (tree at 8b3bb3d093, lane-1 merged): coverage, N3 and N28 through the verbs, where N26 is tested
+
+### 1. mergeq coverage 83.8% to 88.0%
+
+Command and verbatim output, after the change: `go test -race -count=1 -cover ./internal/agenticfactory/mergeq/`
+
+```
+ok  	github.com/modu-ai/moai-adk/internal/agenticfactory/mergeq	65.988s	coverage: 88.0% of statements
+```
+
+Before (the same command with `-coverprofile` added, tree at 8b3bb3d093, before my first commit of this follow-up): `coverage: 83.8% of statements`, which is the leader's figure.
+
+`mask` has a live caller: `grep -rn 'mask(' internal --include='*.go'` finds exactly one call outside tests, `faillog.go:125` (`head := mask(header)`, the gate-text line of a gate log). It showed 0% because no mergeq test set `Merger.GateText`. It stays, and is tested.
+
+Per function (`go tool cover -func`, same run family):
+
+| Function | Before | After |
+|---|---|---|
+| `faillog.go mask` | 0.0% | 100.0% |
+| `faillog.go write` | 65.9% | 82.9% |
+| `faillog.go prepareDir` | not listed (>= 85) | 100.0% |
+| `faillog.go prune` | not listed (>= 85) | 90.0% |
+| `faillog_acl_darwin.go clearExtendedACL` | 66.7% | 100.0% |
+| `gitcli.go GitError.Error` / `Unwrap` (79, 83) | covered | 100.0% / 100.0% |
+| `gitcli.go MergeError.Error` / `Unwrap` (123, 128) | 0.0% / 0.0% | 100.0% / 100.0% |
+| `gitcli.go gitOutputOf` | 75.0% | 100.0% |
+| `gitcli.go PrepareCandidate` | 75.0% | 85.0% |
+| `mergeq.go GateError.Error` / `Unwrap` (97, 101) | 0.0% / 0.0% | 100.0% / 100.0% |
+
+What the tests use are real failures: a real merge conflict (typed `*MergeError`, `errors.Is(ErrMerge)`, `errors.As` through `Unwrap` to `*GitError` and git's `*exec.ExitError`, the text naming no git output), a real `sh` gate that exits 3 (`*GateError`, `Unwrap` to the exit status, through `Land` into the reason and the log), a directory sitting at the log's path (rename fails, no temporary file left), a read-only parent (the directory cannot be made), a nil or empty log, a scratch directory below a regular file, `chmod -N` on a missing path (darwin). Commit 84d3f6ac4c. Mutations shown to be killed: `MergeError.Unwrap` returning nil; the gate-text header written unmasked.
+
+Still uncovered in `write` (82.9%): the `CreateTemp`, `Chmod`, `WriteString` and `Close` error returns. They need a file system that fails on a file this process just created; no real failure of that kind could be forced here, so they are not claimed as tested.
+
+### 2. N3 through the verbs (`internal/cli/af_land_n3_test.go`, commit cd82945f26)
+
+Fixture: `afUnqueuedCard` (project directory = the repository, trunk `refs/heads/af/trunk`). Steps, all through the verbs except the second claim: `evidence` green and gate, `enqueue`, `land` (c1 landed at epoch 1, in the trunk), `move --stage REVIEWING` (and for BUILDING, `move --stage BUILDING --sub IMPLEMENT`), `release`, `Store.Claim` again (epoch 2), then at epoch 2:
+
+- `TestAFVerbs_N3AReclaimedCardFinishesOnTheLandedCommitOnceItMeasuredItAgain` {REVIEWING, BUILDING}: `evidence` green and gate on c1, (BUILDING: `move --stage REVIEWING`, the hand-off), `enqueue c1`, `move MERGING --remote-integrated`, `move DONE`: stage DONE, c1 in the trunk.
+- `TestAFVerbs_N3AReclaimedCardFinishesOnANewCommitOnceItMeasuredItAndLandedIt` {REVIEWING, BUILDING}: a new commit c2 on c1, `evidence` green and gate on c2, `enqueue c2`, `land`, finish: stage DONE, c1 and c2 in the trunk.
+- `TestAFVerbs_N3AReclaimedCardThatMeasuredNothingInItsOwnEpochCannotOfferAnything` {REVIEWING, BUILDING}: `enqueue c1` and `enqueue c2` with nothing measured in epoch 2 are refused, the ledger snapshot (queue, cards, notes, evidence, leases) is equal before and after, the stage is unchanged, and `move DONE` is refused. A card without a receipt of its own cannot hand off from BUILDING (the ledger says so; lane-1's test tolerates it the same way), so it is offered from where it is.
+
+They pass on the current code (lane-1's N3 fix, `cb2922f689`, is in the tree). Meaningful because three mutations of that rule, applied to `ledger/queue.go` in the working tree and reverted (the file is unmodified, `git status` clean), each make them fail: (a) the measured-in-own-epoch check skipped: the refusal test fails (`enqueue of eb658ad5 ... was accepted`, and the row's epoch changed 1 to 2); (b) the take-over case disabled: both finish tests fail with `ledger: invalid argument: t1 has landed`; (c) evidence of any epoch counted as measured: the refusal test fails.
+
+### 3. Where N26 and N28 are tested in `internal/cli`
+
+- **N26** (existing, added in this repair, commits 56d7bd261a RED and d516daa947 GREEN): `af_land_repair_test.go`, `TestAFLand_ATrunkOtherThanTheDedicatedOneIsRefusedBeforeLandingAndTheLedgerStaysAsItWas` (land and reconcile, six other trunks, the ledger snapshot equal, the trunk ref unmoved, the default trunk still lands), `TestAFVerbs_ARepoThatIsNotTheProjectsRepositoryIsRefusedBeforeAnyChange` (evidence, enqueue, land, reconcile with another repository, a non-repository and a missing path; the project's repository, a linked worktree of it and a directory inside it accepted), and the help test. Mutations killed: trunk check off, repo check off, repo check skipped in `afMergeRun`, repo check skipped in `enqueue`. Nothing missing.
+- **N28**: before this follow-up only at the ledger level (`ledger/done_results_after_landing_test.go`, `done_commit_test.go`); no `internal/cli` test. Added `af_land_n28_test.go` (commit 6c3a45b297):
+  - `TestAFVerbs_N28AFailureRecordedAfterTheLandingRefusesDoneUntilTheCommitIsMeasuredAgain`: failing green and gate, green only, gate only; each with the card still in MERGING and withdrawn to REVIEWING; DONE refused, then c1 measured again, DONE accepted.
+  - `TestAFVerbs_N28AGateOnlyNewCommitAfterAWithdrawalOrReworkRefusesDoneUntilC1IsMeasuredAgainInFull` {REVIEWING, BUILDING}: c2 gated, DONE refused; c1 gated alone, DONE refused; c1 green and gate again, DONE accepted.
+  - the control `...AGateOfAnotherCommitWhileTheCardStaysInMergingDoesNotBlockIt`.
+  They pass on the current code (lane-1's fix `bf1da1f4b3`). Mutations applied to `ledger/queue.go` and reverted: (a) `landingStands` ignoring the failing-newest-run check: the three "still in MERGING" cases fail; the "withdrawn to REVIEWING" cases do not fail under (a), because the rework-mark rule (a passing run is needed after the move back) already refuses them, so those cases test the combined behaviour and the failing-run rule alone is held by the MERGING cases; (b) the "other evidence since the card left MERGING" rule always taking the no-other-work shortcut: both gate-only tests fail. A third mutation (requiring neither green nor gate after the other work) was not applied: the edit did not match the file and I did not retry it, so that line of the rule is held only by the first mutation of this paragraph's (b).
+
+### 4. Verification (this tree, after the last commit)
+
+```
+gofmt -l internal/cli internal/agenticfactory         -> no output
+go build ./...                                        -> exit 0
+go vet ./internal/cli/ ./internal/agenticfactory/...  -> exit 0
+GOOS=windows / GOOS=linux go build ./internal/cli/ ./internal/agenticfactory/...   -> exit 0 / exit 0
+GOOS=windows / GOOS=linux go vet ./internal/agenticfactory/mergeq/ ./internal/cli/ -> exit 0 / exit 0
+go test -race -count=1 -p 4 ./internal/agenticfactory/...   -> 21 "ok" lines, no other line
+go test -count=1 -v -run '^(TestAFVerbs_N3|TestAFVerbs_N28)' ./internal/cli/  -> 6 top-level --- PASS, ok internal/cli 11.631s
+go test -count=1 -v -run '^(TestAF|TestCardFlow)' ./internal/cli/             -> ok internal/cli 60.841s, top-level PASS 60, FAIL 0, SKIP 0
+golangci-lint run ./internal/agenticfactory/mergeq/... ./internal/cli/        -> 1 issue, codex_close_entry_signal_test.go:89 errcheck (pre-existing, file untouched)
+```
+
+### Gaps and residual risk of this follow-up
+
+- The 88.0% was measured on darwin; the darwin-only file and its tests count in it. A Linux or Windows run compiles `faillog_acl_other.go` instead and runs no ACL test, so its total would differ; it was not measured.
+- The four error returns in `write` named above stay untested (no real failure could be forced).
+- The REVIEWING-withdrawn N28 cases do not isolate the failing-newest-run rule (above); one mutation line of the other-work rule was not run.
+- `go test ./internal/cli` in full was not run (instructed); the anchored runs above are what was run.
+- No `MOAI_*_LIVE` variable set, no push, no PR. A scratchpad coverage profile was written under the session scratchpad directory, outside the tree.
