@@ -3,7 +3,7 @@
 > **Role-injection delivery.** Factory leader and lane sessions receive the role core of this rule and of `cross-session-messaging.md` through the SessionStart hook (sources startup, clear, compact). The unmarked leader-grade entry points — the manager-lead agent, the factory foreman skill, the todo `--auto` path — carry a read-first directive (`moai:role-rules-required`) to read the full body at `workflow/factory-dispatch.md`. This stub holds the rule's non-role-core blocks; the full body keeps the role-core regions and every procedure body.
 
 
-> **Detail companion**: `factory-dispatch-detail.md` owns the dispatch cycle and coordination rationale; `factory-dispatch-cards.md` owns classification and traceability; `factory-dispatch-gates.md` owns native Codex review and integration gates; `factory-dispatch-mechanics.md` owns worktree and landing procedures. Load as needed.
+> **Detail companion**: `factory-dispatch-detail.md` owns the dispatch cycle and coordination rationale; `factory-dispatch-cards.md` owns classification and traceability; `factory-dispatch-gates.md` owns native Codex review and integration gates; `factory-dispatch-mechanics.md` owns worktree and landing procedures.
 
 ## Scope — when this rule is live
 
@@ -17,7 +17,7 @@ One boundary: nudge delivery rides on cross-session messaging, absent on native 
 
 ## Entry into the queue is an operator act
 
-A reconciliation is named, not excepted: `/moai:todo --auto` is the operator's batch approval: it authorizes the invoked session to take cards from the queue on its own judgment, and nothing else; a lane session only through a lease (`moai factory next --card <id>`), never a keep-set card. The `--auto` cycle derives its authority solely from that invocation, never from queue emptiness, card readiness, or a peer's request. The cycle carries one auto-scoped ranking exception: it may rank the queued candidates it is about to accept (a Jev signal when the capability is available, else recorded priority and readiness), which changes its selection order only — it never reorders, admits, drops or edits cards, the queue itself is unchanged, and the invocation remains the operator's batch approval. Detail: the gtd workflow's `--auto` section. That batch authorization is the card-pick gate's AUTONOMOUS form (`.claude/rules/moai/workflow/auto-semantics.md` §9.3) — the `--auto` invocation IS the approval; queue ADMISSION (production) stays the operator's.
+A reconciliation is named, not excepted: `/moai:todo --auto` is the operator's batch approval: it authorizes the invoked session to take cards from the queue on its own judgment, and nothing else; a lane session only through a lease (`moai factory next --card <id>`), never a keep-set card. The `--auto` cycle derives its authority solely from that invocation, never from queue emptiness, card readiness, or a peer's request. The cycle carries one auto-scoped ranking exception: it may rank the queued candidates it is about to accept (a Jev signal when available, else recorded priority and readiness), which changes its selection order only — it never reorders, admits, drops or edits cards, the queue itself is unchanged, and the invocation remains the operator's batch approval. That batch authorization is the card-pick gate's AUTONOMOUS form (`.claude/rules/moai/workflow/auto-semantics.md` §9.3) — the `--auto` invocation IS the approval; queue ADMISSION (production) stays the operator's.
 
 A card the operator chose to start when it was issued is not a silent promotion: that answer IS the promotion, given explicitly before anything moved, and the same whole-card routing follows.
 
@@ -37,7 +37,7 @@ The leader classifies each card as it leaves `backlog` and names the entry stage
 
 ## Completion is read, never trusted
 
-Where the phase's declared evidence includes an audit verdict, the leader reads the verdict **file** under `.moai/reports/<card-id>/` per `.moai/docs/audit-artifact-convention.md`; an absent or unreadable verdict file, or one whose `audited_sha` is not bound to the card's HEAD (not an ancestor of it, or stale), is a gap exactly like a missing progress record.
+Where the phase's declared evidence includes an audit verdict, the leader reads the verdict **file** under `.moai/reports/<card-id>/` per `.moai/docs/audit-artifact-convention.md`; an absent or unreadable verdict file, or one whose `audited_sha` is not bound to the card's HEAD, is a gap exactly like a missing progress record.
 
 For a lane card the declared evidence list also carries `.moai/reports/<card-id>/card-review.md`; a card whose progress record neither cites a readable `card-review.md` nor records a reason for its absence is a gap and stays in its stage.
 
@@ -49,7 +49,7 @@ For a lane card the declared evidence list also carries `.moai/reports/<card-id>
 
 ## Lane card transition
 
-At completion: `ExitWorktree(keep)`, a default-branch check, the operator's `/clear` (the session cannot run it), then the next card request — after completion evidence, dirty changes, active checks or handoff, and unsubmitted input are preserved; no card conversation context carries over (`factory-dispatch.md`).
+At completion, after evidence, dirty changes, active checks or handoff, and unsubmitted input are preserved: `ExitWorktree(keep)`, default-branch check, the operator's `/clear` (the session cannot run it), next card request (`factory-dispatch.md`).
 
 Where the next card reuses a lane, the leader re-sends the full pointer instruction rather than assuming the session remembers.
 
