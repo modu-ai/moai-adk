@@ -93,6 +93,45 @@ func TestProjectWorkflow_NoDanglingPhase13(t *testing.T) {
 	}
 }
 
+// TestProjectActivationTargetAndMirrors pins card t2010 / PJ-12: the project
+// workflow names the same activation target meta-harness.md installs (AGENTS.md),
+// a quoted tilde never appears in a shell example, and the dogfood copies of the
+// touched files equal their template sources.
+func TestProjectActivationTargetAndMirrors(t *testing.T) {
+	skills := filepath.Join("templates", ".claude", "skills")
+	read := func(path string) string {
+		t.Helper()
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("read %s: %v", path, err)
+		}
+		return string(raw)
+	}
+
+	project := read(filepath.Join(skills, "moai", "workflows", "project.md"))
+	if strings.Contains(project, "Install CLAUDE.md marker") {
+		t.Errorf("project.md names a CLAUDE.md marker but meta-harness.md installs the AGENTS.md marker block")
+	}
+	if !strings.Contains(project, "Install AGENTS.md marker") {
+		t.Errorf("project.md Phase 16 row does not name the AGENTS.md marker")
+	}
+
+	navigator := read(filepath.Join(skills, "moai-workflow-project", "references", "navigator.md"))
+	if strings.Contains(navigator, `"~/`) {
+		t.Errorf("navigator.md quotes a tilde path; bash does not expand ~ inside double quotes")
+	}
+
+	for _, rel := range []string{
+		filepath.Join("moai", "workflows", "project.md"),
+		filepath.Join("moai-workflow-project", "references", "navigator.md"),
+	} {
+		local := read(filepath.Join("..", "..", ".claude", "skills", rel))
+		if local != read(filepath.Join(skills, rel)) {
+			t.Errorf("%s: the local mirror differs from the template source", rel)
+		}
+	}
+}
+
 // TestProjectDocGeneration_LocalMirrorMatches asserts the dogfood copy carries
 // the same edit byte-for-byte.
 func TestProjectDocGeneration_LocalMirrorMatches(t *testing.T) {
