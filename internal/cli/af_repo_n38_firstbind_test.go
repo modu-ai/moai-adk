@@ -355,25 +355,22 @@ func afN38Reclaim(t *testing.T, a afN3Card, worktree string) {
 
 // A linked worktree of the project is the project: a lease in one, a project directory in one, in any pairing.
 func TestAFVerbs_N38FirstBindLinkedWorktreeOfTheProjectPasses(t *testing.T) {
-	a := afN38UnboundCard(t)
-	wt := filepath.Join(t.TempDir(), "wt")
-	afGit(t, a.repo, "worktree", "add", "-q", "--detach", wt, a.c1)
-	link := filepath.Join(t.TempDir(), "link")
-	if err := os.Symlink(a.repo, link); err != nil {
-		t.Fatal(err)
-	}
-	afN38Reclaim(t, a, wt) // the lease is in the linked worktree, the project directory in the project...
-	want := afN38GitDir(t, a.repo)
-	for _, project := range []string{a.repo, wt, link} { // ...and in each spelling of it
-		t.Run(filepath.Base(project), func(t *testing.T) {
-			// a fresh ledger each time would hide the lease: the lease stays, the binding is made once
-			t.Setenv("CLAUDE_PROJECT_DIR", project)
-			a := a
-			a.t = t
+	for _, spelling := range []string{"project", "linked_worktree", "symlink"} {
+		t.Run(spelling, func(t *testing.T) {
+			a := afN38UnboundCard(t) // a fresh unbound ledger for each first bind
+			wt := filepath.Join(t.TempDir(), "wt")
+			afGit(t, a.repo, "worktree", "add", "-q", "--detach", wt, a.c1)
+			link := filepath.Join(t.TempDir(), "link")
+			if err := os.Symlink(a.repo, link); err != nil {
+				t.Fatal(err)
+			}
+			afN38Reclaim(t, a, wt) // the lease is in the linked worktree...
+			project := map[string]string{"project": a.repo, "linked_worktree": wt, "symlink": link}[spelling]
+			t.Setenv("CLAUDE_PROJECT_DIR", project) // ...and the first call comes from each spelling of the project
 			if _, err := a.run("reap"); err != nil {
 				t.Fatalf("reap with the project directory %s: %v", project, err)
 			}
-			if got := a.bound(); got != want {
+			if got, want := a.bound(), afN38GitDir(t, a.repo); got != want {
 				t.Errorf("bound %q, want the project's git directory %q", got, want)
 			}
 		})
