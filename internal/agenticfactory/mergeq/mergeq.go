@@ -88,7 +88,7 @@ type Verify func(ctx context.Context, dir string) error
 // gate printed, and nothing it printed: the output is in Output, for a log file. Anything else a Verify returns is
 // treated the same way: its text goes to the log, not into the reason.
 type GateError struct {
-	Gate   string // the gate as it may be recorded (already redacted by the caller)
+	Gate   string // a short id of the gate, as it may be recorded: never the gate text, which may hold a credential
 	Cause  error
 	Output []byte // the end of what the gate printed
 	Total  int64  // how many bytes it printed in all
@@ -130,7 +130,11 @@ func (m *Merger) failReason(cardID, candidateSHA, kind, summary string, output [
 	}
 	where := "no log is kept"
 	if m.Log != nil {
-		if path, err := m.Log.Write(cardID, candidateSHA, kind, output); err != nil {
+		header := ""
+		if kind == "gate" && m.GateText != "" {
+			header = "gate: " + m.GateText
+		}
+		if path, err := m.Log.write(cardID, candidateSHA, kind, header, output); err != nil {
 			where = "logging failed"
 		} else {
 			where = "log: " + path
@@ -168,7 +172,8 @@ type Merger struct {
 	MaxRetries int
 	Message    func(cardID string) string // the merge commit message; must carry the card id
 	Now        func() time.Time           // the clock Reconcile judges leases by; nil means time.Now
-	Gate       string                     // what Verify runs, for the landed note (already redacted by the caller); may be empty
+	Gate       string                     // a short id of what Verify runs, for the landed note; may be empty. Never the gate text
+	GateText   string                     // what Verify runs: written to the failure log of a failed gate and to nothing else; may be empty
 	Log        *FailureLog                // where the output of a failed gate or merge goes; nil keeps none
 }
 
@@ -376,7 +381,7 @@ func (m *Merger) landUnderLock(ctx context.Context, cardID, candidateSHA string,
 	}
 	note := fmt.Sprintf("%s -> %s on %s", trunk, cand.Result, m.Trunk)
 	if m.Gate != "" {
-		note += fmt.Sprintf(" (verified by gate: %s)", m.Gate)
+		note += fmt.Sprintf(" (verified by gate: %s)", m.Gate) // the id; the gate text is the log's, never a note's
 	}
 	if err := m.Queue.AddNote(ctx, "landed", cardID, note); err != nil {
 		return "", false, err

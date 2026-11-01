@@ -2,6 +2,8 @@ package cli
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
@@ -103,16 +105,19 @@ func afGate(gate string, timeout time.Duration) mergeq.Verify {
 				err = fmt.Errorf("%w (the gate ran past %s)", err, timeout)
 			}
 			// What the gate printed does not go into the error: the merge queue puts it in the failure log.
-			return &mergeq.GateError{Gate: afRedactedGate(gate), Cause: err, Output: append([]byte(nil), out.Bytes()...), Total: out.Total()}
+			return &mergeq.GateError{Gate: afGateID(gate), Cause: err, Output: append([]byte(nil), out.Bytes()...), Total: out.Total()}
 		}
 		return nil
 	}
 }
 
-// afRedactedGate is the gate text as it may be recorded: a secret written into the command line is not kept.
-func afRedactedGate(gate string) string {
-	g, _ := core.Redact(gate)
-	return g
+// afGateID names a gate in the reason, the verb's output, the notes and the landed note: "gate-" and the first 12 hex
+// digits of the SHA-256 of the gate text. The text itself may hold a credential (a deny-list of shapes cannot be made
+// complete), so it is recorded nowhere but the failure log; the same text always has the same id, and two gates
+// differ in theirs.
+func afGateID(gate string) string {
+	sum := sha256.Sum256([]byte(gate))
+	return "gate-" + hex.EncodeToString(sum[:6])
 }
 
 // afCardMayLand says whether the card is where a landing needs it: MERGING at the epoch the queue row was made
@@ -196,7 +201,7 @@ A landing lock whose holder process is gone is taken back first.`,
 					return fmt.Errorf("af land: take back a dead holder's lock: %w", err)
 				}
 				m := afMerger(f, st, scratch, afGate(gate, gateTimeout))
-				m.Gate = afRedactedGate(gate)
+				m.Gate, m.GateText = afGateID(gate), gate
 				res, err := m.Land(ctx, args[0], item.CandidateSHA)
 				if err != nil {
 					return err

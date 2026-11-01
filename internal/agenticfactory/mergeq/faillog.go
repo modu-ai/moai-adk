@@ -55,8 +55,39 @@ const failureLogExt = ".log"
 // failureLogTmpPrefix starts the name of the file a log is written into before it is renamed onto its name.
 const failureLogTmpPrefix = ".tmp-"
 
+// failureLogHeaderCap is how many bytes of a header (the gate text) a log keeps: the start of it.
+const failureLogHeaderCap = 2 << 10
+
 // Write stores out for the failure of kind (gate, merge, git) of card's candidate and returns the file's path.
 func (l *FailureLog) Write(card, candidate, kind string, out []byte) (string, error) {
+	return l.write(card, candidate, kind, "", out)
+}
+
+// mask is what every text passes before it is written: the masking once on the raw text (a marker inside an escape
+// sequence would be removed with the sequence, and the value after it would no longer have a marker to follow), the
+// stripping of control characters, and the masking again on the result.
+func mask(s string) string {
+	s, _ = core.Redact(s)
+	s, _ = core.Redact(StripControls(s))
+	s, _ = core.Redact(s)
+	return s
+}
+
+// tailOf is the last limit bytes of s, cut forward to the start of a character, and how many bytes were cut.
+func tailOf(s string, limit int) (string, int) {
+	if len(s) <= limit {
+		return s, 0
+	}
+	cut := len(s) - limit
+	for cut < len(s) && !utf8.RuneStart(s[cut]) {
+		cut++
+	}
+	return s[cut:], cut
+}
+
+// write is Write with a header: a line of text that stands before the output and is kept whatever the output's size
+// (the gate text, which the reason and the ledger carry only as a short id).
+func (l *FailureLog) write(card, candidate, kind, header string, out []byte) (string, error) {
 	if l == nil || l.Dir == "" {
 		return "", fmt.Errorf("mergeq: no failure log directory is configured")
 	}
@@ -69,29 +100,20 @@ func (l *FailureLog) Write(card, candidate, kind string, out []byte) (string, er
 	if limit <= 0 {
 		limit = DefaultFailureLogCap
 	}
-	body := out
-	dropped := 0
-	if len(body) > limit {
-		dropped = len(body) - limit
-		body = body[dropped:]
-	}
-	// The raw text is masked once before the controls are stripped: a marker inside an escape sequence would be
-	// removed with the sequence, and the value after it would no longer have a marker to follow.
-	text, _ := core.Redact(string(body))
-	text, _ = core.Redact(StripControls(text))
-	text, _ = core.Redact(text)
-	// The masking and the stripping change the length ("key=1" becomes "key=[REDACTED]"), so the cap is applied again
-	// to what will be written; the cut moves forward to the start of a character.
-	if len(text) > limit {
-		cut := len(text) - limit
-		for cut < len(text) && !utf8.RuneStart(text[cut]) {
-			cut++
-		}
-		dropped += cut
-		text = text[cut:]
-	}
+	// The cut before the masking bounds the work the masking does; the cut after it bounds the file, because the
+	// masking and the stripping change the length ("key=1" becomes "key=[REDACTED]").
+	body, dropped := tailOf(string(out), limit)
+	text, more := tailOf(mask(body), limit)
+	dropped += more
 	if dropped > 0 {
 		text = fmt.Sprintf("[%d earlier bytes of output are not kept]\n%s", dropped, text)
+	}
+	if header != "" {
+		head := mask(header)
+		if len(head) > failureLogHeaderCap {
+			head = strings.ToValidUTF8(head[:failureLogHeaderCap], "") + " [the rest of the text is not kept]"
+		}
+		text = head + "\n" + text
 	}
 
 	// The text goes into a file of its own (a name no other writer has, mode 0600) and is renamed onto the log's name:

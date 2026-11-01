@@ -30,8 +30,8 @@ func afRepairLand(t *testing.T, db, repo, gate string) (outcome, reason, stdout 
 	return res.Outcome, res.Reason, out
 }
 
-// afGateID is the short id the reason and the landed note carry in place of the gate text: "gate-" and 12 hex digits.
-var afGateID = regexp.MustCompile(`gate-[0-9a-f]{12}`)
+// afGateIDPattern is the short id the reason and the landed note carry in place of the gate text: "gate-" and 12 hex digits.
+var afGateIDPattern = regexp.MustCompile(`gate-[0-9a-f]{12}`)
 
 // N29: the gate TEXT used to be quoted in the failure reason, the stdout line, the note the next enqueue copies the
 // reason into, and the landed note, with core.Redact as the only protection; a credential written into the command
@@ -82,7 +82,7 @@ func TestAFLand_TheGateTextIsNotInTheReasonTheStdoutOrTheLedgerButTheLogHoldsIt(
 			if jerr := json.Unmarshal([]byte(out), &res); jerr != nil || res.Outcome != "failed" {
 				t.Fatalf("stdout %.200q: want outcome failed", out)
 			}
-			if !afGateID.MatchString(res.Reason) {
+			if !afGateIDPattern.MatchString(res.Reason) {
 				t.Errorf("the reason carries no gate id: %.300q", res.Reason)
 			}
 			m := afD1LogPath.FindStringSubmatch(res.Reason)
@@ -116,7 +116,7 @@ func TestAFLand_TheLandedNoteCarriesTheGateIDAndNotTheGateText(t *testing.T) {
 	for _, n := range notes {
 		if n.Kind == "landed" {
 			landed = true
-			if !afGateID.MatchString(n.Text) {
+			if !afGateIDPattern.MatchString(n.Text) {
 				t.Errorf("the landed note carries no gate id: %.300q", n.Text)
 			}
 		}

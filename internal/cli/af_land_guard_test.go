@@ -124,8 +124,8 @@ func TestAFLand_ALandedNoteSaysWhichGateVerifiedIt(t *testing.T) {
 	notes, _ := st.NotesSince(ctx, 0)
 	for _, n := range notes {
 		if n.Kind == ledger.NoteLanded && n.CardID == "t1" {
-			if !strings.Contains(n.Text, gate) {
-				t.Errorf("landed note %q does not name the gate %q", n.Text, gate)
+			if !strings.Contains(n.Text, afGateID(gate)) || strings.Contains(n.Text, gate) { // N29: named by an id of its text, never by the text
+				t.Errorf("landed note %q does not name the gate %q by its id %q", n.Text, gate, afGateID(gate))
 			}
 			return
 		}
