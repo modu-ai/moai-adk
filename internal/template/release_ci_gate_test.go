@@ -113,7 +113,7 @@ func TestReleaseScriptCIGate(t *testing.T) {
 				s.env = append(s.env, "GH_STUB_API_FAIL=1")
 			}
 			sha := r.git("rev-parse", "HEAD")
-			res := rlsReleaseSkipMatrix(t, r, s, append([]string{rlsRcTag, "--dry-run"}, row.args...)...)
+			res := rlsReleaseGreenMatrix(t, r, s, append([]string{rlsRcTag, "--dry-run"}, row.args...)...)
 			out := rlsNorm(res.out)
 			t.Logf("exit=%d\n%s\ngh calls: %q", res.exit, out, s.calls(t))
 			if res.exit != row.wantExit {
@@ -154,11 +154,13 @@ func TestReleaseScriptCIGateWithoutGh(t *testing.T) {
 			t.Fatalf("link %s: %v", tool, err)
 		}
 	}
-	for _, args := range [][]string{{}, {"--skip-ci-check", "--skip-matrix-run"}} {
+	for _, args := range [][]string{{}, {"--skip-ci-check"}} {
 		name := "no_override"
 		wantExit, wantOut := 1, "CI gate: the gh CLI is not available"
 		if len(args) > 0 {
-			name, wantExit, wantOut = "override", 0, "CI gate OVERRIDDEN (--skip-ci-check)"
+			// --skip-ci-check passes the CI gate, and the matrix gate behind it
+			// still refuses without gh: the override does not reach Validation 9b.
+			name, wantExit, wantOut = "override", 1, "Matrix gate: the gh CLI is needed"
 		}
 		t.Run(name, func(t *testing.T) {
 			r := rlsBuildReleaseRepo(t, rlsRcChangelog)
@@ -198,6 +200,7 @@ func TestReleaseScriptTagsTheVerifiedCommit(t *testing.T) {
 	r := rlsBuildReleaseRepo(t, rlsRcChangelog)
 	s := rlsNewStub(t)
 	verified := r.git("rev-parse", "HEAD")
+	rlsGreenMatrix(t, s, verified)
 
 	shim := t.TempDir()
 	rlsWriteScript(t, shim, "git", fmt.Sprintf(`#!/usr/bin/env bash
@@ -222,7 +225,7 @@ exec %q "$@"
 	script := filepath.Join(findProjectRootForMirrorTest(t), filepath.FromSlash(rlsReleaseScriptRel))
 	ctx, cancel := context.WithTimeout(context.Background(), rlsDeadline)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, "bash", script, rlsRcTag, "--skip-matrix-run")
+	cmd := exec.CommandContext(ctx, "bash", script, rlsRcTag)
 	cmd.Dir, cmd.Env, cmd.Stdin = r.work, env, strings.NewReader("y\n")
 	out, runErr := cmd.CombinedOutput()
 	if ctx.Err() != nil {

@@ -8,8 +8,9 @@
 // nothing here can tag or push.
 //
 // TestReleaseScriptCharacterization pins the behaviour of every non-detached,
-// non-rc, no-option invocation as it was before this milestone; it is green
-// before and after, which is the proof that those invocations did not change.
+// non-rc, no-option invocation as it was before this milestone, with one
+// deliberate change (card t2012): the matrix gate now always runs, so each row
+// is fed a green matrix and a passing row must have read it.
 package template_test
 
 import (
@@ -46,15 +47,6 @@ func rlsRelease(t *testing.T, r *rlsRepo, s *rlsStub, args ...string) rlsResult 
 	t.Helper()
 	script := filepath.Join(findProjectRootForMirrorTest(t), filepath.FromSlash(rlsReleaseScriptRel))
 	return rlsRun(t, r.work, s.env, "bash", append([]string{script}, args...)...)
-}
-
-// rlsReleaseSkipMatrix runs the script with the 3-OS matrix gate explicitly
-// overridden (--skip-matrix-run). The matrix gate is on by default, so tests of
-// the other gates pass the recorded override and keep their own subject; the
-// matrix gate itself is covered by TestReleaseScriptMatrixGate.
-func rlsReleaseSkipMatrix(t *testing.T, r *rlsRepo, s *rlsStub, args ...string) rlsResult {
-	t.Helper()
-	return rlsRelease(t, r, s, append(append([]string{}, args...), "--skip-matrix-run")...)
 }
 
 // TestReleaseScriptCharacterization pins what the script does for invocations
@@ -112,7 +104,7 @@ func TestReleaseScriptCharacterization(t *testing.T) {
 			if row.prepare != nil {
 				row.prepare(r)
 			}
-			res := rlsReleaseSkipMatrix(t, r, s, row.args...)
+			res := rlsReleaseGreenMatrix(t, r, s, row.args...)
 			out := rlsNorm(res.out)
 			t.Logf("exit=%d\n%s", res.exit, out)
 			if res.exit != row.wantExit {
@@ -125,9 +117,17 @@ func TestReleaseScriptCharacterization(t *testing.T) {
 					t.Errorf("output lacks %q", w)
 				}
 			}
-			for _, c := range s.calls(t) {
-				if strings.HasPrefix(c, "run ") {
-					t.Errorf("a no-option invocation must not touch gh run: %q", c)
+			// The matrix gate (card t2012) always runs: an invocation that gets
+			// past every earlier validation must have read the matrix.
+			if row.wantExit == 0 {
+				read := false
+				for _, c := range s.calls(t) {
+					if strings.HasPrefix(c, "run list ") {
+						read = true
+					}
+				}
+				if !read {
+					t.Errorf("an invocation that passed every validation never read the matrix run; gh calls: %q", s.calls(t))
 				}
 			}
 		})
@@ -163,7 +163,7 @@ func TestReleaseScriptHeadAdmission(t *testing.T) {
 			r := rlsBuildReleaseRepo(t, rlsRcChangelog)
 			s := rlsNewStub(t)
 			row.prepare(r)
-			res := rlsReleaseSkipMatrix(t, r, s, rlsRcTag, "--dry-run")
+			res := rlsReleaseGreenMatrix(t, r, s, rlsRcTag, "--dry-run")
 			t.Logf("exit=%d\n%s", res.exit, rlsNorm(res.out))
 			if res.exit != row.wantExit {
 				t.Errorf("exit code = %d, want %d", res.exit, row.wantExit)
@@ -194,7 +194,7 @@ func TestReleaseScriptRcChangelogSkip(t *testing.T) {
 		t.Run(row.name, func(t *testing.T) {
 			r := rlsBuildReleaseRepo(t, noSection)
 			s := rlsNewStub(t)
-			res := rlsReleaseSkipMatrix(t, r, s, row.tag, "--dry-run")
+			res := rlsReleaseGreenMatrix(t, r, s, row.tag, "--dry-run")
 			t.Logf("exit=%d\n%s", res.exit, rlsNorm(res.out))
 			if res.exit != row.wantExit {
 				t.Errorf("exit code = %d, want %d", res.exit, row.wantExit)
@@ -386,11 +386,9 @@ func matrixScenarios() []matrixScenario {
 	}
 }
 
-// TestReleaseScriptMatrixGate is AC-GFD-010 extended by AC-RVS-011: two switch
-// states times fifteen gh doubles. With the switch off the script must not
-// look at the matrix at all (no `gh run` call is logged) and the release
-// summary records the override. The gate is on by default and under
-// `--require-matrix-run`: only the run that is complete, green on every one of
+// TestReleaseScriptMatrixGate is AC-GFD-010 extended by AC-RVS-011: two
+// invocation forms (no flag, and the no-effect `--require-matrix-run`) times
+// fifteen gh doubles. The gate always runs: only the run that is complete, green on every one of
 // the six shards of each of the three OS values (each exactly once), on the
 // target SHA and dispatched by hand passes, and every other double is refused
 // before the tag with the condition named.
@@ -401,9 +399,8 @@ func TestReleaseScriptMatrixGate(t *testing.T) {
 		name string
 		args []string
 	}{
-		{name: "switch_skip", args: []string{rlsRcTag, "--dry-run", "--skip-matrix-run"}},
-		{name: "switch_on", args: []string{rlsRcTag, "--dry-run", "--require-matrix-run"}},
-		{name: "switch_default", args: []string{rlsRcTag, "--dry-run"}},
+		{name: "compat_flag", args: []string{rlsRcTag, "--dry-run", "--require-matrix-run"}},
+		{name: "no_flag", args: []string{rlsRcTag, "--dry-run"}},
 	} {
 		for _, sc := range matrixScenarios() {
 			t.Run(sw.name+"/"+sc.name, func(t *testing.T) {
@@ -416,28 +413,15 @@ func TestReleaseScriptMatrixGate(t *testing.T) {
 				out := rlsNorm(res.out)
 				t.Logf("exit=%d\n%s\ngh calls: %q", res.exit, out, s.calls(t))
 
-				if sw.name == "switch_skip" {
-					if res.exit != 0 {
-						t.Errorf("switch skip: exit code = %d, want 0 (the matrix is not consulted)", res.exit)
-					}
-					rlsMustContain(t, out, "Matrix gate: OVERRIDDEN (--skip-matrix-run)")
-					for _, c := range s.calls(t) {
-						if strings.HasPrefix(c, "run ") {
-							t.Errorf("switch skip: the script called %q; it must not read the matrix at all", c)
-						}
-					}
-					return
-				}
-
 				if sc.wantReason == "" {
 					if res.exit != 0 {
-						t.Errorf("switch on, green run: exit code = %d, want 0", res.exit)
+						t.Errorf("green run: exit code = %d, want 0", res.exit)
 					}
 					rlsMustContain(t, out, "Matrix gate: run 101 of "+rlsMatrixFile+" is green on all three OS legs")
 					return
 				}
 				if res.exit != 1 {
-					t.Errorf("switch on: exit code = %d, want 1 (refused before the tag)", res.exit)
+					t.Errorf("exit code = %d, want 1 (refused before the tag)", res.exit)
 				}
 				rlsMustContain(t, out, "Matrix gate:", sc.wantReason)
 			})
