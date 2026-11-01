@@ -4,7 +4,7 @@ Policy rules applied: `.claude/rules/moai/core/verification-claim-integrity.md` 
 
 Tree measured: branch WT-run-tdd-result, base `5c3f0ebf27584d2c45deb2d00f9d69a4eea932c4` (= origin/main at intake, `git merge --ff-only` from cb30e05b3e). Judging build: `go test` ran against this tree's source and the hook test is `bash` over this tree; no installed moai build judged anything. Nothing is pushed; no PR; `.github/workflows` untouched.
 
-Verdict: PASS for RUN-01, RUN-02, RUN-03 and RUN-06 (reproduced, repaired, regression-tested). RUN-05 reproduced and NOT repaired (a policy ruling is the leader's). RUN-07, RUN-08, RUN-10, RUN-12, RUN-13 not repaired in this pass (below).
+Verdict: PASS for RUN-01, RUN-02, RUN-03, RUN-06 and RUN-10 (reproduced, repaired, regression-tested). RUN-05 reproduced and NOT repaired by the leader's ruling (working basis: lane verdict = self-verification recommendation, progress and landing = the leader's evidence read; unification goes to the 3.2 approval-ledger design). RUN-13 refuted against current code and config. RUN-07, RUN-08, RUN-12 and the spec-workflow Grace Window paragraph not repaired (below).
 
 ## Claims
 
@@ -18,18 +18,21 @@ Verdict: PASS for RUN-01, RUN-02, RUN-03 and RUN-06 (reproduced, repaired, regre
 | C6 | RUN-06 RED then GREEN | `go test -count=1 -run TestRunResumeIdentity ./internal/template/` -> exit 1, 5 missing words at `0c498dc3b3`; after the fix commit -> ok | this run |
 | C7 | Combined scoped run | `go test -count=1 -run 'TestRunPlan\|TestRunResumeIdentity\|TestSkillsContainPlanAuditGateMarkers\|Mirror\|Embed\|Manifest\|DateProvenance\|BindingLedger' ./internal/template/` -> `ok github.com/modu-ai/moai-adk/internal/template 3.324s` | this run, HEAD of the RUN-06 fix |
 | C8 | Mirrors and catalog | each edited skill file `cmp`-identical to its `internal/template/templates/` twin (copied in the same commit); `TestManifestHashFormat` failed with `CATALOG_HASH_UNSTABLE` after the first skill edit and passes after `go run ./internal/template/scripts/gen-catalog-hashes.go --all` (one line of `catalog.yaml` per commit) | this run |
+| C9 | RUN-10 RED then GREEN | `go test -count=1 -run TestRunPhaseReferences ./internal/template/` -> exit 1 with 3 findings (`'proceeding to Phase 3' names no phase heading`, router `Phase 11~4`, router `2.8`) at `5bd50fabf0`; after the fix commit -> ok; combined scoped run (now also `TestRunPhaseReferences`) -> `ok github.com/modu-ai/moai-adk/internal/template 6.576s`; the RUN-03 hook test -> PASS | this run |
+| C10 | RUN-13 not reproduced | `candidate_ci.enabled: false` and `base_freshness_gate.enabled: false` in the live and template `workflow.yaml`; `candidateCIRequired` documents unreadable-config = off | this run |
 
 Per-item reproduction output, RED output and design notes: `.moai/reports/t2008/progress.md` (committed; baseline records precede each fix commit, so the commit graph witnesses the order).
 
 ## Not repaired - disposition and reason
 
-- RUN-05 (final verdict owner): contradiction reproduced inside the factory-dispatch rule set (stub says the final PASS/FAIL is the leader's, detail and mechanics say the per-card verdict is the lane's). Edit withheld: the sentence is in the leader's own always-loaded/role-injected stub, so the ruling is the leader's; the progress record carries the proposed decision-kind split.
-- RUN-08 (autofix budget unit): the wording "per PR push" (manager-develop, prompt template) versus a PR-scoped persisted counter (`ci-autofix-protocol.md`) was read in this tree; not repaired because `.claude/agents/moai/manager-develop.md` is emitted from `internal/template/agentemit/source/` and the Codex twin must move with it - a separate emit change.
-- RUN-12 (worktree path guidance): two worktree-integration.md statements read (home projects root for `moai worktree new` versus "WT worktrees live only under `.moai/worktrees/`"); not repaired - a rule-file edit with a path-policy owner; the SKILL.md claim was not read.
-- RUN-07, RUN-10, RUN-13: not examined beyond the survey text; RUN-13 needs a read of the Go consumers, RUN-07 and RUN-10 are design/generation changes. Nothing here claims them verified or refuted.
+- RUN-05 (final verdict owner): contradiction reproduced inside the factory-dispatch rule set (core:44 and dispatch:148 say the final PASS/FAIL is the leader's; detail:140/169/176 and mechanics:145 say the per-card verdict is the lane's). The leader confirmed the conflict and ruled: no rule sentence changes now; operating basis as in the Verdict line; unification goes to the 3.2 approval-ledger (R18) design. The decision-kind split is preserved in `progress.md` as input.
+- RUN-08 (autofix budget unit), RUN-12 (worktree path guidance) and the `spec-workflow.md` Grace Window paragraph: deferred by the leader's ruling. Reasons recorded in `progress.md` (agentemit source and Codex twin for RUN-08; a rule-file edit with a path-policy owner for RUN-12 and the Grace paragraph).
+- RUN-07 (ac_converge evidence admission): a design change (loop stop versus completion gate, evidence keys); no current-code defect was shown, so nothing is claimed either way; left for the 3.2 design.
+- RUN-13: see C10 - refuted for the shipped and live configuration; the residual (unreadable config reads as off if a project later turns the gate on) needs a policy decision.
 
 ## Gaps
 
+- RUN-03 pins wording only ("문구 존재만 고정"): the hook test and the added greps prove the sentences exist, not that an orchestrator or `manager-develop` classifies a RED correctly; no behavioral fixture (normal RED->GREEN->regression, compile failure, timeout, other-test failure, re-failure after GREEN, zero tests) exists.
 - No end-to-end `/moai run` entry or resume was executed; the three skill-text repairs are checked by literal and mutant tests, not by observing an orchestrator follow them.
 - `make build` was not run; only its catalog-hash step. Only `./internal/template/` and `./internal/runtime/` (comment change) were tested; no full `./internal/cli/...` run (forbidden by R22).
 - `spec-workflow.md` Grace Window paragraph (rule file) still describes FAIL warn-only; correcting it needs its own byte statement and ledger check.

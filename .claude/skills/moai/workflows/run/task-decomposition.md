@@ -249,7 +249,7 @@ Output: review_findings per dimension, iterations_completed count, final review 
 
 Purpose: Update @MX code annotations for modified files. See .claude/rules/moai/workflow/mx-tag-protocol.md for tag rules.
 
-[HARD] This phase is MANDATORY. MoAI MUST scan all files modified during Phase 11 and verify @MX tag coverage before proceeding to Phase 3. If implementation agents did not add required tags during their work, MoAI adds them here.
+[HARD] This phase is MANDATORY. MoAI MUST scan all files modified during Phase 11 and verify @MX tag coverage before proceeding to Phase 19. If implementation agents did not add required tags during their work, MoAI adds them here.
 
 **Validation criteria (blocking):**
 - P1: Every new exported function with fan_in >= 3 MUST have `@MX:ANCHOR`
