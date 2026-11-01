@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/gitenv"
 )
 
 // LandedRefLevel names WHICH level of the resolution chain answered. The
@@ -44,7 +45,11 @@ const (
 // so tests can record the invocations the resolution path makes — the census
 // behind REQ-TLA-012's writes-nothing property runs through it.
 var landedRefGitRun CommandRunner = func(name string, args ...string) (string, error) {
-	out, err := exec.Command(name, args...).Output()
+	cmd := exec.Command(name, args...)
+	// `git -C dir` is outranked by GIT_DIR and its siblings; scrub the caller's
+	// git context so the answer is about dir (internal/gitenv).
+	cmd.Env = gitenv.Env()
+	out, err := cmd.Output()
 	return string(out), err
 }
 

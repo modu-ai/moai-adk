@@ -14,6 +14,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/gitenv"
 )
 
 // DefaultTimeout bounds every git call. A hook invocation carries a 10s
@@ -44,6 +46,9 @@ func Run(dir string, args ...string) (string, error) {
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "git", args...)
 	cmd.Dir = dir
+	// The directory alone does not name the repository: GIT_DIR and its siblings
+	// outrank it, so the caller's git context is scrubbed (internal/gitenv).
+	cmd.Env = gitenv.Env()
 	var out, errb bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &errb
@@ -248,6 +253,9 @@ func RunRaw(dir string, args ...string) ([]byte, error) {
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "git", args...)
 	cmd.Dir = dir
+	// The directory alone does not name the repository: GIT_DIR and its siblings
+	// outrank it, so the caller's git context is scrubbed (internal/gitenv).
+	cmd.Env = gitenv.Env()
 	var out, errb bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &errb

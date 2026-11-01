@@ -41,11 +41,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"os/exec"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/gitenv"
 )
 
 // landingPatchIDCommitCap bounds how many integration-ref commits since the
@@ -63,7 +64,9 @@ var landingGHTimeout = 10 * time.Second
 var landingGH = func(ctx context.Context, dir string, args ...string) ([]byte, error) {
 	cmd := exec.CommandContext(ctx, "gh", args...)
 	cmd.Dir = dir
-	cmd.Env = append(os.Environ(), "GH_PROMPT_DISABLED=1")
+	// gh runs git in dir; the caller's repository-locating git variables must
+	// not redirect it (internal/gitenv). GH_REPO is left as the caller set it.
+	cmd.Env = append(gitenv.Env(), "GH_PROMPT_DISABLED=1")
 	// A gh that ignores the kill must not hold the call past its bound.
 	cmd.WaitDelay = 2 * time.Second
 	return cmd.Output()
@@ -75,6 +78,9 @@ var landingGH = func(ctx context.Context, dir string, args ...string) ([]byte, e
 // (exit 1) from "cannot tell" (anything else); -1 means git did not run.
 func runLandingGit(dir, stdin string, args ...string) (stdout string, exit int, err error) {
 	cmd := exec.Command("git", append([]string{"-C", dir}, args...)...)
+	// `-C dir` is outranked by GIT_DIR and its siblings; scrub the caller's git
+	// context so the answer is about dir (internal/gitenv).
+	cmd.Env = gitenv.Env()
 	if stdin != "" {
 		cmd.Stdin = strings.NewReader(stdin)
 	}
