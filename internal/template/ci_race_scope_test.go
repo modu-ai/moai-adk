@@ -1,0 +1,313 @@
+// ci_race_scope_test.go: the PR race-shard scope of ci.yml (card t2012).
+//
+// scripts/ci/race-scope.sh decides which of the six advisory Race Test shards a
+// pull request needs: cli-1..cli-4 (internal/cli), rosterguard, remainder. It
+// narrows only when it can prove the narrowing: every changed file is a Go file
+// that belongs to a package of the module, and a shard runs when the changed
+// package is among the (test-inclusive) dependencies of a package the shard
+// tests. Anything it cannot judge (a non-Go file, go.mod, a workflow, testdata,
+// a deleted package, an empty list, a failing `go list`) runs all six.
+//
+// Every row runs the real script inside a scratch Go module that mirrors the
+// shard layout (internal/cli, internal/harness/rosterguard, shared and leaf
+// packages, a test-less cmd/tool).
+package template_test
+
+import (
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"gopkg.in/yaml.v3"
+)
+
+const (
+	rsAll       = ",cli-1,cli-2,cli-3,cli-4,rosterguard,remainder,"
+	rsCLI       = ",cli-1,cli-2,cli-3,cli-4,"
+	rsScriptRel = "scripts/ci/race-scope.sh"
+)
+
+// rsFixture writes the scratch module and returns its directory.
+func rsFixture(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	files := map[string]string{
+		"go.mod":                                  "module example.com/fx\n\ngo 1.21\n",
+		"internal/shared/shared.go":               "package shared\n\nfunc S() int { return 1 }\n",
+		"internal/shared/shared_test.go":          "package shared\n\nimport \"testing\"\n\nfunc TestS(t *testing.T) { _ = S() }\n",
+		"internal/cli/cli.go":                     "package cli\n\nimport \"example.com/fx/internal/shared\"\n\nfunc C() int { return shared.S() }\n",
+		"internal/cli/cli_test.go":                "package cli\n\nimport \"testing\"\n\nfunc TestC(t *testing.T) { _ = C() }\n",
+		"internal/harness/rosterguard/rg.go":      "package rosterguard\n\nfunc R() int { return 1 }\n",
+		"internal/harness/rosterguard/rg_test.go": "package rosterguard\n\nimport (\n\t\"testing\"\n\n\t\"example.com/fx/internal/tmpl\"\n)\n\nfunc TestR(t *testing.T) { _ = R() + tmpl.T() }\n",
+		"internal/tmpl/tmpl.go":                   "package tmpl\n\nfunc T() int { return 1 }\n",
+		"internal/tmpl/tmpl_test.go":              "package tmpl\n\nimport \"testing\"\n\nfunc TestT(t *testing.T) { _ = T() }\n",
+		"internal/leaf/leaf.go":                   "package leaf\n\nfunc L() int { return 1 }\n",
+		"internal/leaf/leaf_test.go":              "package leaf\n\nimport \"testing\"\n\nfunc TestL(t *testing.T) { _ = L() }\n",
+		"internal/other/other.go":                 "package other\n\nimport \"example.com/fx/internal/shared\"\n\nfunc O() int { return shared.S() }\n",
+		"internal/other/other_test.go":            "package other\n\nimport \"testing\"\n\nfunc TestO(t *testing.T) { _ = O() }\n",
+		"cmd/tool/main.go":                        "package main\n\nimport \"example.com/fx/internal/cli\"\n\nfunc main() { _ = cli.C() }\n",
+		"internal/leaf/testdata/fixture/x.go":     "package fixture\n",
+	}
+	for rel, body := range files {
+		p := filepath.Join(dir, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatalf("mkdir %s: %v", rel, err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatalf("write %s: %v", rel, err)
+		}
+	}
+	return dir
+}
+
+// rsRun runs the real script in dir with the given changed-file list and
+// returns its stdout line, stderr and exit code.
+func rsRun(t *testing.T, dir string, changed []string, mutate func(dir string)) (shards, stderr string, exit int) {
+	t.Helper()
+	if _, err := exec.LookPath("go"); err != nil {
+		t.Skip("go not available")
+	}
+	root := findProjectRootForMirrorTest(t)
+	script := filepath.Join(root, filepath.FromSlash(rsScriptRel))
+	list := filepath.Join(t.TempDir(), "changed.txt")
+	if err := os.WriteFile(list, []byte(strings.Join(changed, "\n")+"\n"), 0o644); err != nil {
+		t.Fatalf("write changed list: %v", err)
+	}
+	if mutate != nil {
+		mutate(dir)
+	}
+	cmd := exec.Command("bash", script, "--changed", list)
+	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), "GOFLAGS=-mod=mod", "GOWORK=off", "GO111MODULE=on")
+	var out, errb strings.Builder
+	cmd.Stdout, cmd.Stderr = &out, &errb
+	err := cmd.Run()
+	exit = 0
+	if ee, ok := err.(*exec.ExitError); ok {
+		exit = ee.ExitCode()
+	} else if err != nil {
+		t.Fatalf("start race-scope.sh: %v", err)
+	}
+	return strings.TrimSpace(out.String()), errb.String(), exit
+}
+
+// TestRaceScopeNarrowsOnlyWhatItCanProve: the scoped rows. Each changed
+// package selects exactly the shards whose tested packages depend on it.
+func TestRaceScopeNarrowsOnlyWhatItCanProve(t *testing.T) {
+	rows := []struct {
+		name    string
+		changed []string
+		want    string
+	}{
+		{"leaf_package_only_remainder", []string{"internal/leaf/leaf.go"}, ",remainder,"},
+		{"leaf_test_file_only_remainder", []string{"internal/leaf/leaf_test.go"}, ",remainder,"},
+		{"cli_package_only_cli_shards", []string{"internal/cli/cli.go"}, rsCLI},
+		{"rosterguard_package_only_rosterguard", []string{"internal/harness/rosterguard/rg.go"}, ",rosterguard,"},
+		{"tmpl_is_a_test_import_of_rosterguard", []string{"internal/tmpl/tmpl.go"}, ",rosterguard,remainder,"},
+		{"shared_package_reaches_cli_and_remainder", []string{"internal/shared/shared.go"}, ",cli-1,cli-2,cli-3,cli-4,remainder,"},
+		{"two_packages_union", []string{"internal/leaf/leaf.go", "internal/harness/rosterguard/rg.go"}, ",rosterguard,remainder,"},
+	}
+	for _, row := range rows {
+		t.Run(row.name, func(t *testing.T) {
+			shards, stderr, exit := rsRun(t, rsFixture(t), row.changed, nil)
+			if exit != 0 {
+				t.Fatalf("exit = %d\n%s", exit, stderr)
+			}
+			if shards != "shards="+row.want {
+				t.Errorf("shards = %q, want %q\nstderr:\n%s", shards, "shards="+row.want, stderr)
+			}
+		})
+	}
+}
+
+// TestRaceScopeClosesToAllSixWhenItCannotJudge: every row the script must not
+// narrow ends with all six shards. A narrowed answer on any of these rows is the
+// bug the filter must never have.
+func TestRaceScopeClosesToAllSixWhenItCannotJudge(t *testing.T) {
+	rows := []struct {
+		name    string
+		changed []string
+		mutate  func(dir string)
+	}{
+		{name: "go_mod", changed: []string{"go.mod"}},
+		{name: "go_sum", changed: []string{"go.sum"}},
+		{name: "workflow", changed: []string{".github/workflows/ci.yml"}},
+		{name: "filter_file", changed: []string{".github/test-input-filters.yml"}},
+		{name: "makefile", changed: []string{"Makefile"}},
+		{name: "ci_scripts", changed: []string{"scripts/ci/retry-flaky.sh"}},
+		{name: "non_go_file_beside_a_go_file", changed: []string{"internal/leaf/leaf.go", "internal/leaf/data.json"}},
+		{name: "markdown_beside_a_go_file", changed: []string{"internal/leaf/leaf.go", "README.md"}},
+		{name: "template_tree_file", changed: []string{"internal/template/templates/x.md"}},
+		{name: "testdata_go_file", changed: []string{"internal/leaf/testdata/fixture/x.go"}},
+		{name: "deleted_package_dir", changed: []string{"internal/gone/gone.go"}},
+		{name: "path_outside_every_package", changed: []string{"tools/gen.go"}},
+		// Tests build and run the command binary (internal/cli/binary_fixture_test.go),
+		// an edge the import graph does not show: a main package is never narrowed.
+		{name: "main_package_is_built_by_tests", changed: []string{"cmd/tool/main.go"}},
+		{name: "empty_list", changed: nil},
+		{name: "blank_lines_only", changed: []string{"", "  "}},
+		{name: "go_list_fails", changed: []string{"internal/leaf/leaf.go"}, mutate: func(dir string) {
+			if err := os.WriteFile(filepath.Join(dir, "internal/leaf/leaf.go"), []byte("this is not a go file\n"), 0o644); err != nil {
+				t.Fatalf("break package: %v", err)
+			}
+		}},
+		{name: "no_go_mod_at_all", changed: []string{"internal/leaf/leaf.go"}, mutate: func(dir string) {
+			if err := os.Remove(filepath.Join(dir, "go.mod")); err != nil {
+				t.Fatalf("remove go.mod: %v", err)
+			}
+		}},
+	}
+	for _, row := range rows {
+		t.Run(row.name, func(t *testing.T) {
+			shards, stderr, exit := rsRun(t, rsFixture(t), row.changed, row.mutate)
+			if exit != 0 {
+				t.Fatalf("exit = %d, want 0 (the script closes to all six, it does not fail)\n%s", exit, stderr)
+			}
+			if shards != "shards="+rsAll {
+				t.Errorf("shards = %q, want all six %q\nstderr:\n%s", shards, "shards="+rsAll, stderr)
+			}
+			if strings.TrimSpace(stderr) == "" {
+				t.Errorf("a closed-to-all answer must name its reason on stderr")
+			}
+		})
+	}
+}
+
+// TestRaceScopeMissingChangedFileClosesToAll: an unreadable list is "cannot
+// judge", not "nothing changed".
+func TestRaceScopeMissingChangedFileClosesToAll(t *testing.T) {
+	if _, err := exec.LookPath("go"); err != nil {
+		t.Skip("go not available")
+	}
+	root := findProjectRootForMirrorTest(t)
+	script := filepath.Join(root, filepath.FromSlash(rsScriptRel))
+	for _, args := range [][]string{{"--changed", filepath.Join(t.TempDir(), "absent.txt")}, {}} {
+		cmd := exec.Command("bash", append([]string{script}, args...)...)
+		cmd.Dir = rsFixture(t)
+		out, err := cmd.Output()
+		if err != nil {
+			t.Fatalf("args %v: %v", args, err)
+		}
+		if got := strings.TrimSpace(string(out)); got != "shards="+rsAll {
+			t.Errorf("args %v: shards = %q, want all six", args, got)
+		}
+	}
+}
+
+type rsWorkflow struct {
+	Jobs map[string]struct {
+		Name  string `yaml:"name"`
+		Needs any    `yaml:"needs"`
+		If    string `yaml:"if"`
+	} `yaml:"jobs"`
+}
+
+func rsLoadCI(t *testing.T) (rsWorkflow, string) {
+	t.Helper()
+	root := findProjectRootForMirrorTest(t)
+	raw, err := os.ReadFile(filepath.Join(root, ".github/workflows/ci.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var wf rsWorkflow
+	if err := yaml.Unmarshal(raw, &wf); err != nil {
+		t.Fatal(err)
+	}
+	return wf, string(raw)
+}
+
+func rsNeeds(v any) []string {
+	switch n := v.(type) {
+	case string:
+		return []string{n}
+	case []any:
+		var out []string
+		for _, e := range n {
+			if s, ok := e.(string); ok {
+				out = append(out, s)
+			}
+		}
+		return out
+	}
+	return nil
+}
+
+// TestCIRaceShardJobsConsumeTheScope: each of the six race jobs waits for
+// race-scope, runs when the scope is empty (fail-closed) or names its own
+// shard token, and keeps the release/ exclusion and the go_code gate.
+func TestCIRaceShardJobsConsumeTheScope(t *testing.T) {
+	wf, _ := rsLoadCI(t)
+	shardJobs := map[string]string{
+		"test-race-cli-1":       ",cli-1,",
+		"test-race-cli-2":       ",cli-2,",
+		"test-race-cli-3":       ",cli-3,",
+		"test-race-cli-4":       ",cli-4,",
+		"test-race-rosterguard": ",rosterguard,",
+		"test-race-remainder":   ",remainder,",
+	}
+	scope, ok := wf.Jobs["race-scope"]
+	if !ok {
+		t.Fatal("ci.yml has no race-scope job")
+	}
+	if !strings.Contains(scope.If, "github.event_name == 'pull_request'") {
+		t.Errorf("race-scope must narrow pull requests only; if = %q", scope.If)
+	}
+	for id, token := range shardJobs {
+		job, ok := wf.Jobs[id]
+		if !ok {
+			t.Errorf("job %s missing", id)
+			continue
+		}
+		needs := rsNeeds(job.Needs)
+		has := map[string]bool{}
+		for _, n := range needs {
+			has[n] = true
+		}
+		if !has["detect"] || !has["race-scope"] {
+			t.Errorf("%s needs %v, want detect and race-scope", id, needs)
+		}
+		for _, want := range []string{
+			"needs.detect.result == 'success'",
+			"needs.detect.outputs.go_code == 'true'",
+			"!startsWith(github.head_ref, 'release/')",
+			"needs.race-scope.outputs.shards == ''",
+			"contains(needs.race-scope.outputs.shards, '" + token + "')",
+			"!cancelled()",
+		} {
+			if !strings.Contains(job.If, want) {
+				t.Errorf("%s: if lacks %q\n  if = %s", id, want, job.If)
+			}
+		}
+	}
+}
+
+// TestCIRequiredAndWindowsJobsIgnoreTheScope: the scope reaches the six
+// advisory race jobs and nothing else. Lint, Build, Test, Analyze, the Windows
+// legs and every other job neither need race-scope nor mention it.
+func TestCIRequiredAndWindowsJobsIgnoreTheScope(t *testing.T) {
+	wf, raw := rsLoadCI(t)
+	raceJobs := map[string]bool{
+		"test-race-cli-1": true, "test-race-cli-2": true, "test-race-cli-3": true,
+		"test-race-cli-4": true, "test-race-rosterguard": true, "test-race-remainder": true,
+		"race-scope": true,
+	}
+	for id, job := range wf.Jobs {
+		if raceJobs[id] {
+			continue
+		}
+		for _, n := range rsNeeds(job.Needs) {
+			if n == "race-scope" {
+				t.Errorf("job %s needs race-scope; only the six race shard jobs may", id)
+			}
+		}
+		if strings.Contains(job.If, "race-scope") {
+			t.Errorf("job %s gates on race-scope; only the six race shard jobs may", id)
+		}
+	}
+	// The six shard selectors themselves are untouched: still six, still -race.
+	if got := strings.Count(raw, "Race Test ("); got != 6 {
+		t.Errorf("ci.yml defines %d 'Race Test (' jobs, want 6", got)
+	}
+}

@@ -85,6 +85,53 @@ jobs:
           filters: .github/test-input-filters.yml
 
   # ---------------------------------------------------------------------------
+  # Race scope (card t2012): which of the six advisory Race Test shards does a
+  # PULL REQUEST need? Pull requests only; push, workflow_dispatch and ci/**
+  # candidate runs skip this job, and a skipped, failed or empty answer means
+  # every shard runs (the shard `if:` below reads an empty `shards` as "all").
+  # scripts/ci/race-scope.sh narrows only when every changed file is a Go file
+  # of a package of this module and the shard's tested packages depend on it;
+  # go.mod, workflows, testdata, non-Go files, main packages and anything it
+  # cannot judge close to all six. The go_code gate stays the shared filter
+  # (.github/test-input-filters.yml, read by `detect`); Lint, Build, Test
+  # (ubuntu), Analyze and the Windows legs never read this job.
+  # ---------------------------------------------------------------------------
+  race-scope:
+    name: Race scope
+    needs: detect
+    if: ${{ github.event_name == 'pull_request' && needs.detect.outputs.go_code == 'true' && !startsWith(github.head_ref, 'release/') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      shards: ${{ steps.scope.outputs.shards }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Decide the race shards
+        id: scope
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          # An unreadable diff is an empty list, which the script reads as
+          # "cannot judge" and closes to all six shards.
+          if ! git diff --name-only "$BASE_SHA" HEAD > changed-files.txt; then
+            : > changed-files.txt
+          fi
+          bash scripts/ci/race-scope.sh --changed changed-files.txt | tee -a "$GITHUB_OUTPUT"
+          {
+            echo "### Race scope"
+            echo "- changed files: $(grep -c . changed-files.txt || true)"
+            echo "- $(grep '^shards=' "$GITHUB_OUTPUT" | tail -n 1)"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # ---------------------------------------------------------------------------
   # Test: Run tests with coverage (fast — NO race detector). The race
   # detector moved to the separate `test-race-*` jobs
   # (advisory, non-required):
@@ -350,8 +397,8 @@ jobs:
   # each job's timeout-minutes covers setup and compilation on top of it.
   test-race-cli-1:
     name: Race Test (internal/cli 1 of 4)
-    needs: detect
-    if: needs.detect.outputs.go_code == 'true' && !startsWith(github.head_ref, 'release/')
+    needs: [detect, race-scope]
+    if: ${{ !cancelled() && needs.detect.result == 'success' && needs.detect.outputs.go_code == 'true' && !startsWith(github.head_ref, 'release/') && (needs.race-scope.outputs.shards == '' || contains(needs.race-scope.outputs.shards, ',cli-1,')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -412,8 +459,8 @@ jobs:
 
   test-race-cli-2:
     name: Race Test (internal/cli 2 of 4)
-    needs: detect
-    if: needs.detect.outputs.go_code == 'true' && !startsWith(github.head_ref, 'release/')
+    needs: [detect, race-scope]
+    if: ${{ !cancelled() && needs.detect.result == 'success' && needs.detect.outputs.go_code == 'true' && !startsWith(github.head_ref, 'release/') && (needs.race-scope.outputs.shards == '' || contains(needs.race-scope.outputs.shards, ',cli-2,')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -472,8 +519,8 @@ jobs:
 
   test-race-cli-3:
     name: Race Test (internal/cli 3 of 4)
-    needs: detect
-    if: needs.detect.outputs.go_code == 'true' && !startsWith(github.head_ref, 'release/')
+    needs: [detect, race-scope]
+    if: ${{ !cancelled() && needs.detect.result == 'success' && needs.detect.outputs.go_code == 'true' && !startsWith(github.head_ref, 'release/') && (needs.race-scope.outputs.shards == '' || contains(needs.race-scope.outputs.shards, ',cli-3,')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -531,8 +578,8 @@ jobs:
 
   test-race-cli-4:
     name: Race Test (internal/cli 4 of 4)
-    needs: detect
-    if: needs.detect.outputs.go_code == 'true' && !startsWith(github.head_ref, 'release/')
+    needs: [detect, race-scope]
+    if: ${{ !cancelled() && needs.detect.result == 'success' && needs.detect.outputs.go_code == 'true' && !startsWith(github.head_ref, 'release/') && (needs.race-scope.outputs.shards == '' || contains(needs.race-scope.outputs.shards, ',cli-4,')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -591,8 +638,8 @@ jobs:
 
   test-race-rosterguard:
     name: Race Test (rosterguard)
-    needs: detect
-    if: needs.detect.outputs.go_code == 'true' && !startsWith(github.head_ref, 'release/')
+    needs: [detect, race-scope]
+    if: ${{ !cancelled() && needs.detect.result == 'success' && needs.detect.outputs.go_code == 'true' && !startsWith(github.head_ref, 'release/') && (needs.race-scope.outputs.shards == '' || contains(needs.race-scope.outputs.shards, ',rosterguard,')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
@@ -652,8 +699,8 @@ jobs:
 
   test-race-remainder:
     name: Race Test (remainder packages)
-    needs: detect
-    if: needs.detect.outputs.go_code == 'true' && !startsWith(github.head_ref, 'release/')
+    needs: [detect, race-scope]
+    if: ${{ !cancelled() && needs.detect.result == 'success' && needs.detect.outputs.go_code == 'true' && !startsWith(github.head_ref, 'release/') && (needs.race-scope.outputs.shards == '' || contains(needs.race-scope.outputs.shards, ',remainder,')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
