@@ -2,6 +2,7 @@ package ledger
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
@@ -80,6 +81,20 @@ func TestEnqueue_AReviewOrAFailureOfTheCandidateIsNotMeasuringItAgain(t *testing
 			t.Fatalf("c1 measured again in full and reviewed again is refused: %v", err)
 		}
 	})
+}
+
+// A failing run of the candidate is not the newest evidence either: the refusal names the commit
+// the card measured last, not the failed candidate (the failed run is refused on its own account
+// only after that).
+func TestEnqueue_AFailingRunOfTheCandidateDoesNotHideTheNewerCommit(t *testing.T) {
+	s := openTemp(t)
+	c := gated(t, s, "a", "c1")
+	greenOn(t, s, c.Epoch, "c2", ResultPass)
+	greenOn(t, s, c.Epoch, "c1", ResultFail)
+	err := s.Enqueue(bg, "a", c.Epoch, "c1")
+	if !errors.Is(err, ErrEvidenceStale) || !strings.Contains(err.Error(), "about commit c2") {
+		t.Fatalf("the refusal must say the newest evidence is about c2: %v", err)
+	}
 }
 
 // What stays as it was: a review about ANOTHER commit as the newest evidence is still evidence

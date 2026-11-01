@@ -203,6 +203,23 @@ func TestDone_APassingRecordAboutAnotherCommitBeforeTheWithdrawalBlocksNothing(t
 	})
 }
 
+// A failure about another commit from BEFORE the candidate was offered is the Enqueue check's
+// business (the newest evidence must be the candidate's), not a reason to demand a green the
+// gate-only candidate never had (D5).
+func TestDone_AFailureAboutAnotherCommitBeforeTheOfferBlocksNoGateOnlyCandidate(t *testing.T) {
+	s := openTemp(t)
+	c := claimOne(t, s, "a", "internal/a/x.go")
+	recordOn(t, s, c.Epoch, KindGreen, "c0", ResultFail)
+	recordOn(t, s, c.Epoch, KindGate, "c1", ResultPass)
+	if err := s.Enqueue(bg, "a", c.Epoch, "c1"); err != nil {
+		t.Fatal(err)
+	}
+	landOne(t, s, "a", c.Epoch)
+	if err := finish(s, c.Epoch); err != nil {
+		t.Fatalf("a gate-only candidate landed and an older failure of c0 refuses the card: %v", err)
+	}
+}
+
 // A review of another commit recorded after the card left MERGING is evidence the card moved on, as a
 // gate or a green is.
 func TestDone_AReviewOfAnotherCommitAfterTheWithdrawalNeedsTheCandidateMeasuredAgain(t *testing.T) {
