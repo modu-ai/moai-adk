@@ -223,6 +223,40 @@ func TestCodexSecurityNullAdapter(t *testing.T) {
 			n["updated_at"] = "2026-11-01T17:41:00Z"
 			return append(v, n)
 		}, want: 1, reason: "state-comment-duplicated"},
+		// R5 rows (Codex review comment 4437061079): a key spelled with a JSON escape is the same key to
+		// jq's parser but not to a raw-text count. Any escape inside a KEY string switches the adapter off;
+		// escapes in VALUES stay legitimate and keep passing.
+		// bs is ONE backslash, built from its code point because a unicode-escape literal does not survive
+		// the editing tool (it arrives already decoded and the row silently tests nothing).
+		{name: "R5a_escaped_dup_after_plain_true", edit: func(v []cgEntry) []cgEntry {
+			bs := string(rune(92))
+			return setState(v, `"security_review":{"commit_sha":"`+snHead+`","has_any_findings":null`, `"security_review":{"commit_sha":"`+snHead+`","has_any_findings":true,"`+bs+`u0068as_any_findings":null`)
+		}, want: 1, reason: "review-not-complete:security_review:has_any_findings"},
+		{name: "R5b_escaped_first_plain_last", edit: func(v []cgEntry) []cgEntry {
+			bs := string(rune(92))
+			return setState(v, `"security_review":{"commit_sha":"`+snHead+`","has_any_findings":null`, `"security_review":{"commit_sha":"`+snHead+`","`+bs+`u0068as_any_findings":true,"has_any_findings":null`)
+		}, want: 1, reason: "review-not-complete:security_review:has_any_findings"},
+		{name: "R5c_escaped_dup_unresolved", edit: func(v []cgEntry) []cgEntry {
+			bs := string(rune(92))
+			return setState(v, `"has_unresolved_findings":null`, `"has_unresolved_findings":true,"has_unresolved`+bs+`u005ffindings":null`)
+		}, want: 1, reason: "review-not-complete:security_review:has_any_findings"},
+		{name: "R5d_escaped_key_without_duplicate", edit: func(v []cgEntry) []cgEntry {
+			bs := string(rune(92))
+			return setState(v, `"has_any_findings":null`, `"has`+bs+`u005fany_findings":null`)
+		}, want: 1, reason: "review-not-complete:security_review:has_any_findings"},
+		{name: "R5e_quote_escape_inside_key", edit: func(v []cgEntry) []cgEntry {
+			return setState(v, `"has_any_findings":null`, `"has_any_findings\"":null`)
+		}, want: 1, reason: "review-not-complete:security_review:has_any_findings"},
+		{name: "R5f_invalid_escape_inside_key", edit: func(v []cgEntry) []cgEntry {
+			return setState(v, `"has_any_findings":null`, `"has\_any_findings":null`)
+		}, want: 1, reason: "state-marker-malformed"},
+		{name: "R5g_value_escape_solidus_passes", edit: func(v []cgEntry) []cgEntry {
+			return setState(v, `"repository":"modu-ai/moai-adk"`, `"repository":"modu-ai\/moai-adk"`)
+		}, want: 0, text: "security-null-adapter"},
+		{name: "R5h_value_unicode_escape_passes", edit: func(v []cgEntry) []cgEntry {
+			bs := string(rune(92))
+			return setState(v, secLeg, strings.Replace(secLeg, `"status":"completed"`, `"status":"complete`+bs+`u0064"`, 1))
+		}, want: 0, text: "security-null-adapter"},
 	}
 	for _, row := range rows {
 		t.Run(row.name, func(t *testing.T) {
