@@ -3510,7 +3510,7 @@ func factoryPrintClearPolicyLine(out io.Writer, root string) {
 	if policy == config.FactoryClearPolicyWhenFull && !factoryContextAtHandoffThreshold(root) {
 		return // below the handoff threshold: continue with the next card, no line
 	}
-	const preserveFirst = "before leaving, check and preserve completion evidence, dirty changes, active checks or handoff, and unsubmitted input; if any is incomplete or pending, resolve it first and do not clear (never force-clear). Then, in order: (1) ExitWorktree(keep); (2) confirm the primary checkout is back on the default branch (`git branch --show-current`); (3) operator: run /clear (this session cannot run /clear itself); (4) "
+	const preserveFirst = "before leaving, check and preserve completion evidence, dirty changes, unpushed commits, active checks or handoff, and unsubmitted input; if any is incomplete or pending, resolve it first and do not clear (never force-clear). Then, in order: (1) ExitWorktree(keep); (2) confirm the primary checkout is back on the default branch (`git branch --show-current`); (3) operator: run /clear (this session cannot run /clear itself); (4) "
 	const guidanceOnly = ". This line is guidance only and does not show that any step ran; earlier cards' conversation context is non-authoritative"
 	if os.Getenv(config.EnvFactoryAutoDispatch) == config.FactoryDispatchManual {
 		// Manual dispatch: the operator chose to route cards to this lane, so
