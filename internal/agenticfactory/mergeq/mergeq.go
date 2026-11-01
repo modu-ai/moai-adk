@@ -525,6 +525,13 @@ func (m *Merger) Reconcile(ctx context.Context, items []Item) ([]Action, error) 
 		if it.State != StateVerifying && it.State != StateLanding {
 			continue
 		}
+		// Land refuses a candidate that is not the complete SHA of a commit; a row an earlier build or the ledger API
+		// wrote with a branch name or an option-like text is not judged by ancestry (the name resolves to the trunk
+		// itself, or reads as an option to git): it is left as it is and reported.
+		if err := m.validCandidate(ctx, it.CandidateSHA); err != nil {
+			errs = append(errs, fmt.Errorf("mergeq: %s: %w", it.CardID, err))
+			continue
+		}
 		in, err := m.Git.IsAncestor(ctx, it.CandidateSHA, trunk)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("mergeq: %s: %w", it.CardID, err))
