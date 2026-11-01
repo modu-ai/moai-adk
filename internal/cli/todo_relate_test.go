@@ -53,18 +53,19 @@ func TestTodoRelateAndUnrelateTouchNoCard(t *testing.T) {
 	if len(afterRelate) != 2 {
 		t.Fatalf("findings after relate = %d, want 2: %+v", len(afterRelate), afterRelate)
 	}
-	// REQ-TCI-013: absorbs is symmetric for dedup, so the recorded pair is
-	// normalized smaller-id-first — the caller's (t2, t1) spelling lands as
-	// (t1, t2).
+	// REQ-TCI-013: absorbs is symmetric for DEDUP, but it is a directional
+	// claim ("t2 covers t1" in the note above), so the stored pair keeps the
+	// caller's (t2, t1) direction. CHANGED (card t2011): this assertion used to
+	// expect the normalized (t1, t2), which recorded the claim reversed.
 	recorded := -1
 	for i, f := range afterRelate {
-		if f.SubjectID == "t1" && f.RelatedID == "t2" &&
+		if f.SubjectID == "t2" && f.RelatedID == "t1" &&
 			f.Relation == factory.BacklogRelationAbsorbs && f.Source == factory.BacklogSourceAgent {
 			recorded = i + 1
 		}
 	}
 	if recorded < 0 {
-		t.Fatalf("no {t1, t2, absorbs, agent} finding was recorded: %+v", afterRelate)
+		t.Fatalf("no {t2, t1, absorbs, agent} finding was recorded: %+v", afterRelate)
 	}
 	assertItemsUnchanged(t, store, snapshot, "after relate")
 

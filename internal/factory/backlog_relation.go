@@ -54,6 +54,15 @@ func BacklogRelationIsSymmetricForDedup(relation string) bool {
 	}
 }
 
+// BacklogRelationKeepsDirection reports a relation that deduplicates
+// symmetrically (the opposite-order re-record maps onto the first record) but
+// whose meaning is directional — "a contains b", "a absorbs b" — so the
+// stored subject/related must be the caller's, never reordered by id. Storing
+// the normalized order recorded the claim reversed (card t2011).
+func BacklogRelationKeepsDirection(relation string) bool {
+	return relation == BacklogRelationContains || relation == BacklogRelationAbsorbs
+}
+
 // issuanceIDNum extracts the numeric part of a t<N> card id; unparsable ids
 // sort by string so the normalization stays total.
 func issuanceIDNum(id string) (int, bool) {

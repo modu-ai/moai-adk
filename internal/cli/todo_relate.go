@@ -88,7 +88,10 @@ func runTodoRelate(cmd *cobra.Command, subject, related, relation, note string) 
 	// SPEC-TODO-CARD-ISSUANCE-001 REQ-TCI-013: symmetric kinds normalize the
 	// pair (smaller id first) BEFORE the dedup check, so an opposite-order
 	// re-record maps onto the first finding instead of creating a second.
-	if factory.BacklogRelationIsSymmetricForDedup(relation) {
+	// contains and absorbs dedup symmetrically but are directional claims: the
+	// stored pair keeps the caller's direction (HasNormalizedFindingTuple below
+	// still maps an opposite-order re-record onto the first record).
+	if factory.BacklogRelationIsSymmetricForDedup(relation) && !factory.BacklogRelationKeepsDirection(relation) {
 		subject, related, _ = factory.NormalizeRelationPair(subject, related)
 	}
 	var index int
