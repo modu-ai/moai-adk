@@ -165,6 +165,8 @@ When the next card reuses a lane, the leader re-sends the full pointer instructi
 
 The leader session itself is cleared between cards: at `done` the operator is asked to `/clear` it, and the next turn presents the queue again.
 
+Completion guidance (card t2013, operator instruction, later than SPEC-FACTORY-LANE-NO-CLEAR-001 and governing the printed line where it differs from the no-clear statements above): `moai factory complete` prints one guidance line, only after a genuinely completed edge (merged-local or merged-pr) — never for pr-open, a still-open or closed pull request, an audit-pending card, or a refused complete. Its order: first check and preserve completion evidence, dirty changes, active checks or handoff, and unsubmitted input (if any is incomplete or pending, resolve it first and do not clear; a force-clear is never suggested); then `ExitWorktree(keep)`; confirm the primary checkout is back on the default branch; the operator runs `/clear` (a session has no tool that executes it, so the line addresses the operator); then request the next existing card (`moai factory next`, or the leader's dispatch under manual dispatch). The line is text: it is not evidence that any step ran.
+
 ## Isolation is provisioned by MoAI, then entered through a launcher
 
 [HARD] **A card session starts inside its worktree and stays there — between cards it moves only by the in-session transition (`ExitWorktree(keep)`, then `EnterWorktree` of the leased tree)**; a relaunch inside the leased worktree is the operator's fallback when the entry is refused (the full clause lives on the always-loaded stub; measured detail: `factory-dispatch-mechanics.md` § Isolation).

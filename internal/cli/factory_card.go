@@ -3450,14 +3450,23 @@ func factoryContextAtHandoffThreshold(root string) bool {
 	return rec.RawPct >= threshold
 }
 
-// factoryPrintClearPolicyLine prints the one line the lane follows after a
-// completion (REQ-SD-020, reshaped by SPEC-FACTORY-LANE-NO-CLEAR-001
-// REQ-LNC-007/009): clear-each — the default, absence included — prints the
-// in-session card transition; clear-when-full prints the same line only once
-// the session's context-usage record is at or above the handoff threshold and
-// prints nothing below it; relaunch asks the operator to end the session so
-// the supervising launcher starts the next card's session. No value
-// instructs a session clear.
+// factoryPrintClearPolicyLine prints the one line of completion guidance after
+// a genuinely completed card (REQ-SD-020). It is called only on the completed
+// edges — merged-local (the adoption and the merge step) and merged-pr; a
+// pr-open, a still-open PR, a refused delivery or an audit-pending card never
+// reach it. clear-each — the default, absence included — prints the guidance;
+// clear-when-full prints it only once the session's context-usage record is at
+// or above the handoff threshold and prints nothing below it; relaunch asks
+// the operator to end the session so the supervising launcher starts the next
+// card's session.
+//
+// Card t2013 (decisions R22, an operator instruction later than
+// SPEC-FACTORY-LANE-NO-CLEAR-001 REQ-LNC-007/009) fixes the printed order:
+// ExitWorktree, the default-branch check, the operator's /clear, the next-card
+// request. The line is TEXT: a session has no tool that runs /clear, so /clear
+// is phrased as an operator action, and nothing printed here is evidence that
+// any step ran. Pending work blocks the clear: the line tells the reader to
+// resolve and preserve first and never suggests a force-clear.
 func factoryPrintClearPolicyLine(out io.Writer, root string) {
 	policy := factoryClearPolicySelected()
 	if policy == config.FactoryClearPolicyRelaunch {
@@ -3467,13 +3476,15 @@ func factoryPrintClearPolicyLine(out io.Writer, root string) {
 	if policy == config.FactoryClearPolicyWhenFull && !factoryContextAtHandoffThreshold(root) {
 		return // below the handoff threshold: continue with the next card, no line
 	}
+	const preserveFirst = "before leaving, check and preserve completion evidence, dirty changes, active checks or handoff, and unsubmitted input; if any is incomplete or pending, resolve it first and do not clear (never force-clear). Then, in order: (1) ExitWorktree(keep); (2) confirm the primary checkout is back on the default branch (`git branch --show-current`); (3) operator: run /clear (this session cannot run /clear itself); (4) "
+	const guidanceOnly = ". This line is guidance only and does not show that any step ran; earlier cards' conversation context is non-authoritative"
 	if os.Getenv(config.EnvFactoryAutoDispatch) == config.FactoryDispatchManual {
 		// Manual dispatch: the operator chose to route cards to this lane, so
 		// the line must not tell it to lease one (REQ-LNC-007, manual mode).
-		_, _ = fmt.Fprintf(out, "  card transition (policy %s, manual dispatch): ExitWorktree(keep), then wait for the leader's next dispatch; earlier cards' conversation context is non-authoritative\n", policy)
+		_, _ = fmt.Fprintf(out, "  card complete (policy %s, manual dispatch): %sask the leader for the next card, do not lease one%s\n", policy, preserveFirst, guidanceOnly)
 		return
 	}
-	_, _ = fmt.Fprintf(out, "  card transition (policy %s): ExitWorktree(keep), then `moai factory next` from the primary checkout, then EnterWorktree(<leased worktree path>) and verify the toplevel; earlier cards' conversation context is non-authoritative\n", policy)
+	_, _ = fmt.Fprintf(out, "  card complete (policy %s): %srequest the next card with `moai factory next` from the primary checkout%s\n", policy, preserveFirst, guidanceOnly)
 }
 
 // factoryResolveIntegrationBranch mirrors acquire's branch resolution
