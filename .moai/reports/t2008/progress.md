@@ -135,3 +135,13 @@ decision record: decided_by=lane-7 (claude, lane orchestrator) evidence_refs=lea
 
 Gaps: no whole-file semantic test of the new clauses (literal greps only, plus the one mutation); `make build` was not run (only its hash step); no Go package other than internal/template was run.
 Residual risk: the three docs still describe `go test ./...` exit 0 as an ac_converge predicate (RUN-07, out of the stated order for this pass).
+
+### Handoff record (PR #1961; leader instruction R97: freeze the head, then one independent sync audit)
+
+decision record: decided_by=lane-7 (claude, lane orchestrator) evidence_refs=leader message R97 (operator approval),this section ladder_path=gate boundary (operator-approved audit, auto-semantics.md §6)
+
+- Code head before this record: `c9828cb40f4a22c9c5e91a4a12afd44c404f8f45`; this record is the only change in its commit (no code change), pushed once without force.
+- State: PR #1961 draft, no hold. CI at c9828cb40f (run 41335379169): the only failing jobs are Test (ubuntu-latest) and Race Test (internal/cli 1 of 4), both on `TestCleanReportsArchive_MovesOnlyEligibleCandidates` (the #1956 calendar defect, non-required per the leader). Required-check rows (Lint, Build, Analyze) were not individually re-read in this record.
+- origin/main was not absorbed into this branch (leader ordered the independent audit first); the audit judges the branch as pushed.
+- Open items for the audit: the Gaps and Residual risk lists above (RUN-03 wording-only pin, RUN-07 left, no end-to-end `/moai run`, `make build` not run, lint measured by CI only).
+- Verdict file expected at `.moai/reports/t2008/sync-audit-1.md` (audited_sha = the head after this commit). Ready-for-review and merge are the leader's.
