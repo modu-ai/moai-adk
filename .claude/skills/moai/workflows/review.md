@@ -189,7 +189,7 @@ If --security flag: This perspective receives primary focus with deeper analysis
 
 ### Native /code-review compose (Axis A)
 
-Where native `/code-review` is auto-invocable, the orchestrator MAY invoke it via `Skill("code-review")` as one Phase 2 finding source, covering the correctness-bug + reuse/simplification/efficiency portion; its findings feed the sync-auditor synthesis. The Security review (Perspective 1), `@MX` tag-compliance (Phase 3), UX review (Perspective 4), and design review (Phase 5) composition is preserved — native `/code-review` augments, never replaces, the MoAI-specific perspectives.
+Where native `/code-review` is auto-invocable, the orchestrator MAY invoke it via `Skill("code-review")` as one Phase 2 finding source, covering the correctness-bug portion plus the cleanup findings (reuse, simplification, efficiency) that the model recipe adds at the chosen effort (effort-dependent; `/simplify` is the cleanup-focused command); its findings feed the sync-auditor synthesis. The Security review (Perspective 1), `@MX` tag-compliance (Phase 3), UX review (Perspective 4), and design review (Phase 5) composition is preserved — native `/code-review` augments, never replaces, the MoAI-specific perspectives.
 
 Conditional-PROGRAMMATIC caveat: before relying on `Skill("code-review")`, verify auto-invocability at runtime — a bundled skill with `disable-model-invocation: true`, a session with `disableBundledSkills`, or a denied `Skill` tool all remove auto-invocability.
 
