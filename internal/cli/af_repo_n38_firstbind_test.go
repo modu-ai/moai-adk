@@ -107,7 +107,7 @@ func TestAFVerbs_N38FirstBindWorkingDirectoryNamesAnotherRepository(t *testing.T
 	// the control: from the project the same card is measured, bound to the project and carried on
 	t.Setenv("CLAUDE_PROJECT_DIR", a.repo)
 	t.Chdir(a.repo)
-	a.measure(a.c1)
+	a.measureDeclared(a.c1) // N65: the first bind of this ledger declares its repository, the lease alone is the caller's word
 	if got := a.bound(); got != project {
 		t.Errorf("bound %q from the project, want %q", got, project)
 	}
@@ -370,7 +370,9 @@ func TestAFVerbs_N38FirstBindLinkedWorktreeOfTheProjectPasses(t *testing.T) {
 			afN38Reclaim(t, a, wt) // the lease is in the linked worktree...
 			project := map[string]string{"project": a.repo, "linked_worktree": wt, "symlink": link}[spelling]
 			t.Setenv("CLAUDE_PROJECT_DIR", project) // ...and the first call comes from each spelling of the project
-			if _, err := a.run("reap"); err != nil {
+			// N65: a lease alone no longer says where the ledger belongs, so the first bind declares the project (its
+			// agreement with the lease in the linked worktree is still compared, and a disagreement is still refused)
+			if _, err := a.run("reap", "--bind-repo", project); err != nil {
 				t.Fatalf("reap with the project directory %s: %v", project, err)
 			}
 			if got, want := a.bound(), afN38GitDir(t, a.repo); got != want {

@@ -43,7 +43,12 @@ var afD1Words = strings.NewReplacer(
 type afD1Row struct{ name, printf string }
 
 // afRunBoth runs one `moai af` verb and returns stdout, stderr and the error, whatever the exit.
+//
+// With AF_TEST_BIN set it runs that binary's `af` verb instead (afRunBinary), so one test group can be run against two builds.
 func afRunBoth(args ...string) (stdout, stderr string, err error) {
+	if bin := os.Getenv("AF_TEST_BIN"); bin != "" {
+		return afRunBinary(bin, args...)
+	}
 	cmd := newAFCmd()
 	var out, errOut bytes.Buffer
 	cmd.SetOut(&out)
@@ -445,6 +450,7 @@ func afUnqueuedCard(t *testing.T) (db, repo, cand string, st *ledger.Store, epoc
 func TestAFVerbs_D4EnqueueRefusesAnEvidencedNameThatIsNotACommit(t *testing.T) {
 	afSkipWithoutSh(t)
 	db, repo, cand, st, epoch := afUnqueuedCard(t)
+	afBindFixture(t, st, repo)
 	ctx := context.Background()
 	e := strconv.FormatInt(epoch, 10)
 	afGit(t, repo, "tag", "-a", "v1", "-m", "release", cand)

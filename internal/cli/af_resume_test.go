@@ -141,6 +141,7 @@ func TestAFVerbs_N42TheResumeVerbRefusesWithoutAReasonOrWithAnotherGuardOrEpochA
 func TestAFVerbs_N42TheResumeVerbRefusesACardThatIsNotParkedAndChangesNothing(t *testing.T) {
 	afSkipWithoutSh(t)
 	db, repo, c1, st, epoch := afUnqueuedCard(t)
+	afBindFixture(t, st, repo)
 	a := afN3Card{t: t, db: db, repo: repo, c1: c1, st: st, e2: strconv.FormatInt(epoch, 10)}
 	before := afSnapshot(t, a.st)
 	out, err := a.try("resume", "t1", "--epoch", a.e2, "--guard", "reclaim-cap", "--reason", "r")

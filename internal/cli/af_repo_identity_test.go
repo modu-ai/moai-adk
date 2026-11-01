@@ -10,15 +10,18 @@ package cli
 // one thing it was refused for is put right.
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"reflect"
 	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -750,5 +753,128 @@ func TestAFIdentity_TheMoveHelpNamesFromAndTheMarker(t *testing.T) {
 		if !strings.Contains(flat, want) {
 			t.Errorf("`moai af move-repository --help` does not say %q:\n%s", want, flat)
 		}
+	}
+}
+
+// ---- fixtures shared with the older tests ---------------------------------------------------------------------------------
+
+// afBindFixture binds the ledger of a fixture to the repository its card is worked in, as the first verb run in that
+// repository used to do on the strength of the lease alone (N65: a lease worktree is the caller's own word, so a first
+// bind of a ledger placed with --db declares its repository, and a fixture that is not about the first bind starts bound).
+func afBindFixture(t *testing.T, st *ledger.Store, repo string) {
+	t.Helper()
+	if err := st.BindRepository(context.Background(), afN38GitDir(t, repo)); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// measureDeclared is measure for a ledger whose first bind is still to come: the evidence declares the repository.
+func (a afN3Card) measureDeclared(sha string) {
+	a.t.Helper()
+	for _, kind := range []string{"green", "gate"} {
+		a.verb("evidence", "t1", "--epoch", a.e2, "--kind", kind, "--subject-sha", sha, "--result", "pass", "--repo", a.repo, "--bind-repo", a.repo)
+	}
+}
+
+// afRunBinary runs one `af` verb of a built moai binary and returns what afRunBoth returns, the error being the line the
+// binary printed after "Error: ". It lets one test group run against two builds (AF_TEST_BIN).
+func afRunBinary(bin string, args ...string) (stdout, stderr string, err error) {
+	cmd := exec.Command(bin, append([]string{"af"}, args...)...)
+	var out, errOut bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &out, &errOut
+	if runErr := cmd.Run(); runErr != nil {
+		msg := strings.TrimSpace(errOut.String())
+		if _, after, found := strings.Cut(msg, "Error: "); found {
+			msg = strings.TrimSpace(strings.SplitN(after, "\n", 2)[0])
+		}
+		err = errors.New(msg)
+	}
+	return out.String(), errOut.String(), err
+}
+
+// ---- the normal paths beside the refusals -----------------------------------------------------------------------------------
+
+// A chain of moves and the way back: the marker travels with every rename, each step is recorded, and the card the ledger
+// held goes on to DONE from the last place, which is the first one again.
+func TestAFIdentity_AChainOfMovesAndTheWayBackFinishesTheCard(t *testing.T) {
+	afSkipWithoutSh(t)
+	a := afN28Landed(t)
+	p := a.repo
+	m := afIDMarkerOf(t, p)
+	b := afN52{afN3Card: a, oldID: a.bound()}
+	froms := []string{p, p + "-q", p + "-r"}
+	for i, to := range []string{p + "-q", p + "-r", p} {
+		if err := os.Rename(froms[i], to); err != nil {
+			t.Fatal(err)
+		}
+		t.Setenv("CLAUDE_PROJECT_DIR", to)
+		out, err := b.move("--reason", "step "+to)
+		b.wantMoved(out, err, to)
+		if got := afIDMarkerOf(t, to); got != m {
+			t.Fatalf("after step %d the repository holds the marker %q, want %q", i, got, m)
+		}
+	}
+	if moves, err := a.st.RepositoryMoves(context.Background()); err != nil || len(moves) != 3 {
+		t.Fatalf("moves %+v %v, want three", moves, err)
+	}
+	if err := a.tryFinish(); err != nil {
+		t.Fatalf("the card does not finish after the way back: %v", err)
+	}
+	if !a.inTrunk(a.c1) {
+		t.Error("the card is DONE and its commit is not in the trunk")
+	}
+}
+
+// A linked worktree of the moved repository names it as well as the repository itself does.
+func TestAFIdentity_ALinkedWorktreeOfTheMovedRepositoryIsAcceptedAsTheNewPlace(t *testing.T) {
+	afSkipWithoutSh(t)
+	a := afN52Renamed(t)
+	wt := filepath.Join(t.TempDir(), "wt")
+	afGit(t, a.moved, "worktree", "add", "-q", "--detach", wt, a.c1)
+	out, err := a.move("--reason", "moved", "--bind-repo", wt)
+	a.wantMoved(out, err, a.moved) // the identity is the repository's git directory, not the worktree's
+}
+
+// The holder dies, the repository moves, the operator records the move, another lane takes the card back, measures it in
+// its own epoch and lands it: the restart path crosses the move.
+func TestAFIdentity_AHolderThatDiedBeforeTheMoveDoesNotStrandTheCard(t *testing.T) {
+	afSkipWithoutSh(t)
+	db, repo, c1, st, epoch := afUnqueuedCard(t)
+	afBindFixture(t, st, repo)
+	a := afN3Card{t: t, db: db, repo: repo, c1: c1, st: st, e2: strconv.FormatInt(epoch, 10)}
+	for _, kind := range []string{"green", "gate"} {
+		a.verb("evidence", "t1", "--epoch", a.e2, "--kind", kind, "--subject-sha", c1, "--result", "pass", "--repo", repo)
+	}
+	b := afN52{afN3Card: a, oldID: a.bound(), moved: repo + "-moved"}
+	// the holder is gone (its recorded process fingerprint does not match any live process) and the repository moves
+	if err := os.Rename(repo, b.moved); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("CLAUDE_PROJECT_DIR", b.moved)
+	if out, err := a.run("reap"); err == nil {
+		t.Fatalf("reap was accepted before the move was recorded: %.200s", out)
+	}
+	out, err := b.move("--reason", "moved")
+	b.wantMoved(out, err, b.moved)
+	var reaped struct {
+		Reclaimed []struct{ CardID string } `json:"reclaimed"`
+	}
+	if jerr := json.Unmarshal([]byte(a.mustRun("reap")), &reaped); jerr != nil || len(reaped.Reclaimed) != 1 {
+		t.Fatalf("reap after the move: %+v %v, want the dead holder's card taken back", reaped, jerr)
+	}
+	ep := afN49Claim(t, db, b.moved)
+	a.e2 = ep
+	for _, kind := range []string{"green", "gate"} {
+		a.verb("evidence", "t1", "--epoch", ep, "--kind", kind, "--subject-sha", c1, "--result", "pass", "--repo", b.moved)
+	}
+	a.verb("enqueue", "t1", "--epoch", ep, "--candidate", c1, "--repo", b.moved)
+	if out := a.verb("land", "t1", "--repo", b.moved, "--gate", "true"); !strings.Contains(out, `"outcome":"landed"`) {
+		t.Fatalf("c1 did not land from the new place: %s", out)
+	}
+	if err := a.tryFinish(); err != nil {
+		t.Fatalf("the card does not finish after the restart across the move: %v", err)
+	}
+	if exec.Command("git", "-C", b.moved, "merge-base", "--is-ancestor", c1, "refs/heads/af/trunk").Run() != nil {
+		t.Error("the card is DONE and c1 is not in the trunk of the new place")
 	}
 }

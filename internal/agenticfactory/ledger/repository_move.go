@@ -31,7 +31,17 @@ type RepositoryMove struct {
 // identity the ledger already has is refused with ErrInvalid (nothing moved, and the history should
 // not say it did), as is a blank `from`, `to` or `reason`. A move back to an earlier identity is an
 // ordinary move.
+//
+// The first recorded move raises PRAGMA user_version to SchemaVersionMoved in the same transaction (N68), so a build that
+// does not know the move refuses the file and cannot take the old path of a repository that moved for the current one.
 func (s *Store) MoveRepository(ctx context.Context, from, to, reason string) error {
+	return s.MoveRepositoryMarked(ctx, from, to, reason, "")
+}
+
+// MoveRepositoryMarked is MoveRepository that also settles the repository marker in the same transaction: with a marker
+// already on record the one given must be it (otherwise ErrWrongRepository and nothing is written), and with none on
+// record the one given is recorded with the move. An empty marker leaves the record alone.
+func (s *Store) MoveRepositoryMarked(ctx context.Context, from, to, reason, marker string) error {
 	if strings.TrimSpace(from) == "" || strings.TrimSpace(to) == "" || strings.TrimSpace(reason) == "" {
 		return fmt.Errorf("%w: a repository move needs the identity it starts from, the identity it goes to, and a reason", ErrInvalid)
 	}
@@ -49,7 +59,24 @@ func (s *Store) MoveRepository(ctx context.Context, from, to, reason string) err
 		case current != from:
 			return fmt.Errorf("%w: it is bound to %q, not %q", ErrWrongRepository, current, from)
 		}
+		if marker != "" {
+			have, err := currentMarker(ctx, tx)
+			if err != nil {
+				return err
+			}
+			if have != "" && have != marker {
+				return fmt.Errorf("%w: the repository it moves to carries another marker than the one recorded for it", ErrWrongRepository)
+			}
+			if have == "" {
+				if _, err := tx.ExecContext(ctx, `INSERT INTO repository_marker(id,marker,recorded_at) VALUES(1,?,`+nowSQL+`)`, marker); err != nil {
+					return fmt.Errorf("ledger: %w", err)
+				}
+			}
+		}
 		if _, err := tx.ExecContext(ctx, `INSERT INTO repository_move(old_identity,new_identity,reason,moved_at) VALUES(?,?,?,`+nowSQL+`)`, from, to, reason); err != nil {
+			return fmt.Errorf("ledger: %w", err)
+		}
+		if _, err := tx.ExecContext(ctx, fmt.Sprintf(`PRAGMA user_version=%d`, SchemaVersionMoved)); err != nil {
 			return fmt.Errorf("ledger: %w", err)
 		}
 		return nil

@@ -39,6 +39,43 @@ func (s *Store) BindRepository(ctx context.Context, identity string) error {
 	})
 }
 
+// RecordRepositoryMarker records the marker of the repository this ledger belongs to: a token the caller keeps inside the
+// repository's git directory, which is what tells that repository from a clone, a mirror or a new repository standing at
+// the same path (the identity is a path, and a path is not a repository). The first call writes it; any later call
+// changes nothing. The marker on record is returned either way, so callers that race converge on one value and a caller
+// that brought another one can see it. The ledger stores the string as written and runs no git (REQ-AFL-008). It does not
+// raise the schema number: only a recorded move does, since a build that does not know the marker decides an unmoved
+// ledger exactly as it did before.
+func (s *Store) RecordRepositoryMarker(ctx context.Context, marker string) (string, error) {
+	if strings.TrimSpace(marker) == "" {
+		return "", fmt.Errorf("%w: a repository marker cannot be blank", ErrInvalid)
+	}
+	var recorded string
+	err := s.write(ctx, func(tx *sql.Tx) error {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO repository_marker(id,marker,recorded_at) VALUES(1,?,`+nowSQL+`) ON CONFLICT(id) DO NOTHING`, marker); err != nil {
+			return fmt.Errorf("ledger: %w", err)
+		}
+		var err error
+		recorded, err = currentMarker(ctx, tx)
+		return err
+	})
+	return recorded, err
+}
+
+// RepositoryMarker returns the marker recorded for the repository, or "" while none is (a ledger bound before markers
+// existed, or one no caller has marked yet).
+func (s *Store) RepositoryMarker(ctx context.Context) (string, error) {
+	return currentMarker(ctx, s.db)
+}
+
+func currentMarker(ctx context.Context, q querier) (string, error) {
+	var marker sql.NullString
+	if err := q.QueryRowContext(ctx, `SELECT (SELECT marker FROM repository_marker WHERE id=1)`).Scan(&marker); err != nil {
+		return "", fmt.Errorf("ledger: %w", err)
+	}
+	return marker.String, nil
+}
+
 // Repository returns the identity the ledger is bound to now, or "" while it is not bound: the
 // newest recorded move's new identity (MoveRepository), or the first binding while the repository
 // has not moved.

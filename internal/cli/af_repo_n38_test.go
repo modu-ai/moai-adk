@@ -26,6 +26,7 @@ import (
 func afN38Card(t *testing.T) afN3Card {
 	t.Helper()
 	db, repo, c1, st, epoch := afUnqueuedCard(t)
+	afBindFixture(t, st, repo)
 	a := afN3Card{t: t, db: db, repo: repo, c1: c1, st: st, e2: strconv.FormatInt(epoch, 10)}
 	a.measure(c1)
 	return a

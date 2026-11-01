@@ -14,9 +14,15 @@ import (
 	_ "modernc.org/sqlite" // the pure Go driver: no cgo, one binary
 )
 
-// SchemaVersion is PRAGMA user_version of a ledger this code wrote. Version 2 adds
+// SchemaVersion is PRAGMA user_version of a ledger this code wrote and whose repository never moved. Version 2 adds
 // transitions.evidence_mark (see migrateEvidenceMark).
 const SchemaVersion = 2
+
+// SchemaVersionMoved is PRAGMA user_version of a ledger that recorded a repository move. The first recorded move raises
+// the number to it (N68), so a build that does not know the move rule (its newest known schema is SchemaVersion) refuses
+// the file with "the file has schema 3, this code knows 2" instead of accepting the old path of a repository that
+// moved. This build opens both: a ledger that never moved keeps SchemaVersion and stays readable by the builds before.
+const SchemaVersionMoved = 3
 
 // timeLayout is how the database clock writes a time (I4).
 const timeLayout = "2006-01-02T15:04:05.000Z"
@@ -85,6 +91,14 @@ CREATE TABLE IF NOT EXISTS repository_move(
   reason TEXT NOT NULL CHECK(reason<>''), moved_at TEXT NOT NULL, CHECK(old_identity<>new_identity));
 CREATE TRIGGER IF NOT EXISTS repository_move_no_update BEFORE UPDATE ON repository_move BEGIN SELECT RAISE(ABORT,'repository moves are never rewritten'); END;
 CREATE TRIGGER IF NOT EXISTS repository_move_no_delete BEFORE DELETE ON repository_move BEGIN SELECT RAISE(ABORT,'ledger rows are never deleted'); END;
+-- repository_marker: the marker of the repository this ledger belongs to, a token the caller keeps inside the git
+-- directory of the repository (a path is not a repository: a clone, a mirror or a re-created repository can stand at it).
+-- Recorded once, by the first caller that has one, and never changed; the ledger stores and compares it as written and
+-- runs no git. Additive like repository: created on any file at Open; only a recorded move raises the schema number.
+CREATE TABLE IF NOT EXISTS repository_marker(
+  id INTEGER PRIMARY KEY CHECK(id=1), marker TEXT NOT NULL CHECK(marker<>''), recorded_at TEXT NOT NULL);
+CREATE TRIGGER IF NOT EXISTS repository_marker_no_update BEFORE UPDATE ON repository_marker BEGIN SELECT RAISE(ABORT,'the repository marker is recorded once'); END;
+CREATE TRIGGER IF NOT EXISTS repository_marker_no_delete BEFORE DELETE ON repository_marker BEGIN SELECT RAISE(ABORT,'ledger rows are never deleted'); END;
 -- I7: the history is never deleted, by anyone holding the file
 CREATE TRIGGER IF NOT EXISTS cards_no_delete BEFORE DELETE ON cards BEGIN SELECT RAISE(ABORT,'ledger rows are never deleted'); END;
 CREATE TRIGGER IF NOT EXISTS transitions_no_delete BEFORE DELETE ON transitions BEGIN SELECT RAISE(ABORT,'ledger rows are never deleted'); END;
@@ -130,8 +144,8 @@ func (s *Store) init(ctx context.Context) error {
 	if err := s.db.QueryRowContext(ctx, `PRAGMA user_version`).Scan(&have); err != nil {
 		return fmt.Errorf("ledger: %w", err)
 	}
-	if have > SchemaVersion {
-		return fmt.Errorf("ledger: the file has schema %d, this code knows %d", have, SchemaVersion)
+	if have > SchemaVersionMoved {
+		return fmt.Errorf("ledger: the file has schema %d, this code knows %d", have, SchemaVersionMoved)
 	}
 	if _, err := s.db.ExecContext(ctx, schemaDDL); err != nil {
 		return fmt.Errorf("ledger: schema: %w", err)

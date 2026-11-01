@@ -99,6 +99,7 @@ func (a afN3Card) inTrunk(sha string) bool {
 func afN3Reclaimed(t *testing.T, rework bool) afN3Card {
 	t.Helper()
 	db, repo, c1, st, epoch := afUnqueuedCard(t)
+	afBindFixture(t, st, repo)
 	a := afN3Card{t: t, db: db, repo: repo, c1: c1, st: st, rework: rework}
 	e1 := strconv.FormatInt(epoch, 10)
 	for _, kind := range []string{"green", "gate"} {

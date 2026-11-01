@@ -68,7 +68,7 @@ func TestAFVerbs_N51dARelativeLeaseWorktreeAlreadyRecordedIsNotTrustedAtTheFirst
 	db2 := t.TempDir() + "/af/ledger.db"
 	st2 := afN49Ledger(t, db2)
 	claimAs(st2, o)
-	if out, errOut, err := afRunBoth("evidence", "t1", "--db", db2, "--epoch", e, "--kind", "gate", "--subject-sha", x, "--result", "pass"); err != nil {
+	if out, errOut, err := afRunBoth("evidence", "t1", "--db", db2, "--epoch", e, "--kind", "gate", "--subject-sha", x, "--result", "pass", "--bind-repo", o); err != nil {
 		t.Fatalf("evidence with an absolute lease worktree: %v\n%.300s %.300s", err, out, errOut)
 	}
 	if got := afN49Bound(t, st2); got != idO {

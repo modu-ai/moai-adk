@@ -110,27 +110,80 @@ func afBindRepository(ctx context.Context, st *ledger.Store, place afPlace, dir 
 		return fmt.Errorf("af: refused: this ledger is bound to the repository %s and this call would use %s (the git directory of %s); "+
 			"nothing was changed", bound, id, dir)
 	}
+	return afCheckMarker(ctx, st, id, dir)
+}
+
+// afCheckMarker settles the repository identity marker once the identity (the git directory) is the ledger's (N61 N65
+// N67). A ledger with a marker on record accepts only the repository whose git directory holds that marker: a clone, a
+// mirror, a re-created repository or any stranger at the path has none or another. A ledger with none on record (bound by
+// a build before markers, or just bound now) takes the marker of the repository it is bound to, created when the
+// repository has none, and keeps it for good.
+func afCheckMarker(ctx context.Context, st *ledger.Store, id, dir string) error {
+	have, err := st.RepositoryMarker(ctx)
+	if err != nil {
+		return fmt.Errorf("af: read the repository marker of the ledger: %w", err)
+	}
+	if have == "" {
+		mine, err := afEnsureMarker(id)
+		if err != nil {
+			return fmt.Errorf("af: refused: the repository %s (the git directory of %s) has no identity marker and one cannot be written "+
+				"in its git directory (%v); the ledger is bound to it but holds no marker yet, and nothing else was changed", id, dir, err)
+		}
+		got, err := st.RecordRepositoryMarker(ctx, mine)
+		if err != nil {
+			return fmt.Errorf("af: record the repository marker: %w", err)
+		}
+		if got != mine {
+			return afMarkerRefusal(id, dir, got, mine)
+		}
+		return nil
+	}
+	mine, err := afReadMarker(id)
+	if err != nil {
+		return fmt.Errorf("af: refused: cannot read the identity marker of the repository %s (the git directory of %s): %v; nothing was changed", id, dir, err)
+	}
+	if mine != have {
+		return afMarkerRefusal(id, dir, have, mine)
+	}
 	return nil
+}
+
+// afMarkerRefusal is the refusal of a repository whose identity marker is not the one the ledger recorded; it names the
+// repository and the first characters of the two markers, never a marker value.
+func afMarkerRefusal(id, dir, recorded, found string) error {
+	what := "carries the identity marker " + afMarkerPrefix(found) + "..."
+	if found == "" {
+		what = "carries no identity marker"
+	}
+	return fmt.Errorf("af: refused: the repository at %s (the git directory of %s) is not the one this ledger belongs to: it %s, and the ledger "+
+		"recorded %s... for its repository. A repository that was moved or renamed carries its identity marker with it; a clone, a mirror or a "+
+		"repository made afterwards does not; nothing was changed", id, dir, what, afMarkerPrefix(recorded))
 }
 
 // afCheckKnownRepositories refuses to bind id (the repository of dir) while the ledger already knows another one: the
 // repository of any worktree a lease records, the repository the ledger file itself sits in (place.db, the --db the
 // caller gave; the default location is no clue), and the repository that has the commits the rows name. A lease worktree
-// that is gone or is no repository is no clue and is skipped; a relative one is refused (N51 d).
+// that is gone or is no repository is no clue and is skipped; a relative one is refused (N51 d). A lease worktree that
+// agrees with id is not a clue either (N65): it is the caller's own word.
 //
-// A ledger given with --db whose file sits in no repository and that holds no lease worktree and no commit knows nothing
-// (N51, the clone form): the first call would decide, and a call from a second clone of the project would decide wrongly
-// with nothing ever refused afterwards. Such a first bind needs the caller to declare the repository (place.bindRepo).
-// A declaration is also checked when it is given and a clue exists. The default location needs none.
+// A ledger given with --db whose file sits in no repository and that holds no commit knows nothing (N51, the clone form):
+// the first call would decide, and a call from a second clone of the project would decide wrongly with nothing ever
+// refused afterwards. Such a first bind needs the caller to declare the repository (place.bindRepo). A declaration is also
+// checked when it is given and a clue exists. The default location needs none.
 func afCheckKnownRepositories(ctx context.Context, st *ledger.Store, place afPlace, id, dir string) error {
 	clue := false
-	check := func(where, why string) error {
+	// check refuses a worktree or file location in another repository than id. proof says whether agreeing with id is a
+	// clue that the ledger belongs to it: the repository the ledger file sits in is, a lease worktree is not (N65), since
+	// the caller of a claim names it and a claim from a directory that is no repository records whatever it is given.
+	check := func(where, why string, proof bool) error {
 		got, err := afGitCommonPath(ctx, where)
 		if err != nil {
 			return nil // no clue (gone, no repository, git could not answer)
 		}
 		if got == id {
-			clue = true
+			if proof {
+				clue = true
+			}
 			return nil
 		}
 		return fmt.Errorf("af: refused: this ledger is not bound yet, but it already belongs to the repository %s (%s) and this call would bind "+
@@ -158,22 +211,34 @@ func afCheckKnownRepositories(ctx context.Context, st *ledger.Store, place afPla
 					"and names whatever directory the caller stands in; release that lease (from a directory that is no git repository, where the release needs no bind) "+
 					"and claim the card again with the absolute worktree; this call would bind %s (the git directory of %s); nothing was changed", l.CardID, l.Worktree, id, dir)
 			}
-			if err := check(l.Worktree, "the worktree "+l.Worktree+" of the lease on "+l.CardID); err != nil {
+			if err := check(l.Worktree, "the worktree "+l.Worktree+" of the lease on "+l.CardID, false); err != nil {
 				return err
 			}
 		}
 	}
 	if place.db != "" {
 		if loc, err := afLedgerFileLocation(place.db); err == nil {
-			if err := check(filepath.Dir(loc), "the ledger file "+loc+" sits in it"); err != nil {
+			if err := check(filepath.Dir(loc), "the ledger file "+loc+" sits in it", true); err != nil {
 				return err
 			}
 		}
 	}
 	// The rows name commits (evidence subjects, queue candidates): the repository this call would bind must have them
-	// (N51 b). A ledger with no such row, or a git that cannot answer, is no clue.
-	if shas, err := afRowCommits(ctx, st); err == nil && len(shas) > 0 {
-		if missing := afMissingCommit(ctx, dir, shas); missing != "" {
+	// (N51 b). A ledger with no such row is no clue. A git that cannot answer is a refusal and not a clue (N62): a
+	// comparison that gave no answer says nothing, and counting it as agreement bound the ledger to whichever
+	// repository had a damaged object.
+	shas, rerr := afRowCommits(ctx, st)
+	if rerr != nil {
+		return fmt.Errorf("af: refused: this ledger is not bound yet and its rows could not be read (%v), so what they say about the repository is not known; nothing was changed", rerr)
+	}
+	if len(shas) > 0 {
+		missing, err := afMissingCommit(ctx, dir, shas)
+		if err != nil {
+			return fmt.Errorf("af: refused: this ledger is not bound yet and its rows name commits, but git could not answer whether the repository %s "+
+				"(the git directory of %s) has them (%v); a comparison that gave no answer is no clue, and this call would bind that repository; "+
+				"nothing was changed", id, dir, err)
+		}
+		if missing != "" {
 			return fmt.Errorf("af: refused: this ledger is not bound yet, but its rows name the commit %s, which the repository %s "+
 				"(the git directory of %s) does not have; the commits of a ledger live in its repository, and this call would bind another one; "+
 				"nothing was changed", missing, id, dir)
@@ -181,10 +246,10 @@ func afCheckKnownRepositories(ctx context.Context, st *ledger.Store, place afPla
 		clue = true
 	}
 	if !clue && place.db != "" && place.bindRepo == "" {
-		return fmt.Errorf("af: refused: this ledger (--db %s) is not bound yet, sits in no repository and holds no lease worktree and no commit "+
-			"that says which repository it belongs to, so the first call would decide, and a call from a second clone or another repository "+
-			"would decide wrongly with nothing refused afterwards; declare the repository this ledger belongs to with --bind-repo <a path in it> "+
-			"(this call would bind %s, the git directory of %s); nothing was changed", place.db, id, dir)
+		return fmt.Errorf("af: refused: this ledger (--db %s) is not bound yet, sits in no repository and holds no commit that says which "+
+			"repository it belongs to (a lease worktree is the caller's own word and does not say), so the first call would decide, and a call "+
+			"from a second clone or another repository would decide wrongly with nothing refused afterwards; declare the repository this "+
+			"ledger belongs to with --bind-repo <a path in it> (this call would bind %s, the git directory of %s); nothing was changed", place.db, id, dir)
 	}
 	return nil
 }
@@ -193,40 +258,60 @@ func afCheckKnownRepositories(ctx context.Context, st *ledger.Store, place afPla
 // row, each once, complete SHAs only (the ledger takes any non-empty string as a subject, "n/a" of a resume row
 // included, and a name that is not a commit says nothing about a repository).
 func afRowCommits(ctx context.Context, st *ledger.Store) ([]string, error) {
-	var out []string
-	seen := map[string]bool{}
-	add := func(sha string) {
-		if mergeq.IsCompleteSHA(sha) && !seen[sha] {
+	all, _, err := afRowCommitSets(ctx, st)
+	return all, err
+}
+
+// afRowCommitSets are all the commits the rows name, and the part of them a move of the repository cannot do without:
+// the candidates of the queue rows that are not failed (a waiting, verifying, landing or landed row is the work the move
+// is for). The rest, the subjects of evidence rows and the candidates of failed rows, are the past: a commit of an attempt
+// that ended in failure is thrown away and collected in time, and a move refused for it has no way out (N67).
+func afRowCommitSets(ctx context.Context, st *ledger.Store) (all, required []string, err error) {
+	seen, seenReq := map[string]bool{}, map[string]bool{}
+	add := func(sha string, req bool) {
+		if !mergeq.IsCompleteSHA(sha) {
+			return
+		}
+		if !seen[sha] {
 			seen[sha] = true
-			out = append(out, sha)
+			all = append(all, sha)
+		}
+		if req && !seenReq[sha] {
+			seenReq[sha] = true
+			required = append(required, sha)
 		}
 	}
 	cards, err := st.Cards(ctx)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	for _, c := range cards {
 		recs, err := st.EvidenceFor(ctx, c.ID)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		for _, r := range recs {
-			add(r.SubjectSHA)
+			add(r.SubjectSHA, false)
 		}
 	}
 	rows, err := st.Queue(ctx)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	for _, r := range rows {
-		add(r.CandidateSHA)
+		add(r.CandidateSHA, r.State != ledger.QueueFailed)
 	}
-	return out, nil
+	return all, required, nil
 }
 
-// afMissingCommit is the first of shas that is no commit of the repository dir belongs to, "" when all are (and when git
-// cannot answer: that is no clue). One git process answers for all of them.
-func afMissingCommit(ctx context.Context, dir string, shas []string) string {
+// afMissingCommits are the shas that are no commit of the repository dir belongs to, in the order given. One git process
+// answers for all of them. A git that cannot answer is an error and never "nothing is missing" (N62): a failure, a
+// time-out (the context ends the process), an answer of another length than the question, and a line that is neither a
+// commit nor a "missing" are all refusals to answer, since each of them used to read as agreement.
+func afMissingCommits(ctx context.Context, dir string, shas []string) ([]string, error) {
+	if len(shas) == 0 {
+		return nil, nil
+	}
 	var in strings.Builder
 	for _, sha := range shas {
 		in.WriteString(sha + "^{commit}\n")
@@ -236,18 +321,41 @@ func afMissingCommit(ctx context.Context, dir string, shas []string) string {
 	cmd.Stdin = strings.NewReader(in.String())
 	out, err := cmd.Output()
 	if err != nil {
-		return ""
+		if cerr := ctx.Err(); cerr != nil {
+			return nil, fmt.Errorf("the check was cut off: %w", cerr)
+		}
+		var ee *exec.ExitError
+		if errors.As(err, &ee) {
+			return nil, fmt.Errorf("git cat-file exited with status %d", ee.ExitCode())
+		}
+		return nil, err
 	}
-	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
+	lines := strings.Split(strings.TrimRight(string(out), "\n"), "\n")
 	if len(lines) != len(shas) {
-		return ""
+		return nil, fmt.Errorf("git answered %d lines to %d questions", len(lines), len(shas))
 	}
+	var missing []string
 	for i, line := range lines {
-		if strings.HasSuffix(line, " missing") {
-			return shas[i]
+		f := strings.Fields(line)
+		switch {
+		case len(f) == 2 && f[1] == "missing":
+			missing = append(missing, shas[i])
+		case len(f) == 3 && f[1] == "commit":
+		default:
+			return nil, fmt.Errorf("git answered a line that is neither a commit nor a missing one (line %d)", i+1)
 		}
 	}
-	return ""
+	return missing, nil
+}
+
+// afMissingCommit is the first of shas that is no commit of the repository dir belongs to, "" when all are. The error
+// says git could not answer; callers refuse on it (N62).
+func afMissingCommit(ctx context.Context, dir string, shas []string) (string, error) {
+	missing, err := afMissingCommits(ctx, dir, shas)
+	if err != nil || len(missing) == 0 {
+		return "", err
+	}
+	return missing[0], nil
 }
 
 // afLedgerFileLocation is where the ledger file really is: absolute, with symbolic links resolved. A link outside any
@@ -356,11 +464,13 @@ or the card's lease worktree. Afterwards a call that would use another repositor
 message naming both. While the ledger is not bound yet, the repository a call would bind is first compared with what the
 ledger already knows: the repository of every lease worktree it records and, for a ledger given with --db, the repository
 the ledger file itself sits in (the default ledger location is not compared; a lease worktree that is gone or is no
-repository is no clue), and the repository that has the commits its rows name; a disagreement is refused the same way. A
-ledger given with --db that sits in no repository and holds no lease worktree and no commit knows nothing: the first call
-would decide, so it is refused unless it declares the repository with --bind-repo <a path in it> (the default ledger
-location needs no declaration). A project directory that is no git repository binds nothing, for the verbs
-that run no git.`
+repository is no clue), and the repository that has the commits its rows name; a disagreement is refused the same way, and
+so is a git that cannot say whether the repository has those commits. A lease worktree is compared but never proves where
+the ledger belongs: the caller of a claim names it. A ledger given with --db that sits in no repository and holds no commit
+knows nothing: the first call would decide, so it is refused unless it declares the repository with --bind-repo <a path in
+it> (the default ledger location needs no declaration). Once bound, the ledger also records an identity marker kept in the
+git directory of the repository, and a repository without that marker (a clone, a mirror, one made afterwards at the same
+path) is refused. A project directory that is no git repository binds nothing, for the verbs that run no git.`
 
 // afCheckTrunk refuses every --trunk but the dedicated one. A landing row says "merged" without asking which trunk or
 // which repository it landed in, so a verb that took another ref (the candidate's own branch, say) ended the card DONE
@@ -453,8 +563,8 @@ func (f afFlags) place() afPlace { return afPlace{db: f.db, bindRepo: f.bindRepo
 
 // afBindRepoFlagHelp is what --bind-repo says on every verb that opens the ledger.
 const afBindRepoFlagHelp = "the repository this ledger belongs to, declared for its first bind: any path inside it (a linked worktree " +
-	"included). Needed only for a ledger given with --db that sits in no repository and holds no lease worktree and no commit that " +
-	"say where it belongs; a path in another repository than the one the call would bind is refused; ignored once the ledger is bound"
+	"included). Needed only for a ledger given with --db that sits in no repository and holds no commit that " +
+	"says where it belongs (a lease worktree does not); a path in another repository than the one the call would bind is refused; ignored once the ledger is bound"
 
 func (f *afFlags) bind(cmd *cobra.Command, needEpoch bool) {
 	cmd.Flags().StringVar(&f.db, "db", "", "ledger file (default: <project dir>/af/ledger.db)")
