@@ -140,7 +140,17 @@ func ParseProgressRows(progressMD []byte) ([]ProgressRow, bool) {
 	var rows []ProgressRow
 	found := false
 	level := 0 // heading level of the open §E.2 section; 0 outside it
+	inFence := false
 	for line := range strings.SplitSeq(string(progressMD), "\n") {
+		// A fenced code block is quoted text: its "# comment" lines are not
+		// headings and its table-looking lines are not matrix rows.
+		if t := strings.TrimLeft(line, " "); strings.HasPrefix(t, "```") || strings.HasPrefix(t, "~~~") {
+			inFence = !inFence
+			continue
+		}
+		if inFence {
+			continue
+		}
 		if lv := markdownHeadingLevel(line); lv > 0 {
 			switch {
 			case strings.Contains(line, "§E.2"):
