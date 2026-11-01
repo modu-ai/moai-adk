@@ -35,11 +35,14 @@ const afGateKeep = mergeq.DefaultFailureLogCap
 
 // afMergeFlags are the flags both verbs take.
 type afMergeFlags struct {
-	db, repo, trunk, session string
+	db, repo, trunk, session, bindRepo string
 }
+
+func (f afMergeFlags) place() afPlace { return afPlace{db: f.db, bindRepo: f.bindRepo} }
 
 func (f *afMergeFlags) bind(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&f.db, "db", "", "ledger file (default: <project dir>/af/ledger.db)")
+	cmd.Flags().StringVar(&f.bindRepo, "bind-repo", "", afBindRepoFlagHelp)
 	cmd.Flags().StringVar(&f.repo, "repo", "", "the git repository the trunk lives in: the project directory (default), or any path with the same git directory, "+
 		"a linked worktree of it included; any other path is refused")
 	cmd.Flags().StringVar(&f.trunk, "trunk", mergeq.DefaultTrunk, "the trunk ref; only the default "+mergeq.DefaultTrunk+" is accepted and it cannot be changed (check out nothing on it)")
@@ -325,7 +328,7 @@ func afMergeRun(cmd *cobra.Command, f afMergeFlags, fn func(ctx context.Context,
 	if repo == "" {
 		repo = resolveProjectDir()
 	}
-	if err := afBindRepository(ctx, st, f.db, repo, false); err != nil {
+	if err := afBindRepository(ctx, st, f.place(), repo, false); err != nil {
 		return err
 	}
 	scratch, err := os.MkdirTemp("", "moai-af-land-")

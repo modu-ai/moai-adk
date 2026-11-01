@@ -84,12 +84,13 @@ func TestCardFlow_ClaimToDone_ThroughMergeQueue(t *testing.T) {
 	cand := afGit(t, repo, "rev-parse", "HEAD")
 	afGit(t, repo, "checkout", "-q", "work")
 
-	// claim
+	// claim: the first verb on a ledger that was placed with --db outside any repository, and that knows nothing yet, says
+	// which repository it belongs to (N51, --bind-repo)
 	var claimed struct {
 		CardID string `json:"card_id"`
 		Epoch  int64  `json:"epoch"`
 	}
-	if err := json.Unmarshal([]byte(runAF(t, "claim", "--db", db, "--session", "s-t1", "--worktree", repo)), &claimed); err != nil || claimed.CardID != "t1" {
+	if err := json.Unmarshal([]byte(runAF(t, "claim", "--db", db, "--session", "s-t1", "--worktree", repo, "--bind-repo", repo)), &claimed); err != nil || claimed.CardID != "t1" {
 		t.Fatalf("claim output: %+v %v", claimed, err)
 	}
 	ep := []string{"--db", db, "--epoch", strconv.FormatInt(claimed.Epoch, 10)}

@@ -6,7 +6,8 @@ package cli
 // ledger already knows: the repository of every lease worktree it records, and the repository the ledger file itself sits
 // in. A repository that disagrees with any of them is refused, with a message naming both, the exit non-zero and the
 // ledger unchanged. What the ledger cannot know (no lease with a worktree that is a repository, a file outside any
-// repository) it binds as before; TestAFVerbs_N38FirstBindWithNothingKnownBindsAsBefore pins that residual risk.
+// repository) it asks the caller to declare the repository with --bind-repo (N51); TestAFVerbs_N38FirstBindWithNothingKnownNeedsADeclaration
+// pins that.
 //
 // The fixtures here leave the ledger UNBOUND (the card is claimed straight through the store, evidence and queue rows are
 // written through the store), unlike af_repo_n38_test.go whose card is first measured through a verb run in the project.
@@ -305,10 +306,11 @@ func TestAFVerbs_N38FirstBindLedgerFileInsideAnotherRepositoryIsRefused(t *testi
 	}
 }
 
-// The residual risk, pinned so it is explicit: with no lease worktree that is a repository and a ledger file outside any
-// repository the ledger knows nothing, and the first call decides, as before. A lease whose worktree is gone, or is no
-// repository, is not a clue and not an error.
-func TestAFVerbs_N38FirstBindWithNothingKnownBindsAsBefore(t *testing.T) {
+// What the ledger cannot know: no lease worktree that is a repository, no commit in its rows and a ledger file outside any
+// repository. It was a residual risk (the first call decided); since the clone form of N51 that first call has to declare
+// the repository with --bind-repo, and without the declaration it is refused with the ledger unbound. A lease whose
+// worktree is gone, or is no repository, is not a clue and not an error.
+func TestAFVerbs_N38FirstBindWithNothingKnownNeedsADeclaration(t *testing.T) {
 	ctx := context.Background()
 	cases := map[string]func(t *testing.T, a afN3Card){
 		"no lease at all": func(t *testing.T, a afN3Card) {
@@ -330,11 +332,12 @@ func TestAFVerbs_N38FirstBindWithNothingKnownBindsAsBefore(t *testing.T) {
 			setup(t, a)
 			other, _ := afN38Other(t)
 			t.Setenv("CLAUDE_PROJECT_DIR", other)
-			if _, err := a.run("reap"); err != nil {
-				t.Fatalf("reap with nothing known: %v", err)
+			a.refusedAtFirstBind("reap with nothing known and no declaration", "--bind-repo", afN38GitDir(t, other), "reap")
+			if _, err := a.run("reap", "--bind-repo", other); err != nil {
+				t.Fatalf("reap with nothing known and the repository declared: %v", err)
 			}
 			if got, want := a.bound(), afN38GitDir(t, other); got != want {
-				t.Errorf("bound %q, want %q (the first call decides when the ledger knows nothing)", got, want)
+				t.Errorf("bound %q, want %q (the declared repository)", got, want)
 			}
 		})
 	}
