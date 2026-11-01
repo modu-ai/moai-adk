@@ -109,6 +109,9 @@ def leading_block:
 def app_ok:
   (.performed_via_github_app == null)
   or ((.performed_via_github_app | type) == "object" and .performed_via_github_app.slug == "chatgpt-codex-connector");
+# Occurrences of a JSON key in raw marker text. jq keeps the LAST of two equal keys, so a duplicated key can
+# hide an earlier value; the adapter counts keys in the text and accepts only the exact single-use shape.
+def keyn($s; $k): [($s // "") | scan("\"" + $k + "\"\\s*:")] | length;
 # Only trusted Codex issue comments are candidates; untrusted marker text is not parsed.
 ($issues | map(select(ident))) as $native
 | ($native | map(select((.body // "") | contains("<!-- codex-review-state:v1")))) as $states
@@ -148,6 +151,10 @@ def app_ok:
     and $state_occurrences == 1 and $security_occurrences == 1
     and ($state | type) == "object" and ($code | type) == "object" and ($security | type) == "object"
     and ($security_marker | type) == "object"
+    and keyn($state_lines[0]; "code_review") == 1 and keyn($state_lines[0]; "security_review") == 1
+    and keyn($state_lines[0]; "has_any_findings") == 2 and keyn($state_lines[0]; "has_unresolved_findings") == 2
+    and keyn($state_lines[0]; "commit_sha") == 2 and keyn($state_lines[0]; "status") == 2
+    and keyn($security_lines[0]; "headSha") == 1 and keyn($security_lines[0]; "status") == 1
     and is_head($code.commit_sha) and is_head($security.commit_sha) and is_head($security_marker.headSha)
     and $code.status == "completed" and $security.status == "completed" and $security_marker.status == "completed"
     and ($code | has("has_any_findings")) and ($code | has("has_unresolved_findings"))

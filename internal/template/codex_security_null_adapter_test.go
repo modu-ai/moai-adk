@@ -201,7 +201,7 @@ func TestCodexSecurityNullAdapter(t *testing.T) {
 		}, want: 1, reason: "review-not-complete:security_review:has_any_findings"},
 		{name: "R4b_duplicate_key_hides_true_unresolved", edit: func(v []cgEntry) []cgEntry {
 			return setState(v, `"has_unresolved_findings":null`, `"has_unresolved_findings":true,"has_unresolved_findings":null`)
-		}, want: 1, reason: "review-not-complete:security_review:has_unresolved_findings"},
+		}, want: 1, reason: "review-not-complete:security_review:has_any_findings"},
 		{name: "R4c_duplicate_security_leg_object", edit: func(v []cgEntry) []cgEntry {
 			return setState(v, `"security_review":{`, `"security_review":{"commit_sha":"`+snHead+`","has_any_findings":true,"has_unresolved_findings":true,"status":"completed"},"security_review":{`)
 		}, want: 1, reason: "review-not-complete:security_review:has_any_findings"},
