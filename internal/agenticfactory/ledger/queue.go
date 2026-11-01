@@ -208,16 +208,31 @@ func measuredAfterOtherWork(ctx context.Context, q querier, cardID, candidate st
 // about the commit (whenever they were recorded) are not failures. A kind never recorded for it is
 // not a failure. Merge and red evidence are about other commits by design and stay out.
 func noFailingNewestRun(ctx context.Context, q querier, cardID, sha string) (bool, error) {
+	kind, err := failingNewestRun(ctx, q, cardID, sha)
+	return kind == "", err
+}
+
+// failingNewestRun names the first kind (green, gate, review, in that order) whose newest run about the commit is
+// not a pass, "" when there is none: noFailingNewestRun's rule, with the kind that failed.
+func failingNewestRun(ctx context.Context, q querier, cardID, sha string) (string, error) {
 	for _, kind := range []string{KindGreen, KindGate, KindReview} {
 		res, err := latestResult(ctx, q, cardID, kind, sha)
 		if err != nil {
-			return false, err
+			return "", err
 		}
 		if res != "" && res != ResultPass {
-			return false, nil
+			return kind, nil
 		}
 	}
-	return true, nil
+	return "", nil
+}
+
+// FailingNewestRun is the read-only form of the rule Enqueue and finishing a card apply (a commit whose newest green,
+// gate or review run failed is neither taken nor finished on): it names the first kind whose newest run about the
+// commit failed, in the order green, gate, review, and returns "" when none did. A kind never recorded for the commit
+// is not a failure. `moai af land` asks it before a landing (N54).
+func (s *Store) FailingNewestRun(ctx context.Context, cardID, sha string) (string, error) {
+	return failingNewestRun(ctx, s.db, cardID, sha)
 }
 
 // measuredInEpoch says whether the commit was measured in that card epoch: at least one passing

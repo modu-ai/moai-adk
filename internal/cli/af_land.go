@@ -145,6 +145,18 @@ func afCardMayLand(ctx context.Context, st *ledger.Store, item mergeq.Item) erro
 				"the holder moved it out of the merge queue, so it is not landed; if its row is left in landing, "+
 				"`moai af reconcile` settles it", item.CardID, c.Position.Stage, c.Epoch, item.CardEpoch)
 		}
+		// The rule Enqueue and finishing a card apply: a commit whose newest green, gate or review run failed is not
+		// landed. A run that failed while the row waited would otherwise put the commit in the trunk, where nothing
+		// takes it out again (N54). A passing run about another commit does not count (D5).
+		kind, err := st.FailingNewestRun(ctx, item.CardID, item.CandidateSHA)
+		if err != nil {
+			return fmt.Errorf("af land: %w", err)
+		}
+		if kind != "" {
+			return fmt.Errorf("af land: %s is not landed: the newest %s run of commit %s failed; measure the commit again "+
+				"(`moai af evidence %s --kind %s --subject-sha %s --result pass`, and the other kinds the card needs) and land again; "+
+				"nothing was changed", item.CardID, kind, item.CandidateSHA, item.CardID, kind, item.CandidateSHA)
+		}
 		return nil
 	}
 	return fmt.Errorf("af land: card %s does not exist", item.CardID)
