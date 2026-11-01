@@ -1,0 +1,50 @@
+[
+  {
+    "id": 6558423553,
+    "user": {
+      "id": 199175422,
+      "login": "chatgpt-codex-connector[bot]",
+      "type": "Bot"
+    },
+    "performed_via_github_app": {
+      "id": 1144995,
+      "slug": "chatgpt-codex-connector",
+      "name": "ChatGPT Codex Connector"
+    },
+    "body": "<!-- codex-pull-request-review-summary -->\n<!-- codex-review-state:v1 {\"code_review\":{\"commit_sha\":\"a7555928155f1df3bcc3a1439670a97ce8dfebf1\",\"has_any_findings\":false,\"has_unresolved_findings\":false,\"status\":\"completed\"},\"security_review\":{\"commit_sha\":\"a7555928155f1df3bcc3a1439670a97ce8dfebf1\",\"has_any_findings\":null,\"has_unresolved_findings\":null,\"status\":\"completed\"}} -->\n<!-- codex-security-review:v1 {\"blockingSeverityThreshold\":\"P0\",\"headSha\":\"a7555928155f1df3bcc3a1439670a97ce8dfebf1\",\"mergeGateEnabled\":false,\"pullRequestNumber\":1956,\"repository\":\"modu-ai/moai-adk\",\"status\":\"completed\"} -->\n## Codex Review Summary",
+    "created_at": "2026-11-01T13:12:50Z",
+    "updated_at": "2026-11-01T17:32:25Z"
+  },
+  {
+    "id": 6561417994,
+    "user": {
+      "id": 199175422,
+      "login": "chatgpt-codex-connector[bot]",
+      "type": "Bot"
+    },
+    "performed_via_github_app": {
+      "id": 1144995,
+      "slug": "chatgpt-codex-connector",
+      "name": "ChatGPT Codex Connector"
+    },
+    "body": "<!-- codex-review-receipt:v1 -->\n\nCodex Review: Didn't find any major issues. Already looking forward to the next diff.\n\n**Reviewed commit:** `a755592815`\n",
+    "created_at": "2026-11-01T17:31:48Z",
+    "updated_at": "2026-11-01T17:31:48Z"
+  },
+  {
+    "id": 6561424453,
+    "user": {
+      "id": 199175422,
+      "login": "chatgpt-codex-connector[bot]",
+      "type": "Bot"
+    },
+    "performed_via_github_app": {
+      "id": 1144995,
+      "slug": "chatgpt-codex-connector",
+      "name": "ChatGPT Codex Connector"
+    },
+    "body": "<!-- codex-review-receipt:v1 -->\n\n### 🛡️ Codex Security Review\n\nSecurity review completed. No security issues were found in this pull request.\n\n**Reviewed commit:** `a755592815`\n",
+    "created_at": "2026-11-01T17:32:22Z",
+    "updated_at": "2026-11-01T17:32:22Z"
+  }
+]
