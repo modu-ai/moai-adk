@@ -120,8 +120,9 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           # An unreadable diff is an empty list, which the script reads as
-          # "cannot judge" and closes to all six shards.
-          if ! git diff --name-only "$BASE_SHA" HEAD > changed-files.txt; then
+          # "cannot judge" and closes to all six shards. --no-renames lists
+          # both paths of a moved file, so the package it left keeps its shard.
+          if ! git diff --name-only --no-renames "$BASE_SHA" HEAD > changed-files.txt; then
             : > changed-files.txt
           fi
           bash scripts/ci/race-scope.sh --changed changed-files.txt | tee -a "$GITHUB_OUTPUT"

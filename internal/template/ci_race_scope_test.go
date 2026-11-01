@@ -17,6 +17,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -310,4 +311,93 @@ func TestCIRequiredAndWindowsJobsIgnoreTheScope(t *testing.T) {
 	if got := strings.Count(raw, "Race Test ("); got != 6 {
 		t.Errorf("ci.yml defines %d 'Race Test (' jobs, want 6", got)
 	}
+}
+
+// rsGit runs git in dir with a fixed identity and fails the test on error.
+func rsGit(t *testing.T, dir string, args ...string) {
+	t.Helper()
+	cmd := exec.Command("git", append([]string{"-c", "user.name=t", "-c", "user.email=t@example.com", "-c", "commit.gpgsign=false"}, args...)...)
+	cmd.Dir = dir
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git %v: %v\n%s", args, err, out)
+	}
+}
+
+// TestRaceScopeSeesBothPathsOfAMovedFile: a file moved out of a package must
+// still select the shards of the package it LEFT. The workflow's own diff line
+// (extracted from ci.yml, so removing --no-renames from it turns this red) is
+// run in a scratch repository where a rosterguard file moves into the leaf
+// package; with rename detection the diff lists only the new path and the
+// rosterguard shard is lost.
+func TestRaceScopeSeesBothPathsOfAMovedFile(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not available")
+	}
+	root := findProjectRootForMirrorTest(t)
+	raw, err := os.ReadFile(filepath.Join(root, ".github/workflows/ci.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := regexp.MustCompile(`git diff --name-only[^\n;]*`).FindString(string(raw))
+	if m == "" {
+		t.Fatal("ci.yml has no `git diff --name-only` line in the Race scope step")
+	}
+
+	dir := rsFixture(t)
+	// A body large enough for git to pair the old and new path as a rename.
+	body := "package rosterguard\n\nfunc R() int { return 1 }\n" + strings.Repeat("// filler line so the moved file is recognised as a rename\n", 30)
+	rg := filepath.Join(dir, "internal/harness/rosterguard/rg.go")
+	if err := os.WriteFile(rg, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	rsGit(t, dir, "init", "-q", "-b", "main")
+	rsGit(t, dir, "add", "-A")
+	rsGit(t, dir, "commit", "-q", "-m", "base")
+	base := strings.TrimSpace(rsOut(t, dir, "git", "rev-parse", "HEAD"))
+
+	rsGit(t, dir, "mv", "internal/harness/rosterguard/rg.go", "internal/leaf/zz_moved.go")
+	moved := strings.Replace(body, "package rosterguard", "package leaf", 1)
+	moved = strings.Replace(moved, "func R()", "func Moved()", 1)
+	if err := os.WriteFile(filepath.Join(dir, "internal/leaf/zz_moved.go"), []byte(moved), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	rsGit(t, dir, "add", "-A")
+	rsGit(t, dir, "commit", "-q", "-m", "move")
+
+	list := filepath.Join(t.TempDir(), "changed-files.txt")
+	cmd := exec.Command("bash", "-c", m+` > "$OUT"`)
+	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), "BASE_SHA="+base, "OUT="+list)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("workflow diff line %q: %v\n%s", m, err, out)
+	}
+	changed, err := os.ReadFile(list)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"internal/harness/rosterguard/rg.go", "internal/leaf/zz_moved.go"} {
+		if !strings.Contains(string(changed), want) {
+			t.Errorf("the workflow's diff omits %s; got:\n%s", want, changed)
+		}
+	}
+
+	shards, stderr, exit := rsRun(t, dir, strings.Split(strings.TrimSpace(string(changed)), "\n"), nil)
+	if exit != 0 {
+		t.Fatalf("race-scope exit = %d\n%s", exit, stderr)
+	}
+	if !strings.Contains(shards, ",rosterguard,") || !strings.Contains(shards, ",remainder,") {
+		t.Errorf("a file moved out of rosterguard into leaf selected %q, want rosterguard and remainder", shards)
+	}
+}
+
+// rsOut runs a command in dir and returns its stdout.
+func rsOut(t *testing.T, dir, name string, args ...string) string {
+	t.Helper()
+	cmd := exec.Command(name, args...)
+	cmd.Dir = dir
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("%s %v: %v", name, args, err)
+	}
+	return string(out)
 }
