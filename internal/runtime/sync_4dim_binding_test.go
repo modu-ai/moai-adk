@@ -1,6 +1,9 @@
 package runtime
 
-import "testing"
+import (
+	"math"
+	"testing"
+)
 
 // judgeFinding builds a single judge-shaped finding for the verdict fixtures.
 func judgeFinding(dimension, severity string) map[string]any {
@@ -138,5 +141,71 @@ func TestBindingSurvivesNonContestedFindings(t *testing.T) {
 	binding, reason := v.IsBinding()
 	if !binding {
 		t.Fatalf("non-contested minor findings on different dimensions MUST remain binding; fallback reason: %q", reason)
+	}
+}
+
+// TestBindingRequiresCompleteFourDimensions (card t2009, S10): a top-level PASS
+// is binding only when Scores carries exactly the four distinct dimensions the
+// workflow judges, each with a finite score in 0..1. A PASS with empty,
+// partial, duplicated, unknown-dimension, or non-numeric scores falls back to
+// the cold sync-auditor.
+func TestBindingRequiresCompleteFourDimensions(t *testing.T) {
+	t.Parallel()
+
+	four := func(mut func(s []map[string]any) []map[string]any) *FourDimVerdict {
+		v := cleanPassVerdict()
+		v.Scores = mut(v.Scores)
+		return v
+	}
+	cases := map[string]*FourDimVerdict{
+		"pass-with-empty-scores": four(func([]map[string]any) []map[string]any { return nil }),
+		"three-dimensions":       four(func(s []map[string]any) []map[string]any { return s[:3] }),
+		"duplicate-dimension": four(func(s []map[string]any) []map[string]any {
+			return append(s[:3:3], judgeScore("Craft", 0.9))
+		}),
+		"five-entries": four(func(s []map[string]any) []map[string]any {
+			return append(s[:4:4], judgeScore("Craft", 0.9))
+		}),
+		"unknown-dimension": four(func(s []map[string]any) []map[string]any {
+			s[2] = judgeScore("Style", 0.9)
+			return s
+		}),
+		"string-score": four(func(s []map[string]any) []map[string]any {
+			s[1] = map[string]any{"dimension": "Security", "score": "0.9"}
+			return s
+		}),
+		"null-score": four(func(s []map[string]any) []map[string]any {
+			s[1] = map[string]any{"dimension": "Security", "score": nil}
+			return s
+		}),
+		"nan-score": four(func(s []map[string]any) []map[string]any {
+			s[1] = judgeScore("Security", math.NaN())
+			return s
+		}),
+		"inf-score": four(func(s []map[string]any) []map[string]any {
+			s[1] = judgeScore("Security", math.Inf(1))
+			return s
+		}),
+		"score-above-one": four(func(s []map[string]any) []map[string]any {
+			s[1] = judgeScore("Security", 1.5)
+			return s
+		}),
+	}
+	for name, v := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			binding, reason := v.IsBinding()
+			if binding {
+				t.Fatalf("an incomplete or malformed PASS verdict MUST NOT be binding (%s)", name)
+			}
+			if reason == "" {
+				t.Errorf("fallback reason must explain the %s trigger", name)
+			}
+		})
+	}
+
+	// Control: the same builder with nothing damaged stays binding.
+	if binding, reason := four(func(s []map[string]any) []map[string]any { return s }).IsBinding(); !binding {
+		t.Fatalf("an undamaged four-dimension PASS must stay binding; reason: %q", reason)
 	}
 }

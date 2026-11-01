@@ -1,6 +1,41 @@
 package runtime
 
-import "strings"
+import (
+	"fmt"
+	"math"
+	"slices"
+	"strings"
+)
+
+// fourDimensions is the exact dimension set sync-audit-4dim.js judges
+// (DIMENSIONS there); a binding verdict scores each of them once.
+var fourDimensions = []string{"Functionality", "Security", "Craft", "Consistency"}
+
+// scoresIncomplete reports why scores is not exactly one finite 0..1 score per
+// dimension of fourDimensions, or "" when it is complete. An empty, partial,
+// duplicated, unknown-dimension, or non-numeric Scores slice is a malformed
+// verdict, not a clean one (card t2009, S10).
+func scoresIncomplete(scores []map[string]any) string {
+	seen := make(map[string]bool, len(fourDimensions))
+	for _, s := range scores {
+		dim, ok := s["dimension"].(string)
+		if !ok || !slices.Contains(fourDimensions, dim) {
+			return fmt.Sprintf("score entry for unknown dimension %q", strOr(s["dimension"], "?"))
+		}
+		if seen[dim] {
+			return "duplicate score entry for dimension " + dim
+		}
+		score, ok := toFloat(s["score"])
+		if !ok || score < 0 || score > 1 {
+			return "dimension " + dim + " has no finite score in 0..1"
+		}
+		seen[dim] = true
+	}
+	if len(seen) != len(fourDimensions) {
+		return fmt.Sprintf("%d of %d dimensions scored", len(seen), len(fourDimensions))
+	}
+	return ""
+}
 
 // SPEC-AUDIT-SNAPSHOT-001 (A3, REQ-AUDIT-SNAPSHOT-003): the 4-dimension
 // sync-audit workflow verdict becomes BINDING on the happy path (clean sync:
@@ -96,6 +131,11 @@ func (v *FourDimVerdict) IsBinding() (bool, string) {
 	if len(v.Missing) > 0 {
 		return false, "missing judge dimensions: " + strings.Join(v.Missing, ", ")
 	}
+	// Trigger 2d: a PASS is binding only on a complete score set — exactly the
+	// four dimensions, each once, each a finite number in 0..1.
+	if reason := scoresIncomplete(v.Scores); reason != "" {
+		return false, "incomplete scores: " + reason
+	}
 
 	// Triggers 3 + 4: contested-finding predicates over the findings slice.
 	byDim := make(map[string]map[string]bool) // dimension -> set of severities
@@ -125,14 +165,15 @@ func (v *FourDimVerdict) IsBinding() (bool, string) {
 	return true, ""
 }
 
-// toFloat extracts a float64 from an any (handles the JSON-number shapes
-// float64 and int).
+// toFloat extracts a finite float64 from an any (handles the JSON-number
+// shapes float64 and int). NaN and ±Inf are not scores, so they report !ok.
 func toFloat(v any) (float64, bool) {
 	switch x := v.(type) {
 	case float64:
-		return x, true
+		return x, !math.IsNaN(x) && !math.IsInf(x, 0)
 	case float32:
-		return float64(x), true
+		f := float64(x)
+		return f, !math.IsNaN(f) && !math.IsInf(f, 0)
 	case int:
 		return float64(x), true
 	case int64:
