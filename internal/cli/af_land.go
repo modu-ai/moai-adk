@@ -299,6 +299,14 @@ func afMergeRun(cmd *cobra.Command, f afMergeFlags, fn func(ctx context.Context,
 		return fmt.Errorf("af: open the ledger %s: %w", path, err)
 	}
 	defer func() { _ = st.Close() }()
+	// the repository afMerger will use (--repo, else the project directory) must be the one the ledger is bound to
+	repo := f.repo
+	if repo == "" {
+		repo = resolveProjectDir()
+	}
+	if err := afBindRepository(ctx, st, repo, false); err != nil {
+		return err
+	}
 	scratch, err := os.MkdirTemp("", "moai-af-land-")
 	if err != nil {
 		return err

@@ -67,35 +67,70 @@ func afRun(db string, fn func(ctx context.Context, st *ledger.Store) error) erro
 		return fmt.Errorf("af: open the ledger %s: %w", path, err)
 	}
 	defer func() { _ = st.Close() }()
+	// every verb binds the ledger to the repository of the project directory it runs in; the verbs that look commits up
+	// bind the repository they use as well (afCheckCommit), and a project directory that is no repository has none to bind
+	if err := afBindRepository(ctx, st, resolveProjectDir(), true); err != nil {
+		return err
+	}
 	return fn(ctx, st)
+}
+
+// afBindRepository binds the ledger to the repository that dir belongs to (its git directory, which a linked worktree
+// shares) or checks that it is the repository the ledger is already bound to. A call that would use another repository
+// is refused with the ledger unchanged. A directory that is no git repository has no repository to compare:
+// optionalRepo lets a verb that runs no git carry on there (a refusal for anything git could not answer).
+func afBindRepository(ctx context.Context, st *ledger.Store, dir string, optionalRepo bool) error {
+	id, err := afGitCommonPath(ctx, dir)
+	if err != nil {
+		if optionalRepo && errors.Is(err, errAFNotARepository) {
+			return nil
+		}
+		return fmt.Errorf("af: cannot tell which repository %q belongs to (%w); nothing was changed", dir, err)
+	}
+	if err := st.BindRepository(ctx, id); err != nil {
+		if !errors.Is(err, ledger.ErrWrongRepository) {
+			return fmt.Errorf("af: bind the ledger to the repository %s: %w", id, err)
+		}
+		bound, _ := st.Repository(ctx)
+		return fmt.Errorf("af: refused: this ledger is bound to the repository %s and this call would use %s (the git directory of %s); "+
+			"nothing was changed", bound, id, dir)
+	}
+	return nil
+}
+
+// afCommitRepo is the directory a verb looks a card's commit up in: --repo, else the worktree of the card's lease, else
+// the project directory.
+func afCommitRepo(ctx context.Context, st *ledger.Store, card, repoFlag string) string {
+	if repoFlag != "" {
+		return repoFlag
+	}
+	if leases, err := st.Leases(ctx); err == nil {
+		for _, l := range leases {
+			if l.CardID == card && l.Worktree != "" {
+				return l.Worktree
+			}
+		}
+	}
+	return resolveProjectDir()
 }
 
 // afCheckCommit refuses a commit name that is not the complete lowercase hex SHA (40, or 64 for SHA-256) of a commit
 // that exists in the repository: an abbreviation, HEAD or a branch name can name another commit tomorrow, so
 // evidence or a queue entry bound to one is not bound to anything, and a value that starts with '-' reads as an
-// option to git. The repository is --repo, else the worktree of the card's lease, else the project directory.
-func afCheckCommit(ctx context.Context, st *ledger.Store, card, repoFlag, sha, what string) error {
+// option to git. The repository is --repo, else the worktree of the card's lease, else the project directory; it must be
+// the repository the ledger is bound to, and the directory that was used is returned.
+func afCheckCommit(ctx context.Context, st *ledger.Store, card, repoFlag, sha, what string) (string, error) {
 	if !mergeq.IsCompleteSHA(sha) {
-		return fmt.Errorf("af: %s %q is not a complete lowercase hex commit SHA (40 or 64 characters)", what, sha)
+		return "", fmt.Errorf("af: %s %q is not a complete lowercase hex commit SHA (40 or 64 characters)", what, sha)
 	}
-	repo := repoFlag
-	if repo == "" {
-		if leases, err := st.Leases(ctx); err == nil {
-			for _, l := range leases {
-				if l.CardID == card && l.Worktree != "" {
-					repo = l.Worktree
-					break
-				}
-			}
-		}
-	}
-	if repo == "" {
-		repo = resolveProjectDir()
+	repo := afCommitRepo(ctx, st, card, repoFlag)
+	if err := afBindRepository(ctx, st, repo, false); err != nil {
+		return "", err
 	}
 	if got, err := (mergeq.GitCLI{Repo: repo}).RevParse(ctx, sha); err != nil || got != sha {
-		return fmt.Errorf("af: %s %s names no commit in %s", what, sha, repo)
+		return "", fmt.Errorf("af: %s %s names no commit in %s", what, sha, repo)
 	}
-	return nil
+	return repo, nil
 }
 
 // afRepoFlagHelp is what --repo says of the verbs that look a commit up; the land verbs say the same in their own words.
@@ -113,20 +148,41 @@ func afCheckTrunk(trunk string) error {
 	return nil
 }
 
-// afGitCommonDir is the git directory shared by dir and every linked worktree of its repository.
-func afGitCommonDir(ctx context.Context, dir string) (os.FileInfo, error) {
+// errAFNotARepository is what afGitCommonPath returns for a directory git says is in no repository.
+var errAFNotARepository = errors.New("not in a git repository")
+
+// afGitCommonPath is the identity of the repository dir belongs to: the absolute git directory shared by dir and every
+// linked worktree of the repository, symlinks resolved so two spellings of one path give one identity.
+func afGitCommonPath(ctx context.Context, dir string) (string, error) {
 	cmd := exec.CommandContext(ctx, "git", "-C", dir, "rev-parse", "--git-common-dir")
 	cmd.Env = append(gitenv.Env(), "GIT_TERMINAL_PROMPT=0")
 	out, err := cmd.Output()
 	if err != nil {
-		return nil, err
+		var ee *exec.ExitError
+		if errors.As(err, &ee) {
+			return "", errAFNotARepository // git ran and found no repository
+		}
+		return "", err
 	}
 	common := strings.TrimSpace(string(out))
 	if common == "" {
-		return nil, errors.New("git printed no git directory")
+		return "", errors.New("git printed no git directory")
 	}
 	if !filepath.IsAbs(common) {
 		common = filepath.Join(dir, common) // git prints it relative to the directory it ran in
+	}
+	abs, err := filepath.Abs(common)
+	if err != nil {
+		return "", err
+	}
+	return filepath.EvalSymlinks(abs)
+}
+
+// afGitCommonDir is the git directory shared by dir and every linked worktree of its repository.
+func afGitCommonDir(ctx context.Context, dir string) (os.FileInfo, error) {
+	common, err := afGitCommonPath(ctx, dir)
+	if err != nil {
+		return nil, err
 	}
 	return os.Stat(common)
 }
@@ -352,7 +408,7 @@ func newAFEvidenceCmd() *cobra.Command {
 				return err
 			}
 			return afRun(f.db, func(ctx context.Context, st *ledger.Store) error {
-				if err := afCheckCommit(ctx, st, args[0], repo, ev.SubjectSHA, "--subject-sha"); err != nil {
+				if _, err := afCheckCommit(ctx, st, args[0], repo, ev.SubjectSHA, "--subject-sha"); err != nil {
 					return err
 				}
 				if err := st.AddEvidence(ctx, args[0], f.epoch, ev); err != nil {
@@ -389,7 +445,7 @@ func newAFEnqueueCmd() *cobra.Command {
 				return err
 			}
 			return afRun(f.db, func(ctx context.Context, st *ledger.Store) error {
-				if err := afCheckCommit(ctx, st, args[0], repo, candidate, "--candidate"); err != nil {
+				if _, err := afCheckCommit(ctx, st, args[0], repo, candidate, "--candidate"); err != nil {
 					return err
 				}
 				if err := st.Enqueue(ctx, args[0], f.epoch, candidate); err != nil {
