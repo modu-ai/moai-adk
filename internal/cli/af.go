@@ -157,15 +157,17 @@ func afCommitRepo(ctx context.Context, st *ledger.Store, card, repoFlag string) 
 // that exists in the repository: an abbreviation, HEAD or a branch name can name another commit tomorrow, so
 // evidence or a queue entry bound to one is not bound to anything, and a value that starts with '-' reads as an
 // option to git. The repository is --repo, else the worktree of the card's lease, else the project directory; it must be
-// the repository the ledger is bound to, and the directory that was used is returned.
-func afCheckCommit(ctx context.Context, st *ledger.Store, card, repoFlag, sha, what string) (string, error) {
+// the repository the ledger is bound to, and the directory that was used is returned. dbFlag is the verb's --db ("" when
+// it was not given): while the ledger is not bound yet the repository used here may be the first one to bind it, and it is
+// compared with the ledger file's own location exactly as afRun does (N49).
+func afCheckCommit(ctx context.Context, st *ledger.Store, dbFlag, card, repoFlag, sha, what string) (string, error) {
 	if !mergeq.IsCompleteSHA(sha) {
 		return "", fmt.Errorf("af: %s %q is not a complete lowercase hex commit SHA (40 or 64 characters)", what, sha)
 	}
 	repo := afCommitRepo(ctx, st, card, repoFlag)
-	// afRun bound the ledger to the project directory's repository before this (when that is a repository); the file
-	// path is not at hand here, and the lease worktrees are still compared
-	if err := afBindRepository(ctx, st, "", repo, false); err != nil {
+	// afRun bound the ledger to the project directory's repository before this (when that is a repository); when the
+	// project directory is none, this call is the first bind, and it asks the same questions
+	if err := afBindRepository(ctx, st, dbFlag, repo, false); err != nil {
 		return "", err
 	}
 	if got, err := (mergeq.GitCLI{Repo: repo}).RevParse(ctx, sha); err != nil || got != sha {
@@ -524,7 +526,7 @@ complete commit SHA that exists there, and that repository must be the one the l
 				return err
 			}
 			return afRun(f.db, func(ctx context.Context, st *ledger.Store) error {
-				if _, err := afCheckCommit(ctx, st, args[0], repo, ev.SubjectSHA, "--subject-sha"); err != nil {
+				if _, err := afCheckCommit(ctx, st, f.db, args[0], repo, ev.SubjectSHA, "--subject-sha"); err != nil {
 					return err
 				}
 				if err := st.AddEvidence(ctx, args[0], f.epoch, ev); err != nil {
@@ -570,7 +572,7 @@ say) the offer is refused and nothing is changed: the verb does not guess.
 				return err
 			}
 			return afRun(f.db, func(ctx context.Context, st *ledger.Store) error {
-				used, err := afCheckCommit(ctx, st, args[0], repo, candidate, "--candidate")
+				used, err := afCheckCommit(ctx, st, f.db, args[0], repo, candidate, "--candidate")
 				if err != nil {
 					return err
 				}
