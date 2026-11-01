@@ -129,7 +129,7 @@ Every output above was produced in this run from source in this tree (`go test` 
 - N3 at the verb level: the real `af reclaim`/`af land` path (claim, evidence verb, `enqueue` verb, `reconcile`) was not run; only `Store.Claim`, `AddEvidence`, `Enqueue`, `Move` were. A CLI path that records evidence without the card's current epoch would not pass `measuredInEpoch`.
 - The error mapping of the new `Enqueue` refusals (`ErrEvidenceStale`, `ErrInvalid`) through `internal/cli/af.go` was not observed.
 - The mutation pairs "N25 and N27 both off" and "condition 2 of `landingStands` off" were not run. Condition 2 (a pass after the mark) is held by earlier tests (`TestMove_DoneRefusedForALandedCardBackInBuilding` and others), which were not re-mutated in this session.
-- Coverage of the ledger package: 84.8% in the verbose run, 85.0% in a second profile of the same tree; the baseline of the previous report was 85.1%. The uncovered lines in the new code are the `fmt.Errorf("ledger: %w", err)` returns after a failed query; no fault-injection test was added. The 85% target is therefore not met in the run named above, and the margin is inside run-to-run variation.
+- Coverage of the ledger package: at b3c1a9485a it measured 84.8% (85.0% in a second profile; baseline of the previous report 85.1%), below the 85% gate. Resolved by commit 6edfaf1c6a (`internal/agenticfactory/ledger/failure_paths_test.go`): measured 87.7%, 87.8%, 87.8% in three `-race -count=1 -cover` runs (below). The new tests induce real failures (dropped or renamed tables and columns, engine-refused writes through triggers, a non-ledger file, a broken version 1 ledger) and assert the returned `ledger:` error and the unchanged rows. Not covered: read failures that cannot be isolated from the query before them (for example the second `latestResult` of a risk card), and the `AddEvidence`/`Claim` families outside the repair.
 - Refused commands: the worktree guard refused (a) a compound command containing `sed -i` and (b) a heredoc-plus-python rewrite of `queue.go`. Both were redone with the Edit tool or as single plain commands; no check was skipped because of them. The mutation scripts run `sed` without `-i` into the scratchpad and were not refused.
 - Windows build, Linux run, and the whole `agenticfactory` race run were not requested and not run.
 - Baseline test count before this session was not re-measured; the previous report gives 327 PASS lines, this run 388, and the 61 added lines were not itemized per file.
@@ -143,3 +143,14 @@ Every output above was produced in this run from source in this tree (`go test` 
 - The N27 rule cannot tell whether c2 contains c1; a newest-evidence commit that is a descendant of the candidate still refuses it until it is measured again.
 - Condition 3 looks at green, gate and review evidence about other commits after the latest move out of MERGING; a move out and back that crosses nothing (no evidence) leaves it inert, which matches the old behavior for those shapes.
 - N26 (`--trunk`, `--repo`) is lane-2's; E6 and N37 stay outside this lane.
+
+
+## Coverage repair (commit 6edfaf1c6a, tree HEAD at measurement 6edfaf1c6a)
+
+Command: `go test -race -count=1 -cover ./internal/agenticfactory/ledger/`, run in this tree after the test commit.
+
+```
+ok  	github.com/modu-ai/moai-adk/internal/agenticfactory/ledger	38.458s	coverage: 87.7% of statements
+ok  	github.com/modu-ai/moai-adk/internal/agenticfactory/ledger	31.194s	coverage: 87.8% of statements
+ok  	github.com/modu-ai/moai-adk/internal/agenticfactory/ledger	32.097s	coverage: 87.8% of statements
+```
