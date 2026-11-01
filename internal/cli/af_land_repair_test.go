@@ -145,6 +145,56 @@ func TestAFLand_TheLandedNoteCarriesTheGateIDAndNotTheGateText(t *testing.T) {
 	}
 }
 
+// N34: the help of `moai af land` said that a failing gate fails the card "with the tail of its output", which has not
+// been true since the output moved to a log file, and did not say where the logs are, that they can hold secrets, or
+// that the free-input flags are recorded as given.
+func TestAFLand_TheHelpSaysWhereTheLogsAreThatTheyCanHoldSecretsAndWhatIsRecordedAsGiven(t *testing.T) {
+	out, _, err := afRunBoth("land", "--help")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"gate-logs",             // where the logs are
+		"can still hold secret", // the masking is best effort
+		"gate-",                 // the short id of the gate text stands in the reason
+		"never carry the gate text",
+		"recorded as given", // the free-input flags
+		"--command", "--reason", "--path", "--actor",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("`moai af land --help` does not say %q", want)
+		}
+	}
+	for _, stale := range []string{"with the tail of its output", "recorded in the landed note"} {
+		if strings.Contains(out, stale) {
+			t.Errorf("`moai af land --help` still says %q", stale)
+		}
+	}
+}
+
+// N34: the verbs that take free text say that it is recorded as given.
+func TestAFVerbs_TheFreeInputFlagsSayThatTheyAreRecordedAsGiven(t *testing.T) {
+	for verb, flags := range map[string][]string{"evidence": {"--command", "--path"}, "move": {"--reason", "--actor"}} {
+		out, _, err := afRunBoth(verb, "--help")
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, f := range flags {
+			i := strings.Index(out, f+" ")
+			if i < 0 {
+				t.Fatalf("`moai af %s --help` lists no %s", verb, f)
+			}
+			line := out[i:]
+			if j := strings.Index(line, "\n"); j >= 0 {
+				line = line[:j]
+			}
+			if !strings.Contains(line, "recorded as given") {
+				t.Errorf("`moai af %s --help`: the line of %s does not say it is recorded as given: %q", verb, f, line)
+			}
+		}
+	}
+}
+
 // afRepairACLEntries is the ACL entries `ls -lde` prints under the permission line of path (none when it has no ACL).
 func afRepairACLEntries(t *testing.T, path string) []string {
 	t.Helper()
