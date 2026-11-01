@@ -1,0 +1,64 @@
+package closure
+
+import "testing"
+
+// TestParseProgressRowsStaysInsideE2 (card t2009, S13): the AC matrix is the
+// table under the §E.2 heading. Tables elsewhere in progress.md (a later
+// section's reference table, an appendix) and a body sentence that merely
+// mentions §E.2 are not matrix rows.
+func TestParseProgressRowsStaysInsideE2(t *testing.T) {
+	t.Parallel()
+
+	const withLaterTables = `# Progress
+
+## §E.2 Run-phase Evidence
+
+| AC | Status | Evidence |
+|----|--------|----------|
+| AC-1 | PASS | go test ok |
+| AC-2 | FAIL | go test failed |
+
+### E.2 notes
+
+| AC-3 | PASS | nested under E.2 |
+
+## §E.4 Sync-phase Signal
+
+| AC-1 | NOT_RUN | reference table outside the matrix |
+| AC-9 | PASS | appendix-only row |
+
+## Appendix
+
+| AC-2 | PASS | stale copy |
+`
+	rows, found := ParseProgressRows([]byte(withLaterTables))
+	if !found {
+		t.Fatal("the §E.2 heading exists and must be found")
+	}
+	var ids []string
+	for _, r := range rows {
+		ids = append(ids, r.ID+"="+r.Status)
+	}
+	want := []string{"AC-1=PASS", "AC-2=FAIL", "AC-3=PASS"}
+	if len(ids) != len(want) {
+		t.Fatalf("S13_ROWS_OUTSIDE_E2: rows = %v, want exactly the matrix under §E.2 %v", ids, want)
+	}
+	for i := range want {
+		if ids[i] != want[i] {
+			t.Fatalf("S13_ROWS_OUTSIDE_E2: rows = %v, want %v", ids, want)
+		}
+	}
+
+	const mentionOnly = `# Progress
+
+The matrix lives in §E.2, which this run has not written yet.
+
+## §E.4 Sync-phase Signal
+
+| AC-1 | PASS | table in another section |
+`
+	rows, found = ParseProgressRows([]byte(mentionOnly))
+	if found || len(rows) != 0 {
+		t.Fatalf("S13_MENTION_IS_NOT_A_HEADING: found=%v rows=%v, want no §E.2 section and no rows", found, rows)
+	}
+}

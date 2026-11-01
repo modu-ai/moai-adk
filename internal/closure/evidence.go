@@ -130,20 +130,48 @@ type ProgressRow struct {
 }
 
 // ParseProgressRows extracts the §E.2 AC-matrix rows. It returns the rows in
-// file order and whether the §E.2 heading exists at all.
+// file order and whether a §E.2 heading exists at all.
+//
+// Only rows inside the §E.2 section count: the section opens at a heading line
+// naming §E.2 and closes at the next heading of the same or a shallower level
+// (deeper sub-headings stay inside it). A body sentence that merely mentions
+// §E.2 opens nothing, and AC tables in other sections are not matrix rows.
 func ParseProgressRows(progressMD []byte) ([]ProgressRow, bool) {
-	text := string(progressMD)
-	if !strings.Contains(text, "§E.2") {
-		return nil, false
-	}
 	var rows []ProgressRow
-	for _, line := range strings.Split(text, "\n") {
+	found := false
+	level := 0 // heading level of the open §E.2 section; 0 outside it
+	for line := range strings.SplitSeq(string(progressMD), "\n") {
+		if lv := markdownHeadingLevel(line); lv > 0 {
+			switch {
+			case strings.Contains(line, "§E.2"):
+				level, found = lv, true
+			case level > 0 && lv <= level:
+				level = 0
+			}
+			continue
+		}
+		if level == 0 {
+			continue
+		}
 		if m := progressRowRe.FindStringSubmatch(line); m != nil &&
 			strings.HasPrefix(m[1], "AC-") {
 			rows = append(rows, ProgressRow{ID: m[1], Status: m[2], Evidence: m[3]})
 		}
 	}
-	return rows, true
+	return rows, found
+}
+
+// markdownHeadingLevel returns the ATX heading level of line (1-6), or 0 when
+// the line is not a heading.
+func markdownHeadingLevel(line string) int {
+	n := 0
+	for n < len(line) && line[n] == '#' {
+		n++
+	}
+	if n == 0 || n > 6 || n >= len(line) || line[n] != ' ' {
+		return 0
+	}
+	return n
 }
 
 // ProgressFirstVerdict is the §E.3 fenced YAML block's display fields.
