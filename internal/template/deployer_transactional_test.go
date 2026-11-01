@@ -15,7 +15,14 @@ import (
 // broken state if a template fails to parse (issue #733).
 func TestDeployer_TransactionalValidation(t *testing.T) {
 	t.Run("validation_happens_before_file_writes", func(t *testing.T) {
-		// Create a filesystem with one valid template and one invalid template
+		// Create a filesystem with one valid template and one invalid template.
+		// Names are chosen so the invalid file sorts FIRST: with that order
+		// this subtest passes for any deployer that stops at the first error,
+		// so it pins only that case. Deploy on its own does not pre-validate
+		// (an invalid file sorting after a valid one leaves the valid one
+		// written); the callers do: `moai init` and `moai update` both call
+		// ValidateAll before Deploy (see
+		// internal/core/project TestInit_InvalidTemplateWritesNoTemplateFiles).
 		fs := fstest.MapFS{
 			"valid.tmpl": &fstest.MapFile{
 				Data: []byte("Hello {{.ProjectName}}"),

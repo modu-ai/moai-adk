@@ -421,6 +421,15 @@ func (i *projectInitializer) deployTemplates(ctx context.Context, opts InitOptio
 		}
 	}
 
+	// Validate every template before any file is written, as `moai update`
+	// does (update_template_sync.go). Deploy writes in file order, so without
+	// this an invalid template late in the order leaves the earlier valid files
+	// behind. This is a pre-check, not a rollback: an I/O failure during the
+	// write phase can still leave a partial deployment.
+	if err := i.deployer.ValidateAll(ctx, tmplCtx); err != nil {
+		return fmt.Errorf("validate templates: %w", err)
+	}
+
 	// The deployer reports its skill-mirror outcome by return value and never
 	// prints, so surfacing a copy fallback is this caller's job. The result
 	// extension is optional by design (a Deployer that predates it keeps
