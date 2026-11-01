@@ -27,17 +27,17 @@ import (
 const afOpTimeout = 30 * time.Second
 
 // newAFCmd is the `moai af` command: the verbs of the card flow over the local ledger (AC-AFL-017). One verb per
-// ledger method the flow needs, and nothing else: claim, move (stage move), evidence (record), enqueue, release.
+// ledger method the flow needs, and nothing else: add (a card), claim, move (stage move), evidence (record), enqueue,
+// release, reap, land and reconcile (the merge queue's two entry points) and resume (the operator's exit from a park).
 // Each verb opens the ledger, makes its one call, prints one JSON object and exits; the ledger owns every rule
-// (fencing epochs, the position table, the evidence binding), so a verb adds none. Landing is the merge queue's
-// and has no verb here.
+// (fencing epochs, the position table, the evidence binding), so a verb adds none.
 func newAFCmd() *cobra.Command {
 	af := &cobra.Command{
 		Use:          "af",
 		Short:        "Agentic factory card flow over the local ledger",
 		SilenceUsage: true,
 	}
-	af.AddCommand(newAFClaimCmd(), newAFMoveCmd(), newAFEvidenceCmd(), newAFEnqueueCmd(), newAFReleaseCmd(), newAFReapCmd(), newAFLandCmd(), newAFReconcileCmd(), newAFResumeCmd())
+	af.AddCommand(newAFAddCmd(), newAFClaimCmd(), newAFMoveCmd(), newAFEvidenceCmd(), newAFEnqueueCmd(), newAFReleaseCmd(), newAFReapCmd(), newAFLandCmd(), newAFReconcileCmd(), newAFResumeCmd())
 	return af
 }
 

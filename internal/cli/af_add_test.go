@@ -122,10 +122,14 @@ func TestAFAdd_TheMinimalCallAndTheRefusalsOfTheLedger(t *testing.T) {
 	}
 	// a card that depends on one that exists is accepted
 	afAddVerb(t, "add", "m5", "--depends", "m1")
-	// the verb binds the repository like every other verb: from another repository the bound ledger refuses it
+	// the verb binds the repository like every other verb: this ledger is bound to the project's, so the same ledger
+	// file reached from another repository is refused (the default location would be another project's ledger)
+	if got := afN49Bound(t, st); got != afN38GitDir(t, repo) {
+		t.Fatalf("add did not bind the ledger to the project: %q", got)
+	}
 	other, _ := afN38Other(t)
 	t.Setenv("CLAUDE_PROJECT_DIR", other)
-	if _, _, err := afRunBoth("add", "m6"); err == nil || !strings.Contains(err.Error(), "bound to") {
+	if _, _, err := afRunBoth("add", "m6", "--db", db); err == nil || !strings.Contains(err.Error(), "bound to") {
 		t.Errorf("add from another repository: %v, want the ledger's repository refusal", err)
 	}
 }
