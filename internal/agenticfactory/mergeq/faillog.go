@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
 )
@@ -53,6 +54,16 @@ func (l *FailureLog) Write(card, candidate, kind string, out []byte) (string, er
 	text, _ := core.Redact(string(body))
 	text, _ = core.Redact(StripControls(text))
 	text, _ = core.Redact(text)
+	// The masking and the stripping change the length ("key=1" becomes "key=[REDACTED]"), so the cap is applied again
+	// to what will be written; the cut moves forward to the start of a character.
+	if len(text) > limit {
+		cut := len(text) - limit
+		for cut < len(text) && !utf8.RuneStart(text[cut]) {
+			cut++
+		}
+		dropped += cut
+		text = text[cut:]
+	}
 	if dropped > 0 {
 		text = fmt.Sprintf("[%d earlier bytes of output are not kept]\n%s", dropped, text)
 	}
