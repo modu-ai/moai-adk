@@ -2,6 +2,8 @@
 
 실용적인 예시를 통해 프로젝트 관리 시스템의 활용 패턴을 학습합니다.
 
+> Note: the Python code below is illustrative pseudocode of the design intent. The `moai_menu_project` module does not exist in the repository and is not a runnable API. The Go `moai` binary and the `/moai project` workflow do the actual work.
+
 ---
 
 ## Example 1: 완전한 프로젝트 초기화
@@ -503,30 +505,7 @@ if optimization_failed:
 
 ## CLI Quick Reference
 
-```bash
-# 프로젝트 초기화
-python -m moai_menu_project.cli init \
-    --language ko \
-    --domains backend,frontend
-
-# SPEC에서 문서 생성
-python -m moai_menu_project.cli generate-docs \
-    --spec-file .moai/specs/SPEC-001.json
-
-# 템플릿 최적화
-python -m moai_menu_project.cli optimize-templates \
-    --backup \
-    --dry-run  # 미리보기
-
-# 문서 내보내기
-python -m moai_menu_project.cli export-docs \
-    --format html \
-    --language ko \
-    --output ./dist/docs
-
-# 프로젝트 상태 확인
-python -m moai_menu_project.cli status
-```
+The Python CLI that this section used to list does not exist. Use the Go `moai` binary and the `/moai project` workflow; `moai --help` prints the current command surface.
 
 ---
 

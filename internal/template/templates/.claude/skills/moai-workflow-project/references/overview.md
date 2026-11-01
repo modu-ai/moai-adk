@@ -14,31 +14,19 @@ This skill replaces 5 separate configuration management skills with a unified sy
 
 ## Quick Start
 
-```python
-from moai_menu_project import create_config_manager, ConfigurationMigrator
-
-# Initialize configuration manager
-config_manager = create_config_manager("/path/to/config")
-
-# Migrate legacy configurations
-migrator = ConfigurationMigrator(config_manager)
-result = migrator.detect_and_migrate(backup=True)
-
-# Access module-specific configuration
-from moai_menu_project import BatchQuestionsConfigManager
-batch_manager = BatchQuestionsConfigManager(config_manager)
-settings = batch_manager.get_config()
-```
+There is no importable module and no Python surface in this repository. Project configuration is read and written by the Go `moai` binary; see `reference.md` § Design Surface for the capability map and use `moai` subcommands and the `/moai project` workflow for actual operations.
 
 ## Architecture
 
-### Core Components
+### Core Components (design contracts, not code)
 
-1. UnifiedConfigManager: Centralized configuration with JSON Schema validation
-2. ConfigurationMigrator: Legacy configuration detection and migration
-3. Module Managers: Specialized access for each functional area
-4. Validation Framework: Schema and business rule validation
-5. Backup/Recovery: Automatic backup creation and rollback
+The names below describe responsibilities the Go runtime covers. None of them is a class or module you can import, and no atomic-update, backup, or rollback guarantee is made by this document; the guarantees that exist are the ones the Go settings writers implement.
+
+1. Configuration manager: centralized configuration with JSON Schema validation
+2. Migration: legacy configuration detection and migration
+3. Module managers: specialized access for each functional area
+4. Validation framework: schema and business rule validation
+5. Backup/recovery: owned by the Go writers, not specified here
 
 ### Supported Modules
 

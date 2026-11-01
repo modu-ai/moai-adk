@@ -1357,8 +1357,8 @@
   },
   "implementation_notes": {
     "conditional_batches": "Batches in Tab 3 show/hide based on git_strategy.mode selection",
-    "atomic_updates": "All updates delegated to UnifiedConfigManager from moai-workflow-project skill",
-    "backup_rollback": "Manager handles backup/rollback internally, not in command",
+    "atomic_updates": "Updates are applied by the Go moai settings writers; no separate manager module exists and no atomicity guarantee is made by this schema",
+    "backup_rollback": "Backup and rollback behavior is whatever the Go writers implement; this schema does not specify it",
     "validation_checkpoints": "Run validation after Tab 1, Tab 3, and before final update",
     "language_aware": "All user-facing questions use conversation_language, no emojis in AskUserQuestion"
   }
