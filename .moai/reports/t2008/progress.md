@@ -81,5 +81,31 @@ Gaps: the survey's acceptance matrix (whitespace-only edit, decision-index-only 
 - `go test -count=1 -run 'TestRunPlan|TestRunResumeIdentity|TestSkillsContainPlanAuditGateMarkers|Mirror|Embed|Manifest|DateProvenance|BindingLedger' ./internal/template/` -> `ok github.com/modu-ai/moai-adk/internal/template 3.324s`; `bash .claude/hooks/tests/test-tdd-result-contract.sh` -> PASS.
 - Gaps: no resume was executed; the survey's matrix (other repo/card/head, expired reassignment, cancel then retry, crash between write and checkpoint, duplicate complete, stale owner return) is not run.
 
+### Leader rulings received (cross-session message after the first report; recorded as input, not as an approval of any push)
+
+decision record: decided_by=lane-7 (claude, lane orchestrator) evidence_refs=leader message (RUN-05 ruling, deferrals, RUN-07/10/13 rule, RUN-03 gap wording) ladder_path=gate boundary (leader ruling, auto-semantics.md §6)
+
+- RUN-05: no rule sentence is changed in this card. Working basis until the 3.2 approval ledger (R18) design: a lane's verdict is a self-verification recommendation; progress and landing are the leader's reading of the evidence. The decision-kind split proposed above is preserved here as input to that design.
+- RUN-08, RUN-12 and the `spec-workflow.md` Grace Window paragraph: deferred, not repaired.
+- RUN-07, RUN-10, RUN-13: a small RED-first repair only when current code reproduces the defect; otherwise a refutation is recorded.
+- RUN-03 Gaps (leader's wording): the test pins the presence of wording only ("문구 존재만 고정"): `test-tdd-result-contract.sh` plus the added run.md / phase-execution.md greps prove that sentences exist, not that an orchestrator or `manager-develop` classifies a RED correctly; no behavioral fixture (normal RED->GREEN->regression, compile failure, timeout, other-test failure, re-failure after GREEN, zero tests) was built.
+
+### RUN-13 - optional gate read as required (checked against current code and config: not reproduced as a defect here)
+
+- Code read: `internal/factory/candidate_landing_check.go` `candidateCIRequired` returns false for an absent key AND for an unreadable config, and says so in its comment ("the step never invents a gate the project did not ask for"); `CandidateGrantGate` returns nil unless that flag is true.
+- Config measured: `grep -n -A3 candidate_ci:` on `.moai/config/sections/workflow.yaml` and on `internal/template/templates/.moai/config/sections/workflow.yaml` -> `enabled: false` in both; `base_freshness_gate` in the live config -> `enabled: false`, `max_behind_landings: 0` (the file's own comment: "Ships OFF"; any config/branch/git uncertainty admits with one notice line).
+- Verdict: the survey's condition ("if AF policy requires the check as required") is not met by the shipped or live configuration, so a corrupt config cannot downgrade a required gate here; the unreadable-equals-off behavior is documented design. Not repaired; no RED test could be made red on the current tree. Residual: if a project later turns `candidate_ci.enabled` on and relies on it, an unreadable config would silently read as off at the merge step; that needs a policy decision (fail-closed when the flag was once on), not a wording fix.
+- Gap: `base_freshness.go` and the `integration_window_ops.go` grant path were read only at the cited lines (the grant gate delegates to `candidateCIRequired`); the full complete->merge seam was not exercised.
+
+### RUN-07 - ac_converge evidence admission (not repaired; no current-code reproduction attempted)
+
+- The survey item is a design change (separate the loop stop from the completion/merge gate and admit evidence by key). `run.md` already states the predicates are transcript-judged, and `manager-develop.md` already leaves the repository-wide verdict PENDING for CI. No behavior of current code was shown wrong, so nothing is claimed either way; left for the 3.2 approval-ledger design.
+
+### RUN-10 - stale phase labels (reproduced before any edit)
+
+- `run.md:51` router row reads "Phase 11~4: Implementation ... quality validation (Phase 13/2.8) ... git operations (Phase 19) ... (Phase 20)"; `run/task-decomposition.md:252` (Phase 18) ends with "before proceeding to Phase 3", while that file's headings are `## Phase 11:` to `## Phase 20:` (Phase 19 follows Phase 18). `run.md` metadata also still reads `version: "2.6.0"`, `updated: "2026-02-23"` (not touched; a metadata bump is not a behavior fix).
+- RED test (new, `internal/template/run_phase_reference_test.go`): `go test -count=1 -run TestRunPhaseReferences ./internal/template/` -> exit 1, `TestRunPhaseReferences_Deployed` FAIL with three findings (`'proceeding to Phase 3' names no phase heading`; router `Phase 11~4`; router `2.8`); `TestRunPhaseReferences_Mutants` passes.
+- Plan: change only those three strings (+ template mirrors, catalog hash).
+
 Gaps: no whole-file semantic test of the new clauses (literal greps only, plus the one mutation); `make build` was not run (only its hash step); no Go package other than internal/template was run.
 Residual risk: the three docs still describe `go test ./...` exit 0 as an ac_converge predicate (RUN-07, out of the stated order for this pass).
