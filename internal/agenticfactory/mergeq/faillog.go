@@ -32,7 +32,7 @@ const DefaultFailureLogCap = 256 << 10
 type FailureLog struct {
 	Dir      string // created with mode 0700
 	Cap      int    // bytes kept per file; DefaultFailureLogCap when not positive
-	TotalCap int64  // bytes all the *.log files of Dir may hold together; DefaultFailureLogTotalCap when not positive
+	TotalCap int64  // bytes the *.log files of Dir and the temp files of writes in flight may hold together; DefaultFailureLogTotalCap when not positive
 
 	clearACL func(path string) error // clearExtendedACL when nil; a test replaces it to make clearing fail
 }
@@ -189,9 +189,16 @@ func (l *FailureLog) prepareDir() error {
 	return os.Chmod(l.Dir, 0o700) // MkdirAll honours the umask; an existing directory keeps whatever mode it had
 }
 
-// prune removes the oldest log files of the directory until what is left fits the total cap. keep, the file just
-// written, is never removed, whatever its size. A file that cannot be removed or read is skipped: the retention pass
-// is a bound on how long output stays, not a reason to fail a write that has already succeeded.
+// failureLogTmpMaxAge is how old a temp file must be before the retention pass takes it for the leftover of a write
+// that died. A write creates its temp file, fills it and renames it within a moment, so a minute is far past any write
+// in flight: a younger temp file is left alone and counted in the total.
+const failureLogTmpMaxAge = time.Minute
+
+// prune removes the temp files that a dead write left behind, then the oldest log files of the directory until what is
+// left fits the total cap. The temp files that are not old enough to be leftovers belong to a write in flight: they are
+// not touched, and their bytes count toward the cap. keep, the file just written, is never removed, whatever its size.
+// A file that cannot be removed or read is skipped: the retention pass is a bound on how long output stays, not a
+// reason to fail a write that has already succeeded.
 func (l *FailureLog) prune(keep string) {
 	limit := l.TotalCap
 	if limit <= 0 {
@@ -208,15 +215,28 @@ func (l *FailureLog) prune(keep string) {
 	}
 	var files []logFile
 	var sum int64
+	now := time.Now()
 	for _, e := range entries {
-		if !e.Type().IsRegular() || !strings.HasSuffix(e.Name(), failureLogExt) {
+		temp := strings.HasPrefix(e.Name(), failureLogTmpPrefix)
+		if !e.Type().IsRegular() || (!temp && !strings.HasSuffix(e.Name(), failureLogExt)) {
 			continue
 		}
 		fi, ierr := e.Info()
 		if ierr != nil {
 			continue
 		}
-		files = append(files, logFile{filepath.Join(l.Dir, e.Name()), fi.Size(), fi.ModTime()})
+		path := filepath.Join(l.Dir, e.Name())
+		if temp {
+			if now.Sub(fi.ModTime()) > failureLogTmpMaxAge {
+				if rerr := os.Remove(path); rerr != nil && !os.IsNotExist(rerr) {
+					sum += fi.Size() // a leftover that stays still holds its bytes
+				}
+				continue
+			}
+			sum += fi.Size() // a write in flight: counted, never removed
+			continue
+		}
+		files = append(files, logFile{path, fi.Size(), fi.ModTime()})
 		sum += fi.Size()
 	}
 	if sum <= limit {
