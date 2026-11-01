@@ -295,6 +295,31 @@ func TestAFLand_TheHelpSaysWhereTheLogsAreThatTheyCanHoldSecretsAndWhatIsRecorde
 	}
 }
 
+// N26: the help says that the trunk cannot be changed and which repositories --repo accepts (this replaces the
+// warning about a mis-specified --trunk or --repo that the audit asked for before the verbs refused them).
+func TestAFVerbs_TheHelpSaysTheTrunkCannotBeChangedAndWhichRepositoriesAreAccepted(t *testing.T) {
+	for _, c := range []struct {
+		verb  string
+		wants []string
+	}{
+		{"land", []string{mergeq.DefaultTrunk, "cannot be changed", "git directory", "linked worktree"}},
+		{"reconcile", []string{mergeq.DefaultTrunk, "cannot be changed", "git directory", "linked worktree"}},
+		{"evidence", []string{"project", "git directory", "linked worktree"}},
+		{"enqueue", []string{"project", "git directory", "linked worktree"}},
+	} {
+		out, _, err := afRunBoth(c.verb, "--help")
+		if err != nil {
+			t.Fatal(err)
+		}
+		flat := strings.Join(strings.Fields(out), " ") // the wrapping of a flag's description is not the test's concern
+		for _, want := range c.wants {
+			if !strings.Contains(flat, want) {
+				t.Errorf("`moai af %s --help` does not say %q", c.verb, want)
+			}
+		}
+	}
+}
+
 // N34: the verbs that take free text say that it is recorded as given.
 func TestAFVerbs_TheFreeInputFlagsSayThatTheyAreRecordedAsGiven(t *testing.T) {
 	for verb, flags := range map[string][]string{"evidence": {"--command", "--path"}, "move": {"--reason", "--actor"}} {
