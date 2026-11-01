@@ -78,16 +78,7 @@ func appendAnalyzedCardGuarded(rec *factory.BacklogRecord, text string, state fa
 
 	// The caller's independent-scope judgment is recorded against every active
 	// card it was judged independent of — a record, never an inference.
-	for _, s := range sharing {
-		rec.AppendFindingOnce(factory.BacklogFinding{
-			SubjectID: item.ID,
-			RelatedID: s.ID,
-			Relation:  factory.BacklogRelationIndependentScope,
-			Source:    factory.BacklogSourceAgent,
-			Note:      strings.TrimSpace(guard.IndependentScope),
-			At:        item.AddedAt,
-		})
-	}
+	appendIndependentScopeFindings(rec, item.ID, sharing, guard.IndependentScope, item.AddedAt)
 
 	// The finding names the NEW card as the subject: it is the card whose
 	// admission the finding explains. A finding is a record and nothing

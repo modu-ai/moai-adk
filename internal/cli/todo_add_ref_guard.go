@@ -100,6 +100,23 @@ func todoRefRefusal(matches []factory.BacklogItem) error {
 		strings.Join(parts, ", "), matches[0].ID)
 }
 
+// appendIndependentScopeFindings records the caller's independent-scope reason
+// against every active card it was judged independent of. The source is
+// `agent` — a stated judgment, as `todo relate` records — and it lives here,
+// not in the analyser, which is a Jev production path that must never name it.
+func appendIndependentScopeFindings(rec *factory.BacklogRecord, subjectID string, sharing []factory.BacklogItem, reason, at string) {
+	for _, s := range sharing {
+		rec.AppendFindingOnce(factory.BacklogFinding{
+			SubjectID: subjectID,
+			RelatedID: s.ID,
+			Relation:  factory.BacklogRelationIndependentScope,
+			Source:    factory.BacklogSourceAgent,
+			Note:      strings.TrimSpace(reason),
+			At:        at,
+		})
+	}
+}
+
 // todoAttachTextInLock records text as one attached-text finding on the active
 // card cardID. It changes no card field; a second call leaves the first
 // finding in place and reports appended=false.
