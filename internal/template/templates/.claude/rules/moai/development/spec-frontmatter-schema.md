@@ -50,7 +50,7 @@ Two files sit outside this sub-section: `spec.md`, which carries the canonical `
 
 | Field | Type | Constraints | Notes |
 |-------|------|-------------|-------|
-| `id` | string | `^SPEC-[A-Z][A-Z0-9]+-[0-9]{3}$` | Domain-namespaced identifier |
+| `id` | string | `^SPEC(-[A-Z][A-Z0-9]*)+-[0-9]{3}$` | Domain-namespaced identifier (one or more domain segments); `internal/cli/specid` / `moai spec lint` is the authority, so this doc must not restate a different shape |
 | `title` | string | non-empty, quoted | Human-readable description |
 | `version` | string | semver `X.Y.Z`, quoted | Start at `"0.1.0"` |
 | `status` | enum | See Status Enum below | Lifecycle state |

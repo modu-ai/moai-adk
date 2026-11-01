@@ -90,7 +90,7 @@ File generation — **single writer, single-turn parallel Write**: `manager-spec
 [HARD] Before manager-spec calls Write/MultiEdit for spec.md, it MUST validate the frontmatter contains ALL 12 required fields AND rejects snake_case legacy aliases. This checklist prevents dual-schema drift between the plan workflow and the SPEC frontmatter lint rule. SSOT: `.claude/rules/moai/development/spec-frontmatter-schema.md`.
 
 Required 12 fields (canonical order):
-- [ ] `id: SPEC-{DOMAIN}-{NUM}` — matches `^SPEC-[A-Z][A-Z0-9]+-[0-9]{3}$`
+- [ ] `id: SPEC-{DOMAIN}-{NUM}` — matches `^SPEC(-[A-Z][A-Z0-9]*)+-[0-9]{3}$` (one or more domain segments; `internal/cli/specid` / `moai spec lint` is the authority, so this doc must not restate a different shape)
 - [ ] `title: "Human-readable title"` — quoted string
 - [ ] `version: "X.Y.Z"` — quoted semver string (NOT `0.1` unquoted)
 - [ ] `status: draft` — enum: draft | planned | in-progress | implemented | completed | superseded | archived | rejected
