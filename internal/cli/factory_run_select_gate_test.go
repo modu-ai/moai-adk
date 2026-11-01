@@ -50,7 +50,7 @@ func selSeedDead(t *testing.T, root, runID string, workers bool, cards int) {
 	}
 	if workers {
 		if _, err := db.DB.Exec(`INSERT INTO workers(label,pid,run_id,registered_at,heartbeat_at) VALUES(?,?,?,?,?)`,
-			"w-"+runID, 1, runID, "2026-10-18T00:00:00Z", "2026-10-18T00:00:00Z"); err != nil {
+			"w-"+runID, os.Getpid(), runID, "2026-10-18T00:00:00Z", "2026-10-18T00:00:00Z"); err != nil {
 			t.Fatalf("seed worker for %s: %v", runID, err)
 		}
 	}

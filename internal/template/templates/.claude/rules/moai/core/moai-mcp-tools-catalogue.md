@@ -1,5 +1,5 @@
 ---
-description: "Detail companion for moai-mcp-tools.md — the full 37-tool moai MCP catalogue with per-family tables, consumers, and CLI equivalents"
+description: "Detail companion for moai-mcp-tools.md — the full 38-tool moai MCP catalogue with per-family tables, consumers, and CLI equivalents"
 paths: "**/moai-mcp-tools.md,**/internal/cli/mcp_server.go,**/.claude/agents/moai/*.md"
 ---
 
@@ -7,11 +7,11 @@ paths: "**/moai-mcp-tools.md,**/internal/cli/mcp_server.go,**/.claude/agents/moa
 
 > Detail companion of `moai-mcp-tools.md` (the always-loaded stub). The stub owns the
 > MCP-over-CLI preference rule, the family index, and the unwired-by-design note. This file owns
-> the per-tool catalogue: purpose, wired consumer, and CLI equivalent for each of the 37 tools.
+> the per-tool catalogue: purpose, wired consumer, and CLI equivalent for each of the 38 tools.
 > Load it when wiring a tool into an agent's `tools:` list, or when choosing between an MCP tool
 > and its Bash equivalent for a specific capability.
 
-## Tool catalogue (37 tools)
+## Tool catalogue (38 tools)
 
 ### SPEC lifecycle
 
@@ -162,6 +162,7 @@ unavailable GLM yields a fail-open result, never a hard error.
 | Tool | Purpose | Consumer | CLI equivalent |
 |------|---------|----------|----------------|
 | `mcp__moai__jev_ask` | Ask the gated judgment capability typed questions over one supplied state; typed answers with probability | gated-unavailable at the shipped default (`workflow.jev.enabled: false`); display-only — a labelled model signal a person reads, never a completion predicate, merge approval, queue mutation, or gate input, except as the second signal of the contract-mode Kickoff `llm+jev` cross-check, where it can only confirm an LLM approval or route the Kickoff to a human and never decides alone, and except as the ordering key of the `todo --auto` cycle's own candidate ranking (the auto-scoped ranking exception — selection order only, in-process, never through this tool) | — (MCP-only) |
+| `mcp__moai__fetch_web` | Fetch a page and return verbatim excerpts that answer a question (two-stage Jev scoring; same pipeline as `moai fetch web`) | gated-off at the shipped default (`workflow.jev.enabled: false`): zero network requests, a WebFetch-pointing fetch_error result; once enabled, any agent needing the exact passage that answers a question | `moai fetch web <url> "<question>"` |
 
 The tool is registered unconditionally so its gate-off contract is invocable
 and countable, but with the gate off it constructs no request and makes no
@@ -229,7 +230,7 @@ Classification: Lazy companion — catalogue tables and per-family guidance only
 stays in `moai-mcp-tools.md`. Update this file whenever a tool is added, removed, or renamed on the
 `moai mcp-server` (the Go producer lives in `internal/cli/mcp_server.go`).
 
-## Tool families (37 of the 37 tools)
+## Tool families (38 of the 38 tools)
 
 | Family | Tools | Wired consumers |
 |---|---|---|
@@ -243,6 +244,7 @@ stays in `moai-mcp-tools.md`. Update this file whenever a tool is added, removed
 | GLM delegation | `glm_task`, `glm_job_{status,result,cancel}` | super-advisor, manager-develop |
 | Code queries | `graph_file_api`, `graph_find_code`, `graph_trace_calls`, `graph_shortest_path` | any agent (signature-level code navigation from the code-derived edge layer; every answer carries tree+commit provenance) |
 | Judgment (gated) | `jev_ask` | gated-unavailable at the shipped default (`workflow.jev.enabled: false`) — no request constructed, no network call; while the chain's fitness gate stands unrun it is not presented as available. Display-only: a labelled model signal a person reads, never a completion predicate, merge approval, queue mutation, or gate input, except as the second signal of the contract-mode Kickoff `llm+jev` cross-check, where it can only confirm an LLM approval or route the Kickoff to a human and never decides alone, and except as the ordering key of the `todo --auto` cycle's own candidate ranking (the auto-scoped ranking exception — selection order only, in-process, never through this tool) |
+| Web reading (gated) | `fetch_web` | gated-off at the shipped default (`workflow.jev.enabled: false`) — zero network requests while off; once enabled, any agent that needs the verbatim passage answering a question |
 | Factory card verbs | `factory_next`, `factory_stage`, `factory_complete`, `factory_decide`, `factory_renew`, `todo_claim`, `todo_add`, `todo_list` | factory lane sessions (lane verbs, `project_root` required on next/stage/complete/renew); `factory_decide` inverts the gate; `todo_list` is the family's read-only surface |
 
 Per-tool purpose, consumer, and CLI equivalent: `moai-mcp-tools-catalogue.md`. Claude, codex, and
@@ -270,7 +272,7 @@ producer lives in `internal/cli/mcp_server.go`).
 ### moai-mcp Tool Catalogue
 
 
-> Single source of truth for the 37 tools exposed by the self-hosted `moai` MCP
+> Single source of truth for the 38 tools exposed by the self-hosted `moai` MCP
 > server (`.mcp.json` → `{command: "moai", args: ["mcp-server"]}`). Each tool is
 > prefixed `mcp__moai__` at the call site. This rule tells agents and the
 > orchestrator WHEN to prefer an MCP tool over its CLI/slash equivalent.
@@ -282,16 +284,16 @@ producer lives in `internal/cli/mcp_server.go`).
 ### The `project_root` input — name your own tree
 
 
-Thirty-two tools accept an optional `project_root` string: `spec_progress`,
+Thirty-three tools accept an optional `project_root` string: `spec_progress`,
 `spec_audit`, `spec_drift`, `verify_snapshot`, `verify_trend`, `codex_audit`,
 `codex_review`, `glm_audit`, `glm_review`, `claude_audit`,
 `audit_multi`, `graph_file_api`, `graph_find_code`, `graph_shortest_path`,
 `graph_trace_calls`, `factory_decide`, `todo_add`, `todo_list`, `factory_next`,
 `factory_stage`, `factory_complete`, `factory_renew`, `audit_cache`,
 `glm_job_cancel`, `glm_job_result`, `glm_job_status`,
-`glm_task`, `goal_arm`, `goal_status`, `jev_ask`, `session_list`,
+`glm_task`, `goal_arm`, `goal_status`, `jev_ask`, `fetch_web`, `session_list`,
 and `todo_claim`. It names the tree the call should act
-on. Four of the thirty-two
+on. Four of the thirty-three
 REQUIRE it rather than accept it: the lane verbs `factory_next`, `factory_stage`,
 `factory_complete`, and `factory_renew` reject a call without it naming the
 argument; it is never defaulted.
@@ -331,5 +333,5 @@ opinions about the same tree.
 
 
 `moai-mcp-tools-catalogue.md` — the lazy companion. Load it for § Tool catalogue
-(37 tools) · § Tool families (the family-to-consumer map) · § Unwired-by-design (why `goal_arm` reaches no agent).
+(38 tools) · § Tool families (the family-to-consumer map) · § Unwired-by-design (why `goal_arm` reaches no agent).
 

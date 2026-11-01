@@ -10,12 +10,367 @@ RED-now probe 일괄 관측 기록(모두 `a158b4b5f` 트리, 2026-10-06 plan-ph
 |---|---|---|---|
 | P1 receipt 부재 | `grep -rn 'Receipt\|receipt' internal/cli/todo_autodone.go internal/cli/todo.go` | `internal/cli/todo.go:818:	// REQ-TSS-001 family) — the response's issued id is a receipt for the` + `internal/cli/todo.go:873:	// the issued id is a receipt for the store that answered. Scoped to the` | 0 |
 | P2 facts 필드 | `grep -n 'type AutoDoneFacts' -A 12 internal/factory/*.go` | `internal/factory/autodone_scan.go:108:type AutoDoneFacts struct {` 이하 RecordedSHA·SHAReachable·SubjectHit·SubjectKnown… — receipt 필드 없음 | 0 |
-| P3 active-only | `grep -n 'classifyRuns(ctx, opts, ' internal/homestate/factory_run_retire.go` | :162 `""`(전체), :333·:350 `"active"` | 0 |
+| P3 active-only | `grep -n 'classifyRuns(ctx, opts, ' internal/homestate/factory_run_retire.go` | :162 `""`(전체), :333·:350 `"active"` (HEAD `c4784db4c2` 위치: :169·:340·:369 — research §2.3) | 0 |
 | P4 reassign 부재 | `grep -in 'reassign' internal/homestate/*.go` | (출력 없음) | 1 |
 | P5 관계 disposition 부재 | `grep -n 'disposition' internal/factory/backlog_gtd_schema.go internal/factory/gtd_relation.go` | backlog_gtd_schema.go:36만(gtd_items) — gtd_relations·gtd_relation.go 0건 | 0 |
 | P6 watchdog 부재 | `grep -rn 'watchdog\|waiting_since\|review_deadline\|WaitingSince' internal/homestate --include='*.go' \| grep -v _test` | (출력 없음 — 두 번째 grep이 선택한 행이 없어 exit 1) | 1 |
 | P7 reserved edge | `grep -n 'CardPushed\|CardCIGreen\|reserved' internal/homestate/card_transition.go` | :173 술어, :267 거부 | 0 |
 | P8 발급 출력 | `sed -n '851p' internal/cli/todo.go` | `fmt.Fprintf(cmd.OutOrStdout(), "%s %d\n", item.ID, pos)` | 0 |
+
+### §0.1 — M2-B 증거 장부 (카드 t1963, 2026-10-26)
+
+M2-B 기준(AC-FCR-017..025)의 RED-now 셀은 아래 장부 항목을 id로 인용한다. **트리 SHA는 항목마다 `c4784db4c2`**(브랜치 `WT-run-dead-owner`)이며 위 P1-P8의 `a158b4b5f` 핀은 M2-B 기준에 적용되지 않는다. 모든 명령은 워크트리 루트에서 단일 호출로 실행했다(파이프·연쇄 없음). L1의 오버레이 시험 원본은 `probes/m2b_red_probe_test.go.txt`, 매핑은 `probes/m2b-red-overlay.json`(트리 상대 경로)이라 누구든 같은 명령으로 재실행할 수 있다 — 이 파일들은 run-phase 시험이 아니며 커밋돼도 `go` 도구가 읽지 않는다(`.txt`·`.moai/` 아래).
+
+```text
+[L1] RED — 죽은 소유자 run 통합·worker 생존·임대 중복
+tree: c4784db4c2
+command: go test ./internal/homestate/ -overlay .moai/specs/SPEC-FACTORY-COMPLETION-RECOVERY-001/probes/m2b-red-overlay.json -run '^(TestT1963RedTwoDeadRunsOneLeaderStart|TestT1963RedGhostWorkerKeepsRunAlive|TestT1963RedLeaseLeavesDeadRowNonTerminal)$' -count=1 -v
+exit: 1
+stdout:
+=== RUN   TestT1963RedTwoDeadRunsOneLeaderStart
+    zz_m2b_red_probe_test.go:26: RED adopt: adopt="" candidates=2, want one dead-owner run adopted
+    zz_m2b_red_probe_test.go:33: RED ambiguity: remaining active runs=2 preserved=2, want 1
+--- FAIL: TestT1963RedTwoDeadRunsOneLeaderStart (0.78s)
+=== RUN   TestT1963RedGhostWorkerKeepsRunAlive
+    zz_m2b_red_probe_test.go:48: RED ghost worker: status="active" preserved=1, want retired (worker pid is dead)
+--- FAIL: TestT1963RedGhostWorkerKeepsRunAlive (0.63s)
+=== RUN   TestT1963RedLeaseLeavesDeadRowNonTerminal
+    zz_m2b_red_probe_test.go:65: RED duplicate: dead-run row state="run" after lease in run-new, want terminal or re-keyed
+--- FAIL: TestT1963RedLeaseLeavesDeadRowNonTerminal (0.67s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/homestate	2.466s
+FAIL
+note: 세 시험 이름이 모두 `=== RUN`으로 나타나므로 스윕이 비지 않았다(3/3 선택).
+```
+
+```text
+[L2] RED — 리더 진입 재채택이 resume 인자를 요구
+tree: c4784db4c2
+command: grep -n 'resumeSeen && explicitRun' internal/cli/factory_run_adopt.go
+exit: 0
+stdout:
+165:	return adoptResumedLeaderRun(root, resumeSeen && explicitRun == "" && leaderRunIDWasMinted(leaderLabel, priorRunID), warn)
+```
+
+```text
+[L3] RED — runs 명령의 플래그는 retire 하나뿐(재결속 표면 없음)
+tree: c4784db4c2
+command: go test ./internal/cli/ -run '^(TestFactoryRunsRetire.*|TestFactoryRunsHasNoForceFlag)$' -count=1 -v
+exit: 0
+stdout (원문 — 하위 시험 줄 포함):
+=== RUN   TestFactoryRunsRetireRefusesInProgressCards
+=== RUN   TestFactoryRunsRetireRefusesInProgressCards/operator
+=== RUN   TestFactoryRunsRetireRefusesInProgressCards/lane
+--- PASS: TestFactoryRunsRetireRefusesInProgressCards (2.25s)
+    --- PASS: TestFactoryRunsRetireRefusesInProgressCards/operator (0.74s)
+    --- PASS: TestFactoryRunsRetireRefusesInProgressCards/lane (0.56s)
+=== RUN   TestFactoryRunsRetireReportsStrandedCardsOfRetiredRun
+=== RUN   TestFactoryRunsRetireReportsStrandedCardsOfRetiredRun/A_retired_run_holding_cards
+=== RUN   TestFactoryRunsRetireReportsStrandedCardsOfRetiredRun/B_retired_run,_terminal_cards_only
+=== RUN   TestFactoryRunsRetireReportsStrandedCardsOfRetiredRun/C_active_card-free_run
+--- PASS: TestFactoryRunsRetireReportsStrandedCardsOfRetiredRun (3.51s)
+    --- PASS: TestFactoryRunsRetireReportsStrandedCardsOfRetiredRun/A_retired_run_holding_cards (0.86s)
+    --- PASS: TestFactoryRunsRetireReportsStrandedCardsOfRetiredRun/B_retired_run,_terminal_cards_only (0.24s)
+    --- PASS: TestFactoryRunsRetireReportsStrandedCardsOfRetiredRun/C_active_card-free_run (0.70s)
+=== RUN   TestFactoryRunsHasNoForceFlag
+--- PASS: TestFactoryRunsHasNoForceFlag (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	7.026s
+reading: TestFactoryRunsHasNoForceFlag는 플래그 집합이 정확히 [retire]임을 단언한다(factory_runs_retire_guard_test.go:234-242) — PASS가 곧 --rebind-to 부재의 관측이다. 같은 실행이 RETIRE-GUARD cli 시험 3건의 보존 기준선(AC-FCR-025)이기도 하다.
+```
+
+```text
+[L4] RED — 합류 프롬프트는 r 접두만 파싱
+tree: c4784db4c2
+command: grep -n 'strings.HasPrefix(entry, "r")' internal/cli/factory_run_select.go
+exit: 0
+stdout:
+207:	cleanup := strings.HasPrefix(entry, "r")
+```
+
+```text
+[L5] 보존 기준선 — homestate RETIRE-GUARD 5건 + t1707 재채택·조정 시험
+tree: c4784db4c2
+command: go test ./internal/homestate/ -run '^(TestRetireRunIfDead.*|TestFindResumableRun.*|TestAdoptRun.*|TestReconcile.*|TestLiveRecordsTerminalSetMatchesSharedDefinition)$' -count=1 -v
+exit: 0
+stdout (발췌 — 최상위 `--- PASS` 줄과 마지막 줄만 옮김; `=== RUN` 줄과 하위 시험 줄은 생략. 이 항목은 보존 기준선이라 release-blocking RED 셀이 아니다):
+--- PASS: TestFindResumableRunAdoptsSingleDeadOwnerWithLiveRecords (0.40s)
+--- PASS: TestFindResumableRunSkipsLiveOwner (0.26s)
+--- PASS: TestFindResumableRunSkipsRunWithoutLiveRecords (0.25s)
+--- PASS: TestFindResumableRunReportsMultipleCandidates (0.24s)
+--- PASS: TestFindResumableRunWarnsSingleIndeterminateOwner (0.22s)
+--- PASS: TestFindResumableRunWarnsUnstampedPeerClassifiedRun (0.25s)
+--- PASS: TestAdoptRunRestampsOwnerAndAppendsResumedEvent (0.31s)
+--- PASS: TestAdoptRunRefusesChangedStamp (0.25s)
+--- PASS: TestAdoptRunRefusesNonActiveRun (0.23s)
+--- PASS: TestLiveRecordsTerminalSetMatchesSharedDefinition (0.00s)
+--- PASS: TestReconcilePreservesDeadOwnerRunWithLiveRecords (0.23s)
+--- PASS: TestReconcilePreservesDeadOwnerWithOnlyWorkers (0.27s)
+--- PASS: TestReconcileRetiresDeadOwnerWithTerminalRecordsOnly (0.28s)
+--- PASS: TestReconcileRetiresIdentitylessRunsThatPredateBoot (0.01s)
+--- PASS: TestRetireRunIfDeadAcceptsBootProof (0.01s)
+--- PASS: TestRetireRunIfDeadRefusesInProgressCards (0.41s)
+--- PASS: TestRetireRunIfDeadRetiresWhenOnlyTerminalCardsOrWorkers (0.59s)
+--- PASS: TestRetireRunIfDeadCardReadHoldsWriteLock (0.51s)
+--- PASS: TestRetireRunIfDeadFlipIsCASOnClassifiedStamp (1.24s)
+--- PASS: TestRetireRunIfDeadAlreadyRetiredIsNoOp (1.25s)
+--- PASS: TestReconcileRetiresDeadAndLeavesLive (0.30s)
+--- PASS: TestReconcileLeavesIndeterminateActive (0.32s)
+--- PASS: TestReconcileUnstampedRunUsesLeadPeerFallback (0.33s)
+--- PASS: TestReconcileNeverRetiresLiveOrIndeterminate (0.47s)
+--- PASS: TestRetireRunIfDeadRefusesLiveAndIndeterminate (0.62s)
+ok  	github.com/modu-ai/moai-adk/internal/homestate	9.555s
+```
+
+```text
+[L6] 보존 기준선 — cli t1707 재채택 시험
+tree: c4784db4c2
+command: go test ./internal/cli/ -run '^(TestAdoptResumedLeaderRun.*|TestStrictResumeCarrierSeen|TestLeaderRunIDWasMinted)$' -count=1 -v
+exit: 0
+stdout:
+=== RUN   TestAdoptResumedLeaderRunAdoptsSingleCandidate
+--- PASS: TestAdoptResumedLeaderRunAdoptsSingleCandidate (0.94s)
+=== RUN   TestAdoptResumedLeaderRunSkipsWhenNotResumeShaped
+--- PASS: TestAdoptResumedLeaderRunSkipsWhenNotResumeShaped (0.23s)
+=== RUN   TestAdoptResumedLeaderRunWarnsOnMultipleCandidates
+--- PASS: TestAdoptResumedLeaderRunWarnsOnMultipleCandidates (0.51s)
+=== RUN   TestAdoptResumedLeaderRunMintsWhenNoCandidates
+--- PASS: TestAdoptResumedLeaderRunMintsWhenNoCandidates (0.23s)
+=== RUN   TestAdoptResumedLeaderRunWarnsCodexLedCandidate
+--- PASS: TestAdoptResumedLeaderRunWarnsCodexLedCandidate (0.74s)
+=== RUN   TestStrictResumeCarrierSeen
+--- PASS: TestStrictResumeCarrierSeen (0.00s)
+=== RUN   TestLeaderRunIDWasMinted
+--- PASS: TestLeaderRunIDWasMinted (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	3.689s
+```
+
+```text
+[L7] RED — 산 리더 run 옆의 죽은 run이 채택 대상으로 나온다 (AC-FCR-018 사례 iii)
+tree: 41f8db15deae9483161575d811904acc580cd001 (측정 직전 `git rev-parse HEAD` 관측; 소스는 c4784db4c2와 동일 — 감사 판정서 Evidence의 `git diff --name-only c4784db4c2 41f8db15de` = SPEC 디렉터리 파일만). 탐침 원본 `probes/m2b_red_l7_probe_test.go.txt`와 매핑 `probes/m2b-red-l7-overlay.json`은 측정 시점에 작업 트리에만 있었고 이 개정과 함께 커밋된다.
+fixture: 죽은 스탬프 run `run-dead`(pid 20) + `OwnerLive` 활성 run `run-live`(pid 21) + `run-dead`의 비종결 카드 `c1(run)` 1장, pid별 분류기(21 → OwnerLive, 그 밖 → OwnerDead)
+command: go test ./internal/homestate/ -overlay .moai/specs/SPEC-FACTORY-COMPLETION-RECOVERY-001/probes/m2b-red-l7-overlay.json -run '^TestT1963RedAdoptsDeadRunBesideLiveLeader$' -count=1 -v
+exit: 1
+stdout:
+=== RUN   TestT1963RedAdoptsDeadRunBesideLiveLeader
+    zz_m2b_red_l7_probe_test.go:28: RED live-leader guard: adopt="run-dead" candidates=1 while run-live is OwnerLive, want no adoption
+--- FAIL: TestT1963RedAdoptsDeadRunBesideLiveLeader (1.06s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/homestate	1.508s
+FAIL
+reading: 오늘의 후보 탐색(`FindResumableRun`)은 산 리더가 있어도 죽은 run을 채택 대상으로 내놓고, resume 형태 진입은 그것을 채택한다 — REQ-FCR-017의 "산 리더가 있으면 채택하지 않는다"가 현재 거짓이다. `=== RUN` 1줄로 스윕은 1/1.
+```
+
+```text
+[L8] RED — dispatch retry aimed at a consolidated source (AC-FCR-017 (10), REQ-FCR-024)
+tree: dccb87e60773590f7820045ef94227024adb57e4  (git rev-parse HEAD; the test files below were new and uncommitted, production code unchanged)
+fixture: gtdConsolidatedFixture — run-src (dead stamp) and run-tgt (live); card c1 picked in run-src with the queue's DispatchCurrent naming run-src (queue half of the in-flight dispatch); binding -> run-src; then the real RebindRun consolidates run-src into run-tgt: c1 re-keyed to run-tgt, run-src retired with run.retired{rebound_to:run-tgt}, binding -> run-tgt; the queue still names run-src and the item is picked
+command: go test ./internal/factory -run '^TestRepairGTDDispatchRefusesConsolidatedSource$' -count=1 -v
+exit: 1
+stdout:
+=== RUN   TestRepairGTDDispatchRefusesConsolidatedSource
+    gtd_operation_consolidated_test.go:120: the repair recreated work in a run a consolidation retired: card row in run-src=true, binding="run-src"
+--- FAIL: TestRepairGTDDispatchRefusesConsolidatedSource (1.07s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/factory	1.484s
+FAIL
+reading: pre-fix, repairGTDDispatchRecord(c1, run-src) returned nil, recreated c1's row in the retired run-src and flipped card_dispatch[c1] back to run-src — the L8 prediction, observed.
+source: `.moai/reports/t1963/run-evidence.md` § Ledger entry L8 (verbatim copy, v0.3.7)
+```
+
+```text
+[L9] RED — consolidation between the retired-run check and the first repair write (AC-FCR-017 (10b), REQ-FCR-024 atomicity)
+tree: 8b10f6706627bb806487b58c79d859645fd7d2ad  (git rev-parse HEAD; production code = the separate-read check + four separate transactions; plus the uncommitted seam var `gtdRepairAfterCheck` called after the check, and the new test)
+fixture: run-src (dead stamp) and run-tgt (live); the queue holds the queue half of an in-flight dispatch to run-src (no factory row yet). The seam, after the check and before the first write, starts a REAL RebindRun(run-src -> run-tgt) on its own database handle and waits up to 3s for it.
+command: go test ./internal/factory -run '^TestRepairGTDDispatchNeverRecreatesWorkInASourceConsolidatedMidRepair$' -count=1 -v
+exit: 1
+stdout:
+=== RUN   TestRepairGTDDispatchNeverRecreatesWorkInASourceConsolidatedMidRepair
+    gtd_operation_atomic_test.go:127: work was recreated in the retired source: non-terminal rows in run-src=1, binding="run-src" (repair err=<nil>)
+--- FAIL: TestRepairGTDDispatchNeverRecreatesWorkInASourceConsolidatedMidRepair (0.95s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/factory	1.345s
+FAIL
+reading: with nothing holding the write lock between the check and the writes, the consolidation committed in the window and RecordPicked/Transition/RecordDispatchEngagement then recreated the card in the run it had retired.
+source: `.moai/reports/t1963/run-evidence.md` § Ledger entry L9 (verbatim copy, v0.3.7)
+```
+
+```text
+[L10] RED — dispatch first write aimed at a consolidated source (REQ-FCR-024 scope)
+tree: 6056e489dfa1f3c76bfe257a03321a0a20443975  (git rev-parse HEAD; production code unchanged; new tests uncommitted)
+fixture: gtdConsolidatedFixtureWith(t, false) — c1 recorded in run-src, bound to run-src, then the real RebindRun consolidates run-src into run-tgt (c1 re-keyed, binding -> run-tgt, run-src retired with rebound_to). The queue holds NO current-dispatch record: a dispatch prepared before the consolidation whose assignment had not yet been recorded.
+command: go test ./internal/factory -run '^TestDispatchFirstWriteRefusesAConsolidatedSource$' -count=1 -v
+exit: 1
+stdout:
+=== RUN   TestDispatchFirstWriteRefusesAConsolidatedSource
+    gtd_operation_consolidated_test.go:210: the first-write path bound the card to a run a consolidation retired: binding="run-src", row in run-src=false
+--- FAIL: TestDispatchFirstWriteRefusesAConsolidatedSource (1.86s)
+FAIL	github.com/modu-ai/moai-adk/internal/factory	2.257s
+reading: the real Apply path (RecordFactoryCardAssignment -> its hook RecordDispatchEngagementIfEngaged -> RecordDispatchEngagement) re-pointed the card's binding at the retired run, which holds no row for it: recordedCardRow now fails closed (ErrApprovalRunUnresolvable) and the completion gate cannot resolve the card.
+cli mirror (same tree, verbatim):
+$ go test ./internal/cli -run '^TestDispatchMirrorRefusesAConsolidatedSource$' -count=1 -v      exit 1
+    factory_mirror_consolidated_test.go:61: the mirror recreated work in a run a consolidation retired (rows in run-src: 1)
+--- FAIL: TestDispatchMirrorRefusesAConsolidatedSource (1.85s)
+FAIL	github.com/modu-ai/moai-adk/internal/cli	3.339s
+storage-layer unit test (same tree, verbatim): and the storage-layer unit test, six write entry points (`RecordPicked` of a new card and of a moved card, `RecordPickedReconciled`, `RecordDispatchBinding`, `RecordDispatchEngagement` with and without an owner): all six `err = <nil>, want ErrRunRetiredByConsolidation` (`go test ./internal/homestate -run '^TestStorageWritesRefuseAConsolidatedSource$' -count=1 -v`, exit 1; the ordinary-retirement/read-only guard test `TestStorageGuardsLeaveOrdinaryRetirementAndReadsAlone` passed on arrival).
+source: `.moai/reports/t1963/run-evidence.md` § L10 (verbatim copy, v0.3.7)
+```
+
+```text
+[L11] RED-now to be observed by the run phase on the pre-fix tree — 옮긴 카드의 이력이 대상 run에서 사라짐 (AC-FCR-017 (11), REQ-FCR-025)
+tree: (run-phase가 수리 전 트리의 `git rev-parse HEAD`를 기록한다 — 기대 기준: `a23f95cc88`)
+fixture: 원천 run에서 단계 전이 이벤트를 가진 카드를 통합으로 대상 run에 재키(원천 `run.retired`에 `rebound_to`=대상, `moved_cards`에 그 카드); 대조로 A→B→C 연쇄와 포인터 포기 카드
+command: (run-phase가 단일 호출 형태로 기록)
+exit: (관측 대기 — 기대 1)
+stdout: (관측 대기 — 기대: 대상 run 기준 단계 진입 기준점이 `unknown`)
+status: 이 개정(v0.3.8)은 코드를 실행하지 않았다. 근거는 리더의 유효한 codex_audit P2(receipt `rcpt-c09c57fa597eefc1a189ff69`, HEAD `a23f95cc88`)와 manager-spec의 코드 판독 — `LoadCardEvents`(`internal/homestate/card_age.go:77`)가 `run_id=?`(`:82`)로만 거르고, 경보 뷰(`internal/cli/factory_age_alarm.go:81`·`:90`)가 `[RunID, CardID]`로 묶는다.
+observed (v0.3.9 — run-phase 관측을 옮겨 적음; 출처 `.moai/reports/t1963/run-evidence.md` § "L11 RED" 와 § "L11 RED, part 2"). L11은 RED 부분이 둘이다:
+part 1 — run id 있는 경로. tree: HEAD fcc97ba7b9(수정하지 않은 트리)
+  command: `go test ./internal/homestate/ -count=1 -v`에 접두 선택자 `^TestLoadCardEvents`(끝 앵커 없음 — 그 접두의 시험 전부를 고른다)를 준 실행. 원문 명령은 run-evidence.md 같은 절에 있다 — 여기서는 끝 앵커 없는 선택자를 판정 명령으로 오인하지 않도록 풀어 적었다(결과 줄만 기록됨)
+  stdout (excerpt as recorded):
+    card_events_moved_test.go:146: c1 event seqs on run-new = [], want the source seqs [3 5 9 10] (REQ-FCR-025)
+--- FAIL: TestLoadCardEventsReadsMovedCardHistory (0.40s)
+    card_events_moved_test.go:259: c1 on run-c = [], want the history of both hops [4 5 8]
+--- FAIL: TestLoadCardEventsFollowsConsolidationChain (0.28s)
+FAIL	github.com/modu-ai/moai-adk/internal/homestate	2.338s
+  command: go test ./internal/cli/ -run '^TestFactoryAgeAlarmMovedCardKeepsSourceStageAnchor$' -count=1 -v
+  stdout:
+    factory_age_alarm_moved_test.go:92: alarm rows = [], want exactly one stall row for the moved card (L11: its source-run history was lost)
+--- FAIL: TestFactoryAgeAlarmMovedCardKeepsSourceStageAnchor (0.33s)
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.450s
+part 2 — 모든 run 경로(빈 run id, 기본 `factory status`). tree: run id 있는 경로만 고친 트리(run-evidence.md에 SHA 미기재)
+  command: part 1과 같은 접두 선택자 실행(원문은 run-evidence.md § "L11 RED, part 2"; 결과 줄만 기록됨)
+  stdout (excerpt as recorded):
+    card_events_moved_test.go:224: empty-runID event seq 3 RunID = "run-old", want its stored run "run-new"
+--- FAIL: TestLoadCardEventsEmptyRunIDRewritesMovedCardsOnly (0.28s)
+    card_events_moved_test.go:280: seq 4 RunID = "run-a", want "run-c"
+--- FAIL: TestLoadCardEventsAllRunsFollowsConsolidationChain (0.35s)
+FAIL	github.com/modu-ai/moai-adk/internal/homestate	3.312s
+  command: go test ./internal/cli/ -run '^(TestFactoryAgeAlarmMovedCardKeepsSourceStageAnchor|TestFactoryStatusDefaultPathAgeAlarmMovedCard)$' -count=1 -v
+  stdout (excerpt): factory_age_alarm_moved_test.go:137: default status has no alarm line … --- FAIL: TestFactoryStatusDefaultPathAgeAlarmMovedCard (1.01s)
+exit: run-evidence.md는 exit 코드를 별도 필드로 기록하지 않았다 — 기록된 것은 패키지 `FAIL` 줄이다(Gap).
+reading: part 1에서 옮긴 카드의 이벤트가 대상 run에서 비어 단계 기준점이 없고 경보 뷰가 그 카드를 빠뜨린다; part 2에서 모든 run 경로는 옮긴 카드의 이벤트를 원천 run 이름으로 내 기본 status가 경보 줄을 내지 않는다. 함께 기록된 PASS 줄(읽기 전용·포기/잔류 카드 등)은 수리 전후 모두 성립해야 하는 가드이며 RED 증인이 아니다.
+```
+
+```text
+[L12] RED — 통합으로 은퇴한 run의 재활성화 (AC-FCR-017 (12), REQ-FCR-024)
+tree: HEAD f618bdfa5d (가드 추가 전; 새 시험은 커밋 전)
+command: go test ./internal/homestate/ -run '^(TestRecordRunRefusesAConsolidatedSource|TestResumeRunRefusesAConsolidatedSource|TestReactivationOfAnOrdinarilyRetiredRunUnchanged)$' -count=1 -v   (결과 줄만 기록됨)
+stdout (as recorded):
+    factory_run_reactivation_test.go:42: err = <nil>, want ErrRunRetiredByConsolidation
+--- FAIL: TestRecordRunRefusesAConsolidatedSource (0.29s)
+    factory_run_reactivation_test.go:56: err = <nil>, want ErrRunRetiredByConsolidation
+--- FAIL: TestResumeRunRefusesAConsolidatedSource (0.21s)
+--- PASS: TestReactivationOfAnOrdinarilyRetiredRunUnchanged (0.39s)
+    --- PASS: TestReactivationOfAnOrdinarilyRetiredRunUnchanged/RecordRun (0.19s)
+    --- PASS: TestReactivationOfAnOrdinarilyRetiredRunUnchanged/ResumeRun (0.20s)
+FAIL
+command: go test ./internal/cli/ -run '^TestLeaderEntryRefusesAConsolidatedRun$' -count=1 -v
+stdout (as recorded):
+=== RUN   TestLeaderEntryRefusesAConsolidatedRun/start
+    factory_run_reactivation_test.go:32: err = <nil>, want homestate.ErrRunRetiredByConsolidation
+=== RUN   TestLeaderEntryRefusesAConsolidatedRun/resume
+    factory_run_reactivation_test.go:38: err = <nil>, want homestate.ErrRunRetiredByConsolidation
+--- FAIL: TestLeaderEntryRefusesAConsolidatedRun (1.03s)
+    --- FAIL: TestLeaderEntryRefusesAConsolidatedRun/start (0.54s)
+    --- FAIL: TestLeaderEntryRefusesAConsolidatedRun/resume (0.49s)
+FAIL
+exit: 별도 필드로 기록되지 않음 — `FAIL` 줄만 기록됨(Gap).
+reading: 수리 전 `RecordRun`·`ResumeRun`은 은퇴한 원천을 `status='active'`로 upsert해 저장 계층 가드(REQ-FCR-024)를 꺼 버렸다. 통상 은퇴 run 시험은 수리 전후 모두 통과해야 하는 가드다.
+source: `.moai/reports/t1963/run-evidence.md` § L12 RED (v0.3.9 옮겨 적음)
+```
+
+```text
+[L13] RED — 통합 대상이 분류 뒤·트랜잭션 전에 죽음 (AC-FCR-017 (13), REQ-FCR-020 단계 (2))
+tree: 수리 전 트리 — run-evidence.md에 SHA 미기재(Gap)
+command: go test ./internal/homestate/ -run '^(TestRebindRefusesTargetThatDiedBeforeTheTransaction|TestRebindRefusesTargetRetiredBeforeTheTransaction|TestRebindProceedsWhenTargetStaysLive)$' -count=1 -v   (결과 줄만 기록됨)
+stdout (as recorded):
+    factory_run_rebind_target_test.go:49: operation succeeded, want a refusal naming [run-new]
+--- FAIL: TestRebindRefusesTargetThatDiedBeforeTheTransaction (0.72s)
+--- PASS: TestRebindRefusesTargetRetiredBeforeTheTransaction (0.33s)
+--- PASS: TestRebindProceedsWhenTargetStaysLive (0.30s)
+FAIL
+exit: 별도 필드로 기록되지 않음 — `FAIL` 줄만 기록됨(Gap).
+reading: 죽은 대상으로 통합이 커밋됐다. 은퇴한 대상 사례는 수리 전에도 트랜잭션 안의 `requireRunStamp`가 거부한다(PASS 가드). run-evidence.md § L13 RED의 "새 트랜잭션 전 부재 확인이 더 일찍 거부한다"는 문장은 같은 파일 § "P2 deviation"에서 철회됐다 — 그 확인은 기존 `TestRebindRefusesRunsThatAreGone/run-new`의 "does not exist" 메시지 기대를 깨서 빠졌다.
+source: `.moai/reports/t1963/run-evidence.md` § L13 RED, § L12 / L13 GREEN and mutants (P2 deviation) (v0.3.9 옮겨 적음)
+addendum (v0.3.10, sync-audit F1 — 미확정 대상; RED 증인이 아니라 변이 증인이다):
+  성격: 새 시험은 수리 전 RED가 없다 — 코드(`!= OwnerLive`)는 이미 옳았고 미확정 대상을 고정하는 시험만 비어 있었다. 변이 M3가 그 공백의 증인이다.
+  survivor (sync-audit, HEAD bb3fccf130 — `.moai/reports/t1963/sync-audit-verdict.md` Findings F1): M3 `o.Classification != OwnerLive` → `o.Classification == OwnerDead` 아래 `^TestRebind` 21건 모두 통과
+  new test: TestRebindRefusesTargetWhoseOwnerBecameIndeterminate (커밋 cb54bff9de, internal/homestate/factory_run_rebind_target_test.go) — rbOpts()로 분류(대상 pid 21 live), 호출은 pid 21을 OwnerIndeterminate로 분류하는 옵션으로
+  base (as recorded): HEAD bb3fccf130, 수정 전 트리 깨끗함
+  command: timeout 600 go test ./internal/homestate/ -run '^TestRebindRefusesTargetWhoseOwnerBecameIndeterminate$' -count=1 -v
+  stdout (as recorded): --- PASS: TestRebindRefusesTargetWhoseOwnerBecameIndeterminate (0.28s)
+  mutant M3 (go test -overlay, 실행 집합 = 새 시험 + 기존 대상 시험 셋), stdout (as recorded):
+    factory_run_rebind_target_test.go:69: operation succeeded, want a refusal naming [run-new indeterminate]
+    TestRebindRefusesTargetThatDiedBeforeTheTransaction PASS, TestRebindRefusesTargetRetiredBeforeTheTransaction PASS, TestRebindProceedsWhenTargetStaysLive PASS — 새 시험 하나만으로 KILLED
+  mutant M5 (`case tgt.RunID:` 본문 비움 — 변이 (o)와 같은 모양), stdout (as recorded):
+    FAIL TestRebindRefusesTargetThatDiedBeforeTheTransaction (factory_run_rebind_target_test.go:49) and FAIL the new test (:69); 은퇴한 대상·산 대상 시험 PASS — KILLED
+  exit: run-evidence.md는 exit 코드를 별도 필드로 기록하지 않았다(Gap).
+  source: `.moai/reports/t1963/run-evidence.md` § "F1/F5 repair (post-audit debts)" (v0.3.10 옮겨 적음)
+```
+
+```text
+[L14] RED — 리더 시작의 거부가 큐 쪽 runtime 기록 뒤에 온다 (AC-FCR-017 (12), REQ-FCR-024, CARRY-5)
+tree: 888e9accd1 + 새 시험만(수정 전 — run-evidence.md "RED on 888e9accd1 + test only")
+command: timeout 600 go test ./internal/cli/ -run '^TestLeaderStartRefusalWritesNoQueueSideRunRecord$' -count=1
+stdout (as recorded):
+--- FAIL: TestLeaderStartRefusalWritesNoQueueSideRunRecord (1.05s)
+    factory_run_reactivation_test.go:81: a refused start under the consolidated run id still wrote a queue-side run record
+FAIL github.com/modu-ai/moai-adk/internal/cli 2.075s
+exit: 별도 필드로 기록되지 않음 — `FAIL` 줄만 기록됨(Gap).
+reading: 대조 단언(살아 있는 run id의 시작은 큐 쪽 행을 남긴다)은 통과했고 실패는 :81의 부재 단언이다 — 판독기(`factory.NewBacklogStore(factory.BacklogPathForRoot(root)).LoadPure()` → `Runtime.Runs`)가 큐 쪽 쓰기를 볼 수 있음이 같은 실행에서 증명됐다.
+green (as recorded): go test ./internal/cli/ -run '^(TestLeaderStartRefusalWritesNoQueueSideRunRecord|TestLeaderEntryRefusesAConsolidatedRun)$' -count=1 -v → TestLeaderEntryRefusesAConsolidatedRun(start, resume) PASS, TestLeaderStartRefusalWritesNoQueueSideRunRecord PASS, `ok ... 2.736s`
+mutant (p) (오버레이, 탐침 블록 삭제 = 옛 순서; 오버레이 파일은 워크트리 밖 — 경로가 생략된 채 기록돼 재실행 불가, Gap), stdout (as recorded):
+  --- FAIL: TestLeaderStartRefusalWritesNoQueueSideRunRecord (:81 a refused start under the consolidated run id still wrote a queue-side run record)
+  TestLeaderEntryRefusesAConsolidatedRun PASS (RecordRun의 가드가 여전히 거부) — 새 시험 하나만으로 KILLED
+residual (as recorded, 닫히지 않음): 탐침과 RecordRun은 따로 읽는다 — 그 사이에 커밋되는 통합은 큐 쪽 기록이 쓰인 뒤 RecordRun이 거부하게 만든다. 이 이른 탐침은 순서일 뿐이다. 경합 시험 없음(design.md §5 (a)).
+source: `.moai/reports/t1963/run-evidence.md` § "D7/CARRY-5/CARRY-6 repair (leader-assigned debts)" → L14 (v0.3.11 옮겨 적음)
+```
+
+```text
+[L15] RED — 레인 worker 등록이 통합된 run에 붙는다 (AC-FCR-017 (14), REQ-FCR-024, CARRY-6)
+tree: 888e9accd1 + 새 시험만(가드 없음)
+command: timeout 600 go test ./internal/factory/ -run '^(TestClaimFactoryLaneRefusesAConsolidatedRun|TestClaimFactoryLaneConsolidationGuardLeavesOtherRunsAlone)$' -count=1 -v
+stdout (as recorded — 요약 형태로만 기록됨):
+  거부 하위 네 건 모두 FAIL: claim on the consolidated run: label="lane-1" err=<nil>, want homestate.ErrRunRetiredByConsolidation
+  대조 하위 네 건 PASS
+  FAIL ... 5.894s
+exit: 별도 필드로 기록되지 않음 — `FAIL` 줄만 기록됨(Gap).
+reading: 수정 전 claimFactoryLane은 run 상태를 읽지 않는다 — 코드 판독과 이 RED가 같은 것을 말한다. 대조는 수정 전 트리에서 통과하므로 가드 전 동작의 고정이다. 통합된 원천은 RecordRun + `UPDATE runs SET status='retired'` + `{"rebound_to":"run-new"}`를 담은 `run.retired` 이벤트로 심는다(factory_run_consolidated.go가 읽는 표지 쌍).
+green (as recorded): 같은 명령 → 거부 4/4 PASS, 대조 4/4 PASS, `ok ... 5.514s`
+mutant (q) (오버레이, 가드 블록 삭제; 오버레이 파일 경로 생략 기록 — 재실행 불가, Gap), stdout (as recorded):
+  거부 하위 네 건 FAIL(같은 메시지), 대조 PASS, `FAIL ... 4.510s` — TestClaimFactoryLaneRefusesAConsolidatedRun이 KILLED
+residual (as recorded, 닫히지 않음): run id는 호출자가 claim 전에 해석한다(ResolveActiveRun) — 그 해석과 claim 트랜잭션 사이에 커밋되는 통합은 표지가 커밋되기 전까지 가드가 보지 못한다. run-evidence.md는 "SQLite에서는 claim의 첫 읽기 뒤·쓰기 전에 커밋되는 통합이 claim을 실패시킨다(stale snapshot)"고 적었으나 경합 시험이 없다 — 이 SPEC은 그 문장을 측정된 사실로 받지 않는다(design.md §5 (e)).
+source: `.moai/reports/t1963/run-evidence.md` § "D7/CARRY-5/CARRY-6 repair (leader-assigned debts)" → L15 (v0.3.11 옮겨 적음)
+```
+
+```text
+[L16] RED — 옮긴 카드의 시작 시각이 대상 run만 읽어 늦게 나온다 (AC-FCR-017 (15), REQ-FCR-025 둘째 독자, 독립 sync-auditor M1)
+tree: 5032930590 + 새 시험만(수정 전 함수 — run-evidence.md "HEAD 5032930590, new tests, old function")
+command: timeout 600 go test ./internal/homestate/ -run '^TestCardEngagementStart$' -count=1
+stdout (as recorded):
+--- FAIL: TestCardEngagementStart (1.98s)
+    --- FAIL: TestCardEngagementStart/a_card_moved_in_by_consolidation_keeps_its_source_run_history (0.51s)
+        card_landed_evidence_test.go:137: start = 2026-06-01 00:00:00 +0000 UTC, want 2026-01-01 00:00:00 +0000 UTC (the history the card carries from its source run, REQ-FCR-025)
+    --- FAIL: TestCardEngagementStart/a_chain_of_consolidations_returns_the_earliest_over_the_whole_chain (0.38s)
+        card_landed_evidence_test.go:173: run-c/c1: found=false err=<nil>
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/homestate	2.728s
+exit: 별도 필드로 기록되지 않음 — `FAIL` 줄만 기록됨(Gap).
+reading: 두 RED는 같은 원인이다 — 수정 전 함수는 대상 run의 이벤트만 읽는다. (b)는 원천 run의 2026-01-01 이벤트를 보지 못해 대상 run의 2026-06-01을 돌려주고, (d)는 연쇄 끝 run에 그 카드의 이벤트가 없어 found=false를 돌려준다. (a)(통합 기록 없는 run 제외)·(c)(포기·남겨진 카드)와 t1962의 하위 셋은 실패 목록에 없었다 — 수정 전 함수에서도 통과(run-evidence.md 기록).
+green (as recorded): 같은 명령에 -v, 수정 뒤 → 하위 7건 모두 PASS(`--- PASS: TestCardEngagementStart (2.25s)`, `ok ... 2.623s`)
+mutant (r) (오버레이, 워크트리 밖 사본 — `if moved[cardID] && false {` 로 옛 단일 run 읽기 복원; 오버레이 파일 경로는 `<scratchpad>`로 기록돼 재실행 불가, Gap), command (as recorded): timeout 600 go test -overlay <scratchpad>/overlay_l16.json ./internal/homestate/ -run '^TestCardEngagementStart$' -count=1, stdout (as recorded — 하위 실패 줄만 옮겨 적음; 상위 줄은 `--- FAIL: TestCardEngagementStart (1.56s)`):
+  --- FAIL: TestCardEngagementStart/a_card_moved_in_by_consolidation_keeps_its_source_run_history (card_landed_evidence_test.go:137, 같은 메시지)
+  --- FAIL: TestCardEngagementStart/a_chain_of_consolidations_returns_the_earliest_over_the_whole_chain (card_landed_evidence_test.go:173: run-c/c1: found=false err=<nil>)
+  — (b)와 (d)가 KILLED
+residual (as recorded, 닫히지 않음): 읽기는 공유 트랜잭션 없는 여러 질의(movedCardSources, 원천 run마다 하나)다 — 그 사이에 커밋되는 통합은 반만 보일 수 있고, 그때 시작은 수리 전의 늦은 값이 될 뿐 데이터가 뒷받침하는 것보다 이른 값은 되지 않는다. 경합 시험 없음, consolidationHops의 비용 미측정(design.md §5 (f)). 변이는 하나뿐이다 — 포기 카드 필터와 연쇄 방문 집합은 movedCardSources 자신의 시험이 지키며 여기서 다시 변이하지 않았다(run-evidence.md Gaps).
+source: `.moai/reports/t1963/run-evidence.md` § "CardEngagementStart moved-card history (leader-assigned, M1)" → L16 (v0.3.12 옮겨 적음)
+```
+
+**장부의 성격(L1·L7)**: L1과 L7은 결함 관측이다. 탐침이 단언하는 함수(`FindResumableRun`·`ReconcileActiveRuns`)는 plan·design상 바뀌지 않고 새 선택 단계가 추가되므로, **올바른 구현 뒤에도 L1·L7은 RED로 남을 수 있다** — 녹색 전환의 증인이 아니다. 전환 판정은 각 AC의 green 명령만 한다. L1의 오버레이 원본은 커밋 `41f8db15de`부터 트리에 있다(L1의 측정 핀 `c4784db4c2`와 소스는 같다).
+
+**공통 green 판정 규칙(M2-B)**: 각 green 명령은 단일 호출이고 `-count=1 -v`로 돈다. 통과는 exit 0 **그리고** 출력에 지정 시험 이름의 `--- PASS` 줄이 있는 것이다 — `[no tests to run]` 또는 이름 줄 부재는 미측정이다(§0). 모든 fixture는 샌드박스 루트(`openSandboxFactory`·`adoptSandbox`·`runOwnerSandbox` 형태)에서만 만든다 — 라이브 factory DB를 여는 시험은 기준 위반이다.
 
 ## §A — M1: 완료 게이트
 
@@ -77,6 +432,94 @@ RED-now probe 일괄 관측 기록(모두 `a158b4b5f` 트리, 2026-10-06 plan-ph
 - RED-now: P7 — T19/T20이 :267에서 예약 거부 중("CI verdict reader ... owned by F3").
 - green(M2): `go test ./internal/homestate -run '^TestCICompletionReader$'` — push 시 기록된 SHA의 CI 증거는 **T19(pushed→ci-green)을 통과**, 다른 SHA 증거·증거 부재는 T19도 계속 거부; **T20과 T18은 receipt 게이트만 연다**(`FactoryDB.Transition` 안에서) — receipt 없는 T20·T18(원격 없는 저장소 포함)은 계속 거부, 올바른 receipt와 함께 성공(REQ-FCR-002b·016과 모순 없음). **tip 영속화 변이**: 일괄 push 시나리오(카드 MergeSHA≠push tip)에서 reader는 T17이 저장한 tip SHA만 인정하고, push 뒤 remote ref 이동은 인정을 바꾸지 않는다. INPUT: frWriteVerdict 선례(fr_fixture_test.go:108)의 sha 바인딩 변이 + receipt 변이 + 일괄 push tip 변이.
 
+## §B2 — M2-B: run 수명주기 (카드 t1963)
+
+각 기준: Given-When-Then · RED-now(장부 인용과 RED인 이유) · green(뒤집는 milestone·단일 명령·통과 형태) · 변이 탐침(기준을 통과하면서 요구를 어기는 구현을 쓸 수 있는지 — 쓸 수 있으면 그 변이를 잡는 단언을 기준에 넣었다).
+
+### AC-FCR-017 — 리더 진입 한 번에 활성 run이 하나로 모인다 (REQ-FCR-017/018/020/023/024/025) [release-blocking]
+
+- **Given** 샌드박스 루트에 죽은 스탬프 run 2개(`run-old`·`run-new`, 생성 시각 `run-old` < `run-new`, 두 스탬프 모두 결코 살아날 수 없는 pid·지문 — `seedDeadRunWithLiveRecords` 형태)가 있고, 비종결 카드가 `run-old`에 `c1(run)`·`c2(picked)`·`c4(needs-decision)`, `run-new`에 `c3(assigned)`·`c4(picked)`로 있으며(`c4`는 두 run에 걸친 중복), 종결 카드 `c5(done)`가 `run-old`에 있고, 어떤 활성 run도 `OwnerLive`·`OwnerIndeterminate`가 아니며, `card_dispatch`가 `c1→run-old`와 `c2→run-old` 두 건, 그리고 종결 카드 `c5(done)`의 `c5→run-old`를 가리키며, `leader_approvals`에 `c1`의 `run-old` 승인 행 1개가 있다. 두 run의 `created_at`은 픽스처가 명시적으로 다르게 심는다(같은 시각이면 `run_id` 내림차순으로 `run-old`가 뽑힌다 — 동률 규칙은 변이 탐침 (e)가 따로 단언한다)
+- **When** resume 인자 없이, `--factory-run` 없이, 새로 발급된 id로 리더 진입 채택 경로를 한 번 실행한다
+- **Then** (1) 활성 run은 정확히 1개이고 그것은 `run-new`이며 스탬프가 현재 프로세스로 바뀌었고 `run.resumed` 이벤트가 1개 붙었다; (2) `run-old`는 `retired`이고 `run.retired` 이벤트 1개가 `classification=dead`·`basis=stamp`·`rebound_to=run-new`·`moved=2`·`abandoned=1`과 카드 id 목록(옮김 `c1`·`c2`, 포기 `c4`)을 담으며, 리더 진입의 stderr에 같은 카드 id가 나온다; (3) `c1`·`c2`는 `run-new` 아래 행으로 재키됐고 run_id 외 모든 열(state·version·stage·updated_at 포함)이 진입 전 값과 같다; (4) `run-old`의 `c4`는 `abandoned`이고 `card.rebound` 이벤트가 이전 state `needs-decision`과 version을 담으며, `run-new`의 `c4`는 바뀌지 않았다; (5) `cards` 전체 행 수가 진입 전과 **정확히 같고**(삭제 0·복사 0), `events` 행 수는 줄지 않았다; (6) `card_dispatch`의 `c1`과 `c2` 두 건 모두 `run-new`를 가리키고(옮긴 카드 전부 — 하나만 재지정하는 구현은 실패), 종결 카드 `c5`의 바인딩은 `run-old`로 **바뀌지 않았으며** 바인딩 해석(`recordedCardRow`)이 `c5`를 `run-old`의 행으로 해석한다(오류 없음, REQ-FCR-020 (5) — 사후 개정 v0.3.3); (7) `ResolveActiveRun(root, "")`이 `run-new`를 반환하고 오류가 없다 — `AMBIGUOUS_FACTORY` 0회; (8) `c1`의 `run-old` 승인 행이 `run_id=run-old`로 바이트 단위로 그대로이고 `leader_approvals` 행 수도 같다(승인 행을 대상 run으로 옮기지 않는다 — REQ-FCR-023); (9) 통합 뒤 `c1`의 옛 `run-old` 승인만 있는 상태로 완료 게이트를 부르면 `ErrApprovalRunMismatch`로 거부되고(완료 0 — run 간 승인 재사용 거부, REQ-FCR-002), `run-new` 아래에서 `c1`에 새 승인을 발급하면 카드가 닫히며, 옛 승인 행은 바이트 단위로 그대로다. 판정 시험: `go test ./internal/cli -run '^TestLeaderStartRekeyedCardNeedsFreshApproval$' -count=1 -v`(통과 형태 `--- PASS: TestLeaderStartRekeyedCardNeedsFreshApproval `(이름 뒤 공백)). **사후 개정(run-phase, 카드 t1963)**: 원래 문구는 "큐 기록이 옛 run을 가리키면 거부, 사유가 바인딩/기록 불일치"였으나 완료 게이트(`holdDoneApprovalGate` → `verifyForClose`, `internal/cli/leader_approval_gate.go:63`·`:91`)는 `card_dispatch` 바인딩과 승인 테이블만 읽고 큐의 현재 배차 기록은 읽지 않아 충족 불가능했다 — 집행되는 절반으로 고쳤다. 큐 기록 쪽의 결함 경로는 v0.3.5에서 REQ-FCR-024와 아래 (10)으로 닫는다; (10) **큐 기록이 은퇴한 원천을 가리키는 재시도 거부(REQ-FCR-024, 사후 개정 v0.3.5)** — 통합 뒤 큐의 `DispatchCurrent`가 `c1`에 대해 은퇴한 원천 `run-old`를 가리키는 상태에서 dispatch 재시도가 `repairGTDDispatchRecord(c1, run-old)`를 실행하면: 타입 있는 오류로 거부되고, 그 뒤 factory DB 덤프(`cards`·`card_dispatch`·`runs`·`events`)가 재시도 전과 바이트 단위로 같으며, `c1`의 비종결 행은 정확히 하나(`run-new` 아래)이고, `run-new`에 묶인 완료 게이트의 바인딩 해석(`recordedCardRow`)이 여전히 `c1`을 `run-new`의 행으로 해석한다. RED-now: 장부 L8(run-phase가 수리 전 트리에서 관측). 판정 시험: `go test ./internal/factory -run '^TestRepairGTDDispatchRefusesConsolidatedSource$' -count=1 -v`(통과 형태 `--- PASS: TestRepairGTDDispatchRefusesConsolidatedSource `(이름 뒤 공백)); (10b) **확인과 쓰기 사이의 통합(사후 개정 v0.3.6)** — 은퇴 표지 확인 뒤·첫 복구 쓰기 전 시임에 통합(`RebindRun`)을 주입한다: 결과는 (가) 덤프가 바뀌지 않은 거부이거나 (나) 살아남은 run 아래에서 복구 완료, 둘 중 하나이고, **은퇴한 원천에 카드 행이나 바인딩이 다시 만들어지는 결과는 없다**. RED-now: 장부 L9. 판정 시험: `go test ./internal/factory -run '^TestRepairGTDDispatchNeverRecreatesWorkInASourceConsolidatedMidRepair$' -count=1 -v`(통과 형태 `--- PASS: TestRepairGTDDispatchNeverRecreatesWorkInASourceConsolidatedMidRepair `(이름 뒤 공백)); (10c) **원래의 dispatch 첫 쓰기 경로와 미러도 거부된다(REQ-FCR-024 범위, 사후 개정 v0.3.7)** — 통합 뒤 큐에 현재 배차 기록이 없는 상태(통합 전에 준비된 dispatch)에서 원래의 첫 쓰기 경로가 `c1`을 은퇴한 원천에 묶으려 하거나, cli 미러가 그 원천에 작업을 다시 만들려 하면 타입 있는 오류(`ErrRunRetiredByConsolidation`)로 거부되고, 원천에 카드 행·바인딩이 생기지 않는다. 저장 계층의 여섯 쓰기 진입점(새 카드와 옮긴 카드의 `RecordPicked`, `RecordPickedReconciled`, `RecordDispatchBinding`, 소유자 유무별 `RecordDispatchEngagement`)이 모두 거부하고, 통상 은퇴 run과 읽기 전용 경로는 영향받지 않는다. RED-now: 장부 L10. 판정 시험(**각각 따로** 실행): `go test ./internal/factory -run '^TestDispatchFirstWriteRefusesAConsolidatedSource$' -count=1 -v`(통과 형태 `--- PASS: TestDispatchFirstWriteRefusesAConsolidatedSource `(이름 뒤 공백)); `go test ./internal/cli -run '^TestDispatchMirrorRefusesAConsolidatedSource$' -count=1 -v`(통과 형태 `--- PASS: TestDispatchMirrorRefusesAConsolidatedSource `(이름 뒤 공백)); `go test ./internal/homestate -run '^(TestStorageWritesRefuseAConsolidatedSource|TestStorageGuardsLeaveOrdinaryRetirementAndReadsAlone)$' -count=1 -v`(통과 형태 `--- PASS: TestStorageWritesRefuseAConsolidatedSource `와 `--- PASS: TestStorageGuardsLeaveOrdinaryRetirementAndReadsAlone `(각 이름 뒤 공백) 둘 다 — 한쪽만 있으면 미측정); (11) **옮긴 카드의 이력은 대상 run에서 읽힌다(REQ-FCR-025, 사후 개정 v0.3.8)** — 통합 뒤 재키된 카드의 단계 진입 기준점(stage-entry anchor)이 대상 run에서 읽히고(`unknown`이 아님), 원천 run의 이벤트 행은 바이트 단위로 그대로다. A→B→C 연쇄 통합 뒤에도 C에서 원래의 기준점이 유지된다. 포인터 포기된 카드는 아무것도 보태지 않는다(대상 run의 그 카드 이력에 원천 이벤트가 섞이지 않는다). **모든 run 경로(run id 없음 — 기본 `factory status`, 사후 개정 v0.3.9)**: 빈 run id로 읽으면 옮겨진 카드의 이벤트는 각각 정확히 한 번, 그 카드가 연쇄 끝에 있는 run(A→B→C면 C)의 것으로 나오고 원천 run의 사본은 남지 않으며, 옮겨지지 않은 카드의 이벤트는 저장된 run 그대로다; 기본 `factory status`는 옮겨진 카드의 연령 경보 줄을 최종 run 아래에 낸다. RED-now: 장부 L11(두 RED 부분 — run id 있는 경로, 모든 run 경로). 판정 시험(**각각 따로** 실행): `go test ./internal/homestate -run '^(TestLoadCardEventsReadsMovedCardHistory|TestLoadCardEventsLeavesSourceRowsByteIdentical|TestLoadCardEventsAbandonedAndLeftBehindCardsContributeNothing|TestLoadCardEventsEmptyRunIDRewritesMovedCardsOnly|TestLoadCardEventsFollowsConsolidationChain|TestLoadCardEventsAllRunsFollowsConsolidationChain|TestLoadCardEventsConsolidationCycleTerminates|TestLoadCardEventsMalformedRetiredPayloadSkipped)$' -count=1 -v`(통과 형태 — 8개 시험 `TestLoadCardEventsReadsMovedCardHistory`·`TestLoadCardEventsLeavesSourceRowsByteIdentical`·`TestLoadCardEventsAbandonedAndLeftBehindCardsContributeNothing`·`TestLoadCardEventsEmptyRunIDRewritesMovedCardsOnly`·`TestLoadCardEventsFollowsConsolidationChain`·`TestLoadCardEventsAllRunsFollowsConsolidationChain`·`TestLoadCardEventsConsolidationCycleTerminates`·`TestLoadCardEventsMalformedRetiredPayloadSkipped` 각각의 `--- PASS: <이름> `(이름 뒤 공백) 줄 — 8개 미만이면 미측정); `go test ./internal/cli -run '^(TestFactoryAgeAlarmMovedCardKeepsSourceStageAnchor|TestFactoryStatusDefaultPathAgeAlarmMovedCard)$' -count=1 -v`(두 이름의 `--- PASS` 줄 둘 다); (12) **통합으로 은퇴한 run은 다시 활성화되지 않는다(REQ-FCR-024 재활성화, 사후 개정 v0.3.9)** — 통합 뒤 은퇴한 원천 `run-old`의 id로 run 기록(`RecordRun`)이나 재개(`ResumeRun`)를 시도하면 각 쓰기 자신의 트랜잭션 안에서 `ErrRunRetiredByConsolidation`으로 거부되고 `run-old`는 `retired`로 남으며, 리더 진입 표면(시작·재개 둘 다)의 오류는 타입을 유지하고 `run-old`와 `run-new`를 둘 다 이름으로 든다; 통상 은퇴 run(`rebound_to` 없음)의 기록·재개는 이전처럼 동작한다(가드 대조). RED-now: 장부 L12. 판정 시험(**각각 따로**): `go test ./internal/homestate -run '^(TestRecordRunRefusesAConsolidatedSource|TestResumeRunRefusesAConsolidatedSource|TestReactivationOfAnOrdinarilyRetiredRunUnchanged)$' -count=1 -v`(세 이름의 `--- PASS` 줄 모두); `go test ./internal/cli -run '^TestLeaderEntryRefusesAConsolidatedRun$' -count=1 -v`(`--- PASS: TestLeaderEntryRefusesAConsolidatedRun `과 하위 `start`·`resume`의 PASS 줄). **리더 시작은 큐 쪽 runtime 기록보다 먼저 거부된다(사후 개정 v0.3.11, CARRY-5)** — 통합된 `run-old`의 id로 리더 시작을 실행하면 `ErrRunRetiredByConsolidation`으로 거부되고, 큐 저장소의 runtime run 기록(`LoadPure` → `Runtime.Runs`)에 `run-old` 행이 없다; 대조로 살아 있는 run id의 같은 시작은 큐 쪽 행을 남긴다(빈 읽기가 보지 못하는 판독기의 결과가 아님을 같은 시험이 증명). RED-now: 장부 L14. 판정 시험: `go test ./internal/cli -run '^TestLeaderStartRefusalWritesNoQueueSideRunRecord$' -count=1 -v`(통과 형태 `--- PASS: TestLeaderStartRefusalWritesNoQueueSideRunRecord `(이름 뒤 공백)). 이 단언은 탐침과 `RecordRun` 사이의 경합을 다루지 않는다(design.md §5 (a)); (13) **통합 대상이 트랜잭션 전에 죽으면 거부된다(REQ-FCR-020 단계 (2), 사후 개정 v0.3.9)** — 분류에서 `OwnerLive`였던 대상의 소유자가 트랜잭션 직전 재분류에서 더는 `OwnerLive`가 아니면 통합은 대상 run id를 이름으로 든 `ErrRebindRefused`로 거부되고 아무것도 커밋되지 않는다; 대상이 계속 살아 있으면 통합은 진행한다; 분류 뒤 은퇴한 대상은 트랜잭션 안의 스탬프 재확인(`requireRunStamp`)이 거부한다 — 그 시험은 수리 전 트리에서도 통과하는 가드이며, 트랜잭션 전 부재 확인은 추가하지 않았다. 대상의 새 분류가 미확정(`OwnerIndeterminate`)이어도 거부된다 — 미확정은 `OwnerLive`가 아니다(사후 개정 v0.3.10, sync-audit F1; 시험 `TestRebindRefusesTargetWhoseOwnerBecameIndeterminate`, 커밋 `cb54bff9de` — 대상 run id와 `indeterminate`를 이름으로 든 `ErrRebindRefused`, 아무것도 옮기지 않음). RED-now: 장부 L13. 판정 시험: `go test ./internal/homestate -run '^(TestRebindRefusesTargetThatDiedBeforeTheTransaction|TestRebindRefusesTargetWhoseOwnerBecameIndeterminate|TestRebindRefusesTargetRetiredBeforeTheTransaction|TestRebindProceedsWhenTargetStaysLive)$' -count=1 -v`(네 이름의 `--- PASS` 줄 모두); (14) **통합으로 은퇴한 run에는 레인 worker가 등록되지 않는다(REQ-FCR-024 레인 worker 등록, 사후 개정 v0.3.11, CARRY-6)** — `run-old`가 통합으로 은퇴한(`status='retired'` + `rebound_to=run-new`를 담은 `run.retired`) 샌드박스에서 run id `run-old`로 레인 claim을 네 모양(자동 무제한, 명시 label, 범위 있는 자동, backend 지정)으로 시도하면 각각 `ErrRunRetiredByConsolidation`을 감싼 오류로 거부되고 `run-old`의 workers 행은 0이다; 대조 넷 — 활성 run, 통상 은퇴 run(`rebound_to` 없음), 저장소에 없는 run, run id 없음 — 은 각각 `lane-1`을 받고, run이 있는 두 대조(활성·통상 은퇴)는 workers 행 1을 남긴다(가드 전 동작 그대로). RED-now: 장부 L15. 판정 시험: `go test ./internal/factory -run '^(TestClaimFactoryLaneRefusesAConsolidatedRun|TestClaimFactoryLaneConsolidationGuardLeavesOtherRunsAlone)$' -count=1 -v`(두 이름과 하위 여덟 건 — 거부 넷·대조 넷 — 각각의 `--- PASS` 줄; 여덟 건 미만이면 미측정). 이 단언은 run id 해석과 claim 트랜잭션 사이의 경합을 다루지 않는다(design.md §5 (e)); (15) **옮긴 카드의 시작 시각은 원천 run의 이력에서 읽힌다(REQ-FCR-025 둘째 독자, 사후 개정 v0.3.12, 독립 sync-auditor M1)** — rebind-evidence의 착지 대체 경로가 비교하는 시작 시각(`CardEngagementStart`)은: (a) 통합 기록이 없는 다른 run의 그 카드 이벤트를 세지 않는다; (b) 통합(`RebindRun`)으로 대상 run에 옮겨진 카드는 원천 run의 이벤트(2026-01-01T00:00:00Z)가 대상 run의 이벤트(2026-06-01)보다 이르면 원천 쪽 시각을 시작으로 돌려준다; (c) 포인터 포기되었거나 원천에 남겨진 카드는 원천 run에서 아무것도 보태지 않는다; (d) A→B→C 연쇄 통합 뒤에는 C에서 연쇄 전체의 가장 이른 시각을 `found=true`로 돌려준다. t1962의 하위 셋(이벤트가 없으면 "이르다"가 아니라 "모른다", factory가 picked에서 쓰는 이벤트를 찾음, 가장 이른 시각을 글자가 아닌 시각으로 고름)은 그대로 통과한다. 이벤트 행은 읽기만 한다. RED-now: 장부 L16. 판정 시험: `go test ./internal/homestate -run '^TestCardEngagementStart$' -count=1 -v`(`--- PASS: TestCardEngagementStart `(이름 뒤 공백)과 하위 일곱 건 — `an_unrelated_runs_events_do_not_count`·`a_card_moved_in_by_consolidation_keeps_its_source_run_history`·`an_abandoned_or_left_behind_card_contributes_nothing_from_the_source_run`·`a_chain_of_consolidations_returns_the_earliest_over_the_whole_chain`과 t1962의 `no_event_for_the_card_is_unknown_not_early`·`the_event_the_factory_itself_writes_when_it_picks_a_card_is_found`·`the_earliest_event_by_time_wins_not_by_text` — 각각의 `--- PASS` 줄; 일곱 건 미만이면 미측정). 소비자(`resolveRecordedLanding`)의 "earlier issuance" 거부는 기존 cli 시험 `TestFactoryRebindEvidenceSquashLanded`의 하위 `refuses_a_landing_recorded_before_the_run_engaged_the_card`가 덮으며, 옮긴 카드를 쓰는 cli 시험은 없다(run-evidence.md 기록). 이 단언은 원천 탐색과 run별 질의 사이의 경합을 다루지 않는다(design.md §5 (f))
+- **RED-now**: L1 `TestT1963RedTwoDeadRunsOneLeaderStart` — `adopt="" candidates=2`, `remaining active runs=2`. RED인 이유: 후보가 둘이면 채택하지 않고(`internal/homestate/factory_run_adopt.go:92`), 비종결 카드가 있는 run은 조정이 보존한다(`runHasLiveRecords`). 또한 L2 — 진입 채택이 resume 인자를 요구한다(`:165`). 이 작업이 바꾸지 않는 파일 때문의 RED가 아니다.
+- **green (M2-B)**: `go test ./internal/cli -run '^TestLeaderStartConsolidatesDeadOwnerRuns$' -count=1 -v` → exit 0, `--- PASS: TestLeaderStartConsolidatesDeadOwnerRuns `(이름 뒤 공백).
+- **변이 탐침**: (a) 옛 run을 카드 이동 없이 은퇴시키는 구현 → (3)·(6) 실패; (b) 옮기지 않고 복사(INSERT)하는 구현 → (5)의 행 수가 늘고 `run-old`가 은퇴 가드에 막혀 (1)·(2) 실패 — 그래서 `cards` 행 수는 "줄지 않았다"가 아니라 "정확히 같다"로 단언한다; (c) 중복 `c4`를 DELETE하는 구현 → (4)·(5) 실패; (d) 최신이 아닌 run을 채택 → (1) 실패; (e) 동률 규칙 — 같은 시험 안의 하위 단언으로, `created_at`이 같은 두 죽은 스탬프 run을 심으면 `run_id` 내림차순으로 큰 쪽이 채택된다(`run_id` 오름차순이나 삽입 순서로 고르는 구현 → 실패); (f) 승인 행의 `run_id`를 대상 run으로 UPDATE하는 구현 → (8) 실패, 그리고 (9)에서 옛 승인으로 완료가 일어나 실패; (g) 승인의 run 바인딩을 보지 않는 완료 게이트 → (9)에서 옛 승인으로 완료가 일어나 실패; (h) 원천을 가리키는 바인딩을 전부 재지정하는 구현("repoint every binding") → (6)에서 `c5`의 바인딩이 `run-new`로 바뀌고 `recordedCardRow`가 `ErrApprovalRunUnresolvable`을 내 실패; (i) 복구 경로가 통합 은퇴 표지를 무시하는 구현("repair path ignores the retired marker") → (10)에서 `RecordPicked`가 `run-old`에 `c1` 행을 다시 만들고 바인딩이 `run-old`로 되돌아가 덤프 동일성·"비종결 행 정확히 하나" 단언이 실패; (j) 은퇴 표지 확인을 복구 쓰기와 다른 트랜잭션에서 하는 구현("check outside the transaction") → (10b)에서 시임에 주입된 통합이 확인 뒤에 커밋되고, 이어지는 쓰기가 은퇴한 원천에 행·바인딩을 다시 만들어 실패; (k) `recordPickedTx`의 행 생성 분기나 바인딩 쓰기(`upsertDispatchBindingTx`)에서 가드를 제거한 구현("guard removed from recordPickedTx/binding write") → (10c)에서 첫 쓰기 경로가 바인딩을 은퇴한 원천으로 향하게 하거나 미러가 원천에 행을 다시 만들고, 저장 계층 시험의 여섯 진입점이 `err = <nil>`을 내 실패(run-phase가 factory·homestate·cli 세 패키지에서 이 변이를 죽였다고 기록 — `.moai/reports/t1963/run-evidence.md` § L10 GREEN); (l) 대상 run의 이벤트만 읽는 구현("read only the target run's events") → (11)에서 옮긴 카드의 단계 진입 기준점이 `unknown`이 되어 실패; (m) 모든 run 경로가 run 바꾸기를 건너뛰는 구현("all-runs path skips the rewrite") → (11)의 모든 run 경로에서 `TestLoadCardEventsEmptyRunIDRewritesMovedCardsOnly`·`TestLoadCardEventsAllRunsFollowsConsolidationChain`과 cli `TestFactoryStatusDefaultPathAgeAlarmMovedCard`가 실패(run-phase 기록 — `.moai/reports/t1963/run-evidence.md` § L11 GREEN and mutants (l), (m)); (n) `RecordRun`에서만 재활성화 가드를 뺀 구현 → (12)에서 `TestRecordRunRefusesAConsolidatedSource`만 실패; (n2) `ResumeRun`에서만 뺀 구현 → (12)에서 `TestResumeRunRefusesAConsolidatedSource`만 실패 — 각 변이는 정확히 자기 시험이 잡는다(run-phase 기록 — 같은 파일 § L12 / L13 GREEN and mutants); (o) 대상의 새 분류를 버리는 구현("restore the empty target case") → (13)에서 `TestRebindRefusesTargetThatDiedBeforeTheTransaction`이 실패(같은 절). v0.3.10 재측정: 같은 모양의 변이(`case tgt.RunID:` 본문 비움)는 새 시험 `TestRebindRefusesTargetWhoseOwnerBecameIndeterminate`도 실패시키고, 은퇴한 대상·산 대상 시험은 통과한다(`.moai/reports/t1963/run-evidence.md` § "F1/F5 repair (post-audit debts)", M5); (o2) 대상 확인을 `o.Classification == OwnerDead`로 약화한 구현(미확정 대상을 허용) → (13)에서 `TestRebindRefusesTargetWhoseOwnerBecameIndeterminate`만 실패하고 죽은·은퇴한·산 대상 시험 셋은 통과한다(같은 절, M3) — 이 시험이 들어오기 전에는 같은 변이가 `^TestRebind` 21건을 모두 통과해 살아남았다(sync-audit F1, HEAD `bb3fccf130`); (p) 리더 시작의 이른 탐침을 지워 옛 순서(큐 쪽 runtime 기록 먼저)로 되돌린 구현("restore the old order") → (12)에서 `TestLeaderStartRefusalWritesNoQueueSideRunRecord`만 실패하고(`factory_run_reactivation_test.go:81` — 거부된 시작이 큐 쪽 기록을 남김) `TestLeaderEntryRefusesAConsolidatedRun`은 통과한다 — `RecordRun`의 가드가 여전히 거부하기 때문이다(run-phase 기록, 오버레이 — `.moai/reports/t1963/run-evidence.md` § L14); (q) claim 가드 블록을 지운 구현("delete the claim guard") → (14)에서 `TestClaimFactoryLaneRefusesAConsolidatedRun`의 거부 하위 네 건이 모두 실패하고(`label="lane-1" err=<nil>`) 대조 네 건은 통과한다(같은 파일 § L15); (r) 시작 시각을 대상 run에서만 읽는 구현("engagement start reads only the target run" — 옛 단일 run 읽기 복원) → (15)에서 `a_card_moved_in_by_consolidation_keeps_its_source_run_history`(시작이 원천의 2026-01-01 대신 2026-06-01)와 `a_chain_of_consolidations_returns_the_earliest_over_the_whole_chain`(`found=false`)이 실패한다 — 기록된 실패 목록에는 이 둘만 있다(run-phase 기록, 오버레이 — `.moai/reports/t1963/run-evidence.md` § "CardEngagementStart moved-card history (leader-assigned, M1)", 장부 L16). 포기 카드 필터와 연쇄 방문 집합은 이 변이로 다시 시험하지 않았다 — `movedCardSources` 자신의 시험(AC-FCR-017 (11))이 지킨다.
+
+### AC-FCR-018 — 자동 채택의 가드와 통합 원천 필터 (REQ-FCR-017/018/020) [release-blocking]
+
+- **Given** 채택 0 사례 여덟: (i) 미확정 소유자 run 하나뿐 (ii) `BasisPeer` run 하나뿐 (iii) 죽은 스탬프 run 하나 + `OwnerLive` 활성 run 하나 (iv) `--factory-run` 명시 (v-a) 죽은 스탬프 run 2개 — **최신이 codex 리더 run**이고 더 오래된 것이 claude run (v-b) 죽은 스탬프 run 2개 — **최신이 산 레거시 피어 기록을 가진 run**이고 더 오래된 것이 claude run (vi) 죽은 스탬프 run 2개 + `OwnerIndeterminate` 활성 run 1개 (vii) (iii)과 같은 fixture에서 `--resume <id>`를 준다. 그리고 통합 원천 필터 사례 하나: (viii) 채택 가능한 죽은 스탬프 claude run 1개(최신) + 더 오래된 죽은 codex 리더 run 1개 + 더 오래된 산 레거시 피어 기록을 가진 죽은 스탬프 run 1개 + 더 오래된 `BasisPeer`로만 dead인 run 1개 + 더 오래된 `BasisBoot`로만 dead인 원천 1개(`ReconcileOptions`의 `BootTime`·`LegacyPeerRecordAbsent` 주입)(각각 비종결 카드 1장)
+- **When** (i)~(vi)·(viii)은 resume 인자 없이, (vii)은 `--resume <id>`를 주고 리더 진입 채택 경로를 실행한다
+- **Then** (i)~(vii) 모두 채택 0·통합 0·`runs`와 `cards` 덤프 불변이며 새 id가 발급된다. (v-a)(v-b)는 더 오래된 claude 후보로 넘어가지 않는다(채택 0). (i)(ii)(v-a)(v-b)(vi)(vii)은 해당 run id를 이름으로 든 경고 줄이 stderr에 나온다. (viii)은 최신 claude run이 채택되고, codex run·레거시 피어 run·`BasisPeer` run·`BasisBoot` run 넷은 통합되지 않고 `active`로 남으며 그 카드 행이 진입 전 그대로이고, stderr에 네 run 각각의 run id와 제외 사유가 한 줄씩 나온다
+- **RED-now**: L7 — resume 형태 진입은 산 리더가 있어도 죽은 run을 채택한다(사례 iii RED: `adopt="run-dead" candidates=1 while run-live is OwnerLive`, exit 1, tree `41f8db15de`). (vii)은 같은 L7 결함을 resume 형태 진입 경로에서 직접 겨눈다(L7이 관측한 것이 바로 resume 경로의 채택 후보다). (i)(ii)(iv)(v-a)(v-b)(vi)(viii)은 AC-FCR-017과 짝으로 채택한다: 017이 RED→green으로 뒤집혀야 그 사례들의 green이 자명하지 않다(§2 짝 규칙 — 채택만 하는 기준과 거부만 하는 기준을 함께 둔다).
+- **green (M2-B)**: 세 명령을 **각각 따로** 실행한다(사후 개정 v0.3.4 — sync-audit D3: 첫 명령은 (i)~(vii)만 실행하고 (viii)은 별도 시험에 있다): `go test ./internal/cli -run '^TestLeaderStartAutoAdoptGuards$' -count=1 -v` → exit 0, `--- PASS: TestLeaderStartAutoAdoptGuards `(이름 뒤 공백) — (i)~(vii); `go test ./internal/cli -run '^TestLeaderStartLeavesExcludedSourcesActive$' -count=1 -v` → exit 0, `--- PASS: TestLeaderStartLeavesExcludedSourcesActive `(이름 뒤 공백) — (viii); `go test ./internal/homestate -run '^TestPlanLeaderEntryStampedExcludesPeerAndBootProofs$' -count=1 -v` → exit 0, `--- PASS: TestPlanLeaderEntryStampedExcludesPeerAndBootProofs `(이름 뒤 공백) — 리더 진입 계획의 `BasisStamp` 긍정형 단언.
+- **변이 탐침**: 분류를 보지 않고 최신 활성 run을 채택하는 구현은 AC-FCR-017을 통과하지만 (i)(ii)(iii)(vi)에서 실패한다. 거부된 최신 후보 대신 다음 후보로 넘어가는 구현은 (v-a)(v-b)에서 각각 실패한다 — 한쪽 거부만 구현한 경우도 다른 쪽에서 잡힌다. `OwnerLive`만 보고 미확정 활성 run을 무시하는 구현은 (vi)에서 실패한다. 가드를 무-resume 경로에만 두고 resume 경로는 그대로 둔 구현은 (vii)에서 실패한다. 채택 대상에만 codex·레거시 피어 거부를 적용하고 통합 원천에는 적용하지 않는 구현, 또는 리더 진입 통합에서 `BasisStamp` 조건 없이 `OwnerDead`만 보는 구현은 (viii)에서 실패한다. 긍정형(`Basis == BasisStamp`) 대신 역목록(`Basis != BasisPeer`)으로 구현한 변이는 homestate `TestPlanLeaderEntryStampedExcludesPeerAndBootProofs`(위 셋째 green 명령)에서 실패한다 — sync-audit 실측상 이 변이는 두 cli 시험과 AC-FCR-017 시험에서는 살아남는다(`RebindRun`의 `RequireStampBasis`가 원천 쪽을 따로 막기 때문, `.moai/reports/t1963/sync-audit-verdict.md` m3·D3). 경고 없이 조용히 넘기는 구현은 경고 단언에서 실패한다.
+
+### AC-FCR-019 — 두 리더 경합 (REQ-FCR-018/020/023) [release-blocking]
+
+- **Given** 죽은 스탬프 run 2개와 비종결 카드
+- **When** (a) 두 채택자가 같은 후보를 분류한 뒤 한쪽이 먼저 `AdoptRun`을 커밋하고 다른 쪽이 이어서 시도한다; (b) 통합 연산의 트랜잭션 진입 직전(분류 뒤)에 대상 run의 스탬프가 다른 프로세스로 바뀐다; (c) 같은 원천을 두 통합 연산이 차례로 시도한다; (d) 통합 연산의 분류 뒤·트랜잭션 진입 전에 **원천** run의 스탬프가 다른 프로세스로 바뀐다(다른 리더가 그 원천을 채택한 상황)
+- **Then** (a) 정확히 하나만 채택하고 이긴 쪽의 스탬프는 덮이지 않는다. 진 리더(런처 경로, 분류와 `AdoptRun` 사이 시임에서 스탬프를 교체해 재현)는 **exit 0**으로 새로 발급된 id를 쓰고, 경합 run id를 든 경고 한 줄을 stderr에 남기며, 통합을 0회 실행한다 — 현행 코드의 런치 실패(`re-adopt factory run`)와 다른 새 동작이다. CAS 패배가 아닌 `AdoptRun` 오류(예: 닫힌 데이터베이스)는 여전히 런치를 실패시킨다(같은 cli 시험의 하위 단언 — 오류를 삼키지 않는다); (b) 트랜잭션이 거부되고 카드·`card_dispatch`·`runs`·`events` 덤프가 연산 전과 같다(거부가 별도 이벤트를 커밋하지 않는다); (c) 두 번째 시도는 거부되고 이벤트가 중복되지 않는다(`run.retired` 1개); (d) 트랜잭션이 거부되고 카드·`card_dispatch`·`runs`·`events` 덤프가 연산 전과 같다 — 새 소유자의 카드는 옮겨지지 않고 거부가 별도 이벤트를 커밋하지 않는다
+- **RED-now**: L1 — 통합 연산이 존재하지 않는다(`remaining active runs=2`). 경합 의미론은 새 연산에 처음 적용된다. (a)의 현행 동작(런치 실패)은 `internal/cli/factory_run_adopt.go:106-108`이 `AdoptRun` 오류를 반환하고 `internal/cli/cc.go:227-229`가 `re-adopt factory run: %w`로 실패하는 경로다(코드 판독 — 감사 판정서 D3 인용).
+- **green (M2-B)**: 두 명령을 **각각 따로** 실행한다 — (a)는 런처에 닿아야 하므로 cli 시험: `go test ./internal/cli -run '^TestLeaderStartAdoptCASLoserMints$' -count=1 -v` → exit 0, `--- PASS: TestLeaderStartAdoptCASLoserMints `(이름 뒤 공백); (b)(c)(d)는 `go test ./internal/homestate -run '^TestRunConsolidationConcurrentLeaders$' -count=1 -v` → exit 0, `--- PASS: TestRunConsolidationConcurrentLeaders `(이름 뒤 공백).
+- **변이 탐침**: WHERE에 스탬프 조건이 없는 UPDATE → (a)에서 둘째가 첫째의 스탬프를 덮어 실패; CAS 오류를 그대로 전파하는 구현 → (a)의 exit 0·새 id 단언에서 실패; 모든 `AdoptRun` 오류를 삼키고 새 id를 발급하는 구현 → (a)의 닫힌 데이터베이스 하위 단언에서 실패; 대상 스탬프를 트랜잭션 밖에서만 확인 → (b)의 시임(분류와 트랜잭션 사이 스탬프 교체)에서 실패; 원천의 `status`만 보고 스탬프는 보지 않는 구현 → (d)에서 실패.
+
+### AC-FCR-020 — 이동 도중 실패는 전부 되돌린다 (REQ-FCR-020) [release-blocking]
+
+- **Given** 원천 run에 비종결 카드 3장, 대상 run은 산 소유자
+- **When** 주입점 셋에서 각각 실패로 중단된다(시험 시임 — `retireAfterCardRead`와 같은 형태): (a) 통합 연산이 두 번째 카드를 처리한 직후 (b) 카드 이동을 모두 마친 뒤, `card_dispatch` 재지정 전 (c) 모든 쓰기(카드·바인딩·은퇴·이벤트)를 마친 뒤, 커밋 직전
+- **Then** 세 주입점 모두에서 원천은 `active`, 세 카드 모두 원천 아래 원래 열 그대로, 대상의 카드 집합·`card_dispatch`·`events`·`runs`가 연산 전 덤프와 바이트 단위로 같다
+- **RED-now**: L1 — 연산 부재. 원자성은 새 연산에 처음 적용된다.
+- **green (M2-B)**: `go test ./internal/homestate -run '^TestRebindRetireIsAtomic$' -count=1 -v` → exit 0, `--- PASS: TestRebindRetireIsAtomic `(이름 뒤 공백).
+- **변이 탐침**: 카드마다 트랜잭션을 여는 구현은 정상 경로(AC-FCR-017)를 통과하지만 (a)의 덤프 동일성에서 실패한다. 카드 이동+은퇴를 tx1로 커밋하고 `card_dispatch` 재지정·`run.retired` 이벤트를 tx2로 나누는 구현은 (a)를 통과하지만 (b)에서 실패한다. 카드 이동+`card_dispatch` 재지정을 tx1로 커밋하고 은퇴 전환+`run.retired`를 tx2로 나누는 구현은 (a)(b)를 모두 통과하지만 (c)에서 tx1의 변경이 덤프 차이로 드러나 실패한다 — (c)는 어떤 분할이든 먼저 커밋된 부분을 드러낸다.
+
+### AC-FCR-021 — 다른 산 run이 쥔 카드와 죽지 않은 원천은 옮기지 않는다 (REQ-FCR-020/023) [release-blocking]
+
+- **Given** 하위 사례 여섯: (a) 원천에 비종결 카드 2장 이상이 있고, 그중 원천 카드 정렬의 **첫 번째가 아닌** 카드 `cX`가 제3의 활성 run(소유자 `OwnerLive`)에도 비종결 행으로 있다 (b) 같은 상황에서 제3 run 소유자가 `OwnerIndeterminate` (c) 원천에 worker 행 2개 — 첫 행은 죽은 pid, 둘째 행은 산 pid(현재 프로세스) (d) 원천의 소유자가 `OwnerLive` (e) 원천의 소유자가 `OwnerIndeterminate` (f) 원천이 처음 분류에서 `OwnerDead`/`BasisPeer`(스탬프 없는 레거시 run, lead_pid 0)였다가 트랜잭션 직전 재분류에서 `OwnerLive`/`BasisPeer`로 바뀐다(분류기·`Fallback` 주입 — 피어가 살아남; 사후 개정 v0.3.4, sync-audit F-2)
+- **When** 통합 연산을 실행한다 — (d)(e)는 세 표면 모두에서: `runs --retire <원천> --rebind-to <대상>`, 합류 프롬프트 `m<n>`, 리더 진입 통합
+- **Then** 모든 사례·표면에서 연산 전체가 거부되고(부분 이동 없음), 오류가 (a)(b)는 `cX`와 제3 run id를, (c)는 산 worker의 label을, (d)(e)는 원천 run id와 그 분류를 이름으로 들며, (f)는 `ErrRunOwnerNotDead`로 거부되고(운영자 경로 `--rebind-to`·`m<n>`), `events`를 포함한 덤프가 연산 전과 같다
+- **RED-now**: L1 — 연산 부재.
+- **green (M2-B)**: `go test ./internal/homestate -run '^TestRebindRefusesCardHeldByAnotherLiveRun$' -count=1 -v` → exit 0, `--- PASS: TestRebindRefusesCardHeldByAnotherLiveRun `(이름 뒤 공백). 세 표면의 (d)(e) 거부는 같은 시험이 연산 진입점별로 단언하며, CLI 표면 쪽은 AC-FCR-022의 `TestFactoryRunsRetireRebindTo`·`TestLaneChoiceMergeOffer`가 (h)로 함께 단언한다. (f)는 별도 명령으로 실행한다(sync-audit D8 — 위 명령은 (f)를 실행하지 않는다): `go test ./internal/homestate -run '^TestRebindReclassifiesPeerAndBootSources$' -count=1 -v` → exit 0, `--- PASS: TestRebindReclassifiesPeerAndBootSources `(이름 뒤 공백).
+- **변이 탐침**: 충돌 카드만 건너뛰고 나머지를 옮기는 구현 → 덤프 동일성에서 실패. 첫 카드만 제3 run 검사를 하는 구현 → (a)에서 실패(충돌 카드가 첫 번째가 아니므로). 첫 worker 행만 탐침하는 구현 → (c)에서 실패(첫 행이 죽은 pid). `OwnerLive`만 막고 미확정은 통과시키는 구현 → (b)(e)에서 실패. 원천 분류를 보지 않는 `--retire <산 run> --rebind-to <산 run2>` → (d)에서 실패 — Q1 플래그 확대가 숨길 수 있는 우회로를 닫는 사례다. `BasisPeer`·`BasisBoot` 원천을 트랜잭션 직전에 다시 분류하지 않는 구현("no re-check") → (f)에서 원천이 옮겨지고 은퇴해 실패(sync-audit가 오버레이로 재현한 바로 그 결과 — `res={Moved:[c1]}`, `status after = "retired"`) — 이 변이를 죽이는 것은 `TestRebindReclassifiesPeerAndBootSources`다(sync-audit 실측상 `TestRebindRefusesCardHeldByAnotherLiveRun`은 이 변이에서도 통과한다).
+
+### AC-FCR-022 — 운영자 표면: `--rebind-to`와 `m<n>` (REQ-FCR-021/020/014) [release-blocking; 플래그 모양 = decision-index Q1 판정 (a)]
+
+- **Given** 죽은 스탬프 원천 run(비종결 카드 2장, 그중 하나의 `leader_approvals` 원천 run 승인 행 1개)과 `OwnerLive` 대상 run
+- **When** (a) 운영자 세션에서 `runs --retire <원천> --rebind-to <대상>` (b) 레인 세션(`MOAI_FACTORY_WORKER=lane-1`)에서 같은 명령 (c) 대상이 `OwnerLive`가 아닌 run (d) `--rebind-to` 없이 `--retire <원천>` (e) 합류 프롬프트 행 계산과 `m<n>` 파싱 (f) 플래그 집합 확인 (g) `--rebind-to`만 주고 `--retire` 없음 (h) 원천이 `OwnerLive`·`OwnerIndeterminate`인 `--rebind-to`와 `m<n>`(AC-FCR-021 (d)(e)의 CLI 표면)
+- **Then** (a) 원천 `retired`, 두 카드가 대상 아래, 출력에 두 카드 id, 그리고 `leader_approvals`가 바이트 단위로 그대로다(운영자 `--rebind-to` 경로도 승인 행을 옮기지 않는다 — REQ-FCR-023); (b)(c) 거부, 상태 덤프 불변; (d) SPEC-FACTORY-RETIRE-GUARD-001 그대로 — `ErrRunHasInProgressCards`, 거부 출력의 기존 줄 전부 포함, 상태 불변; (e) `m<n>`은 `Dead && InProgress>0 && OwnerLive 활성 run 정확히 1`인 행에만 제시되고, 조건 밖 행의 `m<n>` 입력은 거부되며, `r<n>`의 제시 조건과 동작은 그대로다. 조건을 만족하는 행에서 `m<n>`을 선택하면 통합 연산이 실행된다 — 원천 `retired`, 카드가 대상 아래, 출력에 옮긴/포기한 카드 id(`TestLaneChoiceMergeOffer`가 함께 단언); (f) `runs` 명령의 플래그 집합은 정확히 `[rebind-to retire]`이다 — 이것이 기존 시험 `TestFactoryRunsHasNoForceFlag`에 허용된 유일한 기대 변경이며(Q1 판정 (a)), `--force` 같은 우회 플래그는 여전히 없어야 한다(판정 명령은 AC-FCR-025의 셋째 명령); (g) 상태 변경 없이 거부; (h) 거부, 상태 덤프 불변
+- **RED-now**: L3 — runs 명령 플래그가 정확히 `[retire]`(재결속 표면 없음). L4 — 합류 프롬프트는 `r` 접두만 파싱한다(`:207`).
+- **green (M2-B)**: 두 명령을 **각각 따로** 실행한다(OR 셀렉터 한 번은 한쪽만 있어도 통과해 빈 스윕을 숨긴다): `go test ./internal/cli -run '^TestFactoryRunsRetireRebindTo$' -count=1 -v` → `--- PASS: TestFactoryRunsRetireRebindTo `(이름 뒤 공백); `go test ./internal/cli -run '^TestLaneChoiceMergeOffer$' -count=1 -v` → `--- PASS: TestLaneChoiceMergeOffer `(이름 뒤 공백). 둘 다 exit 0.
+- **변이 탐침**: 레인 세션 확인을 빠뜨린 구현 → (b)에서 실패. `--rebind-to` 없는 은퇴까지 카드를 옮기게 바꾼 구현 → (d)와 AC-FCR-025에서 실패. `--rebind-to`를 단독으로도 받아들이는 구현 → (g)에서 실패. 원천 분류를 보지 않는 구현 → (h)에서 실패. `m<n>`을 파싱만 하고 통합 연산을 부르지 않는 구현 → (e)의 정상 선택 단언에서 실패. 운영자 경로에서만 승인 행을 대상 run으로 옮기는 구현 → (a)의 `leader_approvals` 불변 단언에서 실패.
+
+### AC-FCR-023 — 임대가 죽은 run의 중복 행을 남기지 않는다 (REQ-FCR-019/023) [release-blocking]
+
+- **Given** 죽은 스탬프 run `run-dead`에 카드 `c9(run, stage 있음)`과 **죽은 pid(예: 2147480000) worker 행 1개**, 현재 산 run `run-now`; 대조로 `OwnerLive` run `run-live`에 카드 `c8(run)`, 은퇴했지만 `c7(assigned)`을 남긴 `run-ret`(소유자 dead), 그리고 리더는 죽었지만 레인이 살아 있을 수 있는 대조 행 둘 — 죽은 스탬프 run `run-dead2`에 **`c6a`(run, 유효 lease, worker 행 없음)**, 죽은 스탬프 run `run-dead3`에 **`c6b`(run, 만료된 lease, 산 worker pid=현재 프로세스)**
+그리고 (재분류 사례, 사후 개정 v0.3.5) 스탬프 없는 레거시 run `run-peer`(lead_pid 0)에 카드 `c10(run, lease 없음, worker 없음)` — 처음 분류에서 `OwnerDead`/`BasisPeer`였다가 임대 트랜잭션 직전 재분류에서 `OwnerLive`/`BasisPeer`로 바뀐다(분류기·`Fallback` 주입)
+- **When** `run-now`에서 `moai factory next --card c9`, `--card c7`, `--card c8`, `--card c6a`, `--card c6b`, `--card c10` 경로로 각각 기록한다. 추가로 (주입) `c9` 경로에서 T1 기록 뒤·포기 전에 실패를 주입한다
+- **Then** `run-dead`의 `c9`(죽은 pid worker 행이 있어도)와 `run-ret`의 `c7`은 `abandoned`이고 각각 `card.rebound` 이벤트(`from_run`=각 원천 run·이전 state·version·stage·evidence_sha·`to_run=run-now`) 1개; `run-now`의 `c9`는 기존 이어받기 규칙 그대로(이어받기 읽기가 포기보다 먼저); `run-live`의 `c8`은 바뀌지 않았다; **`c6a`와 `c6b`의 두 원천 행 모두 바뀌지 않았다**(기존 동작 — 새 행 생성, 원천 행 불변); `c10`은 `run-now`에 새 행이 기록되고 `run-peer`의 옛 행은 바뀌지 않았으며 `card.rebound` 이벤트가 없다(재분류에서 살아난 소유자 — REQ-FCR-019); 주입 실패 시 `run-now`의 `c9` 행과 `run-dead`의 `c9` 행이 모두 진입 전 그대로다(한 트랜잭션); `cards` 행 수는 새로 생긴 `run-now` 행만큼만 늘었다(삭제 0)
+- **RED-now**: L1 `TestT1963RedLeaseLeavesDeadRowNonTerminal` — `dead-run row state="run" after lease in run-new`. RED인 이유: 임대는 현재 run에만 쓰고 이전 run 행을 읽기만 한다(`card_picked.go:159-176`, `card_metadata.go:284` — 계획 트리 `c4784db4c2` 기준; HEAD `fcb21d81dc`에서는 `recordPickedTx` 생성 분기 `card_picked.go:159-183`, `PreviousCardRow` `card_metadata.go:295`, v0.3.12에서 다시 읽음; 병합 `aa6fe70e71` 뒤에는 생성 분기 `card_picked.go:165-189`, `PreviousCardRow` `:295` 그대로, v0.3.13에서 다시 읽음).
+- **green (M2-B)**: 두 명령을 **각각 따로** 실행한다: `go test ./internal/cli -run '^TestFactoryNextAbandonsDeadRunDuplicate$' -count=1 -v` → exit 0, `--- PASS: TestFactoryNextAbandonsDeadRunDuplicate `(이름 뒤 공백); `c10`은 별도 명령(sync-audit D8 — 위 명령은 `c10`을 실행하지 않는다): `go test ./internal/homestate -run '^TestRecordPickedReclassifiesPeerAndBootSources$' -count=1 -v` → exit 0, `--- PASS: TestRecordPickedReclassifiesPeerAndBootSources `(이름 뒤 공백).
+- **변이 탐침**: 소유자 판정 없이 다른 run의 행을 모두 포기하는 구현 → `c8` 대조에서 실패. 리더 판정만 보고 lease·산 worker를 보지 않는 구현 → `c6a`·`c6b` 대조에서 실패. lease만 보는 구현 → `c6b`에서, worker만 보는 구현 → `c6a`에서 실패. worker 검사를 "worker 행 존재"로 구현한 변이(REQ-FCR-022 pid 탐침 미적용) → `c9`가 포기되지 않아 실패. `BasisPeer`·`BasisBoot` 원천을 임대 트랜잭션 직전에 다시 분류하지 않는 구현("no re-check") → `c10`의 옛 행이 `abandoned`가 되어 실패 — 이 변이를 죽이는 것은 `TestRecordPickedReclassifiesPeerAndBootSources`다. 포기를 이어받기 읽기보다 먼저 하는 구현 → `run-now`의 `c9` stage 이어받기 단언에서 실패. 포기를 별도 트랜잭션으로 하는 구현 → 주입 실패 단언에서 실패.
+
+### AC-FCR-024 — 죽은 pid의 worker는 run을 붙잡지 않는다 (REQ-FCR-022) [release-blocking]
+
+- **Given** 소유자 dead인 활성 run 셋, 각각 worker 행 하나만: (a) pid 탐침이 `Dead`를 내는 pid (b) 현재 프로세스 pid(`Live`) (c) 탐침이 판정 불가를 내도록 주입한 pid; (e) worker 행 2개 — 첫 행 죽은 pid, 둘째 행 산 pid; 그리고 (d) 죽은 스탬프 run 하나 — 비종결 카드 없음, 죽은 pid worker 행만
+- **When** (a)~(c)·(e)는 `ReconcileActiveRuns`를, (d)는 리더 진입의 채택 후보 탐색을 실행한다
+- **Then** (a)만 `retired`, (b)(c)(e)는 `active`로 보존된다; (d)의 run은 채택 후보가 아니다(같은 술어가 후보 경로에도 적용됨)
+- **RED-now**: L1 `TestT1963RedGhostWorkerKeepsRunAlive` — `status="active" preserved=1`. RED인 이유: `runHasLiveRecords`가 worker 행 존재만 본다(`factory_run_adopt.go:35`).
+- **green (M2-B)**: `go test ./internal/homestate -run '^TestRunHasLiveRecordsIgnoresDeadWorkers$' -count=1 -v` → exit 0, `--- PASS: TestRunHasLiveRecordsIgnoresDeadWorkers `(이름 뒤 공백).
+- **변이 탐침**: worker 절을 통째로 지운 구현 → (b)에서 실패. 판정 불가를 죽음으로 읽는 구현 → (c)에서 실패. 조정 경로에만 죽은 worker 필터를 넣고 채택 후보 경로는 빠뜨린 구현 → (d)에서 실패. 첫 worker 행만 탐침하는 구현 → (e)에서 실패.
+
+### AC-FCR-025 — 기존 보존 기준 (REQ-FCR-021/022/023) [regression-guard]
+
+- **Given / When**: M2-B 착지 뒤 트리에서 아래 명령을 각각 따로 실행한다.
+- **Then**: 모두 exit 0이고 열거한 시험 이름마다 `--- PASS` 줄이 있다.
+  - `go test ./internal/homestate -run '^(TestRetireRunIfDead.*|TestFindResumableRun.*|TestAdoptRun.*|TestReconcile.*|TestLiveRecordsTerminalSetMatchesSharedDefinition)$' -count=1 -v` — L5의 25개 최상위 시험 전부, **시험 파일 변경 없이** — 단 **열거된 픽스처 예외 1건**: `mustInsertWorker`(`internal/homestate/factory_run_adopt_test.go:23-29`)의 worker pid를 `1`에서 `os.Getpid()`로 바꾸는 수정만 허용한다(시험 의도 — 산 worker는 run을 보존한다 — 불변). 이유: REQ-FCR-022 하에서 pid 1은 Windows 탐침(`internal/homestate/pid_state_windows.go:11-14`, `ERROR_INVALID_PARAMETER` → Dead)에서 dead로 읽힐 수 있어 `TestReconcilePreservesDeadOwnerWithOnlyWorkers`가 windows 러너(`.github/workflows/ci.yml`의 windows-latest)에서 거짓이 될 수 있다 — 코드 판독에 근거한 추론이며 Windows에서 측정하지 않았다. 이 헬퍼는 `TestRetireRunIfDeadRetiresWhenOnlyTerminalCardsOrWorkers`도 쓰지만 그 시험은 worker 생존을 보지 않는 `retireRun` 경로라 기대가 바뀌지 않는다. **같은 근거의 두 번째 픽스처 예외(사후 개정, run-phase, 카드 t1963)**: cli 합류 게이트 픽스처 `selSeedDead(workers=true)`(`internal/cli/factory_run_select_gate_test.go:37-63`)의 worker pid `1` → `os.Getpid()`(시험 의도 불변 — 픽스처의 worker는 산 worker로 읽혀야 한다).
+  - `go test ./internal/cli -run '^(TestFactoryRunsRetireRefusesInProgressCards|TestFactoryRunsRetireReportsStrandedCardsOfRetiredRun)$' -count=1 -v` — SPEC-FACTORY-RETIRE-GUARD-001 cli 시험 2건, 변경 없이.
+  - `go test ./internal/cli -run '^TestFactoryRunsHasNoForceFlag$' -count=1 -v` — **SPEC-FACTORY-RETIRE-GUARD-001 시험 중 유일한 명시적 기대 변경**(Q1 판정 (a)): 허용 플래그 집합 단언이 `[retire]`에서 `[rebind-to retire]`로 넓어진 상태로 통과한다. 단언의 형태(정렬된 전체 집합의 정확 일치)는 그대로라 `--force` 같은 우회 플래그가 생기면 여전히 실패한다. 그 SPEC의 나머지 7건(homestate 5건은 위 첫 명령, cli 2건은 위 둘째 명령)은 시험 파일 변경 없이 통과한다.
+  - `go test ./internal/cli -run '^(TestAdoptResumedLeaderRun.*|TestStrictResumeCarrierSeen|TestLeaderRunIDWasMinted)$' -count=1 -v` — L6의 7건. **열거된 예외 1건**: `TestAdoptResumedLeaderRunWarnsOnMultipleCandidates`는 REQ-FCR-017 하에서 기대가 반전돼(최신 채택 + 나머지 통합) 개정된 기대로 통과한다. `strictResumeCarrierSeen`이 제거되면 `TestStrictResumeCarrierSeen`도 함께 제거되고, 그 사실을 run-phase 증거에 적는다.
+- **RED-now**: 해당 없음 — 보존 기준이다(L5·L6이 착지 전 green 기준선). release-blocking이 아니라 regression-guard로 분류한다.
+- **변이 탐침**: 은퇴 가드를 "옮길 수 있으면 옮기고 은퇴"로 일반화한 구현은 `TestRetireRunIfDeadRefusesInProgressCards`에서 실패한다.
+
 ## §C — M3: 표시·처분
 
 ### AC-FCR-012 — near-dup 발급 stderr 표시 (REQ-FCR-012)
@@ -132,5 +575,14 @@ RED-now probe 일괄 관측 기록(모두 `a158b4b5f` 트리, 2026-10-06 plan-ph
 | AC-FCR-014 | REQ-FCR-014 | M2-M3 | internal/homestate + internal/cli |
 | AC-FCR-015 | REQ-FCR-015 | M2 | internal/homestate |
 | AC-FCR-016 | REQ-FCR-016 | M1-M3 | internal/homestate + internal/cli |
+| AC-FCR-017 | REQ-FCR-017, REQ-FCR-018, REQ-FCR-020, REQ-FCR-023, REQ-FCR-024, REQ-FCR-025 | M2-B | internal/cli + internal/homestate + internal/factory |
+| AC-FCR-018 | REQ-FCR-017, REQ-FCR-018, REQ-FCR-020 | M2-B | internal/cli |
+| AC-FCR-019 | REQ-FCR-018, REQ-FCR-020, REQ-FCR-023 | M2-B | internal/cli + internal/homestate |
+| AC-FCR-020 | REQ-FCR-020 | M2-B | internal/homestate |
+| AC-FCR-021 | REQ-FCR-020, REQ-FCR-023 | M2-B | internal/homestate |
+| AC-FCR-022 | REQ-FCR-021, REQ-FCR-020, REQ-FCR-014 | M2-B | internal/cli |
+| AC-FCR-023 | REQ-FCR-019, REQ-FCR-023 | M2-B | internal/cli + internal/homestate |
+| AC-FCR-024 | REQ-FCR-022 | M2-B | internal/homestate |
+| AC-FCR-025 | REQ-FCR-021, REQ-FCR-022, REQ-FCR-023 | M2-B | internal/homestate + internal/cli |
 
-전체 REQ-FCR-001..016이 위 표에서 최소 1개 AC와 연결된다(coverage reader가 읽는 전체 ID 형태 — 축약 `FCR-001..005`는 reader 미인약, 게이트 실측으로 16건 전부 CoverageIncomplete로 보고된 바 있음).
+전체 REQ-FCR-001..025가 위 표에서 최소 1개 AC와 연결된다(coverage reader가 읽는 전체 ID 형태 — 축약 `FCR-001..005`는 reader 미인약, 게이트 실측으로 16건 전부 CoverageIncomplete로 보고된 바 있음).

@@ -236,7 +236,11 @@ func TestFactoryRunsHasNoForceFlag(t *testing.T) {
 	var names []string
 	cmd.Flags().VisitAll(func(f *pflag.Flag) { names = append(names, f.Name) })
 	sort.Strings(names)
-	if !reflect.DeepEqual(names, []string{"retire"}) {
-		t.Fatalf("flags = %v, want exactly [retire]", names)
+	// SPEC-FACTORY-COMPLETION-RECOVERY-001 AC-FCR-022 (f), decision Q1 (a): the
+	// one widening this card is allowed — `--rebind-to` joins `--retire`. The
+	// assertion keeps its form (the sorted set, exact), so a bypass flag such as
+	// `--force` still fails it.
+	if !reflect.DeepEqual(names, []string{"rebind-to", "retire"}) {
+		t.Fatalf("flags = %v, want exactly [rebind-to retire]", names)
 	}
 }

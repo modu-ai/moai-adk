@@ -222,6 +222,11 @@ catalog:
                   path: templates/.agents/skills/moai-clean/
                   hash: 73b5afcb5ff9198d70eb5af9955cff517a17f2295850673b3e154eae147f8f32
                   version: 1.0.0
+                - name: moai-fetch-web
+                  tier: optional-pack:commands
+                  path: templates/.claude/skills/moai-fetch-web/
+                  hash: 45baada9685949ccadac4f413054233833b5e67f140449b01be1903bf45abac2
+                  version: 1.0.0
                   depends_skills:
                     - moai
                     - moai-workflow-ddd

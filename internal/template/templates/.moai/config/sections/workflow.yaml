@@ -349,6 +349,12 @@ workflow:
     # reaches the switch through `moai web` or by editing this key by hand.
     jev:
         enabled: false
+        # consumers: per-consumer mode and threshold. No consumer is compiled
+        # in this release, so an entry here has no effect until one ships.
+        # mode: shadow | advise | steer | confirm  (all run as shadow today)
+        # threshold: a number from 0 to 1, recorded only. An invalid entry
+        # is ignored on its own; the rest of this file still loads.
+        consumers: {}
     # autonomy: how a SPEC's autonomous-execution contract is signed and bounded.
     # An absent key takes the default shown here; an unrecognized value for
     # mode, second_review, decider, or jev_min_confidence falls back to the

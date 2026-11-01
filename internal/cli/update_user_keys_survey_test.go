@@ -132,7 +132,6 @@ func initUserOwnedKeysProject(t *testing.T) string {
 	wizResult := &wizard.WizardResult{
 		ConversationLang:  "ko",
 		UserName:          "surveyor",
-		DevelopmentMode:   "ddd",
 		ReportFormat:      "md",
 		GitMode:           "team",
 		GitProvider:       "gitlab",
@@ -158,9 +157,11 @@ func initUserOwnedKeysProject(t *testing.T) string {
 
 	root := filepath.Join(t.TempDir(), "survey")
 	cmd := newInitTestCmd()
-	// Git values reach init only through flags (or remote detection).
+	// Git values and the development mode reach init only through flags (or
+	// remote detection); init does not map the wizard's development mode.
 	for flag, val := range map[string]string{
 		"name":                "survey-proj",
+		"mode":                "ddd",
 		"git-mode":            "team",
 		"git-provider":        "gitlab",
 		"github-username":     "gh-user",

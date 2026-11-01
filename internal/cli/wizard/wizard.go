@@ -32,11 +32,12 @@ func Run(questions []Question, styles *Styles) (*WizardResult, error) {
 //
 // It is the SINGLE init entry point: the former mode-parameterised variant is
 // retired (SPEC-CLI-WIZARD-RESTRUCTURE-001 REQ-WIZ-018), because every user now
-// sees the same three pages and no flag changes what is asked.
+// sees the same four pages and no flag changes what is asked.
 func RunWithDefaults(projectRoot, locale, userName string) (*WizardResult, error) {
-	// The full 2-page init set (Basic / Agents & Autonomy), the Q5 regroup.
-	// Both pages are unconditional — every user sees them
-	// (SPEC-CLI-WIZARD-RESTRUCTURE-001 REQ-WIZ-001/002).
+	// The full init set: five questions on four pages (Basic / Agents &
+	// Autonomy / Judgment Capability / Participation). All pages are
+	// unconditional — every user sees them (SPEC-CLI-WIZARD-RESTRUCTURE-001
+	// REQ-WIZ-001/002).
 	questions := InitQuestions(projectRoot)
 
 	// Pre-fill the identity/locale defaults from the caller (profile values).
@@ -45,11 +46,10 @@ func RunWithDefaults(projectRoot, locale, userName string) (*WizardResult, error
 	// Pre-populate the boolean defaults so Condition funcs and the
 	// non-interactive path see them from the start.
 	result := &WizardResult{
-		LSPEnabled:                true,
-		EnforceQuality:            true,
-		CoverageExemptionsEnabled: false,
-		DesignEnabled:             true,
-		ClaudeDesignEnabled:       true,
+		LSPEnabled:          true,
+		EnforceQuality:      true,
+		DesignEnabled:       true,
+		ClaudeDesignEnabled: true,
 	}
 
 	// Run wizard with pre-populated result
@@ -93,11 +93,10 @@ func RunWithLocale(questions []Question, styles *Styles, locale string) (*Wizard
 	// claude_design_enabled) hold true even on this entry point (used by
 	// update_wizard.go) where their questions are no longer asked.
 	result := &WizardResult{
-		LSPEnabled:                true,
-		EnforceQuality:            true,
-		CoverageExemptionsEnabled: false,
-		DesignEnabled:             true,
-		ClaudeDesignEnabled:       true,
+		LSPEnabled:          true,
+		EnforceQuality:      true,
+		DesignEnabled:       true,
+		ClaudeDesignEnabled: true,
 	}
 	if err := runWithResult(questions, styles, locale, result); err != nil {
 		return nil, err

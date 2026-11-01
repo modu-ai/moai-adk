@@ -21,7 +21,7 @@
   <a href="https://codecov.io/gh/modu-ai/moai-adk"><img src="https://codecov.io/gh/modu-ai/moai-adk/branch/main/graph/badge.svg" alt="Codecov"></a>
   <br>
   <a href="https://go.dev/"><img src="https://img.shields.io/badge/Go-1.26+-00ADD8?style=flat&logo=go&logoColor=white" alt="Go"></a>
-  <a href="https://github.com/modu-ai/moai-adk/releases"><img src="https://img.shields.io/badge/Release-v3.2.0-blue.svg" alt="Release"></a>
+  <a href="https://github.com/modu-ai/moai-adk/releases"><img src="https://img.shields.io/badge/Release-v3.1.2-blue.svg" alt="Release"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/License-Apache--2.0-blue.svg" alt="License: Apache-2.0"></a>
 </p>
 
@@ -55,7 +55,7 @@ moai codex -l                 # Codex のレーン
 
 `-f`（長い形 `--factory`）がリーダーを開き、`-l`（長い形 `--lane`）が稼働中のファクトリーにレーンとして合流する。どちらも引数を取らない。レーン番号はオペレーターが選ぶものではなく、自動で割り当てられる。レーンは**ターミナルを 1 つずつ新しく開いて手動で**立ち上げる。セッションが別のセッションの代わりに立つことはない。`moai codex` にリーダーの進入はなく、レーンとしてしか合流できない。
 
-1 回の起動に進入トークンは 1 つだけなので、`-f` と `-l` の併用はエラーになる。値を付けた形（`moai cc -f <値>`、`moai cc -l lane-2`）も 1 行のエラーで拒否され、エラー文が正しい形を教えてくれる。かつてのマルチセッション・ボードモードの `-k` は削除済みで、`moai cg` は移行案内を表示して終了する（`moai migrate cg` で先に確認できる）。`moai gpt` は存在せず、GPT モデルは `moai codex` で動かす。
+1 回の起動に進入トークンは 1 つだけなので、`-f` と `-l` の併用はエラーになる。値を付けた形（`moai cc -f <値>`、`moai cc -l lane-2`）も 1 行のエラーで拒否され、エラー文が正しい形を教えてくれる。かつてのマルチセッション・ボードモードの `-k` は削除済みです。GPT モデルは `moai codex` で動かします。
 
 ### どのバックエンドで動かすか
 
@@ -287,7 +287,7 @@ cd my-project
 
 
 > **GPT ゲートウェイの撤回（2026-09-16）。** 内蔵トランスレーションゲートウェイで GPT モデルを
-> Claude Code に載せていた旧 `moai gpt` ランチャーは削除されました。GPT モデルはネイティブハーネスの
+> Claude Code に載せていた旧ランチャーは削除されました。GPT モデルはネイティブハーネスの
 > `moai codex`（Codex CLI）から利用してください。上記の `--llm gpt` init 値には影響しません —
 > 撤回されたランチャーではなく、Codex 専用デプロイを選ぶ値です。
 ```bash
@@ -382,7 +382,7 @@ SPEC ごとに独立した作業ツリーを与える。`moai cc -w <名前>` �
 
 ### CG の廃止と設定の移行
 
-`moai cg` は廃止されました。Claude や GLM を起動せず、移行案内を表示して終了します。`moai cc` の別名ではありません。`llm.team_mode: cg` が残るプロジェクトでは、セッションを起動する前に移行先を明示的に選ぶ必要があります。
+CG ランチャーは廃止されました。移行手順は [CG の廃止と設定の移行](https://adk.mo.ai.kr/ja/multi-llm/cg-mode/) を参照してください。
 
 ```bash
 moai migrate cg
@@ -587,7 +587,7 @@ SPEC ごとに独立した作業ツリーを与え、2 つのエージェント�
 
 ### CG の廃止と設定の移行
 
-`moai cg` は廃止されました。Claude や GLM を起動せず、移行案内を表示して終了します。`moai cc` の別名ではありません。`llm.team_mode: cg` が残るプロジェクトでは、セッションを起動する前に移行先を明示的に選ぶ必要があります。
+CG ランチャーは廃止されました。移行手順は [CG の廃止と設定の移行](https://adk.mo.ai.kr/ja/multi-llm/cg-mode/) を参照してください。
 
 ```bash
 moai migrate cg

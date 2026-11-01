@@ -42,10 +42,10 @@ func TestDocsSiteProjectRootMatchesServer(t *testing.T) {
 	// factory_msg_* / session_msg_* tools server-side, so the served
 	// project_root set dropped from 45 to 36 and the pages were reconciled.
 	locales := map[string]string{
-		"en": "Thirty-two tools",
-		"ko": "32개 도구",
-		"ja": "32個のツール",
-		"zh": "32 个工具",
+		"en": "Thirty-three tools",
+		"ko": "33개 도구",
+		"ja": "33個のツール",
+		"zh": "33 个工具",
 	}
 	for locale, countPhrase := range locales {
 		t.Run(locale, func(t *testing.T) {
@@ -97,7 +97,7 @@ var docCountWords = map[string]int{
 	"Three": 3, "Four": 4, "Five": 5, "Six": 6, "Seven": 7, "Eight": 8, "Nine": 9, "Ten": 10,
 	"Eleven": 11, "Twelve": 12, "Thirteen": 13, "Fourteen": 14,
 	"Fifteen": 15, "Sixteen": 16, "Seventeen": 17, "Eighteen": 18, "Nineteen": 19, "Twenty": 20,
-	"Twenty-one": 21, "Twenty-two": 22, "Twenty-three": 23, "Thirty-two": 32, "Thirty-six": 36, "Forty-five": 45,
+	"Twenty-one": 21, "Twenty-two": 22, "Twenty-three": 23, "Thirty-two": 32, "Thirty-three": 33, "Thirty-six": 36, "Forty-five": 45,
 }
 
 // TestProjectRootDocMatchesServer asserts the rule file names exactly the tools

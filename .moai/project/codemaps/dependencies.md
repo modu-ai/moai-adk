@@ -1,6 +1,10 @@
 # 의존성 그래프
 
-## 현재 의존성 측정 — 656e4d3 (card t1640 판)
+## 현재 의존성 측정 — 4c4217a1 (card t1991 판)
+
+Darwin/arm64에서 `go list ./internal/... ./cmd/... ./pkg/...`는 모듈 패키지 **176**개를 낸다(t1640 판 175 대비 +1 — 신규 패키지 `internal/jevledger`). 모듈 내부 import 쌍은 `go list -json=ImportPath,Imports`의 비테스트 `Imports` 항목 중 모듈 `internal`·`cmd`·`pkg` 경로를 센 값으로 **531**개다. 이전 판의 530은 `go list -deps -json` 산출이라 집계 경로가 다르므로 +1은 방향 신호일 뿐 기준 쌍 집합 대조가 아니다(Gaps). 이 창에서 신규성을 소스로 확인한 쌍은 하나다 — `internal/template`→`internal/lockfile`(`settings.go`의 `SyncLocalSettingsPATH`가 `settings.local.json`을 형제 잠금 파일 아래서 갱신하려고 쓴다; `internal/template`에서 이 패키지를 import 하는 파일은 이것 하나다). `internal/jevledger`는 표준 라이브러리만 import 하므로 나가는 모듈 내부 엣지가 0이고, 비테스트 import 하는 쪽도 0이다(`go list` Imports에 이름이 나타나는 곳은 자기 `ImportPath` 한 줄뿐) — 순환에 낄 수 없는 잎이며 `internal/jev`도 import 하지 않는다(경계는 `boundary_test.go`의 import 허용 목록이 지킨다). `internal/config/jev_consumers.go`는 이미 쓰던 `gopkg.in/yaml.v3`와 표준 라이브러리만 import 한다. `go.mod`·`go.sum`은 창 안에서 변하지 않았다(외부 의존성 집계는 아래 절 그대로).
+
+## 이전 의존성 측정 — 656e4d3 (card t1640 판)
 
 Darwin/arm64의 `go list -deps -json ./internal/... ./cmd/... ./pkg/...` 결과에서 모듈 패키지는 **175**개(+2), 모듈 내부 import 쌍은 **530**개(+10)다 — t1931 후속 판 대비 움직임은 전부 worktree-home-root와 agentemit 진입점이 만든 새 경계다(델타 감사 F2 정정 — 초판 174·529는 파서 결함). **신규 패키지 경계 2개**: `internal/worktreeroot`(잎 — stdlib+`internal/paths`만 임포트)와 `internal/template/agentemit/cmd/agents-emit`(card t1649). `internal/cli/worktree`·`internal/template/agentemit` 본체는 기준 커밋에 존재한다(F3 정정). **검증된 신규 패키지 쌍 5개**(jq 유니크 쌍 집계 기계 산출): `internal/cli`→`internal/worktreeroot`, `internal/cli/worktree`→`internal/worktreeroot`, `internal/factory`→`internal/worktreeroot`, `internal/worktreeroot`→`internal/paths`, `internal/template/agentemit/cmd/agents-emit`→`internal/template/agentemit`. 나머지 +5쌍은 기존 패키지 간 신규 쌍으로 기준 커밋과의 쌍 집합 대조 없이는 신규성을 검증할 수 없어 이 판에서 열거하지 않는다(Gaps). **config→worktreeroot 엣지는 없다**(F1 정정 — 리졸버가 핀을 자체 스캔으로 읽고 config 쪽 로더는 의존 없이 병존). **제거된 엣지**: `claudeNativeWorktreeSubdir` 상수 소비 — `.claude/worktrees`는 리졸버 Candidates의 legacy-claude 폴백으로만 남는다. **불변 경계**: `internal/hook`은 `worktreeroot`를 임포트하지 않는다 — moai-made 홈 루트 생성은 internal/cli 리졸버로 수렴하지만 훅의 생성기(`worktree_create.go`)는 legacy `.claude/worktrees`에 claude-native 트리를 직접 만든다(리졸버 미경유 — 델타 감사 F7 정정). 이 판 측정의 fan-out 상위는 cli·hook·web, fan-in 상위는 config·defs·atomicfile 순으로 구성이 유지된다.
 

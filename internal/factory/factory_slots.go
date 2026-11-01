@@ -342,6 +342,16 @@ func claimFactoryLane(root, requested string, auto bool, pid int, runID string, 
 			n++
 		}
 	}
+	// A run a consolidation retired takes no new lane worker (card t1963,
+	// CARRY-6): its cards live in the surviving run, so a registration here would
+	// attach a lane to a run nobody owns. The guard reads inside this
+	// transaction, ahead of every write below; any other run state, and a claim
+	// that names no run, passes exactly as before.
+	if runID != "" {
+		if err := homestate.RefuseTxIfRetiredByConsolidation(context.Background(), tx, runID); err != nil {
+			return claim, err
+		}
+	}
 	for _, r := range stale {
 		if _, err := tx.Exec(`DELETE FROM workers WHERE label=? AND pid=?`, r.label, r.pid); err != nil {
 			return claim, err
