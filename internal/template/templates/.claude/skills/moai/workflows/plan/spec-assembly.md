@@ -295,10 +295,10 @@ Execution conditions (ALL must hold):
 - GitHub CLI (`gh`) is available
 - Repository has a remote origin
 
-Skip conditions (any triggers a silent skip with no warning):
-- `--issue` flag is NOT set (default — silent skip)
-- `gh` CLI not available (log warning and continue)
-- No remote origin configured
+Skip conditions (the flag being absent is a silent skip; `--issue` set but a prerequisite missing skips with exactly one warning line):
+- `--issue` flag is NOT set (default — silent skip, no warning)
+- `--issue` is set but `gh` CLI is not available (skip, emit exactly one warning line, continue)
+- `--issue` is set but no remote origin is configured (skip, emit exactly one warning line, continue)
 
 #### Step 2.5.1: Create GitHub Issue
 
@@ -566,7 +566,7 @@ All of the following must be verified:
   - plan_complete_at: {ISO-8601 timestamp}
   - plan_status: audit-ready
   ```
-  Write it under the `## §E.1` heading; the Kickoff readiness check reads only the bare `audit_ready: true` line. This signal indicates plan artifacts (spec.md, plan.md, acceptance.md, tasks.md) are finalized
+  Write it under the `## §E.1` heading; the Kickoff readiness check reads only the bare `audit_ready: true` line. This signal indicates the plan artifacts of the SPEC's complexity tier are finalized (Tier S: spec.md + plan.md; Tier M: + acceptance.md; Tier L: + design.md + research.md)
   and ready for Plan Audit Gate validation at `/moai run` Phase 1.
 
 ---
@@ -580,7 +580,7 @@ All of the following must be verified:
 - Phase 8: manager-spec designs GEARS-notation requirements for JWT auth (canonical notation; EARS legacy form for pre-v3 SPECs only)
 - Annotation cycle: 1-3 iterations refining requirements
 - Phase 10: SPEC-AUTH-001 created with spec.md, plan.md, acceptance.md
-- Phase 12: GitHub Issue created and linked to SPEC
+- Phase 12: skipped silently (no `--issue` flag), so no GitHub Issue is created; with `--issue` an Issue would be created and linked to the SPEC
 - Phase 13: Feature branch feat/SPEC-AUTH-001-jwt-auth created (if --branch)
 
 ### Existing Assets Flow

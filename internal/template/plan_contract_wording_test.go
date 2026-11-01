@@ -125,3 +125,55 @@ func TestPlanContractWording(t *testing.T) {
 		t.Error("spec-assembly.md opt-in paragraph does not point at Step 2.5.2 as the only writer of issue_number")
 	}
 }
+
+// TestPlanSpecAssemblyIssueAndArtifactWording guards three in-doc contradictions
+// in spec-assembly.md: the Phase 12 skip-condition header versus its warning
+// bullet, the default-flow example expecting an Issue without --issue, and the
+// audit-ready signal naming tasks.md as a plan-phase artifact (no tier produces
+// it at plan time). Lexical checks on the embedded copy only.
+func TestPlanSpecAssemblyIssueAndArtifactWording(t *testing.T) {
+	fsys, err := EmbeddedTemplates()
+	if err != nil {
+		t.Fatalf("EmbeddedTemplates(): %v", err)
+	}
+	raw, err := fs.ReadFile(fsys, ".claude/skills/moai/workflows/plan/spec-assembly.md")
+	if err != nil {
+		t.Fatalf("read spec-assembly.md: %v", err)
+	}
+	sa := string(raw)
+
+	skip, ok := between(sa, "Skip conditions (", "#### Step 2.5.1")
+	if !ok {
+		t.Fatal("spec-assembly.md: Phase 12 'Skip conditions (' block not found")
+	}
+	if strings.Contains(skip, "silent skip with no warning") {
+		t.Error("Phase 12 skip header still says 'silent skip with no warning' while a bullet logs a warning")
+	}
+	if !strings.Contains(skip, "exactly one warning line") {
+		t.Error("Phase 12 skip block does not state the single-warning-line rule for --issue with missing gh or remote")
+	}
+
+	flow, ok := between(sa, "### Normal Flow", "### Existing Assets Flow")
+	if !ok {
+		t.Fatal("spec-assembly.md: Normal Flow example not found")
+	}
+	if !strings.Contains(flow, "--issue") {
+		if strings.Contains(flow, "GitHub Issue created") {
+			t.Error("Normal Flow example (no --issue) still expects a GitHub Issue to be created")
+		}
+		if !strings.Contains(flow, "no GitHub Issue") {
+			t.Error("Normal Flow example does not state that no GitHub Issue is created without --issue")
+		}
+	}
+
+	sig, ok := between(sa, "**Audit-ready signal**", "\n---")
+	if !ok {
+		t.Fatal("spec-assembly.md: audit-ready signal block not found")
+	}
+	if strings.Contains(sig, "tasks.md") {
+		t.Error("audit-ready signal still lists tasks.md as a plan-phase artifact")
+	}
+	if !strings.Contains(sig, "tier") {
+		t.Error("audit-ready signal does not name the tier-appropriate artifact set")
+	}
+}
