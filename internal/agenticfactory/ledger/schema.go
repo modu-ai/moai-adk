@@ -148,7 +148,10 @@ func (s *Store) migrate(ctx context.Context) error {
 // migrateEvidenceMark adds transitions.evidence_mark to a version 1 ledger. Its rows are given the
 // mark the old data supports: the newest evidence the card had at or before the moment of the
 // move. The two clocks only share the database's own millisecond timestamps, so evidence written
-// in the very same millisecond counts as before the move, the side that withholds a DONE. A fresh
+// in the very same millisecond is ranked by what the move is used for. For a move back into
+// BUILDING it counts as before the move, the side that withholds a DONE. For the move that offers
+// a candidate to the queue (into MERGING) it counts as after: the mark there says which
+// green is newer work than the offer, and a tie must not make newer work look older. A fresh
 // ledger already has the column and no rows to mark.
 func migrateEvidenceMark(ctx context.Context, q querier) error {
 	var n int
@@ -160,7 +163,7 @@ func migrateEvidenceMark(ctx context.Context, q querier) error {
 			return fmt.Errorf("ledger: migrate: %w", err)
 		}
 	}
-	if _, err := q.ExecContext(ctx, `UPDATE transitions SET evidence_mark=COALESCE((SELECT MAX(e.id) FROM evidence e WHERE e.card_id=transitions.card_id AND e.at<=transitions.at),0) WHERE evidence_mark IS NULL`); err != nil {
+	if _, err := q.ExecContext(ctx, `UPDATE transitions SET evidence_mark=COALESCE((SELECT MAX(e.id) FROM evidence e WHERE e.card_id=transitions.card_id AND (e.at<transitions.at OR (e.at=transitions.at AND transitions.to_stage<>'MERGING'))),0) WHERE evidence_mark IS NULL`); err != nil {
 		return fmt.Errorf("ledger: migrate: %w", err)
 	}
 	return nil
