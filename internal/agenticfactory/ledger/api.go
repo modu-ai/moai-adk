@@ -72,6 +72,9 @@ var (
 	ErrSQLiteTooOld   = errors.New("ledger: the SQLite engine is older than " + MinSQLite)
 	ErrEvidenceStale  = errors.New("ledger: no evidence for this tree SHA")
 	ErrDependency     = errors.New("ledger: a dependency is missing, cancelled, or the card's own")
+	// ErrLanding refuses a failing green, gate or review run about the candidate of a queue row that is in landing; it is
+	// retryable (record the run after the landing, or after the row left landing).
+	ErrLanding = errors.New("ledger: the commit is being landed")
 )
 
 // Spec is spec_json: what the card must show and where it may write.

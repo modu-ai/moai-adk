@@ -796,6 +796,12 @@ func newAFEvidenceCmd() *cobra.Command {
 The commit is looked up in --repo, else in the worktree of the card's lease, else in the project directory; it must name a
 complete commit SHA that exists there, and that repository must be the one the ledger is bound to.
 
+A failing green, gate or review run about the commit of a queue row that is in landing is refused (non-zero exit, nothing
+recorded): the trunk is being moved on that commit, and the landing's last look at the newest runs has been taken or is
+being taken. Record the run again once "moai af land" has returned; where no lander is running (a process that is gone
+left the row in landing), "moai af reconcile" settles the row first. Passing runs, runs about another commit and red or
+merge runs are not refused.
+
 ` + afBindHelp,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

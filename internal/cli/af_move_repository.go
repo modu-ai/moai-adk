@@ -13,6 +13,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/ledger"
 	"github.com/modu-ai/moai-adk/internal/homestate"
+	"github.com/modu-ai/moai-adk/internal/hook"
 )
 
 // newAFMoveRepositoryCmd is `moai af move-repository` (N52): the operator's way to tell the ledger that the repository it
@@ -60,6 +61,11 @@ The default ledger location is keyed by the project directory, so a project dire
 ledger there. --from <the old project directory> names the old key: its ledger file (with its -wal and -shm) is moved to
 the new key before the move is recorded, only when the new key has no ledger yet, and left where it was on any refusal.
 Spell the old directory as it was when the ledger was made. --from cannot be combined with --db.
+
+With --from the sessions' lease bindings follow the file: each binding in the project's .moai/state/ledger-heartbeat that
+names the old ledger path is rewritten to the new one (heartbeat_bindings_rewritten in the output), so the hooks of a
+session that holds a card keep renewing its lease. A binding that names another path is left alone. A binding that cannot
+be rewritten does not undo the recorded move: it is printed as warning_heartbeat_bindings.
 
 A lease records the worktree its holder claimed with, and that path is not rewritten: evidence and enqueue for a card
 claimed before the move need --repo <a path in the new repository>.`,
@@ -182,6 +188,15 @@ func afMoveRepository(cmd *cobra.Command, f afFlags, reason, from string) error 
 		return fmt.Errorf("af: refused: %w; nothing was changed", err)
 	}
 	res["commits_checked"], res["commits_unchecked"] = checked, unchecked
+	if oldPath != "" {
+		// The session bindings of the project name the ledger file by path, and the hooks renew leases through them: they
+		// follow the file. The move is recorded by now and a failure here does not undo it; it is a named warning.
+		n, rerr := hook.RebindLedgerHeartbeats(resolveProjectDir(), oldPath, newPath)
+		res["heartbeat_bindings_rewritten"] = n
+		if rerr != nil {
+			res["warning_heartbeat_bindings"] = fmt.Sprintf("%v; the move is recorded, and the hooks of a session whose binding was not rewritten cannot renew its lease", rerr)
+		}
+	}
 	return afPrint(cmd, res)
 }
 

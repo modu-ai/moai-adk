@@ -212,10 +212,13 @@ func noFailingNewestRun(ctx context.Context, q querier, cardID, sha string) (boo
 	return kind == "", err
 }
 
+// landingReadKinds are the kinds of run failingNewestRun reads, in its order; refuseWhileLanding refuses the same kinds.
+var landingReadKinds = []string{KindGreen, KindGate, KindReview}
+
 // failingNewestRun names the first kind (green, gate, review, in that order) whose newest run about the commit is
 // not a pass, "" when there is none: noFailingNewestRun's rule, with the kind that failed.
 func failingNewestRun(ctx context.Context, q querier, cardID, sha string) (string, error) {
-	for _, kind := range []string{KindGreen, KindGate, KindReview} {
+	for _, kind := range landingReadKinds {
 		res, err := latestResult(ctx, q, cardID, kind, sha)
 		if err != nil {
 			return "", err
