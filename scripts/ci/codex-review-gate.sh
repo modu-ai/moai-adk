@@ -104,6 +104,11 @@ def leading_block:
       elif .[0] then [false, .[1]]
       else . end)
   | .[1] | join("\n");
+# Security-null adapter (SPEC-CI-CODEX-REVIEW-001 Amendment 8, AC-CCR-004a). A comment that still carries
+# performed_via_github_app must name the Codex app; a comment without the field is not refused for it.
+def app_ok:
+  (.performed_via_github_app == null)
+  or ((.performed_via_github_app | type) == "object" and .performed_via_github_app.slug == "chatgpt-codex-connector");
 # Only trusted Codex issue comments are candidates; untrusted marker text is not parsed.
 ($issues | map(select(ident))) as $native
 | ($native | map(select((.body // "") | contains("<!-- codex-review-state:v1")))) as $states
@@ -128,6 +133,34 @@ def leading_block:
 | ($typed_receipts | map(select(.kind == "unknown")) | length) as $receipt_type_unknown
 | ($typed_receipts | receipt_check("code")) as $code_receipt_error
 | ($typed_receipts | receipt_check("security")) as $security_receipt_error
+# The security-null adapter. null is NOT read as false here: the predicate is true only for the exact shape
+# measured on PR #1956 (both security flags present and exactly JSON null on a leg that is completed, bound to
+# the current head and corroborated), and it suspends exactly one refusal below, the type check of a completed
+# security leg, namely its two finding flags. Every condition must hold; one missing leaves the existing refusal unchanged.
+| ([$native[] | (.body // "") | scan("<!-- codex-(?:review-state|security-review|review-receipt):([^ >]*)") | .[0]] | all(.[]; . == "v1")) as $versions_v1
+| ($typed_receipts | map(select(.kind == "security"))) as $sec_receipts
+| ($sec_receipts | map(select(.reviewed_head | receipt_prefix_matches))) as $sec_current
+| ($sec_receipts | if length == 0 then null else max_by(.id) end) as $sec_latest
+| (
+    $state_comment != null
+    and ($state_comment | app_ok)
+    and $versions_v1
+    and $state_occurrences == 1 and $security_occurrences == 1
+    and ($state | type) == "object" and ($code | type) == "object" and ($security | type) == "object"
+    and ($security_marker | type) == "object"
+    and is_head($code.commit_sha) and is_head($security.commit_sha) and is_head($security_marker.headSha)
+    and $code.status == "completed" and $security.status == "completed" and $security_marker.status == "completed"
+    and ($code | has("has_any_findings")) and ($code | has("has_unresolved_findings"))
+    and $code.has_any_findings == false and $code.has_unresolved_findings == false
+    and ($security | has("has_any_findings")) and ($security | has("has_unresolved_findings"))
+    and $security.has_any_findings == null and $security.has_unresolved_findings == null
+    and ($sec_current | length) == 1
+    and $sec_latest != null and $sec_latest.id == $sec_current[0].id
+    and ($sec_current[0] | app_ok)
+    and $security_receipt_error == null
+    and (($reviews | map(select(ident)) | length) == 0)
+    and (($comments | map(select(ident)) | length) == 0)
+  ) as $sec_null_ok
 | ($reviews | map(select(ident))) as $cand
 | ($cand | map(select(((.id | type) != "number") or ((.id | floor) != .id) or ((.commit_id | type) != "string") or ((.state | type) != "string")))) as $bad
 | ($cand | map(select((.id | type) == "number")) | group_by(.id) | map(select(length > 1)) | .[0]) as $dup
@@ -181,9 +214,9 @@ def leading_block:
     elif ($code.has_unresolved_findings != null and ($code.has_unresolved_findings | type) != "boolean") then {c: 1, r: "review-not-complete:code_review:has_unresolved_findings"}
     elif ($security.has_unresolved_findings != null and ($security.has_unresolved_findings | type) != "boolean") then {c: 1, r: "review-not-complete:security_review:has_unresolved_findings"}
     elif $code.status != "running" and ($code.has_any_findings | type) != "boolean" then {c: 1, r: "review-not-complete:code_review:has_any_findings"}
-    elif $security.status != "running" and ($security.has_any_findings | type) != "boolean" then {c: 1, r: "review-not-complete:security_review:has_any_findings"}
+    elif ($sec_null_ok | not) and $security.status != "running" and ($security.has_any_findings | type) != "boolean" then {c: 1, r: "review-not-complete:security_review:has_any_findings"}
     elif $code.status != "running" and ($code.has_unresolved_findings | type) != "boolean" then {c: 1, r: "review-not-complete:code_review:has_unresolved_findings"}
-    elif $security.status != "running" and ($security.has_unresolved_findings | type) != "boolean" then {c: 1, r: "review-not-complete:security_review:has_unresolved_findings"}
+    elif ($sec_null_ok | not) and $security.status != "running" and ($security.has_unresolved_findings | type) != "boolean" then {c: 1, r: "review-not-complete:security_review:has_unresolved_findings"}
     elif $code.has_unresolved_findings == true then {c: 1, r: "finding:unresolved:code_review"}
     elif $security.has_unresolved_findings == true then {c: 1, r: "finding:unresolved:security_review"}
     elif $code.status == "completed" and $code.has_any_findings == true then {c: 1, r: "finding:reported:code_review"}
@@ -205,7 +238,7 @@ def leading_block:
     elif ($security_marker.headSha | full_sha | not) then {c: 1, r: "security-marker-malformed"}
     elif (is_head($security_marker.headSha) | not) then {c: 1, r: ("stale-review:" + $security_marker.headSha[0:10])}
     else
-      {c: 0, r: ("native-review-clean: state-comment " + ($state_comment.id | tostring) + " updated " + $state_comment.updated_at + " markers " + ([{code_review: {status: $code.status, commit_sha: $code.commit_sha, has_unresolved_findings: $code.has_unresolved_findings}, security_review: {status: $security.status, commit_sha: $security.commit_sha, has_unresolved_findings: $security.has_unresolved_findings}, security_marker: {status: $security_marker.status, headSha: $security_marker.headSha}}] | tojson | @base64))}
+      {c: 0, r: ("native-review-clean: " + (if $sec_null_ok then "security-null-adapter " else "" end) + "state-comment " +($state_comment.id | tostring) + " updated " + $state_comment.updated_at + " markers " + ([{code_review: {status: $code.status, commit_sha: $code.commit_sha, has_unresolved_findings: $code.has_unresolved_findings}, security_review: {status: $security.status, commit_sha: $security.commit_sha, has_unresolved_findings: $security.has_unresolved_findings}, security_marker: {status: $security_marker.status, headSha: $security_marker.headSha}}] | tojson | @base64))}
     end
   elif $find != null then
     {c: 1, r: ((if $find.bound then "finding:" else "finding-unbound:" end) + $find.id)}
