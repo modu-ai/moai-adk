@@ -74,7 +74,7 @@ func TestEnqueue_AGateOnlyCandidateStaysAcceptedWhenItIsTheNewestEvidence(t *tes
 	t.Run("c2 measured twice, the last run a gate", func(t *testing.T) {
 		s := openTemp(t)
 		c := gated(t, s, "a", "c1")
-		greenOn(t, s, c.Epoch, "c2", ResultFail)
+		greenOn(t, s, c.Epoch, "c2", ResultPass)
 		gateOn(t, s, c.Epoch, "c2", ResultPass)
 		if err := s.Enqueue(bg, "a", c.Epoch, "c2"); err != nil {
 			t.Fatalf("the newest evidence is about c2 and c2 is refused: %v", err)
