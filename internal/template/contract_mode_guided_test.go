@@ -693,6 +693,93 @@ var grKickoffClasses = map[string]string{
 	".claude/agents/harness/workflow-specialist.md":               "L",
 }
 
+// grEmitterFindings checks every class-E document in both copies: the copy must
+// exist and must carry a contract-mode block. It returns one finding per
+// failure plus the number of copies it looked at.
+func grEmitterFindings(root string, classes map[string]string) (findings []string, copies int) {
+	var emitters []string
+	for p, class := range classes {
+		if class == "E" {
+			emitters = append(emitters, p)
+		}
+	}
+	sort.Strings(emitters)
+	for _, p := range emitters {
+		for _, rel := range []string{p, grTemplatePrefix + p} {
+			copies++
+			data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(rel)))
+			if err != nil {
+				// A missing copy is a finding, and the sweep goes on: one stale
+				// table row must not hide the checks after it.
+				findings = append(findings, fmt.Sprintf("emitter %s: %v", rel, err))
+				continue
+			}
+			blocks, _ := grParse(rel, string(data))
+			if len(blocks) == 0 {
+				findings = append(findings, fmt.Sprintf("emitter %s carries no contract-mode block", rel))
+			}
+		}
+	}
+	return findings, copies
+}
+
+// TestContractModeEmitterSweepContinuesPastMissingFile pins the sweep's
+// behaviour on a stale table row: a class-E copy that does not exist is a
+// finding and the sweep goes on, so the checks after it still run. It needs no
+// base ref.
+func TestContractModeEmitterSweepContinuesPastMissingFile(t *testing.T) {
+	root := t.TempDir()
+	withBlock := grBlockText("a", grCondition+" x") + "\n"
+	write := func(rel, text string) {
+		t.Helper()
+		path := filepath.Join(root, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(text), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, p := range []string{"b.md", "c.md"} {
+		text := "plain\n"
+		if p == "c.md" {
+			text = "plain\n" + withBlock
+		}
+		write(p, text)
+		write(grTemplatePrefix+p, text)
+	}
+
+	classes := map[string]string{"a.md": "E", "b.md": "E", "c.md": "E", "r.md": "R"}
+	findings, copies := grEmitterFindings(root, classes)
+	if copies != 6 {
+		t.Fatalf("looked at %d copies, want 6 (3 emitter documents x 2 copies; the R row is not swept): %v", copies, findings)
+	}
+	joined := strings.Join(findings, "\n")
+	for _, want := range []string{
+		"emitter a.md:",
+		"emitter " + grTemplatePrefix + "a.md:",
+		"emitter b.md carries no contract-mode block",
+		"emitter " + grTemplatePrefix + "b.md carries no contract-mode block",
+	} {
+		if !strings.Contains(joined, want) {
+			t.Errorf("EMITTER_SWEEP_ABORTED: missing finding %q; findings were:\n%s", want, joined)
+		}
+	}
+	if strings.Contains(joined, "emitter c.md") {
+		t.Errorf("a copy that exists and carries a block was reported:\n%s", joined)
+	}
+
+	// No change is a pass: with every emitter present and carrying a block the
+	// sweep reports nothing.
+	write("a.md", "plain\n"+withBlock)
+	write(grTemplatePrefix+"a.md", "plain\n"+withBlock)
+	write("b.md", "plain\n"+withBlock)
+	write(grTemplatePrefix+"b.md", "plain\n"+withBlock)
+	if f, _ := grEmitterFindings(root, classes); len(f) != 0 {
+		t.Errorf("a complete emitter set was reported: %v", f)
+	}
+}
+
 // TestContractModeEmitterSites requires every base document carrying
 // "Kickoff" to be classified and every emitter copy to carry a block
 // (AC-GR-004).
@@ -723,18 +810,9 @@ func TestContractModeEmitterSites(t *testing.T) {
 			t.Errorf("unclassified Kickoff document at the base: %s", p)
 		}
 	}
-	emitters := 0
-	for p, class := range grKickoffClasses {
-		if class != "E" {
-			continue
-		}
-		for _, rel := range []string{p, grTemplatePrefix + p} {
-			emitters++
-			blocks, _ := grParse(rel, grRead(t, root, rel))
-			if len(blocks) == 0 {
-				t.Errorf("emitter %s carries no contract-mode block", rel)
-			}
-		}
+	emitterFindings, emitters := grEmitterFindings(root, grKickoffClasses)
+	for _, f := range emitterFindings {
+		t.Error(f)
 	}
 	t.Logf("%d Kickoff documents at the base, %d emitter copies checked", len(found), emitters)
 	if emitters != 20 {
