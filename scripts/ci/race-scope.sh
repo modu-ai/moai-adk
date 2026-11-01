@@ -14,15 +14,24 @@
 # graph (`go list -test -deps`, test imports included) plus a textual scan; it is
 # not a proof of independence. A shard is left out only when BOTH hold: (1) no
 # changed package is among the dependencies of the packages that shard tests, and
-# (2) nothing in the shard's module closure (its test files, and the sources of
-# every module package they depend on) matches READ_PATTERN — file reads or
-# walks, the working directory, commands, go:embed, testdata, "../". A shard
-# that matches (2) is selected for ANY Go change, because tests that read files
-# or run commands depend on things no import shows (audit round 2: rosterguard
-# walks the repository's Go sources). The pattern is textual and broad on
-# purpose; what it cannot recognise (a path built in another way, a generated
-# file, behaviour switched on by the environment) is a residual risk that stays
-# inside the advisory Race Test legs — the required Test job runs every package.
+# (2) no sign of reading outside the imports is found in the shard's module
+# closure — the packages its tests and their dependencies need, listed for the
+# default build AND for `-tags race` (the build the shards run). In every such
+# package directory ALL .go files are scanned, including files the build excludes
+# (race-tagged, other tags) and cgo files, with names read by glob so a space or
+# bracket in a file name does not hide one. A sign is: READ_PATTERN (file reads,
+# walks, globs, the working directory, commands, go:embed, testdata, "../",
+# template file loading), IMPORT_PATTERN (an aliased or dot-imported os, or an
+# import of os/exec, io/ioutil, io/fs, path/filepath, embed, syscall, plugin,
+# the template packages, x/sys), an embed pattern, or any C/C++/assembly source
+# (which cannot be read here). A shard with a sign is selected for ANY Go change,
+# because tests that read files or run commands depend on things no import shows
+# (audit round 2: rosterguard walks the repository's Go sources). The scan is
+# textual and broad on purpose. What it still cannot recognise — a path built in
+# another way, a generated file, behaviour switched on by the environment, an
+# import edge that exists only under a build tag other than `race` — is a residual
+# risk that stays inside the advisory Race Test legs; the required Test job runs
+# every package.
 # Narrowing also needs every changed file to be a Go file in a package of this
 # module. Everything else — a non-Go file, go.mod/go.sum, a workflow or this script, a
 # testdata or vendor path, a main package (tests build and run the command
@@ -111,8 +120,16 @@ rest_ips="$(printf '%s\n' "$test_ips" | grep -vx -- "$cli_ip" | grep -vx -- "$rg
 
 # deps_of <import paths…>: the packages those targets (and their tests) need,
 # one per line, with go list's test-variant decorations removed.
+#
+# The listing runs twice and the answers are united: the default build, and the build
+# the shards actually run (`-tags race`), whose race-tagged files can add imports a
+# plain listing does not show. Edges that exist only under some OTHER build tag are not
+# followed (they are not what the shards build).
 deps_of() {
-    go list -test -deps -f '{{.ImportPath}}' "$@" 2> /dev/null | sed 's/ \[.*$//' | grep -v '\.test$' | sort -u
+    local plain tagged
+    plain="$(go list -test -deps -f '{{.ImportPath}}' "$@" 2> /dev/null)" || return 2
+    tagged="$(go list -tags race -test -deps -f '{{.ImportPath}}' "$@" 2> /dev/null)" || return 2
+    printf '%s\n%s\n' "$plain" "$tagged" | sed 's/ \[.*$//' | grep -v '\.test$' | sort -u
 }
 
 hits() { # hits <import paths…>: 0 when a changed package is among the deps, 1 when none is, 2 on failure
@@ -133,32 +150,51 @@ hits() { # hits <import paths…>: 0 when a changed package is among the deps, 1
 # commands run, files embedded, testdata, a relative parent path. A match is
 # deliberately broad — a false match only selects a shard that could have been
 # skipped, never the reverse.
-READ_PATTERN='filepath\.Walk|os\.(ReadFile|ReadDir|Open|OpenFile|Stat|Lstat|Getwd|Executable|DirFS)\(|ioutil\.|fs\.(WalkDir|ReadFile|ReadDir|Stat)\(|exec\.Command|runtime\.Caller\(|//go:embed|testdata|\.\./'
+READ_PATTERN='filepath\.Walk|filepath\.Glob|os\.(ReadFile|ReadDir|Open|OpenFile|Stat|Lstat|Getwd|Executable|DirFS|StartProcess|Chdir|Readlink|Create|Mkdir|MkdirAll|Remove|RemoveAll|Rename|WriteFile|Truncate)\(|ioutil\.|fs\.(WalkDir|ReadFile|ReadDir|Stat|Glob|Sub)\(|exec\.(Command|LookPath)|syscall\.(Exec|ForkExec)|ParseFiles|ParseGlob|ParseFS|runtime\.Caller\(|//go:embed|import "C"|testdata|\.\./'
+
+# Import-based signs, because a call through an alias or a dot import has no
+# recognisable "os." text: an aliased or dot-imported os, and any import of a package
+# whose purpose is files, processes, embedding or templates loaded from disk.
+IMPORT_PATTERN='^[[:space:]]*(import[[:space:]]+)?[A-Za-z_.][A-Za-z0-9_]*[[:space:]]+"os"|^[[:space:]]*(import[[:space:]]+)?([A-Za-z_.][A-Za-z0-9_]*[[:space:]]+)?"(os/exec|io/ioutil|io/fs|path/filepath|embed|syscall|plugin|text/template|html/template|golang\.org/x/sys[^"]*)"'
 
 # reads_outside_imports <import paths…>: 0 when the targets' module closure (their
-# tests and every module package they depend on) may depend on something outside the
-# import graph, 1 when no such sign was found, 2 when the listing failed.
+# tests and every module package they depend on, for the default build and for
+# `-tags race`) may depend on something outside the import graph, 1 when no such sign
+# was found, 2 when the listing failed. EVERY .go file in each such package directory
+# is scanned — including files the build excludes (race-tagged, other tags) and cgo
+# files — and a package with C, C++, assembly or similar non-Go sources counts as a
+# sign by itself, since its code cannot be read here.
 reads_outside_imports() {
-    local rows ip dir files embeds f
-    rows="$(go list -test -deps -f '{{.ImportPath}}|{{.Dir}}|{{join .GoFiles " "}} {{join .TestGoFiles " "}} {{join .XTestGoFiles " "}}|{{join .EmbedPatterns ","}}' "$@" 2> /dev/null)" || return 2
-    [ -n "$rows" ] || return 2
-    while IFS='|' read -r ip dir files embeds; do
-        case "$ip" in
-            "$mod" | "$mod"/* | "$mod "*) ;;
-            *) continue ;;
-        esac
-        if [ -n "$embeds" ]; then
-            echo "race-scope: $ip embeds files ($embeds)" >&2
-            return 0
+    local rows ip dir embeds nongo f tagflag
+    for tagflag in "" "race"; do
+        if [ -n "$tagflag" ]; then
+            rows="$(go list -tags "$tagflag" -test -deps -f '{{.ImportPath}}|{{.Dir}}|{{join .EmbedPatterns ","}}|{{if or .CgoFiles .CFiles .CXXFiles .MFiles .FFiles .SFiles .SwigFiles .SwigCXXFiles .SysoFiles}}C{{end}}' "$@" 2> /dev/null)" || return 2
+        else
+            rows="$(go list -test -deps -f '{{.ImportPath}}|{{.Dir}}|{{join .EmbedPatterns ","}}|{{if or .CgoFiles .CFiles .CXXFiles .MFiles .FFiles .SFiles .SwigFiles .SwigCXXFiles .SysoFiles}}C{{end}}' "$@" 2> /dev/null)" || return 2
         fi
-        for f in $files; do
-            [ -f "$dir/$f" ] || continue
-            if grep -Eq -- "$READ_PATTERN" "$dir/$f"; then
-                echo "race-scope: $ip: $f matches a file/command/embed pattern" >&2
+        [ -n "$rows" ] || return 2
+        while IFS='|' read -r ip dir embeds nongo; do
+            case "$ip" in
+                "$mod" | "$mod"/* | "$mod "*) ;;
+                *) continue ;;
+            esac
+            if [ -n "$embeds" ]; then
+                echo "race-scope: $ip embeds files ($embeds)" >&2
                 return 0
             fi
-        done
-    done <<< "$rows"
+            if [ -n "$nongo" ]; then
+                echo "race-scope: $ip has cgo, C, C++ or assembly sources" >&2
+                return 0
+            fi
+            for f in "$dir"/*.go; do
+                [ -f "$f" ] || continue
+                if grep -Eq -- "$READ_PATTERN" "$f" || grep -Eq -- "$IMPORT_PATTERN" "$f"; then
+                    echo "race-scope: $ip: ${f##*/} matches a file/command/embed/import pattern" >&2
+                    return 0
+                fi
+            done
+        done <<< "$rows"
+    done
     return 1
 }
 
