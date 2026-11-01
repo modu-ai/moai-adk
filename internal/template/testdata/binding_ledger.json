@@ -5725,7 +5725,7 @@
     "start_line": 116
    },
    "before_text": "Where the phase's declared evidence includes an audit verdict, the leader reads the verdict **file** under `.moai/reports/<card-id>/` per `.moai/docs/audit-artifact-convention.md`; an absent, unreadable, or uncommitted verdict file is a gap exactly like a missing progress record.",
-   "after_text": "Where the phase's declared evidence includes an audit verdict, the leader reads the verdict **file** under `.moai/reports/<card-id>/` per `.moai/docs/audit-artifact-convention.md`; an absent, unreadable, or uncommitted verdict file is a gap exactly like a missing progress record.",
+   "after_text": "Where the phase's declared evidence includes an audit verdict, the leader reads the verdict **file** under `.moai/reports/<card-id>/` per `.moai/docs/audit-artifact-convention.md`; an absent or unreadable verdict file, or one whose `audited_sha` is not bound to the card's HEAD (not an ancestor of it, or stale), is a gap exactly like a missing progress record.",
    "location": "always:.claude/rules/moai/workflow/factory-dispatch-core.md",
    "processing": "verbatim",
    "entry_points": [

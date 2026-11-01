@@ -37,7 +37,7 @@ The leader classifies each card as it leaves `backlog` and names the entry stage
 
 ## Completion is read, never trusted
 
-Where the phase's declared evidence includes an audit verdict, the leader reads the verdict **file** under `.moai/reports/<card-id>/` per `.moai/docs/audit-artifact-convention.md`; an absent, unreadable, or uncommitted verdict file is a gap exactly like a missing progress record.
+Where the phase's declared evidence includes an audit verdict, the leader reads the verdict **file** under `.moai/reports/<card-id>/` per `.moai/docs/audit-artifact-convention.md`; an absent or unreadable verdict file, or one whose `audited_sha` is not bound to the card's HEAD (not an ancestor of it, or stale), is a gap exactly like a missing progress record.
 
 For a lane card the declared evidence list also carries `.moai/reports/<card-id>/card-review.md`; a card whose progress record neither cites a readable `card-review.md` nor records a reason for its absence is a gap and stays in its stage.
 
