@@ -7,7 +7,9 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
@@ -24,9 +26,17 @@ const DefaultFailureLogCap = 256 << 10
 // control characters and passed through core.Redact before it is written, as a best effort and not as the guarantee:
 // the guarantee is the file mode and that nothing else points at the content.
 type FailureLog struct {
-	Dir string // created with mode 0700
-	Cap int    // bytes kept per file; DefaultFailureLogCap when not positive
+	Dir      string // created with mode 0700
+	Cap      int    // bytes kept per file; DefaultFailureLogCap when not positive
+	TotalCap int64  // bytes all the *.log files of Dir may hold together; DefaultFailureLogTotalCap when not positive
 }
+
+// DefaultFailureLogTotalCap is how many bytes all the logs of one directory may hold together: when a write takes
+// the directory past it, the oldest files are removed first.
+const DefaultFailureLogTotalCap = 4 * DefaultFailureLogCap
+
+// failureLogExt ends the name of every log file; the retention pass looks at these and nothing else.
+const failureLogExt = ".log"
 
 // Write stores out for the failure of kind (gate, merge, git) of card's candidate and returns the file's path.
 func (l *FailureLog) Write(card, candidate, kind string, out []byte) (string, error) {
@@ -84,7 +94,60 @@ func (l *FailureLog) Write(card, candidate, kind string, out []byte) (string, er
 	if err := f.Close(); err != nil {
 		return "", err
 	}
+	l.prune(path)
 	return path, nil
+}
+
+// prune removes the oldest log files of the directory until what is left fits the total cap. keep, the file just
+// written, is never removed, whatever its size. A file that cannot be removed or read is skipped: the retention pass
+// is a bound on how long output stays, not a reason to fail a write that has already succeeded.
+func (l *FailureLog) prune(keep string) {
+	limit := l.TotalCap
+	if limit <= 0 {
+		limit = DefaultFailureLogTotalCap
+	}
+	entries, err := os.ReadDir(l.Dir)
+	if err != nil {
+		return
+	}
+	type logFile struct {
+		path string
+		size int64
+		mod  time.Time
+	}
+	var files []logFile
+	var sum int64
+	for _, e := range entries {
+		if !e.Type().IsRegular() || !strings.HasSuffix(e.Name(), failureLogExt) {
+			continue
+		}
+		fi, ierr := e.Info()
+		if ierr != nil {
+			continue
+		}
+		files = append(files, logFile{filepath.Join(l.Dir, e.Name()), fi.Size(), fi.ModTime()})
+		sum += fi.Size()
+	}
+	if sum <= limit {
+		return
+	}
+	sort.Slice(files, func(i, j int) bool {
+		if !files[i].mod.Equal(files[j].mod) {
+			return files[i].mod.Before(files[j].mod)
+		}
+		return files[i].path < files[j].path
+	})
+	for _, f := range files {
+		if sum <= limit {
+			return
+		}
+		if f.path == keep {
+			continue
+		}
+		if rerr := os.Remove(f.path); rerr == nil || os.IsNotExist(rerr) {
+			sum -= f.size
+		}
+	}
 }
 
 // controlSequences finds the sequences a terminal acts on: CSI (ESC [ ... final byte, or the single-byte C1 form),
