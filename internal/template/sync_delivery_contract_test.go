@@ -103,6 +103,36 @@ func TestSyncDeliveryCIMirrorDoesNotMaskFailure(t *testing.T) {
 	}
 }
 
+// TestSyncStopHookDescriptionMatchesTheHook (S07): sync.md must describe what
+// sync-phase-quality-gate.sh does today — fast vet/build structural checks,
+// blocking by default with MOAI_SYNC_GATE_BLOCKING=0 as the opt-out — and must
+// not claim it runs lint, tests, or a coverage delta.
+func TestSyncStopHookDescriptionMatchesTheHook(t *testing.T) {
+	t.Parallel()
+	doc := readTemplateDoc(t, ".claude/skills/moai/workflows/sync.md")
+
+	var line string
+	for l := range strings.SplitSeq(doc, "\n") {
+		if strings.Contains(l, "sync-phase-quality-gate.sh") && strings.Contains(l, "Stop hook") {
+			line = l
+			break
+		}
+	}
+	if line == "" {
+		t.Fatal("SYNC_HOOK_DESCRIPTION_MISSING: sync.md carries no sentence describing the sync-phase-quality-gate.sh Stop hook")
+	}
+	for _, stale := range []string{"lint + test + coverage", "(MOAI_SYNC_GATE_BLOCKING=1)", "coverage regression"} {
+		if strings.Contains(line, stale) {
+			t.Errorf("SYNC_HOOK_DESCRIPTION_STALE: the Stop hook sentence still says %q", stale)
+		}
+	}
+	for _, required := range []string{"vet", "build", "MOAI_SYNC_GATE_BLOCKING=0"} {
+		if !strings.Contains(line, required) {
+			t.Errorf("SYNC_HOOK_DESCRIPTION_INCOMPLETE: the Stop hook sentence does not name %q", required)
+		}
+	}
+}
+
 func TestSyncDocExecutionPreservesApprovedSpecBody(t *testing.T) {
 	t.Parallel()
 	doc := readTemplateDoc(t, ".claude/skills/moai/workflows/sync/doc-execution.md")
