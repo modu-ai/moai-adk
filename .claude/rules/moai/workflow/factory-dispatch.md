@@ -155,7 +155,7 @@ For a lane card the declared evidence list also carries `.moai/reports/<card-id>
 
 ## Lane card transition — completion order and in-session move
 
-[HARD] No card context crosses to the next: a lane treats the conversation context of earlier cards as non-authoritative and works each newly leased card only from that card's body, its SPEC artifacts, and its progress record. At `done`, evidence read, the leader names what closed (card, evidence read). The completion order is `ExitWorktree(keep)`, a default-branch check of the primary checkout, the operator's `/clear` (a session cannot run `/clear` itself), then the next card request — and only after completion evidence, dirty changes, active checks or handoff, and unsubmitted input are checked and preserved; anything incomplete or pending is resolved first, never force-cleared.
+[HARD] No card context crosses to the next: a lane treats the conversation context of earlier cards as non-authoritative and works each newly leased card only from that card's body, its SPEC artifacts, and its progress record. At `done`, evidence read, the leader names what closed (card, evidence read). The completion order is `ExitWorktree(keep)`, a default-branch check of the primary checkout, the operator's `/clear` (a session cannot run `/clear` itself), then the next card request — and only after completion evidence, dirty changes, unpushed commits, active checks or handoff, and unsubmitted input are checked and preserved; anything incomplete or pending is resolved first, never force-cleared.
 
 <!-- moai:role-core-start -->
 [HARD] `ExitWorktree(keep)`, lease, `EnterWorktree(path)`; a Codex lane moves in-session via `/cd`; conversation context never carries.

@@ -53,7 +53,7 @@ The leader's statement at `done` names three things, in this order:
 
 1. **What closed** — the card and the evidence that was read.
 2. **Which session moves on** — the lane, by name.
-3. **What happens next** — after preserving evidence, dirty changes, active checks or handoff, and unsubmitted input, the lane runs `ExitWorktree(keep)`, the default-branch check, the operator's `/clear`, and then requests the next card it is routed (lease, `EnterWorktree`).
+3. **What happens next** — after preserving evidence, dirty changes, unpushed commits, active checks or handoff, and unsubmitted input, the lane runs `ExitWorktree(keep)`, the default-branch check, the operator's `/clear`, and then requests the next card it is routed (lease, `EnterWorktree`).
 
 ## Isolation rationale
 
