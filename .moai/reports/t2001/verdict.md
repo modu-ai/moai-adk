@@ -43,6 +43,14 @@ Swept set is non-empty (`-v` showed the named tests ran).
 - Run 2's child made Bash twice (ids counted by grep; the second row is the Monitor id, verified by id); the first claude -p child's trace claim is corroboration only.
 - Single OS/version: macOS, Claude Code 2.1.316; behaviour on other versions unmeasured.
 
+### PR #1955 CI repair (lane-9, 2026-11-02) — scope and Gaps
+Scope: the PR's own change (Claims 1-3 above) is unchanged. Two test-only commits were added because the PR's CI was red on tests this PR does not touch: `68b379bd5a` (reports-archive fixture shard; to be reverted before absorbing origin/main because #1956 carries the same fix more broadly) and `eb7c12b822` (inject `activeProcessCWDProbe` in the migrate rehearsal world; production code unchanged).
+- Repair evidence (migrate): RED `env PATH=/opt/homebrew/bin:/usr/bin:/bin go test ./internal/cli/worktree -run TestMigrate_ApplyMovesEligibleAndSkipsProtected -count=1` -> `moved 0, skipped 6`, FAIL migrate_command_test.go:225 (macOS without lsof; same symptom as the Windows CI log). GREEN: same PATH with `-run 'TestMigrate|TestRollback|TestJournal|TestUpdateConsolidation'` -> ok; normal PATH -> ok. NOT run on Windows: the 14 Windows tests are verified only by the PR CI after push.
+- NOT repaired, NOT PASS: `internal/hook` `TestWorktreeRegistry_TwoWritersAcrossProcessesLoseNeitherEntry` and `TestWorktreeRegistry_HeldLockPastLoweredBoundLapses` fail on the Windows runner ("a writer's update was lost" / "write succeeded while the lock was held past the bound"); cause not isolated (leader ruling: leave, record as Gap).
+- No test pins the lsof-probe-failure skip ("cannot inspect active process working directories"): grep over internal/cli and internal/cli/worktree tests found none. That conservative-skip behaviour is untested; production code left unchanged per leader.
+- Whether main itself is red on these Windows tests is unobserved (main has no Windows push CI).
+- Guard refusal 2026-11-01T18:45:38Z: a `sed -n 845,870p` over the downloaded CI log was refused by the worktree-isolation guard (runtime-computed variable in an option position); not run. The Read tool read the same log lines instead. A later compound `command -v` + git form was also refused and re-issued as plain separate commands.
+
 ## Residual-risk
 - The Monitor-as-Bash relabel is Claude Code behaviour, not MoAI's; a later runtime may deliver `Monitor`. The test pins today's shape and will not detect the runtime change by itself (it replays a fixture); the guard-reach claim is re-measured only by a live run.
 - A project that adds a `Monitor` matcher would bypass shell guards (IsShellTool false). Not shipped; widening needs an operator decision (shell_tool.go comment).
