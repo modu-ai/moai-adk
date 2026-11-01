@@ -133,6 +133,42 @@ func afCheckCommit(ctx context.Context, st *ledger.Store, card, repoFlag, sha, w
 	return repo, nil
 }
 
+// afInTrunk asks the repository whether sha is in the dedicated trunk (exit 0 of the ancestor test: yes, exit 1: no).
+// Any other answer, a missing trunk ref included, is an error and not a guess.
+func afInTrunk(ctx context.Context, repo, sha string) (bool, error) {
+	in, err := (mergeq.GitCLI{Repo: repo}).IsAncestor(ctx, sha, mergeq.DefaultTrunk)
+	if err != nil {
+		return false, fmt.Errorf("af: cannot tell whether %s is in %s of %s: %w; nothing was changed", sha, mergeq.DefaultTrunk, repo, err)
+	}
+	return in, nil
+}
+
+// afCheckLandedInTrunk refuses to finish a card whose queue row says landed while its commit is not in the dedicated
+// trunk (the row landed on another trunk, or the trunk lost the commit since): the row alone says "merged" without
+// asking where. The way out is a real landing, so the message says how to get one.
+func afCheckLandedInTrunk(ctx context.Context, st *ledger.Store, card string) error {
+	rows, err := st.Queue(ctx)
+	if err != nil {
+		return err
+	}
+	for _, r := range rows {
+		if r.CardID != card || r.State != ledger.QueueLanded {
+			continue
+		}
+		repo := resolveProjectDir()
+		in, err := afInTrunk(ctx, repo, r.CandidateSHA)
+		if err != nil {
+			return err
+		}
+		if !in {
+			return fmt.Errorf("af: %s cannot move to DONE: its queue row says %s landed, but that commit is not in %s of %s; "+
+				"nothing was changed. Withdraw the card (move to REVIEWING) and release it; the next holder measures the commit again "+
+				"and offers it with enqueue, the row starts again as waiting, and `moai af land` lands it for real", card, r.CandidateSHA, mergeq.DefaultTrunk, repo)
+		}
+	}
+	return nil
+}
+
 // afRepoFlagHelp is what --repo says of the verbs that look a commit up; the land verbs say the same in their own words.
 const afRepoFlagHelp = "the git repository the commit is looked up in: the project's own (default: the card's lease worktree, " +
 	"else the project directory), or any path with the same git directory, a linked worktree of it included; any other path is refused"
@@ -314,6 +350,11 @@ reclaim-cap park, which is the separate "resume" verb. Recording evidence is the
 		RunE: func(cmd *cobra.Command, args []string) error {
 			to := core.Position{Stage: core.Stage(strings.ToUpper(stage)), Sub: core.SubStage(strings.ToUpper(sub)), RemoteIntegrated: remote}
 			return afRun(f.db, func(ctx context.Context, st *ledger.Store) error {
+				if to.Stage == core.StageDone {
+					if err := afCheckLandedInTrunk(ctx, st, args[0]); err != nil {
+						return err
+					}
+				}
 				if err := st.Move(ctx, args[0], f.epoch, to, actor, reason); err != nil {
 					return err
 				}
@@ -445,10 +486,16 @@ func newAFEnqueueCmd() *cobra.Command {
 				return err
 			}
 			return afRun(f.db, func(ctx context.Context, st *ledger.Store) error {
-				if _, err := afCheckCommit(ctx, st, args[0], repo, candidate, "--candidate"); err != nil {
+				used, err := afCheckCommit(ctx, st, args[0], repo, candidate, "--candidate")
+				if err != nil {
 					return err
 				}
-				if err := st.Enqueue(ctx, args[0], f.epoch, candidate); err != nil {
+				// A landed row of an earlier epoch is taken over only when its commit really is in the dedicated trunk.
+				onTrunk, err := afInTrunk(ctx, used, candidate)
+				if err != nil {
+					return err
+				}
+				if err := st.Enqueue(ctx, args[0], f.epoch, candidate, ledger.OnTrunk(onTrunk)); err != nil {
 					return err
 				}
 				return afPrint(cmd, map[string]any{"card_id": args[0], "candidate": candidate, "state": ledger.QueueWaiting})
