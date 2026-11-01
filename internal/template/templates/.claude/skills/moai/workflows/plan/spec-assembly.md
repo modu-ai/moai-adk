@@ -104,7 +104,7 @@ Required 12 fields (canonical order):
 - [ ] `tags: "tag1, tag2, ..."` — comma-separated string (NOT `labels:`, NOT YAML array)
 
 Optional fields (do NOT include unless needed):
-- `issue_number: null` — integer or null (omit entirely when not tracking GitHub issue)
+- `issue_number: null` — integer or null; written only by Step 2.5.2 when `--issue` is set, omit entirely otherwise
 
 Rejected legacy aliases (fail closed — do NOT accept):
 - `created_at:` (use `created:`)
@@ -288,7 +288,7 @@ For `thorough` harness with `cross_validate_with_evaluator_active: true`: after 
 
 Purpose: Create a GitHub Issue linked to the SPEC document for bidirectional traceability between planning artifacts and issue tracker.
 
-[HARD] Per the late-branch opt-in policy, this phase MUST default to a silent skip. The flag semantics are now opt-in: `--issue` activates creation; the absence of `--issue` skips the entire phase. The legacy `--no-issue` opt-out is no longer required because skipping is the default. SPEC frontmatter MUST NOT carry an `issue_number` field for new SPECs. The removal is prospective only — existing SPECs retain the field.
+[HARD] Per the late-branch opt-in policy, this phase MUST default to a silent skip. The flag semantics are now opt-in: `--issue` activates creation; the absence of `--issue` skips the entire phase. The legacy `--no-issue` opt-out is no longer required because skipping is the default. New SPECs carry no `issue_number` field by default; the field is written only by Step 2.5.2 when `--issue` is set. The removal is prospective only — existing SPECs retain the field.
 
 Execution conditions (ALL must hold):
 - `--issue` flag IS set (explicit opt-in)
@@ -343,7 +343,7 @@ EOF
 After Issue creation, update the SPEC frontmatter with the issue number:
 
 - Read the issue number from `gh issue create` output
-- Update `issue_number` field in `.moai/specs/SPEC-{ID}/spec.md` YAML frontmatter
+- Update `issue_number` field in `.moai/specs/SPEC-{ID}/spec.md` YAML frontmatter. Owner: `manager-spec`, reached by orchestrator re-delegation from the manager-git issue-creation step (manager-git does not edit `spec.md`); it writes the `issue_number` field and `updated:` only
 - Add cross-reference comment in the Issue: `gh issue comment {number} --body "SPEC document: .moai/specs/SPEC-{ID}/spec.md"`
 
 #### Step 2.5.3: Bidirectional Reference
@@ -562,10 +562,11 @@ All of the following must be verified:
 - Next steps presented to user
 - **Audit-ready signal**: Before transitioning to `/moai run`, append to `.moai/specs/SPEC-{ID}/progress.md`:
   ```
+  - audit_ready: true
   - plan_complete_at: {ISO-8601 timestamp}
   - plan_status: audit-ready
   ```
-  This signal indicates plan artifacts (spec.md, plan.md, acceptance.md, tasks.md) are finalized
+  Write it under the `## §E.1` heading; the Kickoff readiness check reads only the bare `audit_ready: true` line. This signal indicates plan artifacts (spec.md, plan.md, acceptance.md, tasks.md) are finalized
   and ready for Plan Audit Gate validation at `/moai run` Phase 1.
 
 ---

@@ -162,14 +162,15 @@ The orchestrator launches the script itself; this is scaling, not subagent nesti
 
 ## Audit-Ready Signal
 
-On successful plan completion (all SPEC files created, user approved), append to `.moai/specs/SPEC-{ID}/progress.md`:
+Once all SPEC plan artifacts are created and finalized, write this block under the `## §E.1` heading of `.moai/specs/SPEC-{ID}/progress.md`:
 
 ```
+- audit_ready: true
 - plan_complete_at: {ISO-8601 timestamp}
 - plan_status: audit-ready
 ```
 
-This signal marks the plan artifacts as finalized and enables the Plan Audit Gate at `/moai run` Phase 1.
+The Kickoff readiness check reads only the bare `audit_ready: true` line; `plan_status: audit-ready` is kept as a secondary line for the documents that still name it. Approval is not a precondition of this signal: it is the separate plan->run Kickoff gate (autonomous by default), which consumes the signal. The signal marks the plan artifacts as finalized and enables the Plan Audit Gate at `/moai run` Phase 1.
 
 
 ---
