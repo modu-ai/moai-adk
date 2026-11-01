@@ -46,10 +46,9 @@ func (l *FailureLog) Write(card, candidate, kind string, out []byte) (string, er
 	if l == nil || l.Dir == "" {
 		return "", fmt.Errorf("mergeq: no failure log directory is configured")
 	}
-	if err := os.MkdirAll(l.Dir, 0o700); err != nil {
+	if err := l.prepareDir(); err != nil {
 		return "", err
 	}
-	_ = os.Chmod(l.Dir, 0o700) // MkdirAll honours the umask; an existing directory keeps whatever mode it had
 	path := filepath.Join(l.Dir, failureLogName(card, candidate, kind))
 
 	limit := l.Cap
@@ -107,6 +106,28 @@ func (l *FailureLog) Write(card, candidate, kind string, out []byte) (string, er
 	}
 	l.prune(path)
 	return path, nil
+}
+
+// prepareDir makes sure Dir is a real directory of mode 0700 before anything is written into it or changed about it.
+// A link, or anything that is not a directory, is refused: following it would change the mode of whatever it points at
+// and put the output there. Only the last component of Dir is looked at; the components above it are the caller's
+// path to the ledger and are out of scope, and a link swapped in between this look and the write needs the same
+// user's write access to the parent, which already reads the ledger.
+func (l *FailureLog) prepareDir() error {
+	fi, err := os.Lstat(l.Dir)
+	if os.IsNotExist(err) {
+		if err = os.MkdirAll(l.Dir, 0o700); err != nil {
+			return err
+		}
+		fi, err = os.Lstat(l.Dir)
+	}
+	if err != nil {
+		return err
+	}
+	if fi.Mode()&os.ModeSymlink != 0 || !fi.IsDir() {
+		return fmt.Errorf("mergeq: the failure log directory %s is a link or not a directory", l.Dir)
+	}
+	return os.Chmod(l.Dir, 0o700) // MkdirAll honours the umask; an existing directory keeps whatever mode it had
 }
 
 // prune removes the oldest log files of the directory until what is left fits the total cap. keep, the file just
