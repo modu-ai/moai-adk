@@ -55,7 +55,6 @@ This workflow is also triggered automatically when project documentation does no
 | Phase 10: Dev Environment Check | `project/doc-generation.md` | LSP server detection + optional install |
 | Phase 11: MCP Server Provisioning | `project/doc-generation.md` | Detect stack, select recommended MCP servers, orchestrator approval, additive `.mcp.json` write |
 | Phase 12: Dev Methodology Config | `project/doc-generation.md` | Auto-set development_mode in quality.yaml |
-| Phase 13: DB Detection | `project/doc-generation.md` | Grep/Glob DB keyword detection, db-detection.json |
 | Phase 14: Completion | `project/doc-generation.md` | Summary report + one derived `[PROJECT] ` backlog card (standing source, skipped when `harness-spec.yaml` `goal` is empty or the card already exists) + next-steps AskUserQuestion whose chosen branch is the operator's pick. Governed by `workflow.project.continuation` (`none` \| `card` \| `pipeline`; absent and unmatched both resolve to `card`), which selects the recommended option and how far it carries the session — never whether the question is asked |
 | Phase 15: Harness Generation Entry | `project/meta-harness.md` | Redirect to the v4 harness Builder (Context-First Discovery + orchestrator-direct 4-phase Builder) |
 | Phase 16: 5-Layer Activation | `project/meta-harness.md` | Install AGENTS.md marker + main.md router, post-generation smoke gate |
@@ -80,7 +79,6 @@ This workflow is also triggered automatically when project documentation does no
                                              ├─ Phase 10: LSP check
                                              ├─ Phase 11: MCP provisioning
                                              ├─ Phase 12: Dev mode config
-                                             ├─ Phase 13: DB detection
                                              └─ Phase 14: Completion
                                                   └─ [optional] Phase 15-Phase 16
                                                        └─ meta-harness.md
@@ -90,11 +88,9 @@ This workflow is also triggered automatically when project documentation does no
 
 ---
 
-## Detection Keywords Reference
+## Phase 13
 
-Full DB engine keywords, dependency manifest files (16 languages), and ORM/ODM lists used by Phase 13 are defined in `project/doc-generation.md` §Detection Keywords Reference section.
-
-For convenience, the DB engine categories are: Relational/SQL (PostgreSQL, MySQL, MariaDB, SQLite, Oracle, SQL Server, CockroachDB, Supabase, Neon, Planetscale), NoSQL Document (MongoDB, Firestore, Firebase, Couchbase), NoSQL Key-Value (Redis, DynamoDB, Cassandra, ScyllaDB, Riak), Search/Analytics (Elasticsearch, ClickHouse, Snowflake, InfluxDB).
+Phase 13 (DB detection) has no producer: `project/doc-generation.md` carries no such section and nothing writes a DB detection artifact. The number is retired and kept unused so Phases 14-16 keep their references; restoring it requires a typed producer with a defined artifact first.
 
 ---
 

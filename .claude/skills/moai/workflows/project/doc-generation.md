@@ -58,7 +58,7 @@ After plan-auditor completes, read the report at `.moai/reports/PROJECT-review-1
 
 Extract the verdict line: `Verdict: PASS | FAIL`
 
-If PASS: Proceed to Phase 9 (Codemaps Generation).
+If PASS: Proceed to Phase 8 (harness-spec.yaml Emission), then Phase 9 (Codemaps Generation). Phase 8 completes before any later phase reads `harness-spec.yaml`.
 
 If FAIL: Enter retry loop.
 
@@ -66,13 +66,13 @@ If FAIL: Enter retry loop.
 
 On FAIL, the retry ceiling is 1 — a single regeneration + re-audit cycle (iteration 2 is the final audit). The former up-to-3-iteration regeneration loop is retired; the escalation AskUserQuestion fires as soon as the single retry fails.
 
-1. Delegate back to manager-docs: "Use the manager-docs subagent to revise .moai/project/ documents based on the review report at .moai/reports/plan-audit/PROJECT-review-1.md. Address all defects listed in the report."
+1. Delegate back to manager-docs: "Use the manager-docs subagent to revise .moai/project/ documents based on the review report at .moai/reports/PROJECT-review-1.md. Address all defects listed in the report."
 
-2. After manager-docs revision, re-invoke plan-auditor: "Use the plan-auditor subagent to audit project documents at .moai/project/ — document type: project, iteration 2. Previous review report: .moai/reports/plan-audit/PROJECT-review-1.md"
+2. After manager-docs revision, re-invoke plan-auditor: "Use the plan-auditor subagent to audit project documents at .moai/project/ — document type: project, iteration 2. Previous review report: .moai/reports/PROJECT-review-1.md"
 
-3. Read new verdict from `.moai/reports/plan-audit/PROJECT-review-2.md`.
+3. Read new verdict from `.moai/reports/PROJECT-review-2.md`.
 
-4. If PASS: Proceed to Phase 9.
+4. If PASS: Proceed to Phase 8, then Phase 9.
 
 5. If FAIL after the single retry (iteration = 2): Escalate to user via AskUserQuestion with the final review report. Options:
    - Fix manually and retry: User edits documents, then re-run audit
@@ -256,7 +256,9 @@ When the user rejects the recommendation entirely via AskUserQuestion, Phase 11 
 
 ## Phase 12: Development Methodology Auto-Configuration
 
-Goal: Automatically set the `development_mode` in `.moai/config/sections/quality.yaml` based on the project analysis results from Phase 1 and Phase 1.
+Goal: Automatically set the `development_mode` in `.moai/config/sections/quality.yaml` based on the project analysis results from Phase 1.
+
+[HARD] Preserve a user-configured value. Read the current `constitution.development_mode` first. When it is already set to a value other than the shipped default (`tdd`), the user chose it: keep it unchanged, do not write quality.yaml, and report the detected recommendation as a one-line note in the Phase 14 summary instead. Auto-detection applies only when the key is absent or still equals the shipped default.
 
 [HARD] This phase runs automatically without user interaction. No AskUserQuestion is needed.
 
