@@ -17,8 +17,9 @@ var ErrWrongRepository = errors.New("ledger: the ledger is bound to another repo
 // normalise the value; two spellings of one path are two identities). The first call writes it.
 // The same identity again changes nothing. A different one is refused with ErrWrongRepository and
 // the ledger stays as it was; the binding is never overwritten. The first caller decides: if
-// it named the wrong repository the wrong one stays bound, and moving the repository on disk makes
-// the old identity refuse the new path.
+// it named the wrong repository the wrong one stays bound. "Bound" means the current identity:
+// once the repository has moved on disk and MoveRepository recorded it, the new identity is the one
+// that binds as a no-op and the earlier ones are refused.
 func (s *Store) BindRepository(ctx context.Context, identity string) error {
 	if strings.TrimSpace(identity) == "" {
 		return fmt.Errorf("%w: a repository identity cannot be blank", ErrInvalid)
@@ -27,9 +28,9 @@ func (s *Store) BindRepository(ctx context.Context, identity string) error {
 		if _, err := tx.ExecContext(ctx, `INSERT INTO repository(id,identity,bound_at) VALUES(1,?,`+nowSQL+`) ON CONFLICT(id) DO NOTHING`, identity); err != nil {
 			return fmt.Errorf("ledger: %w", err)
 		}
-		var bound string
-		if err := tx.QueryRowContext(ctx, `SELECT identity FROM repository WHERE id=1`).Scan(&bound); err != nil {
-			return fmt.Errorf("ledger: %w", err)
+		bound, err := currentRepository(ctx, tx)
+		if err != nil {
+			return err
 		}
 		if bound != identity {
 			return fmt.Errorf("%w: it is bound to %q, not %q", ErrWrongRepository, bound, identity)
@@ -38,14 +39,9 @@ func (s *Store) BindRepository(ctx context.Context, identity string) error {
 	})
 }
 
-// Repository returns the identity the ledger is bound to, or "" while it is not bound.
+// Repository returns the identity the ledger is bound to now, or "" while it is not bound: the
+// newest recorded move's new identity (MoveRepository), or the first binding while the repository
+// has not moved.
 func (s *Store) Repository(ctx context.Context) (string, error) {
-	var identity string
-	switch err := s.db.QueryRowContext(ctx, `SELECT identity FROM repository WHERE id=1`).Scan(&identity); {
-	case err == sql.ErrNoRows:
-		return "", nil
-	case err != nil:
-		return "", fmt.Errorf("ledger: %w", err)
-	}
-	return identity, nil
+	return currentRepository(ctx, s.db)
 }

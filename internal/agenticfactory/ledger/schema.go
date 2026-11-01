@@ -75,6 +75,16 @@ CREATE TABLE IF NOT EXISTS repository(
   id INTEGER PRIMARY KEY CHECK(id=1), identity TEXT NOT NULL CHECK(identity<>''), bound_at TEXT NOT NULL);
 CREATE TRIGGER IF NOT EXISTS repository_no_update BEFORE UPDATE ON repository BEGIN SELECT RAISE(ABORT,'the repository identity is bound once'); END;
 CREATE TRIGGER IF NOT EXISTS repository_no_delete BEFORE DELETE ON repository BEGIN SELECT RAISE(ABORT,'ledger rows are never deleted'); END;
+-- repository_move: the append-only record of the repository having moved on disk. A row names the
+-- identity the caller said was current, the one it moved to, why, and when. The current identity is
+-- the newest row's new identity, or the first binding while there is none. Additive like repository:
+-- created on any file at Open, the schema version does not move.
+CREATE TABLE IF NOT EXISTS repository_move(
+  seq INTEGER PRIMARY KEY AUTOINCREMENT,
+  old_identity TEXT NOT NULL CHECK(old_identity<>''), new_identity TEXT NOT NULL CHECK(new_identity<>''),
+  reason TEXT NOT NULL CHECK(reason<>''), moved_at TEXT NOT NULL, CHECK(old_identity<>new_identity));
+CREATE TRIGGER IF NOT EXISTS repository_move_no_update BEFORE UPDATE ON repository_move BEGIN SELECT RAISE(ABORT,'repository moves are never rewritten'); END;
+CREATE TRIGGER IF NOT EXISTS repository_move_no_delete BEFORE DELETE ON repository_move BEGIN SELECT RAISE(ABORT,'ledger rows are never deleted'); END;
 -- I7: the history is never deleted, by anyone holding the file
 CREATE TRIGGER IF NOT EXISTS cards_no_delete BEFORE DELETE ON cards BEGIN SELECT RAISE(ABORT,'ledger rows are never deleted'); END;
 CREATE TRIGGER IF NOT EXISTS transitions_no_delete BEFORE DELETE ON transitions BEGIN SELECT RAISE(ABORT,'ledger rows are never deleted'); END;
