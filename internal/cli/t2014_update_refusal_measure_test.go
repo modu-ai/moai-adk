@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/testguard"
 	"github.com/modu-ai/moai-adk/internal/userassets"
 	"github.com/modu-ai/moai-adk/pkg/version"
 )
@@ -21,9 +22,7 @@ import (
 // producer this binary does not know), then switches the binary to rc.38.
 func seedT2014RefusalFixture(t *testing.T) (home, target string, edited []byte) {
 	t.Helper()
-	t.Setenv("HOME", t.TempDir())
-	t.Setenv("USERPROFILE", os.Getenv("HOME"))
-	home, _ = os.UserHomeDir()
+	home = testguard.RedirectHome(t)
 
 	prev := version.Version
 	t.Cleanup(func() { version.Version = prev })
@@ -97,9 +96,7 @@ func TestT2014_RefusalsReachTheClosingBlock(t *testing.T) {
 // with no refusal adds no required row (unconverted references are
 // informational).
 func TestT2014_CleanRunLeavesTheClosingBlockEmpty(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
-	t.Setenv("USERPROFILE", os.Getenv("HOME"))
-	home, _ := os.UserHomeDir()
+	home := testguard.RedirectHome(t)
 	if err := ensureUserAssetsLocked(home, nil, &bytes.Buffer{}); err != nil {
 		t.Fatal(err)
 	}
