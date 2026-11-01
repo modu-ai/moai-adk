@@ -141,10 +141,82 @@ func afCheckKnownRepositories(ctx context.Context, st *ledger.Store, dbPath, id,
 	}
 	if dbPath != "" {
 		if loc, err := afLedgerFileLocation(dbPath); err == nil {
-			return check(filepath.Dir(loc), "the ledger file "+loc+" sits in it")
+			if err := check(filepath.Dir(loc), "the ledger file "+loc+" sits in it"); err != nil {
+				return err
+			}
+		}
+	}
+	// The rows name commits (evidence subjects, queue candidates): the repository this call would bind must have them
+	// (N51 b). A ledger with no such row, or a git that cannot answer, is no clue.
+	if shas, err := afRowCommits(ctx, st); err == nil && len(shas) > 0 {
+		if missing := afMissingCommit(ctx, dir, shas); missing != "" {
+			return fmt.Errorf("af: refused: this ledger is not bound yet, but its rows name the commit %s, which the repository %s "+
+				"(the git directory of %s) does not have; the commits of a ledger live in its repository, and this call would bind another one; "+
+				"nothing was changed", missing, id, dir)
 		}
 	}
 	return nil
+}
+
+// afRowCommits are the commits the ledger's rows name: the subject of every evidence row and the candidate of every queue
+// row, each once, complete SHAs only (the ledger takes any non-empty string as a subject, "n/a" of a resume row
+// included, and a name that is not a commit says nothing about a repository).
+func afRowCommits(ctx context.Context, st *ledger.Store) ([]string, error) {
+	var out []string
+	seen := map[string]bool{}
+	add := func(sha string) {
+		if mergeq.IsCompleteSHA(sha) && !seen[sha] {
+			seen[sha] = true
+			out = append(out, sha)
+		}
+	}
+	cards, err := st.Cards(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, c := range cards {
+		recs, err := st.EvidenceFor(ctx, c.ID)
+		if err != nil {
+			return nil, err
+		}
+		for _, r := range recs {
+			add(r.SubjectSHA)
+		}
+	}
+	rows, err := st.Queue(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, r := range rows {
+		add(r.CandidateSHA)
+	}
+	return out, nil
+}
+
+// afMissingCommit is the first of shas that is no commit of the repository dir belongs to, "" when all are (and when git
+// cannot answer: that is no clue). One git process answers for all of them.
+func afMissingCommit(ctx context.Context, dir string, shas []string) string {
+	var in strings.Builder
+	for _, sha := range shas {
+		in.WriteString(sha + "^{commit}\n")
+	}
+	cmd := exec.CommandContext(ctx, "git", "-C", dir, "cat-file", "--batch-check")
+	cmd.Env = append(gitenv.Env(), "GIT_TERMINAL_PROMPT=0")
+	cmd.Stdin = strings.NewReader(in.String())
+	out, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
+	if len(lines) != len(shas) {
+		return ""
+	}
+	for i, line := range lines {
+		if strings.HasSuffix(line, " missing") {
+			return shas[i]
+		}
+	}
+	return ""
 }
 
 // afLedgerFileLocation is where the ledger file really is: absolute, with symbolic links resolved. A link outside any
