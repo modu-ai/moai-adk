@@ -9,6 +9,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -64,6 +66,52 @@ func TestFailureLog_TheCapHoldsAfterTheMaskingMadeTheTextLonger(t *testing.T) {
 		}
 		if fi.Size() > capBytes+repairNoteSlack {
 			t.Errorf("input %q repeated: the log holds %d bytes, over the cap %d", line, fi.Size(), capBytes)
+		}
+	}
+}
+
+// N35: two landers failing the same card, candidate and kind at once made one of them report "logging failed" (the file
+// the other had just made was in its way) although a log was there. Writers of one key all succeed, and the file is
+// always one writer's whole text.
+func TestFailureLog_WritersOfTheSameKeyAllSucceedAndNeverMixTheirContent(t *testing.T) {
+	dir := t.TempDir()
+	const writers, rounds = 8, 100
+	var wg sync.WaitGroup
+	var failures atomic.Int32
+	var firstErr atomic.Value
+	for w := 0; w < writers; w++ {
+		wg.Add(1)
+		go func(w int) {
+			defer wg.Done()
+			l := &FailureLog{Dir: dir}
+			body := []byte(strings.Repeat(fmt.Sprintf("writer %d says this\n", w), 200))
+			for i := 0; i < rounds; i++ {
+				if _, err := l.Write("t1", "c", "gate", body); err != nil {
+					failures.Add(1)
+					firstErr.CompareAndSwap(nil, err.Error())
+				}
+			}
+		}(w)
+	}
+	wg.Wait()
+	if n := failures.Load(); n != 0 {
+		t.Errorf("%d of %d writes failed, the first with %v", n, writers*rounds, firstErr.Load())
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 || !strings.HasSuffix(entries[0].Name(), failureLogExt) {
+		t.Fatalf("the directory holds %d entries, want the one log and no temporary file: %v", len(entries), entries)
+	}
+	body, err := os.ReadFile(filepath.Join(dir, entries[0].Name()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.Split(strings.TrimSuffix(string(body), "\n"), "\n")
+	for _, ln := range lines {
+		if ln != lines[0] {
+			t.Fatalf("the log mixes the content of two writers: %q and %q", lines[0], ln)
 		}
 	}
 }
