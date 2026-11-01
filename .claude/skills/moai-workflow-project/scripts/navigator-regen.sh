@@ -43,6 +43,11 @@ SPECS_DIR="$ROOT/.moai/specs"
 
 mkdir -p "$NAV_DIR" "$STATE_DIR" "$(dirname "$WARN_LOG")" 2>/dev/null || true
 
+# Marker file listing every output that failed to land (see record_write_failure).
+FAIL_MARK="$(mktemp "${TMPDIR:-/tmp}/navigator-regen-fail.XXXXXX" 2>/dev/null)" || FAIL_MARK="$STATE_DIR/.regen-failed.$$"
+: >"$FAIL_MARK" 2>/dev/null || true
+trap 'rm -f "$FAIL_MARK" 2>/dev/null' EXIT
+
 # is_git_repo returns 0 if ROOT is inside a git work tree.
 is_git_repo() {
     [ -n "$(git -C "$ROOT" rev-parse --is-inside-work-tree 2>/dev/null)" ]
@@ -134,10 +139,26 @@ atomic_write() {
     local dest="$1"
     local tmp
     tmp="$(mktemp "${dest}.XXXXXX" 2>/dev/null)" || tmp="${dest}.tmp"
-    cat >"$tmp" || return 1
+    cat >"$tmp" || { rm -f "$tmp" 2>/dev/null; record_write_failure "$dest"; return 1; }
     barrier_wait
-    mv -f "$tmp" "$dest" 2>/dev/null || cp "$tmp" "$dest" 2>/dev/null || true
-    rm -f "$tmp" 2>/dev/null || true
+    # No cp fallback: a copy onto a path the rename could not reach can leave a
+    # partial file. A failed rename keeps the previous file and is recorded.
+    if ! mv -f "$tmp" "$dest" 2>/dev/null; then
+        rm -f "$tmp" 2>/dev/null || true
+        record_write_failure "$dest"
+        return 1
+    fi
+}
+
+# record_write_failure <dest> — atomic_write runs as the last stage of a pipeline
+# (a subshell), so a variable cannot carry the failure out. Append to the marker
+# file and the warning log instead; the sentinel step reads the marker.
+record_write_failure() {
+    printf '%s\n' "$1" >>"$FAIL_MARK" 2>/dev/null || true
+    {
+        printf '[%s] WARN navigator output not written: %s\n' \
+            "$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || echo UNKNOWN)" "$1"
+    } >>"$WARN_LOG" 2>/dev/null || true
 }
 
 # --- collect SPEC rows -------------------------------------------------------
@@ -284,8 +305,17 @@ ROW_COUNT="$(wc -l <"$ROWS_FILE" 2>/dev/null | tr -dc '0-9' || echo 0)"
 } | atomic_write "$NAV_DIR/progress-map.md"
 
 # --- last-regen-commit sentinel (written LAST) -------------------------------
-{
-    printf '%s\n' "${HEAD_SHA:-(no-git)}"
-} | atomic_write "$STATE_DIR/last-regen-commit.txt"
+# Freshness is only claimed when every output above landed. An incomplete run
+# leaves the previous sentinel in place so a reader sees the set as stale.
+if [ -s "$FAIL_MARK" ]; then
+    {
+        printf '[%s] WARN navigator regeneration incomplete; freshness sentinel not advanced\n' \
+            "$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || echo UNKNOWN)"
+    } >>"$WARN_LOG" 2>/dev/null || true
+else
+    {
+        printf '%s\n' "${HEAD_SHA:-(no-git)}"
+    } | atomic_write "$STATE_DIR/last-regen-commit.txt"
+fi
 
 exit 0

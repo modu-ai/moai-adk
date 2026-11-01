@@ -87,9 +87,14 @@ atomic_write() {
     local dest="$1"
     local tmp
     tmp="$(mktemp "${dest}.XXXXXX" 2>/dev/null)" || tmp="${dest}.tmp"
-    cat >"$tmp" || { rm -f "$tmp"; return 1; }
-    mv -f "$tmp" "$dest" 2>/dev/null || cp "$tmp" "$dest" 2>/dev/null || true
-    rm -f "$tmp" 2>/dev/null || true
+    cat >"$tmp" || { rm -f "$tmp"; warn "navigator audit output not written: $dest"; return 1; }
+    # No cp fallback: a copy can leave a partial file; a failed rename keeps the
+    # previous file and is reported instead of being swallowed.
+    if ! mv -f "$tmp" "$dest" 2>/dev/null; then
+        rm -f "$tmp" 2>/dev/null || true
+        warn "navigator audit output not written: $dest"
+        return 1
+    fi
 }
 
 # normalize <string>: lowercase, replace non-alphanumeric runs with single
