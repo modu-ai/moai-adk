@@ -958,7 +958,16 @@ say) the offer is refused and nothing is changed: the verb does not guess.
 				if err := st.Enqueue(ctx, args[0], f.epoch, candidate, ledger.OnTrunk(onTrunk)); err != nil {
 					return err
 				}
-				return afPrint(cmd, map[string]any{"card_id": args[0], "candidate": candidate, "state": ledger.QueueWaiting})
+				// What the row says now, not what an offer usually starts as: a landing taken over from an earlier holder is landed (N48).
+				state := ledger.QueueWaiting
+				if rows, qerr := st.Queue(ctx); qerr == nil {
+					for _, r := range rows {
+						if r.CardID == args[0] {
+							state = r.State
+						}
+					}
+				}
+				return afPrint(cmd, map[string]any{"card_id": args[0], "candidate": candidate, "state": state})
 			})
 		},
 	}
