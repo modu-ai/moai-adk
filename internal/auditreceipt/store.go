@@ -206,6 +206,16 @@ type Receipt struct {
 	HeadCommit string `json:"head_commit,omitempty"`
 	TreeDigest string `json:"tree_digest,omitempty"`
 
+	// UncommittedDigest is the uncommitted working-tree state the receipt judged,
+	// without the head (SPEC-AUDIT-ENGINE-CONVERGENCE-001 REQ-AEC-009): it lets the
+	// reuse check keep the receipt across commits that only record the audit's own
+	// evidence while the uncommitted state is still the judged one. Recorded only
+	// when the state read at write time is the state the binding above names, so a
+	// tree edited during the audit leaves it empty. Empty on receipts written
+	// before the field existed; the reuse check then accepts nothing but an
+	// unchanged head.
+	UncommittedDigest string `json:"uncommitted_digest,omitempty"`
+
 	// BindCaptureFailed marks a receipt whose start-of-audit state capture
 	// FAILED (card t1632 sync-audit r3 F14): the freshness of this receipt is
 	// UNKNOWABLE, so the reuse check refuses it — never silent, never a
@@ -229,6 +239,26 @@ type Receipt struct {
 // @MX:ANCHOR: [AUTO] tree-state binding seam; feeds every receipt write and the reuse check
 // @MX:REASON: the binding's honesty rests on this one derivation — a digest that misses the judged state would forge freshness
 var TreeState = func(treeRoot string) (head, digest string, err error) {
+	return computeTreeState(treeRoot, true)
+}
+
+// UncommittedState returns the digest of the working-tree state OUTSIDE the head
+// commit: the same status rows, tracked diff, untracked content and submodule state
+// TreeState binds, hashed without the head line
+// (SPEC-AUDIT-ENGINE-CONVERGENCE-001 REQ-AEC-009). A receipt records it beside its
+// TreeState binding, so a later check can ask whether the uncommitted state is the
+// one the receipt judged when the head has moved. It is a var so tests stub the git
+// reads, as TreeState is.
+var UncommittedState = func(treeRoot string) (string, error) {
+	_, digest, err := computeTreeState(treeRoot, false)
+	return digest, err
+}
+
+// computeTreeState is the one derivation behind TreeState and UncommittedState. With
+// bindHead the digest stream begins with the head line, byte for byte as it always
+// did — the digest format of the TreeState seam does not change; without it, the
+// same stream starts at the status rows.
+func computeTreeState(treeRoot string, bindHead bool) (head, digest string, err error) {
 	if strings.TrimSpace(treeRoot) == "" {
 		return "", "", nil
 	}
@@ -249,7 +279,11 @@ var TreeState = func(treeRoot string) (head, digest string, err error) {
 		return "", "", err
 	}
 	h := sha256.New()
-	_, _ = fmt.Fprintf(h, "head:%s\x00status\x00%s\x00diff\x00%s", headOut, statusOut, diffOut)
+	if bindHead {
+		_, _ = fmt.Fprintf(h, "head:%s\x00status\x00%s\x00diff\x00%s", headOut, statusOut, diffOut)
+	} else {
+		_, _ = fmt.Fprintf(h, "status\x00%s\x00diff\x00%s", statusOut, diffOut)
+	}
 	for _, f := range untrackedContentPaths(treeRoot) {
 		full := filepath.Join(treeRoot, f)
 		// l57-r5 finding 2: the digest binds the Lstat METADATA beside the
@@ -1223,6 +1257,17 @@ func WriteReceipt(treeRoot string, r *Receipt) (string, error) {
 			r.HeadCommit, r.TreeDigest = head, digest
 		}
 	}
+	if r.UncommittedDigest == "" && !r.BindCaptureFailed && r.HeadCommit != "" && r.TreeDigest != "" {
+		// Record the uncommitted state only when it is the state the binding
+		// names: a caller that captured the binding before the audit ran passes it
+		// in, and a tree edited since then must not have its newer state recorded
+		// as the judged one (the laundering the start-of-audit capture closed).
+		if head, digest, sErr := TreeState(r.TreeRoot); sErr == nil && head == r.HeadCommit && digest == r.TreeDigest {
+			if u, uErr := UncommittedState(r.TreeRoot); uErr == nil {
+				r.UncommittedDigest = u
+			}
+		}
+	}
 	if err := writeJSON(filepath.Join(StateDir(treeRoot), receiptsRel, r.ReceiptID+".json"), r); err != nil {
 		return "", err
 	}
@@ -1616,6 +1661,15 @@ func CheckCitedReceipts(treeRoot string, start *StartMarker, cited []string) (bo
 // zero endBoundary means no single-live predecessor end has sealed an era,
 // and the check is the original one.
 func CheckCitedReceiptsSince(treeRoot string, start *StartMarker, endBoundary time.Time, cited []string) (bool, string) {
+	return CheckCitedReceiptsForSpec(treeRoot, start, endBoundary, cited, "")
+}
+
+// CheckCitedReceiptsForSpec is CheckCitedReceiptsSince with the spec= value of the
+// citing verdict line (SPEC-AUDIT-ENGINE-CONVERGENCE-001 REQ-AEC-009/010). The value
+// decides which progress.md may change between a receipt's head and the current HEAD
+// without making the receipt stale: only the progress.md of the SPEC it names, and
+// only when it is a SPEC id; a card id, an unknown value or an empty one allows none.
+func CheckCitedReceiptsForSpec(treeRoot string, start *StartMarker, endBoundary time.Time, cited []string, citedSpec string) (bool, string) {
 	if start == nil {
 		return false, CauseStartMarkerMissing
 	}
@@ -1710,7 +1764,12 @@ func CheckCitedReceiptsSince(treeRoot string, start *StartMarker, endBoundary ti
 			switch {
 			case sErr == nil && (head != "" || digest != ""):
 				if r.HeadCommit != head || r.TreeDigest != digest {
-					cause = CauseReceiptTreeStateChanged
+					// A receipt whose head is the current HEAD is judged exactly as
+					// before. When HEAD moved, the receipt stays fresh only across
+					// commits that record the audit's own evidence (REQ-AEC-009).
+					if r.HeadCommit == head || !evidenceOnlyRange(r, head, citedSpec) {
+						cause = CauseReceiptTreeStateChanged
+					}
 				}
 			case sErr != nil && errors.Is(sErr, exec.ErrNotFound):
 				// Absent-git carve-out: undecided, the receipt keeps its other arms.
@@ -1726,6 +1785,131 @@ func CheckCitedReceiptsSince(treeRoot string, start *StartMarker, endBoundary ti
 		}
 	}
 	return false, worst
+}
+
+var (
+	// evidenceReportPath is the audit-artifact family under .moai/reports/<id>/
+	// (SPEC-AUDIT-ENGINE-CONVERGENCE-001 REQ-AEC-009 (a)): directly inside one
+	// report directory, and only these file names. A path that merely begins with
+	// the prefix text, any other report file, and a deeper path do not match.
+	evidenceReportPath = regexp.MustCompile(`^\.moai/reports/[^/]+/(?:plan-audit[^/]*\.md|sync-audit[^/]*\.md|verdict[^/]*\.md|card-review\.md|second-review\.jsonl)$`)
+	// citedSpecIDPattern admits only a SPEC id as the owner of an allowed
+	// progress.md: a card id, "unknown-spec" or an empty value names none.
+	citedSpecIDPattern = regexp.MustCompile(`^` + specIDBody + `$`)
+	// gitCommitPattern keeps a recorded or current head from being read as an
+	// option by the git commands below.
+	gitCommitPattern = regexp.MustCompile(`^[0-9a-f]{7,64}$`)
+	// e2HeadingPattern matches the heading line of section E.2 of a progress.md.
+	e2HeadingPattern = regexp.MustCompile(`^## §E\.2(?:[ \t]|$)`)
+)
+
+// evidenceOnlyRange reports whether a receipt whose head is not the current HEAD is
+// still fresh because everything since is the audit's own evidence
+// (SPEC-AUDIT-ENGINE-CONVERGENCE-001 REQ-AEC-009). All must hold: the receipt records
+// the uncommitted state it judged; its head is an ancestor of the current HEAD; every
+// change between the two is an added, modified or deleted audit-artifact report file
+// or the progress.md of the SPEC the citation names with section E.2 unchanged; and
+// the uncommitted state now equals the judged one. Any git failure reads as stale.
+//
+// @MX:NOTE: [AUTO] the freshness relaxation is an allowlist over the commit range, not a code-tree digest: it admits only the audit-artifact family and the cited SPEC's progress.md with section E.2 untouched
+// @MX:SPEC: SPEC-AUDIT-ENGINE-CONVERGENCE-001
+func evidenceOnlyRange(r Receipt, currentHead, citedSpec string) bool {
+	if r.UncommittedDigest == "" || !gitCommitPattern.MatchString(r.HeadCommit) || !gitCommitPattern.MatchString(currentHead) {
+		return false
+	}
+	root := r.TreeRoot
+	if _, err := gitIn(root, "merge-base", "--is-ancestor", r.HeadCommit, currentHead); err != nil {
+		return false
+	}
+	// The net change between the two commits, renames split into a delete and an
+	// add so a rename into or out of the allowed set is judged path by path.
+	out, err := gitInRaw(root, "diff", "--name-status", "-z", "--no-renames", r.HeadCommit, currentHead, "--")
+	if err != nil {
+		return false
+	}
+	progressPath := ""
+	if citedSpecIDPattern.MatchString(citedSpec) {
+		progressPath = ".moai/specs/" + citedSpec + "/progress.md"
+	}
+	if out != "" {
+		fields := strings.Split(strings.TrimSuffix(out, "\x00"), "\x00")
+		if len(fields)%2 != 0 {
+			return false
+		}
+		for i := 0; i < len(fields); i += 2 {
+			status, path := fields[i], fields[i+1]
+			if status != "A" && status != "M" && status != "D" {
+				return false
+			}
+			switch {
+			case evidenceReportPath.MatchString(path):
+			case progressPath != "" && path == progressPath:
+				if !e2Unchanged(root, r.HeadCommit, currentHead, path, status) {
+					return false
+				}
+			default:
+				return false
+			}
+		}
+	}
+	now, err := UncommittedState(root)
+	return err == nil && now == r.UncommittedDigest
+}
+
+// e2Unchanged reports whether section E.2 of the progress.md at path is the same in
+// the two commits: computed on BOTH versions (a file added or deleted in between has
+// no E.2 on one side), byte-identical, with its heading line unchanged and in the
+// same position among the document's second-level headings.
+func e2Unchanged(root, from, to, path, status string) bool {
+	var oldDoc, newDoc string
+	if status != "A" {
+		out, err := gitInRaw(root, "show", from+":"+path)
+		if err != nil {
+			return false
+		}
+		oldDoc = out
+	}
+	if status != "D" {
+		out, err := gitInRaw(root, "show", to+":"+path)
+		if err != nil {
+			return false
+		}
+		newDoc = out
+	}
+	return slices.Equal(e2Sections(oldDoc), e2Sections(newDoc))
+}
+
+// e2Section is one section E.2 of a progress.md: its heading line, its position among
+// the second-level headings, and its body up to the next second-level heading.
+type e2Section struct {
+	ordinal int
+	heading string
+	body    string
+}
+
+// e2Sections returns every section E.2 of doc in order. A "## " line inside a fenced
+// code block is not a heading, so text after such a line stays part of the section.
+func e2Sections(doc string) []e2Section {
+	var out []e2Section
+	ordinal, cur, fenced := 0, -1, false
+	for _, line := range strings.Split(doc, "\n") {
+		if !fenced && strings.HasPrefix(line, "## ") {
+			ordinal++
+			cur = -1
+			if e2HeadingPattern.MatchString(line) {
+				out = append(out, e2Section{ordinal: ordinal, heading: line})
+				cur = len(out) - 1
+			}
+			continue
+		}
+		if t := strings.TrimLeft(line, " "); strings.HasPrefix(t, "```") || strings.HasPrefix(t, "~~~") {
+			fenced = !fenced
+		}
+		if cur >= 0 {
+			out[cur].body += line + "\n"
+		}
+	}
+	return out
 }
 
 func markerFileName(agentID string) string { return sanitizeKey(agentID) + ".json" }
