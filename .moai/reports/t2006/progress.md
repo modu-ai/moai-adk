@@ -106,3 +106,63 @@ decision record: decided_by=lane-7 (claude, lane orchestrator) evidence_refs=lea
 - R180 finding (source read only, not reproduced in CI): `Capture` abandons its worker after the 50ms time box (`internal/config/defaults.go` DefaultBugreportCaptureTimeBox), and `TestCaptureSpoolsMoaiAndAmbiguous` read the spool count immediately after `Capture`, so a slow `-race` runner sees 0 lines. An ordering race, not a data race.
 - R182 repair (main-side test hardening, outside this PR's scope; no new card): RED `e56fe1eb7c` (stub write held until after `Capture` returns; 5/5 runs fail "spooled 0 line(s), want 1"), GREEN `bb763bfae6` (channel wait with 2s Fatal bound, `t.Cleanup` restore; 20/20 pass, `go test ./internal/bugreport -race -count=1` ok). Production code untouched; no sleep, skip or registry.
 - Gaps: the CI remainder-packages race leg at the pushed head is not yet read; the HOME/TMP-dependence hypothesis was not tested.
+
+### Sync-phase record
+
+decision record: decided_by=manager-docs (sync phase, spawned by lane-7) evidence_refs=commands below ladder_path=disk-evidence (auto-semantics.md §6 step 1). Class B, no SPEC directory: no spec.md/plan.md/acceptance.md exist, so no B12 AC-count self-test applies (ac_source=none); test 1 (pre-emission grep) and test 3 (path existence) were run.
+
+**Docs checked**
+
+| Path | Result |
+|---|---|
+| `docs-site/content/en/claude-code/context-memory/prompt-caching.md` | Read via grep. Describes the 5-minute idle lifetime and an "Auth method / Default TTL" table (subscription 1 hour, API key and third party 5 minutes, `promptCacheTtl` noted). Does not mention directive 9, session length or idle compaction. Not contradicted by the new directive 9 wording. Unchanged. |
+| `docs-site/content/en/cost-optimization/prompt-caching.md` | Same table and `promptCacheTtl` paragraph (lines 142-147); no idle compaction mention. Not contradicted. Unchanged. |
+| `docs-site/content/en/advanced/tokenomics-overview.md` | Line 67/89: 5-minute idle lifetime and stagger-spawn/deferred-edit summary; no directive 9 claim. Not contradicted. Unchanged. |
+| `docs-site/content/ko/.../prompt-caching.md`, `docs-site/content/ko/cost-optimization/prompt-caching.md` | Matched by the cache-aware grep; not opened, mirrors of the en pages above. ja and zh: no match. Not verified line by line (Gap). |
+| `README.md`, `README.ko.md`, `README.ja.md`, `README.zh.md`, `docs/` | `grep -rlE "cache-aware-execution\|Cache-Aware Execution\|idleCompaction\|idle compaction"` returned only the en prompt-caching page; no README or docs/ hit. |
+| `CHANGELOG.md` [Unreleased] | No cache-aware directive 9 entry before this pass (`grep -c 't2006' CHANGELOG.md` -> `0`). |
+
+**Docs changed**
+
+- `CHANGELOG.md`: one entry added under `[Unreleased]` / `### Changed` (card t2006, Class B, no SPEC). Convention check: [Unreleased] and 3.2.0 carry Class B no-SPEC entries (e.g. lines 101-107 of the pre-edit file: `card t1873, Class B, no SPEC` ... `card t1854, Class B defect fix, no SPEC`), so an entry is expected.
+- docs-site pages: none changed. Reason: no contradiction found; a 4-locale docs-site edit is outside a wording-only rule card.
+
+**Audit-ready signal (E.4 style)**
+
+```yaml
+sync_complete_at: 2026-11-03
+sync_commit_sha: pending-backfill
+sync_status: complete-pending-audit
+gap_named: ko docs-site pages not read line by line; no independent sync audit run (forbidden in this pass)
+changelog_entry_position: "[Unreleased] / ### Changed, appended after the SPEC-CI-CODEX-REVIEW-001 entry"
+frontmatter_status_transitions: none (no SPEC)
+b12_self_test_a: pass (grep -c t2006 CHANGELOG.md -> 0 before edit)
+b12_self_test_b: not applicable (no acceptance.md)
+b12_self_test_c: pass (ls of every path named in the entry succeeded)
+```
+
+`sync_status` is not `complete` because the audit step was out of scope for this pass and the ko pages were not read; every other listed check was performed.
+
+**Claim / Evidence / Baseline-attribution**
+
+| Claim | Evidence (command -> observed) | Baseline |
+|---|---|---|
+| Sync ran at the stated HEAD | `git rev-parse --short HEAD` -> `83e4f0c3e8` | this tree, this run |
+| No t2006 CHANGELOG entry existed | `grep -c 't2006' CHANGELOG.md` -> `0` | this tree, before the edit |
+| Live and template rule files are byte-identical | `cmp .claude/rules/moai/workflow/cache-aware-execution.md internal/template/templates/.claude/rules/moai/workflow/cache-aware-execution.md` -> no output; same for `cache-aware-execution-reference.md` -> no output | this tree |
+| The card's own change set is 4 rule files, the ledger and 3 report files | `git diff --name-only 5c3f0ebf27 e739a8bd36` -> the 2 live rule files, 2 template mirrors, `internal/template/testdata/binding_ledger.json`, `.moai/reports/t2006/{card-review,progress,verdict}.md` | base 5c3f0ebf27 to code head e739a8bd36 |
+| Entry paths exist | `ls` of the 2 live rule files, 2 mirrors, `binding_ledger.json`, `progress.md` -> all listed, exit 0 | this tree |
+| Directive 9 wording the docs were compared against | `grep` of `cache-aware-execution.md` line 23: "5 minutes by default; one hour for a subscription's main conversation within plan usage, or with `promptCacheTtl` ... Claude Code may compact an idle 200K+ conversation at about 54 minutes (`idleCompaction`, v2.1.290+); MoAI keeps that default and ships no key" | this tree |
+
+**Gaps (not observed)**
+
+- Korean docs-site pages not read line by line; ja/zh have no cache-aware match.
+- No independent sync audit and no `go test` run in this pass (scoped tests not needed for a CHANGELOG and report edit; nothing in the CHANGELOG is parsed by the touched Go tests, which was not verified).
+- The en docs-site TTL table keeps the "Auth method" framing that D2 corrected in the rule reference; read as imprecise-but-not-contradicting, not as a verified error.
+- The idle-compaction facts in the CHANGELOG entry are the quoted upstream values recorded under "Upstream re-verification" above, not re-fetched in this pass.
+- The bugreport test hardening commits (`e56fe1eb7c`, `bb763bfae6`) and the main merge `0249200318` are not described in the CHANGELOG entry (out of the card's wording scope).
+
+**Residual-risk**
+
+- The docs-site prompt-caching pages say nothing about idle compaction; a reader of those pages learns only the 5-minute baseline. Left for a separate docs card (4-locale same-PR obligation).
+- The binding ledger rows ALB-0195/0197 and the rule text must stay byte-equal; a later directive 1-10 edit reopens them.
