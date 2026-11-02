@@ -275,3 +275,42 @@ func TestClearRejectionOnApproval_ApprovedAtIsUTC(t *testing.T) {
 		t.Errorf("approved_at must be the Now seam in UTC: %s", line)
 	}
 }
+
+// A mark file that cannot be parsed is neither "absent" nor clearable: the call
+// fails with an error that is not ErrMarkNotFound, removes nothing and writes no
+// record.
+func TestClearRejectionOnApproval_UnreadableMarkFile_IsAnErrorNotAClear(t *testing.T) {
+	store := t.TempDir()
+	target := markFile(store, store, KindReceipt, AgentPlanAuditor, "SPEC-A-001")
+	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(target, []byte("{ not json"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	err := ClearRejectionOnApproval(store, store, approvalFor(AgentPlanAuditor, "SPEC-A-001"))
+	if err == nil || errors.Is(err, ErrMarkNotFound) {
+		t.Errorf("want a read error that is not ErrMarkNotFound, got %v", err)
+	}
+	if !exists(target) || exists(approvalLogPath(store)) {
+		t.Errorf("a failed call must remove nothing and write nothing")
+	}
+}
+
+// The record is written BEFORE the mark is removed: when the log cannot be
+// appended, the mark must survive, so a mark never disappears without a record.
+func TestClearRejectionOnApproval_LogNotWritable_KeepsTheMark(t *testing.T) {
+	store := t.TempDir()
+	writeMark(t, store, store, AgentPlanAuditor, "SPEC-A-001", CauseNoReceiptCited, "")
+	// A directory where the log file should be makes the append fail on every OS.
+	if err := os.MkdirAll(approvalLogPath(store), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	err := ClearRejectionOnApproval(store, store, approvalFor(AgentPlanAuditor, "SPEC-A-001"))
+	if err == nil || errors.Is(err, ErrMarkNotFound) {
+		t.Errorf("want an append error, got %v", err)
+	}
+	if !exists(markFile(store, store, KindReceipt, AgentPlanAuditor, "SPEC-A-001")) {
+		t.Errorf("the mark must survive a failed append")
+	}
+}
