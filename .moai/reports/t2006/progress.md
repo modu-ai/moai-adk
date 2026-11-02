@@ -96,3 +96,13 @@ decision record: decided_by=lane-7 (claude, lane orchestrator) evidence_refs=lea
 - origin/main was not absorbed into this branch; no independent audit exists for this PR (not requested by the leader at this point).
 - Open items: the Gaps and Residual risk lists above; the ledger text and the rule file must stay byte-equal.
 - Ready-for-review and merge are the leader's.
+
+### Post-handoff record (R156/R158/R180/R182)
+
+decision record: decided_by=lane-7 (claude, lane orchestrator) evidence_refs=leader messages R158,R180,R182; run 41364659599 failed-job logs ladder_path=gate boundary (leader ruling, auto-semantics.md §6)
+
+- R156 rerun (`gh run rerun 41364659599 --failed`, once): the same two jobs failed again on `TestCleanReportsArchive_MovesOnlyEligibleCandidates`; a rerun reuses the original merge commit, which lacks the #1956 fix.
+- R158 absorb: `git merge --no-ff origin/main` (no conflicts, no rebase), scoped `go test ./internal/cli -run TestCleanReportsArchive` passed, pushed once without force: `9f737ae253` -> `0249200318`.
+- R180 finding (source read only, not reproduced in CI): `Capture` abandons its worker after the 50ms time box (`internal/config/defaults.go` DefaultBugreportCaptureTimeBox), and `TestCaptureSpoolsMoaiAndAmbiguous` read the spool count immediately after `Capture`, so a slow `-race` runner sees 0 lines. An ordering race, not a data race.
+- R182 repair (main-side test hardening, outside this PR's scope; no new card): RED `e56fe1eb7c` (stub write held until after `Capture` returns; 5/5 runs fail "spooled 0 line(s), want 1"), GREEN `bb763bfae6` (channel wait with 2s Fatal bound, `t.Cleanup` restore; 20/20 pass, `go test ./internal/bugreport -race -count=1` ok). Production code untouched; no sleep, skip or registry.
+- Gaps: the CI remainder-packages race leg at the pushed head is not yet read; the HOME/TMP-dependence hypothesis was not tested.
