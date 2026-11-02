@@ -432,6 +432,23 @@ class CDP:
         except asyncio.TimeoutError:
             pass
 
+    async def drain_until(self, seconds):
+        """Collect events until an ABSOLUTE deadline `seconds` from now. Unlike
+        drain(), whose timer restarts on every message, a chatty page cannot
+        keep this window open."""
+        loop = asyncio.get_event_loop()
+        deadline = loop.time() + seconds
+        while True:
+            left = deadline - loop.time()
+            if left <= 0:
+                return
+            try:
+                msg = json.loads(await asyncio.wait_for(self.ws.recv(), timeout=left))
+            except asyncio.TimeoutError:
+                return
+            if "method" in msg:
+                self.events.append(msg)
+
     def take_errors(self):
         out = []
         for e in self.events:
@@ -476,6 +493,12 @@ async def poll(cdp, expr, want, timeout=5.0, interval=0.2):
 LOAD_READY_QUIET_SECONDS = 0.5
 
 
+class LoadWaitExpired(Exception):
+    """--load-wait-ready: the load event did not arrive within the bound. The
+    scenario stops (main_async records it, judge() names it): a not-ready
+    document must never be judged as a handler defect or read as a pass."""
+
+
 async def navigate(cdp, url, drain_seconds=4.0):
     """Navigate and collect events for the load window. Default: a fixed
     drain_seconds window, so a ReferenceError thrown up to that long after the
@@ -483,12 +506,18 @@ async def navigate(cdp, url, drain_seconds=4.0):
     judge late load-window errors - the settle-wait measurement) ends the window
     when the document's load event arrives (app.js wires its handlers on
     DOMContentLoaded, which precedes it) plus LOAD_READY_QUIET_SECONDS, bounded
-    by drain_seconds: never longer than the default window."""
+    by drain_seconds: never longer than the default window. The quiet window
+    ends at an absolute deadline from the load event, however many messages
+    arrive; a load event that does not arrive in the bound raises
+    LoadWaitExpired."""
     await cdp.send("Page.navigate", {"url": url})
     if opts.load_wait_ready:
         if await cdp.wait_event("Page.loadEventFired", drain_seconds):
-            await cdp.drain(LOAD_READY_QUIET_SECONDS)
-        return
+            await cdp.drain_until(LOAD_READY_QUIET_SECONDS)
+            return
+        raise LoadWaitExpired(
+            "document load not observed within %.1fs under --load-wait-ready (%s)" % (drain_seconds, url)
+        )
     await cdp.drain(drain_seconds)
 
 
@@ -986,6 +1015,13 @@ def judge(rep, driven_ids):
     """
     failures = []
     missing = []
+    # A scenario stopped by an expired load wait observed nothing about the
+    # handlers: the stop is the only failure, never a per-entry verdict.
+    if rep.get("load_wait_expired"):
+        failures.append({"entry": None, "reason": rep["load_wait_expired"], "detail": ""})
+        rep["failures"] = failures
+        rep["missing_selectors"] = missing
+        return failures
     paint = rep.get("s_paint") or {}
     by_id = {
         "glm_reveal": rep.get("p2_glm_handler_fired"),
@@ -1209,10 +1245,13 @@ async def main_async(args):
             if opts.cpu_throttle is not None:
                 await cdp.send("Emulation.setCPUThrottlingRate", {"rate": opts.cpu_throttle})
                 rep["cpu_throttle_rate"] = opts.cpu_throttle
-            if [e for e in driven if e.get("requires_sandbox_serving") is not True]:
-                rep.update(await run_scenario(cdp, base))
-            for entry in driven_marked:
-                rep.update(await run_sandbox_scenario(cdp, sandbox_base, opts.sandbox_root, entry))
+            try:
+                if [e for e in driven if e.get("requires_sandbox_serving") is not True]:
+                    rep.update(await run_scenario(cdp, base))
+                for entry in driven_marked:
+                    rep.update(await run_sandbox_scenario(cdp, sandbox_base, opts.sandbox_root, entry))
+            except LoadWaitExpired as exc:
+                rep["load_wait_expired"] = str(exc)
     finally:
         close_tab(cdp_host, tab["id"])
 
