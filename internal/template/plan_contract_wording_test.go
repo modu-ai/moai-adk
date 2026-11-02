@@ -4,6 +4,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -199,9 +200,51 @@ func TestPlanStaleContractPhrases(t *testing.T) {
 	}
 
 	sa := read(".claude/skills/moai/workflows/plan/spec-assembly.md")
-	for _, stale := range []string{"Repeat until PASS or 3 iterations exhausted", "Retry Loop (max 3 iterations)", "review iteration {N}/3"} {
+	for _, stale := range []string{
+		"Repeat until PASS or 3 iterations exhausted", "Retry Loop (max 3 iterations)", "review iteration {N}/3",
+		"after 3 FAIL Iterations", "all three iterations", "-review-3.md",
+	} {
 		if strings.Contains(sa, stale) {
 			t.Errorf("spec-assembly.md still carries the fixed-budget phrase %q (the tier-resolved ceiling owns the attempts)", stale)
+		}
+	}
+
+	// Positive checks: Steps 2.3.4 and 2.3.5 must name the tier-resolved ceiling,
+	// and no other fixed budget may replace the old "3".
+	retry, ok := between(sa, "#### Step 2.3.4", "#### Step 2.3.5")
+	if !ok {
+		t.Fatal("spec-assembly.md: Step 2.3.4 not found")
+	}
+	escalation, ok := between(sa, "#### Step 2.3.5", "<!-- moai:contract-mode-start")
+	if !ok {
+		t.Fatal("spec-assembly.md: Step 2.3.5 not found")
+	}
+	if !strings.Contains(retry, "tier-resolved ceiling") {
+		t.Error("spec-assembly.md Step 2.3.4 does not name the tier-resolved ceiling")
+	}
+	if !strings.Contains(escalation, "tier-resolved ceiling") {
+		t.Error("spec-assembly.md Step 2.3.5 does not name the tier-resolved ceiling")
+	}
+	if !strings.Contains(sa, "remaining_attempts") {
+		t.Error("spec-assembly.md does not mention remaining_attempts")
+	}
+	fixedBudget := []*regexp.Regexp{
+		regexp.MustCompile(`[0-9]+ iterations exhausted`),
+		regexp.MustCompile(`iteration \{N\}/[0-9]`),
+	}
+	for _, re := range fixedBudget {
+		if loc := re.FindString(retry + escalation); loc != "" {
+			t.Errorf("spec-assembly.md Steps 2.3.4/2.3.5 carry a fixed budget %q (the tier-resolved ceiling owns the attempts)", loc)
+		}
+	}
+
+	// Positive checks: the validator-authoring docs must state the GEARS compound clause.
+	for path, want := range map[string]string{
+		".claude/skills/moai-workflow-spec/modules/advanced-patterns.md": "GEARS compound clause",
+		".claude/skills/moai-workflow-spec/references/reference.md":      "Where/While/When chaining is allowed",
+	} {
+		if !strings.Contains(read(path), want) {
+			t.Errorf("%s does not carry the GEARS compound wording %q", path, want)
 		}
 	}
 

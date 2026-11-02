@@ -260,12 +260,12 @@ If verdict is FAIL:
 
 Iteration tracking: Display "SPEC review iteration {N}/{ceiling}" after each verdict, where {ceiling} is the tier-resolved ceiling.
 
-#### Step 2.3.5: Escalation after 3 FAIL Iterations
+#### Step 2.3.5: Escalation when the tier-resolved ceiling is exhausted with FAIL
 
-If all three iterations result in FAIL, do NOT proceed to Phase 12 automatically.
+The tier-resolved ceiling (S 1 / M 2 / L 3) owns the number of review attempts. Escalation fires when the final permitted iteration for the SPEC's tier ends in FAIL, that is, when `remaining_attempts` has reached 0 and the latest verdict is still FAIL. This applies identically to Tier S (after the single attempt), Tier M (after the second attempt), and Tier L (after the third attempt). Do NOT proceed to Phase 12 automatically.
 
 Present the full defect history to the user:
-- Show `.moai/reports/plan-audit/{SPEC-ID}-review-1.md` through `-review-3.md`
+- Show `.moai/reports/plan-audit/{SPEC-ID}-review-1.md` through `-review-{ceiling}.md` (only the reports actually generated for this SPEC)
 - Summarize blocking defects that persisted across all iterations
 - Preload: `ToolSearch(query: "select:AskUserQuestion")`
 - Use AskUserQuestion with options:

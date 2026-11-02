@@ -2,9 +2,13 @@ package template
 
 import (
 	"io/fs"
+	"regexp"
 	"strings"
 	"testing"
 )
+
+// okStatus matches the success status literal in either quote style.
+var okStatus = regexp.MustCompile(`status:\s*['"]ok['"]`)
 
 // TestPlanResearchFanoutGuard is a LEXICAL guard on the embedded
 // plan-research-fanout.js: the repo has no JS test runner, and a Go test that
@@ -56,11 +60,11 @@ func TestPlanResearchFanoutGuard(t *testing.T) {
 		if !strings.Contains(branch, ".trim() === ''") || !strings.Contains(branch, "return {") || !strings.Contains(branch, "invalid_synthesis") {
 			t.Error("synthesis check does not return invalid_synthesis for a non-string or blank result")
 		}
-		if k := strings.Index(js, "status: 'ok'"); k >= 0 && k < j {
+		if loc := okStatus.FindStringIndex(js); loc != nil && loc[0] < j {
 			t.Error("status: 'ok' is returned before the synthesis validation")
 		}
 	}
-	if !strings.Contains(js, "status: 'ok'") {
+	if !okStatus.MatchString(js) {
 		t.Error("success return carries no status: 'ok'")
 	}
 }
