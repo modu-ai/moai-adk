@@ -3316,6 +3316,9 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 			})
 		}
 	}
+	if factoryCompleteMergeSeamsHook != nil {
+		factoryCompleteMergeSeamsHook(&mergeSeams)
+	}
 	mergeSHA, err := factory.RunMergeStep(factory.MergeStepInput{
 		Root:                lockRoot,
 		IntegrationWorktree: integTree,
@@ -3431,6 +3434,15 @@ const completePostMergeTransitionConflictExit = 20
 // integrationLockMutationTestHook established). Every production path
 // leaves it nil, and the call site is nil-guarded.
 var factoryCompleteTransitionHook func()
+
+// factoryCompleteMergeSeamsHook is a TEST-ONLY seam: it receives the merge
+// step's seams just before the step runs, so a test can wrap the step's git
+// runner and present a change that lands after the step's pre-merge gates (the
+// only way a real merge conflict is reachable, since every gate pins the
+// record's base to the integration tip). Same convention as the hooks around
+// it: unexported, assigned only from package cli tests, nil in every production
+// path, and the call site is nil-guarded.
+var factoryCompleteMergeSeamsHook func(*factory.MergeStepSeams)
 
 // factoryCompleteAcquireHook is the acquisition's test seam (card t1478
 // Finding 4): called just before complete takes the integration window for
