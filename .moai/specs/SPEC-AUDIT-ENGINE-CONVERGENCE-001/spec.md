@@ -2,7 +2,7 @@
 id: SPEC-AUDIT-ENGINE-CONVERGENCE-001
 title: "Audit engine convergence repairs — fix-confirm delta by default with a verified delta chain, unrun legs classified instead of failed, receipts that survive evidence-only commits, one operator path to clear a rejection, honest auditor prompts, and a repair-scope rule"
 version: "0.5.2"
-status: draft
+status: in-progress
 created: 2026-11-03
 updated: 2026-11-03
 author: manager-spec (card t2017)
