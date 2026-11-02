@@ -203,6 +203,19 @@ it is not a FAIL.
 
 ---
 
+## Repairing a failed audit
+
+The repair of a failed audit stays within the audit's own finding. This keeps a
+repair from growing into new machinery: a repair of an audit FAIL
+may only remove the defective path, tighten an existing check, or add tests. A
+repair that would need a new verb, flag, input, store, or rule is delivered as
+a SPEC amendment with its own acceptance criterion on a separate card. The
+limit applies to repairs made after a FAIL and does not reach back over earlier
+work: work already specified by a SPEC amendment with its own acceptance
+criterion is outside the limit.
+
+---
+
 ## Side-talk (advice attached to verdicts)
 
 An audit report sometimes carries advice beyond its verdict — operational
