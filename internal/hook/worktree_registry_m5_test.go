@@ -22,9 +22,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -201,44 +199,25 @@ func TestWorktreeRegistry_TwoWritersAcrossProcessesLoseNeitherEntry(t *testing.T
 	projectDir, stateFile := m5Fixture(t, paths[0], paths[1])
 	lockPath := stateFile + ".lock"
 
-	if runtime.GOOS == "windows" {
-		// internal/lockfile is a process-local mutex on Windows (cross-process
-		// locking is documented as unsupported in lockfile_windows.go), so
-		// two writer PROCESSES are not excluded there. The property Windows
-		// provides — two concurrent writers in one process lose neither
-		// entry — is pinned here with the same assertions below.
-		var wg sync.WaitGroup
-		wg.Add(2)
-		go func() {
-			defer wg.Done()
-			RegisterLauncherWorktree(projectDir, "/repo/.claude/worktrees/t7", "worker-branch", "m5-child")
-		}()
-		go func() {
-			defer wg.Done()
-			_ = RekeyWorktreeEntry(projectDir, "/repo/.claude/worktrees/t6", "/repo/.claude/worktrees/t6-moved")
-		}()
-		wg.Wait()
-	} else {
-		run := func(helper string, entryPath string) {
-			t.Helper()
-			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-			defer cancel()
-			cmd := exec.CommandContext(ctx, os.Args[0], "-test.run=TestM5HelperProcess")
-			cmd.Env = append(os.Environ(),
-				"M5_HELPER="+helper,
-				"M5_PROJECT_DIR="+projectDir,
-				"M5_LOCK_PATH="+lockPath,
-				"M5_ENTRY_PATH="+entryPath,
-			)
-			if out, err := cmd.CombinedOutput(); err != nil {
-				t.Errorf("helper %s: %v\n%s", helper, err, out)
-			}
+	run := func(helper string, entryPath string) {
+		t.Helper()
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		defer cancel()
+		cmd := exec.CommandContext(ctx, os.Args[0], "-test.run=TestM5HelperProcess")
+		cmd.Env = append(os.Environ(),
+			"M5_HELPER="+helper,
+			"M5_PROJECT_DIR="+projectDir,
+			"M5_LOCK_PATH="+lockPath,
+			"M5_ENTRY_PATH="+entryPath,
+		)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Errorf("helper %s: %v\n%s", helper, err, out)
 		}
-		go run("m5-register", "/repo/.claude/worktrees/t7")
-		run("m5-rekey", "/repo/.claude/worktrees/t6") // re-keys t6 inside the child
-
-		time.Sleep(200 * time.Millisecond) // let both children finish their sections
 	}
+	go run("m5-register", "/repo/.claude/worktrees/t7")
+	run("m5-rekey", "/repo/.claude/worktrees/t6") // re-keys t6 inside the child
+
+	time.Sleep(200 * time.Millisecond) // let both children finish their sections
 
 	entries := loadWorktreeEntries(stateFile)
 	seen := map[string]bool{}
@@ -263,10 +242,34 @@ func TestWorktreeRegistry_HeldLockPastLoweredBoundLapses(t *testing.T) {
 	projectDir, stateFile := m5Fixture(t, "/repo/.claude/worktrees/t1")
 	lockPath := stateFile + ".lock"
 
-	if runtime.GOOS == "windows" {
-		m5HoldLockInProcess(t, lockPath)
-	} else {
-		m5HoldLockFromChild(t, lockPath)
+	// A live child the test started holds the state-file lock for 2s and
+	// exits on its own (no kill needed). It signals readiness by creating
+	// the ready file after the lock is held, so the parent's write cannot
+	// race ahead of the acquisition.
+	readyFile := lockPath + ".ready"
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, os.Args[0], "-test.run=TestM5HelperProcess")
+	cmd.Env = append(os.Environ(),
+		"M5_HELPER=hold-lock",
+		"M5_LOCK_PATH="+lockPath,
+		"M5_READY_FILE="+readyFile,
+	)
+	if err := cmd.Start(); err != nil {
+		t.Fatalf("start holder child: %v", err)
+	}
+	t.Cleanup(func() { _ = cmd.Wait() })
+	t.Cleanup(func() { _ = os.Remove(readyFile) })
+
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		if _, err := os.Stat(readyFile); err == nil {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("the holder child never signaled readiness")
+		}
+		time.Sleep(20 * time.Millisecond)
 	}
 
 	// Lower the wait bound through the seam for this run only.
@@ -293,66 +296,8 @@ func TestWorktreeRegistry_HeldLockPastLoweredBoundLapses(t *testing.T) {
 	if after := m5ReadStateFile(t, stateFile); strings.Contains(after, "t1-new") {
 		t.Errorf("the lapsed write rewrote the file:\n%s", after)
 	}
-}
-
-// m5HoldLockFromChild starts a live child the test owns that holds the
-// state-file lock for 2s and exits on its own (no kill needed). It signals
-// readiness by creating the ready file after the lock is held, so the
-// parent's write cannot race ahead of the acquisition. Cross-process
-// exclusion is what the OS lock gives on Unix.
-func m5HoldLockFromChild(t *testing.T, lockPath string) {
-	t.Helper()
-	readyFile := lockPath + ".ready"
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	cmd := exec.CommandContext(ctx, os.Args[0], "-test.run=TestM5HelperProcess")
-	cmd.Env = append(os.Environ(),
-		"M5_HELPER=hold-lock",
-		"M5_LOCK_PATH="+lockPath,
-		"M5_READY_FILE="+readyFile,
-	)
-	if err := cmd.Start(); err != nil {
-		cancel()
-		t.Fatalf("start holder child: %v", err)
-	}
-	t.Cleanup(func() { _ = cmd.Wait() })
-	t.Cleanup(func() { _ = os.Remove(readyFile) })
-	// Registered last so it runs first: the timeout context is released
-	// before Wait, exactly as the deferred cancel did in the inline form.
-	t.Cleanup(cancel)
-
-	deadline := time.Now().Add(5 * time.Second)
-	for {
-		if _, err := os.Stat(readyFile); err == nil {
-			break
-		}
-		if time.Now().After(deadline) {
-			t.Fatal("the holder child never signaled readiness")
-		}
-		time.Sleep(20 * time.Millisecond)
-	}
-}
-
-// m5HoldLockInProcess holds the state-file lock inside the test process. On
-// Windows internal/lockfile is a process-local mutex keyed by the lock path
-// (lockfile_windows.go; cross-process locking is documented as unsupported),
-// so a holder in another process cannot exclude this process there; the
-// property Windows provides — a writer in the same process lapses while the
-// lock is held past the bound — is what this arm pins. The same lock handle
-// is released at test end.
-func m5HoldLockInProcess(t *testing.T, lockPath string) {
-	t.Helper()
-	f, err := os.OpenFile(lockPath, os.O_CREATE|os.O_RDWR, 0o644)
-	if err != nil {
-		t.Fatalf("open lock file: %v", err)
-	}
-	if err := lockfile.Lock(f); err != nil {
-		_ = f.Close()
-		t.Fatalf("take the in-process lock: %v", err)
-	}
-	t.Cleanup(func() {
-		_ = lockfile.Unlock(f)
-		_ = f.Close()
-	})
+	_ = ctx // the context bounds the child; the child exits on its own
+	_ = cancel
 }
 
 // TestStateLockLapseBudget_IsOne pins the budget constant the M6 engine
