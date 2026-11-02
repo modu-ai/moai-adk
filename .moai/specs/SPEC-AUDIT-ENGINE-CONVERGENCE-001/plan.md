@@ -41,7 +41,7 @@ Reasoning: both budgets are counted independently and both sit exactly at 16. Th
 - RED first per item: each milestone opens with the failing test named in its AC, committed before the fix.
 - Template-First:
   - A file with a mirror under `internal/template/templates/` changes in the same commit as the mirror, with the neutrality strip: no internal SPEC IDs, REQ tokens, card ids, dates, or SHAs in the mirror.
-  - An agent definition is edited only in its source under `internal/template/agentemit/source/`, then `make agents-emit` regenerates every rendered copy.
+  - An agent definition is edited in its source under `internal/template/agentemit/source/`, then `make agents-emit` regenerates the copies it renders. For the plan-auditor and sync-auditor those are the template sets only; their local `.claude/agents/moai/` definitions are not emitter targets (`internal/template/agentemit/sets.go:48-50`, `:62-63`) and are updated by hand in M6 (leader ruling R308).
   - Then `make build`, which runs `agents-emit-check`, exits 0, and `git status --short` shows no unexpected tracked change.
 - Push happens only at sync, through the PR edge.
 
@@ -57,14 +57,15 @@ RED: AC-AEC-001c, 001d, 001e, 001f.
 Files:
 - `internal/cli/audit_delta_chain.go` (new):
   - reads the card's second-review records;
-  - checks every record, the starting record included, for a pass or fail from every required backend;
+  - checks every record, the starting record included, for a pass or fail from every required backend, iterating over the required set rather than the entries present, so an absent entry counts as not run;
   - cross-checks each record's receipt against the receipt store (tool, tree root, head, empty `gate_unmet`, codex verdict not inconclusive);
-  - builds the closure set as the union of `blocking_defect:` ids over every FAIL verdict file tied to a chain record, and checks `blocking_count` on each.
+  - builds the closure set as the union of `blocking_defect:` ids over every FAIL verdict file tied to a chain record, and checks `blocking_count` on each;
+  - treats an id as inherited when the record that extended its FAIL file lists it among its confirmed ids, and checks only the remaining ids for a closing commit inside `delta_base..HEAD`.
 - `internal/cli/mcp_convergence.go`:
   - change the record branch at `:1059` so an admitted delta files a record;
   - change the persistence condition at `:1046` so an admitted delta persists whatever its verdict, while a `card_id`-less delta stays fail-only (t1873);
   - pass the confirmation to every leg.
-- `internal/cli/mcp_audit_multi_record.go` and `internal/closure/records.go` — additive fields: delta marker, delta base, extended receipt id, relied-on verdict-file digests. `SelectSecondReview` logic stays unchanged.
+- `internal/cli/mcp_audit_multi_record.go` and `internal/closure/records.go` — additive fields: delta marker, delta base, extended receipt id, confirmed ids, relied-on verdict-file digests. `SelectSecondReview` logic stays unchanged.
 - `internal/cli/mcp_audit_multi.go`, `internal/cli/mcp_server.go` — the confirmation input and its schema description; an explicit `delta_base` with a `card_id` goes through the gate.
 - `internal/auditverdict/verdict.go` — parse `blocking_defect:` lines.
 - Tests: `internal/cli/audit_delta_chain_test.go`, `internal/cli/mcp_audit_multi_record_test.go`, a persistence test beside the existing t1873 test.
@@ -132,7 +133,9 @@ Files:
   - the narrowed gate statements;
   - `INCONCLUSIVE` in both machine-line templates;
   - the `blocking_count` and `blocking_defect:` obligation on every FAIL, which the sync-auditor source gains for the first time.
-- `make agents-emit`, which regenerates `.claude/agents/moai/*.md`, their template mirrors, and `.codex/agents/moai/*.toml` with their mirrors. All are committed together with the sources. The rendered plan-auditor keeps its pre-existing line 64 and 150 differences from its mirror.
+- `make agents-emit`, which regenerates the template copies of the two agents (`internal/template/templates/.claude/agents/moai/{plan,sync}-auditor.md` and `internal/template/templates/.codex/agents/moai/{plan,sync}-auditor.toml`). It does not write the local definitions: the emitter's project targets are limited to `CarriedFour` (`internal/template/agentemit/sets.go:62-63`), and the comment at `:48-50` says the other project copies stay hand-managed.
+- `.claude/agents/moai/plan-auditor.md` and `.claude/agents/moai/sync-auditor.md` — updated by hand to match the corrected source text (leader ruling R308): the three wrong sentences removed, the positive statements, `INCONCLUSIVE` in both machine-line templates, and the `blocking_count` / `blocking_defect:` obligation. The local plan-auditor keeps its pre-existing line 64 and 150 differences from the template copy (R287). The local `.codex/agents/moai/` copies stay as they are (spec §E B5, t2018 input).
+- Sources, template copies, and the two local definitions are committed together.
 - `internal/cli/mcp_convergence_test.go` — the FAIL-plus-inconclusive convergence test; `internal/cli/audit_gates_failclosed_test.go` (where `applyGateUnmet` is already exercised) — the two `applyGateUnmet` tests.
 - `.moai/docs/audit-artifact-convention.md` + mirror — the A1 paragraph (may share the M4 commit).
 - Then `make build`; confirm `git status --short` shows only the intended files.
@@ -148,7 +151,8 @@ Files:
 | The completed-SPEC projection and the new label disagree | the admission reason stops at "overall fail" and never names the class | spec §G sets `convergence_overall: inconclusive` and the refusal order; AC-AEC-002b pins the reason |
 | The `error_class` mapping misreads codex text | a quota failure is labelled `other` | `other` still refuses; AC fixtures pin the three named classes |
 | B4 bypassed by an agent Bash call, a Codex session, or direct file deletion | a rejection cleared without the operator | stated as residual in spec §E: an operator-mistake guard, not a boundary |
-| Rendered agent copies edited by hand | `make build` fails at `agents-emit-check` | M6 edits the sources only |
+| Template agent copies edited by hand | `make build` fails at `agents-emit-check` | M6 edits the sources and regenerates the template copies |
+| The hand-updated local definitions drift from the sources | a local auditor keeps or regains a wrong sentence, and no check sees it | AC-AEC-005 checks the two local files at M6; later drift is residual (spec §E B5) |
 | A section-boundary check that drifts to whole-file, new-version-only, or §E.3-stale | a rewrite of the evidence is inherited, or the normal flow goes stale | AC-AEC-003a/003b pin each direction |
 | Any further addition | a ceiling exceeded | report to the leader; only the leader splits B4 (R300) |
 
@@ -158,7 +162,8 @@ Files:
 - Building the delta chain from verdict files or call arguments.
 - Clearing a rejection through any path other than the one verb.
 - Folding the head commit back into the new uncommitted-state field.
-- Editing a rendered agent copy instead of its source.
+- Editing a template agent copy instead of its source.
+- Assuming `make agents-emit` updates the local plan-auditor and sync-auditor definitions.
 
 ## §I Cross-references
 
