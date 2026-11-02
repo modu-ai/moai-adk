@@ -158,7 +158,11 @@ func m6NewWorld(t *testing.T) *m6World {
 // m6Registered reports whether git still registers path.
 func m6Registered(t *testing.T, repo, path string) bool {
 	t.Helper()
-	return strings.Contains(m6Git(t, repo, "worktree", "list", "--porcelain"), path)
+	// git prints worktree paths with forward slashes on every host (C:/... on
+	// Windows) while the test builds them with the host separator; compare
+	// both in slash form so the check names the same tree on every OS.
+	listed := filepath.ToSlash(m6Git(t, repo, "worktree", "list", "--porcelain"))
+	return strings.Contains(listed, filepath.ToSlash(path))
 }
 
 // TestMigrateVerb_IsRegistered pins the registration clause: the migrate
