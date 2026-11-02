@@ -89,6 +89,10 @@ T1-T3 carry a copy-able condition template; T4 is a decision-route trigger with 
 
 Canonical native documentation: `https://code.claude.com/docs/en/goal`.
 
+## Native `/goal` and long waits
+
+Because the native `/goal` has no stop guard and no turn ceiling, a session that has only a wait left is re-entered with empty turns. For waits, a long-wait goal uses `/moai goal`: its turn ceiling (MaxTurns) and three consecutive stagnant turns end it. When only waiting remains, run `/goal clear`.
+
 ## Cross-references
 
 - `.claude/rules/moai/workflow/native-invocation-model.md` § Classification Matrix / § Axis B — the invocation classification and the automation justification the Native `/goal` Prohibition rests on
