@@ -7,7 +7,7 @@ status: draft
 ```yaml
 plan_complete: true
 plan_author: manager-spec (card t2017)
-plan_revision: 0.3.0 (leader rulings R287 and R288 applied)
+plan_revision: 0.4.0 (leader rulings R287, R288, R290 applied; plan-audit round 1 repaired — .moai/reports/t2017/plan-audit-1.md, FAIL 0.75 at 36148aeec9)
 measured_tree: cb30e05b3e5f64774b8dabd87e80c24332f4551d
 tier: M
 req_count: 16   # Tier M ceiling 16

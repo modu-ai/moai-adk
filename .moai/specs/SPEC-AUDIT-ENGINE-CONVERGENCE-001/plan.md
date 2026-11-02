@@ -2,7 +2,12 @@
 
 ## §A Context
 
-Six repairs to the audit engine, decided by the operator on 2026-11-03, with the product rulings relayed by the leader as R287. Requirements: `spec.md` §C. Acceptance: `acceptance.md`. Decisions: `decision-index.md`. Measured tree: `cb30e05b3e5f64774b8dabd87e80c24332f4551d`.
+The operator decided on 2026-11-03 to repair six defects in the audit engine; the leader relayed the product rulings as R287 and R288. This plan also carries the round-1 plan-audit repair (`.moai/reports/t2017/plan-audit-1.md`), and per leader ruling R290 the card is in the rc.39 integration candidate.
+
+- Requirements: `spec.md` §C. Reconciliation with completed SPECs: `spec.md` §G.
+- Acceptance: `acceptance.md`.
+- Decisions: `decision-index.md`.
+- Measured trees: `cb30e05b3e5f64774b8dabd87e80c24332f4551d`, and `36148aeec99fd8d80e76645432f5a58802732c3e` for the round-4 entries (same code).
 
 ## §B Tier classification
 
@@ -12,27 +17,32 @@ Six repairs to the audit engine, decided by the operator on 2026-11-03, with the
 |---|---|---|---|
 | Requirements | 16 (REQ-AEC-001..016) | 16 | at the ceiling |
 | Acceptance criteria | 6 logical ACs, 16 sub-criteria (AC-AEC-001a..006) | 16 | at the ceiling, counting every sub-criterion |
-| Production files touched | about 12 | — | see milestones |
-| All files touched | about 24 | 5-15 guidance | over the file guidance |
-| Estimated LOC | 800-1100 | 300-1000 | at or slightly over the upper bound |
+| Production files touched | about 18 | — | see milestones |
+| All files touched | about 34 | 5-15 guidance | over the file guidance |
+| Estimated LOC | 1000-1400 | 300-1000 | over the upper bound |
 
-Reasoning: both budgets are counted independently and both sit exactly at 16. R287's additions to B1 (the chain gate and the delta record) were absorbed by folding the old B1 fallback requirement into REQ-AEC-001 and by merging the B4 negative sub-criteria, not by exceeding a ceiling. The file and LOC estimates are at or over the Tier M guidance. About half of the files are tests and template mirrors.
+Reasoning: both budgets are counted independently and both sit exactly at 16. The round-1 audit repair added no requirement and no criterion. Every repair is a condition inside an existing requirement or a fixture inside an existing criterion, and no pinned case was dropped. The file and LOC estimates are over the Tier M guidance; about half of the files are tests, template mirrors, and rendered agent copies.
 
-**B4 stays in this SPEC (leader ruling R288).** The operator decision bundles B1-B5. Any new requirement or criterion would push the SPEC over a ceiling and is reported to the leader rather than added. The only split the leader has named is B4 (REQ-AEC-011..013, AC-AEC-004a..c), and only if the plan audit raises server-side BLOCKING-id storage as BLOCKING; that split is the leader's act, not this plan's. B4 shares no code with B1-B3, so the cut would be clean.
-
-The R288 positive `§E.3` case fits within the existing sub-criteria: it is a second fixture inside AC-AEC-003a, and the single-line `§E.2` negative tightens AC-AEC-003b. No pinned case was removed.
+**B4 stays in this SPEC (leader rulings R288, R300).** Any new requirement or criterion would push the SPEC over a ceiling and is reported to the leader rather than added. The only way out the leader has named is a B4 split (REQ-AEC-011..013, AC-AEC-004a..c), issued by the leader as a separate SPEC and card. That would leave this SPEC at 13 and 13. Re-tiering is ruled out.
 
 ## §C Pre-flight
 
 - Re-read `spec.md` §B before touching any cited line; the run tree may have moved.
-- Fix-confirm re-audits for this card are limited to 3, and each is scoped to the diff since the previous verdict's `audited_sha`. Pass that SHA as `delta_base` explicitly until M3 lands the default.
-- Verification runs scoped tests only, for example `go test ./internal/cli/... -run '^(TestName1|TestName2)$'` with every branch anchored. The same applies to `./internal/auditreceipt/...`, `./internal/auditverdict/...`, `./internal/runtime/...`, `./internal/closure/...`, and `./internal/hook/...`. The full suite runs in CI after push. Take a slot lease before the `internal/cli` suite where other lanes may run it.
+- Fix-confirm re-audits for this card are limited to 3, each scoped to the diff since the previous verdict's `audited_sha`, passed as `delta_base` explicitly. Until M1 lands there is no chain gate, so such a delta is a t1708 delta, not a chain-verified one.
+- Verification runs scoped tests only, for example `go test ./internal/cli/... -run '^(TestName1|TestName2)$'` with every branch anchored. The same applies to `./internal/auditreceipt/...`, `./internal/auditverdict/...`, `./internal/runtime/...`, `./internal/closure/...`, `./internal/homestate/...`, `./internal/hook/...`, and `./internal/template/agentemit/...`. The full suite runs in CI after push. Take a slot lease before the `internal/cli` suite where other lanes may run it.
 
 ## §D Constraints
 
-- Forbidden: a concurrently writing session or agent added to the tree, replacing the installed binary, weakening any refusal, deleting any check (REQ-AEC-016).
+- Forbidden (REQ-AEC-016):
+  - a concurrently writing session or agent added to the tree;
+  - replacing the installed binary;
+  - weakening any refusal;
+  - deleting any check.
 - RED first per item: each milestone opens with the failing test named in its AC, committed before the fix.
-- Template-First: a file with a mirror under `internal/template/templates/` changes in the same commit as the mirror, with the neutrality strip (no internal SPEC IDs, REQ tokens, card ids, dates, or SHAs in the mirror). Then `make build` exits 0, and `git status --short` shows no unexpected tracked change.
+- Template-First:
+  - A file with a mirror under `internal/template/templates/` changes in the same commit as the mirror, with the neutrality strip: no internal SPEC IDs, REQ tokens, card ids, dates, or SHAs in the mirror.
+  - An agent definition is edited only in its source under `internal/template/agentemit/source/`, then `make agents-emit` regenerates every rendered copy.
+  - Then `make build`, which runs `agents-emit-check`, exits 0, and `git status --short` shows no unexpected tracked change.
 - Push happens only at sync, through the PR edge.
 
 ## §E Self-verification
@@ -41,51 +51,66 @@ Each milestone closes with its AC's green cell observed, verbatim, in `progress.
 
 ## §F Milestones (ordered: highest decision-reversibility first)
 
-### M1 — B1 delta chain gate and the delta second-review record (highest-risk decision)
+### M1 — B1 delta chain gate, the delta record, and its persistence (highest-risk decision)
 
 RED: AC-AEC-001c, 001d, 001e, 001f.
 Files:
+- `internal/cli/audit_delta_chain.go` (new):
+  - reads the card's second-review records;
+  - checks every record, the starting record included, for a pass or fail from every required backend;
+  - cross-checks each record's receipt against the receipt store (tool, tree root, head, empty `gate_unmet`, codex verdict not inconclusive);
+  - builds the closure set as the union of `blocking_defect:` ids over every FAIL verdict file tied to a chain record, and checks `blocking_count` on each.
 - `internal/cli/mcp_convergence.go`:
-  - change the second-review branch at `:1059` so a delta admitted under REQ-AEC-004 files a record;
-  - pass the BLOCKING-closure confirmation to every leg.
-- `internal/cli/mcp_audit_multi_record.go` — the delta record: scope base equals the delta base, a delta marker, and the receipt id of the chain record it extends (additive JSON fields).
-- `internal/closure/records.go` — the additive fields on `SecondReviewRecord` and `SecondReviewScope`. The `SelectSecondReview` logic stays unchanged.
-- `internal/cli/mcp_audit_multi.go`, `internal/cli/mcp_server.go` — the BLOCKING-closure confirmation input and its schema description.
-- `internal/cli/audit_delta_chain.go` (new) — reads the card's second-review records, cross-checks each against the receipt store, and evaluates the confirmation against the newest FAIL verdict's `blocking_defect:` lines.
+  - change the record branch at `:1059` so an admitted delta files a record;
+  - change the persistence condition at `:1046` so an admitted delta persists whatever its verdict, while a `card_id`-less delta stays fail-only (t1873);
+  - pass the confirmation to every leg.
+- `internal/cli/mcp_audit_multi_record.go` and `internal/closure/records.go` — additive fields: delta marker, delta base, extended receipt id, relied-on verdict-file digests. `SelectSecondReview` logic stays unchanged.
+- `internal/cli/mcp_audit_multi.go`, `internal/cli/mcp_server.go` — the confirmation input and its schema description; an explicit `delta_base` with a `card_id` goes through the gate.
 - `internal/auditverdict/verdict.go` — parse `blocking_defect:` lines.
-- Tests: `internal/cli/audit_delta_chain_test.go`, `internal/cli/mcp_audit_multi_record_test.go`.
+- Tests: `internal/cli/audit_delta_chain_test.go`, `internal/cli/mcp_audit_multi_record_test.go`, a persistence test beside the existing t1873 test.
 
 ### M2 — B4 operator approval path (security boundary)
 
 RED: AC-AEC-004a..c.
 Files:
 - `internal/auditreceipt/store.go` — one function that removes exactly one named receipt-kind rejection of one tree and appends one approval record (an append-only log inside `.moai/state/audit-receipts/`).
-- `internal/cli/verify_clear_rejection.go` (new) — the verb under `moai verify`, reusing the `internal/contract/sign` human-path checks.
+- `internal/cli/verify_clear_rejection.go` (new) — the verb under `moai verify`. It reuses `contractAgentMarkers()` (`internal/cli/contract.go:76-78`), the terminal seam, and the typed confirmation of the contract signing path.
 - `internal/cli/verify.go` — register the subcommand.
-- Tests: `internal/cli/verify_clear_rejection_test.go`, `internal/auditreceipt/store_approval_test.go`.
+- Tests: `internal/cli/verify_clear_rejection_test.go` (including the set-equality test against `contractAgentMarkers()`), `internal/auditreceipt/store_approval_test.go`.
 
-### M3 — B1 default proposal and mechanical codex scope
+### M3 — B1 default proposal and the delta codex leg
 
 RED: AC-AEC-001a, 001b.
 Files:
 - `internal/cli/mcp_audit_multi.go` — the default proposal from the newest FAIL verdict file; the `"full"` opt-out.
 - `internal/cli/audit_delta_scope.go` — remove the prose-only path for the leg.
-- `internal/cli/mcp_convergence.go` — when a delta is in effect, the codex leg uses the native review target (as `codex_audit` native already does at `mcp_codex_audit.go:2323-2330`) or the collected diff.
+- `internal/cli/mcp_convergence.go` — while a delta is in effect, `performCodexAudit` keeps its adversarial `turn/start` and embeds the server-collected `delta_base...HEAD` diff in the turn. It does not switch to the native target.
 - Reuse the newest-verdict selection used by `factory rebind-evidence` (`internal/cli/factory_card_rebind.go`) rather than writing a second reader.
 - Tests: `internal/cli/audit_delta_scope_test.go`, `internal/cli/mcp_audit_multi_test.go`.
 
-### M4 — B2 classified unrun legs, the INCONCLUSIVE label and its consumers
+### M4 — B2 classified unrun legs, the INCONCLUSIVE label and every consumer
 
 RED: AC-AEC-002a..c.
 Files:
-- `internal/cli/mcp_convergence.go` — `error_class` on `PerBackendVerdict`; re-running only the named legs.
-- `internal/cli/mcp_codex_audit.go`, `internal/cli/mcp_glm.go`, `internal/cli/mcp_claude.go` — map each could-not-run path to a class (Claude's existing `Provenance.ErrorCode` values map; codex and GLM gain a mapping).
+- `internal/cli/mcp_convergence.go`:
+  - `error_class` on `PerBackendVerdict`;
+  - head commit, tree digest, and scope fields on the persisted result;
+  - re-running only the named legs.
+- `internal/cli/mcp_codex_audit.go`, `internal/cli/mcp_glm.go`, `internal/cli/mcp_claude.go` — map each could-not-run path to a class.
 - `internal/cli/mcp_audit_multi.go`, `internal/cli/mcp_server.go` — the legs-to-re-run input.
-- `internal/auditreceipt/store.go` — the receipt carries `error_class`.
-- `internal/auditverdict/verdict.go` — parse `INCONCLUSIVE` and the class; admission refuses it and names the class.
-- `internal/runtime/audit_counter.go` — skip `INCONCLUSIVE` iteration files; keep counting FAIL.
-- `.moai/docs/audit-artifact-convention.md` + `internal/template/templates/.moai/docs/audit-artifact-convention.md` — the label vocabulary, the `required_backend` line shape, the `blocking_defect:` line, and the consumer rules (same commit). The `blocking_defect:` line is defined here because M1 consumes it; if M1 lands first, its tests use fixtures.
-- Tests in the matching `_test.go` files.
+- `internal/auditreceipt/store.go`:
+  - the receipt carries `error_class`;
+  - the Stop-hook last-line grammar at `:173` accepts `INCONCLUSIVE`.
+- `internal/hook/audit_receipt_guard.go` — an `INCONCLUSIVE` last line is a parsed line: no `CauseVerdictLineMissing`, no clear, stage entry blocked with the class.
+- `internal/homestate/card_evidence_readers.go` — the verdict-line pattern at `:20` accepts `INCONCLUSIVE` and holds the card.
+- `internal/auditverdict/verdict.go`:
+  - `convergence_overall: inconclusive`;
+  - the 3-token `required_backend` line;
+  - the new refusal step and its reason, in the order of `spec.md` §G;
+  - `AdmitLabel` unchanged.
+- `internal/runtime/audit_counter.go` and `internal/runtime/audit_ceiling.go` (`CountPlanAuditRounds`, `:1186-1191`) — both skip `INCONCLUSIVE` iteration files and keep counting FAIL. `Latest` and `SelectLatestVerdict` still select an `INCONCLUSIVE` file.
+- `.moai/docs/audit-artifact-convention.md` + `internal/template/templates/.moai/docs/audit-artifact-convention.md` (same commit) — the label vocabulary, the `required_backend` line shape, the `required_backend_fail:` producer rule, the `blocking_defect:` line on plan and sync FAIL files, and the consumer rules. The `blocking_defect:` line is defined here because M1 consumes it; if M1 lands first, its tests use fixtures.
+- Tests in the matching `_test.go` files, one per consumer.
 
 ### M5 — B3 receipt binding across evidence-only commits
 
@@ -93,15 +118,22 @@ RED: AC-AEC-003a, 003b.
 Files:
 - `internal/auditreceipt/store.go`:
   - the new receipt field for the uncommitted state without the head;
-  - the ancestry, filename-family, and `progress.md` section checks in the reuse arm at `:1578-1616`. The section check refuses only a changed line under `§E.2`; changes under `§E.1`, `§E.3` and `§E.4` are allowed (leader ruling R288).
+  - the cited SPEC ID passed into `CheckCitedReceiptsSince` (`:1514`) from the citing line's `spec=`;
+  - the ancestry, filename-family, and `progress.md` checks in the reuse arm at `:1578-1616`.
+  The `§E.2` section is computed on both versions and must be byte-identical, with its heading unchanged and in place. Changes under `§E.1`, `§E.3`, and `§E.4` are allowed (leader ruling R288). Only the cited SPEC's `progress.md` qualifies.
+- `internal/hook/audit_receipt_guard.go` — pass the parsed `spec=` value to the check.
 - `internal/auditreceipt/store_binding_range_test.go` (new).
 
-### M6 — B5 prompt corrections and A1 rule paragraph (mechanical text)
+### M6 — B5 agent sources and A1 rule paragraph (mechanical text)
 
 RED: AC-AEC-005, AC-AEC-006.
-Files (each pair in one commit):
-- `.claude/agents/moai/sync-auditor.md` lines 201, 203 + `internal/template/templates/.claude/agents/moai/sync-auditor.md`.
-- `.claude/agents/moai/plan-auditor.md` lines 251, 253 + `internal/template/templates/.claude/agents/moai/plan-auditor.md`. Edit the matching lines only; the line-64 divergence stays.
+Files:
+- `internal/template/agentemit/source/sync-auditor.md` (lines 101, 201, 203, 210) and `internal/template/agentemit/source/plan-auditor.md` (lines 193, 204, 251, 253, 260):
+  - the narrowed gate statements;
+  - `INCONCLUSIVE` in both machine-line templates;
+  - the `blocking_count` and `blocking_defect:` obligation on every FAIL, which the sync-auditor source gains for the first time.
+- `make agents-emit`, which regenerates `.claude/agents/moai/*.md`, their template mirrors, and `.codex/agents/moai/*.toml` with their mirrors. All are committed together with the sources. The rendered plan-auditor keeps its pre-existing line 64 and 150 differences from its mirror.
+- `internal/cli/mcp_convergence_test.go` — the FAIL-plus-inconclusive convergence test; `internal/cli/audit_gates_failclosed_test.go` (where `applyGateUnmet` is already exercised) — the two `applyGateUnmet` tests.
 - `.moai/docs/audit-artifact-convention.md` + mirror — the A1 paragraph (may share the M4 commit).
 - Then `make build`; confirm `git status --short` shows only the intended files.
 
@@ -109,14 +141,16 @@ Files (each pair in one commit):
 
 | Risk | Effect | Mitigation |
 |---|---|---|
-| A delta chain passes a card whose pre-existing defect sits outside every delta and the full review missed it | a defect lands | stated in spec §E B1; the chain must start at a full-scope record |
-| Forged second-review record plus receipt pair | a fake chain admits a delta | receipt cross-check raises the cost; stated as residual |
-| The closure reader treats a delta record as full coverage | readiness reads a delta PASS as coverage | intended by R287 Q1; the record is filed only behind the chain gate |
-| `INCONCLUSIVE` read by a consumer that knows three labels | treated as unknown | `AdmitLabel` admits only PASS-family, so unknown refuses; AC-AEC-002b pins it |
-| `error_class` mapping misreads codex text | a quota failure labelled `other` | `other` still refuses; AC fixtures pin the three named classes |
-| Pseudo-terminal forgery by a local process | B4 boundary bypassed | stated as residual; the hook deny is a follow-up Gap |
-| A section-boundary check that drifts to a whole-file or `§E.3`-stale rule | a normal `§E.3` rewrite goes stale, or an `§E.2` evidence rewrite is inherited | AC-AEC-003a pins the `§E.3` acceptance and AC-AEC-003b the single-line `§E.2` refusal |
-| Any further addition | a ceiling exceeded | report it to the leader; B4 stays in this SPEC (R288), and only the leader splits it |
+| A delta chain passes a card whose pre-existing defect sits outside every delta, and the full review missed it | a defect lands | stated in spec §E B1; the chain must start at a full-scope record that ran every required backend |
+| A forged second-review record plus receipt pair | a fake chain admits a delta | the receipt cross-check raises the cost; stated as residual (R288 threat model) |
+| A chain-admitted delta PASS opens the Stop gate | intended by R287 Q1 | only behind the chain gate; a `card_id`-less delta keeps the t1873 rule (AC-AEC-001f) |
+| One of the `INCONCLUSIVE` consumers is missed | an unrun audit is read as a missing line, or counted as a round | AC-AEC-002b asserts each consumer separately; §B lists all of them |
+| The completed-SPEC projection and the new label disagree | the admission reason stops at "overall fail" and never names the class | spec §G sets `convergence_overall: inconclusive` and the refusal order; AC-AEC-002b pins the reason |
+| The `error_class` mapping misreads codex text | a quota failure is labelled `other` | `other` still refuses; AC fixtures pin the three named classes |
+| B4 bypassed by an agent Bash call, a Codex session, or direct file deletion | a rejection cleared without the operator | stated as residual in spec §E: an operator-mistake guard, not a boundary |
+| Rendered agent copies edited by hand | `make build` fails at `agents-emit-check` | M6 edits the sources only |
+| A section-boundary check that drifts to whole-file, new-version-only, or §E.3-stale | a rewrite of the evidence is inherited, or the normal flow goes stale | AC-AEC-003a/003b pin each direction |
+| Any further addition | a ceiling exceeded | report to the leader; only the leader splits B4 (R300) |
 
 ## §H Anti-patterns to avoid
 
@@ -124,10 +158,12 @@ Files (each pair in one commit):
 - Building the delta chain from verdict files or call arguments.
 - Clearing a rejection through any path other than the one verb.
 - Folding the head commit back into the new uncommitted-state field.
+- Editing a rendered agent copy instead of its source.
 
 ## §I Cross-references
 
-- `spec.md` §B (verified citations), §D (A1/B4 tension), §E (B1 residual risk, B2 counter, B3/B4/A1 choices)
-- `decision-index.md` (Q1-Q8, leader ruling R287)
+- `spec.md` §B (verified citations), §D (A1/B4 tension), §E (residual risk and design choices), §G (reconciliation with completed SPECs)
+- `decision-index.md` (Q1-Q8, leader rulings R287, R288)
+- `.moai/reports/t2017/plan-audit-1.md` (round-1 audit)
 - `.claude/rules/moai/development/verification-completeness.md` §2 (two-cell adoption)
 - `.moai/docs/audit-artifact-convention.md`

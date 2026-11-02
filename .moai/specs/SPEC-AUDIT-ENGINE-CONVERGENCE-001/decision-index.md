@@ -10,7 +10,7 @@ Class: product-level
 Authority anchor: none in the committed tree; leader ruling R287 (relaying the operator decision of 2026-11-03)
 Why unresolved: it changes the default behavior of a shipped MCP tool for every `card_id` call after a FAIL, and today a delta call files no second-review record (`internal/cli/mcp_convergence.go:1059`).
 Ruling quoted (R287): "Q1 = YES. audit_multi called with a card_id defaults delta_base to the card's newest FAIL verdict's audited_sha. A delta round may produce PASS only when (i) the delta verdicts since the last full review form an unbroken chain (each delta's base equals the previous verdict's SHA) AND (ii) the input of that delta includes the confirmation that every previous BLOCKING defect is closed. In that case the delta call must also file a second-review record (this changes the branch at internal/cli/mcp_convergence.go:1059 …). A broken chain means full scope. Returning to 'a final full review is always required' defeats B1's purpose."
-Operator verdict: YES per leader ruling R287 (2026-11-03) — applied as REQ-AEC-001, -004, -005
+Operator verdict: YES per leader ruling R287 (2026-11-03) — applied as REQ-AEC-001, -004, -005. Plan-audit round 1 (D1, D2) tightened the gate within this ruling: every chain record must have run every required backend, the closure set is the union over the chain's FAIL verdicts, and an explicit `delta_base` with a `card_id` goes through the same gate.
 
 ### Q2: How is a full-scope review requested once the default exists — the value `delta_base: "full"`, or a separate boolean input?
 Label: FOUNDER
