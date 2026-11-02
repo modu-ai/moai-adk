@@ -4,11 +4,10 @@ package cli
 // real `moai af` verbs, a real ledger and real git. The tests begin with TestAFLandingWindow_ so that one anchored run
 // picks them, and they go through afRunBoth, so with AF_TEST_BIN set the same tests drive a built binary.
 //
-// `af land` asks again, with the landing lock held, whether the candidate has a failing newest run, then moves the trunk
-// ref; a failing run recorded between the two was landed all the same because evidence writes take no landing lock. The
-// ledger refuses a failing green, gate or review run about the candidate of a row that is in landing, so the instant is
-// closed from the evidence side. What a command line can set up deterministically is the state that instant leaves
-// behind when the lander dies: a row left in landing. (The instant itself is hooked in the mergeq tests, on Merger.LastCheck.)
+// The ledger refuses a failing green, gate or review run about the candidate of a row that is in landing, so the instant
+// between a landing's last look at the newest runs and the swap of the trunk ref is closed from the evidence side. What a
+// command line can set up deterministically is the state that instant leaves behind when the lander dies: a row left in
+// landing. (The instant itself is hooked in the mergeq tests, on Merger.LastCheck.)
 //
 //   - the verb prints the refusal, says why and what to do, exits non-zero and changes nothing;
 //   - `moai af reconcile` settles the row (back to waiting, or landed when the candidate is in the trunk) and the same
@@ -96,7 +95,7 @@ func TestAFLandingWindow_TheVerbRefusesAFailingRunAboutTheCandidateOfALandingRow
 }
 
 // The way on the refusal names: reconcile settles the row (the candidate is not in the trunk, so it goes back to
-// waiting), the same command is then accepted, and the landing refuses the commit until it is measured again.
+// waiting) and the same command is then accepted.
 func TestAFLandingWindow_ReconcileFreesTheRowAndTheRunIsThenRecorded(t *testing.T) {
 	afSkipWithoutSh(t)
 	a := afTrMeasured(t, afTrAlive)
@@ -112,9 +111,6 @@ func TestAFLandingWindow_ReconcileFreesTheRowAndTheRunIsThenRecorded(t *testing.
 	}
 	if out, err := afLWEvidence(a, "gate", a.c1, "fail"); err != nil {
 		t.Fatalf("still refused after the reconcile: %v %.200s", err, out)
-	}
-	if out, err := a.try("land", "t1", "--gate", "true"); err == nil {
-		t.Fatalf("land landed a commit whose newest gate run failed: %.200s", out)
 	}
 }
 

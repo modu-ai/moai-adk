@@ -233,7 +233,7 @@ func failingNewestRun(ctx context.Context, q querier, cardID, sha string) (strin
 // FailingNewestRun is the read-only form of the rule Enqueue and finishing a card apply (a commit whose newest green,
 // gate or review run failed is neither taken nor finished on): it names the first kind whose newest run about the
 // commit failed, in the order green, gate, review, and returns "" when none did. A kind never recorded for the commit
-// is not a failure. `moai af land` asks it before a landing (N54).
+// is not a failure. No verb asks it any more; a Merger.LastCheck may.
 func (s *Store) FailingNewestRun(ctx context.Context, cardID, sha string) (string, error) {
 	return failingNewestRun(ctx, s.db, cardID, sha)
 }
@@ -330,9 +330,9 @@ func queueSettledAt(ctx context.Context, q querier, cardID string, cardEpoch int
 }
 
 // queueUnlandableAt says whether the card's queue row was queued at that card epoch, still waits, and names a candidate
-// whose newest green, gate or review run failed: the row `moai af land` refuses (N54). Such a row cannot be settled by a
-// landing, so the card it holds would otherwise have no way out once its holder is gone (N63). A row that is verifying or
-// landing belongs to a lander that may be at work and is not this.
+// whose newest green, gate or review run failed: a row its holder has to measure again (N63), so the card it holds would
+// otherwise have no way out once its holder is gone. A row that is verifying or landing belongs to a lander that may be
+// at work and is not this.
 func queueUnlandableAt(ctx context.Context, q querier, cardID string, cardEpoch int64) (bool, error) {
 	var candidate string
 	switch err := q.QueryRowContext(ctx, `SELECT candidate_sha FROM merge_queue WHERE card_id=? AND card_epoch=? AND state='waiting'`, cardID, cardEpoch).Scan(&candidate); {

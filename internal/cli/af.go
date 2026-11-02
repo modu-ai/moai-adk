@@ -782,8 +782,8 @@ and offers it with enqueue; the row starts again as waiting and "moai af land" l
 ` + afAsGivenHelp + `
 
 A MERGING card whose holder is gone (it holds no lease) and whose queue row waits with a candidate whose newest green,
-gate or review run failed can be moved, at the card's own --epoch, to REVIEWING without a lease: "moai af land" refuses
-such a row, and this move takes the card back so that the next claim measures the commit again.
+gate or review run failed can be moved, at the card's own --epoch, to REVIEWING without a lease, so that the next claim
+measures the commit again.
 
 ` + afBindHelp,
 		Args: cobra.ExactArgs(1),

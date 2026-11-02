@@ -34,11 +34,11 @@ func (s *Store) AddEvidence(ctx context.Context, cardID string, epoch int64, e E
 	})
 }
 
-// refuseWhileLanding closes the window between the landing's last read of the newest runs (Merger.LastCheck, asked with
-// the row in landing) and the swap of the trunk ref. Both sides write through this database, and the row is set to
-// landing before that read, so a FAILING run of a kind the read looks at (landingReadKinds) about the candidate of a row
-// that is in landing is refused: either it committed before the row went to landing and the read sees it, or it commits
-// after and is refused here. Passing runs, runs about another commit and the other kinds are not what the read looks at
+// refuseWhileLanding closes the window between a landing's last read of the newest runs (Merger.LastCheck, asked with
+// the row in landing, when the merger has one) and the swap of the trunk ref. Both sides write through this database, and
+// the row is set to landing before that read, so a FAILING run of a kind the read looks at (landingReadKinds) about the
+// candidate of a row that is in landing is refused: either it committed before the row went to landing and the read sees
+// it, or it commits after and is refused here. Passing runs, runs about another commit and the other kinds are not what the read looks at
 // and are not refused. The refusal is retryable: the row leaves landing when the landing ends (landed or waiting), or
 // when `moai af reconcile` settles a row a dead lander left behind.
 func refuseWhileLanding(ctx context.Context, q querier, cardID string, e Evidence) error {

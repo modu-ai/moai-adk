@@ -44,7 +44,7 @@ func checkEvidence(e Evidence) error {
 // A move without a lease is authorised by the card's public epoch number alone, which is
 // not a secret: it is allowed only for the in-place resume of a ledger-made park and for
 // settling a MERGING card from its landed or failed queue row, or from a waiting row whose
-// candidate's newest green, gate or review run failed (the row `af land` refuses, N63), and
+// candidate's newest green, gate or review run failed (N63), and
 // the position table still has to accept the move (P3-7). A MERGING card whose holder died
 // and whose queue row is verifying, landing, or waiting with a candidate that can land cannot
 // be moved or cancelled by anyone until the queue's owner settles the row.
@@ -88,8 +88,8 @@ func (s *Store) Move(ctx context.Context, cardID string, epoch int64, to core.Po
 				if settles, err = queueSettledAt(ctx, tx, cardID, card.Epoch); err != nil {
 					return err
 				}
-				// A waiting row whose candidate's newest run failed is refused by `af land`; with the holder gone
-				// nothing else would settle it, so it is the same kind of authority (N63).
+				// A waiting row whose candidate's newest run failed: with the holder gone nothing else would settle it,
+				// so it is the same kind of authority (N63).
 				if !settles {
 					if settles, err = queueUnlandableAt(ctx, tx, cardID, card.Epoch); err != nil {
 						return err

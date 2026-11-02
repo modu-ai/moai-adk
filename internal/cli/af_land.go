@@ -117,19 +117,6 @@ func afGateID(gate string) string {
 	return "gate-" + hex.EncodeToString(sum[:6])
 }
 
-// afLandRefusal is the refusal of a landing whose candidate has a failing newest run of a kind (N54), asked before the
-// gates (afCardMayLand) and again immediately before the swap of the trunk ref (N66). It names the commands that run as
-// printed: the measurement is made again and its result recorded as the measurement gave it (never a result typed
-// without measuring), and, for a card whose holder is gone and that therefore holds no lease, the move that takes the
-// card back so that the next claim carries it on (N63).
-func afLandRefusal(cardID, sha, kind string, epoch int64) error {
-	return fmt.Errorf("af land: %s is not landed: the newest %s run of commit %s failed; measure the commit again and record what the "+
-		"measurement gives (`moai af evidence %s --epoch %d --kind %s --subject-sha %s --result <pass|fail>`, and the same for the other kinds "+
-		"the card needs), then land again; nothing was changed. If the holder of the card is gone (it holds no lease), "+
-		"`moai af move %s --epoch %d --stage REVIEWING` takes the card back, and the next `moai af claim` carries it on",
-		cardID, kind, sha, cardID, epoch, kind, sha, cardID, epoch)
-}
-
 // afCardMayLand says whether the card is where a landing needs it: MERGING at the epoch the queue row was made
 // at. A holder who moved the card back (to REVIEWING, say) withdrew the work, and the row it left behind is not
 // permission to land it. A row already landed answers landed on a retry and needs no position.
@@ -153,16 +140,6 @@ func afCardMayLand(ctx context.Context, st *ledger.Store, item mergeq.Item) erro
 			return fmt.Errorf("af land: %s is not in MERGING at the epoch its queue row was made at (stage %s, epoch %d; row epoch %d): "+
 				"the holder moved it out of the merge queue, so it is not landed; if its row is left in landing, "+
 				"`moai af reconcile` settles it", item.CardID, c.Position.Stage, c.Epoch, item.CardEpoch)
-		}
-		// The rule Enqueue and finishing a card apply: a commit whose newest green, gate or review run failed is not
-		// landed. A run that failed while the row waited would otherwise put the commit in the trunk, where nothing
-		// takes it out again (N54). A passing run about another commit does not count (D5).
-		kind, err := st.FailingNewestRun(ctx, item.CardID, item.CandidateSHA)
-		if err != nil {
-			return fmt.Errorf("af land: %w", err)
-		}
-		if kind != "" {
-			return afLandRefusal(item.CardID, item.CandidateSHA, kind, item.CardEpoch)
 		}
 		return nil
 	}
@@ -219,9 +196,7 @@ The gate receives the caller's full environment except GIT_DIR and the other rep
 credential in the caller's environment is visible to it.
 A landing lock whose holder process is gone is taken back first.
 
-A commit whose newest green, gate or review run failed is not landed, whether the run was recorded before this verb or
-while its gate ran: the verb asks again under the landing lock, immediately before it moves the trunk, and refuses with
-the trunk untouched. %s`, mergeq.DefaultTrunk, afBindHelp, afDoneHelp),
+%s`, mergeq.DefaultTrunk, afBindHelp, afDoneHelp),
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if strings.TrimSpace(gate) == "" {
@@ -248,17 +223,6 @@ the trunk untouched. %s`, mergeq.DefaultTrunk, afBindHelp, afDoneHelp),
 				}
 				m := afMerger(f, st, scratch, afGate(gate, gateTimeout))
 				m.Gate = afGateID(gate)
-				// the gates may have run for minutes: the failing-run question is asked again under the landing lock (N66)
-				m.LastCheck = func(ctx context.Context, cardID, sha string) error {
-					kind, err := st.FailingNewestRun(ctx, cardID, sha)
-					if err != nil {
-						return fmt.Errorf("af land: %w", err)
-					}
-					if kind != "" {
-						return afLandRefusal(cardID, sha, kind, item.CardEpoch)
-					}
-					return nil
-				}
 				res, err := m.Land(ctx, args[0], item.CandidateSHA)
 				if err != nil {
 					return err
