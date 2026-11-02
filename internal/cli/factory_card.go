@@ -3266,6 +3266,14 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	// the window this call acquired; the check can outlast the lease, so a
 	// pass renews it before the merge step reads it.
 	if releaseRoute {
+		// The check runs in the card's working copy and the merge lands its
+		// committed HEAD, so a tree that is not exactly its HEAD is refused
+		// before the check can speak for something it did not measure.
+		if reason, dirt := factoryCardTreeDirt(card.WorktreePath); reason != "" {
+			releaseOwnAcquisition()
+			refused := fmt.Errorf("factory complete: refused — card %s's worktree is not its committed HEAD (%s); the release branch and the card state are unchanged, a hold was recorded; commit or remove the changes and complete again", cardID, reason)
+			return stop.hold(ctx, out, reason, dirt, "", refused)
+		}
 		checkKey, tail, checkErr := factoryFastCheck(ctx, out, card.WorktreePath, factoryBranchTip(integTree, branch))
 		if checkErr != nil {
 			releaseOwnAcquisition()

@@ -106,7 +106,7 @@ func (s factoryReleaseStop) hold(ctx context.Context, out io.Writer, reason stri
 	if detail != nil {
 		h.Detail = factoryBoundedTail(detail.Error(), 2000)
 	}
-	if reason != "check-failed" {
+	if reason != "check-failed" && reason != "dirty-card-tree" && reason != "card-tree-unreadable" {
 		h.ConflictPaths = factoryDivergedPaths(s.integTree, factoryBranchTip(s.integTree, s.branch), cardTip)
 	}
 	if err := s.db.RecordCardHold(ctx, s.runID, h, factoryCardNow()); err != nil {
@@ -159,6 +159,45 @@ func factoryBoundedTail(s string, n int) string {
 		s = s[i+1:]
 	}
 	return s
+}
+
+// factoryDirtyPathLimit bounds how many offending paths a dirty-card-tree hold
+// names.
+const factoryDirtyPathLimit = 10
+
+// factoryCardTreeDirt reports whether the card worktree differs from its
+// committed HEAD: any modified, staged or untracked path (ignored files are not
+// changes). The fast check runs in the working copy while the merge step merges
+// the committed HEAD, so the check speaks for the merge only on a tree that is
+// exactly its HEAD (REQ-FCR-026 (b); sync-audit F1). It returns "" when the tree
+// is clean; otherwise the hold reason — dirty-card-tree, or card-tree-unreadable
+// when the status query itself fails (fail closed) — with the hold detail.
+func factoryCardTreeDirt(cardTree string) (reason string, detail error) {
+	out, err := cliGitIn(cardTree, "status", "--porcelain", "-z", "--untracked-files=all")
+	if err != nil {
+		return "card-tree-unreadable", fmt.Errorf("git status in the card worktree %s failed (%v); commit or remove the changes in the card worktree, then run moai factory complete again", cardTree, err)
+	}
+	var paths []string
+	entries := strings.Split(out, "\x00")
+	for i := 0; i < len(entries); i++ {
+		e := entries[i]
+		if len(e) < 4 {
+			continue
+		}
+		paths = append(paths, e[3:])
+		if e[0] == 'R' || e[0] == 'C' || e[1] == 'R' || e[1] == 'C' {
+			i++ // a rename or copy entry is followed by its source path
+		}
+	}
+	if len(paths) == 0 {
+		return "", nil
+	}
+	shown, more := paths, ""
+	if len(shown) > factoryDirtyPathLimit {
+		more = fmt.Sprintf(" and %d more", len(shown)-factoryDirtyPathLimit)
+		shown = shown[:factoryDirtyPathLimit]
+	}
+	return "dirty-card-tree", fmt.Errorf("the card worktree %s has %d uncommitted path(s): %s%s; the merge lands the committed HEAD, so the check cannot speak for it; commit or remove the changes in the card worktree, then run moai factory complete again", cardTree, len(paths), strings.Join(shown, ", "), more)
 }
 
 // factoryFastCheck runs the fast required check against cardTree: build the
