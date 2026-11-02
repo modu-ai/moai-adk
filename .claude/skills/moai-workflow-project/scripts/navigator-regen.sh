@@ -46,7 +46,13 @@ mkdir -p "$NAV_DIR" "$STATE_DIR" "$(dirname "$WARN_LOG")" 2>/dev/null || true
 # Marker file listing every output that failed to land (see record_write_failure).
 FAIL_MARK="$(mktemp "${TMPDIR:-/tmp}/navigator-regen-fail.XXXXXX" 2>/dev/null)" || FAIL_MARK="$STATE_DIR/.regen-failed.$$"
 : >"$FAIL_MARK" 2>/dev/null || true
-trap 'rm -f "$FAIL_MARK" 2>/dev/null' EXIT
+ROWS_FILE=""
+# One EXIT trap for every temp file this script owns: a later `trap ... EXIT`
+# replaces an earlier one, so registering per file leaks the first.
+cleanup_temp_files() {
+    rm -f "$FAIL_MARK" "$ROWS_FILE" 2>/dev/null
+}
+trap cleanup_temp_files EXIT
 
 # is_git_repo returns 0 if ROOT is inside a git work tree.
 is_git_repo() {
@@ -212,7 +218,6 @@ NOW_ISO="$(git -C "$ROOT" log -1 --format=%cI 2>/dev/null || echo '(no-git)')"
 
 # Collect rows (sort by id for deterministic ordering).
 ROWS_FILE="$(mktemp 2>/dev/null || echo /tmp/nav-rows.$$)"
-trap 'rm -f "$ROWS_FILE" 2>/dev/null' EXIT
 collect_spec_rows | sort -t$'\t' -k1,1 >"$ROWS_FILE" 2>/dev/null || true
 ROW_COUNT="$(wc -l <"$ROWS_FILE" 2>/dev/null | tr -dc '0-9' || echo 0)"
 [ -z "$ROW_COUNT" ] && ROW_COUNT=0
