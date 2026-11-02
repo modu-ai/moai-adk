@@ -189,7 +189,7 @@ func TestAFTransition_N63AHolderThatLeftARefusedRowLeavesAWayOutThatEndsInDone(t
 			for name, args := range map[string][]string{
 				"evidence": {"evidence", "t1", "--epoch", a.e2, "--kind", "gate", "--subject-sha", a.c1, "--result", "pass"},
 				"enqueue":  {"enqueue", "t1", "--epoch", a.e2, "--candidate", a.c1},
-				"resume":   {"resume", "t1", "--epoch", a.e2, "--guard", "reclaim-cap", "--actor", "operator", "--reason", "way out"},
+				"resume":   {"resume", "t1", "--epoch", a.e2, "--actor", "operator", "--reason", "way out"},
 			} {
 				if out, err := a.try(args...); err == nil {
 					t.Errorf("%s changed a card that holds no lease: %.200s", name, out)

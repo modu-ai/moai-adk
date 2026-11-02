@@ -2,8 +2,8 @@ package cli
 
 // N42 (audit 46dbcce0d4) through the real `moai af` verbs, a real ledger and real git: the third reclaim of a card
 // parks it for the operator (reason reclaim-cap), the ledger resolves that park only by an in-place move that carries
-// the evidence "resume-guard:reclaim-cap", and no verb passed it. `moai af resume <card> --epoch N --guard
-// reclaim-cap --reason <text>` is that verb. It adds no rule: it reads the card, and hands the ledger the in-place
+// the evidence "resume-guard:reclaim-cap", and no verb passed it. `moai af resume <card> --epoch N
+// --reason <text>` is that verb. It adds no rule: it reads the card, and hands the ledger the in-place
 // move with the guard. Without it the existing refusals stay; with it the card can be claimed again, measured in its
 // own epoch, taken over and finished on the commit that already landed.
 
@@ -94,9 +94,9 @@ func TestAFVerbs_N42TheRefusalsOfAReclaimCapParkStandWithoutTheResumeVerb(t *tes
 	}
 }
 
-// Every refused resume leaves the ledger as it was: an empty or missing reason, another guard, a missing guard, a
-// stale epoch, and a card that is not parked at all.
-func TestAFVerbs_N42TheResumeVerbRefusesWithoutAReasonOrWithAnotherGuardOrEpochAndChangesNothing(t *testing.T) {
+// Every refused resume leaves the ledger as it was: an empty or missing reason, a stale epoch, and a card that is not
+// parked at all.
+func TestAFVerbs_N42TheResumeVerbRefusesWithoutAReasonOrWithAnotherEpochAndChangesNothing(t *testing.T) {
 	afSkipWithoutSh(t)
 	a := afN42Parked(t)
 	before := afSnapshot(t, a.st)
@@ -107,17 +107,12 @@ func TestAFVerbs_N42TheResumeVerbRefusesWithoutAReasonOrWithAnotherGuardOrEpochA
 		args []string
 		want string // what the refusal says: a refusal for another cause (a slip in the fixture) does not count
 	}{
-		{"no reason", []string{"resume", "t1", "--epoch", a.e2, "--guard", "reclaim-cap"}, `"reason" not set`},
-		{"an empty reason", []string{"resume", "t1", "--epoch", a.e2, "--guard", "reclaim-cap", "--reason", ""}, "--reason must say why"},
-		{"a reason of blanks", []string{"resume", "t1", "--epoch", a.e2, "--guard", "reclaim-cap", "--reason", "  \t "}, "--reason must say why"},
-		{"the guard of another park", []string{"resume", "t1", "--epoch", a.e2, "--guard", "operator-hold", "--reason", "r"}, `--guard "operator-hold" refused`},
-		{"the guard fix-limit", []string{"resume", "t1", "--epoch", a.e2, "--guard", "fix-limit", "--reason", "r"}, `--guard "fix-limit" refused`},
-		{"the guard spelled as the ledger's key", []string{"resume", "t1", "--epoch", a.e2, "--guard", "resume-guard:reclaim-cap", "--reason", "r"}, `--guard "resume-guard:reclaim-cap" refused`},
-		{"an empty guard", []string{"resume", "t1", "--epoch", a.e2, "--guard", "", "--reason", "r"}, `--guard "" refused`},
-		{"no guard", []string{"resume", "t1", "--epoch", a.e2, "--reason", "r"}, `"guard" not set`},
-		{"a newer epoch", []string{"resume", "t1", "--epoch", epochPlus, "--guard", "reclaim-cap", "--reason", "r"}, "stale epoch"},
-		{"an older epoch", []string{"resume", "t1", "--epoch", epochMinus, "--guard", "reclaim-cap", "--reason", "r"}, "stale epoch"},
-		{"another card", []string{"resume", "nope", "--epoch", a.e2, "--guard", "reclaim-cap", "--reason", "r"}, "does not exist"},
+		{"no reason", []string{"resume", "t1", "--epoch", a.e2}, `"reason" not set`},
+		{"an empty reason", []string{"resume", "t1", "--epoch", a.e2, "--reason", ""}, "--reason must say why"},
+		{"a reason of blanks", []string{"resume", "t1", "--epoch", a.e2, "--reason", "  \t "}, "--reason must say why"},
+		{"a newer epoch", []string{"resume", "t1", "--epoch", epochPlus, "--reason", "r"}, "stale epoch"},
+		{"an older epoch", []string{"resume", "t1", "--epoch", epochMinus, "--reason", "r"}, "stale epoch"},
+		{"another card", []string{"resume", "nope", "--epoch", a.e2, "--reason", "r"}, "does not exist"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			out, err := a.try(tc.args...)
@@ -144,7 +139,7 @@ func TestAFVerbs_N42TheResumeVerbRefusesACardThatIsNotParkedAndChangesNothing(t 
 	afBindFixture(t, st, repo)
 	a := afN3Card{t: t, db: db, repo: repo, c1: c1, st: st, e2: strconv.FormatInt(epoch, 10)}
 	before := afSnapshot(t, a.st)
-	out, err := a.try("resume", "t1", "--epoch", a.e2, "--guard", "reclaim-cap", "--reason", "r")
+	out, err := a.try("resume", "t1", "--epoch", a.e2, "--reason", "r")
 	if err == nil {
 		t.Fatalf("a card that is not parked was resumed: %.200s", out)
 	}
@@ -163,7 +158,7 @@ func TestAFVerbs_N42TheResumeVerbLetsAReclaimCapParkedCardFinishOnItsLandedCommi
 	a := afN42Parked(t)
 	parkedEpoch := a.card().Epoch
 	const reason = "operator looked: the holders died of the machine rebooting, not of the card"
-	out := a.verb("resume", "t1", "--epoch", a.e2, "--guard", "reclaim-cap", "--reason", reason)
+	out := a.verb("resume", "t1", "--epoch", a.e2, "--reason", reason)
 	if !strings.Contains(out, `"card_id":"t1"`) {
 		t.Errorf("the verb printed %q", out)
 	}
@@ -196,7 +191,7 @@ func TestAFVerbs_N42TheResumeVerbLetsAReclaimCapParkedCardFinishOnItsLandedCommi
 	}
 }
 
-// N45 (part): the help says what the verbs do. `resume` names the park it resolves and the two flags it insists on,
+// N45 (part): the help says what the verbs do. `resume` names the park it resolves and the flags it insists on,
 // and `move`, which cannot carry a guard, points at `resume` for the one resume it used to send to the ledger API.
 func TestAFVerbs_N45TheHelpOfResumeAndMoveMatchesWhatTheVerbsDo(t *testing.T) {
 	af := newAFCmd()
@@ -204,12 +199,12 @@ func TestAFVerbs_N45TheHelpOfResumeAndMoveMatchesWhatTheVerbsDo(t *testing.T) {
 	if resume == nil {
 		t.Fatal("no resume verb")
 	}
-	for _, want := range []string{"reclaim-cap", "--guard", "--reason", "epoch", "recorded as given"} {
+	for _, want := range []string{"reclaim-cap", "--reason", "epoch", "recorded as given"} {
 		if !strings.Contains(resume.Long, want) {
 			t.Errorf("the help of resume does not say %q", want)
 		}
 	}
-	for _, name := range []string{"guard", "reason", "epoch"} {
+	for _, name := range []string{"reason", "epoch"} {
 		f := resume.Flags().Lookup(name)
 		if f == nil {
 			t.Errorf("resume has no --%s", name)

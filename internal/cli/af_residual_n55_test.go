@@ -19,7 +19,7 @@ func TestAFResidual_N55ARefusedVerbThatWroteNothingDoesNotBindTheLedger(t *testi
 		args []string
 	}{
 		{"release of a card that does not exist", []string{"release", "nosuch", "--epoch", "1"}},
-		{"resume of a card that does not exist", []string{"resume", "nosuch", "--epoch", "1", "--guard", "reclaim-cap", "--reason", "x"}},
+		{"resume of a card that does not exist", []string{"resume", "nosuch", "--epoch", "1", "--reason", "x"}},
 		{"reap with nothing to reap", []string{"reap"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

@@ -123,7 +123,7 @@ func afN38EveryVerb(a afN3Card) map[string][]string {
 		"reap":      {"reap"},
 		"land":      {"land", "t1", "--gate", "true"},
 		"reconcile": {"reconcile"},
-		"resume":    {"resume", "t1", "--epoch", a.e2, "--guard", "reclaim-cap", "--reason", "looked"},
+		"resume":    {"resume", "t1", "--epoch", a.e2, "--reason", "looked"},
 	}
 }
 
