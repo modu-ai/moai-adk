@@ -825,6 +825,27 @@ func attachContribution(projectRoot string, roots []string, rep *LayerReport) {
 	}
 	rep.Contribution = &n
 	rep.ContributionBase = base
+	rep.CodemapsInputsStable = codemapsInputsStable(projectRoot, base)
+}
+
+// codemapsInputsStable reports whether everything under the codemaps directory
+// (the body AND provenance.json) is what the first parent carried: no tracked
+// difference against base and no untracked file under it. Only then do the
+// cumulative count and the contribution share one measurement anchor, which is
+// what lets Value - Contribution stand for the base's own count. It returns nil
+// when git cannot answer, and nil is never treated as stable.
+func codemapsInputsStable(projectRoot, base string) *bool {
+	const dir = ".moai/project/codemaps/"
+	tracked, err := gitOutput(projectRoot, "diff", "--name-only", base, "--", dir)
+	if err != nil {
+		return nil
+	}
+	untracked, err := gitOutput(projectRoot, "ls-files", "--others", "--exclude-standard", "--", dir)
+	if err != nil {
+		return nil
+	}
+	stable := !hasNonBlankLine(tracked) && !hasNonBlankLine(untracked)
+	return &stable
 }
 
 // attachDrivingPaths records the paths driving a stale count, truncated to the

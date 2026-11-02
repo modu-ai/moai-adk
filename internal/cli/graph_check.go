@@ -77,14 +77,17 @@ Exit codes: 0 all fresh · 1 stale or absent · 2 system error.
 
 One narrow exception turns a stale report into exit 0 plus a warning: on a
 pull_request event (--event, else GITHUB_EVENT_NAME), when the codemaps layer
-is the ONLY non-fresh layer and the BASE alone (value minus this change's
-measured contribution) is already at or over the codemaps threshold. The JSON
-report states the origin as drift_origin: inherited (base >= threshold),
-crossed-by-change (base < threshold <= value), or originated (contribution >=
-threshold); only inherited downgrades, with verdict=stale kept and
-verdict_class=warn added. crossed-by-change, originated, a push event (main,
-release/*), an absent layer, edges or citations failures, and an unmeasured
-contribution all still exit 1. gate.graph_freshness.inherited_codemaps_drift
+is the ONLY non-fresh layer, this change left the codemaps body and its
+provenance stamp exactly as the first parent carried them, and the BASE alone
+(value minus this change's measured contribution) is already at or over the
+codemaps threshold. The JSON report states the origin as drift_origin:
+inherited (base >= threshold), crossed-by-change (base < threshold <= value),
+originated (contribution >= threshold), or anchor-moved (the change touched the
+body or stamp, or that could not be measured, so value is not measured from the
+base's window); only inherited downgrades, with verdict=stale kept and
+verdict_class=warn added. crossed-by-change, originated, anchor-moved, a push
+event (main, release/*), an absent layer, edges or citations failures, and an
+unmeasured contribution all still exit 1. gate.graph_freshness.inherited_codemaps_drift
 = block restores exit 1 for the inherited case too.
 
 Thresholds are configured in gate.yaml (graph_freshness section).`,
@@ -308,6 +311,8 @@ func driftOriginSentence(l graph.LayerReport) string {
 		return fmt.Sprintf("crossed by this change — the base carried %d < threshold %d, this change added %d and took the count over the line", base, l.Threshold, *l.Contribution)
 	case graph.DriftOriginated:
 		return fmt.Sprintf("originated by this change — it alone is %d >= threshold %d", *l.Contribution, l.Threshold)
+	case graph.DriftAnchorMoved:
+		return "origin not attributable — this change touched the codemaps body or stamp (or that could not be ruled out), so its measurement window is not the base's"
 	default:
 		return "origin not stated"
 	}

@@ -94,9 +94,15 @@ func (r *CheckResult) ClassifyVerdicts(event, inheritedPolicy string, th Thresho
 }
 
 // driftOrigin classifies a stale codemaps count by where it came from. The base
-// alone is Value - Contribution. Only a count the base already carried is
-// inherited; a change that took it over the line, or is over it by itself,
-// is not. An unmeasured contribution states no origin and so never warns.
+// alone is Value - Contribution, but that subtraction is a statement about the
+// base ONLY while the change left the codemaps stamp and body alone: Value is
+// measured from an anchor derived from the tree under judgment, so a change that
+// rewinds the stamp widens the window over files the base had already covered,
+// and Contribution (.go files against HEAD^1) never sees that. Hence the order:
+// a change over the line by itself is originated whatever the window did; a
+// window that moved, or whose stability was not measured, is anchor-moved and
+// never inherited; only then does the arithmetic decide. An unmeasured
+// contribution states no origin and so never warns.
 func driftOrigin(l LayerReport, threshold int) string {
 	if l.Contribution == nil {
 		return ""
@@ -104,6 +110,8 @@ func driftOrigin(l LayerReport, threshold int) string {
 	switch {
 	case *l.Contribution >= threshold:
 		return DriftOriginated
+	case l.CodemapsInputsStable == nil || !*l.CodemapsInputsStable:
+		return DriftAnchorMoved
 	case l.Value-*l.Contribution >= threshold:
 		return DriftInherited
 	default:
