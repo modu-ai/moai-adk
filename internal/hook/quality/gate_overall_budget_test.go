@@ -105,9 +105,9 @@ func TestOverallBudgetSumsToolchains(t *testing.T) {
 	single, _ := NewQualityGate(goOnly).OverallBudget()
 
 	both := writeFixture(t, map[string]string{
-		"go.mod":       goModFixture,
-		"main.go":      "package main\nfunc main() {}\n",
-		"package.json": `{"scripts":{"lint":"eslint .","test":"jest"}}`,
+		"go.mod":                goModFixture,
+		"main.go":               "package main\nfunc main() {}\n",
+		"apps/web/package.json": `{"scripts":{"lint":"eslint .","test":"jest"}}`,
 	})
 	cfg := budgetCfg(both)
 	cfg.TestTimeout = 900 * time.Second

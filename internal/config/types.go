@@ -1430,7 +1430,10 @@ func (g *GateConfig) TypecheckTimeoutDuration() time.Duration {
 // TotalTimeoutDuration converts the explicit overall-budget override to
 // time.Duration. Returns 0 (derive it) when the value is zero or negative.
 func (g *GateConfig) TotalTimeoutDuration() time.Duration {
-	return 0 // STUB (card t2020 RED)
+	if g.Timeouts.Total <= 0 {
+		return 0
+	}
+	return time.Duration(g.Timeouts.Total) * time.Second
 }
 
 // LockWaitDuration converts the gate-run lock wait budget to time.Duration.
