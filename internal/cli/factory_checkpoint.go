@@ -35,6 +35,9 @@ const (
 	checkpointUnknown = "unknown"
 	// checkpointNoCount marks a count the checkpoint does not carry.
 	checkpointNoCount = -1
+	// checkpointWorktreeAbsent is the worktree line value when the card's
+	// recorded worktree is missing and no git field could be read.
+	checkpointWorktreeAbsent = "absent"
 )
 
 var checkpointSyncAuditName = regexp.MustCompile(`^sync-audit-(\d+)\.md$`)
@@ -48,6 +51,7 @@ type factoryCheckpoint struct {
 	WaitLines                            []string // `waker=<w> release=<kind[:ref]> reason=<recorded reason>`
 	Evidence                             []string // worktree-relative paths only
 	NextAction                           string
+	Worktree                             string // checkpointWorktreeAbsent, or "" when the card worktree was read
 }
 
 func checkpointCount(v string) int {
@@ -91,6 +95,8 @@ func parseCheckpoint(text string) factoryCheckpoint {
 			cp.State = val
 		case "stage":
 			cp.Stage = val
+		case "worktree":
+			cp.Worktree = val
 		case "pr":
 			cp.PR = val
 		case "dirty":
@@ -122,6 +128,9 @@ func (cp factoryCheckpoint) render() string {
 	kv("unpushed", checkpointCountText(cp.Unpushed))
 	kv("state", cp.State)
 	kv("stage", cp.Stage)
+	if cp.Worktree != "" {
+		kv("worktree", cp.Worktree)
+	}
 	kv("pr", cp.PR)
 	kv("waits", checkpointCountText(cp.WaitCount))
 	for _, w := range cp.WaitLines {
@@ -246,6 +255,9 @@ func checkpointEvidence(base, cardID string) []string {
 // checkpointGit runs one read-only git query in base and returns trimmed
 // stdout, or "" and false when it fails.
 func checkpointGit(base string, args ...string) (string, bool) {
+	if base == "" {
+		return "", false
+	}
 	out, err := gitio.Run(base, args...)
 	return out, err == nil
 }
@@ -272,25 +284,36 @@ func checkpointPR(ctx context.Context, db *homestate.FactoryDB, cardID string) s
 // directory its evidence paths are relative to.
 func buildFactoryCheckpoint(ctx context.Context, db *homestate.FactoryDB, root string, card homestate.Card) (factoryCheckpoint, string) {
 	base := card.WorktreePath
+	absent := false
 	if st, err := os.Stat(base); base == "" || err != nil || !st.IsDir() {
-		base = root
+		// The file is stored under the project root, but no git query runs
+		// there: the root is another checkout, and its HEAD, branch, dirty
+		// count, and upstream are not the card's.
+		base, absent = root, true
+	}
+	gitBase := base
+	if absent {
+		gitBase = ""
 	}
 	cp := factoryCheckpoint{
 		Card: card.CardID, Branch: checkpointUnknown, Head: checkpointUnknown,
 		State: orUnknown(card.State), Stage: orUnknown(card.Stage), PR: checkpointPR(ctx, db, card.CardID),
 		Dirty: checkpointNoCount, Unpushed: checkpointNoCount, WaitCount: checkpointNoCount,
 	}
-	if head, ok := checkpointGit(base, "rev-parse", "HEAD"); ok && head != "" {
+	if absent {
+		cp.Worktree = checkpointWorktreeAbsent
+	}
+	if head, ok := checkpointGit(gitBase, "rev-parse", "HEAD"); ok && head != "" {
 		cp.Head = head
 	}
-	if branch, ok := checkpointGit(base, "branch", "--show-current"); ok {
+	if branch, ok := checkpointGit(gitBase, "branch", "--show-current"); ok {
 		cp.Branch = branch
 		if branch == "" {
 			cp.Branch = "detached"
 		}
 	}
 	rel := path.Join(".moai", "reports", card.CardID, checkpointFile)
-	if status, ok := checkpointGit(base, "status", "--porcelain", "--untracked-files=all"); ok {
+	if status, ok := checkpointGit(gitBase, "status", "--porcelain", "--untracked-files=all"); ok {
 		cp.Dirty = 0
 		for _, l := range strings.Split(status, "\n") {
 			// The checkpoint file is this verb's own output: it must not make
@@ -300,7 +323,7 @@ func buildFactoryCheckpoint(ctx context.Context, db *homestate.FactoryDB, root s
 			}
 		}
 	}
-	if n, ok := checkpointGit(base, "rev-list", "--count", "@{u}..HEAD"); ok {
+	if n, ok := checkpointGit(gitBase, "rev-list", "--count", "@{u}..HEAD"); ok {
 		cp.Unpushed = checkpointCount(n)
 	}
 	if waits, err := db.LoadCardWaits(ctx, card.CardID); err == nil {
@@ -348,7 +371,7 @@ func runFactoryCheckpoint(ctx context.Context, out io.Writer, root, cardID strin
 	var card homestate.Card
 	found := false
 	for _, c := range cards {
-		if c.CardID == cardID && (!found || c.UpdatedAt > card.UpdatedAt) {
+		if c.CardID == cardID && (!found || checkpointRowBetter(c, card)) {
 			card, found = c, true
 		}
 	}
@@ -366,6 +389,29 @@ func runFactoryCheckpoint(ctx context.Context, out io.Writer, root, cardID strin
 	}
 	_, _ = fmt.Fprint(out, content)
 	return nil
+}
+
+// checkpointRowRank orders a card's rows across runs: a live (non-terminal)
+// row first, a finished row next, a rebind-abandoned row last. A rebind bumps
+// the abandoned source row's updated_at, so recency alone can pick it.
+func checkpointRowRank(c homestate.Card) int {
+	switch {
+	case c.State == homestate.CardAbandoned:
+		return 2
+	case homestate.IsTerminalCardState(c.State):
+		return 1
+	}
+	return 0
+}
+
+// checkpointRowBetter reports whether candidate should replace current: a lower
+// rank wins, and the newer updated_at breaks a tie within a rank.
+func checkpointRowBetter(candidate, current homestate.Card) bool {
+	cr, cur := checkpointRowRank(candidate), checkpointRowRank(current)
+	if cr != cur {
+		return cr < cur
+	}
+	return candidate.UpdatedAt > current.UpdatedAt
 }
 
 func newFactoryCheckpointCommand() *cobra.Command {
