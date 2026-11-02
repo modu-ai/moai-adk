@@ -41,7 +41,7 @@ Reasoning: both budgets are counted independently and both sit exactly at 16. Th
 - RED first per item: each milestone opens with the failing test named in its AC, committed before the fix.
 - Template-First:
   - A file with a mirror under `internal/template/templates/` changes in the same commit as the mirror, with the neutrality strip: no internal SPEC IDs, REQ tokens, card ids, dates, or SHAs in the mirror.
-  - An agent definition is edited in its source under `internal/template/agentemit/source/`, then `make agents-emit` regenerates the copies it renders. For the plan-auditor and sync-auditor those are the template sets only; their local `.claude/agents/moai/` definitions are not emitter targets (`internal/template/agentemit/sets.go:48-50`, `:62-63`) and are updated by hand in M6 (leader ruling R308).
+  - An agent definition is edited in its source under `internal/template/agentemit/source/`, then `make agents-emit` regenerates the copies it renders. For the plan-auditor and sync-auditor those are the template sets only; their four local definitions (`.claude/agents/moai/{plan,sync}-auditor.md` and `.codex/agents/moai/{plan,sync}-auditor.toml`) are not emitter targets (`internal/template/agentemit/sets.go:48-50`, `:62-63`) and are updated by hand in M6 (leader rulings R308, R313).
   - Then `make build`, which runs `agents-emit-check`, exits 0, and `git status --short` shows no unexpected tracked change.
 - Push happens only at sync, through the PR edge.
 
@@ -134,8 +134,11 @@ Files:
   - `INCONCLUSIVE` in both machine-line templates;
   - the `blocking_count` and `blocking_defect:` obligation on every FAIL, which the sync-auditor source gains for the first time.
 - `make agents-emit`, which regenerates the template copies of the two agents (`internal/template/templates/.claude/agents/moai/{plan,sync}-auditor.md` and `internal/template/templates/.codex/agents/moai/{plan,sync}-auditor.toml`). It does not write the local definitions: the emitter's project targets are limited to `CarriedFour` (`internal/template/agentemit/sets.go:62-63`), and the comment at `:48-50` says the other project copies stay hand-managed.
-- `.claude/agents/moai/plan-auditor.md` and `.claude/agents/moai/sync-auditor.md` — updated by hand to match the corrected source text (leader ruling R308): the three wrong sentences removed, the positive statements, `INCONCLUSIVE` in both machine-line templates, and the `blocking_count` / `blocking_defect:` obligation. The local plan-auditor keeps its pre-existing line 64 and 150 differences from the template copy (R287). The local `.codex/agents/moai/` copies stay as they are (spec §E B5, t2018 input).
-- Sources, template copies, and the two local definitions are committed together.
+- The four local definitions, updated by hand to match the corrected source text (leader rulings R308, R313):
+  - `.claude/agents/moai/plan-auditor.md` (wrong lines 251, 253) and `.claude/agents/moai/sync-auditor.md` (201, 203);
+  - `.codex/agents/moai/plan-auditor.toml` (248, 250) and `.codex/agents/moai/sync-auditor.toml` (190, 192).
+  Each gets the same edit set as its source: the three wrong sentences removed (two lines per file), the positive statements, `INCONCLUSIVE` in both machine-line templates, and the `blocking_count` / `blocking_defect:` obligation. In the TOML files the text lives inside the `developer_instructions = '''` literal string (`sync-auditor.toml:12-228`, `plan-auditor.toml:10-772`), so the edit must not introduce a `'''` sequence. The local plan-auditor Markdown keeps its pre-existing line 64 and 150 differences from the template copy (R287).
+- Sources, template copies, and the four local definitions are committed together.
 - `internal/cli/mcp_convergence_test.go` — the FAIL-plus-inconclusive convergence test; `internal/cli/audit_gates_failclosed_test.go` (where `applyGateUnmet` is already exercised) — the two `applyGateUnmet` tests.
 - `.moai/docs/audit-artifact-convention.md` + mirror — the A1 paragraph (may share the M4 commit).
 - Then `make build`; confirm `git status --short` shows only the intended files.
@@ -152,7 +155,8 @@ Files:
 | The `error_class` mapping misreads codex text | a quota failure is labelled `other` | `other` still refuses; AC fixtures pin the three named classes |
 | B4 bypassed by an agent Bash call, a Codex session, or direct file deletion | a rejection cleared without the operator | stated as residual in spec §E: an operator-mistake guard, not a boundary |
 | Template agent copies edited by hand | `make build` fails at `agents-emit-check` | M6 edits the sources and regenerates the template copies |
-| The hand-updated local definitions drift from the sources | a local auditor keeps or regains a wrong sentence, and no check sees it | AC-AEC-005 checks the two local files at M6; later drift is residual (spec §E B5) |
+| The hand-updated local definitions drift from the sources | a local auditor keeps or regains a wrong sentence, and no check sees it | AC-AEC-005 checks the four local files at M6; later drift is residual (spec §E B5) |
+| Only the `.claude` copies are fixed | the Codex lanes keep the wrong gate text | AC-AEC-005 and EV-20 name all four local files |
 | A section-boundary check that drifts to whole-file, new-version-only, or §E.3-stale | a rewrite of the evidence is inherited, or the normal flow goes stale | AC-AEC-003a/003b pin each direction |
 | Any further addition | a ceiling exceeded | report to the leader; only the leader splits B4 (R300) |
 
@@ -163,7 +167,7 @@ Files:
 - Clearing a rejection through any path other than the one verb.
 - Folding the head commit back into the new uncommitted-state field.
 - Editing a template agent copy instead of its source.
-- Assuming `make agents-emit` updates the local plan-auditor and sync-auditor definitions.
+- Assuming `make agents-emit` updates the local plan-auditor and sync-auditor definitions, in `.claude` or in `.codex`.
 
 ## §I Cross-references
 

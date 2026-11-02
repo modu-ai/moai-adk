@@ -14,7 +14,7 @@ There are two classes:
 
 Each RED below is a source observation of the defective path, not the AC's whole verdict. Every green cell pairs that observation's inverse with a named behavior test, so deleting the text without fixing the behavior does not pass.
 
-**Multi-file `grep -c` output order.** The per-file line order of a multi-file `grep -c` may vary by environment. Each recorded order (EV-10, EV-11, EV-17, EV-20) was observed on one machine, the lane's, and on that machine the same command printed its two files in different orders on different runs (EV-20). No cause for the ordering was measured, and none is claimed. Read a multi-file cell by its `file:count` pairs, never by line position.
+**Multi-file `grep -c` output order.** The per-file line order of a multi-file `grep -c` may vary by environment. Each recorded order (EV-10, EV-11, EV-17) was observed on one machine, the lane's, and on that machine a plain multi-file `grep -c` over the local agent files printed its files in different orders on different runs (rounds 5 and 6). No cause for the ordering was measured, and none is claimed. Read a multi-file cell by its `file:count` pairs (in EV-20, `tree:path:count` triples), never by line position.
 
 ## §B AC Matrix
 
@@ -34,7 +34,7 @@ Each RED below is a source observation of the defective path, not the AC's whole
 | AC-AEC-004a | Given a tree with rejection marks for SPEC-A and SPEC-B, a terminal on standard input (seam), neither `CLAUDECODE` nor `CLAUDE_CODE_SESSION_ID` set, and an evidence file under `.moai/reports/` naming SPEC-A, When the verb clears the SPEC-A mark with a correct typed confirmation, Then one approval record is appended with the operator name, git identity, mark fields, evidence path and SHA-256, HEAD and UTC time; the SPEC-A mark is gone; the SPEC-B mark is byte-identical; and the spawn check no longer lists SPEC-A. | REQ-AEC-013 | release-blocking | EV-09 | M2 |
 | AC-AEC-004b | Given any one of the following, When the verb runs, Then it refuses, and the approvals log and every mark are unchanged: `CLAUDECODE` set; `CLAUDE_CODE_SESSION_ID` set; standard input not a terminal (including `</dev/null`); a mark name that does not exist; a mark recorded for another tree in the same store; an evidence file outside `.moai/reports/` or not naming the mark's SPEC ID; a typed confirmation naming another agent type or SPEC. The marker set the verb checks equals the contract signing path's set (one test compares the two). | REQ-AEC-011, REQ-AEC-012 | paired guard (with 004a) | EV-09, EV-19 | M2 |
 | AC-AEC-004c | Given an approval line appended to the approvals log by hand, Then the spawn check still denies. Given the built server's `tools/list` and a source sweep of callers of the new store function, Then no MCP tool clears a rejection, and the function has exactly one non-test caller, the verb. | REQ-AEC-011 | paired guard (with 004a) | EV-09 | M2 |
-| AC-AEC-005 | Given the two agent sources under `internal/template/agentemit/source/` and the two local definitions `.claude/agents/moai/plan-auditor.md` and `.claude/agents/moai/sync-auditor.md` (hand-updated, leader ruling R308), Then each of the four files: <br>- contains none of the three wrong sentences (EV-10, EV-11 for the sources; EV-20 for the local definitions); <br>- states that an unmet gate with no reported defect stays `inconclusive` with `gate_unmet`, yields no PASS, and is exported as `INCONCLUSIVE`; <br>- states that a reported fail stays fail; <br>- keeps the unreadable-configuration `fail` case; <br>- lists `INCONCLUSIVE` in both machine-line templates; <br>- obliges `blocking_count` and `blocking_defect:` lines on every FAIL (EV-17, EV-20). <br>After `make agents-emit`, `make agents-emit-check` exits 0, so the template Claude files and the template Codex TOML files carry the source text; the emitter does not reach the two local definitions, so they are checked by the statements above. Tests pin: `applyGateUnmet` returns `inconclusive` for a required unmet gate and `fail` for an unreadable gate; `enforceRequiredGateUnmet` keeps `fail` for a convergence where one required backend reported fail and another required leg was inconclusive. | REQ-AEC-014 | release-blocking | EV-10, EV-11, EV-17, EV-20 | M6 |
+| AC-AEC-005 | Given the two agent sources under `internal/template/agentemit/source/` and the four local definitions `.claude/agents/moai/plan-auditor.md`, `.claude/agents/moai/sync-auditor.md`, `.codex/agents/moai/plan-auditor.toml`, and `.codex/agents/moai/sync-auditor.toml` (hand-updated, leader rulings R308, R313), Then each of the six files: <br>- contains none of the three wrong sentences (EV-10, EV-11 for the sources; EV-20 for the local definitions); <br>- states that an unmet gate with no reported defect stays `inconclusive` with `gate_unmet`, yields no PASS, and is exported as `INCONCLUSIVE`; <br>- states that a reported fail stays fail; <br>- keeps the unreadable-configuration `fail` case; <br>- lists `INCONCLUSIVE` in both machine-line templates; <br>- obliges `blocking_count` and `blocking_defect:` lines on every FAIL (EV-17, EV-20). <br>After `make agents-emit`, `make agents-emit-check` exits 0, so the template Claude files and the template Codex TOML files carry the source text; the emitter does not reach the four local definitions, so they are checked by the statements above. Tests pin: `applyGateUnmet` returns `inconclusive` for a required unmet gate and `fail` for an unreadable gate; `enforceRequiredGateUnmet` keeps `fail` for a convergence where one required backend reported fail and another required leg was inconclusive. | REQ-AEC-014 | release-blocking | EV-10, EV-11, EV-17, EV-20 | M6 |
 | AC-AEC-006 | Given the convention doc and its mirror, Then each carries the repair-scope paragraph with the three permitted repair kinds, the amendment route, and the clause exempting work specified by a SPEC amendment with its own AC; the mirror carries no SPEC ID or card id; and the two files are byte-identical. | REQ-AEC-015, REQ-AEC-016 | release-blocking | EV-12 | M6 |
 
 REQ-AEC-016 is also checked at every milestone close: `make build`, which runs `agents-emit-check`, exits 0, and mirror pairs and rendered copies change in the same commit (the sync audit reads `git show --stat` per commit).
@@ -57,7 +57,8 @@ REQ-AEC-016 is also checked at every milestone close: `make build`, which runs `
 | 003a | Treat any change under `§E.3` as stale, or allow only the `§E.1`/`§E.4` lines | the `§E.3` full-rewrite fixture (with `§E.2` byte-unchanged) expects the receipt inherited |
 | 003b | Drop the head comparison; allow all of `.moai/reports/`; treat the whole `progress.md` as exempt; compute `§E.2` on the new version only; or allow any SPEC's `progress.md` | the single-line `§E.2` fixture fails a whole-file exemption; the heading delete, rename, and move fixtures fail a new-version-only boundary; the other-SPEC and card-id fixtures fail an unrestricted path; the `.go`, ledger, prefix-trick, rename, non-descendant, and uncommitted-edit fixtures fail the rest |
 | 004a-c | A verb that clears any mark, a wildcard, an MCP wrapper, one that honours a hand-written approval line, or one with a marker set different from the signing path | the SPEC-B mark must be byte-identical; every refusal fixture leaves state unchanged; the set-equality test fails a divergent set; the caller sweep allows one caller |
-| 005 | Delete the wrong sentences without stating the real behavior; edit the template copies instead of the sources; fix the sources and rely on `make agents-emit` to reach the local definitions; or say "fail only when the configuration cannot be read" on the convergence path | the AC requires each positive statement in the sources and in both local definitions; `agents-emit-check` fails a copy-only edit; the local definitions are checked directly, because the emitter's project targets exclude them (`sets.go:62-63`) and EV-20 measures them separately from the sources; the convergence test keeps a reported fail at `fail` |
+| 005 | Delete the wrong sentences without stating the real behavior; edit the template copies instead of the sources; fix the sources and rely on `make agents-emit` to reach the local definitions; or say "fail only when the configuration cannot be read" on the convergence path | the AC requires each positive statement in the sources and in all four local definitions; `agents-emit-check` fails a copy-only edit; the local definitions are checked directly, because the emitter's project targets exclude them (`sets.go:62-63`) and EV-20 measures them separately from the sources; the convergence test keeps a reported fail at `fail` |
+| 005 (local Codex copies) | Hand-fix only the two `.claude/agents/moai/` copies and leave `.codex/agents/moai/{plan,sync}-auditor.toml` unchanged | AC-AEC-005 names all four local files; EV-20's green requires empty output for both wrong-sentence commands over all four, so either unchanged TOML file still prints `…toml:1` and the cell stays red |
 | 006 | Add the paragraph without the exemption clause | the AC requires the exemption clause |
 
 ## §D RED-now Evidence Ledger
@@ -241,31 +242,47 @@ red why : this observes the set the verb must equal; it is green today and pins
           the reused set rather than a defect.
 green   : M2 — the set-equality test passes.
 
-EV-20 (AC-AEC-005 · release-blocking · RED, measured in round 5; three observations)
-tree    : cc100c29093b02b7b117ec63a2eef7cc51de581f
-command : grep -c 'returns `verdict: fail` with a non-empty' .claude/agents/moai/plan-auditor.md .claude/agents/moai/sync-auditor.md
-stdout  : .claude/agents/moai/sync-auditor.md:1
-          .claude/agents/moai/plan-auditor.md:1
+EV-20 (AC-AEC-005 · release-blocking · RED, re-measured in round 6 over the four local definitions; three observations)
+tree    : cc100c29093b02b7b117ec63a2eef7cc51de581f (the committed tree, read
+          directly by `git grep <tree>`; every output line carries that SHA)
+command : git grep -c 'returns `verdict: fail` with a non-empty' cc100c29093b02b7b117ec63a2eef7cc51de581f -- .claude/agents/moai/plan-auditor.md .claude/agents/moai/sync-auditor.md .codex/agents/moai/plan-auditor.toml .codex/agents/moai/sync-auditor.toml
+stdout  : cc100c29093b02b7b117ec63a2eef7cc51de581f:.claude/agents/moai/plan-auditor.md:1
+          cc100c29093b02b7b117ec63a2eef7cc51de581f:.claude/agents/moai/sync-auditor.md:1
+          cc100c29093b02b7b117ec63a2eef7cc51de581f:.codex/agents/moai/plan-auditor.toml:1
+          cc100c29093b02b7b117ec63a2eef7cc51de581f:.codex/agents/moai/sync-auditor.toml:1
 exit    : 0
-command : grep -c 'gate_unmet` makes the overall verdict `fail`\|the overall verdict is `fail`' .claude/agents/moai/plan-auditor.md .claude/agents/moai/sync-auditor.md
-stdout  : .claude/agents/moai/plan-auditor.md:1
-          .claude/agents/moai/sync-auditor.md:1
+command : git grep -c 'gate_unmet` makes the overall verdict `fail`\|the overall verdict is `fail`' cc100c29093b02b7b117ec63a2eef7cc51de581f -- .claude/agents/moai/plan-auditor.md .claude/agents/moai/sync-auditor.md .codex/agents/moai/plan-auditor.toml .codex/agents/moai/sync-auditor.toml
+stdout  : cc100c29093b02b7b117ec63a2eef7cc51de581f:.claude/agents/moai/plan-auditor.md:1
+          cc100c29093b02b7b117ec63a2eef7cc51de581f:.claude/agents/moai/sync-auditor.md:1
+          cc100c29093b02b7b117ec63a2eef7cc51de581f:.codex/agents/moai/plan-auditor.toml:1
+          cc100c29093b02b7b117ec63a2eef7cc51de581f:.codex/agents/moai/sync-auditor.toml:1
 exit    : 0
-command : grep -c "blocking_defect" .claude/agents/moai/plan-auditor.md .claude/agents/moai/sync-auditor.md
-stdout  : .claude/agents/moai/sync-auditor.md:0
-          .claude/agents/moai/plan-auditor.md:0
+command : git grep -c "blocking_defect" cc100c29093b02b7b117ec63a2eef7cc51de581f -- .claude/agents/moai/plan-auditor.md .claude/agents/moai/sync-auditor.md .codex/agents/moai/plan-auditor.toml .codex/agents/moai/sync-auditor.toml
+stdout  : (empty)
 exit    : 1
-order   : observed on the lane's machine. The first command, run twice in this
-          round, printed plan-auditor first on one run and sync-auditor first on
-          the other (the stdout above is the run whose exit code was captured).
-          Read the pairs, not the line positions (§A).
-red why : the two local definitions are not emitter targets
-          (internal/template/agentemit/sets.go:62-63) and carry both wrong
-          sentences and no BLOCKING-id obligation, so a source-only fix with
-          `make agents-emit` leaves them wrong.
-green   : M6 — the first two counts are 0 for both files (exit 1), the third is
-          at least 1 for both files (exit 0), and each local file states the
-          positive statements of AC-AEC-005.
+reading : read each line as a `<tree>:<path>:<count>` triple, not by position;
+          no line order is claimed. `git grep -c` prints no line for a file
+          with zero matches, so the empty stdout with exit 1 means all four
+          counts are 0.
+red why : the four local definitions are not emitter targets
+          (internal/template/agentemit/sets.go:62-63); each carries the two
+          wrong lines and no BLOCKING-id obligation, so a source-only fix with
+          `make agents-emit` leaves all four wrong, and a `.claude`-only hand
+          fix leaves the two TOML copies wrong.
+green   : M6, measured on the M6 commit <M6>:
+          command : the first command with <M6> in place of the tree SHA
+          stdout  : (empty)
+          exit    : 1
+          command : the second command with <M6> in place of the tree SHA
+          stdout  : (empty)
+          exit    : 1
+          command : the third command with <M6> in place of the tree SHA
+          stdout  : four lines, one per local definition, each
+                    `<M6>:<path>:<N>` with N at least 1
+          exit    : 0
+          tree    : <M6>, the commit that lands the M6 hand edits
+          and each of the four files states the positive statements of
+          AC-AEC-005.
 ```
 
 ## §E Edge cases
