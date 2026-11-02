@@ -307,6 +307,91 @@ func TestMatchProtectedCommitCommand(t *testing.T) {
 	}
 }
 
+// TestMatchProtectedCommitCommand_VerbBoundary pins the verb boundary of the
+// protected-commit matcher. The verb ends at whitespace, a shell separator, or
+// the end of the command — NOT at a hyphen: `git commit-tree` and `git
+// commit-graph` are plumbing/maintenance commands that create an object without
+// moving any ref, and are not commit-creating verbs of the ban. A compound
+// command is judged by its real verbs: one separate real `git commit`, `git
+// revert` or `git cherry-pick` still matches, whatever else it carries.
+func TestMatchProtectedCommitCommand_VerbBoundary(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		command string
+		want    bool
+	}{
+		// Plumbing and maintenance verbs sharing the "commit" prefix: not matched.
+		{"git commit-tree abc123 -p def456 -m probe", false},
+		{`git commit-tree "$tree" -p HEAD -m msg`, false},
+		{"GIT COMMIT-TREE abc123", false},
+		{"git commit-graph write --reachable", false},
+		{"git write-tree && git commit-tree abc123 -m probe", false},
+		{`pwsh -Command "git commit-tree abc123 -m probe"`, false},
+		{"git revert-nothing", false},
+		{"git cherry-pick-like x", false},
+		// The real verbs, in every position the ban must keep seeing.
+		{"git commit", true},
+		{"git commit -m x", true},
+		{"git commit --amend", true},
+		{"git commit -a -m x", true},
+		{"git commit;git status", true},
+		{"git commit&&git status", true},
+		{"git commit|cat", true},
+		{"(git commit -m x)", true},
+		{"git revert HEAD", true},
+		{"git revert", true},
+		{"git cherry-pick abc", true},
+		{"git cherry-pick", true},
+		{"git status\ngit commit -m x", true},
+		// A compound command that carries a separate real commit still matches,
+		// even next to a plumbing verb.
+		{"git commit-tree abc123 -m probe && git commit -m x", true},
+		{"git commit-tree abc123 -m probe; git revert HEAD", true},
+		{"git commit-graph write && git cherry-pick abc", true},
+		{`pwsh -Command "git commit-tree abc123 -m probe; git commit -m y"`, true},
+	}
+	for _, tc := range cases {
+		if got := matchProtectedCommitCommand(tc.command); got != tc.want {
+			t.Errorf("matchProtectedCommitCommand(%q) = %v, want %v", tc.command, got, tc.want)
+		}
+	}
+}
+
+// TestProtectedCommit_PlumbingVerbBoundary is the decision-level sibling: on a
+// repo whose HEAD is the protected branch, a plumbing `git commit-tree` is not
+// denied, while a real commit, a revert, a cherry-pick, and a compound command
+// carrying one of them are — so the protection of main stays exactly as wide as
+// the commit-creating verbs.
+func TestProtectedCommit_PlumbingVerbBoundary(t *testing.T) {
+	t.Parallel()
+	repo := mainRepoFixture(t)
+	denyList := []string{"main"}
+
+	cases := []struct {
+		command string
+		want    string
+	}{
+		{"git commit-tree abc123 -p def456 -m probe", ""},
+		{"git commit-graph write --reachable", ""},
+		{"git write-tree && git commit-tree abc123 -m probe", ""},
+		{"git commit -m x", DecisionDeny},
+		{"git revert HEAD", DecisionDeny},
+		{"git cherry-pick abc123", DecisionDeny},
+		{"git commit-tree abc123 -m probe && git commit -m x", DecisionDeny},
+		{"git commit-tree abc123 -m probe; git revert HEAD", DecisionDeny},
+	}
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.command, func(t *testing.T) {
+			t.Parallel()
+			decision, reason := checkProtectedCommit(protectedCommitInput(repo, tc.command), repo, denyList)
+			if decision != tc.want {
+				t.Fatalf("checkProtectedCommit(%q) decision = %q reason = %q, want %q", tc.command, decision, reason, tc.want)
+			}
+		})
+	}
+}
+
 // TestPreTool_ProtectedCommit_Handle is the AC-4 Given/When/Then at the
 // handler surface: preToolHandler.Handle with BranchGuard.Enabled AND
 // deny_commits_on == ["main"] denies a `git commit` in a real primary

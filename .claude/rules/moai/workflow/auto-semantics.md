@@ -383,7 +383,7 @@ blocked-by remedy resolves by evidence, never by relation bookkeeping.
 A wait is legitimate only as an **explicit wait** — a disk record naming:
 
 ```text
-wait record: id=w-<card>-<UTC> waiting_on=<subject> reason=<why> recheck=<condition or next check point>
+wait record: id=w-<card>-<UTC> waiting_on=<subject> reason=<why> scope=<refused operation/path/permission | none> recheck=<condition or next check point>
 ```
 
 recorded on the card's evidence path (the decision board is the leader's;
@@ -403,6 +403,8 @@ recheck shows no change, and never prompts the operator on its own behalf.
 Where no on-disk gate state exists (a gate mid-question), the recheck
 degrades to ladder steps ①–④ — the wait note is then the only record, and
 progress resumes only on evidence.
+
+A refusal binds only its own scope; permitted work the refusal does not affect continues (a real permission refusal is never bypassed). Audit request record before asking: `audit request: card=<id> sha=<full 40> checks=<running checks|none> slot=<n> owner=<lane> next=<event>` — an audit request without a candidate SHA is not a reason to wait.
 
 ## 15. Cross-references
 

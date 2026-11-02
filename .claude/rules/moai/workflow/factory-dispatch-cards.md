@@ -49,11 +49,11 @@ A card whose agent-authored branch changes any file under `.github/workflows/` i
 
 ## Lane card transition — statement structure
 
-The leader's statement at `done` names three things, in this order, and asks the operator to clear nothing:
+The leader's statement at `done` names three things, in this order:
 
 1. **What closed** — the card and the evidence that was read.
 2. **Which session moves on** — the lane, by name.
-3. **What happens next** — the lane runs the in-session transition (`ExitWorktree(keep)`, lease, `EnterWorktree`), and the next card it is routed.
+3. **What happens next** — after preserving evidence, dirty changes, unpushed commits, active checks or handoff, and unsubmitted input, the lane runs `ExitWorktree(keep)`, the default-branch check, the operator's `/clear`, and then requests the next card it is routed (lease, `EnterWorktree`).
 
 ## Isolation rationale
 

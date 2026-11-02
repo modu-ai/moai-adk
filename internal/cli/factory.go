@@ -384,7 +384,10 @@ func refuseLegacyEntryNames(args []string) error {
 //     cap) so every lane launch shares one implementation. The run's count is
 //     NOT fabricated — a lane joined incrementally carries 0 ("unknown"), which
 //     the lane notice degrades from. -l plus an operator-supplied --name is a
-//     conflict error: the entry token already names the role.
+//     conflict error: the entry token already names the role. The one
+//     exception is the canonical `lane-<n>` label, which asks to REJOIN that
+//     lane (FactoryRejoin): the claim grants it only when no live session holds
+//     the label (rejoinFactoryLaneName).
 //
 // Legacy spellings of an operator --name (`worker-<n>`, `agent-<n>`, bare
 // legacy roles, and `lead` / `lead-<suffix>` leader names) are refused before
@@ -416,7 +419,14 @@ func parseLauncherEntry(args []string) (launcherEntryParse, error) {
 	entry.Rest = fp.Rest
 	if fp.LaneRole {
 		if operatorSuppliedName(fp.Rest) {
-			return entry, errors.New(laneFlagNameError)
+			// -l with the canonical label of an existing lane is a REJOIN of that
+			// label (granted only when no live session holds it — the claim
+			// refuses otherwise); any other name keeps the conflict refusal.
+			if !isCanonicalLaneName(fp.Rest) {
+				return entry, errors.New(laneFlagNameError)
+			}
+			entry.FactoryRejoin = true
+			return entry, nil
 		}
 		// Desugar into the next free lane label so the bump/liveness rules
 		// and the leader's dispatch address stay one implementation. The
@@ -963,6 +973,52 @@ func resolveFactoryLaneName(root, label, backend string, auto bool, notes io.Wri
 		_, _ = fmt.Fprintf(notes, "factory: %s is held by a live session; launching as %s\n", canonical, final)
 	}
 	return final, nil
+}
+
+// isCanonicalLaneName reports whether the first operator-supplied name in args
+// (before the pass-through marker) is exactly a canonical `lane-<n>` label.
+func isCanonicalLaneName(args []string) bool {
+	first, ok := parseNamedLabel(args, func(string) bool { return true })
+	if !ok {
+		return false
+	}
+	n, isLane := factory.SplitFactoryLaneLabel(first)
+	return isLane && factory.FactoryLaneLabel(n) == first
+}
+
+// claimFactoryLaneForEntry is the lane entry's one claim call: the `-l` join
+// takes the next free label (resolveFactoryLaneName), a `-l --name lane-<n>`
+// rejoin takes exactly that label or is refused (rejoinFactoryLaneName).
+func claimFactoryLaneForEntry(root, label, backend string, entry launcherEntryParse, notes io.Writer) (string, error) {
+	if entry.FactoryRejoin {
+		return rejoinFactoryLaneName(root, label, backend)
+	}
+	return resolveFactoryLaneName(root, label, backend, entry.FactoryAutoNumber, notes)
+}
+
+// rejoinFactoryLaneName registers this process under exactly label (a canonical
+// `lane-<n>`), or refuses. The label is granted only when no LIVE roster row
+// holds it; a dead row is pruned and replaced in the same claim. Unlike the
+// next-free join it never bumps to another number: a live holder is an error
+// and nothing changes. The check and the insert are one claim — the admission
+// lock and the single transaction in factory.ClaimFactoryLaneWithinWithBackend
+// (maxSlots = the label's own number makes a taken label a refusal rather than
+// a bump). No lease is read or written here: leases stay with the card owner.
+func rejoinFactoryLaneName(root, label, backend string) (string, error) {
+	n, ok := factory.SplitFactoryLaneLabel(label)
+	if !ok {
+		return "", fmt.Errorf("rejoin factory lane: %q is not a lane label", label)
+	}
+	runID := strings.TrimSpace(os.Getenv(config.EnvFactoryRunID))
+	claim, err := factory.ClaimFactoryLaneWithinWithBackend(root, label, false, os.Getpid(), runID, n, backend, factoryProcessAlive)
+	var legacyRun *factory.FactoryLegacyRunError
+	if errors.As(err, &legacyRun) {
+		return "", fmt.Errorf("claim factory lane: %s", legacyRun)
+	}
+	if err != nil {
+		return "", fmt.Errorf("rejoin factory lane %s: %w", label, err)
+	}
+	return claim.Label, nil
 }
 
 // replaceNamedLabel returns args with the first `--name` / `-n` value equal
