@@ -185,6 +185,12 @@ type Receipt struct {
 	// tail of the codex child's stderr. Absent when codex gave a verdict (t1788).
 	CodexError string `json:"codex_error,omitempty"`
 
+	// ErrorClass names, from the closed set quota, timeout, auth, unavailable,
+	// other, why an inconclusive codex verdict could not be performed
+	// (SPEC-AUDIT-ENGINE-CONVERGENCE-001 REQ-AEC-006). Absent when codex gave a
+	// verdict.
+	ErrorClass string `json:"error_class,omitempty"`
+
 	// HeadCommit and TreeDigest bind the receipt to the tree state it judged
 	// (SPEC-MCP-NEUTRALITY-001 REQ-MN-020): the head commit and a deterministic
 	// digest of the working-tree state at audit time. A reuse check compares

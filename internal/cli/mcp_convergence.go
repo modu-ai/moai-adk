@@ -112,6 +112,10 @@ type PerBackendVerdict struct {
 	// Provenance is forwarded from a real backend call. In-session anchors do
 	// not invent transport or usage evidence.
 	Provenance *AuditProvenance `json:"provenance,omitempty"`
+	// ErrorClass names why an inconclusive leg could not be performed, from the
+	// closed set quota, timeout, auth, unavailable, other (SPEC-AUDIT-ENGINE-
+	// CONVERGENCE-001 REQ-AEC-006). Empty for a leg that reported pass or fail.
+	ErrorClass string `json:"error_class,omitempty"`
 	// StderrTail is the bounded stderr tail of the codex child behind this verdict.
 	// It feeds the audit receipt's codex_error and never reaches the JSON output (t1788).
 	StderrTail string `json:"-"`
@@ -650,7 +654,7 @@ func defaultBackendCaller(ctx context.Context, backend, target, focus, projectRo
 func performCodexAudit(ctx context.Context, target, focus, projectRoot string) ReviewOutput {
 	binaryPath, err := codexLookPath(codexBinaryName)
 	if err != nil {
-		return inconclusiveReview("codex binary not found in PATH")
+		return inconclusiveReviewClass(errClassUnavailable, "codex binary not found in PATH")
 	}
 	prompt := codexAdversarialReviewPrompt(focus)
 	// REQ-AEC-003: while a delta base is in effect the turn carries the
@@ -722,6 +726,7 @@ func performCodexAudit(ctx context.Context, target, focus, projectRoot string) R
 	// first keeps the reader's cause.
 	if out.Verdict == VerdictInconclusive && errors.Is(legCtx.Err(), context.DeadlineExceeded) && ctx.Err() == nil {
 		timedOut := inconclusiveReviewWithSummary("codex leg timed out after " + legBound.String())
+		timedOut.ErrorClass = errClassTimeout
 		timedOut.StderrTail = out.StderrTail // the deadline is the cause; the tail says what the child printed before the kill
 		return timedOut
 	}
@@ -894,6 +899,7 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 			NextSteps:     claudeVerdict.NextSteps,
 			SynthesisNote: claudeVerdict.SynthesisNote,
 			Source:        "in_session_anchor",
+			ErrorClass:    classifyUnrun(claudeVerdict),
 		})
 	}
 
@@ -966,6 +972,7 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 					Provenance:    p.out.Provenance,
 					ReviewBase:    p.out.ReviewBase,
 					StderrTail:    p.out.StderrTail,
+					ErrorClass:    classifyUnrun(p.out),
 
 					RecordingDefect: p.out.RecordingDefect,
 				})
@@ -1105,7 +1112,7 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 		// marker): a failed start bind records bind_capture_failed instead of
 		// a write-time fallback.
 		bindFailed := bindHead == "" && bindDigest == "" && captureFailed
-		result.AuditReceipt, notice = recordAuditReceiptAtBound(auditreceipt.ToolAuditMulti, cfg.ProjectRoot, codexVerdict, codexReceiptErrorFromVerdicts(verdicts), result.GateUnmet, receiptCodexRequired, bindHead, bindDigest, bindFailed)
+		result.AuditReceipt, notice = recordAuditReceiptClassed(auditreceipt.ToolAuditMulti, cfg.ProjectRoot, codexVerdict, codexReceiptErrorFromVerdicts(verdicts), codexErrorClassFromVerdicts(verdicts), result.GateUnmet, receiptCodexRequired, bindHead, bindDigest, bindFailed)
 		if notice != "" {
 			notices = append(notices, notice)
 		}
@@ -1162,6 +1169,17 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 		}
 	}
 	return result
+}
+
+// codexErrorClassFromVerdicts returns the error class of the codex leg, "" when
+// codex took part with a verdict (the receipt then carries no class).
+func codexErrorClassFromVerdicts(verdicts []PerBackendVerdict) string {
+	for _, v := range verdicts {
+		if v.Backend == BackendCodex {
+			return v.ErrorClass
+		}
+	}
+	return ""
 }
 
 // codexParticipation reports the codex backend's verdict in this fan-out and

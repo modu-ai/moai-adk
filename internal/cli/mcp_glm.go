@@ -23,6 +23,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -372,14 +373,20 @@ func callGLMAudit(ctx context.Context, key, model, effort, focus, diff string, t
 	notifyMCPProgress(ctx, token, 0.1, "sending the audit request to z.ai...")
 	resp, err := glmHTTPClient.Do(httpReq)
 	if err != nil {
-		return glmInconclusive("z.ai request failed: " + err.Error())
+		// A deadline is a timeout; any other transport failure means z.ai could
+		// not be reached (REQ-AEC-006).
+		class := errClassUnavailable
+		if errors.Is(err, context.DeadlineExceeded) {
+			class = errClassTimeout
+		}
+		return glmInconclusiveClass(class, "z.ai request failed: "+err.Error())
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		// Unauthenticated (401/403) / rate-limited / server error ⇒ fail-open.
 		// AC-MCP-014: an unauthenticated GLM is a missing/unauthenticated auditor.
-		return glmInconclusive(fmt.Sprintf("z.ai returned HTTP %d", resp.StatusCode))
+		return glmInconclusiveClass(glmStatusClass(resp.StatusCode), fmt.Sprintf("z.ai returned HTTP %d", resp.StatusCode))
 	}
 
 	raw, err := io.ReadAll(resp.Body)
@@ -535,6 +542,27 @@ func glmInconclusive(reason string) ReviewOutput {
 		Findings:  []Finding{},
 		NextSteps: []string{"fall back to the active auditor (claude)"},
 	}
+}
+
+// glmInconclusiveClass is glmInconclusive for a cause the caller knows
+// structurally; the class rides the output to audit_multi (REQ-AEC-006).
+func glmInconclusiveClass(class, reason string) ReviewOutput {
+	out := glmInconclusive(reason)
+	out.ErrorClass = class
+	return out
+}
+
+// glmStatusClass maps a non-2xx z.ai status to its error class.
+func glmStatusClass(status int) string {
+	switch {
+	case status == http.StatusTooManyRequests:
+		return errClassQuota
+	case status == http.StatusUnauthorized || status == http.StatusForbidden:
+		return errClassAuth
+	case status >= 500:
+		return errClassUnavailable
+	}
+	return errClassOther
 }
 
 // reviewToolResult shapes a ReviewOutput as the schema-typed MCP result. Shared

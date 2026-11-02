@@ -52,6 +52,7 @@
       },
       {
         "backend": "codex",
+        "error_class": "other",
         "findings": [],
         "gate": "required",
         "next_steps": [],
@@ -122,6 +123,7 @@
       },
       {
         "backend": "codex",
+        "error_class": "other",
         "findings": [],
         "gate": "required",
         "next_steps": [],
