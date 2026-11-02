@@ -26,6 +26,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/modu-ai/moai-adk/internal/closure/gitio"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/verify"
@@ -71,7 +72,7 @@ func factoryReleaseAlreadyMerged(card homestate.Card, branch, tree string) strin
 	if cardTip == "" || len(parents) != 3 || parents[2] != cardTip {
 		return ""
 	}
-	if _, err := cliGitIn(tree, "merge-base", "--is-ancestor", card.MergeSHA, "refs/heads/"+branch); err != nil {
+	if ok, err := gitio.IsAncestor(tree, card.MergeSHA, "refs/heads/"+branch); err != nil || !ok {
 		return ""
 	}
 	return card.MergeSHA
@@ -120,11 +121,10 @@ func factoryDivergedPaths(dir, tip, cardTip string) []string {
 	if tip == "" || cardTip == "" {
 		return nil
 	}
-	base, err := cliGitIn(dir, "merge-base", tip, cardTip)
+	base, err := gitio.MergeBase(dir, tip, cardTip)
 	if err != nil {
 		return nil
 	}
-	base = strings.TrimSpace(base)
 	changed := func(to string) map[string]bool {
 		out, err := cliGitIn(dir, "diff", "--name-only", base, to)
 		set := map[string]bool{}
