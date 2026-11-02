@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/fs"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -75,71 +74,6 @@ func BindLedgerHeartbeat(root, sessionID string, b LedgerBinding) error {
 		return err
 	}
 	return os.WriteFile(path, data, 0o600)
-}
-
-// RebindLedgerHeartbeats rewrites, in the project at root, every session binding that names the ledger file oldDB so that
-// it names newDB, and returns how many it rewrote: the ledger file moved (move-repository --from), and a binding that
-// kept the old path made every renewal fail. A binding that names another path, a file that is not a binding and the
-// stamp files are left as they are; a project with no binding directory has nothing to rewrite (0, nil). Each rewrite is
-// atomic (a temp file in the same directory, then a rename over the binding, so a reader sees the old binding or the
-// new one) and a binding that cannot be rewritten does not stop the others: the errors come back joined, with the count
-// of those that were rewritten.
-func RebindLedgerHeartbeats(root, oldDB, newDB string) (int, error) {
-	dir := ledgerHeartbeatDir(root)
-	entries, err := os.ReadDir(dir)
-	if errors.Is(err, fs.ErrNotExist) {
-		return 0, nil
-	}
-	if err != nil {
-		return 0, err
-	}
-	rewritten := 0
-	var errs []error
-	for _, e := range entries {
-		if e.IsDir() || filepath.Ext(e.Name()) != ".json" {
-			continue
-		}
-		path := filepath.Join(dir, e.Name())
-		raw, err := os.ReadFile(path)
-		if err != nil {
-			errs = append(errs, err)
-			continue
-		}
-		var b LedgerBinding
-		if json.Unmarshal(raw, &b) != nil || b.DB == "" || filepath.Clean(b.DB) != filepath.Clean(oldDB) {
-			continue
-		}
-		b.DB = newDB
-		if err := writeLedgerBinding(path, b); err != nil {
-			errs = append(errs, err)
-			continue
-		}
-		rewritten++
-	}
-	return rewritten, errors.Join(errs...)
-}
-
-// writeLedgerBinding replaces the binding file atomically: a temp file in the same directory (mode 0600), then a rename.
-func writeLedgerBinding(path string, b LedgerBinding) error {
-	data, err := json.Marshal(b)
-	if err != nil {
-		return err
-	}
-	tmp, err := os.CreateTemp(filepath.Dir(path), "."+filepath.Base(path)+".*.tmp")
-	if err != nil {
-		return err
-	}
-	_, werr := tmp.Write(data)
-	cerr := tmp.Close()
-	if err := errors.Join(werr, cerr); err != nil {
-		_ = os.Remove(tmp.Name())
-		return err
-	}
-	if err := os.Rename(tmp.Name(), path); err != nil {
-		_ = os.Remove(tmp.Name())
-		return err
-	}
-	return nil
 }
 
 // LedgerHeartbeatSeam renews the ledger lease of the card this session holds, at

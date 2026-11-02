@@ -11,7 +11,7 @@ import (
 )
 
 func TestAFResidual_N72TheVerbsThatRecordFreeInputSayNothingMasksIt(t *testing.T) {
-	for _, verb := range []string{"add", "move", "move-repository"} {
+	for _, verb := range []string{"add", "move"} {
 		if flat := afHelpOf(t, verb); !strings.Contains(flat, "Nothing masks") {
 			t.Errorf("`moai af %s --help` does not say that nothing masks the text of its free-input flags", verb)
 		}

@@ -28,7 +28,7 @@ const afOpTimeout = 30 * time.Second
 
 // newAFCmd is the `moai af` command: the verbs of the card flow over the local ledger (AC-AFL-017). One verb per
 // ledger method the flow needs, and nothing else: add (a card), claim, move (stage move), evidence (record), enqueue,
-// release, reap, land, reconcile (the queue's entry points), resume (the exit from a park) and move-repository (N52).
+// release, reap, land, reconcile (the queue's entry points) and resume (the exit from a park).
 // Each verb opens the ledger, makes its one call, prints one JSON object and exits; the ledger owns every rule
 // (fencing epochs, the position table, the evidence binding), so a verb adds none.
 func newAFCmd() *cobra.Command {
@@ -37,7 +37,7 @@ func newAFCmd() *cobra.Command {
 		Short:        "Agentic factory card flow over the local ledger",
 		SilenceUsage: true,
 	}
-	af.AddCommand(newAFAddCmd(), newAFClaimCmd(), newAFMoveCmd(), newAFEvidenceCmd(), newAFEnqueueCmd(), newAFReleaseCmd(), newAFReapCmd(), newAFLandCmd(), newAFReconcileCmd(), newAFResumeCmd(), newAFMoveRepositoryCmd())
+	af.AddCommand(newAFAddCmd(), newAFClaimCmd(), newAFMoveCmd(), newAFEvidenceCmd(), newAFEnqueueCmd(), newAFReleaseCmd(), newAFReapCmd(), newAFLandCmd(), newAFReconcileCmd(), newAFResumeCmd())
 	return af
 }
 
@@ -365,50 +365,35 @@ func afCheckKnownRepositories(ctx context.Context, st *ledger.Store, place afPla
 // row, each once, complete SHAs only (the ledger takes any non-empty string as a subject, "n/a" of a resume row
 // included, and a name that is not a commit says nothing about a repository).
 func afRowCommits(ctx context.Context, st *ledger.Store) ([]string, error) {
-	all, _, err := afRowCommitSets(ctx, st)
-	return all, err
-}
-
-// afRowCommitSets are all the commits the rows name, and the part of them a move of the repository cannot do without:
-// the candidates of the queue rows that are not failed (a waiting, verifying, landing or landed row is the work the move
-// is for). The rest, the subjects of evidence rows and the candidates of failed rows, are the past: a commit of an attempt
-// that ended in failure is thrown away and collected in time, and a move refused for it has no way out (N67).
-func afRowCommitSets(ctx context.Context, st *ledger.Store) (all, required []string, err error) {
-	seen, seenReq := map[string]bool{}, map[string]bool{}
-	add := func(sha string, req bool) {
-		if !mergeq.IsCompleteSHA(sha) {
-			return
-		}
-		if !seen[sha] {
+	var all []string
+	seen := map[string]bool{}
+	add := func(sha string) {
+		if mergeq.IsCompleteSHA(sha) && !seen[sha] {
 			seen[sha] = true
 			all = append(all, sha)
-		}
-		if req && !seenReq[sha] {
-			seenReq[sha] = true
-			required = append(required, sha)
 		}
 	}
 	cards, err := st.Cards(ctx)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	for _, c := range cards {
 		recs, err := st.EvidenceFor(ctx, c.ID)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		for _, r := range recs {
-			add(r.SubjectSHA, false)
+			add(r.SubjectSHA)
 		}
 	}
 	rows, err := st.Queue(ctx)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	for _, r := range rows {
-		add(r.CandidateSHA, r.State != ledger.QueueFailed)
+		add(r.CandidateSHA)
 	}
-	return all, required, nil
+	return all, nil
 }
 
 // afMissingCommits are the shas that are no commit of the repository dir belongs to, in the order given. One git process

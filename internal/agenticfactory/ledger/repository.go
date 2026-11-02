@@ -17,9 +17,7 @@ var ErrWrongRepository = errors.New("ledger: the ledger is bound to another repo
 // normalise the value; two spellings of one path are two identities). The first call writes it.
 // The same identity again changes nothing. A different one is refused with ErrWrongRepository and
 // the ledger stays as it was; the binding is never overwritten. The first caller decides: if
-// it named the wrong repository the wrong one stays bound. "Bound" means the current identity:
-// once the repository has moved on disk and MoveRepository recorded it, the new identity is the one
-// that binds as a no-op and the earlier ones are refused.
+// it named the wrong repository the wrong one stays bound.
 func (s *Store) BindRepository(ctx context.Context, identity string) error {
 	if strings.TrimSpace(identity) == "" {
 		return fmt.Errorf("%w: a repository identity cannot be blank", ErrInvalid)
@@ -43,9 +41,7 @@ func (s *Store) BindRepository(ctx context.Context, identity string) error {
 // repository's git directory, which is what tells that repository from a clone, a mirror or a new repository standing at
 // the same path (the identity is a path, and a path is not a repository). The first call writes it; any later call
 // changes nothing. The marker on record is returned either way, so callers that race converge on one value and a caller
-// that brought another one can see it. The ledger stores the string as written and runs no git (REQ-AFL-008). It does not
-// raise the schema number: only a recorded move does, since a build that does not know the marker decides an unmoved
-// ledger exactly as it did before.
+// that brought another one can see it. The ledger stores the string as written and runs no git (REQ-AFL-008).
 func (s *Store) RecordRepositoryMarker(ctx context.Context, marker string) (string, error) {
 	if strings.TrimSpace(marker) == "" {
 		return "", fmt.Errorf("%w: a repository marker cannot be blank", ErrInvalid)
@@ -76,9 +72,16 @@ func currentMarker(ctx context.Context, q querier) (string, error) {
 	return marker.String, nil
 }
 
-// Repository returns the identity the ledger is bound to now, or "" while it is not bound: the
-// newest recorded move's new identity (MoveRepository), or the first binding while the repository
-// has not moved.
+// Repository returns the identity the ledger is bound to, or "" while it is not bound.
 func (s *Store) Repository(ctx context.Context) (string, error) {
 	return currentRepository(ctx, s.db)
+}
+
+// currentRepository is the identity the ledger answers to: the first binding, or "" while the ledger is not bound.
+func currentRepository(ctx context.Context, q querier) (string, error) {
+	var identity sql.NullString
+	if err := q.QueryRowContext(ctx, `SELECT identity FROM repository WHERE id=1`).Scan(&identity); err != nil && err != sql.ErrNoRows {
+		return "", fmt.Errorf("ledger: %w", err)
+	}
+	return identity.String, nil
 }
