@@ -67,6 +67,13 @@ type Fields struct {
 	// the receipt vocabulary (pass|fail|inconclusive); any entry makes the
 	// file inadmissible.
 	MalformedReceipts int
+	// BlockingDefects collects every `blocking_defect: <id>` line's id, one
+	// per BLOCKING defect, in file order. Repeats collect, so a file that
+	// names an id twice carries it twice and the count check against
+	// BlockingCount sees the repeat (SPEC-AUDIT-ENGINE-CONVERGENCE-001
+	// REQ-AEC-004 (ii)). It decides no admission here; the delta chain gate
+	// reads it.
+	BlockingDefects []string
 }
 
 // Receipt is the convergence receipt a required-backend tree's verdict file
@@ -130,6 +137,12 @@ func Parse(raw []byte) Fields {
 			// signal, never a dedupe candidate (REQ-ACR-005).
 			if value != "" {
 				f.RequiredBackendFails = append(f.RequiredBackendFails, value)
+			}
+		case "blocking_defect":
+			// Every occurrence collects: the id list is compared to
+			// blocking_count, so a repeated id must stay visible.
+			if value != "" {
+				f.BlockingDefects = append(f.BlockingDefects, value)
 			}
 		}
 		switch key {
