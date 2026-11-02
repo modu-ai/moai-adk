@@ -169,6 +169,10 @@ func (f *FactoryDB) SettleLandedWaits(ctx context.Context, landedCardID string, 
 			}
 			if n, _ := res.RowsAffected(); n == 1 {
 				w.WokenAt = stamp
+				// The hand-out is the wake's `delivered` event (card t2013).
+				if err := appendEvent(ctx, tx, "", "wake."+WakeDelivered, map[string]any{"wait_seq": w.Seq, "card_id": w.CardID, "actor": w.Waker}, now.UTC()); err != nil {
+					return err
+				}
 				settled = append(settled, w)
 			}
 		}
