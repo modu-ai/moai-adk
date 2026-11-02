@@ -1685,6 +1685,28 @@ func factoryNextReacquire(ctx context.Context, db *homestate.FactoryDB, root, ru
 	return card, true, false, nil
 }
 
+// factoryNextResumeRepair is the owner's return to its own `pr-open` card
+// (card t2013): the repair resume and the new lease commit in one record
+// transaction (ResumePROpenRepair), with the queue's dispatch record following
+// inside it as for T2/T3. A row that stopped being resumable between the read
+// and the write is a race to re-select. Record only — the worktree and the
+// pull request are never touched.
+func factoryNextResumeRepair(ctx context.Context, db *homestate.FactoryDB, root, runID, lane string, cur homestate.Card) (homestate.Card, bool, bool, error) {
+	ctx, cancel := factoryClaimContext(ctx)
+	defer cancel()
+	followRecord := func(next homestate.Card) error {
+		return todoStoreAt(root).RefreshDispatchCurrentLockHeld(next.CardID, runID, next.OwnerLabel)
+	}
+	card, resumed, err := db.ResumePROpenRepair(ctx, runID, cur.CardID, lane, factoryCardNow(), followRecord)
+	if err != nil {
+		return factoryNextClaimRefused(factoryClaimFailure(ctx, err))
+	}
+	if !resumed {
+		return homestate.Card{}, false, true, nil
+	}
+	return card, true, false, nil
+}
+
 // factoryNextClaimRefused maps a claim refusal: a stale version or a holder
 // mismatch is a race to retry; anything else is a real error.
 func factoryNextClaimRefused(err error) (homestate.Card, bool, bool, error) {
@@ -1916,6 +1938,13 @@ func factoryRecordRefusal(row homestate.Card, lane string) *factoryNominateRefus
 		homestate.CardSync, homestate.CardSyncAudit, homestate.CardMergeReady, homestate.CardMerging,
 		homestate.CardMergedLocal, homestate.CardPushed, homestate.CardCIGreen:
 		return factoryRefusal(factoryRefuseOwned, "the card is in flight at %s (holder %s)", row.State, dash(factoryRowHolder(row)))
+	case homestate.CardPROpen:
+		// The owner resumes repair on its own open pull request (card t2013);
+		// any other lane keeps the recorded refusal below.
+		if homestate.CanResumePROpenRepair(row, lane) {
+			return nil
+		}
+		return factoryRefusal(factoryRefuseRecorded, "the factory record has the card at %s; only an operator unblock or re-pick moves it", row.State)
 	default:
 		return factoryRefusal(factoryRefuseRecorded, "the factory record has the card at %s; only an operator unblock or re-pick moves it", row.State)
 	}
@@ -1990,6 +2019,10 @@ type factoryNominee struct {
 	// owner nominating its own card whose lease has expired (card t2013). The
 	// claim then applies the expiry and re-leases in one transaction.
 	reacquire bool
+	// resumeRepair marks the registered owner nominating its own `pr-open` card
+	// to repair it (card t2013); the claim returns it to the run stage and
+	// leases it in one transaction.
+	resumeRepair bool
 }
 
 // factoryNextValidate is step 1 of the nominated lease: one pure queue read
@@ -2039,6 +2072,12 @@ func factoryNextValidate(ctx context.Context, l *factory.LockedBacklog, db *home
 	refusalRow := nom.row
 	if nom.row != nil && homestate.IsReacquirableExpiredLease(*nom.row, lane, now) {
 		nom.reacquire, assignedHere = true, true
+		assigned := *nom.row
+		assigned.State = homestate.CardAssigned
+		refusalRow = &assigned
+	}
+	if nom.row != nil && homestate.CanResumePROpenRepair(*nom.row, lane) {
+		nom.resumeRepair, assignedHere = true, true
 		assigned := *nom.row
 		assigned.State = homestate.CardAssigned
 		refusalRow = &assigned
@@ -2270,6 +2309,9 @@ func factoryNextNominatedClaim(ctx context.Context, db *homestate.FactoryDB, roo
 	}
 	if nom.reacquire {
 		return factoryNextReacquire(ctx, db, root, runID, lane, *nom.row)
+	}
+	if nom.resumeRepair {
+		return factoryNextResumeRepair(ctx, db, root, runID, lane, *nom.row)
 	}
 	if nom.row != nil && nom.row.State == homestate.CardAssigned {
 		return factoryNextClaim(ctx, db, root, runID, *nom.row, lane)
