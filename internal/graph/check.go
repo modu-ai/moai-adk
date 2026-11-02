@@ -89,6 +89,10 @@ type LayerReport struct {
 	// codemaps drift stays "stale"), and only ClassifyVerdicts sets the class
 	// (check_policy.go).
 	VerdictClass string `json:"verdict_class,omitempty"`
+	// DriftOrigin states where a stale codemaps count came from: inherited,
+	// crossed-by-change, or originated (see check_policy.go). Empty when the
+	// contribution is unmeasured or the layer is not stale codemaps.
+	DriftOrigin string `json:"drift_origin,omitempty"`
 
 	// Contribution is the change under judgment's OWN described-worthy count,
 	// measured against the checkout's first-parent predecessor (REQ-GFC-007).

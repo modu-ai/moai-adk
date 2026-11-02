@@ -4,8 +4,8 @@ import "testing"
 
 func intp(n int) *int { return &n }
 
-func policyResult(codemaps string, contribution *int, others ...string) CheckResult {
-	layers := []LayerReport{{Layer: LayerCodemaps, Verdict: codemaps, Contribution: contribution}}
+func policyResult(value int, codemaps string, contribution *int, others ...string) CheckResult {
+	layers := []LayerReport{{Layer: LayerCodemaps, Verdict: codemaps, Value: value, Contribution: contribution}}
 	names := []string{LayerMXIndex, LayerEdges, LayerCitations}
 	for i, v := range others {
 		layers = append(layers, LayerReport{Layer: names[i], Verdict: v})
@@ -23,6 +23,7 @@ func TestDefaultThresholdsUnchangedByPolicy(t *testing.T) {
 
 func TestClassifyVerdicts(t *testing.T) {
 	th := DefaultThresholds()
+	f := VerdictFresh
 	cases := []struct {
 		name         string
 		res          CheckResult
@@ -30,19 +31,29 @@ func TestClassifyVerdicts(t *testing.T) {
 		policy       string
 		wantBlocking bool
 		wantWarnings int
+		wantOrigin   string
 	}{
-		{"inherited pull_request warns", policyResult(VerdictStale, intp(1), VerdictFresh, VerdictFresh, VerdictFresh), EventPullRequest, InheritedDriftWarn, false, 1},
-		{"contribution just under threshold warns", policyResult(VerdictStale, intp(39), VerdictFresh, VerdictFresh, VerdictFresh), EventPullRequest, InheritedDriftWarn, false, 1},
-		{"contribution at threshold blocks", policyResult(VerdictStale, intp(40), VerdictFresh, VerdictFresh, VerdictFresh), EventPullRequest, InheritedDriftWarn, true, 0},
-		{"self contribution 41 blocks", policyResult(VerdictStale, intp(41), VerdictFresh, VerdictFresh, VerdictFresh), EventPullRequest, InheritedDriftWarn, true, 0},
-		{"unmeasured contribution blocks", policyResult(VerdictStale, nil, VerdictFresh, VerdictFresh, VerdictFresh), EventPullRequest, InheritedDriftWarn, true, 0},
-		{"push blocks", policyResult(VerdictStale, intp(1), VerdictFresh, VerdictFresh, VerdictFresh), EventPush, InheritedDriftWarn, true, 0},
-		{"unknown event blocks", policyResult(VerdictStale, intp(1), VerdictFresh, VerdictFresh, VerdictFresh), "", InheritedDriftWarn, true, 0},
-		{"policy block blocks", policyResult(VerdictStale, intp(1), VerdictFresh, VerdictFresh, VerdictFresh), EventPullRequest, InheritedDriftBlock, true, 0},
-		{"codemaps absent blocks", policyResult(VerdictAbsent, intp(1), VerdictFresh, VerdictFresh, VerdictFresh), EventPullRequest, InheritedDriftWarn, true, 0},
-		{"edges stale alongside blocks", policyResult(VerdictStale, intp(1), VerdictFresh, VerdictStale, VerdictFresh), EventPullRequest, InheritedDriftWarn, true, 0},
-		{"edges absent alongside blocks", policyResult(VerdictStale, intp(1), VerdictFresh, VerdictAbsent, VerdictFresh), EventPullRequest, InheritedDriftWarn, true, 0},
-		{"citations stale alongside blocks", policyResult(VerdictStale, intp(1), VerdictFresh, VerdictFresh, VerdictStale), EventPullRequest, InheritedDriftWarn, true, 0},
+		// inherited: base alone (Value - Contribution) is already at the threshold.
+		{"base 40 + pr 1 is inherited", policyResult(41, VerdictStale, intp(1), f, f, f), EventPullRequest, InheritedDriftWarn, false, 1, DriftInherited},
+		{"base 41 + pr 0 is inherited", policyResult(41, VerdictStale, intp(0), f, f, f), EventPullRequest, InheritedDriftWarn, false, 1, DriftInherited},
+		{"base 40 + pr 0 is inherited", policyResult(40, VerdictStale, intp(0), f, f, f), EventPullRequest, InheritedDriftWarn, false, 1, DriftInherited},
+		// crossed by this change: base under the line, the change took it over.
+		{"base 25 + pr 16 crossed", policyResult(41, VerdictStale, intp(16), f, f, f), EventPullRequest, InheritedDriftWarn, true, 0, DriftCrossedByChange},
+		{"base 39 + pr 1 crossed", policyResult(40, VerdictStale, intp(1), f, f, f), EventPullRequest, InheritedDriftWarn, true, 0, DriftCrossedByChange},
+		// originated: the change alone is at or over the line.
+		{"base 0 + pr 41 originated", policyResult(41, VerdictStale, intp(41), f, f, f), EventPullRequest, InheritedDriftWarn, true, 0, DriftOriginated},
+		{"base 0 + pr 40 originated", policyResult(40, VerdictStale, intp(40), f, f, f), EventPullRequest, InheritedDriftWarn, true, 0, DriftOriginated},
+		// unmeasured: no origin can be stated.
+		{"unmeasured contribution blocks", policyResult(41, VerdictStale, nil, f, f, f), EventPullRequest, InheritedDriftWarn, true, 0, ""},
+		// event and policy gates.
+		{"push blocks", policyResult(41, VerdictStale, intp(1), f, f, f), EventPush, InheritedDriftWarn, true, 0, DriftInherited},
+		{"unknown event blocks", policyResult(41, VerdictStale, intp(1), f, f, f), "", InheritedDriftWarn, true, 0, DriftInherited},
+		{"policy block blocks", policyResult(41, VerdictStale, intp(1), f, f, f), EventPullRequest, InheritedDriftBlock, true, 0, DriftInherited},
+		// other layers.
+		{"codemaps absent blocks", policyResult(41, VerdictAbsent, intp(1), f, f, f), EventPullRequest, InheritedDriftWarn, true, 0, ""},
+		{"edges stale alongside blocks", policyResult(41, VerdictStale, intp(1), f, VerdictStale, f), EventPullRequest, InheritedDriftWarn, true, 0, DriftInherited},
+		{"edges absent alongside blocks", policyResult(41, VerdictStale, intp(1), f, VerdictAbsent, f), EventPullRequest, InheritedDriftWarn, true, 0, DriftInherited},
+		{"citations stale alongside blocks", policyResult(41, VerdictStale, intp(1), f, f, VerdictStale), EventPullRequest, InheritedDriftWarn, true, 0, DriftInherited},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -54,6 +65,9 @@ func TestClassifyVerdicts(t *testing.T) {
 			if got := len(res.Warnings()); got != c.wantWarnings {
 				t.Errorf("len(Warnings()) = %d, want %d", got, c.wantWarnings)
 			}
+			if got := res.Layers[0].DriftOrigin; got != c.wantOrigin {
+				t.Errorf("DriftOrigin = %q, want %q", got, c.wantOrigin)
+			}
 			// The verdict is a fact and is never rewritten by classification.
 			if res.Layers[0].Verdict != c.res.Layers[0].Verdict {
 				t.Errorf("verdict rewritten: %q -> %q", c.res.Layers[0].Verdict, res.Layers[0].Verdict)
@@ -64,7 +78,7 @@ func TestClassifyVerdicts(t *testing.T) {
 
 // A caller that never classifies keeps the fail-closed behavior.
 func TestBlockingWithoutClassificationFailsClosed(t *testing.T) {
-	res := policyResult(VerdictStale, intp(1), VerdictFresh, VerdictFresh, VerdictFresh)
+	res := policyResult(41, VerdictStale, intp(1), VerdictFresh, VerdictFresh, VerdictFresh)
 	if !res.Blocking() {
 		t.Fatal("an unclassified stale layer must block")
 	}

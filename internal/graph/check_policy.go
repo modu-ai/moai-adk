@@ -30,6 +30,19 @@ const (
 	EventPush = "push"
 )
 
+// Where a stale codemaps count came from, stated as a fact next to the verdict.
+// Base alone = Value - Contribution (the described-worthy files the change did
+// not touch).
+const (
+	// DriftInherited: the base alone is already at or over the threshold.
+	DriftInherited = "inherited"
+	// DriftCrossedByChange: the base is under the threshold and this change took
+	// the count over it.
+	DriftCrossedByChange = "crossed-by-change"
+	// DriftOriginated: this change alone is at or over the threshold.
+	DriftOriginated = "originated"
+)
+
 const (
 	// InheritedDriftWarn lets a pull_request announce an inherited codemaps
 	// drift instead of failing on it. It is the default.

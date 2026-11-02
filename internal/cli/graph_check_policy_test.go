@@ -51,11 +51,21 @@ func restampExceptCodemaps(t *testing.T, root, codemapsCommit string) {
 // other layer is fresh.
 func inheritedFixture(t *testing.T, ownFiles int) string {
 	t.Helper()
+	return driftFixture(t, 41, ownFiles)
+}
+
+// driftFixture: codemaps stamped at the base commit; baseFiles described files
+// landed base-side; this change then adds ownFiles described files (0 = a
+// docs-only commit that contributes nothing). Every other layer is fresh.
+func driftFixture(t *testing.T, baseFiles, ownFiles int) string {
+	t.Helper()
 	root := newCheckCLIRepo(t)
 	base := checkFixtureGit(t, root, "rev-parse", "HEAD")
-	commitAgedFiles(t, root, 41)
+	if baseFiles > 0 {
+		commitAgedFiles(t, root, baseFiles)
+	}
+	dir := filepath.Join(root, "internal", "own")
 	if ownFiles > 0 {
-		dir := filepath.Join(root, "internal", "own")
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			t.Fatal(err)
 		}
@@ -64,11 +74,53 @@ func inheritedFixture(t *testing.T, ownFiles int) string {
 				t.Fatal(err)
 			}
 		}
-		checkFixtureGit(t, root, "add", "-A")
-		checkFixtureGit(t, root, "commit", "-q", "-m", "own change")
+	} else if err := os.WriteFile(filepath.Join(root, "NOTES.md"), []byte("docs only\n"), 0o644); err != nil {
+		t.Fatal(err)
 	}
+	checkFixtureGit(t, root, "add", "-A")
+	checkFixtureGit(t, root, "commit", "-q", "-m", "own change")
 	restampExceptCodemaps(t, root, base)
 	return root
+}
+
+// R216 RED: base 25 + this change 16 = 41. The change took the count over the
+// line, so it is not inherited and must block.
+func TestGraphCheckPolicy_CrossedByChangeBlocks(t *testing.T) {
+	root := driftFixture(t, 25, 16)
+	t.Setenv("GITHUB_EVENT_NAME", "pull_request")
+	out, errOut, code := runGraphCheckPolicy(t, root, "--json")
+	if code != 1 {
+		t.Fatalf("base 25 + pr 16 must exit 1, got %d\nstdout=%s\nstderr=%s", code, out, errOut)
+	}
+	if !strings.Contains(out, `"drift_origin": "crossed-by-change"`) {
+		t.Errorf("origin must be stated as crossed-by-change:\n%s", out)
+	}
+}
+
+// Base alone is at the line and this change contributed nothing: inherited.
+func TestGraphCheckPolicy_BaseOverLinePrZeroWarns(t *testing.T) {
+	root := driftFixture(t, 41, 0)
+	t.Setenv("GITHUB_EVENT_NAME", "pull_request")
+	out, errOut, code := runGraphCheckPolicy(t, root, "--json")
+	if code != 0 {
+		t.Fatalf("base 41 + pr 0 must exit 0, got %d\nstdout=%s\nstderr=%s", code, out, errOut)
+	}
+	if !strings.Contains(out, `"drift_origin": "inherited"`) {
+		t.Errorf("origin must be inherited:\n%s", out)
+	}
+}
+
+// This change alone is over the line: originated, blocks.
+func TestGraphCheckPolicy_OriginatedByChangeBlocks(t *testing.T) {
+	root := driftFixture(t, 0, 41)
+	t.Setenv("GITHUB_EVENT_NAME", "pull_request")
+	out, errOut, code := runGraphCheckPolicy(t, root, "--json")
+	if code != 1 {
+		t.Fatalf("base 0 + pr 41 must exit 1, got %d\nstdout=%s\nstderr=%s", code, out, errOut)
+	}
+	if !strings.Contains(out, `"drift_origin": "originated"`) {
+		t.Errorf("origin must be originated:\n%s", out)
+	}
 }
 
 func writeGatePolicy(t *testing.T, root, policy string) {
