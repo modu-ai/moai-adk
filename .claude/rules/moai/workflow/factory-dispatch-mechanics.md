@@ -54,7 +54,8 @@ The launcher table (per-harness entry forms):
 | Need | Form |
 |---|---|
 | Create a harness-neutral L1 worktree | `moai worktree new <name>` |
-| Start Claude Code in a MoAI tree | `moai cc -w <absolute-worktree-path>` (`--spawn` for a new window; Claude may ask to approve an external worktree path) |
+| Start Claude Code in a MoAI tree | `moai cc -w <absolute-worktree-path>` (`--spawn` for a new window): the launcher enters the path only when it is a registered worktree of this repository, `.moai/worktrees/*` trees included; an unregistered absolute path is refused before anything is written |
+| Rejoin a lane whose session died | `moai cc -l --name <lane-label>` with the canonical `lane-<n>`: granted only when no live session holds that label, refused otherwise; the launcher moves no lease |
 | Start a Claude-native worktree | `moai cc -w <name>` creates or enters `.claude/worktrees/<name>` |
 | Re-enter or leave in the current Claude Code session | `EnterWorktree(<path>)` / `ExitWorktree` |
 | Start a Codex app chat in a new tree | Select Worktree and the starting branch in the new chat |
