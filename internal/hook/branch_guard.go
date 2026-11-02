@@ -446,6 +446,13 @@ var (
 	explicitGitTargetPattern = regexp.MustCompile(`(?i)\bgit\s+-C\s+(/[^\s;&|"'()<>]+)`)
 	leadingCdTargetPattern   = regexp.MustCompile(`^\s*cd\s+(/[^\s;&|"'()<>]+)\s*&&\s*`)
 	gitInvocationPattern     = regexp.MustCompile(`(?i)\bgit\s`)
+
+	// Forms that can move a git invocation off the path a leading `cd` or a
+	// `-C` names (see explicitGitTarget).
+	repoOverridePattern     = regexp.MustCompile(`(?i)(?:\bGIT_DIR=|\bGIT_WORK_TREE=|--git-dir\b|--work-tree\b)`)
+	dirChangePattern        = regexp.MustCompile(`(?i)(?:\b(?:cd|pushd|popd)\b|\()`)
+	cOptionPattern          = regexp.MustCompile(`\s-C\s+\S`)
+	gitGlobalOptionsPattern = regexp.MustCompile(`(?i)\bgit(?:\s+(?:-C\s+\S+|--git-dir[=\s]\S+|--work-tree[=\s]\S+))+`)
 )
 
 // explicitGitTarget returns the command with its explicit target removed (so
@@ -455,13 +462,30 @@ var (
 // with two, `-C`/`cd` could scope only one of them, and falling back to the
 // cwd judgment can only deny, never newly allow. Quoted spans are data and
 // never a target.
+//
+// The target is adopted only when nothing in the command can move the git
+// invocation elsewhere: a further `cd`/`pushd`/`popd`, a subshell `(`,
+// GIT_DIR=/GIT_WORK_TREE=, --git-dir/--work-tree, or a second `-C` all make
+// the named path untrustworthy. Those forms fall back to the hook-cwd
+// judgment, with the git global options removed so the verb is still seen —
+// the fallback can therefore only deny, never newly allow.
 func explicitGitTarget(command string) (string, string) {
-	if len(gitInvocationPattern.FindAllStringIndex(substituteQuotedArguments(command), -1)) != 1 {
+	plain := substituteQuotedArguments(command)
+	if len(gitInvocationPattern.FindAllStringIndex(plain, -1)) != 1 {
 		return command, ""
 	}
+	redirected := repoOverridePattern.MatchString(plain) || len(cOptionPattern.FindAllStringIndex(plain, -1)) > 1
 	rest, target := command, ""
 	if m := leadingCdTargetPattern.FindStringSubmatchIndex(rest); m != nil {
-		target, rest = rest[m[2]:m[3]], rest[m[1]:]
+		after := substituteQuotedArguments(rest[m[1]:])
+		if dirChangePattern.MatchString(after) || cOptionPattern.MatchString(after) {
+			redirected = true
+		} else {
+			target, rest = rest[m[2]:m[3]], rest[m[1]:]
+		}
+	}
+	if redirected {
+		return gitGlobalOptionsPattern.ReplaceAllString(command, "git"), ""
 	}
 	if m := explicitGitTargetPattern.FindStringSubmatchIndex(rest); m != nil &&
 		!insideAnySpan(m[0], quotedArgumentPattern.FindAllStringIndex(rest, -1)) {
