@@ -8,6 +8,8 @@ package homestate
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -64,7 +66,8 @@ func validateCardWait(w CardWait) error {
 
 // RecordCardWait records a wait. A second record for the same card and
 // condition that is still unwoken updates the waker and reason in place
-// (idempotent); a woken wait is history and a new record opens a fresh one.
+// (idempotent); when waker, reason and recorder are all unchanged it performs
+// no write at all. A woken wait is history and a new record opens a fresh one.
 func (f *FactoryDB) RecordCardWait(ctx context.Context, w CardWait, now time.Time) error {
 	if err := validateCardWait(w); err != nil {
 		return err
@@ -80,16 +83,26 @@ func (f *FactoryDB) RecordCardWait(ctx context.Context, w CardWait, now time.Tim
 		}
 		defer func() { _ = tx.Rollback() }()
 		// SQL: every value goes through a ? placeholder.
-		res, err := tx.ExecContext(ctx, `UPDATE card_waits SET waker=?,reason=?,recorded_by=? WHERE card_id=? AND cond_kind=? AND cond_ref=? AND woken_at=''`,
-			w.Waker, w.Reason, w.RecordedBy, w.CardID, w.CondKind, w.CondRef)
-		if err != nil {
-			return err
-		}
-		if n, _ := res.RowsAffected(); n == 0 {
+		// Read the open (unwoken) wait first: an identical re-record is zero
+		// writes - no UPDATE, no recorded_at or seq movement (card t2013).
+		var curWaker, curReason, curBy string
+		err = tx.QueryRowContext(ctx, `SELECT waker,reason,recorded_by FROM card_waits WHERE card_id=? AND cond_kind=? AND cond_ref=? AND woken_at='' ORDER BY seq LIMIT 1`,
+			w.CardID, w.CondKind, w.CondRef).Scan(&curWaker, &curReason, &curBy)
+		switch {
+		case err == nil:
+			if curWaker != w.Waker || curReason != w.Reason || curBy != w.RecordedBy {
+				if _, err := tx.ExecContext(ctx, `UPDATE card_waits SET waker=?,reason=?,recorded_by=? WHERE card_id=? AND cond_kind=? AND cond_ref=? AND woken_at=''`,
+					w.Waker, w.Reason, w.RecordedBy, w.CardID, w.CondKind, w.CondRef); err != nil {
+					return err
+				}
+			}
+		case errors.Is(err, sql.ErrNoRows):
 			if _, err := tx.ExecContext(ctx, `INSERT INTO card_waits(card_id,cond_kind,cond_ref,waker,reason,recorded_by,recorded_at) VALUES(?,?,?,?,?,?,?)`,
 				w.CardID, w.CondKind, w.CondRef, w.Waker, w.Reason, w.RecordedBy, stamp); err != nil {
 				return err
 			}
+		default:
+			return err
 		}
 		return tx.Commit()
 	})
