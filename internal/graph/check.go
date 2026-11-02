@@ -105,9 +105,12 @@ type LayerReport struct {
 	// measured against the checkout's first-parent predecessor (REQ-GFC-007).
 	// It is always REPORTED. Since card t2001 (user request R208) it is also
 	// read, narrowly, by ClassifyVerdicts: on a pull_request event a codemaps
-	// layer that is the ONLY non-fresh layer and whose contribution is
-	// measured and below the threshold is announced (VerdictClass warn)
-	// instead of failed. REQ-GFC-007 and spec.md §D.3 (third rejection) said
+	// layer that is the ONLY non-fresh layer, whose contribution is measured,
+	// whose codemaps stamp and body the change left alone, and whose BASE alone
+	// (Value minus Contribution) is already at or over the threshold is
+	// announced (VerdictClass warn) instead of failed. A count the change took
+	// over the line (crossed-by-change), one it put over alone (originated), and
+	// one whose window the change moved (anchor-moved) all still block. REQ-GFC-007 and spec.md §D.3 (third rejection) said
 	// the contribution is never gated on, because gating it could eliminate
 	// the accumulated-drift signal; that decision is deliberately narrowed,
 	// not removed: the cumulative count and the threshold are unchanged, a

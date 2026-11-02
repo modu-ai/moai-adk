@@ -16,9 +16,10 @@ package hook
 //
 // The payload below reproduces that observed shape (cwd, transcript_path and
 // ids neutralized). It runs through the real protocol decoder and the real
-// PreToolUse handler, so a runtime change that stops delivering Monitor
-// commands to Bash guards under the Bash name, or a guard change that stops
-// reading the command from this shape, fails here.
+// PreToolUse handler, so a guard change that stops reading the command from
+// this shape fails here. It replays a fixed fixture, so it cannot notice the
+// runtime itself changing how Monitor commands are delivered; only a fresh
+// live measurement can (see .moai/reports/t2001/verdict.md, Residual-risk).
 
 import (
 	"context"

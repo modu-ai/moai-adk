@@ -47,9 +47,10 @@ const (
 	DefaultGraphFreshnessUpdateBudgetMS = 2000
 	// DefaultGraphFreshnessInheritedCodemapsDrift is the policy for a codemaps
 	// drift a pull request merely inherited from its base: "warn" announces it
-	// (the other layers must be fresh and the change's own contribution below
-	// the codemaps threshold); "block" fails on it. A push event blocks either
-	// way. A chosen policy, not a measured figure (card t2001, R208).
+	// (the other layers must be fresh, the change must have left the codemaps
+	// body and stamp alone, and the base alone must already be at or over the
+	// codemaps threshold); "block" fails on it. A push event blocks either way.
+	// A chosen policy, not a measured figure (card t2001, R208).
 	DefaultGraphFreshnessInheritedCodemapsDrift = "warn"
 	// DefaultSlotLeaseMaxDuration is the declared maximum duration a slot
 	// lease takes when the caller omits --max-duration. A chosen value, not a

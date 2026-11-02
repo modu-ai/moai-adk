@@ -1375,10 +1375,13 @@ type GraphFreshnessGateConfig struct {
 	// InheritedCodemapsDrift decides what `moai graph check` does with a
 	// codemaps drift a pull request merely inherited from its base: "warn"
 	// announces it (exit 0 plus a warning) when the codemaps layer is the only
-	// non-fresh layer and the change's own contribution is below the codemaps
-	// threshold; "block" fails on it as before. A push event, an absent layer,
-	// an edges or citations failure, and a self-contribution at or over the
-	// threshold block under either value. Empty falls back to the default.
+	// non-fresh layer, the change left the codemaps body and stamp as the first
+	// parent had them, and the base alone (count minus the change's own
+	// contribution) is already at or over the codemaps threshold; "block" fails
+	// on it as before. A push event, an absent layer, an edges or citations
+	// failure, a change that took the count over the line or is over it by
+	// itself, and a change that touched the codemaps body or stamp block under
+	// either value. Empty falls back to the default.
 	InheritedCodemapsDrift string `yaml:"inherited_codemaps_drift"`
 }
 

@@ -133,9 +133,9 @@ func withMigrationLock(root string, fn func() error) error {
 	if terr := lockfile.TryLock(f); terr != nil {
 		return fmt.Errorf("migration lock: %s is held by another mover; this run moves nothing", lockPath)
 	}
-	// Release explicitly: Unix drops the flock when the file closes, but the
-	// Windows lockfile is a process-local mutex that only Unlock releases, so
-	// a second run in the same process would otherwise find it held forever.
+	// Release explicitly rather than leaning on the deferred Close: the lock is
+	// the file handle's, so an explicit Unlock frees it at once on every
+	// platform and a second run in the same process never finds it still held.
 	defer func() { _ = lockfile.Unlock(f) }()
 	return fn()
 }

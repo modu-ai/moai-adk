@@ -9,7 +9,10 @@ import (
 )
 
 // The tests in this file carry NO build constraint, like lockfile_contract_test.go:
-// they run on every GOOS, so the Windows arm is exercised by the Windows CI leg.
+// they run on every GOOS. The Windows arm runs only where a Windows leg covers
+// internal/lockfile: the release multi-OS leg runs every package, but the PR
+// multi-OS gate's path filter (./internal/hook/... ./internal/cli/worktree/...)
+// reaches this package only indirectly, through the hook registry tests.
 //
 // What they pin that the same-process contract tests cannot: exclusion between
 // two PROCESSES. The Windows arm was a process-local mutex until card t2001,

@@ -92,10 +92,13 @@ gate:
     update_budget_ms: 2000
     # What `moai graph check` does with a codemaps drift a pull request merely
     # inherited from its base. "warn": announce it (exit 0 plus a warning) when
-    # the codemaps layer is the ONLY non-fresh layer and this change's own
-    # described-source contribution is measured and below codemaps_changed_files.
-    # "block": fail on it, as before. A push event (main, release/*), an absent
-    # layer, an edges or citations failure, and a self-contribution at or over
-    # the threshold block under either value. The event comes from `--event` or
-    # GITHUB_EVENT_NAME; an unknown or empty event blocks.
+    # the codemaps layer is the ONLY non-fresh layer, the change left the
+    # codemaps body and stamp as the first parent had them, and the base alone
+    # (the count minus this change's own described-source contribution) is
+    # already at or over codemaps_changed_files. "block": fail on it, as before.
+    # A push event (main, release/*), an absent layer, an edges or citations
+    # failure, a change that took the count over the line or is over it by
+    # itself, and a change that touched the codemaps body or stamp block under
+    # either value. The event comes from `--event` or GITHUB_EVENT_NAME; an
+    # unknown or empty event blocks.
     inherited_codemaps_drift: warn
