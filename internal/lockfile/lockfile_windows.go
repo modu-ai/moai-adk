@@ -5,73 +5,58 @@ package lockfile
 import (
 	"errors"
 	"os"
-	"sync"
+
+	"golang.org/x/sys/windows"
 )
 
-// fileLocksMu guards concurrent access to the fileLocks map.
-var fileLocksMu sync.Mutex
-
-// @MX:NOTE: [AUTO] Windows in-process-mutex limitation preserved verbatim from the
-// pre-migration internal/cli/team_spawn_lock_windows.go (SPEC-AGENT-TEAM-RETIRE-001
-// REQ-ATR-001 — behavior preservation is the contract; do NOT silently "upgrade"
-// this to LockFileEx).
+// @MX:NOTE: [AUTO] Windows locks are LockFileEx byte-range locks, so they exclude
+// across processes as well as across handles in one process (card t2001,
+// user decision R162). The earlier implementation was a process-local mutex
+// map (SPEC-AGENT-TEAM-RETIRE-001 REQ-ATR-001 kept it verbatim as "behavior
+// preservation") and could not exclude a second PROCESS; the state-file lock
+// of SPEC-WORKTREE-HOME-ROOT-001 REQ-WHR-017 and its cross-process tests need
+// that exclusion, so the Windows arm now matches what flock gives on Unix.
 //
-// fileLocks holds in-process mutexes keyed by absolute file path.
-// Windows lacks portable advisory file locks (no fcntl/flock equivalent in stdlib),
-// so we fall back to process-local mutexes. This means:
-//   - Concurrent writes within the SAME process are serialized (safe for tests and
-//     tmux teammates that run as separate processes within the same OS user session)
-//   - Concurrent writes across DIFFERENT OS processes are NOT protected
-//     (acceptable limitation: ClaimTask is primarily exercised by tmux-based team
-//     workflows, which are macOS/Linux-only; Windows users run solo mode)
-var fileLocks = map[string]*sync.Mutex{}
-
-// Lock acquires a process-local mutex for the given file on Windows.
-// Multi-process locking is not supported; see package comment above.
-func Lock(f *os.File) error {
-	fileLocksMu.Lock()
-	path := f.Name()
-	mu, ok := fileLocks[path]
-	if !ok {
-		mu = &sync.Mutex{}
-		fileLocks[path] = mu
-	}
-	fileLocksMu.Unlock()
-	mu.Lock()
-	return nil
-}
-
-// TryLock acquires the process-local mutex for the given file without
-// blocking, returning an error when another holder owns it
-// (SPEC-WORKTREE-HOME-ROOT-001 M5, design.md D-12: the state-file lock is
-// try-and-bounded-wait). Nothing else about the lockfile surface changes.
-func TryLock(f *os.File) error {
-	fileLocksMu.Lock()
-	path := f.Name()
-	mu, ok := fileLocks[path]
-	if !ok {
-		mu = &sync.Mutex{}
-		fileLocks[path] = mu
-	}
-	fileLocksMu.Unlock()
-	if mu.TryLock() {
-		return nil
-	}
-	return errLockHeld
-}
+// One byte at offset 0 is locked (the region may lie beyond the end of the
+// file). A lock belongs to the file handle: another handle on the same path —
+// in this process or another — cannot take it until it is released, and
+// closing the handle (or the holder dying) releases it. The exported contract
+// is unchanged: Lock blocks, TryLock returns at once, Unlock of a file that
+// holds no lock is not an error.
 
 // errLockHeld reports a try-acquisition refused because another holder owns
 // the lock (Windows TryLock arm).
 var errLockHeld = errors.New("lock already held")
 
-// Unlock releases the process-local mutex for the given file on Windows.
-func Unlock(f *os.File) error {
-	fileLocksMu.Lock()
-	mu, ok := fileLocks[f.Name()]
-	fileLocksMu.Unlock()
-	if !ok {
-		return nil // never locked or already released
+// lockRegion locks or tries to lock the one-byte region with the given flags.
+func lockRegion(f *os.File, flags uint32) error {
+	return windows.LockFileEx(windows.Handle(f.Fd()), flags, 0, 1, 0, new(windows.Overlapped))
+}
+
+// Lock acquires an exclusive byte-range lock on the file, blocking until
+// another holder (in any process) releases it.
+func Lock(f *os.File) error {
+	return lockRegion(f, windows.LOCKFILE_EXCLUSIVE_LOCK)
+}
+
+// TryLock acquires the exclusive lock without blocking, returning an error
+// when another holder owns it (SPEC-WORKTREE-HOME-ROOT-001 M5, design.md D-12:
+// the state-file lock is try-and-bounded-wait). A refusal wraps errLockHeld.
+func TryLock(f *os.File) error {
+	err := lockRegion(f, windows.LOCKFILE_EXCLUSIVE_LOCK|windows.LOCKFILE_FAIL_IMMEDIATELY)
+	if errors.Is(err, windows.ERROR_LOCK_VIOLATION) {
+		return errLockHeld
 	}
-	mu.Unlock()
-	return nil
+	return err
+}
+
+// Unlock releases the lock on the file. Releasing a file that holds no lock is
+// a no-op, as flock(LOCK_UN) is on an unlocked descriptor: call sites unlock
+// from deferred cleanup paths that can run before a successful Lock.
+func Unlock(f *os.File) error {
+	err := windows.UnlockFileEx(windows.Handle(f.Fd()), 0, 1, 0, new(windows.Overlapped))
+	if errors.Is(err, windows.ERROR_NOT_LOCKED) {
+		return nil
+	}
+	return err
 }
