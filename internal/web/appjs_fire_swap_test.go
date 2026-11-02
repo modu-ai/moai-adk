@@ -605,6 +605,81 @@ func TestAppJsFireLoadWaitOption(t *testing.T) {
 	}
 }
 
+// fireFixtureChattyLateLoadError is fireFixtureLateLoadError on a page that
+// also logs to the console every 0.3s for 3s after its load event, so protocol
+// events keep arriving across the whole quiet window. The logging is finite on
+// purpose: the default fixed drain restarts its timer per message and must be
+// able to end.
+func fireFixtureChattyLateLoadError(t *testing.T) string {
+	return writeFireProbeFixture(t, "fixture_chatty_late_load_error", fireProbeEdit{
+		anchor: "if opts.cpu_throttle is not None:",
+		replacement: `await cdp.send("Page.addScriptToEvaluateOnNewDocument", {"source": "window.addEventListener('load',function(){var n=0,t=setInterval(function(){console.log('chatty',n);if(++n>=10){clearInterval(t);}},300);setTimeout(function(){fireLateRefErrT2014();},1500);});"})
+            if opts.cpu_throttle is not None:`,
+	})
+}
+
+// TestAppJsFireLoadWaitQuietWindowAbsolute is the audit P2(b) regression: the
+// quiet window after the load event ends at an absolute deadline from that
+// event, not 0.5s after the LAST message. A page that keeps logging must not
+// keep the window open until a 1.5s-late ReferenceError lands inside it.
+// Acceptance: with --load-wait-ready, the chatty late error is in neither the
+// p1 nor the p7 load window; without the flag (default drain) it stays red.
+func TestAppJsFireLoadWaitQuietWindowAbsolute(t *testing.T) {
+	chromePath := requireFireGuardPrereqs(t)
+	baseURL := startFireGuardServer(t)
+	cdpPort := launchFireGuardChrome(t, chromePath)
+	script := fireFixtureChattyLateLoadError(t)
+	const wantP1 = "ReferenceError in p1_load_referenceerrors"
+
+	code, r := runFireGuardProbe(t, script, cdpPort, baseURL, "t2014-chatty-default", "--primary-entries-only")
+	if code != 1 || !strings.Contains(strings.Join(fireFailureReasons(r), "\n"), wantP1) {
+		t.Errorf("default window on a chatty page: exit=%d failures=%v (want exit 1 naming %q)", code, fireFailureReasons(r), wantP1)
+	}
+
+	code, r = runFireGuardProbe(t, script, cdpPort, baseURL, "t2014-chatty-load-wait",
+		"--primary-entries-only", "--load-wait-ready")
+	if code == 2 {
+		t.Fatalf("machine fault; report=%s", mustJSON(t, r))
+	}
+	joined := strings.Join(fireFailureReasons(r), "\n")
+	for _, window := range []string{"p1_load_referenceerrors", "p7_load_referenceerrors"} {
+		if strings.Contains(joined, "ReferenceError in "+window) {
+			t.Errorf("load-wait quiet window stayed open on a chatty page: the late error is in %s: %v", window, fireFailureReasons(r))
+		}
+	}
+}
+
+// TestAppJsFireLoadWaitExpiryIsNamedStop is the audit P2(a) regression: under
+// --load-wait-ready, a load event that does not arrive within the bound stops
+// the scenario with a named failure. It must not carry on and judge handlers on
+// a document that is not ready. The bound is cut to ~0 in a probe copy so the
+// expiry is deterministic.
+// Acceptance: exit 1, exactly one failure naming the unobserved load, and no
+// handler failure from the not-ready document.
+func TestAppJsFireLoadWaitExpiryIsNamedStop(t *testing.T) {
+	chromePath := requireFireGuardPrereqs(t)
+	baseURL := startFireGuardServer(t)
+	cdpPort := launchFireGuardChrome(t, chromePath)
+	script := writeFireProbeFixture(t, "fixture_load_bound_expired", fireProbeEdit{
+		anchor:      `if await cdp.wait_event("Page.loadEventFired", drain_seconds):`,
+		replacement: `if await cdp.wait_event("Page.loadEventFired", 0.0001):`,
+	})
+	const want = "document load not observed within"
+
+	code, r := runFireGuardProbe(t, script, cdpPort, baseURL, "t2014-load-wait-expired",
+		"--primary-entries-only", "--load-wait-ready")
+	reasons := fireFailureReasons(r)
+	if code != 1 {
+		t.Errorf("expired load wait: exit=%d (want 1, a red named stop); failures=%v", code, reasons)
+	}
+	if !strings.Contains(strings.Join(reasons, "\n"), want) {
+		t.Errorf("expired load wait is not named: failures=%v (want a reason containing %q)", reasons, want)
+	}
+	if len(reasons) != 1 {
+		t.Errorf("scenario carried on past the expired load wait: failures=%v (want exactly the named stop)", reasons)
+	}
+}
+
 // TestAppJsFireThrottledLoadWindow keeps the load-window observation that
 // TestAppJsFirePostSwapSettleWait gave up for speed (card t2014): that test now
 // ends each navigation at the load event, so a ReferenceError that only shows
