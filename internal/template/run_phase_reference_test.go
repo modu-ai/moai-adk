@@ -25,7 +25,7 @@ var (
 
 // phaseReferenceViolations lists dangling hand-offs in the task decomposition
 // body and retired phase labels in the router body.
-func phaseReferenceViolations(taskDecomp, router string) []string {
+func phaseReferenceViolations(taskDecomp, router string, others ...string) []string {
 	var v []string
 	exists := map[string]bool{}
 	for _, m := range phaseHeadingRE.FindAllStringSubmatch(taskDecomp, -1) {
@@ -39,6 +39,14 @@ func phaseReferenceViolations(taskDecomp, router string) []string {
 	for _, stale := range []string{"Phase 11~4", "2.8"} {
 		if strings.Contains(router, stale) {
 			v = append(v, "run router: retired phase label "+stale)
+		}
+	}
+	// Labels retired by the same renumbering, searched in the router and in the
+	// run bodies it loads.
+	all := router + "\n" + strings.Join(others, "\n")
+	for _, stale := range []string{"Phase 1~1.8", "Phase 1.8", "11/2B", "or 2B", "Phase 5, sync-auditor Phase 19"} {
+		if strings.Contains(all, stale) {
+			v = append(v, "run workflow: retired phase label "+stale)
 		}
 	}
 	return v
@@ -60,7 +68,19 @@ func TestRunPhaseReferences_Deployed(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read %s: %v", runRouterPath, err)
 	}
-	if v := phaseReferenceViolations(string(td), string(rt)); len(v) > 0 {
+	// The retired labels also survived in the two run bodies the router loads.
+	var others []string
+	for _, p := range []string{
+		".claude/skills/moai/workflows/run/context-loading.md",
+		".claude/skills/moai/workflows/run/phase-execution.md",
+	} {
+		b, rerr := fs.ReadFile(fsys, p)
+		if rerr != nil {
+			t.Fatalf("read %s: %v", p, rerr)
+		}
+		others = append(others, string(b))
+	}
+	if v := phaseReferenceViolations(string(td), string(rt), others...); len(v) > 0 {
 		t.Errorf("stale run phase references:\n  %s", strings.Join(v, "\n  "))
 	}
 }
@@ -85,5 +105,10 @@ func TestRunPhaseReferences_Mutants(t *testing.T) {
 	}
 	if v := phaseReferenceViolations(headings, "| Phase 11-20: Implementation | Phase 13 |"); len(v) != 0 {
 		t.Errorf("current labels must pass, got %v", v)
+	}
+	for _, stale := range []string{"Phase 1~1.8", "Phase 1.8 MX", "Phase 11/2B", "Phase 11 or 2B", "plan-auditor Phase 5, sync-auditor Phase 19"} {
+		if v := phaseReferenceViolations(headings, "ok", stale); len(v) != 1 {
+			t.Errorf("retired label %q must be one violation, got %v", stale, v)
+		}
 	}
 }
