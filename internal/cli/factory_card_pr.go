@@ -233,10 +233,19 @@ func factoryCompleteGitHubFlow(ctx context.Context, out io.Writer, root, cardID,
 var factoryPRReadiness = func(out io.Writer, root string, card homestate.Card, lane, cardBranch, target string) (factorylane.MergeCheckRun, error) {
 	wt := card.WorktreePath
 	ref := target
-	if _, err := factoryGitRead(wt, "fetch", "origin", target); err != nil {
-		_, _ = fmt.Fprintf(out, "  note: could not fetch origin/%s (%v); probing the last fetched ref\n", target, err)
+	_, fetchErr := factoryGitRead(wt, "fetch", "origin", target)
+	if fetchErr != nil {
+		_, _ = fmt.Fprintf(out, "  note: could not fetch origin/%s (%v); probing the last fetched ref\n", target, fetchErr)
 	}
 	if _, err := factoryGitRead(wt, "rev-parse", "--verify", "--quiet", "refs/remotes/origin/"+target); err == nil {
+		// A tracking ref that survives a failed fetch is stale: the base may
+		// have moved, so the triple is not judged against it (card t2013).
+		if fetchErr != nil {
+			return factorylane.MergeCheckRun{
+				Lane: lane, Card: card.CardID, Branch: cardBranch, Develop: "origin/" + target,
+				FailedCondition: "stale-base", CheckedAt: factoryCardNow(),
+			}, fmt.Errorf("the base origin/%s is stale: its fetch failed (%v) and the remote-tracking ref predates it", target, fetchErr)
+		}
 		ref = "origin/" + target
 	}
 	specDir := ""
