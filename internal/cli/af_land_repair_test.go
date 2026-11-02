@@ -14,20 +14,6 @@ import (
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/ledger"
 )
 
-// afRepairLand runs `af land` with the gate on the standard queued card and returns the verb's JSON line.
-func afRepairLand(t *testing.T, db, repo, gate string) (outcome, reason, stdout string) {
-	t.Helper()
-	out, _, err := afRunBoth("land", "t1", "--db", db, "--gate", gate)
-	if err != nil {
-		t.Fatalf("the verb failed: %v (stdout %.200q)", err, out)
-	}
-	var res struct{ Outcome, Reason string }
-	if jerr := json.Unmarshal([]byte(out), &res); jerr != nil {
-		t.Fatalf("stdout %.200q is not the verb's JSON line", out)
-	}
-	return res.Outcome, res.Reason, out
-}
-
 // afGateIDPattern is the short id the reason and the landed note carry in place of the gate text: "gate-" and 12 hex digits.
 var afGateIDPattern = regexp.MustCompile(`gate-[0-9a-f]{12}`)
 

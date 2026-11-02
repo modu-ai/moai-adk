@@ -7,27 +7,6 @@ import (
 // issue-1948: a commit that was offered to the queue and failed or was withdrawn, after which the card went back into
 // the build stage.
 
-// offeredThenTakenBack leaves the card in REVIEWING after c1 was offered, ended ("failed" or
-// "withdrawn") and the card went through BUILDING and back.
-func offeredThenTakenBack(t *testing.T, ending string) (*Store, int64) {
-	t.Helper()
-	s := openTemp(t)
-	c := gated(t, s, "a", "c1")
-	e := c.Epoch
-	if err := s.Enqueue(bg, "a", e, "c1"); err != nil {
-		t.Fatal(err)
-	}
-	if ending == "failed" {
-		if err := s.QueueUpdate(bg, "a", CardEpoch(e, "c1"), QueueFailed, "", "flaky gate"); err != nil {
-			t.Fatal(err)
-		}
-	}
-	mustMove(t, s, e, posReviewing, "lane")
-	mustMove(t, s, e, posImplement, "lane")
-	mustMove(t, s, e, posReviewing, "lane")
-	return s, e
-}
-
 // What Enqueue accepts: a candidate the card never offered before (REQ-AFL-008, decision D5), a card not
 // taken back (a flaky retry of the same commit), and a commit the card was taken back for and has
 // since measured.

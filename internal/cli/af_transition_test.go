@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -103,10 +102,3 @@ func TestAFTransition_E6ACandidateThatIsTheTrunksOwnCommitStillLandsAsAlreadyInT
 		t.Errorf("stage %s, want DONE", got)
 	}
 }
-
-// ---- N69, first bullet: the refusal names commands that run as printed ----------------------------------------------------
-
-var (
-	afTrEvidenceCmd = regexp.MustCompile("`(moai af evidence [^`]+)`")
-	afTrMoveCmd     = regexp.MustCompile("`(moai af move [^`]+)`")
-)
