@@ -211,6 +211,18 @@ the lane's now, under the same evidence discipline: the lane self-verifies
 with a receipt, and a completion is still read, never trusted — by the lane
 itself.
 
+One leader check pass runs in this fixed order, each step read from the tree,
+the tool, or the PR and never from a reply:
+
+1. lane liveness;
+2. each card tree's HEAD, dirty state, and unpushed state;
+3. the PR's protected required checks;
+4. the blocking cause;
+5. whether a predecessor condition was released;
+6. independent work that can be assigned meanwhile;
+7. the same owner repairing its own failure;
+8. ACK or action confirmation.
+
 ## Boundaries
 
 - **No session spawning.** The leader addresses sessions the operator launched — it never creates one (sub-agents are not sessions).
