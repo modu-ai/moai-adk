@@ -661,7 +661,7 @@ func TestAppJsFireLoadWaitExpiryIsNamedStop(t *testing.T) {
 	baseURL := startFireGuardServer(t)
 	cdpPort := launchFireGuardChrome(t, chromePath)
 	script := writeFireProbeFixture(t, "fixture_load_bound_expired", fireProbeEdit{
-		anchor:      `if await cdp.wait_event("Page.loadEventFired", drain_seconds):`,
+		anchor:      `if await cdp.wait_event("Page.loadEventFired", LOAD_WAIT_BOUND_SECONDS):`,
 		replacement: `if await cdp.wait_event("Page.loadEventFired", 0.0001):`,
 	})
 	const want = "document load not observed within"

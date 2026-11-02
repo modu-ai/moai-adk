@@ -492,6 +492,14 @@ async def poll(cdp, expr, want, timeout=5.0, interval=0.2):
 
 LOAD_READY_QUIET_SECONDS = 0.5
 
+# --load-wait-ready: upper bound for the document load event. It is only a
+# bound: the wait returns the moment the load event arrives, so healthy runs
+# keep the speed-up. It is deliberately separate from the 4.0 s default-path
+# drain. Value rationale: measured on 2026-11-03, under --cpu-throttle 12 at
+# load average 26-35 the /specs load event arrived after 4.0 s in 2-4 of 10
+# runs, which a 4.0 s bound turned into false reds.
+LOAD_WAIT_BOUND_SECONDS = 20.0
+
 
 class LoadWaitExpired(Exception):
     """--load-wait-ready: the load event did not arrive within the bound. The
@@ -506,17 +514,17 @@ async def navigate(cdp, url, drain_seconds=4.0):
     judge late load-window errors - the settle-wait measurement) ends the window
     when the document's load event arrives (app.js wires its handlers on
     DOMContentLoaded, which precedes it) plus LOAD_READY_QUIET_SECONDS, bounded
-    by drain_seconds: never longer than the default window. The quiet window
+    by LOAD_WAIT_BOUND_SECONDS (its own ceiling, not the drain). The quiet window
     ends at an absolute deadline from the load event, however many messages
     arrive; a load event that does not arrive in the bound raises
     LoadWaitExpired."""
     await cdp.send("Page.navigate", {"url": url})
     if opts.load_wait_ready:
-        if await cdp.wait_event("Page.loadEventFired", drain_seconds):
+        if await cdp.wait_event("Page.loadEventFired", LOAD_WAIT_BOUND_SECONDS):
             await cdp.drain_until(LOAD_READY_QUIET_SECONDS)
             return
         raise LoadWaitExpired(
-            "document load not observed within %.1fs under --load-wait-ready (%s)" % (drain_seconds, url)
+            "document load not observed within %.1fs under --load-wait-ready (%s)" % (LOAD_WAIT_BOUND_SECONDS, url)
         )
     await cdp.drain(drain_seconds)
 
