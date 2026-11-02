@@ -306,6 +306,9 @@ func TestRunMultiAudit_DeltaBase_CarriedOnCtxToEveryLeg(t *testing.T) {
 	}
 }
 
+// A delta call WITHOUT a card_id is not full-scope review coverage and files no
+// second-review record (card t1708; unchanged by SPEC-AUDIT-ENGINE-CONVERGENCE-001
+// REQ-AEC-005, which only changes the card_id path).
 func TestRunMultiAudit_DeltaBase_WritesNoSecondReviewRecord(t *testing.T) {
 	f := closuretest.New(t)
 	fixtureSeams(t, f)
@@ -314,7 +317,6 @@ func TestRunMultiAudit_DeltaBase_WritesNoSecondReviewRecord(t *testing.T) {
 
 	result := runMultiAudit(context.Background(), ReviewOutput{}, codexTargetBaseBranch, "", MultiAuditConfig{
 		ProjectRoot: f.CardDir,
-		CardID:      "c1",
 		DeltaBase:   f.Head(),
 	}, nil)
 
@@ -327,6 +329,37 @@ func TestRunMultiAudit_DeltaBase_WritesNoSecondReviewRecord(t *testing.T) {
 	}
 	if !strings.Contains(result.ResidualRiskNote, "delta_base") {
 		t.Errorf("residual_risk_note = %q, want the delta scope (and the codex prose-only limit) named", result.ResidualRiskNote)
+	}
+}
+
+// A delta proposal WITH a card_id goes through the chain gate (REQ-AEC-004). With
+// no chain on disk the gate refuses it: the call is a full-scope call, its
+// record is a full-scope record (no delta marker), and the result says why
+// (REQ-AEC-005; AC-AEC-001f "a delta call the gate sent to full scope").
+func TestRunMultiAudit_DeltaBase_WithCardID_NoChain_IsAFullScopeCall(t *testing.T) {
+	f := closuretest.New(t)
+	fixtureSeams(t, f)
+	queueWithCards(t, f, map[string]string{"c1": closuretest.SpecID})
+	recordBackends(t)
+
+	result := runMultiAudit(context.Background(), ReviewOutput{}, codexTargetBaseBranch, "", MultiAuditConfig{
+		ProjectRoot: f.CardDir,
+		CardID:      "c1",
+		DeltaBase:   f.Head(),
+	}, nil)
+
+	records := readSecondReviewLines(t, filepath.Join(f.EvidenceDir, closure.SecondReviewFile))
+	if len(records) != 1 {
+		t.Fatalf("a gate-refused delta is a full-scope call and files one record, got %d", len(records))
+	}
+	if hasDeltaMarker(records[0]) {
+		t.Errorf("the record of a gate-refused delta must be a full-scope record: %v", records[0])
+	}
+	if result.SecondReviewRecordError != "" {
+		t.Errorf("second_review_record_error = %q", result.SecondReviewRecordError)
+	}
+	if !strings.Contains(result.ResidualRiskNote, deltaGatePrefix) {
+		t.Errorf("residual_risk_note = %q, want the gate's reason (%q)", result.ResidualRiskNote, deltaGatePrefix)
 	}
 }
 

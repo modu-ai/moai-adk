@@ -523,9 +523,23 @@ type MultiAuditConfig struct {
 
 	// DeltaBase is the previously audited commit a delta audit measures from
 	// (card t1708). The handler validates it; the fan-out only carries it on the
-	// legs' context. Non-empty ⇒ no second-review record is written, because a
-	// delta call is not full-scope review coverage. Empty ⇒ byte-identical.
+	// legs' context. With a CardID it is only a PROPOSAL: the delta chain gate
+	// (audit_delta_chain.go, REQ-AEC-004) either admits it, in which case one
+	// delta second-review record is filed and the result persists whatever its
+	// verdict, or reduces it to the full scope and says why. Without a CardID a
+	// delta call is not full-scope review coverage and files no record. Empty ⇒
+	// byte-identical.
 	DeltaBase string
+
+	// BlockingClosed is the BLOCKING-closure confirmation of a card delta call
+	// (REQ-AEC-004 (ii)): each id of the card's FAIL verdict files mapped to the
+	// commit that closed it, "" for an id an earlier chain round already
+	// confirmed. Read only by the gate; ignored without a CardID and DeltaBase.
+	BlockingClosed map[string]string
+
+	// deltaAdmission is set by runMultiAudit itself, on its local copy, when the
+	// gate admits the delta. Nothing outside the fan-out can set it.
+	deltaAdmission *deltaAdmission
 
 	// OriginProvider is the launcher-owned initial provider. Only a Claude
 	// origin may reuse a caller-supplied in-session Claude anchor; GPT, GLM, and
@@ -788,6 +802,36 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 	// project_root).
 	buildCommit, buildLag := auditBuildIdentity(ctx, cfg.ProjectRoot)
 
+	// ── delta chain gate (SPEC-AUDIT-ENGINE-CONVERGENCE-001 REQ-AEC-004) ──
+	// A card_id call's delta base is a proposal. Admitted: the legs measure the
+	// delta and carry the confirmation. Refused: the call is a full-scope call
+	// from here on (no delta base on the legs' context, a full-scope record, a
+	// full-scope persistence) and the result states which condition failed.
+	var deltaGateNote string
+	if cfg.CardID != "" && cfg.DeltaBase != "" {
+		root := cfg.ProjectRoot
+		if root == "" {
+			root = resolveProjectDir()
+		}
+		adm, reason := evaluateDeltaChain(deltaChainInput{
+			Root:     root,
+			Card:     cfg.CardID,
+			Proposed: cfg.DeltaBase,
+			Required: requiredBackends(cfg.Gates),
+			Closure:  cfg.BlockingClosed,
+		})
+		if adm != nil {
+			cfg.deltaAdmission = adm
+		} else {
+			cfg.DeltaBase = ""
+			deltaGateNote = reason
+		}
+	}
+	legFocus := focus
+	if cfg.deltaAdmission != nil {
+		legFocus = confirmationFocus(focus, cfg.deltaAdmission)
+	}
+
 	// Card t1632 sync-audit r3 F13: the convergence receipt binds the tree
 	// state captured BEFORE the fan-out — the state the backends actually
 	// judged. A write-time bind records the post-edit state when a tree edit
@@ -864,7 +908,7 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 			// Any error inside defaultBackendCaller is already fail-opened to a
 			// VerdictInconclusive ReviewOutput, so this never returns a hard error.
 			notifyMCPProgress(gctx, token, 0.3, s.name+" 백엔드 리뷰 실행 중...")
-			out := backendCall(gctx, s.name, target, focus, cfg.ProjectRoot)
+			out := backendCall(gctx, s.name, target, legFocus, cfg.ProjectRoot)
 			notifyMCPProgress(gctx, token, 0.7, s.name+" 백엔드 응답 수신")
 			mu.Lock()
 			parts = append(parts, secondaryResult{backend: s.name, gate: s.gate, out: out})
@@ -996,10 +1040,21 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 		// verdict measured from the base exactly, codex was only asked to
 		// (turn/start has no target).
 		note := deltaScopeNote(cfg.DeltaBase, verdicts)
+		if cfg.deltaAdmission != nil {
+			note = admittedDeltaNote(note)
+		}
 		if result.ResidualRiskNote != "" {
 			note += " | " + result.ResidualRiskNote
 		}
 		result.ResidualRiskNote = note
+	}
+	if deltaGateNote != "" {
+		// The refused delta's reason leads the note: it is the one fact a caller
+		// asking for a delta needs to see.
+		if result.ResidualRiskNote != "" {
+			deltaGateNote += " | " + result.ResidualRiskNote
+		}
+		result.ResidualRiskNote = deltaGateNote
 	}
 
 	// ── audit receipt (SPEC-CODEX-AUDIT-GATE-AXES-001 axis (b)) ──
@@ -1040,10 +1095,17 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 	// per-session delta file, so a
 	// separate name would be dead state; the delta result goes to the caller and
 	// its audit receipt still records below.
+	//
+	// The one exception is a delta the chain gate admitted (REQ-AEC-005): it has
+	// passed the very check that keeps an unverified delta out of coverage, so
+	// its result persists whatever its verdict, and a chain-admitted delta PASS
+	// opens the Stop gate after the earlier full FAIL. A delta without a card_id,
+	// and a delta the gate refused (which is a full-scope call by now), keep
+	// their rules.
 	if cfg.ProjectRoot != "" {
 		result.TreeRoot = cfg.ProjectRoot
 	}
-	if cfg.SessionID != "" && (cfg.DeltaBase == "" || result.OverallVerdict == overallVerdictFail) {
+	if cfg.SessionID != "" && (cfg.DeltaBase == "" || cfg.deltaAdmission != nil || result.OverallVerdict == overallVerdictFail) {
 		var unresolved *auditreceipt.UnresolvedStoreError
 		if err := persistConvergenceResult(result, cfg.SessionID, cfg.ProjectRoot); errors.As(err, &unresolved) {
 			notices = append(notices, "convergence result for session "+cfg.SessionID+" not persisted: "+err.Error())
@@ -1055,8 +1117,11 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 	// ── Append-only, after the existing persistence step. A failure rides
 	// the result's second_review_record_error — the audit result itself is
 	// never altered. Empty CardID skips the whole block byte-identically.
-	// A delta call is not full-scope review coverage, so it files no record.
-	if cfg.CardID != "" && cfg.DeltaBase == "" {
+	// A delta call the chain gate did not admit is not full-scope review
+	// coverage, so it files no record; a refused delta is a full-scope call by
+	// now (DeltaBase cleared) and files a full-scope record; an admitted delta
+	// files exactly one delta record (REQ-AEC-005).
+	if cfg.CardID != "" && (cfg.DeltaBase == "" || cfg.deltaAdmission != nil) {
 		if err := appendSecondReviewRecord(cfg, result, target); err != nil {
 			result.SecondReviewRecordError = err.Error()
 		}

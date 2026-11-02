@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"unicode"
 
 	"github.com/mark3labs/mcp-go/mcp"
 
@@ -97,6 +98,14 @@ func handleAuditMulti(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	if deltaErr != nil {
 		return toolErr(auditMultiToolName, deltaErr), nil
 	}
+	// SPEC-AUDIT-ENGINE-CONVERGENCE-001 REQ-AEC-004 (ii): the optional BLOCKING-
+	// closure confirmation of a card delta call. Malformed input is a caller-
+	// correctable error, not an absent confirmation: reading it as absent would
+	// quietly widen the call to the full scope.
+	blockingClosed, closedErr := readBlockingClosed(req)
+	if closedErr != nil {
+		return toolErr(auditMultiToolName, closedErr), nil
+	}
 
 	// SPEC-AUDIT-MODEL-CONVERGE-001 REQ-ACV-003/006: the audited tree's plan —
 	// resolved from its RAW workflow.audit section and the gates this call
@@ -138,6 +147,7 @@ func handleAuditMulti(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 		OriginProvider:   os.Getenv(config.EnvMoaiLaunchProvider),
 		CardID:           cardID,
 		DeltaBase:        deltaBase,
+		BlockingClosed:   blockingClosed,
 		EnforcementGates: &enforcement,
 		EnforcementNote:  enforcementNote,
 	}
@@ -150,6 +160,53 @@ func handleAuditMulti(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	result := runMultiAudit(ctx, claudeVerdict, target, focus, cfg, token)
 	notifyMCPProgress(ctx, token, 1, "audit_multi done - convergence result assembled")
 	return convergenceToolResult(result)
+}
+
+// blockingClosedArg is the audit_multi argument carrying the BLOCKING-closure
+// confirmation.
+const blockingClosedArg = "blocking_closed"
+
+// blockingClosedDescription is the tool-schema text of the blocking_closed input.
+const blockingClosedDescription = "Optional BLOCKING-closure confirmation for a card_id delta review: an object mapping each `blocking_defect:` id of the card's FAIL verdict files to the commit that closed it (a commit SHA inside delta_base..HEAD). An id whose closure an earlier chain round already confirmed may map to an empty string. A delta review needs the confirmation to name every id; omitted or incomplete ⇒ the full scope is reviewed and the result says why. Ignored without card_id and delta_base."
+
+// auditMultiDeltaBaseDescription is delta_base's schema text for audit_multi:
+// the shared text says audit_multi files no record for a delta call, which is
+// no longer true for a delta the chain gate admits.
+var auditMultiDeltaBaseDescription = strings.Replace(deltaBaseDescription,
+	"audit_multi writes no second-review record for a delta call.",
+	"With a card_id the SHA is a proposal: the delta is reviewed only when the card's second-review records form an unbroken, reviewed chain ending at it and blocking_closed confirms every BLOCKING defect; otherwise the full scope is reviewed and the result says why, and an admitted delta files one second-review record. Without a card_id no record is written.", 1)
+
+// readBlockingClosed reads the optional blocking_closed argument: a JSON object
+// of id -> closing commit SHA ("" allowed). Absent ⇒ nil. A present value that
+// is not such an object, an empty or oversized id, an id with a control
+// character (the id is echoed into the legs' focus text), or a value that is not
+// a commit SHA is an error.
+func readBlockingClosed(req mcp.CallToolRequest) (map[string]string, error) {
+	raw, present := req.GetArguments()[blockingClosedArg]
+	if !present {
+		return nil, nil
+	}
+	obj, ok := raw.(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("%s must be an object mapping each BLOCKING id to its closing commit SHA, got %T", blockingClosedArg, raw)
+	}
+	out := make(map[string]string, len(obj))
+	for id, v := range obj {
+		id = strings.TrimSpace(id)
+		if id == "" || len(id) > maxClosureIDBytes || strings.ContainsFunc(id, unicode.IsControl) {
+			return nil, fmt.Errorf("%s has an unusable id %q (1-%d characters, no control characters)", blockingClosedArg, id, maxClosureIDBytes)
+		}
+		commit, ok := v.(string)
+		if !ok {
+			return nil, fmt.Errorf("%s[%s] must be a commit SHA string (or \"\" for an id confirmed in an earlier round), got %T", blockingClosedArg, id, v)
+		}
+		commit = strings.TrimSpace(commit)
+		if commit != "" && !deltaBaseHex.MatchString(commit) {
+			return nil, fmt.Errorf("%s[%s] %q is not a commit SHA (7-64 hex digits)", blockingClosedArg, id, commit)
+		}
+		out[id] = commit
+	}
+	return out, nil
 }
 
 // readClaudeVerdict extracts + assembles the ReviewOutput from the structured
