@@ -77,7 +77,7 @@ func newCRWorld(t *testing.T) *crWorld {
 	root := t.TempDir()
 	run := func(args ...string) string {
 		t.Helper()
-		cmd := exec.Command("git", append([]string{"-C", root, "-c", "user.name=Fixture", "-c", "user.email=f@example.test"}, args...)...)
+		cmd := exec.Command("git", append([]string{"-C", root, "-c", "user.name=Fixture", "-c", "user.email=fixture@example.test"}, args...)...)
 		cmd.Env = closuretest.ScrubbedEnv()
 		out, err := cmd.CombinedOutput()
 		if err != nil {
