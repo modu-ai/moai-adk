@@ -90,6 +90,23 @@ func handleAuditMulti(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	if deltaErr != nil {
 		return toolErr(auditMultiToolName, deltaErr), nil
 	}
+	// SPEC-AUDIT-ENGINE-CONVERGENCE-001 REQ-AEC-001/002: delta_base "full" asks for
+	// the full resolved base; a card call without a delta_base (baseBranch target)
+	// proposes the audited_sha of the card's newest FAIL verdict, which the chain
+	// gate in runMultiAudit then admits or refuses. The note says what happened.
+	var deltaDefaultNote string
+	if strings.EqualFold(strings.TrimSpace(rawDeltaBase), deltaBaseFull) {
+		rawDeltaBase = ""
+		if cardID != "" {
+			deltaDefaultNote = deltaFullNote()
+		}
+	} else if cardID != "" && strings.TrimSpace(rawDeltaBase) == "" && target == codexTargetBaseBranch {
+		proposeRoot := projectRoot
+		if proposeRoot == "" {
+			proposeRoot = resolveProjectDir()
+		}
+		rawDeltaBase, deltaDefaultNote = defaultDeltaProposal(proposeRoot, cardID)
+	}
 	deltaRoot := projectRoot
 	if deltaRoot == "" && rawDeltaBase != "" {
 		deltaRoot = resolveProjectDir()
@@ -148,6 +165,7 @@ func handleAuditMulti(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 		CardID:           cardID,
 		DeltaBase:        deltaBase,
 		BlockingClosed:   blockingClosed,
+		DeltaDefaultNote: deltaDefaultNote,
 		EnforcementGates: &enforcement,
 		EnforcementNote:  enforcementNote,
 	}
@@ -172,9 +190,11 @@ const blockingClosedDescription = "Optional BLOCKING-closure confirmation for a 
 // auditMultiDeltaBaseDescription is delta_base's schema text for audit_multi:
 // the shared text says audit_multi files no record for a delta call, which is
 // no longer true for a delta the chain gate admits.
-var auditMultiDeltaBaseDescription = strings.Replace(deltaBaseDescription,
+var auditMultiDeltaBaseDescription = strings.Replace(strings.Replace(deltaBaseDescription,
 	"audit_multi writes no second-review record for a delta call.",
-	"With a card_id the SHA is a proposal: the delta is reviewed only when the card's second-review records form an unbroken, reviewed chain ending at it and blocking_closed confirms every BLOCKING defect; otherwise the full scope is reviewed and the result says why, and an admitted delta files one second-review record. Without a card_id no record is written.", 1)
+	"With a card_id the SHA is a proposal: the delta is reviewed only when the card's second-review records form an unbroken, reviewed chain ending at it and blocking_closed confirms every BLOCKING defect; otherwise the full scope is reviewed and the result says why, and an admitted delta files one second-review record. Without a card_id no record is written. With a card_id and no delta_base, the audited_sha of the card's newest FAIL verdict file is proposed the same way, and the result names the file and SHA or says why none was proposed; \"full\" reviews the full resolved base instead.", 1),
+	"codex adversarial (and the audit_multi codex leg) is told in the prompt only, and the result says so.",
+	"codex adversarial is told in the prompt only, and the result says so; the audit_multi codex leg carries the delta diff the server collected in its adversarial turn.", 1)
 
 // readBlockingClosed reads the optional blocking_closed argument: a JSON object
 // of id -> closing commit SHA ("" allowed). Absent ⇒ nil. A present value that

@@ -239,6 +239,12 @@ func readBoundedFile(path string) ([]byte, error) {
 	return os.ReadFile(path)
 }
 
+// NewestVerdictFile is the rebind-evidence selection, exported so the audit
+// tools choose "the newest verdict file" by the very rule the factory card
+// record uses (SPEC-AUDIT-ENGINE-CONVERGENCE-001 REQ-AEC-001) instead of a
+// second reader.
+func NewestVerdictFile(paths []string) (string, error) { return newestVerdictFile(paths) }
+
 // newestVerdictFile picks the highest iteration number in the file name (a
 // name without `-iter<N>` is iteration 1), then the latest modification time.
 func newestVerdictFile(paths []string) (string, error) {

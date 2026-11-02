@@ -339,19 +339,26 @@ func readBoundedEvidence(path string) ([]byte, bool) {
 // carries none or two different ones (the file is then unreadable to the gate,
 // as it is to the factory card reader).
 func singleAuditedSHA(raw []byte) string {
+	if shas := auditedSHAs(raw); len(shas) == 1 {
+		return shas[0]
+	}
+	return ""
+}
+
+// auditedSHAs returns the distinct audited_sha values a file carries, sorted.
+func auditedSHAs(raw []byte) []string {
 	seen := map[string]bool{}
 	for _, line := range strings.Split(string(raw), "\n") {
 		if m := auditedSHALine.FindStringSubmatch(strings.TrimRight(line, " \t\r")); m != nil {
 			seen[m[1]] = true
 		}
 	}
-	if len(seen) != 1 {
-		return ""
-	}
+	out := make([]string, 0, len(seen))
 	for s := range seen {
-		return s
+		out = append(out, s)
 	}
-	return ""
+	sort.Strings(out)
+	return out
 }
 
 // closingCommitRefusal checks the closing commit of an id that is not

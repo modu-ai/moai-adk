@@ -537,6 +537,11 @@ type MultiAuditConfig struct {
 	// confirmed. Read only by the gate; ignored without a CardID and DeltaBase.
 	BlockingClosed map[string]string
 
+	// DeltaDefaultNote is the handler's statement of the default delta proposal
+	// (REQ-AEC-001): which verdict file and SHA it proposed, why it proposed none,
+	// or that "full" was requested. It leads the result's residual_risk_note.
+	DeltaDefaultNote string
+
 	// deltaAdmission is set by runMultiAudit itself, on its local copy, when the
 	// gate admits the delta. Nothing outside the fan-out can set it.
 	deltaAdmission *deltaAdmission
@@ -647,7 +652,26 @@ func performCodexAudit(ctx context.Context, target, focus, projectRoot string) R
 	if err != nil {
 		return inconclusiveReview("codex binary not found in PATH")
 	}
-	prompt := codexAdversarialPromptFor(ctx, focus)
+	prompt := codexAdversarialReviewPrompt(focus)
+	// REQ-AEC-003: while a delta base is in effect the turn carries the
+	// delta_base...HEAD diff the SERVER collected, not an instruction to compute
+	// it. The turn stays an adversarial turn/start (never the native review), and
+	// the leg reports the delta base as the base it judged. A diff that cannot be
+	// collected makes the leg inconclusive rather than a review of something else.
+	var deltaBase *reviewBase
+	if sha := deltaBaseFromContext(ctx); sha != "" {
+		deltaRoot := strings.TrimSpace(projectRoot)
+		if deltaRoot == "" {
+			deltaRoot = resolveProjectDir() // the resolver performGLMAudit falls back to
+		}
+		p, derr := codexDeltaLegPrompt(deltaRoot, focus, sha)
+		if derr != nil {
+			return inconclusiveReview("delta diff not collected: " + derr.Error())
+		}
+		prompt = p
+		b := deltaReviewBase(sha)
+		deltaBase = &b
+	}
 	// REQ-MN-019: the turn/start this leg sends has no target field, so a
 	// baseBranch target is applied in the prompt — the resolved base SHA and the
 	// diff instruction — and the result names the base it judged. A delta base
@@ -703,6 +727,9 @@ func performCodexAudit(ctx context.Context, target, focus, projectRoot string) R
 	}
 	if base != nil {
 		out.ReviewBase = base.String()
+	}
+	if deltaBase != nil {
+		out.ReviewBase = deltaBase.String()
 	}
 	return out
 }
@@ -1055,6 +1082,14 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 			deltaGateNote += " | " + result.ResidualRiskNote
 		}
 		result.ResidualRiskNote = deltaGateNote
+	}
+	if cfg.DeltaDefaultNote != "" {
+		// Leads everything else: it states what the call was asked to review.
+		if result.ResidualRiskNote != "" {
+			result.ResidualRiskNote = cfg.DeltaDefaultNote + " | " + result.ResidualRiskNote
+		} else {
+			result.ResidualRiskNote = cfg.DeltaDefaultNote
+		}
 	}
 
 	// ── audit receipt (SPEC-CODEX-AUDIT-GATE-AXES-001 axis (b)) ──
