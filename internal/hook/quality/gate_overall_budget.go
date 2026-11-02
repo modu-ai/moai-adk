@@ -39,6 +39,11 @@ const (
 // correction is announced in the returned warning. Zero or negative means
 // "derive it".
 func (g *QualityGate) OverallBudget() (time.Duration, string) {
+	// A disabled gate runs no step (Run returns at once), so there is nothing
+	// to derive: do not detect toolchains, which reads project manifests.
+	if !g.config.Enabled {
+		return overallBudgetFloor, ""
+	}
 	var sum, largest time.Duration
 	note := func(d time.Duration, n int) {
 		if n <= 0 {

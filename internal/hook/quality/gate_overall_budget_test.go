@@ -159,3 +159,78 @@ func TestOverallBudgetParentExpiryKeepsAttribution(t *testing.T) {
 		t.Errorf("parent expiry blamed the step: %q", out)
 	}
 }
+
+// exactBudgetCfg enables every budget axis of a single Go toolchain with
+// distinct step budgets, so the derived value below is one exact number and
+// dropping any term (an axis, an allowance, the slack) changes it.
+func exactBudgetCfg(t *testing.T) *GateConfig {
+	t.Helper()
+	cfg := budgetCfg(budgetGoDir(t))
+	cfg.VetTimeout = 10 * time.Second
+	cfg.TypecheckEnabled = true
+	cfg.TypecheckCommand = "go version"
+	cfg.TypecheckTimeout = 50 * time.Second
+	cfg.LintTimeout = 20 * time.Second
+	cfg.TestTimeout = 1000 * time.Second
+	cfg.GraphFreshness = &GraphFreshnessConfig{Enabled: true}
+	cfg.AstGrepGate = &AstGrepGateConfig{Enabled: true}
+	return cfg
+}
+
+// vet 10 + typecheck 50 + lint 20 + test 1000 + graph-freshness 30 + ast-grep
+// 30 = 1140s; slack = max(60s, 10% = 114s) = 114s; total 1254s.
+func TestOverallBudgetExactSumOfEveryAxis(t *testing.T) {
+	t.Parallel()
+	got, warn := NewQualityGate(exactBudgetCfg(t)).OverallBudget()
+	if want := 1254 * time.Second; got != want || warn != "" {
+		t.Errorf("OverallBudget = %s warn=%q, want exactly %s (vet+typecheck+lint+test+allowances+10%% slack)", got, warn, want)
+	}
+}
+
+// The slack floor is 60s when 10% of the sum is smaller than that.
+func TestOverallBudgetSlackFloorIsSixtySeconds(t *testing.T) {
+	t.Parallel()
+	cfg := exactBudgetCfg(t)
+	cfg.TypecheckEnabled = false
+	cfg.GraphFreshness = nil
+	cfg.AstGrepGate = nil
+	cfg.VetTimeout, cfg.LintTimeout, cfg.TestTimeout = 40*time.Second, 100*time.Second, 400*time.Second
+	// sum 540s; 10% = 54s < 60s, so the slack is the 60s floor: 600s, which
+	// is exactly the ten-minute floor. A slack of 54s would give 594s and the
+	// floor would lift it, so also check a sum just above the floor:
+	if got, _ := NewQualityGate(cfg).OverallBudget(); got != 10*time.Minute {
+		t.Errorf("OverallBudget = %s, want 10m for sum 540s", got)
+	}
+	cfg.TestTimeout = 410 * time.Second // sum 550s: 10% = 55s < 60s -> 610s
+	if got, _ := NewQualityGate(cfg).OverallBudget(); got != 610*time.Second {
+		t.Errorf("OverallBudget = %s, want 610s (sum 550s + the 60s slack floor)", got)
+	}
+}
+
+// The largest single step can be an axis other than test: a 2000s typecheck
+// makes a 1500s override too small, and the raise names the larger budget.
+func TestOverallBudgetLargestStepIsTheLargestAxis(t *testing.T) {
+	t.Parallel()
+	cfg := exactBudgetCfg(t)
+	cfg.TypecheckTimeout = 2000 * time.Second
+	cfg.TotalTimeout = 1500 * time.Second
+	got, warn := NewQualityGate(cfg).OverallBudget()
+	if got != 2000*time.Second {
+		t.Errorf("OverallBudget = %s, want the 2000s typecheck budget as the floor for an override", got)
+	}
+	if !strings.Contains(warn, "timeouts.total") || !strings.Contains(warn, "33m20s") {
+		t.Errorf("warning %q should name timeouts.total and the 33m20s (2000s) step", warn)
+	}
+}
+
+// An override at or above the largest step but below the derived budget wins
+// as given: it is the operator's choice, not clamped up to the derivation.
+func TestOverallBudgetOverrideBetweenLargestStepAndDerivedWins(t *testing.T) {
+	t.Parallel()
+	cfg := exactBudgetCfg(t)
+	cfg.TotalTimeout = 1100 * time.Second // largest 1000s <= 1100s < derived 1254s
+	got, warn := NewQualityGate(cfg).OverallBudget()
+	if got != 1100*time.Second || warn != "" {
+		t.Errorf("OverallBudget = %s warn=%q, want exactly the 1100s override and no warning", got, warn)
+	}
+}

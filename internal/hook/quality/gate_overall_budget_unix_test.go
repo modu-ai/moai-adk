@@ -20,7 +20,9 @@ func TestOverallBudgetDisabledGateDoesNotReadManifests(t *testing.T) {
 	}
 	t.Cleanup(func() {
 		// Unblock a reader stuck in open(2) so a failing run does not leak it.
-		if f, err := os.OpenFile(fifo, os.O_WRONLY, 0); err == nil {
+		// O_RDWR never blocks on a FIFO, even when no reader is waiting (a
+		// plain O_WRONLY open would hang the cleanup of a passing run).
+		if f, err := os.OpenFile(fifo, os.O_RDWR, 0); err == nil {
 			_ = f.Close()
 		}
 	})
