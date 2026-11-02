@@ -13,6 +13,11 @@ import (
 	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
+// ASSUMPTION: the queue item is taken to stay `picked` after the PR-opening
+// step. That was read from factory_card_pr.go (the PR edge writes no queue
+// state) and NOT traced across every closure path; a path that moves the item
+// elsewhere would make the nominated lease refuse the owner on the queue-state
+// check before the record is consulted.
 func prOpenRepairSetup(t *testing.T) reacqFixture {
 	t.Helper()
 	root, store := nmBase(t, factory.BacklogStatePicked)
