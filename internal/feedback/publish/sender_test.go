@@ -682,7 +682,24 @@ func TestRecordedSendIsReconciledNotResent(t *testing.T) {
 // Send return after ~1.22s at the gate. The whole flush honors its
 // deadline: the result saves select on the caller's context like every
 // other lock wait.
+//
+// The verdict is ORDER-based, not a wall-clock bound (card t2004, main-side
+// test hardening): the earlier form asserted "returns within 700ms", and a
+// starved -race runner stretched the lock-independent work in front of the
+// contended save (revalidate, history reads, outbox append) past that bound
+// without any deadline being ignored. Here the live holder lets go a fixed
+// interval AFTER the deadline fires. A Send that honors the deadline has
+// already given the save up (ClaimSection checks ctx.Err() before every
+// attempt), so the item is still queued; a Send that ignores it keeps polling
+// the lock, takes it once released, and the item is gone. The outcome depends
+// on "deadline before release", never on how fast Send runs; the watchdog only
+// bounds a hang.
 func TestSendHonorsDeadlineOnResultSaves(t *testing.T) {
+	const (
+		deadline             = 200 * time.Millisecond
+		releaseAfterDeadline = 150 * time.Millisecond // far under the 1s lock budget a deadline-ignoring save would still be polling
+		sendWatchdog         = 10 * time.Second
+	)
 	consentOn(t)
 	_, item := payloadFixture(t)
 	seedQueue(t, item)
@@ -693,15 +710,34 @@ func TestSendHonorsDeadlineOnResultSaves(t *testing.T) {
 	if err != nil {
 		t.Fatalf("claim the live holder lock: %v", err)
 	}
-	defer func() { _ = release() }()
 
 	stub := newStubRunner(true)
-	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), deadline)
 	defer cancel()
-	start := time.Now()
-	_ = NewSender(stub).Send(ctx)
-	if elapsed := time.Since(start); elapsed > 700*time.Millisecond {
-		t.Fatalf("a 200ms-deadline Send ran %s on a contended result save — the deadline was not honored", elapsed)
+
+	// The holder lets go releaseAfterDeadline AFTER the deadline fires.
+	released := make(chan struct{})
+	go func() {
+		defer close(released)
+		<-ctx.Done()
+		time.Sleep(releaseAfterDeadline)
+		_ = release()
+	}()
+	defer func() { <-released }()
+
+	sendDone := make(chan struct{})
+	go func() {
+		defer close(sendDone)
+		_ = NewSender(stub).Send(ctx)
+	}()
+	select {
+	case <-sendDone:
+	case <-time.After(sendWatchdog):
+		t.Fatalf("Send did not return within %s of a %s deadline on a contended result save — it is stuck waiting", sendWatchdog, deadline)
+	}
+
+	if rest := queuedItems(t); len(rest) != 1 {
+		t.Fatalf("the contended result save outlived the %s deadline and landed after the lock was released (queue now holds %d items, want the 1 unsaved item) — the save did not honor the caller's context", deadline, len(rest))
 	}
 }
 
