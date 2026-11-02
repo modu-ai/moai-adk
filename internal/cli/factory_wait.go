@@ -115,7 +115,7 @@ func factoryWaitDisplay(stored string) (reason, missing string) {
 }
 
 func newFactoryWaitCommand() *cobra.Command {
-	var on, waker, reason, actor, scope, next string
+	var on, waker, reason, actor, scope, next, ack string
 	var operator bool
 	cmd := &cobra.Command{
 		Use:   "wait <card>",
@@ -125,6 +125,14 @@ func newFactoryWaitCommand() *cobra.Command {
 			ctx := cmd.Context()
 			if ctx == nil {
 				ctx = context.Background()
+			}
+			if cmd.Flags().Changed("ack") {
+				for _, f := range []string{"on", "operator", "waker", "reason", "scope", "next"} {
+					if cmd.Flags().Changed(f) {
+						return fmt.Errorf("factory wait: --ack records a wake event and cannot be combined with --%s", f)
+					}
+				}
+				return factoryAckWake(ctx, cmd.OutOrStdout(), factoryCardRoot(), args[0], ack, actor)
 			}
 			var scopeArg *string
 			if cmd.Flags().Changed("scope") {
@@ -144,7 +152,42 @@ func newFactoryWaitCommand() *cobra.Command {
 	cmd.Flags().StringVar(&actor, "actor", "", "who records the wait")
 	cmd.Flags().StringVar(&scope, "scope", "", "the refused operation, path, or permission that caused the wait (one line)")
 	cmd.Flags().StringVar(&next, "next", "", "the event that triggers the next check of this wait (one line)")
+	cmd.Flags().StringVar(&ack, "ack", "", "record the waker's wake event instead of a wait: received (acknowledged) or started (began the work); each is recorded once, in order")
 	return cmd
+}
+
+// factoryAckWake records the received or started event of the card's most
+// recent delivered wait. Delivery itself is written by the landing edge. An
+// event recorded out of order is refused and writes nothing.
+func factoryAckWake(ctx context.Context, out io.Writer, root, cardID, phase, actor string) error {
+	if phase != homestate.WakeReceived && phase != homestate.WakeStarted {
+		return fmt.Errorf("factory wait: --ack takes %s or %s, got %q (delivery is recorded by the landing edge)", homestate.WakeReceived, homestate.WakeStarted, phase)
+	}
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		return fmt.Errorf("factory wait: %w", err)
+	}
+	defer func() { _ = db.Close() }()
+	waits, err := db.LoadCardWaits(ctx, cardID)
+	if err != nil {
+		return fmt.Errorf("factory wait: %w", err)
+	}
+	if len(waits) == 0 {
+		return fmt.Errorf("factory wait: card %s has no recorded wait to acknowledge", cardID)
+	}
+	// The wake the waker acknowledges is the card's latest wait; an undelivered
+	// one is refused by the ordering rule below with the delivered reason.
+	w := waits[len(waits)-1]
+	recorded, err := db.RecordWakeEvent(ctx, w.Seq, phase, actor, factoryCardNow())
+	if err != nil {
+		return fmt.Errorf("factory wait: %w", err)
+	}
+	if !recorded {
+		_, _ = fmt.Fprintf(out, "wake %s already recorded: card=%s wait=%d\n", phase, cardID, w.Seq)
+		return nil
+	}
+	_, _ = fmt.Fprintf(out, "wake %s recorded: card=%s wait=%d\n", phase, cardID, w.Seq)
+	return nil
 }
 
 // factoryRecordWait records one wait for cardID. With --on empty and no

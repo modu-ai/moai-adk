@@ -23,6 +23,20 @@ const (
 	WakeStarted   = "started"
 )
 
+// ErrWakeOutOfOrder reports a wake event recorded before the event it follows.
+var ErrWakeOutOfOrder = errors.New("wake event out of order")
+
+// wakePredecessor names the phase that must be recorded before phase.
+func wakePredecessor(phase string) string {
+	switch phase {
+	case WakeReceived:
+		return WakeDelivered
+	case WakeStarted:
+		return WakeReceived
+	}
+	return ""
+}
+
 // WakeState reports which of the three wake events a wait has recorded.
 type WakeState struct{ Delivered, Received, Started bool }
 
@@ -82,6 +96,18 @@ func (f *FactoryDB) RecordWakeEvent(ctx context.Context, waitSeq int64, phase, a
 		}
 		if seen {
 			return nil
+		}
+		// The events are ordered: received needs delivered, started needs
+		// received. A refused event writes nothing.
+		if need := wakePredecessor(phase); need != "" {
+			prior, _ := wakeKind(need)
+			ok, err := wakeRecorded(ctx, tx, waitSeq, prior)
+			if err != nil {
+				return err
+			}
+			if !ok {
+				return fmt.Errorf("%w: wake %s cannot be recorded for wait %d before %s", ErrWakeOutOfOrder, phase, waitSeq, need)
+			}
 		}
 		if err := appendEvent(ctx, tx, "", kind, map[string]any{"wait_seq": waitSeq, "card_id": cardID, "actor": actor}, now); err != nil {
 			return err
