@@ -105,3 +105,31 @@ func TestBranchGuardExplicitTargetUnchangedForeignForms(t *testing.T) {
 		}
 	}
 }
+
+// TestBranchGuardExplicitTargetNotAdoptedWhenLaterSegmentRedirects pins the
+// can-only-deny promise of the fallback: a leading `cd <abs> &&` is the git
+// target only when nothing after it can change the directory or the
+// repository. From the primary checkout on main, every redirected form below
+// must stay denied (the hook-cwd judgment), as it was before the explicit
+// target judgment existed.
+func TestBranchGuardExplicitTargetNotAdoptedWhenLaterSegmentRedirects(t *testing.T) {
+	t.Setenv(branchGuardExemptEnv, "")
+	fx := newAFFGuardFixture(t)
+	handler := newTargetGuardHandler(fx)
+
+	for _, command := range []string{
+		"cd " + fx.release + " && cd " + fx.primary + " && git commit -m x",
+		"cd " + fx.release + " && GIT_DIR=" + fx.primary + "/.git git commit -m x",
+		"cd " + fx.release + " && GIT_WORK_TREE=" + fx.primary + " git commit -m x",
+		"cd " + fx.release + " && pushd " + fx.primary + " && git commit -m x",
+		"cd " + fx.release + " && (cd " + fx.primary + " && git commit -m x)",
+		"cd " + fx.release + " && git --git-dir=" + fx.primary + "/.git commit -m x",
+		"cd " + fx.release + " && git --work-tree=" + fx.primary + " commit -m x",
+		"git -C " + fx.release + " -C " + fx.primary + " commit -m x",
+	} {
+		decision, reason := affObserve(t, handler, fx.primary, command)
+		if decision != DecisionDeny || !strings.HasPrefix(reason, branchGuardViolationPrefix+":") {
+			t.Errorf("%q from the primary cwd = %q / %q, want deny with the sentinel (a later segment redirects, so the explicit target must not be adopted)", command, decision, reason)
+		}
+	}
+}
