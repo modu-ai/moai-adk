@@ -23,12 +23,14 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/auditreceipt"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
+	"github.com/modu-ai/moai-adk/internal/factorylane"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/verify"
 )
@@ -303,6 +305,80 @@ func TestAFFS2CompleteConflictHoldsReleasesAndCleans(t *testing.T) {
 	}
 	affs2WindowReleased(t, f, "after the diverged release branch")
 	affs2Untouched(t, f, "after the diverged release branch")
+}
+
+// (c, real conflict) The test above stops at a pre-merge gate (the release tip
+// moved before complete began), so it never reaches git's own conflict. This one
+// does: the release tip is moved by a commit that lands after the merge step's
+// last tip re-read and immediately before its `git merge` (the merge-step Git
+// seam, installed through factoryCompleteMergeSeamsHook), editing the same line
+// the card edited. Git stops the merge at a real conflict, the step aborts it,
+// and complete records the stop as a merge-conflict hold naming the diverged path.
+func TestAFFS2CompleteRealMergeConflictHoldsAbortsAndReleases(t *testing.T) {
+	f := affs2New(t, affs2Opts{})
+	real := factorylane.ExecGitRunner{Dir: f.relWT}
+	var relMoved, mergeOut string
+	var mergeErr error
+	factoryCompleteMergeSeamsHook = func(s *factory.MergeStepSeams) {
+		s.Git = func(args ...string) (string, error) {
+			isMerge := len(args) >= 1 && args[0] == "merge" && !slices.Contains(args, "--abort")
+			if isMerge && relMoved == "" {
+				affs2Write(t, filepath.Join(f.relWT, "base.txt"), "line1\nrelease line2\nline3\n")
+				affs2Git(t, f.relWT, "add", "base.txt")
+				affs2Git(t, f.relWT, "commit", "-q", "-m", "release edits line2 after the gates")
+				relMoved = affs2Git(t, f.relWT, "rev-parse", "HEAD")
+			}
+			out, err := real.Git(args...)
+			if isMerge {
+				mergeOut, mergeErr = out, err
+			}
+			return out, err
+		}
+	}
+	t.Cleanup(func() { factoryCompleteMergeSeamsHook = nil })
+
+	_, _, err := runFactory(t, "complete", "t1", "--run", fcRun)
+	if err == nil {
+		t.Fatal("complete succeeded although the release branch gained a conflicting commit")
+	}
+	var coded *exitCodeError
+	if !errors.As(err, &coded) || coded.code != factory.MergeExitMergeFailed {
+		t.Fatalf("complete error = %v, want the merge-failed exit code %d", err, factory.MergeExitMergeFailed)
+	}
+
+	// The stop was git's own conflict, not a gate.
+	var exit *factorylane.GitExitError
+	if !errors.As(mergeErr, &exit) || exit.ExitCode != 1 || !strings.Contains(mergeOut+exit.Stdout+exit.Stderr, "CONFLICT") {
+		t.Fatalf("the merge call = (%q, %v), want git exit 1 reporting a CONFLICT", mergeOut, mergeErr)
+	}
+	if relMoved == "" || relMoved == f.relBefore {
+		t.Fatalf("the release tip never moved before the merge (before %s, moved %s)", f.relBefore, relMoved)
+	}
+
+	if got := affs2Git(t, f.relWT, "rev-parse", "HEAD"); got != relMoved {
+		t.Errorf("release branch moved %s -> %s although the merge failed", relMoved, got)
+	}
+	if out := affs2Git(t, f.relWT, "status", "--porcelain"); out != "" {
+		t.Errorf("release worktree not clean after the abort:\n%s", out)
+	}
+	merge := exec.Command("git", "-C", f.relWT, "rev-parse", "-q", "--verify", "MERGE_HEAD")
+	if out, mergeHeadErr := merge.Output(); mergeHeadErr == nil || strings.TrimSpace(string(out)) != "" {
+		t.Errorf("MERGE_HEAD exists in the release worktree: %q (err %v)", out, mergeHeadErr)
+	}
+	if c := fcCard(t, f.root, "t1"); c.State != homestate.CardMergeReady || c.Version != 1 {
+		t.Errorf("card = %s v%d, want merge-ready v1", c.State, c.Version)
+	}
+	holds := affs2Holds(t, f.root)
+	if len(holds) != 1 {
+		t.Fatalf("hold records = %d, want 1: %v", len(holds), holds)
+	}
+	h := holds[0]
+	paths, _ := h["conflict_paths"].([]any)
+	if h["reason"] != "merge-conflict" || h["card_head"] != f.cardHead || len(paths) != 1 || paths[0] != "base.txt" {
+		t.Errorf("hold = %v, want reason merge-conflict, card_head %s and conflict_paths [base.txt]", h, f.cardHead)
+	}
+	affs2WindowReleased(t, f, "after the real merge conflict")
+	affs2Untouched(t, f, "after the real merge conflict")
 }
 
 // (d) The same card HEAD completed twice merges once.
