@@ -289,34 +289,42 @@ case "$sub" in
     ;;
   "run list")
     shift 2
-    commit=""; event=""; jqexpr="."; fields=""
+    commit=""; event=""; jqexpr="."; fields=""; repo=""
     while [ $# -gt 0 ]; do
       case "$1" in
         --commit|-c) commit="$2"; shift 2 ;;
         --event|-e) event="$2"; shift 2 ;;
         --jq|-q) jqexpr="$2"; shift 2 ;;
         --json) fields="$2"; shift 2 ;;
+        --repo|-R) repo="$2"; shift 2 ;;
         *) shift ;;
       esac
     done
+    # The repository gh reads: --repo, else GH_REPO, else the project's own. Any
+    # other repository answers from the fork's canned data (card t2012, F5).
+    runs_file="${GH_STUB_RUNS:?}"
+    if [ "${repo:-${GH_REPO:-modu-ai/moai-adk}}" != "modu-ai/moai-adk" ]; then runs_file="${GH_STUB_FORK_RUNS:?}"; fi
     jq -c --arg c "$commit" --arg e "$event" --arg f "$fields" '
       [ .[]
         | select(($c == "" or .headSha == $c) and ($e == "" or .event == $e))
-        | with_entries(select(.key as $k | ($f | split(",")) | index($k))) ]' "${GH_STUB_RUNS:?}" | jq -r "$jqexpr"
+        | with_entries(select(.key as $k | ($f | split(",")) | index($k))) ]' "$runs_file" | jq -r "$jqexpr"
     exit 0
     ;;
   "run view")
     id="$3"
     shift 3
-    jqexpr="."; fields=""
+    jqexpr="."; fields=""; repo=""
     while [ $# -gt 0 ]; do
       case "$1" in
         --jq|-q) jqexpr="$2"; shift 2 ;;
         --json) fields="$2"; shift 2 ;;
+        --repo|-R) repo="$2"; shift 2 ;;
         *) shift ;;
       esac
     done
-    f="${GH_STUB_JOBS_DIR:?}/${id}.json"
+    jobs_dir="${GH_STUB_JOBS_DIR:?}"
+    if [ "${repo:-${GH_REPO:-modu-ai/moai-adk}}" != "modu-ai/moai-adk" ]; then jobs_dir="${GH_STUB_FORK_JOBS_DIR:?}"; fi
+    f="${jobs_dir}/${id}.json"
     [ -f "$f" ] || { echo "gh stub: no jobs file for run ${id}" >&2; exit 1; }
     jq -c --arg f "$fields" 'with_entries(select(.key as $k | ($f | split(",")) | index($k)))' "$f" | jq -r "$jqexpr"
     exit 0
