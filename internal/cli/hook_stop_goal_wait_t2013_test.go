@@ -127,6 +127,30 @@ func TestStopGoalWait_OpenWaitWithNextEventDoesNotBlock(t *testing.T) {
 	}
 }
 
+// (7c) The read-only lookup works while another process holds the database
+// open for writing, the situation a running factory is in.
+func TestStopGoalWait_ReadsWhileAWriterHoldsTheDatabase(t *testing.T) {
+	e := newStopWaitEnv(t)
+	next := "operator ruling arrives"
+	reason, _ := factoryWaitReason("needs the ruling", nil, &next)
+	e.seedCard(t, operatorWait(reason))
+	e.armModelGoal(t)
+	writer, err := homestate.OpenFactory(factoryRootOf(e.root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = writer.Close() }()
+	if _, err := writer.DB.Exec(`BEGIN IMMEDIATE`); err != nil {
+		t.Fatalf("hold a write lock: %v", err)
+	}
+	defer func() { _, _ = writer.DB.Exec(`ROLLBACK`) }()
+
+	stdout, stderr := driveStopGoalStreams(t, e.hookInput(true))
+	if strings.Contains(stdout, "block") {
+		t.Fatalf("a live writer must not defeat the read-only lookup, stdout=%q stderr=%q", stdout, stderr)
+	}
+}
+
 // (7b) A scope tag in front of the next tag is read the same way.
 func TestStopGoalWait_ScopeThenNextIsValid(t *testing.T) {
 	e := newStopWaitEnv(t)
@@ -215,14 +239,18 @@ func TestStopGoalWait_WokenOrAbsentWaitBlocks(t *testing.T) {
 	})
 }
 
-// (10) A hook input without a cwd cannot resolve a card: the goal blocks as
-// before and the skipped lookup is named on stderr.
+// (10) A hook input that carries no cwd cannot resolve a card: the goal blocks
+// as before and the skipped lookup is named on stderr. The hook protocol fills
+// an absent cwd from CLAUDE_PROJECT_DIR, so the truly cwd-less input is one with
+// neither: the project root then falls back to the process directory.
 func TestStopGoalWait_NoCwdBlocksAndSaysSo(t *testing.T) {
 	e := newStopWaitEnv(t)
 	next := "operator ruling arrives"
 	reason, _ := factoryWaitReason("needs the ruling", nil, &next)
 	e.seedCard(t, operatorWait(reason))
 	e.armModelGoal(t)
+	t.Setenv(config.EnvClaudeProjectDir, "")
+	t.Chdir(e.root)
 	stdout, stderr := driveStopGoalStreams(t, e.hookInput(false))
 	assertBlocked(t, stdout)
 	if !strings.Contains(stderr, "stop-goal: wait lookup skipped (no cwd in hook input)") {
@@ -230,6 +258,22 @@ func TestStopGoalWait_NoCwdBlocksAndSaysSo(t *testing.T) {
 	}
 	if strings.Contains(stdout, "skipped") {
 		t.Errorf("the diagnostic must stay off stdout: %q", stdout)
+	}
+}
+
+// (10b) With CLAUDE_PROJECT_DIR set, the protocol fills the absent cwd from it;
+// a session standing in the project root is not inside a card worktree, so the
+// goal blocks and the lookup says why.
+func TestStopGoalWait_ProjectDirFallbackIsNotACardWorktree(t *testing.T) {
+	e := newStopWaitEnv(t)
+	next := "operator ruling arrives"
+	reason, _ := factoryWaitReason("needs the ruling", nil, &next)
+	e.seedCard(t, operatorWait(reason))
+	e.armModelGoal(t)
+	stdout, stderr := driveStopGoalStreams(t, e.hookInput(false))
+	assertBlocked(t, stdout)
+	if !strings.Contains(stderr, "stop-goal: wait lookup skipped (cwd is not inside a recorded card worktree)") {
+		t.Errorf("stderr lacks the not-a-card-worktree line: %q", stderr)
 	}
 }
 
