@@ -1663,6 +1663,28 @@ func factoryNextClaim(ctx context.Context, db *homestate.FactoryDB, root, runID 
 	return leased, true, false, nil
 }
 
+// factoryNextReacquire is the owner's re-lease of its own expired leased card
+// (card t2013), the claim of a nominee marked reacquire: the expiry return and
+// the new lease commit in one record transaction (ReacquireExpiredLease), with
+// the queue's dispatch record following inside it exactly as for T2/T3. A row
+// that stopped being reacquirable between the read and the write is a race to
+// re-select, not an error. Record only — the card's worktree is never touched.
+func factoryNextReacquire(ctx context.Context, db *homestate.FactoryDB, root, runID, lane string, cur homestate.Card) (homestate.Card, bool, bool, error) {
+	ctx, cancel := factoryClaimContext(ctx)
+	defer cancel()
+	followRecord := func(next homestate.Card) error {
+		return todoStoreAt(root).RefreshDispatchCurrentLockHeld(next.CardID, runID, next.OwnerLabel)
+	}
+	card, reacquired, err := db.ReacquireExpiredLease(ctx, runID, cur.CardID, lane, factoryCardNow(), followRecord)
+	if err != nil {
+		return factoryNextClaimRefused(factoryClaimFailure(ctx, err))
+	}
+	if !reacquired {
+		return homestate.Card{}, false, true, nil
+	}
+	return card, true, false, nil
+}
+
 // factoryNextClaimRefused maps a claim refusal: a stale version or a holder
 // mismatch is a race to retry; anything else is a real error.
 func factoryNextClaimRefused(err error) (homestate.Card, bool, bool, error) {
@@ -1964,6 +1986,10 @@ type factoryNominee struct {
 	item       factory.BacklogItem
 	row        *homestate.Card // nil when the factory record has no row for the card
 	serialHeld bool
+	// reacquire marks the one shape a leased row is leasable in: the registered
+	// owner nominating its own card whose lease has expired (card t2013). The
+	// claim then applies the expiry and re-leases in one transaction.
+	reacquire bool
 }
 
 // factoryNextValidate is step 1 of the nominated lease: one pure queue read
@@ -2008,6 +2034,15 @@ func factoryNextValidate(ctx context.Context, l *factory.LockedBacklog, db *home
 	// refused the one lease a lane was dispatched to run). A nomination of a
 	// card NOT assigned to this lane is a NEW card and still passes false.
 	assignedHere := nom.row != nil && nom.row.State == homestate.CardAssigned && nom.row.OwnerLabel == lane
+	// The owner's own expired lease (card t2013) is arm (a) after the expiry the
+	// claim applies: it is judged as the `assigned` row it is about to become.
+	refusalRow := nom.row
+	if nom.row != nil && homestate.IsReacquirableExpiredLease(*nom.row, lane, now) {
+		nom.reacquire, assignedHere = true, true
+		assigned := *nom.row
+		assigned.State = homestate.CardAssigned
+		refusalRow = &assigned
+	}
 	// holderAlive (card t1828): the same generation-aware holder-liveness
 	// read the selection arms take — an expired lease of a live same-incarnation
 	// holder still holds the slot.
@@ -2025,7 +2060,7 @@ func factoryNextValidate(ctx context.Context, l *factory.LockedBacklog, db *home
 			}
 		}
 	}
-	if r := factoryKeepSetRefusal(nom.item, nom.row, lane, nom.serialHeld, serialHolder); r != nil {
+	if r := factoryKeepSetRefusal(nom.item, refusalRow, lane, nom.serialHeld, serialHolder); r != nil {
 		return nom, r, nil
 	}
 	// Another lane's bundle member is never a nominee (card t1454
@@ -2232,6 +2267,9 @@ func factoryNominateInSection(ctx context.Context, l *factory.LockedBacklog, db 
 func factoryNextNominatedClaim(ctx context.Context, db *homestate.FactoryDB, root, runID, lane string, nom factoryNominee, fields homestate.CardFields) (homestate.Card, bool, bool, error) {
 	if err := factoryNominateBeforeRecord(nom.item.ID); err != nil {
 		return homestate.Card{}, false, false, err
+	}
+	if nom.reacquire {
+		return factoryNextReacquire(ctx, db, root, runID, lane, *nom.row)
 	}
 	if nom.row != nil && nom.row.State == homestate.CardAssigned {
 		return factoryNextClaim(ctx, db, root, runID, *nom.row, lane)
