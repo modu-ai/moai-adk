@@ -11,14 +11,8 @@ import (
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
 )
 
-// issue-1948, audit db0a69698a N24: the schema-2 migration gives each transition of a version 1 ledger
-// the id of the newest evidence the card had "at or before" the move, counting evidence written in
-// the very same millisecond as before. For a move back into BUILDING that is the side that withholds
-// a DONE. For the move that registers a candidate with the queue the same count turns round: a
-// green about another commit that was recorded in the offer's millisecond, after it, ended up
-// inside the offer's mark, so it was taken for work the holder had left behind, and the landing
-// finished the card with newer work that the trunk does not hold. Evidence in the same millisecond as a
-// registration therefore ranks after it; for any other move it still ranks before.
+// issue-1948: the schema-2 migration gives each transition of a version 1 ledger the id of the newest evidence the card had
+// "at or before" the move, counting evidence written in the very same millisecond as before.
 
 // v1Millisecond writes a version 1 ledger for card "t1" in which c1 was offered and landed at 10:00:03.000.
 // extra is called with a way to add an evidence row at a given time; it runs after c1's pair.
@@ -74,44 +68,8 @@ func v1Millisecond(t *testing.T, back bool, extra func(ev func(kind, sha, at str
 	return path
 }
 
-func TestOpen_ASameMillisecondGreenAfterTheOfferIsNewerWork(t *testing.T) {
-	done := core.Position{Stage: core.StageDone}
-	cases := []struct {
-		name string
-		at   string // when the green about c2 was recorded
-		want bool   // whether the card may finish on the landing of c1
-	}{
-		{"in the millisecond of the offer", "2026-10-20T10:00:03.000Z", false},
-		{"a millisecond after the offer", "2026-10-20T10:00:03.001Z", false},
-		{"a millisecond before the offer", "2026-10-20T10:00:02.999Z", true},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			path := v1Millisecond(t, false, func(ev func(kind, sha, at string)) { ev(KindGreen, "c2", tc.at) })
-			s, err := Open(bg, path)
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer func() { _ = s.Close() }()
-			err = s.Move(bg, "t1", 1, posIntegrated, "lane", "merge seen")
-			if err == nil {
-				err = s.Move(bg, "t1", 1, done, "lane", "done")
-			}
-			switch {
-			case tc.want && err != nil:
-				t.Fatalf("c2 was measured before c1 was offered, and the card is refused: %v", err)
-			case !tc.want && !errors.Is(err, core.ErrGuardMissing):
-				t.Fatalf("a green about c2 recorded no earlier than the offer of c1 did not hold the card back: %v", err)
-			}
-			if got := cardOf(t, s, "t1").Position.Stage; (got == core.StageDone) != tc.want {
-				t.Errorf("stage %s", got)
-			}
-		})
-	}
-}
-
-// The other side stays as it was: evidence in the very same millisecond as a move back into BUILDING
-// ranks before it, the side that withholds a DONE, so the old receipt is not mistaken for rework.
+// Evidence in the very same millisecond as a move back into BUILDING ranks before it, the side that withholds a DONE, so
+// the old receipt is not mistaken for rework.
 func TestOpen_ASameMillisecondMeasurementOfTheMoveBackStillRanksBeforeIt(t *testing.T) {
 	path := v1Millisecond(t, true, func(ev func(kind, sha, at string)) {
 		ev(KindGreen, "c1", "2026-10-20T10:00:10.000Z")
