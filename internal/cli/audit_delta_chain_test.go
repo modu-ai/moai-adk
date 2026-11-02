@@ -17,7 +17,10 @@ package cli
 // Wire names the fixtures assume (confirmation argument, record keys) are
 // declared in audit_delta_chain_world_test.go.
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 // chainCall is the call every row starts from: the delta proposed from R1's
 // head with the confirmation naming B1 closed by k1.
@@ -328,4 +331,35 @@ func TestAEC001e_ChainIsReadFromServerWrittenStateOnly(t *testing.T) {
 		call.extra = map[string]any{"chain": forged, "records": forged, "second_review_records": forged}
 		wantScope(t, w.call(call), "")
 	})
+}
+
+// AC-AEC-001d (last sentence) — when the confirmation is complete, every leg's
+// request carries it. The carrier is the focus text each leg receives (the
+// existing argument, observable at the leg seam), and the caller's own focus is
+// kept. Ids inherited under REQ-AEC-004 (ii) may map to "": they are still
+// named. Today the legs get the caller's focus unchanged, so this fails on the
+// missing ids.
+func TestAEC001d_AdmittedDelta_EveryLegRequestCarriesTheConfirmation(t *testing.T) {
+	w := newAECWorld(t)
+	c := w.happyChain(aecChainOpts{f0Ids: []string{"B1", "B2"}})
+	w.verdictFile("sync-audit-1.md", c.h1, aecN(1), "B3")
+
+	out := w.call(aecCallOpts{
+		deltaBase: c.h1,
+		confirm:   aecClosure("B1", c.k1, "B2", "", "B3", c.k2),
+		focus:     "concurrency",
+	})
+	wantScope(t, out, c.h1) // control: the complete confirmation is admitted
+
+	for _, b := range []string{BackendCodex, BackendGLM} {
+		focus := out.focusSeen[b]
+		if !strings.Contains(focus, "concurrency") {
+			t.Errorf("leg %s lost the caller's own focus: %q", b, focus)
+		}
+		for _, want := range []string{"B1", "B2", "B3", c.k1, c.k2} {
+			if !strings.Contains(focus, want) {
+				t.Errorf("leg %s request does not carry %q of the confirmation; focus = %q", b, want, focus)
+			}
+		}
+	}
 }

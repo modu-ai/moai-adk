@@ -292,6 +292,7 @@ type aecCallOpts struct {
 	session   string
 	verdicts  map[string]string // backend -> verdict for the fake legs; default pass
 	noCard    bool              // omit card_id (the t1873 path)
+	focus     string            // the caller's own focus text
 }
 
 // aecOut is what one call showed: which legs ran, the delta base each saw on
@@ -299,6 +300,7 @@ type aecCallOpts struct {
 type aecOut struct {
 	ran       map[string]bool
 	deltaSeen map[string]string
+	focusSeen map[string]string // backend -> the focus text the leg received
 	raw       string
 	result    ConvergenceResult
 	isErr     bool
@@ -309,13 +311,14 @@ type aecOut struct {
 func (w *aecWorld) call(c aecCallOpts) aecOut {
 	w.t.Helper()
 	var mu sync.Mutex
-	out := aecOut{ran: map[string]bool{}, deltaSeen: map[string]string{}}
+	out := aecOut{ran: map[string]bool{}, deltaSeen: map[string]string{}, focusSeen: map[string]string{}}
 	prev := backendCall
-	backendCall = func(ctx context.Context, backend, _, _, _ string) ReviewOutput {
+	backendCall = func(ctx context.Context, backend, _, focus, _ string) ReviewOutput {
 		mu.Lock()
 		defer mu.Unlock()
 		out.ran[backend] = true
 		out.deltaSeen[backend] = deltaBaseFromContext(ctx)
+		out.focusSeen[backend] = focus
 		v := "pass"
 		if x, ok := c.verdicts[backend]; ok {
 			v = x
@@ -337,6 +340,9 @@ func (w *aecWorld) call(c aecCallOpts) aecOut {
 	}
 	if c.noCard {
 		delete(args, "card_id")
+	}
+	if c.focus != "" {
+		args["focus"] = c.focus
 	}
 	if c.deltaBase != "" {
 		args["delta_base"] = c.deltaBase
