@@ -729,9 +729,11 @@ func TestStage1_WindowsSizedByRequestNotBodyAlone(t *testing.T) {
 // P2 performance (card t1968 codex review, repair round): sortByScoreDesc
 // was a quadratic insertion sort, so the backfill leg of selectBlocks cost
 // O(n²) on large documents. selectBlocks must stay near n·log(n) as the
-// block count doubles: the growth ratio from n to 2n is bounded at 3.4 —
-// comfortably above n·log(n) (~2.2 from 8k to 16k) and comfortably below the
-// 4.0 a quadratic sort exhibits. The fixture is the insertion sort's worst
+// block count grows 4x: the growth ratio from n to 4n is bounded at
+// scalingMaxRatio (see selectBlocksGrowth) — above the stable sort's cost
+// (measured ~4.1 from 8k to 32k on this reversed input, max 4.40 over 12
+// samples under cpu load, -race) and below the 16 a quadratic sort exhibits
+// (a quadratic insertion-sort mutant measured 16.87 and failed). The fixture is the insertion sort's worst
 // case: one sole candidate (kept set under the 300-token backfill floor, so
 // the sort runs over the whole order) with the remaining blocks' stage-1
 // scores ASCENDING in document order — the reverse of the descending order
@@ -740,7 +742,7 @@ func TestSelectBlocks_BackfillSortScaling(t *testing.T) {
 	if testing.Short() {
 		t.Skip("timing-sensitive scaling guard")
 	}
-	run := func(n int) time.Duration {
+	build := func(n int) ([]Block, []blockScore) {
 		blocks := make([]Block, n)
 		scores := make([]blockScore, n)
 		for i := range blocks {
@@ -750,22 +752,12 @@ func TestSelectBlocks_BackfillSortScaling(t *testing.T) {
 		for i := 1; i < n; i++ {
 			scores[i] = blockScore{stage1: 0.1 + 0.4*float64(i)/float64(n)} // ascending, all sub-threshold
 		}
-		best := time.Duration(1 << 62)
-		for range 3 {
-			start := time.Now()
-			selectBlocks(blocks, scores)
-			if d := time.Since(start); d < best {
-				best = d
-			}
-		}
-		return best
+		return blocks, scores
 	}
-	t1 := run(8000)
-	t2 := run(16000)
-	ratio := float64(t2) / float64(t1)
-	if ratio > 3.4 {
-		t.Errorf("selectBlocks growth from 8k to 16k blocks: ratio %.2f (8k=%s, 16k=%s) — quadratic backfill sort; must stay near n·log(n) (~2.2)",
-			ratio, t1, t2)
+	ratio, t1, t2 := selectBlocksGrowth(build, 8000)
+	if ratio > scalingMaxRatio {
+		t.Errorf("selectBlocks growth from 8k to %dk blocks: ratio %.2f (8k=%s, large=%s) — quadratic backfill sort; must stay near n·log(n)",
+			8*scalingFactor, ratio, t1, t2)
 	}
 }
 
