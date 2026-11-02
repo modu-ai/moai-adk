@@ -279,7 +279,9 @@ func TestJournal_WriteErrorFailsTheRun(t *testing.T) {
 
 	out, err := m4RunMigrate(t, "--apply")
 	if err == nil {
-		t.Errorf("the apply exits 0 although every journal write failed; output:\n%s", out)
+		// Stop here: the check below reads err.Error(), and an apply that
+		// moved nothing (so no journal write ever failed) returns a nil err.
+		t.Fatalf("the apply exits 0 although every journal write failed; output:\n%s", out)
 	}
 	if !strings.Contains(out, "journal") && !strings.Contains(err.Error(), "journal") {
 		t.Errorf("the failure does not name the journal: %v", err)
