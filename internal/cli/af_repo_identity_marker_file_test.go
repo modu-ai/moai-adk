@@ -25,7 +25,7 @@ func TestAFIdentity_AMarkerFileThatHoldsNoMarkerIsARefusalNotAnAbsence(t *testin
 				t.Fatal(err)
 			}
 			before := afSnapshot(t, a.st)
-			for _, args := range [][]string{{"reap"}, {"add", "t9"}} {
+			for _, args := range [][]string{{"reap"}} {
 				out, err := a.run(args...)
 				if err == nil || !strings.Contains(err.Error(), "does not hold a repository marker") {
 					t.Errorf("moai af %s: %v %.200s, want a refusal that says the marker file holds no marker", args[0], err, out)

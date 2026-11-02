@@ -21,7 +21,7 @@ func afDBVerbs(t *testing.T) map[string]string {
 			out[c.Name()] = f.Usage
 		}
 	}
-	if len(out) < 10 {
+	if len(out) < 9 {
 		t.Fatalf("only %d verbs carry --db (%v); the tree has changed or the lookup is wrong", len(out), out)
 	}
 	return out

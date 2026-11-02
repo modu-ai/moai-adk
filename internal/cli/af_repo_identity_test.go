@@ -26,6 +26,7 @@ import (
 
 	_ "modernc.org/sqlite"
 
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/ledger"
 )
 
@@ -224,7 +225,7 @@ func TestAFIdentity_ARepositoryRecreatedAtTheSamePathIsNotTheOneTheLedgerBelongs
 	}
 	afGit(t, a.repo, "init", "-q", "-b", "work")
 	boundBefore, rowsBefore := a.bound(), afSnapshot(t, a.st)
-	for _, args := range [][]string{{"reap"}, {"add", "t9"}, {"land", "t1", "--gate", "true"}} {
+	for _, args := range [][]string{{"reap"}, {"land", "t1", "--gate", "true"}} {
 		out, err := a.run(args...)
 		if err == nil || !strings.Contains(err.Error()+out, "identity marker") {
 			t.Errorf("moai af %s: %v %.200s, want a refusal that names the identity marker", args[0], err, out)
@@ -294,8 +295,14 @@ func TestAFIdentity_N65ACloneBoundThroughALeaseNeedsADeclaration(t *testing.T) {
 	db := filepath.Join(t.TempDir(), "central", "ledger.db") // in no repository
 	nonrepo := t.TempDir()
 	t.Setenv("CLAUDE_PROJECT_DIR", nonrepo)
-	if out, errOut, err := afRunBoth("add", "t1", "--db", db, "--path", "a.txt", "--class", "A"); err != nil {
-		t.Fatalf("add: %v %s %s", err, out, errOut)
+	if seed, err := ledger.Open(context.Background(), db); err != nil {
+		t.Fatal(err)
+	} else {
+		err = seed.AddCard(context.Background(), ledger.Card{ID: "t1", Title: "t1", Position: core.Position{Stage: core.StageReady}, Spec: ledger.Spec{Class: "A", Paths: []string{"a.txt"}}})
+		_ = seed.Close()
+		if err != nil {
+			t.Fatalf("add the card: %v", err)
+		}
 	}
 	ep := afN49Claim(t, db, clone)
 	st, err := ledger.Open(context.Background(), db)
