@@ -270,8 +270,9 @@ func factoryHasGolangciConfig(dir string) bool {
 	return false
 }
 
-// factoryChangedGoPackages lists, as ./dir arguments, the existing Go package
-// directories the card changed since its merge base with releaseTip.
+// factoryChangedGoPackages lists, as ./dir arguments (or "." for the module
+// root), the Go package directories that own what the card changed since its
+// merge base with releaseTip.
 func factoryChangedGoPackages(cardTree, releaseTip string) []string {
 	if releaseTip == "" {
 		return nil
@@ -280,22 +281,62 @@ func factoryChangedGoPackages(cardTree, releaseTip string) []string {
 	if err != nil {
 		return nil
 	}
+	return factoryOwningGoPackages(cardTree, strings.Fields(out))
+}
+
+// factoryOwningGoPackages maps each changed path (relative to cardTree) to the
+// nearest ancestor directory holding at least one .go file, walking up from the
+// path's directory to the module root. A testdata fixture or a go:embed asset
+// therefore selects the package that owns it; testdata directories are never
+// packages themselves; a deleted path whose directory vanished selects its
+// nearest existing ancestor. The module root is selected (as ".") only when it
+// holds .go files. A pure function of the path list and the tree's directories.
+func factoryOwningGoPackages(cardTree string, changed []string) []string {
 	seen := map[string]bool{}
 	var pkgs []string
-	for _, p := range strings.Fields(out) {
-		if !strings.HasSuffix(p, ".go") || strings.Contains("/"+p, "/testdata/") {
+	for _, p := range changed {
+		if !filepath.IsLocal(p) {
 			continue
 		}
-		dir := filepath.Dir(p)
-		if seen[dir] {
-			continue
+		for dir := filepath.Dir(p); ; {
+			if !factoryInTestdata(dir) && factoryDirHasGoFiles(filepath.Join(cardTree, dir)) {
+				arg := "."
+				if dir != "." {
+					arg = "./" + filepath.ToSlash(dir)
+				}
+				if !seen[arg] {
+					seen[arg] = true
+					pkgs = append(pkgs, arg)
+				}
+				break
+			}
+			parent := filepath.Dir(dir)
+			if parent == dir {
+				break
+			}
+			dir = parent
 		}
-		seen[dir] = true
-		if info, statErr := os.Stat(filepath.Join(cardTree, dir)); statErr != nil || !info.IsDir() {
-			continue
-		}
-		pkgs = append(pkgs, "./"+filepath.ToSlash(dir))
 	}
 	sort.Strings(pkgs)
 	return pkgs
+}
+
+// factoryInTestdata reports whether the slash-relative dir sits in or under a
+// testdata directory.
+func factoryInTestdata(dir string) bool {
+	return strings.Contains("/"+filepath.ToSlash(dir)+"/", "/testdata/")
+}
+
+// factoryDirHasGoFiles reports whether dir exists and directly holds a .go file.
+func factoryDirHasGoFiles(dir string) bool {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return false
+	}
+	for _, e := range entries {
+		if !e.IsDir() && strings.HasSuffix(e.Name(), ".go") {
+			return true
+		}
+	}
+	return false
 }
