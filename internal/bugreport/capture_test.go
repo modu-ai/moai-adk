@@ -196,12 +196,21 @@ func TestCaptureSpoolsMoaiAndAmbiguous(t *testing.T) {
 	prev := spoolAppendFn
 	t.Cleanup(func() { spoolAppendFn = prev })
 	release := make(chan struct{})
+	written := make(chan struct{})
 	spoolAppendFn = func(e SpoolEntry) error {
 		<-release // the write lands only after Capture has returned
+		defer close(written)
 		return appendSpoolLine(e)
 	}
 	Capture(KindHookTimeout, errors.New("deadline"), "", nil)
 	close(release)
+	// Capture is time-boxed and may return before the worker writes, so wait
+	// for the write itself rather than racing the box.
+	select {
+	case <-written:
+	case <-time.After(2 * time.Second):
+		t.Fatal("spool write did not complete within 2s")
+	}
 	if got := spoolLineCount(t, path); got != 1 {
 		t.Fatalf("ambiguous capture spooled %d line(s), want 1", got)
 	}
