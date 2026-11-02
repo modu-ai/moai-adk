@@ -24,6 +24,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -239,7 +240,8 @@ type Receipt struct {
 // @MX:ANCHOR: [AUTO] tree-state binding seam; feeds every receipt write and the reuse check
 // @MX:REASON: the binding's honesty rests on this one derivation — a digest that misses the judged state would forge freshness
 var TreeState = func(treeRoot string) (head, digest string, err error) {
-	return computeTreeState(treeRoot, true)
+	head, digest, _, err = computeTreeState(treeRoot)
+	return head, digest, err
 }
 
 // UncommittedState returns the digest of the working-tree state OUTSIDE the head
@@ -250,21 +252,22 @@ var TreeState = func(treeRoot string) (head, digest string, err error) {
 // one the receipt judged when the head has moved. It is a var so tests stub the git
 // reads, as TreeState is.
 var UncommittedState = func(treeRoot string) (string, error) {
-	_, digest, err := computeTreeState(treeRoot, false)
-	return digest, err
+	_, _, unbound, err := computeTreeState(treeRoot)
+	return unbound, err
 }
 
-// computeTreeState is the one derivation behind TreeState and UncommittedState. With
-// bindHead the digest stream begins with the head line, byte for byte as it always
-// did — the digest format of the TreeState seam does not change; without it, the
-// same stream starts at the status rows.
-func computeTreeState(treeRoot string, bindHead bool) (head, digest string, err error) {
+// computeTreeState is the one derivation behind TreeState and UncommittedState: one
+// pass over the git reads feeds two digests. The head-bound digest stream begins
+// with the head line, byte for byte as it always did — the digest format of the
+// TreeState seam does not change; the head-free one is the same stream from the
+// status rows on.
+func computeTreeState(treeRoot string) (head, bound, unbound string, err error) {
 	if strings.TrimSpace(treeRoot) == "" {
-		return "", "", nil
+		return "", "", "", nil
 	}
 	headOut, err := gitIn(treeRoot, "rev-parse", "HEAD")
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 	// Card t1632 sync-audit F3: NUL-delimited reads — `git status --porcelain`
 	// C-quotes non-ASCII filenames and the line parser misreads them, so a
@@ -272,18 +275,16 @@ func computeTreeState(treeRoot string, bindHead bool) (head, digest string, err 
 	// rows with no quoting.
 	statusOut, err := gitIn(treeRoot, "status", "--porcelain", "-z")
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 	diffOut, err := gitIn(treeRoot, "diff", "HEAD")
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
-	h := sha256.New()
-	if bindHead {
-		_, _ = fmt.Fprintf(h, "head:%s\x00status\x00%s\x00diff\x00%s", headOut, statusOut, diffOut)
-	} else {
-		_, _ = fmt.Fprintf(h, "status\x00%s\x00diff\x00%s", statusOut, diffOut)
-	}
+	hBound, hUnbound := sha256.New(), sha256.New()
+	_, _ = fmt.Fprintf(hBound, "head:%s\x00status\x00%s\x00diff\x00%s", headOut, statusOut, diffOut)
+	_, _ = fmt.Fprintf(hUnbound, "status\x00%s\x00diff\x00%s", statusOut, diffOut)
+	h := io.MultiWriter(hBound, hUnbound)
 	for _, f := range untrackedContentPaths(treeRoot) {
 		full := filepath.Join(treeRoot, f)
 		// l57-r5 finding 2: the digest binds the Lstat METADATA beside the
@@ -293,7 +294,7 @@ func computeTreeState(treeRoot string, bindHead bool) (head, digest string, err 
 		// are not the link's own state.
 		info, lerr := os.Lstat(full)
 		if lerr != nil {
-			return "", "", lerr
+			return "", "", "", lerr
 		}
 		_, _ = fmt.Fprintf(h, "\x00untracked:%s\x00mode:%d", f, uint32(info.Mode()))
 		// l57-r6 finding 1: a symlink is bound as a LINK — the Readlink target
@@ -308,7 +309,7 @@ func computeTreeState(treeRoot string, bindHead bool) (head, digest string, err 
 		if info.Mode()&os.ModeSymlink != 0 {
 			target, lerr := os.Readlink(full)
 			if lerr != nil {
-				return "", "", lerr
+				return "", "", "", lerr
 			}
 			_, _ = fmt.Fprintf(h, "\x00link:%s", target)
 			continue
@@ -327,7 +328,7 @@ func computeTreeState(treeRoot string, bindHead bool) (head, digest string, err 
 		}
 		data, rerr := os.ReadFile(full)
 		if rerr != nil {
-			return "", "", rerr
+			return "", "", "", rerr
 		}
 		// l57-r7 finding 1: the content is LENGTH-FRAMED. Unframed, a file's
 		// content bytes could masquerade as the framing of a phantom entry —
@@ -362,7 +363,7 @@ func computeTreeState(treeRoot string, bindHead bool) (head, digest string, err 
 		}
 		_, _ = fmt.Fprintf(h, "\x00submodule:%s\x00head:%s\x00status\x00%s\x00diff\x00%s", link.path, subHead, subStatus, subDiff)
 	}
-	return headOut, hex.EncodeToString(h.Sum(nil)), nil
+	return headOut, hex.EncodeToString(hBound.Sum(nil)), hex.EncodeToString(hUnbound.Sum(nil)), nil
 }
 
 // submoduleLink is one gitlink entry of the parent index: the submodule's path
@@ -1262,10 +1263,10 @@ func WriteReceipt(treeRoot string, r *Receipt) (string, error) {
 		// names: a caller that captured the binding before the audit ran passes it
 		// in, and a tree edited since then must not have its newer state recorded
 		// as the judged one (the laundering the start-of-audit capture closed).
-		if head, digest, sErr := TreeState(r.TreeRoot); sErr == nil && head == r.HeadCommit && digest == r.TreeDigest {
-			if u, uErr := UncommittedState(r.TreeRoot); uErr == nil {
-				r.UncommittedDigest = u
-			}
+		// One real git pass serves both digests; it is not a read through the
+		// TreeState seam, so the seam still sees only the start-of-audit capture.
+		if head, bound, unbound, sErr := computeTreeState(r.TreeRoot); sErr == nil && head == r.HeadCommit && bound == r.TreeDigest {
+			r.UncommittedDigest = unbound
 		}
 	}
 	if err := writeJSON(filepath.Join(StateDir(treeRoot), receiptsRel, r.ReceiptID+".json"), r); err != nil {
