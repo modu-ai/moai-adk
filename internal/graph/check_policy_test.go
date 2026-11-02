@@ -4,8 +4,16 @@ import "testing"
 
 func intp(n int) *int { return &n }
 
+func boolp(b bool) *bool { return &b }
+
+// policyResult builds a result whose codemaps stamp and body are stable against
+// the first parent (the normal case); policyResultWithStability overrides it.
 func policyResult(value int, codemaps string, contribution *int, others ...string) CheckResult {
-	layers := []LayerReport{{Layer: LayerCodemaps, Verdict: codemaps, Value: value, Contribution: contribution}}
+	return policyResultWithStability(boolp(true), value, codemaps, contribution, others...)
+}
+
+func policyResultWithStability(stable *bool, value int, codemaps string, contribution *int, others ...string) CheckResult {
+	layers := []LayerReport{{Layer: LayerCodemaps, Verdict: codemaps, Value: value, Contribution: contribution, CodemapsInputsStable: stable}}
 	names := []string{LayerMXIndex, LayerEdges, LayerCitations}
 	for i, v := range others {
 		layers = append(layers, LayerReport{Layer: names[i], Verdict: v})
@@ -81,5 +89,41 @@ func TestBlockingWithoutClassificationFailsClosed(t *testing.T) {
 	res := policyResult(41, VerdictStale, intp(1), VerdictFresh, VerdictFresh, VerdictFresh)
 	if !res.Blocking() {
 		t.Fatal("an unclassified stale layer must block")
+	}
+}
+
+// F2: Value - Contribution is a statement about the base only while the change
+// left the codemaps stamp and body alone. A moved or unmeasured window never
+// reads as inherited, however large the count.
+func TestClassifyVerdicts_MovedOrUnknownAnchorBlocks(t *testing.T) {
+	th := DefaultThresholds()
+	f := VerdictFresh
+	for _, c := range []struct {
+		name   string
+		stable *bool
+	}{
+		{"stamp or body moved", boolp(false)},
+		{"stability not measured", nil},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			res := policyResultWithStability(c.stable, 41, VerdictStale, intp(0), f, f, f)
+			res.ClassifyVerdicts(EventPullRequest, InheritedDriftWarn, th)
+			if !res.Blocking() || len(res.Warnings()) != 0 {
+				t.Fatalf("must block, got blocking=%v warnings=%d", res.Blocking(), len(res.Warnings()))
+			}
+			if got := res.Layers[0].DriftOrigin; got != DriftAnchorMoved {
+				t.Errorf("DriftOrigin = %q, want %q", got, DriftAnchorMoved)
+			}
+		})
+	}
+}
+
+// A change that is itself over the line stays "originated" even when the
+// window also moved: the stronger fact wins.
+func TestClassifyVerdicts_OriginatedBeatsMovedAnchor(t *testing.T) {
+	res := policyResultWithStability(boolp(false), 41, VerdictStale, intp(41), VerdictFresh, VerdictFresh, VerdictFresh)
+	res.ClassifyVerdicts(EventPullRequest, InheritedDriftWarn, DefaultThresholds())
+	if got := res.Layers[0].DriftOrigin; got != DriftOriginated {
+		t.Errorf("DriftOrigin = %q, want %q", got, DriftOriginated)
 	}
 }

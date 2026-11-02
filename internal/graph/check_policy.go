@@ -41,6 +41,10 @@ const (
 	DriftCrossedByChange = "crossed-by-change"
 	// DriftOriginated: this change alone is at or over the threshold.
 	DriftOriginated = "originated"
+	// DriftAnchorMoved: this change touched the codemaps body or its stamp (or
+	// that could not be ruled out), so the count's measurement window is not the
+	// base's and the count says nothing reliable about what the base carried.
+	DriftAnchorMoved = "anchor-moved"
 )
 
 const (

@@ -46,6 +46,77 @@ func restampExceptCodemaps(t *testing.T, root, codemapsCommit string) {
 	}
 }
 
+// commitCodemaps commits the codemaps body and a provenance stamp pointing at
+// stampSHA, exactly the bytes stampAllLayers/restampExceptCodemaps write, so a
+// later re-stamp leaves the working tree identical to the commit.
+func commitCodemaps(t *testing.T, root, stampSHA string) {
+	t.Helper()
+	cmDir := filepath.Join(root, ".moai", "project", "codemaps")
+	if err := os.MkdirAll(cmDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cmDir, "provenance.json"), marshalCodemapsProvenance(t, root, stampSHA), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cmDir, "modules.md"), []byte("# modules\n\ninternal/alpha/alpha.go\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	checkFixtureGit(t, root, "add", "--", ".moai/project/codemaps")
+	checkFixtureGit(t, root, "commit", "-q", "-m", "codemaps")
+}
+
+// rewoundStampFixture is the F2 exploit shape. The BASE is fresh: 41 described
+// files landed in c1 and the committed stamp points at c1. The change under
+// judgment is docs-only (contribution 0) but rewinds the stamp to c0, which
+// drags the measurement window back over those 41 files.
+func rewoundStampFixture(t *testing.T) string {
+	t.Helper()
+	root := newCheckCLIRepo(t)
+	c0 := checkFixtureGit(t, root, "rev-parse", "HEAD")
+	commitAgedFiles(t, root, 41)
+	c1 := checkFixtureGit(t, root, "rev-parse", "HEAD")
+	commitCodemaps(t, root, c1)
+	if err := os.WriteFile(filepath.Join(root, "NOTES.md"), []byte("docs only\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	pv := filepath.Join(root, ".moai", "project", "codemaps", "provenance.json")
+	if err := os.WriteFile(pv, marshalCodemapsProvenance(t, root, c0), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	checkFixtureGit(t, root, "add", "--", "NOTES.md", ".moai/project/codemaps/provenance.json")
+	checkFixtureGit(t, root, "commit", "-q", "-m", "docs + rewound stamp")
+	restampExceptCodemaps(t, root, c0)
+	return root
+}
+
+// F2 RED: a change that rewinds the codemaps stamp moved the measurement window,
+// so Value - Contribution is not the base's count. It must block, and say why.
+func TestGraphCheckPolicy_RewoundStampBlocks(t *testing.T) {
+	root := rewoundStampFixture(t)
+	t.Setenv("GITHUB_EVENT_NAME", "pull_request")
+	out, errOut, code := runGraphCheckPolicy(t, root, "--json")
+	if code != 1 {
+		t.Fatalf("a rewound stamp over a fresh base must exit 1, got %d\nstdout=%s\nstderr=%s", code, out, errOut)
+	}
+	if !strings.Contains(out, `"drift_origin": "anchor-moved"`) {
+		t.Errorf("origin must be anchor-moved:\n%s", out)
+	}
+}
+
+// Control: with the stamp and body untouched by the change, a base that already
+// carries the count still warns (the narrow R208 downgrade is intact).
+func TestGraphCheckPolicy_UntouchedStampStillWarns(t *testing.T) {
+	root := driftFixture(t, 41, 0)
+	t.Setenv("GITHUB_EVENT_NAME", "pull_request")
+	out, errOut, code := runGraphCheckPolicy(t, root, "--json")
+	if code != 0 {
+		t.Fatalf("untouched stamp, inherited count must exit 0, got %d\nstdout=%s\nstderr=%s", code, out, errOut)
+	}
+	if !strings.Contains(out, `"codemaps_inputs_stable": true`) {
+		t.Errorf("the stability fact must be reported as true:\n%s", out)
+	}
+}
+
 // inheritedFixture: codemaps stamped at the base commit; 41 files landed in an
 // earlier (base-side) commit; this change adds ownFiles files on top; every
 // other layer is fresh.
@@ -61,6 +132,9 @@ func driftFixture(t *testing.T, baseFiles, ownFiles int) string {
 	t.Helper()
 	root := newCheckCLIRepo(t)
 	base := checkFixtureGit(t, root, "rev-parse", "HEAD")
+	// Real CI checks out codemaps as a TRACKED artifact, so the base commit
+	// carries the body and its stamp.
+	commitCodemaps(t, root, base)
 	if baseFiles > 0 {
 		commitAgedFiles(t, root, baseFiles)
 	}
