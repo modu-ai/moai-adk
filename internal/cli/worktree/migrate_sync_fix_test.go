@@ -356,7 +356,8 @@ func TestMigrationSkipsOnUnreadableRegistry(t *testing.T) {
 	if err != nil {
 		t.Fatalf("apply: %v\n%s", err, out)
 	}
-	if !strings.Contains(out, w.movedTree) || !strings.Contains(out, "registry") {
+	// The plan prints the source column in git's slash form; compare in slash form.
+	if !strings.Contains(filepath.ToSlash(out), filepath.ToSlash(w.movedTree)) || !strings.Contains(out, "registry") {
 		t.Errorf("the tree with an unreadable registry was not skipped with a registry reason:\n%s", out)
 	}
 	if _, statErr := os.Lstat(filepath.Join(w.homeRoot, "legacy6")); statErr == nil {
