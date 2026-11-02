@@ -27,7 +27,20 @@ func factoryWaitLine(s string) string { return strings.Join(strings.Fields(s), "
 // whose waker is the operator prints a leader-facing note, never a lane wake.
 // Failures are fail-open: the landing already committed.
 func factoryPrintWakes(ctx context.Context, out io.Writer, db *homestate.FactoryDB, card homestate.Card) {
-	if card.State != homestate.CardMergedLocal && card.State != homestate.CardMergedPR {
+	factoryPrintWakesSuffixed(ctx, out, db, card, "")
+}
+
+// factoryLandedState reports whether state is one of the two landing states a
+// wait on a predecessor is released by.
+func factoryLandedState(state string) bool {
+	return state == homestate.CardMergedLocal || state == homestate.CardMergedPR
+}
+
+// factoryPrintWakesSuffixed is factoryPrintWakes with an extra suffix on each
+// printed line; the record-time wake uses it to say the predecessor had
+// already landed.
+func factoryPrintWakesSuffixed(ctx context.Context, out io.Writer, db *homestate.FactoryDB, card homestate.Card, suffix string) {
+	if !factoryLandedState(card.State) {
 		return
 	}
 	waits, err := db.SettleLandedWaits(ctx, card.CardID, factoryCardNow())
@@ -38,10 +51,10 @@ func factoryPrintWakes(ctx context.Context, out io.Writer, db *homestate.Factory
 	for _, w := range waits {
 		reason, missing := factoryWaitDisplay(w.Reason)
 		if w.Waker == homestate.WaitWakerOperator {
-			_, _ = fmt.Fprintf(out, "  note: card=%s waits on the operator (predecessor %s landed); no lane wake - leader relays reason=%s%s\n", w.CardID, card.CardID, reason, missing)
+			_, _ = fmt.Fprintf(out, "  note: card=%s waits on the operator (predecessor %s landed); no lane wake - leader relays reason=%s%s%s\n", w.CardID, card.CardID, reason, missing, suffix)
 			continue
 		}
-		_, _ = fmt.Fprintf(out, "wake: lane=%s card=%s reason=%s (predecessor %s landed)%s\n", w.Waker, w.CardID, reason, card.CardID, missing)
+		_, _ = fmt.Fprintf(out, "wake: lane=%s card=%s reason=%s (predecessor %s landed)%s%s\n", w.Waker, w.CardID, reason, card.CardID, missing, suffix)
 		_, _ = fmt.Fprintf(out, "  confirm the start from records, not from a reply: moai factory status (lease holder of %s) and the card progress record under .moai/reports/%s/\n", w.CardID, w.CardID)
 	}
 }
@@ -167,8 +180,13 @@ func factoryRecordWait(ctx context.Context, out io.Writer, root, cardID, on stri
 			w.CondRef = card.HintAfter
 		}
 	}
-	if err := db.RecordCardWait(ctx, w, factoryCardNow()); err != nil {
-		return fmt.Errorf("factory wait: %w", err)
+	predecessorWait := w.CondKind == homestate.WaitCondPredecessorLanded && w.CondRef != ""
+	// An identical wait already woken because its predecessor landed is
+	// history: re-recording it would open a fresh wait that wakes again.
+	if !(predecessorWait && factoryWaitAlreadyDelivered(ctx, db, w)) {
+		if err := db.RecordCardWait(ctx, w, factoryCardNow()); err != nil {
+			return fmt.Errorf("factory wait: %w", err)
+		}
 	}
 	line := fmt.Sprintf("wait recorded: card=%s condition=%s %s waker=%s", cardID, w.CondKind, w.CondRef, w.Waker)
 	if scope != nil {
@@ -178,5 +196,58 @@ func factoryRecordWait(ctx context.Context, out io.Writer, root, cardID, on stri
 		line += " next=" + strings.TrimSpace(*next)
 	}
 	_, _ = fmt.Fprintln(out, line)
+	if predecessorWait {
+		factoryWakeIfPredecessorLanded(ctx, out, db, w.CondRef)
+	}
 	return nil
+}
+
+// factoryLandedPredecessor returns the record of card ref when any run holds
+// it at a landing state.
+func factoryLandedPredecessor(ctx context.Context, db *homestate.FactoryDB, ref string) (homestate.Card, bool, error) {
+	cards, err := db.ListCards(ctx, "")
+	if err != nil {
+		return homestate.Card{}, false, err
+	}
+	for _, c := range cards {
+		if c.CardID == ref && factoryLandedState(c.State) {
+			return c, true, nil
+		}
+	}
+	return homestate.Card{}, false, nil
+}
+
+// factoryWakeIfPredecessorLanded closes the gap the landing edge leaves: a wait
+// recorded after its predecessor already landed (including a landing that
+// raced the record) would never see an edge. It reads the predecessor's
+// current state after the record and, when landed, settles through the same
+// SettleLandedWaits path the edge uses, so the woken_at guard keeps the wake
+// to at most once. An unknown or not-yet-landed predecessor changes nothing.
+// Fail-open: the wait is already recorded.
+func factoryWakeIfPredecessorLanded(ctx context.Context, out io.Writer, db *homestate.FactoryDB, ref string) {
+	card, landed, err := factoryLandedPredecessor(ctx, db, ref)
+	if err != nil {
+		_, _ = fmt.Fprintf(out, "  note: state of %s was not read (%v)\n", ref, err)
+		return
+	}
+	if landed {
+		factoryPrintWakesSuffixed(ctx, out, db, card, " - predecessor had already landed when the wait was recorded")
+	}
+}
+
+// factoryWaitAlreadyDelivered reports whether an identical wait was already
+// woken and its predecessor is still at a landing state.
+func factoryWaitAlreadyDelivered(ctx context.Context, db *homestate.FactoryDB, w homestate.CardWait) bool {
+	waits, err := db.LoadCardWaits(ctx, w.CardID)
+	if err != nil {
+		return false
+	}
+	for _, x := range waits {
+		if x.WokenAt != "" && x.CondKind == w.CondKind && x.CondRef == w.CondRef &&
+			x.Waker == w.Waker && x.Reason == w.Reason && x.RecordedBy == w.RecordedBy {
+			_, landed, err := factoryLandedPredecessor(ctx, db, w.CondRef)
+			return err == nil && landed
+		}
+	}
+	return false
 }
