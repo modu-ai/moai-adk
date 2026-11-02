@@ -157,13 +157,13 @@ func TestPlanSpecAssemblyIssueAndArtifactWording(t *testing.T) {
 	if !ok {
 		t.Fatal("spec-assembly.md: Normal Flow example not found")
 	}
-	if !strings.Contains(flow, "--issue") {
-		if strings.Contains(flow, "GitHub Issue created") {
-			t.Error("Normal Flow example (no --issue) still expects a GitHub Issue to be created")
-		}
-		if !strings.Contains(flow, "no GitHub Issue") {
-			t.Error("Normal Flow example does not state that no GitHub Issue is created without --issue")
-		}
+	// Unconditional: the fixed example itself names --issue (to say an Issue is
+	// created only with it), so gating these checks on its absence made them dead.
+	if strings.Contains(flow, "GitHub Issue created") {
+		t.Error("Normal Flow example (no --issue) still expects a GitHub Issue to be created")
+	}
+	if !strings.Contains(flow, "no GitHub Issue") {
+		t.Error("Normal Flow example does not state that no GitHub Issue is created without --issue")
 	}
 
 	sig, ok := between(sa, "**Audit-ready signal**", "\n---")

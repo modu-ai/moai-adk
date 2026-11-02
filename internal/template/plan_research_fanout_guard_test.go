@@ -45,8 +45,20 @@ func TestPlanResearchFanoutGuard(t *testing.T) {
 	}
 
 	// Synthesizer result validation and explicit success status.
-	if !strings.Contains(js, "invalid_synthesis") {
-		t.Error("invalid_synthesis status missing: a null/empty synthesizer result is returned as success")
+	// The status string alone is not enough (a header comment also names it):
+	// the typeof/empty check must exist and its branch must return it.
+	j := strings.Index(js, "typeof research_md !== 'string'")
+	if j < 0 {
+		t.Error("no typeof research_md !== 'string' check: a null/empty synthesizer result is returned as success")
+	} else {
+		end := min(len(js), j+240)
+		branch := js[j:end]
+		if !strings.Contains(branch, ".trim() === ''") || !strings.Contains(branch, "return {") || !strings.Contains(branch, "invalid_synthesis") {
+			t.Error("synthesis check does not return invalid_synthesis for a non-string or blank result")
+		}
+		if k := strings.Index(js, "status: 'ok'"); k >= 0 && k < j {
+			t.Error("status: 'ok' is returned before the synthesis validation")
+		}
 	}
 	if !strings.Contains(js, "status: 'ok'") {
 		t.Error("success return carries no status: 'ok'")
