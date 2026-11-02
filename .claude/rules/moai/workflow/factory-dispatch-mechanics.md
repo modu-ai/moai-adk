@@ -25,6 +25,12 @@ The bound is the holder's own declaration: past it another lane may take the res
 
 While it executes the card, a lane renews its own card lease at the start of each watchdog pass with `moai factory renew <card>` (MCP tool `factory_renew`, the same implementation): the renewal extends the lease from the request time by `workflow.factory_lease.duration`, and a renewal of an expired lease is refused with no write.
 
+When a renewal is refused as expired, the stage verb run against that card is itself refused and
+returns the card to assigned with stage, worktree and evidence kept; the lane then leases it again with
+`moai factory next --card <id> --run <run-id>` from the primary checkout and re-runs the stage verb in
+its worktree. A refused renewal (expired or not holder) is recorded,
+never retried inside one watchdog pass, and an expired lease alone never wakes or reassigns anyone.
+
 ### Lease renewal — only the card being executed
 
 Executing means the lane is carrying out a stage of the card — plan, run, sync, the card-review, or the landing sequence — and is not waiting on a slot, a trigger, or the operator.
@@ -159,7 +165,14 @@ file the completion report names:
    point, and leaving the PR in draft while waiting is not a wait reason. A
    failing check outside the protected required set (Lint, Build, Analyze)
    does not block the ready conversion; when the cause is on main, record it
-   in Gaps and proceed. The git-flow variant (integration window, `--no-ff` merge, release-branch
+   in Gaps and proceed. After the PR is opened the lane
+   records its wait with `moai factory wait` and ends its turn. A failing
+   required check (Lint, Build, Analyze) after the PR is open is
+   repaired by the same lane, in the same card worktree, with forward commits;
+   it is neither reassigned nor re-opened as a new card. The lane's own PR
+   merge is confirmed by a one-shot recheck (or the leader's message)
+   followed by `moai factory complete` again — no polling loop, and
+   the wake: line covers predecessor landings only. The git-flow variant (integration window, `--no-ff` merge, release-branch
    push) is the section above and applies only where the project's git
    strategy names git-flow.
 4. **Close** — the merged-pr record closes the lane's own queue card by the

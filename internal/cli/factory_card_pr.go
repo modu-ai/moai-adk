@@ -510,7 +510,7 @@ func factoryDeliverByPR(ctx context.Context, out io.Writer, db *homestate.Factor
 
 // factoryPREdgeReviewGuidance is the short form of the standard-landing rule's
 // two sentences on draft pull requests and non-required check failures.
-const factoryPREdgeReviewGuidance = "a draft PR does not start the native review: once the handoff evidence is complete, the leader's ready conversion (or a leader request) starts it, and leaving the PR in draft while waiting is not a wait reason; a failing check outside the protected required set (Lint, Build, Analyze) does not block the ready conversion — when the cause is on main, record it in Gaps and proceed"
+const factoryPREdgeReviewGuidance = "a draft PR does not start the native review: once the handoff evidence is complete, the leader's ready conversion (or a leader request) starts it, and leaving the PR in draft while waiting is not a wait reason; a failing check outside the protected required set (Lint, Build, Analyze) does not block the ready conversion — when the cause is on main, record it in Gaps and proceed; then record the wait with `moai factory wait` and end the turn — a failing required check is repaired by this same lane in this worktree"
 
 func errOr(err error, fallback string) string {
 	if err != nil {
