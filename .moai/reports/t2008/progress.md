@@ -155,3 +155,76 @@ decision record: decided_by=lane-7 (claude, lane orchestrator) evidence_refs=lea
 - D1 (RUN-06 producer), RED `baec92566f`: `go test -count=1 -run TestRunResumeIdentity ./internal/template/` failed on six missing items. GREEN `f871445166`: the progress.md initial entry in context-loading.md now records `Repository root`, `Worktree`, `Lease owner`, `HEAD` and `plan_artifact_hash` (refreshed at each phase checkpoint), and the Resume Check invalidates a phase with an unrecorded identity field.
 - Verification after GREEN: `go test -count=1 -run 'TestRunPlan|TestRunResumeIdentity|TestRunPhaseReferences|TestSkillsContainPlanAuditGateMarkers|Mirror|Embed|Manifest|DateProvenance|BindingLedger' ./internal/template/` ok; `go test -count=1 ./internal/skills/` ok; `bash .claude/hooks/tests/test-tdd-result-contract.sh` PASS.
 - Not repaired: RUN-07 (design change, left for the approval-ledger design), RUN-05/08/12 (deferred by ruling), the RUN-03 behavioral-fixture gap. Gaps: no whole-file semantic test of the new clauses (literal pins only); `make build` and golangci-lint not run locally (CI reads lint); CI at the new head not yet read.
+
+### Sync-phase record
+
+decision record: decided_by=lane-7 (claude, lane orchestrator; manager-docs sync pass) evidence_refs=leader dispatch for the t2008 sync pass, this section ladder_path=disk-evidence (auto-semantics.md §6 step 1)
+
+Scope: Class B card, no SPEC directory (`git ls-files .moai/specs/t2008 .moai/specs/SPEC-t2008` -> no output), so no spec.md status transition, no §E.4 block in a SPEC progress.md, and no B12 acceptance-criterion count apply. Pre-flight: HEAD `c32801f0a7`, branch `WT-run-tdd-result`, `git status --short` empty; `git merge-base --is-ancestor a75589ea90 HEAD` exit 0 (the origin/main absorb is in this head's history); the five commits after it are the D1/D2 RED/GREEN pairs and the post-audit record.
+
+#### Docs checked
+
+| Path | Result |
+|---|---|
+| `README.md`, `README.ko.md`, `README.ja.md`, `README.zh.md` | no mention of the changed identifiers; unchanged |
+| `docs-site/content/{ko,en,ja,zh}/` (all pages) | no mention of the changed identifiers; unchanged |
+| `docs-site/content/en/workflow-commands/moai-run.md` lines 59-61 (Resume feature) | "On re-run, work continues from the last successful stage checkpoint." Less specific than the new Resume Check, but not contradicted by it; unchanged |
+| `docs-site/content/en/workflow-commands/moai-run.md` lines 210-230 (Plan Audit Gate, Kickoff Approval) | cache-skip wording (hash unchanged, score >= 0.90) is consistent with the Go helper; the Kickoff text is a pre-existing divergence, see Residual-risk R1; unchanged |
+| `CHANGELOG.md` `[Unreleased]` | `grep -c t2008 CHANGELOG.md` -> 0 before any edit; convention check below; no entry added |
+
+Identifier scan, verbatim: `grep -rlE "tdd-result-contract|EXPECTED_RED|REGRESSION_FAILURE|plan_artifact_hash|FAIL_WARNED|MOAI_SKIP_PLAN_AUDIT|Resume Check|whitespace-normalized|Phase 2\.8|Phase 11~4|ResolveLatestPlanAudit" README.md README.ko.md README.ja.md README.zh.md docs-site/content` -> no output. The other three locale copies of `moai-run.md` were located by the scan above but not individually read (the en page is the structural twin); see Gaps.
+
+#### CHANGELOG convention check (why no entry)
+
+- Card-attributed entries in `[Unreleased]` (`grep -n -o -E "\(card t(200[0-9]|199[0-9]|19[0-9][0-9])[^)]*\)" CHANGELOG.md`): t1968 and t1963 (SPEC cards, Tier M/L), t1921 (a Go behavior fix in `internal/cli`). No skill-wording, rule-wording or test-only card has an entry, and none of t2005 to t2007 (the sibling cards of this batch) has one.
+- This card changes instruction wording in deployed skill bodies, their template mirrors, the catalog hash, three new template tests and one Go comment. It changes no CLI behavior, config key, or API. By the observed convention an entry is expected for a SPEC close or a user-visible Go behavior change; neither applies, so adding one would create a precedent the file does not show.
+- Reversible: if the leader wants an entry because `moai update` redelivers the skill bodies to user projects, it is one line under `### Changed`.
+
+#### Docs changed
+
+None. Reason: no user-facing document names the changed contract; the one divergence found (R1) predates this card and belongs to an autonomy-semantics docs sweep, not to this reconciliation.
+
+#### Audit-ready signal
+
+```yaml
+sync_phase:
+  card: t2008
+  class: B
+  spec: none
+  sync_complete_at: 2026-11-03
+  sync_commit_sha: pending-backfill
+  sync_status: complete-pending-audit
+  gap: "no independent audit was run in this pass; sync-audit-1.md judged d0177299cf (audited_sha), not a later head"
+  changelog_entry: none (convention check above)
+  docs_changed: none
+```
+
+`sync_status` is `complete-pending-audit`, not `complete`: every docs check below was performed, but the gate token `complete` is reserved for a state with a verdict that covers the head, and the only verdict on disk covers an earlier head.
+
+#### Five-section evidence
+
+**Claim 1.** No README or docs-site page names the identifiers this card changed.
+- Evidence: the `grep -rlE` command in "Docs checked" -> no output (exit code not captured).
+- Baseline-attribution: run in this pass against tree HEAD `c32801f0a7`.
+- Gaps: a grep matches tokens, not paraphrases; a page describing the same behavior in other words would not be found (the two `moai-run.md` passages above were found by reading, not by this grep).
+
+**Claim 2.** No CHANGELOG entry for t2008 exists and none is expected by convention.
+- Evidence: `grep -c t2008 CHANGELOG.md` -> `0`; the card-id listing command above -> three entries (t1968, t1963, t1921), no t2005..t2007.
+- Baseline-attribution: this pass, tree HEAD `c32801f0a7`.
+- Gaps: "expected by convention" is a judgment from three data points in `[Unreleased]`, not a documented rule; I did not read a CHANGELOG policy file.
+
+**Claim 3.** The branch contains the absorb and the D1/D2 repairs, and the tree was clean at the start of this pass.
+- Evidence: `git rev-parse --short HEAD` -> `c32801f0a7`; `git branch --show-current` -> `WT-run-tdd-result`; `git status --short` -> no output; `git merge-base --is-ancestor a75589ea90 HEAD` -> exit 0; `git log --oneline a75589ea90..HEAD` -> the five commits `6b1e3a5802`, `4c1f69d10b`, `baec92566f`, `f871445166`, `c32801f0a7`.
+- Baseline-attribution: this pass.
+- Gaps: `.moai/reports/t2008/sync-audit-1.md` is gitignored (`git check-ignore -v` -> `.gitignore:235:.moai/reports/*`), so it does not show in status; it was neither read, staged, edited nor deleted in this pass.
+
+**Gaps (not observed in this pass).**
+1. No independent audit was run in this pass. `sync-audit-1.md` judged `d0177299cf`; heads `a75589ea90` (absorb) and the five later commits are not covered by any audit verdict.
+2. No test, build, lint or CI read was performed in this pass (docs-only scope, per the dispatch); the test results quoted in earlier sections are the lane's earlier runs, not re-observed here. CI at the current head was not read.
+3. The ko, ja and zh copies of `moai-run.md` were not read; the en copy was.
+4. No CHANGELOG policy document was searched for.
+
+**Residual-risk.**
+- R1. `docs-site/content/en/workflow-commands/moai-run.md` (and presumably the ko/ja/zh twins) says the Implementation Kickoff Approval is a user-approval gate asked through `AskUserQuestion` that "cannot be bypassed under any circumstances" and is not skipped even for PASS-with-debt. The run skill body after this card, and `auto-semantics.md` §9.1, make the Kickoff gate autonomous by default with the operator form kept for keep-set cases. The page therefore reads stricter than the enforced contract. Not introduced by t2008 (its last edits are `5bcc778571` and `cb69888824`, earlier cards), and fixing it needs four-locale edits plus a humanize pass; recommended as a separate docs card.
+- R2. The skill-body wording is pinned by literal-presence tests only (see the earlier Gaps), so a docs reader or orchestrator behavior is not shown to change.
+- R3. Customer projects receive the new wording only on `moai update`; until then deployed copies keep the old Resume Check and phase labels.
