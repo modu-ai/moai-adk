@@ -1380,6 +1380,9 @@ type GateTimeouts struct {
 	Lint      int `yaml:"lint"`
 	Test      int `yaml:"test"`
 	Typecheck int `yaml:"typecheck"`
+	// Total overrides the overall run budget, in seconds. Zero or negative
+	// means "derive it from the detected steps".
+	Total int `yaml:"total"`
 	// LockWait bounds how long a starting gate run waits for the gate-run
 	// lock — the advisory lock serializing concurrent manual `moai gate` runs
 	// in one project — before degrading to an unserialized run. In seconds,
@@ -1422,6 +1425,12 @@ func (g *GateConfig) TypecheckTimeoutDuration() time.Duration {
 		return 300 * time.Second
 	}
 	return time.Duration(g.Timeouts.Typecheck) * time.Second
+}
+
+// TotalTimeoutDuration converts the explicit overall-budget override to
+// time.Duration. Returns 0 (derive it) when the value is zero or negative.
+func (g *GateConfig) TotalTimeoutDuration() time.Duration {
+	return 0 // STUB (card t2020 RED)
 }
 
 // LockWaitDuration converts the gate-run lock wait budget to time.Duration.
