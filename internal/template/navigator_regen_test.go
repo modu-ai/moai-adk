@@ -668,3 +668,28 @@ func TestACPN017_ProgressMapPreservesEmptyPhaseColumns(t *testing.T) {
 		t.Errorf("frontier-milestone column = %q, want draft (status fallback); row: %q", cells[5], row)
 	}
 }
+
+// TestNavigatorRegen_LeavesNoTempFilesInTMPDIR pins card t2010 / audit F1: the
+// script owns two temp files (the failure marker and the rows file) and must
+// remove both on exit. A second `trap ... EXIT` replaces the first, so the
+// marker used to survive every run.
+func TestNavigatorRegen_LeavesNoTempFilesInTMPDIR(t *testing.T) {
+	dir := t.TempDir()
+	initFixtureRepo(t, dir)
+	writeSPEC(t, dir, "SPEC-LEAK-001", "Leak check", "draft", "plan", "internal/leak")
+	tmp := t.TempDir()
+
+	for i := 0; i < 2; i++ {
+		if out, err := runRegen(t, dir, "TMPDIR="+tmp); err != nil {
+			t.Fatalf("run %d: %v\n%s", i+1, err, out)
+		}
+	}
+
+	left, err := os.ReadDir(tmp)
+	if err != nil {
+		t.Fatalf("read TMPDIR: %v", err)
+	}
+	for _, e := range left {
+		t.Errorf("navigator-regen.sh left %q in TMPDIR after exit", e.Name())
+	}
+}
