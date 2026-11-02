@@ -3015,7 +3015,13 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	// `main` holder is the primary checkout down the same edge (card t1831
 	// M5b, REQ-AGT-006 rescope 0.4.0): the shared human/leader surface never
 	// becomes a merge window; the leader merges the card's pull request.
-	if factoryGitHubFlow(root) || factoryAgenticTrunkPrimaryRoute(root) {
+	// The release route (card t2013, AFF S2, REQ-FCR-026): under agentic-trunk
+	// with the fixed release branch provisioned in its own worktree, the card
+	// lands through the local integration window into that branch — never the
+	// pull-request edge, never main. Any condition missing leaves the judgment
+	// below untouched.
+	relBranch, relTree, releaseRoute := factoryReleaseRoute(root)
+	if !releaseRoute && (factoryGitHubFlow(root) || factoryAgenticTrunkPrimaryRoute(root)) {
 		return factoryCompleteGitHubFlow(ctx, out, root, cardID, remeasure, run, lane)
 	}
 	// The same session identity acquire resolves: a window whose holder is
@@ -3037,6 +3043,18 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	card, err := db.LoadCard(ctx, runID, cardID)
 	if err != nil {
 		return fmt.Errorf("factory complete: %w", err)
+	}
+
+	// REQ-FCR-026 (e): a card already merged-local whose recorded merge is a
+	// merge commit of its CURRENT card HEAD on the release branch is a no-op —
+	// before the "not merge-ready" refusal below, which stays for every other
+	// card and for the main route.
+	if releaseRoute {
+		if merged := factoryReleaseAlreadyMerged(card, relBranch, relTree); merged != "" {
+			_, _ = fmt.Fprintf(out, "%s %s merge=%s branch=%s worktree=%s (already merged for this card HEAD; nothing to do)\n",
+				card.CardID, card.State, merged, relBranch, relTree)
+			return nil
+		}
 	}
 
 	// REQ-MWQ-019 step 1 — the card gates run READ-ONLY, before the window
@@ -3076,6 +3094,11 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	heldByUs := lock.Held() && lock.SessionID == sessionID && lock.Branch != ""
 	var branch, source string
 	if heldByUs {
+		// The release route never lands through a window recorded for another
+		// branch: that window belongs to a different route.
+		if releaseRoute && lock.Branch != relBranch {
+			return fmt.Errorf("factory complete: refused — the integration window this session holds records branch %q, not the release branch %q; release it (moai integration release) or complete after it lapses", lock.Branch, relBranch)
+		}
 		branch, source = lock.Branch, lock.BranchSource
 	} else {
 		if lock.Held() && lock.SessionID != sessionID && !lock.Stale() {
@@ -3083,6 +3106,9 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 				factoryHolderLabel(lock), lock.PID, lock.AcquiredAt, lock.Branch)
 		}
 		branch, source = factoryResolveIntegrationBranch(root, card)
+		if releaseRoute {
+			branch, source = relBranch, factory.BranchSourceConfig
+		}
 	}
 
 	// REQ-SD-023 refusals — each fires before any record changes.
@@ -3125,6 +3151,13 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 		return fmt.Errorf("factory complete: refused — the integration worktree for %q is not provisioned: no tree holds it, or only the parent checkout %s does (the parent never changes branch; the leader provisions the integration worktree)", branch, primary)
 	}
 
+	// The release route's stops (REQ-FCR-026 (d)) leave a card-level hold
+	// record and change nothing else; the main route's stops stay as they were.
+	stop := factoryReleaseStop{
+		enabled: releaseRoute, db: db, runID: runID, card: card, lane: lane,
+		branch: branch, integTree: integTree, cardBranch: cardBranch,
+	}
+
 	// Hold the window as the lane: the same record acquire writes, resolved
 	// the same way (the owner pid, never this process's). A window already
 	// ours is not re-written — the recorded branch choice stands.
@@ -3146,7 +3179,7 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 		// runs before the window record is touched. A tip that is an adoption
 		// is exempt (REQ-ISB-016).
 		if freshErr := completeBaseFreshnessPrecondition(out, lockRoot, integTree, branch, card.WorktreePath, cardBranch, card.CardID); freshErr != nil {
-			return freshErr
+			return stop.hold(ctx, out, "base-freshness", freshErr, "", freshErr)
 		}
 		if factoryCompleteAcquireHook != nil {
 			factoryCompleteAcquireHook()
@@ -3224,7 +3257,27 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	}
 	if _, err := factory.ReadRemeasureRecord(lockRoot, candidateTree); err != nil {
 		releaseOwnAcquisition()
-		return &exitCodeError{code: factory.MergeExitBaseMoved, msg: fmt.Sprintf("factory complete: refused — no valid re-measure record for the candidate tree %s (%v); run moai integration remeasure, then re-acquire --wait — the re-measure-and-re-acquire code", factory.ShortSHA(candidateTree), err)}
+		refused := &exitCodeError{code: factory.MergeExitBaseMoved, msg: fmt.Sprintf("factory complete: refused — no valid re-measure record for the candidate tree %s (%v); run moai integration remeasure, then re-acquire --wait — the re-measure-and-re-acquire code", factory.ShortSHA(candidateTree), err)}
+		return stop.hold(ctx, out, "remeasure-record", refused, "", refused)
+	}
+
+	// REQ-FCR-026 (b): the fast required check, run against the CARD's tree
+	// before any merge commit exists. A failure holds the card and releases
+	// the window this call acquired; the check can outlast the lease, so a
+	// pass renews it before the merge step reads it.
+	if releaseRoute {
+		checkKey, tail, checkErr := factoryFastCheck(ctx, out, card.WorktreePath, factoryBranchTip(integTree, branch))
+		if checkErr != nil {
+			releaseOwnAcquisition()
+			failed := fmt.Errorf("factory complete: refused — the fast required check failed for card %s (%v); the release branch and the card state are unchanged, a hold was recorded; fix the card and complete again", cardID, checkErr)
+			return stop.hold(ctx, out, "check-failed", errors.New(tail), checkKey, failed)
+		}
+		_ = factory.UpdateIntegrationWindow(lockRoot, func(w *factory.IntegrationLock) error {
+			if w.Held() && w.SessionID == sessionID {
+				factory.StampLease(w, factory.WindowClock(), factory.WindowLeaseDuration)
+			}
+			return nil
+		})
 	}
 
 	// REQ-MWQ-019 step 4 — the merge runs ONLY by calling the REQ-MWQ-017
@@ -3265,9 +3318,19 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	}, mergeSeams)
 	if err != nil {
 		if code, ok := factory.MergeExitCode(err); ok {
-			return &exitCodeError{code: code, msg: fmt.Sprintf("factory complete: the merge step refused: %v", err)}
+			refused := &exitCodeError{code: code, msg: fmt.Sprintf("factory complete: the merge step refused: %v", err)}
+			// Every cause but a failure AFTER the merge commit exists leaves
+			// the integration branch without this card: a card-level hold.
+			if code == factory.MergeExitPostMerge {
+				return refused
+			}
+			reason := "pre-merge-gate"
+			if code == factory.MergeExitMergeFailed || code == factory.MergeExitMergeDirty {
+				reason = "merge-conflict"
+			}
+			return stop.hold(ctx, out, reason, err, "", refused)
 		}
-		return fmt.Errorf("factory complete: the merge step failed: %w", err)
+		return stop.hold(ctx, out, "merge-step-failed", err, "", fmt.Errorf("factory complete: the merge step failed: %w", err))
 	}
 
 	// The transitions ride the merge (T14 then T16), and a transition
