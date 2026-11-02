@@ -431,7 +431,13 @@ func normalizeCommandForScan(command string) string {
 // from matching; case-insensitive like branchStatePatterns. Evaluated ONLY
 // for the protected-branch deny — pull/fetch/tag of a protected branch stay
 // legitimate (spec §D Non-Goals).
-var protectedCommitPattern = regexp.MustCompile(`(?i)\bgit\s+(commit|revert|cherry-pick)\b`)
+//
+// The verb must end at a non-word, non-hyphen character or end of input: RE2
+// treats `-` as a word boundary, so a trailing \b let the plumbing verbs
+// `commit-tree` / `commit-graph` (and `revert-x`, `cherry-pick-x`) read as a
+// commit (card t2013). Go regexp has no lookahead; this class is the
+// equivalent, and a following `;`, `&`, `|`, `)` or space still ends the verb.
+var protectedCommitPattern = regexp.MustCompile(`(?i)\bgit\s+(?:commit|revert|cherry-pick)(?:[^\w-]|$)`)
 
 // resolveHeadBranch is the package-level indirection over
 // gitcore.ResolveHeadBranch. Tests swap it with a counting stub (the M6
