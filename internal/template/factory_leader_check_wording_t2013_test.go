@@ -49,3 +49,24 @@ func TestT2013_WaitRecordTracksFourFields(t *testing.T) {
 		})
 	}
 }
+
+// TestT2013_ResumeStartsFromCheckpoint pins the sentence telling a resuming lane
+// or agent to start from the checkpoint verb and read original evidence only for
+// the fields it needs.
+func TestT2013_ResumeStartsFromCheckpoint(t *testing.T) {
+	markers := []string{
+		"A resuming lane or agent starts from `moai factory checkpoint <card>`",
+		"(state plus evidence paths)",
+		"reads the original evidence only for the fields it needs",
+	}
+	for copyName, root := range t2013HandoffRoots() {
+		t.Run(copyName, func(t *testing.T) {
+			section := t2013HandoffSection(t, root, "factory-dispatch.md", "## The dispatch cycle")
+			for _, m := range markers {
+				if !strings.Contains(section, m) {
+					t.Errorf("dispatch cycle section lacks %q", m)
+				}
+			}
+		})
+	}
+}
