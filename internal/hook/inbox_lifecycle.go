@@ -139,6 +139,11 @@ func RotateLessonsInboxArchive(inboxPath string) (InboxRotationStats, error) {
 	return st, nil
 }
 
+// inboxPathStat reads the live inbox through its path. It is a seam so a test
+// can make the path-based size disagree with the real file (on Windows the
+// path-based read can lag a file other handles are writing).
+var inboxPathStat = os.Stat
+
 // enforceInboxCap applies the write-time size cap ahead of an append
 // (REQ-IBX-001..004). Steady-state cost is one stat (NFC-2): the marker is
 // probed only after the live file is observed at or over the cap, and the
@@ -150,7 +155,7 @@ func RotateLessonsInboxArchive(inboxPath string) (InboxRotationStats, error) {
 // Fail-open (REQ-IBX-009): a failed rotation logs a warning and the append
 // proceeds best-effort on the existing file.
 func enforceInboxCap(root, inboxPath string) {
-	info, err := os.Stat(inboxPath)
+	info, err := inboxPathStat(inboxPath)
 	if err != nil {
 		return // absent inbox — nothing to cap
 	}
