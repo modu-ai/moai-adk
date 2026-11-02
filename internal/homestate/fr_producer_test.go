@@ -54,14 +54,23 @@ func frExampleLine(body, prefix string) string {
 // example passes the E-VERDICT reader; and the AUDIT-VERDICT chat-message
 // line stays the last instruction so ParseVerdictLine keeps working.
 func TestFR_AC020_VerdictLineProducer(t *testing.T) {
+	// The auditor definitions still instruct the three-label line; widening them
+	// to INCONCLUSIVE is the agent-text milestone's (SPEC-AUDIT-ENGINE-CONVERGENCE-001
+	// AC-AEC-005), so that part of the pin stays as it was. The convention carries
+	// the four-label line from AC-AEC-002b on.
 	const formatLine = "verdict: <PASS|PASS-WITH-DEBT|FAIL>"
+	const conventionFormatLine = "verdict: <PASS|PASS-WITH-DEBT|FAIL|INCONCLUSIVE>"
 	for _, rel := range append(append([]string{}, frAuditorFiles...), frConventionFiles...) {
 		body := frReadRepoFile(t, rel)
 		if n := strings.Count(body, "audited_sha:"); n < 1 {
 			t.Errorf("%s: audited_sha: count = %d, want ≥ 1", rel, n)
 		}
-		if n := strings.Count(body, formatLine); n < 1 {
-			t.Errorf("%s: %q count = %d, want ≥ 1", rel, formatLine, n)
+		want := formatLine
+		if strings.HasSuffix(rel, "audit-artifact-convention.md") {
+			want = conventionFormatLine
+		}
+		if n := strings.Count(body, want); n < 1 {
+			t.Errorf("%s: %q count = %d, want ≥ 1", rel, want, n)
 		}
 	}
 	for _, rel := range []string{
@@ -105,7 +114,7 @@ func TestFR_AC020_VerdictLineProducer(t *testing.T) {
 		t.Fatalf("convention example lines missing: verdict=%q audited_sha=%q", verdictTmpl, shaTmpl)
 	}
 	body := "# Plan audit\n\nProse verdict: the plan holds.\n\n" +
-		strings.Replace(verdictTmpl, formatLine[len("verdict: "):], "PASS", 1) + "\n" +
+		strings.Replace(verdictTmpl, conventionFormatLine[len("verdict: "):], "PASS", 1) + "\n" +
 		shaTmpl[:strings.Index(shaTmpl, "<")] + repo.Commit + "\n"
 	// The plan-audit field block the convention adds for the shared admission
 	// predicate, filled with values that satisfy it.
