@@ -161,8 +161,9 @@ func parseAuditVerdict(path string, raw []byte, evidenceSHA string) (auditVerdic
 }
 
 // admitCardVerdict applies the shared admission predicate to a verdict file
-// the guard already located. A sync-audit card (T13) keeps the label-only
-// check; a plan-audit card (T7) is checked on every plan field, with the
+// the guard already located. A sync-audit card (T13) is admitted on its
+// label and binds any decision field the file carries (a file with none passes
+// on the label); a plan-audit card (T7) is checked on every plan field, with the
 // tier threshold and plan-artifact hash read from the card's SPEC directory
 // in its worktree. A card without a valid SPEC id cannot bind the hash and
 // is refused.

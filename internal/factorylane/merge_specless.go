@@ -78,9 +78,12 @@ func checkSyncAuditVerdictFile(git GitRunner, repoDir, card string) (string, boo
 	// Card t1571: the verdict admission is the shared auditverdict predicate —
 	// the same rule the contract, the kickoff evaluator, and the
 	// card-transition guard use — so a verdict cannot pass this reader and
-	// fail another site. PhaseSync keeps the label-only rule (PASS,
-	// PASS-WITH-DEBT) plus the unconditional required_backend_fail refusal
-	// (REQ-ACR-005) and the conflicting-decision-key refusal.
+	// fail another site. PhaseSync admits the label (PASS,
+	// PASS-WITH-DEBT) and, when a decision field is present, binds it (score in
+	// range, must_pass_failed an integer or an empty list, unmet body MP rows),
+	// plus the unconditional required_backend_fail refusal (REQ-ACR-005) and the
+	// conflicting-decision-key refusal. A file with no decision fields still
+	// passes on its label.
 	fields := auditverdict.Parse(raw)
 	// A spec-less card's merge evidence claims a CLOSED audit: a recorded
 	// backend receipt that is not "pass" (fail or inconclusive) refuses the

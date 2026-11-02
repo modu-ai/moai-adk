@@ -94,8 +94,37 @@ type Fields struct {
 }
 
 // mpRow matches one must-pass row of the plan-audit report body, in the
-// format the plan-auditor's output template writes: "- [PASS|FAIL|N/A] MP-n ...".
+// list format the plan-auditor's output template writes: "- [PASS|FAIL|N/A] MP-n ...".
 var mpRow = regexp.MustCompile(`(?i)^[-*]\s*\[\s*([A-Za-z][A-Za-z /_-]*?)\s*\]\s*(MP-\d+)\b(.*)$`)
+
+var mpID = regexp.MustCompile(`(?i)^MP-\d+$`)
+
+// matchMPRow reads one must-pass row in either shape the stored reports use: the
+// list form the plan-auditor template writes ("- [STATE] MP-n ...") and the
+// table form ("| MP-n | STATE | ... |", or the state cell first). Markdown bold
+// around the id or the state is ignored ("- [FAIL] **MP-5**: ...").
+func matchMPRow(line string) (state, id, rest string, ok bool) {
+	plain := strings.ReplaceAll(line, "**", "")
+	if m := mpRow.FindStringSubmatch(plain); m != nil {
+		return m[1], m[2], m[3], true
+	}
+	if !strings.HasPrefix(plain, "|") {
+		return "", "", "", false
+	}
+	cells := strings.Split(strings.Trim(plain, "|"), "|")
+	if len(cells) < 2 {
+		return "", "", "", false
+	}
+	a, b := strings.TrimSpace(cells[0]), strings.TrimSpace(cells[1])
+	rest = strings.Join(cells[2:], " ")
+	switch {
+	case mpID.MatchString(a):
+		return b, a, rest, true
+	case mpID.MatchString(b):
+		return a, b, rest, true
+	}
+	return "", "", "", false
+}
 
 // mpRowUnmet reports whether one MP row records an unmet check. An N/A row is
 // unmet only when its own text says the check was unverified or not run — a
@@ -180,9 +209,9 @@ func Parse(raw []byte) Fields {
 	mpUnmet := map[string]bool{}
 	for _, line := range strings.Split(string(raw), "\n") {
 		line = strings.TrimSpace(strings.TrimRight(line, "\r"))
-		if m := mpRow.FindStringSubmatch(line); m != nil {
-			id := strings.ToUpper(m[2])
-			mpUnmet[id] = mpUnmet[id] || mpRowUnmet(m[1], m[3])
+		if state, mp, rest, ok := matchMPRow(line); ok {
+			id := strings.ToUpper(mp)
+			mpUnmet[id] = mpUnmet[id] || mpRowUnmet(state, rest)
 			continue
 		}
 		if m := debtLine.FindStringSubmatch(line); m != nil {
