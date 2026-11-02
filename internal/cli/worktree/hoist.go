@@ -31,6 +31,29 @@ type HoistResult struct {
 	Bytes   int64    // bytes copied
 	Skipped []string // relative paths NOT copied: destination held different content
 	Dest    string   // destination directory (main root / .moai/reports/worktrees/<tree>)
+
+	// TrackedFallback is non-empty when the git-tracked set could not be
+	// listed and the hoist failed open to copy-everything (card t2013).
+	TrackedFallback string
+}
+
+// trackedReportPaths returns the set of slash-separated, tree-relative paths
+// under .moai/reports that are tracked in the tree's git index. Membership is
+// by index, not working-tree state, so a modified tracked file is still
+// tracked: the primary checkout already holds its committed version. NUL
+// separation (-z) keeps names with spaces or non-ASCII bytes unquoted.
+func trackedReportPaths(treePath string) (map[string]struct{}, error) {
+	out, err := gitWorktreeCmd("-C", treePath, "ls-files", "-z", "--", ".moai/reports")
+	if err != nil {
+		return nil, err
+	}
+	set := make(map[string]struct{})
+	for _, p := range strings.Split(out, "\x00") {
+		if p != "" {
+			set[p] = struct{}{}
+		}
+	}
+	return set, nil
 }
 
 // hoistWorktreeReports copies treePath/.moai/reports/ content into
@@ -59,6 +82,14 @@ func hoistWorktreeReports(treePath, mainRoot string) (HoistResult, error) {
 		return res, fmt.Errorf("stat %s: %w", srcRoot, err)
 	}
 
+	// Tracked report paths already exist in the primary checkout; only
+	// untracked evidence is copied. A listing failure fails open (copy all):
+	// a hoist must never lose untracked evidence.
+	tracked, trackedErr := trackedReportPaths(treePath)
+	if trackedErr != nil {
+		res.TrackedFallback = fmt.Sprintf("git ls-files failed (%v); copying all report files", trackedErr)
+	}
+
 	err := filepath.WalkDir(srcRoot, func(path string, d os.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
@@ -69,6 +100,9 @@ func hoistWorktreeReports(treePath, mainRoot string) (HoistResult, error) {
 		rel, err := filepath.Rel(srcRoot, path)
 		if err != nil {
 			return fmt.Errorf("rel %s: %w", path, err)
+		}
+		if _, isTracked := tracked[".moai/reports/"+filepath.ToSlash(rel)]; isTracked {
+			return nil // tracked: the primary checkout already holds it
 		}
 		dst := filepath.Join(res.Dest, rel)
 		if existing, statErr := os.ReadFile(dst); statErr == nil {
@@ -179,6 +213,9 @@ func runHoist(cmd *cobra.Command, args []string) error {
 // printHoistResult renders the hoist outcome (REQ-RLC-005 output clause:
 // count and byte total; REQ-RLC-006: every unresolved path).
 func printHoistResult(w io.Writer, res HoistResult, treePath string) {
+	if res.TrackedFallback != "" {
+		_, _ = fmt.Fprintf(w, "Warning: %s\n", res.TrackedFallback)
+	}
 	if res.Count == 0 && len(res.Skipped) == 0 {
 		_, _ = fmt.Fprintf(w, "Nothing to hoist: %s has no .moai/reports/ content\n", treePath)
 		return
