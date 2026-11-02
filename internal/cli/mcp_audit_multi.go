@@ -123,6 +123,12 @@ func handleAuditMulti(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	if closedErr != nil {
 		return toolErr(auditMultiToolName, closedErr), nil
 	}
+	// SPEC-AUDIT-ENGINE-CONVERGENCE-001 REQ-AEC-008: the legs to run again. An
+	// unusable value is refused before any leg runs.
+	rerunLegs, rerunErr := readRerunLegs(req)
+	if rerunErr != nil {
+		return toolErr(auditMultiToolName, rerunErr), nil
+	}
 
 	// SPEC-AUDIT-MODEL-CONVERGE-001 REQ-ACV-003/006: the audited tree's plan —
 	// resolved from its RAW workflow.audit section and the gates this call
@@ -165,6 +171,7 @@ func handleAuditMulti(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 		CardID:           cardID,
 		DeltaBase:        deltaBase,
 		BlockingClosed:   blockingClosed,
+		RerunLegs:        rerunLegs,
 		DeltaDefaultNote: deltaDefaultNote,
 		EnforcementGates: &enforcement,
 		EnforcementNote:  enforcementNote,

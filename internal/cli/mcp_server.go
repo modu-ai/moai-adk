@@ -745,6 +745,7 @@ func registerMoaiMCPToolsWithExposure(s *server.MCPServer, projectDir, exposure 
 		mcp.WithString("card_id", mcp.Description("Optional card id binding this review as the card's second review (writes second-review.jsonl into the card evidence directory). Empty ⇒ no record.")),
 		mcp.WithString("delta_base", mcp.Description(auditMultiDeltaBaseDescription)),
 		mcp.WithObject(blockingClosedArg, mcp.Description(blockingClosedDescription)),
+		mcp.WithArray(rerunLegsArg, mcp.Description(rerunLegsDescription), mcp.Items(map[string]any{"type": "string"})),
 		// Pass-through semantics: this fan-out handed its backends no root
 		// before the parameter existed, so an absent parameter must keep
 		// handing them none rather than substituting a default.

@@ -34,6 +34,13 @@
           "description": "Optional project or worktree root to act on. Supply your own `git rev-parse --show-toplevel`. In a worktree session you MUST pass it: the server's own resolution names the PRIMARY checkout, so omitting it acts on the wrong tree. An unusable path is rejected, never silently replaced by a default, and an accepted path is canonicalized — symlinks resolved — so the call acts on the real directory rather than on the spelling that reached it. A linked worktree of a repository that does not track .moai is accepted too, when git registers it as a worktree of a primary checkout that has .moai. On such a worktree without its own workflow config, the audit gate (workflow.audit.gates) is read from the primary checkout; its SPEC catalogue is the union of the worktree's and the primary checkout's .moai/specs, and its state is kept in the primary checkout's .moai/state under the worktree's own tree identity. Absent or empty supplies no root at all, exactly as before this parameter existed — the backends then resolve their own working directory.",
           "type": "string"
         },
+        "rerun_legs": {
+          "description": "Optional legs to run again, as backend names (claude, codex, glm). Requires session_id. Only the named legs run; every other leg's verdict is carried from the result this server persisted for the same session, and a verdict the call supplies for a carried leg is ignored. The carry applies only when that persisted result records the same head commit, tree digest and scope (target, resolved base, delta base); otherwise every leg runs and the result says why. Omitted or empty ⇒ every leg runs.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
         "session_id": {
           "description": "Optional session id for per-session convergence state persistence (.moai/state/audit-multi/<session>.json). Empty ⇒ persistence no-op.",
           "type": "string"
