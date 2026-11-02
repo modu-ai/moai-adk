@@ -246,7 +246,7 @@ only that this pass found no unresolved decisions — the Implementation
 Kickoff Approval gate remains a separate affirmative act that fires regardless
 of the row count.
 
-#### Step 2.3.4: FAIL Path — Retry Loop (max 3 iterations)
+#### Step 2.3.4: FAIL Path — Retry Loop (tier-resolved ceiling)
 
 If verdict is FAIL:
 
@@ -256,9 +256,9 @@ If verdict is FAIL:
 
 3. Read new verdict from `.moai/reports/plan-audit/{SPEC-ID}-review-{N+1}.md`.
 
-4. Repeat until PASS or 3 iterations exhausted.
+4. Repeat until PASS or the tier-resolved ceiling is exhausted (`remaining_attempts` reaches 0; S 1 / M 2 / L 3).
 
-Iteration tracking: Display "SPEC review iteration {N}/3" after each verdict.
+Iteration tracking: Display "SPEC review iteration {N}/{ceiling}" after each verdict, where {ceiling} is the tier-resolved ceiling.
 
 #### Step 2.3.5: Escalation after 3 FAIL Iterations
 

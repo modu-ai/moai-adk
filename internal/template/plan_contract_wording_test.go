@@ -177,3 +177,44 @@ func TestPlanSpecAssemblyIssueAndArtifactWording(t *testing.T) {
 		t.Error("audit-ready signal does not name the tier-appropriate artifact set")
 	}
 }
+
+// TestPlanStaleContractPhrases guards two remaining stale phrases from the plan
+// contract reconciliation (PLN-08 and PLN-10). Lexical checks on the embedded
+// copy only: they prove the wording, not that a validator or agent obeys it.
+//   - PLN-08: the Step 2.3.4 retry loop must not restate a fixed three-iteration
+//     budget; the tier-resolved ceiling (S1/M2/L3) owns every review attempt.
+//   - PLN-10: the validator-authoring docs must not forbid mixed patterns in one
+//     requirement while the canonical GEARS clause chains Where/While/When.
+func TestPlanStaleContractPhrases(t *testing.T) {
+	fsys, err := EmbeddedTemplates()
+	if err != nil {
+		t.Fatalf("EmbeddedTemplates(): %v", err)
+	}
+	read := func(p string) string {
+		raw, err := fs.ReadFile(fsys, p)
+		if err != nil {
+			t.Fatalf("read %s: %v", p, err)
+		}
+		return string(raw)
+	}
+
+	sa := read(".claude/skills/moai/workflows/plan/spec-assembly.md")
+	for _, stale := range []string{"Repeat until PASS or 3 iterations exhausted", "Retry Loop (max 3 iterations)", "review iteration {N}/3"} {
+		if strings.Contains(sa, stale) {
+			t.Errorf("spec-assembly.md still carries the fixed-budget phrase %q (the tier-resolved ceiling owns the attempts)", stale)
+		}
+	}
+
+	stale := map[string][]string{
+		".claude/skills/moai-workflow-spec/modules/advanced-patterns.md": {"exactly one EARS pattern", "Detect mixed patterns"},
+		".claude/skills/moai-workflow-spec/references/reference.md":      {"No mixing of patterns in single requirement"},
+	}
+	for path, phrases := range stale {
+		doc := read(path)
+		for _, p := range phrases {
+			if strings.Contains(doc, p) {
+				t.Errorf("%s still says %q, which contradicts the GEARS compound clause", path, p)
+			}
+		}
+	}
+}
