@@ -45,6 +45,12 @@ const (
 	// measured cost before a warning fires. A hypothesis until measured on
 	// this repository (never a foreign figure); overrun warns, never blocks.
 	DefaultGraphFreshnessUpdateBudgetMS = 2000
+	// DefaultGraphFreshnessInheritedCodemapsDrift is the policy for a codemaps
+	// drift a pull request merely inherited from its base: "warn" announces it
+	// (the other layers must be fresh and the change's own contribution below
+	// the codemaps threshold); "block" fails on it. A push event blocks either
+	// way. A chosen policy, not a measured figure (card t2001, R208).
+	DefaultGraphFreshnessInheritedCodemapsDrift = "warn"
 	// DefaultSlotLeaseMaxDuration is the declared maximum duration a slot
 	// lease takes when the caller omits --max-duration. A chosen value, not a
 	// measured one (plan.md §B3, OQ-3); this is the one place it is defined.
@@ -1277,6 +1283,10 @@ func NewDefaultGateConfig() GateConfig {
 			CodemapsChangedFiles: DefaultGraphFreshnessCodemapsChangedFiles,
 			MXIndexChangedFiles:  DefaultGraphFreshnessMXIndexChangedFiles,
 			UpdateBudgetMS:       DefaultGraphFreshnessUpdateBudgetMS,
+			// A pull request announces, rather than fails on, a codemaps
+			// drift it inherited from its base (card t2001, R208); a push
+			// event always blocks regardless of this value.
+			InheritedCodemapsDrift: DefaultGraphFreshnessInheritedCodemapsDrift,
 		},
 		// The pre-commit context's heavy gate is default-OFF (the BranchGuard /
 		// agent_stop_guard opt-in pattern): a project-wide failure unrelated to

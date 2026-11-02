@@ -422,6 +422,9 @@
 - path: "gate.graph_freshness.enabled"
   class: W
   evidence: reader internal/hook/quality/gate.go (runGraphFreshnessStep) + internal/hook/pre_tool.go:840
+- path: "gate.graph_freshness.inherited_codemaps_drift"
+  class: W
+  evidence: reader internal/cli/graph_check.go (graphCheckThresholds) -> graph.CheckResult.ClassifyVerdicts
 - path: "gate.graph_freshness.mx_index_changed_files"
   class: W
   evidence: reader internal/hook/quality/gate.go (runGraphFreshnessStep) + internal/hook/pre_tool.go:840

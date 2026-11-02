@@ -83,12 +83,25 @@ type LayerReport struct {
 	Threshold int    `json:"threshold"`
 	Verdict   string `json:"verdict"`
 	Reason    string `json:"reason,omitempty"`
+	// VerdictClass says whether a non-fresh layer fails the check ("block") or
+	// is only announced ("warn"); empty on a fresh layer. It is a SEPARATE
+	// field: Verdict keeps stating the fact about the tree (an inherited
+	// codemaps drift stays "stale"), and only ClassifyVerdicts sets the class
+	// (check_policy.go).
+	VerdictClass string `json:"verdict_class,omitempty"`
 
 	// Contribution is the change under judgment's OWN described-worthy count,
 	// measured against the checkout's first-parent predecessor (REQ-GFC-007).
-	// It is REPORTED, never gated on: gating it would eliminate the
-	// accumulated-drift signal the cumulative metric exists to carry
-	// (spec.md §D.3, third rejection).
+	// It is always REPORTED. Since card t2001 (user request R208) it is also
+	// read, narrowly, by ClassifyVerdicts: on a pull_request event a codemaps
+	// layer that is the ONLY non-fresh layer and whose contribution is
+	// measured and below the threshold is announced (VerdictClass warn)
+	// instead of failed. REQ-GFC-007 and spec.md §D.3 (third rejection) said
+	// the contribution is never gated on, because gating it could eliminate
+	// the accumulated-drift signal; that decision is deliberately narrowed,
+	// not removed: the cumulative count and the threshold are unchanged, a
+	// push event and every other layer still block, and an unmeasured (nil)
+	// contribution blocks. The SPEC text follows separately.
 	//
 	// nil means the base does not exist — a root commit, or an unborn HEAD.
 	// That case is reported absent rather than defaulted to 0, because 0 is
