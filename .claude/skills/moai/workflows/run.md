@@ -47,7 +47,7 @@ Phase 4 Mode Selection: orchestrator autonomous decision over the 4-mode catalog
 | Phase Group | Sub-skill 경로 | 내용 |
 |------------|----------------|------|
 | Phase 0: Context Loading | `Read workflows/run/context-loading.md` | Mode dispatch, UltraThink, harness level, context loading, worktree path rules |
-| Phase 1~1.8: Phase Execution | `Read workflows/run/phase-execution.md` | Plan Audit Gate, environment assessment, JIT language detection, scale-based mode, analysis/planning, task decomposition, development mode routing |
+| Phase 1-10: Phase Execution | `Read workflows/run/phase-execution.md` | Plan Audit Gate, environment assessment, JIT language detection, scale-based mode, analysis/planning, task decomposition, development mode routing |
 | Phase 11-20: Implementation | `Read workflows/run/task-decomposition.md` | DDD/TDD cycles (Phase 11/12), quality validation (Phase 13), git operations (Phase 19), completion guidance (Phase 20) |
 | Mode Routing + Completion | `Read workflows/run/mode-orchestration.md` | Execution mode gate, mode dispatch routing, context propagation, completion criteria, verify exit gate, test scenarios |
 | External Model Delegation | `Read workflows/run/external-delegation.md` | Optional hand-off of bounded mechanical subtasks to an external model — the single home of the delegation procedure |
@@ -56,7 +56,7 @@ Phase 4 Mode Selection: orchestrator autonomous decision over the 4-mode catalog
 
 | Fan-Out ID | Trigger condition | Target file | What is parallelised |
 |---|---|---|---|
-| `FO-RUN-1` | the MX scan target spans many files across several packages | `workflows/run/phase-execution.md` | Phase 1.8 MX context-map scan — one read-only shard per package |
+| `FO-RUN-1` | the MX scan target spans many files across several packages | `workflows/run/phase-execution.md` | Phase 9 MX context-map scan — one read-only shard per package |
 | `FO-RUN-2` | a milestone's RED stage spans several independent test targets | `workflows/run/task-decomposition.md` | RED-stage test drafting — one read-only drafter per target |
 | `FO-RUN-3` | the quality-evidence fan-out script is on disk AND the runtime supports dynamic workflows | `workflows/run/task-decomposition.md` | the Phase 13 / 16 / 17 quality band — one parallel four-dimension evidence pass |
 | `FO-RUN-4` | the modified files span several packages | `workflows/run/task-decomposition.md` | Phase 18 MX tag scan — one read-only shard per package; tag application stays single-writer |
@@ -84,7 +84,7 @@ Phase 4 Mode Selection: orchestrator autonomous decision over the 4-mode catalog
 **Development mode**: `.moai/config/sections/quality.yaml` `constitution.development_mode` 설정 (`ddd` 또는 `tdd`)에 따라 자동 선택.
 
 **Mode dispatch** (`--mode` flag):
-- `autopilot` (기본): Phase 4 scale-based 선택 후 Phase 11/2B 실행
+- `autopilot` (기본): Phase 4 scale-based 선택 후 Phase 11/12 실행
 - `loop`: Ralph engine 위임 (see `loop.md`)
 - `team`: experimental — `--mode team` selects the Agent Teams layer (re-allowed, operator decision; flag `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` ships on; constraints per `orchestration-mode-selection.md` §C.1). Historical: the retired era emitted `MODE_TEAM_UNAVAILABLE` and fell back to `autopilot`
 - `pipeline`: REJECTED — `MODE_PIPELINE_ONLY_UTILITY` 오류 반환
@@ -192,7 +192,7 @@ The bounded self-diagnosis loop handles MECHANICAL run-phase failures fast (DIAG
 | Flat hierarchy | spawned BY THE ORCHESTRATOR (not manager-develop — subagents cannot spawn subagents); blocker reports never direct user prompts | `agent-common-protocol.md` § User Interaction Boundary |
 | Ledger | [HARD] each iteration appended to the `progress.md` Recursive Self-Diagnosis Log section, lettered per `spec-frontmatter-schema.md` § progress.md Section Map (iteration #, classification, root-cause, patch, VERIFY result, escalation reason); grep-verifiable via `grep -A 10 "Recursive Self-Diagnosis Log" .moai/specs/<SPEC-ID>/progress.md` | `runtime-recovery-doctrine.md` §3 invariant 4 (abort-closes-ledger) |
 
-This loop is COMPLEMENTARY to the independent audits (plan-auditor Phase 5, sync-auditor Phase 19) — self-audit handles mechanical failures fast; independent audit handles SPEC-quality assurance. See `orchestration-mode-selection.md` §J.3.
+This loop is COMPLEMENTARY to the independent audits (plan-auditor Phase 1, sync-auditor Phase 16/17) — self-audit handles mechanical failures fast; independent audit handles SPEC-quality assurance. See `orchestration-mode-selection.md` §J.3.
 
 ## Routing Ledger Recording
 

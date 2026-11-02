@@ -1,5 +1,5 @@
 ---
-description: "Run Phase 1~1.8 — Plan Audit Gate, environment assessment, JIT language detection, scale-based mode, analysis/planning, task decomposition, and development mode routing"
+description: "Run Phase 1-10 — Plan Audit Gate, environment assessment, JIT language detection, scale-based mode, analysis/planning, task decomposition, and development mode routing"
 user-invocable: false
 metadata:
   parent: moai-workflow-run
@@ -371,7 +371,7 @@ SPEC: {SPEC-ID}
 ```
 
 This file is git-tracked. Update task status as implementation progresses.
-The planned_files column is used by the Drift Guard (Phase 11/2B) to detect scope drift.
+The planned_files column is used by the Drift Guard (Phase 11/12) to detect scope drift.
 
 ## Phase 7: Acceptance Criteria Initialization (Failing Checklist)
 
@@ -470,10 +470,10 @@ Independent contract review: Agent(subagent_type="sync-auditor"). A retired CG c
 
 ## Delta Marker Detection (Brownfield Pre-Check)
 
-Before routing to Phase 11 or 2B, scan the loaded SPEC for `[DELTA]` section markers:
+Before routing to Phase 11 or 12, scan the loaded SPEC for `[DELTA]` section markers:
 
 1. Check spec.md (or spec-compact.md) for any line matching `[EXISTING]`, `[MODIFY]`, `[NEW]`, or `[REMOVE]`
-2. If NO delta markers found: skip this section, proceed to Phase 11/2B normally (greenfield path)
+2. If NO delta markers found: skip this section, proceed to Phase 11/12 normally (greenfield path)
 3. If delta markers found: activate delta-aware routing as follows
 
 **Delta-aware routing rules (applied within DDD or TDD mode):**
