@@ -31,6 +31,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -837,5 +838,55 @@ func TestACNA012_NonGoFixture(t *testing.T) {
 	}
 	if _, ok := report["matched"]; !ok {
 		t.Errorf("AC-NA-012: Python fixture report missing 'matched' key")
+	}
+}
+
+// --- PJ-11 ----------------------------------------------------------------
+
+// TestNavigatorAudit_KoreanDocumentsAreAudited pins PJ-11: a design doc
+// generated in the user's conversation_language (Korean) must be audited like
+// an English one. The feature heading `## 핵심 기능` must open a feature
+// section, and a Korean feature name must survive normalization so that it
+// matches the capability-map row carrying the same title.
+func TestNavigatorAudit_KoreanDocumentsAreAudited(t *testing.T) {
+	dir := t.TempDir()
+	initFixtureRepo(t, dir)
+	path := filepath.Join(dir, ".moai", "project", "product.md")
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	doc := "# 제품\n\n## 개요\n\n설명.\n\n## 핵심 기능\n\n" +
+		"- **로그인 인증** — 설명.\n- **알림 센터** — 설명.\n\n## 구조\n\n비기능 절.\n"
+	if err := os.WriteFile(path, []byte(doc), 0o644); err != nil {
+		t.Fatalf("write product.md: %v", err)
+	}
+	writeDesignDoc(t, dir, "structure.md", nil)
+	writeDesignDoc(t, dir, "tech.md", nil)
+	writeSPECStub(t, dir, "SPEC-FIXTURE-001")
+	writeCapabilityMap(t, dir, capMapVariantB, []capRow{
+		{"SPEC-AUTH-001", "로그인 인증", "completed", "internal/auth"},
+	})
+	if _, err := runAudit(t, dir); err != nil {
+		t.Fatalf("audit exited non-zero: %v", err)
+	}
+	report := loadAuditJSON(t, dir)
+	names := func(key, field string) []string {
+		var out []string
+		list, _ := report[key].([]any)
+		for _, e := range list {
+			m, _ := e.(map[string]any)
+			s, _ := m[field].(string)
+			out = append(out, s)
+		}
+		return out
+	}
+	if got := names("matched", "design_name"); !slices.Contains(got, "로그인 인증") {
+		t.Errorf("Korean feature %q not matched to its capability row; matched=%v", "로그인 인증", got)
+	}
+	if got := names("missing", "design_name"); !slices.Contains(got, "알림 센터") {
+		t.Errorf("Korean feature %q without a SPEC not reported missing; missing=%v", "알림 센터", got)
+	}
+	if got := names("orphan", "spec_id"); slices.Contains(got, "SPEC-AUTH-001") {
+		t.Errorf("SPEC-AUTH-001 reported orphan although a Korean feature carries its title; orphan=%v", got)
 	}
 }
