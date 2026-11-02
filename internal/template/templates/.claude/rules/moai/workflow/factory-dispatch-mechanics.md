@@ -25,10 +25,14 @@ The bound is the holder's own declaration: past it another lane may take the res
 
 While it executes the card, a lane renews its own card lease at the start of each watchdog pass with `moai factory renew <card>` (MCP tool `factory_renew`, the same implementation): the renewal extends the lease from the request time by `workflow.factory_lease.duration`, and a renewal of an expired lease is refused with no write.
 
-When a renewal is refused as expired, the stage verb run against that card is itself refused and
-returns the card to assigned with stage, worktree and evidence kept; the lane then leases it again with
-`moai factory next --card <id> --run <run-id>` from the primary checkout and re-runs the stage verb in
-its worktree. A refused renewal (expired or not holder) is recorded,
+When a renewal is refused as expired, the registered owner of the card runs
+`moai factory next --card <id> --run <run-id>` from the primary checkout (MCP tool `factory_next`, the
+same implementation). For a card that is leased with an expired lease, held by its recorded owner, that
+one call applies the expiry and leases the card to the owner again in a single step, keeping stage,
+worktree, evidence and uncommitted work; the verb never touches the worktree. The lane then re-runs the
+stage verb in its worktree. `moai factory renew` on an expired lease still refuses without writing, and the earlier
+recovery through a refused stage call is retired and must not be used. Another lane, or the leader, does
+not re-lease a card it does not own this way. A refused renewal (expired or not holder) is recorded,
 never retried inside one watchdog pass, and an expired lease alone never wakes or reassigns anyone.
 
 ### Lease renewal — only the card being executed

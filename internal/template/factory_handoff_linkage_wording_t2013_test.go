@@ -38,10 +38,21 @@ func t2013HandoffRoots() map[string]string {
 // the lease renewal passage of the factory-dispatch mechanics rule.
 func TestT2013_LeaseRecoveryStepsAreStated(t *testing.T) {
 	markers := []string{
-		"returns the card to assigned with stage, worktree and evidence kept",
+		"the registered owner of the card runs",
 		"factory next --card <id> --run <run-id>",
+		"applies the expiry and leases the card to the owner again in a single step",
+		"keeping stage,\nworktree, evidence and uncommitted work",
+		"still refuses without writing",
+		"retired and must not be used",
+		"does\nnot re-lease a card it does not own this way",
 		"never retried inside one watchdog pass",
 		"an expired lease alone never wakes or reassigns anyone",
+	}
+	// The earlier recovery (a refused stage call returning the card to assigned)
+	// is retired; its wording must not survive in the passage.
+	retired := []string{
+		"the stage verb run against that card is itself refused",
+		"returns the card to assigned with stage, worktree and evidence kept",
 	}
 	for copyName, root := range t2013HandoffRoots() {
 		t.Run(copyName, func(t *testing.T) {
@@ -49,6 +60,11 @@ func TestT2013_LeaseRecoveryStepsAreStated(t *testing.T) {
 			for _, m := range markers {
 				if !strings.Contains(section, m) {
 					t.Errorf("lease renewal passage lacks %q", m)
+				}
+			}
+			for _, m := range retired {
+				if strings.Contains(section, m) {
+					t.Errorf("lease renewal passage still carries the retired recovery %q", m)
 				}
 			}
 		})
