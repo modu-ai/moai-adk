@@ -183,7 +183,7 @@ func factoryRecordWait(ctx context.Context, out io.Writer, root, cardID, on stri
 	predecessorWait := w.CondKind == homestate.WaitCondPredecessorLanded && w.CondRef != ""
 	// An identical wait already woken because its predecessor landed is
 	// history: re-recording it would open a fresh wait that wakes again.
-	if !(predecessorWait && factoryWaitAlreadyDelivered(ctx, db, w)) {
+	if !predecessorWait || !factoryWaitAlreadyDelivered(ctx, db, w) {
 		if err := db.RecordCardWait(ctx, w, factoryCardNow()); err != nil {
 			return fmt.Errorf("factory wait: %w", err)
 		}
