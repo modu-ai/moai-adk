@@ -2,10 +2,11 @@ package worktree
 
 // Hoist tracked-path tests — card t2013.
 //
-// A card tree's .moai/reports/ holds both git-tracked files (already present in
-// the primary checkout) and untracked run-phase evidence. Hoisting must copy
-// only the untracked evidence; copying tracked paths duplicates what the
-// primary checkout already has.
+// A card tree's .moai/reports/ holds git-tracked files and untracked run-phase
+// evidence. Hoisting skips a tracked path only when the primary checkout's HEAD
+// holds the identical blob and the working file is unmodified; every other path
+// (untracked, modified, staged differently, committed only on the card branch)
+// is copied (sync-audit F6).
 
 import (
 	"os"
