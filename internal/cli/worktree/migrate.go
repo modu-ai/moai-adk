@@ -694,6 +694,14 @@ func m6ReverseMove(root string, p migratePlan, id TreeIdentity, mlPath, trigger 
 // and through a WRITABLE connection: RebindCardWorktree is an UPDATE and a
 // mode=ro connection would refuse it (card t1640 review P1-1).
 func rebindCardForPath(root, oldPath, newPath string) error {
+	// The plan's source path comes from `git worktree list --porcelain`, which
+	// prints slash form on every host (C:/... on Windows), while a card's
+	// recorded worktree path is the host form: materializeSessionWorktree
+	// returns filepath.Abs(destDir) and RecordCardWorktree stores it as given.
+	// The store matches the path by exact string, so look the card up in the
+	// host form. FromSlash is the identity on POSIX hosts.
+	oldPath = filepath.FromSlash(oldPath)
+	newPath = filepath.FromSlash(newPath)
 	dbPath, err := homestate.FactoryDBPath(root)
 	if err != nil {
 		return nil
