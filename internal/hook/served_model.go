@@ -256,6 +256,36 @@ func ObserveServedModel(transcriptPath, agentTypeHint string, cfg *config.Config
 }
 
 func observeServedModel(transcriptPath, agentTypeHint string, cfg *config.Config, budget servedReadBudget) ServedObservation {
+	return observeServedModelIn(servedAuditRoot(), transcriptPath, agentTypeHint, cfg, budget)
+}
+
+// sessionDeclarationRoot returns the tree a session runs in, for reading an
+// agent definition: the nearest directory at or above cwd that carries
+// .claude/agents. CLAUDE_PROJECT_DIR names the primary checkout even for a
+// worktree session, so reading the declaration there compares the served model
+// with another tree's expectation (card t2011, audit defect D3). With no cwd, or
+// none that sits in such a tree, it falls back to servedAuditRoot — the earlier
+// behavior — rather than to no declaration.
+func sessionDeclarationRoot(cwd string) string {
+	if cwd == "" {
+		return servedAuditRoot()
+	}
+	dir := filepath.Clean(cwd)
+	for {
+		if st, err := os.Stat(filepath.Join(dir, ".claude", "agents")); err == nil && st.IsDir() {
+			return dir
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return servedAuditRoot()
+		}
+		dir = parent
+	}
+}
+
+// observeServedModelIn is observeServedModel with the root that supplies the
+// frontmatter declaration named by the caller.
+func observeServedModelIn(declRoot, transcriptPath, agentTypeHint string, cfg *config.Config, budget servedReadBudget) ServedObservation {
 	meta := readSubagentMeta(transcriptPath)
 	obs := ServedObservation{AgentType: agentTypeHint, DeclaredModel: strings.TrimSpace(meta.Model)}
 	if obs.AgentType == "" {
@@ -266,7 +296,7 @@ func observeServedModel(transcriptPath, agentTypeHint string, cfg *config.Config
 	// the agent definition declares its role's model in frontmatter, which is
 	// the canonical declaration. An explicit spawn argument still wins.
 	if obs.DeclaredModel == "" {
-		obs.DeclaredModel = frontmatterDeclaredModel(servedAuditRoot(), obs.AgentType)
+		obs.DeclaredModel = frontmatterDeclaredModel(declRoot, obs.AgentType)
 	}
 
 	expected, resolved, state := expectedServedModel(obs.DeclaredModel, obs.AgentType, cfg)

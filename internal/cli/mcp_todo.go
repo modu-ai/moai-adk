@@ -106,8 +106,14 @@ func handleTodoAdd(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolRes
 	}
 	out, errBuf := &bytes.Buffer{}, &bytes.Buffer{}
 	args := req.GetArguments()
-	attach, haveAttach := args["attach"].(string)
-	scope, haveScope := args["independent_scope"].(string)
+	attach, haveAttach, err := optionalStringArg(args, "attach")
+	if err != nil {
+		return toolErr("todo_add", err), nil
+	}
+	scope, haveScope, err := optionalStringArg(args, "independent_scope")
+	if err != nil {
+		return toolErr("todo_add", err), nil
+	}
 	guard := todoAddGuard{IndependentScope: scope, HaveIndependentScope: haveScope}
 	if haveAttach {
 		if haveScope || strings.TrimSpace(attach) == "" {
@@ -131,6 +137,23 @@ func handleTodoAdd(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolRes
 		result += "\n\n" + presentation
 	}
 	return mcp.NewToolResultText(result), nil
+}
+
+// optionalStringArg reads an optional string argument. An absent key is "not
+// given"; a key that is present with any non-string value (a number, a bool,
+// null, a list) is refused, never read as absent — a caller who passes
+// attach: 1 meant to attach, and silently opening a new card instead is the
+// wrong outcome (card t2011, audit defect D4).
+func optionalStringArg(args map[string]any, key string) (value string, present bool, err error) {
+	raw, ok := args[key]
+	if !ok {
+		return "", false, nil
+	}
+	s, isString := raw.(string)
+	if !isString {
+		return "", true, errors.New("todo add: " + key + " must be a string when given")
+	}
+	return s, true, nil
 }
 
 // handleTodoList wraps runTodoListRoot (todo.go) — the same default render

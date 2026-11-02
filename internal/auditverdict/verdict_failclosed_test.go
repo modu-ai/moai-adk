@@ -36,7 +36,11 @@ func TestAdmitSync_FieldsPresentFailClosed(t *testing.T) {
 		{"must_pass_failed unparseable", "verdict: PASS\nmust_pass_failed: two\n", false, "must_pass_failed"},
 		{"blocking_count unparseable", "verdict: PASS\nblocking_count: none\n", false, "blocking_count"},
 		{"negative must_pass_failed", "verdict: PASS\nmust_pass_failed: -1\n", false, "must_pass_failed"},
-		{"score 88 out of range", "verdict: PASS\nOverall Score: 88\n", false, "score"},
+		// A bare 88 is a 0-100-scale score, the shape stored sync reports use
+		// (audit defect D2, verdict_legacy_sync_test.go); a value past 100 is
+		// not a score on either scale.
+		{"score 88 is the 0-100 scale and admits in sync", "verdict: PASS\nOverall Score: 88\n", true, ""},
+		{"score 188 out of range", "verdict: PASS\nOverall Score: 188\n", false, "score"},
 		{"score unparseable", "verdict: PASS\noverall_score: high\n", false, "score"},
 		{"score exactly 1 admits", "verdict: PASS\noverall_score: 1\n", true, ""},
 	}

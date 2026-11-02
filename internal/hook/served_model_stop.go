@@ -124,7 +124,10 @@ func (h *subagentStopHandler) observeServedModel(input *HookInput) (ServedObserv
 		// @MX:NOTE: [AUTO] a payload naming no transcript at all (neither agent_transcript_path nor transcript_path + agent_id) identifies no subagent run to observe, so it yields no row and no warning; whether the runtime ever sends such a SubagentStop payload has not been measured — if it does, that stop goes unobserved rather than recorded unknown
 		return ServedObservation{}, ""
 	}
-	obs := ObserveServedModel(path, input.AgentType, h.loadedConfig())
+	// The declaration is read from the tree the session runs in; the audit row
+	// below still lands under servedAuditRoot, which is where the PreToolUse row
+	// of the same spawn lands.
+	obs := observeServedModelIn(sessionDeclarationRoot(input.CWD), path, input.AgentType, h.loadedConfig(), defaultServedReadBudget)
 	served := obs.ServedModels
 	if served == nil {
 		served = []string{}

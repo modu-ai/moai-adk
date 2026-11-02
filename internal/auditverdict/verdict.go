@@ -71,6 +71,22 @@ type Fields struct {
 	// appeared at all, so a value that failed to parse (or sat outside the
 	// score's [0, 1] range) is told apart from a key the file never carried.
 	ScoreSeen, MustPassSeen, BlockingSeen bool
+	// ScoreLegacy is the score read leniently, for the sync phase only: the
+	// first token of the value, accepted as a bare number in [0, 1], as
+	// "{n}/100" or "{n}%", or as a bare number in (1, 100] written on the 0-100
+	// scale. The sync-auditor contract writes the {n}/100 form, and stored
+	// reports carry prose after the number, so the strict ScoreOK above would
+	// newly refuse them (card t2011, audit defect D2). The plan phase never
+	// reads it. MustPassEmpty is the same kind of allowance for
+	// must_pass_failed written as an empty list ("[]" or "none"), which means
+	// zero.
+	// ScoreNone records a score value whose first word is "none": a report that
+	// states it carries no score (a landing-confirmation round that did not
+	// re-score), which makes no numeric claim the sync phase could mis-read.
+	ScoreLegacy   float64
+	ScoreLegacyOK bool
+	ScoreNone     bool
+	MustPassEmpty bool
 	// BodyMustPassUnmet counts the distinct MP-n rows of the body
 	// ("- [STATE] MP-n ...") recorded as unmet: any state other than PASS or
 	// N/A, or an N/A row whose own text calls the check unverified or not run.
@@ -109,6 +125,50 @@ var (
 	debtLine     = regexp.MustCompile(`^-?\s*debt:\s*(.*)$`)
 	debtWellForm = regexp.MustCompile(`^(\S+)\s+dispose_in=(run|sync)\s+(\S.*)$`)
 )
+
+// legacyScore reads a score the way stored sync reports write it: the first
+// whitespace-delimited token of the value, as "{n}/100" (or "{n}/1"), "{n}%",
+// or a bare number, where a bare number above 1 is taken to be on the 0-100
+// scale. The result must land in [0, 1]; NaN, infinities, negatives, a zero or
+// other denominator, and anything past 100 are not scores. It is consulted only
+// by the sync phase (Fields.ScoreLegacy).
+func legacyScore(value string) (float64, bool) {
+	fields := strings.Fields(value)
+	if len(fields) == 0 {
+		return 0, false
+	}
+	tok := strings.TrimRight(fields[0], ",;")
+	var s float64
+	switch {
+	case strings.Contains(tok, "/"):
+		num, den, _ := strings.Cut(tok, "/")
+		n, errN := strconv.ParseFloat(num, 64)
+		d, errD := strconv.ParseFloat(den, 64)
+		if errN != nil || errD != nil || (d != 100 && d != 1) {
+			return 0, false
+		}
+		s = n / d
+	case strings.HasSuffix(tok, "%"):
+		n, err := strconv.ParseFloat(strings.TrimSuffix(tok, "%"), 64)
+		if err != nil {
+			return 0, false
+		}
+		s = n / 100
+	default:
+		n, err := strconv.ParseFloat(tok, 64)
+		if err != nil {
+			return 0, false
+		}
+		if n > 1 {
+			n /= 100
+		}
+		s = n
+	}
+	if math.IsNaN(s) || math.IsInf(s, 0) || s < 0 || s > 1 {
+		return 0, false
+	}
+	return s, true
+}
 
 // Parse reads the machine fields. Keys are matched case-insensitively with
 // spaces folded to underscores, so "Overall Score: 0.9" and
@@ -174,10 +234,16 @@ func Parse(raw []byte) Fields {
 			if s, err := strconv.ParseFloat(value, 64); err == nil && !math.IsNaN(s) && !math.IsInf(s, 0) && s >= 0 && s <= 1 {
 				f.Score, f.ScoreOK = s, true
 			}
+			f.ScoreLegacy, f.ScoreLegacyOK = legacyScore(value)
+			if first := strings.Fields(value); len(first) > 0 && strings.EqualFold(first[0], "none") {
+				f.ScoreNone = true
+			}
 		case "must_pass_failed":
 			f.MustPassSeen = true
 			if n, err := strconv.Atoi(value); err == nil {
 				f.MustPassFailed, f.MustPassKnown = n, true
+			} else if v := strings.ToLower(value); v == "[]" || v == "none" {
+				f.MustPassEmpty = true
 			}
 		case "blocking_count":
 			f.BlockingSeen = true
@@ -347,10 +413,19 @@ func admitBase(f Fields, phase Phase, threshold float64, hashOK bool) (bool, str
 	// stays label-only for a file that carries none of them (the legacy shape),
 	// but a present must_pass_failed or blocking_count that is non-zero or
 	// unparseable, and a present score outside [0, 1], refuse (card t2011).
+	//
+	// The sync phase reads the two legacy spellings stored reports use (a score
+	// on the 0-100 scale or followed by prose, must_pass_failed as an empty list);
+	// every other phase reads only the strict forms. (The plan branch below
+	// also re-checks ScoreOK and MustPassKnown, so it stays strict even if this
+	// guard were widened; the guard keeps the intent at the point of use.)
+	syncLenient := phase == PhaseSync
+	scoreReadable := f.ScoreOK || (syncLenient && (f.ScoreLegacyOK || f.ScoreNone))
+	mustPassReadable := f.MustPassKnown || (syncLenient && f.MustPassEmpty)
 	switch {
-	case f.ScoreSeen && !f.ScoreOK:
+	case f.ScoreSeen && !scoreReadable:
 		return false, "score is unparseable or outside [0, 1]"
-	case f.MustPassSeen && !f.MustPassKnown:
+	case f.MustPassSeen && !mustPassReadable:
 		return false, "must_pass_failed is not an integer"
 	case f.MustPassKnown && f.MustPassFailed != 0:
 		return false, fmt.Sprintf("must_pass_failed %d", f.MustPassFailed)
