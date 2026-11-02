@@ -165,7 +165,7 @@ func runUserAssetUpdatePhase(homeDir string, out io.Writer) error {
 		}
 	}
 	announceUnselectedOptionalPacks(".", saved.Bundles, out)
-	recordUserAssetFailures(ensureRes, pruneRes)
+	recordUserAssetFailures(homeDir, ensureRes, pruneRes)
 	return nil
 }
 
@@ -175,18 +175,34 @@ func runUserAssetUpdatePhase(homeDir string, out io.Writer) error {
 // the project templates only, so without this row a run with refusals reads as
 // fully current. It records only: no refusal is lifted, no file or record is
 // touched, and the phase's return value is unchanged.
-func recordUserAssetFailures(results ...*userassets.Result) {
-	n := 0
+//
+// A failure recorded against the install journal is not a refused file: the
+// installer adds it after the file was already written, once per written file.
+// Those are counted apart and named once in their own row, so the file count
+// stays the number of files the run did not write.
+func recordUserAssetFailures(homeDir string, results ...*userassets.Result) {
+	journal := userassets.JournalPath(homeDir)
+	files, journalFailures := 0, 0
 	for _, r := range results {
-		if r != nil {
-			n += len(r.Failures)
+		if r == nil {
+			continue
+		}
+		for _, f := range r.Failures {
+			if f.Path == journal {
+				journalFailures++
+			} else {
+				files++
+			}
 		}
 	}
-	if n == 0 {
-		return
+	if files > 0 {
+		updateLedger.requiref(sevWarn,
+			"user-asset update: %d file(s) refused or failed (see the failure rows above); they were left as they were, and the 'Up to date' line covers the project templates only", files)
 	}
-	updateLedger.requiref(sevWarn,
-		"user-asset update: %d file(s) refused or failed (see the failure rows above); they were left as they were, and the 'Up to date' line covers the project templates only", n)
+	if journalFailures > 0 {
+		updateLedger.requiref(sevWarn,
+			"user-asset update: the install journal could not be saved (%d write failure(s)); the files this run wrote are in place, and re-running `moai update` re-checks them", journalFailures)
+	}
 }
 
 // announceUnselectedOptionalPacks names each optional pack the recorded

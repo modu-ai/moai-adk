@@ -6,6 +6,7 @@ package cli
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -38,7 +39,10 @@ func seedT2014RefusalFixture(t *testing.T) (home, target string, edited []byte) 
 		t.Fatal(err)
 	}
 	manifestPath := userassets.ManifestPath(home)
-	m, _ := userassets.Load(manifestPath)
+	m, err := userassets.Load(manifestPath)
+	if err != nil {
+		t.Fatalf("load the recorded manifest: %v", err)
+	}
 	fe := m.Files[key]
 	fe.SHA256 = shaHex(edited)
 	m.Files[key] = fe
@@ -61,7 +65,10 @@ func TestT2014_PhaseReportsRefusalsButReturnsNil(t *testing.T) {
 	if err != nil {
 		t.Fatalf("phase returned %v; the measurement expects nil (refusals are only printed)", err)
 	}
-	got, _ := os.ReadFile(target)
+	got, readErr := os.ReadFile(target)
+	if readErr != nil {
+		t.Fatalf("read the refused file back: %v", readErr)
+	}
 	if string(got) != string(edited) {
 		t.Errorf("refused refresh still changed the file: %q", got)
 	}
@@ -78,17 +85,77 @@ func TestT2014_RefusalsReachTheClosingBlock(t *testing.T) {
 	home, _, _ := seedT2014RefusalFixture(t)
 	updateLedger.reset()
 	t.Cleanup(updateLedger.reset)
-	if err := runUserAssetUpdatePhase(home, &bytes.Buffer{}); err != nil {
+	var out bytes.Buffer
+	if err := runUserAssetUpdatePhase(home, &out); err != nil {
 		t.Fatalf("phase: %v", err)
 	}
+	// The closing row must carry the number of failure rows the phase printed
+	// above it, not merely mention "user-asset".
+	printed := 0
+	for _, line := range strings.Split(out.String(), "\n") {
+		if strings.HasPrefix(line, "  failure:") {
+			printed++
+		}
+	}
+	if printed == 0 {
+		t.Fatalf("the fixture produced no failure rows; output:\n%s", out.String())
+	}
+	want := fmt.Sprintf("%d file(s) refused or failed", printed)
 	found := false
 	for _, row := range updateLedger.required {
-		if strings.Contains(row.msg, "user-asset") {
+		if strings.Contains(row.msg, want) {
 			found = true
 		}
 	}
 	if !found {
-		t.Errorf("no user-asset row in the closing block; required=%+v", updateLedger.required)
+		t.Errorf("no closing row carrying %q; required=%+v", want, updateLedger.required)
+	}
+}
+
+// TestT2014_JournalPersistFailuresAreNotCountedAsRefusedFiles pins audit
+// finding F1. When the install journal cannot be saved, install.go adds one
+// failure per written file against the journal path (the file HAS been
+// written). The closing row must count only real file failures, must not claim
+// the journal-failed files were left as they were, and must name the journal
+// problem once, in its own row.
+func TestT2014_JournalPersistFailuresAreNotCountedAsRefusedFiles(t *testing.T) {
+	home := testguard.RedirectHome(t)
+	journal := userassets.JournalPath(home)
+	res := &userassets.Result{Failures: []userassets.FileOutcome{
+		{Path: journal, Reason: "persist completion flag: injected"},
+		{Path: journal, Reason: "persist completion flag: injected"},
+		{Path: journal, Reason: "persist completion flag: injected"},
+		{Path: "claude-skills/moai-workflow-tdd/SKILL.md", Reason: "refresh refused: injected"},
+	}}
+	updateLedger.reset()
+	t.Cleanup(updateLedger.reset)
+	recordUserAssetFailures(home, res)
+
+	var fileRow, journalRow string
+	for _, row := range updateLedger.required {
+		switch {
+		case strings.Contains(row.msg, "refused or failed"):
+			fileRow = row.msg
+		case strings.Contains(row.msg, "journal"):
+			journalRow = row.msg
+		}
+	}
+	if !strings.Contains(fileRow, "1 file(s) refused or failed") {
+		t.Errorf("JOURNAL_FAILURES_COUNTED_AS_FILES: file row = %q, want a count of 1", fileRow)
+	}
+	if journalRow == "" {
+		t.Errorf("JOURNAL_FAILURE_NOT_NAMED: no row names the journal problem; required=%+v", updateLedger.required)
+	}
+	if strings.Contains(journalRow, "left as they were") {
+		t.Errorf("a journal-persist failure must not claim the files were left as they were: %q", journalRow)
+	}
+	// Journal-only failures: no file row at all.
+	updateLedger.reset()
+	recordUserAssetFailures(home, &userassets.Result{Failures: res.Failures[:3]})
+	for _, row := range updateLedger.required {
+		if strings.Contains(row.msg, "refused or failed") {
+			t.Errorf("journal-only failures produced a refused-file row: %q", row.msg)
+		}
 	}
 }
 
