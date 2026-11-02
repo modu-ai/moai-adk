@@ -143,11 +143,19 @@ func TestExistingBrokerOpenContextBoundsGitPathResolution(t *testing.T) {
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
+	// The first Open taught homestate where this repository is, and a known location is not resolved
+	// again (the repository-location memo), so a slow git on the SAME path would never run and the
+	// open would answer inside the deadline. The test is about the slow git path, so it reaches the
+	// repository through a symlink alias: a path the memo has not seen, which has to be resolved.
+	alias := filepath.Join(t.TempDir(), "alias")
+	if err := os.Symlink(root, alias); err != nil {
+		t.Fatal(err)
+	}
 	slowBrokerGit(t, 600)
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 	started := time.Now()
-	store, err = OpenExistingWithContext(ctx, root, "run-existing", time.Second)
+	store, err = OpenExistingWithContext(ctx, alias, "run-existing", time.Second)
 	elapsed := time.Since(started)
 	if store != nil {
 		_ = store.Close()

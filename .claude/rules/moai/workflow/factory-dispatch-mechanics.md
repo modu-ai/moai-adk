@@ -33,7 +33,7 @@ A lane renews the lease of the card it is executing, and of no other card: only 
 
 A lease on a merge-ready, held (operator-wait), or serial-waiting card may expire; expiry is harmless, because at the landing slot the leader reassigns the card or the lane re-leases it with `factory next --card`, the stage preserved.
 
-The lane's standing recheck cron is kept while the lane executes the card; a lane waiting on a slot or a trigger arms and keeps no polling cron for that wait, and the leader sends a notice when a slot or a landing turn opens.
+The lane's self-paced wake is scheduled while the lane executes the card; a lane waiting on a slot or a trigger schedules no polling wake for that wait, and the leader sends a notice when a slot or a landing turn opens.
 
 ## Isolation — launcher, tiers, branch naming, and the traceability carriers
 

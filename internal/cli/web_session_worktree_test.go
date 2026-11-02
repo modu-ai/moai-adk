@@ -51,7 +51,12 @@ func runWebHarness(t *testing.T, seams swSeams, opts ...func(*runWebHarnessCfg))
 
 	// webRunFn → no-op (web.Run blocks; we never want to start a real server).
 	origRun := webRunFn
-	webRunFn = func(ctx context.Context, _ web.Config) error { return nil }
+	webRunFn = func(ctx context.Context, c web.Config) error {
+		if cfg.captured != nil {
+			*cfg.captured = c
+		}
+		return nil
+	}
 	t.Cleanup(func() { webRunFn = origRun })
 
 	// Port reclamation: ensurePortFree returns nil when the port is free.
@@ -92,6 +97,7 @@ func runWebHarness(t *testing.T, seams swSeams, opts ...func(*runWebHarnessCfg))
 type runWebHarnessCfg struct {
 	materializePath string
 	projectRoot     string
+	captured        *web.Config // when set, receives the Config runWeb handed to web.Run
 }
 
 // withRootDir sets the temp dir findProjectRootFn returns.

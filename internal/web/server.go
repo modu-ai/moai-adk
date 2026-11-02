@@ -37,6 +37,9 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/ledger"
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/monitor/flow"
 )
 
 // loopbackHost is the only interface the Console ever binds to (REQ-WC-002).
@@ -62,6 +65,10 @@ type Config struct {
 	// Console reads and writes via SyncToProjectConfig. Required.
 	ProjectRoot string
 
+	// Ledger supplies the read-only local ledger the /board screen renders. Nil
+	// leaves the board "not provided".
+	Ledger ledger.Reader
+
 	// ProfileBaseDir overrides the profile store base directory
 	// (~/.moai/claude-profiles by default). When empty, the process default is
 	// used. Tests set this to a temp dir for isolation.
@@ -82,6 +89,11 @@ type Config struct {
 	// CLI layer sets this to a wrapper around internal/cli.ProbeCodexSetup so
 	// internal/web consumes the probe without importing internal/cli (AC-C-006).
 	CodexStateProbe func(ctx context.Context) CodexStateView
+
+	// FlowProbe judges whether a lease holder's process is alive for the board's
+	// flow panel. The CLI layer injects the real process probe; nil reads every
+	// holder as Unknown (monitor/flow's rule).
+	FlowProbe flow.Probe
 }
 
 // @MX:ANCHOR: [AUTO] Console HTTP 서버 엔트리 포인트 — 루프백 바인드 + graceful shutdown 불변식을 보장한다.
@@ -139,6 +151,9 @@ func NewServer(cfg Config) (*Server, error) {
 	// renders the real codex state (AC-C-006 — consume, don't fork).
 	if cfg.CodexStateProbe != nil {
 		a.codexStateProbe = cfg.CodexStateProbe
+	}
+	if cfg.FlowProbe != nil {
+		a.flowProbe = cfg.FlowProbe
 	}
 	return srv, nil
 }

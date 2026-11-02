@@ -177,14 +177,17 @@ func TestSD_AC019_NextCardRuleInjection(t *testing.T) {
 		}
 	})
 
-	t.Run("resume and compact carry no rule", func(t *testing.T) {
+	// Leader decision (914ea8064b): after a compact only a summary remains, so the rule is injected again;
+	// resume keeps the transcript, which still holds the earlier injection.
+	t.Run("compact carries the rule, resume does not", func(t *testing.T) {
 		sdScrubRuleEnv(t)
 		t.Setenv(config.EnvMoaiFactoryWorker, "lane-2")
 		t.Setenv(config.EnvFactoryBackend, factory.BackendClaude)
-		for _, source := range []string{"resume", "compact"} {
-			if rule := factoryLaneRuleForSource(source, "en"); rule != "" {
-				t.Errorf("source %s: rule injected, want none", source)
-			}
+		if rule := factoryLaneRuleForSource("compact", "en"); rule == "" {
+			t.Error("source compact: no rule injected, want the rule")
+		}
+		if rule := factoryLaneRuleForSource("resume", "en"); rule != "" {
+			t.Error("source resume: rule injected, want none")
 		}
 	})
 

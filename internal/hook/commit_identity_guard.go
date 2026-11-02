@@ -126,6 +126,7 @@ var builtinCommitIdentityDenyEmails = []string{
 	"sync-gate-test@example.com",
 	"t@example.com",
 	"t@example.invalid",
+	"t@example.test",
 	"t@fixture",
 	"t@local",
 	"t@t",
