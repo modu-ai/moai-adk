@@ -604,3 +604,28 @@ func TestAppJsFireLoadWaitOption(t *testing.T) {
 		t.Errorf("load-wait window still saw the 1.5s-late error in the p1 window (opt-in not honoured): %v", fireFailureReasons(r))
 	}
 }
+
+// TestAppJsFireThrottledLoadWindow keeps the load-window observation that
+// TestAppJsFirePostSwapSettleWait gave up for speed (card t2014): that test now
+// ends each navigation at the load event, so a ReferenceError that only shows
+// up late under the 12x CPU throttle would go unseen. Here the default fixed
+// drain runs under the same throttle, once on the committed probe (must be
+// clean) and once on a copy that throws 1.5s after load (must be red, so the
+// window is shown to catch what it is here to catch).
+func TestAppJsFireThrottledLoadWindow(t *testing.T) {
+	chromePath := requireFireGuardPrereqs(t)
+	baseURL := startFireGuardServer(t)
+	cdpPort := launchFireGuardChrome(t, chromePath)
+	const want = "ReferenceError in p1_load_referenceerrors"
+	throttled := []string{"--primary-entries-only", "--cpu-throttle", "12"}
+
+	code, r := runFireGuardProbe(t, fireGuardProbePath(t), cdpPort, baseURL, "t2014-throttled-load-clean", throttled...)
+	if code != 0 {
+		t.Errorf("committed probe under 12x throttle with the default load drain: exit=%d failures=%v (want exit 0)", code, fireFailureReasons(r))
+	}
+
+	code, r = runFireGuardProbe(t, fireFixtureLateLoadError(t), cdpPort, baseURL, "t2014-throttled-load-late-error", throttled...)
+	if code != 1 || !strings.Contains(strings.Join(fireFailureReasons(r), "\n"), want) {
+		t.Errorf("late-error copy under 12x throttle: exit=%d failures=%v (want exit 1 naming %q)", code, fireFailureReasons(r), want)
+	}
+}
