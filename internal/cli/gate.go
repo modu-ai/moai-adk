@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/spf13/cobra"
 
@@ -105,13 +104,18 @@ func runGate(cmd *cobra.Command, _ []string) error {
 		}()
 	}
 
-	// Overall deadline: vet (30s) + lint (60s) + test (120s) + ast-grep + slack.
-	// Per-step timeouts inside the gate enforce the real ceilings; this outer
-	// deadline is a safety net against a runaway step hanging indefinitely.
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	// Overall deadline: derived from the steps this run will take (card t2020),
+	// or gate.yaml timeouts.total when set. Per-step timeouts inside the gate
+	// enforce the real ceilings; this outer deadline is a bounded safety net
+	// against a runaway step hanging indefinitely.
+	gate := quality.NewQualityGate(cfg)
+	budget, budgetWarn := gate.OverallBudget()
+	if budgetWarn != "" {
+		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), budgetWarn)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), budget)
 	defer cancel()
 
-	gate := quality.NewQualityGate(cfg)
 	passed, output := gate.Run(ctx)
 	if !passed {
 		if output != "" {
@@ -186,6 +190,9 @@ func mapConfigGateToQuality(g config.GateConfig) *quality.GateConfig {
 		VetTimeout:  g.VetTimeoutDuration(),
 		LintTimeout: g.LintTimeoutDuration(),
 		TestTimeout: g.TestTimeoutDuration(),
+
+		// timeouts.total: the explicit overall-budget override (0 = derive).
+		TotalTimeout: g.TotalTimeoutDuration(),
 
 		TypecheckEnabled: g.Typecheck.Enabled,
 		TypecheckCommand: g.Typecheck.Command,
