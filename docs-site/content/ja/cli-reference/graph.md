@@ -73,6 +73,8 @@ mtime はどこでも読みません。新しいチェックアウトはすべ�
 
 stale 判定には原因の内訳が付くようになりました。`codemaps` 層が stale になると、stderr にはこの変更自身が寄与したファイル数(`contribution`)と測定基準のコミット(`contribution_base`、通常は `HEAD^1`)がまず出力され、続いてドリフトを起こした経路が最大10件まで列挙され、それ以上は `... and N more` にまとめられます。`--json` では同じ情報が `contribution` · `contribution_base` · `driving_paths` · `driving_paths_omitted` フィールドとして出ます。この red を単に引き継いだだけか(寄与0)、自分で起こしたのか(寄与>0)を stderr 一行で見分けられます。
 
+stale の `codemaps` 層は、件数の出どころも `--json` レポートの `drift_origin` で示します。`inherited` はベースだけ(値からこの変更の寄与を引いた数)で既にしきい値以上の場合、`crossed-by-change` はベースはしきい値未満で、この変更が線を越えさせた場合、`originated` はこの変更だけでしきい値以上の場合です。fresh でない層には `block` または `warn` の `verdict_class` も付き、`verdict` 自体は書き換えません。`warn` になるのは一つの場合だけです。`pull_request` イベントで `codemaps` が唯一の fresh でない層であり、出どころが `inherited` なら、`::warning` 注釈を出力して終了コード 0 で終わります(verdict は `stale` のまま)。push イベント(main、`release/*`)、未知または空のイベント、`crossed-by-change`、`originated`、寄与を測定できなかった場合、absent の層、その他の fresh でない層は、すべてこれまでどおり終了コード 1 です。イベントは `--event pull_request|push` で渡し、なければ `GITHUB_EVENT_NAME` を使います。`gate.yaml` の `gate.graph_freshness.inherited_codemaps_drift` を `block` にすると(既定値は `warn`)inherited も再び終了コード 1 になり、それ以外の値はシステムエラー(終了コード 2)です。
+
 ## moai graph stamp codemaps
 
 ```bash

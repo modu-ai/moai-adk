@@ -73,6 +73,8 @@ mtime은 어디에서도 읽지 않습니다. 새 체크아웃은 모든 mtime�
 
 stale 판정에는 원인 첨부가 함께 옵니다. `codemaps` 층이 stale이면 stderr에 이 변경이 기여한 파일 수(`contribution`)와 측정 기준 커밋(`contribution_base`, 보통 `HEAD^1`)이 먼저 찍히고, 드리프트를 일으킨 경로가 최대 10개까지 나열되며 그 이상은 `... and N more`로 요약됩니다. `--json`에서는 같은 정보가 `contribution` · `contribution_base` · `driving_paths` · `driving_paths_omitted` 필드로 노출됩니다. 이 red를 물려받았을 뿐인지(기여 0) 직접 만들었는지(기여 >0)를 stderr 한 줄로 구분할 수 있습니다.
 
+stale인 `codemaps` 층은 개수가 어디서 왔는지도 `--json` 보고서의 `drift_origin`으로 밝힙니다. `inherited`는 베이스만으로(값에서 이 변경의 기여를 뺀 수) 이미 임계값 이상인 경우, `crossed-by-change`는 베이스는 임계값 미만이었는데 이 변경이 선을 넘긴 경우, `originated`는 이 변경 하나만으로 임계값 이상인 경우입니다. fresh가 아닌 층에는 `block` 또는 `warn`인 `verdict_class`도 붙으며, `verdict` 자체는 바꾸지 않습니다. `warn`이 되는 경우는 하나뿐입니다. `pull_request` 이벤트에서 `codemaps`가 유일하게 fresh가 아닌 층이고 원인이 `inherited`이면, `::warning` 주석을 출력하고 종료 코드 0으로 끝납니다(verdict는 `stale` 그대로). push 이벤트(main, `release/*`), 알 수 없거나 빈 이벤트, `crossed-by-change`, `originated`, 기여를 측정하지 못한 경우, absent 층, 그 밖의 fresh가 아닌 층은 모두 그대로 종료 코드 1입니다. 이벤트는 `--event pull_request|push`로 받고, 없으면 `GITHUB_EVENT_NAME`을 씁니다. `gate.yaml`의 `gate.graph_freshness.inherited_codemaps_drift`를 `block`으로 두면(기본값 `warn`) inherited도 다시 종료 코드 1이 되고, 다른 값은 시스템 오류(종료 코드 2)입니다.
+
 ## moai graph stamp codemaps
 
 ```bash

@@ -73,6 +73,8 @@ edges     metric=source-fingerprint-mismatch value=0 threshold=0 verdict=fresh
 
 stale 判定现在会附带归因信息。`codemaps` 层判为 stale 时，stderr 会先打印这次变更自身贡献的漂移文件数(`contribution`)和测量所依据的提交(`contribution_base`，通常是 `HEAD^1`)，接着列出最多 10 个引发漂移的路径，超出部分归纳为 `... and N more`。`--json` 中同样的信息以 `contribution` · `contribution_base` · `driving_paths` · `driving_paths_omitted` 字段暴露。一行 stderr 就能分清这条 lane 是仅仅继承了这个 red(贡献 0)还是自己造成的(贡献 > 0)。
 
+stale 的 `codemaps` 层还会在 `--json` 报告的 `drift_origin` 中说明数量的来源。`inherited` 表示仅基线(数值减去本次变更的贡献)就已达到或超过阈值，`crossed-by-change` 表示基线低于阈值、是本次变更把数量推过了线，`originated` 表示仅本次变更自身就达到或超过阈值。非 fresh 的层还带有取值为 `block` 或 `warn` 的 `verdict_class`，而 `verdict` 本身不会被改写。只有一种情况会变成 `warn`：在 `pull_request` 事件上，`codemaps` 是唯一非 fresh 的层且来源为 `inherited` 时，检查会输出 `::warning` 注解并以退出码 0 结束(verdict 仍为 `stale`)。push 事件(main、`release/*`)、未知或为空的事件、`crossed-by-change`、`originated`、未能测得贡献、absent 的层以及其他非 fresh 的层，仍然全部以退出码 1 结束。事件取自 `--event pull_request|push`，缺省时回退到 `GITHUB_EVENT_NAME`。在 `gate.yaml` 中把 `gate.graph_freshness.inherited_codemaps_drift` 设为 `block`(默认 `warn`)，inherited 的情况也会恢复为退出码 1；其他取值属于系统错误(退出码 2)。
+
 ## moai graph stamp codemaps
 
 ```bash
