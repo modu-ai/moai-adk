@@ -69,7 +69,7 @@ type GitCLI struct {
 
 // GitError is a git call that failed. What git printed is held in Output and is NOT part of Error(): that text
 // reaches the ledger and the verb's output, and a repository hook or a merge driver can print anything, a credential
-// included. A caller that wants the output reads Output and puts it in a log file (FailureLog).
+// included. Output is for a caller that decides to look at it; nothing records it.
 type GitError struct {
 	Sub    string // the git subcommand
 	Cause  error  // the exec error (an *exec.ExitError for a non-zero exit)
@@ -117,7 +117,7 @@ func gitOutputOf(err error) string {
 }
 
 // MergeError is a candidate that does not merge into the trunk. Its text names the failure and nothing git printed;
-// Output holds that, for a log file.
+// Output holds that.
 type MergeError struct {
 	Cause  error
 	Output []byte

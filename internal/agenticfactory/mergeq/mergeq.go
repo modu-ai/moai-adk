@@ -85,8 +85,8 @@ type Queue interface {
 type Verify func(ctx context.Context, dir string) error
 
 // GateError is a gate that failed. Error() names the gate, the cause (an exit status, a timeout) and how much the
-// gate printed, and nothing it printed: the output is in Output, for a log file. Anything else a Verify returns is
-// treated the same way: its text goes to the log, not into the reason.
+// gate printed, and nothing it printed: the output is in Output, which nothing records. Anything else a Verify returns is
+// treated the same way: its text is not put into the reason.
 type GateError struct {
 	Gate   string // a short id of the gate, as it may be recorded: never the gate text, which may hold a credential
 	Cause  error
@@ -121,26 +121,13 @@ func (m *Merger) validCandidate(ctx context.Context, candidateSHA string) error 
 	return nil
 }
 
-// failReason is the reason of a failed landing: the kind, what failed, the byte count of the output and the log file
-// that holds it. The output itself is never in it. A log that cannot be written is said to be missing and the failure
-// is recorded all the same.
-func (m *Merger) failReason(cardID, candidateSHA, kind, summary string, output []byte, total int64) string {
+// failReason is the reason of a failed landing: what failed and the byte count of the output. The output itself is
+// never in it, and nothing keeps it.
+func failReason(summary string, output []byte, total int64) string {
 	if total < int64(len(output)) {
 		total = int64(len(output))
 	}
-	where := "no log is kept"
-	if m.Log != nil {
-		header := ""
-		if kind == "gate" && m.GateText != "" {
-			header = "gate: " + m.GateText
-		}
-		if path, err := m.Log.write(cardID, candidateSHA, kind, header, output); err != nil {
-			where = "logging failed"
-		} else {
-			where = "log: " + path
-		}
-	}
-	return fmt.Sprintf("%s (output %d bytes; %s)", summary, total, where)
+	return fmt.Sprintf("%s (output %d bytes)", summary, total)
 }
 
 // Outcome is how one Land call ended.
@@ -173,8 +160,6 @@ type Merger struct {
 	Message    func(cardID string) string // the merge commit message; must carry the card id
 	Now        func() time.Time           // the clock Reconcile judges leases by; nil means time.Now
 	Gate       string                     // a short id of what Verify runs, for the landed note; may be empty. Never the gate text
-	GateText   string                     // what Verify runs: written to the failure log of a failed gate and to nothing else; may be empty
-	Log        *FailureLog                // where the output of a failed gate or merge goes; nil keeps none
 	// LastCheck, when set, is asked once more with the landing lock held, after the row says landing and immediately
 	// before the compare-and-swap of the trunk ref, because the gates ran for as long as they ran and the facts the caller
 	// judged the candidate by can have changed meanwhile (a failing run recorded while they ran, N66). A non-nil error
@@ -198,28 +183,8 @@ func (m *Merger) lockTTL() time.Duration {
 // trunk moved after the re-check.
 //
 // A git step that fails (anything but the merge, whose output has its own kind) is returned as a *GitError, whose text
-// holds no output; what git printed goes to the failure log under the kind git, and the returned error names the file.
+// holds no output.
 func (m *Merger) Land(ctx context.Context, cardID, candidateSHA string) (Result, error) {
-	res, err := m.land(ctx, cardID, candidateSHA)
-	return res, m.logGitFailure(cardID, candidateSHA, err)
-}
-
-// logGitFailure writes the output of the git step that made err fail to the failure log and returns err with the
-// file's name (or the fact that logging failed) added. An error that holds no git failure, or a merger with no log,
-// is returned as it is.
-func (m *Merger) logGitFailure(cardID, candidateSHA string, err error) error {
-	var ge *GitError
-	if err == nil || m.Log == nil || !errors.As(err, &ge) {
-		return err
-	}
-	path, werr := m.Log.Write(cardID, candidateSHA, "git", ge.Output)
-	if werr != nil {
-		return fmt.Errorf("%w (logging failed)", err)
-	}
-	return fmt.Errorf("%w (log: %s)", err, path)
-}
-
-func (m *Merger) land(ctx context.Context, cardID, candidateSHA string) (Result, error) {
 	maxTries := m.MaxRetries
 	if maxTries <= 0 {
 		maxTries = DefaultMaxRetries
@@ -291,7 +256,7 @@ func (m *Merger) land(ctx context.Context, cardID, candidateSHA string) (Result,
 					out = me.Output
 				}
 				return m.fail(ctx, res, cardID, candidateSHA, trunk,
-					m.failReason(cardID, candidateSHA, "merge", "the candidate does not merge into the trunk", out, int64(len(out))))
+					failReason("the candidate does not merge into the trunk", out, int64(len(out))))
 			}
 			return res, err
 		}
@@ -313,9 +278,9 @@ func (m *Merger) land(ctx context.Context, cardID, candidateSHA string) (Result,
 					told += ": " + err.Error()
 				}
 				return res, errors.Join(fmt.Errorf("mergeq: the landing was cut off (%w) while the gates ran; %s", ctxErr,
-					m.failReason(cardID, candidateSHA, "gate", told, output, total)), m.stepBack(ctx, cardID, candidateSHA, trunk))
+					failReason(told, output, total)), m.stepBack(ctx, cardID, candidateSHA, trunk))
 			}
-			return m.fail(ctx, res, cardID, candidateSHA, trunk, m.failReason(cardID, candidateSHA, "gate", summary, output, total))
+			return m.fail(ctx, res, cardID, candidateSHA, trunk, failReason(summary, output, total))
 		}
 
 		epoch, err := m.Queue.AcquireLock(ctx, LandingLock, m.Holder, m.lockTTL())

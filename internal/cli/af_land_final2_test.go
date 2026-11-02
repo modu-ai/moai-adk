@@ -1,12 +1,10 @@
 package cli
 
-// lane-19 37th review (non-blocking): the failure tail of a gate reaches the ledger and the operator's terminal, so
-// control characters other than newline and tab are removed from it; and the help says what the Windows hosts and a
-// gate that never stops printing get.
+// lane-19 37th review (non-blocking): the failure of a gate reaches the ledger and the operator's terminal with no
+// control character in its reason; and the help says what the Windows hosts and a gate that never stops printing get.
 
 import (
 	"context"
-	"os"
 	"strings"
 	"testing"
 )
@@ -33,29 +31,6 @@ func TestAFLand_ControlCharactersInAFailedGatesOutputAreNotKept(t *testing.T) {
 				break
 			}
 		}
-	}
-	// the log file holds the readable text, with the controls removed and the tab kept
-	m := afD1LogPath.FindStringSubmatch(reason)
-	if m == nil {
-		t.Fatalf("the reason names no log file: %.300q", reason)
-	}
-	log, err := os.ReadFile(m[1])
-	if err != nil {
-		t.Fatal(err)
-	}
-	text := string(log)
-	for _, r := range text {
-		if (r < 0x20 && r != '\n' && r != '\t') || (r >= 0x7f && r <= 0x9f) {
-			t.Errorf("the log keeps the control character %U: %.200q", r, text)
-			break
-		}
-	}
-	// (the 8-bit CSI introducer takes the 'e' after it as its final byte, as a terminal would: "end" reads "nd")
-	if !strings.Contains(text, "red") || !strings.Contains(text, "nd") {
-		t.Errorf("the log lost the readable text around the controls: %.300q", text)
-	}
-	if !strings.Contains(text, "\tkept") {
-		t.Errorf("a tab was removed from the log: %.300q", text)
 	}
 }
 

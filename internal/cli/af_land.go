@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -25,9 +24,9 @@ import (
 // ledger write.
 const afLandTimeout = 30 * time.Minute
 
-// afGateKeep is how much of the end of a gate's output is kept in memory and, from there, in the failure log: the end
-// is what explains a failure, and the volume must not fill memory.
-const afGateKeep = mergeq.DefaultFailureLogCap
+// afGateKeep is how much of the end of a gate's output is kept in memory: the end is what explains a failure, and the
+// volume must not fill memory. Nothing records it.
+const afGateKeep = 256 << 10
 
 // The merge queue's operational entry points (AC-AFL-014): `af land` lands an enqueued card through the queue's
 // compare-and-swap of the trunk ref, and `af reconcile` settles the rows a restart left in verifying or landing
@@ -57,13 +56,7 @@ func afMerger(f afMergeFlags, st *ledger.Store, scratch string, verify mergeq.Ve
 	}
 	pid := os.Getpid() // the lock is held while this command runs, so this process is the holder
 	start, _ := homestate.ProbeProcessIdentity(pid)
-	// the failure logs sit beside the ledger, in a directory of their own
-	var failLog *mergeq.FailureLog
-	if path, err := afLedgerPath(f.db); err == nil {
-		failLog = &mergeq.FailureLog{Dir: filepath.Join(filepath.Dir(path), "gate-logs"), Cap: mergeq.DefaultFailureLogCap}
-	}
 	return &mergeq.Merger{
-		Log:    failLog,
 		Git:    mergeq.GitCLI{Repo: repo, ScratchD: scratch, Who: mergeq.Identity{Name: "moai af", Email: "af@moai.invalid"}},
 		Queue:  mergeq.NewLedgerQueue(st),
 		Trunk:  f.trunk,
@@ -83,8 +76,8 @@ const afGateTimeout = 20 * time.Minute
 // afGate runs the gate command in the candidate worktree, under a timeout, in its own process group (killed whole
 // when the timeout ends), with the repository-scoping variables removed from its environment and its output bounded
 // by the merge queue's writer. A non-zero exit fails the card, and what the command printed is NOT part of the
-// error: it goes to a failure log file (mergeq.FailureLog), and the ledger and the verb's output carry only the
-// failure kind, the gate's short id, the exit status, the byte count and that file's path.
+// error and is recorded nowhere: the ledger and the verb's output carry only the failure kind, the gate's short id, the
+// exit status and the byte count.
 func afGate(gate string, timeout time.Duration) mergeq.Verify {
 	return func(ctx context.Context, dir string) error {
 		ctx, cancel := context.WithTimeout(ctx, timeout)
@@ -108,7 +101,7 @@ func afGate(gate string, timeout time.Duration) mergeq.Verify {
 			if ctx.Err() != nil {
 				err = fmt.Errorf("%w (the gate ran past %s)", err, timeout)
 			}
-			// What the gate printed does not go into the error: the merge queue puts it in the failure log.
+			// What the gate printed does not go into the error.
 			return &mergeq.GateError{Gate: afGateID(gate), Cause: err, Output: append([]byte(nil), out.Bytes()...), Total: out.Total()}
 		}
 		return nil
@@ -117,7 +110,7 @@ func afGate(gate string, timeout time.Duration) mergeq.Verify {
 
 // afGateID names a gate in the reason, the verb's output, the notes and the landed note: "gate-" and the first 12 hex
 // digits of the SHA-256 of the gate text. The text itself may hold a credential (a deny-list of shapes cannot be made
-// complete), so it is recorded nowhere but the failure log; the same text always has the same id, and two gates
+// complete), so it is recorded nowhere; the same text always has the same id, and two gates
 // differ in theirs.
 func afGateID(gate string) string {
 	sum := sha256.Sum256([]byte(gate))
@@ -198,14 +191,9 @@ A gate that fails fails the card; a trunk that moved meanwhile is rebuilt and ve
 line (outcome: landed, failed or waiting).
 
 What a failure records. The reason, this verb's output, the notes and the ledger carry the failure kind, the gate's
-short id ("gate-" and 12 hex digits of the SHA-256 of the gate text), the exit status or timeout, the number of bytes
-the gate printed and the path of a log file. They never carry the gate text or what the gate or git printed. The gate
-text and the end of the output (at most %d KiB) are written to that log file, in the gate-logs directory beside the
-ledger: mode 0600 in a 0700 directory, one file per card, candidate and kind, and at most %d MiB for the whole
-directory (the oldest files go first). The log is masked as well as a list of shapes can mask it.
-It can still hold secrets, and any process of your user can read it: read it yourself, and do not paste it into a
-conversation or a report. When the log cannot be written the reason says "logging failed" and the failure is
-recorded all the same.
+short id ("gate-" and 12 hex digits of the SHA-256 of the gate text), the exit status or timeout and the number of bytes
+the gate printed. They never carry the gate text or what the gate or git printed, and nothing else keeps it: run the
+gate yourself to see why it failed.
 
 Which trunk and which repository. The trunk is %s and cannot be changed: --trunk takes that value or nothing, and
 any other value is refused before anything is landed, with the ledger unchanged. --repo takes the project directory or
@@ -233,7 +221,7 @@ A landing lock whose holder process is gone is taken back first.
 
 A commit whose newest green, gate or review run failed is not landed, whether the run was recorded before this verb or
 while its gate ran: the verb asks again under the landing lock, immediately before it moves the trunk, and refuses with
-the trunk untouched. %s`, mergeq.DefaultFailureLogCap>>10, mergeq.DefaultFailureLogTotalCap>>20, mergeq.DefaultTrunk, afBindHelp, afDoneHelp),
+the trunk untouched. %s`, mergeq.DefaultTrunk, afBindHelp, afDoneHelp),
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if strings.TrimSpace(gate) == "" {
@@ -259,7 +247,7 @@ the trunk untouched. %s`, mergeq.DefaultFailureLogCap>>10, mergeq.DefaultFailure
 					return fmt.Errorf("af land: take back a dead holder's lock: %w", err)
 				}
 				m := afMerger(f, st, scratch, afGate(gate, gateTimeout))
-				m.Gate, m.GateText = afGateID(gate), gate
+				m.Gate = afGateID(gate)
 				// the gates may have run for minutes: the failing-run question is asked again under the landing lock (N66)
 				m.LastCheck = func(ctx context.Context, cardID, sha string) error {
 					kind, err := st.FailingNewestRun(ctx, cardID, sha)

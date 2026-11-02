@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
-	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -40,8 +39,8 @@ var afGateIDPattern = regexp.MustCompile(`gate-[0-9a-f]{12}`)
 // N29: the gate TEXT used to be quoted in the failure reason, the stdout line, the note the next enqueue copies the
 // reason into, and the landed note, with core.Redact as the only protection; a credential written into the command
 // line stayed in 6 of 9 shapes. The reason, the stdout, the memo and the landed note now carry a short id of the gate
-// text; the text itself goes to the failure log only.
-func TestAFLand_TheGateTextIsNotInTheReasonTheStdoutOrTheLedgerButTheLogHoldsIt(t *testing.T) {
+// text; the text itself is recorded nowhere.
+func TestAFLand_TheGateTextIsNotInTheReasonTheStdoutOrTheLedger(t *testing.T) {
 	afSkipWithoutSh(t)
 	// every command is replaced by a built-in that does nothing, so no shape starts a client or reaches a network
 	const tail = ": the-tail-of-the-gate-text; exit 1"
@@ -89,33 +88,10 @@ func TestAFLand_TheGateTextIsNotInTheReasonTheStdoutOrTheLedgerButTheLogHoldsIt(
 			if !afGateIDPattern.MatchString(res.Reason) {
 				t.Errorf("the reason carries no gate id: %.300q", res.Reason)
 			}
-			m := afD1LogPath.FindStringSubmatch(res.Reason)
-			if m == nil {
-				t.Fatalf("the reason names no log file: %.300q", res.Reason)
-			}
-			if log, rerr := os.ReadFile(m[1]); rerr != nil || !strings.Contains(string(log), "the-tail-of-the-gate-text") {
-				t.Errorf("the log %s does not hold the gate text: %.300q %v", m[1], log, rerr)
+			if strings.Contains(res.Reason, "the-tail-of-the-gate-text") {
+				t.Errorf("the gate text is in the reason: %.300q", res.Reason)
 			}
 		})
-	}
-}
-
-// N31: a gate whose output the masking makes longer ("key=1" becomes "key=[REDACTED]") must not make the log longer
-// than its cap; the bound is the tightened afD1LogCapUpper.
-func TestAFLand_TheLogStaysUnderItsCapWhenTheMaskingMakesTheOutputLonger(t *testing.T) {
-	afSkipWithoutSh(t)
-	db, repo, _, _, _ := afQueuedCard(t)
-	_, reason, _ := afRepairLand(t, db, repo, `awk 'BEGIN{for(i=0;i<120000;i++)print "key=1"}'; echo REAL-"FAILURE"-LINE; exit 1`)
-	m := afD1LogPath.FindStringSubmatch(reason)
-	if m == nil {
-		t.Fatalf("the reason names no log file: %.300q", reason)
-	}
-	log, err := os.ReadFile(m[1])
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(log) > afD1LogCapUpper || !strings.Contains(string(log), "REAL-FAILURE-LINE") {
-		t.Errorf("log: %d bytes (bound %d), last line kept=%v", len(log), afD1LogCapUpper, strings.Contains(string(log), "REAL-FAILURE-LINE"))
 	}
 }
 
@@ -269,17 +245,14 @@ func TestAFVerbs_ARepoThatIsNotTheProjectsRepositoryIsRefusedBeforeAnyChange(t *
 }
 
 // N34: the help of `moai af land` said that a failing gate fails the card "with the tail of its output", which has not
-// been true since the output moved to a log file, and did not say where the logs are, that they can hold secrets, or
-// that the free-input flags are recorded as given.
-func TestAFLand_TheHelpSaysWhereTheLogsAreThatTheyCanHoldSecretsAndWhatIsRecordedAsGiven(t *testing.T) {
+// been true since the output left the reason, and did not say that the free-input flags are recorded as given.
+func TestAFLand_TheHelpSaysWhatIsRecordedAndWhatIsRecordedAsGiven(t *testing.T) {
 	out, _, err := afRunBoth("land", "--help")
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, want := range []string{
-		"gate-logs",             // where the logs are
-		"can still hold secret", // the masking is best effort
-		"gate-",                 // the short id of the gate text stands in the reason
+		"gate-", // the short id of the gate text stands in the reason
 		"never carry the gate text",
 		"recorded as given", // the free-input flags
 		"--command", "--reason", "--path", "--actor",
@@ -340,83 +313,5 @@ func TestAFVerbs_TheFreeInputFlagsSayThatTheyAreRecordedAsGiven(t *testing.T) {
 				t.Errorf("`moai af %s --help`: the line of %s does not say it is recorded as given: %q", verb, f, line)
 			}
 		}
-	}
-}
-
-// afRepairACLEntries is the ACL entries `ls -lde` prints under the permission line of path (none when it has no ACL).
-func afRepairACLEntries(t *testing.T, path string) []string {
-	t.Helper()
-	out, err := exec.Command("ls", "-lde", path).Output()
-	if err != nil {
-		t.Fatalf("ls -lde %s: %v", path, err)
-	}
-	return strings.Split(strings.TrimSpace(string(out)), "\n")[1:]
-}
-
-// N22: the ledger lives below a directory with an inheritable ACL (TMPDIR points inside it, as a project under a
-// shared directory would). The log of a failed gate may hold unmasked output, so the file and its directory must end
-// without the ACL the 0600 mode does not remove.
-func TestAFLand_TheLogFileEndsWithoutAnInheritedACL(t *testing.T) {
-	if runtime.GOOS != "darwin" {
-		t.Skip("macOS inheritable ACLs")
-	}
-	afSkipWithoutSh(t)
-	parent, err := os.MkdirTemp("", "moai-af-acl-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = os.RemoveAll(parent) })
-	acl := "everyone allow read,execute,list,search,readattr,readextattr,readsecurity,file_inherit,directory_inherit"
-	if out, cerr := exec.Command("chmod", "+a", acl, parent).CombinedOutput(); cerr != nil {
-		t.Fatalf("chmod +a: %v %s", cerr, out)
-	}
-	t.Setenv("TMPDIR", parent) // before the first t.TempDir(), which makes its root below TMPDIR
-	db, repo, _, _, _ := afQueuedCard(t)
-	if got := afRepairACLEntries(t, filepath.Dir(db)); len(got) == 0 {
-		t.Fatal("the fixture is wrong: the ledger directory inherited no ACL")
-	}
-	_, reason, _ := afRepairLand(t, db, repo, "printf 'hello from the gate\\n'; exit 1")
-	m := afD1LogPath.FindStringSubmatch(reason)
-	if m == nil {
-		t.Fatalf("the reason names no log file: %.300q", reason)
-	}
-	for _, p := range []string{filepath.Dir(m[1]), m[1]} {
-		if got := afRepairACLEntries(t, p); len(got) != 0 {
-			t.Errorf("%s has an ACL: %q", p, got)
-		}
-	}
-}
-
-// N23: gate-logs is a symbolic link. The verb must not follow it: no log in the target, its mode unchanged, and the
-// failure is recorded with a reason that says logging failed.
-func TestAFLand_ALogDirectoryThatIsALinkIsRefusedAndItsTargetIsLeftAlone(t *testing.T) {
-	afSkipWithoutSh(t)
-	if runtime.GOOS == "windows" {
-		t.Skip("symbolic links need privileges on native Windows")
-	}
-	db, repo, _, st, _ := afQueuedCard(t)
-	target := filepath.Join(t.TempDir(), "elsewhere")
-	if err := os.MkdirAll(target, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Symlink(target, filepath.Join(filepath.Dir(db), "gate-logs")); err != nil {
-		t.Fatal(err)
-	}
-	outcome, reason, _ := afRepairLand(t, db, repo, "echo hello; exit 1")
-	if outcome != "failed" || !strings.Contains(reason, "logging failed") {
-		t.Errorf("outcome %q reason %.200q: want a failure that says logging failed", outcome, reason)
-	}
-	fi, err := os.Stat(target)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if fi.Mode().Perm() != 0o755 {
-		t.Errorf("the link's target has mode %v, want it untouched at 0755", fi.Mode().Perm())
-	}
-	if entries, _ := os.ReadDir(target); len(entries) != 0 {
-		t.Errorf("the link's target holds %v, want nothing", entries)
-	}
-	if rows, err := st.Queue(context.Background()); err != nil || len(rows) != 1 || rows[0].FailReason == "" {
-		t.Errorf("the failure was not recorded: %+v %v", rows, err)
 	}
 }

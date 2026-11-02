@@ -2,8 +2,7 @@ package cli
 
 // Round 3 of N1 (decision D1 of the repair after the audit of 22a0afd247): the output of a gate or of a git step
 // never enters the ledger or the verb's output. The reason carries the failure kind, the gate, the exit status or
-// timeout, the output byte count and the path of a log file; the output goes to that file (mode 0600, in a 0700
-// directory beside the ledger, size-capped, one file per card+candidate+kind).
+// timeout and the output byte count; nothing keeps the output.
 //
 // Real ledger, real git, the real `moai af land` verb. The secret value is assembled at run time by the gate from $A
 // and $B, so a hit on the whole value can only come from the gate's output, never from the gate text. Words that a
@@ -15,8 +14,6 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"regexp"
-	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -27,11 +24,6 @@ import (
 )
 
 const afD1Value = "hunter2" + "super"
-
-// afD1LogCapUpper is an upper bound on the log file size the tests accept: the code's cap on the output plus room for
-// the header that holds the gate text (2 KiB at most) and the note that says how much of the start was dropped. It was
-// twice the cap, which let a log that the masking had made 2.5 times longer pass.
-const afD1LogCapUpper = mergeq.DefaultFailureLogCap + 4<<10
 
 var afD1Words = strings.NewReplacer(
 	"@PW@", "pass"+"word", "@PWU@", "PASS"+"WORD", "@TK@", "to"+"ken", "@TKU@", "TO"+"KEN",
@@ -73,11 +65,9 @@ func afLedgerBytes(t *testing.T, db string) []byte {
 	return all
 }
 
-var afD1LogPath = regexp.MustCompile(`log: (\S+\.log)`)
-
 // afD1Land runs `af land` with the gate and checks that the value is in none of: stdout, stderr, the error, the whole
-// ledger. It returns the reason and the log path the reason names ("" when it names none).
-func afD1Land(t *testing.T, gate string, extra ...string) (outcome, reason, logPath string) {
+// ledger. It returns the outcome and the reason.
+func afD1Land(t *testing.T, gate string, extra ...string) (outcome, reason string) {
 	t.Helper()
 	db, repo, _, _, _ := afQueuedCard(t)
 	args := append([]string{"land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/af/trunk", "--gate", gate}, extra...)
@@ -95,10 +85,7 @@ func afD1Land(t *testing.T, gate string, extra ...string) (outcome, reason, logP
 	if jerr := json.Unmarshal([]byte(out), &res); jerr != nil {
 		t.Fatalf("stdout %.200q is not the verb's JSON line (err %v)", out, err)
 	}
-	if m := afD1LogPath.FindStringSubmatch(res.Reason); m != nil {
-		logPath = m[1]
-	}
-	return res.Outcome, res.Reason, logPath
+	return res.Outcome, res.Reason
 }
 
 // afD1Shapes runs every row as a failing gate that prints the row.
@@ -108,19 +95,9 @@ func afD1Shapes(t *testing.T, rows []afD1Row, prelude string) {
 	for _, c := range rows {
 		t.Run(c.name, func(t *testing.T) {
 			gate := `A=hunter2; B=super; ` + prelude + `printf "` + afD1Words.Replace(c.printf) + `\n"; printf 'the last line\n'; exit 1`
-			outcome, reason, logPath := afD1Land(t, gate)
+			outcome, reason := afD1Land(t, gate)
 			if outcome != "failed" {
 				t.Fatalf("outcome %q, want failed (%.200q)", outcome, reason)
-			}
-			if logPath == "" {
-				t.Fatalf("the reason names no log file: %.300q", reason)
-			}
-			log, err := os.ReadFile(logPath)
-			if err != nil {
-				t.Fatalf("the named log %s is unreadable: %v", logPath, err)
-			}
-			if !strings.Contains(string(log), "the last line") {
-				t.Errorf("the log lacks the gate's last line (%d bytes)", len(log))
 			}
 		})
 	}
@@ -251,12 +228,8 @@ func TestAFLand_D1MergeHookStderrNeverReachesTheLedgerOrStdout(t *testing.T) {
 	if jerr := json.Unmarshal([]byte(out), &res); jerr != nil || res.Outcome != "failed" {
 		t.Fatalf("stdout %.200q (err %v), want outcome failed", out, err)
 	}
-	m := afD1LogPath.FindStringSubmatch(res.Reason)
-	if m == nil {
-		t.Fatalf("the reason names no log file: %.300q", res.Reason)
-	}
-	if log, rerr := os.ReadFile(m[1]); rerr != nil || !strings.Contains(string(log), "deploy check") {
-		t.Errorf("the merge log %s lacks the hook's line: %v", m[1], rerr)
+	if strings.Contains(res.Reason, "deploy check") {
+		t.Errorf("the hook's line is in the reason: %.300q", res.Reason)
 	}
 }
 
@@ -278,71 +251,24 @@ func TestAFLand_D1MergeHookVolumeIsBounded(t *testing.T) {
 	}
 	var res struct{ Reason string }
 	_ = json.Unmarshal([]byte(out), &res)
-	m := afD1LogPath.FindStringSubmatch(res.Reason)
-	if m == nil {
-		t.Fatalf("the reason names no log file: %.300q", res.Reason)
-	}
-	log, rerr := os.ReadFile(m[1])
-	if rerr != nil || len(log) > afD1LogCapUpper || !strings.Contains(string(log), "LAST HOOK LINE") {
-		t.Errorf("log: %d bytes (cap upper bound %d), last line kept=%v, err %v", len(log), afD1LogCapUpper, strings.Contains(string(log), "LAST HOOK LINE"), rerr)
+	if strings.Contains(res.Reason, "LAST HOOK LINE") {
+		t.Errorf("the hook's output is in the reason: %.300q", res.Reason)
 	}
 }
 
-// A gate that prints 5 MB and then explains: the explanation is the last line of the log, the log is capped, and
-// stdout points at the file instead of holding the line.
-func TestAFLand_D1LoudFailingGateKeepsItsLastLineInTheLog(t *testing.T) {
+// A gate that prints 5 MB and then explains: stdout and the reason stay small and hold neither the output nor its last
+// line, and say how many bytes the gate printed.
+func TestAFLand_D1LoudFailingGateLeavesNoOutputInTheReason(t *testing.T) {
 	afSkipWithoutSh(t)
-	_, reason, logPath := afD1Land(t, "head -c 5000000 /dev/zero | tr '\\0' x; echo; echo REAL-\"FAILURE\"-LINE; exit 1")
-	if logPath == "" {
-		t.Fatalf("the reason names no log file: %.300q", reason)
-	}
+	_, reason := afD1Land(t, "head -c 5000000 /dev/zero | tr '\\0' x; echo; echo REAL-\"FAILURE\"-LINE; exit 1")
 	if strings.Contains(reason, "REAL-FAILURE-LINE") {
 		t.Errorf("the output is in the reason: %.300q", reason)
 	}
 	if len(reason) > 4096 {
 		t.Errorf("the reason is %d bytes", len(reason))
 	}
-	log, err := os.ReadFile(logPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(log) > afD1LogCapUpper || !strings.Contains(string(log), "REAL-FAILURE-LINE") {
-		t.Errorf("log: %d bytes (cap upper bound %d), last line kept=%v", len(log), afD1LogCapUpper, strings.Contains(string(log), "REAL-FAILURE-LINE"))
-	}
-	if runtime.GOOS != "windows" {
-		fi, serr := os.Stat(logPath)
-		di, derr := os.Stat(filepath.Dir(logPath))
-		if serr != nil || derr != nil || fi.Mode().Perm() != 0o600 || di.Mode().Perm() != 0o700 {
-			t.Errorf("log file mode %v dir mode %v (%v %v), want 0600 and 0700", fi.Mode().Perm(), di.Mode().Perm(), serr, derr)
-		}
-	}
 	if !strings.Contains(reason, "bytes") {
 		t.Errorf("the reason does not state the output byte count: %.300q", reason)
-	}
-}
-
-// A log that cannot be written must not stop the failure from being recorded.
-func TestAFLand_D1ALogThatCannotBeWrittenDoesNotBlockTheFailure(t *testing.T) {
-	afSkipWithoutSh(t)
-	db, repo, _, st, _ := afQueuedCard(t)
-	// the directory the logs go to (beside the ledger) is a file
-	if err := os.WriteFile(filepath.Join(filepath.Dir(db), "gate-logs"), []byte("not a directory"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	out, _, err := afRunBoth("land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/af/trunk", "--gate", "echo some output; exit 1")
-	if err != nil {
-		t.Fatalf("the verb failed because the log could not be written: %v", err)
-	}
-	var res struct{ Outcome, Reason string }
-	if jerr := json.Unmarshal([]byte(out), &res); jerr != nil || res.Outcome != "failed" {
-		t.Fatalf("stdout %.200q: want outcome failed", out)
-	}
-	if !strings.Contains(strings.ToLower(res.Reason), "logging failed") {
-		t.Errorf("the reason does not say that logging failed: %.300q", res.Reason)
-	}
-	rows, qerr := st.Queue(context.Background())
-	if qerr != nil || len(rows) != 1 || rows[0].FailReason == "" {
-		t.Errorf("the queue row did not take the failure: %+v %v", rows, qerr)
 	}
 }
 

@@ -17,7 +17,7 @@ import (
 
 // A merge that git refuses is a *MergeError: errors.Is(ErrMerge) holds, Unwrap reaches the *GitError and through it the
 // *exec.ExitError of the real git process, the text names the failure and none of what git printed, and the output is
-// kept in the error for the log.
+// kept in the error.
 func TestMergeError_ARealConflictIsTypedAndUnwrapsToGitsExitStatus(t *testing.T) {
 	dir := repo(t)
 	cand := candidate(t, dir, "c1", "x.txt", "from the card\n")
@@ -36,7 +36,7 @@ func TestMergeError_ARealConflictIsTypedAndUnwrapsToGitsExitStatus(t *testing.T)
 		t.Fatalf("%T %v, want a *MergeError", err, err)
 	}
 	if !strings.Contains(string(me.Output), "CONFLICT") {
-		t.Errorf("the error does not keep git's output for the log: %q", me.Output)
+		t.Errorf("the error does not keep git's output: %q", me.Output)
 	}
 	if text := err.Error(); !strings.HasPrefix(text, ErrMerge.Error()) || strings.Contains(text, "CONFLICT") || strings.Contains(text, "x.txt") {
 		t.Errorf("the text must name the failure and none of git's output: %q", text)
@@ -86,76 +86,19 @@ func TestGateError_ARealFailingGateIsTypedAndUnwrapsToItsExitStatus(t *testing.T
 		t.Errorf("Unwrap returned %v, want the cause %v", ge.Unwrap(), ge.Cause)
 	}
 	if string(ge.Output) != "gate-says-no\n" {
-		t.Errorf("the output kept for the log is %q", ge.Output)
+		t.Errorf("the output kept is %q", ge.Output)
 	}
 
-	// the same gate through Land: the failure is recorded, the reason carries the text of the error and no output,
-	// and the log holds the output
+	// the same gate through Land: the failure is recorded and the reason carries the text of the error and no output
 	cdir := repo(t)
 	cand := candidate(t, cdir, "c1", "a.txt", "a\n")
 	m := newMerger(t, cdir, &fakeQueue{}, verify)
-	m.Log = &FailureLog{Dir: filepath.Join(t.TempDir(), "gate-logs")}
 	res, lerr := m.Land(context.Background(), "t1", cand)
 	if lerr != nil || res.Outcome != OutcomeFailed {
 		t.Fatalf("%+v %v", res, lerr)
 	}
 	if !strings.Contains(res.Reason, `gate "gate-0123456789ab": exit status 3`) || strings.Contains(res.Reason, "gate-says-no") {
 		t.Errorf("reason %q", res.Reason)
-	}
-	i := strings.Index(res.Reason, "log: ")
-	if i < 0 {
-		t.Fatalf("no log named: %q", res.Reason)
-	}
-	if body, rerr := os.ReadFile(strings.TrimSuffix(res.Reason[i+len("log: "):], ")")); rerr != nil || !strings.Contains(string(body), "gate-says-no") {
-		t.Errorf("the log lacks the gate's output: %q %v", body, rerr)
-	}
-}
-
-// The gate text is the first line of the gate's log: masked (a credential written into the command is not kept) and
-// bounded (a very long text is cut and says so). A kind that is not a gate gets no such line.
-func TestLand_TheGateTextHeadsTheGateLogMaskedAndBounded(t *testing.T) {
-	failing := func(context.Context, string) error {
-		return &GateError{Gate: "gate-0123456789ab", Cause: errors.New("exit status 1"), Output: []byte("the output\n"), Total: 11}
-	}
-	land := func(t *testing.T, gateText string) string {
-		t.Helper()
-		dir := repo(t)
-		cand := candidate(t, dir, "c1", "a.txt", "a\n")
-		m := newMerger(t, dir, &fakeQueue{}, failing)
-		m.Log = &FailureLog{Dir: filepath.Join(t.TempDir(), "gate-logs")}
-		m.GateText = gateText
-		res, err := m.Land(context.Background(), "t1", cand)
-		if err != nil || res.Outcome != OutcomeFailed {
-			t.Fatalf("%+v %v", res, err)
-		}
-		i := strings.Index(res.Reason, "log: ")
-		if i < 0 {
-			t.Fatalf("no log named: %q", res.Reason)
-		}
-		body, rerr := os.ReadFile(strings.TrimSuffix(res.Reason[i+len("log: "):], ")"))
-		if rerr != nil {
-			t.Fatal(rerr)
-		}
-		return string(body)
-	}
-
-	body := land(t, "deploy --target prod "+repairMarker+"="+logSecret+" --now")
-	first, _, _ := strings.Cut(body, "\n")
-	if !strings.HasPrefix(first, "gate: deploy --target prod") || strings.Contains(body, logSecret) {
-		t.Errorf("the log does not start with the masked gate text: %q", body)
-	}
-	if !strings.HasSuffix(body, "the output\n") {
-		t.Errorf("the output is not after the gate text: %q", body)
-	}
-
-	long := land(t, strings.Repeat("echo padding; ", 600)) // 8400 bytes
-	head, _, _ := strings.Cut(long, "\n")
-	if len(head) > failureLogHeaderCap+80 || !strings.HasSuffix(head, "[the rest of the text is not kept]") {
-		t.Errorf("a long gate text is not bounded: %d bytes, ends %q", len(head), head[max(0, len(head)-60):])
-	}
-
-	if none := land(t, ""); strings.HasPrefix(none, "gate:") {
-		t.Errorf("a merger with no gate text still wrote a gate line: %q", none)
 	}
 }
 
