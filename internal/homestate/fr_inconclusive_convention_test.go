@@ -90,3 +90,26 @@ func TestFR_ConventionExample_INCONCLUSIVE_IsReadByTheCardReader(t *testing.T) {
 		t.Fatalf("card reader on the INCONCLUSIVE example = (%q, %q, %v), want INCONCLUSIVE / %s", v, got, err, sha)
 	}
 }
+
+// SPEC-AUDIT-ENGINE-CONVERGENCE-001 M6, AC-AEC-006 (REQ-AEC-015): the convention and
+// its mirror carry one repair-scope paragraph: a repair of an audit FAIL may only
+// remove the defective path, tighten an existing check, or add tests; a repair
+// needing a new verb, flag, input, store or rule is a SPEC amendment with its own
+// acceptance criterion on a separate card; and work already specified by such an
+// amendment is outside the limit.
+var frRepairScopePins = []struct{ name, pin string }{
+	{"the limit", "a repair of an audit FAIL may only remove the defective path, tighten an existing check, or add tests"},
+	{"the amendment route", "a new verb, flag, input, store, or rule is delivered as a SPEC amendment with its own acceptance criterion on a separate card"},
+	{"the exemption", "work already specified by a SPEC amendment with its own acceptance criterion is outside the limit"},
+}
+
+func TestFR_ConventionCarriesTheRepairScopeRule(t *testing.T) {
+	for _, rel := range frConventionFiles {
+		body := strings.Join(strings.Fields(frReadRepoFile(t, rel)), " ")
+		for _, p := range frRepairScopePins {
+			if n := strings.Count(body, p.pin); n != 1 {
+				t.Errorf("%s: %s appears %d times, want exactly once (%q)", rel, p.name, n, p.pin)
+			}
+		}
+	}
+}
