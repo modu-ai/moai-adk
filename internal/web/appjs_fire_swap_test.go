@@ -192,7 +192,15 @@ func fireMedian(xs []float64) float64 {
 func runFireSettleVariant(t *testing.T, name, script, cdpPort, baseURL string, n int, extra ...string) fireVariantTally {
 	t.Helper()
 	tally := fireVariantTally{name: name, reasons: map[string]int{}}
-	args := append([]string{"--primary-entries-only"}, extra...)
+	// AC-AFG-014 judges the settle wait and the post-swap indicator, not late
+	// load-window errors (TestAppJsHandlersFireRuntime judges those with the
+	// default fixed drain, unthrottled). Ending each navigation's window at the
+	// document's load event instead of a fixed 4s drain removes most of the
+	// fixed ~8s from each of this test's ~41 probe runs (card t2014: the CI leg
+	// ran 565-748s against a 900s go test limit) without clicking before the
+	// page is wired; TestAppJsFireLoadWaitOption pins what the option does not
+	// see.
+	args := append([]string{"--primary-entries-only", "--load-wait-ready"}, extra...)
 	for i := 1; i <= n; i++ {
 		label := fmt.Sprintf("t1108-%s-%02d", name, i)
 		code, r := runFireGuardProbe(t, script, cdpPort, baseURL, label, args...)
@@ -550,5 +558,49 @@ func TestAppJsFireSettleStartPath(t *testing.T) {
 		if got := fireSettleStartPath(c.raw); got != c.want {
 			t.Errorf("fireSettleStartPath(%q) = %q, want %q", c.raw, got, c.want)
 		}
+	}
+}
+
+// fireFixtureLateLoadError is a probe copy whose every new document throws a
+// ReferenceError 1.5s after its load event. It is the load-window falsifier
+// for the probe's load window: an error that lands after the document's load
+// event plus a short quiet window, but inside the default fixed drain, must
+// still be red by the default - the --load-wait-ready opt-in used by one test
+// never changes what the other tests' load windows see.
+func fireFixtureLateLoadError(t *testing.T) string {
+	return writeFireProbeFixture(t, "fixture_late_load_error", fireProbeEdit{
+		anchor: "if opts.cpu_throttle is not None:",
+		replacement: `await cdp.send("Page.addScriptToEvaluateOnNewDocument", {"source": "window.addEventListener('load',function(){setTimeout(function(){fireLateRefErrT2014();},1500);});"})
+            if opts.cpu_throttle is not None:`,
+	})
+}
+
+// TestAppJsFireLoadWaitOption pins the --load-wait-ready opt-in the
+// settle-wait test passes so its navigations end at the load event instead of
+// a fixed 4s drain (the test spends most of its fixed time there). Not a
+// product guard: it keeps the option from silently changing the default window
+// and shows what the option does and does not see.
+func TestAppJsFireLoadWaitOption(t *testing.T) {
+	chromePath := requireFireGuardPrereqs(t)
+	baseURL := startFireGuardServer(t)
+	cdpPort := launchFireGuardChrome(t, chromePath)
+	script := fireFixtureLateLoadError(t)
+	const want = "ReferenceError in p1_load_referenceerrors"
+
+	// Default (fixed 4s drain): the 1.5s-late error is inside the load window.
+	code, r := runFireGuardProbe(t, script, cdpPort, baseURL, "t2014-late-error-default", "--primary-entries-only")
+	if code != 1 || !strings.Contains(strings.Join(fireFailureReasons(r), "\n"), want) {
+		t.Errorf("default window: exit=%d failures=%v (want exit 1 naming %q)", code, fireFailureReasons(r), want)
+	}
+
+	// The opt-in exists and is honoured: its window ends at the load event plus
+	// a 0.5s quiet window, before the 1.5s-late error.
+	code, r = runFireGuardProbe(t, script, cdpPort, baseURL, "t2014-late-error-load-wait",
+		"--primary-entries-only", "--load-wait-ready")
+	if code == 2 {
+		t.Fatalf("--load-wait-ready is not accepted by the probe (machine fault); report=%s", mustJSON(t, r))
+	}
+	if strings.Contains(strings.Join(fireFailureReasons(r), "\n"), want) {
+		t.Errorf("load-wait window still saw the 1.5s-late error in the p1 window (opt-in not honoured): %v", fireFailureReasons(r))
 	}
 }

@@ -405,6 +405,24 @@ class CDP:
             if "method" in msg:
                 self.events.append(msg)
 
+    async def wait_event(self, method, seconds):
+        """Collect events until one named `method` arrives or `seconds` pass.
+        Returns True when it arrived. Events seen on the way are kept."""
+        loop = asyncio.get_event_loop()
+        deadline = loop.time() + seconds
+        while True:
+            left = deadline - loop.time()
+            if left <= 0:
+                return False
+            try:
+                msg = json.loads(await asyncio.wait_for(self.ws.recv(), timeout=left))
+            except asyncio.TimeoutError:
+                return False
+            if "method" in msg:
+                self.events.append(msg)
+                if msg["method"] == method:
+                    return True
+
     async def drain(self, seconds):
         try:
             while True:
@@ -455,8 +473,22 @@ async def poll(cdp, expr, want, timeout=5.0, interval=0.2):
     return await ev(cdp, expr)
 
 
+LOAD_READY_QUIET_SECONDS = 0.5
+
+
 async def navigate(cdp, url, drain_seconds=4.0):
+    """Navigate and collect events for the load window. Default: a fixed
+    drain_seconds window, so a ReferenceError thrown up to that long after the
+    load is still collected. --load-wait-ready (opt-in, for a run that does not
+    judge late load-window errors - the settle-wait measurement) ends the window
+    when the document's load event arrives (app.js wires its handlers on
+    DOMContentLoaded, which precedes it) plus LOAD_READY_QUIET_SECONDS, bounded
+    by drain_seconds: never longer than the default window."""
     await cdp.send("Page.navigate", {"url": url})
+    if opts.load_wait_ready:
+        if await cdp.wait_event("Page.loadEventFired", drain_seconds):
+            await cdp.drain(LOAD_READY_QUIET_SECONDS)
+        return
     await cdp.drain(drain_seconds)
 
 
@@ -1255,6 +1287,14 @@ def main():
         help="set htmx.config.defaultSettleDelay on /settings before the swap click, widening the gap "
         "between the body swap and htmx:afterSettle (AC-AFG-014 measurement step 2); the applied "
         "value is read back and reported",
+    )
+    p.add_option(
+        "--load-wait-ready",
+        action="store_true",
+        default=False,
+        help="end each navigation's load window at the document's load event plus a short quiet "
+        "window instead of the fixed drain (bounded by it). A ReferenceError thrown after that is "
+        "not collected, so only a run that does not judge late load-window errors may set it",
     )
     p.add_option(
         "--judge-report",
