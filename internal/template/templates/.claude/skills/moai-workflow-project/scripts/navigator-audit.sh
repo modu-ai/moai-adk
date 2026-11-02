@@ -219,6 +219,14 @@ extract_design_features() {
                 if (t ~ /functionality/) return 1
                 if (t ~ /subsystems/) return 1
                 if (t ~ /components/) return 1
+                # Korean section names: documents are generated in the
+                # configured conversation language, so headings are not always English.
+                if (t ~ /기능/) return 1
+                if (t ~ /역량/) return 1
+                if (t ~ /모듈/) return 1
+                if (t ~ /구성 ?요소/) return 1
+                if (t ~ /컴포넌트/) return 1
+                if (t ~ /하위 ?시스템/) return 1
             }
             return 0
         }
@@ -405,7 +413,9 @@ awk \
     -v ORPHAN_OUT="$ORPHAN_TSV" '
     function normalize(s,    t) {
         t = tolower(s)
-        gsub(/[^a-z0-9]/, "-", t)
+        # Replace ASCII separators/punctuation only; bytes >= 0x80 (Hangul, CJK)
+        # are kept so a non-English name never normalizes to an empty token.
+        gsub(/[\001-\057\072-\100\133-\140\173-\177]/, "-", t)
         gsub(/--+/, "-", t)
         sub(/^-+/, "", t)
         sub(/-+$/, "", t)
