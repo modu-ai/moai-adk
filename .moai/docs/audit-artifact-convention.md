@@ -72,7 +72,7 @@ so.
 An exported audit artifact carries at minimum:
 
 - The verdict token and score (for example `PASS`, `PASS-WITH-DEBT`, `FAIL`,
-  plus the numeric score where the audit type uses one)
+  `INCONCLUSIVE`, plus the numeric score where the audit type uses one)
 - Per-defect findings — each defect's identifier, severity, and a one-line
   summary
 - The commands run with their observed outputs, in evidence-bearing format:
@@ -84,7 +84,7 @@ An exported audit artifact carries at minimum:
   verdict stays; these lines are added, not substituted):
 
   ```
-  verdict: <PASS|PASS-WITH-DEBT|FAIL>
+  verdict: <PASS|PASS-WITH-DEBT|FAIL|INCONCLUSIVE>
   audited_sha: <full commit SHA the audit read>
   ```
 
@@ -93,6 +93,12 @@ An exported audit artifact carries at minimum:
   the file unreadable to the gate. These lines belong in the exported file
   only, never in the auditor's final chat message, whose last line stays the
   receipt-citation verdict line where that gate applies.
+
+  `INCONCLUSIVE` means the audit did not run: no backend reported a defect, and
+  at least one required backend could not perform its review. It is the label
+  for "not performed" — never a PASS claim and never a FAIL. A file labelled
+  `INCONCLUSIVE` carries the receipt lines below, and every consumer reads it
+  as not performed (§ How consumers read `INCONCLUSIVE`).
 
   A **plan-audit** verdict file adds the fields the shared admission rule
   checks before a card may leave plan audit for Kickoff — every one is
@@ -115,8 +121,8 @@ An exported audit artifact carries at minimum:
   - debt: <id> dispose_in=<run|sync> <description>
   ```
 
-  A verdict that records a required backend the audit could not admit carries
-  one line per failed backend, each at the start of its own line:
+  A verdict that records a required backend that reported fail carries one
+  line per such backend, each at the start of its own line:
 
   ```
   required_backend_fail: <backend>
@@ -124,16 +130,76 @@ An exported audit artifact carries at minimum:
 
   The line's producer is the exporting auditor: from the multi-model
   convergence result's per-backend verdicts, or from a single-backend audit's
-  own review. The shared admission rule refuses a verdict carrying the line
+  own review. The line names only a backend that reported fail; a backend that
+  did not run is recorded by a `required_backend:` line below, never by this
+  one. The shared admission rule refuses a verdict carrying the line
   regardless of the verdict's own label, naming the recorded backend.
   Required backends the audit did not cover carry no line, and the absence of
   lines refuses nothing — the label and field checks above remain the primary
   admission gates.
 
-  A sync-audit verdict file keeps the two lines above; its label alone decides.
+  A verdict exported from a multi-model convergence result also carries the
+  convergence's receipt lines, each at the start of its own line:
+
+  ```
+  convergence_overall: <pass|fail|inconclusive>
+  required_backend: <backend> <pass|fail|inconclusive> [<error_class>]
+  ```
+
+  One `required_backend:` line per audited backend. `<error_class>` says why a
+  review could not be performed and is one of `quota`, `timeout`, `auth`,
+  `unavailable`, `other`; it follows `inconclusive` only — a class after `pass`
+  or `fail`, a class outside that set, or a further token makes the line
+  malformed. An `INCONCLUSIVE` file carries `convergence_overall: inconclusive`
+  and one `required_backend: <backend> inconclusive <error_class>` line per
+  backend that did not run, and no `required_backend_fail:` line for any of
+  them.
+
+  Every `FAIL` verdict file, plan-audit or sync-audit, also states how many
+  blocking findings it reports and names each one, one line per finding with a
+  distinct id:
+
+  ```
+  blocking_count: <count of blocking findings>
+  blocking_defect: <defect id>
+  ```
+
+  The number of `blocking_defect:` lines equals `blocking_count`. A review
+  that re-audits only the changes made since a failed audit reads these ids to
+  confirm that each blocking defect was closed.
+
+  A sync-audit verdict file keeps the two lines above, plus the
+  `blocking_count` and `blocking_defect:` lines when it is labelled `FAIL`; its
+  label alone decides.
 
 An inline response summary alone does not satisfy this convention. The
 summary points to the file; it does not substitute for it.
+
+---
+
+## How consumers read `INCONCLUSIVE`
+
+Every consumer reads `INCONCLUSIVE` as not performed: it is not a PASS claim and
+it is not a FAIL.
+
+- **Admission.** The shared admission rule refuses an `INCONCLUSIVE` file as it
+  refuses a `FAIL`, and its refusal reason names each backend that did not run
+  with its error class. A file that records a backend as failed
+  (`required_backend_fail:`) or an overall `fail` is refused for that reason
+  first.
+- **Final chat message.** The auditor's last line is
+  `AUDIT-VERDICT: INCONCLUSIVE spec=<SPEC-ID> receipts=<ids|none>`. It is a
+  parsed verdict line: it is not a missing line, and it clears no outstanding
+  rejection. Entering the next stage stays blocked as after `FAIL`, and the
+  reason carries the error class.
+- **Card record.** The factory card record accepts `verdict: INCONCLUSIVE` and
+  keeps the card in audit, as it does for `FAIL`, with the error class in its
+  reason.
+- **Round counters.** Both plan-audit round counters skip an `INCONCLUSIVE`
+  iteration file and keep counting `FAIL` and passing files, so a quota wall
+  does not spend the iteration ceiling. An `INCONCLUSIVE` file with the highest
+  iteration number is still the latest verdict, so an older verdict never
+  becomes the decision.
 
 ---
 

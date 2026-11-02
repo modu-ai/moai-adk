@@ -33,7 +33,9 @@ var frConventionPins = []struct{ name, pin string }{
 
 func TestFR_ConventionDescribesINCONCLUSIVE(t *testing.T) {
 	for _, rel := range frConventionFiles {
-		body := frReadRepoFile(t, rel)
+		// The doc wraps its prose, so a sentence is compared with its line breaks
+		// folded to single spaces.
+		body := strings.Join(strings.Fields(frReadRepoFile(t, rel)), " ")
 		for _, p := range frConventionPins {
 			if !strings.Contains(body, p.pin) {
 				t.Errorf("%s: %s is missing (%q)", rel, p.name, p.pin)
