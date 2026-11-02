@@ -36,34 +36,73 @@ func factoryPrintWakes(ctx context.Context, out io.Writer, db *homestate.Factory
 		return
 	}
 	for _, w := range waits {
-		reason := factoryWaitLine(w.Reason)
+		reason, missing := factoryWaitDisplay(w.Reason)
 		if w.Waker == homestate.WaitWakerOperator {
-			_, _ = fmt.Fprintf(out, "  note: card=%s waits on the operator (predecessor %s landed); no lane wake - leader relays reason=%s\n", w.CardID, card.CardID, reason)
+			_, _ = fmt.Fprintf(out, "  note: card=%s waits on the operator (predecessor %s landed); no lane wake - leader relays reason=%s%s\n", w.CardID, card.CardID, reason, missing)
 			continue
 		}
-		_, _ = fmt.Fprintf(out, "wake: lane=%s card=%s reason=%s (predecessor %s landed)\n", w.Waker, w.CardID, reason, card.CardID)
+		_, _ = fmt.Fprintf(out, "wake: lane=%s card=%s reason=%s (predecessor %s landed)%s\n", w.Waker, w.CardID, reason, card.CardID, missing)
 		_, _ = fmt.Fprintf(out, "  confirm the start from records, not from a reply: moai factory status (lease holder of %s) and the card progress record under .moai/reports/%s/\n", w.CardID, w.CardID)
 	}
 }
 
-// factoryWaitReason folds an optional scope into the reason text as a leading
-// `scope=<value> ` token, so the stored reason, the record line, and the wake
-// line all carry it without a schema change. An absent scope leaves the reason
-// untouched; a given scope must be one trimmed non-empty line.
-func factoryWaitReason(reason string, scope *string) (string, error) {
-	flat := factoryWaitLine(reason)
-	if scope == nil {
-		return flat, nil
-	}
-	s := strings.TrimSpace(*scope)
+// factoryWaitTag validates a --scope / --next value: one trimmed non-empty line.
+func factoryWaitTag(flag string, v *string, what string) (string, error) {
+	s := strings.TrimSpace(*v)
 	if s == "" || strings.ContainsAny(s, "\r\n") {
-		return "", fmt.Errorf("%w: --scope must be one non-empty line naming the refused operation, path, or permission", homestate.ErrInvalidCardInput)
+		return "", fmt.Errorf("%w: --%s must be one non-empty line naming %s", homestate.ErrInvalidCardInput, flag, what)
 	}
-	return strings.TrimSpace("scope=" + s + " " + flat), nil
+	return s, nil
+}
+
+// factoryWaitReason folds the optional scope and next-check event into the
+// reason text as leading `scope=<value> ` / `next=<value> ` tokens (in that
+// order), so the stored reason, the record line, and the wake line all carry
+// them without a schema change. An absent flag adds nothing: a call with
+// neither stores the flattened reason byte-for-byte as before.
+func factoryWaitReason(reason string, scope, next *string) (string, error) {
+	parts := make([]string, 0, 3)
+	if scope != nil {
+		s, err := factoryWaitTag("scope", scope, "the refused operation, path, or permission")
+		if err != nil {
+			return "", err
+		}
+		parts = append(parts, "scope="+s)
+	}
+	if next != nil {
+		n, err := factoryWaitTag("next", next, "the event that triggers the next check")
+		if err != nil {
+			return "", err
+		}
+		parts = append(parts, "next="+n)
+	}
+	parts = append(parts, factoryWaitLine(reason))
+	return strings.TrimSpace(strings.Join(parts, " ")), nil
+}
+
+// factoryWaitDisplay renders a stored wait reason for the wake and note lines:
+// an empty reason shows as `unknown`, and the tracking fields a record does
+// not carry (it predates the tag, or the call omitted it) are appended as
+// `scope=unknown` / `next=unknown`. Display only - stored data is never
+// rewritten, and a missing field never blocks a read or a wake.
+func factoryWaitDisplay(stored string) (reason, missing string) {
+	reason = factoryWaitLine(stored)
+	hasScope := strings.HasPrefix(reason, "scope=")
+	hasNext := strings.HasPrefix(reason, "next=") || (hasScope && strings.Contains(reason, " next="))
+	if reason == "" {
+		reason = "unknown"
+	}
+	if !hasScope {
+		missing += " scope=unknown"
+	}
+	if !hasNext {
+		missing += " next=unknown"
+	}
+	return reason, missing
 }
 
 func newFactoryWaitCommand() *cobra.Command {
-	var on, waker, reason, actor, scope string
+	var on, waker, reason, actor, scope, next string
 	var operator bool
 	cmd := &cobra.Command{
 		Use:   "wait <card>",
@@ -78,7 +117,11 @@ func newFactoryWaitCommand() *cobra.Command {
 			if cmd.Flags().Changed("scope") {
 				scopeArg = &scope
 			}
-			return factoryRecordWait(ctx, cmd.OutOrStdout(), factoryCardRoot(), args[0], on, operator, waker, reason, actor, scopeArg)
+			var nextArg *string
+			if cmd.Flags().Changed("next") {
+				nextArg = &next
+			}
+			return factoryRecordWait(ctx, cmd.OutOrStdout(), factoryCardRoot(), args[0], on, operator, waker, reason, actor, scopeArg, nextArg)
 		},
 	}
 	cmd.Flags().StringVar(&on, "on", "", "predecessor card whose landing releases the wait (default: the card's --after hint)")
@@ -87,14 +130,15 @@ func newFactoryWaitCommand() *cobra.Command {
 	cmd.Flags().StringVar(&reason, "reason", "", "why the card waits")
 	cmd.Flags().StringVar(&actor, "actor", "", "who records the wait")
 	cmd.Flags().StringVar(&scope, "scope", "", "the refused operation, path, or permission that caused the wait (one line)")
+	cmd.Flags().StringVar(&next, "next", "", "the event that triggers the next check of this wait (one line)")
 	return cmd
 }
 
 // factoryRecordWait records one wait for cardID. With --on empty and no
 // --operator the card's existing `after` hint is the predecessor, reusing the
 // dependency already recorded rather than restating it.
-func factoryRecordWait(ctx context.Context, out io.Writer, root, cardID, on string, operator bool, waker, reason, actor string, scope *string) error {
-	waitReason, err := factoryWaitReason(reason, scope)
+func factoryRecordWait(ctx context.Context, out io.Writer, root, cardID, on string, operator bool, waker, reason, actor string, scope, next *string) error {
+	waitReason, err := factoryWaitReason(reason, scope, next)
 	if err != nil {
 		return fmt.Errorf("factory wait: %w", err)
 	}
@@ -129,6 +173,9 @@ func factoryRecordWait(ctx context.Context, out io.Writer, root, cardID, on stri
 	line := fmt.Sprintf("wait recorded: card=%s condition=%s %s waker=%s", cardID, w.CondKind, w.CondRef, w.Waker)
 	if scope != nil {
 		line += " scope=" + strings.TrimSpace(*scope)
+	}
+	if next != nil {
+		line += " next=" + strings.TrimSpace(*next)
 	}
 	_, _ = fmt.Fprintln(out, line)
 	return nil
