@@ -169,8 +169,12 @@ func SpecIDFromText(text string) string {
 // refusing that line as unparseable recorded "verdict line missing" refusals
 // for provable PASSes (card t1861). Everything else — verdict alternation,
 // receipts grammar, last-line anchoring — is unchanged.
+//
+// SPEC-AUDIT-ENGINE-CONVERGENCE-001 REQ-AEC-007 adds the fourth label,
+// INCONCLUSIVE: an audit whose required leg did not run says so on its last line
+// instead of being recorded as a missing verdict line.
 var verdictLinePattern = regexp.MustCompile(
-	`^AUDIT-VERDICT: (PASS|PASS-WITH-DEBT|FAIL) spec=((?:` + specIDBody + `|` + cardIDBody + `)) receipts=(none|rcpt-[a-z0-9]{20,40}(?:,rcpt-[a-z0-9]{20,40})*)[ \t\r]*$`)
+	`^AUDIT-VERDICT: (PASS|PASS-WITH-DEBT|FAIL|INCONCLUSIVE) spec=((?:` + specIDBody + `|` + cardIDBody + `)) receipts=(none|rcpt-[a-z0-9]{20,40}(?:,rcpt-[a-z0-9]{20,40})*)[ \t\r]*$`)
 
 // Receipt records one audit call the runtime actually made.
 type Receipt struct {
@@ -1051,6 +1055,11 @@ func RejectionKind(r Rejection) string {
 	}
 	return r.Kind
 }
+
+// VerdictInconclusive is the verdict-line label of an audit that did not run
+// (SPEC-AUDIT-ENGINE-CONVERGENCE-001 REQ-AEC-007): neither a PASS claim nor a
+// FAIL.
+const VerdictInconclusive = "INCONCLUSIVE"
 
 // VerdictLine is a parsed auditor verdict line.
 type VerdictLine struct {
