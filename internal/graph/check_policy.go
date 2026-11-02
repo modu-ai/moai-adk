@@ -58,12 +58,14 @@ const (
 //   - the event is a pull request and the policy is not "block";
 //   - the codemaps verdict is stale (an absent or unjudgeable layer blocks);
 //   - the change's own contribution was measured (nil means unmeasured, which
-//     blocks — a fabricated 0 would read as the inheriting signature) and is
-//     below the codemaps threshold;
+//     blocks — a fabricated 0 would read as the inheriting signature) and the
+//     BASE alone (Value - Contribution) is already at or over the threshold,
+//     i.e. the origin is "inherited";
 //   - every other layer is fresh.
 //
-// A push event, an unknown or empty event, and a self-contribution at or over
-// the threshold all block.
+// A push event, an unknown or empty event, a count this change took over the
+// line (crossed-by-change), and one this change alone put over it
+// (originated) all block.
 func (r *CheckResult) ClassifyVerdicts(event, inheritedPolicy string, th Thresholds) {
 	nonFresh := 0
 	for i := range r.Layers {
@@ -71,19 +73,37 @@ func (r *CheckResult) ClassifyVerdicts(event, inheritedPolicy string, th Thresho
 			r.Layers[i].VerdictClass = VerdictClassBlock
 			nonFresh++
 		}
+		// The origin is a fact about the count, stated whatever the event or policy.
+		if l := &r.Layers[i]; l.Layer == LayerCodemaps && l.Verdict == VerdictStale {
+			l.DriftOrigin = driftOrigin(*l, th.CodemapsChangedFiles)
+		}
 	}
 	if event != EventPullRequest || inheritedPolicy == InheritedDriftBlock || nonFresh != 1 {
 		return
 	}
 	for i := range r.Layers {
 		l := &r.Layers[i]
-		if l.Layer != LayerCodemaps || l.Verdict != VerdictStale {
-			continue
+		if l.Layer == LayerCodemaps && l.Verdict == VerdictStale && l.DriftOrigin == DriftInherited {
+			l.VerdictClass = VerdictClassWarn
 		}
-		if l.Contribution == nil || *l.Contribution >= th.CodemapsChangedFiles {
-			return
-		}
-		l.VerdictClass = VerdictClassWarn
+	}
+}
+
+// driftOrigin classifies a stale codemaps count by where it came from. The base
+// alone is Value - Contribution. Only a count the base already carried is
+// inherited; a change that took it over the line, or is over it by itself,
+// is not. An unmeasured contribution states no origin and so never warns.
+func driftOrigin(l LayerReport, threshold int) string {
+	if l.Contribution == nil {
+		return ""
+	}
+	switch {
+	case *l.Contribution >= threshold:
+		return DriftOriginated
+	case l.Value-*l.Contribution >= threshold:
+		return DriftInherited
+	default:
+		return DriftCrossedByChange
 	}
 }
 

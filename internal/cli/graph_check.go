@@ -77,12 +77,14 @@ Exit codes: 0 all fresh · 1 stale or absent · 2 system error.
 
 One narrow exception turns a stale report into exit 0 plus a warning: on a
 pull_request event (--event, else GITHUB_EVENT_NAME), when the codemaps layer
-is the ONLY non-fresh layer and this change's own described-source
-contribution is measured and below the codemaps threshold — i.e. the drift was
-inherited from the base, not originated. The JSON report keeps verdict=stale
-and adds verdict_class=warn. A push event (main, release/*), an absent layer,
-edges or citations failures, an unmeasured contribution, and a contribution at
-or over the threshold all still exit 1. gate.graph_freshness.inherited_codemaps_drift
+is the ONLY non-fresh layer and the BASE alone (value minus this change's
+measured contribution) is already at or over the codemaps threshold. The JSON
+report states the origin as drift_origin: inherited (base >= threshold),
+crossed-by-change (base < threshold <= value), or originated (contribution >=
+threshold); only inherited downgrades, with verdict=stale kept and
+verdict_class=warn added. crossed-by-change, originated, a push event (main,
+release/*), an absent layer, edges or citations failures, and an unmeasured
+contribution all still exit 1. gate.graph_freshness.inherited_codemaps_drift
 = block restores exit 1 for the inherited case too.
 
 Thresholds are configured in gate.yaml (graph_freshness section).`,
@@ -219,12 +221,8 @@ func writeLayerAttribution(errs io.Writer, l graph.LayerReport) {
 		if len(base) > 9 {
 			base = base[:9]
 		}
-		verb := "originated by this change"
-		if *l.Contribution == 0 {
-			verb = "inherited — this change contributed none of it"
-		}
 		_, _ = fmt.Fprintf(errs, "  contribution: %d described-worthy file(s) vs first parent %s (%s)\n",
-			*l.Contribution, base, verb)
+			*l.Contribution, base, driftOriginSentence(l))
 	case l.ContributionAbsentReason != "":
 		// Absent, and said so. A fabricated 0 would read as the inheriting
 		// signature on every checkout that has no comparison base.
@@ -295,6 +293,26 @@ func graphCheckEvent(flagValue string) string {
 	return os.Getenv("GITHUB_EVENT_NAME")
 }
 
+// driftOriginSentence states, as a fact, where the codemaps count came from.
+// Base alone is value - contribution; the wording follows graph's three-way
+// DriftOrigin and never calls a count "inherited" unless the base carried it.
+func driftOriginSentence(l graph.LayerReport) string {
+	if l.Contribution == nil {
+		return "origin not stated"
+	}
+	base := l.Value - *l.Contribution
+	switch l.DriftOrigin {
+	case graph.DriftInherited:
+		return fmt.Sprintf("inherited — the base alone carries %d >= threshold %d, this change added %d", base, l.Threshold, *l.Contribution)
+	case graph.DriftCrossedByChange:
+		return fmt.Sprintf("crossed by this change — the base carried %d < threshold %d, this change added %d and took the count over the line", base, l.Threshold, *l.Contribution)
+	case graph.DriftOriginated:
+		return fmt.Sprintf("originated by this change — it alone is %d >= threshold %d", *l.Contribution, l.Threshold)
+	default:
+		return "origin not stated"
+	}
+}
+
 // writeInheritedDriftWarnings announces the layers that were downgraded from
 // block to warn. In text mode the GitHub annotation goes to stdout, where the
 // runner reads workflow commands; in --json mode stdout must stay a single JSON
@@ -312,7 +330,7 @@ func writeInheritedDriftWarnings(out, errs io.Writer, asJSON bool, warns []graph
 			contribution = fmt.Sprintf("%d", *l.Contribution)
 		}
 		_, _ = fmt.Fprintf(dst,
-			"::warning title=graph-freshness::layer %s is %s (value=%d >= threshold=%d) but inherited: this change contributed %s described-worthy file(s), below the threshold, and every other layer is fresh. Regenerate the %s body (/moai codemaps) and stamp it; a bare re-stamp is not a fix.\n",
-			l.Layer, l.Verdict, l.Value, l.Threshold, contribution, l.Layer)
+			"::warning title=graph-freshness::layer %s is %s (value=%d >= threshold=%d), inherited: the base alone carries the count (%s), this change contributed %s described-worthy file(s), and every other layer is fresh. Regenerate the %s body (/moai codemaps) and stamp it; a bare re-stamp is not a fix.\n",
+			l.Layer, l.Verdict, l.Value, l.Threshold, driftOriginSentence(l), contribution, l.Layer)
 	}
 }
