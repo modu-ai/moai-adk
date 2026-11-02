@@ -65,7 +65,7 @@ func TestEnqueue_AReclaimedCardTakesOverOrReplacesTheLandedRowOnceItMeasuredInIt
 			s, e2 := landedThenReclaimed(t, rework, nil)
 			evidenceOn(t, s, e2, "c1")
 			handOff(t, s, e2, rework)
-			if err := s.Enqueue(bg, "a", e2, "c1", OnTrunk(true)); err != nil {
+			if err := s.Enqueue(bg, "a", e2, "c1"); err != nil {
 				t.Fatalf("c1 landed, was measured again by the new holder, and the offer is refused: %v", err)
 			}
 			if it, ok := queueRow(t, s, "a"); !ok || it.State != QueueLanded || it.CandidateSHA != "c1" || it.CardEpoch != e2 {

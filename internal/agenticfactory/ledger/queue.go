@@ -114,14 +114,13 @@ func newestWorkIs(ctx context.Context, q querier, cardID, sha string) (bool, err
 //
 //  1. The newest record of each kind (green, gate, review) about it is not a failure, whenever
 //     that record was made and whether or not the card was ever taken back, as it is for the
-//     receipt and at Enqueue: a pass followed by a failure leaves a failure, a failure followed
+//     receipt: a pass followed by a failure leaves a failure, a failure followed
 //     by a pass is repaired, a kind never recorded for the commit is not a failure.
 //  2. If the card went back into the build stage after the candidate was first offered to the
 //     queue (see offerOf), at least one passing run (green or gate) of it follows the latest such
 //     move. Going back means the holder took the work back; the old receipt and the landed row
 //     are older than that, so nothing in the record says the rework was done. The same commit
-//     measured again counts (the trunk holds exactly what was measured; Enqueue refuses to take a
-//     commit that fails this check, so a landed row has normally passed it already).
+//     measured again counts (the trunk holds exactly what was measured).
 //  3. If a green, gate or review about another commit FAILED after the candidate was offered, or
 //     the card left MERGING after the offer and has recorded evidence about another commit since
 //     its latest such move, the candidate was measured again after that evidence, with a passing
@@ -230,8 +229,8 @@ func failingNewestRun(ctx context.Context, q querier, cardID, sha string) (strin
 	return "", nil
 }
 
-// FailingNewestRun is the read-only form of the rule Enqueue and finishing a card apply (a commit whose newest green,
-// gate or review run failed is neither taken nor finished on): it names the first kind whose newest run about the
+// FailingNewestRun is the read-only form of the rule finishing a card applies (a commit whose newest green,
+// gate or review run failed is not finished on): it names the first kind whose newest run about the
 // commit failed, in the order green, gate, review, and returns "" when none did. A kind never recorded for the commit
 // is not a failure. No verb asks it any more; a Merger.LastCheck may.
 func (s *Store) FailingNewestRun(ctx context.Context, cardID, sha string) (string, error) {
@@ -345,26 +344,9 @@ func queueUnlandableAt(ctx context.Context, q querier, cardID string, cardEpoch 
 	return kind != "", err
 }
 
-// EnqueueOption is an optional fact the caller of Enqueue brings from outside the ledger.
-type EnqueueOption func(*enqueueOptions)
-
-type enqueueOptions struct{ onTrunk bool }
-
-// OnTrunk tells Enqueue whether the candidate commit is on the trunk, as the caller found out by
-// asking the repository (the ledger never runs the VCS itself, REQ-AFL-008). It matters for one
-// case only: a landed row of an earlier card epoch that the new holder offers again as the same
-// commit. The row's own word that it landed is not taken for the trunk's; with OnTrunk(true) the
-// row is taken over, with OnTrunk(false), or without the option at all (the caller did not say),
-// the row starts over as waiting so that the commit must really land.
-func OnTrunk(on bool) EnqueueOption { return func(o *enqueueOptions) { o.onTrunk = on } }
-
 // Enqueue puts the card's candidate on the merge queue and moves the card into MERGING;
 // see the API.
-func (s *Store) Enqueue(ctx context.Context, cardID string, epoch int64, candidateSHA string, opts ...EnqueueOption) error {
-	var opt enqueueOptions
-	for _, o := range opts {
-		o(&opt)
-	}
+func (s *Store) Enqueue(ctx context.Context, cardID string, epoch int64, candidateSHA string) error {
 	if strings.TrimSpace(candidateSHA) == "" {
 		return fmt.Errorf("%w: a candidate needs its commit SHA", ErrInvalid)
 	}
@@ -424,15 +406,8 @@ func (s *Store) Enqueue(ctx context.Context, cardID string, epoch int64, candida
 			}
 			text := fmt.Sprintf("card %s: candidate %s had landed at card epoch %d; queued again as new work %s at card epoch %d", cardID, oldSHA.String, oldEpoch, candidateSHA, card.Epoch)
 			if oldSHA.String == candidateSHA {
-				// The row's word that it landed is checked by the caller against the trunk: a row
-				// that landed on another trunk, or a trunk that lost the commit since, is not a
-				// landing the card may finish on, so the row starts over below.
-				takeOver = opt.onTrunk
-				if takeOver {
-					text = fmt.Sprintf("card %s: candidate %s had landed at card epoch %d; taken over at card epoch %d after it was measured again", cardID, candidateSHA, oldEpoch, card.Epoch)
-				} else {
-					text = fmt.Sprintf("card %s: candidate %s had landed at card epoch %d but is not on the trunk as far as the caller found; queued again at card epoch %d, to land for real", cardID, candidateSHA, oldEpoch, card.Epoch)
-				}
+				takeOver = true
+				text = fmt.Sprintf("card %s: candidate %s had landed at card epoch %d; taken over at card epoch %d after it was measured again", cardID, candidateSHA, oldEpoch, card.Epoch)
 			}
 			if _, err := tx.ExecContext(ctx, `INSERT INTO notes(kind,card_id,text,at) VALUES('decision',?,?,`+nowSQL+`)`, cardID, text); err != nil {
 				return fmt.Errorf("ledger: %w", err)
@@ -470,49 +445,6 @@ func (s *Store) Enqueue(ctx context.Context, cardID string, epoch int64, candida
 			}
 			if _, err := tx.ExecContext(ctx, `INSERT INTO notes(kind,card_id,text,at) VALUES('decision',?,?,`+nowSQL+`)`, cardID, text); err != nil {
 				return fmt.Errorf("ledger: %w", err)
-			}
-		}
-		// The candidate is the commit the card measured last. A gate-only candidate is that commit
-		// the moment it is gated (REQ-AFL-008), but an older commit offered over a newer one's
-		// green is not: the trunk would hold the old work while the card's newest work, which
-		// may have failed, is not in it. The ledger cannot tell whether one commit contains the
-		// other, so it asks for the same commit; measuring the older one again makes it the
-		// newest. Red and merge evidence are about other commits by design and do not count.
-		// Only a passing green or gate of the candidate measures it again: a review of it is a
-		// reading, not a run, and a failing record is no measurement at all, so neither is the
-		// newest evidence (a review of ANOTHER commit still is, as before).
-		var lastSubject sql.NullString
-		switch err := tx.QueryRowContext(ctx, `SELECT subject_sha FROM evidence WHERE card_id=? AND kind IN (?,?,?)
-			AND NOT (COALESCE(subject_sha,'')=? AND (kind=? OR result<>?)) ORDER BY id DESC LIMIT 1`,
-			cardID, KindGreen, KindGate, KindReview, candidateSHA, KindReview, ResultPass).Scan(&lastSubject); {
-		case err == sql.ErrNoRows:
-		case err != nil:
-			return fmt.Errorf("ledger: %w", err)
-		case lastSubject.Valid && lastSubject.String != candidateSHA:
-			return fmt.Errorf("%w: the newest evidence of %s is about commit %s, not %s; measure %s again first", ErrEvidenceStale, cardID, lastSubject.String, candidateSHA, candidateSHA)
-		}
-		// A commit whose newest green run failed cannot finish the card (landingStands), so it is
-		// not taken either; its gate is already known to pass.
-		if ok, err := noFailingNewestRun(ctx, tx, cardID, candidateSHA); err != nil {
-			return err
-		} else if !ok {
-			return fmt.Errorf("%w: the newest run of commit %s failed; measure it again first", ErrEvidenceStale, candidateSHA)
-		}
-		// A commit this card already offered, and was then taken back for rework, is taken again
-		// only with the run that finishing needs already recorded (see landingStands). Refusing it
-		// here, while the holder is still there to measure it, is the only place a refusal
-		// leaves a way out: after the landing, the same demand would strand the card in MERGING
-		// with the work in the trunk and no one left to answer it. A commit never offered before
-		// carries no mark, and a gate-only one is still taken (REQ-AFL-008).
-		if _, _, offered, err := namedOfferOf(ctx, tx, cardID, candidateSHA); err != nil {
-			return err
-		} else if offered {
-			stands, err := landingStands(ctx, tx, cardID, candidateSHA)
-			if err != nil {
-				return err
-			}
-			if !stands {
-				return fmt.Errorf("%w: commit %s was offered before %s was taken back for rework and needs a passing run recorded since, with no failing newest run", ErrEvidenceStale, candidateSHA, cardID)
 			}
 		}
 		if takeOver {

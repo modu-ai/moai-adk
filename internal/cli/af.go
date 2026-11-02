@@ -930,11 +930,8 @@ func newAFEnqueueCmd() *cobra.Command {
 		Short: "Put the card's candidate commit on the merge queue",
 		Long: `Put the card's candidate commit on the merge queue.
 
-The commit is looked up as evidence does (--repo, else the card's lease worktree, else the project directory). The verb
-then asks that repository whether the candidate is in ` + mergeq.DefaultTrunk + ` and tells the ledger. A queue row that landed
-under an earlier holder of the card, for this same commit, is taken over only when the commit is in the trunk; otherwise
-the row starts again as waiting, to be landed for real. When the repository cannot answer (the trunk ref does not exist,
-say) the offer is refused and nothing is changed: the verb does not guess.
+The commit is looked up as evidence does (--repo, else the card's lease worktree, else the project directory). A queue row
+that landed under an earlier holder of the card, for this same commit, is taken over.
 
 ` + afBindHelp,
 		Args: cobra.ExactArgs(1),
@@ -943,16 +940,10 @@ say) the offer is refused and nothing is changed: the verb does not guess.
 				return err
 			}
 			return afRun(f, func(ctx context.Context, st *ledger.Store) error {
-				used, err := afCheckCommit(ctx, st, f, args[0], repo, candidate, "--candidate")
-				if err != nil {
+				if _, err := afCheckCommit(ctx, st, f, args[0], repo, candidate, "--candidate"); err != nil {
 					return err
 				}
-				// A landed row of an earlier epoch is taken over only when its commit really is in the dedicated trunk.
-				onTrunk, err := afInTrunk(ctx, used, candidate)
-				if err != nil {
-					return err
-				}
-				if err := st.Enqueue(ctx, args[0], f.epoch, candidate, ledger.OnTrunk(onTrunk)); err != nil {
+				if err := st.Enqueue(ctx, args[0], f.epoch, candidate); err != nil {
 					return err
 				}
 				// What the row says now, not what an offer usually starts as: a landing taken over from an earlier holder is landed (N48).

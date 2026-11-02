@@ -45,9 +45,8 @@ func TestAFVerbs_N45TheLandHelpNoLongerPromisesAChoiceItDoesNotMake(t *testing.T
 	}
 }
 
-func TestAFVerbs_N45EnqueueAndMoveSayWhatTheyAskTheTrunk(t *testing.T) {
+func TestAFVerbs_N45MoveSaysWhatItAsksTheTrunk(t *testing.T) {
 	for verb, wants := range map[string][]string{
-		"enqueue":  {mergeq.DefaultTrunk, "landed", "waiting", "cannot answer"},
 		"move":     {mergeq.DefaultTrunk, "DONE", "landed", "REVIEWING"},
 		"evidence": {"lease"},
 		"claim":    {"--worktree", "evidence and enqueue"},

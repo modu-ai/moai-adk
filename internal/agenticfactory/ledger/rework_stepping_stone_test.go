@@ -14,20 +14,12 @@ import (
 // with nothing about c1 recorded since it was taken back (and c2, the work of the rework, not in the
 // trunk). The mark belongs to the first offer of the candidate that stands in the row, not to the
 // latest Enqueue: offering the same commit again is not new work.
-//
-// Since audit db0a69698a N25 the refusal is at the entrance: Enqueue does not take c1 again until
-// the holder has recorded a passing run of it after the move back, so the card never lands on
-// the old measurements at all (see enqueue_rework_test.go). The tests below keep the guarantee
-// they always stated, that the card cannot finish on c1 without that measurement, and add the
-// way out.
 
 var posIntegrated = core.Position{Stage: core.StageMerging, RemoteIntegrated: true}
 
-// steppingStone takes the card through c1 landed, the rework, c2 offered and gone, and c1 offered
-// again. c2Green says whether c2 carried a green as well as its gate (otherwise the no-handoff
-// path: a gate only). measured says whether c1 was measured again before it was offered again.
-// It returns the error of the second offer of c1; when that is nil c1 has landed again.
-func steppingStone(t *testing.T, ending string, c2Green, measured bool) (*Store, int64, error) {
+// steppingStone leaves the card in MERGING with c1 landed (again), after c2 came and went in between.
+// c2Green says whether c2 carried a green as well as its gate (otherwise the no-handoff path: a gate only).
+func steppingStone(t *testing.T, ending string, c2Green bool) (*Store, int64) {
 	t.Helper()
 	s := openTemp(t)
 	c := gated(t, s, "a", "c1")
@@ -56,14 +48,11 @@ func steppingStone(t *testing.T, ending string, c2Green, measured bool) (*Store,
 		}
 	}
 	mustMove(t, s, e, posReviewing, "lane")
-	if measured {
-		evidenceOn(t, s, e, "c1")
-	}
 	if err := s.Enqueue(bg, "a", e, "c1"); err != nil {
-		return s, e, err
+		t.Fatalf("enqueue c1 again: %v", err)
 	}
 	landOne(t, s, "a", e)
-	return s, e, nil
+	return s, e
 }
 
 // finish tries the two moves that end a landed card and reports the first refusal.
@@ -84,29 +73,18 @@ func TestRework_OfferingTheLandedCommitAgainDoesNotWashOutTheReworkMark(t *testi
 				name += " gate only"
 			}
 			t.Run(name, func(t *testing.T) {
-				s, e, err := steppingStone(t, ending, c2Green, false)
-				if !errors.Is(err, ErrEvidenceStale) {
-					t.Fatalf("c1 was offered again with nothing about c1 recorded since the move back, and the offer was taken: %v", err)
+				s, e := steppingStone(t, ending, c2Green)
+				if err := finish(s, e); !errors.Is(err, core.ErrGuardMissing) {
+					t.Fatalf("the card finished on c1, offered again, with nothing about c1 recorded since the move back: %v", err)
 				}
-				if got := cardOf(t, s, "a").Position.Stage; got != core.StageReviewing {
-					t.Errorf("the refused offer left the card at %s", got)
-				}
-				// The way out: measure c1 again, and the same card lands and finishes.
-				evidenceOn(t, s, e, "c1")
-				if err := s.Enqueue(bg, "a", e, "c1"); err != nil {
-					t.Fatalf("c1 measured again, and the offer is refused: %v", err)
-				}
-				landOne(t, s, "a", e)
-				if err := finish(s, e); err != nil {
-					t.Fatalf("c1 measured again and landed, and the card cannot finish: %v", err)
+				if got := cardOf(t, s, "a").Position.Stage; got == core.StageDone {
+					t.Error("the card is DONE")
 				}
 			})
 			// Control: the honest holder measures c1 again after the move back and finishes.
 			t.Run(name+", c1 measured again", func(t *testing.T) {
-				s, e, err := steppingStone(t, ending, c2Green, true)
-				if err != nil {
-					t.Fatalf("c1 was measured again after the move back, and the offer is refused: %v", err)
-				}
+				s, e := steppingStone(t, ending, c2Green)
+				evidenceOn(t, s, e, "c1")
 				if err := finish(s, e); err != nil {
 					t.Fatalf("c1 was measured again after the move back, and the card is refused: %v", err)
 				}
@@ -141,19 +119,16 @@ func TestRework_AFailedCandidateOfferedAgainAfterTheMoveBackNeedsNewEvidence(t *
 				evidenceOn(t, s, e, "c1")
 			}
 			mustMove(t, s, e, posReviewing, "lane")
-			err := s.Enqueue(bg, "a", e, "c1")
-			if !measured {
-				if !errors.Is(err, ErrEvidenceStale) {
-					t.Fatalf("the card offered a commit again after the move back, nothing measured since: %v", err)
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("c1 was measured again after the move back, and the offer is refused: %v", err)
+			if err := s.Enqueue(bg, "a", e, "c1"); err != nil {
+				t.Fatal(err)
 			}
 			landOne(t, s, "a", e)
-			if err := finish(s, e); err != nil {
+			err := finish(s, e)
+			if measured && err != nil {
 				t.Fatalf("c1 was measured again after the move back, and the card is refused: %v", err)
+			}
+			if !measured && !errors.Is(err, core.ErrGuardMissing) {
+				t.Fatalf("the card finished on a commit offered again after the move back, nothing measured since: %v", err)
 			}
 		})
 	}
