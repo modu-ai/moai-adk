@@ -60,7 +60,7 @@ Files:
   - checks every record, the starting record included, for a pass or fail from every required backend, iterating over the required set rather than the entries present, so an absent entry counts as not run;
   - cross-checks each record's receipt against the receipt store (tool, tree root, head, empty `gate_unmet`, codex verdict not inconclusive);
   - builds the closure set as the union of `blocking_defect:` ids over every FAIL verdict file tied to a chain record, and checks `blocking_count` on each;
-  - treats an id as inherited when the record that extended its FAIL file lists it among its confirmed ids, and checks only the remaining ids for a closing commit inside `delta_base..HEAD`.
+  - treats an id as inherited when the record that extended its FAIL file lists it among its confirmed ids, deciding this per naming rather than per id: when a FAIL file tied to a later chain record names the id again, the earlier inheritance is void, and the id is inherited only if the record extending that latest naming confirmed it; it checks every id not inherited for a closing commit inside `delta_base..HEAD` that comes after the id's latest naming.
 - `internal/cli/mcp_convergence.go`:
   - change the record branch at `:1059` so an admitted delta files a record;
   - change the persistence condition at `:1046` so an admitted delta persists whatever its verdict, while a `card_id`-less delta stays fail-only (t1873);

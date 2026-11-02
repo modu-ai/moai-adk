@@ -7,7 +7,7 @@ status: draft
 ```yaml
 plan_complete: true
 plan_author: manager-spec (card t2017)
-plan_revision: 0.5.1 (leader rulings R287, R288, R290, R308, R313 applied; plan-audit round 1 repaired — .moai/reports/t2017/plan-audit-1.md, FAIL 0.75 at 36148aeec9; plan-audit round 2 repaired — .moai/reports/t2017/plan-audit-2.md, FAIL at cc100c2909)
+plan_revision: 0.5.2 (leader rulings R287, R288, R290, R308, R313, R320 applied; plan-audit round 1 repaired — .moai/reports/t2017/plan-audit-1.md, FAIL 0.75 at 36148aeec9; plan-audit round 2 repaired — .moai/reports/t2017/plan-audit-2.md, FAIL at cc100c2909; plan-audit round 3 repaired — .moai/reports/t2017/plan-audit-3.md, FAIL at 44b21e558e, G1)
 follow_up:
   - "agentemit local target expansion (add plan-auditor and sync-auditor to the project targets) - input for card t2018"
   - "agentemit local .codex target expansion (add plan-auditor and sync-auditor to the codex_project target as well) - input for card t2018; the two local TOML copies themselves are in scope here and fixed by hand in M6 (leader ruling R313)"
