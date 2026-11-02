@@ -14,7 +14,7 @@ func TestAFResidual_N48ThePrintedStateOfATakenOverLandingIsTheStateOfTheRow(t *t
 	afSkipWithoutSh(t)
 	a := afN3Reclaimed(t, false)
 	a.measure(a.c1)
-	out := a.verb("enqueue", "t1", "--epoch", a.e2, "--candidate", a.c1, "--repo", a.repo)
+	out := a.verb("enqueue", "t1", "--epoch", a.e2, "--candidate", a.c1)
 	var printed struct {
 		State string `json:"state"`
 	}

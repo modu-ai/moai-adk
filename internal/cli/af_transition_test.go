@@ -55,10 +55,9 @@ func afTrMeasured(t *testing.T, how afTrHolder) afN3Card {
 		claim.Lease = time.Millisecond
 	}
 	db, repo, c1, st, epoch := afUnqueuedCardAs(t, claim)
-	afBindFixture(t, st, repo)
 	a := afN3Card{t: t, db: db, repo: repo, c1: c1, st: st, e2: fmt.Sprint(epoch)}
 	a.measure(c1)
-	a.verb("enqueue", "t1", "--epoch", a.e2, "--candidate", c1, "--repo", repo)
+	a.verb("enqueue", "t1", "--epoch", a.e2, "--candidate", c1)
 	if got := a.row().State; got != ledger.QueueWaiting {
 		t.Fatalf("setup: the row is %s, want waiting", got)
 	}
@@ -89,8 +88,8 @@ func TestAFTransition_E6ACandidateThatIsTheTrunksOwnCommitStillLandsAsAlreadyInT
 	a.verb("move", "t1", "--epoch", a.e2, "--stage", "REVIEWING")
 	base := afGit(t, a.repo, "rev-parse", mergeq.DefaultTrunk)
 	a.measure(base)
-	a.verb("enqueue", "t1", "--epoch", a.e2, "--candidate", base, "--repo", a.repo)
-	out := a.verb("land", "t1", "--repo", a.repo, "--gate", "true")
+	a.verb("enqueue", "t1", "--epoch", a.e2, "--candidate", base)
+	out := a.verb("land", "t1", "--gate", "true")
 	if !strings.Contains(out, `"outcome":"landed"`) || !strings.Contains(out, "already in the trunk") {
 		t.Fatalf("land of the trunk's own commit: %s", out)
 	}

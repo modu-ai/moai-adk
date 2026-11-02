@@ -136,7 +136,6 @@ func TestAFVerbs_N42TheResumeVerbRefusesWithoutAReasonOrWithAnotherEpochAndChang
 func TestAFVerbs_N42TheResumeVerbRefusesACardThatIsNotParkedAndChangesNothing(t *testing.T) {
 	afSkipWithoutSh(t)
 	db, repo, c1, st, epoch := afUnqueuedCard(t)
-	afBindFixture(t, st, repo)
 	a := afN3Card{t: t, db: db, repo: repo, c1: c1, st: st, e2: strconv.FormatInt(epoch, 10)}
 	before := afSnapshot(t, a.st)
 	out, err := a.try("resume", "t1", "--epoch", a.e2, "--reason", "r")
@@ -181,7 +180,7 @@ func TestAFVerbs_N42TheResumeVerbLetsAReclaimCapParkedCardFinishOnItsLandedCommi
 		t.Error("DONE accepted before the landed commit was measured in the new epoch")
 	}
 	a.measure(a.c1)
-	a.verb("enqueue", "t1", "--epoch", a.e2, "--candidate", a.c1, "--repo", a.repo)
+	a.verb("enqueue", "t1", "--epoch", a.e2, "--candidate", a.c1)
 	a.finish()
 	if got := a.stage(); got != core.StageDone {
 		t.Errorf("stage %s, want DONE", got)

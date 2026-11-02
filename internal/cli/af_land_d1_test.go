@@ -12,7 +12,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -69,8 +71,8 @@ func afLedgerBytes(t *testing.T, db string) []byte {
 // ledger. It returns the outcome and the reason.
 func afD1Land(t *testing.T, gate string, extra ...string) (outcome, reason string) {
 	t.Helper()
-	db, repo, _, _, _ := afQueuedCard(t)
-	args := append([]string{"land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/af/trunk", "--gate", gate}, extra...)
+	db, _, _, _, _ := afQueuedCard(t)
+	args := append([]string{"land", "t1", "--db", db, "--gate", gate}, extra...)
 	out, errOut, err := afRunBoth(args...)
 	ledgerBytes := afLedgerBytes(t, db)
 	for where, text := range map[string]string{"stdout": out, "stderr": errOut, "ledger file": string(ledgerBytes)} {
@@ -208,7 +210,7 @@ func TestAFLand_D1MergeHookStderrNeverReachesTheLedgerOrStdout(t *testing.T) {
 	if err := os.WriteFile(hook, []byte(body), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	out, errOut, err := afRunBoth("land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/af/trunk", "--gate", "true")
+	out, errOut, err := afRunBoth("land", "t1", "--db", db, "--gate", "true")
 	for where, text := range map[string]string{"stdout": out, "stderr": errOut, "ledger file": string(afLedgerBytes(t, db))} {
 		if strings.Contains(text, afD1Value) {
 			t.Errorf("the hook's value is in the %s", where)
@@ -241,7 +243,7 @@ func TestAFLand_D1MergeHookVolumeIsBounded(t *testing.T) {
 	if err := os.WriteFile(hook, []byte("#!/bin/sh\nhead -c 5000000 /dev/zero | tr '\\0' 'x' >&2\necho\necho 'LAST HOOK LINE' >&2\nexit 1\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	out, _, _ := afRunBoth("land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/af/trunk", "--gate", "true")
+	out, _, _ := afRunBoth("land", "t1", "--db", db, "--gate", "true")
 	if len(out) > 4096 {
 		t.Errorf("stdout is %d bytes", len(out))
 	}
@@ -351,7 +353,7 @@ func afUnqueuedCardAs(t *testing.T, claim ledger.ClaimRequest) (db, repo, cand s
 	}
 	t.Cleanup(func() { _ = st.Close() })
 	repo = t.TempDir()
-	t.Setenv("CLAUDE_PROJECT_DIR", repo) // the verbs take --repo only for the project's own repository
+	t.Setenv("CLAUDE_PROJECT_DIR", repo) // the verbs look a commit up in the project's repository
 	afGit(t, repo, "init", "-q", "-b", "work")
 	if err := os.WriteFile(filepath.Join(repo, "base.txt"), []byte("base\n"), 0o644); err != nil {
 		t.Fatal(err)
@@ -386,7 +388,6 @@ func afUnqueuedCardAs(t *testing.T, claim ledger.ClaimRequest) (db, repo, cand s
 func TestAFVerbs_D4EnqueueRefusesAnEvidencedNameThatIsNotACommit(t *testing.T) {
 	afSkipWithoutSh(t)
 	db, repo, cand, st, epoch := afUnqueuedCard(t)
-	afBindFixture(t, st, repo)
 	ctx := context.Background()
 	e := strconv.FormatInt(epoch, 10)
 	afGit(t, repo, "tag", "-a", "v1", "-m", "release", cand)
@@ -410,8 +411,8 @@ func TestAFVerbs_D4EnqueueRefusesAnEvidencedNameThatIsNotACommit(t *testing.T) {
 	}
 }
 
-// --repo names the repository the commit is looked up in; the object name of an annotated tag is not a commit's.
-func TestAFVerbs_D4TheRepositoryFlagAndTheObjectNameOfATag(t *testing.T) {
+// The object name of an annotated tag is not a commit's.
+func TestAFVerbs_D4TheObjectNameOfATagIsNotACommit(t *testing.T) {
 	afSkipWithoutSh(t)
 	db, repo, cand, _, epoch := afQueuedCard(t)
 	e := strconv.FormatInt(epoch, 10)
@@ -422,16 +423,40 @@ func TestAFVerbs_D4TheRepositoryFlagAndTheObjectNameOfATag(t *testing.T) {
 		_, _, err := afRunBoth(args...)
 		return err
 	}
-	if err := evidence(cand, "--repo", repo); err != nil {
-		t.Errorf("--repo with the real commit: %v", err)
+	if err := evidence(cand); err != nil {
+		t.Errorf("the real commit: %v", err)
 	}
-	if err := evidence(cand, "--repo", t.TempDir()); err == nil {
-		t.Error("a commit looked up in a repository that does not hold it was accepted")
-	}
-	if err := evidence(tagObject, "--repo", repo); err == nil {
+	if err := evidence(tagObject); err == nil {
 		t.Errorf("the object name %s of an annotated tag was accepted as a commit", tagObject)
 	}
-	if _, _, err := afRunBoth("enqueue", "t1", "--db", db, "--epoch", e, "--candidate", tagObject, "--repo", repo); err == nil {
+	if _, _, err := afRunBoth("enqueue", "t1", "--db", db, "--epoch", e, "--candidate", tagObject); err == nil {
 		t.Error("enqueue accepted the object name of an annotated tag")
 	}
+}
+
+// afRunBinary runs one `af` verb of a built moai binary and returns what afRunBoth returns, the error being the line the
+// binary printed after "Error: ". It lets one test group run against two builds (AF_TEST_BIN).
+func afRunBinary(bin string, args ...string) (stdout, stderr string, err error) {
+	cmd := exec.Command(bin, append([]string{"af"}, args...)...)
+	var out, errOut bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &out, &errOut
+	if runErr := cmd.Run(); runErr != nil {
+		// the binary prints the error in a framed block (an ERROR banner, the message wrapped to the width of the frame, a
+		// capital first letter): the lines of the message are joined back with a space; a word the frame cut in two keeps a
+		// space inside it, which afIDSays ignores
+		var lines []string
+		for _, line := range strings.Split(errOut.String(), "\n") {
+			if line = strings.TrimSpace(line); line != "" && line != "ERROR" {
+				lines = append(lines, line)
+			}
+		}
+		err = errors.New(strings.Join(lines, " "))
+	}
+	return out.String(), errOut.String(), err
+}
+
+// afIDSays is whether text says want, with the white space of both left out: the binary's frame may cut a path in two.
+func afIDSays(text, want string) bool {
+	squash := func(s string) string { return strings.Join(strings.Fields(s), "") }
+	return strings.Contains(squash(text), squash(want))
 }

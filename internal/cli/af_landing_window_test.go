@@ -49,7 +49,7 @@ func afLWLeftLanding(t *testing.T, a afN3Card) {
 
 func afLWEvidence(a afN3Card, kind, sha, result string) (string, error) {
 	a.t.Helper()
-	return a.try("evidence", "t1", "--epoch", a.e2, "--kind", kind, "--subject-sha", sha, "--result", result, "--repo", a.repo)
+	return a.try("evidence", "t1", "--epoch", a.e2, "--kind", kind, "--subject-sha", sha, "--result", result)
 }
 
 func afLWEvidenceCount(a afN3Card) int {

@@ -52,7 +52,7 @@ func (a afN3Card) try(args ...string) (string, error) {
 func (a afN3Card) measure(sha string) {
 	a.t.Helper()
 	for _, kind := range []string{"green", "gate"} {
-		a.verb("evidence", "t1", "--epoch", a.e2, "--kind", kind, "--subject-sha", sha, "--result", "pass", "--repo", a.repo)
+		a.verb("evidence", "t1", "--epoch", a.e2, "--kind", kind, "--subject-sha", sha, "--result", "pass")
 	}
 }
 
@@ -99,14 +99,13 @@ func (a afN3Card) inTrunk(sha string) bool {
 func afN3Reclaimed(t *testing.T, rework bool) afN3Card {
 	t.Helper()
 	db, repo, c1, st, epoch := afUnqueuedCard(t)
-	afBindFixture(t, st, repo)
 	a := afN3Card{t: t, db: db, repo: repo, c1: c1, st: st, rework: rework}
 	e1 := strconv.FormatInt(epoch, 10)
 	for _, kind := range []string{"green", "gate"} {
-		a.verb("evidence", "t1", "--epoch", e1, "--kind", kind, "--subject-sha", c1, "--result", "pass", "--repo", repo)
+		a.verb("evidence", "t1", "--epoch", e1, "--kind", kind, "--subject-sha", c1, "--result", "pass")
 	}
-	a.verb("enqueue", "t1", "--epoch", e1, "--candidate", c1, "--repo", repo)
-	if out := a.verb("land", "t1", "--repo", repo, "--gate", "true"); !strings.Contains(out, `"outcome":"landed"`) {
+	a.verb("enqueue", "t1", "--epoch", e1, "--candidate", c1)
+	if out := a.verb("land", "t1", "--gate", "true"); !strings.Contains(out, `"outcome":"landed"`) {
 		t.Fatalf("c1 did not land: %s", out)
 	}
 	if !a.inTrunk(c1) {
@@ -139,7 +138,7 @@ func TestAFVerbs_N3AReclaimedCardFinishesOnTheLandedCommitOnceItMeasuredItAgain(
 			a := afN3Reclaimed(t, rework)
 			a.measure(a.c1)
 			a.handOff()
-			a.verb("enqueue", "t1", "--epoch", a.e2, "--candidate", a.c1, "--repo", a.repo)
+			a.verb("enqueue", "t1", "--epoch", a.e2, "--candidate", a.c1)
 			a.finish()
 			if got := a.stage(); got != core.StageDone {
 				t.Errorf("stage %s, want DONE", got)
@@ -159,8 +158,8 @@ func TestAFVerbs_N3AReclaimedCardFinishesOnANewCommitOnceItMeasuredItAndLandedIt
 			c2 := a.newCommit()
 			a.measure(c2)
 			a.handOff()
-			a.verb("enqueue", "t1", "--epoch", a.e2, "--candidate", c2, "--repo", a.repo)
-			if out := a.verb("land", "t1", "--repo", a.repo, "--gate", "true"); !strings.Contains(out, `"outcome":"landed"`) {
+			a.verb("enqueue", "t1", "--epoch", a.e2, "--candidate", c2)
+			if out := a.verb("land", "t1", "--gate", "true"); !strings.Contains(out, `"outcome":"landed"`) {
 				t.Fatalf("c2 did not land: %s", out)
 			}
 			a.finish()
@@ -189,7 +188,7 @@ func TestAFVerbs_N3AReclaimedCardThatMeasuredNothingInItsOwnEpochCannotOfferAnyt
 			before := afSnapshot(t, a.st)
 			stageBefore := a.stage()
 			for _, sha := range []string{a.c1, c2} {
-				out, err := a.try("enqueue", "t1", "--epoch", a.e2, "--candidate", sha, "--repo", a.repo)
+				out, err := a.try("enqueue", "t1", "--epoch", a.e2, "--candidate", sha)
 				if err == nil {
 					t.Errorf("enqueue of %.8s with nothing measured in the new epoch was accepted: %.200s", sha, out)
 				}

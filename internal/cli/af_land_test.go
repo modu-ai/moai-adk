@@ -31,7 +31,7 @@ func afQueuedCard(t *testing.T) (db, repo, cand string, st *ledger.Store, epoch 
 	t.Cleanup(func() { _ = st.Close() })
 
 	repo = t.TempDir()
-	// The verbs take --repo only for the project's own repository, and the project directory is where they look for it.
+	// The project directory is where the verbs look for the repository.
 	t.Setenv("CLAUDE_PROJECT_DIR", repo)
 	afGit(t, repo, "init", "-q", "-b", "work")
 	if err := os.WriteFile(filepath.Join(repo, "base.txt"), []byte("base\n"), 0o644); err != nil {
@@ -84,7 +84,7 @@ func TestAFLand_AGateThatFailsFailsTheCardAndLeavesTheTrunk(t *testing.T) {
 		Outcome string `json:"outcome"`
 		Reason  string `json:"reason"`
 	}
-	out := runAF(t, "land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/af/trunk", "--gate", "false")
+	out := runAF(t, "land", "t1", "--db", db, "--gate", "false")
 	if err := json.Unmarshal([]byte(out), &res); err != nil || res.Outcome != "failed" || res.Reason == "" {
 		t.Fatalf("output %q: %+v %v, want outcome failed with a reason", out, res, err)
 	}
@@ -97,9 +97,9 @@ func TestAFLand_AGateThatFailsFailsTheCardAndLeavesTheTrunk(t *testing.T) {
 }
 
 func TestAFLand_RefusesACardThatIsNotQueued(t *testing.T) {
-	db, repo, _, _, _ := afQueuedCard(t)
+	db, _, _, _, _ := afQueuedCard(t)
 	cmd := newAFCmd()
-	cmd.SetArgs([]string{"land", "ghost", "--db", db, "--repo", repo, "--trunk", "refs/heads/af/trunk", "--gate", "true"})
+	cmd.SetArgs([]string{"land", "ghost", "--db", db, "--gate", "true"})
 	cmd.SetOut(&strings.Builder{})
 	cmd.SetErr(&strings.Builder{})
 	err := cmd.Execute()
@@ -134,7 +134,7 @@ func TestAFReconcile_SettlesALandingRowWhoseCandidateIsInTheTrunk(t *testing.T) 
 			To     string `json:"to"`
 		} `json:"actions"`
 	}
-	out := runAF(t, "reconcile", "--db", db, "--repo", repo, "--trunk", "refs/heads/af/trunk")
+	out := runAF(t, "reconcile", "--db", db)
 	if err := json.Unmarshal([]byte(out), &res); err != nil || len(res.Actions) != 1 || res.Actions[0].CardID != "t1" || res.Actions[0].To != "landed" {
 		t.Fatalf("output %q: %+v %v, want one action settling t1 as landed", out, res, err)
 	}

@@ -17,7 +17,7 @@ import (
 func TestAFLand_ReclaimingALockLeavesOtherCardsLeasesAndNotesAlone(t *testing.T) {
 	afSkipWithoutSh(t)
 	ctx := context.Background()
-	db, repo, _, st, _ := afQueuedCard(t)
+	db, _, _, st, _ := afQueuedCard(t)
 	// another card whose lease has run out and whose holder is unknown (no pid): the full Reap writes a stalled
 	// note for it, and the landing must not
 	if err := st.AddCard(ctx, ledger.Card{ID: "t2", Title: "t2", Position: core.Position{Stage: core.StageReady}, Priority: 1,
@@ -30,7 +30,7 @@ func TestAFLand_ReclaimingALockLeavesOtherCardsLeasesAndNotesAlone(t *testing.T)
 	time.Sleep(50 * time.Millisecond)
 	before, _ := st.NotesSince(ctx, 0)
 
-	if outcome, reason := afLandJSON(t, "land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/af/trunk", "--gate", "true"); outcome != "landed" {
+	if outcome, reason := afLandJSON(t, "land", "t1", "--db", db, "--gate", "true"); outcome != "landed" {
 		t.Fatalf("outcome %q reason %q", outcome, reason)
 	}
 	after, _ := st.NotesSince(ctx, 0)
@@ -71,7 +71,7 @@ func TestAFReconcile_ALandingRowOfAWithdrawnCardIsSettledLanded(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	out := runAF(t, "reconcile", "--db", db, "--repo", repo, "--trunk", "refs/heads/af/trunk")
+	out := runAF(t, "reconcile", "--db", db)
 	if got := afRowState(t, st); got != ledger.QueueLanded {
 		t.Errorf("the row is %s after reconcile (output %q), want landed: the candidate is in the trunk", got, out)
 	}

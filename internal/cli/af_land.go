@@ -34,32 +34,23 @@ const afGateKeep = 256 << 10
 
 // afMergeFlags are the flags both verbs take.
 type afMergeFlags struct {
-	db, repo, trunk, session, bindRepo string
+	db, session string
 }
-
-func (f afMergeFlags) place() afPlace { return afPlace{db: f.db, bindRepo: f.bindRepo} }
 
 func (f *afMergeFlags) bind(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&f.db, "db", "", afDBFlagHelp)
-	cmd.Flags().StringVar(&f.bindRepo, "bind-repo", "", afBindRepoFlagHelp)
-	cmd.Flags().StringVar(&f.repo, "repo", "", "the git repository the trunk lives in: the project directory (default), or any path with the same git directory, "+
-		"a linked worktree of it included; any other path is refused")
-	cmd.Flags().StringVar(&f.trunk, "trunk", mergeq.DefaultTrunk, "the trunk ref; only the default "+mergeq.DefaultTrunk+" is accepted and it cannot be changed (check out nothing on it)")
 	cmd.Flags().StringVar(&f.session, "session", "moai-af", "who holds the landing lock (recorded as given)")
 }
 
 // afMerger builds the merge queue over the opened ledger. verify may be nil for a verb that runs no gates.
 func afMerger(f afMergeFlags, st *ledger.Store, scratch string, verify mergeq.Verify) *mergeq.Merger {
-	repo := f.repo
-	if repo == "" {
-		repo = resolveProjectDir()
-	}
+	repo := resolveProjectDir()
 	pid := os.Getpid() // the lock is held while this command runs, so this process is the holder
 	start, _ := homestate.ProbeProcessIdentity(pid)
 	return &mergeq.Merger{
 		Git:    mergeq.GitCLI{Repo: repo, ScratchD: scratch, Who: mergeq.Identity{Name: "moai af", Email: "af@moai.invalid"}},
 		Queue:  mergeq.NewLedgerQueue(st),
-		Trunk:  f.trunk,
+		Trunk:  mergeq.DefaultTrunk,
 		Verify: verify, Holder: mergeq.Holder{Session: f.session, PID: pid, PIDStart: start},
 		LockTTL: mergeq.DefaultLockTTL, MaxRetries: mergeq.DefaultMaxRetries,
 		Message: func(card string) string { return "merge(" + card + "): land" },
@@ -172,14 +163,8 @@ short id ("gate-" and 12 hex digits of the SHA-256 of the gate text), the exit s
 the gate printed. They never carry the gate text or what the gate or git printed, and nothing else keeps it: run the
 gate yourself to see why it failed.
 
-Which trunk and which repository. The trunk is %s and cannot be changed: --trunk takes that value or nothing, and
-any other value is refused before anything is landed, with the ledger unchanged. --repo takes the project directory or
-any path with the same git directory (a linked worktree of the project's repository qualifies) and refuses every
-other path the same way: a landing row says "merged" without asking where. Without --repo the repository is the project
-directory (CLAUDE_PROJECT_DIR, else the working directory), and it too must be the repository the ledger is bound to: a
-second clone of the project, or another repository, is refused with the ledger unchanged.
-
-%s
+Which trunk and which repository. The trunk is %s. The repository is the project directory (CLAUDE_PROJECT_DIR, else the
+working directory).
 
 What is recorded as given. Nothing masks the text of the free-input flags: --session here, and --command, --reason,
 --path and --actor of the other af verbs are recorded as given, so put no secret in them.
@@ -196,7 +181,7 @@ The gate receives the caller's full environment except GIT_DIR and the other rep
 credential in the caller's environment is visible to it.
 A landing lock whose holder process is gone is taken back first.
 
-%s`, mergeq.DefaultTrunk, afBindHelp, afDoneHelp),
+%s`, mergeq.DefaultTrunk, afDoneHelp),
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if strings.TrimSpace(gate) == "" {
@@ -252,14 +237,8 @@ waiting (an older landing row is settled as failed), and only while this command
 row whose card still holds a live lease is left alone. Every row is judged on its own: one failure does not stop the
 others. The result is one JSON line listing the actions taken; a failed row is reported as an error after it.
 
-The trunk is ` + mergeq.DefaultTrunk + ` and cannot be changed: --trunk takes that value or nothing, and any other value is
-refused with the ledger unchanged. --repo takes the project directory or any path with the same git directory (a
-linked worktree of the project's repository qualifies) and refuses every other path the same way. Without --repo the
-repository is the project directory (CLAUDE_PROJECT_DIR, else the working directory), and it must be the repository the
-ledger is bound to: a reconcile from another repository would settle the rows from that repository's ancestry, so it is
-refused with the ledger unchanged.
-
-` + afBindHelp,
+The trunk is ` + mergeq.DefaultTrunk + `. The repository is the project directory (CLAUDE_PROJECT_DIR, else the working
+directory).`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return afMergeRun(cmd, f, func(ctx context.Context, st *ledger.Store, scratch string) error {
@@ -289,13 +268,6 @@ refused with the ledger unchanged.
 // afMergeRun opens the ledger and a scratch directory for the candidate worktrees, runs fn under the landing
 // timeout and cleans up.
 func afMergeRun(cmd *cobra.Command, f afMergeFlags, fn func(ctx context.Context, st *ledger.Store, scratch string) error) error {
-	// The trust boundary: both checks run before the ledger is opened, so a refusal changes nothing.
-	if err := afCheckTrunk(f.trunk); err != nil {
-		return err
-	}
-	if err := afCheckRepoFlag(cmd.Context(), f.repo); err != nil {
-		return err
-	}
 	path, err := afLedgerPath(f.db)
 	if err != nil {
 		return err
@@ -307,14 +279,6 @@ func afMergeRun(cmd *cobra.Command, f afMergeFlags, fn func(ctx context.Context,
 		return fmt.Errorf("af: open the ledger %s: %w", path, err)
 	}
 	defer func() { _ = st.Close() }()
-	// the repository afMerger will use (--repo, else the project directory) must be the one the ledger is bound to
-	repo := f.repo
-	if repo == "" {
-		repo = resolveProjectDir()
-	}
-	if err := afBindRepository(ctx, st, f.place(), repo, false); err != nil {
-		return err
-	}
 	scratch, err := os.MkdirTemp("", "moai-af-land-")
 	if err != nil {
 		return err

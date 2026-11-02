@@ -50,7 +50,7 @@ func TestAFLand_ACardThatLeftMergingIsNotLanded(t *testing.T) {
 	runAF(t, "move", "t1", "--db", db, "--epoch", strconv.FormatInt(epoch, 10), "--stage", "REVIEWING", "--actor", "lane", "--reason", "withdrawn")
 
 	cmd := newAFCmd()
-	cmd.SetArgs([]string{"land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/af/trunk", "--gate", "true"})
+	cmd.SetArgs([]string{"land", "t1", "--db", db, "--gate", "true"})
 	cmd.SetOut(&strings.Builder{})
 	cmd.SetErr(&strings.Builder{})
 	err := cmd.Execute()
@@ -68,11 +68,11 @@ func TestAFLand_ACardThatLeftMergingIsNotLanded(t *testing.T) {
 
 func TestAFLand_ATimedOutGateIsKilledWithItsChildren(t *testing.T) {
 	afSkipWithoutSh(t)
-	db, repo, _, _, _ := afQueuedCard(t)
+	db, _, _, _, _ := afQueuedCard(t)
 	pidFile := filepath.Join(t.TempDir(), "child.pid")
 	gate := "sleep 60 & echo $! > '" + pidFile + "'; wait"
 	start := time.Now()
-	outcome, reason := afLandJSON(t, "land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/af/trunk", "--gate", gate, "--gate-timeout", "1s")
+	outcome, reason := afLandJSON(t, "land", "t1", "--db", db, "--gate", gate, "--gate-timeout", "1s")
 	if outcome != "failed" || !strings.Contains(reason, "gate") {
 		t.Fatalf("outcome %q reason %q, want a failed card naming the gate", outcome, reason)
 	}
@@ -97,7 +97,7 @@ func TestAFLand_ATimedOutGateIsKilledWithItsChildren(t *testing.T) {
 
 func TestAFLand_TheGateRunsWithoutRepositoryScopingVariables(t *testing.T) {
 	afSkipWithoutSh(t)
-	db, repo, _, _, _ := afQueuedCard(t)
+	db, _, _, _, _ := afQueuedCard(t)
 	prev, had := os.LookupEnv("GIT_DIR")
 	t.Cleanup(func() {
 		if had {
@@ -107,7 +107,7 @@ func TestAFLand_TheGateRunsWithoutRepositoryScopingVariables(t *testing.T) {
 		}
 	})
 	_ = os.Setenv("GIT_DIR", filepath.Join(t.TempDir(), "elsewhere"))
-	outcome, reason := afLandJSON(t, "land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/af/trunk", "--gate", `test -z "$GIT_DIR"`)
+	outcome, reason := afLandJSON(t, "land", "t1", "--db", db, "--gate", `test -z "$GIT_DIR"`)
 	if outcome != "landed" {
 		t.Errorf("outcome %q reason %q: the gate saw GIT_DIR", outcome, reason)
 	}
@@ -116,9 +116,9 @@ func TestAFLand_TheGateRunsWithoutRepositoryScopingVariables(t *testing.T) {
 func TestAFLand_ALandedNoteSaysWhichGateVerifiedIt(t *testing.T) {
 	afSkipWithoutSh(t)
 	ctx := context.Background()
-	db, repo, _, st, _ := afQueuedCard(t)
+	db, _, _, st, _ := afQueuedCard(t)
 	gate := "test -f a.txt"
-	if outcome, reason := afLandJSON(t, "land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/af/trunk", "--gate", gate); outcome != "landed" {
+	if outcome, reason := afLandJSON(t, "land", "t1", "--db", db, "--gate", gate); outcome != "landed" {
 		t.Fatalf("outcome %q reason %q", outcome, reason)
 	}
 	notes, _ := st.NotesSince(ctx, 0)
@@ -135,9 +135,9 @@ func TestAFLand_ALandedNoteSaysWhichGateVerifiedIt(t *testing.T) {
 
 func TestAFLand_ASecretInAFailedGatesOutputIsRedactedFromTheReason(t *testing.T) {
 	afSkipWithoutSh(t)
-	db, repo, _, st, _ := afQueuedCard(t)
+	db, _, _, st, _ := afQueuedCard(t)
 	const secret = "hunter2supersecretvalue"
-	outcome, reason := afLandJSON(t, "land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/af/trunk", "--gate", "echo password="+secret+"; exit 1")
+	outcome, reason := afLandJSON(t, "land", "t1", "--db", db, "--gate", "echo password="+secret+"; exit 1")
 	if outcome != "failed" {
 		t.Fatalf("outcome %q reason %q, want failed", outcome, reason)
 	}
@@ -153,7 +153,7 @@ func TestAFLand_ASecretInAFailedGatesOutputIsRedactedFromTheReason(t *testing.T)
 func TestAFLand_TheLandingLockOfADeadHolderDoesNotHoldTheQueue(t *testing.T) {
 	afSkipWithoutSh(t)
 	ctx := context.Background()
-	db, repo, _, st, _ := afQueuedCard(t)
+	db, _, _, st, _ := afQueuedCard(t)
 	// a process that held the landing lock and is gone: start one, record its identity, kill it
 	child := exec.Command("sleep", "60")
 	if err := child.Start(); err != nil {
@@ -171,7 +171,7 @@ func TestAFLand_TheLandingLockOfADeadHolderDoesNotHoldTheQueue(t *testing.T) {
 	_ = child.Process.Kill()
 	_ = child.Wait()
 
-	outcome, reason := afLandJSON(t, "land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/af/trunk", "--gate", "true")
+	outcome, reason := afLandJSON(t, "land", "t1", "--db", db, "--gate", "true")
 	if outcome != "landed" {
 		t.Errorf("outcome %q reason %q: a dead holder's lock held the queue", outcome, reason)
 	}

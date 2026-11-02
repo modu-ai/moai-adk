@@ -24,7 +24,7 @@ func TestAFLand_ACardUnderAParkIsNotLanded(t *testing.T) {
 		t.Skipf("the ledger does not take an operator hold in MERGING: %v", err)
 	}
 	cmd := newAFCmd()
-	cmd.SetArgs([]string{"land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/af/trunk", "--gate", "true"})
+	cmd.SetArgs([]string{"land", "t1", "--db", db, "--gate", "true"})
 	cmd.SetOut(&strings.Builder{})
 	cmd.SetErr(&strings.Builder{})
 	err := cmd.Execute()
@@ -38,8 +38,8 @@ func TestAFLand_ACardUnderAParkIsNotLanded(t *testing.T) {
 
 func TestAFLand_ALoudPassingGateStillLands(t *testing.T) {
 	afSkipWithoutSh(t)
-	db, repo, _, _, _ := afQueuedCard(t)
-	outcome, reason := afLandJSON(t, "land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/af/trunk",
+	db, _, _, _, _ := afQueuedCard(t)
+	outcome, reason := afLandJSON(t, "land", "t1", "--db", db,
 		"--gate", "head -c 9000000 /dev/zero | tr '\\0' x; exit 0")
 	if outcome != "landed" {
 		t.Errorf("outcome %q reason %.200q: a gate that exits 0 and prints 9 MB did not land", outcome, reason)
@@ -48,8 +48,8 @@ func TestAFLand_ALoudPassingGateStillLands(t *testing.T) {
 
 func TestAFLand_ALoudFailingGateFailsAndLeavesItsOutputOutOfTheReason(t *testing.T) {
 	afSkipWithoutSh(t)
-	db, repo, _, _, _ := afQueuedCard(t)
-	outcome, reason := afLandJSON(t, "land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/af/trunk",
+	db, _, _, _, _ := afQueuedCard(t)
+	outcome, reason := afLandJSON(t, "land", "t1", "--db", db,
 		"--gate", "head -c 9000000 /dev/zero | tr '\\0' x; echo REAL-\"FAILURE\"-LINE; exit 1")
 	if outcome != "failed" {
 		t.Fatalf("outcome %q, want failed", outcome)
@@ -82,10 +82,10 @@ func TestAFLand_HelpAndRefusalPointTheOperatorOnward(t *testing.T) {
 }
 
 func TestAFLand_TheRefusalOfAWithdrawnCardNamesReconcile(t *testing.T) {
-	db, repo, _, _, epoch := afQueuedCard(t)
+	db, _, _, _, epoch := afQueuedCard(t)
 	runAF(t, "move", "t1", "--db", db, "--epoch", strconv.FormatInt(epoch, 10), "--stage", "REVIEWING", "--actor", "lane", "--reason", "withdrawn")
 	cmd := newAFCmd()
-	cmd.SetArgs([]string{"land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/af/trunk", "--gate", "true"})
+	cmd.SetArgs([]string{"land", "t1", "--db", db, "--gate", "true"})
 	cmd.SetOut(&strings.Builder{})
 	cmd.SetErr(&strings.Builder{})
 	err := cmd.Execute()

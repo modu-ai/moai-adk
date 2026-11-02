@@ -22,29 +22,6 @@ func afHelpOf(t *testing.T, verb string) string {
 	return strings.Join(strings.Fields(out), " ") // the wrapping of a description is not the test's concern
 }
 
-func TestAFVerbs_N45EveryVerbThatOpensTheLedgerSaysItIsBoundToOneRepository(t *testing.T) {
-	for _, verb := range afN38Verbs() {
-		flat := afHelpOf(t, verb)
-		for _, want := range []string{"is bound to one repository", "CLAUDE_PROJECT_DIR", "refused with the ledger unchanged"} {
-			if !strings.Contains(flat, want) {
-				t.Errorf("`moai af %s --help` does not say %q", verb, want)
-			}
-		}
-	}
-}
-
-func TestAFVerbs_N45TheLandHelpNoLongerPromisesAChoiceItDoesNotMake(t *testing.T) {
-	flat := afHelpOf(t, "land")
-	if strings.Contains(flat, "so the verb does not let the caller choose") {
-		t.Error("`moai af land --help` still says the verb does not let the caller choose the repository; the working directory and CLAUDE_PROJECT_DIR choose it, and the ledger's binding is what refuses a wrong one")
-	}
-	for _, want := range []string{"working directory", "bound"} {
-		if !strings.Contains(flat, want) {
-			t.Errorf("`moai af land --help` does not say %q", want)
-		}
-	}
-}
-
 func TestAFVerbs_N45MoveSaysWhatItAsksTheTrunk(t *testing.T) {
 	for verb, wants := range map[string][]string{
 		"move":     {mergeq.DefaultTrunk, "DONE", "landed", "REVIEWING"},

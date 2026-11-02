@@ -68,21 +68,6 @@ CREATE TABLE IF NOT EXISTS notes(
   seq INTEGER PRIMARY KEY AUTOINCREMENT,
   kind TEXT NOT NULL CHECK(kind IN ('landed','decision','gate_wait','stalled')),
   card_id TEXT, text TEXT NOT NULL, at TEXT NOT NULL);
--- repository: the identity of the repository this ledger belongs to (the git common directory,
--- as the caller wrote it), bound by the first caller and never changed. A single row. The table
--- is additive, so it is created on any file at Open and the schema version does not move.
-CREATE TABLE IF NOT EXISTS repository(
-  id INTEGER PRIMARY KEY CHECK(id=1), identity TEXT NOT NULL CHECK(identity<>''), bound_at TEXT NOT NULL);
-CREATE TRIGGER IF NOT EXISTS repository_no_update BEFORE UPDATE ON repository BEGIN SELECT RAISE(ABORT,'the repository identity is bound once'); END;
-CREATE TRIGGER IF NOT EXISTS repository_no_delete BEFORE DELETE ON repository BEGIN SELECT RAISE(ABORT,'ledger rows are never deleted'); END;
--- repository_marker: the marker of the repository this ledger belongs to, a token the caller keeps inside the git
--- directory of the repository (a path is not a repository: a clone, a mirror or a re-created repository can stand at it).
--- Recorded once, by the first caller that has one, and never changed; the ledger stores and compares it as written and
--- runs no git. Additive like repository: created on any file at Open.
-CREATE TABLE IF NOT EXISTS repository_marker(
-  id INTEGER PRIMARY KEY CHECK(id=1), marker TEXT NOT NULL CHECK(marker<>''), recorded_at TEXT NOT NULL);
-CREATE TRIGGER IF NOT EXISTS repository_marker_no_update BEFORE UPDATE ON repository_marker BEGIN SELECT RAISE(ABORT,'the repository marker is recorded once'); END;
-CREATE TRIGGER IF NOT EXISTS repository_marker_no_delete BEFORE DELETE ON repository_marker BEGIN SELECT RAISE(ABORT,'ledger rows are never deleted'); END;
 -- I7: the history is never deleted, by anyone holding the file
 CREATE TRIGGER IF NOT EXISTS cards_no_delete BEFORE DELETE ON cards BEGIN SELECT RAISE(ABORT,'ledger rows are never deleted'); END;
 CREATE TRIGGER IF NOT EXISTS transitions_no_delete BEFORE DELETE ON transitions BEGIN SELECT RAISE(ABORT,'ledger rows are never deleted'); END;

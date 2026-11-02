@@ -22,11 +22,10 @@ import (
 func afN28Landed(t *testing.T) afN3Card {
 	t.Helper()
 	db, repo, c1, st, epoch := afUnqueuedCard(t)
-	afBindFixture(t, st, repo)
 	a := afN3Card{t: t, db: db, repo: repo, c1: c1, st: st, e2: strconv.FormatInt(epoch, 10)}
 	a.measure(c1)
-	a.verb("enqueue", "t1", "--epoch", a.e2, "--candidate", c1, "--repo", repo)
-	if out := a.verb("land", "t1", "--repo", repo, "--gate", "true"); !strings.Contains(out, `"outcome":"landed"`) {
+	a.verb("enqueue", "t1", "--epoch", a.e2, "--candidate", c1)
+	if out := a.verb("land", "t1", "--gate", "true"); !strings.Contains(out, `"outcome":"landed"`) {
 		t.Fatalf("c1 did not land: %s", out)
 	}
 	return a
@@ -35,7 +34,7 @@ func afN28Landed(t *testing.T) afN3Card {
 // record writes one run of a kind about sha with the result, at the card's epoch.
 func (a afN3Card) record(kind, sha, result string) {
 	a.t.Helper()
-	a.verb("evidence", "t1", "--epoch", a.e2, "--kind", kind, "--subject-sha", sha, "--result", result, "--repo", a.repo)
+	a.verb("evidence", "t1", "--epoch", a.e2, "--kind", kind, "--subject-sha", sha, "--result", result)
 }
 
 // tryFinish makes the two moves that finish a card that is in MERGING and reports the first that is refused.

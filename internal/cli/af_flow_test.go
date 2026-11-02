@@ -66,7 +66,7 @@ func TestCardFlow_ClaimToDone_ThroughMergeQueue(t *testing.T) {
 	// a repository whose trunk ref is checked out nowhere, and one commit on a candidate branch
 	repo := t.TempDir()
 	// The claim verb binds the session's heartbeat under the project directory: a temporary one keeps that out of the
-	// real one. It is the repository itself, because the verbs take --repo only for the project's own repository.
+	// real one. It is the repository itself, because the verbs look a commit up in the project's repository.
 	t.Setenv("CLAUDE_PROJECT_DIR", repo)
 	afGit(t, repo, "init", "-q", "-b", "work")
 	if err := os.WriteFile(filepath.Join(repo, "base.txt"), []byte("base\n"), 0o644); err != nil {
@@ -84,13 +84,12 @@ func TestCardFlow_ClaimToDone_ThroughMergeQueue(t *testing.T) {
 	cand := afGit(t, repo, "rev-parse", "HEAD")
 	afGit(t, repo, "checkout", "-q", "work")
 
-	// claim: the first verb on a ledger that was placed with --db outside any repository, and that knows nothing yet, says
-	// which repository it belongs to (N51, --bind-repo)
+	// claim
 	var claimed struct {
 		CardID string `json:"card_id"`
 		Epoch  int64  `json:"epoch"`
 	}
-	if err := json.Unmarshal([]byte(runAF(t, "claim", "--db", db, "--session", "s-t1", "--worktree", repo, "--bind-repo", repo)), &claimed); err != nil || claimed.CardID != "t1" {
+	if err := json.Unmarshal([]byte(runAF(t, "claim", "--db", db, "--session", "s-t1", "--worktree", repo)), &claimed); err != nil || claimed.CardID != "t1" {
 		t.Fatalf("claim output: %+v %v", claimed, err)
 	}
 	ep := []string{"--db", db, "--epoch", strconv.FormatInt(claimed.Epoch, 10)}
@@ -108,7 +107,7 @@ func TestCardFlow_ClaimToDone_ThroughMergeQueue(t *testing.T) {
 		CardID  string `json:"card_id"`
 		Outcome string `json:"outcome"`
 	}
-	out := runAF(t, "land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/af/trunk", "--gate", "true")
+	out := runAF(t, "land", "t1", "--db", db, "--gate", "true")
 	if err := json.Unmarshal([]byte(out), &landRes); err != nil || landRes.CardID != "t1" || landRes.Outcome != string(mergeq.OutcomeLanded) {
 		t.Fatalf("af land output %q: %+v %v, want outcome landed", out, landRes, err)
 	}

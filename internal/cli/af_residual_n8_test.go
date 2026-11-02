@@ -23,13 +23,12 @@ func TestAFResidual_N8TheHelpOfLandNamesTheProcessThatLeavesTheGroup(t *testing.
 	if _, err := exec.LookPath("perl"); err != nil {
 		t.Skip("perl is needed to start a process in a session of its own")
 	}
-	db, repo, _, st, _ := afQueuedCard(t)
-	afBindFixture(t, st, repo)
+	db, _, _, _, _ := afQueuedCard(t)
 	pidFile := filepath.Join(t.TempDir(), "escaped.pid")
 	// the child starts its own session (POSIX::setsid, what setsid(1) does), closes the gate's pipes and sleeps
 	gate := `perl -e 'use POSIX; if (fork() == 0) { POSIX::setsid(); open(STDIN, "</dev/null"); open(STDOUT, ">/dev/null"); open(STDERR, ">&STDOUT"); ` +
 		`open(F, ">", $ARGV[0]); print F $$; close(F); exec("sleep", "60"); }' '` + pidFile + `'; sleep 0.5`
-	out, errOut, err := afRunBoth("land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/af/trunk", "--gate", gate)
+	out, errOut, err := afRunBoth("land", "t1", "--db", db, "--gate", gate)
 	if err != nil || !strings.Contains(out, `"outcome":"landed"`) {
 		t.Fatalf("setup: the landing did not land: %v %.200s %.200s", err, out, errOut)
 	}

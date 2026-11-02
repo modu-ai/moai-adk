@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -17,7 +16,6 @@ import (
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/ledger"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/mergeq"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/monitor/flow"
-	"github.com/modu-ai/moai-adk/internal/gitenv"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/hook"
 	"github.com/modu-ai/moai-adk/internal/session"
@@ -69,14 +67,9 @@ func afLedgerPath(override string) (string, error) {
 	return filepath.Join(dir, "af", "ledger.db"), nil
 }
 
-// afPlace is what a call says about its ledger: db is the --db it was given ("" for the default location, which says
-// nothing about the project, N50), and bindRepo the --bind-repo it declared (N51), used for the first bind only.
-type afPlace struct{ db, bindRepo string }
-
 // afRun opens the ledger, runs fn with a bounded context and closes the ledger.
 func afRun(f afFlags, fn func(ctx context.Context, st *ledger.Store) error) error {
-	db := f.db
-	path, err := afLedgerPath(db)
+	path, err := afLedgerPath(f.db)
 	if err != nil {
 		return err
 	}
@@ -87,393 +80,12 @@ func afRun(f afFlags, fn func(ctx context.Context, st *ledger.Store) error) erro
 		return fmt.Errorf("af: open the ledger %s: %w", path, err)
 	}
 	defer func() { _ = st.Close() }()
-	// every verb binds the ledger to the repository of the project directory it runs in; the verbs that look commits up
-	// bind the repository they use as well (afCheckCommit), and a project directory that is no repository has none to bind.
-	// The ledger file is a clue only when the caller placed it with --db (N50): the default place is the tool's choice.
-	pending, err := afPrepareBinding(ctx, st, f.place(), resolveProjectDir(), true)
-	if err != nil {
-		return err
-	}
-	if pending == nil {
-		return fn(ctx, st)
-	}
-	// The ledger is not bound yet and the first verb that COMPLETES and WROTE binds it (N55): a verb the ledger refuses (no
-	// such card, a stale epoch) has done nothing, and a ledger it leaves bound to the repository it happened to run in is
-	// bound for good. A verb that completed but wrote nothing (a reap with nothing to reap) binds only when it declared the
-	// repository with --bind-repo: the explicit first bind. A verb that binds on its own (afCheckCommit) flushes this first,
-	// so the project's repository is still the first one bound.
-	err = fn(context.WithValue(ctx, afPendingKey{}, pending), st)
-	if err == nil && !pending.skippable() {
-		err = pending.flush(ctx)
-	}
-	return err
+	return fn(ctx, st)
 }
 
-// afSameDirectory says that a and b are one directory on disk (os.SameFile), whatever the spelling. Anything that cannot be
-// looked at is not the same.
-func afSameDirectory(a, b string) bool {
-	fa, aerr := os.Stat(a)
-	fb, berr := os.Stat(b)
-	return aerr == nil && berr == nil && os.SameFile(fa, fb)
-}
-
-// afPendingBinding is the binding of a repository that waits for the first write of the verb that checked it.
-type afPendingBinding struct {
-	finish func(context.Context) error
-	done   bool
-	// declared says the call carried --bind-repo (already checked by afPrepareBinding); wroteNothing says the verb
-	// completed without writing the ledger (afWroteNothing).
-	declared, wroteNothing bool
-}
-
-// skippable says the binding is left for a later verb: the verb wrote nothing, declared no repository, and no one bound
-// the ledger meanwhile.
-func (p *afPendingBinding) skippable() bool { return p.wroteNothing && !p.declared && !p.done }
-
-// afWroteNothing is what a verb that completed without writing the ledger tells afRun: such a verb binds only when it
-// declared the repository (N55).
-func afWroteNothing(ctx context.Context) {
-	if p, ok := ctx.Value(afPendingKey{}).(*afPendingBinding); ok {
-		p.wroteNothing = true
-	}
-}
-
-// afPendingKey is the context key under which afRun hands the waiting binding to the code the verb calls.
-type afPendingKey struct{}
-
-// flush binds now, once.
-func (p *afPendingBinding) flush(ctx context.Context) error {
-	if p.done {
-		return nil
-	}
-	p.done = true
-	return p.finish(ctx)
-}
-
-// afBindRepository binds the ledger to the repository that dir belongs to (its git directory, which a linked worktree
-// shares) or checks that it is the repository the ledger is already bound to, now. A binding that afRun put off is made
-// first. A call that would use another repository is refused with the ledger unchanged. A directory that is no git
-// repository has no repository to compare: optionalRepo lets a verb that runs no git carry on there (a refusal for
-// anything git could not answer).
-//
-// While the ledger is not bound yet the first call would decide, so before it binds it is compared with what the ledger
-// already knows (afCheckKnownRepositories); place says whether the caller placed the ledger file (--db) and which
-// repository it declared (--bind-repo).
-func afBindRepository(ctx context.Context, st *ledger.Store, place afPlace, dir string, optionalRepo bool) error {
-	if p, ok := ctx.Value(afPendingKey{}).(*afPendingBinding); ok {
-		if err := p.flush(ctx); err != nil {
-			return err
-		}
-	}
-	pending, err := afPrepareBinding(ctx, st, place, dir, optionalRepo)
-	if err != nil || pending == nil {
-		return err
-	}
-	return pending.flush(ctx)
-}
-
-// afPrepareBinding does every check of afBindRepository and, when the ledger is not bound yet, leaves the binding itself
-// to the caller: it returns the waiting binding (nil when there is nothing to bind or the binding was made already).
-func afPrepareBinding(ctx context.Context, st *ledger.Store, place afPlace, dir string, optionalRepo bool) (*afPendingBinding, error) {
-	id, err := afGitCommonPath(ctx, dir)
-	if err != nil {
-		if optionalRepo && errors.Is(err, errAFNotARepository) {
-			if bound, rerr := st.Repository(ctx); place.bindRepo != "" && rerr == nil && bound == "" {
-				// A declaration is for the first bind, and this call binds nothing: it would be dropped without a word (N70).
-				return nil, fmt.Errorf("af: refused: --bind-repo %q cannot be honoured: the project directory %q is not in a git repository, so this call "+
-					"binds nothing and the declaration would be dropped; run it with CLAUDE_PROJECT_DIR set to a directory inside the repository; "+
-					"nothing was changed", place.bindRepo, dir)
-			}
-			return nil, nil
-		}
-		return nil, fmt.Errorf("af: cannot tell which repository %q belongs to (%w); nothing was changed", dir, err)
-	}
-	// The identity is a string the ledger compares as written, and one directory can be spelled two ways that differ as
-	// strings (another case on a case-insensitive volume): the spelling already on record stands for it (N56).
-	if bound, rerr := st.Repository(ctx); rerr == nil && bound != "" && bound != id && afSameDirectory(bound, id) {
-		id = bound
-	}
-	bind := func(ctx context.Context) error {
-		if err := st.BindRepository(ctx, id); err != nil {
-			if !errors.Is(err, ledger.ErrWrongRepository) {
-				return fmt.Errorf("af: bind the ledger to the repository %s: %w", id, err)
-			}
-			bound, _ := st.Repository(ctx)
-			return fmt.Errorf("af: refused: this ledger is bound to the repository %s and this call would use %s (the git directory of %s); "+
-				"nothing was changed", bound, id, dir)
-		}
-		return afCheckMarker(ctx, st, id, dir)
-	}
-	if bound, rerr := st.Repository(ctx); rerr == nil && bound == "" {
-		if err := afCheckKnownRepositories(ctx, st, place, id, dir); err != nil {
-			return nil, err
-		}
-		return &afPendingBinding{finish: bind, declared: place.bindRepo != ""}, nil
-	}
-	return nil, bind(ctx)
-}
-
-// afCheckMarker settles the repository identity marker once the identity (the git directory) is the ledger's (N61 N65
-// N67). A ledger with a marker on record accepts only the repository whose git directory holds that marker: a clone, a
-// mirror, a re-created repository or any stranger at the path has none or another. A ledger with none on record (bound by
-// a build before markers, or just bound now) takes the marker of the repository it is bound to, created when the
-// repository has none, and keeps it for good.
-func afCheckMarker(ctx context.Context, st *ledger.Store, id, dir string) error {
-	have, err := st.RepositoryMarker(ctx)
-	if err != nil {
-		return fmt.Errorf("af: read the repository marker of the ledger: %w", err)
-	}
-	if have == "" {
-		mine, err := afEnsureMarker(id)
-		if err != nil {
-			return fmt.Errorf("af: refused: the repository %s (the git directory of %s) has no identity marker and one cannot be written "+
-				"in its git directory (%v); the ledger is bound to it but holds no marker yet, and nothing else was changed", id, dir, err)
-		}
-		got, err := st.RecordRepositoryMarker(ctx, mine)
-		if err != nil {
-			return fmt.Errorf("af: record the repository marker: %w", err)
-		}
-		if got != mine {
-			return afMarkerRefusal(id, dir, got, mine)
-		}
-		return nil
-	}
-	mine, err := afReadMarker(id)
-	if err != nil {
-		return fmt.Errorf("af: refused: cannot read the identity marker of the repository %s (the git directory of %s): %v; nothing was changed", id, dir, err)
-	}
-	if mine != have {
-		return afMarkerRefusal(id, dir, have, mine)
-	}
-	return nil
-}
-
-// afMarkerRefusal is the refusal of a repository whose identity marker is not the one the ledger recorded; it names the
-// repository and the first characters of the two markers, never a marker value.
-func afMarkerRefusal(id, dir, recorded, found string) error {
-	what := "carries the identity marker " + afMarkerPrefix(found) + "..."
-	if found == "" {
-		what = "carries no identity marker"
-	}
-	return fmt.Errorf("af: refused: the repository at %s (the git directory of %s) is not the one this ledger belongs to: it %s, and the ledger "+
-		"recorded %s... for its repository. A repository that was moved or renamed carries its identity marker with it; a clone, a mirror or a "+
-		"repository made afterwards does not; nothing was changed", id, dir, what, afMarkerPrefix(recorded))
-}
-
-// afCheckKnownRepositories refuses to bind id (the repository of dir) while the ledger already knows another one: the
-// repository of any worktree a lease records, the repository the ledger file itself sits in (place.db, the --db the
-// caller gave; the default location is no clue), and the repository that has the commits the rows name. A lease worktree
-// that is gone or is no repository is no clue and is skipped; a relative one is refused (N51 d). A lease worktree that
-// agrees with id is not a clue either (N65): it is the caller's own word.
-//
-// A ledger given with --db whose file sits in no repository and that holds no commit knows nothing (N51, the clone form):
-// the first call would decide, and a call from a second clone of the project would decide wrongly with nothing ever
-// refused afterwards. Such a first bind needs the caller to declare the repository (place.bindRepo). A declaration is also
-// checked when it is given and a clue exists. The default location needs none.
-func afCheckKnownRepositories(ctx context.Context, st *ledger.Store, place afPlace, id, dir string) error {
-	clue := false
-	// check refuses a worktree or file location in another repository than id. proof says whether agreeing with id is a
-	// clue that the ledger belongs to it: the repository the ledger file sits in is, a lease worktree is not (N65), since
-	// the caller of a claim names it and a claim from a directory that is no repository records whatever it is given.
-	check := func(where, why string, proof bool) error {
-		got, err := afGitCommonPath(ctx, where)
-		if err != nil {
-			return nil // no clue (gone, no repository, git could not answer)
-		}
-		if got == id {
-			if proof {
-				clue = true
-			}
-			return nil
-		}
-		out := ""
-		if !proof {
-			// The way out of two leases in two repositories (N53): the release binds nothing where there is no repository.
-			out = "; if the leases of this ledger name worktrees of two repositories and none of them is the ledger's, a release run from a " +
-				"directory that is no git repository (set CLAUDE_PROJECT_DIR to one) binds nothing and is accepted: release the leases there, " +
-				"then claim the cards again from the repository"
-		}
-		return fmt.Errorf("af: refused: this ledger is not bound yet, but it already belongs to the repository %s (%s) and this call would bind "+
-			"%s (the git directory of %s); nothing was changed%s", got, why, id, dir, out)
-	}
-	if place.bindRepo != "" {
-		declared, err := afGitCommonPath(ctx, place.bindRepo)
-		if err != nil {
-			return fmt.Errorf("af: refused: --bind-repo %q is not a directory inside a git repository; nothing was changed", place.bindRepo)
-		}
-		if declared != id {
-			return fmt.Errorf("af: refused: --bind-repo %q declares the repository %s, and this call would bind %s (the git directory of %s); "+
-				"nothing was changed", place.bindRepo, declared, id, dir)
-		}
-	}
-	if leases, err := st.Leases(ctx); err == nil {
-		for _, l := range leases {
-			if l.Worktree == "" {
-				continue
-			}
-			if !filepath.IsAbs(l.Worktree) {
-				// git -C <relative> runs in the caller's directory, so the comparison would always agree with the
-				// caller (N51 d); a clue that cannot be read the same by everyone is a reason to stop, not to bind
-				return fmt.Errorf("af: refused: this ledger is not bound yet, and the lease on %s records the worktree %q, which is not an absolute path "+
-					"and names whatever directory the caller stands in; release that lease (from a directory that is no git repository, where the release needs no bind) "+
-					"and claim the card again with the absolute worktree; this call would bind %s (the git directory of %s); nothing was changed", l.CardID, l.Worktree, id, dir)
-			}
-			if err := check(l.Worktree, "the worktree "+l.Worktree+" of the lease on "+l.CardID, false); err != nil {
-				return err
-			}
-		}
-	}
-	if place.db != "" {
-		if loc, err := afLedgerFileLocation(place.db); err == nil {
-			if err := check(filepath.Dir(loc), "the ledger file "+loc+" sits in it", true); err != nil {
-				return err
-			}
-		}
-	}
-	// The rows name commits (evidence subjects, queue candidates): the repository this call would bind must have them
-	// (N51 b). A ledger with no such row is no clue. A git that cannot answer is a refusal and not a clue (N62): a
-	// comparison that gave no answer says nothing, and counting it as agreement bound the ledger to whichever
-	// repository had a damaged object.
-	shas, rerr := afRowCommits(ctx, st)
-	if rerr != nil {
-		return fmt.Errorf("af: refused: this ledger is not bound yet and its rows could not be read (%v), so what they say about the repository is not known; nothing was changed", rerr)
-	}
-	if len(shas) > 0 {
-		missing, err := afMissingCommit(ctx, dir, shas)
-		if err != nil {
-			return fmt.Errorf("af: refused: this ledger is not bound yet and its rows name commits, but git could not answer whether the repository %s "+
-				"(the git directory of %s) has them (%v); a comparison that gave no answer is no clue, and this call would bind that repository; "+
-				"nothing was changed", id, dir, err)
-		}
-		if missing != "" {
-			return fmt.Errorf("af: refused: this ledger is not bound yet, but its rows name the commit %s, which the repository %s "+
-				"(the git directory of %s) does not have; the commits of a ledger live in its repository, and this call would bind another one; "+
-				"nothing was changed", missing, id, dir)
-		}
-		clue = true
-	}
-	if !clue && place.db != "" && place.bindRepo == "" {
-		return fmt.Errorf("af: refused: this ledger (--db %s) is not bound yet, sits in no repository and holds no commit that says which "+
-			"repository it belongs to (a lease worktree is the caller's own word and does not say), so the first call would decide, and a call "+
-			"from a second clone or another repository would decide wrongly with nothing refused afterwards; declare the repository this "+
-			"ledger belongs to with --bind-repo <a path in it> (this call would bind %s, the git directory of %s); nothing was changed", place.db, id, dir)
-	}
-	return nil
-}
-
-// afRowCommits are the commits the ledger's rows name: the subject of every evidence row and the candidate of every queue
-// row, each once, complete SHAs only (the ledger takes any non-empty string as a subject, "n/a" of a resume row
-// included, and a name that is not a commit says nothing about a repository).
-func afRowCommits(ctx context.Context, st *ledger.Store) ([]string, error) {
-	var all []string
-	seen := map[string]bool{}
-	add := func(sha string) {
-		if mergeq.IsCompleteSHA(sha) && !seen[sha] {
-			seen[sha] = true
-			all = append(all, sha)
-		}
-	}
-	cards, err := st.Cards(ctx)
-	if err != nil {
-		return nil, err
-	}
-	for _, c := range cards {
-		recs, err := st.EvidenceFor(ctx, c.ID)
-		if err != nil {
-			return nil, err
-		}
-		for _, r := range recs {
-			add(r.SubjectSHA)
-		}
-	}
-	rows, err := st.Queue(ctx)
-	if err != nil {
-		return nil, err
-	}
-	for _, r := range rows {
-		add(r.CandidateSHA)
-	}
-	return all, nil
-}
-
-// afMissingCommits are the shas that are no commit of the repository dir belongs to, in the order given. One git process
-// answers for all of them. A git that cannot answer is an error and never "nothing is missing" (N62): a failure, a
-// time-out (the context ends the process), an answer of another length than the question, and a line that is neither a
-// commit nor a "missing" are all refusals to answer, since each of them used to read as agreement.
-func afMissingCommits(ctx context.Context, dir string, shas []string) ([]string, error) {
-	if len(shas) == 0 {
-		return nil, nil
-	}
-	var in strings.Builder
-	for _, sha := range shas {
-		in.WriteString(sha + "^{commit}\n")
-	}
-	cmd := exec.CommandContext(ctx, "git", "-C", dir, "cat-file", "--batch-check")
-	cmd.Env = append(gitenv.Env(), "GIT_TERMINAL_PROMPT=0", "GIT_NO_REPLACE_OBJECTS=1") // a replace ref must not stand in for a commit (N37)
-	cmd.Stdin = strings.NewReader(in.String())
-	out, err := cmd.Output()
-	if err != nil {
-		if cerr := ctx.Err(); cerr != nil {
-			return nil, fmt.Errorf("the check was cut off: %w", cerr)
-		}
-		var ee *exec.ExitError
-		if errors.As(err, &ee) {
-			return nil, fmt.Errorf("git cat-file exited with status %d", ee.ExitCode())
-		}
-		return nil, err
-	}
-	lines := strings.Split(strings.TrimRight(string(out), "\n"), "\n")
-	if len(lines) != len(shas) {
-		return nil, fmt.Errorf("git answered %d lines to %d questions", len(lines), len(shas))
-	}
-	var missing []string
-	for i, line := range lines {
-		f := strings.Fields(line)
-		switch {
-		case len(f) == 2 && f[1] == "missing":
-			missing = append(missing, shas[i])
-		case len(f) == 3 && f[1] == "commit":
-		default:
-			return nil, fmt.Errorf("git answered a line that is neither a commit nor a missing one (line %d)", i+1)
-		}
-	}
-	return missing, nil
-}
-
-// afMissingCommit is the first of shas that is no commit of the repository dir belongs to, "" when all are. The error
-// says git could not answer; callers refuse on it (N62).
-func afMissingCommit(ctx context.Context, dir string, shas []string) (string, error) {
-	missing, err := afMissingCommits(ctx, dir, shas)
-	if err != nil || len(missing) == 0 {
-		return "", err
-	}
-	return missing[0], nil
-}
-
-// afLedgerFileLocation is where the ledger file really is: absolute, with symbolic links resolved. A link outside any
-// repository to a file inside one would otherwise be asked about the link's directory (N51 c). A file that does not
-// exist yet has its directory resolved instead.
-func afLedgerFileLocation(dbPath string) (string, error) {
-	abs, err := filepath.Abs(dbPath)
-	if err != nil {
-		return "", err
-	}
-	if real, err := filepath.EvalSymlinks(abs); err == nil {
-		return real, nil
-	}
-	dir, err := filepath.EvalSymlinks(filepath.Dir(abs))
-	if err != nil {
-		return abs, nil
-	}
-	return filepath.Join(dir, filepath.Base(abs)), nil
-}
-
-// afCommitRepo is the directory a verb looks a card's commit up in: --repo, else the worktree of the card's lease, else
-// the project directory.
-func afCommitRepo(ctx context.Context, st *ledger.Store, card, repoFlag string) string {
-	if repoFlag != "" {
-		return repoFlag
-	}
+// afCommitRepo is the directory a verb looks a card's commit up in: the worktree of the card's lease, else the project
+// directory.
+func afCommitRepo(ctx context.Context, st *ledger.Store, card string) string {
 	if leases, err := st.Leases(ctx); err == nil {
 		for _, l := range leases {
 			if l.CardID == card && l.Worktree != "" {
@@ -487,29 +99,13 @@ func afCommitRepo(ctx context.Context, st *ledger.Store, card, repoFlag string) 
 // afCheckCommit refuses a commit name that is not the complete lowercase hex SHA (40, or 64 for SHA-256) of a commit
 // that exists in the repository: an abbreviation, HEAD or a branch name can name another commit tomorrow, so
 // evidence or a queue entry bound to one is not bound to anything, and a value that starts with '-' reads as an
-// option to git. The repository is --repo, else the worktree of the card's lease, else the project directory; it must be
-// the repository the ledger is bound to, and the directory that was used is returned. f carries the verb's --db and
-// --bind-repo: while the ledger is not bound yet the repository used here may be the first one to bind it, and it is
-// compared with the ledger file's own location exactly as afRun does (N49).
-func afCheckCommit(ctx context.Context, st *ledger.Store, f afFlags, card, repoFlag, sha, what string) (string, error) {
+// option to git. The repository is the worktree of the card's lease, else the project directory, and the directory that
+// was used is returned.
+func afCheckCommit(ctx context.Context, st *ledger.Store, card, sha, what string) (string, error) {
 	if !mergeq.IsCompleteSHA(sha) {
 		return "", fmt.Errorf("af: %s %q is not a complete lowercase hex commit SHA (40 or 64 characters)", what, sha)
 	}
-	repo := afCommitRepo(ctx, st, card, repoFlag)
-	fromLease := repoFlag == "" && repo != resolveProjectDir()
-	if fromLease {
-		// The lease keeps the path its holder claimed with, and the worktree can be gone since (removed, cleaned up, or the
-		// repository moved): the way on is the flag (N37, N69).
-		if _, serr := os.Stat(repo); serr != nil {
-			return "", fmt.Errorf("af: the worktree %s of the lease on %s is gone (%v), so %s cannot be looked up there; name the repository "+
-				"with --repo <a path inside it>; nothing was changed", repo, card, serr, what)
-		}
-	}
-	// afRun bound the ledger to the project directory's repository before this (when that is a repository); when the
-	// project directory is none, this call is the first bind, and it asks the same questions
-	if err := afBindRepository(ctx, st, f.place(), repo, false); err != nil {
-		return "", err
-	}
+	repo := afCommitRepo(ctx, st, card)
 	if got, err := (mergeq.GitCLI{Repo: repo}).RevParse(ctx, sha); err != nil || got != sha {
 		return "", fmt.Errorf("af: %s %s names no commit in %s", what, sha, repo)
 	}
@@ -552,103 +148,6 @@ func afCheckLandedInTrunk(ctx context.Context, st *ledger.Store, card string) er
 	return nil
 }
 
-// afRepoFlagHelp is what --repo says of the verbs that look a commit up; the land verbs say the same in their own words.
-const afRepoFlagHelp = "the git repository the commit is looked up in: the project's own (default: the card's lease worktree, " +
-	"else the project directory), or any path with the same git directory, a linked worktree of it included; any other path is refused, " +
-	"and so is a repository other than the one the ledger is bound to"
-
-// afBindHelp closes the help of every verb that opens the ledger: what the repository binding is and what it refuses.
-const afBindHelp = `The ledger is bound to one repository: the first verb that completes and writes it binds the git directory of the repository it
-runs in (a verb the ledger refuses binds nothing, and so does a verb that wrote nothing, a reap with nothing to reap, unless it declares
-the repository with --bind-repo; a linked worktree has the git directory of its repository, and two spellings of one path are one repository). That
-is the project directory, which CLAUDE_PROJECT_DIR or else the working directory names; evidence and enqueue also use --repo
-or the card's lease worktree. Afterwards a call that would use another repository is refused with the ledger unchanged, the
-message naming both. While the ledger is not bound yet, the repository a call would bind is first compared with what the
-ledger already knows: the repository of every lease worktree it records and, for a ledger given with --db, the repository
-the ledger file itself sits in (the default ledger location is not compared; a lease worktree that is gone or is no
-repository is no clue), and the repository that has the commits its rows name; a disagreement is refused the same way, and
-so is a git that cannot say whether the repository has those commits. A lease worktree is compared but never proves where
-the ledger belongs: the caller of a claim names it. A ledger given with --db that sits in no repository and holds no commit
-knows nothing: the first call would decide, so it is refused unless it declares the repository with --bind-repo <a path in
-it> (the default ledger location needs no declaration). Once bound, the ledger also records an identity marker kept in the
-git directory of the repository, and a repository without that marker (a clone, a mirror, one made afterwards at the same
-path) is refused. A project directory that is no git repository binds nothing, for the verbs that run no git.`
-
-// afCheckTrunk refuses every --trunk but the dedicated one. A landing row says "merged" without asking which trunk or
-// which repository it landed in, so a verb that took another ref (the candidate's own branch, say) ended the card DONE
-// with the real trunk empty. The trunk of this queue is mergeq.DefaultTrunk and cannot be changed; the Merger library
-// keeps its Trunk field, and the verbs are the trust boundary that fixes it.
-func afCheckTrunk(trunk string) error {
-	if trunk != mergeq.DefaultTrunk {
-		return fmt.Errorf("af: --trunk %q refused: the trunk is %s and cannot be changed; nothing was landed and the ledger is unchanged", trunk, mergeq.DefaultTrunk)
-	}
-	return nil
-}
-
-// errAFNotARepository is what afGitCommonPath returns for a directory git says is in no repository.
-var errAFNotARepository = errors.New("not in a git repository")
-
-// afGitCommonPath is the identity of the repository dir belongs to: the absolute git directory shared by dir and every
-// linked worktree of the repository, symlinks resolved so two spellings of one path give one identity.
-func afGitCommonPath(ctx context.Context, dir string) (string, error) {
-	cmd := exec.CommandContext(ctx, "git", "-C", dir, "rev-parse", "--git-common-dir")
-	cmd.Env = append(gitenv.Env(), "GIT_TERMINAL_PROMPT=0")
-	out, err := cmd.Output()
-	if err != nil {
-		var ee *exec.ExitError
-		if errors.As(err, &ee) {
-			return "", errAFNotARepository // git ran and found no repository
-		}
-		return "", err
-	}
-	common := strings.TrimSpace(string(out))
-	if common == "" {
-		return "", errors.New("git printed no git directory")
-	}
-	if !filepath.IsAbs(common) {
-		common = filepath.Join(dir, common) // git prints it relative to the directory it ran in
-	}
-	abs, err := filepath.Abs(common)
-	if err != nil {
-		return "", err
-	}
-	return filepath.EvalSymlinks(abs)
-}
-
-// afGitCommonDir is the git directory shared by dir and every linked worktree of its repository.
-func afGitCommonDir(ctx context.Context, dir string) (os.FileInfo, error) {
-	common, err := afGitCommonPath(ctx, dir)
-	if err != nil {
-		return nil, err
-	}
-	return os.Stat(common)
-}
-
-// afCheckRepoFlag refuses a --repo that is not the project's own repository: a path whose git directory is the project
-// directory's (a linked worktree of the same repository has it too). Evidence, a queue entry and a landing made against
-// another repository say nothing about the project's, and the card could end DONE without the commit in it. An empty
-// repo (the flag left out) is accepted: the verbs then use the lease's worktree or the project directory themselves.
-// It runs before the ledger is opened, so a refusal changes nothing.
-func afCheckRepoFlag(ctx context.Context, repo string) error {
-	if repo == "" {
-		return nil
-	}
-	project := resolveProjectDir()
-	want, err := afGitCommonDir(ctx, project)
-	if err != nil {
-		return fmt.Errorf("af: --repo %s refused: the project directory %q is not in a git repository, so there is no repository to compare it with", repo, project)
-	}
-	got, err := afGitCommonDir(ctx, repo)
-	if err != nil {
-		return fmt.Errorf("af: --repo %s refused: it is not a directory inside a git repository", repo)
-	}
-	if !os.SameFile(want, got) {
-		return fmt.Errorf("af: --repo %s refused: its git directory is not the project's (the project directory is %s); "+
-			"only the project's repository, or a linked worktree of it, is accepted, and nothing was changed", repo, project)
-	}
-	return nil
-}
-
 func afPrint(cmd *cobra.Command, v any) error {
 	enc := json.NewEncoder(cmd.OutOrStdout())
 	return enc.Encode(v)
@@ -656,22 +155,12 @@ func afPrint(cmd *cobra.Command, v any) error {
 
 // afFlags are the flags every verb carries.
 type afFlags struct {
-	db       string
-	bindRepo string
-	epoch    int64
+	db    string
+	epoch int64
 }
-
-func (f afFlags) place() afPlace { return afPlace{db: f.db, bindRepo: f.bindRepo} }
-
-// afBindRepoFlagHelp is what --bind-repo says on every verb that opens the ledger.
-const afBindRepoFlagHelp = "the repository this ledger belongs to, declared for its first bind: any path inside it (a linked worktree " +
-	"included). Needed for a ledger given with --db that sits in no repository and holds no commit that " +
-	"says where it belongs (a lease worktree does not), and for a verb that writes nothing (a reap with nothing to reap) to bind an unbound ledger; " +
-	"a path in another repository than the one the call would bind is refused; ignored once the ledger is bound"
 
 func (f *afFlags) bind(cmd *cobra.Command, needEpoch bool) {
 	cmd.Flags().StringVar(&f.db, "db", "", afDBFlagHelp)
-	cmd.Flags().StringVar(&f.bindRepo, "bind-repo", "", afBindRepoFlagHelp)
 	if needEpoch {
 		cmd.Flags().Int64Var(&f.epoch, "epoch", 0, "the fencing epoch the claim returned")
 		_ = cmd.MarkFlagRequired("epoch")
@@ -711,11 +200,7 @@ func newAFClaimCmd() *cobra.Command {
 		Short: "Claim the next card and print its id and fencing epoch",
 		Long: `Claim the next card and print its id and fencing epoch.
 
---worktree must be an absolute path (a relative one is refused: it would name a different directory for every caller) and
-is recorded in the lease as given; it is not checked against a repository here: evidence and enqueue look a commit up in
-it when --repo is left out, and refuse it there when it is in a repository other than the ledger's.
-
-` + afBindHelp,
+--worktree (default: the working directory) is recorded in the lease as given; evidence and enqueue look a commit up in it.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if worktree == "" {
@@ -724,12 +209,6 @@ it when --repo is left out, and refuse it there when it is in a repository other
 					return err
 				}
 				worktree = wd
-			}
-			// A lease worktree is looked up later from whichever directory the next verb runs in, so a relative one names
-			// a different place for every caller (N51 d): it is refused here, where it would be recorded.
-			if !filepath.IsAbs(worktree) {
-				return fmt.Errorf("af claim: --worktree %q is not an absolute path: a lease worktree is looked up from the directory "+
-					"of whoever asks next, so a relative one names a different place for each of them; give the absolute path; nothing was changed", worktree)
 			}
 			pid, start := afHolder()
 			return afRun(f, func(ctx context.Context, st *ledger.Store) error {
@@ -783,9 +262,7 @@ and offers it with enqueue; the row starts again as waiting and "moai af land" l
 
 A MERGING card whose holder is gone (it holds no lease) and whose queue row waits with a candidate whose newest green,
 gate or review run failed can be moved, at the card's own --epoch, to REVIEWING without a lease, so that the next claim
-measures the commit again.
-
-` + afBindHelp,
+measures the commit again.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			to := core.Position{Stage: core.Stage(strings.ToUpper(stage)), Sub: core.SubStage(strings.ToUpper(sub)), RemoteIntegrated: remote}
@@ -832,9 +309,7 @@ earlier epochs does not count for the new holder, and the reclaim cap itself is 
 
 --reason is required and must say what the operator looked at. A card that is not parked at reclaim-cap, or an --epoch
 that is not the card's own, is refused with the ledger unchanged. --actor and --reason are recorded as given, in the
-card's transition history: nothing masks them, put no secret in them.
-
-` + afBindHelp,
+card's transition history: nothing masks them, put no secret in them.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if strings.TrimSpace(reason) == "" {
@@ -875,29 +350,23 @@ card's transition history: nothing masks them, put no secret in them.
 func newAFEvidenceCmd() *cobra.Command {
 	var f afFlags
 	var ev ledger.Evidence
-	var repo string
 	cmd := &cobra.Command{
 		Use:   "evidence <card>",
 		Short: "Record evidence (red, green, gate, review, merge) bound to a commit",
 		Long: `Record evidence (red, green, gate, review, merge) bound to a commit.
 
-The commit is looked up in --repo, else in the worktree of the card's lease, else in the project directory; it must name a
-complete commit SHA that exists there, and that repository must be the one the ledger is bound to.
+The commit is looked up in the worktree of the card's lease, else in the project directory; it must name a complete commit
+SHA that exists there.
 
 A failing green, gate or review run about the commit of a queue row that is in landing is refused (non-zero exit, nothing
 recorded): the trunk is being moved on that commit, and the landing's last look at the newest runs has been taken or is
 being taken. Record the run again once "moai af land" has returned; where no lander is running (a process that is gone
 left the row in landing), "moai af reconcile" settles the row first. Passing runs, runs about another commit and red or
-merge runs are not refused.
-
-` + afBindHelp,
+merge runs are not refused.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := afCheckRepoFlag(cmd.Context(), repo); err != nil {
-				return err
-			}
 			return afRun(f, func(ctx context.Context, st *ledger.Store) error {
-				if _, err := afCheckCommit(ctx, st, f, args[0], repo, ev.SubjectSHA, "--subject-sha"); err != nil {
+				if _, err := afCheckCommit(ctx, st, args[0], ev.SubjectSHA, "--subject-sha"); err != nil {
 					return err
 				}
 				if err := st.AddEvidence(ctx, args[0], f.epoch, ev); err != nil {
@@ -910,7 +379,6 @@ merge runs are not refused.
 	f.bind(cmd, true)
 	cmd.Flags().StringVar(&ev.Kind, "kind", "", "red, green, gate, review or merge")
 	cmd.Flags().StringVar(&ev.SubjectSHA, "subject-sha", "", "the complete lowercase hex SHA (40 or 64 characters) of the commit that was measured; it must exist in the repository")
-	cmd.Flags().StringVar(&repo, "repo", "", afRepoFlagHelp)
 	cmd.Flags().StringVar(&ev.TreeSHA, "tree-sha", "", "the tree SHA (informational)")
 	cmd.Flags().StringVar(&ev.BaseSHA, "base-sha", "", "the base commit SHA")
 	cmd.Flags().StringVar(&ev.Command, "command", "", "the command that was run (recorded as given: nothing masks it, put no secret in it)")
@@ -924,23 +392,18 @@ merge runs are not refused.
 
 func newAFEnqueueCmd() *cobra.Command {
 	var f afFlags
-	var candidate, repo string
+	var candidate string
 	cmd := &cobra.Command{
 		Use:   "enqueue <card>",
 		Short: "Put the card's candidate commit on the merge queue",
 		Long: `Put the card's candidate commit on the merge queue.
 
-The commit is looked up as evidence does (--repo, else the card's lease worktree, else the project directory). A queue row
-that landed under an earlier holder of the card, for this same commit, is taken over.
-
-` + afBindHelp,
+The commit is looked up as evidence does (the card's lease worktree, else the project directory). A queue row
+that landed under an earlier holder of the card, for this same commit, is taken over.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := afCheckRepoFlag(cmd.Context(), repo); err != nil {
-				return err
-			}
 			return afRun(f, func(ctx context.Context, st *ledger.Store) error {
-				if _, err := afCheckCommit(ctx, st, f, args[0], repo, candidate, "--candidate"); err != nil {
+				if _, err := afCheckCommit(ctx, st, args[0], candidate, "--candidate"); err != nil {
 					return err
 				}
 				if err := st.Enqueue(ctx, args[0], f.epoch, candidate); err != nil {
@@ -961,7 +424,6 @@ that landed under an earlier holder of the card, for this same commit, is taken 
 	}
 	f.bind(cmd, true)
 	cmd.Flags().StringVar(&candidate, "candidate", "", "the complete lowercase hex SHA (40 or 64 characters) of the commit the gates passed for; it must exist in the repository")
-	cmd.Flags().StringVar(&repo, "repo", "", afRepoFlagHelp)
 	_ = cmd.MarkFlagRequired("candidate")
 	return cmd
 }
@@ -971,7 +433,7 @@ func newAFReleaseCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "release <card>",
 		Short: "Let go of a claimed card",
-		Long:  "Let go of a claimed card.\n\n" + afBindHelp,
+		Long:  "Let go of a claimed card.",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return afRun(f, func(ctx context.Context, st *ledger.Store) error {
@@ -999,7 +461,7 @@ func newAFReapCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "reap",
 		Short: "Take back the cards whose holder process is gone",
-		Long:  "Take back the cards whose holder process is gone.\n\n" + afBindHelp,
+		Long:  "Take back the cards whose holder process is gone.",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return afRun(f, func(ctx context.Context, st *ledger.Store) error {
@@ -1009,7 +471,6 @@ func newAFReapCmd() *cobra.Command {
 				}
 				if len(got) == 0 {
 					got = []ledger.Reclaimed{}
-					afWroteNothing(ctx)
 				}
 				leases, err := st.Leases(ctx)
 				if err != nil {

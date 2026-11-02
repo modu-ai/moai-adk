@@ -35,7 +35,7 @@ func TestAFVerbs_N39ALandedRowWhoseCommitIsInTheDedicatedTrunkIsTakenOver(t *tes
 	afSkipWithoutSh(t)
 	a := afN3Reclaimed(t, false)
 	a.measure(a.c1)
-	a.verb("enqueue", "t1", "--epoch", a.e2, "--candidate", a.c1, "--repo", a.repo)
+	a.verb("enqueue", "t1", "--epoch", a.e2, "--candidate", a.c1)
 	if got := a.row().State; got != ledger.QueueLanded {
 		t.Errorf("the row is %s, want landed (taken over)", got)
 	}

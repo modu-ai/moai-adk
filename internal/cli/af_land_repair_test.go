@@ -6,23 +6,18 @@ package cli
 import (
 	"context"
 	"encoding/json"
-	"os"
-	"os/exec"
-	"path/filepath"
-	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/ledger"
-	"github.com/modu-ai/moai-adk/internal/agenticfactory/mergeq"
 )
 
 // afRepairLand runs `af land` with the gate on the standard queued card and returns the verb's JSON line.
 func afRepairLand(t *testing.T, db, repo, gate string) (outcome, reason, stdout string) {
 	t.Helper()
-	out, _, err := afRunBoth("land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/af/trunk", "--gate", gate)
+	out, _, err := afRunBoth("land", "t1", "--db", db, "--gate", gate)
 	if err != nil {
 		t.Fatalf("the verb failed: %v (stdout %.200q)", err, out)
 	}
@@ -57,13 +52,13 @@ func TestAFLand_TheGateTextIsNotInTheReasonTheStdoutOrTheLedger(t *testing.T) {
 	}
 	for _, r := range rows {
 		t.Run(r.name, func(t *testing.T) {
-			db, repo, cand, st, epoch := afQueuedCard(t)
+			db, _, cand, st, epoch := afQueuedCard(t)
 			gate := afD1Words.Replace(r.gate) + "\n" + tail
-			out, errOut, err := afRunBoth("land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/af/trunk", "--gate", gate)
+			out, errOut, err := afRunBoth("land", "t1", "--db", db, "--gate", gate)
 			if err != nil {
 				t.Fatalf("the verb failed: %v", err)
 			}
-			if _, _, eerr := afRunBoth("enqueue", "t1", "--db", db, "--epoch", strconv.FormatInt(epoch, 10), "--candidate", cand, "--repo", repo); eerr != nil {
+			if _, _, eerr := afRunBoth("enqueue", "t1", "--db", db, "--epoch", strconv.FormatInt(epoch, 10), "--candidate", cand); eerr != nil {
 				t.Fatalf("enqueue after the failure: %v", eerr)
 			}
 			if strings.Contains(out+errOut, afD1Value) {
@@ -98,9 +93,9 @@ func TestAFLand_TheGateTextIsNotInTheReasonTheStdoutOrTheLedger(t *testing.T) {
 // N29: the same on a gate that passes: the landed note carries the id, not the text.
 func TestAFLand_TheLandedNoteCarriesTheGateIDAndNotTheGateText(t *testing.T) {
 	afSkipWithoutSh(t)
-	db, repo, _, st, _ := afQueuedCard(t)
+	db, _, _, st, _ := afQueuedCard(t)
 	gate := afD1Words.Replace(`pass=` + afD1Value + ` true`)
-	out, errOut, err := afRunBoth("land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/af/trunk", "--gate", gate)
+	out, errOut, err := afRunBoth("land", "t1", "--db", db, "--gate", gate)
 	if err != nil {
 		t.Fatalf("the verb failed: %v", err)
 	}
@@ -158,92 +153,6 @@ func afSnapshot(t *testing.T, st *ledger.Store) afLedgerSnapshot {
 	return s
 }
 
-// N26: --trunk named another branch (the candidate's own, say) and the card ended DONE with the real trunk empty: the
-// landing row says "merged" without asking which trunk. The trunk is the dedicated ref and cannot be changed; any
-// other value is refused before the ledger is opened, for land and reconcile alike.
-func TestAFLand_ATrunkOtherThanTheDedicatedOneIsRefusedBeforeLandingAndTheLedgerStaysAsItWas(t *testing.T) {
-	afSkipWithoutSh(t)
-	db, repo, cand, st, _ := afQueuedCard(t)
-	before := afSnapshot(t, st)
-	trunkBefore := afGit(t, repo, "rev-parse", mergeq.DefaultTrunk)
-	for _, verb := range [][]string{{"land", "t1", "--gate", "true"}, {"reconcile"}} {
-		for _, trunk := range []string{"refs/heads/c1", "refs/heads/af/other", "refs/heads/trunk", "af/trunk", "refs/heads/main", ""} {
-			args := append(append([]string{}, verb...), "--db", db, "--repo", repo, "--trunk", trunk)
-			out, _, err := afRunBoth(args...)
-			if err == nil || !strings.Contains(err.Error(), "--trunk") || !strings.Contains(err.Error(), mergeq.DefaultTrunk) {
-				t.Errorf("%s --trunk %q: error %v (stdout %.120q), want a refusal that names --trunk and %s", verb[0], trunk, err, out, mergeq.DefaultTrunk)
-			}
-			if after := afSnapshot(t, st); !reflect.DeepEqual(before, after) {
-				t.Fatalf("%s --trunk %q changed the ledger:\nbefore %+v\nafter  %+v", verb[0], trunk, before, after)
-			}
-		}
-	}
-	if got := afGit(t, repo, "rev-parse", mergeq.DefaultTrunk); got != trunkBefore {
-		t.Errorf("the trunk moved: %s -> %s", trunkBefore, got)
-	}
-	// the dedicated trunk, named or left out, still lands the card
-	out, _, err := afRunBoth("land", "t1", "--db", db, "--repo", repo, "--gate", "true")
-	if err != nil || !strings.Contains(out, `"outcome":"landed"`) {
-		t.Errorf("land with the default trunk: %v %.200q, want landed", err, out)
-	}
-	if err := exec.Command("git", "-C", repo, "merge-base", "--is-ancestor", cand, mergeq.DefaultTrunk).Run(); err != nil {
-		t.Errorf("the candidate is not in the dedicated trunk after the landing: %v", err)
-	}
-}
-
-// N26: --repo named another repository: the evidence, the queue entry and the landing were then made against a
-// repository the project does not own, and the card ended DONE with the project's repository without the commit.
-// --repo accepts a path whose git common directory is the project directory's (a linked worktree of the same
-// repository qualifies); anything else is refused before the ledger is opened.
-func TestAFVerbs_ARepoThatIsNotTheProjectsRepositoryIsRefusedBeforeAnyChange(t *testing.T) {
-	afSkipWithoutSh(t)
-	db, repo, cand, st, epoch := afQueuedCard(t)
-	e := strconv.FormatInt(epoch, 10)
-
-	other := t.TempDir()
-	afGit(t, other, "init", "-q", "-b", "work")
-	if err := os.WriteFile(filepath.Join(other, "base.txt"), []byte("other\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	afGit(t, other, "add", "-A")
-	afGit(t, other, "commit", "-q", "-m", "other base")
-	foreign := afGit(t, other, "rev-parse", "HEAD")
-	notARepo := t.TempDir()
-
-	before := afSnapshot(t, st)
-	for _, repoFlag := range []string{other, notARepo, filepath.Join(t.TempDir(), "missing")} {
-		for _, verb := range [][]string{
-			{"evidence", "t1", "--epoch", e, "--kind", "gate", "--subject-sha", foreign, "--result", "pass"},
-			{"enqueue", "t1", "--epoch", e, "--candidate", foreign},
-			{"land", "t1", "--gate", "true"},
-			{"reconcile"},
-		} {
-			args := append(append([]string{}, verb...), "--db", db, "--repo", repoFlag)
-			out, _, err := afRunBoth(args...)
-			if err == nil || !strings.Contains(err.Error(), "--repo") {
-				t.Errorf("%s --repo %s: error %v (stdout %.120q), want a refusal that names --repo", verb[0], repoFlag, err, out)
-			}
-			if after := afSnapshot(t, st); !reflect.DeepEqual(before, after) {
-				t.Fatalf("%s --repo %s changed the ledger:\nbefore %+v\nafter  %+v", verb[0], repoFlag, before, after)
-			}
-		}
-	}
-
-	// the project's own repository, a linked worktree of it and a directory inside it are accepted
-	wt := filepath.Join(t.TempDir(), "linked")
-	afGit(t, repo, "worktree", "add", "-q", "-b", "linked-work", wt, cand)
-	inside := filepath.Join(repo, "sub")
-	if err := os.MkdirAll(inside, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	for _, repoFlag := range []string{repo, wt, inside} {
-		out, errOut, err := afRunBoth("evidence", "t1", "--db", db, "--epoch", e, "--kind", "review", "--subject-sha", cand, "--result", "pass", "--repo", repoFlag)
-		if err != nil {
-			t.Errorf("evidence --repo %s refused: %v %s %s", repoFlag, err, out, errOut)
-		}
-	}
-}
-
 // N34: the help of `moai af land` said that a failing gate fails the card "with the tail of its output", which has not
 // been true since the output left the reason, and did not say that the free-input flags are recorded as given.
 func TestAFLand_TheHelpSaysWhatIsRecordedAndWhatIsRecordedAsGiven(t *testing.T) {
@@ -264,31 +173,6 @@ func TestAFLand_TheHelpSaysWhatIsRecordedAndWhatIsRecordedAsGiven(t *testing.T) 
 	for _, stale := range []string{"with the tail of its output", "recorded in the landed note"} {
 		if strings.Contains(out, stale) {
 			t.Errorf("`moai af land --help` still says %q", stale)
-		}
-	}
-}
-
-// N26: the help says that the trunk cannot be changed and which repositories --repo accepts (this replaces the
-// warning about a mis-specified --trunk or --repo that the audit asked for before the verbs refused them).
-func TestAFVerbs_TheHelpSaysTheTrunkCannotBeChangedAndWhichRepositoriesAreAccepted(t *testing.T) {
-	for _, c := range []struct {
-		verb  string
-		wants []string
-	}{
-		{"land", []string{mergeq.DefaultTrunk, "cannot be changed", "git directory", "linked worktree"}},
-		{"reconcile", []string{mergeq.DefaultTrunk, "cannot be changed", "git directory", "linked worktree"}},
-		{"evidence", []string{"project", "git directory", "linked worktree"}},
-		{"enqueue", []string{"project", "git directory", "linked worktree"}},
-	} {
-		out, _, err := afRunBoth(c.verb, "--help")
-		if err != nil {
-			t.Fatal(err)
-		}
-		flat := strings.Join(strings.Fields(out), " ") // the wrapping of a flag's description is not the test's concern
-		for _, want := range c.wants {
-			if !strings.Contains(flat, want) {
-				t.Errorf("`moai af %s --help` does not say %q", c.verb, want)
-			}
 		}
 	}
 }

@@ -15,9 +15,8 @@ func TestAFResidual_F8AGateTimeoutThatLetsNoGateRunIsRefusedBeforeAnyWrite(t *te
 	afSkipWithoutSh(t)
 	for _, timeout := range []string{"0", "-1s"} {
 		t.Run(timeout, func(t *testing.T) {
-			db, repo, _, st, _ := afQueuedCard(t)
-			afBindFixture(t, st, repo)
-			out, errOut, err := afRunBoth("land", "t1", "--db", db, "--repo", repo, "--trunk", "refs/heads/af/trunk", "--gate", "true", "--gate-timeout", timeout)
+			db, _, _, st, _ := afQueuedCard(t)
+			out, errOut, err := afRunBoth("land", "t1", "--db", db, "--gate", "true", "--gate-timeout", timeout)
 			rows, qerr := st.Queue(context.Background())
 			if qerr != nil || len(rows) != 1 {
 				t.Fatalf("queue: %+v %v", rows, qerr)
