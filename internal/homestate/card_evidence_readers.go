@@ -15,9 +15,12 @@ import (
 )
 
 var (
-	shaPattern          = regexp.MustCompile(`^[0-9a-f]{7,64}$`)
-	cardIDPattern       = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
-	verdictLinePattern  = regexp.MustCompile(`^verdict: (PASS|PASS-WITH-DEBT|FAIL)$`)
+	shaPattern    = regexp.MustCompile(`^[0-9a-f]{7,64}$`)
+	cardIDPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
+	// The fourth label, INCONCLUSIVE, is an audit that did not run
+	// (SPEC-AUDIT-ENGINE-CONVERGENCE-001 REQ-AEC-007): the card stays in audit
+	// as for FAIL, and the shared admission rule names the unrun backend and class.
+	verdictLinePattern  = regexp.MustCompile(`^verdict: (PASS|PASS-WITH-DEBT|FAIL|INCONCLUSIVE)$`)
 	auditedSHAPattern   = regexp.MustCompile(`^audited_sha: ([0-9a-f]{12,40})$`)
 	verdictIterPattern  = regexp.MustCompile(`-iter(\d+)`)
 	maxEvidenceFileSize = int64(4 << 20)
