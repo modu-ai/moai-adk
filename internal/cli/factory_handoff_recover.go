@@ -93,6 +93,7 @@ func newFactoryCommand() *cobra.Command {
 		newFactoryNextCommand(), newFactoryStageCommand(), newFactoryCompleteCommand(), newFactoryRenewCommand())
 	factory.AddCommand(newFactorySetSpecCommand(), newFactoryReclassifyCommand())
 	factory.AddCommand(newFactoryWaitCommand())
+	factory.AddCommand(newFactoryCheckpointCommand())
 	factory.AddCommand(newFactoryRebindEvidenceCommand()) // card t1930 defect ④
 	factory.AddCommand(newFactoryApproveCommand())
 	factory.AddCommand(newFactoryMessagingCommand(), newFactoryFallbackCommand())
