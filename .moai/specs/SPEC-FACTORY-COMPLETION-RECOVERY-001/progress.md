@@ -215,6 +215,29 @@ The previously recorded "continuing debt" wording for D17/D18 below is supersede
 
 **MX validation (sync sub-step).** `@MX` tags are present on the new code: `@MX:ANCHOR` + `@MX:WARN` on `RebindRun` (`internal/homestate/factory_run_rebind.go:95-98`), `@MX:WARN` on `RecordPickedReconciled` (`factory_run_lease_rebound.go:43-44`), `@MX:WARN` on `adoptResumedLeaderRun` (`internal/cli/factory_run_adopt.go:79-80`) and on the lane-join loop (`internal/cli/factory_run_select.go:308-309`). `moai mx query --file-prefix internal/homestate/factory_run --format table` (read-only) returned `(결과 없음)` with `provenance: unknown`: the sidecar index has not been built in this tree, so the query cannot confirm the tags. `moai mx scan` writes the index and was not run.
 
+### Amendment sync signal — card t2013 (Class B, 2026-11-03)
+
+This block records the sync stage of card t2013's run-phase changes to the factory completion-recovery surface (the AFF amendment and the lane-recovery follow-ups). It is a card-level signal, not a SPEC-close signal: `spec.md` stays `status: in-progress` and is not edited here (AC-FCR-006..013 are still open, see above), and the SPEC-level close-marker field name stays withheld.
+
+```yaml
+sync_scope: amendment-card-t2013
+sync_complete_at: 2026-11-03
+amendment_sync_commit_sha: pending-backfill   # a commit cannot cite its own hash; backfilled in a following commit
+sync_status: complete-pending-audit   # the independent sync audit runs after this commit; no verdict is claimed here
+run_exit_commit: a7ff646ede
+run_base: cb30e05b3e   # merge-base with main at sync time
+changelog_entry_position: "[Unreleased] > Added, first bullet; [Unreleased] > Fixed, first bullet"
+frontmatter_status_transitions:
+  spec_md_status: "in-progress (unchanged)"
+  spec_md_updated: "unchanged (2026-11-02); spec.md not touched by this sync"
+canary_compliance_check: not-applicable
+mx_validation: "not run in this sync (no sidecar index built; moai mx scan not executed)"
+```
+
+Changed areas covered by the CHANGELOG entries (from `git log cb30e05b3e..a7ff646ede`): owner re-lease of an expired lease via `moai factory next --card` (`internal/homestate/card_lease_expired_owner.go`, `internal/cli/factory_card.go`); launcher gaps (`internal/cli/launcher.go`, `cc.go`, `glm.go`, `factory.go`, `lane_resume.go`, `launch_view.go`); wait-aware `stop-goal` (`internal/cli/hook_stop_goal_wait.go`, `internal/goal/evaluate.go`); `moai factory checkpoint` (`internal/cli/factory_checkpoint.go`); BranchGuard protected-commit verb boundary and explicit `git -C` / leading `cd` target (`internal/hook/branch_guard.go`); `pr-open` same-owner repair resume (`internal/homestate/card_pr_open_repair.go`); wake delivered/received/started events and `moai factory wait --ack received|started` (`internal/homestate/card_wake_events.go`, `internal/cli/factory_wait.go`); PR readiness stale/unverified base refusal and `behind N` guidance (`internal/cli/factory_card_pr.go`).
+
+Gaps (not observed by this sync): no Go build, test, or lint was run (markdown-only sync; run-phase results are in `.moai/reports/t2013/progress.md`, which this commit does not touch). The B12 duplicate-emission pre-check `grep -c 'SPEC-FACTORY-COMPLETION-RECOVERY-001' CHANGELOG.md` returned 1 before this edit, from the existing M2-B entry; the new entries are keyed on card t2013 and do not repeat that entry, and no AC count is claimed in them. Docs not updated: no user-facing doc outside the rule files documents the `moai factory wait --ack` flag or the `moai factory next --card` re-lease/repair behavior; the three workflow rules that mention `factory wait` (`factory-dispatch.md`, `factory-dispatch-mechanics.md`, `goal-directive-detail.md`, each with a template mirror) were left unchanged because the core stub carries a role-core size budget and the run phase already edited them.
+
 ## §F Phase 4 Mode Selection
 
 - 입력: tier=M, scope=9파일(plan §C 파일별 변경표), 도메인=1(CLI+homestate 단일 Go 축), 언어 혼합=Go 100%, concurrency benefit=LOW(coding-heavy — Anthropic coding-task caveat), agent-team 요건=미요청.
