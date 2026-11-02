@@ -36,6 +36,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/closure/gitio"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/factorylane"
@@ -237,6 +238,8 @@ var factoryPRReadiness = func(out io.Writer, root string, card homestate.Card, l
 	if fetchErr != nil {
 		_, _ = fmt.Fprintf(out, "  note: could not fetch origin/%s (%v); probing the last fetched ref\n", target, fetchErr)
 	}
+	staleErr := fmt.Errorf("the base origin/%s is stale: its fetch failed (%v) and the base was not refreshed", target, fetchErr)
+	unverified := false
 	if _, err := factoryGitRead(wt, "rev-parse", "--verify", "--quiet", "refs/remotes/origin/"+target); err == nil {
 		// A tracking ref that survives a failed fetch is stale: the base may
 		// have moved, so the triple is not judged against it (card t2013).
@@ -244,9 +247,24 @@ var factoryPRReadiness = func(out io.Writer, root string, card homestate.Card, l
 			return factorylane.MergeCheckRun{
 				Lane: lane, Card: card.CardID, Branch: cardBranch, Develop: "origin/" + target,
 				FailedCondition: "stale-base", CheckedAt: factoryCardNow(),
-			}, fmt.Errorf("the base origin/%s is stale: its fetch failed (%v) and the remote-tracking ref predates it", target, fetchErr)
+			}, staleErr
 		}
 		ref = "origin/" + target
+		// The PR head must contain the integration target's current head
+		// (card t2013). A head that is behind is not a refusal of the PR: it
+		// is the precondition for re-running CI and for the ready
+		// transition, so the operator absorbs the base first and no CI rerun
+		// is requested from here.
+		if contains, err := gitio.IsAncestor(wt, ref, "HEAD"); err == nil && !contains {
+			behind, _ := factoryGitRead(wt, "rev-list", "--count", "HEAD.."+ref)
+			_, _ = fmt.Fprintf(out, "  base: behind %s — the PR head does not contain %s; absorb %s first (CI is not re-run and the ready transition waits until the head contains it)\n",
+				strings.TrimSpace(behind), ref, ref)
+		}
+	} else if fetchErr != nil {
+		// No fetched ref at all: the local branch stays as the fallback, but
+		// the base is unverified and readiness is refused below.
+		unverified = true
+		_, _ = fmt.Fprintf(out, "  base: unverified (fetch failed)\n")
 	}
 	specDir := ""
 	if card.SpecID != "" { // a SPEC-less card reads its verdict file (empty SpecDir)
@@ -263,7 +281,14 @@ var factoryPRReadiness = func(out io.Writer, root string, card homestate.Card, l
 	if err != nil {
 		return run, err
 	}
-	return factorylane.NewStore(root, nil).RecordMergeCheckRun(run)
+	rec, err := factorylane.NewStore(root, nil).RecordMergeCheckRun(run)
+	if err != nil {
+		return rec, err
+	}
+	if unverified {
+		return rec, staleErr
+	}
+	return rec, nil
 }
 
 // factoryDeliverByPR is the merge-ready/merging half: check, push, open,
