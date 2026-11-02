@@ -1472,6 +1472,95 @@ func clearRejectionsForRoleInTreeKind(storeRoot, treeRoot, agentType, kind strin
 	return nil
 }
 
+// approvalsFile is the append-only log of operator approvals inside the store.
+// It is a record, never authority: nothing reads it to decide whether a mark
+// stands (SPEC-AUDIT-ENGINE-CONVERGENCE-001 REQ-AEC-011).
+const approvalsFile = "approvals.jsonl"
+
+// ErrMarkNotFound reports that the named receipt-kind rejection mark does not
+// exist for the tree: it was never written, was already cleared, or was
+// recorded for another tree.
+var ErrMarkNotFound = errors.New("auditreceipt: no such rejection mark for this tree")
+
+// Approval is one operator approval to clear one receipt-kind rejection mark
+// (REQ-AEC-013). The caller fills the operator, the evidence and the HEAD; Mark
+// is filled by ClearRejectionOnApproval with the mark exactly as it was read.
+type Approval struct {
+	SchemaVersion  int       `json:"schema_version"`
+	Operator       string    `json:"operator"`
+	Email          string    `json:"email"`
+	Confirmation   string    `json:"confirmation"` // the line the operator typed
+	Mark           Rejection `json:"mark"`
+	EvidencePath   string    `json:"evidence_path"` // relative to the tree, slash-separated
+	EvidenceSHA256 string    `json:"evidence_sha256"`
+	Head           string    `json:"head"`
+	TreeRoot       string    `json:"tree_root"`
+	ApprovedAt     time.Time `json:"approved_at"`
+}
+
+// ClearRejectionOnApproval appends one approval record to the store's
+// append-only log and then removes exactly the one receipt-kind rejection mark
+// named by a.Mark.AgentType and a.Mark.SpecID for treeRoot. Nothing else is
+// removed; a mark of another tree, another SPEC or another kind is untouched.
+// The record is written first, so a mark never disappears without a record; if
+// the removal then fails, the error says the record exists.
+//
+// It checks nothing about WHO is asking: the operator checks (terminal, agent
+// markers, typed confirmation, evidence) belong to the one verb that calls it.
+//
+// @MX:WARN: [AUTO] deletes a gate mark: the phase-entry spawn deny disappears with it
+// @MX:REASON: the only non-test caller must stay the operator verb `moai verify clear-rejection`; a second caller, a hook, or an MCP tool would be a second path that clears a rejection without the operator checks (REQ-AEC-011)
+// @MX:SPEC: SPEC-AUDIT-ENGINE-CONVERGENCE-001
+func ClearRejectionOnApproval(storeRoot, treeRoot string, a *Approval) error {
+	if a == nil || strings.TrimSpace(a.Mark.AgentType) == "" || strings.TrimSpace(a.Operator) == "" {
+		return errors.New("auditreceipt: an approval needs an agent type and an operator")
+	}
+	agentType, specID := a.Mark.AgentType, a.Mark.SpecID
+	mark, err := ReadRejectionInKind(storeRoot, treeRoot, KindReceipt, agentType, specID)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return ErrMarkNotFound
+		}
+		return fmt.Errorf("read rejection mark: %w", err)
+	}
+	if !ownTree(mark.TreeRoot, storeRoot, treeRoot) {
+		return ErrMarkNotFound
+	}
+
+	a.SchemaVersion = 1
+	a.Mark = mark
+	a.TreeRoot = treeRoot
+	if a.ApprovedAt.IsZero() {
+		a.ApprovedAt = Now()
+	}
+	a.ApprovedAt = a.ApprovedAt.UTC()
+	line, err := json.Marshal(a)
+	if err != nil {
+		return fmt.Errorf("encode approval: %w", err)
+	}
+	logPath := filepath.Join(StateDir(storeRoot), approvalsFile)
+	if err := os.MkdirAll(filepath.Dir(logPath), 0o755); err != nil {
+		return fmt.Errorf("approval log dir: %w", err)
+	}
+	f, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	if err != nil {
+		return fmt.Errorf("open approval log: %w", err)
+	}
+	_, werr := f.Write(append(line, '\n'))
+	if cerr := f.Close(); werr == nil {
+		werr = cerr
+	}
+	if werr != nil {
+		return fmt.Errorf("append approval: %w", werr)
+	}
+
+	markPath := rejectionPathInKind(storeRoot, treeRoot, KindReceipt, agentType, specID)
+	if err := os.Remove(markPath); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("the approval is recorded but the mark was not removed: %w", err)
+	}
+	return nil
+}
+
 // ParseVerdictLine reads the LAST non-empty line of an auditor's final message
 // as a verdict line (plan.md §B.6). Leading whitespace is stripped and trailing
 // spaces, tabs and carriage returns are tolerated, so a CRLF message is not

@@ -70,7 +70,6 @@ type crWorld struct {
 	tree  string // canonical tree root; also the store root
 	env   map[string]string
 	isTTY bool
-	n     int
 }
 
 func newCRWorld(t *testing.T) *crWorld {
