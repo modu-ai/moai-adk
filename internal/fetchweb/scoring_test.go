@@ -3,6 +3,8 @@ package fetchweb
 import (
 	"context"
 	"fmt"
+	"runtime"
+	"runtime/debug"
 	"strings"
 	"testing"
 	"time"
@@ -767,42 +769,85 @@ func TestSelectBlocks_BackfillSortScaling(t *testing.T) {
 	}
 }
 
+// Scaling-guard measurement (card t2004, main-side test hardening). The guards
+// below compare selectBlocks wall time at a small and a 4x larger block count.
+// The earlier form compared n with 2n, where the n·log(n) value (~2.2) and the
+// quadratic value (4.0) sit only ~1.8x apart, so a single noisy CI measurement
+// (a run observed 3.85 under -race) landed next to the quadratic value. A 4x step
+// separates the two shapes by ~3.5x: n·log(n) ~4.6 (4·ln(24k)/ln(6k)), n² = 16.
+// scalingMaxRatio is their geometric mean, so noise has to inflate a healthy
+// run by ~1.8x before it trips, while a real n² regression (16) still fails by
+// ~1.9x. Measurement noise is reduced, not removed: GC off while timing, a forced
+// GC before every sample, small and large samples interleaved, and the minimum
+// of scalingRounds taken for each size.
+const (
+	scalingFactor   = 4
+	scalingRounds   = 7
+	scalingMaxRatio = 8.5
+	scalingBudget   = 10 * time.Second // stop sampling after >= 2 rounds once this much wall time is spent
+)
+
+// selectBlocksGrowth returns large/small best-of-scalingRounds wall time of
+// selectBlocks on build(n) and build(n*scalingFactor). Fixtures are built before
+// any timing starts.
+func selectBlocksGrowth(build func(n int) ([]Block, []blockScore), n int) (ratio float64, small, large time.Duration) {
+	smallBlocks, smallScores := build(n)
+	largeBlocks, largeScores := build(n * scalingFactor)
+	prev := debug.SetGCPercent(-1)
+	defer debug.SetGCPercent(prev)
+	small, large = time.Duration(1<<62), time.Duration(1<<62)
+	var spent time.Duration
+	for r := range scalingRounds {
+		runtime.GC()
+		start := time.Now()
+		selectBlocks(smallBlocks, smallScores)
+		ds := time.Since(start)
+		if ds < small {
+			small = ds
+		}
+		runtime.GC()
+		start = time.Now()
+		selectBlocks(largeBlocks, largeScores)
+		dl := time.Since(start)
+		if dl < large {
+			large = dl
+		}
+		// A real quadratic regression makes each large sample take seconds; two
+		// samples already show it, so do not spend scalingRounds of them.
+		spent += ds + dl
+		if r >= 1 && spent > scalingBudget {
+			break
+		}
+	}
+	return float64(large) / float64(small), small, large
+}
+
 // P2 performance (card t1968 codex review, repair round):
 // sameHeadingNeighborQualifies rescanned ALL blocks per candidate, so a
 // document of many candidates with no qualifying sibling (distinct heading
 // paths, sub-threshold neighbors) cost O(n²) inside selectBlocks. The
 // judgment must come from a per-pass aggregate: the growth ratio from n to
-// 2n is bounded at 3.4 — above n·log(n) (~2.2 from 5k to 10k), below the
-// 4.0 the per-candidate full scan exhibits. Every block here is a candidate
+// 4n is bounded at scalingMaxRatio (see selectBlocksGrowth) — above n·log(n)
+// (~4.6 from 5k to 20k), below the 16 the per-candidate full scan exhibits. Every block here is a candidate
 // (stage1 0.7) whose stage-2 fails, under its own DISTINCT heading path —
 // the rescue check must examine every one and find no sibling.
 func TestSelectBlocks_NeighborAggregationScaling(t *testing.T) {
 	if testing.Short() {
 		t.Skip("timing-sensitive scaling guard")
 	}
-	run := func(n int) time.Duration {
+	build := func(n int) ([]Block, []blockScore) {
 		blocks := make([]Block, n)
 		scores := make([]blockScore, n)
 		for i := range blocks {
 			blocks[i] = Block{Kind: KindParagraph, HeadingPath: []string{fmt.Sprintf("H%d", i)}, Text: "para", HeaderIndex: -1}
 			scores[i] = blockScore{stage1: 0.7} // candidate; stage2 0 -> the rescue judgment runs
 		}
-		best := time.Duration(1 << 62)
-		for range 3 {
-			start := time.Now()
-			selectBlocks(blocks, scores)
-			if d := time.Since(start); d < best {
-				best = d
-			}
-		}
-		return best
+		return blocks, scores
 	}
-	t1 := run(5000)
-	t2 := run(10000)
-	ratio := float64(t2) / float64(t1)
-	if ratio > 3.4 {
-		t.Errorf("selectBlocks growth from 5k to 10k candidates: ratio %.2f (5k=%s, 10k=%s) — per-candidate neighbor rescan; must aggregate once per pass (~n·log(n) overall)",
-			ratio, t1, t2)
+	ratio, t1, t2 := selectBlocksGrowth(build, 5000)
+	if ratio > scalingMaxRatio {
+		t.Errorf("selectBlocks growth from 5k to %dk candidates: ratio %.2f (5k=%s, large=%s) — per-candidate neighbor rescan; must aggregate once per pass (~n·log(n) overall)",
+			5*scalingFactor, ratio, t1, t2)
 	}
 }
 
@@ -811,9 +856,10 @@ func TestSelectBlocks_NeighborAggregationScaling(t *testing.T) {
 // the WHOLE kept map — on EVERY iteration, so a document whose backfill never
 // reaches the 300-token floor paid O(n²): the loop ran to exhaustion while the
 // kept map grew to n. The kept-token total must be maintained as a running
-// accumulator: selectBlocks stays near n·log(n) as the block count doubles,
-// the growth ratio from n to 2n bounded at 3.4 — above n·log(n) (~2.2 from 6k
-// to 12k), below the 4.0 the per-iteration full scan exhibits. The fixture is
+// accumulator: selectBlocks stays near n·log(n) as the block count grows 4x,
+// the growth ratio from n to 4n bounded at scalingMaxRatio (see
+// selectBlocksGrowth) — above n·log(n) (~4.6 from 6k to 24k), below the 16
+// the per-iteration full scan exhibits. The fixture is
 // the scan's worst case: one sole candidate (its kept set holds 0 tokens, far
 // under the floor, so backfill runs to exhaustion) and EVERY block EMPTY-TEXT
 // — each newly kept row adds 0 tokens, the break never fires, and the kept
@@ -822,7 +868,7 @@ func TestSelectBlocks_BackfillKeptScanScaling(t *testing.T) {
 	if testing.Short() {
 		t.Skip("timing-sensitive scaling guard")
 	}
-	run := func(n int) time.Duration {
+	build := func(n int) ([]Block, []blockScore) {
 		blocks := make([]Block, n)
 		scores := make([]blockScore, n)
 		for i := range blocks {
@@ -830,22 +876,12 @@ func TestSelectBlocks_BackfillKeptScanScaling(t *testing.T) {
 			scores[i] = blockScore{stage1: 0.1 + 0.4*float64(i)/float64(n)} // ascending, all sub-threshold
 		}
 		scores[0] = blockScore{stage1: 0.9} // sole candidate; stage2 0 -> first-block keep only
-		best := time.Duration(1 << 62)
-		for range 3 {
-			start := time.Now()
-			selectBlocks(blocks, scores)
-			if d := time.Since(start); d < best {
-				best = d
-			}
-		}
-		return best
+		return blocks, scores
 	}
-	t1 := run(6000)
-	t2 := run(12000)
-	ratio := float64(t2) / float64(t1)
-	if ratio > 3.4 {
-		t.Errorf("selectBlocks growth from 6k to 12k blocks: ratio %.2f (6k=%s, 12k=%s) — per-iteration kept-map scan in the backfill loop; the kept-token total must run as an accumulator (~n·log(n) overall)",
-			ratio, t1, t2)
+	ratio, t1, t2 := selectBlocksGrowth(build, 6000)
+	if ratio > scalingMaxRatio {
+		t.Errorf("selectBlocks growth from 6k to %dk blocks: ratio %.2f (6k=%s, large=%s) — per-iteration kept-map scan in the backfill loop; the kept-token total must run as an accumulator (~n·log(n) overall)",
+			6*scalingFactor, ratio, t1, t2)
 	}
 }
 
