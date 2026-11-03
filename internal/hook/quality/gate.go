@@ -66,6 +66,10 @@ type GateConfig struct {
 	// struct so the config chain stays one object (gate.yaml → config loader
 	// → this config → the CLI's wait loop).
 	LockWait time.Duration
+	// TotalTimeout is gate.yaml timeouts.total: an explicit override of the
+	// overall run budget. Zero (or negative, which the config layer maps to
+	// zero) means "derive it from the detected steps" — see OverallBudget.
+	TotalTimeout time.Duration
 	// PreCommitEnabled carries gate.pre_commit.enabled into the CLI entry
 	// (runGate). Run itself NEVER reads it: the key is honored only under the
 	// MOAI_PRECOMMIT=1 marker, and that decision is made by the CLI caller —

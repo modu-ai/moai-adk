@@ -188,6 +188,10 @@ func (h *userPromptSubmitHandler) Handle(ctx context.Context, input *HookInput) 
 	// is the per-turn driver. Fail-open and never affects the output below.
 	HeartbeatSeamUserPromptSubmit(input)
 
+	// Ledger lease renewal (Issue #1948): throttled to once per 30s per session and
+	// inert for a session that holds no card.
+	LedgerHeartbeatSeam(input)
+
 	// Build session title (errors are silently ignored, falls back to empty title)
 	title := h.buildSessionTitle(ctx, input.CWD, input.TranscriptPath)
 

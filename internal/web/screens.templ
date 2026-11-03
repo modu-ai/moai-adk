@@ -645,6 +645,25 @@ templ Monitor(vm ShellVM, m MonitorVM) {
 					}
 				</div>
 			}
+			@panel("Browser", browserMeta(m.Browser), "", "", "Read-only. The adapter calls only the saved choice and never falls back to another.", "roomy") {
+				<div class="vlist" id="browser-selection">
+					for _, c := range m.Browser.Choices {
+						<div class="vrow">
+							<span class="mono">{ c.ID }</span>
+							if c.Selected {
+								@badge("outline", "selected")
+							}
+						</div>
+					}
+					if m.Browser.BlockReason != "" {
+						<p class="warn">{ "blocked: " + m.Browser.BlockReason }</p>
+						<p class="panel__meta">{ m.Browser.Resume }</p>
+					}
+					if m.Browser.Note != "" {
+						<p class="warn">{ m.Browser.Note }</p>
+					}
+				</div>
+			}
 		</div>
 	}
 }
