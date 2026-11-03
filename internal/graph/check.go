@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -835,10 +836,21 @@ func attachContribution(projectRoot string, roots []string, rep *LayerReport) {
 // (the body AND provenance.json) is what the first parent carried: no tracked
 // difference against base and no untracked file under it. Only then do the
 // cumulative count and the contribution share one measurement anchor, which is
-// what lets Value - Contribution stand for the base's own count. It returns nil
-// when git cannot answer, and nil is never treated as stable.
+// what lets Value - Contribution stand for the base's own count.
+//
+// Path lists alone cannot prove that: git records a symlink as its link string
+// and never lists an ignored file, while checkCodemaps reads the stamp's BYTES
+// through the filesystem. So sameness is proven on those bytes: every entry
+// under the directory must be a regular file or directory (no link, no device),
+// no ignored file may sit under it, and the stamp on disk must equal the
+// first parent's blob byte for byte. Whenever sameness cannot be proven — a
+// link, an ignored file, a missing base blob, any git or read error — it
+// returns nil, and nil is never treated as stable (fail closed).
 func codemapsInputsStable(projectRoot, base string) *bool {
 	const dir = ".moai/project/codemaps/"
+	if !regularCodemapsTree(filepath.Join(projectRoot, filepath.FromSlash(dir))) {
+		return nil
+	}
 	tracked, err := gitOutput(projectRoot, "diff", "--name-only", base, "--", dir)
 	if err != nil {
 		return nil
@@ -847,8 +859,40 @@ func codemapsInputsStable(projectRoot, base string) *bool {
 	if err != nil {
 		return nil
 	}
-	stable := !hasNonBlankLine(tracked) && !hasNonBlankLine(untracked)
+	ignored, err := gitOutput(projectRoot, "ls-files", "--others", "--ignored", "--exclude-standard", "--", dir)
+	if err != nil || hasNonBlankLine(ignored) {
+		return nil
+	}
+	const stamp = dir + "provenance.json"
+	onDisk, err := os.ReadFile(filepath.Join(projectRoot, filepath.FromSlash(stamp)))
+	if err != nil {
+		return nil
+	}
+	atBase, err := gitOutput(projectRoot, "show", base+":"+stamp)
+	if err != nil {
+		return nil
+	}
+	stable := !hasNonBlankLine(tracked) && !hasNonBlankLine(untracked) && string(onDisk) == atBase
 	return &stable
+}
+
+// regularCodemapsTree reports whether the codemaps directory and everything
+// under it is made of plain directories and regular files. Lstat-style walking
+// never follows a link, so a symlink anywhere in it (stamp or body) makes the
+// bytes a reader sees differ from what git tracks and the answer false.
+func regularCodemapsTree(root string) bool {
+	if info, err := os.Lstat(root); err != nil || !info.IsDir() {
+		return false
+	}
+	ok := true
+	err := filepath.WalkDir(root, func(_ string, d fs.DirEntry, err error) error {
+		if err != nil || !(d.IsDir() || d.Type().IsRegular()) {
+			ok = false
+			return filepath.SkipAll
+		}
+		return nil
+	})
+	return ok && err == nil
 }
 
 // attachDrivingPaths records the paths driving a stale count, truncated to the
