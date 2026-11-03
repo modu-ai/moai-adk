@@ -55,6 +55,9 @@ func runWebHarness(t *testing.T, seams swSeams, opts ...func(*runWebHarnessCfg))
 		if cfg.captured != nil {
 			*cfg.captured = c
 		}
+		if cfg.onRun != nil {
+			cfg.onRun(c) // runs while the server would still be up
+		}
 		return nil
 	}
 	t.Cleanup(func() { webRunFn = origRun })
@@ -97,7 +100,8 @@ func runWebHarness(t *testing.T, seams swSeams, opts ...func(*runWebHarnessCfg))
 type runWebHarnessCfg struct {
 	materializePath string
 	projectRoot     string
-	captured        *web.Config // when set, receives the Config runWeb handed to web.Run
+	captured        *web.Config      // when set, receives the Config runWeb handed to web.Run
+	onRun           func(web.Config) // when set, runs inside the web.Run stand-in, before it returns
 }
 
 // withRootDir sets the temp dir findProjectRootFn returns.
