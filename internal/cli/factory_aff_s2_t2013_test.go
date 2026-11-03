@@ -24,6 +24,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -48,7 +49,13 @@ type affs2Opts struct {
 	// unprovisioned leaves the release branch checked out nowhere and gives
 	// main to a dedicated worktree (the pre-amendment local-merge shape).
 	unprovisioned bool
+	// slowTest commits a passing test that sleeps for slowTestPause into the
+	// CARD tree, so the fast required check takes longer than that.
+	slowTest bool
 }
+
+// slowTestPause is how long the slowTest fixture's test sleeps.
+const slowTestPause = 3
 
 // affs2Fix is one built fixture.
 type affs2Fix struct {
@@ -137,6 +144,9 @@ func affs2New(t *testing.T, o affs2Opts) affs2Fix {
 	affs2Write(t, filepath.Join(f.cardWT, "calc", "card.go"), "package calc\n\nfunc Sub(a, b int) int { return a - b }\n")
 	if o.broken {
 		affs2Write(t, filepath.Join(f.cardWT, "calc", "broken.go"), "package calc\n\nfunc Broken() int { return undefinedSymbol }\n")
+	}
+	if o.slowTest {
+		affs2Write(t, filepath.Join(f.cardWT, "calc", "slow_test.go"), "package calc\n\nimport (\n\t\"testing\"\n\t\"time\"\n)\n\nfunc TestSlow(t *testing.T) { time.Sleep("+strconv.Itoa(slowTestPause)+" * time.Second) }\n")
 	}
 	affs2Git(t, f.cardWT, "add", "base.txt", "calc")
 	affs2Git(t, f.cardWT, "commit", "-q", "-m", "card change alpha")
