@@ -154,10 +154,10 @@ func factoryNotALaneError(verb string) error {
 func factoryLaneLabelValidated(verb, label string) (string, error) {
 	lowered := strings.ToLower(label)
 	if n, ok := factory.SplitFactoryLegacyLabel(lowered); ok {
-		return "", fmt.Errorf("factory %s: %q is the legacy lane label; use %q (rejoin with -l)", verb, label, factory.FactoryLaneLabel(n))
+		return "", fmt.Errorf("factory %s: %q is the legacy lane label; use %q (rejoin with -a)", verb, label, factory.FactoryLaneLabel(n))
 	}
 	if factory.IsLegacyFactoryRoleValue(lowered) {
-		return "", fmt.Errorf("factory %s: %q is the legacy role token; lane sessions carry lane-<n> labels (rejoin with -l)", verb, label)
+		return "", fmt.Errorf("factory %s: %q is the legacy role token; lane sessions carry lane-<n> labels (rejoin with -a)", verb, label)
 	}
 	if factory.IsLegacyLeaderSpelling(lowered) {
 		return "", fmt.Errorf("factory %s: %q is the legacy leader spelling; lane sessions carry lane-<n> labels (the leader launches with -f)", verb, label)

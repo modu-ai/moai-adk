@@ -24,10 +24,10 @@ const (
 
 // retiredEntryRefusal is the one line every launcher prints for a retired
 // entry: it states the mode is retired and names the replacement entries —
-// `-f` starts a factory leader on cc and glm, `-l` joins as a lane on all three
+// `-f` starts a factory leader on cc and glm, `-a` joins as an agent (lane) on cc and glm, `-l` on codex
 // launchers (codex has no leader entry, so its lane entry is named in full).
 const retiredEntryRefusal = "-k/--kanban is retired: Kanban Mode was removed; " +
-	"start a factory leader with 'moai cc -f' or 'moai glm -f', and join as a lane with -l ('moai codex -l' on Codex)"
+	"start a factory leader with 'moai cc -f' or 'moai glm -f', and join as an agent with -a ('moai cc -a' / 'moai glm -a'; 'moai codex -l' on Codex)"
 
 // refuseRetiredEntry returns the refusal when args carry a retired entry
 // spelling (bare or `=`-joined) before the pass-through marker, and nil

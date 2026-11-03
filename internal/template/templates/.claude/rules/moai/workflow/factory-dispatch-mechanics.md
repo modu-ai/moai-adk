@@ -21,7 +21,7 @@ The bound is the holder's own declaration: past it another lane may take the res
 
 ## Factory Mode mechanics
 
-`moai cc -f` launches the leader and lane sessions join one at a time with `moai cc -l`, labelled `lane-<n>`. No per-stage companions: the leader routes each card WHOLE to a free lane, or a lane receives the card by its own self-promotion of an already-queued card; either way the lane carries it `plan → run → sync` in-session — serial stages, each stage's execution spawned as sub-agents — and owns it end to end. The card class still names which ceremonies are skipped (`plan` for A and B) but no card changes sessions. Queue, evidence-reading, integration, and disposal rules are as stated in the stub. Mechanics: `factory-dispatch-detail.md` § Factory in-lane 3-stage.
+`moai cc -f` launches the leader and lane sessions join one at a time with `moai cc -a`, labelled `lane-<n>`. No per-stage companions: the leader routes each card WHOLE to a free lane, or a lane receives the card by its own self-promotion of an already-queued card; either way the lane carries it `plan → run → sync` in-session — serial stages, each stage's execution spawned as sub-agents — and owns it end to end. The card class still names which ceremonies are skipped (`plan` for A and B) but no card changes sessions. Queue, evidence-reading, integration, and disposal rules are as stated in the stub. Mechanics: `factory-dispatch-detail.md` § Factory in-lane 3-stage.
 
 While it executes the card, a lane renews its own card lease at the start of each watchdog pass with `moai factory renew <card>` (MCP tool `factory_renew`, the same implementation): the renewal extends the lease from the request time by `workflow.factory_lease.duration`, and a renewal of an expired lease is refused with no write.
 
@@ -55,7 +55,7 @@ The launcher table (per-harness entry forms):
 |---|---|
 | Create a harness-neutral L1 worktree | `moai worktree new <name>` |
 | Start Claude Code in a MoAI tree | `moai cc -w <absolute-worktree-path>` (`--spawn` for a new window): the launcher enters the path only when it is a registered worktree of this repository, `.moai/worktrees/*` trees included; an unregistered absolute path is refused before anything is written |
-| Rejoin a lane whose session died | `moai cc -l --name <lane-label>` with the canonical `lane-<n>`: granted only when no live session holds that label, refused otherwise; the launcher moves no lease |
+| Rejoin a lane whose session died | `moai cc -a --name <lane-label>` with the canonical `lane-<n>`: granted only when no live session holds that label, refused otherwise; the launcher moves no lease |
 | Start a Claude-native worktree | `moai cc -w <name>` creates or enters `.claude/worktrees/<name>` |
 | Re-enter or leave in the current Claude Code session | `EnterWorktree(<path>)` / `ExitWorktree` |
 | Start a Codex app chat in a new tree | Select Worktree and the starting branch in the new chat |

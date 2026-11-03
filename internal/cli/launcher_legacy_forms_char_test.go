@@ -38,7 +38,7 @@ func TestLegacyForms_CcF_IsFactoryLeader(t *testing.T) {
 }
 
 func TestLegacyForms_CcL_IsLaneWithAutoNumber(t *testing.T) {
-	for _, flag := range []string{"-l", "--lane"} {
+	for _, flag := range []string{"-a"} {
 		e, branch := legacyEntry(t, flag)
 		if !e.FactoryEnabled || branch != factoryBranchLane {
 			t.Fatalf("%s: enabled=%v branch=%v, want lane", flag, e.FactoryEnabled, branch)
@@ -57,8 +57,8 @@ func TestLegacyForms_CcL_IsLaneWithAutoNumber(t *testing.T) {
 
 func TestLegacyForms_CcLWithLeader_CarriesRawLeaderName(t *testing.T) {
 	for _, args := range [][]string{
-		{"-l", "--leader", "leader-2"},
-		{"-l", "--leader=leader-2"},
+		{"-a", "--leader", "leader-2"},
+		{"-a", "--leader=leader-2"},
 	} {
 		e, branch := legacyEntry(t, args...)
 		if branch != factoryBranchLane || e.FactoryLead != "leader-2" {
@@ -79,16 +79,16 @@ func TestLegacyForms_CcWorktree_IsNotAFactoryEntry(t *testing.T) {
 	}
 }
 
-// `moai glm -l` shares the same entry parse as `moai cc -l`; only the backend
+// `moai glm -a` shares the same entry parse as `moai cc -a`; only the backend
 // differs. Pin both the shared parse and the documented usage lines.
 func TestLegacyForms_GlmL_SharesTheCcEntryParse(t *testing.T) {
-	e, branch := legacyEntry(t, "-l")
+	e, branch := legacyEntry(t, "-a")
 	if branch != factoryBranchLane || !e.FactoryEnabled {
-		t.Fatalf("-l branch=%v enabled=%v", branch, e.FactoryEnabled)
+		t.Fatalf("-a branch=%v enabled=%v", branch, e.FactoryEnabled)
 	}
 	for name, use := range map[string]string{"cc": ccCmd.Use, "glm": glmCmd.Use} {
-		if !strings.Contains(use, "[-f | -l]") {
-			t.Errorf("%s Use = %q lost its [-f | -l] entry", name, use)
+		if !strings.Contains(use, "[-f | -a]") {
+			t.Errorf("%s Use = %q lost its [-f | -a] entry", name, use)
 		}
 	}
 }
@@ -115,10 +115,10 @@ func TestLegacyForms_AgentFlag_PassesThroughUnchanged(t *testing.T) {
 	}
 }
 
-// One entry token per launch: -f beside -l is refused.
+// One entry token per launch: -f beside -a is refused.
 func TestLegacyForms_FAndLTogether_Refused(t *testing.T) {
 	t.Setenv("CLAUDE_PROJECT_DIR", t.TempDir())
-	if _, err := parseLauncherEntry([]string{"-f", "-l"}); err == nil {
-		t.Error("-f beside -l was accepted")
+	if _, err := parseLauncherEntry([]string{"-f", "-a"}); err == nil {
+		t.Error("-f beside -a was accepted")
 	}
 }

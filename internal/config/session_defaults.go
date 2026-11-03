@@ -8,7 +8,7 @@ import (
 // session_defaults.go — launch defaults for factory sessions (card t1808,
 // operator per-role defaults).
 //
-// Each launcher's leader (-f) and lane (-l) session starts from a model and
+// Each launcher's leader (-f) and lane (-a) session starts from a model and
 // effort pair. In `default` mode the shipped table below applies; in `custom`
 // mode the llm.defaults.sessions cells in llm.yaml apply (an empty cell falls
 // back to the shipped value), from the next launch on. The values travel only
@@ -56,7 +56,7 @@ type SessionRolePair struct {
 // vocabulary. The GLM model is the Claude slot alias (opus serves
 // llm.glm.models.high, sonnet medium) and its effort is translated to a z.ai
 // reasoning state at launch through the llm.glm.effort table (high -> max,
-// medium -> high), so `glm -f` reaches z.ai at max and `glm -l` at high.
+// medium -> high), so `glm -f` reaches z.ai at max and `glm -a` at high.
 func defaultSessionDefaults() SessionDefaults {
 	return SessionDefaults{
 		Mode: SessionDefaultsModeDefault,

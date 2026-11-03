@@ -279,7 +279,7 @@ const (
 	// lane count from the launcher entry point to the block-cap inject and
 	// the SessionStart hook. It is set on BOTH the factory leader and every
 	// lane — the leader carries the run's declared fan-out size N, and a lane
-	// started with `-l` carries 0 (the count-less form). A non-empty value is
+	// started with `-a` carries 0 (the count-less form). A non-empty value is
 	// what marks a session a factory session; the value is the fan-out size N.
 	//
 	// A factory run reuses EnvFactoryRunID and EnvFactoryLeadAddr on the

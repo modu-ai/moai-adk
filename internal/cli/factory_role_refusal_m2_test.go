@@ -47,7 +47,7 @@ func TestFactoryEntryRefusesLegacyRoleTokens(t *testing.T) {
 				t.Fatalf("parseLauncherEntry(%v) = nil error, want the legacy-token refusal", c.args)
 			}
 			msg := err.Error()
-			if !strings.Contains(msg, "-l") {
+			if !strings.Contains(msg, "-a") {
 				t.Errorf("refusal %q does not name the canonical -l", msg)
 			}
 			if n := strings.Count(msg, "\n"); n != 0 {
@@ -68,10 +68,10 @@ func TestFactoryEntryRefusesLegacyLaneLabels(t *testing.T) {
 		args []string
 		want string
 	}{
-		{name: "-f worker-2", args: []string{"-f", "worker-2"}, want: "-l"},
-		{name: "-f Worker-4", args: []string{"-f", "Worker-4"}, want: "-l"},
-		{name: "-f=agent-5", args: []string{"-f=agent-5"}, want: "-l"},
-		{name: "--factory AGENT-6", args: []string{"--factory", "AGENT-6"}, want: "-l"},
+		{name: "-f worker-2", args: []string{"-f", "worker-2"}, want: "-a"},
+		{name: "-f Worker-4", args: []string{"-f", "Worker-4"}, want: "-a"},
+		{name: "-f=agent-5", args: []string{"-f=agent-5"}, want: "-a"},
+		{name: "--factory AGENT-6", args: []string{"--factory", "AGENT-6"}, want: "-a"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -203,11 +203,11 @@ func TestRunCCRefusesLegacySpellingsNothingWritten(t *testing.T) {
 		args []string
 		want []string
 	}{
-		{name: "-f worker", args: []string{"-f", "worker"}, want: []string{"-l"}},
-		{name: "-f agent", args: []string{"-f", "agent"}, want: []string{"-l"}},
-		{name: "-f WORKER", args: []string{"-f", "WORKER"}, want: []string{"-l"}},
-		{name: "-f worker-2", args: []string{"-f", "worker-2"}, want: []string{"-l"}},
-		{name: "-f Worker-4", args: []string{"-f", "Worker-4"}, want: []string{"-l"}},
+		{name: "-f worker", args: []string{"-f", "worker"}, want: []string{"-a"}},
+		{name: "-f agent", args: []string{"-f", "agent"}, want: []string{"-a"}},
+		{name: "-f WORKER", args: []string{"-f", "WORKER"}, want: []string{"-a"}},
+		{name: "-f worker-2", args: []string{"-f", "worker-2"}, want: []string{"-a"}},
+		{name: "-f Worker-4", args: []string{"-f", "Worker-4"}, want: []string{"-a"}},
 		{name: "-f --name agent-5", args: []string{"-f", "--name", "agent-5"}, want: []string{"lane-5"}},
 		{name: "--name lead", args: []string{"--name", "lead"}, want: []string{"leader"}},
 		{name: "--name lead-7", args: []string{"--name", "lead-7"}, want: []string{"leader-7"}},
@@ -311,7 +311,7 @@ func TestRunCCFactoriesEntryWritesLane1(t *testing.T) {
 	buf := new(bytes.Buffer)
 	ccCmd.SetOut(buf)
 	ccCmd.SetErr(buf)
-	if err := runCC(ccCmd, []string{"-l"}); err != nil {
+	if err := runCC(ccCmd, []string{"-a"}); err != nil {
 		t.Fatalf("runCC(-l): %v", err)
 	}
 	if cap.worker != "lane-1" {
@@ -369,7 +369,7 @@ func TestRunCCLiveLegacyClaimRefusedThroughCLI(t *testing.T) {
 	buf := new(bytes.Buffer)
 	ccCmd.SetOut(buf)
 	ccCmd.SetErr(buf)
-	err := runCC(ccCmd, []string{"-l"})
+	err := runCC(ccCmd, []string{"-a"})
 	if err == nil {
 		t.Fatal("runCC(-l) with a live legacy claim = nil error, want the refusal")
 	}
@@ -406,7 +406,7 @@ func TestRunCCDeadLegacyClaimProceedsThroughCLI(t *testing.T) {
 	buf := new(bytes.Buffer)
 	ccCmd.SetOut(buf)
 	ccCmd.SetErr(buf)
-	if err := runCC(ccCmd, []string{"-l"}); err != nil {
+	if err := runCC(ccCmd, []string{"-a"}); err != nil {
 		t.Fatalf("runCC(-l) with a dead legacy claim: %v", err)
 	}
 	if cap.worker != "lane-1" {
@@ -415,7 +415,7 @@ func TestRunCCDeadLegacyClaimProceedsThroughCLI(t *testing.T) {
 }
 
 // TestFactoryFlagUsageErrorVocabulary (AC-RNC-016, usage-error text): the -f
-// usage error contains lane and leader, no worker, and no \blead\b match.
+// usage error contains agent and leader, no worker, and no \blead\b match.
 func TestFactoryFlagUsageErrorVocabulary(t *testing.T) {
 	t.Parallel()
 
@@ -424,8 +424,8 @@ func TestFactoryFlagUsageErrorVocabulary(t *testing.T) {
 		t.Fatal("want the usage error")
 	}
 	msg := err.Error()
-	if !strings.Contains(msg, "lane") || !strings.Contains(msg, "leader") {
-		t.Errorf("usage error %q must contain lane and leader", msg)
+	if !strings.Contains(msg, "agent") || !strings.Contains(msg, "leader") {
+		t.Errorf("usage error %q must contain agent and leader", msg)
 	}
 	if strings.Contains(msg, "worker") {
 		t.Errorf("usage error %q still mentions worker", msg)
@@ -436,7 +436,7 @@ func TestFactoryFlagUsageErrorVocabulary(t *testing.T) {
 }
 
 // TestLauncherHelpLaneVocabulary (AC-RNC-016, help text): the cc and glm help
-// surfaces teach -l / --lane and neither -f worker nor -f agent.
+// surfaces teach -a and neither -f worker nor -f agent.
 func TestLauncherHelpLaneVocabulary(t *testing.T) {
 	t.Parallel()
 
@@ -444,7 +444,7 @@ func TestLauncherHelpLaneVocabulary(t *testing.T) {
 		"cc":  ccCmd.Use + "\n" + ccCmd.Long,
 		"glm": glmCmd.Use + "\n" + glmCmd.Long,
 	} {
-		for _, want := range []string{"-l", "--lane"} {
+		for _, want := range []string{"-a"} {
 			if !strings.Contains(text, want) {
 				t.Errorf("%s help missing %q", name, want)
 			}
