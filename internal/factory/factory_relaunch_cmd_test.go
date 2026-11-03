@@ -27,15 +27,15 @@ func TestRelaunchCommandLineAndLaunchLine(t *testing.T) {
 		wantLine   string
 		wantLaunch string
 	}{
-		// The launch line is the lane entry `-l` (SPEC-LAUNCHER-ENTRY-FLAGS-001):
+		// The launch line is the agent entry `-a` on cc and glm, `-l` on codex (SPEC-LAUNCHER-ENTRY-FLAGS-001):
 		// it takes no argument, so a pinned Lane label prints in the verb line
 		// but does not travel into the launch.
-		{"cc bare", RelaunchCommand{Provider: "cc"}, "moai factory relaunch --provider cc", "moai cc -l"},
-		{"cc lane", RelaunchCommand{Provider: "cc", Lane: "lane-3"}, "moai factory relaunch --provider cc --lane lane-3", "moai cc -l"},
-		{"glm lane run", RelaunchCommand{Provider: "glm", Lane: "lane-3", Run: "runA"}, "moai factory relaunch --provider glm --lane lane-3 --run runA", "moai glm -l --factory-run runA"},
-		{"cc run", RelaunchCommand{Provider: "cc", Run: "runA"}, "moai factory relaunch --provider cc --run runA", "moai cc -l --factory-run runA"},
-		{"cc from-run", RelaunchCommand{Provider: "cc", FromRun: "runX"}, "moai factory relaunch --provider cc --from-run runX", "moai cc -l"},
-		{"flag order", RelaunchCommand{Provider: "cc", Lane: "lane-3", Run: "runA", FromRun: "runX"}, "moai factory relaunch --provider cc --lane lane-3 --run runA --from-run runX", "moai cc -l --factory-run runA"},
+		{"cc bare", RelaunchCommand{Provider: "cc"}, "moai factory relaunch --provider cc", "moai cc -a"},
+		{"cc lane", RelaunchCommand{Provider: "cc", Lane: "lane-3"}, "moai factory relaunch --provider cc --lane lane-3", "moai cc -a"},
+		{"glm lane run", RelaunchCommand{Provider: "glm", Lane: "lane-3", Run: "runA"}, "moai factory relaunch --provider glm --lane lane-3 --run runA", "moai glm -a --factory-run runA"},
+		{"cc run", RelaunchCommand{Provider: "cc", Run: "runA"}, "moai factory relaunch --provider cc --run runA", "moai cc -a --factory-run runA"},
+		{"cc from-run", RelaunchCommand{Provider: "cc", FromRun: "runX"}, "moai factory relaunch --provider cc --from-run runX", "moai cc -a"},
+		{"flag order", RelaunchCommand{Provider: "cc", Lane: "lane-3", Run: "runA", FromRun: "runX"}, "moai factory relaunch --provider cc --lane lane-3 --run runA --from-run runX", "moai cc -a --factory-run runA"},
 		// REQ-SRH-016: the codex entry takes no lane pin and no run flag.
 		{"codex drops lane and run", RelaunchCommand{Provider: "codex", Lane: "lane-3", Run: "runA"}, "moai factory relaunch --provider codex", "moai codex -l"},
 		{"codex keeps from-run", RelaunchCommand{Provider: "codex", FromRun: "runX"}, "moai factory relaunch --provider codex --from-run runX", "moai codex -l"},

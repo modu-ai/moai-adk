@@ -1,0 +1,412 @@
+# Agentic Factory provider configuration schema -- DRAFT, fixture only.
+#
+# STATUS: DRAFT. Nothing reads this file at run time. It is the contract that
+# the Go reader and the runtime will consume; the keys named here are meant to
+# be stable and unambiguous. The reader change belongs to the settings-keys
+# worktree and is out of scope for the template work that created this file.
+#
+# Why a fixture and not a configuration section. The existing pattern for a new
+# section (the Jev consumer surface) adds its keys inside the shared
+# workflow.yaml section file and its decode types inside the shared config
+# types, and the loader then reads them. Both are shared registries, so adding
+# them here would edit files this work must not touch. The schema therefore
+# lives in this fixture, guarded by
+# internal/template/agentic_factory_provider_schema_test.go.
+#
+# Rules this schema states (each one is pinned by a test):
+#   1. Rejection, not repair. A value outside the allowed set or range is
+#      rejected with an error that names the key. It is never clamped, coerced,
+#      or replaced by a default, and there is no fallback provider.
+#   2. Resolution order for a limit or interval value:
+#        response_header > config_value > schema_default > UNKNOWN
+#      A response header that carries the quantity wins over any number written
+#      here. A value written by the operator wins over the schema default.
+#   3. UNKNOWN. When neither the configuration, nor a response header, nor a
+#      documented default supplies a value, the runtime treats the quantity as
+#      UNKNOWN and acts conservatively: it invents no number, borrows none from
+#      the other provider or from memory, and pauses mutating requests until a
+#      value is observed or the operator supplies one.
+#   4. Documented defaults are not verified. Every documented default below
+#      carries the marker  status: uncollated. The values come from fetched
+#      documentation text that has NOT been compared against the primary source
+#      by the owner of this schema; they stay marked uncollated until someone
+#      does that comparison and records it. "provenance" says how each value
+#      reached this file.
+#   5. Number placement. Limit numbers live in this schema only. No template
+#      prose may state one (guarded by a test).
+
+schema_version: draft-1
+schema_status: DRAFT
+fetched: "2026-10-29"
+
+unknown_rule: >-
+  When neither the configuration, a response header, nor a documented default
+  supplies a value, the runtime treats the quantity as UNKNOWN and acts
+  conservatively: it invents no number, borrows none from the other provider,
+  and pauses mutating requests until a value is observed or the operator
+  supplies one.
+
+resolution_order:
+  - response_header
+  - config_value
+  - schema_default
+  - UNKNOWN
+
+# Keys already read by the committed reader in the settings-keys worktree. They
+# are listed so the draft stays consistent with that reader; this fixture does
+# not define them.
+existing_reader_keys:
+  - key: workflow.agentic_factory.browser.selected
+    type: string
+    allowed: [egolite, aside, chrome]
+    default: null
+    on_invalid: reject
+  - key: workflow.agentic_factory.codex.enabled
+    type: boolean
+    default: null
+    on_invalid: reject
+  - key: workflow.agentic_factory.pr_queue.wip_limit
+    type: integer
+    min: 1
+    default: null
+    on_invalid: reject
+
+keys:
+  # ---- provider selection (PROPOSED) --------------------------------------
+  - key: workflow.agentic_factory.provider.selected
+    type: string
+    allowed: [github, gitlab]
+    default: null
+    on_invalid: reject
+    status: proposed
+    note: >-
+      Same rejection style as browser.selected. Unset means no provider is
+      selected and nothing is inferred from the remote URL; an invalid value
+      such as bitbucket or GitHub is an error, with no fallback.
+
+  # ---- GitHub rate limits -------------------------------------------------
+  - key: workflow.agentic_factory.github.rate_limit.primary_unauthenticated_per_hour
+    provider: github
+    type: integer
+    min: 1
+    default: 60
+    unit: requests_per_hour
+    on_out_of_range: reject
+    when_unresolved: UNKNOWN
+    source_urls:
+      - https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api
+    fetched: "2026-10-29"
+    status: uncollated
+    provenance: scratchpad-webfetch-summary
+
+  - key: workflow.agentic_factory.github.rate_limit.primary_authenticated_user_per_hour
+    provider: github
+    type: integer
+    min: 1
+    default: 5000
+    unit: requests_per_hour
+    on_out_of_range: reject
+    when_unresolved: UNKNOWN
+    source_urls:
+      - https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api
+    fetched: "2026-10-29"
+    status: uncollated
+    provenance: scratchpad-webfetch-summary
+    note: Higher limits exist for some organisation-owned apps; the x-ratelimit-limit response header wins.
+
+  - key: workflow.agentic_factory.github.rate_limit.primary_actions_token_per_repo_per_hour
+    provider: github
+    type: integer
+    min: 1
+    default: 1000
+    unit: requests_per_hour_per_repository
+    on_out_of_range: reject
+    when_unresolved: UNKNOWN
+    source_urls:
+      - https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api
+    fetched: "2026-10-29"
+    status: uncollated
+    provenance: scratchpad-webfetch-summary
+
+  - key: workflow.agentic_factory.github.rate_limit.secondary_concurrent_requests_ceiling
+    provider: github
+    type: integer
+    min: 1
+    default: 100
+    unit: concurrent_requests
+    on_out_of_range: reject
+    when_unresolved: UNKNOWN
+    source_urls:
+      - https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api
+    fetched: "2026-10-29"
+    status: uncollated
+    provenance: scratchpad-webfetch-summary
+    note: A ceiling, not a target. The recommended concurrency is the separate key below.
+
+  - key: workflow.agentic_factory.github.rate_limit.recommended_concurrent_requests
+    provider: github
+    type: integer
+    min: 1
+    default: 1
+    unit: concurrent_requests
+    on_out_of_range: reject
+    when_unresolved: UNKNOWN
+    source_urls:
+      - https://docs.github.com/en/rest/using-the-rest-api/best-practices-for-using-the-rest-api
+    fetched: "2026-10-29"
+    status: uncollated
+    provenance: scratchpad-webfetch-summary
+    note: The documentation says to make requests serially instead of concurrently; 1 is that statement expressed as a count.
+
+  - key: workflow.agentic_factory.github.rate_limit.secondary_rest_points_per_minute
+    provider: github
+    type: integer
+    min: 1
+    default: 900
+    unit: points_per_minute
+    on_out_of_range: reject
+    when_unresolved: UNKNOWN
+    source_urls:
+      - https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api
+    fetched: "2026-10-29"
+    status: uncollated
+    provenance: scratchpad-webfetch-summary
+
+  - key: workflow.agentic_factory.github.rate_limit.secondary_cpu_seconds_per_60s
+    provider: github
+    type: integer
+    min: 1
+    default: 90
+    unit: cpu_seconds_per_60_real_seconds
+    on_out_of_range: reject
+    when_unresolved: UNKNOWN
+    source_urls:
+      - https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api
+    fetched: "2026-10-29"
+    status: uncollated
+    provenance: scratchpad-webfetch-summary
+
+  - key: workflow.agentic_factory.github.rate_limit.secondary_content_requests_per_minute
+    provider: github
+    type: integer
+    min: 1
+    default: 80
+    unit: content_generating_requests_per_minute
+    on_out_of_range: reject
+    when_unresolved: UNKNOWN
+    source_urls:
+      - https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api
+    fetched: "2026-10-29"
+    status: uncollated
+    provenance: primary-page-text-read-while-authoring
+    note: Some endpoints have lower content-creation limits than this general figure.
+
+  - key: workflow.agentic_factory.github.rate_limit.secondary_content_requests_per_hour
+    provider: github
+    type: integer
+    min: 1
+    default: 500
+    unit: content_generating_requests_per_hour
+    on_out_of_range: reject
+    when_unresolved: UNKNOWN
+    source_urls:
+      - https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api
+    fetched: "2026-10-29"
+    status: uncollated
+    provenance: primary-page-text-read-while-authoring
+
+  - key: workflow.agentic_factory.github.rate_limit.min_seconds_between_mutating_requests
+    provider: github
+    type: integer
+    min: 1
+    default: 1
+    unit: seconds
+    on_out_of_range: reject
+    when_unresolved: UNKNOWN
+    source_urls:
+      - https://docs.github.com/en/rest/using-the-rest-api/best-practices-for-using-the-rest-api
+    fetched: "2026-10-29"
+    status: uncollated
+    provenance: scratchpad-webfetch-summary
+    note: The documented minimum pause between POST, PATCH, PUT and DELETE requests. A smaller configured value is rejected, not raised.
+
+  - key: workflow.agentic_factory.github.rate_limit.secondary_unclassified_min_wait_seconds
+    provider: github
+    type: integer
+    min: 60
+    default: 60
+    unit: seconds
+    on_out_of_range: reject
+    when_unresolved: UNKNOWN
+    source_urls:
+      - https://docs.github.com/en/rest/using-the-rest-api/best-practices-for-using-the-rest-api
+      - https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api
+    fetched: "2026-10-29"
+    status: uncollated
+    provenance: scratchpad-webfetch-summary
+    note: Minimum wait when a rate-limit refusal carries neither a retry-after nor an exhausted x-ratelimit-remaining header. A smaller configured value is rejected.
+
+  - key: workflow.agentic_factory.github.rate_limit.retry_backoff_multiplier
+    provider: github
+    type: integer
+    min: 2
+    default: null
+    unit: multiplier
+    on_out_of_range: reject
+    when_unresolved: UNKNOWN
+    source_urls:
+      - https://docs.github.com/en/rest/using-the-rest-api/best-practices-for-using-the-rest-api
+    fetched: "2026-10-29"
+    status: no-documented-value
+    note: The documentation says to wait an exponentially increasing time but states no multiplier. No number is invented.
+
+  - key: workflow.agentic_factory.github.rate_limit.retry_max_attempts
+    provider: github
+    type: integer
+    min: 1
+    default: null
+    unit: attempts
+    on_out_of_range: reject
+    when_unresolved: UNKNOWN
+    source_urls:
+      - https://docs.github.com/en/rest/using-the-rest-api/best-practices-for-using-the-rest-api
+    fetched: "2026-10-29"
+    status: no-documented-value
+    note: The documentation says to give up after a specific number of retries but states no number. No number is invented.
+
+  - key: workflow.agentic_factory.github.rate_limit.poll_interval_seconds
+    provider: github
+    type: integer
+    min: 1
+    default: null
+    unit: seconds
+    on_out_of_range: reject
+    when_unresolved: UNKNOWN
+    source_urls:
+      - https://docs.github.com/en/rest/using-the-rest-api/best-practices-for-using-the-rest-api
+    fetched: "2026-10-29"
+    status: no-documented-value
+    note: The documentation says to wait at least the x-poll-interval response header when one is present. The header is the supplier; there is no documented default.
+
+  # ---- GitLab rate limits (GitLab.com only) ----------------------------------
+  # Self-managed and dedicated instances set their own limits: every key below
+  # resolves to UNKNOWN there unless the operator or a response header supplies
+  # a value. Plan-tier sustained and burst limits were documented as proposed and
+  # not yet in effect on the fetch date, so they are deliberately not defaulted.
+  - key: workflow.agentic_factory.gitlab.rate_limit.authenticated_api_per_user_per_minute
+    provider: gitlab
+    type: integer
+    min: 1
+    default: 2000
+    unit: requests_per_minute
+    applies_to: gitlab.com
+    on_out_of_range: reject
+    when_unresolved: UNKNOWN
+    source_urls:
+      - https://docs.gitlab.com/user/gitlab_com/rate_limits/
+    fetched: "2026-10-29"
+    status: uncollated
+    provenance: primary-page-text-read-while-authoring
+
+  - key: workflow.agentic_factory.gitlab.rate_limit.issue_creation_per_minute
+    provider: gitlab
+    type: integer
+    min: 1
+    default: 200
+    unit: requests_per_minute
+    applies_to: gitlab.com
+    on_out_of_range: reject
+    when_unresolved: UNKNOWN
+    source_urls:
+      - https://docs.gitlab.com/user/gitlab_com/rate_limits/
+    fetched: "2026-10-29"
+    status: uncollated
+    provenance: primary-page-text-read-while-authoring
+    note: The subject of the limit (user, project, instance) is not stated in the table row that was read.
+
+  - key: workflow.agentic_factory.gitlab.rate_limit.note_creation_per_minute
+    provider: gitlab
+    type: integer
+    min: 1
+    default: 60
+    unit: requests_per_minute
+    applies_to: gitlab.com
+    on_out_of_range: reject
+    when_unresolved: UNKNOWN
+    source_urls:
+      - https://docs.gitlab.com/user/gitlab_com/rate_limits/
+    fetched: "2026-10-29"
+    status: uncollated
+    provenance: primary-page-text-read-while-authoring
+    note: Applies to notes on issues and merge requests, which is where comment templates are posted. The subject of the limit is not stated in the table row that was read.
+
+  - key: workflow.agentic_factory.gitlab.rate_limit.unauthenticated_per_ip_per_minute
+    provider: gitlab
+    type: integer
+    min: 1
+    default: 500
+    unit: requests_per_minute
+    applies_to: gitlab.com
+    on_out_of_range: reject
+    when_unresolved: UNKNOWN
+    source_urls:
+      - https://docs.gitlab.com/user/gitlab_com/rate_limits/
+    fetched: "2026-10-29"
+    status: uncollated
+    provenance: primary-page-text-read-while-authoring
+
+  - key: workflow.agentic_factory.gitlab.rate_limit.min_seconds_between_mutating_requests
+    provider: gitlab
+    type: integer
+    min: 1
+    default: null
+    unit: seconds
+    on_out_of_range: reject
+    when_unresolved: UNKNOWN
+    source_urls:
+      - https://docs.gitlab.com/user/gitlab_com/rate_limits/
+    fetched: "2026-10-29"
+    status: no-documented-value
+    note: The GitLab pages read state no pause between mutating requests. The GitHub figure is NOT borrowed.
+
+  - key: workflow.agentic_factory.gitlab.rate_limit.retry_backoff_multiplier
+    provider: gitlab
+    type: integer
+    min: 2
+    default: null
+    unit: multiplier
+    on_out_of_range: reject
+    when_unresolved: UNKNOWN
+    source_urls:
+      - https://docs.gitlab.com/user/gitlab_com/rate_limits/
+    fetched: "2026-10-29"
+    status: no-documented-value
+    note: The documentation recommends exponential backoff when throttling continues but states no multiplier.
+
+  - key: workflow.agentic_factory.gitlab.rate_limit.retry_max_attempts
+    provider: gitlab
+    type: integer
+    min: 1
+    default: null
+    unit: attempts
+    on_out_of_range: reject
+    when_unresolved: UNKNOWN
+    source_urls:
+      - https://docs.gitlab.com/user/gitlab_com/rate_limits/
+    fetched: "2026-10-29"
+    status: no-documented-value
+    note: No retry count is stated. No number is invented.
+
+  - key: workflow.agentic_factory.gitlab.rate_limit.poll_interval_seconds
+    provider: gitlab
+    type: integer
+    min: 1
+    default: null
+    unit: seconds
+    on_out_of_range: reject
+    when_unresolved: UNKNOWN
+    source_urls:
+      - https://docs.gitlab.com/user/gitlab_com/rate_limits/
+    fetched: "2026-10-29"
+    status: no-documented-value
+    note: No polling interval is stated in the pages read.

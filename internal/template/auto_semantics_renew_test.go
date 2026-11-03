@@ -77,7 +77,7 @@ func armParagraph(t *testing.T, doc string) string {
 func TestAutoSemanticsArmFollowsRenewInterval(t *testing.T) {
 	t.Run("text", func(t *testing.T) {
 		arm := armParagraph(t, embeddedText(t, autoSemanticsPath))
-		for _, want := range []string{"*/N * * * *", "renew_interval", "no two consecutive scheduled wakes are further apart than one renewal period"} {
+		for _, want := range []string{"ScheduleWakeup", "renew_interval", "relative to now", "idle: backlog empty"} {
 			if !strings.Contains(arm, want) {
 				t.Errorf("the Arm bullet lacks %q", want)
 			}

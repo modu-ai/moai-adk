@@ -1,0 +1,40 @@
+# PROPOSED labels for the Agentic Factory. Not applied, and not read by label-sync.
+#
+# Decision: these are kept in a separate manifest and are NOT added to
+# .github/labels.yml. The label-sync workflow reads only .github/labels.yml and
+# runs on every push that touches it, so extending that file would create labels
+# in a repository as a side effect of a template update. This file is inert: no
+# workflow, hook or command reads it.
+#
+# Applying any of these needs explicit approval of an exact diff (names, colours,
+# descriptions, target repository), a check against the live label list for
+# synonyms, and a read-back afterwards. Existing labels are
+# never deleted, renamed or recoloured.
+# No status label is proposed: runtime state is not a label. To adopt, copy the
+# approved entries into .github/labels.yml in the project.
+#
+# Colours are achromatic on purpose. Each entry is a candidate, not a decision.
+
+- name: "type:epic"
+  color: "595959"
+  description: "Parent Issue that tracks a goal split into child Issues"
+
+- name: "area:agentic-factory"
+  color: "8c8c8c"
+  description: "Agentic Factory workflow and templates"
+
+- name: "agent:managed"
+  color: "bfbfbf"
+  description: "Discovery marker only; not ownership, approval or a lock"
+
+- name: "risk:low"
+  color: "d9d9d9"
+  description: "Optional: low risk. A label never replaces an approval"
+
+- name: "risk:medium"
+  color: "a6a6a6"
+  description: "Optional: medium risk. A label never replaces an approval"
+
+- name: "risk:high"
+  color: "737373"
+  description: "Optional: high risk. A label never replaces an approval"

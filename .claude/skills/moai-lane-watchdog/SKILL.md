@@ -123,14 +123,17 @@ and at an authority gate they fail closed.
 3. **Audit cross** — run one `moai` MCP audit tool (`codex_audit`,
    `glm_audit`, `claude_audit`, or `audit_multi`) for an independent second
    opinion. Positive → proceed per verdict. Negative → fail-closed: no
-   proceed; record + escalate to step 5. Tool absent → step 4. Inconclusive
+   proceed; record + treat as a gate boundary (doctrine §7). Tool absent → step 4. Inconclusive
    → record it, → step 4.
 4. **jev_ask** — only while `workflow.jev.enabled` is true; a bounded
    proceed / retry / wait judgment with repeatable, side-effect-free
    parameters; never for completion, merge, or queue outcomes. Gated off or
    unavailable → step 5 (fail-open by design).
-5. **Lead chat** — last resort. Record the explicit wait (§5 below), then
-   yield.
+5. **Self-judgment** — terminal. Decide from steps 1–4 and write the decision
+   record (§5 below) in the card's progress record, then proceed on the lane's
+   own authority; never proceed against evidence. The leader is reached only
+   at a gate boundary (a keep-set category or a cross-card conflict), never as
+   a judgment request (doctrine §6).
 
 Write a decision record naming whichever step resolved the judgment (§5
 below).
@@ -181,9 +184,9 @@ its work.
   message revives it as an ownerless writer
   (`cross-session-messaging.md` § Rules). Record which.
 - Deliverable absent and the evidence still moving (the delegate is working) →
-  explicit wait whose recheck point is the next cron fire.
+  explicit wait whose recheck point is the next scheduled wake.
 - Deliverable absent, no sign the delegate ended, and the evidence unchanged
-  across two consecutive fires → structured blocker naming the delegate, what
+  across two consecutive wakes → structured blocker naming the delegate, what
   was asked of it, and the evidence read; do not wait a third time.
 
 ## 4. Decision board protocol
@@ -243,4 +246,4 @@ Every iteration ends in exactly one of:
    evidence records, and the disk board.
 4. Verification is lane-local; no background load.
 5. Hook-independent: awaken-tick only; no hook surface. The scheduler that
-   fires the awaken is the lane's standing recheck cron (doctrine §5.1), armed at card intake and kept while the lane executes the card — this skill is its prompt, not its owner.
+   fires the awaken is the lane's self-paced wake (doctrine §5.1), first scheduled at card intake and re-scheduled at the end of each wake while the lane executes the card — this skill is its prompt, not its owner.

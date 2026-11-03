@@ -80,7 +80,8 @@ func runStopGoalHook(cmd *cobra.Command, _ []string) error {
 	// any error it degrades to command re-execution; correctness never depends
 	// on the optimization.
 	verdict, block, found := evaluateStopGoal(context.Background(), root, hookInput.SessionID,
-		realCmdRunner{}, &verify.Source{ProjectRoot: root}, cmd.ErrOrStderr())
+		realCmdRunner{}, &verify.Source{ProjectRoot: root},
+		stopGoalWaitProbe(hookInput.CWD, root, cmd.ErrOrStderr()), cmd.ErrOrStderr())
 	if !found {
 		// No armed goal (or a load error, fail-open) → no block.
 		return nil
@@ -111,7 +112,7 @@ func runStopGoalHook(cmd *cobra.Command, _ []string) error {
 // found is false when no goal is armed or the goal cannot be loaded (fail-open,
 // no block). The goal is persisted, and the at-exit verdict sidecar written,
 // exactly as the stop-goal hook always did.
-func evaluateStopGoal(ctx context.Context, root, sessionID string, runner goal.CmdRunner, snap goal.SnapshotSource, stderr io.Writer) (goal.Verdict, bool, bool) {
+func evaluateStopGoal(ctx context.Context, root, sessionID string, runner goal.CmdRunner, snap goal.SnapshotSource, validWait func() bool, stderr io.Writer) (goal.Verdict, bool, bool) {
 	g, err := goal.LoadGoal(root, sessionID)
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "stop-goal load: %v\n", err)
@@ -120,7 +121,7 @@ func evaluateStopGoal(ctx context.Context, root, sessionID string, runner goal.C
 	if g == nil {
 		return goal.Verdict{}, false, false
 	}
-	e := &goal.Eval{Runner: runner}
+	e := &goal.Eval{Runner: runner, ValidWait: validWait}
 	if snap != nil {
 		e.Snapshot = snap
 	}

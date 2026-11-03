@@ -191,8 +191,8 @@ func TestFactoryPRReadinessProbesTheOriginRef(t *testing.T) {
 		fcGit(t, repo, "update-ref", "-d", "refs/remotes/origin/main")
 		var out strings.Builder
 		run, err := factoryPRReadiness(&out, root, homestate.Card{CardID: "t9", WorktreePath: repo}, "lane-1", "WT-9", "main")
-		if err != nil {
-			t.Fatalf("readiness: %v", err)
+		if err == nil { // card t2013: the unverified base keeps the local fallback but refuses readiness
+			t.Fatalf("readiness against an unverified base returned no refusal")
 		}
 		if run.Develop != "main" {
 			t.Fatalf("triple target = %q, want the local fallback main", run.Develop)

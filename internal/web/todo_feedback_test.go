@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
 
@@ -34,21 +35,41 @@ func watchSeededTodo(t *testing.T) (string, *factory.BacklogStore, <-chan string
 		}
 		h.remove(ch)
 	})
-	ticker := time.NewTicker(350 * time.Millisecond)
-	defer ticker.Stop()
+	// Single-flight probe: write one probe, then wait for its outcome — the
+	// "config" event, or one debounce window plus margin with nothing — before
+	// the next write. A second write in flight could fire after the first event
+	// and leak into the caller's quiet assertions. After the first event, drain
+	// until one debounce window passes with nothing, so the tree is handed over
+	// quiet.
 	timeout := time.After(8 * time.Second)
-	for {
-		select {
-		case <-ticker.C:
-			if err := os.WriteFile(filepath.Join(control, "probe.yaml"), []byte("x: y"), 0600); err != nil {
-				t.Fatal(err)
-			}
-		case ev := <-ch:
-			if ev == "config" {
+	settle := debounce + 250*time.Millisecond
+	for n := 0; ; n++ {
+		if err := os.WriteFile(filepath.Join(control, "probe.yaml"), []byte("x: "+strconv.Itoa(n)), 0600); err != nil {
+			t.Fatal(err)
+		}
+		attempt := time.After(settle)
+	wait:
+		for {
+			select {
+			case ev := <-ch:
+				if ev != "config" {
+					continue
+				}
+				for drained := false; !drained; {
+					select {
+					case <-ch:
+					case <-time.After(settle):
+						drained = true
+					case <-timeout:
+						t.Fatal("existing-directory control did not go quiet")
+					}
+				}
 				return root, store, ch
+			case <-attempt:
+				break wait
+			case <-timeout:
+				t.Fatal("existing-directory control did not deliver")
 			}
-		case <-timeout:
-			t.Fatal("existing-directory control did not deliver")
 		}
 	}
 }
@@ -162,5 +183,20 @@ func TestTodoCreatedWALRefreshesOnlyWhenPopulated(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestWatchSeededTodoReturnsQuiet: a helper that hands over a watched tree must
+// hand it over quiet. The probe writes and the 250ms debounce overlap, so a probe
+// written just before the first "config" event can fire a second one right after
+// the helper returned — and the next assertion ("idle control emitted nothing")
+// reads it as a spurious refresh. The helper drains until one debounce window
+// passes with nothing.
+func TestWatchSeededTodoReturnsQuiet(t *testing.T) {
+	_, _, events := watchSeededTodo(t)
+	select {
+	case ev := <-events:
+		t.Fatalf("the helper handed over a tree that was not quiet: %s", ev)
+	case <-time.After(debounce + 150*time.Millisecond):
 	}
 }

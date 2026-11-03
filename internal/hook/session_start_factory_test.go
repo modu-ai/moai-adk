@@ -14,7 +14,7 @@ import (
 // `-f lane` / `-f lane-<n>` forms.
 func TestFactoryGuideNamesWorkerJoinInEveryLocale(t *testing.T) {
 	for lang, m := range factoryLocales {
-		for _, want := range []string{"`moai cc -l`", "`moai glm -l`", "`moai codex -l`"} {
+		for _, want := range []string{"`moai cc -a`", "`moai glm -a`", "`moai codex -l`"} {
 			if !strings.Contains(m.leaderManual, want) {
 				t.Errorf("%s leaderManual missing %q:\n%s", lang, want, m.leaderManual)
 			}
@@ -64,8 +64,8 @@ func TestFactoryLeadNoticeCarriesLaneLinesSocketAndEntryGuide(t *testing.T) {
 		// The lead is named by its bare role (t133): the run id lives in the
 		// header line above, not in the session name.
 		"named leader.",
-		"start a lane, enter `moai cc -l`",
-		"`moai glm -l`",
+		"start a lane, enter `moai cc -a`",
+		"`moai glm -a`",
 		"`moai codex -l`",
 		"`moai cc -f` starts a Claude factory leader",
 		"`moai glm -f` a GLM leader",
