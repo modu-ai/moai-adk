@@ -95,3 +95,24 @@
 - lane 독립 재검증(HEAD f722ee92c5): `go test -count=1 -v -run '^(TestBranchGuard.*|TestProtectedCommit.*|TestMatchProtectedCommitCommand.*)$' ./internal/hook/` ok 32 PASS/0 FAIL · `go test -count=1 -v -run '^TestFactoryCheckpoint' ./internal/cli/` ok 8 PASS/0 FAIL.
 - Gaps: (1) 수리 에이전트 1차 라운드에서 복합 셸 명령 2건이 가드에 거절돼 미실행·미변경(재실행 안 함); 2차는 Edit 도구와 단일 명령으로 진행. (2) 2차에서 에이전트가 자기 명령에 넣은 `;` 하나로 거절된 명령을 `;` 없이 재실행했다고 보고 — 형태 변경 재실행이므로 그 결과는 증거로 쓰지 않고 위 lane 재검증으로 대체. (3) `GIT_DIR=`·`--git-dir=` 형태는 수정 전에도 다른 검사로 거절됐으며 어느 검사인지 미추적. (4) 확인 델타 감사는 사용자 확인(hold 해제) 전까지 미실행 — 현재 HEAD에 유효한 독립 감사 없음. (5) card-review(codex_review)는 감사 승인 범위 밖이라 미실행(factory-dispatch "부재 사유 기록").
 - 후속: manager-spec — acceptance.md의 `TestLeaderReceiptGateSelfIssued` 1곳을 `TestLeaderReceiptGateIssuerIndependence`로, SPEC progress.md D16 장부 행 갱신. SPEC progress.md §E.4 `amendment_sync_commit_sha` 백필과 `sync_status` 첫 토큰 `complete` 정정은 확인 감사 PASS 뒤.
+
+- 임대 유지(R337): 기존 세션 크론 e416e057(`3-58/5 * * * *`, renew_interval 5분)이 `moai factory renew t2013 --json` 1회를 수행 중 — 새 크론 만들지 않음. 마지막 결과 renewed(만료 2026-11-02T21:00:17Z). 세션 전용(세션 종료 시 소멸), 7일 자동 만료.
+
+## sync 감사 3회차(확인) — FAIL 0.76, 카드 정지 (R349, 11-03)
+- 판정: .moai/reports/t2013/sync-audit-3.md, audited_sha 6cb0c11f325fdabbb9b80e1bfabf0df92c251ed0, Codex receipt rcpt-7ca077fcb8808436b4e45880(fail). 판정 파일 커밋 79218493e9(2·3회차 함께). F1~F4 해소, 새 Codex 지적 C1·C3 차단.
+- 정지: 리더 R349 — 수리 미착수, stage 전이·complete·PR·push 금지, 임대 갱신 중단(크론 e416e057 삭제). 원장 sync v10 그대로; 임대는 다음 renew 없이 만료 예정.
+- 수정 방향(기록만, 미착수):
+  - C1 internal/cli/factory_wait.go:35-37,250-261 — 착지 판정을 merged-local/merged-pr에 더해 그 이후 상태(pushed·ci-green·done)도 착지로 인정. 선행이 이미 그 상태일 때 대기를 기록하면 즉시 settle(또는 기록 거절)하도록 하고, `--next` 대기의 stop-goal 차단 해제가 영구화되지 않게 회귀 시험 추가(선행 상태별 표).
+  - C3 internal/cli/factory_release_route.go:248-262,294-322 — 빠른 필수 검사의 Go 감지를 "루트 .go 존재"가 아니라 변경 파일 목록(go.mod·go.sum·*.go)으로 판단해, go.mod/go.sum만 바뀐 카드도 lint·test를 돌리게. rc39 후보에 들어간 코드라 RC40 범위 판단 대상.
+  - 선택: C2 검사 뒤 카드 임대도 갱신, C4 lint 캐시 키에 golangci-lint 버전 포함, O1 worktree cwd의 `cd /wt && git -C /primary` 허용(기준점 동작) 검토.
+
+- 임대 (11-03 R370 착수 시점): `moai factory renew t2013 --json` → exit 1 `{"result":"refused-expired","expires_at":"2026-11-03T01:09:18.739596Z","detail":"card lease expired: card t2013 lease expired at 2026-11-03T01:09:18.739596Z"}`. 재시도·재임대 하지 않음(리더 보충, 9259 (c) "repair/audit need no lease"). 수리·확인 감사는 임대 없이 진행, stage 전이·complete·push는 하지 않음.
+
+## R-lane note (11-03, lane-1, run tnwnit): guard refusal, stopped
+- Refused read-only command (not executed): `git log --oneline 6cfedbcf5e..HEAD; echo ---; git grep -nE 'ResolveOperatorWaits|factoryResolveOperatorWait|--resolve' -- '*_test.go' | head; echo ---; git grep -nE 'eval' -- internal/hook/branch_guard.go | head -5`
+- Refusal text: "This session is isolated in the worktree .../.moai/worktrees/t2013, but this command runs a string through eval, which can't be verified to stay inside the worktree. Refusing to run it ... Run git directly with literal arguments from .../t2013."
+- Per leader boundary: not re-run in another shape; stopped. Gap: commit history since 6cfedbcf5e and presence of K1 fix/K3 tests unobserved. Uncommitted K3 repair (factory_wait.go, card_wait.go, this file) preserved as-is, not yet committed.
+
+## 재임대·커밋 재개 (11-03, 리더 결정판 card:t2013, lane-1)
+- t2013 임대 만료(run tnwnit, 03:55:31Z) 원인: 리더 보류 지시(임대 갱신 중단 허용)에 따른 것, lane의 임의 방치 아님. 리더 결정판 뒤 동일 owner(lane-1) 재임대 `moai factory next --card t2013 --run tnwnit` 1회: exit 0, 출력 `t2013 stage=sync worktree=t2013` (open PR 조회 불가 노트 포함, 링크 칸 비움).
+- 시작 상태: HEAD dd5a34e6c9, dirty 3개(progress.md, internal/cli/factory_wait.go, internal/homestate/card_wait.go). K1 RED 6d81e09d00/GREEN 0a377bf398 커밋됨, K3 RED dd5a34e6c9 커밋됨, K3 GREEN(--resolve)만 미커밋이었음.
