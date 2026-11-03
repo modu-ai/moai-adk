@@ -8,10 +8,13 @@ package graph
 // VerdictClass — that says whether a non-fresh layer should FAIL the check
 // (block) or only be announced (warn). The one case that is announced instead
 // of failed is a codemaps count a pull request merely inherited from its base:
-// the cumulative count is at or over the threshold, but the change under
-// judgment contributed fewer described-worthy files than the threshold, and
-// every other layer is fresh. Nothing about the threshold, the metric, or any
-// other layer changes, and a stamp-only refresh is not offered as a remedy.
+// the change left the codemaps stamp and body byte-identical to the first
+// parent, the base ALONE (cumulative count minus the change's own contribution)
+// already meets the threshold, and every other layer is fresh. A count the
+// change took over the line (crossed-by-change), one it put over the line by
+// itself (originated), and one whose stamp or body moved or could not be proven
+// unmoved (anchor-moved) all block. Nothing about the threshold, the metric, or
+// any other layer changes, and a stamp-only refresh is not offered as a remedy.
 
 const (
 	// VerdictClassBlock marks a non-fresh layer that fails the check (exit 1).
@@ -65,11 +68,15 @@ const (
 //     blocks — a fabricated 0 would read as the inheriting signature) and the
 //     BASE alone (Value - Contribution) is already at or over the threshold,
 //     i.e. the origin is "inherited";
+//   - the change left the codemaps stamp and body byte-identical to the first
+//     parent (CodemapsInputsStable is true; a symlink, an ignored file, or any
+//     input whose sameness cannot be proven leaves it nil or false);
 //   - every other layer is fresh.
 //
 // A push event, an unknown or empty event, a count this change took over the
-// line (crossed-by-change), and one this change alone put over it
-// (originated) all block.
+// line (crossed-by-change), one this change alone put over it (originated),
+// and one whose measurement window moved or could not be proven unmoved
+// (anchor-moved) all block.
 func (r *CheckResult) ClassifyVerdicts(event, inheritedPolicy string, th Thresholds) {
 	nonFresh := 0
 	for i := range r.Layers {

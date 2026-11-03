@@ -91,12 +91,15 @@ type LayerReport struct {
 	// (check_policy.go).
 	VerdictClass string `json:"verdict_class,omitempty"`
 	// DriftOrigin states where a stale codemaps count came from: inherited,
-	// crossed-by-change, or originated (see check_policy.go). Empty when the
-	// contribution is unmeasured or the layer is not stale codemaps.
+	// crossed-by-change, originated, or anchor-moved (the change moved the
+	// codemaps stamp or body, or that could not be ruled out; see
+	// check_policy.go). Only inherited can warn. Empty when the contribution is
+	// unmeasured or the layer is not stale codemaps.
 	DriftOrigin string `json:"drift_origin,omitempty"`
 	// CodemapsInputsStable is true only when the codemaps body AND its
 	// provenance stamp are byte-for-byte what the first parent carried (nothing
-	// tracked changed and nothing untracked sits under the codemaps directory).
+	// tracked changed, nothing untracked or ignored sits under the codemaps
+	// directory, no entry there is a link, and the stamp equals the base blob).
 	// It is the premise that makes Value - Contribution a statement about the
 	// BASE: both counts share one anchor only while the stamp and body did not
 	// move. nil means it was not measured; that, like false, is never inherited.
