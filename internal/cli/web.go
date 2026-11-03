@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/ledger"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/monitor/flow"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/profile"
@@ -34,6 +35,30 @@ var webRunFn = web.Run
 // fingerprint is classified by homestate's process identity, so a live holder reads
 // Alive, a reused pid Dead, and only a probe that cannot tell reads Unknown.
 func webFlowProbe() flow.Probe { return flow.ProcessProbe(homestate.ProbeProcessIdentity) }
+
+// openWebLedger opens the project ledger `moai af` uses (afLedgerPath) for the board's read side. A ledger file that
+// does not exist, or cannot be opened, yields a nil reader (the board shows "not provided") and never creates a file or
+// fails startup. The returned func closes the ledger and is always safe to call.
+func openWebLedger(ctx context.Context) (ledger.Reader, func()) {
+	noop := func() {}
+	path, err := afLedgerPath("")
+	if err != nil {
+		return nil, noop
+	}
+	if _, err := os.Stat(path); err != nil {
+		return nil, noop
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	openCtx, cancel := context.WithTimeout(ctx, afOpTimeout)
+	defer cancel()
+	st, err := ledger.Open(openCtx, path)
+	if err != nil {
+		return nil, noop
+	}
+	return st, func() { _ = st.Close() }
+}
 
 // newWebCmd constructs the `web` subcommand. Factory form (mirrors
 // newNewCmd/newCleanCmd) so tests can build an isolated command instance.
@@ -149,10 +174,14 @@ func runWeb(cmd *cobra.Command, _ []string) (err error) {
 		emitWorktreeAdvisory(cmd.OutOrStdout(), projectRoot)
 	}
 
+	boardLedger, closeLedger := openWebLedger(cmd.Context())
+	defer closeLedger()
+
 	return webRunFn(cmd.Context(), web.Config{
 		Port:        webPort,
 		NoOpen:      webNoOpen,
 		ProjectRoot: projectRoot,
+		Ledger:      boardLedger,
 		FlowProbe:   webFlowProbe(),
 		// Project-scoped read (SPEC-PROFILE-MEMORY-001 REQ-PM-024) to match the
 		// project-scoped write wired in web.newApp. CLAUDE_CONFIG_DIR still wins
