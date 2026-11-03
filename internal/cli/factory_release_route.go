@@ -24,6 +24,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -241,6 +242,50 @@ func factoryFastCheck(ctx context.Context, out io.Writer, cardTree, releaseTip s
 		}
 	}
 	return key, "", nil
+}
+
+// factoryCheckLeaseRenewEvery overrides the period at which the card lease is
+// renewed while the fast check runs; zero means the configured
+// workflow.factory_lease.renew_interval. Tests shorten it.
+var factoryCheckLeaseRenewEvery time.Duration
+
+// factoryFastCheckKeepingLease runs factoryFastCheck while renewing the lane's
+// card lease every `every` through factoryRenewCard, the one renewal
+// implementation: a lapsed lease cannot be renewed afterwards, and the check may
+// outlast it. One more renewal follows the check so the merge step starts with a
+// full lease. leaseErr is the first renewal failure; it is only meaningful when
+// the check itself succeeded.
+func factoryFastCheckKeepingLease(ctx context.Context, out io.Writer, root, runID, cardID, lane string, every time.Duration, cardTree, releaseTip string) (key, tail string, checkErr, leaseErr error) {
+	renew := func() error {
+		_, err := factoryRenewCard(ctx, root, cardID, runID, lane)
+		return err
+	}
+	stop, finished := make(chan struct{}), make(chan struct{})
+	var renewErr error // written by the goroutine only, read after <-finished
+	go func() {
+		defer close(finished)
+		ticker := time.NewTicker(every)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-stop:
+				return
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				if renewErr = renew(); renewErr != nil {
+					return
+				}
+			}
+		}
+	}()
+	key, tail, checkErr = factoryFastCheck(ctx, out, cardTree, releaseTip)
+	close(stop)
+	<-finished
+	if renewErr == nil && checkErr == nil {
+		renewErr = renew()
+	}
+	return key, tail, checkErr, renewErr
 }
 
 // factoryFastCheckSteps names the check as argv steps (no shell, so no sh on

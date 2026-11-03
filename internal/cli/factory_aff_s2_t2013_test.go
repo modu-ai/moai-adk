@@ -27,6 +27,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/auditreceipt"
 	"github.com/modu-ai/moai-adk/internal/config"
@@ -105,6 +106,12 @@ func affs2New(t *testing.T, o affs2Opts) affs2Fix {
 	t.Helper()
 	sdClearLaneEnv(t)
 	root, store := fcFixture(t)
+	// The merge step reads the real clock for the card lease, so the lease
+	// renewals complete performs while the check runs must write real time too
+	// (fcFixture pins the factory clock to a past date).
+	prevNow := factoryCardNow
+	factoryCardNow = time.Now
+	t.Cleanup(func() { factoryCardNow = prevNow })
 	t.Setenv("CLAUDE_PROJECT_DIR", root)
 	fcQueue(t, store, factory.BacklogStatePicked)
 	f := affs2Fix{root: root, ghCalls: affs2NoGH(t)}
