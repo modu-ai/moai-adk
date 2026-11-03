@@ -590,12 +590,43 @@ func isSoleGitInvocation(after string) bool {
 		!strings.Contains(after, "$(")
 }
 
+// anyCdTargetPattern captures the ABSOLUTE path of every `cd <abs>` command word
+// (at the start or after whitespace or a separator). Only unquoted words count:
+// it runs on the quote-collapsed command, so a quoted span is data.
+var anyCdTargetPattern = regexp.MustCompile(`(?:^|[\s;&|(])cd\s+(/[^\s;&|"'()<>]+)`)
+
+// cdPrimaryTarget reports whether any literal `cd <abs>` word in the command
+// names the primary checkout, returning that path. Paths the shell and git may
+// read differently (targetPathAgrees) are skipped, as are lookup errors: both
+// leave the caller on the hook-cwd judgment, so this can only add denials.
+// pushd, variable or quoted paths, and `git -C` are deliberately not scanned.
+func cdPrimaryTarget(command string) (string, bool) {
+	plain := substituteQuotedArguments(command)
+	for _, m := range anyCdTargetPattern.FindAllStringSubmatch(plain, -1) {
+		if !targetPathAgrees(m[1]) {
+			continue
+		}
+		if isPrimary, err := isPrimaryCheckout(m[1]); err == nil && isPrimary {
+			return m[1], true
+		}
+	}
+	return "", false
+}
+
 // primaryAtTargetOrCwd classifies the git context of the explicit target, and
 // when that lookup fails falls back to the hook cwd: a lookup failure on a
 // literal target is uncertainty about the target, not evidence the command is
 // safe, and the cwd judgment can only add denials.
-func primaryAtTargetOrCwd(target, hookCwd string) (cwd string, isPrimary bool, err error) {
+//
+// When no target was adopted, a literal `cd <abs>` word anywhere in the command
+// that names the primary checkout makes the command primary-judged whatever the
+// hook cwd is (cdPrimaryTarget): the verb can really land there, and the hook
+// cwd alone would let `cd <worktree> && cd <primary> && git commit` through.
+func primaryAtTargetOrCwd(target, hookCwd, command string) (cwd string, isPrimary bool, err error) {
 	if target == "" {
+		if p, ok := cdPrimaryTarget(command); ok {
+			return p, true, nil
+		}
 		isPrimary, err = isPrimaryCheckout(hookCwd)
 		return hookCwd, isPrimary, err
 	}
@@ -673,7 +704,7 @@ func checkProtectedCommit(input *HookInput, projectDir string, denyList []string
 	// Seam A: query the git context at the command's actual cwd — the same
 	// discriminant checkBranchState uses (see its comment for why the
 	// audit-log project dir must NOT feed this query).
-	gitContextCwd, isPrimary, err := primaryAtTargetOrCwd(target, resolveProjectRootFromInputOrEnv(input, "branch_guard"))
+	gitContextCwd, isPrimary, err := primaryAtTargetOrCwd(target, resolveProjectRootFromInputOrEnv(input, "branch_guard"), command)
 	if err != nil {
 		// Fail OPEN with advisory (REQ-2.3): uncertainty never denies.
 		appendBranchGuardAdvisory(input, projectDir, command, err, gitContextCwd)
@@ -1235,7 +1266,7 @@ func checkBranchState(input *HookInput, projectDir string) (decision string, rea
 	// dir. This is the one-line correction that fixes the worktree
 	// misclassification — isPrimaryCheckout stays a pure function of its
 	// argument; only which directory the caller asks it to query changes.
-	gitContextCwd, isPrimary, err := primaryAtTargetOrCwd(target, resolveProjectRootFromInputOrEnv(input, "branch_guard"))
+	gitContextCwd, isPrimary, err := primaryAtTargetOrCwd(target, resolveProjectRootFromInputOrEnv(input, "branch_guard"), command)
 	// W3 (SPEC-SESSION-ANCHOR-ATTR-001 REQ-SAA-007): this Seam A anchor read
 	// is one of the traced anchor decision points. One env lookup when
 	// MOAI_ANCHOR_TRACE is off (REQ-SAA-008); the audit-log project dir
