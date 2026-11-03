@@ -321,3 +321,105 @@ func TestGraphCheckPolicy_InvalidPolicyExitsTwo(t *testing.T) {
 		t.Fatalf("invalid policy must exit 2, got %d\n%s", code, errOut)
 	}
 }
+
+// symlinkedStampFixture is the N1 shape: the codemaps stamp is a tracked
+// symlink to a file OUTSIDE the codemaps directory. The BASE is fresh (the
+// target stamps c1, after 41 described files). The change under judgment is
+// docs-only but rewinds the symlink TARGET to c0, which git sees as a change
+// to a different path: the codemaps directory diff stays empty while the bytes
+// read through the link move the measurement window. It skips where symlinks
+// cannot be created.
+func symlinkedStampFixture(t *testing.T) string {
+	t.Helper()
+	root := newCheckCLIRepo(t)
+	c0 := checkFixtureGit(t, root, "rev-parse", "HEAD")
+	commitAgedFiles(t, root, 41)
+	c1 := checkFixtureGit(t, root, "rev-parse", "HEAD")
+
+	cmDir := filepath.Join(root, ".moai", "project", "codemaps")
+	if err := os.MkdirAll(cmDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	target := filepath.Join(root, "stamp-target.json")
+	if err := os.WriteFile(target, marshalCodemapsProvenance(t, root, c1), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cmDir, "modules.md"), []byte("# modules\n\ninternal/alpha/alpha.go\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(filepath.Join("..", "..", "..", "stamp-target.json"), filepath.Join(cmDir, "provenance.json")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	checkFixtureGit(t, root, "add", "--", "stamp-target.json", ".moai/project/codemaps")
+	checkFixtureGit(t, root, "commit", "-q", "-m", "codemaps with linked stamp")
+
+	if err := os.WriteFile(target, marshalCodemapsProvenance(t, root, c0), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "NOTES.md"), []byte("docs only\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	checkFixtureGit(t, root, "add", "--", "stamp-target.json", "NOTES.md")
+	checkFixtureGit(t, root, "commit", "-q", "-m", "docs + rewound linked stamp target")
+	restampExceptCodemaps(t, root, c0)
+	return root
+}
+
+// N1 RED: stability read from git path lists cannot see a rewound symlink
+// target; the stamp actually read is not what the first parent carried, so the
+// layer must block as anchor-moved.
+func TestGraphCheckPolicy_SymlinkedStampTargetRewoundBlocks(t *testing.T) {
+	root := symlinkedStampFixture(t)
+	t.Setenv("GITHUB_EVENT_NAME", "pull_request")
+	out, errOut, code := runGraphCheckPolicy(t, root, "--json")
+	if code != 1 {
+		t.Fatalf("a rewound symlinked stamp must exit 1, got %d\nstdout=%s\nstderr=%s", code, out, errOut)
+	}
+	if !strings.Contains(out, `"drift_origin": "anchor-moved"`) {
+		t.Errorf("origin must be anchor-moved:\n%s", out)
+	}
+}
+
+// ignoredStampFixture is the N1 variant where provenance.json is ignored by git:
+// it never shows in any path list, tracked or untracked, yet it is the stamp
+// that gets read. Its on-disk content points at c0.
+func ignoredStampFixture(t *testing.T) string {
+	t.Helper()
+	root := newCheckCLIRepo(t)
+	c0 := checkFixtureGit(t, root, "rev-parse", "HEAD")
+	commitAgedFiles(t, root, 41)
+
+	cmDir := filepath.Join(root, ".moai", "project", "codemaps")
+	if err := os.MkdirAll(cmDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, ".gitignore"), []byte(".moai/project/codemaps/provenance.json\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cmDir, "modules.md"), []byte("# modules\n\ninternal/alpha/alpha.go\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	checkFixtureGit(t, root, "add", "--", ".gitignore", ".moai/project/codemaps/modules.md")
+	checkFixtureGit(t, root, "commit", "-q", "-m", "codemaps body, ignored stamp")
+	if err := os.WriteFile(filepath.Join(root, "NOTES.md"), []byte("docs only\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	checkFixtureGit(t, root, "add", "--", "NOTES.md")
+	checkFixtureGit(t, root, "commit", "-q", "-m", "docs only")
+	restampExceptCodemaps(t, root, c0)
+	return root
+}
+
+// N1 RED: an ignored stamp cannot be compared with the first parent at all, so
+// sameness is unprovable and the layer must block as anchor-moved.
+func TestGraphCheckPolicy_IgnoredStampBlocks(t *testing.T) {
+	root := ignoredStampFixture(t)
+	t.Setenv("GITHUB_EVENT_NAME", "pull_request")
+	out, errOut, code := runGraphCheckPolicy(t, root, "--json")
+	if code != 1 {
+		t.Fatalf("an ignored stamp must exit 1, got %d\nstdout=%s\nstderr=%s", code, out, errOut)
+	}
+	if !strings.Contains(out, `"drift_origin": "anchor-moved"`) {
+		t.Errorf("origin must be anchor-moved:\n%s", out)
+	}
+}
