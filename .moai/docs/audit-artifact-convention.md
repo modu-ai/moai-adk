@@ -214,6 +214,14 @@ limit applies to repairs made after a FAIL and does not reach back over earlier
 work: work already specified by a SPEC amendment with its own acceptance
 criterion is outside the limit.
 
+An operator clears a receipt-kind rejection mark with the CLI verb
+`moai verify clear-rejection <agent-type> <spec-id> --evidence <path>`. It
+clears exactly one mark of the current tree on operator approval and appends one
+approval record. It refuses, changing nothing, in an agent environment, without
+an interactive terminal, without the named mark, when the typed confirmation does
+not match, or when the evidence file is outside `.moai/reports/` or does not name
+the SPEC (for a mark with no SPEC ID: the agent type). It has no MCP path.
+
 ---
 
 ## Side-talk (advice attached to verdicts)

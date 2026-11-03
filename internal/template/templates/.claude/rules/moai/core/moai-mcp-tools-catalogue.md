@@ -78,8 +78,12 @@ unknown-origin session ignores any caller-supplied Claude verdict and invokes
 the independent `claude_audit` backend. Codex and GLM continue to run as their
 configured gates require. Every backend tool fails open to `inconclusive`; an
 explicitly required gate left inconclusive makes the overall verdict
-`inconclusive` (not performed, never a pass); a reported required FAIL stays
-`fail`. A leg that could not run carries an `error_class` — `quota`, `timeout`,
+`inconclusive` (not performed, never a pass) unless the overall is already
+`fail` from a verdict a backend reported, which stays `fail` with the unmet leg
+still named in `gate_unmet`. The single-backend `codex_audit` does the same for
+its own verdict, except that a gate configuration that cannot be read (for
+example a worktree whose primary checkout cannot be identified) gives `fail`
+with `gate_unmet` naming the cause. A leg that could not run carries an `error_class` — `quota`, `timeout`,
 `auth`, `unavailable` or `other` — while its verdict stays `inconclusive`.
 
 With a `card_id` and target `baseBranch`, `audit_multi` proposes a delta: an

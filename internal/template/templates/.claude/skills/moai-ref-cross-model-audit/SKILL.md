@@ -150,6 +150,25 @@ The tool returns a `ConvergenceResult`:
 }
 ```
 
+A re-run after the codex leg hit a quota wall (`rerun_legs: ["codex"]`, same
+`session_id`; the other two legs are carried), abbreviated:
+
+```json
+{
+  "per_backend_verdicts": [
+    {"backend": "claude", "gate": "required", "verdict": "pass", "summary": "...", "findings": [], "next_steps": []},
+    {"backend": "codex",  "gate": "required", "verdict": "inconclusive", "error_class": "quota", "summary": "...", "findings": [], "next_steps": []},
+    {"backend": "glm",    "gate": "advisory", "verdict": "pass", "summary": "...", "findings": [], "next_steps": []}
+  ],
+  "overall_verdict": "inconclusive",
+  "disagreement_flag": false,
+  "participant_count": 2,
+  "residual_risk_note": "legs carried from the persisted result of session <id> (same head, tree digest and scope): claude, glm; re-run: codex | ...",
+  "fail_open_backends": ["codex"],
+  "carried_legs": ["claude", "glm"]
+}
+```
+
 - `overall_verdict` ∈ `{pass, fail, inconclusive}` — the existing review-output
   values (disagreement is a flag, not a verdict value). `inconclusive` means the
   convergence was not performed: a required backend returned no verdict and no
@@ -228,8 +247,8 @@ same target/focus/project-root scope and optional model/effort override.
 
 The orchestrator-side question channel is preserved: the tool returns a
 structured result, never prompts the user. When a required backend is
-inconclusive, surface the structured `overall_verdict: fail` plus
-`residual_risk_note` in the audit report and let the orchestrator translate.
+inconclusive, surface the structured `overall_verdict` (`inconclusive`, or `fail`
+when a backend reported a FAIL) plus `residual_risk_note` in the audit report and let the orchestrator translate.
 
 ## Independence rule (load-bearing)
 
@@ -279,9 +298,10 @@ Two invariants follow:
 - **An explicitly configured `required` gate left unmet blocks a pass.** A gate
   the project sets to `required` in `workflow.audit.gates` must actually hold:
   when that backend returns `inconclusive` (missing binary, auth failure, error),
-  the engine leaves `overall_verdict` at `inconclusive` (never `pass`; a required
-  FAIL some other backend reported stays `fail`) and names the unmet backend in
-  `gate_unmet` and `residual_risk_note`. A gate the project never configured
+  the engine leaves `overall_verdict` at `inconclusive` (never `pass`), unless
+  the overall is already `fail` from a verdict a backend reported: that `fail`
+  stays, with the unmet backend still named in `gate_unmet` and
+  `residual_risk_note`. A gate the project never configured
   keeps the fail-open behavior — the distributed default is NOT an opt-in. In both cases the
   backend's own `per_backend_verdicts` entry stays `inconclusive` and its
   `fail_open_backends` listing stays, so the audit trail keeps saying the
@@ -306,8 +326,8 @@ evidence-of-failure`.
 In a Claude main session, when all external backends are inconclusive, the
 overall verdict can fall back to the in-session Claude anchor — EXCEPT for a gate
 the project explicitly configured `required` in `workflow.audit.gates`: that
-gate left unmet leaves `overall_verdict` at `inconclusive` instead (see the
-convergence policy above).
+gate left unmet leaves `overall_verdict` at `inconclusive` instead (a `fail` a
+backend reported stays `fail`; see the convergence policy above).
 
 ## Checking the result against the plan
 
@@ -355,10 +375,13 @@ residual-risk section so a human reader sees which backend disagreed with which.
 - `workflow.audit.gates.*` — the per-auditor gate map (`off`/`advisory`/`required`).
   An explicit `required` is enforced on BOTH surfaces: on the convergence result
   an unmet required gate (its backend `inconclusive`) leaves `overall_verdict`
-  at `inconclusive`, and the single-backend `codex_audit` tool likewise keeps
+  at `inconclusive` unless the overall is already a reported `fail`, which
+  stays, and the single-backend `codex_audit` tool likewise keeps
   `verdict: inconclusive` with a non-empty `gate_unmet` and `isError: false`
   when an explicitly required codex gate is left without a verdict (it returns
-  `fail` only when the gate configuration itself cannot be read). Absent keys fall back to the distributed
+  `fail`, with `gate_unmet` naming the cause, only when the gate configuration
+  itself cannot be read — for example a worktree whose primary checkout cannot
+  be identified). Absent keys fall back to the distributed
   defaults WITHOUT that enforcement — write the key to opt in.
 - **Audit receipts.** Where the codex gate is explicitly `required`, the server
   records a receipt for every codex audit it performs and returns its id on the
