@@ -3,7 +3,7 @@ description: "Run Phase 1-10 — Plan Audit Gate, environment assessment, JIT la
 user-invocable: false
 metadata:
   parent: moai-workflow-run
-  phase: "Phase 1-1.8: Phase Sequence and Preparation"
+  phase: "Phase 1-10: Phase Sequence and Preparation"
 ---
 
 # Phase Sequence
@@ -13,7 +13,7 @@ All phases execute sequentially. Each phase receives outputs from all previous p
 ## Phase 1: Plan Audit Gate
 
 **Purpose**: Mandatory independent audit of plan artifacts before any implementation begins.
-Prevents unreviewed, incomplete, or non-compliant SPEC documents from entering Phase 1.
+Prevents unreviewed, incomplete, or non-compliant SPEC documents from entering Phase 2.
 Source: the plan audit gate contract.
 
 **Scope**: Every `/moai run <SPEC-ID>` invocation. Never skipped — not even in `minimal` harness.
@@ -67,7 +67,7 @@ predicate is NOT consulted).
 If cache HIT (all three canonical conditions hold):
 - Log: `[plan-audit] cache hit (verdict=PASS, sticky)`
 - Append to `.moai/specs/<SPEC-ID>/progress.md`: `- audit_cache_hit: true` and `- cached_audit_at: <T0>`
-- Skip Step 3 and proceed to Phase 1.
+- Skip Step 3 and proceed to Phase 2.
 
 If cache MISS: proceed to Step 3.
 
@@ -93,7 +93,7 @@ Read the verdict from the report file produced by plan-auditor.
 **4a. PASS**
 - A `PASS-WITH-DEBT` verdict with at least one enumerated debt is admitted the same way: copy every enumerated debt into the SPEC's `progress.md` under a `Binding run conditions` heading before Phase 5 (both sync verdict owners re-read them).
 - Log: `[plan-audit] verdict=PASS, persisted to progress.md, proceeding to Phase 5`
-- Proceed to Step 5 (persist), then continue to Phase 1.
+- Proceed to Step 5 (persist), then continue to Phase 2.
 
 **4b. FAIL (and grace window ACTIVE — today < merge_date + 7 days)**
 - Log: `[plan-audit] verdict=FAIL [grace-window], D-<N> until auto-block`
@@ -196,7 +196,7 @@ When plan-auditor returns FAIL, the verdict carries a structured defect-list —
 ## Phase 2: Environment Assessment (Conditional)
 
 Condition: Only executes when `memory_guard.enabled: true` in quality.yaml.
-If memory_guard is not enabled or not present, skip to Phase 1.
+If memory_guard is not enabled or not present, skip to Phase 3.
 
 Purpose: Detect available system memory and determine test execution strategy to prevent OOM.
 

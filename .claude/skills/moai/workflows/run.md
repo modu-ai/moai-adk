@@ -68,7 +68,7 @@ Phase 4 Mode Selection: orchestrator autonomous decision over the 4-mode catalog
   ├── [trace] /moai run Phase 0 enter
   │   Read workflows/run/context-loading.md  → Mode dispatch + context setup
   ├── [trace] /moai run Phase 1 enter
-  │   Read workflows/run/phase-execution.md  → Phase Sequence (0.5~1.8) + mode routing
+  │   Read workflows/run/phase-execution.md  → Phase Sequence (1-10) + mode routing
   ├── [trace] /moai run Phase 11 enter
   │   Read workflows/run/task-decomposition.md → Implementation + quality + git
   └── [trace] /moai run Mode enter

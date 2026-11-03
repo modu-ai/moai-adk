@@ -1,9 +1,9 @@
 ---
-description: "Run Phase 11~4 — DDD/TDD implementation cycles, quality validation, git operations, and completion guidance"
+description: "Run Phase 11-20 — DDD/TDD implementation cycles, quality validation, git operations, and completion guidance"
 user-invocable: false
 metadata:
  parent: moai-workflow-run
- phase: "Phase 11-4: Implementation, Quality Validation, and Completion"
+ phase: "Phase 11-20: Implementation, Quality Validation, and Completion"
 ---
 
 # Phase 11: Implementation (Mode-Dependent)
