@@ -441,7 +441,7 @@ ok  	github.com/modu-ai/moai-adk/internal/config	0.354s
 ### AC-FCR-003 — 수행자 발급 receipt 거부, 리더 발급+리더 실행 허용 (REQ-FCR-005)
 
 - RED-now: P1 동일.
-- green(M1): `go test ./internal/cli -run '^TestLeaderReceiptGateSelfIssued$'` — 카드의 수행 owner(lane)가 발급자로 표식된 receipt는 거부; **리더가 발급하고 같은 리더가 done을 실행하는 경로는 통과**(단일 리더 정상 흐름 — REQ-FCR-005의 독립 축은 수행자≠승인자). INPUT: 발급자==수행자 fixture + 발급자==리더 fixture 2종.
+- green(M1): `go test ./internal/cli -run '^TestLeaderReceiptGateIssuerIndependence$'` — 카드의 수행 owner(lane)가 발급자로 표식된 receipt는 거부; **리더가 발급하고 같은 리더가 done을 실행하는 경로는 통과**(단일 리더 정상 흐름 — REQ-FCR-005의 독립 축은 수행자≠승인자). INPUT: 발급자==수행자 fixture + 발급자==리더 fixture 2종.
 
 ### AC-FCR-004 — auto-done이 receipt 없이 닫지 않음 (REQ-FCR-003)
 

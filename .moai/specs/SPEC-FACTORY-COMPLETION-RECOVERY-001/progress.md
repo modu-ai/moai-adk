@@ -19,7 +19,7 @@ plan_complete_at: 2026-10-06
 | 부채 | 내용 | dispose_in | 처분 상태 |
 |---|---|---|---|
 | D15 | AC-FCR-005의 RED-now 셀이 bare reading(:385 stale 앵커) — 재실행 가능한 probe(command+output+exit)로 보강, :386 동기화 | run | M1 스폰 브리프 이관 — 처분 증거는 §E.2에 기록 |
-| D16 | `TestLeaderReceiptGateSelfIssued` 개명(수행자≠승인자 축에서 misnomer) — M1 RED 저작 전 | run | M1 스폰 브리프 이관 — §E.2에 기록 |
+| D16 | `TestLeaderReceiptGateSelfIssued` 개명(수행자≠승인자 축에서 misnomer) — M1 RED 저작 전 | run | **처분됨 — 카드 t2013 커밋**(테스트는 `TestLeaderReceiptGateIssuerIndependence`로 개명됨, internal/cli/leader_approval_gate_test.go:963; acceptance.md AC-FCR-003 green 셀 인용을 새 이름으로 교체 — sync-audit-2 D16) |
 | D20 | AC-FCR-005 green 셀을 네 바인딩 전체 재검증 목록(run id 포함)으로 동기화 + run 교체 race INPUT 변이 | run | M1 스폰 브리프 이관 — §E.2에 기록 |
 | D24 | plan merge-base 피연산자를 흡수 ref(develop)로 정렬 | run | **처분됨 — `17a0d79c3`**(plan §H 현행) |
 | D17 | plan §D에 t1533의 제외 파일 4종 명명 | sync | sync 단계 처분 예정 |
