@@ -21,7 +21,7 @@ func factoryWaitLine(s string) string { return strings.Join(strings.Fields(s), "
 
 // factoryPrintWakes prints, once per wait, the lane and card to wake for every
 // recorded wait the just-landed card satisfies. It prints nothing unless the
-// card sits at a landing state (merged-local or merged-pr), so a lease expiry
+// card sits at a landing or post-landing state (factoryLandedState), so a lease expiry
 // or any other transition never wakes anyone. The woken_at stamp is written in
 // the same update that selects the wait, so a re-run prints nothing. A wait
 // whose waker is the operator prints a leader-facing note, never a lane wake.
@@ -30,10 +30,18 @@ func factoryPrintWakes(ctx context.Context, out io.Writer, db *homestate.Factory
 	factoryPrintWakesSuffixed(ctx, out, db, card, "")
 }
 
-// factoryLandedState reports whether state is one of the two landing states a
-// wait on a predecessor is released by.
+// factoryLandedState reports whether state is a landing state, or a state a
+// card only reaches after landing (pushed, ci-green, done), that releases a
+// wait on a predecessor. The later states matter because a wait recorded after
+// the predecessor moved past the landing would otherwise stay open forever.
+// abandoned and failed never landed and release nothing.
 func factoryLandedState(state string) bool {
-	return state == homestate.CardMergedLocal || state == homestate.CardMergedPR
+	switch state {
+	case homestate.CardMergedLocal, homestate.CardMergedPR,
+		homestate.CardPushed, homestate.CardCIGreen, homestate.CardDone:
+		return true
+	}
+	return false
 }
 
 // factoryPrintWakesSuffixed is factoryPrintWakes with an extra suffix on each
