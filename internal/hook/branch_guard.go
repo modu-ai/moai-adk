@@ -452,6 +452,13 @@ var (
 	repoOverridePattern     = regexp.MustCompile(`(?i)(?:\bGIT_DIR=|\bGIT_WORK_TREE=|--git-dir\b|--work-tree\b)`)
 	dirChangePattern        = regexp.MustCompile(`(?i)(?:\b(?:cd|pushd|popd)\b|\()`)
 	cOptionPattern          = regexp.MustCompile(`\s-C\s+\S`)
+
+	// shellRunsCodePattern matches `eval`, `source`, or a dot-source `.` used as
+	// a command (at the start or right after a separator, followed by a space or
+	// the end). Their argument is code the current shell runs and the quoted-span
+	// collapse hides it, so it can change directory unseen. A path such as
+	// `/wt/.hidden` never matches: the dot must stand alone as a command word.
+	shellRunsCodePattern = regexp.MustCompile(`(?:^|[\s;&|({])(?:eval|source)(?:\s|$)|(?:^|[;&|({])\s*\.(?:\s|$)`)
 	gitGlobalOptionsPattern = regexp.MustCompile(`(?i)\bgit(?:\s+(?:-C\s+\S+|--git-dir[=\s]\S+|--work-tree[=\s]\S+))+`)
 )
 
@@ -474,7 +481,8 @@ func explicitGitTarget(command string) (string, string) {
 	if len(gitInvocationPattern.FindAllStringIndex(plain, -1)) != 1 {
 		return command, ""
 	}
-	redirected := repoOverridePattern.MatchString(plain) || len(cOptionPattern.FindAllStringIndex(plain, -1)) > 1
+	redirected := repoOverridePattern.MatchString(plain) || shellRunsCodePattern.MatchString(plain) ||
+		len(cOptionPattern.FindAllStringIndex(plain, -1)) > 1
 	rest, target := command, ""
 	if m := leadingCdTargetPattern.FindStringSubmatchIndex(rest); m != nil {
 		after := substituteQuotedArguments(rest[m[1]:])
