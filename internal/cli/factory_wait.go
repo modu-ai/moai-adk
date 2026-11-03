@@ -173,9 +173,9 @@ func newFactoryWaitCommand() *cobra.Command {
 	return cmd
 }
 
-// factoryAckWake records the received or started event of the card's most
-// recent delivered wait. Delivery itself is written by the landing edge. An
-// event recorded out of order is refused and writes nothing.
+// factoryAckWake records the received or started event of the card's oldest
+// delivered wait still awaiting that event. Delivery itself is written by the
+// landing edge. An event recorded out of order is refused and writes nothing.
 func factoryAckWake(ctx context.Context, out io.Writer, root, cardID, phase, actor string) error {
 	if phase != homestate.WakeReceived && phase != homestate.WakeStarted {
 		return fmt.Errorf("factory wait: --ack takes %s or %s, got %q (delivery is recorded by the landing edge)", homestate.WakeReceived, homestate.WakeStarted, phase)
@@ -192,9 +192,23 @@ func factoryAckWake(ctx context.Context, out io.Writer, root, cardID, phase, act
 	if len(waits) == 0 {
 		return fmt.Errorf("factory wait: card %s has no recorded wait to acknowledge", cardID)
 	}
-	// The wake the waker acknowledges is the card's latest wait; an undelivered
-	// one is refused by the ordering rule below with the delivered reason.
+	// The wake the waker acknowledges is the card's oldest wait that holds the
+	// phase's predecessor event and not the phase itself (received follows
+	// delivered, started follows received). With no such wait the card's latest
+	// wait is used, so a repeat is reported as already recorded and an event out
+	// of order is refused by the ordering rule below, as before.
 	w := waits[len(waits)-1]
+	for _, candidate := range waits {
+		st, err := db.LoadWakeState(ctx, candidate.Seq)
+		if err != nil {
+			return fmt.Errorf("factory wait: %w", err)
+		}
+		if (phase == homestate.WakeReceived && st.Delivered && !st.Received) ||
+			(phase == homestate.WakeStarted && st.Received && !st.Started) {
+			w = candidate
+			break
+		}
+	}
 	recorded, err := db.RecordWakeEvent(ctx, w.Seq, phase, actor, factoryCardNow())
 	if err != nil {
 		return fmt.Errorf("factory wait: %w", err)
