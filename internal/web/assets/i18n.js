@@ -28,6 +28,7 @@ window.MOAI_I18N = {
     // --- console redesign (overview / factory / specs / monitor shell) ---
     "nav.main": "Main navigation",
     "nav.overview": "Overview",
+    "nav.board": "Board",
     "nav.factory": "Factory",
     "nav.specs": "Specs",
     "nav.monitor": "Monitor",
@@ -870,6 +871,7 @@ window.MOAI_I18N = {
     // --- console redesign (overview / factory / specs / monitor shell) ---
     "nav.main": "주 메뉴",
     "nav.overview": "개요",
+    "nav.board": "보드",
     "nav.factory": "팩토리",
     "nav.specs": "SPEC",
     "nav.monitor": "모니터",
@@ -1716,6 +1718,7 @@ window.MOAI_I18N = {
     // --- console redesign (overview / factory / specs / monitor shell) ---
     "nav.main": "メインナビゲーション",
     "nav.overview": "概要",
+    "nav.board": "ボード",
     "nav.factory": "ファクトリー",
     "nav.specs": "SPEC",
     "nav.monitor": "モニター",
@@ -2562,6 +2565,7 @@ window.MOAI_I18N = {
     // --- console redesign (overview / factory / specs / monitor shell) ---
     "nav.main": "主导航",
     "nav.overview": "概览",
+    "nav.board": "看板",
     "nav.factory": "工厂",
     "nav.specs": "SPEC",
     "nav.monitor": "监控",

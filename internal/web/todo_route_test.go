@@ -85,26 +85,27 @@ func TestTodoRouteRejectsNonGET(t *testing.T) {
 	}
 }
 
-// TestTodoNavRowIsSecondAndCurrent — the rail carries the three primary rows,
-// the second links to /todo, and it is marked current on the Todo route.
-func TestTodoNavRowIsSecondAndCurrent(t *testing.T) {
+// TestTodoNavRowIsThirdAndCurrent — the rail carries the four primary rows (the
+// board leads since the Issue screens were retired), the third links to /todo,
+// and it is marked current on the Todo route.
+func TestTodoNavRowIsThirdAndCurrent(t *testing.T) {
 	a := newTestApp(t)
 
 	body := getTodoPage(t, a).Body.String()
 
 	hrefs := navRowHrefRe.FindAllStringSubmatch(body, -1)
-	if len(hrefs) != 3 {
+	if len(hrefs) != 4 {
 		got := make([]string, 0, len(hrefs))
 		for _, m := range hrefs {
 			got = append(got, m[1])
 		}
-		t.Fatalf("rail carries %d navigation rows (%v), want 3", len(hrefs), got)
+		t.Fatalf("rail carries %d navigation rows (%v), want 4", len(hrefs), got)
 	}
-	if hrefs[1][1] != "/todo" {
-		t.Errorf("second navigation row links to %q, want \"/todo\"", hrefs[1][1])
+	if hrefs[2][1] != "/todo" {
+		t.Errorf("third navigation row links to %q, want \"/todo\"", hrefs[2][1])
 	}
-	// The primary rail deliberately exposes only the three focused surfaces.
-	want := []string{"/", "/todo", "/settings"}
+	// The primary rail deliberately exposes only the four focused surfaces.
+	want := []string{"/board", "/overview", "/todo", "/settings"}
 	for i, w := range want {
 		if hrefs[i][1] != w {
 			t.Errorf("navigation row %d links to %q, want %q", i, hrefs[i][1], w)

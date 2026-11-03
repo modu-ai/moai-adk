@@ -431,7 +431,47 @@ func normalizeCommandForScan(command string) string {
 // from matching; case-insensitive like branchStatePatterns. Evaluated ONLY
 // for the protected-branch deny — pull/fetch/tag of a protected branch stay
 // legitimate (spec §D Non-Goals).
-var protectedCommitPattern = regexp.MustCompile(`(?i)\bgit\s+(commit|revert|cherry-pick)\b`)
+//
+// The verb must end at a non-word, non-hyphen character or end of input: RE2
+// treats `-` as a word boundary, so a trailing \b let the plumbing verbs
+// `commit-tree` / `commit-graph` (and `revert-x`, `cherry-pick-x`) read as a
+// commit (card t2013). Go regexp has no lookahead; this class is the
+// equivalent, and a following `;`, `&`, `|`, `)` or space still ends the verb.
+var protectedCommitPattern = regexp.MustCompile(`(?i)\bgit\s+(?:commit|revert|cherry-pick)(?:[^\w-]|$)`)
+
+// explicitGitTargetPattern / leadingCdTargetPattern capture an ABSOLUTE path a
+// command names as its git target: `git -C <abs>` or a leading `cd <abs> &&`.
+// A relative path is not captured, so it keeps today's behavior (card t2013).
+var (
+	explicitGitTargetPattern = regexp.MustCompile(`(?i)\bgit\s+-C\s+(/[^\s;&|"'()<>]+)`)
+	leadingCdTargetPattern   = regexp.MustCompile(`^\s*cd\s+(/[^\s;&|"'()<>]+)\s*&&\s*`)
+	gitInvocationPattern     = regexp.MustCompile(`(?i)\bgit\s`)
+)
+
+// explicitGitTarget returns the command with its explicit target removed (so
+// the verb-after-`git` matchers see it) and the absolute target path. It
+// returns (command, "") when no explicit absolute target applies. The target
+// is honored only when the unquoted command holds exactly ONE git invocation:
+// with two, `-C`/`cd` could scope only one of them, and falling back to the
+// cwd judgment can only deny, never newly allow. Quoted spans are data and
+// never a target.
+func explicitGitTarget(command string) (string, string) {
+	if len(gitInvocationPattern.FindAllStringIndex(substituteQuotedArguments(command), -1)) != 1 {
+		return command, ""
+	}
+	rest, target := command, ""
+	if m := leadingCdTargetPattern.FindStringSubmatchIndex(rest); m != nil {
+		target, rest = rest[m[2]:m[3]], rest[m[1]:]
+	}
+	if m := explicitGitTargetPattern.FindStringSubmatchIndex(rest); m != nil &&
+		!insideAnySpan(m[0], quotedArgumentPattern.FindAllStringIndex(rest, -1)) {
+		target, rest = rest[m[2]:m[3]], rest[:m[0]]+"git"+rest[m[1]:]
+	}
+	if target == "" {
+		return command, ""
+	}
+	return rest, target
+}
 
 // resolveHeadBranch is the package-level indirection over
 // gitcore.ResolveHeadBranch. Tests swap it with a counting stub (the M6
@@ -490,7 +530,8 @@ func checkProtectedCommit(input *HookInput, projectDir string, denyList []string
 	if command == "" {
 		return "", ""
 	}
-	if !matchProtectedCommitCommand(command) {
+	scanCommand, target := explicitGitTarget(command)
+	if !matchProtectedCommitCommand(scanCommand) {
 		return "", ""
 	}
 	if isExemptAgent(input) {
@@ -500,6 +541,9 @@ func checkProtectedCommit(input *HookInput, projectDir string, denyList []string
 	// discriminant checkBranchState uses (see its comment for why the
 	// audit-log project dir must NOT feed this query).
 	gitContextCwd := resolveProjectRootFromInputOrEnv(input, "branch_guard")
+	if target != "" {
+		gitContextCwd = target
+	}
 	isPrimary, err := isPrimaryCheckout(gitContextCwd)
 	if err != nil {
 		// Fail OPEN with advisory (REQ-2.3): uncertainty never denies.
@@ -1041,7 +1085,8 @@ func checkBranchState(input *HookInput, projectDir string) (decision string, rea
 	if command == "" {
 		return "", ""
 	}
-	suffix, matched := matchBranchStateCommand(command)
+	scanCommand, target := explicitGitTarget(command)
+	suffix, matched := matchBranchStateCommand(scanCommand)
 	if !matched {
 		// D2 (SPEC-HOOK-MATCHER-POWERSHELL-001 REQ-HMP-010): a PowerShell
 		// indirection the pattern scan cannot see is allowed, and recorded.
@@ -1062,6 +1107,9 @@ func checkBranchState(input *HookInput, projectDir string) (decision string, rea
 	// misclassification — isPrimaryCheckout stays a pure function of its
 	// argument; only which directory the caller asks it to query changes.
 	gitContextCwd := resolveProjectRootFromInputOrEnv(input, "branch_guard")
+	if target != "" {
+		gitContextCwd = target
+	}
 	isPrimary, err := isPrimaryCheckout(gitContextCwd)
 	// W3 (SPEC-SESSION-ANCHOR-ATTR-001 REQ-SAA-007): this Seam A anchor read
 	// is one of the traced anchor decision points. One env lookup when

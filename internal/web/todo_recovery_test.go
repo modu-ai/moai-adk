@@ -16,7 +16,7 @@ func TestTodoUnreadableDoesNotClaimEmpty(t *testing.T) {
 	writeBacklog(t, root, `{"version":1,"items":[{"id":`)
 	a := newApp(Config{ProjectRoot: root, ProfileName: "default"})
 	a.recordLastProfile = func(string) error { return nil }
-	for _, route := range []string{"/todo", "/"} {
+	for _, route := range []string{"/todo", "/overview"} {
 		body := serveGet(t, a.routes(), route).Body.String()
 		if !strings.Contains(body, "data-todo-unavailable") {
 			t.Errorf("%s lacks unreadable diagnostic", route)

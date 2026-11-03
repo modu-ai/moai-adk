@@ -259,7 +259,7 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 		// the bumped value must reach the backend argv — the session name is
 		// the address the leader dispatches to.
 		endClaim := debugTiming.beginDebug(factoryStepLaneClaim, "")
-		finalLabel, claimErr := resolveFactoryLaneName(launchProjectRoot(), factoryLabel, backend, entry.FactoryAutoNumber, cmd.ErrOrStderr())
+		finalLabel, claimErr := claimFactoryLaneForEntry(launchProjectRoot(), factoryLabel, backend, entry, cmd.ErrOrStderr())
 		endClaim()
 		if claimErr == nil {
 			debugTiming.annotateDetail("label=" + finalLabel)
@@ -298,6 +298,13 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 	// rewriting (AC-WES-010b).
 	endWt := debugTiming.beginDebug(launchStepWorktree, "")
 	if err := validateWorktreeL2Value(view.StageA, cmd.ErrOrStderr()); err != nil {
+		endWt()
+		return err
+	}
+	// An absolute -w value re-enters an existing tree only: an unregistered path
+	// is refused here, before the materialization, the hook seed, the settings
+	// cleanup and the exec below touch anything.
+	if err := validateAbsoluteWorktreeRegistered(view.StageB); err != nil {
 		endWt()
 		return err
 	}

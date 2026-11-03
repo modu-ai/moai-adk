@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/monitor/flow"
+	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/web"
 	"github.com/spf13/cobra"
@@ -27,6 +29,11 @@ var (
 // exercise runWeb end-to-end substitute a no-op here. The default is the real
 // implementation.
 var webRunFn = web.Run
+
+// webFlowProbe is the board's real process probe: a lease holder's pid plus start
+// fingerprint is classified by homestate's process identity, so a live holder reads
+// Alive, a reused pid Dead, and only a probe that cannot tell reads Unknown.
+func webFlowProbe() flow.Probe { return flow.ProcessProbe(homestate.ProbeProcessIdentity) }
 
 // newWebCmd constructs the `web` subcommand. Factory form (mirrors
 // newNewCmd/newCleanCmd) so tests can build an isolated command instance.
@@ -146,6 +153,7 @@ func runWeb(cmd *cobra.Command, _ []string) (err error) {
 		Port:        webPort,
 		NoOpen:      webNoOpen,
 		ProjectRoot: projectRoot,
+		FlowProbe:   webFlowProbe(),
 		// Project-scoped read (SPEC-PROFILE-MEMORY-001 REQ-PM-024) to match the
 		// project-scoped write wired in web.newApp. CLAUDE_CONFIG_DIR still wins
 		// when set, so a console launched inside a `moai cc -p X` session is

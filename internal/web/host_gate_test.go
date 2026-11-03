@@ -147,7 +147,8 @@ func TestHostGateControlMatrix(t *testing.T) {
 // loopback control proves each refusal is the Host gate: the same method on the
 // same route from a loopback Host is not refused.
 func TestHostGateCoversEveryRouteAndMethod(t *testing.T) {
-	routes := []string{"/", "/factory", "/monitor", "/todo", "/specs", "/settings", "/events", "/static/app.js"}
+	// "/" is checked separately below: it answers 302 to /board, not 200.
+	routes := []string{"/overview", "/board", "/api/board", "/factory", "/monitor", "/todo", "/specs", "/settings", "/events", "/static/app.js"}
 	methods := []string{http.MethodGet, http.MethodHead, http.MethodOptions, http.MethodDelete}
 	h := newTestApp(t).routes()
 
@@ -170,6 +171,21 @@ func TestHostGateCoversEveryRouteAndMethod(t *testing.T) {
 		if rec := serveGateProbe(h, http.MethodGet, path, "127.0.0.1:3041"); rec.Code != http.StatusOK {
 			t.Errorf("GET %s from a loopback Host: status = %d, want 200", path, rec.Code)
 		}
+	}
+
+	// The root path keeps the same Host-gate coverage: a foreign or absent Host is
+	// refused for every method, and a loopback GET reaches the route's own
+	// answer, which is the redirect to the board.
+	for _, method := range methods {
+		for _, host := range []string{"attacker.example.com:3041", ""} {
+			rec := serveGateProbe(h, method, "/", host)
+			if rec.Code != http.StatusForbidden {
+				t.Errorf("%s / with Host %q: status = %d, want 403", method, host, rec.Code)
+			}
+		}
+	}
+	if rec := serveGateProbe(h, http.MethodGet, "/", "127.0.0.1:3041"); rec.Code != http.StatusFound || rec.Header().Get("Location") != "/board" {
+		t.Errorf("GET / from a loopback Host: status = %d Location %q, want 302 /board", rec.Code, rec.Header().Get("Location"))
 	}
 }
 
