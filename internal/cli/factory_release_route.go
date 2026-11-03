@@ -347,8 +347,9 @@ func factoryChangedPaths(cardTree, releaseTip string) []string {
 // factoryFastCheckPackages decides the packages to lint and test from the
 // card's changed file list. A module input (go.mod, go.sum, go.work,
 // go.work.sum) can break any package and owns none, so it widens the scope to
-// the whole module; so does a changed .go file no package directory claims
-// (for example a deleted file in a vanished directory).
+// the whole module; so does any changed .go file no package directory claims
+// (for example a deleted file in a vanished directory), decided per path so
+// another path that does select a package cannot mask it.
 func factoryFastCheckPackages(cardTree, releaseTip string) []string {
 	changed := factoryChangedPaths(cardTree, releaseTip)
 	pkgs := factoryOwningGoPackages(cardTree, changed)
@@ -357,7 +358,7 @@ func factoryFastCheckPackages(cardTree, releaseTip string) []string {
 		case "go.mod", "go.sum", "go.work", "go.work.sum":
 			return []string{"./..."}
 		}
-		if strings.HasSuffix(p, ".go") && len(pkgs) == 0 {
+		if strings.HasSuffix(p, ".go") && len(factoryOwningGoPackages(cardTree, []string{p})) == 0 {
 			return []string{"./..."}
 		}
 	}
