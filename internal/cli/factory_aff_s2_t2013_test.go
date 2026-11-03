@@ -50,17 +50,22 @@ type affs2Opts struct {
 	// unprovisioned leaves the release branch checked out nowhere and gives
 	// main to a dedicated worktree (the pre-amendment local-merge shape).
 	unprovisioned bool
-	// slowTest commits a passing test that sleeps for slowTestPause into the
-	// CARD tree, so the fast required check takes longer than that.
+	// slowTest commits a passing test into the CARD tree that stays open until
+	// the test creates the "release" file in the fixture's gate directory
+	// (affs2Fix.gate), writing a "started" file there as soon as it runs. The
+	// fast required check therefore lasts exactly as long as the test holds it,
+	// with no sleep and no wall-clock margin.
 	slowTest bool
 }
 
-// slowTestPause is how long the slowTest fixture's test sleeps.
-const slowTestPause = 3
+// slowTestGiveUp bounds how long the held-open test waits for its release file,
+// so an abandoned fixture cannot hang a check forever.
+const slowTestGiveUp = 120 * time.Second
 
 // affs2Fix is one built fixture.
 type affs2Fix struct {
 	root, relWT, cardWT string
+	gate                string // slowTest: the directory of the "started" / "release" files
 	relBranch           string // the branch the card is expected to land in
 	cardHead            string
 	mainBefore          string
@@ -153,7 +158,13 @@ func affs2New(t *testing.T, o affs2Opts) affs2Fix {
 		affs2Write(t, filepath.Join(f.cardWT, "calc", "broken.go"), "package calc\n\nfunc Broken() int { return undefinedSymbol }\n")
 	}
 	if o.slowTest {
-		affs2Write(t, filepath.Join(f.cardWT, "calc", "slow_test.go"), "package calc\n\nimport (\n\t\"testing\"\n\t\"time\"\n)\n\nfunc TestSlow(t *testing.T) { time.Sleep("+strconv.Itoa(slowTestPause)+" * time.Second) }\n")
+		f.gate = t.TempDir()
+		started, release := strconv.Quote(filepath.Join(f.gate, "started")), strconv.Quote(filepath.Join(f.gate, "release"))
+		affs2Write(t, filepath.Join(f.cardWT, "calc", "slow_test.go"), "package calc\n\nimport (\n\t\"os\"\n\t\"testing\"\n\t\"time\"\n)\n\n"+
+			"func TestSlow(t *testing.T) {\n\tif err := os.WriteFile("+started+", []byte(\"1\"), 0o644); err != nil {\n\t\tt.Fatal(err)\n\t}\n"+
+			"\tgiveUp := time.Now().Add("+strconv.Itoa(int(slowTestGiveUp/time.Second))+" * time.Second)\n"+
+			"\tfor time.Now().Before(giveUp) {\n\t\tif _, err := os.Stat("+release+"); err == nil {\n\t\t\treturn\n\t\t}\n\t\ttime.Sleep(20 * time.Millisecond)\n\t}\n"+
+			"\tt.Fatal(\"the check was never released\")\n}\n")
 	}
 	affs2Git(t, f.cardWT, "add", "base.txt", "calc")
 	affs2Git(t, f.cardWT, "commit", "-q", "-m", "card change alpha")
