@@ -20,7 +20,7 @@
 
 8. **Prefer the quiet form of routine commands** [ZONE:Evolvable] [HARD] Call everyday commands in their quiet form — `--no-progress`, `-q`, machine-readable output with a targeted filter — not forms that emit spinners, banners, tables, or color noise: the same decision bytes, a fraction of the context cost.
 
-9. **Weigh session length as a cost axis** [ZONE:Evolvable] [HARD] One long session is cheaper than several short ones for the same work — every fresh session re-pays the always-loaded prefix at write price, a continuing one reads it from cache — if it stays warm: a >5-min idle gap or prefix edit reverts it to write price. Treat session splitting as directive 4 treats `/clear`: a cost to justify, not a default.
+9. **Weigh session length as a cost axis** [ZONE:Evolvable] [HARD] One long session is cheaper than several short ones for the same work — every fresh session re-pays the always-loaded prefix at write price, a continuing one reads it from cache — if it stays warm: an idle gap longer than the cache TTL (5 minutes by default; one hour for a subscription's main conversation within plan usage, or with `promptCacheTtl`) or a prefix edit reverts it to write price. On the one-hour TTL, Claude Code may compact an idle 200K+ conversation at about 54 minutes (`idleCompaction`, v2.1.290+); MoAI keeps that default and ships no key (`cache-aware-execution-reference.md` § Directive 9). Treat session splitting as directive 4 treats `/clear`: a cost to justify, not a default.
 
 10. **A mid-session model or effort switch busts the cache** [ZONE:Evolvable] [HARD] Changing model or effort mid-session (thinking budget included — `MAX_THINKING_TOKENS`) discards the prompt cache; prefer a natural boundary for the switch.
 
