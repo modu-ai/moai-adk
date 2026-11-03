@@ -30,14 +30,14 @@ moai cc [-p profile] [-w [name]] [-- claude-args...]
 | `-m, --model <model>` | 覆盖模型选择 |
 | `-w, --worktree [name]` | 在隔离的 git worktree(`.claude/worktrees/<name>/`)中启动 —— 省略名称时自动生成 |
 | `--chrome` / `--no-chrome` | 原样传递给 Claude Code。启动器不会自行添加任一标志，因此除非传入 `--no-chrome`，否则可通过 `/chrome` 连接 |
-| `-f, --factory` | 以**工厂主导**身份进入，不带参数。主导会话把运维者挑好的卡片通过跨会话消息整张分配给空闲 lane，lane 用 `-l` 加入 |
-| `-l, --lane` | 以 **lane** 身份加入正在运行的工厂，自动领取下一个 `lane-<n>` 编号（存活 lane 中最大编号的下一个）。不带参数，没有正在运行的工厂时会被拒绝。`moai glm -l` 与 `moai codex -l` 行为相同 |
-| `--leader <name>` | 只能与 `-l` 或 `--lane` 同用，指定要加入的主导会话（默认 `leader`，旧拼写 `lead` 会被拒绝）。当运行记录缺失或已退役而存活的主导会话仍在时，加入会验证该主导会话（pid + 进程启动）并恢复它的运行 |
-| `--factory-run <run-id>` | 与 `-l` 同用：按 id 指定要加入的运行，不能与 `--leader` 同时使用 |
-| `--clear-policy <value>` | 与 `moai cc -l` / `moai glm -l` 同用：lane 做完卡片后清理上下文的方式（默认 `clear-each`，另有 `clear-when-full`、`relaunch`） |
-| `--no-auto-dispatch` | 与 `moai cc -l` / `moai glm -l` 同用：以手动模式启动 lane。默认是自主派单的 lane，会自己租用队列里的下一张卡片 |
+| `-f, --factory` | 以**工厂主导**身份进入，不带参数。主导会话把运维者挑好的卡片通过跨会话消息整张分配给空闲 lane，lane 用 `-a` 加入 |
+| `-a` | 以 **lane** 身份加入正在运行的工厂，自动领取下一个 `lane-<n>` 编号（存活 lane 中最大编号的下一个）。不带参数，没有正在运行的工厂时会被拒绝。`moai glm -a` 与 `moai codex -l` 行为相同 |
+| `--leader <name>` | 只能与 `-a` 同用，指定要加入的主导会话（默认 `leader`，旧拼写 `lead` 会被拒绝）。当运行记录缺失或已退役而存活的主导会话仍在时，加入会验证该主导会话（pid + 进程启动）并恢复它的运行 |
+| `--factory-run <run-id>` | 与 `-a` 同用：按 id 指定要加入的运行，不能与 `--leader` 同时使用 |
+| `--clear-policy <value>` | 与 `moai cc -a` / `moai glm -a` 同用：lane 做完卡片后清理上下文的方式（默认 `clear-each`，另有 `clear-when-full`、`relaunch`） |
+| `--no-auto-dispatch` | 与 `moai cc -a` / `moai glm -a` 同用：以手动模式启动 lane。默认是自主派单的 lane，会自己租用队列里的下一张卡片 |
 
-{{< callout type="info" >}} 进入令牌只有 `-f`（主导）和 `-l`（lane）两个，都不带参数。一次启动只能带一个令牌，所以 `-f` 与 `-l` 同时出现会报错；`-f <值>`、`-l lane-2` 这类带值的形式，以及在 Codex 上请求主导（`moai codex` 上的 `-f`），都会被一行错误拒绝。已停用的 `-k` 入口同样被拒绝，并提示改用 `-f` 和 `-l`。完整约定见[工厂模式](/zh/advanced/factory-mode)与 [manager-lead 主导协调者](/zh/advanced/manager-lead)。 {{< /callout >}}
+{{< callout type="info" >}} 进入令牌只有 `-f`（主导）和 `-a`（lane）两个，都不带参数。一次启动只能带一个令牌，所以 `-f` 与 `-a` 同时出现会报错；`-f <值>`、`-a lane-2` 这类带值的形式，以及在 Codex 上请求主导（`moai codex` 上的 `-f`），都会被一行错误拒绝。已停用的 `-k` 入口同样被拒绝，并提示改用 `-f` 和 `-a`。完整约定见[工厂模式](/zh/advanced/factory-mode)与 [manager-lead 主导协调者](/zh/advanced/manager-lead)。 {{< /callout >}}
 
 卡片整张进入一条 lane，并在其中按顺序走完 `plan → run → sync` 三个阶段。每个阶段由该会话拉起 `Agent()` 子智能体，有写权限的拉起用 `isolation: "worktree"` 隔离。一条 lane 同时最多运行 10 个子智能体，启动器会在 lane 会话中以 `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS` 设置这个值，所以 N 条 lane 分摊机器容量，靠的是配置的保证，而不是运维者自觉。不要一次把所有 lane 全部启动：先起第一条，确认它确实开始产出，再启动其余的。
 
