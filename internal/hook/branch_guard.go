@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -446,6 +447,7 @@ var (
 	explicitGitTargetPattern = regexp.MustCompile(`(?i)\bgit\s+-C\s+(/[^\s;&|"'()<>]+)`)
 	leadingCdTargetPattern   = regexp.MustCompile(`^\s*cd\s+(/[^\s;&|"'()<>]+)\s*&&\s*`)
 	gitInvocationPattern     = regexp.MustCompile(`(?i)\bgit\s`)
+	soleGitStartPattern     = regexp.MustCompile(`(?i)^git\s`)
 
 	// Forms that can move a git invocation off the path a leading `cd` or a
 	// `-C` names (see explicitGitTarget).
@@ -473,7 +475,11 @@ var (
 // The target is adopted only when nothing in the command can move the git
 // invocation elsewhere: a further `cd`/`pushd`/`popd`, a subshell `(`,
 // GIT_DIR=/GIT_WORK_TREE=, --git-dir/--work-tree, or a second `-C` all make
-// the named path untrustworthy. Those forms fall back to the hook-cwd
+// the named path untrustworthy. So does a path the shell expands or git reads
+// differently (targetPathAgrees), and a leading `cd` followed by anything but
+// exactly one git command (isSoleGitInvocation) — an allow-list, because the
+// spellings of "run code" a deny-list must name (`\eval`, `"cd"`, `c\d`,
+// `$'cd'`, `then .`) have no end. Those forms fall back to the hook-cwd
 // judgment, with the git global options removed so the verb is still seen —
 // the fallback can therefore only deny, never newly allow.
 func explicitGitTarget(command string) (string, string) {
@@ -486,7 +492,8 @@ func explicitGitTarget(command string) (string, string) {
 	rest, target := command, ""
 	if m := leadingCdTargetPattern.FindStringSubmatchIndex(rest); m != nil {
 		after := substituteQuotedArguments(rest[m[1]:])
-		if dirChangePattern.MatchString(after) || cOptionPattern.MatchString(after) {
+		if dirChangePattern.MatchString(after) || cOptionPattern.MatchString(after) ||
+			!targetPathAgrees(rest[m[2]:m[3]]) || !isSoleGitInvocation(after) {
 			redirected = true
 		} else {
 			target, rest = rest[m[2]:m[3]], rest[m[1]:]
@@ -497,12 +504,56 @@ func explicitGitTarget(command string) (string, string) {
 	}
 	if m := explicitGitTargetPattern.FindStringSubmatchIndex(rest); m != nil &&
 		!insideAnySpan(m[0], quotedArgumentPattern.FindAllStringIndex(rest, -1)) {
+		if !targetPathAgrees(rest[m[2]:m[3]]) {
+			return gitGlobalOptionsPattern.ReplaceAllString(command, "git"), ""
+		}
 		target, rest = rest[m[2]:m[3]], rest[:m[0]]+"git"+rest[m[1]:]
 	}
 	if target == "" {
 		return command, ""
 	}
 	return rest, target
+}
+
+// targetPathAgrees reports whether the shell and git are certain to enter the
+// same directory for an explicit target path. A shell expansion character
+// ($, backtick, glob, brace, tilde, history, backslash) or a path that is not
+// already clean (a `.` or `..` segment, a doubled slash) is read differently by
+// the shell (logical path, expansion) and git (physical path), so the lookup
+// would judge a directory the command never enters. One trailing slash is fine.
+func targetPathAgrees(p string) bool {
+	if strings.ContainsAny(p, "$`*?[{~#!\\") {
+		return false
+	}
+	clean := path.Clean(p)
+	return p == clean || p == clean+"/"
+}
+
+// isSoleGitInvocation reports whether the text after a leading `cd <abs> &&`
+// (quoted spans already collapsed) is exactly one git command: it starts with
+// the word `git` and holds no command separator, command substitution, or
+// backtick. Any other shape (an eval, a quote- or backslash-obscured cd, a
+// dot-source, a conditional) can move the directory unseen, so the leading
+// target is not adopted.
+func isSoleGitInvocation(after string) bool {
+	return soleGitStartPattern.MatchString(after) && !strings.ContainsAny(after, ";&|\n`") &&
+		!strings.Contains(after, "$(")
+}
+
+// primaryAtTargetOrCwd classifies the git context of the explicit target, and
+// when that lookup fails falls back to the hook cwd: a lookup failure on a
+// literal target is uncertainty about the target, not evidence the command is
+// safe, and the cwd judgment can only add denials.
+func primaryAtTargetOrCwd(target, hookCwd string) (cwd string, isPrimary bool, err error) {
+	if target == "" {
+		isPrimary, err = isPrimaryCheckout(hookCwd)
+		return hookCwd, isPrimary, err
+	}
+	if isPrimary, err = isPrimaryCheckout(target); err == nil {
+		return target, isPrimary, nil
+	}
+	isPrimary, err = isPrimaryCheckout(hookCwd)
+	return hookCwd, isPrimary, err
 }
 
 // resolveHeadBranch is the package-level indirection over
@@ -572,11 +623,7 @@ func checkProtectedCommit(input *HookInput, projectDir string, denyList []string
 	// Seam A: query the git context at the command's actual cwd — the same
 	// discriminant checkBranchState uses (see its comment for why the
 	// audit-log project dir must NOT feed this query).
-	gitContextCwd := resolveProjectRootFromInputOrEnv(input, "branch_guard")
-	if target != "" {
-		gitContextCwd = target
-	}
-	isPrimary, err := isPrimaryCheckout(gitContextCwd)
+	gitContextCwd, isPrimary, err := primaryAtTargetOrCwd(target, resolveProjectRootFromInputOrEnv(input, "branch_guard"))
 	if err != nil {
 		// Fail OPEN with advisory (REQ-2.3): uncertainty never denies.
 		appendBranchGuardAdvisory(input, projectDir, command, err, gitContextCwd)
@@ -1138,11 +1185,7 @@ func checkBranchState(input *HookInput, projectDir string) (decision string, rea
 	// dir. This is the one-line correction that fixes the worktree
 	// misclassification — isPrimaryCheckout stays a pure function of its
 	// argument; only which directory the caller asks it to query changes.
-	gitContextCwd := resolveProjectRootFromInputOrEnv(input, "branch_guard")
-	if target != "" {
-		gitContextCwd = target
-	}
-	isPrimary, err := isPrimaryCheckout(gitContextCwd)
+	gitContextCwd, isPrimary, err := primaryAtTargetOrCwd(target, resolveProjectRootFromInputOrEnv(input, "branch_guard"))
 	// W3 (SPEC-SESSION-ANCHOR-ATTR-001 REQ-SAA-007): this Seam A anchor read
 	// is one of the traced anchor decision points. One env lookup when
 	// MOAI_ANCHOR_TRACE is off (REQ-SAA-008); the audit-log project dir
