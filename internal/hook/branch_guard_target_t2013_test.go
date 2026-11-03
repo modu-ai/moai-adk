@@ -8,6 +8,8 @@ package hook
 // follows the cwd.
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -102,6 +104,54 @@ func TestBranchGuardExplicitTargetUnchangedForeignForms(t *testing.T) {
 		_, reason := affObserve(t, handler, fx.primary, command)
 		if strings.HasPrefix(reason, branchGuardViolationPrefix+":") && strings.Contains(command, "../rel") {
 			t.Errorf("%q carries the sentinel: %q, want today's behavior (no match)", command, reason)
+		}
+	}
+}
+
+// TestBranchGuardExplicitTargetNotAdoptedWhenShellRunsStringOrFile pins the
+// second can-only-deny promise: a quoted argument is collapsed before the
+// directory-change scan, so a leading `cd <abs> &&` followed by code the current
+// shell runs from a string or a file (eval, source, dot-source) can move the
+// git invocation anywhere. Those forms fall back to the hook-cwd judgment.
+func TestBranchGuardExplicitTargetNotAdoptedWhenShellRunsStringOrFile(t *testing.T) {
+	t.Setenv(branchGuardExemptEnv, "")
+	fx := newAFFGuardFixture(t)
+	handler := newTargetGuardHandler(fx)
+
+	for _, command := range []string{
+		"cd " + fx.release + " && eval 'cd " + fx.primary + "' && git commit -m x",
+		"cd " + fx.release + ` && eval "cd ` + fx.primary + `" && git commit -m x`,
+		"cd " + fx.release + " && source ./x.sh && git commit -m x",
+		"cd " + fx.release + " && . ./x.sh && git commit -m x",
+	} {
+		decision, reason := affObserve(t, handler, fx.primary, command)
+		if decision != DecisionDeny || !strings.HasPrefix(reason, branchGuardViolationPrefix+":") {
+			t.Errorf("%q from the primary cwd = %q / %q, want deny with the sentinel (the shell runs a string or file, so the explicit target must not be adopted)", command, decision, reason)
+		}
+	}
+}
+
+// TestBranchGuardExplicitTargetStillAdoptedForPlainForms keeps the allowed
+// forms allowed: a path that merely contains a dot, such as a hidden directory,
+// is not a dot-source command.
+func TestBranchGuardExplicitTargetStillAdoptedForPlainForms(t *testing.T) {
+	t.Setenv(branchGuardExemptEnv, "")
+	fx := newAFFGuardFixture(t)
+	handler := newTargetGuardHandler(fx)
+	hidden := filepath.Join(fx.release, ".hidden")
+	if err := os.MkdirAll(hidden, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, command := range []string{
+		"cd " + fx.release + " && git commit -m x",
+		"git -C " + fx.release + " commit -m x",
+		"cd " + hidden + " && git commit -m x",
+		"git -C " + hidden + " commit -m x",
+	} {
+		_, reason := affObserve(t, handler, fx.primary, command)
+		if strings.HasPrefix(reason, branchGuardViolationPrefix+":") {
+			t.Errorf("%q with primary cwd carries the sentinel: %q, want no BranchGuard deny (target is a worktree)", command, reason)
 		}
 	}
 }
