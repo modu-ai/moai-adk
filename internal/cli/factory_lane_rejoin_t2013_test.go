@@ -85,10 +85,10 @@ func TestT2013RejoinEntryParse(t *testing.T) {
 	t.Setenv("CLAUDE_PROJECT_DIR", t.TempDir())
 
 	for _, args := range [][]string{
-		{"-l", "--name", "lane-1"},
-		{"-l", "-n", "lane-2"},
-		{"-l", "--name=lane-3"},
-		{"--lane", "-n=lane-4", "-b"},
+		{"-a", "--name", "lane-1"},
+		{"-a", "-n", "lane-2"},
+		{"-a", "--name=lane-3"},
+		{"-a", "-n=lane-4", "-b"},
 	} {
 		p, err := parseLauncherEntry(args)
 		if err != nil {
@@ -104,18 +104,18 @@ func TestT2013RejoinEntryParse(t *testing.T) {
 	}
 
 	for _, args := range [][]string{
-		{"-l", "--name", "board-watch"},
-		{"-l", "--name", "lane-01"},
-		{"-l", "--name", "lane-0"},
-		{"-l", "--name", "lane-x"},
-		{"-l", "--name", "worker-3"},
+		{"-a", "--name", "board-watch"},
+		{"-a", "--name", "lane-01"},
+		{"-a", "--name", "lane-0"},
+		{"-a", "--name", "lane-x"},
+		{"-a", "--name", "worker-3"},
 	} {
 		if _, err := parseLauncherEntry(args); err == nil {
 			t.Errorf("parseLauncherEntry(%v) accepted, want a refusal (not a canonical lane label)", args)
 		}
 	}
 
-	p, err := parseLauncherEntry([]string{"-l"})
+	p, err := parseLauncherEntry([]string{"-a"})
 	if err != nil || p.FactoryRejoin || !p.FactoryAutoNumber {
 		t.Errorf("parseLauncherEntry(-l) = rejoin=%v auto=%v err=%v, want the unchanged next-free join", p.FactoryRejoin, p.FactoryAutoNumber, err)
 	}

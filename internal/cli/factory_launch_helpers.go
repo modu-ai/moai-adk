@@ -26,7 +26,7 @@ import (
 )
 
 // launcherEntryParse is the launcher entry parse: the factory entry the `-f`
-// leader and `-l` lane tokens select, plus the arguments left for the backend.
+// leader and `-a` agent tokens select, plus the arguments left for the backend.
 // The retired `-k` entry never reaches it — parseLauncherEntry refuses that
 // spelling first (launcher_retired_entries.go).
 type launcherEntryParse struct {
@@ -47,7 +47,7 @@ type launcherEntryParse struct {
 	// run by the time a non-empty value reaches the gate.
 	FactoryLead string
 	// FactoryAutoNumber marks a lane number the launcher chose itself
-	// (`-l`), as opposed to one the operator typed; the claim reports legacy
+	// (`-a`), as opposed to one the operator typed; the claim reports legacy
 	// collisions differently.
 	FactoryAutoNumber bool
 	// FactoryRejoin marks `-l --name lane-<n>`: the session asks for that exact

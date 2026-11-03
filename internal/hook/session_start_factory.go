@@ -318,7 +318,7 @@ func codexLaneEnvFailFast() string {
 
 // factoryLeaderNotice is the factory leader branch. It carries, in order:
 // (a) the run id and the session name that must accompany it; (b) the one
-// lane-start sentence — to start a lane, enter `moai cc -l` (or `moai glm -l`,
+// lane-start sentence — to start a lane, enter `moai cc -a` (or `moai glm -a`,
 // `moai codex -l`) in a new terminal; (c) the entry-point guide — the -f
 // leader entries — the per-lane fan-out line, and the leader socket path;
 // (d) the dispatch discipline — whole-card routing (each card to ONE lane,
@@ -399,7 +399,7 @@ func factoryLeaderNotice(runID string, lanes int, lang string) string {
 // final name). It does NOT print a launch block: a lane is already running,
 // and the operator has nothing left to paste.
 //
-// The incremental `-l` lane entry carries no run count (the launcher
+// The incremental `-a` agent entry carries no run count (the launcher
 // publishes 0), and the count-less sentence names the label alone rather
 // than fabricating a fan-out size. Both sentences take (label, lanes);
 // the per-locale word order differs (en/ja/ko say the count first, zh the

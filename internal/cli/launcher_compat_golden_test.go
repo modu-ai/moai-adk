@@ -21,13 +21,14 @@ var launcherEntryRefusalRows = [][]string{
 	{"-l", "-a"},
 	{"-l", "x"},
 	{"-a", "x"},
-	{"-l", "--name", "foo"},
+	{"-a", "--name", "foo"},
 	{"-f", "--name", "lane-2"},
 	{"-f", "--leader", "leader-2"},
 	{"--leader"},
-	{"-l", "--leader", "lead-1"},
-	{"-l", "--clear-policy", "bogus"},
+	{"-a", "--leader", "lead-1"},
+	{"-a", "--clear-policy", "bogus"},
 	{"-f", "--no-auto-dispatch"},
+	{"--lane"},
 }
 
 func TestCompat_LauncherEntryRefusalsMatchGolden(t *testing.T) {

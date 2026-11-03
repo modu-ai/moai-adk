@@ -23,7 +23,7 @@ func TestFactoryGuideTeachesLaneFormsInEveryLocale(t *testing.T) {
 		if !ok {
 			t.Fatalf("locale %q missing from factoryLocales", lang)
 		}
-		for _, want := range []string{"`moai cc -l`", "`moai glm -l`", "`moai codex -l`"} {
+		for _, want := range []string{"`moai cc -a`", "`moai glm -a`", "`moai codex -l`"} {
 			if !strings.Contains(m.leaderManual, want) {
 				t.Errorf("%s leaderManual lacks %q:\n%s", lang, want, m.leaderManual)
 			}

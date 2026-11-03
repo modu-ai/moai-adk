@@ -5,7 +5,7 @@ import "github.com/spf13/cobra"
 // newAgenticFactoryCmd is the Issue #1948 canonical-command skeleton.
 // The name and subcommands are provisional until SPEC-AGENTIC-FACTORY-001
 // fixes them (design.md §8), so the command is hidden and changes no state.
-// The legacy `moai cc -f/-l` and `moai factory` entry points are untouched.
+// The legacy `moai cc -f/-a` and `moai factory` entry points are untouched.
 func newAgenticFactoryCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:    "agentic-factory",

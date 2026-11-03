@@ -19,9 +19,8 @@ func TestS46_NoRoleInversion(t *testing.T) {
 	}{
 		{[]string{"-f"}, factoryBranchLeader},
 		{[]string{"--factory"}, factoryBranchLeader},
-		{[]string{"-l"}, factoryBranchLane},
-		{[]string{"--lane"}, factoryBranchLane},
-		{[]string{"-l", "--leader", "leader-2"}, factoryBranchLane},
+		{[]string{"-a"}, factoryBranchLane},
+		{[]string{"-a", "--leader", "leader-2"}, factoryBranchLane},
 		{[]string{"-w", "n"}, factoryBranchNone},
 		{[]string{"-w"}, factoryBranchNone},
 	} {
@@ -33,7 +32,7 @@ func TestS46_NoRoleInversion(t *testing.T) {
 
 // -w composes with either entry and is never consumed by it.
 func TestS46_WorktreeFlagKeptWithEntries(t *testing.T) {
-	for _, entry := range []string{"-f", "-l"} {
+	for _, entry := range []string{"-f", "-a"} {
 		e, _ := legacyEntry(t, entry, "-w", "n")
 		if !containsFlag(e.Rest, "-w") || !containsFlag(e.Rest, "n") {
 			t.Errorf("%s -w n: Rest = %v lost the -w pair", entry, e.Rest)
@@ -49,10 +48,12 @@ func TestS46_RefusedFormsAreExplicit(t *testing.T) {
 		want string // substring the error must carry
 	}{
 		{[]string{"-k"}, "retired"},
-		{[]string{"--leader", "x"}, "-l"},
-		{[]string{"--leader=x"}, "-l"},
-		{[]string{"-f", "--leader", "x"}, "-l"},
-		{[]string{"-f", "-l"}, ""},
+		{[]string{"--leader", "x"}, "-a"},
+		{[]string{"--leader=x"}, "-a"},
+		{[]string{"-f", "--leader", "x"}, "-a"},
+		{[]string{"-f", "-a"}, ""},
+		{[]string{"-l"}, "-a"},
+		{[]string{"--lane"}, "-a"},
 	} {
 		_, err := parseLauncherEntry(tc.args)
 		if err == nil {
