@@ -37,8 +37,9 @@ var webRunFn = web.Run
 func webFlowProbe() flow.Probe { return flow.ProcessProbe(homestate.ProbeProcessIdentity) }
 
 // openWebLedger opens the project ledger `moai af` uses (afLedgerPath) for the board's read side. A ledger file that
-// does not exist, or cannot be opened, yields a nil reader (the board shows "not provided") and never creates a file or
-// fails startup. The returned func closes the ledger and is always safe to call.
+// does not exist, cannot be opened, or has a schema other than the one this build knows, yields a nil reader (the board
+// shows "not provided"); the file is opened read-only, so it is never created, migrated or written, and startup never
+// fails. The returned func closes the ledger and is always safe to call.
 func openWebLedger(ctx context.Context) (ledger.Reader, func()) {
 	noop := func() {}
 	path, err := afLedgerPath("")
@@ -53,7 +54,7 @@ func openWebLedger(ctx context.Context) (ledger.Reader, func()) {
 	}
 	openCtx, cancel := context.WithTimeout(ctx, afOpTimeout)
 	defer cancel()
-	st, err := ledger.Open(openCtx, path)
+	st, err := ledger.OpenReadOnly(openCtx, path)
 	if err != nil {
 		return nil, noop
 	}
