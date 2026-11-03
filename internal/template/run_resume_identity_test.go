@@ -21,6 +21,7 @@ const contextLoadingPath = ".claude/skills/moai/workflows/run/context-loading.md
 // must exist), and "unrecorded identity field" is the rule for a field that was never written.
 var resumeRequiredWords = []string{
 	"repository root", "HEAD", "plan_artifact_hash", "card", "invalidate",
+	"whether the file was just created or already existed", "- Phase {N} complete: HEAD",
 	"unrecorded identity field", "- Repository root:", "- Worktree:", "- Lease owner:", "- HEAD:", "- plan_artifact_hash:",
 }
 
@@ -68,7 +69,7 @@ func TestRunResumeIdentity_Mutants(t *testing.T) {
 		t.Fatalf("stale section must miss all %d words, got %d: %v", len(resumeRequiredWords), len(v), v)
 	}
 
-	const good = "### Resume Check\nVerify repository root, card, HEAD and plan_artifact_hash; invalidate on a difference or an unrecorded identity field.\n- Repository root: x\n- Worktree: x\n- Lease owner: x\n- HEAD: x\n- plan_artifact_hash: x\n## Worktree Path Rules\n"
+	const good = "### Resume Check\nVerify repository root, card, HEAD and plan_artifact_hash; invalidate on a difference or an unrecorded identity field; whether the file was just created or already existed, record the block.\n- Phase {N} complete: HEAD x\n- Repository root: x\n- Worktree: x\n- Lease owner: x\n- HEAD: x\n- plan_artifact_hash: x\n## Worktree Path Rules\n"
 	if v := resumeIdentityViolations(good); len(v) != 0 {
 		t.Fatalf("positive control must pass, got: %v", v)
 	}

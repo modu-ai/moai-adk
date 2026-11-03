@@ -36,15 +36,21 @@ func phaseReferenceViolations(taskDecomp, router string, others ...string) []str
 			v = append(v, "task-decomposition: 'proceeding to Phase "+m[1]+"' names no phase heading")
 		}
 	}
-	for _, stale := range []string{"Phase 11~4", "2.8"} {
+	for _, stale := range []string{"2.8"} {
 		if strings.Contains(router, stale) {
 			v = append(v, "run router: retired phase label "+stale)
 		}
 	}
 	// Labels retired by the same renumbering, searched in the router and in the
 	// run bodies it loads.
-	all := router + "\n" + strings.Join(others, "\n")
-	for _, stale := range []string{"Phase 1~1.8", "Phase 1.8", "11/2B", "or 2B", "Phase 5, sync-auditor Phase 19"} {
+	all := router + "\n" + taskDecomp + "\n" + strings.Join(others, "\n")
+	for _, stale := range []string{
+		"Phase 1~1.8", "Phase 1.8", "11/2B", "or 2B", "Phase 5, sync-auditor Phase 19",
+		// Frontmatter and sequence labels of the same renumbering, and hand-offs
+		// from Phase 1 back to Phase 1 (the gate is Phase 1; the next is Phase 2).
+		"Phase 11~4", "Phase 11-4", "Phase 1-1.8", "0.5~1.8",
+		"entering Phase 1.", "proceed to Phase 1.", "continue to Phase 1.", "skip to Phase 1.",
+	} {
 		if strings.Contains(all, stale) {
 			v = append(v, "run workflow: retired phase label "+stale)
 		}
