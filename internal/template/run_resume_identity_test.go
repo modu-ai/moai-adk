@@ -2,6 +2,7 @@ package template
 
 import (
 	"io/fs"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -23,6 +24,72 @@ var resumeRequiredWords = []string{
 	"repository root", "HEAD", "plan_artifact_hash", "card", "invalidate",
 	"whether the file was just created or already existed", "- Phase {N} complete: HEAD",
 	"unrecorded identity field", "- Repository root:", "- Worktree:", "- Lease owner:", "- HEAD:", "- plan_artifact_hash:",
+}
+
+// checkpointLineRE matches a phase-checkpoint template line anywhere in a run
+// body. Every such line must carry the identity the Resume Check compares, or
+// a run that follows the template resumes from the first phase every time.
+var checkpointLineRE = regexp.MustCompile(`(?m)^- Phase (\d+) complete:.*$`)
+
+// checkpointViolations lists checkpoint template lines that omit the HEAD or
+// the plan_artifact_hash.
+func checkpointViolations(text string) []string {
+	var v []string
+	for _, m := range checkpointLineRE.FindAllString(text, -1) {
+		if !strings.Contains(m, "HEAD") || !strings.Contains(m, "plan_artifact_hash") {
+			v = append(v, "checkpoint without HEAD and plan_artifact_hash: "+m)
+		}
+	}
+	return v
+}
+
+// TestRunCheckpointTemplatesCarryIdentity checks every checkpoint template in
+// the deployed run bodies.
+func TestRunCheckpointTemplatesCarryIdentity(t *testing.T) {
+	t.Parallel()
+
+	fsys, err := EmbeddedTemplates()
+	if err != nil {
+		t.Fatalf("EmbeddedTemplates() error: %v", err)
+	}
+	seen := 0
+	for _, p := range []string{
+		".claude/skills/moai/workflows/run.md",
+		contextLoadingPath,
+		".claude/skills/moai/workflows/run/phase-execution.md",
+		".claude/skills/moai/workflows/run/task-decomposition.md",
+	} {
+		b, err := fs.ReadFile(fsys, p)
+		if err != nil {
+			t.Fatalf("read %s: %v", p, err)
+		}
+		seen += len(checkpointLineRE.FindAllString(string(b), -1))
+		if v := checkpointViolations(string(b)); len(v) > 0 {
+			t.Errorf("%s:\n  %s", p, strings.Join(v, "\n  "))
+		}
+	}
+	if seen == 0 {
+		t.Fatal("no checkpoint template lines found: the check would pass vacuously")
+	}
+}
+
+// TestRunCheckpointTemplates_Mutants proves the checker can fail in each
+// direction and that a complete line passes.
+func TestRunCheckpointTemplates_Mutants(t *testing.T) {
+	t.Parallel()
+
+	if v := checkpointViolations("- Phase 2 complete: strategy=x\n"); len(v) != 1 {
+		t.Errorf("bare checkpoint must be one violation, got %v", v)
+	}
+	if v := checkpointViolations("- Phase 2 complete: HEAD {sha}, strategy=x\n"); len(v) != 1 {
+		t.Errorf("checkpoint without the hash must be one violation, got %v", v)
+	}
+	if v := checkpointViolations("- Phase 2 complete: plan_artifact_hash {h}, strategy=x\n"); len(v) != 1 {
+		t.Errorf("checkpoint without HEAD must be one violation, got %v", v)
+	}
+	if v := checkpointViolations("- Phase 2 complete: HEAD {sha}, plan_artifact_hash {h}, strategy=x\n"); len(v) != 0 {
+		t.Errorf("complete checkpoint must pass, got %v", v)
+	}
 }
 
 // resumeIdentityViolations lists the identity checks a Resume Check section
