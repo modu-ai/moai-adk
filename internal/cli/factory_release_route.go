@@ -341,28 +341,30 @@ func factoryHasGolangciConfig(dir string) bool {
 // root), the Go package directories that own what the card changed since its
 // merge base with releaseTip.
 func factoryChangedGoPackages(cardTree, releaseTip string) []string {
-	return factoryOwningGoPackages(cardTree, factoryChangedPaths(cardTree, releaseTip))
+	changed, _ := factoryChangedPaths(cardTree, releaseTip)
+	return factoryOwningGoPackages(cardTree, changed)
 }
 
 // factoryChangedPaths lists the paths the card changed since its merge base
-// with releaseTip; nil when the tip is empty or the diff cannot be read.
-func factoryChangedPaths(cardTree, releaseTip string) []string {
+// with releaseTip. known is false when the change could not be established (the
+// tip is empty or the diff cannot be read): an unknown change is not "no
+// change", and the caller must not read the nil list as the latter.
+func factoryChangedPaths(cardTree, releaseTip string) (paths []string, known bool) {
 	if releaseTip == "" {
-		return nil
+		return nil, false
 	}
 	// NUL-delimited: git quotes non-ASCII paths in line mode, and a path may
 	// hold spaces, so neither a newline nor a whitespace split is safe.
 	out, err := cliGitIn(cardTree, "diff", "--name-only", "-z", releaseTip+"...HEAD")
 	if err != nil {
-		return nil
+		return nil, false
 	}
-	var paths []string
 	for _, p := range strings.Split(out, "\x00") {
 		if p != "" {
 			paths = append(paths, p)
 		}
 	}
-	return paths
+	return paths, true
 }
 
 // factoryFastCheckPackages decides the packages to lint and test from the
@@ -370,9 +372,14 @@ func factoryChangedPaths(cardTree, releaseTip string) []string {
 // go.work.sum) can break any package and owns none, so it widens the scope to
 // the whole module; so does any changed .go file no package directory claims
 // (for example a deleted file in a vanished directory), decided per path so
-// another path that does select a package cannot mask it.
+// another path that does select a package cannot mask it. A change that cannot
+// be established (an empty or unresolvable release tip, an unreadable diff) also
+// widens to the whole module: it is not "no change".
 func factoryFastCheckPackages(cardTree, releaseTip string) []string {
-	changed := factoryChangedPaths(cardTree, releaseTip)
+	changed, known := factoryChangedPaths(cardTree, releaseTip)
+	if !known {
+		return []string{"./..."}
+	}
 	pkgs := factoryOwningGoPackages(cardTree, changed)
 	for _, p := range changed {
 		switch path.Base(p) {
