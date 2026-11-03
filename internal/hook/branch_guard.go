@@ -481,7 +481,10 @@ var (
 // spellings of "run code" a deny-list must name (`\eval`, `"cd"`, `c\d`,
 // `$'cd'`, `then .`) have no end. Those forms fall back to the hook-cwd
 // judgment, with the git global options removed so the verb is still seen —
-// the fallback can therefore only deny, never newly allow.
+// the fallback can therefore only deny, never newly allow. Finally the whole
+// command must pass isLiteralTargetCommand, a strict allow-list that does not
+// depend on the quote collapse (which mis-reads `\"`): a command with any quote,
+// backslash, expansion character, or separator is never adopted.
 func explicitGitTarget(command string) (string, string) {
 	plain := substituteQuotedArguments(command)
 	if len(gitInvocationPattern.FindAllStringIndex(plain, -1)) != 1 {
@@ -512,7 +515,54 @@ func explicitGitTarget(command string) (string, string) {
 	if target == "" {
 		return command, ""
 	}
+	if !isLiteralTargetCommand(command) {
+		return gitGlobalOptionsPattern.ReplaceAllString(command, "git"), ""
+	}
 	return rest, target
+}
+
+// nonLiteralShellChars are the characters whose presence means the scan cannot
+// be trusted to read the command as the shell does: quotes and backslash (the
+// quote collapse mis-reads `\"` and `\'`), expansion and substitution
+// characters, glob/brace/tilde/history/comment characters, redirections,
+// subshell parentheses, and every command separator including a newline.
+const nonLiteralShellChars = "'\"\\$`*?[]{}~#!;&|<>()\n\r"
+
+// shellKeywordWords are shell keywords and command builtins that run or
+// introduce code. As the first word after the optional `cd` they are already
+// excluded by the must-start-with-git rule; they are listed so the allow-list
+// states them and still rejects one that rides along as a later word.
+var shellKeywordWords = map[string]bool{
+	"if": true, "then": true, "else": true, "elif": true, "fi": true,
+	"for": true, "while": true, "until": true, "do": true, "done": true,
+	"case": true, "esac": true, "eval": true, "source": true,
+	"command": true, "exec": true, "builtin": true,
+}
+
+// isLiteralTargetCommand is the fail-closed allow-list for adopting an explicit
+// git target. The command must be exactly an optional literal `cd <abs> &&`
+// followed by ONE git command, with no quote, backslash, expansion character,
+// separator, or shell keyword anywhere (nonLiteralShellChars,
+// shellKeywordWords). Quote collapsing is deliberately not trusted here: it is
+// a regex approximation of the shell, and every error in it is a bypass.
+// Anything else is judged at the hook cwd, which can only add denials.
+func isLiteralTargetCommand(command string) bool {
+	body := strings.TrimSpace(command)
+	if m := leadingCdTargetPattern.FindStringSubmatchIndex(body); m != nil {
+		if strings.ContainsAny(body[m[2]:m[3]], nonLiteralShellChars) {
+			return false
+		}
+		body = body[m[1]:]
+	}
+	if !soleGitStartPattern.MatchString(body) || strings.ContainsAny(body, nonLiteralShellChars) {
+		return false
+	}
+	for _, w := range strings.Fields(strings.ToLower(body)) {
+		if shellKeywordWords[w] {
+			return false
+		}
+	}
+	return true
 }
 
 // targetPathAgrees reports whether the shell and git are certain to enter the
