@@ -16,7 +16,7 @@ draft: false
 ## moai cc — Claude バックエンド
 
 ```bash
-moai cc [-p profile] [-w [name]] [-- claude-args...]
+moai cc [-p profile] [-w [name]] [-f | -a] [-- claude-args...]
 ```
 
 `.claude/settings.local.json` から GLM 専用の環境変数を取り除き、team モードが有効だった場合はリセットしたうえで Claude Code を起動します。
@@ -29,6 +29,8 @@ moai cc [-p profile] [-w [name]] [-- claude-args...]
 | `-c, --continue` | 前回のセッションを継続 |
 | `-m, --model <model>` | モデル選択をオーバーライド |
 | `-w, --worktree [name]` | 隔離された git worktree (`.claude/worktrees/<name>/`) で起動 — 名前を省略すると自動生成 |
+| `--branch <existing>` | `-w <name>` と併用: 新しいブランチを作る代わりに、**既存の**ブランチをチェックアウトした worktree を作成します (例: gitflow の統合 worktree 向けの `moai cc -w develop --branch develop`)。ブランチはあらかじめ存在している必要があり、このフラグがブランチを作ることはありません。作成したツリーは worktree ツールが使えるよう `.moai/state/worktrees.json` に登録されます |
+| `--spawn` | 現在のセッションを置き換えず、新しい tmux ウィンドウでコマンドを実行します (tmux が必要) |
 | `--chrome` / `--no-chrome` | Claude Code にそのまま渡します。ランチャーはどちらも自動では付けないため、`--no-chrome` を指定しない限り `/chrome` で接続できます |
 | `-f, --factory` | **ファクトリーリーダー**として進入します。引数は取りません。リーダーは運用者が選んだカードをクロスセッションメッセージで空きレーンに丸ごと割り当て、レーンは `-a` で合流させます |
 | `-a` | 稼働中のファクトリーに**レーン**として合流し、次の `lane-<n>` 番号（生きているレーンの最大番号の次）を自動で受け取ります。引数は取らず、稼働中のファクトリーがなければ拒否されます。`moai glm -a` と `moai codex -l` も同じ動作です |
