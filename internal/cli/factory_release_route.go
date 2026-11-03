@@ -16,6 +16,7 @@ package cli
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -239,6 +240,20 @@ func factoryFastCheck(ctx context.Context, out io.Writer, cardTree, releaseTip s
 			if strings.Contains(line, "verify run: reuse") {
 				_, _ = fmt.Fprintf(out, "  fast check %s: %s (output not re-observed)\n", strings.Join(argv, " "), strings.TrimSpace(line))
 			}
+		}
+	}
+	// A step that exits 0 after it changed the working copy or HEAD measured a
+	// tree other than the one the check started on, so the pass speaks for
+	// neither (card-review round 2 P2 #1). verifyRun does not fail on this.
+	if key != "" {
+		end, endErr := verify.Key(ctx, cardTree)
+		if endErr != nil {
+			msg := fmt.Sprintf("the card tree key could not be re-read after the check (%v), so the check cannot be tied to the tree it started on", endErr)
+			return key, msg, errors.New(msg)
+		}
+		if end != key {
+			msg := fmt.Sprintf("the card tree changed while the check ran (key %s at the start, %s at the end); the pass does not speak for either tree", key, end)
+			return key, msg, errors.New(msg)
 		}
 	}
 	return key, "", nil
