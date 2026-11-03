@@ -16,7 +16,7 @@ import (
 // opt-out: the selection the launcher stamps is the code default (auto).
 func TestParseFactoryEntryAutoDispatchDefaultOn(t *testing.T) {
 	sdScrubLauncherEnv(t)
-	entry, err := parseLauncherEntry([]string{"-l"})
+	entry, err := parseLauncherEntry([]string{"-a"})
 	if err != nil {
 		t.Fatalf("parse -l: %v", err)
 	}
@@ -26,12 +26,12 @@ func TestParseFactoryEntryAutoDispatchDefaultOn(t *testing.T) {
 }
 
 // TestParseFactoryEntryNoAutoDispatchOptOut — `--no-auto-dispatch` selects
-// the manual mode on both lane spellings.
+// the manual mode with the opt-out before or after the -a entry.
 func TestParseFactoryEntryNoAutoDispatchOptOut(t *testing.T) {
 	sdScrubLauncherEnv(t)
 	for _, args := range [][]string{
-		{"-l", "--no-auto-dispatch"},
-		{"--lane", "--no-auto-dispatch"},
+		{"-a", "--no-auto-dispatch"},
+		{"--no-auto-dispatch", "-a"},
 	} {
 		entry, err := parseLauncherEntry(args)
 		if err != nil {
@@ -51,7 +51,7 @@ func TestParseFactoryEntryNoAutoDispatchLaneOnly(t *testing.T) {
 	for _, args := range [][]string{
 		{"-f", "--no-auto-dispatch"},   // leader shape
 		{"--no-auto-dispatch"},         // no factory entry at all
-		{"-l", "--no-auto-dispatch=1"}, // no value form exists
+		{"-a", "--no-auto-dispatch=1"}, // no value form exists
 	} {
 		if _, err := parseLauncherEntry(args); err == nil {
 			t.Errorf("%v: parsed without refusal, want a lane-only usage error", args)

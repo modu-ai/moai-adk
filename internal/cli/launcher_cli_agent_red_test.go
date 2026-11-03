@@ -39,23 +39,19 @@ func TestRED_AgentFlag_NotSilentlyAbsorbed(t *testing.T) {
 	}
 }
 
-// -a is the lane entry under its short design spelling: it selects the lane branch and the same factory entry
-// fields.
+// -a is the only lane entry (card t2021 removed -l/--lane): it selects the lane branch with an automatic
+// lane-<n> name and carries no declared lane count.
 func TestAgentFlag_ShortFormIsTheLaneEntry(t *testing.T) {
 	t.Setenv("CLAUDE_PROJECT_DIR", t.TempDir())
-	lane, err := parseLauncherEntry([]string{"-l"})
-	if err != nil {
-		t.Fatal(err)
-	}
 	e, err := parseLauncherEntry([]string{"-a"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !e.FactoryEnabled || !e.FactoryAutoNumber || e.FactoryLanes != lane.FactoryLanes {
-		t.Errorf("entry %+v does not match the lane entry %+v", e, lane)
+	if !e.FactoryEnabled || !e.FactoryAutoNumber || e.FactoryLanes != 0 {
+		t.Errorf("entry %+v is not the lane entry (enabled, automatic number, no declared count)", e)
 	}
-	if strings.Join(e.Rest, " ") != strings.Join(lane.Rest, " ") {
-		t.Errorf("Rest %v, want the lane form %v", e.Rest, lane.Rest)
+	if label, ok := parseFactoryLaneLabel(e.Rest); !ok || !strings.HasPrefix(label, "lane-") {
+		t.Errorf("Rest %v lacks a canonical lane-<n> --name", e.Rest)
 	}
 }
 
@@ -88,7 +84,8 @@ func TestAgentFlag_RefusalsNameBothTokens(t *testing.T) {
 		want string
 	}{
 		{[]string{"-f", "-a"}, "-a"},
-		{[]string{"-l", "-a"}, "-l/--lane"},
+		{[]string{"-l", "-a"}, "the -l flag was removed"},
+		{[]string{"--lane"}, "the --lane flag was removed"},
 		{[]string{"-a", "x"}, "takes no argument"},
 		{[]string{"-a=x"}, "takes no argument"},
 	} {

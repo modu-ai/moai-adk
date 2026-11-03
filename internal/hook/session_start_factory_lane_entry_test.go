@@ -22,7 +22,7 @@ import (
 var laneEntryLocales = []string{langEnglish, "ko", "ja", "zh"}
 
 // laneEntryCommands are the three lane-start commands the notice names.
-var laneEntryCommands = []string{"moai cc -l", "moai glm -l", "moai codex -l"}
+var laneEntryCommands = []string{"moai cc -a", "moai glm -a", "moai codex -l"}
 
 // removedFreeSlotLines are the free-slot line prefixes the notice used to
 // carry, one per locale (the string-table fields are gone; the text must not
@@ -88,7 +88,7 @@ func TestFactoryLeadNoticePrintsLaneCommandOnce(t *testing.T) {
 			// The entry guide names -l and -f only: every launcher flag the
 			// notice mentions is one of the two.
 			for _, m := range launcherEntryFlag.FindAllStringSubmatch(notice, -1) {
-				if m[1] != "-l" && m[1] != "-f" {
+				if m[1] != "-l" && m[1] != "-a" && m[1] != "-f" {
 					t.Errorf("notice names launcher flag %q beside -l and -f:\n%s", m[1], notice)
 				}
 			}
@@ -141,7 +141,10 @@ func TestStaleRunRebindHintNamesLaneEntry(t *testing.T) {
 		}
 	}
 	for _, provider := range []string{factory.RelaunchProviderCC, factory.RelaunchProviderGLM, factory.RelaunchProviderCodex} {
-		want := "moai " + provider + " -l"
+		want := "moai " + provider + " -a"
+		if provider == factory.RelaunchProviderCodex {
+			want = "moai " + provider + " -l"
+		}
 		if got := (factory.RelaunchCommand{Provider: provider}).LaunchLine(); got != want {
 			t.Errorf("relaunch verb launch line for %s = %q, want the lane entry %q", provider, got, want)
 		}
