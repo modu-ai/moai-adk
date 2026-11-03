@@ -889,7 +889,7 @@ func regularCodemapsTree(root string) bool {
 	}
 	ok := true
 	err := filepath.WalkDir(root, func(_ string, d fs.DirEntry, err error) error {
-		if err != nil || !(d.IsDir() || d.Type().IsRegular()) {
+		if err != nil || (!d.IsDir() && !d.Type().IsRegular()) {
 			ok = false
 			return filepath.SkipAll
 		}
