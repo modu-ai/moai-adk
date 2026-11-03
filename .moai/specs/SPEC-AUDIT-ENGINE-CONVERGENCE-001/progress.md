@@ -179,7 +179,52 @@ Recorded deviations and open items for M6: (1) `internal/template/catalog.yaml` 
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_status: audit-ready
+run_complete_at: 2026-11-03T00:29:00Z
+run_author: manager-develop (card t2017)
+run_commit_sha: 4894f2db5ef5acb02f4dd33e3bcd1c455df456af   # the last CODE commit (M6 GREEN). The commits after it are docs-only progress commits (b7fba48b67 appends the M6 block of section E.2; the commit that carries this section follows it); no code, test, template or agent text changed after 4894f2db5e.
+run_base_sha: f0fafb81e5cafd2c3165b68b6d83c85d07cf6de0     # parent of the first M1 RED commit e3757ebaf1
+ac_pass_count: 16
+ac_fail_count: 0
+ac_status_basis: the 16 sub-criteria of acceptance.md section B; each PASS row is in the section E.2 block named in the table below, with its verbatim output
+preserve_list_post_run_count: not measured          # no PRESERVE enumeration was part of this SPEC's plan; the milestone boundaries were checked against each plan file list instead (section E.2, per milestone)
+l44_pre_commit_fetch: not run by this lane          # the lane commits locally and never fetches or pushes
+l44_post_push_fetch: not applicable                 # nothing was pushed
+new_warnings_or_lints_introduced: none against the baseline   # golangci-lint run ./... reports only the pre-existing internal/discovery/leader_readers_darwin.go:93:31 SA1019; go vet ./... exit 0
+cross_platform_build:
+  native: go build ./... exit 0 (darwin)
+  windows: GOOS=windows GOARCH=amd64 go build ./... exit 0   # build and vet only; Windows tests were not run
+  agents_emit_check: make agents-emit-check specs=12 copies=4 diff=0, exit 0
+total_run_phase_files: 69   # git diff --name-only f0fafb81e5 4894f2db5e | wc -l; 8004 insertions, 187 deletions
+run_phase_commits: 38        # git rev-list --count f0fafb81e5..b7fba48b67
+m1_to_mN_commit_strategy: per milestone, RED commit(s) first as tests only, then GREEN as forward commits, then one docs-only evidence commit; M4 and M5 split by AC group; local commits only, nothing pushed
+```
+
+Milestones (the evidence for each is the block of the same name in section E.2, above; nothing in section E.2 was edited to write this section):
+
+| Milestone | Scope | AC | Status | Evidence |
+|---|---|---|---|---|
+| M1 | B1 delta chain gate, the delta record, its persistence | AC-AEC-001c, 001d, 001e, 001f | PASS (4 of 4) | section E.2, "M1" |
+| M2 | B4 operator approval verb `moai verify clear-rejection` | AC-AEC-004a, 004b, 004c | PASS (3 of 3) | section E.2, "M2" |
+| M3 | B1 default proposal and the delta codex leg | AC-AEC-001a, 001b | PASS (2 of 2) | section E.2, "M3" |
+| M4 | B2 classified unrun legs, the INCONCLUSIVE label and every consumer, re-run of named legs | AC-AEC-002a, 002b, 002c | PASS (3 of 3); AC-AEC-002b closed by the M4 addendum | section E.2, "M4" and "M4 addendum" |
+| M5 | B3 receipt binding across evidence-only commits | AC-AEC-003a, 003b | PASS (2 of 2) | section E.2, "M5" |
+| M6 | B5 agent sources and the A1 repair-scope paragraph | AC-AEC-005, 006 | PASS (2 of 2) | section E.2, "M6" |
+
+The two criteria that carried an open item during the run are closed: AC-AEC-002b was PASS-WITH-DEBT at the end of M4 (its convention-doc sentence was deferred) and is PASS after the M4 addendum; AC-AEC-005 is PASS with the four local definitions checked directly (`git grep` on the M6 commit, EV-20). Both are PASS as of `4894f2db5e`.
+
+Gaps and caveats (what this signal does not claim):
+
+1. **No sync audit has run, and none is approved.** This section says the run phase is ready to be audited; it is not a verdict and not an approval. Sections E.4 and the sync-phase close are untouched.
+2. **Hand-maintained local definitions can drift.** The four local auditor definitions (`.claude/agents/moai/{plan,sync}-auditor.md`, `.codex/agents/moai/{plan,sync}-auditor.toml`) are not emitter targets and were edited by hand to the source text; later drift between them and the sources is residual (spec section E B5). The emitter's `CarriedFour` expansion, and the `.codex` project target, are input for card t2018.
+3. **Doc items no plan milestone lists, open for the leader:** `.claude/rules/moai/core/moai-mcp-tools-catalogue.md` (the `blocking_closed` and `rerun_legs` audit_multi inputs and the `carried_legs` result field), and the `moai-ref-cross-model-audit` skill (the default delta proposal, `"full"`, the delta codex leg, `rerun_legs`, the INCONCLUSIVE overall).
+4. **Functions under 85% coverage, with the reasons recorded in section E.2:** M5 `computeTreeState` 81.8% and `CheckCitedReceiptsForSpec` 80.6% (pre-existing bodies whose untaken arms are the file-read, symlink-read, submodule and older refusal paths; the M5 lines in them are covered) and `e2Unchanged` 83.3% (the arms for a `git show` that errors); M4 `codexErrorClassFromVerdicts` 75.0% and `loadPersistedConvergence` 80.0% (untaken error branches). Package total below 85%: `internal/homestate` 80.7% (measured at M4 and M5; its value before this SPEC was not measured, so no claim is made about where the gap comes from).
+5. **Verification scope.** The full `internal/cli` suite was not run (by instruction: CI owns it); every cli run was the anchored milestone selection under the `cli-suite` lease. Windows tests were not run: Windows is covered by `go build` and `go vet` only. No push was made, so no CI result exists for this run.
+6. **A lint and coverage caveat.** `golangci-lint run ./...` still reports the one pre-existing `SA1019` in `internal/discovery/leader_readers_darwin.go`, a file this SPEC does not touch; it is baseline, not new.
+7. **The hook-package timeout episode (M6 re-measure).** In one batch the `internal/hook` package hit its own `-timeout 400s` (`panic: test timed out after 6m40s`) while the machine's load average was about 100; no test failed. It was rerun alone with `-timeout 590s` and passed (`ok  	github.com/modu-ai/moai-adk/internal/hook	578.194s`). Under load that suite is slow enough to sit close to a 600-second ceiling, so a CI timeout on it should be read against machine load before it is read as a regression.
+8. **One earlier defect found by a wider run, recorded for the audit:** the first M5 GREEN read the `TreeState` seam a second time inside `WriteReceipt`; `TestCodexAudit_ReceiptBindsStartOfAuditState` failed in the broad `internal/cli` selection and the fix was a forward commit (section E.2, "M5"). The M2 fixture email found by the hook package run (`892b1b177e`) is recorded in the same way.
+9. **Lane-chosen names, not fixed by the SPEC:** the `rerun_legs` input, the persisted fields `audited_head`, `audited_digest`, `audited_scope`, the result field `carried_legs`, the receipt field `uncommitted_digest`, and the wording of the default-delta statement (section E.2, per milestone).
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
