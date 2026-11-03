@@ -16,7 +16,7 @@ draft: false
 ## moai cc — Claude 백엔드
 
 ```bash
-moai cc [-p profile] [-w [name]] [-- claude-args...]
+moai cc [-p profile] [-w [name]] [-f | -a] [-- claude-args...]
 ```
 
 `.claude/settings.local.json` 에서 GLM 전용 환경 변수를 제거하고, team 모드가 켜져 있었다면 초기화한 뒤 Claude Code를 실행합니다.
@@ -29,6 +29,8 @@ moai cc [-p profile] [-w [name]] [-- claude-args...]
 | `-c, --continue` | 이전 세션 이어서 시작 |
 | `-m, --model <model>` | 모델 선택 재정의 |
 | `-w, --worktree [name]` | 격리된 git worktree(`.claude/worktrees/<name>/`)에서 실행 — 이름 생략 시 자동 생성 |
+| `--branch <existing>` | `-w <name>`과 함께: 새 브랜치를 만드는 대신 **이미 있는** 브랜치를 체크아웃한 worktree를 만듭니다(예: gitflow 통합 worktree용 `moai cc -w develop --branch develop`). 브랜치는 미리 존재해야 하며, 이 플래그는 브랜치를 만들지 않습니다. 만들어진 트리는 worktree 도구가 쓰도록 `.moai/state/worktrees.json`에 등록됩니다 |
+| `--spawn` | 현재 세션을 대체하지 않고 새 tmux 창에서 명령을 실행합니다(tmux 필요) |
 | `--chrome` / `--no-chrome` | Claude Code 에 그대로 전달합니다. 런처가 스스로 붙이지 않으므로 `--no-chrome` 을 넘기지 않는 한 `/chrome` 으로 연결할 수 있습니다 |
 | `-f, --factory` | **팩토리 리더**로 진입합니다. 인자를 받지 않습니다. 리더는 운영자가 고른 카드를 교차 세션 메시지로 빈 레인에 통째로 배분하고, 레인은 `-a`로 합류시킵니다 |
 | `-a` | 실행 중인 팩토리에 **레인**으로 합류해 다음 `lane-<n>` 번호(살아 있는 레인 가운데 가장 큰 번호의 다음)를 자동으로 받습니다. 인자를 받지 않으며, 실행 중인 팩토리가 없으면 거부됩니다. `moai glm -a`와 `moai codex -l`도 같은 동작입니다 |
