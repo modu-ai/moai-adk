@@ -11,7 +11,9 @@ package hook
 // checkProtectedCommit). The rows with hook cwd =
 // primary checkout are asserted: a mutating git verb that really lands in the
 // primary checkout must never be allowed. The rows with hook cwd = linked
-// worktree are observed and logged only; their disposition is not decided here.
+// worktree assert the narrow repair: any literal `cd <abs>` naming the primary
+// checkout makes the command primary-judged (cells a, b, f deny), while a
+// command whose only cd target is the worktree stays allowed (cells e, i).
 
 import (
 	"encoding/json"
@@ -29,20 +31,30 @@ func TestBranchGuardChainedCdDecisionTable(t *testing.T) {
 		landsPrimary  = "primary"
 		landsWorktree = "worktree"
 	)
+	// wtGuard is the BranchGuard-level expectation for the rows whose hook cwd
+	// is the linked worktree (narrow repair of tracked item 1): a literal
+	// `cd <abs>` naming the primary checkout anywhere in the command makes the
+	// command primary-judged; a command whose only cd target is the worktree
+	// stays allowed. "" means observed only.
+	const (
+		wtDeny  = "deny"
+		wtAllow = "allow"
+	)
 	cells := []struct {
 		name    string
 		command string
 		lands   string
+		wtGuard string
 	}{
-		{"a: cd wt && cd primary && git reset --hard", "cd " + fx.release + " && cd " + fx.primary + " && git reset --hard", landsPrimary},
-		{"b: cd wt && cd primary && git commit", "cd " + fx.release + " && cd " + fx.primary + " && git commit -m x", landsPrimary},
-		{"c: cd primary && git reset --hard", "cd " + fx.primary + " && git reset --hard", landsPrimary},
-		{"d: git reset --hard", "git reset --hard", landsPrimary},
-		{"e: cd wt && git reset --hard", "cd " + fx.release + " && git reset --hard", landsWorktree},
-		{"f: cd wt && cd primary && git switch other", "cd " + fx.release + " && cd " + fx.primary + " && git switch other", landsPrimary},
-		{"g: cd primary && git switch other", "cd " + fx.primary + " && git switch other", landsPrimary},
-		{"h: git switch other", "git switch other", landsPrimary},
-		{"i: cd wt && git switch other", "cd " + fx.release + " && git switch other", landsWorktree},
+		{"a: cd wt && cd primary && git reset --hard", "cd " + fx.release + " && cd " + fx.primary + " && git reset --hard", landsPrimary, wtDeny},
+		{"b: cd wt && cd primary && git commit", "cd " + fx.release + " && cd " + fx.primary + " && git commit -m x", landsPrimary, wtDeny},
+		{"c: cd primary && git reset --hard", "cd " + fx.primary + " && git reset --hard", landsPrimary, ""},
+		{"d: git reset --hard", "git reset --hard", landsPrimary, ""},
+		{"e: cd wt && git reset --hard", "cd " + fx.release + " && git reset --hard", landsWorktree, wtAllow},
+		{"f: cd wt && cd primary && git switch other", "cd " + fx.release + " && cd " + fx.primary + " && git switch other", landsPrimary, wtDeny},
+		{"g: cd primary && git switch other", "cd " + fx.primary + " && git switch other", landsPrimary, ""},
+		{"h: git switch other", "git switch other", landsPrimary, ""},
+		{"i: cd wt && git switch other", "cd " + fx.release + " && git switch other", landsWorktree, wtAllow},
 	}
 
 	for _, cwdCase := range []struct {
@@ -72,7 +84,17 @@ func TestBranchGuardChainedCdDecisionTable(t *testing.T) {
 			t.Logf("%s | %s -> handler=%q sentinel=%t | BranchGuard-alone deny=%t", cwdCase.label, cell.name, decision, sentinel, guardDenies)
 
 			if cwdCase.cwd != fx.primary {
-				continue // observed only; disposition is the leader's
+				switch cell.wtGuard {
+				case wtDeny:
+					if !guardDenies {
+						t.Errorf("%s | %s: BranchGuard alone = %q / %q, want deny with the sentinel (a literal cd names the primary checkout)", cwdCase.label, cell.name, guardDecision, guardReason)
+					}
+				case wtAllow:
+					if guardDenies || sentinel {
+						t.Errorf("%s | %s is denied by the BranchGuard, want no BranchGuard deny (its only cd target is the worktree)", cwdCase.label, cell.name)
+					}
+				}
+				continue
 			}
 			if cell.lands == landsWorktree {
 				if guardDenies || sentinel {
