@@ -1,10 +1,10 @@
 -f 4	-f/--factory takes no argument (bare -f starts the factory leader); an agent joins with -a, got "4"
 -f worker	"worker" is the legacy role token; an agent joins with -a
 -f lane-2	-f/--factory takes no argument (bare -f starts the factory leader); an agent joins with -a, got "lane-2"
--f -l	-l was removed; use -a to join the running factory as the next free agent (-f starts the leader)
--f -a	-f/--factory and -a are two entry tokens; a launch carries at most one
--l -a	-l was removed; use -a to join the running factory as the next free agent (-f starts the leader)
--l x	-l was removed; use -a to join the running factory as the next free agent (-f starts the leader)
+-f -l	the -l flag was removed; use -a to join the running factory as the next free agent (-f starts the leader)
+-f -a	a launch carries at most one entry token; -f/--factory and -a are two entry tokens
+-l -a	the -l flag was removed; use -a to join the running factory as the next free agent (-f starts the leader)
+-l x	the -l flag was removed; use -a to join the running factory as the next free agent (-f starts the leader)
 -a x	-a takes no argument (it joins the running factory as the next free agent); --leader <name> selects the leader session
 -a --name foo	-a already names the role; drop the --name/-n flag
 -f --name lane-2	--name lane-<n> does not select a lane under -f/--factory (-f starts the factory leader); the agent entry is -a
@@ -13,4 +13,4 @@
 -a --leader lead-1	--leader "lead-1" is the legacy leader spelling; use "leader-1" (leader label forms: leader, leader-<n>, leader-<run-id>)
 -a --clear-policy bogus	--clear-policy takes clear-each, clear-when-full, or relaunch (got "bogus")
 -f --no-auto-dispatch	--no-auto-dispatch selects a lane's dispatch mode; the factory leader takes none
---lane	--lane was removed; use -a to join the running factory as the next free agent (-f starts the leader)
+--lane	the --lane flag was removed; use -a to join the running factory as the next free agent (-f starts the leader)

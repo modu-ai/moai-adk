@@ -84,8 +84,8 @@ func TestAgentFlag_RefusalsNameBothTokens(t *testing.T) {
 		want string
 	}{
 		{[]string{"-f", "-a"}, "-a"},
-		{[]string{"-l", "-a"}, "-l was removed"},
-		{[]string{"--lane"}, "--lane was removed"},
+		{[]string{"-l", "-a"}, "the -l flag was removed"},
+		{[]string{"--lane"}, "the --lane flag was removed"},
 		{[]string{"-a", "x"}, "takes no argument"},
 		{[]string{"-a=x"}, "takes no argument"},
 	} {

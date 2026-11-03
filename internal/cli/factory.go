@@ -100,10 +100,13 @@ const factoryFlagUsageError = "-f/--factory takes no argument (bare -f starts th
 // one-line refusals of the agent entry: the removed -l/--lane spelling (card
 // t2021), an operator --name beside -a, and a second entry token.
 const (
-	removedLaneFlagError   = "%s was removed; use -a to join the running factory as the next free agent (-f starts the leader)"
+	// The first word of an error is title-cased by the fang error renderer, so a message
+	// must not START with a flag: "-l" would print as "-L" (a different flag) and
+	// "--lane" as "--Lane". The two messages below lead with a plain word instead.
+	removedLaneFlagError   = "the %s flag was removed; use -a to join the running factory as the next free agent (-f starts the leader)"
 	laneFlagNameError      = "-a already names the role; drop the --name/-n flag"
 	agentFlagArgumentError = "-a takes no argument (it joins the running factory as the next free agent); --leader <name> selects the leader session"
-	entryTokenConflict     = "%s and %s are two entry tokens; a launch carries at most one"
+	entryTokenConflict     = "a launch carries at most one entry token; %s and %s are two entry tokens"
 	laneNameUnderFactory   = "--name lane-<n> does not select a lane under -f/--factory (-f starts the factory leader); the agent entry is -a"
 	leaderNeedsLaneEntry   = "--leader names the leader session a lane join targets; it composes with -a only"
 )
