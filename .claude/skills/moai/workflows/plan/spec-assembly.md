@@ -262,7 +262,7 @@ Iteration tracking: Display "SPEC review iteration {N}/{ceiling}" after each ver
 
 #### Step 2.3.5: Escalation when the tier-resolved ceiling is exhausted with FAIL
 
-The tier-resolved ceiling (S 1 / M 2 / L 3) owns the number of review attempts. Escalation fires when the final permitted iteration for the SPEC's tier ends in FAIL, that is, when `remaining_attempts` has reached 0 and the latest verdict is still FAIL. This applies identically to Tier S (after the single attempt), Tier M (after the second attempt), and Tier L (after the third attempt). Do NOT proceed to Phase 12 automatically.
+This escalation applies to the `standard` and `thorough` harness levels only; under `minimal` a final FAIL is logged and Phase 12 proceeds, as defined in the harness-level intensity list above. The tier-resolved ceiling (S 1 / M 2 / L 3) owns the number of review attempts. Escalation fires when the final permitted iteration for the SPEC's tier ends in FAIL, that is, when `remaining_attempts` has reached 0 and the latest verdict is still FAIL. This applies identically to Tier S (after the single attempt), Tier M (after the second attempt), and Tier L (after the third attempt). Do NOT proceed to Phase 12 automatically.
 
 Present the full defect history to the user:
 - Show `.moai/reports/plan-audit/{SPEC-ID}-review-1.md` through `-review-{ceiling}.md` (only the reports actually generated for this SPEC)

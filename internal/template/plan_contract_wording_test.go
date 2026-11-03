@@ -211,26 +211,39 @@ func TestPlanStaleContractPhrases(t *testing.T) {
 
 	// Positive checks: Steps 2.3.4 and 2.3.5 must name the tier-resolved ceiling,
 	// and no other fixed budget may replace the old "3".
-	retry, ok := between(sa, "#### Step 2.3.4", "#### Step 2.3.5")
-	if !ok {
-		t.Fatal("spec-assembly.md: Step 2.3.4 not found")
+	// The heading line is dropped so a heading cannot satisfy a positive check.
+	stepBody := func(start, end string) string {
+		sec, ok := between(sa, start, end)
+		if !ok {
+			t.Fatalf("spec-assembly.md: %s not found", start)
+		}
+		if i := strings.Index(sec, "\n"); i >= 0 {
+			return sec[i+1:]
+		}
+		return ""
 	}
-	escalation, ok := between(sa, "#### Step 2.3.5", "<!-- moai:contract-mode-start")
-	if !ok {
-		t.Fatal("spec-assembly.md: Step 2.3.5 not found")
+	retry := stepBody("#### Step 2.3.4", "#### Step 2.3.5")
+	escalation := stepBody("#### Step 2.3.5", "<!-- moai:contract-mode-start")
+	for name, body := range map[string]string{"Step 2.3.4": retry, "Step 2.3.5": escalation} {
+		if !strings.Contains(body, "tier-resolved ceiling") {
+			t.Errorf("spec-assembly.md %s body does not name the tier-resolved ceiling", name)
+		}
+		if !strings.Contains(body, "remaining_attempts") {
+			t.Errorf("spec-assembly.md %s body does not mention remaining_attempts", name)
+		}
 	}
-	if !strings.Contains(retry, "tier-resolved ceiling") {
-		t.Error("spec-assembly.md Step 2.3.4 does not name the tier-resolved ceiling")
-	}
-	if !strings.Contains(escalation, "tier-resolved ceiling") {
-		t.Error("spec-assembly.md Step 2.3.5 does not name the tier-resolved ceiling")
-	}
-	if !strings.Contains(sa, "remaining_attempts") {
-		t.Error("spec-assembly.md does not mention remaining_attempts")
+	// Escalation applies to the blocking harness levels only; minimal records and proceeds.
+	for _, want := range []string{"`standard`", "`thorough`", "`minimal`"} {
+		if !strings.Contains(escalation, want) {
+			t.Errorf("spec-assembly.md Step 2.3.5 body does not name the harness level %s (minimal records the FAIL and proceeds)", want)
+		}
 	}
 	fixedBudget := []*regexp.Regexp{
 		regexp.MustCompile(`[0-9]+ iterations exhausted`),
 		regexp.MustCompile(`iteration \{N\}/[0-9]`),
+		regexp.MustCompile(`\b[0-9]+ (FAIL )?iterations?\b`),
+		regexp.MustCompile(`after [0-9]+ FAIL`),
+		regexp.MustCompile(`(?i)all three|three iterations`),
 	}
 	for _, re := range fixedBudget {
 		if loc := re.FindString(retry + escalation); loc != "" {
