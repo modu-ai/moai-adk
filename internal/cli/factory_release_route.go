@@ -212,8 +212,13 @@ func factoryCardTreeDirt(cardTree string) (reason string, detail error) {
 // its output. A card tree that is not a Go module has no check defined here and
 // fails closed.
 func factoryFastCheck(ctx context.Context, out io.Writer, cardTree, releaseTip string) (key, tail string, err error) {
-	if k, keyErr := verify.Key(ctx, cardTree); keyErr == nil {
-		key = k
+	// The check speaks for the tree it started on, so a key that cannot be read
+	// here fails it before any step runs: without the entry key there is nothing
+	// to compare the end key with, and a step that edited the tree would pass.
+	key, keyErr := verify.Key(ctx, cardTree)
+	if keyErr != nil {
+		msg := fmt.Sprintf("the card tree key could not be read before the check (%v), so the check cannot be tied to the tree it measures", keyErr)
+		return "", msg, errors.New(msg)
 	}
 	steps, err := factoryFastCheckSteps(cardTree, releaseTip)
 	if err != nil {
@@ -245,16 +250,14 @@ func factoryFastCheck(ctx context.Context, out io.Writer, cardTree, releaseTip s
 	// A step that exits 0 after it changed the working copy or HEAD measured a
 	// tree other than the one the check started on, so the pass speaks for
 	// neither (card-review round 2 P2 #1). verifyRun does not fail on this.
-	if key != "" {
-		end, endErr := verify.Key(ctx, cardTree)
-		if endErr != nil {
-			msg := fmt.Sprintf("the card tree key could not be re-read after the check (%v), so the check cannot be tied to the tree it started on", endErr)
-			return key, msg, errors.New(msg)
-		}
-		if end != key {
-			msg := fmt.Sprintf("the card tree changed while the check ran (key %s at the start, %s at the end); the pass does not speak for either tree", key, end)
-			return key, msg, errors.New(msg)
-		}
+	end, endErr := verify.Key(ctx, cardTree)
+	if endErr != nil {
+		msg := fmt.Sprintf("the card tree key could not be re-read after the check (%v), so the check cannot be tied to the tree it started on", endErr)
+		return key, msg, errors.New(msg)
+	}
+	if end != key {
+		msg := fmt.Sprintf("the card tree changed while the check ran (key %s at the start, %s at the end); the pass does not speak for either tree", key, end)
+		return key, msg, errors.New(msg)
 	}
 	return key, "", nil
 }
