@@ -81,7 +81,7 @@ catalog:
             - name: moai-ref-cross-model-audit
               tier: core
               path: templates/.claude/skills/moai-ref-cross-model-audit/
-              hash: cdd99445b591b30b2083f342c7e79d7e1f99fe36d6ab4bb7603ca7a8cbed7d87
+              hash: 76570a6b5405bf3c982666fcfa522b821a2e87e4db35d55222ff20c038a7b93b
               version: 1.0.0
             - name: moai-ref-owasp-checklist
               tier: core
@@ -421,7 +421,7 @@ catalog:
                 - name: moai-ref-cross-model-audit
                   tier: optional-pack:devops
                   path: templates/.claude/skills/moai-ref-cross-model-audit/
-                  hash: cdd99445b591b30b2083f342c7e79d7e1f99fe36d6ab4bb7603ca7a8cbed7d87
+                  hash: 76570a6b5405bf3c982666fcfa522b821a2e87e4db35d55222ff20c038a7b93b
                   version: 1.0.0
                 - name: moai-ref-supply-chain
                   tier: optional-pack:devops

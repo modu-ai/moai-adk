@@ -81,6 +81,9 @@ results.
 | `focus` | string | no | Optional focus area forwarded to the secondary backends (e.g. `concurrency`, `auth`). |
 | `gates` | object | no | Per-auditor gate map (`claude`/`codex`/`glm` ∈ `off`/`advisory`/`required`). Auditors do not pass it: omitted, the tree's own plan applies (the configured audit model and gates); with no configuration the distributed defaults apply — claude required, codex required, glm advisory — and an unconfigured gate stays fail-open. |
 | `session_id` | string | no | When set, the result is persisted to `.moai/state/audit-multi/<session>.json` so the multi-review-gate Stop hook reads the most recent result rather than re-invoking convergence. |
+| `delta_base` | string | no | With `card_id` and target `baseBranch`, omitted ⇒ the `audited_sha` of the card's newest FAIL verdict file is proposed as the delta base; `"full"` ⇒ review the full resolved base. A proposal is a request, not a grant: see Delta review below. |
+| `blocking_closed` | object | no | Delta confirmation: maps each `blocking_defect:` id of the card's FAIL verdict files to the commit that closed it. Ignored without `card_id` and a delta base. |
+| `rerun_legs` | array | no | Backend names (`claude`, `codex`, `glm`) to run again; requires `session_id`. The other legs are carried from the result the server persisted for that session. |
 | `project_root` | string | no *(REQUIRED in a worktree)* | The tree the backends should read — this session's own `git rev-parse --show-toplevel`. Omitted from a worktree, the fan-out reads the PRIMARY checkout instead, so the backends review a diff that is not the one under audit and nothing in the result says so. Omit it only in the primary checkout. An unusable path is rejected with an error naming it, never silently replaced. |
 
 <!-- moai:closure-second-review:start -->
@@ -101,6 +104,33 @@ Without `card_id` no record is written and the tool behaves byte-identically to
 the pre-argument surface.
 <!-- moai:closure-second-review:end -->
 
+### Delta review and re-running legs
+
+After a FAIL and its repair, a `card_id` call with target `baseBranch` and no
+`delta_base` proposes the `audited_sha` of the card's newest FAIL verdict file,
+so a re-audit measures `delta_base...HEAD` instead of the whole change. The
+result's note names the file and SHA, or says why nothing was proposed (no
+verdict file, newest not a FAIL, no usable `audited_sha`, not an ancestor of
+HEAD). Pass `delta_base: "full"` to review the full resolved base.
+
+A delta passes only on an unbroken chain. The server reads the card's own
+second-review records (never an argument): the newest full-scope record starts
+the chain and every later record is a delta from the previous record's head.
+Pass `blocking_closed` naming every `blocking_defect:` id of the card's FAIL
+verdict files with the commit that closed it. A broken or unreviewed chain, an
+incomplete confirmation, or any unreadable input makes the call a full-scope
+review and the result says which condition failed — a delta PASS is never
+inferred from a caller-supplied chain. An admitted delta files one second-review
+record. The codex leg of a delta call is an adversarial turn that embeds the
+delta diff the server collected, not a native review.
+
+To retry only the leg that did not run, pass `rerun_legs` with its name and the
+same `session_id`. The other legs' verdicts are carried and listed in
+`carried_legs`, and the overall verdict is recomputed; the carry holds only when
+the persisted result records the same head commit, tree digest and scope —
+otherwise every leg runs and the result says why. A verdict you supply for a
+carried leg is ignored.
+
 ### Output shape
 
 The tool returns a `ConvergenceResult`:
@@ -120,8 +150,16 @@ The tool returns a `ConvergenceResult`:
 }
 ```
 
-- `overall_verdict` ∈ `{pass, fail}` — the existing review-output values. No
-  new enum (disagreement is a flag, not a verdict value).
+- `overall_verdict` ∈ `{pass, fail, inconclusive}` — the existing review-output
+  values (disagreement is a flag, not a verdict value). `inconclusive` means the
+  convergence was not performed: a required backend returned no verdict and no
+  required backend reported a FAIL.
+- `error_class` on a `per_backend_verdicts` entry names why an `inconclusive`
+  leg could not run: `quota`, `timeout`, `auth`, `unavailable` or `other`. A leg
+  that reported pass or fail carries none. Quote it in the report; a quota or
+  login wall is not a reviewed defect.
+- `carried_legs` lists the legs a `rerun_legs` call took from the persisted
+  result instead of running; absent when nothing was carried.
 - `next_steps` is populated ONLY where the backend itself produced it. A
   backend that returns a structured review carries its model's own list;
   a backend that answers in prose carries none, so its entry shows `[]` even
@@ -238,12 +276,13 @@ Two invariants follow:
 - **Advisory backends never flip overall to fail.** Case 4 records the advisory
   conflict but keeps `overall_verdict: pass`. This is the fixed user-policy term:
   an advisory FAIL is reported, not enforced.
-- **An explicitly configured `required` gate left unmet fails overall.** A gate
+- **An explicitly configured `required` gate left unmet blocks a pass.** A gate
   the project sets to `required` in `workflow.audit.gates` must actually hold:
   when that backend returns `inconclusive` (missing binary, auth failure, error),
-  the engine fails `overall_verdict` and names the unmet backend in
-  `residual_risk_note`. A gate the project never configured keeps the fail-open
-  behavior — the distributed default is NOT an opt-in. In both cases the
+  the engine leaves `overall_verdict` at `inconclusive` (never `pass`; a required
+  FAIL some other backend reported stays `fail`) and names the unmet backend in
+  `gate_unmet` and `residual_risk_note`. A gate the project never configured
+  keeps the fail-open behavior — the distributed default is NOT an opt-in. In both cases the
   backend's own `per_backend_verdicts` entry stays `inconclusive` and its
   `fail_open_backends` listing stays, so the audit trail keeps saying the
   backend never ran.
@@ -267,8 +306,8 @@ evidence-of-failure`.
 In a Claude main session, when all external backends are inconclusive, the
 overall verdict can fall back to the in-session Claude anchor — EXCEPT for a gate
 the project explicitly configured `required` in `workflow.audit.gates`: that
-gate left unmet fails `overall_verdict` instead (see the convergence policy
-above).
+gate left unmet leaves `overall_verdict` at `inconclusive` instead (see the
+convergence policy above).
 
 ## Checking the result against the plan
 
@@ -302,6 +341,7 @@ The auditor's verdict and the convergence result relate as follows:
 | `pass` | `null` | Standard PASS. The flag is undetermined (`participant_count` below 2, no observed divergence) — not an agreement claim. No residual-risk row needed. |
 | `pass` | `true` | PASS with a residual-risk row naming the advisory disagreement. |
 | `fail` | (any) | FAIL. Name the failing required backend(s) from `per_backend_verdicts`. The block is conservative (cases 2/3). |
+| `inconclusive` | (any) | INCONCLUSIVE, not a PASS and not a FAIL: the audit did not run. Name each unrun backend with its `error_class`, write `verdict: INCONCLUSIVE` in the exported file and `AUDIT-VERDICT: INCONCLUSIVE` as the last line (`receipts=none` is valid). Consumers read it as not performed: the next stage stays blocked as after FAIL, the card stays in audit, and the plan-audit round counters skip it. Retry the unrun leg with `rerun_legs`. |
 
 In all cases, surface `residual_risk_note` verbatim in the audit report's
 residual-risk section so a human reader sees which backend disagreed with which.
@@ -314,10 +354,11 @@ residual-risk section so a human reader sees which backend disagreed with which.
   must be confirmed on the other rather than assumed shared.
 - `workflow.audit.gates.*` — the per-auditor gate map (`off`/`advisory`/`required`).
   An explicit `required` is enforced on BOTH surfaces: on the convergence result
-  an unmet required gate (its backend `inconclusive`) fails `overall_verdict`,
-  and the single-backend `codex_audit` tool likewise returns `verdict: fail`
-  with a non-empty `gate_unmet` and `isError: false` when an explicitly required
-  codex gate is left without a verdict. Absent keys fall back to the distributed
+  an unmet required gate (its backend `inconclusive`) leaves `overall_verdict`
+  at `inconclusive`, and the single-backend `codex_audit` tool likewise keeps
+  `verdict: inconclusive` with a non-empty `gate_unmet` and `isError: false`
+  when an explicitly required codex gate is left without a verdict (it returns
+  `fail` only when the gate configuration itself cannot be read). Absent keys fall back to the distributed
   defaults WITHOUT that enforcement — write the key to opt in.
 - **Audit receipts.** Where the codex gate is explicitly `required`, the server
   records a receipt for every codex audit it performs and returns its id on the
@@ -325,7 +366,7 @@ residual-risk section so a human reader sees which backend disagreed with which.
   ends your report:
 
   ```
-  AUDIT-VERDICT: <PASS|PASS-WITH-DEBT|FAIL> spec=<SPEC-ID> receipts=<receipt-id>[,<receipt-id>...]
+  AUDIT-VERDICT: <PASS|PASS-WITH-DEBT|FAIL|INCONCLUSIVE> spec=<SPEC-ID> receipts=<receipt-id>[,<receipt-id>...]
   ```
 
   The line is the LAST non-empty line of the final message; `receipts=none` says
