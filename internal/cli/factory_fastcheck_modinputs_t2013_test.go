@@ -38,7 +38,7 @@ func TestT2013FastCheckStepsModuleInputOnlyChangePlansLintAndTest(t *testing.T) 
 			if !strings.Contains(lint, "go vet") && !strings.Contains(lint, "golangci-lint") {
 				t.Errorf("second step must be a lint step, got %q", steps[1])
 			}
-			if want := []string{"go", "test", "./..."}; !reflect.DeepEqual(steps[2], want) {
+			if want := []string{"go", "test", "-timeout", "30m", "./..."}; !reflect.DeepEqual(steps[2], want) {
 				t.Errorf("third step = %q, want %q", steps[2], want)
 			}
 		})

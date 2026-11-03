@@ -304,8 +304,14 @@ func factoryFastCheckSteps(cardTree, releaseTip string) ([][]string, error) {
 	if _, err := exec.LookPath("golangci-lint"); err == nil && factoryHasGolangciConfig(cardTree) {
 		lint = append([]string{"golangci-lint", "run", "--allow-parallel-runners"}, pkgs...)
 	}
-	return append(steps, lint, append([]string{"go", "test"}, pkgs...)), nil
+	return append(steps, lint, append([]string{"go", "test", "-timeout", factoryFastCheckTestTimeout}, pkgs...)), nil
 }
+
+// factoryFastCheckTestTimeout is the -timeout of the fast check's `go test`
+// step. Go's 10-minute default is shorter than the 60 minutes the surrounding
+// step allows, and AGENTS.local.md section 4 (Before Commit) sets 30m for
+// `go test` on a package (a measured local worst case is 1118.093s).
+const factoryFastCheckTestTimeout = "30m"
 
 func factoryHasGolangciConfig(dir string) bool {
 	for _, name := range []string{".golangci.yml", ".golangci.yaml", ".golangci.toml", ".golangci.json"} {
