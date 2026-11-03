@@ -41,6 +41,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	worktreepkg "github.com/modu-ai/moai-adk/internal/cli/worktree"
 	"github.com/modu-ai/moai-adk/internal/worktreeroot"
 )
 
@@ -220,12 +221,26 @@ func readFirstWorktree(args []string) worktreeRead {
 // name (two or more roots) also answers ""; the ambiguity report belongs
 // to the callers that enumerate candidates (REQ-WHR-022).
 //
+// An absolute first -w value is entered by the same directory form when it
+// equals a registered worktree of this repository (registeredAbsoluteWorktree)
+// and answers "" otherwise.
+//
 // Defined here next to the resolver walk helpers it reuses: worktree
 // selection is derived in ONE file (launch_view.go) and every reader on the
 // launch path receives values (TestLaunchViewSingleParse).
 func existingWorktreeEntryDir(args []string) string {
 	read := readFirstWorktree(args)
-	if !read.Has || read.Value == "" || filepath.IsAbs(read.Value) {
+	if read.Has && filepath.IsAbs(read.Value) {
+		// An absolute value is entered only when it is a registered worktree of
+		// this repository; any other answer (unregistered, unverifiable) is "",
+		// and validateAbsoluteWorktreeRegistered has already refused it.
+		dir, err := registeredAbsoluteWorktree(read.Value)
+		if err != nil {
+			return ""
+		}
+		return dir
+	}
+	if !read.Has || read.Value == "" {
 		return ""
 	}
 	if read.Value == "." || read.Value == ".." || strings.ContainsAny(read.Value, `/\`) {
@@ -240,6 +255,50 @@ func existingWorktreeEntryDir(args []string) string {
 		return ""
 	}
 	return cands[0].Path
+}
+
+// registeredAbsoluteWorktree returns the registered worktree directory that the
+// absolute path names, or an error naming the path and the reason. The match is
+// against `git worktree list` of this repository, on cleaned and
+// symlink-resolved paths; a prunable record (directory gone) does not count.
+func registeredAbsoluteWorktree(abs string) (string, error) {
+	root, err := findProjectRootFn()
+	if err != nil {
+		return "", fmt.Errorf("worktree path %q: cannot verify it is a registered worktree (project root: %w)", abs, err)
+	}
+	listing, err := runGitCommand(root, "worktree", "list", "--porcelain")
+	if err != nil {
+		return "", fmt.Errorf("worktree path %q: cannot verify it is a registered worktree (%w)", abs, err)
+	}
+	records, err := worktreepkg.ParseWorktreeList(listing)
+	if err != nil {
+		return "", fmt.Errorf("worktree path %q: cannot verify it is a registered worktree (%w)", abs, err)
+	}
+	want := resolveSymlinks(filepath.Clean(abs))
+	for _, rec := range records {
+		if rec.Bare || rec.Prunable {
+			continue
+		}
+		path := filepath.FromSlash(rec.Path)
+		if resolveSymlinks(filepath.Clean(path)) == want {
+			return path, nil
+		}
+	}
+	return "", fmt.Errorf("worktree path %q is not a registered worktree of this repository\n"+
+		"  an absolute -w path re-enters an existing worktree only; create one with 'moai worktree new <name>'\n"+
+		"  or use a short name, then pass its registered path", abs)
+}
+
+// validateAbsoluteWorktreeRegistered refuses an absolute -w value that is not a
+// registered worktree, before anything is written or exec'd. It runs after
+// validateWorktreeL2Value (the root restriction stays first) and is a no-op for
+// a bare -w, a short name, or no -w at all.
+func validateAbsoluteWorktreeRegistered(read worktreeRead) error {
+	if !read.Has || read.Value == "" || !filepath.IsAbs(read.Value) {
+		return nil
+	}
+	_, err := registeredAbsoluteWorktree(read.Value)
+	return err
 }
 
 // stripWorktreeSelection removes the argv's first -w selection (both

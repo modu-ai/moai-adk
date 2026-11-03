@@ -141,7 +141,7 @@ func TestFactoryRunsRetireRefusesInProgressCards(t *testing.T) {
 				fmt.Sprintf(retireOwnerLineFmt, "dead"),
 				fmt.Sprintf(retireCardLineFmt, "cardA", "needs-decision", "lane-1"),
 				fmt.Sprintf(retireCardLineFmt, "cardB", "picked", "-"),
-				"moai cc -l --factory-run runR",
+				"moai cc -a --factory-run runR",
 				"moai cc -f --factory-run runR",
 				"moai factory decide cardA --choice abandon --run runR",
 				"moai factory decide cardB --choice abandon --run runR",
@@ -202,7 +202,7 @@ func TestFactoryRunsRetireReportsStrandedCardsOfRetiredRun(t *testing.T) {
 				t.Errorf("output lacks %q:\n%s", want, out)
 			}
 		}
-		for _, banned := range []string{"moai cc -l", "moai cc -f", "남은 방법", "유일", "only"} {
+		for _, banned := range []string{"moai cc -a", "moai cc -f", "남은 방법", "유일", "only"} {
 			if strings.Contains(out, banned) {
 				t.Errorf("output contains %q:\n%s", banned, out)
 			}

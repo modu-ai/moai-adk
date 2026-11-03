@@ -372,6 +372,59 @@ source: `.moai/reports/t1963/run-evidence.md` § "CardEngagementStart moved-card
 
 **공통 green 판정 규칙(M2-B)**: 각 green 명령은 단일 호출이고 `-count=1 -v`로 돈다. 통과는 exit 0 **그리고** 출력에 지정 시험 이름의 `--- PASS` 줄이 있는 것이다 — `[no tests to run]` 또는 이름 줄 부재는 미측정이다(§0). 모든 fixture는 샌드박스 루트(`openSandboxFactory`·`adoptSandbox`·`runOwnerSandbox` 형태)에서만 만든다 — 라이브 factory DB를 여는 시험은 기준 위반이다.
 
+### §0.2 — M4(AFF S2) 증거 장부 (카드 t2013, 2026-11-02)
+
+AC-FCR-026의 RED-now 셀은 아래 장부 L17을 인용한다. **트리 SHA는 `ff902a2920ff9942d00f86fa21b3d12d77458c27`**(브랜치 `WT-agent-trunk-factory`)이며 위 P1-P8의 `a158b4b5f`·§0.1의 `c4784db4c2` 핀은 이 기준에 적용되지 않는다. 각 명령은 워크트리 루트에서 단일 호출로 실행했다(P11만 exit 관측을 위해 `sh -c` 한 번으로 감쌌다 — 출력 둘째 줄이 그 exit다). 새 시험 이름은 구현 전에 존재하지 않으므로 RED 근거는 현재 동작의 판독·부재 관측이다.
+
+```text
+[L17] RED — agentic-trunk complete has no release-branch route, no fast check, and refuses a rerun
+tree: ff902a2920ff9942d00f86fa21b3d12d77458c27
+
+P9 (release branch is unknown to the code)
+command: grep -rn 'main-batch' internal --include='*.go'
+exit: 0
+stdout:
+internal/cli/integration_backup.go:126:any branch, and never substitutes for the release/main-batch-YYYYMMDD
+(the only hit is a comment; no code resolves the fixed release branch)
+
+P10 (agentic-trunk primary-only takes the PR edge)
+command: grep -n "factoryGitHubFlow(root) || factoryAgenticTrunkPrimaryRoute(root)" internal/cli/factory_card.go
+exit: 0
+stdout:
+3018:	if factoryGitHubFlow(root) || factoryAgenticTrunkPrimaryRoute(root) {
+
+P11 (no fast check on the complete path)
+command: sh -c 'grep -c verifyRun internal/cli/factory_card.go; echo "exit=$?"'
+exit: 0 (sh); grep exit recorded on the second line
+stdout:
+0
+exit=1
+
+P12 (a rerun after merged-local is refused, not a no-op)
+command: grep -n 'if cardState.Stage != "merge-ready"' internal/cli/factory_card.go
+exit: 0
+stdout:
+3051:	if cardState.Stage != "merge-ready" {
+
+P13 (the agentic-trunk integration target is pinned to main; release_branch_prefix is ignored)
+command: go test ./internal/config/ -run '^TestAgenticTrunkTarget$' -count=1 -v
+exit: 0
+stdout:
+=== RUN   TestAgenticTrunkTarget
+=== RUN   TestAgenticTrunkTarget/manual
+=== RUN   TestAgenticTrunkTarget/personal
+=== RUN   TestAgenticTrunkTarget/team
+=== RUN   TestAgenticTrunkTarget/environment_and_release_branch_prefix_change_nothing
+--- PASS: TestAgenticTrunkTarget (0.00s)
+    --- PASS: TestAgenticTrunkTarget/manual (0.00s)
+    --- PASS: TestAgenticTrunkTarget/personal (0.00s)
+    --- PASS: TestAgenticTrunkTarget/team (0.00s)
+    --- PASS: TestAgenticTrunkTarget/environment_and_release_branch_prefix_change_nothing (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/config	0.354s
+(P13 stays green after M4 — it is the preservation pin of REQ-FCR-026 (g), not a RED to flip)
+```
+
 ## §A — M1: 완료 게이트
 
 ### AC-FCR-001 — receipt 없는 done 거부 (REQ-FCR-001/002)
@@ -520,6 +573,32 @@ source: `.moai/reports/t1963/run-evidence.md` § "CardEngagementStart moved-card
 - **RED-now**: 해당 없음 — 보존 기준이다(L5·L6이 착지 전 green 기준선). release-blocking이 아니라 regression-guard로 분류한다.
 - **변이 탐침**: 은퇴 가드를 "옮길 수 있으면 옮기고 은퇴"로 일반화한 구현은 `TestRetireRunIfDeadRefusesInProgressCards`에서 실패한다.
 
+## §B3 — M4: AFF S2 — agentic-trunk 완료의 로컬 통합 창 착지 (카드 t2013)
+
+### AC-FCR-026 — release 경로: 단일 integrator·빠른 검사·`--no-ff`·실패 보류·멱등·보존 (REQ-FCR-026) [release-blocking]
+
+공통 fixture(모든 하위 사례): `t.TempDir()` 아래 실제 git 저장소 — `main` 브랜치(primary checkout이 쥠), primary가 아닌 전용 worktree가 쥔 고정 release branch(`release_branch_prefix: release/` → `release/main-batch`), 그 브랜치에서 분기해 커밋을 더한 카드 worktree(`WT-…`), 맨 저장소 `origin`(push 금지 관측용); 활성 프로필 `workflow: agentic-trunk`(manual); 샌드박스 factory DB(기존 `openSandboxFactory` 계열 — 라이브 DB 금지, spec.md §E.3)에 merge-ready 카드 + 호출자의 유효 임대 + 유효한 재측정 기록. 카드 트리는 작은 Go 모듈이라 빠른 필수 검사가 실제로 돈다. **병합·검사는 실제 명령이다 — 병합 단계·`moai verify run`·git을 모의하지 않는다.** 모든 하위 사례는 실행 전후의 `git rev-parse main`, `git rev-parse release/main-batch`, `git for-each-ref refs/remotes`를 기록한다.
+
+- **Given / When / Then**:
+  - (a) **정상 착지** — Given 공통 fixture, When `moai factory complete <card> --run <run>`, Then exit 0; 카드 `merged-local`이고 `MergeSHA` = release branch의 새 HEAD; 그 커밋은 부모 2개이고 둘째 부모 = 실행 전 카드 HEAD SHA(`--no-ff`); `main`의 SHA와 모든 `refs/remotes`가 실행 전과 같다; window는 해제됨; `gh` 호출 0회; 빠른 필수 검사의 `moai verify run` 기록이 카드 트리의 키로 남는다.
+  - (b) **검사 실패** — Given 카드 트리에만 컴파일되지 않는 Go 파일(release worktree는 깨끗), When complete, Then 0 아닌 종료; release branch HEAD SHA 불변(병합 커밋 없음); 카드는 진행하지 않음(decision-index Q10 기본값 — `merge-ready`·version 불변); 보류 기록이 사유 `check-failed`·카드 HEAD SHA·검사 키를 담아 읽힌다; window 해제됨; `main` 불변.
+  - (c) **충돌** — Given release branch에 카드와 같은 줄을 바꾼 커밋이 더해진 상태, When complete, Then 0 아닌 종료; release branch HEAD SHA 불변; release worktree에서 `git status --porcelain` 출력 없음, `git rev-parse -q --verify MERGE_HEAD` 출력 없음; 보류 기록이 멈춘 지점(병합 충돌 또는 그보다 먼저 거부한 기존 게이트 이름)·카드 HEAD SHA·충돌 경로를 담는다; window 해제됨; `main` 불변. 시험은 실제로 멈춘 게이트/종료 원인을 자기 출력에 남긴다.
+  - (d) **같은 SHA 재실행** — Given (a)가 끝난 상태, When 같은 명령을 다시, Then exit 0; release branch HEAD SHA와 `git rev-list --count release/main-batch` 불변(둘째 병합 커밋 없음); 카드 상태·version 불변; 출력이 기존 병합 SHA를 이름으로 든다.
+  - (e) **병합과 기록 사이의 중단** — Given 이 카드의 병합 커밋이 이미 release branch에 있으나(기존 병합 동사 `moai integration merge --card`로 만듦) 카드는 아직 `merge-ready`, When complete, Then exit 0; 그 병합 커밋을 채택해 `merged-local` 기록, `MergeSHA` = 그 커밋; release branch에 새 커밋 없음.
+  - (f) **둘째 completer 차단** — Given 다른 세션 id가 산 pid로 window를 쥔 상태(기록이 release branch를 이름으로 듦), When complete, Then 0 아닌 종료이고 오류가 보유자를 이름으로 든다; release branch HEAD SHA·카드 상태·window 기록(보유자·브랜치) 모두 불변; 병합 없음.
+  - (g) **보존(회귀)** — release 경로 조건이 하나라도 빠진 fixture(release branch 미프로비저닝, `release_branch_prefix` 비어 있음, github-flow, 카드 `pr-open`)에서 기존 시험이 시험 파일 변경 없이 통과한다 — 아래 green (g) 명령.
+- **RED-now**: 장부 L17(§0.2, 트리 `ff902a2920`). RED인 이유: (a)(c)(f) — release branch를 해석하는 코드가 없고(P9) agentic-trunk primary-only 프로젝트는 PR 가장자리로 간다(P10), 그 밖의 로컬 경로는 `main`으로 병합한다(P13 — 대상 `main` 고정); (b) — complete 경로에 빠른 검사가 없다(P11 — `verifyRun` 0건, exit 1); (d) — 재실행은 `:3051`에서 "not merge-ready"로 거부된다(P12, 0 아닌 종료). (e)는 기존 채택 경로(`factoryAdoptedTip`)가 `main` 대상으로 이미 하는 일이라 release 경로에서의 RED는 경로 부재(P9·P10)뿐이다. 새 시험 이름의 부재는 구현 전 트리에서 `[no tests to run]`이며 이는 RED가 아니라 미측정이다(§0).
+- **green (M4)**: 각 명령을 **따로** 실행한다(OR 패턴 금지 — 한쪽만 존재해도 exit 0이 되어 빈 스윕을 숨긴다). 각각 exit 0 + 이름 뒤 공백이 붙은 `--- PASS: <name> ` 줄 + `[no tests to run]` 없음:
+  - (a) `go test ./internal/cli -run '^TestAFFS2CompleteMergesCardIntoReleaseBranch$' -count=1 -v`
+  - (b) `go test ./internal/cli -run '^TestAFFS2CompleteCheckFailureHoldsAndReleases$' -count=1 -v`
+  - (c) `go test ./internal/cli -run '^TestAFFS2CompleteConflictHoldsReleasesAndCleans$' -count=1 -v`
+  - (d) `go test ./internal/cli -run '^TestAFFS2CompleteSameSHARerunIsNoOp$' -count=1 -v`
+  - (e) `go test ./internal/cli -run '^TestAFFS2CompleteAdoptsMergeAfterCrash$' -count=1 -v`
+  - (f) `go test ./internal/cli -run '^TestAFFS2CompleteSecondCompleterBlocked$' -count=1 -v`
+  - (g) 시험 파일 변경 없이, 각각 따로: `go test ./internal/cli -run '^TestAgenticTrunk.*$' -count=1 -v`(12건 전부 — `TestAgenticTrunkFactoryCompleteTakesWindow`·`TestAgenticTrunkCompletePrimaryPrEdge` 포함); `go test ./internal/cli -run '^(TestFactoryCompleteGitHubFlowPR|TestFactoryCompleteGitHubFlowResumesFromMerging|TestFactoryCompleteGitHubFlowMergeMethod|TestFactoryCompleteGitHubFlowRefusals|TestFactoryCompleteNoWindowGitHubFlow|TestFactoryMergeReadyGitHubFlowTakesNoWindow|TestFactoryCompleteGitHubFlowClosesTheQueueCard)$' -count=1 -v`(열거한 7건 각각 `--- PASS`); `go test ./internal/cli -run '^TestCodex.*$' -count=1 -v`; `go test ./internal/cli -run '^TestT2013_PREdgeGuidanceDraftAndNonRequiredChecks$' -count=1 -v`; `go test ./internal/config -run '^TestAgenticTrunkTarget$' -count=1 -v`(P13 — 대상 `main` 고정이 그대로).
+  - 시험 파일 변경 없음의 증거: `git diff --stat <M4 착지 전 HEAD> HEAD -- internal/cli/agentic_trunk_test.go internal/cli/factory_card_pr_test.go internal/cli/factory_pr_edge_guidance_t2013_test.go internal/config/agentic_trunk_test.go` 출력 없음, 그리고 `TestCodex*`를 담은 시험 파일에 대한 같은 명령의 출력 없음.
+- **변이 탐침**: 대상을 `IntegrationTarget`(`main`)으로 둔 구현 → (a)의 `main` SHA 불변 단언에서 실패. 빠른 검사를 건너뛴 구현 → (b)에서 병합 커밋이 생겨 실패. 검사를 release worktree에서 돌린 구현 → (b)의 fixture는 카드 트리만 깨져 있어 검사가 통과하고 병합이 일어나 실패. (c)의 green 명령 `TestAFFS2CompleteConflictHoldsReleasesAndCleans`는 실제 git 병합 전에 base-moved 게이트에서 멈추는 경로를 증명한다 — 카드 보류·깨끗한 트리·window 반납이 그 단언이고, `merge --abort`를 지운 변이는 이 시험을 통과한다. cobra 경로만으로는 실제 내용 충돌에 닿을 수 없다(먼저 움직인 tip은 base-freshness·base-moved 게이트가 잡고, 자손을 자기 조상에 병합하면 충돌하지 않는다) — 경합이 없는 production 경로의 충돌은 게이트 설계상 도달 불가다. 실제 충돌은 병합 단계의 마지막 tip 재판독과 `git merge` 하위 프로세스 사이의 경합으로만 도달하며, 두 시험이 시험 전용 시임(`internal/cli/factory_card.go`의 `factoryCompleteMergeSeamsHook`, production에서는 nil)으로 그 경합을 구동한다: `TestMergeStepRealContentConflictAbortsAndReleases`(internal/factory, add/add 충돌)와 `TestAFFS2CompleteRealMergeConflictHoldsAbortsAndReleases`(internal/cli, modify/modify 충돌). 실패 시 window를 반납하지 않는 구현 → (b)의 window 단언과, 병합 실패 경로에서는 위 두 시험의 window 반납 단언에서 실패. `merge --abort`를 빼먹은 구현 → 위 두 시험의 `MERGE_HEAD`·porcelain·미병합 인덱스 항목 단언에서 실패(원래 (c) 시험에서는 실패하지 않는다). `merge-conflict` 보류 사유 매핑을 뺀 구현 → cli 시험의 `card.hold` 사유·`conflict_paths` 단언에서 실패. 보류 기록 없이 거부만 하는 구현 → (b)(c)의 보류 기록 단언에서 실패. fast-forward 병합 → (a)의 부모 2개 단언에서 실패. 재실행마다 병합하는 구현 → (d)의 커밋 수 단언에서 실패. 재실행을 계속 거부하는 현행 동작 → (d)의 exit 0 단언에서 실패. window 보유자를 무시하는 구현 → (f)에서 병합이 일어나거나 window 기록이 바뀌어 실패. release 경로를 조건 없이 켠 구현(프로비저닝 여부를 보지 않음) → (g)의 `TestAgenticTrunkCompletePrimaryPrEdge`·`TestAgenticTrunkFactoryCompleteTakesWindow`에서 실패. 어떤 ref든 push하는 구현 → 모든 하위 사례의 `refs/remotes` 불변 단언에서 실패.
+
 ## §C — M3: 표시·처분
 
 ### AC-FCR-012 — near-dup 발급 stderr 표시 (REQ-FCR-012)
@@ -584,5 +663,6 @@ source: `.moai/reports/t1963/run-evidence.md` § "CardEngagementStart moved-card
 | AC-FCR-023 | REQ-FCR-019, REQ-FCR-023 | M2-B | internal/cli + internal/homestate |
 | AC-FCR-024 | REQ-FCR-022 | M2-B | internal/homestate |
 | AC-FCR-025 | REQ-FCR-021, REQ-FCR-022, REQ-FCR-023 | M2-B | internal/homestate + internal/cli |
+| AC-FCR-026 | REQ-FCR-026 | M4 | internal/cli (+internal/factory, internal/config 읽기) |
 
-전체 REQ-FCR-001..025가 위 표에서 최소 1개 AC와 연결된다(coverage reader가 읽는 전체 ID 형태 — 축약 `FCR-001..005`는 reader 미인약, 게이트 실측으로 16건 전부 CoverageIncomplete로 보고된 바 있음).
+전체 REQ-FCR-001..026이 위 표에서 최소 1개 AC와 연결된다(coverage reader가 읽는 전체 ID 형태 — 축약 `FCR-001..005`는 reader 미인약, 게이트 실측으로 16건 전부 CoverageIncomplete로 보고된 바 있음).

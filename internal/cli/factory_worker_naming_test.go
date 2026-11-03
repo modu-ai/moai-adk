@@ -10,13 +10,13 @@ import (
 
 // TestParseFactoryFlagLaneVocabulary pins the lane-axis entry tokens
 // (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-002, re-pinned by SPEC-LAUNCHER-ENTRY-
-// FLAGS-001): `-l` / `--lane` are the only lane entry and `-f` takes no value,
+// FLAGS-001, then card t2021): `-a` is the only lane entry and `-f` takes no value,
 // so every `-f lane` spelling is refused. The legacy spellings are refused
 // too — their refusal matrix lives in factory_role_refusal_m2_test.go.
 func TestParseFactoryFlagLaneVocabulary(t *testing.T) {
 	t.Parallel()
 
-	for _, args := range [][]string{{"-l"}, {"--lane"}} {
+	for _, args := range [][]string{{"-a"}} {
 		p, err := parseFactoryFlag(args)
 		if err != nil {
 			t.Fatalf("parseFactoryFlag(%v): %v", args, err)
@@ -25,11 +25,17 @@ func TestParseFactoryFlagLaneVocabulary(t *testing.T) {
 			t.Errorf("parseFactoryFlag(%v) = %+v, want a lane entry carrying no number", args, p)
 		}
 	}
+	// Card t2021: the former -l / --lane spellings are refused naming -a.
+	for _, args := range [][]string{{"-l"}, {"--lane"}} {
+		if _, err := parseFactoryFlag(args); err == nil || !strings.Contains(err.Error(), "-a") {
+			t.Errorf("parseFactoryFlag(%v) = %v, want a refusal naming -a", args, err)
+		}
+	}
 	for _, args := range [][]string{
 		{"-f", "lane"}, {"-f=lane"}, {"--factory=lane"}, {"-f", "lane-3"}, {"--factory=lane-7"},
 	} {
 		if _, err := parseFactoryFlag(args); err == nil {
-			t.Errorf("parseFactoryFlag(%v) = nil error, want the refusal naming -l", args)
+			t.Errorf("parseFactoryFlag(%v) = nil error, want the refusal naming -a", args)
 		}
 	}
 }
@@ -45,7 +51,7 @@ func TestFactoryFlagUsageErrorAdvertisesLaneForms(t *testing.T) {
 		t.Fatal("want a usage error")
 	}
 	msg := err.Error()
-	for _, want := range []string{"-l", "--lane", "bare -f"} {
+	for _, want := range []string{"-a", "bare -f"} {
 		if !strings.Contains(msg, want) {
 			t.Errorf("usage error %q missing %q", msg, want)
 		}
@@ -63,7 +69,7 @@ func TestFactoryFlagUsageErrorAdvertisesLaneForms(t *testing.T) {
 func TestParseLauncherEntryDesugarsLaneLabel(t *testing.T) {
 	t.Setenv("CLAUDE_PROJECT_DIR", t.TempDir())
 
-	p, err := parseLauncherEntry([]string{"-l", "-b"})
+	p, err := parseLauncherEntry([]string{"-a", "-b"})
 	if err != nil {
 		t.Fatalf("parseLauncherEntry(-l): %v", err)
 	}
@@ -74,9 +80,9 @@ func TestParseLauncherEntryDesugarsLaneLabel(t *testing.T) {
 	if len(p.Rest) != 3 || p.Rest[0] != "-b" || p.Rest[1] != "--name" || p.Rest[2] != label {
 		t.Errorf("desugared rest = %v, want [-b --name %s]", p.Rest, label)
 	}
-	if _, err := parseLauncherEntry([]string{"-l", "--name", "lane-3"}); err == nil ||
+	if _, err := parseLauncherEntry([]string{"-a", "--name", "board-watch"}); err == nil ||
 		!strings.Contains(err.Error(), "already names the role") {
-		t.Errorf("-l plus --name = %v, want the naming conflict", err)
+		t.Errorf("-l plus a non-lane --name = %v, want the naming conflict", err)
 	}
 }
 

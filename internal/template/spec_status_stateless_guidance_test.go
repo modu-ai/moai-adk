@@ -31,11 +31,12 @@ var statusGuidanceFiles = []string{
 	filepath.Join("agents", "moai", "manager-spec.md"),
 	filepath.Join("agents", "moai", "manager-develop.md"),
 	filepath.Join("agents", "moai", "manager-docs.md"),
+	filepath.Join("skills", "moai", "workflows", "plan", "clarity-interview.md"),
 }
 
 var statelessArtifactNames = []string{"plan.md", "acceptance.md"}
 
-var statusAxisTokens = []string{"status:", "`status`", "→"}
+var statusAxisTokens = []string{"status:", "`status`", "→", "status draft"}
 
 // Markers that a line states the carve-out rather than contradicting it.
 var statelessCarveOutMarkers = []string{"stateless", "carry no `status:`", "carries no `status:`"}

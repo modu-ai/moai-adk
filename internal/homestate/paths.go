@@ -70,19 +70,70 @@ func projectKeyFromCanonicalRoot(root string) string {
 // builders); every caller must land on the same root or one repository splits
 // across two project keys.
 func CanonicalProjectRoot(projectRoot string) string {
-	root, _ := canonicalProjectRoot(projectRoot, gitcore.ResolveGitDirs, func(dir string, args ...string) ([]byte, error) {
-		return scrubbedGit(dir, args...).Output()
-	}, false)
-	return root
+	abs := absProjectRoot(projectRoot)
+	return memoLocation("canonical", abs, func() (string, bool) {
+		clean := true
+		root, _ := canonicalProjectRoot(abs, func(dir string) (*gitcore.GitDirs, error) {
+			dirs, err := gitcore.ResolveGitDirs(dir)
+			if err != nil && !outsideRepository(err) {
+				clean = false // git itself failed: a degraded answer follows
+			}
+			return dirs, err
+		}, func(dir string, args ...string) ([]byte, error) {
+			out, err := scrubbedGit(dir, args...).Output()
+			if err != nil {
+				clean = false
+			}
+			return out, err
+		}, false)
+		return root, clean
+	})
 }
 
 // CanonicalProjectRootContext preserves repository identity and reports interrupted or uncertain Git resolution.
 func CanonicalProjectRootContext(ctx context.Context, projectRoot string) (string, error) {
-	return canonicalProjectRoot(projectRoot, func(dir string) (*gitcore.GitDirs, error) {
-		return gitcore.ResolveGitDirsContext(ctx, dir)
-	}, func(dir string, args ...string) ([]byte, error) {
-		return contextGitOutput(ctx, dir, args...)
-	}, true)
+	if err := ctx.Err(); err != nil {
+		return "", err // a remembered answer must not hide an interrupted caller
+	}
+	abs := absProjectRoot(projectRoot)
+	var failure error
+	root := memoLocation("canonical-strict", abs, func() (string, bool) {
+		clean := true
+		root, err := canonicalProjectRoot(abs, func(dir string) (*gitcore.GitDirs, error) {
+			dirs, err := gitcore.ResolveGitDirsContext(ctx, dir)
+			if err != nil && !outsideRepository(err) {
+				clean = false
+			}
+			return dirs, err
+		}, func(dir string, args ...string) ([]byte, error) {
+			out, err := contextGitOutput(ctx, dir, args...)
+			if err != nil {
+				clean = false
+			}
+			return out, err
+		}, true)
+		if err != nil {
+			failure = err
+			return "", false
+		}
+		return root, clean
+	})
+	if failure != nil {
+		return "", failure
+	}
+	return root, nil
+}
+
+// absProjectRoot is the first step of canonicalProjectRoot: an empty root is the
+// working directory and a relative one is made absolute. It is also the memo's key.
+func absProjectRoot(projectRoot string) string {
+	if projectRoot == "" {
+		projectRoot = "."
+	}
+	if abs, err := filepath.Abs(projectRoot); err == nil {
+		return abs
+	}
+	return projectRoot
 }
 
 func contextGitOutput(ctx context.Context, dir string, args ...string) ([]byte, error) {
@@ -243,12 +294,24 @@ func ProjectDirContext(ctx context.Context, projectRoot string) (string, error) 
 	}
 	key := projectKeyFromCanonicalRoot(canonical)
 	if !explicitMoaiHome() && insideTempRoots(canonical) {
-		out, err := contextGitOutput(ctx, canonical, "rev-parse", "--absolute-git-dir", "--is-inside-git-dir")
-		if err != nil && !notGitRepository(err) {
-			return "", err
+		var failure error
+		raw := memoLocation("absgitdir-context", canonical, func() (string, bool) {
+			out, err := contextGitOutput(ctx, canonical, "rev-parse", "--absolute-git-dir", "--is-inside-git-dir")
+			switch {
+			case err == nil:
+				return "ok\n" + string(out), true
+			case notGitRepository(err):
+				return "notgit", true
+			default:
+				failure = err
+				return "", false
+			}
+		})
+		if failure != nil {
+			return "", failure
 		}
-		gitDir, inside, _ := strings.Cut(strings.TrimSpace(string(out)), "\n")
-		if err != nil || (!sameDir(gitDir, canonical) && strings.TrimSpace(inside) != "true") {
+		gitDir, inside, _ := strings.Cut(strings.TrimSpace(strings.TrimPrefix(raw, "ok\n")), "\n")
+		if raw == "notgit" || (!sameDir(gitDir, canonical) && strings.TrimSpace(inside) != "true") {
 			return filepath.Join(canonical, ".moai", "db", key), nil
 		}
 	}
@@ -285,12 +348,19 @@ func rootLayout(canonical string) bool {
 // (a submodule's always does; t1221 re-audit F1), while `--is-inside-git-dir`
 // recognises a path below a git directory, such as .git/refs (delta audit N1).
 func isGitDir(dir string) bool {
-	out, err := scrubbedGit(dir, "rev-parse", "--absolute-git-dir", "--is-inside-git-dir").Output()
-	if err != nil {
-		return false
-	}
-	gitDir, inside, _ := strings.Cut(strings.TrimSpace(string(out)), "\n")
-	return sameDir(gitDir, dir) || strings.TrimSpace(inside) == "true"
+	answer := memoLocation("isgitdir", dir, func() (string, bool) {
+		out, err := scrubbedGit(dir, "rev-parse", "--absolute-git-dir", "--is-inside-git-dir").Output()
+		if err != nil {
+			// Not a repository is a fact about dir; any other failure is not.
+			return "0", outsideRepository(err)
+		}
+		gitDir, inside, _ := strings.Cut(strings.TrimSpace(string(out)), "\n")
+		if sameDir(gitDir, dir) || strings.TrimSpace(inside) == "true" {
+			return "1", true
+		}
+		return "0", true
+	})
+	return answer == "1"
 }
 
 // sameDir reports whether a and b name the same directory once cleaned and
