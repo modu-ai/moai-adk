@@ -1,0 +1,15 @@
+-f 4	-f/--factory takes no argument (bare -f starts the factory leader); a lane joins with -l or --lane, got "4"
+-f worker	"worker" is the legacy role token; a lane joins with -l
+-f lane-2	-f/--factory takes no argument (bare -f starts the factory leader); a lane joins with -l or --lane, got "lane-2"
+-f -l	-f/--factory and -l/--lane are two entry tokens; a launch carries at most one
+-f -a	-f/--factory and -a are two entry tokens; a launch carries at most one
+-l -a	-l/--lane and -a are two entry tokens; a launch carries at most one
+-l x	-l/--lane takes no argument (it joins the running factory as the next free lane); --leader <name> selects the leader session
+-a x	-a takes no argument (it joins the running factory as the next free agent, the lane entry); --leader <name> selects the leader session
+-l --name foo	-l/--lane already names the role; drop the --name/-n flag
+-f --name lane-2	--name lane-<n> does not select a lane under -f/--factory (-f starts the factory leader); the lane entry is -l or --lane
+-f --leader leader-2	--leader names the leader session a lane join targets; it composes with -l or --lane only
+--leader	--leader requires a leader label
+-l --leader lead-1	--leader "lead-1" is the legacy leader spelling; use "leader-1" (leader label forms: leader, leader-<n>, leader-<run-id>)
+-l --clear-policy bogus	--clear-policy takes clear-each, clear-when-full, or relaunch (got "bogus")
+-f --no-auto-dispatch	--no-auto-dispatch selects a lane's dispatch mode; the factory leader takes none

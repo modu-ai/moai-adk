@@ -1,4 +1,6 @@
-# SPEC-AGENTIC-FACTORY-001 — 수용 기준 (0.6.7)
+# SPEC-AGENTIC-FACTORY-001 — 수용 기준 (0.6.7; 0.7.6에서 AC-AF-007·010·021만 고침)
+
+> **0.7.6 (2026-11-03, card t2023).** 사용자 결정 R286으로 AgenticFactory 추가분이 되돌려진 뒤, 세 기준이 인용하던 시험 이름이 `internal/`에 없었다. AC-AF-007은 (B) superseded(OD-37, AC-AFL-008 [REF]·AC-AFL-014 [REF]), AC-AF-010과 AC-AF-021은 (A) test added로 처분했다. 각 기준의 처분 줄과 §G.2의 해당 행만 바꿨고 다른 기준은 그대로다. 더할 시험은 아직 쓰이지 않았고, 이 판은 어떤 시험도 돌리지 않았다 — 통과로 적지 않는다.
 
 > **0.7.0 가리킴.** 권위는 로컬 SQLite 원장 하나다(spec DEC-AF-06 개정, SPEC-AGENTIC-FACTORY-LOCAL-001). Issue·control ref·PR에 기대는 AC는 제목 끝에 처분 표시를 달았고 처분표는 spec.md §J다. 새 로컬 원장 AC는 하위 SPEC의 AC-AFL-001~021이다.
 
@@ -188,11 +190,13 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 
 #### AC-AF-007 — 병합 게이트·PR 적체 상한 [PARTLY SUPERSEDED — OD-37; 0.7.0 표지: SUPERSEDED by AC-AFL-014]
 
-- 주 REQ: maps REQ-AF-007. 초록: M4.
-- 정본 주 시험 8: M14, M24, M25, M26, M27, M32, M37, M55.
-- 명령(F2): 없음 — 표 행·적체 사례를 단언하는 시험을 본문으로 확인하지 못했다.
-- 미충족 — 시험 없음: 게이트 표 8행, 적체 (a)(b), 정본 M14·M24~M27·M32·M37·M55.
-- 목표 시험 이름(아직 없음, 실행 대상 아님): 위 정본 id의 `TestAcceptanceManifest/<id>`, `TestGate_ReasonTable_*`(0개), `TestPRQueue_*`(0개).
+- **처분(0.7.6, card t2023): (B) superseded.** 이 기준은 더 이상 이 SPEC의 시험으로 채택하지 않는다. 대신하는 것은 SPEC 자신이 적은 두 갈래다.
+  - 게이트 사례(design §2.1b 표 8행, `check-not-passed`·`budget-exhausted`·`PASS-WITH-DEBT`): spec.md §G.1 **OD-37** 결정 — «the remote-independent obligations of REQ-AF-007 (same-HEAD review, debt-free independent audit, QA PASS) stay as process obligations carried by the gate evidence a card needs before `Enqueue` (REQ-AFL-008); a follow-up card after deploy decides whether to model them as evidence kinds.» 따라서 이 사례들의 수용 기준은 하위 AC-AFL-008 [REF] 이며, 증거 종류 모형화는 OD-37이 적은 배포 뒤 후속 카드 몫이다.
+  - 적체 사례 (a)(b)(열린 PR 인계 + 수리 적체 = `wip_limit`): 원격 PR 인계에 기대므로 spec.md §J의 AC-AF-007 행대로 «원격 부분 superseded» — 대신하는 기준은 하위 AC-AFL-014 [REF] (원격 부분만).
+  - 지운 인용: `TestAcceptanceManifest/<id>`(정본 M14·M24~M27·M32·M37·M55), `TestGate_ReasonTable_*`, `TestPRQueue_*`. 세 이름 모두 `internal/`에 `func` 정의가 없다(측정: `130d6d9f5b` 트리에서 `grep -rln "func <이름>" internal/`, 출력 없음 — card t2023 manager-spec 보고). 이전 문구는 git의 `130d6d9f5b:.moai/specs/SPEC-AGENTIC-FACTORY-001/acceptance.md` 189-199행에 있다.
+  - 코드 사실(처분을 바꾸지 않음): 사유 상수 `ReasonCheckNotPassed`·`ReasonBudgetExhausted`는 `internal/agenticfactory/core/state.go:61-62`에 있고, 설정 키 `PRQueueWIPLimit`은 `internal/config/agentic_factory.go:55`에 아직 있다. 이 키를 쓰는 배차 규칙은 위 처분으로 이 기준 밖이다.
+- 아래 줄은 처분 이전 사례의 기록이며, 채택 기준이 아니다.
+- 주 REQ: maps REQ-AF-007.
 - 게이트 사례(게이트 단위 시험, 귀속 대역 허용): design §2.1b 표의 8행마다 하나. 각 행의 기대 사유는 표와 같고 한 결과는 사유 하나만 남긴다(기록 수 = 1). 여기에 skipped·누락·실패·취소·다른 HEAD 검사 → `check-not-passed`, 감사 예산 소진 → `budget-exhausted`.
 - 적체 사례: (a) 열린 인계 + 수리 적체 = `wip_limit` → 새 Issue dispatch 0, 종결·수리 effect는 계속. (b) 키 값 `0`, `-1`, `"x"`, 범위 밖 정수 → 설정 로드가 키 이름과 허용 범위를 밝혀 거절(`0`을 끔으로 읽는 변형을 죽임). 키 미설정 사례는 두지 않는다. 미설정 동작은 운영자 결정 대기(OD-7)이며, 결정이 나면 manager-spec 재위임으로 사례 (c)를 넣고 기대 PASS 수를 고친다.
 - 변형 단언: `PASS-WITH-DEBT`를 통과로 세는 구현, 귀속 실패를 판정값보다 늦게 보는 구현(한 결과에 사유 둘), `operator-ack-missing`을 역할 부재에 쓰는 구현은 표 행에서 FAIL.
@@ -226,14 +230,16 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 
 #### AC-AF-010 — 독립성과 역할 쓰기 경계 [PARTLY SUPERSEDED — OD-32]
 
-- 주 REQ: maps REQ-AF-010. 초록: M4.
-- 정본 주 시험 2: M22, M23.
-- 명령(F2): 없음 — 이 기준의 사례를 단언하는 시험을 찾지 못했다.
-- 미충족 — 시험 없음: (a)~(g) 전부, 정본 M22·M23.
-- 목표 시험 이름(아직 없음, 실행 대상 아님): `TestAcceptanceManifest/M22`, `TestAcceptanceManifest/M23`, `TestIndependence_*`(0개), `TestIndependence_LeaderDoesNotTakeOverAgentWork`, `TestIndependence_LaneEscalatesOnlyFourCategories`.
+- 주 REQ: maps REQ-AF-010.
+- **처분(0.7.6, card t2023): (A) test added.** 이 기준은 지금 코드에 있는 리뷰 독립성 판정(`internal/agenticfactory/identity`, `writers` = `identity.go:202-220`)에 시험으로 묶는다.
+  - 사례 (c)·(d) — 있는 시험: `TestAWriterOfTheIssueIsNeverItsReviewerAuditorQAOrCoordinator`(`internal/agenticfactory/identity/identity_test.go:147`). 같은 Issue에 attempt를 쓴 세션의 리뷰·감사·QA·Coordinator 증거가 `ReasonWasWriter`로 세지 않음을 단언한다.
+  - 사례 (e) — 더할 시험(manager-develop가 card t2023에서 씀): `TestIndependence_WriterOfAnotherIssueStillCountsAsReviewer`, 파일 `internal/agenticfactory/identity/independence_test.go`. 단언: Issue 1949에만 attempt를 쓴 세션이 Issue 1948에 대한 ControlService 리뷰 부여를 받아 낸 코드 리뷰 증거는 `Attributed == true`, `Role == core.RoleReviewer`. 죽여야 할 변이: 어느 Issue든 writer였던 세션을 모두 거절하는 구현(run 전체를 막는 과잉 구현) → 이 시험에서 FAIL.
+  - 기대 PASS 수: 위 두 시험, 각 `--- PASS:` 한 줄(빈 선택 금지, §A 판정).
+  - 덮지 않는 사례(처분을 바꾸지 않음, 열린 채): (a)(b) ControlService 밖 쓰기 거절 — 부여자 ControlService는 아직 없다(`identity.go:7-11`: «until that service exists no grant does»); (f) leader가 agent 일을 대신하지 않음 — 집행 위치는 OD-18에 열려 있다; (g) leader로 보내는 네 범주 — 제안 사례였고 코드가 없다. 이 넷의 Issue 의존 부분 처분은 OD-32에 그대로 열려 있으며, 이 판은 OD-32를 닫지 않았다.
+  - 지운 인용: `TestAcceptanceManifest/M22`, `TestAcceptanceManifest/M23`, `TestIndependence_*`, `TestIndependence_LeaderDoesNotTakeOverAgentWork`, `TestIndependence_LaneEscalatesOnlyFourCategories` — `internal/`에 `func` 정의가 없다. 이전 문구는 `130d6d9f5b:.moai/specs/SPEC-AGENTIC-FACTORY-001/acceptance.md` 227-238행.
 - 사례: (a) ControlService가 아닌 쓰기 주체의 claim·lease·liveness·resume 쓰기 → 거절. (b) Coordinator의 직접 상태 쓰기 → 거절. (c) 같은 Issue의 어느 attempt writer였던 세션의 리뷰 증거 → 세지 않음. (d) Coordinator가 직접 구현한 변경의 리뷰 → 세지 않음. (e) 다른 Issue의 writer였던 세션이 이 Issue를 리뷰 → 셈(정본 [2]§21).
-- (f) leader 역할 경계(0.6.7, DEC-AF-23, 제안 이름 `TestIndependence_LeaderDoesNotTakeOverAgentWork`): Coordinator가 agent에 배정된 Issue의 구현·수리·리뷰 대응 쓰기를 요청 → 거절, 그 Issue의 attempt 기록 불변. 변경 알림·실패 복구·배정 조정·통합 지원 요청 → ControlService 명령으로 받아들여짐. 이 사례는 위 PASS 줄 수에 1을 더한다.
-- (g) leader로 보내는 범주(0.6.7 B8a, DEC-AF-27, **제안 사례**, 제안 이름 `TestIndependence_LaneEscalatesOnlyFourCategories`. `4cdaba5d7e`에 이 시험은 없다): lane이 leader에 보내는 항목의 집합은 정확히 사용자 승인 게이트·lane 사이 충돌·외부 또는 되돌릴 수 없는 쓰기·실제 오류 넷이다. 네 범주 각각 → 보냄 1. 그 밖의 항목 → 보냄 0, lane의 기록에 결정·이유·되돌리는 법이 남음.
+- (f) leader 역할 경계(0.6.7, DEC-AF-23; 0.7.6: 시험 없음, OD-18 열림): Coordinator가 agent에 배정된 Issue의 구현·수리·리뷰 대응 쓰기를 요청 → 거절, 그 Issue의 attempt 기록 불변. 변경 알림·실패 복구·배정 조정·통합 지원 요청 → ControlService 명령으로 받아들여짐.
+- (g) leader로 보내는 범주(0.6.7 B8a, DEC-AF-27, **제안 사례**; 0.7.6: 시험 없음): lane이 leader에 보내는 항목의 집합은 정확히 사용자 승인 게이트·lane 사이 충돌·외부 또는 되돌릴 수 없는 쓰기·실제 오류 넷이다. 네 범주 각각 → 보냄 1. 그 밖의 항목 → 보냄 0, lane의 기록에 결정·이유·되돌리는 법이 남음.
 - 변형 단언: run 전체를 막는 과잉 구현은 (e)에서 FAIL, Issue 범위를 보지 않는 구현은 (c)에서 FAIL, leader가 agent 일을 대신하는 구현은 (f)에서 FAIL.
 - RED 이유: 역할 경계 없음. 초록 경로: M4. (e)는 귀속 대역으로 게이트 단위 시험 안에서만 돈다.
 
@@ -376,11 +382,14 @@ tree_sha: 3275706cc9 (작성 트리. 관측 대상은 원격 ref)
 
 #### AC-AF-021 — CLI
 
-- 주 REQ: maps REQ-AF-022. 초록: M6.
-- 정본 주 시험 23: CLI01~CLI23.
-- 명령(F2): 없음 — 이 기준의 사례를 단언하는 시험을 찾지 못했다.
-- 미충족 — 시험 없음: (a)~(g) 전부, golden 순서 점검, 정본 CLI01~CLI23.
-- 목표 시험 이름(아직 없음, 실행 대상 아님): `TestAcceptanceManifest/CLI01`~`CLI23`, `TestCompat_*`(0개), `TestLauncher_*`(`internal/cli`·AF 범위 0개; `internal/lsp`·`internal/sandbox`의 같은 접두는 관계없음).
+- 주 REQ: maps REQ-AF-022.
+- **처분(0.7.6, card t2023): (A) test added.** 새 명령 이름과 문법은 OD-29·OD-2에 열려 있어 새 문법 사례 (c)(d)는 시험할 대상이 없다. 이 기준은 지금 있는 진입 명령(`moai cc`·`moai glm`의 `-f`/`-l`, `internal/cli/factory.go` `parseFactoryFlag`·`parseLauncherEntry`)에 묶는다.
+  - 사례 (e) 역할 뒤바뀜 0 — 있는 시험: `TestS46_NoRoleInversion`(`internal/cli/launcher_cli_s46_regression_test.go:15`), `TestLegacyForms_FAndLTogether_Refused`(`internal/cli/launcher_legacy_forms_char_test.go:119`).
+  - 사례 (g) `--` 뒤 인자 전달 — 있는 시험: `TestParseFactoryFlagPassThroughBoundary`(`internal/cli/factory_test.go:232`).
+  - 사례 (a) 거절 문구 바이트 동일 — 더할 시험(manager-develop가 card t2023에서 씀): `TestCompat_LauncherEntryRefusalsMatchGolden`, 파일 `internal/cli/launcher_compat_golden_test.go`, golden `internal/cli/testdata/agentic_factory_compat/entry_refusals.golden`(design §9.6 제안 위치). 단언: 고정한 거절 입력 표의 각 행마다 `parseLauncherEntry(args)`가 오류를 내고, 그 오류 문자열이 golden의 같은 행과 바이트까지 같다. 죽여야 할 변이: 거절 문구 하나를 바꾸거나 거절을 받아들임으로 바꾼 구현 → 이 시험에서 FAIL.
+  - 기대 PASS 수: 위 네 시험, 각 `--- PASS:` 한 줄(빈 선택 금지, §A 판정).
+  - 덮지 않는 사례(열린 채): (b) stderr 한 줄 추가(S2 단계 없음), (c)(d) 버전 선언·혼합 문법(OD-2), (f) 모르는 인자 거절 — 지금 진입 명령은 모르는 인자를 Claude Code에 그대로 넘기므로(`cc.go:24` 사용법 `[-- claude-args...]`, `TestLegacyForms_AgentFlag_PassesThroughUnchanged`) 이 사례는 지금 동작과 맞지 않으며 OD-2 결정 전에는 시험으로 묶지 않는다; golden 순서 점검(S1 등록 커밋 없음).
+  - 지운 인용: `TestAcceptanceManifest/CLI01`~`CLI23`, `TestCompat_*`(AF 범위에 없음; `internal/`의 유일한 `TestCompat` 일치는 `internal/config/toolpolicy/codegen_test.go`로 관계없음), `TestLauncher_*`(`internal/lsp/subprocess`·`internal/sandbox` 소속, 관계없음). 이전 문구는 `130d6d9f5b:.moai/specs/SPEC-AGENTIC-FACTORY-001/acceptance.md` 377-386행.
 - 사례: (a) S1: golden 파일과 도움말·거절 문구·출력·종료 코드 바이트 동일. (b) S2: stderr 한 줄만 추가. (c) 버전 선언 없이 새 문법 → 호환 오류(종료 2). (d) 새·옛 문법 혼합 → 호환 오류. (e) 역할 뒤바뀜 0: 모든 플래그 조합에서 세션 역할이 선언과 같음. (f) 조용한 흡수 0: 모르는 인자는 거절. (g) `--` 뒤 인자는 해석 없이 전달.
 - golden 순서 점검: golden 커밋이 S1 등록 커밋의 엄격한 조상.
 - RED 이유: 새 명령 없음. 초록 경로: M6(launcher 담당). OD-2의 4건이 정해지면 (c)(d)의 문법을 고친다.
@@ -609,14 +618,11 @@ F2 작업 당시에는 하위 SPEC의 `acceptance.md`를 고치지 않고 여기
 | `TestLiveness_*` | AC-AF-004 | REQ-AF-004 | `runner/`(`takeover_test.go` 옆) | (d) 재시작·끊김 뒤 실제 실행 조회가 재개·재발급·PARKED 결정보다 먼저, 강제 종료 0, 중복 attempt 0 |
 | `TestLiveness_CrashHandover_ResponsibilityPassesWithEpoch` | AC-AF-004 | REQ-AF-004 | `runner/` | (e) 책임 agent `dead` → 새 agent에 epoch+1로 책임, 책임 기록이 비는 순번 0, 이전 worktree·branch·변경 보존, `live`·`indeterminate`면 이전 0 |
 | `TestDone_*` | AC-AF-006 | REQ-AF-006 | `core/`(`closing_test.go` 옆) | (a) 종료 effect 순번 < DONE 순번 (b) 종료 실패 → MERGING + PARKED `pending-effect` (c) 로컬 동기화 변형 → DONE 거절 (d) `deploy: N/A` 사유 없음 → 거절 (e) DONE 전 다음 dispatch → 거절. zusätzlich lane-20: Issue 종료 effect |
-| `TestGate_ReasonTable_*` | AC-AF-007 | REQ-AF-007 | `core/`(`gate_test.go` 옆) | design §2.1b 8행마다 기대 사유 하나, 기록 수 1. 검사 미통과 → `check-not-passed`, 감사 예산 소진 → `budget-exhausted` |
-| `TestPRQueue_*` | AC-AF-007 | REQ-AF-007 | `runner/`(`next_test.go` 옆) | 적체 (a) 열린 인계 + 수리 적체 = `wip_limit` → 새 dispatch 0, 종결·수리 effect는 계속. zusätzlich lane-17: 적체 (b) 설정 로드 거절 |
+| (0.7.6 철회 — AC-AF-007 superseded, OD-37·AC-AFL-008 [REF]·AC-AFL-014 [REF]; 이전 행 두 개는 `130d6d9f5b` 이 파일 612-613행) | AC-AF-007 | REQ-AF-007 | — | 시험을 쓰지 않는다 |
 | `TestHandoff_*`, `TestRepair_*`, `TestResponsibility_*` | AC-AF-009 | REQ-AF-009 | `runner/`(`handoff_test.go`·`repair_test.go` 옆) | (a)~(e): receipt 필드 하나씩 빼기 → E03 거절, PR 발행만 → DONE·REVIEWING 아님, E03 뒤 책임 유지·보존, E06 수리 배타 claim, MERGING 중 HEAD 변경 → E10 |
 | `TestResponsibility_CIFailure_SameAgentRepairsThroughDone` | AC-AF-009 | REQ-AF-009 | `runner/` | (f) 실패한 필수 검사 → 같은 agent가 수리부터 DONE까지, leader 커밋 0, 단계 순번 |
 | `TestResponsibility_SecondIssue_OnlyWhenConditionsHold` | AC-AF-009 | REQ-AF-009 | `runner/` | (g) ①~⑤ 두 번째 Issue 배차 조건 |
-| `TestIndependence_*` | AC-AF-010 | REQ-AF-010 | `core/`(`authz_test.go`·`gate_test.go` 옆) | (a)~(e): ControlService 밖 쓰기 거절, Coordinator 직접 상태 쓰기 거절, 같은 Issue writer의 리뷰 불산입, Coordinator 구현의 리뷰 불산입, 다른 Issue writer의 리뷰 산입 |
-| `TestIndependence_LeaderDoesNotTakeOverAgentWork` | AC-AF-010 | REQ-AF-010 | `core/` | (f) Coordinator의 구현·수리·리뷰 대응 쓰기 요청 → 거절, attempt 기록 불변 |
-| `TestIndependence_LaneEscalatesOnlyFourCategories` (B8a 제안, 기존 `TestIndependence_*` 배치를 따름) | AC-AF-010 | REQ-AF-010 | `core/` | (g) 네 범주 각각 → 보냄 1, 그 밖 → 보냄 0이고 lane 기록에 결정·이유·되돌리는 법 |
+| `TestIndependence_WriterOfAnotherIssueStillCountsAsReviewer` (0.7.6, card t2023에서 씀; 이전 행 세 개는 `130d6d9f5b` 이 파일 617-619행) | AC-AF-010 | REQ-AF-010 | `identity/`(`independence_test.go`) | (e) 다른 Issue의 writer였던 세션의 리뷰 → 산입. (c)(d)는 있는 시험 `TestAWriterOfTheIssueIsNeverItsReviewerAuditorQAOrCoordinator`; (a)(b)(f)(g)는 시험 없음(AC-AF-010 처분 줄) |
 | `TestGate_RoleEvidence_RequiresChildAttribution_AndLockHolds` | AC-AF-011 | REQ-AF-011 | `runner/`(`attribution_test.go` 옆) | L1 증거 종류 6개 각각 `unattributable{identity-spec-incomplete}`, L2 종류마다 `producer-not-allowed` 하나 |
 | `TestLock_*` | AC-AF-011 | REQ-AF-011 | `runner/` | L3 설정·환경 변수 변경에도 결과 바이트 동일 + 정적 검사, P4a, P4b. zusätzlich lane-21: L4 시나리오 하네스 사전 점검 |
 | `TestRedact_*`(13) | AC-AF-013 | REQ-AF-013 | `core/`(`core_test.go` 옆) | C1 3, C2 1, C3 2, C4 2, C5 1, Restricted 1, Idempotent 1, Negative 2(범주 하나를 뺀 변형에서 FAIL). Restricted 1에는 DEC-AF-28 제안 단언(SHA-256 = 가린 장부 형태의 hash, 원값의 hash 아님)이 들어간다. 담당 lane은 그대로 lane-18이며, 이 단언은 장부 쓰기 쪽(`mirror/`, lane-18 소관 — 구현 위치는 리더 전달)에 놓일 수도 있다. zusätzlich lane-20: AC 초록 경로의 refiner(M5) |
@@ -659,7 +665,7 @@ F2 작업 당시에는 하위 SPEC의 `acceptance.md`를 고치지 않고 여기
 
 | 시험 이름 | AC | REQ | 패키지(제안) | 동작 |
 |---|---|---|---|---|
-| `TestCompat_*`, `TestLauncher_*` | AC-AF-021 | REQ-AF-022 | `internal/cli/`(`launch_exec_test.go`·`gtd_compat_test.go` 옆) | (a)~(g): golden 바이트 동일, stderr 한 줄, 버전 선언 없는 새 문법 → 종료 2, 혼합 → 호환 오류, 역할 뒤바뀜 0, 모르는 인자 거절, `--` 뒤 전달. golden 순서 점검 |
+| `TestCompat_LauncherEntryRefusalsMatchGolden` (0.7.6, card t2023에서 씀; 이전 행은 `130d6d9f5b` 이 파일 662행) | AC-AF-021 | REQ-AF-022 | `internal/cli/`(`launcher_compat_golden_test.go`, golden `testdata/agentic_factory_compat/entry_refusals.golden`) | (a) 거절 문구 바이트 동일. (e)(g)는 있는 시험(AC-AF-021 처분 줄); (b)(c)(d)(f)·golden 순서 점검은 시험 없음 |
 | `TestEnvMatrix_StepEvidenceRequired_NotRunNeverSuccess` | AC-AF-023 | REQ-AF-024 | 기존 패키지 없음(새 위치) | (a) 명령·종료 코드·출력 중 하나 없음 → 행 거절 (b) 실행 안 한 단계 → `not-run` (c) 전부 `BLOCKED` → 행렬 FAIL (d) Codex 미설정 → `BLOCKED(not-configured)` |
 | `TestEfficiencyRecord_*` | AC-AF-024 | REQ-AF-025 | 기존 패키지 없음(새 위치) | (a) 필드 누락 → 거절 (b) `estimated`를 `measured` 칸에 → 거절 (c) 품질 회귀 비교 → 향상 보고 0 (d) checkpoint 비용 필드는 측정값 또는 Gap. zusätzlich lane-18: (d) checkpoint |
 | `TestLaneWake_SelfPacedWithTime_NoFixedIntervalJob` (B8a 제안) | AC-AF-016 | REQ-AF-016 | `internal/cli/` 또는 통합(새 위치) | (f) 깨어남 형태: 시각을 밝힌 한 번의 자기 페이스 깨어남, 고정 간격 반복 작업 등록 0, 남은 일이 없으면 다시 걸지 않음. zusätzlich lane-18: 대기 기록 규칙 |
@@ -868,7 +874,7 @@ F2 작업 당시에는 하위 SPEC의 `acceptance.md`를 고치지 않고 여기
 
 - CONTEXT06 — implementation gap, not part of the expected behavior(서른네 번째 후속에 동작 칸에서 옮김): "CONTEXT06 '새 대상의 증거가 필요하다'는 **호출자 규칙**이며 모형이 집행하지 않는다"(`spec.md:370 @0659c71de4`, "lane-18이 밝힌 공백(리더 전달)" 줄). 출처는 리더 전달(relayed)이며 이 작성자는 lane-18 코드를 읽지 않았다.
 
-#### golden 파일 형식 — AC-AF-021 (`TestCompat_*`·`TestLauncher_*`)
+#### golden 파일 형식 — AC-AF-021 (`TestCompat_LauncherEntryRefusalsMatchGolden`, 0.7.6에서 이름을 고침)
 
 - 근거: design §9.6(`design.md:716-720 @0659c71de4`, 이 판 `:720-724`) — 위치 제안 `internal/cli/testdata/agentic_factory_compat/`, 내용 "변경 전 빌드로 기록한 `moai cc --help`의 진입 플래그 도움말, 거절 문구와 종료 코드, 기존 factory 기록의 lane 레이블·세션 id·owner·handle·권한 모드 스냅숏", 순서 "M6의 첫 커밋이 golden 파일만 담는다". AC-AF-021 (a)·(b)와 golden 순서 점검(`acceptance.md` AC-AF-021 사례 줄). 형식의 네 요소는 `.claude/rules/moai/development/verification-completeness.md` §2.1.
 - **형식(이 절은 형식만 정한다)**: golden 항목 하나는 명령 하나다. 항목마다 다음을 따로 담는다.

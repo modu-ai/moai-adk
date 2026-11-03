@@ -30,14 +30,14 @@ moai cc [-p profile] [-w [name]] [-- claude-args...]
 | `-m, --model <model>` | 모델 선택 재정의 |
 | `-w, --worktree [name]` | 격리된 git worktree(`.claude/worktrees/<name>/`)에서 실행 — 이름 생략 시 자동 생성 |
 | `--chrome` / `--no-chrome` | Claude Code 에 그대로 전달합니다. 런처가 스스로 붙이지 않으므로 `--no-chrome` 을 넘기지 않는 한 `/chrome` 으로 연결할 수 있습니다 |
-| `-f, --factory` | **팩토리 리더**로 진입합니다. 인자를 받지 않습니다. 리더는 운영자가 고른 카드를 교차 세션 메시지로 빈 레인에 통째로 배분하고, 레인은 `-l`로 합류시킵니다 |
-| `-l, --lane` | 실행 중인 팩토리에 **레인**으로 합류해 다음 `lane-<n>` 번호(살아 있는 레인 가운데 가장 큰 번호의 다음)를 자동으로 받습니다. 인자를 받지 않으며, 실행 중인 팩토리가 없으면 거부됩니다. `moai glm -l`과 `moai codex -l`도 같은 동작입니다 |
-| `--leader <name>` | `-l` 또는 `--lane`과 함께만 씁니다. 합류할 리더 세션을 지정합니다(기본값 `leader`, 옛 철자 `lead`는 거부). 실행 기록이 없거나 은퇴했는데 살아 있는 리더가 있으면, 합류는 그 리더를 검증(pid + 프로세스 시작)하고 그 실행을 복원합니다 |
-| `--factory-run <run-id>` | `-l`과 함께: 합류할 실행을 id로 지정합니다. `--leader`와는 함께 쓸 수 없습니다 |
-| `--clear-policy <value>` | `moai cc -l`·`moai glm -l`과 함께: 카드를 끝낸 뒤 컨텍스트를 비우는 방식입니다(`clear-each` 기본값, `clear-when-full`, `relaunch`) |
-| `--no-auto-dispatch` | `moai cc -l`·`moai glm -l`과 함께: 레인을 수동 모드로 띄웁니다. 기본은 큐의 다음 카드를 스스로 임대하는 자가 배차 레인입니다 |
+| `-f, --factory` | **팩토리 리더**로 진입합니다. 인자를 받지 않습니다. 리더는 운영자가 고른 카드를 교차 세션 메시지로 빈 레인에 통째로 배분하고, 레인은 `-a`로 합류시킵니다 |
+| `-a` | 실행 중인 팩토리에 **레인**으로 합류해 다음 `lane-<n>` 번호(살아 있는 레인 가운데 가장 큰 번호의 다음)를 자동으로 받습니다. 인자를 받지 않으며, 실행 중인 팩토리가 없으면 거부됩니다. `moai glm -a`와 `moai codex -l`도 같은 동작입니다 |
+| `--leader <name>` | `-a`와 함께만 씁니다. 합류할 리더 세션을 지정합니다(기본값 `leader`, 옛 철자 `lead`는 거부). 실행 기록이 없거나 은퇴했는데 살아 있는 리더가 있으면, 합류는 그 리더를 검증(pid + 프로세스 시작)하고 그 실행을 복원합니다 |
+| `--factory-run <run-id>` | `-a`와 함께: 합류할 실행을 id로 지정합니다. `--leader`와는 함께 쓸 수 없습니다 |
+| `--clear-policy <value>` | `moai cc -a`·`moai glm -a`와 함께: 카드를 끝낸 뒤 컨텍스트를 비우는 방식입니다(`clear-each` 기본값, `clear-when-full`, `relaunch`) |
+| `--no-auto-dispatch` | `moai cc -a`·`moai glm -a`와 함께: 레인을 수동 모드로 띄웁니다. 기본은 큐의 다음 카드를 스스로 임대하는 자가 배차 레인입니다 |
 
-{{< callout type="info" >}} 진입 토큰은 `-f`(리더)와 `-l`(레인) 둘뿐이며 어느 쪽도 인자를 받지 않습니다. 한 번의 실행에는 토큰이 하나만 붙으므로 `-f`와 `-l`을 함께 쓰면 에러이고, `-f <값>`, `-l lane-2`처럼 값이 붙은 형태와 Codex에서 리더를 요구하는 `moai codex`의 `-f`는 모두 한 줄 오류로 거부됩니다. 폐기된 `-k` 진입도 같은 방식으로 `-f`와 `-l`을 안내하며 거부됩니다. 자세한 계약은 [팩토리 모드](/ko/advanced/factory-mode)와 [manager-lead 리더 코디네이터](/ko/advanced/manager-lead)를 참고하세요. {{< /callout >}}
+{{< callout type="info" >}} 진입 토큰은 `-f`(리더)와 `-a`(레인) 둘뿐이며 어느 쪽도 인자를 받지 않습니다. 한 번의 실행에는 토큰이 하나만 붙으므로 `-f`와 `-a`를 함께 쓰면 에러이고, `-f <값>`, `-a lane-2`처럼 값이 붙은 형태와 Codex에서 리더를 요구하는 `moai codex`의 `-f`는 모두 한 줄 오류로 거부됩니다. 폐기된 `-k` 진입도 같은 방식으로 `-f`와 `-a`를 안내하며 거부됩니다. 자세한 계약은 [팩토리 모드](/ko/advanced/factory-mode)와 [manager-lead 리더 코디네이터](/ko/advanced/manager-lead)를 참고하세요. {{< /callout >}}
 
 카드는 통째로 레인 하나에 들어가, 그 레인 안에서 `plan → run → sync` 세 단계를 순서대로 지나갑니다. 단계마다 그 세션이 `Agent()` 서브에이전트를 띄우며, 쓰기 작업을 맡는 스폰은 `isolation: "worktree"`로 격리합니다. 레인 하나가 동시에 띄울 수 있는 서브에이전트는 최대 10개이고, 런처가 레인 세션에 `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS`로 이 값을 심어 두므로 레인 N개가 머신 용량을 나눠 쓰는 구조는 운영자의 자제가 아니라 설정으로 보장됩니다. 레인은 한꺼번에 켜지 마세요. 첫 레인을 먼저 올리고, 실제로 출력이 나오기 시작한 것을 확인한 뒤에 나머지를 띄웁니다.
 
