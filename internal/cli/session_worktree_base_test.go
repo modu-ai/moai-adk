@@ -2,11 +2,12 @@ package cli
 
 // session_worktree_base_test.go — SPEC-WORKTREE-BASEREF-001 M3 (card t313).
 //
-// Consumer 2: `moai cc -w` passes the configured base branch as the
-// `git worktree add` base operand. Covers AC-WBR-007 (the created tree is cut
-// from the configured base) and AC-WBR-008 (empty / unresolvable degrade to
-// today's byte-identical invocation, and the unresolvability decision comes
-// from the SHARED predicate rather than a second rule).
+// Consumer 2: `moai cc -w` passes the configured base branch, pinned to its
+// remote-tracking ref ("origin/<base>", card t447), as the `git worktree add`
+// base operand. Covers AC-WBR-007 (the created tree is cut from the configured
+// base) and AC-WBR-008 (empty / unresolvable degrade to today's byte-identical
+// invocation, and the unresolvability decision comes from the SHARED predicate
+// rather than a second rule).
 
 import (
 	"bytes"
@@ -305,5 +306,90 @@ func TestSessionWorktreeConfiguredBaseCutsFromThatBranch(t *testing.T) {
 	reflogOut, _ := reflog.CombinedOutput()
 	if !strings.Contains(string(reflogOut), "Created from") || !strings.Contains(string(reflogOut), "develop") {
 		t.Errorf("reflog does not name develop as the base:\n%s", reflogOut)
+	}
+}
+
+// TestSessionWorktreeConfiguredBaseCutsFromStaleLocalMain is card t447's
+// reproduction: when the local branch named by worktree_base_branch has
+// diverged from its remote-tracking ref (a stale local main behind
+// origin/main), the created tree MUST be cut from the remote-tracking commit,
+// not from the local branch tip. The bare operand `main` makes git resolve
+// refs/heads/main first, which is exactly how card worktrees ended up on a
+// stale local main (observed 2026-11-04: a fresh `moai worktree new` tree
+// landed on local main c4784db4c while origin/main was 59464c5f3).
+func TestSessionWorktreeConfiguredBaseCutsFromStaleLocalMain(t *testing.T) {
+	testguard.RedirectHome(t)
+	repo := t.TempDir()
+	git := func(args ...string) string {
+		t.Helper()
+		cmd := exec.Command("git", args...)
+		cmd.Dir = repo
+		cmd.Env = append(os.Environ(),
+			"GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@example.com",
+			"GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@example.com")
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+		return strings.TrimSpace(string(out))
+	}
+
+	git("init", "-q", "-b", "main")
+	write := func(name, body string) {
+		t.Helper()
+		if err := os.WriteFile(filepath.Join(repo, name), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("a.txt", "one\n")
+	git("add", "a.txt")
+	git("commit", "-q", "-m", "first")
+	localMainSHA := git("rev-parse", "HEAD")
+
+	// Build a "remote" main that is AHEAD of the local branch: the work the
+	// remote carries is unreachable from local main — the real-world shape of
+	// a stale local main. refs/remotes/origin/main exists (so the shared
+	// resolvability predicate answers true), but the bare operand `main`
+	// resolves to the stale local tip.
+	write("b.txt", "remote-side\n")
+	git("add", "b.txt")
+	git("commit", "-q", "-m", "remote-side")
+	remoteMainSHA := git("rev-parse", "HEAD")
+	git("update-ref", "refs/remotes/origin/main", remoteMainSHA)
+	git("update-ref", "refs/heads/main", localMainSHA)
+
+	if got := git("rev-parse", "refs/remotes/origin/main"); got != remoteMainSHA {
+		t.Fatalf("fixture: origin/main = %s, want remote-side %s", got, remoteMainSHA)
+	}
+
+	writeWorktreeBaseConfig(t, repo, "main")
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(repo); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(cwd) })
+
+	swapSessionWorktreeSeams(t, swSeams{
+		commonDir: func() (string, error) { return filepath.Join(repo, ".git"), nil },
+		configSet: func(string, string, string) error { return nil },
+	})
+
+	wtPath, err := materializeSessionWorktree("WT-stale-base-probe", &bytes.Buffer{})
+	if err != nil {
+		t.Fatalf("materialize: %v", err)
+	}
+
+	head := exec.Command("git", "-C", wtPath, "rev-parse", "HEAD")
+	headOut, err := head.CombinedOutput()
+	if err != nil {
+		t.Fatalf("rev-parse in new worktree: %v\n%s", err, headOut)
+	}
+	if got := strings.TrimSpace(string(headOut)); got != remoteMainSHA {
+		t.Errorf("new worktree HEAD = %s, want remote-tracking origin/main %s "+
+			"(a stale local branch must not win the base cut — card t447)", got, remoteMainSHA)
 	}
 }

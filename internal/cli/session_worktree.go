@@ -53,7 +53,9 @@ const sessionWorktreeSubdir = ".moai" + string(filepath.Separator) + "worktrees"
 var (
 	// sessionWorktreeGitWorktreeAdd runs `git worktree add -b <branch> <dest>
 	// [<base>]` and returns the absolute worktree path on success. The base is
-	// the configured git_strategy.worktree_base_branch value
+	// the configured git_strategy.worktree_base_branch value pinned to its
+	// remote-tracking ref ("origin/<base>", card t447 — a bare name resolves
+	// refs/heads first and a stale local branch would win the cut)
 	// (SPEC-WORKTREE-BASEREF-001 REQ-WBR-010); an empty base reproduces the
 	// pre-SPEC invocation byte-identically.
 	sessionWorktreeGitWorktreeAdd = gitWorktreeAddReal
@@ -241,6 +243,15 @@ func materializeSessionWorktree(branch string, out io.Writer) (string, error) {
 	base := config.LoadWorktreeBaseBranch(projectRoot)
 	if base != "" && !sessionWorktreeBaseResolvable(base) {
 		base = ""
+	}
+	// Card t447: the resolvability predicate verifies refs/remotes/origin/<base>,
+	// but a bare `<base>` operand makes git resolve refs/heads/<base> FIRST —
+	// a stale local branch wins the cut over the verified remote-tracking ref
+	// (observed live: a fresh tree landed on local main while origin/main was
+	// ahead). Pin the operand to the remote-tracking ref the predicate just
+	// verified, so the cut follows the remote regardless of local branch state.
+	if base != "" {
+		base = "origin/" + base
 	}
 
 	wtPath, err := sessionWorktreeGitWorktreeAdd(destDir, branch, base)
