@@ -20,16 +20,16 @@ func TestLaneRuleCarriesConfiguredRenewInterval(t *testing.T) {
 	cases := []struct {
 		name   string
 		yaml   string // the project's workflow.yaml; "" writes no file (the defaults)
-		want   string // the arm expression the rendered rule must carry
+		want   string // the wake bound the rendered rule must carry
 		absent string // the expression a rule for this configuration must not carry
 	}{
 		{
 			name:   "configured-7m",
 			yaml:   "workflow:\n    factory_lease:\n        renew_interval: 7m\n",
-			want:   "*/7 * * * *",
-			absent: "*/5 * * * *",
+			want:   "renew_interval=7m",
+			absent: "renew_interval=5m",
 		},
-		{name: "default-5m", yaml: "", want: "*/5 * * * *"},
+		{name: "default-5m", yaml: "", want: "renew_interval=5m"},
 	}
 	for _, c := range cases {
 		for _, source := range []string{"startup", "clear"} {
@@ -54,7 +54,7 @@ func TestLaneRuleCarriesConfiguredRenewInterval(t *testing.T) {
 						t.Fatalf("no lane rule rendered for source %s, locale %s", source, lang)
 					}
 					if !strings.Contains(rule, c.want) {
-						t.Errorf("rendered rule lacks the arm expression %q:\n%s", c.want, rule)
+						t.Errorf("rendered rule lacks the wake bound %q:\n%s", c.want, rule)
 					}
 					if c.absent != "" && strings.Contains(rule, c.absent) {
 						t.Errorf("rendered rule carries %q although the configured renewal period is 7 minutes", c.absent)

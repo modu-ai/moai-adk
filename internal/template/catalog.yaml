@@ -6,7 +6,7 @@ catalog:
             - name: moai
               tier: core
               path: templates/.claude/skills/moai/
-              hash: 18df0ebde3a82e0718c904dedc9c3ac8970c2dd6cb4676d5b9e29be107898286
+              hash: 2466235ef1bfb733b18f01d8a36c89828be953aca9755e239ee1e61938b06a11
               version: 1.0.0
               depends_skills:
                 - moai-workflow-spec
@@ -63,7 +63,7 @@ catalog:
             - name: moai-lane-watchdog
               tier: core
               path: templates/.claude/skills/moai-lane-watchdog/
-              hash: 1159eef1dbbd22b6fb87854346a0047b31fc3db9fd84120f11ec229bcb55b55b
+              hash: 5c26872e5cff918a19f4f961c748c4851ecd76b0efdc2b0c6191f7cbc359972c
               version: 1.0.0
               depends_agents:
                 - manager-lead
@@ -132,7 +132,7 @@ catalog:
             - name: moai-workflow-spec
               tier: core
               path: templates/.claude/skills/moai-workflow-spec/
-              hash: b0b866dc84760992c03dcad16cf6505f0931d04c17c16cff0526abf3cf9093e2
+              hash: 21d54e4e24941b309fbac9e64627ff5082e8013020b3a7fee943a0079b28ad06
               version: 1.0.0
             - name: moai-workflow-tdd
               tier: core

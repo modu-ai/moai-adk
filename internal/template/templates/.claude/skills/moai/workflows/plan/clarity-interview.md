@@ -199,12 +199,12 @@ Tool: AskUserQuestion (at orchestrator level only)
 Options:
 - Proceed with SPEC Creation (Recommended): Plan is approved, continue to Phase 9 then Phase 10
 - Annotate Plan: Add inline notes to plan.md for revision (starts annotation cycle)
-- Save as Draft: Save plan.md with status draft, create commit, print resume command, exit
+- Save as Draft: Save the plan artifacts as a draft SPEC (the draft state is recorded only as `status: draft` in the spec.md frontmatter; plan.md and acceptance.md stay stateless and carry no `status:`), create the commit, print the resume command, exit
 - Cancel: Discard plan, exit with no files created
 
 If "Proceed": Continue to Phase 9 then Phase 10.
 If "Annotate": Enter Annotation Cycle (see below).
-If "Draft": Save plan.md with status draft, create commit, print resume command, exit.
+If "Draft": Save the plan artifacts as a draft SPEC (the draft state is recorded only as `status: draft` in the spec.md frontmatter; plan.md and acceptance.md stay stateless and carry no `status:`), create the commit, print the resume command, exit.
 If "Cancel": Discard plan, exit with no files created.
 
 #### Annotation Cycle (1-6 iterations)

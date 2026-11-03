@@ -313,7 +313,7 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		// See cc.go: a live-held lane number is bumped, and the bumped value
 		// must reach the backend argv.
 		endClaim := debugTiming.beginDebug(factoryStepLaneClaim, "")
-		finalLabel, claimErr := resolveFactoryLaneName(launchProjectRoot(), factoryLabel, factory.BackendGLM, entry.FactoryAutoNumber, cmd.ErrOrStderr())
+		finalLabel, claimErr := claimFactoryLaneForEntry(launchProjectRoot(), factoryLabel, factory.BackendGLM, entry, cmd.ErrOrStderr())
 		endClaim()
 		if claimErr == nil {
 			debugTiming.annotateDetail("label=" + finalLabel)
@@ -343,6 +343,11 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	// SPEC-WORKTREE-ENTRY-STRATEGY-001 M3a: see cc.go for the rationale.
 	endWt := debugTiming.beginDebug(launchStepWorktree, "")
 	if err := validateWorktreeL2Value(view.StageA, cmd.ErrOrStderr()); err != nil {
+		endWt()
+		return err
+	}
+	// See cc.go: an unregistered absolute -w path is refused before any write.
+	if err := validateAbsoluteWorktreeRegistered(view.StageB); err != nil {
 		endWt()
 		return err
 	}

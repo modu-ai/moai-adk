@@ -17,7 +17,8 @@
 // the pass-through tokens survive into the child argv, and the launcher adds
 // its settings. The t1348 proposal's `moai cc -f lane-<n>` spelling is itself
 // refused (factoryFlagUsageError), and an operator --name beside -l is
-// refused at the entry parse (laneFlagNameError).
+// refused at the entry parse (laneFlagNameError), except a canonical lane-<n>
+// name, which is the rejoin form.
 
 package cli
 

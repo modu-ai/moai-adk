@@ -84,6 +84,49 @@ func TestHeadAndAncestry(t *testing.T) {
 	}
 }
 
+// TestMergeBase pins the fork point of two diverged branches and the error
+// for unrelated histories.
+func TestMergeBase(t *testing.T) {
+	dir := newRepo(t)
+	run := func(args ...string) {
+		t.Helper()
+		cmd := exec.Command("git", args...)
+		cmd.Dir = dir
+		cmd.Env = append(environ(), "GIT_CONFIG_GLOBAL=/dev/null", "GIT_CONFIG_SYSTEM=/dev/null")
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v: %s", args, err, out)
+		}
+	}
+	base, err := Head(dir)
+	if err != nil {
+		t.Fatalf("head: %v", err)
+	}
+	run("checkout", "-b", "left")
+	write(t, dir, "l.txt", "l\n")
+	run("add", "l.txt")
+	run("commit", "-m", "left")
+	run("checkout", "main")
+	write(t, dir, "r.txt", "r\n")
+	run("add", "r.txt")
+	run("commit", "-m", "right")
+
+	got, err := MergeBase(dir, "left", "main")
+	if err != nil {
+		t.Fatalf("MergeBase: %v", err)
+	}
+	if got != base {
+		t.Fatalf("MergeBase = %q, want %q", got, base)
+	}
+
+	run("checkout", "--orphan", "island")
+	write(t, dir, "i.txt", "i\n")
+	run("add", "i.txt")
+	run("commit", "-m", "island")
+	if got, err := MergeBase(dir, "island", "main"); err == nil {
+		t.Fatalf("MergeBase on unrelated histories = %q, want error", got)
+	}
+}
+
 // TestNonMergeCommits pins the range listing shape: oldest first, paths
 // attached, empty range empty.
 func TestNonMergeCommits(t *testing.T) {

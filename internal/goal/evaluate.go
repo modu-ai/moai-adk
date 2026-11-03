@@ -105,6 +105,13 @@ type Eval struct {
 	// without a CmdRunner call. nil preserves the pre-existing behavior
 	// unchanged (strictly additive contract).
 	Snapshot SnapshotSource
+	// ValidWait, when non-nil, reports whether the session's card holds a valid
+	// open wait. It is consulted only at the point where an unmet goal would
+	// produce a block, after every ceiling, wall-clock, stagnation and
+	// unsatisfiable check has run: a wait quiets the block, never a bound. The
+	// predicate carries the I/O (the evaluator stays pure); nil preserves the
+	// pre-existing behavior unchanged.
+	ValidWait func() bool
 }
 
 // DefaultStagnationThreshold is the number of consecutive identical progress
@@ -454,6 +461,17 @@ func (e *Eval) Evaluate(ctx context.Context, g *Goal) (Verdict, bool) {
 		// All mechanical conditions passed and no model conditions exist.
 		g.Status = StatusSatisfied
 		e.appendProgressFP(g, "all conditions satisfied", currentFP)
+		return Verdict{SnapshotAttribution: attributions}, false
+	}
+
+	// A legitimate wait: the goal is unmet but the session's card holds a valid
+	// open wait, so a block would only spin an empty turn. The turn was already
+	// counted and every bound above has already had its say; this turn still
+	// leaves a Progress entry, so the stagnation guard keeps working over wait
+	// turns exactly as it does over blocked ones. This covers the mechanical,
+	// the model-claim and the semi-autonomous checkpoint block alike.
+	if e.ValidWait != nil && e.ValidWait() {
+		e.appendProgressFP(g, "legitimate wait: card holds a valid open wait", currentFP)
 		return Verdict{SnapshotAttribution: attributions}, false
 	}
 
