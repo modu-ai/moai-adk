@@ -447,20 +447,20 @@ var (
 	explicitGitTargetPattern = regexp.MustCompile(`(?i)\bgit\s+-C\s+(/[^\s;&|"'()<>]+)`)
 	leadingCdTargetPattern   = regexp.MustCompile(`^\s*cd\s+(/[^\s;&|"'()<>]+)\s*&&\s*`)
 	gitInvocationPattern     = regexp.MustCompile(`(?i)\bgit\s`)
-	soleGitStartPattern     = regexp.MustCompile(`(?i)^git\s`)
+	soleGitStartPattern      = regexp.MustCompile(`(?i)^git\s`)
 
 	// Forms that can move a git invocation off the path a leading `cd` or a
 	// `-C` names (see explicitGitTarget).
-	repoOverridePattern     = regexp.MustCompile(`(?i)(?:\bGIT_DIR=|\bGIT_WORK_TREE=|--git-dir\b|--work-tree\b)`)
-	dirChangePattern        = regexp.MustCompile(`(?i)(?:\b(?:cd|pushd|popd)\b|\()`)
-	cOptionPattern          = regexp.MustCompile(`\s-C\s+\S`)
+	repoOverridePattern = regexp.MustCompile(`(?i)(?:\bGIT_DIR=|\bGIT_WORK_TREE=|--git-dir\b|--work-tree\b)`)
+	dirChangePattern    = regexp.MustCompile(`(?i)(?:\b(?:cd|pushd|popd)\b|\()`)
+	cOptionPattern      = regexp.MustCompile(`\s-C\s+\S`)
 
 	// shellRunsCodePattern matches `eval`, `source`, or a dot-source `.` used as
 	// a command (at the start or right after a separator, followed by a space or
 	// the end). Their argument is code the current shell runs and the quoted-span
 	// collapse hides it, so it can change directory unseen. A path such as
 	// `/wt/.hidden` never matches: the dot must stand alone as a command word.
-	shellRunsCodePattern = regexp.MustCompile(`(?:^|[\s;&|({])(?:eval|source)(?:\s|$)|(?:^|[;&|({])\s*\.(?:\s|$)`)
+	shellRunsCodePattern    = regexp.MustCompile(`(?:^|[\s;&|({])(?:eval|source)(?:\s|$)|(?:^|[;&|({])\s*\.(?:\s|$)`)
 	gitGlobalOptionsPattern = regexp.MustCompile(`(?i)\bgit(?:\s+(?:-C\s+\S+|--git-dir[=\s]\S+|--work-tree[=\s]\S+))+`)
 )
 
