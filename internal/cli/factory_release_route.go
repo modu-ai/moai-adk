@@ -284,11 +284,19 @@ func factoryChangedPaths(cardTree, releaseTip string) []string {
 	if releaseTip == "" {
 		return nil
 	}
-	out, err := cliGitIn(cardTree, "diff", "--name-only", releaseTip+"...HEAD")
+	// NUL-delimited: git quotes non-ASCII paths in line mode, and a path may
+	// hold spaces, so neither a newline nor a whitespace split is safe.
+	out, err := cliGitIn(cardTree, "diff", "--name-only", "-z", releaseTip+"...HEAD")
 	if err != nil {
 		return nil
 	}
-	return strings.Fields(out)
+	var paths []string
+	for _, p := range strings.Split(out, "\x00") {
+		if p != "" {
+			paths = append(paths, p)
+		}
+	}
+	return paths
 }
 
 // factoryFastCheckPackages decides the packages to lint and test from the
