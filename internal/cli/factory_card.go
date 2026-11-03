@@ -3095,7 +3095,7 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	// `main` holder is the primary checkout down the same edge (card t1831
 	// M5b, REQ-AGT-006 rescope 0.4.0): the shared human/leader surface never
 	// becomes a merge window; the leader merges the card's pull request.
-	// The release route (card t2013, AFF S2, REQ-FCR-026): under agentic-trunk
+	// The release route (card t2013, Git-AFF S2, REQ-FCR-026): under agentic-trunk
 	// with the fixed release branch provisioned in its own worktree, the card
 	// lands through the local integration window into that branch — never the
 	// pull-request edge, never main. Any condition missing leaves the judgment

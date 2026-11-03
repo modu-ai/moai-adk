@@ -1,6 +1,6 @@
 package cli
 
-// factory_release_route.go — card t2013, AFF S2 (SPEC-FACTORY-COMPLETION-
+// factory_release_route.go — card t2013, Git-AFF S2 (SPEC-FACTORY-COMPLETION-
 // RECOVERY-001 REQ-FCR-026, spec.md section D.5): the release route of
 // `moai factory complete`.
 //
