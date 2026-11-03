@@ -20,6 +20,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -249,7 +250,7 @@ func factoryFastCheckSteps(cardTree, releaseTip string) ([][]string, error) {
 	if _, err := os.Stat(filepath.Join(cardTree, "go.mod")); err != nil {
 		return nil, fmt.Errorf("no go.mod in the card tree %s: the fast required check is defined for Go modules only", cardTree)
 	}
-	pkgs := factoryChangedGoPackages(cardTree, releaseTip)
+	pkgs := factoryFastCheckPackages(cardTree, releaseTip)
 	steps := [][]string{{"go", "build", "./..."}}
 	if len(pkgs) == 0 {
 		return steps, nil
@@ -274,6 +275,12 @@ func factoryHasGolangciConfig(dir string) bool {
 // root), the Go package directories that own what the card changed since its
 // merge base with releaseTip.
 func factoryChangedGoPackages(cardTree, releaseTip string) []string {
+	return factoryOwningGoPackages(cardTree, factoryChangedPaths(cardTree, releaseTip))
+}
+
+// factoryChangedPaths lists the paths the card changed since its merge base
+// with releaseTip; nil when the tip is empty or the diff cannot be read.
+func factoryChangedPaths(cardTree, releaseTip string) []string {
 	if releaseTip == "" {
 		return nil
 	}
@@ -281,7 +288,27 @@ func factoryChangedGoPackages(cardTree, releaseTip string) []string {
 	if err != nil {
 		return nil
 	}
-	return factoryOwningGoPackages(cardTree, strings.Fields(out))
+	return strings.Fields(out)
+}
+
+// factoryFastCheckPackages decides the packages to lint and test from the
+// card's changed file list. A module input (go.mod, go.sum, go.work,
+// go.work.sum) can break any package and owns none, so it widens the scope to
+// the whole module; so does a changed .go file no package directory claims
+// (for example a deleted file in a vanished directory).
+func factoryFastCheckPackages(cardTree, releaseTip string) []string {
+	changed := factoryChangedPaths(cardTree, releaseTip)
+	pkgs := factoryOwningGoPackages(cardTree, changed)
+	for _, p := range changed {
+		switch path.Base(p) {
+		case "go.mod", "go.sum", "go.work", "go.work.sum":
+			return []string{"./..."}
+		}
+		if strings.HasSuffix(p, ".go") && len(pkgs) == 0 {
+			return []string{"./..."}
+		}
+	}
+	return pkgs
 }
 
 // factoryOwningGoPackages maps each changed path (relative to cardTree) to the
