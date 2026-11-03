@@ -215,7 +215,7 @@ Output: test_execution_strategy ("full", "module", "changed") passed to Phase 5+
 
 Progress update: Append to `.moai/specs/SPEC-{ID}/progress.md`:
 ```
-- Phase 2 complete: memory_guard={enabled|disabled}, available_mb={N}, strategy={full|module|changed}
+- Phase 2 complete: HEAD {sha}, plan_artifact_hash {hash}, memory_guard={enabled|disabled}, available_mb={N}, strategy={full|module|changed}
 ```
 
 <!-- @MX:WARN: [AUTO] Future PRs may be tempted to revert to moai-lang-* skill references here. The current rule-path mapping (post-the language-as-rules policy) MUST remain pointing to .claude/rules/moai/languages/<name>.md. Frontmatter `related-skills:` regressions fail TestRelatedSkillsNoLangReference (DEAD_LANG_FRONTMATTER_REFERENCE); body-prose regressions fail TestSkillBodyNoLangReference (DEAD_LANG_SKILL_REFERENCE). -->
@@ -389,7 +389,7 @@ Output: TaskList populated with all acceptance criteria as pending items.
 
 Progress update: Append to `.moai/specs/SPEC-{ID}/progress.md`:
 ```
-- Phase 7 complete: {N} acceptance criteria registered as pending tasks
+- Phase 7 complete: HEAD {sha}, plan_artifact_hash {hash}, {N} acceptance criteria registered as pending tasks
 ```
 
 ## Phase 8: File Structure Scaffolding
@@ -409,7 +409,7 @@ Output: List of stub files created, LSP baseline diagnostics captured.
 
 Progress update: Append to `.moai/specs/SPEC-{ID}/progress.md`:
 ```
-- Phase 8 complete: {N} stub files created, LSP baseline captured
+- Phase 8 complete: HEAD {sha}, plan_artifact_hash {hash}, {N} stub files created, LSP baseline captured
 ```
 
 ## Phase 9: Pre-Implementation MX Context Scan
