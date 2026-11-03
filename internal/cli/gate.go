@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -109,11 +110,7 @@ func runGate(cmd *cobra.Command, _ []string) error {
 	// enforce the real ceilings; this outer deadline is a bounded safety net
 	// against a runaway step hanging indefinitely.
 	gate := quality.NewQualityGate(cfg)
-	budget, budgetWarn := gate.OverallBudget()
-	if budgetWarn != "" {
-		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), budgetWarn)
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), budget)
+	ctx, cancel := gateRunContext(gate, cmd.ErrOrStderr())
 	defer cancel()
 
 	passed, output := gate.Run(ctx)
@@ -130,6 +127,18 @@ func runGate(cmd *cobra.Command, _ []string) error {
 		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), output)
 	}
 	return nil
+}
+
+// gateRunContext builds the context that bounds one whole gate run: the
+// derived overall budget (or the gate.yaml timeouts.total override), with the
+// one-line correction warning written to errOut when the override had to be
+// raised.
+func gateRunContext(gate *quality.QualityGate, errOut io.Writer) (context.Context, context.CancelFunc) {
+	budget, warn := gate.OverallBudget()
+	if warn != "" {
+		_, _ = fmt.Fprintln(errOut, warn)
+	}
+	return context.WithTimeout(context.Background(), budget)
 }
 
 // @MX:NOTE: loadGateCfgForCLI is the SSOT seam that routes the standalone
