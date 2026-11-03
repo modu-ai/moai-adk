@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"regexp"
@@ -27,6 +28,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/atomicfile"
 	"github.com/modu-ai/moai-adk/internal/closure/gitio"
+	"github.com/modu-ai/moai-adk/internal/gitenv"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
@@ -253,13 +255,21 @@ func checkpointEvidence(base, cardID string) []string {
 }
 
 // checkpointGit runs one read-only git query in base and returns trimmed
-// stdout, or "" and false when it fails.
+// stdout, or "" and false when it fails. The query runs with the repository-
+// scoping variables scrubbed (card-review round 2 P2 #2): an inherited GIT_DIR
+// or GIT_WORK_TREE would outrank base and describe another checkout. The
+// bound is gitio's, whose Run does not pin the environment.
 func checkpointGit(base string, args ...string) (string, bool) {
 	if base == "" {
 		return "", false
 	}
-	out, err := gitio.Run(base, args...)
-	return out, err == nil
+	ctx, cancel := context.WithTimeout(context.Background(), gitio.DefaultTimeout)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "git", args...)
+	cmd.Dir = base
+	cmd.Env = gitenv.Env()
+	out, err := cmd.Output()
+	return strings.TrimSpace(string(out)), err == nil
 }
 
 // checkpointPR returns the pull request number recorded on the card's
