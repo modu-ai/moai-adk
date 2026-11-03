@@ -94,21 +94,23 @@ const (
 // (--factory-run, --leader) to the -f text; they compose with -a
 // only, so they are taught by the lane refusals and the ambiguity guidance
 // rather than by this -f line.
-const factoryFlagUsageError = "-f/--factory takes no argument (bare -f starts the factory leader); an agent joins with -a"
+const factoryFlagUsageError = "the -f/--factory flag takes no argument (bare -f starts the factory leader); an agent joins with -a"
 
 // removedLaneFlagError, laneFlagNameError and the entry-token error are the
 // one-line refusals of the agent entry: the removed -l/--lane spelling (card
 // t2021), an operator --name beside -a, and a second entry token.
 const (
 	// The first word of an error is title-cased by the fang error renderer, so a message
-	// must not START with a flag: "-l" would print as "-L" (a different flag) and
-	// "--lane" as "--Lane". The two messages below lead with a plain word instead.
+	// must not START with a flag: "-l" would print as "-L" (a different flag), "--lane" as
+	// "--Lane", "-a" as "-A". Every entry-path message in this file leads with a plain word
+	// ("the -a flag ...", "a --name value ...") for that reason; keep new ones the same way
+	// (TestT2021_EntryRefusalsKeepTheTypedFlagCase pins the printed text).
 	removedLaneFlagError   = "the %s flag was removed; use -a to join the running factory as the next free agent (-f starts the leader)"
-	laneFlagNameError      = "-a already names the role; drop the --name/-n flag"
-	agentFlagArgumentError = "-a takes no argument (it joins the running factory as the next free agent); --leader <name> selects the leader session"
+	laneFlagNameError      = "the -a flag already names the role; drop the --name/-n flag"
+	agentFlagArgumentError = "the -a flag takes no argument (it joins the running factory as the next free agent); --leader <name> selects the leader session"
 	entryTokenConflict     = "a launch carries at most one entry token; %s and %s are two entry tokens"
-	laneNameUnderFactory   = "--name lane-<n> does not select a lane under -f/--factory (-f starts the factory leader); the agent entry is -a"
-	leaderNeedsLaneEntry   = "--leader names the leader session a lane join targets; it composes with -a only"
+	laneNameUnderFactory   = "a --name lane-<n> value does not select a lane under -f/--factory (-f starts the factory leader); the agent entry is -a"
+	leaderNeedsLaneEntry   = "the --leader flag names the leader session a lane join targets; it composes with -a only"
 )
 
 // factoryFlagParse is the entry parse of the factory surface. Two entry
@@ -166,10 +168,10 @@ func parseFactoryFlag(args []string) (p factoryFlagParse, err error) {
 				i++
 				p.RunID = args[i]
 			} else {
-				return p, fmt.Errorf("--factory-run requires a run id")
+				return p, fmt.Errorf("the --factory-run flag requires a run id")
 			}
 			if strings.TrimSpace(p.RunID) == "" {
-				return p, fmt.Errorf("--factory-run requires a run id")
+				return p, fmt.Errorf("the --factory-run flag requires a run id")
 			}
 			continue
 		}
@@ -188,10 +190,10 @@ func parseFactoryFlag(args []string) (p factoryFlagParse, err error) {
 				i++
 				p.Lead = args[i]
 			default:
-				return p, fmt.Errorf("%s requires a leader label", leadFlagLong)
+				return p, fmt.Errorf("the %s flag requires a leader label", leadFlagLong)
 			}
 			if factory.IsLegacyLeaderSpelling(p.Lead) {
-				return p, fmt.Errorf("%s %q is the legacy leader spelling; use %q (leader label forms: leader, leader-<n>, leader-<run-id>)",
+				return p, fmt.Errorf("the %s value %q is the legacy leader spelling; use %q (leader label forms: leader, leader-<n>, leader-<run-id>)",
 					leadFlagLong, p.Lead, factory.LeaderLabel()+strings.TrimPrefix(p.Lead, "lead"))
 			}
 			continue
@@ -199,7 +201,7 @@ func parseFactoryFlag(args []string) (p factoryFlagParse, err error) {
 
 		if arg == noAutoDispatchFlag || strings.HasPrefix(arg, noAutoDispatchFlag+"=") {
 			if strings.HasPrefix(arg, noAutoDispatchFlag+"=") {
-				return p, fmt.Errorf("%s takes no value; it is a boolean opt-out", noAutoDispatchFlag)
+				return p, fmt.Errorf("the %s flag takes no value; it is a boolean opt-out", noAutoDispatchFlag)
 			}
 			p.NoAutoDispatch = true
 			continue
@@ -213,14 +215,14 @@ func parseFactoryFlag(args []string) (p factoryFlagParse, err error) {
 				i++
 				value = args[i]
 			} else {
-				return p, fmt.Errorf("%s requires a clear policy value (%s, %s, or %s)",
+				return p, fmt.Errorf("the %s flag requires a clear policy value (%s, %s, or %s)",
 					clearPolicyFlag, config.FactoryClearPolicyEach, config.FactoryClearPolicyWhenFull, config.FactoryClearPolicyRelaunch)
 			}
 			switch value {
 			case config.FactoryClearPolicyEach, config.FactoryClearPolicyWhenFull, config.FactoryClearPolicyRelaunch:
 				p.ClearPolicy = value
 			default:
-				return p, fmt.Errorf("%s takes %s, %s, or %s (got %q)",
+				return p, fmt.Errorf("the %s flag takes %s, %s, or %s (got %q)",
 					clearPolicyFlag, config.FactoryClearPolicyEach, config.FactoryClearPolicyWhenFull, config.FactoryClearPolicyRelaunch, value)
 			}
 			continue
@@ -294,7 +296,7 @@ func parseFactoryFlag(args []string) (p factoryFlagParse, err error) {
 	// anything launches.
 	if p.Lead != "" {
 		if p.RunID != "" {
-			return p, fmt.Errorf("%s and --factory-run name two different selectors; carry one", leadFlagLong)
+			return p, fmt.Errorf("the %s and --factory-run flags name two different selectors; carry one", leadFlagLong)
 		}
 		if !p.LaneRole {
 			return p, errors.New(leaderNeedsLaneEntry)
@@ -307,10 +309,10 @@ func parseFactoryFlag(args []string) (p factoryFlagParse, err error) {
 	// value refusal above.
 	if p.ClearPolicy != "" {
 		if !p.Enabled {
-			return p, fmt.Errorf("%s selects a factory lane's clear policy; it composes with -a only", clearPolicyFlag)
+			return p, fmt.Errorf("the %s flag selects a factory lane's clear policy; it composes with -a only", clearPolicyFlag)
 		}
 		if !p.LaneRole {
-			return p, fmt.Errorf("%s selects a lane's clear policy; the factory leader takes none", clearPolicyFlag)
+			return p, fmt.Errorf("the %s flag selects a lane's clear policy; the factory leader takes none", clearPolicyFlag)
 		}
 	}
 	// The auto-dispatch opt-out is a LANE selection too (REQ-TCD-011), on
@@ -318,10 +320,10 @@ func parseFactoryFlag(args []string) (p factoryFlagParse, err error) {
 	// non-factory launch refuses it rather than silently swallowing the flag.
 	if p.NoAutoDispatch {
 		if !p.Enabled {
-			return p, fmt.Errorf("%s selects a factory lane's dispatch mode; it composes with -a only", noAutoDispatchFlag)
+			return p, fmt.Errorf("the %s flag selects a factory lane's dispatch mode; it composes with -a only", noAutoDispatchFlag)
 		}
 		if !p.LaneRole {
-			return p, fmt.Errorf("%s selects a lane's dispatch mode; the factory leader takes none", noAutoDispatchFlag)
+			return p, fmt.Errorf("the %s flag selects a lane's dispatch mode; the factory leader takes none", noAutoDispatchFlag)
 		}
 	}
 
@@ -346,14 +348,14 @@ func laneDispatchSelection(entry launcherEntryParse) string {
 // parsed further, nothing launches, nothing is written.
 func refuseLegacyEntryNames(args []string) error {
 	if name, ok := parseNamedLabel(args, factory.IsLegacyLeaderSpelling); ok {
-		return fmt.Errorf("--name %q is the legacy leader spelling; use %q (leader label forms: leader, leader-<n>, leader-<run-id>)",
+		return fmt.Errorf("the --name value %q is the legacy leader spelling; use %q (leader label forms: leader, leader-<n>, leader-<run-id>)",
 			name, factory.LeaderLabel()+strings.TrimPrefix(name, "lead"))
 	}
 	if name, ok := parseNamedLabel(args, factory.IsLegacyFactoryRoleValue); ok {
 		if n, isLabel := factory.SplitFactoryLegacyLabel(name); isLabel {
-			return fmt.Errorf("--name %q is the legacy lane label; use %q", name, factory.FactoryLaneLabel(n))
+			return fmt.Errorf("the --name value %q is the legacy lane label; use %q", name, factory.FactoryLaneLabel(n))
 		}
-		return fmt.Errorf("--name %q is a legacy factory spelling; the leader launches as %q and lanes join with -a",
+		return fmt.Errorf("the --name value %q is a legacy factory spelling; the leader launches as %q and lanes join with -a",
 			name, factory.LeaderLabel())
 	}
 	return nil

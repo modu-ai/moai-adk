@@ -554,7 +554,7 @@ func handleGLMKeyFlag(cmd *cobra.Command, args []string) (bool, error) {
 		return false, nil
 	}
 	if !hasValue {
-		return true, fmt.Errorf("--key requires a value; usage: moai glm --key <api-key>")
+		return true, fmt.Errorf("the --key flag requires a value; usage: moai glm --key <api-key>")
 	}
 	// REQ-GJK-003: any other token in the scanned region — before the flag
 	// as well as after the value — refuses the mixed invocation. The token
@@ -564,7 +564,7 @@ func handleGLMKeyFlag(cmd *cobra.Command, args []string) (bool, error) {
 	extra = append(extra, args[:flagIdx]...)
 	extra = append(extra, rest...)
 	if len(extra) > 0 {
-		return true, fmt.Errorf("--key cannot be combined with other arguments (found %q); run 'moai glm --key <api-key>' by itself", redactArg(extra[0], strings.TrimSpace(value)))
+		return true, fmt.Errorf("the --key flag cannot be combined with other arguments (found %q); run 'moai glm --key <api-key>' by itself", redactArg(extra[0], strings.TrimSpace(value)))
 	}
 	trimmed := strings.TrimSpace(value)
 	if trimmed == "" {
