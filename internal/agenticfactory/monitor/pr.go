@@ -57,13 +57,17 @@ func Phase(p PRInfo) PRPhase {
 	if !p.Open {
 		return PhaseNone
 	}
-	fresh, failed := 0, false
+	fresh, failed, running := 0, false, false
 	for _, k := range p.Checks {
 		if k.HeadSHA != p.HeadSHA {
 			continue
 		}
 		fresh++
-		if k.Conclusion != "success" {
+		switch k.Conclusion {
+		case "success":
+		case "pending": // still running: waiting, not failing
+			running = true
+		default:
 			failed = true
 		}
 	}
@@ -72,6 +76,8 @@ func Phase(p PRInfo) PRPhase {
 		return PhaseChecksPending
 	case failed:
 		return PhaseChecksFailed
+	case running:
+		return PhaseChecksPending
 	}
 	switch p.ReviewVerdict {
 	case "PASS":

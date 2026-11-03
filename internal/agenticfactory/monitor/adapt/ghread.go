@@ -66,6 +66,9 @@ type ghPR struct {
 		Name       string `json:"name"`
 		Conclusion string `json:"conclusion"`
 		Status     string `json:"status"`
+		// StatusContext entries (commit statuses) carry context/state instead of name/status/conclusion.
+		Context string `json:"context"`
+		State   string `json:"state"`
 	} `json:"statusCheckRollup"`
 	ClosingIssuesReferences []struct {
 		Number int `json:"number"`
@@ -96,7 +99,8 @@ func (g GHReader) ReadPR(ctx context.Context, issue int) (monitor.PRInfo, bool, 
 		if !closes(p, issue) || p.State == "CLOSED" {
 			continue
 		}
-		if pick == nil || p.Number > pick.Number {
+		// An open PR outranks a merged one; among PRs in the same class the higher number wins.
+		if pick == nil || betterPR(p, pick) {
 			pick = p
 		}
 	}
@@ -105,11 +109,14 @@ func (g GHReader) ReadPR(ctx context.Context, issue int) (monitor.PRInfo, bool, 
 	}
 	info := monitor.PRInfo{Number: pick.Number, Open: pick.State == "OPEN", Merged: pick.State == "MERGED", HeadSHA: pick.HeadRefOid}
 	for _, c := range pick.StatusCheckRollup {
-		concl := strings.ToLower(c.Conclusion)
-		if c.Status != "COMPLETED" {
+		name, concl := c.Name, strings.ToLower(c.Conclusion)
+		switch {
+		case c.State != "" && c.Status == "":
+			name, concl = c.Context, statusContextConclusion(c.State)
+		case c.Status != "COMPLETED":
 			concl = "pending"
 		}
-		info.Checks = append(info.Checks, monitor.CheckRun{Name: c.Name, Conclusion: concl, HeadSHA: pick.HeadRefOid})
+		info.Checks = append(info.Checks, monitor.CheckRun{Name: name, Conclusion: concl, HeadSHA: pick.HeadRefOid})
 	}
 	if g.Verdict != nil {
 		info.ReviewVerdict = g.Verdict(issue, pick.HeadRefOid)
@@ -131,6 +138,24 @@ func (g GHReader) ReadPR(ctx context.Context, issue int) (monitor.PRInfo, bool, 
 		info.IssueClosed = st.State == "CLOSED"
 	}
 	return info, true, nil
+}
+
+// statusContextConclusion maps a commit-status state onto the check conclusions Phase reads.
+func statusContextConclusion(state string) string {
+	switch strings.ToUpper(state) {
+	case "SUCCESS":
+		return "success"
+	case "FAILURE", "ERROR":
+		return "failure"
+	}
+	return "pending" // PENDING, EXPECTED, or anything unknown: not yet a result
+}
+
+func betterPR(p, than *ghPR) bool {
+	if po, to := p.State == "OPEN", than.State == "OPEN"; po != to {
+		return po
+	}
+	return p.Number > than.Number
 }
 
 func closes(p *ghPR, issue int) bool {
