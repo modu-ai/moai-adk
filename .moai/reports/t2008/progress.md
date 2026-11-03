@@ -238,3 +238,10 @@ decision record: decided_by=lane-7 (claude, lane orchestrator) evidence_refs=dec
 
 - RED a6f9fdc927: `go test -count=1 -run "TestRunPhaseReferences|TestRunResumeIdentity" ./internal/template/` failed with two missing Resume Check items and eight retired labels. GREEN 32c93279ad: F1/F2 an identity-record bullet that runs whether progress.md was just created or already existed, and per-phase `- Phase {N} complete: HEAD {sha}, plan_artifact_hash {hash}` lines; F3 remaining retired labels renumbered (task-decomposition frontmatter, phase-execution frontmatter and Phase 1 hand-offs, run.md sequence label). Mirrors copied, catalog hash regenerated; run.md 199 lines.
 - After GREEN: template impact tests ok, `go test ./internal/skills/` ok, test-tdd-result-contract.sh PASS. Optional F4-F7 not repaired (F4 wording partly fixed by the new bullet). One fix-confirm audit follows at the commit carrying this note; a second FAIL stops the card.
+
+### Repair of sync-audit-3 N1 (FAIL 0.81 @9754a83878, receipt rcpt-7adecf2d9fbf14de79cdc95f; committed verdict b0b18dd939)
+
+decision record: decided_by=lane-7 (claude, lane orchestrator) evidence_refs=decision d-20261103T002644Z-9259 (operator direct approval, read from the board; repair plus exactly one confirmation audit), .moai/reports/t2008/sync-audit-3.md ladder_path=gate boundary (operator-approved audit)
+
+- RED f8739dd891: `go test -count=1 -run TestRunCheckpointTemplates ./internal/template/` failed on the Phase 2, 7 and 8 checkpoint lines in phase-execution.md (no HEAD, no plan_artifact_hash); a mutant test proves each omission is detected and a vacuous pass is refused. GREEN 41433b3329: the three templates now start with `HEAD {sha}, plan_artifact_hash {hash}`; mirror copied, catalog hash regenerated.
+- After GREEN: template impact tests ok, `go test ./internal/skills/` ok, test-tdd-result-contract.sh PASS. Optional N2-N5 and F5/F6 are not repaired. One confirmation audit (sync-audit-4) follows at the commit carrying this note; a FAIL stops the card, and the verdict file is committed alone.
