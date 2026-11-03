@@ -1,9 +1,9 @@
 ---
-description: "Run Phase 11~4 — DDD/TDD implementation cycles, quality validation, git operations, and completion guidance"
+description: "Run Phase 11-20 — DDD/TDD implementation cycles, quality validation, git operations, and completion guidance"
 user-invocable: false
 metadata:
  parent: moai-workflow-run
- phase: "Phase 11-4: Implementation, Quality Validation, and Completion"
+ phase: "Phase 11-20: Implementation, Quality Validation, and Completion"
 ---
 
 # Phase 11: Implementation (Mode-Dependent)
@@ -67,6 +67,7 @@ Requirements:
 - Initialize task tracking for progress across TDD cycles
 - Execute the complete RED-GREEN-REFACTOR cycle for each feature
 - Write tests before implementation (test-first discipline)
+- Record a semantic result for every TDD command, not only an exit code, per `.claude/rules/moai/workflow/tdd-result-contract.md`: `EXPECTED_RED` is allowed only in RED for the new AC test, after it reached its intended assertion; Compile errors, discovery, fixture, tool, or timeout failures are `TOOL_FAILURE` and never count as RED; an existing test failing, or a RED test failing again after GREEN, is `REGRESSION_FAILURE` and blocks the cycle. GREEN runs the new AC test and the regression set together, and REFACTOR must preserve both results
 - Ensure minimum 80% coverage per commit (85% recommended for new code)
 
 ### RED-stage Drafter Pool (read-only, conditional)
@@ -248,7 +249,7 @@ Output: review_findings per dimension, iterations_completed count, final review 
 
 Purpose: Update @MX code annotations for modified files. See .claude/rules/moai/workflow/mx-tag-protocol.md for tag rules.
 
-[HARD] This phase is MANDATORY. MoAI MUST scan all files modified during Phase 11 and verify @MX tag coverage before proceeding to Phase 3. If implementation agents did not add required tags during their work, MoAI adds them here.
+[HARD] This phase is MANDATORY. MoAI MUST scan all files modified during Phase 11 and verify @MX tag coverage before proceeding to Phase 19. If implementation agents did not add required tags during their work, MoAI adds them here.
 
 **Validation criteria (blocking):**
 - P1: Every new exported function with fan_in >= 3 MUST have `@MX:ANCHOR`

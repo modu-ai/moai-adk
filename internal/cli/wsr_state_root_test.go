@@ -414,7 +414,7 @@ func TestWSR006_ReviewGateRootMatrix(t *testing.T) {
 	// The codex path names the switch-off state (REQ-RG-007, D4; changed from
 	// "{}" by commit 1002a14c1); the multi path stays "{}"; no detector call.
 	t.Run("F-noid row 4", func(t *testing.T) {
-		wantCodexSwitchOff := `{"systemMessage":"codex review gate: turn allowed without a fresh pass (state: 스위치 꺼짐)"}`
+		wantCodexSwitchOff := `{"systemMessage":"codex review gate: no fresh pass — turn allowed, not a review PASS (state: 스위치 꺼짐)"}`
 		for _, variant := range []string{"admin HEAD deleted", "no git"} {
 			nfx := newWSRFixture(t, wsrWorkflowF)
 			if variant == "no git" {

@@ -72,3 +72,47 @@ Default: 채택하지 않음 — 변경 전 동작 (rule: 현재 동작 보존)
 Alternate: 그래도 채택
 Operator verdict: DEFAULT-APPLIED 2026-10-26T01:29:43Z lane-11+manager-spec
 Amendment: 2026-10-26 레인 판정(plan-audit iter1 D8, 판정서 `.moai/reports/t1963/plan-audit-verdict.md`) — 같은 금지를 `OwnerIndeterminate` 활성 run까지 넓힌다(REQ-003b — 판정 불가는 산 쪽으로). 산 소유자 또는 미확정 소유자 활성 run이 하나라도 있으면 채택하지 않는다(REQ-FCR-017, AC-FCR-018 사례 vi). 같은 판정(D9)으로 최신 후보가 codex 리더 run이거나 산 레거시 피어를 가지면 채택 0(다음 후보로 넘어가지 않음)이며, 두 조건의 run은 통합 원천에서도 제외한다.
+
+---
+
+v0.4.0(카드 t2013, M4 — AFF S2) 개정 중 드러난 판정이다. 같은 등록부·기본값 규칙을 쓴다.
+
+### Q8: agentic-trunk의 로컬 통합 대상을 `main`이 아니라 고정 release branch(`release_branch_prefix` + `main-batch`)로 둘 것인가?
+
+Label: FOUNDER
+Class: product-level
+Authority anchor: 운영자 판정의 출처 — 리더 세션이 운영자 채팅 원문을 기록한 결정 행 R114(`.moai/reports/pr-repair-20261101/decisions.md`, 2026-11-02T00:18Z). `.moai/reports/` 아래 카드 증거라 커밋된 권위 등록부의 항목으로 인용하지 않는다(이 실행에서 추적 여부를 확인하지 못했다 — 주 저장소에 대한 `git -C` 조회는 워크트리 가드가 거부). 그래서 라벨은 FOUNDER로 두고 판정은 아래 운영자 판정 줄에 기록한다(Q1·Q2와 같은 방식)
+Why unresolved: 현행 코드는 agentic-trunk의 통합 대상을 고정 `main`으로 둔다(`internal/config/loader_workflow_disposition.go:35`, `TestAgenticTrunkTarget`이 고정 — `release_branch_prefix` 무시). 전용 worktree가 `main`을 쥐면 `factory complete`가 `main`으로 병합하고(`TestAgenticTrunkFactoryCompleteTakesWindow`), primary만 쥐면 PR 가장자리로 간다. 고정 release branch로 바꾸면 출시된 `factory complete`의 착지 대상이 바뀐다. 선택지: (a) 고정 release branch(R114 ①) (b) 현행 `main`.
+Default: (b) 현행 `main` (rule: 현재 동작 보존)
+Alternate: (a) 고정 release branch
+Operator verdict: DECIDED 2026-11-02 operator (operator chat recorded by the leader as R114 ①; authority anchor is card evidence, not the committed register) — (a): 로컬 통합 대상은 고정 release branch이고 로컬 `main`은 `origin/main`만 따른다. S2는 release 경로를 추가하고 기존 `main` 경로의 은퇴는 S4가 한다(spec.md §G).
+
+### Q9: 고정 release branch가 프로비저닝되지 않았을 때 release 경로는 어떻게 하는가?
+
+Label: FOUNDER
+Class: implementation-level
+Authority anchor: 없음
+Why unresolved: R114는 대상을 정했지만 그 브랜치·worktree가 없을 때의 동작은 정하지 않았다. 선택지: (a) release 경로 조건 불성립으로 보고 기존 동작 그대로(PR 가장자리 또는 기존 로컬 병합) (b) agentic-trunk에서는 항상 release 경로를 타고, 미프로비저닝이면 거부.
+Default: (a) 기존 동작 그대로 (rule: 현재 동작 보존 — 프로비저닝 전에는 사용자에게 보이는 변화가 없다)
+Alternate: (b) 항상 release 경로 + 미프로비저닝 거부
+Operator verdict: DEFAULT-APPLIED 2026-11-02T00:21:59Z t2013+manager-spec
+
+### Q10: 검사 실패·충돌 시 "카드 보류"를 어떤 표현으로 남기는가?
+
+Label: FOUNDER
+Class: implementation-level
+Authority anchor: 없음
+Why unresolved: 카드 상태 기계에는 `merge-ready → blocked` edge가 없다(`internal/homestate/card_transition.go`의 blocked edge는 T9·T23·T24뿐). 현행 병합 실패는 카드 상태를 바꾸지 않는다. 선택지: (a) 새 전이 edge `merge-ready → blocked`(사유를 전이 이벤트에) (b) 카드는 `merge-ready`·version 유지 + 사유 분류·카드 HEAD SHA·검사 키 또는 충돌 경로를 담은 보류 기록(카드 이벤트), 같은 lane이 고친 뒤 다시 complete할 수 있음.
+Default: (b) `merge-ready` 유지 + 보류 기록 (rule: 현재 동작 보존 — 상태 기계·전이 edge 불변)
+Alternate: (a) 새 전이 edge
+Operator verdict: DEFAULT-APPLIED 2026-11-02T00:21:59Z t2013+manager-spec
+
+### Q11: 요구·기준이 Tier L 천장(25/25)을 넘는 것을 편차로 받아들일 것인가?
+
+Label: FOUNDER
+Class: implementation-level
+Authority anchor: 없음 — 천장 규칙은 `.claude/rules/moai/workflow/spec-workflow.md` § SPEC Complexity Tier(초과는 상향 또는 분할 신호), 분할 제약의 출처 R114 ⑤는 카드 증거라 권위로 인용하지 않는다
+Why unresolved: REQ-FCR-026·AC-FCR-026으로 26/26이 된다. L 위의 등급은 없고, 분할은 새 SPEC을 뜻하는데 R114 ⑤는 t2013을 유일 구현 카드로 두고 새 카드를 금지한다. 선택지: (a) 이 SPEC에 두고 편차로 기록, plan-auditor·리더에 보고 (b) 새 SPEC으로 분할.
+Default: (a) 편차로 기록 (rule: 이 SPEC 자신의 커밋 되돌리기 한 번으로 원복 — (b)는 새 SPEC 디렉터리를 만든다; 현재 동작 보존 규칙은 둘을 가르지 못한다)
+Alternate: (b) 분할
+Operator verdict: DEFAULT-APPLIED 2026-11-02T00:21:59Z t2013+manager-spec

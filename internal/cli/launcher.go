@@ -338,6 +338,13 @@ func removeGLMEnv(settingsPath string) error {
 	if len(preRead) == 0 {
 		return nil
 	}
+	// A file that carries no GLM env residue has nothing to clean, and the
+	// teammate-mode override is not residue on its own: it is the operator's
+	// own setting there. Leave such a file untouched, without a rewrite, so a
+	// repeated launch is a no-op.
+	if !settingsEnvHasGLMResidue(preRead) {
+		return nil
+	}
 
 	// SPEC-CLIFIX-CONCURRENCY-001 REQ-CONC-001-001: route through the locked+atomic
 	// mutateSettingsLocal seam so concurrent sessions cannot lose updates.
@@ -348,9 +355,13 @@ func removeGLMEnv(settingsPath string) error {
 
 		// Clear teammateMode override so settings.json default ("auto") applies.
 		// CG/GLM modes set this to "tmux"; CC mode should restore the default.
+		// Only reached when the same file carries GLM env residue (checked on the
+		// locked read as well), and the value is never inspected.
 		// delete (rather than m["teammateMode"] = "") so the key is omitted entirely,
 		// matching the original struct's omitempty behavior for "".
-		delete(m, "teammateMode")
+		if settingsEnvHasGLMResidue(m) {
+			delete(m, "teammateMode")
+		}
 
 		if env, ok := m["env"].(map[string]any); ok {
 			// Restore backed-up OAuth token before removing GLM vars
@@ -391,6 +402,22 @@ func removeGLMEnv(settingsPath string) error {
 			}
 		}
 	})
+}
+
+// settingsEnvHasGLMResidue reports whether the settings map's env block holds
+// any key of the settings-axis cleanup view — the keys a GLM or CG launch leaves
+// behind. Only the presence of a key is read, never a value.
+func settingsEnvHasGLMResidue(m map[string]any) bool {
+	env, ok := m["env"].(map[string]any)
+	if !ok {
+		return false
+	}
+	for _, key := range config.SettingsAxisCleanupKeys() {
+		if _, present := env[key]; present {
+			return true
+		}
+	}
+	return false
 }
 
 // resetTeamModeForCC disables team_mode when switching to CC.
