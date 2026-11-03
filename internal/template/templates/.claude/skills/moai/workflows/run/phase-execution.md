@@ -1,9 +1,9 @@
 ---
-description: "Run Phase 1~1.8 — Plan Audit Gate, environment assessment, JIT language detection, scale-based mode, analysis/planning, task decomposition, and development mode routing"
+description: "Run Phase 1-10 — Plan Audit Gate, environment assessment, JIT language detection, scale-based mode, analysis/planning, task decomposition, and development mode routing"
 user-invocable: false
 metadata:
   parent: moai-workflow-run
-  phase: "Phase 1-1.8: Phase Sequence and Preparation"
+  phase: "Phase 1-10: Phase Sequence and Preparation"
 ---
 
 # Phase Sequence
@@ -13,7 +13,7 @@ All phases execute sequentially. Each phase receives outputs from all previous p
 ## Phase 1: Plan Audit Gate
 
 **Purpose**: Mandatory independent audit of plan artifacts before any implementation begins.
-Prevents unreviewed, incomplete, or non-compliant SPEC documents from entering Phase 1.
+Prevents unreviewed, incomplete, or non-compliant SPEC documents from entering Phase 2.
 Source: the plan audit gate contract.
 
 **Scope**: Every `/moai run <SPEC-ID>` invocation. Never skipped — not even in `minimal` harness.
@@ -25,9 +25,12 @@ The hash subject set and tier-conditional inclusion are owned by the canonical
 contract in .claude/rules/moai/workflow/spec-workflow-detail.md § Report Persistence
 ("Plan-artifact hash subject list (Go verbatim)"); consult that contract for the
 authoritative subject list rather than restating it here. The Go implementation
-is `internal/runtime/audit_cache.go` `ComputeHash`, which hashes the
-whitespace-normalized UTF-8 content of each present subject file (missing files
-are skipped, making inclusion tier-conditional by construction).
+is `internal/runtime/audit_cache.go` `ComputeHash`, which hashes the exact bytes
+of each present subject file, framed by file name, length, and NUL separators
+(missing files are skipped, making inclusion tier-conditional by construction).
+No whitespace or newline normalization is part of the identity: a whitespace-only
+edit to a YAML or shell example changes the hash. Do not compute the hash by hand;
+the Go helper is the single implementation.
 
 Store hash as `plan_artifact_hash` for Step 2 cache lookup.
 
@@ -42,8 +45,21 @@ single authoritative skip contract (the three conditions: verdict PASS, score
 Gate skip policy. This step CITES that contract — it MUST NOT restate a
 divergent condition set.
 
-Read `.moai/reports/plan-audit/<SPEC-ID>-<YYYY-MM-DD>.md` (today's date) and
-apply the canonical three-condition skip predicate. The Go helper
+Read the highest-numbered plan-phase review file
+`.moai/reports/plan-audit/<SPEC-ID>-review-<N>.md`, exactly as
+`internal/runtime.ResolveLatestPlanAudit` selects it (the largest integer N wins; a
+name that does not parse is ignored), and apply the canonical three-condition skip
+predicate to that file's verdict and its recorded `plan_artifact_hash`.
+Three surfaces carry different roles and never substitute for one another:
+
+| Surface | Role |
+|---|---|
+| Date-stamped run-gate report `.moai/reports/plan-audit/<SPEC-ID>-<YYYY-MM-DD>.md` | history only, append-only; never a cache key or a verdict source |
+| Highest-numbered review-N file | the verdict and the cache source |
+| Admission evidence such as the gate receipt | separate; a cache hit does not replace the gate receipt |
+
+Only the highest-numbered review counts, so a later `FAIL` review ends the hit even
+when an earlier review was `PASS`. The Go helper
 `internal/runtime.SkipEligibleByScore(tier, score)` codifies condition 2
 (per-tier PASS threshold: S 0.75 / M 0.80 / L 0.85; the retired flat `≥ 0.90`
 predicate is NOT consulted).
@@ -51,7 +67,7 @@ predicate is NOT consulted).
 If cache HIT (all three canonical conditions hold):
 - Log: `[plan-audit] cache hit (verdict=PASS, sticky)`
 - Append to `.moai/specs/<SPEC-ID>/progress.md`: `- audit_cache_hit: true` and `- cached_audit_at: <T0>`
-- Skip Step 3 and proceed to Phase 1.
+- Skip Step 3 and proceed to Phase 2.
 
 If cache MISS: proceed to Step 3.
 
@@ -72,9 +88,12 @@ Timeout: 60 seconds. On timeout, treat as INCONCLUSIVE (Step 4d).
 
 Read the verdict from the report file produced by plan-auditor.
 
+[HARD] Precedence: the plan→run Kickoff gate (`run.md` § Run-phase Autonomy section 1; `.claude/rules/moai/workflow/auto-semantics.md` §9.1) decides run entry. There a `FAIL`, `INCONCLUSIVE`, `BYPASSED`, or an absent verdict is a hard block, and only an admitted `PASS` or `PASS-WITH-DEBT` verdict enters. Branches 4b, 4c, and 4d below are the legacy interactive forms: none of them turns a `FAIL` or an `INCONCLUSIVE` into an entry. A `FAIL_WARNED` record is a historical grace-window label (the grace window is read from `.moai/state/audit-gate-merge-at.txt`, which no Go code reads), never a pass. Where an override or an acknowledgement is requested, it is the operator-form question for a keep-set case, recorded with a decision record.
+
 **4a. PASS**
+- A `PASS-WITH-DEBT` verdict with at least one enumerated debt is admitted the same way: copy every enumerated debt into the SPEC's `progress.md` under a `Binding run conditions` heading before Phase 5 (both sync verdict owners re-read them).
 - Log: `[plan-audit] verdict=PASS, persisted to progress.md, proceeding to Phase 5`
-- Proceed to Step 5 (persist), then continue to Phase 1.
+- Proceed to Step 5 (persist), then continue to Phase 2.
 
 **4b. FAIL (and grace window ACTIVE — today < merge_date + 7 days)**
 - Log: `[plan-audit] verdict=FAIL [grace-window], D-<N> until auto-block`
@@ -131,6 +150,8 @@ When the same SPEC is audited multiple times in the same day, each run appends a
 
 ### When --skip-audit Flag Is Provided
 
+Legacy: the plan-audit bypass flags are retired into the default path (`auto-semantics.md` gate table and §9.1), and `BYPASSED` is a hard block at the Kickoff gate. The steps below describe the library behavior that records a bypass; they do not admit run entry, and an environment variable or a non-interactive session never supplies the operator-form answer.
+
 When the user passes `--skip-audit` flag OR sets `MOAI_SKIP_PLAN_AUDIT=1` env var:
 
 1. Skip Steps 1–4 entirely.
@@ -175,7 +196,7 @@ When plan-auditor returns FAIL, the verdict carries a structured defect-list —
 ## Phase 2: Environment Assessment (Conditional)
 
 Condition: Only executes when `memory_guard.enabled: true` in quality.yaml.
-If memory_guard is not enabled or not present, skip to Phase 1.
+If memory_guard is not enabled or not present, skip to Phase 3.
 
 Purpose: Detect available system memory and determine test execution strategy to prevent OOM.
 
@@ -194,7 +215,7 @@ Output: test_execution_strategy ("full", "module", "changed") passed to Phase 5+
 
 Progress update: Append to `.moai/specs/SPEC-{ID}/progress.md`:
 ```
-- Phase 2 complete: memory_guard={enabled|disabled}, available_mb={N}, strategy={full|module|changed}
+- Phase 2 complete: HEAD {sha}, plan_artifact_hash {hash}, memory_guard={enabled|disabled}, available_mb={N}, strategy={full|module|changed}
 ```
 
 <!-- @MX:WARN: [AUTO] Future PRs may be tempted to revert to moai-lang-* skill references here. The current rule-path mapping (post-the language-as-rules policy) MUST remain pointing to .claude/rules/moai/languages/<name>.md. Frontmatter `related-skills:` regressions fail TestRelatedSkillsNoLangReference (DEAD_LANG_FRONTMATTER_REFERENCE); body-prose regressions fail TestSkillBodyNoLangReference (DEAD_LANG_SKILL_REFERENCE). -->
@@ -292,7 +313,7 @@ Implementation guard: [HARD] During Phase 5 (Analysis and Planning), the manager
 - [ ] User has approved the approach
 <!-- moai:evolvable-end -->
 
-Tool: AskUserQuestion (at orchestrator level)
+Tool: AskUserQuestion (at orchestrator level) - the operator form. Under the default-autonomous Kickoff (`auto-semantics.md` §9.1) the admitted audit verdict and a written decision record replace this question; it stays for keep-set cases (environment-impossible, operator-held, irreversible external-shared work) and for an explicit operator dialogue.
 
 Before presenting options, verify the plan against these criteria:
 
@@ -350,7 +371,7 @@ SPEC: {SPEC-ID}
 ```
 
 This file is git-tracked. Update task status as implementation progresses.
-The planned_files column is used by the Drift Guard (Phase 11/2B) to detect scope drift.
+The planned_files column is used by the Drift Guard (Phase 11/12) to detect scope drift.
 
 ## Phase 7: Acceptance Criteria Initialization (Failing Checklist)
 
@@ -368,7 +389,7 @@ Output: TaskList populated with all acceptance criteria as pending items.
 
 Progress update: Append to `.moai/specs/SPEC-{ID}/progress.md`:
 ```
-- Phase 7 complete: {N} acceptance criteria registered as pending tasks
+- Phase 7 complete: HEAD {sha}, plan_artifact_hash {hash}, {N} acceptance criteria registered as pending tasks
 ```
 
 ## Phase 8: File Structure Scaffolding
@@ -388,7 +409,7 @@ Output: List of stub files created, LSP baseline diagnostics captured.
 
 Progress update: Append to `.moai/specs/SPEC-{ID}/progress.md`:
 ```
-- Phase 8 complete: {N} stub files created, LSP baseline captured
+- Phase 8 complete: HEAD {sha}, plan_artifact_hash {hash}, {N} stub files created, LSP baseline captured
 ```
 
 ## Phase 9: Pre-Implementation MX Context Scan
@@ -449,10 +470,10 @@ Independent contract review: Agent(subagent_type="sync-auditor"). A retired CG c
 
 ## Delta Marker Detection (Brownfield Pre-Check)
 
-Before routing to Phase 11 or 2B, scan the loaded SPEC for `[DELTA]` section markers:
+Before routing to Phase 11 or 12, scan the loaded SPEC for `[DELTA]` section markers:
 
 1. Check spec.md (or spec-compact.md) for any line matching `[EXISTING]`, `[MODIFY]`, `[NEW]`, or `[REMOVE]`
-2. If NO delta markers found: skip this section, proceed to Phase 11/2B normally (greenfield path)
+2. If NO delta markers found: skip this section, proceed to Phase 11/12 normally (greenfield path)
 3. If delta markers found: activate delta-aware routing as follows
 
 **Delta-aware routing rules (applied within DDD or TDD mode):**
@@ -479,7 +500,7 @@ If no delta markers are present in the SPEC, delta processing is silently skippe
 The following HARD invariants govern the `ac_converge` loop. Each is the canonical rule's render surface here; the rule is the SSOT.
 
 - **Transcript-measurability**: the `acceptance.md` reference NAMES where the AC list lives — it is NOT a path the evaluator opens. Because every predicate above is a model condition, the `stop-goal` evaluator judges only what the orchestrator SURFACES into the transcript (per-AC PASS line, `go test ./...` exit 0, `git status`).
-- **Semantic-failure escalation (HARD)**: on a data race / deadlock / panic / test assertion failure surfaced during the loop, clear the goal (`/moai goal clear`) and escalate via `AskUserQuestion` — NEVER auto-fix a semantic failure (per `ci-autofix-protocol.md` semantic-failure-handling).
+- **Semantic-failure escalation (HARD)**: on a data race / deadlock / panic / test assertion failure surfaced during the loop, clear the goal (`/moai goal clear`) and escalate via `AskUserQuestion` — NEVER auto-fix a semantic failure (per `ci-autofix-protocol.md` semantic-failure-handling). Classify a test failure first under `.claude/rules/moai/workflow/tdd-result-contract.md`: an `EXPECTED_RED` (a new AC test failing at its intended assertion in the RED step) is not a semantic failure, while a `REGRESSION_FAILURE` is; a `TOOL_FAILURE` never counts as RED.
 - **Non-substitution (HARD)**: the goal removes per-turn STOP prompts only. It does NOT authorize bypassing Implementation Kickoff Approval (already cleared), PR creation, or any destructive operation — those remain separately-surfaced explicit gates.
 - **Blocker reports, never user prompts**: a goal-loop turn or sweep Workflow agent lacking input returns a structured blocker report; the orchestrator runs `AskUserQuestion` and re-delegates (asymmetric boundary per `agent-common-protocol.md` § User Interaction Boundary).
 - **Graceful degradation**: the goal engine's evaluator IS a Stop hook (`moai hook stop-goal`), so `/moai goal` is unavailable when hooks are disabled (`disableAllHooks`, or `allowManagedHooksOnly` permitting only managed hooks). It carries no runtime-version floor of its own. When the engine is unavailable, run-phase autonomy degrades to the standard manual per-turn flow rather than failing.
