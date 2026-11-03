@@ -150,7 +150,7 @@ manager-develop-prompt-template.md §E 형식 — E1 AC 매트릭스(acceptance.
 | CLI 표면 | 관계 처분 기록의 리더/운영자 입력 경로 — 레인 쓰기 없음 |
 | 테스트 | `todo_analysis_test.go`·`backlog_analysis_test.go` 스타일 — `TestTodoAddNearDupDisclosure`, `TestGTDRelationDisposition` |
 
-### M4 — AFF S2: agentic-trunk 완료의 로컬 통합 창 착지 (카드 t2013, REQ-FCR-026, AC-FCR-026, v0.4.0)
+### M4 — Git-AFF S2: agentic-trunk 완료의 로컬 통합 창 착지 (카드 t2013, REQ-FCR-026, AC-FCR-026, v0.4.0)
 
 **판정 반영**: R114(운영자 직접 승인, 리더 기록 2026-11-02T00:18Z — decision-index Q8)의 ①~⑤를 그대로 따른다 — 대상은 `release_branch_prefix` + `main-batch`, 단일 integrator = window 보유자, 빠른 검사 = `moai verify run`, 설정값 `agentic-trunk` 유지, t2013이 유일 writer. 구현 판정 Q9(경로 조건 — 프로비저닝 시에만)·Q10(보류 표현 — 카드는 `merge-ready` 유지 + 보류 기록)·Q11(천장 초과 편차)은 decision-index 기본값 적용.
 

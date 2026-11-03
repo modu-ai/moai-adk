@@ -372,7 +372,7 @@ source: `.moai/reports/t1963/run-evidence.md` § "CardEngagementStart moved-card
 
 **공통 green 판정 규칙(M2-B)**: 각 green 명령은 단일 호출이고 `-count=1 -v`로 돈다. 통과는 exit 0 **그리고** 출력에 지정 시험 이름의 `--- PASS` 줄이 있는 것이다 — `[no tests to run]` 또는 이름 줄 부재는 미측정이다(§0). 모든 fixture는 샌드박스 루트(`openSandboxFactory`·`adoptSandbox`·`runOwnerSandbox` 형태)에서만 만든다 — 라이브 factory DB를 여는 시험은 기준 위반이다.
 
-### §0.2 — M4(AFF S2) 증거 장부 (카드 t2013, 2026-11-02)
+### §0.2 — M4(Git-AFF S2) 증거 장부 (카드 t2013, 2026-11-02)
 
 AC-FCR-026의 RED-now 셀은 아래 장부 L17을 인용한다. **트리 SHA는 `ff902a2920ff9942d00f86fa21b3d12d77458c27`**(브랜치 `WT-agent-trunk-factory`)이며 위 P1-P8의 `a158b4b5f`·§0.1의 `c4784db4c2` 핀은 이 기준에 적용되지 않는다. 각 명령은 워크트리 루트에서 단일 호출로 실행했다(P11만 exit 관측을 위해 `sh -c` 한 번으로 감쌌다 — 출력 둘째 줄이 그 exit다). 새 시험 이름은 구현 전에 존재하지 않으므로 RED 근거는 현재 동작의 판독·부재 관측이다.
 
@@ -573,7 +573,7 @@ ok  	github.com/modu-ai/moai-adk/internal/config	0.354s
 - **RED-now**: 해당 없음 — 보존 기준이다(L5·L6이 착지 전 green 기준선). release-blocking이 아니라 regression-guard로 분류한다.
 - **변이 탐침**: 은퇴 가드를 "옮길 수 있으면 옮기고 은퇴"로 일반화한 구현은 `TestRetireRunIfDeadRefusesInProgressCards`에서 실패한다.
 
-## §B3 — M4: AFF S2 — agentic-trunk 완료의 로컬 통합 창 착지 (카드 t2013)
+## §B3 — M4: Git-AFF S2 — agentic-trunk 완료의 로컬 통합 창 착지 (카드 t2013)
 
 ### AC-FCR-026 — release 경로: 단일 integrator·빠른 검사·`--no-ff`·실패 보류·멱등·보존 (REQ-FCR-026) [release-blocking]
 
