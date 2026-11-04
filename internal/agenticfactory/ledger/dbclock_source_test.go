@@ -174,9 +174,9 @@ func (r *clockReport) judge(where, col, val string) {
 		return
 	}
 	r.sites[col]++
-	switch {
-	case val == dbClock:
-	case val == "excluded."+col: // an upsert copying the value its own INSERT carried; that INSERT is judged separately
+	switch val {
+	case dbClock:
+	case "excluded." + col: // an upsert copying the value its own INSERT carried; that INSERT is judged separately
 	default:
 		r.problems = append(r.problems, where+": "+col+" is written from "+strconv.Quote(strings.ReplaceAll(val, dyn, "<dynamic>"))+", not the database clock")
 	}
