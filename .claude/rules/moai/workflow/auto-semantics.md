@@ -159,7 +159,7 @@ category, or a cross-card conflict), never a judgment request.
 | ① disk evidence | read the deciding artifact directly: audit verdict files, the card's progress record, plan-audit verdicts, evidence paths | yes |
 | ② decision board | poll the shared decision store (§11) — leader-level rulings land there | yes |
 | ③ audit cross | the `moai` MCP audit tools (`codex_audit` / `glm_audit` / `claude_audit` / `audit_multi`) for an independent second opinion; fail-open on tool absence | yes |
-| ④ jev_ask | the MCP judgment tool, ONLY while `workflow.jev.enabled` is true (ships false); repeatable, side-effect-free parameters; its answer is ADVISORY INPUT (§12) | yes, gated |
+| ④ jev_ask | the MCP judgment tool, ONLY while `workflow.jev.enabled` is true (ships false); repeatable, side-effect-free parameters; its answer is ADVISORY INPUT (§12), kept as a shadow record (§12) | yes, gated |
 | ⑤ self-judgment | the lane decides from ①–④ and writes the decision record (§10) in the card's progress record; it proceeds on its own authority | yes, terminal |
 
 ## 7. Outcome → action transitions
@@ -208,7 +208,8 @@ never an implicit one.
 The human gates, each with a disposition. KEEP is admissible ONLY in three
 categories: **environment-impossible** (execution itself cannot proceed —
 missing credentials/runner), **operator-held** work, and **irreversible
-operations touching external shared systems**. Any KEEP outside these three
+operations touching external shared systems** (for example an origin push, or a schema
+migration applied to a shared database). Any KEEP outside these three
 carries its justification right here, in this inventory.
 
 | Gate | Disposition |
@@ -365,6 +366,11 @@ judges, writes the decision record (§10), and owns the call. A Jev answer is
 never the SOLE basis of a completion, merge, queue-change, or operator
 keep-set gate decision — those are advisory-input-plus-lane-judgment, or the
 operator's own answer where a keep-set category holds.
+
+Shadow record: when a lane escalates a judgment to this step, the decision
+record (§10) keeps the verbatim `jev_ask` request and the verbatim response,
+including its `model` field, in the card's evidence path. The record observes;
+the DECISION stays with the lane exactly as above.
 
 ## 13. The queue read-only boundary
 

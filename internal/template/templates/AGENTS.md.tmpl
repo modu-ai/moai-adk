@@ -262,7 +262,8 @@ library documentation and established patterns, then continue — analysis quali
 **Keep command output bounded**: quiet flags, targeted queries, or redirect-to-file with the exit
 code and a bounded tail. A runtime output limit is a backstop, not the target. **Prefer the quiet
 form of routine commands** — `--no-progress`, `-q`, machine-readable output plus a targeted filter
-— not forms emitting spinners, banners, tables, or color noise.
+— not forms emitting spinners, banners, tables, or color noise. **Never write secret values**
+(tokens, keys, passwords) into logs, reports, or evidence files; record the variable name or a redaction.
 
 **Weigh session length as a cost axis.** Prefer one warm session for the same work; a new or cold
 session re-pays the always-loaded prefix. Split only when the benefit justifies that cost.
