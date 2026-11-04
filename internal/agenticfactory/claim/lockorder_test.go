@@ -4,7 +4,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"io/fs"
+	"os"
 	"sort"
 	"strings"
 	"testing"
@@ -19,19 +19,30 @@ import (
 // direction would need.
 func TestTheDocumentsLockIsALeaf(t *testing.T) {
 	fset := token.NewFileSet()
-	pkgs, err := parser.ParseDir(fset, ".", func(fi fs.FileInfo) bool {
-		return !strings.HasSuffix(fi.Name(), "_test.go")
-	}, 0)
+	entries, err := os.ReadDir(".")
 	if err != nil {
 		t.Fatal(err)
 	}
-	pkg := pkgs["claim"]
-	if pkg == nil {
+	files := map[string]*ast.File{} // the non-test files of package claim, by file name
+	for _, e := range entries {
+		name := e.Name()
+		if e.IsDir() || !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
+			continue
+		}
+		f, err := parser.ParseFile(fset, name, nil, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if f.Name.Name == "claim" {
+			files[name] = f
+		}
+	}
+	if len(files) == 0 {
 		t.Fatal("package claim not found")
 	}
 	calls := map[string]map[string]bool{} // function name -> names it calls
 	var docBodies []*ast.FuncLit
-	for _, f := range pkg.Files {
+	for _, f := range files {
 		for _, d := range f.Decls {
 			fn, ok := d.(*ast.FuncDecl)
 			if !ok || fn.Body == nil {
