@@ -1,6 +1,6 @@
 package cli
 
-// factory_release_route.go — card t2013, AFF S2 (SPEC-FACTORY-COMPLETION-
+// factory_release_route.go — card t2013, Git-AFF S2 (SPEC-FACTORY-COMPLETION-
 // RECOVERY-001 REQ-FCR-026, spec.md section D.5): the release route of
 // `moai factory complete`.
 //
@@ -16,13 +16,16 @@ package cli
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -209,8 +212,13 @@ func factoryCardTreeDirt(cardTree string) (reason string, detail error) {
 // its output. A card tree that is not a Go module has no check defined here and
 // fails closed.
 func factoryFastCheck(ctx context.Context, out io.Writer, cardTree, releaseTip string) (key, tail string, err error) {
-	if k, keyErr := verify.Key(ctx, cardTree); keyErr == nil {
-		key = k
+	// The check speaks for the tree it started on, so a key that cannot be read
+	// here fails it before any step runs: without the entry key there is nothing
+	// to compare the end key with, and a step that edited the tree would pass.
+	key, keyErr := verify.Key(ctx, cardTree)
+	if keyErr != nil {
+		msg := fmt.Sprintf("the card tree key could not be read before the check (%v), so the check cannot be tied to the tree it measures", keyErr)
+		return "", msg, errors.New(msg)
 	}
 	steps, err := factoryFastCheckSteps(cardTree, releaseTip)
 	if err != nil {
@@ -239,7 +247,63 @@ func factoryFastCheck(ctx context.Context, out io.Writer, cardTree, releaseTip s
 			}
 		}
 	}
+	// A step that exits 0 after it changed the working copy or HEAD measured a
+	// tree other than the one the check started on, so the pass speaks for
+	// neither (card-review round 2 P2 #1). verifyRun does not fail on this.
+	end, endErr := verify.Key(ctx, cardTree)
+	if endErr != nil {
+		msg := fmt.Sprintf("the card tree key could not be re-read after the check (%v), so the check cannot be tied to the tree it started on", endErr)
+		return key, msg, errors.New(msg)
+	}
+	if end != key {
+		msg := fmt.Sprintf("the card tree changed while the check ran (key %s at the start, %s at the end); the pass does not speak for either tree", key, end)
+		return key, msg, errors.New(msg)
+	}
 	return key, "", nil
+}
+
+// factoryCheckLeaseRenewEvery overrides the period at which the card lease is
+// renewed while the fast check runs; zero means the configured
+// workflow.factory_lease.renew_interval. Tests shorten it.
+var factoryCheckLeaseRenewEvery time.Duration
+
+// factoryFastCheckKeepingLease runs factoryFastCheck while renewing the lane's
+// card lease every `every` through factoryRenewCard, the one renewal
+// implementation: a lapsed lease cannot be renewed afterwards, and the check may
+// outlast it. One more renewal follows the check so the merge step starts with a
+// full lease. leaseErr is the first renewal failure; it is only meaningful when
+// the check itself succeeded.
+func factoryFastCheckKeepingLease(ctx context.Context, out io.Writer, root, runID, cardID, lane string, every time.Duration, cardTree, releaseTip string) (key, tail string, checkErr, leaseErr error) {
+	renew := func() error {
+		_, err := factoryRenewCard(ctx, root, cardID, runID, lane)
+		return err
+	}
+	stop, finished := make(chan struct{}), make(chan struct{})
+	var renewErr error // written by the goroutine only, read after <-finished
+	go func() {
+		defer close(finished)
+		ticker := time.NewTicker(every)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-stop:
+				return
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				if renewErr = renew(); renewErr != nil {
+					return
+				}
+			}
+		}
+	}()
+	key, tail, checkErr = factoryFastCheck(ctx, out, cardTree, releaseTip)
+	close(stop)
+	<-finished
+	if renewErr == nil && checkErr == nil {
+		renewErr = renew()
+	}
+	return key, tail, checkErr, renewErr
 }
 
 // factoryFastCheckSteps names the check as argv steps (no shell, so no sh on
@@ -249,7 +313,7 @@ func factoryFastCheckSteps(cardTree, releaseTip string) ([][]string, error) {
 	if _, err := os.Stat(filepath.Join(cardTree, "go.mod")); err != nil {
 		return nil, fmt.Errorf("no go.mod in the card tree %s: the fast required check is defined for Go modules only", cardTree)
 	}
-	pkgs := factoryChangedGoPackages(cardTree, releaseTip)
+	pkgs := factoryFastCheckPackages(cardTree, releaseTip)
 	steps := [][]string{{"go", "build", "./..."}}
 	if len(pkgs) == 0 {
 		return steps, nil
@@ -258,8 +322,14 @@ func factoryFastCheckSteps(cardTree, releaseTip string) ([][]string, error) {
 	if _, err := exec.LookPath("golangci-lint"); err == nil && factoryHasGolangciConfig(cardTree) {
 		lint = append([]string{"golangci-lint", "run", "--allow-parallel-runners"}, pkgs...)
 	}
-	return append(steps, lint, append([]string{"go", "test"}, pkgs...)), nil
+	return append(steps, lint, append([]string{"go", "test", "-timeout", factoryFastCheckTestTimeout}, pkgs...)), nil
 }
+
+// factoryFastCheckTestTimeout is the -timeout of the fast check's `go test`
+// step. Go's 10-minute default is shorter than the 60 minutes the surrounding
+// step allows, and AGENTS.local.md section 4 (Before Commit) sets 30m for
+// `go test` on a package (a measured local worst case is 1118.093s).
+const factoryFastCheckTestTimeout = "30m"
 
 func factoryHasGolangciConfig(dir string) bool {
 	for _, name := range []string{".golangci.yml", ".golangci.yaml", ".golangci.toml", ".golangci.json"} {
@@ -274,14 +344,56 @@ func factoryHasGolangciConfig(dir string) bool {
 // root), the Go package directories that own what the card changed since its
 // merge base with releaseTip.
 func factoryChangedGoPackages(cardTree, releaseTip string) []string {
+	changed, _ := factoryChangedPaths(cardTree, releaseTip)
+	return factoryOwningGoPackages(cardTree, changed)
+}
+
+// factoryChangedPaths lists the paths the card changed since its merge base
+// with releaseTip. known is false when the change could not be established (the
+// tip is empty or the diff cannot be read): an unknown change is not "no
+// change", and the caller must not read the nil list as the latter.
+func factoryChangedPaths(cardTree, releaseTip string) (paths []string, known bool) {
 	if releaseTip == "" {
-		return nil
+		return nil, false
 	}
-	out, err := cliGitIn(cardTree, "diff", "--name-only", releaseTip+"...HEAD")
+	// NUL-delimited: git quotes non-ASCII paths in line mode, and a path may
+	// hold spaces, so neither a newline nor a whitespace split is safe.
+	out, err := cliGitIn(cardTree, "diff", "--name-only", "-z", releaseTip+"...HEAD")
 	if err != nil {
-		return nil
+		return nil, false
 	}
-	return factoryOwningGoPackages(cardTree, strings.Fields(out))
+	for _, p := range strings.Split(out, "\x00") {
+		if p != "" {
+			paths = append(paths, p)
+		}
+	}
+	return paths, true
+}
+
+// factoryFastCheckPackages decides the packages to lint and test from the
+// card's changed file list. A module input (go.mod, go.sum, go.work,
+// go.work.sum) can break any package and owns none, so it widens the scope to
+// the whole module; so does any changed .go file no package directory claims
+// (for example a deleted file in a vanished directory), decided per path so
+// another path that does select a package cannot mask it. A change that cannot
+// be established (an empty or unresolvable release tip, an unreadable diff) also
+// widens to the whole module: it is not "no change".
+func factoryFastCheckPackages(cardTree, releaseTip string) []string {
+	changed, known := factoryChangedPaths(cardTree, releaseTip)
+	if !known {
+		return []string{"./..."}
+	}
+	pkgs := factoryOwningGoPackages(cardTree, changed)
+	for _, p := range changed {
+		switch path.Base(p) {
+		case "go.mod", "go.sum", "go.work", "go.work.sum":
+			return []string{"./..."}
+		}
+		if strings.HasSuffix(p, ".go") && len(factoryOwningGoPackages(cardTree, []string{p})) == 0 {
+			return []string{"./..."}
+		}
+	}
+	return pkgs
 }
 
 // factoryOwningGoPackages maps each changed path (relative to cardTree) to the

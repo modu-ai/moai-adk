@@ -26,7 +26,7 @@ package hook
 //     reset --hard, branch -f, rebase, stash);
 //   - the moai verbs of the flow are allowed at the primary checkout.
 //
-// What this test does NOT show, so a green run is not read as full AF/AFF
+// What this test does NOT show, so a green run is not read as full AF/Git-AFF
 // compatibility: it does not run any moai verb; it does not exercise
 // `git -C <path> ...` (the matchers require the verb right after `git`, so a
 // -C form is not classified at all); and ref-moving commands the guard has never

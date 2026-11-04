@@ -127,6 +127,34 @@ func (f *FactoryDB) LoadCardWaits(ctx context.Context, cardID string) ([]CardWai
 	return out, rows.Err()
 }
 
+// ResolveOperatorWaits closes, in ONE statement, every unwoken operator-ruling
+// wait of the card by stamping woken_at, and returns how many it closed. It is
+// the operator's explicit close path: no landing ever wakes such a wait. A
+// second call closes nothing and returns 0 (idempotent); the stamp of a wait
+// already closed is never moved.
+func (f *FactoryDB) ResolveOperatorWaits(ctx context.Context, cardID string, now time.Time) (int, error) {
+	if !ValidCardID(cardID) {
+		return 0, fmt.Errorf("%w: wait card %q is not a card id", ErrInvalidCardInput, cardID)
+	}
+	if now.IsZero() {
+		now = time.Now()
+	}
+	stamp := now.UTC().Format(time.RFC3339Nano)
+	var closed int
+	err := retryFactoryBusy(ctx, func() error {
+		// SQL: every value goes through a ? placeholder.
+		res, err := f.DB.ExecContext(ctx, `UPDATE card_waits SET woken_at=? WHERE card_id=? AND cond_kind=? AND woken_at=''`,
+			stamp, cardID, WaitCondOperatorRuling)
+		if err != nil {
+			return err
+		}
+		n, _ := res.RowsAffected()
+		closed = int(n)
+		return nil
+	})
+	return closed, err
+}
+
 // SettleLandedWaits marks woken, in ONE transaction, every unwoken
 // predecessor-landed wait on landedCardID and returns exactly those. A wait
 // is handed out once: the woken_at stamp is written in the same update that
