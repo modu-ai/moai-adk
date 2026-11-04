@@ -361,7 +361,7 @@ MoAI-ADK は指示を 3 つのファイルに分けています。どのハー�
 |----------|------|----------|--------|
 | `AGENTS.md` | ハーネス共通の契約 | あり | Claude Code(`@AGENTS.md` の取り込み)と Codex |
 | `CLAUDE.md` | Claude 専用の仕組みを載せる薄い層 | あり | Claude Code |
-| `AGENTS.local.md` | 個人の指示 | なし (`.gitignore`) | Claude Code(`CLAUDE.md` 末尾の `@AGENTS.local.md`)と `moai codex` |
+| `AGENTS.local.md` | 個人の指示 | なし (`.gitignore`) | Claude Code(`CLAUDE.md` 末尾の `@AGENTS.local.md`)と Codex |
 
 ```mermaid
 flowchart TD
@@ -369,7 +369,7 @@ flowchart TD
     L["AGENTS.local.md<br/>個人の指示"] --> C
     C --> CC["Claude Code"]
     A --> X["Codex"]
-    L --> R["moai codex ランチャー"]
+    L --> R["Codex ランチャー"]
     R --> X
 ```
 

@@ -47,7 +47,7 @@ The managed block has character-count and bullet-count ceilings. These ceilings 
 
 ## Where Tier 3 records land
 
-Tier 3 records are appended to the Learned section of `AGENTS.local.md`. In the three-file structure — the shared contract `AGENTS.md`, the Claude-only layer `CLAUDE.md`, and personal instructions in `AGENTS.local.md` — this file holds the personal instructions, and both Claude Code and `moai codex` read it. A promoted observation therefore applies whichever harness you work in. Git ignores the file and `moai update` never touches it, so records survive updates.
+Tier 3 records are appended to the Learned section of `AGENTS.local.md`. In the three-file structure — the shared contract `AGENTS.md`, the Claude-only layer `CLAUDE.md`, and personal instructions in `AGENTS.local.md` — this file holds the personal instructions, and both Claude Code and Codex read it. A promoted observation therefore applies whichever harness you work in. Git ignores the file and `moai update` never touches it, so records survive updates.
 
 If a project still uses `CLAUDE.local.md`, move it first with `moai migrate local-instructions`. `moai update` and `moai doctor` print the same advisory whenever they find a `CLAUDE.local.md`.
 
