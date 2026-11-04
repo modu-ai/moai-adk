@@ -220,6 +220,23 @@ $ <test-runner command>   # captured BEFORE the implementation makes the test pa
 ```
 The verbatim RED failing-test output captured before GREEN MUST be shown. A run that skipped RED (test-after) has no such output to supply, so without this item the self-verification matrix is structurally incomplete — test-first is falsifiable via this item (a test-after run cannot produce pre-GREEN failing output).
 
+**E9. Verdict-function baseline comparison (only when the card changes a guard, classifier, or policy decision)**
+| Command (corpus row) | Baseline SHA verdict | Candidate verdict | Differs | Intended? |
+|---|---|---|---|---|
+| `<command>` | allow | deny | yes | yes / no, with the reason |
+
+Run the same command corpus on the baseline SHA and on the candidate, name both SHAs, and mark every differing row intended or not; an unintended row is a defect to fix before reporting. This item does not apply to ordinary cards. The auditor may add rows to the corpus, so a small corpus does not close the item. No helper code is required.
+
+### Delegation Preamble (write-capable spawns)
+
+Put these lines at the top of a write-capable spawn prompt (the source of truth is `factory-dispatch-mechanics.md` and `worktree-integration.md`; point there, do not copy more):
+1. Tree: work only in `<absolute tree path>`; write nothing outside it.
+2. Permitted git: plain `git ...` and `git -C <that same absolute path> ...`; stage by explicit pathspec only.
+3. Refused git: `git -C .`, a relative or computed `-C` path, another tree's path, `git add -A`, `git stash`, branch switching.
+4. Never rely on `cd` across commands; each call is a fresh shell.
+5. Env scrub: one call, `unset <VARS> && <command>`.
+6. Evidence: write verdicts and records under `.moai/reports/<card-id>/`.
+
 ## 2. Delegation Prompt Authoring Workflow (from the orchestrator's perspective)
 
 ```

@@ -18,13 +18,12 @@ MoAI-ADK (Agentic Development Kit) is a strategic orchestration framework for Cl
 
 A session holds one context window, and a long SPEC fills it — everything that follows carries everything that came before. Factory Mode spreads the work across **several terminals**: one leader session routes picked cards, and each lane is a session of its own that carries one card whole through `plan`, `run`, and `sync`. The review verdict is not a separate stage: the sync gate absorbs it. Limits do not disappear, but no session carries more than one card's history, so the same budget goes considerably further.
 
-Each lane can run a different backend. The leader and every lane choose between `cc`, `glm`, and `codex` on their own.
+Each lane can run a different backend. The leader and every lane choose between `cc` and `glm` on their own.
 
 {{< terminal title="factory mode" raw="true" >}}
 moai cc -f                    # leader — opens the factory run
-moai cc -a                    # lane, in its own terminal — joins as the next free lane
-moai glm -a                   # a lane on the GLM backend
-moai codex -l                 # a Codex lane
+moai cc -l                    # lane, in its own terminal — joins as the next free lane
+moai glm -l                   # a lane on the GLM backend
 {{< /terminal >}}
 
 The queue is the channel: `backlog` has no owning session by design — work enters it only when you put it there with [`/moai todo`](/en/utility-commands/moai-todo). The leader advances a card only on evidence it read from the card's `progress.md`, never on a lane's reply.

@@ -1082,7 +1082,7 @@ const DefaultFactoryLanes = 8
 // DefaultFactoryLeaderLanes is the leader fan-out a bare `-f` / `--factory`
 // (no count) resolves to (t118 launcher axis, v3.1.1): one lane. The revived
 // -f entry starts the minimal factory — leader plus lane-1 — which the
-// operator then grows one lane at a time with `-a`, so the
+// operator then grows one lane at a time with `-l`, so the
 // count-less default is 1, not the legacy form's 8 (DefaultFactoryLanes).
 //
 // Its role is the LEADER FAN-OUT DEFAULT only (SPEC-CODEX-LANE-SLOTS-001,

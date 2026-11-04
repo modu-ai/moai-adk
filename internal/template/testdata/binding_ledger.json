@@ -2283,7 +2283,7 @@
     "start_line": 136
    },
    "before_text": "Rules:\n- Never commit secrets to version control\n- Validate all external inputs\n- Follow OWASP guidelines for web security\n- Use environment variables for credentials",
-   "after_text": "Rules:\n- Never commit secrets to version control\n- Validate all external inputs\n- Follow OWASP guidelines for web security\n- Use environment variables for credentials",
+   "after_text": "Rules:\n- Never commit secrets to version control\n- Never write secret values (tokens, keys, passwords) into logs, reports, or evidence files; record the variable name or a redaction instead\n- Validate all external inputs\n- Follow OWASP guidelines for web security\n- Use environment variables for credentials",
    "location": "always:.claude/rules/moai/core/moai-constitution.md",
    "processing": "verbatim",
    "entry_points": [
@@ -4728,7 +4728,7 @@
     "start_line": 15
    },
    "before_text": "Factory Mode is entered with `moai cc -f` (or `moai glm -f`), which elects one leader; lane sessions join one at a time with `moai cc -l` (or `moai glm -l`) and are labelled `lane-<n>`. Lane sessions are launched **by hand, one per terminal** — a session cannot launch another, and no peer-spawning mechanism exists or is wanted.",
-   "after_text": "Factory Mode is entered with `moai cc -f` (or `moai glm -f`), which elects one leader; lane sessions join one at a time with `moai cc -a` (or `moai glm -a`) and are labelled `lane-<n>`. Lane sessions are launched **by hand, one per terminal** — a session cannot launch another, and no peer-spawning mechanism exists or is wanted.",
+   "after_text": "Factory Mode is entered with `moai cc -f` (or `moai glm -f`), which elects one leader; lane sessions join one at a time with `moai cc -l` (or `moai glm -l`) and are labelled `lane-<n>`. Lane sessions are launched **by hand, one per terminal** — a session cannot launch another, and no peer-spawning mechanism exists or is wanted.",
    "location": "always:.claude/rules/moai/workflow/factory-dispatch-core.md",
    "processing": "verbatim",
    "entry_points": [
@@ -6436,7 +6436,7 @@
     "start_line": 189
    },
    "before_text": "`moai cc -f` launches the leader and lane sessions join with `moai cc -l`, labelled `lane-<n>`; the leader routes each card WHOLE to a free lane, which carries it `plan → run → sync` in-session and owns it end to end. Mechanics and the card-class effect on the entry stage: `factory-dispatch-mechanics.md` § Factory Mode mechanics · `factory-dispatch-detail.md` § Factory in-lane 3-stage.",
-   "after_text": "`moai cc -f` launches the leader and lane sessions join with `moai cc -a`, labelled `lane-<n>`; the leader routes each card WHOLE to a free lane, which carries it `plan → run → sync` in-session and owns it end to end. Mechanics and the card-class effect on the entry stage: `factory-dispatch-mechanics.md` § Factory Mode mechanics · `factory-dispatch-detail.md` § Factory in-lane 3-stage.",
+   "after_text": "`moai cc -f` launches the leader and lane sessions join with `moai cc -l`, labelled `lane-<n>`; the leader routes each card WHOLE to a free lane, which carries it `plan → run → sync` in-session and owns it end to end. Mechanics and the card-class effect on the entry stage: `factory-dispatch-mechanics.md` § Factory Mode mechanics · `factory-dispatch-detail.md` § Factory in-lane 3-stage.",
    "location": "always:.claude/rules/moai/workflow/factory-dispatch-core.md",
    "processing": "verbatim",
    "entry_points": [

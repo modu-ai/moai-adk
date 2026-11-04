@@ -15,7 +15,7 @@ func TestT2013_LauncherTableStatesAbsolutePathAndLaneRejoin(t *testing.T) {
 		"the launcher enters the path only when it is a registered worktree of this repository",
 		"`.moai/worktrees/*` trees included",
 		"an unregistered absolute path is refused before anything is written",
-		"`moai cc -a --name <lane-label>`",
+		"`moai cc -l --name <lane-label>`",
 		"granted only when no live session holds that label, refused otherwise",
 		"the launcher moves no lease",
 	}

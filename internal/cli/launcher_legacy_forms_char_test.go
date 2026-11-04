@@ -38,7 +38,7 @@ func TestLegacyForms_CcF_IsFactoryLeader(t *testing.T) {
 }
 
 func TestLegacyForms_CcL_IsLaneWithAutoNumber(t *testing.T) {
-	for _, flag := range []string{"-a"} {
+	for _, flag := range []string{"-l", "--lane"} {
 		e, branch := legacyEntry(t, flag)
 		if !e.FactoryEnabled || branch != factoryBranchLane {
 			t.Fatalf("%s: enabled=%v branch=%v, want lane", flag, e.FactoryEnabled, branch)
@@ -57,8 +57,8 @@ func TestLegacyForms_CcL_IsLaneWithAutoNumber(t *testing.T) {
 
 func TestLegacyForms_CcLWithLeader_CarriesRawLeaderName(t *testing.T) {
 	for _, args := range [][]string{
-		{"-a", "--leader", "leader-2"},
-		{"-a", "--leader=leader-2"},
+		{"-l", "--leader", "leader-2"},
+		{"-l", "--leader=leader-2"},
 	} {
 		e, branch := legacyEntry(t, args...)
 		if branch != factoryBranchLane || e.FactoryLead != "leader-2" {
@@ -79,27 +79,38 @@ func TestLegacyForms_CcWorktree_IsNotAFactoryEntry(t *testing.T) {
 	}
 }
 
-// `moai glm -a` shares the same entry parse as `moai cc -a`; only the backend
+// `moai glm -l` shares the same entry parse as `moai cc -l`; only the backend
 // differs. Pin both the shared parse and the documented usage lines.
 func TestLegacyForms_GlmL_SharesTheCcEntryParse(t *testing.T) {
-	e, branch := legacyEntry(t, "-a")
+	e, branch := legacyEntry(t, "-l")
 	if branch != factoryBranchLane || !e.FactoryEnabled {
-		t.Fatalf("-a branch=%v enabled=%v", branch, e.FactoryEnabled)
+		t.Fatalf("-l branch=%v enabled=%v", branch, e.FactoryEnabled)
 	}
 	for name, use := range map[string]string{"cc": ccCmd.Use, "glm": glmCmd.Use} {
-		if !strings.Contains(use, "[-f | -a]") {
-			t.Errorf("%s Use = %q lost its [-f | -a] entry", name, use)
+		if !strings.Contains(use, "[-f | -l]") {
+			t.Errorf("%s Use = %q lost its [-f | -l] entry", name, use)
 		}
 	}
 }
 
-// `--agent <x>` is not a launcher token: it is neither a factory entry
-// nor consumed, and it reaches the launch argv unchanged, with or without the
-// `--` pass-through marker. (Claude Code has its own --agent option; only the short `-a` is the lane entry.)
-func TestLegacyForms_AgentFlag_PassesThroughUnchanged(t *testing.T) {
+// `--agent` is a removed launcher spelling (card t2021 round 2, R438): refused before and after the `--`
+// pass-through marker, pointing at the lane entry. Every other pass-through argument still reaches the
+// launch argv unchanged.
+func TestLegacyForms_AgentFlag_RefusedOthersPassThrough(t *testing.T) {
+	t.Setenv("CLAUDE_PROJECT_DIR", t.TempDir())
 	for _, args := range [][]string{
 		{"--agent", "x"},
+		{"--agent=x"},
 		{"--", "--agent", "x"},
+		{"--", "--agent=x"},
+	} {
+		if _, err := parseLauncherEntry(args); err == nil || !strings.Contains(err.Error(), "--agent flag was removed") {
+			t.Errorf("%v: error %v, want the removed --agent refusal", args, err)
+		}
+	}
+	for _, args := range [][]string{
+		{"--", "--model", "x"},
+		{"--", "-a"},
 	} {
 		e, branch := legacyEntry(t, args...)
 		if e.FactoryEnabled || branch != factoryBranchNone {
@@ -115,10 +126,10 @@ func TestLegacyForms_AgentFlag_PassesThroughUnchanged(t *testing.T) {
 	}
 }
 
-// One entry token per launch: -f beside -a is refused.
+// One entry token per launch: -f beside -l is refused.
 func TestLegacyForms_FAndLTogether_Refused(t *testing.T) {
 	t.Setenv("CLAUDE_PROJECT_DIR", t.TempDir())
-	if _, err := parseLauncherEntry([]string{"-f", "-a"}); err == nil {
-		t.Error("-f beside -a was accepted")
+	if _, err := parseLauncherEntry([]string{"-f", "-l"}); err == nil {
+		t.Error("-f beside -l was accepted")
 	}
 }

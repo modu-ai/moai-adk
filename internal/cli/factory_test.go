@@ -177,21 +177,19 @@ func TestParseFactoryFlag(t *testing.T) {
 		{name: "--factory N errors post-N-removal", args: []string{"--factory", "12"}, wantErr: true, errMarker: "takes no argument"},
 		{name: "--factory=N errors post-N-removal", args: []string{"--factory=1"}, wantErr: true, errMarker: "takes no argument"},
 		// Legacy spellings are REFUSED (REQ-RNC-003), any letter case.
-		{name: "-f worker refused", args: []string{"-f", "worker"}, wantErr: true, errMarker: "-a"},
-		{name: "-f=worker refused", args: []string{"-f=worker"}, wantErr: true, errMarker: "-a"},
-		{name: "-f agent refused", args: []string{"-f", "agent"}, wantErr: true, errMarker: "-a"},
-		{name: "-f=agent refused", args: []string{"-f=agent"}, wantErr: true, errMarker: "-a"},
-		{name: "-f WORKER refused", args: []string{"-f", "WORKER"}, wantErr: true, errMarker: "-a"},
-		{name: "-f AGENT refused", args: []string{"-f", "AGENT"}, wantErr: true, errMarker: "-a"},
-		{name: "-l lane entry", args: []string{"-a"}, wantEnabled: true, wantRole: true},
-		{name: "-a lane entry with a trailing flag", args: []string{"-a", "-b"}, wantEnabled: true, wantRole: true, wantRest: []string{"-b"}},
-		{name: "-l removed, refused naming -a", args: []string{"-l"}, wantErr: true, errMarker: "-a"},
-		{name: "--lane removed, refused naming -a", args: []string{"--lane"}, wantErr: true, errMarker: "-a"},
-		{name: "-f lane refused naming -l", args: []string{"-f", "lane"}, wantErr: true, errMarker: "-a"},
-		{name: "-f lane-2 refused naming -l", args: []string{"-f", "lane-2"}, wantErr: true, errMarker: "-a"},
-		{name: "-f worker-2 refused naming lane-2", args: []string{"-f", "worker-2"}, wantErr: true, errMarker: "-a"},
-		{name: "-f=worker-3 refused naming lane-3", args: []string{"-f=worker-3"}, wantErr: true, errMarker: "-a"},
-		{name: "--factory=worker-7 refused naming lane-7", args: []string{"--factory=worker-7"}, wantErr: true, errMarker: "-a"},
+		{name: "-f worker refused", args: []string{"-f", "worker"}, wantErr: true, errMarker: "-l"},
+		{name: "-f=worker refused", args: []string{"-f=worker"}, wantErr: true, errMarker: "-l"},
+		{name: "-f agent refused", args: []string{"-f", "agent"}, wantErr: true, errMarker: "-l"},
+		{name: "-f=agent refused", args: []string{"-f=agent"}, wantErr: true, errMarker: "-l"},
+		{name: "-f WORKER refused", args: []string{"-f", "WORKER"}, wantErr: true, errMarker: "-l"},
+		{name: "-f AGENT refused", args: []string{"-f", "AGENT"}, wantErr: true, errMarker: "-l"},
+		{name: "-l lane entry", args: []string{"-l"}, wantEnabled: true, wantRole: true},
+		{name: "--lane lane entry", args: []string{"--lane", "-b"}, wantEnabled: true, wantRole: true, wantRest: []string{"-b"}},
+		{name: "-f lane refused naming -l", args: []string{"-f", "lane"}, wantErr: true, errMarker: "-l"},
+		{name: "-f lane-2 refused naming -l", args: []string{"-f", "lane-2"}, wantErr: true, errMarker: "-l"},
+		{name: "-f worker-2 refused naming lane-2", args: []string{"-f", "worker-2"}, wantErr: true, errMarker: "-l"},
+		{name: "-f=worker-3 refused naming lane-3", args: []string{"-f=worker-3"}, wantErr: true, errMarker: "-l"},
+		{name: "--factory=worker-7 refused naming lane-7", args: []string{"--factory=worker-7"}, wantErr: true, errMarker: "-l"},
 		{name: "positional flag is not a value", args: []string{"-f", "-b"}, wantEnabled: true, wantRest: []string{"-b"}},
 		{name: "zero count errors", args: []string{"-f", "0"}, wantErr: true, errMarker: "takes no argument"},
 		{name: "negative joined count errors", args: []string{"-f=-2"}, wantErr: true, errMarker: "takes no argument"},
@@ -289,7 +287,7 @@ func TestParseLauncherEntryMerge(t *testing.T) {
 
 	t.Run("-l desugars to the lane form with unknown count", func(t *testing.T) {
 		t.Parallel()
-		p, err := parseLauncherEntry([]string{"-a", "-b"})
+		p, err := parseLauncherEntry([]string{"-l", "-b"})
 		if err != nil {
 			t.Fatalf("parseLauncherEntry(-l): %v", err)
 		}
@@ -326,9 +324,9 @@ func TestParseLauncherEntryMerge(t *testing.T) {
 	t.Run("-k beside -f or -l is the retired refusal", func(t *testing.T) {
 		t.Parallel()
 		for _, args := range [][]string{
-			{"-a", "-k"},
+			{"-l", "-k"},
 			{"-f", "-k", "SPEC-X-001"},
-			{"-a", "-k", "3"},
+			{"--lane", "-k", "3"},
 		} {
 			if _, err := parseLauncherEntry(args); err == nil || err.Error() != retiredEntryRefusal {
 				t.Errorf("parseLauncherEntry(%v) = %v, want the retired-entry refusal (it runs before the one-entry-token merge)", args, err)
@@ -340,7 +338,7 @@ func TestParseLauncherEntryMerge(t *testing.T) {
 		t.Parallel()
 		// A canonical lane-<n> name is the rejoin form (factory_lane_rejoin_t2013_test.go);
 		// every other name keeps the conflict.
-		if _, err := parseLauncherEntry([]string{"-a", "--name", "board-watch"}); err == nil ||
+		if _, err := parseLauncherEntry([]string{"-l", "--name", "board-watch"}); err == nil ||
 			!strings.Contains(err.Error(), "already names the role") {
 			t.Errorf("parseLauncherEntry(-l --name board-watch) = %v, want the naming conflict", err)
 		}
@@ -675,7 +673,8 @@ func TestRejectFactoryOnCG(t *testing.T) {
 
 	for _, args := range [][]string{
 		{"-f"},
-		{"-a"},
+		{"-l"},
+		{"--lane"},
 		{"--factory"},
 	} {
 		if err := rejectFactoryOnCG(args); err == nil || !strings.Contains(err.Error(), factoryUnsupportedBackendSentinel) {
@@ -692,11 +691,11 @@ func TestRejectFactoryOnCG(t *testing.T) {
 	if err := rejectFactoryOnCG([]string{"-f", "4"}); err == nil || !strings.Contains(err.Error(), "takes no argument") {
 		t.Errorf("retired -f N on cg must surface the parse error, got %v", err)
 	}
-	if err := rejectFactoryOnCG([]string{"-a", "-f"}); err == nil || !strings.Contains(err.Error(), "at most one") {
+	if err := rejectFactoryOnCG([]string{"-l", "-f"}); err == nil || !strings.Contains(err.Error(), "at most one") {
 		t.Errorf("-l plus -f on cg must surface the conflict, got %v", err)
 	}
 	// The retired -k spelling is the entry parse's refusal, whatever it sits beside.
-	for _, args := range [][]string{{"-k"}, {"-k", "4"}, {"-k", "--name", "lane-1"}, {"-a", "-k"}} {
+	for _, args := range [][]string{{"-k"}, {"-k", "4"}, {"-k", "--name", "lane-1"}, {"-l", "-k"}} {
 		if err := rejectFactoryOnCG(args); err == nil || err.Error() != retiredEntryRefusal {
 			t.Errorf("rejectFactoryOnCG(%v) = %v, want the retired-entry refusal", args, err)
 		}
@@ -715,7 +714,7 @@ func TestFactoryGenealogyInHelp(t *testing.T) {
 		for _, marker := range []string{
 			"--factory", "#1513", "7f61332ef", "RENAMED", "RETIRED",
 			"-f, --factory", // the lead entry (numeric count retired 2026-09-16)
-			"AGENT",         // the -a agent entry (a lane-<n> session)
+			"-l, --lane",    // the lane entry
 			"-k <N>",        // the genealogy names the v1.2.0 count form
 			"t118",          // the revival names its own card
 		} {
@@ -937,7 +936,7 @@ func TestCC_FactoryEntryThroughRunCC(t *testing.T) {
 		buf := new(bytes.Buffer)
 		ccCmd.SetOut(buf)
 		ccCmd.SetErr(buf)
-		if err := runCC(ccCmd, []string{"-a"}); err != nil {
+		if err := runCC(ccCmd, []string{"-l"}); err != nil {
 			t.Fatalf("runCC(-l): %v", err)
 		}
 		if c.runID != run {
@@ -964,7 +963,7 @@ func TestCC_FactoryEntryThroughRunCC(t *testing.T) {
 		buf := new(bytes.Buffer)
 		ccCmd.SetOut(buf)
 		ccCmd.SetErr(buf)
-		if err := runCC(ccCmd, []string{"-a", "-k"}); err == nil || err.Error() != retiredEntryRefusal {
+		if err := runCC(ccCmd, []string{"-l", "-k"}); err == nil || err.Error() != retiredEntryRefusal {
 			t.Errorf("runCC(-l -k) = %v, want the retired-entry refusal", err)
 		}
 	})
@@ -1024,7 +1023,7 @@ func TestGLM_FactoryLaneEntry(t *testing.T) {
 	buf := new(bytes.Buffer)
 	glmCmd.SetOut(buf)
 	glmCmd.SetErr(buf)
-	if err := runGLM(glmCmd, []string{"-a"}); err != nil {
+	if err := runGLM(glmCmd, []string{"-l"}); err != nil {
 		t.Fatalf("runGLM(-l): %v", err)
 	}
 	if c.runID != run {
@@ -1066,7 +1065,7 @@ func TestGLM_FactoryLeadRunIsJoinableByLane(t *testing.T) {
 	}
 
 	clearFactoryTestEnv(t)
-	if err := runGLM(glmCmd, []string{"-a"}); err != nil {
+	if err := runGLM(glmCmd, []string{"-l"}); err != nil {
 		t.Fatalf("runGLM(-l) after a GLM lead started run %q: %v", leadRun, err)
 	}
 	if c.runID != leadRun {

@@ -110,6 +110,12 @@ Chasing every optional finding produces the failure mode this brake exists to pr
 
 A FAIL verdict is driven by **blocking** findings and the must-pass firewall. An all-optional findings list does not by itself convert a PASS into a FAIL.
 
+**Finding location.** Tag each finding `in-diff` (inside the card diff), `touched-file` (in a changed file, outside the diff), or `outside`. A finding blocks only when it is `in-diff` or carries reproduction evidence (then its location is irrelevant). `outside` findings do not affect the verdict: list them in the report, never queue them; the leader shows them to the operator. A security finding of High severity is the exception and is escalated to the operator.
+
+**Repair stop rule.** On a re-audit, mark a blocking finding that lies inside the diff made since the previous audited SHA as repair-born (a defect born of the previous repair). When two consecutive audits each carry a repair-born blocking finding, do not request another patch: the Required fix is to choose revert, redesign, narrow scope, or split the card, and to record the choice. The threshold 2 is a STARTING value, not measured on general code; it is revisited as cards record the outcome.
+
+**Verdict-function cards.** When the card changes a verdict function (a guard, classifier, or policy decision), require the allow/deny comparison table described in `manager-develop-prompt-template.md` § E (E9) and check it: the command corpus run on the baseline SHA and on the candidate, every differing row marked intended or not. You may add rows to the corpus; a corpus that is small proves little. Ordinary cards are not subject to this.
+
 ## Binding Run Conditions
 
 [HARD] When the SPEC's `progress.md` carries a `Binding run conditions` heading (debts copied from a `PASS-WITH-DEBT` plan verdict), re-read every item and report each as disposed (with its evidence) or undisposed. An undisposed binding condition is a failed must-pass criterion: the sync verdict is `FAIL` whatever the scores.

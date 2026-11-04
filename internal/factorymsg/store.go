@@ -405,18 +405,9 @@ func ResolveActiveRun(ctx context.Context, projectRoot, explicit string) (_ stri
 		}
 		return explicit, nil
 	}
-	rows, err := db.DB.QueryContext(ctx, `SELECT run_id FROM runs WHERE status='active' ORDER BY run_id`)
+	runs, err := activeRunIDs(ctx, db)
 	if err != nil {
 		return "", err
-	}
-	defer closeInto(&err, rows, "active run rows")
-	var runs []string
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
-			return "", err
-		}
-		runs = append(runs, id)
 	}
 	switch len(runs) {
 	case 0:
@@ -441,6 +432,62 @@ func ResolveActiveRun(ctx context.Context, projectRoot, explicit string) (_ stri
 		return rec.Remaining[0].RunID, nil
 	default:
 		return "", &AmbiguousRunsError{Owners: rec.Remaining}
+	}
+}
+
+// activeRunIDs lists, sorted, the ids of every run whose status is active.
+func activeRunIDs(ctx context.Context, db *homestate.FactoryDB) (_ []string, err error) {
+	rows, err := db.DB.QueryContext(ctx, `SELECT run_id FROM runs WHERE status='active' ORDER BY run_id`)
+	if err != nil {
+		return nil, err
+	}
+	defer closeInto(&err, rows, "active run rows")
+	var runs []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		runs = append(runs, id)
+	}
+	return runs, rows.Err()
+}
+
+// ResolveActiveRunReadOnly is ResolveActiveRun without the reconciliation: it writes no row of any table.
+// Zero active runs answer ErrRunNotActive and one answers that run, as ResolveActiveRun does. With several,
+// it never retires a dead owner or moves its cards; it returns an *AmbiguousRunsError whose Owners list EVERY
+// active run, dead owners included, each with its owner classification, so the caller decides from facts it
+// can read. A verb that must write only its own rows (the run-less lease renewal) resolves through here; the
+// leader start path keeps ResolveActiveRun, whose reconciliation is deliberate (#1948 section 8).
+//
+// @MX:NOTE: [AUTO] read-only counterpart of ResolveActiveRun; keep it free of ReconcileActiveRuns and of any RebindRun/retire call
+func ResolveActiveRunReadOnly(ctx context.Context, projectRoot string) (_ string, err error) {
+	db, err := homestate.OpenFactory(projectRoot)
+	if err != nil {
+		return "", err
+	}
+	defer closeInto(&err, db, "factory state")
+	runs, err := activeRunIDs(ctx, db)
+	if err != nil {
+		return "", err
+	}
+	switch len(runs) {
+	case 0:
+		return "", ErrRunNotActive
+	case 1:
+		return runs[0], nil
+	}
+	owners, err := db.ClassifyActiveRuns(ctx, ReconcileOptionsFor(projectRoot))
+	if err != nil {
+		return "", err
+	}
+	switch len(owners) {
+	case 0:
+		return "", ErrRunNotActive
+	case 1:
+		return owners[0].RunID, nil
+	default:
+		return "", &AmbiguousRunsError{Owners: owners}
 	}
 }
 
