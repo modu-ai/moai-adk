@@ -153,7 +153,7 @@ catalog:
             - name: manager-develop
               tier: core
               path: templates/.claude/agents/moai/manager-develop.md
-              hash: 64b817770863d5e7b4057421690a8fed5e6314777058c4779400078a2fdae820
+              hash: 5e6bf34cc3412f6e65cce7a59a3c37a87954ae2edc5ee76b1b8d2dacfd79657d
               version: 1.0.0
               depends_skills:
                 - moai-foundation-core
@@ -183,12 +183,12 @@ catalog:
             - name: plan-auditor
               tier: core
               path: templates/.claude/agents/moai/plan-auditor.md
-              hash: b9cff1b58992ff19e8e8fa3b1b841d3b4328e41f29139b66aa7a1f006abbaf49
+              hash: 46d8e9b0fa582bccf3a999484d2b0beae0983b697956fc2dd8cbe7d54ee725ca
               version: 1.0.0
             - name: sync-auditor
               tier: core
               path: templates/.claude/agents/moai/sync-auditor.md
-              hash: f834ac42475b3d33f9263a8ea6b235f9f18ae82e1638d7e38d4ba34de54194d1
+              hash: fb5e8ae7a83c8edc67735cf2b4351d92be4dc1705729d63f45c4d2e7835c10b8
               version: 1.0.0
               depends_skills:
                 - moai-foundation-quality
@@ -354,7 +354,7 @@ catalog:
                 - name: super-advisor
                   tier: optional-pack:consult
                   path: templates/.claude/agents/moai/super-advisor.md
-                  hash: d765c4af741afc06e8280098ce15521205abc34cc116f0ef13c2c14b186fc7d1
+                  hash: d504ae7c5d064214636a8bfe3799cefd54c630b6ce2ad9df92af621fe6c254b2
                   version: 1.0.0
         creative:
             description: Domain authoring skills for rendered and visual artifacts

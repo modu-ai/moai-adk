@@ -48,3 +48,50 @@ Scope: items 1, 3, 4, 5. Item 2 (sync-auditor regression table) belongs to build
 ## Verification (this run, tree = card branch before the commit)
 - `go test ./internal/template/... -count=1 -timeout 40m`: exit 0; `ok internal/template 972.553s`, agentemit/commandemit/embedemit ok. Two earlier runs failed for the reasons above (card-id token, ledger row) plus environmental toolchain/default-10m-timeout noise.
 - `make build`: exit 0.
+
+## Agent-definition and rule edits (builder-harness pass, items a-f)
+Scope: text only. Agent sources live in `internal/template/agentemit/source/`; `go run ./internal/template/agentemit/cmd/agents-emit` regenerated the template `.claude/agents`, `.codex/agents` copies and the live `super-advisor.md`. The live `.claude/agents/moai/{sync-auditor,manager-develop,plan-auditor}.md` are NOT emitter-managed (they already differ from the template for unrelated reasons), so the same text was applied to them by hand. `.moai/policies/**` is a stale pre-cutover snapshot (last touched by commit 82677fd271, previous writer left it alone): not edited.
+
+### (a) Repair stop rule (A1 + card item 1)
+- Existing-sentence check: `factory-dispatch-detail.md:169` already held the rule (previous writer); `grep -n "repair\|consecutive"` over sync-auditor.md and manager-develop.md: no hit before this edit. Operator-set audit-round budget: `git grep -i "round budget|audit rounds|budget at card"` over `.claude`, `internal/template/templates`, `.moai/policies`: no hit, so ONE sentence added, in factory-dispatch-detail only.
+- Added: sync-auditor "Repair stop rule" paragraph, manager-develop "Repair stop rule" paragraph, plus a definition of "repair-induced" and the budget sentence in factory-dispatch-detail. Threshold 2 stated as a STARTING value in all three.
+- prediction: in the next 10 lane cards with an audit repair loop, a card whose audits show repair-born blocking findings twice in a row records a revert/redesign/narrow/split choice before a third repair commit; a third same-approach repair commit with no recorded choice falsifies it. verified: pending.
+
+### (b) Verdict-function baseline table (card item 2 + A2)
+- Existing-sentence check: `git grep -i "allow/deny|differing row|verdict function"` over `.claude/rules` and `.claude/agents`: only an unrelated hooks-system row. ADDED.
+- Added: item E9 in `manager-develop-prompt-template.md` (both trees); sync-auditor "Verdict-function cards" paragraph (auditor may add corpus rows; not for ordinary cards). No helper code.
+- prediction: a later card that changes a guard/classifier/policy function carries an E9 table naming both SHAs, and an auditor-found wrong decision on such a card (the t2013 F1/F8 shape) appears as a differing row in that table before audit; a verdict-function card reaching audit without the table, or a wrong decision absent from the table, falsifies it. verified: pending.
+
+### (c) Finding-location classification (A4)
+- Existing-sentence check: sync-auditor "Finding-consumption discipline" has blocking/optional only; `git grep "in-diff|touched-file"` over rules/agents: no hit. ADDED to sync-auditor (right after that subsection) and factory-dispatch-detail (card-review list, bullet "Finding location").
+- prediction: in the next 10 sync audits of lane cards, the number of rounds that fail only on `outside` findings is 0, and every High security finding outside the diff appears in the report as an operator escalation; one FAIL driven solely by an `outside` finding without reproduction falsifies it. verified: pending.
+
+### (d) Delegation preamble (A7)
+- Existing-sentence check: `grep -n "preamble|env -u|unset "` over manager-develop source and the prompt template: no hit. ADDED "Delegation Preamble (write-capable spawns)" (6 numbered lines, under 10) after E9 in the prompt template, and a one-line reference in manager-develop (both trees). The preamble names `factory-dispatch-mechanics.md` and `worktree-integration.md` as the source of truth; facts taken from mechanics § Isolation (guard refuses `-C .`, relative, computed, other-tree paths; plain git and `-C <own absolute path>` pass) and § Verification load (`unset VARS && command`).
+- prediction: lane write-capable spawn prompts that include the preamble show fewer worktree-guard refusals (`tool_failure:Bash:*` rows in `.moai/lessons-inbox.jsonl` for the spawn) than spawns that omit it; equal or higher refusal counts across 10 spawns falsify it. verified: pending.
+
+### (e) Dependency existence (card item 4)
+- Existing-sentence check: coding-standards.md § New Dependencies exists (previous writer); manager-develop had no pointer (`grep -n "dependenc"`: only ANALYZE line and a security-route row). ADDED one pointer line to manager-develop, no restatement.
+- prediction: a card adding a dependency cites the registry lookup output in its progress record or commit body; a dependency name that does not resolve reaching review falsifies it. verified: pending.
+
+### (f) Catalog numbers and descriptions (A10)
+- `delegation.yaml` comment "13 retained agents" replaced by "the retained agents (the files under .claude/agents/moai/ are the list; this map is the routing SSOT)" (live and template). `plan-auditor.md` line 692 "up to 3 times per SPEC (max_iterations: 3 per harness.yaml)" replaced by the tier-ceiling wording (`plan_audit_tier_ceilings` in harness.yaml: S 1, M 2, L 3; checked in `.moai/config/sections/harness.yaml:73-77`). `super-advisor` description and its "[1m]-safe Wiring" body paragraph said the model is injected at spawn and not a frontmatter pin, while the frontmatter declares `model: opus` / `effort: high`; both rewritten.
+- Not touched on purpose: "13 retained agents" (12 custom + built-in Explore, enforced by `internal/harness/rosterguard`) in `agent-authoring.md`, `agents-reference.md`, `manager-design.md`, `docs-truth.md` codemap: outside the card's named list; recorded as a follow-up gap.
+- Tests pinning old wording: `git grep` of the old strings in `*.go`: only rosterguard fixtures about "CLAUDE.md §4 (the 13 retained agents" (comments in internal/harness, not edited) and codex rollout testdata under `internal/cli/testdata` (frozen fixtures, not edited).
+- prediction: no new file states the retained-agent count as a number outside the roster guard; a doc-vs-disk count mismatch (disk 12 files) appearing in `delegation.yaml` or a plan-auditor retry statement disagreeing with `plan_audit_tier_ceilings` falsifies it. verified: pending.
+
+### Byte delta (wc -c, HEAD -> working tree; none of these is always-loaded)
+- manager-develop-prompt-template.md 16855 -> 18222 (+1367, paths-scoped)
+- factory-dispatch-detail.md 30156 -> 30905 (+749, paths-scoped)
+- .claude/agents/moai/sync-auditor.md 24406 -> 25819 (+1413), manager-develop.md 21185 -> 21977 (+792), plan-auditor.md 69968 -> 69998 (+30), super-advisor.md 8733 -> 8760 (+27): agent bodies load only on spawn
+- delegation.yaml 4570 -> 4626 (+56, config)
+- Always-loaded growth this pass: 0 bytes (no AGENTS.md, constitution, output style, or unscoped rule touched).
+
+### Corrections forced by the first test run (this pass)
+- Run 1 (`go test ./internal/template/... ./internal/harness/rosterguard/... -count=1`) failed three ways: (1) `TestDeployedRoleRuleEntryPointMarkers`: my manager-develop repair-rule line cited `factory-dispatch-detail.md` (a role-gated rule), which requires the `moai:role-rules-required` marker; the citation was removed from all four manager-develop copies. (2) `TestManifestHashFormat` CATALOG_HASH_UNSTABLE for manager-develop, plan-auditor, sync-auditor, super-advisor: fixed by `make build` (gen-catalog-hashes --all rewrote catalog.yaml). (3) rosterguard `TestRegisteredSitesMatchTheirDeclaredAxis` / `TestNumeralBreadthSetEqualsTheDeclaredUnion` / `TestNumeralResidualArithmeticCloses`: the registry pins the `delegation.yaml` citation text "the 13 retained agents (...)" as a declared site (the 13 = 12 custom + built-in Explore). Rewording it needs a Go registry edit, which is out of scope, so the `delegation.yaml` edit (both copies) was REVERTED. A10 delegation.yaml part is NOT done; follow-up needs a card allowed to edit `internal/harness/rosterguard/registry.go`.
+- binding_ledger.json: no row touched.
+
+## Verification (this run, tree = card branch before the commit, base fe4634ff43)
+- `GOCACHE=<private> go test ./internal/template/... ./internal/harness/rosterguard/... -count=1 -timeout 40m`: exit 0; ok internal/template 531.128s, agentemit 1.267s, commandemit 0.495s, embedemit 0.536s, rosterguard 47.688s.
+- `make build`: exit 0 (agents-emit-check specs=12 copies=4 diff=0; catalog.yaml rewritten by gen-catalog-hashes, 24603 bytes).
+- Gaps: `internal/cli` tests not run (out of scope); live `.claude/agents/moai/{manager-develop,sync-auditor,plan-auditor}.md` are hand-synced, no test pins them to the template.
