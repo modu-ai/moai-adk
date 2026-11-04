@@ -208,7 +208,8 @@ never an implicit one.
 The human gates, each with a disposition. KEEP is admissible ONLY in three
 categories: **environment-impossible** (execution itself cannot proceed —
 missing credentials/runner), **operator-held** work, and **irreversible
-operations touching external shared systems**. Any KEEP outside these three
+operations touching external shared systems** (for example an origin push, or a schema
+migration applied to a shared database). Any KEEP outside these three
 carries its justification right here, in this inventory.
 
 | Gate | Disposition |

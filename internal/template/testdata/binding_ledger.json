@@ -2283,7 +2283,7 @@
     "start_line": 136
    },
    "before_text": "Rules:\n- Never commit secrets to version control\n- Validate all external inputs\n- Follow OWASP guidelines for web security\n- Use environment variables for credentials",
-   "after_text": "Rules:\n- Never commit secrets to version control\n- Validate all external inputs\n- Follow OWASP guidelines for web security\n- Use environment variables for credentials",
+   "after_text": "Rules:\n- Never commit secrets to version control\n- Never write secret values (tokens, keys, passwords) into logs, reports, or evidence files; record the variable name or a redaction instead\n- Validate all external inputs\n- Follow OWASP guidelines for web security\n- Use environment variables for credentials",
    "location": "always:.claude/rules/moai/core/moai-constitution.md",
    "processing": "verbatim",
    "entry_points": [
