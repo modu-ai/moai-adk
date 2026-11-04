@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -56,6 +57,64 @@ func TestE2Sections_FencedHeadingDoesNotEndTheSection(t *testing.T) {
 	if other := e2Sections(changed); len(other) != 1 || other[0] == got[0] {
 		t.Errorf("an edit after the fenced line is an edit of E.2: %+v", other)
 	}
+}
+
+// A fence is closed only by a run of the same character at least as long as the one
+// that opened it (AC-AEC-003b, sync-audit D1). A shorter or different run inside the
+// fence is content, so an edit under a later E.2 heading still reads as a change.
+func TestE2Sections_FenceTrackingIsLengthAndCharacterAware(t *testing.T) {
+	const e2Old = "## §E.2 Run-phase Evidence\nAC-1 PASS"
+	const e2New = "## §E.2 Run-phase Evidence\nAC-1 FAIL (rewritten)"
+
+	t.Run("a three-backtick line inside a four-backtick fence does not close it", func(t *testing.T) {
+		const head = "## §E.1 Plan\n````text\nA fence opens with a line like:\n```\n````\n"
+		oldSecs, newSecs := e2Sections(head+e2Old), e2Sections(head+e2New)
+		if len(oldSecs) != 1 || len(newSecs) != 1 {
+			t.Fatalf("sections old=%d new=%d, want 1 each: the E.2 heading after the closed fence must be seen", len(oldSecs), len(newSecs))
+		}
+		if slices.Equal(oldSecs, newSecs) {
+			t.Error("a rewrite of the E.2 body compared equal; the receipt would stay fresh")
+		}
+	})
+
+	t.Run("control: no nested fence", func(t *testing.T) {
+		const head = "## §E.1 Plan\n```text\nplain\n```\n"
+		oldSecs, newSecs := e2Sections(head+e2Old), e2Sections(head+e2New)
+		if len(oldSecs) != 1 || len(newSecs) != 1 || slices.Equal(oldSecs, newSecs) {
+			t.Errorf("old=%+v new=%+v, want one differing section each", oldSecs, newSecs)
+		}
+	})
+
+	t.Run("a backtick run inside a tilde fence does not close it", func(t *testing.T) {
+		doc := "## §E.2 Run\n\n~~~\n```\n## not a heading\n~~~\n\nstill E.2\n\n## §E.3 Three\n"
+		got := e2Sections(doc)
+		if len(got) != 1 || !strings.Contains(got[0].body, "still E.2") {
+			t.Fatalf("e2Sections = %+v, want the text after the tilde fence kept inside E.2", got)
+		}
+	})
+
+	t.Run("a longer closing run closes the fence", func(t *testing.T) {
+		doc := "## §E.1 Plan\n```\ncode\n`````\n## §E.2 Run\nrow\n"
+		if got := e2Sections(doc); len(got) != 1 {
+			t.Fatalf("e2Sections = %+v, want the E.2 heading after the closing run", got)
+		}
+	})
+
+	t.Run("a closing line carrying text does not close the fence", func(t *testing.T) {
+		doc := "## §E.2 Run\n```\n```text\n## not a heading\n```\nstill E.2\n"
+		got := e2Sections(doc)
+		if len(got) != 1 || !strings.Contains(got[0].body, "still E.2") {
+			t.Fatalf("e2Sections = %+v, want the info-string line kept as fence content", got)
+		}
+	})
+
+	t.Run("control: a heading line inside a plain fence is not a heading", func(t *testing.T) {
+		doc := "## §E.2 Run\n```\n## not a heading\n```\nstill E.2\n"
+		got := e2Sections(doc)
+		if len(got) != 1 || !strings.Contains(got[0].body, "still E.2") {
+			t.Fatalf("e2Sections = %+v, want the fenced heading kept as body", got)
+		}
+	})
 }
 
 // Two E.2 headings are two sections; losing one is a change.

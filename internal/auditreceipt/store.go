@@ -1890,11 +1890,15 @@ type e2Section struct {
 
 // e2Sections returns every section E.2 of doc in order. A "## " line inside a fenced
 // code block is not a heading, so text after such a line stays part of the section.
+// Fences follow CommonMark: one closes only on a run of the same character at least as
+// long as the one that opened it, so a shorter or different run inside it is content.
 func e2Sections(doc string) []e2Section {
 	var out []e2Section
-	ordinal, cur, fenced := 0, -1, false
+	ordinal, cur := 0, -1
+	var fenceCh byte
+	fenceLen := 0 // 0 outside a fence, else the length of the run that opened it
 	for _, line := range strings.Split(doc, "\n") {
-		if !fenced && strings.HasPrefix(line, "## ") {
+		if fenceLen == 0 && strings.HasPrefix(line, "## ") {
 			ordinal++
 			cur = -1
 			if e2HeadingPattern.MatchString(line) {
@@ -1903,14 +1907,36 @@ func e2Sections(doc string) []e2Section {
 			}
 			continue
 		}
-		if t := strings.TrimLeft(line, " "); strings.HasPrefix(t, "```") || strings.HasPrefix(t, "~~~") {
-			fenced = !fenced
+		if ch, n, rest, ok := fenceRun(line); ok {
+			if fenceLen == 0 {
+				fenceCh, fenceLen = ch, n
+			} else if ch == fenceCh && n >= fenceLen && strings.TrimSpace(rest) == "" {
+				fenceLen = 0
+			}
 		}
 		if cur >= 0 {
 			out[cur].body += line + "\n"
 		}
 	}
 	return out
+}
+
+// fenceRun reports the character and length of the backtick or tilde run that starts
+// line (indented at most three spaces, at least three characters long), and the text
+// after it. ok is false for a line that cannot open or close a fence.
+func fenceRun(line string) (ch byte, n int, rest string, ok bool) {
+	t := strings.TrimLeft(line, " ")
+	if len(line)-len(t) > 3 || t == "" || (t[0] != '`' && t[0] != '~') {
+		return 0, 0, "", false
+	}
+	ch = t[0]
+	for n < len(t) && t[n] == ch {
+		n++
+	}
+	if n < 3 {
+		return 0, 0, "", false
+	}
+	return ch, n, t[n:], true
 }
 
 func markerFileName(agentID string) string { return sanitizeKey(agentID) + ".json" }
