@@ -130,6 +130,31 @@ func failReason(summary string, output []byte, total int64) string {
 	return fmt.Sprintf("%s (output %d bytes)", summary, total)
 }
 
+// maxReportedPaths bounds how many changed paths a failure reason names.
+const maxReportedPaths = 5
+
+// trackedChangesReason is the reason of a card whose gate left tracked files changed in the check worktree: it names
+// the gate (its id, never its text) and the changed paths, and nothing the gate printed.
+func (m *Merger) trackedChangesReason(paths []string) string {
+	who := "the gate"
+	if m.Gate != "" {
+		who = fmt.Sprintf("gate %q", m.Gate)
+	}
+	shown := paths
+	if len(shown) > maxReportedPaths {
+		shown = shown[:maxReportedPaths]
+	}
+	quoted := make([]string, len(shown))
+	for i, p := range shown {
+		quoted[i] = fmt.Sprintf("%q", p)
+	}
+	list := strings.Join(quoted, ", ")
+	if more := len(paths) - len(shown); more > 0 {
+		list += fmt.Sprintf(" and %d more", more)
+	}
+	return fmt.Sprintf("gates failed: %s left tracked changes in the check worktree: %s", who, list)
+}
+
 // Outcome is how one Land call ended.
 type Outcome string
 
@@ -281,6 +306,17 @@ func (m *Merger) Land(ctx context.Context, cardID, candidateSHA string) (Result,
 					failReason(told, output, total)), m.stepBack(ctx, cardID, candidateSHA, trunk))
 			}
 			return m.fail(ctx, res, cardID, candidateSHA, trunk, failReason(summary, output, total))
+		}
+		// The tree the gate passed must be the commit that lands: a gate that left tracked files changed judged
+		// something other than the merge result.
+		changed, err := m.Git.TrackedChanges(ctx, cand)
+		if err != nil {
+			_ = m.Git.Discard(settle, cand)
+			return res, err
+		}
+		if len(changed) > 0 {
+			_ = m.Git.Discard(settle, cand)
+			return m.fail(ctx, res, cardID, candidateSHA, trunk, m.trackedChangesReason(changed))
 		}
 
 		epoch, err := m.Queue.AcquireLock(ctx, LandingLock, m.Holder, m.lockTTL())

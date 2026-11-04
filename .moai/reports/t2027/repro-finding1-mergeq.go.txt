@@ -1,0 +1,49 @@
+// Preserved copy of internal/agenticfactory/mergeq/gate_modifies_tracked_repro_test.go (card t2027, finding 1).
+// Stored as .txt so it is not compiled. Red by design: it fails while the behaviour reproduces.
+// To rerun: copy to internal/agenticfactory/mergeq/gate_modifies_tracked_repro_test.go (helpers repo, candidate,
+// fakeQueue, newMerger, write, git come from the package's existing tests), then
+//   go test ./internal/agenticfactory/mergeq/ -count=1 -v -run TestLand_GateThatModifiesATrackedFile_Reproduction
+
+package mergeq
+
+// Card t2027 finding 1 (P1, static review of mergeq.go:284): a gate that changes TRACKED files in the check worktree.
+// This is a reproduction, not a fix: it records what Land does with such a gate.
+
+import (
+	"context"
+	"os"
+	"strings"
+	"testing"
+)
+
+func TestLand_GateThatModifiesATrackedFile_Reproduction(t *testing.T) {
+	dir := repo(t)
+	cand := candidate(t, dir, "c1", "a.txt", "a\n")
+	q := &fakeQueue{}
+	var checkDir, statusAfterGate string
+	m := newMerger(t, dir, q, func(_ context.Context, d string) error {
+		checkDir = d
+		write(t, d, "base.txt", "changed by the gate\n") // a tracked file of the merge result
+		statusAfterGate = git(t, d, "status", "--porcelain")
+		return nil
+	})
+
+	res, err := m.Land(context.Background(), "t1", cand)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// control: the gate really did leave a tracked file modified in the check worktree
+	if !strings.Contains(statusAfterGate, "M base.txt") {
+		t.Fatalf("control: the gate left no tracked modification (status %q)", statusAfterGate)
+	}
+	trunk := git(t, dir, "rev-parse", "refs/heads/trunk")
+	t.Logf("outcome=%s reason=%q trunkAfter=%s trunk=%s", res.Outcome, res.Reason, res.TrunkAfter, trunk)
+	t.Logf("status after gate: %q", statusAfterGate)
+	t.Logf("base.txt on the trunk: %q", git(t, dir, "show", "refs/heads/trunk:base.txt"))
+	_, statErr := os.Stat(checkDir)
+	t.Logf("check worktree still exists: %v", statErr == nil)
+	if res.Outcome == OutcomeLanded {
+		t.Errorf("REPRODUCED: landed %s although the gate ran on a tree that differs from it (base.txt modified by the gate; on the trunk it is %q)",
+			res.TrunkAfter, git(t, dir, "show", "refs/heads/trunk:base.txt"))
+	}
+}
