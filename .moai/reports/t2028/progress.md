@@ -103,3 +103,18 @@ Scope: text only. Agent sources live in `internal/template/agentemit/source/`; `
 - Byte delta: auto-semantics.md 30670 -> 30986 (+316, paths-scoped); SKILL.md 13964 -> 14155 (+191, loads on invocation). Always-loaded growth: 0.
 - Verification: `GOCACHE=/tmp/gc2028b go test ./internal/template/... ./internal/harness/rosterguard/... -count=1 -timeout 40m` exit 0 (template 459.840s, rosterguard 30.244s). The run before `make build` failed TestManifestHashFormat and TestCatalogHashCoversSkillSubfiles (stale watchdog hash); fixed by make build. `make build` exit 0.
 - prediction: in the next 10 lane cards that call `jev_ask`, each decision record names a file or section holding the verbatim request and response with `model`; a Jev-consulted lane decision with no such record falsifies it. verified: pending.
+
+## Lane verification and close-out (lane-4, own runs)
+
+- Commits on the card branch: merge 1650a20b57, rules fe4634ff43, agents 1804e4fa29, Jev shadow d7c11ab7d3.
+- Own checks at d7c11ab7d3: `git status --short` empty; `git diff --stat fe4634ff43 -- '*.go'` empty; added lines with `cc -a|glm -a|[-f | -a]|--agent`: 0; `git diff --name-only release/main-batch HEAD | grep -c -- '-core\.md'`: 0.
+- Core stub gate (leader R-note, budget 10,000 UTF-16): command `go test ./internal/template/ -run 'TestRoleCoreStubGate$' -count=1 -v` -> PASS (ok 0.485s); factory-dispatch-core.md 9994 and cross-session-messaging-core.md 8072, identical in the deployed and template trees. No *-core.md file is touched by this card (net 0), so nothing needed moving to a detail file.
+- Template/rosterguard test runs and `make build` are the writers' reported results (not re-run by the lane): rules writer `ok internal/template 972.553s`; agents writer `ok internal/template 531.128s` + rosterguard `ok 47.688s`; Jev writer `ok internal/template 459.840s` + rosterguard `ok 30.244s`.
+- binding_ledger.json: only row ALB-0115 `after_text` touched (required by TestBindingLedgerIntegrity after the constitution bullet).
+
+## Deferrals / Gaps
+- delegation.yaml "13 retained agents" NOT reworded: rosterguard pins the citation text as a registered site, so a reword needs a Go registry edit (out of scope). The 13 = 12 custom agents + built-in Explore. Same phrase left in agent-authoring.md, agents-reference.md, manager-design.md and the docs-truth codemap (not on the card's list). plan-auditor.md:692 and the super-advisor description were fixed.
+- `.moai/policies/**` copies untouched (stale pre-cutover snapshot).
+- Template copy of the watchdog SKILL.md already differed from the live copy by one card-id phrase (line 202) before this card; left alone.
+- All `prediction:` entries are `verified: pending`; the 2-consecutive threshold is a PROPOSED starting value.
+- card-review: verdict fail, two outside-the-diff P1 findings on Go batch code (see card-review.md); not re-run.
