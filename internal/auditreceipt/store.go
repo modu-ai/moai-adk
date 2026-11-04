@@ -1877,7 +1877,31 @@ func e2Unchanged(root, from, to, path, status string) bool {
 		}
 		newDoc = out
 	}
-	return slices.Equal(e2Sections(oldDoc), e2Sections(newDoc))
+	return e2DocsUnchanged(oldDoc, newDoc)
+}
+
+// e2DocsUnchanged is the pure comparison behind e2Unchanged: section E.2 of the two
+// document versions is the same. It fails closed: when either version holds a raw
+// E.2 heading line the fence parser did not find, the parse cannot be trusted (two
+// empty lists would compare equal), so the sections are reported as changed.
+func e2DocsUnchanged(oldDoc, newDoc string) bool {
+	oldSecs, newSecs := e2Sections(oldDoc), e2Sections(newDoc)
+	if rawE2Headings(oldDoc) != len(oldSecs) || rawE2Headings(newDoc) != len(newSecs) {
+		return false
+	}
+	return slices.Equal(oldSecs, newSecs)
+}
+
+// rawE2Headings counts the lines of doc that read as an E.2 heading with no fence
+// tracking at all: the independent count e2Sections is checked against.
+func rawE2Headings(doc string) int {
+	n := 0
+	for _, line := range strings.Split(doc, "\n") {
+		if e2HeadingPattern.MatchString(line) {
+			n++
+		}
+	}
+	return n
 }
 
 // e2Section is one section E.2 of a progress.md: its heading line, its position among
