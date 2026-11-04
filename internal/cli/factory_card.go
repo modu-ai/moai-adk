@@ -3839,8 +3839,10 @@ func factoryRunRowNotActive(ctx context.Context, root, run string) bool {
 // sync-audit F3, F7 and F11, card t1663). An explicit --run value wins. Otherwise the lane's roster
 // binding (workers.run_id, the run the lane joined) is read against the active runs. A sole active run
 // answers, except that a binding naming another run, active or not, refuses (F11); an empty binding or a
-// missing roster row keeps the sole-run answer. When several active runs survive reconciliation, the
-// binding must name an active run, and the card's lease must be held by this lane in that run: the lease
+// missing roster row keeps the sole-run answer. When several active runs remain (the set is read without
+// reconciliation, so nothing is retired or moved, card t2030), the one run whose owner is not dead answers
+// as the sole run does, dead-owner runs beside it set aside. Otherwise the binding must name an active run,
+// and the card's lease must be held by this lane in that run: the lease
 // holder alone does not decide it, because a label can be reused across runs, so a stale lease in another
 // run can name the same label. Every other ambiguous case refuses, naming --run: no binding, a binding
 // outside the active set, or a card the lane does not hold in its bound run. Each refusal keeps the detail
@@ -3857,7 +3859,10 @@ func resolveFactoryRenewRunRule(ctx context.Context, root, explicit, lane, cardI
 		}
 		return run, homestate.RosterUnchecked, nil
 	}
-	run, err := factorymsg.ResolveActiveRun(ctx, root, "")
+	// A renewal writes only its own card row and the lane's heartbeat, so its run resolves WITHOUT
+	// reconciliation (card t2030): ResolveActiveRun retires dead-owner runs and re-keys their cards, a write
+	// the renewal never asked for, and one it made even when the renewal itself was then refused.
+	run, err := factorymsg.ResolveActiveRunReadOnly(ctx, root)
 	if err == nil {
 		// The roster binding is the lane's own run. A binding to any other run is a mismatch: refuse,
 		// naming --run, and write nothing.
@@ -3866,7 +3871,7 @@ func resolveFactoryRenewRunRule(ctx context.Context, root, explicit, lane, cardI
 			return "", homestate.RosterUnchecked, berr
 		}
 		if bound != "" && bound != run {
-			return "", homestate.RosterUnchecked, fmt.Errorf("no --run given: lane %s is bound to run %s, not to the single active run %s; pass --run", lane, bound, run)
+			return "", homestate.RosterUnchecked, factoryRenewBindingMismatch(lane, bound, run)
 		}
 		return run, homestate.RosterSoleRun, nil
 	}
@@ -3885,6 +3890,19 @@ func resolveFactoryRenewRunRule(ctx context.Context, root, explicit, lane, cardI
 	bound, berr := db.WorkerRunBinding(ctx, lane)
 	if berr != nil {
 		return "", homestate.RosterUnchecked, refuse(berr)
+	}
+	// One run whose owner is not dead is the sole run in the sense of the branch above: the dead-owner runs
+	// beside it are set aside, as a reconciliation would have retired them, but nothing is written here. With
+	// two or more such runs the answer stays ambiguous. The write re-checks the roster (RosterSoleRun).
+	if only, ok := factorySoleNonDeadRun(ambiguous.Owners); ok {
+		switch {
+		case bound == "" || bound == only:
+			return only, homestate.RosterSoleRun, nil
+		case !factoryRunListed(ambiguous.Owners, bound):
+			return "", homestate.RosterUnchecked, factoryRenewBindingMismatch(lane, bound, only)
+		}
+		// bound names another ACTIVE run, a dead-owner run that may still hold the lane's live records: the
+		// binding below decides, and the card must be held there.
 	}
 	if bound == "" {
 		return "", homestate.RosterUnchecked, refuse(fmt.Errorf("lane %s has no roster binding", lane))
@@ -3918,6 +3936,24 @@ func factoryRenewBoundRun(ctx context.Context, root, lane string) (string, error
 	}
 	defer func() { _ = db.Close() }()
 	return db.WorkerRunBinding(ctx, lane)
+}
+
+// factoryRenewBindingMismatch is the refusal for a lane whose roster binding names a run other than the
+// renewal's sole run (F11): it names --run and nothing is written.
+func factoryRenewBindingMismatch(lane, bound, run string) error {
+	return fmt.Errorf("no --run given: lane %s is bound to run %s, not to the single active run %s; pass --run", lane, bound, run)
+}
+
+// factorySoleNonDeadRun returns the active run whose owner is not classified dead, when exactly one is.
+// An indeterminate owner counts as not dead, as in the retirement gate: it may be a live leader.
+func factorySoleNonDeadRun(owners []homestate.RunOwner) (string, bool) {
+	run, n := "", 0
+	for _, owner := range owners {
+		if owner.Classification != homestate.OwnerDead {
+			run, n = owner.RunID, n+1
+		}
+	}
+	return run, n == 1
 }
 
 // factoryRunListed reports whether runID is one of the active runs owners names.

@@ -182,6 +182,12 @@ func (f *FactoryDB) ClassifyRuns(ctx context.Context, opts ReconcileOptions) ([]
 	return f.classifyRuns(ctx, opts, "")
 }
 
+// ClassifyActiveRuns is ClassifyRuns restricted to the rows whose status is active — the same listing
+// ReconcileActiveRuns classifies — and, like ClassifyRuns, a pure read: it retires nothing and moves nothing.
+func (f *FactoryDB) ClassifyActiveRuns(ctx context.Context, opts ReconcileOptions) ([]RunOwner, error) {
+	return f.classifyRuns(ctx, opts, "active")
+}
+
 func (f *FactoryDB) classifyRuns(ctx context.Context, opts ReconcileOptions, status string) (_ []RunOwner, err error) {
 	query := `SELECT run_id,status,lead_pid,lead_process_start,created_at,updated_at FROM runs ORDER BY run_id`
 	args := []any{}
