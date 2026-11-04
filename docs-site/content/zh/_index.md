@@ -20,8 +20,8 @@ MoAI-ADK (Agentic Development Kit) 是 Claude Code 的战略编排框架。
 
 {{< terminal title="factory mode" raw="true" >}}
 moai cc -f                    # 主导：开启工厂运行
-moai cc -a                    # lane，各开一个终端：作为下一条空闲 lane 加入
-moai glm -a                   # GLM 后端的 lane
+moai cc -l                    # lane，各开一个终端：作为下一条空闲 lane 加入
+moai glm -l                   # GLM 后端的 lane
 moai codex -l                 # Codex 的 lane
 {{< /terminal >}}
 

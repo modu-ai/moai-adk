@@ -528,14 +528,14 @@ manager-develop 智能体会 **自动保存进度**。执行 `/clear` 后再次�
 
 ## 工厂模式 —— 一张卡片一路走到底 (v3.2)
 
-`/moai run` 只驱动一个阶段。在**工厂模式**下，lane 会话在自己的会话内把一张卡片完整走完 `plan → run → sync`，阶段之间的往返不再需要你追加输入命令。用 `moai cc -f` 开启主导会话，再用 `moai cc -a` 让 lane 加入，主导会话便会把运维者挑好的卡片交给空闲的 lane。
+`/moai run` 只驱动一个阶段。在**工厂模式**下，lane 会话在自己的会话内把一张卡片完整走完 `plan → run → sync`，阶段之间的往返不再需要你追加输入命令。用 `moai cc -f` 开启主导会话，再用 `moai cc -l` 让 lane 加入，主导会话便会把运维者挑好的卡片交给空闲的 lane。
 
 ```bash
 # 主导会话: 开启工厂运行
 $ moai cc -f
 
 # lane: 在各自的终端中，作为下一个空闲 lane 加入
-$ moai cc -a
+$ moai cc -l
 ```
 
 人工门禁（实现启动批准、verify 的 CRITICAL/HIGH 决定、两道 sync 门禁）照常触发。工厂模式并不是“跳过人工门禁”，而是去掉“阶段之间的往返”。详细约定见[工厂模式](/zh/advanced/factory-mode)。

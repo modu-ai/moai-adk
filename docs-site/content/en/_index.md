@@ -22,8 +22,8 @@ Each lane can run a different backend. The leader and every lane choose between 
 
 {{< terminal title="factory mode" raw="true" >}}
 moai cc -f                    # leader — opens the factory run
-moai cc -a                    # lane, in its own terminal — joins as the next free lane
-moai glm -a                   # a lane on the GLM backend
+moai cc -l                    # lane, in its own terminal — joins as the next free lane
+moai glm -l                   # a lane on the GLM backend
 moai codex -l                 # a Codex lane
 {{< /terminal >}}
 

@@ -87,7 +87,7 @@ $ CLAUDE_CODE_STOP_HOOK_BLOCK_CAP=200
 > /moai goal "<condition>" --max-turns 0 --max-duration 14400
 ```
 
-从 v3.1 起，用 `moai goal arm --max-turns 0` 武装、或启动工厂会话（`-f` 或 `-a`）时，启动器会自动把这个上限注入为 200。因此用户不必亲自动手改环境变量，4 小时长的链也不会在中途被截断。
+从 v3.1 起，用 `moai goal arm --max-turns 0` 武装、或启动工厂会话（`-f` 或 `-l`）时，启动器会自动把这个上限注入为 200。因此用户不必亲自动手改环境变量，4 小时长的链也不会在中途被截断。
 
 ## arm-only 与安全边界
 
@@ -125,7 +125,7 @@ $ CLAUDE_CODE_STOP_HOOK_BLOCK_CAP=200
 
 - **`/moai loop`** —— 诊断主导的确定性循环。区别在于由工具判定要修什么。[`/moai loop`](/zh/utility-commands/moai-loop) 位于 utility 命令一节。
 - **`/moai run`** —— 启动工作的命令。与 goal 配对使用。[`/moai run`](./moai-run)。
-- **工厂模式** —— 以主导（`-f`）和 lane（`-a`）开启或加入工厂运行的启动器入口。它自己不设置目标，启动器只是把会话的 Stop 钩子拦截上限调高。详见 [工厂模式](/zh/advanced/factory-mode)。
+- **工厂模式** —— 以主导（`-f`）和 lane（`-l`）开启或加入工厂运行的启动器入口。它自己不设置目标，启动器只是把会话的 Stop 钩子拦截上限调高。详见 [工厂模式](/zh/advanced/factory-mode)。
 
 ## 这条命令不做的事（范围边界）
 

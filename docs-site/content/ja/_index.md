@@ -20,8 +20,8 @@ MoAI-ADK (Agentic Development Kit) は、Claude Code 用の戦略的オーケス
 
 {{< terminal title="factory mode" raw="true" >}}
 moai cc -f                    # リーダー: ファクトリーのランを開く
-moai cc -a                    # レーン、それぞれ別のターミナルで: 次の空きレーンとして合流する
-moai glm -a                   # GLMバックエンドのレーン
+moai cc -l                    # レーン、それぞれ別のターミナルで: 次の空きレーンとして合流する
+moai glm -l                   # GLMバックエンドのレーン
 moai codex -l                 # Codexのレーン
 {{< /terminal >}}
 

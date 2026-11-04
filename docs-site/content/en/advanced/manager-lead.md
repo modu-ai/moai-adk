@@ -32,7 +32,7 @@ This is an advanced page. It goes one layer deeper into the boundary between the
 
 Role A takes the execution of a Tier-L-scale SPEC, folds context at every milestone (Context-Folding) to keep the window light, and runs peer cross-validation on every acceptance criterion (AC — the criterion for a pass verdict) that has been marked pass, so the run survives end-to-end in a single window.
 
-Role B is the work in which the **leader session owns the dispatch cycle** in factory mode (`moai cc -f`). The factory leader assigns an operator-picked card to an empty lane as a whole. It creates no session: the operator launches lanes by hand, one per terminal with `moai cc -a`, and the leader addresses them by name to send messages.
+Role B is the work in which the **leader session owns the dispatch cycle** in factory mode (`moai cc -f`). The factory leader assigns an operator-picked card to an empty lane as a whole. It creates no session: the operator launches lanes by hand, one per terminal with `moai cc -l`, and the leader addresses them by name to send messages.
 
 Three disciplines run through both roles. Work proceeds **in order rather than in competition**, completion is judged **only on evidence that was read, never on a claim**, and the user-question channel belongs to the orchestrator — when this agent is blocked, it returns a blocker report.
 
