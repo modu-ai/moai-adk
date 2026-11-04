@@ -468,8 +468,9 @@ var (
 // the verb-after-`git` matchers see it) and the absolute target path. It
 // returns (command, "") when no explicit absolute target applies. The target
 // is honored only when the unquoted command holds exactly ONE git invocation:
-// with two, `-C`/`cd` could scope only one of them, and falling back to the
-// cwd judgment can only deny, never newly allow. Quoted spans are data and
+// with two, `-C`/`cd` could scope only one of them, so the target is dropped
+// and the hook-cwd judgment decides (with cdPrimaryTarget adding a denial when
+// a literal `cd`/`-C` names the primary checkout). Quoted spans are data and
 // never a target.
 //
 // The target is adopted only when nothing in the command can move the git
@@ -481,7 +482,10 @@ var (
 // spellings of "run code" a deny-list must name (`\eval`, `"cd"`, `c\d`,
 // `$'cd'`, `then .`) have no end. Those forms fall back to the hook-cwd
 // judgment, with the git global options removed so the verb is still seen —
-// the fallback can therefore only deny, never newly allow. Finally the whole
+// the fallback never ADOPTS a target to allow. It judges at the hook cwd, and a
+// literal `cd`/`-C` naming the primary checkout (cdPrimaryTarget) overrides
+// that with a primary judgment, so relative to the hook-cwd judgment the
+// fallback only ever adds denials. Finally the whole
 // command must pass isLiteralTargetCommand, a strict allow-list that does not
 // depend on the quote collapse (which mis-reads `\"`): a command with any quote,
 // backslash, expansion character, or separator is never adopted.
@@ -595,19 +599,38 @@ func isSoleGitInvocation(after string) bool {
 // it runs on the quote-collapsed command, so a quoted span is data.
 var anyCdTargetPattern = regexp.MustCompile(`(?:^|[\s;&|(])cd\s+(/[^\s;&|"'()<>]+)`)
 
-// cdPrimaryTarget reports whether any literal `cd <abs>` word in the command
-// names the primary checkout, returning that path. Paths the shell and git may
-// read differently (targetPathAgrees) are skipped, as are lookup errors: both
-// leave the caller on the hook-cwd judgment, so this can only add denials.
-// pushd, variable or quoted paths, and `git -C` are deliberately not scanned.
+// gitCOperandPattern captures the ABSOLUTE operand of each `-C` inside one run
+// of git global options (a span gitGlobalOptionsPattern matched).
+var gitCOperandPattern = regexp.MustCompile(`-C\s+(/[^\s;&|"'()<>]+)`)
+
+// cdPrimaryTarget reports whether any literal `cd <abs>` word, or any absolute
+// `-C <abs>` among the global options of a git invocation, names the primary
+// checkout, returning that path. The `-C` scan is what keeps a command whose
+// text is not literal (a quote, `$VAR`, a comment, a redirect) judged as primary
+// when it names the primary checkout: explicitGitTarget drops the target of such
+// a command rather than adopt it, and the hook cwd alone would then let
+// `git -C <primary> commit -m 'message'` through from a worktree. Paths the
+// shell and git may read differently (targetPathAgrees) are skipped, as are
+// lookup errors: both leave the caller on the hook-cwd judgment, so this can
+// only add denials, never allow. pushd and variable or quoted paths are
+// deliberately not scanned.
 func cdPrimaryTarget(command string) (string, bool) {
 	plain := substituteQuotedArguments(command)
+	var paths []string
 	for _, m := range anyCdTargetPattern.FindAllStringSubmatch(plain, -1) {
-		if !targetPathAgrees(m[1]) {
+		paths = append(paths, m[1])
+	}
+	for _, span := range gitGlobalOptionsPattern.FindAllString(plain, -1) {
+		for _, m := range gitCOperandPattern.FindAllStringSubmatch(span, -1) {
+			paths = append(paths, m[1])
+		}
+	}
+	for _, p := range paths {
+		if !targetPathAgrees(p) {
 			continue
 		}
-		if isPrimary, err := isPrimaryCheckout(m[1]); err == nil && isPrimary {
-			return m[1], true
+		if isPrimary, err := isPrimaryCheckout(p); err == nil && isPrimary {
+			return p, true
 		}
 	}
 	return "", false
@@ -618,10 +641,12 @@ func cdPrimaryTarget(command string) (string, bool) {
 // literal target is uncertainty about the target, not evidence the command is
 // safe, and the cwd judgment can only add denials.
 //
-// When no target was adopted, a literal `cd <abs>` word anywhere in the command
-// that names the primary checkout makes the command primary-judged whatever the
-// hook cwd is (cdPrimaryTarget): the verb can really land there, and the hook
-// cwd alone would let `cd <worktree> && cd <primary> && git commit` through.
+// When no target was adopted, a literal `cd <abs>` word or an absolute
+// `git -C <abs>` anywhere in the command that names the primary checkout makes
+// the command primary-judged whatever the hook cwd is (cdPrimaryTarget): the
+// verb can really land there, and the hook cwd alone would let
+// `cd <worktree> && cd <primary> && git commit` or
+// `git -C <primary> commit -m 'message'` through.
 func primaryAtTargetOrCwd(target, hookCwd, command string) (cwd string, isPrimary bool, err error) {
 	if target == "" {
 		if p, ok := cdPrimaryTarget(command); ok {
