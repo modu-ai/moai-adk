@@ -25,8 +25,8 @@ func TestFactoryCardLegacyLabelErrorsNameLaneEntry(t *testing.T) {
 				t.Fatalf("legacy label %q was accepted", tc.label)
 			}
 			msg := err.Error()
-			if !strings.Contains(msg, "rejoin with -a") {
-				t.Errorf("error does not name the -a rejoin: %s", msg)
+			if !strings.Contains(msg, "rejoin with -l") {
+				t.Errorf("error does not name the -l rejoin: %s", msg)
 			}
 			if !strings.Contains(msg, tc.want) {
 				t.Errorf("error does not name %q: %s", tc.want, msg)

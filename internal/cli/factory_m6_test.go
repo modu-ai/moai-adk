@@ -191,7 +191,7 @@ func TestSD_AC020_ClearPolicies(t *testing.T) {
 			findProjectRootFn, deps = prevRoot, prevDeps
 		})
 
-		if err := sdCCEntry([]string{"-a", "--clear-policy", "relaunch"}); err != nil {
+		if err := sdCCEntry([]string{"-l", "--clear-policy", "relaunch"}); err != nil {
 			t.Fatalf("cc lane relaunch: %v", err)
 		}
 		if launches != 1 {
@@ -269,7 +269,7 @@ func TestSD_AC020_ClearPolicies(t *testing.T) {
 		prevDeps := deps
 		deps = nil
 		t.Cleanup(func() { findProjectRootFn, deps = prevRoot, prevDeps })
-		err := sdCCEntry([]string{"-a", "--clear-policy", "never"})
+		err := sdCCEntry([]string{"-l", "--clear-policy", "never"})
 		if err == nil {
 			t.Fatal("invalid clear-policy value succeeded, want a refusal")
 		}

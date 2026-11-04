@@ -38,7 +38,7 @@ func init() {
 }
 
 var glmCmd = &cobra.Command{
-	Use:   "glm [-p profile] [-f | -a] [-- claude-args...]",
+	Use:   "glm [-p profile] [-f | -l] [-- claude-args...]",
 	Short: "Launch Claude Code with GLM backend",
 	Long: `Launch Claude Code with GLM backend.
 
@@ -67,15 +67,15 @@ Flags:
       --spawn                   Run this command in a new tmux window instead of
                                 replacing the current session (requires tmux)
 
-Factory Mode (dedicated -f and -a entries):
+Factory Mode (dedicated -f and -l entries):
   -f, --factory                Enter as the LEADER of a factory run (one
-                                lane, lane-1, grown afterwards with -a).
+                                lane, lane-1, grown afterwards with -l).
                                 The flag takes no argument. The leader routes
                                 operator-picked cards to free lanes over
                                 cross-session messages — each card goes
                                 WHOLE to one lane, which carries it through
                                 plan -> run -> sync in-session.
-  -a                           Join the running factory as an AGENT (a
+  -l, --lane                   Join the running factory as a LANE (a
                                 lane-<n> session): the next free lane-<n>
                                 label is claimed for this session. The flag takes no argument. If the
                                 run's record is missing or retired while a
@@ -83,12 +83,12 @@ Factory Mode (dedicated -f and -a entries):
                                 that leader (pid + process-start) and
                                 restores its run, so the lane still lands on
                                 the live factory.
-  --leader <name>              With -a: which leader session the
+  --leader <name>              With -l: which leader session the
                                 record-absence verification targets
                                 (default: leader). A legacy spelling of the
                                 leader name is refused.
-  One entry token per launch: -f beside -a is an error. The former -l/--lane
-  spelling is removed and refused with a line naming -a. A lane number
+  One entry token per launch: -f beside -l is an error. The former -a/--agent
+  spelling is removed and refused with a line naming -l/--lane. A lane number
   held by a live session is bumped to the next free number.
   Legacy role and label spellings (the pre-rename nouns, any letter case)
   are refused — the error names the canonical lane-<n> label.
@@ -97,7 +97,7 @@ Factory Mode (dedicated -f and -a entries):
   in #1513 (7f61332ef). -f briefly returned as the factory fan-out flag and
   was RETIRED (v1.2.0) in favor of '-k <N>'; t118 (v3.1.1) revived it as the
   dedicated factory entry, and -k itself is now retired: a launch carrying
-  it is refused with one line naming -f and -a.
+  it is refused with one line naming -f and -l.
 
 Note: Auto mode is not available with GLM (third-party provider).
 Use 'moai cc --permission-mode auto' instead.
@@ -115,7 +115,7 @@ Examples:
   moai glm                 # Launch with GLM backend
   moai glm -p work         # Use 'work' profile with GLM
   moai glm -f             # Factory leader on GLM: one lane (lane-1)
-  moai glm -a              # Join the running factory as the next free agent (GLM backend)
+  moai glm -l              # Join the running factory as the next free lane (GLM backend)
 
 Mixed Claude/GLM teammate roles require verified teammate routing support.
 Use 'moai cc' to switch back to Claude backend.`,
@@ -250,7 +250,7 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	// t118 launcher axis: the entry parse — parseLauncherEntry refuses the
-	// retired -k spelling and covers the dedicated -f / -a surface. See cc.go;
+	// retired -k spelling and covers the dedicated -f / -l surface. See cc.go;
 	// glm mirrors cc exactly except for the backend constant.
 	entry, err := parseLauncherEntry(filteredArgs)
 	if err != nil {
@@ -285,7 +285,7 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		if adoptErr != nil {
 			return fmt.Errorf("re-adopt factory run: %w", adoptErr)
 		}
-		// Same recording as the cc leader: the factory run state a lane's -a join
+		// Same recording as the cc leader: the factory run state a lane's -l join
 		// resolves. Without it every GLM-led run is unjoinable
 		// (NO_ACTIVE_FACTORY).
 		if err := recordLeaderRunStart(launchProjectRoot(), adopted, factory.BackendGLM, entry.Spec, factoryDeclaredLanes(entry)); err != nil {
@@ -632,7 +632,7 @@ var glmFlagNames = map[string]bool{
 	"--branch": true,
 	"--spawn":  true,
 	"-f":       true, "--factory": true,
-	"-a":            true,
+	"-l": true, "--lane": true,
 	"--leader":      true,
 	"--factory-run": true,
 	"--key":         true,

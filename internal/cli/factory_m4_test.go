@@ -107,7 +107,7 @@ func sdDriveLaneLaunch(t *testing.T, root string, entry func([]string) error, du
 	deps = nil
 	t.Cleanup(func() { deps = prevDeps })
 
-	if err := entry([]string{"-a"}); err != nil {
+	if err := entry([]string{"-l"}); err != nil {
 		t.Fatalf("lane launch: %v", err)
 	}
 	return captured
@@ -193,7 +193,7 @@ func TestSD_AC005_LaneLaunchRequiresGitRepo(t *testing.T) {
 			deps = nil
 			t.Cleanup(func() { deps = prevDeps })
 
-			err := tc.entry([]string{"-a"})
+			err := tc.entry([]string{"-l"})
 			if err == nil {
 				t.Fatal("lane launch outside a git working tree succeeded; want the git-requirement refusal")
 			}

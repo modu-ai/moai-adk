@@ -2,7 +2,7 @@ package cli
 
 // launch_session_defaults.go — factory session launch defaults (card t1808).
 //
-// A factory leader (-f) and lane (-a) start from the llm.defaults.sessions
+// A factory leader (-f) and lane (-l) start from the llm.defaults.sessions
 // model + effort pair (config.LLMConfig.ResolveSessionDefault). Every value
 // travels as a launch DEFAULT that an in-session /model or /effort change can
 // replace:

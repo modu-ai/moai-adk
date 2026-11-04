@@ -16,10 +16,10 @@ import (
 var spawnRefusedShapes = [][]string{
 	{"-k"},
 	{"--kanban"},
-	{"-a", "lane-2"},
+	{"-l", "lane-2"},
 	{"--lane", "lane-2"},
-	{"-a", "-f"},
-	{"-f", "-a"},
+	{"-l", "-f"},
+	{"-f", "-l"},
 	{"-f", "3"},
 	{"-f", "lane"},
 }
@@ -30,7 +30,7 @@ var spawnRefusedShapes = [][]string{
 var spawnProfileErrorShapes = [][]string{
 	{"-p"},
 	{"-k", "-p"},
-	{"-a", "-f", "--profile="},
+	{"-l", "-f", "--profile="},
 }
 
 func TestSpawnRefusesProfileErrorsBeforeOpeningAWindow(t *testing.T) {
@@ -75,7 +75,7 @@ func TestSpawnRefusesBadEntriesBeforeOpeningAWindow(t *testing.T) {
 // accepts.
 func TestSpawnStillOpensAWindowForAnAcceptedEntry(t *testing.T) {
 	for _, verb := range laneVerbs {
-		for _, shape := range [][]string{{"-a", "--spawn"}, {"--spawn", "-a"}, {"-f", "--spawn"}} {
+		for _, shape := range [][]string{{"-l", "--spawn"}, {"--spawn", "-l"}, {"-f", "--spawn"}} {
 			t.Run(verb.name+"_"+strings.Join(shape, "_"), func(t *testing.T) {
 				spawned := withSpawnStubs(t, true, "%1", nil)
 				root := netLaneFixture(t, verb.backend)
