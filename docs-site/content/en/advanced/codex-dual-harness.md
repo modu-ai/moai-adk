@@ -30,11 +30,11 @@ codex-cli does not read Claude Code's `.claude/skills/`, so skills are deployed 
 
 ## Harness-local personal instructions
 
-`AGENTS.local.md` is the personal instruction file both harnesses read; `CLAUDE.local.md` is its former name and survives only as a fallback input. Every local `moai codex` route—bare, `cli`, `app`, `--spawn`, and `-w`—reads the non-empty regular files from the project root in that order, places a `<!-- source: <filename> -->` provenance header before each body, and sends the combined text as one `developer_instructions` override. For `-w`, the source stays the original project root even though Codex runs in the worktree. Neither shared `AGENTS.md` nor `CLAUDE.md` imports or links these local files. The launcher refuses links and non-regular inputs, reads from the same descriptor it checked, and fails before launch if the operator also supplies `developer_instructions` or if the direct/spawn argument is too large. Other harness-local settings and memory remain with their harness. Codex Web does not run the local launcher and receives none of this injection.
+`AGENTS.local.md` is the personal instruction file both harnesses read; `CLAUDE.local.md` is its former name and survives only as a fallback input. The `moai codex` launcher path described here has been removed, so no automatic injection of these files takes place from that launcher. Codex Web receives none of this injection either.
 
 ## The `CLAUDE.local.md` fallback and the migration advisory
 
-In a project that has `CLAUDE.local.md` but no `AGENTS.local.md`, `moai codex` still reads that file as a fallback and places it in `developer_instructions`. The provenance header carries the literal name of the file actually read — here, `<!-- source: CLAUDE.local.md -->`.
+The former launcher fallback read of `CLAUDE.local.md` is gone together with the removed launcher path.
 
 When the fallback is taken, the launcher prints a one-line migration advisory on standard error:
 

@@ -30,11 +30,11 @@ codex-cli는 Claude Code의 `.claude/skills/`를 읽지 않으므로, 스킬을 
 
 ## 하네스별 개인 지침
 
-`AGENTS.local.md`는 두 하네스가 함께 읽는 개인 지침 파일이고, `CLAUDE.local.md`는 그 이전 이름으로 폴백 입력으로만 남아 있습니다. 로컬 `moai codex`의 모든 실행 경로(기본 실행·`cli`·`app`·`--spawn`·`-w`)는 프로젝트 루트에서 비어 있지 않은 일반 파일을 이 순서로 읽고, 각 본문 앞에 `<!-- source: <filename> -->` 출처 헤더를 붙여 하나의 `developer_instructions` 덮어쓰기로 전달합니다. `-w`에서도 Codex의 실행 위치만 워크트리로 바뀌며 입력은 원래 프로젝트 루트에서 읽습니다. 공용 `AGENTS.md`와 `CLAUDE.md`는 두 로컬 파일을 가져오거나 링크하지 않습니다. 런처는 링크와 일반 파일이 아닌 입력을 거부하고, 검사한 파일 디스크립터에서 그대로 읽으며, 운영자가 `developer_instructions`를 중복 지정했거나 direct/spawn 인자가 너무 크면 실행 전에 실패합니다. 다른 하네스별 설정과 메모리는 해당 하네스에만 남습니다. Codex Web은 로컬 런처를 거치지 않으므로 이 주입을 받지 않습니다.
+`AGENTS.local.md`는 두 하네스가 함께 읽는 개인 지침 파일이고, `CLAUDE.local.md`는 그 이전 이름으로 폴백 입력으로만 남아 있습니다. 여기서 설명하던 `moai codex` 런처 경로는 제거되었으므로, 이 런처가 두 파일을 자동으로 주입하는 일은 없습니다. Codex Web도 이 주입을 받지 않습니다.
 
 ## `CLAUDE.local.md` 폴백과 이관 안내
 
-`AGENTS.local.md` 없이 `CLAUDE.local.md`만 있는 프로젝트에서도 `moai codex`는 그 파일을 폴백으로 읽어 `developer_instructions`에 넣습니다. 출처 헤더는 실제로 읽은 파일 이름을 그대로 적습니다 — 이 경우 `<!-- source: CLAUDE.local.md -->`입니다.
+런처가 `CLAUDE.local.md`를 폴백으로 읽던 동작도 제거된 런처 경로와 함께 사라졌습니다.
 
 폴백을 탈 때 런처는 표준 에러에 이관 안내를 한 줄 출력합니다.
 
