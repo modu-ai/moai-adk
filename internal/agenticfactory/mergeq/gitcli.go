@@ -49,6 +49,9 @@ type Git interface {
 	// (no fast-forward), so the gates see the real merge result. Nothing it does touches the trunk ref.
 	PrepareCandidate(ctx context.Context, trunkSHA, candidateSHA, message string) (Candidate, error)
 	Discard(ctx context.Context, c Candidate) error
+	// TrackedChanges lists the tracked paths of the candidate worktree that differ from the merge result (modified,
+	// deleted or staged). Untracked and git-ignored files are not listed: they are not part of the commit.
+	TrackedChanges(ctx context.Context, c Candidate) ([]string, error)
 	// OriginHeadBranch is the local branch name origin/HEAD points at, or "" when there is no origin/HEAD.
 	OriginHeadBranch(ctx context.Context) (string, error)
 	// CheckedOutAt returns the worktree that has ref checked out, or "" when none does.
@@ -226,6 +229,23 @@ func (g GitCLI) PrepareCandidate(ctx context.Context, trunkSHA, candidateSHA, me
 	}
 	c.Result = res
 	return c, nil
+}
+
+// TrackedChanges lists the tracked paths of the candidate worktree that differ from HEAD, the merge result. `git diff
+// HEAD` compares HEAD with the working tree (so staged and unstaged changes both count), refreshes the index first,
+// and never lists untracked or ignored files; -z keeps every path verbatim.
+func (g GitCLI) TrackedChanges(ctx context.Context, c Candidate) ([]string, error) {
+	out, err := g.run(ctx, c.Dir, "diff", "--name-only", "-z", "HEAD", "--")
+	if err != nil {
+		return nil, err
+	}
+	var paths []string
+	for _, p := range strings.Split(out, "\x00") {
+		if p != "" {
+			paths = append(paths, p)
+		}
+	}
+	return paths, nil
 }
 
 // Discard removes a candidate worktree. A tree that is already gone is not an error.

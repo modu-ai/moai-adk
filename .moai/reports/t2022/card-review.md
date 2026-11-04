@@ -21,3 +21,11 @@ Reason for "not adopted": the card's own commit (fb6ed75ce4) changes only README
 
 ## Residual risk
 - The `fail` verdict stays on record unresolved for the three batch findings; if the leader reads the tool verdict as card-blocking, that is a leader call, since none of the findings touches t2022's diff.
+
+## Second run — after the M1-M3 repair (one run, no re-review)
+- tool: `codex_review` scope=card, backend codex, project_root = the t2022 tree; base 59464c5f37201f17e712a250caf6a46c508a35cf
+- reviewed tree: HEAD e79daf76a2 (docs repair commit on top of merge of release/main-batch 650b5d27f2)
+- tool verdict: `fail` (advisory, static; the reviewer ran no test, build, or reproduction)
+- findings (verbatim titles): P1 중간 디렉터리 변경까지 확인한 뒤 Git 대상을 판정하라 — internal/hook/branch_guard.go:463; P2 변경 목록 조회 실패를 빈 패키지 목록과 구분하라 — internal/cli/factory_release_route.go:280; P2 모듈 의존성 변경에도 영향받는 패키지를 검사하라 — internal/cli/factory_release_route.go:252
+- disposition: not adopted. All three are in Go code from the merged release/main-batch, outside this card's diff (the repair commit e79daf76a2 changes only 6 files under docs-site/content: launchers.md x4 and ja/zh moai-run.md). Same files and topics as the first run (the factory_release_route.go findings are now two, lines 252 and 280). Carried to the leader as information; not recorded as a pass.
+- Gap: the tool output names no finding on the docs files; whether it read them in detail is not shown.

@@ -16,7 +16,7 @@ draft: false
 ## moai cc —— Claude 后端
 
 ```bash
-moai cc [-p profile] [-w [name]] [-- claude-args...]
+moai cc [-p profile] [-w [name]] [-f | -a] [-- claude-args...]
 ```
 
 从 `.claude/settings.local.json` 中移除 GLM 专用环境变量,若 team 模式曾开启则将其重置,然后启动 Claude Code。
@@ -29,6 +29,8 @@ moai cc [-p profile] [-w [name]] [-- claude-args...]
 | `-c, --continue` | 继续上一个会话 |
 | `-m, --model <model>` | 覆盖模型选择 |
 | `-w, --worktree [name]` | 在隔离的 git worktree(`.claude/worktrees/<name>/`)中启动 —— 省略名称时自动生成 |
+| `--branch <existing>` | 与 `-w <name>` 同用：创建 worktree 时检出一个**已有**分支，而不是新建分支（例如为 gitflow 集成 worktree 使用 `moai cc -w develop --branch develop`）。该分支必须已存在，此标志不会创建分支。创建的树会登记到 `.moai/state/worktrees.json`，供 worktree 工具使用 |
+| `--spawn` | 在新的 tmux 窗口中运行该命令，而不是替换当前会话（需要 tmux） |
 | `--chrome` / `--no-chrome` | 原样传递给 Claude Code。启动器不会自行添加任一标志，因此除非传入 `--no-chrome`，否则可通过 `/chrome` 连接 |
 | `-f, --factory` | 以**工厂主导**身份进入，不带参数。主导会话把运维者挑好的卡片通过跨会话消息整张分配给空闲 lane，lane 用 `-a` 加入 |
 | `-a` | 以 **lane** 身份加入正在运行的工厂，自动领取下一个 `lane-<n>` 编号（存活 lane 中最大编号的下一个）。不带参数，没有正在运行的工厂时会被拒绝。`moai glm -a` 与 `moai codex -l` 行为相同 |

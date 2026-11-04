@@ -16,7 +16,7 @@ draft: false
 ## moai cc — Claude backend
 
 ```bash
-moai cc [-p profile] [-w [name]] [-- claude-args...]
+moai cc [-p profile] [-w [name]] [-f | -a] [-- claude-args...]
 ```
 
 Removes GLM-specific environment variables from `.claude/settings.local.json`, resets team mode if it was enabled, and then runs Claude Code.
@@ -29,6 +29,8 @@ Removes GLM-specific environment variables from `.claude/settings.local.json`, r
 | `-c, --continue` | Continue the previous session |
 | `-m, --model <model>` | Override the model selection |
 | `-w, --worktree [name]` | Launch inside an isolated git worktree (`.claude/worktrees/<name>/`) — name omitted means auto-generated |
+| `--branch <existing>` | With `-w <name>`: create the worktree checked out at an **existing** branch (for example `moai cc -w develop --branch develop` for the gitflow integration worktree) instead of a new one. The branch must already exist — this flag never creates one. The tree is registered in `.moai/state/worktrees.json` for worktree tooling |
+| `--spawn` | Run the command in a new tmux window instead of replacing the current session (requires tmux) |
 | `--chrome` / `--no-chrome` | Passed through to Claude Code unchanged; the launcher adds neither, so `/chrome` can attach unless you pass `--no-chrome` |
 | `-f, --factory` | Enter as the **factory leader**. It takes no argument. The leader deals the cards the operator picks, whole, to free lanes over cross-session messages, and lanes join with `-a` |
 | `-a` | Join the running factory as a **lane**, claiming the next `lane-<n>` number automatically (one past the highest live lane). It takes no argument and is refused when no factory is running. `moai glm -a` and `moai codex -l` behave the same |

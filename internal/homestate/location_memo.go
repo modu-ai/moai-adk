@@ -15,7 +15,8 @@ package homestate
 // BEFORE the answer is computed, and the entry is used only while a fresh
 // fingerprint equals it.
 //
-// What an answer depends on, and so what the fingerprint covers, for every
+// What an answer depends on, and so what the fingerprint covers: the directory the
+// path resolves to (a symlink moved to another repository), and, for every
 // directory from the one asked about up to the filesystem root (git discovers a
 // repository by walking up):
 //
@@ -147,6 +148,13 @@ func memoLocation(op, dir string, compute func() (value string, remember bool)) 
 func locationFingerprint(dir string) string {
 	var b strings.Builder
 	p := filepath.Clean(dir)
+	// Where dir (or a directory above it) is a symlink, the directory it resolves to is part of the answer: a link
+	// moved to another repository must not be served the entry of its old target, whatever the two stamp as.
+	if resolved, err := filepath.EvalSymlinks(p); err == nil {
+		b.WriteString("=>")
+		b.WriteString(resolved)
+		b.WriteByte('\n')
+	}
 	for {
 		b.WriteString(p)
 		b.WriteByte('|')
