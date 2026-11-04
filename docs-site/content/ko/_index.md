@@ -19,13 +19,12 @@ MoAI-ADK(Agentic Development Kit)는 Claude Code를 위한 전략적 오케스�
 
 세션 하나는 컨텍스트 창 하나를 쓴다. 긴 SPEC은 그 창을 채우고, 뒤에 오는 작업은 앞의 것을 전부 지고 간다. 팩토리 모드는 작업을 **여러 터미널**에 나눈다. 리더 세션 하나가 고른 카드를 배분하고, 레인마다 따로 뜬 세션이 카드 한 장을 `plan`·`run`·`sync`까지 통째로 맡는다. 검토 판정은 별도 단계가 아니라 sync 게이트가 흡수한다. 한도가 사라지는 것은 아니지만, 어느 세션도 카드 한 장보다 많은 이력을 짊어지지 않으므로 같은 예산이 훨씬 멀리 간다.
 
-레인마다 백엔드를 다르게 둘 수 있다. 리더와 각 레인은 `cc`, `glm`, `codex` 중에서 따로 고른다.
+레인마다 백엔드를 다르게 둘 수 있다. 리더와 각 레인은 `cc`, `glm` 중에서 따로 고른다.
 
 {{< terminal title="factory mode" raw="true" >}}
 moai cc -f                    # 리더: 팩토리 런을 연다
 moai cc -l                    # 레인, 각자 별도 터미널에서: 다음 빈 레인으로 합류한다
 moai glm -l                   # GLM 백엔드 레인
-moai codex -l                 # Codex 레인
 {{< /terminal >}}
 
 위임 채널은 큐다. `backlog`에는 주인 세션이 일부러 없고, 일감은 [`/moai todo`](/ko/utility-commands/moai-todo)로 사람이 넣을 때만 들어온다. 리더는 카드의 `progress.md`에서 직접 읽은 증거로만 카드를 넘기며, 레인의 답장으로는 넘기지 않는다.

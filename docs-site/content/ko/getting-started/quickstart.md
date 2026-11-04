@@ -379,7 +379,7 @@ graph TD
 
 ## 개인 지침 파일 — `AGENTS.local.md`
 
-프로젝트에서 지키고 싶은 개인 규칙은 프로젝트 루트의 `AGENTS.local.md`에 적습니다. Git에서 무시되고 `moai update`가 건드리지 않으며, Claude Code와 `moai codex`가 함께 읽습니다. 팀과 공유하는 계약은 `AGENTS.md`, Claude 전용 설정은 `CLAUDE.md`에 있습니다 — 이 세 파일이 지침 구조의 전부입니다.
+프로젝트에서 지키고 싶은 개인 규칙은 프로젝트 루트의 `AGENTS.local.md`에 적습니다. Git에서 무시되고 `moai update`가 건드리지 않으며, Claude Code와 Codex가 함께 읽습니다. 팀과 공유하는 계약은 `AGENTS.md`, Claude 전용 설정은 `CLAUDE.md`에 있습니다 — 이 세 파일이 지침 구조의 전부입니다.
 
 이전 버전에서 만든 `CLAUDE.local.md`가 있다면 한 번만 옮기면 됩니다.
 

@@ -23,10 +23,9 @@ There are only two entry tokens, and neither takes an argument. `-f` opens the l
 | What you want | Command | Role |
 |---------------|---------|------|
 | Open the factory leader | `moai cc -f` · `moai glm -f` (long form `--factory`) | Leader |
-| Join the running factory as a lane | `moai cc -l` · `moai glm -l` · `moai codex -l` | Lane |
+| Join the running factory as a lane | `moai cc -l` · `moai glm -l` | Lane |
 
 - `-l` joins the running factory and takes the **next lane number automatically**. You do not pick the number; it is one past the highest live lane. If no factory is running, the join is refused.
-- `moai codex` has no leader entry. It can only join as a lane; open the leader with `moai cc -f` or `moai glm -f`.
 - A launch carries at most one entry token. `-f` together with `-l` is an error.
 
 ```bash
@@ -37,7 +36,6 @@ $ moai cc -f
 $ moai cc -l
 $ moai cc -l
 $ moai glm -l      # a lane on the GLM backend, same form
-$ moai codex -l    # a Codex lane
 ```
 
 You start lanes **by hand, one per terminal**. There is no path for a session to start another session on your behalf.
@@ -50,10 +48,9 @@ An entry carrying a value is refused with a one-line error. The message names th
 |--------------|-----|
 | `moai cc -f <value>` (a SPEC ID, a number, a lane label) | `-f` takes no argument. Open the leader with `-f` alone and join lanes with `-l` |
 | `moai cc -l <value>` (a name such as `lane-2`) | A lane does not name itself. The number is assigned automatically |
-| `-f` on `moai codex` | Codex has no leader entry (use `moai cc -f` or `moai glm -f`) |
 | `-f` and `-l` in one launch | Only one entry token is allowed |
 | The retired `-k` entry | The old multi-session board mode was removed. The error message points to `-f` and `-l` |
-| `moai cg`, `moai gpt` | `moai cg` is retired and exits with a migration notice (preview with `moai migrate cg`). `moai gpt` does not exist; GPT models run through `moai codex` |
+| `moai cg`, `moai gpt` | `moai cg` is retired and exits with a migration notice (preview with `moai migrate cg`). `moai gpt` does not exist |
 
 ## When several runs are alive
 
@@ -70,7 +67,7 @@ A lane join reads the run record first. Two selectors can accompany `-l`.
 
 ## Lane options
 
-These options attach to a lane on `moai cc -l` and `moai glm -l`. Codex lanes take no policy.
+These options attach to a lane on `moai cc -l` and `moai glm -l`.
 
 | Option | Effect |
 |--------|--------|

@@ -23,10 +23,9 @@ added_in: "v3.2"
 | 想做的事 | 命令 | 角色 |
 |----------|------|------|
 | 打开工厂主导会话 | `moai cc -f` · `moai glm -f`（长形式 `--factory`） | 主导 |
-| 以 lane 身份加入正在运行的工厂 | `moai cc -l` · `moai glm -l` · `moai codex -l` | lane |
+| 以 lane 身份加入正在运行的工厂 | `moai cc -l` · `moai glm -l` | lane |
 
 - `-l` 会加入正在运行的工厂，并**自动领取下一个 lane 编号**。编号不由运维者挑选，取存活 lane 中最大编号的下一个。没有正在运行的工厂时，加入会被拒绝。
-- `moai codex` 没有主导入口，只能以 lane 身份加入；主导会话要用 `moai cc -f` 或 `moai glm -f` 打开。
 - 一次启动最多带一个进入令牌，`-f` 与 `-l` 同时出现会报错。
 
 ```bash
@@ -37,7 +36,6 @@ $ moai cc -f
 $ moai cc -l
 $ moai cc -l
 $ moai glm -l      # GLM 后端的 lane，形式相同
-$ moai codex -l    # Codex 的 lane
 ```
 
 lane 由**人在各自的终端里手动**启动。没有哪个会话能替你去启动另一个会话。
@@ -50,10 +48,9 @@ lane 由**人在各自的终端里手动**启动。没有哪个会话能替你�
 |--------------|------|
 | `moai cc -f <值>`（SPEC ID、数字、lane 标签） | `-f` 不接受参数。主导会话只用 `-f` 打开，lane 用 `-l` 加入 |
 | `moai cc -l <值>`（如 `lane-2` 之类的名字） | lane 不自己命名，编号是自动分配的 |
-| `moai codex` 上的 `-f` | Codex 没有主导入口（请用 `moai cc -f` 或 `moai glm -f`） |
 | 同时使用 `-f` 与 `-l` | 只允许一个进入令牌 |
 | 已停用的 `-k` 入口 | 早先那种多会话分列运行的模式已被移除，错误信息会指向 `-f` 和 `-l` |
-| `moai cg`、`moai gpt` | `moai cg` 已停用，会给出迁移提示后退出（可用 `moai migrate cg` 预览）；`moai gpt` 不存在，GPT 模型通过 `moai codex` 运行 |
+| `moai cg`、`moai gpt` | `moai cg` 已停用，会给出迁移提示后退出（可用 `moai migrate cg` 预览）；`moai gpt` 不存在 |
 
 ## 同时存在多个运行时
 
@@ -70,7 +67,7 @@ lane 加入时会先读取运行记录。`-l` 可以搭配两个选择器。
 
 ## lane 选项
 
-下面的选项只用在 `moai cc -l` 和 `moai glm -l` 的 lane 上，Codex 的 lane 不接受策略。
+下面的选项只用在 `moai cc -l` 和 `moai glm -l` 的 lane 上。
 
 | 选项 | 作用 |
 |------|------|

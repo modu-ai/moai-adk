@@ -185,7 +185,7 @@ MoAI-ADK 运行在上述 Claude Code 记忆基础之上。它把项目根的 CLA
 
 ## MoAI-ADK 项目中的本地指令 —— `AGENTS.local.md`
 
-Claude Code 本身读取 `CLAUDE.local.md`，但 MoAI-ADK 项目把个人指令放在 `AGENTS.local.md`。`CLAUDE.md` 末尾的 `@AGENTS.local.md` 导入把它加载进 Claude Code，`moai codex` 则把同一个文件交给 Codex。通用契约是 `AGENTS.md`，Claude 专属层是 `CLAUDE.md`，个人指令是 `AGENTS.local.md`——这就是三文件结构。
+Claude Code 本身读取 `CLAUDE.local.md`，但 MoAI-ADK 项目把个人指令放在 `AGENTS.local.md`。`CLAUDE.md` 末尾的 `@AGENTS.local.md` 导入把它加载进 Claude Code，Codex 则收到同一个文件。通用契约是 `AGENTS.md`，Claude 专属层是 `CLAUDE.md`，个人指令是 `AGENTS.local.md`——这就是三文件结构。
 
 同时保留 `CLAUDE.local.md` 和 `AGENTS.local.md` 会让 Claude Code 两者都读，相似的指令被加载两次。已有的 `CLAUDE.local.md` 请用 `moai migrate local-instructions` 迁移。两个文件都存在时该命令会拒绝执行，此时请手动合并。
 
