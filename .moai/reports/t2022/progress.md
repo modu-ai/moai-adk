@@ -77,3 +77,16 @@ Verification (this run, tree WT-docs-site-readme):
 
 Gaps: ko/ja/zh phrasing reviewed from the diff text only, no humanize skill pass and no rendered-page read; no mermaid/emoji/URL-blacklist rescan (only the Mermaid node label text changed, direction still TD); `codex_review`/`codex_audit` descriptions were not searched separately beyond the `moai codex` grep; hits in Go help text (t2029) untouched.
 Residual risk: codex-dual-harness.md still names `moai codex` routes (8 lines) and can read as runnable until the command is restored or the page is revised by the leader's decision; mentions of Codex without the `moai codex` string (for example `--llm gpt`, harness choice) were not changed and may still imply a launcher; a first scripted pass left a stray "and" in README.md line 62, found in the diff and repaired by hand before commit.
+
+## codex-dual-harness lines 33/37
+
+What changed: in docs-site/content/{en,ko,ja,zh}/advanced/codex-dual-harness.md, line 33 keeps the `AGENTS.local.md` / `CLAUDE.local.md` sentence and now says the `moai codex` launcher path described there has been removed (no automatic injection from that launcher; Codex Web receives none either); the launcher route, provenance header, `developer_instructions`, descriptor and refusal details are gone. Line 37 now says the former launcher fallback read of `CLAUDE.local.md` went away with the removed launcher path. Headings, other lines and the page itself are untouched (page deletion stays with t2029).
+
+Verification (run in this tree):
+1. `git grep -n 'moai codex' -- docs-site README.md README.ko.md README.ja.md README.zh.md`: 4 lines, all line 33 of codex-dual-harness.md (en/ko/ja/zh); each stays because it explicitly states the path was removed. Lines 37 no longer match.
+2. `grep -c '^#'` per locale, before 10/10/10/10 and after 10/10/10/10 (en/ko/ja/zh).
+3. `hugo --quiet --source docs-site`: exit=0; WARN/ERROR count 0 (log redirected, empty).
+4. `git diff --stat` before commit: 4 files changed, 8 insertions(+), 8 deletions(-).
+
+Gaps: no humanize skill pass or rendered-page read; ko/ja/zh checked from text only. Lines 39-43 of the page (migration advisory printed by the launcher, `moai migrate local-instructions`) were outside the assigned lines and still describe launcher behavior, and the heading "CLAUDE.local.md fallback and the migration advisory" is unchanged.
+Residual risk: the lines 39-43 advisory block reads as launcher output that no longer exists until t2029 deletes or revises the page.
