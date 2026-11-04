@@ -655,9 +655,18 @@ func seeThroughGitC(command string) string {
 }
 
 // gitCLandsInPrimary reports whether the `-C` chain of some guarded invocation
-// resolves to the primary checkout.
+// resolves to the primary checkout OF THE HOOK CWD'S REPOSITORY. It decides only
+// whether a verb hidden behind `-C` in a multi-invocation command counts (F4),
+// and it deliberately does not widen the existing judgment of an unrelated
+// repository (F9), which is left as it was: a verb behind `-C` in some other
+// repository stays unmatched here.
 func gitCLandsInPrimary(command, hookCwd string) bool {
-	_, ok := gitCPrimaryTarget(command, hookCwd)
+	sameRepo := func(p string) bool {
+		target, errTarget := gitcore.ResolveGitDirs(p)
+		cwd, errCwd := gitcore.ResolveGitDirs(hookCwd)
+		return errTarget == nil && errCwd == nil && target.CommonDir == cwd.CommonDir
+	}
+	_, ok := gitCPrimaryTarget(command, hookCwd, sameRepo)
 	return ok
 }
 
@@ -678,8 +687,9 @@ func guardedVerbText(invocation string) bool {
 // guard denies resolves ONLY that invocation's `-C` operands, in order. A `-C`
 // on any other invocation, in a quoted mention, in a comment, in a heredoc body
 // or in an `echo` argument therefore never moves another invocation's verdict.
-// It returns the resolved path when it is a primary checkout.
-func gitCPrimaryTarget(command, hookCwd string) (string, bool) {
+// It returns the resolved path when it is a primary checkout (and, when accept
+// is not nil, accept approves the path).
+func gitCPrimaryTarget(command, hookCwd string, accept func(string) bool) (string, bool) {
 	for _, piece := range invocationSeparatorPattern.Split(normalizeCommandForScan(command), -1) {
 		matches := gitInvocationOptsPattern.FindAllStringSubmatchIndex(piece, -1)
 		for i, m := range matches {
@@ -690,7 +700,7 @@ func gitCPrimaryTarget(command, hookCwd string) (string, bool) {
 			if !guardedVerbText(strings.TrimSpace("git " + piece[m[1]:end])) {
 				continue
 			}
-			if p, ok := resolveGitCPrimary(piece[m[2]:m[3]], hookCwd); ok {
+			if p, ok := resolveGitCPrimary(piece[m[2]:m[3]], hookCwd); ok && (accept == nil || accept(p)) {
 				return p, true
 			}
 		}
@@ -746,7 +756,7 @@ func primaryAtTargetOrCwd(target, hookCwd, command string) (cwd string, isPrimar
 		if p, ok := cdPrimaryTarget(command); ok {
 			return p, true, nil
 		}
-		if p, ok := gitCPrimaryTarget(command, hookCwd); ok {
+		if p, ok := gitCPrimaryTarget(command, hookCwd, nil); ok {
 			return p, true, nil
 		}
 		isPrimary, err = isPrimaryCheckout(hookCwd)

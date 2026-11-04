@@ -119,6 +119,22 @@ func TestBranchGuardPerInvocationTargetNamingPrimaryIsDeniedFromWorktreeCwd(t *t
 	}
 }
 
+// TestBranchGuardPerInvocationUnrelatedRepositoryChainStaysAllowed: seeing a
+// verb through `-C` must not add a deny for a repository that is not the hook
+// cwd's own (F9 is a separate, unrepaired item). Q3 was allowed before the
+// per-invocation repair and stays allowed.
+func TestBranchGuardPerInvocationUnrelatedRepositoryChainStaysAllowed(t *testing.T) {
+	t.Setenv(branchGuardExemptEnv, "")
+	fx := newAFFGuardFixture(t)
+	other := mainRepoFixture(t)
+
+	command := "git -C " + other + " add . && git -C " + other + " commit -m 'second'"
+	denies, decision, reason := gitcGuardVerdict(t, fx, fx.release, command)
+	if denies {
+		t.Errorf("Q3: BranchGuard alone = %q / %q for %q at a worktree cwd, want no deny (the target is another repository)", decision, reason, command)
+	}
+}
+
 // TestBranchGuardPerInvocationQuotedMentionDoesNotChangeVerdict (F12): a `-C`
 // that only appears inside a quoted argument is data. The commit runs in the
 // worktree, so it is allowed. This row is what makes the quoted-span blanking of
