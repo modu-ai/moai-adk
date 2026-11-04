@@ -45,3 +45,35 @@ Operator decision R437 (supersedes the card text): launcher entry flags are `-f`
 - Gaps: no mermaid/emoji/URL-blacklist re-scan (no such content added); not read in rendered form; ko particle choice reviewed by grep only.
 - Residual risk: the ja/zh/ko prose may still say "-a" in a form not matching the greps (e.g. unbackticked), checked by a boundary regex over the touched files only. Code side (t2021) must actually remove `-a`, else docs lead the binary.
 - Tooling note: the worktree guard refused compound git/perl commands with computed args; a perl script file was used instead of an inline loop.
+
+## Codex lane guidance removal
+Fact (leader, measured against a build of release/main-batch): `moai codex -l` and `moai codex status` only print help and exit 0; `codex_cmd.go` lost its RunE, so `moai codex [cli|status|app]` and `moai codex -l` are not working commands. Docs must not present them as runnable. Scope: docs only; Go code and help strings belong to t2029.
+
+Hit table (hits classified from the `git grep -n 'moai codex'` listing before the edit; script `scratchpad/codex_rm.pl`, literal replacements, applied to 32 files):
+
+| Where (all 4 locales unless noted) | Action | Reason |
+|---|---|---|
+| README x4 getting-started code line `moai codex -l` | removed line | runnable Codex lane join |
+| README x4 "moai codex has no leader entry ..." sentence | removed sentence | Codex lane guidance |
+| README x4 "GPT models run through moai codex" | removed sentence | runnable command presented |
+| README x4 "Which backend" `moai codex -l` clause | dropped clause, sentence kept | Codex lane |
+| README x4 relaunch paragraph "Codex only moai codex -l" | dropped clause | Codex lane |
+| README x4 "GPT gateway withdrawn" note | `moai codex` -> "Codex CLI" | command not runnable; fact (GPT via native harness) kept |
+| README x4 command table row `moai codex [cli|status|app]` | removed row | non-working command |
+| `_index.md` code line + "cc, glm, codex" backend list | line removed; list now cc, glm | Codex lane |
+| `advanced/factory-mode.md` entry-forms row clause, "no leader entry" bullet, `$ moai codex -l` line, refused-forms `-f on moai codex` row, `moai gpt` row tail, "Codex lanes take no policy" | removed / trimmed | Codex lane or non-working command |
+| `cli-reference/launchers.md` `-l, --lane` row tail and callout clause | trimmed | Codex lane / `-f` on `moai codex` |
+| `advanced/claude-md-guide.md` table cell and Mermaid node (TD kept) | `moai codex` -> `Codex` / `Codex launcher` | descriptive, command name not runnable |
+| `advanced/harness-learning.md`, `getting-started/quickstart.md`, `claude-code/context-memory/memory.md` | `moai codex` -> `Codex` | descriptive, command name not runnable |
+
+Kept hits (8): `advanced/codex-dual-harness.md` lines 33 and 37 in en/ko/ja/zh. Reason: the conceptual dual-harness page, explicitly excluded by the task; the lines describe which files the Codex launcher reads (`AGENTS.local.md` / `CLAUDE.local.md` fallback, `developer_instructions`) and do not tell the reader to run anything. Line 33 does list route names (bare, cli, app, --spawn, -w) as launcher behavior, so it still names `moai codex` as if it works.
+
+Verification (this run, tree WT-docs-site-readme):
+1. `git grep -n 'moai codex' -- docs-site README.md README.ko.md README.ja.md README.zh.md` after the edit: only the 8 codex-dual-harness.md lines above (en/ko/ja/zh x lines 33, 37).
+2. `git grep -n -e 'moai codex -l' -e 'moai codex status' -e 'moai codex cli' -e 'moai codex app' -- docs-site README*.md`: no output, exit 1. A looser grep for Codex near lane words (lane/レーン/레인/泳道) over README*.md and docs-site/content: no output.
+3. Heading counts (`git grep -c '^#'`) over the 4 READMEs and the 7 changed page types x 4 locales: before/after files diff exit 0 (identical). README 81x4; `_index` 5x4; factory-mode 13x4; launchers 7x4; harness-learning 7x4; memory 18x4; claude-md-guide 46/21/46/46 (en/ko/ja/zh) and quickstart 32/31/32/32 are pre-existing mismatches, unchanged.
+4. `hugo --quiet` from docs-site: exit 0, no output; a separate non-quiet `hugo` run piped to `grep -ci 'WARN\|ERROR'` counted 0.
+5. `git diff --stat` before commit: 32 files changed, 61 insertions(+), 85 deletions(-) (code diff, before this section).
+
+Gaps: ko/ja/zh phrasing reviewed from the diff text only, no humanize skill pass and no rendered-page read; no mermaid/emoji/URL-blacklist rescan (only the Mermaid node label text changed, direction still TD); `codex_review`/`codex_audit` descriptions were not searched separately beyond the `moai codex` grep; hits in Go help text (t2029) untouched.
+Residual risk: codex-dual-harness.md still names `moai codex` routes (8 lines) and can read as runnable until the command is restored or the page is revised by the leader's decision; mentions of Codex without the `moai codex` string (for example `--llm gpt`, harness choice) were not changed and may still imply a launcher; a first scripted pass left a stray "and" in README.md line 62, found in the diff and repaired by hand before commit.
