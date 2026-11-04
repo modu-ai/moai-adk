@@ -46,13 +46,17 @@ func TestT2021_EntryRefusalsKeepTheTypedFlagCase(t *testing.T) {
 		want    string // exact text that must appear
 		notWant string // the re-cased corruption that must not appear
 	}{
-		// Repair 2: the removed lane flags and the entry-token conflict.
-		{"cc -l", []string{"cc", "-l"}, "-l flag was removed; use -a", "-L"},
-		{"cc --lane", []string{"cc", "--lane"}, "--lane flag was removed; use -a", "--Lane"},
-		{"glm -l", []string{"glm", "-l"}, "-l flag was removed; use -a", "-L"},
-		{"glm --lane", []string{"glm", "--lane"}, "--lane flag was removed; use -a", "--Lane"},
-		{"cc -f -a", []string{"cc", "-f", "-a"}, "-f/--factory and -a are two entry tokens", "-F/--Factory"},
-		{"cc -a -f", []string{"cc", "-a", "-f"}, "-f/--factory and -a are two entry tokens", "-F/--Factory"},
+		// Repair 2 / round 2: the removed agent flags and the entry-token conflict.
+		{"cc -a", []string{"cc", "-a"}, "-a flag was removed; use -l", "-A flag"},
+		{"cc -a=x", []string{"cc", "-a=x"}, "-a flag was removed; use -l", "-A flag"},
+		{"cc --agent", []string{"cc", "--agent"}, "--agent flag was removed; use -l", "--Agent"},
+		{"cc --agent=x", []string{"cc", "--agent=x"}, "--agent flag was removed; use -l", "--Agent"},
+		{"glm -a", []string{"glm", "-a"}, "-a flag was removed; use -l", "-A flag"},
+		{"glm --agent", []string{"glm", "--agent"}, "--agent flag was removed; use -l", "--Agent"},
+		{"cc -- --agent x", []string{"cc", "--", "--agent", "x"}, "--agent flag was removed; use --lane", "--Agent"},
+		{"cc -- --agent=x", []string{"cc", "--", "--agent=x"}, "--agent flag was removed; use --lane", "--Agent"},
+		{"cc -f -l", []string{"cc", "-f", "-l"}, "-f/--factory and -l/--lane are two entry tokens", "-F/--Factory"},
+		{"cc -l -f", []string{"cc", "-l", "-f"}, "-f/--factory and -l/--lane are two entry tokens", "-F/--Factory"},
 
 		// Repair 3: -f / --factory carrying a value.
 		{"cc -f=x", []string{"cc", "-f=x"}, "-f/--factory flag takes no argument", "-F/--Factory"},
@@ -60,15 +64,16 @@ func TestT2021_EntryRefusalsKeepTheTypedFlagCase(t *testing.T) {
 		{"cc -f 4", []string{"cc", "-f", "4"}, "-f/--factory flag takes no argument", "-F/--Factory"},
 		{"glm -f lane-2", []string{"glm", "-f", "lane-2"}, "-f/--factory flag takes no argument", "-F/--Factory"},
 
-		// Repair 3: -a carrying a value, or a name.
-		{"cc -a=x", []string{"cc", "-a=x"}, "-a flag takes no argument", "-A takes"},
-		{"cc -a x", []string{"cc", "-a", "x"}, "-a flag takes no argument", "-A takes"},
-		{"cc -a --name foo", []string{"cc", "-a", "--name", "foo"}, "-a flag already names the role", "-A already"},
+		// Repair 3: -l / --lane carrying a value, or a name.
+		{"cc -l=x", []string{"cc", "-l=x"}, "-l/--lane flag takes no argument", "-L/--Lane"},
+		{"cc --lane=x", []string{"cc", "--lane=x"}, "-l/--lane flag takes no argument", "-L/--Lane"},
+		{"cc -l x", []string{"cc", "-l", "x"}, "-l/--lane flag takes no argument", "-L/--Lane"},
+		{"cc -l --name foo", []string{"cc", "-l", "--name", "foo"}, "-l/--lane flag already names the role", "-L/--Lane"},
 		{"cc -f --name lane-2", []string{"cc", "-f", "--name", "lane-2"}, "--name lane-<n> value does not select a lane", "--Name"},
 
 		// Repair 3: --leader.
 		{"cc --leader", []string{"cc", "--leader"}, "--leader flag requires a leader label", "--Leader"},
-		{"cc -a --leader lead-1", []string{"cc", "-a", "--leader", "lead-1"}, "--leader value \"lead-1\" is the legacy leader spelling", "--Leader"},
+		{"cc -l --leader lead-1", []string{"cc", "-l", "--leader", "lead-1"}, "--leader value \"lead-1\" is the legacy leader spelling", "--Leader"},
 		{"cc -f --leader leader-2", []string{"cc", "-f", "--leader", "leader-2"}, "--leader flag names the leader session", "--Leader"},
 		{"cc --leader x --factory-run y", []string{"cc", "--leader", "x", "--factory-run", "y"}, "--leader and --factory-run flags name two different selectors", "--Leader"},
 
@@ -77,11 +82,11 @@ func TestT2021_EntryRefusalsKeepTheTypedFlagCase(t *testing.T) {
 		{"cc --factory-run=", []string{"cc", "--factory-run="}, "--factory-run flag requires a run id", "--Factory-Run"},
 
 		// Repair 3: --clear-policy and --no-auto-dispatch.
-		{"cc -a --clear-policy", []string{"cc", "-a", "--clear-policy"}, "--clear-policy flag requires a clear policy value", "--Clear-Policy"},
-		{"cc -a --clear-policy bogus", []string{"cc", "-a", "--clear-policy", "bogus"}, "--clear-policy flag takes clear-each", "--Clear-Policy"},
+		{"cc -l --clear-policy", []string{"cc", "-l", "--clear-policy"}, "--clear-policy flag requires a clear policy value", "--Clear-Policy"},
+		{"cc -l --clear-policy bogus", []string{"cc", "-l", "--clear-policy", "bogus"}, "--clear-policy flag takes clear-each", "--Clear-Policy"},
 		{"cc --clear-policy clear-each", []string{"cc", "--clear-policy", "clear-each"}, "--clear-policy flag selects a factory lane's clear policy", "--Clear-Policy"},
 		{"cc -f --clear-policy clear-each", []string{"cc", "-f", "--clear-policy", "clear-each"}, "--clear-policy flag selects a lane's clear policy", "--Clear-Policy"},
-		{"cc -a --no-auto-dispatch=x", []string{"cc", "-a", "--no-auto-dispatch=x"}, "--no-auto-dispatch flag takes no value", "--No-Auto-Dispatch"},
+		{"cc -l --no-auto-dispatch=x", []string{"cc", "-l", "--no-auto-dispatch=x"}, "--no-auto-dispatch flag takes no value", "--No-Auto-Dispatch"},
 		{"cc --no-auto-dispatch", []string{"cc", "--no-auto-dispatch"}, "--no-auto-dispatch flag selects a factory lane's dispatch mode", "--No-Auto-Dispatch"},
 		{"cc -f --no-auto-dispatch", []string{"cc", "-f", "--no-auto-dispatch"}, "--no-auto-dispatch flag selects a lane's dispatch mode", "--No-Auto-Dispatch"},
 

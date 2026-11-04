@@ -21,7 +21,7 @@ import (
 var findProjectRootFn = findProjectRoot
 
 var ccCmd = &cobra.Command{
-	Use:   "cc [-p profile] [-f | -a] [-- claude-args...]",
+	Use:   "cc [-p profile] [-f | -l] [-- claude-args...]",
 	Short: "Launch Claude Code with Claude backend",
 	Long: `Launch Claude Code with Claude backend.
 
@@ -54,15 +54,15 @@ Flags:
                                 launcher adds neither (Chrome stays attachable
                                 via /chrome unless you pass --no-chrome)
 
-Factory Mode (dedicated -f and -a entries):
+Factory Mode (dedicated -f and -l entries):
   -f, --factory                Enter as the LEADER of a factory run. The flag
                                 takes no argument: lanes join one at a time
-                                with -a. The leader routes operator-picked
+                                with -l. The leader routes operator-picked
                                 cards to free lanes over cross-session
                                 messages — each card goes WHOLE to one lane,
                                 which carries it through plan -> run -> sync
                                 in-session.
-  -a                           Join the running factory as an AGENT (a
+  -l, --lane                   Join the running factory as a LANE (a
                                 lane-<n> session): the next free lane-<n>
                                 label is claimed for this session. The flag takes no argument. If the
                                 run's record is missing or retired while a
@@ -70,12 +70,12 @@ Factory Mode (dedicated -f and -a entries):
                                 that leader (pid + process-start) and
                                 restores its run, so the lane still lands on
                                 the live factory.
-  --leader <name>              With -a: which leader session the
+  --leader <name>              With -l: which leader session the
                                 record-absence verification targets
                                 (default: leader). A legacy spelling of the
                                 leader name is refused.
-  One entry token per launch: -f beside -a is an error. The former -l/--lane
-  spelling is removed and refused with a line naming -a. A lane number
+  One entry token per launch: -f beside -l is an error. The former -a/--agent
+  spelling is removed and refused with a line naming -l/--lane. A lane number
   held by a live session is bumped to the next free number.
   Legacy role and label spellings (the pre-rename nouns, any letter case)
   are refused — the error names the canonical lane-<n> label.
@@ -84,7 +84,7 @@ Factory Mode (dedicated -f and -a entries):
   in #1513 (7f61332ef). -f briefly returned as the factory fan-out flag and
   was RETIRED (v1.2.0) in favor of '-k <N>'; t118 (v3.1.1) revived it as the
   dedicated factory entry, and -k itself is now retired: a launch carrying
-  it is refused with one line naming -f and -a.
+  it is refused with one line naming -f and -l.
 
 Permission Modes:
   default            Ask permissions for file edits and commands
@@ -104,8 +104,8 @@ Examples:
   moai cc -w feat-login --spawn        # Teammate session in a new tmux window
   moai cc -w develop --branch develop  # Integration worktree on the existing develop branch
   moai cc -f                          # Factory leader: one lane (lane-1)
-  moai cc -a                           # Join the running factory as the next free agent (lane)
-  moai glm -a                          # Same agent on the GLM backend`,
+  moai cc -l                           # Join the running factory as the next free lane
+  moai glm -l                          # Same lane on the GLM backend`,
 	GroupID:            "launch",
 	DisableFlagParsing: true,
 	RunE:               runCC,
@@ -181,7 +181,7 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 		return err
 	}
 	// The entry parse (t118): parseLauncherEntry refuses the retired -k
-	// spelling, then covers the factory surface (-f for the leader, -a
+	// spelling, then covers the factory surface (-f for the leader, -l
 	// for a lane). Parsed after --spawn is stripped (a spawned session re-issues
 	// this command and must carry the token through) and before worktree
 	// handling (so an entry token can never be mistaken for a -w value). The

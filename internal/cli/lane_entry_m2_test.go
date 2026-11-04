@@ -85,7 +85,7 @@ func requireTokens(t *testing.T, args []string, msg string, tokens ...string) {
 	}
 }
 
-// TestLaneEntryJoinsNextFreeSlot — AC-001: `-a` takes the next free
+// TestLaneEntryJoinsNextFreeSlot — AC-001: `-l` and `--lane` take the next free
 // lane label through the shared claim — one past the highest LIVE claim, dead
 // claims pruned, never backfilling — and the claim row exists afterwards.
 func TestLaneEntryJoinsNextFreeSlot(t *testing.T) {
@@ -97,10 +97,10 @@ func TestLaneEntryJoinsNextFreeSlot(t *testing.T) {
 		spells []string // lane entry spellings exercised (F1 carries both)
 	}
 	fixtures := []fixture{
-		{name: "F1", live: map[string]int{"lane-1": 41001}, want: "lane-2", spells: []string{"-a"}},
-		{name: "F2", live: map[string]int{"lane-1": 41001, "lane-3": 41003}, want: "lane-4", spells: []string{"-a"}},
-		{name: "F3", dead: map[string]int{"lane-1": 41099}, want: "lane-1", spells: []string{"-a"}},
-		{name: "F4", live: map[string]int{"lane-2": 41002}, dead: map[string]int{"lane-5": 41098}, want: "lane-3", spells: []string{"-a"}},
+		{name: "F1", live: map[string]int{"lane-1": 41001}, want: "lane-2", spells: []string{"-l", "--lane"}},
+		{name: "F2", live: map[string]int{"lane-1": 41001, "lane-3": 41003}, want: "lane-4", spells: []string{"-l"}},
+		{name: "F3", dead: map[string]int{"lane-1": 41099}, want: "lane-1", spells: []string{"-l"}},
+		{name: "F4", live: map[string]int{"lane-2": 41002}, dead: map[string]int{"lane-5": 41098}, want: "lane-3", spells: []string{"-l"}},
 	}
 	for _, fx := range fixtures {
 		for _, verb := range laneVerbs {
@@ -166,25 +166,25 @@ func TestLaneEntryComposesWithLaneOptions(t *testing.T) {
 		args []string
 		pass func(entry launcherEntryParse) string // "" = ok, otherwise the complaint
 	}{
-		{[]string{"-a", "--leader", "leader-2"}, func(e launcherEntryParse) string { return wantString("FactoryLead", e.FactoryLead, "leader-2") }},
-		{[]string{"-a", "--leader=leader-2"}, func(e launcherEntryParse) string { return wantString("FactoryLead", e.FactoryLead, "leader-2") }},
-		{[]string{"-a", "--clear-policy", config.FactoryClearPolicyEach}, func(e launcherEntryParse) string {
+		{[]string{"-l", "--leader", "leader-2"}, func(e launcherEntryParse) string { return wantString("FactoryLead", e.FactoryLead, "leader-2") }},
+		{[]string{"--lane", "--leader=leader-2"}, func(e launcherEntryParse) string { return wantString("FactoryLead", e.FactoryLead, "leader-2") }},
+		{[]string{"-l", "--clear-policy", config.FactoryClearPolicyEach}, func(e launcherEntryParse) string {
 			return wantString("ClearPolicy", e.ClearPolicy, config.FactoryClearPolicyEach)
 		}},
-		{[]string{"-a", "--no-auto-dispatch"}, func(e launcherEntryParse) string {
+		{[]string{"-l", "--no-auto-dispatch"}, func(e launcherEntryParse) string {
 			if !e.AutoDispatchManual {
 				return "AutoDispatchManual = false, want true"
 			}
 			return ""
 		}},
-		{[]string{"-a", "--factory-run", "runx0001"}, func(e launcherEntryParse) string { return wantString("FactoryRun", e.FactoryRun, "runx0001") }},
-		{[]string{"-a", "-w", "feat-x"}, func(e launcherEntryParse) string {
+		{[]string{"-l", "--factory-run", "runx0001"}, func(e launcherEntryParse) string { return wantString("FactoryRun", e.FactoryRun, "runx0001") }},
+		{[]string{"-l", "-w", "feat-x"}, func(e launcherEntryParse) string {
 			if !containsFlag(e.Rest, "-w") || !containsFlag(e.Rest, "feat-x") {
 				return "Rest = " + strings.Join(e.Rest, " ") + ", want the -w pair preserved"
 			}
 			return ""
 		}},
-		{[]string{"-a", "--", "--print"}, func(e launcherEntryParse) string {
+		{[]string{"-l", "--", "--print"}, func(e launcherEntryParse) string {
 			if !containsFlag(e.Rest, "--print") {
 				return "Rest = " + strings.Join(e.Rest, " ") + ", want the passthrough token kept"
 			}
@@ -207,7 +207,7 @@ func TestLaneEntryComposesWithLaneOptions(t *testing.T) {
 	// Launch-level rows: the selections reach the launched lane.
 	for _, verb := range laneVerbs {
 		root := netLaneFixture(t, verb.backend)
-		launch := netDriveLaunch(t, root, verb.entry, []string{"-a", "--clear-policy", config.FactoryClearPolicyWhenFull, "--no-auto-dispatch", "-p", "work"})
+		launch := netDriveLaunch(t, root, verb.entry, []string{"-l", "--clear-policy", config.FactoryClearPolicyWhenFull, "--no-auto-dispatch", "-p", "work"})
 		if launch.err != nil || !launch.launched {
 			t.Errorf("%s -l with options: launched=%v err=%v", verb.name, launch.launched, launch.err)
 			continue
@@ -223,7 +223,7 @@ func TestLaneEntryComposesWithLaneOptions(t *testing.T) {
 		// launch is still the lane the entry token named (the desugared --name
 		// sits ahead of the marker), and the child still receives the tokens.
 		root = netLaneFixture(t, verb.backend)
-		launch = netDriveLaunch(t, root, verb.entry, []string{"-a", "--", "--print"})
+		launch = netDriveLaunch(t, root, verb.entry, []string{"-l", "--", "--print"})
 		if launch.err != nil || !launch.launched {
 			t.Errorf("%s -l -- --print: launched=%v err=%v", verb.name, launch.launched, launch.err)
 			continue
@@ -258,7 +258,7 @@ func TestFactoryLaneSpellingsRefused(t *testing.T) {
 		} {
 			t.Run(verb.name+"_"+strings.Join(args, "_"), func(t *testing.T) {
 				if err := m2Refusal(t, verb.backend, verb.entry, args); err != nil {
-					requireTokens(t, args, err.Error(), "-a")
+					requireTokens(t, args, err.Error(), "-l")
 				}
 			})
 		}
@@ -282,7 +282,7 @@ func TestFactoryCountShapeStillRefused(t *testing.T) {
 		t.Run(verb.name, func(t *testing.T) {
 			args := []string{"-f", "3"}
 			if err := m2Refusal(t, verb.backend, verb.entry, args); err != nil {
-				requireTokens(t, args, err.Error(), "-f", "-a")
+				requireTokens(t, args, err.Error(), "-f", "-l")
 			}
 		})
 	}
