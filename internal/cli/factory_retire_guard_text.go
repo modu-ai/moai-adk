@@ -17,7 +17,7 @@ const (
 	retireCardsHeader      = "진행 중 카드 (카드 id, 상태, 소유자):"
 	retireCardLineFmt      = "  %s  %s  %s"
 	retireExitsHeader      = "은퇴 대신 쓸 수 있는 방법 (run이 활성인 동안):"
-	retireExitJoinFmt      = "  레인으로 합류: moai cc -l --factory-run %s"
+	retireExitJoinFmt      = "  레인으로 합류: moai cc -a --factory-run %s"
 	retireExitAdoptFmt     = "  리더로 이어받기: moai cc -f --factory-run %s (codex가 이끄는 run은 거절됩니다)"
 	retireExitAbandonFmt   = "  카드 종료: moai factory decide %s --choice abandon --run %s"
 	retireAbandonNote      = "카드 종료는 되돌릴 수 없고, 레인 세션에서는 거절되며, 임대가 만료된 카드는 한 번 더 호출해야 종료됩니다."

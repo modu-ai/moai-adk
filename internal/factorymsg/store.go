@@ -428,7 +428,8 @@ func ResolveActiveRun(ctx context.Context, projectRoot, explicit string) (_ stri
 	// a single-active-run join pays nothing. It only ever REMOVES provably-dead
 	// owners from the active set — it never selects among survivors, so the
 	// fail-closed behaviour below is preserved and ambiguity that survives it
-	// is real ambiguity.
+	// is real ambiguity. Removing a dead owner's run may MOVE its unfinished
+	// cards to the one live run (ReconcileActiveRuns), which is a write.
 	rec, err := db.ReconcileActiveRuns(ctx, ReconcileOptionsFor(projectRoot))
 	if err != nil {
 		return "", err

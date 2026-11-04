@@ -123,7 +123,9 @@ func TestWebLiveKeyContract(t *testing.T) {
 
 	liveRe := regexp.MustCompile(`data-live="([^"]+)"`)
 	root := t.TempDir()
-	for _, path := range []string{"/", "/factory", "/specs", "/monitor", "/todo"} {
+	// "/" now redirects to /board; the overview it used to serve lives at
+	// /overview, and the board is a screen of its own, so both are swept.
+	for _, path := range []string{"/overview", "/board", "/factory", "/specs", "/monitor", "/todo"} {
 		for _, m := range liveRe.FindAllStringSubmatch(m9ScreenBody(t, root, path), -1) {
 			if !known[m[1]] {
 				t.Errorf("%s declares data-live=%q, which is not in the live key set %v", path, m[1], clientKeys)
@@ -133,12 +135,13 @@ func TestWebLiveKeyContract(t *testing.T) {
 }
 
 // TestTodoScreenStillLive — AC-019: the todo queue keeps its live updates. The
-// Todo screen and the overview todo card carry the renamed live area, and the
+// Todo screen and the overview todo card (the overview is served at /overview
+// since / leads to the board) carry the renamed live area, and the
 // watched queue directory still resolves to that same event, so a queue write
 // still refreshes both.
 func TestTodoScreenStillLive(t *testing.T) {
 	root := t.TempDir()
-	for _, path := range []string{"/todo", "/"} {
+	for _, path := range []string{"/todo", "/overview"} {
 		body := m9ScreenBody(t, root, path)
 		if !strings.Contains(body, `data-live="factory"`) {
 			t.Errorf("GET %s carries no data-live=\"factory\" area for the todo queue", path)

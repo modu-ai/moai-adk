@@ -65,7 +65,7 @@ func TestResolveFactoryWorkerNameAutoIgnoresLegacyRows(t *testing.T) {
 // refused before the merge (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-003).
 func TestParseLauncherEntryMarksAutoAssignedNumbers(t *testing.T) {
 	t.Setenv("CLAUDE_PROJECT_DIR", t.TempDir())
-	for args, want := range map[string]bool{"-l": true, "-f": false} {
+	for args, want := range map[string]bool{"-a": true, "-f": false} {
 		p, err := parseLauncherEntry(strings.Fields(args))
 		if err != nil {
 			t.Fatalf("parseLauncherEntry(%s): %v", args, err)

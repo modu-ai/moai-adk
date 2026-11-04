@@ -12,6 +12,7 @@
 package web
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -176,6 +177,7 @@ type MonitorVM struct {
 	Epics      []EpicVM
 	VerifyKeys int
 	Cwd        string
+	Browser    BrowserSelectionVM
 }
 
 // ─── 상태 판정 ───────────────────────────────────────────────────────────────
@@ -627,6 +629,7 @@ func (a *app) buildMonitor(now time.Time) (MonitorVM, error) {
 		Verify:     verifyRows,
 		VerifyKeys: verifyKeys,
 		Cwd:        root,
+		Browser:    a.buildBrowserSelection(context.Background()),
 	}, nil
 }
 

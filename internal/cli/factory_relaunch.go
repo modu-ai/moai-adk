@@ -118,11 +118,11 @@ func relaunchRetireFromRun(ctx context.Context, runID string) string {
 }
 
 // relaunchLaneIgnoredNote is the one stderr line printed when --lane is
-// supplied: the launcher join the verb runs is `-l`, which takes no argument
+// supplied: the launcher join the verb runs is `-a`, which takes no argument
 // (SPEC-LAUNCHER-ENTRY-FLAGS-001 REQ-002), so the supplied label cannot pin
 // the slot and the session joins as the next free lane.
 func relaunchLaneIgnoredNote(lane string) string {
-	return fmt.Sprintf("--%s %s is ignored: the launcher join -l takes no argument, so the session joins as the next free lane",
+	return fmt.Sprintf("--%s %s is ignored: the launcher join -a takes no argument, so the session joins as the next free lane",
 		factory.RelaunchFlagLane, lane)
 }
 
@@ -136,9 +136,9 @@ func newFactoryRelaunchCommand() *cobra.Command {
 		Short: "Relaunch a factory lane session into a live run",
 		Long: `Relaunch a factory lane session into a live run.
 
-The verb re-executes the provider's own lane entry — 'moai cc -l' or 'moai glm -l'
+The verb re-executes the provider's own lane entry — 'moai cc -a' or 'moai glm -a'
 through the shared lane-join gate — so the run is
-resolved exactly as when the operator types that line. '-l' takes no argument, so
+resolved exactly as when the operator types that line. '-a' takes no argument, so
 a supplied --lane is not passed on: the verb says so on stderr and the session
 joins as the next free lane.
 Run it from a terminal after ending the stale session; the stale-run notice prints
@@ -191,7 +191,7 @@ card leases or worktrees.`,
 		},
 	}
 	cmd.Flags().StringVar(&provider, factory.RelaunchFlagProvider, factory.RelaunchProviderCC, "Launcher to re-enter through: cc or glm")
-	cmd.Flags().StringVar(&lane, factory.RelaunchFlagLane, "", "Lane label the stale session carried (lane-<n>); recorded for the notice only: the join takes the next free lane, since -l takes no argument")
+	cmd.Flags().StringVar(&lane, factory.RelaunchFlagLane, "", "Lane label the stale session carried (lane-<n>); recorded for the notice only: the join takes the next free lane, since -a takes no argument")
 	cmd.Flags().StringVar(&run, factory.RelaunchFlagRun, "", "Run to join (--factory-run); omitted resolves the single active run")
 	cmd.Flags().StringVar(&fromRun, factory.RelaunchFlagFromRun, "", "Retire this run first when it is active and its owner is dead; otherwise leave it untouched")
 	cmd.Flags().BoolVar(&dryRun, factory.RelaunchFlagDryRun, false, "Print the launch line and write nothing")

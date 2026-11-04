@@ -469,7 +469,7 @@ The `status` field uses the canonical 8-value enum owned by `.claude/rules/moai/
 **Rule 1: EARS Pattern Coverage**
 - At least 3 of 5 EARS patterns used
 - Ubiquitous or Event-Driven pattern present
-- No mixing of patterns in single requirement
+- No legacy IF/THEN mixed into a GEARS clause (Where/While/When chaining is allowed)
 
 **Rule 2: Test Scenario Coverage**
 - Minimum 5 test scenarios per SPEC

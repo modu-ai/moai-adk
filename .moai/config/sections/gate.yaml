@@ -24,6 +24,10 @@ gate:
     # A type-check over a large monorepo routinely outlasts the test budget,
     # so it gets its own.
     typecheck: 300
+    # Overall budget for one whole `moai gate` run, in seconds. Leave it unset
+    # to derive it from the steps the run takes (never below 10 minutes); a
+    # value below the largest single step budget is raised to that step.
+    # total: 1200
     # How long a starting `moai gate` run waits for the gate-run lock — the
     # advisory lock that serializes concurrent manual gate runs in one
     # project — before degrading to an unserialized run. On expiry the run

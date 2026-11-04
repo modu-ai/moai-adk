@@ -154,9 +154,10 @@ func divergentColumns(src, tgt Card) []string {
 //	    abandoned with a pointer) — not those of terminal cards left in the source,
 //	(6) flips the source to retired and appends one run.retired event.
 //
-// Any refusal and any failure rolls everything back. No row is deleted, and
-// leader_approvals is never touched (REQ-FCR-023): a re-keyed card needs a
-// fresh approval under the target run.
+// Any refusal and any failure rolls everything back. Cards and events are never
+// deleted; the one deletion is the source's positively-dead worker rows (each
+// leaves a worker.reaped event), and leader_approvals is never touched
+// (REQ-FCR-023): a re-keyed card needs a fresh approval under the target run.
 //
 // @MX:ANCHOR: [AUTO] the single consolidation operation behind leader entry, `runs --retire --rebind-to` and the join prompt's m<n>
 // @MX:REASON: three operator-facing surfaces call it (fan_in >= 3); a guard dropped here is dropped for all of them, and a wrong move strands or steals a live run's cards
@@ -301,6 +302,11 @@ func (f *FactoryDB) RebindRun(ctx context.Context, req RebindRequest, opts Recon
 		}
 	}
 	if err := rebindInject(rebindPointAfterCards); err != nil {
+		return RebindResult{}, err
+	}
+	// refuseLiveWorker passed, so every worker row of the source is positively
+	// dead: they leave with the run instead of outliving it.
+	if err := reapDeadWorkers(ctx, tx, src.RunID, opts.workerProbe(), now); err != nil {
 		return RebindResult{}, err
 	}
 	// Step 5 — the binding of every card step 4 moved, re-keyed or abandoned with
