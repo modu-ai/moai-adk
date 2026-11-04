@@ -14,6 +14,9 @@
 
 Reason for "not adopted": this card's own commit (8aed1a8293) changes only internal/homestate/location_memo.go and internal/homestate/location_memo_symlink_test.go. The scope=card base is the card's branch point, so the diff the reviewer saw also contains the merged `release/main-batch` (f9a4efd964, merge 9fc89e246e); all three findings sit in Go code from that batch, which this card neither wrote nor was dispatched to change (the card targets mergeq.go, location_memo.go and af.go). They are the same three findings the t2022 reviews reported. Carried to the leader as information; not recorded as a pass.
 
+## Scope note
+- This review covers HEAD 8aed1a8293 only. The later commits 8dab263d8b, 7bcadec9c3 and 83f81f3042 (mergeq refusal of tracked gate changes, plus the cli pin test) were NOT reviewed by the tool: the leader forbade a re-review for that item.
+
 ## Gaps
 - The tool output names no finding on the changed homestate files, and none on the three files the card targets; it does not show whether it read them in detail.
 - The review is static; no test or build was run by the reviewer.
