@@ -126,7 +126,10 @@ func factoryLaneRuleForSource(source, lang string) string {
 // the owned-card rule instead of misdirecting it at the parent-checkout
 // queue verb). dir may be empty; an empty dir resolves env-only.
 func factoryLaneRuleForSourceInDir(source, lang, dir string) string {
-	if source != "" && source != "startup" && source != "clear" {
+	// startup, clear and compact (and an unset source) carry the rule: after a compact only a summary of
+	// the conversation remains, so the rule text must be injected again. Resume does not — the transcript
+	// still holds the earlier injection.
+	if source != "" && source != "startup" && source != "clear" && source != "compact" {
 		return ""
 	}
 	label := os.Getenv(config.EnvMoaiFactoryWorker)
@@ -150,7 +153,7 @@ func factoryLaneRuleForSourceInDir(source, lang, dir string) string {
 		// owned-card rule below does not, because that harness has no session
 		// cron tool.
 		m := factoryMessagesFor(lang)
-		recheck := fmt.Sprintf(m.laneRecheckRule, laneArmExpression())
+		recheck := fmt.Sprintf(m.laneRecheckRule, laneWakeBound())
 		if os.Getenv(config.EnvFactoryAutoDispatch) == config.FactoryDispatchManual {
 			return m.laneManualDispatchRule + "\n\n" + recheck
 		}
@@ -185,16 +188,15 @@ func factoryLaneRuleForSourceInDir(source, lang, dir string) string {
 	}
 }
 
-// laneArmExpression renders the arm expression of the standing recheck, `*/N * * * *`,
-// for the effective watchdog renewal period, workflow.factory_lease.renew_interval
-// (SPEC-FACTORY-LEASE-RENEW-001 REQ-FLR-012). The configuration is read from the
-// project root the factory opens: the launch base, CLAUDE_PROJECT_DIR or else the
-// working directory, resolved through factory.ResolveTodoQueueRoot. That is the
-// resolution the factory's own root uses (internal/cli factoryCardRoot), so the
-// rendered period is the one the factory enforces. A configuration the factory
-// refuses renders the default period, because a session-start hook must not block;
-// the factory's own open names the refused key.
-func laneArmExpression() string {
+// laneWakeBound renders the longest delay a self-paced wake may be scheduled at, `renew_interval=Nm`, for
+// the effective watchdog renewal period, workflow.factory_lease.renew_interval
+// (SPEC-FACTORY-LEASE-RENEW-001 REQ-FLR-012): a lane that sleeps longer than the lease renewal period would
+// lose its lease. The configuration is read from the project root the factory opens: the launch base,
+// CLAUDE_PROJECT_DIR or else the working directory, resolved through factory.ResolveTodoQueueRoot. That is
+// the resolution the factory's own root uses (internal/cli factoryCardRoot), so the rendered period is the
+// one the factory enforces. A configuration the factory refuses renders the default period, because a
+// session-start hook must not block; the factory's own open names the refused key.
+func laneWakeBound() string {
 	renew := config.DefaultFactoryLeaseRenewInterval
 	base := os.Getenv(config.EnvClaudeProjectDir)
 	if base == "" {
@@ -205,7 +207,11 @@ func laneArmExpression() string {
 			renew = configured
 		}
 	}
-	return fmt.Sprintf("*/%d * * * *", int(renew/time.Minute))
+	minutes := int(renew / time.Minute)
+	if minutes < 1 {
+		minutes = 1 // ScheduleWakeup cannot sleep under 60 seconds; the factory already refuses sub-minute periods, this keeps the bound sane if that ever changes
+	}
+	return fmt.Sprintf("renew_interval=%dm", minutes)
 }
 
 // factoryLanesEnv reads the run's fan-out size from the environment the
@@ -312,7 +318,7 @@ func codexLaneEnvFailFast() string {
 
 // factoryLeaderNotice is the factory leader branch. It carries, in order:
 // (a) the run id and the session name that must accompany it; (b) the one
-// lane-start sentence — to start a lane, enter `moai cc -l` (or `moai glm -l`,
+// lane-start sentence — to start a lane, enter `moai cc -a` (or `moai glm -a`,
 // `moai codex -l`) in a new terminal; (c) the entry-point guide — the -f
 // leader entries — the per-lane fan-out line, and the leader socket path;
 // (d) the dispatch discipline — whole-card routing (each card to ONE lane,
@@ -378,6 +384,11 @@ func factoryLeaderNotice(runID string, lanes int, lang string) string {
 	// (card t1603).
 	blocks = append(blocks, strings.Join([]string{m.autoModeGuideLeader, m.docsPointer}, "\n"))
 
+	// (g) the leader's standing watch cron and the judgment ladder (B6).
+	// The watch period is the lane renewal period on purpose: the leader's pass reads the same evidence the
+	// lanes renew on, so one configured interval (workflow.factory_lease.renew_interval) governs both.
+	blocks = append(blocks, fmt.Sprintf(m.leaderWatchRule, laneWakeBound()))
+
 	return strings.Join(blocks, "\n\n") + "\n"
 }
 
@@ -388,7 +399,7 @@ func factoryLeaderNotice(runID string, lanes int, lang string) string {
 // final name). It does NOT print a launch block: a lane is already running,
 // and the operator has nothing left to paste.
 //
-// The incremental `-l` lane entry carries no run count (the launcher
+// The incremental `-a` agent entry carries no run count (the launcher
 // publishes 0), and the count-less sentence names the label alone rather
 // than fabricating a fan-out size. Both sentences take (label, lanes);
 // the per-locale word order differs (en/ja/ko say the count first, zh the

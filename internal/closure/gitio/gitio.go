@@ -88,6 +88,15 @@ func IsAncestor(dir, a, b string) (bool, error) {
 	return false, err
 }
 
+// MergeBase returns the best common ancestor commit of a and b (the fork
+// point of two branches). Unrelated histories, or an unresolvable rev, are an
+// error. Like IsAncestor, it lives here so that ancestry questions have a
+// single owner outside package internal/cli, whose sweep guard
+// (REQ-ABI-006) forbids new direct comparisons there.
+func MergeBase(dir, a, b string) (string, error) {
+	return Run(dir, "merge-base", a, b)
+}
+
 // NonMergeCommits lists the non-merge commits in from..to (from exclusive,
 // to inclusive), oldest first, with each commit's changed paths.
 func NonMergeCommits(dir, from, to string) ([]CommitPaths, error) {

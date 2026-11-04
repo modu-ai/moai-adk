@@ -5,6 +5,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/modu-ai/moai-adk/internal/atomicfile"
 )
 
 // SectionIHeading is the canonical progress.md §I Token Accounting heading.
@@ -44,7 +46,8 @@ func BuildSectionI(attr Attribution) string {
 // §I section is absent, appends) the `## §I Token Accounting` section with a
 // freshly built field block derived from attr, and writes the result back.
 //
-// Idempotent: a second call with the same attr overwrites the first cleanly.
+// Idempotent: a second call with the same attr leaves the file untouched (no
+// write at all, card t2013); a changed attr replaces the file.
 // Scope-safe: it MUST NOT touch any other section (§E.*, §F, §G, §H, ...);
 // only the span from the §I heading to the next top-level (## ) heading, or
 // EOF, is replaced. Parser-safe by construction: the §I heading and field
@@ -60,7 +63,7 @@ func WriteSectionI(progressPath string, attr Attribution) error {
 		return fmt.Errorf("tokenusage: read progress for §I write %q: %w", progressPath, err)
 	}
 	updated := applySectionI(string(content), attr)
-	if err := os.WriteFile(progressPath, []byte(updated), 0o644); err != nil {
+	if _, err := atomicfile.WriteFileIfChanged(progressPath, []byte(updated), 0o644); err != nil {
 		return fmt.Errorf("tokenusage: write progress §I %q: %w", progressPath, err)
 	}
 	return nil

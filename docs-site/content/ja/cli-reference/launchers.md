@@ -16,7 +16,7 @@ draft: false
 ## moai cc — Claude バックエンド
 
 ```bash
-moai cc [-p profile] [-w [name]] [-- claude-args...]
+moai cc [-p profile] [-w [name]] [-f | -a] [-- claude-args...]
 ```
 
 `.claude/settings.local.json` から GLM 専用の環境変数を取り除き、team モードが有効だった場合はリセットしたうえで Claude Code を起動します。
@@ -29,15 +29,17 @@ moai cc [-p profile] [-w [name]] [-- claude-args...]
 | `-c, --continue` | 前回のセッションを継続 |
 | `-m, --model <model>` | モデル選択をオーバーライド |
 | `-w, --worktree [name]` | 隔離された git worktree (`.claude/worktrees/<name>/`) で起動 — 名前を省略すると自動生成 |
+| `--branch <existing>` | `-w <name>` と併用: 新しいブランチを作る代わりに、**既存の**ブランチをチェックアウトした worktree を作成します (例: gitflow の統合 worktree 向けの `moai cc -w develop --branch develop`)。ブランチはあらかじめ存在している必要があり、このフラグがブランチを作ることはありません。作成したツリーは worktree ツールが使えるよう `.moai/state/worktrees.json` に登録されます |
+| `--spawn` | 現在のセッションを置き換えず、新しい tmux ウィンドウでコマンドを実行します (tmux が必要) |
 | `--chrome` / `--no-chrome` | Claude Code にそのまま渡します。ランチャーはどちらも自動では付けないため、`--no-chrome` を指定しない限り `/chrome` で接続できます |
-| `-f, --factory` | **ファクトリーリーダー**として進入します。引数は取りません。リーダーは運用者が選んだカードをクロスセッションメッセージで空きレーンに丸ごと割り当て、レーンは `-l` で合流させます |
-| `-l, --lane` | 稼働中のファクトリーに**レーン**として合流し、次の `lane-<n>` 番号（生きているレーンの最大番号の次）を自動で受け取ります。引数は取らず、稼働中のファクトリーがなければ拒否されます。`moai glm -l` と `moai codex -l` も同じ動作です |
-| `--leader <name>` | `-l` または `--lane` とだけ併用します。合流先のリーダーセッションを指定します (既定値 `leader`、旧綴り `lead` は拒否)。実行の記録が欠けているか退役済みでも、生きているリーダーがいれば、合流はそのリーダーを検証 (pid + プロセス開始) してその実行を復元します |
-| `--factory-run <run-id>` | `-l` と併用: 合流する実行を id で指定します。`--leader` とは併用できません |
-| `--clear-policy <value>` | `moai cc -l` · `moai glm -l` と併用: カードを終えたあとコンテキストを空ける方法です (`clear-each` が既定、`clear-when-full`、`relaunch`) |
-| `--no-auto-dispatch` | `moai cc -l` · `moai glm -l` と併用: レーンを手動モードで起動します。既定は、キューの次のカードを自分で借り受ける自己配車レーンです |
+| `-f, --factory` | **ファクトリーリーダー**として進入します。引数は取りません。リーダーは運用者が選んだカードをクロスセッションメッセージで空きレーンに丸ごと割り当て、レーンは `-a` で合流させます |
+| `-a` | 稼働中のファクトリーに**レーン**として合流し、次の `lane-<n>` 番号（生きているレーンの最大番号の次）を自動で受け取ります。引数は取らず、稼働中のファクトリーがなければ拒否されます。`moai glm -a` と `moai codex -l` も同じ動作です |
+| `--leader <name>` | `-a` とだけ併用します。合流先のリーダーセッションを指定します (既定値 `leader`、旧綴り `lead` は拒否)。実行の記録が欠けているか退役済みでも、生きているリーダーがいれば、合流はそのリーダーを検証 (pid + プロセス開始) してその実行を復元します |
+| `--factory-run <run-id>` | `-a` と併用: 合流する実行を id で指定します。`--leader` とは併用できません |
+| `--clear-policy <value>` | `moai cc -a` · `moai glm -a` と併用: カードを終えたあとコンテキストを空ける方法です (`clear-each` が既定、`clear-when-full`、`relaunch`) |
+| `--no-auto-dispatch` | `moai cc -a` · `moai glm -a` と併用: レーンを手動モードで起動します。既定は、キューの次のカードを自分で借り受ける自己配車レーンです |
 
-{{< callout type="info" >}} 進入トークンは `-f` (リーダー) と `-l` (レーン) の2つだけで、どちらも引数を取りません。1回の起動に付けられるトークンは1つなので、`-f` と `-l` を同時に付けるとエラーです。`-f <値>`、`-l lane-2` のように値を付ける形や、Codex でリーダーを求める `moai codex` の `-f` は、すべて1行のエラーで拒否されます。廃止された `-k` 進入も同じ扱いで、`-f` と `-l` を案内して拒否されます。詳しい契約は[ファクトリーモード](/ja/advanced/factory-mode)と [manager-lead リーダーコーディネーター](/ja/advanced/manager-lead)を参照してください。 {{< /callout >}}
+{{< callout type="info" >}} 進入トークンは `-f` (リーダー) と `-a` (レーン) の2つだけで、どちらも引数を取りません。1回の起動に付けられるトークンは1つなので、`-f` と `-a` を同時に付けるとエラーです。`-f <値>`、`-a lane-2` のように値を付ける形や、Codex でリーダーを求める `moai codex` の `-f` は、すべて1行のエラーで拒否されます。廃止された `-k` 進入も同じ扱いで、`-f` と `-a` を案内して拒否されます。詳しい契約は[ファクトリーモード](/ja/advanced/factory-mode)と [manager-lead リーダーコーディネーター](/ja/advanced/manager-lead)を参照してください。 {{< /callout >}}
 
 カードは丸ごと1つのレーンに入り、そのレーンの中で `plan → run → sync` の3段階を順番に通ります。段階ごとにそのセッションが `Agent()` サブエージェントを起動し、書き込みを担当する起動は `isolation: "worktree"` で分離します。レーン1つが同時に動かせるサブエージェントは最大10個で、ランチャーがレーンのセッションに `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS` としてこの値を設定します。そのため、N 個のレーンがマシンの容量を分け合う構造は、運用者の自制ではなく設定で保証されます。レーンは一斉に立ち上げないでください。最初のレーンを先に起動し、実際に出力が出始めたのを確かめてから残りを立ち上げます。
 

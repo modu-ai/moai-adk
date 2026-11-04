@@ -71,15 +71,13 @@ func sdWantTransitionLine(t *testing.T, out, policy string) {
 	if strings.Contains(trimmed, "\n") {
 		t.Fatalf("policy %s: printed more than one line:\n%s", policy, out)
 	}
-	if strings.Contains(out, "/clear") {
-		t.Fatalf("policy %s: output %q carries a clear instruction", policy, out)
-	}
-	if !strings.Contains(out, "ExitWorktree(keep)") {
-		t.Fatalf("policy %s: output %q does not name the in-session transition step", policy, out)
-	}
 	if !strings.Contains(out, policy) {
 		t.Fatalf("policy %s: output %q does not name the policy", policy, out)
 	}
+	// Card t2013 (decisions R22) supersedes the REQ-LNC-007/009 "no clear
+	// instruction" shape: the guidance names ExitWorktree, the default-branch
+	// check, the operator's /clear, and the next-card request, in that order.
+	t2013WantCompletionGuidance(t, out)
 }
 
 // AC-SD-020 — each policy with an injected context-usage record; no policy
@@ -193,7 +191,7 @@ func TestSD_AC020_ClearPolicies(t *testing.T) {
 			findProjectRootFn, deps = prevRoot, prevDeps
 		})
 
-		if err := sdCCEntry([]string{"-l", "--clear-policy", "relaunch"}); err != nil {
+		if err := sdCCEntry([]string{"-a", "--clear-policy", "relaunch"}); err != nil {
 			t.Fatalf("cc lane relaunch: %v", err)
 		}
 		if launches != 1 {
@@ -226,12 +224,7 @@ func TestSD_AC020_ClearPolicies(t *testing.T) {
 		if err != nil {
 			t.Fatalf("cli complete: %v", err)
 		}
-		if n := strings.Count(out, "/clear"); n != 0 {
-			t.Fatalf("complete output carries %d /clear requests, want 0:\n%s", n, out)
-		}
-		if !strings.Contains(out, "ExitWorktree(keep)") {
-			t.Errorf("complete output does not name the in-session transition step:\n%s", out)
-		}
+		t2013WantCompletionGuidance(t, out)
 		if !strings.Contains(out, config.FactoryClearPolicyEach) {
 			t.Errorf("complete output does not name the policy:\n%s", out)
 		}
@@ -276,7 +269,7 @@ func TestSD_AC020_ClearPolicies(t *testing.T) {
 		prevDeps := deps
 		deps = nil
 		t.Cleanup(func() { findProjectRootFn, deps = prevRoot, prevDeps })
-		err := sdCCEntry([]string{"-l", "--clear-policy", "never"})
+		err := sdCCEntry([]string{"-a", "--clear-policy", "never"})
 		if err == nil {
 			t.Fatal("invalid clear-policy value succeeded, want a refusal")
 		}
@@ -337,15 +330,16 @@ func TestFactoryClearPolicyManualDispatch(t *testing.T) {
 			if !strings.Contains(out, "ExitWorktree(keep)") {
 				t.Fatalf("manual %s: output %q does not name the exit step", policy, out)
 			}
-			if !strings.Contains(out, "wait for the leader") {
-				t.Errorf("manual %s: output %q does not tell the lane to wait for the leader's dispatch", policy, out)
+			// Card t2013 (decisions R22) supersedes the "wait for the leader" and
+			// "no /clear" shape: manual dispatch now ends by asking the leader for
+			// the next card, after the operator's /clear step.
+			if !strings.Contains(out, "ask the leader for the next card") {
+				t.Errorf("manual %s: output %q does not tell the lane to ask the leader for the next card", policy, out)
 			}
 			if strings.Contains(out, "factory next") {
 				t.Errorf("manual %s: output %q tells a manual-dispatch lane to lease a card", policy, out)
 			}
-			if strings.Contains(out, "/clear") {
-				t.Errorf("manual %s: output %q carries a clear instruction", policy, out)
-			}
+			t2013WantCompletionGuidance(t, out)
 		})
 	}
 	t.Run("auto dispatch keeps the lease line", func(t *testing.T) {

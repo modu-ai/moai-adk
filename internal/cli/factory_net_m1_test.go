@@ -176,7 +176,7 @@ func TestFactoryNetLaneLaunch(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			root := netLaneFixture(t, tc.backend)
 
-			first := netDriveLaunch(t, root, tc.entry, []string{"-l"})
+			first := netDriveLaunch(t, root, tc.entry, []string{"-a"})
 			if first.err != nil || !first.launched {
 				t.Fatalf("%s -l: launched=%v err=%v", tc.name, first.launched, first.err)
 			}
@@ -206,7 +206,7 @@ func TestFactoryNetLaneLaunch(t *testing.T) {
 			}
 
 			// A second lane while the first claim is live bumps to lane-2.
-			second := netDriveLaunch(t, root, tc.entry, []string{"-l"})
+			second := netDriveLaunch(t, root, tc.entry, []string{"-a"})
 			if second.err != nil || !second.launched {
 				t.Fatalf("%s second -l: launched=%v err=%v", tc.name, second.launched, second.err)
 			}
@@ -264,7 +264,7 @@ func TestFactoryNetBlockCap(t *testing.T) {
 	})
 	t.Run("lane", func(t *testing.T) {
 		root := netLaneFixture(t, factory.BackendClaude)
-		launch := netDriveLaunch(t, root, netCC, []string{"-l"}, func() { check(t, "lane") })
+		launch := netDriveLaunch(t, root, netCC, []string{"-a"}, func() { check(t, "lane") })
 		if launch.err != nil || !launch.launched {
 			t.Fatalf("cc -l: launched=%v err=%v", launch.launched, launch.err)
 		}

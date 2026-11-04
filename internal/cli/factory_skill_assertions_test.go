@@ -116,7 +116,7 @@ func entryShape(row entryRow) string {
 	switch row.args[0] {
 	case "-f", "--factory":
 		kind = "f"
-	case "-l", "--lane":
+	case "-a":
 		kind = "l"
 	default:
 		return ""
@@ -402,16 +402,23 @@ var factorySkillMutants = []struct {
 		want: "documented as accepted but the launcher refuses it",
 	},
 	{
-		name: "-l documented as taking a lane label",
+		name: "-a documented as taking a lane label",
 		mutate: func(s string) string {
-			return strings.Replace(s, "| refused | `moai glm --lane lane-2`", "| accepted | `moai glm --lane lane-2`", 1)
+			return strings.Replace(s, "| refused | `moai glm -a lane-2`", "| accepted | `moai glm -a lane-2`", 1)
+		},
+		want: "documented as accepted but the launcher refuses it",
+	},
+	{
+		name: "a removed -l entry documented as accepted",
+		mutate: func(s string) string {
+			return strings.Replace(s, "| refused | `moai cc -l`", "| accepted | `moai cc -l`", 1)
 		},
 		want: "documented as accepted but the launcher refuses it",
 	},
 	{
 		name: "a lane entry documented as refused",
 		mutate: func(s string) string {
-			return strings.Replace(s, "| accepted | `moai cc -l`", "| refused | `moai cc -l`", 1)
+			return strings.Replace(s, "| accepted | `moai cc -a`", "| refused | `moai cc -a`", 1)
 		},
 		want: "documented as refused but the launcher accepts it",
 	},

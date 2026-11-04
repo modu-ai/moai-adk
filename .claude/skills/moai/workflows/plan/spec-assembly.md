@@ -90,7 +90,7 @@ File generation — **single writer, single-turn parallel Write**: `manager-spec
 [HARD] Before manager-spec calls Write/MultiEdit for spec.md, it MUST validate the frontmatter contains ALL 12 required fields AND rejects snake_case legacy aliases. This checklist prevents dual-schema drift between the plan workflow and the SPEC frontmatter lint rule. SSOT: `.claude/rules/moai/development/spec-frontmatter-schema.md`.
 
 Required 12 fields (canonical order):
-- [ ] `id: SPEC-{DOMAIN}-{NUM}` — matches `^SPEC-[A-Z][A-Z0-9]+-[0-9]{3}$`
+- [ ] `id: SPEC-{DOMAIN}-{NUM}` — matches `^SPEC(-[A-Z][A-Z0-9]*)+-[0-9]{3}$` (one or more domain segments; `internal/cli/specid` / `moai spec lint` is the authority, so this doc must not restate a different shape)
 - [ ] `title: "Human-readable title"` — quoted string
 - [ ] `version: "X.Y.Z"` — quoted semver string (NOT `0.1` unquoted)
 - [ ] `status: draft` — enum: draft | planned | in-progress | implemented | completed | superseded | archived | rejected
@@ -104,7 +104,7 @@ Required 12 fields (canonical order):
 - [ ] `tags: "tag1, tag2, ..."` — comma-separated string (NOT `labels:`, NOT YAML array)
 
 Optional fields (do NOT include unless needed):
-- `issue_number: null` — integer or null (omit entirely when not tracking GitHub issue)
+- `issue_number: null` — integer or null; written only by Step 2.5.2 when `--issue` is set, omit entirely otherwise
 
 Rejected legacy aliases (fail closed — do NOT accept):
 - `created_at:` (use `created:`)
@@ -246,7 +246,7 @@ only that this pass found no unresolved decisions — the Implementation
 Kickoff Approval gate remains a separate affirmative act that fires regardless
 of the row count.
 
-#### Step 2.3.4: FAIL Path — Retry Loop (max 3 iterations)
+#### Step 2.3.4: FAIL Path — Retry Loop (tier-resolved ceiling)
 
 If verdict is FAIL:
 
@@ -256,16 +256,16 @@ If verdict is FAIL:
 
 3. Read new verdict from `.moai/reports/plan-audit/{SPEC-ID}-review-{N+1}.md`.
 
-4. Repeat until PASS or 3 iterations exhausted.
+4. Repeat until PASS or the tier-resolved ceiling is exhausted (`remaining_attempts` reaches 0; S 1 / M 2 / L 3).
 
-Iteration tracking: Display "SPEC review iteration {N}/3" after each verdict.
+Iteration tracking: Display "SPEC review iteration {N}/{ceiling}" after each verdict, where {ceiling} is the tier-resolved ceiling.
 
-#### Step 2.3.5: Escalation after 3 FAIL Iterations
+#### Step 2.3.5: Escalation when the tier-resolved ceiling is exhausted with FAIL
 
-If all three iterations result in FAIL, do NOT proceed to Phase 12 automatically.
+This escalation applies to the `standard` and `thorough` harness levels only; under `minimal` a final FAIL is logged and Phase 12 proceeds, as defined in the harness-level intensity list above. The tier-resolved ceiling (S 1 / M 2 / L 3) owns the number of review attempts. Escalation fires when the final permitted iteration for the SPEC's tier ends in FAIL, that is, when `remaining_attempts` has reached 0 and the latest verdict is still FAIL. This applies identically to Tier S (after the single attempt), Tier M (after the second attempt), and Tier L (after the third attempt). Do NOT proceed to Phase 12 automatically.
 
 Present the full defect history to the user:
-- Show `.moai/reports/plan-audit/{SPEC-ID}-review-1.md` through `-review-3.md`
+- Show `.moai/reports/plan-audit/{SPEC-ID}-review-1.md` through `-review-{ceiling}.md` (only the reports actually generated for this SPEC)
 - Summarize blocking defects that persisted across all iterations
 - Preload: `ToolSearch(query: "select:AskUserQuestion")`
 - Use AskUserQuestion with options:
@@ -288,17 +288,17 @@ For `thorough` harness with `cross_validate_with_evaluator_active: true`: after 
 
 Purpose: Create a GitHub Issue linked to the SPEC document for bidirectional traceability between planning artifacts and issue tracker.
 
-[HARD] Per the late-branch opt-in policy, this phase MUST default to a silent skip. The flag semantics are now opt-in: `--issue` activates creation; the absence of `--issue` skips the entire phase. The legacy `--no-issue` opt-out is no longer required because skipping is the default. SPEC frontmatter MUST NOT carry an `issue_number` field for new SPECs. The removal is prospective only — existing SPECs retain the field.
+[HARD] Per the late-branch opt-in policy, this phase MUST default to a silent skip. The flag semantics are now opt-in: `--issue` activates creation; the absence of `--issue` skips the entire phase. The legacy `--no-issue` opt-out is no longer required because skipping is the default. New SPECs carry no `issue_number` field by default; the field is written only by Step 2.5.2 when `--issue` is set. The removal is prospective only — existing SPECs retain the field.
 
 Execution conditions (ALL must hold):
 - `--issue` flag IS set (explicit opt-in)
 - GitHub CLI (`gh`) is available
 - Repository has a remote origin
 
-Skip conditions (any triggers a silent skip with no warning):
-- `--issue` flag is NOT set (default — silent skip)
-- `gh` CLI not available (log warning and continue)
-- No remote origin configured
+Skip conditions (the flag being absent is a silent skip; `--issue` set but a prerequisite missing skips with exactly one warning line):
+- `--issue` flag is NOT set (default — silent skip, no warning)
+- `--issue` is set but `gh` CLI is not available (skip, emit exactly one warning line, continue)
+- `--issue` is set but no remote origin is configured (skip, emit exactly one warning line, continue)
 
 #### Step 2.5.1: Create GitHub Issue
 
@@ -343,7 +343,7 @@ EOF
 After Issue creation, update the SPEC frontmatter with the issue number:
 
 - Read the issue number from `gh issue create` output
-- Update `issue_number` field in `.moai/specs/SPEC-{ID}/spec.md` YAML frontmatter
+- Update `issue_number` field in `.moai/specs/SPEC-{ID}/spec.md` YAML frontmatter. Owner: `manager-spec`, reached by orchestrator re-delegation from the manager-git issue-creation step (manager-git does not edit `spec.md`); it writes the `issue_number` field and `updated:` only
 - Add cross-reference comment in the Issue: `gh issue comment {number} --body "SPEC document: .moai/specs/SPEC-{ID}/spec.md"`
 
 #### Step 2.5.3: Bidirectional Reference
@@ -562,10 +562,11 @@ All of the following must be verified:
 - Next steps presented to user
 - **Audit-ready signal**: Before transitioning to `/moai run`, append to `.moai/specs/SPEC-{ID}/progress.md`:
   ```
+  - audit_ready: true
   - plan_complete_at: {ISO-8601 timestamp}
   - plan_status: audit-ready
   ```
-  This signal indicates plan artifacts (spec.md, plan.md, acceptance.md, tasks.md) are finalized
+  Write it under the `## §E.1` heading; the Kickoff readiness check reads only the bare `audit_ready: true` line. This signal indicates the plan artifacts of the SPEC's complexity tier are finalized (Tier S: spec.md + plan.md; Tier M: + acceptance.md; Tier L: + design.md + research.md)
   and ready for Plan Audit Gate validation at `/moai run` Phase 1.
 
 ---
@@ -579,7 +580,7 @@ All of the following must be verified:
 - Phase 8: manager-spec designs GEARS-notation requirements for JWT auth (canonical notation; EARS legacy form for pre-v3 SPECs only)
 - Annotation cycle: 1-3 iterations refining requirements
 - Phase 10: SPEC-AUTH-001 created with spec.md, plan.md, acceptance.md
-- Phase 12: GitHub Issue created and linked to SPEC
+- Phase 12: skipped silently (no `--issue` flag), so no GitHub Issue is created; with `--issue` an Issue would be created and linked to the SPEC
 - Phase 13: Feature branch feat/SPEC-AUTH-001-jwt-auth created (if --branch)
 
 ### Existing Assets Flow

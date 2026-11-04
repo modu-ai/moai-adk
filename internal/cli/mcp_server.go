@@ -145,6 +145,9 @@ func runMCPServerWithIOAndExposure(stdin io.Reader, stdout io.Writer, exposure s
 	defer func() {
 		stopGLMBackgroundJobs()
 		stopCodexRoleAuditJobs()
+		// A tool call still inside a codex session when the server leaves would
+		// otherwise leave the session's process group (a group of its own).
+		shutdownCodexSessions()
 	}()
 	// ServeStdio waits for in-flight tool workers on EOF before cancelling its
 	// internal context. A worker stalled in an app-server handshake would keep

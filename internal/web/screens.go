@@ -8,6 +8,7 @@ package web
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"net/http"
 	"path/filepath"
 	"time"
@@ -107,18 +108,26 @@ func (a *app) readOnly(w http.ResponseWriter, r *http.Request) bool {
 	return true
 }
 
-func (a *app) handleOverview(w http.ResponseWriter, r *http.Request) {
+// handleRoot sends the bare root to the local board, the landing screen. Any
+// other path the mux hands to "/" is an unregistered one and answers 404.
+func (a *app) handleRoot(w http.ResponseWriter, r *http.Request) {
 	if !a.readOnly(w, r) {
 		return
 	}
-	// "/" 는 정확히 일치할 때만 개요다. 그 밖의 미등록 경로는 404 로 둔다.
 	if r.URL.Path != "/" {
 		http.NotFound(w, r)
 		return
 	}
+	http.Redirect(w, r, "/board", http.StatusFound)
+}
+
+func (a *app) handleOverview(w http.ResponseWriter, r *http.Request) {
+	if !a.readOnly(w, r) {
+		return
+	}
 	o, err := a.buildOverview(time.Now())
 	if err != nil {
-		http.Error(w, "overview unavailable: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, "overview unavailable: "+refineText(err.Error()), http.StatusInternalServerError)
 		return
 	}
 	// The other three screens carry a descriptive crumb; overview carried none,
@@ -135,7 +144,7 @@ func (a *app) handleFactory(w http.ResponseWriter, r *http.Request) {
 	}
 	k, err := a.buildFactory(time.Now())
 	if err != nil {
-		http.Error(w, "factory unavailable: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, "factory unavailable: "+refineText(err.Error()), http.StatusInternalServerError)
 		return
 	}
 	vm := a.shellVM(r, "factory", "Factory", "lanes + pipeline")
@@ -175,11 +184,19 @@ func (a *app) handleMonitor(w http.ResponseWriter, r *http.Request) {
 	}
 	m, err := a.buildMonitor(time.Now())
 	if err != nil {
-		http.Error(w, "monitor unavailable: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, "monitor unavailable: "+refineText(err.Error()), http.StatusInternalServerError)
 		return
 	}
 	vm := a.shellVM(r, "monitor", "Monitor", "sessions · goals · verification")
 	a.renderPage(w, Monitor(vm, m))
+}
+
+func (a *app) handleBrowserAPI(w http.ResponseWriter, r *http.Request) {
+	if !a.readOnly(w, r) {
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(a.buildBrowserSelection(r.Context()))
 }
 
 func (a *app) handleSpecs(w http.ResponseWriter, r *http.Request) {
@@ -189,7 +206,7 @@ func (a *app) handleSpecs(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	l, err := a.buildSpecList(q.Get("q"), q.Get("status"), q.Get("id"))
 	if err != nil {
-		http.Error(w, "spec list unavailable: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, "spec list unavailable: "+refineText(err.Error()), http.StatusInternalServerError)
 		return
 	}
 	vm := a.shellVM(r, "specs", "Specs", itoa(len(l.Rows))+" shown")

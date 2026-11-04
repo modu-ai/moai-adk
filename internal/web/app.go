@@ -8,7 +8,10 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/browser"
+	"github.com/modu-ai/moai-adk/internal/agenticfactory/monitor/flow"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/glmcred"
 	"github.com/modu-ai/moai-adk/internal/jevcred"
@@ -127,6 +130,19 @@ type app struct {
 	// returns a zero view (not-installed), matching the probe's fail-open.
 	codexStateProbe func(ctx context.Context) CodexStateView
 
+	// browserSelected reads the saved browser selection and browserProbe detects
+	// installs, both for the read-only browser panel (REQ-AF-016). The saved
+	// value is owned by the settings layer; this console only reads it.
+	browserSelected func(projectRoot string) (string, error)
+	browserProbe    browser.Probe
+
+	// flowProbe judges whether a lease holder's process is alive for the board's
+	// flow panel. Nil reads every holder as Unknown (monitor/flow's rule).
+	flowProbe flow.Probe
+
+	// nowFunc replaces the wall clock for the board (tests); nil means time.Now.
+	nowFunc func() time.Time
+
 	// triggerShutdown is 페이지 내 서버 종료 버튼(/__shutdown__)이 호출하는
 	// injectable seam 이다. openBrowser 와 동일한 패턴이지만 app 에 두는 이유는 —
 	// Config 가 값 전달이라 server 와 handler 가 하나의 closure 를 공유해야
@@ -164,6 +180,9 @@ func newApp(cfg Config) *app {
 
 		codexStateProbe: defaultCodexStateProbe,
 
+		browserSelected: readBrowserSelected,
+		browserProbe:    browser.ExecProbe{},
+
 		schemaCurrentValues: settings.SchemaCurrentValues,
 		rawBlockValues:      settings.RawBlockValues,
 		applySchemaEdits:    settings.ApplySchemaEdits,
@@ -196,10 +215,15 @@ func (a *app) routes() http.Handler {
 	// 재설계본 라우트. "/" 는 개요로 올라가고, 설정 편집기는 /settings 로 내려간다
 	// — 세션을 열었을 때 먼저 보고 싶은 것은 설정값이 아니라 현재 상태이기 때문이다.
 	// 모니터링 라우트(개요·팩토리·모니터·SPEC)는 GET 외 메서드를 405 로 거부한다.
-	mux.HandleFunc("/", a.handleOverview)
+	mux.HandleFunc("/", a.handleRoot)
+	mux.HandleFunc("/overview", a.handleOverview)
 	mux.HandleFunc("/factory", a.handleFactory)
 	registerLegacyRoutes(mux)
 	mux.HandleFunc("/monitor", a.handleMonitor)
+	// REQ-AF-016: read-only browser selection data for the monitor panel.
+	mux.HandleFunc("/api/browser", a.handleBrowserAPI)
+	mux.HandleFunc("/board", a.handleBoard)
+	mux.HandleFunc("/api/board", a.handleBoardAPI)
 	// SPEC-WEB-TODO-QUEUE-001 M2 (REQ-WTQ-002): /todo renders the backlog queue
 	// read-only. Writes and id issuance belong to `moai todo`; this route only
 	// reads, and like the other monitoring routes it answers 405 to non-GET.
@@ -321,6 +345,10 @@ func (a *app) selectedProfile(r *http.Request) string {
 // renderError writes a readable inline error page (REQ-WC-010) — never blank,
 // never a panic.
 func (a *app) renderError(w http.ResponseWriter, status int, msg string) {
+	// HTML escaping is not refining: error text built from err.Error() may carry a
+	// path, an address, a token, a number or a stack. Every banner and error page
+	// goes through the one refiner (Issue #1948, B14).
+	msg = refineText(msg)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
 	_, _ = fmt.Fprintf(w,

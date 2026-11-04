@@ -181,7 +181,7 @@ func captureLaneEnvToday(t *testing.T) map[string]map[string]string {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := netLaneFixture(t, tc.backend)
-			launch := netDriveLaunch(t, root, tc.entry, []string{"-l"})
+			launch := netDriveLaunch(t, root, tc.entry, []string{"-a"})
 			if !launch.launched || launch.err != nil {
 				t.Fatalf("%s lane launch: launched=%v err=%v", tc.name, launch.launched, launch.err)
 			}

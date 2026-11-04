@@ -114,7 +114,9 @@ const maxPlanArtifactBytes = 8 << 20
 // Suitable for both production (single process lifetime) and tests.
 // Each GateConfig holds its own InMemoryCache instance, so cache entries do not
 // persist across separate /moai run invocations. For cross-invocation caching,
-// the daily report file serves as the durable cache source (see AuditReporter).
+// FileAuditCache reads the highest-numbered plan-phase review-N file; the
+// date-stamped daily report (AuditReporter) is append-only history and is not a
+// cache source.
 type InMemoryCache struct {
 	entries map[string]*CachedEntry
 }
