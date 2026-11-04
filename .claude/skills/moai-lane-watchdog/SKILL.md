@@ -129,6 +129,9 @@ and at an authority gate they fail closed.
    proceed / retry / wait judgment with repeatable, side-effect-free
    parameters; never for completion, merge, or queue outcomes. Gated off or
    unavailable → step 5 (fail-open by design).
+   Shadow record: keep the verbatim `jev_ask` request and the verbatim
+   response (including `model`) with the decision record (§5 below); the
+   decision stays the lane's (doctrine §12).
 5. **Self-judgment** — terminal. Decide from steps 1–4 and write the decision
    record (§5 below) in the card's progress record, then proceed on the lane's
    own authority; never proceed against evidence. The leader is reached only
