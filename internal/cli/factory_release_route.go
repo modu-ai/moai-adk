@@ -358,7 +358,10 @@ func factoryChangedPaths(cardTree, releaseTip string) (paths []string, known boo
 	}
 	// NUL-delimited: git quotes non-ASCII paths in line mode, and a path may
 	// hold spaces, so neither a newline nor a whitespace split is safe.
-	out, err := cliGitIn(cardTree, "diff", "--name-only", "-z", releaseTip+"...HEAD")
+	// --no-renames: under rename detection --name-only lists only the new path,
+	// so the package a file moved OUT of (whose tests may still use it) would
+	// never be selected; both sides of a rename must be listed.
+	out, err := cliGitIn(cardTree, "diff", "--name-only", "--no-renames", "-z", releaseTip+"...HEAD")
 	if err != nil {
 		return nil, false
 	}
