@@ -91,10 +91,10 @@ workflow:
     # and the PR-merge sweep); gates worktree removal only.
     # auto_merge: read by the session-exit auto-merge path — when true, a clean
     # session exit merges the session branch into the integration branch: the
-    # configured git-flow develop branch, or main under manual agentic-trunk
+    # configured git-flow develop branch, or main under manual af-flow
     # (a local merge inside the release-integration window, never a push).
     # Inert unless the project is manual git-flow with
-    # git_strategy.<mode>.develop_branch set, or manual agentic-trunk (main is
+    # git_strategy.<mode>.develop_branch set, or manual af-flow (main is
     # projected; the develop_branch key is ignored there).
     worktree:
         auto_create: false

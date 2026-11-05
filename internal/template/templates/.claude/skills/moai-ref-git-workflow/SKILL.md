@@ -59,7 +59,7 @@ main ─────────────────────────
 
 ### Agentic-Trunk (Local Batch Landing)
 
-`git_strategy.manual.workflow: agentic-trunk` names the model MoAI-ADK's own factory runs on:
+`git_strategy.manual.workflow: af-flow` names the model MoAI-ADK's own factory runs on:
 
 ```
 main ──────────────────────────────────────────
