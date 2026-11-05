@@ -113,7 +113,7 @@ func LoadGitFlowIntegrationConfig(projectRoot string) GitFlowIntegrationConfig {
 	}
 	profile, ok := wrapper.GitStrategy.ActiveModeProfile()
 	// Card t2045: every consumer sees the normalized value (the legacy
-	// af-flow reads as af-flow).
+	// agentic-trunk reads as af-flow).
 	workflow := ""
 	if ok {
 		workflow = NormalizeWorkflow(profile.Workflow)
