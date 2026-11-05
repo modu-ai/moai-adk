@@ -380,7 +380,8 @@ func (e *Executor) settle(in Intent) (Intent, error) {
 // may still land). The intent stays Sent, and a retry therefore cannot duplicate it, until SentAt plus two
 // of the kind's configured timeouts have passed: one for the send's own limit, one for the write that
 // stamped SentAt and for delivery lag. No new constant: the window is derived from the same timeout the
-// sender runs under.
+// sender runs under. The window is a fact about SentAt, so it holds for a Parked intent too: a send whose
+// lookup errored was parked with its SentAt intact and may still land.
 func (e *Executor) Reconcile(ctx context.Context, key string) (Intent, error) {
 	in, ok, err := e.Store.Get(key)
 	if err != nil || !ok {
@@ -402,7 +403,7 @@ func (e *Executor) Reconcile(ctx context.Context, key string) (Intent, error) {
 	case res.Found:
 		in.Status, in.ProviderID = StatusConfirmed, res.ProviderID
 	case res.Authoritative:
-		if in.Status == StatusSent && in.SentAt > 0 && e.now().UnixNano() < sentAtNanos(in.SentAt)+2*int64(to) {
+		if in.SentAt > 0 && e.now().UnixNano() < sentAtNanos(in.SentAt)+2*int64(to) {
 			return in, nil // the sender may still be mid-flight: look again later, write nothing
 		}
 		in.Status = StatusFailed
