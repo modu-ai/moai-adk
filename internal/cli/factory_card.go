@@ -3091,11 +3091,11 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	}
 	// github-flow delivers by pull request, takes no integration window and
 	// never merges locally (factory_card_pr.go, REQ-GFD-004/005/006). Under
-	// agentic-trunk the target-holder routing sends a project whose ONLY
+	// af-flow the target-holder routing sends a project whose ONLY
 	// `main` holder is the primary checkout down the same edge (card t1831
 	// M5b, REQ-AGT-006 rescope 0.4.0): the shared human/leader surface never
 	// becomes a merge window; the leader merges the card's pull request.
-	// The release route (card t2013, Git-AFF S2, REQ-FCR-026): under agentic-trunk
+	// The release route (card t2013, AF-Flow S2, REQ-FCR-026): under af-flow
 	// with the fixed release branch provisioned in its own worktree, the card
 	// lands through the local integration window into that branch — never the
 	// pull-request edge, never main. Any condition missing leaves the judgment

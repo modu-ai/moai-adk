@@ -3,7 +3,7 @@ package cli
 // factory_target_holder.go — SPEC-GIT-STRATEGY-AGENTIC-TRUNK-001 M5b (card
 // t1831, rescope 0.4.0): the target-holder probe of the delivery routing.
 //
-// Under agentic-trunk a card lands by the TARGET HOLDER (design.md section
+// Under af-flow a card lands by the TARGET HOLDER (design.md section
 // 1): a worktree OTHER than the primary checkout holding `main` is a
 // dedicated integration worktree — the integration-window local merge (the
 // M0-M5 behavior). Where the ONLY tree holding `main` is the primary
@@ -37,10 +37,10 @@ func factoryPrimaryHoldsTarget(root, branch string) bool {
 }
 
 // factoryAgenticTrunkPrimaryRoute reports that the project rooted at root
-// runs agentic-trunk — any mode: the route is judged on the workflow value
+// runs af-flow — any mode: the route is judged on the workflow value
 // and the integration target only, never on the git-strategy mode (card
 // t1831 landing audit F1: a `!cfg.Manual` restriction excluded team and
-// personal agentic-trunk from the PR edge and fell them through to the
+// personal af-flow from the PR edge and fell them through to the
 // local-merge window, contradicting the SPEC's github-flow-like edge-case
 // rows) — AND holds its fixed integration target `main` nowhere but the
 // primary checkout. That is the condition under which `factory complete`

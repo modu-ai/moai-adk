@@ -1,10 +1,10 @@
 package cli
 
-// factory_release_route.go — card t2013, Git-AFF S2 (SPEC-FACTORY-COMPLETION-
+// factory_release_route.go — card t2013, AF-Flow S2 (SPEC-FACTORY-COMPLETION-
 // RECOVERY-001 REQ-FCR-026, spec.md section D.5): the release route of
 // `moai factory complete`.
 //
-// Under agentic-trunk, with the fixed release branch (release_branch_prefix +
+// Under af-flow, with the fixed release branch (release_branch_prefix +
 // "main-batch") checked out in a worktree other than the primary checkout, a
 // completed card lands through the local integration window into THAT branch
 // — never main, never the pull-request edge — after the fast required check
@@ -40,7 +40,7 @@ import (
 const factoryFastCheckID = "factory-complete-fast"
 
 // factoryReleaseRoute reports the release route's branch and worktree when every
-// condition of REQ-FCR-026 holds: an agentic-trunk profile, a non-empty
+// condition of REQ-FCR-026 holds: an af-flow profile, a non-empty
 // release_branch_prefix, and the fixed release branch checked out in a worktree
 // that is not the primary checkout. Any condition missing — including an
 // unprovisioned branch (decision-index Q9) — answers false and leaves the

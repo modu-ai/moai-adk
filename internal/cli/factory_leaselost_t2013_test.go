@@ -1,6 +1,6 @@
 package cli
 
-// factory_leaselost_t2013_test.go — card t2013, Git-AFF S2: the `lease-lost`
+// factory_leaselost_t2013_test.go — card t2013, AF-Flow S2: the `lease-lost`
 // stop of the release route (factory_card.go, after factoryFastCheckKeepingLease).
 // The fast required check PASSED, but the card lease could not be renewed while
 // it ran, so a merge would start on a lapsed lease. complete must hold the card,

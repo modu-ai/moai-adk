@@ -17,7 +17,7 @@ package cli
 // "cannot confirm": the verb reports it and the record keeps what it had.
 //
 // git-flow never reaches this file: factoryCompleteCard hands over only when
-// the active git strategy's workflow is github-flow, or when agentic-trunk's
+// the active git strategy's workflow is github-flow, or when af-flow's
 // target-holder routing sends the primary-only shape here
 // (factory_target_holder.go). The merge queue stays deferred (design D-3):
 // one PR per card, no merge_group.
@@ -109,7 +109,7 @@ type factoryPR struct {
 
 // factoryGitHubFlow reports whether the project's active git strategy is
 // github-flow — one of the two configurations the delivery edge is live
-// under (the other is agentic-trunk's primary-only shape, routed by
+// under (the other is af-flow's primary-only shape, routed by
 // factoryAgenticTrunkPrimaryRoute). An absent or unreadable
 // git-strategy.yaml, and every other workflow, is not.
 func factoryGitHubFlow(root string) bool {

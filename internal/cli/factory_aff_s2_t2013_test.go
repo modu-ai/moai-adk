@@ -1,6 +1,6 @@
 package cli
 
-// factory_aff_s2_t2013_test.go — card t2013, Git-AFF S2: REQ-FCR-026 / AC-FCR-026
+// factory_aff_s2_t2013_test.go — card t2013, AF-Flow S2: REQ-FCR-026 / AC-FCR-026
 // (a)-(f) of SPEC-FACTORY-COMPLETION-RECOVERY-001 (spec.md section D.5).
 //
 // Under agentic-trunk, `moai factory complete` lands a card through the local

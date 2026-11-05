@@ -29,7 +29,7 @@ func workflowStandingBranches(flow string) string {
 		return "single standing branch main; topic branches are short-lived"
 	case config.WorkflowGitFlow:
 		return "standing branches develop + main; release branches cut for each release"
-	case config.WorkflowAgenticTrunk:
+	case config.WorkflowAFFlow:
 		// Card t1831 REQ-AGT-012: the standing-branch interpretation of the
 		// model — one trunk, serial landing by the target holder (the
 		// integration-window merge, or the card's pull request where only

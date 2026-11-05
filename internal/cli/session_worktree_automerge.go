@@ -183,16 +183,16 @@ func sessionExitAutoMerge(cfg *config.Config, wtPath string, cleanExit bool, out
 	if !gitFlow.UsesLocalIntegration() || gitFlow.DevelopBranch == "" {
 		// REQ-WKW-003: the integration target is inert when the project runs
 		// neither local-integration workflow (manual git-flow or manual
-		// agentic-trunk, card t1831 REQ-AGT-007), the develop branch is empty
-		// (unset, or non-manual agentic-trunk's empty seam), or the file is
+		// af-flow, card t1831 REQ-AGT-007), the develop branch is empty
+		// (unset, or non-manual af-flow's empty seam), or the file is
 		// unreadable (the loader yields the zero value on every failure). The
 		// notice names both workflows that DO merge.
-		autoMergeNoticef(out, "skipped (no integration target): the project is not manual git-flow or manual agentic-trunk, or git_strategy develop_branch is unset; set git_strategy.<mode>.develop_branch (git-flow) or git_strategy.<mode>.workflow: agentic-trunk in manual mode to enable session-exit auto-merge")
+		autoMergeNoticef(out, "skipped (no integration target): the project is not manual git-flow or manual af-flow, or git_strategy develop_branch is unset; set git_strategy.<mode>.develop_branch (git-flow) or git_strategy.<mode>.workflow: af-flow in manual mode to enable session-exit auto-merge")
 		return
 	}
 	develop := gitFlow.DevelopBranch
 
-	// REQ-AGT-007 (rescope 0.4.0, card t1831 M5b): under manual agentic-trunk,
+	// REQ-AGT-007 (rescope 0.4.0, card t1831 M5b): under manual af-flow,
 	// where the integration branch is held ONLY by the primary checkout, no
 	// dedicated landing surface exists — a session-exit merge never writes
 	// into the shared primary working tree. Skip with a notice naming the

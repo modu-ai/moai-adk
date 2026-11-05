@@ -1,11 +1,11 @@
 ---
-description: "agentic-trunk lane protocol (repo-local) — card worktrees branch from local main, per-card delivery follows the target-holder routing (card pull request merged by the leader with no auto-merge request where only the primary holds main; integration-window local merge where a dedicated worktree holds it), origin/main is the CI verdict surface, batch releases reach origin/main only through a release PR"
+description: "af-flow lane protocol (repo-local) — card worktrees branch from local main, per-card delivery follows the target-holder routing (card pull request merged by the leader with no auto-merge request where only the primary holds main; integration-window local merge where a dedicated worktree holds it), origin/main is the CI verdict surface, batch releases reach origin/main only through a release PR"
 paths: ".moai/specs/**,.claude/skills/moai/workflows/run.md,.claude/skills/moai/workflows/sync.md,.claude/rules/local/repo-local-pr-policy.md,AGENTS.local.md,internal/cli/**,internal/hook/**"
 ---
 
-# agentic-trunk Lane Protocol (moai-adk-go, local-only)
+# af-flow Lane Protocol (moai-adk-go, local-only)
 
-> **2026-10-21, rescope 0.4.0 (SPEC-GIT-STRATEGY-AGENTIC-TRUNK-001, operator-corrected).** This repository's model is **agentic-trunk: lane worktree, serial landing into main, leader release batch per lead_push_threshold, tagged release.** Per-card delivery follows the target-holder routing: where only the primary checkout holds `main` (this repository — the rescope abolished the dedicated integration worktree), the completed card lands through its pull request, which the leader merges with no auto-merge request; where a dedicated integration worktree holds `main`, the card lands through the integration-window local merge (`moai integration merge --card`). The live `git_strategy.manual.workflow` value converts at the leader's post-landing cutover; until then the leader's temporary bridge `github-flow` is in force, and this file describes the post-cutover flow.
+> **2026-10-21, rescope 0.4.0 (SPEC-GIT-STRATEGY-AGENTIC-TRUNK-001, operator-corrected).** This repository's model is **af-flow: lane worktree, serial landing into main, leader release batch per lead_push_threshold, tagged release.** Per-card delivery follows the target-holder routing: where only the primary checkout holds `main` (this repository — the rescope abolished the dedicated integration worktree), the completed card lands through its pull request, which the leader merges with no auto-merge request; where a dedicated integration worktree holds `main`, the card lands through the integration-window local merge (`moai integration merge --card`). The live `git_strategy.manual.workflow` value converts at the leader's post-landing cutover; until then the leader's temporary bridge `github-flow` is in force, and this file describes the post-cutover flow.
 >
 > **2026-08-27, operator instruction (history).** This repository had then moved its integration model from GitHub Flow to a git-flow-style local-landing regime, deliberately reversing the "local-only, disposable `develop`, no remote push" decision that backlog card t281 set on 2026-08-26. The 2026-10-21 rescope above supersedes that regime's landing surface; the model and its rationale are in `AGENTS.local.md` §4.0, and this file is the **operating rule** that lanes and the factory leader follow as written.
 >
@@ -161,7 +161,7 @@ sh scripts/verify-local-install.sh       # byte identity + installed-binary vers
 
 ## 10. Release — outside the lane's scope
 
-**Current model (agentic-trunk):** there is no per-version release branch. The leader's release batch per `lead_push_threshold` landings (§4) is the delivery step, and the release itself is a tagged release cut from `main` after a batch lands. Lanes neither cut releases nor tag, and they never push `main`.
+**Current model (af-flow):** there is no per-version release branch. The leader's release batch per `lead_push_threshold` landings (§4) is the delivery step, and the release itself is a tagged release cut from `main` after a batch lands. Lanes neither cut releases nor tag, and they never push `main`.
 
 **[SUPERSEDED — pending OQ-7]** Once the local rc test passes, branch `release/vX.Y.Z` **from `develop`**, and the `release` harness takes it from there. `origin/main` is updated only through release PRs — including batch releases (`release/main-batch-YYYYMMDD`) (§4.0 §6; branch protection `enforce_admins: true`). Lanes neither create release branches nor open PRs to main.
 
@@ -194,10 +194,10 @@ git rev-list --count --left-right origin/main...main
 ## Cross-references
 
 - `.claude/skills/moai/workflows/sync/delivery.md` Step 3.2 — canonical source of the `WT-*` integration procedure (owned by the distributed skill; this document covers only repo-specific matters)
-- `AGENTS.local.md` §4.0 — the model (`agentic-trunk`) and its flow definition; §4.1 keeps the transition record (reversal of t281; the current status of the rejection reasons of 2026-08-14)
+- `AGENTS.local.md` §4.0 — the model (`af-flow`) and its flow definition; §4.1 keeps the transition record (reversal of t281; the current status of the rejection reasons of 2026-08-14)
 - `.claude/rules/local/repo-local-pr-policy.md` — the `main` branch protection and the mandatory-PR rule
 - `.moai/docs/git-workflow-doctrine.md` (§18) / `.moai/docs/git-local-workflow-doctrine.md` (§23) — parent doctrines (some parts superseded; see the notes at the top)
-- **[SUPERSEDED by §4.0]** `.moai/config/sections/git-strategy.yaml` — under the superseded regime `git_strategy.manual.workflow` carried `git-flow` plus the develop/release keys; the live value is the leader's temporary bridge `github-flow` until the post-landing cutover converts it to `agentic-trunk` (M6 of SPEC-GIT-STRATEGY-AGENTIC-TRUNK-001; `AGENTS.local.md` §2.3 for the re-apply rule)
+- **[SUPERSEDED by §4.0]** `.moai/config/sections/git-strategy.yaml` — under the superseded regime `git_strategy.manual.workflow` carried `git-flow` plus the develop/release keys; the live value is the leader's temporary bridge `github-flow` until the post-landing cutover converts it to `af-flow` (M6 of SPEC-GIT-STRATEGY-AGENTIC-TRUNK-001; `AGENTS.local.md` §2.3 for the re-apply rule)
 
 ---
 
