@@ -93,6 +93,11 @@ func ReconcileHandoff(ctx context.Context, lk HandoffLookup, issue int, handoffI
 			Detail: fmt.Sprintf("PR #%d is published but no handoff receipt exists; not done, claim kept", pr.Number)}
 	case !pr.Found:
 		return HandoffDecision{Kind: HandoffPRMissing, ClosureOwner: OwnerAgent, Detail: "receipt exists but the remote shows no PR"}
+	case pr.Number != rec.PR:
+		// The receipt names another PR (the old one was closed and a new one opened, possibly for the same
+		// HEAD): its acceptance was given to that PR and does not carry over.
+		return HandoffDecision{Kind: HandoffStale, NeedsNewHandoff: true, ClosureOwner: OwnerAgent,
+			Detail: fmt.Sprintf("receipt PR #%d, remote PR #%d", rec.PR, pr.Number)}
 	case pr.Head != rec.Head:
 		return HandoffDecision{Kind: HandoffStale, NeedsNewHandoff: true, ClosureOwner: OwnerAgent,
 			Detail: fmt.Sprintf("receipt HEAD %.12s, remote PR HEAD %.12s", rec.Head, pr.Head)}
