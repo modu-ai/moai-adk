@@ -43,6 +43,11 @@ func fcFixture(t *testing.T) (string, *factory.BacklogStore) {
 	// assignment must land in a sandbox, never the real ~/.moai.
 	t.Setenv(paths.EnvHome, t.TempDir())
 	root, store := todoFixture(t)
+	// todoFixture clears MOAI_HOME, which makes paths.MoaiHome fall back to
+	// $HOME/.moai; point HOME at a sandbox so that fallback stays inside the
+	// test (card t2047: without it each test left a project folder in the real
+	// ~/.moai/worktrees/projects, 21.8k by 2026-11-05).
+	t.Setenv("HOME", t.TempDir())
 	prev := factoryCardNow
 	factoryCardNow = func() time.Time { return fcNow }
 	t.Cleanup(func() { factoryCardNow = prev })
