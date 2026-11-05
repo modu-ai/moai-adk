@@ -21,13 +21,15 @@ Resolve the delivery strategy from `.moai/config/sections/git-strategy.yaml`:
 
 The canonical value domain is exactly `github-flow`, `git-flow` and `af-flow`.
 
+A stored value of `agentic-trunk` — the former spelling of `af-flow` — is normalized to `af-flow` before the domain check below. It is accepted on read only and is not a fourth member of the domain, matching the config loader's `NormalizeWorkflow`; nothing is rewritten in `git-strategy.yaml`.
+
 | Strategy | Branch Model | PR Behavior | Best For |
 |----------|-------------|-------------|----------|
 | github-flow | Feature branches off the main branch | Auto-create PR to the main branch | Team/OSS projects |
 | git-flow | develop/release/hotfix/worktree branches | PR to the appropriate base, or integration-worktree merge | Enterprise and multi-lane projects |
 | af-flow | main plus WT-* branches | integration-worktree merge, no PR | multi-lane projects landing locally with batch pull requests |
 
-**Unmatched value stops delivery.** When the resolved `git_strategy.{mode}.workflow` value is neither `github-flow`, `git-flow` nor `af-flow`, stop the delivery step and report the offending value together with the canonical domain `{github-flow, git-flow, af-flow}`. Do not create a pull request and do not push. A missing `workflow` subkey under the active mode is an unmatched value, not a default — there is no fallback strategy.
+**Unmatched value stops delivery.** When the resolved `git_strategy.{mode}.workflow` value, after that normalization, is neither `github-flow`, `git-flow` nor `af-flow`, stop the delivery step and report the offending value together with the canonical domain `{github-flow, git-flow, af-flow}`. Do not create a pull request and do not push. A missing `workflow` subkey under the active mode is an unmatched value, not a default — there is no fallback strategy.
 
 Branch handling is a separate axis and is not read from this key: whether each SPEC gets its own branch is governed by `git_strategy.{mode}.automation.auto_branch` and the `branch_creation` settings.
 
