@@ -635,8 +635,11 @@ var (
 	// and captures the run of global options after it (`-C <path>`,
 	// `--git-dir`, `--work-tree`); the verb starts where the match ends.
 	gitInvocationOptsPattern = regexp.MustCompile(`(?i)\bgit((?:\s+(?:-C\s+\S+|--git-dir[=\s]\S+|--work-tree[=\s]\S+))*)(?:\s|$)`)
-	// gitCOperandPattern captures each `-C` operand inside such a run.
-	gitCOperandPattern = regexp.MustCompile(`(?:^|\s)-C\s+(\S+)`)
+	// gitCOperandPattern captures each `-C` operand inside such a run. The
+	// operand ends at a redirection character: `-C /repo</dev/null` names
+	// /repo, because the shell never hands the redirection to git as part of
+	// the path (card t2049).
+	gitCOperandPattern = regexp.MustCompile(`(?:^|\s)-C\s+([^\s<>]+)`)
 	// gitCOptionsStripPattern matches a `git` word with only `-C <path>`
 	// options after it, so the verb behind them can be read.
 	gitCOptionsStripPattern = regexp.MustCompile(`(?i)\bgit(?:\s+-C\s+\S+)+`)
