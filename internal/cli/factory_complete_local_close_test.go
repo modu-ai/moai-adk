@@ -48,3 +48,32 @@ func TestFactoryCompleteLocalMergeClosesTheQueueCard(t *testing.T) {
 		t.Fatalf("landing verdict = %+v, want landed against develop", v)
 	}
 }
+
+// TestFactoryCompleteRerunReconcilesAMergedLocalCard — closing the queue card
+// is fail-open (a failed archive prints a note), so a re-run of complete on a
+// card already at merged-local must retry the close instead of refusing the
+// card as "not merge-ready"; the pull-request edge reconciles the same way at
+// merged-pr. The card record and the integration branch are not touched.
+func TestFactoryCompleteRerunReconcilesAMergedLocalCard(t *testing.T) {
+	sdClearLaneEnv(t)
+	root, _, cards := sdMergeFixture(t, true, true, false, 1)
+	fcPlace(t, root, homestate.Card{
+		CardID: "t1", State: homestate.CardMergedLocal, Stage: homestate.CardMergedLocal,
+		OwnerLabel: "lane-1", LeaseHolder: "lane-1",
+		WorktreePath: cards[0].wt, MergeSHA: "0123456789abcdef0123456789abcdef01234567",
+	})
+	before := fcCard(t, root, "t1")
+	sdLaneEnv(t, "lane-1", "")
+	t.Setenv(config.EnvClaudeCodeSessionID, "sess-lane-1")
+	if _, _, err := runFactory(t, "complete", "t1", "--run", fcRun); err != nil {
+		t.Fatalf("re-run of complete on a merged-local card: %v", err)
+	}
+	sdCardUnchanged(t, "merged-local re-run", root, "t1", before)
+	rec, err := factory.NewBacklogStore(todoBacklogPath(root)).LoadPure()
+	if err != nil {
+		t.Fatalf("load queue: %v", err)
+	}
+	if len(rec.Items) != 0 || len(rec.Archived) != 1 || rec.Archived[0].Item.ID != "t1" {
+		t.Fatalf("queue after the re-run: live=%d archived=%d, want t1 archived", len(rec.Items), len(rec.Archived))
+	}
+}
