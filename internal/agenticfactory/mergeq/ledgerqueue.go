@@ -46,6 +46,18 @@ func (q LedgerQueue) ReleaseLock(ctx context.Context, name string, epoch int64) 
 	return q.L.ReleaseLock(ctx, name, epoch)
 }
 
+type startEpochKey struct{ cardID string }
+
+// withStartEpoch pins the card epoch a lander read from the queue row before it began verifying cardID.
+func withStartEpoch(ctx context.Context, cardID string, epoch int64) context.Context {
+	return context.WithValue(ctx, startEpochKey{cardID}, epoch)
+}
+
+func startEpochFrom(ctx context.Context, cardID string) (int64, bool) {
+	n, ok := ctx.Value(startEpochKey{cardID}).(int64)
+	return n, ok
+}
+
 // SetState records the queue row's state. A write that holds the landing lock (lockEpoch != 0: landing, landed,
 // a reconcile's waiting, a stale landing row's settlement) presents it as a ledger.LockEpoch; one that does not
 // (verifying, failed, a first waiting) presents the row's own CardEpoch, read from the queue row and never from
@@ -55,7 +67,11 @@ func (q LedgerQueue) ReleaseLock(ctx context.Context, name string, epoch int64) 
 // returned as ErrStaleRow.
 func (q LedgerQueue) SetState(ctx context.Context, cardID, candidate string, lockEpoch int64, st State, trunkBefore, failReason string) error {
 	epoch := ledger.LockEpoch(lockEpoch, candidate)
-	if lockEpoch == 0 {
+	if started, ok := startEpochFrom(ctx, cardID); ok && lockEpoch == 0 {
+		// The caller pinned the card epoch it started verifying at; presenting that one (not the row's current one)
+		// makes a write by a fenced lander stale instead of landing on the new holder's row.
+		epoch = ledger.CardEpoch(started, candidate)
+	} else if lockEpoch == 0 {
 		items, err := q.L.Queue(ctx)
 		if err != nil {
 			return err
