@@ -3294,7 +3294,7 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	// adopted and falls through to step 3.
 	adopted := factoryAdoptedTip(lockRoot, integTree, branch, card.WorktreePath, cardBranch)
 	if adopted != "" {
-		done, err := completeTransitions(ctx, db, out, lockRoot, runID, card, cardID, lane, adopted, remeasure, branch, integTree)
+		done, err := completeTransitions(ctx, db, out, root, lockRoot, runID, card, cardID, lane, adopted, remeasure, branch, integTree)
 		if err != nil {
 			// O1: the adoption's transition failure is the post-merge class
 			// (the commit already sits on the integration branch) — but the
@@ -3442,7 +3442,7 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	if factoryCompleteTransitionHook != nil {
 		factoryCompleteTransitionHook()
 	}
-	if _, err := completeTransitions(ctx, db, out, lockRoot, runID, card, cardID, lane, mergeSHA, remeasure, branch, integTree); err != nil {
+	if _, err := completeTransitions(ctx, db, out, root, lockRoot, runID, card, cardID, lane, mergeSHA, remeasure, branch, integTree); err != nil {
 		return completePostMergeConflict(out, lockRoot, sessionID, cardID, mergeSHA, err)
 	}
 
@@ -3461,7 +3461,7 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 // what the lane passed — the GATE no longer reads a lane file for the
 // re-measure (REQ-MWQ-021: the record is the gate), so a stand-in file can
 // never satisfy it (REQ-MWQ-020).
-func completeTransitions(ctx context.Context, db *homestate.FactoryDB, out io.Writer, lockRoot, runID string, card homestate.Card, cardID, lane, mergeSHA, remeasure, branch, integTree string) (homestate.Card, error) {
+func completeTransitions(ctx context.Context, db *homestate.FactoryDB, out io.Writer, root, lockRoot, runID string, card homestate.Card, cardID, lane, mergeSHA, remeasure, branch, integTree string) (homestate.Card, error) {
 	merging, err := db.Transition(ctx, homestate.TransitionRequest{
 		RunID: runID, CardID: cardID, To: homestate.CardMerging,
 		ExpectedVersion: card.Version, Actor: lane, Now: factoryCardNow(),
@@ -3490,6 +3490,11 @@ func completeTransitions(ctx context.Context, db *homestate.FactoryDB, out io.Wr
 	}
 	_, _ = fmt.Fprintf(out, "%s %s merge=%s branch=%s worktree=%s\n",
 		done.CardID, done.State, done.MergeSHA, branch, integTree)
+	// card t2057: merged-local into the local integration branch is the
+	// mechanical landing answer of this route, so the lane closes its own
+	// queue card here exactly as the pull-request edge does at merged-pr. The
+	// approval-gated done edges of the factory record are not touched.
+	factoryCloseLaneCard(out, root, runID, done, lane, branch)
 	factoryPrintWakes(ctx, out, db, done) // card t2013: wait records the landing satisfies
 	return done, nil
 }
