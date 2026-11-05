@@ -13,6 +13,15 @@ package statusline
 
 import "github.com/modu-ai/moai-adk/internal/config"
 
+// workflowDisplayLabel maps the normalized workflow value to its display
+// label: af-flow shows as AF-Flow; every other value shows unchanged.
+func workflowDisplayLabel(workflow string) string {
+	if workflow == config.WorkflowAFFlow {
+		return "AF-Flow"
+	}
+	return workflow
+}
+
 // resolveWorkflowLabel reports the workflow value the active git-strategy
 // profile reads at root, for the states the label is allowed to name. Every
 // other state — github-flow, unreadable file, no active profile, an invalid
@@ -27,7 +36,7 @@ func resolveWorkflowLabel(root string) string {
 		if c.Workflow == config.WorkflowGitHubFlow {
 			return ""
 		}
-		return c.Workflow
+		return workflowDisplayLabel(c.Workflow)
 	default:
 		// The zero disposition (unknown: unreadable file / no active
 		// profile) and DispositionInvalid both withhold the label.
