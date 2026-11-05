@@ -87,3 +87,36 @@ RED 확인: 구현 전 `go vet ./internal/cli/worktree/` 와 `go vet ./internal/
 - `update_clean_install.go` 의 클린 재설치 경로 백업 정리(`[clean-reinstall]` 접두 출력 서식이 달라 제외; 일반 템플릿 동기화 경로만 라벨).
 - `.moai/reports` 처리: 파일 개수만 세고 내용을 읽지 않으므로 그대로 둠.
 - 푸시, PR, 팩토리 큐: 건드리지 않음.
+
+## 7. 리뷰 반영 (codex 리뷰 지적 2건)
+
+두 건 모두 조정자가 도달 가능함을 확인했고, 실패하는 테스트를 먼저 작성해 단언 실패(RED)를 본 뒤 고쳤다.
+
+### F1. 워크트리 목록 조회 실패가 "0건 성공"으로 읽힘
+
+- 원인: `planMigrationFor` 가 `git worktree list` 오류(이제 `gitCommandTimeout` 로 도달 가능)와 파싱 오류를 삼키고 `nil` 을 돌려줘, 적용이 후보를 한 번도 보지 못했는데도 `0 moved, 0 skipped, 0 failed` 를 찍었다.
+- 수정: `planMigrationFor` 가 `([]migratePlan, error)` 를 돌려주고(`list the registered worktrees: ...` / `parse the registered worktree list: ...`), `runMigrationEngineWith` 가 그 오류를 그대로 위로 올린다. `migrate` 동사와 업데이트 통합이 모두 오류를 보고하며, 업데이트는 기존 규약대로 이를 경고 행으로 낮춘다(`update.go` 코드는 바꾸지 않았다). 드라이런도 같은 경로라 같은 오류를 보고한다.
+- 테스트(RED 확인: 7개 하위 케이스가 "returned success" 단언으로 실패): `TestMigrationEngine_WorktreeListTimeoutIsAnError`(드라이런/적용), `TestMigrateVerb_WorktreeListTimeoutFails`(`--apply`/드라이런), `TestUpdateConsolidation_WorktreeListTimeoutFails`(드라이런/적용). 모두 오류에 "timed out" 이유가 있고 성공 요약 행이 찍히지 않음을 확인한다.
+
+### F2. 역이동이 파일시스템 이동 완료 뒤 오류를 내면 위치를 잘못 가정
+
+- 원인: `m6ReverseMove` 가 `reverseGitMove` 오류를 곧 "트리는 아직 목적지에 있다"로 간주해 re-key / 카드 rebind 를 건너뛰었다. git 이 이름 바꾸기 완료 뒤 시간 초과로 종료되면 트리는 이미 원위치인데 기록은 목적지를 가리킨다.
+- 수정: 오류 시 `treeMovedBack` 으로 실제 위치를 식별자로 다시 확인한다. 원위치(source)가 저널의 식별자를 가지고 있고 **그리고** 목적지가 더 이상 그 식별자를 갖지 않을 때만 "되돌아감"으로 보고 `RekeyWorktreeEntryInverse` + `rebindCardForPath` 후 `reversed` 행을 남기고 `true` 를 돌려준다. 목적지가 여전히 식별자를 가지거나, 두 경로 모두 읽을 수 없는 모호한 상태는 기존 pending / failed 경로를 유지한다(실패 안전).
+- 테스트(RED 확인: `a reverse move that completed before git reported the timeout was not treated as moved back`): `TestReverseMove_ErrorAfterMoveCompleted_IsTreatedAsMovedBack`(시임이 실제로 이동한 뒤 시간 초과 오류를 반환; 등록 위치, `reversed` 행, 카드가 원위치로 rebind 됨을 확인), `TestReverseMove_ErrorWhileTreeStaysAtDestination_StaysPending`, `TestReverseMove_AmbiguousLocation_StaysPending`.
+
+### 재검증 (레인 한정)
+
+| 명령 | 종료 코드 | 마지막 줄 |
+|---|---|---|
+| `go build ./...` | 0 | 출력 없음 |
+| `go vet ./internal/cli/... ./internal/config/...` | 0 | 출력 없음 |
+| `gofmt -l internal/` | 0 | 출력 0바이트 |
+| `go test -count=1 -v -run 'TestMigrationEngine_WorktreeList\|TestMigrateVerb_WorktreeList\|TestUpdateConsolidation_WorktreeList\|TestReverseMove_\|TestPlanMigration_' ./internal/cli/worktree/` | 0 | `ok .../internal/cli/worktree 20.747s` (`=== RUN` 13줄, 전부 PASS) |
+| `go test -count=1 ./internal/cli/worktree/...` (패키지 전체) | 0 | `ok .../internal/cli/worktree 240.660s` |
+| `go test -count=1 -v -run 'Worktree.*Migrat\|Migrat.*Worktree\|TestAcquireUserLockNotified\|TestDetectGitConfig\|TestRunBinaryUpdateStep\|TestRunUpdateProgressStep\|TestPruneBackupsWithProgress' ./internal/cli/` | 0 | `ok .../internal/cli 2.856s` (`=== RUN` 20줄, PASS 20, FAIL 0) |
+| `golangci-lint run ./internal/cli/worktree/... ./internal/cli/` | 0 | `0 issues.` |
+
+### 한계 (이번 수정 관련)
+
+- `--rollback`(`runMigrateRollback`)도 같은 `reverseGitMove` 를 쓰지만 F2 의 지적 범위는 `m6ReverseMove` 였고 롤백 쪽은 오류 시 `pending` 행과 실패 집계로 이미 수렴하도록 설계되어 있어 손대지 않았다. 같은 "이동 완료 후 시간 초과" 상황이 롤백에서 일어나면 다음 롤백 실행이 수렴시킨다.
+- `treeMovedBack` 이 참이어도 git 의 등록 정보(`worktrees/<id>/gitdir`)가 목적지를 가리킨 채 남아 있을 수 있다. 이는 이름 바꾸기 직후 git 이 종료된 경우의 잔여 상태이며 `git worktree repair` 가 다루는 영역이다. 이번 수정은 지적된 범위(위치 재확인 후 re-key / rebind / `reversed`)만 다룬다.
