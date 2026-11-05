@@ -386,3 +386,264 @@ func TestRollback_StaleRegistrationUnrepairable_StaysPending(t *testing.T) {
 	}
 	_ = w
 }
+
+// ---- third review round (H1, H2) --------------------------------------------
+//
+//	H1  a forward `git worktree move` killed after the directory rename but
+//	    before git updated its registration leaves the tree at the destination
+//	    while git still registers the source. The reverse move then fails
+//	    ("not a working tree"); one bounded `git worktree repair <destination>`
+//	    makes the destination the registered path so the reverse order can run.
+//	H2  a journal written by the previous build carries a manifest digest in the
+//	    previous shape; --rollback must verify it the previous way.
+
+// t2053RenameOnlyForward is a forward-move seam that renames the directory the
+// way a killed `git worktree move` leaves it, then reports the timeout.
+func t2053RenameOnlyForward(t *testing.T) {
+	t.Helper()
+	orig := forwardGitMove
+	forwardGitMove = func(root, from, to string) error {
+		if err := os.Rename(from, to); err != nil {
+			return err
+		}
+		return fmt.Errorf("%w after 1ms", ErrCommandTimeout)
+	}
+	t.Cleanup(func() { forwardGitMove = orig })
+}
+
+// TestMigrateApply_ForwardMoveInterruptedAfterRename_ConvergesBack — H1: every
+// forward move is killed after the rename. The engine repairs the destination's
+// registration and runs the reverse order: each tree is back at its source,
+// registered there, outcome reversed — never moved, never left stranded.
+func TestMigrateApply_ForwardMoveInterruptedAfterRename_ConvergesBack(t *testing.T) {
+	w := t2053TwoTreeWorld(t)
+	t2053RenameOnlyForward(t)
+
+	report, err := t2053EngineApply(t, w.repo)
+	if err != nil {
+		t.Fatalf("engine: %v", err)
+	}
+	if report.moved != 0 {
+		t.Errorf("moved = %d, want 0 for an interrupted forward move", report.moved)
+	}
+	if report.reversed != 2 || report.failed != 0 {
+		t.Fatalf("reversed=%d failed=%d, want 2 reversed and 0 failed: %+v", report.reversed, report.failed, report.rows)
+	}
+	for _, src := range []string{w.movedTree, w.nonWTTree} {
+		if fi, statErr := os.Lstat(src); statErr != nil || !fi.IsDir() {
+			t.Errorf("%s is not back at its source (stat err=%v)", src, statErr)
+		}
+		if !m6Registered(t, w.repo, src) {
+			t.Errorf("%s is not registered at its source", src)
+		}
+	}
+}
+
+// TestMigrateApply_ForwardMoveInterrupted_RepairHangs_NeverSuccess — H1: when
+// the repair cannot run, the tree stays where it stands (destination), the
+// outcome is failed, and nothing is reported moved or reversed.
+func TestMigrateApply_ForwardMoveInterrupted_RepairHangs_NeverSuccess(t *testing.T) {
+	w := t2053TwoTreeWorld(t)
+	t2053RenameOnlyForward(t)
+	t2053BlockingGit(t, "repair")
+	orig := gitCommandTimeout
+	gitCommandTimeout = 2 * time.Second
+	t.Cleanup(func() { gitCommandTimeout = orig })
+
+	report, err := t2053EngineApply(t, w.repo)
+	if err != nil {
+		t.Fatalf("engine: %v", err)
+	}
+	if report.moved != 0 || report.reversed != 0 {
+		t.Errorf("moved=%d reversed=%d, want neither while the registration cannot be repaired", report.moved, report.reversed)
+	}
+	if report.failed != 2 {
+		t.Errorf("failed = %d, want 2: %+v", report.failed, report.rows)
+	}
+}
+
+// t2053HalfMovedWorld renames the legacy tree to its destination without
+// touching git's registration — the state a killed forward move leaves — and
+// returns the plan, identity and move-list path.
+func t2053HalfMovedWorld(t *testing.T) (*m6World, migratePlan, TreeIdentity, string) {
+	t.Helper()
+	w := m6NewWorld(t)
+	m4InRepo(t, w.repo)
+	dest := filepath.Join(w.homeRoot, "legacy6")
+	id, err := EnsureInstanceToken(w.movedTree)
+	if err != nil {
+		t.Fatalf("instance token: %v", err)
+	}
+	if rerr := os.Rename(w.movedTree, dest); rerr != nil {
+		t.Fatalf("rename: %v", rerr)
+	}
+	mlPath := filepath.Join(w.repo, ".moai", "state", "worktree-migrate", "move-list.jsonl")
+	if merr := os.MkdirAll(filepath.Dir(mlPath), 0o755); merr != nil {
+		t.Fatalf("mkdir: %v", merr)
+	}
+	return w, migratePlan{source: w.movedTree, destination: dest}, id, mlPath
+}
+
+// TestRollback_ForwardMoveInterrupted_RepairsThenRestores — H1: a journal left
+// pending by a killed forward move rolls back: the destination is repaired, the
+// reverse move runs, and `restored` is recorded.
+func TestRollback_ForwardMoveInterrupted_RepairsThenRestores(t *testing.T) {
+	w, p, id, mlPath := t2053HalfMovedWorld(t)
+	body, _ := json.Marshal(map[string]any{"steps": []journalStep{{
+		OldPath: p.source, NewPath: p.destination, Outcome: "pending", Ident: id.Ident(),
+	}}})
+	journal := filepath.Join(t.TempDir(), "journal.json")
+	if err := os.WriteFile(journal, body, 0o644); err != nil {
+		t.Fatalf("write journal: %v", err)
+	}
+
+	out, rerr := m4RunMigrate(t, "--rollback", journal)
+	if rerr != nil {
+		t.Fatalf("rollback failed on a half-moved tree: %v\n%s", rerr, out)
+	}
+	if got := t2053LastMoveListResult(t, mlPath); got != "restored" {
+		t.Errorf("last move-list result = %q, want restored", got)
+	}
+	if !m6Registered(t, w.repo, p.source) || m6Registered(t, w.repo, p.destination) {
+		t.Errorf("registration does not name the source only")
+	}
+}
+
+// TestRollback_ForwardMoveInterrupted_RepairHangs_StaysPending — H1: with the
+// repair hung the rollback fails and writes no `restored` line.
+func TestRollback_ForwardMoveInterrupted_RepairHangs_StaysPending(t *testing.T) {
+	_, p, id, mlPath := t2053HalfMovedWorld(t)
+	body, _ := json.Marshal(map[string]any{"steps": []journalStep{{
+		OldPath: p.source, NewPath: p.destination, Outcome: "pending", Ident: id.Ident(),
+	}}})
+	journal := filepath.Join(t.TempDir(), "journal.json")
+	if err := os.WriteFile(journal, body, 0o644); err != nil {
+		t.Fatalf("write journal: %v", err)
+	}
+	t2053BlockingGit(t, "repair")
+	orig := gitCommandTimeout
+	gitCommandTimeout = 2 * time.Second
+	t.Cleanup(func() { gitCommandTimeout = orig })
+
+	if out, rerr := m4RunMigrate(t, "--rollback", journal); rerr == nil {
+		t.Fatalf("rollback reported success while the destination cannot be repaired:\n%s", out)
+	}
+	if raw, err := os.ReadFile(mlPath); err == nil && strings.Contains(string(raw), `"result":"restored"`) {
+		t.Errorf("a `restored` line was written:\n%s", raw)
+	}
+}
+
+// t2053LegacyJournalWorld moves the legacy tree for real, gives it an ignored
+// file (so the legacy and the current digest differ), and writes a journal
+// whose manifest is the base build's digest and carries no format version.
+func t2053LegacyJournalWorld(t *testing.T) (*m6World, migratePlan, string, string) {
+	t.Helper()
+	w, p, id, mlPath := t2053ReverseWorld(t)
+	if err := os.WriteFile(filepath.Join(p.destination, ".gitignore"), []byte("*.log\n"), 0o644); err != nil {
+		t.Fatalf("gitignore: %v", err)
+	}
+	m6Git(t, p.destination, "add", ".gitignore")
+	m6Git(t, p.destination, "commit", "-q", "-m", "ignore logs")
+	if err := os.WriteFile(filepath.Join(p.destination, "bulk.log"), []byte("aaaa"), 0o644); err != nil {
+		t.Fatalf("ignored file: %v", err)
+	}
+	legacy := legacyCaptureManifestT2053(p.destination)
+	if current := captureManifest(p.destination); current == legacy {
+		t.Fatalf("fixture error: the legacy and the current digest are equal")
+	}
+	body, _ := json.Marshal(map[string]any{"steps": []map[string]any{{
+		"old_path": p.source, "new_path": p.destination, "outcome": "moved",
+		"ident": id.Ident(), "manifest": legacy, // no manifest_version: a base-build journal
+	}}})
+	journal := filepath.Join(t.TempDir(), "journal.json")
+	if err := os.WriteFile(journal, body, 0o644); err != nil {
+		t.Fatalf("write journal: %v", err)
+	}
+	return w, p, journal, mlPath
+}
+
+// TestRollback_LegacyJournalManifest_UnchangedTreeMatches — H2: an unchanged
+// tree matches the base build's digest, so the rollback restores it.
+func TestRollback_LegacyJournalManifest_UnchangedTreeMatches(t *testing.T) {
+	_, _, journal, mlPath := t2053LegacyJournalWorld(t)
+	out, err := m4RunMigrate(t, "--rollback", journal)
+	if err != nil {
+		t.Fatalf("rollback of an unchanged tree from a legacy journal failed: %v\n%s", err, out)
+	}
+	if got := t2053LastMoveListResult(t, mlPath); got != "restored" {
+		t.Errorf("last move-list result = %q, want restored", got)
+	}
+}
+
+// TestRollback_LegacyJournalManifest_ChangedTreeRefused — H2: the legacy digest
+// still catches what the base build caught, including a same-size content
+// change inside an ignored file.
+func TestRollback_LegacyJournalManifest_ChangedTreeRefused(t *testing.T) {
+	for name, mutate := range map[string]func(p migratePlan) error{
+		"ignored same-size change": func(p migratePlan) error {
+			return os.WriteFile(filepath.Join(p.destination, "bulk.log"), []byte("bbbb"), 0o644)
+		},
+		"untracked file added": func(p migratePlan) error {
+			return os.WriteFile(filepath.Join(p.destination, "new.txt"), []byte("x"), 0o644)
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, p, journal, mlPath := t2053LegacyJournalWorld(t)
+			if err := mutate(p); err != nil {
+				t.Fatalf("mutate: %v", err)
+			}
+			out, rerr := m4RunMigrate(t, "--rollback", journal)
+			if rerr == nil {
+				t.Fatalf("rollback of a changed tree succeeded:\n%s", out)
+			}
+			if !strings.Contains(rerr.Error(), "manifest mismatch") {
+				t.Errorf("error %q does not name the manifest mismatch", rerr)
+			}
+			if got := t2053LastMoveListResult(t, mlPath); got != "refused" {
+				t.Errorf("last move-list result = %q, want refused", got)
+			}
+		})
+	}
+}
+
+// TestMigrateApply_JournalRecordsManifestVersion — H2: a new journal marks its
+// settled steps with the manifest format version.
+func TestMigrateApply_JournalRecordsManifestVersion(t *testing.T) {
+	w := t2053TwoTreeWorld(t)
+	if _, err := t2053EngineApply(t, w.repo); err != nil {
+		t.Fatalf("engine: %v", err)
+	}
+	dir := filepath.Join(w.repo, ".moai", "state", "worktree-migrate")
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatalf("read state dir: %v", err)
+	}
+	var checked int
+	for _, e := range entries {
+		if !strings.HasSuffix(e.Name(), ".json") {
+			continue
+		}
+		raw, _ := os.ReadFile(filepath.Join(dir, e.Name()))
+		var j struct {
+			Steps []struct {
+				Manifest        string `json:"manifest"`
+				ManifestVersion int    `json:"manifest_version"`
+			} `json:"steps"`
+		}
+		if json.Unmarshal(raw, &j) != nil {
+			continue
+		}
+		for _, s := range j.Steps {
+			if s.Manifest == "" {
+				continue
+			}
+			checked++
+			if s.ManifestVersion < 2 {
+				t.Errorf("a settled step carries manifest_version %d, want >= 2", s.ManifestVersion)
+			}
+		}
+	}
+	if checked == 0 {
+		t.Fatalf("no settled step with a manifest found in %s", dir)
+	}
+}

@@ -410,7 +410,15 @@ type journalStep struct {
 	Ident    string `json:"ident"`
 	Reason   string `json:"reason,omitempty"`
 	Manifest string `json:"manifest,omitempty"`
+	// ManifestVersion names the digest algorithm behind Manifest. Absent (0)
+	// means the pre-t2053 algorithm, which hashed the bytes of ignored files
+	// too; a rollback verifies such a journal that way (captureLegacyManifest).
+	ManifestVersion int `json:"manifest_version,omitempty"`
 }
+
+// manifestFormatVersion is the digest algorithm this build writes: 2 = ignored
+// files digested by path, type and size only (card t2053).
+const manifestFormatVersion = 2
 
 // migrationJournal is one apply run's journal file: every tree is appended
 // as pending before its move and settled afterwards, and the whole file is
@@ -460,6 +468,9 @@ func (j *migrationJournal) settle(ident, outcome, reason, manifest string) error
 			j.steps[i].Outcome = outcome
 			j.steps[i].Reason = reason
 			j.steps[i].Manifest = manifest
+			if manifest != "" {
+				j.steps[i].ManifestVersion = manifestFormatVersion
+			}
 			break
 		}
 	}
@@ -597,7 +608,7 @@ func migrateOneTree(root string, p migratePlan, mlPath, trigger string, journal 
 		return treeOutcome{Outcome: "failed", Reason: fmt.Sprintf("intent line not recorded; moved nothing (%v)", ierr), Ident: id.Ident(), Manifest: digest}
 	}
 
-	if _, err := gitOutputWithin(gitMoveTimeout, root, "worktree", "move", p.source, p.destination); err != nil {
+	if err := forwardGitMove(root, p.source, p.destination); err != nil {
 		if errors.Is(err, ErrCommandTimeout) {
 			// The deadline killed git mid-call: the tree may or may not have
 			// reached the destination. A destination that exists goes through
@@ -663,8 +674,14 @@ func reverseAfterFailure(root string, p migratePlan, id TreeIdentity, mlPath, tr
 	return out
 }
 
-// reverseAfterFailure runs the one reverse order after a failed step and
-// translates its result into the outcome (card t1640 review P1-4): the tree
+// forwardGitMove is the injectable seam for the forward `git worktree move`
+// (the fault-injection point for a move killed after the directory rename but
+// before git updated its registration — card t2053).
+var forwardGitMove = func(root, from, to string) error {
+	_, err := gitOutputWithin(gitMoveTimeout, root, "worktree", "move", from, to)
+	return err
+}
+
 // reverseGitMove is the injectable seam for the reverse `git worktree move`
 // (the fault-injection point of AC-WHR-017a's reverse-step failure clause).
 var reverseGitMove = func(root, from, to string) error {
@@ -750,6 +767,10 @@ func m6ReverseMove(root string, p migratePlan, id TreeIdentity, mlPath, trigger 
 	if err == nil && destIdent.Ident() != id.Ident() {
 		return false, appendMoveListLine(mlPath, m6MoveLineTrigger(trigger, "refused", p.destination, p.source, id.Ident()))
 	}
+	if forwardMoveUnregistered(root, p.source, p.destination, id.Ident()) && !repairRegistration(root, p.destination) {
+		return false, appendMoveListLine(mlPath, m6MoveLineTriggerReason(trigger, "pending", p.destination, p.source, id.Ident(),
+			"forward move left git's registration on the source and the repair did not hold"))
+	}
 	if rerr := reverseGitMove(root, p.destination, p.source); rerr != nil && !treeMovedBack(root, p.source, p.destination, id.Ident()) {
 		// The tree stands at the destination: the re-key and the rebind stay
 		// pointing at it — reverting them would name a location the tree
@@ -763,6 +784,37 @@ func m6ReverseMove(root string, p migratePlan, id TreeIdentity, mlPath, trigger 
 	_ = hook.RekeyWorktreeEntryInverse(root, p.destination, p.source)
 	_ = rebindCardForPath(root, p.destination, p.source)
 	return true, appendMoveListLine(mlPath, m6MoveLineTrigger(trigger, "reversed", p.destination, p.source, id.Ident()))
+}
+
+// forwardMoveUnregistered detects the state a forward `git worktree move` leaves
+// when it is killed after the directory rename but before git rewrote its
+// registration (card t2053, H1): the destination carries the journal identity,
+// the source is gone, and git still registers the source rather than the
+// destination. A reverse move cannot run from there ("not a working tree").
+// Every other state — including a listing that failed — answers false, so the
+// caller takes its ordinary path.
+func forwardMoveUnregistered(root, source, destination, ident string) bool {
+	if ident == "" {
+		return false
+	}
+	if _, err := os.Lstat(source); !errors.Is(err, os.ErrNotExist) {
+		return false
+	}
+	destIdent, err := TreeIdent(destination)
+	if err != nil || destIdent.Ident() != ident {
+		return false
+	}
+	return registeredAt(root, source) && !registeredAt(root, destination)
+}
+
+// repairRegistration runs one bounded `git worktree repair <destination>` and
+// reports whether git now registers the destination. A repair that fails or
+// times out answers false; the caller stays pending, never successful.
+func repairRegistration(root, destination string) bool {
+	if _, err := listGitOutput(root, "worktree", "repair", destination); err != nil {
+		return false
+	}
+	return registeredAt(root, destination)
 }
 
 // treeMovedBack reports whether the tree is verifiably back at source after a
@@ -958,12 +1010,21 @@ func runMigrateRollback(cmd *cobra.Command, root, journalPath string, asJSON boo
 			// The manifest-match precondition belongs to the ordinary
 			// rollback of a settled move; a pending step reverses
 			// unconditionally (REQ-WHR-018's fifth entry).
-			if s.Outcome == "moved" && s.Manifest != "" && captureManifest(s.NewPath) != s.Manifest {
+			if s.Outcome == "moved" && s.Manifest != "" && manifestForJournal(s.NewPath, s.ManifestVersion) != s.Manifest {
 				if lerr := appendMoveListLine(mlPath, m6MoveLineReason("refused", s.NewPath, s.OldPath, s.Ident, "manifest mismatch")); lerr != nil {
 					return lerr
 				}
 				problems = append(problems, fmt.Sprintf("%s: manifest mismatch; the step stays pending", s.NewPath))
 				refused++
+				continue
+			}
+			if forwardMoveUnregistered(root, s.OldPath, s.NewPath, s.Ident) && !repairRegistration(root, s.NewPath) {
+				const msg = "forward move left git's registration on the source and the repair did not hold"
+				if lerr := appendMoveListLine(mlPath, m6MoveLineReason("pending", s.NewPath, s.OldPath, s.Ident, msg)); lerr != nil {
+					return lerr
+				}
+				problems = append(problems, fmt.Sprintf("%s: %s", s.NewPath, msg))
+				failed++
 				continue
 			}
 			if merr := reverseGitMove(root, s.NewPath, s.OldPath); merr != nil && !treeMovedBack(root, s.OldPath, s.NewPath, s.Ident) {
@@ -1092,6 +1153,70 @@ type treeManifest struct {
 func captureManifest(tree string) string {
 	digest, _ := captureManifestChecked(tree)
 	return digest
+}
+
+// manifestForJournal captures the digest the way the journal step was written:
+// a step without a format version came from the pre-t2053 build, whose digest
+// covered the bytes of ignored files as well (H2, card t2053).
+func manifestForJournal(tree string, version int) string {
+	if version >= manifestFormatVersion {
+		return captureManifest(tree)
+	}
+	return captureLegacyManifest(tree)
+}
+
+// captureLegacyManifest reproduces the pre-t2053 manifest digest: the same
+// fields as treeManifest minus IgnoredDigest, with ContentDigest hashing the
+// bytes of every untracked file, ignored ones included. It exists only so
+// --rollback can verify journals an older build wrote; new journals never use
+// it. A timed-out git call returns "", which never equals a recorded digest.
+func captureLegacyManifest(tree string) string {
+	type legacyManifest struct {
+		HEAD          string
+		Branch        string
+		Unpushed      string
+		Status        string
+		Diff          string
+		IgnoredCount  int
+		ReportsCount  int
+		ContentDigest string
+	}
+	var m legacyManifest
+	timedOut := false
+	git := func(args ...string) string {
+		if timedOut {
+			return ""
+		}
+		out, err := listGitOutput(tree, args...)
+		if err != nil && errors.Is(err, ErrCommandTimeout) {
+			timedOut = true
+		}
+		return out
+	}
+	m.HEAD = strings.TrimSpace(git("rev-parse", "HEAD"))
+	m.Branch = strings.TrimSpace(git("rev-parse", "--abbrev-ref", "HEAD"))
+	m.Unpushed = git("rev-list", "HEAD", "--not", "--remotes")
+	m.Status = git("status", "--porcelain")
+	m.Diff = git("diff", "--cached") + git("diff")
+	untracked := splitNul(git("ls-files", "--others", "-z"))
+	ignored := splitNul(git("ls-files", "--others", "--ignored", "--exclude-standard", "-z"))
+	if timedOut {
+		return ""
+	}
+	m.IgnoredCount = len(ignored)
+	m.ContentDigest = hashUntrackedContent(tree, append(append([]string{}, untracked...), ignored...))
+	_ = filepath.WalkDir(filepath.Join(tree, ".moai", "reports"), func(_ string, d os.DirEntry, err error) error {
+		if err == nil && !d.IsDir() {
+			m.ReportsCount++
+		}
+		return nil
+	})
+	b, err := json.Marshal(m)
+	if err != nil {
+		return ""
+	}
+	sum := sha256.Sum256(b)
+	return hex.EncodeToString(sum[:])
 }
 
 // captureManifestChecked is captureManifest plus the reason a manifest could
