@@ -118,3 +118,17 @@ Scope: text only. Agent sources live in `internal/template/agentemit/source/`; `
 - Template copy of the watchdog SKILL.md already differed from the live copy by one card-id phrase (line 202) before this card; left alone.
 - All `prediction:` entries are `verified: pending`; the 2-consecutive threshold is a PROPOSED starting value.
 - card-review: verdict fail, two outside-the-diff P1 findings on Go batch code (see card-review.md); not re-run.
+
+## AGENTS.md headroom repair (leader instruction, candidate 4855b23ee8 failure)
+
+`TestContractDocumentsKeepHeadroom`: limit 22528 B; before AGENTS.md 22662 / AGENTS.md.tmpl 22640; after 22505 / 22483. Wording-only; the secret-value duty (fe4634ff43) is kept.
+
+| Location | Before | After |
+|---|---|---|
+| §7 secret sentence | "...into logs, reports, or evidence files; record the variable name or a redaction." | "...into logs or reports; record the name or a redaction." |
+| §7 session length | "Prefer one warm session for the same work; a new or cold session re-pays..." | "Prefer one warm session; a new or cold one re-pays..." |
+| §7 MCP | "...for library documentation and established patterns, then continue — analysis quality must not depend on MCP availability." | "...for library documentation, then continue; quality must not depend on MCP." |
+| §7 tool usage | "Use absolute paths and verify a path exists rather than constructing it from an assumption." | "Use absolute paths; verify a path exists rather than assuming it." |
+| §7 output | "A runtime output limit is a backstop, not the target." / "— not forms emitting spinners, ..." | "A runtime limit is only a backstop." / "— not spinners, ..." |
+
+Observed (this run, this tree): `go test -count=1 -run TestContractDocumentsKeepHeadroom ./internal/config/` ok; `./internal/config/` ok 32.673s; `internal/template` `TestRoleCoreStubGate$|TestBindingLedgerIntegrity` ok; Catalog|Manifest|AgentsMd|AGENTS subset ok. Gap: full `internal/template` not re-run; tmpl/live byte parity checked only by identical substitutions.
