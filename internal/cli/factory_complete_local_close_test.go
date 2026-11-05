@@ -4,6 +4,8 @@
 package cli
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
@@ -75,5 +77,40 @@ func TestFactoryCompleteRerunReconcilesAMergedLocalCard(t *testing.T) {
 	}
 	if len(rec.Items) != 0 || len(rec.Archived) != 1 || rec.Archived[0].Item.ID != "t1" {
 		t.Fatalf("queue after the re-run: live=%d archived=%d, want t1 archived", len(rec.Items), len(rec.Archived))
+	}
+}
+
+// TestFactoryCompleteRerunDoesNotGuessTheLandingTarget — card-review P2: the
+// card record keeps no integration branch, so the re-run reads the target from
+// configuration. Where configuration names none, the target would fall back to
+// the card's own work branch, and archiving the card as landed there would be
+// a false landing verdict: the re-run reports and leaves the queue card live.
+func TestFactoryCompleteRerunDoesNotGuessTheLandingTarget(t *testing.T) {
+	sdClearLaneEnv(t)
+	root, _, cards := sdMergeFixture(t, false, true, false, 1)
+	dir := filepath.Join(root, ".moai", "config", "sections")
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	body := "git_strategy:\n  mode: manual\n  manual:\n    workflow: git-flow\n"
+	if err := os.WriteFile(filepath.Join(dir, "git-strategy.yaml"), []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	fcPlace(t, root, homestate.Card{
+		CardID: "t1", State: homestate.CardMergedLocal, Stage: homestate.CardMergedLocal,
+		OwnerLabel: "lane-1", LeaseHolder: "lane-1",
+		WorktreePath: cards[0].wt, MergeSHA: "0123456789abcdef0123456789abcdef01234567",
+	})
+	sdLaneEnv(t, "lane-1", "")
+	t.Setenv(config.EnvClaudeCodeSessionID, "sess-lane-1")
+	if _, _, err := runFactory(t, "complete", "t1", "--run", fcRun); err != nil {
+		t.Fatalf("re-run of complete: %v", err)
+	}
+	rec, err := factory.NewBacklogStore(todoBacklogPath(root)).LoadPure()
+	if err != nil {
+		t.Fatalf("load queue: %v", err)
+	}
+	if len(rec.Archived) != 0 || len(rec.Items) != 1 {
+		t.Fatalf("queue after the re-run: live=%d archived=%d, want the card left live (no configured landing target)", len(rec.Items), len(rec.Archived))
 	}
 }
