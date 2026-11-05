@@ -15,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
@@ -28,7 +29,7 @@ import (
 // (lock, catalog, roots) return an error; per-file failures continue and are
 // surfaced in the summary (REQ-013).
 func ensureUserAssetsLocked(homeDir string, selection []string, out io.Writer) error {
-	lock, err := userassets.AcquireUserLock(homeDir, userLockWaitWindow)
+	lock, err := acquireUserLockNotified(homeDir, userLockWaitWindow, out)
 	if err != nil {
 		return fmt.Errorf("acquire user-asset lock: %w", err)
 	}
@@ -58,6 +59,34 @@ func ensureUserAssetsLocked(homeDir string, selection []string, out io.Writer) e
 // userLockWaitWindow bounds how long a run waits on the user-level lock.
 // Generous: a cold-tree first install can legitimately take minutes.
 const userLockWaitWindow = 2 * time.Minute
+
+// userLockNoticeDelay is how long the lock wait stays silent before the notice
+// below prints. A variable so a test can shorten it.
+var userLockNoticeDelay = config.DefaultUserLockNoticeDelay
+
+// acquireUserLockNotified is userassets.AcquireUserLock plus one line of
+// feedback (card t2053): when the lock is still not held after
+// userLockNoticeDelay, it prints once to out that another process holds the
+// moai user lock and how long this run will wait for it. A lock taken at once
+// prints nothing; the notice never repeats. Update and init share it.
+func acquireUserLockNotified(homeDir string, window time.Duration, out io.Writer) (*userassets.UserLock, error) {
+	var mu sync.Mutex
+	finished := false
+	notice := time.AfterFunc(userLockNoticeDelay, func() {
+		mu.Lock()
+		defer mu.Unlock()
+		if finished {
+			return
+		}
+		_, _ = fmt.Fprintf(out, "Waiting for the moai user lock, held by another process (waiting at most %s)...\n", window)
+	})
+	lock, err := userassets.AcquireUserLock(homeDir, window)
+	notice.Stop()
+	mu.Lock()
+	finished = true
+	mu.Unlock()
+	return lock, err
+}
 
 // newUserAssetInstaller builds the installer over the embedded catalog and
 // tree.
@@ -115,7 +144,7 @@ func writeInstallSummary(out io.Writer, label string, res *userassets.Result) {
 // (REQ-024's upgrade arm ordering). The recorded bundle selection is
 // preserved — the phase passes the manifest's own list back as the selection.
 func runUserAssetUpdatePhase(homeDir string, out io.Writer) error {
-	lock, err := userassets.AcquireUserLock(homeDir, userLockWaitWindow)
+	lock, err := acquireUserLockNotified(homeDir, userLockWaitWindow, out)
 	if err != nil {
 		return fmt.Errorf("acquire user-asset lock: %w", err)
 	}
