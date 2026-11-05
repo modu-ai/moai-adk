@@ -180,14 +180,22 @@ file the completion report names:
    the wake: line covers predecessor landings only. The git-flow variant (integration window, `--no-ff` merge, release-branch
    push) is the section above and applies only where the project's git
    strategy names git-flow.
-4. **Close** — the merged-pr record closes the lane's own queue card by the
+4. **Read the merge receipt and the review on the pull request** — after
+   the remote merge has actually happened, require the merged-pr record and
+   trusted native Codex artifacts bound to the current full head SHA and no unresolved findings. Missing, failed, stale, or contradictory evidence is a gap, never a pass.
+5. **Close** — the merged-pr record closes the lane's own queue card by the
    runtime-completion archive authority (`auto-semantics.md` §13): the
    archive lands with the landing verdict the edge answered, and the
    runtime completion row is recorded. No leader `todo done` is needed.
-5. **Read the review on the pull request** — require trusted native Codex artifacts bound to the current full head SHA and no unresolved findings. Missing, failed, stale, or contradictory evidence is a gap, never a pass.
-6. **Sweep** — once the remote landing is confirmed, `moai worktree sweep`
-   disposes the card tree (owner check, dirty trees skipped — the
-   `worktree-integration.md` disposal contract).
+6. **Sweep** — once the remote landing is confirmed and the pre-disposal
+   check holds (no uncommitted, unpushed, or shared work in the tree; its
+   evidence recoverable), `moai worktree sweep` disposes the card tree
+   (owner check, dirty trees skipped — the `worktree-integration.md`
+   disposal contract). A check that cannot be answered preserves the tree.
+
+The order is local integration (where the project's route has an
+integration window), the pull request and its real remote merge, the
+receipt and evidence read, Close, the pre-disposal check, then the sweep.
 
 The landing writes one decision record (`auto-semantics.md` §10) in the
 card's progress record, and the completion report to the leader carries the
