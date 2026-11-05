@@ -142,7 +142,11 @@ func withMigrationLock(root string, fn func() error) error {
 // writer gate (AC-WHR-017b), not a reader's.
 func runMigratePlanOrApply(cmd *cobra.Command, root string, apply, asJSON bool) error {
 	run := func() error {
-		report, err := runMigrationEngine(root, apply, "migrate")
+		var progress *treeProgress
+		if apply && !asJSON {
+			progress = newTreeProgress(cmd.ErrOrStderr())
+		}
+		report, err := runMigrationEngineWith(root, apply, "migrate", progress)
 		if err != nil {
 			return err
 		}
@@ -203,6 +207,36 @@ type migratePlan struct {
 	skip                string
 }
 
+// ErrCommandTimeout marks a subprocess the migration stopped waiting for (card
+// t2053). It fails SAFE everywhere it surfaces: a tree whose manifest or move
+// timed out is skipped or failed with this reason, never reported moved.
+var ErrCommandTimeout = errors.New("timed out")
+
+// The bounds are package variables so a test can shorten them; the production
+// values are the named defaults in internal/config.
+var (
+	lsofCommandTimeout = config.DefaultWorktreeLsofTimeout
+	gitCommandTimeout  = config.DefaultWorktreeGitTimeout
+	gitMoveTimeout     = config.DefaultWorktreeMoveTimeout
+)
+
+// boundedOutput runs name with args under a deadline and returns its stdout.
+// dir, when set, becomes the working directory. A deadline hit returns an
+// error wrapping ErrCommandTimeout; the child is killed and its output pipes
+// are released after config.DefaultWorktreeCommandWaitDelay.
+func boundedOutput(timeout time.Duration, dir, name string, args ...string) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, name, args...)
+	cmd.Dir = dir
+	cmd.WaitDelay = config.DefaultWorktreeCommandWaitDelay
+	out, err := cmd.Output()
+	if ctx.Err() == context.DeadlineExceeded {
+		return out, fmt.Errorf("%w after %s", ErrCommandTimeout, timeout)
+	}
+	return out, err
+}
+
 // activeProcessCWDProbe is the injectable seam for the process working-
 // directory skip cause. The default is the conservative lsof scan — the
 // same logic planLegacyWorktreeMigrationFor uses through its package-cli
@@ -212,7 +246,7 @@ var activeProcessCWDProbe = defaultActiveProcessCWDs
 // defaultActiveProcessCWDs scans lsof for the working directories of every
 // active process (the conservative process-level guard for worktree moves).
 func defaultActiveProcessCWDs() ([]string, error) {
-	out, err := exec.Command("lsof", "-a", "-d", "cwd", "-F0n").Output()
+	out, err := boundedOutput(lsofCommandTimeout, "", "lsof", "-a", "-d", "cwd", "-F0n")
 	if err != nil {
 		return nil, fmt.Errorf("lsof cwd scan: %w", err)
 	}
@@ -434,8 +468,26 @@ func (j *migrationJournal) settle(ident, outcome, reason, manifest string) error
 // the move list ("migrate" for the verb, "update" for the consolidation —
 // AC-WHR-019(g)).
 func runMigrationEngine(root string, apply bool, trigger string) (*migrationReport, error) {
+	return runMigrationEngineWith(root, apply, trigger, nil)
+}
+
+// runMigrationEngineWith is runMigrationEngine with a live-progress renderer:
+// the apply announces the count of trees it will move, then names each tree as
+// it starts. A nil progress is silent.
+func runMigrationEngineWith(root string, apply bool, trigger string, progress *treeProgress) (*migrationReport, error) {
 	report := &migrationReport{}
 	plans := planMigrationFor(root, time.Now(), apply)
+	if apply {
+		eligible := 0
+		for _, p := range plans {
+			if p.class == string(ClassMoaiMade) && p.skip == "" {
+				eligible++
+			}
+		}
+		progress.begin(eligible)
+		defer progress.end()
+	}
+	treeIndex := 0
 	mlPath := moveListPath(root)
 
 	var journal *migrationJournal
@@ -469,6 +521,8 @@ func runMigrationEngine(root string, apply bool, trigger string) (*migrationRepo
 		}
 		// The apply: the row's outcome is the engine's verdict for this tree
 		// (card t1640 review P2h — the placeholder never survives the run).
+		treeIndex++
+		progress.tree(treeIndex, p.source)
 		out := migrateOneTree(root, p, mlPath, trigger, journal)
 		row.Outcome, row.SkipReason = out.Outcome, out.Reason
 		if mlErr := out.MLErr; mlErr != nil {
@@ -512,7 +566,12 @@ type treeOutcome struct {
 // tree's identity with the journal's and refuses a mismatch with a
 // `refused` line (REQ-WHR-017/018).
 func migrateOneTree(root string, p migratePlan, mlPath, trigger string, journal *migrationJournal) treeOutcome {
-	digest := captureManifest(p.source)
+	digest, merr := captureManifestChecked(p.source)
+	if merr != nil {
+		// Fail safe (card t2053): a manifest that could not be read in full —
+		// a git call timed out — proves nothing, so nothing moves.
+		return treeOutcome{Outcome: "skipped", Reason: fmt.Sprintf("manifest unavailable: %v; moved nothing", merr)}
+	}
 
 	id, err := EnsureInstanceToken(p.source)
 	if err != nil {
@@ -530,7 +589,16 @@ func migrateOneTree(root string, p migratePlan, mlPath, trigger string, journal 
 		return treeOutcome{Outcome: "failed", Reason: fmt.Sprintf("intent line not recorded; moved nothing (%v)", ierr), Ident: id.Ident(), Manifest: digest}
 	}
 
-	if _, err := listGitOutput(root, "worktree", "move", p.source, p.destination); err != nil {
+	if _, err := gitOutputWithin(gitMoveTimeout, root, "worktree", "move", p.source, p.destination); err != nil {
+		if errors.Is(err, ErrCommandTimeout) {
+			// The deadline killed git mid-call: the tree may or may not have
+			// reached the destination. A destination that exists goes through
+			// the one reverse order (identity-checked); one that does not means
+			// nothing moved.
+			if _, statErr := os.Lstat(p.destination); statErr == nil {
+				return reverseAfterFailure(root, p, id, mlPath, trigger, digest, fmt.Sprintf("git worktree move: %v", err))
+			}
+		}
 		_ = appendMoveListLine(mlPath, m6MoveLineTrigger(trigger, "failed", p.source, p.destination, id.Ident()))
 		return treeOutcome{Outcome: "failed", Reason: fmt.Sprintf("git worktree move: %v", err), Ident: id.Ident(), Manifest: digest}
 	}
@@ -548,7 +616,11 @@ func migrateOneTree(root string, p migratePlan, mlPath, trigger string, journal 
 		return reverseAfterFailure(root, p, id, mlPath, trigger, digest, fmt.Sprintf("card rebind failed: %v", rerr))
 	}
 
-	if after := captureManifest(p.destination); after != digest {
+	after, aerr := captureManifestChecked(p.destination)
+	if aerr != nil {
+		return reverseAfterFailure(root, p, id, mlPath, trigger, digest, fmt.Sprintf("manifest unavailable after the move: %v", aerr))
+	}
+	if after != digest {
 		return reverseAfterFailure(root, p, id, mlPath, trigger, digest, "manifest mismatch after the move")
 	}
 
@@ -588,7 +660,7 @@ func reverseAfterFailure(root string, p migratePlan, id TreeIdentity, mlPath, tr
 // reverseGitMove is the injectable seam for the reverse `git worktree move`
 // (the fault-injection point of AC-WHR-017a's reverse-step failure clause).
 var reverseGitMove = func(root, from, to string) error {
-	_, err := listGitOutput(root, "worktree", "move", from, to)
+	_, err := gitOutputWithin(gitMoveTimeout, root, "worktree", "move", from, to)
 	return err
 }
 
@@ -617,7 +689,11 @@ func RunUpdateConsolidation(root string, dryRun bool, out io.Writer) error {
 // warning (AC-WHR-019(j)).
 func runUpdateConsolidation(root string, dryRun bool, out io.Writer) error {
 	run := func() error {
-		report, err := runMigrationEngine(root, !dryRun, "update")
+		var progress *treeProgress
+		if !dryRun {
+			progress = newTreeProgress(out)
+		}
+		report, err := runMigrationEngineWith(root, !dryRun, "update", progress)
 		if err != nil {
 			return err
 		}
@@ -873,10 +949,17 @@ func canonicalTreePath(p string) string {
 	return filepath.Clean(p)
 }
 
-// listGitOutput runs git in dir and returns stdout.
+// listGitOutput runs git in dir and returns stdout, bounded by
+// gitCommandTimeout.
 func listGitOutput(dir string, args ...string) (string, error) {
+	return gitOutputWithin(gitCommandTimeout, dir, args...)
+}
+
+// gitOutputWithin is listGitOutput under an explicit bound (the `worktree
+// move` call carries its own, longer one).
+func gitOutputWithin(timeout time.Duration, dir string, args ...string) (string, error) {
 	argv := append([]string{"-C", dir}, args...)
-	out, err := exec.Command("git", argv...).Output()
+	out, err := boundedOutput(timeout, "", "git", argv...)
 	return string(out), err
 }
 
@@ -910,10 +993,22 @@ func m6MoveLineTriggerReason(trigger, result, oldPath, newPath, ident, reason st
 
 // treeManifest is the manifest of one tree at a point in time: the
 // AC-WHR-017a field list (HEAD, branch, unpushed commit list, status,
-// ignored-file count, reports file count) plus a content digest over every
-// untracked and ignored file's bytes — the digest that detects a one-byte
-// mutation in an ignored report file (REQ-WHR-017; card t1640 review P2f:
-// a HEAD+status digest alone is blind to ignored content).
+// ignored-file count, reports file count) plus two digests over the files git
+// does not track:
+//
+//   - ContentDigest covers every untracked, NON-ignored file's bytes — the
+//     files a user wrote and did not ignore (symlinks hash their target).
+//   - IgnoredDigest covers every IGNORED file's path, size and file type,
+//     taken from Lstat alone; the content is never read (card t2053).
+//
+// Why the split: a digest over the bytes of every ignored file reads whatever
+// the tree ignores — node_modules, build output, caches — twice per moved
+// tree, and a project with hundreds of trees went silent for minutes. The
+// price is a documented blind spot: a same-size content change inside an
+// ignored file is NOT detected. A missing ignored file, a size change and a
+// type change (file / symlink / directory / special) are still detected. The
+// pre-t2053 digest (card t1640 review P2f) caught the same-size change too;
+// ignored files are by definition reproducible output, which is the trade.
 type treeManifest struct {
 	HEAD          string
 	Branch        string
@@ -923,52 +1018,92 @@ type treeManifest struct {
 	IgnoredCount  int
 	ReportsCount  int
 	ContentDigest string
+	IgnoredDigest string
 }
 
 // captureManifest digests the working state of the tree at path through the
-// full AC-WHR-017a manifest.
+// full AC-WHR-017a manifest. It returns "" when the manifest could not be read
+// in full (see captureManifestChecked); an empty digest never equals a real
+// one, so every comparison against it fails safe.
 func captureManifest(tree string) string {
-	m := captureTreeManifest(tree)
-	b, err := json.Marshal(m)
+	digest, _ := captureManifestChecked(tree)
+	return digest
+}
+
+// captureManifestChecked is captureManifest plus the reason a manifest could
+// not be completed: a git call that timed out. Other read failures still
+// degrade to zero values inside the manifest (see captureTreeManifest).
+func captureManifestChecked(tree string) (string, error) {
+	m, err := captureTreeManifest(tree)
 	if err != nil {
-		return ""
+		return "", err
+	}
+	b, merr := json.Marshal(m)
+	if merr != nil {
+		return "", nil
 	}
 	sum := sha256.Sum256(b)
-	return hex.EncodeToString(sum[:])
+	return hex.EncodeToString(sum[:]), nil
 }
 
 // captureTreeManifest reads the AC-WHR-017a manifest fields of the tree at
-// path. Read failures degrade to zero values inside the manifest — the
-// pre/post comparison then notices the change of shape, exactly as an
-// unreadable field should fail a field-for-field comparison.
-func captureTreeManifest(tree string) treeManifest {
+// path. A git call that exits non-zero degrades to a zero value — the pre/post
+// comparison then notices the change of shape, exactly as an unreadable field
+// should fail a field-for-field comparison. A git call that TIMES OUT does
+// not: the capture stops at once and returns an error wrapping
+// ErrCommandTimeout, because two timed-out captures would otherwise compare
+// equal and certify a tree nobody inspected.
+func captureTreeManifest(tree string) (treeManifest, error) {
 	var m treeManifest
-	m.HEAD, _ = listGitOutput(tree, "rev-parse", "HEAD")
-	m.HEAD = strings.TrimSpace(m.HEAD)
-	m.Branch, _ = listGitOutput(tree, "rev-parse", "--abbrev-ref", "HEAD")
-	m.Branch = strings.TrimSpace(m.Branch)
-	m.Unpushed, _ = listGitOutput(tree, "rev-list", "HEAD", "--not", "--remotes")
-	m.Status, _ = listGitOutput(tree, "status", "--porcelain")
+	var timedOut error
+	git := func(args ...string) string {
+		if timedOut != nil {
+			return ""
+		}
+		out, err := listGitOutput(tree, args...)
+		if err != nil && errors.Is(err, ErrCommandTimeout) {
+			timedOut = fmt.Errorf("git %s: %w", args[0], err)
+		}
+		return out
+	}
+
+	m.HEAD = strings.TrimSpace(git("rev-parse", "HEAD"))
+	m.Branch = strings.TrimSpace(git("rev-parse", "--abbrev-ref", "HEAD"))
+	m.Unpushed = git("rev-list", "HEAD", "--not", "--remotes")
+	m.Status = git("status", "--porcelain")
 	// The tracked-change content (REQ-WHR-017's content digest over the
 	// tracked-change diff — card t1640 review F7): a content mutation that
 	// preserves the status shape must change the manifest. Both the
 	// unstaged and the staged forms ride the manifest.
-	staged, _ := listGitOutput(tree, "diff", "--cached")
-	unstaged, _ := listGitOutput(tree, "diff")
+	staged := git("diff", "--cached")
+	unstaged := git("diff")
 	m.Diff = staged + unstaged
 
-	var untracked, ignored []string
-	if out, err := listGitOutput(tree, "ls-files", "--others", "-z"); err == nil {
-		untracked = splitNul(out)
-	}
-	if out, err := listGitOutput(tree, "ls-files", "--others", "--ignored", "--exclude-standard", "-z"); err == nil {
-		ignored = splitNul(out)
+	untracked := splitNul(git("ls-files", "--others", "--exclude-standard", "-z"))
+	ignored := splitNul(git("ls-files", "--others", "--ignored", "--exclude-standard", "-z"))
+	if timedOut != nil {
+		return m, timedOut
 	}
 	m.IgnoredCount = len(ignored)
+	m.ContentDigest = hashUntrackedContent(tree, untracked)
+	m.IgnoredDigest = hashIgnoredMetadata(tree, ignored)
 
+	reports := filepath.Join(tree, ".moai", "reports")
+	_ = filepath.WalkDir(reports, func(path string, d os.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return nil
+		}
+		m.ReportsCount++
+		return nil
+	})
+	return m, nil
+}
+
+// sortedUniquePaths trims, de-duplicates and sorts a git path listing.
+func sortedUniquePaths(listing []string) []string {
 	seen := map[string]bool{}
 	var paths []string
-	for _, p := range append(append([]string{}, untracked...), ignored...) {
+	for _, p := range listing {
 		p = strings.TrimSpace(p)
 		if p == "" || seen[p] {
 			continue
@@ -977,8 +1112,13 @@ func captureTreeManifest(tree string) treeManifest {
 		paths = append(paths, p)
 	}
 	sort.Strings(paths)
+	return paths
+}
+
+// hashUntrackedContent digests the bytes of the untracked, non-ignored files.
+func hashUntrackedContent(tree string, listing []string) string {
 	digest := sha256.New()
-	for _, p := range paths {
+	for _, p := range sortedUniquePaths(listing) {
 		_, _ = digest.Write([]byte(p))
 		_, _ = digest.Write([]byte{0})
 		full := filepath.Join(tree, filepath.FromSlash(p))
@@ -1008,17 +1148,27 @@ func captureTreeManifest(tree string) treeManifest {
 		}
 		_, _ = digest.Write([]byte{0})
 	}
-	m.ContentDigest = hex.EncodeToString(digest.Sum(nil))
+	return hex.EncodeToString(digest.Sum(nil))
+}
 
-	reports := filepath.Join(tree, ".moai", "reports")
-	_ = filepath.WalkDir(reports, func(path string, d os.DirEntry, err error) error {
-		if err != nil || d.IsDir() {
-			return nil
+// @MX:NOTE: [AUTO] same-size content changes inside ignored files are NOT detected (card t2053); only path, size and file type are compared
+// hashIgnoredMetadata digests the ignored files by path, file type and size
+// from Lstat alone. It never opens a file: an unreadable (mode 000) or huge
+// ignored file costs one stat call, and a symlink is recorded as a symlink
+// (its target is not followed or read).
+func hashIgnoredMetadata(tree string, listing []string) string {
+	digest := sha256.New()
+	for _, p := range sortedUniquePaths(listing) {
+		kind, size := "missing", int64(0)
+		if info, lerr := os.Lstat(filepath.Join(tree, filepath.FromSlash(p))); lerr == nil {
+			kind, size = "regular", info.Size()
+			if t := info.Mode().Type(); t != 0 {
+				kind = t.String()
+			}
 		}
-		m.ReportsCount++
-		return nil
-	})
-	return m
+		_, _ = fmt.Fprintf(digest, "%s\x00%s\x00%d\x00", p, kind, size)
+	}
+	return hex.EncodeToString(digest.Sum(nil))
 }
 
 // splitNul splits a NUL-delimited git -z listing.
