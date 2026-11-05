@@ -302,14 +302,19 @@ var liveAnchoredProbe = func(tree, root string, now time.Time) int {
 // record is created for a planned tree (AC-WHR-015). The apply resolves
 // through the writing resolver, whose first-time assignment claims the key
 // and writes the marker (REQ-WHR-002a) — an apply may write.
-func planMigrationFor(root string, now time.Time, apply bool) []migratePlan {
+//
+// A worktree listing that fails (git exits non-zero, or the call times out —
+// card t2053) or does not parse is an ERROR, not an empty plan: returning no
+// plans would let the caller print a clean "0 moved, 0 skipped, 0 failed" for a
+// run that never saw a candidate.
+func planMigrationFor(root string, now time.Time, apply bool) ([]migratePlan, error) {
 	out, err := listGitOutput(root, "worktree", "list", "--porcelain")
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("list the registered worktrees: %w", err)
 	}
 	records, err := ParseWorktreeList(out)
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("parse the registered worktree list: %w", err)
 	}
 	homeBase := homeProjectsDir()
 	// The classifier verdicts must agree across list, migrate, tier and
@@ -388,7 +393,7 @@ func planMigrationFor(root string, now time.Time, apply bool) []migratePlan {
 		}
 		plans = append(plans, p)
 	}
-	return plans
+	return plans, nil
 }
 
 // migrationReport builders
@@ -476,7 +481,10 @@ func runMigrationEngine(root string, apply bool, trigger string) (*migrationRepo
 // it starts. A nil progress is silent.
 func runMigrationEngineWith(root string, apply bool, trigger string, progress *treeProgress) (*migrationReport, error) {
 	report := &migrationReport{}
-	plans := planMigrationFor(root, time.Now(), apply)
+	plans, planErr := planMigrationFor(root, time.Now(), apply)
+	if planErr != nil {
+		return report, planErr
+	}
 	if apply {
 		eligible := 0
 		for _, p := range plans {
@@ -742,7 +750,7 @@ func m6ReverseMove(root string, p migratePlan, id TreeIdentity, mlPath, trigger 
 	if err == nil && destIdent.Ident() != id.Ident() {
 		return false, appendMoveListLine(mlPath, m6MoveLineTrigger(trigger, "refused", p.destination, p.source, id.Ident()))
 	}
-	if rerr := reverseGitMove(root, p.destination, p.source); rerr != nil {
+	if rerr := reverseGitMove(root, p.destination, p.source); rerr != nil && !treeMovedBack(p, id) {
 		// The tree stands at the destination: the re-key and the rebind stay
 		// pointing at it — reverting them would name a location the tree
 		// does not occupy. The pending line is the convergence record; it
@@ -755,6 +763,23 @@ func m6ReverseMove(root string, p migratePlan, id TreeIdentity, mlPath, trigger 
 	_ = hook.RekeyWorktreeEntryInverse(root, p.destination, p.source)
 	_ = rebindCardForPath(root, p.destination, p.source)
 	return true, appendMoveListLine(mlPath, m6MoveLineTrigger(trigger, "reversed", p.destination, p.source, id.Ident()))
+}
+
+// treeMovedBack reports whether the tree is verifiably back at its source after
+// a reverse `git worktree move` that returned an error (card t2053): git can be
+// killed by the deadline AFTER the rename completed. It answers true only when
+// the source carries the journal's identity AND the destination no longer does;
+// every other state — the destination still carries it, or neither path can be
+// read — is ambiguous and fails safe to the caller's pending path.
+func treeMovedBack(p migratePlan, id TreeIdentity) bool {
+	srcIdent, err := TreeIdent(p.source)
+	if err != nil || srcIdent.Ident() != id.Ident() {
+		return false
+	}
+	if destIdent, derr := TreeIdent(p.destination); derr == nil && destIdent.Ident() == id.Ident() {
+		return false
+	}
+	return true
 }
 
 // rebindCardForPath rebinds the card record bound to oldPath onto newPath

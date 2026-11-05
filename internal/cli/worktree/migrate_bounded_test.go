@@ -202,7 +202,11 @@ func TestPlanMigration_SkipsEveryTreeWhenLsofTimesOut(t *testing.T) {
 	t.Cleanup(func() { lsofCommandTimeout = orig })
 
 	var found bool
-	for _, p := range planMigrationFor(w.repo, time.Now(), false) {
+	plans, planErr := planMigrationFor(w.repo, time.Now(), false)
+	if planErr != nil {
+		t.Fatalf("plan: %v", planErr)
+	}
+	for _, p := range plans {
 		if p.source != w.movedTree {
 			continue
 		}
