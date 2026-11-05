@@ -229,7 +229,9 @@ func TestMigrateApply_ManifestGitTimeout_TreeNotMoved(t *testing.T) {
 	m4InRepo(t, w.repo)
 	t2053BlockingGit(t, "status")
 	orig := gitCommandTimeout
-	gitCommandTimeout = 300 * time.Millisecond
+	// Long enough that a loaded machine does not time out the real git calls
+	// (the listing, rev-parse) — only the blocked `status` may hit it.
+	gitCommandTimeout = 2 * time.Second
 	t.Cleanup(func() { gitCommandTimeout = orig })
 
 	report, err := t2053EngineApply(t, w.repo)

@@ -750,7 +750,7 @@ func m6ReverseMove(root string, p migratePlan, id TreeIdentity, mlPath, trigger 
 	if err == nil && destIdent.Ident() != id.Ident() {
 		return false, appendMoveListLine(mlPath, m6MoveLineTrigger(trigger, "refused", p.destination, p.source, id.Ident()))
 	}
-	if rerr := reverseGitMove(root, p.destination, p.source); rerr != nil && !treeMovedBack(p, id) {
+	if rerr := reverseGitMove(root, p.destination, p.source); rerr != nil && !treeMovedBack(root, p.source, p.destination, id.Ident()) {
 		// The tree stands at the destination: the re-key and the rebind stay
 		// pointing at it — reverting them would name a location the tree
 		// does not occupy. The pending line is the convergence record; it
@@ -765,21 +765,60 @@ func m6ReverseMove(root string, p migratePlan, id TreeIdentity, mlPath, trigger 
 	return true, appendMoveListLine(mlPath, m6MoveLineTrigger(trigger, "reversed", p.destination, p.source, id.Ident()))
 }
 
-// treeMovedBack reports whether the tree is verifiably back at its source after
-// a reverse `git worktree move` that returned an error (card t2053): git can be
+// treeMovedBack reports whether the tree is verifiably back at source after a
+// reverse `git worktree move` that returned an error (card t2053): git can be
 // killed by the deadline AFTER the rename completed. It answers true only when
-// the source carries the journal's identity AND the destination no longer does;
-// every other state — the destination still carries it, or neither path can be
-// read — is ambiguous and fails safe to the caller's pending path.
-func treeMovedBack(p migratePlan, id TreeIdentity) bool {
-	srcIdent, err := TreeIdent(p.source)
-	if err != nil || srcIdent.Ident() != id.Ident() {
+// all three hold:
+//
+//   - the source carries the journal's identity (ident is never empty here — an
+//     empty ident proves nothing),
+//   - the destination no longer does, and
+//   - git's registration names the source. A move killed between the rename
+//     and the registration update leaves worktrees/<id>/gitdir naming the
+//     destination, so a missing registration gets ONE bounded
+//     `git worktree repair <source>` and is checked again.
+//
+// Every other state — the destination still carries the identity, neither path
+// can be read, a registration that stays on the destination — is ambiguous and
+// fails safe to the caller's pending path.
+func treeMovedBack(root, source, destination, ident string) bool {
+	if ident == "" {
 		return false
 	}
-	if destIdent, derr := TreeIdent(p.destination); derr == nil && destIdent.Ident() == id.Ident() {
+	srcIdent, err := TreeIdent(source)
+	if err != nil || srcIdent.Ident() != ident {
 		return false
 	}
-	return true
+	if destIdent, derr := TreeIdent(destination); derr == nil && destIdent.Ident() == ident {
+		return false
+	}
+	if registeredAt(root, source) {
+		return true
+	}
+	if _, rerr := listGitOutput(root, "worktree", "repair", source); rerr != nil {
+		return false
+	}
+	return registeredAt(root, source)
+}
+
+// registeredAt reports whether git lists path (spelling-safe) as a registered
+// worktree of root. A listing that fails or times out answers false.
+func registeredAt(root, path string) bool {
+	out, err := listGitOutput(root, "worktree", "list", "--porcelain")
+	if err != nil {
+		return false
+	}
+	records, perr := ParseWorktreeList(out)
+	if perr != nil {
+		return false
+	}
+	want := canonicalTreePath(path)
+	for _, rec := range records {
+		if canonicalTreePath(rec.Path) == want {
+			return true
+		}
+	}
+	return false
 }
 
 // rebindCardForPath rebinds the card record bound to oldPath onto newPath
@@ -927,7 +966,7 @@ func runMigrateRollback(cmd *cobra.Command, root, journalPath string, asJSON boo
 				refused++
 				continue
 			}
-			if merr := reverseGitMove(root, s.NewPath, s.OldPath); merr != nil {
+			if merr := reverseGitMove(root, s.NewPath, s.OldPath); merr != nil && !treeMovedBack(root, s.OldPath, s.NewPath, s.Ident) {
 				if lerr := appendMoveListLine(mlPath, m6MoveLineReason("pending", s.NewPath, s.OldPath, s.Ident, fmt.Sprintf("reverse move failed: %v", merr))); lerr != nil {
 					return lerr
 				}

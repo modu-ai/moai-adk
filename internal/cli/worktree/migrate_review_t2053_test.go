@@ -14,6 +14,7 @@ package worktree
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -212,4 +213,176 @@ func TestReverseMove_AmbiguousLocation_StaysPending(t *testing.T) {
 	if movedBack {
 		t.Errorf("an ambiguous location (identity at neither path) was reported moved back")
 	}
+}
+
+// ---- second review round (G1, G2) -------------------------------------------
+//
+//	G1  identity at the source is not enough: after an interrupted reverse move
+//	    git's worktrees/<id>/gitdir may still name the destination. The tree is
+//	    "moved back" only when git's registration names the source — after one
+//	    bounded `git worktree repair` if it did not.
+//	G2  --rollback shares the post-error re-check (and the registration check).
+
+// t2053RenameOnlyReverse is a reverse-move seam that renames the directory the
+// way a killed `git worktree move` leaves it — the files at the target, git's
+// registration still naming the origin — and then reports the timeout.
+func t2053RenameOnlyReverse(t *testing.T) {
+	t.Helper()
+	orig := reverseGitMove
+	reverseGitMove = func(root, from, to string) error {
+		if err := os.Rename(from, to); err != nil {
+			return err
+		}
+		return fmt.Errorf("%w after 1ms", ErrCommandTimeout)
+	}
+	t.Cleanup(func() { reverseGitMove = orig })
+}
+
+// t2053LastMoveListResult returns the `result` of the last move-list line.
+func t2053LastMoveListResult(t *testing.T, mlPath string) string {
+	t.Helper()
+	raw, err := os.ReadFile(mlPath)
+	if err != nil {
+		t.Fatalf("read move list: %v", err)
+	}
+	lines := strings.Split(strings.TrimSpace(string(raw)), "\n")
+	var rec struct {
+		Result string `json:"result"`
+	}
+	if jerr := json.Unmarshal([]byte(lines[len(lines)-1]), &rec); jerr != nil {
+		t.Fatalf("parse %q: %v", lines[len(lines)-1], jerr)
+	}
+	return rec.Result
+}
+
+// TestReverseMove_StaleRegistration_RepairConverges — G1: the directory is back
+// at the source but git still registers the destination. One bounded
+// `git worktree repair <source>` converges it; only then is the tree reversed.
+func TestReverseMove_StaleRegistration_RepairConverges(t *testing.T) {
+	w, p, id, mlPath := t2053ReverseWorld(t)
+	t2053RenameOnlyReverse(t)
+
+	movedBack, mlErr := m6ReverseMove(w.repo, p, id, mlPath, "migrate")
+	if mlErr != nil {
+		t.Fatalf("move list: %v", mlErr)
+	}
+	if !movedBack {
+		t.Fatalf("a repairable stale registration was not converged")
+	}
+	if !m6Registered(t, w.repo, p.source) || m6Registered(t, w.repo, p.destination) {
+		t.Errorf("registration does not name the source only after the repair")
+	}
+	if got := t2053LastMoveListResult(t, mlPath); got != "reversed" {
+		t.Errorf("last move-list result = %q, want reversed", got)
+	}
+}
+
+// TestReverseMove_StaleRegistration_UnrepairableNeverReversed — G1: when the
+// repair cannot run (a hung `git worktree repair`), the registration still
+// names the destination, so the tree is NOT reported reversed.
+func TestReverseMove_StaleRegistration_UnrepairableNeverReversed(t *testing.T) {
+	w, p, id, mlPath := t2053ReverseWorld(t)
+	t2053RenameOnlyReverse(t)
+	t2053BlockingGit(t, "repair")
+	orig := gitCommandTimeout
+	gitCommandTimeout = 300 * time.Millisecond
+	t.Cleanup(func() { gitCommandTimeout = orig })
+
+	movedBack, _ := m6ReverseMove(w.repo, p, id, mlPath, "migrate")
+	if movedBack {
+		t.Fatalf("reported moved back while git still registers the destination")
+	}
+	if !m6Registered(t, w.repo, p.destination) {
+		t.Fatalf("fixture error: the registration no longer names the destination")
+	}
+	if got := t2053LastMoveListResult(t, mlPath); got == "reversed" {
+		t.Errorf("a `reversed` line was written while the registration names the destination")
+	}
+}
+
+// t2053RollbackJournal writes a one-step rollback journal for the plan and
+// returns its path.
+func t2053RollbackJournal(t *testing.T, p migratePlan, id TreeIdentity) string {
+	t.Helper()
+	body, err := json.Marshal(map[string]any{"steps": []journalStep{{
+		OldPath: p.source, NewPath: p.destination, Outcome: "moved", Ident: id.Ident(),
+	}}})
+	if err != nil {
+		t.Fatalf("marshal journal: %v", err)
+	}
+	path := filepath.Join(t.TempDir(), "journal.json")
+	if werr := os.WriteFile(path, body, 0o644); werr != nil {
+		t.Fatalf("write journal: %v", werr)
+	}
+	return path
+}
+
+// TestRollback_ReverseErrorAfterMoveCompleted_RecordsRestored — G2: the seam
+// performs the move and then reports a timeout; the rollback re-keys, rebinds
+// the card and records `restored` instead of leaving the step pending.
+func TestRollback_ReverseErrorAfterMoveCompleted_RecordsRestored(t *testing.T) {
+	w, p, id, mlPath := t2053ReverseWorld(t)
+	journal := t2053RollbackJournal(t, p, id)
+
+	db, err := homestate.OpenFactory(w.repo)
+	if err != nil {
+		t.Fatalf("open factory: %v", err)
+	}
+	dest := p.destination
+	if _, perr := db.RecordPicked(context.Background(), "run-t2053-rb", "card-t2053-rb", homestate.CardFields{WorktreePath: &dest}, "t2053-test", time.Now().UTC()); perr != nil {
+		t.Fatalf("record picked: %v", perr)
+	}
+	_ = db.Close()
+
+	orig := reverseGitMove
+	reverseGitMove = func(root, from, to string) error {
+		m6Git(t, root, "worktree", "move", from, to)
+		return fmt.Errorf("%w after 1ms", ErrCommandTimeout)
+	}
+	t.Cleanup(func() { reverseGitMove = orig })
+
+	out, rerr := m4RunMigrate(t, "--rollback", journal)
+	if rerr != nil {
+		t.Fatalf("rollback failed although the move had completed: %v\n%s", rerr, out)
+	}
+	if !strings.Contains(out, "restored 1 tree(s)") {
+		t.Errorf("rollback summary: %q", out)
+	}
+	if got := t2053LastMoveListResult(t, mlPath); got != "restored" {
+		t.Errorf("last move-list result = %q, want restored", got)
+	}
+	db2, derr := homestate.OpenFactory(w.repo)
+	if derr != nil {
+		t.Fatalf("reopen factory: %v", derr)
+	}
+	defer func() { _ = db2.Close() }()
+	card, lerr := db2.LoadCard(context.Background(), "run-t2053-rb", "card-t2053-rb")
+	if lerr != nil {
+		t.Fatalf("load card: %v", lerr)
+	}
+	if card.WorktreePath != p.source {
+		t.Errorf("card worktree = %q, want it rebound to %q", card.WorktreePath, p.source)
+	}
+}
+
+// TestRollback_StaleRegistrationUnrepairable_StaysPending — G2 + G1: a rollback
+// whose reverse move errors with the registration still naming the destination
+// records the step pending and fails the run; it never records `restored`.
+func TestRollback_StaleRegistrationUnrepairable_StaysPending(t *testing.T) {
+	w, p, id, mlPath := t2053ReverseWorld(t)
+	journal := t2053RollbackJournal(t, p, id)
+	t2053RenameOnlyReverse(t)
+	t2053BlockingGit(t, "repair")
+	orig := gitCommandTimeout
+	gitCommandTimeout = 300 * time.Millisecond
+	t.Cleanup(func() { gitCommandTimeout = orig })
+
+	out, rerr := m4RunMigrate(t, "--rollback", journal)
+	if rerr == nil {
+		t.Fatalf("rollback reported success while the registration names the destination:\n%s", out)
+	}
+	if raw, err := os.ReadFile(mlPath); err == nil && strings.Contains(string(raw), `"result":"restored"`) {
+		t.Errorf("a `restored` line was written:\n%s", raw)
+	}
+	_ = w
 }
