@@ -80,7 +80,8 @@ var commitVerbs = map[string]bool{
 // (SPEC-WORKTREE-HOME-ROOT-001) fixture emails (bases, cls-test, list, m3,
 // m6, ml-test, tier, wr-test, rfx, sfx-cli) joined under the t1913 addition;
 // 77 with the t1831 af-flow fixture email; 78 with the t2013 factory
-// checkpoint fixture email.
+// checkpoint fixture email; 80 with the t2034 mergeq gate fixture emails
+// (g@e, t@e).
 var builtinCommitIdentityDenyEmails = []string{
 	"a@e.invalid",
 	"anchor-test@example.com",
@@ -103,6 +104,7 @@ var builtinCommitIdentityDenyEmails = []string{
 	"fixture@example.test",
 	"fixture@t516.invalid",
 	"fx@example.com",
+	"g@e",
 	"gfd-test@example.com",
 	"guard-test@example.invalid",
 	"guard@test",
@@ -126,6 +128,7 @@ var builtinCommitIdentityDenyEmails = []string{
 	"sub@e.x",
 	"sweep-test@example.com",
 	"sync-gate-test@example.com",
+	"t@e",
 	"t@example.com",
 	"t@example.invalid",
 	"t@example.test",
