@@ -58,10 +58,10 @@ func TestAgenticTrunkStatuslineLabel(t *testing.T) {
 	t.Run("af-flow label after the dirty count", func(t *testing.T) {
 		d := branchFixture()
 		d.WorkflowLabel = resolveWorkflowLabel(statuslineGitStrategyFixture(t, "agentic-trunk"))
-		if d.WorkflowLabel != "af-flow" {
-			t.Fatalf("provider = %q, want af-flow", d.WorkflowLabel)
+		if d.WorkflowLabel != "AF-Flow" {
+			t.Fatalf("provider = %q, want AF-Flow (legacy agentic-trunk input)", d.WorkflowLabel)
 		}
-		want := goldenBranch + " (af-flow)"
+		want := goldenBranch + " (AF-Flow)"
 		if got := newTestRenderer().renderRepoBranchSegment(d); got != want {
 			t.Errorf("render = %q, want %q", got, want)
 		}
@@ -81,12 +81,12 @@ func TestAgenticTrunkStatuslineLabel(t *testing.T) {
 
 	t.Run("label precedes nothing — it is the segment tail", func(t *testing.T) {
 		d := branchFixture()
-		d.WorkflowLabel = "af-flow"
+		d.WorkflowLabel = "AF-Flow"
 		got := newTestRenderer().renderRepoBranchSegment(d)
-		if !strings.HasSuffix(got, " (af-flow)") {
+		if !strings.HasSuffix(got, " (AF-Flow)") {
 			t.Errorf("render %q does not end with the label tail", got)
 		}
-		if strings.Contains(got, "(af-flow) (") {
+		if strings.Contains(got, "(AF-Flow) (") {
 			t.Errorf("render %q carries the label twice", got)
 		}
 	})
@@ -162,14 +162,14 @@ func TestAgenticTrunkStatuslineNoExtraGit(t *testing.T) {
 
 	// The provider reads the yaml through the config reader only.
 	for i := 0; i < 3; i++ {
-		if got := resolveWorkflowLabel(root); got != "af-flow" {
-			t.Fatalf("provider = %q under the shim, want af-flow", got)
+		if got := resolveWorkflowLabel(root); got != "AF-Flow" {
+			t.Fatalf("provider = %q under the shim, want AF-Flow", got)
 		}
 	}
 	// The labeled render runs the provider again.
 	d := branchFixture()
 	d.WorkflowLabel = resolveWorkflowLabel(root)
-	if got := newTestRenderer().renderRepoBranchSegment(d); !strings.HasSuffix(got, " (af-flow)") {
+	if got := newTestRenderer().renderRepoBranchSegment(d); !strings.HasSuffix(got, " (AF-Flow)") {
 		t.Fatalf("render = %q, want the labeled tail", got)
 	}
 
@@ -297,8 +297,8 @@ func TestAgenticTrunkStatuslineBuilderExecCount(t *testing.T) {
 		input := &StdinData{Workspace: &WorkspaceInfo{ProjectDir: root, CurrentDir: root}}
 		agenticTrunkShimReset(t, log)
 		data := db.collectAll(context.Background(), input)
-		if data.WorkflowLabel != "af-flow" {
-			t.Errorf("WorkflowLabel = %q, want af-flow (label read through the shared anchor)", data.WorkflowLabel)
+		if data.WorkflowLabel != "AF-Flow" {
+			t.Errorf("WorkflowLabel = %q, want AF-Flow (label read through the shared anchor)", data.WorkflowLabel)
 		}
 		if got := agenticTrunkWalkUpCount(t, log); got != 1 {
 			t.Errorf("collect pass ran %d git resolution(s) with the anchor on stdin, want exactly 1 (the queue-root probe; the stateanchor consumers must read the stdin anchor with zero git)", got)
@@ -315,8 +315,8 @@ func TestAgenticTrunkStatuslineBuilderExecCount(t *testing.T) {
 		input := &StdinData{CWD: root}
 		agenticTrunkShimReset(t, log)
 		data := db.collectAll(context.Background(), input)
-		if data.WorkflowLabel != "af-flow" {
-			t.Errorf("WorkflowLabel = %q, want af-flow (resolved through the walked-up anchor)", data.WorkflowLabel)
+		if data.WorkflowLabel != "AF-Flow" {
+			t.Errorf("WorkflowLabel = %q, want AF-Flow (resolved through the walked-up anchor)", data.WorkflowLabel)
 		}
 		if got := agenticTrunkWalkUpCount(t, log); got != 4 {
 			t.Errorf("collect pass ran %d git resolution(s) for the CWD-only payload, want exactly 4 (the queue-root probe + 3 stateanchor walk-ups: board root, the SHARED goal/label anchor, the quota-fallback anchor; an unshared goal/label pair makes it 5)", got)
