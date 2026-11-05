@@ -155,6 +155,16 @@ func (m *Merger) trackedChangesReason(paths []string) string {
 	return fmt.Sprintf("gates failed: %s left tracked changes in the check worktree: %s", who, list)
 }
 
+// headMovedReason is the reason of a card whose gate moved HEAD off the pinned merge result: it names the gate (its
+// id, never its text) and both commits, and nothing the gate printed.
+func (m *Merger) headMovedReason(e *HeadMovedError) string {
+	who := "the gate"
+	if m.Gate != "" {
+		who = fmt.Sprintf("gate %q", m.Gate)
+	}
+	return fmt.Sprintf("gates failed: %s moved HEAD off the pinned merge result (pinned %s, now %s)", who, e.Pinned, e.Now)
+}
+
 // Outcome is how one Land call ended.
 type Outcome string
 
@@ -312,6 +322,10 @@ func (m *Merger) Land(ctx context.Context, cardID, candidateSHA string) (Result,
 		changed, err := m.Git.TrackedChanges(ctx, cand)
 		if err != nil {
 			_ = m.Git.Discard(settle, cand)
+			var hm *HeadMovedError
+			if errors.As(err, &hm) {
+				return m.fail(ctx, res, cardID, candidateSHA, trunk, m.headMovedReason(hm))
+			}
 			return res, err
 		}
 		if len(changed) > 0 {

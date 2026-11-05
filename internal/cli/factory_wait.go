@@ -21,7 +21,7 @@ func factoryWaitLine(s string) string { return strings.Join(strings.Fields(s), "
 
 // factoryPrintWakes prints, once per wait, the lane and card to wake for every
 // recorded wait the just-landed card satisfies. It prints nothing unless the
-// card sits at a landing state (merged-local or merged-pr), so a lease expiry
+// card sits at a landing or post-landing state (factoryLandedState), so a lease expiry
 // or any other transition never wakes anyone. The woken_at stamp is written in
 // the same update that selects the wait, so a re-run prints nothing. A wait
 // whose waker is the operator prints a leader-facing note, never a lane wake.
@@ -30,10 +30,18 @@ func factoryPrintWakes(ctx context.Context, out io.Writer, db *homestate.Factory
 	factoryPrintWakesSuffixed(ctx, out, db, card, "")
 }
 
-// factoryLandedState reports whether state is one of the two landing states a
-// wait on a predecessor is released by.
+// factoryLandedState reports whether state is a landing state, or a state a
+// card only reaches after landing (pushed, ci-green, done), that releases a
+// wait on a predecessor. The later states matter because a wait recorded after
+// the predecessor moved past the landing would otherwise stay open forever.
+// abandoned and failed never landed and release nothing.
 func factoryLandedState(state string) bool {
-	return state == homestate.CardMergedLocal || state == homestate.CardMergedPR
+	switch state {
+	case homestate.CardMergedLocal, homestate.CardMergedPR,
+		homestate.CardPushed, homestate.CardCIGreen, homestate.CardDone:
+		return true
+	}
+	return false
 }
 
 // factoryPrintWakesSuffixed is factoryPrintWakes with an extra suffix on each
@@ -116,7 +124,7 @@ func factoryWaitDisplay(stored string) (reason, missing string) {
 
 func newFactoryWaitCommand() *cobra.Command {
 	var on, waker, reason, actor, scope, next, ack string
-	var operator bool
+	var operator, resolve bool
 	cmd := &cobra.Command{
 		Use:   "wait <card>",
 		Short: "Record why a card waits and who must wake it: --on <predecessor card> or --operator, --waker <lane|leader|operator>",
@@ -125,6 +133,14 @@ func newFactoryWaitCommand() *cobra.Command {
 			ctx := cmd.Context()
 			if ctx == nil {
 				ctx = context.Background()
+			}
+			if resolve {
+				for _, f := range []string{"on", "operator", "waker", "reason", "scope", "next", "ack"} {
+					if cmd.Flags().Changed(f) {
+						return fmt.Errorf("factory wait: --resolve closes the operator wait and cannot be combined with --%s", f)
+					}
+				}
+				return factoryResolveOperatorWait(ctx, cmd.OutOrStdout(), factoryCardRoot(), args[0])
 			}
 			if cmd.Flags().Changed("ack") {
 				for _, f := range []string{"on", "operator", "waker", "reason", "scope", "next"} {
@@ -147,6 +163,7 @@ func newFactoryWaitCommand() *cobra.Command {
 	}
 	cmd.Flags().StringVar(&on, "on", "", "predecessor card whose landing releases the wait (default: the card's --after hint)")
 	cmd.Flags().BoolVar(&operator, "operator", false, "the wait is released by an operator ruling (never woken by a landing)")
+	cmd.Flags().BoolVar(&resolve, "resolve", false, "close the card's open --operator wait: the operator ruled, so the wait ends (idempotent; refused when the card has no operator wait)")
 	cmd.Flags().StringVar(&waker, "waker", "", "who must wake the card: a lane name, leader, or operator")
 	cmd.Flags().StringVar(&reason, "reason", "", "why the card waits")
 	cmd.Flags().StringVar(&actor, "actor", "", "who records the wait")
@@ -156,9 +173,9 @@ func newFactoryWaitCommand() *cobra.Command {
 	return cmd
 }
 
-// factoryAckWake records the received or started event of the card's most
-// recent delivered wait. Delivery itself is written by the landing edge. An
-// event recorded out of order is refused and writes nothing.
+// factoryAckWake records the received or started event of the card's oldest
+// delivered wait still awaiting that event. Delivery itself is written by the
+// landing edge. An event recorded out of order is refused and writes nothing.
 func factoryAckWake(ctx context.Context, out io.Writer, root, cardID, phase, actor string) error {
 	if phase != homestate.WakeReceived && phase != homestate.WakeStarted {
 		return fmt.Errorf("factory wait: --ack takes %s or %s, got %q (delivery is recorded by the landing edge)", homestate.WakeReceived, homestate.WakeStarted, phase)
@@ -175,9 +192,23 @@ func factoryAckWake(ctx context.Context, out io.Writer, root, cardID, phase, act
 	if len(waits) == 0 {
 		return fmt.Errorf("factory wait: card %s has no recorded wait to acknowledge", cardID)
 	}
-	// The wake the waker acknowledges is the card's latest wait; an undelivered
-	// one is refused by the ordering rule below with the delivered reason.
+	// The wake the waker acknowledges is the card's oldest wait that holds the
+	// phase's predecessor event and not the phase itself (received follows
+	// delivered, started follows received). With no such wait the card's latest
+	// wait is used, so a repeat is reported as already recorded and an event out
+	// of order is refused by the ordering rule below, as before.
 	w := waits[len(waits)-1]
+	for _, candidate := range waits {
+		st, err := db.LoadWakeState(ctx, candidate.Seq)
+		if err != nil {
+			return fmt.Errorf("factory wait: %w", err)
+		}
+		if (phase == homestate.WakeReceived && st.Delivered && !st.Received) ||
+			(phase == homestate.WakeStarted && st.Received && !st.Started) {
+			w = candidate
+			break
+		}
+	}
 	recorded, err := db.RecordWakeEvent(ctx, w.Seq, phase, actor, factoryCardNow())
 	if err != nil {
 		return fmt.Errorf("factory wait: %w", err)
@@ -187,6 +218,42 @@ func factoryAckWake(ctx context.Context, out io.Writer, root, cardID, phase, act
 		return nil
 	}
 	_, _ = fmt.Fprintf(out, "wake %s recorded: card=%s wait=%d\n", phase, cardID, w.Seq)
+	return nil
+}
+
+// factoryResolveOperatorWait closes the card's open operator-ruling waits. A
+// landing never wakes such a wait, so without this path an open one would stay
+// valid for the stop-goal hook forever. A card that never recorded an operator
+// wait is refused; one whose operator waits are all closed already succeeds
+// without writing.
+func factoryResolveOperatorWait(ctx context.Context, out io.Writer, root, cardID string) error {
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		return fmt.Errorf("factory wait: %w", err)
+	}
+	defer func() { _ = db.Close() }()
+	waits, err := db.LoadCardWaits(ctx, cardID)
+	if err != nil {
+		return fmt.Errorf("factory wait: %w", err)
+	}
+	operatorWaits := 0
+	for _, w := range waits {
+		if w.CondKind == homestate.WaitCondOperatorRuling {
+			operatorWaits++
+		}
+	}
+	if operatorWaits == 0 {
+		return fmt.Errorf("factory wait: card %s has no operator wait to resolve", cardID)
+	}
+	closed, err := db.ResolveOperatorWaits(ctx, cardID, factoryCardNow())
+	if err != nil {
+		return fmt.Errorf("factory wait: %w", err)
+	}
+	if closed == 0 {
+		_, _ = fmt.Fprintf(out, "operator wait already resolved: card=%s\n", cardID)
+		return nil
+	}
+	_, _ = fmt.Fprintf(out, "operator wait resolved: card=%s closed=%d\n", cardID, closed)
 	return nil
 }
 

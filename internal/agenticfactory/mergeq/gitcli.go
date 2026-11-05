@@ -119,6 +119,13 @@ func gitOutputOf(err error) string {
 	return ""
 }
 
+// HeadMovedError is a check worktree whose HEAD is no longer the pinned merge result after the gate ran.
+type HeadMovedError struct{ Pinned, Now string }
+
+func (e *HeadMovedError) Error() string {
+	return fmt.Sprintf("mergeq: the check worktree HEAD moved off the pinned merge result (pinned %s, now %s)", e.Pinned, e.Now)
+}
+
 // MergeError is a candidate that does not merge into the trunk. Its text names the failure and nothing git printed;
 // Output holds that.
 type MergeError struct {
@@ -234,7 +241,21 @@ func (g GitCLI) PrepareCandidate(ctx context.Context, trunkSHA, candidateSHA, me
 // TrackedChanges lists the tracked paths of the candidate worktree that differ from HEAD, the merge result. `git diff
 // HEAD` compares HEAD with the working tree (so staged and unstaged changes both count), refreshes the index first,
 // and never lists untracked or ignored files; -z keeps every path verbatim.
+//
+// It first checks that HEAD still is c.Result: a gate that committed or checked out another commit leaves `git diff
+// HEAD` clean while the commit that lands (c.Result) is not the tree the gate judged, so a moved HEAD is returned as a
+// *HeadMovedError. Only the HEAD at the end is observable here: a gate that moves HEAD away and back to c.Result leaves
+// the pinned tree in place and is not detected.
 func (g GitCLI) TrackedChanges(ctx context.Context, c Candidate) ([]string, error) {
+	if c.Result != "" {
+		head, err := g.run(ctx, c.Dir, "rev-parse", "HEAD")
+		if err != nil {
+			return nil, err
+		}
+		if head != c.Result {
+			return nil, &HeadMovedError{Pinned: c.Result, Now: head}
+		}
+	}
 	out, err := g.run(ctx, c.Dir, "diff", "--name-only", "-z", "HEAD", "--")
 	if err != nil {
 		return nil, err

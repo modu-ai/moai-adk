@@ -3095,7 +3095,7 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	// `main` holder is the primary checkout down the same edge (card t1831
 	// M5b, REQ-AGT-006 rescope 0.4.0): the shared human/leader surface never
 	// becomes a merge window; the leader merges the card's pull request.
-	// The release route (card t2013, AFF S2, REQ-FCR-026): under agentic-trunk
+	// The release route (card t2013, Git-AFF S2, REQ-FCR-026): under agentic-trunk
 	// with the fixed release branch provisioned in its own worktree, the card
 	// lands through the local integration window into that branch — never the
 	// pull-request edge, never main. Any condition missing leaves the judgment
@@ -3343,8 +3343,9 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 
 	// REQ-FCR-026 (b): the fast required check, run against the CARD's tree
 	// before any merge commit exists. A failure holds the card and releases
-	// the window this call acquired; the check can outlast the lease, so a
-	// pass renews it before the merge step reads it.
+	// the window this call acquired. The check can outlast the card lease and
+	// a lapsed lease cannot be renewed, so the lease is renewed while the check
+	// runs and once more after it; the window is stamped after a pass.
 	if releaseRoute {
 		// The check runs in the card's working copy and the merge lands its
 		// committed HEAD, so a tree that is not exactly its HEAD is refused
@@ -3354,11 +3355,20 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 			refused := fmt.Errorf("factory complete: refused — card %s's worktree is not its committed HEAD (%s); the release branch and the card state are unchanged, a hold was recorded; commit or remove the changes and complete again", cardID, reason)
 			return stop.hold(ctx, out, reason, dirt, "", refused)
 		}
-		checkKey, tail, checkErr := factoryFastCheck(ctx, out, card.WorktreePath, factoryBranchTip(integTree, branch))
+		renewEvery := factoryCheckLeaseRenewEvery
+		if renewEvery <= 0 {
+			renewEvery = db.RenewInterval()
+		}
+		checkKey, tail, checkErr, leaseErr := factoryFastCheckKeepingLease(ctx, out, root, runID, cardID, lane, renewEvery, card.WorktreePath, factoryBranchTip(integTree, branch))
 		if checkErr != nil {
 			releaseOwnAcquisition()
 			failed := fmt.Errorf("factory complete: refused — the fast required check failed for card %s (%v); the release branch and the card state are unchanged, a hold was recorded; fix the card and complete again", cardID, checkErr)
 			return stop.hold(ctx, out, "check-failed", errors.New(tail), checkKey, failed)
+		}
+		if leaseErr != nil {
+			releaseOwnAcquisition()
+			refused := fmt.Errorf("factory complete: refused — the check passed but card %s's lease could not be kept alive while it ran (%v); the release branch and the card state are unchanged, a hold was recorded; re-lease the card and complete again", cardID, leaseErr)
+			return stop.hold(ctx, out, "lease-lost", leaseErr, checkKey, refused)
 		}
 		_ = factory.UpdateIntegrationWindow(lockRoot, func(w *factory.IntegrationLock) error {
 			if w.Held() && w.SessionID == sessionID {

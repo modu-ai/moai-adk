@@ -75,7 +75,7 @@ Amendment: 2026-10-26 레인 판정(plan-audit iter1 D8, 판정서 `.moai/report
 
 ---
 
-v0.4.0(카드 t2013, M4 — AFF S2) 개정 중 드러난 판정이다. 같은 등록부·기본값 규칙을 쓴다.
+v0.4.0(카드 t2013, M4 — Git-AFF S2) 개정 중 드러난 판정이다. 같은 등록부·기본값 규칙을 쓴다.
 
 ### Q8: agentic-trunk의 로컬 통합 대상을 `main`이 아니라 고정 release branch(`release_branch_prefix` + `main-batch`)로 둘 것인가?
 

@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -386,7 +387,12 @@ func matchBranchStateCommand(command string) (string, bool) {
 // matchNormalizedBranchState runs the collapse pipeline and the pattern set
 // over one text (the outer command, or a -Command payload).
 func matchNormalizedBranchState(command string) (string, bool) {
-	scanned := normalizeCommandForScan(command)
+	return matchBranchStatePatterns(normalizeCommandForScan(command))
+}
+
+// matchBranchStatePatterns runs the branch-state pattern set over text that has
+// already been through normalizeCommandForScan.
+func matchBranchStatePatterns(scanned string) (string, bool) {
 	for _, p := range branchStatePatterns {
 		if p.match != nil {
 			if p.match(scanned) {
@@ -446,31 +452,321 @@ var (
 	explicitGitTargetPattern = regexp.MustCompile(`(?i)\bgit\s+-C\s+(/[^\s;&|"'()<>]+)`)
 	leadingCdTargetPattern   = regexp.MustCompile(`^\s*cd\s+(/[^\s;&|"'()<>]+)\s*&&\s*`)
 	gitInvocationPattern     = regexp.MustCompile(`(?i)\bgit\s`)
+	soleGitStartPattern      = regexp.MustCompile(`(?i)^git\s`)
+
+	// Forms that can move a git invocation off the path a leading `cd` or a
+	// `-C` names (see explicitGitTarget).
+	repoOverridePattern = regexp.MustCompile(`(?i)(?:\bGIT_DIR=|\bGIT_WORK_TREE=|--git-dir\b|--work-tree\b)`)
+	dirChangePattern    = regexp.MustCompile(`(?i)(?:\b(?:cd|pushd|popd)\b|\()`)
+	cOptionPattern      = regexp.MustCompile(`\s-C\s+\S`)
+
+	// shellRunsCodePattern matches `eval`, `source`, or a dot-source `.` used as
+	// a command (at the start or right after a separator, followed by a space or
+	// the end). Their argument is code the current shell runs and the quoted-span
+	// collapse hides it, so it can change directory unseen. A path such as
+	// `/wt/.hidden` never matches: the dot must stand alone as a command word.
+	shellRunsCodePattern    = regexp.MustCompile(`(?:^|[\s;&|({])(?:eval|source)(?:\s|$)|(?:^|[;&|({])\s*\.(?:\s|$)`)
+	gitGlobalOptionsPattern = regexp.MustCompile(`(?i)\bgit(?:\s+(?:-C\s+\S+|--git-dir[=\s]\S+|--work-tree[=\s]\S+))+`)
 )
 
 // explicitGitTarget returns the command with its explicit target removed (so
 // the verb-after-`git` matchers see it) and the absolute target path. It
 // returns (command, "") when no explicit absolute target applies. The target
 // is honored only when the unquoted command holds exactly ONE git invocation:
-// with two, `-C`/`cd` could scope only one of them, and falling back to the
-// cwd judgment can only deny, never newly allow. Quoted spans are data and
+// with two, `-C`/`cd` could scope only one of them, so the target is dropped
+// and the hook-cwd judgment decides (with primaryAtTargetOrCwd adding a denial
+// when a literal `cd`, or the `-C` chain of the invocation that carries the
+// guarded verb, names the primary checkout). Quoted spans are data and
 // never a target.
+//
+// The target is adopted only when nothing in the command can move the git
+// invocation elsewhere: a further `cd`/`pushd`/`popd`, a subshell `(`,
+// GIT_DIR=/GIT_WORK_TREE=, --git-dir/--work-tree, or a second `-C` all make
+// the named path untrustworthy. So does a path the shell expands or git reads
+// differently (targetPathAgrees), and a leading `cd` followed by anything but
+// exactly one git command (isSoleGitInvocation) — an allow-list, because the
+// spellings of "run code" a deny-list must name (`\eval`, `"cd"`, `c\d`,
+// `$'cd'`, `then .`) have no end. Those forms fall back to the hook-cwd
+// judgment, with the git global options removed so the verb is still seen —
+// the fallback never ADOPTS a target to allow. It judges at the hook cwd, and a
+// literal `cd`, or a `-C` chain on the guarded invocation, naming the primary
+// checkout (primaryAtTargetOrCwd) overrides that with a primary judgment, so relative to the hook-cwd judgment the
+// fallback only ever adds denials. Finally the whole
+// command must pass isLiteralTargetCommand, a strict allow-list that does not
+// depend on the quote collapse (which mis-reads `\"`): a command with any quote,
+// backslash, expansion character, or separator is never adopted.
 func explicitGitTarget(command string) (string, string) {
-	if len(gitInvocationPattern.FindAllStringIndex(substituteQuotedArguments(command), -1)) != 1 {
+	plain := substituteQuotedArguments(command)
+	if len(gitInvocationPattern.FindAllStringIndex(plain, -1)) != 1 {
 		return command, ""
 	}
+	redirected := repoOverridePattern.MatchString(plain) || shellRunsCodePattern.MatchString(plain) ||
+		len(cOptionPattern.FindAllStringIndex(plain, -1)) > 1
 	rest, target := command, ""
 	if m := leadingCdTargetPattern.FindStringSubmatchIndex(rest); m != nil {
-		target, rest = rest[m[2]:m[3]], rest[m[1]:]
+		after := substituteQuotedArguments(rest[m[1]:])
+		if dirChangePattern.MatchString(after) || cOptionPattern.MatchString(after) ||
+			!targetPathAgrees(rest[m[2]:m[3]]) || !isSoleGitInvocation(after) {
+			redirected = true
+		} else {
+			target, rest = rest[m[2]:m[3]], rest[m[1]:]
+		}
+	}
+	if redirected {
+		return gitGlobalOptionsPattern.ReplaceAllString(command, "git"), ""
 	}
 	if m := explicitGitTargetPattern.FindStringSubmatchIndex(rest); m != nil &&
 		!insideAnySpan(m[0], quotedArgumentPattern.FindAllStringIndex(rest, -1)) {
+		if !targetPathAgrees(rest[m[2]:m[3]]) {
+			return gitGlobalOptionsPattern.ReplaceAllString(command, "git"), ""
+		}
 		target, rest = rest[m[2]:m[3]], rest[:m[0]]+"git"+rest[m[1]:]
 	}
 	if target == "" {
 		return command, ""
 	}
+	if !isLiteralTargetCommand(command) {
+		return gitGlobalOptionsPattern.ReplaceAllString(command, "git"), ""
+	}
 	return rest, target
+}
+
+// nonLiteralShellChars are the characters whose presence means the scan cannot
+// be trusted to read the command as the shell does: quotes and backslash (the
+// quote collapse mis-reads `\"` and `\'`), expansion and substitution
+// characters, glob/brace/tilde/history/comment characters, redirections,
+// subshell parentheses, and every command separator including a newline.
+const nonLiteralShellChars = "'\"\\$`*?[]{}~#!;&|<>()\n\r"
+
+// shellKeywordWords are shell keywords and command builtins that run or
+// introduce code. As the first word after the optional `cd` they are already
+// excluded by the must-start-with-git rule; they are listed so the allow-list
+// states them and still rejects one that rides along as a later word.
+var shellKeywordWords = map[string]bool{
+	"if": true, "then": true, "else": true, "elif": true, "fi": true,
+	"for": true, "while": true, "until": true, "do": true, "done": true,
+	"case": true, "esac": true, "eval": true, "source": true,
+	"command": true, "exec": true, "builtin": true,
+}
+
+// isLiteralTargetCommand is the fail-closed allow-list for adopting an explicit
+// git target. The command must be exactly an optional literal `cd <abs> &&`
+// followed by ONE git command, with no quote, backslash, expansion character,
+// separator, or shell keyword anywhere (nonLiteralShellChars,
+// shellKeywordWords). Quote collapsing is deliberately not trusted here: it is
+// a regex approximation of the shell, and every error in it is a bypass.
+// Anything else is judged at the hook cwd, which can only add denials.
+func isLiteralTargetCommand(command string) bool {
+	body := strings.TrimSpace(command)
+	if m := leadingCdTargetPattern.FindStringSubmatchIndex(body); m != nil {
+		if strings.ContainsAny(body[m[2]:m[3]], nonLiteralShellChars) {
+			return false
+		}
+		body = body[m[1]:]
+	}
+	if !soleGitStartPattern.MatchString(body) || strings.ContainsAny(body, nonLiteralShellChars) {
+		return false
+	}
+	for _, w := range strings.Fields(strings.ToLower(body)) {
+		if shellKeywordWords[w] {
+			return false
+		}
+	}
+	return true
+}
+
+// shellExpansionChars are the characters the shell expands or rewrites in a
+// word (variable, command substitution, glob, brace, tilde, history, comment,
+// backslash), so the word on the page is not the word the command runs with.
+const shellExpansionChars = "$`*?[{~#!\\"
+
+// targetPathAgrees reports whether the shell and git are certain to enter the
+// same directory for an explicit target path. A shell expansion character
+// ($, backtick, glob, brace, tilde, history, backslash) or a path that is not
+// already clean (a `.` or `..` segment, a doubled slash) is read differently by
+// the shell (logical path, expansion) and git (physical path), so the lookup
+// would judge a directory the command never enters. One trailing slash is fine.
+func targetPathAgrees(p string) bool {
+	if strings.ContainsAny(p, shellExpansionChars) {
+		return false
+	}
+	clean := path.Clean(p)
+	return p == clean || p == clean+"/"
+}
+
+// isSoleGitInvocation reports whether the text after a leading `cd <abs> &&`
+// (quoted spans already collapsed) is exactly one git command: it starts with
+// the word `git` and holds no command separator, command substitution, or
+// backtick. Any other shape (an eval, a quote- or backslash-obscured cd, a
+// dot-source, a conditional) can move the directory unseen, so the leading
+// target is not adopted.
+func isSoleGitInvocation(after string) bool {
+	return soleGitStartPattern.MatchString(after) && !strings.ContainsAny(after, ";&|\n`") &&
+		!strings.Contains(after, "$(")
+}
+
+// anyCdTargetPattern captures the ABSOLUTE path of every `cd <abs>` command word
+// (at the start or after whitespace or a separator). Only unquoted words count:
+// it runs on the quote-collapsed command, so a quoted span is data.
+var anyCdTargetPattern = regexp.MustCompile(`(?:^|[\s;&|(])cd\s+(/[^\s;&|"'()<>]+)`)
+
+// cdPrimaryTarget reports whether any literal `cd <abs>` word names the primary
+// checkout, returning that path. Paths the shell and git may read differently
+// (targetPathAgrees) are skipped, as are lookup errors: both leave the caller on
+// the hook-cwd judgment, so this can only add denials, never allow. pushd and
+// variable or quoted paths are deliberately not scanned. The `git -C` targets
+// are judged per invocation instead (gitCPrimaryTarget).
+func cdPrimaryTarget(command string) (string, bool) {
+	plain := substituteQuotedArguments(command)
+	for _, m := range anyCdTargetPattern.FindAllStringSubmatch(plain, -1) {
+		p := m[1]
+		if !targetPathAgrees(p) {
+			continue
+		}
+		if isPrimary, err := isPrimaryCheckout(p); err == nil && isPrimary {
+			return p, true
+		}
+	}
+	return "", false
+}
+
+var (
+	// gitInvocationOptsPattern finds each `git` word that opens an invocation
+	// and captures the run of global options after it (`-C <path>`,
+	// `--git-dir`, `--work-tree`); the verb starts where the match ends.
+	gitInvocationOptsPattern = regexp.MustCompile(`(?i)\bgit((?:\s+(?:-C\s+\S+|--git-dir[=\s]\S+|--work-tree[=\s]\S+))*)(?:\s|$)`)
+	// gitCOperandPattern captures each `-C` operand inside such a run.
+	gitCOperandPattern = regexp.MustCompile(`(?:^|\s)-C\s+(\S+)`)
+	// gitCOptionsStripPattern matches a `git` word with only `-C <path>`
+	// options after it, so the verb behind them can be read.
+	gitCOptionsStripPattern = regexp.MustCompile(`(?i)\bgit(?:\s+-C\s+\S+)+`)
+	// invocationSeparatorPattern splits normalized text into the pieces one
+	// shell command each can live in.
+	invocationSeparatorPattern = regexp.MustCompile("[;&|\n()`]")
+)
+
+// seeThroughGitC returns the normalized scan text with every `-C <path>`
+// option removed, so the verb behind it is visible to the verb matchers even
+// when the command holds more than one git invocation. It works on the
+// normalized text, where quoted spans are already one placeholder word, so the
+// removal cannot swallow a quote.
+func seeThroughGitC(command string) string {
+	return gitCOptionsStripPattern.ReplaceAllString(normalizeCommandForScan(command), "git")
+}
+
+// gitCLandsInPrimary reports whether the `-C` chain of some guarded invocation
+// resolves to the primary checkout OF THE HOOK CWD'S REPOSITORY. It decides only
+// whether a verb hidden behind `-C` in a multi-invocation command counts (F4),
+// and it deliberately does not widen the existing judgment of an unrelated
+// repository (F9), which is left as it was: a verb behind `-C` in some other
+// repository stays unmatched here.
+func gitCLandsInPrimary(command, hookCwd string) bool {
+	sameRepo := func(p string) bool {
+		target, errTarget := gitcore.ResolveGitDirs(p)
+		cwd, errCwd := gitcore.ResolveGitDirs(hookCwd)
+		return errTarget == nil && errCwd == nil && target.CommonDir == cwd.CommonDir
+	}
+	_, ok := gitCPrimaryTarget(command, hookCwd, sameRepo)
+	return ok
+}
+
+// guardedVerbText reports whether the text of ONE invocation (`git <verb> ...`)
+// carries a verb the guard denies in a protected context: a commit-creating
+// verb or a branch-state verb.
+func guardedVerbText(invocation string) bool {
+	if protectedCommitPattern.MatchString(invocation) {
+		return true
+	}
+	_, matched := matchBranchStatePatterns(invocation)
+	return matched
+}
+
+// gitCPrimaryTarget judges the git `-C` target PER INVOCATION. It reads the
+// normalized text (heredoc bodies, comments and quoted spans already removed),
+// splits it into shell commands, and for each git invocation whose verb the
+// guard denies resolves ONLY that invocation's `-C` operands, in order. A `-C`
+// on any other invocation, in a quoted mention, in a comment, in a heredoc body
+// or in an `echo` argument therefore never moves another invocation's verdict.
+// It returns the resolved path when it is a primary checkout (and, when accept
+// is not nil, accept approves the path).
+func gitCPrimaryTarget(command, hookCwd string, accept func(string) bool) (string, bool) {
+	for _, piece := range invocationSeparatorPattern.Split(normalizeCommandForScan(command), -1) {
+		matches := gitInvocationOptsPattern.FindAllStringSubmatchIndex(piece, -1)
+		for i, m := range matches {
+			end := len(piece)
+			if i+1 < len(matches) {
+				end = matches[i+1][0]
+			}
+			if !guardedVerbText(strings.TrimSpace("git " + piece[m[1]:end])) {
+				continue
+			}
+			if p, ok := resolveGitCPrimary(piece[m[2]:m[3]], hookCwd); ok && (accept == nil || accept(p)) {
+				return p, true
+			}
+		}
+	}
+	return "", false
+}
+
+// resolveGitCPrimary resolves one invocation's `-C` operands the way git does:
+// a later absolute path replaces the earlier one, a relative path is joined onto
+// the previous one (the first relative one onto the hook cwd). The joined text is
+// handed to the operating system unchanged, so `..` segments and symlinks are
+// followed as git's own chdir follows them; `git -C` is not read by the shell,
+// so unlike a `cd` target it needs no clean path. An operand the shell would
+// expand, or the placeholder a quoted operand collapsed to, cannot be resolved
+// and is skipped, as is a failed lookup: both leave the caller on the hook-cwd
+// judgment, so this can only add denials, never allow.
+func resolveGitCPrimary(options, hookCwd string) (string, bool) {
+	cur, resolved := hookCwd, false
+	for _, m := range gitCOperandPattern.FindAllStringSubmatch(options, -1) {
+		operand := m[1]
+		if operand == strings.TrimSpace(quotedArgumentPlaceholder) || strings.ContainsAny(operand, shellExpansionChars) {
+			continue
+		}
+		if filepath.IsAbs(operand) {
+			cur = operand
+		} else {
+			cur += string(filepath.Separator) + operand
+		}
+		resolved = true
+	}
+	if !resolved {
+		return "", false
+	}
+	if isPrimary, err := isPrimaryCheckout(cur); err == nil && isPrimary {
+		return cur, true
+	}
+	return "", false
+}
+
+// primaryAtTargetOrCwd classifies the git context of the explicit target, and
+// when that lookup fails falls back to the hook cwd: a lookup failure on a
+// literal target is uncertainty about the target, not evidence the command is
+// safe, and the cwd judgment can only add denials.
+//
+// When no target was adopted, a literal `cd <abs>` word that names the primary
+// checkout (cdPrimaryTarget), or a `git -C` chain on the invocation that carries
+// the guarded verb resolving to it (gitCPrimaryTarget), makes the command
+// primary-judged whatever the hook cwd is: the verb can really land there, and
+// the hook cwd alone would let `cd <worktree> && cd <primary> && git commit` or
+// `git -C <primary> commit -m 'message'` through.
+func primaryAtTargetOrCwd(target, hookCwd, command string) (cwd string, isPrimary bool, err error) {
+	if target == "" {
+		if p, ok := cdPrimaryTarget(command); ok {
+			return p, true, nil
+		}
+		if p, ok := gitCPrimaryTarget(command, hookCwd, nil); ok {
+			return p, true, nil
+		}
+		isPrimary, err = isPrimaryCheckout(hookCwd)
+		return hookCwd, isPrimary, err
+	}
+	if isPrimary, err = isPrimaryCheckout(target); err == nil {
+		return target, isPrimary, nil
+	}
+	isPrimary, err = isPrimaryCheckout(hookCwd)
+	return hookCwd, isPrimary, err
 }
 
 // resolveHeadBranch is the package-level indirection over
@@ -531,7 +827,14 @@ func checkProtectedCommit(input *HookInput, projectDir string, denyList []string
 		return "", ""
 	}
 	scanCommand, target := explicitGitTarget(command)
-	if !matchProtectedCommitCommand(scanCommand) {
+	hookCwd := resolveProjectRootFromInputOrEnv(input, "branch_guard")
+	isCommit := matchProtectedCommitCommand(scanCommand)
+	if !isCommit && matchProtectedCommitCommand(seeThroughGitC(scanCommand)) {
+		// The verb sits behind a `-C` of a multi-invocation command (F4): it
+		// counts only where that invocation's own `-C` chain lands in the primary.
+		isCommit = gitCLandsInPrimary(command, hookCwd)
+	}
+	if !isCommit {
 		return "", ""
 	}
 	if isExemptAgent(input) {
@@ -540,11 +843,7 @@ func checkProtectedCommit(input *HookInput, projectDir string, denyList []string
 	// Seam A: query the git context at the command's actual cwd — the same
 	// discriminant checkBranchState uses (see its comment for why the
 	// audit-log project dir must NOT feed this query).
-	gitContextCwd := resolveProjectRootFromInputOrEnv(input, "branch_guard")
-	if target != "" {
-		gitContextCwd = target
-	}
-	isPrimary, err := isPrimaryCheckout(gitContextCwd)
+	gitContextCwd, isPrimary, err := primaryAtTargetOrCwd(target, hookCwd, command)
 	if err != nil {
 		// Fail OPEN with advisory (REQ-2.3): uncertainty never denies.
 		appendBranchGuardAdvisory(input, projectDir, command, err, gitContextCwd)
@@ -1086,7 +1385,16 @@ func checkBranchState(input *HookInput, projectDir string) (decision string, rea
 		return "", ""
 	}
 	scanCommand, target := explicitGitTarget(command)
+	hookCwd := resolveProjectRootFromInputOrEnv(input, "branch_guard")
 	suffix, matched := matchBranchStateCommand(scanCommand)
+	if !matched {
+		// A command with more than one git invocation keeps its `-C` options in
+		// scanCommand, which hides the verb behind them (F4). The verb counts
+		// only where its own `-C` chain lands in the primary checkout.
+		if s, ok := matchBranchStateCommand(seeThroughGitC(scanCommand)); ok && gitCLandsInPrimary(command, hookCwd) {
+			suffix, matched = s, true
+		}
+	}
 	if !matched {
 		// D2 (SPEC-HOOK-MATCHER-POWERSHELL-001 REQ-HMP-010): a PowerShell
 		// indirection the pattern scan cannot see is allowed, and recorded.
@@ -1106,11 +1414,7 @@ func checkBranchState(input *HookInput, projectDir string) (decision string, rea
 	// dir. This is the one-line correction that fixes the worktree
 	// misclassification — isPrimaryCheckout stays a pure function of its
 	// argument; only which directory the caller asks it to query changes.
-	gitContextCwd := resolveProjectRootFromInputOrEnv(input, "branch_guard")
-	if target != "" {
-		gitContextCwd = target
-	}
-	isPrimary, err := isPrimaryCheckout(gitContextCwd)
+	gitContextCwd, isPrimary, err := primaryAtTargetOrCwd(target, hookCwd, command)
 	// W3 (SPEC-SESSION-ANCHOR-ATTR-001 REQ-SAA-007): this Seam A anchor read
 	// is one of the traced anchor decision points. One env lookup when
 	// MOAI_ANCHOR_TRACE is off (REQ-SAA-008); the audit-log project dir
