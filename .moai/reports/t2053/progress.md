@@ -1,0 +1,89 @@
+# t2053 진행 기록 (run 단계, manager-develop / cycle_type=tdd)
+
+- 카드: t2053 — `moai update` 의 워크트리 마이그레이션이 수 분간 무출력으로 멈춘 것처럼 보이는 문제
+- 브랜치: WT-update-progress, 기준 커밋 67b4734d6b
+- 범위: 진행 표시 + 시간 제한 + 해시 축소 (운영자 승인 범위, `brief.md` 의 Implementer brief)
+
+## 1. 커밋
+
+| SHA | 제목 |
+|---|---|
+| 0ba4130416 | perf(worktree): stop hashing ignored files, bound subprocesses, show live progress [t2053] |
+| 5a51a89b01 | feat(cli): label silent update/init waits and bound init's git probe [t2053] |
+| (이 파일) | docs(t2053): run-phase progress record [t2053] |
+
+작업 트리의 `.moai/config/sections/language.yaml`, `llm.yaml` 변경은 이 카드의 것이 아니며 스테이징·수정하지 않았다.
+
+## 2. 파일별 변경
+
+| 파일 | 변경 |
+|---|---|
+| `internal/config/defaults.go` | 이름 붙은 기본값 6개 추가: `DefaultWorktreeGitTimeout`(2분), `DefaultWorktreeMoveTimeout`(5분), `DefaultWorktreeLsofTimeout`(30초), `DefaultWorktreeCommandWaitDelay`(2초), `DefaultInitGitProbeTimeout`(5초), `DefaultUserLockNoticeDelay`(1초). 값은 측정값이 아니라 정한 값이다(주석에 명시). |
+| `internal/cli/worktree/migrate.go` | (1) 매니페스트: `treeManifest` 에 `IgnoredDigest` 추가. 추적되지 않고 무시되지 않은 파일(`ls-files --others --exclude-standard -z`)은 기존대로 내용을 전부 SHA-256 으로 해시(심볼릭 링크 처리 불변). 무시된 파일(`--others --ignored --exclude-standard -z`)은 경로 + 파일 종류 + 크기를 `Lstat` 만으로 기록하고 열지 않는다. (2) 시간 제한: `boundedOutput`(`exec.CommandContext` + `WaitDelay`), `ErrCommandTimeout`, 패키지 변수 `lsofCommandTimeout` / `gitCommandTimeout` / `gitMoveTimeout`. lsof, 모든 git 읽기 호출, `git worktree move`(정·역방향)에 적용. (3) 실패 안전 처리: `captureManifestChecked` / `captureTreeManifest` 는 git 호출이 시간 초과되면 즉시 중단하고 오류를 돌려준다. `migrateOneTree` 는 이전 매니페스트가 불완전하면 트리를 `skipped`(이유에 "timed out")로 두고 옮기지 않는다. 이동 후 매니페스트가 불완전하거나 다르면 기존 역순서로 되돌린다. `git worktree move` 가 시간 초과된 뒤 목적지가 생겨 있으면 식별자 검사를 거치는 역이동 경로를 탄다. (4) 진행 표시: `runMigrationEngineWith` 가 `treeProgress` 를 받는다(`runMigrationEngine` 은 nil 로 위임). 적용 모드에서만 개수를 알리고 트리마다 한 줄. `migrate --apply`(비 JSON)는 stderr, 업데이트 통합은 `out` 에 쓴다. 드라이런과 `--json` 은 무출력. |
+| `internal/cli/worktree/migrate_progress.go` (신규) | `treeProgress`: `tui.ProgressLine` 재사용. TTY 에서는 한 줄을 제자리 갱신, 비 TTY 에서는 트리마다 평문 한 줄(이스케이프 없음). 끝에 `Done` 으로 줄을 닫아 이어지는 최종 행이 새 줄에서 시작하게 한다. 새 스피너 구현은 만들지 않았다. |
+| `internal/cli/init_gitdetect.go` | `git remote`, `git remote get-url origin` 을 `gitDetectOutput`(`exec.CommandContext`, `gitDetectTimeout`) 로 실행. `detectGitConfigReport` 가 시간 초과 이유를 함께 돌려주고, `detectGitConfig` 는 기존 두 값 시그니처를 유지한다. 시간 초과 시 manual / github 기본값(기존 실패 경로와 동일한 안전한 값)으로 물러난다. |
+| `internal/cli/init.go` | `detectGitConfigReport` 를 호출하고 이유가 있으면 `p.Warn` 으로 보고. |
+| `internal/cli/user_asset_phase.go` | `acquireUserLockNotified`: 잠금을 `userLockNoticeDelay`(기본 1초) 안에 못 잡으면 "다른 프로세스가 moai user lock 을 쥐고 있음 + 최대 대기 시간" 을 한 번만 출력. 잠금이 바로 잡히면 무출력. `ensureUserAssetsLocked`(init)와 `runUserAssetUpdatePhase`(update) 모두 적용. |
+| `internal/cli/update_progress.go` (신규) | `runUpdateProgressStep`, `pruneBackupsWithProgress` (모두 `tui.ProgressLine`). |
+| `internal/cli/update.go` | 바이너리 업데이트 확인(`IsUpdateAvailable` 구간)과 마이그레이션 이전 하우스키핑(일반 흐름과 `--binary` 흐름)에 라벨 추가. |
+| `internal/cli/update_template_sync.go` | 오래된 백업 정리(`PruneBackups`)를 `pruneBackupsWithProgress` 로 감쌈. |
+
+## 3. 추가한 테스트 (실패하는 테스트 먼저)
+
+RED 확인: 구현 전 `go vet ./internal/cli/worktree/` 와 `go vet ./internal/cli/` 가 `undefined: lsofCommandTimeout`, `gitCommandTimeout`, `userLockNoticeDelay`, `acquireUserLockNotified`, `gitDetectTimeout` 등으로 실패했다(컴파일 단계 RED).
+
+`internal/cli/worktree/migrate_bounded_test.go`
+- `TestCaptureManifest_IgnoredContentIsNotRead` — 무시된 파일의 같은 크기 내용 변경은 매니페스트를 바꾸지 않는다(읽지 않음의 증거이자 알려진 한계의 고정).
+- `TestCaptureManifest_IgnoredUnreadableFile_DeletionAndSizeChangeDetected` — mode 000 무시 파일도 삭제·크기 변경은 탐지, 변경 없는 재측정은 동일.
+- `TestCaptureManifest_IgnoredTypeChangeDetected` — 일반 파일을 같은 길이의 심볼릭 링크로 바꾸면 탐지.
+- `TestCaptureManifest_UntrackedContentChangeStillDetected` — 추적되지 않고 무시되지 않은 파일의 같은 크기 변경은 여전히 탐지.
+- `TestDefaultActiveProcessCWDs_TimesOutOnBlockedLsof` — 멈춘 lsof 는 `ErrCommandTimeout` 로 반환.
+- `TestPlanMigration_SkipsEveryTreeWhenLsofTimesOut` — lsof 가 답하지 못하면 트리는 이동 계획에 오르지 않는다.
+- `TestMigrateApply_ManifestGitTimeout_TreeNotMoved` — git `status` 가 멈추면 `moved == 0`, 행은 `skipped` + "timed out", 트리는 원위치.
+- `TestMigrateApply_MoveTimeout_TreeStaysAndFails` — `git worktree move` 가 멈추면 `failed` + "timed out", 목적지 없음, 원위치 등록 유지.
+- `TestUpdateConsolidation_NonTTYProgress` — 비 TTY 에서 대상 2개일 때 개수 안내 후 `(1/2)`, `(2/2)` 가 최종 행보다 먼저, 이스케이프 없음, 최종 요약 행 불변.
+- `TestUpdateConsolidation_DryRunPrintsNoProgress`, `TestMigrateVerb_ApplyShowsLiveLines`, `TestMigrateVerb_ApplyJSONStaysClean`.
+
+`internal/cli/update_init_bounded_test.go`
+- `TestAcquireUserLockNotified_PrintsNoticeOncePastThreshold` — 주입한 짧은 임계값을 넘기면 안내가 정확히 한 번, 최대 대기 시간 포함.
+- `TestAcquireUserLockNotified_QuietWhenLockIsFree` — 잠금이 비어 있으면 임계값을 한참 넘겨도 무출력.
+- `TestDetectGitConfig_GitTimeoutFallsBackToManualWithReason`, `TestDetectGitConfigReport_NoReasonOnPlainAbsence`.
+- `TestRunBinaryUpdateStep_ShowsCheckProgress`, `TestRunUpdateProgressStep_LabelsThenCompletes`, `TestPruneBackupsWithProgress_LabelsAndReports`.
+
+위생: 모든 픽스처는 `t.TempDir()` 아래. `TMPDIR` 는 `/var/folders/...`(홈·저장소 밖), `GOTMPDIR` 는 비어 있음. 네트워크 없음. 멈추는 가짜 `git`/`lsof` 는 `exec sleep 30` 으로, 검증 대상 시간 제한(300ms)이 종료시킨다. 배경 부하를 만들지 않았다.
+
+## 4. 검증 (레인 한정, 전체 `internal/cli` 스위트는 실행하지 않음)
+
+출력 파일은 스크래치패드 `/private/tmp/claude-501/-Users-goos--moai-worktrees-projects-moai-adk-go-t2053/4f29bfd8-9bc1-4f88-996a-4e8756921769/scratchpad/` 에 있다(머신 로컬, 인용 대상 아님). 아래는 그 출력에서 옮긴 마지막 줄이다.
+
+| 명령 | 종료 코드 | 마지막 줄 |
+|---|---|---|
+| `go build ./...` | 0 | (출력 없음) |
+| `go vet ./internal/cli/... ./internal/config/...` | 0 | (출력 없음) |
+| `gofmt -l internal/` | 0 | (출력 0바이트) |
+| `go test -count=1 ./internal/cli/worktree/... ./internal/cli/printer/... ./internal/config/...` | 0 | `ok  github.com/modu-ai/moai-adk/internal/cli/worktree  281.567s` / `ok  .../internal/cli/printer  0.418s` / `ok  .../internal/config  12.152s` / `ok  .../internal/config/atomicfile  0.591s` / `ok  .../internal/config/toolpolicy  14.310s` |
+| `go test -count=1 -v -run 'TestAcquireUserLockNotified\|TestDetectGitConfig\|TestRunBinaryUpdateStep\|TestRunUpdateProgressStep\|TestPruneBackupsWithProgress' ./internal/cli/` | 0 | `ok  github.com/modu-ai/moai-adk/internal/cli  3.216s` — `=== RUN` 20줄, `--- PASS` 13줄, `--- FAIL` 0줄 |
+| `go test -count=1 -v -run 'TestAcquireUserLock\|TestUpdatePhase\|TestRunUpdate\|TestUpdate\|UserAsset\|TestInit.*Git\|TestEnsureUserAssets\|Housekeeping\|TestRunUserAsset' ./internal/cli/` (관련 회귀) | 0 | `ok  github.com/modu-ai/moai-adk/internal/cli  124.055s` — `=== RUN` 201줄, `--- PASS` 138줄 |
+| `go test -count=1 -run 'TemplateSync\|Backup\|Prune\|Retention\|CleanReinstall\|DryRun\|Binary' ./internal/cli/` (정리 라벨 회귀) | 0 | `ok  github.com/modu-ai/moai-adk/internal/cli  107.386s` |
+| `go test -count=1 ./internal/tui/...` (ProgressLine 재사용 확인) | 0 | `ok  github.com/modu-ai/moai-adk/internal/tui  0.339s` 외 하위 패키지 ok |
+| `golangci-lint run ./internal/cli/worktree/... ./internal/config/... ./internal/cli/` | 0 | `0 issues.` |
+
+중간에 린트가 `migrate_bounded_test.go:337:5: QF1001: could apply De Morgan's law` 를 한 건 지적해 조건식을 고친 뒤 위 최종 결과를 얻었다.
+
+## 5. 알려진 한계
+
+1. **같은 크기의 내용 변경 미탐지(핵심 한계)**: 무시된 파일(`node_modules`, 빌드 산출물 등)의 내용이 같은 크기로 바뀌어도 매니페스트가 바뀌지 않는다. 경로 없어짐, 크기 변경, 종류 변경(일반 파일/링크/디렉터리/특수 파일)만 잡는다. `treeManifest` 주석, `hashIgnoredMetadata` 의 `@MX:NOTE`, 테스트로 명시했다. 이전 방식(카드 t1640 리뷰 P2f)은 이것까지 잡았으나 무시된 파일은 재생성 가능한 산출물이라는 전제로 맞바꿨다.
+2. **이전 빌드의 저널과 롤백 호환**: 매니페스트 구조가 바뀌어(`IgnoredDigest` 추가, `ContentDigest` 범위 축소) 이전 빌드가 쓴 저널의 `manifest` 값과는 `--rollback` 의 정착된 이동 매니페스트 비교가 일치하지 않는다. 그 경우 롤백은 안전한 쪽(`refused`, "manifest mismatch")으로 멈춘다. 이 변경 이전에 적용된 저널을 롤백할 일이 있으면 별도 판단이 필요하다.
+3. **`git worktree move` 시간 초과의 불확정성**: git 이 중간에 종료되면 이동 여부가 불확실하다. 목적지가 존재하면 식별자 검사를 거친 역이동 경로를 타고, 없으면 `failed` 로 둔다. 목적지가 존재하는 부분 이동 상태 자체를 직접 재현하는 테스트는 만들지 않았다(재현이 불안정해질 수 있어서). 분기 로직은 코드 리뷰 대상이다.
+4. **애니메이션 없음**: 브리프가 허용한 `tui.ProgressLine` 을 썼다. 트리마다 한 줄을 제자리 갱신하지만 프레임 애니메이션은 없다. 한 트리 내부에서 시간이 오래 걸리는 구간은 이제 시간 제한이 상한을 둔다. `printer.Spinner` 는 stderr 전용이고 update 경로는 `out` 에 쓰는 `ProgressLine` 규약으로 통일되어 있어 쓰지 않았다.
+5. 값(2분/5분/30초/5초/1초)은 측정값이 아니라 정한 값이다. 실제 600개 워크트리 환경에서 재측정하지 않았다.
+6. 검증 훅: `/verify` 스킬은 `moai gate`(전체 lint+test)를 가리키지만, 레인 규칙(전체 스위트 금지)에 따라 이 세션에서는 돌리지 않았다. 커밋 시점의 pre-commit 훅이 같은 게이트를 독립적으로 다시 실행한다. 두 커밋 모두 훅이 막지 않았다.
+7. 리포지토리 전체 테스트 판정은 통합 브랜치의 CI 가 소유하며 이 보고 시점에는 미정(PENDING)이다.
+
+## 6. 범위 밖 (손대지 않음)
+
+- `internal/cli/worktree/sweep_cwd_posix.go` 등 마이그레이션이 아닌 다른 `lsof`/`git` 호출, `guard.go`, `list.go`, `shared.go` 의 `exec.Command` (브리프는 `migrate.go` 와 `init_gitdetect.go` 로 한정).
+- `moai bundle add|remove`, `resumeInitializedProject` 의 사용자 자산 잠금 대기(브리프는 update 와 init 한정).
+- `update_clean_install.go` 의 클린 재설치 경로 백업 정리(`[clean-reinstall]` 접두 출력 서식이 달라 제외; 일반 템플릿 동기화 경로만 라벨).
+- `.moai/reports` 처리: 파일 개수만 세고 내용을 읽지 않으므로 그대로 둠.
+- 푸시, PR, 팩토리 큐: 건드리지 않음.
