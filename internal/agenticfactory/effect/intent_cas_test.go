@@ -302,6 +302,33 @@ func TestASubSecondTimeoutHasAWindow(t *testing.T) {
 	}
 }
 
+// A send that went Sent -> Parked because a lookup errored may still be in flight. The window is a fact
+// about SentAt, not about the status the intent happens to carry: an authoritative "nothing there" inside it
+// must not write Failed (a retry would create a duplicate), and past it the intent is Failed as before.
+// (card t2051; Codex review of effect Reconcile, rcpt-e9a0ff6206ca4001b07701ed)
+func TestAParkedSendInsideTheWindowIsNotFailedByAnAuthoritativeNothing(t *testing.T) {
+	mem := NewMemIntentStore()
+	now := time.Unix(1_000_000, 0)
+	key := Key(IssueCreate, "repo:o/r", "d1")
+	if err := mem.Put(Intent{Key: key, Kind: IssueCreate, Issue: 7, Target: "repo:o/r", Digest: "d1", Status: StatusSent, Attempts: 1, SentAt: now.UnixNano()}); err != nil {
+		t.Fatal(err)
+	}
+	clock := now.Add(100 * time.Millisecond)
+	park := &Executor{Store: mem, Send: &countSender{}, Lookup: errLookup{errors.New("lookup unavailable")}, Timeouts: casTimeouts(), Now: func() time.Time { return clock }}
+	if got, err := park.Reconcile(t.Context(), key); err != nil || got.Status != StatusParked {
+		t.Fatalf("setup: %+v %v, want Parked after a lookup error", got, err)
+	}
+	clock = now.Add(500 * time.Millisecond)
+	e := &Executor{Store: mem, Send: &countSender{}, Lookup: notFoundLookup{}, Timeouts: casTimeouts(), Now: func() time.Time { return clock }}
+	if got, err := e.Reconcile(t.Context(), key); err != nil || got.Status == StatusFailed {
+		t.Fatalf("inside the window: %+v %v, want the intent left unresolved, not Failed", got, err)
+	}
+	clock = now.Add(3 * time.Second)
+	if got, err := e.Reconcile(t.Context(), key); err != nil || got.Status != StatusFailed {
+		t.Errorf("past the window: %+v %v, want Failed", got, err)
+	}
+}
+
 type errSender struct{ err error }
 
 func (e errSender) Send(context.Context, Intent) (string, error) { return "", e.err }
