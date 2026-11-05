@@ -3142,7 +3142,15 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 		// has nothing left to merge; the re-run only reconciles the queue close
 		// (already-closed reads as closed), as the pull-request edge does at
 		// merged-pr. The card record and the integration branch stay untouched.
-		target, _ := factoryResolveIntegrationBranch(root, card)
+		// The record keeps no integration branch, so the target comes from
+		// configuration only; a fallback to the card's own work branch would
+		// archive the card as landed where it did not land.
+		target, source := factoryResolveIntegrationBranch(root, card)
+		if source != factory.BranchSourceConfig {
+			_, _ = fmt.Fprintf(out, "%s %s merge=%s (already merged; the queue card is left open: no configured integration target to record the landing against)\n",
+				card.CardID, card.State, card.MergeSHA)
+			return nil
+		}
 		_, _ = fmt.Fprintf(out, "%s %s merge=%s branch=%s (already merged; reconciling the queue close)\n",
 			card.CardID, card.State, card.MergeSHA, target)
 		factoryCloseLaneCard(out, root, runID, card, lane, target)
