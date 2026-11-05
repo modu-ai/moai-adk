@@ -148,3 +148,46 @@ RED 확인: 구현 전 `go vet ./internal/cli/worktree/` 와 `go vet ./internal/
 
 - (해소) 롤백 경로와 등록 불일치는 위 2차 리뷰 반영(G1, G2)에서 처리했다.
 - 남은 한계: `git worktree repair` 가 실패하거나 멈추는 경우는 pending 으로 남고 다음 실행(롤백 재실행 또는 다음 업데이트)이 수렴시키도록 두었다. 이 경로에서 repair 의 성공은 `git worktree list` 재조회로만 판정하며, 등록 외의 git 내부 상태(예: 잠금 파일)는 보지 않는다.
+
+### 3차 리뷰 반영 (H1, H2)
+
+3차 codex 리뷰가 P2 두 건을 지적했다. 두 건 모두 실패하는 테스트를 먼저 작성해 RED 를 확인한 뒤 고쳤다.
+
+**H1. 정방향 이동이 이름 바꾸기 뒤 등록 갱신 전에 끊긴 경우**
+- 원인: `git worktree move` 가 디렉터리 이름 바꾸기를 마치고 git 등록을 고치기 전에 오류나 시간 초과로 끝나면, 목적지가 저널 식별자를 갖고 원위치는 비어 있는데 git 은 여전히 원위치를 등록 경로로 가진다. 이때 역이동은 `not a working tree` 로 실패하고, `treeMovedBack` 도(원위치가 없으므로) `--rollback` 도 같은 이유로 수렴하지 못했다.
+- 수정: 역이동 직전에 `forwardMoveUnregistered(root, source, destination, ident)` 로 이 상태를 판정한다. 조건은 (1) 식별자가 비어 있지 않음, (2) 원위치가 없음, (3) 목적지가 저널 식별자를 가짐, (4) 한도가 있는 `git worktree list --porcelain` 에서 등록 경로가 원위치이고 목적지가 아님. 이 상태이면 한도가 있는 `git worktree repair <destination>` 를 한 번 실행하고(`repairRegistration`), 등록이 목적지로 바뀐 것을 다시 조회로 확인한 뒤에만 역이동을 진행한다. repair 가 실패하거나 멈추거나 확인되지 않으면 `m6ReverseMove` 는 `pending` 행을 남기고 `false`(트리는 `failed`)를 돌려주며, `--rollback` 은 `pending` 행과 실패 집계를 남긴다. 판정 조건에 맞지 않는 상태(목록 조회 실패 포함)는 기존 경로 그대로 간다.
+- 시임: 정방향 이동 호출을 `forwardGitMove` 로 분리했다(동작 변화 없음). 테스트는 이 시임으로 "이름만 바꾸고 시간 초과 오류" 를 재현한다.
+- 테스트(RED 출력: `reversed=0 failed=2, want 2 reversed and 0 failed`, `rollback failed on a half-moved tree: ... reverse move failed (exit status 128)`):
+  - `TestMigrateApply_ForwardMoveInterruptedAfterRename_ConvergesBack` — 적용 두 트리 모두 `reversed`, 원위치에 있고 원위치로 등록됨, `moved` 0.
+  - `TestMigrateApply_ForwardMoveInterrupted_RepairHangs_NeverSuccess` — repair 가 멈추면 `failed` 2, `moved`/`reversed` 0.
+  - `TestRollback_ForwardMoveInterrupted_RepairsThenRestores` — 반쯤 옮겨진 트리의 pending 저널이 롤백으로 수렴해 마지막 행 `restored`, 등록은 원위치만.
+  - `TestRollback_ForwardMoveInterrupted_RepairHangs_StaysPending` — repair 가 멈추면 롤백이 오류로 끝나고 `restored` 행 없음(이 케이스는 수정 전에도 통과하는 안전 가드).
+- 구현 중 겪은 일: 롤백 쪽 배선을 처음 패턴 치환으로 넣었다가 들여쓰기 불일치로 적용되지 않았고, 롤백 테스트 하나가 실패해서 발견했다. 치환 후에는 `grep` 으로 두 호출 지점을 확인했다.
+
+**H2. 이전 빌드가 쓴 저널이 `--rollback` 에서 "manifest mismatch"**
+- 원인: 지난 수정이 매니페스트 JSON 에 `IgnoredDigest` 를 추가해 해시 입력이 달라졌다. 이전 빌드가 쓴 저널의 다이제스트는 새 알고리즘과 절대 일치하지 않아, 변하지 않은 트리도 롤백이 거부됐다.
+- 수정(최소): 저널 단계에 `manifest_version`(`omitempty`)을 두고 새 저널은 `manifestFormatVersion = 2` 를 기록한다(`settle` 이 매니페스트가 있을 때 설정). 롤백은 `manifestForJournal(tree, version)` 으로 비교한다. 버전이 없는(0) 단계는 `captureLegacyManifest` 로 이전 방식 그대로 계산한다: 필드 구성은 `IgnoredDigest` 를 뺀 이전 JSON 모양, `ContentDigest` 는 `ls-files --others -z` 와 무시 목록의 합집합 전체의 내용 SHA-256(`hashUntrackedContent` 재사용, 정렬과 중복 제거가 같아 바이트가 동일). git 호출이 시간 초과이면 빈 문자열을 돌려주므로 기록된 값과 절대 같지 않다. 일반 버전 관리 틀은 만들지 않았다.
+- 검증용 복제본: 테스트 파일 `migrate_legacy_manifest_test.go` 에 기준 커밋 `67b4734d6b` 의 알고리즘을 식별자만 바꿔 그대로 복사했다. 프로덕션 `captureLegacyManifest` 와 구현이 독립이므로, 두 구현이 같은 다이제스트를 낸다는 것 자체가 호환성 증거다.
+- 테스트(RED 출력: `rollback of an unchanged tree from a legacy journal failed: ... manifest mismatch`, `a settled step carries manifest_version 0, want >= 2`):
+  - `TestRollback_LegacyJournalManifest_UnchangedTreeMatches` — 이전 방식 저널, 변하지 않은 트리(무시 파일 포함)는 `restored`.
+  - `TestRollback_LegacyJournalManifest_ChangedTreeRefused` — 무시 파일의 같은 크기 내용 변경, 추적되지 않는 새 파일 추가 둘 다 `manifest mismatch` 로 거부, 마지막 행 `refused`. 이전 빌드가 잡던 변경을 이전 방식 검증이 계속 잡는다는 증거다(이 케이스는 수정 전에도 통과하는 안전 가드).
+  - `TestMigrateApply_JournalRecordsManifestVersion` — 새 저널의 정산된 단계는 `manifest_version >= 2`.
+
+**3차 재검증 (레인 한정)**
+
+| 명령 | 종료 코드 | 마지막 줄 |
+|---|---|---|
+| `go build ./...` | 0 | 출력 없음 |
+| `go vet ./internal/cli/... ./internal/config/...` | 0 | 출력 없음 |
+| `gofmt -l internal/` | 0 | 출력 0바이트 |
+| `go test -count=1 -v -run 'TestMigrateApply_ForwardMove\|TestRollback_ForwardMove\|TestRollback_LegacyJournal\|TestMigrateApply_JournalRecords' ./internal/cli/worktree/` | 0 | `ok .../internal/cli/worktree 28.901s` (신규 7건, 하위 2건 PASS) |
+| `go test -count=1 ./internal/cli/worktree/... ./internal/cli/printer/... ./internal/config/...` | 0 | `ok .../internal/cli/worktree 270.020s`, printer, config 계열 모두 ok |
+| `go test -count=1 -v -run 'Update\|InitGit\|Progress\|UserLock\|Migrat' ./internal/cli/` | 0 | `ok .../internal/cli 256.295s` (`--- PASS` 362, `--- FAIL` 0) |
+| `golangci-lint run ./internal/cli/worktree/... ./internal/cli/ ./internal/config/...` | 0 | `0 issues.` |
+
+### 한계 (3차 수정 관련)
+
+- 이전 빌드 저널의 롤백 검증은 이전 방식의 장단점을 그대로 가진다(무시 파일의 내용까지 읽으므로 느릴 수 있으나, 롤백은 드문 복구 경로이고 한도가 있는 git 호출만 쓴다). 새 저널은 무시 파일의 같은 크기 내용 변경을 잡지 못한다는 기존 한계를 유지한다.
+- `forwardMoveUnregistered` 는 목록 조회가 실패하면 "해당 없음" 으로 답하고 기존 역이동 경로로 간다. 그 경로가 실패하면 pending 으로 남는다(성공으로 보고되지 않는다).
+- `git worktree repair <destination>` 의 성공은 `git worktree list` 재조회로만 판정한다.
+- `/verify` 스킬은 실행하지 않았다(전체 스위트를 돌리기 때문).
