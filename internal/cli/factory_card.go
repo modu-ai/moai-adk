@@ -3133,8 +3133,20 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 		if merged := factoryReleaseAlreadyMerged(card, relBranch, relTree); merged != "" {
 			_, _ = fmt.Fprintf(out, "%s %s merge=%s branch=%s worktree=%s (already merged for this card HEAD; nothing to do)\n",
 				card.CardID, card.State, merged, relBranch, relTree)
+			// card t2057: the queue close is fail-open, so the re-run retries it.
+			factoryCloseLaneCard(out, root, runID, card, lane, relBranch)
 			return nil
 		}
+	} else if card.State == homestate.CardMergedLocal {
+		// card t2057: a card already at merged-local on the plain local route
+		// has nothing left to merge; the re-run only reconciles the queue close
+		// (already-closed reads as closed), as the pull-request edge does at
+		// merged-pr. The card record and the integration branch stay untouched.
+		target, _ := factoryResolveIntegrationBranch(root, card)
+		_, _ = fmt.Fprintf(out, "%s %s merge=%s branch=%s (already merged; reconciling the queue close)\n",
+			card.CardID, card.State, card.MergeSHA, target)
+		factoryCloseLaneCard(out, root, runID, card, lane, target)
+		return nil
 	}
 
 	// REQ-MWQ-019 step 1 — the card gates run READ-ONLY, before the window
