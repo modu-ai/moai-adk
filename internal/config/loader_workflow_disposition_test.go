@@ -80,7 +80,7 @@ func TestWorkflowDisposition(t *testing.T) {
 		for _, v := range got {
 			set[v] = true
 		}
-		for _, want := range []string{"github-flow", "git-flow", "gitlab-flow", "release-flow", "agentic-trunk"} {
+		for _, want := range []string{"github-flow", "git-flow", "gitlab-flow", "release-flow", "af-flow"} {
 			if !set[want] {
 				t.Errorf("AllowedWorkflows() is missing %q: %v", want, got)
 			}
@@ -129,7 +129,7 @@ func TestWorkflowDisposition(t *testing.T) {
 			{workflow: "git-flow", want: DispositionGitFlow},
 			{workflow: "gitlab-flow", want: DispositionValidNonGitFlow},
 			{workflow: "release-flow", want: DispositionValidNonGitFlow},
-			{workflow: "agentic-trunk", want: DispositionValidNonGitFlow},
+			{workflow: "af-flow", want: DispositionValidNonGitFlow},
 		}
 		for _, tt := range tests {
 			root := t.TempDir()
