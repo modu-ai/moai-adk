@@ -635,8 +635,11 @@ var (
 	// and captures the run of global options after it (`-C <path>`,
 	// `--git-dir`, `--work-tree`); the verb starts where the match ends.
 	gitInvocationOptsPattern = regexp.MustCompile(`(?i)\bgit((?:\s+(?:-C\s+\S+|--git-dir[=\s]\S+|--work-tree[=\s]\S+))*)(?:\s|$)`)
-	// gitCOperandPattern captures each `-C` operand inside such a run.
-	gitCOperandPattern = regexp.MustCompile(`(?:^|\s)-C\s+(\S+)`)
+	// gitCOperandPattern captures each `-C` operand inside such a run. The
+	// operand ends at a redirection character: `-C /repo</dev/null` names
+	// /repo, because the shell never hands the redirection to git as part of
+	// the path (card t2049).
+	gitCOperandPattern = regexp.MustCompile(`(?:^|\s)-C\s+([^\s<>]+)`)
 	// gitCOptionsStripPattern matches a `git` word with only `-C <path>`
 	// options after it, so the verb behind them can be read.
 	gitCOptionsStripPattern = regexp.MustCompile(`(?i)\bgit(?:\s+-C\s+\S+)+`)
@@ -645,13 +648,35 @@ var (
 	invocationSeparatorPattern = regexp.MustCompile("[;&|\n()`]")
 )
 
+// redirectionWordPattern matches one shell redirection, with its target, that
+// stands as its own word: `</dev/null`, `> file`, `2>/dev/null`, `2>&1`,
+// `&>/dev/null`, `>>log`. It consumes the target word of a redirection that
+// takes one (the shell never passes that word to git), and nothing after a
+// `>&N` duplication. A heredoc or here-string opener (`<<EOF`, `<<<`) and a
+// process substitution (`<(cmd)`) do not match: the target class excludes
+// `<`, `>` and parentheses.
+var redirectionWordPattern = regexp.MustCompile(`(?:^|\s)(?:\d+|&)?(?:>>?|<)(?:&(?:\d+|-)|\s*[^\s;&|()<>]+)`)
+
+// normalizeForGitCScan is the one normalization point of the `-C` judgment: the
+// shared scan normalization followed by removal of redirection words. A
+// redirection between `git`, a `-C` operand and the verb ends the option run
+// the `-C` patterns read, so left in place it hides the verb (and a `2>&1`
+// splits the invocation at its `&`) — a commit on the primary checkout's
+// protected branch then reached the allow path (card t2049). Quoted spans are
+// already one placeholder word here, so a `<` or `>` inside a message is never
+// read as a redirection. The removal feeds only the `-C` judgment, which can
+// only add denials; the plain scan above it is left as it was.
+func normalizeForGitCScan(command string) string {
+	return redirectionWordPattern.ReplaceAllString(normalizeCommandForScan(command), " ")
+}
+
 // seeThroughGitC returns the normalized scan text with every `-C <path>`
 // option removed, so the verb behind it is visible to the verb matchers even
 // when the command holds more than one git invocation. It works on the
 // normalized text, where quoted spans are already one placeholder word, so the
 // removal cannot swallow a quote.
 func seeThroughGitC(command string) string {
-	return gitCOptionsStripPattern.ReplaceAllString(normalizeCommandForScan(command), "git")
+	return gitCOptionsStripPattern.ReplaceAllString(normalizeForGitCScan(command), "git")
 }
 
 // gitCLandsInPrimary reports whether the `-C` chain of some guarded invocation
@@ -690,7 +715,7 @@ func guardedVerbText(invocation string) bool {
 // It returns the resolved path when it is a primary checkout (and, when accept
 // is not nil, accept approves the path).
 func gitCPrimaryTarget(command, hookCwd string, accept func(string) bool) (string, bool) {
-	for _, piece := range invocationSeparatorPattern.Split(normalizeCommandForScan(command), -1) {
+	for _, piece := range invocationSeparatorPattern.Split(normalizeForGitCScan(command), -1) {
 		matches := gitInvocationOptsPattern.FindAllStringSubmatchIndex(piece, -1)
 		for i, m := range matches {
 			end := len(piece)
