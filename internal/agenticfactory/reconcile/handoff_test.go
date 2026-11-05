@@ -65,11 +65,11 @@ func TestReleaseHappensOnceAcrossDuplicatesAndOrder(t *testing.T) {
 
 // HANDOFF03: crash before / after acceptance recovers from remote PR + receipt without a second writer.
 func TestCrashAroundAcceptanceRecoversWithoutDuplicateWriter(t *testing.T) {
-	before := decide(&fakeHandoff{pr: RemotePR{Found: true, Number: 55, Head: headA}, rec: Receipt{HandoffID: id(), Head: headA}, recFound: true})
+	before := decide(&fakeHandoff{pr: RemotePR{Found: true, Number: 55, Head: headA}, rec: Receipt{HandoffID: id(), Issue: 7, PR: 55, Head: headA}, recFound: true})
 	if before.ReleaseClaim || before.NewWriterAllowed || before.ClosureOwner != OwnerAgent {
 		t.Errorf("before accept: %+v", before)
 	}
-	after := decide(&fakeHandoff{pr: RemotePR{Found: true, Number: 55, Head: headA}, rec: Receipt{HandoffID: id(), Head: headA, LeaderAccepted: true}, recFound: true})
+	after := decide(&fakeHandoff{pr: RemotePR{Found: true, Number: 55, Head: headA}, rec: Receipt{HandoffID: id(), Issue: 7, PR: 55, Head: headA, LeaderAccepted: true}, recFound: true})
 	if !after.ReleaseClaim || after.NewWriterAllowed || after.ClosureOwner != OwnerLeader {
 		t.Errorf("after accept, before release: %+v", after)
 	}
@@ -77,9 +77,19 @@ func TestCrashAroundAcceptanceRecoversWithoutDuplicateWriter(t *testing.T) {
 
 // HANDOFF08: a HEAD that moved after the handoff voids the handoff.
 func TestHeadChangedAfterHandoffInvalidatesIt(t *testing.T) {
-	d := decide(&fakeHandoff{pr: RemotePR{Found: true, Number: 55, Head: headB}, rec: Receipt{HandoffID: id(), Head: headA, LeaderAccepted: true}, recFound: true})
+	d := decide(&fakeHandoff{pr: RemotePR{Found: true, Number: 55, Head: headB}, rec: Receipt{HandoffID: id(), Issue: 7, PR: 55, Head: headA, LeaderAccepted: true}, recFound: true})
 	if d.Kind != HandoffStale || d.ReleaseClaim || d.NextDispatch || !d.NeedsNewHandoff {
 		t.Errorf("decision = %+v", d)
+	}
+}
+
+// A handoff accepted for PR 55 does not carry over to PR 56 opened for the same HEAD after 55 was closed:
+// the acceptance named another PR. The number mismatch asks for a new handoff and releases nothing.
+// (card t2052; Codex review P2 on handoff.go)
+func TestAcceptanceOfAClosedPRDoesNotCarryToANewPRWithTheSameHead(t *testing.T) {
+	d := decide(&fakeHandoff{pr: RemotePR{Found: true, Number: 56, Head: headA}, rec: Receipt{HandoffID: id(), Issue: 7, PR: 55, Head: headA, LeaderAccepted: true}, recFound: true})
+	if d.Kind != HandoffStale || d.ReleaseClaim || d.NextDispatch || !d.NeedsNewHandoff {
+		t.Errorf("decision = %+v, want a new handoff required and nothing released", d)
 	}
 }
 
@@ -96,7 +106,7 @@ func TestUnreadableFactsAreUnconfirmedAndChangeNothing(t *testing.T) {
 }
 
 func TestMergedPRIsStillNotDoneByHandoffAlone(t *testing.T) {
-	d := decide(&fakeHandoff{pr: RemotePR{Found: true, Number: 55, Head: headA, Merged: true}, rec: Receipt{HandoffID: id(), Head: headA, LeaderAccepted: true, ClaimReleased: true}, recFound: true})
+	d := decide(&fakeHandoff{pr: RemotePR{Found: true, Number: 55, Head: headA, Merged: true}, rec: Receipt{HandoffID: id(), Issue: 7, PR: 55, Head: headA, LeaderAccepted: true, ClaimReleased: true}, recFound: true})
 	if d.Done {
 		t.Error("handoff reconcile must never declare done; completion needs the done evidence")
 	}
