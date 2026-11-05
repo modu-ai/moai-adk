@@ -40,8 +40,8 @@ For methodology details (DDD ANALYZE-PRESERVE-IMPROVE and TDD RED-GREEN-REFACTOR
 
 ### Mode Values
 
-- **`autopilot` (default for harness `minimal` / `standard`)**: Single-lead orchestration via Phase 4 Scale-Based Mode Selection (Fix / Focused / Standard / Full Pipeline) → Phase 11/2B per `quality.yaml constitution.development_mode`. Behaves as today's default `/moai run` invocation.
-- **`loop`**: Delegate to `Skill("moai-workflow-loop")` with the SPEC-ID and remaining args. Bypasses Phase 11/2B and enters the Ralph engine per-iteration cycle (see `loop.md` Steps 1-9). `/moai loop SPEC-XXX` is an alias resolving to `/moai run --mode loop SPEC-XXX` with identical behavior.
+- **`autopilot` (default for harness `minimal` / `standard`)**: Single-lead orchestration via Phase 4 Scale-Based Mode Selection (Fix / Focused / Standard / Full Pipeline) → Phase 11/12 per `quality.yaml constitution.development_mode`. Behaves as today's default `/moai run` invocation.
+- **`loop`**: Delegate to `Skill("moai-workflow-loop")` with the SPEC-ID and remaining args. Bypasses Phase 11/12 and enters the Ralph engine per-iteration cycle (see `loop.md` Steps 1-9). `/moai loop SPEC-XXX` is an alias resolving to `/moai run --mode loop SPEC-XXX` with identical behavior.
 - **`team` (experimental)**: The `--mode team` dispatch value selects the Agent Teams layer (agent-team `agent-team`, re-allowed; constraints per `orchestration-mode-selection.md` §C.1). Historical: the retired era emitted `MODE_TEAM_UNAVAILABLE` and fell back to `autopilot`.
 - **`pipeline`**: REJECTED on `/moai run`. Pipeline mode is reserved for utility subcommands (`fix`, `coverage`, `mx`, `codemaps`, `clean`). Passing `--mode pipeline` here triggers `MODE_PIPELINE_ONLY_UTILITY` (the same error key the utility subcommands share).
 
@@ -154,13 +154,22 @@ Before spawning implementation agents, load relevant lessons from auto-memory:
 ### Resume Check
 
 Before Phase 5, check if `.moai/specs/SPEC-{ID}/progress.md` exists:
-- If it exists: Load content, identify last completed phase checkpoint, skip all completed phases, resume from the next pending phase. Log: "Resuming SPEC-{ID} from Phase {N}"
+- If it exists: Load content and identify the last completed phase checkpoint. Before skipping any completed phase, re-verify that the record still belongs to this work: the repository root and worktree path equal the ones recorded, the card id (when the run is a factory card) and its lease owner are unchanged, `git rev-parse HEAD` equals the HEAD recorded on that phase's checkpoint line or descends from it with only expected commits, the working tree carries no unrecorded changes, and the recomputed `plan_artifact_hash` of the SPEC equals the recorded one (the card's assigned SPEC revision and git commit are already recorded at assignment). Skip only the completed phases whose recorded identity still matches; invalidate a phase whose identity differs or that carries an unrecorded identity field (never compare against a value that was not written), and every later phase that consumed its output, and re-run them. A cancelled or revoked run is never resumed from its checkpoint. Then resume from the first pending or invalidated phase. Log: "Resuming SPEC-{ID} from Phase {N}" and, for each invalidated phase, the identity field that differed
 - If it does not exist: Create the file now with initial entry:
   ```
   ## SPEC-{ID} Progress
 
   - Started: {current timestamp}
   ```
+- Identity record (every run, whether the file was just created or already existed; the plan phase creates progress.md without these fields): if the block below is absent, append it now before the first phase runs. A field that cannot be determined is written as `unknown`, which the Resume Check treats as an unrecorded identity field.
+  ```
+  - Repository root: {git rev-parse --show-toplevel of the tree the run executes in}
+  - Worktree: {absolute worktree path, or "none"}
+  - Lease owner: {card id and lease owner when the run is a factory card, else "none"}
+  - HEAD: {git rev-parse HEAD}
+  - plan_artifact_hash: {hash recorded by the Plan Audit Gate}
+  ```
+  Append each phase checkpoint as its own line, `- Phase {N} complete: HEAD {sha}, plan_artifact_hash {hash}`, so the Resume Check compares each completed phase with the values that phase actually ran on, never with a single shared value that later checkpoints overwrite.
 - The progress.md file persists across sessions and enables seamless resume after interruption.
 
 ---

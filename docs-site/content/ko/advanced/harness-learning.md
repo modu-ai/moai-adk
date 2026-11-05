@@ -47,7 +47,7 @@ flowchart TD
 
 ## Tier 3 기록이 쌓이는 파일
 
-Tier 3 기록은 `AGENTS.local.md`의 Learned 섹션에 덧붙습니다. 이 파일은 세 파일 구조 — 공통 계약 `AGENTS.md`, Claude 전용 층 `CLAUDE.md`, 개인 지침 `AGENTS.local.md` — 에서 개인 지침을 맡으며, Claude Code와 `moai codex`가 함께 읽습니다. 그래서 한 번 승격된 관찰은 어느 하네스로 작업하든 적용됩니다. Git에서 무시되고 `moai update`가 건드리지 않으므로 기록이 업데이트에 사라지지도 않습니다.
+Tier 3 기록은 `AGENTS.local.md`의 Learned 섹션에 덧붙습니다. 이 파일은 세 파일 구조 — 공통 계약 `AGENTS.md`, Claude 전용 층 `CLAUDE.md`, 개인 지침 `AGENTS.local.md` — 에서 개인 지침을 맡으며, Claude Code와 Codex가 함께 읽습니다. 그래서 한 번 승격된 관찰은 어느 하네스로 작업하든 적용됩니다. Git에서 무시되고 `moai update`가 건드리지 않으므로 기록이 업데이트에 사라지지도 않습니다.
 
 아직 `CLAUDE.local.md`를 쓰는 프로젝트라면 `moai migrate local-instructions`로 먼저 옮기세요. `moai update`와 `moai doctor`는 `CLAUDE.local.md`를 발견하면 같은 안내를 출력합니다.
 

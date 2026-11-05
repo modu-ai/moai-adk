@@ -16,7 +16,7 @@ draft: false
 ## moai cc — Claude backend
 
 ```bash
-moai cc [-p profile] [-w [name]] [-- claude-args...]
+moai cc [-p profile] [-w [name]] [-f | -l] [-- claude-args...]
 ```
 
 Removes GLM-specific environment variables from `.claude/settings.local.json`, resets team mode if it was enabled, and then runs Claude Code.
@@ -29,15 +29,17 @@ Removes GLM-specific environment variables from `.claude/settings.local.json`, r
 | `-c, --continue` | Continue the previous session |
 | `-m, --model <model>` | Override the model selection |
 | `-w, --worktree [name]` | Launch inside an isolated git worktree (`.claude/worktrees/<name>/`) — name omitted means auto-generated |
+| `--branch <existing>` | With `-w <name>`: create the worktree checked out at an **existing** branch (for example `moai cc -w develop --branch develop` for the gitflow integration worktree) instead of a new one. The branch must already exist — this flag never creates one. The tree is registered in `.moai/state/worktrees.json` for worktree tooling |
+| `--spawn` | Run the command in a new tmux window instead of replacing the current session (requires tmux) |
 | `--chrome` / `--no-chrome` | Passed through to Claude Code unchanged; the launcher adds neither, so `/chrome` can attach unless you pass `--no-chrome` |
 | `-f, --factory` | Enter as the **factory leader**. It takes no argument. The leader deals the cards the operator picks, whole, to free lanes over cross-session messages, and lanes join with `-l` |
-| `-l, --lane` | Join the running factory as a **lane**, claiming the next `lane-<n>` number automatically (one past the highest live lane). It takes no argument and is refused when no factory is running. `moai glm -l` and `moai codex -l` behave the same |
-| `--leader <name>` | Used with `-l` or `--lane` only. Picks which leader session to join (default `leader`; the former spelling `lead` is refused). When the run's record is missing or retired while a live leader exists, the join verifies that leader (pid + process-start) and restores its run |
+| `-l, --lane` | Join the running factory as a **lane**, claiming the next `lane-<n>` number automatically (one past the highest live lane). It takes no argument and is refused when no factory is running. `moai glm -l` behaves the same |
+| `--leader <name>` | Used with `-l` only. Picks which leader session to join (default `leader`; the former spelling `lead` is refused). When the run's record is missing or retired while a live leader exists, the join verifies that leader (pid + process-start) and restores its run |
 | `--factory-run <run-id>` | With `-l`: join the run with this id. It cannot be combined with `--leader` |
 | `--clear-policy <value>` | With `moai cc -l` / `moai glm -l`: how the lane clears its context after a card (`clear-each` default, `clear-when-full`, `relaunch`) |
 | `--no-auto-dispatch` | With `moai cc -l` / `moai glm -l`: start the lane in manual mode. The default is a self-dispatch lane that leases the next queued card itself |
 
-{{< callout type="info" >}} There are two entry tokens, `-f` (leader) and `-l` (lane), and neither takes an argument. A launch carries one token only, so `-f` together with `-l` is an error, and every form that attaches a value (`-f <value>`, `-l lane-2`) or asks for a leader on Codex (`-f` on `moai codex`) is refused with a one-line error. The retired `-k` entry is refused the same way, with a message pointing to `-f` and `-l`. For the full contract see [Factory Mode](/en/advanced/factory-mode) and [manager-lead Leader Coordinator](/en/advanced/manager-lead). {{< /callout >}}
+{{< callout type="info" >}} There are two entry tokens, `-f` (leader) and `-l` (lane), and neither takes an argument. A launch carries one token only, so `-f` together with `-l` is an error, and every form that attaches a value (`-f <value>`, `-l lane-2`) is refused with a one-line error. The retired `-k` entry is refused the same way, with a message pointing to `-f` and `-l`. For the full contract see [Factory Mode](/en/advanced/factory-mode) and [manager-lead Leader Coordinator](/en/advanced/manager-lead). {{< /callout >}}
 
 A card goes whole into one lane and passes the three phases `plan → run → sync` serially inside it. Each phase is spawned by that session as `Agent()` subagents, and write-capable spawns are isolated with `isolation: "worktree"`. A lane runs at most 10 concurrent subagents, and the launcher plants this value in the lane session as `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS`, so N lanes sharing the machine's capacity is guaranteed by configuration rather than by operator restraint. Do not switch on all lanes at once: bring up the first lane, confirm it has actually started producing output, and then start the rest.
 

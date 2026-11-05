@@ -336,9 +336,11 @@ func TestParseLauncherEntryMerge(t *testing.T) {
 
 	t.Run("-l plus an operator --name is a conflict", func(t *testing.T) {
 		t.Parallel()
-		if _, err := parseLauncherEntry([]string{"-l", "--name", "lane-3"}); err == nil ||
+		// A canonical lane-<n> name is the rejoin form (factory_lane_rejoin_t2013_test.go);
+		// every other name keeps the conflict.
+		if _, err := parseLauncherEntry([]string{"-l", "--name", "board-watch"}); err == nil ||
 			!strings.Contains(err.Error(), "already names the role") {
-			t.Errorf("parseLauncherEntry(-l --name lane-3) = %v, want the naming conflict", err)
+			t.Errorf("parseLauncherEntry(-l --name board-watch) = %v, want the naming conflict", err)
 		}
 	})
 

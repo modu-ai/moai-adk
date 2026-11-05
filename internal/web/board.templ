@@ -1,0 +1,115 @@
+package web
+
+// Board is the read-only local ledger board. It renders text only: no input,
+// select, button or form sits inside it.
+templ Board(vm ShellVM, b BoardVM) {
+	@Shell(vm) {
+		if !b.Available {
+			<p class="panel__help">{ b.Note }</p>
+		} else {
+			<div class="quad">
+				<div id="board-cards">
+					@panel("Cards", itoa(len(b.Stages))+" stages", "", "", "Stage, park, priority and reclaim count.", "roomy") {
+						for _, g := range b.Stages {
+							<h4 class="mono">{ g.Stage }</h4>
+							for _, c := range g.Cards {
+								<div class="tr">
+									<span class="mono">{ c.ID }</span>
+									<span>{ c.Title }</span>
+									<span class="panel__meta">{ c.Sub }</span>
+									if c.Parked {
+										@badge("outline", "parked: "+c.ParkReason)
+									}
+									<span class="panel__meta">{ "priority " + c.Priority + " · reclaims " + c.Reclaims }</span>
+									if c.Redacted {
+										@badge("outline", "masked")
+									}
+								</div>
+							}
+						}
+					}
+				</div>
+				<div id="board-leases">
+					@panel("Leases", itoa(len(b.Leases))+" held", "", "", "Session, epoch, heartbeat and next wake.", "roomy") {
+						for _, l := range b.Leases {
+							<div class="tr">
+								<span class="mono">{ l.CardID }</span>
+								<span class="mono">{ l.Session }</span>
+								<span class="panel__meta">{ "epoch " + l.Epoch }</span>
+								<span class="panel__meta">{ "heartbeat " + l.Heartbeat }</span>
+								<span class="panel__meta">{ "next wake " + l.NextWake }</span>
+								<span class="panel__meta">{ "expires " + l.Expires }</span>
+								if l.Expired {
+									@badge("outline", "expired")
+								}
+								if l.Redacted {
+									@badge("outline", "masked")
+								}
+							</div>
+						}
+					}
+				</div>
+				<div id="board-keys">
+					@panel("Conflict keys", itoa(len(b.Keys))+" held", "", "", "Each key and the card holding it.", "roomy") {
+						for _, k := range b.Keys {
+							<div class="tr"><span class="mono">{ k.Key }</span><span class="mono">{ k.CardID }</span></div>
+						}
+					}
+				</div>
+				<div id="board-queue">
+					@panel("Merge queue", itoa(len(b.Queue))+" queued", "", "", "Oldest first; a failure keeps its reason.", "roomy") {
+						for _, q := range b.Queue {
+							<div class="tr">
+								<span class="mono">{ q.CardID }</span>
+								<span class="mono">{ q.Candidate }</span>
+								<span>{ q.State }</span>
+								<span class="panel__meta">{ q.FailReason }</span>
+								if q.Redacted {
+									@badge("outline", "masked")
+								}
+							</div>
+						}
+					}
+				</div>
+				<div id="board-landed">
+					@panel("Landed and notes", itoa(len(b.Landed))+" landed", "", "", "Landed news first, then other notes.", "roomy") {
+						for _, n := range b.Landed {
+							<div class="tr"><span class="mono">{ n.CardID }</span><span>{ n.Text }</span><span class="panel__meta">{ n.At }</span></div>
+						}
+						for _, n := range b.Notes {
+							<div class="tr">
+								<span class="mono">{ n.Kind }</span>
+								<span class="mono">{ n.CardID }</span>
+								<span>{ n.Text }</span>
+								<span class="panel__meta">{ n.At }</span>
+								if n.Redacted {
+									@badge("outline", "masked")
+								}
+							</div>
+						}
+					}
+				</div>
+				<div id="board-flow">
+					if b.Flow.Known {
+						@panel("Flow", "WIP "+b.Flow.WIP, "", "", "Work in progress, the age of each stage, what waits, and holders gone quiet.", "roomy") {
+							<p class="panel__meta">{ "WIP " + b.Flow.WIP }</p>
+							for _, g := range b.Flow.Stages {
+								<div class="tr"><span class="mono">{ g.Key }</span><span>{ g.Count }</span><span class="panel__meta">{ "oldest " + g.Oldest }</span></div>
+							}
+							for _, g := range b.Flow.Waiting {
+								<div class="tr"><span class="mono">{ g.Key }</span><span>{ g.Count }</span><span class="panel__meta">{ "waiting, oldest " + g.Oldest }</span></div>
+							}
+							for _, s := range b.Flow.Stalled {
+								<div class="tr"><span class="mono">{ s.CardID }</span><span>stalled</span><span class="panel__meta">{ "heartbeat " + s.HeartbeatAge + " · " + s.Liveness }</span></div>
+							}
+						}
+					} else {
+						@panel("Flow", "not provided", "", "", "Flow metrics are not provided yet.", "roomy") {
+							<p class="panel__help">{ b.Flow.Note }</p>
+						}
+					}
+				</div>
+			</div>
+		}
+	}
+}

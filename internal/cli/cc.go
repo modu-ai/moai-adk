@@ -62,9 +62,9 @@ Factory Mode (dedicated -f and -l entries):
                                 messages — each card goes WHOLE to one lane,
                                 which carries it through plan -> run -> sync
                                 in-session.
-  -l, --lane                   Join the running factory as a LANE: the next
-                                free lane-<n> label is claimed for this
-                                session. The flag takes no argument. If the
+  -l, --lane                   Join the running factory as a LANE (a
+                                lane-<n> session): the next free lane-<n>
+                                label is claimed for this session. The flag takes no argument. If the
                                 run's record is missing or retired while a
                                 live leader session exists, the join verifies
                                 that leader (pid + process-start) and
@@ -74,7 +74,8 @@ Factory Mode (dedicated -f and -l entries):
                                 record-absence verification targets
                                 (default: leader). A legacy spelling of the
                                 leader name is refused.
-  One entry token per launch: -f beside -l is an error. A lane number
+  One entry token per launch: -f beside -l is an error. The former -a/--agent
+  spelling is removed and refused with a line naming -l/--lane. A lane number
   held by a live session is bumped to the next free number.
   Legacy role and label spellings (the pre-rename nouns, any letter case)
   are refused — the error names the canonical lane-<n> label.
@@ -180,7 +181,7 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 		return err
 	}
 	// The entry parse (t118): parseLauncherEntry refuses the retired -k
-	// spelling, then covers the factory surface (-f for the leader, -l / --lane
+	// spelling, then covers the factory surface (-f for the leader, -l
 	// for a lane). Parsed after --spawn is stripped (a spawned session re-issues
 	// this command and must carry the token through) and before worktree
 	// handling (so an entry token can never be mistaken for a -w value). The
@@ -259,7 +260,7 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 		// the bumped value must reach the backend argv — the session name is
 		// the address the leader dispatches to.
 		endClaim := debugTiming.beginDebug(factoryStepLaneClaim, "")
-		finalLabel, claimErr := resolveFactoryLaneName(launchProjectRoot(), factoryLabel, backend, entry.FactoryAutoNumber, cmd.ErrOrStderr())
+		finalLabel, claimErr := claimFactoryLaneForEntry(launchProjectRoot(), factoryLabel, backend, entry, cmd.ErrOrStderr())
 		endClaim()
 		if claimErr == nil {
 			debugTiming.annotateDetail("label=" + finalLabel)
@@ -298,6 +299,13 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 	// rewriting (AC-WES-010b).
 	endWt := debugTiming.beginDebug(launchStepWorktree, "")
 	if err := validateWorktreeL2Value(view.StageA, cmd.ErrOrStderr()); err != nil {
+		endWt()
+		return err
+	}
+	// An absolute -w value re-enters an existing tree only: an unregistered path
+	// is refused here, before the materialization, the hook seed, the settings
+	// cleanup and the exec below touch anything.
+	if err := validateAbsoluteWorktreeRegistered(view.StageB); err != nil {
 		endWt()
 		return err
 	}

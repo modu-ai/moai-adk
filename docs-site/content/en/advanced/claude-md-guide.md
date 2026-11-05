@@ -361,7 +361,7 @@ MoAI-ADK splits instructions across three files, so that every harness reads the
 |------|-------|----------------|---------|
 | `AGENTS.md` | The cross-harness contract | Yes | Claude Code (via `@AGENTS.md`) and Codex |
 | `CLAUDE.md` | A thin layer of Claude-only mechanisms | Yes | Claude Code |
-| `AGENTS.local.md` | Personal instructions | No (`.gitignore`) | Claude Code (via the final `@AGENTS.local.md` in `CLAUDE.md`) and `moai codex` |
+| `AGENTS.local.md` | Personal instructions | No (`.gitignore`) | Claude Code (via the final `@AGENTS.local.md` in `CLAUDE.md`) and Codex |
 
 ```mermaid
 flowchart TD
@@ -369,7 +369,7 @@ flowchart TD
     L["AGENTS.local.md<br/>personal instructions"] --> C
     C --> CC["Claude Code"]
     A --> X["Codex"]
-    L --> R["moai codex launcher"]
+    L --> R["Codex launcher"]
     R --> X
 ```
 
