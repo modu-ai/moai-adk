@@ -31,6 +31,14 @@ type RebindRequest struct {
 	Source            RunOwner
 	Target            RunOwner
 	RequireStampBasis bool
+	// AbandonExpiredLeaseDuplicate is the explicit operator/leader verb's opt-in
+	// (`moai factory runs --retire <dead> --rebind-to <live>`, card t2104,
+	// #1938): when true, the source row's lease columns are ignored in the
+	// duplicate-pair comparison, so an EXPIRED lease (the valid-lease guard has
+	// already refused a live one) does not stop the row being abandoned with a
+	// pointer. False — every automatic caller — keeps lease divergence a
+	// refusal: resolving a run never silently abandons a card row.
+	AbandonExpiredLeaseDuplicate bool
 }
 
 // RebindResult lists the card ids the consolidation re-keyed and the ones it
@@ -275,7 +283,19 @@ func (f *FactoryDB) RebindRun(ctx context.Context, req RebindRequest, opts Recon
 				return RebindResult{}, rebindRefusal("card %s: run %s already holds a TERMINAL %s row (evidence %q, source %q); the live row of run %s stays and the conflict needs a fresh decision",
 					c.CardID, tgt.RunID, tgtCard.State, tgtCard.EvidenceSHA, c.EvidenceSHA, src.RunID)
 			}
-			if diverged := divergentColumns(c, tgtCard); len(diverged) > 0 {
+			// Explicit verb only (AbandonExpiredLeaseDuplicate): the lease
+			// guard above already established that this source row holds no
+			// VALID lease, so its lease columns are dead data and never
+			// stranded work (card t2104, #1938): a row that differs from the
+			// live row only there is still a duplicate. The automatic
+			// reconcile path leaves the flag false and keeps refusing.
+			diverged := divergentColumns(c, tgtCard)
+			if req.AbandonExpiredLeaseDuplicate {
+				diverged = slices.DeleteFunc(diverged, func(col string) bool {
+					return col == "lease_holder" || col == "lease_expires_at"
+				})
+			}
+			if len(diverged) > 0 {
 				return RebindResult{}, rebindRefusal("card %s: run %s already holds a %s row diverging on %s (target evidence %q, source %q); the live row of run %s stays and the conflict needs a fresh decision",
 					c.CardID, tgt.RunID, tgtCard.State, strings.Join(diverged, ", "), tgtCard.EvidenceSHA, c.EvidenceSHA, src.RunID)
 			}
