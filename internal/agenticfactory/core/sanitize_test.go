@@ -92,6 +92,7 @@ func TestSanitizeLeavesOrdinaryTextAlone(t *testing.T) {
 		"WT-agentic-factory-core-claim-runner",
 		"the operation internationalizationconfigurationmanagement completed", // a long word with no digits is a word
 		"0123456789012345678901234567890123456789",                            // digits only: a number, not a mixed token
+		// home-guard:allow deliberate input: the sanitizer must leave a tilde path alone
 		"~/work/notes.md", // a tilde path names no user
 		"Users/goos/Library/Application/Support2/MoAI/Caches",                   // a relative path with a digit: words, not random text
 		"github.com/modu-ai/moai-adk/internal/agenticfactory/claim/presence.go", // dots and dashes make it a path
