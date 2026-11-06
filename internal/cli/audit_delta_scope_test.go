@@ -268,9 +268,21 @@ func TestPerformCodexAudit_DeltaBaseRidesThePrompt(t *testing.T) {
 
 	_ = performCodexAudit(withDeltaBase(context.Background(), d.shaB), codexTargetBaseBranch, "", d.root)
 
+	// REQ-AEC-003: the leg carries the delta diff the server collected as material,
+	// not a prose instruction to compute it. This drives performCodexAudit directly;
+	// the audit_multi path is covered by TestAEC001a_DeltaCodexLeg_*.
+	if _, ok := sentReviewStart(t, sess); ok {
+		t.Errorf("the delta codex leg must stay an adversarial turn/start, not the native review; methods sent: %v", sentMethods(sess))
+	}
 	prompt := sentTurnPrompt(t, sess)
-	if !strings.Contains(prompt, "git diff "+d.shaB+"...HEAD") {
-		t.Errorf("codex leg prompt does not carry the delta scope; prompt:\n%s", prompt)
+	if !strings.HasPrefix(prompt, codexAdversarialReviewPrompt("")) {
+		t.Errorf("the delta codex leg must extend the standard adversarial prompt; prompt:\n%s", prompt)
+	}
+	if !strings.Contains(prompt, "canary_c_delta") {
+		t.Errorf("codex leg prompt does not carry the delta diff material (canary_c_delta); prompt:\n%s", prompt)
+	}
+	if strings.Contains(prompt, "canary_b_preexisting") {
+		t.Errorf("codex leg prompt carries the already-audited change (canary_b_preexisting); prompt:\n%s", prompt)
 	}
 }
 
