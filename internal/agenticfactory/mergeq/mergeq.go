@@ -273,6 +273,18 @@ func (m *Merger) Land(ctx context.Context, cardID, candidateSHA string) (Result,
 			return res, nil
 		}
 	}
+	// Pin the card epoch the row has now: every lock-free write of this attempt (verifying, failed) presents it, so a
+	// lander whose card was taken back and queued again by a new holder while its gates ran gets ErrStaleRow instead
+	// of moving the new holder's row (RC40 review, ledgerqueue.go SetState).
+	now := time.Now
+	if m.Now != nil {
+		now = m.Now
+	}
+	started, err := m.Queue.Item(ctx, cardID, now())
+	if err != nil {
+		return res, err
+	}
+	ctx = withStartEpoch(ctx, cardID, started.CardEpoch)
 	for attempt := 0; attempt < maxTries; attempt++ {
 		if err := m.Queue.SetState(ctx, cardID, candidateSHA, 0, StateVerifying, trunk, ""); err != nil {
 			if errors.Is(err, ErrStaleRow) {
