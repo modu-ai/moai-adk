@@ -114,15 +114,17 @@ func TestRunInit_WizardDevelopmentModeDoesNotReachConfig(t *testing.T) {
 	}
 }
 
-// Item 7: the --enable-lsp registration default must match its help text
-// ("default: true"), like --enforce-quality.
+// Item 7: the --enable-lsp flag is registered with default true. The usage string
+// does not state the default; the help renders the registered value itself (the
+// same holds for --enforce-quality and --enable-design, see
+// TestInitBoolFlagUsageDoesNotRepeatTheDefaultTheRendererPrints).
 func TestInitCmd_EnableLSPRegisteredDefaultMatchesHelp(t *testing.T) {
 	f := initCmd.Flags().Lookup("enable-lsp")
 	if f == nil {
 		t.Fatal("--enable-lsp not registered")
 	}
 	if f.DefValue != "true" {
-		t.Errorf("--enable-lsp DefValue = %q, want \"true\" (help says default: true)", f.DefValue)
+		t.Errorf("--enable-lsp DefValue = %q, want \"true\" (the help shows the registered default)", f.DefValue)
 	}
 }
 
