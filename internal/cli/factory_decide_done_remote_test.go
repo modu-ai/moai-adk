@@ -1,6 +1,9 @@
 // factory_decide_done_remote_test.go — card t2059: the verb path that sends a
 // merged-local card to done in a repository WITH a remote (t2057 admitted the
-// T18 edge at the store; PushGateTarget still routes such a card to pushed).
+// T18 edge at the store). The first fix of this card made the choice explicit;
+// the root-cause fix then made done the push gate's default too (see
+// factory_push_gate_default_test.go), so `--choice done` is the explicit
+// spelling of the default.
 package cli
 
 import (

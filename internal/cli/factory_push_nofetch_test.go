@@ -42,7 +42,9 @@ func TestFR_AC018_PushGateNeverFetches(t *testing.T) {
 	}
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 
-	if _, _, err := runFactory(t, "decide", "nf", "--gate", "push", "--run", fcRun); err != nil {
+	// card t2059: the pushed route (whose git reads this test records) is an
+	// explicit choice now; the default destination is done.
+	if _, _, err := runFactory(t, "decide", "nf", "--gate", "push", "--choice", "push", "--run", fcRun); err != nil {
 		t.Fatalf("push gate: %v", err)
 	}
 	if c := fcCard(t, root, "nf"); c.State != homestate.CardPushed {
