@@ -1102,7 +1102,10 @@ func runMigrationEngineWith(root string, apply bool, trigger string, progress *t
 	return report, nil
 }
 
-// treeOutcome is migrateOneTreeWith's verdict for one tree.
+// treeOutcome is the verdict for one tree, produced by prepareTree and
+// finishTree (the journaled step order: manifest, journal-pending, intent
+// line, git worktree move, state re-key, card rebind, manifest comparison,
+// and on failure the one reverse order — REQ-WHR-017/018).
 type treeOutcome struct {
 	Outcome  string // moved | reversed | failed | skipped
 	Reason   string
@@ -1197,23 +1200,6 @@ func (pf *manifestPrefetcher) stop() {
 	pf.once.Do(func() { close(pf.quit) })
 	<-pf.feeder
 	pf.running.Wait()
-}
-
-// migrateOneTreeWith moves one tree through the journaled step order —
-// manifest, journal-pending (F3: before the move), intent line (the
-// instance token first), git worktree move, state re-key, card rebind,
-// manifest comparison — and, on any failure, the one reverse order (move
-// back, re-key back, rebind back). Every reverse move first compares the
-// tree's identity with the journal's and refuses a mismatch with a
-// `refused` line (REQ-WHR-017/018). The before-the-move manifest is handed
-// in: the engine reads it ahead of time for the trees waiting behind the one
-// being moved (card t2070).
-func migrateOneTreeWith(root string, p migratePlan, mlPath, trigger string, journal *migrationJournal, before func() (string, error)) treeOutcome {
-	prep := prepareTree(p, mlPath, trigger, journal, before)
-	if prep.early != nil {
-		return *prep.early
-	}
-	return finishTree(root, p, mlPath, trigger, prep, forwardGitMove(root, p.source, p.destination))
 }
 
 // treePrep is a tree after every step that precedes its `git worktree move`
