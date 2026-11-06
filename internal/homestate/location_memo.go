@@ -150,15 +150,26 @@ func locationFingerprint(dir string) string {
 	p := filepath.Clean(dir)
 	// Where dir (or a directory above it) is a symlink, the directory it resolves to is part of the answer: a link
 	// moved to another repository must not be served the entry of its old target, whatever the two stamp as.
+	// Git walks up from the resolved directory, so the directories above it are stamped too (card t2060).
 	if resolved, err := filepath.EvalSymlinks(p); err == nil {
 		b.WriteString("=>")
 		b.WriteString(resolved)
 		b.WriteByte('\n')
+		if resolved != p {
+			stampAncestors(&b, resolved)
+			b.WriteString("--\n")
+		}
 	}
+	stampAncestors(&b, p)
+	return b.String()
+}
+
+// stampAncestors stamps p and every directory above it.
+func stampAncestors(b *strings.Builder, p string) {
 	for {
 		b.WriteString(p)
 		b.WriteByte('|')
-		stampDotGit(&b, filepath.Join(p, ".git"))
+		stampDotGit(b, filepath.Join(p, ".git"))
 		bare := 0
 		for _, n := range []string{"HEAD", "objects", "refs"} {
 			if _, err := os.Lstat(filepath.Join(p, n)); err == nil {
@@ -167,12 +178,12 @@ func locationFingerprint(dir string) string {
 		}
 		if bare == 3 {
 			b.WriteString("G")
-			stampFile(&b, filepath.Join(p, "config"))
+			stampFile(b, filepath.Join(p, "config"))
 		}
 		b.WriteByte('\n')
 		parent := filepath.Dir(p)
 		if parent == p {
-			return b.String()
+			return
 		}
 		p = parent
 	}
