@@ -112,3 +112,7 @@ The "before" tree is `git archive HEAD` of this branch before the change, extrac
 1. Parallel `git worktree move` across trees of one repository: 8 concurrent moves took 300 ms vs 724 ms serial with 0 failures in two samples; needs a proof of git's registration locking plus a journal/move-list design that stays recoverable per tree before it is safe to adopt.
 2. Read the after-the-move manifest of a tree while the next tree moves: saves the second capture's latency; a mismatch would then be found after a later tree has already moved, which changes the reverse-order guarantee.
 3. Raise `DefaultWorktreeMigrateManifestLookahead` (a chosen value, 3): trades a wider capture-to-move gap for more overlap.
+
+## Landing record (af-batch-20261107)
+
+Not a manifest row of its own: this card's audited commits `2ac39de91c` and `23f0568bc6` (sync-audit-iter2 PASS-WITH-DEBT at `23f0568bc6`) reached local `main` through cards t2075/t2079/t2081/t2085/t2094 in the 2026-11-07 batch (tip `4fb7c8fdf1`). Ledger disposition: landed via t2081.

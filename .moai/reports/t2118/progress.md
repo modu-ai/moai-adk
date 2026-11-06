@@ -78,3 +78,7 @@ $ grep 'invalid uri authority: C:%5C' categorized.tsv | grep -c 'ledger: '
   - 시험: `go test -count=1 ./internal/cli/ -run TestQASReadOnlyDSN_DrivePathIsNotTheAuthority` ok, `-run TestQAS_AC018` ok 17.365s, `-run TestQAS_AC021` ok 11.495s, `GOOS=windows GOARCH=amd64 go vet ./internal/cli/` exit 0, gofmt 무출력.
 - F2 (BLOCKING): §3 모양별 건수를 469/5로 정정하고 5건을 생산자별로 귀속, cli 22건 전부가 ledger.Open이라는 서술 삭제(§3 재집계 명령·출력 기록).
 - 미수리(선택, 감사 F3/F4/F5): 가드 정규식 확장, 남은 손수 빌더 7곳 정리은 이번 수리 범위 밖.
+
+## Batch landing record (af-batch-20261107)
+
+Landed in local `main` by the 2026-11-07 batch (merge `d4fe1d9867`, batch tip `4fb7c8fdf1`, operator FF). This card's two new import lines in `internal/cli/factory_card.go` moved the line-pinned coordinates of `TestAuditLagUsesBinlagSeam` (3813/3817 → 3815/3819); batch repair commit `4fb7c8fdf1` re-measured the baseline (same doc mention, same call — the t948 precedent). RED in the full `internal/cli` run at `f05814ad66`, GREEN after the repair.

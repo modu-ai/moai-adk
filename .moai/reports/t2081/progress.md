@@ -91,3 +91,7 @@ Once in this card (before the first audit) the card's lease had expired while it
 1. Raise or lower `DefaultWorktreeMigrateMoveConcurrency` after a run on large real trees.
 2. Also overlap the after-the-move manifest of finished trees with later batches (saves more, but a mismatch would then be found after more trees have moved, which changes the reverse-order guarantee).
 3. Make the move-list append and the journal flush safe for concurrent callers (locks) so rekey/rebind could overlap too; not needed for the current gain and a larger change to files `--rollback` recovers from.
+
+## Batch landing record (af-batch-20261107)
+
+Landed in local `main` by the 2026-11-07 batch (merge `f533914a93`, batch tip `4fb7c8fdf1`, operator FF). Batch repair commit `c94332235d` registered this card's fixture identity `t2081@example.com` (`internal/cli/worktree/migrate_parallel_t2081_test.go`) in `builtinCommitIdentityDenyEmails`; `TestCommitIdentityGuard_BuiltinListCoversFixtureEnumeration` was RED at the card head and GREEN after the repair (observed by the batch auditor). Card t2070's audited commits (`2ac39de91c`, `23f0568bc6`) reached main through this card's branch.
