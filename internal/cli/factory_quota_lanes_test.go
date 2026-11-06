@@ -33,6 +33,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
+	"github.com/modu-ai/moai-adk/internal/sqliteuri"
 )
 
 // qasDeadPID is the one registered pid the liveness seam reports dead.
@@ -99,7 +100,7 @@ func qasReadOnlyDSN(path string) string {
 	v := url.Values{}
 	v.Add("mode", "ro")
 	v.Add("_pragma", "query_only(ON)")
-	return (&url.URL{Scheme: "file", Path: filepath.ToSlash(path), RawQuery: v.Encode()}).String()
+	return sqliteuri.File(path, v)
 }
 
 // qasRegistryState fingerprints the registry: the main database file's SHA-256
