@@ -284,7 +284,51 @@ func TestHomeGuard_RejectsPathInsideRealHome(t *testing.T) {
 	}
 }
 
-// TestHomeGuard_AcceptsTempDir is the positive case: t.TempDir() paths are
+// TestCheckSeamHomesInTemp pins the temp-under-home rule on any OS by injecting
+// the real home and the temp dir: a Windows-like layout has the temp dir under
+// the real home.
+func TestCheckSeamHomesInTemp(t *testing.T) {
+	base := t.TempDir()
+	realHome := filepath.Join(base, "home")
+	tmp := filepath.Join(realHome, "AppData", "Local", "Temp")
+	for _, d := range []string{tmp, filepath.Join(realHome, ".moai")} {
+		if err := os.MkdirAll(d, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	t.Run("seams_under_temp_accepted", func(t *testing.T) {
+		seams := []string{filepath.Join(tmp, "x"), filepath.Join(tmp, "x", ".moai")}
+		if err := checkSeamHomesInTemp(realHome, tmp, seams); err != nil {
+			t.Errorf("want nil, got %v", err)
+		}
+	})
+	t.Run("seam_in_home_outside_temp_refused", func(t *testing.T) {
+		seams := []string{filepath.Join(tmp, "x"), filepath.Join(realHome, ".moai")}
+		if err := checkSeamHomesInTemp(realHome, tmp, seams); err == nil {
+			t.Error("want refusal for a seam in the real home outside the temp dir")
+		}
+	})
+	t.Run("relative_and_dotdot_never_exempt", func(t *testing.T) {
+		for _, s := range []string{"rel/path", filepath.Join(tmp, "..", "x")} {
+			if err := checkSeamHomesInTemp(realHome, tmp, []string{s}); err == nil {
+				t.Errorf("want refusal for %q", s)
+			}
+		}
+	})
+	t.Run("home_under_temp_still_refused", func(t *testing.T) {
+		tmp2 := filepath.Join(base, "tmp2")
+		home2 := filepath.Join(tmp2, "home")
+		if err := os.MkdirAll(home2, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := checkSeamHomesInTemp(home2, tmp2, []string{filepath.Join(home2, ".moai")}); err == nil {
+			t.Error("want refusal when the real home is under the temp dir")
+		}
+	})
+}
+
+// TestHomeGuard_AcceptsTempDir is the positive case:t.TempDir() paths are
 // accepted against the actual real home, and a sibling that only shares a name
 // prefix with the real home is not mistaken for a child.
 func TestHomeGuard_AcceptsTempDir(t *testing.T) {
@@ -299,8 +343,8 @@ func TestHomeGuard_AcceptsTempDir(t *testing.T) {
 			filepath.Join(fakeHome, ".moai", "claude-profiles"),
 			filepath.Join(fakeHome, ".moai"),
 		}
-		if err := CheckSeamHomes(realHome, seamPaths); err != nil {
-			t.Errorf("CheckSeamHomes(real home, temp dirs) = %v, want nil", err)
+		if err := CheckSeamHomesInTemp(realHome, seamPaths); err != nil {
+			t.Errorf("CheckSeamHomesInTemp(real home, temp dirs) = %v, want nil", err)
 		}
 	})
 

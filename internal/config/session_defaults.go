@@ -69,8 +69,12 @@ func defaultSessionDefaults() SessionDefaults {
 			Lane:   ModelEffort{Model: "sonnet", Effort: "medium"},
 		},
 		Codex: SessionRolePair{
-			Leader: ModelEffort{Model: CodexModelSol, Effort: "high"},
-			Lane:   ModelEffort{Model: CodexModelSol, Effort: "medium"},
+			// Card t1980 scope expansion (+ audit repair P1): the shipped codex
+			// session pair follows the template llm.yaml cells — terra at the
+			// shared effort default, both roles — so `mode: default` resolves
+			// to the same values the distributed file restates.
+			Leader: ModelEffort{Model: CodexModelTerra, Effort: DefaultCodexAuditEffort},
+			Lane:   ModelEffort{Model: CodexModelTerra, Effort: DefaultCodexAuditEffort},
 		},
 	}
 }

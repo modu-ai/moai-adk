@@ -58,6 +58,17 @@ type SecondReviewRecord struct {
 	AuditReceipt     string                `json:"audit_receipt"`
 	BuildCommit      string                `json:"build_commit"`
 	RecordedAt       string                `json:"recorded_at"`
+
+	// Delta-record fields (SPEC-AUDIT-ENGINE-CONVERGENCE-001 REQ-AEC-005). All
+	// are additive and omitted when empty, so a full-scope record keeps exactly
+	// the shape it had before; a record is a delta record iff Delta is true.
+	// Scope.BaseSHA of a delta record equals DeltaBase. SelectSecondReview reads
+	// none of them.
+	Delta          bool              `json:"delta,omitempty"`
+	DeltaBase      string            `json:"delta_base,omitempty"`
+	ExtendsReceipt string            `json:"extends_receipt,omitempty"` // audit receipt id of the chain record this one extends
+	ConfirmedIDs   []string          `json:"confirmed_ids,omitempty"`   // BLOCKING ids the call's confirmation named
+	VerdictDigests map[string]string `json:"verdict_digests,omitempty"` // relied-on FAIL verdict file -> SHA-256
 }
 
 // VerdictOperator is the git identity of the human who recorded a verdict.

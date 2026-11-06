@@ -20,6 +20,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
+	"github.com/modu-ai/moai-adk/internal/sqliteuri"
 	_ "modernc.org/sqlite"
 )
 
@@ -203,7 +204,7 @@ func ValidateActiveRun(ctx context.Context, projectRoot, runID string) (err erro
 	if _, err := os.Stat(path); err != nil {
 		return ErrRunNotActive
 	}
-	db, err := sql.Open("sqlite", "file:"+filepath.ToSlash(path)+"?_pragma=busy_timeout(100)")
+	db, err := sql.Open("sqlite", sqliteuri.File(path, url.Values{"_pragma": {"busy_timeout(100)"}}))
 	if err != nil {
 		return err
 	}
@@ -913,7 +914,7 @@ func (s *Store) runLead(ctx context.Context) (Peer, error) {
 	if err != nil {
 		return Peer{}, err
 	}
-	db, err := sql.Open("sqlite", "file:"+filepath.ToSlash(path)+"?_pragma=busy_timeout(100)")
+	db, err := sql.Open("sqlite", sqliteuri.File(path, url.Values{"_pragma": {"busy_timeout(100)"}}))
 	if err != nil {
 		return Peer{}, err
 	}

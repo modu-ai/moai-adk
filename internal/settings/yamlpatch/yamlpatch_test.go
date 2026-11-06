@@ -413,7 +413,7 @@ func TestPatchFileGreenfieldCreation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := info.Mode().Perm(); got != 0o644 {
+	if got := info.Mode().Perm(); runtime.GOOS != "windows" && got != 0o644 { // Windows has no POSIX mode bits
 		t.Errorf("greenfield file mode = %o, want 644 (template convention, spec.md §4)", got)
 	}
 }
@@ -516,7 +516,7 @@ func TestYAMLPatchAtomicWriteErrors(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got := info.Mode().Perm(); got != 0o644 {
+		if got := info.Mode().Perm(); runtime.GOOS != "windows" && got != 0o644 { // Windows has no POSIX mode bits
 			t.Errorf("absent-target file mode = %o, want 644 (defaultFilePerm)", got)
 		}
 		raw, err := os.ReadFile(path)

@@ -34,7 +34,8 @@ type fakePub struct {
 	lost     bool           // the issue IS created but the response is lost (err returned)
 	block    bool           // PublishIssue waits for the context
 	findErr  error
-	wrongNum int // when set, PublishIssue claims this number instead of the real one
+	wrongNum int  // when set, PublishIssue claims this number instead of the real one
+	crash    bool // the issue IS created, then the process dies before anything is recorded
 
 	noUser   bool        // the authenticated user cannot be established
 	dups     []Candidate // issues that already do the same work
@@ -76,7 +77,11 @@ func (f *fakePub) PublishIssue(ctx context.Context, req claim.Request) (int, str
 	issue := f.base + f.n - 1
 	f.created[req.Key] = issue
 	wrong := f.wrongNum
+	crash := f.crash
 	f.mu.Unlock()
+	if crash {
+		panic("process died after the issue was created")
+	}
 	if lost {
 		return 0, "", err
 	}
@@ -106,6 +111,7 @@ type fakeBr struct {
 	calls      int
 	err        error
 	lost       bool // the branch IS registered but the response is lost
+	crash      bool // the branch IS registered, then the process dies before anything is recorded
 	oid        string
 }
 
@@ -125,6 +131,9 @@ func (f *fakeBr) RegisterBranch(_ context.Context, req claim.Request) (claim.Bra
 	}
 	b := claim.Branch{Ref: "WT-" + req.Key, BaseOID: oid}
 	f.registered[req.Key] = b
+	if f.crash {
+		panic("process died after the branch was registered")
+	}
 	if f.lost {
 		return claim.Branch{}, f.err
 	}
@@ -144,11 +153,15 @@ type fakePrep struct {
 	host    string
 	err     error
 	slots   []string
+	crash   bool // the worktree IS prepared, then the process dies before anything is recorded
 }
 
 func (f *fakePrep) PrepareWorktree(_ context.Context, req claim.Request, slot string) (Ready, error) {
 	f.calls.Add(1)
 	f.slots = append(f.slots, slot)
+	if f.crash {
+		panic("process died after the worktree was prepared")
+	}
 	if f.err != nil {
 		return Ready{}, f.err
 	}
@@ -798,8 +811,11 @@ func TestAcceptReturnsBusyToTheCallerAfterABoundedWait(t *testing.T) {
 	}
 }
 
-// A step that cannot record its failure because the store is Busy reports both
-// the cause and the Busy, so neither is lost.
+// The publish intent is recorded before the send (t2072), so a store that is Busy
+// stops the step before anything is sent: the Busy is reported and no effect
+// happened. (Before t2072 the send went out and the failure then could not be
+// recorded; the join of both errors is still what fail() does when the store goes
+// Busy after the intent was written.)
 func TestAdvanceFailureWhileBusyKeepsBothErrors(t *testing.T) {
 	pub := &fakePub{base: 1948, err: fmt.Errorf("%w: HTTP 429 secondary rate limit", ErrNotSent)}
 	r := rigAt(t, t.TempDir(), Config{}, pub, &fakeBr{}, &fakePrep{stopped: true, host: "host-1"})
@@ -808,8 +824,11 @@ func TestAdvanceFailureWhileBusyKeepsBothErrors(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, err := r.in.Advance(ctx(), "req-1")
-	if err == nil || !errors.Is(err, core.ErrBusy) || !strings.Contains(err.Error(), "429") {
-		t.Fatalf("both the publish error and the Busy must survive: %v", err)
+	if err == nil || !errors.Is(err, core.ErrBusy) {
+		t.Fatalf("the Busy must be reported: %v", err)
+	}
+	if pub.publishCount() != 0 {
+		t.Error("an intent that could not be recorded was sent anyway")
 	}
 }
 
