@@ -751,7 +751,9 @@ func TestRollback_ConvergedStep_IsNothingToDo(t *testing.T) {
 	if !strings.Contains(out, "restored 0 tree(s)") {
 		t.Errorf("rollback summary: %q", out)
 	}
-	if raw, err := os.ReadFile(mlPath); err == nil && strings.Contains(string(raw), `"result":"restored"`) {
-		t.Errorf("a `restored` line was written for a converged step:\n%s", raw)
+	// Card t2053 C13: a converged step now records the `restored` line that
+	// releases the move-list protection (TestRollback_ConvergedStep_WritesRestored).
+	if got := t2053LastMoveListResult(t, mlPath); got != "restored" {
+		t.Errorf("last move-list result = %q, want restored", got)
 	}
 }

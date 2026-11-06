@@ -69,6 +69,11 @@ func gitDirPointer(treePath string) (string, error) {
 	if rest, ok := strings.CutPrefix(line, "gitdir:"); ok {
 		p := strings.TrimSpace(rest)
 		if p != "" {
+			// worktree.useRelativePaths writes the pointer relative to the
+			// tree: resolve it there, never against the process cwd (t2053, C6).
+			if !filepath.IsAbs(p) {
+				p = filepath.Join(treePath, p)
+			}
 			return p, nil
 		}
 	}

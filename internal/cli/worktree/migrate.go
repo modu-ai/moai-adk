@@ -645,17 +645,23 @@ func migrateOneTree(root string, p migratePlan, mlPath, trigger string, journal 
 	}
 
 	if err := forwardGitMove(root, p.source, p.destination); err != nil {
-		if errors.Is(err, ErrCommandTimeout) {
-			// The deadline killed git mid-call: the tree may or may not have
-			// reached the destination. A destination that exists goes through
-			// the one reverse order (identity-checked); one that does not means
-			// nothing moved.
-			if _, statErr := os.Lstat(p.destination); statErr == nil {
-				return reverseAfterFailure(root, p, id, mlPath, trigger, digest, fmt.Sprintf("git worktree move: %v", err))
+		// ANY forward error (card t2053, C4), not only a deadline: git can fail
+		// after the directory rename, so the destination decides. A destination
+		// that carries the journal identity means the tree moved (or half
+		// moved) and goes through the one reverse order; otherwise nothing
+		// moved and the intent line is released.
+		reason := fmt.Sprintf("git worktree move: %v", err)
+		if _, statErr := os.Lstat(p.destination); statErr == nil {
+			if destIdent, ierr := TreeIdent(p.destination); ierr == nil && destIdent.Ident() == id.Ident() {
+				return reverseAfterFailure(root, p, id, mlPath, trigger, digest, reason)
 			}
 		}
-		_ = appendMoveListLine(mlPath, m6MoveLineTrigger(trigger, "failed", p.source, p.destination, id.Ident()))
-		return treeOutcome{Outcome: "failed", Reason: fmt.Sprintf("git worktree move: %v", err), Ident: id.Ident(), Manifest: digest}
+		// The tree never left the source: the pending intent line must not keep
+		// protecting it (C13). A `reversed` line is the release; failing to
+		// write it surfaces through MLErr.
+		mlErr := appendMoveListLine(mlPath, m6MoveLineTriggerReason(trigger, "reversed", p.destination, p.source, id.Ident(),
+			"the forward move failed before the tree moved"))
+		return treeOutcome{Outcome: "failed", Reason: reason, Ident: id.Ident(), Manifest: digest, MLErr: mlErr}
 	}
 
 	if rerr := hook.RekeyWorktreeEntry(root, p.source, p.destination); rerr != nil {
@@ -694,16 +700,16 @@ func migrateOneTree(root string, p migratePlan, mlPath, trigger string, journal 
 // and rebind intact (they name the location the tree really sits at),
 // records pending, and fails the tree.
 func reverseAfterFailure(root string, p migratePlan, id TreeIdentity, mlPath, trigger, digest, reason string) treeOutcome {
-	movedBack, mlErr := m6ReverseMove(root, p, id, mlPath, trigger)
+	movedBack, why, mlErr := m6ReverseMoveWhy(root, p, id, mlPath, trigger)
 	out := treeOutcome{Ident: id.Ident(), Manifest: digest}
 	if movedBack {
 		out.Outcome, out.Reason = "reversed", reason
 	} else {
 		out.Outcome = "failed"
 		if mlErr != nil {
-			out.Reason = fmt.Sprintf("%s; the reverse move failed and the pending line could not be written (%v)", reason, mlErr)
+			out.Reason = fmt.Sprintf("%s; %s and the pending line could not be written (%v)", reason, why, mlErr)
 		} else {
-			out.Reason = fmt.Sprintf("%s; the reverse move failed, the tree stands at %s (pending)", reason, p.destination)
+			out.Reason = fmt.Sprintf("%s; %s", reason, why)
 		}
 	}
 	out.MLErr = mlErr
@@ -834,13 +840,25 @@ func runUpdateConsolidation(root string, dryRun bool, out io.Writer) error {
 // reports whether the tree actually moved back (card t1640 review P1-4) and
 // the move-list write error, if any.
 func m6ReverseMove(root string, p migratePlan, id TreeIdentity, mlPath, trigger string) (bool, error) {
+	movedBack, _, mlErr := m6ReverseMoveWhy(root, p, id, mlPath, trigger)
+	return movedBack, mlErr
+}
+
+// m6ReverseMoveWhy is m6ReverseMove plus the reason a reverse that did not
+// complete stopped (card t2053, C16): a refusal by the identity check must not
+// read as a failed reverse move.
+func m6ReverseMoveWhy(root string, p migratePlan, id TreeIdentity, mlPath, trigger string) (bool, string, error) {
+	// The identity rule the rollback applies (G8): an identity that cannot be
+	// read, or a journal ident that is empty, is not a match.
 	destIdent, err := TreeIdent(p.destination)
-	if err == nil && destIdent.Ident() != id.Ident() {
-		return false, appendMoveListLine(mlPath, m6MoveLineTrigger(trigger, "refused", p.destination, p.source, id.Ident()))
+	if err != nil || id.Ident() == "" || destIdent.Ident() != id.Ident() {
+		return false, "refused: identity mismatch at the destination, the tree stays where it is",
+			appendMoveListLine(mlPath, m6MoveLineTriggerReason(trigger, "refused", p.destination, p.source, id.Ident(), "identity mismatch"))
 	}
 	if forwardMoveUnregistered(root, p.source, p.destination, id.Ident()) && !repairRegistration(root, p.destination) {
-		return false, appendMoveListLine(mlPath, m6MoveLineTriggerReason(trigger, "pending", p.destination, p.source, id.Ident(),
-			"forward move left git's registration on the source and the repair did not hold"))
+		const msg = "forward move left git's registration on the source and the repair did not hold"
+		return false, "the reverse move did not run: " + msg + ", the tree stands at " + p.destination + " (pending)",
+			appendMoveListLine(mlPath, m6MoveLineTriggerReason(trigger, "pending", p.destination, p.source, id.Ident(), msg))
 	}
 	if rerr := reverseGitMove(root, p.destination, p.source); rerr != nil && !treeMovedBack(root, p.source, p.destination, id.Ident()) {
 		// The tree stands at the destination: the re-key and the rebind stay
@@ -849,12 +867,19 @@ func m6ReverseMove(root string, p migratePlan, id TreeIdentity, mlPath, trigger 
 		// names the destination as the line's OLD path (the orientation the
 		// reverse order travels), and MovedBy reads both ends of a pending
 		// line (card t1640 review F5).
-		return false, appendMoveListLine(mlPath, m6MoveLineTriggerReason(trigger, "pending", p.destination, p.source, id.Ident(),
-			fmt.Sprintf("reverse move failed: %v", rerr)))
+		return false, fmt.Sprintf("the reverse move failed, the tree stands at %s (pending)", p.destination),
+			appendMoveListLine(mlPath, m6MoveLineTriggerReason(trigger, "pending", p.destination, p.source, id.Ident(),
+				fmt.Sprintf("reverse move failed: %v", rerr)))
 	}
-	_ = hook.RekeyWorktreeEntryInverse(root, p.destination, p.source)
-	_ = rebindCardForPath(root, p.destination, p.source)
-	return true, appendMoveListLine(mlPath, m6MoveLineTrigger(trigger, "reversed", p.destination, p.source, id.Ident()))
+	// The tree is back at the source. The metadata must follow it (C3): a
+	// failed inverse re-key or rebind leaves state naming a location the tree
+	// does not occupy, which is pending, never reversed.
+	if terr := rekeyAndRebindBack(root, journalStep{OldPath: p.source, NewPath: p.destination}); terr != nil {
+		return false, fmt.Sprintf("the tree is back at the source but its metadata was not restored (%v) (pending)", terr),
+			appendMoveListLine(mlPath, m6MoveLineTriggerReason(trigger, "pending", p.destination, p.source, id.Ident(),
+				fmt.Sprintf("metadata restore failed: %v", terr)))
+	}
+	return true, "", appendMoveListLine(mlPath, m6MoveLineTrigger(trigger, "reversed", p.destination, p.source, id.Ident()))
 }
 
 // forwardMoveUnregistered detects the state a forward `git worktree move` leaves
@@ -875,7 +900,15 @@ func forwardMoveUnregistered(root, source, destination, ident string) bool {
 	if err != nil || destIdent.Ident() != ident {
 		return false
 	}
-	return registeredAt(root, source) && !registeredAt(root, destination)
+	// The source is NOT required to be listed (card t2053, C5): an emptied or
+	// truncated admin gitdir file makes git drop the worktree from its listing
+	// altogether. What decides is that git does not register the destination,
+	// and only a listing that succeeded can say so.
+	paths, lerr := registeredPaths(root)
+	if lerr != nil {
+		return false
+	}
+	return !pathListed(paths, destination)
 }
 
 // repairRegistration runs one bounded `git worktree repair <destination>` and
@@ -927,17 +960,36 @@ func treeMovedBack(root, source, destination, ident string) bool {
 // registeredAt reports whether git lists path (spelling-safe) as a registered
 // worktree of root. A listing that fails or times out answers false.
 func registeredAt(root, path string) bool {
-	out, err := listGitOutput(root, "worktree", "list", "--porcelain")
+	paths, err := registeredPaths(root)
 	if err != nil {
 		return false
 	}
+	return pathListed(paths, path)
+}
+
+// registeredPaths lists the worktree paths git registers for root, bounded; an
+// error means the listing could not be read (not that nothing is registered).
+func registeredPaths(root string) ([]string, error) {
+	out, err := listGitOutput(root, "worktree", "list", "--porcelain")
+	if err != nil {
+		return nil, err
+	}
 	records, perr := ParseWorktreeList(out)
 	if perr != nil {
-		return false
+		return nil, perr
 	}
-	want := canonicalTreePath(path)
+	paths := make([]string, 0, len(records))
 	for _, rec := range records {
-		if canonicalTreePath(rec.Path) == want {
+		paths = append(paths, rec.Path)
+	}
+	return paths, nil
+}
+
+// pathListed reports whether path (spelling-safe) is among paths.
+func pathListed(paths []string, path string) bool {
+	want := canonicalTreePath(path)
+	for _, p := range paths {
+		if canonicalTreePath(p) == want {
 			return true
 		}
 	}
@@ -1200,6 +1252,33 @@ func runMigrateRollback(cmd *cobra.Command, root, journalPath string, asJSON boo
 		mlPath := moveListPath(root)
 		restored, refused, failed := 0, 0, 0
 		var problems []string
+		rows := []rollbackRow{}
+		note := func(s journalStep, outcome, reason string) {
+			rows = append(rows, rollbackRow{OldPath: s.OldPath, NewPath: s.NewPath, Outcome: outcome, Reason: reason})
+		}
+		refuse := func(s journalStep, reason, problem string) error {
+			if lerr := appendMoveListLine(mlPath, m6MoveLineReason("refused", s.NewPath, s.OldPath, s.Ident, reason)); lerr != nil {
+				return lerr
+			}
+			problems = append(problems, problem)
+			refused++
+			note(s, "refused", reason)
+			return nil
+		}
+		hold := func(s journalStep, msg, problem string) error {
+			if lerr := appendMoveListLine(mlPath, m6MoveLineReason("pending", s.NewPath, s.OldPath, s.Ident, msg)); lerr != nil {
+				return lerr
+			}
+			problems = append(problems, problem)
+			failed++
+			note(s, "pending", msg)
+			return nil
+		}
+		fail := func(s journalStep, problem string) {
+			problems = append(problems, problem)
+			failed++
+			note(s, "pending", problem)
+		}
 		for i := len(journal.Steps) - 1; i >= 0; i-- {
 			s := journal.Steps[i]
 			if _, serr := os.Stat(s.NewPath); serr != nil {
@@ -1209,98 +1288,127 @@ func runMigrateRollback(cmd *cobra.Command, root, journalPath string, asJSON boo
 				// t2053, J1). Only a source that carries the step's identity AND
 				// is registered there AND has nothing left to undo is "nothing to
 				// do"; every other state converges or stays pending.
-				if s.Ident == "" {
-					continue
-				}
 				if _, lerr := os.Lstat(s.OldPath); lerr != nil {
 					continue // neither end exists: nothing here to act on
 				}
+				if s.Ident == "" {
+					// An identity-less step cannot be matched to the tree at the
+					// source (G10): said out loud, never a silent skip.
+					note(s, "refused", "the journal step carries no identity")
+					problems = append(problems, fmt.Sprintf("%s: the journal step carries no identity; the tree stays where it is", s.OldPath))
+					refused++
+					continue
+				}
 				srcIdent, ierr := TreeIdent(s.OldPath)
 				if ierr != nil || srcIdent.Ident() != s.Ident {
-					if lerr := appendMoveListLine(mlPath, m6MoveLineReason("refused", s.NewPath, s.OldPath, s.Ident, "identity mismatch")); lerr != nil {
-						return lerr
+					if rerr := refuse(s, "identity mismatch", fmt.Sprintf("%s: identity mismatch at the source; the tree stays where it is", s.OldPath)); rerr != nil {
+						return rerr
 					}
-					problems = append(problems, fmt.Sprintf("%s: identity mismatch at the source; the tree stays where it is", s.OldPath))
-					refused++
 					continue
 				}
 				alreadyRegistered := registeredAt(root, s.OldPath)
 				if !alreadyRegistered && !treeMovedBack(root, s.OldPath, s.NewPath, s.Ident) {
 					const msg = "the tree is back at the source but git's registration could not be repaired"
-					if lerr := appendMoveListLine(mlPath, m6MoveLineReason("pending", s.NewPath, s.OldPath, s.Ident, msg)); lerr != nil {
-						return lerr
+					if herr := hold(s, msg, fmt.Sprintf("%s: %s", s.OldPath, msg)); herr != nil {
+						return herr
 					}
-					problems = append(problems, fmt.Sprintf("%s: %s", s.OldPath, msg))
-					failed++
 					continue
 				}
 				if terr := rekeyAndRebindBack(root, s); terr != nil {
-					problems = append(problems, terr.Error())
-					failed++
+					fail(s, terr.Error())
 					continue
 				}
-				if alreadyRegistered {
-					continue // converged: registration, re-key and binding already name the source
-				}
+				// Converged or repaired: either way the tree is at the source,
+				// so the line that releases its protection is written (C13).
 				if lerr := appendMoveListLine(mlPath, m6MoveLine("restored", s.NewPath, s.OldPath, s.Ident)); lerr != nil {
 					return lerr
 				}
+				if alreadyRegistered {
+					note(s, "restored", "already at the source")
+					continue // nothing was moved: not counted
+				}
+				note(s, "restored", "")
 				restored++
 				continue
 			}
-			destIdent, terr := TreeIdent(s.NewPath)
-			if terr != nil || (s.Ident != "" && destIdent.Ident() != s.Ident) {
-				if lerr := appendMoveListLine(mlPath, m6MoveLineReason("refused", s.NewPath, s.OldPath, s.Ident, "identity mismatch")); lerr != nil {
-					return lerr
+			// The identity rule, shared with the apply-time reverse (G8): an
+			// unreadable identity or a step without one is not a match.
+			if s.Ident == "" {
+				if rerr := refuse(s, "no identity", fmt.Sprintf("%s: the journal step carries no identity; the tree stays where it is", s.NewPath)); rerr != nil {
+					return rerr
 				}
-				problems = append(problems, fmt.Sprintf("%s: identity mismatch; the tree stays where it is", s.NewPath))
-				refused++
 				continue
 			}
-			// The manifest-match precondition belongs to the ordinary
-			// rollback of a settled move; a pending step reverses
-			// unconditionally (REQ-WHR-018's fifth entry).
-			if s.Outcome == "moved" && s.Manifest != "" && manifestForJournal(s.NewPath, s.ManifestVersion) != s.Manifest {
-				if lerr := appendMoveListLine(mlPath, m6MoveLineReason("refused", s.NewPath, s.OldPath, s.Ident, "manifest mismatch")); lerr != nil {
-					return lerr
+			destIdent, terr := TreeIdent(s.NewPath)
+			if terr != nil || destIdent.Ident() != s.Ident {
+				if rerr := refuse(s, "identity mismatch", fmt.Sprintf("%s: identity mismatch; the tree stays where it is", s.NewPath)); rerr != nil {
+					return rerr
 				}
-				problems = append(problems, fmt.Sprintf("%s: manifest mismatch; the step stays pending", s.NewPath))
-				refused++
 				continue
+			}
+			// The manifest-match precondition belongs to every step that is
+			// not pending and carries a digest (C14); a pending step reverses
+			// unconditionally (REQ-WHR-018's fifth entry).
+			if s.Outcome != "pending" && s.Manifest != "" {
+				if s.ManifestVersion > manifestFormatVersion {
+					if rerr := refuse(s, fmt.Sprintf("unknown manifest_version %d", s.ManifestVersion),
+						fmt.Sprintf("%s: unknown manifest_version %d (this build reads up to %d); the step stays pending", s.NewPath, s.ManifestVersion, manifestFormatVersion)); rerr != nil {
+						return rerr
+					}
+					continue
+				}
+				if manifestForJournal(s.NewPath, s.ManifestVersion) != s.Manifest {
+					if rerr := refuse(s, "manifest mismatch", fmt.Sprintf("%s: manifest mismatch; the step stays pending", s.NewPath)); rerr != nil {
+						return rerr
+					}
+					continue
+				}
 			}
 			if forwardMoveUnregistered(root, s.OldPath, s.NewPath, s.Ident) && !repairRegistration(root, s.NewPath) {
 				const msg = "forward move left git's registration on the source and the repair did not hold"
-				if lerr := appendMoveListLine(mlPath, m6MoveLineReason("pending", s.NewPath, s.OldPath, s.Ident, msg)); lerr != nil {
-					return lerr
+				if herr := hold(s, msg, fmt.Sprintf("%s: %s", s.NewPath, msg)); herr != nil {
+					return herr
 				}
-				problems = append(problems, fmt.Sprintf("%s: %s", s.NewPath, msg))
-				failed++
 				continue
 			}
 			if merr := reverseGitMove(root, s.NewPath, s.OldPath); merr != nil && !treeMovedBack(root, s.OldPath, s.NewPath, s.Ident) {
-				if lerr := appendMoveListLine(mlPath, m6MoveLineReason("pending", s.NewPath, s.OldPath, s.Ident, fmt.Sprintf("reverse move failed: %v", merr))); lerr != nil {
-					return lerr
+				if herr := hold(s, fmt.Sprintf("reverse move failed: %v", merr), fmt.Sprintf("%s: reverse move failed (%v)", s.NewPath, merr)); herr != nil {
+					return herr
 				}
-				problems = append(problems, fmt.Sprintf("%s: reverse move failed (%v)", s.NewPath, merr))
-				failed++
 				continue
 			}
 			if terr := rekeyAndRebindBack(root, s); terr != nil {
-				problems = append(problems, terr.Error())
-				failed++
+				fail(s, terr.Error())
 				continue
 			}
 			if lerr := appendMoveListLine(mlPath, m6MoveLine("restored", s.NewPath, s.OldPath, s.Ident)); lerr != nil {
 				return lerr
 			}
+			note(s, "restored", "")
 			restored++
 		}
-		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "restored %d tree(s), %d refused, %d pending\n", restored, refused, failed)
+		if asJSON {
+			body, jerr := json.MarshalIndent(rows, "", "  ")
+			if jerr != nil {
+				return jerr
+			}
+			_, _ = fmt.Fprintln(cmd.OutOrStdout(), string(body))
+		} else {
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "restored %d tree(s), %d refused, %d pending\n", restored, refused, failed)
+		}
 		if len(problems) > 0 {
 			return fmt.Errorf("rollback: %s", strings.Join(problems, "; "))
 		}
 		return nil
 	})
+}
+
+// rollbackRow is one line of the --rollback --json report.
+type rollbackRow struct {
+	OldPath string `json:"old_path"`
+	NewPath string `json:"new_path"`
+	Outcome string `json:"outcome"` // restored | refused | pending
+	Reason  string `json:"reason,omitempty"`
 }
 
 // canonicalTreePath resolves symlinks for path comparisons (the same
