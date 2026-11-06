@@ -12,7 +12,7 @@ module: "internal/cli"
 lifecycle: spec-anchored
 tags: "factory,todo,auto-done,receipt-gate,lease-reaper,reassign,watchdog,ci-reader,run-lifecycle,dead-owner-run,near-dup,gtd-relations,agentic-trunk,integration-window,aff-s2"
 tier: L
-# t2105 documented debt: the draft -> in-progress commit 55b20438fd carries Authored-By-Agent: manager-spec (the matrix expects manager-develop); history is not rewritten. Remove this skip once the next status transition by its owner lands.
+# t2105 documented debt: lint false positive, not an ownership violation. Commit 55b20438fd is a squash merge (#1930) whose body carries many Authored-By-Agent trailers; the rule reads only the first (manager-spec), while the sub-commit that moved the status draft -> in-progress carries manager-develop, the expected owner. History is not rewritten. Remove this skip at this SPEC's next status transition (its sync commit); the rule's squash handling is to be fixed separately.
 lint:
   skip:
     - OwnershipTransitionInvalid
