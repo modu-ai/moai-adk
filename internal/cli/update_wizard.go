@@ -276,15 +276,21 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 			gitStrategy["provider"] = result.GitProvider
 		}
 
-		// Save GitLab instance URL (REQ-5)
-		if result.GitLabInstanceURL != "" {
+		// Save GitLab instance URL (REQ-5). A blank answer for a gitlab provider
+		// means the default, as it does in the wizard (t1972 F5); under another
+		// provider the question is not asked, so a blank URL writes nothing.
+		gitlabURL := result.GitLabInstanceURL
+		if gitlabURL == "" && result.GitProvider == "gitlab" {
+			gitlabURL = wizard.DefaultGitLabInstanceURL
+		}
+		if gitlabURL != "" {
 			var gitlabSection map[string]any
 			if existing, ok := gitStrategy["gitlab"].(map[string]any); ok {
 				gitlabSection = existing
 			} else {
 				gitlabSection = make(map[string]any)
 			}
-			gitlabSection["instance_url"] = result.GitLabInstanceURL
+			gitlabSection["instance_url"] = gitlabURL
 			gitStrategy["gitlab"] = gitlabSection
 		}
 
