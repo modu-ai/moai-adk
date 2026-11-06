@@ -26,6 +26,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/shell"
 	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/internal/tui"
+	"github.com/modu-ai/moai-adk/internal/userassets"
 	"github.com/modu-ai/moai-adk/pkg/version"
 	"github.com/spf13/cobra"
 )
@@ -1069,35 +1070,134 @@ func updateSettingsLocalEnv(settingsPath, key, value string) error {
 	})
 }
 
-// globalMoaiHooksDir returns the global moai hooks directory under homeDir.
-// It is the single named removal target for ensureGlobalSettingsEnv, so the
-// deletion-radius guard has one symbol to assert against instead of
-// re-deriving the path independently.
+// globalMoaiHooksDir returns the global moai hooks directory under the
+// default Claude config root (~/.claude). It is the single named removal
+// target for ensureGlobalSettingsEnv, so the deletion-radius guard has one
+// symbol to assert against instead of re-deriving the path independently.
 func globalMoaiHooksDir(homeDir string) string {
-	return filepath.Join(homeDir, defs.ClaudeDir, "hooks", "moai")
+	return configRootMoaiHooksDir(filepath.Join(homeDir, defs.ClaudeDir))
 }
 
-// @MX:ANCHOR: [AUTO] ensureGlobalSettingsEnv is the global settings and hooks cleanup shared by the init, update, and init-resume paths; it removes ~/.claude/hooks/moai
+// configRootMoaiHooksDir returns the moai hooks directory inside one Claude
+// config root. A profile dir carries the same layout as ~/.claude because
+// CLAUDE_CONFIG_DIR points at it (card t1702 gap 2).
+func configRootMoaiHooksDir(configRoot string) string {
+	return filepath.Join(configRoot, "hooks", "moai")
+}
+
+// pathIsSymlink reports whether p itself (not its target) is a symbolic
+// link — the Lstat judgment the hooks cleanup refuses on (card t1702
+// audit iter4 F1).
+func pathIsSymlink(p string) bool {
+	fi, err := os.Lstat(p)
+	return err == nil && fi.Mode()&os.ModeSymlink != 0
+}
+
+// @MX:ANCHOR: [AUTO] ensureGlobalSettingsEnv is the global settings and hooks cleanup shared by the init, update, and init-resume paths; it removes the moai hooks dir from every Claude config root a session can use
 // @MX:REASON: [AUTO] fan_in=3 non-test call sites: runInit (init.go), runTemplateSyncWithReporter (update_template_sync.go), resumeInitializedProject (init_resume.go)
-// ensureGlobalSettingsEnv cleans up moai-managed settings from ~/.claude/settings.json.
-// All settings (env, permissions, teammateMode, hooks) are managed at the project level.
-// The global hooks directory (~/.claude/hooks/moai/) is also removed since hooks
-// are only deployed to project-level directories via moai init.
+// ensureGlobalSettingsEnv cleans up moai-managed settings from every Claude
+// config root a session can use (card t1702 gap 2): ~/.claude plus each real
+// profile directory under ~/.moai/claude-profiles — a profile-launched
+// session runs with CLAUDE_CONFIG_DIR pointed at its profile dir, so the
+// same cleanup must reach <profile>/settings.json and <profile>/hooks/moai.
+// All settings (env, permissions, teammateMode, hooks) are managed at the
+// project level. The moai hooks directory in each root is also removed since
+// hooks are only deployed to project-level directories via moai init.
 func ensureGlobalSettingsEnv() error {
 	homeDir, err := userHomeDirFn()
 	if err != nil {
 		return fmt.Errorf("get home directory: %w", err)
 	}
 
-	// Remove global hooks/moai directory if it exists.
-	// Hooks are project-level only; the global directory causes "No such file or directory"
-	// errors in non-initialized projects that reference $CLAUDE_PROJECT_DIR paths.
-	globalHooksDir := globalMoaiHooksDir(homeDir)
-	if _, err := os.Stat(globalHooksDir); err == nil {
-		_ = os.RemoveAll(globalHooksDir)
+	configRoots, err := userassets.ClaudeConfigRoots(homeDir)
+	if err != nil {
+		// Cleanup is best-effort per root, but a profile store that exists
+		// and cannot be read is not "no profiles": propagate so the skipped
+		// profile-root cleanups are visible instead of silent (card t1702
+		// audit round 4).
+		return fmt.Errorf("enumerate Claude config roots: %w", err)
 	}
+	for _, configRoot := range configRoots {
+		if err := ensureSettingsEnvInConfigRoot(configRoot); err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
-	globalSettingsPath := filepath.Join(homeDir, defs.ClaudeDir, defs.SettingsJSON)
+// afterMoaiHooksCheck is the test seam between the symlink check and the
+// removal of <config-root>/hooks/moai: the window a concurrent actor with write
+// access to the user's own config directory could use to swap `hooks` for a
+// link (card t1702 audit iter5 P3).
+var afterMoaiHooksCheck = func(configRoot string) {}
+
+// removeConfigRootMoaiHooks removes <config-root>/hooks/moai when both
+// components are real directories.
+//
+// The check and the removal run through one os.Root opened on the config root
+// (audit iter5 P3): every name below it resolves inside that root, and a path
+// that would leave it - which is what a `hooks` swapped for a link after the
+// check becomes - fails instead of being followed. The F1 refusal is kept: a
+// link at either component is left alone, even one that stays inside the root.
+// A link to another directory INSIDE the root, placed after the check, is
+// caught differently: `hooks` is reopened as its own root and must be the same
+// directory (os.SameFile) that the check saw (audit iter6 M1).
+func removeConfigRootMoaiHooks(configRoot string) {
+	root, err := os.OpenRoot(configRoot)
+	if err != nil {
+		return // no config root, nothing to clean
+	}
+	defer func() { _ = root.Close() }()
+
+	var hooksInfo os.FileInfo
+	for _, rel := range []string{"hooks", "hooks/moai"} {
+		info, lerr := root.Lstat(rel)
+		if lerr != nil || info.Mode()&os.ModeSymlink != 0 {
+			return // absent, or a link the user placed: left as it is
+		}
+		if rel == "hooks" {
+			hooksInfo = info
+		}
+	}
+	afterMoaiHooksCheck(configRoot)
+
+	// Audit iter6 M1: os.Root follows a link that stays inside the root, so a
+	// `hooks` swapped for such a link after the check would be opened as
+	// another directory (for example skills). Open `hooks` as its own root and
+	// require that it is the directory that was checked.
+	hooksRoot, err := root.OpenRoot("hooks")
+	if err != nil {
+		return
+	}
+	defer func() { _ = hooksRoot.Close() }()
+	opened, err := hooksRoot.Stat(".")
+	if err != nil || !os.SameFile(hooksInfo, opened) {
+		return // not the directory that was checked: left as it is
+	}
+	if mi, merr := hooksRoot.Lstat("moai"); merr != nil || mi.Mode()&os.ModeSymlink != 0 {
+		return
+	}
+	_ = hooksRoot.RemoveAll("moai")
+}
+
+// ensureSettingsEnvInConfigRoot applies the moai-managed settings cleanup to
+// one Claude config root: the hooks-dir removal plus the settings.json
+// read-modify-write. A missing settings.json means nothing to clean beyond
+// the hooks directory.
+func ensureSettingsEnvInConfigRoot(configRoot string) error {
+	// Remove the config root's hooks/moai directory if it exists.
+	// Hooks are project-level only; a config-root-level directory causes
+	// "No such file or directory" errors in non-initialized projects that
+	// reference $CLAUDE_PROJECT_DIR paths.
+	// F1 (card t1702 audit iter4): the removal never FOLLOWS a symlink —
+	// through a symlinked <config-root>/hooks, RemoveAll(<root>/hooks/moai)
+	// would delete the external target's subtree. When either component is
+	// a symbolic link the removal is REFUSED (the moai hooks dir stays
+	// under the user's own link until the user resolves it); only a real
+	// directory chain is ever removed.
+	removeConfigRootMoaiHooks(configRoot)
+
+	globalSettingsPath := filepath.Join(configRoot, defs.SettingsJSON)
 
 	// Read existing global settings
 	var existingSettings map[string]any

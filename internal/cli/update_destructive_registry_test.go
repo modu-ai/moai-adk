@@ -206,6 +206,21 @@ func rootHandleNames(n ast.Node) map[string]bool {
 		return ok && pkg.Name == "os" && sel.Sel.Name == "OpenRoot"
 	}
 
+	// isSubRoot reports whether e is `<known root>.OpenRoot(...)`: a handle derived
+	// from a handle that is already known to be an os.Root.
+	isSubRoot := func(e ast.Expr, known map[string]bool) bool {
+		call, ok := e.(*ast.CallExpr)
+		if !ok {
+			return false
+		}
+		sel, ok := call.Fun.(*ast.SelectorExpr)
+		if !ok || sel.Sel.Name != "OpenRoot" {
+			return false
+		}
+		recv, ok := sel.X.(*ast.Ident)
+		return ok && known[recv.Name]
+	}
+
 	roots := map[string]bool{}
 	ast.Inspect(n, func(node ast.Node) bool {
 		switch v := node.(type) {
@@ -224,7 +239,57 @@ func rootHandleNames(n ast.Node) map[string]bool {
 		}
 		return true
 	})
+	// A sub-root of a known root is a root; repeat until nothing new appears, so a
+	// chain (root -> sub -> subsub) is followed whatever order it is written in.
+	for changed := true; changed; {
+		changed = false
+		ast.Inspect(n, func(node ast.Node) bool {
+			if a, ok := node.(*ast.AssignStmt); ok && len(a.Rhs) == 1 && isSubRoot(a.Rhs[0], roots) {
+				if id, ok := a.Lhs[0].(*ast.Ident); ok && !roots[id.Name] {
+					roots[id.Name] = true
+					changed = true
+				}
+			}
+			return true
+		})
+	}
 	return roots
+}
+
+// A handle derived from another root handle (root.OpenRoot("hooks")) is itself a root
+// handle: the scan must count a RemoveAll through it, or a deletion moved behind a
+// sub-root silently drops out of the registry (card t1702 audit iter8 R1, found by the
+// codex leg).
+func TestCountDestructiveCalls_ASubRootOfARootHandleIsARootHandle(t *testing.T) {
+	const src = `package p
+import "os"
+func f(dir string) {
+	root, _ := os.OpenRoot(dir)
+	sub, _ := root.OpenRoot("hooks")
+	_ = sub.RemoveAll("moai")
+}
+func g(sub *os.Root) { _ = sub.RemoveAll("x") }
+func unrelated(w interface{ OpenRoot(string) (int, error) }) {
+	other, _ := w.OpenRoot("a")
+	_ = other
+}
+`
+	file, err := parser.ParseFile(token.NewFileSet(), "p.go", src, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]int{}
+	for _, d := range file.Decls {
+		if fn, ok := d.(*ast.FuncDecl); ok {
+			got[fn.Name.Name] = countDestructiveCalls(fn)
+		}
+	}
+	want := map[string]int{"f": 1, "g": 1, "unrelated": 0}
+	for name, w := range want {
+		if got[name] != w {
+			t.Errorf("%s: %d destructive call site(s), want %d (all: %v)", name, got[name], w, got)
+		}
+	}
 }
 
 // destructiveScanFiles returns the absolute paths of every non-test Go file in

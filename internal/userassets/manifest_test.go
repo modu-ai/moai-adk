@@ -319,7 +319,10 @@ func TestRelPathValidation(t *testing.T) {
 func TestRootSlugs(t *testing.T) {
 	t.Parallel()
 	home := t.TempDir()
-	roots := ResolveRoots(home)
+	roots, err := ResolveRoots(home)
+	if err != nil {
+		t.Fatalf("ResolveRoots: %v", err)
+	}
 	want := map[string]string{
 		"claude-skills": filepath.Join(home, ".claude", "skills"),
 		"claude-agents": filepath.Join(home, ".claude", "agents"),

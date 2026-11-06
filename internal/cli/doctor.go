@@ -260,6 +260,27 @@ func runGroupedChecksObserved(verbose bool, filterCheck string, obs checkObserve
 			}
 			return checkUserInstallIntegrity(home, v)
 		}},
+		// Card t1702: the ACTIVE Claude config root (CLAUDE_CONFIG_DIR when
+		// set, else ~/.claude) must resolve the core skills a standard
+		// install lands. Report-only. The message carries the root's
+		// DISPLAY form (env value or the literal "~/.claude") — never the
+		// resolved absolute path, so the golden snapshots stay hermetic.
+		{"Skill Reach", func(v bool) DiagnosticCheck {
+			home, err := os.UserHomeDir()
+			if err != nil {
+				c := DiagnosticCheck{Name: "Skill Reach", Status: uikit.CheckWarn}
+				c.Message = fmt.Sprintf("cannot resolve home: %v", err)
+				return c
+			}
+			envDir := os.Getenv(config.EnvClaudeConfigDir)
+			display := "~/.claude"
+			active := filepath.Join(home, defs.ClaudeDir)
+			if envDir != "" {
+				active = envDir
+				display = envDir
+			}
+			return checkProfileSkillReach(active, display, home, v)
+		}},
 		{"Project Lock", func(v bool) DiagnosticCheck { return checkProjectVsLock(cwd, v) }},
 		// SPEC-USERASSET-DEPLOY-GUARD-001 (M2, REQ-LOCK-001): the user-lock
 		// marker's visible-recovery row — an ownerless marker is never

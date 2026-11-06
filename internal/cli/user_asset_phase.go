@@ -14,6 +14,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -180,6 +181,7 @@ func runUserAssetUpdatePhase(homeDir string, out io.Writer) error {
 	}
 
 	writeInstallSummary(out, "user-asset update", ensureRes)
+	_, _ = fmt.Fprintln(out, userAssetRootsLine(ensureRes))
 	if pruneRes != nil {
 		_, _ = fmt.Fprintf(out, "user-asset prune: %d removed, %d divergence-preserved\n",
 			pruneRes.Removed, pruneRes.DivergencePreserved)
@@ -196,6 +198,38 @@ func runUserAssetUpdatePhase(homeDir string, out io.Writer) error {
 	announceUnselectedOptionalPacks(".", saved.Bundles, out)
 	recordUserAssetFailures(homeDir, ensureRes, pruneRes)
 	return nil
+}
+
+// userAssetRootsLine renders the update summary's roots-reached line (card
+// t1702). Final-round repair: the line renders from the install RESULT's
+// validated root snapshot (RootsReached) — never a post-hoc disk
+// re-enumeration — so a profile dir appearing after the snapshot is never
+// reported as reached. Count-aware, profile names included.
+func userAssetRootsLine(res *userassets.Result) string {
+	if res == nil || len(res.RootsReached) == 0 {
+		return "user-asset roots reached: (none recorded)"
+	}
+	base := 0
+	profileRoots := 0
+	nameSet := map[string]bool{}
+	var profiles []string
+	for _, slug := range res.RootsReached {
+		if _, name, found := strings.Cut(slug, "@"); found {
+			profileRoots++
+			if !nameSet[name] {
+				nameSet[name] = true
+				profiles = append(profiles, name)
+			}
+		} else {
+			base++
+		}
+	}
+	if len(profiles) == 0 {
+		return fmt.Sprintf("user-asset roots reached: %d base roots (no Claude profile dirs)", base)
+	}
+	sort.Strings(profiles)
+	return fmt.Sprintf("user-asset roots reached: %d base roots + %d profile roots (%s)",
+		base, profileRoots, strings.Join(profiles, ", "))
 }
 
 // recordUserAssetFailures puts refused or failed user-asset files into the
