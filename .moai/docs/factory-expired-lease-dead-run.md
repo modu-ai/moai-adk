@@ -11,6 +11,12 @@ that case is the leader/operator verb:
 moai factory runs --retire <dead-run> --rebind-to <live-run>
 ```
 
+Only the explicit verb relaxes the lease comparison (`RebindRequest.AbandonExpiredLeaseDuplicate`,
+set by `runs --retire --rebind-to` alone). The automatic paths (`ResolveActiveRun` ->
+`ReconcileActiveRuns` -> `consolidateIntoLive`, the join chooser, leader adoption) leave it
+false and behave exactly as before this card: a row diverging on the lease columns refuses,
+the dead run stays active, and resolving a run never abandons a card row as a side effect.
+
 Measured (isolated sandboxes; tests `internal/cli/factory_runs_rebind_expired_t2104_test.go`):
 
 | Situation | Result |
@@ -19,6 +25,12 @@ Measured (isolated sandboxes; tests `internal/cli/factory_runs_rebind_expired_t2
 | Live run already holds an `assigned` `t1` row (assign-first) | the source row is abandoned with a `card.rebound` pointer event; the live row is untouched; the source run is `retired` |
 | Two dead runs hold `t1` leased, each expired at a different time | the first rebind moves `t1`; the second abandons its row with a pointer; both dead runs are `retired`; one live row remains |
 | The source row also differs from the live row on any compared column other than the dead lease (for example `stage`) | refused, naming the column; nothing changes |
+| Same as the assign-first row, but reached by the automatic path (`ResolveActiveRun` without `--run`) | no change: the consolidation is refused inside the reconcile, the dead run stays `active`, no row changes |
+| The source row holds a VALID (unexpired) lease beside a duplicate live row | refused (`live lease`), nothing changes, with or without the opt-in |
+
+After an abandon, `status` still lists the abandoned source row (`state=abandoned`, lease columns kept): the card then has one live row and one `abandoned` row, which is the success shape.
+
+An expiry that does not parse counts as expired (`holdsValidLease` contract), so such a row is abandoned like an expired one under the opt-in; the write path always records RFC3339Nano, so this occurs only with corrupted data.
 
 Why the lease alone does not refuse: the consolidation has already established
 that the source row holds no VALID lease (a live lease refuses the whole
@@ -43,7 +55,7 @@ State: expired `leased` `t1` in a dead run, `assigned` `t1` in the live run,
 
 So the leftover row does not corrupt the completion gate; its harm is that the
 dead run stays active, so every run-less verb is ambiguous and `status` shows
-the card twice. With the change above one `--rebind-to` call removes it.
+the card twice. With the change above one `--rebind-to` call removes it; the automatic path does not (it stays ambiguous until the operator runs that verb).
 
 Hand-off for a state that predates this change (a dead run still active with a
 leftover row): as the operator (`MOAI_FACTORY_ROLE=operator`), run

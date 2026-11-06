@@ -211,7 +211,7 @@ func runRebindRetire(cmd *cobra.Command, db *homestate.FactoryDB, opts homestate
 	if tgt == nil {
 		return fmt.Errorf("factory run %s not found (the --rebind-to target)", target)
 	}
-	res, err := db.RebindRun(cmd.Context(), homestate.RebindRequest{Source: *src, Target: *tgt}, opts)
+	res, err := db.RebindRun(cmd.Context(), homestate.RebindRequest{Source: *src, Target: *tgt, AbandonExpiredLeaseDuplicate: true}, opts)
 	if err != nil {
 		return err
 	}

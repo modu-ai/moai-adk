@@ -15,9 +15,58 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 )
+
+// N1 (t2104 re-audit): the relaxation is the explicit verb's opt-in. Resolving
+// the active run (ResolveActiveRun -> ReconcileActiveRuns -> consolidateIntoLive)
+// is automatic and must never abandon a card row as a side effect: with the
+// expired-lease duplicate present the consolidation is refused, the dead run
+// stays active, and no row changes.
+func TestFactoryAutomaticReconcileKeepsRefusingExpiredLeaseDuplicate(t *testing.T) {
+	root := expiredLeaseRebindFixture(t, true)
+	before := lcDump(t, root)
+	_, _ = factorymsg.ResolveActiveRun(t.Context(), root, "")
+	if after := lcDump(t, root); after != before {
+		t.Errorf("automatic reconcile changed state:\nbefore:\n%s\nafter:\n%s", before, after)
+	}
+	if got := cardStateIn(t, root, "run-src"); got != "leased" {
+		t.Errorf("source row state = %q, want leased (not silently abandoned)", got)
+	}
+	if got := runStatusOf(t, root, "run-src"); got != "active" {
+		t.Errorf("source status = %q, want active (not silently retired)", got)
+	}
+}
+
+// N2 (t2104 re-audit): guard order. A source row holding a VALID (unexpired)
+// lease beside a duplicate assigned live row refuses and changes nothing; the
+// lease guard must run before the duplicate-abandon branch.
+func TestFactoryRunsRebindValidLeaseSourceWithDuplicateTargetRefuses(t *testing.T) {
+	root := expiredLeaseRebindFixture(t, true)
+	valid := time.Now().UTC().Add(24 * time.Hour).Format(time.RFC3339Nano)
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.DB.Exec(`UPDATE cards SET lease_expires_at=? WHERE run_id='run-src' AND card_id='t1'`, valid); err != nil {
+		t.Fatal(err)
+	}
+	_ = db.Close()
+	before := lcDump(t, root)
+	out, err := runFactoryCommand(t, "runs", "--retire", "run-src", "--rebind-to", "run-tgt")
+	if err == nil {
+		t.Fatalf("consolidation accepted a source row with a valid lease:\n%s", out)
+	}
+	if !strings.Contains(err.Error(), "live lease") {
+		t.Errorf("refusal %q does not name the live lease", err.Error())
+	}
+	if after := lcDump(t, root); after != before {
+		t.Errorf("the refusal changed state")
+	}
+}
 
 func expiredLeaseRebindFixture(t *testing.T, assignedInLive bool) string {
 	t.Helper()
