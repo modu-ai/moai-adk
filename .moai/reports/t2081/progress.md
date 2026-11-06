@@ -81,6 +81,12 @@ Once in this card (before the first audit) the card's lease had expired while it
 - The flaky `TestApply_PendingIntentButNeverMoved_IsSettledThenMoved` named in Round 2 is the subject of card t2106 (cause confirmed by measurement, fixed in `appendMoveListLine`/`revLines`, branch `WT-testapply-pendingintentb`, not landed yet). This card's tree does not carry that fix.
 - The lease expired again after the first audit; recovered with the formal verb `moai factory next --card t2081 --run to2bbk` from the primary checkout (card t2116's path), not with 8859.
 
+### Re-audit (c1827b7c4d)
+- `.moai/reports/t2081/sync-audit-iter2.md`: PASS-WITH-DEBT, no BLOCKING defect; F1 and F2 closed (F2: a mutant with the join removed fails the new test 3 of 3, captures still running 2, 2, 1). Codex: second and last call of this stage, receipt rcpt-a9b987efb30157fd8062d7ba (verdict pass, no findings, repair-delta scope). New MINOR N1, N2 (optional). F3 accepted as corrected; F4-F9 stay as debts.
+- Guard-test hunt (new this round, from the t1702 lesson): the auditor found the tests that scan source files and ran nine by name; all passed except `internal/testguard TestHomeGuard_RepositoryHasNoNewHomeAccess`, which reports exactly two violations in files this card does not own (`internal/agenticfactory/core/sanitize_test.go:95`, `internal/cli/factory_fixture_home_test.go:36`), both present in main.
+- `verdict.md` is a byte copy of `sync-audit-iter2.md` (the name the complete gate reads for a card with no SPEC); the audit was not redone.
+- Landing is on hold by the leader (gate-repair card t2121 and the rc.3 install first); no `complete`, no main absorption was done for this card.
+
 ## Options (not done)
 1. Raise or lower `DefaultWorktreeMigrateMoveConcurrency` after a run on large real trees.
 2. Also overlap the after-the-move manifest of finished trees with later batches (saves more, but a mismatch would then be found after more trees have moved, which changes the reverse-order guarantee).
