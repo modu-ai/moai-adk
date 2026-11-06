@@ -17,6 +17,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/claim"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
+	"github.com/modu-ai/moai-adk/internal/gitenv"
 )
 
 type Section string
@@ -309,6 +310,9 @@ func (g GitVerifier) Lookup(commit, path string) (string, bool, error) {
 	}
 	cmd := exec.Command("git", "cat-file", "blob", commit+":"+path)
 	cmd.Dir = g.Dir
+	// The clone is the one in Dir; an inherited GIT_DIR would redirect the
+	// lookup to another repository's objects.
+	cmd.Env = gitenv.Env()
 	var out, errb bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &out, &errb
 	if err := cmd.Run(); err != nil {
