@@ -75,7 +75,7 @@ func TestMissionBlockedQuestionPersistedShapeUnchanged(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read persisted mission: %v", err)
 	}
-	if info, err := os.Stat(path); err != nil || info.Mode().Perm() != 0o600 {
+	if info, err := os.Stat(path); err != nil || !permMatchesOnHost(info.Mode().Perm(), 0o600) {
 		t.Fatalf("persisted mission mode = %v err=%v, want 0600", info.Mode(), err)
 	}
 

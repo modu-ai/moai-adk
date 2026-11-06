@@ -164,6 +164,42 @@ func TestMigrateLocalInstructions_RefusesNonRegular(t *testing.T) {
 	}
 }
 
+// TestMigrateLocalInstructions_SourceChangeRace (card t2117 C2): a write to
+// CLAUDE.local.md landing between the verb's read and its remove must abort
+// the migration and roll back AGENTS.local.md. The unguarded code removes the
+// changed file, so the racing write's content is destroyed and only the
+// stale backup survives. Deterministic via the migratePreRemoveHook seam
+// (set between the destination write and the source remove).
+func TestMigrateLocalInstructions_SourceChangeRace(t *testing.T) {
+	root := t.TempDir()
+	writeLocalFile(t, root, codexClaudeLocalName, "first write\n")
+
+	migratePreRemoveHook = func() {
+		writeLocalFile(t, root, codexClaudeLocalName, "racing second write\n")
+	}
+	defer func() { migratePreRemoveHook = nil }()
+
+	_, _, err := runMigrateLocalInstructions(t, root)
+	if err == nil {
+		t.Fatal("migration exited 0 although CLAUDE.local.md changed mid-flight; the remove destroyed the racing write (content lost)")
+	}
+	if !strings.Contains(err.Error(), "changed") {
+		t.Errorf("refusal reason = %q, want it to name the mid-flight change", err.Error())
+	}
+	// The changed original must survive untouched at the legacy path.
+	got, rerr := os.ReadFile(filepath.Join(root, codexClaudeLocalName))
+	if rerr != nil {
+		t.Fatalf("CLAUDE.local.md was removed despite the mid-flight change: %v", rerr)
+	}
+	if string(got) != "racing second write\n" {
+		t.Errorf("CLAUDE.local.md content = %q, want the racing write preserved verbatim", got)
+	}
+	// The premature AGENTS.local.md must be rolled back.
+	if _, lerr := os.Lstat(filepath.Join(root, codexLocalInstructionName)); !os.IsNotExist(lerr) {
+		t.Errorf("AGENTS.local.md left behind by the aborted migration (err=%v)", lerr)
+	}
+}
+
 // The verb is reachable as `moai migrate local-instructions`.
 func TestMigrateLocalInstructions_RegisteredUnderMigrate(t *testing.T) {
 	var found *cobra.Command

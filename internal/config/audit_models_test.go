@@ -1,6 +1,7 @@
 package config
 
 import (
+	"slices"
 	"testing"
 
 	"gopkg.in/yaml.v3"
@@ -129,6 +130,55 @@ func TestAuditConfigYAMLWorkflowWrapperLoad(t *testing.T) {
 	if got.GLM.Model != "glm-5.3" || got.GLM.Effort != "max" {
 		t.Errorf("GLM pin: got %+v, want {glm-5.3 max}", got.GLM)
 	}
+}
+
+// TestValidCodexAuditModelsClosedSet pins the codex audit model closed set
+// (card t1980 + its scope expansion): the default is gpt-6.1-terra and comes
+// first, gpt-6.1-sol survives the default flip as a literal member, and the
+// set carries no duplicates — the schema derives its options and validator
+// straight from this accessor, so a duplicate would render twice.
+func TestValidCodexAuditModelsClosedSet(t *testing.T) {
+	got := ValidCodexAuditModels()
+	if len(got) == 0 || got[0] != DefaultCodexAuditModel {
+		t.Errorf("ValidCodexAuditModels() = %v, want the runtime default %q first", got, DefaultCodexAuditModel)
+	}
+	if got[0] != "gpt-6.1-terra" {
+		t.Errorf("ValidCodexAuditModels() = %v, want gpt-6.1-terra as the default first (card t1980 scope expansion)", got)
+	}
+	if !containsString(got, "gpt-6.1-sol") {
+		t.Errorf("ValidCodexAuditModels() = %v, want gpt-6.1-sol as a member after the default flip", got)
+	}
+	seen := map[string]bool{}
+	for _, id := range got {
+		if seen[id] {
+			t.Errorf("ValidCodexAuditModels() carries duplicate member %q", id)
+		}
+		seen[id] = true
+	}
+}
+
+// TestValidCodexAuditEffortsClosedSet pins the codex effort closed set
+// (card t1980 scope expansion): terra's reasoning.effort vocabulary
+// (none|low|medium|high|xhigh|max) — NOT the Claude v4 vocabulary the claude
+// pin keeps — with the xhigh default a member.
+func TestValidCodexAuditEffortsClosedSet(t *testing.T) {
+	got := ValidCodexAuditEfforts()
+	want := []string{"none", "low", "medium", "high", "xhigh", "max"}
+	if !slices.Equal(got, want) {
+		t.Errorf("ValidCodexAuditEfforts() = %v, want %v (terra reasoning.effort vocabulary)", got, want)
+	}
+	if containsString(got, DefaultCodexAuditEffort) == false || DefaultCodexAuditEffort != "xhigh" {
+		t.Errorf("DefaultCodexAuditEffort = %q, want xhigh as a set member", DefaultCodexAuditEffort)
+	}
+}
+
+func containsString(list []string, s string) bool {
+	for _, v := range list {
+		if v == s {
+			return true
+		}
+	}
+	return false
 }
 
 // containsLine reports whether the marshaled bytes contain the given key with

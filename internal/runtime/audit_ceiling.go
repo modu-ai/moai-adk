@@ -1188,7 +1188,16 @@ func CountPlanAuditRounds(specDir string, listedDirs []string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	return len(files), nil
+	// An INCONCLUSIVE file is an audit that did not run, not a round
+	// (SPEC-AUDIT-ENGINE-CONVERGENCE-001 REQ-AEC-007); SelectLatestVerdict still
+	// selects it.
+	rounds := 0
+	for _, f := range files {
+		if !IsInconclusiveReport(f.path) {
+			rounds++
+		}
+	}
+	return rounds, nil
 }
 
 // SelectLatestVerdict returns the recorded file with the highest parsed

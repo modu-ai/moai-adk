@@ -204,7 +204,7 @@ func readGovernanceReceipt(root, path string) (GovernanceReceipt, error) {
 	if errors.Is(err, os.ErrNotExist) {
 		return GovernanceReceipt{}, errors.New("mission governance: receipt_missing")
 	}
-	if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() || info.Mode().Perm() != 0o600 {
+	if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() || !hostPrivateModeOK(info.Mode().Perm(), 0o600) {
 		return GovernanceReceipt{}, errors.New("mission governance: receipt_unsafe")
 	}
 	resolved, err := filepath.EvalSymlinks(path)

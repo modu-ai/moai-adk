@@ -78,9 +78,9 @@ func TestCommittedWorkflowYamlAuditAlignment(t *testing.T) {
 	if committed.GLM.Model != "glm-5.3" || committed.GLM.Effort != "max" {
 		t.Errorf("committed glm pin = {%s %s}, want {glm-5.3 max}", committed.GLM.Model, committed.GLM.Effort)
 	}
-	wantGates := map[string]any{"claude": "off", "codex": "required", "glm": "off"}
+	wantGates := map[string]any{"claude": "off", "codex": "advisory", "glm": "off"}
 	if !reflect.DeepEqual(committed.Gates, wantGates) {
-		t.Errorf("committed workflow.audit.gates = %v, want %v (the D8 explicit posture — not the model-token resolution)", committed.Gates, wantGates)
+		t.Errorf("committed workflow.audit.gates = %v, want %v (the D8 explicit posture, codex advisory since the 2026-11-07 af-flow landing — not the model-token resolution)", committed.Gates, wantGates)
 	}
 	if strings.Contains(body, "claude-opus-5-5/medium") {
 		t.Errorf("committed workflow.yaml header comment still names claude-opus-5-5/medium")

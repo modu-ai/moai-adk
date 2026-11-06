@@ -25,6 +25,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -34,6 +35,7 @@ import (
 // PATH for the duration of the test.
 func t2053FakeBin(t *testing.T, name, script string) {
 	t.Helper()
+	t2085SkipOnWindows(t, t2085ReasonShim)
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, name), []byte(script), 0o755); err != nil {
 		t.Fatalf("write fake %s: %v", name, err)
@@ -46,6 +48,7 @@ func t2053FakeBin(t *testing.T, name, script string) {
 // runs the real git.
 func t2053BlockingGit(t *testing.T, blockArg string) {
 	t.Helper()
+	t2085SkipOnWindows(t, t2085ReasonShim)
 	realGit, err := exec.LookPath("git")
 	if err != nil {
 		t.Skipf("git unavailable: %v", err)
@@ -173,6 +176,9 @@ func TestCaptureManifest_UntrackedContentChangeStillDetected(t *testing.T) {
 // TestDefaultActiveProcessCWDs_TimesOutOnBlockedLsof — a hung lsof returns an
 // error wrapping ErrCommandTimeout instead of blocking the update.
 func TestDefaultActiveProcessCWDs_TimesOutOnBlockedLsof(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("lsof scan is POSIX-only; Windows reports errProcessCWDOSGuarded (card t2075)")
+	}
 	t2053FakeBin(t, "lsof", "#!/bin/sh\nexec sleep 30\n")
 	orig := lsofCommandTimeout
 	lsofCommandTimeout = 300 * time.Millisecond
@@ -194,6 +200,9 @@ func TestDefaultActiveProcessCWDs_TimesOutOnBlockedLsof(t *testing.T) {
 // TestPlanMigration_SkipsEveryTreeWhenLsofTimesOut — the process-cwd scan is a
 // skip cause: when it cannot answer, no tree is planned for a move.
 func TestPlanMigration_SkipsEveryTreeWhenLsofTimesOut(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("lsof scan is POSIX-only; Windows reports errProcessCWDOSGuarded (card t2075)")
+	}
 	w := m6NewWorld(t)
 	m4InRepo(t, w.repo)
 	activeProcessCWDProbe = defaultActiveProcessCWDs // this test pins the real scan; m6NewWorld stubs it

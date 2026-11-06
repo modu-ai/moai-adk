@@ -514,10 +514,11 @@ func appendMoveListLine(mlPath, line string) error {
 // return them in file order under this same comment, so the duplicate check
 // compared a new line with the FIRST line of the file (card t2106).
 func revLines(data string) []string {
+	lines := strings.Split(data, "\n")
 	var out []string
-	for _, l := range strings.Split(data, "\n") {
-		if strings.TrimSpace(l) != "" {
-			out = append(out, l)
+	for i := len(lines) - 1; i >= 0; i-- {
+		if strings.TrimSpace(lines[i]) != "" {
+			out = append(out, lines[i])
 		}
 	}
 	for i, j := 0, len(out)-1; i < j; i, j = i+1, j-1 {

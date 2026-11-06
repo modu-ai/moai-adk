@@ -77,7 +77,7 @@ func TestLoadGovernanceReceiptsRejectsUnsafeMissingStaleAndFailed(t *testing.T) 
 	if err := os.Chmod(decisionPath, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := LoadGovernanceReceipts(root, decisionPath, auditPath, expect); err == nil || !strings.Contains(err.Error(), "unsafe") {
+	if _, err := LoadGovernanceReceipts(root, decisionPath, auditPath, expect); weakModeDetectable() && (err == nil || !strings.Contains(err.Error(), "unsafe")) {
 		t.Fatalf("weak mode err=%v", err)
 	}
 	if err := os.Chmod(decisionPath, 0o600); err != nil {

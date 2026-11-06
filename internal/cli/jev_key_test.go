@@ -192,7 +192,7 @@ func TestGlmKeyFlagSavesKeySameStorage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if info.Mode().Perm() != 0o600 {
+	if !permMatchesOnHost(info.Mode().Perm(), 0o600) {
 		t.Errorf("credential file mode = %v, want 0600", info.Mode().Perm())
 	}
 	if !strings.Contains(out, "GLM API key stored (") {
@@ -225,7 +225,7 @@ func TestJevKeyFlagSavesCredential(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if info.Mode().Perm() != 0o600 {
+	if !permMatchesOnHost(info.Mode().Perm(), 0o600) {
 		t.Errorf("credential file mode = %v, want 0600", info.Mode().Perm())
 	}
 	if !strings.Contains(out, "Jev credential stored") {

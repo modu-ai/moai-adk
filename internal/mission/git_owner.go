@@ -153,7 +153,7 @@ func (o GitOwnerAdapter) validateLease(repo string) error {
 		return errors.New("git owner: lease outside repository")
 	}
 	info, err := os.Lstat(leasePath)
-	if err != nil || info.Mode()&os.ModeSymlink != 0 || info.Mode().Perm()&0o077 != 0 {
+	if err != nil || info.Mode()&os.ModeSymlink != 0 || !hostNoGroupOrOtherAccess(info.Mode().Perm()) {
 		return errors.New("git owner: lease missing or unsafe")
 	}
 	raw, err := os.ReadFile(leasePath)

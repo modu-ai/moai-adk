@@ -294,6 +294,61 @@ func TestInstructionFileSetDerivation(t *testing.T) {
 	}
 }
 
+// TestInstructionFileSetNestedRelativeImports (card t2117 C4): an import
+// inside a NESTED instruction file resolves relative to that file's
+// directory, not the project root. Root-relative resolution queues the wrong
+// path (the root decoy below) and silently misses the real nested target.
+func TestInstructionFileSetNestedRelativeImports(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	files := map[string]string{
+		"AGENTS.md":         "# Agents\n\n@sub/dir/AGENTS.md\n",
+		"more.md":           "# Root decoy — the WRONG resolution lands here\n",
+		"sub/dir/AGENTS.md": "# Nested\n\n@./more.md\n",
+		"sub/dir/more.md":   "# Nested target — the RIGHT resolution\n",
+	}
+	for rel, content := range files {
+		path := filepath.Join(root, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	got := instructionFileSet(root)
+	want := []string{
+		filepath.Join(root, "AGENTS.md"),
+		filepath.Join(root, "sub", "dir", "AGENTS.md"),
+		filepath.Join(root, "sub", "dir", "more.md"),
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("instructionFileSet() = %v, want %v (nested relative import must resolve under sub/dir/, never the root)", got, want)
+	}
+}
+
+// TestInstructionFileSetSkipsDirectoryImport (card t2117 C1 companion): a
+// directory sitting where an import points is skipped, never read.
+func TestInstructionFileSetSkipsDirectoryImport(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "docs"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "AGENTS.md"), []byte("# Agents\n@docs\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	got := instructionFileSet(root)
+	want := []string{filepath.Join(root, "AGENTS.md")}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("instructionFileSet() = %v, want %v (a directory at an import path must be skipped)", got, want)
+	}
+}
+
 // TestInstructionFileSetCycleSafe pins the visited-set behavior: a mutual
 // @-import between AGENTS.md and CLAUDE.md must terminate and yield both
 // members exactly once.

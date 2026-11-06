@@ -1,0 +1,16 @@
+--- FAIL: TestT2121AbsorbRepair (19.50s)
+    --- FAIL: TestT2121AbsorbRepair/P1_binary_card_file_swapped_in_merge_refuses (4.05s)
+        merge_specless_repair_t2121_test.go:52: sync-audit passed=true, want false; detail: .moai/reports/t9/verdict.md: verdict: PASS, audited_sha a2d8d38d01a3a57cafccf92648f561783badd052 binds HEAD 0def7269d300b0777ac3c76cd7114fdb46d1bb4b — the SPEC-less card's audit record reads closed
+    --- FAIL: TestT2121AbsorbRepair/P7_minus_diff_attribute_text_file_edited_in_merge_refuses (3.19s)
+        merge_specless_repair_t2121_test.go:62: sync-audit passed=true, want false; detail: .moai/reports/t9/verdict.md: verdict: PASS, audited_sha c7c660ec904b640fa8ad5f56497fa08eec8ba976 binds HEAD 5cb49846b33dfa1b7801d2b479968c0a672e0c2b — the SPEC-less card's audit record reads closed
+    --- FAIL: TestT2121AbsorbRepair/P2b_card_hunk_moved_in_merge_refuses (3.59s)
+        merge_specless_repair_t2121_test.go:68: sync-audit passed=true, want false; detail: .moai/reports/t9/verdict.md: verdict: PASS, audited_sha 936d3af317c5b1d02f33a21bc0e6ef0369a51f1a binds HEAD d5ce0ebd621944a12dfe320918338780691cf270 — the SPEC-less card's audit record reads closed
+    --- FAIL: TestT2121AbsorbRepair/octopus_merge_refuses (2.69s)
+        merge_specless_repair_t2121_test.go:93: detail lacks "octopus": card t9 has no SPEC, so its merge evidence is .moai/reports/t9/verdict.md (or, when verdict.md is absent, the latest .moai/reports/t9/sync-audit*.md) — audited_sha 6cf77c9112222c6fdf9e876c388e5807fbf00cb0 is stale: HEAD 8a79fa54ac0f85d402bce31ae864595060430d6a differs from it outside .moai/reports/t9/ (first changed path: b.txt) and the change is not a plain absorb of main: the card's own diff against main differs between the audited commit and HEAD. Produce that file on the card branch with the machine lines `verdict: PASS` (or `verdict: PASS-WITH-DEBT`) and `audited_sha: <full commit SHA the audit read>` (the audited commit must be HEAD, differ from HEAD only under .moai/reports/t9/, or differ only by absorbing main with the card's own diff unchanged)
+    --- FAIL: TestT2121AbsorbRepair/conflict_resolved_merge_refuses (2.80s)
+        merge_specless_repair_t2121_test.go:99: sync-audit passed=true, want false; detail: .moai/reports/t9/verdict.md: verdict: PASS, audited_sha c3e5a1b74c1396ca7a19833ec3c066bc5cd07c57 binds HEAD a5d57f578cc6cfebe007076ca20223d7a6509b6a — the SPEC-less card's audit record reads closed
+--- FAIL: TestT2121AbsorbRepairUnsupportedGitFailsClosed (2.15s)
+    merge_specless_repair_t2121_test.go:126: sync-audit passed=true, want false; detail: .moai/reports/t9/verdict.md: verdict: PASS, audited_sha a00c56518887e1f7b675a8f1ebc5f3d299f77e84 binds HEAD c07a2210b4e486c52d2a96489b75126f03d530c9 — the SPEC-less card's audit record reads closed
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/factorylane	21.971s
+FAIL
