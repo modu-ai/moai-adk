@@ -40,6 +40,7 @@ func gitcGuardVerdict(t *testing.T, fx affGuardFixture, cwd, command string) (de
 }
 
 func TestBranchGuardGitCTargetNamingPrimaryIsDeniedFromWorktreeCwd(t *testing.T) {
+	skipWindowsPOSIXCommandText(t)
 	t.Setenv(branchGuardExemptEnv, "")
 	fx := newAFFGuardFixture(t)
 	handler := newTargetGuardHandler(fx)
@@ -103,6 +104,7 @@ func TestBranchGuardGitCTargetNamingWorktreeStaysAllowedFromWorktreeCwd(t *testi
 // checkout, a non-literal `git -C <worktree> commit -m 'msg'` keeps its
 // existing (fall-back to the hook cwd) verdict, which is deny.
 func TestBranchGuardGitCTargetPrimaryCwdUnchanged(t *testing.T) {
+	skipWindowsPOSIXCommandText(t)
 	t.Setenv(branchGuardExemptEnv, "")
 	fx := newAFFGuardFixture(t)
 	W := fx.release

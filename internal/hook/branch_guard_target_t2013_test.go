@@ -28,6 +28,7 @@ func newTargetGuardHandler(fx affGuardFixture) *preToolHandler {
 }
 
 func TestBranchGuardExplicitTargetDeniesPrimary(t *testing.T) {
+	skipWindowsPOSIXCommandText(t)
 	t.Setenv(branchGuardExemptEnv, "")
 	fx := newAFFGuardFixture(t)
 	handler := newTargetGuardHandler(fx)
@@ -47,6 +48,7 @@ func TestBranchGuardExplicitTargetDeniesPrimary(t *testing.T) {
 }
 
 func TestBranchGuardExplicitTargetAllowsWorktree(t *testing.T) {
+	skipWindowsPOSIXCommandText(t)
 	t.Setenv(branchGuardExemptEnv, "")
 	fx := newAFFGuardFixture(t)
 	handler := newTargetGuardHandler(fx)
@@ -135,6 +137,7 @@ func TestBranchGuardExplicitTargetNotAdoptedWhenShellRunsStringOrFile(t *testing
 // forms allowed: a path that merely contains a dot, such as a hidden directory,
 // is not a dot-source command.
 func TestBranchGuardExplicitTargetStillAdoptedForPlainForms(t *testing.T) {
+	skipWindowsPOSIXCommandText(t)
 	t.Setenv(branchGuardExemptEnv, "")
 	fx := newAFFGuardFixture(t)
 	handler := newTargetGuardHandler(fx)

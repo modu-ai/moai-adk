@@ -88,6 +88,7 @@ func TestBranchGuardPerInvocationRowsStillDenyAtPrimaryCwd(t *testing.T) {
 // invocation that carries the verb has a `-C` that resolves to the primary
 // checkout, so the verb lands there whatever else the command holds.
 func TestBranchGuardPerInvocationTargetNamingPrimaryIsDeniedFromWorktreeCwd(t *testing.T) {
+	skipWindowsPOSIXCommandText(t)
 	t.Setenv(branchGuardExemptEnv, "")
 	fx := newAFFGuardFixture(t)
 	P, W := fx.primary, fx.release
