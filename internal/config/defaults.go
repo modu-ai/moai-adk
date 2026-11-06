@@ -286,6 +286,16 @@ const (
 	// captures of eight reads each. A chosen value, not a measured one.
 	DefaultWorktreeMigrateManifestLookahead = 3
 
+	// DefaultWorktreeMigrateMoveConcurrency is how many trees of one repository
+	// the migration hands to `git worktree move` at the same time (card t2081).
+	// Only that call overlaps; the journal and move-list writes, the registry
+	// re-key, the card rebind and the comparison after the move stay one tree at
+	// a time. Overlapping moves of different trees were checked against git's
+	// own view over 12 trees x 8 rounds with other git processes reading the
+	// same repository; the number is a chosen cap well inside what was tried
+	// (every tree in a round moved at once), not a measured optimum.
+	DefaultWorktreeMigrateMoveConcurrency = 4
+
 	// DefaultWorktreeCommandWaitDelay is how long a bounded migration command's
 	// output pipes may stay open after its context ends before the runner stops
 	// waiting for them (a grandchild holding the pipe must not outlive the bound).
