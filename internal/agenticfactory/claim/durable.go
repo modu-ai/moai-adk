@@ -83,5 +83,5 @@ func dirSyncFailureIsFatal(goos string, err error) bool {
 	if err == nil {
 		return false
 	}
-	return !(goos == "windows" && errors.Is(err, fs.ErrPermission))
+	return goos != "windows" || !errors.Is(err, fs.ErrPermission)
 }
