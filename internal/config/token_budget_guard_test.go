@@ -313,9 +313,34 @@ func TestAlwaysLoadedSurfaceEnumeration(t *testing.T) {
 	}
 
 	wantRuleCount := countNoPathsRuleFiles(t, root)
-	wantTotal := wantRuleCount + 2 // + AGENTS.md + moai.md fixed slots (the CLAUDE.md slot retired with the AGENTS.md-primary conversion)
+	// + AGENTS.md + moai.md fixed slots, plus the t2117 C3/F7 members this
+	// tree contributes: every local instruction slot present as a regular
+	// file (both when the pair coexists). (This repo's AGENTS.md and
+	// AGENTS.local.md carry no `^@` import lines, so the import closure adds
+	// nothing here — asserted below.)
+	localSlots := localInstructionSlots(root)
+	wantTotal := wantRuleCount + 2 + len(localSlots)
 	if len(surface) != wantTotal {
-		t.Errorf("surface has %d entries, want %d (= %d no-paths: rules + 2 fixed surfaces)", len(surface), wantTotal, wantRuleCount)
+		t.Errorf("surface has %d entries, want %d (= %d no-paths: rules + 2 fixed surfaces + %d local slots)", len(surface), wantTotal, wantRuleCount, len(localSlots))
+	}
+
+	// t2117 C3 closure pin: outside the rules tree, the fixed slots and the
+	// local instruction slots, this tree contributes no further members (its
+	// instruction files carry no @-imports). If this fires, the count above
+	// needs re-deriving against the new closure members.
+	rulesPrefix := filepath.Join(root, ".claude", "rules", "moai") + string(filepath.Separator)
+	knownFixed := map[string]bool{
+		filepath.Join(root, "AGENTS.md"):                                   true,
+		filepath.Join(root, ".claude", "output-styles", "moai", "moai.md"): true,
+	}
+	for _, s := range localSlots {
+		knownFixed[s] = true
+	}
+	for _, p := range surface {
+		if strings.HasPrefix(p, rulesPrefix) || knownFixed[p] {
+			continue
+		}
+		t.Errorf("surface carries unexpected non-rule member %s — update the count derivation if the @-import closure grew", p)
 	}
 
 	// AC-TEF-004: a known paths:-scoped rule (languages/go.md carries a paths:
@@ -341,6 +366,104 @@ func TestAlwaysLoadedSurfaceEnumeration(t *testing.T) {
 	}
 	if !found {
 		t.Errorf("always-loaded surface omits %s; the Codex contract layer must be enumerated (REQ-AMC-008)", agents)
+	}
+}
+
+// TestAlwaysLoadedSurfaceIncludesLocalAndImports (card t2117 C3): the real
+// always-loaded prefix also carries the repo-root local instruction file and
+// the @-import closure of the instruction anchor. The surface must enumerate
+// both, resolving a relative import against the IMPORTING file's directory
+// (docs/extra.md importing ./leaf.md means docs/leaf.md, not root/leaf.md).
+func TestAlwaysLoadedSurfaceIncludesLocalAndImports(t *testing.T) {
+	root := t.TempDir()
+	// The enumeration helper walks the rules tree; it must exist (empty here —
+	// this test is about the local-file and import-closure members).
+	if err := os.MkdirAll(filepath.Join(root, ".claude", "rules", "moai"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeFile(t, filepath.Join(root, "AGENTS.md"), "# Agents\n\n@docs/extra.md\n")
+	writeFile(t, filepath.Join(root, "AGENTS.local.md"), "# Local\n")
+	writeFile(t, filepath.Join(root, "docs", "extra.md"), "# Extra\n\n@./leaf.md\n")
+	writeFile(t, filepath.Join(root, "docs", "leaf.md"), "# Leaf\n")
+
+	surface, err := alwaysLoadedSurface(root)
+	if err != nil {
+		t.Fatalf("alwaysLoadedSurface: %v", err)
+	}
+	for _, want := range []string{
+		filepath.Join(root, "AGENTS.local.md"),
+		filepath.Join(root, "docs", "extra.md"),
+		filepath.Join(root, "docs", "leaf.md"),
+	} {
+		if !slices.Contains(surface, want) {
+			t.Errorf("always-loaded surface omits %s (local instruction file / @-import closure member)", want)
+		}
+	}
+}
+
+// TestAlwaysLoadedSurfaceRefusesSymlinkEscapeImport (card t2117 F3+): an
+// import whose path is a symlink to a regular file OUTSIDE repoRoot passes
+// the lexicographic boundary check (the link name sits inside the root) and
+// is then followed by os.Stat/os.ReadFile — the surface counts content the
+// boundary clause claims is not followed. The boundary check must resolve
+// the real path (EvalSymlinks, so a symlinked ANCESTOR is caught too) and
+// reject on the RESOLVED escape.
+func TestAlwaysLoadedSurfaceRefusesSymlinkEscapeImport(t *testing.T) {
+	outer := t.TempDir()
+	target := filepath.Join(outer, "outside.md")
+	writeFile(t, target, "# Real body outside the repo boundary\n")
+
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, ".claude", "rules", "moai"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeFile(t, filepath.Join(root, "AGENTS.local.md"), "# Local\n\n@linked.md\n")
+	if err := os.Symlink(target, filepath.Join(root, "linked.md")); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+
+	surface, err := alwaysLoadedSurface(root)
+	if err != nil {
+		t.Fatalf("alwaysLoadedSurface: %v", err)
+	}
+	link := filepath.Join(root, "linked.md")
+	if slices.Contains(surface, link) {
+		t.Errorf("surface counts %s — a symlink whose target escapes repoRoot; the boundary check must resolve links before judging the escape", link)
+	}
+	// The symlinked TARGET must not sneak in under its real path either.
+	if slices.Contains(surface, target) {
+		t.Errorf("surface counts the outside target %s — repo-boundary escape via symlink", target)
+	}
+}
+
+// TestAlwaysLoadedSurfaceCountsBothLocalSlots (card t2117 F7): when BOTH
+// local instruction files exist as regular files, both bodies AND both
+// @-import closures belong to the budget surface — the launcher injects both
+// while the pair coexists (AGENTS.md §8). First-found enumeration drops the
+// legacy file's body and imports from the measured surface.
+func TestAlwaysLoadedSurfaceCountsBothLocalSlots(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, ".claude", "rules", "moai"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeFile(t, filepath.Join(root, "AGENTS.local.md"), "# Canonical local\n\n@canon-import.md\n")
+	writeFile(t, filepath.Join(root, "CLAUDE.local.md"), "# Legacy local\n\n@legacy-import.md\n")
+	writeFile(t, filepath.Join(root, "canon-import.md"), "# Canonical import\n")
+	writeFile(t, filepath.Join(root, "legacy-import.md"), "# Legacy import\n")
+
+	surface, err := alwaysLoadedSurface(root)
+	if err != nil {
+		t.Fatalf("alwaysLoadedSurface: %v", err)
+	}
+	for _, want := range []string{
+		filepath.Join(root, "AGENTS.local.md"),
+		filepath.Join(root, "CLAUDE.local.md"),
+		filepath.Join(root, "canon-import.md"),
+		filepath.Join(root, "legacy-import.md"),
+	} {
+		if !slices.Contains(surface, want) {
+			t.Errorf("always-loaded surface omits %s — both local slots and both import closures must be counted while the pair coexists", want)
+		}
 	}
 }
 
