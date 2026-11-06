@@ -50,7 +50,8 @@ Counts come from `cut | sort | uniq -c` and `awk` over the table, run in this se
 - The G7 rule as written in words does not reproduce 61 / 90 without the backslash clause (see the G7 row); the counts are reproducible only with that clause.
 - The CI head SHA is not recorded here; take it from `gh pr view 1969 --json headRefOid` (R2-4).
 - Whether cards that landed on main after the CI run (t2063-t2091) already fixed some rows was not checked.
-- Codex was not approved for this card: Claude audit only.
+- Codex: after the first two Claude audits the operator approved one `codex_audit` call (d-20261106T172203Z-d033); it was made on the clean tree at 4948957a7b and returned pass, findings 0, receipt rcpt-27c7f33ca4d227284477758a. The third Claude audit (PASS 0.94) cites that receipt; the stop hook refused it because the receipt predates the auditor's start (hook defect, tracked by t2138).
+- Optional audit notes accepted as-is: one NOMSG row (the parent row of the two card-9 tests) is not separately counted, and the 2 doctor rows are named in both card 2 and card 5.
 
 ## Residual-risk
 Proposed cards may overlap with t2085 and t2092 at the edges. G1 and OWNERSHIP_EPOCH may vanish after t2118/t2119; opening cards for them before a re-measure would waste a slot. The G7 probe is the largest unknown (61 + 90 rows).
