@@ -323,9 +323,12 @@ func TestMCPVerbParity_DecideConfigRoot(t *testing.T) {
 		t.Chdir(root)
 		var err error
 		if viaMCP {
-			err = callFactoryTool(handleFactoryDecide)(t, map[string]any{"card": cardID, "gate": "push", "run": fcRun, "project_root": wt})
+			// card t2059: the pushed route (which reads the integration target at
+			// the parent checkout, the point of this test) is an explicit choice
+			// now; the default destination is done.
+			err = callFactoryTool(handleFactoryDecide)(t, map[string]any{"card": cardID, "gate": "push", "choice": "push", "run": fcRun, "project_root": wt})
 		} else {
-			_, _, err = runFactory(t, "decide", cardID, "--gate", "push", "--run", fcRun)
+			_, _, err = runFactory(t, "decide", cardID, "--gate", "push", "--choice", "push", "--run", fcRun)
 		}
 		if err != nil {
 			t.Logf("decide (viaMCP=%v): %v", viaMCP, err)

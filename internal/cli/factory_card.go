@@ -3133,8 +3133,52 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 		if merged := factoryReleaseAlreadyMerged(card, relBranch, relTree); merged != "" {
 			_, _ = fmt.Fprintf(out, "%s %s merge=%s branch=%s worktree=%s (already merged for this card HEAD; nothing to do)\n",
 				card.CardID, card.State, merged, relBranch, relTree)
+			// card t2057: the queue close is fail-open, so the re-run retries it.
+			factoryCloseLaneCard(out, root, runID, card, lane, relBranch)
 			return nil
 		}
+	} else if card.State == homestate.CardMergedLocal {
+		// card t2057: a card already at merged-local on the plain local route
+		// has nothing left to merge; the re-run only reconciles the queue close
+		// (already-closed reads as closed), as the pull-request edge does at
+		// merged-pr. The card record and the integration branch stay untouched.
+		// The record keeps no integration branch, so the target comes from
+		// configuration only; a fallback to the card's own work branch would
+		// archive the card as landed where it did not land.
+		target, source := factoryResolveIntegrationBranch(root, card)
+		if source != factory.BranchSourceConfig {
+			_, _ = fmt.Fprintf(out, "%s %s merge=%s (already merged; the queue card is left open: no configured integration target to record the landing against)\n",
+				card.CardID, card.State, card.MergeSHA)
+			return nil
+		}
+		// The configuration may have changed since the merge: close only when
+		// the recorded merge is an ancestor of the CURRENT target, otherwise
+		// report why and leave the queue card open (no landed verdict is
+		// recorded against a branch the merge never reached).
+		reachable, reachErr := factoryMergeReachable(factoryRepoDir(root, card), card.MergeSHA, target)
+		if reachErr != nil || !reachable {
+			why := "is not reachable from"
+			if reachErr != nil {
+				why = fmt.Sprintf("could not be checked against (%v)", reachErr)
+			}
+			_, _ = fmt.Fprintf(out, "%s %s merge=%s (already merged; the queue card is left open: the recorded merge %s %s)\n",
+				card.CardID, card.State, card.MergeSHA, why, target)
+			return nil
+		}
+		// And only when the card branch has not moved past that merge: a fix
+		// committed on the card branch after the merge is not in the recorded
+		// merge, and archiving the card would call it landed. No record field
+		// is needed — the card's own HEAD and the recorded MergeSHA answer it
+		// (card t2059, review of fa98cfb9ae).
+		if why := factoryCardHeadNotInMerge(card); why != "" {
+			_, _ = fmt.Fprintf(out, "%s %s merge=%s (already merged; the queue card is left open: %s)\n",
+				card.CardID, card.State, card.MergeSHA, why)
+			return nil
+		}
+		_, _ = fmt.Fprintf(out, "%s %s merge=%s branch=%s (already merged; reconciling the queue close)\n",
+			card.CardID, card.State, card.MergeSHA, target)
+		factoryCloseLaneCard(out, root, runID, card, lane, target)
+		return nil
 	}
 
 	// REQ-MWQ-019 step 1 — the card gates run READ-ONLY, before the window
@@ -3294,7 +3338,7 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	// adopted and falls through to step 3.
 	adopted := factoryAdoptedTip(lockRoot, integTree, branch, card.WorktreePath, cardBranch)
 	if adopted != "" {
-		done, err := completeTransitions(ctx, db, out, lockRoot, runID, card, cardID, lane, adopted, remeasure, branch, integTree)
+		done, err := completeTransitions(ctx, db, out, root, lockRoot, runID, card, cardID, lane, adopted, remeasure, branch, integTree)
 		if err != nil {
 			// O1: the adoption's transition failure is the post-merge class
 			// (the commit already sits on the integration branch) — but the
@@ -3442,7 +3486,7 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	if factoryCompleteTransitionHook != nil {
 		factoryCompleteTransitionHook()
 	}
-	if _, err := completeTransitions(ctx, db, out, lockRoot, runID, card, cardID, lane, mergeSHA, remeasure, branch, integTree); err != nil {
+	if _, err := completeTransitions(ctx, db, out, root, lockRoot, runID, card, cardID, lane, mergeSHA, remeasure, branch, integTree); err != nil {
 		return completePostMergeConflict(out, lockRoot, sessionID, cardID, mergeSHA, err)
 	}
 
@@ -3461,7 +3505,7 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 // what the lane passed — the GATE no longer reads a lane file for the
 // re-measure (REQ-MWQ-021: the record is the gate), so a stand-in file can
 // never satisfy it (REQ-MWQ-020).
-func completeTransitions(ctx context.Context, db *homestate.FactoryDB, out io.Writer, lockRoot, runID string, card homestate.Card, cardID, lane, mergeSHA, remeasure, branch, integTree string) (homestate.Card, error) {
+func completeTransitions(ctx context.Context, db *homestate.FactoryDB, out io.Writer, root, lockRoot, runID string, card homestate.Card, cardID, lane, mergeSHA, remeasure, branch, integTree string) (homestate.Card, error) {
 	merging, err := db.Transition(ctx, homestate.TransitionRequest{
 		RunID: runID, CardID: cardID, To: homestate.CardMerging,
 		ExpectedVersion: card.Version, Actor: lane, Now: factoryCardNow(),
@@ -3490,6 +3534,11 @@ func completeTransitions(ctx context.Context, db *homestate.FactoryDB, out io.Wr
 	}
 	_, _ = fmt.Fprintf(out, "%s %s merge=%s branch=%s worktree=%s\n",
 		done.CardID, done.State, done.MergeSHA, branch, integTree)
+	// card t2057: merged-local into the local integration branch is the
+	// mechanical landing answer of this route, so the lane closes its own
+	// queue card here exactly as the pull-request edge does at merged-pr. The
+	// approval-gated done edges of the factory record are not touched.
+	factoryCloseLaneCard(out, root, runID, done, lane, branch)
 	factoryPrintWakes(ctx, out, db, done) // card t2013: wait records the landing satisfies
 	return done, nil
 }
@@ -3705,6 +3754,59 @@ func factoryResolveIntegrationBranch(root string, card homestate.Card) (string, 
 		return branch, factory.BranchSourceConfig
 	}
 	return factoryBranchOfWorktree(card.WorktreePath), factory.BranchSourceCaller
+}
+
+// factoryMergeReachable reports whether the commit mergeSHA is an ancestor of
+// (or equal to) the branch tip, read in dir (card t2057). A negative answer
+// (git exits 1) is (false, nil); a commit or branch git cannot resolve, or any
+// other git failure, is an error — never read as "not an ancestor", because
+// the caller leaves the queue card open in both cases and must say which.
+func factoryMergeReachable(dir, mergeSHA, branch string) (bool, error) {
+	if strings.TrimSpace(mergeSHA) == "" || strings.TrimSpace(branch) == "" {
+		return false, errors.New("no recorded merge or target to compare")
+	}
+	// The full ref: a tag named like the branch outranks it in git's name
+	// resolution and would answer for the wrong ref.
+	return factoryCommitContained(dir, mergeSHA, "refs/heads/"+strings.TrimPrefix(branch, "refs/heads/"))
+}
+
+// factoryCommitContained reports whether ancestor is an ancestor of (or equal
+// to) descendant, read in dir with `git merge-base --is-ancestor` (card t2057,
+// t2059). A negative answer (git exits 1) is (false, nil); anything git cannot
+// resolve or answer is an error, never read as "not an ancestor".
+func factoryCommitContained(dir, ancestor, descendant string) (bool, error) {
+	_, err := factoryGitRead(dir, "merge-base", "--is-ancestor", ancestor, descendant)
+	if err == nil {
+		return true, nil
+	}
+	var ee *exec.ExitError
+	if errors.As(err, &ee) && ee.ExitCode() == 1 {
+		return false, nil
+	}
+	return false, err
+}
+
+// factoryCardHeadNotInMerge answers "" when the card branch's current HEAD is
+// contained in the recorded merge, and otherwise a short reason the re-run
+// prints when it leaves the queue card open (card t2059). A HEAD or a merge
+// git cannot resolve is a reason too — never read as contained.
+func factoryCardHeadNotInMerge(card homestate.Card) string {
+	dir := strings.TrimSpace(card.WorktreePath)
+	if dir == "" {
+		return "the card has no recorded worktree to read the card branch HEAD from"
+	}
+	head, err := factoryGitRead(dir, "rev-parse", "--verify", "--quiet", "HEAD^{commit}")
+	if err != nil || head == "" {
+		return fmt.Sprintf("the card branch HEAD could not be read (%v)", err)
+	}
+	contained, err := factoryCommitContained(dir, head, card.MergeSHA)
+	if err != nil {
+		return fmt.Sprintf("the card branch HEAD could not be compared with the recorded merge (%v)", err)
+	}
+	if !contained {
+		return fmt.Sprintf("the card branch HEAD %s is not contained in the recorded merge", factory.ShortSHA(head))
+	}
+	return ""
 }
 
 // factoryRepoDir names the repository directory the worktree lookup runs
@@ -4574,10 +4676,10 @@ func newFactoryDecideCommand() *cobra.Command {
 			}
 			switch {
 			case gate == "kickoff" && (choice == "approve" || choice == "reject"):
-			case gate == "push" && choice == "":
+			case gate == "push" && (choice == "" || choice == "done" || choice == "push"):
 			case gate == "" && (choice == "resume" || choice == "block" || choice == "unblock" || choice == "abandon"):
 			default:
-				return fmt.Errorf("factory decide: want --gate kickoff --choice approve|reject, --gate push, or --choice resume|block|unblock|abandon")
+				return fmt.Errorf("factory decide: want --gate kickoff --choice approve|reject, --gate push [--choice done|push], or --choice resume|block|unblock|abandon")
 			}
 			ctx := cmd.Context()
 			if ctx == nil {
@@ -4590,7 +4692,7 @@ func newFactoryDecideCommand() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&gate, "gate", "", "decision gate: kickoff or push")
-	cmd.Flags().StringVar(&choice, "choice", "", "approve|reject (kickoff), or resume|block|unblock|abandon")
+	cmd.Flags().StringVar(&choice, "choice", "", "approve|reject (kickoff), done|push (gate push: done is the default for a merged-local card whatever the remote and needs the leader receipt; push takes the pushed route), or resume|block|unblock|abandon")
 	cmd.Flags().StringVar(&decider, "decider", homestate.DeciderHuman, "who decided: human, or audit (kickoff approve only, on verdict-file evidence)")
 	cmd.Flags().StringVar(&run, "run", "", "factory run id (default: the single active run)")
 	return cmd
@@ -4628,7 +4730,13 @@ func decideOne(ctx context.Context, db *homestate.FactoryDB, projectRoot, runID,
 		if err := want(homestate.CardMergedLocal); err != nil {
 			return cur, err
 		}
-		if to, err = homestate.PushGateTarget(ctx, cur); err != nil {
+		if choice == "push" {
+			// card t2059: the pushed → ci-green → done route (T17/T19/T20) is an
+			// explicit choice; it is no longer chosen by the presence of a remote.
+			to = homestate.CardPushed
+		} else if to, err = homestate.PushGateTarget(ctx, cur); err != nil {
+			// The default (and the explicit --choice done) is the T18 edge:
+			// done, with the leader's receipt required by the store.
 			return cur, err
 		}
 		if to == homestate.CardPushed && integration == "" {
