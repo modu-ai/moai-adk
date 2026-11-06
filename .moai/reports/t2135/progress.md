@@ -16,11 +16,11 @@ Disjoint accounting of the 201 OTHER rows (first matching rule wins, in this ord
 | G4 | Todo store | 12 | `TestTodoStaleStoreDisclosure` 6 + `TestTodoPR_QueueDirUnchanged` 6 (the 6 `backlog.lock` message rows are inside these, not extra) |
 | G5 | Skill mirror / residue | 10 | package `skillresidue`, or message about `skill.md`, the skill folder, the skills mirror |
 | G6 | Environment/fixture | 5 | `installed version`, `state file unreadable` (3 rows), `TestCheckMCPProviderDuplicat*` |
-| G7 | Path spelling (Windows path in message) | 61 | message carries a `C:` path, `RUNNER~1`, spelling/case-fold/raw-path text |
+| G7 | Path spelling (Windows path in message) | 61 | message carries a `C:` path, `RUNNER~1`, spelling/case-fold/raw-path text, OR a backslash in the message. Read without the backslash clause the rule gives G7 54 / G9 97; the clause also pulls in 4 rows that are not path spelling (an `\n` escape 1, awk escape warnings 2, CRLF line ends 1). Both are probed together by card 1, so the 7-row difference does not change the plan |
 | G9 | Unassigned singles | 90 | everything else |
 | | Total | 201 | |
 
-G1 (SQLite URI / dirsync derivatives) is not an OTHER group: it lives in the NOMSG parent rows (agenticfactory/ledger 37, e2e 8, runner 7, claim 3 = 55 of the 117) and in the SQLITE_URI / DIRSYNC categories themselves. The other 62 NOMSG rows are parents of failures in other groups and are not independent failures.
+G1 (SQLite URI / dirsync derivatives) is not an OTHER group: it lives in the NOMSG parent rows (agenticfactory/ledger 37, e2e 8, runner 7, claim 3 = 55 of the 117) and in the SQLITE_URI / DIRSYNC categories themselves. Of the other 62 NOMSG rows, most are parents of failures in other groups, but NOT all (second audit, R2-1): 6 are independent failures with no subtests — `internal/cli` `TestHookSink*` / `TestHookPathWarnRecordReachesSink` (5 rows) and `internal/homestate` `TestOpenFactoryReadonlyNeverCheckpointsWAL` (1 row) — and 4 more are parents of the G1 category (SQLite 3, dirsync 1). The 6 independent rows are proposed as card 9 below (no group covers them).
 
 ## Attribution, corrected by the audit (code reading, not reproduced)
 - G6 is NOT "needs the real Claude CLI, so skip": `TestInstalledVersionFromResolvedPath` builds a symlink fixture under `t.TempDir()` and replaces the PATH lookup by a seam; the likely cause is `versionSegmentFromPath` looking for a slash-fixed `/versions/` prefix (product, path separator). `TestCheckMCPProviderDuplicates_*` writes `C:\...` paths into a JSON string without escaping, which breaks the JSON and yields "unreadable" (test-fixture defect, escape the path). A skip card would hide two fixable defects.
@@ -33,10 +33,11 @@ G1 (SQLite URI / dirsync derivatives) is not an OTHER group: it lives in the NOM
 2. G9 90 singles: classified inside the same probe (they are single-test packages and singles in cli).
 3. G2 stop-goal-wait hook (15): reproduce first (hook subprocess/DB/path), one package, class B.
 4. G3 empty-target fixtures (8): confirm the `filepath.FromSlash` hypothesis, then fix the expectation or the product spelling.
-5. G4 todo store (12): path spelling + stat on `backlog.lock`; one card.
+5. G4 todo store (12): path spelling + stat on `backlog.lock`; one card. Its scope also takes the 2 `TestDoctorTodoStoreDivergence` rows that the disjoint rules leave in G9 (R2-3).
 6. G5 skill mirror / residue (10): rename of directories in use and separator spelling; one card.
 7. G6 (5): two defects (a product `versionSegmentFromPath` separator; a test JSON-escape) — NOT a skip card.
 8. G1 + OWNERSHIP_EPOCH 26: no card now; re-measure after t2118, t2119 and t2123 land.
+9. Six independent NOMSG failures with no subtests (R2-1): `internal/cli` `TestHookSink*` / `TestHookPathWarnRecordReachesSink` (5) and `internal/homestate` `TestOpenFactoryReadonlyNeverCheckpointsWAL` (1): class B, reproduce-first, first step reads the CI test stream for their messages (the table has none).
 Rows assigned elsewhere and not part of this report: CLI_WORKTREE 60 (t2085), HOMEGUARD 54 (t2133), PRECOMMIT_E2E 12 (t2134), BIN_SH 19 (t2123), POSIX_MODE_PERM 46 (t2130/t2131/t2132), SQLITE_URI 474 (t2118), DIRSYNC 326 (t2119). The card ids were checked against `moai todo` by the audit.
 
 ## Baseline-attribution
@@ -46,6 +47,8 @@ Counts come from `cut | sort | uniq -c` and `awk` over the table, run in this se
 - Nothing was reproduced; no Windows host. G2-G9 attributions are inferences from messages, test names and the audit's code reading.
 - The table keeps only the first failure line per test: a test can fail again after its first failure is fixed.
 - 90 rows are "unassigned singles"; they are classified only as a pool.
+- The G7 rule as written in words does not reproduce 61 / 90 without the backslash clause (see the G7 row); the counts are reproducible only with that clause.
+- The CI head SHA is not recorded here; take it from `gh pr view 1969 --json headRefOid` (R2-4).
 - Whether cards that landed on main after the CI run (t2063-t2091) already fixed some rows was not checked.
 - Codex was not approved for this card: Claude audit only.
 
