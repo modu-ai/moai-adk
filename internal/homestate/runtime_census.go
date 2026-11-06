@@ -25,6 +25,12 @@ func (c RuntimeCensus) Total() int {
 	return c.ActiveSessions + c.ActiveFactoryLanes + c.ActiveMCPServers
 }
 
+// runtimeCensusDSN builds the read-only driver DSN for the factory database.
+func runtimeCensusDSN(factoryPath string) string {
+	values := url.Values{"mode": {"ro"}}
+	return (&url.URL{Scheme: "file", Path: filepath.ToSlash(factoryPath), RawQuery: values.Encode()}).String()
+}
+
 func ReadRuntimeCensus(projectRoot string) (RuntimeCensus, error) {
 	return readRuntimeCensusWithWorktreeList(projectRoot, func(root string) ([]byte, error) {
 		if _, err := os.Stat(filepath.Join(root, ".git")); os.IsNotExist(err) {
@@ -101,9 +107,7 @@ func readRuntimeCensusWithWorktreeList(projectRoot string, listWorktrees func(st
 		return c, err
 	}
 	if _, statErr := os.Stat(factoryPath); statErr == nil {
-		values := url.Values{"mode": {"ro"}}
-		dsn := (&url.URL{Scheme: "file", Path: filepath.ToSlash(factoryPath), RawQuery: values.Encode()}).String()
-		db, err := sql.Open("sqlite", dsn)
+		db, err := sql.Open("sqlite", runtimeCensusDSN(factoryPath))
 		if err != nil {
 			return c, err
 		}

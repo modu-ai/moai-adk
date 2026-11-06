@@ -75,13 +75,8 @@ CREATE TRIGGER IF NOT EXISTS evidence_no_delete BEFORE DELETE ON evidence BEGIN 
 CREATE TRIGGER IF NOT EXISTS notes_no_delete BEFORE DELETE ON notes BEGIN SELECT RAISE(ABORT,'ledger rows are never deleted'); END;
 `
 
-// Open opens or creates the ledger at path: its directory (0700), WAL mode, the
-// busy timeout, immediate write transactions (I3), the schema, and the engine version
-// check (ErrSQLiteTooOld).
-func Open(ctx context.Context, path string) (*Store, error) {
-	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
-		return nil, fmt.Errorf("ledger: %w", err)
-	}
+// ledgerDSN builds the read-write driver DSN for the ledger file at path.
+func ledgerDSN(path string) string {
 	q := url.Values{}
 	q.Add("_pragma", fmt.Sprintf("busy_timeout(%d)", BusyTimeout.Milliseconds()))
 	q.Add("_pragma", "journal_mode(WAL)")
@@ -89,7 +84,17 @@ func Open(ctx context.Context, path string) (*Store, error) {
 	q.Add("_pragma", "recursive_triggers(1)") // so INSERT OR REPLACE fires the delete triggers
 	q.Set("_txlock", "immediate")
 	u := url.URL{Scheme: "file", Path: path, RawQuery: strings.ReplaceAll(q.Encode(), "%28", "(")}
-	db, err := sql.Open("sqlite", u.String())
+	return u.String()
+}
+
+// Open opens or creates the ledger at path: its directory (0700), WAL mode, the
+// busy timeout, immediate write transactions (I3), the schema, and the engine version
+// check (ErrSQLiteTooOld).
+func Open(ctx context.Context, path string) (*Store, error) {
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return nil, fmt.Errorf("ledger: %w", err)
+	}
+	db, err := sql.Open("sqlite", ledgerDSN(path))
 	if err != nil {
 		return nil, fmt.Errorf("ledger: %w", err)
 	}
