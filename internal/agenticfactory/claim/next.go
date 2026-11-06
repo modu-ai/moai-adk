@@ -157,6 +157,12 @@ func (s *Store) BindWorktree(i core.IssueRef, holder string, epoch int64, path s
 	if err != nil {
 		return Record{}, err
 	}
+	// Ownership first: a caller that does not hold the Issue must not leave a
+	// reservation behind that blocks the real holder. Update verifies again under
+	// the Issue lock, so a claim lost between the two is still refused there.
+	if _, err := s.Verify(i, holder, epoch); err != nil {
+		return Record{}, err
+	}
 	if err := s.ReserveWorktree(i, canon); err != nil {
 		return Record{}, err
 	}
@@ -259,10 +265,12 @@ func (s *Store) usesWorktree(h worktreeReservation) bool {
 	return r.State != core.StateDone && (r.Worktree == "" || sameWorktree(r.Worktree, h.Path) || (r.Receipt != nil && sameWorktree(r.Receipt.Worktree, h.Path)))
 }
 
-// TakeOverUnverified reassigns a held Issue to a new holder checking ONLY that the
-// old holder and epoch are the recorded ones. It does not look at whether the owner
-// is gone: the caller has to have established that itself (the runner reads the
-// owner's recorded process before it calls) and must not use this on a guess. When
+// TakeOverUnverified reassigns a held Issue to a new holder checking that the old
+// holder and epoch are the recorded ones and, under the Issue lock, that the owner's
+// recorded process (if any) is not live or unreadable (OwnerState.Refusal). Where no
+// process is recorded it takes the caller's word: the caller has to have established
+// the departure itself (the runner reads the owner's recorded process before it
+// calls) and must not use this on a guess. When
 // the departure rests on the owner's safe-stop record, use TakeOverOnStop, which
 // checks the record where the claim moves.
 //
@@ -304,6 +312,17 @@ func (s *Store) takeOver(i core.IssueRef, oldHolder string, oldEpoch int64, newH
 		}
 		if strings.TrimSpace(safeStop) != "" {
 			if err := s.CheckSafeStop(i, oldHolder, oldEpoch, safeStop); err != nil {
+				return err
+			}
+		} else {
+			// The caller read the owner's process before taking this lock; a Heartbeat
+			// takes it too, so one that landed since is read here. OwnerLiveness takes
+			// no lock, so it is safe inside this critical section.
+			st, err := s.OwnerLiveness(i)
+			if err != nil {
+				return err
+			}
+			if err := st.Refusal(); err != nil {
 				return err
 			}
 		}

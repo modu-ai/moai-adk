@@ -129,11 +129,20 @@ func TestUpdateConsolidation_Interrupted_WarnsAndNamesJournal(t *testing.T) {
 }
 
 // TestApply_FailedTrees_PrintTheJournalPath — C7: a run that failed trees
-// prints the journal path, where --rollback reads from.
+// prints the journal path, where --rollback reads from. Since t2094 (F3) the
+// rollback hint is gated on the journal holding moves to undo, so the failure
+// here is one tree of two: the other moves, the journal carries that move, and
+// the hint prints (a run where every tree failed before moving no longer
+// advertises rollback — pinned in migrate_busy_tree_t2094_test.go).
 func TestApply_FailedTrees_PrintTheJournalPath(t *testing.T) {
 	w := t2053TwoTreeWorld(t)
 	orig := forwardGitMove
-	forwardGitMove = func(root, from, to string) error { return fmt.Errorf("fatal: refused before any rename") }
+	forwardGitMove = func(root, from, to string) error {
+		if from == w.movedTree {
+			return fmt.Errorf("fatal: refused before any rename")
+		}
+		return orig(root, from, to)
+	}
 	t.Cleanup(func() { forwardGitMove = orig })
 
 	out, err := m4RunMigrate(t, "--apply")
@@ -303,7 +312,20 @@ func TestApply_StateEntrySpelledViaSymlink_StillFollowsTheMove(t *testing.T) {
 	}
 	dest := filepath.Join(w.homeRoot, "legacy6")
 	raw, _ := os.ReadFile(stateFile)
-	if !strings.Contains(string(raw), dest) {
+	// Decode before comparing: the file is JSON, so a Windows path is stored
+	// with every backslash escaped (card t2085); a substring search of the raw
+	// bytes for the unescaped path can never match there.
+	var entries []struct {
+		Path string `json:"path"`
+	}
+	if jerr := json.Unmarshal(raw, &entries); jerr != nil {
+		t.Fatalf("the state file is not valid JSON: %v\n%s", jerr, raw)
+	}
+	var rekeyed bool
+	for _, e := range entries {
+		rekeyed = rekeyed || e.Path == dest
+	}
+	if !rekeyed {
 		t.Errorf("the state entry was not re-keyed to %s:\n%s", dest, raw)
 	}
 }

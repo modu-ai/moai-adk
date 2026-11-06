@@ -1,0 +1,62 @@
+package worktree
+
+// Card t2070 before/after probe: one whole apply over an isolated fixture of N
+// registered trees, with the REAL lsof scan. Opt-in (MOAI_T2070_E2E=N). Uses
+// only symbols present both before and after the change.
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"strconv"
+	"testing"
+	"time"
+)
+
+func TestT2070EndToEnd(t *testing.T) {
+	n, _ := strconv.Atoi(os.Getenv("MOAI_T2070_E2E"))
+	if n <= 0 {
+		t.Skip("MOAI_T2070_E2E not set")
+	}
+	w := m6NewWorld(t)
+	activeProcessCWDProbe = defaultActiveProcessCWDs // the real scan, as `moai update` runs it
+	legacy := filepath.Join(w.repo, ".moai", "worktrees")
+	for i := 0; i < n; i++ {
+		name := fmt.Sprintf("bulk%03d", i)
+		m6Git(t, w.repo, "worktree", "add", "-q", "-b", "WT-"+name, "--", filepath.Join(legacy, name))
+	}
+	cwds, _ := defaultActiveProcessCWDs()
+
+	p0 := time.Now()
+	plans, err := planMigrationFor(w.repo, time.Now(), true)
+	planDur := time.Since(p0)
+	if err != nil {
+		t.Fatalf("plan: %v", err)
+	}
+	eligible := 0
+	for _, p := range plans {
+		if p.class == "moai-made" && p.skip == "" {
+			eligible++
+		}
+	}
+
+	a0 := time.Now()
+	var report *migrationReport
+	err = withMigrationLock(w.repo, func() error {
+		var rerr error
+		report, rerr = runMigrationEngineWith(w.repo, true, "migrate", nil)
+		return rerr
+	})
+	applyDur := time.Since(a0)
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	moveDur := applyDur - planDur
+	perTree := time.Duration(0)
+	if report.moved > 0 {
+		perTree = moveDur / time.Duration(report.moved)
+	}
+	t.Logf("E2E trees=%d registered=%d plans=%d eligible=%d process-cwds=%d | plan=%v (%.1fms/tree) | whole-apply=%v | moved=%d failed=%d reversed=%d skipped=%d | move-phase~%v (%v/tree)",
+		n, n+len(plans)-n, len(plans), eligible, len(cwds), planDur, float64(planDur.Milliseconds())/float64(len(plans)), applyDur,
+		report.moved, report.failed, report.reversed, report.skipped, moveDur, perTree)
+}

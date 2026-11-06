@@ -34,7 +34,9 @@ func retireSandbox(t *testing.T) string {
 // probes dead, and a recycled one carries a different start fingerprint.
 func deadIdentity(t *testing.T) (int, string) {
 	t.Helper()
-	cmd := exec.Command("/bin/sh", "-c", "exit 0")
+	// The test binary itself, run with no tests selected, exits at once on every
+	// platform; /bin/sh does not exist on Windows (card t2123, #1969).
+	cmd := exec.Command(os.Args[0], "-test.run=^$")
 	if err := cmd.Start(); err != nil {
 		t.Fatalf("start short-lived process: %v", err)
 	}

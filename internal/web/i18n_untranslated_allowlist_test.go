@@ -236,6 +236,11 @@ var i18nUntranslatedAllowlist = []i18nAllowEntry{
 		Reason:        reasonTechnicalIdentifier,
 		Justification: "gpt-5.6-sol is a codex model id.",
 	},
+	{
+		Key:           "f.workflow.audit.codex.model.opt.gpt-6.1-terra",
+		Reason:        reasonTechnicalIdentifier,
+		Justification: "gpt-6.1-terra is a codex model id (card t1980).",
+	},
 	// SPEC-MCP-CONSOLE-001 M2: MCP section title — Model Context Protocol is a
 	// locale-invariant initialism identical across locales.
 	{

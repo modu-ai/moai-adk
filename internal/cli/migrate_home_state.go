@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -19,6 +20,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/paths"
+	"github.com/modu-ai/moai-adk/internal/sqliteuri"
 	"github.com/modu-ai/moai-adk/pkg/version"
 	"github.com/spf13/cobra"
 	_ "modernc.org/sqlite"
@@ -406,7 +408,7 @@ func sqliteCensus(path string) (homeStateCensus, error) {
 	if _, err := os.Stat(path); err != nil {
 		return homeStateCensus{}, err
 	}
-	db, err := sql.Open("sqlite", "file:"+filepath.ToSlash(path)+"?mode=ro")
+	db, err := sql.Open("sqlite", sqliteuri.File(path, url.Values{"mode": {"ro"}}))
 	if err != nil {
 		return homeStateCensus{}, err
 	}
@@ -497,7 +499,7 @@ func copySQLiteConsistent(source, target string) error {
 	if err := os.MkdirAll(filepath.Dir(target), 0o700); err != nil {
 		return err
 	}
-	db, err := sql.Open("sqlite", "file:"+filepath.ToSlash(source)+"?mode=ro")
+	db, err := sql.Open("sqlite", sqliteuri.File(source, url.Values{"mode": {"ro"}}))
 	if err != nil {
 		return err
 	}

@@ -113,10 +113,11 @@ func deltaProseReviewBase(sha string) string {
 // The codex clause appears only when a codex verdict is present.
 func deltaScopeNote(sha string, verdicts []PerBackendVerdict) string {
 	var reviewed []string
-	anchor, codexRan := false, false
+	anchor, codexRan, codexReviewed := false, false, false
 	for _, v := range verdicts {
 		if v.Backend == BackendCodex {
 			codexRan = true
+			codexReviewed = v.Verdict == "pass" || v.Verdict == "fail"
 		}
 		if v.Backend != BackendClaude && v.Backend != BackendGLM {
 			continue
@@ -138,9 +139,14 @@ func deltaScopeNote(sha string, verdicts []PerBackendVerdict) string {
 	if len(clauses) == 0 {
 		clauses = append(clauses, "no claude or glm leg produced a verdict on it")
 	}
+	// The codex leg carries the server-collected diff in its adversarial turn
+	// (REQ-AEC-003), so a codex verdict is a review of the delta like the others.
 	codex := "codex did not run on it"
-	if codexRan {
-		codex = "codex was scoped in prose only (not mechanically bounded)"
+	switch {
+	case codexReviewed:
+		codex = "codex reviewed " + sha + "...HEAD (the server-collected diff, in its adversarial turn)"
+	case codexRan:
+		codex = "codex produced no verdict on it"
 	}
 	return "delta_base " + sha + ": " + strings.Join(clauses, "; ") +
 		"; " + codex + "; no second-review record and no session state written"
@@ -152,6 +158,37 @@ func deltaScopeNote(sha string, verdicts []PerBackendVerdict) string {
 func codexDeltaScopeClause(sha string) string {
 	return " Delta audit scope: this change was already reviewed up to commit " + sha +
 		". Review ONLY what changed after it (`git diff " + sha + "...HEAD`); code and findings that predate that commit are out of scope, so do not report them."
+}
+
+// codexDeltaLegPrompt is the adversarial turn of the audit_multi codex leg while a
+// delta base is in effect (SPEC-AUDIT-ENGINE-CONVERGENCE-001 REQ-AEC-003): the
+// standard adversarial prompt, then the delta_base...HEAD diff the SERVER
+// collected, so the scope is carried as material rather than asked for in prose.
+// The turn stays an adversarial turn/start; it never becomes the native review.
+// An empty or uncollectable diff is an error: the leg then reports inconclusive
+// instead of reviewing something the delta did not contain.
+func codexDeltaLegPrompt(root, focus, sha string) (string, error) {
+	diff, truncated, err := collectReviewDiffAtFlagged(root, deltaReviewBase(sha))
+	if err != nil {
+		return "", err
+	}
+	if strings.TrimSpace(diff) == "" {
+		return "", fmt.Errorf("delta %s...HEAD produced an empty diff", sha)
+	}
+	var b strings.Builder
+	b.WriteString(codexAdversarialReviewPrompt(focus))
+	b.WriteString(" Delta audit scope: this change was already reviewed up to commit " + sha +
+		". The diff below is exactly what changed after it (`" + sha + "...HEAD`), collected by the server; review ONLY it. " +
+		"Code and findings that predate that commit are out of scope, so do not report them.")
+	if truncated {
+		b.WriteString(" The diff was cut at the review size limit; say so if what is missing could change your verdict.")
+	}
+	b.WriteString("\n\n```diff\n" + diff)
+	if !strings.HasSuffix(diff, "\n") {
+		b.WriteString("\n")
+	}
+	b.WriteString("```\n")
+	return b.String(), nil
 }
 
 // codexAdversarialPromptFor is the adversarial prompt for ctx: the standard one,

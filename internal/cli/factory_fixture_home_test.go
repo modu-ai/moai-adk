@@ -33,6 +33,7 @@ func TestFcFixtureKeepsMoaiHomeInsideTheTestSandbox(t *testing.T) {
 		t.Fatalf("resolve sandbox home %q: %v", filepath.Dir(home), err)
 	}
 	if !strings.HasPrefix(resolved+string(filepath.Separator), tmp+string(filepath.Separator)) {
-		t.Errorf("MoaiHome() = %q resolves outside the test temp dir %q: factory tests would write project folders into the real user home's .moai", home, tmp)
+		// home-guard:allow failure-message text only: the "~/.moai" below is prose, no home directory is read here
+		t.Errorf("MoaiHome() = %q resolves outside the test temp dir %q: factory tests would write project folders into the real ~/.moai", home, tmp)
 	}
 }

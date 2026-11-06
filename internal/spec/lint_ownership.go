@@ -201,7 +201,24 @@ var getOwnershipTransitionRunner = lookupOwnershipTransitionFromGit
 //
 // @MX:NOTE: [AUTO] git log --follow로 spec.md status 라인 변화 감지
 // @MX:REASON: REQ-AAT-010 — git unreachable 시 Info finding (no error severity)
+//
+// Lint() 실행 중(per-run cache 활성)에는 SPEC마다 `git log --follow -p`를 띄우지 않고
+// 실행당 한 번의 배치 읽기에서 답을 얻는다 (card t2087, lint_ownership_batch.go).
+// 배치가 답할 수 없는 경우(경로 정규화 실패, git 오류 등)와 Lint() 바깥 호출은
+// 기존 per-SPEC 경로(lookupOwnershipTransitionPerSpec)를 그대로 쓴다.
 func lookupOwnershipTransitionFromGit(specPath, specID string) (*ownershipTransitionRecord, error) {
+	if specID == "" || specPath == "" {
+		return nil, nil
+	}
+	if rec, ok := batchedOwnershipTransition(specPath); ok {
+		return rec, nil
+	}
+	return lookupOwnershipTransitionPerSpec(specPath, specID)
+}
+
+// lookupOwnershipTransitionPerSpec은 SPEC 하나당 git log --follow 한 번을 실행하는 원본
+// 경로다. 배치 경로의 fallback이자 동치 테스트의 oracle이다 (lint_gitbatch_test.go).
+func lookupOwnershipTransitionPerSpec(specPath, specID string) (*ownershipTransitionRecord, error) {
 	if specID == "" || specPath == "" {
 		return nil, nil
 	}

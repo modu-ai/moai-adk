@@ -22,14 +22,60 @@ import (
 // lets unrelated commits through, and that the failure guidance carries the
 // five remedy strings.
 
-// gateE2EFakeMoai is the test double described above. NOT production code.
-const gateE2EFakeMoai = `#!/bin/sh
-# Test double for 'moai gate' (SPEC E2E fixture — mirrors the runner contract).
-if [ "${MOAI_PRECOMMIT:-0}" = "1" ]; then
-    enabled="$(awk '/^[[:space:]]*pre_commit:/{inblk=1; next} /^[^[:space:]#]/{inblk=0} inblk && $1 == "enabled:"{print $2; exit}' .moai/config/sections/gate.yaml 2>/dev/null)"
-    [ "$enabled" = "true" ] || exit 0
-fi
-exit 1
+// gateE2EFakeMoaiSrc is the Go source of the test double described above,
+// compiled into a real binary (moai.exe on Windows) by buildE2EBinary. NOT
+// production code.
+const gateE2EFakeMoaiSrc = `package main
+
+import (
+	"bufio"
+	"os"
+	"strings"
+)
+
+// Test double for 'moai gate' (SPEC E2E fixture — mirrors the runner
+// contract). Under MOAI_PRECOMMIT=1 with gate.pre_commit.enabled != true in
+// .moai/config/sections/gate.yaml the heavy steps are skipped (exit 0);
+// otherwise the project-wide check fails (exit 1).
+func main() {
+	if os.Getenv("MOAI_PRECOMMIT") != "1" {
+		os.Exit(1)
+	}
+	os.Exit(preCommitVerdict())
+}
+
+// preCommitVerdict mirrors the awk parse the previous sh double performed:
+// inside the pre_commit block, enabled: true means the heavy gate runs (and
+// fails here, exit 1); anything else — block absent, enabled false, or the
+// file missing — skips it (exit 0).
+func preCommitVerdict() int {
+	f, err := os.Open(".moai/config/sections/gate.yaml")
+	if err != nil {
+		return 0
+	}
+	defer f.Close()
+	inBlock := false
+	sc := bufio.NewScanner(f)
+	for sc.Scan() {
+		line := sc.Text()
+		fields := strings.Fields(line)
+		if len(fields) >= 1 && fields[0] == "pre_commit:" {
+			inBlock = true
+			continue
+		}
+		if line == "" || line[0] == ' ' || line[0] == '\t' || line[0] == '#' {
+			if inBlock && len(fields) >= 2 && fields[0] == "enabled:" {
+				if fields[1] == "true" {
+					return 1
+				}
+				return 0
+			}
+			continue
+		}
+		inBlock = false
+	}
+	return 0
+}
 `
 
 // writeGateE2ERepo builds a git repo with the hook installed, an optional
@@ -56,17 +102,13 @@ func writeGateE2ERepo(t *testing.T, gateYAML string, withFakeMoai bool) (string,
 		}
 	}
 
-	hookPath := "/usr/bin:/bin:/usr/sbin:/sbin"
+	var binDirs []string
 	if withFakeMoai {
 		binDir := filepath.Join(root, ".e2e-bin")
-		if err := os.MkdirAll(binDir, 0o755); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(filepath.Join(binDir, "moai"), []byte(gateE2EFakeMoai), 0o755); err != nil {
-			t.Fatal(err)
-		}
-		hookPath = binDir + ":" + hookPath
+		buildE2EBinary(t, gateE2EFakeMoaiSrc, binDir, "moai")
+		binDirs = append(binDirs, binDir)
 	}
+	hookPath := hookE2EPath(t, binDirs...)
 
 	commit := func(msg string) (string, error) {
 		if err := os.WriteFile(filepath.Join(root, "unrelated.txt"), []byte(msg+"\n"), 0o644); err != nil {

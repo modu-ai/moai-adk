@@ -87,6 +87,38 @@ func TestTakeoverReadsTheRecordedProcessInsteadOfTheCallersWord(t *testing.T) {
 	})
 }
 
+// t2073: a second handover in a row is an ordinary event, and the earlier holder's
+// presence file stays on disk after the first one. That file is not the current
+// holder's (OwnerLiveness reads it as "none recorded"), so even a probe that can
+// no longer tell any process apart must not turn the second handover into
+// ErrOwnerUnconfirmed. The ownership check stays whole: a presence the CURRENT
+// holder recorded is still read (see the indeterminate and damaged cases above).
+func TestAnEarlierHoldersPresenceDoesNotBlockTheNextHandover(t *testing.T) {
+	r, ref, tk := handedOffOwner(t)
+	beat(t, r, tk, homestate.ProcessIdentityDead)
+	first, err := r.TakeOver(ref, tk, "sess-b", "disp-b", "run-2", notGone())
+	if err != nil {
+		t.Fatalf("first handover: %v", err)
+	}
+	if _, statErr := os.Stat(r.Store.PresenceFile(ref)); statErr != nil {
+		t.Fatalf("the earlier holder's presence should still be on disk: %v", statErr)
+	}
+	// From here no process can be told running or gone.
+	r.Store.SetProcessProbe(func(int) (string, homestate.ProcessIdentityState) {
+		return "", homestate.ProcessIdentityIndeterminate
+	})
+	second, err := r.TakeOver(ref, Ticket{Issue: ref, Holder: first.Holder, Epoch: first.Epoch}, "sess-c", "disp-c", "run-3", fullTakeover())
+	if err != nil {
+		t.Fatalf("second handover blocked by the earlier holder's presence: %v", err)
+	}
+	if second.Holder != "sess-c" || second.Epoch <= first.Epoch {
+		t.Errorf("the record did not move to the new holder: %+v", second)
+	}
+	if note := second.History[len(second.History)-1].Note; !strings.Contains(note, "caller-asserted") {
+		t.Errorf("no process on record for the current holder, so the departure must be marked caller-asserted: %q", note)
+	}
+}
+
 // A running owner is not taken over on the strength of an unverified string.
 func TestARunningOwnerIsNotTakenOverOnAnInventedStopReference(t *testing.T) {
 	r, ref, tk := handedOffOwner(t)
@@ -133,5 +165,42 @@ func TestARunningOwnerThatBeatsAfterItsStopIsNotTakenOver(t *testing.T) {
 	}
 	if cur, _ := r.Store.Read(ref); cur.Holder != "sess-a" {
 		t.Errorf("the record moved: %+v", cur)
+	}
+}
+
+// With no process on record at the first look, the caller's OwnerGone stands. An
+// owner that records its process between that look and the move (a Heartbeat takes
+// the Issue lock, so only the store's check under the lock can see it) is read from
+// that process again: a live or unreadable one is not taken over.
+func TestTakeoverRechecksTheOwnerUnderTheLockWhenItBeatsAfterTheFirstLook(t *testing.T) {
+	cases := []struct {
+		name  string
+		state homestate.ProcessIdentityState
+		want  error // nil: the takeover goes ahead
+	}{
+		{"a live process", homestate.ProcessIdentityLive, core.ErrHeld},
+		{"an indeterminate process", homestate.ProcessIdentityIndeterminate, core.ErrOwnerUnconfirmed},
+		{"a process that is gone", homestate.ProcessIdentityDead, nil},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			r, ref, tk := handedOffOwner(t)
+			before, _ := r.Store.Read(ref)
+			r.beforeClaimMoves = func() { beat(t, r, tk, c.state) }
+			rec, err := r.TakeOver(ref, tk, "sess-new", "disp-t", "run-2", fullTakeover()) // OwnerGone: true
+			cur, _ := r.Store.Read(ref)
+			if c.want == nil {
+				if err != nil || rec.Holder != "sess-new" || cur.Holder != "sess-new" {
+					t.Fatalf("an owner whose process is gone: %+v %v", rec, err)
+				}
+				return
+			}
+			if !errors.Is(err, c.want) {
+				t.Fatalf("an owner that beat after the first look: err=%v holder=%q", err, rec.Holder)
+			}
+			if cur.Holder != before.Holder || cur.Epoch != before.Epoch {
+				t.Errorf("the record moved: before %s/%d, after %s/%d", before.Holder, before.Epoch, cur.Holder, cur.Epoch)
+			}
+		})
 	}
 }

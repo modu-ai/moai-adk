@@ -268,7 +268,7 @@ func TestCleanHome_RetentionFromHomeTier(t *testing.T) {
 		if err != nil {
 			t.Fatalf("stat repaired logs dir: %v", err)
 		}
-		if info.Mode().Perm() != 0o700 {
+		if !permMatchesOnHost(info.Mode().Perm(), 0o700) {
 			t.Errorf("force must repair directory permissions even when retention is disabled: mode=%v", info.Mode().Perm())
 		}
 	})

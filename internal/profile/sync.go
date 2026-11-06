@@ -50,7 +50,17 @@ func SyncToProjectConfig(projectRoot string, prefs ProfilePreferences) error {
 		if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
 			return fmt.Errorf("create config directory: %w", err)
 		}
-		if err := yamlpatch.PatchFile(filepath.Join(sectionsDir, "user.yaml"),
+		userPath := filepath.Join(sectionsDir, "user.yaml")
+		// A user.yaml that is not valid YAML (a duplicated `name` key is one) would
+		// be spliced at its first row only and reported as synced while still
+		// unreadable; refuse it untouched instead (t1972 N6).
+		if raw, rerr := os.ReadFile(userPath); rerr == nil {
+			var probe map[string]any
+			if perr := yaml.Unmarshal(raw, &probe); perr != nil {
+				return fmt.Errorf("sync user name: user.yaml is not valid YAML, fix it first: %w", perr)
+			}
+		}
+		if err := yamlpatch.PatchFile(userPath,
 			[]yamlpatch.KeyEdit{{Path: []string{"user", "name"}, Value: prefs.UserName}}); err != nil {
 			return fmt.Errorf("sync user name: %w", err)
 		}
