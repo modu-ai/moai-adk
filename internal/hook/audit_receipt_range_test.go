@@ -12,22 +12,16 @@ import (
 	"github.com/modu-ai/moai-adk/internal/auditreceipt"
 )
 
-// SPEC-AUDIT-ENGINE-CONVERGENCE-001 M5 RED — a receipt stays fresh across commits
-// that only record the audit's own evidence (AC-AEC-003a, AC-AEC-003b; REQ-AEC-009,
-// REQ-AEC-010; card t2017).
+// Receipt freshness after the audit (SPEC-MCP-NEUTRALITY-001 REQ-MN-020; card t2017).
 //
-// A receipt judged at commit C is reused by an auditor's PASS citing it. Today any
-// later commit moves both the head and the digest, so a commit that only files the
-// audit's own verdict makes every receipt stale. The reuse check now also accepts
-// the receipt when C is an ancestor of HEAD, every change since is an audit
-// artifact under .moai/reports/<id>/ or the progress.md of the SPEC the citation
-// names (with section E.2 byte-identical and its heading in place), and the
-// uncommitted state equals the one the receipt judged.
+// A receipt judged at commit C is reused by an auditor's PASS citing it. Any later
+// commit moves both the head and the digest, so the receipt is stale whatever the
+// commit touched; SPEC-AUDIT-ENGINE-CONVERGENCE-001 excludes the evidence-only
+// relaxation (B3) by operator decision. The cases below pin that outcome, and
+// audit_receipt_stale_test.go pins the evidence-only commits in particular.
 //
 // The fixtures are real git repositories under t.TempDir() and the check is driven
-// through the auditor's SubagentStop step, the one production caller, so the cited
-// spec= value has to reach the check from the verdict line. The test needs no new
-// production symbol and names no receipt field.
+// through the auditor's SubagentStop step, the one production caller.
 
 const (
 	rangeSpec      = "SPEC-X-001"
@@ -160,55 +154,9 @@ func replaceOnce(t *testing.T, body, old, repl string) string {
 	return strings.Replace(body, old, repl, 1)
 }
 
-// AC-AEC-003a — commits that only file the audit's evidence keep the receipt.
-func TestAEC003a_EvidenceOnlyCommits_KeepTheReceipt(t *testing.T) {
-	progress := ".moai/specs/" + rangeSpec + "/progress.md"
-
-	t.Run("verdict, second-review and the E.1/E.4 lines of the cited SPEC", func(t *testing.T) {
-		r := newRangeRepo(t)
-		rangeWrite(t, r.root, ".moai/reports/t1/verdict.md", "verdict: PASS\nrevised\n")
-		rangeWrite(t, r.root, ".moai/reports/t1/second-review.jsonl", "{}\n")
-		rangeCommit(t, r.root, "file the verdict")
-		body := rangeRead(t, r.root, progress)
-		body = replaceOnce(t, body, "plan_status: audit-ready", "plan_status: audit-ready (reviewed)")
-		body = replaceOnce(t, body, "sync_status: pending", "sync_status: complete")
-		rangeWrite(t, r.root, progress, body)
-		rangeCommit(t, r.root, "record the phases")
-		requireFresh(t, r, rangeSpec)
-	})
-
-	t.Run("a full rewrite of E.3 with E.2 byte-unchanged", func(t *testing.T) {
-		r := newRangeRepo(t)
-		body := rangeRead(t, r.root, progress)
-		at := strings.Index(body, "## §E.3")
-		end := strings.Index(body, "## §E.4")
-		body = body[:at] + "## §E.3 Run-phase Audit-Ready Signal\n\nrun_status: complete\nrun_commit_sha: abcdef0\n\nnotes: rewritten wholesale\n\n" + body[end:]
-		rangeWrite(t, r.root, progress, body)
-		rangeCommit(t, r.root, "rewrite E.3")
-		requireFresh(t, r, rangeSpec)
-	})
-
-	t.Run("every family member of the audit artifacts, over several commits", func(t *testing.T) {
-		r := newRangeRepo(t)
-		rangeWrite(t, r.root, ".moai/reports/t1/plan-audit-iter2.md", "iteration two\n")
-		rangeCommit(t, r.root, "plan audit")
-		rangeWrite(t, r.root, ".moai/reports/t1/sync-audit.md", "sync\n")
-		rangeWrite(t, r.root, ".moai/reports/t1/card-review.md", "review\n")
-		rangeCommit(t, r.root, "sync audit and card review")
-		requireFresh(t, r, rangeSpec)
-	})
-
-	t.Run("a card-id citation keeps the receipt across reports-only commits", func(t *testing.T) {
-		r := newRangeRepo(t)
-		rangeWrite(t, r.root, ".moai/reports/t1/verdict.md", "verdict: PASS\nfiled\n")
-		rangeCommit(t, r.root, "file the verdict")
-		requireFresh(t, r, rangeCard)
-	})
-}
-
-// AC-AEC-003b — anything outside the allowed set makes the receipt stale, with
+// Any change after the audit makes the receipt stale, with
 // CauseReceiptTreeStateChanged. Each row is one commit on top of the judged one.
-func TestAEC003b_AnyOtherChange_MakesTheReceiptStale(t *testing.T) {
+func TestAEC_AnyChangeAfterTheAudit_MakesTheReceiptStale(t *testing.T) {
 	progress := ".moai/specs/" + rangeSpec + "/progress.md"
 	otherProgress := ".moai/specs/" + rangeOtherSpec + "/progress.md"
 
@@ -286,35 +234,6 @@ func TestAEC003b_AnyOtherChange_MakesTheReceiptStale(t *testing.T) {
 		rangeWrite(t, r.root, "internal/a.go", "package internal\n\nvar Y = 2\n")
 		requireStale(t, r, rangeSpec)
 	})
-
-	t.Run("a receipt that predates the field carries no uncommitted-state record", func(t *testing.T) {
-		r := newRangeRepo(t)
-		legacyReceipt(t, r)
-		rangeWrite(t, r.root, ".moai/reports/t1/verdict.md", "verdict: PASS\nfiled\n")
-		rangeCommit(t, r.root, "file the verdict")
-		requireStale(t, r, rangeSpec)
-	})
-}
-
-// REQ-AEC-009's third condition, the positive side of the uncommitted-state rule: a
-// receipt that judged a tree already carrying an uncommitted edit stays fresh across
-// an evidence-only commit while that edit is unchanged. (A lane-added row; the AC
-// rows pin only the refusal when an uncommitted code edit appears.)
-func TestAEC003a_UncommittedStateAlreadyJudged_KeepsTheReceipt(t *testing.T) {
-	root := newGateTree(t, "required")
-	rangeWrite(t, root, ".gitignore", ".moai/state/\n")
-	rangeWrite(t, root, ".moai/reports/t1/verdict.md", "verdict: PASS\n")
-	rangeWrite(t, root, "internal/a.go", "package internal\n")
-	rangeCommit(t, root, "base")
-	rangeWrite(t, root, "internal/a.go", "package internal\n\nvar Z = 3\n")
-	seedStart(t, root, "a1", auditreceipt.AgentPlanAuditor, time.Now().UTC().Add(-time.Hour))
-	rid := seedReceipt(t, root, auditreceipt.Receipt{Tool: auditreceipt.ToolAuditMulti, TreeRoot: root, CodexVerdict: "pass"})
-	r := rangeRepo{root: root, rid: rid, base: rangeGit(t, root, "rev-parse", "HEAD")}
-	// Commit only the evidence file; the code edit stays uncommitted and unchanged.
-	rangeWrite(t, root, ".moai/reports/t1/verdict.md", "verdict: PASS\nfiled\n")
-	rangeGit(t, root, "add", ".moai/reports/t1/verdict.md")
-	rangeGit(t, root, "commit", "-q", "-m", "file the verdict")
-	requireFresh(t, r, rangeSpec)
 }
 
 // legacyReceipt rewrites the receipt as a record written before the change: only the
@@ -351,7 +270,7 @@ func legacyReceipt(t *testing.T, r rangeRepo) {
 
 // A receipt whose head equals the current HEAD is judged exactly as before. Controls:
 // they pass today and must keep passing.
-func TestAEC003b_HeadUnchanged_IsJudgedAsBefore_Control(t *testing.T) {
+func TestAEC_HeadUnchanged_IsJudgedAsBefore_Control(t *testing.T) {
 	t.Run("nothing changed", func(t *testing.T) {
 		r := newRangeRepo(t)
 		requireFresh(t, r, rangeSpec)

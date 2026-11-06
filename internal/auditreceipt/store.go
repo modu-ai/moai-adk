@@ -24,7 +24,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -207,16 +206,6 @@ type Receipt struct {
 	HeadCommit string `json:"head_commit,omitempty"`
 	TreeDigest string `json:"tree_digest,omitempty"`
 
-	// UncommittedDigest is the uncommitted working-tree state the receipt judged,
-	// without the head (SPEC-AUDIT-ENGINE-CONVERGENCE-001 REQ-AEC-009): it lets the
-	// reuse check keep the receipt across commits that only record the audit's own
-	// evidence while the uncommitted state is still the judged one. Recorded only
-	// when the state read at write time is the state the binding above names, so a
-	// tree edited during the audit leaves it empty. Empty on receipts written
-	// before the field existed; the reuse check then accepts nothing but an
-	// unchanged head.
-	UncommittedDigest string `json:"uncommitted_digest,omitempty"`
-
 	// BindCaptureFailed marks a receipt whose start-of-audit state capture
 	// FAILED (card t1632 sync-audit r3 F14): the freshness of this receipt is
 	// UNKNOWABLE, so the reuse check refuses it — never silent, never a
@@ -240,34 +229,12 @@ type Receipt struct {
 // @MX:ANCHOR: [AUTO] tree-state binding seam; feeds every receipt write and the reuse check
 // @MX:REASON: the binding's honesty rests on this one derivation — a digest that misses the judged state would forge freshness
 var TreeState = func(treeRoot string) (head, digest string, err error) {
-	head, digest, _, err = computeTreeState(treeRoot)
-	return head, digest, err
-}
-
-// UncommittedState returns the digest of the working-tree state OUTSIDE the head
-// commit: the same status rows, tracked diff, untracked content and submodule state
-// TreeState binds, hashed without the head line
-// (SPEC-AUDIT-ENGINE-CONVERGENCE-001 REQ-AEC-009). A receipt records it beside its
-// TreeState binding, so a later check can ask whether the uncommitted state is the
-// one the receipt judged when the head has moved. It is a var so tests stub the git
-// reads, as TreeState is.
-var UncommittedState = func(treeRoot string) (string, error) {
-	_, _, unbound, err := computeTreeState(treeRoot)
-	return unbound, err
-}
-
-// computeTreeState is the one derivation behind TreeState and UncommittedState: one
-// pass over the git reads feeds two digests. The head-bound digest stream begins
-// with the head line, byte for byte as it always did — the digest format of the
-// TreeState seam does not change; the head-free one is the same stream from the
-// status rows on.
-func computeTreeState(treeRoot string) (head, bound, unbound string, err error) {
 	if strings.TrimSpace(treeRoot) == "" {
-		return "", "", "", nil
+		return "", "", nil
 	}
 	headOut, err := gitIn(treeRoot, "rev-parse", "HEAD")
 	if err != nil {
-		return "", "", "", err
+		return "", "", err
 	}
 	// Card t1632 sync-audit F3: NUL-delimited reads — `git status --porcelain`
 	// C-quotes non-ASCII filenames and the line parser misreads them, so a
@@ -275,16 +242,14 @@ func computeTreeState(treeRoot string) (head, bound, unbound string, err error) 
 	// rows with no quoting.
 	statusOut, err := gitIn(treeRoot, "status", "--porcelain", "-z")
 	if err != nil {
-		return "", "", "", err
+		return "", "", err
 	}
 	diffOut, err := gitIn(treeRoot, "diff", "HEAD")
 	if err != nil {
-		return "", "", "", err
+		return "", "", err
 	}
-	hBound, hUnbound := sha256.New(), sha256.New()
-	_, _ = fmt.Fprintf(hBound, "head:%s\x00status\x00%s\x00diff\x00%s", headOut, statusOut, diffOut)
-	_, _ = fmt.Fprintf(hUnbound, "status\x00%s\x00diff\x00%s", statusOut, diffOut)
-	h := io.MultiWriter(hBound, hUnbound)
+	h := sha256.New()
+	_, _ = fmt.Fprintf(h, "head:%s\x00status\x00%s\x00diff\x00%s", headOut, statusOut, diffOut)
 	for _, f := range untrackedContentPaths(treeRoot) {
 		full := filepath.Join(treeRoot, f)
 		// l57-r5 finding 2: the digest binds the Lstat METADATA beside the
@@ -294,7 +259,7 @@ func computeTreeState(treeRoot string) (head, bound, unbound string, err error) 
 		// are not the link's own state.
 		info, lerr := os.Lstat(full)
 		if lerr != nil {
-			return "", "", "", lerr
+			return "", "", lerr
 		}
 		_, _ = fmt.Fprintf(h, "\x00untracked:%s\x00mode:%d", f, uint32(info.Mode()))
 		// l57-r6 finding 1: a symlink is bound as a LINK — the Readlink target
@@ -309,7 +274,7 @@ func computeTreeState(treeRoot string) (head, bound, unbound string, err error) 
 		if info.Mode()&os.ModeSymlink != 0 {
 			target, lerr := os.Readlink(full)
 			if lerr != nil {
-				return "", "", "", lerr
+				return "", "", lerr
 			}
 			_, _ = fmt.Fprintf(h, "\x00link:%s", target)
 			continue
@@ -328,7 +293,7 @@ func computeTreeState(treeRoot string) (head, bound, unbound string, err error) 
 		}
 		data, rerr := os.ReadFile(full)
 		if rerr != nil {
-			return "", "", "", rerr
+			return "", "", rerr
 		}
 		// l57-r7 finding 1: the content is LENGTH-FRAMED. Unframed, a file's
 		// content bytes could masquerade as the framing of a phantom entry —
@@ -363,7 +328,7 @@ func computeTreeState(treeRoot string) (head, bound, unbound string, err error) 
 		}
 		_, _ = fmt.Fprintf(h, "\x00submodule:%s\x00head:%s\x00status\x00%s\x00diff\x00%s", link.path, subHead, subStatus, subDiff)
 	}
-	return headOut, hex.EncodeToString(hBound.Sum(nil)), hex.EncodeToString(hUnbound.Sum(nil)), nil
+	return headOut, hex.EncodeToString(h.Sum(nil)), nil
 }
 
 // submoduleLink is one gitlink entry of the parent index: the submodule's path
@@ -1258,17 +1223,6 @@ func WriteReceipt(treeRoot string, r *Receipt) (string, error) {
 			r.HeadCommit, r.TreeDigest = head, digest
 		}
 	}
-	if r.UncommittedDigest == "" && !r.BindCaptureFailed && r.HeadCommit != "" && r.TreeDigest != "" {
-		// Record the uncommitted state only when it is the state the binding
-		// names: a caller that captured the binding before the audit ran passes it
-		// in, and a tree edited since then must not have its newer state recorded
-		// as the judged one (the laundering the start-of-audit capture closed).
-		// One real git pass serves both digests; it is not a read through the
-		// TreeState seam, so the seam still sees only the start-of-audit capture.
-		if head, bound, unbound, sErr := computeTreeState(r.TreeRoot); sErr == nil && head == r.HeadCommit && bound == r.TreeDigest {
-			r.UncommittedDigest = unbound
-		}
-	}
 	if err := writeJSON(filepath.Join(StateDir(treeRoot), receiptsRel, r.ReceiptID+".json"), r); err != nil {
 		return "", err
 	}
@@ -1662,15 +1616,6 @@ func CheckCitedReceipts(treeRoot string, start *StartMarker, cited []string) (bo
 // zero endBoundary means no single-live predecessor end has sealed an era,
 // and the check is the original one.
 func CheckCitedReceiptsSince(treeRoot string, start *StartMarker, endBoundary time.Time, cited []string) (bool, string) {
-	return CheckCitedReceiptsForSpec(treeRoot, start, endBoundary, cited, "")
-}
-
-// CheckCitedReceiptsForSpec is CheckCitedReceiptsSince with the spec= value of the
-// citing verdict line (SPEC-AUDIT-ENGINE-CONVERGENCE-001 REQ-AEC-009/010). The value
-// decides which progress.md may change between a receipt's head and the current HEAD
-// without making the receipt stale: only the progress.md of the SPEC it names, and
-// only when it is a SPEC id; a card id, an unknown value or an empty one allows none.
-func CheckCitedReceiptsForSpec(treeRoot string, start *StartMarker, endBoundary time.Time, cited []string, citedSpec string) (bool, string) {
 	if start == nil {
 		return false, CauseStartMarkerMissing
 	}
@@ -1765,12 +1710,7 @@ func CheckCitedReceiptsForSpec(treeRoot string, start *StartMarker, endBoundary 
 			switch {
 			case sErr == nil && (head != "" || digest != ""):
 				if r.HeadCommit != head || r.TreeDigest != digest {
-					// A receipt whose head is the current HEAD is judged exactly as
-					// before. When HEAD moved, the receipt stays fresh only across
-					// commits that record the audit's own evidence (REQ-AEC-009).
-					if r.HeadCommit == head || !evidenceOnlyRange(r, head, citedSpec) {
-						cause = CauseReceiptTreeStateChanged
-					}
+					cause = CauseReceiptTreeStateChanged
 				}
 			case sErr != nil && errors.Is(sErr, exec.ErrNotFound):
 				// Absent-git carve-out: undecided, the receipt keeps its other arms.
@@ -1786,208 +1726,6 @@ func CheckCitedReceiptsForSpec(treeRoot string, start *StartMarker, endBoundary 
 		}
 	}
 	return false, worst
-}
-
-var (
-	// evidenceReportPath is the audit-artifact family under .moai/reports/<id>/
-	// (SPEC-AUDIT-ENGINE-CONVERGENCE-001 REQ-AEC-009 (a)): directly inside one
-	// report directory, and only these file names. A path that merely begins with
-	// the prefix text, any other report file, and a deeper path do not match.
-	evidenceReportPath = regexp.MustCompile(`^\.moai/reports/[^/]+/(?:plan-audit[^/]*\.md|sync-audit[^/]*\.md|verdict[^/]*\.md|card-review\.md|second-review\.jsonl)$`)
-	// citedSpecIDPattern admits only a SPEC id as the owner of an allowed
-	// progress.md: a card id, "unknown-spec" or an empty value names none.
-	citedSpecIDPattern = regexp.MustCompile(`^` + specIDBody + `$`)
-	// gitCommitPattern keeps a recorded or current head from being read as an
-	// option by the git commands below.
-	gitCommitPattern = regexp.MustCompile(`^[0-9a-f]{7,64}$`)
-	// e2HeadingPattern matches the heading line of section E.2 of a progress.md.
-	e2HeadingPattern = regexp.MustCompile(`^## §E\.2(?:[ \t]|$)`)
-	// e2BoundaryPattern matches the heading line of a later evidence section, E.3 to
-	// E.9: the raw line at which section E.2 ends. The first submatch is the digit.
-	e2BoundaryPattern = regexp.MustCompile(`^## §E\.([3-9])`)
-)
-
-// evidenceOnlyRange reports whether a receipt whose head is not the current HEAD is
-// still fresh because everything since is the audit's own evidence
-// (SPEC-AUDIT-ENGINE-CONVERGENCE-001 REQ-AEC-009). All must hold: the receipt records
-// the uncommitted state it judged; its head is an ancestor of the current HEAD; every
-// change between the two is an added, modified or deleted audit-artifact report file
-// or the progress.md of the SPEC the citation names with section E.2 unchanged; and
-// the uncommitted state now equals the judged one. Any git failure reads as stale.
-//
-// @MX:NOTE: [AUTO] the freshness relaxation is an allowlist over the commit range, not a code-tree digest: it admits only the audit-artifact family and the cited SPEC's progress.md with section E.2 untouched
-// @MX:SPEC: SPEC-AUDIT-ENGINE-CONVERGENCE-001
-func evidenceOnlyRange(r Receipt, currentHead, citedSpec string) bool {
-	if r.UncommittedDigest == "" || !gitCommitPattern.MatchString(r.HeadCommit) || !gitCommitPattern.MatchString(currentHead) {
-		return false
-	}
-	root := r.TreeRoot
-	if _, err := gitIn(root, "merge-base", "--is-ancestor", r.HeadCommit, currentHead); err != nil {
-		return false
-	}
-	// The net change between the two commits, renames split into a delete and an
-	// add so a rename into or out of the allowed set is judged path by path.
-	out, err := gitInRaw(root, "diff", "--name-status", "-z", "--no-renames", r.HeadCommit, currentHead, "--")
-	if err != nil {
-		return false
-	}
-	progressPath := ""
-	if citedSpecIDPattern.MatchString(citedSpec) {
-		progressPath = ".moai/specs/" + citedSpec + "/progress.md"
-	}
-	if out != "" {
-		fields := strings.Split(strings.TrimSuffix(out, "\x00"), "\x00")
-		if len(fields)%2 != 0 {
-			return false
-		}
-		for i := 0; i < len(fields); i += 2 {
-			status, path := fields[i], fields[i+1]
-			if status != "A" && status != "M" && status != "D" {
-				return false
-			}
-			switch {
-			case evidenceReportPath.MatchString(path):
-			case progressPath != "" && path == progressPath:
-				if !e2Unchanged(root, r.HeadCommit, currentHead, path, status) {
-					return false
-				}
-			default:
-				return false
-			}
-		}
-	}
-	now, err := UncommittedState(root)
-	return err == nil && now == r.UncommittedDigest
-}
-
-// e2Unchanged reports whether section E.2 of the progress.md at path is the same in
-// the two commits: computed on BOTH versions (a file added or deleted in between has
-// no E.2 on one side), byte-identical in the raw text, with its heading line unchanged
-// and in the same raw position among the document's second-level headings. Any
-// ambiguity in either version reads as changed (e2RawRegion).
-func e2Unchanged(root, from, to, path, status string) bool {
-	var oldDoc, newDoc string
-	if status != "A" {
-		out, err := gitInRaw(root, "show", from+":"+path)
-		if err != nil {
-			return false
-		}
-		oldDoc = out
-	}
-	if status != "D" {
-		out, err := gitInRaw(root, "show", to+":"+path)
-		if err != nil {
-			return false
-		}
-		newDoc = out
-	}
-	return e2DocsUnchanged(oldDoc, newDoc)
-}
-
-// e2DocsUnchanged is the pure comparison behind e2Unchanged: section E.2 of the two
-// document versions is the same, read from the raw text of each (e2RawRegion). It
-// fails closed: when either version is ambiguous the sections are reported as changed,
-// and so is a heading present on one side only. It may report "changed" for an edit
-// that did not touch E.2; it never reports "unchanged" for an edit inside it.
-func e2DocsUnchanged(oldDoc, newDoc string) bool {
-	oldReg, oldHas, oldOK := e2RawRegion(oldDoc)
-	newReg, newHas, newOK := e2RawRegion(newDoc)
-	if !oldOK || !newOK || oldHas != newHas {
-		return false
-	}
-	return !oldHas || oldReg == newReg
-}
-
-// e2Region is section E.2 of one document version, read from its raw text.
-type e2Region struct {
-	// ordinal is 1 plus the raw count of lines starting "## " above the E.2 heading:
-	// the section's position among the second-level headings. The count is raw, so a
-	// "## " line inside a code block above E.2 counts too; that can only report a move
-	// more often, never hide one.
-	ordinal int
-	// text is the raw lines from the E.2 heading up to, not including, the first
-	// later evidence-section heading line, or to the end of the document.
-	text string
-}
-
-// e2RawRegion reads section E.2 of doc from the raw lines, with no Markdown modelling:
-// no fence, HTML block or quote is tracked, so none can end the section early. The
-// region runs from the single raw line matching e2HeadingPattern to the next raw line
-// matching e2BoundaryPattern (a LATER evidence section, E.3 to E.9), or the document end.
-//
-// ok is false, and the caller must read "changed", whenever the text is ambiguous:
-//   - several lines match e2HeadingPattern;
-//   - a line is only heading-like for E.2 (a near-miss such as "### §E.2", an indented
-//     or tab-separated "§E.2" heading, a bare "## §E.2" ending in a carriage return,
-//     "<h2>§E.2", or a setext heading);
-//   - an evidence-section boundary line sits above the E.2 heading;
-//   - the boundary lines below it do not rise strictly (E.3 before E.4, none repeated).
-//
-// The last rule is the quoted-heading corner. A code block inside E.2 that quotes
-// "## §E.3 ..." matches the boundary pattern and would end E.2 there, hiding a later
-// E.2 edit. When the document also carries the real E.3 the quote repeats or reorders
-// the sequence, so the rule reads it as ambiguous. Residual: a quote of a section number
-// the document does not otherwise carry looks like a real boundary and cannot be told
-// apart without modelling Markdown, which this comparison does not do.
-//
-// present is false, with ok true, when doc has no E.2 and nothing that could be one.
-func e2RawRegion(doc string) (region e2Region, present, ok bool) {
-	lines := strings.Split(doc, "\n")
-	heading := -1
-	var boundaries []int // line indexes of evidence-section boundary lines
-	var digits []byte    // the section digit of each boundary line
-	for i, line := range lines {
-		switch {
-		case e2HeadingPattern.MatchString(line):
-			if heading >= 0 {
-				return e2Region{}, false, false
-			}
-			heading = i
-		case e2HeadingLike(lines, i):
-			return e2Region{}, false, false
-		}
-		if m := e2BoundaryPattern.FindStringSubmatch(line); m != nil {
-			boundaries = append(boundaries, i)
-			digits = append(digits, m[1][0])
-		}
-	}
-	if heading < 0 {
-		return e2Region{}, false, true
-	}
-	for k, at := range boundaries {
-		if at < heading || (k > 0 && digits[k] <= digits[k-1]) {
-			return e2Region{}, false, false
-		}
-	}
-	end := len(lines)
-	if len(boundaries) > 0 {
-		end = boundaries[0]
-	}
-	above := 0
-	for _, line := range lines[:heading] {
-		if strings.HasPrefix(line, "## ") {
-			above++
-		}
-	}
-	return e2Region{ordinal: above + 1, text: strings.Join(lines[heading:end], "\n")}, true, true
-}
-
-// e2HeadingLike reports whether lines[i], which is not an exact E.2 heading line, still
-// reads as a heading for E.2: it names "§E.2" and starts with '#' or "<h" after any
-// indent, or the next line underlines it as a setext heading.
-func e2HeadingLike(lines []string, i int) bool {
-	t := strings.TrimLeft(lines[i], " \t")
-	if !strings.Contains(t, "§E.2") {
-		return false
-	}
-	if strings.HasPrefix(t, "#") || strings.HasPrefix(strings.ToLower(t), "<h") {
-		return true
-	}
-	if i+1 < len(lines) {
-		next := strings.TrimSpace(lines[i+1])
-		return next != "" && (strings.Trim(next, "=") == "" || strings.Trim(next, "-") == "")
-	}
-	return false
 }
 
 func markerFileName(agentID string) string { return sanitizeKey(agentID) + ".json" }

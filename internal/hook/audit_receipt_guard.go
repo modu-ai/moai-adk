@@ -228,7 +228,7 @@ func checkAuditorStop(input *HookInput) *HookOutput {
 			}
 			break
 		}
-		ok, failure := auditreceipt.CheckCitedReceiptsForSpec(g.store, start, boundary, cited, specID)
+		ok, failure := auditreceipt.CheckCitedReceiptsSince(g.store, start, boundary, cited)
 		if ok {
 			// A proven PASS clears this role's outstanding refusals in THIS tree —
 			// the other SPECs' and the unknown-spec one included (operator
