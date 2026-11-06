@@ -156,3 +156,33 @@ func TestFactoryCompleteRerunRefusesAMergeNotOnTheTarget(t *testing.T) {
 		t.Errorf("the re-run output does not say why the card was left open: %q", stdout)
 	}
 }
+
+// TestFactoryCompleteRerunReachabilityReadsTheBranchNotATag — card-review
+// (c6452cde99): a tag named like the integration branch outranks the branch in
+// git's name resolution, so a merge recorded only on that tag would read as
+// reachable from "develop". The comparison names refs/heads/<branch>, and the
+// re-run leaves the card open.
+func TestFactoryCompleteRerunReachabilityReadsTheBranchNotATag(t *testing.T) {
+	sdClearLaneEnv(t)
+	root, _, cards := sdMergeFixture(t, true, true, false, 1)
+	notOnTarget := fcGit(t, cards[0].wt, "rev-parse", "HEAD")
+	// A tag "develop" on a commit the branch does not contain.
+	fcGit(t, root, "tag", "develop", notOnTarget)
+	fcPlace(t, root, homestate.Card{
+		CardID: "t1", State: homestate.CardMergedLocal, Stage: homestate.CardMergedLocal,
+		OwnerLabel: "lane-1", LeaseHolder: "lane-1",
+		WorktreePath: cards[0].wt, MergeSHA: notOnTarget,
+	})
+	sdLaneEnv(t, "lane-1", "")
+	t.Setenv(config.EnvClaudeCodeSessionID, "sess-lane-1")
+	if _, _, err := runFactory(t, "complete", "t1", "--run", fcRun); err != nil {
+		t.Fatalf("re-run of complete: %v", err)
+	}
+	rec, err := factory.NewBacklogStore(todoBacklogPath(root)).LoadPure()
+	if err != nil {
+		t.Fatalf("load queue: %v", err)
+	}
+	if len(rec.Archived) != 0 || len(rec.Items) != 1 {
+		t.Fatalf("queue after the re-run: live=%d archived=%d, want the card left live (the tag, not the branch, contains the merge)", len(rec.Items), len(rec.Archived))
+	}
+}
