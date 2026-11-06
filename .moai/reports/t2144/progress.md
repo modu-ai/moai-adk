@@ -58,6 +58,30 @@ No timeouts occurred. The repository-wide test verdict is PENDING with CI on the
 
 ## Residual risk
 
-- A name containing `refs/` that is a tag path still resolves by git rule order; exact-path `refs/heads/...` wins first, so only a non-existent qualified ref could resolve to a tag literally named so. This fails toward a different, existing ref, not toward a silently broader one.
+- (Superseded by Repair round 1 below: the tag-first fallback is gone.) A name containing `refs/` that is a tag path still resolves by git rule order; exact-path `refs/heads/...` wins first, so only a non-existent qualified ref could resolve to a tag literally named so. This fails toward a different, existing ref, not toward a silently broader one.
 - A remote-tracking name (`origin/main`) is resolved bare and could in theory be shadowed by a tag of the same name; the task kept that behaviour.
 - A local branch literally named `origin/main` would take precedence over the remote-tracking ref (step 1); this is the intended preference for local branches.
+
+## Repair round 1 (audit sync-audit-iter1 FAIL 0.79, F1)
+
+Changes
+- `internal/factorylane/merge.go` `integrationRevSHA`: the tag-first `rev-parse <name>^{commit}` fallback is removed. Resolution is by exact ref path via `show-ref --verify --hash`: a `refs/...` name verbatim, otherwise `refs/heads/<name>` then `refs/remotes/<name>`. Nothing resolving refuses fail-closed, naming the candidate forms. The one helper still serves every call site (conflict-free, tree-identity, absorb, spec-less).
+- F2 (a local branch named `origin/main` wins over the remote-tracking ref, as in git): left, documented in the helper comment, pinned by a test. F3 (`main~0`, `main^`, `main@{0}`, `--all`): now fail closed, pinned. F4/F5 untouched.
+- New `internal/factorylane/merge_tag_shadow_repair_t2144_test.go`: P3 for tree-identity, conflict-free and absorb; cases a, b, c, d, F2. RED commit 6a1fd2780d, verbatim run in `red-repair-output.txt` (6 subtests failed; d and F2 passed before the fix). No earlier t2144 test needed updating; the nonexistent-name test still passes.
+
+Results (each run as its own command; outputs in `.moai/reports/t2144/green-repair-*.txt`)
+- `go test ./internal/factorylane/ -count=1`: `ok ... factorylane 123.510s`
+- `go test ./internal/cli/ -run MergeReady -count=1`: `ok ... cli 65.273s`
+- `go test ./internal/cli/ -run SpecLess -count=1`: `ok ... cli 25.969s`
+- `go test ./internal/cli/ -run FactoryMerge -count=1`: `ok ... cli 24.297s`
+- `go test ./internal/cli/ -run MergeReadinessBeforePR -count=1`: `ok ... cli 75.043s`
+- `go test ./internal/cli/ -run FactoryComplete -count=1`: `ok ... cli 344.197s` (covers the PR delivery path)
+- `go vet ./internal/factorylane/`: exit 0; `gofmt -l internal/factorylane`: empty
+- `-run CardPR` matched no tests ("no tests to run"); the PR-path tests carry other names, hence the two runs above. Patterns with `|` or "GitHub" in them were refused by the worktree guard and not used.
+
+Gaps
+- Mutation testing not run. Full `internal/cli` suite and CI not run. Git version not recorded this run.
+- `Develop=HEAD` now refuses (no `refs/heads/HEAD`), a side effect near audit F4; not tested directly.
+
+Residual risk
+- A local branch named like a remote-tracking ref wins over it (git behaviour, F2).
