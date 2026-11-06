@@ -42,10 +42,12 @@ func TestReconfigureBlankGitLabURLRestoresTheDefault(t *testing.T) {
 		want     string
 	}{
 		{
-			name:     "gitlab provider, blank URL, an older self-hosted URL on disk",
+			// t2108 changed this case: a blank answer keeps a stored URL (it used to
+			// overwrite it with the default), and only an absent URL becomes the default
+			name:     "gitlab provider, blank URL, a stored self-hosted URL is kept",
 			existing: "git_strategy:\n    mode: personal\n    gitlab:\n        instance_url: https://gitlab.corp.example\n",
 			result:   wizard.WizardResult{GitMode: "personal", GitProvider: "gitlab"},
-			want:     wizard.DefaultGitLabInstanceURL,
+			want:     "https://gitlab.corp.example",
 		},
 		{
 			name:   "gitlab provider, blank URL, nothing on disk",
