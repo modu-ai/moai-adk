@@ -73,6 +73,13 @@ Card t2117 · run to2bbk · lane-31 · Class B (run → sync, RED 먼저) · 202
 - 환경: 감사 중 toolchain 재소거 1회 — 환경 사유, 1회 재시도로 회수, 카드 결함으로 기록 안 함(감사관 Gaps 명시)
 - 결정 기록: decided_by=lane-31 sync-audit-r1 evidence_refs=.moai/reports/t2117/sync-audit-iter1.md ladder_path=Claude sync-auditor(af-flow) — PASS-WITH-DEBT 수용, 영수증 보강은 호스트 MCP 재시작 후 별도 기록
 
-## 대기
+## stale_server 원인 규명 (운영자 지시: 원인 찾기 — 2026-11-06 ~22:23 local)
 
-- (아래에 merge-ready·RECOMMEND 기록이 이어짐)
+- 증상: codex_audit 4회 모두 결정론적 stale_server(서빙 rc.1/b00c35d103 vs 설치본 rc.2). /mcp 재연결 2회에도 불구
+- 원인(프로세스 표 직독): **내 세션의 MCP 서버 pid 28154(PPID 44598=lane-31 호스트, 기동 21:00:04)** — rc.2 설치(21:17, go/bin/moai mtime)보다 17분 이전에 스폰된 rc.1 메모리 상 프로세스. `/mcp` 재연결이 이 프로세스를 종료·재생성하지 않았고(타 세션들은 21:27-21:31에 재생성된 흔적 존재), 세션의 모든 moai MCP 호출이 28154로 라우팅됨
+- PATH 단일성 확인: `which -a moai` → go/bin/moai 하나뿐. MCP 설정 `{"command":"moai","args":["mcp-server"]}`(프로젝트 .mcp.json) — 스폰은 PATH 해석이므로 재생성 시 곧바로 설치본(rc.2)
+- 조치: 기록된 단일 PID 28154 종료(내 세션 소유, PPID 44598 재확인 뒤 — 패턴 kill 아님). 종료 확인 + MCP 연결 끊김 확인 → 재연결 시 신규 스폰이 곧 rc.2가 되는 상태
+- de2d 허용분: 4회 거부 모두 리뷰 시작 전(영수증 미생성) — 미소모 유지. 재연결 후 감사관 1호출 예정
+- 교훈(레인 판단 기록): Claude Code의 /mcp 재연결은 기존 서버 프로세스를 재사용할 수 있다 — 설치본 교체 후 재연결이 실제 재생성을 보장하지 않으면(오류문 권고 "restart the host session"), 세션 소유 서버 프로세스를 기록 PID로 종료하는 것이 재생성을 강제하는 최소 침습 경로
+
+### Gaps
