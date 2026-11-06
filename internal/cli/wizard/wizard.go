@@ -310,37 +310,9 @@ const selectFieldUsableWidth = 76
 // size the option viewport, so passing the exact total renders every option
 // with no blank card rows (REQ-ITI-015, AC-ITI-016). The description wrap is
 // recomputed at the usable width so a long description never hides options.
-//
-// The height is the largest any supported locale needs (t1972 F6): the option set
-// is re-localized at run time while Height is fixed at build time, and an option
-// row whose "label - description" text is longer than the field (or is East Asian
-// wide text, two columns per character) wraps onto further rows, which are
-// counted here by display width via lipgloss.
 func selectHeight(q *Question) int {
-	h := selectHeightOf(q)
-	for locale := range translations {
-		lq := GetLocalizedQuestion(q, locale)
-		if lh := selectHeightOf(&lq); lh > h {
-			h = lh
-		}
-	}
-	return h
-}
-
-// selectOptionUsableWidth is the width an option row wraps at: the field width
-// less the cursor column.
-const selectOptionUsableWidth = selectFieldUsableWidth - 2
-
-// selectHeightOf is the height one locale's question needs: the title row, the
-// wrapped description, and every option row at its wrapped height.
-func selectHeightOf(q *Question) int {
 	descLines := lipgloss.Height(lipgloss.NewStyle().Width(selectFieldUsableWidth).Render(q.Description))
-	optionStyle := lipgloss.NewStyle().Width(selectOptionUsableWidth)
-	rows := 0
-	for _, o := range alignOptionLabels(q.Options) {
-		rows += lipgloss.Height(optionStyle.Render(o.Key))
-	}
-	return 1 + descLines + rows
+	return 1 + descLines + len(q.Options)
 }
 
 // alignOptionLabels renders one option per label/desc pair with the

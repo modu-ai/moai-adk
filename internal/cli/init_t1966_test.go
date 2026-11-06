@@ -1,6 +1,6 @@
 package cli
 
-// Card t1966 — `moai init` wizard/flag regression tests (items 1, 2, 7).
+// Card t1966 — `moai init` wizard/flag regression tests (items 1, 2, 5, 7).
 
 import (
 	"os"
