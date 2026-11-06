@@ -62,7 +62,7 @@ func receiptTarget(projectRoot string) (root, source string) {
 	return auditreceipt.Canonical(auditReceiptFallbackRoot()), auditreceipt.RootSourceFallback
 }
 
-// recordAuditReceiptBound writes one receipt for an audit call and returns the id
+// recordAuditReceiptClassed writes one receipt for an audit call and returns the id
 // to EXPOSE on the result — empty unless the audited tree explicitly declared the
 // codex gate required. A write failure is logged and returns an empty id: the
 // receipt is evidence, and failing the audit because the evidence could not be
@@ -79,26 +79,20 @@ func receiptTarget(projectRoot string) (root, source string) {
 // FAILURE (bindFailed) records the explicit bind_capture_failed marker
 // instead — the write-time fallback is forbidden, because a binding written
 // after the audit judged nothing.
-func recordAuditReceiptBound(tool, projectRoot, codexVerdict, codexError, gateUnmet, bindHead, bindDigest string, bindFailed bool) (id, notice string) {
-	return recordAuditReceiptAtBound(tool, projectRoot, codexVerdict, codexError, gateUnmet, nil, bindHead, bindDigest, bindFailed)
-}
-
-// recordAuditReceiptAtBound records one receipt with the codex gate the
-// exposure follows supplied by the caller: a non-nil codexRequired is the gate
-// fixed at call start (the one the unmet-gate enforcement used), so the id
-// exposed and the verdict persisted cannot disagree under an edit of the
-// tree's configuration made while the backends ran
+//
+// The codex gate the exposure follows is supplied by the caller: a non-nil
+// codexRequired is the gate fixed at call start (the one the unmet-gate
+// enforcement used), so the id exposed and the verdict persisted cannot disagree
+// under an edit of the tree's configuration made while the backends ran
 // (SPEC-AUDIT-MODEL-CONVERGE-001 REQ-ACV-009). A nil codexRequired keeps the
-// read of the tree's configuration that every caller carrying no call-start
-// plan has always had. The receipt is recorded either way; only its exposure
-// follows the gate.
-// Card t1632 sync-audit F5: the caller-supplied state binding — non-empty
-// bindHead/bindDigest are written into the receipt verbatim, so the receipt
-// attests the state the audit STARTED with. Card t1632 sync-audit r3 F14:
-// bindFailed records the explicit capture-failed marker — the receipt then
-// carries NO binding and the reuse check refuses it; the write-time fallback
-// is forbidden, because a binding written after the audit judged nothing.
-func recordAuditReceiptAtBound(tool, projectRoot, codexVerdict, codexError, gateUnmet string, codexRequired *bool, bindHead, bindDigest string, bindFailed bool) (id, notice string) {
+// read of the tree's configuration that every caller carrying no call-start plan
+// has always had. The receipt is recorded either way; only its exposure follows
+// the gate.
+//
+// errorClass is the closed-set class of an inconclusive codex verdict
+// (SPEC-AUDIT-ENGINE-CONVERGENCE-001 REQ-AEC-006): the receipt then says WHY the
+// review did not happen. An empty class writes none.
+func recordAuditReceiptClassed(tool, projectRoot, codexVerdict, codexError, errorClass, gateUnmet string, codexRequired *bool, bindHead, bindDigest string, bindFailed bool) (id, notice string) {
 	root, source := receiptTarget(projectRoot)
 	if root == "" {
 		return "", ""
@@ -113,6 +107,7 @@ func recordAuditReceiptAtBound(tool, projectRoot, codexVerdict, codexError, gate
 		RootSource:        source,
 		CodexVerdict:      codexVerdict,
 		CodexError:        codexError,
+		ErrorClass:        errorClass,
 		GateUnmet:         gateUnmet,
 		HeadCommit:        bindHead,
 		TreeDigest:        bindDigest,

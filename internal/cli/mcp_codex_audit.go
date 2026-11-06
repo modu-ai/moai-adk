@@ -235,6 +235,13 @@ type ReviewOutput struct {
 	// review. It feeds the receipt's codex_error and never reaches the JSON output.
 	StderrTail string `json:"-"`
 
+	// ErrorClass is the closed-set class (REQ-AEC-006) a backend assigns at the
+	// point it knows why a review could not be performed. Like StderrTail it never
+	// reaches this tool's JSON output; audit_multi forwards the class to
+	// PerBackendVerdict.ErrorClass and the receipt, classifying from the message
+	// where the origin set none.
+	ErrorClass string `json:"-"`
+
 	// RecordingDefect carries synthesizeReviewOutput's finding that the body
 	// stated `Verdict: pass` while finding bullets made the recorded verdict
 	// fail (card t1708). Like StderrTail it never reaches the tool's JSON output,
@@ -391,6 +398,14 @@ type Finding struct {
 // distinct from a content failure.
 func inconclusiveReview(reason string) ReviewOutput {
 	return inconclusiveReviewWithSummary("codex unavailable: " + reason)
+}
+
+// inconclusiveReviewClass is inconclusiveReview for a cause the caller knows
+// structurally; the class rides the output to audit_multi (REQ-AEC-006).
+func inconclusiveReviewClass(class, reason string) ReviewOutput {
+	out := inconclusiveReview(reason)
+	out.ErrorClass = class
+	return out
 }
 
 // inconclusiveReviewWithSummary is the same fail-open factory taking the Summary
@@ -2320,9 +2335,10 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 		// The receipt's cause is read before applyGateUnmet rewrites an inconclusive
 		// verdict to fail under a required gate; after that it would read as empty (t1788).
 		receiptErr := codexErrorDetail(out.Verdict, out.Summary, out.StderrTail)
+		receiptClass := classifyUnrun(out)
 		out = applyGateUnmet(out, root)
 		out.BuildCommit, out.BuildLag = buildCommit, buildLag
-		out.AuditReceipt, out.StateNotice = recordAuditReceiptBound(auditreceipt.ToolCodexAudit, rootArg, out.Verdict, receiptErr, out.GateUnmet, bindHead, bindDigest, bindFailed)
+		out.AuditReceipt, out.StateNotice = recordAuditReceiptClassed(auditreceipt.ToolCodexAudit, rootArg, out.Verdict, receiptErr, receiptClass, out.GateUnmet, nil, bindHead, bindDigest, bindFailed)
 		return codexReviewToolResult(out), nil
 	}
 	notifyMCPProgress(ctx, token, 0.1, "codex binary check - preparing the review request...")
@@ -2368,9 +2384,10 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 			if resolveErr != nil {
 				out := inconclusiveReview("target not applied: the base for " + codexTargetBaseBranch + " could not be resolved: " + resolveErr.Error())
 				receiptErr := codexErrorDetail(out.Verdict, out.Summary, out.StderrTail)
+				receiptClass := classifyUnrun(out)
 				out = applyGateUnmet(out, root)
 				out.BuildCommit, out.BuildLag = buildCommit, buildLag
-				out.AuditReceipt, out.StateNotice = recordAuditReceiptBound(auditreceipt.ToolCodexAudit, rootArg, out.Verdict, receiptErr, out.GateUnmet, bindHead, bindDigest, bindFailed)
+				out.AuditReceipt, out.StateNotice = recordAuditReceiptClassed(auditreceipt.ToolCodexAudit, rootArg, out.Verdict, receiptErr, receiptClass, out.GateUnmet, nil, bindHead, bindDigest, bindFailed)
 				return codexReviewToolResult(out), nil
 			}
 			base = &b
@@ -2418,9 +2435,10 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	// Read the receipt's cause before applyGateUnmet rewrites an inconclusive verdict to
 	// fail under a required gate (t1788).
 	receiptErr := codexErrorDetail(out.Verdict, out.Summary, out.StderrTail)
+	receiptClass := classifyUnrun(out)
 	out = applyGateUnmet(out, root)
 	out.BuildCommit, out.BuildLag = buildCommit, buildLag
-	out.AuditReceipt, out.StateNotice = recordAuditReceiptBound(auditreceipt.ToolCodexAudit, rootArg, out.Verdict, receiptErr, out.GateUnmet, bindHead, bindDigest, bindFailed)
+	out.AuditReceipt, out.StateNotice = recordAuditReceiptClassed(auditreceipt.ToolCodexAudit, rootArg, out.Verdict, receiptErr, receiptClass, out.GateUnmet, nil, bindHead, bindDigest, bindFailed)
 	notifyMCPProgress(ctx, token, 0.9, "codex response received - assembling the result...")
 	return codexReviewToolResult(out), nil
 }

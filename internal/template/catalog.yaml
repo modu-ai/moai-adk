@@ -81,7 +81,7 @@ catalog:
             - name: moai-ref-cross-model-audit
               tier: core
               path: templates/.claude/skills/moai-ref-cross-model-audit/
-              hash: cdd99445b591b30b2083f342c7e79d7e1f99fe36d6ab4bb7603ca7a8cbed7d87
+              hash: 00d8e9dcd8366cd7649c3f0ef00eac098452af564c706202552b5d76d12f8c50
               version: 1.0.0
             - name: moai-ref-owasp-checklist
               tier: core
@@ -183,12 +183,12 @@ catalog:
             - name: plan-auditor
               tier: core
               path: templates/.claude/agents/moai/plan-auditor.md
-              hash: 46d8e9b0fa582bccf3a999484d2b0beae0983b697956fc2dd8cbe7d54ee725ca
+              hash: bc986f7523604ca451306978c77ce1635af2e1b0a821864d4f62ac04e76de750
               version: 1.0.0
             - name: sync-auditor
               tier: core
               path: templates/.claude/agents/moai/sync-auditor.md
-              hash: fb5e8ae7a83c8edc67735cf2b4351d92be4dc1705729d63f45c4d2e7835c10b8
+              hash: 00b911833e6c452fd45174efe1480954ce34e686717596e3600a86ccc671e435
               version: 1.0.0
               depends_skills:
                 - moai-foundation-quality
@@ -426,7 +426,7 @@ catalog:
                 - name: moai-ref-cross-model-audit
                   tier: optional-pack:devops
                   path: templates/.claude/skills/moai-ref-cross-model-audit/
-                  hash: cdd99445b591b30b2083f342c7e79d7e1f99fe36d6ab4bb7603ca7a8cbed7d87
+                  hash: 00d8e9dcd8366cd7649c3f0ef00eac098452af564c706202552b5d76d12f8c50
                   version: 1.0.0
                 - name: moai-ref-supply-chain
                   tier: optional-pack:devops
