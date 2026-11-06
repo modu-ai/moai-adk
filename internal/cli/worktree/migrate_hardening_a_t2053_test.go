@@ -46,6 +46,7 @@ func t2053PlaceJournal(t *testing.T, repo, src, name string) string {
 // partial journal if the process dies mid-write, and the partial journal is
 // the recovery handle for every tree the run already moved).
 func TestJournalWrite_ReplacesTheFileAtomically(t *testing.T) {
+	t2085SkipOnWindows(t, t2085ReasonSameFile)
 	path := filepath.Join(t.TempDir(), "run.json")
 	if err := journalWrite(path, []byte(`{"steps":[]}`)); err != nil {
 		t.Fatalf("first write: %v", err)

@@ -34,6 +34,7 @@ import (
 // PATH for the duration of the test.
 func t2053FakeBin(t *testing.T, name, script string) {
 	t.Helper()
+	t2085SkipOnWindows(t, t2085ReasonShim)
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, name), []byte(script), 0o755); err != nil {
 		t.Fatalf("write fake %s: %v", name, err)
@@ -46,6 +47,7 @@ func t2053FakeBin(t *testing.T, name, script string) {
 // runs the real git.
 func t2053BlockingGit(t *testing.T, blockArg string) {
 	t.Helper()
+	t2085SkipOnWindows(t, t2085ReasonShim)
 	realGit, err := exec.LookPath("git")
 	if err != nil {
 		t.Skipf("git unavailable: %v", err)
