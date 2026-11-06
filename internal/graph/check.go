@@ -100,9 +100,9 @@ type LayerReport struct {
 	// provenance stamp are byte-for-byte what the first parent carried (nothing
 	// tracked changed, nothing untracked or ignored sits under the codemaps
 	// directory, no entry there is a link, and the stamp equals the base blob).
-	// It is the premise that makes Value - Contribution a statement about the
-	// BASE: both counts share one anchor only while the stamp and body did not
-	// move. nil means it was not measured; that, like false, is never inherited.
+	// It is the premise that makes BaseCount a statement about the BASE:
+	// the base and the cumulative count share one anchor only while the stamp
+	// and body did not move. nil means it was not measured; that, like false, is never inherited.
 	CodemapsInputsStable *bool `json:"codemaps_inputs_stable,omitempty"`
 
 	// Contribution is the change under judgment's OWN described-worthy count,
@@ -111,7 +111,9 @@ type LayerReport struct {
 	// read, narrowly, by ClassifyVerdicts: on a pull_request event a codemaps
 	// layer that is the ONLY non-fresh layer, whose contribution is measured,
 	// whose codemaps stamp and body the change left alone, and whose BASE alone
-	// (Value minus Contribution) is already at or over the threshold is
+	// (BaseCount, measured directly; not Value minus Contribution, which
+	// miscounts when the change re-edits files the base already moved) is
+	// already at or over the threshold is
 	// announced (VerdictClass warn) instead of failed. A count the change took
 	// over the line (crossed-by-change), one it put over alone (originated), and
 	// one whose window the change moved (anchor-moved) all still block. REQ-GFC-007 and spec.md §D.3 (third rejection) said
@@ -133,6 +135,14 @@ type LayerReport struct {
 	// ContributionAbsentReason names why Contribution is nil. Absent must be
 	// legible, not merely a missing field.
 	ContributionAbsentReason string `json:"contribution_absent_reason,omitempty"`
+	// BaseCount is the BASE's own described-worthy count: the files that differ
+	// between the content anchor and the first parent, same predicate and union
+	// as Value. It is measured directly rather than derived as Value minus
+	// Contribution, because Value is the union of the base's and the change's
+	// file sets and the two overlap when the change re-edits files the base
+	// already moved. nil means it could not be measured (no first parent, no
+	// anchor, a git error); nil is never treated as inherited.
+	BaseCount *int `json:"base_count,omitempty"`
 
 	// ContentAnchor is the sha the described-source diff was measured from.
 	// It is REPORTED, never gated on: the verdict is decided by Value against
@@ -555,6 +565,7 @@ func checkCodemaps(projectRoot string, th Thresholds) (LayerReport, error) {
 	}
 	rep.Value = len(driving)
 	attachContribution(projectRoot, roots, &rep)
+	attachBaseCount(projectRoot, roots, anchor, &rep)
 	if rep.Value >= th.CodemapsChangedFiles {
 		rep.Verdict = VerdictStale
 		// REQ-GFC-008 is guarded on the stale verdict: a fresh layer has
@@ -835,11 +846,33 @@ func attachContribution(projectRoot string, roots []string, rep *LayerReport) {
 	rep.CodemapsInputsStable = codemapsInputsStable(projectRoot, base)
 }
 
+// attachBaseCount measures the base's own described-worthy count: the files
+// that differ between the content anchor and the first parent (committed state
+// on both sides; no untracked listing, the base is a commit). Same predicate as
+// the cumulative count. It leaves BaseCount nil whenever the first parent or
+// the comparison is unavailable, which the policy treats as unmeasured.
+func attachBaseCount(projectRoot string, roots []string, anchor string, rep *LayerReport) {
+	if rep.Contribution == nil || rep.ContributionBase == "" || anchor == "" {
+		return
+	}
+	out, err := gitOutput(projectRoot, append([]string{"diff", "--name-only", anchor, rep.ContributionBase, "--"}, roots...)...)
+	if err != nil {
+		return
+	}
+	n := 0
+	for _, line := range strings.Split(out, "\n") {
+		if p := strings.TrimSpace(line); p != "" && mx.IsDescribedWorthy(p) {
+			n++
+		}
+	}
+	rep.BaseCount = &n
+}
+
 // codemapsInputsStable reports whether everything under the codemaps directory
 // (the body AND provenance.json) is what the first parent carried: no tracked
 // difference against base and no untracked file under it. Only then do the
-// cumulative count and the contribution share one measurement anchor, which is
-// what lets Value - Contribution stand for the base's own count.
+// cumulative count and the base count share one measurement anchor, which is
+// what lets BaseCount stand for the base's own share of the cumulative count.
 //
 // Path lists alone cannot prove that: git records a symlink as its link string
 // and never lists an ignored file, while checkCodemaps reads the stamp's BYTES

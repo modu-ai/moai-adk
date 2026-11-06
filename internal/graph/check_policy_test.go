@@ -13,7 +13,12 @@ func policyResult(value int, codemaps string, contribution *int, others ...strin
 }
 
 func policyResultWithStability(stable *bool, value int, codemaps string, contribution *int, others ...string) CheckResult {
-	layers := []LayerReport{{Layer: LayerCodemaps, Verdict: codemaps, Value: value, Contribution: contribution, CodemapsInputsStable: stable}}
+	// These hand-built rows model a non-overlapping change: base = value - contribution.
+	var base *int
+	if contribution != nil {
+		base = intp(value - *contribution)
+	}
+	layers := []LayerReport{{Layer: LayerCodemaps, Verdict: codemaps, Value: value, Contribution: contribution, BaseCount: base, CodemapsInputsStable: stable}}
 	names := []string{LayerMXIndex, LayerEdges, LayerCitations}
 	for i, v := range others {
 		layers = append(layers, LayerReport{Layer: names[i], Verdict: v})
@@ -115,6 +120,16 @@ func TestClassifyVerdicts_MovedOrUnknownAnchorBlocks(t *testing.T) {
 				t.Errorf("DriftOrigin = %q, want %q", got, DriftAnchorMoved)
 			}
 		})
+	}
+}
+
+// An unmeasured base count never reads as inherited, however large Value is.
+func TestClassifyVerdicts_UnmeasuredBaseCountBlocks(t *testing.T) {
+	res := policyResult(41, VerdictStale, intp(1), VerdictFresh, VerdictFresh, VerdictFresh)
+	res.Layers[0].BaseCount = nil
+	res.ClassifyVerdicts(EventPullRequest, InheritedDriftWarn, DefaultThresholds())
+	if !res.Blocking() || res.Layers[0].DriftOrigin != DriftAnchorMoved {
+		t.Fatalf("blocking=%v origin=%q, want blocking anchor-moved", res.Blocking(), res.Layers[0].DriftOrigin)
 	}
 }
 

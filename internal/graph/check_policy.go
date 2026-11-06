@@ -9,8 +9,8 @@ package graph
 // (block) or only be announced (warn). The one case that is announced instead
 // of failed is a codemaps count a pull request merely inherited from its base:
 // the change left the codemaps stamp and body byte-identical to the first
-// parent, the base ALONE (cumulative count minus the change's own contribution)
-// already meets the threshold, and every other layer is fresh. A count the
+// parent, the base ALONE (its own count, measured directly between the anchor
+// and the first parent) already meets the threshold, and every other layer is fresh. A count the
 // change took over the line (crossed-by-change), one it put over the line by
 // itself (originated), and one whose stamp or body moved or could not be proven
 // unmoved (anchor-moved) all block. Nothing about the threshold, the metric, or
@@ -34,8 +34,9 @@ const (
 )
 
 // Where a stale codemaps count came from, stated as a fact next to the verdict.
-// Base alone = Value - Contribution (the described-worthy files the change did
-// not touch).
+// Base alone = BaseCount (the described-worthy files that differ between the
+// anchor and the first parent; not Value - Contribution, since the two change
+// sets can overlap).
 const (
 	// DriftInherited: the base alone is already at or over the threshold.
 	DriftInherited = "inherited"
@@ -66,8 +67,8 @@ const (
 //   - the codemaps verdict is stale (an absent or unjudgeable layer blocks);
 //   - the change's own contribution was measured (nil means unmeasured, which
 //     blocks — a fabricated 0 would read as the inheriting signature) and the
-//     BASE alone (Value - Contribution) is already at or over the threshold,
-//     i.e. the origin is "inherited";
+//     BASE alone (BaseCount, measured directly) is already at or over the
+//     threshold, i.e. the origin is "inherited";
 //   - the change left the codemaps stamp and body byte-identical to the first
 //     parent (CodemapsInputsStable is true; a symlink, an ignored file, or any
 //     input whose sameness cannot be proven leaves it nil or false);
@@ -101,15 +102,19 @@ func (r *CheckResult) ClassifyVerdicts(event, inheritedPolicy string, th Thresho
 }
 
 // driftOrigin classifies a stale codemaps count by where it came from. The base
-// alone is Value - Contribution, but that subtraction is a statement about the
-// base ONLY while the change left the codemaps stamp and body alone: Value is
-// measured from an anchor derived from the tree under judgment, so a change that
-// rewinds the stamp widens the window over files the base had already covered,
-// and Contribution (.go files against HEAD^1) never sees that. Hence the order:
-// a change over the line by itself is originated whatever the window did; a
-// window that moved, or whose stability was not measured, is anchor-moved and
-// never inherited; only then does the arithmetic decide. An unmeasured
-// contribution states no origin and so never warns.
+// alone is BaseCount, measured directly (anchor..first parent, same predicate).
+// It is not Value - Contribution: Value is the union of the base's and the
+// change's file sets, and when the change re-edits files the base already moved
+// the subtraction undercounts the base and would block a count the base alone
+// had already put over the line. The base count is a statement about the base
+// ONLY while the change left the codemaps stamp and body alone: the anchor is
+// derived from the tree under judgment, so a change that rewinds the stamp
+// moves the window. Hence the order: a change over the line by itself is
+// originated whatever the window did; a window that moved, or whose stability
+// was not measured, is anchor-moved and never inherited; a base count that
+// could not be measured is likewise anchor-moved (fail closed); only then does
+// the comparison decide. An unmeasured contribution states no origin and so
+// never warns.
 func driftOrigin(l LayerReport, threshold int) string {
 	if l.Contribution == nil {
 		return ""
@@ -119,7 +124,9 @@ func driftOrigin(l LayerReport, threshold int) string {
 		return DriftOriginated
 	case l.CodemapsInputsStable == nil || !*l.CodemapsInputsStable:
 		return DriftAnchorMoved
-	case l.Value-*l.Contribution >= threshold:
+	case l.BaseCount == nil:
+		return DriftAnchorMoved
+	case *l.BaseCount >= threshold:
 		return DriftInherited
 	default:
 		return DriftCrossedByChange
