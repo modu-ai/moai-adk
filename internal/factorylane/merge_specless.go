@@ -14,7 +14,10 @@ package factorylane
 // the audited commit is HEAD, or differs from HEAD only under the card's own
 // evidence directory (a verdict file cannot name the commit that adds it, so
 // the commit that lands the verdict is allowed to sit after the audited one —
-// every other change after the audited commit makes the verdict stale).
+// every other change after the audited commit makes the verdict stale, except
+// a plain absorb of the integration branch that leaves the card's own diff
+// byte-identical — card t2121, absorbOnlyChange). When verdict.md is absent the
+// latest sync-audit*.md (highest -iter<N>) is the evidence file instead.
 //
 // The leader's default for a SPEC-less card, operator not yet confirmed; the
 // SPEC path (checkSyncAudit) is untouched.
@@ -25,6 +28,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/auditverdict"
@@ -33,6 +37,8 @@ import (
 var (
 	specLessCardIDPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
 	specLessSHAPattern    = regexp.MustCompile(`^audited_sha: ([0-9a-f]{12,40})$`)
+
+	specLessSyncAuditPattern = regexp.MustCompile(`^sync-audit(?:-iter(\d+))?\.md$`)
 )
 
 // specLessMaxVerdictBytes bounds the verdict file the condition reads.
@@ -40,17 +46,17 @@ const specLessMaxVerdictBytes = int64(4 << 20)
 
 // checkSyncAuditVerdictFile evaluates condition (a) for a SPEC-less card. repoDir
 // is the card's tree (where the verdict file lives); git runs in that same tree.
-func checkSyncAuditVerdictFile(git GitRunner, repoDir, card string) (string, bool) {
+func checkSyncAuditVerdictFile(git GitRunner, repoDir, card, develop string) (string, bool) {
 	if !specLessCardIDPattern.MatchString(card) || strings.Contains(card, "..") {
 		return fmt.Sprintf("card id %q is not a safe path segment, so its verdict file .moai/reports/<card-id>/verdict.md cannot be located", card), false
 	}
-	rel := ".moai/reports/" + card + "/verdict.md"
+	rel := specLessEvidenceRel(repoDir, card)
 	path := filepath.Join(repoDir, filepath.FromSlash(rel))
 	refuse := func(format string, args ...any) (string, bool) {
-		return fmt.Sprintf("card %s has no SPEC, so its merge evidence is %s — %s. "+
+		return fmt.Sprintf("card %s has no SPEC, so its merge evidence is %s (or, when verdict.md is absent, the latest .moai/reports/%s/sync-audit*.md) — %s. "+
 			"Produce that file on the card branch with the machine lines `verdict: PASS` (or `verdict: PASS-WITH-DEBT`) and `audited_sha: <full commit SHA the audit read>` "+
-			"(the audited commit must be HEAD, or differ from HEAD only under .moai/reports/%s/)",
-			card, rel, fmt.Sprintf(format, args...), card), false
+			"(the audited commit must be HEAD, differ from HEAD only under .moai/reports/%s/, or differ only by absorbing %s with the card's own diff unchanged)",
+			card, rel, card, fmt.Sprintf(format, args...), card, develop), false
 	}
 
 	info, err := os.Stat(path)
@@ -135,11 +141,142 @@ func checkSyncAuditVerdictFile(git GitRunner, repoDir, card string) (string, boo
 		evidenceDir := ".moai/reports/" + card + "/"
 		for _, changed := range strings.Split(diffOut, "\x00") {
 			if changed != "" && !strings.HasPrefix(changed, evidenceDir) {
-				return refuse("audited_sha %s is stale: HEAD %s differs from it outside %s (first changed path: %s)", auditedFull, head, evidenceDir, changed)
+				if absorbed, why := absorbOnlyChange(git, develop, auditedFull, head, card); !absorbed {
+					return refuse("audited_sha %s is stale: HEAD %s differs from it outside %s (first changed path: %s) and the change is not a plain absorb of %s: %s", auditedFull, head, evidenceDir, changed, develop, why)
+				}
+				break
 			}
 		}
 	}
 	return fmt.Sprintf("%s: verdict: %s, audited_sha %s binds HEAD %s — the SPEC-less card's audit record reads closed", rel, fields.Label, auditedFull, head), true
+}
+
+// specLessEvidenceRel names the card's evidence file: verdict.md when it exists,
+// else the latest sync-audit*.md (highest -iter<N>; a name without -iter counts
+// as iteration 1), else verdict.md so the refusal names the primary file.
+func specLessEvidenceRel(repoDir, card string) string {
+	dir := ".moai/reports/" + card + "/"
+	primary := dir + "verdict.md"
+	if _, err := os.Lstat(filepath.Join(repoDir, filepath.FromSlash(primary))); err == nil {
+		return primary
+	}
+	entries, err := os.ReadDir(filepath.Join(repoDir, filepath.FromSlash(dir)))
+	if err != nil {
+		return primary
+	}
+	best, bestN := "", -1
+	for _, e := range entries {
+		m := specLessSyncAuditPattern.FindStringSubmatch(e.Name())
+		if m == nil {
+			continue
+		}
+		n := 1
+		if m[1] != "" {
+			n, _ = strconv.Atoi(m[1])
+		}
+		if n > bestN || (n == bestN && e.Name() > best) {
+			best, bestN = e.Name(), n
+		}
+	}
+	if best == "" {
+		return primary
+	}
+	return dir + best
+}
+
+// absorbOnlyChange reports whether HEAD differs from the audited commit only by
+// absorbing the integration branch, with the card's own diff untouched.
+//
+//	(a) every first-parent commit in audited..HEAD is either a merge whose extra
+//	    parents all lie inside develop (an absorb of main, not of another
+//	    branch) or touches nothing outside the card evidence directory;
+//	(b) the card's diff against its merge-base with develop is the same at the
+//	    audited commit and at HEAD, outside the evidence directory.
+//
+// (b) is the load-bearing proof: an evil merge — a conflict-resolution edit to a
+// card-owned file, or a smuggled edit to any other path — changes the card diff
+// (every path where HEAD differs from develop is in the card diff by
+// construction), so it cannot pass. The comparison uses -U0 patches with the
+// blob ids ("index" lines) dropped and the hunk positions blanked: blob ids of
+// a file main also touched legitimately change on absorb, and hunk line numbers
+// shift when main inserts lines earlier in the file, while the removed/added
+// lines themselves are what the audit read. Anything unresolvable fails closed.
+func absorbOnlyChange(git GitRunner, develop, audited, head, card string) (bool, string) {
+	if strings.TrimSpace(develop) == "" {
+		return false, "the integration branch is unknown"
+	}
+	dev, err := git.Git("rev-parse", "--verify", "--quiet", develop+"^{commit}")
+	if err != nil || strings.TrimSpace(dev) == "" {
+		return false, fmt.Sprintf("the integration ref %s cannot be resolved (fail-closed)", develop)
+	}
+	dev = strings.TrimSpace(dev)
+	evidenceDir := ".moai/reports/" + card + "/"
+
+	log, err := git.Git("rev-list", "--first-parent", "--parents", audited+".."+head)
+	if err != nil {
+		return false, fmt.Sprintf("the commits after the audited one could not be listed: %v", err)
+	}
+	for _, line := range strings.Split(strings.TrimSpace(log), "\n") {
+		f := strings.Fields(line)
+		if len(f) == 0 {
+			continue
+		}
+		if len(f) > 2 { // a merge: every merged-in parent must already be in develop
+			for _, p := range f[2:] {
+				if _, err := git.Git("merge-base", "--is-ancestor", p, dev); err != nil {
+					return false, fmt.Sprintf("merge %s brings in %s, which is not part of %s", f[0], p, develop)
+				}
+			}
+			continue
+		}
+		names, err := git.Git("diff-tree", "--no-commit-id", "--name-only", "-r", "-z", "--root", f[0])
+		if err != nil {
+			return false, fmt.Sprintf("commit %s could not be inspected: %v", f[0], err)
+		}
+		for _, p := range strings.Split(names, "\x00") {
+			if p != "" && !strings.HasPrefix(p, evidenceDir) {
+				return false, fmt.Sprintf("commit %s changes %s after the audit", f[0], p)
+			}
+		}
+	}
+
+	before, err := cardPatch(git, dev, audited, evidenceDir)
+	if err != nil {
+		return false, err.Error()
+	}
+	after, err := cardPatch(git, dev, head, evidenceDir)
+	if err != nil {
+		return false, err.Error()
+	}
+	if before != after {
+		return false, "the card's own diff against " + develop + " differs between the audited commit and HEAD"
+	}
+	return true, ""
+}
+
+// cardPatch returns the normalized card diff of tip against its merge-base with dev.
+func cardPatch(git GitRunner, dev, tip, evidenceDir string) (string, error) {
+	base, err := git.Git("merge-base", dev, tip)
+	if err != nil || strings.TrimSpace(base) == "" {
+		return "", fmt.Errorf("no merge-base between %s and %s: %v", dev, tip, err)
+	}
+	out, err := git.Git("diff", "--no-ext-diff", "--no-color", "--no-renames", "-U0", strings.TrimSpace(base), tip, "--", ".", ":(exclude)"+evidenceDir)
+	if err != nil {
+		return "", fmt.Errorf("the card diff at %s could not be computed: %v", tip, err)
+	}
+	var b strings.Builder
+	for _, l := range strings.Split(out, "\n") {
+		switch {
+		case strings.HasPrefix(l, "index "):
+			continue
+		case strings.HasPrefix(l, "@@"):
+			b.WriteString("@@\n")
+		default:
+			b.WriteString(l)
+			b.WriteByte('\n')
+		}
+	}
+	return b.String(), nil
 }
 
 // soleKey returns the only key of m, and false when m does not hold exactly one.
