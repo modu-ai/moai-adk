@@ -81,8 +81,8 @@ var commitVerbs = map[string]bool{
 // m6, ml-test, tier, wr-test, rfx, sfx-cli) joined under the t1913 addition;
 // 77 with the t1831 af-flow fixture email; 78 with the t2013 factory
 // checkpoint fixture email; 80 with the t2034 mergeq gate fixture emails
-// (g@e, t@e); 82 with the t2081 (migrate_parallel_t2081_test.go) and t2087
-// (lint_gitbatch_test.go) fixture emails (card t2153).
+// (g@e, t@e); 83 with the t2081 parallel-migration and t2087 lint git-batch
+// fixture emails.
 var builtinCommitIdentityDenyEmails = []string{
 	"a@e.invalid",
 	"anchor-test@example.com",
@@ -147,6 +147,8 @@ var builtinCommitIdentityDenyEmails = []string{
 	"t1404@example.invalid",
 	"t1680@example.invalid",
 	"t1831@test.local",
+	"t2081@example.com",
+	"t2087@example.com",
 	"t371@example.com",
 	"t461@example.test",
 	"t488@example.invalid",
@@ -159,8 +161,6 @@ var builtinCommitIdentityDenyEmails = []string{
 	"t688@example.test",
 	"t766@example.invalid",
 	"t768@example.test",
-	"t2081@example.com",
-	"t2087@example.com",
 	"test@example.com",
 	"test@example.invalid",
 	"test@test.com",
