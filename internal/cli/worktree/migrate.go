@@ -1131,6 +1131,8 @@ type manifestPrefetcher struct {
 	slots   chan struct{}
 	quit    chan struct{}
 	once    sync.Once
+	feeder  chan struct{} // closed when the feeding goroutine has returned
+	running sync.WaitGroup
 }
 
 type manifestFuture struct {
@@ -1143,18 +1145,21 @@ func newManifestPrefetcher(trees []string, ahead int) *manifestPrefetcher {
 	if ahead < 1 {
 		ahead = 1
 	}
-	pf := &manifestPrefetcher{slots: make(chan struct{}, ahead), quit: make(chan struct{})}
+	pf := &manifestPrefetcher{slots: make(chan struct{}, ahead), quit: make(chan struct{}), feeder: make(chan struct{})}
 	for range trees {
 		pf.futures = append(pf.futures, &manifestFuture{done: make(chan struct{})})
 	}
 	go func() {
+		defer close(pf.feeder)
 		for i, tree := range trees {
 			select {
 			case pf.slots <- struct{}{}:
 			case <-pf.quit:
 				return
 			}
+			pf.running.Add(1)
 			go func(f *manifestFuture, tree string) {
+				defer pf.running.Done()
 				f.digest, f.err = manifestCapture(tree)
 				close(f.done)
 			}(pf.futures[i], tree)
@@ -1172,8 +1177,17 @@ func (pf *manifestPrefetcher) get(i int) (string, error) {
 	return f.digest, f.err
 }
 
-// stop ends the read-ahead; captures already running finish on their own.
-func (pf *manifestPrefetcher) stop() { pf.once.Do(func() { close(pf.quit) }) }
+// stop ends the read-ahead and waits for the captures already running: an engine
+// that returns early must not leave git child processes behind it (card t2081,
+// audit F2 - a child between fork and exec still holds the migration lock's
+// descriptor, so a rerun right after the return found the lock held). The wait
+// is bounded by the per-call git timeout of the captures in flight, at most the
+// read-ahead width of them.
+func (pf *manifestPrefetcher) stop() {
+	pf.once.Do(func() { close(pf.quit) })
+	<-pf.feeder
+	pf.running.Wait()
+}
 
 // migrateOneTreeWith moves one tree through the journaled step order —
 // manifest, journal-pending (F3: before the move), intent line (the

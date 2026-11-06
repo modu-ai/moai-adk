@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -89,6 +90,9 @@ func TestVerify_PicksTheSecondJournalOfTheSameSecond(t *testing.T) {
 func TestMigrateApply_ForwardFailure_UnreadableDestinationIdentity_StaysPending(t *testing.T) {
 	w := t2053TwoTreeWorld(t)
 	orig := forwardGitMove
+	// The engine hands a batch of trees to this seam at the same time (card
+	// t2081), so the list the seam appends to is guarded.
+	var mu sync.Mutex
 	var restore []func()
 	forwardGitMove = func(root, from, to string) error {
 		if err := orig(root, from, to); err != nil {
@@ -97,7 +101,9 @@ func TestMigrateApply_ForwardFailure_UnreadableDestinationIdentity_StaysPending(
 		gitFile := filepath.Join(to, ".git")
 		body, _ := os.ReadFile(gitFile)
 		_ = os.WriteFile(gitFile, []byte("gitdir: \n"), 0o644)
+		mu.Lock()
 		restore = append(restore, func() { _ = os.WriteFile(gitFile, body, 0o644) })
+		mu.Unlock()
 		return errors.New("killed right after the rename")
 	}
 	t.Cleanup(func() { forwardGitMove = orig })

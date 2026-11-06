@@ -482,3 +482,39 @@ func TestMigrationEngine_StoppedAfterABatchMovedThenRollbackRestoresEveryTree(t 
 		}
 	}
 }
+
+// An engine that returns early (an error, or a stop in the middle of a batch)
+// must not leave its read-ahead manifest captures running: each one starts git
+// child processes after the engine has handed control back, and a child that is
+// between fork and exec still holds the descriptors of the migration lock, so a
+// rerun right after the return found the lock "held by another mover" (audit
+// finding F2, seen 1 in 6 under -race). The engine joins them before it returns.
+func TestMigrationEngine_ReturningEarlyJoinsTheReadAheadCaptures(t *testing.T) {
+	w := pipelineWorld(t, 7)
+	orig := manifestCapture
+	var active, started int32
+	manifestCapture = func(tree string) (string, error) {
+		atomic.AddInt32(&started, 1)
+		atomic.AddInt32(&active, 1)
+		defer atomic.AddInt32(&active, -1)
+		time.Sleep(150 * time.Millisecond) // long enough that a capture started late is still running at the return
+		return orig(tree)
+	}
+	t.Cleanup(func() { manifestCapture = orig })
+
+	restore, _ := stopAt("prepared")
+	err := withMigrationLock(w.repo, func() error {
+		_, rerr := runMigrationEngineWith(w.repo, true, "migrate", nil)
+		return rerr
+	})
+	restore()
+	if err == nil {
+		t.Fatalf("the injected stop did not stop the run")
+	}
+	if n := atomic.LoadInt32(&started); n <= int32(moveConcurrency) {
+		t.Fatalf("only %d captures started; the scenario needs read-ahead beyond the first batch", n)
+	}
+	if n := atomic.LoadInt32(&active); n != 0 {
+		t.Errorf("%d manifest captures were still running when the engine returned", n)
+	}
+}
