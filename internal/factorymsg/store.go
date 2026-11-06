@@ -277,6 +277,14 @@ func OpenExistingWithContext(parent context.Context, projectRoot, runID string, 
 	var count int
 	if err := db.QueryRowContext(ctx, `SELECT count(*) FROM peers`).Scan(&count); err != nil {
 		_ = db.Close()
+		// Card t2068: the file exists before its first opener has committed the
+		// schema (the first connection creates the file, the schema statement
+		// runs after). That is "not initialized yet", not a broken broker: take
+		// the full open, whose CREATE ... IF NOT EXISTS is serialized by the
+		// immediate write lock against the opener still initializing.
+		if strings.Contains(err.Error(), "no such table") {
+			return openResolvedWithContext(ctx, namespace, runID, nil)
+		}
 		return nil, err
 	}
 	if err := ensureSchema(ctx, db); err != nil {
