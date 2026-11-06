@@ -82,4 +82,12 @@ Card t2117 · run to2bbk · lane-31 · Class B (run → sync, RED 먼저) · 202
 - de2d 허용분: 4회 거부 모두 리뷰 시작 전(영수증 미생성) — 미소모 유지. 재연결 후 감사관 1호출 예정
 - 교훈(레인 판단 기록): Claude Code의 /mcp 재연결은 기존 서버 프로세스를 재사용할 수 있다 — 설치본 교체 후 재연결이 실제 재생성을 보장하지 않으면(오류문 권고 "restart the host session"), 세션 소유 서버 프로세스를 기록 PID로 종료하는 것이 재생성을 강제하는 최소 침습 경로
 
+### 영수증 보강 완료 (2026-11-06 ~22:40 local)
+
+- 원인 조치 후 rc.2 서빙 확인(서버 지시문 스탬프 "build v3.2.1-rc.2 (commit: 04d8c27a7e) (pid 21882)" + 신규 프로세스 22:30:55 기동 + `moai version` rc.2 3중 직독) → 감사관 5호출 성공
+- 영수증: **rcpt-570cb4d72e7e4f0aaab856cb** (backend codex, resolved_model gpt-6.1-sol, build_commit 04d8c27a7e, 검토 범위 merge-base b00c35d103→호출시점 HEAD bf35a34953) — de2d 허용분 1회 소모(카드 한도 2회 중 1회)
+- codex 독립 판정: **fail — P2 2건**. 감사관 재판정: F7(신규, in-diff Medium) — AGENTS.local.md+CLAUDE.local.md 병존 시 localInstructionSlot이 첫 파일만 반환해 후자 본문·import가 예산 표면 누락(근거: AGENTS.md §8 결합 주입. 주 체크아웃은 오늘両 파일 보유). 구현은 카드 처방(first/fallback) 그대로 → 처방 수준 갭, **레인 수용: 이 카드는 선택적, 팔로업 카드 후보**(양 슬롯을 시드로 열거). F3은 기존 선택적 발견과의 동의 — 신규 조치 없음
+- 판정 토큰 불변: PASS-WITH-DEBT 94.2 (부채=미게이트 코드 결함 0 + F7 등 선택적 발견). 기계 줄 verdict:/audited_sha: 각 1줄 유지(직독 확인)
+- 리더 전달: F7 팔로업 카드 후보(큐 변경 없이 기록만)
+
 ### Gaps

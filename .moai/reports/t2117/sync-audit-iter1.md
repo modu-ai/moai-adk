@@ -9,9 +9,17 @@ audited tree = worktree `/Users/goos/.moai/worktrees/projects/moai-adk-go/t2117`
 card diff = `b00c35d103..927cd8b651` (7 files, +383/−29; commits RED `108c9bed5e` + GREEN `927cd8b651`).
 
 Overall Verdict: **PASS-WITH-DEBT** — the four defects are repaired and verified
-RED→GREEN by independently reproduced mechanical evidence; the single debt item is
-the unserved required codex second-opinion gate (stale MCP server, environmental;
-no receipt exists). No blocking code finding.
+RED→GREEN by independently reproduced mechanical evidence; the required codex
+second-opinion gate was ultimately served (receipt `rcpt-570cb4d72e7e4f0aaab856cb`,
+fifth call, after four environmental `stale_server` refusals), and the debt is now
+the two codex P2 measurement-accuracy findings (F7 coexistence under-count, F3+
+symlink real-path escape) — routed as follow-up, neither blocking under this
+card's stated acceptance. No blocking code finding. **Disagreement surfaced, not
+smoothed**: codex's own verdict on the delta is `fail` (the two P2s); this
+auditor's verdict is PASS-WITH-DEBT on the reasoning recorded against F7/F3+
+(both are beyond-prescription accuracy gaps of the C3 surface — the card text
+itself prescribed the first/fallback slot — and the hook's prompt-facing surface
+is unaffected). The leader holds the final disposition.
 
 ## Dimension Scores (harmonic 94.2; flat-weighted 94.9)
 
@@ -35,10 +43,12 @@ All findings below are **optional** — none blocks (finding-consumption discipl
 | F4 | in-diff | Info | optional | internal/cli/migrate_local_instructions.go:111-118 | The divergence-abort path leaves the timestamped backup of the (still-live) original on disk. Matches the pre-existing remove-failure rollback behavior exactly; a retry writes a fresh `MkdirTemp` directory, so no retry interference. Cosmetic. |
 | F5 | in-diff | Info | optional | internal/hook/instructions_loaded.go:201 | User-visible delta within fix scope: symlinked instruction anchors/members, previously followed by `ReadFile`, are now excluded from the set (and thus from hook measurement). Intended consequence of the card's Lstat-subset adoption; coordinate with t2114 (renames). |
 | F6 | in-diff | Info | optional | internal/cli/migrate_local_instructions.go:104-109 | In the re-check-failure branch the message asserts the source "is untouched" even in the vanished-file sub-case (concurrent actor removed it). The action taken (abort + rollback) is the safe one; wording only. |
+| F7 | in-diff | Medium | optional (this card) → follow-up routed | internal/config/token_budget_guard.go:338 (`localInstructionSlot`) | **Codex P2 #1** (receipt rcpt-570cb4d72e7e4f0aaab856cb): when `AGENTS.local.md` and `CLAUDE.local.md` coexist, the slot returns only the first, so the legacy file's body AND its `@`-import closure fall out of the budget surface — while the real injection combines both bodies (grounded: AGENTS.md §8 local-launch form, "reads … `AGENTS.local.md` first, then the legacy file, and injects the combined bodies"; the primary checkout carries both files today). Under-count can mask an overshoot during the coexistence state. The card text itself prescribed first/fallback semantics, so the implementation matches the dispatch — the gap is prescription-level. Required fix (follow-up): enumerate BOTH slots as seeds when both are present as regular files. |
+| F3+ | in-diff | Medium (upgraded by codex concurrence) | optional (this card) → follow-up routed | internal/config/token_budget_guard.go:381 | **Codex P2 #2**: the import boundary check is lexical — an import path that is a symlink pointing outside repoRoot passes `os.Stat` (follows links) and the string-form `filepath.Rel` check, so an external regular file is read and counted, breaking the stated project-internal confinement and measurement reproducibility. Same substance as F3/Residual-risk (3), now with a concrete remedy: resolve the real path (`filepath.EvalSymlinks`) BEFORE the boundary check and reject symlinked ancestors that escape. Hook prompt surface unaffected (hook refuses symlinks via Lstat). |
 
 No `outside` findings. No `touched-file` findings outside the diff hunks.
 
-## Codex second-opinion gate — unserved (the debt), environmental
+## Codex second-opinion gate — SERVED on the fifth call (receipt minted); four environmental refusals preceded
 
 - Audit plan (`moai verify audit-plan --project-root <worktree>`, verbatim members):
   `"config_status": "ok"`, gates — claude `off`, codex `required`, glm `off`,
@@ -102,6 +112,33 @@ No `outside` findings. No `touched-file` findings outside the diff hunks.
   to satisfy the guard is forbidden by the standing decision. Disposition per
   that decision (t2094 precedent, leader-accepted): recorded, token unchanged,
   finished. The lane resolves the receipt downstream (rebind-evidence).
+- **Fourth refusal (RECOMMEND-path retry, final).** After the operator's second
+  `/mcp` reconnect round, HEAD re-verified
+  `5158fc0981ccec574e6d096be418cd544793aaac` (docs-only, two commits past the
+  audited SHA, zero code change); the single instructed retry (same parameters)
+  returned the verbatim-identical refusal:
+  `stale_server: the serving moai build (/Users/goos/go/bin/moai) differs from
+  the installed build (/Users/goos/go/bin/moai)` with `_server
+  {"commit":"b00c35d103","version":"v3.2.1-rc.1"}` still serving against the
+  installed `v3.2.1-rc.2`. No receipt minted, nothing bound to any SHA. No
+  further calls per instruction; verdict token unchanged. Four calls total,
+  zero codex runs.
+- **Fifth call — GATE SERVED, receipt minted (final).** After the stale rc.1
+  server was killed and replaced by a fresh process (pid 21882, build
+  v3.2.1-rc.2, commit 04d8c27a7e — coordinator-verified), HEAD re-verified
+  `bf35a3495312b0c050bed702e99ec182f77340a7` (docs-only commits past the
+  audited SHA; `git diff --stat` over them shows only `.moai/reports/`
+  progress/verdict files — code surface identical to `927cd8b651…`), the call
+  (same parameters) succeeded: **receipt `rcpt-570cb4d72e7e4f0aaab856cb`**,
+  server provenance `"backend":"codex","resolved_model":"gpt-6.1-sol"`,
+  `"build_commit":"04d8c27a7e"`, review scope
+  `"review_base":"delta_base (merge base b00c35d103fa175efe3b68340d9b176cba1b067b)"`.
+  The result carries no explicit head-SHA field; the reviewed delta is
+  merge-base `b00c35d103…` to call-time HEAD `bf35a3495312…`. Codex's
+  independent verdict on the delta: **fail**, two P2 findings — folded below
+  as F7 (new) and F3 concurrence. The prior debt item (unserved gate) is
+  resolved; the verdict's debt is now the two codex P2 measurement-accuracy
+  findings, routed as follow-up.
 
 ## Verification Record (5-section)
 
@@ -149,10 +186,12 @@ measured on this worktree, where `AGENTS.local.md` is git-tracked (53,522 bytes,
 
 **Gaps** — (a) Full suite not run: lane-local discipline; the repository verdict
 belongs to integration CI. (b) Windows build of the unix-tagged FIFO test not
-compiled (build-tag shape verified by inspection only). (c) Required codex gate
-unserved — stale MCP server (verbatim error above); no receipt minted; one call
-made, none repeated; host restart + downstream rebind-evidence is the resolution
-path. (d) Concurrent-actor environment damage during THIS audit: the freshly
+compiled (build-tag shape verified by inspection only). (c) Required codex gate — initially unserved (four `stale_server` refusals,
+verbatim above), ultimately SERVED on the fifth call after the stale server
+process was replaced: receipt `rcpt-570cb4d72e7e4f0aaab856cb` minted by build
+04d8c27a7e against merge-base `b00c35d103…`, call-time HEAD
+`bf35a3495312…` (docs-only past the audited SHA). The gate's two P2 findings are
+carried as the verdict's debt (F7, F3+) and routed as follow-up. (d) Concurrent-actor environment damage during THIS audit: the freshly
 restored go1.27.1 toolchain in the shared module cache was wiped again mid-audit
 (~17:50 local; two `go test` calls errored `stat .../toolchain@v0.0.1-go1.27.1.../bin/go: no such file or directory`); the one-retry disposition recovered it (module+toolchain re-download) and both affected runs then completed — recorded as environment, never as card defect. (e) Targeted-subset coverage only (no package-coverage claim): with the same `-run` subsets and `-cover`, exit 0 — `hook 1.657s coverage: 2.8% of statements`, `cli 3.480s coverage: 9.9%`, `config 1.613s coverage: 2.8%`. These are subset-driven package-wide figures (the cli package is large; 7 targeted tests exercising 9.9% is expected) and are cited only to record what was observed — the repository 85% threshold is owned by the full-suite CI verdict, deliberately not run here. (f) `go test -list` swept counts read at HEAD only (RED-tree sweeps inferred from the executed FAIL lines, which name the tests).
 
