@@ -19,6 +19,7 @@ import (
 // directory the shell actually enters, and a failed lookup of a literal target
 // must not turn a protected commit into an allow.
 func TestBranchGuardExplicitTargetNotAdoptedWhenPathIsShellExpanded(t *testing.T) {
+	skipWindowsPOSIXCommandText(t)
 	t.Setenv(branchGuardExemptEnv, "")
 	fx := newAFFGuardFixture(t)
 	handler := newTargetGuardHandler(fx)

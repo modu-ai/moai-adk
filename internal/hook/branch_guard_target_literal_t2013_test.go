@@ -18,6 +18,7 @@ import (
 // quote collapse, and the fail-closed allow-list refuses to adopt the target for
 // any command that is not a plain literal.
 func TestBranchGuardExplicitTargetNotAdoptedWhenCommandIsNotLiteral(t *testing.T) {
+	skipWindowsPOSIXCommandText(t)
 	t.Setenv(branchGuardExemptEnv, "")
 	fx := newAFFGuardFixture(t)
 	handler := newTargetGuardHandler(fx)

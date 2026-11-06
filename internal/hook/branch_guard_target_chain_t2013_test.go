@@ -22,6 +22,7 @@ import (
 )
 
 func TestBranchGuardChainedCdDecisionTable(t *testing.T) {
+	skipWindowsPOSIXCommandText(t)
 	t.Setenv(branchGuardExemptEnv, "")
 	fx := newAFFGuardFixture(t)
 	handler := newTargetGuardHandler(fx)

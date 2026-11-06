@@ -13,6 +13,7 @@ package hook
 import "testing"
 
 func TestBranchGuardGitCSpacedRedirectionStillDeniedForPrimary(t *testing.T) {
+	skipWindowsPOSIXCommandText(t)
 	t.Setenv(branchGuardExemptEnv, "")
 	fx := newAFFGuardFixture(t)
 	P := fx.primary

@@ -12,6 +12,7 @@ package hook
 import "testing"
 
 func TestBranchGuardGitCOperandEndsAtRedirection(t *testing.T) {
+	skipWindowsPOSIXCommandText(t)
 	t.Setenv(branchGuardExemptEnv, "")
 	fx := newAFFGuardFixture(t)
 	P, W := fx.primary, fx.release
