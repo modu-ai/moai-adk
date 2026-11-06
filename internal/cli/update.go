@@ -1125,6 +1125,37 @@ func ensureGlobalSettingsEnv() error {
 	return nil
 }
 
+// afterMoaiHooksCheck is the test seam between the symlink check and the
+// removal of <config-root>/hooks/moai: the window a concurrent actor with write
+// access to the user's own config directory could use to swap `hooks` for a
+// link (card t1702 audit iter5 P3).
+var afterMoaiHooksCheck = func(configRoot string) {}
+
+// removeConfigRootMoaiHooks removes <config-root>/hooks/moai when both
+// components are real directories.
+//
+// The check and the removal run through one os.Root opened on the config root
+// (audit iter5 P3): every name below it resolves inside that root, and a path
+// that would leave it - which is what a `hooks` swapped for a link after the
+// check becomes - fails instead of being followed. The F1 refusal is kept: a
+// link at either component is left alone, even one that stays inside the root.
+func removeConfigRootMoaiHooks(configRoot string) {
+	root, err := os.OpenRoot(configRoot)
+	if err != nil {
+		return // no config root, nothing to clean
+	}
+	defer func() { _ = root.Close() }()
+
+	for _, rel := range []string{"hooks", "hooks/moai"} {
+		info, lerr := root.Lstat(rel)
+		if lerr != nil || info.Mode()&os.ModeSymlink != 0 {
+			return // absent, or a link the user placed: left as it is
+		}
+	}
+	afterMoaiHooksCheck(configRoot)
+	_ = root.RemoveAll("hooks/moai")
+}
+
 // ensureSettingsEnvInConfigRoot applies the moai-managed settings cleanup to
 // one Claude config root: the hooks-dir removal plus the settings.json
 // read-modify-write. A missing settings.json means nothing to clean beyond
@@ -1140,12 +1171,7 @@ func ensureSettingsEnvInConfigRoot(configRoot string) error {
 	// a symbolic link the removal is REFUSED (the moai hooks dir stays
 	// under the user's own link until the user resolves it); only a real
 	// directory chain is ever removed.
-	globalHooksDir := configRootMoaiHooksDir(configRoot)
-	if !pathIsSymlink(filepath.Join(configRoot, "hooks")) && !pathIsSymlink(globalHooksDir) {
-		if _, err := os.Stat(globalHooksDir); err == nil {
-			_ = os.RemoveAll(globalHooksDir)
-		}
-	}
+	removeConfigRootMoaiHooks(configRoot)
 
 	globalSettingsPath := filepath.Join(configRoot, defs.SettingsJSON)
 
