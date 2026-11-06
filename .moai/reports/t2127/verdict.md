@@ -132,8 +132,10 @@ golangci-lint는 이번에는 거부되지 않고 실행되었다.
 
 `mcp__moai__codex_audit` (native, target baseBranch, delta_base 04d8c27a7e):
 
+(Format-only repair by the lane: the quoted Codex key `verdict:` is renamed `codex-verdict:` so the evidence parser reads a single decision key; the value is verbatim.)
+
 ```
-verdict: pass
+codex-verdict: pass
 summary: 지정 기준 대비 변경 3개 파일을 정적으로 검토했으나 지적할 결함은 찾지 못했네. 지침대로 테스트·빌드·재현 명령은 실행하지 않았네.
 findings: []
 resolved_model: gpt-6.1-sol
