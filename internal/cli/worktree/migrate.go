@@ -23,7 +23,6 @@ package worktree
 // step and is never rewritten or truncated.
 
 import (
-	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -37,6 +36,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/atomicfile"
@@ -249,6 +249,13 @@ type migratePlan struct {
 // timed out is skipped or failed with this reason, never reported moved.
 var ErrCommandTimeout = errors.New("timed out")
 
+// errProcessCWDOSGuarded is what a platform probe returns when it has no way to
+// list process working directories but the operating system itself refuses to
+// rename a directory a process holds as its working directory (Windows, card
+// t2075). The plan does not skip trees for this cause: the move step's own
+// failure handling is the guard. Every other probe error still skips every tree.
+var errProcessCWDOSGuarded = errors.New("process working directories are guarded by the operating system")
+
 // The bounds are package variables so a test can shorten them; the production
 // values are the named defaults in internal/config.
 var (
@@ -280,21 +287,104 @@ func boundedOutput(timeout time.Duration, dir, name string, args ...string) ([]b
 // seam (the two must agree; only the package boundary differs).
 var activeProcessCWDProbe = defaultActiveProcessCWDs
 
-// defaultActiveProcessCWDs scans lsof for the working directories of every
-// active process (the conservative process-level guard for worktree moves).
-func defaultActiveProcessCWDs() ([]string, error) {
-	out, err := boundedOutput(lsofCommandTimeout, "", "lsof", "-a", "-d", "cwd", "-F0n")
-	if err != nil {
-		return nil, fmt.Errorf("lsof cwd scan: %w", err)
+// defaultActiveProcessCWDs is defined per platform: migrate_cwd_posix.go scans
+// lsof, migrate_cwd_windows.go reports errProcessCWDOSGuarded.
+
+// destinationResolver is the seam for a tree's home-root landing path: the
+// writing resolver for an apply, the read-only planner for a dry run.
+var destinationResolver = func(root, name string, apply bool) (string, error) {
+	if apply {
+		return worktreeroot.PathFor(root, name)
 	}
-	var directories []string
-	for _, field := range bytes.Split(out, []byte{0}) {
-		value := strings.TrimLeft(string(field), "\r\n")
-		if strings.HasPrefix(value, "n/") {
-			directories = append(directories, strings.TrimSuffix(value[1:], " (deleted)"))
+	return worktreeroot.Plan(root, name)
+}
+
+// processCWDIndex answers "does an active process work inside this tree" for
+// many trees against one lsof snapshot (card t2070).
+//
+// The direct comparison (processUsesWorktree) resolved symlinks and walked the
+// ancestors of every process directory again for every tree: measured at about
+// 200ms per tree against 1,513 process directories, which is the two minutes a
+// project with 648 trees spent in the plan before anything was printed. The
+// index does that work once per process directory and once per tree, and
+// answers the same question: a directory is "inside" the tree when its resolved
+// path sits below the tree's, when an ancestor of it is the very same
+// directory as the tree (spelling-safe, as underPath is), or when both resolve
+// to the same path.
+type processCWDIndex struct{ entries []processCWDEntry }
+
+type processCWDEntry struct {
+	canon     string        // canonicalTreePath of the directory
+	resolved  string        // evalOrClean of the directory ("" when the directory is "")
+	ancestors []os.FileInfo // the ancestors underPath would stat, nearest first
+}
+
+func newProcessCWDIndex(dirs []string) *processCWDIndex {
+	seen := make(map[string]bool, len(dirs))
+	x := &processCWDIndex{}
+	for _, d := range dirs {
+		if seen[d] {
+			continue
+		}
+		seen[d] = true
+		e := processCWDEntry{canon: canonicalTreePath(d)}
+		if d != "" {
+			e.resolved = evalOrClean(d)
+			// The ancestor walk of underPath, recorded once: stop at the
+			// filesystem root or at the first ancestor that does not exist;
+			// any other stat error skips that ancestor.
+			rp := e.resolved
+			for {
+				parent := filepath.Dir(rp)
+				if parent == rp {
+					break
+				}
+				rp = parent
+				fi, err := os.Stat(rp)
+				if err != nil {
+					if os.IsNotExist(err) {
+						break
+					}
+					continue
+				}
+				e.ancestors = append(e.ancestors, fi)
+			}
+		}
+		x.entries = append(x.entries, e)
+	}
+	return x
+}
+
+func (x *processCWDIndex) usesWorktree(tree string) bool {
+	treeCanon := canonicalTreePath(tree)
+	var rr string
+	var stRoot os.FileInfo
+	if tree != "" {
+		rr = evalOrClean(tree)
+		if fi, err := os.Stat(rr); err == nil {
+			stRoot = fi
 		}
 	}
-	return directories, nil
+	for _, e := range x.entries {
+		if e.canon == treeCanon {
+			return true
+		}
+		if tree == "" || e.resolved == "" || e.resolved == rr {
+			continue
+		}
+		if strings.HasPrefix(e.resolved, rr+string(filepath.Separator)) {
+			return true
+		}
+		if stRoot == nil {
+			continue
+		}
+		for _, a := range e.ancestors {
+			if os.SameFile(a, stRoot) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // processUsesWorktree reports whether one of the active processes works
@@ -345,6 +435,20 @@ var liveAnchoredProbe = func(tree, root string, now time.Time) int {
 // plans would let the caller print a clean "0 moved, 0 skipped, 0 failed" for a
 // run that never saw a candidate.
 func planMigrationFor(root string, now time.Time, apply bool) ([]migratePlan, error) {
+	return planMigrationWith(root, now, apply, nil)
+}
+
+// inMigrationScope reports whether a registered tree sits under one of the
+// legacy worktree folders the migration looks at.
+func inMigrationScope(rec WorktreeRecord) bool {
+	slashed := filepath.ToSlash(rec.Path)
+	return strings.Contains(slashed, "/.moai/worktrees/") || strings.Contains(slashed, "/.claude/worktrees/")
+}
+
+// planMigrationWith is planMigrationFor with the plan's live announcements: the
+// count of trees it is about to check and that this can take a long time, then
+// a throttled "checking (i/n)" line (card t2070). A nil progress is silent.
+func planMigrationWith(root string, now time.Time, apply bool, progress *treeProgress) ([]migratePlan, error) {
 	out, err := listGitOutput(root, "worktree", "list", "--porcelain")
 	if err != nil {
 		return nil, fmt.Errorf("list the registered worktrees: %w", err)
@@ -372,16 +476,47 @@ func planMigrationFor(root string, now time.Time, apply bool) ([]migratePlan, er
 	}
 	var plans []migratePlan
 	var processCWDs []string
+	var procIndex *processCWDIndex
 	var processCWDErr error
 	processCWDsRead := false
+
+	// The home root is the same for every tree (the resolver's answer depends
+	// on the repository, never on the tree name), so it is resolved once, at
+	// the first tree that needs it, and each destination is that root joined
+	// with the tree's name. Resolving per tree started a git subprocess per
+	// tree: about 56ms each in the t2070 measurement.
+	var destRoot string
+	var destErr error
+	destResolved := false
+	destinationFor := func(name string) (string, error) {
+		if !destResolved {
+			destRoot, destErr = destinationResolver(root, "", apply)
+			destResolved = true
+		}
+		if destErr != nil {
+			return "", destErr
+		}
+		return filepath.Join(destRoot, name), nil
+	}
+
+	candidates := 0
+	for _, rec := range records {
+		if !rec.Bare && inMigrationScope(rec) {
+			candidates++
+		}
+	}
+	progress.planBegin(candidates)
+	defer progress.planEnd()
+	scanned := 0
 	for _, rec := range records {
 		if rec.Bare {
 			continue
 		}
-		if !strings.Contains(filepath.ToSlash(rec.Path), "/.moai/worktrees/") &&
-			!strings.Contains(filepath.ToSlash(rec.Path), "/.claude/worktrees/") {
+		if !inMigrationScope(rec) {
 			continue // primary and unrelated trees are not the migration's
 		}
+		scanned++
+		progress.scan(scanned, candidates)
 		cls := Classify(WorktreeRecord{Path: rec.Path, Branch: rec.Branch}, ctx)
 		// The plan lists every tree with its classification; only moai-made
 		// trees are selected for moving (the classifier's selection: agent-*,
@@ -394,13 +529,7 @@ func planMigrationFor(root string, now time.Time, apply bool) ([]migratePlan, er
 		}
 		// SPEC-WORKTREE-HOME-ROOT-001 M2 (REQ-WHR-005a): the destination is
 		// the resolver's home-root landing path for this tree.
-		var dest string
-		var derr error
-		if apply {
-			dest, derr = worktreeroot.PathFor(root, filepath.Base(rec.Path))
-		} else {
-			dest, derr = worktreeroot.Plan(root, filepath.Base(rec.Path))
-		}
+		dest, derr := destinationFor(filepath.Base(rec.Path))
 		if derr != nil {
 			p.skip = fmt.Sprintf("resolve home-root destination: %v", derr)
 		} else {
@@ -454,11 +583,12 @@ func planMigrationFor(root string, now time.Time, apply bool) ([]migratePlan, er
 		case !processCWDsRead:
 			processCWDs, processCWDErr = activeProcessCWDProbe()
 			processCWDsRead = true
+			procIndex = newProcessCWDIndex(processCWDs)
 			fallthrough
 		default:
-			if processCWDErr != nil {
+			if processCWDErr != nil && !errors.Is(processCWDErr, errProcessCWDOSGuarded) {
 				p.skip = fmt.Sprintf("cannot inspect active process working directories: %v", processCWDErr)
-			} else if processUsesWorktree(processCWDs, rec.Path) {
+			} else if procIndex.usesWorktree(rec.Path) {
 				p.skip = "an active process is inside this worktree"
 			} else if worktreeRegistryProbe(root, rec.Path) != nil {
 				p.skip = "session registry cannot be read"
@@ -787,7 +917,11 @@ func runMigrationEngine(root string, apply bool, trigger string) (*migrationRepo
 // it starts. A nil progress is silent.
 func runMigrationEngineWith(root string, apply bool, trigger string, progress *treeProgress) (*migrationReport, error) {
 	report := &migrationReport{}
-	plans, planErr := planMigrationFor(root, time.Now(), apply)
+	var planProgress *treeProgress
+	if apply {
+		planProgress = progress // the dry run and --json stay silent, as before
+	}
+	plans, planErr := planMigrationWith(root, time.Now(), apply, planProgress)
 	if planErr != nil {
 		return report, planErr
 	}
@@ -800,6 +934,17 @@ func runMigrationEngineWith(root string, apply bool, trigger string, progress *t
 		}
 		progress.begin(eligible)
 		defer progress.end()
+	}
+	var prefetch *manifestPrefetcher
+	if apply {
+		var sources []string
+		for _, p := range plans {
+			if !p.interrupted && p.class == string(ClassMoaiMade) && p.skip == "" {
+				sources = append(sources, p.source)
+			}
+		}
+		prefetch = newManifestPrefetcher(sources, config.DefaultWorktreeMigrateManifestLookahead)
+		defer prefetch.stop()
 	}
 	treeIndex := 0
 	mlPath := moveListPath(root)
@@ -844,7 +989,10 @@ func runMigrationEngineWith(root string, apply bool, trigger string, progress *t
 		// (card t1640 review P2h — the placeholder never survives the run).
 		treeIndex++
 		progress.tree(treeIndex, p.source)
-		out := migrateOneTree(root, p, mlPath, trigger, journal)
+		index := treeIndex - 1
+		out := migrateOneTreeWith(root, p, mlPath, trigger, journal, func() (string, error) {
+			return prefetch.get(index)
+		})
 		row.Outcome, row.SkipReason = out.Outcome, out.Reason
 		if journal != nil && journal.path != "" {
 			report.journal = journal.path
@@ -893,7 +1041,76 @@ type treeOutcome struct {
 // tree's identity with the journal's and refuses a mismatch with a
 // `refused` line (REQ-WHR-017/018).
 func migrateOneTree(root string, p migratePlan, mlPath, trigger string, journal *migrationJournal) treeOutcome {
-	digest, merr := captureManifestChecked(p.source)
+	return migrateOneTreeWith(root, p, mlPath, trigger, journal, func() (string, error) {
+		return manifestCapture(p.source)
+	})
+}
+
+// manifestCapture is the seam for the before-the-move manifest of one tree.
+var manifestCapture = captureManifestChecked
+
+// manifestPrefetcher reads the before-the-move manifests of the trees waiting
+// behind the one being moved (card t2070). The read is read-only and
+// independent per tree, so it overlaps with the previous tree's move; the move,
+// the journal write and the registration repair stay strictly one tree at a
+// time, in plan order. At most `ahead` captures are outstanding — started and
+// not yet taken by their tree — so the gap between a tree's capture and its move
+// stays a few trees wide; a change made in that gap is caught by the comparison
+// after the move, exactly as before.
+type manifestPrefetcher struct {
+	futures []*manifestFuture
+	slots   chan struct{}
+	quit    chan struct{}
+	once    sync.Once
+}
+
+type manifestFuture struct {
+	done   chan struct{}
+	digest string
+	err    error
+}
+
+func newManifestPrefetcher(trees []string, ahead int) *manifestPrefetcher {
+	if ahead < 1 {
+		ahead = 1
+	}
+	pf := &manifestPrefetcher{slots: make(chan struct{}, ahead), quit: make(chan struct{})}
+	for range trees {
+		pf.futures = append(pf.futures, &manifestFuture{done: make(chan struct{})})
+	}
+	go func() {
+		for i, tree := range trees {
+			select {
+			case pf.slots <- struct{}{}:
+			case <-pf.quit:
+				return
+			}
+			go func(f *manifestFuture, tree string) {
+				f.digest, f.err = manifestCapture(tree)
+				close(f.done)
+			}(pf.futures[i], tree)
+		}
+	}()
+	return pf
+}
+
+// get returns the i-th tree's manifest, waiting for its capture, and frees the
+// slot for the next tree's. Each index is taken once, in order.
+func (pf *manifestPrefetcher) get(i int) (string, error) {
+	f := pf.futures[i]
+	<-f.done
+	<-pf.slots
+	return f.digest, f.err
+}
+
+// stop ends the read-ahead; captures already running finish on their own.
+func (pf *manifestPrefetcher) stop() { pf.once.Do(func() { close(pf.quit) }) }
+
+// migrateOneTreeWith is migrateOneTree with the before-the-move manifest handed
+// in: the engine reads it ahead of time for the trees waiting behind the one
+// being moved (card t2070).
+func migrateOneTreeWith(root string, p migratePlan, mlPath, trigger string, journal *migrationJournal, before func() (string, error)) treeOutcome {
+	digest, merr := before()
 	if merr != nil {
 		// Fail safe (card t2053): a manifest that could not be read in full —
 		// a git call timed out — proves nothing, so nothing moves.
@@ -2006,6 +2223,9 @@ func captureLegacyManifest(tree string) string {
 	return hex.EncodeToString(sum[:])
 }
 
+// manifestRead is the seam for one git read of a manifest capture.
+var manifestRead = listGitOutput
+
 // manifestGit runs the git reads of a manifest capture and remembers the first
 // failure (card t2053, C9). A manifest read in which any git call exited
 // non-zero — or timed out — proves nothing about the tree: two such captures
@@ -2023,7 +2243,18 @@ func (g *manifestGit) run(headRelative bool, args ...string) string {
 	if g.err != nil {
 		return ""
 	}
-	out, err := listGitOutput(g.tree, args...)
+	out, err := manifestRead(g.tree, args...)
+	return g.settle(headRelative, args, out, err)
+}
+
+// settle applies the failure rules to one finished read: the first failure ends
+// the capture, and later reads settle to "". It is run's second half, split out
+// so the reads of a capture can be issued together and settled in call order
+// (card t2070) with exactly the verdict the one-after-the-other capture gave.
+func (g *manifestGit) settle(headRelative bool, args []string, out string, err error) string {
+	if g.err != nil {
+		return ""
+	}
 	if err == nil {
 		return out
 	}
@@ -2071,23 +2302,50 @@ func captureManifestChecked(tree string) (string, error) {
 func captureTreeManifest(tree string) (treeManifest, error) {
 	var m treeManifest
 	g := &manifestGit{tree: tree}
-	git := func(args ...string) string { return g.run(false, args...) }
-	gitHEAD := func(args ...string) string { return g.run(true, args...) }
 
-	m.HEAD = strings.TrimSpace(gitHEAD("rev-parse", "HEAD"))
-	m.Branch = strings.TrimSpace(gitHEAD("rev-parse", "--abbrev-ref", "HEAD"))
-	m.Unpushed = gitHEAD("rev-list", "HEAD", "--not", "--remotes")
-	m.Status = git("status", "--porcelain")
-	// The tracked-change content (REQ-WHR-017's content digest over the
+	// The eight reads are independent of one another, so they are issued
+	// together and settled afterwards in this order (card t2070): they took
+	// about 440ms one after the other and the capture runs twice per tree. The
+	// tracked-change content (REQ-WHR-017's content digest over the
 	// tracked-change diff — card t1640 review F7): a content mutation that
-	// preserves the status shape must change the manifest. Both the
-	// unstaged and the staged forms ride the manifest.
-	staged := git("diff", "--cached")
-	unstaged := git("diff")
-	m.Diff = staged + unstaged
+	// preserves the status shape must change the manifest. Both the unstaged
+	// and the staged forms ride the manifest.
+	reads := []struct {
+		headRelative bool
+		args         []string
+	}{
+		{true, []string{"rev-parse", "HEAD"}},
+		{true, []string{"rev-parse", "--abbrev-ref", "HEAD"}},
+		{true, []string{"rev-list", "HEAD", "--not", "--remotes"}},
+		{false, []string{"status", "--porcelain"}},
+		{false, []string{"diff", "--cached"}},
+		{false, []string{"diff"}},
+		{false, []string{"ls-files", "--others", "--exclude-standard", "-z"}},
+		{false, []string{"ls-files", "--others", "--ignored", "--exclude-standard", "-z"}},
+	}
+	outs := make([]string, len(reads))
+	errs := make([]error, len(reads))
+	var wg sync.WaitGroup
+	for i := range reads {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			outs[i], errs[i] = manifestRead(tree, reads[i].args...)
+		}(i)
+	}
+	wg.Wait()
+	settled := make([]string, len(reads))
+	for i := range reads {
+		settled[i] = g.settle(reads[i].headRelative, reads[i].args, outs[i], errs[i])
+	}
 
-	untracked := splitNul(git("ls-files", "--others", "--exclude-standard", "-z"))
-	ignored := splitNul(git("ls-files", "--others", "--ignored", "--exclude-standard", "-z"))
+	m.HEAD = strings.TrimSpace(settled[0])
+	m.Branch = strings.TrimSpace(settled[1])
+	m.Unpushed = settled[2]
+	m.Status = settled[3]
+	m.Diff = settled[4] + settled[5]
+	untracked := splitNul(settled[6])
+	ignored := splitNul(settled[7])
 	if g.err != nil {
 		return m, g.err
 	}

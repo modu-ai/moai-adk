@@ -276,6 +276,16 @@ const (
 	// answer makes every tree a skip, never a move.
 	DefaultWorktreeLsofTimeout = 30 * time.Second
 
+	// DefaultWorktreeMigrateManifestLookahead is how many trees ahead of the one
+	// being moved the migration may already be reading the before-the-move
+	// manifest of (card t2070). The read is read-only and independent per tree;
+	// the move, the journal write and the registration repair stay one tree at a
+	// time. The bound keeps the gap between a tree's capture and its move to a
+	// few trees, because a change made in that gap is caught as a mismatch after
+	// the move and costs a reverse — and caps the git processes at this many
+	// captures of eight reads each. A chosen value, not a measured one.
+	DefaultWorktreeMigrateManifestLookahead = 3
+
 	// DefaultWorktreeCommandWaitDelay is how long a bounded migration command's
 	// output pipes may stay open after its context ends before the runner stops
 	// waiting for them (a grandchild holding the pipe must not outlive the bound).
