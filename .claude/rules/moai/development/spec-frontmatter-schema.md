@@ -199,7 +199,7 @@ The rule emits three finding codes:
 
 - **`OwnershipTransitionInvalid`** (Warning severity): Emitted when the transition commit carries an `Authored-By-Agent:` trailer whose actor does NOT match the canonical owner for that transition. Example: a trailer reading `manager-docs` on a `draft → in-progress` transition (which the matrix above assigns to `manager-develop`) triggers a finding.
 - **`OwnershipTransitionUnreachable`** (Info severity): Emitted when the rule cannot read git history for the SPEC file (non-git environment, fresh clone without history, or `git log --follow` error). Graceful observation — no panic, no error escalation.
-- **`OwnershipTransitionUnmeasured`** (Info severity): Emitted when a transition was found but its commit carries no `Authored-By-Agent:` trailer. A statement about measurement state, not a violation — the transition cannot be attributed, so it is reported instead of passing silently.
+- **`OwnershipTransitionUnmeasured`** (Info severity): Emitted when a transition was found but cannot be attributed: its commit carries no `Authored-By-Agent:` trailer, OR its body carries trailers of more than one distinct actor (a squash-merge body concatenates the trailers of every squashed sub-commit, and the sub-commit that changed `status:` cannot be recovered from the squash commit). A statement about measurement state, not a violation — it is reported instead of passing silently, and never judged on whichever trailer came first. Repeated trailers of ONE actor are still judged normally.
 
 Three transitions are silent by design (not gaps):
 

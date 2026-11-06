@@ -185,6 +185,9 @@ type ownershipTransitionRecord struct {
 	CommitSubject   string
 	CommitSHA       string
 	AuthoredByAgent string
+	// AmbiguousActors는 commit body가 서로 다른 둘 이상의 행위자 trailer를 담을 때(squash-merge)
+	// 그 행위자 목록이다. 이 경우 AuthoredByAgent는 비어 있고 전환은 Unmeasured로 보고된다 (card t2107).
+	AmbiguousActors []string
 }
 
 // getOwnershipTransitionRunner는 테스트에서 git-log lookup 함수를 주입할 수 있도록 분리한다.
@@ -254,13 +257,14 @@ func lookupOwnershipTransitionPerSpec(specPath, specID string) (*ownershipTransi
 		if !found {
 			continue
 		}
-		return &ownershipTransitionRecord{
-			PreviousStatus:  oldStatus,
-			CurrentStatus:   newStatus,
-			CommitSubject:   c.subject,
-			CommitSHA:       c.hash,
-			AuthoredByAgent: parseAuthoredByAgent(c.body),
-		}, nil
+		rec := &ownershipTransitionRecord{
+			PreviousStatus: oldStatus,
+			CurrentStatus:  newStatus,
+			CommitSubject:  c.subject,
+			CommitSHA:      c.hash,
+		}
+		applyTrailerAttribution(rec, c.body)
+		return rec, nil
 	}
 
 	return nil, nil
@@ -280,6 +284,37 @@ func parseAuthoredByAgent(body string) string {
 		return ""
 	}
 	return strings.ToLower(strings.TrimSpace(m[1]))
+}
+
+// distinctAuthoredByAgents는 commit body의 모든 `Authored-By-Agent:` trailer를 소문자로 정규화해
+// 첫 등장 순서를 유지한 채 중복 없이 반환한다 (card t2107). squash-merge 본문은 squash된
+// 하위 commit들의 trailer를 전부 이어 붙이므로, 첫 trailer만 읽으면 판정이 하위 commit 순서에
+// 좌우된다.
+func distinctAuthoredByAgents(body string) []string {
+	var out []string
+	seen := map[string]bool{}
+	for _, m := range authoredByAgentLine.FindAllStringSubmatch(body, -1) {
+		a := strings.ToLower(strings.TrimSpace(m[1]))
+		if a != "" && !seen[a] {
+			seen[a] = true
+			out = append(out, a)
+		}
+	}
+	return out
+}
+
+// applyTrailerAttribution은 body의 trailer로 record의 행위자 필드를 채운다. 서로 다른 행위자가
+// 하나면 그 행위자를 AuthoredByAgent로 두고, 둘 이상이면 (squash 본문 — 상태 변경을 한 하위
+// commit을 되짚을 수 없음) AuthoredByAgent를 비우고 AmbiguousActors에 기록한다.
+func applyTrailerAttribution(rec *ownershipTransitionRecord, body string) {
+	actors := distinctAuthoredByAgents(body)
+	switch len(actors) {
+	case 0:
+	case 1:
+		rec.AuthoredByAgent = actors[0]
+	default:
+		rec.AmbiguousActors = actors
+	}
 }
 
 // gitLogCommit는 splitGitLogCommits 결과의 commit-단위 구조이다.
@@ -435,6 +470,29 @@ func (r *OwnershipTransitionRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
 	// silence read as a green on every transition. Report it as a plain Info finding —
 	// a statement about measurement state, not a violation (strict promotion is
 	// Warning-only at lint.go:62, so this never changes the exit status).
+	// card t2107: a squash-merge body names several actors. The sub-commit that changed
+	// the status cannot be recovered from the squash commit, so the transition cannot be
+	// attributed — Unmeasured (Info), never a verdict on whichever trailer came first.
+	if len(rec.AmbiguousActors) > 0 {
+		return []Finding{
+			{
+				File:     doc.Path,
+				Line:     1,
+				Severity: SeverityInfo,
+				Code:     "OwnershipTransitionUnmeasured",
+				Message: fmt.Sprintf(
+					"SPEC %s transition %q → %q expected owner %q but commit %s (%s) carries Authored-By-Agent trailers of several actors (%s) — squash body, ownership transition unmeasured",
+					fm.ID,
+					emptyOrValue(rec.PreviousStatus),
+					rec.CurrentStatus,
+					expected.String(),
+					rec.CommitSHA,
+					rec.CommitSubject,
+					strings.Join(rec.AmbiguousActors, ", "),
+				),
+			},
+		}
+	}
 	if rec.AuthoredByAgent == "" {
 		return []Finding{
 			{
