@@ -201,6 +201,26 @@ func TestJevCost_AbsentAndMalformed(t *testing.T) {
 	})
 }
 
+// TestJevCost_DirectoryAtLedgerPath pins the non-regular cell of the
+// sync-audit round-1 P2 repair (card t1971) on every platform: a DIRECTORY at
+// the ledger path is the non-regular case all platforms can build (mkfifo is
+// unix-only — the FIFO case lives in jev_cost_fifo_unix_test.go). The report
+// must treat the path as absent per REQ-JEVL-016's absent-class semantics —
+// zero calls, exit 0 — never an error.
+func TestJevCost_DirectoryAtLedgerPath(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, ".moai", "state", "jev", "decisions.jsonl"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	out := runJevCostCmd(t, root)
+	if !strings.Contains(out, "calls: 0") {
+		t.Errorf("a directory at the ledger path must report calls: 0; got:\n%s", out)
+	}
+	if strings.Contains(out, "skipped") {
+		t.Errorf("a non-regular ledger path carries no malformed lines; got:\n%s", out)
+	}
+}
+
 // TestJevCost_JsonMatchesTextAggregates closes the --json cell of
 // AC-JEVL-015: one flat object carrying the same aggregates, with `skipped`
 // always present (0 included, decision D3).

@@ -100,6 +100,7 @@ $ GOOS=windows GOARCH=amd64 go build ./internal/cli                 → 출력 �
 - 디코드만 성공하면 0값 필드 행도 유효 행으로 계수(plan.md §G 잔여, 의도된 반입).
 - not-exist 외 읽기 실패(권한, 경로상 디렉터리)는 0-call fail-open과 출력상 구별 불가(D6 결정).
 - 클린 ledger에서 `skipped` 라인 미출력은 D3 설계 결정(시험으로 고정).
+- 수리 라운드(sync 감사 1차 codex P2, receipt rcpt-11b837f9258ea3ca20d0620e): ledger 경로의 FIFO 무-writer 시 `moai jev cost` 영구 블록 — 읽기 쪽을 쓰기 쪽 openLedger 미러로 수리(`jev_cost_open_unix.go` O_NONBLOCK open + 열린 핸들 f.Stat regular-file 체크, 비정규 객체는 REQ-JEVL-016 absent-class 0-call 처리; `jev_cost_open_windows.go`는 plain open; internal/jevledger 미편집). 시험: `TestJevCost_FIFOAtLedgerPathDoesNotHang`(unix 전용, `go test -timeout 30s` 외부 하한) RED 5.01s 블록 관찰 → GREEN `--- PASS (0.00s)`, 포터블 non-regular 셀 `TestJevCost_DirectoryAtLedgerPath` 추가; 집중 검증 `go test ./internal/cli -run 'TestJevCost|TestJevCallPath' -count=1` ok, gofmt clean, `go build ./...` exit 0, `GOOS=windows go build ./internal/cli` exit 0.
 
 ## §E.3 Run-phase Audit-Ready Signal
 

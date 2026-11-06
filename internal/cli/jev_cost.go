@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/modu-ai/moai-adk/internal/jevledger"
@@ -142,11 +141,21 @@ func readJevCostLedger() jevCostAggregates {
 		return agg
 	}
 	path := filepath.Join(root, ".moai", "state", "jev", "decisions.jsonl")
-	f, err := os.Open(path)
+	f, err := openJevCostLedger(path)
 	if err != nil {
 		return agg // not-exist and every other open failure: zero calls, exit 0
 	}
 	defer func() { _ = f.Close() }()
+
+	// A non-regular object at the ledger path (FIFO, device, directory) is
+	// treated as absent per REQ-JEVL-016's absent-class semantics — zero
+	// calls, exit 0. A hostile or anomalous ledger path must not hang the
+	// read-only report; silent-zero is the same fail-open class the write
+	// side chose (openJevCostLedger's comment, sync audit round 1 P2 of
+	// card t1971). The check runs on the opened handle, never on the path.
+	if info, err := f.Stat(); err != nil || !info.Mode().IsRegular() {
+		return agg
+	}
 
 	seen := make(map[string]bool)
 	sc := bufio.NewScanner(f)
