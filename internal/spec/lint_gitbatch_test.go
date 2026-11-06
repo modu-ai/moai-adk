@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -312,6 +313,12 @@ func TestLintGitBatch_FixtureCoversConventions(t *testing.T) {
 // to a log and then execs the real git. It returns the log path.
 func gbShim(t *testing.T) string {
 	t.Helper()
+	// exec.LookPath on Windows resolves an extensionless name only through
+	// PATHEXT, so this `#!/bin/sh` shim is never found and the real git.exe
+	// runs unobserved. A .cmd shim's argument quoting is unmeasured there.
+	if runtime.GOOS == "windows" {
+		t.Skip("PATH shim is an extensionless sh script, not resolvable by exec.LookPath on Windows")
+	}
 	realGit, err := exec.LookPath("git")
 	if err != nil {
 		t.Skipf("git not available: %v", err)
@@ -379,5 +386,115 @@ func TestLintGitBatch_ConstantSubprocessCount(t *testing.T) {
 	}
 	if large > 12 {
 		t.Errorf("git invocations = %d, want a small fixed number (<= 12)", large)
+	}
+}
+
+// advanceFixture commits a SPEC that goes draft -> in-progress under the wrong
+// actor, so the ownership walk has a transition record to find.
+func (r *gbRepo) advanceFixture(id string) {
+	r.spec(id, "draft", "")
+	r.commit("feat("+id+"): plan-phase", "Authored-By-Agent: manager-spec")
+	r.spec(id, "in-progress", "")
+	r.commit("fix("+id+"): M1", "Authored-By-Agent: manager-docs")
+}
+
+// TestLintGitBatch_DiffRelativeFromSubdir pins F2: a user git config
+// diff.relative=true makes patch paths relative to the cwd; the batch must still
+// return the per-SPEC oracle's record instead of silently dropping it.
+func TestLintGitBatch_DiffRelativeFromSubdir(t *testing.T) {
+	r := newGBRepo(t)
+	const id = "SPEC-REL-001"
+	r.advanceFixture(id)
+	r.git("config", "diff.relative", "true")
+	chdirForTest(t, filepath.Join(r.dir, ".moai", "specs"))
+
+	want, werr := lookupOwnershipTransitionPerSpec(r.specPath(id), id)
+	if werr != nil || want == nil {
+		t.Fatalf("oracle must find the transition: rec=%v err=%v", want, werr)
+	}
+
+	startGitQueryCache()
+	defer stopGitQueryCache()
+	got, gerr := lookupOwnershipTransitionFromGit(r.specPath(id), id)
+	if g, w := gbOwnershipString(got, gerr), gbOwnershipString(want, werr); g != w {
+		t.Errorf("batched %q, oracle %q", g, w)
+	}
+}
+
+// TestLintGitBatch_OldGitRejectingNoRelativeFallsBack pins the F2 safety net: a
+// git that does not know --no-relative fails the batch, and the lookup must then
+// still return the per-SPEC oracle's record.
+func TestLintGitBatch_OldGitRejectingNoRelativeFallsBack(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("PATH shim is an extensionless sh script, not resolvable by exec.LookPath on Windows")
+	}
+	r := newGBRepo(t)
+	const id = "SPEC-OLD-001"
+	r.advanceFixture(id)
+	chdirForTest(t, r.dir)
+
+	want, werr := lookupOwnershipTransitionPerSpec(r.specPath(id), id)
+	if werr != nil || want == nil {
+		t.Fatalf("oracle must find the transition: rec=%v err=%v", want, werr)
+	}
+
+	realGit, err := exec.LookPath("git")
+	if err != nil {
+		t.Skipf("git not available: %v", err)
+	}
+	shimDir := t.TempDir()
+	script := "#!/bin/sh\nfor a in \"$@\"; do\n  if [ \"$a\" = \"--no-relative\" ]; then echo \"error: unknown option\" >&2; exit 129; fi\ndone\nexec \"" + realGit + "\" \"$@\"\n"
+	if err := os.WriteFile(filepath.Join(shimDir, "git"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", shimDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	startGitQueryCache()
+	defer stopGitQueryCache()
+	got, gerr := lookupOwnershipTransitionFromGit(r.specPath(id), id)
+	if g, w := gbOwnershipString(got, gerr), gbOwnershipString(want, werr); g != w {
+		t.Errorf("fallback %q, oracle %q", g, w)
+	}
+	gitQueryCacheMu.RLock()
+	b := gitQueryCacheV.ownershipBatches[".moai/specs"]
+	gitQueryCacheMu.RUnlock()
+	if b == nil || b.err == nil {
+		t.Errorf("batch must have failed to exercise the fallback, got %+v", b)
+	}
+}
+
+// TestLintGitBatch_QuotedPathHeaderClosesSegment pins F3: a `diff --git "a/..."`
+// header (git quotes a path containing a double quote) must close the previous
+// file's segment, so its status lines are not credited to the SPEC before it.
+func TestLintGitBatch_QuotedPathHeaderClosesSegment(t *testing.T) {
+	r := newGBRepo(t)
+	const (
+		plain  = "SPEC-A-001"
+		quoted = `SPEC-Z"Q-001`
+	)
+	r.spec(plain, "draft", "")
+	r.spec(quoted, "draft", "")
+	r.commit("feat: plan-phase", "Authored-By-Agent: manager-spec")
+	r.spec(plain, "draft", "body edit only")
+	r.spec(quoted, "in-progress", "")
+	r.commit("fix: M1", "Authored-By-Agent: manager-docs")
+	chdirForTest(t, r.dir)
+
+	want, werr := lookupOwnershipTransitionPerSpec(r.specPath(plain), plain)
+	if werr != nil {
+		t.Fatalf("oracle: %v", werr)
+	}
+	// The body-only commit carries no status delta for SPEC-A-001, so the answer
+	// is its creation commit; a segment merged with the quoted file would answer
+	// with the later "fix: M1" commit instead.
+	if want == nil || want.CommitSubject != "feat: plan-phase" {
+		t.Fatalf("oracle must resolve to the creation commit, got %+v", want)
+	}
+
+	startGitQueryCache()
+	defer stopGitQueryCache()
+	got, gerr := lookupOwnershipTransitionFromGit(r.specPath(plain), plain)
+	if g, w := gbOwnershipString(got, gerr), gbOwnershipString(want, werr); g != w {
+		t.Errorf("batched %q, oracle %q", g, w)
 	}
 }

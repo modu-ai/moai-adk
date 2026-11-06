@@ -176,9 +176,12 @@ func readOwnershipBatch(root string) *ownershipBatch {
 	}
 	// core.quotepath=false keeps non-ASCII names unquoted; --no-color,
 	// --no-ext-diff and the explicit prefixes pin the output shape against
-	// user/repo diff configuration.
+	// user/repo diff configuration. --no-relative keeps patch paths
+	// repository-relative when diff.relative=true and lint runs from a
+	// subdirectory; a git too old to know it fails the batch, which then falls
+	// back to the per-SPEC walk.
 	cmd := exec.Command("git", "-c", "core.quotepath=false", "log", "-M",
-		"--no-color", "--no-ext-diff", "--src-prefix=a/", "--dst-prefix=b/",
+		"--no-color", "--no-ext-diff", "--no-relative", "--src-prefix=a/", "--dst-prefix=b/",
 		ownershipBatchFormat, "-p", "--", pathspec)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -277,16 +280,21 @@ func parseOwnershipBatch(r io.Reader) (*ownershipBatch, error) {
 			continue
 		}
 
-		if rest, ok := strings.CutPrefix(line, "diff --git a/"); ok {
+		if fileHdr, ok := strings.CutPrefix(line, "diff --git "); ok {
+			// Any file header closes the previous segment. A quoted path
+			// (`diff --git "a/..."`) opens no segment of its own, so its lines
+			// are not credited to the file before it.
 			flush()
 			oldStatus, newStat = "", ""
 			segPath, segOld, inSeg = "", "", false
-			if i := strings.Index(rest, " b/"); i >= 0 {
-				segPath, segOld = rest[i+3:], rest[:i]
-				if segOld == segPath {
-					segOld = ""
+			if rest, ok := strings.CutPrefix(fileHdr, "a/"); ok {
+				if i := strings.Index(rest, " b/"); i >= 0 {
+					segPath, segOld = rest[i+3:], rest[:i]
+					if segOld == segPath {
+						segOld = ""
+					}
+					inSeg = true
 				}
-				inSeg = true
 			}
 			continue
 		}
