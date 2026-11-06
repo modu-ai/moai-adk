@@ -164,11 +164,28 @@ const gitGlobalConfigEnv = "GIT_CONFIG_GLOBAL"
 // root is accepted when the root is under os.TempDir and the real home is not.
 // Every other seam keeps the full judgment, and so does an unknown real home.
 func judgeSandbox(realHome, root string, seams []string) error {
+	return judgeSandboxIn(realHome, os.TempDir(), root, seams)
+}
+
+// CheckSeamHomesInTemp is CheckSeamHomes with the temp-dir exemption of
+// judgeSandbox: a seam under os.TempDir is accepted when the real home is not
+// under it (Windows temp lies under the home). Every other seam, and any
+// relative or ".." seam, keeps the full judgment.
+func CheckSeamHomesInTemp(realHome string, seamPaths []string) error {
+	return checkSeamHomesInTemp(realHome, os.TempDir(), seamPaths)
+}
+
+func checkSeamHomesInTemp(realHome, tmpDir string, seamPaths []string) error {
+	return judgeSandboxIn(realHome, tmpDir, tmpDir, seamPaths)
+}
+
+// judgeSandboxIn is judgeSandbox with the temp dir supplied by the caller.
+func judgeSandboxIn(realHome, tmpDir, root string, seams []string) error {
 	base := CheckSeamHomes(realHome, seams)
 	if base == nil || strings.TrimSpace(realHome) == "" {
 		return base
 	}
-	if !TempDirExemption(realHome, root) {
+	if !tempExempt(realHome, tmpDir, root) {
 		return base
 	}
 	rootR := resolveForGuard(root)
