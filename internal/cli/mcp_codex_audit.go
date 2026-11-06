@@ -37,18 +37,18 @@ const (
 	codexAppServerSubcmd = "app-server"
 
 	// codexAuditDefaultModel / codexAuditDefaultEffort are the audit-path
-	// terminal fallback (SPEC-MODEL-MATRIX-UPDATE-001 REQ-MMU-001), the codex
+	// terminal fallback (SPEC-MODEL-MATRIX-UPDATE-001 REQ-MMU-001, retargeted
+	// to {gpt-6.1-terra, xhigh} by the card t1980 scope expansion), the codex
 	// counterpart of the claudeAuditDefault* pair in mcp_claude.go: when the
 	// workflow.audit.codex pin is absent (or unservable) AND the caller supplied
 	// no explicit model, resolveCodexAuditModelEffort lands here instead of the
 	// former zero value. The task-delegation path (resolveCodexModelEffort)
 	// still resolves to the zero value — REQ-AMP-008 keeps the audit pin and the
-	// task path separate. Unchanged by SPEC-AGENT-TIER-001; the model derives
-	// from config.DefaultCodexAuditModel per that constant's single-sourcing
-	// intent (the effort token stays local — effort vocabulary values are not
+	// task path separate. Both tokens derive from the closed-set constants per
+	// single-sourcing intent (the effort vocabulary values themselves are not
 	// swept pin literals).
 	codexAuditDefaultModel  = config.DefaultCodexAuditModel
-	codexAuditDefaultEffort = "high"
+	codexAuditDefaultEffort = config.DefaultCodexAuditEffort
 
 	// codex JSON-RPC methods. review/start (native audit) and turn/start
 	// (adversarial prompt) are the review methods; initialize + thread/start are
@@ -174,15 +174,20 @@ func codexServableModel(model string) bool {
 // (SPEC-V3R6-AUDIT-MODEL-PIN-001 REQ-AMP-002): the workflow.audit.codex pin
 // outranks the backend default; everything else falls through to the audit
 // terminal fallback (REQ-AMP-004, retargeted by SPEC-MODEL-MATRIX-UPDATE-001
-// REQ-MMU-001 from the zero value to the {gpt-6.1-sol, high} pin).
+// REQ-MMU-001 from the zero value to a pinned default, itself retargeted to
+// {gpt-6.1-terra, xhigh} by the card t1980 scope expansion).
 //
 // Pin rules: the pin applies only when its Model is non-empty AND
 // codexServable (an unservable pin falls back to the backend default — never
 // break the review gate); an explicit caller `model` argument still outranks the
 // pinned model, mirroring the legacy precedence (the paired pin effort stays).
-// An effort with an empty model pins nothing (the model is the gate). A
-// workflow.yaml that cannot be read or parsed returns the error — the audit
-// never runs with an assumed-absent pin (SPEC-AUDIT-CEILING-002 REQ-ACR-006).
+// Card t1980 scope expansion: the reasoning effort is a CONFIG-KEY surface
+// only — workflow.audit.codex.effort (vocabulary none|low|medium|high|xhigh|max,
+// default xhigh) — never a per-call argument; the closed-set validation fires
+// on the stored pin effort the audit path consumes. An effort with an empty
+// model pins nothing (the model is the gate). A workflow.yaml that cannot be
+// read or parsed returns the error — the audit never runs with an
+// assumed-absent pin (SPEC-AUDIT-CEILING-002 REQ-ACR-006).
 func resolveCodexAuditModelEffort(params map[string]any) (config.ModelEffort, error) {
 	cwd, _ := params["cwd"].(string)
 	if strings.TrimSpace(cwd) == "" {
@@ -193,6 +198,14 @@ func resolveCodexAuditModelEffort(params map[string]any) (config.ModelEffort, er
 		return config.ModelEffort{}, pinErr
 	}
 	if pin := pins.Codex; pin.Model != "" && codexServableModel(pin.Model) {
+		// Card t1980 audit repair P2: a hand-edited pin effort outside terra's
+		// reasoning.effort vocabulary is an error the operator can correct,
+		// never a token to transmit (the same never-run-with-an-assumed-value
+		// contract as the unparseable-pin error; it surfaces as a fail-open
+		// inconclusive naming the cause).
+		if pin.Effort != "" && !config.ValidCodexAuditEffort(pin.Effort) {
+			return config.ModelEffort{}, fmt.Errorf("workflow.audit.codex.effort %q is not in the closed set %v", pin.Effort, config.ValidCodexAuditEfforts())
+		}
 		if explicit, ok := params["model"].(string); ok && strings.TrimSpace(explicit) != "" {
 			pin.Model = strings.TrimSpace(explicit)
 		}
