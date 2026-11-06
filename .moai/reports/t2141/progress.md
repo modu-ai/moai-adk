@@ -56,4 +56,13 @@ Card t2141 · run to2bbk · lane-31 · Class B (재현 먼저, 동결 해제 판
 - 전체 수트·타 패키지 미실행(레인 로컬 규율)
 - staged_read·gate_scope 2파일은 이 트리에서 여전히 pre-t2134 fixture(t2134 수정분이 미착지) — 그 카드 착지로 해소, 본 카드 범위 밖
 
+## sync 감사 결과 (2026-11-07 ~09:0x local)
+
+- 판정: **PASS-WITH-DEBT** — 가중 89.6/조화 89.0 (기능성 92 / 보안성 88 / 장인정신 88 / 일관성 88). 판정 파일 sync-audit-iter1.md (verdict:/audited_sha: 각 1줄, audited=8d6d4ef59f923bac78a9cecfcf61ea4341dd08b4 — 직독 확인)
+- **codex leg**: 감사관이 끊긴 MCP를 CLI stdio 서버(`moai mcp-server`)로 직접 스폰해 호출 — 영수증 **rcpt-ba8034d9024db2b4a563ef99**(native, baseBranch, head 149e94f9fa=흡수 전, review_base 04d8c27a7e; id가 결과 텍스트에 없어 스토어에서 복구·트리 결합 검증 — F7). codex 판정 **fail 2 P2**: ① hook_install_precommit.go:91 — 감사관 F1과 동일 위치(mktemp+trap)로 **두 모델 교차 확인 → 부채 D1**, ② mcp_convergence.go:1182 — **카드 델타 밖**(영수증 기계 결함, 리더 후속 후보)
+- 판정 접기: codex 게이트가 판정 시점에 advisory(병합이 가져온 required→advisory 커밋)라 fail은 case-4 자문 불일치로 접힘 — 부채 D1+위 형제로 확정
+- **F8 프로세스 결함(레인 자평, 수용)**: 감사관의 codex 검토 진행 중에 레인이 main 흡수 커밋(5bce362653)을 넣음 — 감사 중 트리 이동. 흡수 자체는 리더 지시(d852)였으나 타이밍이 검토 창과 겹침 — 흡수 후 재검증으로 피해는 제거(audited 시험 ok 5.525s, fixtures가 t2134 superset과 바이트 동일 해소 — F5 예측대로)하나 기록은 유지
+- 병합 트리 재검증: darwin 표적 ok 27.454s(흡수분 포함 전 수트), windows vet/compile exit 0(귀속 환경 — 기본 툴체인 src 손상은 환경 귀속)
+- 결정 기록: decided_by=lane-31 sync-audit-r1 evidence_refs=.moai/reports/t2141/sync-audit-iter1.md ladder_path=Claude sync-auditor + codex(305c 1/2) — PASS-WITH-DEBT 수용, D1 부채는 리더/운영자 수용-수리 판단 대기
+
 ### Gaps
