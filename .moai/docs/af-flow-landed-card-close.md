@@ -19,11 +19,12 @@ is `origin/main` and the merge sits on local `main`.
 
 ## The formal chain (leader path; no store edits)
 
-A lane cannot run steps 1, 3 and 4: `todo landed`, `factory approve` and `todo done` are queue or
+A lane cannot run steps 3, 5 and 6: `todo landed`, `factory approve` and `todo done` are queue or
 leader-path acts. Run them from the leader session in the primary checkout.
 
 1. Find the delivering commit (read-only): `git log --oneline --grep 'merge: <card>' main`.
-2. Check it is on local `main` and not yet on origin: `git merge-base --is-ancestor <sha> main`.
+2. Check it is on local `main` (`git merge-base --is-ancestor <sha> main` exits 0) and not yet on
+   origin (the same command against `origin/main` exits 1).
 3. Record the landing against the local branch: `moai todo landed <card> --sha <sha> --ref main`.
 4. Re-bind the evidence from that record: `moai factory rebind-evidence <card> --run <run> --reason "<why>"`.
    The recorded commit is accepted only when it is reachable from the record's ref.
