@@ -76,6 +76,15 @@ type Ready struct {
 
 // Preparer builds and verifies the worktree in an exclusively held slot. It only
 // prepares: it writes no product code or SPEC.
+//
+// Intake treats preparing as repeatable and records no intent before the call
+// (unlike publish and register, whose effects are remote and not idempotent): a
+// process that dies or times out mid-prepare is retried by calling PrepareWorktree
+// again for the same request and slot. An implementation is bound by that
+// contract: a second call must succeed against whatever an interrupted earlier call
+// left in the slot, must touch nothing outside the slot, and must return only after
+// it has stopped writing, on an error or a timeout as well. No implementation
+// exists in this repository yet; the tests use fakes.
 type Preparer interface {
 	PrepareWorktree(ctx context.Context, req claim.Request, slot string) (Ready, error)
 }

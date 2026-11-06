@@ -7,13 +7,16 @@ import (
 )
 
 // t2080 (follow-up of t2078): does prepare share the "effect sent, nothing recorded"
-// gap of publish and register? It does not, by design: PrepareWorktree builds a
-// LOCAL worktree in a slot the request already holds exclusively, and preparing
-// again keeps what the first attempt made. A process that dies mid-prepare must
-// therefore restart by preparing again, in the same slot, without the operator
-// having to confirm anything. This pins that behavior; an intent-first marker like
-// publish and register use would be wrong here, because it would turn a repeatable
-// step into one that needs ConfirmNotCreated.
+// gap of publish and register? Not in intake's design: intake treats preparing as
+// repeatable (see the Preparer contract), and the slot is one the request already
+// holds exclusively. A process that dies mid-prepare therefore restarts by
+// preparing again, in the same slot, without the operator confirming anything.
+// This pins intake's side of that contract; an intent-first marker like the one
+// publish and register use would turn a repeatable step into one that needs
+// ConfirmNotCreated. It does NOT show that a real preparer is repeatable: none
+// exists in this repository yet, the fake here cannot tell a repeatable preparer
+// from one that fails on an existing worktree, and that obligation sits on the
+// implementer.
 func TestAProcessDyingDuringPrepareRestartsByPreparingAgainInTheSameSlot(t *testing.T) {
 	r := newRig(t, Config{})
 	reserved, _ := advanceTo(t, r, "crash-prep", claim.StageAgentReserved)
