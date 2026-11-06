@@ -121,7 +121,7 @@ $ moai verify audit-plan --project-root /Users/goos/.moai/worktrees/projects/moa
   (claude gate off, codex required, glm off)
 
 mcp__moai__codex_audit (mode native, target baseBranch, delta_base 65d950bf5a, project_root = this tree), called once:
-  verdict: pass, findings: [], resolved_model: gpt-6.1-sol, review_base: "delta_base (merge base 65d950bf5aeb14ad228f9bcedcb4466098528906)",
+  codex result -> verdict=pass, findings: [], resolved_model: gpt-6.1-sol, review_base: "delta_base (merge base 65d950bf5aeb14ad228f9bcedcb4466098528906)",
   build_commit: 646955327e, audit_receipt: rcpt-b5fdfd620ebfea24cb28527b
 ```
 
