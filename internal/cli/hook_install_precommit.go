@@ -75,24 +75,40 @@ if [ -n "$STAGED_GO" ]; then
     if command -v gofmt >/dev/null 2>&1; then
         # One scan, two outcomes per file, told apart by a line prefix: the
         # loop runs in a subshell and cannot hand variables back.
+        #
+        # Portable staged-byte handoff (card t2141): the bytes land in a temp
+        # FILE and gofmt reads the file. The old pipe form
+        # 'git show ":$f" | gofmt -l /dev/stdin' works only where gofmt can
+        # open /dev/stdin -- native gofmt.exe on Windows cannot, so every Go
+        # commit of a real Windows user was blocked with a spurious tool
+        # error (CI run 42147372729, windows cli-3). The temp path is
+        # pid-keyed and removed after every check and once more after the
+        # scan, so nothing survives a completed or interrupted run. The
+        # verdicts are unchanged: an index read that fails leaves an empty
+        # file, which gofmt accepts -- the same result the empty pipe
+        # produced.
         FMT_SCAN="$(
+            _moai_fmt_tmp="${TMPDIR:-/tmp}/moai-precommit-gofmt.$$"
             printf '%s\n' "$STAGED_GO" | while IFS= read -r f; do
                 [ -n "$f" ] || continue
-                if _out="$(git show ":$f" 2>/dev/null | gofmt -l /dev/stdin 2>/dev/null)"; then
+                git show ":$f" >"$_moai_fmt_tmp" 2>/dev/null || :
+                if _out="$(gofmt -l "$_moai_fmt_tmp" 2>/dev/null)"; then
                     if [ -n "$_out" ]; then
                         printf 'fmt %s\n' "$f"
                     fi
                 else
                     printf 'err %s\n' "$f"
                 fi
+                rm -f "$_moai_fmt_tmp"
             done
+            rm -f "$_moai_fmt_tmp"
         )"
         FMT_ERR="$(printf '%s\n' "$FMT_SCAN" | sed -n 's/^err //p')"
         NEED_FMT="$(printf '%s\n' "$FMT_SCAN" | sed -n 's/^fmt //p')"
 
         # A non-zero gofmt exit is a tool error, never a pass. Deciding on an
         # empty stdout alone would let a gofmt that could not run at all --
-        # /dev/stdin missing, input unreadable, staged bytes that do not parse
+        # an unreadable temp file, staged bytes that do not parse
         # -- report a clean gate, and a gate that passes silently is worse
         # than no gate: nobody trusts an absent one, everybody trusts a green.
         if [ -n "$FMT_ERR" ]; then
