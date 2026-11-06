@@ -241,6 +241,17 @@ func (in *Intake) publish(ctx context.Context, req claim.Request) (claim.Request
 			return rec, err
 		}
 	}
+	// Record the intent before the send: a process that dies after the host created
+	// the Issue restarts on an unknown effect (looked up by key, never repeated on a
+	// guess), not on a clean StageAccepted that would publish a second Issue. A
+	// confirmed Issue, a failure, or ConfirmNotCreated replaces the row.
+	if _, err := in.Store.UpdateRequest(req.Key, func(r *claim.Request) error {
+		r.Blocked = &claim.Blocked{Step: claim.StageAccepted, Detail: "publish in flight", Unknown: true,
+			Resume: "look the effect up (Advance); another attempt needs ConfirmNotCreated"}
+		return nil
+	}); err != nil {
+		return claim.Request{}, err
+	}
 	sctx, cancel := in.step(ctx)
 	defer cancel()
 	issue, ref, err := in.pub.PublishIssue(sctx, req)
