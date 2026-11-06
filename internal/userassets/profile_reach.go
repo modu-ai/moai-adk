@@ -5,9 +5,10 @@ package userassets
 // A profile-launched session reads user skills and agents from its own profile
 // directory, not from ~/.claude. Before a project copy of a user asset is
 // removed, the removal path asks whether every real profile root already holds
-// the same copy. The operator's ruling (relayed 11-06): the answer comes from
-// READING the profile roots; nothing is written to one, and a doubt keeps the
-// project copy.
+// the same copy. Operator decision d-20261106T055331Z-c28f ("install writes,
+// the judgment only reads"): the install and update paths keep writing to
+// profile roots; THIS judgment only reads them (os.Root reads, no writes, no
+// directory creation), and a doubt keeps the project copy.
 
 import (
 	"crypto/sha256"
@@ -54,6 +55,12 @@ func (s ReachState) String() string {
 	return fmt.Sprintf("ReachState(%d)", int(s))
 }
 
+// afterReachLstat is a test seam between the Lstat of the copy and its open:
+// the window a concurrent actor with write access to the user's own profile
+// directory could use to swap the name (audit iter7 N4). It does nothing in
+// production.
+var afterReachLstat = func(dir, rel string) {}
+
 // maxReachFileBytes bounds the read of a profile copy; a larger file is
 // Unknown rather than hashed (a skill or agent file is small text).
 const maxReachFileBytes = 8 << 20
@@ -61,15 +68,18 @@ const maxReachFileBytes = 8 << 20
 // ProfileReach is the read-only answer for ONE profile and ONE project copy.
 type ProfileReach struct {
 	Profile string     // profile directory name
-	Root    string     // absolute profile skills|agents root that was read
+	Root    string     // absolute profile skills|agents root that was read; the profile directory itself for an entry that was not read
 	State   ReachState // what was found
 	Reason  string     // one line for the report
 }
 
-// CheckProfileReach reads, for every real profile (the shared junk-filtered
-// enumeration), the profile root of slug and compares the file rel under it
-// with want, the content hash of the project copy. It writes nothing and
-// creates nothing. Only the two profile-derivable bases (claude-skills,
+// CheckProfileReach lists the profile store and, for every real profile (the
+// shared junk-filtered enumeration), reads the profile root of slug and
+// compares the file rel under it with want, the content hash of the project
+// copy. A store entry the launcher could start but that enumeration drops (a
+// linked directory, a name with a space, the reserved sentinel) is not read and
+// is reported as an Unknown row; plain files, hidden names and dangling links
+// give no row. It writes nothing and creates nothing. Only the two profile-derivable bases (claude-skills,
 // claude-agents) have a profile root; any other slug yields no rows, and an
 // empty result never licenses a removal (SafeToRemoveProjectCopy). An
 // unreadable profile store is an error, never an empty answer. rel is a
@@ -168,11 +178,17 @@ func readProfileCopy(dir, rel string, want [32]byte) (ReachState, string) {
 	case fi.Size() > maxReachFileBytes:
 		return ReachUnknown, "file larger than the read bound"
 	}
+	afterReachLstat(dir, rel)
 	f, err := openRegularForRead(root, rel)
 	if err != nil {
 		return ReachUnknown, "file cannot be opened: " + err.Error()
 	}
 	defer f.Close()
+	// The open follows a link that stays inside the root: the handle must be the
+	// very file the Lstat inspected (audit iter7 N4).
+	if hs, herr := f.Stat(); herr != nil || !os.SameFile(fi, hs) {
+		return ReachUnknown, "the opened file is not the one that was inspected"
+	}
 	data, err := io.ReadAll(io.LimitReader(f, maxReachFileBytes+1))
 	if err != nil {
 		return ReachUnknown, "file read failed: " + err.Error()

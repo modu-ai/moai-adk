@@ -261,6 +261,59 @@ func TestCheckProfileReach_LaunchableProfilesTheSharedFilterDropsAreUnknown(t *t
 	}
 }
 
+// Audit iter7 N1: a store entry that cannot even be inspected (a link that
+// loops, so os.Stat fails with something other than "does not exist") is not a
+// plain file or a dangling link; the launcher's own os.Stat would fail the same
+// way, but "cannot tell" must keep the project copy, so it is an Unknown row.
+func TestCheckProfileReach_AStoreEntryThatCannotBeInspectedIsUnknown(t *testing.T) {
+	home := t.TempDir()
+	reachProfile(t, home, "alpha", reachBody)
+	if err := os.Symlink("loop", filepath.Join(ProfileRootsBase(home), "loop")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	rs, err := CheckProfileReach(home, RootClaudeSkills, reachRel, reachHash(reachBody))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := reachStates(rs); got["alpha"] != ReachSame || got["loop"] != ReachUnknown || len(rs) != 2 {
+		t.Fatalf("want alpha Same and loop Unknown, got %+v", rs)
+	}
+	if SafeToRemoveProjectCopy(rs) {
+		t.Fatal("an entry that cannot be inspected must keep the project copy")
+	}
+}
+
+// Audit iter7 N4: between the Lstat of the copy and its open, the name is
+// swapped for a link to ANOTHER file inside the same root. The open follows it,
+// so the handle must be shown to be the file that was inspected.
+func TestCheckProfileReach_ACopySwappedForAnInRootLinkAfterTheLstatIsUnknown(t *testing.T) {
+	home := t.TempDir()
+	d := reachProfile(t, home, "alpha", reachBody)
+	other := filepath.Join(d, "skills", "moai-alpha", "other.md")
+	if err := os.WriteFile(other, reachBody, 0o644); err != nil { // same content: only identity differs
+		t.Fatal(err)
+	}
+	orig := afterReachLstat
+	afterReachLstat = func(dir, rel string) {
+		p := filepath.Join(dir, filepath.FromSlash(rel))
+		if err := os.Remove(p); err != nil {
+			t.Errorf("swap, step 1: %v", err)
+			return
+		}
+		if err := os.Symlink("other.md", p); err != nil {
+			t.Errorf("swap, step 2: %v", err)
+		}
+	}
+	t.Cleanup(func() { afterReachLstat = orig })
+	rs, err := CheckProfileReach(home, RootClaudeSkills, reachRel, reachHash(reachBody))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := reachStates(rs); got["alpha"] != ReachUnknown {
+		t.Fatalf("the opened file is not the one that was inspected: want Unknown, got %+v", rs)
+	}
+}
+
 // Audit iter6 S1: shapes that must stay Unknown and were not pinned.
 func TestCheckProfileReach_RootAndFileShapesThatMustStayUnknown(t *testing.T) {
 	home := t.TempDir()
