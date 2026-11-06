@@ -196,7 +196,11 @@ func printMigrationReport(cmd *cobra.Command, report *migrationReport, asJSON bo
 		summary += fmt.Sprintf(", interrupted %d", report.interrupted)
 	}
 	_, _ = fmt.Fprintln(cmd.OutOrStdout(), summary)
-	if report.journal != "" && report.failed+report.reversed > 0 {
+	// The rollback hint names moves this run actually has something to undo
+	// for (card t2094, F3): a run whose only failures are trees that never
+	// moved — a busy tree the OS refused to rename — must not advertise
+	// --rollback, which would have nothing to undo.
+	if report.journal != "" && (report.moved > 0 || report.interrupted > 0) {
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "journal: %s (undo with: moai worktree migrate --rollback %s)\n", report.journal, report.journal)
 	}
 	return nil
@@ -1149,7 +1153,7 @@ func migrateOneTreeWith(root string, p migratePlan, mlPath, trigger string, jour
 			// failing to write it surfaces through MLErr.
 			mlErr := appendMoveListLine(mlPath, m6MoveLineTriggerReason(trigger, "reversed", p.destination, p.source, id.Ident(),
 				"the forward move failed before the tree moved"))
-			return treeOutcome{Outcome: "failed", Reason: reason, Ident: id.Ident(), Manifest: digest, MLErr: mlErr}
+			return treeOutcome{Outcome: "failed", Reason: failedAtSourceReason(p, err), Ident: id.Ident(), Manifest: digest, MLErr: mlErr}
 		default:
 			// The tree's location cannot be established (K2): an unreadable
 			// identity is not an absent tree. The protection stays and the
@@ -1220,6 +1224,26 @@ func forwardFailureLocation(p migratePlan, ident string) string {
 		return atSource
 	}
 	return locationUnknown
+}
+
+// failedAtSourceReason names the cause of a forward move that failed with the
+// tree still at its source (card t2094, F3). A move refusing to rename the
+// tree directory usually means a process holds it as its working directory —
+// the Windows rename refusal — and a bare git error names nothing the user can
+// act on, so the working directories are probed again and, when the source is
+// inside the returned set, the reason becomes the busy-tree guidance. A probe
+// that errors or is OS-guarded keeps the git error — the underlying error is
+// never lost.
+func failedAtSourceReason(p migratePlan, moveErr error) string {
+	reason := fmt.Sprintf("git worktree move: %v", moveErr)
+	cwds, err := activeProcessCWDProbe()
+	if err != nil {
+		return reason
+	}
+	if !newProcessCWDIndex(cwds).usesWorktree(p.source) {
+		return reason
+	}
+	return fmt.Sprintf("a process is inside this worktree — close it or move its working directory elsewhere, then run the migration again (%v)", moveErr)
 }
 
 // reverseAfterFailure runs the one reverse order after a failed step and
