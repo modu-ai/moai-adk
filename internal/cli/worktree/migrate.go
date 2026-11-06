@@ -38,10 +38,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/atomicfile"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/hook"
-	"github.com/modu-ai/moai-adk/internal/lockfile"
 	"github.com/modu-ai/moai-adk/internal/session"
 	"github.com/modu-ai/moai-adk/internal/worktreeroot"
 	"github.com/spf13/cobra"
@@ -87,7 +87,7 @@ func runMigrate(cmd *cobra.Command, args []string) error {
 
 	switch {
 	case verify:
-		return runMigrateVerify(cmd, root)
+		return runMigrateVerify(cmd, root, asJSON)
 	case rollbackPath != "":
 		return runMigrateRollback(cmd, root, rollbackPath, asJSON)
 	default:
@@ -130,7 +130,7 @@ func withMigrationLock(root string, fn func() error) error {
 		return fmt.Errorf("migration lock: open %s: %w", lockPath, err)
 	}
 	defer func() { _ = f.Close() }()
-	if terr := lockfile.TryLock(f); terr != nil {
+	if terr := tryMigrationLock(f); terr != nil {
 		return fmt.Errorf("migration lock: %s is held by another mover; this run moves nothing", lockPath)
 	}
 	return fn()
@@ -426,12 +426,47 @@ const manifestFormatVersion = 2
 // every tree whose move may have started (card t1640 review F3).
 type migrationJournal struct {
 	path    string
+	dir     string // when path is empty: the directory the file is claimed in on first flush
+	stamp   string // the second-resolution stem of the file name
 	trigger string
 	steps   []journalStep
 }
 
+// claimJournalPath creates dir/<stamp>.json exclusively and returns its path;
+// a name already taken (another run in the same second, or a leftover) gets a
+// -N suffix, so a run never overwrites an earlier run's journal (card t2053,
+// C12). The claimed stub is replaced by the first atomic flush.
+func claimJournalPath(dir, stamp string) (string, error) {
+	for i := 0; i < 1000; i++ {
+		name := stamp + ".json"
+		if i > 0 {
+			name = fmt.Sprintf("%s-%d.json", stamp, i)
+		}
+		path := filepath.Join(dir, name)
+		f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
+		if err == nil {
+			_ = f.Close()
+			return path, nil
+		}
+		if !errors.Is(err, os.ErrExist) {
+			return "", err
+		}
+	}
+	return "", fmt.Errorf("no free journal name under %s for stamp %s", dir, stamp)
+}
+
 func (j *migrationJournal) flush() error {
-	if j == nil || j.path == "" {
+	if j == nil {
+		return nil
+	}
+	if j.path == "" && j.dir != "" {
+		path, err := claimJournalPath(j.dir, j.stamp)
+		if err != nil {
+			return fmt.Errorf("journal: %w", err)
+		}
+		j.path = path
+	}
+	if j.path == "" {
 		return nil
 	}
 	data, err := json.MarshalIndent(map[string]any{
@@ -512,7 +547,8 @@ func runMigrationEngineWith(root string, apply bool, trigger string, progress *t
 	var journal *migrationJournal
 	if apply {
 		journal = &migrationJournal{
-			path:    filepath.Join(filepath.Dir(moveListPath(root)), time.Now().UTC().Format("20060102T150405")+".json"),
+			dir:     filepath.Dir(moveListPath(root)),
+			stamp:   journalStamp(),
 			trigger: trigger,
 		}
 	}
@@ -689,10 +725,45 @@ var reverseGitMove = func(root, from, to string) error {
 	return err
 }
 
+// journalStamp names a run's journal file; a seam so a test can force two runs
+// onto the same name.
+var journalStamp = func() string { return time.Now().UTC().Format("20060102T150405") }
+
+// journalReplace is the final rename step of the atomic journal write; a seam
+// so a test can stop the write exactly there.
+var journalReplace = atomicfile.Replace
+
 // journalWrite is the injectable seam for the journal file write (the
 // fault-injection point of the REQ-WHR-017 journal clause).
 var journalWrite = func(path string, data []byte) error {
-	return os.WriteFile(path, data, 0o644)
+	return writeFileAtomic(path, data, 0o644)
+}
+
+// writeFileAtomic replaces path with data: a temp file in the same directory,
+// fsynced, then renamed over the target (card t2053, C1). A kill at any point
+// leaves either the previous complete file or the new complete one — never a
+// truncated journal, which would be the recovery handle for every tree the run
+// already moved. On error the temp file is removed.
+func writeFileAtomic(path string, data []byte, mode os.FileMode) error {
+	tmp, err := os.CreateTemp(filepath.Dir(path), ".journal-*.tmp")
+	if err != nil {
+		return err
+	}
+	name := tmp.Name()
+	defer func() { _ = os.Remove(name) }() // a no-op once the rename has succeeded
+	if _, err = tmp.Write(data); err == nil {
+		err = tmp.Sync()
+	}
+	if cerr := tmp.Close(); err == nil {
+		err = cerr
+	}
+	if err == nil {
+		err = os.Chmod(name, mode)
+	}
+	if err != nil {
+		return err
+	}
+	return journalReplace(name, path)
 }
 
 // RunUpdateConsolidation is the exported update-time entry into the
@@ -918,63 +989,186 @@ func rebindCardForPath(root, oldPath, newPath string) error {
 	return err
 }
 
-// runMigrateVerify reports each recorded move in the journals as intact:
-// the destination exists AND carries the journal step's identity (D-12 —
-// only ident tells two trees apart; card t1640 review P2e). A destination
-// whose identity differs is a mismatch and fails the verification; a step
-// that was never a completed move (failed, skipped, pending) is not a
-// recorded move and is not verified.
-func runMigrateVerify(cmd *cobra.Command, root string) error {
-	mlDir := filepath.Join(root, ".moai", "state", "worktree-migrate")
-	entries, err := os.ReadDir(mlDir)
-	if err != nil {
-		return fmt.Errorf("read the migration journals: %w", err)
+// verifyRow is one line of the --verify report.
+type verifyRow struct {
+	Kind    string `json:"kind"`
+	OldPath string `json:"old_path,omitempty"`
+	NewPath string `json:"new_path,omitempty"`
+	Journal string `json:"journal,omitempty"`
+	Reason  string `json:"reason,omitempty"`
+}
+
+// latestLocationResult is the result of the latest location line of the move
+// list that carries ident ("" when there is none).
+func latestLocationResult(root, ident string) string {
+	result := ""
+	for _, rec := range loadMoveList(root) {
+		if rec.Ident == ident && isLocationLine(rec.Result) {
+			result = rec.Result
+		}
 	}
-	intact, mismatched := 0, 0
-	for _, e := range entries {
-		if !strings.HasSuffix(e.Name(), ".json") || e.Name() == "move-list.jsonl" {
-			continue
+	return result
+}
+
+// treeCarries reports whether path exists as a linked worktree carrying ident.
+func treeCarries(path, ident string) bool {
+	if ident == "" {
+		return false
+	}
+	ti, err := TreeIdent(path)
+	return err == nil && ti.Ident() == ident
+}
+
+// verifyStep classifies one journal step (the latest per identity). The kinds
+// that fail the verification are absent, mismatch, unregistered, pending,
+// failed, reversed and unverifiable; intact and restored are healthy.
+func verifyStep(root string, s journalStep) (kind, reason string, healthy bool) {
+	_, dstErr := os.Lstat(s.NewPath)
+	dstExists := dstErr == nil
+	switch s.Outcome {
+	case "", "moved":
+		if dstExists {
+			if !treeCarries(s.NewPath, s.Ident) {
+				return "mismatch", "the destination is not the tree the journal moved", false
+			}
+			if !registeredAt(root, s.NewPath) {
+				return "unregistered", "git does not list the destination as a worktree", false
+			}
+			return "intact", "", true
 		}
-		data, err := os.ReadFile(filepath.Join(mlDir, e.Name()))
+		if treeCarries(s.OldPath, s.Ident) && registeredAt(root, s.OldPath) {
+			if r := latestLocationResult(root, s.Ident); r == "restored" || r == "reversed" {
+				return "restored", "rolled back to the source", true
+			}
+		}
+		return "absent", "", false
+	default: // pending, failed, reversed: a step that did not end as a completed move
+		if dstExists {
+			if treeCarries(s.NewPath, s.Ident) {
+				return s.Outcome, "the tree stands at the destination; run --rollback on this journal", false
+			}
+			return "", "", true // a foreign tree at the destination: not this step's tree
+		}
+		if _, srcErr := os.Lstat(s.OldPath); srcErr != nil {
+			return "", "", true // neither end exists: the tree is gone
+		}
+		if !treeCarries(s.OldPath, s.Ident) || !registeredAt(root, s.OldPath) {
+			return s.Outcome, "the tree is at the source but git does not register it under the journal identity; run --rollback on this journal", false
+		}
+		if s.Outcome == "pending" {
+			if r := latestLocationResult(root, s.Ident); r != "restored" && r != "reversed" {
+				return "pending", "an unsettled step; run --rollback on this journal to settle it", false
+			}
+		}
+		return "", "", true
+	}
+}
+
+// runMigrateVerify reports each recorded move in the journals (card t2053,
+// C2). Only the latest step per identity counts, so a tree moved again by a
+// later run is not judged by an older journal. It fails — with a row — on a
+// journal it cannot read, on a step left unsettled or stranded, on a
+// destination that git does not list, and on a step without an identity;
+// a step the rollback restored reads as restored. A repository without any
+// journal directory has nothing to verify. The migration lock keeps a
+// running mover from being read mid-write.
+func runMigrateVerify(cmd *cobra.Command, root string, asJSON bool) error {
+	mlDir := filepath.Join(root, ".moai", "state", "worktree-migrate")
+	if _, err := os.Stat(mlDir); errors.Is(err, os.ErrNotExist) {
+		if asJSON {
+			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "[]")
+		} else {
+			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "nothing to verify: no migration journals")
+		}
+		return nil
+	}
+	return withMigrationLock(root, func() error {
+		entries, err := os.ReadDir(mlDir)
 		if err != nil {
-			continue
+			return fmt.Errorf("read the migration journals: %w", err)
 		}
-		var journal struct {
-			Steps []struct {
-				OldPath string `json:"old_path"`
-				NewPath string `json:"new_path"`
-				Outcome string `json:"outcome"`
-				Ident   string `json:"ident"`
-			} `json:"steps"`
+		rows := []verifyRow{}
+		failures := 0
+		fail := func(r verifyRow) {
+			rows = append(rows, r)
+			failures++
 		}
-		if json.Unmarshal(data, &journal) != nil {
-			continue
+		type located struct {
+			step    journalStep
+			journal string
 		}
-		for _, s := range journal.Steps {
-			if s.Outcome != "" && s.Outcome != "moved" {
+		latest := map[string]located{}
+		var order []string
+		for _, e := range entries {
+			if !strings.HasSuffix(e.Name(), ".json") {
 				continue
 			}
-			if _, serr := os.Stat(s.NewPath); serr != nil {
-				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "absent\t%s → %s\n", s.OldPath, s.NewPath)
-				mismatched++
+			path := filepath.Join(mlDir, e.Name())
+			data, rerr := os.ReadFile(path)
+			var journal struct {
+				Steps []journalStep `json:"steps"`
+			}
+			if rerr != nil {
+				fail(verifyRow{Kind: "unreadable", Journal: path, Reason: rerr.Error()})
 				continue
 			}
-			if s.Ident != "" {
-				if ti, terr := TreeIdent(s.NewPath); terr != nil || ti.Ident() != s.Ident {
-					_, _ = fmt.Fprintf(cmd.OutOrStdout(), "mismatch\t%s → %s (the destination is not the tree the journal moved)\n", s.OldPath, s.NewPath)
-					mismatched++
+			if jerr := json.Unmarshal(data, &journal); jerr != nil {
+				fail(verifyRow{Kind: "unreadable", Journal: path, Reason: jerr.Error()})
+				continue
+			}
+			for _, s := range journal.Steps {
+				if s.Ident == "" {
+					fail(verifyRow{Kind: "unverifiable", OldPath: s.OldPath, NewPath: s.NewPath, Journal: path,
+						Reason: "the journal step carries no identity"})
 					continue
 				}
+				if _, seen := latest[s.Ident]; !seen {
+					order = append(order, s.Ident)
+				}
+				latest[s.Ident] = located{step: s, journal: path}
 			}
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "intact\t%s → %s\n", s.OldPath, s.NewPath)
-			intact++
 		}
-	}
-	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%d recorded move(s) intact, %d mismatched\n", intact, mismatched)
-	if mismatched > 0 {
-		return fmt.Errorf("verification found %d mismatched move(s)", mismatched)
-	}
-	return nil
+		intact := 0
+		for _, ident := range order {
+			l := latest[ident]
+			kind, reason, healthy := verifyStep(root, l.step)
+			if kind == "" {
+				continue
+			}
+			row := verifyRow{Kind: kind, OldPath: l.step.OldPath, NewPath: l.step.NewPath, Journal: l.journal, Reason: reason}
+			if healthy {
+				rows = append(rows, row)
+				if kind == "intact" {
+					intact++
+				}
+			} else {
+				fail(row)
+			}
+		}
+		if asJSON {
+			body, jerr := json.MarshalIndent(rows, "", "  ")
+			if jerr != nil {
+				return jerr
+			}
+			_, _ = fmt.Fprintln(cmd.OutOrStdout(), string(body))
+		} else {
+			for _, r := range rows {
+				line := fmt.Sprintf("%s\t%s → %s", r.Kind, r.OldPath, r.NewPath)
+				if r.Kind == "unreadable" {
+					line = fmt.Sprintf("%s\t%s", r.Kind, r.Journal)
+				}
+				if r.Reason != "" {
+					line += " (" + r.Reason + ")"
+				}
+				_, _ = fmt.Fprintln(cmd.OutOrStdout(), line)
+			}
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%d recorded move(s) intact, %d mismatched\n", intact, failures)
+		}
+		if failures > 0 {
+			return fmt.Errorf("verification found %d mismatched move(s)", failures)
+		}
+		return nil
+	})
 }
 
 // runMigrateRollback reverses each journaled move: move back, re-key back,
