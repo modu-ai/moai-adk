@@ -31,7 +31,6 @@ import (
 	"fmt"
 	"math/big"
 	"path/filepath"
-	"slices"
 	"strings"
 	"time"
 
@@ -418,7 +417,13 @@ func (r *afsReader) guardSecrets() {
 		return // shape errors are reported by routes()
 	}
 	for i, e := range n.Content {
-		if afsHasSecretKey(e) {
+		found, cycle := afsHasSecretKey(e)
+		if cycle {
+			r.fail(fmt.Sprintf("webhook.routes[%d]", i),
+				"a YAML alias refers back to itself (a cycle), which this file does not allow (the value was not echoed)", nil)
+			return
+		}
+		if found {
 			r.fail(fmt.Sprintf("webhook.routes[%d].secret", i),
 				"a secret value must not be stored in this file; use a reference to where the secret is read from (the value was not echoed)", nil)
 			return
@@ -426,24 +431,52 @@ func (r *afsReader) guardSecrets() {
 	}
 }
 
-func afsHasSecretKey(n *yaml.Node) bool {
+// afsHasSecretKey reports whether a mapping key named "secret" exists under n,
+// following YAML aliases. cycle is true when an alias leads back to a node that
+// is still being walked (a self-referencing anchor); the walk then stops. A
+// non-cyclic anchor used several times is not a cycle.
+func afsHasSecretKey(n *yaml.Node) (found, cycle bool) {
+	return afsWalkSecret(n, map[*yaml.Node]bool{}, map[*yaml.Node]bool{})
+}
+
+// afsWalkSecret keeps onPath (nodes on the current descent, for cycle detection)
+// and clean (nodes fully walked without a finding, so a shared anchor is walked once).
+func afsWalkSecret(n *yaml.Node, onPath, clean map[*yaml.Node]bool) (found, cycle bool) {
 	if n == nil {
-		return false
+		return false, false
 	}
 	if n.Kind == yaml.AliasNode {
-		return afsHasSecretKey(n.Alias)
+		n = n.Alias
+		if n == nil {
+			return false, false
+		}
 	}
-	switch n.Kind {
-	case yaml.MappingNode:
+	if onPath[n] {
+		return false, true
+	}
+	if clean[n] || (n.Kind != yaml.MappingNode && n.Kind != yaml.SequenceNode) {
+		return false, false
+	}
+	onPath[n] = true
+	defer delete(onPath, n)
+	if n.Kind == yaml.MappingNode {
 		for i := 0; i+1 < len(n.Content); i += 2 {
-			if n.Content[i].Value == "secret" || afsHasSecretKey(n.Content[i+1]) {
-				return true
+			if n.Content[i].Value == "secret" {
+				return true, false
+			}
+			if f, c := afsWalkSecret(n.Content[i+1], onPath, clean); f || c {
+				return f, c
 			}
 		}
-	case yaml.SequenceNode:
-		return slices.ContainsFunc(n.Content, afsHasSecretKey)
+	} else {
+		for _, e := range n.Content {
+			if f, c := afsWalkSecret(e, onPath, clean); f || c {
+				return f, c
+			}
+		}
 	}
-	return false
+	clean[n] = true
+	return false, false
 }
 
 // afsLookup walks a dotted path from the document root. It returns (nil, nil)
