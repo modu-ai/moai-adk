@@ -35,6 +35,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -481,17 +482,12 @@ func interruptedMigration(root string, paths ...string) (string, bool) {
 // journalRecording is the newest journal under the migration state directory
 // holding a step for ident ("" when none does).
 func journalRecording(root, ident string) string {
-	dir := filepath.Dir(moveListPath(root))
-	entries, err := os.ReadDir(dir)
+	journals, err := orderedJournals(filepath.Dir(moveListPath(root)))
 	if err != nil {
 		return ""
 	}
-	for i := len(entries) - 1; i >= 0; i-- {
-		name := entries[i].Name()
-		if !strings.HasSuffix(name, ".json") {
-			continue
-		}
-		data, rerr := os.ReadFile(filepath.Join(dir, name))
+	for i := len(journals) - 1; i >= 0; i-- {
+		data, rerr := os.ReadFile(journals[i])
 		if rerr != nil {
 			continue
 		}
@@ -503,7 +499,7 @@ func journalRecording(root, ident string) string {
 		}
 		for _, s := range journal.Steps {
 			if s.Ident == ident {
-				return filepath.Join(dir, name)
+				return journals[i]
 			}
 		}
 	}
@@ -787,17 +783,24 @@ func migrateOneTree(root string, p migratePlan, mlPath, trigger string, journal 
 		// moved) and goes through the one reverse order; otherwise nothing
 		// moved and the intent line is released.
 		reason := fmt.Sprintf("git worktree move: %v", err)
-		if _, statErr := os.Lstat(p.destination); statErr == nil {
-			if destIdent, ierr := TreeIdent(p.destination); ierr == nil && destIdent.Ident() == id.Ident() {
-				return reverseAfterFailure(root, p, id, mlPath, trigger, digest, reason)
-			}
+		switch forwardFailureLocation(p, id.Ident()) {
+		case atDestination:
+			return reverseAfterFailure(root, p, id, mlPath, trigger, digest, reason)
+		case atSource:
+			// The tree never left the source: the pending intent line must not
+			// keep protecting it (C13). A `reversed` line is the release;
+			// failing to write it surfaces through MLErr.
+			mlErr := appendMoveListLine(mlPath, m6MoveLineTriggerReason(trigger, "reversed", p.destination, p.source, id.Ident(),
+				"the forward move failed before the tree moved"))
+			return treeOutcome{Outcome: "failed", Reason: reason, Ident: id.Ident(), Manifest: digest, MLErr: mlErr}
+		default:
+			// The tree's location cannot be established (K2): an unreadable
+			// identity is not an absent tree. The protection stays and the
+			// pending line records both ends for --rollback to converge.
+			const msg = "the tree's location could not be established after the failed move"
+			mlErr := appendMoveListLine(mlPath, m6MoveLineTriggerReason(trigger, "pending", p.destination, p.source, id.Ident(), msg))
+			return treeOutcome{Outcome: "failed", Reason: fmt.Sprintf("%s; %s (pending)", reason, msg), Ident: id.Ident(), Manifest: digest, MLErr: mlErr}
 		}
-		// The tree never left the source: the pending intent line must not keep
-		// protecting it (C13). A `reversed` line is the release; failing to
-		// write it surfaces through MLErr.
-		mlErr := appendMoveListLine(mlPath, m6MoveLineTriggerReason(trigger, "reversed", p.destination, p.source, id.Ident(),
-			"the forward move failed before the tree moved"))
-		return treeOutcome{Outcome: "failed", Reason: reason, Ident: id.Ident(), Manifest: digest, MLErr: mlErr}
 	}
 
 	if rerr := hook.RekeyWorktreeEntry(root, p.source, p.destination); rerr != nil {
@@ -827,6 +830,39 @@ func migrateOneTree(root string, p migratePlan, mlPath, trigger string, journal 
 		return treeOutcome{Outcome: "moved", Ident: id.Ident(), Manifest: digest, MLErr: merr}
 	}
 	return treeOutcome{Outcome: "moved", Ident: id.Ident(), Manifest: digest}
+}
+
+// Where a tree stands after a failed forward move.
+const (
+	atDestination   = "destination"
+	atSource        = "source"
+	locationUnknown = "unknown"
+)
+
+// forwardFailureLocation decides where the tree stands after `git worktree
+// move` returned an error. The destination wins only when it carries the
+// journal identity; the source wins only when it exists, carries the identity
+// and the destination is absent or provably another tree. Everything else —
+// an identity that cannot be read, a path that cannot be inspected, neither
+// end carrying the identity — is unknown, never "absent" (card t2053, K2).
+func forwardFailureLocation(p migratePlan, ident string) string {
+	_, derr := os.Lstat(p.destination)
+	if derr != nil && !errors.Is(derr, os.ErrNotExist) {
+		return locationUnknown
+	}
+	if derr == nil {
+		destIdent, ierr := TreeIdent(p.destination)
+		if ierr != nil {
+			return locationUnknown
+		}
+		if destIdent.Ident() == ident {
+			return atDestination
+		}
+	}
+	if srcIdent, serr := TreeIdent(p.source); serr == nil && srcIdent.Ident() == ident {
+		return atSource
+	}
+	return locationUnknown
 }
 
 // reverseAfterFailure runs the one reverse order after a failed step and
@@ -1306,7 +1342,7 @@ func runMigrateVerify(cmd *cobra.Command, root string, asJSON bool) error {
 		return nil
 	}
 	return withMigrationLock(root, func() error {
-		entries, err := os.ReadDir(mlDir)
+		journalPaths, err := orderedJournals(mlDir)
 		if err != nil {
 			return fmt.Errorf("read the migration journals: %w", err)
 		}
@@ -1322,11 +1358,7 @@ func runMigrateVerify(cmd *cobra.Command, root string, asJSON bool) error {
 		}
 		latest := map[string]located{}
 		var order []string
-		for _, e := range entries {
-			if !strings.HasSuffix(e.Name(), ".json") {
-				continue
-			}
-			path := filepath.Join(mlDir, e.Name())
+		for _, path := range journalPaths {
 			data, rerr := os.ReadFile(path)
 			var journal struct {
 				Steps []journalStep `json:"steps"`
@@ -1452,7 +1484,15 @@ func runMigrateRollback(cmd *cobra.Command, root, journalPath string, asJSON boo
 		}
 		for i := len(journal.Steps) - 1; i >= 0; i-- {
 			s := journal.Steps[i]
-			if _, serr := os.Stat(s.NewPath); serr != nil {
+			if _, serr := os.Stat(s.NewPath); serr != nil && !errors.Is(serr, os.ErrNotExist) {
+				// A destination that cannot be inspected is not an absent one
+				// (K2): where the tree stands is unknown, so nothing is restored.
+				msg := fmt.Sprintf("the destination cannot be inspected: %v", serr)
+				if herr := hold(s, msg, fmt.Sprintf("%s: %s", s.NewPath, msg)); herr != nil {
+					return herr
+				}
+				continue
+			} else if serr != nil {
 				// The destination is gone. The tree either never left the source
 				// or a reverse move renamed it back and was cut off before git's
 				// registration, the re-key and the card binding followed (card
@@ -1460,7 +1500,15 @@ func runMigrateRollback(cmd *cobra.Command, root, journalPath string, asJSON boo
 				// is registered there AND has nothing left to undo is "nothing to
 				// do"; every other state converges or stays pending.
 				if _, lerr := os.Lstat(s.OldPath); lerr != nil {
-					continue // neither end exists: nothing here to act on
+					if errors.Is(lerr, os.ErrNotExist) {
+						continue // neither end exists: nothing here to act on
+					}
+					// A source that cannot be inspected is not a gone one (K2).
+					msg := fmt.Sprintf("the source cannot be inspected: %v", lerr)
+					if herr := hold(s, msg, fmt.Sprintf("%s: %s", s.OldPath, msg)); herr != nil {
+						return herr
+					}
+					continue
 				}
 				if s.Ident == "" {
 					// An identity-less step cannot be matched to the tree at the
@@ -1914,3 +1962,44 @@ func isUnderWorktreePrefix(path, prefix string) bool {
 
 // processUsesWorktree reports whether one of the active processes works
 // inside the tree at path.
+
+// orderedJournals lists the journal files of dir in TRUE creation order (card
+// t2053, K1): `<stamp>.json` first, then `<stamp>-1.json`, `<stamp>-2.json`...
+// numerically. Plain lexical order puts `<stamp>-1` before `<stamp>` ('-' sorts
+// before '.'), so every reader of the journal directory goes through this one
+// helper instead of trusting os.ReadDir's order.
+func orderedJournals(dir string) ([]string, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+	type journalName struct {
+		path, stamp string
+		n           int
+	}
+	var names []journalName
+	for _, e := range entries {
+		base, ok := strings.CutSuffix(e.Name(), ".json")
+		if !ok {
+			continue
+		}
+		stamp, n := base, 0
+		if i := strings.LastIndex(base, "-"); i > 0 {
+			if v, perr := strconv.Atoi(base[i+1:]); perr == nil && v > 0 {
+				stamp, n = base[:i], v
+			}
+		}
+		names = append(names, journalName{path: filepath.Join(dir, e.Name()), stamp: stamp, n: n})
+	}
+	sort.SliceStable(names, func(i, j int) bool {
+		if names[i].stamp != names[j].stamp {
+			return names[i].stamp < names[j].stamp
+		}
+		return names[i].n < names[j].n
+	})
+	out := make([]string, 0, len(names))
+	for _, n := range names {
+		out = append(out, n.path)
+	}
+	return out, nil
+}
