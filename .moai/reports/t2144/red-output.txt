@@ -1,0 +1,16 @@
+--- FAIL: TestT2144TagShadow (37.70s)
+    --- FAIL: TestT2144TagShadow/tree_identity_measures_the_branch_not_the_tag (3.24s)
+        merge_tag_shadow_t2144_test.go:47: tree-identity passed against the tag's old commit; want refusal against the branch: merge result tree ada05530bab81a7667ff79bd69e466bd5d0fe32a == card branch tree ada05530bab81a7667ff79bd69e466bd5d0fe32a (HEAD^{{tree}} == HEAD^2^{{tree}} holds)
+    --- FAIL: TestT2144TagShadow/conflict_free_measures_the_branch_not_the_tag (2.78s)
+        merge_tag_shadow_t2144_test.go:61: conflict-free passed against the tag's old commit; want the branch's conflict: merge-tree main + refs/heads/WT-card@227659cb191cc72f747b72375c16aa886d947715 clean; result tree ada05530bab81a7667ff79bd69e466bd5d0fe32a
+    --- FAIL: TestT2144TagShadow/verdict_valid_only_against_the_branch_is_accepted (4.24s)
+        merge_tag_shadow_t2144_test.go:73: sync-audit passed=false, want true; detail: card t9 has no SPEC, so its merge evidence is .moai/reports/t9/verdict.md (or, when verdict.md is absent, the latest .moai/reports/t9/sync-audit*.md) — audited_sha 2620c099898de804a6a6f46773a04fa325777c09 is stale: HEAD d08468bc729d73f84a4e8e07aaae107818fedc70 is not the audited tree plus a plain absorb of main (first path outside .moai/reports/t9/: "main_only.txt"): merge d08468bc729d73f84a4e8e07aaae107818fedc70 brings in b0089c5cc4d96a58379be6bf192e3b5eb115d3a1, which is not part of main. Produce that file on the card branch with the machine lines `verdict: PASS` (or `verdict: PASS-WITH-DEBT`) and `audited_sha: <full commit SHA the audit read>` (the audited commit must be HEAD, differ from HEAD only under .moai/reports/t9/, or differ only by absorbing main with the card's own diff unchanged)
+    --- FAIL: TestT2144TagShadow/forged_by_tag_absorb_of_an_unaudited_commit_is_refused (4.62s)
+        merge_tag_shadow_t2144_test.go:86: sync-audit passed=true, want false; detail: .moai/reports/t9/verdict.md: verdict: PASS, audited_sha 372babedbbae383209559882012c8bcf9d8b073e binds HEAD d95489983ff364264252b0ce52be5ff5c154aae0 — the SPEC-less card's audit record reads closed
+    --- FAIL: TestT2144TagShadow/nonexistent_name_is_refused_naming_both_candidates (3.94s)
+        merge_tag_shadow_t2144_test.go:134: conflict-free detail lacks "refs/heads/no-such-branch": merge-tree no-such-branch + refs/heads/WT-card@7d3aa05dfaec846a531a2ddc84da49ea57d69ae2 reports unresolved conflicts:
+        merge_tag_shadow_t2144_test.go:134: tree-identity detail lacks "refs/heads/no-such-branch": merge-tree no-such-branch + refs/heads/WT-card@7d3aa05dfaec846a531a2ddc84da49ea57d69ae2 could not run: git exited 1: merge-tree: no-such-branch - not something we can merge — tree identity cannot be evaluated (fail-closed)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/factorylane	38.084s
+FAIL
+exit=1
