@@ -75,6 +75,33 @@ No `outside` findings. No `touched-file` findings outside the diff hunks.
   token unchanged. The lane resolves downstream — respawn the MCP server from
   the host, run the codex audit against this tree, and cite it via
   rebind-evidence (the sanctioned path).
+- **Third refusal after host reconnect, recorded (final).** The operator
+  reconnected the lane's `/mcp`; HEAD was re-verified first — it had moved to
+  `810f0897a841fcf80acc0f3e3ee934ebb268d906`, a docs-only commit adding exactly
+  `.moai/reports/t2117/progress.md` (+78) and this verdict file (+178), zero
+  code-surface change (`git diff --stat 927cd8b651..810f0897a8`). The instructed
+  single retry (same parameters: `target="baseBranch"`,
+  `delta_base=b00c35d103`, `project_root=<own toplevel>`) was refused again with
+  the identical deterministic error:
+  `"error":"codex_audit: the serving moai build is stale — stale_server: the serving moai build (/Users/goos/go/bin/moai) differs from the installed build (/Users/goos/go/bin/moai) — reconnect the moai MCP server (restart the host session) so the installed build serves"`.
+  Serving-build notation, complete: the responding server process self-identifies
+  as `_server: {"commit":"b00c35d103","version":"v3.2.1-rc.1"}` — i.e. the
+  post-reconnect respawn IS fresh relative to rc.1 — while the installed binary
+  read this same run reports `moai-adk v3.2.1-rc.2` (`moai version`): the rc
+  rollout replaced the on-disk binary again after the reconnect, so the
+  staleness check (serving rc.1 vs on-disk rc.2) fires against a moving target.
+  Per the coordinator's instruction: no further retries; refusal reported
+  verbatim; verdict token unchanged. Resolution remains downstream: respawn the
+  server from a host whose installed binary has stopped moving, run the codex
+  audit against this tree, cite via rebind-evidence.
+- **Stop-hook loop, closed.** The Stop hook refused this session's finish twice
+  on the same missing receipt (`AUDIT_RECEIPT_VIOLATION ... no receipt cited`),
+  before and after the third recorded refusal. The loop is deterministic — the
+  only receipt-minting path errors `stale_server` on every call, further retries
+  are forbidden by the coordinator's instruction, and altering the verdict token
+  to satisfy the guard is forbidden by the standing decision. Disposition per
+  that decision (t2094 precedent, leader-accepted): recorded, token unchanged,
+  finished. The lane resolves the receipt downstream (rebind-evidence).
 
 ## Verification Record (5-section)
 
