@@ -495,35 +495,59 @@ func TestLintGitBatch_OldGitRejectingNoRelativeFallsBack(t *testing.T) {
 // TestLintGitBatch_QuotedPathHeaderClosesSegment pins F3: a `diff --git "a/..."`
 // header (git quotes a path containing a double quote) must close the previous
 // file's segment, so its status lines are not credited to the SPEC before it.
+//
+// The patch stream is hand-written, exactly as `git log -M -p` prints it, and fed
+// to the parser directly: a real fixture directory named with a double quote
+// cannot be created on Windows.
 func TestLintGitBatch_QuotedPathHeaderClosesSegment(t *testing.T) {
-	r := newGBRepo(t)
 	const (
-		plain  = "SPEC-A-001"
-		quoted = `SPEC-Z"Q-001`
+		rs = "\x1e"
+		us = "\x1f"
 	)
-	r.spec(plain, "draft", "")
-	r.spec(quoted, "draft", "")
-	r.commit("feat: plan-phase", "Authored-By-Agent: manager-spec")
-	r.spec(plain, "draft", "body edit only")
-	r.spec(quoted, "in-progress", "")
-	r.commit("fix: M1", "Authored-By-Agent: manager-docs")
-	chdirForTest(t, r.dir)
+	stream := strings.Join([]string{
+		// Newest commit: a body-only edit of SPEC-A-001, then a quoted-path file
+		// whose hunk changes its status.
+		rs + "bbbb" + us + "fix: M1" + us + "Authored-By-Agent: manager-docs" + us,
+		"",
+		"diff --git a/.moai/specs/SPEC-A-001/spec.md b/.moai/specs/SPEC-A-001/spec.md",
+		"index 1111111..2222222 100644",
+		"--- a/.moai/specs/SPEC-A-001/spec.md",
+		"+++ b/.moai/specs/SPEC-A-001/spec.md",
+		"@@ -5,3 +5,4 @@",
+		" id: SPEC-A-001",
+		" title: x",
+		"+body edit only",
+		`diff --git "a/.moai/specs/SPEC-Z\"Q-001/spec.md" "b/.moai/specs/SPEC-Z\"Q-001/spec.md"`,
+		"index 3333333..4444444 100644",
+		`--- "a/.moai/specs/SPEC-Z\"Q-001/spec.md"`,
+		`+++ "b/.moai/specs/SPEC-Z\"Q-001/spec.md"`,
+		"@@ -2,1 +2,1 @@",
+		"-status: draft",
+		"+status: in-progress",
+		// Older commit: creation of SPEC-A-001.
+		rs + "aaaa" + us + "feat: plan-phase" + us + "Authored-By-Agent: manager-spec" + us,
+		"",
+		"diff --git a/.moai/specs/SPEC-A-001/spec.md b/.moai/specs/SPEC-A-001/spec.md",
+		"new file mode 100644",
+		"index 0000000..1111111",
+		"--- /dev/null",
+		"+++ b/.moai/specs/SPEC-A-001/spec.md",
+		"@@ -0,0 +1,3 @@",
+		"+id: SPEC-A-001",
+		"+status: draft",
+		"+title: x",
+		"",
+	}, "\n")
 
-	want, werr := lookupOwnershipTransitionPerSpec(r.specPath(plain), plain)
-	if werr != nil {
-		t.Fatalf("oracle: %v", werr)
+	b, err := parseOwnershipBatch(strings.NewReader(stream))
+	if err != nil {
+		t.Fatalf("parseOwnershipBatch: %v", err)
 	}
 	// The body-only commit carries no status delta for SPEC-A-001, so the answer
 	// is its creation commit; a segment merged with the quoted file would answer
 	// with the later "fix: M1" commit instead.
-	if want == nil || want.CommitSubject != "feat: plan-phase" {
-		t.Fatalf("oracle must resolve to the creation commit, got %+v", want)
-	}
-
-	startGitQueryCache()
-	defer stopGitQueryCache()
-	got, gerr := lookupOwnershipTransitionFromGit(r.specPath(plain), plain)
-	if g, w := gbOwnershipString(got, gerr), gbOwnershipString(want, werr); g != w {
-		t.Errorf("batched %q, oracle %q", g, w)
+	got := b.resolve(".moai/specs/SPEC-A-001/spec.md")
+	if got == nil || got.CommitSubject != "feat: plan-phase" || got.CurrentStatus != "draft" {
+		t.Fatalf("SPEC-A-001 must resolve to its creation record, got %+v", got)
 	}
 }
