@@ -35,5 +35,17 @@ Classification (tdd-result-contract): TOOL_FAILURE — the failure is the fixtur
 - No Windows/Linux run.
 - A compound shell command (heredoc append) was refused by the worktree guard once; the same edit was made with the Edit tool; no verification rested on the refused command.
 
+## Factory transitions (2026-11-06, lane-23, run to2bbk)
+- `stage t1975 run --run to2bbk` -> `t1975 run v9 lease renewed`; `stage t1975 sync dc5e6c5bcdde6e971f547563da2d84b541a65a71 --run to2bbk` -> `t1975 sync v10 lease renewed`.
+- Independent Claude sync-audit (no Codex): `.moai/reports/t1975/sync-audit-iter1.md`, PASS-WITH-DEBT 0.91, blocking 0, audited_sha dc5e6c5bcd; committed with `git add -f` as 8dc57e6862 (evidence-only commit). Optional debt D1 (no failure-injection test for the read-error branch, mutant M8 survives), D2 (stale comment factory_card.go:4361-4363), D3 (P1 queue-first residual).
+- LANE ERROR: I entered the sync-audit edge with the verdict file as evidence: `stage t1975 sync-audit dc5e6c5bcd...:.moai/reports/t1975/sync-audit-iter1.md` was refused (`card evidence refused: artifact .moai/reports/t1975/sync-audit-iter1.md is absent at commit dc5e6c5bcdde6e971f547563da2d84b541a65a71.`); I then re-ran it with 8dc57e6862...:<verdict> -> `t1975 sync-audit v11 lease renewed`. That recorded 8dc57e6862 as the evidence commit. The t2073 pattern is code commit as the sync-audit entry evidence (`<code sha>:<code file>`), verdict commit only at merge-ready.
+- `stage t1975 merge-ready --run to2bbk` and again with `8dc57e6862...:.moai/reports/t1975/sync-audit-iter1.md`: both refused, verbatim: `card evidence refused: verdict file .../t1975/.moai/reports/t1975/sync-audit-iter1.md audited dc5e6c5bcdde6e971f547563da2d84b541a65a71, not the recorded evidence commit "8dc57e6862313abc9c07c77444d53fbd602b1ff9".`
+- Repair attempt `stage t1975 sync-audit dc5e6c5bcd...:internal/cli/factory_card.go --run to2bbk`: refused, verbatim `Factory stage: illegal card transition: sync-audit → sync-audit.` Not worked around (no queue or DB edits, no back-edge tried).
+- State now: sync-audit v11, HEAD 8dc57e6862 (+ this progress edit), not pushed. Waiting on the leader for the repair path (a legal edge to re-record the evidence, or a verb).
+
+## Gaps (audit gate)
+- The stop hook refused the verdict without a Codex receipt (`AUDIT_RECEIPT_VIOLATION ... no receipt cited`); no Codex call was made for this audit. Operator rule d-20261106T061529Z-5d7e allows up to 2 per card by the auditor itself; not used. The verdict is the auditor's judgment on the merits, not a gate-corroborated PASS.
+- `card-review.md` (codex_review scope=card) was not produced: no Codex call approved for the lane's own review in this run; the leader self-review applies.
+
 ## Next
-Run -> sync -> independent Claude sync-auditor (Codex only if the operator rule applies at that point) -> merge-ready; stop there (complete is paused until t2098 lands). Paused now for the t2002 Codex re-audit (decision record d-20261106T061529Z-5d7e, read by the lane).
+Waiting for the leader's repair instruction for the sync-audit evidence record; then merge-ready; stop there (complete is paused until t2098 lands).
