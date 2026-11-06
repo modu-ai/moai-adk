@@ -191,3 +191,38 @@ RED 확인: 구현 전 `go vet ./internal/cli/worktree/` 와 `go vet ./internal/
 - `forwardMoveUnregistered` 는 목록 조회가 실패하면 "해당 없음" 으로 답하고 기존 역이동 경로로 간다. 그 경로가 실패하면 pending 으로 남는다(성공으로 보고되지 않는다).
 - `git worktree repair <destination>` 의 성공은 `git worktree list` 재조회로만 판정한다.
 - `/verify` 스킬은 실행하지 않았다(전체 스위트를 돌리기 때문).
+
+### 4차 리뷰 반영 (J1)
+
+4차 codex 리뷰의 P2 한 건이다. 실패하는 테스트를 먼저 작성해 RED 를 확인한 뒤 고쳤다.
+
+**J1. 역이동이 이름만 바꾸고 끊긴 뒤 `--rollback` 이 "성공"으로 끝남**
+- 원인: 역이동이 디렉터리를 원위치로 돌려놓은 뒤 시간 초과로 끝나고 등록 repair 도 실패하면, 트리는 원위치에 있고 git 등록은 목적지를 가리키며 단계는 pending 으로 남는다. 이 뒤의 `--rollback` 은 `s.NewPath` 가 없다는 이유로 단계를 건너뛰어, 등록, 상태 파일 re-key, 카드 바인딩을 고치지 않은 채 성공으로 끝났다.
+- 수정: `runMigrateRollback` 에서 목적지가 없을 때 곧바로 건너뛰지 않는다. 판정 순서는 다음과 같다.
+  1. 단계에 식별자가 없거나 원위치도 없으면 기존처럼 건너뛴다(손댈 대상이 없음).
+  2. 원위치가 단계 식별자를 갖지 않으면(읽기 실패 포함) `refused` 행을 남기고 실패로 센다.
+  3. 원위치가 식별자를 갖고 git 이 이미 원위치로 등록하고 있으면 re-key 와 rebind 의 역연산만 멱등으로 실행한다. 둘 다 이미 수렴한 상태면 아무 행도 쓰지 않는 "할 일 없음"이다. 역연산이 실패하면 실패로 센다.
+  4. 등록이 원위치가 아니면 기존 `treeMovedBack`(한도가 있는 `git worktree repair <source>` 한 번 + 재조회)을 재사용한다. 확인되지 않으면(repair 실패, 멈춤, 모호) `pending` 행을 남기고 실패로 세어 롤백이 0 이 아닌 코드로 끝난다.
+  5. 확인되면 re-key, rebind 역연산 뒤 `restored` 행을 기록한다.
+- 정리: 정방향 롤백과 이 경로가 같은 re-key/rebind 꼬리를 쓰도록 `rekeyAndRebindBack` 으로 뺐다(오류 문구는 기존과 동일).
+- 테스트(RED 출력: `rollback summary: "restored 0 tree(s), 0 refused, 0 pending"`, `rollback reported success with the registration unfixed`):
+  - `TestRollback_RenamedBackStaleRegistration_RepairsAndRestores` — 요약 `restored 1 tree(s)`, 마지막 행 `restored`, 등록은 원위치만, 카드가 원위치로 rebind.
+  - `TestRollback_RenamedBackRepairHangs_ExitsNonZeroNoRestored` — repair 가 멈추면 오류로 끝나고 `restored` 행 없음.
+  - `TestRollback_ConvergedStep_IsNothingToDo` — 이미 수렴한 단계는 `restored 0 tree(s)`, `restored` 행 없음, 성공(수정 전에도 통과하는 안전 가드).
+
+**4차 재검증 (레인 한정)**
+
+| 명령 | 종료 코드 | 마지막 줄 |
+|---|---|---|
+| `go build ./...` | 0 | 출력 없음 |
+| `go vet ./internal/cli/... ./internal/config/...` | 0 | 출력 없음 |
+| `gofmt -l internal/` | 0 | 출력 0바이트 |
+| `go test -count=1 -v -run 'TestRollback_\|TestReverseMove_' ./internal/cli/worktree/` | 0 | `ok .../internal/cli/worktree 27.113s` (신규 3건 포함 전부 PASS) |
+| `go test -count=1 ./internal/cli/worktree/... ./internal/cli/printer/... ./internal/config/...` | 0 | `ok .../internal/cli/worktree 261.861s`, printer, config 계열 모두 ok |
+| `go test -count=1 -v -run 'Update\|InitGit\|Progress\|UserLock\|Migrat' ./internal/cli/` | 0 | `ok .../internal/cli 232.712s` (`--- PASS` 362, `--- FAIL` 0) |
+| `golangci-lint run ./internal/cli/worktree/... ./internal/cli/ ./internal/config/...` | 0 | `0 issues.` |
+
+### 한계 (J1 관련)
+
+- 원위치도 목적지도 없는 단계는 여전히 건너뛴다(트리가 어디에도 없으므로 손댈 대상이 없다). 식별자가 빈 단계도 기존대로 건너뛴다. 이 엔진이 쓴 저널에는 항상 식별자가 있으므로 손으로 쓴 저널에만 해당한다.
+- 오너의 지시에 따라 이번 수정으로 리뷰 대응을 멈추고, 상태 전수 자체 감사를 `.moai/reports/t2053/self-audit.md` 에 별도로 두었다(커밋 전).
