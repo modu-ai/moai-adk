@@ -3,11 +3,14 @@
 package cli
 
 import (
+	"context"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/worktreeroot"
 )
 
@@ -90,6 +93,54 @@ func TestT2058_BaseSHAFlagIsValidated(t *testing.T) {
 	}
 	if len(rec.Items) != 0 {
 		t.Fatalf("a refused add wrote %d card(s)", len(rec.Items))
+	}
+}
+
+// TestT2058_EmptyBaseSHAIsRefused — card-review (b393e2e3c5, todo.go:921): a
+// base the caller asked for but left empty (`--base-sha "$FAILED_SHA"` with an
+// unset variable) must be refused, not stored as "no base" — the lease would
+// then cut the repair from the configured branch, the wrong base.
+func TestT2058_EmptyBaseSHAIsRefused(t *testing.T) {
+	_, store := fcFixture(t)
+	for name, val := range map[string]string{"empty": "", "blank": "   "} {
+		if _, _, err := runTodo(t, "add", "repair", "--base-sha", val); err == nil {
+			t.Errorf("%s: todo add accepted an empty --base-sha", name)
+		}
+	}
+	rec, err := store.LoadPure()
+	if err != nil {
+		t.Fatalf("load queue: %v", err)
+	}
+	if len(rec.Items) != 0 {
+		t.Fatalf("a refused add wrote %d card(s)", len(rec.Items))
+	}
+}
+
+// TestT2058_UnreadableQueueStopsTheRepairWorktree — card-review
+// (factory_card.go:932): when the queue cannot be read, the lease cannot tell a
+// repair card from an ordinary one; it must stop instead of cutting a tree from
+// the configured base. No tree is created.
+func TestT2058_UnreadableQueueStopsTheRepairWorktree(t *testing.T) {
+	root, _ := fcFixture(t)
+	sha := t2058FailedCandidate(t, root)
+	if _, _, err := runTodo(t, "add", "repair the failed release CI", "--origin", "ci-repair", "--base-sha", sha); err != nil {
+		t.Fatalf("todo add --base-sha: %v", err)
+	}
+	dbPath := filepath.Join(filepath.Dir(todoBacklogPath(root)), "backlog.db")
+	if err := os.WriteFile(dbPath, []byte("this is not a database"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(root)
+	card := homestate.Card{CardID: "t1", RunID: fcRun, State: homestate.CardAssigned, OwnerLabel: "lane-1"}
+	if _, _, err := factoryEnsureCardWorktree(context.Background(), root, fcRun, card, "lane-1", io.Discard); err == nil {
+		t.Fatal("factoryEnsureCardWorktree succeeded although the queue could not be read")
+	}
+	homeRoot, rerr := worktreeroot.Root(root)
+	if rerr != nil {
+		t.Fatalf("resolve home root: %v", rerr)
+	}
+	if _, statErr := os.Stat(filepath.Join(homeRoot, "t1")); statErr == nil {
+		t.Fatal("a worktree was created from the configured base although the card's base could not be read")
 	}
 }
 
