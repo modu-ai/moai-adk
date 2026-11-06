@@ -219,6 +219,11 @@ func runFactoryRebindEvidence(cmd *cobra.Command, cardID, reason, run string) er
 		landed, note := resolveRecordedLanding(ctx, root, db, runID, card)
 		if landed == "" {
 			if phaseErr != nil {
+				if note == "" {
+					// card t2071: no stage to read a verdict for and no landing
+					// recorded — name the step that unblocks the chain.
+					note = fmt.Sprintf("; no landing is recorded for the card — record it first with `moai todo landed %s --sha <delivering commit> [--ref <branch>]` (a card merged into local main and not yet pushed takes --ref main)", cardID)
+				}
 				return fmt.Errorf("%w%s", phaseErr, note)
 			}
 			return fmt.Errorf("card %s: no %s verdict to re-bind onto: %w%s", cardID, phase, verdictErr, note)
