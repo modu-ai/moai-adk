@@ -319,3 +319,108 @@ RED 확인: 구현 전 `go vet ./internal/cli/worktree/` 와 `go vet ./internal/
 | `golangci-lint run ./internal/cli/worktree/... ./internal/cli/ ./internal/config/... ./internal/hook/ ./internal/homestate/ ./internal/worktreeroot/` | 0 | `0 issues.` |
 
 한계: 위치 불명으로 `pending` 이 된 트리는 사람이 `--rollback` 으로 수렴시켜야 한다. 이 라운드에서 `internal/hook`, `internal/homestate`, `internal/worktreeroot` 의 코드는 바뀌지 않아 vet 만 다시 돌렸고 테스트는 4차 정리 때의 결과를 따른다.
+
+### 6차 리뷰 반영 (L1, L2, 클래스 스윕)
+
+수정 커밋 `31e0f8617b`. 규칙: **`errors.Is(err, fs.ErrNotExist)` 만 "없음"이다.** 그 밖의 오류는 "모름"이며 pending/failed/refused(이유에 오류 포함) 또는 0 이 아닌 종료 코드로 끝난다.
+
+**L1. 이동 전에 죽은 실행의 `pending` 이 재실행에서 풀리지 않음**
+- 원인: 플래너가 "중단된 이동" 검사를 트리 위치(목적지 존재 / prunable)로 가렸다. 저널·이동 목록에 `pending` 을 쓰고 `git worktree move` 직전에 죽으면 원위치는 멀쩡히 등록돼 있고 목적지는 없다. 이 상태는 검사를 건너뛰어 재실행이 트리를 옮기고 성공을 보고했고, 옛 저널은 계속 `pending` 으로 남아 나중의 `--rollback <옛 저널>` 이 새 이동을 되돌릴 수 있었다. 새 `pending` 줄이 옛 줄과 같아 `appendMoveListLine` 의 중복 제거가 삼키기도 했다.
+- 수정:
+  - 검사는 위치와 무관하게 실행한다(`findInterrupted`).
+  - 증명되는 경우만 수렴한다(`provablyUnmovedStep`): 정방향 의도 줄(원위치 → 목적지), 원위치가 줄의 신원을 가지고 있음, git 이 원위치를 등록, 목적지 `Lstat` 이 `ErrNotExist` 정확히, 읽을 수 있는 저널에 해당 `pending` 단계가 있음. 이때 **apply 에서만** 옛 저널 단계를 `failed` / "interrupted before the move" 로 C1 의 원자 쓰기(`journalWrite`)로 정산하고, 이어서 풀어 주는 `reversed` 줄을 쓴 뒤 트리를 정상 계획한다. 저널을 먼저 쓰므로 둘 사이에서 죽어도 다음 실행이 같은 단계를 증명 가능한 것으로 다시 인식해 마저 정산한다. dry run 은 아무것도 쓰지 않고 후보로만 보고한다.
+  - 그 밖의 모든 조합(신원 불일치, 목적지 읽기 불가, 저널을 못 찾음 등)은 "interrupted migration — run `moai worktree migrate --rollback <journal>`" 로 건너뛰고 종료 코드가 0 이 아니다.
+  - 정산된 단계의 롤백은 무동작이다(`skipped`, 이동 목록 변경 없음): 그 신원이 지금 목적지에 서 있어도 새 이동의 것이므로 되돌리지 않는다.
+- 테스트(RED 출력: `the old journal step was not settled: [{... Outcome:pending ...}]`, `move-list results = pending,pending,moved, want pending,reversed,pending,moved`, `rollback of the OLD journal reversed the new move`, `a not-provably-unmoved pending step exited clean`):
+  - `TestApply_PendingIntentButNeverMoved_IsSettledThenMoved`
+  - `TestPlan_PendingIntent_NotProvablyUnmoved_IsInterrupted` (다른 신원 / 목적지 검사 불가, 저널·이동 목록이 바이트 단위로 불변)
+  - `TestPlan_PendingIntent_DryRunWritesNothing`
+  - `TestRollback_StepSettledAsNeverMoved_IsANoOp`
+
+**L2. verify 가 검사할 수 없는 원위치를 "양쪽 다 없음" 으로 읽음**
+- 원인: `verifyStep` 이 `Lstat(원위치)` 의 모든 오류를 부재로 보아 단계를 빼 버렸다. 같은 함수가 목적지 `Lstat` 오류를 "없음", 읽을 수 없는 신원을 "남의 트리(정상)" / "mismatch" 로도 읽었다.
+- 수정: 목적지·원위치 존재 여부를 `lstatPresence` 로, 신원을 `treeCarries`(없음/모름 구분)로 판정한다. 모르는 모든 경우는 `unverifiable` 행 + 오류 문자열이고 verify 는 실패한다. 이동 목록 읽기 실패(`latestLocationResult`)도 마찬가지.
+- 테스트(RED 출력: `verify succeeded over a source it cannot inspect: []`, `verify succeeded over a destination whose identity it cannot read: []`): `TestVerify_UnreadableEnds_AreFailuresNotGone` (원위치 검사 불가 / 목적지 검사 불가 / 이동 목록 읽기 불가 / `moved`·`failed` 단계의 목적지 신원 읽기 불가).
+
+**클래스 스윕: `internal/cli/worktree` 비테스트 파일의 모든 오류 분기**
+
+범위: `os.Stat` / `os.Lstat` / `os.ReadFile` / `os.ReadDir` / `filepath.EvalSymlinks` / `filepath.WalkDir` / `TreeIdent` / `registeredAt` / `registeredPaths` / `gitDirPointer` / git 목록 호출. 줄 번호는 수정 전(HEAD `1a60e648f5`) 기준. 판정: 수정 = 오류 분기가 "없음/이 트리 아님/할 일 없음/수렴됨"으로 읽히던 것을 고침, 정상 = 이미 `ErrNotExist` 만 부재로 보거나 모름이 안전한 쪽(보호·실패·미수렴)으로 닫힘, 예외 = SPEC 이 명시한 동작이라 바꾸지 않고 표시함.
+
+| # | 위치 | 호출 | 수정 전 오류 분기 | 수정 후 / 사유 | 판정 · 테스트 |
+|---|---|---|---|---|---|
+| 1 | migrate.go:407 | `Lstat(destination)` → `destExists` | 모든 오류 = 없음, 그 값으로 중단 검사 여부 결정 | 중단 검사에서 분리. 증명은 `Lstat` 이 `ErrNotExist` 일 때만 | 수정 · L1 테스트 |
+| 2 | migrate.go:445 | `Lstat(rec.Path)` | 모든 오류 = "missing or not a directory" | 부재 / 검사 불가(오류 포함) / 디렉터리 아님으로 분리 | 수정 · 단위 테스트 불가: git 이 같은 트리를 먼저 prunable 로 판정해 이 분기에 닿지 않음(경합 구간만 남음) |
+| 3 | migrate.go:447, 449 | `Lstat(destination)` (건너뛰기 판정) | `nil`=존재, `ErrNotExist` 아님=검사 불가 | 이미 정확 | 정상 |
+| 4 | migrate.go:464 | `loadMoveList` | 읽기 실패 = 빈 목록 | 실행 전체 오류 `read the move list` | 수정 · `TestPlan_UnreadableMoveList_IsARunError` |
+| 5 | migrate.go:490 | `ReadFile(journal)` (`journalRecording`) | 읽기 실패 단계 건너뜀 | 이 값은 안내 문구에만 쓰임. 수렴 판단은 별도 엄격 판독기(`provablyUnmovedStep`)가 하고 읽을 수 없으면 증명 실패 | 정상 |
+| 6 | migrate.go:763 / movelist.go:111 | `EnsureInstanceToken` 토큰 읽기 | 읽기 실패 → 새 토큰을 덮어씀(옛 신원 고아화) | `ErrNotExist` 만 새 토큰을 씀, 그 외 오류 반환 | 수정 · `TestEnsureInstanceToken_UnreadableToken_IsNotReplaced` |
+| 7 | migrate.go:849-862 | `Lstat(dest)`, `TreeIdent` ×2 (`forwardFailureLocation`) | 이미 K2 에서 모름 = `unknown` | — | 정상 |
+| 8 | migrate.go:1040 | `TreeIdent(dest)` (`m6ReverseMoveWhy`) | 읽기 실패 = 불일치 → `refused` 줄 | 읽기 불가는 `pending`(오류 포함), 읽은 신원이 다를 때만 `refused` | 수정 · `TestReverseMove_UnreadableDestinationIdentity_StaysPending` |
+| 9 | migrate.go:1083 | `Lstat(source)` (`forwardMoveUnregistered`) | `ErrNotExist` 아니면 false | 이미 정확 | 정상 |
+| 10 | migrate.go:1086 | `TreeIdent(dest)` (`forwardMoveUnregistered`) | 오류 = false (일반 경로 진행 → 역이동이 실패하면 pending) | 안전한 쪽 | 정상 |
+| 11 | migrate.go:1094, 1149-1170 | `registeredPaths` / `registeredAt` | 목록 실패 = false | 호출처 6곳 모두에서 false 가 보수적 답(verify 는 실패 행, 증명은 불성립, 롤백은 repair 후 hold) | 정상 |
+| 12 | migrate.go:1131 | `TreeIdent(source)` (`treeMovedBack`) | 오류 = false | "돌아왔음을 보이지 못함" = 안전 | 정상 |
+| 13 | migrate.go:1135 | `TreeIdent(dest)` (`treeMovedBack`) | 오류 = "목적지는 더 이상 이 신원을 갖지 않음" → true 가능 | 읽기 불가는 false | 수정 · `TestTreeMovedBack_UnreadableDestination_IsNotMovedBack` |
+| 14 | migrate.go:1212 | `Stat(dbPath)` (`rebindCardForPath`) | 모든 오류 = 저장소 없음 | `ErrNotExist` 만 건너뜀, 그 외는 오류(apply 는 되돌림 / 롤백은 pending) | 수정 · `TestRebindCardForPath_UnstatableStore_IsAnError` |
+| 15 | migrate.go:1264 | `loadMoveList` (`latestLocationResult`) | 읽기 실패 = 결과 없음 | `unverifiable` 행 | 수정 · verify 테스트(이동 목록 읽기 불가) |
+| 16 | migrate.go:1277 | `TreeIdent` (`treeCarries`) | 오류 = 이 신원 아님 | 없음 / 모름 구분, 모름은 `unverifiable` | 수정 · L2 테스트 |
+| 17 | migrate.go:1285 | `Lstat(NewPath)` (`verifyStep`) | 모든 오류 = 없음 | 모름은 `unverifiable` | 수정 · L2 테스트 |
+| 18 | migrate.go:1311 | `Lstat(OldPath)` (`verifyStep`) | 모든 오류 = 양쪽 다 없음 → 단계 제외 | 모름은 `unverifiable` | 수정 · L2 테스트 |
+| 19 | migrate.go:1336 | `Stat(mlDir)` (verify) | `ErrNotExist` 만 "검증할 것 없음" | 이미 정확(그 외는 이후 `ReadDir` 오류로 보고) | 정상 |
+| 20 | migrate.go:1362, 1445 | `ReadFile(journal)` (verify, rollback) | 읽기 불가 행 / 오류 반환 | 이미 정확 | 정상 |
+| 21 | migrate.go:1487, 1502 | `Stat(NewPath)`, `Lstat(OldPath)` (rollback) | K2 에서 정리됨 | — | 정상 |
+| 22 | migrate.go:1521 | `TreeIdent(OldPath)` (rollback 수렴 분기) | 오류 = `refused: identity mismatch` | 읽기 불가는 `pending`(오류 포함) | 수정 · `TestRollback_UnreadableIdentity_HoldsInsteadOfRefusing` |
+| 23 | migrate.go:1561 | `TreeIdent(NewPath)` (rollback 역이동 분기) | 오류 = `refused: identity mismatch` | 읽기 불가는 `pending`(오류 포함) | 수정 · 같은 테스트 |
+| 24 | migrate.go:1636 | `EvalSymlinks` (`canonicalTreePath`) | 오류 = `Clean` 철자로 비교 | 비교용 도우미로 유지. 플래너의 원위치 경로는 `resolveTreePath`(부재만 `Clean`, 그 외 오류는 "cannot resolve the source path" 건너뛰기). `pathListed` 의 과소 일치는 미등록 쪽(안전)으로 닫힘 | 수정(플래너) · `TestResolveTreePath_OnlyAbsenceKeepsTheSpelling` |
+| 25 | migrate.go:1765, 1869 | `WalkDir(.moai/reports)` (두 매니페스트) | 모든 오류 무시 → 읽지 못한 하위 디렉터리가 0 건 | `countReportFiles`: 루트 부재만 0 건, 그 외 오류는 매니페스트 불가(트리는 안 움직임) | 수정 · `TestManifest_UnreadableReportsTree_IsNotACount` |
+| 26 | migrate.go:1902, 1915, 1940 | `Lstat`/`ReadFile` (해시) | 읽기 실패를 `unreadable` 표지로 다이제스트에 넣음 | 표지가 다이제스트에 들어가 이동 전후 비교에서 읽기 가능 여부가 바뀌면 불일치 → 되돌림 | 정상 |
+| 27 | migrate.go:1972 | `ReadDir` (`orderedJournals`) | 오류 반환 | 이미 정확 | 정상 |
+| 28 | migrate.go:103, 348, 352 | git 호출 (`primaryRootFrom`, 플래너 목록) | 오류 반환(C 라운드에서 정리) | — | 정상 |
+| 29 | movelist.go:64 | `ReadFile(.git)` (`gitDirPointer`) | 모든 오류를 오류로 반환 | 이미 정확(분류는 `probeTree`) | 정상 |
+| 30 | movelist.go:93 | `ReadFile(token)` (`TreeIdent`) | 읽기 실패 = 빈 토큰("토큰 없음") | `ErrNotExist` 만 빈 토큰, 그 외 오류 | 수정 · `TestTreeIdent_UnreadableToken_IsAnError` |
+| 31 | movelist.go:165 | `ReadFile(move-list)` (`loadMoveList`) | 모든 오류 = 빈 목록 | `ErrNotExist` 만 빈 목록, 그 외 오류 | 수정 · 4·15·32·33·34 의 테스트 |
+| 32 | movelist.go:232 | `loadMoveList` (`MovedTo`) | 읽기 실패 시 카드 경로가 등록만으로 응답 가능 | 읽기 실패 = 답 없음 | 수정 · `TestMovedTo_UnreadableMoveList_GivesNoAnswer` |
+| 33 | movelist.go:307 | `TreeIdent` (`MovedTo` 후보) | 오류 = 후보 건너뜀 | "답 없음" 계약 안에서 안전 | 정상 |
+| 34 | movelist.go:340 | `TreeIdent` (`MovedBy`, 정리 가드) | 오류 = false = **정리 허용** | 연결 트리 아님/토큰 없음만 false, 신원 읽기 불가는 보호(true) | 수정 · `TestMovedBy_UnknownIsProtected` |
+| 35 | movelist.go:345 | `loadMoveList` (`MovedBy`) | 읽기 실패 = false | 보호(true) | 수정 · 같은 테스트 |
+| 36 | movelist.go:370, 379 | `registeredWorktreePaths` (`MovedBy`) | 목록 실패 = false | 보호(true) | 수정 · 같은 테스트 |
+| 37 | movelist.go:409 | `ReadFile(move-list)` (`appendMoveListLine` 중복 제거) | 오류 무시 | `ErrNotExist` 만 빈 목록, 그 외 오류 | 수정 · `TestAppendMoveListLine_UnreadableList_IsAnError` |
+| 38 | movelist.go:420-421 | `Stat`/`ReadFile` (개행 보정) | 오류 무시 → 마지막 줄에 이어붙을 수 있음 | 위에서 읽은 내용으로 판정, 읽기 실패는 이미 오류 | 수정 · 같은 테스트 |
+| 39 | remove.go:104 | `EvalSymlinks(target)` (`removalTargetLock`) | 모든 오류 = 잠기지 않음 | 부재만 잠기지 않음, 그 외는 오류(호출처가 제거를 거부) | 수정 · `TestRemovalTargetLock_UnresolvablePath_IsAnError` |
+| 40 | hoist.go:152 | `ReadFile(dst)` | 모든 오류 = 목적지 없음 → 덮어씀 | `ErrNotExist` 만 없음, 그 외 오류로 중단(REQ-RLC-006) | 수정 · `TestHoist_UnreadableDestination_IsNotOverwritten` |
+| 41 | hoist.go:122, 237 | `Stat(srcRoot)`, `Stat(treePath)` | `IsNotExist` 만 0 건 / 동사 오류 | 이미 정확 | 정상 |
+| 42 | list.go:216 | `ReadDir(projects)` (`homeMarkerOwners`) | 모든 오류 = 마커 없음 → 소유 트리가 조용히 unclassified | `ErrNotExist` 만 마커 없음, 그 외 `buildListRows` 오류 | 수정 · `TestList_UnreadableMarkerDirectory_IsAnError` |
+| 43 | retire.go:27 | `ReadDir(legacyDir)` | `IsNotExist` 만 은퇴 완료 | 이미 정확 | 정상 |
+| 44 | guard.go:223 | `ReadFile(agent response)` | 오류 반환 | 이미 정확 | 정상 |
+| 45 | clean.go:527 (`worktreeLockStates`) | git 목록 | 오류 반환, fail-closed 명시 | 이미 정확 | 정상 |
+| 46 | classify.go:246, 258, 272 | `Stat`, `EvalSymlinks` (`underPath`, `evalOrClean`) | 오류 = "아래에 없음" | 분류기는 모르면 unclassified → 이동·정리 대상 아님(보호 쪽) | 정상(마이그레이션 선택 기준) |
+| 47 | done.go:197-215 | `gitMainRootFromTargetFunc` 오류, `canonicalTierPath` | 오류 = L1 아님 → 명령 진행 | SPEC-WORKTREE-DONE-TIER-001 REQ-005 가 "해석 실패는 계급의 증거가 아니다, 가드 이전처럼 진행" 으로 명시. 이 카드의 범위 밖 | **예외 · 바꾸지 않음, 결정 필요** |
+
+집계(표 행 기준, 같은 패턴의 호출을 묶은 행 포함): 47 행 조사 — 수정 26, 정상 20, 예외 1.
+
+**설계 메모 (6차)**
+- 신원 판독을 한 곳으로 모았다: `probeTree` 가 경로를 `treeIdentified` / `treeNotLinked`(경로나 `.git` 이 `ErrNotExist`, 또는 `.git` 이 디렉터리) / `treeUnreadable`(그 외) 로 가른다. "이 트리가 아님" 으로 읽어도 되는 것은 `treeNotLinked` 뿐이다.
+- `loadMoveList` 는 `([]mlRecord, error)` 로 바뀌었다(비검사 변종 삭제). 호출처 4곳(플래너, `latestLocationResult`, `MovedTo`, `MovedBy`)이 모두 오류를 처리한다. 파싱 불가 줄은 계속 건너뛴다(기존 계약, 잘린 마지막 줄과 잡음을 구분할 수 없음).
+- `MovedBy` 의 의미가 넓어졌다: 읽을 수 없으면 true(보호). 호출처는 `internal/cli/launcher.go:561` 하나(정리 거부 사유), 관련 launcher 테스트를 다시 돌렸다.
+
+**한계 (6차)**
+- 표 2행(플래너의 원위치 `Lstat` 분기)은 git 이 먼저 prunable 로 판정하므로 결정적 테스트가 불가능하다. 문구만 분리했고 동작(건너뜀)은 이전과 같다.
+- 47행은 SPEC 이 명시한 동작이라 바꾸지 않았다. 바꾸려면 SPEC 개정(REQ-005)이 먼저다.
+- `worktreeroot.OwnerMarkerOf` 가 읽기 오류를 `ok=false` 로 접는 문제는 다른 패키지(`internal/worktreeroot`)라 이 스윕 범위 밖이다.
+- 파싱 불가 이동 목록 줄은 계속 건너뛴다. 잘려서 파싱되지 않는 `pending` 줄은 보호를 못 준다(알려진 잔여 위험).
+- 표 2·4·15 의 일부 테스트(`TestResolveTreePath_*`, `TestPlan_UnreadableMoveList_*`, verify 의 이동 목록·목적지 하위 케이스)는 수정 후에 작성했다. `TestManifest_UnreadableReportsTree_IsNotACount` 는 수정을 임시로 되돌려 RED 를 확인했다.
+
+**6차 재검증 (레인 한정)**
+
+| 명령 | 종료 코드 | 마지막 줄 |
+|---|---|---|
+| `go build ./...` | 0 | 출력 없음 |
+| `go vet ./internal/cli/... ./internal/config/... ./internal/hook/ ./internal/homestate/ ./internal/worktreeroot/` | 0 | 출력 없음 |
+| `GOOS=windows go vet ./internal/cli/worktree/...` | 0 | 출력 없음 |
+| `GOOS=windows go test -c -o /dev/null ./internal/cli/worktree/` | 0 | 출력 없음 |
+| `gofmt -l internal/` | 0 | 출력 0바이트 |
+| `go test -count=1 ./internal/cli/worktree/...` | 0 | `ok .../internal/cli/worktree 453.387s` |
+| `go test -count=1 -v -run 'Update\|InitGit\|Progress\|UserLock\|Migrat\|Launcher\|Cleanup\|MovedBy' ./internal/cli/` | 0 | `ok .../internal/cli 321.570s` (`--- PASS` 507, `--- FAIL` 0) |
+| `golangci-lint run ./internal/cli/worktree/... ./internal/cli/` | 0 | `0 issues.` |
+
+첫 전체 실행에서 `TestReverse_UnreadableDestinationIdentity_IsRefused`(G8)가 실패했다. 이 테스트는 읽을 수 없는 신원을 `refused` 로 고정해 두었는데, 6차 규칙(모름 = `pending`)과 직접 충돌한다. 의도(역이동이 실행되지 않음)는 그대로 두고 기대값만 `pending` 으로 바꿨다. `refused` 는 읽은 신원이 다를 때만이며 `TestReverseAfterFailure_IdentityRefusal_ReasonSaysRefused` 가 계속 고정한다. 바꾼 뒤 전체 실행이 통과했다. 이 실행 중 다른 세션의 `go test ./internal/cli` 가 같은 머신에서 돌고 있어 시간이 평소보다 길다.
