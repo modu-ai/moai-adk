@@ -18,6 +18,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -138,8 +139,11 @@ func TestWindowsPowerShellSetLocationDoesNotHoldTheWin32CWD(t *testing.T) {
 		t.Fatal(err)
 	}
 	marker := filepath.Join(outside, "cwds.txt")
+	// win32 needs the subexpression $(): an expandable string interpolates
+	// only $-prefixed tokens, so a bare [Environment]::CurrentDirectory would
+	// be emitted verbatim (card t2094, audit F1).
 	script := fmt.Sprintf(
-		"Set-Location -LiteralPath '%s'; \"prov=$($PWD.Path)`nwin32=[Environment]::CurrentDirectory\" | Set-Content -LiteralPath '%s'; Start-Sleep -Seconds 60",
+		"Set-Location -LiteralPath '%s'; \"prov=$($PWD.Path)`nwin32=$([Environment]::CurrentDirectory)\" | Set-Content -LiteralPath '%s'; Start-Sleep -Seconds 60",
 		tree, marker)
 	child := exec.Command("powershell.exe", "-NoProfile", "-Command", script)
 	child.Dir = outside
@@ -190,7 +194,13 @@ func TestWindowsCmdCDHoldsTheWin32CWD(t *testing.T) {
 		t.Fatalf("start cmd outside the tree: %v", err)
 	}
 	t.Cleanup(func() {
-		_ = child.Process.Kill()
+		// Process.Kill terminates only cmd.exe (Windows has no process-tree
+		// kill): the ping grandchild would survive, keep holding the tree as
+		// its working directory and block the TempDir cleanup — so the whole
+		// tree is killed (card t2094, audit F4).
+		if err := exec.Command("taskkill", "/T", "/F", "/PID", strconv.Itoa(child.Process.Pid)).Run(); err != nil {
+			_ = child.Process.Kill()
+		}
 		_ = child.Wait()
 	})
 	t2094WaitForMarker(t, marker)
@@ -219,16 +229,26 @@ func TestWindowsMSYSBashCDHoldsTheWin32CWD(t *testing.T) {
 	}
 	marker := filepath.Join(outside, "cwd.txt")
 	// read -t is a builtin: bash blocks in-process for 60s without spawning.
+	// Stdin is a pipe the test holds open for the child's lifetime — with the
+	// null device read would hit EOF at once and bash would exit before the
+	// rename below (card t2094, audit F2).
+	readEnd, writeEnd, perr := os.Pipe()
+	if perr != nil {
+		t.Fatalf("pipe for bash's stdin: %v", perr)
+	}
 	script := fmt.Sprintf("cd '%s' && printf '%%s\\n' \"$PWD\" > '%s' && IFS= read -t 60 line",
 		filepath.ToSlash(tree), filepath.ToSlash(marker))
 	child := exec.Command(bash, "-c", script)
 	child.Dir = outside
+	child.Stdin = readEnd
 	if err := child.Start(); err != nil {
 		t.Fatalf("start bash outside the tree: %v", err)
 	}
+	_ = readEnd.Close() // the child owns its end now
 	t.Cleanup(func() {
 		_ = child.Process.Kill()
 		_ = child.Wait()
+		_ = writeEnd.Close()
 	})
 	t2094WaitForMarker(t, marker)
 

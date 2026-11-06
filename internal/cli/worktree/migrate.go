@@ -199,8 +199,10 @@ func printMigrationReport(cmd *cobra.Command, report *migrationReport, asJSON bo
 	// The rollback hint names moves this run actually has something to undo
 	// for (card t2094, F3): a run whose only failures are trees that never
 	// moved — a busy tree the OS refused to rename — must not advertise
-	// --rollback, which would have nothing to undo.
-	if report.journal != "" && (report.moved > 0 || report.interrupted > 0) {
+	// --rollback, which would have nothing to undo. A stranded failure (the
+	// reverse order did not complete; the pending line survived) keeps the
+	// hint: the journal holds a move --rollback must converge.
+	if report.journal != "" && (report.moved > 0 || report.interrupted > 0 || report.stranded > 0) {
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "journal: %s (undo with: moai worktree migrate --rollback %s)\n", report.journal, report.journal)
 	}
 	return nil
@@ -231,6 +233,11 @@ type migrationReport struct {
 	// interrupted counts trees a previous run left unfinished (card t2053,
 	// C7); the rerun neither moves nor reports them as clean.
 	interrupted int
+	// stranded counts failed trees whose settling pending line survived — the
+	// tree stands at the destination, or its location could not be established
+	// (card t2094, F3): the journal holds a move --rollback must converge, so
+	// the summary's rollback hint prints for these too.
+	stranded int
 	// journal is this run's journal path ("" when the run wrote none).
 	journal string
 }
@@ -1014,6 +1021,9 @@ func runMigrationEngineWith(root string, apply bool, trigger string, progress *t
 			report.reversed++
 		case "failed":
 			report.failed++
+			if out.Stranded {
+				report.stranded++
+			}
 		default:
 			report.skipped++
 		}
@@ -1035,6 +1045,10 @@ type treeOutcome struct {
 	Ident    string
 	Manifest string // the pre-move manifest digest (the rollback's settled precondition)
 	MLErr    error  // a move-list write error that outlives a successful move
+	// Stranded marks a failed tree whose settling pending line survived: the
+	// tree stands at the destination or its location is unknown, and
+	// --rollback is the convergence path (card t2094, F3).
+	Stranded bool
 }
 
 // migrateOneTree moves one tree through the journaled step order —
@@ -1160,7 +1174,7 @@ func migrateOneTreeWith(root string, p migratePlan, mlPath, trigger string, jour
 			// pending line records both ends for --rollback to converge.
 			const msg = "the tree's location could not be established after the failed move"
 			mlErr := appendMoveListLine(mlPath, m6MoveLineTriggerReason(trigger, "pending", p.destination, p.source, id.Ident(), msg))
-			return treeOutcome{Outcome: "failed", Reason: fmt.Sprintf("%s; %s (pending)", reason, msg), Ident: id.Ident(), Manifest: digest, MLErr: mlErr}
+			return treeOutcome{Outcome: "failed", Reason: fmt.Sprintf("%s; %s (pending)", reason, msg), Ident: id.Ident(), Manifest: digest, MLErr: mlErr, Stranded: true}
 		}
 	}
 
@@ -1258,7 +1272,9 @@ func reverseAfterFailure(root string, p migratePlan, id TreeIdentity, mlPath, tr
 	if movedBack {
 		out.Outcome, out.Reason = "reversed", reason
 	} else {
-		out.Outcome = "failed"
+		// The reverse order did not complete: the settling pending line
+		// survived and --rollback is the convergence path (card t2094, F3).
+		out.Outcome, out.Stranded = "failed", true
 		if mlErr != nil {
 			out.Reason = fmt.Sprintf("%s; %s and the pending line could not be written (%v)", reason, why, mlErr)
 		} else {

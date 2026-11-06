@@ -92,6 +92,39 @@ func TestApply_AllFailuresNeverMoved_NoRollbackHint(t *testing.T) {
 	}
 }
 
+// TestApply_StrandedTreeKeepsTheRollbackHint — card t2094, audit F3: a run
+// whose forward moves reach the destination and whose reverse moves then fail
+// leaves the trees failed with a surviving pending line — the journal holds
+// moves --rollback must converge, so the hint prints even though nothing
+// counts as moved.
+func TestApply_StrandedTreeKeepsTheRollbackHint(t *testing.T) {
+	w := t2053TwoTreeWorld(t)
+	origMove := forwardGitMove
+	forwardGitMove = func(root, from, to string) error {
+		if err := origMove(root, from, to); err != nil {
+			return err
+		}
+		// The directory rename happened; git then reports the move as failed —
+		// the half-completed state the failure handling converges from.
+		return fmt.Errorf("fatal: injected failure after the rename")
+	}
+	t.Cleanup(func() { forwardGitMove = origMove })
+	origReverse := reverseGitMove
+	reverseGitMove = func(root, from, to string) error { return fmt.Errorf("fatal: reverse refused") }
+	t.Cleanup(func() { reverseGitMove = origReverse })
+
+	out, err := m4RunMigrate(t, "--apply")
+	if err == nil {
+		t.Fatalf("apply with stranded trees exited clean:\n%s", out)
+	}
+	if !strings.Contains(out, "undo with") {
+		t.Errorf("a run with destination-stranded trees must keep the rollback hint:\n%s", out)
+	}
+	if !strings.Contains(out, w.movedTree) {
+		t.Errorf("the run does not name the stranded tree %s:\n%s", w.movedTree, out)
+	}
+}
+
 // TestMigrateSummary_RollbackHintOnlyWhenTheJournalHoldsMoves — the summary
 // gate itself: the hint prints for a run that moved trees or inherited an
 // interrupted migration, and stays silent for a run of busy-tree failures.
@@ -107,6 +140,7 @@ func TestMigrateSummary_RollbackHintOnlyWhenTheJournalHoldsMoves(t *testing.T) {
 		{"busy failure only", &migrationReport{rows: []migrationRow{row("failed")}, failed: 1, journal: "j.json"}, false},
 		{"a move to undo", &migrationReport{rows: []migrationRow{row("moved"), row("failed")}, moved: 1, failed: 1, journal: "j.json"}, true},
 		{"interrupted", &migrationReport{rows: []migrationRow{row("interrupted")}, interrupted: 1, journal: "j.json"}, true},
+		{"stranded failure", &migrationReport{rows: []migrationRow{row("failed")}, failed: 1, stranded: 1, journal: "j.json"}, true},
 		{"no journal at all", &migrationReport{rows: []migrationRow{row("moved")}, moved: 1}, false},
 	}
 	for _, tc := range cases {
