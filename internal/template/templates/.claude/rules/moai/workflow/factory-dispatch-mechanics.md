@@ -180,14 +180,27 @@ file the completion report names:
    the wake: line covers predecessor landings only. The git-flow variant (integration window, `--no-ff` merge, release-branch
    push) is the section above and applies only where the project's git
    strategy names git-flow.
-4. **Close** — the merged-pr record closes the lane's own queue card by the
+4. **Close** — local verification, the card's merge into local `main` (the
+   af-flow edge) or its merged-pr record (the github-flow edge), and the
+   recorded evidence close the lane's own queue card by the
    runtime-completion archive authority (`auto-semantics.md` §13): the
    archive lands with the landing verdict the edge answered, and the
    runtime completion row is recorded. No leader `todo done` is needed.
-5. **Read the review on the pull request** — require trusted native Codex artifacts bound to the current full head SHA and no unresolved findings. Missing, failed, stale, or contradictory evidence is a gap, never a pass.
-6. **Sweep** — once the remote landing is confirmed, `moai worktree sweep`
-   disposes the card tree (owner check, dirty trees skipped — the
-   `worktree-integration.md` disposal contract).
+   Release CI, review, audit, and the remote merge are managed apart from
+   Close and do not hold it.
+5. **Read the review on the pull request** — require trusted native Codex artifacts bound to the current full head SHA and no unresolved findings. Missing, failed, stale, or contradictory evidence is a gap, never a pass; it withholds the remote integration, not the card's Close.
+6. **Sweep** — once the remote landing is confirmed and the pre-disposal
+   check holds, `moai worktree sweep` disposes the card tree (owner check,
+   dirty trees skipped — the `worktree-integration.md` disposal contract).
+   The check preserves or confirms the SHA, branch, card link, and
+   completion evidence, and that no uncommitted, unpushed, or shared work
+   remains and the tree can be recovered after a restart. A check that
+   cannot be answered preserves the tree, which also keeps the failed
+   candidate's SHA and branch available to a later repair card.
+
+The order is local verification, the merge into local `main` (or the pull
+request edge), evidence recorded, Close, the pre-disposal check, then the
+sweep once the remote landing is confirmed.
 
 The landing writes one decision record (`auto-semantics.md` §10) in the
 card's progress record, and the completion report to the leader carries the
