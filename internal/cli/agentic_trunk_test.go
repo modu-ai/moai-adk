@@ -33,9 +33,11 @@ import (
 // agenticTrunkGitStrategy is the manual agentic-trunk profile body the
 // fixtures write: the value and the git-flow-only keys together, the exact
 // state REQ-AGT-018 leaves behind at the flip (the keys ignored, no
-// diagnostic).
+// diagnostic). release_route: true (card t2098) keeps the release-route
+// fixtures (the AC-FCR-026 set below) exercising the route: since the route
+// became opt-in, only the explicit key arms it.
 const agenticTrunkGitStrategy = "git_strategy:\n    mode: manual\n    worktree_base_branch: main\n    manual:\n        workflow: agentic-trunk\n" +
-	"        develop_branch: develop\n        release_branch_prefix: release/\n" +
+	"        develop_branch: develop\n        release_branch_prefix: release/\n        release_route: true\n" +
 	"        rc_version_format: vX.Y.Z-rc.N\n        lead_push_threshold: 20\n        merge_method: merge\n"
 
 // writeAgenticTrunkConfig stamps the agentic-trunk git-strategy body under
