@@ -122,9 +122,11 @@ func TestReacquireExpiredLeaseIgnoresEveryOtherShape(t *testing.T) {
 		}},
 		{"lease still valid", "worker-1", func(t *testing.T, db *FactoryDB) { reacqCard(t, db, "worker-1", -time.Minute) }},
 		{"empty label", "", func(t *testing.T, db *FactoryDB) { reacqCard(t, db, "worker-1", 2*time.Minute) }},
-		{"not leased", "worker-1", func(t *testing.T, db *FactoryDB) {
+		// Card t2116: a staged state (run included) is now reacquirable by its
+		// owner; the shape that stays ignored is an interrupted merge.
+		{"interrupted merge", "worker-1", func(t *testing.T, db *FactoryDB) {
 			c := reacqCard(t, db, "worker-1", 2*time.Minute)
-			if _, err := db.DB.Exec(`UPDATE cards SET state=? WHERE card_id=?`, CardRun, c.CardID); err != nil {
+			if _, err := db.DB.Exec(`UPDATE cards SET state=? WHERE card_id=?`, CardMerging, c.CardID); err != nil {
 				t.Fatal(err)
 			}
 		}},
