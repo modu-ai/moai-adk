@@ -53,8 +53,10 @@ func TestE2DocsUnchanged_E2BodyEditIsAlwaysAChange(t *testing.T) {
 			oldDoc := s.prefix + d10Heading + d10OldBody
 			newDoc := s.prefix + d10Heading + d10NewBody
 			if e2DocsUnchanged(oldDoc, newDoc) {
-				t.Errorf("an edit under the E.2 heading compared unchanged (sections old=%d new=%d); the receipt would stay fresh",
-					len(e2Sections(oldDoc)), len(e2Sections(newDoc)))
+				_, oldHas, oldOK := e2RawRegion(oldDoc)
+				_, newHas, newOK := e2RawRegion(newDoc)
+				t.Errorf("an edit under the E.2 heading compared unchanged (present old=%v new=%v, ok old=%v new=%v); the receipt would stay fresh",
+					oldHas, newHas, oldOK, newOK)
 			}
 		})
 	}
@@ -109,8 +111,34 @@ func TestE2DocsUnchanged_PositiveControls(t *testing.T) {
 
 	t.Run("E.2 quoted inside a fence only, identical documents", func(t *testing.T) {
 		doc := "# P\n\n## §E.1 Plan\n```text\n## §E.2 Run-phase Evidence\nquoted\n```\n\n## §E.3 Run\n"
-		t.Logf("raw heading lines=%d sections=%d unchanged=%v", rawE2Headings(doc), len(e2Sections(doc)), e2DocsUnchanged(doc, doc))
+		_, present, ok := e2RawRegion(doc)
+		t.Logf("present=%v ok=%v unchanged=%v", present, ok, e2DocsUnchanged(doc, doc))
 	})
+}
+
+// e2Section and fenceRun are test-only copies of the fence-tracking parser removed from
+// store.go by the D16/D13 repair (card t2017). They exist so the comparison table below
+// can keep running the earlier parsers against the raw-region comparison; nothing in
+// production uses them.
+type e2Section struct {
+	ordinal int
+	heading string
+	body    string
+}
+
+func fenceRun(line string) (ch byte, n int, rest string, ok bool) {
+	t := strings.TrimLeft(line, " ")
+	if len(line)-len(t) > 3 || t == "" || (t[0] != '`' && t[0] != '~') {
+		return 0, 0, "", false
+	}
+	ch = t[0]
+	for n < len(t) && t[n] == ch {
+		n++
+	}
+	if n < 3 {
+		return 0, 0, "", false
+	}
+	return ch, n, t[n:], true
 }
 
 // legacyE2Sections1008 is a verbatim copy of e2Sections at commit 1008b915b2 (the
@@ -171,7 +199,7 @@ func e2SectionsD9665(doc string) []e2Section {
 }
 
 // Prints one row per shape: the unchanged verdict of the 1008b915b2 parser, the
-// d9665c52c5 parser, and the fixed comparison, for an edit under the real E.2 heading.
+// d9665c52c5 parser, and the raw-region comparison, for an edit under the real E.2 heading.
 // Run with -v to read it. A row reading unchanged=true is a receipt that stays fresh.
 func TestE2DocsUnchanged_ComparisonTable(t *testing.T) {
 	t.Logf("%-50s | %-10s | %-10s | %-10s", "shape (edit under real E.2)", "1008b915b2", "d9665c52c5", "fixed")

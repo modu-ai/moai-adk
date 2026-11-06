@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -20,108 +19,123 @@ import (
 
 const e2Doc = "# P\n\n## §E.1 One\n\na\n\n## §E.2 Run-phase Evidence\n\nrow\n\n## §E.3 Three\n\nc\n"
 
-func TestE2Sections_ParsesHeadingOrdinalAndBody(t *testing.T) {
-	got := e2Sections(e2Doc)
-	if len(got) != 1 || got[0].ordinal != 2 || got[0].heading != "## §E.2 Run-phase Evidence" || got[0].body != "\nrow\n\n" {
-		t.Fatalf("e2Sections = %+v, want one section at ordinal 2 with its heading and body", got)
+func TestE2RawRegion_ParsesHeadingOrdinalAndText(t *testing.T) {
+	got, present, ok := e2RawRegion(e2Doc)
+	if !ok || !present || got.ordinal != 2 || got.text != "## §E.2 Run-phase Evidence\n\nrow\n" {
+		t.Fatalf("e2RawRegion = %+v present=%v ok=%v, want one region at ordinal 2 from its heading up to the E.3 line", got, present, ok)
 	}
-	if got := e2Sections("# P\n\n## §E.1 One\n\na\n"); len(got) != 0 {
-		t.Errorf("a document without E.2: %+v, want none", got)
+	if got, present, ok := e2RawRegion("# P\n\n## §E.1 One\n\na\n"); !ok || present {
+		t.Errorf("a document without E.2: %+v present=%v ok=%v, want none and unambiguous", got, present, ok)
 	}
-	if got := e2Sections(""); len(got) != 0 {
-		t.Errorf("an empty document: %+v, want none", got)
+	if got, present, ok := e2RawRegion(""); !ok || present {
+		t.Errorf("an empty document: %+v present=%v ok=%v, want none and unambiguous", got, present, ok)
 	}
 }
 
 // A heading above E.2 changes its ordinal; content after E.2 is outside it.
-func TestE2Sections_OrdinalAndBoundary(t *testing.T) {
+func TestE2RawRegion_OrdinalAndBoundary(t *testing.T) {
 	moved := strings.Replace(e2Doc, "## §E.2", "## §E.0 New\n\nz\n\n## §E.2", 1)
-	a, b := e2Sections(e2Doc), e2Sections(moved)
-	if len(b) != 1 || b[0].ordinal != 3 || a[0].ordinal == b[0].ordinal {
+	a, _, _ := e2RawRegion(e2Doc)
+	b, present, ok := e2RawRegion(moved)
+	if !ok || !present || b.ordinal != 3 || a.ordinal == b.ordinal {
 		t.Errorf("a heading inserted above E.2 must move its ordinal: %+v vs %+v", a, b)
 	}
+	if e2DocsUnchanged(e2Doc, moved) {
+		t.Error("a heading inserted above E.2 compared unchanged")
+	}
 	after := strings.Replace(e2Doc, "\nc\n", "\nc rewritten\n", 1)
-	if x, y := e2Sections(e2Doc), e2Sections(after); len(y) != 1 || x[0] != y[0] {
-		t.Errorf("a rewrite of E.3 must leave E.2 equal: %+v vs %+v", x, y)
+	if x, _, _ := e2RawRegion(e2Doc); !e2DocsUnchanged(e2Doc, after) {
+		t.Errorf("a rewrite of E.3 must leave E.2 equal: %+v", x)
 	}
 }
 
-// A "## " line inside a fenced block is not a heading, so text after it stays in E.2.
-func TestE2Sections_FencedHeadingDoesNotEndTheSection(t *testing.T) {
+// A "## " line inside a fenced block is part of the raw text of E.2, so the text after
+// it stays in E.2 and an edit there is an edit of E.2.
+func TestE2RawRegion_FencedHeadingDoesNotEndTheSection(t *testing.T) {
 	doc := "## §E.2 Run\n\n```\n## not a heading\n```\n\nstill E.2\n\n## §E.3 Three\n"
-	got := e2Sections(doc)
-	if len(got) != 1 || !strings.Contains(got[0].body, "still E.2") {
-		t.Fatalf("e2Sections = %+v, want the fenced line kept inside E.2 with the text after it", got)
+	got, present, ok := e2RawRegion(doc)
+	if !ok || !present || !strings.Contains(got.text, "still E.2") {
+		t.Fatalf("e2RawRegion = %+v present=%v ok=%v, want the fenced line kept inside E.2 with the text after it", got, present, ok)
 	}
 	changed := strings.Replace(doc, "still E.2", "still E.2, edited", 1)
-	if other := e2Sections(changed); len(other) != 1 || other[0] == got[0] {
-		t.Errorf("an edit after the fenced line is an edit of E.2: %+v", other)
+	if e2DocsUnchanged(doc, changed) {
+		t.Error("an edit after the fenced line compared unchanged; it is an edit of E.2")
 	}
 }
 
-// A fence is closed only by a run of the same character at least as long as the one
-// that opened it (AC-AEC-003b, sync-audit D1). A shorter or different run inside the
-// fence is content, so an edit under a later E.2 heading still reads as a change.
-func TestE2Sections_FenceTrackingIsLengthAndCharacterAware(t *testing.T) {
+// Whatever fence shape precedes or sits inside E.2 (AC-AEC-003b, sync-audit D1), the
+// raw region still finds the heading and keeps the text under it, so an edit under a
+// later E.2 heading still reads as a change. Same inputs as the former fence-tracking
+// table; the outcome is now independent of the fence rules.
+func TestE2RawRegion_FenceShapesNeverCutTheSection(t *testing.T) {
 	const e2Old = "## §E.2 Run-phase Evidence\nAC-1 PASS"
 	const e2New = "## §E.2 Run-phase Evidence\nAC-1 FAIL (rewritten)"
 
-	t.Run("a three-backtick line inside a four-backtick fence does not close it", func(t *testing.T) {
+	t.Run("a three-backtick line inside a four-backtick fence", func(t *testing.T) {
 		const head = "## §E.1 Plan\n````text\nA fence opens with a line like:\n```\n````\n"
-		oldSecs, newSecs := e2Sections(head+e2Old), e2Sections(head+e2New)
-		if len(oldSecs) != 1 || len(newSecs) != 1 {
-			t.Fatalf("sections old=%d new=%d, want 1 each: the E.2 heading after the closed fence must be seen", len(oldSecs), len(newSecs))
+		_, oldHas, oldOK := e2RawRegion(head + e2Old)
+		_, newHas, newOK := e2RawRegion(head + e2New)
+		if !oldHas || !newHas || !oldOK || !newOK {
+			t.Fatalf("present old=%v new=%v ok old=%v new=%v, want the E.2 heading after the closed fence seen on both sides", oldHas, newHas, oldOK, newOK)
 		}
-		if slices.Equal(oldSecs, newSecs) {
-			t.Error("a rewrite of the E.2 body compared equal; the receipt would stay fresh")
+		if e2DocsUnchanged(head+e2Old, head+e2New) {
+			t.Error("a rewrite of the E.2 body compared unchanged; the receipt would stay fresh")
 		}
 	})
 
 	t.Run("control: no nested fence", func(t *testing.T) {
 		const head = "## §E.1 Plan\n```text\nplain\n```\n"
-		oldSecs, newSecs := e2Sections(head+e2Old), e2Sections(head+e2New)
-		if len(oldSecs) != 1 || len(newSecs) != 1 || slices.Equal(oldSecs, newSecs) {
-			t.Errorf("old=%+v new=%+v, want one differing section each", oldSecs, newSecs)
+		if e2DocsUnchanged(head+e2Old, head+e2New) {
+			t.Error("a rewrite of the E.2 body compared unchanged")
+		}
+		if !e2DocsUnchanged(head+e2Old, head+e2Old) {
+			t.Error("identical documents compared changed")
 		}
 	})
 
-	t.Run("a backtick run inside a tilde fence does not close it", func(t *testing.T) {
+	t.Run("a backtick run inside a tilde fence", func(t *testing.T) {
 		doc := "## §E.2 Run\n\n~~~\n```\n## not a heading\n~~~\n\nstill E.2\n\n## §E.3 Three\n"
-		got := e2Sections(doc)
-		if len(got) != 1 || !strings.Contains(got[0].body, "still E.2") {
-			t.Fatalf("e2Sections = %+v, want the text after the tilde fence kept inside E.2", got)
+		got, present, ok := e2RawRegion(doc)
+		if !ok || !present || !strings.Contains(got.text, "still E.2") {
+			t.Fatalf("e2RawRegion = %+v present=%v ok=%v, want the text after the tilde fence kept inside E.2", got, present, ok)
 		}
 	})
 
-	t.Run("a longer closing run closes the fence", func(t *testing.T) {
+	t.Run("a longer closing run", func(t *testing.T) {
 		doc := "## §E.1 Plan\n```\ncode\n`````\n## §E.2 Run\nrow\n"
-		if got := e2Sections(doc); len(got) != 1 {
-			t.Fatalf("e2Sections = %+v, want the E.2 heading after the closing run", got)
+		if _, present, ok := e2RawRegion(doc); !ok || !present {
+			t.Fatalf("present=%v ok=%v, want the E.2 heading after the closing run", present, ok)
 		}
 	})
 
-	t.Run("a closing line carrying text does not close the fence", func(t *testing.T) {
+	t.Run("a closing line carrying text", func(t *testing.T) {
 		doc := "## §E.2 Run\n```\n```text\n## not a heading\n```\nstill E.2\n"
-		got := e2Sections(doc)
-		if len(got) != 1 || !strings.Contains(got[0].body, "still E.2") {
-			t.Fatalf("e2Sections = %+v, want the info-string line kept as fence content", got)
+		got, present, ok := e2RawRegion(doc)
+		if !ok || !present || !strings.Contains(got.text, "still E.2") {
+			t.Fatalf("e2RawRegion = %+v present=%v ok=%v, want the info-string line kept as content", got, present, ok)
 		}
 	})
 
-	t.Run("control: a heading line inside a plain fence is not a heading", func(t *testing.T) {
+	t.Run("control: a heading line inside a plain fence", func(t *testing.T) {
 		doc := "## §E.2 Run\n```\n## not a heading\n```\nstill E.2\n"
-		got := e2Sections(doc)
-		if len(got) != 1 || !strings.Contains(got[0].body, "still E.2") {
-			t.Fatalf("e2Sections = %+v, want the fenced heading kept as body", got)
+		got, present, ok := e2RawRegion(doc)
+		if !ok || !present || !strings.Contains(got.text, "still E.2") {
+			t.Fatalf("e2RawRegion = %+v present=%v ok=%v, want the fenced heading kept as text", got, present, ok)
 		}
 	})
 }
 
-// Two E.2 headings are two sections; losing one is a change.
-func TestE2Sections_DuplicateHeadings(t *testing.T) {
+// Two E.2 headings are ambiguous; losing one is a change, and so is keeping both.
+func TestE2RawRegion_DuplicateHeadings(t *testing.T) {
 	doc := "## §E.2 A\n\none\n\n## §E.2 B\n\ntwo\n"
-	if got := e2Sections(doc); len(got) != 2 {
-		t.Fatalf("e2Sections = %+v, want both sections", got)
+	if _, _, ok := e2RawRegion(doc); ok {
+		t.Fatal("two E.2 heading lines read as unambiguous, want ambiguous")
+	}
+	if e2DocsUnchanged(doc, "## §E.2 A\n\none\n") {
+		t.Error("losing one of two E.2 headings compared unchanged")
+	}
+	if e2DocsUnchanged(doc, doc) {
+		t.Error("two E.2 heading lines compared unchanged; an ambiguous document must read as changed")
 	}
 }
 

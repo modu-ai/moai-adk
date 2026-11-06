@@ -56,3 +56,50 @@ func TestAEC003b_E2FenceShapes_RewriteUnderE2MakesTheReceiptStale(t *testing.T) 
 		requireFresh(t, r, rangeSpec)
 	})
 }
+
+// Sync-audit 4 defects D16 and D13 (card t2017, REQ-AEC-010, AC-AEC-003b): a construct
+// INSIDE section E.2 that holds a "## " line made the section parser end E.2 there, so
+// an edit of an AC row below it kept the receipt fresh. Each row puts the shape inside
+// E.2 above an AC-2 row, records a receipt at that commit, rewrites the AC-2 row in a
+// later commit, and drives the auditor Stop step. Every shape must read as stale; the
+// controls (an edit confined to E.3 or E.4, with the same shape inside E.2) stay fresh.
+func TestAEC003b_E2FenceShapes_ShapeInsideE2_RewriteBelowItMakesTheReceiptStale(t *testing.T) {
+	const (
+		head = "# P\n\n## §E.1 Plan\n\nplan one\n\n## §E.2 Run-phase Evidence\n\n| AC-1 | PASS |\n\n"
+		tail = "| AC-2 | PASS |\n\n## §E.3 Run\n\nrun one\n\n## §E.4 Sync\n\nsync_status: pending\n"
+	)
+	shapes := []struct{ name, inside string }{
+		{"D16-inline-code-line-then-bare-fence-holding-a-heading", "```foo``` is inline code, not a fence\n\n```\n## quoted heading line\n```\n\n"},
+		{"D16-two-backtick-info-strings-then-bare-fence-holding-a-heading", "```a`b\n```c`d\n\n```\n## quoted heading line\n```\n\n"},
+		{"D13-html-pre-holding-a-heading", "<pre>\n## quoted heading line\n</pre>\n\n"},
+		{"D13-html-comment-holding-a-heading", "<!--\n## quoted heading line\n-->\n\n"},
+		{"control-plain-fence-holding-a-heading", "```text\n## quoted heading line\n```\n\n"},
+		{"control-nothing", ""},
+	}
+	path := ".moai/specs/" + rangeSpec + "/progress.md"
+	prepare := func(t *testing.T, inside string) rangeRepo {
+		root := newGateTree(t, "required")
+		rangeWrite(t, root, ".gitignore", ".moai/state/\n")
+		rangeWrite(t, root, path, head+inside+tail)
+		rangeCommit(t, root, "base")
+		seedStart(t, root, "a1", auditreceipt.AgentPlanAuditor, time.Now().UTC().Add(-time.Hour))
+		rid := seedReceipt(t, root, auditreceipt.Receipt{Tool: auditreceipt.ToolAuditMulti, TreeRoot: root, CodexVerdict: "pass"})
+		return rangeRepo{root: root, rid: rid, base: rangeGit(t, root, "rev-parse", "HEAD")}
+	}
+	for _, s := range shapes {
+		t.Run("stale: "+s.name, func(t *testing.T) {
+			r := prepare(t, s.inside)
+			rangeWrite(t, r.root, path, replaceOnce(t, rangeRead(t, r.root, path), "| AC-2 | PASS |", "| AC-2 | FAIL |"))
+			rangeCommit(t, r.root, "rewrite the AC-2 row below the shape")
+			requireStale(t, r, rangeSpec)
+		})
+		t.Run("fresh: "+s.name, func(t *testing.T) {
+			r := prepare(t, s.inside)
+			body := replaceOnce(t, rangeRead(t, r.root, path), "run one", "run two, rewritten wholesale")
+			body = replaceOnce(t, body, "sync_status: pending", "sync_status: complete")
+			rangeWrite(t, r.root, path, body)
+			rangeCommit(t, r.root, "rewrite E.3 and E.4 only")
+			requireFresh(t, r, rangeSpec)
+		})
+	}
+}

@@ -1802,6 +1802,9 @@ var (
 	gitCommitPattern = regexp.MustCompile(`^[0-9a-f]{7,64}$`)
 	// e2HeadingPattern matches the heading line of section E.2 of a progress.md.
 	e2HeadingPattern = regexp.MustCompile(`^## §E\.2(?:[ \t]|$)`)
+	// e2BoundaryPattern matches the heading line of a later evidence section, E.3 to
+	// E.9: the raw line at which section E.2 ends. The first submatch is the digit.
+	e2BoundaryPattern = regexp.MustCompile(`^## §E\.([3-9])`)
 )
 
 // evidenceOnlyRange reports whether a receipt whose head is not the current HEAD is
@@ -1859,8 +1862,9 @@ func evidenceOnlyRange(r Receipt, currentHead, citedSpec string) bool {
 
 // e2Unchanged reports whether section E.2 of the progress.md at path is the same in
 // the two commits: computed on BOTH versions (a file added or deleted in between has
-// no E.2 on one side), byte-identical, with its heading line unchanged and in the
-// same position among the document's second-level headings.
+// no E.2 on one side), byte-identical in the raw text, with its heading line unchanged
+// and in the same raw position among the document's second-level headings. Any
+// ambiguity in either version reads as changed (e2RawRegion).
 func e2Unchanged(root, from, to, path, status string) bool {
 	var oldDoc, newDoc string
 	if status != "A" {
@@ -1881,86 +1885,109 @@ func e2Unchanged(root, from, to, path, status string) bool {
 }
 
 // e2DocsUnchanged is the pure comparison behind e2Unchanged: section E.2 of the two
-// document versions is the same. It fails closed: when either version holds a raw
-// E.2 heading line the fence parser did not find, the parse cannot be trusted (two
-// empty lists would compare equal), so the sections are reported as changed.
+// document versions is the same, read from the raw text of each (e2RawRegion). It
+// fails closed: when either version is ambiguous the sections are reported as changed,
+// and so is a heading present on one side only. It may report "changed" for an edit
+// that did not touch E.2; it never reports "unchanged" for an edit inside it.
 func e2DocsUnchanged(oldDoc, newDoc string) bool {
-	oldSecs, newSecs := e2Sections(oldDoc), e2Sections(newDoc)
-	if rawE2Headings(oldDoc) != len(oldSecs) || rawE2Headings(newDoc) != len(newSecs) {
+	oldReg, oldHas, oldOK := e2RawRegion(oldDoc)
+	newReg, newHas, newOK := e2RawRegion(newDoc)
+	if !oldOK || !newOK || oldHas != newHas {
 		return false
 	}
-	return slices.Equal(oldSecs, newSecs)
+	return !oldHas || oldReg == newReg
 }
 
-// rawE2Headings counts the lines of doc that read as an E.2 heading with no fence
-// tracking at all: the independent count e2Sections is checked against.
-func rawE2Headings(doc string) int {
-	n := 0
-	for _, line := range strings.Split(doc, "\n") {
-		if e2HeadingPattern.MatchString(line) {
-			n++
-		}
-	}
-	return n
-}
-
-// e2Section is one section E.2 of a progress.md: its heading line, its position among
-// the second-level headings, and its body up to the next second-level heading.
-type e2Section struct {
+// e2Region is section E.2 of one document version, read from its raw text.
+type e2Region struct {
+	// ordinal is 1 plus the raw count of lines starting "## " above the E.2 heading:
+	// the section's position among the second-level headings. The count is raw, so a
+	// "## " line inside a code block above E.2 counts too; that can only report a move
+	// more often, never hide one.
 	ordinal int
-	heading string
-	body    string
+	// text is the raw lines from the E.2 heading up to, not including, the first
+	// later evidence-section heading line, or to the end of the document.
+	text string
 }
 
-// e2Sections returns every section E.2 of doc in order. A "## " line inside a fenced
-// code block is not a heading, so text after such a line stays part of the section.
-// Fences follow CommonMark: one closes only on a run of the same character at least as
-// long as the one that opened it, so a shorter or different run inside it is content.
-func e2Sections(doc string) []e2Section {
-	var out []e2Section
-	ordinal, cur := 0, -1
-	var fenceCh byte
-	fenceLen := 0 // 0 outside a fence, else the length of the run that opened it
-	for _, line := range strings.Split(doc, "\n") {
-		if fenceLen == 0 && strings.HasPrefix(line, "## ") {
-			ordinal++
-			cur = -1
-			if e2HeadingPattern.MatchString(line) {
-				out = append(out, e2Section{ordinal: ordinal, heading: line})
-				cur = len(out) - 1
+// e2RawRegion reads section E.2 of doc from the raw lines, with no Markdown modelling:
+// no fence, HTML block or quote is tracked, so none can end the section early. The
+// region runs from the single raw line matching e2HeadingPattern to the next raw line
+// matching e2BoundaryPattern (a LATER evidence section, E.3 to E.9), or the document end.
+//
+// ok is false, and the caller must read "changed", whenever the text is ambiguous:
+//   - several lines match e2HeadingPattern;
+//   - a line is only heading-like for E.2 (a near-miss such as "### §E.2", an indented
+//     or tab-separated "§E.2" heading, a bare "## §E.2" ending in a carriage return,
+//     "<h2>§E.2", or a setext heading);
+//   - an evidence-section boundary line sits above the E.2 heading;
+//   - the boundary lines below it do not rise strictly (E.3 before E.4, none repeated).
+//
+// The last rule is the quoted-heading corner. A code block inside E.2 that quotes
+// "## §E.3 ..." matches the boundary pattern and would end E.2 there, hiding a later
+// E.2 edit. When the document also carries the real E.3 the quote repeats or reorders
+// the sequence, so the rule reads it as ambiguous. Residual: a quote of a section number
+// the document does not otherwise carry looks like a real boundary and cannot be told
+// apart without modelling Markdown, which this comparison does not do.
+//
+// present is false, with ok true, when doc has no E.2 and nothing that could be one.
+func e2RawRegion(doc string) (region e2Region, present, ok bool) {
+	lines := strings.Split(doc, "\n")
+	heading := -1
+	var boundaries []int // line indexes of evidence-section boundary lines
+	var digits []byte    // the section digit of each boundary line
+	for i, line := range lines {
+		switch {
+		case e2HeadingPattern.MatchString(line):
+			if heading >= 0 {
+				return e2Region{}, false, false
 			}
-			continue
+			heading = i
+		case e2HeadingLike(lines, i):
+			return e2Region{}, false, false
 		}
-		if ch, n, rest, ok := fenceRun(line); ok {
-			if fenceLen == 0 {
-				fenceCh, fenceLen = ch, n
-			} else if ch == fenceCh && n >= fenceLen && strings.TrimSpace(rest) == "" {
-				fenceLen = 0
-			}
-		}
-		if cur >= 0 {
-			out[cur].body += line + "\n"
+		if m := e2BoundaryPattern.FindStringSubmatch(line); m != nil {
+			boundaries = append(boundaries, i)
+			digits = append(digits, m[1][0])
 		}
 	}
-	return out
+	if heading < 0 {
+		return e2Region{}, false, true
+	}
+	for k, at := range boundaries {
+		if at < heading || (k > 0 && digits[k] <= digits[k-1]) {
+			return e2Region{}, false, false
+		}
+	}
+	end := len(lines)
+	if len(boundaries) > 0 {
+		end = boundaries[0]
+	}
+	above := 0
+	for _, line := range lines[:heading] {
+		if strings.HasPrefix(line, "## ") {
+			above++
+		}
+	}
+	return e2Region{ordinal: above + 1, text: strings.Join(lines[heading:end], "\n")}, true, true
 }
 
-// fenceRun reports the character and length of the backtick or tilde run that starts
-// line (indented at most three spaces, at least three characters long), and the text
-// after it. ok is false for a line that cannot open or close a fence.
-func fenceRun(line string) (ch byte, n int, rest string, ok bool) {
-	t := strings.TrimLeft(line, " ")
-	if len(line)-len(t) > 3 || t == "" || (t[0] != '`' && t[0] != '~') {
-		return 0, 0, "", false
+// e2HeadingLike reports whether lines[i], which is not an exact E.2 heading line, still
+// reads as a heading for E.2: it names "§E.2" and starts with '#' or "<h" after any
+// indent, or the next line underlines it as a setext heading.
+func e2HeadingLike(lines []string, i int) bool {
+	t := strings.TrimLeft(lines[i], " \t")
+	if !strings.Contains(t, "§E.2") {
+		return false
 	}
-	ch = t[0]
-	for n < len(t) && t[n] == ch {
-		n++
+	if strings.HasPrefix(t, "#") || strings.HasPrefix(strings.ToLower(t), "<h") {
+		return true
 	}
-	if n < 3 {
-		return 0, 0, "", false
+	if i+1 < len(lines) {
+		next := strings.TrimSpace(lines[i+1])
+		return next != "" && (strings.Trim(next, "=") == "" || strings.Trim(next, "-") == "")
 	}
-	return ch, n, t[n:], true
+	return false
 }
 
 func markerFileName(agentID string) string { return sanitizeKey(agentID) + ".json" }
