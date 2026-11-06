@@ -75,7 +75,8 @@ func gitLogAllFullMessage(branch string) ([]commitRecord, error) {
 	if err != nil {
 		// execerr.StatusDetail, not %w: a raw *exec.ExitError chain would be
 		// mistaken for an intentional ExitCoder at the cmd/moai seam (t130).
-		return nil, fmt.Errorf("git log failed: %s", execerr.StatusDetail(err))
+		// errGitQueryFailed renders "git log failed", so the text is unchanged.
+		return nil, fmt.Errorf("%w: %s", errGitQueryFailed, execerr.StatusDetail(err))
 	}
 
 	return parseCommitRecords(string(output)), nil
@@ -214,11 +215,13 @@ func inMemImpliedStatus(commits []commitRecord, specID string) (string, error) {
 	// Both exhaustion paths preserve the original error text, so callers that
 	// distinguish them (and the lint rule that treats an error as "skip") keep
 	// behaving identically.
+	// The sentinels render the same text as before; they let the lint rule tell the
+	// shapes apart with errors.Is (card t2087 — the lint run now reads this index).
 	if matched == 0 {
-		return "", fmt.Errorf("no git history found for %s", specID)
+		return "", fmt.Errorf("%w for %s", errNoGitHistory, specID)
 	}
 
-	return "", fmt.Errorf("no classifiable commit within window of %d for %s", gitLogWindowSize, specID)
+	return "", fmt.Errorf("%w of %d for %s", errNoClassifiableCommit, gitLogWindowSize, specID)
 }
 
 // inMemCombinedScopeClose is the in-memory equivalent of resolveCombinedScopeClose:
