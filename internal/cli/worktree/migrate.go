@@ -23,7 +23,6 @@ package worktree
 // step and is never rewritten or truncated.
 
 import (
-	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -250,6 +249,13 @@ type migratePlan struct {
 // timed out is skipped or failed with this reason, never reported moved.
 var ErrCommandTimeout = errors.New("timed out")
 
+// errProcessCWDOSGuarded is what a platform probe returns when it has no way to
+// list process working directories but the operating system itself refuses to
+// rename a directory a process holds as its working directory (Windows, card
+// t2075). The plan does not skip trees for this cause: the move step's own
+// failure handling is the guard. Every other probe error still skips every tree.
+var errProcessCWDOSGuarded = errors.New("process working directories are guarded by the operating system")
+
 // The bounds are package variables so a test can shorten them; the production
 // values are the named defaults in internal/config.
 var (
@@ -281,22 +287,8 @@ func boundedOutput(timeout time.Duration, dir, name string, args ...string) ([]b
 // seam (the two must agree; only the package boundary differs).
 var activeProcessCWDProbe = defaultActiveProcessCWDs
 
-// defaultActiveProcessCWDs scans lsof for the working directories of every
-// active process (the conservative process-level guard for worktree moves).
-func defaultActiveProcessCWDs() ([]string, error) {
-	out, err := boundedOutput(lsofCommandTimeout, "", "lsof", "-a", "-d", "cwd", "-F0n")
-	if err != nil {
-		return nil, fmt.Errorf("lsof cwd scan: %w", err)
-	}
-	var directories []string
-	for _, field := range bytes.Split(out, []byte{0}) {
-		value := strings.TrimLeft(string(field), "\r\n")
-		if strings.HasPrefix(value, "n/") {
-			directories = append(directories, strings.TrimSuffix(value[1:], " (deleted)"))
-		}
-	}
-	return directories, nil
-}
+// defaultActiveProcessCWDs is defined per platform: migrate_cwd_posix.go scans
+// lsof, migrate_cwd_windows.go reports errProcessCWDOSGuarded.
 
 // destinationResolver is the seam for a tree's home-root landing path: the
 // writing resolver for an apply, the read-only planner for a dry run.
@@ -594,7 +586,7 @@ func planMigrationWith(root string, now time.Time, apply bool, progress *treePro
 			procIndex = newProcessCWDIndex(processCWDs)
 			fallthrough
 		default:
-			if processCWDErr != nil {
+			if processCWDErr != nil && !errors.Is(processCWDErr, errProcessCWDOSGuarded) {
 				p.skip = fmt.Sprintf("cannot inspect active process working directories: %v", processCWDErr)
 			} else if procIndex.usesWorktree(rec.Path) {
 				p.skip = "an active process is inside this worktree"
