@@ -647,3 +647,111 @@ func TestMigrateApply_JournalRecordsManifestVersion(t *testing.T) {
 		t.Fatalf("no settled step with a manifest found in %s", dir)
 	}
 }
+
+// ---- fourth review round (J1) -----------------------------------------------
+//
+//	J1  a reverse move renames the directory back and then times out; the
+//	    registration repair fails too. The tree stands at the source, git still
+//	    registers the destination, and the step stays pending. A later --rollback
+//	    used to skip the step because its destination is gone and finish as a
+//	    success, leaving the registration, re-key and card binding unfixed.
+
+// t2053RenamedBackWorld is the J1 state: the tree sits at the source (renamed
+// back by hand), git's registration still names the destination, a card is
+// bound to the destination, and the journal step is pending.
+func t2053RenamedBackWorld(t *testing.T) (*m6World, migratePlan, string, string) {
+	t.Helper()
+	w, p, id, mlPath := t2053ReverseWorld(t)
+	db, err := homestate.OpenFactory(w.repo)
+	if err != nil {
+		t.Fatalf("open factory: %v", err)
+	}
+	dest := p.destination
+	if _, perr := db.RecordPicked(context.Background(), "run-t2053-j1", "card-t2053-j1", homestate.CardFields{WorktreePath: &dest}, "t2053-test", time.Now().UTC()); perr != nil {
+		t.Fatalf("record picked: %v", perr)
+	}
+	_ = db.Close()
+	if rerr := os.Rename(p.destination, p.source); rerr != nil {
+		t.Fatalf("rename back: %v", rerr)
+	}
+	body, _ := json.Marshal(map[string]any{"steps": []journalStep{{
+		OldPath: p.source, NewPath: p.destination, Outcome: "pending", Ident: id.Ident(),
+	}}})
+	journal := filepath.Join(t.TempDir(), "journal.json")
+	if werr := os.WriteFile(journal, body, 0o644); werr != nil {
+		t.Fatalf("write journal: %v", werr)
+	}
+	return w, p, journal, mlPath
+}
+
+// TestRollback_RenamedBackStaleRegistration_RepairsAndRestores — J1 (a): the
+// rollback repairs the source's registration, re-keys, rebinds the card and
+// records `restored`; it does not skip the step for its missing destination.
+func TestRollback_RenamedBackStaleRegistration_RepairsAndRestores(t *testing.T) {
+	w, p, journal, mlPath := t2053RenamedBackWorld(t)
+
+	out, rerr := m4RunMigrate(t, "--rollback", journal)
+	if rerr != nil {
+		t.Fatalf("rollback failed: %v\n%s", rerr, out)
+	}
+	if !strings.Contains(out, "restored 1 tree(s)") {
+		t.Errorf("rollback summary: %q", out)
+	}
+	if got := t2053LastMoveListResult(t, mlPath); got != "restored" {
+		t.Errorf("last move-list result = %q, want restored", got)
+	}
+	if !m6Registered(t, w.repo, p.source) || m6Registered(t, w.repo, p.destination) {
+		t.Errorf("registration does not name the source only")
+	}
+	db, err := homestate.OpenFactory(w.repo)
+	if err != nil {
+		t.Fatalf("reopen factory: %v", err)
+	}
+	defer func() { _ = db.Close() }()
+	card, lerr := db.LoadCard(context.Background(), "run-t2053-j1", "card-t2053-j1")
+	if lerr != nil {
+		t.Fatalf("load card: %v", lerr)
+	}
+	if card.WorktreePath != p.source {
+		t.Errorf("card worktree = %q, want it rebound to %q", card.WorktreePath, p.source)
+	}
+}
+
+// TestRollback_RenamedBackRepairHangs_ExitsNonZeroNoRestored — J1 (b): with the
+// repair hung, the rollback fails and records no `restored` line; the step is
+// never a success while the registration is unfixed.
+func TestRollback_RenamedBackRepairHangs_ExitsNonZeroNoRestored(t *testing.T) {
+	_, _, journal, mlPath := t2053RenamedBackWorld(t)
+	t2053BlockingGit(t, "repair")
+	orig := gitCommandTimeout
+	gitCommandTimeout = 2 * time.Second
+	t.Cleanup(func() { gitCommandTimeout = orig })
+
+	out, rerr := m4RunMigrate(t, "--rollback", journal)
+	if rerr == nil {
+		t.Fatalf("rollback reported success with the registration unfixed:\n%s", out)
+	}
+	if raw, err := os.ReadFile(mlPath); err == nil && strings.Contains(string(raw), `"result":"restored"`) {
+		t.Errorf("a `restored` line was written:\n%s", raw)
+	}
+}
+
+// TestRollback_ConvergedStep_IsNothingToDo — J1 guard: a step whose source
+// carries the identity, is registered at the source, and has no destination is
+// converged; the rollback succeeds without recording a restoration.
+func TestRollback_ConvergedStep_IsNothingToDo(t *testing.T) {
+	w, p, id, mlPath := t2053ReverseWorld(t)
+	m6Git(t, w.repo, "worktree", "move", p.destination, p.source) // really back, really registered
+	journal := t2053RollbackJournal(t, p, id)
+
+	out, rerr := m4RunMigrate(t, "--rollback", journal)
+	if rerr != nil {
+		t.Fatalf("rollback of a converged step failed: %v\n%s", rerr, out)
+	}
+	if !strings.Contains(out, "restored 0 tree(s)") {
+		t.Errorf("rollback summary: %q", out)
+	}
+	if raw, err := os.ReadFile(mlPath); err == nil && strings.Contains(string(raw), `"result":"restored"`) {
+		t.Errorf("a `restored` line was written for a converged step:\n%s", raw)
+	}
+}

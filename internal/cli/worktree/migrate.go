@@ -873,6 +873,19 @@ func registeredAt(root, path string) bool {
 	return false
 }
 
+// rekeyAndRebindBack undoes the state-file re-key and the card binding of a
+// step (new path -> old path). A missing entry or binding is already converged.
+func rekeyAndRebindBack(root string, s journalStep) error {
+	if rerr := hook.RekeyWorktreeEntryInverse(root, s.NewPath, s.OldPath); rerr != nil &&
+		!strings.Contains(rerr.Error(), "no entry keyed to") {
+		return fmt.Errorf("%s: reverse re-key failed (%v)", s.OldPath, rerr)
+	}
+	if rerr := rebindCardForPath(root, s.NewPath, s.OldPath); rerr != nil {
+		return fmt.Errorf("%s: reverse card rebind failed (%v)", s.OldPath, rerr)
+	}
+	return nil
+}
+
 // rebindCardForPath rebinds the card record bound to oldPath onto newPath
 // when the factory record holds such a binding. No factory record, no
 // binding — the step is skipped silently when the store is absent (the
@@ -996,7 +1009,50 @@ func runMigrateRollback(cmd *cobra.Command, root, journalPath string, asJSON boo
 		for i := len(journal.Steps) - 1; i >= 0; i-- {
 			s := journal.Steps[i]
 			if _, serr := os.Stat(s.NewPath); serr != nil {
-				continue // the tree never reached its destination: nothing to reverse
+				// The destination is gone. The tree either never left the source
+				// or a reverse move renamed it back and was cut off before git's
+				// registration, the re-key and the card binding followed (card
+				// t2053, J1). Only a source that carries the step's identity AND
+				// is registered there AND has nothing left to undo is "nothing to
+				// do"; every other state converges or stays pending.
+				if s.Ident == "" {
+					continue
+				}
+				if _, lerr := os.Lstat(s.OldPath); lerr != nil {
+					continue // neither end exists: nothing here to act on
+				}
+				srcIdent, ierr := TreeIdent(s.OldPath)
+				if ierr != nil || srcIdent.Ident() != s.Ident {
+					if lerr := appendMoveListLine(mlPath, m6MoveLineReason("refused", s.NewPath, s.OldPath, s.Ident, "identity mismatch")); lerr != nil {
+						return lerr
+					}
+					problems = append(problems, fmt.Sprintf("%s: identity mismatch at the source; the tree stays where it is", s.OldPath))
+					refused++
+					continue
+				}
+				alreadyRegistered := registeredAt(root, s.OldPath)
+				if !alreadyRegistered && !treeMovedBack(root, s.OldPath, s.NewPath, s.Ident) {
+					const msg = "the tree is back at the source but git's registration could not be repaired"
+					if lerr := appendMoveListLine(mlPath, m6MoveLineReason("pending", s.NewPath, s.OldPath, s.Ident, msg)); lerr != nil {
+						return lerr
+					}
+					problems = append(problems, fmt.Sprintf("%s: %s", s.OldPath, msg))
+					failed++
+					continue
+				}
+				if terr := rekeyAndRebindBack(root, s); terr != nil {
+					problems = append(problems, terr.Error())
+					failed++
+					continue
+				}
+				if alreadyRegistered {
+					continue // converged: registration, re-key and binding already name the source
+				}
+				if lerr := appendMoveListLine(mlPath, m6MoveLine("restored", s.NewPath, s.OldPath, s.Ident)); lerr != nil {
+					return lerr
+				}
+				restored++
+				continue
 			}
 			destIdent, terr := TreeIdent(s.NewPath)
 			if terr != nil || (s.Ident != "" && destIdent.Ident() != s.Ident) {
@@ -1035,20 +1091,8 @@ func runMigrateRollback(cmd *cobra.Command, root, journalPath string, asJSON boo
 				failed++
 				continue
 			}
-			if rerr := hook.RekeyWorktreeEntryInverse(root, s.NewPath, s.OldPath); rerr != nil {
-				if strings.Contains(rerr.Error(), "no entry keyed to") {
-					// No state-file entry keyed to the new path: the forward
-					// re-key was a no-op (the tree was never registered in
-					// the state file) — the reverse is the same no-op, the
-					// same symmetry migrateOneTree applies forward.
-				} else {
-					problems = append(problems, fmt.Sprintf("%s: reverse re-key failed (%v)", s.OldPath, rerr))
-					failed++
-					continue
-				}
-			}
-			if rerr := rebindCardForPath(root, s.NewPath, s.OldPath); rerr != nil {
-				problems = append(problems, fmt.Sprintf("%s: reverse card rebind failed (%v)", s.OldPath, rerr))
+			if terr := rekeyAndRebindBack(root, s); terr != nil {
+				problems = append(problems, terr.Error())
 				failed++
 				continue
 			}
