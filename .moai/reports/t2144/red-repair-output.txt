@@ -1,0 +1,17 @@
+--- FAIL: TestT2144TagShadowRepair (11.54s)
+    --- FAIL: TestT2144TagShadowRepair/P3_tag_origin_main_does_not_shadow_remote_tracking_tree_identity (1.54s)
+        merge_tag_shadow_repair_t2144_test.go:27: tree-identity measured the tag origin/main, not refs/remotes/origin/main: merge result tree ada05530bab81a7667ff79bd69e466bd5d0fe32a == card branch tree ada05530bab81a7667ff79bd69e466bd5d0fe32a (HEAD^{{tree}} == HEAD^2^{{tree}} holds)
+    --- FAIL: TestT2144TagShadowRepair/P3_tag_origin_main_does_not_shadow_remote_tracking_conflict_free (1.81s)
+        merge_tag_shadow_repair_t2144_test.go:42: conflict-free measured the tag, not the remote-tracking ref: merge-tree origin/main + refs/heads/WT-card@057806aba6c0599eea16efb504e0832fe75438fc clean; result tree ada05530bab81a7667ff79bd69e466bd5d0fe32a
+    --- FAIL: TestT2144TagShadowRepair/P3_tag_origin_main_does_not_forge_the_absorb_check (2.73s)
+        merge_tag_shadow_repair_t2144_test.go:57: sync-audit passed=true, want false; detail: .moai/reports/t9/verdict.md: verdict: PASS, audited_sha 43d11641c59399f1256bacdf1ec4987457183e35 binds HEAD e4878595b65277ce7232726a95a95a05c3227fe3 — the SPEC-less card's audit record reads closed
+    --- FAIL: TestT2144TagShadowRepair/a_tag_named_like_remote_ref_still_resolves_the_remote_ref (1.36s)
+        merge_tag_shadow_repair_t2144_test.go:69: got ok=true sha=98ca2646ba43826fba40274905355560b795d2e8 why=""; want b98e3640066c1f6fd969e3fde983ae5dea4f79f9
+    --- FAIL: TestT2144TagShadowRepair/b_only_a_tag_exists_is_refused_naming_both_forms (0.86s)
+        merge_tag_shadow_repair_t2144_test.go:78: a tag alone must not resolve as the integration ref
+    --- FAIL: TestT2144TagShadowRepair/c_suffixed_names_fail_closed (1.08s)
+        merge_tag_shadow_repair_t2144_test.go:91: "main~0" resolved to 79136e5027b1a722ae9867af575dfa404e2d79ca; want fail-closed refusal
+        merge_tag_shadow_repair_t2144_test.go:91: "main@{0}" resolved to 79136e5027b1a722ae9867af575dfa404e2d79ca; want fail-closed refusal
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/factorylane	11.934s
+FAIL

@@ -217,14 +217,10 @@ func specLessEvidenceRel(repoDir, card string) string {
 // it a clean absorb where main inserts lines before the card's hunk would be
 // refused (TestT2121AbsorbRepair/P10).
 func absorbOnlyChange(git GitRunner, develop, audited, head, card string) (bool, string) {
-	if strings.TrimSpace(develop) == "" {
-		return false, "the integration branch is unknown"
+	dev, refusal, ok := integrationRevSHA(git, develop)
+	if !ok {
+		return false, refusal
 	}
-	dev, err := git.Git("rev-parse", "--verify", "--quiet", develop+"^{commit}")
-	if err != nil || strings.TrimSpace(dev) == "" {
-		return false, fmt.Sprintf("the integration ref %s cannot be resolved (fail-closed)", develop)
-	}
-	dev = strings.TrimSpace(dev)
 	evidenceDir := ".moai/reports/" + card + "/"
 
 	log, err := git.Git("rev-list", "--first-parent", "--parents", audited+".."+head)

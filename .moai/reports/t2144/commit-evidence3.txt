@@ -1,0 +1,7 @@
+[t2144] docs(audit): final verdict PASS-WITH-DEBT 0.91 for b73989497a with Codex receipt (card t2144)
+
+F1 tag-first fallback closed. Codex call under d-20261106T163347Z-7adc after the MCP reconnect: result pass,
+no findings, receipt rcpt-185288dcaa28642f8c9fd53b, delta_base c89eac461c. Debt N1 (refs/ names not checked to be
+commits). Earlier verdicts kept as sync-audit-iter1.md (FAIL 0.79) and sync-audit-iter2.md (FAIL 0.90, Codex unmet).
+
+🗿 MoAI

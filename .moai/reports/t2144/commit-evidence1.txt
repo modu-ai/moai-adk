@@ -1,0 +1,7 @@
+[t2144] docs(audit): sync-audit-iter1 verdict FAIL 0.79 for c89eac461c, blocking F1 tag-first fallback (card t2144)
+
+Claude sync-auditor, no Codex receipt (codex_audit refused before review with stale_server; not counted).
+F1: integrationRevSHA falls back to rev-parse <name>^{commit}, tag-first, so a local tag origin/main shadows
+the remote-tracking ref the PR path passes. Repair follows.
+
+🗿 MoAI
