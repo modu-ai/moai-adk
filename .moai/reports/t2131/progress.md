@@ -17,7 +17,8 @@ Tree t2131 (branch WT-internal-cli-tests), commands ran in this run against this
 ## Gaps
 - The goal mission failures `receipt_unsafe` (governance/completion receipts) and `git owner: lease missing or unsafe` come from the production checks in `internal/mission`, fixed by sibling card t2130 (merge-ready, not in this tree's base). Those cli tests are expected to pass on Windows only after t2130 lands; they are not claimed fixed here.
 - No Windows host: the Windows behavior is the CI race matrix's verdict. No real RED on this platform.
-- If any of these cli tests also has a weak-mode negative step (chmod 0644 then expect refusal) it was not found by grep (`goal_mission_test.go` only chmods to a caller-provided mode at line 287) — checked, none needs gating.
+- CORRECTION (audit round 1, F2): the first version of this file claimed no weak-mode negative step needed gating; that was wrong. `TestAutoMissionTestsReceiptTrustBoundary` writes a 0644 receipt (via the helper at `goal_mission_test.go:287`) and expects a refusal, which no longer exists on Windows. It is now gated by `weakModeRefusalExpected()` (false on Windows); the test's other steps still run there.
+- Audit F3 (inference, not run): `TestAutoMissionProductionGitCommitOwner` (line ~192) passes the tests-receipt check but is expected to stop at the governance receipt check in `internal/mission` (`Perm() != 0o600`), fixed by t2130; that row also depends on t2130. Audit F4 (outside the diff): `migrate_cg.go:260` has the same `&0077` check; it is not among the 11 failures and was not touched.
 - Focused runs only, no whole-package suite.
 - Codex not approved for this card: Claude audit only.
 

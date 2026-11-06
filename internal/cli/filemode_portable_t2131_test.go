@@ -13,6 +13,12 @@ func permMatchesOnHost(perm, want fs.FileMode) bool {
 	return runtime.GOOS == "windows" || perm == want
 }
 
+// weakModeRefusalExpected reports whether a deliberately weakened file mode
+// (chmod 0644) is refused on this platform; Windows has no POSIX bits, so the
+// negative step that relies on it runs only elsewhere while every other step of
+// the same test still runs there.
+func weakModeRefusalExpected() bool { return runtime.GOOS != "windows" }
+
 func TestNoGroupOrOtherAccessOn(t *testing.T) {
 	cases := []struct {
 		goos string
