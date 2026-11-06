@@ -25,9 +25,29 @@
 | internal/web | 1 |
 | 합계 | 474 |
 
-오류 문자열은 두 모양이다.
-1. `invalid uri authority: C:%5CUsers%5CRUNNER~1%5C…%5Cledger.db?_pr…` (473건 — ledger 416 + mergeq 34 + cli 22 + web 1): 백슬래시가 그대로 인코딩된 경로. 생산자는 `internal/agenticfactory/ledger/schema.go` `Open`(변경 전 줄 85-92)의 `url.URL{Scheme:"file", Path: path}` — 원시 Windows 경로를 넘겨 `file://C:%5CUsers…`가 되고 드라이버가 `C:%5C…`를 authority로 읽음. 모든 시험이 `ledger.Open`을 거쳐(af_flow_test.go, af_land_*_test.go, mergeq 시험, web board_store_test.go) 같은 한 지점에서 실패. 분류표 5열 파일명은 474건 전부 `_test.go`(시험이 연 저장소가 ledger).
-2. `invalid uri authority: C: (1)` (1건 — homestate `TestRuntimeCensusCountsLiveAndIgnoresProvablyDead`): 생산자는 `internal/homestate/runtime_census.go`의 `filepath.ToSlash(factoryPath)`만 쓰고 앞 `/`를 붙이지 않는 DSN — `file://C:/…`.
+오류 문자열은 두 모양이다. 재집계(iter-1 수리, 이 트리 기준 분류표 그대로):
+
+```
+$ grep 'invalid uri authority' categorized.tsv | awk -F'\t' '{shape=($0 ~ /C:%5C/)?"C:%5C":"C: (1)"; print $3, shape}' | sort | uniq -c
+ 416 internal/agenticfactory/ledger C:%5C
+  34 internal/agenticfactory/mergeq C:%5C
+   4 internal/cli C: (1)
+  18 internal/cli C:%5C
+   1 internal/homestate C: (1)
+   1 internal/web C:%5C
+$ grep 'invalid uri authority' categorized.tsv | grep -o 'invalid uri authority: C:[^?]\{0,4\}' | sed 's/%5C.*/%5C…/' | sort | uniq -c
+   5 invalid uri authority: C: (1)
+ 469 invalid uri authority: C:%5C…
+$ grep 'invalid uri authority: C:%5C' categorized.tsv | grep -c 'ledger: '
+469
+```
+
+1. `invalid uri authority: C:%5CUsers%5CRUNNER~1%5C…%5Cledger.db?_pr…` (469건 — ledger 416 + mergeq 34 + cli 18 + web 1, 전부 `ledger: ` 접두): 백슬래시가 그대로 인코딩된 경로. 생산자는 `internal/agenticfactory/ledger/schema.go` `Open`(변경 전 줄 85-92)의 `url.URL{Scheme:"file", Path: path}` — 원시 Windows 경로를 넘겨 `file://C:%5CUsers…`가 되고 드라이버가 `C:%5C…`를 authority로 읽음. 이 469건은 `ledger.Open`을 거친다(`ledger: ` 접두 469/469로 확인). cli 22건 전부가 ledger.Open을 거친다는 이전 서술은 틀렸다 — cli는 18건만 이 모양이다.
+2. `invalid uri authority: C: (1)` (5건): 슬래시 변환만 하고 앞 `/`를 붙이지 않은 `file://C:/…` 모양. 생산자별:
+   - homestate `TestRuntimeCensusCountsLiveAndIgnoresProvablyDead` 1건과 cli `TestFactoryRecoverResumeCommandRequeuesUnknownOwnerAtZeroCensus` 1건 — 둘 다 `factory census:` 경유, 생산자 `internal/homestate/runtime_census.go`의 `filepath.ToSlash(factoryPath)` DSN. 커밋 `9deb412a48`이 수리.
+   - cli 3건(`TestQAS_AC018_LaneInventoryCandidates/read_only_main_file_and_rows_unchanged`, `TestQAS_AC021_SteeringChangesNothing/status_is_read_only`, `…/auto_mutations_equal_pressure_off`) — 모두 `dump workers:`, 생산자는 시험 헬퍼 `internal/cli/factory_quota_lanes_test.go` `qasRegistryState`의 `url.URL{Scheme:"file", Path: filepath.ToSlash(path)}`. `9deb412a48`이 못 고침; iter-1 수리 커밋이 수리(§6).
+
+분류표 5열 파일명은 474건 전부 `_test.go`(시험이 연 저장소가 ledger 또는 registry).
 
 재현(이 OS에서 문자열 수준, RED 출력 `.moai/reports/t2118/red-ledger.txt`): `ledgerDSN("C:\Users\dev\x.db")` = `file://C:%5CUsers%5Cdev%5Cx.db?…` — CI 오류 문자열과 같은 모양. `runtimeCensusDSN` = `file://C:%5C…` 파싱 불가.
 
@@ -49,3 +69,12 @@
 - 집중 시험(레인 직접): `go test -count=1 ./internal/sqliteuri/ ./internal/agenticfactory/ledger/` → `ok internal/sqliteuri 3.617s`, `ok internal/agenticfactory/ledger 110.466s`.
 - Security Guardian "path-traversal (medium) line 85": 해당 줄은 `internal/agenticfactory/ledger/schema.go:85` `return sqliteuri.File(path, q)`. path는 호출자가 정한 원장 파일 위치(설정·시험 임시 디렉터리)이며 사용자 입력 경계가 새로 생긴 것이 아님 — 수정 전에도 같은 path가 `url.URL{Path: path}`로 드라이버에 갔음. 레인 판단: 오탐(새 경로 처리 위험 없음). sync 감사관 재확인 대상.
 - Gaps: Windows 실제 실행 없음(CI Windows race 행렬이 판정). internal/cli 전체·internal/web 시험 미실행(레인 집중 규칙). 위임의 그 밖의 패키지 통과 수(mergeq 91, factorymsg 235, homestate 763, discovery 15, cli 집중 62)는 위임 보고·증거 파일 기준이며 레인이 재실행하지 않음. 이전 턴 위임 기록 조회 명령 1건이 워크트리 가드에 거절됨(위임 백그라운드 명령 확인용, 판정 근거 아님).
+
+## 6. iter-1 repair (sync-audit iter-1 FAIL 0.78, 2026-11-06)
+
+- F1 (BLOCKING): 시험 헬퍼 `qasRegistryState`의 DSN이 `file://C:/…`를 만들어 CI 3건을 냈다. CI 증거 `invalid uri authority` 474줄의 생산자를 전수 대조한 결과, 헬퍼 문제는 이 3건뿐(나머지 471건은 ledger.Open 469 + factory census 2). `"file:"+` 형태의 다른 시험 헬퍼는 CI 증거에 나오지 않아 손대지 않음(범위 밖, 잠복).
+  - RED `dfefa51452` — `qasReadOnlyDSN` 추출(동작 보존) + 문자열 수준 시험 `TestQASReadOnlyDSN_DrivePathIsNotTheAuthority`; 실패 출력 `.moai/reports/t2118/red-cli-qas.txt`(`file://C:%5CUsers…`, `invalid port`).
+  - GREEN `95dfec79b5` — `qasReadOnlyDSN`이 `sqliteuri.File(path, v)` 사용(`mode=ro`, `_pragma=query_only(ON)` 유지).
+  - 시험: `go test -count=1 ./internal/cli/ -run TestQASReadOnlyDSN_DrivePathIsNotTheAuthority` ok, `-run TestQAS_AC018` ok 17.365s, `-run TestQAS_AC021` ok 11.495s, `GOOS=windows GOARCH=amd64 go vet ./internal/cli/` exit 0, gofmt 무출력.
+- F2 (BLOCKING): §3 모양별 건수를 469/5로 정정하고 5건을 생산자별로 귀속, cli 22건 전부가 ledger.Open이라는 서술 삭제(§3 재집계 명령·출력 기록).
+- 미수리(선택, 감사 F3/F4/F5): 가드 정규식 확장, 남은 손수 빌더 7곳 정리은 이번 수리 범위 밖.
