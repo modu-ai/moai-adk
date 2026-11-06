@@ -8,17 +8,21 @@ import (
 )
 
 // IsReacquirableExpiredLease reports whether card is the one shape the owner's
-// own re-lease acts on: `leased`, its lease expired at now, and label is both
-// the recorded owner and the lease holder. Any other card, label, or an
+// own re-lease acts on: a lease-holding state a lane parks a card in (`leased`,
+// or a staged state — plan … merge-ready; card t2116), its lease expired at now,
+// and label is both the recorded owner and the lease holder. `merging` is not
+// reacquirable: its expiry means an interrupted merge (the card goes to
+// `blocked`), which no lane re-leases quietly. Any other card, label, or an
 // unexpired lease is not reacquirable.
 func IsReacquirableExpiredLease(card Card, label string, now time.Time) bool {
 	label = strings.TrimSpace(label)
-	return label != "" && card.State == CardLeased && card.LeaseExpired(now) &&
-		card.LeaseHolder == label && card.OwnerLabel == label
+	return label != "" && IsLeaseHoldingState(card.State) && card.State != CardMerging &&
+		card.LeaseExpired(now) && card.LeaseHolder == label && card.OwnerLabel == label
 }
 
-// ReacquireExpiredLease lets the registered owner of a `leased` card whose lease
-// expired take it again in ONE transaction: the existing expiry return (T27,
+// ReacquireExpiredLease lets the registered owner of a card whose lease
+// expired — `leased`, or parked in a staged state (card t2116) — take it again
+// in ONE transaction: the existing expiry return (T27,
 // applyLeaseExpiry — the card goes to `assigned`, stage, worktree and evidence
 // kept, `lease.expired` appended), then the existing lease edge (T3, which also
 // enforces that label is a registered worker and the card's owner), then a
