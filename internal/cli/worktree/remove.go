@@ -4,7 +4,9 @@ package worktree
 // @MX:NOTE: [AUTO] Force flag bypasses uncommitted changes safety check
 
 import (
+	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -101,8 +103,14 @@ func removalTargetLock(absPath string) (session.LockInfo, error) {
 	if lock, ok := locks[filepath.Clean(absPath)]; ok {
 		return lock, nil
 	}
-	if resolved, rerr := filepath.EvalSymlinks(absPath); rerr == nil {
+	resolved, rerr := filepath.EvalSymlinks(absPath)
+	if rerr == nil {
 		return locks[filepath.Clean(resolved)], nil
 	}
-	return session.LockInfo{}, nil
+	if errors.Is(rerr, os.ErrNotExist) {
+		return session.LockInfo{}, nil // the target is gone: nothing locks it
+	}
+	// A resolution that failed for any other reason leaves the lock state
+	// unknown — not "unlocked" (card t2053, sixth review).
+	return session.LockInfo{}, fmt.Errorf("resolve %s to read its lock state: %w", absPath, rerr)
 }

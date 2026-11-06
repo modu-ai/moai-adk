@@ -363,6 +363,13 @@ func planMigrationFor(root string, now time.Time, apply bool) ([]migratePlan, er
 		HomeProjectsDir:   homeBase,
 	}
 	cwd, _ := os.Getwd()
+	// The move list is read once, checked: a list that exists but cannot be read
+	// is not an empty one, and no tree can be judged against it (card t2053,
+	// sixth review).
+	moveEntries, mlErr := loadMoveList(root)
+	if mlErr != nil {
+		return nil, mlErr
+	}
 	var plans []migratePlan
 	var processCWDs []string
 	var processCWDErr error
@@ -401,15 +408,25 @@ func planMigrationFor(root string, now time.Time, apply bool) ([]migratePlan, er
 		}
 		// A tree the migration left unfinished is not a candidate and not a
 		// stale registration: it is reported as interrupted, naming the journal
-		// that recovers it (card t2053, C7) — never as something to prune.
-		destExists := false
-		if p.destination != "" {
-			_, statErr := os.Lstat(p.destination)
-			destExists = statErr == nil
-		}
-		atDestination := p.destination != "" && worktreeroot.Same(rec.Path, p.destination)
-		if rec.Prunable || destExists || atDestination {
-			if journal, interrupted := interruptedMigration(root, rec.Path, p.destination); interrupted {
+		// that recovers it (card t2053, C7) — never as something to prune. The
+		// check does not depend on where the tree stands (L1): a run killed after
+		// its pending lines but before the move leaves the source intact and the
+		// destination absent, and that state is interrupted too — unless it is
+		// PROVABLY a step that never moved, which an apply settles explicitly.
+		if line, interrupted := findInterrupted(moveEntries, rec.Path, p.destination); interrupted {
+			journal := journalRecording(root, line.Ident)
+			stepJournal, unmoved := provablyUnmovedStep(root, rec.Path, p.destination, line)
+			switch {
+			case unmoved && !apply:
+				// A candidate: the dry run writes nothing (AC-WHR-015).
+			case unmoved:
+				if serr := settleUnmovedStep(root, line, stepJournal); serr != nil {
+					p.interrupted, p.journal = true, stepJournal
+					p.skip = fmt.Sprintf("%s; the earlier step could not be settled automatically: %v", interruptedReason(root, stepJournal), serr)
+					plans = append(plans, p)
+					continue
+				}
+			default:
 				p.interrupted, p.journal = true, journal
 				p.skip = interruptedReason(root, journal)
 				plans = append(plans, p)
@@ -418,16 +435,21 @@ func planMigrationFor(root string, now time.Time, apply bool) ([]migratePlan, er
 		}
 		// A tree already standing at its destination has nothing to migrate and
 		// earns no row (C16).
-		if atDestination {
+		if p.destination != "" && worktreeroot.Same(rec.Path, p.destination) {
 			continue
 		}
+		// Only fs.ErrNotExist makes a path absent: a source whose path cannot be
+		// resolved is skipped saying so (card t2053, sixth review).
+		treeCanon, canonErr := resolveTreePath(rec.Path)
 		// The same skip causes as planLegacyWorktreeMigrationFor.
 		switch {
 		case rec.Prunable:
 			p.skip = "Git lists this tree as prunable"
 		case rec.Locked:
 			p.skip = "Git worktree is locked"
-		case isUnderWorktreePrefix(cwd, rec.Path) || canonicalTreePath(cwd) == canonicalTreePath(rec.Path):
+		case canonErr != nil:
+			p.skip = fmt.Sprintf("cannot resolve the source path: %v", canonErr)
+		case isUnderWorktreePrefix(cwd, rec.Path) || canonicalTreePath(cwd) == treeCanon:
 			p.skip = "current process is inside this worktree"
 		case !processCWDsRead:
 			processCWDs, processCWDErr = activeProcessCWDProbe()
@@ -442,8 +464,14 @@ func planMigrationFor(root string, now time.Time, apply bool) ([]migratePlan, er
 				p.skip = "session registry cannot be read"
 			} else if liveAnchoredProbe(rec.Path, root, now) > 0 {
 				p.skip = "active session is anchored in this worktree"
-			} else if info, statErr := os.Lstat(rec.Path); statErr != nil || !info.IsDir() {
-				p.skip = "source path is missing or not a directory"
+			} else if info, statErr := os.Lstat(rec.Path); statErr != nil {
+				if errors.Is(statErr, os.ErrNotExist) {
+					p.skip = "source path is missing"
+				} else {
+					p.skip = fmt.Sprintf("source path cannot be inspected: %v", statErr)
+				}
+			} else if !info.IsDir() {
+				p.skip = "source path is not a directory"
 			} else if _, statErr := os.Lstat(p.destination); statErr == nil {
 				p.skip = "destination already exists"
 			} else if !errors.Is(statErr, os.ErrNotExist) {
@@ -455,28 +483,140 @@ func planMigrationFor(root string, now time.Time, apply bool) ([]migratePlan, er
 	return plans, nil
 }
 
-// interruptedMigration reports whether the move list's latest location line
-// for a tree touching any of paths is an unsettled `pending` — a migration that
-// started and was never settled, restored or reversed — and the journal that
-// records it (card t2053, C7).
-func interruptedMigration(root string, paths ...string) (string, bool) {
+// findInterrupted returns the latest unsettled `pending` location line of a
+// tree touching any of paths: a migration that started and was never settled,
+// restored or reversed (card t2053, C7).
+func findInterrupted(entries []mlRecord, paths ...string) (mlRecord, bool) {
 	latest := map[string]mlRecord{}
-	for _, rec := range loadMoveList(root) {
+	for _, rec := range entries {
 		if rec.Ident != "" && isLocationLine(rec.Result) {
 			latest[rec.Ident] = rec
 		}
 	}
-	for ident, rec := range latest {
+	for _, rec := range latest {
 		if rec.Result != "pending" {
 			continue
 		}
 		for _, p := range paths {
 			if p != "" && (worktreeroot.Same(rec.OldPath, p) || worktreeroot.Same(rec.NewPath, p)) {
-				return journalRecording(root, ident), true
+				return rec, true
+			}
+		}
+	}
+	return mlRecord{}, false
+}
+
+// reasonInterruptedBeforeMove is the reason an earlier step is settled with when
+// it is proven never to have moved its tree; a rollback treats such a step as
+// nothing to undo.
+const reasonInterruptedBeforeMove = "interrupted before the move"
+
+// provablyUnmovedStep reports whether the pending forward-intent line is a step
+// that provably never moved its tree, and the journal holding that step. Every
+// condition is a positive observation: the line is the forward orientation for
+// this source and destination, the source carries the line's identity, git
+// registers the source, the destination is absent (fs.ErrNotExist — not merely
+// unreadable), and a readable journal holds the step. Anything else is not
+// proof (L1).
+func provablyUnmovedStep(root, source, destination string, line mlRecord) (string, bool) {
+	if line.Result != "pending" || line.Ident == "" || destination == "" ||
+		!worktreeroot.Same(line.OldPath, source) || !worktreeroot.Same(line.NewPath, destination) {
+		return "", false
+	}
+	id, state, _ := probeTree(source)
+	if state != treeIdentified || id.Ident() != line.Ident || !registeredAt(root, source) {
+		return "", false
+	}
+	if _, err := os.Lstat(destination); !errors.Is(err, os.ErrNotExist) {
+		return "", false
+	}
+	journals, err := orderedJournals(filepath.Dir(moveListPath(root)))
+	if err != nil {
+		return "", false
+	}
+	for i := len(journals) - 1; i >= 0; i-- {
+		steps, _, rerr := readJournalFile(journals[i])
+		if rerr != nil {
+			continue
+		}
+		for _, s := range steps {
+			if s.Ident == line.Ident && worktreeroot.Same(s.OldPath, line.OldPath) &&
+				(s.Outcome == "pending" || (s.Outcome == "failed" && s.Reason == reasonInterruptedBeforeMove)) {
+				return journals[i], true
+			}
+		}
+		for _, s := range steps {
+			if s.Ident == line.Ident {
+				return "", false // the newest journal naming this tree does not hold an unsettled step
 			}
 		}
 	}
 	return "", false
+}
+
+// readJournalFile parses a journal file: its steps and its raw top-level
+// fields (kept so a rewrite preserves trigger and creation time).
+func readJournalFile(path string) ([]journalStep, map[string]json.RawMessage, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, nil, err
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return nil, nil, err
+	}
+	var steps []journalStep
+	if raw, ok := fields["steps"]; ok {
+		if err := json.Unmarshal(raw, &steps); err != nil {
+			return nil, nil, err
+		}
+	}
+	return steps, fields, nil
+}
+
+// settleUnmovedStep settles an earlier step proven never to have moved its tree:
+// the journal step becomes `failed` ("interrupted before the move") through the
+// atomic journal write, and then a releasing `reversed` line ends the move-list
+// protection. The journal goes first, so a kill between the two leaves a step the
+// next run recognises and finishes settling (the step still passes
+// provablyUnmovedStep), never one that looks unsettled forever.
+func settleUnmovedStep(root string, line mlRecord, journalPath string) error {
+	steps, fields, err := readJournalFile(journalPath)
+	if err != nil {
+		return fmt.Errorf("read the journal %s: %w", journalPath, err)
+	}
+	for i := range steps {
+		if steps[i].Ident == line.Ident && worktreeroot.Same(steps[i].OldPath, line.OldPath) && steps[i].Outcome == "pending" {
+			steps[i].Outcome, steps[i].Reason = "failed", reasonInterruptedBeforeMove
+		}
+	}
+	raw, merr := json.Marshal(steps)
+	if merr != nil {
+		return merr
+	}
+	fields["steps"] = raw
+	data, merr := json.MarshalIndent(fields, "", "  ")
+	if merr != nil {
+		return merr
+	}
+	if werr := journalWrite(journalPath, data); werr != nil {
+		return fmt.Errorf("settle the journal %s: %w", journalPath, werr)
+	}
+	return appendMoveListLine(moveListPath(root), m6MoveLineReason("reversed", line.NewPath, line.OldPath, line.Ident, reasonInterruptedBeforeMove))
+}
+
+// resolveTreePath is the canonical spelling of p for comparisons: a path that is
+// absent (fs.ErrNotExist) keeps its cleaned spelling, any other resolution
+// failure is an error — never silently the unresolved spelling.
+func resolveTreePath(p string) (string, error) {
+	r, err := filepath.EvalSymlinks(p)
+	if err == nil {
+		return r, nil
+	}
+	if errors.Is(err, os.ErrNotExist) {
+		return filepath.Clean(p), nil
+	}
+	return "", err
 }
 
 // journalRecording is the newest journal under the migration state directory
@@ -1037,8 +1177,14 @@ func m6ReverseMove(root string, p migratePlan, id TreeIdentity, mlPath, trigger 
 func m6ReverseMoveWhy(root string, p migratePlan, id TreeIdentity, mlPath, trigger string) (bool, string, error) {
 	// The identity rule the rollback applies (G8): an identity that cannot be
 	// read, or a journal ident that is empty, is not a match.
-	destIdent, err := TreeIdent(p.destination)
-	if err != nil || id.Ident() == "" || destIdent.Ident() != id.Ident() {
+	destIdent, dstate, derr := probeTree(p.destination)
+	if dstate == treeUnreadable {
+		// Unknown is not a mismatch: the tree may be exactly ours (sixth review).
+		msg := fmt.Sprintf("the destination's identity cannot be read: %v", derr)
+		return false, "the reverse move did not run: " + msg + " (pending)",
+			appendMoveListLine(mlPath, m6MoveLineTriggerReason(trigger, "pending", p.destination, p.source, id.Ident(), msg))
+	}
+	if dstate != treeIdentified || id.Ident() == "" || destIdent.Ident() != id.Ident() {
 		return false, "refused: identity mismatch at the destination, the tree stays where it is",
 			appendMoveListLine(mlPath, m6MoveLineTriggerReason(trigger, "refused", p.destination, p.source, id.Ident(), "identity mismatch"))
 	}
@@ -1132,8 +1278,13 @@ func treeMovedBack(root, source, destination, ident string) bool {
 	if err != nil || srcIdent.Ident() != ident {
 		return false
 	}
-	if destIdent, derr := TreeIdent(destination); derr == nil && destIdent.Ident() == ident {
-		return false
+	switch destIdent, dstate, _ := probeTree(destination); dstate {
+	case treeUnreadable:
+		return false // an identity that cannot be read does not show the tree left
+	case treeIdentified:
+		if destIdent.Ident() == ident {
+			return false
+		}
 	}
 	if registeredAt(root, source) {
 		return true
@@ -1210,7 +1361,10 @@ func rebindCardForPath(root, oldPath, newPath string) error {
 		return nil
 	}
 	if _, serr := os.Stat(dbPath); serr != nil {
-		return nil // no factory store in this repository: nothing to rebind
+		if errors.Is(serr, os.ErrNotExist) {
+			return nil // no factory store in this repository: nothing to rebind
+		}
+		return fmt.Errorf("inspect the factory store %s for the card rebind: %w", dbPath, serr)
 	}
 	db, err := homestate.OpenFactoryPath(dbPath)
 	if err != nil {
@@ -1259,35 +1413,67 @@ type verifyRow struct {
 
 // latestLocationResult is the result of the latest location line of the move
 // list that carries ident ("" when there is none).
-func latestLocationResult(root, ident string) string {
+func latestLocationResult(root, ident string) (string, error) {
+	entries, err := loadMoveList(root)
+	if err != nil {
+		return "", err
+	}
 	result := ""
-	for _, rec := range loadMoveList(root) {
+	for _, rec := range entries {
 		if rec.Ident == ident && isLocationLine(rec.Result) {
 			result = rec.Result
 		}
 	}
-	return result
+	return result, nil
 }
 
-// treeCarries reports whether path exists as a linked worktree carrying ident.
-func treeCarries(path, ident string) bool {
+// treeCarries reports whether path holds a linked worktree carrying ident. A
+// path that is provably not such a tree carries nothing (false, nil); one whose
+// identity cannot be read is unknown (false, error).
+func treeCarries(path, ident string) (bool, error) {
 	if ident == "" {
-		return false
+		return false, nil
 	}
-	ti, err := TreeIdent(path)
-	return err == nil && ti.Ident() == ident
+	id, state, err := probeTree(path)
+	if state == treeUnreadable {
+		return false, err
+	}
+	return state == treeIdentified && id.Ident() == ident, nil
+}
+
+// lstatPresence separates present, absent (fs.ErrNotExist only) and unknown.
+func lstatPresence(path string) (bool, error) {
+	_, err := os.Lstat(path)
+	if err == nil {
+		return true, nil
+	}
+	if errors.Is(err, os.ErrNotExist) {
+		return false, nil
+	}
+	return false, err
 }
 
 // verifyStep classifies one journal step (the latest per identity). The kinds
 // that fail the verification are absent, mismatch, unregistered, pending,
-// failed, reversed and unverifiable; intact and restored are healthy.
+// failed, reversed and unverifiable; intact and restored are healthy. A path that
+// cannot be inspected, or an identity that cannot be read, is unverifiable with
+// the error — only fs.ErrNotExist means a path is gone (card t2053, L2).
 func verifyStep(root string, s journalStep) (kind, reason string, healthy bool) {
-	_, dstErr := os.Lstat(s.NewPath)
-	dstExists := dstErr == nil
+	unknown := func(what string, err error) (string, string, bool) {
+		return "unverifiable", fmt.Sprintf("%s cannot be inspected: %v", what, err), false
+	}
+	dstExists, dstErr := lstatPresence(s.NewPath)
+	if dstErr != nil {
+		return unknown("the destination", dstErr)
+	}
 	switch s.Outcome {
 	case "", "moved":
 		if dstExists {
-			if !treeCarries(s.NewPath, s.Ident) {
+			carries, err := treeCarries(s.NewPath, s.Ident)
+			if err != nil {
+				return unknown("the destination's identity", err)
+			}
+			if !carries {
 				return "mismatch", "the destination is not the tree the journal moved", false
 			}
 			if !registeredAt(root, s.NewPath) {
@@ -1295,27 +1481,51 @@ func verifyStep(root string, s journalStep) (kind, reason string, healthy bool) 
 			}
 			return "intact", "", true
 		}
-		if treeCarries(s.OldPath, s.Ident) && registeredAt(root, s.OldPath) {
-			if r := latestLocationResult(root, s.Ident); r == "restored" || r == "reversed" {
+		carries, err := treeCarries(s.OldPath, s.Ident)
+		if err != nil {
+			return unknown("the source's identity", err)
+		}
+		if carries && registeredAt(root, s.OldPath) {
+			r, lerr := latestLocationResult(root, s.Ident)
+			if lerr != nil {
+				return unknown("the move list", lerr)
+			}
+			if r == "restored" || r == "reversed" {
 				return "restored", "rolled back to the source", true
 			}
 		}
 		return "absent", "", false
 	default: // pending, failed, reversed: a step that did not end as a completed move
 		if dstExists {
-			if treeCarries(s.NewPath, s.Ident) {
+			carries, err := treeCarries(s.NewPath, s.Ident)
+			if err != nil {
+				return unknown("the destination's identity", err)
+			}
+			if carries {
 				return s.Outcome, "the tree stands at the destination; run --rollback on this journal", false
 			}
 			return "", "", true // a foreign tree at the destination: not this step's tree
 		}
-		if _, srcErr := os.Lstat(s.OldPath); srcErr != nil {
+		srcExists, srcErr := lstatPresence(s.OldPath)
+		if srcErr != nil {
+			return unknown("the source", srcErr)
+		}
+		if !srcExists {
 			return "", "", true // neither end exists: the tree is gone
 		}
-		if !treeCarries(s.OldPath, s.Ident) || !registeredAt(root, s.OldPath) {
+		carries, err := treeCarries(s.OldPath, s.Ident)
+		if err != nil {
+			return unknown("the source's identity", err)
+		}
+		if !carries || !registeredAt(root, s.OldPath) {
 			return s.Outcome, "the tree is at the source but git does not register it under the journal identity; run --rollback on this journal", false
 		}
 		if s.Outcome == "pending" {
-			if r := latestLocationResult(root, s.Ident); r != "restored" && r != "reversed" {
+			r, lerr := latestLocationResult(root, s.Ident)
+			if lerr != nil {
+				return unknown("the move list", lerr)
+			}
+			if r != "restored" && r != "reversed" {
 				return "pending", "an unsettled step; run --rollback on this journal to settle it", false
 			}
 		}
@@ -1484,6 +1694,13 @@ func runMigrateRollback(cmd *cobra.Command, root, journalPath string, asJSON boo
 		}
 		for i := len(journal.Steps) - 1; i >= 0; i-- {
 			s := journal.Steps[i]
+			if s.Outcome == "failed" && s.Reason == reasonInterruptedBeforeMove {
+				// Settled by a later run as a step that never moved its tree:
+				// there is nothing to undo, and the identity now at the destination
+				// belongs to a newer move (L1).
+				note(s, "skipped", "the step never moved the tree ("+reasonInterruptedBeforeMove+")")
+				continue
+			}
 			if _, serr := os.Stat(s.NewPath); serr != nil && !errors.Is(serr, os.ErrNotExist) {
 				// A destination that cannot be inspected is not an absent one
 				// (K2): where the tree stands is unknown, so nothing is restored.
@@ -1518,8 +1735,15 @@ func runMigrateRollback(cmd *cobra.Command, root, journalPath string, asJSON boo
 					refused++
 					continue
 				}
-				srcIdent, ierr := TreeIdent(s.OldPath)
-				if ierr != nil || srcIdent.Ident() != s.Ident {
+				srcIdent, sstate, ierr := probeTree(s.OldPath)
+				if sstate == treeUnreadable {
+					msg := fmt.Sprintf("the source's identity cannot be read: %v", ierr)
+					if herr := hold(s, msg, fmt.Sprintf("%s: %s", s.OldPath, msg)); herr != nil {
+						return herr
+					}
+					continue
+				}
+				if sstate != treeIdentified || srcIdent.Ident() != s.Ident {
 					if rerr := refuse(s, "identity mismatch", fmt.Sprintf("%s: identity mismatch at the source; the tree stays where it is", s.OldPath)); rerr != nil {
 						return rerr
 					}
@@ -1558,8 +1782,15 @@ func runMigrateRollback(cmd *cobra.Command, root, journalPath string, asJSON boo
 				}
 				continue
 			}
-			destIdent, terr := TreeIdent(s.NewPath)
-			if terr != nil || destIdent.Ident() != s.Ident {
+			destIdent, dstate, terr := probeTree(s.NewPath)
+			if dstate == treeUnreadable {
+				msg := fmt.Sprintf("the destination's identity cannot be read: %v", terr)
+				if herr := hold(s, msg, fmt.Sprintf("%s: %s", s.NewPath, msg)); herr != nil {
+					return herr
+				}
+				continue
+			}
+			if dstate != treeIdentified || destIdent.Ident() != s.Ident {
 				if rerr := refuse(s, "identity mismatch", fmt.Sprintf("%s: identity mismatch; the tree stays where it is", s.NewPath)); rerr != nil {
 					return rerr
 				}
@@ -1626,7 +1857,7 @@ func runMigrateRollback(cmd *cobra.Command, root, journalPath string, asJSON boo
 type rollbackRow struct {
 	OldPath string `json:"old_path"`
 	NewPath string `json:"new_path"`
-	Outcome string `json:"outcome"` // restored | refused | pending
+	Outcome string `json:"outcome"` // restored | refused | pending | skipped (a step that never moved)
 	Reason  string `json:"reason,omitempty"`
 }
 
@@ -1762,12 +1993,11 @@ func captureLegacyManifest(tree string) string {
 	}
 	m.IgnoredCount = len(ignored)
 	m.ContentDigest = hashUntrackedContent(tree, append(append([]string{}, untracked...), ignored...))
-	_ = filepath.WalkDir(filepath.Join(tree, ".moai", "reports"), func(_ string, d os.DirEntry, err error) error {
-		if err == nil && !d.IsDir() {
-			m.ReportsCount++
-		}
-		return nil
-	})
+	reportsCount, cerr := countReportFiles(tree)
+	if cerr != nil {
+		return "" // an unreadable reports tree proves nothing: never matches
+	}
+	m.ReportsCount = reportsCount
 	b, err := json.Marshal(m)
 	if err != nil {
 		return ""
@@ -1865,15 +2095,36 @@ func captureTreeManifest(tree string) (treeManifest, error) {
 	m.ContentDigest = hashUntrackedContent(tree, untracked)
 	m.IgnoredDigest = hashIgnoredMetadata(tree, ignored)
 
+	reportsCount, cerr := countReportFiles(tree)
+	if cerr != nil {
+		return m, cerr
+	}
+	m.ReportsCount = reportsCount
+	return m, nil
+}
+
+// countReportFiles counts the files under the tree's .moai/reports. An absent
+// reports directory (fs.ErrNotExist) holds none; any other walk failure is an
+// error — a count taken over a tree it could not fully read proves nothing.
+func countReportFiles(tree string) (int, error) {
 	reports := filepath.Join(tree, ".moai", "reports")
-	_ = filepath.WalkDir(reports, func(path string, d os.DirEntry, err error) error {
-		if err != nil || d.IsDir() {
-			return nil
+	count := 0
+	err := filepath.WalkDir(reports, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			if path == reports && errors.Is(err, os.ErrNotExist) {
+				return nil
+			}
+			return err
 		}
-		m.ReportsCount++
+		if !d.IsDir() {
+			count++
+		}
 		return nil
 	})
-	return m, nil
+	if err != nil {
+		return 0, fmt.Errorf("count the reports of %s: %w", tree, err)
+	}
+	return count, nil
 }
 
 // sortedUniquePaths trims, de-duplicates and sorts a git path listing.

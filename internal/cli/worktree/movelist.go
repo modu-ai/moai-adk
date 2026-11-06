@@ -26,7 +26,9 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -83,24 +85,75 @@ func gitDirPointer(treePath string) (string, error) {
 // TreeIdent reads a linked worktree's identity: the admin id from the .git
 // pointer and the instance token from the tree's git administrative
 // directory. Read-only: a missing token stays missing (REQ-WHR-012). Paths
-// that are not linked worktrees error.
+// that are not linked worktrees error, and so does a token that exists but
+// cannot be read — only fs.ErrNotExist means "never tokened" (card t2053,
+// sixth review).
 func TreeIdent(treePath string) (TreeIdentity, error) {
 	gitdir, err := gitDirPointer(treePath)
 	if err != nil {
 		return TreeIdentity{}, err
 	}
-	token := ""
-	if body, err := os.ReadFile(filepath.Join(gitdir, tokenFileName)); err == nil {
-		token = strings.TrimSpace(string(body))
+	token, err := readInstanceToken(gitdir)
+	if err != nil {
+		return TreeIdentity{}, err
 	}
 	return TreeIdentity{AdminID: filepath.Base(gitdir), Token: token}, nil
+}
+
+// readInstanceToken reads the token file of a git administrative directory:
+// absent (fs.ErrNotExist) is the empty token, any other failure is an error.
+func readInstanceToken(gitdir string) (string, error) {
+	body, err := os.ReadFile(filepath.Join(gitdir, tokenFileName))
+	if err == nil {
+		return strings.TrimSpace(string(body)), nil
+	}
+	if errors.Is(err, fs.ErrNotExist) {
+		return "", nil
+	}
+	return "", fmt.Errorf("reading the instance token of %s: %w", gitdir, err)
+}
+
+// treeProbe is what can be established about the tree a path holds.
+type treeProbe int
+
+const (
+	// treeIdentified: a linked worktree whose identity was read.
+	treeIdentified treeProbe = iota
+	// treeNotLinked: provably not a linked worktree — the path or its .git is
+	// absent (fs.ErrNotExist), or .git is a directory (a primary checkout).
+	treeNotLinked
+	// treeUnreadable: anything else. The identity is unknown, which is neither
+	// "this tree" nor "not this tree".
+	treeUnreadable
+)
+
+// probeTree separates a path that is provably not a linked worktree from one
+// whose identity merely could not be read: only the first may be read as "not
+// this tree".
+func probeTree(path string) (TreeIdentity, treeProbe, error) {
+	fi, err := os.Lstat(filepath.Join(path, ".git"))
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return TreeIdentity{}, treeNotLinked, nil
+		}
+		return TreeIdentity{}, treeUnreadable, err
+	}
+	if fi.IsDir() {
+		return TreeIdentity{}, treeNotLinked, nil
+	}
+	id, err := TreeIdent(path)
+	if err != nil {
+		return TreeIdentity{}, treeUnreadable, err
+	}
+	return id, treeIdentified, nil
 }
 
 // EnsureInstanceToken returns the tree's identity, writing the instance
 // token once when it is absent and never again. The token lands in the
 // tree's git administrative directory only — nothing is written into the
 // working tree. An unwritable administrative directory fails without
-// creating the token.
+// creating the token, and a token that exists but cannot be read is an error:
+// writing a new one over it would orphan every record carrying the old one.
 func EnsureInstanceToken(treePath string) (TreeIdentity, error) {
 	gitdir, err := gitDirPointer(treePath)
 	if err != nil {
@@ -108,8 +161,12 @@ func EnsureInstanceToken(treePath string) (TreeIdentity, error) {
 	}
 	admin := filepath.Base(gitdir)
 	tokenFile := filepath.Join(gitdir, tokenFileName)
-	if body, err := os.ReadFile(tokenFile); err == nil {
+	body, rerr := os.ReadFile(tokenFile)
+	if rerr == nil {
 		return TreeIdentity{AdminID: admin, Token: strings.TrimSpace(string(body))}, nil
+	}
+	if !errors.Is(rerr, fs.ErrNotExist) {
+		return TreeIdentity{}, fmt.Errorf("reading the instance token %s: %w", tokenFile, rerr)
 	}
 	token, err := newToken()
 	if err != nil {
@@ -159,12 +216,17 @@ func locationKind(r string) bool {
 	return false
 }
 
-// loadMoveList parses the move list of primary; a missing file is no
-// entries, and every unparseable line is skipped (steps 8).
-func loadMoveList(primary string) []mlRecord {
+// loadMoveList parses the move list of primary; a missing file
+// (fs.ErrNotExist) is no entries, every unparseable line is skipped (steps 8),
+// and any other read failure is an error — a list that cannot be read is not an
+// empty one (card t2053, sixth review).
+func loadMoveList(primary string) ([]mlRecord, error) {
 	body, err := os.ReadFile(moveListPath(primary))
 	if err != nil {
-		return nil
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("read the move list: %w", err)
 	}
 	var out []mlRecord
 	for _, line := range strings.Split(string(body), "\n") {
@@ -178,7 +240,7 @@ func loadMoveList(primary string) []mlRecord {
 		}
 		out = append(out, rec)
 	}
-	return out
+	return out, nil
 }
 
 // registeredWorktreePaths returns the paths git registers for primary.
@@ -229,7 +291,10 @@ func carriesE(rec mlRecord, e string) bool {
 // @MX:ANCHOR: [AUTO] move-list lookup — every reader of a moved tree's new path resolves here
 // @MX:REASON: [AUTO] consumed by launcher cleanup, card readers and the migration engine alike; a second lookup that trusts the latest line would hand a stale pointer another tree (SPEC-WORKTREE-HOME-ROOT-001 REQ-WHR-012, design D-11)
 func MovedTo(primary, oldPath string, requester MoveRequester, cardPath string) (string, bool) {
-	entries := loadMoveList(primary)
+	entries, lerr := loadMoveList(primary)
+	if lerr != nil {
+		return "", false // an unreadable list cannot vouch for any candidate
+	}
 
 	// The expected identity E is fixed once, before any candidate is tried:
 	// the supplied ident, else the one ident of the requester's own
@@ -337,12 +402,25 @@ func identBearingLineNames(entries []mlRecord, path string) bool {
 // @MX:ANCHOR: [AUTO] moved-by-the-migration witness — the cleanup guard refuses on it
 // @MX:REASON: [AUTO] a second witness keyed on paths instead of the tree's own ident would let a foreign line switch the protection off (SPEC-WORKTREE-HOME-ROOT-001 REQ-WHR-014, design D-11)
 func MovedBy(primary, path string) bool {
-	id, err := TreeIdent(path)
-	if err != nil || id.Token == "" {
+	// The cleanup guard answers false ("not moved by the migration") only when
+	// it can show that. Provably not a linked worktree, or a tree that never
+	// carried a token, is such a showing; an identity, a move list or a
+	// registration listing that cannot be read is not — it protects.
+	id, state, _ := probeTree(path)
+	switch state {
+	case treeNotLinked:
+		return false
+	case treeUnreadable:
+		return true
+	}
+	if id.Token == "" {
 		// A tree with no token was never moved by the migration.
 		return false
 	}
-	entries := loadMoveList(primary)
+	entries, lerr := loadMoveList(primary)
+	if lerr != nil {
+		return true
+	}
 	latest := -1
 	for i, rec := range entries {
 		if rec.Ident != id.Ident() || !isLocationLine(rec.Result) {
@@ -369,7 +447,7 @@ func MovedBy(primary, path string) bool {
 		}
 		registrations, err := registeredWorktreePaths(primary)
 		if err != nil {
-			return false
+			return true
 		}
 		return isRegistered(registrations, path)
 	case "moved", "refused":
@@ -378,7 +456,7 @@ func MovedBy(primary, path string) bool {
 		}
 		registrations, err := registeredWorktreePaths(primary)
 		if err != nil {
-			return false
+			return true
 		}
 		return isRegistered(registrations, path)
 	}
@@ -406,7 +484,12 @@ func isLocationLine(r string) bool {
 // step 9) must abort; a caller recording an already-made change surfaces the
 // failure to the run's exit.
 func appendMoveListLine(mlPath, line string) error {
-	data, _ := os.ReadFile(mlPath)
+	data, rerr := os.ReadFile(mlPath)
+	if rerr != nil && !errors.Is(rerr, fs.ErrNotExist) {
+		// The dedupe and the newline repair both read the list: one that cannot
+		// be read is not an empty one.
+		return fmt.Errorf("read the move list %s before appending: %w", mlPath, rerr)
+	}
 	// The dedupe: compare against the latest entry naming either path.
 	rev := revLines(string(data))
 	if len(rev) > 0 && rev[0] == line {
@@ -417,12 +500,9 @@ func appendMoveListLine(mlPath, line string) error {
 		return fmt.Errorf("append the move list %s: %w", mlPath, err)
 	}
 	defer func() { _ = fh.Close() }()
-	if fi, serr := os.Stat(mlPath); serr == nil && fi.Size() > 0 {
-		raw, _ := os.ReadFile(mlPath)
-		if len(raw) > 0 && raw[len(raw)-1] != '\n' {
-			if _, werr := fh.Write([]byte("\n")); werr != nil {
-				return fmt.Errorf("append the move list %s: %w", mlPath, werr)
-			}
+	if len(data) > 0 && data[len(data)-1] != '\n' {
+		if _, werr := fh.Write([]byte("\n")); werr != nil {
+			return fmt.Errorf("append the move list %s: %w", mlPath, werr)
 		}
 	}
 	if _, werr := fh.WriteString(line + "\n"); werr != nil {

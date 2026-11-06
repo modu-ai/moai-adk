@@ -257,7 +257,10 @@ func TestRollback_UnknownManifestVersion_IsRefusedByName(t *testing.T) {
 
 // TestReverse_UnreadableDestinationIdentity_IsRefused — G8: the apply-time
 // reverse follows the rollback's identity rule: an identity that cannot be
-// read is not a match, so the reverse is refused with a `refused` line.
+// read is not a match, so the reverse does not run. Since the sixth review the
+// verdict is `pending` (unknown, error in the reason), not `refused`, which is
+// reserved for an identity that was read and differs (TestReverseAfterFailure_
+// IdentityRefusal_ReasonSaysRefused still pins that case).
 func TestReverse_UnreadableDestinationIdentity_IsRefused(t *testing.T) {
 	w, p, id, mlPath := t2053ReverseWorld(t)
 	if err := os.WriteFile(filepath.Join(p.destination, ".git"), []byte("not a gitdir pointer\n"), 0o644); err != nil {
@@ -267,8 +270,8 @@ func TestReverse_UnreadableDestinationIdentity_IsRefused(t *testing.T) {
 	if movedBack {
 		t.Fatalf("reversed a tree whose identity could not be read")
 	}
-	if got := t2053LastMoveListResult(t, mlPath); got != "refused" {
-		t.Errorf("last move-list result = %q, want refused", got)
+	if got := t2053LastMoveListResult(t, mlPath); got != "pending" {
+		t.Errorf("last move-list result = %q, want pending", got)
 	}
 }
 
