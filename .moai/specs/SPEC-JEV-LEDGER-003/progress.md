@@ -115,3 +115,23 @@ total_run_phase_files: 2
 m1_to_mN_commit_strategy: "single run-phase commit (code + tests + SPEC status flip + progress)"
 ```
 - 커밋 경위(추가): fin-t1971(마무리 위임)이 기계 부하(콜드 캐시 컴파일)로 집중 시험 백그라운드 대기 중 커밋 지연 — 레인이 §E.2/§E.3·status 전환이 끝난 상태를 직접 커밋(순수 git 작업, GREEN 증거는 레인 직접 관측분 사용). 사후 집중 시험은 위임자 재기동 시 또는 sync 단계에서 재실행.
+
+## §E.4 Sync-phase Audit-Ready Signal
+
+```yaml
+sync_status: complete
+sync_complete_at: 2026-11-06
+sync_commit_sha: pending-backfill-sync   # placeholder — a commit cannot cite its own hash; backfilled in the next commit (D3 exemption)
+sync_commit_files: CHANGELOG.md, .moai/specs/SPEC-JEV-LEDGER-003/spec.md, .moai/specs/SPEC-JEV-LEDGER-003/progress.md
+sync_scope: SPEC-JEV-LEDGER-003 only (CHANGELOG.md [Unreleased] -> Added entry, spec.md frontmatter status/updated, this section); no code, no README, no docs-site change (no user-facing documentation surface is touched by this SPEC)
+tier: S
+b12_self_test: pass-with-crossref-note   # grep -c 'SPEC-JEV-LEDGER-003' CHANGELOG.md printed 1 before emission — that single mention is the LEDGER-001 entry's forward reference ("the cost report SPEC-JEV-LEDGER-003"), not an entry for this SPEC; grep -c 't1971' CHANGELOG.md = 0 and 'jev cost' unmentioned, so no entry for this card existed and emission proceeded
+evidence_refs:
+  plan_audit: plan-phase audit-ready signal per §E.1 (audit_ready: true)
+  run_evidence: §E.2 GREEN (`go test ./internal/cli -run TestJevCost -count=1` -> ok 2.894s exit 0) and §E.3 (run_status: complete, 3 AC PASS)
+  card_review: .moai/reports/t1971/card-review.md — pending at audit time (sync audit follows this commit; per the lane card-review convention the verdict lands before complete)
+frontmatter_status_transitions:
+  spec_md: in-progress -> completed on this single sync commit (status and updated only; updated already 2026-11-06 as authored)
+  plan_md_acceptance_md: not touched (no status field; updated already 2026-11-06 as authored)
+```
+- 커밋 경위(추가): 레인(fin-t1971 후속)이 sync 단계에서 위 3파일을 편집·커밋함 — spec.md 전환(in-progress -> completed), CHANGELOG 엔트리, 본 §E.4. sync_commit_sha의 실제 값은 다음 커밋에서 backfill 예정.

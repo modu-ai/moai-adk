@@ -2,7 +2,7 @@
 id: SPEC-JEV-LEDGER-003
 title: "Jev decision-ledger cost report (`moai jev cost`)"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-11-06
 updated: 2026-11-06
 author: manager-spec
