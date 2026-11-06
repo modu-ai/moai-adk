@@ -924,6 +924,25 @@ func factoryCardQueueTitle(root, cardID string) string {
 	return ""
 }
 
+// factoryCardQueueBaseSHA returns the card's recorded base SHA (card t2058: a
+// repair card's failed release-CI candidate). "" with a nil error means the
+// card carries none — it is cut from the configured base branch exactly as
+// before. A queue that cannot be read is an ERROR, never "no base": the lease
+// could not tell a repair card from an ordinary one and would cut the repair
+// from the wrong base.
+func factoryCardQueueBaseSHA(root, cardID string) (string, error) {
+	rec, err := todoReadStoreAt(root).LoadPure()
+	if err != nil {
+		return "", fmt.Errorf("read the card's base SHA from the queue: %w", err)
+	}
+	for _, it := range rec.Items {
+		if it.ID == cardID && it.Issuance != nil {
+			return strings.TrimSpace(it.Issuance.BaseSHA), nil
+		}
+	}
+	return "", nil
+}
+
 // factoryEnsureCardWorktree is the REQ-SD-011 record step of a successful
 // lease: a card with a recorded worktree reuses that card's own tree; a card
 // without one gains a worktree created through the shared worktree
@@ -944,7 +963,11 @@ func factoryEnsureCardWorktree(ctx context.Context, root, runID string, card hom
 		return "", false, errors.New("worktree creator is not initialized")
 	}
 	slug := factoryWorktreeSlug(card.CardID, factoryCardQueueTitle(root, card.CardID), card.SpecID)
-	wt, err := factoryCreateAndRenameWorktree(root, card.CardID, slug, out)
+	baseSHA, err := factoryCardQueueBaseSHA(root, card.CardID)
+	if err != nil {
+		return "", false, err
+	}
+	wt, err := factoryCreateAndRenameWorktreeAt(root, card.CardID, slug, baseSHA, out)
 	if err != nil {
 		return "", false, err
 	}
@@ -989,12 +1012,28 @@ func uniqueWorktreeBranchName(slug string, exists func(string) bool) (string, er
 // @MX:NOTE: [AUTO] The lock covers the creator and `git branch -m` only; the record write stays outside it (D3, lock order).
 // @MX:SPEC: SPEC-FACTORY-ATOMIC-LEASE-001
 func factoryCreateAndRenameWorktree(root, cardID, slug string, out io.Writer) (string, error) {
+	return factoryCreateAndRenameWorktreeAt(root, cardID, slug, "", out)
+}
+
+// factoryCreateAndRenameWorktreeAt is the same step with an optional base SHA
+// (card t2058): a card that carries one is cut from it through
+// worktree.WorktreeCreatorAt, which refuses an unresolvable SHA instead of
+// falling back to the configured base.
+func factoryCreateAndRenameWorktreeAt(root, cardID, slug, baseSHA string, out io.Writer) (string, error) {
 	release, err := factory.AcquireFactoryStepLock(root, factoryWorktreeStepWait)
 	if err != nil {
 		return "", fmt.Errorf("serialize the card worktree step: %w", err)
 	}
 	defer func() { _ = release() }()
-	wt, err := worktree.WorktreeCreator(cardID, out)
+	var wt string
+	if baseSHA != "" {
+		if worktree.WorktreeCreatorAt == nil {
+			return "", errors.New("worktree creator (explicit base) is not initialized")
+		}
+		wt, err = worktree.WorktreeCreatorAt(cardID, baseSHA, out)
+	} else {
+		wt, err = worktree.WorktreeCreator(cardID, out)
+	}
 	if err != nil {
 		return "", fmt.Errorf("create the card worktree: %w", err)
 	}
