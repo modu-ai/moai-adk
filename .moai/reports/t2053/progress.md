@@ -226,3 +226,61 @@ RED 확인: 구현 전 `go vet ./internal/cli/worktree/` 와 `go vet ./internal/
 
 - 원위치도 목적지도 없는 단계는 여전히 건너뛴다(트리가 어디에도 없으므로 손댈 대상이 없다). 식별자가 빈 단계도 기존대로 건너뛴다. 이 엔진이 쓴 저널에는 항상 식별자가 있으므로 손으로 쓴 저널에만 해당한다.
 - 오너의 지시에 따라 이번 수정으로 리뷰 대응을 멈추고, 상태 전수 자체 감사를 `.moai/reports/t2053/self-audit.md` 에 별도로 두었다(커밋 전).
+
+## 8. 통합 수정 (자체 감사 G1–G13 + 독립 감사, 오너 지시 "전부 수정")
+
+수정 커밋은 세 묶음이다. 묶음 A `3451c486b5`(저널·verify·락), 묶음 B `f604a2a47e`(이동·역이동·신원·롤백), 묶음 C `b640917185`(재실행 보고·매니페스트·경로 표기). 규칙은 항목마다 같다. 먼저 상태를 재현하는 테스트를 쓰고, 실패를 확인한 뒤 고친다. 재현되지 않으면 코드를 건드리지 않고 "재현 안 됨"으로 적는다. 이번 라운드에서 재현되지 않은 항목은 없다. C10 은 가설이었으나 상태 파일과 카드 바인딩 양쪽에서 재현되어 고쳤다.
+
+### 항목별 결과
+
+| 항목 | 테스트 | RED 관찰 | 수정 커밋 | 상태 |
+|---|---|---|---|---|
+| C1 저널 원자 쓰기 | `TestJournalWrite_ReplacesTheFileAtomically`, `TestJournalWrite_InterruptedReplaceKeepsThePreviousJournal` | 예 (같은 inode, "interrupted replace reported success") | `3451c486b5` | 수정 |
+| C2 `--verify` 거짓 성공 | `TestVerify_PendingStep_IsAFailure`, `_UnreadableJournal_IsAFailure`, `_MovedButUnregistered_IsAFailure`, `_NoJournalDirectory_NothingToVerify`, `_IntactMove_IsSuccess`, `_RolledBackStep_IsNotAFailure`, `_JSON` | 묶음 A 작업 중 관찰. 세션 압축 후 이 기록을 쓰면서 개별 실패 출력은 옮기지 않았다 | `3451c486b5` | 수정 |
+| C3 apply 역이동의 stale 메타데이터 | `TestMigrateApply_ReverseWithFailingInverseMetadata_IsNotReversed` | 예 (`reversed = 2, want 0`, `reversed` 행 기록) | `f604a2a47e` | 수정 |
+| C4 정방향 오류 전반의 역이동 | `TestMigrateApply_ForwardMoveNonTimeoutErrorAfterRename_Reverses` | 예 (`reversed=0 failed=2`) | `f604a2a47e` | 수정 |
+| C5 비었거나 잘린 gitdir | `TestRollback_EmptiedRegistrationFile_RepairsAndRestores` | 예 (`reverse move failed (exit status 128)`; 이 git 에서 빈 gitdir 이 목록에서 빠짐을 확인 후 진행) | `f604a2a47e` | 수정 |
+| C6 상대 gitdir 포인터 | `TestTreeIdent_RelativeGitdirPointer` | 예 (토큰이 `../repo/.git/worktrees/tree/` 를 cwd 기준으로 열려 실패) | `f604a2a47e` | 수정 |
+| C7 재실행 감지와 저널 경로 | `TestPlan_InterruptedMigration_NamesTheJournal`, `TestApply_InterruptedMigration_IsNotMovedAgain`, `TestUpdateConsolidation_Interrupted_WarnsAndNamesJournal`, `TestApply_FailedTrees_PrintTheJournalPath` | 예 (재실행이 "exited clean", 출력에 저널 경로 없음) | `b640917185` | 수정 |
+| C8 행을 먼저 출력하고 오류 반환 | `TestApply_ReportRowsPrecedeTheError`, `TestUpdateConsolidation_ReportRowsPrecedeTheError` | 예 (verb: 출력이 `Error` 로 시작, update: 행 없음) | `b640917185` | 수정 |
+| C9 매니페스트의 git 비정상 종료 | `TestApply_ManifestGitFailure_MovesNothing`, `TestCaptureLegacyManifest_GitFailure_NeverMatches`, `TestCaptureTreeManifest_UnbornHEAD_IsNotAnError` | 앞 둘은 예 (`moved = 2`, 레거시 다이제스트가 비지 않음). 셋째는 수정 전에도 통과하는 안전 가드 | `b640917185` | 수정 |
+| C10 경로 표기 차이 | `TestApply_StateEntrySpelledViaSymlink_StillFollowsTheMove`, `TestApply_CardBoundViaSymlinkSpelling_StillFollowsTheMove` | 예 (상태 항목 미갱신, 카드 경로가 심볼릭 표기 그대로) | `b640917185` | 재현되어 수정 |
+| C11 Windows 락 프로세스 간 | 별도 테스트 없음 | 해당 없음 | `3451c486b5` | 수정 (컴파일 확인만, 아래 한계 참고) |
+| C12 저널 파일명 충돌 | `TestMigrateApply_JournalNameCollision_NeverOverwrites` | 예 (묶음 A 작업 중 관찰) | `3451c486b5` | 수정 |
+| C13 해제 줄 | `TestMigrateApply_ForwardMoveFailsBeforeRename_ReleasesMovedBy`, `TestRollback_ConvergedStep_WritesRestored` | 예 (`MovedBy still protects…`, 이동 목록 파일 자체가 없음) | `f604a2a47e` | 수정 |
+| C14 매니페스트 선행 조건 | `TestRollback_FailedStepWithManifest_RefusesAChangedTree` | 예 (변경된 트리를 되돌림) | `f604a2a47e` | 수정 |
+| C15 알 수 없는 `manifest_version` | `TestRollback_UnknownManifestVersion_IsRefusedByName` | 예 (`manifest mismatch` 로 표시) | `f604a2a47e` | 수정 |
+| C16 오해를 부르는 사유, `--json`, 조용한 건너뜀, `WaitDelay` | `TestReverseAfterFailure_IdentityRefusal_ReasonSaysRefused`, `TestRollback_JSON`, `TestVerify_JSON`, `TestPlan_TreeAlreadyAtItsDestination_IsNotARow` | 예 (사유가 "reverse move failed", JSON 이 아님, 목적지에 있는 트리가 행으로 나옴) | `f604a2a47e`, `3451c486b5`, `b640917185` | 수정. `WaitDelay` 는 `boundedOutput` 에 이미 설정되어 있어 변경 없음 |
+| G8 apply/rollback 신원 규칙 공유 | `TestReverse_UnreadableDestinationIdentity_IsRefused` | 예 (마지막 줄이 `pending`, 기대값 `refused`) | `f604a2a47e` | 수정 |
+| G10 빈 신원 단계 | `TestRollback_EmptyIdentStep_IsRefusedWithReason` | 예 (`err=<nil>`) | `f604a2a47e` | 수정 |
+
+### 설계 메모
+
+- **C3/C13.** 역이동 안쪽 순서를 `m6ReverseMoveWhy` 로 분리했다(`m6ReverseMove` 는 같은 시그니처의 래퍼). 트리가 원위치로 돌아온 뒤 상태 파일 역 re-key 나 카드 역 rebind 가 실패하면 `pending` 줄과 함께 실패로 끝난다. 정방향 이동이 이름 변경 전에 실패하면 `reversed` 줄(사유 포함)이 `MovedBy` 보호를 풀어 준다.
+- **C5.** `forwardMoveUnregistered` 는 이제 "원위치가 목록에 있어야 한다"는 조건을 요구하지 않는다. 원위치 없음, 목적지 신원 일치, 목록 조회 성공, 목적지가 미등록이면 repair 를 시도한다. 목록 조회 자체가 실패하면 예전처럼 `false` 를 답한다.
+- **C7.** 계획 단계에서 prunable 이거나 목적지가 있거나 이미 목적지에 있는 레코드에 대해, 이동 목록의 마지막 위치 줄이 `pending` 이면 `interrupted` 행으로 보고하고 저널을 찾아 `--rollback` 을 안내한다. 자동 정방향 완료는 하지 않는다. 종료 코드는 0 이 아니며 update 는 경고 줄만 출력한다. 실패/되돌림이 있는 실행은 이 실행의 저널 경로를 출력한다(JSON 은 행의 `journal` 필드).
+- **C10.** 정규화는 존재하는 가장 긴 상위 경로의 심볼릭 링크를 풀고 나머지를 붙이는 방식이다(`worktreeroot.CanonicalSpelling`). 이동이 끝난 뒤에는 원래 경로가 없으므로 `EvalSymlinks` 를 직접 쓸 수 없다. 카드 바인딩은 `homestate` 에 읽기 전용 `CardWorktreeBindings` 를 더해, 정확 일치가 없을 때 정규화 비교로 행이 실제로 가진 표기를 찾아 그 표기에서 rebind 한다.
+- **테스트 변경.** `TestRollback_ConvergedStep_IsNothingToDo` 는 C13 에 맞춰 바뀌었다. 요약은 그대로 `restored 0 tree(s)` 이지만(이동한 것이 없으므로 세지 않는다) 이제 마지막 줄이 `restored` 여야 한다.
+- **고아 자식 프로세스 가설.** 시간 초과 시 git 의 자식 프로세스가 남을 수 있다는 가설은 문서로만 남긴다. 프로세스 그룹 코드는 추가하지 않았다. `WaitDelay` 가 파이프 해제를 보장하지만 손자 프로세스까지 죽이지는 않는다.
+
+### 한계 (이번 수정 관련)
+
+- **C11 은 darwin 에서 컴파일만 확인했다.** `GOOS=windows go vet` 와 `GOOS=windows go test -c` 는 통과했으나 `LockFileEx` 의 프로세스 간 배제를 Windows 에서 실행해 보지는 못했다.
+- **C14 의 부작용.** `failed` 단계가 매니페스트를 가지고 있고 그 실패 원인이 "이동 뒤 매니페스트 불일치"였다면, 이후 `--rollback` 은 그 트리를 `refused` 로 돌려보낸다. 지시대로 `moved` 와 같은 규칙을 적용한 결과이며, 이 경우 사람이 트리를 확인해야 한다.
+- 빈 신원 단계는 이 엔진이 쓴 저널에는 없고 손으로 쓴 저널에만 나타난다. 이제 목적지가 있든 없든 사유와 함께 거부되고 롤백은 0 이 아닌 코드로 끝난다.
+- `interrupted` 판정은 이동 목록의 마지막 위치 줄이 `pending` 일 때만 성립한다. `refused` 로 끝난 줄은 이 판정에 들어가지 않는다.
+- 전체 `internal/cli` 스위트는 레인 규칙에 따라 실행하지 않았다.
+
+### 재검증 (레인 한정)
+
+| 명령 | 종료 코드 | 마지막 줄 |
+|---|---|---|
+| `go build ./...` | 0 | 출력 없음 |
+| `go vet ./internal/cli/... ./internal/config/... ./internal/hook/ ./internal/homestate/ ./internal/worktreeroot/` | 0 | 출력 없음 |
+| `GOOS=windows go vet ./internal/cli/worktree/...` | 0 | 출력 없음 |
+| `GOOS=windows go test -c -o /dev/null ./internal/cli/worktree/` | 0 | 출력 없음 |
+| `gofmt -l internal/` | 0 | 출력 0바이트 |
+| `go test -count=1 ./internal/cli/worktree/... ./internal/cli/printer/... ./internal/config/... ./internal/worktreeroot/... ./internal/homestate/...` | 0 | `ok .../internal/cli/worktree 338.970s`, 나머지 ok |
+| `go test -count=1 -run 'Worktree\|Rekey\|Registry' ./internal/hook/` | 0 | `ok .../internal/hook 10.143s` |
+| `go test -count=1 -v -run 'Update\|InitGit\|Progress\|UserLock\|Migrat' ./internal/cli/` | 0 | `ok .../internal/cli 180.650s` (`--- PASS` 362, `--- FAIL` 0) |
+| `golangci-lint run ./internal/cli/worktree/... ./internal/cli/ ./internal/config/... ./internal/hook/ ./internal/homestate/ ./internal/worktreeroot/` | 0 | `0 issues.` |
