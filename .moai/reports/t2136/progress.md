@@ -18,4 +18,6 @@ The defect reproduces, so the fix applies.
 ## Gaps
 - No separate mutant of the fix line (the RED run is the fix-absent evidence).
 - Only `./internal/agenticfactory/ctxmodel` and `./internal/gitenv` re-run; not the whole agenticfactory tree.
-- No independent audit yet.
+- Independent audit iter1 (sync-audit-iter1.md): verdict FAIL @5e02a7a780, code score 0.94, no code finding. Sole cause: the required Codex gate (workflow.audit.gates.codex: required) is unmet — Codex is not approved for this card (leader dispatch), so no codex_audit was called; the receipt guard refused a receipt-less PASS and the auditor wrote FAIL (fail-closed). No verdict.md was created and merge-ready was NOT recorded. Reported to the leader.
+- Audit-side checks executed: mutant (fix line reverted in a scratch export) fails the new test, HEAD passes; ctxmodel+gitenv `ok`; go vet exit 0; gofmt clean.
+- The auditor's F1 (checkpoint GitRemote.git lacks Env) is already fixed on card t2126 (954a2e42a3), not on this card's base.
