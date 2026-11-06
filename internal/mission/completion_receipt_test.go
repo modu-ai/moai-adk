@@ -70,7 +70,7 @@ func TestCompletionReceiptRefusesUnsafeAndMalformedInputs(t *testing.T) {
 	if err := os.Chmod(path, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := LoadCompletionReceipt(root, path, exp); err == nil {
+	if _, err := LoadCompletionReceipt(root, path, exp); err == nil && weakModeDetectable() {
 		t.Fatal("weak receipt accepted")
 	}
 	if err := os.WriteFile(path, []byte("{"), 0o600); err != nil {

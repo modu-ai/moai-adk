@@ -2,8 +2,15 @@ package mission
 
 import (
 	"io/fs"
+	"runtime"
 	"testing"
 )
+
+// weakModeDetectable reports whether a deliberately weakened file mode (chmod
+// 0644) can be told apart from a private one on this platform. Windows has no
+// POSIX bits, so the negative steps that rely on it run only elsewhere; every
+// other step of those tests still runs on Windows.
+func weakModeDetectable() bool { return runtime.GOOS != "windows" }
 
 // Card t2130 (#1969, 21 Windows failures): on Windows the permission bits are
 // not meaningful, so the readers must not reject a receipt for its mode; on

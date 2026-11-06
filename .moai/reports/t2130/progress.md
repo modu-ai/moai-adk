@@ -20,5 +20,10 @@ Tree t2130 (branch WT-internal-mission-tests); commands ran in this run against 
 - Codex review was not requested (leader: Codex not approved for this card); Claude audit only. No `card-review.md` from Codex; see `card-review.md` for the self-review note.
 - Focused package run only.
 
+## Audit round 1 (FAIL 0.62 @19aa331da4) and its repair
+- F1 (blocking): simulating Windows with the host wrappers forced to "windows" showed three negative tests would newly fail there (`completion_receipt_test.go` "weak receipt accepted", `git_owner_test.go` "weak lease mode accepted", `governance_receipt_test.go` "weak mode err=<nil>"): each chmods a file to 0644 and expects a refusal, which no longer exists on Windows by policy. Repaired: those weak-mode expectations run only where the mode is detectable (`weakModeDetectable()`, false on Windows); every other step of the three tests (missing, outside path, symlink, malformed JSON) still runs on Windows.
+- Audit gaps carried: Codex gate unmet by instruction (not approved for this card); O2 Windows ACL not enforced (disclosed residual risk, accepted by the auditor).
+- After the repair: `go test ./internal/mission -count=1` -> `ok  github.com/modu-ai/moai-adk/internal/mission  11.241s`; `GOOS=windows go vet ./internal/mission` and `gofmt -l internal/mission` printed nothing.
+
 ## Residual-risk
 On Windows the receipts' "private to the owner" property is no longer enforced by mode bits (there are none); access control there rests on the user profile directory ACLs. This is the operator-chosen policy.
