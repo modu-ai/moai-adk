@@ -32,6 +32,19 @@ leader-path acts. Run them from the leader session in the primary checkout.
    gate reads (`moai factory status` shows it); a receipt for another run is refused at `todo done`.
 6. Close: `moai todo done <card>`.
 
+## When `rebind-evidence` still refuses after a landing is recorded
+
+- `recorded landing refused: observed <time>, before this run engaged the card (<time>) — it belongs
+  to an earlier issuance`: the landing record is stored per card id, not per run, so a reissued card
+  still carries the previous issuance's record, and a record observed before this run first engaged
+  the card is refused. Record the landing again (step 3): `todo landed` replaces the record with a
+  fresh observation time, and `rebind-evidence` then accepts it. This is pinned by
+  `TestAFFlowEarlierIssuanceRecordIsRefusedAndRecordingAgainHeals`.
+- `the card's landing record names no delivering commit`: a record exists but was made without
+  `--sha`; record it again with `--sha <delivering commit>` (step 3).
+- `recorded landing commit refused: ...`: the commit is not reachable from the record's ref; for a
+  card merged into local `main` the ref must be `main` (step 3), not the default `origin/main`.
+
 ## Worked example (read-only facts, not executed by the lane)
 
 Card t2055, run `to0ck1`, state `leased`, stage `-` (`moai factory status`). Its local-main merge is

@@ -98,7 +98,8 @@ func newFactoryRebindEvidenceCommand() *cobra.Command {
 // repository, where the record was made. An empty
 // commit means the fallback did not apply; note is then the suffix for the
 // verdict refusal — empty when the card carries no landing record, so an
-// unlanded card keeps the verdict's own refusal.
+// unlanded card keeps the verdict's own refusal. A record that names no
+// delivering commit (card t2091) is not absent: its note says so.
 //
 // The record is stored per card id, not per run, so a reissued card still
 // carries the previous issuance's landing. A record observed before this run
@@ -111,14 +112,20 @@ func resolveRecordedLanding(ctx context.Context, root string, db *homestate.Fact
 		return "", fmt.Sprintf("; landing record unreadable: %v", err)
 	}
 	var sha, ref, observed string
+	hasRecord := false
 	for i := range rec.Items {
 		if rec.Items[i].ID == card.CardID && rec.Items[i].Landing != nil {
+			hasRecord = true
 			sha = strings.TrimSpace(rec.Items[i].Landing.SHA)
 			ref = strings.TrimSpace(rec.Items[i].Landing.Ref)
 			observed = strings.TrimSpace(rec.Items[i].Landing.ObservedAt)
 		}
 	}
 	if sha == "" {
+		if hasRecord {
+			// card t2091: a record without a delivering commit is not an absent record.
+			return "", fmt.Sprintf("; the card's landing record names no delivering commit — add it with `moai todo landed %s --sha <delivering commit> [--ref <branch>]`", card.CardID)
+		}
 		return "", ""
 	}
 	start, known, err := db.CardEngagementStart(ctx, runID, card.CardID)

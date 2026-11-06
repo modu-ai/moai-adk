@@ -12,8 +12,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
 // afFlowLocalMainRoot merges a card commit into the queue root's LOCAL main
@@ -47,6 +45,12 @@ func TestAFFlowLocalMainCardClosesThroughFormalVerbs(t *testing.T) {
 	if got := fcCard(t, root, "t1").EvidenceSHA; got != merge {
 		t.Fatalf("evidence_sha = %q, want the local-main merge commit %s", got, merge)
 	}
+	// Negative control (card t2091): the done gate must refuse before the receipt
+	// exists, so the success below is the receipt's doing and not a gate that
+	// silently treats the row as unlinked.
+	if _, _, err := runTodo(t, "done", "t1"); err == nil || !strings.Contains(err.Error(), "receipt") {
+		t.Fatalf("todo done before approve: err = %v, want a refusal naming the missing receipt", err)
+	}
 	if _, _, err := runFactory(t, "approve", "t1", "--run", fcRun, "--issuer", "lead"); err != nil {
 		t.Fatalf("approve: %v", err)
 	}
@@ -62,7 +66,6 @@ func TestAFFlowLocalMainCardClosesThroughFormalVerbs(t *testing.T) {
 	if !strings.Contains(out, "t1") {
 		t.Errorf("todo done stdout = %q, want it to name the card", out)
 	}
-	_ = homestate.CardLeased
 }
 
 // The refusals an af-flow card meets before its landing is recorded must name
