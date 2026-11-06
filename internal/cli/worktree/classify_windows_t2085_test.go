@@ -7,8 +7,9 @@ package worktree
 // git prints worktree paths with forward slashes on Windows ("C:/Users/x"),
 // while the engine builds every other path with the OS separator. A record's
 // Path kept git's spelling, so a plan row's Source ("C:/...") never matched the
-// tree path the caller held ("C:\..."), and the card-binding re-key after a
-// move addressed a key that did not exist. ParseWorktreeList converts once.
+// tree path the caller held ("C:\..."), and the first state-store lookup after a
+// move used the other spelling (a canonical fallback absorbed that one).
+// ParseWorktreeList converts once.
 
 import "testing"
 
