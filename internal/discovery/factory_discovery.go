@@ -27,7 +27,6 @@ import (
 	"fmt"
 	"net/url"
 	"os"
-	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -39,6 +38,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/homestate"
+	"github.com/modu-ai/moai-adk/internal/sqliteuri"
 )
 
 // runtimeSocketDir is the Claude Code runtime's per-pid socket directory. Its
@@ -354,7 +354,7 @@ func openSQLiteReadOnly(path string) (*sql.DB, error) {
 	v := url.Values{}
 	v.Add("_pragma", "busy_timeout(100)")
 	v.Add("mode", "ro")
-	db, err := sql.Open("sqlite", (&url.URL{Scheme: "file", Path: filepath.ToSlash(path), RawQuery: v.Encode()}).String())
+	db, err := sql.Open("sqlite", sqliteuri.File(path, v))
 	if err != nil {
 		return nil, err
 	}

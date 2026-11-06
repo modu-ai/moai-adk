@@ -176,6 +176,9 @@ func checkAuditorStop(input *HookInput) *HookOutput {
 	}
 
 	line, parsed := auditreceipt.ParseVerdictLine(input.LastAssistantMessage)
+	if parsed && line.Verdict == auditreceipt.VerdictInconclusive {
+		return stopInconclusive(g, input, line)
+	}
 	if parsed && !line.IsPass() {
 		// A FAIL needs no receipt: it is not claiming an audit approved anything.
 		if !g.assumed() {
@@ -268,6 +271,38 @@ func checkAuditorStop(input *HookInput) *HookOutput {
 			"%s: %s reported %s but the audit could not be corroborated — %s. Call the codex audit (codex_audit or audit_multi) for this tree, then end with a verdict line citing the receipt id it returns.",
 			auditReceiptViolation, input.AgentType, passLabel(parsed, line), cause),
 	}
+}
+
+// stopInconclusive handles a parsed INCONCLUSIVE last line (SPEC-AUDIT-ENGINE-
+// CONVERGENCE-001 REQ-AEC-007). The audit did not run, so the line claims no PASS
+// and no receipt is demanded; it is a parsed line, so it records no
+// CauseVerdictLineMissing and blocks nothing; and, unlike a parsed FAIL, it answers
+// no earlier refusal, so it clears none — whatever was outstanding stays, and the
+// phase-entry spawns it denies stay denied. The instance ends as after a FAIL. The
+// message carries the error class a cited receipt records, so the reader learns
+// why the audit did not run.
+func stopInconclusive(g guardTree, input *HookInput, line auditreceipt.VerdictLine) *HookOutput {
+	if !g.assumed() {
+		_, key := readStartMarker(g.store, input)
+		consumeStartMarker(g.store, key)
+		recordAuditorEnd(g.store, endAggregationKey(g.store, input, key))
+	}
+	class := ""
+	if !g.assumed() {
+		for _, id := range line.Receipts {
+			if r, err := auditreceipt.ReadReceipt(g.store, id); err == nil && r.ErrorClass != "" {
+				class = r.ErrorClass
+				break
+			}
+		}
+	}
+	why := "error class not recorded"
+	if class != "" {
+		why = "error_class " + class
+	}
+	return &HookOutput{SystemMessage: fmt.Sprintf(
+		"%s ended %s for %s (%s): the audit did not run, so no PASS is claimed and no outstanding refusal is cleared.",
+		input.AgentType, line.Verdict, line.SpecID, why)}
 }
 
 func passLabel(parsed bool, line auditreceipt.VerdictLine) string {

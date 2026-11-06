@@ -615,9 +615,12 @@ var anyCdTargetPattern = regexp.MustCompile(`(?:^|[\s;&|(])cd\s+(/[^\s;&|"'()<>]
 // (targetPathAgrees) are skipped, as are lookup errors: both leave the caller on
 // the hook-cwd judgment, so this can only add denials, never allow. pushd and
 // variable or quoted paths are deliberately not scanned. The `git -C` targets
-// are judged per invocation instead (gitCPrimaryTarget).
+// are judged per invocation instead (gitCPrimaryTarget). Shell comments are
+// elided after the quote collapse (the order normalizeCommandForScan uses), so a
+// `cd <abs>` that exists only in a comment is no target while a `#` inside a
+// quoted span stays data.
 func cdPrimaryTarget(command string) (string, bool) {
-	plain := substituteQuotedArguments(command)
+	plain := substituteShellComments(substituteQuotedArguments(command))
 	for _, m := range anyCdTargetPattern.FindAllStringSubmatch(plain, -1) {
 		p := m[1]
 		if !targetPathAgrees(p) {

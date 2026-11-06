@@ -364,11 +364,12 @@ func validateClaudeAuditEnv(environ []string) error {
 
 func claudeInconclusive(code, summary, model, effort string) ReviewOutput {
 	return ReviewOutput{
-		Verdict:   VerdictInconclusive,
-		Summary:   summary,
-		Findings:  []Finding{},
-		NextSteps: []string{"restore Claude Code subscription availability and retry the independent audit"},
-		GateUnmet: BackendClaude,
+		Verdict:    VerdictInconclusive,
+		Summary:    summary,
+		Findings:   []Finding{},
+		NextSteps:  []string{"restore Claude Code subscription availability and retry the independent audit"},
+		GateUnmet:  BackendClaude,
+		ErrorClass: claudeErrorClass(code),
 		Provenance: &AuditProvenance{
 			Backend:          BackendClaude,
 			Transport:        claudeAuditTransport,

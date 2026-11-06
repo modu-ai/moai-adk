@@ -594,7 +594,7 @@ func validateMissionTestsReceipt(repository, receiptPath, headSHA string) error 
 		return err
 	}
 	info, err := os.Lstat(receiptPath)
-	if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() || info.Mode().Perm()&0o077 != 0 {
+	if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() || !hostNoGroupOrOtherAccess(info.Mode().Perm()) {
 		return fmt.Errorf("auto mission blocked: tests_receipt_unsafe")
 	}
 	resolved, err := filepath.EvalSymlinks(receiptPath)

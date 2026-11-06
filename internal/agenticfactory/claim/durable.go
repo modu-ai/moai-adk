@@ -1,8 +1,11 @@
 package claim
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
+	"runtime"
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
 )
@@ -66,8 +69,19 @@ func (s *Store) writeAtomic(dir, pattern, dst string, b []byte) error {
 		_ = os.Remove(tmp.Name())
 		return fail(err)
 	}
-	if err := s.sync.syncDir(dir); err != nil {
+	if err := s.sync.syncDir(dir); dirSyncFailureIsFatal(runtime.GOOS, err) {
 		return fail(err)
 	}
 	return nil
+}
+
+// dirSyncFailureIsFatal reports whether a directory fsync error must fail the write.
+// Windows cannot open a directory to sync it ("Access is denied"), so there the
+// refusal is best effort, the same posture the ledger snapshot takes; any other
+// platform or any other error keeps the fsync a hard durability step (card t2119).
+func dirSyncFailureIsFatal(goos string, err error) bool {
+	if err == nil {
+		return false
+	}
+	return !(goos == "windows" && errors.Is(err, fs.ErrPermission))
 }

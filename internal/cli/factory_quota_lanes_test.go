@@ -33,6 +33,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
+	"github.com/modu-ai/moai-adk/internal/sqliteuri"
 )
 
 // qasDeadPID is the one registered pid the liveness seam reports dead.
@@ -93,6 +94,15 @@ func qasWriteLanes(t *testing.T, root string, rows []qasRegistryLane) {
 	}
 }
 
+// qasReadOnlyDSN is the read-only connection string qasRegistryState opens the
+// registry with: `mode=ro` plus the `query_only` pragma.
+func qasReadOnlyDSN(path string) string {
+	v := url.Values{}
+	v.Add("mode", "ro")
+	v.Add("_pragma", "query_only(ON)")
+	return sqliteuri.File(path, v)
+}
+
 // qasRegistryState fingerprints the registry: the main database file's SHA-256
 // and a row dump of workers, cards, and meta, read through an independent
 // read-only connection. The directory listing is deliberately not part of it —
@@ -108,10 +118,7 @@ func qasRegistryState(t *testing.T, root string) string {
 		t.Fatal(err)
 	}
 	sum := sha256.Sum256(raw)
-	v := url.Values{}
-	v.Add("mode", "ro")
-	v.Add("_pragma", "query_only(ON)")
-	db, err := sql.Open("sqlite", (&url.URL{Scheme: "file", Path: filepath.ToSlash(path), RawQuery: v.Encode()}).String())
+	db, err := sql.Open("sqlite", qasReadOnlyDSN(path))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -341,7 +341,35 @@ var (
 // @MX:REASON: called from two sites — StatusGitConsistencyRule.Check + DetectDrift (fan_in=2);
 //
 //	the core walker incorporates both LSCSK-001 (chore-skip) and LSGF-001 (word-boundary) fixes.
+//
+// Inside a Lint() run (per-run cache active) the answer is derived from ONE shared
+// commit index instead of a per-SPEC `git log --grep` subprocess (card t2087), so the
+// subprocess count no longer grows with the SPEC count. Outside a run, or for a
+// SPEC-ID that `--grep` would read as a regular expression, the per-SPEC path runs
+// unchanged.
 func getGitImpliedStatus(specID string) (string, error) {
+	if literalGrepSafe(specID) {
+		if idx, ok := cachedCommitIndex(); ok {
+			if idx.err != nil {
+				return "", idx.err
+			}
+			return inMemImpliedStatus(idx.commits, specID)
+		}
+	}
+	return getGitImpliedStatusPerSpec(specID)
+}
+
+// literalGrepSafe reports whether `git log --grep=<id>` treats id as a plain
+// substring. --grep takes a POSIX basic regular expression; an ID free of BRE
+// metacharacters degrades to the literal match inMemImpliedStatus reproduces.
+func literalGrepSafe(id string) bool {
+	return id != "" && !strings.ContainsAny(id, "\\.[]*^$\n")
+}
+
+// getGitImpliedStatusPerSpec is the original per-SPEC walker: one `git log --grep`
+// subprocess per call. It remains the fallback and the test oracle for the indexed
+// path (lint_gitbatch_test.go).
+func getGitImpliedStatusPerSpec(specID string) (string, error) {
 	// Decide default branch — prefer main; fall back to master.
 	// REQ-PERF-001-A: uses per-run cache to avoid redundant git rev-parse spawns.
 	branch := cachedMainBranch()

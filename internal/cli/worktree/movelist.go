@@ -513,10 +513,11 @@ func appendMoveListLine(mlPath, line string) error {
 
 // revLines returns the non-empty lines of the file, last first.
 func revLines(data string) []string {
+	lines := strings.Split(data, "\n")
 	var out []string
-	for _, l := range strings.Split(data, "\n") {
-		if strings.TrimSpace(l) != "" {
-			out = append(out, l)
+	for i := len(lines) - 1; i >= 0; i-- {
+		if strings.TrimSpace(lines[i]) != "" {
+			out = append(out, lines[i])
 		}
 	}
 	return out

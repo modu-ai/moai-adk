@@ -64,6 +64,52 @@ type gitEnvCache struct {
 	// asker from the first's result is what keeps corpus lint at one walk per
 	// document rather than one per rule.
 	transitions map[string]transitionMemo
+
+	// commitIndex is the single `git log` pass over the base branch that
+	// StatusGitConsistency walks in memory (card t2087) instead of spawning one
+	// `git log --grep=<specID>` per SPEC. The failure is cached like a success,
+	// so a broken repository costs one failed spawn, not one per SPEC.
+	commitIndex    commitIndexResult
+	commitIndexSet bool
+
+	// ownershipBatches holds, per specs root, the one batched history read that
+	// answers every SPEC's most-recent-`status:`-transition question.
+	ownershipBatches map[string]*ownershipBatch
+
+	// repoLoc is the repository top-level and cwd prefix, resolved once per run
+	// to turn a SPEC path into the repo-relative form git prints.
+	repoLoc    repoLocation
+	repoLocSet bool
+}
+
+// commitIndexResult is one cached outcome of the commit-index pass.
+type commitIndexResult struct {
+	commits []commitRecord
+	err     error
+}
+
+// cachedCommitIndex returns the run's shared commit index. ok is false when no
+// per-run cache is active (any caller outside Lint()), so the caller keeps its
+// per-SPEC behavior.
+func cachedCommitIndex() (commitIndexResult, bool) {
+	// Resolve the branch first: cachedMainBranch takes the cache lock itself.
+	branch := cachedMainBranch()
+
+	gitQueryCacheMu.RLock()
+	c := gitQueryCacheV
+	gitQueryCacheMu.RUnlock()
+	if c == nil {
+		return commitIndexResult{}, false
+	}
+
+	gitQueryCacheMu.Lock()
+	defer gitQueryCacheMu.Unlock()
+	if !c.commitIndexSet {
+		commits, err := gitLogAllFullMessage(branch)
+		c.commitIndex = commitIndexResult{commits: commits, err: err}
+		c.commitIndexSet = true
+	}
+	return c.commitIndex, true
 }
 
 // transitionMemo is one memoized history-walk outcome. Both return values are
@@ -76,7 +122,10 @@ type transitionMemo struct {
 // startGitQueryCache initializes a fresh per-run cache. Called at Lint() entry.
 func startGitQueryCache() {
 	gitQueryCacheMu.Lock()
-	gitQueryCacheV = &gitEnvCache{transitions: make(map[string]transitionMemo)}
+	gitQueryCacheV = &gitEnvCache{
+		transitions:      make(map[string]transitionMemo),
+		ownershipBatches: make(map[string]*ownershipBatch),
+	}
 	gitQueryCacheMu.Unlock()
 }
 
