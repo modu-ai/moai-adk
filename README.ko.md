@@ -21,7 +21,7 @@
   <a href="https://codecov.io/gh/modu-ai/moai-adk"><img src="https://codecov.io/gh/modu-ai/moai-adk/branch/main/graph/badge.svg" alt="Codecov"></a>
   <br>
   <a href="https://go.dev/"><img src="https://img.shields.io/badge/Go-1.26+-00ADD8?style=flat&logo=go&logoColor=white" alt="Go"></a>
-  <a href="https://github.com/modu-ai/moai-adk/releases"><img src="https://img.shields.io/badge/Release-v3.2.0-blue.svg" alt="Release"></a>
+  <a href="https://github.com/modu-ai/moai-adk/releases"><img src="https://img.shields.io/badge/Release-v3.1.2-blue.svg" alt="Release"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/License-Apache--2.0-blue.svg" alt="License: Apache-2.0"></a>
 </p>
 
@@ -50,16 +50,15 @@ moai cc -f                    # 리더 — 팩토리를 연다
 moai cc -l                    # 레인, 각자 별도 터미널에서 — 다음 빈 번호로 합류
 moai cc -l                    # lane-1, lane-2 … 순으로 붙는다
 moai glm -l                   # GLM 백엔드로 띄운 레인
-moai codex -l                 # Codex 레인
 ```
 
-`-f`(긴 형태 `--factory`)가 리더를 열고, `-l`(긴 형태 `--lane`)이 실행 중인 팩토리에 레인으로 합류한다. 둘 다 인자를 받지 않는다. 레인 번호는 운영자가 고르지 않고 자동으로 배정된다. 레인은 **터미널을 하나씩 새로 열어 직접** 띄운다. 세션은 다른 세션을 대신 띄우지 못한다. `moai codex`에는 리더 진입이 없어 레인으로만 합류할 수 있다.
+`-f`(긴 형태 `--factory`)가 리더를 열고, `-l`이 실행 중인 팩토리에 레인으로 합류한다. 둘 다 인자를 받지 않는다. 레인 번호는 운영자가 고르지 않고 자동으로 배정된다. 레인은 **터미널을 하나씩 새로 열어 직접** 띄운다. 세션은 다른 세션을 대신 띄우지 못한다.
 
-한 번의 실행에는 진입 토큰이 하나뿐이라 `-f`와 `-l`을 함께 쓰면 에러다. 값이 붙은 형태(`moai cc -f <값>`, `moai cc -l lane-2`)도 한 줄 에러로 거부되고, 에러 문구가 올바른 형태를 알려 준다. 예전 다중 세션 보드 모드의 `-k`는 제거되었고, `moai cg`는 이전 안내를 띄우고 종료한다(`moai migrate cg`로 먼저 확인). `moai gpt`는 없으며 GPT 모델은 `moai codex`로 돌린다.
+한 번의 실행에는 진입 토큰이 하나뿐이라 `-f`와 `-l`을 함께 쓰면 에러다. 값이 붙은 형태(`moai cc -f <값>`, `moai cc -l lane-2`)도 한 줄 에러로 거부되고, 에러 문구가 올바른 형태를 알려 준다. 예전 다중 세션 보드 모드의 `-k`는 제거되었다.
 
 ### 어느 백엔드로 돌릴까
 
-백엔드는 레인마다 따로 고른다. `moai cc -l`은 Claude, `moai glm -l`은 GLM, `moai codex -l`은 Codex 레인이다. 리더는 판정을 내리는 자리가 아니라 큐를 지키며 카드를 나르는 자리라, 상시 대기 비용이 크지 않은 GLM(`moai glm -f`)이 어울린다. 한 계정이 429로 막히기 시작하면 레인을 계정에 분산해 배치하는 운영이 통한다. 이 조합은 어디까지나 한 예일 뿐 — 전 세션을 한 백엔드로 통일해도 무방하다.
+백엔드는 레인마다 따로 고른다. `moai cc -l`은 Claude, `moai glm -l`은 GLM 레인이다. 리더는 판정을 내리는 자리가 아니라 큐를 지키며 카드를 나르는 자리라, 상시 대기 비용이 크지 않은 GLM(`moai glm -f`)이 어울린다. 한 계정이 429로 막히기 시작하면 레인을 계정에 분산해 배치하는 운영이 통한다. 이 조합은 어디까지나 한 예일 뿐 — 전 세션을 한 백엔드로 통일해도 무방하다.
 
 ### 레인 N개에 카드를 한꺼번에
 
@@ -69,9 +68,9 @@ moai codex -l                 # Codex 레인
 
 레인 하나가 동시에 돌리는 `Agent()` 서브에이전트는 최대 10개이고, 쓰기를 맡는 스폰은 각자의 워크트리로 격리한다. 레인을 한꺼번에 켜지 말고 첫 레인을 먼저 올려 실제로 출력이 나오는 것을 확인한 뒤 나머지를 띄운다. 카드는 레인에 쪼개어 넣지 않는다.
 
-팩토리 런은 자기를 소유한 세션의 프로세스 신원을 기록한다. 리더가 죽은 런은 다음 레인이 합류하는 시점에 자동으로 회수되므로 합류가 `AMBIGUOUS_FACTORY`에서 막히지 않는다. 그 반대도 막혀 있다: 레인이 합류할 때 실행 기록이 없거나 은퇴했는데 살아 있는 리더 세션이 있으면, 합류는 그 리더를 검증하고(pid + 프로세스 시작 지문, 대상은 긴 형태 `--leader <이름>`으로 지정, 기본값 `leader`) 그 런 기록을 복원한 뒤 그대로 합류한다 — 검증된 리더가 둘 이상이면 후보를 모두 이름 대고 실패로 닫는다. `--leader`는 `-l`/`--lane`과만 함께 쓰는 선택자이고 진입 토큰의 짧은 형태가 아니다. `moai factory runs`는 모든 런을 소유자 생존 여부와 함께 보여주고, `moai factory runs --retire <run-id>`는 지목한 런 하나를 손으로 회수한다. 소유자가 실제로 죽지 않았으면 거절하고, 완료·실패·종료 상태가 아닌 카드가 남아 있는 런도 거절하면서 그 카드 목록과 대신 쓸 방법(`moai cc -l --factory-run <run-id>`로 합류, `moai cc -f --factory-run <run-id>`로 이어받기, 카드별 `moai factory decide <카드> --choice abandon --run <run-id>`)을 보여준다. 합류와 이어받기는 런이 활성인 동안만 통하고, 카드 종료는 되돌릴 수 없다. 강제로 회수하는 플래그는 없다. 이미 회수된 런을 다시 지목하면 쓰기 없이 결과를 알리고 남은 카드를 나열한다. 이런 카드가 남은 활성 런은 `moai factory relaunch --from-run`도 활성 상태로 두고 `left active (N in-progress cards)`로 알리며, 이미 회수된 런은 건드리지 않는다(`not active (retired), left untouched`).
+팩토리 런은 자기를 소유한 세션의 프로세스 신원을 기록한다. 리더가 죽은 런은 다음 레인이 합류하는 시점에 자동으로 회수되므로 합류가 `AMBIGUOUS_FACTORY`에서 막히지 않는다. 그 반대도 막혀 있다: 레인이 합류할 때 실행 기록이 없거나 은퇴했는데 살아 있는 리더 세션이 있으면, 합류는 그 리더를 검증하고(pid + 프로세스 시작 지문, 대상은 긴 형태 `--leader <이름>`으로 지정, 기본값 `leader`) 그 런 기록을 복원한 뒤 그대로 합류한다 — 검증된 리더가 둘 이상이면 후보를 모두 이름 대고 실패로 닫는다. `--leader`는 `-l`과만 함께 쓰는 선택자이고 진입 토큰의 짧은 형태가 아니다. `moai factory runs`는 모든 런을 소유자 생존 여부와 함께 보여주고, `moai factory runs --retire <run-id>`는 지목한 런 하나를 손으로 회수한다. 소유자가 실제로 죽지 않았으면 거절하고, 완료·실패·종료 상태가 아닌 카드가 남아 있는 런도 거절하면서 그 카드 목록과 대신 쓸 방법(`moai cc -l --factory-run <run-id>`로 합류, `moai cc -f --factory-run <run-id>`로 이어받기, 카드별 `moai factory decide <카드> --choice abandon --run <run-id>`)을 보여준다. 합류와 이어받기는 런이 활성인 동안만 통하고, 카드 종료는 되돌릴 수 없다. 강제로 회수하는 플래그는 없다. 이미 회수된 런을 다시 지목하면 쓰기 없이 결과를 알리고 남은 카드를 나열한다. 이런 카드가 남은 활성 런은 `moai factory relaunch --from-run`도 활성 상태로 두고 `left active (N in-progress cards)`로 알리며, 이미 회수된 런은 건드리지 않는다(`not active (retired), left untouched`).
 
-런이 죽거나 바뀐 뒤에도 레인 세션은 환경에 박힌 옛 런을 계속 가리키는데, 이 레인은 `moai factory relaunch`로 살아 있는 런에 다시 붙인다. 이 명령은 공급자의 레인 합류 줄(`moai cc -l`, `moai glm -l`, Codex는 `moai codex -l`)을 그대로 다시 실행하고, 옵션은 `--provider`·`--lane`·`--run`·`--from-run <run-id>`·`--dry-run`이다. `-l`은 인자를 받지 않으므로 `--lane`을 줘도 합류 줄에는 실리지 않는다. 명령이 stderr로 그렇게 알리고, 레인은 다음 빈 번호로 합류한다. `--from-run`은 그 런이 활성이면서 소유자가 죽은 경우에만 먼저 회수하고, `--dry-run`은 실행 줄만 찍고 아무것도 바꾸지 않는다. 한 런 안에서 카드를 돌며 도는 `--clear-policy relaunch` 루프와는 별개의 일회성 명령이다. stale-run 안내문도 산문 대신 이 명령을 채워 넣은 줄로 보여 준다.
+런이 죽거나 바뀐 뒤에도 레인 세션은 환경에 박힌 옛 런을 계속 가리키는데, 이 레인은 `moai factory relaunch`로 살아 있는 런에 다시 붙인다. 이 명령은 공급자의 레인 합류 줄(`moai cc -l`, `moai glm -l`)을 그대로 다시 실행하고, 옵션은 `--provider`·`--lane`·`--run`·`--from-run <run-id>`·`--dry-run`이다. `-l`은 인자를 받지 않으므로 `--lane`을 줘도 합류 줄에는 실리지 않는다. 명령이 stderr로 그렇게 알리고, 레인은 다음 빈 번호로 합류한다. `--from-run`은 그 런이 활성이면서 소유자가 죽은 경우에만 먼저 회수하고, `--dry-run`은 실행 줄만 찍고 아무것도 바꾸지 않는다. 한 런 안에서 카드를 돌며 도는 `--clear-policy relaunch` 루프와는 별개의 일회성 명령이다. stale-run 안내문도 산문 대신 이 명령을 채워 넣은 줄로 보여 준다.
 
 > 자세히: [팩토리 모드](https://adk.mo.ai.kr/ko/advanced/factory-mode)
 
@@ -288,8 +287,8 @@ cd my-project
 `moai update`는 이 매니페스트를 기준으로 사용자 설치를 갱신한다: 배포본이 바뀐 추적 파일은 제자리에서 다시 쓰고, 직접 편집한 파일은 보존하며 `~/.moai/` 아래에 백업하고, 선택을 해제한 번들의 파일은 걷어내고, 기존 프로젝트의 템플릿 관리 스킬·에이전트는 첫 update에서 사용자 폴더로 이전한다. `moai bundle add|remove <이름>`으로 설치 번들 선택을 조정하고, `moai doctor`가 User Install과 Project Lock 어긋남을 보고한다. 선언된 v1 한계 하나: MoAI 프로필 루트(`~/.moai/claude-profiles/<이름>`)로 실행한 세션은 공유 사용자 에셋을 보지 못한다.
 
 
-> **GPT 게이트웨이 철회(2026-09-16).** 내장 번역 게이트웨이로 GPT 모델을 Claude Code에 얹던 옛 `moai gpt`
-> 런처는 제거되었습니다. GPT 모델은 이제 원래 하네스인 `moai codex`(Codex CLI)로 사용합니다. 위의
+> **GPT 게이트웨이 철회(2026-09-16).** 내장 번역 게이트웨이로 GPT 모델을 Claude Code에 얹던 옛 런처는
+> 제거되었습니다. GPT 모델은 이제 원래 하네스인 Codex CLI로 사용합니다. 위의
 > `--llm gpt` init 값은 영향을 받지 않습니다 — 철회된 런처가 아니라 Codex 단독 배포를 선택하는 값입니다.
 ```bash
 moai init my-project --llm gpt   # Codex 단독 프로젝트
@@ -366,7 +365,7 @@ SPEC마다 독립된 작업 트리를 준다. `moai cc -w <이름>`으로 진입
 
 ### 팩토리 모드
 
-`-f`(`--factory`)가 팩토리 리더를, `-l`(`--lane`)이 레인을 연다. 둘 다 인자를 받지 않는다. 리더 하나가 큐의 카드를 번호가 붙은 레인에 나르고, 레인은 카드 한 장을 `plan → run → sync`로 끝까지 맡는다. 실행 순서는 위 "v3.2 새 기능 — 팩토리 모드" 절에 있다.
+`-f`(`--factory`)가 팩토리 리더를, `-l`이 레인을 연다. 둘 다 인자를 받지 않는다. 리더 하나가 큐의 카드를 번호가 붙은 레인에 나르고, 레인은 카드 한 장을 `plan → run → sync`로 끝까지 맡는다. 실행 순서는 위 "v3.2 새 기능 — 팩토리 모드" 절에 있다.
 
 세션의 계보는 **Origin-Trail Chain**이 따로 맡는다 — 팩토리 모드와 독립이라 리더도 레인도 필요 없고, `moai cc -w <이름>`처럼 worktree를 지정해 띄운 모든 세션이 체인에 오른다. append-only JSONL 계보 트리로 worktree 조상을 추적하고, 깊이 망각(`/clear` 뒤 루트-리프 체인 복구)을 해결하며, 하트비트가 끊긴 세션을 `stale`로 가려낸다.
 
@@ -383,7 +382,7 @@ SPEC마다 독립된 작업 트리를 준다. `moai cc -w <이름>`으로 진입
 
 ### CG 폐기와 설정 이전
 
-`moai cg`는 폐기되었습니다. Claude나 GLM을 실행하지 않고 설정 이전 안내와 함께 종료합니다. `moai cc`의 별칭이 아닙니다. `llm.team_mode: cg`가 남은 프로젝트는 세션을 실행하기 전에 이전할 구성을 명시적으로 선택해야 합니다.
+CG 런처는 폐기되었습니다. 이전 절차와 안내는 [CG 폐기와 설정 이전](https://adk.mo.ai.kr/ko/multi-llm/cg-mode/) 문서를 참고하세요.
 
 ```bash
 moai migrate cg
@@ -588,7 +587,7 @@ SPEC마다 독립된 작업 트리를 주어 두 에이전트가 서로 밟지 �
 
 ### CG 폐기와 설정 이전
 
-`moai cg`는 폐기되었습니다. Claude나 GLM을 실행하지 않고 설정 이전 안내와 함께 종료합니다. `moai cc`의 별칭이 아닙니다. `llm.team_mode: cg`가 남은 프로젝트는 세션을 실행하기 전에 이전할 구성을 명시적으로 선택해야 합니다.
+CG 런처는 폐기되었습니다. 이전 절차와 안내는 [CG 폐기와 설정 이전](https://adk.mo.ai.kr/ko/multi-llm/cg-mode/) 문서를 참고하세요.
 
 ```bash
 moai migrate cg
@@ -741,7 +740,6 @@ Claude의 각 티어는 `ANTHROPIC_DEFAULT_*_MODEL` 환경변수를 통해 GLM �
 | `moai update` | 최신 버전으로 업데이트 (로컬 파일 보존 · 3-way 병합과 충돌 사이드카 · 삭제 전 아카이브) |
 | `moai graph <build\|query>` | 코드베이스 그래프(edges.jsonl) 생성·조회 — 호출자 찾기, 폭발 반경, 마일스톤 교차검사 |
 | `moai cc` / `moai glm` | Claude 전용 / GLM 전용 세션 |
-| `moai codex [cli\|status\|app]` | Codex 런처 — 인자 없이 부르면 Codex CLI를 기동한다. `status`는 준비 상태만 보여주고 아무것도 띄우지 않는다 |
 | `moai worktree <sync\|done\|sweep\|hoist\|remove\|clean\|recover\|snapshot\|verify\|restore>` | Git worktree 유지 관리 (워크트리 진입은 런처의 몫) |
 | `moai session <list\|register\|current>` | 멀티 세션 조율 |
 | `moai spec <audit\|archive\|lint\|list\|new>` | SPEC 라이프사이클 도구 |

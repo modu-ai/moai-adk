@@ -297,7 +297,7 @@ func isPassVerdict(verdict string) bool {
 // the only addition. A fresh pass never reaches this helper, so it stays silent.
 func codexGateAllowed(state string) *hook.HookOutput {
 	return &hook.HookOutput{
-		SystemMessage: "codex review gate: turn allowed without a fresh pass (state: " + state + ")",
+		SystemMessage: "codex review gate: no fresh pass — turn allowed, not a review PASS (state: " + state + ")",
 	}
 }
 

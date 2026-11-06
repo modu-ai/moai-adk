@@ -16,6 +16,7 @@ package worktree
 //     removing an L2 tree (done.go wiring).
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -31,6 +32,73 @@ type HoistResult struct {
 	Bytes   int64    // bytes copied
 	Skipped []string // relative paths NOT copied: destination held different content
 	Dest    string   // destination directory (main root / .moai/reports/worktrees/<tree>)
+
+	// TrackedFallback is non-empty when the git-tracked set could not be
+	// listed and the hoist failed open to copy-everything (card t2013).
+	TrackedFallback string
+}
+
+// reportBlobs parses NUL-separated `<meta> TAB <path>` records (ls-files -s and
+// ls-tree both use this shape; the object id is the last space-separated field
+// of <meta> for ls-tree and the second for ls-files -s) into path -> blob id.
+// Unmerged index entries (stage != 0) are left out so they are never treated as
+// identical to anything. NUL separation keeps names with spaces unquoted.
+func reportBlobs(out string, indexFormat bool) map[string]string {
+	blobs := make(map[string]string)
+	for _, rec := range strings.Split(out, "\x00") {
+		meta, path, ok := strings.Cut(rec, "\t")
+		if !ok || path == "" {
+			continue
+		}
+		f := strings.Fields(meta)
+		switch {
+		case indexFormat && len(f) == 3 && f[2] == "0": // <mode> <object> <stage>
+			blobs[path] = f[1]
+		case !indexFormat && len(f) == 3: // <mode> <type> <object>
+			blobs[path] = f[2]
+		}
+	}
+	return blobs
+}
+
+// identicalTrackedReports returns the set of slash-separated, tree-relative
+// paths under .moai/reports that the primary checkout provably already holds:
+// the path's blob in the tree's index equals the blob at the same path in the
+// primary checkout's HEAD, AND the working file is unmodified relative to that
+// index. A path that is modified, staged differently, committed only on the
+// card branch, or absent from the primary's HEAD is not in the set and is
+// copied like untracked evidence (sync-audit F6: "tracked" alone does not mean
+// the primary checkout has the content).
+func identicalTrackedReports(treePath, mainRoot string) (map[string]struct{}, error) {
+	staged, err := gitWorktreeCmd("-C", treePath, "ls-files", "-s", "-z", "--", ".moai/reports")
+	if err != nil {
+		return nil, err
+	}
+	primary, err := gitWorktreeCmd("-C", mainRoot, "ls-tree", "-r", "-z", "HEAD", "--", ".moai/reports")
+	if err != nil {
+		return nil, fmt.Errorf("primary checkout %s: %w", mainRoot, err)
+	}
+	modified, err := gitWorktreeCmd("-C", treePath, "diff", "--name-only", "-z", "--", ".moai/reports")
+	if err != nil {
+		return nil, err
+	}
+	dirty := make(map[string]struct{})
+	for _, p := range strings.Split(modified, "\x00") {
+		if p != "" {
+			dirty[p] = struct{}{}
+		}
+	}
+	primaryBlobs := reportBlobs(primary, false)
+	set := make(map[string]struct{})
+	for path, blob := range reportBlobs(staged, true) {
+		if _, isDirty := dirty[path]; isDirty {
+			continue
+		}
+		if primaryBlobs[path] == blob {
+			set[path] = struct{}{}
+		}
+	}
+	return set, nil
 }
 
 // hoistWorktreeReports copies treePath/.moai/reports/ content into
@@ -59,6 +127,14 @@ func hoistWorktreeReports(treePath, mainRoot string) (HoistResult, error) {
 		return res, fmt.Errorf("stat %s: %w", srcRoot, err)
 	}
 
+	// Only report paths the primary checkout provably already holds (identical
+	// blob, unmodified working file) are skipped; everything else is copied. A
+	// git failure fails open (copy all): a hoist must never lose evidence.
+	tracked, trackedErr := identicalTrackedReports(treePath, mainRoot)
+	if trackedErr != nil {
+		res.TrackedFallback = fmt.Sprintf("git could not compare tracked reports with the primary checkout (%v); copying all report files", trackedErr)
+	}
+
 	err := filepath.WalkDir(srcRoot, func(path string, d os.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
@@ -70,8 +146,17 @@ func hoistWorktreeReports(treePath, mainRoot string) (HoistResult, error) {
 		if err != nil {
 			return fmt.Errorf("rel %s: %w", path, err)
 		}
+		if _, isIdentical := tracked[".moai/reports/"+filepath.ToSlash(rel)]; isIdentical {
+			return nil // identical to the primary checkout's HEAD: it already holds it
+		}
 		dst := filepath.Join(res.Dest, rel)
-		if existing, statErr := os.ReadFile(dst); statErr == nil {
+		existing, statErr := os.ReadFile(dst)
+		if statErr != nil && !errors.Is(statErr, os.ErrNotExist) {
+			// An existing destination that cannot be read is neither absent nor
+			// identical: never silently overwrite it (REQ-RLC-006).
+			return fmt.Errorf("read %s: %w", dst, statErr)
+		}
+		if statErr == nil {
 			incoming, readErr := os.ReadFile(path)
 			if readErr != nil {
 				return fmt.Errorf("read %s: %w", path, readErr)
@@ -179,6 +264,9 @@ func runHoist(cmd *cobra.Command, args []string) error {
 // printHoistResult renders the hoist outcome (REQ-RLC-005 output clause:
 // count and byte total; REQ-RLC-006: every unresolved path).
 func printHoistResult(w io.Writer, res HoistResult, treePath string) {
+	if res.TrackedFallback != "" {
+		_, _ = fmt.Fprintf(w, "Warning: %s\n", res.TrackedFallback)
+	}
 	if res.Count == 0 && len(res.Skipped) == 0 {
 		_, _ = fmt.Fprintf(w, "Nothing to hoist: %s has no .moai/reports/ content\n", treePath)
 		return

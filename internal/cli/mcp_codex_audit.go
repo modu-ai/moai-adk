@@ -615,9 +615,13 @@ func (realCodexSessionRunner) start(ctx context.Context, binaryPath string, args
 	if ctx.Value(codexAuditLegCtxKey{}) != nil {
 		cmd.Env = append(cmd.Env, codexAuditLegEnv+"=1")
 	}
+	// The session runs in a process group of its own so close can end the helpers
+	// the child started, not only the child (codex_procgroup.go).
+	isolateCodexProcessGroup(cmd)
 	if err := cmd.Start(); err != nil {
 		return nil, fmt.Errorf("codex start: %w", err)
 	}
+	trackCodexGroup(cmd.Process.Pid)
 	c := &realCodexConn{cmd: cmd, stdin: stdin, stdout: stdout, stderr: stderr, lines: make(chan string, 128)}
 	go c.readLoop(ctx)
 	return c, nil
@@ -633,6 +637,7 @@ type realCodexConn struct {
 	stderr *codexStderrBuffer
 	lines  chan string
 	mu     sync.Mutex
+	reap   sync.Once // close runs twice on the normal path; the group is ended once
 }
 
 // stderrTail satisfies codexStderrReporter: the last 4KiB of what the codex
@@ -685,13 +690,17 @@ func (c *realCodexConn) close() error {
 	_ = c.stdin.Close()
 	done := make(chan error, 1)
 	go func() { done <- c.cmd.Wait() }()
+	var err error
 	select {
-	case err := <-done:
-		return err
+	case err = <-done:
 	case <-time.After(3 * time.Second):
 		_ = c.cmd.Process.Kill()
-		return <-done
+		err = <-done
 	}
+	// The direct child is gone; the helpers it started may not be. Do not return
+	// while they still hold the session's directories (Issue #1948).
+	c.reap.Do(func() { endCodexSessionGroup(c.pid()) })
+	return err
 }
 
 // codexRPCError is the JSON-RPC error object. Both fields are surfaced verbatim

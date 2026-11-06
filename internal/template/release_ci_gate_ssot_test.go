@@ -94,6 +94,7 @@ func TestReleaseScriptCIGateSSoTFailsClosed(t *testing.T) {
 				}
 			}
 
+			rlsGreenMatrix(t, s, r.git("rev-parse", "HEAD"))
 			res := rlsRun(t, r.work, s.env, "bash", script, rlsRcTag, "--dry-run")
 			out := rlsNorm(res.out)
 			t.Logf("exit=%d\n%s", res.exit, out)
@@ -156,7 +157,7 @@ func TestReleaseScriptRealSSoTDemandsEveryPinnedCheck(t *testing.T) {
 			r := rlsBuildReleaseRepo(t, rlsRcChangelog)
 			s := rlsNewStub(t)
 			s.setCheckRuns(t, row.runs)
-			res := rlsRelease(t, r, s, rlsRcTag, "--dry-run")
+			res := rlsReleaseGreenMatrix(t, r, s, rlsRcTag, "--dry-run")
 			out := rlsNorm(res.out)
 			t.Logf("exit=%d\n%s", res.exit, out)
 			if res.exit != 1 {

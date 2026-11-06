@@ -8,22 +8,27 @@ import (
 	"testing"
 )
 
-// The push gate asks the card's repository: with a remote the decision
-// requests `pushed`, without one it requests `done`, and a repository git
-// cannot inspect is an error rather than a guess.
+// The push gate's DEFAULT destination no longer asks the card's repository
+// (card t2059): before, a remote meant `pushed`, none meant `done`, and a
+// repository git cannot inspect was an error. The default is `done` whatever
+// the remote — the Done standard is the local merge plus the leader receipt,
+// which the store still requires — and the pushed route is an explicit choice
+// made by the caller. Because nothing is read from git any more, a worktree
+// git cannot inspect is no longer an error here.
 func TestPushGateTargetByRemote(t *testing.T) {
 	withRemote := frNewRepo(t, true)
 	got, err := PushGateTarget(context.Background(), Card{WorktreePath: withRemote.Dir})
-	if err != nil || got != CardPushed {
-		t.Fatalf("remote repo target = %q err=%v, want pushed", got, err)
+	if err != nil || got != CardDone {
+		t.Fatalf("remote repo target = %q err=%v, want done", got, err)
 	}
 	noRemote := frNewRepo(t, false)
 	got, err = PushGateTarget(context.Background(), Card{WorktreePath: noRemote.Dir})
 	if err != nil || got != CardDone {
 		t.Fatalf("remote-less repo target = %q err=%v, want done", got, err)
 	}
-	if _, err := PushGateTarget(context.Background(), Card{WorktreePath: filepath.Join(t.TempDir(), "missing")}); err == nil {
-		t.Fatal("missing worktree: err = nil, want git failure")
+	got, err = PushGateTarget(context.Background(), Card{WorktreePath: filepath.Join(t.TempDir(), "missing")})
+	if err != nil || got != CardDone {
+		t.Fatalf("missing worktree target = %q err=%v, want done (no git read)", got, err)
 	}
 }
 

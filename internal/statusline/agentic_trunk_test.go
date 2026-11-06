@@ -13,7 +13,20 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/config"
 )
+
+// plainSession clears the factory markers a launcher's -f / -l entry stamps
+// (card t2056): a factory leader or lane reads an UNSET workflow as af-flow,
+// and the byte-identity cases here describe a plain session — even when the
+// test process itself runs inside a factory lane.
+func plainSession(t *testing.T) {
+	t.Helper()
+	t.Setenv(config.EnvMoaiFactoryWorker, "")
+	t.Setenv(config.EnvMoaiFactoryWorkers, "")
+	t.Setenv(config.EnvFactoryRole, "")
+}
 
 // statuslineGitStrategyFixture writes a git-strategy.yaml naming the given
 // workflow (an empty body writes no file) and returns the project root.
@@ -52,16 +65,16 @@ func branchFixture() *StatusData {
 const goldenBranch = "🅱️ main +28"
 
 // TestAgenticTrunkStatuslineLabel is AC-AGT-012's label half: a valid
-// non-github-flow workflow value — agentic-trunk and git-flow both — renders
+// non-github-flow workflow value — af-flow and git-flow both — renders
 // the workflow value in parentheses after the branch segment's dirty count.
 func TestAgenticTrunkStatuslineLabel(t *testing.T) {
-	t.Run("agentic-trunk label after the dirty count", func(t *testing.T) {
+	t.Run("af-flow label after the dirty count", func(t *testing.T) {
 		d := branchFixture()
 		d.WorkflowLabel = resolveWorkflowLabel(statuslineGitStrategyFixture(t, "agentic-trunk"))
-		if d.WorkflowLabel != "agentic-trunk" {
-			t.Fatalf("provider = %q, want agentic-trunk", d.WorkflowLabel)
+		if d.WorkflowLabel != "AF-Flow" {
+			t.Fatalf("provider = %q, want AF-Flow (legacy agentic-trunk input)", d.WorkflowLabel)
 		}
-		want := goldenBranch + " (agentic-trunk)"
+		want := goldenBranch + " (AF-Flow)"
 		if got := newTestRenderer().renderRepoBranchSegment(d); got != want {
 			t.Errorf("render = %q, want %q", got, want)
 		}
@@ -81,12 +94,12 @@ func TestAgenticTrunkStatuslineLabel(t *testing.T) {
 
 	t.Run("label precedes nothing — it is the segment tail", func(t *testing.T) {
 		d := branchFixture()
-		d.WorkflowLabel = "agentic-trunk"
+		d.WorkflowLabel = "AF-Flow"
 		got := newTestRenderer().renderRepoBranchSegment(d)
-		if !strings.HasSuffix(got, " (agentic-trunk)") {
+		if !strings.HasSuffix(got, " (AF-Flow)") {
 			t.Errorf("render %q does not end with the label tail", got)
 		}
-		if strings.Contains(got, "(agentic-trunk) (") {
+		if strings.Contains(got, "(AF-Flow) (") {
 			t.Errorf("render %q carries the label twice", got)
 		}
 	})
@@ -97,6 +110,7 @@ func TestAgenticTrunkStatuslineLabel(t *testing.T) {
 // byte-equal to the pre-change golden — the label provider contributes
 // nothing (and with it REQ-PLO-009's cases stay byte-identical).
 func TestAgenticTrunkStatuslineAbsent(t *testing.T) {
+	plainSession(t)
 	unreadable := t.TempDir()
 	dir := filepath.Join(unreadable, ".moai", "config", "sections")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -133,11 +147,26 @@ func TestAgenticTrunkStatuslineAbsent(t *testing.T) {
 	})
 }
 
+// TestAgenticTrunkStatuslineFactoryDefault — card t2056: in a factory leader
+// or lane session an UNSET workflow (the value left empty) shows the AF-Flow
+// label, because the reader defaults it to af-flow there; an explicit
+// github-flow in the same session still shows no label.
+func TestAgenticTrunkStatuslineFactoryDefault(t *testing.T) {
+	plainSession(t)
+	t.Setenv(config.EnvMoaiFactoryWorkers, "3")
+	if got := resolveWorkflowLabel(statuslineGitStrategyFixture(t, "''")); got != "AF-Flow" {
+		t.Errorf("unset workflow in a factory session: provider = %q, want AF-Flow", got)
+	}
+	if got := resolveWorkflowLabel(statuslineGitStrategyFixture(t, "github-flow")); got != "" {
+		t.Errorf("explicit github-flow in a factory session: provider = %q, want no label", got)
+	}
+}
+
 // TestAgenticTrunkStatuslineNoExtraGit is AC-AGT-012's no-invocation half:
 // inside a real git repository, the provider and the labeled render spawn no
 // git process — the shim logs every git invocation and stays empty.
 func TestAgenticTrunkStatuslineNoExtraGit(t *testing.T) {
-	root := statuslineGitStrategyFixture(t, "agentic-trunk")
+	root := statuslineGitStrategyFixture(t, "af-flow")
 	gitOut := func(args ...string) string {
 		out, err := exec.Command("git", args...).CombinedOutput()
 		if err != nil {
@@ -162,14 +191,14 @@ func TestAgenticTrunkStatuslineNoExtraGit(t *testing.T) {
 
 	// The provider reads the yaml through the config reader only.
 	for i := 0; i < 3; i++ {
-		if got := resolveWorkflowLabel(root); got != "agentic-trunk" {
-			t.Fatalf("provider = %q under the shim, want agentic-trunk", got)
+		if got := resolveWorkflowLabel(root); got != "AF-Flow" {
+			t.Fatalf("provider = %q under the shim, want AF-Flow", got)
 		}
 	}
 	// The labeled render runs the provider again.
 	d := branchFixture()
 	d.WorkflowLabel = resolveWorkflowLabel(root)
-	if got := newTestRenderer().renderRepoBranchSegment(d); !strings.HasSuffix(got, " (agentic-trunk)") {
+	if got := newTestRenderer().renderRepoBranchSegment(d); !strings.HasSuffix(got, " (AF-Flow)") {
 		t.Fatalf("render = %q, want the labeled tail", got)
 	}
 
@@ -281,7 +310,7 @@ func agenticTrunkBuilder(t *testing.T) Builder {
 //     resolved separately, making the walk-ups 4 and the total 5.
 func TestAgenticTrunkStatuslineBuilderExecCount(t *testing.T) {
 	log := agenticTrunkShim(t)
-	root := statuslineGitStrategyFixture(t, "agentic-trunk")
+	root := statuslineGitStrategyFixture(t, "af-flow")
 	// The fixture must be a real git repository: the no-project_dir payload
 	// resolves its anchor through the git walk-up.
 	if out, err := exec.Command("git", "-C", root, "init", "-q").CombinedOutput(); err != nil {
@@ -297,8 +326,8 @@ func TestAgenticTrunkStatuslineBuilderExecCount(t *testing.T) {
 		input := &StdinData{Workspace: &WorkspaceInfo{ProjectDir: root, CurrentDir: root}}
 		agenticTrunkShimReset(t, log)
 		data := db.collectAll(context.Background(), input)
-		if data.WorkflowLabel != "agentic-trunk" {
-			t.Errorf("WorkflowLabel = %q, want agentic-trunk (label read through the shared anchor)", data.WorkflowLabel)
+		if data.WorkflowLabel != "AF-Flow" {
+			t.Errorf("WorkflowLabel = %q, want AF-Flow (label read through the shared anchor)", data.WorkflowLabel)
 		}
 		if got := agenticTrunkWalkUpCount(t, log); got != 1 {
 			t.Errorf("collect pass ran %d git resolution(s) with the anchor on stdin, want exactly 1 (the queue-root probe; the stateanchor consumers must read the stdin anchor with zero git)", got)
@@ -315,8 +344,8 @@ func TestAgenticTrunkStatuslineBuilderExecCount(t *testing.T) {
 		input := &StdinData{CWD: root}
 		agenticTrunkShimReset(t, log)
 		data := db.collectAll(context.Background(), input)
-		if data.WorkflowLabel != "agentic-trunk" {
-			t.Errorf("WorkflowLabel = %q, want agentic-trunk (resolved through the walked-up anchor)", data.WorkflowLabel)
+		if data.WorkflowLabel != "AF-Flow" {
+			t.Errorf("WorkflowLabel = %q, want AF-Flow (resolved through the walked-up anchor)", data.WorkflowLabel)
 		}
 		if got := agenticTrunkWalkUpCount(t, log); got != 4 {
 			t.Errorf("collect pass ran %d git resolution(s) for the CWD-only payload, want exactly 4 (the queue-root probe + 3 stateanchor walk-ups: board root, the SHARED goal/label anchor, the quota-fallback anchor; an unshared goal/label pair makes it 5)", got)

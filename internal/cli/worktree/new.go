@@ -14,6 +14,13 @@ import (
 // adapter avoids a second git worktree creation path in this subpackage.
 var WorktreeCreator func(name string, out io.Writer) (string, error)
 
+// WorktreeCreatorAt is the same materializer cutting the tree from an explicit
+// full commit SHA instead of the configured base branch (card t2058: a repair
+// card's worktree starts at the failed release-CI candidate). It is wired next
+// to WorktreeCreator and used only for a card that carries a base SHA; an
+// unresolvable SHA is an error, never a fall-back to another base.
+var WorktreeCreatorAt func(name, baseSHA string, out io.Writer) (string, error)
+
 func newNewCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "new <name>",

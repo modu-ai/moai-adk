@@ -128,11 +128,7 @@ A Codex agent must not invoke `moai cc -w`, `EnterWorktree`, or `ExitWorktree`. 
 **Codex factory lanes** work in the card worktree their supervising launcher selects
 (`codex -C <absolute-worktree-path>`); a child already there continues.
 
-**From inside a worktree session, `<path>` must be that worktree's absolute path.** Measured on
-Claude Code 2.1.275: the guard refuses `-C .`, a relative path, a runtime-computed path, and any
-path outside this worktree; plain git, `git -C <own absolute path>` and `--git-dir=<own .git>` pass.
-`cd <own worktree> && git …` also passes but is not advisable. A refusal here is the guard reading
-the command, not a runtime defect.
+**From inside a worktree session, `<path>` must be that worktree's absolute path** — refusal catalogue: `worktree-integration-ops.md` § Refused Commands.
 
 **`moai worktree done` closes L2 trees only.** A tree under `.claude/worktrees/` or `.moai/worktrees/` is L1, is absent
 from the registry, and is disposed by the session-end prompt or by `git worktree unlock` +
@@ -141,10 +137,7 @@ from the registry, and is disposed by the session-end prompt or by `git worktree
 **An unpushed card branch has its only copy in the worktree.** Dispose of no
 worktree — L1 or L2 — until the branch is integrated and the remote merge has landed.
 
-**Start a new card in a new worktree.** A Claude Code session exits its previous worktree first;
-a Codex lane starts a new session in the new card tree. Create the fresh tree from the remote
-default branch; never reuse the previous card's tree. Where the new card depends on a prior card's
-unmerged code, merge that branch inside the new worktree.
+**Start a new card in a new worktree.** Claude Code exits its previous worktree first; a Codex lane moves in-session with `/cd <new-tree absolute path>` (0.149+) and verifies the toplevel; a `codex -C <path>` session (recorded in the progress record) only after a refused move. Factory leases create and register the tree (`moai factory next`); else `moai worktree new`. Codex `create_worktree` (0.162+) is unused for card trees — `WT-` naming and evidence hoisting unchanged. Fresh trees cut from `worktree_base_branch` (empty/unresolvable: the invoking tree's HEAD — wrong-base incident class); never reuse the prior card's tree.
 
 **Card worktree branches carry the `WT-` prefix and a descriptive slug, never the card id.** Rename
 in place immediately after creating the tree: `git branch -m WT-<slug>`; re-entry resolves by tree
@@ -261,8 +254,7 @@ phase ordering ("complete A, then start B"). Prohibited: "2-3 days", "as soon as
 
 **Follow tool usage patterns optimized for accuracy and efficiency.** Read a file before editing
 it. Locate before reading: find the file by pattern and the line by content, then read that region, not
-the whole file. Use absolute paths and verify a path exists rather than
-constructing it from an assumption. Prefer a targeted edit over rewriting a file, and a dedicated
+the whole file. Use absolute paths; verify a path exists rather than assuming it. Prefer a targeted edit over rewriting a file, and a dedicated
 tool over a shell equivalent. Retry safety is asymmetric: read-only and idempotent calls may be
 retried, but a side-effecting one (write, commit, push, PR, deploy, external mutation) that fails
 ambiguously requires observing current state first and retrying only when the effect is confirmed
@@ -270,15 +262,16 @@ absent — no success signal is not evidence the effect did not land. After thre
 operation, report the blocker.
 
 **Work without MCP servers.** Where one is unavailable, fall back to web search and fetch for
-library documentation and established patterns, then continue — analysis quality must not depend on MCP availability.
+library documentation, then continue; quality must not depend on MCP.
 
 **Keep command output bounded**: quiet flags, targeted queries, or redirect-to-file with the exit
-code and a bounded tail. A runtime output limit is a backstop, not the target. **Prefer the quiet
+code and a bounded tail. A runtime limit is only a backstop. **Prefer the quiet
 form of routine commands** — `--no-progress`, `-q`, machine-readable output plus a targeted filter
-— not forms emitting spinners, banners, tables, or color noise.
+— not spinners, banners, tables, or color noise. **Never write secret values**
+(tokens, keys, passwords) into logs or reports; record the name or a redaction.
 
-**Weigh session length as a cost axis.** Prefer one warm session for the same work; a new or cold
-session re-pays the always-loaded prefix. Split only when the benefit justifies that cost.
+**Weigh session length as a cost axis.** Prefer one warm session; a new or cold one re-pays the
+always-loaded prefix. Split only when the benefit justifies that cost.
 
 ---
 

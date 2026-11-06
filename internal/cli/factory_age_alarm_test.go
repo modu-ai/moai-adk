@@ -851,11 +851,32 @@ func TestFactoryAgeAlarmCallerCancellation(t *testing.T) {
 	}
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 	c := homestate.Card{CardID: "stalled", RunID: fcRun, State: homestate.CardRun, WorktreePath: root, UpdatedAt: fcNow.Add(-24 * time.Hour).Format(time.RFC3339)}
-	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
+	// The caller cancels only once the marker proves git is in flight: the first
+	// exec of a freshly built binary can take longer than any fixed window on a
+	// loaded host (macOS scans it first), so a timer-based cancel races the start.
+	// Elapsed time is measured from the cancel moment.
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	start := time.Now()
+	var canceledAt time.Time
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for end := time.Now().Add(10 * time.Second); time.Now().Before(end) && ctx.Err() == nil; time.Sleep(5 * time.Millisecond) {
+			if _, err := os.Stat(marker); err == nil {
+				canceledAt = time.Now()
+				cancel()
+				return
+			}
+		}
+	}()
 	_, _ = computeFactoryAgeAlarms(ctx, root, fcRun, db, []homestate.Card{c}, fcNow)
-	if elapsed := time.Since(start); elapsed > time.Second {
+	returned := time.Now()
+	cancel()
+	<-done
+	if canceledAt.IsZero() {
+		t.Fatal("in-flight control: git never started")
+	}
+	if elapsed := returned.Sub(canceledAt); elapsed > time.Second {
 		t.Fatalf("caller cancellation did not stop git: elapsed=%s", elapsed)
 	}
 	if _, err := os.Stat(marker); err != nil {

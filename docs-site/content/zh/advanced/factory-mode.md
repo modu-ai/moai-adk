@@ -23,10 +23,9 @@ added_in: "v3.2"
 | 想做的事 | 命令 | 角色 |
 |----------|------|------|
 | 打开工厂主导会话 | `moai cc -f` · `moai glm -f`（长形式 `--factory`） | 主导 |
-| 以 lane 身份加入正在运行的工厂 | `moai cc -l` · `moai glm -l` · `moai codex -l`（长形式 `--lane`） | lane |
+| 以 lane 身份加入正在运行的工厂 | `moai cc -l` · `moai glm -l` | lane |
 
 - `-l` 会加入正在运行的工厂，并**自动领取下一个 lane 编号**。编号不由运维者挑选，取存活 lane 中最大编号的下一个。没有正在运行的工厂时，加入会被拒绝。
-- `moai codex` 没有主导入口，只能以 lane 身份加入；主导会话要用 `moai cc -f` 或 `moai glm -f` 打开。
 - 一次启动最多带一个进入令牌，`-f` 与 `-l` 同时出现会报错。
 
 ```bash
@@ -37,7 +36,6 @@ $ moai cc -f
 $ moai cc -l
 $ moai cc -l
 $ moai glm -l      # GLM 后端的 lane，形式相同
-$ moai codex -l    # Codex 的 lane
 ```
 
 lane 由**人在各自的终端里手动**启动。没有哪个会话能替你去启动另一个会话。
@@ -50,10 +48,9 @@ lane 由**人在各自的终端里手动**启动。没有哪个会话能替你�
 |--------------|------|
 | `moai cc -f <值>`（SPEC ID、数字、lane 标签） | `-f` 不接受参数。主导会话只用 `-f` 打开，lane 用 `-l` 加入 |
 | `moai cc -l <值>`（如 `lane-2` 之类的名字） | lane 不自己命名，编号是自动分配的 |
-| `moai codex` 上的 `-f` | Codex 没有主导入口（请用 `moai cc -f` 或 `moai glm -f`） |
 | 同时使用 `-f` 与 `-l` | 只允许一个进入令牌 |
 | 已停用的 `-k` 入口 | 早先那种多会话分列运行的模式已被移除，错误信息会指向 `-f` 和 `-l` |
-| `moai cg`、`moai gpt` | `moai cg` 已停用，会给出迁移提示后退出（可用 `moai migrate cg` 预览）；`moai gpt` 不存在，GPT 模型通过 `moai codex` 运行 |
+| `moai cg`、`moai gpt` | `moai cg` 已停用，会给出迁移提示后退出（可用 `moai migrate cg` 预览）；`moai gpt` 不存在 |
 
 ## 同时存在多个运行时
 
@@ -61,7 +58,7 @@ lane 加入时会先读取运行记录。`-l` 可以搭配两个选择器。
 
 | 选择器 | 作用 |
 |--------|------|
-| `--leader <名称>` | 指定要加入的主导会话（默认 `leader`）。只能与 `-l` 或 `--lane` 一起用，不是任何进入令牌的短形式 |
+| `--leader <名称>` | 指定要加入的主导会话（默认 `leader`）。只能与 `-l` 一起用，不是任何进入令牌的短形式 |
 | `--factory-run <run-id>` | 按 id 指定要加入的运行 |
 
 `--leader` 与 `--factory-run` 是不同的选择器，不能同时使用。如果存活的运行不止一个，无法判断该加入哪个，具体行为取决于会话类型。在终端中运行 `-l` 会打开选择界面，逐个列出运行的 run id、主导会话是否存活、主导会话名称、开始时间（KST）、最近一次 lane 活动以及进行中的卡片数。你可以加入其中一个运行，也可以取消；若某个运行的主导会话已退出且没有进行中的卡片，还可以先将其退役，再加入剩下的运行（提示文字为韩文）。没有终端时，加入会被拒绝，错误信息会列出全部候选及其开始时间（KST），并提示在 `--factory-run <run-id>` 与 `--leader <主导会话名>` 之间选一个，并与 `-l` 一起使用。指定了 `--factory-run`，或用 `--leader` 指明了主导会话时，不会打开选择界面。所有者已经退出的运行，可以用 `moai factory runs --retire <run-id>` 退役。但如果运行里还有处于完成、失败、放弃之外状态的卡片，命令不会退役，而是拒绝，并列出这些卡片和可以改用的办法（用 `moai cc -l --factory-run <run-id>` 加入，用 `moai cc -f --factory-run <run-id>` 接管，或对每张卡片执行 `moai factory decide <卡片> --choice abandon --run <run-id>`）。加入和接管只在运行处于活动状态时有效，放弃卡片无法撤销。没有强制退役的标志。对已经退役的运行再次执行该命令，只报告结果而不再写入，并列出仍滞留的卡片。仍有此类卡片的活动运行，`moai factory relaunch --from-run` 同样让它保持活动状态，并报告 `left active (N in-progress cards)`；已经退役的运行则原样不动（`not active (retired), left untouched`）。
@@ -70,7 +67,7 @@ lane 加入时会先读取运行记录。`-l` 可以搭配两个选择器。
 
 ## lane 选项
 
-下面的选项只用在 `moai cc -l` 和 `moai glm -l` 的 lane 上，Codex 的 lane 不接受策略。
+下面的选项只用在 `moai cc -l` 和 `moai glm -l` 的 lane 上。
 
 | 选项 | 作用 |
 |------|------|

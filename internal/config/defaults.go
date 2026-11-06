@@ -198,6 +198,15 @@ const (
 	// references MUST use this const (CLAUDE.local.md §14 — no hardcoding).
 	DefaultAgenticLoopMaxIterations = 10
 
+	// Hook-process Jev time budget (SPEC-JEV-LEDGER-001 REQ-JEVL-013). The host
+	// kills a hook past its timeout (Stop and SubagentStop 5 s on Claude Code);
+	// the margin is held back for time outside the moai process clock. Both are
+	// decisions, not measurements, until SPEC-JEV-LEDGER-002 measures the
+	// wrapper-start-to-exit clock. The deadline offset is derived by
+	// JevHookDeadlineOffset, never stored as a third value.
+	DefaultJevHookBudget = 5 * time.Second
+	DefaultJevHookMargin = 1 * time.Second
+
 	// workflow.autonomy.* defaults (SPEC-AUTONOMY-CONTRACT-001
 	// REQ-CONTRACT-015). ResolveAutonomy is the only reader; the kickoff
 	// decider has no stored default (it derives from the effective mode).
@@ -248,6 +257,39 @@ const (
 	// REQ-021). The command measured 0.02 s; the bound only stops a hang from
 	// stalling an on-demand `moai doctor`. A chosen value, not a measured one.
 	DefaultPluginVersionProbeTimeout = 3 * time.Second
+
+	// DefaultWorktreeGitTimeout bounds ONE read-side git call of the worktree
+	// migration (rev-parse, status, diff, ls-files, worktree list; card t2053).
+	// A repository with a very large untracked or ignored tree can make `git
+	// status` slow, but not unbounded; a timeout fails the tree safe (skipped,
+	// nothing moved). A chosen value, not a measured one.
+	DefaultWorktreeGitTimeout = 2 * time.Minute
+
+	// DefaultWorktreeMoveTimeout bounds the `git worktree move` call itself
+	// (forward and reverse). Longer than the read-side bound because the move
+	// rewrites the tree's registration; a timeout fails the tree, and a
+	// destination that appeared anyway goes through the reverse order.
+	DefaultWorktreeMoveTimeout = 5 * time.Minute
+
+	// DefaultWorktreeLsofTimeout bounds the one whole-system `lsof -a -d cwd`
+	// scan that tells whether a process works inside a tree. A scan that cannot
+	// answer makes every tree a skip, never a move.
+	DefaultWorktreeLsofTimeout = 30 * time.Second
+
+	// DefaultWorktreeCommandWaitDelay is how long a bounded migration command's
+	// output pipes may stay open after its context ends before the runner stops
+	// waiting for them (a grandchild holding the pipe must not outlive the bound).
+	DefaultWorktreeCommandWaitDelay = 2 * time.Second
+
+	// DefaultInitGitProbeTimeout bounds the `git remote` calls `moai init` uses
+	// to detect the git mode and provider (card t2053). A timeout falls back to
+	// the manual default and says so.
+	DefaultInitGitProbeTimeout = 5 * time.Second
+
+	// DefaultUserLockNoticeDelay is how long a user-asset lock wait stays silent
+	// before `moai update` / `moai init` print that another process holds the
+	// moai user lock (card t2053).
+	DefaultUserLockNoticeDelay = 1 * time.Second
 
 	// DefaultStopParseCapLimit is N, the number of consecutive stdin-parse-
 	// failure Stops under the Claude harness that keep the fail-closed deny;

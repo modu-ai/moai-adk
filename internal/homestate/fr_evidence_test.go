@@ -210,8 +210,11 @@ func TestFR_AC018_PushGateStore(t *testing.T) {
 	if _, err := decide(c, CardPushed); !errors.Is(err, ErrEvidence) {
 		t.Fatalf("push before the ref contains the merge: err = %v, want ErrEvidence", err)
 	}
-	if _, err := decide(c, CardDone); err == nil {
-		t.Fatal("merged-local → done accepted while a remote is configured")
+	// card t2057 (operator decision 11-06): a configured remote no longer
+	// refuses merged-local → done; the refusal here is the missing leader
+	// receipt (REQ-FCR-002b), and the edge is still not admitted without one.
+	if _, err := decide(c, CardDone); !errors.Is(err, ErrApprovalMissing) {
+		t.Fatalf("merged-local → done with a remote and no receipt: err = %v, want ErrApprovalMissing", err)
 	}
 	if after := frRowDump(t, db, frRun, "push"); after != before {
 		t.Fatal("refused push changed the record")

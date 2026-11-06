@@ -1,9 +1,10 @@
 package cli
 
 // factory.go is the Factory Mode machinery behind the dedicated entry
-// surface (`moai cc -f` starts the leader, `moai cc -l` joins as a lane, and
-// likewise on glm; t118 launcher axis, v3.1.1, with the lane entry added by
-// SPEC-LAUNCHER-ENTRY-FLAGS-001).
+// surface (`moai cc -f` starts the leader, `moai cc -l` joins as a lane
+// (a lane-<n> session), and likewise on glm; t118 launcher axis, v3.1.1, with the
+// lane entry added by SPEC-LAUNCHER-ENTRY-FLAGS-001, its -l/--lane spelling
+// removed by card t2021 (R385) and restored in round 2 (R437/R438), when -a/--agent were removed).
 // A factory run is a leader session plus numbered lanes: the leader routes
 // cards to the lanes over cross-session messages, and everything in this
 // file exists to get that signal into the session and to keep the lane
@@ -49,18 +50,22 @@ import (
 // rather than adapted.
 const factoryUnsupportedBackendSentinel = "FACTORY_MODE_UNSUPPORTED_BACKEND"
 
-// The entry tokens. `-f` / `--factory` start the factory leader; `-l` /
-// `--lane` join the running factory as the next free lane (SPEC-LAUNCHER-
-// ENTRY-FLAGS-001). `--leader` names the leader session a lane join's
-// discovery targets (SPEC-FACTORY-LANE-JOIN-SOCKET-001 REQ-008) and composes
-// with the lane entry only. The former `-l` short of `--leader` is retired on
-// every launcher: `-l` is the lane entry.
+// The entry tokens. `-f` / `--factory` start the factory leader; `-l` / `--lane` join the
+// running factory as the next free lane (a lane-<n> session). `--leader` names
+// the leader session a lane join's discovery targets
+// (SPEC-FACTORY-LANE-JOIN-SOCKET-001 REQ-008) and composes with the lane entry
+// only. `-a` / `--agent` were the former agent spelling and are REFUSED (card
+// t2021 round 2): the refusal names -l / --lane and never maps to a role.
 const (
 	factoryFlagLong  = "--factory"
 	factoryFlagShort = "-f"
-	laneFlagLong     = "--lane"
-	laneFlagShort    = "-l"
-	leadFlagLong     = "--leader"
+	// laneFlagLong / laneFlagShort are the lane entry (card t2021 round 2, operator decisions R437/R438).
+	laneFlagLong  = "--lane"
+	laneFlagShort = "-l"
+	// agentFlagShort / agentFlagLong name the REMOVED agent spelling: used only to recognise and refuse it, never as an entry.
+	agentFlagShort = "-a"
+	agentFlagLong  = "--agent"
+	leadFlagLong   = "--leader"
 
 	// factoryLaneRoleToken is the canonical lane role value
 	// (SPEC-ROLE-NAMING-CODE-001 REQ-RNC-002), kept as the lane role's name
@@ -84,22 +89,32 @@ const (
 
 // factoryFlagUsageError is the refusal for any value after -f/--factory: the
 // flag takes none (bare -f starts the factory leader) and a lane joins with
-// -l / --lane. It is the reference the help texts paraphrase; the supplied
+// -l or --lane. It is the reference the help texts paraphrase; the supplied
 // value is appended by the caller. Card t1444 added the lane-join selectors
 // (--factory-run, --leader) to the -f text; they compose with -l / --lane
 // only, so they are taught by the lane refusals and the ambiguity guidance
 // rather than by this -f line.
-const factoryFlagUsageError = "-f/--factory takes no argument (bare -f starts the factory leader); a lane joins with -l or --lane"
+const factoryFlagUsageError = "the -f/--factory flag takes no argument (bare -f starts the factory leader); a lane joins with -l or --lane"
 
-// laneFlagArgumentError, laneFlagNameError and the entry-token error are the
-// one-line refusals of the lane entry (REQ-002): an argument after -l/--lane,
-// an operator --name beside it, and a second entry token.
+// removedAgentFlagError, laneFlagNameError and the entry-token error are the
+// one-line refusals of the lane entry: the removed -a / --agent spelling (card
+// t2021 round 2), an argument after -l/--lane, an operator --name beside it, and
+// a second entry token.
 const (
-	laneFlagArgumentError = "-l/--lane takes no argument (it joins the running factory as the next free lane); --leader <name> selects the leader session"
-	laneFlagNameError     = "-l/--lane already names the role; drop the --name/-n flag"
-	entryTokenConflict    = "%s and %s are two entry tokens; a launch carries at most one"
-	laneNameUnderFactory  = "--name lane-<n> does not select a lane under -f/--factory (-f starts the factory leader); the lane entry is -l or --lane"
-	leaderNeedsLaneEntry  = "--leader names the leader session a lane join targets; it composes with -l or --lane only"
+	// The first word of an error is title-cased by the fang error renderer, so a message
+	// must not START with a flag: "-l" would print as "-L" (a different flag), "--lane" as
+	// "--Lane", "-a" as "-A". Every entry-path message in this file leads with a plain word
+	// ("the -l flag ...", "a --name value ...") for that reason; keep new ones the same way
+	// (TestT2021_EntryRefusalsKeepTheTypedFlagCase pins the printed text).
+	removedAgentFlagError = "the %s flag was removed; use -l (or --lane) to join the running factory as a lane (-f starts the leader)"
+	// removedAgentAfterDashesError: --agent after a literal "--" would reach the backend
+	// unchanged, which a stale script could read as a lane join; it is refused too.
+	removedAgentAfterDashesError = "the %s flag was removed; use --lane (before any --) to join the running factory as a lane (-f starts the leader)"
+	laneFlagArgumentError        = "the -l/--lane flag takes no argument (it joins the running factory as the next free lane); --leader <name> selects the leader session"
+	laneFlagNameError            = "the -l/--lane flag already names the role; drop the --name/-n flag"
+	entryTokenConflict           = "a launch carries at most one entry token; %s and %s are two entry tokens"
+	laneNameUnderFactory         = "a --name lane-<n> value does not select a lane under -f/--factory (-f starts the factory leader); the lane entry is -l or --lane"
+	leaderNeedsLaneEntry         = "the --leader flag names the leader session a lane join targets; it composes with -l or --lane only"
 )
 
 // factoryFlagParse is the entry parse of the factory surface. Two entry
@@ -141,11 +156,18 @@ type factoryFlagParse struct {
 // manual parser is the only mechanism available.
 func parseFactoryFlag(args []string) (p factoryFlagParse, err error) {
 	p.Rest = make([]string, 0, len(args))
-	sawFactoryFlag := false
+	sawFactoryFlag, sawLaneToken := false, false
 
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
 		if arg == "--" {
+			// Everything after the marker is forwarded unchanged, except the
+			// removed --agent spelling (R438): a stale script must not pass it on.
+			for _, rest := range args[i+1:] {
+				if rest == agentFlagLong || strings.HasPrefix(rest, agentFlagLong+"=") {
+					return factoryFlagParse{}, fmt.Errorf(removedAgentAfterDashesError, agentFlagLong)
+				}
+			}
 			p.Rest = append(p.Rest, args[i:]...)
 			break
 		}
@@ -157,10 +179,10 @@ func parseFactoryFlag(args []string) (p factoryFlagParse, err error) {
 				i++
 				p.RunID = args[i]
 			} else {
-				return p, fmt.Errorf("--factory-run requires a run id")
+				return p, fmt.Errorf("the --factory-run flag requires a run id")
 			}
 			if strings.TrimSpace(p.RunID) == "" {
-				return p, fmt.Errorf("--factory-run requires a run id")
+				return p, fmt.Errorf("the --factory-run flag requires a run id")
 			}
 			continue
 		}
@@ -170,7 +192,7 @@ func parseFactoryFlag(args []string) (p factoryFlagParse, err error) {
 		// not this session's own name. The legacy spelling is refused here
 		// with the same canonical-form shape refuseLegacyEntryNames applies
 		// to --name (AC-010): nothing parsed further, nothing launched,
-		// nothing written. Its former short `-l` is the lane entry now.
+		// nothing written. Its former short `-l` is refused now.
 		if arg == leadFlagLong || strings.HasPrefix(arg, leadFlagLong+"=") {
 			switch {
 			case strings.HasPrefix(arg, leadFlagLong+"="):
@@ -179,10 +201,10 @@ func parseFactoryFlag(args []string) (p factoryFlagParse, err error) {
 				i++
 				p.Lead = args[i]
 			default:
-				return p, fmt.Errorf("%s requires a leader label", leadFlagLong)
+				return p, fmt.Errorf("the %s flag requires a leader label", leadFlagLong)
 			}
 			if factory.IsLegacyLeaderSpelling(p.Lead) {
-				return p, fmt.Errorf("%s %q is the legacy leader spelling; use %q (leader label forms: leader, leader-<n>, leader-<run-id>)",
+				return p, fmt.Errorf("the %s value %q is the legacy leader spelling; use %q (leader label forms: leader, leader-<n>, leader-<run-id>)",
 					leadFlagLong, p.Lead, factory.LeaderLabel()+strings.TrimPrefix(p.Lead, "lead"))
 			}
 			continue
@@ -190,7 +212,7 @@ func parseFactoryFlag(args []string) (p factoryFlagParse, err error) {
 
 		if arg == noAutoDispatchFlag || strings.HasPrefix(arg, noAutoDispatchFlag+"=") {
 			if strings.HasPrefix(arg, noAutoDispatchFlag+"=") {
-				return p, fmt.Errorf("%s takes no value; it is a boolean opt-out", noAutoDispatchFlag)
+				return p, fmt.Errorf("the %s flag takes no value; it is a boolean opt-out", noAutoDispatchFlag)
 			}
 			p.NoAutoDispatch = true
 			continue
@@ -204,24 +226,32 @@ func parseFactoryFlag(args []string) (p factoryFlagParse, err error) {
 				i++
 				value = args[i]
 			} else {
-				return p, fmt.Errorf("%s requires a clear policy value (%s, %s, or %s)",
+				return p, fmt.Errorf("the %s flag requires a clear policy value (%s, %s, or %s)",
 					clearPolicyFlag, config.FactoryClearPolicyEach, config.FactoryClearPolicyWhenFull, config.FactoryClearPolicyRelaunch)
 			}
 			switch value {
 			case config.FactoryClearPolicyEach, config.FactoryClearPolicyWhenFull, config.FactoryClearPolicyRelaunch:
 				p.ClearPolicy = value
 			default:
-				return p, fmt.Errorf("%s takes %s, %s, or %s (got %q)",
+				return p, fmt.Errorf("the %s flag takes %s, %s, or %s (got %q)",
 					clearPolicyFlag, config.FactoryClearPolicyEach, config.FactoryClearPolicyWhenFull, config.FactoryClearPolicyRelaunch, value)
 			}
 			continue
 		}
 
-		// -l / --lane: the lane entry. It takes no argument — a following
-		// positional token or an `=`-joined value is refused (REQ-002), so a
-		// parser that read `--lane <x>` as `--lane` plus a forwarded value
-		// cannot pass. A following flag or the pass-through marker belongs to
-		// someone else and is left in place.
+		// -a / --agent: REMOVED (card t2021 round 2, operator decisions R437/R438). The refusal
+		// names -l / --lane and maps to no role, so a stale script fails loudly instead of
+		// launching as something else. (Claude Code's own --agent option is no longer reachable
+		// through moai cc / glm, before or after "--".)
+		if arg == agentFlagShort || arg == agentFlagLong ||
+			strings.HasPrefix(arg, agentFlagShort+"=") || strings.HasPrefix(arg, agentFlagLong+"=") {
+			return factoryFlagParse{}, fmt.Errorf(removedAgentFlagError, strings.SplitN(arg, "=", 2)[0])
+		}
+
+		// -l / --lane: the lane entry. It takes no argument — a following positional token or an
+		// `=`-joined value is refused (REQ-002), so a parser that read `--lane <x>` as `--lane` plus
+		// a forwarded value cannot pass. A following flag or the pass-through marker belongs to
+		// someone else and is left in place. Carrying it with -f is two entry tokens and refuses below.
 		if arg == laneFlagShort || arg == laneFlagLong ||
 			strings.HasPrefix(arg, laneFlagShort+"=") || strings.HasPrefix(arg, laneFlagLong+"=") {
 			if strings.Contains(arg, "=") || (i+1 < len(args) && args[i+1] != "--" && !strings.HasPrefix(args[i+1], "-")) {
@@ -229,6 +259,7 @@ func parseFactoryFlag(args []string) (p factoryFlagParse, err error) {
 			}
 			p.Enabled = true
 			p.LaneRole = true
+			sawLaneToken = true
 			continue
 		}
 
@@ -268,7 +299,7 @@ func parseFactoryFlag(args []string) (p factoryFlagParse, err error) {
 
 	// One entry token per launch: -f and -l each name a different role, and a
 	// launch carrying both would have to drop one silently.
-	if sawFactoryFlag && p.LaneRole {
+	if sawFactoryFlag && sawLaneToken {
 		return p, fmt.Errorf(entryTokenConflict, "-f/--factory", "-l/--lane")
 	}
 
@@ -279,7 +310,7 @@ func parseFactoryFlag(args []string) (p factoryFlagParse, err error) {
 	// anything launches.
 	if p.Lead != "" {
 		if p.RunID != "" {
-			return p, fmt.Errorf("%s and --factory-run name two different selectors; carry one", leadFlagLong)
+			return p, fmt.Errorf("the %s and --factory-run flags name two different selectors; carry one", leadFlagLong)
 		}
 		if !p.LaneRole {
 			return p, errors.New(leaderNeedsLaneEntry)
@@ -292,10 +323,10 @@ func parseFactoryFlag(args []string) (p factoryFlagParse, err error) {
 	// value refusal above.
 	if p.ClearPolicy != "" {
 		if !p.Enabled {
-			return p, fmt.Errorf("%s selects a factory lane's clear policy; it composes with -l or --lane only", clearPolicyFlag)
+			return p, fmt.Errorf("the %s flag selects a factory lane's clear policy; it composes with -l or --lane only", clearPolicyFlag)
 		}
 		if !p.LaneRole {
-			return p, fmt.Errorf("%s selects a lane's clear policy; the factory leader takes none", clearPolicyFlag)
+			return p, fmt.Errorf("the %s flag selects a lane's clear policy; the factory leader takes none", clearPolicyFlag)
 		}
 	}
 	// The auto-dispatch opt-out is a LANE selection too (REQ-TCD-011), on
@@ -303,10 +334,10 @@ func parseFactoryFlag(args []string) (p factoryFlagParse, err error) {
 	// non-factory launch refuses it rather than silently swallowing the flag.
 	if p.NoAutoDispatch {
 		if !p.Enabled {
-			return p, fmt.Errorf("%s selects a factory lane's dispatch mode; it composes with -l or --lane only", noAutoDispatchFlag)
+			return p, fmt.Errorf("the %s flag selects a factory lane's dispatch mode; it composes with -l or --lane only", noAutoDispatchFlag)
 		}
 		if !p.LaneRole {
-			return p, fmt.Errorf("%s selects a lane's dispatch mode; the factory leader takes none", noAutoDispatchFlag)
+			return p, fmt.Errorf("the %s flag selects a lane's dispatch mode; the factory leader takes none", noAutoDispatchFlag)
 		}
 	}
 
@@ -331,14 +362,14 @@ func laneDispatchSelection(entry launcherEntryParse) string {
 // parsed further, nothing launches, nothing is written.
 func refuseLegacyEntryNames(args []string) error {
 	if name, ok := parseNamedLabel(args, factory.IsLegacyLeaderSpelling); ok {
-		return fmt.Errorf("--name %q is the legacy leader spelling; use %q (leader label forms: leader, leader-<n>, leader-<run-id>)",
+		return fmt.Errorf("the --name value %q is the legacy leader spelling; use %q (leader label forms: leader, leader-<n>, leader-<run-id>)",
 			name, factory.LeaderLabel()+strings.TrimPrefix(name, "lead"))
 	}
 	if name, ok := parseNamedLabel(args, factory.IsLegacyFactoryRoleValue); ok {
 		if n, isLabel := factory.SplitFactoryLegacyLabel(name); isLabel {
-			return fmt.Errorf("--name %q is the legacy lane label; use %q", name, factory.FactoryLaneLabel(n))
+			return fmt.Errorf("the --name value %q is the legacy lane label; use %q", name, factory.FactoryLaneLabel(n))
 		}
-		return fmt.Errorf("--name %q is a legacy factory spelling; the leader launches as %q and lanes join with -l",
+		return fmt.Errorf("the --name value %q is a legacy factory spelling; the leader launches as %q and lanes join with -l",
 			name, factory.LeaderLabel())
 	}
 	return nil
@@ -358,7 +389,10 @@ func refuseLegacyEntryNames(args []string) error {
 //     cap) so every lane launch shares one implementation. The run's count is
 //     NOT fabricated — a lane joined incrementally carries 0 ("unknown"), which
 //     the lane notice degrades from. -l plus an operator-supplied --name is a
-//     conflict error: the entry token already names the role.
+//     conflict error: the entry token already names the role. The one
+//     exception is the canonical `lane-<n>` label, which asks to REJOIN that
+//     lane (FactoryRejoin): the claim grants it only when no live session holds
+//     the label (rejoinFactoryLaneName).
 //
 // Legacy spellings of an operator --name (`worker-<n>`, `agent-<n>`, bare
 // legacy roles, and `lead` / `lead-<suffix>` leader names) are refused before
@@ -390,7 +424,14 @@ func parseLauncherEntry(args []string) (launcherEntryParse, error) {
 	entry.Rest = fp.Rest
 	if fp.LaneRole {
 		if operatorSuppliedName(fp.Rest) {
-			return entry, errors.New(laneFlagNameError)
+			// -l with the canonical label of an existing lane is a REJOIN of that
+			// label (granted only when no live session holds it — the claim
+			// refuses otherwise); any other name keeps the conflict refusal.
+			if !isCanonicalLaneName(fp.Rest) {
+				return entry, errors.New(laneFlagNameError)
+			}
+			entry.FactoryRejoin = true
+			return entry, nil
 		}
 		// Desugar into the next free lane label so the bump/liveness rules
 		// and the leader's dispatch address stay one implementation. The
@@ -705,14 +746,23 @@ func refuseCodexLeaderRun(root, runID string) (err error) {
 // operator-supplied count, or homestate.LaneCapacityDerived when the leader
 // start carried none — the marker the join reads as capacity-open.
 func recordFactoryRunStart(root, runID, backend, specID string, declaredLanes int) (err error) {
-	if err := factory.RecordFactoryRunStart(root, runID, backend, specID); err != nil {
-		return err
-	}
 	db, err := homestate.OpenFactory(root)
 	if err != nil {
 		return err
 	}
 	defer closeFactoryInto(&err, db, "factory state")
+	// A run id a consolidation retired is refused BEFORE the queue-side runtime
+	// write (card t1963, CARRY-5): the queue record below would otherwise be
+	// written for a run that RecordRun then refuses. This probe is ordering
+	// only. RecordRun's in-transaction guard stays the atomic check, so a
+	// consolidation committing between this probe and RecordRun can still leave
+	// the queue-side record behind: the window is narrowed, not closed.
+	if err := db.RefuseIfRetiredByConsolidation(context.Background(), runID); err != nil {
+		return err
+	}
+	if err := factory.RecordFactoryRunStart(root, runID, backend, specID); err != nil {
+		return err
+	}
 	// The owner stamp written here is the RECORDING process, and it is correct
 	// only for the instant it describes. On a replace-shaped door (syscall.Exec)
 	// this process IS the session and the stamp stays correct; on the spawn and
@@ -928,6 +978,52 @@ func resolveFactoryLaneName(root, label, backend string, auto bool, notes io.Wri
 		_, _ = fmt.Fprintf(notes, "factory: %s is held by a live session; launching as %s\n", canonical, final)
 	}
 	return final, nil
+}
+
+// isCanonicalLaneName reports whether the first operator-supplied name in args
+// (before the pass-through marker) is exactly a canonical `lane-<n>` label.
+func isCanonicalLaneName(args []string) bool {
+	first, ok := parseNamedLabel(args, func(string) bool { return true })
+	if !ok {
+		return false
+	}
+	n, isLane := factory.SplitFactoryLaneLabel(first)
+	return isLane && factory.FactoryLaneLabel(n) == first
+}
+
+// claimFactoryLaneForEntry is the lane entry's one claim call: the `-l` join
+// takes the next free label (resolveFactoryLaneName), a `-l --name lane-<n>`
+// rejoin takes exactly that label or is refused (rejoinFactoryLaneName).
+func claimFactoryLaneForEntry(root, label, backend string, entry launcherEntryParse, notes io.Writer) (string, error) {
+	if entry.FactoryRejoin {
+		return rejoinFactoryLaneName(root, label, backend)
+	}
+	return resolveFactoryLaneName(root, label, backend, entry.FactoryAutoNumber, notes)
+}
+
+// rejoinFactoryLaneName registers this process under exactly label (a canonical
+// `lane-<n>`), or refuses. The label is granted only when no LIVE roster row
+// holds it; a dead row is pruned and replaced in the same claim. Unlike the
+// next-free join it never bumps to another number: a live holder is an error
+// and nothing changes. The check and the insert are one claim — the admission
+// lock and the single transaction in factory.ClaimFactoryLaneWithinWithBackend
+// (maxSlots = the label's own number makes a taken label a refusal rather than
+// a bump). No lease is read or written here: leases stay with the card owner.
+func rejoinFactoryLaneName(root, label, backend string) (string, error) {
+	n, ok := factory.SplitFactoryLaneLabel(label)
+	if !ok {
+		return "", fmt.Errorf("rejoin factory lane: %q is not a lane label", label)
+	}
+	runID := strings.TrimSpace(os.Getenv(config.EnvFactoryRunID))
+	claim, err := factory.ClaimFactoryLaneWithinWithBackend(root, label, false, os.Getpid(), runID, n, backend, factoryProcessAlive)
+	var legacyRun *factory.FactoryLegacyRunError
+	if errors.As(err, &legacyRun) {
+		return "", fmt.Errorf("claim factory lane: %s", legacyRun)
+	}
+	if err != nil {
+		return "", fmt.Errorf("rejoin factory lane %s: %w", label, err)
+	}
+	return claim.Label, nil
 }
 
 // replaceNamedLabel returns args with the first `--name` / `-n` value equal

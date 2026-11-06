@@ -58,9 +58,9 @@ func TestGETReadPathAllowsValidProfileName(t *testing.T) {
 	h := a.routes()
 
 	for _, valid := range []string{"", "default", "work", "my-profile"} {
-		rec := serveGet(t, h, "/?profile="+url.QueryEscape(valid))
+		rec := serveGet(t, h, "/overview?profile="+url.QueryEscape(valid))
 		if rec.Code != http.StatusOK {
-			t.Errorf("GET /?profile=%q status = %d, want 200 (valid name must not be denied)", valid, rec.Code)
+			t.Errorf("GET /overview?profile=%q status = %d, want 200 (valid name must not be denied)", valid, rec.Code)
 		}
 	}
 }

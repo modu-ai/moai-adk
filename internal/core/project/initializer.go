@@ -77,7 +77,7 @@ type InitOptions struct {
 	// AutonomyTier (SPEC-AUTONOMY-TIERS-001 M7): the interactive autonomy-tier
 	// selection. Reuses the config.AutonomyTier* enum. Empty when unset; the
 	// downstream reader resolves empty → semi-auto.
-	AutonomyTier string // workflow.autonomy_tier
+	AutonomyTier string // applied as the Claude Code permission defaultMode (user-scope settings.json) by ApplyAutonomyTierBundle; not a workflow.yaml key
 
 	// Harness is the resolved agent-harness selection (SPEC-INIT-HARNESS-001
 	// REQ-IH-005): one of {claude, codex, both}, empty meaning claude. While

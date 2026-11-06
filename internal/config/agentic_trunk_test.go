@@ -24,17 +24,17 @@ func TestAgenticTrunkValueSet(t *testing.T) {
 		if len(got) != 5 {
 			t.Fatalf("AllowedWorkflows() has %d entries, want 5: %v", len(got), got)
 		}
-		if got[len(got)-1] != WorkflowAgenticTrunk {
-			t.Errorf("AllowedWorkflows() last entry = %q, want %q (fifth value appended)", got[len(got)-1], WorkflowAgenticTrunk)
+		if got[len(got)-1] != WorkflowAFFlow {
+			t.Errorf("AllowedWorkflows() last entry = %q, want %q (fifth value appended)", got[len(got)-1], WorkflowAFFlow)
 		}
-		if got[4] != "agentic-trunk" {
-			t.Errorf("AllowedWorkflows()[4] = %q, want the literal agentic-trunk", got[4])
+		if got[4] != "af-flow" {
+			t.Errorf("AllowedWorkflows()[4] = %q, want the literal af-flow", got[4])
 		}
 	})
 
 	t.Run("classifies valid and not git-flow", func(t *testing.T) {
-		if got := ClassifyWorkflowDisposition(WorkflowAgenticTrunk); got != DispositionValidNonGitFlow {
-			t.Errorf("ClassifyWorkflowDisposition(%q) = %q, want %q (the class github-flow has)", WorkflowAgenticTrunk, got, DispositionValidNonGitFlow)
+		if got := ClassifyWorkflowDisposition(WorkflowAFFlow); got != DispositionValidNonGitFlow {
+			t.Errorf("ClassifyWorkflowDisposition(%q) = %q, want %q (the class github-flow has)", WorkflowAFFlow, got, DispositionValidNonGitFlow)
 		}
 	})
 
@@ -74,13 +74,13 @@ func TestAgenticTrunkValueSet(t *testing.T) {
 
 	t.Run("reader seam classifies the fixture value", func(t *testing.T) {
 		root := t.TempDir()
-		dispositionWrite(t, root, gitStrategyBody("manual", WorkflowAgenticTrunk, ""))
+		dispositionWrite(t, root, gitStrategyBody("manual", WorkflowAFFlow, ""))
 		got := LoadGitFlowIntegrationConfig(root)
 		if got.Disposition != DispositionValidNonGitFlow {
 			t.Errorf("Disposition = %q, want %q", got.Disposition, DispositionValidNonGitFlow)
 		}
-		if got.Workflow != WorkflowAgenticTrunk {
-			t.Errorf("Workflow raw = %q, want %q", got.Workflow, WorkflowAgenticTrunk)
+		if got.Workflow != WorkflowAFFlow {
+			t.Errorf("Workflow raw = %q, want %q", got.Workflow, WorkflowAFFlow)
 		}
 		if got.IsGitFlow() {
 			t.Error("IsGitFlow() = true on agentic-trunk — it must take the github-flow class")
@@ -96,7 +96,7 @@ func TestAgenticTrunkValueSet(t *testing.T) {
 func TestAgenticTrunkTarget(t *testing.T) {
 	t.Run("manual", func(t *testing.T) {
 		root := t.TempDir()
-		body := gitStrategyBody("manual", WorkflowAgenticTrunk,
+		body := gitStrategyBody("manual", WorkflowAFFlow,
 			"        develop_branch: develop\n        environment: staging\n        release_branch_prefix: release/\n")
 		dispositionWrite(t, root, body)
 		got := LoadGitFlowIntegrationConfig(root)
@@ -113,7 +113,7 @@ func TestAgenticTrunkTarget(t *testing.T) {
 
 	t.Run("personal", func(t *testing.T) {
 		root := t.TempDir()
-		body := gitStrategyBody("personal", WorkflowAgenticTrunk,
+		body := gitStrategyBody("personal", WorkflowAFFlow,
 			"        develop_branch: develop\n        environment: staging\n")
 		dispositionWrite(t, root, body)
 		got := LoadGitFlowIntegrationConfig(root)
@@ -130,7 +130,7 @@ func TestAgenticTrunkTarget(t *testing.T) {
 
 	t.Run("team", func(t *testing.T) {
 		root := t.TempDir()
-		body := gitStrategyBody("team", WorkflowAgenticTrunk,
+		body := gitStrategyBody("team", WorkflowAFFlow,
 			"        release_branch_prefix: release/\n")
 		dispositionWrite(t, root, body)
 		got := LoadGitFlowIntegrationConfig(root)
@@ -150,7 +150,7 @@ func TestAgenticTrunkTarget(t *testing.T) {
 			ReleaseBranchPrefix: "release/",
 			MainBranch:          "trunk",
 		}
-		if got := WorkflowIntegrationTarget(WorkflowAgenticTrunk, profile); got != "main" {
+		if got := WorkflowIntegrationTarget(WorkflowAFFlow, profile); got != "main" {
 			t.Errorf("WorkflowIntegrationTarget(agentic-trunk, all keys set) = %q, want main", got)
 		}
 	})
@@ -168,8 +168,8 @@ func TestAgenticTrunkLocalIntegrationPredicate(t *testing.T) {
 		wantGitFlowOnly bool
 	}{
 		{name: "git-flow manual", body: gitStrategyBody("manual", WorkflowGitFlow, "        develop_branch: develop\n"), wantLocal: true, wantGitFlowOnly: true},
-		{name: "agentic-trunk manual", body: gitStrategyBody("manual", WorkflowAgenticTrunk, ""), wantLocal: true, wantGitFlowOnly: false},
-		{name: "agentic-trunk team", body: gitStrategyBody("team", WorkflowAgenticTrunk, ""), wantLocal: false, wantGitFlowOnly: false},
+		{name: "agentic-trunk manual", body: gitStrategyBody("manual", WorkflowAFFlow, ""), wantLocal: true, wantGitFlowOnly: false},
+		{name: "agentic-trunk team", body: gitStrategyBody("team", WorkflowAFFlow, ""), wantLocal: false, wantGitFlowOnly: false},
 		{name: "github-flow manual", body: gitStrategyBody("manual", WorkflowGitHubFlow, ""), wantLocal: false, wantGitFlowOnly: false},
 		{name: "absent file", body: "", wantLocal: false, wantGitFlowOnly: false},
 	}
@@ -196,7 +196,7 @@ func TestAgenticTrunkLocalIntegrationPredicate(t *testing.T) {
 func TestAgenticTrunkDevelopBranchProjection(t *testing.T) {
 	t.Run("key absent", func(t *testing.T) {
 		root := t.TempDir()
-		dispositionWrite(t, root, gitStrategyBody("manual", WorkflowAgenticTrunk, ""))
+		dispositionWrite(t, root, gitStrategyBody("manual", WorkflowAFFlow, ""))
 		got := LoadGitFlowIntegrationConfig(root)
 		if got.DevelopBranch != "main" {
 			t.Errorf("DevelopBranch = %q, want main with no develop_branch key", got.DevelopBranch)
@@ -208,7 +208,7 @@ func TestAgenticTrunkDevelopBranchProjection(t *testing.T) {
 
 	t.Run("key present as develop is ignored", func(t *testing.T) {
 		root := t.TempDir()
-		dispositionWrite(t, root, gitStrategyBody("manual", WorkflowAgenticTrunk, "        develop_branch: develop\n"))
+		dispositionWrite(t, root, gitStrategyBody("manual", WorkflowAFFlow, "        develop_branch: develop\n"))
 		got := LoadGitFlowIntegrationConfig(root)
 		if got.DevelopBranch != "main" {
 			t.Errorf("DevelopBranch = %q, want main (the develop_branch key is ignored under agentic-trunk)", got.DevelopBranch)
@@ -217,7 +217,7 @@ func TestAgenticTrunkDevelopBranchProjection(t *testing.T) {
 
 	t.Run("personal mode empty seam", func(t *testing.T) {
 		root := t.TempDir()
-		dispositionWrite(t, root, gitStrategyBody("personal", WorkflowAgenticTrunk, ""))
+		dispositionWrite(t, root, gitStrategyBody("personal", WorkflowAFFlow, ""))
 		got := LoadGitFlowIntegrationConfig(root)
 		if got.DevelopBranch != "" {
 			t.Errorf("DevelopBranch = %q, want empty in personal mode", got.DevelopBranch)
@@ -237,7 +237,7 @@ func TestAgenticTrunkDevelopBranchProjection(t *testing.T) {
 // TestAgenticTrunkGuidance pins the diagnostic surfaces (REQ-AGT-009 /
 // AC-AGT-008): the invalid-value allowed-set listing carries all five
 // values, and every git-flow fix suggestion that names
-// `github-flow (target main)` also names `agentic-trunk (target main)`.
+// `github-flow (target main)` also names `af-flow (target main)`.
 func TestAgenticTrunkGuidance(t *testing.T) {
 	t.Run("invalid-value listing carries all five values", func(t *testing.T) {
 		root := t.TempDir()
@@ -257,8 +257,8 @@ func TestAgenticTrunkGuidance(t *testing.T) {
 		if !strings.Contains(msg, "github-flow (target main)") {
 			t.Errorf("fix no longer names github-flow (target main): %q", msg)
 		}
-		if !strings.Contains(msg, "agentic-trunk (target main)") {
-			t.Errorf("fix does not name agentic-trunk (target main): %q", msg)
+		if !strings.Contains(msg, "af-flow (target main)") {
+			t.Errorf("fix does not name af-flow (target main): %q", msg)
 		}
 	})
 
@@ -270,8 +270,8 @@ func TestAgenticTrunkGuidance(t *testing.T) {
 		if !strings.Contains(msg, "github-flow (target main)") {
 			t.Errorf("fix no longer names github-flow (target main): %q", msg)
 		}
-		if !strings.Contains(msg, "agentic-trunk (target main)") {
-			t.Errorf("fix does not name agentic-trunk (target main): %q", msg)
+		if !strings.Contains(msg, "af-flow (target main)") {
+			t.Errorf("fix does not name af-flow (target main): %q", msg)
 		}
 	})
 }
@@ -311,7 +311,7 @@ func TestAgenticTrunkDistributedDefaultsUnchanged(t *testing.T) {
 
 	t.Run("built-in defaults name no agentic-trunk anywhere", func(t *testing.T) {
 		gs := NewDefaultGitStrategyConfig()
-		if gs.Manual.Workflow == WorkflowAgenticTrunk || gs.Personal.Workflow == WorkflowAgenticTrunk || gs.Team.Workflow == WorkflowAgenticTrunk {
+		if gs.Manual.Workflow == WorkflowAFFlow || gs.Personal.Workflow == WorkflowAFFlow || gs.Team.Workflow == WorkflowAFFlow {
 			t.Error("a built-in default profile carries agentic-trunk")
 		}
 	})

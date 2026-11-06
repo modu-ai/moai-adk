@@ -23,6 +23,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -43,6 +44,7 @@ func TestSessionStart_DeferredScanDoesNotBlockReturn(t *testing.T) {
 	// developer machine running CG mode (same isolation pattern as
 	// TestSessionStartHandler_Handle). Non-parallel: mutates package seams.
 	t.Setenv("ANTHROPIC_BASE_URL", "")
+	stageLap := observeStageLaps(t)
 
 	// SPEC-DRIFT-CACHE-FILL-001 REQ-DCF-011: the deferred step's drift work is
 	// now the HEAD-SHA cache RESOLVE (driftCachedCountFn), not the in-band
@@ -66,7 +68,7 @@ func TestSessionStart_DeferredScanDoesNotBlockReturn(t *testing.T) {
 		select {
 		case <-driftAbort:
 			return 7, true // test released the scan; value irrelevant
-		case <-time.After(2 * time.Second):
+		case <-time.After(deferredScanSafetyNet):
 			return 99, true
 		}
 	}
@@ -82,9 +84,7 @@ func TestSessionStart_DeferredScanDoesNotBlockReturn(t *testing.T) {
 		HookEventName: "SessionStart",
 	}
 
-	start := time.Now()
 	out, err := h.Handle(context.Background(), input)
-	elapsed := time.Since(start)
 	if err != nil {
 		t.Fatalf("Handle error: %v", err)
 	}
@@ -92,31 +92,15 @@ func TestSessionStart_DeferredScanDoesNotBlockReturn(t *testing.T) {
 		t.Fatal("Handle returned nil output")
 	}
 
-	// Threshold derivation (t662). This assertion discriminates two states:
-	//
-	//	deferred (correct)     434.93ms .. 646.52ms   measured, n=160
-	//	synchronous (defect)   ~2s                    the block injected above
-	//
-	// The bound must clear the correct state's observed maximum and stay well
-	// under what the defect costs:
-	//
-	//	lower  646.52ms * 1.5 = 969.8ms   headroom over the correct state
-	//	upper  2s / 2         = 1000ms    separation from the defect state
-	//
-	// 1s is the round value in [970ms, 1000ms].
-	//
-	// It is NOT an input-lag budget. The previous 500ms bound sat at 1.1x the
-	// correct state's median, so it fired on slow-but-correct runs while the
-	// message blamed deferral — a failure none of the 160 observations ever
-	// showed. The input-lag contract is asserted separately, under normal
-	// (non-pathological) scan conditions, by TestSessionStart_HandleInputLagBudget.
-	//
-	// Measurement: .moai/reports/t662/verdict.md
-	const deferralDiscriminationBound = 1 * time.Second
-	if elapsed > deferralDiscriminationBound {
-		t.Fatalf("Handle blocked %v (bound %v); the advisory scan ran on the synchronous path instead of being deferred",
-			elapsed, deferralDiscriminationBound)
-	}
+	// Deferral is read from two facts that do not depend on how long Handle's
+	// unrelated synchronous steps took (card t2048): the scan was still pending
+	// when Handle returned, and the deferred join alone stayed within its bound.
+	// A total-elapsed threshold here (1s, from t662) failed correct runs whose
+	// synchronous git and file-lock steps ran slow (1.046s observed), while a
+	// scan moved onto the synchronous path or an unbounded join still fails both
+	// checks. Total elapsed time is not asserted here: the input-lag contract
+	// belongs to TestSessionStart_HandleInputLagBudget.
+	assertDeferralOffSyncPath(t, completedCh, stageLap)
 
 	// Turn-visible attribution MUST remain synchronous.
 	if out.HookSpecificOutput == nil || !strings.Contains(out.HookSpecificOutput.AdditionalContext, "source_session_id=") {
@@ -336,7 +320,7 @@ func TestSessionStart_DeferredScanJoinsWithinBound(t *testing.T) {
 			select {
 			case <-driftAbort:
 				return driftWarningThreshold, true
-			case <-time.After(deferredScanJoinBound + 200*time.Millisecond):
+			case <-time.After(deferredScanSafetyNet):
 				return driftWarningThreshold, true
 			}
 		}
@@ -345,15 +329,14 @@ func TestSessionStart_DeferredScanJoinsWithinBound(t *testing.T) {
 		projectDir := t.TempDir()
 		mkStateDir(t, projectDir)
 		h := NewSessionStartHandler(nil)
+		stageLap := observeStageLaps(t)
 
-		start := time.Now()
 		out, err := h.Handle(context.Background(), &HookInput{
 			SessionID:     "sess-join-slow",
 			CWD:           projectDir,
 			ProjectDir:    projectDir,
 			HookEventName: "SessionStart",
 		})
-		elapsed := time.Since(start)
 		if err != nil {
 			t.Fatalf("Handle: %v", err)
 		}
@@ -366,16 +349,59 @@ func TestSessionStart_DeferredScanJoinsWithinBound(t *testing.T) {
 			t.Errorf("slow scan advisory was NOT dropped; expected absence since scan exceeds bound. payload=%v", payload)
 		}
 
-		// Handle must return within a small envelope above the bound (the
-		// bound itself plus modest headroom for the synchronous errgroup
-		// steps). It must NOT approach the slow scan's full duration.
-		if elapsed > deferredScanJoinBound+500*time.Millisecond {
-			t.Errorf("Handle blocked %v; expected return near the %v bound", elapsed, deferredScanJoinBound)
-		}
+		// Handle must return with the slow scan still pending and its join
+		// within the bound; it must NOT wait for the scan to finish.
+		assertDeferralOffSyncPath(t, completedCh, stageLap)
 
 		close(driftAbort)
 		waitDeferred(t, completedCh, 3*time.Second)
 	})
+}
+
+// deferredScanSafetyNet is how long an injected slow deferred scan blocks when
+// the test never releases it. The assertions do not wait on it: a correct
+// Handle returns after the 250ms join, long before this. It exists so that a
+// defect which puts the scan on the synchronous path or removes the join bound
+// shows up as a deferred_join lap of this length (far above the limit below)
+// and a scan already finished at return, instead of hanging the test.
+const deferredScanSafetyNet = 5 * time.Second
+
+// observeStageLaps installs the SessionStart stage observer for the test and
+// returns a reader of the accumulated time per stage name.
+func observeStageLaps(t *testing.T) func(stage string) time.Duration {
+	t.Helper()
+	orig := handleStageObserver
+	var mu sync.Mutex
+	got := map[string]time.Duration{}
+	handleStageObserver = func(stage string, d time.Duration) {
+		mu.Lock()
+		got[stage] += d
+		mu.Unlock()
+	}
+	t.Cleanup(func() { handleStageObserver = orig })
+	return func(stage string) time.Duration {
+		mu.Lock()
+		defer mu.Unlock()
+		return got[stage]
+	}
+}
+
+// assertDeferralOffSyncPath asserts, from facts that do not depend on the cost
+// of Handle's other synchronous steps, that the deferred advisory scan is off
+// the synchronous path and its join is bounded: (1) the scan had not finished
+// when Handle returned, and (2) the deferred_join stage alone stayed within
+// twice deferredScanJoinBound (the join waits one bound; the second bound is
+// scheduling headroom).
+func assertDeferralOffSyncPath(t *testing.T, completed <-chan struct{}, stageLap func(string) time.Duration) {
+	t.Helper()
+	select {
+	case <-completed:
+		t.Fatal("the deferred scan had already finished when Handle returned: it ran on the synchronous path")
+	default:
+	}
+	if l := stageLap("deferred_join"); l > 2*deferredScanJoinBound {
+		t.Fatalf("deferred_join took %v, want at most %v: the join must be bounded by %v", l, 2*deferredScanJoinBound, deferredScanJoinBound)
+	}
 }
 
 // mkStateDir ensures .moai/state exists under the project dir so the

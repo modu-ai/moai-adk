@@ -11,24 +11,54 @@ package config
 
 import "strings"
 
-// The allowed workflow values (REQ-GWS-001; agentic-trunk appended by
-// SPEC-GIT-STRATEGY-AGENTIC-TRUNK-001 REQ-AGT-001). Exactly five;
+// The allowed workflow values (REQ-GWS-001; the fifth, af-flow, appended by
+// SPEC-GIT-STRATEGY-AGENTIC-TRUNK-001 REQ-AGT-001 under its former name
+// agentic-trunk, renamed by card t2045). Exactly five;
 // `trunk-based` is deliberately EXCLUDED by operator decision — a user who
 // sets it gets the invalid-value diagnostic, which is where they discover
 // the exclusion.
 const (
-	WorkflowGitHubFlow   = "github-flow"
-	WorkflowGitFlow      = "git-flow"
-	WorkflowGitLabFlow   = "gitlab-flow"
-	WorkflowReleaseFlow  = "release-flow"
-	WorkflowAgenticTrunk = "agentic-trunk"
+	WorkflowGitHubFlow  = "github-flow"
+	WorkflowGitFlow     = "git-flow"
+	WorkflowGitLabFlow  = "gitlab-flow"
+	WorkflowReleaseFlow = "release-flow"
+	WorkflowAFFlow      = "af-flow"
 )
+
+// workflowLegacyAgenticTrunk is the former spelling of WorkflowAFFlow. It is
+// accepted on read only (NormalizeWorkflow) and is not an allowed value.
+const workflowLegacyAgenticTrunk = "agentic-trunk"
+
+// NormalizeWorkflow maps the legacy value agentic-trunk to af-flow and returns
+// every other string unchanged: no trimming, no case folding, so an invalid
+// value still classifies invalid. It is applied where a profile's workflow
+// value is read from git-strategy.yaml.
+func NormalizeWorkflow(raw string) string {
+	if raw == workflowLegacyAgenticTrunk {
+		return WorkflowAFFlow
+	}
+	return raw
+}
+
+// effectiveWorkflow is the one place that turns an active mode profile into
+// the workflow every reader sees (card t2056): the normalized value (legacy
+// agentic-trunk reads as af-flow), except that a factory leader or lane
+// session reads a profile that sets NO workflow (missing or blank) as af-flow.
+// An explicit value is never replaced, and nothing is written back. Every
+// reader of the profile's workflow goes through here, so two readers cannot
+// disagree about the same file.
+func effectiveWorkflow(profile *ModeProfile, factorySession bool) string {
+	if factorySession && strings.TrimSpace(profile.Workflow) == "" {
+		return WorkflowAFFlow
+	}
+	return NormalizeWorkflow(profile.Workflow)
+}
 
 // githubFlowFixedTarget is github-flow's integration target: the fixed
 // default main. github-flow reads no config key for its target.
 const githubFlowFixedTarget = "main"
 
-// agenticTrunkFixedTarget is agentic-trunk's integration target: the fixed
+// agenticTrunkFixedTarget is af-flow's integration target: the fixed
 // default main (REQ-AGT-003). Like github-flow it reads no config key — the
 // develop_branch, environment, release_branch_prefix and main_branch keys
 // change nothing.
@@ -39,7 +69,7 @@ const agenticTrunkFixedTarget = "main"
 // ClassifyWorkflowDisposition rather than re-deriving membership from this
 // slice, so validation has one source of truth.
 func AllowedWorkflows() []string {
-	return []string{WorkflowGitHubFlow, WorkflowGitFlow, WorkflowGitLabFlow, WorkflowReleaseFlow, WorkflowAgenticTrunk}
+	return []string{WorkflowGitHubFlow, WorkflowGitFlow, WorkflowGitLabFlow, WorkflowReleaseFlow, WorkflowAFFlow}
 }
 
 // WorkflowDisposition is the three-way classification of a
@@ -64,7 +94,7 @@ const (
 // ClassifyWorkflowDisposition classifies a raw workflow value. Matching is
 // exact and case-sensitive — the pre-existing git-flow discriminator was
 // case-sensitive, and generalizing to the allowed set keeps that contract
-// (agentic-trunk included, REQ-AGT-002). An empty string classifies invalid
+// (af-flow included, REQ-AGT-002; the legacy agentic-trunk reads as af-flow). An empty string classifies invalid
 // (an empty value present), but the loader only calls this when an active
 // profile exists, so the zero disposition stays reserved for "unknown".
 //
@@ -72,10 +102,10 @@ const (
 // git_strategy.<mode>.workflow classifies through here, never by re-matching
 // raw values (SPEC-GITSTRAT-WORKFLOW-READER-001 REQ-GWS-001).
 func ClassifyWorkflowDisposition(value string) WorkflowDisposition {
-	switch value {
+	switch NormalizeWorkflow(value) {
 	case WorkflowGitFlow:
 		return DispositionGitFlow
-	case WorkflowGitHubFlow, WorkflowGitLabFlow, WorkflowReleaseFlow, WorkflowAgenticTrunk:
+	case WorkflowGitHubFlow, WorkflowGitLabFlow, WorkflowReleaseFlow, WorkflowAFFlow:
 		return DispositionValidNonGitFlow
 	default:
 		return DispositionInvalid
@@ -97,10 +127,10 @@ func ClassifyWorkflowDisposition(value string) WorkflowDisposition {
 // consumes this through the loader; acquire/automerge stay unwired
 // (REQ-GWS-008) and are a follow-up card candidate.
 func WorkflowIntegrationTarget(workflow string, profile ModeProfile) string {
-	switch workflow {
+	switch NormalizeWorkflow(workflow) {
 	case WorkflowGitHubFlow:
 		return githubFlowFixedTarget
-	case WorkflowAgenticTrunk:
+	case WorkflowAFFlow:
 		return agenticTrunkFixedTarget
 	case WorkflowGitFlow:
 		return strings.TrimSpace(profile.DevelopBranch)

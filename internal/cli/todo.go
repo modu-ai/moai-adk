@@ -702,6 +702,10 @@ type todoAddScan struct {
 	haveSizeLines bool
 	files         string
 	haveFiles     bool
+	// card t2058: the failed release-CI candidate a repair card's worktree is
+	// cut from.
+	baseSHA     string
+	haveBaseSHA bool
 }
 
 // scanTodoAddArgs separates the known flags from the card text in the raw
@@ -794,6 +798,20 @@ func scanTodoAddArgs(raw []string) (*todoAddScan, error) {
 						return nil, fmt.Errorf("flag needs an argument: %s", name)
 					}
 					scan.files = raw[i]
+				}
+			case "--base-sha":
+				if scan.haveBaseSHA {
+					return nil, fmt.Errorf("flag repeated: %s", name)
+				}
+				scan.haveBaseSHA = true
+				if hasValue {
+					scan.baseSHA = value
+				} else {
+					i++
+					if i >= len(raw) {
+						return nil, fmt.Errorf("flag needs an argument: %s", name)
+					}
+					scan.baseSHA = raw[i]
 				}
 			case "--classification-file":
 				scan.haveClassFile = true
@@ -898,9 +916,15 @@ func newTodoAddCmd() *cobra.Command {
 			// BEFORE the pick branch (card t1454 card-review r2 finding 7):
 			// `--pick` carries the issuance flags too — an early return here
 			// left them unvalidated and unsaved.
+			// card t2058: a base the caller asked for but left blank (an unset
+			// shell variable) is an error, never "no base" — the lease would
+			// cut the repair from the configured branch, the wrong base.
+			if scan.haveBaseSHA && strings.TrimSpace(scan.baseSHA) == "" {
+				return fmt.Errorf("todo add: --base-sha needs a full 40-hex commit SHA (got an empty value)")
+			}
 			var iss *factory.BacklogIssuance
-			if scan.haveOrigin || scan.haveParent || scan.haveSizeLines || scan.haveFiles {
-				iss = &factory.BacklogIssuance{Origin: scan.origin, SpawnedBy: scan.parent}
+			if scan.haveOrigin || scan.haveParent || scan.haveSizeLines || scan.haveFiles || scan.haveBaseSHA {
+				iss = &factory.BacklogIssuance{Origin: scan.origin, SpawnedBy: scan.parent, BaseSHA: strings.TrimSpace(scan.baseSHA)}
 				if scan.haveSizeLines {
 					n, parseErr := strconv.Atoi(strings.TrimSpace(scan.sizeLines))
 					if parseErr != nil {
@@ -934,6 +958,8 @@ func newTodoAddCmd() *cobra.Command {
 		"Estimated product line count")
 	cmd.Flags().StringVar(new(string), "files", "",
 		"Comma-separated expected files")
+	cmd.Flags().StringVar(new(string), "base-sha", "",
+		"Full commit SHA the card's worktree is cut from (a repair card's failed release-CI candidate)")
 	cmd.Flags().BoolVar(new(bool), "force", false,
 		"Admit a card the analyser reads as an exact duplicate, recording that it was forced")
 	cmd.Flags().StringVar(new(string), "classification-file", "",
@@ -1059,6 +1085,9 @@ func validateIssuanceInLock(rec *factory.BacklogRecord, iss *factory.BacklogIssu
 		return fmt.Errorf("todo add: --origin must be one of %s (got %q)",
 			strings.Join(factory.IssuanceOrigins, ", "), iss.Origin)
 	}
+	if iss.BaseSHA != "" && !issuanceBaseSHAValid(iss.BaseSHA) {
+		return fmt.Errorf("todo add: --base-sha must be a full 40-hex commit SHA (got %q)", iss.BaseSHA)
+	}
 	if iss.SpawnedBy != "" {
 		parentExists := false
 		for i := range rec.Items {
@@ -1078,6 +1107,21 @@ func validateIssuanceInLock(rec *factory.BacklogRecord, iss *factory.BacklogIssu
 		}
 	}
 	return nil
+}
+
+// issuanceBaseSHAValid reports whether s is a full 40-character lowercase-hex
+// commit SHA (card t2058). Format only: the commit may not be fetched on the
+// issuing side yet, so existence is checked when the lease cuts the worktree.
+func issuanceBaseSHAValid(s string) bool {
+	if len(s) != 40 {
+		return false
+	}
+	for _, c := range s {
+		if (c < '0' || c > '9') && (c < 'a' || c > 'f') {
+			return false
+		}
+	}
+	return true
 }
 
 // attachIssuance records the issuance attributes on the freshly appended

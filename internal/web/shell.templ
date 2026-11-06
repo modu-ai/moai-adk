@@ -132,7 +132,8 @@ templ rail(vm ShellVM) {
 			<span>{ vm.Host }</span>
 		</div>
 		<ul class="nav">
-			@navRow(vm, "overview", "Overview", "/")
+			@navRow(vm, "board", "Board", "/board")
+			@navRow(vm, "overview", "Overview", "/overview")
 			@navRow(vm, "todo", "Todo", "/todo")
 			@navRow(vm, "settings", "Settings", "/settings")
 			if vm.Area == "settings" && len(vm.Tabs) > 0 {

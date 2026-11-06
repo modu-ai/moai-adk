@@ -50,6 +50,9 @@ type launcherEntryParse struct {
 	// (`-l`), as opposed to one the operator typed; the claim reports legacy
 	// collisions differently.
 	FactoryAutoNumber bool
+	// FactoryRejoin marks `-l --name lane-<n>`: the session asks for that exact
+	// canonical label (a rejoin of a dead lane) instead of the next free one.
+	FactoryRejoin bool
 	// ClearPolicy carries the lane's --clear-policy selection (REQ-SD-020,
 	// factory entry only): "" when none was given, which the lane reads as
 	// the default clear-each.

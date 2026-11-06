@@ -379,7 +379,7 @@ Run `/clear` after each phase to empty the context. The decisions live on as fil
 
 ## Personal instructions file — `AGENTS.local.md`
 
-Write the personal rules you want followed in a project into `AGENTS.local.md` at the project root. Git ignores it, `moai update` never touches it, and both Claude Code and `moai codex` read it. The contract shared with your team lives in `AGENTS.md` and Claude-only settings live in `CLAUDE.md` — those three files are the whole instruction structure.
+Write the personal rules you want followed in a project into `AGENTS.local.md` at the project root. Git ignores it, `moai update` never touches it, and both Claude Code and Codex read it. The contract shared with your team lives in `AGENTS.md` and Claude-only settings live in `CLAUDE.md` — those three files are the whole instruction structure.
 
 If you have a `CLAUDE.local.md` from an earlier version, move it once:
 

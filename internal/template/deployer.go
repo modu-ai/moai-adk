@@ -250,7 +250,7 @@ func (d *deployer) DeployWithResult(ctx context.Context, projectRoot string, m m
 		// refresh template-managed content, not to overwrite a user-owned
 		// file that happens to sit at a published-skill path. There the
 		// provenance check survives forceUpdate, and a skip is reported.
-		protectedScope := isPublishedSkillPath(destRelPath)
+		protectedScope := isPublishedSkillPath(destRelPath) || isUserOwnedTemplatePath(destRelPath)
 		if !d.forceUpdate || protectedScope {
 			if _, statErr := os.Stat(destPath); statErr == nil {
 				// File exists — check manifest for provenance

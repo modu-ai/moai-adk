@@ -50,6 +50,8 @@ Each row below is replayed against the launcher's entry parse by the document-ve
 | refused | `moai glm --factory <spec-id>` | |
 | refused | `moai cc -l lane-2` | |
 | refused | `moai glm --lane lane-2` | |
+| refused | `moai cc --agent` | |
+| refused | `moai glm --agent` | |
 | retired | `moai cg` | |
 | retired | `moai gpt` | |
 
@@ -57,6 +59,7 @@ What the table fixes:
 
 - A value after `-f` (a SPEC identifier, a number, a lane label) is refused with one line; the leader entry is bare `-f`.
 - A value after `-l` or `--lane` is refused with one line; a lane never names itself.
+- `-a` and `--agent` were removed. Each is refused with one line that points at `-l` (or `--lane`), and none maps to a role. After a literal `--`, every argument reaches the backend unchanged except `--agent`, which is refused the same way.
 - A lane joins a running factory and claims the next free lane number automatically. The operator does not choose slot numbers, and a launch with no running factory is refused.
 - `--leader <name>` selects which leader session a lane joins, and composes with `-l` or `--lane` only. It is not a short flag for any entry.
 - `moai cg` is retired and exits with its migration diagnostic; `moai migrate cg` previews an explicit role migration. `moai gpt` does not exist.

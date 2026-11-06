@@ -51,7 +51,13 @@ import (
 // (workflow.base_freshness_gate.*, SPEC-INTEGRATION-STALE-BASE-001): an older
 // cache would serve a zero gate over a workflow.yaml that opts the gate in or
 // sets its tolerance.
-const configCacheSchemaVersion = 13
+// Bumped to 14 when WorkflowJevConfig gained Consumers
+// (workflow.jev.consumers.*, SPEC-JEV-LEDGER-001): an older cache would serve
+// an empty consumers block over a workflow.yaml that configures consumers.
+// Bumped to 15 when the D2 merge-key warning entered JevConsumers.Warnings
+// (SPEC-JEV-LEDGER-001, card t1979): an older cache would serve empty
+// warnings over a workflow.yaml whose consumer uses a YAML merge key.
+const configCacheSchemaVersion = 15
 
 // cacheFileName is the fixed cache file name under the state directory.
 // Fixed name ensures predictable gitignore and cleanup (REQ-PERF-009).

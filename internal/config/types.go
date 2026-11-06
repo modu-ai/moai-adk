@@ -1050,14 +1050,19 @@ type CardMetadataVerbsConfig struct {
 }
 
 // WorkflowJevConfig mirrors workflow.jev.* — the opt-in gate for the TypeSafe
-// System One judgment capability (REQ-JEVC-015). It carries a bare Enabled flag
-// and nothing else: the request model alias (jev-latest) and the endpoint URL
-// are compiled constants in internal/jev (the interpreted model id is recorded
-// from each response), so there is no operator-visible knob that could change
-// the alias without a release, and no configuration path by which a request
-// could be aimed somewhere else.
+// System One judgment capability (REQ-JEVC-015) and the per-consumer settings
+// (SPEC-JEV-LEDGER-001). The request model alias (jev-latest) and the endpoint
+// URL are compiled constants in internal/jev (the interpreted model id is
+// recorded from each response), so there is no operator-visible knob that could
+// change the alias without a release, and no configuration path by which a
+// request could be aimed somewhere else. Consumers carries only a mode and a
+// threshold per named consumer; its tolerant decode lives in jev_consumers.go.
 type WorkflowJevConfig struct {
 	Enabled bool `yaml:"enabled"`
+
+	// Consumers is workflow.jev.consumers: consumer name -> mode and threshold.
+	// No consumer is compiled in this release, so an entry has no effect yet.
+	Consumers JevConsumers `yaml:"consumers"`
 }
 
 // AutonomyConfig mirrors workflow.autonomy.* (SPEC-AUTONOMY-CONTRACT-001
@@ -1375,6 +1380,9 @@ type GateTimeouts struct {
 	Lint      int `yaml:"lint"`
 	Test      int `yaml:"test"`
 	Typecheck int `yaml:"typecheck"`
+	// Total overrides the overall run budget, in seconds. Zero or negative
+	// means "derive it from the detected steps".
+	Total int `yaml:"total"`
 	// LockWait bounds how long a starting gate run waits for the gate-run
 	// lock — the advisory lock serializing concurrent manual `moai gate` runs
 	// in one project — before degrading to an unserialized run. In seconds,
@@ -1417,6 +1425,15 @@ func (g *GateConfig) TypecheckTimeoutDuration() time.Duration {
 		return 300 * time.Second
 	}
 	return time.Duration(g.Timeouts.Typecheck) * time.Second
+}
+
+// TotalTimeoutDuration converts the explicit overall-budget override to
+// time.Duration. Returns 0 (derive it) when the value is zero or negative.
+func (g *GateConfig) TotalTimeoutDuration() time.Duration {
+	if g.Timeouts.Total <= 0 {
+		return 0
+	}
+	return time.Duration(g.Timeouts.Total) * time.Second
 }
 
 // LockWaitDuration converts the gate-run lock wait budget to time.Duration.

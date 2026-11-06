@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/lockfile"
+	"github.com/modu-ai/moai-adk/internal/worktreeroot"
 )
 
 // WorktreeEntry records a currently active isolated worktree.
@@ -178,6 +179,19 @@ func rekeyWorktreeEntry(projectDir, from, to string) error {
 				entries[i].Path = to
 				found = true
 				break
+			}
+		}
+		if !found {
+			// The entry may spell the same directory differently (a symlinked
+			// parent such as /var vs /private/var, a trailing separator): the
+			// move re-keys the entry that denotes the tree (card t2053, C10).
+			want := worktreeroot.CanonicalSpelling(from)
+			for i := range entries {
+				if worktreeroot.CanonicalSpelling(entries[i].Path) == want {
+					entries[i].Path = to
+					found = true
+					break
+				}
 			}
 		}
 		if !found {
