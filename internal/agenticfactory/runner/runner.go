@@ -21,7 +21,6 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/claim"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
-	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
 // Verdict values a result may carry. Anything else (skipped, cancelled,
@@ -755,13 +754,10 @@ func (r *Runner) TakeOver(i core.IssueRef, old Ticket, newHolder, dispatch strin
 		if err != nil {
 			return claim.Record{}, err
 		}
+		if err := st.Refusal(); err != nil {
+			return claim.Record{}, err
+		}
 		switch {
-		case st.HasPresence && st.Class == homestate.OwnerLive:
-			return claim.Record{}, fmt.Errorf("%w: the owner's process %d is still running", core.ErrHeld, st.PID)
-		case st.HasPresence && st.Damaged:
-			return claim.Record{}, fmt.Errorf("%w: the presence file %s cannot be read: once the owner's process is confirmed gone, remove that file (the owner's next Heartbeat writes a new one)", core.ErrOwnerUnconfirmed, st.File)
-		case st.HasPresence && st.Class == homestate.OwnerIndeterminate:
-			return claim.Record{}, fmt.Errorf("%w: the owner's process %d cannot be told running or gone", core.ErrOwnerUnconfirmed, st.PID)
 		case st.HasPresence:
 			note += fmt.Sprintf("; owner process %d is gone", st.PID)
 		case ev.OwnerGone:
