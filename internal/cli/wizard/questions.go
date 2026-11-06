@@ -124,6 +124,11 @@ func DefaultQuestions(projectRoot string) []Question {
 	}
 }
 
+// DefaultGitLabInstanceURL is what a blank GitLab instance URL answer means: the
+// question's default, and what the reconfigure saver writes for a gitlab provider
+// whose URL is blank.
+const DefaultGitLabInstanceURL = "https://gitlab.com"
+
 // GitQuestions returns the 7 Git questions, in their canonical order:
 //  1. Git mode
 //  2. Git provider (conditional)
@@ -182,7 +187,7 @@ func GitQuestions() []Question {
 			Type:        QuestionTypeInput,
 			Title:       "Enter GitLab instance URL",
 			Description: "For GitLab.com use https://gitlab.com. For self-hosted, enter your instance URL.",
-			Default:     "https://gitlab.com",
+			Default:     DefaultGitLabInstanceURL,
 			Required:    false,
 			Condition: func(r *WizardResult) bool {
 				return (r.GitMode == "personal" || r.GitMode == "team") && r.GitProvider == "gitlab"

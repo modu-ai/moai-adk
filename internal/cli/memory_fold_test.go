@@ -746,7 +746,7 @@ func TestMemoryFold_VerbatimFiling(t *testing.T) {
 		if err != nil {
 			t.Fatalf("stat %s: %v", name, err)
 		}
-		if got := info.Mode().Perm(); got != 0o600 {
+		if got := info.Mode().Perm(); !permMatchesOnHost(got, 0o600) {
 			t.Errorf("%s permission = %o after the fold, want the original 0600", name, got)
 		}
 	}

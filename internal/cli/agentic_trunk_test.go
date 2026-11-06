@@ -33,9 +33,11 @@ import (
 // agenticTrunkGitStrategy is the manual agentic-trunk profile body the
 // fixtures write: the value and the git-flow-only keys together, the exact
 // state REQ-AGT-018 leaves behind at the flip (the keys ignored, no
-// diagnostic).
+// diagnostic). release_route: true (card t2098) keeps the release-route
+// fixtures (the AC-FCR-026 set below) exercising the route: since the route
+// became opt-in, only the explicit key arms it.
 const agenticTrunkGitStrategy = "git_strategy:\n    mode: manual\n    worktree_base_branch: main\n    manual:\n        workflow: agentic-trunk\n" +
-	"        develop_branch: develop\n        release_branch_prefix: release/\n" +
+	"        develop_branch: develop\n        release_branch_prefix: release/\n        release_route: true\n" +
 	"        rc_version_format: vX.Y.Z-rc.N\n        lead_push_threshold: 20\n        merge_method: merge\n"
 
 // writeAgenticTrunkConfig stamps the agentic-trunk git-strategy body under
@@ -345,8 +347,8 @@ func TestAgenticTrunkAutoMerge(t *testing.T) {
 		if len(rec.gitLog) != 0 || len(rec.lockLog) != 0 {
 			t.Errorf("a non-manual agentic-trunk project must not merge: gitLog=%v lockLog=%v", rec.gitLog, rec.lockLog)
 		}
-		if !strings.Contains(notice, "git-flow") || !strings.Contains(notice, "agentic-trunk") {
-			t.Errorf("skip notice must name both workflows (git-flow and agentic-trunk): %q", notice)
+		if !strings.Contains(notice, "git-flow") || !strings.Contains(notice, "af-flow") {
+			t.Errorf("skip notice must name both workflows (git-flow and af-flow): %q", notice)
 		}
 		if !strings.Contains(notice, "develop_branch") || !strings.Contains(notice, "git_strategy") {
 			t.Errorf("skip notice must keep naming the config key: %q", notice)
@@ -602,7 +604,7 @@ func TestAgenticTrunkAutoMergeSkipsPrimaryTarget(t *testing.T) {
 		rec := &amRecorder{}
 		seams := baseAMSeams(rec)
 		seams.gitFlow = func(string) config.GitFlowIntegrationConfig {
-			return config.GitFlowIntegrationConfig{Manual: true, AgenticTrunkWorkflow: true, Workflow: config.WorkflowAgenticTrunk, DevelopBranch: "main"}
+			return config.GitFlowIntegrationConfig{Manual: true, AgenticTrunkWorkflow: true, Workflow: config.WorkflowAFFlow, DevelopBranch: "main"}
 		}
 		seams.primaryHolds = func(root, branch string) bool { return true }
 		swapAutoMergeSeams(t, seams)
@@ -736,7 +738,7 @@ func TestAgenticTrunkIntegrationAcquire(t *testing.T) {
 		if len(lines) != 1 {
 			t.Fatalf("want exactly one warning line, got %d: %q", len(lines), stderr)
 		}
-		for _, token := range []string{"agentic-trunk", "main"} {
+		for _, token := range []string{"af-flow", "main"} {
 			if !strings.Contains(lines[0], token) {
 				t.Errorf("unwired-target warning does not name %q: %q", token, lines[0])
 			}
@@ -889,7 +891,7 @@ func TestAgenticTrunkDoctor(t *testing.T) {
 	if check.Status != uikit.CheckOK {
 		t.Fatalf("status = %v, want OK (message %q)", check.Status, check.Message)
 	}
-	for _, token := range []string{"agentic-trunk", "main", "serial", "batch"} {
+	for _, token := range []string{"af-flow", "main", "serial", "batch"} {
 		if !strings.Contains(check.Message, token) {
 			t.Errorf("doctor message does not name %q: %q", token, check.Message)
 		}

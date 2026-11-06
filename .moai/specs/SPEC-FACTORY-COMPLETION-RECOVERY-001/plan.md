@@ -150,6 +150,37 @@ manager-develop-prompt-template.md §E 형식 — E1 AC 매트릭스(acceptance.
 | CLI 표면 | 관계 처분 기록의 리더/운영자 입력 경로 — 레인 쓰기 없음 |
 | 테스트 | `todo_analysis_test.go`·`backlog_analysis_test.go` 스타일 — `TestTodoAddNearDupDisclosure`, `TestGTDRelationDisposition` |
 
+### M4 — Git-AFF S2: agentic-trunk 완료의 로컬 통합 창 착지 (카드 t2013, REQ-FCR-026, AC-FCR-026, v0.4.0)
+
+**판정 반영**: R114(운영자 직접 승인, 리더 기록 2026-11-02T00:18Z — decision-index Q8)의 ①~⑤를 그대로 따른다 — 대상은 `release_branch_prefix` + `main-batch`, 단일 integrator = window 보유자, 빠른 검사 = `moai verify run`, 설정값 `agentic-trunk` 유지, t2013이 유일 writer. 구현 판정 Q9(경로 조건 — 프로비저닝 시에만)·Q10(보류 표현 — 카드는 `merge-ready` 유지 + 보류 기록)·Q11(천장 초과 편차)은 decision-index 기본값 적용.
+
+**출발점 — 현행 코드가 이미 하는 일(트리 `ff902a2920`)**:
+
+1. 경로 판정: `internal/cli/factory_card.go:3009-3011`(`pr-open` 재개) → `:3018`(github-flow 또는 agentic-trunk primary-only → PR 가장자리 `factoryCompleteGitHubFlow` `internal/cli/factory_card_pr.go:178`) → 그 밖은 로컬 병합(`:3021-3291`).
+2. 대상 브랜치: `factoryResolveIntegrationBranch`(`factory_card.go:3530-3535`)가 `config.LoadGitFlowIntegrationConfig(root).IntegrationTarget`을 쓴다 — agentic-trunk에서 고정 `main`(`internal/config/loader_workflow_disposition.go:35`·`:103-104`, `internal/config/loader_integration_branch.go:135-149`). `release_branch_prefix`는 `GitFlowIntegrationConfig`에 실려 오지 않는다(`types.go:130` "manual mode, git-flow only"). **즉 현행 로컬 경로는 `main`으로 병합한다 — R114 ①과 어긋남, 이 슬라이스의 델타.**
+3. window: 이미 쥔 window는 그 기록의 브랜치를 유지(`:3076-3079`), 다른 산 보유자 거부(`:3081-3083`), 획득 `factory.AcquireIntegrationWindow`(`:3154-3163`), 이번 호출이 얻은 window의 거부 시 반납 `releaseOwnAcquisition`(`:3212-3219`), 성공 뒤 반납(`:3287`).
+4. 병합 전 게이트: 카드 게이트(`:3047-3056`), 출처 거부·자기 브랜치 거부·통합 worktree 프로비저닝(`:3092-3126`, 해석 `integrationMergeWorktree` `internal/cli/integration_merge.go:145-158`), 후보 red 보류(`:3139-3143`), base-freshness(`:3148`), 재측정 기록(`:3220-3228`).
+5. 병합: `factory.RunMergeStep`(`:3258-3271`) — 고정 SHA `--no-ff`(`internal/factory/integration_merge_step.go:609`), 실패 시 `merge --abort`(`:654`), 원인별 종료 코드(`:40-56`), window 안에서 시험 없음(`:12-13`).
+6. 중단 복구: `factoryAdoptedTip`(`:3387`) 채택(`:3182-3202`). 단 `merged-local` 카드의 재실행은 `:3051`에서 거부.
+7. 빠른 검사 없음(장부 L17 P11). 동사 `moai verify run` = `internal/cli/verify_run.go:40`(트리 키·명령·env·도구 신원이 같고 TTL 안이면 재사용).
+8. 카드 수준 보류 없음: 병합 실패는 카드 상태 불변, window 정책 보류는 원인 7·8만(`integration_merge_step.go:15-19`); `merge-ready → blocked` edge 없음(`internal/homestate/card_transition.go:148`·`:169-170`의 blocked edge만).
+
+결정 가능성이 큰 것부터(되돌리기 어려운 판정 → 사용자 표면 → 기계적 변경):
+
+| 순서 | 파일 | 변경 |
+|---|---|---|
+| 1 | `internal/cli/factory_card.go`(+ 새 파일 권장, 예: `factory_release_route.go`), `internal/config`(읽기만) | **경로 판정과 대상 해석**(REQ-FCR-026 머리·(f)·(g)): `pr-open` 재개와 Codex 거부 뒤, `:3018` 판정 **앞**에 release 경로 술어 — agentic-trunk + 비어 있지 않은 `release_branch_prefix` + 고정 release branch를 primary가 아닌 worktree가 쥠. 성립하면 그 브랜치를 window·병합 대상으로 쓰고, 불성립이면 아래 코드는 바이트 그대로. `IntegrationTarget` 표와 `TestAgenticTrunkTarget`은 바꾸지 않는다 — 프리픽스는 활성 프로필에서 따로 읽는다. 이미 쥔 window의 브랜치가 release branch가 아니면 거부(다른 경로의 window를 가로채지 않음) |
+| 2 | `internal/homestate`(보류 기록 — Q10 기본값) + `internal/cli/factory_card.go` | **보류 기록**(REQ-FCR-026 (d)): 카드는 `merge-ready`·version 유지, 사유 분류·카드 HEAD SHA·검사 키 또는 충돌 경로를 담은 기록을 카드 이벤트로 남겨 `factory status`/카드 이벤트에서 읽힌다. 새 테이블·새 전이 edge 없음(Q10 대안 (a)를 고르면 edge 추가가 필요 — 기각). 실패 경로마다 `releaseOwnAcquisition` 호출 보장 |
+| 3 | `internal/cli/factory_card.go` | **빠른 필수 검사**(REQ-FCR-026 (b)): window 획득 뒤·병합 단계 호출 전에 카드 worktree를 루트로 `moai verify run`의 동일 코드 경로(lint + build + 변경 패키지 시험; `--env`·`--tool-version-cmd`로 결과가 기대는 것을 묶음) 실행. 재사용이면 키·`recorded_at`을 출력. 실패 → 순서 2의 보류 + window 반납. 검사는 window를 오래 붙잡으므로 lease 갱신이 필요한지 run-phase가 측정해 기록한다 |
+| 4 | `internal/cli/factory_card.go` | **멱등 재실행**(REQ-FCR-026 (e)): release 경로에서 카드가 `merged-local`이고 release branch에 둘째 부모 = 현재 카드 HEAD인 병합 커밋이 있으면 window를 잡지 않고 exit 0 + 기존 병합 SHA 출력(`:3051` 거부보다 먼저). 중단 복구는 기존 채택(`:3182`)을 release branch에 적용 |
+| 5 | 시험 `internal/cli/factory_affs2_complete_test.go`(이름 예) | AC-FCR-026 (a)~(f)의 여섯 시험(실제 git 임시 저장소 + 샌드박스 factory DB + 맨 `origin`; 병합·검사 모의 금지). (g)는 기존 시험을 변경 없이 실행 |
+
+순서 근거: 1은 어느 프로젝트가 새 경로를 타는지를 정하는 사용자 표면 판정이라 가장 되돌리기 어렵고, 2는 카드 상태 모델에 닿는다. 3·4는 그 위의 배선, 5는 기계적이다. M4는 M2-B의 파일(`internal/homestate/factory_run_*`)과 겹치지 않는다.
+
+**사전 확인(M4 착지 전, 단일 호출씩)**: `grep -n "factoryGitHubFlow(root) || factoryAgenticTrunkPrimaryRoute(root)" internal/cli/factory_card.go`(줄 이동 시 앵커 갱신 — manager-spec 재위임), `go test ./internal/cli -run '^TestAgenticTrunk.*$' -count=1`(기준선 green), `go test ./internal/cli -run '^TestCodex.*$' -count=1`(기준선 green).
+
+**위험**: (i) 충돌 도달성 — 기존 병합 전 게이트가 실제 `git merge` 충돌보다 먼저 거부할 수 있다; AC-FCR-026 (c)는 게이트와 무관한 관측 결과를 요구한다. (ii) 빠른 검사가 window 보유 시간을 늘린다 — window lease(`integrationLeaseDuration`)보다 길면 다른 lane이 stale로 보고 가져갈 수 있다; run-phase가 측정한다. (iii) 천장 초과(Q11).
+
 ## §G — Anti-patterns to avoid
 
 - `go test -run '^<새 테스트 이름>$'`가 `[no tests to run]`으로 exit 0 — 미측정을 통과로 읽는 것(verification-completeness §1.1). 기준 판정은 스윕 카운트 확인을 포함한다.
@@ -168,6 +199,11 @@ manager-develop-prompt-template.md §E 형식 — E1 AC 매트릭스(acceptance.
 - (M2-B) 원천 분류를 보지 않는 통합 — `--retire <산 run> --rebind-to <산 run2>`가 산 리더의 카드를 옮긴다. 단계 (0)으로 막는다(REQ-FCR-020).
 - (M2-B) CAS 패배를 오류로 전파 — 경합한 두 번째 리더의 런치가 실패한다. 오류 없이 새 id 발급 + 경고(REQ-FCR-018).
 - (M2-B) 거부된 최신 후보 대신 다음 후보로 넘어가기 — 어느 run을 이어받는지가 실행마다 달라진다. 채택 0(REQ-FCR-017).
+- (M4) agentic-trunk `IntegrationTarget`을 release branch로 바꾸기 — acquire·auto-merge·doctor·push 점검이 같은 값을 읽어 S2 밖의 동작이 바뀐다. release branch는 release 경로에서만 해석한다(REQ-FCR-026 (g)).
+- (M4) 빠른 검사를 release worktree에서 돌리기 — 병합 전 카드의 결함을 보지 못한다. 카드 HEAD 트리에서(REQ-FCR-026 (b)).
+- (M4) 실패 시 `--abort` 없이 반환하거나 window를 쥔 채 반환 — 다음 lane이 반쯤 병합된 트리 위에 서거나 lease 만료까지 막힌다(REQ-FCR-026 (d)).
+- (M4) 검사·병합을 위해 기존 게이트(재측정 기록·base-freshness·후보 red 보류)를 우회 — 보호 약화 금지(REQ-FCR-026 (g)).
+- (M4) 병합·검사를 모의한 시험 — AC-FCR-026은 실제 git·실제 `moai verify run` 경로를 요구한다.
 
 ## §H — Integration notes
 

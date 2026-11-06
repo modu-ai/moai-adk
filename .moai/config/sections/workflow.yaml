@@ -35,7 +35,7 @@ workflow:
             effort: max
         gates:
             claude: off
-            codex: required
+            codex: advisory
             glm: off
     default_mode: ""
     execution_mode: auto
@@ -45,8 +45,8 @@ workflow:
     # the factory opens; a value outside its bound refuses to open the factory
     # and is never clamped.
     factory_lease:
-        duration: 15m
-        renew_interval: 5m
+        duration: 2h
+        renew_interval: 30m
     # factory: bare `moai factory next` self-dispatch policy
     # (SPEC-CARD-ELIGIBLE-PULL-001). self_dispatch arms the generic selection
     # arms — unowned picked rows (b) and queue-picked no-record cards (b2) —
@@ -320,6 +320,8 @@ workflow:
     # This local opt-in enables the capability for dogfood. Shipped
     # default-false in template (internal/config/defaults.go enforces this;
     # no `enabled: true` under internal/template/templates/).
+    card_metadata_verbs:
+        enabled: true
     jev:
         enabled: true
         # consumers: per-consumer mode and threshold. No consumer is compiled

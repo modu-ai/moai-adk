@@ -1,6 +1,16 @@
 # 의존성 그래프
 
-## 현재 의존성 측정 — 4c4217a1 (card t1991 판)
+## 현재 의존성 측정 — 67b4734d6b (card t2061 판)
+
+Darwin/arm64에서 `go list ./internal/... ./cmd/... ./pkg/...`는 모듈 패키지 **198**개를 낸다(t1991 판 176 대비 +22 — `internal/agenticfactory` 아래 21개와 `internal/fetchweb`; 21개 중 `retirement`는 테스트 파일만 있다). 모듈 내부 import 쌍은 `go list -json=ImportPath,Imports`의 비테스트 `Imports` 중 모듈 `internal`·`cmd`·`pkg` 경로를 센 값으로 **581**개다(t1991 판 531과 같은 집계, +50). 두 판 사이에 쌍 집합 대조는 하지 않았으므로 +50은 방향 신호이며 쌍 하나하나의 신규성은 아래 소스 확인분에만 해당한다(Gaps).
+
+**Agentic Factory 내부 엣지**(각 패키지의 `go list` Imports에서 직접 읽음). `core`는 모듈 내부 임포트가 없는 잎이다. `core`만 임포트하는 패키지: `ledger`·`effect`·`review`. `ledger/importer`→`core`·`ledger`. `monitor`→`core`(그리고 자기 하위). `monitor/flow`→`core`·`ledger`·`internal/homestate`. `reconcile`→`core`·`effect`·`monitor`. `monitor/adapt`→`claim`·`core`·`ctxmodel`·`effect`·`monitor`·`reconcile`·`internal/homestate`. `claim`→`core`·`internal/homestate`. `runner`→`claim`·`core`·`internal/homestate`. `intake`→`claim`·`core`·`runner`. `identity`→`claim`·`core`·`runner`·`internal/homestate`. `mergeq`→`core`·`ledger`·`internal/gitenv`. `checkpoint`·`ctxmodel`→`claim`·`core`·`internal/gitenv`. 모듈 내부 임포트가 없는 패키지: `measure`·`browser`(표준 라이브러리만; `browser`는 `os/exec`).
+
+**Agentic Factory로 들어오는 바깥 엣지.** `internal/cli`(`af.go`→`core`·`ledger`·`mergeq`·`monitor/flow`; `af_land.go`→`core`·`ledger`·`mergeq`; `web.go`→`ledger`·`monitor/flow`), `internal/web`(`app.go`→`browser`·`monitor/flow`; `board.go`→`core`·`ledger`·`monitor/flow`; `browser_select.go`→`browser`; `refine.go`→`core`; `server.go`→`ledger`·`monitor/flow`), `internal/hook/ledger_heartbeat.go`→`ledger`. Agentic Factory가 기존 factory 계통으로 나가는 엣지는 `internal/homestate`(claim·runner·identity·monitor/adapt·monitor/flow)와 `internal/gitenv`(mergeq·checkpoint·ctxmodel) 둘이며 `internal/factory`로는 가지 않는다(`core`의 문서가 의존 없음을 선언한다).
+
+**그 밖의 신규 엣지.** `internal/fetchweb`→`internal/jev`(표준 라이브러리 밖으로는 `golang.org/x/net/html/charset`); `internal/jevmeasure`→`internal/fetchweb`·`internal/jev`; `internal/tokenusage`→`internal/atomicfile`(`section_writer.go`의 `WriteFileIfChanged` 사용); `internal/cli`→`internal/fetchweb`·`internal/jevmeasure`(`fetch_web.go`·`jevmeasure_cmd.go`). `internal/jev`는 표준 라이브러리만 임포트한다.
+
+## 이전 의존성 측정 — 4c4217a1 (card t1991 판)
 
 Darwin/arm64에서 `go list ./internal/... ./cmd/... ./pkg/...`는 모듈 패키지 **176**개를 낸다(t1640 판 175 대비 +1 — 신규 패키지 `internal/jevledger`). 모듈 내부 import 쌍은 `go list -json=ImportPath,Imports`의 비테스트 `Imports` 항목 중 모듈 `internal`·`cmd`·`pkg` 경로를 센 값으로 **531**개다. 이전 판의 530은 `go list -deps -json` 산출이라 집계 경로가 다르므로 +1은 방향 신호일 뿐 기준 쌍 집합 대조가 아니다(Gaps). 이 창에서 신규성을 소스로 확인한 쌍은 하나다 — `internal/template`→`internal/lockfile`(`settings.go`의 `SyncLocalSettingsPATH`가 `settings.local.json`을 형제 잠금 파일 아래서 갱신하려고 쓴다; `internal/template`에서 이 패키지를 import 하는 파일은 이것 하나다). `internal/jevledger`는 표준 라이브러리만 import 하므로 나가는 모듈 내부 엣지가 0이고, 비테스트 import 하는 쪽도 0이다(`go list` Imports에 이름이 나타나는 곳은 자기 `ImportPath` 한 줄뿐) — 순환에 낄 수 없는 잎이며 `internal/jev`도 import 하지 않는다(경계는 `boundary_test.go`의 import 허용 목록이 지킨다). `internal/config/jev_consumers.go`는 이미 쓰던 `gopkg.in/yaml.v3`와 표준 라이브러리만 import 한다. `go.mod`·`go.sum`은 창 안에서 변하지 않았다(외부 의존성 집계는 아래 절 그대로).
 

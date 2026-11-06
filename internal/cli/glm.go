@@ -75,9 +75,9 @@ Factory Mode (dedicated -f and -l entries):
                                 cross-session messages — each card goes
                                 WHOLE to one lane, which carries it through
                                 plan -> run -> sync in-session.
-  -l, --lane                   Join the running factory as a LANE: the next
-                                free lane-<n> label is claimed for this
-                                session. The flag takes no argument. If the
+  -l, --lane                   Join the running factory as a LANE (a
+                                lane-<n> session): the next free lane-<n>
+                                label is claimed for this session. The flag takes no argument. If the
                                 run's record is missing or retired while a
                                 live leader session exists, the join verifies
                                 that leader (pid + process-start) and
@@ -87,10 +87,18 @@ Factory Mode (dedicated -f and -l entries):
                                 record-absence verification targets
                                 (default: leader). A legacy spelling of the
                                 leader name is refused.
-  One entry token per launch: -f beside -l is an error. A lane number
+  One entry token per launch: -f beside -l is an error. The former -a/--agent
+  spelling is removed and refused with a line naming -l/--lane. A lane number
   held by a live session is bumped to the next free number.
   Legacy role and label spellings (the pre-rename nouns, any letter case)
   are refused — the error names the canonical lane-<n> label.
+
+  Git workflow: a -f or -l session reads an UNSET git_strategy workflow (the
+  key missing or blank in the active mode profile) as af-flow. An explicit
+  setting always wins — github-flow, git-flow and every other value are never
+  replaced, and the legacy agentic-trunk still reads as af-flow. The default
+  is applied when the setting is read: .moai/config/sections/git-strategy.yaml
+  is never rewritten, and plain sessions and moai init are unchanged.
 
   Genealogy: the pre-3.1 "factory" flag (-f/--factory) was RENAMED to -k
   in #1513 (7f61332ef). -f briefly returned as the factory fan-out flag and
@@ -313,7 +321,7 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		// See cc.go: a live-held lane number is bumped, and the bumped value
 		// must reach the backend argv.
 		endClaim := debugTiming.beginDebug(factoryStepLaneClaim, "")
-		finalLabel, claimErr := resolveFactoryLaneName(launchProjectRoot(), factoryLabel, factory.BackendGLM, entry.FactoryAutoNumber, cmd.ErrOrStderr())
+		finalLabel, claimErr := claimFactoryLaneForEntry(launchProjectRoot(), factoryLabel, factory.BackendGLM, entry, cmd.ErrOrStderr())
 		endClaim()
 		if claimErr == nil {
 			debugTiming.annotateDetail("label=" + finalLabel)
@@ -343,6 +351,11 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	// SPEC-WORKTREE-ENTRY-STRATEGY-001 M3a: see cc.go for the rationale.
 	endWt := debugTiming.beginDebug(launchStepWorktree, "")
 	if err := validateWorktreeL2Value(view.StageA, cmd.ErrOrStderr()); err != nil {
+		endWt()
+		return err
+	}
+	// See cc.go: an unregistered absolute -w path is refused before any write.
+	if err := validateAbsoluteWorktreeRegistered(view.StageB); err != nil {
 		endWt()
 		return err
 	}
@@ -548,7 +561,7 @@ func handleGLMKeyFlag(cmd *cobra.Command, args []string) (bool, error) {
 		return false, nil
 	}
 	if !hasValue {
-		return true, fmt.Errorf("--key requires a value; usage: moai glm --key <api-key>")
+		return true, fmt.Errorf("the --key flag requires a value; usage: moai glm --key <api-key>")
 	}
 	// REQ-GJK-003: any other token in the scanned region — before the flag
 	// as well as after the value — refuses the mixed invocation. The token
@@ -558,7 +571,7 @@ func handleGLMKeyFlag(cmd *cobra.Command, args []string) (bool, error) {
 	extra = append(extra, args[:flagIdx]...)
 	extra = append(extra, rest...)
 	if len(extra) > 0 {
-		return true, fmt.Errorf("--key cannot be combined with other arguments (found %q); run 'moai glm --key <api-key>' by itself", redactArg(extra[0], strings.TrimSpace(value)))
+		return true, fmt.Errorf("the --key flag cannot be combined with other arguments (found %q); run 'moai glm --key <api-key>' by itself", redactArg(extra[0], strings.TrimSpace(value)))
 	}
 	trimmed := strings.TrimSpace(value)
 	if trimmed == "" {

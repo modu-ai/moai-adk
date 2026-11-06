@@ -96,7 +96,7 @@ func TestRelocateQueueArtifactsCopiesLogicalDataAndKeepsRollbackSource(t *testin
 	}
 	if info, err := os.Stat(filepath.Join(to, "backlog.db")); err != nil {
 		t.Fatalf("target database missing: %v", err)
-	} else if got := info.Mode().Perm(); got != 0o600 {
+	} else if got := info.Mode().Perm(); runtime.GOOS != "windows" && got != 0o600 { // Windows has no POSIX mode bits
 		t.Fatalf("target database mode=%#o, want 0600", got)
 	}
 }
@@ -268,7 +268,7 @@ func TestBacklogSQLiteArtifactsArePrivateWhileOpen(t *testing.T) {
 		if err != nil {
 			t.Fatalf("stat %s: %v", path, err)
 		}
-		if got := info.Mode().Perm(); got != 0o600 {
+		if got := info.Mode().Perm(); runtime.GOOS != "windows" && got != 0o600 { // Windows has no POSIX mode bits
 			t.Errorf("%s mode=%#o, want 0600", filepath.Base(path), got)
 		}
 	}

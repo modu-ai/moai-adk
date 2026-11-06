@@ -16,10 +16,11 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"net/url"
 	"os"
-	"path/filepath"
 
 	"github.com/modu-ai/moai-adk/internal/homestate"
+	"github.com/modu-ai/moai-adk/internal/sqliteuri"
 )
 
 // RunState is the tri-state verdict of the shared run-state measurement.
@@ -86,7 +87,7 @@ func ProbeRunStateAt(ctx context.Context, dbPath, runID string) (state RunState,
 		// run — measured not-active, never a failure.
 		return RunStateNotActive, "absent", nil
 	}
-	db, err := sql.Open("sqlite", "file:"+filepath.ToSlash(dbPath)+"?_pragma=busy_timeout(100)")
+	db, err := sql.Open("sqlite", sqliteuri.File(dbPath, url.Values{"_pragma": {"busy_timeout(100)"}}))
 	if err != nil {
 		return RunStateUnavailable, "", err
 	}
@@ -125,7 +126,7 @@ func ActiveRunIDsAt(ctx context.Context, dbPath string) ([]string, error) {
 	if _, err := os.Stat(dbPath); err != nil {
 		return nil, nil
 	}
-	db, err := sql.Open("sqlite", "file:"+filepath.ToSlash(dbPath)+"?_pragma=busy_timeout(100)")
+	db, err := sql.Open("sqlite", sqliteuri.File(dbPath, url.Values{"_pragma": {"busy_timeout(100)"}}))
 	if err != nil {
 		return nil, err
 	}
@@ -169,7 +170,7 @@ func ActiveRunExistsAt(ctx context.Context, dbPath string) (active bool, err err
 	if _, err := os.Stat(dbPath); err != nil {
 		return false, nil
 	}
-	db, err := sql.Open("sqlite", "file:"+filepath.ToSlash(dbPath)+"?_pragma=busy_timeout(100)")
+	db, err := sql.Open("sqlite", sqliteuri.File(dbPath, url.Values{"_pragma": {"busy_timeout(100)"}}))
 	if err != nil {
 		return false, err
 	}

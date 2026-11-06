@@ -1,0 +1,7 @@
+[t2121] docs(audit): sync-audit-iter2 verdict FAIL 0.77 for 0a1192eeac, F1/F2 closed, G1 blocking (card t2121)
+
+Repair-delta re-audit: one codex_audit call (delta_base 7723481e7e) receipt rcpt-035ee381a55be2dfc36e2f8d, result pass.
+Blocking G1: an absorb merge that drops main changes (-X ours, deleted main file) leaves the HEAD tree equal to
+the audited tree, so absorbOnlyChange is never reached.
+
+🗿 MoAI

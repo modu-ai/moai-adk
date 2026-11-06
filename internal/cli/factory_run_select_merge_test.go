@@ -29,6 +29,28 @@ func deadFact(id string, inProgress int) homestate.RunFacts {
 	return homestate.RunFacts{RunOwner: homestate.RunOwner{RunID: id, Classification: homestate.OwnerDead}, InProgress: inProgress}
 }
 
+// selSeedPeerDead records an active run whose death is proved through its dead
+// role='leader' peer (BasisPeer), not through an owner stamp: the row carries pid 0
+// and no process start. The automatic zombie consolidation requires a stamp
+// basis (RequireStampBasis), so it leaves this run alone and the chooser's m<n>
+// merge stays the way to move its cards. selSeedDead cannot stand in: its stamped
+// dead pid is merged automatically before the chooser opens.
+func selSeedPeerDead(t *testing.T, root, runID string, cards int) {
+	t.Helper()
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		t.Fatalf("open factory: %v", err)
+	}
+	lcRun(t, db, runID, "claude", 0, "", "")
+	for i := 0; i < cards; i++ {
+		lcCard(t, db, runID, fmt.Sprintf("card-%s-%d", runID, i), "run")
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("close factory: %v", err)
+	}
+	lcPeer(t, root, runID, "leader", "leader", false)
+}
+
 func TestLaneChoiceMergeOffer(t *testing.T) {
 	t.Run("eligibility is dead, in progress, and exactly one live run", func(t *testing.T) {
 		for _, tc := range []struct {
@@ -96,7 +118,7 @@ func TestLaneChoiceMergeOffer(t *testing.T) {
 	t.Run("choosing m<n> moves the cards, retires the source, and joins the live run", func(t *testing.T) {
 		root := laneGateRoot(t)
 		seedLiveRun(t, root, "rl-live")
-		selSeedDead(t, root, "rd-dead", false, 2)
+		selSeedPeerDead(t, root, "rd-dead", 2)
 		spy := newSpy(root, choose(choiceMergeThenJoin, "rd-dead"))
 		notices := installLaneSeams(t, spy)
 		restore, err := enterFactoryLaneRun(root, "", "", nil)

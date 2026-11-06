@@ -77,20 +77,20 @@ func m6NewWorld(t *testing.T) *m6World {
 	home := m6Real(t, t.TempDir())
 	t.Setenv(paths.EnvHome, home)
 	t.Setenv("HOME", home)
+	// The default probe shells out to lsof, which does not exist on Windows and
+	// answers about every process on the host elsewhere. Either way it is not
+	// part of what these rehearsals pin: a probe that cannot answer is a skip
+	// cause, so on Windows every tree was skipped and nothing moved (card
+	// t2064). The world reports no active process; tests that exercise the real
+	// scan or a specific occupant set the seam themselves.
+	origProbe := activeProcessCWDProbe
+	activeProcessCWDProbe = func() ([]string, error) { return nil, nil }
+	t.Cleanup(func() { activeProcessCWDProbe = origProbe })
 
 	repo := filepath.Join(m6Real(t, t.TempDir()), "mig-repo")
 	if err := os.MkdirAll(repo, 0o755); err != nil {
 		t.Fatalf("mkdir repo: %v", err)
 	}
-	// The process-cwd probe shells out to lsof, which a Windows host does not
-	// have (and a minimal PATH may not carry): a failing probe makes every
-	// moai-made tree skip, so the tests that expect moves would fail on the
-	// host rather than on the code. Inject a probe that reports no active
-	// process.
-	origProbe := activeProcessCWDProbe
-	activeProcessCWDProbe = func() ([]string, error) { return nil, nil }
-	t.Cleanup(func() { activeProcessCWDProbe = origProbe })
-
 	m6Git(t, repo, "init", "-q", "--template=", "-b", "dev")
 	m6Git(t, repo, "config", "user.email", "m6@example.com")
 	m6Git(t, repo, "config", "user.name", "M6 Test")
@@ -158,11 +158,9 @@ func m6NewWorld(t *testing.T) *m6World {
 // m6Registered reports whether git still registers path.
 func m6Registered(t *testing.T, repo, path string) bool {
 	t.Helper()
-	// git prints worktree paths with forward slashes on every host (C:/... on
-	// Windows) while the test builds them with the host separator; compare
-	// both in slash form so the check names the same tree on every OS.
-	listed := filepath.ToSlash(m6Git(t, repo, "worktree", "list", "--porcelain"))
-	return strings.Contains(listed, filepath.ToSlash(path))
+	// git prints forward slashes on every OS; path is spelled with the OS
+	// separator, so compare in git's spelling (card t2085).
+	return strings.Contains(m6Git(t, repo, "worktree", "list", "--porcelain"), filepath.ToSlash(path))
 }
 
 // TestMigrateVerb_IsRegistered pins the registration clause: the migrate

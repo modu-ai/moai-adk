@@ -15,9 +15,12 @@ import (
 )
 
 var (
-	shaPattern          = regexp.MustCompile(`^[0-9a-f]{7,64}$`)
-	cardIDPattern       = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
-	verdictLinePattern  = regexp.MustCompile(`^verdict: (PASS|PASS-WITH-DEBT|FAIL)$`)
+	shaPattern    = regexp.MustCompile(`^[0-9a-f]{7,64}$`)
+	cardIDPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
+	// The fourth label, INCONCLUSIVE, is an audit that did not run
+	// (SPEC-AUDIT-ENGINE-CONVERGENCE-001 REQ-AEC-007): the card stays in audit
+	// as for FAIL, and the shared admission rule names the unrun backend and class.
+	verdictLinePattern  = regexp.MustCompile(`^verdict: (PASS|PASS-WITH-DEBT|FAIL|INCONCLUSIVE)$`)
 	auditedSHAPattern   = regexp.MustCompile(`^audited_sha: ([0-9a-f]{12,40})$`)
 	verdictIterPattern  = regexp.MustCompile(`-iter(\d+)`)
 	maxEvidenceFileSize = int64(4 << 20)
@@ -238,6 +241,12 @@ func readBoundedFile(path string) ([]byte, error) {
 	}
 	return os.ReadFile(path)
 }
+
+// NewestVerdictFile is the rebind-evidence selection, exported so the audit
+// tools choose "the newest verdict file" by the very rule the factory card
+// record uses (SPEC-AUDIT-ENGINE-CONVERGENCE-001 REQ-AEC-001) instead of a
+// second reader.
+func NewestVerdictFile(paths []string) (string, error) { return newestVerdictFile(paths) }
 
 // newestVerdictFile picks the highest iteration number in the file name (a
 // name without `-iter<N>` is iteration 1), then the latest modification time.

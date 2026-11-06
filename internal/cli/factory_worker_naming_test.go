@@ -74,9 +74,9 @@ func TestParseLauncherEntryDesugarsLaneLabel(t *testing.T) {
 	if len(p.Rest) != 3 || p.Rest[0] != "-b" || p.Rest[1] != "--name" || p.Rest[2] != label {
 		t.Errorf("desugared rest = %v, want [-b --name %s]", p.Rest, label)
 	}
-	if _, err := parseLauncherEntry([]string{"-l", "--name", "lane-3"}); err == nil ||
+	if _, err := parseLauncherEntry([]string{"-l", "--name", "board-watch"}); err == nil ||
 		!strings.Contains(err.Error(), "already names the role") {
-		t.Errorf("-l plus --name = %v, want the naming conflict", err)
+		t.Errorf("-l plus a non-lane --name = %v, want the naming conflict", err)
 	}
 }
 

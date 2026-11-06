@@ -7,14 +7,17 @@ import (
 	"testing"
 )
 
-// TestPrimaryRailKeepsThreeSurfaceIA pins the agreed first-level information
-// architecture. Factory, Specs, and Monitor remain route-compatible screens;
-// they are not shown as primary navigation or Overview destinations.
-func TestPrimaryRailKeepsThreeSurfaceIA(t *testing.T) {
+// TestPrimaryRailKeepsFourSurfaceIA pins the agreed first-level information
+// architecture: the local board leads (the Issue screens were retired), then
+// Overview (moved to /overview), Todo and Settings. Factory, Specs, and Monitor
+// remain route-compatible screens; they are not shown as primary navigation or
+// Overview destinations.
+func TestPrimaryRailKeepsFourSurfaceIA(t *testing.T) {
 	body := renderConsolePage(t)
 
 	for _, want := range []string{
-		`class="nav__row" href="/"`,
+		`class="nav__row" href="/board"`,
+		`class="nav__row" href="/overview"`,
 		`class="nav__row" href="/todo"`,
 		`class="nav__row" href="/settings"`,
 	} {

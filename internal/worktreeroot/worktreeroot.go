@@ -544,3 +544,23 @@ func Same(a, b string) bool {
 	}
 	return filepath.Clean(a) == filepath.Clean(b)
 }
+
+// CanonicalSpelling resolves the symlinks of the longest existing prefix of p
+// and re-attaches the rest, so two spellings of one directory (a symlinked
+// parent such as /var vs /private/var, a trailing separator) compare equal
+// even after the directory itself has moved away (card t2053, C10).
+func CanonicalSpelling(p string) string {
+	p = filepath.Clean(p)
+	tail := ""
+	for cur := p; ; {
+		if resolved, err := filepath.EvalSymlinks(cur); err == nil {
+			return filepath.Join(resolved, tail)
+		}
+		parent := filepath.Dir(cur)
+		if parent == cur {
+			return p
+		}
+		tail = filepath.Join(filepath.Base(cur), tail)
+		cur = parent
+	}
+}

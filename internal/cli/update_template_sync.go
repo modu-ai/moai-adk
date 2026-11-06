@@ -964,7 +964,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 					// older run that holds the last copy of a past file version
 					// within the state.backup_past_versions_keep budget is kept, and
 					// every removed or retained run is named in the ledger.
-					rep := backup.PruneBackups(projectRoot, 5, config.LoadBackupPastVersionsKeep(projectRoot))
+					rep := pruneBackupsWithProgress(out, projectRoot)
 					if rep.Removed > 0 {
 						_, _ = fmt.Fprintf(out, "  %s Cleaned up %d old backup(s)\n", uikit.SymSuccess(), rep.Removed)
 					}

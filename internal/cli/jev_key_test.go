@@ -192,7 +192,7 @@ func TestGlmKeyFlagSavesKeySameStorage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if info.Mode().Perm() != 0o600 {
+	if !permMatchesOnHost(info.Mode().Perm(), 0o600) {
 		t.Errorf("credential file mode = %v, want 0600", info.Mode().Perm())
 	}
 	if !strings.Contains(out, "GLM API key stored (") {
@@ -225,7 +225,7 @@ func TestJevKeyFlagSavesCredential(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if info.Mode().Perm() != 0o600 {
+	if !permMatchesOnHost(info.Mode().Perm(), 0o600) {
 		t.Errorf("credential file mode = %v, want 0600", info.Mode().Perm())
 	}
 	if !strings.Contains(out, "Jev credential stored") {
@@ -269,7 +269,7 @@ func TestGlmKeyFlagMissingValueErrors(t *testing.T) {
 	if err == nil {
 		t.Fatal("glm --key with no value should fail")
 	}
-	if !strings.Contains(err.Error(), "--key requires a value") {
+	if !strings.Contains(err.Error(), "the --key flag requires a value") {
 		t.Errorf("missing-value usage error expected, got: %v", err)
 	}
 	nothingStoredAt(t, filepath.Join(home, ".moai", ".env.glm"))
@@ -547,7 +547,7 @@ func TestGlmKeyExecFlagAsValueRefused(t *testing.T) {
 	if err == nil {
 		t.Fatal("a flag-shaped token must not be stored as the key")
 	}
-	if !strings.Contains(err.Error(), "--key requires a value") {
+	if !strings.Contains(err.Error(), "the --key flag requires a value") {
 		t.Errorf("missing-value usage error expected, got: %v", err)
 	}
 	nothingStoredAt(t, filepath.Join(home, ".moai", ".env.glm"))

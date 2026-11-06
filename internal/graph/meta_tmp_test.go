@@ -3,6 +3,7 @@ package graph
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -69,6 +70,11 @@ func TestWriteEdgesMeta_FailureBranches(t *testing.T) {
 	}
 
 	// Destination directory exists but is read-only: CreateTemp fails.
+	// Windows cannot make a directory read-only in the POSIX sense, so the
+	// negative step is POSIX-only.
+	if runtime.GOOS == "windows" {
+		return
+	}
 	ro := filepath.Join(root, "ro")
 	if err := os.MkdirAll(ro, 0o500); err != nil {
 		t.Fatal(err)

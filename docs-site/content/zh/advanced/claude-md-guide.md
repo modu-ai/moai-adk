@@ -363,7 +363,7 @@ MoAI-ADK 把指令拆成三个文件：无论由哪个 harness 驱动工作，�
 |------|------|----------|--------|
 | `AGENTS.md` | 各 harness 通用的契约 | 是 | Claude Code（通过 `@AGENTS.md` 导入）和 Codex |
 | `CLAUDE.md` | 承载 Claude 专属机制的薄层 | 是 | Claude Code |
-| `AGENTS.local.md` | 个人指令 | 否（`.gitignore`） | Claude Code（通过 `CLAUDE.md` 末尾的 `@AGENTS.local.md`）和 `moai codex` |
+| `AGENTS.local.md` | 个人指令 | 否（`.gitignore`） | Claude Code（通过 `CLAUDE.md` 末尾的 `@AGENTS.local.md`）和 Codex |
 
 ```mermaid
 flowchart TD
@@ -371,7 +371,7 @@ flowchart TD
     L["AGENTS.local.md<br/>个人指令"] --> C
     C --> CC["Claude Code"]
     A --> X["Codex"]
-    L --> R["moai codex 启动器"]
+    L --> R["Codex 启动器"]
     R --> X
 ```
 

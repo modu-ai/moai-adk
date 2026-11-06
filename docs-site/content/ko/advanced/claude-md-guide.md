@@ -238,7 +238,7 @@ MoAI-ADK는 지침을 세 파일로 나눕니다. 어느 하네스가 작업을 
 |------|-----------|----------|---------|
 | `AGENTS.md` | 하네스 공통 계약 | 예 | Claude Code(`@AGENTS.md` 가져오기)와 Codex |
 | `CLAUDE.md` | Claude 전용 메커니즘을 얹는 얇은 층 | 예 | Claude Code |
-| `AGENTS.local.md` | 개인 지침 | 아니오 (`.gitignore`) | Claude Code(`CLAUDE.md` 마지막의 `@AGENTS.local.md`)와 `moai codex` |
+| `AGENTS.local.md` | 개인 지침 | 아니오 (`.gitignore`) | Claude Code(`CLAUDE.md` 마지막의 `@AGENTS.local.md`)와 Codex |
 
 ```mermaid
 flowchart TD
@@ -246,7 +246,7 @@ flowchart TD
     L["AGENTS.local.md<br/>개인 지침"] --> C
     C --> CC["Claude Code"]
     A --> X["Codex"]
-    L --> R["moai codex 런처"]
+    L --> R["Codex 런처"]
     R --> X
 ```
 

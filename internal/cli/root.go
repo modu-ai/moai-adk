@@ -57,6 +57,7 @@ var trivialCommands = map[string]bool{
 	"glm":        true, // launcher: exec's claude, discards the graph
 	"jev":        true, // deps-free: reads flags and the jevcred writer only (SPEC-GLM-JEV-KEY-001)
 	"paths":      true, // deps-free and read-only: flags plus the project-state resolvers (SPEC-MOAI-DB-PATHS-001)
+	"af":         true, // deps-free: opens the local ledger only (AC-AFL-017)
 }
 
 // @MX:ANCHOR: [AUTO] Execute is the main entry point for the moai CLI
@@ -137,6 +138,7 @@ func init() {
 
 	// Wire worktree subcommand with lazy Git initialization
 	worktree.WorktreeCreator = materializeSessionWorktree
+	worktree.WorktreeCreatorAt = materializeSessionWorktreeAt
 	worktree.WorktreeCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
 		if deps == nil {
 			return fmt.Errorf("dependencies not initialized")
@@ -286,4 +288,11 @@ func init() {
 	// confirmed project key and database paths. It is the source of truth every
 	// instruction surface points at instead of a guessed path.
 	rootCmd.AddCommand(newPathsCmd())
+
+	// Issue #1948: hidden provisional skeleton for the canonical agentic-factory
+	// command; names are fixed later by SPEC-AGENTIC-FACTORY-001.
+	rootCmd.AddCommand(newAgenticFactoryCmd())
+
+	// AC-AFL-017: the card flow's verbs over the local ledger.
+	rootCmd.AddCommand(newAFCmd())
 }

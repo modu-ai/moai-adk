@@ -180,7 +180,7 @@ func EvaluateMergeTriple(in MergeTripleInput, git GitRunner) (MergeCheckRun, err
 	var syncDetail string
 	var syncOK bool
 	if in.SpecDir == "" {
-		syncDetail, syncOK = checkSyncAuditVerdictFile(git, in.RepoDir, in.Card)
+		syncDetail, syncOK = checkSyncAuditVerdictFile(git, in.RepoDir, in.Card, in.Develop)
 	} else {
 		syncDetail, syncOK = checkSyncAudit(in.SpecDir)
 	}

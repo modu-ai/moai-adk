@@ -130,6 +130,21 @@ type ModeProfile struct {
 	ReleaseBranchPrefix string `yaml:"release_branch_prefix"` // manual mode, git-flow only
 	RCVersionFormat     string `yaml:"rc_version_format"`     // manual mode, git-flow only
 
+	// ReleaseRoute arms the af-flow release completion route (card t2098).
+	// Default OFF, and absent unmarshals to false: the route arms only when
+	// an af-flow profile explicitly sets release_route: true, so
+	// LoadAgenticTrunkReleaseBranch resolves prefix + "main-batch" for
+	// factoryReleaseRoute only through the explicit opt-in. Operator rule
+	// (decision 2026-11-06): under af-flow the landing surface is local main
+	// — the release branch is never a lane landing surface. The key narrows
+	// SPEC-FACTORY-COMPLETION-RECOVERY-001 REQ-FCR-026's Where clause by that
+	// operator decision (.moai/reports/af-flow-v2-20261106/design-diff.md
+	// §2 step S0, "release route off — route deactivation or a config key");
+	// the route's own semantics are unchanged. Modelled so a typed save
+	// re-marshals it instead of silently deleting it (see the round-trip
+	// hazard note above).
+	ReleaseRoute bool `yaml:"release_route"` // af-flow only; default false
+
 	// LeadPushThreshold is the manual-mode batch-push trigger (SPEC-MAIN-COMMIT-BAN-001
 	// REQ-3.3): the lead closes the push batch when
 	// `git rev-list --count origin/<develop>..<develop>` reaches this count.
@@ -1391,6 +1406,9 @@ type GateTimeouts struct {
 	Lint      int `yaml:"lint"`
 	Test      int `yaml:"test"`
 	Typecheck int `yaml:"typecheck"`
+	// Total overrides the overall run budget, in seconds. Zero or negative
+	// means "derive it from the detected steps".
+	Total int `yaml:"total"`
 	// LockWait bounds how long a starting gate run waits for the gate-run
 	// lock — the advisory lock serializing concurrent manual `moai gate` runs
 	// in one project — before degrading to an unserialized run. In seconds,
@@ -1433,6 +1451,15 @@ func (g *GateConfig) TypecheckTimeoutDuration() time.Duration {
 		return 300 * time.Second
 	}
 	return time.Duration(g.Timeouts.Typecheck) * time.Second
+}
+
+// TotalTimeoutDuration converts the explicit overall-budget override to
+// time.Duration. Returns 0 (derive it) when the value is zero or negative.
+func (g *GateConfig) TotalTimeoutDuration() time.Duration {
+	if g.Timeouts.Total <= 0 {
+		return 0
+	}
+	return time.Duration(g.Timeouts.Total) * time.Second
 }
 
 // LockWaitDuration converts the gate-run lock wait budget to time.Duration.

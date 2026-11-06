@@ -8,6 +8,7 @@ package update
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/manifest"
@@ -183,7 +184,7 @@ func TestSafeWriteFilePreservesExistingMode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("stat: %v", err)
 	}
-	if info.Mode().Perm() != 0o600 {
+	if runtime.GOOS != "windows" && info.Mode().Perm() != 0o600 { // Windows has no POSIX mode bits
 		t.Errorf("restored file mode = %v, want the preserved 0600", info.Mode().Perm())
 	}
 	if data, readErr := os.ReadFile(abs); readErr != nil || string(data) != "restored bytes\n" {

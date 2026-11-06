@@ -50,16 +50,15 @@ moai cc -f                    # leader — opens the factory
 moai cc -l                    # a lane, each in its own terminal — joins as the next free number
 moai cc -l                    # lane-1, lane-2 … in order
 moai glm -l                   # a lane on the GLM backend
-moai codex -l                 # a Codex lane
 ```
 
-`-f` (long form `--factory`) opens the leader, and `-l` (long form `--lane`) joins the running factory as a lane. Neither takes an argument. The operator never picks a lane number; it is assigned automatically. Lanes are launched **by hand, one fresh terminal each**, because a session cannot launch another session. `moai codex` has no leader entry and can only join as a lane.
+`-f` (long form `--factory`) opens the leader, and `-l` joins the running factory as a lane. Neither takes an argument. The operator never picks a lane number; it is assigned automatically. Lanes are launched **by hand, one fresh terminal each**, because a session cannot launch another session.
 
-A launch carries one entry token, so `-f` together with `-l` is an error. A value after either token (`moai cc -f <value>`, `moai cc -l lane-2`) is refused with a one-line error that names the correct form. The `-k` entry of the former multi-session board mode is removed. GPT models run through `moai codex`.
+A launch carries one entry token, so `-f` together with `-l` is an error. A value after either token (`moai cc -f <value>`, `moai cc -l lane-2`) is refused with a one-line error that names the correct form. The `-k` entry of the former multi-session board mode is removed.
 
 ### Which backend to run
 
-The backend is chosen per lane: `moai cc -l` is a Claude lane, `moai glm -l` a GLM lane, `moai codex -l` a Codex lane. The leader's seat is not for passing verdicts but for watching the queue and carrying cards, so GLM (`moai glm -f`), which is cheap to leave waiting, suits it. When one account starts hitting 429s, spreading lanes across accounts works. This mix is only one example — putting every session on a single backend is fine too.
+The backend is chosen per lane: `moai cc -l` is a Claude lane, `moai glm -l` a GLM lane. The leader's seat is not for passing verdicts but for watching the queue and carrying cards, so GLM (`moai glm -f`), which is cheap to leave waiting, suits it. When one account starts hitting 429s, spreading lanes across accounts works. This mix is only one example — putting every session on a single backend is fine too.
 
 ### Many cards at once across N lanes
 
@@ -69,9 +68,9 @@ Find the database paths with `moai paths` instead of guessing them. Opening a gu
 
 A lane runs at most 10 `Agent()` subagents at once, and write-capable spawns are isolated in their own worktrees. Don't light up the lanes all at once: bring up the first lane, confirm it is actually producing output, then start the rest. A card is never split across lanes.
 
-A factory run records the process identity of the session that owns it. A run whose leader has died is retired automatically when the next lane joins, so the join does not stall on `AMBIGUOUS_FACTORY`. The reverse is covered too: when a lane joins and the run record is missing or retired while a live leader session exists, the join verifies that leader (pid plus process start fingerprint; the target is picked with the long form `--leader <name>`, default `leader`), restores the run record, and joins as usual — with more than one verified leader it fails closed, naming every candidate. `--leader` is a selector that composes with `-l`/`--lane` only; it is not a short form of any entry token. `moai factory runs` lists every run with its owner's liveness, and `moai factory runs --retire <run-id>` retires one named run by hand. It refuses if the owner is not actually dead, and it also refuses when the run still holds cards that are not done, failed, or abandoned: it lists those cards together with the exits you can use instead (join with `moai cc -l --factory-run <run-id>`, adopt with `moai cc -f --factory-run <run-id>`, or end each card with `moai factory decide <card> --choice abandon --run <run-id>`). Joining and adopting work only while the run is active, and abandoning a card cannot be undone. There is no force flag. Pointing it at a run that is already retired reports the result without a second write and lists the cards still stranded there. For an active run that still holds such cards, `moai factory relaunch --from-run` also leaves the run active and reports `left active (N in-progress cards)`; an already-retired run is left untouched (`not active (retired), left untouched`).
+A factory run records the process identity of the session that owns it. A run whose leader has died is retired automatically when the next lane joins, so the join does not stall on `AMBIGUOUS_FACTORY`. The reverse is covered too: when a lane joins and the run record is missing or retired while a live leader session exists, the join verifies that leader (pid plus process start fingerprint; the target is picked with the long form `--leader <name>`, default `leader`), restores the run record, and joins as usual — with more than one verified leader it fails closed, naming every candidate. `--leader` is a selector that composes with `-l` only; it is not a short form of any entry token. `moai factory runs` lists every run with its owner's liveness, and `moai factory runs --retire <run-id>` retires one named run by hand. It refuses if the owner is not actually dead, and it also refuses when the run still holds cards that are not done, failed, or abandoned: it lists those cards together with the exits you can use instead (join with `moai cc -l --factory-run <run-id>`, adopt with `moai cc -f --factory-run <run-id>`, or end each card with `moai factory decide <card> --choice abandon --run <run-id>`). Joining and adopting work only while the run is active, and abandoning a card cannot be undone. There is no force flag. Pointing it at a run that is already retired reports the result without a second write and lists the cards still stranded there. For an active run that still holds such cards, `moai factory relaunch --from-run` also leaves the run active and reports `left active (N in-progress cards)`; an already-retired run is left untouched (`not active (retired), left untouched`).
 
-After a run dies or is replaced, a lane session keeps pointing at the old run baked into its environment. Reattach it to a live run with `moai factory relaunch`. The command re-executes the provider's own lane-join line (`moai cc -l`, `moai glm -l`, and for Codex only `moai codex -l`), and its options are `--provider`, `--lane`, `--run`, `--from-run <run-id>` and `--dry-run`. Because `-l` takes no argument, a `--lane` you pass is not carried onto the join line: the command says so on stderr, and the lane joins as the next free number. `--from-run` retires that run first, but only when it is active and its owner is dead, and `--dry-run` prints the launch line and changes nothing. It is a one-shot command, separate from the `--clear-policy relaunch` loop that walks cards inside one run. The stale-run notice now shows this command filled in, instead of prose.
+After a run dies or is replaced, a lane session keeps pointing at the old run baked into its environment. Reattach it to a live run with `moai factory relaunch`. The command re-executes the provider's own lane-join line (`moai cc -l`, `moai glm -l`), and its options are `--provider`, `--lane`, `--run`, `--from-run <run-id>` and `--dry-run`. Because `-l` takes no argument, a `--lane` you pass is not carried onto the join line: the command says so on stderr, and the lane joins as the next free number. `--from-run` retires that run first, but only when it is active and its owner is dead, and `--dry-run` prints the launch line and changes nothing. It is a one-shot command, separate from the `--clear-policy relaunch` loop that walks cards inside one run. The stale-run notice now shows this command filled in, instead of prose.
 
 > Details: [Factory Mode](https://adk.mo.ai.kr/en/advanced/factory-mode)
 
@@ -295,7 +294,7 @@ A project initialized before this choice existed has no `llm.harness` key and ke
 
 > **GPT gateway withdrawn (2026-09-16).** The former launcher — Claude Code driven by GPT
 > models through the built-in translation gateway — has been removed. GPT models are reached through
-> their native harness instead: `moai codex` (Codex CLI). The `--llm gpt` init value above is
+> their native harness instead: Codex (the Codex CLI). The `--llm gpt` init value above is
 > unaffected; it selects the Codex-only deployment, not the withdrawn launcher.
 
 ### First workflow
@@ -367,7 +366,7 @@ Every SPEC gets its own working tree. Enter with `moai cc -w <name>`; add `--spa
 
 ### Factory Mode
 
-`-f` (`--factory`) opens the factory leader and `-l` (`--lane`) opens a lane. Neither takes an argument. One leader carries the queue's cards to numbered lanes, and each lane takes a card through `plan → run → sync` to the end. The launch sequence is in the "What's New in v3.2 — Factory Mode" section above.
+`-f` (`--factory`) opens the factory leader and `-l` opens a lane. Neither takes an argument. One leader carries the queue's cards to numbered lanes, and each lane takes a card through `plan → run → sync` to the end. The launch sequence is in the "What's New in v3.2 — Factory Mode" section above.
 
 Session lineage is handled separately by the **Origin-Trail Chain**. It is independent of Factory Mode — no leader or lane is needed, and every session launched with a named worktree, as in `moai cc -w <name>`, lands on the chain. An append-only JSONL lineage tree tracks worktree ancestry, solves depth amnesia (root-to-leaf chain recovery after `/clear`), and marks a session whose heartbeat has gone quiet as `stale`.
 
@@ -742,7 +741,6 @@ The [adk.mo.ai.kr](https://adk.mo.ai.kr) online documentation is organized into 
 | `moai update` | Update to latest version (preserves local files · 3-way merge with conflict sidecars · archived removals) |
 | `moai graph <build\|query>` | Build/query the codebase graph (edges.jsonl) — caller lookup, blast radius, milestone cross-checks |
 | `moai cc` / `moai glm` | Claude-only / GLM-only sessions |
-| `moai codex [cli\|status\|app]` | Codex launcher — called with no verb it launches the Codex CLI; `status` prints the readiness readout and starts nothing |
 | `moai worktree <sync\|done\|sweep\|hoist\|remove\|clean\|recover\|snapshot\|verify\|restore>` | Git worktree maintenance (entering a worktree is the launchers' job) |
 | `moai session <list\|register\|current>` | Multi-session coordination |
 | `moai spec <audit\|archive\|lint\|list\|new>` | SPEC lifecycle tools |

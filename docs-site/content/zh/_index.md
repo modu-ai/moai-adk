@@ -16,13 +16,12 @@ MoAI-ADK (Agentic Development Kit) 是 Claude Code 的战略编排框架。
 
 一个会话只有一个上下文窗口，长 SPEC 会把它填满，之后的每一步都背着前面的全部内容前进。工厂模式把工作分到**多个终端**：主导会话负责分配选定的卡片，每条 lane 是各自独立的会话，把一张卡片从 `plan`、`run` 到 `sync` 整张接下来。评审判定不是单独的阶段，由 sync 关卡吸收。上限并没有消失，但没有任何会话需要背负超过一张卡片的历史，因此同样的预算能走得远得多。
 
-每条 lane 都可以用不同的后端。主导会话和各条 lane 可以分别在 `cc`、`glm`、`codex` 中选择。
+每条 lane 都可以用不同的后端。主导会话和各条 lane 可以分别在 `cc`、`glm` 中选择。
 
 {{< terminal title="factory mode" raw="true" >}}
 moai cc -f                    # 主导：开启工厂运行
 moai cc -l                    # lane，各开一个终端：作为下一条空闲 lane 加入
 moai glm -l                   # GLM 后端的 lane
-moai codex -l                 # Codex 的 lane
 {{< /terminal >}}
 
 委派通道是队列。`backlog` 刻意不设归属会话，只有用 [`/moai todo`](/zh/utility-commands/moai-todo) 主动放入时，工作才会进来。主导只依据自己从卡片 `progress.md` 中读到的证据推进卡片，不依据 lane 的回复。

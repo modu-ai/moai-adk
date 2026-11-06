@@ -104,8 +104,8 @@ func init() {
 	// lsp_enabled seed uses; explicitness is probed with Changed() (see
 	// getBoolFlagWithDefault), so --enable-lsp=false still wins.
 	initCmd.Flags().Bool("enable-lsp", true, "Enable LSP integration")
-	initCmd.Flags().Bool("enforce-quality", true, "Enforce quality gates (default: true)")
-	initCmd.Flags().Bool("enable-design", true, "Enable design workflow (default: true)")
+	initCmd.Flags().Bool("enforce-quality", true, "Enforce quality gates")
+	initCmd.Flags().Bool("enable-design", true, "Enable design workflow")
 
 	// Retired per-agent model flags (SPEC-AGENT-MODEL-INHERIT-001 D10/D13).
 	// Subagents inherit the main session's model and effort, so these flags
@@ -531,7 +531,10 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// --git-provider flags take precedence: detection only fills a value still
 	// empty after flag parsing.
 	if opts.GitMode == "" || opts.GitProvider == "" {
-		detectedMode, detectedProvider := detectGitConfig(rootFlag)
+		detectedMode, detectedProvider, detectSkipped := detectGitConfigReport(rootFlag)
+		if detectSkipped != "" {
+			p.Warn("Git detection was cut short: %s", detectSkipped)
+		}
 		if opts.GitMode == "" {
 			opts.GitMode = detectedMode
 		}

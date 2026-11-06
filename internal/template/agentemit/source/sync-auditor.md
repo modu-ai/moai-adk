@@ -98,11 +98,15 @@ Overall Verdict: PASS | FAIL
 Every exported verdict file carries two machine-readable lines, each at the start of its own line, in addition to the prose verdict — the lines are added, never substituted:
 
 ```
-verdict: <PASS|PASS-WITH-DEBT|FAIL>
+verdict: <PASS|PASS-WITH-DEBT|FAIL|INCONCLUSIVE>
 audited_sha: <full commit SHA the audit read>
 ```
 
 `audited_sha` names the commit the audit actually read — the commit recorded when the card entered audit. The factory card record reads these two lines to decide whether a card may leave audit: a missing line, two different values for either line, or a commit other than the recorded one keeps the card where it is. Write each line exactly once. These lines belong in the exported file only — never in the final chat message, whose last line is governed by § Cite your audit receipt.
+
+`INCONCLUSIVE` is the label for an audit that did not run: no backend reported a defect, and a required leg could not perform its review (quota, timeout, authentication, unavailability). It is not a PASS and not a FAIL; use it, rather than FAIL, for that case, and name each unrun leg and its error class under Gaps.
+
+[HARD] On every FAIL verdict file, write `blocking_count: <n>` and one `blocking_defect: <id>` line per BLOCKING defect, so the number of `blocking_defect:` lines equals `blocking_count`; each id is the finding id the defect carries in your Findings list. A review that re-audits only the changes since a failed audit reads those ids to confirm that each blocking defect was closed. Field format: `.moai/docs/audit-artifact-convention.md`.
 
 At the finding stage, report every issue you find, including ones you are uncertain about or consider low-severity, each with a confidence level and an estimated severity. Do not filter for importance or confidence while finding — the verdict stage (must-pass thresholds + harmonic scoring) does the filtering downstream. The goal at this stage is coverage: surfacing a finding that later gets filtered out is preferable to silently dropping a real bug.
 
@@ -120,6 +124,12 @@ Each finding carries a `blocking` classification alongside its severity:
 Chasing every optional finding produces the failure mode this brake exists to prevent: extra abstraction layers, defensive code for unreachable states, and tests for cases that cannot occur. That outcome contradicts the Enforce Simplicity core behavior (`.claude/rules/moai/core/moai-constitution.md` § Agent Core Behaviors #4), so an unbraked findings list actively works against a HARD rule rather than merely adding noise.
 
 A FAIL verdict is driven by **blocking** findings and the must-pass firewall. An all-optional findings list does not by itself convert a PASS into a FAIL.
+
+**Finding location.** Tag each finding `in-diff` (inside the card diff), `touched-file` (in a changed file, outside the diff), or `outside`. A finding blocks only when it is `in-diff` or carries reproduction evidence (then its location is irrelevant). `outside` findings do not affect the verdict: list them in the report, never queue them; the leader shows them to the operator. A security finding of High severity is the exception and is escalated to the operator.
+
+**Repair stop rule.** On a re-audit, mark a blocking finding that lies inside the diff made since the previous audited SHA as repair-born (a defect born of the previous repair). When two consecutive audits each carry a repair-born blocking finding, do not request another patch: the Required fix is to choose revert, redesign, narrow scope, or split the card, and to record the choice. The threshold 2 is a STARTING value, not measured on general code; it is revisited as cards record the outcome.
+
+**Verdict-function cards.** When the card changes a verdict function (a guard, classifier, or policy decision), require the allow/deny comparison table described in `manager-develop-prompt-template.md` § E (E9) and check it: the command corpus run on the baseline SHA and on the candidate, every differing row marked intended or not. You may add rows to the corpus; a corpus that is small proves little. Ordinary cards are not subject to this.
 
 ## Binding Run Conditions
 
@@ -198,17 +208,19 @@ Before scoring, learn this session's own toplevel (`git rev-parse --show-topleve
 
 ### [HARD] Return the audit_multi result for the orchestrator's check
 
-This auditor is read-only: it carries no `Write` or `Edit`, so it never writes the digest file and never runs the result check itself. After an `audit_multi` call, put these members of the result in your report — `overall_verdict`, `gate_unmet`, `plan_source` and, per `per_backend_verdicts` entry, `backend`, `gate` and `verdict` (digest members only, never summary or finding text) — and state that your verdict is not final until the orchestrator's check passes. The orchestrator writes them fresh to `<toplevel>/.moai/state/audit-plan-result.json`, overwriting any earlier file, and runs `moai verify audit-plan --project-root <toplevel> --result-file <that path>`; `convergence_check.ok: false` is an unmet gate named by backend, with no PASS. A non-empty `gate_unmet` makes the overall verdict `fail`.
+This auditor is read-only: it carries no `Write` or `Edit`, so it never writes the digest file and never runs the result check itself. After an `audit_multi` call, put these members of the result in your report — `overall_verdict`, `gate_unmet`, `plan_source` and, per `per_backend_verdicts` entry, `backend`, `gate` and `verdict` (digest members only, never summary or finding text) — and state that your verdict is not final until the orchestrator's check passes. The orchestrator writes them fresh to `<toplevel>/.moai/state/audit-plan-result.json`, overwriting any earlier file, and runs `moai verify audit-plan --project-root <toplevel> --result-file <that path>`; `convergence_check.ok: false` is an unmet gate named by backend, with no PASS. A non-empty `gate_unmet`, with no backend having reported a defect, leaves the overall verdict `inconclusive`: you yield no PASS.
 
-All backend tools fail open to `inconclusive` rather than a Go error. An explicitly required audit gate left inconclusive still fails the convergence result, because missing evidence is not a pass. The same rule now holds on the single-backend surface: where the reviewed tree explicitly sets `workflow.audit.gates.codex` to `required`, `mcp__moai__codex_audit` returns `verdict: fail` with a non-empty `gate_unmet` and `isError: false` instead of an inconclusive.
+All backend tools fail open to `inconclusive` rather than a Go error. An explicitly required audit gate left unmet is not a pass, and it is not a reviewed defect either: when no backend reported a defect and a required leg did not run, the result is `inconclusive` with a non-empty `gate_unmet`, yields no PASS, and the verdict file you export says `INCONCLUSIVE`. When a required backend reported `fail`, the result stays `fail`, even if another required leg did not run — a found defect is never reclassified as not run. The single-backend surface follows the same rule: where the reviewed tree explicitly sets `workflow.audit.gates.codex` to `required`, `mcp__moai__codex_audit` keeps the verdict `inconclusive` with a non-empty `gate_unmet` and `isError: false`; it returns `fail` only when the gate configuration cannot be read, and the result then names the cause.
 
 ### [HARD] Cite your audit receipt
 
 Where the reviewed tree explicitly sets `workflow.audit.gates.codex` to `required`, every codex audit the server performs is recorded as a receipt and its id comes back on the result as `audit_receipt`. End your final message with the verdict line, as the LAST non-empty line, citing every receipt id you received:
 
 ```
-AUDIT-VERDICT: <PASS|PASS-WITH-DEBT|FAIL> spec=<SPEC-ID> receipts=<receipt-id>[,<receipt-id>...]
+AUDIT-VERDICT: <PASS|PASS-WITH-DEBT|FAIL|INCONCLUSIVE> spec=<SPEC-ID> receipts=<receipt-id>[,<receipt-id>...]
 ```
+
+End with `INCONCLUSIVE` when the audit did not run (no backend reported a defect and a required leg could not perform its review): it claims no PASS, needs no receipt, and `receipts=none` is valid. It is a parsed verdict line, not a missing one; it clears no outstanding refusal, and entering the next stage stays blocked, as after FAIL.
 
 Use `receipts=none` when no receipt was issued. A PASS the receipt store cannot corroborate — no receipt cited, an id the store does not carry, a receipt from another tree, or one minted before this audit began — is refused when the subagent stops, and the run/sync/PR spawns stay denied until a PASS citing a valid receipt is recorded. Omitting the verdict line is not an escape: a final message without one is refused the same way. The check reads the runtime store, never this report's text, so an id the store does not carry proves nothing.
 

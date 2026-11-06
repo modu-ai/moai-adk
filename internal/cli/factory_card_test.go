@@ -43,6 +43,11 @@ func fcFixture(t *testing.T) (string, *factory.BacklogStore) {
 	// assignment must land in a sandbox, never the real ~/.moai.
 	t.Setenv(paths.EnvHome, t.TempDir())
 	root, store := todoFixture(t)
+	// todoFixture clears MOAI_HOME, which makes paths.MoaiHome fall back to
+	// $HOME/.moai; point HOME at a sandbox so that fallback stays inside the
+	// test (card t2047: without it each test left a project folder in the real
+	// ~/.moai/worktrees/projects, 21.8k by 2026-11-05).
+	t.Setenv("HOME", t.TempDir())
 	prev := factoryCardNow
 	factoryCardNow = func() time.Time { return fcNow }
 	t.Cleanup(func() { factoryCardNow = prev })
@@ -476,14 +481,16 @@ func TestFR_AC018_DecidePushGate(t *testing.T) {
 	fcGitFlowConfig(t, root)
 	dir, merge := fcRepo(t, true)
 	fcPlace(t, root, homestate.Card{CardID: "p1", State: homestate.CardMergedLocal, OwnerLabel: "worker-1", MergeSHA: merge, WorktreePath: dir})
-	if _, _, err := runFactory(t, "decide", "p1", "--gate", "push", "--run", fcRun); err == nil {
+	// card t2059: the pushed route is an explicit choice (--choice push); the
+	// default destination is done, so these two calls name the route.
+	if _, _, err := runFactory(t, "decide", "p1", "--gate", "push", "--choice", "push", "--run", fcRun); err == nil {
 		t.Fatal("push accepted before the remote-tracking ref contains the merge")
 	}
 	if c := fcCard(t, root, "p1"); c.State != homestate.CardMergedLocal {
 		t.Fatalf("p1 = %s, want merged-local", c.State)
 	}
 	fcGit(t, dir, "push", "-q", "origin", "integration")
-	if _, _, err := runFactory(t, "decide", "p1", "--gate", "push", "--run", fcRun); err != nil {
+	if _, _, err := runFactory(t, "decide", "p1", "--gate", "push", "--choice", "push", "--run", fcRun); err != nil {
 		t.Fatalf("push after the ref advanced: %v", err)
 	}
 	if c := fcCard(t, root, "p1"); c.State != homestate.CardPushed {
@@ -550,7 +557,8 @@ func TestFactoryDecidePushChainsApprovalVersion(t *testing.T) {
 	// The operator gate (SPEC-MCP-NEUTRALITY-001 REQ-MN-003, M2 Part A): the
 	// deciding session carries the positive mark — env absence grants nothing.
 	t.Setenv(config.EnvFactoryRole, "operator")
-	if _, _, err := runFactory(t, "decide", cardID, "--gate", "push", "--run", fcRun); err != nil {
+	// card t2059: the with-remote pushed route is the explicit choice now.
+	if _, _, err := runFactory(t, "decide", cardID, "--gate", "push", "--choice", "push", "--run", fcRun); err != nil {
 		t.Fatalf("decide push: %v", err)
 	}
 	if c := fcCard(t, root, cardID); c.State != homestate.CardPushed || c.Version != 2 {

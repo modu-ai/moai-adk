@@ -194,7 +194,7 @@ func newFactoryMergeReadyCommand() *cobra.Command {
 
 			// github-flow delivers by pull request: the integration window is
 			// no prerequisite (REQ-GFD-006), so a cleared triple takes none.
-			// Under agentic-trunk the target-holder routing takes the same
+			// Under af-flow the target-holder routing takes the same
 			// edge when the primary checkout is the only holder of the
 			// integration target (card t1831 M5b). The workflow judgment
 			// reads the COMMON root's config (a card worktree carries no

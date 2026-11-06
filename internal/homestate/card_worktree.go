@@ -199,6 +199,32 @@ func (f *FactoryDB) CardRecordingPath(ctx context.Context, path string) (string,
 	return cardID, true, nil
 }
 
+// CardRecordedWorktree is one card row's recorded worktree path.
+type CardRecordedWorktree struct {
+	CardID string
+	Path   string
+}
+
+// CardWorktreeBindings lists every card row that records a worktree path, the
+// newest first. The migration's rebind uses it to find a binding recorded under
+// another spelling of the same directory (card t2053, C10). It never writes.
+func (f *FactoryDB) CardWorktreeBindings(ctx context.Context) ([]CardRecordedWorktree, error) {
+	rows, err := f.DB.QueryContext(ctx, `SELECT card_id, worktree_path FROM cards WHERE worktree_path != '' ORDER BY updated_at DESC`)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	var out []CardRecordedWorktree
+	for rows.Next() {
+		var b CardRecordedWorktree
+		if err := rows.Scan(&b.CardID, &b.Path); err != nil {
+			return nil, err
+		}
+		out = append(out, b)
+	}
+	return out, rows.Err()
+}
+
 // PreviousCardWorktree reads the newest worktree binding recorded for cardID
 // in a run other than excludeRunID — the binding a run replacement may carry
 // into the new run's row (card t1521). Card rows are keyed per run, so a

@@ -184,6 +184,31 @@ func TestResolveBacklogCounts_UnreadableIsUnavailableNotZero(t *testing.T) {
 // the non-race Test job in the same run was green. The measurement therefore
 // still runs and is logged under -race, but the budget is enforced only in a
 // non-race build; the skip is reported, not a silent pass.
+//
+// Card t2093 found the remaining flake in the gate itself, not in the product.
+// The old estimator computed addedP95 as the difference of the two arms'
+// independent p95 order statistics — a difference of percentiles, which is not
+// a percentile of a difference. Each arm's tail order statistic is dominated
+// by whatever scheduler or disk stall that arm happened to catch, so the
+// "added p95" measured which arm caught asymmetric stalls rather than added
+// cost. Under a machine load of ~50 the p95 gate breached and standalone
+// re-runs flipped pass/fail (1 fail / 1 pass); under a load of ~79 a PASS
+// logged ADDED median 342.499µs with p95 266.624µs — a p95 below the median,
+// which a percentile of one sorted distribution can never be, direct evidence
+// that the estimator was incoherent. The product's added cost (medians) has
+// stayed stable at ~0.3-0.4ms throughout (card t1174: 0.4ms), so the budgets
+// were right and the estimator was wrong.
+//
+// The repair changes the measurement, not the budgets. Each arm's per-round
+// sample is now the MINIMUM of 3 reads, and the gate is applied to ONE sorted
+// distribution of per-round paired differences d[i] = dbMin[i] - jsonMin[i].
+// A stall can only inflate a wall-clock sample, never deflate it, so the min
+// of k reads upper-bounds the uncontended true cost and filters upward-only
+// noise. Interleaving still cancels load landing on both arms at the median,
+// but it cannot cancel tail stalls landing asymmetrically — which is exactly
+// what the old difference-of-order-statistics p95 measured. Percentiles of
+// one sorted distribution of paired differences are real percentiles, so
+// p95 >= median is structurally guaranteed.
 func TestResolveBacklogCounts_LatencyBudget(t *testing.T) {
 	if testing.Short() {
 		t.Skip("latency measurement skipped under -short")
@@ -217,36 +242,40 @@ func TestResolveBacklogCounts_LatencyBudget(t *testing.T) {
 	}
 
 	const runs = 41
+	const readsPerSample = 3
 	dbSamples := make([]time.Duration, 0, runs)
 	jsonSamples := make([]time.Duration, 0, runs)
 	for i := 0; i < runs; i++ {
-		start := time.Now()
-		if got := resolveBacklogCounts(dbRoot); !got.Available {
-			t.Fatalf("database render %d read nothing", i)
-		}
-		dbSamples = append(dbSamples, time.Since(start))
+		// Arm A then arm B per round keeps the interleaving: whatever load
+		// the machine is under during round i lands on both arms' samples.
+		dbSamples = append(dbSamples, minRenderSample(t, dbRoot, readsPerSample))
+		jsonSamples = append(jsonSamples, minRenderSample(t, jsonRoot, readsPerSample))
+	}
 
-		start = time.Now()
-		if got := resolveBacklogCounts(jsonRoot); !got.Available {
-			t.Fatalf("json render %d read nothing", i)
-		}
-		jsonSamples = append(jsonSamples, time.Since(start))
+	// The gate distribution: one sample per round, each the paired difference
+	// of that round's min-of-k arm samples. Percentiles are taken of THIS one
+	// sorted distribution, never of the arms' independent order statistics.
+	added := make([]time.Duration, runs)
+	for i := range added {
+		added[i] = dbSamples[i] - jsonSamples[i]
 	}
 
 	sort.Slice(dbSamples, func(a, b int) bool { return dbSamples[a] < dbSamples[b] })
 	sort.Slice(jsonSamples, func(a, b int) bool { return jsonSamples[a] < jsonSamples[b] })
-	mid, p95i := len(dbSamples)/2, (len(dbSamples)*95)/100
+	sort.Slice(added, func(a, b int) bool { return added[a] < added[b] })
 
-	addedMedian := dbSamples[mid] - jsonSamples[mid]
-	addedP95 := dbSamples[p95i] - jsonSamples[p95i]
+	mid, p95i := runs/2, (runs*95)/100
 
-	t.Logf("AC-TOSQ-012: 500-item fixture, %d interleaved render pairs\n"+
-		"  database : median %v  p95 %v  max %v\n"+
-		"  json     : median %v  p95 %v  max %v\n"+
+	addedMedian := added[mid]
+	addedP95 := added[p95i]
+
+	t.Logf("AC-TOSQ-012: 500-item fixture, %d interleaved render pairs, min-of-%d reads per arm per round\n"+
+		"  database : median %v  p95 %v  max %v  (min-of-%d samples)\n"+
+		"  json     : median %v  p95 %v  max %v  (min-of-%d samples)\n"+
 		"  ADDED    : median %v  p95 %v   (budget: median <=10ms, ceiling 25ms)",
-		runs,
-		dbSamples[mid], dbSamples[p95i], dbSamples[len(dbSamples)-1],
-		jsonSamples[mid], jsonSamples[p95i], jsonSamples[len(jsonSamples)-1],
+		runs, readsPerSample,
+		dbSamples[mid], dbSamples[p95i], dbSamples[len(dbSamples)-1], readsPerSample,
+		jsonSamples[mid], jsonSamples[p95i], jsonSamples[len(jsonSamples)-1], readsPerSample,
 		addedMedian, addedP95)
 
 	if raceEnabled {
@@ -259,6 +288,25 @@ func TestResolveBacklogCounts_LatencyBudget(t *testing.T) {
 	if addedP95 > 25*time.Millisecond {
 		t.Errorf("added p95 %v exceeds the 25ms hard ceiling (C-2)", addedP95)
 	}
+}
+
+// minRenderSample times k reads of resolveBacklogCounts(root) and returns the
+// minimum duration observed. A stall can only inflate a wall-clock sample,
+// never deflate it, so the minimum of k reads upper-bounds the uncontended
+// true cost of the read and filters upward-only noise.
+func minRenderSample(t *testing.T, root string, k int) time.Duration {
+	t.Helper()
+	var best time.Duration
+	for j := 0; j < k; j++ {
+		start := time.Now()
+		if got := resolveBacklogCounts(root); !got.Available {
+			t.Fatalf("render read %d of %s returned nothing", j, root)
+		}
+		if d := time.Since(start); j == 0 || d < best {
+			best = d
+		}
+	}
+	return best
 }
 
 // dirNames lists a directory's entries, sorted.

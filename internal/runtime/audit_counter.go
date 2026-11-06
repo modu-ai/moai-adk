@@ -78,6 +78,18 @@ func readReportFile(path string) ([]byte, error) {
 	return os.ReadFile(path)
 }
 
+// IsInconclusiveReport reports whether the report at path is labelled
+// INCONCLUSIVE: an audit that did not run (SPEC-AUDIT-ENGINE-CONVERGENCE-001
+// REQ-AEC-007). A file that cannot be read in full, or that carries no readable
+// label, is not: a count the counter cannot verify must not shrink.
+func IsInconclusiveReport(path string) bool {
+	data, err := readReportFile(path)
+	if err != nil {
+		return false
+	}
+	return auditverdict.Parse(data).Label == "INCONCLUSIVE"
+}
+
 // CountAuditRounds computes the round count of specID from the given report
 // directories (see RoundReportDirs). A directory that does not exist is
 // skipped; an unreadable directory is an error — a count the caller cannot
@@ -89,6 +101,7 @@ func CountAuditRounds(specID string, reportDirs []string) (RoundEvidence, error)
 	var ev RoundEvidence
 	seen := map[int]bool{}
 	baseSeen := false
+	baseCounted := false // the base report is a round unless it is INCONCLUSIVE
 	failCounted := 0
 	bestN := -1
 	legacyFile := regexp.MustCompile(`^` + regexp.QuoteMeta(specID) + `-review-([0-9]+)\.md$`)
@@ -164,11 +177,22 @@ func CountAuditRounds(specID string, reportDirs []string) (RoundEvidence, error)
 				}
 			}
 			ev.Sources = append(ev.Sources, path)
+			// An INCONCLUSIVE file is an audit that did not run, not a round
+			// (SPEC-AUDIT-ENGINE-CONVERGENCE-001 REQ-AEC-007): it is skipped by the
+			// count but still ranks as evidence, so an INCONCLUSIVE file with the
+			// highest iteration stays the latest verdict and an older verdict never
+			// becomes the decision.
+			inconclusive := IsInconclusiveReport(path)
 			if fail {
-				failCounted++
+				if !inconclusive {
+					failCounted++
+				}
 				continue
 			}
 			if base {
+				if !inconclusive {
+					baseCounted = true
+				}
 				if !baseSeen {
 					baseSeen = true
 					if bestN < 1 {
@@ -182,7 +206,9 @@ func CountAuditRounds(specID string, reportDirs []string) (RoundEvidence, error)
 				}
 				continue
 			}
-			seen[n] = true
+			if !inconclusive {
+				seen[n] = true
+			}
 			if n > bestN {
 				bestN = n
 				ev.LatestPath = path
@@ -190,7 +216,7 @@ func CountAuditRounds(specID string, reportDirs []string) (RoundEvidence, error)
 		}
 	}
 	ev.Count = len(seen) + failCounted
-	if baseSeen {
+	if baseCounted {
 		ev.Count++
 	}
 	if ev.LatestPath != "" {

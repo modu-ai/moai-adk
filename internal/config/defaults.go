@@ -265,6 +265,59 @@ const (
 	// stalling an on-demand `moai doctor`. A chosen value, not a measured one.
 	DefaultPluginVersionProbeTimeout = 3 * time.Second
 
+	// DefaultWorktreeGitTimeout bounds ONE read-side git call of the worktree
+	// migration (rev-parse, status, diff, ls-files, worktree list; card t2053).
+	// A repository with a very large untracked or ignored tree can make `git
+	// status` slow, but not unbounded; a timeout fails the tree safe (skipped,
+	// nothing moved). A chosen value, not a measured one.
+	DefaultWorktreeGitTimeout = 2 * time.Minute
+
+	// DefaultWorktreeMoveTimeout bounds the `git worktree move` call itself
+	// (forward and reverse). Longer than the read-side bound because the move
+	// rewrites the tree's registration; a timeout fails the tree, and a
+	// destination that appeared anyway goes through the reverse order.
+	DefaultWorktreeMoveTimeout = 5 * time.Minute
+
+	// DefaultWorktreeLsofTimeout bounds the one whole-system `lsof -a -d cwd`
+	// scan that tells whether a process works inside a tree. A scan that cannot
+	// answer makes every tree a skip, never a move.
+	DefaultWorktreeLsofTimeout = 30 * time.Second
+
+	// DefaultWorktreeMigrateManifestLookahead is how many trees ahead of the one
+	// being moved the migration may already be reading the before-the-move
+	// manifest of (card t2070). The read is read-only and independent per tree;
+	// the move, the journal write and the registration repair stay one tree at a
+	// time. The bound keeps the gap between a tree's capture and its move to a
+	// few trees, because a change made in that gap is caught as a mismatch after
+	// the move and costs a reverse — and caps the git processes at this many
+	// captures of eight reads each. A chosen value, not a measured one.
+	DefaultWorktreeMigrateManifestLookahead = 3
+
+	// DefaultWorktreeMigrateMoveConcurrency is how many trees of one repository
+	// the migration hands to `git worktree move` at the same time (card t2081).
+	// Only that call overlaps; the journal and move-list writes, the registry
+	// re-key, the card rebind and the comparison after the move stay one tree at
+	// a time. Overlapping moves of different trees were checked against git's
+	// own view over 12 trees x 8 rounds with other git processes reading the
+	// same repository; the number is a chosen cap well inside what was tried
+	// (every tree in a round moved at once), not a measured optimum.
+	DefaultWorktreeMigrateMoveConcurrency = 4
+
+	// DefaultWorktreeCommandWaitDelay is how long a bounded migration command's
+	// output pipes may stay open after its context ends before the runner stops
+	// waiting for them (a grandchild holding the pipe must not outlive the bound).
+	DefaultWorktreeCommandWaitDelay = 2 * time.Second
+
+	// DefaultInitGitProbeTimeout bounds the `git remote` calls `moai init` uses
+	// to detect the git mode and provider (card t2053). A timeout falls back to
+	// the manual default and says so.
+	DefaultInitGitProbeTimeout = 5 * time.Second
+
+	// DefaultUserLockNoticeDelay is how long a user-asset lock wait stays silent
+	// before `moai update` / `moai init` print that another process holds the
+	// moai user lock (card t2053).
+	DefaultUserLockNoticeDelay = 1 * time.Second
+
 	// DefaultStopParseCapLimit is N, the number of consecutive stdin-parse-
 	// failure Stops under the Claude harness that keep the fail-closed deny;
 	// the next one is answered with no opinion (SPEC-HOOK-STOP-PARSE-CAP-001
@@ -1789,15 +1842,14 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 				Model:  DefaultClaudeAuditModel,
 				Effort: DefaultClaudeAuditEffort,
 			},
-			// Codex pin {gpt-6.1-sol, high} (SPEC-MODEL-MATRIX-UPDATE-001
-			// REQ-MMU-001). SUPERSEDES REQ-AMP-005 (keep-the-Go-default-EMPTY
-			// neutrality) per operator directive 2026-09-30 — the supersession
-			// is also recorded at the AuditConfig.Codex doc comment
-			// (internal/config/audit_models.go). Unchanged by
-			// SPEC-AGENT-TIER-001.
+			// Codex pin {gpt-6.1-terra, xhigh} (card t1980 scope expansion,
+			// operator directive — supersedes the SPEC-MODEL-MATRIX-UPDATE-001
+			// {gpt-6.1-sol, high} pin, which itself superseded REQ-AMP-005
+			// neutrality per operator directive 2026-09-30). Derived from the
+			// closed-set constants — no inline pin literals here.
 			Codex: ModelEffort{
 				Model:  DefaultCodexAuditModel,
-				Effort: "high",
+				Effort: DefaultCodexAuditEffort,
 			},
 			// GLM pin {glm-5.3, max} (SPEC-AGENT-TIER-001 REQ-TIER-004/006,
 			// operator directive — SUPERSEDES the t1368 EMPTY GLM pin). The

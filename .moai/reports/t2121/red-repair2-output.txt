@@ -1,0 +1,21 @@
+=== RUN   TestT2121AbsorbRepair2
+=== RUN   TestT2121AbsorbRepair2/N8_X_ours_absorb_dropping_main_change_refuses
+    merge_specless_repair2_t2121_test.go:21: sync-audit passed=true, want false; detail: .moai/reports/t9/verdict.md: verdict: PASS, audited_sha 5151f544ac01ad848210ec4e4dbe78b372a203db binds HEAD 908d2dedddb1bcd80b078e1213f9f7ed84695aa1 — the SPEC-less card's audit record reads closed
+=== RUN   TestT2121AbsorbRepair2/N4c_absorb_deleting_a_file_main_added_refuses
+    merge_specless_repair2_t2121_test.go:29: sync-audit passed=true, want false; detail: .moai/reports/t9/verdict.md: verdict: PASS, audited_sha 1c715dd5bd54ee56efa31ac9c8316ab26f180584 binds HEAD 52ac471f44108d39c2a6041ca322e74534c862af — the SPEC-less card's audit record reads closed
+=== RUN   TestT2121AbsorbRepair2/N2a_clean_absorb_still_passes
+=== RUN   TestT2121AbsorbRepair2/N3a_two_clean_absorbs_still_pass
+=== RUN   TestT2121AbsorbRepair2/regression_no_merge_evidence_dir_only_passes
+--- FAIL: TestT2121AbsorbRepair2 (12.60s)
+    --- FAIL: TestT2121AbsorbRepair2/N8_X_ours_absorb_dropping_main_change_refuses (3.86s)
+    --- FAIL: TestT2121AbsorbRepair2/N4c_absorb_deleting_a_file_main_added_refuses (2.64s)
+    --- PASS: TestT2121AbsorbRepair2/N2a_clean_absorb_still_passes (2.40s)
+    --- PASS: TestT2121AbsorbRepair2/N3a_two_clean_absorbs_still_pass (2.67s)
+    --- PASS: TestT2121AbsorbRepair2/regression_no_merge_evidence_dir_only_passes (1.03s)
+=== RUN   TestT2121AbsorbRepair2BinaryPinned
+--- PASS: TestT2121AbsorbRepair2BinaryPinned (3.08s)
+=== RUN   TestT2121AbsorbRepair2TextconvPinned
+--- PASS: TestT2121AbsorbRepair2TextconvPinned (3.64s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/factorylane	19.712s
+FAIL

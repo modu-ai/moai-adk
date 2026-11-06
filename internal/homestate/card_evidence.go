@@ -59,15 +59,15 @@ func hasRemote(ctx context.Context, dir string) (bool, error) {
 }
 
 // PushGateTarget returns the state `decide --gate push` requests for a
-// merged-local card: `pushed` when the card's repository has a remote,
-// otherwise `done` (the no-remote edge).
-func PushGateTarget(ctx context.Context, c Card) (string, error) {
-	remote, err := hasRemote(ctx, c.WorktreePath)
-	if err != nil {
-		return "", err
-	}
-	if remote {
-		return CardPushed, nil
-	}
+// merged-local card by DEFAULT: `done`, whether or not the card's repository
+// has a remote. The earlier answer — `pushed` when a remote exists — encoded
+// the premise that a remote means push and CI come before done; the operator's
+// Done standard (card t2059, root cause of t2057's follow-up) is local
+// verification + the merge into local main + the leader's evidence receipt,
+// with release CI, review and the remote merge managed apart. The store still
+// requires the receipt on the done edge (REQ-FCR-002b). The pushed → ci-green
+// → done route (T17/T19/T20) is taken only by an explicit choice, resolved by
+// the caller (`--gate push --choice push`), not here.
+func PushGateTarget(_ context.Context, _ Card) (string, error) {
 	return CardDone, nil
 }

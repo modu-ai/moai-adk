@@ -359,9 +359,9 @@ func TestMergeTripleSpecLessRefusesUnsafeCardID(t *testing.T) {
 func TestMergeTripleSpecLessRefusalText(t *testing.T) {
 	r, _ := newSpecLessRepo(t)
 	run := evalSpecLess(t, r, "")
-	want := "card t9 has no SPEC, so its merge evidence is .moai/reports/t9/verdict.md — " + filepath.Join(r.dir, r.verdictRel()) + " does not exist. " +
+	want := "card t9 has no SPEC, so its merge evidence is .moai/reports/t9/verdict.md (or, when verdict.md is absent, the latest .moai/reports/t9/sync-audit*.md) — " + filepath.Join(r.dir, r.verdictRel()) + " does not exist. " +
 		"Produce that file on the card branch with the machine lines `verdict: PASS` (or `verdict: PASS-WITH-DEBT`) and `audited_sha: <full commit SHA the audit read>` " +
-		"(the audited commit must be HEAD, or differ from HEAD only under .moai/reports/t9/)"
+		"(the audited commit must be HEAD, differ from HEAD only under .moai/reports/t9/, or differ only by absorbing main with the card's own diff unchanged)"
 	if got := run.Checks[0].Detail; got != want {
 		t.Errorf("refusal text:\n got: %s\nwant: %s", got, want)
 	}

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -23,6 +24,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/gitenv"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/session"
+	"github.com/modu-ai/moai-adk/internal/sqliteuri"
 	"github.com/modu-ai/moai-adk/internal/statusline"
 	"github.com/modu-ai/moai-adk/internal/worktreeroot"
 )
@@ -924,6 +926,25 @@ func factoryCardQueueTitle(root, cardID string) string {
 	return ""
 }
 
+// factoryCardQueueBaseSHA returns the card's recorded base SHA (card t2058: a
+// repair card's failed release-CI candidate). "" with a nil error means the
+// card carries none — it is cut from the configured base branch exactly as
+// before. A queue that cannot be read is an ERROR, never "no base": the lease
+// could not tell a repair card from an ordinary one and would cut the repair
+// from the wrong base.
+func factoryCardQueueBaseSHA(root, cardID string) (string, error) {
+	rec, err := todoReadStoreAt(root).LoadPure()
+	if err != nil {
+		return "", fmt.Errorf("read the card's base SHA from the queue: %w", err)
+	}
+	for _, it := range rec.Items {
+		if it.ID == cardID && it.Issuance != nil {
+			return strings.TrimSpace(it.Issuance.BaseSHA), nil
+		}
+	}
+	return "", nil
+}
+
 // factoryEnsureCardWorktree is the REQ-SD-011 record step of a successful
 // lease: a card with a recorded worktree reuses that card's own tree; a card
 // without one gains a worktree created through the shared worktree
@@ -944,7 +965,11 @@ func factoryEnsureCardWorktree(ctx context.Context, root, runID string, card hom
 		return "", false, errors.New("worktree creator is not initialized")
 	}
 	slug := factoryWorktreeSlug(card.CardID, factoryCardQueueTitle(root, card.CardID), card.SpecID)
-	wt, err := factoryCreateAndRenameWorktree(root, card.CardID, slug, out)
+	baseSHA, err := factoryCardQueueBaseSHA(root, card.CardID)
+	if err != nil {
+		return "", false, err
+	}
+	wt, err := factoryCreateAndRenameWorktreeAt(root, card.CardID, slug, baseSHA, out)
 	if err != nil {
 		return "", false, err
 	}
@@ -989,12 +1014,28 @@ func uniqueWorktreeBranchName(slug string, exists func(string) bool) (string, er
 // @MX:NOTE: [AUTO] The lock covers the creator and `git branch -m` only; the record write stays outside it (D3, lock order).
 // @MX:SPEC: SPEC-FACTORY-ATOMIC-LEASE-001
 func factoryCreateAndRenameWorktree(root, cardID, slug string, out io.Writer) (string, error) {
+	return factoryCreateAndRenameWorktreeAt(root, cardID, slug, "", out)
+}
+
+// factoryCreateAndRenameWorktreeAt is the same step with an optional base SHA
+// (card t2058): a card that carries one is cut from it through
+// worktree.WorktreeCreatorAt, which refuses an unresolvable SHA instead of
+// falling back to the configured base.
+func factoryCreateAndRenameWorktreeAt(root, cardID, slug, baseSHA string, out io.Writer) (string, error) {
 	release, err := factory.AcquireFactoryStepLock(root, factoryWorktreeStepWait)
 	if err != nil {
 		return "", fmt.Errorf("serialize the card worktree step: %w", err)
 	}
 	defer func() { _ = release() }()
-	wt, err := worktree.WorktreeCreator(cardID, out)
+	var wt string
+	if baseSHA != "" {
+		if worktree.WorktreeCreatorAt == nil {
+			return "", errors.New("worktree creator (explicit base) is not initialized")
+		}
+		wt, err = worktree.WorktreeCreatorAt(cardID, baseSHA, out)
+	} else {
+		wt, err = worktree.WorktreeCreator(cardID, out)
+	}
 	if err != nil {
 		return "", fmt.Errorf("create the card worktree: %w", err)
 	}
@@ -1663,6 +1704,50 @@ func factoryNextClaim(ctx context.Context, db *homestate.FactoryDB, root, runID 
 	return leased, true, false, nil
 }
 
+// factoryNextReacquire is the owner's re-lease of its own expired leased card
+// (card t2013), the claim of a nominee marked reacquire: the expiry return and
+// the new lease commit in one record transaction (ReacquireExpiredLease), with
+// the queue's dispatch record following inside it exactly as for T2/T3. A row
+// that stopped being reacquirable between the read and the write is a race to
+// re-select, not an error. Record only — the card's worktree is never touched.
+func factoryNextReacquire(ctx context.Context, db *homestate.FactoryDB, root, runID, lane string, cur homestate.Card) (homestate.Card, bool, bool, error) {
+	ctx, cancel := factoryClaimContext(ctx)
+	defer cancel()
+	followRecord := func(next homestate.Card) error {
+		return todoStoreAt(root).RefreshDispatchCurrentLockHeld(next.CardID, runID, next.OwnerLabel)
+	}
+	card, reacquired, err := db.ReacquireExpiredLease(ctx, runID, cur.CardID, lane, factoryCardNow(), followRecord)
+	if err != nil {
+		return factoryNextClaimRefused(factoryClaimFailure(ctx, err))
+	}
+	if !reacquired {
+		return homestate.Card{}, false, true, nil
+	}
+	return card, true, false, nil
+}
+
+// factoryNextResumeRepair is the owner's return to its own `pr-open` card
+// (card t2013): the repair resume and the new lease commit in one record
+// transaction (ResumePROpenRepair), with the queue's dispatch record following
+// inside it as for T2/T3. A row that stopped being resumable between the read
+// and the write is a race to re-select. Record only — the worktree and the
+// pull request are never touched.
+func factoryNextResumeRepair(ctx context.Context, db *homestate.FactoryDB, root, runID, lane string, cur homestate.Card) (homestate.Card, bool, bool, error) {
+	ctx, cancel := factoryClaimContext(ctx)
+	defer cancel()
+	followRecord := func(next homestate.Card) error {
+		return todoStoreAt(root).RefreshDispatchCurrentLockHeld(next.CardID, runID, next.OwnerLabel)
+	}
+	card, resumed, err := db.ResumePROpenRepair(ctx, runID, cur.CardID, lane, factoryCardNow(), followRecord)
+	if err != nil {
+		return factoryNextClaimRefused(factoryClaimFailure(ctx, err))
+	}
+	if !resumed {
+		return homestate.Card{}, false, true, nil
+	}
+	return card, true, false, nil
+}
+
 // factoryNextClaimRefused maps a claim refusal: a stale version or a holder
 // mismatch is a race to retry; anything else is a real error.
 func factoryNextClaimRefused(err error) (homestate.Card, bool, bool, error) {
@@ -1894,6 +1979,13 @@ func factoryRecordRefusal(row homestate.Card, lane string) *factoryNominateRefus
 		homestate.CardSync, homestate.CardSyncAudit, homestate.CardMergeReady, homestate.CardMerging,
 		homestate.CardMergedLocal, homestate.CardPushed, homestate.CardCIGreen:
 		return factoryRefusal(factoryRefuseOwned, "the card is in flight at %s (holder %s)", row.State, dash(factoryRowHolder(row)))
+	case homestate.CardPROpen:
+		// The owner resumes repair on its own open pull request (card t2013);
+		// any other lane keeps the recorded refusal below.
+		if homestate.CanResumePROpenRepair(row, lane) {
+			return nil
+		}
+		return factoryRefusal(factoryRefuseRecorded, "the factory record has the card at %s; only an operator unblock or re-pick moves it", row.State)
 	default:
 		return factoryRefusal(factoryRefuseRecorded, "the factory record has the card at %s; only an operator unblock or re-pick moves it", row.State)
 	}
@@ -1964,6 +2056,14 @@ type factoryNominee struct {
 	item       factory.BacklogItem
 	row        *homestate.Card // nil when the factory record has no row for the card
 	serialHeld bool
+	// reacquire marks the one shape a leased row is leasable in: the registered
+	// owner nominating its own card whose lease has expired (card t2013). The
+	// claim then applies the expiry and re-leases in one transaction.
+	reacquire bool
+	// resumeRepair marks the registered owner nominating its own `pr-open` card
+	// to repair it (card t2013); the claim returns it to the run stage and
+	// leases it in one transaction.
+	resumeRepair bool
 }
 
 // factoryNextValidate is step 1 of the nominated lease: one pure queue read
@@ -2008,6 +2108,21 @@ func factoryNextValidate(ctx context.Context, l *factory.LockedBacklog, db *home
 	// refused the one lease a lane was dispatched to run). A nomination of a
 	// card NOT assigned to this lane is a NEW card and still passes false.
 	assignedHere := nom.row != nil && nom.row.State == homestate.CardAssigned && nom.row.OwnerLabel == lane
+	// The owner's own expired lease (card t2013) is arm (a) after the expiry the
+	// claim applies: it is judged as the `assigned` row it is about to become.
+	refusalRow := nom.row
+	if nom.row != nil && homestate.IsReacquirableExpiredLease(*nom.row, lane, now) {
+		nom.reacquire, assignedHere = true, true
+		assigned := *nom.row
+		assigned.State = homestate.CardAssigned
+		refusalRow = &assigned
+	}
+	if nom.row != nil && homestate.CanResumePROpenRepair(*nom.row, lane) {
+		nom.resumeRepair, assignedHere = true, true
+		assigned := *nom.row
+		assigned.State = homestate.CardAssigned
+		refusalRow = &assigned
+	}
 	// holderAlive (card t1828): the same generation-aware holder-liveness
 	// read the selection arms take — an expired lease of a live same-incarnation
 	// holder still holds the slot.
@@ -2025,7 +2140,7 @@ func factoryNextValidate(ctx context.Context, l *factory.LockedBacklog, db *home
 			}
 		}
 	}
-	if r := factoryKeepSetRefusal(nom.item, nom.row, lane, nom.serialHeld, serialHolder); r != nil {
+	if r := factoryKeepSetRefusal(nom.item, refusalRow, lane, nom.serialHeld, serialHolder); r != nil {
 		return nom, r, nil
 	}
 	// Another lane's bundle member is never a nominee (card t1454
@@ -2232,6 +2347,12 @@ func factoryNominateInSection(ctx context.Context, l *factory.LockedBacklog, db 
 func factoryNextNominatedClaim(ctx context.Context, db *homestate.FactoryDB, root, runID, lane string, nom factoryNominee, fields homestate.CardFields) (homestate.Card, bool, bool, error) {
 	if err := factoryNominateBeforeRecord(nom.item.ID); err != nil {
 		return homestate.Card{}, false, false, err
+	}
+	if nom.reacquire {
+		return factoryNextReacquire(ctx, db, root, runID, lane, *nom.row)
+	}
+	if nom.resumeRepair {
+		return factoryNextResumeRepair(ctx, db, root, runID, lane, *nom.row)
 	}
 	if nom.row != nil && nom.row.State == homestate.CardAssigned {
 		return factoryNextClaim(ctx, db, root, runID, *nom.row, lane)
@@ -3011,11 +3132,17 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	}
 	// github-flow delivers by pull request, takes no integration window and
 	// never merges locally (factory_card_pr.go, REQ-GFD-004/005/006). Under
-	// agentic-trunk the target-holder routing sends a project whose ONLY
+	// af-flow the target-holder routing sends a project whose ONLY
 	// `main` holder is the primary checkout down the same edge (card t1831
 	// M5b, REQ-AGT-006 rescope 0.4.0): the shared human/leader surface never
 	// becomes a merge window; the leader merges the card's pull request.
-	if factoryGitHubFlow(root) || factoryAgenticTrunkPrimaryRoute(root) {
+	// The release route (card t2013, AF-Flow S2, REQ-FCR-026): under af-flow
+	// with the fixed release branch provisioned in its own worktree, the card
+	// lands through the local integration window into that branch — never the
+	// pull-request edge, never main. Any condition missing leaves the judgment
+	// below untouched.
+	relBranch, relTree, releaseRoute := factoryReleaseRoute(root)
+	if !releaseRoute && (factoryGitHubFlow(root) || factoryAgenticTrunkPrimaryRoute(root)) {
 		return factoryCompleteGitHubFlow(ctx, out, root, cardID, remeasure, run, lane)
 	}
 	// The same session identity acquire resolves: a window whose holder is
@@ -3037,6 +3164,62 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	card, err := db.LoadCard(ctx, runID, cardID)
 	if err != nil {
 		return fmt.Errorf("factory complete: %w", err)
+	}
+
+	// REQ-FCR-026 (e): a card already merged-local whose recorded merge is a
+	// merge commit of its CURRENT card HEAD on the release branch is a no-op —
+	// before the "not merge-ready" refusal below, which stays for every other
+	// card and for the main route.
+	if releaseRoute {
+		if merged := factoryReleaseAlreadyMerged(card, relBranch, relTree); merged != "" {
+			_, _ = fmt.Fprintf(out, "%s %s merge=%s branch=%s worktree=%s (already merged for this card HEAD; nothing to do)\n",
+				card.CardID, card.State, merged, relBranch, relTree)
+			// card t2057: the queue close is fail-open, so the re-run retries it.
+			factoryCloseLaneCard(out, root, runID, card, lane, relBranch)
+			return nil
+		}
+	} else if card.State == homestate.CardMergedLocal {
+		// card t2057: a card already at merged-local on the plain local route
+		// has nothing left to merge; the re-run only reconciles the queue close
+		// (already-closed reads as closed), as the pull-request edge does at
+		// merged-pr. The card record and the integration branch stay untouched.
+		// The record keeps no integration branch, so the target comes from
+		// configuration only; a fallback to the card's own work branch would
+		// archive the card as landed where it did not land.
+		target, source := factoryResolveIntegrationBranch(root, card)
+		if source != factory.BranchSourceConfig {
+			_, _ = fmt.Fprintf(out, "%s %s merge=%s (already merged; the queue card is left open: no configured integration target to record the landing against)\n",
+				card.CardID, card.State, card.MergeSHA)
+			return nil
+		}
+		// The configuration may have changed since the merge: close only when
+		// the recorded merge is an ancestor of the CURRENT target, otherwise
+		// report why and leave the queue card open (no landed verdict is
+		// recorded against a branch the merge never reached).
+		reachable, reachErr := factoryMergeReachable(factoryRepoDir(root, card), card.MergeSHA, target)
+		if reachErr != nil || !reachable {
+			why := "is not reachable from"
+			if reachErr != nil {
+				why = fmt.Sprintf("could not be checked against (%v)", reachErr)
+			}
+			_, _ = fmt.Fprintf(out, "%s %s merge=%s (already merged; the queue card is left open: the recorded merge %s %s)\n",
+				card.CardID, card.State, card.MergeSHA, why, target)
+			return nil
+		}
+		// And only when the card branch has not moved past that merge: a fix
+		// committed on the card branch after the merge is not in the recorded
+		// merge, and archiving the card would call it landed. No record field
+		// is needed — the card's own HEAD and the recorded MergeSHA answer it
+		// (card t2059, review of fa98cfb9ae).
+		if why := factoryCardHeadNotInMerge(card); why != "" {
+			_, _ = fmt.Fprintf(out, "%s %s merge=%s (already merged; the queue card is left open: %s)\n",
+				card.CardID, card.State, card.MergeSHA, why)
+			return nil
+		}
+		_, _ = fmt.Fprintf(out, "%s %s merge=%s branch=%s (already merged; reconciling the queue close)\n",
+			card.CardID, card.State, card.MergeSHA, target)
+		factoryCloseLaneCard(out, root, runID, card, lane, target)
+		return nil
 	}
 
 	// REQ-MWQ-019 step 1 — the card gates run READ-ONLY, before the window
@@ -3076,6 +3259,11 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	heldByUs := lock.Held() && lock.SessionID == sessionID && lock.Branch != ""
 	var branch, source string
 	if heldByUs {
+		// The release route never lands through a window recorded for another
+		// branch: that window belongs to a different route.
+		if releaseRoute && lock.Branch != relBranch {
+			return fmt.Errorf("factory complete: refused — the integration window this session holds records branch %q, not the release branch %q; release it (moai integration release) or complete after it lapses", lock.Branch, relBranch)
+		}
 		branch, source = lock.Branch, lock.BranchSource
 	} else {
 		if lock.Held() && lock.SessionID != sessionID && !lock.Stale() {
@@ -3083,6 +3271,9 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 				factoryHolderLabel(lock), lock.PID, lock.AcquiredAt, lock.Branch)
 		}
 		branch, source = factoryResolveIntegrationBranch(root, card)
+		if releaseRoute {
+			branch, source = relBranch, factory.BranchSourceConfig
+		}
 	}
 
 	// REQ-SD-023 refusals — each fires before any record changes.
@@ -3125,6 +3316,13 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 		return fmt.Errorf("factory complete: refused — the integration worktree for %q is not provisioned: no tree holds it, or only the parent checkout %s does (the parent never changes branch; the leader provisions the integration worktree)", branch, primary)
 	}
 
+	// The release route's stops (REQ-FCR-026 (d)) leave a card-level hold
+	// record and change nothing else; the main route's stops stay as they were.
+	stop := factoryReleaseStop{
+		enabled: releaseRoute, db: db, runID: runID, card: card, lane: lane,
+		branch: branch, integTree: integTree, cardBranch: cardBranch,
+	}
+
 	// Hold the window as the lane: the same record acquire writes, resolved
 	// the same way (the owner pid, never this process's). A window already
 	// ours is not re-written — the recorded branch choice stands.
@@ -3146,7 +3344,7 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 		// runs before the window record is touched. A tip that is an adoption
 		// is exempt (REQ-ISB-016).
 		if freshErr := completeBaseFreshnessPrecondition(out, lockRoot, integTree, branch, card.WorktreePath, cardBranch, card.CardID); freshErr != nil {
-			return freshErr
+			return stop.hold(ctx, out, "base-freshness", freshErr, "", freshErr)
 		}
 		if factoryCompleteAcquireHook != nil {
 			factoryCompleteAcquireHook()
@@ -3181,7 +3379,7 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	// adopted and falls through to step 3.
 	adopted := factoryAdoptedTip(lockRoot, integTree, branch, card.WorktreePath, cardBranch)
 	if adopted != "" {
-		done, err := completeTransitions(ctx, db, out, lockRoot, runID, card, cardID, lane, adopted, remeasure, branch, integTree)
+		done, err := completeTransitions(ctx, db, out, root, lockRoot, runID, card, cardID, lane, adopted, remeasure, branch, integTree)
 		if err != nil {
 			// O1: the adoption's transition failure is the post-merge class
 			// (the commit already sits on the integration branch) — but the
@@ -3224,7 +3422,45 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	}
 	if _, err := factory.ReadRemeasureRecord(lockRoot, candidateTree); err != nil {
 		releaseOwnAcquisition()
-		return &exitCodeError{code: factory.MergeExitBaseMoved, msg: fmt.Sprintf("factory complete: refused — no valid re-measure record for the candidate tree %s (%v); run moai integration remeasure, then re-acquire --wait — the re-measure-and-re-acquire code", factory.ShortSHA(candidateTree), err)}
+		refused := &exitCodeError{code: factory.MergeExitBaseMoved, msg: fmt.Sprintf("factory complete: refused — no valid re-measure record for the candidate tree %s (%v); run moai integration remeasure, then re-acquire --wait — the re-measure-and-re-acquire code", factory.ShortSHA(candidateTree), err)}
+		return stop.hold(ctx, out, "remeasure-record", refused, "", refused)
+	}
+
+	// REQ-FCR-026 (b): the fast required check, run against the CARD's tree
+	// before any merge commit exists. A failure holds the card and releases
+	// the window this call acquired. The check can outlast the card lease and
+	// a lapsed lease cannot be renewed, so the lease is renewed while the check
+	// runs and once more after it; the window is stamped after a pass.
+	if releaseRoute {
+		// The check runs in the card's working copy and the merge lands its
+		// committed HEAD, so a tree that is not exactly its HEAD is refused
+		// before the check can speak for something it did not measure.
+		if reason, dirt := factoryCardTreeDirt(card.WorktreePath); reason != "" {
+			releaseOwnAcquisition()
+			refused := fmt.Errorf("factory complete: refused — card %s's worktree is not its committed HEAD (%s); the release branch and the card state are unchanged, a hold was recorded; commit or remove the changes and complete again", cardID, reason)
+			return stop.hold(ctx, out, reason, dirt, "", refused)
+		}
+		renewEvery := factoryCheckLeaseRenewEvery
+		if renewEvery <= 0 {
+			renewEvery = db.RenewInterval()
+		}
+		checkKey, tail, checkErr, leaseErr := factoryFastCheckKeepingLease(ctx, out, root, runID, cardID, lane, renewEvery, card.WorktreePath, factoryBranchTip(integTree, branch))
+		if checkErr != nil {
+			releaseOwnAcquisition()
+			failed := fmt.Errorf("factory complete: refused — the fast required check failed for card %s (%v); the release branch and the card state are unchanged, a hold was recorded; fix the card and complete again", cardID, checkErr)
+			return stop.hold(ctx, out, "check-failed", errors.New(tail), checkKey, failed)
+		}
+		if leaseErr != nil {
+			releaseOwnAcquisition()
+			refused := fmt.Errorf("factory complete: refused — the check passed but card %s's lease could not be kept alive while it ran (%v); the release branch and the card state are unchanged, a hold was recorded; re-lease the card and complete again", cardID, leaseErr)
+			return stop.hold(ctx, out, "lease-lost", leaseErr, checkKey, refused)
+		}
+		_ = factory.UpdateIntegrationWindow(lockRoot, func(w *factory.IntegrationLock) error {
+			if w.Held() && w.SessionID == sessionID {
+				factory.StampLease(w, factory.WindowClock(), factory.WindowLeaseDuration)
+			}
+			return nil
+		})
 	}
 
 	// REQ-MWQ-019 step 4 — the merge runs ONLY by calling the REQ-MWQ-017
@@ -3255,6 +3491,9 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 			})
 		}
 	}
+	if factoryCompleteMergeSeamsHook != nil {
+		factoryCompleteMergeSeamsHook(&mergeSeams)
+	}
 	mergeSHA, err := factory.RunMergeStep(factory.MergeStepInput{
 		Root:                lockRoot,
 		IntegrationWorktree: integTree,
@@ -3265,9 +3504,19 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	}, mergeSeams)
 	if err != nil {
 		if code, ok := factory.MergeExitCode(err); ok {
-			return &exitCodeError{code: code, msg: fmt.Sprintf("factory complete: the merge step refused: %v", err)}
+			refused := &exitCodeError{code: code, msg: fmt.Sprintf("factory complete: the merge step refused: %v", err)}
+			// Every cause but a failure AFTER the merge commit exists leaves
+			// the integration branch without this card: a card-level hold.
+			if code == factory.MergeExitPostMerge {
+				return refused
+			}
+			reason := "pre-merge-gate"
+			if code == factory.MergeExitMergeFailed || code == factory.MergeExitMergeDirty {
+				reason = "merge-conflict"
+			}
+			return stop.hold(ctx, out, reason, err, "", refused)
 		}
-		return fmt.Errorf("factory complete: the merge step failed: %w", err)
+		return stop.hold(ctx, out, "merge-step-failed", err, "", fmt.Errorf("factory complete: the merge step failed: %w", err))
 	}
 
 	// The transitions ride the merge (T14 then T16), and a transition
@@ -3278,7 +3527,7 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	if factoryCompleteTransitionHook != nil {
 		factoryCompleteTransitionHook()
 	}
-	if _, err := completeTransitions(ctx, db, out, lockRoot, runID, card, cardID, lane, mergeSHA, remeasure, branch, integTree); err != nil {
+	if _, err := completeTransitions(ctx, db, out, root, lockRoot, runID, card, cardID, lane, mergeSHA, remeasure, branch, integTree); err != nil {
 		return completePostMergeConflict(out, lockRoot, sessionID, cardID, mergeSHA, err)
 	}
 
@@ -3297,7 +3546,7 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 // what the lane passed — the GATE no longer reads a lane file for the
 // re-measure (REQ-MWQ-021: the record is the gate), so a stand-in file can
 // never satisfy it (REQ-MWQ-020).
-func completeTransitions(ctx context.Context, db *homestate.FactoryDB, out io.Writer, lockRoot, runID string, card homestate.Card, cardID, lane, mergeSHA, remeasure, branch, integTree string) (homestate.Card, error) {
+func completeTransitions(ctx context.Context, db *homestate.FactoryDB, out io.Writer, root, lockRoot, runID string, card homestate.Card, cardID, lane, mergeSHA, remeasure, branch, integTree string) (homestate.Card, error) {
 	merging, err := db.Transition(ctx, homestate.TransitionRequest{
 		RunID: runID, CardID: cardID, To: homestate.CardMerging,
 		ExpectedVersion: card.Version, Actor: lane, Now: factoryCardNow(),
@@ -3326,6 +3575,12 @@ func completeTransitions(ctx context.Context, db *homestate.FactoryDB, out io.Wr
 	}
 	_, _ = fmt.Fprintf(out, "%s %s merge=%s branch=%s worktree=%s\n",
 		done.CardID, done.State, done.MergeSHA, branch, integTree)
+	// card t2057: merged-local into the local integration branch is the
+	// mechanical landing answer of this route, so the lane closes its own
+	// queue card here exactly as the pull-request edge does at merged-pr. The
+	// approval-gated done edges of the factory record are not touched.
+	factoryCloseLaneCard(out, root, runID, done, lane, branch)
+	factoryPrintWakes(ctx, out, db, done) // card t2013: wait records the landing satisfies
 	return done, nil
 }
 
@@ -3359,6 +3614,15 @@ const completePostMergeTransitionConflictExit = 20
 // integrationLockMutationTestHook established). Every production path
 // leaves it nil, and the call site is nil-guarded.
 var factoryCompleteTransitionHook func()
+
+// factoryCompleteMergeSeamsHook is a TEST-ONLY seam: it receives the merge
+// step's seams just before the step runs, so a test can wrap the step's git
+// runner and present a change that lands after the step's pre-merge gates (the
+// only way a real merge conflict is reachable, since every gate pins the
+// record's base to the integration tip). Same convention as the hooks around
+// it: unexported, assigned only from package cli tests, nil in every production
+// path, and the call site is nil-guarded.
+var factoryCompleteMergeSeamsHook func(*factory.MergeStepSeams)
 
 // factoryCompleteAcquireHook is the acquisition's test seam (card t1478
 // Finding 4): called just before complete takes the integration window for
@@ -3483,14 +3747,23 @@ func factoryContextAtHandoffThreshold(root string) bool {
 	return rec.RawPct >= threshold
 }
 
-// factoryPrintClearPolicyLine prints the one line the lane follows after a
-// completion (REQ-SD-020, reshaped by SPEC-FACTORY-LANE-NO-CLEAR-001
-// REQ-LNC-007/009): clear-each — the default, absence included — prints the
-// in-session card transition; clear-when-full prints the same line only once
-// the session's context-usage record is at or above the handoff threshold and
-// prints nothing below it; relaunch asks the operator to end the session so
-// the supervising launcher starts the next card's session. No value
-// instructs a session clear.
+// factoryPrintClearPolicyLine prints the one line of completion guidance after
+// a genuinely completed card (REQ-SD-020). It is called only on the completed
+// edges — merged-local (the adoption and the merge step) and merged-pr; a
+// pr-open, a still-open PR, a refused delivery or an audit-pending card never
+// reach it. clear-each — the default, absence included — prints the guidance;
+// clear-when-full prints it only once the session's context-usage record is at
+// or above the handoff threshold and prints nothing below it; relaunch asks
+// the operator to end the session so the supervising launcher starts the next
+// card's session.
+//
+// Card t2013 (decisions R22, an operator instruction later than
+// SPEC-FACTORY-LANE-NO-CLEAR-001 REQ-LNC-007/009) fixes the printed order:
+// ExitWorktree, the default-branch check, the operator's /clear, the next-card
+// request. The line is TEXT: a session has no tool that runs /clear, so /clear
+// is phrased as an operator action, and nothing printed here is evidence that
+// any step ran. Pending work blocks the clear: the line tells the reader to
+// resolve and preserve first and never suggests a force-clear.
 func factoryPrintClearPolicyLine(out io.Writer, root string) {
 	policy := factoryClearPolicySelected()
 	if policy == config.FactoryClearPolicyRelaunch {
@@ -3500,13 +3773,15 @@ func factoryPrintClearPolicyLine(out io.Writer, root string) {
 	if policy == config.FactoryClearPolicyWhenFull && !factoryContextAtHandoffThreshold(root) {
 		return // below the handoff threshold: continue with the next card, no line
 	}
+	const preserveFirst = "before leaving, check and preserve completion evidence, dirty changes, unpushed commits, active checks or handoff, and unsubmitted input; if any is incomplete or pending, resolve it first and do not clear (never force-clear). Then, in order: (1) ExitWorktree(keep); (2) confirm the primary checkout is back on the default branch (`git branch --show-current`); (3) operator: run /clear (this session cannot run /clear itself); (4) "
+	const guidanceOnly = ". This line is guidance only and does not show that any step ran; earlier cards' conversation context is non-authoritative"
 	if os.Getenv(config.EnvFactoryAutoDispatch) == config.FactoryDispatchManual {
 		// Manual dispatch: the operator chose to route cards to this lane, so
 		// the line must not tell it to lease one (REQ-LNC-007, manual mode).
-		_, _ = fmt.Fprintf(out, "  card transition (policy %s, manual dispatch): ExitWorktree(keep), then wait for the leader's next dispatch; earlier cards' conversation context is non-authoritative\n", policy)
+		_, _ = fmt.Fprintf(out, "  card complete (policy %s, manual dispatch): %sask the leader for the next card, do not lease one%s\n", policy, preserveFirst, guidanceOnly)
 		return
 	}
-	_, _ = fmt.Fprintf(out, "  card transition (policy %s): ExitWorktree(keep), then `moai factory next` from the primary checkout, then EnterWorktree(<leased worktree path>) and verify the toplevel; earlier cards' conversation context is non-authoritative\n", policy)
+	_, _ = fmt.Fprintf(out, "  card complete (policy %s): %srequest the next card with `moai factory next` from the primary checkout%s\n", policy, preserveFirst, guidanceOnly)
 }
 
 // factoryResolveIntegrationBranch mirrors acquire's branch resolution
@@ -3520,6 +3795,59 @@ func factoryResolveIntegrationBranch(root string, card homestate.Card) (string, 
 		return branch, factory.BranchSourceConfig
 	}
 	return factoryBranchOfWorktree(card.WorktreePath), factory.BranchSourceCaller
+}
+
+// factoryMergeReachable reports whether the commit mergeSHA is an ancestor of
+// (or equal to) the branch tip, read in dir (card t2057). A negative answer
+// (git exits 1) is (false, nil); a commit or branch git cannot resolve, or any
+// other git failure, is an error — never read as "not an ancestor", because
+// the caller leaves the queue card open in both cases and must say which.
+func factoryMergeReachable(dir, mergeSHA, branch string) (bool, error) {
+	if strings.TrimSpace(mergeSHA) == "" || strings.TrimSpace(branch) == "" {
+		return false, errors.New("no recorded merge or target to compare")
+	}
+	// The full ref: a tag named like the branch outranks it in git's name
+	// resolution and would answer for the wrong ref.
+	return factoryCommitContained(dir, mergeSHA, "refs/heads/"+strings.TrimPrefix(branch, "refs/heads/"))
+}
+
+// factoryCommitContained reports whether ancestor is an ancestor of (or equal
+// to) descendant, read in dir with `git merge-base --is-ancestor` (card t2057,
+// t2059). A negative answer (git exits 1) is (false, nil); anything git cannot
+// resolve or answer is an error, never read as "not an ancestor".
+func factoryCommitContained(dir, ancestor, descendant string) (bool, error) {
+	_, err := factoryGitRead(dir, "merge-base", "--is-ancestor", ancestor, descendant)
+	if err == nil {
+		return true, nil
+	}
+	var ee *exec.ExitError
+	if errors.As(err, &ee) && ee.ExitCode() == 1 {
+		return false, nil
+	}
+	return false, err
+}
+
+// factoryCardHeadNotInMerge answers "" when the card branch's current HEAD is
+// contained in the recorded merge, and otherwise a short reason the re-run
+// prints when it leaves the queue card open (card t2059). A HEAD or a merge
+// git cannot resolve is a reason too — never read as contained.
+func factoryCardHeadNotInMerge(card homestate.Card) string {
+	dir := strings.TrimSpace(card.WorktreePath)
+	if dir == "" {
+		return "the card has no recorded worktree to read the card branch HEAD from"
+	}
+	head, err := factoryGitRead(dir, "rev-parse", "--verify", "--quiet", "HEAD^{commit}")
+	if err != nil || head == "" {
+		return fmt.Sprintf("the card branch HEAD could not be read (%v)", err)
+	}
+	contained, err := factoryCommitContained(dir, head, card.MergeSHA)
+	if err != nil {
+		return fmt.Sprintf("the card branch HEAD could not be compared with the recorded merge (%v)", err)
+	}
+	if !contained {
+		return fmt.Sprintf("the card branch HEAD %s is not contained in the recorded merge", factory.ShortSHA(head))
+	}
+	return ""
 }
 
 // factoryRepoDir names the repository directory the worktree lookup runs
@@ -3648,7 +3976,7 @@ func factoryRunRowNotActive(ctx context.Context, root, run string) bool {
 	if _, err := os.Stat(path); err != nil {
 		return false
 	}
-	db, err := sql.Open("sqlite", "file:"+filepath.ToSlash(path)+"?_pragma=busy_timeout(100)")
+	db, err := sql.Open("sqlite", sqliteuri.File(path, url.Values{"_pragma": {"busy_timeout(100)"}}))
 	if err != nil {
 		return false
 	}
@@ -3664,8 +3992,10 @@ func factoryRunRowNotActive(ctx context.Context, root, run string) bool {
 // sync-audit F3, F7 and F11, card t1663). An explicit --run value wins. Otherwise the lane's roster
 // binding (workers.run_id, the run the lane joined) is read against the active runs. A sole active run
 // answers, except that a binding naming another run, active or not, refuses (F11); an empty binding or a
-// missing roster row keeps the sole-run answer. When several active runs survive reconciliation, the
-// binding must name an active run, and the card's lease must be held by this lane in that run: the lease
+// missing roster row keeps the sole-run answer. When several active runs remain (the set is read without
+// reconciliation, so nothing is retired or moved, card t2030), the one run whose owner is not dead answers
+// as the sole run does, dead-owner runs beside it set aside. Otherwise the binding must name an active run,
+// and the card's lease must be held by this lane in that run: the lease
 // holder alone does not decide it, because a label can be reused across runs, so a stale lease in another
 // run can name the same label. Every other ambiguous case refuses, naming --run: no binding, a binding
 // outside the active set, or a card the lane does not hold in its bound run. Each refusal keeps the detail
@@ -3682,7 +4012,10 @@ func resolveFactoryRenewRunRule(ctx context.Context, root, explicit, lane, cardI
 		}
 		return run, homestate.RosterUnchecked, nil
 	}
-	run, err := factorymsg.ResolveActiveRun(ctx, root, "")
+	// A renewal writes only its own card row and the lane's heartbeat, so its run resolves WITHOUT
+	// reconciliation (card t2030): ResolveActiveRun retires dead-owner runs and re-keys their cards, a write
+	// the renewal never asked for, and one it made even when the renewal itself was then refused.
+	run, err := factorymsg.ResolveActiveRunReadOnly(ctx, root)
 	if err == nil {
 		// The roster binding is the lane's own run. A binding to any other run is a mismatch: refuse,
 		// naming --run, and write nothing.
@@ -3691,7 +4024,7 @@ func resolveFactoryRenewRunRule(ctx context.Context, root, explicit, lane, cardI
 			return "", homestate.RosterUnchecked, berr
 		}
 		if bound != "" && bound != run {
-			return "", homestate.RosterUnchecked, fmt.Errorf("no --run given: lane %s is bound to run %s, not to the single active run %s; pass --run", lane, bound, run)
+			return "", homestate.RosterUnchecked, factoryRenewBindingMismatch(lane, bound, run)
 		}
 		return run, homestate.RosterSoleRun, nil
 	}
@@ -3710,6 +4043,19 @@ func resolveFactoryRenewRunRule(ctx context.Context, root, explicit, lane, cardI
 	bound, berr := db.WorkerRunBinding(ctx, lane)
 	if berr != nil {
 		return "", homestate.RosterUnchecked, refuse(berr)
+	}
+	// One run whose owner is not dead is the sole run in the sense of the branch above: the dead-owner runs
+	// beside it are set aside, as a reconciliation would have retired them, but nothing is written here. With
+	// two or more such runs the answer stays ambiguous. The write re-checks the roster (RosterSoleRun).
+	if only, ok := factorySoleNonDeadRun(ambiguous.Owners); ok {
+		switch {
+		case bound == "" || bound == only:
+			return only, homestate.RosterSoleRun, nil
+		case !factoryRunListed(ambiguous.Owners, bound):
+			return "", homestate.RosterUnchecked, factoryRenewBindingMismatch(lane, bound, only)
+		}
+		// bound names another ACTIVE run, a dead-owner run that may still hold the lane's live records: the
+		// binding below decides, and the card must be held there.
 	}
 	if bound == "" {
 		return "", homestate.RosterUnchecked, refuse(fmt.Errorf("lane %s has no roster binding", lane))
@@ -3743,6 +4089,24 @@ func factoryRenewBoundRun(ctx context.Context, root, lane string) (string, error
 	}
 	defer func() { _ = db.Close() }()
 	return db.WorkerRunBinding(ctx, lane)
+}
+
+// factoryRenewBindingMismatch is the refusal for a lane whose roster binding names a run other than the
+// renewal's sole run (F11): it names --run and nothing is written.
+func factoryRenewBindingMismatch(lane, bound, run string) error {
+	return fmt.Errorf("no --run given: lane %s is bound to run %s, not to the single active run %s; pass --run", lane, bound, run)
+}
+
+// factorySoleNonDeadRun returns the active run whose owner is not classified dead, when exactly one is.
+// An indeterminate owner counts as not dead, as in the retirement gate: it may be a live leader.
+func factorySoleNonDeadRun(owners []homestate.RunOwner) (string, bool) {
+	run, n := "", 0
+	for _, owner := range owners {
+		if owner.Classification != homestate.OwnerDead {
+			run, n = owner.RunID, n+1
+		}
+	}
+	return run, n == 1
 }
 
 // factoryRunListed reports whether runID is one of the active runs owners names.
@@ -4072,9 +4436,24 @@ func factoryAssignReassign(ctx context.Context, queueStore *factory.BacklogStore
 			return fmt.Errorf("read the queue's current dispatch: %w", err)
 		}
 		for _, entry := range rec.Runtime.DispatchCurrent {
-			if entry.CardID == cardID && entry.RunID != "" && entry.RunID != runID {
-				return fmt.Errorf("card %s's current dispatch is run %s, not %s; reassign in the card's current run (pass --run %s)", cardID, entry.RunID, runID, entry.RunID)
+			if entry.CardID != cardID || entry.RunID == "" || entry.RunID == runID {
+				continue
 			}
+			// Card t1975: a run consolidation moves the card into the survivor but
+			// cannot reach the queue, so the record can still name the retired
+			// source. Passing the source is impossible (it is no longer active),
+			// which made the refusal below a dead end. When the recorded run was
+			// consolidated INTO the run being reassigned in, the record is stale
+			// by that merge, not by a competing dispatch: the reassign below
+			// rewrites it to this run. Any other mismatch still refuses.
+			merged, mergeErr := factoryRunConsolidatedInto(ctx, db, entry.RunID, runID)
+			if mergeErr != nil {
+				return fmt.Errorf("read the consolidation record of run %s: %w", entry.RunID, mergeErr)
+			}
+			if merged {
+				continue
+			}
+			return fmt.Errorf("card %s's current dispatch is run %s, not %s; reassign in the card's current run (pass --run %s)", cardID, entry.RunID, runID, entry.RunID)
 		}
 		cur, err := db.LoadCard(ctx, runID, cardID)
 		if err != nil {
@@ -4087,6 +4466,40 @@ func factoryAssignReassign(ctx context.Context, queueStore *factory.BacklogStore
 		return err
 	})
 	return prevOwner, next, err
+}
+
+// factoryConsolidationHopLimit bounds how many consolidation records
+// factoryRunConsolidatedInto follows, so a corrupt cycle cannot loop.
+const factoryConsolidationHopLimit = 16
+
+// factoryRunConsolidatedInto reports whether run from was retired by a chain of
+// consolidations that ends in run to (card t1975). A run retired the ordinary
+// way, an active run, and an absent run are all "no".
+func factoryRunConsolidatedInto(ctx context.Context, db *homestate.FactoryDB, from, to string) (bool, error) {
+	return consolidatedInto(from, to, func(run string) (string, bool, error) {
+		return db.RunRetiredByConsolidation(ctx, run)
+	})
+}
+
+// consolidatedInto follows next (a run's consolidation record: the run its
+// cards went to, and whether it was consolidated at all) from `from` and
+// reports whether the chain reaches `to` within the hop limit.
+func consolidatedInto(from, to string, next func(run string) (into string, consolidated bool, err error)) (bool, error) {
+	cur := from
+	for hop := 0; hop < factoryConsolidationHopLimit; hop++ {
+		into, consolidated, err := next(cur)
+		if err != nil {
+			return false, err
+		}
+		if !consolidated {
+			return false, nil
+		}
+		if into == to {
+			return true, nil
+		}
+		cur = into
+	}
+	return false, nil
 }
 
 // factoryCardView is one card as `status` reports it.
@@ -4353,10 +4766,10 @@ func newFactoryDecideCommand() *cobra.Command {
 			}
 			switch {
 			case gate == "kickoff" && (choice == "approve" || choice == "reject"):
-			case gate == "push" && choice == "":
+			case gate == "push" && (choice == "" || choice == "done" || choice == "push"):
 			case gate == "" && (choice == "resume" || choice == "block" || choice == "unblock" || choice == "abandon"):
 			default:
-				return fmt.Errorf("factory decide: want --gate kickoff --choice approve|reject, --gate push, or --choice resume|block|unblock|abandon")
+				return fmt.Errorf("factory decide: want --gate kickoff --choice approve|reject, --gate push [--choice done|push], or --choice resume|block|unblock|abandon")
 			}
 			ctx := cmd.Context()
 			if ctx == nil {
@@ -4369,7 +4782,7 @@ func newFactoryDecideCommand() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&gate, "gate", "", "decision gate: kickoff or push")
-	cmd.Flags().StringVar(&choice, "choice", "", "approve|reject (kickoff), or resume|block|unblock|abandon")
+	cmd.Flags().StringVar(&choice, "choice", "", "approve|reject (kickoff), done|push (gate push: done is the default for a merged-local card whatever the remote and needs the leader receipt; push takes the pushed route), or resume|block|unblock|abandon")
 	cmd.Flags().StringVar(&decider, "decider", homestate.DeciderHuman, "who decided: human, or audit (kickoff approve only, on verdict-file evidence)")
 	cmd.Flags().StringVar(&run, "run", "", "factory run id (default: the single active run)")
 	return cmd
@@ -4407,7 +4820,13 @@ func decideOne(ctx context.Context, db *homestate.FactoryDB, projectRoot, runID,
 		if err := want(homestate.CardMergedLocal); err != nil {
 			return cur, err
 		}
-		if to, err = homestate.PushGateTarget(ctx, cur); err != nil {
+		if choice == "push" {
+			// card t2059: the pushed → ci-green → done route (T17/T19/T20) is an
+			// explicit choice; it is no longer chosen by the presence of a remote.
+			to = homestate.CardPushed
+		} else if to, err = homestate.PushGateTarget(ctx, cur); err != nil {
+			// The default (and the explicit --choice done) is the T18 edge:
+			// done, with the leader's receipt required by the store.
 			return cur, err
 		}
 		if to == homestate.CardPushed && integration == "" {

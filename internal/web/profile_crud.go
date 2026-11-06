@@ -236,7 +236,7 @@ func (a *app) renderProfileResult(w http.ResponseWriter, r *http.Request, status
 		a.renderError(w, status, msg)
 		return
 	}
-	view.Banner = msg
+	view.Banner = refineText(msg)
 	view.BannerKind = "error"
 	a.render(w, status, view)
 }

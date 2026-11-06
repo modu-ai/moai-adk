@@ -40,8 +40,8 @@ func TestRunMultiAudit_DeltaNote_GatesOffDoNotClaimAReview(t *testing.T) {
 			t.Errorf("note claims %q although those gates were off: %q", claim, note)
 		}
 	}
-	if !strings.Contains(note, noteSHA) || !strings.Contains(note, "codex was scoped in prose only") {
-		t.Errorf("note must keep the delta base and the codex prose-only statement: %q", note)
+	if !strings.Contains(note, noteSHA) || !strings.Contains(note, "codex reviewed "+noteSHA+"...HEAD") {
+		t.Errorf("note must keep the delta base and say codex reviewed the delta: %q", note)
 	}
 }
 
@@ -109,15 +109,32 @@ func TestRunMultiAudit_DeltaNote_CodexOffDoesNotClaimACodexScope(t *testing.T) {
 	}
 }
 
-// A codex verdict in the slice keeps the prose-only statement.
-func TestRunMultiAudit_DeltaNote_CodexVerdictKeepsTheProseOnlyStatement(t *testing.T) {
+// SPEC-AUDIT-ENGINE-CONVERGENCE-001 REQ-AEC-003: the codex leg carries the
+// server-collected delta diff in its adversarial turn, so a codex verdict is a
+// review of the delta and the note no longer calls its scope prose-only. A codex
+// leg that returned no verdict claims nothing.
+func TestRunMultiAudit_DeltaNote_CodexVerdictNamesTheServerCollectedDiff(t *testing.T) {
 	note := deltaNoteFor(t, "", ReviewOutput{}, config.AuditGates{Claude: config.AuditGateRequired, Codex: config.AuditGateRequired, GLM: config.AuditGateOff},
 		func(string) ReviewOutput { return claudeReview("pass") })
 
-	if !strings.Contains(note, "codex was scoped in prose only (not mechanically bounded)") {
-		t.Errorf("codex ran; note must keep the prose-only statement: %q", note)
+	if !strings.Contains(note, "codex reviewed "+noteSHA+"...HEAD (the server-collected diff, in its adversarial turn)") {
+		t.Errorf("codex ran; note must say it reviewed the server-collected diff: %q", note)
 	}
-	if strings.Contains(note, "codex did not run") {
-		t.Errorf("codex ran; note must not say it did not: %q", note)
+	for _, bad := range []string{"prose only", "prose-only", "not mechanically bounded", "codex did not run"} {
+		if strings.Contains(note, bad) {
+			t.Errorf("codex reviewed the delta; note must not say %q: %q", bad, note)
+		}
+	}
+}
+
+func TestRunMultiAudit_DeltaNote_CodexWithoutAVerdictClaimsNoReview(t *testing.T) {
+	note := deltaNoteFor(t, "", ReviewOutput{}, config.AuditGates{Claude: config.AuditGateOff, Codex: config.AuditGateRequired, GLM: config.AuditGateOff},
+		func(string) ReviewOutput { return inconclusiveBackend() })
+
+	if strings.Contains(note, "codex reviewed") {
+		t.Errorf("codex returned no verdict; note must not claim a review: %q", note)
+	}
+	if !strings.Contains(note, "codex produced no verdict on it") {
+		t.Errorf("note must say codex produced no verdict: %q", note)
 	}
 }

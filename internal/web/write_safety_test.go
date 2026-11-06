@@ -15,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -165,7 +166,7 @@ func TestHandleSaveGreenfieldSectionCreation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := info.Mode().Perm(); got != 0o644 {
+	if got := info.Mode().Perm(); runtime.GOOS != "windows" && got != 0o644 { // Windows has no POSIX mode bits
 		t.Errorf("created file mode = %o, want 644 (template convention)", got)
 	}
 }

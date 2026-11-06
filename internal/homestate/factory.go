@@ -170,6 +170,17 @@ CREATE TABLE IF NOT EXISTS card_metadata_events (
   payload_json TEXT NOT NULL DEFAULT '{}',
   created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS card_waits (
+  seq INTEGER PRIMARY KEY AUTOINCREMENT,
+  card_id TEXT NOT NULL,
+  cond_kind TEXT NOT NULL,
+  cond_ref TEXT NOT NULL DEFAULT '',
+  waker TEXT NOT NULL,
+  reason TEXT NOT NULL DEFAULT '',
+  recorded_by TEXT NOT NULL DEFAULT '',
+  recorded_at TEXT NOT NULL,
+  woken_at TEXT NOT NULL DEFAULT ''
+);
 `
 
 type FactoryDB struct {
