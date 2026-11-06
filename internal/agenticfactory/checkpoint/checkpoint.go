@@ -17,6 +17,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/claim"
 	"github.com/modu-ai/moai-adk/internal/agenticfactory/core"
+	"github.com/modu-ai/moai-adk/internal/gitenv"
 )
 
 // Bounds keep one checkpoint small; long work is saved by meaning, not by volume.
@@ -310,6 +311,9 @@ type GitRemote struct{ Dir, Name string }
 func (g GitRemote) git(args ...string) (string, int, error) {
 	c := exec.Command("git", args...)
 	c.Dir = g.Dir
+	// The repository is the one in Dir; an inherited GIT_DIR would redirect
+	// every call to another repository's origin and forge the ACK.
+	c.Env = gitenv.Env()
 	var out bytes.Buffer
 	c.Stdout = &out
 	err := c.Run()
