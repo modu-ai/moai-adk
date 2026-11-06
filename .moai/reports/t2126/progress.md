@@ -19,4 +19,6 @@ Observed (EXPECTED_RED, assertion failure, exit 1): `ConfirmRemote err = <nil>, 
 ## Gaps
 - Mutant probe = the RED run itself (fix absent); no separate mutant of the fix line.
 - The worktree guard refused one compound shell command (add+commit chain); re-issued as separate plain commands.
-- No independent audit yet; no Codex call made.
+- Independent audit: sync-audit-iter1.md PASS 0.93 @8ecd4bfcc0 (published as verdict.md, commit 8795490c5b); stage chain run->sync->sync-audit->merge-ready v11 (one rebind-evidence to the audited commit).
+- card-review.md not produced: codex_audit 1회 pass·지적 0(rcpt-ee212793db05707dcbc2a1da)이 리뷰를 대신함, Codex 한도 보존 (leader instruction).
+- Follow-up candidate (not fixed): ctxmodel/ctxmodel.go:310 GitVerifier.Lookup runs git cat-file without Env (read only, not reproduced); leader asks the operator whether to issue a card.
