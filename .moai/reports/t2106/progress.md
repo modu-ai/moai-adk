@@ -36,3 +36,10 @@ All move-list writers go through `appendMoveListLine` (migrate.go: intent `pendi
 - Windows: vet only; the tests were not run there.
 - The full `internal/cli/worktree` package and `/verify` (the gate) were not run (the leader's constraint).
 - golangci-lint not run.
+
+## Audit (sync-audit, iter 1)
+- Verdict file `.moai/reports/t2106/sync-audit.md`: PASS-WITH-DEBT 94 @901273f155; no blocking defects; MINOR F1-F3 (+F4 out of scope) left as debt.
+- Codex call: one `codex_audit` call by the auditor, receipt rcpt-b7cae4d26e4f1d2872464a77, pass, 0 findings (Codex read the diff only; it ran no tests).
+- Basis for the Codex call: the repository gate `audit.gates.codex: required` and the leader-relayed standing decision d-20261106T064700Z-de2d (max 2 per card), which I read on the decision board. The question I put to this session's user about the call was unanswered ("No response after 60s"), so the user did not approve this call; it rests on the standing decision. Disclosed here.
+- Own re-run on the audited HEAD after the audit: target test + `TestAppendMoveListLine_` `-count=3` -> ok (9.2 s).
+- Auditor measured old code (movelist.go overlaid with 9cf8a1fc14): target test failed 3 of 10 with `pending,reversed,moved`.
