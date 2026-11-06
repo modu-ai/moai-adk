@@ -27,5 +27,10 @@ Tree t2119, base = local main at lease time; commands ran in this run against th
 5. epoch-0 refusals (26): likely a follow-on of the fsync failure — recheck after this slice's CI;
 6. SQLite URI `invalid uri authority: C:` (474) belongs to t2118 (lane-28), deliberately not touched.
 
+## Audit round 1 (FAIL 0.74 @703a5b4035) and its repair
+- F1 (blocking, Claude + Codex P1): `TestSyncDirDefaultPath` required a nil error from the real directory fsync, which fails on Windows by design ("Access is denied" is the tolerated refusal). Repaired: the existing-directory step now asks `dirSyncFailureIsFatal(runtime.GOOS, err)`; the missing-directory step is unchanged.
+- F3: that omission is recorded here; the new test would have added a Windows failure.
+- F2 (optional, left): hard-coding `"windows"` at the call site survives the mutants; the call site passes `runtime.GOOS` by design.
+
 ## Residual-risk
 If Windows CI still reports the fsync failure after this change, the error is not `fs.ErrPermission` on that platform (for example a different errno) and the tolerance must widen. Tolerating the Windows refusal gives up the directory-fsync durability step there only; the file fsync and the rename remain.

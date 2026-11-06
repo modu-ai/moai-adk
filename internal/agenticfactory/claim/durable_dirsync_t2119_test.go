@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io/fs"
 	"os"
+	"runtime"
 	"testing"
 )
 
@@ -33,12 +34,14 @@ func TestDirSyncFailureIsFatal(t *testing.T) {
 	}
 }
 
-// The real directory fsync on this platform still succeeds on a directory that
-// exists, and still fails for one that does not (the tolerance is for the
-// Windows refusal only, never for a missing directory).
+// The real directory fsync on this platform is acceptable for a directory that
+// exists (on Windows it answers "Access is denied", which is exactly the
+// tolerated refusal, so the check is the decision function and not a bare nil),
+// and still fails for one that does not (the tolerance is for the Windows
+// refusal only, never for a missing directory).
 func TestSyncDirDefaultPath(t *testing.T) {
 	var y syncer
-	if err := y.syncDir(t.TempDir()); err != nil {
+	if err := y.syncDir(t.TempDir()); dirSyncFailureIsFatal(runtime.GOOS, err) {
 		t.Fatalf("syncDir on an existing directory: %v", err)
 	}
 	if err := y.syncDir(t.TempDir() + string(os.PathSeparator) + "missing"); err == nil {
