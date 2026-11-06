@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/sqliteuri"
 	_ "modernc.org/sqlite"
 )
 
@@ -27,8 +28,7 @@ func (c RuntimeCensus) Total() int {
 
 // runtimeCensusDSN builds the read-only driver DSN for the factory database.
 func runtimeCensusDSN(factoryPath string) string {
-	values := url.Values{"mode": {"ro"}}
-	return (&url.URL{Scheme: "file", Path: filepath.ToSlash(factoryPath), RawQuery: values.Encode()}).String()
+	return sqliteuri.File(factoryPath, url.Values{"mode": {"ro"}})
 }
 
 func ReadRuntimeCensus(projectRoot string) (RuntimeCensus, error) {

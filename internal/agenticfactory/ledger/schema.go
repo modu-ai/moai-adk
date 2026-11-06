@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/sqliteuri"
 	_ "modernc.org/sqlite" // the pure Go driver: no cgo, one binary
 )
 
@@ -83,8 +84,7 @@ func ledgerDSN(path string) string {
 	q.Add("_pragma", "synchronous(FULL)")
 	q.Add("_pragma", "recursive_triggers(1)") // so INSERT OR REPLACE fires the delete triggers
 	q.Set("_txlock", "immediate")
-	u := url.URL{Scheme: "file", Path: path, RawQuery: strings.ReplaceAll(q.Encode(), "%28", "(")}
-	return u.String()
+	return sqliteuri.File(path, q)
 }
 
 // Open opens or creates the ledger at path: its directory (0700), WAL mode, the

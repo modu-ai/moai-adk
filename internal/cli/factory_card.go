@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -23,6 +24,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/gitenv"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/session"
+	"github.com/modu-ai/moai-adk/internal/sqliteuri"
 	"github.com/modu-ai/moai-adk/internal/statusline"
 	"github.com/modu-ai/moai-adk/internal/worktreeroot"
 )
@@ -3974,7 +3976,7 @@ func factoryRunRowNotActive(ctx context.Context, root, run string) bool {
 	if _, err := os.Stat(path); err != nil {
 		return false
 	}
-	db, err := sql.Open("sqlite", "file:"+filepath.ToSlash(path)+"?_pragma=busy_timeout(100)")
+	db, err := sql.Open("sqlite", sqliteuri.File(path, url.Values{"_pragma": {"busy_timeout(100)"}}))
 	if err != nil {
 		return false
 	}
