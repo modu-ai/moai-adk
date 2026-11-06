@@ -3755,7 +3755,9 @@ func factoryMergeReachable(dir, mergeSHA, branch string) (bool, error) {
 	if strings.TrimSpace(mergeSHA) == "" || strings.TrimSpace(branch) == "" {
 		return false, errors.New("no recorded merge or target to compare")
 	}
-	_, err := factoryGitRead(dir, "merge-base", "--is-ancestor", mergeSHA, branch)
+	// The full ref: a tag named like the branch outranks it in git's name
+	// resolution and would answer for the wrong ref.
+	_, err := factoryGitRead(dir, "merge-base", "--is-ancestor", mergeSHA, "refs/heads/"+strings.TrimPrefix(branch, "refs/heads/"))
 	if err == nil {
 		return true, nil
 	}
