@@ -2,7 +2,7 @@
 
 ## §A Context
 
-The operator decided on 2026-11-03 to repair six defects in the audit engine; the leader relayed the product rulings as R287 and R288. This plan also carries the round-1 plan-audit repair (`.moai/reports/t2017/plan-audit-1.md`), and per leader ruling R290 the card is in the rc.39 integration candidate.
+The operator decided on 2026-11-03 to repair six defects in the audit engine; the leader relayed the product rulings as R287 and R288. This plan also carries the round-1 plan-audit repair (`.moai/reports/t2017/plan-audit-1.md`), and per leader ruling R290 the card is in the rc.39 integration candidate. On 2026-11-06 the operator excluded B3 (receipt freshness across evidence-only commits) from this card; M5 is retired and receipt freshness stays as SPEC-MCP-NEUTRALITY-001 REQ-MN-020 sets it (`spec.md` §C B3, HISTORY 0.6.0).
 
 - Requirements: `spec.md` §C. Reconciliation with completed SPECs: `spec.md` §G.
 - Acceptance: `acceptance.md`.
@@ -11,19 +11,19 @@ The operator decided on 2026-11-03 to repair six defects in the audit engine; th
 
 ## §B Tier classification
 
-**Tier M, at both ceilings.**
+**Tier M, under both ceilings.**
 
 | Measure | Value | Tier M ceiling | Note |
 |---|---|---|---|
-| Requirements | 16 (REQ-AEC-001..016) | 16 | at the ceiling |
-| Acceptance criteria | 6 logical ACs, 16 sub-criteria (AC-AEC-001a..006) | 16 | at the ceiling, counting every sub-criterion |
-| Production files touched | about 18 | — | see milestones |
+| Requirements | 14 live (REQ-AEC-001..016 less REQ-AEC-009 [RETIRED] and REQ-AEC-010 [RETIRED]) | 16 | two under the ceiling |
+| Acceptance criteria | 5 logical ACs, 14 live sub-criteria (AC-AEC-001a..006 less AC-AEC-003a [RETIRED] and AC-AEC-003b [RETIRED]) | 16 | two under the ceiling, counting every sub-criterion |
+| Production files touched | about 18 | — | see milestones; estimated before the B3 exclusion, which drops M5's files |
 | All files touched | about 34 | 5-15 guidance | over the file guidance |
 | Estimated LOC | 1000-1400 | 300-1000 | over the upper bound |
 
-Reasoning: both budgets are counted independently and both sit exactly at 16. The round-1 audit repair added no requirement and no criterion. Every repair is a condition inside an existing requirement or a fixture inside an existing criterion, and no pinned case was dropped. The file and LOC estimates are over the Tier M guidance; about half of the files are tests, template mirrors, and rendered agent copies.
+Reasoning: both budgets are counted independently. Until version 0.5.2 both sat exactly at 16; the B3 exclusion (operator decision, 2026-11-06) retired two requirements and two criteria and left 14 and 14. The round-1 audit repair added no requirement and no criterion. Every repair is a condition inside an existing requirement or a fixture inside an existing criterion, and no pinned case of a live item was dropped. The file and LOC estimates are over the Tier M guidance; about half of the files are tests, template mirrors, and rendered agent copies.
 
-**B4 stays in this SPEC (leader rulings R288, R300).** Any new requirement or criterion would push the SPEC over a ceiling and is reported to the leader rather than added. The only way out the leader has named is a B4 split (REQ-AEC-011..013, AC-AEC-004a..c), issued by the leader as a separate SPEC and card. That would leave this SPEC at 13 and 13. Re-tiering is ruled out.
+**B4 stays in this SPEC (leader rulings R288, R300).** The two places the B3 exclusion freed are not a budget for new scope: any new requirement or criterion is reported to the leader rather than added. The only way out the leader has named is a B4 split (REQ-AEC-011..013, AC-AEC-004a..c), issued by the leader as a separate SPEC and card. That would leave this SPEC at 11 and 11. Re-tiering is ruled out.
 
 ## §C Pre-flight
 
@@ -113,17 +113,11 @@ Files:
 - `.moai/docs/audit-artifact-convention.md` + `internal/template/templates/.moai/docs/audit-artifact-convention.md` (same commit) — the label vocabulary, the `required_backend` line shape, the `required_backend_fail:` producer rule, the `blocking_defect:` line on plan and sync FAIL files, and the consumer rules. The `blocking_defect:` line is defined here because M1 consumes it; if M1 lands first, its tests use fixtures.
 - Tests in the matching `_test.go` files, one per consumer.
 
-### M5 — B3 receipt binding across evidence-only commits
+### M5 — retired (B3 excluded by operator decision, 2026-11-06)
 
-RED: AC-AEC-003a, 003b.
-Files:
-- `internal/auditreceipt/store.go`:
-  - the new receipt field for the uncommitted state without the head;
-  - the cited SPEC ID passed into `CheckCitedReceiptsSince` (`:1514`) from the citing line's `spec=`;
-  - the ancestry, filename-family, and `progress.md` checks in the reuse arm at `:1578-1616`.
-  The `§E.2` section is computed on both versions and must be byte-identical, with its heading unchanged and in place. Changes under `§E.1`, `§E.3`, and `§E.4` are allowed (leader ruling R288). Only the cited SPEC's `progress.md` qualifies.
-- `internal/hook/audit_receipt_guard.go` — pass the parsed `spec=` value to the check.
-- `internal/auditreceipt/store_binding_range_test.go` (new).
+M5 is retired with REQ-AEC-009 [RETIRED], REQ-AEC-010 [RETIRED], AC-AEC-003a [RETIRED] and AC-AEC-003b [RETIRED]; B3 returns as its own SPEC and card. The receipt store keeps the freshness rule of SPEC-MCP-NEUTRALITY-001 REQ-MN-020: a receipt whose head differs from the current HEAD is stale, whatever the intervening commits touched.
+
+Run-phase consequence (manager-develop, not part of this amendment): the B3 code and tests already committed on this card's branch — for example commit `985853c683` in `internal/auditreceipt` — are removed, so that the receipt reuse check again compares the stored tree state exactly as it did before this card.
 
 ### M6 — B5 agent sources and A1 rule paragraph (mechanical text)
 
@@ -157,15 +151,15 @@ Files:
 | Template agent copies edited by hand | `make build` fails at `agents-emit-check` | M6 edits the sources and regenerates the template copies |
 | The hand-updated local definitions drift from the sources | a local auditor keeps or regains a wrong sentence, and no check sees it | AC-AEC-005 checks the four local files at M6; later drift is residual (spec §E B5) |
 | Only the `.claude` copies are fixed | the Codex lanes keep the wrong gate text | AC-AEC-005 and EV-20 name all four local files |
-| A section-boundary check that drifts to whole-file, new-version-only, or §E.3-stale | a rewrite of the evidence is inherited, or the normal flow goes stale | AC-AEC-003a/003b pin each direction |
-| Any further addition | a ceiling exceeded | report to the leader; only the leader splits B4 (R300) |
+| B3 code already on the branch survives the exclusion | a receipt stays fresh across commits it should not survive, through the fail-open path the operator removed | M5 retirement names the removal; no live criterion observes it, so it is residual for the sync audit (spec §E B3) |
+| Any further addition | scope grows past what the leader ruled | report to the leader; the two places the B3 exclusion freed are not spent; only the leader splits B4 (R300) |
 
 ## §H Anti-patterns to avoid
 
 - Grepping for the fixed text as the only proof of a fix; every AC pairs the text check with a behavior test.
 - Building the delta chain from verdict files or call arguments.
 - Clearing a rejection through any path other than the one verb.
-- Folding the head commit back into the new uncommitted-state field.
+- Relaxing receipt freshness on this card in any form; B3 is excluded and REQ-MN-020 stands.
 - Editing a template agent copy instead of its source.
 - Assuming `make agents-emit` updates the local plan-auditor and sync-auditor definitions, in `.claude` or in `.codex`.
 

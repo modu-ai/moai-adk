@@ -1,16 +1,16 @@
 ---
 id: SPEC-AUDIT-ENGINE-CONVERGENCE-001
-title: "Audit engine convergence repairs — fix-confirm delta by default with a verified delta chain, unrun legs classified instead of failed, receipts that survive evidence-only commits, one operator path to clear a rejection, honest auditor prompts, and a repair-scope rule"
-version: "0.5.2"
+title: "Audit engine convergence repairs — fix-confirm delta by default with a verified delta chain, unrun legs classified instead of failed, one operator path to clear a rejection, honest auditor prompts, and a repair-scope rule"
+version: "0.6.0"
 status: in-progress
 created: 2026-11-03
-updated: 2026-11-03
+updated: 2026-11-06
 author: manager-spec (card t2017)
 priority: P1
 phase: "v3.2.0 target"
 module: "internal/cli, internal/auditreceipt, internal/auditverdict, internal/runtime, internal/closure, internal/homestate, internal/template/agentemit/source, .moai/docs"
 lifecycle: spec-anchored
-tags: "audit, convergence, delta-scope, delta-chain, second-review, receipt-binding, rejection, operator-approval, inconclusive, repair-scope, card-t2017"
+tags: "audit, convergence, delta-scope, delta-chain, second-review, rejection, operator-approval, inconclusive, repair-scope, card-t2017"
 tier: M
 card: t2017
 related_specs: [SPEC-MCP-NEUTRALITY-001, SPEC-AUDIT-CEILING-001, SPEC-AUDIT-CEILING-002, SPEC-AUDIT-MODEL-CONVERGE-001, SPEC-AUDIT-CEILING-REPAIR-001, SPEC-AUDIT-GATE-INTEGRITY-001, SPEC-AUDIT-BUILD-IDENTITY-001, SPEC-WF-AUDIT-GATE-001, SPEC-RECEIPT-REUSE-001, SPEC-WORKTREE-STATE-ROOT-001, SPEC-AUTONOMY-CLOSURE-001]
@@ -23,12 +23,13 @@ related_specs: [SPEC-MCP-NEUTRALITY-001, SPEC-AUDIT-CEILING-001, SPEC-AUDIT-CEIL
 | Version | Date | Author | Change |
 |---|---|---|---|
 | 0.1.0 | 2026-11-03 | manager-spec (card t2017) | Initial plan-phase draft. Six repair items (B1-B5, A1). Every code citation was re-read on tree `cb30e05b3e5f64774b8dabd87e80c24332f4551d`; mismatches are recorded in §B. |
-| 0.2.0 | 2026-11-03 | manager-spec (card t2017) | Leader ruling R287 applied. Q1: the delta default stands; on the `card_id` path a delta round can pass only on a verified chain plus a BLOCKING-closure confirmation, and a gated delta call files a second-review record (REQ-AEC-004, -005). Q3: `INCONCLUSIVE` label with its consumer rules (REQ-AEC-007). Q6/Q7: CLI verb on the human path, no MCP path; the hook deny is recorded as a Gap. B3: the reports allowlist is narrowed to the audit-artifact filename family, and `progress.md` §E.2/§E.3 edits are pinned as negative cases (REQ-AEC-009, -010). REQ 14 → 16, AC sub-criteria 15 → 16; both are now at the Tier M ceiling. |
-| 0.3.0 | 2026-11-03 | manager-spec (card t2017) | Leader ruling R288 applied. The B3 negative case narrows to `progress.md` §E.2: a rewrite of §E.3 after a PASS keeps the receipt (REQ-AEC-009, -010; pinned inside AC-AEC-003a/003b, counts unchanged at 16/16). The Q3 reading of the round counter is confirmed. The cooperating-process threat model and the auditor-written BLOCKING ids are recorded as residual risk (§E). B4 stays in this SPEC. |
+| 0.2.0 | 2026-11-03 | manager-spec (card t2017) | Leader ruling R287 applied. Q1: the delta default stands; on the `card_id` path a delta round can pass only on a verified chain plus a BLOCKING-closure confirmation, and a gated delta call files a second-review record (REQ-AEC-004, -005). Q3: `INCONCLUSIVE` label with its consumer rules (REQ-AEC-007). Q6/Q7: CLI verb on the human path, no MCP path; the hook deny is recorded as a Gap. B3: the reports allowlist is narrowed to the audit-artifact filename family, and `progress.md` §E.2/§E.3 edits are pinned as negative cases (REQ-AEC-009 [RETIRED], -010). REQ 14 → 16, AC sub-criteria 15 → 16; both are now at the Tier M ceiling. |
+| 0.3.0 | 2026-11-03 | manager-spec (card t2017) | Leader ruling R288 applied. The B3 negative case narrows to `progress.md` §E.2: a rewrite of §E.3 after a PASS keeps the receipt (REQ-AEC-009 [RETIRED], -010; pinned inside AC-AEC-003a [RETIRED]/003b, counts unchanged at 16/16). The Q3 reading of the round counter is confirmed. The cooperating-process threat model and the auditor-written BLOCKING ids are recorded as residual risk (§E). B4 stays in this SPEC. |
 | 0.4.0 | 2026-11-03 | manager-spec (card t2017) | Plan-audit round 1 repair (`.moai/reports/t2017/plan-audit-1.md`, FAIL 0.75, audited at `36148aeec9`). D1: every chain record, the starting record included, needs a pass or fail from every required backend and a receipt that did run; no FAIL verdict means full scope; an explicit `delta_base` with a `card_id` goes through the same gate. D2: the closure set is the union of the BLOCKING ids of every FAIL verdict tied to the chain; both auditor sources must write `blocking_count` and `blocking_defect:` lines on a FAIL. D3/D4: the four `INCONCLUSIVE` consumers, the last-line form, and a reconciliation with SPEC-AUDIT-CEILING-001 REQ-ACE-008 and SPEC-AUDIT-CEILING-002 REQ-ACR-005 (§G). D5: B5 targets the agent sources and `make agents-emit`. D6: REQ-AEC-014 narrowed to "no backend reported a defect". D7: EV-10 re-measured. D8: the session result gains head, digest and scope; a chain-admitted delta persists. D9: B4 residual risk restated; marker set made identical. D10: the §E.2 boundary on both versions; heading changes stale; only the cited SPEC's `progress.md`. D11-D13: the codex delta leg stays adversarial, citation gaps, `Latest` defined. Leader ruling R290: this card is in the rc.39 integration candidate. REQ and AC counts unchanged at 16/16. |
 | 0.5.0 | 2026-11-03 | manager-spec (card t2017) | Plan-audit round 2 repair (`.moai/reports/t2017/plan-audit-2.md`, delta audit of 0.4.0, FAIL, audited at `cc100c2909`), under leader ruling R308. F1 (accepted): `make agents-emit` renders the plan-auditor and sync-auditor only into the template sets (`internal/template/agentemit/sets.go:48-50`, `:62-63`), so M6 updates the two local `.claude/agents/moai/` definitions by hand to match the corrected sources, and AC-AEC-005 checks them; the local definitions were re-measured (EV-20). F2 (accepted): a closure verified at an earlier chain link is inherited; only closures new since the previous link are checked against the current delta (REQ-AEC-004 (ii), -005; AC-AEC-001d fixture and mutant). F3 (accepted): a record with a required backend entry absent counts as not run (REQ-AEC-004 (i); AC-AEC-001c fixtures and mutant). F4 (accepted as a wording repair; the order claim was not reproduced): the multi-file `grep -c` notes now say the per-file order may vary, record where it was observed, and claim no cause. REQ and AC counts unchanged at 16/16. |
 | 0.5.1 | 2026-11-03 | manager-spec (card t2017) | Leader ruling R313 applied: the local Codex copies `.codex/agents/moai/plan-auditor.toml` and `sync-auditor.toml` are in scope. All four local definitions (the two `.claude/agents/moai/` Markdown files and the two `.codex/agents/moai/` TOML files) are updated by hand and checked by AC-AEC-005 (REQ-AEC-014, §E B5, plan M6). EV-20 re-measured over the four files on the committed tree `cc100c2909` with `git grep`; each TOML copy carries the same two wrong lines as its `.claude` counterpart and no `blocking_defect:` line. A mutant row now fails a fix that touches only the `.claude` copies. The `CarriedFour` expansion stays t2018 input. REQ and AC counts unchanged at 16/16. |
 | 0.5.2 | 2026-11-03 | manager-spec (card t2017) | Plan-audit round 3 repair (`.moai/reports/t2017/plan-audit-3.md`, delta audit round 2 of 2, FAIL, audited at `44b21e558e`), sized by leader ruling R320. G1 (accepted): inheritance of a closure is decided per naming, not per id; a later FAIL that names an id again voids its earlier inheritance, and the id then needs a closing commit inside the current `delta_base..HEAD` after the latest naming (one sentence in REQ-AEC-004 (ii); plan.md M1 (line 63) swept to match, per verification-completeness.md §3). AC-AEC-001d gains a re-report fixture, and a mutant row fails an implementation that inherits by id regardless of a later re-naming. F1, F3, F4 text unchanged. REQ and AC counts unchanged at 16/16. |
+| 0.6.0 | 2026-11-06 | manager-spec (card t2017) | Operator decision on the card t2017 decision board (`moai decision read --scope card:t2017`, answer "B3 빼고 착지", relayed by the leader): item B3, the receipt freshness relaxation across evidence-only commits, is excluded from this SPEC, because its `§E.2` comparison produced fail-open defects in sync-audit rounds 1, 2, 4 and 5 (D1, D10, D16, D13, D19) and the operator chose to remove the path rather than patch it again. Retired: REQ-AEC-009 [RETIRED], REQ-AEC-010 [RETIRED], AC-AEC-003a [RETIRED], AC-AEC-003b [RETIRED], plan.md M5, acceptance.md EV-08. Receipt freshness stays as SPEC-MCP-NEUTRALITY-001 REQ-MN-020 sets it, and this SPEC no longer amends that rule (§C B3, §G). B3 returns as its own SPEC and card, issued by the leader. B1, B2, B4, B5 and A1 are unchanged. Live counts 16/16 → 14 REQ and 14 AC, under the Tier M ceiling of 16/16. |
 
 ## §A Background
 
@@ -40,6 +41,8 @@ Ten audit rounds on card t2012 (PR #1965) stalled honest work. The causes were i
 - A rejection mark can be cleared only by the same auditor role producing a proven PASS. There is no operator path, so a rejection caused by an engine fault blocked every phase-entry spawn until the engine itself recovered.
 
 The operator decided on 2026-11-03 to repair six defects. The leader relayed the follow-up product rulings as leader rulings R287 and R288 (`decision-index.md`). Per leader ruling R290 this card is included in the rc.39 integration candidate.
+
+On 2026-11-06 the operator excluded B3 (the receipt-freshness item behind the third bullet above) from this SPEC; the stale-on-any-commit behaviour stays as it is, and B3 returns as its own SPEC and card (§C B3, HISTORY 0.6.0).
 
 ## §B Cited-location verification
 
@@ -57,7 +60,7 @@ Read on `cb30e05b3e`; the round-4 additions were read on `36148aeec9`, whose cod
 | B2 | `internal/auditverdict/verdict.go:361` | `if v != "pass"` in `admitReceipt` refuses a required backend recorded `fail` or `inconclusive`. `admitBase` runs first and refuses `required_backend_fail:` lines (`:289-291`) and `convergence_overall: fail` (`:297-299`) before any backend line is read. `convergence_overall` accepts only `pass` or `fail` (`:155`); `required_backend` is split once at the first space (`:168`). | Partial: refusal, no error class; reconciled in §G |
 | B2 | `internal/auditreceipt/store.go:1563` | The `CauseReceiptAuditNotRun` arm (a receipt with a non-empty `gate_unmet` or an inconclusive codex verdict), distinct from `CauseReceiptVerdictFail`. | Partial: distinct cause exists, no error class |
 | B2 | (not cited) | Verdict-label consumers: the exported file line (`.moai/docs/audit-artifact-convention.md:87`); the Stop-hook last line `^AUDIT-VERDICT: (PASS\|PASS-WITH-DEBT\|FAIL) …` (`internal/auditreceipt/store.go:173`); the factory card reader `^verdict: (PASS\|PASS-WITH-DEBT\|FAIL)$` (`internal/homestate/card_evidence_readers.go:20`); two round counters (`internal/runtime/audit_counter.go:10`, `internal/runtime/audit_ceiling.go:1186-1191`); the machine-line templates in both auditor sources. `AdmitLabel` (`verdict.go:219-221`) admits only PASS-family labels. | Added context; REQ-AEC-007 |
-| B3 | `internal/auditreceipt/store.go:1605` | `head, digest, sErr := TreeState(r.TreeRoot)`; line 1608 compares `r.HeadCommit != head \|\| r.TreeDigest != digest`. Any commit moves both. The check (`CheckCitedReceiptsSince`, `:1514`) receives no SPEC ID today. | Match |
+| B3 | `internal/auditreceipt/store.go:1605` | `head, digest, sErr := TreeState(r.TreeRoot)`; line 1608 compares `r.HeadCommit != head \|\| r.TreeDigest != digest`. Any commit moves both. The check (`CheckCitedReceiptsSince`, `:1514`) receives no SPEC ID today. | Match; B3 excluded from this SPEC on 2026-11-06, so this binding is not changed here (§C B3) |
 | B4 | `internal/hook/audit_receipt_guard.go` | Rejections are cleared only inside `checkAuditorStop` (`:185-190`, `:225-235`). `checkAuditReceiptSpawn` (`:429-464`) denies phase-entry spawns while any is outstanding. Marks are plain JSON files (`store.go:1255-1260`). | Match |
 | B4 | `internal/cli/contract.go:76-78` | The reused agent-environment marker set is exactly `CLAUDECODE` and `CLAUDE_CODE_SESSION_ID`. No Codex session marker exists in `internal/`. | Added context; REQ-AEC-011 |
 | B5 | Agent sources `internal/template/agentemit/source/{sync,plan}-auditor.md` | Lines 201/203 (sync) and 251/253 (plan) carry the wrong gate sentences. `make agents-emit` (`Makefile:34`, `:38-39`, `:47-49`) renders these two sources into the template sets only (`internal/template/templates/.claude/agents/moai/` and `internal/template/templates/.codex/agents/moai/`). The project targets are limited to `CarriedFour` (`internal/template/agentemit/sets.go:62-63`), whose comment (`:48-50`) says the other agents' project copies stay hand-managed; the four local definitions carry the same two wrong lines (read on the working tree at `f1cd8da975`, whose agent files equal `cc100c2909`: `.claude/agents/moai/sync-auditor.md:201,203`, `.claude/agents/moai/plan-auditor.md:251,253`, `.codex/agents/moai/sync-auditor.toml:190,192`, `.codex/agents/moai/plan-auditor.toml:248,250`). Only the plan-auditor source carries `blocking_count`; neither carries a `blocking_defect:` line. | Match; target corrected to the sources plus the four local definitions (R308, R313) |
@@ -93,23 +96,12 @@ Read on `cb30e05b3e`; the round-4 additions were read on `36148aeec9`, whose cod
   `AdmitLabel` stays unchanged, because it already refuses a label it does not know. §G records how this amends SPEC-AUDIT-CEILING-001 REQ-ACE-008 and SPEC-AUDIT-CEILING-002 REQ-ACR-005.
 - **REQ-AEC-008** (When) — **When** an `audit_multi` call names legs to re-run, the engine shall re-run only those legs and shall carry every other leg's verdict from the result the server itself persisted for the same session. Re-running applies only when that persisted result records the same head commit, the same tree digest, and the same scope (target, resolved base, and delta base), fields the persisted result shall carry for this purpose. **When** no such persisted result exists or any of those differ, the engine shall run every leg. A carried verdict shall never be read from a caller-supplied argument.
 
-### B3 — Receipt binding across evidence-only commits
+### B3 — Excluded from this SPEC (operator decision, 2026-11-06)
 
-- **REQ-AEC-009** (While) — **While** checking a receipt's tree-state binding for a citation, the receipt store shall treat the receipt as fresh when all of the following hold:
-  - the receipt's head commit is an ancestor of the current HEAD;
-  - every change between the two commits is one of:
-    - (a) a change to a file under `.moai/reports/<id>/` whose name belongs to the audit-artifact family (`plan-audit*.md`, `sync-audit*.md`, `verdict*.md`, `card-review.md`, `second-review.jsonl`);
-    - (b) a change to the `progress.md` of the SPEC that the citing verdict line names (`spec=`), where the `§E.2` section is computed on both the old and the new version, is byte-identical between them, and its heading line is unchanged and in the same position. Changes under `§E.1`, `§E.3`, and `§E.4` are allowed, including a full rewrite of `§E.3`.
-  - the uncommitted state outside those changes equals the uncommitted state the receipt judged.
-- **REQ-AEC-010** (Ubiquitous) — The receipt store shall treat a receipt as stale whenever any condition of REQ-AEC-009 does not hold. That includes:
-  - a change to any other file under `.moai/reports/`;
-  - a `progress.md` change touching even one line under `§E.2`;
-  - a change, deletion, rename, or move of the `§E.2` heading line;
-  - a change to the `progress.md` of a SPEC other than the cited one, or any `progress.md` change when the citation names a card id rather than a SPEC ID;
-  - a path that merely begins with the allowed prefix text;
-  - a rename into or out of the allowed set;
-  - a receipt written before this change that carries no separate uncommitted-state record.
-  A receipt whose head equals the current HEAD shall be judged exactly as today.
+- **REQ-AEC-009 [RETIRED]** — moved out of this SPEC by operator decision: the freshness relaxation across evidence-only commits produced fail-open defects in four sync-audit rounds, and the operator chose to remove the path rather than patch it again. It returns as its own SPEC and card, issued by the leader.
+- **REQ-AEC-010 [RETIRED]** — retired with REQ-AEC-009 [RETIRED], for the same reason.
+
+Receipt freshness is not changed by this SPEC. A receipt whose head commit differs from the current HEAD is stale, whatever the intervening commits touched — an audit report, a progress record, or code alike. This is the existing rule of SPEC-MCP-NEUTRALITY-001 REQ-MN-020, "A receipt is refused when the stored tree state differs from the current one", and this SPEC neither relaxes nor restates it as a requirement of its own.
 
 ### B4 — One operator path to clear a rejection
 
@@ -173,18 +165,12 @@ The Stop gate reads the session file and checks no scope (t1873). A chain-admitt
 
 Leader ruling R287 (Q3) excludes `INCONCLUSIVE` rounds from the plan-audit ceiling count, and leader ruling R288 confirms that "the Q8 default stands" means the S1/M2/L3 numbers are untouched while Q3 decides what is counted. Both counters change. An `INCONCLUSIVE` file is still the latest verdict when its iteration number is highest; admission refuses it, so the card stays blocked rather than falling back to an older verdict.
 
-### B3 — commit-range allowlist (chosen) versus a code-tree digest (rejected)
+### B3 — excluded by operator decision (2026-11-06)
 
-Chosen: keep the existing binding and its exact-match path, and relax freshness only when HEAD moved: ancestry, plus changes confined to the allowed set, plus an unchanged uncommitted state outside it. This needs one new receipt field (the uncommitted state without the head) and the cited SPEC ID passed into the check, which receives none today (`CheckCitedReceiptsSince`, `store.go:1514`). It relaxes the freshness rule of SPEC-MCP-NEUTRALITY-001 REQ-MN-020 ("refuse … when the stored tree state differs from the current one") for exactly this allowed set (§G).
+The commit-range allowlist that B3 chose earlier is withdrawn with the item; no design for receipt freshness is recorded in this SPEC, and the successor SPEC owns that design. Two consequences remain for this card:
 
-How the wrongly-accepted cases are closed:
-
-- **Edits to non-artifact report files** — closed by exclusion at path level. Only the audit-artifact filename family under `.moai/reports/<id>/` is allowed.
-- **A rewrite of `progress.md` run evidence after a PASS** — closed by a negative case. The `§E.2` section is computed on both versions, so deleting, renaming, or moving its heading cannot slide the evidence body under `§E.1`. Leader ruling R288 sets the boundary: rewriting `§E.3` after a PASS is the normal flow and keeps the receipt.
-- **Another SPEC's `progress.md`** — closed by restricting the allowance to the SPEC the citation names.
-- **Remaining residual** — an evidence file deliberately named into the audit-artifact family (for example `verdict-notes.md`) would be accepted.
-
-Rejected: a code-tree digest that ignores the head. It wrongly accepts everything the allowlist accepts, plus history that reaches the same content without descending from the judged commit, and it would change the digest format at an `@MX:ANCHOR` seam.
+- **Receipts go stale on the lane's own evidence commits.** A commit that only adds an audit report or a progress record after an audit still makes the receipt stale, so the third §A cause is not repaired by this SPEC. That is the accepted cost of the exclusion.
+- **Residual: removal of code already landed.** B3 code and tests were committed on this card's branch during the run phase (plan.md M5). No live criterion of this SPEC observes that they are removed and that freshness again follows REQ-MN-020 alone; this is recorded as residual risk for the sync audit.
 
 ### B4 — CLI verb on the human path (R287 Q6), no MCP path
 
@@ -195,7 +181,7 @@ The verb reuses the contract signing path's checks: the two agent-environment ma
   - a Codex session, which sets neither marker and is not detected (whether it provides a terminal was not measured);
   - direct deletion of the rejection mark file under `.moai/state/audit-receipts/rejections/`, which no hook guards.
   It is not a security boundary.
-- **PreToolUse deny: recorded as a Gap, not built here.** A deny of the verb in agent Bash calls would add one layer. It needs a new matcher in the branch-guard hook family, an opt-in configuration key, and its own tests, and the requirement budget is at the Tier M ceiling.
+- **PreToolUse deny: recorded as a Gap, not built here.** A deny of the verb in agent Bash calls would add one layer. It needs a new matcher in the branch-guard hook family, an opt-in configuration key, and its own tests, and any new requirement on this card is reported to the leader rather than added (plan.md §B).
 
 ### B5 — local agent definitions outside the emitter (leader rulings R308, R313)
 
@@ -212,7 +198,12 @@ Chosen: `.moai/docs/audit-artifact-convention.md` and its byte-identical templat
 ### Out of Scope — release and binary
 - Replacing or reinstalling the installed `moai` binary as part of the repair. (Per leader ruling R290 this card is part of the rc.39 integration candidate; its landing follows that candidate's batch.)
 
-### Out of Scope — audit policy beyond the six items
+### Out of Scope — receipt freshness (B3, excluded by operator decision 2026-11-06)
+- Any relaxation of receipt freshness across commits that touch only audit reports, progress records, or other evidence; a receipt whose head differs from the current HEAD stays stale (SPEC-MCP-NEUTRALITY-001 REQ-MN-020, unchanged).
+- A receipt field for the uncommitted state without the head, and passing the cited SPEC ID into the receipt reuse check.
+- Designing the successor; B3 returns as its own SPEC and card, issued by the leader.
+
+### Out of Scope — audit policy beyond this SPEC's items
 - A default delta scope or a chain check for `codex_audit`, `glm_audit`, or `claude_audit` called directly, and for an `audit_multi` call without a `card_id`; those keep the t1708 behavior, and their delta receipts carry no scope field.
 - A chain check inside the closure reader `SelectSecondReview`; the chain is enforced where records are written.
 - Changing the convergence policy, `overall_verdict` values, `disagreement_flag`, or the per-backend `verdict` enum.
@@ -233,4 +224,4 @@ This SPEC does not reopen the status of any completed SPEC. It amends the follow
 | SPEC-AUDIT-CEILING-001 receipt line format | `required_backend: <backend> <pass\|fail\|inconclusive>`, split once at the first space (`verdict.go:168`) | A third token is allowed only after `inconclusive`, and only from the closed class set. A class after `pass` or `fail`, or an unknown class, is a malformed receipt line and refuses |
 | SPEC-AUDIT-CEILING-002 REQ-ACR-005 (`required_backend_fail:`) | Written for "a required backend the audit could not admit" | Written only for a backend that reported fail. An unrun leg is carried by its `required_backend … inconclusive <class>` line |
 | Admission order (`verdict.go` `admitBase`, `admitReceipt`) | Duplicates → `required_backend_fail` → `convergence_overall: fail` → label → fields → receipt lines | Duplicates → `required_backend_fail` → `convergence_overall: fail` → `convergence_overall: inconclusive` (the reason names each unrun backend and class) → label → fields → receipt lines. With no `required_backend_fail` line and no overall `fail`, the class-naming reason is the one reached |
-| SPEC-MCP-NEUTRALITY-001 REQ-MN-020 (freshness) | A receipt is refused when the stored tree state differs from the current one | Relaxed only for the allowed set of REQ-AEC-009; every other difference still refuses |
+| SPEC-MCP-NEUTRALITY-001 REQ-MN-020 (freshness) | A receipt is refused when the stored tree state differs from the current one | Not relaxed by this SPEC: the rule stands as written, and any commit that moves HEAD after an audit makes the receipt stale (B3 excluded, 2026-11-06) |
