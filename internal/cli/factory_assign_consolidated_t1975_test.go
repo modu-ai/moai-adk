@@ -15,6 +15,7 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"os"
 	"strings"
 	"testing"
@@ -160,5 +161,54 @@ func TestReassignInTheSurvivorRunAfterAConsolidation(t *testing.T) {
 	}
 	if got := t1975MirrorRun(t, store, "t1"); got != "run-tgt" {
 		t.Errorf("after the reassign the queue names %q for t1, want the survivor run-tgt", got)
+	}
+}
+
+// The consolidation chain the reassign guard follows: a direct merge and a
+// merge of a merge reach the survivor, a reverse, unrelated or unconsolidated
+// run does not, a cycle ends at the hop limit, and a failing read is surfaced.
+func TestConsolidatedIntoFollowsTheRecordedChain(t *testing.T) {
+	records := map[string]string{"a": "b", "b": "c", "x": "y", "loop1": "loop2", "loop2": "loop1"}
+	next := func(run string) (string, bool, error) {
+		into, ok := records[run]
+		return into, ok, nil
+	}
+	for _, tc := range []struct {
+		name, from, to string
+		want           bool
+	}{
+		{"a direct merge reaches the survivor", "a", "b", true},
+		{"a merge of a merge reaches the final survivor", "a", "c", true},
+		{"the reverse direction does not", "b", "a", false},
+		{"an unrelated run does not", "x", "c", false},
+		{"a run that was never consolidated does not", "c", "a", false},
+		{"a cycle ends at the hop limit", "loop1", "elsewhere", false},
+	} {
+		got, err := consolidatedInto(tc.from, tc.to, next)
+		if err != nil || got != tc.want {
+			t.Errorf("%s: consolidatedInto(%q, %q) = %v, %v; want %v, nil", tc.name, tc.from, tc.to, got, err, tc.want)
+		}
+	}
+	boom := errors.New("record unreadable")
+	if got, err := consolidatedInto("a", "b", func(string) (string, bool, error) { return "", false, boom }); got || !errors.Is(err, boom) {
+		t.Errorf("a failing read must be surfaced, got %v, %v", got, err)
+	}
+}
+
+// An unrelated stale run still refuses: the guard keeps its purpose (card t1696).
+func TestReassignStillRefusesAnUnrelatedStaleRun(t *testing.T) {
+	_, store := t1975ConsolidatedCard(t, true, false)
+	// Point the queue's record at a run that was never consolidated into the target.
+	if err := store.WithLock(func(l *factory.LockedBacklog) error {
+		return l.RefreshDispatchCurrent("t1", "run-elsewhere", "lane-1")
+	}); err != nil {
+		t.Fatal(err)
+	}
+	_, stderr, err := reassignRun(t, "t1", "--run", "run-tgt", "--reassign", "--to", "lane-2")
+	if err == nil || !strings.Contains(stderr+err.Error(), "current dispatch is run run-elsewhere") {
+		t.Fatalf("err=%v stderr=%q, want the stale-run refusal for an unrelated run", err, stderr)
+	}
+	if got := t1975MirrorRun(t, store, "t1"); got != "run-elsewhere" {
+		t.Errorf("the refused reassign moved the queue's record to %q", got)
 	}
 }

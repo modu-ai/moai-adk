@@ -4434,9 +4434,24 @@ func factoryAssignReassign(ctx context.Context, queueStore *factory.BacklogStore
 			return fmt.Errorf("read the queue's current dispatch: %w", err)
 		}
 		for _, entry := range rec.Runtime.DispatchCurrent {
-			if entry.CardID == cardID && entry.RunID != "" && entry.RunID != runID {
-				return fmt.Errorf("card %s's current dispatch is run %s, not %s; reassign in the card's current run (pass --run %s)", cardID, entry.RunID, runID, entry.RunID)
+			if entry.CardID != cardID || entry.RunID == "" || entry.RunID == runID {
+				continue
 			}
+			// Card t1975: a run consolidation moves the card into the survivor but
+			// cannot reach the queue, so the record can still name the retired
+			// source. Passing the source is impossible (it is no longer active),
+			// which made the refusal below a dead end. When the recorded run was
+			// consolidated INTO the run being reassigned in, the record is stale
+			// by that merge, not by a competing dispatch: the reassign below
+			// rewrites it to this run. Any other mismatch still refuses.
+			merged, mergeErr := factoryRunConsolidatedInto(ctx, db, entry.RunID, runID)
+			if mergeErr != nil {
+				return fmt.Errorf("read the consolidation record of run %s: %w", entry.RunID, mergeErr)
+			}
+			if merged {
+				continue
+			}
+			return fmt.Errorf("card %s's current dispatch is run %s, not %s; reassign in the card's current run (pass --run %s)", cardID, entry.RunID, runID, entry.RunID)
 		}
 		cur, err := db.LoadCard(ctx, runID, cardID)
 		if err != nil {
@@ -4449,6 +4464,40 @@ func factoryAssignReassign(ctx context.Context, queueStore *factory.BacklogStore
 		return err
 	})
 	return prevOwner, next, err
+}
+
+// factoryConsolidationHopLimit bounds how many consolidation records
+// factoryRunConsolidatedInto follows, so a corrupt cycle cannot loop.
+const factoryConsolidationHopLimit = 16
+
+// factoryRunConsolidatedInto reports whether run from was retired by a chain of
+// consolidations that ends in run to (card t1975). A run retired the ordinary
+// way, an active run, and an absent run are all "no".
+func factoryRunConsolidatedInto(ctx context.Context, db *homestate.FactoryDB, from, to string) (bool, error) {
+	return consolidatedInto(from, to, func(run string) (string, bool, error) {
+		return db.RunRetiredByConsolidation(ctx, run)
+	})
+}
+
+// consolidatedInto follows next (a run's consolidation record: the run its
+// cards went to, and whether it was consolidated at all) from `from` and
+// reports whether the chain reaches `to` within the hop limit.
+func consolidatedInto(from, to string, next func(run string) (into string, consolidated bool, err error)) (bool, error) {
+	cur := from
+	for hop := 0; hop < factoryConsolidationHopLimit; hop++ {
+		into, consolidated, err := next(cur)
+		if err != nil {
+			return false, err
+		}
+		if !consolidated {
+			return false, nil
+		}
+		if into == to {
+			return true, nil
+		}
+		cur = into
+	}
+	return false, nil
 }
 
 // factoryCardView is one card as `status` reports it.
