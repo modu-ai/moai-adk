@@ -136,10 +136,7 @@ func loadGitFlowIntegrationConfig(projectRoot string, factorySession bool) GitFl
 	// agentic-trunk reads as af-flow).
 	workflow := ""
 	if ok {
-		workflow = NormalizeWorkflow(profile.Workflow)
-		if factorySession && strings.TrimSpace(profile.Workflow) == "" {
-			workflow = WorkflowAFFlow
-		}
+		workflow = effectiveWorkflow(profile, factorySession)
 	}
 	// The mode check is not redundant with the profile check: develop_branch is
 	// a manual-mode key by contract, so a personal/team profile that happens to
