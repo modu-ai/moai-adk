@@ -16,6 +16,7 @@ package config
 // value that sends the caller to its fallback.
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 )
@@ -104,7 +105,26 @@ func (c GitFlowIntegrationConfig) UsesLocalIntegration() bool {
 //
 // @MX:ANCHOR: [AUTO] single read of git-strategy.yaml feeding three production consumers — integration acquire target, session-exit auto-merge gate, doctor Git Strategy Workflow check
 // @MX:REASON: fan_in reached 3 when t656 added the doctor consumer; a signature or semantics change here moves all three callers (SPEC-GITSTRAT-WORKFLOW-READER-001)
+//
+// Card t2056: a factory leader or lane session (config.DetectRoleMarker over
+// the process environment — the launcher's -f / -l entries stamp it) reads an
+// UNSET workflow as af-flow; see loadGitFlowIntegrationConfig.
 func LoadGitFlowIntegrationConfig(projectRoot string) GitFlowIntegrationConfig {
+	_, factorySession := DetectRoleMarker(os.Getenv)
+	return loadGitFlowIntegrationConfig(projectRoot, factorySession)
+}
+
+// loadGitFlowIntegrationConfig is the pure body of LoadGitFlowIntegrationConfig:
+// it reads only git-strategy.yaml and the factorySession flag, never the
+// environment, so the factory default is testable by parameter.
+//
+// Card t2056 — the -f / -l entry default. When factorySession is true and the
+// ACTIVE mode profile carries no workflow (the key is missing or blank), the
+// workflow reads as af-flow. An explicit value is never replaced (including
+// github-flow, and the legacy agentic-trunk still normalizes to af-flow); a
+// file with no active profile stays unknown; and nothing is written back to
+// the file — the default exists only in what this function returns.
+func loadGitFlowIntegrationConfig(projectRoot string, factorySession bool) GitFlowIntegrationConfig {
 	dir := filepath.Join(projectRoot, ".moai", "config", "sections")
 	wrapper := &gitStrategyFileWrapper{}
 	loaded, err := loadYAMLFile(dir, "git-strategy.yaml", wrapper)
@@ -117,6 +137,9 @@ func LoadGitFlowIntegrationConfig(projectRoot string) GitFlowIntegrationConfig {
 	workflow := ""
 	if ok {
 		workflow = NormalizeWorkflow(profile.Workflow)
+		if factorySession && strings.TrimSpace(profile.Workflow) == "" {
+			workflow = WorkflowAFFlow
+		}
 	}
 	// The mode check is not redundant with the profile check: develop_branch is
 	// a manual-mode key by contract, so a personal/team profile that happens to

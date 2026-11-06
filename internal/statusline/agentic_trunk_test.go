@@ -13,7 +13,20 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/config"
 )
+
+// plainSession clears the factory markers a launcher's -f / -l entry stamps
+// (card t2056): a factory leader or lane reads an UNSET workflow as af-flow,
+// and the byte-identity cases here describe a plain session — even when the
+// test process itself runs inside a factory lane.
+func plainSession(t *testing.T) {
+	t.Helper()
+	t.Setenv(config.EnvMoaiFactoryWorker, "")
+	t.Setenv(config.EnvMoaiFactoryWorkers, "")
+	t.Setenv(config.EnvFactoryRole, "")
+}
 
 // statuslineGitStrategyFixture writes a git-strategy.yaml naming the given
 // workflow (an empty body writes no file) and returns the project root.
@@ -97,6 +110,7 @@ func TestAgenticTrunkStatuslineLabel(t *testing.T) {
 // byte-equal to the pre-change golden — the label provider contributes
 // nothing (and with it REQ-PLO-009's cases stay byte-identical).
 func TestAgenticTrunkStatuslineAbsent(t *testing.T) {
+	plainSession(t)
 	unreadable := t.TempDir()
 	dir := filepath.Join(unreadable, ".moai", "config", "sections")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -131,6 +145,21 @@ func TestAgenticTrunkStatuslineAbsent(t *testing.T) {
 			t.Errorf("render = %q, want %q", got, goldenBranch)
 		}
 	})
+}
+
+// TestAgenticTrunkStatuslineFactoryDefault — card t2056: in a factory leader
+// or lane session an UNSET workflow (the value left empty) shows the AF-Flow
+// label, because the reader defaults it to af-flow there; an explicit
+// github-flow in the same session still shows no label.
+func TestAgenticTrunkStatuslineFactoryDefault(t *testing.T) {
+	plainSession(t)
+	t.Setenv(config.EnvMoaiFactoryWorkers, "3")
+	if got := resolveWorkflowLabel(statuslineGitStrategyFixture(t, "''")); got != "AF-Flow" {
+		t.Errorf("unset workflow in a factory session: provider = %q, want AF-Flow", got)
+	}
+	if got := resolveWorkflowLabel(statuslineGitStrategyFixture(t, "github-flow")); got != "" {
+		t.Errorf("explicit github-flow in a factory session: provider = %q, want no label", got)
+	}
 }
 
 // TestAgenticTrunkStatuslineNoExtraGit is AC-AGT-012's no-invocation half:
