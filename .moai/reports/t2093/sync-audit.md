@@ -4,6 +4,7 @@ auditor-model: glm-5.3
 
 Card: t2093 (Class B, no SPEC — card text + AC-TOSQ-012 are the requirements)
 Audited commit: a427891cade0f4d51e9984523bf0d402d32f971f (single commit on base 9b632c1eb3, branch WT-testresolvebacklogcounts)
+audited_sha: a427891cade0f4d51e9984523bf0d402d32f971f
 Audit round: 1 of 1 (single-round, per AF-Flow chain)
 
 verdict: PASS
