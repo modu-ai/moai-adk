@@ -38,6 +38,9 @@ func TestPatchFileRefusesRemovingAnchoredKeys(t *testing.T) {
 		{"key_whose_scalar_value_defines_an_anchor", "user:\n  name: &n Old\n  nick: *n\n", []string{"user", "name"}},
 		{"key_inside_an_anchored_mapping_shared_by_an_alias", "user: &u\n  name: Old\n  nick: k\nteam: *u\n", []string{"user", "name"}},
 		{"removed_subtree_holds_an_anchor_definition", "user:\n  nested:\n    k: &a V\n  nick: *a\n", []string{"user", "nested"}},
+		// audit t2109 F2: two wrong implementations passed the first four cases
+		{"the_key_node_itself_carries_the_anchor", "user:\n  &k name: Old\n  other: *k\n", []string{"user", "name"}},
+		{"an_anchored_ancestor_above_the_direct_parent", "a: &x\n  b:\n    c: 1\n    d: 2\ncopy: *x\n", []string{"a", "b", "c"}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -72,6 +75,30 @@ func TestPatchFileStillRemovesUnanchoredKeys(t *testing.T) {
 		}
 		if strings.Contains(out, "name:") || !strings.Contains(out, "&b") || !strings.Contains(out, "*b") {
 			t.Errorf("removal result wrong:\n%s", out)
+		}
+	})
+	// audit t2109 F1: removing a key that is not there changes nothing, so it must not be
+	// refused just because its parent mapping carries an anchor. This is the shape of the
+	// launcher's write: one real edit elsewhere forces the re-encode path, and the legacy
+	// alias keys it removes are already gone from an anchored llm.glm.models.
+	t.Run("absent_key_under_an_anchored_mapping_beside_a_real_edit", func(t *testing.T) {
+		in := "llm:\n  team_mode: a\n  glm:\n    models: &m\n      high: x\ncopy: *m\n"
+		p := filepath.Join(t.TempDir(), "llm.yaml")
+		if err := os.WriteFile(p, []byte(in), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		err := PatchFile(p, []KeyEdit{
+			{Path: []string{"llm", "added_key"}, Value: "v"},
+			{Path: []string{"llm", "glm", "models", "opus"}, Remove: true},
+			{Path: []string{"llm", "glm", "models", "sonnet"}, Remove: true},
+		})
+		if err != nil {
+			t.Fatalf("a write whose removals are absent keys was refused: %v", err)
+		}
+		data, _ := os.ReadFile(p)
+		out := string(data)
+		if !strings.Contains(out, "added_key") || !strings.Contains(out, "&m") || !strings.Contains(out, "*m") || !strings.Contains(out, "high: x") {
+			t.Errorf("result lost the edit or the anchor:\n%s", out)
 		}
 	})
 	t.Run("absent_key", func(t *testing.T) {

@@ -446,6 +446,11 @@ func lookupNode(root *yaml.Node, path []string) *yaml.Node {
 // removed key, its key node, or anything inside the removed value) leaves the
 // aliases that point at it undefined, and the file no longer parses.
 func refuseAnchoredRemoval(root *yaml.Node, path []string, pathDesc string) error {
+	// An absent key is a no-op for removeKey whatever surrounds it, so nothing is
+	// refused for it: the write may carry other edits (audit t2109 F1).
+	if lookupNode(root, path) == nil {
+		return nil
+	}
 	cur := root
 	for i, key := range path {
 		if cur.Kind != yaml.MappingNode {
