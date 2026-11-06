@@ -16,6 +16,7 @@ package worktree
 //     removing an L2 tree (done.go wiring).
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -149,7 +150,13 @@ func hoistWorktreeReports(treePath, mainRoot string) (HoistResult, error) {
 			return nil // identical to the primary checkout's HEAD: it already holds it
 		}
 		dst := filepath.Join(res.Dest, rel)
-		if existing, statErr := os.ReadFile(dst); statErr == nil {
+		existing, statErr := os.ReadFile(dst)
+		if statErr != nil && !errors.Is(statErr, os.ErrNotExist) {
+			// An existing destination that cannot be read is neither absent nor
+			// identical: never silently overwrite it (REQ-RLC-006).
+			return fmt.Errorf("read %s: %w", dst, statErr)
+		}
+		if statErr == nil {
 			incoming, readErr := os.ReadFile(path)
 			if readErr != nil {
 				return fmt.Errorf("read %s: %w", path, readErr)

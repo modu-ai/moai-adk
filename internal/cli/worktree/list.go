@@ -12,6 +12,7 @@ package worktree
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -98,12 +99,16 @@ func buildListRows(root string) ([]listRow, error) {
 		return nil, err
 	}
 
+	markerOwners, err := homeMarkerOwners(homeProjectsDir())
+	if err != nil {
+		return nil, err
+	}
 	ctx := ClassifyContext{
 		PrimaryRoot:       primary,
 		IntegrationBranch: config.LoadGitFlowIntegrationConfig(primary).IntegrationTarget,
 		HomeProjectsDir:   homeProjectsDir(),
 		CodexWorktreesDir: codexWorktreesDir(),
-		MarkerOwners:      homeMarkerOwners(homeProjectsDir()),
+		MarkerOwners:      markerOwners,
 	}
 	// Witness (c) — a home-root tree whose project-folder marker is ours —
 	// needs THIS repository's owner identity; without it every moved non-WT-
@@ -208,14 +213,19 @@ func codexWorktreesDir() string {
 }
 
 // homeMarkerOwners reads every project folder's owner marker under the home
-// projects directory — the classifier's marker witness as data.
-func homeMarkerOwners(projectsDir string) map[string]string {
+// projects directory — the classifier's marker witness as data. A directory
+// that does not exist (fs.ErrNotExist) holds no markers; one that cannot be read
+// is an error, not a home without markers.
+func homeMarkerOwners(projectsDir string) (map[string]string, error) {
 	if projectsDir == "" {
-		return nil
+		return nil, nil
 	}
 	entries, err := os.ReadDir(projectsDir)
 	if err != nil {
-		return nil
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("read the home projects directory %s: %w", projectsDir, err)
 	}
 	owners := make(map[string]string, len(entries))
 	for _, e := range entries {
@@ -226,5 +236,5 @@ func homeMarkerOwners(projectsDir string) map[string]string {
 			owners[e.Name()] = owner
 		}
 	}
-	return owners
+	return owners, nil
 }

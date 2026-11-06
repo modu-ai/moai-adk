@@ -258,6 +258,39 @@ const (
 	// stalling an on-demand `moai doctor`. A chosen value, not a measured one.
 	DefaultPluginVersionProbeTimeout = 3 * time.Second
 
+	// DefaultWorktreeGitTimeout bounds ONE read-side git call of the worktree
+	// migration (rev-parse, status, diff, ls-files, worktree list; card t2053).
+	// A repository with a very large untracked or ignored tree can make `git
+	// status` slow, but not unbounded; a timeout fails the tree safe (skipped,
+	// nothing moved). A chosen value, not a measured one.
+	DefaultWorktreeGitTimeout = 2 * time.Minute
+
+	// DefaultWorktreeMoveTimeout bounds the `git worktree move` call itself
+	// (forward and reverse). Longer than the read-side bound because the move
+	// rewrites the tree's registration; a timeout fails the tree, and a
+	// destination that appeared anyway goes through the reverse order.
+	DefaultWorktreeMoveTimeout = 5 * time.Minute
+
+	// DefaultWorktreeLsofTimeout bounds the one whole-system `lsof -a -d cwd`
+	// scan that tells whether a process works inside a tree. A scan that cannot
+	// answer makes every tree a skip, never a move.
+	DefaultWorktreeLsofTimeout = 30 * time.Second
+
+	// DefaultWorktreeCommandWaitDelay is how long a bounded migration command's
+	// output pipes may stay open after its context ends before the runner stops
+	// waiting for them (a grandchild holding the pipe must not outlive the bound).
+	DefaultWorktreeCommandWaitDelay = 2 * time.Second
+
+	// DefaultInitGitProbeTimeout bounds the `git remote` calls `moai init` uses
+	// to detect the git mode and provider (card t2053). A timeout falls back to
+	// the manual default and says so.
+	DefaultInitGitProbeTimeout = 5 * time.Second
+
+	// DefaultUserLockNoticeDelay is how long a user-asset lock wait stays silent
+	// before `moai update` / `moai init` print that another process holds the
+	// moai user lock (card t2053).
+	DefaultUserLockNoticeDelay = 1 * time.Second
+
 	// DefaultStopParseCapLimit is N, the number of consecutive stdin-parse-
 	// failure Stops under the Claude harness that keep the fail-closed deny;
 	// the next one is answered with no opinion (SPEC-HOOK-STOP-PARSE-CAP-001

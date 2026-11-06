@@ -531,7 +531,10 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// --git-provider flags take precedence: detection only fills a value still
 	// empty after flag parsing.
 	if opts.GitMode == "" || opts.GitProvider == "" {
-		detectedMode, detectedProvider := detectGitConfig(rootFlag)
+		detectedMode, detectedProvider, detectSkipped := detectGitConfigReport(rootFlag)
+		if detectSkipped != "" {
+			p.Warn("Git detection was cut short: %s", detectSkipped)
+		}
 		if opts.GitMode == "" {
 			opts.GitMode = detectedMode
 		}

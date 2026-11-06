@@ -320,7 +320,7 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	// already holds, and its report reaches the terminal block. Every other entry
 	// point housekeeps after the binary step (see the post-dry-run call below).
 	if binaryOnly {
-		runUpdateHousekeeping(lockRoot)
+		runUpdateProgressStep(out, "Cleaning up leftover state...", "Leftover state checked", func() { runUpdateHousekeeping(lockRoot) })
 	}
 
 	// Step 1: Binary update (unless skipped)
@@ -402,7 +402,7 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	// so no report is lost with a discarded ledger). The lowercase skill.md rename is
 	// held back: the template sync that follows may still be cancelled at its
 	// confirmation, and applyDeferredSkillRenames runs only once that is settled.
-	runUpdateHousekeepingDeferRenames(lockRoot)
+	runUpdateProgressStep(out, "Cleaning up leftover state...", "Leftover state checked", func() { runUpdateHousekeepingDeferRenames(lockRoot) })
 
 	// This is after the dry-run return and under the update lock. It also runs
 	// when template sync is version-matched, so a later update can retry trees
@@ -855,13 +855,18 @@ func runBinaryUpdateStep(cmd *cobra.Command) (updated bool, err error) {
 	currentVersion := version.GetVersion()
 
 	// Check for available update
+	// Card t2053: the check reaches the network and can take seconds; label it.
+	checkLine := tui.ProgressLine(out, "Checking for a moai binary update...", &th)
 	available, info, err := deps.UpdateChecker.IsUpdateAvailable(currentVersion)
 	if err != nil {
+		checkLine.Fail("Binary update check failed")
 		return false, fmt.Errorf("check for update: %w", err)
 	}
 	if !available {
+		checkLine.Done("moai binary is up to date")
 		return false, nil
 	}
+	checkLine.Done("A newer moai binary is available")
 
 	// Card t1527 D1: the "Current version" line is dropped here — the top of
 	// runUpdate already printed it seconds earlier, and the identity band after
