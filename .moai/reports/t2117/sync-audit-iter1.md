@@ -1,5 +1,5 @@
 auditor-model: glm-5.3
-verdict: PASS-WITH-DEBT
+verdict: FAIL
 audited_sha: 927cd8b6518f3f3aed0285a69dcab5e069a68d02
 
 # t2117 sync-audit iter1 — instructions-handling defects C1-C4
@@ -8,30 +8,44 @@ Card t2117 (Class B — acceptance = card text) · branch `WT-main-c1-instructio
 audited tree = worktree `/Users/goos/.moai/worktrees/projects/moai-adk-go/t2117` ·
 card diff = `b00c35d103..927cd8b651` (7 files, +383/−29; commits RED `108c9bed5e` + GREEN `927cd8b651`).
 
-Overall Verdict: **PASS-WITH-DEBT** — the four defects are repaired and verified
-RED→GREEN by independently reproduced mechanical evidence; the required codex
-second-opinion gate was ultimately served (receipt `rcpt-570cb4d72e7e4f0aaab856cb`,
-fifth call, after four environmental `stale_server` refusals), and the debt is now
-the two codex P2 measurement-accuracy findings (F7 coexistence under-count, F3+
-symlink real-path escape) — routed as follow-up, neither blocking under this
-card's stated acceptance. No blocking code finding. **Disagreement surfaced, not
-smoothed**: codex's own verdict on the delta is `fail` (the two P2s); this
-auditor's verdict is PASS-WITH-DEBT on the reasoning recorded against F7/F3+
-(both are beyond-prescription accuracy gaps of the C3 surface — the card text
-itself prescribed the first/fallback slot — and the hook's prompt-facing surface
-is unaffected). The leader holds the final disposition.
+Overall Verdict: **FAIL** (must-pass firewall: Functionality — one stated
+acceptance criterion demonstrably fails). The four dispatched defects remain
+repaired and verified RED→GREEN by independently reproduced mechanical
+evidence; the FAIL is driven by ONE blocking in-diff finding (F3+): the card's
+C3 acceptance clause states "**absolute/escaping refused**", and the new
+`instructionImportMembers` refuses only LEXICAL escaping — an import path that
+is a symlink to a regular file outside repoRoot passes `os.Stat` (follows
+links) and the string-form `filepath.Rel` check and is then read and counted,
+so an escaping target IS followed. The code's own diff comment ("targets
+escaping repoRoot are not followed") is false for that reachable case. F7
+(coexistence under-count) rides as Medium/optional — the card text literally
+prescribed first/fallback — and may fold into the same repair.
 
-## Dimension Scores (harmonic 94.2; flat-weighted 94.9)
+**Verdict history, recorded transparently.** Pre-receipt, this audit's token
+was PASS-WITH-DEBT with the unserved codex gate as the (environmental) debt.
+The receipt (`rcpt-570cb4d72e7e4f0aaab856cb`, fifth call after four
+`stale_server` refusals) records codex's independent verdict on the delta:
+`fail`, two P2 findings. The Stop-hook receipt guard refused the pass-family
+token on exactly that ground ("receipt records a FAIL verdict"), which forced
+a re-examination of my classification of those findings against the card's own
+acceptance text. The re-examination — not the guard — moves the token: F3+ is
+a failure of a stated criterion ("escaping refused"), not a beyond-prescription
+residual as first classified; under the must-pass firewall that forces FAIL.
+Codex's `fail` and this verdict now agree.
+
+## Dimension Scores (harmonic 85.3 — OVERRIDDEN: must-pass firewall forces FAIL on Functionality's stated-criterion failure)
 
 | Dimension | Score | Verdict | Evidence (verbatim) |
 |-----------|-------|---------|---------------------|
-| Functionality (40%) | 97 | PASS | HEAD, attributed env: `ok github.com/modu-ai/moai-adk/internal/hook 1.308s`; `ok github.com/modu-ai/moai-adk/internal/cli 2.475s`; `ok github.com/modu-ai/moai-adk/internal/config 0.492s` (targeted `-count=1`, swept sets non-empty via `go test -list`: hook 19 / cli 7 / config 4 tests). RED tree `108c9bed5e` re-run by this auditor: `--- FAIL: TestInstructionFileSetSkipsFIFOAnchor (5.02s)`; `--- FAIL: TestMigrateLocalInstructions_SourceChangeRace (0.10s) ... migration exited 0 although CLAUDE.local.md changed mid-flight`; `--- FAIL: TestAlwaysLoadedSurfaceIncludesLocalAndImports ... omits .../AGENTS.local.md`; `--- FAIL: TestInstructionFileSetNestedRelativeImports ... got [.../more.md ...] want [.../sub/dir/more.md]` — all four RED claims reproduced on the pre-fix tree. |
-| Security (25%) | 93 | PASS | C1/C2 are the security-bearing fixes. FIFO guard: `if info, lerr := os.Lstat(cur); lerr != nil \|\| !info.Mode().IsRegular() { continue }` (instructions_loaded.go:201-203). C2 abort: `if !bytes.Equal(cur, body) { ...rollback... return fmt.Errorf("refusing to migrate: %s changed between the read and the remove; ...") }`. Absolute/escape refusal at both BFS sites (grep): hook `instructions_loaded.go:252 if rel == "" \|\| filepath.IsAbs(rel)` + `:256 filepath.Rel(projectRoot, cleaned)`; config `token_budget_guard.go:393 if imp == "" \|\| filepath.IsAbs(imp)` + `filepath.Rel(repoRoot, resolved)` escape check (diff hunk). Secrets probe on added diff lines: zero printed hits for `password|secret|api[_-]?key|Bearer |token.*= *"`. Residual windows F1/F2 below (accepted card subsets). |
-| Craft (20%) | 95 | PASS | RED-first TDD honored (all four REDs independently reproduced above; the directory-disguise companion honestly documented as coverage-only — it also passed at RED, consistent with the record). Seam minimality verified: `grep -rn migratePreRemoveHook internal/` — production carries only the declaration (`:22`), comments (`:20,:94`), and the nil-guarded call (`:98-99`); set only in the test (`:177`) with reset (`:180`) — **nil-in-production holds**. Parser dedup single implementation: `ParseInstructionImports` (config:317) with hook `parseImports` delegating (`instructions_loaded.go:245`); one call site each. Targeted-subset coverage measured, not claimed as package coverage: hook `coverage: 2.8% of statements` from the Instruction subset (demonstrates a subset figure must not be read as a package claim). |
-| Consistency (15%) | 92 | PASS | `gofmt -l internal/hook/ internal/cli/ internal/config/` → empty list; `go vet` on the three packages → `VET-EXIT=0`. C2 abort paths reuse the file's pre-existing rollback pattern (destination remove + named-error guidance, mirroring the `os.Remove` failure branch). Naming/comments match file conventions; MX tags carry `[AUTO]` + card ref. Minor: F3 (Stat vs Lstat discipline divergence between the two surfaces) and the escape-check logic necessarily duplicated across hook/config (forced by the hook→config dependency direction; cross-referenced in comments). |
+| Functionality (40%) | 75 | **FAIL** (stated criterion) | The four dispatched defects remain GREEN (evidence below, unchanged). The FAIL is the C3 acceptance clause "**absolute/escaping refused**": demonstrated bypass — an import path that is a symlink to a regular file outside repoRoot passes `os.Stat` (follows links) and the lexical `filepath.Rel(repoRoot, resolved)` check, then `os.ReadFile` reads and counts the external file (mechanism verified by this auditor against the code at token_budget_guard.go:379-401; codex P2 #2 concurrence, receipt rcpt-570cb4d72e7e4f0aaab856cb). The diff's own comment "targets escaping repoRoot are not followed" is false for this reachable case. HEAD, attributed env: `ok github.com/modu-ai/moai-adk/internal/hook 1.308s`; `ok github.com/modu-ai/moai-adk/internal/cli 2.475s`; `ok github.com/modu-ai/moai-adk/internal/config 0.492s` (targeted `-count=1`, swept sets non-empty via `go test -list`: hook 19 / cli 7 / config 4 tests). RED tree `108c9bed5e` re-run by this auditor: `--- FAIL: TestInstructionFileSetSkipsFIFOAnchor (5.02s)`; `--- FAIL: TestMigrateLocalInstructions_SourceChangeRace (0.10s) ... migration exited 0 although CLAUDE.local.md changed mid-flight`; `--- FAIL: TestAlwaysLoadedSurfaceIncludesLocalAndImports ... omits .../AGENTS.local.md`; `--- FAIL: TestInstructionFileSetNestedRelativeImports ... got [.../more.md ...] want [.../sub/dir/more.md]` — all four RED claims reproduced on the pre-fix tree. |
+| Security (25%) | 82 | FAIL (confinement clause) | C1/C2 fixes sound (evidence unchanged): FIFO guard `if info, lerr := os.Lstat(cur); lerr != nil \|\| !info.Mode().IsRegular() { continue }` (instructions_loaded.go:201-203); C2 abort `if !bytes.Equal(cur, body) { ...rollback... "refusing to migrate: %s changed between the read and the remove; ..." }`. Secrets probe on added diff lines: zero printed hits. The dimension FAILs on the stated project-internal confinement being bypassable via symlink in the new config BFS (F3+): the guard's measurement can be pointed at arbitrary readable files, and its reproducibility claim breaks. Hook prompt surface unaffected (Lstat refuses symlinks). Residual windows F1/F2 remain accepted card subsets. |
+| Craft (20%) | 95 | PASS | RED-first TDD honored (all four REDs independently reproduced above; the directory-disguise companion honestly documented as coverage-only — it also passed at RED, consistent with the record). Seam minimality verified: `grep -rn migratePreRemoveHook internal/` — production carries only the declaration (`:22`), comments (`:20,:94`), and the nil-guarded call (`:98-99`); set only in the test (`:177`) with reset (`:180`) — **nil-in-production holds**. Parser dedup single implementation: `ParseInstructionImports` (config:317) with hook `parseImports` delegating (`instructions_loaded.go:245`); one call site each. Targeted-subset coverage measured, not claimed as package coverage: hook `coverage: 2.8% of statements` from the Instruction subset. |
+| Consistency (15%) | 92 | PASS | `gofmt -l internal/hook/ internal/cli/ internal/config/` → empty list; `go vet` on the three packages → `VET-EXIT=0`. C2 abort paths reuse the file's pre-existing rollback pattern (destination remove + named-error guidance, mirroring the `os.Remove` failure branch). Naming/comments match file conventions; MX tags carry `[AUTO]` + card ref. Minor: Stat-vs-Lstat discipline divergence (F3) and the escape-check logic duplicated across hook/config (forced by the hook→config dependency direction; cross-referenced in comments). |
 
-Must-pass firewall: Functionality and Security both independently above threshold.
-All findings below are **optional** — none blocks (finding-consumption discipline).
+**Must-pass firewall: Functionality fails a stated acceptance criterion ("escaping
+refused") → overall FAIL regardless of the other dimension scores.** F3+ below is
+the single **blocking** finding; the repair re-audit (second call of the card's
+cap-2 codex allowance, unspent) is scoped to the enumerated defect delta.
 
 ## Findings
 
@@ -44,7 +58,7 @@ All findings below are **optional** — none blocks (finding-consumption discipl
 | F5 | in-diff | Info | optional | internal/hook/instructions_loaded.go:201 | User-visible delta within fix scope: symlinked instruction anchors/members, previously followed by `ReadFile`, are now excluded from the set (and thus from hook measurement). Intended consequence of the card's Lstat-subset adoption; coordinate with t2114 (renames). |
 | F6 | in-diff | Info | optional | internal/cli/migrate_local_instructions.go:104-109 | In the re-check-failure branch the message asserts the source "is untouched" even in the vanished-file sub-case (concurrent actor removed it). The action taken (abort + rollback) is the safe one; wording only. |
 | F7 | in-diff | Medium | optional (this card) → follow-up routed | internal/config/token_budget_guard.go:338 (`localInstructionSlot`) | **Codex P2 #1** (receipt rcpt-570cb4d72e7e4f0aaab856cb): when `AGENTS.local.md` and `CLAUDE.local.md` coexist, the slot returns only the first, so the legacy file's body AND its `@`-import closure fall out of the budget surface — while the real injection combines both bodies (grounded: AGENTS.md §8 local-launch form, "reads … `AGENTS.local.md` first, then the legacy file, and injects the combined bodies"; the primary checkout carries both files today). Under-count can mask an overshoot during the coexistence state. The card text itself prescribed first/fallback semantics, so the implementation matches the dispatch — the gap is prescription-level. Required fix (follow-up): enumerate BOTH slots as seeds when both are present as regular files. |
-| F3+ | in-diff | Medium (upgraded by codex concurrence) | optional (this card) → follow-up routed | internal/config/token_budget_guard.go:381 | **Codex P2 #2**: the import boundary check is lexical — an import path that is a symlink pointing outside repoRoot passes `os.Stat` (follows links) and the string-form `filepath.Rel` check, so an external regular file is read and counted, breaking the stated project-internal confinement and measurement reproducibility. Same substance as F3/Residual-risk (3), now with a concrete remedy: resolve the real path (`filepath.EvalSymlinks`) BEFORE the boundary check and reject symlinked ancestors that escape. Hook prompt surface unaffected (hook refuses symlinks via Lstat). |
+| F3+ | in-diff | Medium | **BLOCKING** | internal/config/token_budget_guard.go:381 (`instructionImportMembers`, resolution at :396-401) | **Codex P2 #2, re-classified blocking on re-examination**: the card's C3 acceptance clause states "**absolute/escaping refused**", but the refusal is lexical only — an import path that is a symlink to a regular file outside repoRoot passes `os.Stat` (follows links) and the `filepath.Rel(repoRoot, resolved)` string check, and the external file is then read and counted. The stated project-internal confinement is bypassable; the diff's own comment ("targets escaping repoRoot are not followed") is false for this reachable case. **Required fix**: resolve the real path (`filepath.EvalSymlinks`) BEFORE the boundary check and reject targets (and symlinked ancestors) whose resolved path escapes repoRoot; add a RED test with an escaping symlink import. Scope note: the hook's prompt-facing BFS is NOT affected (its Lstat refuses symlinks); the pre-card hook shared the same lexical discipline, so this is a new-code acceptance failure, not a regression. |
 
 No `outside` findings. No `touched-file` findings outside the diff hunks.
 
@@ -137,8 +151,18 @@ No `outside` findings. No `touched-file` findings outside the diff hunks.
   merge-base `b00c35d103…` to call-time HEAD `bf35a3495312…`. Codex's
   independent verdict on the delta: **fail**, two P2 findings — folded below
   as F7 (new) and F3 concurrence. The prior debt item (unserved gate) is
-  resolved; the verdict's debt is now the two codex P2 measurement-accuracy
-  findings, routed as follow-up.
+  resolved.
+- **Receipt-guard corroboration and token revision (final).** The Stop-hook
+  receipt guard refused the pass-family token on a NEW ground —
+  `AUDIT_RECEIPT_VIOLATION: ... receipt records a FAIL verdict` — i.e. the
+  receipt was corroborated as valid but its recorded verdict is fail. That
+  refusal forced a re-examination of the findings' classification against the
+  card's own acceptance text; the re-examination (not the guard) re-classified
+  F3+ as a failure of the stated criterion "escaping refused" and revised the
+  verdict token to **FAIL** under the must-pass firewall. Codex's recorded
+  verdict and this verdict now agree; the receipt corroborates. The card's
+  remaining codex allowance (one repair re-audit of the cap-2) is unspent and
+  is the confirming re-audit for the F3+ defect delta.
 
 ## Verification Record (5-section)
 
@@ -190,8 +214,10 @@ compiled (build-tag shape verified by inspection only). (c) Required codex gate 
 verbatim above), ultimately SERVED on the fifth call after the stale server
 process was replaced: receipt `rcpt-570cb4d72e7e4f0aaab856cb` minted by build
 04d8c27a7e against merge-base `b00c35d103…`, call-time HEAD
-`bf35a3495312…` (docs-only past the audited SHA). The gate's two P2 findings are
-carried as the verdict's debt (F7, F3+) and routed as follow-up. (d) Concurrent-actor environment damage during THIS audit: the freshly
+`bf35a3495312…` (docs-only past the audited SHA). The gate's findings drove the
+final verdict: F3+ re-classified blocking (stated criterion "escaping refused"
+fails), F7 Medium/optional. The repair re-audit allowance (cap-2, second call)
+remains unspent for the confirming delta re-audit. (d) Concurrent-actor environment damage during THIS audit: the freshly
 restored go1.27.1 toolchain in the shared module cache was wiped again mid-audit
 (~17:50 local; two `go test` calls errored `stat .../toolchain@v0.0.1-go1.27.1.../bin/go: no such file or directory`); the one-retry disposition recovered it (module+toolchain re-download) and both affected runs then completed — recorded as environment, never as card defect. (e) Targeted-subset coverage only (no package-coverage claim): with the same `-run` subsets and `-cover`, exit 0 — `hook 1.657s coverage: 2.8% of statements`, `cli 3.480s coverage: 9.9%`, `config 1.613s coverage: 2.8%`. These are subset-driven package-wide figures (the cli package is large; 7 targeted tests exercising 9.9% is expected) and are cited only to record what was observed — the repository 85% threshold is owned by the full-suite CI verdict, deliberately not run here. (f) `go test -list` swept counts read at HEAD only (RED-tree sweeps inferred from the executed FAIL lines, which name the tests).
 

@@ -90,4 +90,10 @@ Card t2117 · run to2bbk · lane-31 · Class B (run → sync, RED 먼저) · 202
 - 판정 토큰 불변: PASS-WITH-DEBT 94.2 (부채=미게이트 코드 결함 0 + F7 등 선택적 발견). 기계 줄 verdict:/audited_sha: 각 1줄 유지(직독 확인)
 - 리더 전달: F7 팔로업 카드 후보(큐 변경 없이 기록만)
 
+### 판정 정정 (감사관, 영수증 검증 중 재검토)
+
+- 감사관이 영수증 대조 과정 재검토에서 **FAIL로 정정**(판정 파일 이력 절에 투명 기록, 기계 줄 verdict: FAIL / audited_sha: 927cd8b651 유지): F3+(codex P2 #2)가 수용 조항 "absolute/escaping refused"의 미달 — 심볼릭 링크가 repoRoot 밖 정규 파일을 가리키는 도달 가능 사례에서 os.Stat(링크 추종)+filepath.Rel 문자열 검사를 통과해 읽힘·계수됨. diff 자체 주석("escaping targets are not followed")이 이 사례에 대해 거짓. 기능성 방화벽 발동(75 FAIL), 조화 85.3 — C1~C4 자체는 독립 재현으로 계속 검증 유지
+- 위 레인 기록("판정 토큰 불변: PASS-WITH-DEBT")은 정정 이전 시점 기록 — 정정이 최종
+- 운영자 결정 d-20261106T134133Z-aa98(결정판 직독 일치): Codex P2 부채 미수용 — F7+F3+를 이 카드에서 한 커밋으로 수리(RED 먼저) → 재감사 → de2d 잔여 1회를 수리 델타에. 수리 2라운드 같은 구현자 재개
+
 ### Gaps
