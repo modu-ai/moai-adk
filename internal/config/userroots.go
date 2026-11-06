@@ -81,6 +81,22 @@ func ValidProfileDirName(name string) bool {
 	return name != reservedProfileDirName
 }
 
+// LauncherProfileDirName reports whether the profile launcher accepts name as
+// a profile directory name. It mirrors internal/profile.isValidProfileName
+// (no separator, not absolute, no leading dot) and is deliberately WIDER than
+// ValidProfileDirName: a name with a space, or the reserved sentinel, is
+// junk for install targets yet still startable. A read-only judgment that
+// must not miss a startable profile (card t1702 audit iter6 B1) uses this to
+// notice entries the install enumeration drops. internal/profile cannot be
+// imported from here, so a test in that package pins the two rules together.
+func LauncherProfileDirName(name string) bool {
+	if name == "" {
+		return false
+	}
+	return !(strings.Contains(name, "/") || strings.Contains(name, "\\") ||
+		strings.HasPrefix(name, ".") || filepath.IsAbs(name))
+}
+
 // UserProfileDirNames returns the sorted names of the real profile
 // directories under home's profile store. A missing base is the legitimate
 // empty store and yields (nil, nil); any OTHER ReadDir error (permissions,

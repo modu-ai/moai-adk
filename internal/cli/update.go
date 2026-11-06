@@ -1139,6 +1139,9 @@ var afterMoaiHooksCheck = func(configRoot string) {}
 // that would leave it - which is what a `hooks` swapped for a link after the
 // check becomes - fails instead of being followed. The F1 refusal is kept: a
 // link at either component is left alone, even one that stays inside the root.
+// A link to another directory INSIDE the root, placed after the check, is
+// caught differently: `hooks` is reopened as its own root and must be the same
+// directory (os.SameFile) that the check saw (audit iter6 M1).
 func removeConfigRootMoaiHooks(configRoot string) {
 	root, err := os.OpenRoot(configRoot)
 	if err != nil {
@@ -1146,14 +1149,35 @@ func removeConfigRootMoaiHooks(configRoot string) {
 	}
 	defer func() { _ = root.Close() }()
 
+	var hooksInfo os.FileInfo
 	for _, rel := range []string{"hooks", "hooks/moai"} {
 		info, lerr := root.Lstat(rel)
 		if lerr != nil || info.Mode()&os.ModeSymlink != 0 {
 			return // absent, or a link the user placed: left as it is
 		}
+		if rel == "hooks" {
+			hooksInfo = info
+		}
 	}
 	afterMoaiHooksCheck(configRoot)
-	_ = root.RemoveAll("hooks/moai")
+
+	// Audit iter6 M1: os.Root follows a link that stays inside the root, so a
+	// `hooks` swapped for such a link after the check would be opened as
+	// another directory (for example skills). Open `hooks` as its own root and
+	// require that it is the directory that was checked.
+	hooksRoot, err := root.OpenRoot("hooks")
+	if err != nil {
+		return
+	}
+	defer func() { _ = hooksRoot.Close() }()
+	opened, err := hooksRoot.Stat(".")
+	if err != nil || !os.SameFile(hooksInfo, opened) {
+		return // not the directory that was checked: left as it is
+	}
+	if mi, merr := hooksRoot.Lstat("moai"); merr != nil || mi.Mode()&os.ModeSymlink != 0 {
+		return
+	}
+	_ = hooksRoot.RemoveAll("moai")
 }
 
 // ensureSettingsEnvInConfigRoot applies the moai-managed settings cleanup to

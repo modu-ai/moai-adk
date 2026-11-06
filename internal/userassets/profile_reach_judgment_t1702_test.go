@@ -208,17 +208,96 @@ func TestSafeToRemoveProjectCopy_AnyNonSameStateKeepsTheCopy(t *testing.T) {
 	}
 }
 
-func TestCheckProfileReach_JunkProfileDirectoriesAreNotRead(t *testing.T) {
+// Audit iter6 B1 (reproduced): a store entry the launcher can start but the
+// shared enumeration drops (a linked directory, a name with a space, the
+// reserved sentinel) is a profile whose roots were never read. It must show up
+// as an Unknown row, so that "every other profile is Same" cannot license a
+// removal. Entries the launcher cannot start (plain files, hidden names,
+// dangling links) are not profiles and give no row.
+func TestCheckProfileReach_LaunchableProfilesTheSharedFilterDropsAreUnknown(t *testing.T) {
 	home := t.TempDir()
 	reachProfile(t, home, "alpha", reachBody)
-	reachProfile(t, home, "has space", nil)
-	reachProfile(t, home, "__no_such_profile__", nil)
+	reachProfile(t, home, "has space", reachBody)
+	reachProfile(t, home, "__no_such_profile__", reachBody)
+	outside := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(outside, "skills", "moai-alpha"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(outside, "skills", filepath.FromSlash(reachRel)), reachBody, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	base := ProfileRootsBase(home)
+	if err := os.Symlink(outside, filepath.Join(base, "linked")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	if err := os.Symlink(filepath.Join(outside, "no-such-target"), filepath.Join(base, "dangling")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(base, "notes.txt"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(base, ".hidden"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	rs, err := CheckProfileReach(home, RootClaudeSkills, reachRel, reachHash(reachBody))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(rs) != 1 || rs[0].Profile != "alpha" {
-		t.Fatalf("junk directories must not count as profiles: %+v", rs)
+	got := reachStates(rs)
+	want := map[string]ReachState{
+		"alpha": ReachSame, "has space": ReachUnknown,
+		"__no_such_profile__": ReachUnknown, "linked": ReachUnknown,
+	}
+	if len(got) != len(want) || len(rs) != len(want) {
+		t.Fatalf("rows = %+v, want exactly %v", rs, want)
+	}
+	for name, st := range want {
+		if got[name] != st {
+			t.Errorf("profile %q: state %v, want %v", name, got[name], st)
+		}
+	}
+	if SafeToRemoveProjectCopy(rs) {
+		t.Fatal("a launchable profile that was not read must keep the project copy")
+	}
+}
+
+// Audit iter6 S1: shapes that must stay Unknown and were not pinned.
+func TestCheckProfileReach_RootAndFileShapesThatMustStayUnknown(t *testing.T) {
+	home := t.TempDir()
+	// skills root is itself a link (even to a directory holding the same copy).
+	real := reachProfile(t, home, "realtree", reachBody)
+	rl := reachProfile(t, home, "rootlink", nil)
+	if err := os.Symlink(filepath.Join(real, "skills"), filepath.Join(rl, "skills")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	// the file is a link that stays inside the root.
+	fl := reachProfile(t, home, "inrootlink", reachBody)
+	if err := os.Rename(filepath.Join(fl, "skills", "moai-alpha", "SKILL.md"), filepath.Join(fl, "skills", "moai-alpha", "real.md")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("real.md", filepath.Join(fl, "skills", "moai-alpha", "SKILL.md")); err != nil {
+		t.Fatal(err)
+	}
+	// the file is larger than the read bound.
+	big := reachProfile(t, home, "oversize", nil)
+	if err := os.MkdirAll(filepath.Join(big, "skills", "moai-alpha"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(big, "skills", filepath.FromSlash(reachRel)), make([]byte, maxReachFileBytes+1), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	rs, err := CheckProfileReach(home, RootClaudeSkills, reachRel, reachHash(reachBody))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := reachStates(rs)
+	for _, name := range []string{"rootlink", "inrootlink", "oversize"} {
+		if got[name] != ReachUnknown {
+			t.Errorf("profile %s: want Unknown, got %v", name, got[name])
+		}
+	}
+	if got["realtree"] != ReachSame {
+		t.Errorf("the real tree holds the copy: want Same, got %v", got["realtree"])
 	}
 }
 

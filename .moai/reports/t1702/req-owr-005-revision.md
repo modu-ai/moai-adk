@@ -13,7 +13,7 @@
 
 ## 개정안 — REQ-OWR-005
 
-> **REQ-OWR-005** (Unwanted behavior): The update shall not create, write, rename, remove, link, chmod, or otherwise modify anything inside any profile root (the `skills` and `agents` directories under a profile configuration directory, and the `claude-skills@<profile>` and `claude-agents@<profile>` directories), and shall not supply a profile root as a destination to any write-capable operation; this write ban has no exception.
+> **REQ-OWR-005** (Unwanted behavior): The project-asset removal and migration path of this SPEC shall not create, write, rename, remove, link, chmod, or otherwise modify anything inside any profile root (the `skills` and `agents` directories under a profile configuration directory, and the `claude-skills@<profile>` and `claude-agents@<profile>` directories), and shall not supply a profile root as a destination to any write-capable operation; this write ban has no exception for that path. The user-asset install and `moai update` settings cleanup that already write to profile roots (`internal/userassets` install and prune, `ensureGlobalSettingsEnv`) are retained by operator decision d-20261106T055331Z-c28f and are outside this requirement; they are not extended.
 > The update shall not open, read, enumerate, stat, or walk any profile root for any purpose other than the profile-reach judgment defined below, and shall not add any other call site of a symbol that produces or opens a path in a profile configuration directory beyond the frozen existing contacts.
 > The single permitted read path is the profile-reach judgment in `internal/userassets` — `CheckProfileReach` and `SafeToRemoveProjectCopy` — which may enumerate real profiles through `config.UserProfileDirNames`, and, per call, Lstat a profile `skills` or `agents` root, open it under an `os.Root`, Lstat and read with a fixed upper bound one named relative file inside it, solely to decide whether a project copy of a user skill or agent may be removed; a relative path that leaves the root shall be rejected, and any result other than an equal content hash for every real profile — including zero profiles, a link, a non-regular file, or any read error — shall keep the project copy.
 > The frozen existing contacts, including the `os.Stat` of the profile configuration directory entry inside `launchCandidateIsUsable` (`internal/profile/profile.go:439`), remain tolerated and unchanged; this SPEC neither calls them anew nor alters them.
@@ -25,7 +25,8 @@
 
 ## 채택하지 않은 안
 
-- **설치 단계에서 모든 프로필 루트에 대응 사본을 넣는 안.** 프로젝트 사본을 지우기 전에 각 프로필 루트로 사본을 써 넣어 도달을 보장하는 방식이다. 운영자 판정(d-20261106T055331Z-c28f)이 읽기 전용 검증을 택했기 때문에 채택하지 않았다.
+- **제거 경로가 프로필 루트에 사본을 써 넣어 도달을 보장하는 안.** 프로젝트 사본을 지우기 전에 제거 경로가 각 프로필 루트로 사본을 써 넣는 방식이다. 운영자 판정 d-20261106T055331Z-c28f("설치는 쓰고 판정만 읽기")가 제거 가능 판정을 읽기 전용으로 정했기 때문에 채택하지 않았다.
+- 주의(감사 iter6 S2 정정): 이 브랜치에는 설치·prune·설정 정리가 프로필 루트에 쓰는 기존 경로가 있고, 같은 판정이 그 존치를 정했다(결정 (c)). 따라서 "설치 쪽 쓰기를 채택하지 않았다"는 뜻이 아니다. 제안 문구의 쓰기 금지는 이 SPEC의 프로젝트 사본 제거·이전 경로에만 걸리고, 설치 쪽 쓰기는 요구사항 밖에 둔다. 그 범위 구분이 SPEC 담당 카드의 의도와 맞는지는 담당자가 확인해야 한다.
 
 ## 미확인
 

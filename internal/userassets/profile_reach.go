@@ -17,6 +17,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"syscall"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 )
@@ -81,19 +82,52 @@ func CheckProfileReach(home string, slug RootSlug, rel string, want [32]byte) ([
 	if !profileDerivable(slug) {
 		return nil, nil
 	}
-	names, err := RealProfileDirNames(home)
+	base := ProfileRootsBase(home)
+	entries, err := os.ReadDir(base)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, nil // no profile store: no profile to read
+	}
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("read profile store %s: %w", base, err)
 	}
 	var out []ProfileReach
-	for _, name := range names {
-		rootRel, ok := config.UserRootSlugRel(string(slug) + "@" + name)
-		if !ok {
-			continue // unreachable: name passed the same filter upstream
+	for _, e := range entries { // ReadDir order is sorted by name
+		name := e.Name()
+		profileDir := filepath.Join(base, name)
+		if e.IsDir() && config.ValidProfileDirName(name) {
+			rootRel, ok := config.UserRootSlugRel(string(slug) + "@" + name)
+			if !ok {
+				continue // unreachable: name passed the same filter
+			}
+			dir := filepath.Join(home, filepath.FromSlash(rootRel))
+			// The entry was a directory when listed; if it has become a link
+			// since, reading through it could leave the store.
+			if pi, lerr := os.Lstat(profileDir); lerr != nil || !pi.IsDir() {
+				out = append(out, ProfileReach{Profile: name, Root: dir, State: ReachUnknown,
+					Reason: "profile directory changed since it was listed"})
+				continue
+			}
+			state, reason := readProfileCopy(dir, clean, want)
+			out = append(out, ProfileReach{Profile: name, Root: dir, State: state, Reason: reason})
+			continue
 		}
-		dir := filepath.Join(home, filepath.FromSlash(rootRel))
-		state, reason := readProfileCopy(dir, clean, want)
-		out = append(out, ProfileReach{Profile: name, Root: dir, State: state, Reason: reason})
+		// Not listed by the shared install enumeration. If the launcher could
+		// still start it (a linked directory, a name with a space, the reserved
+		// sentinel), its roots were never read: Unknown, never a silent skip.
+		if !config.LauncherProfileDirName(name) {
+			continue
+		}
+		si, serr := os.Stat(profileDir)
+		switch {
+		case serr == nil && si.IsDir():
+			out = append(out, ProfileReach{Profile: name, Root: profileDir, State: ReachUnknown,
+				Reason: "startable profile directory outside the install enumeration (link, space or reserved name): not read"})
+		case serr == nil || errors.Is(serr, fs.ErrNotExist):
+			// a plain file, or a dangling link: not a profile the launcher can use
+		default:
+			out = append(out, ProfileReach{Profile: name, Root: profileDir, State: ReachUnknown,
+				Reason: "store entry not inspectable: " + serr.Error()})
+		}
 	}
 	return out, nil
 }
@@ -134,7 +168,7 @@ func readProfileCopy(dir, rel string, want [32]byte) (ReachState, string) {
 	case fi.Size() > maxReachFileBytes:
 		return ReachUnknown, "file larger than the read bound"
 	}
-	f, err := root.Open(rel)
+	f, err := openRegularForRead(root, rel)
 	if err != nil {
 		return ReachUnknown, "file cannot be opened: " + err.Error()
 	}
@@ -150,6 +184,27 @@ func readProfileCopy(dir, rel string, want [32]byte) (ReachState, string) {
 		return ReachSame, "content hash equals the project copy"
 	}
 	return ReachDiffers, "content hash differs from the project copy"
+}
+
+// openRegularForRead opens rel for reading without blocking and confirms on
+// the OPEN HANDLE that it is a regular file (audit iter6 M2): an earlier Lstat
+// says nothing about what the name is by the time it is opened, and a blocking
+// open of a FIFO waits for a writer that never comes.
+func openRegularForRead(root *os.Root, rel string) (*os.File, error) {
+	f, err := root.OpenFile(rel, os.O_RDONLY|syscall.O_NONBLOCK, 0)
+	if err != nil {
+		return nil, err
+	}
+	fi, err := f.Stat()
+	if err != nil {
+		_ = f.Close()
+		return nil, err
+	}
+	if !fi.Mode().IsRegular() {
+		_ = f.Close()
+		return nil, fmt.Errorf("%s is not a regular file (%s)", rel, fi.Mode().Type())
+	}
+	return f, nil
 }
 
 // SafeToRemoveProjectCopy is true only when there is at least one profile row

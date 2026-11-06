@@ -51,6 +51,35 @@ func TestRemoveConfigRootMoaiHooks_ASwapToALinkAfterTheCheckNeverReachesTheExter
 	}
 }
 
+// Audit iter6 M1: a swap of `hooks` for a link that stays INSIDE the config
+// root is followed by os.Root, so the removal reached <root>/skills/moai - a
+// tree the update has no business removing. The opened directory must be the
+// one that was checked.
+func TestRemoveConfigRootMoaiHooks_ASwapToAnInRootLinkNeverReachesAnotherTree(t *testing.T) {
+	configRoot := filepath.Join(t.TempDir(), "profile")
+	writeHooksFixtureFile(t, filepath.Join(configRoot, "hooks", "moai", "hook.sh"), "managed\n")
+	keep := filepath.Join(configRoot, "skills", "moai", "SKILL.md")
+	writeHooksFixtureFile(t, keep, "the user's skill\n")
+
+	orig := afterMoaiHooksCheck
+	afterMoaiHooksCheck = func(root string) {
+		if err := os.Rename(filepath.Join(root, "hooks"), filepath.Join(root, "hooks.real")); err != nil {
+			t.Errorf("swap, step 1: %v", err)
+			return
+		}
+		if err := os.Symlink("skills", filepath.Join(root, "hooks")); err != nil {
+			t.Skipf("no symlinks here: %v", err)
+		}
+	}
+	t.Cleanup(func() { afterMoaiHooksCheck = orig })
+
+	removeConfigRootMoaiHooks(configRoot)
+
+	if _, err := os.Stat(keep); err != nil {
+		t.Fatalf("the removal followed an in-root link and deleted another tree: %v", err)
+	}
+}
+
 // Control: with no swap, the managed hooks directory is still removed, and a
 // symlinked `hooks` is still refused up front (the F1 contract).
 func TestRemoveConfigRootMoaiHooks_StillRemovesARealDirectoryAndRefusesALink(t *testing.T) {
