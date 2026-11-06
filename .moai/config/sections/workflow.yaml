@@ -35,7 +35,7 @@ workflow:
             effort: max
         gates:
             claude: off
-            codex: required
+            codex: advisory
             glm: off
     default_mode: ""
     execution_mode: auto
