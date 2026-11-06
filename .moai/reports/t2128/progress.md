@@ -55,3 +55,13 @@
 - `gofmt -l` 변경 파일 → 출력 없음
 
 Gaps: 전체 스위트·다른 패키지·CI 미실행(리더가 CI에 맡김); lint(golangci-lint)·`-race` 미실행; 자식 프로세스 방식은 Windows에서 실행 검증 못 함(vet만); 서로 다른 앵커 간 매우 깊은 중첩(깊이 폭주)은 순환이 아니므로 별도 깊이 제한 없음; 독립 감사(verdict.md/card-review.md)는 이 단계 범위 밖.
+
+## 5. iter-1 repair
+
+sync-audit iter-1 F1 (BLOCKING): `internal/config/agentic_factory_settings_cycle_test.go` lines 51 and 54 called `os.Stdout.WriteString(...)` without checking the result (errcheck). Repair commit `fa2a30ca6e`: both calls now `_, _ = os.Stdout.WriteString(...)`; child-process protocol (`RESULT:...` lines) unchanged. F2-F4 (optional) left as is.
+
+Verification (GOCACHE=.../scratchpad/gocache-lane28, one command at a time):
+- `golangci-lint run ./internal/config/` -> exit 1; tail: `7 issues:` / `* govet: 7`. All 7 are `inline: Constant reflect.Ptr should be inlined (govet)` in `harness_ceiling_test.go:61` and `shipped_key_reader_test.go:369,588,625,706,777` (and one more cut from the tail). `grep -c errcheck` = 0, `grep -c cycle_test` = 0 on the output. Those files are not in this card's diff (`git diff --name-only 04d8c27a7e HEAD` lists only progress.md, sync-audit-iter1.md, agentic_factory_settings.go, agentic_factory_settings_cycle_test.go), so the govet findings are pre-existing and out of scope.
+- `go test -count=1 ./internal/config/` -> `ok  	github.com/modu-ai/moai-adk/internal/config	17.980s`
+
+Gaps: lint not clean package-wide (7 pre-existing govet findings, not touched); no full suite; no CI.
