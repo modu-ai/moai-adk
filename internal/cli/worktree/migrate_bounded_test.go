@@ -196,6 +196,7 @@ func TestDefaultActiveProcessCWDs_TimesOutOnBlockedLsof(t *testing.T) {
 func TestPlanMigration_SkipsEveryTreeWhenLsofTimesOut(t *testing.T) {
 	w := m6NewWorld(t)
 	m4InRepo(t, w.repo)
+	activeProcessCWDProbe = defaultActiveProcessCWDs // this test pins the real scan; m6NewWorld stubs it
 	t2053FakeBin(t, "lsof", "#!/bin/sh\nexec sleep 30\n")
 	orig := lsofCommandTimeout
 	lsofCommandTimeout = 300 * time.Millisecond
@@ -390,5 +391,39 @@ func TestMigrateVerb_ApplyJSONStaysClean(t *testing.T) {
 	var rows []map[string]any
 	if uerr := json.Unmarshal([]byte(out), &rows); uerr != nil {
 		t.Errorf("--json output is not a JSON array (progress leaked in?): %v\n%s", uerr, out)
+	}
+}
+
+// TestPlanMigration_SkipsATreeAnActiveProcessIsInside — the process-cwd scan is
+// a skip cause in both directions: a probe that names a process inside a tree
+// skips that tree, while a tree it does not name stays eligible. m6NewWorld
+// reports no active process by default, so this pins the occupied cause that
+// the shared fixture no longer reaches through a live lsof (card t2064).
+func TestPlanMigration_SkipsATreeAnActiveProcessIsInside(t *testing.T) {
+	w := m6NewWorld(t)
+	m4InRepo(t, w.repo)
+	activeProcessCWDProbe = func() ([]string, error) { return []string{w.movedTree}, nil }
+
+	plans, planErr := planMigrationFor(w.repo, time.Now(), false)
+	if planErr != nil {
+		t.Fatalf("plan: %v", planErr)
+	}
+	var sawOccupied, sawFree bool
+	for _, p := range plans {
+		switch p.source {
+		case w.movedTree:
+			sawOccupied = true
+			if p.skip != "an active process is inside this worktree" {
+				t.Errorf("occupied tree skip = %q, want the active-process cause", p.skip)
+			}
+		case w.workerTree:
+			sawFree = true
+			if p.skip != "" {
+				t.Errorf("unoccupied eligible tree skip = %q, want it planned for a move", p.skip)
+			}
+		}
+	}
+	if !sawOccupied || !sawFree {
+		t.Fatalf("the plan lists occupied=%v free=%v, want both", sawOccupied, sawFree)
 	}
 }
