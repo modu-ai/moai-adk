@@ -157,6 +157,12 @@ func (s *Store) BindWorktree(i core.IssueRef, holder string, epoch int64, path s
 	if err != nil {
 		return Record{}, err
 	}
+	// Ownership first: a caller that does not hold the Issue must not leave a
+	// reservation behind that blocks the real holder. Update verifies again under
+	// the Issue lock, so a claim lost between the two is still refused there.
+	if _, err := s.Verify(i, holder, epoch); err != nil {
+		return Record{}, err
+	}
 	if err := s.ReserveWorktree(i, canon); err != nil {
 		return Record{}, err
 	}
