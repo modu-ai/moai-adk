@@ -17,6 +17,26 @@ All three refusals trace to one missing fact — no landing record on the card:
 A bare `moai todo landed <card> --sha <merge>` is refused as unreachable, because its default ref
 is `origin/main` and the merge sits on local `main`.
 
+## Batch landing is the usual way a card gets here
+
+Under af-flow the default landing is the leader's batch: one audited
+candidate chain the operator fast-forwards into `main`
+(`.claude/rules/moai/workflow/factory-dispatch-mechanics.md` § Batch landing —
+the af-flow default). The batch manifest
+(`.moai/reports/af-batch-<date>/manifest.json`) names each landed card's merge
+SHA; that SHA is the `--sha` of the chain below, and the chain runs once per
+landed row after `git merge-base --is-ancestor <tip> main` holds.
+
+## Batch landing is the usual way a card gets here
+
+Under af-flow the default landing is the leader's batch: one audited
+candidate chain the operator fast-forwards into `main`
+(`.claude/rules/moai/workflow/factory-dispatch-mechanics.md` § Batch landing —
+the af-flow default). The batch manifest
+(`.moai/reports/af-batch-<date>/manifest.json`) names each landed card's merge
+SHA; that SHA is the `--sha` of the chain below, and the chain runs once per
+landed row after `git merge-base --is-ancestor <tip> main` holds.
+
 ## The formal chain (leader path; no store edits)
 
 A lane cannot run steps 3, 5 and 6: `todo landed`, `factory approve` and `todo done` are queue or

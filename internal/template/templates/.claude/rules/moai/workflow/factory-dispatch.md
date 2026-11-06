@@ -157,7 +157,7 @@ For a lane card the declared evidence list also carries `.moai/reports/<card-id>
 
 ### Native Codex review evidence
 
-[HARD] **Native Codex review evidence.** Read the trusted Codex bot’s current-head review artifacts, not a successful check row. A completed code-review summary must bind the full head SHA, report no findings or unresolved findings, and agree with its clean receipt. Missing, failed, running, stale, malformed, or contradictory evidence withholds integration. Re-read the head and review artifacts before merge; preserve the separate functional and security checks.
+[HARD] **Native Codex review evidence.** Read the trusted Codex bot’s current-head review artifacts, not a successful check row. A completed code-review summary must bind the full head SHA, report no findings or unresolved findings at blocking severity, and agree with its clean receipt. Missing, failed, running, stale, malformed, or contradictory evidence withholds integration. Re-read the head and review artifacts before merge; preserve the separate functional and security checks. Severity sets the bar: a blocking finding (P0/P1 — a defect, a security hole, a broken invariant) withholds; P2 and lower findings are recorded in the batch's one debt list (`factory-dispatch-mechanics.md` § Batch landing — the af-flow default) and withhold nothing — a card is never spawned per finding.
 
 ## Lane card transition — completion order and in-session move
 

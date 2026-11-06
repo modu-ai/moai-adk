@@ -188,7 +188,7 @@ file the completion report names:
    runtime completion row is recorded. No leader `todo done` is needed.
    Release CI, review, audit, and the remote merge are managed apart from
    Close and do not hold it.
-5. **Read the review on the pull request** — require trusted native Codex artifacts bound to the current full head SHA and no unresolved findings. Missing, failed, stale, or contradictory evidence is a gap, never a pass; it withholds the remote integration, not the card's Close.
+5. **Read the review on the pull request** — require trusted native Codex artifacts bound to the current full head SHA and no unresolved findings at blocking severity (P0/P1); P2 and lower are recorded in the batch debt list and withhold nothing. Missing, failed, stale, or contradictory evidence is a gap, never a pass; it withholds the remote integration, not the card's Close.
 6. **Sweep** — once the remote landing is confirmed and the pre-disposal
    check holds, `moai worktree sweep` disposes the card tree (owner check,
    dirty trees skipped — the `worktree-integration.md` disposal contract).
@@ -207,6 +207,59 @@ card's progress record, and the completion report to the leader carries the
 PR URL and the merge SHA — information, not a gate. The lane's verdict is
 its own, evidenced by the review receipt, CI, and the readiness triple.
 
+## Batch landing — the af-flow default
+
+Under af-flow (`workflow.git_strategy: af-flow`; local `main` is the landing
+target and the remote sees one batch PR) the per-card `moai factory complete`
+edge is the fallback, not the path. Its interlock — absorb `main`, re-audit,
+`audited_sha == HEAD`, complete — restarts every time `main` moves, and with
+several lanes landing it moves faster than a card can converge (run to2bbk:
+31 complete attempts, 0 landed, 150 audit spawns against 64 implementation
+spawns). The default is the batch:
+
+1. **Candidate** — the leader (or a session the leader delegates it to)
+   reads the factory ledger for `merge-ready` cards whose latest audit is
+   PASS or PASS-WITH-DEBT and bound to the card head (`audited_sha ==
+   HEAD`), and builds the candidate as a first-parent chain of `--no-ff`
+   merges on the current `main` tip, one merge per card, in card order,
+   without touching any ref (`git merge-tree --write-tree` + `commit-tree`).
+   A card whose merge conflicts, whose head moved after its audit, or whose
+   audit is FAIL is left out and named in the manifest
+   (`.moai/reports/af-batch-<date>/manifest.json`: base, tip, landed rows
+   with card, branch, head, audit file, merge SHA; conflicts; excluded).
+2. **Verify** — on a detached worktree at the tip: `go build ./...`,
+   `go vet ./...`, the tests of every package the chain changed, and the
+   full test of the widest changed package. A failure that is one card's
+   own omission (a fixture left unregistered, a line-pinned baseline moved
+   by another card's import) is closed by a **batch repair commit** on top
+   of the chain — one file, RED observed before and GREEN after, recorded in
+   that card's progress record — never by dropping the card. A failure that
+   is two cards cancelling each other drops one of them and rebuilds.
+3. **One audit** — one Claude batch-integrity audit (`sync-auditor`,
+   `.moai/reports/af-batch-<date>/verdict.md`, `audited_sha` = the tip
+   including repairs). Its scope is the chain: merge integrity, cross-card
+   interaction, the repairs' RED→GREEN. It re-audits no card's design.
+   Codex and GLM are not called unless the operator approved the cost.
+   Non-blocking findings go into **one debt list** for the batch
+   (`.moai/reports/af-batch-<date>/debts.md`), not a card per finding;
+   the leader turns the list into at most one follow-up card.
+4. **Operator FF** — the operator fast-forwards `main` to the audited tip by
+   hand (`git merge --ff-only <tip>`); no session changes branch state in
+   the primary checkout. The command and the verdict path are handed to the
+   operator together.
+5. **Close chain** — after `git merge-base --is-ancestor <tip> main` holds,
+   the leader runs the formal chain of `.moai/docs/af-flow-landed-card-close.md`
+   for every landed row (`todo landed --sha <merge SHA>` → `rebind-evidence`
+   → `approve` → `todo done`), stopping at the first refusal. Lanes holding
+   a manifest card stop their own `complete` attempts the moment the
+   candidate is announced; a card left out of the manifest keeps the
+   per-card path.
+
+The batch is bounded by one audit, not by a count of cards: a candidate is
+cut whenever merge-ready cards are waiting and the previous batch has closed.
+Nothing here relaxes an evidence standard — every card in the chain carries
+its own PASS audit bound to its head, and the batch audit is added on top.
+
 ## The leader's remaining role
 
 Lane autonomy moved the per-card judgment and landing duties to the lanes.
@@ -221,6 +274,7 @@ a duty not listed is a lane's:
 | Serial-slot policy | the ordering gate on new leases, and its recorded wedge repairs |
 | Delegated-dispatch promotion | promoting queued cards to a free live lane without a per-card pick, in the case and within the limits stated once in `factory-dispatch-detail.md` § Delegated-dispatch promotion |
 | Keep-set gate relay | environment-impossible, operator-held, and irreversible external-shared decisions reach the operator through the leader |
+| Batch landing | under af-flow the leader cuts, verifies, and has audited the batch candidate, hands the FF command to the operator, and runs the close chain (§ Batch landing — the af-flow default); the per-card `complete` edge stays the lane's fallback |
 | Workflow-file review checklist | cards marked "operator review required before landing" (`factory-dispatch-cards.md` § Workflow-file changes need operator review) wait on the operator; the leader lists them |
 
 Everything that used to sit with the leader per card — the completion

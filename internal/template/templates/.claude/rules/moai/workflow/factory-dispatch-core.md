@@ -45,7 +45,7 @@ For a lane card the declared evidence list also carries `.moai/reports/<card-id>
 
 ### Native Codex review evidence
 
-[HARD] **Native Codex review evidence.** The trusted Codex summary and clean receipt must agree on the full head SHA and show no findings or unresolved findings. Missing, failed, running, stale, malformed, or contradictory evidence or a head/review change before merge withholds integration. Keep functional and security checks separate.
+[HARD] **Native Codex review evidence.** The trusted Codex summary and clean receipt must agree on the full head SHA and show no findings or unresolved findings at blocking severity. Missing, failed, running, stale, malformed, or contradictory evidence or a head/review change before merge withholds integration. Keep functional and security checks separate.
 
 ## Lane card transition
 
@@ -59,7 +59,7 @@ The leader's own session is cleared between cards: once a card reaches `done`, t
 
 [HARD] A card session stays in its worktree (`moai cc -w`); between cards it moves in-session (`ExitWorktree(keep)`, lease, `EnterWorktree`); the integration-tree merge entry keeps its own re-entry rule.
 
-[HARD] A verified lane merges its own branch into the batch release branch (`release/vX.Y.Z`) — git-flow variant; github-flow default: `moai factory complete`'s PR edge (mechanics § standard landing). Where it applies: `moai integration acquire` first, `EnterWorktree` in, `--no-ff`, `HEAD` re-read before commit/push, never force; batch PR with the leader. Under af-flow the lane takes no `release/vX.Y.Z` branch and runs no push: `moai factory complete` lands the card through the integration-window local merge into `main`; the only push is the leader's batch PR from `release/main-batch-YYYYMMDD`.
+[HARD] A verified lane merges its own branch into the batch release branch (`release/vX.Y.Z`) — git-flow variant; github-flow default: `moai factory complete`'s PR edge (mechanics § standard landing). Where it applies: `moai integration acquire` first, `EnterWorktree` in, `--no-ff`, `HEAD` re-read before commit/push, never force; batch PR with the leader. Under af-flow the lane takes no release branch and runs no push: the leader's audited batch lands in `main` by operator FF (mechanics § Batch landing), per-card `moai factory complete` is the fallback, only the leader's PR pushes.
 
 ## Factory Mode — the card travels whole
 
