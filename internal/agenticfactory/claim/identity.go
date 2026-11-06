@@ -110,12 +110,36 @@ func (s *Store) RegisterAgent(sessionID string) (core.Agent, error) {
 			return core.Agent{}, err
 		}
 		if low.Number != 0 && low.Number < n {
-			_ = os.Remove(s.agentPath(n))
+			if err := s.giveBackAgent(n); err != nil {
+				return core.Agent{}, err
+			}
 			return low, nil
 		}
 		return a, nil
 	}
 	return core.Agent{}, fmt.Errorf("%w: no free agent number up to %d", core.ErrStoreUnavailable, maxAgents)
+}
+
+// giveBackAgent returns a number this call won but does not keep. Where an authority is attached the number
+// lives there, so it is deleted there on the revision just read (card t2129); the cache file
+// follows. A number already gone from the authority is nothing left to give back.
+func (s *Store) giveBackAgent(n int) error {
+	if s.ref != nil {
+		_, rev, err := s.agentFile(n)
+		if err != nil && !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+		if err == nil {
+			s.announce()
+			if err := s.ref.Delete(refCtx(), fmt.Sprintf("agent/%d", n), rev); err != nil && !errors.Is(err, core.ErrNotHeld) {
+				return refErr(err)
+			}
+		}
+	}
+	if err := os.Remove(s.agentPath(n)); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("%w: %v", core.ErrStoreUnavailable, err)
+	}
+	return nil
 }
 
 func (s *Store) agentOf(sessionID string) (core.Agent, error) {
