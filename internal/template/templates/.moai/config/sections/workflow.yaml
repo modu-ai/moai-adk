@@ -18,14 +18,15 @@ workflow:
         enabled: true
         token_threshold: 150000
     execution_mode: auto
-    # factory_lease: the card lease duration (duration, default 15m) and the
-    # watchdog renewal period (renew_interval, default 5m; a whole number of
+    # factory_lease: the card lease duration (duration; shipped 2h, built-in
+    # fallback 15m when the key is absent) and the watchdog renewal period
+    # (renew_interval; shipped 30m, built-in fallback 5m; a whole number of
     # minutes from 1 to 59, and at most half of duration). Both are checked when
     # the factory opens; a value outside its bound refuses to open the factory
     # and is never clamped.
     factory_lease:
-        duration: 15m
-        renew_interval: 5m
+        duration: 2h
+        renew_interval: 30m
     # card_age_alarm: display-only work-item-age alarms on gate-waiting and
     # stalled factory cards. Ships OFF; while
     # enabled is false the `moai factory status` output is unchanged. The four
