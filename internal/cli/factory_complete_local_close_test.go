@@ -157,6 +157,48 @@ func TestFactoryCompleteRerunRefusesAMergeNotOnTheTarget(t *testing.T) {
 	}
 }
 
+// TestFactoryCompleteRerunDoesNotCloseForACommitTheMergeLacks — card-review
+// (fa98cfb9ae, factory_card.go:3158), reproduced: the re-run closes the queue
+// card on the old MergeSHA being on the target even when the card branch has
+// gained a commit since that merge, so the new commit is archived as landed
+// although the recorded merge does not contain it. The re-run closes only when
+// the card branch HEAD is contained in the recorded merge. No new record field.
+func TestFactoryCompleteRerunDoesNotCloseForACommitTheMergeLacks(t *testing.T) {
+	sdClearLaneEnv(t)
+	root, integWT, cards := sdMergeFixture(t, true, true, false, 1)
+	fcGit(t, integWT, "merge", "-q", "--no-ff", "-m", "M t1", cards[0].branch)
+	merge := fcGit(t, integWT, "rev-parse", "HEAD")
+	// A fix commit lands on the card branch AFTER the recorded merge.
+	if err := os.WriteFile(filepath.Join(cards[0].wt, "late-fix.txt"), []byte("fix\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	fcGit(t, cards[0].wt, "add", "late-fix.txt")
+	fcGit(t, cards[0].wt, "commit", "-q", "-m", "late fix")
+	fcPlace(t, root, homestate.Card{
+		CardID: "t1", State: homestate.CardMergedLocal, Stage: homestate.CardMergedLocal,
+		OwnerLabel: "lane-1", LeaseHolder: "lane-1",
+		WorktreePath: cards[0].wt, MergeSHA: merge,
+	})
+	before := fcCard(t, root, "t1")
+	sdLaneEnv(t, "lane-1", "")
+	t.Setenv(config.EnvClaudeCodeSessionID, "sess-lane-1")
+	stdout, _, err := runFactory(t, "complete", "t1", "--run", fcRun)
+	if err != nil {
+		t.Fatalf("re-run of complete: %v", err)
+	}
+	sdCardUnchanged(t, "late-fix re-run", root, "t1", before)
+	rec, err := factory.NewBacklogStore(todoBacklogPath(root)).LoadPure()
+	if err != nil {
+		t.Fatalf("load queue: %v", err)
+	}
+	if len(rec.Archived) != 0 || len(rec.Items) != 1 {
+		t.Fatalf("queue after the re-run: live=%d archived=%d, want the card left live (the card branch has a commit the recorded merge lacks)", len(rec.Items), len(rec.Archived))
+	}
+	if !strings.Contains(stdout, "not contained") {
+		t.Errorf("the re-run output does not say why the card was left open: %q", stdout)
+	}
+}
+
 // TestFactoryCompleteRerunReachabilityReadsTheBranchNotATag — card-review
 // (c6452cde99): a tag named like the integration branch outranks the branch in
 // git's name resolution, so a merge recorded only on that tag would read as
