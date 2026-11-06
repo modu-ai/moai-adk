@@ -359,11 +359,15 @@ func applyEdit(root *yaml.Node, e KeyEdit) error {
 	if len(e.Path) == 0 {
 		return errors.New("empty edit path")
 	}
+	pathDesc := strings.Join(e.Path, ".")
 	if e.Remove {
+		// card t2109: removal gets the same anchor refusal as setting a value.
+		if err := refuseAnchoredRemoval(root, e.Path, pathDesc); err != nil {
+			return err
+		}
 		removeKey(root, e.Path)
 		return nil
 	}
-	pathDesc := strings.Join(e.Path, ".")
 
 	cur := root
 	for i, key := range e.Path {
@@ -432,6 +436,56 @@ func lookupNode(root *yaml.Node, path []string) *yaml.Node {
 		cur = cur.Content[idx+1]
 	}
 	return cur
+}
+
+// refuseAnchoredRemoval reports why removing the key at path must not be done to a
+// document that uses YAML anchors, or nil when the removal is safe (including when
+// the key is absent, which removeKey leaves alone). Two things go wrong otherwise:
+// a mapping that carries an anchor is shared by its aliases, so dropping a key from
+// it drops the key from every alias; and dropping a node that defines an anchor (the
+// removed key, its key node, or anything inside the removed value) leaves the
+// aliases that point at it undefined, and the file no longer parses.
+func refuseAnchoredRemoval(root *yaml.Node, path []string, pathDesc string) error {
+	cur := root
+	for i, key := range path {
+		if cur.Kind != yaml.MappingNode {
+			return nil
+		}
+		if cur.Anchor != "" {
+			return fmt.Errorf("path %q: segment %q parent carries anchor &%s, so removing a key would change every alias of it; edit the file by hand", pathDesc, key, cur.Anchor)
+		}
+		idx := findKey(cur, key)
+		if idx < 0 {
+			return nil
+		}
+		if i < len(path)-1 {
+			cur = cur.Content[idx+1]
+			continue
+		}
+		if a := firstAnchor(cur.Content[idx]); a != "" {
+			return fmt.Errorf("path %q: the key carries anchor &%s, so removing it would leave its aliases undefined; edit the file by hand", pathDesc, a)
+		}
+		if a := firstAnchor(cur.Content[idx+1]); a != "" {
+			return fmt.Errorf("path %q: the target (or a node inside it) carries anchor &%s, so removing it would leave its aliases undefined; edit the file by hand", pathDesc, a)
+		}
+	}
+	return nil
+}
+
+// firstAnchor returns the first anchor defined in n or below it, "" when none.
+func firstAnchor(n *yaml.Node) string {
+	if n == nil {
+		return ""
+	}
+	if n.Anchor != "" {
+		return n.Anchor
+	}
+	for _, c := range n.Content {
+		if a := firstAnchor(c); a != "" {
+			return a
+		}
+	}
+	return ""
 }
 
 // removeKey는 path의 키-값 쌍을 부모 매핑에서 뗀다. 키 노드와 값 노드에 붙은 주석은
