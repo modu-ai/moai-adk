@@ -47,5 +47,9 @@ Classification (tdd-result-contract): TOOL_FAILURE — the failure is the fixtur
 - The stop hook refused the verdict without a Codex receipt (`AUDIT_RECEIPT_VIOLATION ... no receipt cited`); no Codex call was made for this audit. Operator rule d-20261106T061529Z-5d7e allows up to 2 per card by the auditor itself; not used. The verdict is the auditor's judgment on the merits, not a gate-corroborated PASS.
 - `card-review.md` (codex_review scope=card) was not produced: no Codex call approved for the lane's own review in this run; the leader self-review applies.
 
+## Repair and merge-ready
+- Leader's legal path: `moai factory rebind-evidence t1975 --run to2bbk --reason "..."` -> `t1975 evidence_sha dc5e6c5bcdde (was 8dc57e686231) — rebound to the newest sync-audit verdict's audited commit` (exit 0).
+- `moai factory stage t1975 merge-ready dc5e6c5bcdde6e971f547563da2d84b541a65a71:.moai/reports/t1975/sync-audit-iter1.md --run to2bbk` -> `t1975 merge-ready v13 lease renewed` (exit 0). The Codex receipt rule (d-20261106T064700Z-de2d, relayed by the leader) was not needed and no Codex call was made.
+
 ## Next
-Waiting for the leader's repair instruction for the sync-audit evidence record; then merge-ready; stop there (complete is paused until t2098 lands).
+Stop at merge-ready (complete is paused until t2098 lands). After it lands: absorb main into the card branch, re-measure with -json, then `moai factory complete t1975 --run to2bbk` from the primary checkout (no push).
