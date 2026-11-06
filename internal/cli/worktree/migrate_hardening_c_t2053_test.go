@@ -303,7 +303,20 @@ func TestApply_StateEntrySpelledViaSymlink_StillFollowsTheMove(t *testing.T) {
 	}
 	dest := filepath.Join(w.homeRoot, "legacy6")
 	raw, _ := os.ReadFile(stateFile)
-	if !strings.Contains(string(raw), dest) {
+	// Decode before comparing: the file is JSON, so a Windows path is stored
+	// with every backslash escaped (card t2085); a substring search of the raw
+	// bytes for the unescaped path can never match there.
+	var entries []struct {
+		Path string `json:"path"`
+	}
+	if jerr := json.Unmarshal(raw, &entries); jerr != nil {
+		t.Fatalf("the state file is not valid JSON: %v\n%s", jerr, raw)
+	}
+	var rekeyed bool
+	for _, e := range entries {
+		rekeyed = rekeyed || e.Path == dest
+	}
+	if !rekeyed {
 		t.Errorf("the state entry was not re-keyed to %s:\n%s", dest, raw)
 	}
 }
