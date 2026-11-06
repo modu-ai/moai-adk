@@ -30,6 +30,12 @@ func writeGuidanceFixture(t *testing.T, body string, absent bool) string {
 }
 
 func TestEmptyTargetGuidance(t *testing.T) {
+	// card t2056: a factory leader/lane session reads an UNSET workflow as
+	// af-flow, so the "empty workflow value" case below describes a PLAIN
+	// session. Run from a lane shell (which carries the factory markers) it
+	// would otherwise see the default; clear them so the case is the same
+	// everywhere.
+	t2056Session(t, "")
 	const tail = "pass --base origin/<branch>"
 	manual := func(profile string) string {
 		return "git_strategy:\n    mode: manual\n    manual:\n" + profile

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 )
@@ -18,7 +19,18 @@ const agenticTrunkReleaseBatchName = "main-batch"
 // unreadable. It is a separate read on purpose: GitFlowIntegrationConfig does
 // not carry the prefix, and widening that struct would move the other
 // consumers of the integration target.
+//
+// Card t2056: the workflow gate reads the same effective workflow as
+// LoadGitFlowIntegrationConfig (effectiveWorkflow), so in a factory leader or
+// lane session a profile that sets no workflow counts as af-flow here too.
 func LoadAgenticTrunkReleaseBranch(projectRoot string) string {
+	_, factorySession := DetectRoleMarker(os.Getenv)
+	return loadAgenticTrunkReleaseBranch(projectRoot, factorySession)
+}
+
+// loadAgenticTrunkReleaseBranch is the pure body (factorySession is a
+// parameter, never read from the environment).
+func loadAgenticTrunkReleaseBranch(projectRoot string, factorySession bool) string {
 	dir := filepath.Join(projectRoot, ".moai", "config", "sections")
 	wrapper := &gitStrategyFileWrapper{}
 	loaded, err := loadYAMLFile(dir, "git-strategy.yaml", wrapper)
@@ -26,7 +38,7 @@ func LoadAgenticTrunkReleaseBranch(projectRoot string) string {
 		return ""
 	}
 	profile, ok := wrapper.GitStrategy.ActiveModeProfile()
-	if !ok || NormalizeWorkflow(profile.Workflow) != WorkflowAFFlow {
+	if !ok || effectiveWorkflow(profile, factorySession) != WorkflowAFFlow {
 		return ""
 	}
 	prefix := strings.TrimSpace(profile.ReleaseBranchPrefix)

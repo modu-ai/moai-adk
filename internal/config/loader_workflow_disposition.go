@@ -40,6 +40,20 @@ func NormalizeWorkflow(raw string) string {
 	return raw
 }
 
+// effectiveWorkflow is the one place that turns an active mode profile into
+// the workflow every reader sees (card t2056): the normalized value (legacy
+// agentic-trunk reads as af-flow), except that a factory leader or lane
+// session reads a profile that sets NO workflow (missing or blank) as af-flow.
+// An explicit value is never replaced, and nothing is written back. Every
+// reader of the profile's workflow goes through here, so two readers cannot
+// disagree about the same file.
+func effectiveWorkflow(profile *ModeProfile, factorySession bool) string {
+	if factorySession && strings.TrimSpace(profile.Workflow) == "" {
+		return WorkflowAFFlow
+	}
+	return NormalizeWorkflow(profile.Workflow)
+}
+
 // githubFlowFixedTarget is github-flow's integration target: the fixed
 // default main. github-flow reads no config key for its target.
 const githubFlowFixedTarget = "main"

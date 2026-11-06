@@ -93,6 +93,13 @@ Factory Mode (dedicated -f and -l entries):
   Legacy role and label spellings (the pre-rename nouns, any letter case)
   are refused — the error names the canonical lane-<n> label.
 
+  Git workflow: a -f or -l session reads an UNSET git_strategy workflow (the
+  key missing or blank in the active mode profile) as af-flow. An explicit
+  setting always wins — github-flow, git-flow and every other value are never
+  replaced, and the legacy agentic-trunk still reads as af-flow. The default
+  is applied when the setting is read: .moai/config/sections/git-strategy.yaml
+  is never rewritten, and plain sessions and moai init are unchanged.
+
   Genealogy: the pre-3.1 "factory" flag (-f/--factory) was RENAMED to -k
   in #1513 (7f61332ef). -f briefly returned as the factory fan-out flag and
   was RETIRED (v1.2.0) in favor of '-k <N>'; t118 (v3.1.1) revived it as the
