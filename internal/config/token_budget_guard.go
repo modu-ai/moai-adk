@@ -287,12 +287,10 @@ func alwaysLoadedSurface(repoRoot string) ([]string, error) {
 		filepath.Join(repoRoot, ".claude", "output-styles", "moai", "moai.md"),
 	}
 
-	// @MX:NOTE: [AUTO] t2117 C3 — the real always-loaded prefix also carries the repo-root local instruction file (AGENTS.local.md; legacy CLAUDE.local.md) and the instruction anchors' @-import closure. Both are enumerated only when present as regular files, keeping the enumeration discipline above (a slot naming an absent path measures nothing).
-	local := localInstructionSlot(repoRoot)
+	// @MX:NOTE: [AUTO] t2117 C3 — the real always-loaded prefix also carries the repo-root local instruction file(s) (AGENTS.local.md; legacy CLAUDE.local.md) and the instruction anchors' @-import closure. Both are enumerated only when present as regular files, keeping the enumeration discipline above (a slot naming an absent path measures nothing).
+	local := localInstructionSlots(repoRoot)
 	extras := instructionImportMembers(repoRoot)
-	if local != "" {
-		extras = append([]string{local}, extras...)
-	}
+	extras = append(local, extras...)
 	sort.Strings(extras)
 
 	union := append(append(ruleFiles, fixed...), extras...)
@@ -330,29 +328,41 @@ func ParseInstructionImports(content string) []string {
 	return imports
 }
 
-// localInstructionSlot names the repo-root local instruction file:
-// AGENTS.local.md when present as a regular file (the local pair's canonical
-// name — the migration verb moves CLAUDE.local.md into it), else the legacy
-// CLAUDE.local.md, else "" (card t2117 C3).
-func localInstructionSlot(repoRoot string) string {
+// localInstructionSlots names the repo-root local instruction files present
+// as regular files: AGENTS.local.md (the pair's canonical name — the
+// migration verb moves CLAUDE.local.md into it) and, when the pair
+// coexists, the legacy CLAUDE.local.md TOO — the launcher injects both while
+// both exist (AGENTS.md §8), so both bodies and both import closures stay on
+// the budget surface (card t2117 C3 + F7).
+func localInstructionSlots(repoRoot string) []string {
+	var slots []string
 	for _, name := range []string{"AGENTS.local.md", "CLAUDE.local.md"} {
 		p := filepath.Join(repoRoot, name)
 		if info, err := os.Stat(p); err == nil && info.Mode().IsRegular() {
-			return p
+			slots = append(slots, p)
 		}
 	}
-	return ""
+	return slots
 }
 
 // instructionImportMembers collects the @-import closure of the instruction
-// anchors — the shared instruction file (AGENTS.md; legacy CLAUDE.md) plus the
-// local instruction slot — EXCLUDING the seeds themselves (they are already
-// enumerated as fixed slots / the local slot). Relative imports resolve against
-// the importing file's directory (the same semantics the hook applies, t2117
-// C4); absolute paths and targets escaping repoRoot are not followed;
-// non-regular entries are never opened (a writer-less FIFO would hang); the
-// traversal is cycle-safe via a visited set.
+// anchors — the shared instruction file (AGENTS.md; legacy CLAUDE.md) plus
+// every local instruction slot — EXCLUDING the seeds themselves (they are
+// already enumerated as fixed slots / local slots). Relative imports resolve
+// against the importing file's directory (the same semantics the hook
+// applies, t2117 C4); absolute paths and targets escaping repoRoot are not
+// followed; non-regular entries are never opened (a writer-less FIFO would
+// hang); the traversal is cycle-safe via a visited set.
+//
+// @MX:NOTE: [AUTO] t2117 F3+ — the boundary check runs on the REAL path (EvalSymlinks), never the link spelling: a symlink (or a symlinked ancestor) whose target escapes repoRoot would otherwise pass the lexicographic Rel check and be followed by Stat/ReadFile. A dangling link fails EvalSymlinks and is skipped. The hook-side BFS needs no equivalent: its os.Lstat guard refuses symlinks outright.
 func instructionImportMembers(repoRoot string) []string {
+	// Normalize the root itself: on macOS a t.TempDir() root under /var
+	// resolves to /private/var/..., and judging resolved children against
+	// the unresolved root would reject everything.
+	realRoot := repoRoot
+	if rr, err := filepath.EvalSymlinks(repoRoot); err == nil {
+		realRoot = rr
+	}
 	var seeds []string
 	for _, name := range []string{"AGENTS.md", "CLAUDE.md"} {
 		p := filepath.Join(repoRoot, name)
@@ -361,9 +371,7 @@ func instructionImportMembers(repoRoot string) []string {
 			break
 		}
 	}
-	if local := localInstructionSlot(repoRoot); local != "" {
-		seeds = append(seeds, local)
-	}
+	seeds = append(seeds, localInstructionSlots(repoRoot)...)
 	seedSet := make(map[string]bool, len(seeds))
 	for _, s := range seeds {
 		seedSet[s] = true
@@ -394,10 +402,18 @@ func instructionImportMembers(repoRoot string) []string {
 				continue
 			}
 			resolved := filepath.Clean(filepath.Join(filepath.Dir(cur), imp))
-			if rel, rerr := filepath.Rel(repoRoot, resolved); rerr != nil || rel == ".." ||
-				strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-				continue
+			real, rerr := filepath.EvalSymlinks(resolved)
+			if rerr != nil {
+				continue // dangling link: not followed
 			}
+			if rel, rerr := filepath.Rel(realRoot, real); rerr != nil || rel == ".." ||
+				strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+				continue // target (or a symlinked ancestor) escapes repoRoot
+			}
+			// Enqueue the in-root spelling, not the resolved real path: the
+			// surface's path expectations (and the fixed slots) use the
+			// repoRoot spelling; only the boundary judgment needs the real
+			// path.
 			if !seen[resolved] {
 				queue = append(queue, resolved)
 			}
