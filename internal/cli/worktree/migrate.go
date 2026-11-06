@@ -966,6 +966,62 @@ func runMigrationEngineWith(root string, apply bool, trigger string, progress *t
 		}
 	}
 
+	// The trees to move, in plan order, and the batches they move in (card
+	// t2081). A batch is prepared one tree at a time (the journal and the move
+	// list are shared files), then its `git worktree move` calls run together —
+	// the one step that touches only git's per-tree registration, shown safe
+	// for different trees of one repository by the concurrent-move tests — and
+	// then each tree is finished one at a time in plan order, exactly as a lone
+	// tree always was. A batch of one is the old strictly serial run.
+	var movable []migratePlan
+	for _, p := range plans {
+		if !p.interrupted && p.class == string(ClassMoaiMade) && p.skip == "" {
+			movable = append(movable, p)
+		}
+	}
+	type movedAhead struct {
+		prep    treePrep
+		moveErr error
+	}
+	ahead := map[int]*movedAhead{}
+	ensureBatch := func(j int) error {
+		if _, ok := ahead[j]; ok {
+			return nil
+		}
+		width := moveConcurrency
+		if width < 1 {
+			width = 1
+		}
+		end := j + width
+		if end > len(movable) {
+			end = len(movable)
+		}
+		var batch []int
+		var sources []string
+		for k := j; k < end; k++ {
+			k := k
+			prep := prepareTree(movable[k], mlPath, trigger, journal, func() (string, error) { return prefetch.get(k) })
+			ahead[k] = &movedAhead{prep: prep}
+			if prep.early == nil {
+				batch = append(batch, k)
+				sources = append(sources, movable[k].source)
+			}
+		}
+		if err := migrationBatchHook("prepared", sources); err != nil {
+			return err
+		}
+		var wg sync.WaitGroup
+		for _, k := range batch {
+			wg.Add(1)
+			go func(a *movedAhead, p migratePlan) {
+				defer wg.Done()
+				a.moveErr = forwardGitMove(root, p.source, p.destination)
+			}(ahead[k], movable[k])
+		}
+		wg.Wait()
+		return migrationBatchHook("moved", sources)
+	}
+
 	var writeErrs []string
 	for _, p := range plans {
 		row := migrationRow{
@@ -998,9 +1054,17 @@ func runMigrationEngineWith(root string, apply bool, trigger string, progress *t
 		treeIndex++
 		progress.tree(treeIndex, p.source)
 		index := treeIndex - 1
-		out := migrateOneTreeWith(root, p, mlPath, trigger, journal, func() (string, error) {
-			return prefetch.get(index)
-		})
+		if berr := ensureBatch(index); berr != nil {
+			return report, berr // a stop in the middle of a batch, as a kill would leave it
+		}
+		a := ahead[index]
+		delete(ahead, index)
+		var out treeOutcome
+		if a.prep.early != nil {
+			out = *a.prep.early
+		} else {
+			out = finishTree(root, p, mlPath, trigger, a.prep, a.moveErr)
+		}
 		row.Outcome, row.SkipReason = out.Outcome, out.Reason
 		if journal != nil && journal.path != "" {
 			report.journal = journal.path
@@ -1056,6 +1120,16 @@ func migrateOneTree(root string, p migratePlan, mlPath, trigger string, journal 
 
 // manifestCapture is the seam for the before-the-move manifest of one tree.
 var manifestCapture = captureManifestChecked
+
+// moveConcurrency is how many trees' `git worktree move` run at the same time
+// (card t2081); a variable so a test can run the old strictly serial order.
+var moveConcurrency = config.DefaultWorktreeMigrateMoveConcurrency
+
+// migrationBatchHook is the fault-injection point between the steps of a batch:
+// "prepared" once every tree of the batch has its journal pending entry and
+// intent line, "moved" once all their `git worktree move` calls have returned.
+// An error stops the run right there, leaving what a kill at that moment would.
+var migrationBatchHook = func(phase string, sources []string) error { return nil }
 
 // manifestPrefetcher reads the before-the-move manifests of the trees waiting
 // behind the one being moved (card t2070). The read is read-only and
@@ -1118,16 +1192,38 @@ func (pf *manifestPrefetcher) stop() { pf.once.Do(func() { close(pf.quit) }) }
 // in: the engine reads it ahead of time for the trees waiting behind the one
 // being moved (card t2070).
 func migrateOneTreeWith(root string, p migratePlan, mlPath, trigger string, journal *migrationJournal, before func() (string, error)) treeOutcome {
+	prep := prepareTree(p, mlPath, trigger, journal, before)
+	if prep.early != nil {
+		return *prep.early
+	}
+	return finishTree(root, p, mlPath, trigger, prep, forwardGitMove(root, p.source, p.destination))
+}
+
+// treePrep is a tree after every step that precedes its `git worktree move`
+// (card t2081): the manifest, the identity token, the journal's pending entry
+// and the move-list intent line. early is set when the tree stopped on the way
+// and nothing is to be moved.
+type treePrep struct {
+	digest string
+	id     TreeIdentity
+	early  *treeOutcome
+}
+
+// prepareTree runs the steps before the move. They write the journal and the
+// move list, which are shared by every tree of the run, so they are never run
+// for two trees at the same time.
+func prepareTree(p migratePlan, mlPath, trigger string, journal *migrationJournal, before func() (string, error)) treePrep {
+	stop := func(out treeOutcome) treePrep { return treePrep{early: &out} }
 	digest, merr := before()
 	if merr != nil {
 		// Fail safe (card t2053): a manifest that could not be read in full —
 		// a git call timed out — proves nothing, so nothing moves.
-		return treeOutcome{Outcome: "skipped", Reason: fmt.Sprintf("manifest unavailable: %v; moved nothing", merr)}
+		return stop(treeOutcome{Outcome: "skipped", Reason: fmt.Sprintf("manifest unavailable: %v; moved nothing", merr)})
 	}
 
 	id, err := EnsureInstanceToken(p.source)
 	if err != nil {
-		return treeOutcome{Outcome: "skipped", Reason: fmt.Sprintf("identity unavailable: %v", err)}
+		return stop(treeOutcome{Outcome: "skipped", Reason: fmt.Sprintf("identity unavailable: %v", err)})
 	}
 	// The journal's pending entry precedes the move (REQ-WHR-017, review
 	// F3): a kill mid-move leaves the journal naming the tree whose move
@@ -1135,13 +1231,22 @@ func migrateOneTreeWith(root string, p migratePlan, mlPath, trigger string, jour
 	// intent line does the same for the lane pointer (REQ-WHR-012b step 9);
 	// either write failing aborts the move before anything moves.
 	if jerr := journal.pending(p.source, p.destination, id.Ident()); jerr != nil {
-		return treeOutcome{Outcome: "failed", Reason: fmt.Sprintf("journal pending entry not recorded; moved nothing (%v)", jerr), Ident: id.Ident()}
+		return stop(treeOutcome{Outcome: "failed", Reason: fmt.Sprintf("journal pending entry not recorded; moved nothing (%v)", jerr), Ident: id.Ident()})
 	}
 	if ierr := appendMoveListLine(mlPath, m6MoveLineTrigger(trigger, "pending", p.source, p.destination, id.Ident())); ierr != nil {
-		return treeOutcome{Outcome: "failed", Reason: fmt.Sprintf("intent line not recorded; moved nothing (%v)", ierr), Ident: id.Ident(), Manifest: digest}
+		return stop(treeOutcome{Outcome: "failed", Reason: fmt.Sprintf("intent line not recorded; moved nothing (%v)", ierr), Ident: id.Ident(), Manifest: digest})
 	}
+	return treePrep{digest: digest, id: id}
+}
 
-	if err := forwardGitMove(root, p.source, p.destination); err != nil {
+// finishTree takes a prepared tree from the outcome of its `git worktree move`
+// (moveErr) to its verdict: the re-key, the card rebind, the comparison with
+// the manifest read before the move, and the settling line — or the one reverse
+// order on any failure. It writes shared state too, so it runs for one tree at
+// a time, in plan order.
+func finishTree(root string, p migratePlan, mlPath, trigger string, prep treePrep, moveErr error) treeOutcome {
+	digest, id := prep.digest, prep.id
+	if err := moveErr; err != nil {
 		// ANY forward error (card t2053, C4), not only a deadline: git can fail
 		// after the directory rename, so the destination decides. A destination
 		// that carries the journal identity means the tree moved (or half
