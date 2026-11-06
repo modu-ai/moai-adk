@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -96,6 +97,24 @@ func migrateLocalInstructions(root string, out io.Writer, now time.Time) error {
 	// calling it there is a no-op.
 	if migratePreRemoveHook != nil {
 		migratePreRemoveHook()
+	}
+	// @MX:NOTE: [AUTO] t2117 C2 — re-read the source immediately before the remove and compare with the bytes originally read. A concurrent writer that landed in the read->remove window would otherwise have its content destroyed by the remove while only the stale backup survives. On divergence (or a failed re-check) abort and roll back the destination; remove only when unchanged.
+	cur, rerr := os.ReadFile(claudePath)
+	if rerr != nil {
+		if rbErr := os.Remove(agentsPath); rbErr != nil {
+			return fmt.Errorf("re-check %s: %w (rollback of %s also failed: %v) — %s is untouched, resolve by hand",
+				codexClaudeLocalName, rerr, codexLocalInstructionName, rbErr, codexClaudeLocalName)
+		}
+		return fmt.Errorf("re-check %s: %w (aborted with %s rolled back; %s is untouched)",
+			codexClaudeLocalName, rerr, codexLocalInstructionName, codexClaudeLocalName)
+	}
+	if !bytes.Equal(cur, body) {
+		if rbErr := os.Remove(agentsPath); rbErr != nil {
+			return fmt.Errorf("refusing to migrate: %s changed between the read and the remove; rollback of %s failed: %v — %s is untouched, resolve by hand",
+				codexClaudeLocalName, codexLocalInstructionName, rbErr, codexClaudeLocalName)
+		}
+		return fmt.Errorf("refusing to migrate: %s changed between the read and the remove; aborted with %s rolled back — %s is untouched",
+			codexClaudeLocalName, codexLocalInstructionName, codexClaudeLocalName)
 	}
 	if err := os.Remove(claudePath); err != nil {
 		// Leaving both files would recreate the coexistence the verb exists to end.

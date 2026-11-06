@@ -313,9 +313,41 @@ func TestAlwaysLoadedSurfaceEnumeration(t *testing.T) {
 	}
 
 	wantRuleCount := countNoPathsRuleFiles(t, root)
-	wantTotal := wantRuleCount + 2 // + AGENTS.md + moai.md fixed slots (the CLAUDE.md slot retired with the AGENTS.md-primary conversion)
+	// + AGENTS.md + moai.md fixed slots, plus the t2117 C3 members this tree
+	// contributes: the local instruction slot, when present as a regular file.
+	// (This repo's AGENTS.md and AGENTS.local.md carry no `^@` import lines, so
+	// the import closure adds nothing here — asserted below.)
+	localExtra := 0
+	for _, name := range []string{"AGENTS.local.md", "CLAUDE.local.md"} {
+		if info, err := os.Stat(filepath.Join(root, name)); err == nil && info.Mode().IsRegular() {
+			localExtra = 1
+			break
+		}
+	}
+	wantTotal := wantRuleCount + 2 + localExtra
 	if len(surface) != wantTotal {
-		t.Errorf("surface has %d entries, want %d (= %d no-paths: rules + 2 fixed surfaces)", len(surface), wantTotal, wantRuleCount)
+		t.Errorf("surface has %d entries, want %d (= %d no-paths: rules + 2 fixed surfaces + %d local slot)", len(surface), wantTotal, wantRuleCount, localExtra)
+	}
+
+	// t2117 C3 closure pin: outside the rules tree, the fixed slots and the
+	// local instruction slot, this tree contributes no further members (its
+	// instruction files carry no @-imports). If this fires, the count above
+	// needs re-deriving against the new closure members.
+	rulesPrefix := filepath.Join(root, ".claude", "rules", "moai") + string(filepath.Separator)
+	knownFixed := map[string]bool{
+		filepath.Join(root, "AGENTS.md"):                                   true,
+		filepath.Join(root, ".claude", "output-styles", "moai", "moai.md"): true,
+	}
+	if localExtra == 1 {
+		if name := localInstructionSlot(root); name != "" {
+			knownFixed[name] = true
+		}
+	}
+	for _, p := range surface {
+		if strings.HasPrefix(p, rulesPrefix) || knownFixed[p] {
+			continue
+		}
+		t.Errorf("surface carries unexpected non-rule member %s — update the count derivation if the @-import closure grew", p)
 	}
 
 	// AC-TEF-004: a known paths:-scoped rule (languages/go.md carries a paths:

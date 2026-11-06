@@ -286,7 +286,124 @@ func alwaysLoadedSurface(repoRoot string) ([]string, error) {
 		filepath.Join(repoRoot, "AGENTS.md"),
 		filepath.Join(repoRoot, ".claude", "output-styles", "moai", "moai.md"),
 	}
-	return append(ruleFiles, fixed...), nil
+
+	// @MX:NOTE: [AUTO] t2117 C3 — the real always-loaded prefix also carries the repo-root local instruction file (AGENTS.local.md; legacy CLAUDE.local.md) and the instruction anchors' @-import closure. Both are enumerated only when present as regular files, keeping the enumeration discipline above (a slot naming an absent path measures nothing).
+	local := localInstructionSlot(repoRoot)
+	extras := instructionImportMembers(repoRoot)
+	if local != "" {
+		extras = append([]string{local}, extras...)
+	}
+	sort.Strings(extras)
+
+	union := append(append(ruleFiles, fixed...), extras...)
+	seen := make(map[string]bool, len(union))
+	deduped := make([]string, 0, len(union))
+	for _, p := range union {
+		if !seen[p] {
+			seen[p] = true
+			deduped = append(deduped, p)
+		}
+	}
+	return deduped, nil
+}
+
+// ParseInstructionImports extracts the path tokens of `^@` import lines
+// ("@path ..." at line start). Everything from the first whitespace after the
+// path token onward is ignored; a line with nothing usable after the @ is
+// skipped. This is the single shared implementation (card t2117 C3): the
+// InstructionsLoaded handler in internal/hook delegates here, so both
+// consumers — the hook's instruction-file set and this guard's surface —
+// parse imports identically.
+func ParseInstructionImports(content string) []string {
+	var imports []string
+	for _, line := range strings.Split(content, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if !strings.HasPrefix(trimmed, "@") {
+			continue
+		}
+		fields := strings.Fields(trimmed[len("@"):])
+		if len(fields) == 0 {
+			continue
+		}
+		imports = append(imports, fields[0])
+	}
+	return imports
+}
+
+// localInstructionSlot names the repo-root local instruction file:
+// AGENTS.local.md when present as a regular file (the local pair's canonical
+// name — the migration verb moves CLAUDE.local.md into it), else the legacy
+// CLAUDE.local.md, else "" (card t2117 C3).
+func localInstructionSlot(repoRoot string) string {
+	for _, name := range []string{"AGENTS.local.md", "CLAUDE.local.md"} {
+		p := filepath.Join(repoRoot, name)
+		if info, err := os.Stat(p); err == nil && info.Mode().IsRegular() {
+			return p
+		}
+	}
+	return ""
+}
+
+// instructionImportMembers collects the @-import closure of the instruction
+// anchors — the shared instruction file (AGENTS.md; legacy CLAUDE.md) plus the
+// local instruction slot — EXCLUDING the seeds themselves (they are already
+// enumerated as fixed slots / the local slot). Relative imports resolve against
+// the importing file's directory (the same semantics the hook applies, t2117
+// C4); absolute paths and targets escaping repoRoot are not followed;
+// non-regular entries are never opened (a writer-less FIFO would hang); the
+// traversal is cycle-safe via a visited set.
+func instructionImportMembers(repoRoot string) []string {
+	var seeds []string
+	for _, name := range []string{"AGENTS.md", "CLAUDE.md"} {
+		p := filepath.Join(repoRoot, name)
+		if info, err := os.Stat(p); err == nil && info.Mode().IsRegular() {
+			seeds = append(seeds, p)
+			break
+		}
+	}
+	if local := localInstructionSlot(repoRoot); local != "" {
+		seeds = append(seeds, local)
+	}
+	seedSet := make(map[string]bool, len(seeds))
+	for _, s := range seeds {
+		seedSet[s] = true
+	}
+	seen := make(map[string]bool)
+	var members []string
+	queue := seeds
+	for len(queue) > 0 {
+		cur := queue[0]
+		queue = queue[1:]
+		if seen[cur] {
+			continue
+		}
+		seen[cur] = true
+		info, err := os.Stat(cur)
+		if err != nil || !info.Mode().IsRegular() {
+			continue // missing or non-regular member (a FIFO would hang): skip
+		}
+		data, err := os.ReadFile(cur)
+		if err != nil {
+			continue
+		}
+		if !seedSet[cur] {
+			members = append(members, cur)
+		}
+		for _, imp := range ParseInstructionImports(string(data)) {
+			if imp == "" || filepath.IsAbs(imp) {
+				continue
+			}
+			resolved := filepath.Clean(filepath.Join(filepath.Dir(cur), imp))
+			if rel, rerr := filepath.Rel(repoRoot, resolved); rerr != nil || rel == ".." ||
+				strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+				continue
+			}
+			if !seen[resolved] {
+				queue = append(queue, resolved)
+			}
+		}
+	}
+	return members
 }
 
 // measureAlwaysLoaded는 repoRoot 기준 always-loaded 표면의 추정 토큰을 합산한다. 총 토큰
