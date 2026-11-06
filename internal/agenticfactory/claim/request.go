@@ -181,24 +181,7 @@ func (s *Store) writeRequestLocal(r Request) error {
 	if err != nil {
 		return err
 	}
-	tmp, err := os.CreateTemp(s.requestsDir(), "req.tmp-*")
-	if err != nil {
-		return fmt.Errorf("%w: %v", core.ErrStoreUnavailable, err)
-	}
-	if _, err := tmp.Write(b); err != nil {
-		_ = tmp.Close()
-		_ = os.Remove(tmp.Name())
-		return fmt.Errorf("%w: %v", core.ErrStoreUnavailable, err)
-	}
-	if err := tmp.Close(); err != nil {
-		_ = os.Remove(tmp.Name())
-		return fmt.Errorf("%w: %v", core.ErrStoreUnavailable, err)
-	}
-	if err := os.Rename(tmp.Name(), s.requestPath(r.Key)); err != nil {
-		_ = os.Remove(tmp.Name())
-		return fmt.Errorf("%w: %v", core.ErrStoreUnavailable, err)
-	}
-	return nil
+	return s.writeAtomic(s.requestsDir(), "req.tmp-*", s.requestPath(r.Key), b)
 }
 
 func (s *Store) listRequests() ([]Request, error) {

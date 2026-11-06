@@ -77,7 +77,31 @@ main session reuses its in-session `claude_verdict` as an anchor. A GPT, GLM, or
 unknown-origin session ignores any caller-supplied Claude verdict and invokes
 the independent `claude_audit` backend. Codex and GLM continue to run as their
 configured gates require. Every backend tool fails open to `inconclusive`; an
-explicitly required gate left inconclusive makes the convergence verdict fail.
+explicitly required gate left inconclusive makes the overall verdict
+`inconclusive` (not performed, never a pass) unless the overall is already
+`fail` from a verdict a backend reported, which stays `fail` with the unmet leg
+still named in `gate_unmet`. The single-backend `codex_audit` does the same for
+its own verdict, except that a gate configuration that cannot be read (for
+example a worktree whose primary checkout cannot be identified) gives `fail`
+with `gate_unmet` naming the cause. A leg that could not run carries an `error_class` — `quota`, `timeout`,
+`auth`, `unavailable` or `other` — while its verdict stays `inconclusive`.
+
+With a `card_id` and target `baseBranch`, `audit_multi` proposes a delta: an
+omitted `delta_base` defaults to the `audited_sha` of the card's newest FAIL
+verdict file (the result's note names the file and SHA, or says why none was
+proposed), and `delta_base: "full"` reviews the full resolved base instead. A
+delta is reviewed only when the card's server-written second-review records form
+an unbroken, reviewed chain ending at the proposed base and `blocking_closed` — an
+object mapping each `blocking_defect:` id of the card's FAIL verdict files to the
+commit that closed it — names every such id; otherwise the full scope is reviewed
+and the result says why. The codex leg of a delta call is an adversarial turn
+that embeds the delta diff the server collected.
+
+`rerun_legs` (backend names; requires `session_id`) runs only the named legs and
+carries every other leg from the result the server persisted for that session,
+only when it records the same head commit, tree digest and scope. The result
+lists the carried legs in `carried_legs`; a verdict the call supplies for a
+carried leg is ignored.
 
 ### On-demand self-review (advisory)
 

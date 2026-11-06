@@ -78,7 +78,7 @@ func TestGovernanceReceiptRecordsJevNoulAsSeparateItem(t *testing.T) {
 	if err := WriteGovernanceReceipt(root, decisionPath, decision); err != nil {
 		t.Fatalf("write: %v", err)
 	}
-	if info, err := os.Stat(decisionPath); err != nil || info.Mode().Perm() != 0o600 {
+	if info, err := os.Stat(decisionPath); err != nil || !hostPrivateModeOK(info.Mode().Perm(), 0o600) {
 		t.Fatalf("receipt mode = %v err=%v, want 0600", info.Mode(), err)
 	}
 

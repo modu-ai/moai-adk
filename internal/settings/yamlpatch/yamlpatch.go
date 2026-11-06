@@ -233,13 +233,18 @@ func lineSplice(data []byte, edits []KeyEdit) ([]byte, bool, error) {
 			if cur.Kind != yaml.MappingNode {
 				return nil, false, nil
 			}
+			// card t1974: a line splice cannot see that an anchored node is shared
+			// by its aliases; hand the edit to the re-encode path, which refuses.
+			if cur.Anchor != "" {
+				return nil, false, nil
+			}
 			idx := findKey(cur, key)
 			if idx < 0 {
 				return nil, false, nil // upsert — needs the re-encode path
 			}
 			val := cur.Content[idx+1]
 			if i == len(e.Path)-1 {
-				if val.Kind != yaml.ScalarNode {
+				if val.Kind != yaml.ScalarNode || val.Anchor != "" {
 					return nil, false, nil
 				}
 				if val.Line <= 0 || val.Line > len(strings.Split(string(data), "\n")) {
@@ -354,17 +359,26 @@ func applyEdit(root *yaml.Node, e KeyEdit) error {
 	if len(e.Path) == 0 {
 		return errors.New("empty edit path")
 	}
+	pathDesc := strings.Join(e.Path, ".")
 	if e.Remove {
+		// card t2109: removal gets the same anchor refusal as setting a value.
+		if err := refuseAnchoredRemoval(root, e.Path, pathDesc); err != nil {
+			return err
+		}
 		removeKey(root, e.Path)
 		return nil
 	}
-	pathDesc := strings.Join(e.Path, ".")
 
 	cur := root
 	for i, key := range e.Path {
 		last := i == len(e.Path)-1
 		if cur.Kind != yaml.MappingNode {
 			return fmt.Errorf("path %q: segment %q parent is not a mapping", pathDesc, key)
+		}
+		// card t1974: a mapping carrying an anchor is shared by its aliases, so
+		// editing or adding a key inside it changes every alias too. Refuse.
+		if cur.Anchor != "" {
+			return fmt.Errorf("path %q: segment %q parent carries anchor &%s, so an edit would change every alias of it; edit the file by hand", pathDesc, key, cur.Anchor)
 		}
 
 		idx := findKey(cur, key)
@@ -424,6 +438,61 @@ func lookupNode(root *yaml.Node, path []string) *yaml.Node {
 	return cur
 }
 
+// refuseAnchoredRemoval reports why removing the key at path must not be done to a
+// document that uses YAML anchors, or nil when the removal is safe (including when
+// the key is absent, which removeKey leaves alone). Two things go wrong otherwise:
+// a mapping that carries an anchor is shared by its aliases, so dropping a key from
+// it drops the key from every alias; and dropping a node that defines an anchor (the
+// removed key, its key node, or anything inside the removed value) leaves the
+// aliases that point at it undefined, and the file no longer parses.
+func refuseAnchoredRemoval(root *yaml.Node, path []string, pathDesc string) error {
+	// An absent key is a no-op for removeKey whatever surrounds it, so nothing is
+	// refused for it: the write may carry other edits (audit t2109 F1).
+	if lookupNode(root, path) == nil {
+		return nil
+	}
+	cur := root
+	for i, key := range path {
+		if cur.Kind != yaml.MappingNode {
+			return nil
+		}
+		if cur.Anchor != "" {
+			return fmt.Errorf("path %q: segment %q parent carries anchor &%s, so removing a key would change every alias of it; edit the file by hand", pathDesc, key, cur.Anchor)
+		}
+		idx := findKey(cur, key)
+		if idx < 0 {
+			return nil
+		}
+		if i < len(path)-1 {
+			cur = cur.Content[idx+1]
+			continue
+		}
+		if a := firstAnchor(cur.Content[idx]); a != "" {
+			return fmt.Errorf("path %q: the key carries anchor &%s, so removing it would leave its aliases undefined; edit the file by hand", pathDesc, a)
+		}
+		if a := firstAnchor(cur.Content[idx+1]); a != "" {
+			return fmt.Errorf("path %q: the target (or a node inside it) carries anchor &%s, so removing it would leave its aliases undefined; edit the file by hand", pathDesc, a)
+		}
+	}
+	return nil
+}
+
+// firstAnchor returns the first anchor defined in n or below it, "" when none.
+func firstAnchor(n *yaml.Node) string {
+	if n == nil {
+		return ""
+	}
+	if n.Anchor != "" {
+		return n.Anchor
+	}
+	for _, c := range n.Content {
+		if a := firstAnchor(c); a != "" {
+			return a
+		}
+	}
+	return ""
+}
+
 // removeKey는 path의 키-값 쌍을 부모 매핑에서 뗀다. 키 노드와 값 노드에 붙은 주석은
 // 함께 사라진다. 경로가 없거나 부모가 매핑이 아니면 아무것도 하지 않는다.
 func removeKey(root *yaml.Node, path []string) {
@@ -445,6 +514,11 @@ func removeKey(root *yaml.Node, path []string) {
 func setScalar(n *yaml.Node, value string, quoted bool, pathDesc string) error {
 	if n.Kind != yaml.ScalarNode {
 		return fmt.Errorf("path %q: target is not a scalar", pathDesc)
+	}
+	// card t1974: an anchored scalar is shared by its aliases; setting it changes
+	// every alias, so a sibling key would change silently. Refuse, file unchanged.
+	if n.Anchor != "" {
+		return fmt.Errorf("path %q: target carries anchor &%s, so an edit would change every alias of it; edit the file by hand", pathDesc, n.Anchor)
 	}
 	n.Value = value
 	if quoted {

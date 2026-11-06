@@ -811,8 +811,12 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 		// disposal-landing coordinates above — not a comparison of the running
 		// binary against its source, so binlag.Evaluate is not their owner
 		// (REQ-ABI-006 governs binary-vs-source freshness only).
-		"factory_card.go:3813": true,
-		"factory_card.go:3817": true,
+		// Re-measured at the af-batch-20261107 landing: card t2118's two
+		// import lines in factory_card.go moved the same two hits
+		// 3813→3815, 3817→3819. Same comment, same call — only the
+		// coordinates moved (the t948 precedent).
+		"factory_card.go:3815": true,
+		"factory_card.go:3819": true,
 		// SPEC-TODO-CARD-ISSUANCE-001 (card t1454): the in-flight lane
 		// changed-files probe — productionLaneFilesProbe resolves the fork
 		// point between the integration branch and the card's lane branch

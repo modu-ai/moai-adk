@@ -310,14 +310,26 @@ func agenticTrunkBuilder(t *testing.T) Builder {
 //     resolved separately, making the walk-ups 4 and the total 5.
 func TestAgenticTrunkStatuslineBuilderExecCount(t *testing.T) {
 	log := agenticTrunkShim(t)
-	root := statuslineGitStrategyFixture(t, "af-flow")
-	// The fixture must be a real git repository: the no-project_dir payload
-	// resolves its anchor through the git walk-up.
-	if out, err := exec.Command("git", "-C", root, "init", "-q").CombinedOutput(); err != nil {
-		t.Fatalf("git init: %v\n%s", err, out)
+	// Each subtest measures a COLD location memo, so each gets its own
+	// repository (card t2083): homestate remembers repository-location answers
+	// for a path while the filesystem looks unchanged (Issue #1948), and a
+	// second subtest reusing the first one's path would skip the queue-root
+	// probe the expected count includes. Where the temp dir is reached through
+	// a symlink (macOS /var -> /private/var) the two spellings miss the memo by
+	// accident and the shared root passed locally while failing on Linux CI.
+	newRoot := func(t *testing.T) string {
+		t.Helper()
+		root := statuslineGitStrategyFixture(t, "af-flow")
+		// The fixture must be a real git repository: the no-project_dir payload
+		// resolves its anchor through the git walk-up.
+		if out, err := exec.Command("git", "-C", root, "init", "-q").CombinedOutput(); err != nil {
+			t.Fatalf("git init: %v\n%s", err, out)
+		}
+		return root
 	}
 
 	t.Run("anchor from stdin: stateanchor consumers add no walk-up", func(t *testing.T) {
+		root := newRoot(t)
 		builder := agenticTrunkBuilder(t)
 		db, ok := builder.(*defaultBuilder)
 		if !ok {
@@ -335,6 +347,7 @@ func TestAgenticTrunkStatuslineBuilderExecCount(t *testing.T) {
 	})
 
 	t.Run("anchor from the git walk-up: goal and label share one resolution", func(t *testing.T) {
+		root := newRoot(t)
 		builder := agenticTrunkBuilder(t)
 		db := builder.(*defaultBuilder)
 		// No Workspace: every stateanchor consumer falls through project_dir

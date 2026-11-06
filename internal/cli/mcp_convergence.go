@@ -112,6 +112,10 @@ type PerBackendVerdict struct {
 	// Provenance is forwarded from a real backend call. In-session anchors do
 	// not invent transport or usage evidence.
 	Provenance *AuditProvenance `json:"provenance,omitempty"`
+	// ErrorClass names why an inconclusive leg could not be performed, from the
+	// closed set quota, timeout, auth, unavailable, other (SPEC-AUDIT-ENGINE-
+	// CONVERGENCE-001 REQ-AEC-006). Empty for a leg that reported pass or fail.
+	ErrorClass string `json:"error_class,omitempty"`
 	// StderrTail is the bounded stderr tail of the codex child behind this verdict.
 	// It feeds the audit receipt's codex_error and never reaches the JSON output (t1788).
 	StderrTail string `json:"-"`
@@ -204,6 +208,32 @@ type ConvergenceResult struct {
 	// identified, so there was no store to write to (REQ-WSR-004). The verdict
 	// itself is unchanged. Additive + omitempty.
 	StateNotice string `json:"state_notice,omitempty"`
+
+	// AuditedHead / AuditedDigest / AuditedScope record the state and the scope the
+	// fan-out judged (SPEC-AUDIT-ENGINE-CONVERGENCE-001 REQ-AEC-008): the head
+	// commit and tree digest captured BEFORE the legs ran, and the target, resolved
+	// base and delta base they measured. They exist for one reader, the re-run of
+	// named legs, which carries a leg's verdict only from a persisted result that
+	// records the same three. They are set on the PERSISTED copy only, so the result
+	// a caller receives stays byte-identical to the one before the fields existed.
+	AuditedHead   string        `json:"audited_head,omitempty"`
+	AuditedDigest string        `json:"audited_digest,omitempty"`
+	AuditedScope  *AuditedScope `json:"audited_scope,omitempty"`
+
+	// CarriedLegs names the legs whose verdicts this result took from the persisted
+	// result of the same session instead of running them (REQ-AEC-008). Absent
+	// unless a re-run carried at least one leg.
+	CarriedLegs []string `json:"carried_legs,omitempty"`
+}
+
+// AuditedScope is the scope a fan-out measured: the review target, the merge base
+// that target resolved to (empty for a target that has none), and the delta base
+// (empty for a full-scope call). Two fan-outs share a scope only when all three
+// are equal.
+type AuditedScope struct {
+	Target    string `json:"target"`
+	Base      string `json:"base"`
+	DeltaBase string `json:"delta_base"`
 }
 
 // ─── convergence algorithm (design.md §3) ───
@@ -523,9 +553,35 @@ type MultiAuditConfig struct {
 
 	// DeltaBase is the previously audited commit a delta audit measures from
 	// (card t1708). The handler validates it; the fan-out only carries it on the
-	// legs' context. Non-empty ⇒ no second-review record is written, because a
-	// delta call is not full-scope review coverage. Empty ⇒ byte-identical.
+	// legs' context. With a CardID it is only a PROPOSAL: the delta chain gate
+	// (audit_delta_chain.go, REQ-AEC-004) either admits it, in which case one
+	// delta second-review record is filed and the result persists whatever its
+	// verdict, or reduces it to the full scope and says why. Without a CardID a
+	// delta call is not full-scope review coverage and files no record. Empty ⇒
+	// byte-identical.
 	DeltaBase string
+
+	// BlockingClosed is the BLOCKING-closure confirmation of a card delta call
+	// (REQ-AEC-004 (ii)): each id of the card's FAIL verdict files mapped to the
+	// commit that closed it, "" for an id an earlier chain round already
+	// confirmed. Read only by the gate; ignored without a CardID and DeltaBase.
+	BlockingClosed map[string]string
+
+	// DeltaDefaultNote is the handler's statement of the default delta proposal
+	// (REQ-AEC-001): which verdict file and SHA it proposed, why it proposed none,
+	// or that "full" was requested. It leads the result's residual_risk_note.
+	DeltaDefaultNote string
+
+	// RerunLegs names the legs to run again (REQ-AEC-008). Non-empty ⇒ only these
+	// legs run and every other leg's verdict is carried from the result the server
+	// persisted for SessionID, provided that result records the same head commit,
+	// tree digest and scope; otherwise every leg runs. Never filled from a verdict
+	// the caller supplied.
+	RerunLegs []string
+
+	// deltaAdmission is set by runMultiAudit itself, on its local copy, when the
+	// gate admits the delta. Nothing outside the fan-out can set it.
+	deltaAdmission *deltaAdmission
 
 	// OriginProvider is the launcher-owned initial provider. Only a Claude
 	// origin may reuse a caller-supplied in-session Claude anchor; GPT, GLM, and
@@ -631,9 +687,28 @@ func defaultBackendCaller(ctx context.Context, backend, target, focus, projectRo
 func performCodexAudit(ctx context.Context, target, focus, projectRoot string) ReviewOutput {
 	binaryPath, err := codexLookPath(codexBinaryName)
 	if err != nil {
-		return inconclusiveReview("codex binary not found in PATH")
+		return inconclusiveReviewClass(errClassUnavailable, "codex binary not found in PATH")
 	}
-	prompt := codexAdversarialPromptFor(ctx, focus)
+	prompt := codexAdversarialReviewPrompt(focus)
+	// REQ-AEC-003: while a delta base is in effect the turn carries the
+	// delta_base...HEAD diff the SERVER collected, not an instruction to compute
+	// it. The turn stays an adversarial turn/start (never the native review), and
+	// the leg reports the delta base as the base it judged. A diff that cannot be
+	// collected makes the leg inconclusive rather than a review of something else.
+	var deltaBase *reviewBase
+	if sha := deltaBaseFromContext(ctx); sha != "" {
+		deltaRoot := strings.TrimSpace(projectRoot)
+		if deltaRoot == "" {
+			deltaRoot = resolveProjectDir() // the resolver performGLMAudit falls back to
+		}
+		p, derr := codexDeltaLegPrompt(deltaRoot, focus, sha)
+		if derr != nil {
+			return inconclusiveReview("delta diff not collected: " + derr.Error())
+		}
+		prompt = p
+		b := deltaReviewBase(sha)
+		deltaBase = &b
+	}
 	// REQ-MN-019: the turn/start this leg sends has no target field, so a
 	// baseBranch target is applied in the prompt — the resolved base SHA and the
 	// diff instruction — and the result names the base it judged. A delta base
@@ -684,11 +759,15 @@ func performCodexAudit(ctx context.Context, target, focus, projectRoot string) R
 	// first keeps the reader's cause.
 	if out.Verdict == VerdictInconclusive && errors.Is(legCtx.Err(), context.DeadlineExceeded) && ctx.Err() == nil {
 		timedOut := inconclusiveReviewWithSummary("codex leg timed out after " + legBound.String())
+		timedOut.ErrorClass = errClassTimeout
 		timedOut.StderrTail = out.StderrTail // the deadline is the cause; the tail says what the child printed before the kill
 		return timedOut
 	}
 	if base != nil {
 		out.ReviewBase = base.String()
+	}
+	if deltaBase != nil {
+		out.ReviewBase = deltaBase.String()
 	}
 	return out
 }
@@ -788,6 +867,36 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 	// project_root).
 	buildCommit, buildLag := auditBuildIdentity(ctx, cfg.ProjectRoot)
 
+	// ── delta chain gate (SPEC-AUDIT-ENGINE-CONVERGENCE-001 REQ-AEC-004) ──
+	// A card_id call's delta base is a proposal. Admitted: the legs measure the
+	// delta and carry the confirmation. Refused: the call is a full-scope call
+	// from here on (no delta base on the legs' context, a full-scope record, a
+	// full-scope persistence) and the result states which condition failed.
+	var deltaGateNote string
+	if cfg.CardID != "" && cfg.DeltaBase != "" {
+		root := cfg.ProjectRoot
+		if root == "" {
+			root = resolveProjectDir()
+		}
+		adm, reason := evaluateDeltaChain(deltaChainInput{
+			Root:     root,
+			Card:     cfg.CardID,
+			Proposed: cfg.DeltaBase,
+			Required: requiredBackends(cfg.Gates),
+			Closure:  cfg.BlockingClosed,
+		})
+		if adm != nil {
+			cfg.deltaAdmission = adm
+		} else {
+			cfg.DeltaBase = ""
+			deltaGateNote = reason
+		}
+	}
+	legFocus := focus
+	if cfg.deltaAdmission != nil {
+		legFocus = confirmationFocus(focus, cfg.deltaAdmission)
+	}
+
 	// Card t1632 sync-audit r3 F13: the convergence receipt binds the tree
 	// state captured BEFORE the fan-out — the state the backends actually
 	// judged. A write-time bind records the post-edit state when a tree edit
@@ -798,7 +907,8 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 	// capture is an explicit marker, never a write-time fallback.
 	var bindHead, bindDigest string
 	captureFailed := false
-	if captureRoot, _ := receiptTarget(cfg.ProjectRoot); captureRoot != "" {
+	captureRoot, _ := receiptTarget(cfg.ProjectRoot)
+	if captureRoot != "" {
 		bindHead, bindDigest, captureFailed = func() (string, string, bool) {
 			h, d, err := auditreceipt.TreeState(captureRoot)
 			return h, d, err != nil
@@ -810,8 +920,37 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 	if claudeGate == "" {
 		claudeGate = config.AuditGateRequired // distributed default
 	}
+	var backends = []struct {
+		name, gate string
+	}{
+		{BackendClaude, claudeGate},
+		{BackendCodex, gateOr(cfg.Gates.Codex, config.AuditGateRequired)},
+		{BackendGLM, gateOr(cfg.Gates.GLM, config.AuditGateAdvisory)},
+	}
+
+	// ── re-run of named legs (SPEC-AUDIT-ENGINE-CONVERGENCE-001 REQ-AEC-008) ──
+	// The state and scope this call judges are fixed here, before any leg runs; a
+	// leg that is not named is carried from the server's own persisted result only
+	// when that result recorded the same state and scope. A carried Claude leg also
+	// takes the caller's claude_verdict out of play: it is read from nowhere.
+	auditedScope := auditedScopeOf(captureRoot, target, cfg.DeltaBase)
+	var (
+		carried     map[string]PerBackendVerdict
+		carriedFrom ConvergenceResult
+		rerunNote   string
+	)
+	if len(cfg.RerunLegs) > 0 {
+		var active []string
+		for _, b := range backends {
+			if b.gate != config.AuditGateOff {
+				active = append(active, b.name)
+			}
+		}
+		carriedFrom, carried, rerunNote = carryPersistedLegs(cfg, bindHead, bindDigest, captureFailed, auditedScope, active)
+	}
+	_, claudeCarried := carried[BackendClaude]
 	useClaudeAnchor := strings.EqualFold(strings.TrimSpace(cfg.OriginProvider), BackendClaude) &&
-		validReviewVerdict(claudeVerdict.Verdict) && claudeGate != config.AuditGateOff
+		validReviewVerdict(claudeVerdict.Verdict) && claudeGate != config.AuditGateOff && !claudeCarried
 	verdicts := make([]PerBackendVerdict, 0, 3)
 	if useClaudeAnchor {
 		verdicts = append(verdicts, PerBackendVerdict{
@@ -823,6 +962,7 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 			NextSteps:     claudeVerdict.NextSteps,
 			SynthesisNote: claudeVerdict.SynthesisNote,
 			Source:        "in_session_anchor",
+			ErrorClass:    classifyUnrun(claudeVerdict),
 		})
 	}
 
@@ -832,14 +972,6 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 		gate    string
 		out     ReviewOutput
 	}
-	var backends = []struct {
-		name, gate string
-	}{
-		{BackendClaude, claudeGate},
-		{BackendCodex, gateOr(cfg.Gates.Codex, config.AuditGateRequired)},
-		{BackendGLM, gateOr(cfg.Gates.GLM, config.AuditGateAdvisory)},
-	}
-
 	var (
 		mu    sync.Mutex
 		parts []secondaryResult
@@ -856,6 +988,9 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 		if s.name == BackendClaude && useClaudeAnchor {
 			continue
 		}
+		if _, ok := carried[s.name]; ok {
+			continue // carried from the persisted result, not run again (REQ-AEC-008)
+		}
 		eg.Go(func() error {
 			// The external backend receives (target, focus, projectRoot) — no
 			// verdict of any kind. claude_verdict stays structurally excluded by
@@ -864,7 +999,7 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 			// Any error inside defaultBackendCaller is already fail-opened to a
 			// VerdictInconclusive ReviewOutput, so this never returns a hard error.
 			notifyMCPProgress(gctx, token, 0.3, s.name+" 백엔드 리뷰 실행 중...")
-			out := backendCall(gctx, s.name, target, focus, cfg.ProjectRoot)
+			out := backendCall(gctx, s.name, target, legFocus, cfg.ProjectRoot)
 			notifyMCPProgress(gctx, token, 0.7, s.name+" 백엔드 응답 수신")
 			mu.Lock()
 			parts = append(parts, secondaryResult{backend: s.name, gate: s.gate, out: out})
@@ -877,6 +1012,10 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 	// Append backend results in canonical order (claude before codex before glm) so the
 	// per_backend_verdicts array reads deterministically.
 	for _, wantName := range []string{BackendClaude, BackendCodex, BackendGLM} {
+		if cv, ok := carried[wantName]; ok {
+			verdicts = append(verdicts, cv)
+			continue
+		}
 		for _, p := range parts {
 			if p.backend == wantName {
 				source := ""
@@ -895,6 +1034,7 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 					Provenance:    p.out.Provenance,
 					ReviewBase:    p.out.ReviewBase,
 					StderrTail:    p.out.StderrTail,
+					ErrorClass:    classifyUnrun(p.out),
 
 					RecordingDefect: p.out.RecordingDefect,
 				})
@@ -996,10 +1136,41 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 		// verdict measured from the base exactly, codex was only asked to
 		// (turn/start has no target).
 		note := deltaScopeNote(cfg.DeltaBase, verdicts)
+		if cfg.deltaAdmission != nil {
+			note = admittedDeltaNote(note)
+		}
 		if result.ResidualRiskNote != "" {
 			note += " | " + result.ResidualRiskNote
 		}
 		result.ResidualRiskNote = note
+	}
+	if deltaGateNote != "" {
+		// The refused delta's reason leads the note: it is the one fact a caller
+		// asking for a delta needs to see.
+		if result.ResidualRiskNote != "" {
+			deltaGateNote += " | " + result.ResidualRiskNote
+		}
+		result.ResidualRiskNote = deltaGateNote
+	}
+	if cfg.DeltaDefaultNote != "" {
+		// Leads everything else: it states what the call was asked to review.
+		if result.ResidualRiskNote != "" {
+			result.ResidualRiskNote = cfg.DeltaDefaultNote + " | " + result.ResidualRiskNote
+		} else {
+			result.ResidualRiskNote = cfg.DeltaDefaultNote
+		}
+	}
+	if len(carried) > 0 {
+		result.CarriedLegs = carriedLegNames(carried)
+		rerunNote = "legs carried from the persisted result of session " + cfg.SessionID + " (same head, tree digest and scope): " + strings.Join(result.CarriedLegs, ", ") + "; re-run: " + strings.Join(rerunLegsRan(verdicts, carried), ", ")
+	}
+	if rerunNote != "" {
+		// States what the call did with rerun_legs, so a caller who named a leg to
+		// re-run is never left to infer that every leg ran again.
+		if result.ResidualRiskNote != "" {
+			rerunNote += " | " + result.ResidualRiskNote
+		}
+		result.ResidualRiskNote = rerunNote
 	}
 
 	// ── audit receipt (SPEC-CODEX-AUDIT-GATE-AXES-001 axis (b)) ──
@@ -1008,14 +1179,18 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 	// would let an auditor cite it as if it were. Runs BEFORE persist so the
 	// state file carries the same id the caller receives.
 	var notices []string
-	if codexVerdict, participated := codexParticipation(verdicts); participated {
+	if _, codexCarried := carried[BackendCodex]; codexCarried {
+		// A carried codex verdict took no new run, so no new receipt is filed: the
+		// result keeps the id the codex run itself was recorded under.
+		result.AuditReceipt = carriedFrom.AuditReceipt
+	} else if codexVerdict, participated := codexParticipation(verdicts); participated {
 		var notice string
 		// F13: the receipt carries the START state captured before the fan-out.
 		// The fan-out-time capture failure stays honest the same way (F14's
 		// marker): a failed start bind records bind_capture_failed instead of
 		// a write-time fallback.
 		bindFailed := bindHead == "" && bindDigest == "" && captureFailed
-		result.AuditReceipt, notice = recordAuditReceiptAtBound(auditreceipt.ToolAuditMulti, cfg.ProjectRoot, codexVerdict, codexReceiptErrorFromVerdicts(verdicts), result.GateUnmet, receiptCodexRequired, bindHead, bindDigest, bindFailed)
+		result.AuditReceipt, notice = recordAuditReceiptClassed(auditreceipt.ToolAuditMulti, cfg.ProjectRoot, codexVerdict, codexReceiptErrorFromVerdicts(verdicts), codexErrorClassFromVerdicts(verdicts), result.GateUnmet, receiptCodexRequired, bindHead, bindDigest, bindFailed)
 		if notice != "" {
 			notices = append(notices, notice)
 		}
@@ -1040,12 +1215,25 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 	// per-session delta file, so a
 	// separate name would be dead state; the delta result goes to the caller and
 	// its audit receipt still records below.
+	//
+	// The one exception is a delta the chain gate admitted (REQ-AEC-005): it has
+	// passed the very check that keeps an unverified delta out of coverage, so
+	// its result persists whatever its verdict, and a chain-admitted delta PASS
+	// opens the Stop gate after the earlier full FAIL. A delta without a card_id,
+	// and a delta the gate refused (which is a full-scope call by now), keep
+	// their rules.
 	if cfg.ProjectRoot != "" {
 		result.TreeRoot = cfg.ProjectRoot
 	}
-	if cfg.SessionID != "" && (cfg.DeltaBase == "" || result.OverallVerdict == overallVerdictFail) {
+	if cfg.SessionID != "" && (cfg.DeltaBase == "" || cfg.deltaAdmission != nil || result.OverallVerdict == overallVerdictFail) {
 		var unresolved *auditreceipt.UnresolvedStoreError
-		if err := persistConvergenceResult(result, cfg.SessionID, cfg.ProjectRoot); errors.As(err, &unresolved) {
+		// The persisted copy records the state and scope this call judged, for the
+		// re-run of named legs (REQ-AEC-008); the returned result does not carry them.
+		persisted := result
+		if !captureFailed && bindHead != "" && bindDigest != "" && auditedScope != nil {
+			persisted.AuditedHead, persisted.AuditedDigest, persisted.AuditedScope = bindHead, bindDigest, auditedScope
+		}
+		if err := persistConvergenceResult(persisted, cfg.SessionID, cfg.ProjectRoot); errors.As(err, &unresolved) {
 			notices = append(notices, "convergence result for session "+cfg.SessionID+" not persisted: "+err.Error())
 		}
 	}
@@ -1055,13 +1243,27 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 	// ── Append-only, after the existing persistence step. A failure rides
 	// the result's second_review_record_error — the audit result itself is
 	// never altered. Empty CardID skips the whole block byte-identically.
-	// A delta call is not full-scope review coverage, so it files no record.
-	if cfg.CardID != "" && cfg.DeltaBase == "" {
+	// A delta call the chain gate did not admit is not full-scope review
+	// coverage, so it files no record; a refused delta is a full-scope call by
+	// now (DeltaBase cleared) and files a full-scope record; an admitted delta
+	// files exactly one delta record (REQ-AEC-005).
+	if cfg.CardID != "" && (cfg.DeltaBase == "" || cfg.deltaAdmission != nil) {
 		if err := appendSecondReviewRecord(cfg, result, target); err != nil {
 			result.SecondReviewRecordError = err.Error()
 		}
 	}
 	return result
+}
+
+// codexErrorClassFromVerdicts returns the error class of the codex leg, "" when
+// codex took part with a verdict (the receipt then carries no class).
+func codexErrorClassFromVerdicts(verdicts []PerBackendVerdict) string {
+	for _, v := range verdicts {
+		if v.Backend == BackendCodex {
+			return v.ErrorClass
+		}
+	}
+	return ""
 }
 
 // codexParticipation reports the codex backend's verdict in this fan-out and
@@ -1221,18 +1423,10 @@ func workflowAuditGates(projectRoot string) (config.AuditGates, string, error) {
 // whose primary cannot be identified returns *auditreceipt.UnresolvedStoreError
 // and writes nothing.
 func persistConvergenceResult(r ConvergenceResult, sessionID, projectRoot string) error {
-	stateDir, name := convergenceStateDirFor(projectRoot), sessionID+".json"
-	if root := strings.TrimSpace(projectRoot); root != "" {
-		store, err := auditreceipt.StoreRoot(root)
-		if err != nil {
-			return err
-		}
-		stateDir = filepath.Join(store, ".moai", "state")
-		if store != root {
-			name = sessionID + "--" + auditreceipt.TreeKey(root) + ".json"
-		}
+	dir, path, err := convergencePersistPath(sessionID, projectRoot)
+	if err != nil {
+		return err
 	}
-	dir := filepath.Join(stateDir, "audit-multi")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return fmt.Errorf("convergence state dir: %w", err)
 	}
@@ -1240,7 +1434,6 @@ func persistConvergenceResult(r ConvergenceResult, sessionID, projectRoot string
 	if err != nil {
 		return fmt.Errorf("convergence state marshal: %w", err)
 	}
-	path := filepath.Join(dir, name)
 	if err := os.WriteFile(path, b, 0o644); err != nil {
 		return fmt.Errorf("convergence state write: %w", err)
 	}

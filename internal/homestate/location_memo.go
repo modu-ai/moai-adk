@@ -241,6 +241,8 @@ func stampGitdirTarget(b *strings.Builder, dotGit string, content []byte) {
 			b.WriteString("-")
 		}
 	}
+	// The directory's config can move the answer too (`core.worktree`), with HEAD and commondir untouched (card t2124).
+	stampFile(b, filepath.Join(target, "config"))
 	b.WriteString("}")
 }
 

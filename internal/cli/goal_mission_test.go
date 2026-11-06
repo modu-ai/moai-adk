@@ -297,7 +297,7 @@ func TestAutoMissionTestsReceiptTrustBoundary(t *testing.T) {
 		t.Fatal("stale tests receipt accepted")
 	}
 	write(inside, "passed", head, 0644)
-	if err := validateMissionTestsReceipt(repo, inside, head); err == nil {
+	if err := validateMissionTestsReceipt(repo, inside, head); err == nil && weakModeRefusalExpected() {
 		t.Fatal("weak receipt permissions accepted")
 	}
 	write(inside, "passed", head, 0600)

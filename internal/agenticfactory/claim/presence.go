@@ -44,6 +44,23 @@ type OwnerState struct {
 	LeaseExpired bool
 }
 
+// Refusal is why a takeover that rests on the owner's recorded process must not go
+// ahead: ErrHeld when the process is still running, ErrOwnerUnconfirmed when the
+// presence file cannot be read or the process cannot be told running or gone. It is
+// nil when no presence is recorded or the recorded process is gone. The runner's first
+// look and the store's check under the Issue lock share it, so both refuse alike.
+func (o OwnerState) Refusal() error {
+	switch {
+	case o.HasPresence && o.Class == homestate.OwnerLive:
+		return fmt.Errorf("%w: the owner's process %d is still running", core.ErrHeld, o.PID)
+	case o.HasPresence && o.Damaged:
+		return fmt.Errorf("%w: the presence file %s cannot be read: once the owner's process is confirmed gone, remove that file (the owner's next Heartbeat writes a new one)", core.ErrOwnerUnconfirmed, o.File)
+	case o.HasPresence && o.Class == homestate.OwnerIndeterminate:
+		return fmt.Errorf("%w: the owner's process %d cannot be told running or gone", core.ErrOwnerUnconfirmed, o.PID)
+	}
+	return nil
+}
+
 func (s *Store) presencePath(i core.IssueRef) string {
 	return filepath.Join(s.dir, i.Resource()+".presence")
 }

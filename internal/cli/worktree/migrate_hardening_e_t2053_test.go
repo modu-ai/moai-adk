@@ -20,6 +20,7 @@ import (
 
 func t2053SkipIfRoot(t *testing.T) {
 	t.Helper()
+	t2085SkipOnWindows(t, t2085ReasonPosixMode)
 	if os.Geteuid() == 0 {
 		t.Skip("root ignores file modes")
 	}
@@ -28,6 +29,7 @@ func t2053SkipIfRoot(t *testing.T) {
 // t2053Chmod sets mode on path and restores 0755/0644 when the test ends.
 func t2053Chmod(t *testing.T, path string, mode os.FileMode, restore os.FileMode) {
 	t.Helper()
+	t2085SkipOnWindows(t, t2085ReasonPosixMode)
 	if err := os.Chmod(path, mode); err != nil {
 		t.Fatalf("chmod %s: %v", path, err)
 	}
