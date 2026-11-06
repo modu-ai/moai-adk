@@ -3151,6 +3151,20 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 				card.CardID, card.State, card.MergeSHA)
 			return nil
 		}
+		// The configuration may have changed since the merge: close only when
+		// the recorded merge is an ancestor of the CURRENT target, otherwise
+		// report why and leave the queue card open (no landed verdict is
+		// recorded against a branch the merge never reached).
+		reachable, reachErr := factoryMergeReachable(factoryRepoDir(root, card), card.MergeSHA, target)
+		if reachErr != nil || !reachable {
+			why := "is not reachable from"
+			if reachErr != nil {
+				why = fmt.Sprintf("could not be checked against (%v)", reachErr)
+			}
+			_, _ = fmt.Fprintf(out, "%s %s merge=%s (already merged; the queue card is left open: the recorded merge %s %s)\n",
+				card.CardID, card.State, card.MergeSHA, why, target)
+			return nil
+		}
 		_, _ = fmt.Fprintf(out, "%s %s merge=%s branch=%s (already merged; reconciling the queue close)\n",
 			card.CardID, card.State, card.MergeSHA, target)
 		factoryCloseLaneCard(out, root, runID, card, lane, target)
@@ -3730,6 +3744,26 @@ func factoryResolveIntegrationBranch(root string, card homestate.Card) (string, 
 		return branch, factory.BranchSourceConfig
 	}
 	return factoryBranchOfWorktree(card.WorktreePath), factory.BranchSourceCaller
+}
+
+// factoryMergeReachable reports whether the commit mergeSHA is an ancestor of
+// (or equal to) the branch tip, read in dir (card t2057). A negative answer
+// (git exits 1) is (false, nil); a commit or branch git cannot resolve, or any
+// other git failure, is an error — never read as "not an ancestor", because
+// the caller leaves the queue card open in both cases and must say which.
+func factoryMergeReachable(dir, mergeSHA, branch string) (bool, error) {
+	if strings.TrimSpace(mergeSHA) == "" || strings.TrimSpace(branch) == "" {
+		return false, errors.New("no recorded merge or target to compare")
+	}
+	_, err := factoryGitRead(dir, "merge-base", "--is-ancestor", mergeSHA, branch)
+	if err == nil {
+		return true, nil
+	}
+	var ee *exec.ExitError
+	if errors.As(err, &ee) && ee.ExitCode() == 1 {
+		return false, nil
+	}
+	return false, err
 }
 
 // factoryRepoDir names the repository directory the worktree lookup runs
