@@ -6,6 +6,7 @@ package cli
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
@@ -58,11 +59,15 @@ func TestFactoryCompleteLocalMergeClosesTheQueueCard(t *testing.T) {
 // merged-pr. The card record and the integration branch are not touched.
 func TestFactoryCompleteRerunReconcilesAMergedLocalCard(t *testing.T) {
 	sdClearLaneEnv(t)
-	root, _, cards := sdMergeFixture(t, true, true, false, 1)
+	root, integWT, cards := sdMergeFixture(t, true, true, false, 1)
+	// A real --no-ff merge of the card branch into develop: the recorded
+	// MergeSHA is reachable from the configured integration target.
+	fcGit(t, integWT, "merge", "-q", "--no-ff", "-m", "M t1", cards[0].branch)
+	merge := fcGit(t, integWT, "rev-parse", "HEAD")
 	fcPlace(t, root, homestate.Card{
 		CardID: "t1", State: homestate.CardMergedLocal, Stage: homestate.CardMergedLocal,
 		OwnerLabel: "lane-1", LeaseHolder: "lane-1",
-		WorktreePath: cards[0].wt, MergeSHA: "0123456789abcdef0123456789abcdef01234567",
+		WorktreePath: cards[0].wt, MergeSHA: merge,
 	})
 	before := fcCard(t, root, "t1")
 	sdLaneEnv(t, "lane-1", "")
@@ -112,5 +117,42 @@ func TestFactoryCompleteRerunDoesNotGuessTheLandingTarget(t *testing.T) {
 	}
 	if len(rec.Archived) != 0 || len(rec.Items) != 1 {
 		t.Fatalf("queue after the re-run: live=%d archived=%d, want the card left live (no configured landing target)", len(rec.Items), len(rec.Archived))
+	}
+}
+
+// TestFactoryCompleteRerunRefusesAMergeNotOnTheTarget — card-review finding 3,
+// redesigned (operator decision 11-06): the re-run closes the queue card only
+// when the recorded MergeSHA is an ancestor of the CURRENT integration target;
+// when it is not (the target configuration changed after the merge, or the
+// merge never reached it), the re-run reports the reason, closes nothing and
+// records no landed verdict.
+func TestFactoryCompleteRerunRefusesAMergeNotOnTheTarget(t *testing.T) {
+	sdClearLaneEnv(t)
+	root, _, cards := sdMergeFixture(t, true, true, false, 1)
+	// The card branch tip is NOT merged into develop: it is not an ancestor
+	// of the configured target.
+	notOnTarget := fcGit(t, cards[0].wt, "rev-parse", "HEAD")
+	fcPlace(t, root, homestate.Card{
+		CardID: "t1", State: homestate.CardMergedLocal, Stage: homestate.CardMergedLocal,
+		OwnerLabel: "lane-1", LeaseHolder: "lane-1",
+		WorktreePath: cards[0].wt, MergeSHA: notOnTarget,
+	})
+	before := fcCard(t, root, "t1")
+	sdLaneEnv(t, "lane-1", "")
+	t.Setenv(config.EnvClaudeCodeSessionID, "sess-lane-1")
+	stdout, _, err := runFactory(t, "complete", "t1", "--run", fcRun)
+	if err != nil {
+		t.Fatalf("re-run of complete: %v", err)
+	}
+	sdCardUnchanged(t, "unreachable merge re-run", root, "t1", before)
+	rec, err := factory.NewBacklogStore(todoBacklogPath(root)).LoadPure()
+	if err != nil {
+		t.Fatalf("load queue: %v", err)
+	}
+	if len(rec.Archived) != 0 || len(rec.Items) != 1 {
+		t.Fatalf("queue after the re-run: live=%d archived=%d, want the card left live (MergeSHA not on develop)", len(rec.Items), len(rec.Archived))
+	}
+	if !strings.Contains(stdout, "not reachable") {
+		t.Errorf("the re-run output does not say why the card was left open: %q", stdout)
 	}
 }
