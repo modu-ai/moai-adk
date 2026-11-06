@@ -127,6 +127,44 @@ func TestT2056_PlainSessionAndAbsentFileAreUnchanged(t *testing.T) {
 	}
 }
 
+// TestT2056_ReleaseBranchReaderSharesTheDefault — card-review (d7e46307e4):
+// LoadAgenticTrunkReleaseBranch gates on the same workflow. In a factory
+// session an unset workflow reads as af-flow, so a release_branch_prefix
+// yields the release branch there too — otherwise the two readers disagree and
+// `factory complete` takes the main route instead of the release route. An
+// explicit non-af-flow workflow, and a plain session, still yield "".
+func TestT2056_ReleaseBranchReaderSharesTheDefault(t *testing.T) {
+	withPrefix := func(workflow string) string {
+		body := "git_strategy:\n  mode: manual\n  manual:\n    release_branch_prefix: release/\n"
+		if workflow != "" {
+			body += "    workflow: " + workflow + "\n"
+		}
+		return body
+	}
+	type tc struct {
+		name, session, body, want string
+	}
+	for _, c := range []tc{
+		{"factory leader, key missing", "leader", withPrefix(""), "release/main-batch"},
+		{"factory lane, key missing", "lane", withPrefix(""), "release/main-batch"},
+		{"factory lane, explicit af-flow", "lane", withPrefix("af-flow"), "release/main-batch"},
+		{"factory lane, explicit github-flow", "lane", withPrefix("github-flow"), ""},
+		{"plain session, key missing", "", withPrefix(""), ""},
+		{"plain session, explicit af-flow", "", withPrefix("af-flow"), "release/main-batch"},
+	} {
+		t2056Session(t, c.session)
+		root, _ := t2056Project(t, c.body)
+		if got := LoadAgenticTrunkReleaseBranch(root); got != c.want {
+			t.Errorf("%s: LoadAgenticTrunkReleaseBranch = %q, want %q", c.name, got, c.want)
+		}
+		// The two readers never disagree about whether the project is af-flow.
+		isAFF := LoadGitFlowIntegrationConfig(root).Workflow == WorkflowAFFlow
+		if (LoadAgenticTrunkReleaseBranch(root) != "") != isAFF {
+			t.Errorf("%s: the release-branch reader and the workflow reader disagree (workflow af-flow=%v, release branch=%q)", c.name, isAFF, LoadAgenticTrunkReleaseBranch(root))
+		}
+	}
+}
+
 // TestT2056_TheUserFileIsNeverRewritten — resolving the default at read time
 // leaves git-strategy.yaml byte-identical.
 func TestT2056_TheUserFileIsNeverRewritten(t *testing.T) {
