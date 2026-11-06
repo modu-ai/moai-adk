@@ -1,102 +1,143 @@
 auditor-model: claude-opus-5-5
 
-# Sync audit — card t2105 (Class B, one SPEC frontmatter change)
+# Sync re-audit — card t2105 (Class B, one SPEC frontmatter change)
 
 verdict: PASS-WITH-DEBT
-audited_sha: 00cc223852b9c9c0957b9ca4b55cff049049ac11
+audited_sha: acfd92d3d78d1e63dc71ed1f5572810175c8c424
+audit_receipt: cited in the final AUDIT-VERDICT line
 
-- Score: 90/100 (weighted: Functionality 90 x0.40, Security 100 x0.25, Craft 80 x0.20, Consistency 90 x0.15)
-- Base: 9cf8a1fc14. Audit mode: Claude-only, in-session (no cross-model / paid MCP tool called, per dispatch).
-- Iteration: 1 (first audit of this card).
-- Rules applied: verification-claim-integrity.md §1.1 surface 3 (defect claim needs the tool), §2.2 (tool provenance), §3.1 (refusal = Gap); spec-frontmatter-schema.md § Optional Fields (`lint.skip` "only for documented debt"), § Non-transition frontmatter corrections.
+- Score: 95/100 (weighted: Functionality 95 x0.40, Security 100 x0.25, Craft 90 x0.20, Consistency 95 x0.15)
+- Base: 9cf8a1fc14 (ancestor of HEAD: `git merge-base --is-ancestor` exit 0). Scope: `git diff 9cf8a1fc14..HEAD`.
+- Iteration: 2 (re-audit of the current HEAD after the D1 repair commit acfd92d3d7).
+- Audit plan (`moai verify audit-plan --project-root <tree>`): `config_status: ok`, `model: codex`, gates claude off / codex required / glm off, `enforced_required: ["codex"]`. Cross-model leg: one `codex_audit` (native, baseBranch, delta_base 9cf8a1fc14), called after this file is committed; its receipt is cited in the final message, not here. The verdict above assumes a clean Codex pass meets the gate.
+- debt: D2 dispose_in=t2107 Remove `lint.skip: [OwnershipTransitionInvalid]` from SPEC-FACTORY-COMPLETION-RECOVERY-001 once the rule fix lands, or at that SPEC's next status transition, whichever comes first. Until then the skip silences the whole rule for this SPEC. Follow-up card t2107 (picked) carries both the rule fix and this removal.
 
-- debt: D1 dispose_in=sync Reword the frontmatter comment (and record in progress.md) so it states the real cause: 55b20438fd is a squash merge (#1930, one parent) whose body carries both `Authored-By-Agent: manager-spec` (plan sub-commits, first) and `Authored-By-Agent: manager-develop` on the sub-commit that says "spec.md status draft -> in-progress"; the rule reads only the FIRST trailer, so the warning is a rule false positive on squash commits, not an ownership violation. Open a follow-up card for the rule (attribute the trailer of the sub-commit that carries the status change, or treat multi-trailer squash bodies as unmeasured).
-- debt: D2 dispose_in=sync Remove `lint.skip: [OwnershipTransitionInvalid]` from SPEC-FACTORY-COMPLETION-RECOVERY-001 at that SPEC's next status transition (its sync commit); the skip returns before the git lookup, so until it is removed a genuine future mis-owned transition on this SPEC is silent.
+## Iteration history
+
+| # | Audited SHA | Verdict | Score | Notes |
+|---|---|---|---|---|
+| 1 | 00cc223852 | PASS-WITH-DEBT | 90 | D1 (comment blamed the history; the real cause is a rule false positive on a squash merge), D2 (skip removal condition). Claude-only, installed build. |
+| 2 | acfd92d3d7 | PASS-WITH-DEBT | 95 | D1 disposed (comment repaired; follow-up card t2107 exists). D2 carried to t2107. Tree-built binary, control reproduced, whole corpus run. |
 
 ## Findings (structured defect-list)
 
-- F1 [Medium] [optional, carried as debt D1] [in-diff] `.moai/specs/SPEC-FACTORY-COMPLETION-RECOVERY-001/spec.md:15` (comment) and the HEAD commit message — the debt is characterized as "the draft -> in-progress commit carries Authored-By-Agent: manager-spec (the matrix expects manager-develop)". Literally true of the squash commit's first trailer, but the squash body shows the transition sub-commit was `manager-develop` (the expected owner). The recorded debt is a rule false positive, not a history defect. Confidence high (reproduced below). Not blocking: the mechanism chosen is still the right one and the gate outcome is correct; the documentation of the debt is what is wrong. Required fix: D1.
-- F2 [Low] [optional] [in-diff] HEAD 00cc223852 carries no `Authored-By-Agent:` trailer, so the claim that manager-spec authored the edit is not witnessed in git. No rule requires a trailer for a non-transition edit; recorded for traceability only.
-- F3 [Low] [optional, carried as debt D2] [in-diff] The skip disables the whole rule for this SPEC (early return at `internal/spec/lint_ownership.go:378`), not just the one historical record; the exit condition is prose and nothing enforces it.
-- F4 [Info] [optional] [outside] The same first-trailer-wins parse may also mis-attribute other squash commits (e.g. the advisory SPEC-PROGRESS-RECORD-IO-001 record, commit 5ef49c4 — single parent aef730d091, trailer list not inspected: see Gaps). Not part of this card.
+- F1 [Info] [optional] [in-diff] D1 from iteration 1 is disposed. The comment at `spec.md:15` now matches the commit facts (E3). Not blocking.
+- F2 [Low] [optional, carried as D2] [in-diff] `spec.md:16-18`: the skip turns off the whole rule for this SPEC. The early return at `internal/spec/lint_ownership.go:377-388` sits before the git lookup. Exit conditions are written in the comment and in card t2107; nothing enforces them. Required fix: D2.
+- F3 [Low] [optional] [in-diff] The D1 wording asked for the cause to be recorded in progress.md as well. This diff does not touch progress.md, and the record t2107 cites ("t2105 progress.md") is outside this tree's diff and was not read. Not blocking: the frontmatter comment and card t2107 both state the cause.
+- F4 [Info] [optional] [outside] The first-trailer-wins parse (`parseAuthoredByAgent`, `FindStringSubmatch`) also affects other squash merges. Card t2107 owns this (it names 55b20438fd and 5ef49c4625 for RED).
 
-No blocking finding. Must-pass dimensions (Functionality, Security) pass.
+No blocking finding. Both must-pass dimensions (Functionality, Security) pass.
 
 ## Dimension scores
 
 | Dimension | Score | Verdict | Evidence |
 |---|---|---|---|
-| Functionality (40%) | 90 | PASS | three-SPEC gate `baseline: OK ... 0 non-advisory tracked`, exit 0 (E2); skip honored as Info `OwnershipTransitionSkipped` |
-| Security (25%) | 100 | PASS | frontmatter-only change; no code, secret, input surface |
-| Craft (20%) | 80 | PASS | correct mechanism, exit condition stated; debt record mis-states the cause (F1) |
-| Consistency (15%) | 90 | PASS | nested `lint:`/`skip:` shape matches SPEC-V3R3-CI-AUTONOMY-001 precedent; no `LintSkipFlatForm` warning |
+| Functionality (40%) | 95 | PASS | Target lint `baseline: OK`, exit 0 (E4). Control without the skip: `EXCEEDED +1`, exit 1 (E5). Whole corpus: `baseline: OK`, exit 0 (E6). |
+| Security (25%) | 100 | PASS | Frontmatter-only YAML change. No code, input surface or secret. A grep for token/secret/password over the SPEC frontmatter matched nothing. |
+| Craft (20%) | 90 | PASS | `go test ./internal/spec -run 'Ownership\|LintSkip\|Skip' -count=1` → `ok ... 16.993s`. Exit condition stated. The skip is whole-rule (F2). |
+| Consistency (15%) | 95 | PASS | Nested `lint:`/`skip:` form, which the decoder binds (`lint.go:637-638`). Corpus run reports no `LintSkipFlatForm` and no `ParseFailure` for this SPEC. |
 
 ## Claim
 
-1. The diff is exactly one file, frontmatter only; `status`, `version`, body, HISTORY untouched; baseline file not in the diff.
-2. After the edit the three-SPEC baseline gate reads OK with 0 non-advisory warnings; only SPEC-FACTORY-COMPLETION-RECOVERY-001's warning was non-advisory; the other two are advisory because their status is terminal (completed, superseded).
-3. The skip is honored by the current rule and by t2087's changed rule path (140c1ca406).
-4. The lane's root-cause description is incomplete: the transition was authored by manager-develop inside a squash merge; the lint attributes it from the squash's first trailer (F1).
+1. The card diff is the SPEC frontmatter (comment line, nested `lint.skip` block, `updated:`) plus this report. Nothing else changed. The baseline file is unchanged.
+2. The skip has the shape the linter reads and is scoped to one rule and one SPEC.
+3. The comment states the real cause accurately.
+4. With the skip, the target SPEC and the whole corpus pass the baseline gate. Without it, the gate fails by exactly +1 `OwnershipTransitionInvalid` on this SPEC.
+5. No other SPEC's lint result depends on this change.
 
 ## Evidence
 
-E1 — diff (`git -C <tree> diff 9cf8a1fc14..HEAD --stat`):
+E1: diff scope.
+`git diff --stat 9cf8a1fc14..HEAD`:
 ```
- .moai/specs/SPEC-FACTORY-COMPLETION-RECOVERY-001/spec.md | 6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
+ .moai/reports/t2105/sync-audit.md                  | 102 +++++++++++++++++++++
+ .../SPEC-FACTORY-COMPLETION-RECOVERY-001/spec.md   |   6 +-
+ 2 files changed, 107 insertions(+), 1 deletion(-)
 ```
-Full diff: `-updated: 2026-11-02` / `+updated: 2026-11-06`, and after `tier: L`:
+spec.md hunk: `-updated: 2026-11-02` / `+updated: 2026-11-06`, then after `tier: L`:
 ```
-+# t2105 documented debt: the draft -> in-progress commit 55b20438fd carries Authored-By-Agent: manager-spec (the matrix expects manager-develop); history is not rewritten. Remove this skip once the next status transition by its owner lands.
++# t2105 documented debt: lint false positive, not an ownership violation. Commit 55b20438fd is a squash merge (#1930) whose body carries many Authored-By-Agent trailers; the rule reads only the first (manager-spec), while the sub-commit that moved the status draft -> in-progress carries manager-develop, the expected owner. History is not rewritten. Remove this skip at this SPEC's next status transition (its sync commit); the rule's squash handling is to be fixed separately.
 +lint:
 +  skip:
 +    - OwnershipTransitionInvalid
 ```
-`.moai/spec-lint-baseline.json` not in the diff; its content: `"rules": { "TierArtifactMissing": 4 }`, tree_sha d5638ba81.
-Precedent (`grep -n -B2 -A4 "^lint:" .moai/specs/SPEC-V3R3-CI-AUTONOMY-001/spec.md`): `23:lint:` / `24-  skip:` / `25-    - StatusGitConsistency` — same nested shape.
+`git show --stat acfd92d3d7` touches only the spec.md line (1 insertion, 1 deletion). `git diff --stat 9cf8a1fc14..HEAD -- .moai/spec-lint-baseline.json` printed nothing. `git status --short` was empty at the start of the audit.
 
-E2 — `moai spec lint SPEC-PROGRESS-RECORD-IO-001 SPEC-FACTORY-COMPLETION-RECOVERY-001 SPEC-LSPMCP-001 --baseline .moai/spec-lint-baseline.json` (exit 0):
+E2: skip parsing (this tree's source).
+- `internal/spec/lint.go:637-638`: `LintConfig struct { Skip []string \`yaml:"skip"\` } \`yaml:"lint"\``. The nested form binds; the flat `lint.skip:` key would be dropped and flagged by `LintSkipFlatFormRule`.
+- `lint.go:313`: `applylintSkip(ruleFindings, doc.LintSkip)`, applied per document. It drops only findings whose `Code` is in that document's list (`lint.go:432-447`).
+- `lint_ownership.go:346-352`: `hasOwnershipSkipOptOut` matches exactly `"OwnershipTransitionInvalid"`. `Check` (377-388) then returns a single Info `OwnershipTransitionSkipped`.
+
+E3: accuracy of the comment.
+- `git log -1 --format='%H%n%s%nparents:%P' 55b20438fd` shows a single parent `2a1898ea22…` and a subject ending in `(#1930)`, so it is a squash merge.
+- `git log -1 --format=%b 55b20438fd | grep -c 'Authored-By-Agent'` → `50`. The first match is body line 8, `Authored-By-Agent: manager-spec`.
+- Body line 46 is the sub-commit `* feat(...): M2-B run consolidation operation and worker-liveness predicate`. Its line 53 reads `spec.md status draft -> in-progress (first run-phase M2-B commit).` and its trailer at line 59 reads `Authored-By-Agent: manager-develop`.
+- `git show 55b20438fd -- <spec.md>` contains `-status: draft` / `+status: in-progress`.
+- Parser: `parseAuthoredByAgent` uses `authoredByAgentLine.FindStringSubmatch(body)`, which returns the first match only (`lint_ownership.go:256-266`).
+- The matrix (`spec-frontmatter-schema.md`) assigns `draft → in-progress` to manager-develop. Each fact in the comment checks out.
+
+E4: target lint with a tree-built binary.
+`<scratch>/moai-t2105 spec lint SPEC-FACTORY-COMPLETION-RECOVERY-001 --baseline .moai/spec-lint-baseline.json` (exit 0):
 ```
-WARNING   OwnershipTransitionInvalid  .../SPEC-PROGRESS-RECORD-IO-001/spec.md  1  ... transition "implemented" → "completed" expected owner "orchestrator|manager-docs" but commit 5ef49c46... (Authored-By-Agent: manager-spec) maps to "manager-spec"
-INFO      OwnershipTransitionSkipped  .../SPEC-FACTORY-COMPLETION-RECOVERY-001/spec.md  1  ... ownership transition check skipped via lint.skip: [OwnershipTransitionInvalid] opt-out
-WARNING   OwnershipTransitionInvalid  .../SPEC-LSPMCP-001/spec.md  1  ... transition "archived" → "superseded" expected owner "manager-spec" but commit 94d9fccf... (Authored-By-Agent: manager-develop) maps to "manager-develop"
+INFO      OwnershipTransitionSkipped  .../SPEC-FACTORY-COMPLETION-RECOVERY-001/spec.md  1     SPEC SPEC-FACTORY-COMPLETION-RECOVERY-001 ownership transition check skipped via lint.skip: [OwnershipTransitionInvalid] opt-out
+0 error(s), 0 warning(s)
+baseline: OK — .moai/spec-lint-baseline.json
+  inventory: 0 warning(s) total (advisory included), 0 non-advisory tracked across 1 recorded rule(s)
+```
+
+E5: control without the skip. The control ran in a clone of this tree in the scratchpad, made with `git clone --no-hardlinks <tree> <scratch>/ctl-clone`. The clone's HEAD was `acfd92d3d78d1e63dc71ed1f5572810175c8c424`. Only the 3-line `lint:` block was removed from its spec.md, so the git history the rule reads is intact. The tree itself was never edited. Same binary, run from the clone root (exit 1):
+```
+WARNING   OwnershipTransitionInvalid  .../ctl-clone/.moai/specs/SPEC-FACTORY-COMPLETION-RECOVERY-001/spec.md  1     SPEC SPEC-FACTORY-COMPLETION-RECOVERY-001 transition "draft" → "in-progress" expected owner "manager-develop" but commit 55b20438fd9d3cc13e671cd8cdbb43b2ebc2d611 (Authored-By-Agent: manag…
+0 error(s), 1 warning(s)
+baseline: EXCEEDED — .moai/spec-lint-baseline.json
+  OwnershipTransitionInvalid: recorded 0 -> current 1 (+1)
+  inventory: 1 warning(s) total (advisory included), 1 non-advisory tracked across 1 recorded rule(s)
+  recorded at: d5638ba81 (2026-09-24)
+```
+
+E6: whole corpus at HEAD (1137 SPEC dirs).
+`<scratch>/moai-t2105 spec lint --baseline .moai/spec-lint-baseline.json` (exit 0, about 33 minutes):
+```
+0 error(s), 8598 warning(s)
+baseline: OK — .moai/spec-lint-baseline.json
+  inventory: 8598 warning(s) total (advisory included), 4 non-advisory tracked across 1 recorded rule(s)
+  recorded at: d5638ba81 (2026-09-24)
+```
+In that output, the target SPEC has exactly one line: `INFO OwnershipTransitionSkipped`. `OwnershipTransitionInvalid` appears 4 times, all on other SPECs. None of them is non-advisory, because the only tracked rule is the recorded one. No `LintSkipFlatForm` or `ParseFailure` finding appears; the single grep hit was a `VacuousTestAssertion` whose message contains the string "ParseFailure".
+
+E7: the three SPECs from iteration 1, same binary.
+`spec lint SPEC-PROGRESS-RECORD-IO-001 SPEC-FACTORY-COMPLETION-RECOVERY-001 SPEC-LSPMCP-001 --baseline …` (exit 0):
+```
+WARNING   OwnershipTransitionInvalid  .moai/specs/SPEC-PROGRESS-RECORD-IO-001/spec.md  1  … commit 5ef49c4625… (Autho…
+INFO      OwnershipTransitionSkipped  .moai/specs/SPEC-FACTORY-COMPLETION-RECOVERY-001/spec.md  1  …
+WARNING   OwnershipTransitionInvalid  .moai/specs/SPEC-LSPMCP-001/spec.md  1  … commit 94d9fccfc7… (Authored-By-Agent: manager-devel…
 0 error(s), 2 warning(s)
 baseline: OK — .moai/spec-lint-baseline.json
   decreased: TierArtifactMissing recorded 4 -> current 0 (-4)
   inventory: 2 warning(s) total (advisory included), 0 non-advisory tracked across 1 recorded rule(s)
 ```
-`--baseline` with `--json` is refused by the tool (exit 3: "cannot use --baseline with --json"); the JSON form was run without `--baseline` (exit 0): both `OwnershipTransitionInvalid` findings carry `"advisory":true`; the FACTORY-COMPLETION-RECOVERY entry is `"severity":"info","code":"OwnershipTransitionSkipped"`. No `ParseFailure` and no `LintSkipFlatForm` finding, so the frontmatter parses and the nested skip binds.
+This is identical to iteration 1's E2. The other two SPECs' results are unchanged.
 
-E3 — why advisory (source, this tree): `internal/spec/lint.go:319-323` demotes when `GrandfatheredEra` OR `TerminalStatus`; `applyEraDemotion` (lint.go:424-425) marks every Warning `Advisory = true` on a demoted SPEC; `CompareBaseline` (`lint_baseline.go:191`) counts only `!f.Advisory`. `grep` of the two other SPECs: PROGRESS-RECORD-IO-001 `status: completed`, LSPMCP-001 `status: superseded` — both terminal, so demoted. FACTORY-COMPLETION-RECOVERY-001 is `status: in-progress`, created 2026-10-06, phase v3.2.0 — not terminal, not grandfathered, so its warning was non-advisory. (`eraDemotableCodes` only demotes ERRORs of two codes; it is not the path here — the warning-advisory branch is.) Skip handling: `lint_ownership.go:377-388` returns Info `OwnershipTransitionSkipped` before the git lookup, and `lint.go:313` `applylintSkip` also drops any finding with a listed code.
+E8: the follow-up card exists. `moai todo list | grep -i squash` matched:
+`t2107 picked [P1·Class B·t2105 후속] spec lint OwnershipTransitionInvalid 규칙 오탐: 다중 트레일러 squash 병합 커밋(예 55b20438fd #1930, …) … 착지 뒤 SPEC-FACTORY-COMPLETION-RECOVERY-001의 lint.skip(t2105 임시 조치) 제거. t2087(lint_ownership.go 수정) 착지 뒤 시작.`
 
-E4 — commit facts:
-- `git show -s --format=%P 55b20438fd` → one parent `2a1898ea22…` (squash merge, subject ends "(#1930)").
-- Trailers in its body (grep of `git show -s --format=%H%n%s%n%b 55b20438fd`): first at body line 10 `Authored-By-Agent: manager-spec`; mixed manager-spec / manager-develop / manager-docs thereafter.
-- Body lines 48-61: sub-commit "M2-B run consolidation operation and worker-liveness predicate" states "spec.md status draft -> in-progress (first run-phase M2-B commit)." followed by `Authored-By-Agent: manager-develop`.
-- `git show 55b20438fd -- .moai/specs/SPEC-FACTORY-COMPLETION-RECOVERY-001/spec.md` contains `-status: draft` / `+status: in-progress` (and version 0.1.0 → 0.3.13).
-- Parser: `parseAuthoredByAgent` uses `FindStringSubmatch` (first match only) — `lint_ownership.go:260-266`. Hence manager-spec is reported.
-
-E5 — t2087 overlap (read-only): `git show 140c1ca406:internal/spec/lint_ownership.go` keeps `hasOwnershipSkipOptOut` and the early Info return ahead of `cachedOwnershipTransition`; lookup now goes through `batchedOwnershipTransition` with per-SPEC fallback. `git grep … 140c1ca406 -- internal/spec/lint.go` shows `applylintSkip(ruleFindings, doc.LintSkip)` still at line 313 and the ownership rule still on the per-doc path (not a `crossSPECRule`). The opt-out is honored under t2087.
-
-E6 — HEAD message (`git show -s --format=%H%n%s%n%b HEAD`): no `Authored-By-Agent:` trailer (F2). `git status --short` empty.
+E9: binding run conditions. `.moai/specs/SPEC-FACTORY-COMPLETION-RECOVERY-001/progress.md:17` carries a `Binding run conditions` ledger. Line 205 records that four items were moved to `dispose_in` the final SPEC-close sync, with the leader's approval recorded at line 173. This card is not that SPEC's run or sync; it does not touch progress.md, and it neither disposes of those items nor changes them. They stay owed at the final SPEC close, outside this card's verdict.
 
 ## Baseline-attribution
 
-- Tree: worktree `/Users/goos/.moai/worktrees/projects/moai-adk-go/t2105`, HEAD 00cc223852b9c9c0957b9ca4b55cff049049ac11, clean; base 9cf8a1fc14.
-- Judging build (§2.2): installed `moai` v3.2.0-rc.42, `v3.2.0-1344-g646955327e`, built 2026-11-06T05:06:19Z. Not a build from this tree; whether 646955327e is an ancestor of HEAD was not checked (Gap). The diff touches no Go code, and the rule source read in E3 is this tree's, so the lint behavior relied on is the tree's code path; the gate outputs in E2 are from the installed build.
+- Tree: worktree `/Users/goos/.moai/worktrees/projects/moai-adk-go/t2105`, branch WT-spec-lint-baseline-3, HEAD `acfd92d3d78d1e63dc71ed1f5572810175c8c424`, clean.
+- Judging build (§2.2): `go build -o <scratch>/moai-t2105 ./cmd/moai` from this clean tree at that HEAD, invoked by path. `version` prints `v3.2.0 none built unknown`, because a plain build carries no ldflags. The build commit is therefore the tree HEAD `acfd92d3d7` by construction, not by a stamped field. The installed `moai` binary was used only for `verify audit-plan` and `todo list`, not for any lint measurement.
 
 ## Gaps
 
-- Pre-edit control not re-run by the auditor: reproducing the `EXCEEDED +1` reading would need the pre-edit SPEC in the tree (checkout/restore is outside this audit's permitted actions). Accepted from the lane's record only; the source path (E3) and the squash trailer order (E4) make it consistent.
-- Lane claim 4 (whole corpus ~32 s, `baseline: OK`, control EXCEEDED +1 under t2087-merged scratch binary) is lane-measured only; not reproduced (no merge/build permitted).
-- Ancestry of the installed build commit 646955327e vs HEAD not checked.
-- A compound `git log` command with `%(trailers:…)` for commit 5ef49c4 was refused by the worktree-isolation guard; fallback was `git show -s --format=%P` only (parent count). Trailer list of 5ef49c4 not inspected (F4 left unconfirmed).
-- No test suite run (dispatch constraint); no Go code changed.
-- Cross-model audit not run by instruction; no codex receipt exists for this audit.
+- The whole-corpus control (clone without the skip) was stopped by its PID after about 4 minutes to free CPU for the HEAD corpus run, so there is no corpus-level before/after diff. Claim 5 rests on the per-document skip path in source (E2: `applylintSkip` and the opt-out read only `doc`'s own frontmatter), the target-level control (E5), and the unchanged three-SPEC result (E7).
+- The progress.md record of the cause that D1 asked for, which t2107 cites, is not in this diff and was not read (F3).
+- `rm -rf` of the scratch clone directory `<scratch>/ctl-clone` was denied by the permission layer, so the clone remains in the session scratchpad. The scratch binary and the lint output files were deleted (`rm -f`, rc 0).
+- Coverage percentage not measured: no Go code changed. Only the rule's existing tests were run.
+- The Codex gate result is not in this file. Its receipt is cited in the auditor's final message, after this file was committed.
 
 ## Residual-risk
 
-- While the skip stands, a real mis-owned transition on this SPEC would not be reported (D2).
-- The first-trailer-wins parse will keep producing false `OwnershipTransitionInvalid` on squash merges whose first sub-commit is a plan commit; each will tempt another per-SPEC skip unless the rule is fixed (D1 follow-up).
-- Whole-corpus gate result rests on the lane's run against an unmerged t2087 combination; after t2087 lands, the corpus gate should be re-read once.
-- Scratch outputs under the session scratchpad are not cited; the deciding lines are copied above.
+- While the skip stands, a genuinely mis-owned future transition on this SPEC would not be reported (D2; removal tracked by t2107).
+- Scratch outputs are deleted. The deciding lines are copied above, and nothing in scratch is cited.
+- The whole-corpus run is slow (about 33 minutes on this tree, before t2087). Anyone re-running it should expect that, or use the t2087 build.
