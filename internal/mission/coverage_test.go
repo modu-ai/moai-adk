@@ -30,7 +30,7 @@ func TestAutoMissionStateRoundTripAndRefusals(t *testing.T) {
 		if info.IsDir() {
 			want = 0o700
 		}
-		if info.Mode().Perm() != want {
+		if !hostPrivateModeOK(info.Mode().Perm(), want) {
 			t.Fatalf("mode %s=%o want %o", path, info.Mode().Perm(), want)
 		}
 	}
