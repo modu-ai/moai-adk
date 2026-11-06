@@ -79,7 +79,7 @@ func registerFactoryCardMCPTools(add func(name string, tool mcp.Tool, handler se
 		mcp.WithDescription("Record one operator decision — the MCP form of `moai factory decide` (one card per call). Refused for a lane session: decide records the operator's decisions. "+projectRootDesc),
 		mcp.WithString("card", mcp.Required(), mcp.Description("The card id.")),
 		mcp.WithString("gate", mcp.Description("Decision gate: kickoff or push. Empty with a lifecycle choice decides the card's pause state.")),
-		mcp.WithString("choice", mcp.Description("approve|reject (kickoff), or resume|block|unblock|abandon.")),
+		mcp.WithString("choice", mcp.Description("approve|reject (kickoff), done (push: send a merged-local card to done, receipt required), or resume|block|unblock|abandon.")),
 		mcp.WithString("run", mcp.Description("Factory run id (default: the single active run).")),
 		projectRootOption(),
 		mcp.WithReadOnlyHintAnnotation(false),
@@ -363,10 +363,10 @@ func handleFactoryDecide(ctx context.Context, req mcp.CallToolRequest) (*mcp.Cal
 	choice := req.GetString("choice", "")
 	switch {
 	case gate == "kickoff" && (choice == "approve" || choice == "reject"):
-	case gate == "push" && choice == "":
+	case gate == "push" && (choice == "" || choice == "done"):
 	case gate == "" && (choice == "resume" || choice == "block" || choice == "unblock" || choice == "abandon"):
 	default:
-		return toolErr("factory_decide", errors.New("factory decide: want --gate kickoff --choice approve|reject, --gate push, or --choice resume|block|unblock|abandon")), nil
+		return toolErr("factory_decide", errors.New("factory decide: want --gate kickoff --choice approve|reject, --gate push [--choice done], or --choice resume|block|unblock|abandon")), nil
 	}
 	out := &bytes.Buffer{}
 	if err := factoryDecideCards(ctx, root, out, []string{cardID}, gate, choice, req.GetString("run", "")); err != nil {

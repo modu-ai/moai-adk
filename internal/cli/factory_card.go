@@ -4635,10 +4635,10 @@ func newFactoryDecideCommand() *cobra.Command {
 			}
 			switch {
 			case gate == "kickoff" && (choice == "approve" || choice == "reject"):
-			case gate == "push" && choice == "":
+			case gate == "push" && (choice == "" || choice == "done"):
 			case gate == "" && (choice == "resume" || choice == "block" || choice == "unblock" || choice == "abandon"):
 			default:
-				return fmt.Errorf("factory decide: want --gate kickoff --choice approve|reject, --gate push, or --choice resume|block|unblock|abandon")
+				return fmt.Errorf("factory decide: want --gate kickoff --choice approve|reject, --gate push [--choice done], or --choice resume|block|unblock|abandon")
 			}
 			ctx := cmd.Context()
 			if ctx == nil {
@@ -4651,7 +4651,7 @@ func newFactoryDecideCommand() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&gate, "gate", "", "decision gate: kickoff or push")
-	cmd.Flags().StringVar(&choice, "choice", "", "approve|reject (kickoff), or resume|block|unblock|abandon")
+	cmd.Flags().StringVar(&choice, "choice", "", "approve|reject (kickoff), done (push: send a merged-local card to done, receipt required), or resume|block|unblock|abandon")
 	cmd.Flags().StringVar(&decider, "decider", homestate.DeciderHuman, "who decided: human, or audit (kickoff approve only, on verdict-file evidence)")
 	cmd.Flags().StringVar(&run, "run", "", "factory run id (default: the single active run)")
 	return cmd
@@ -4685,6 +4685,14 @@ func decideOne(ctx context.Context, db *homestate.FactoryDB, projectRoot, runID,
 		}
 	case gate == "push" && cur.State == homestate.CardMergedPR:
 		to = homestate.CardDone // github-flow: the merge is already on the remote — the gate closes the card, nothing is pushed
+	case gate == "push" && choice == "done":
+		// card t2059: the T18 edge (merged-local → done) is admitted whether or
+		// not a remote is configured (t2057); this choice asks for it
+		// explicitly. The store still requires the leader's receipt.
+		if err := want(homestate.CardMergedLocal); err != nil {
+			return cur, err
+		}
+		to = homestate.CardDone
 	case gate == "push":
 		if err := want(homestate.CardMergedLocal); err != nil {
 			return cur, err
