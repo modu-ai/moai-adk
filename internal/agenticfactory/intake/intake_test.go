@@ -111,6 +111,7 @@ type fakeBr struct {
 	calls      int
 	err        error
 	lost       bool // the branch IS registered but the response is lost
+	crash      bool // the branch IS registered, then the process dies before anything is recorded
 	oid        string
 }
 
@@ -130,6 +131,9 @@ func (f *fakeBr) RegisterBranch(_ context.Context, req claim.Request) (claim.Bra
 	}
 	b := claim.Branch{Ref: "WT-" + req.Key, BaseOID: oid}
 	f.registered[req.Key] = b
+	if f.crash {
+		panic("process died after the branch was registered")
+	}
 	if f.lost {
 		return claim.Branch{}, f.err
 	}

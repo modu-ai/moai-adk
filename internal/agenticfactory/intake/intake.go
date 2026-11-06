@@ -279,6 +279,16 @@ func (in *Intake) publish(ctx context.Context, req claim.Request) (claim.Request
 }
 
 func (in *Intake) register(ctx context.Context, req claim.Request) (claim.Request, error) {
+	// Intent first, as in publish: a process that dies after the branch was
+	// registered restarts on an unknown effect and looks it up, not on a clean
+	// StageIssueConfirmed that would register it again.
+	if _, err := in.Store.UpdateRequest(req.Key, func(r *claim.Request) error {
+		r.Blocked = &claim.Blocked{Step: claim.StageIssueConfirmed, Detail: "branch registration in flight", Unknown: true,
+			Resume: "look the effect up (Advance); another attempt needs ConfirmNotCreated"}
+		return nil
+	}); err != nil {
+		return claim.Request{}, err
+	}
 	sctx, cancel := in.step(ctx)
 	defer cancel()
 	b, err := in.br.RegisterBranch(sctx, req)
