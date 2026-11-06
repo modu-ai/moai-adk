@@ -294,6 +294,7 @@ func TestCheckProfileReach_ACopySwappedForAnInRootLinkAfterTheLstatIsUnknown(t *
 		t.Fatal(err)
 	}
 	orig := afterReachLstat
+	skipSwap := false
 	afterReachLstat = func(dir, rel string) {
 		p := filepath.Join(dir, filepath.FromSlash(rel))
 		if err := os.Remove(p); err != nil {
@@ -301,13 +302,18 @@ func TestCheckProfileReach_ACopySwappedForAnInRootLinkAfterTheLstatIsUnknown(t *
 			return
 		}
 		if err := os.Symlink("other.md", p); err != nil {
-			t.Errorf("swap, step 2: %v", err)
+			// no links here (for example an unprivileged Windows account): the
+			// swap cannot be staged, which is not a defect of the judgment
+			skipSwap = true
 		}
 	}
 	t.Cleanup(func() { afterReachLstat = orig })
 	rs, err := CheckProfileReach(home, RootClaudeSkills, reachRel, reachHash(reachBody))
 	if err != nil {
 		t.Fatal(err)
+	}
+	if skipSwap {
+		t.Skip("symlinks unavailable: the swap could not be staged")
 	}
 	if got := reachStates(rs); got["alpha"] != ReachUnknown {
 		t.Fatalf("the opened file is not the one that was inspected: want Unknown, got %+v", rs)

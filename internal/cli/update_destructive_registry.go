@@ -46,7 +46,8 @@ func (s destructiveSite) key() string { return s.File + " " + s.Function }
 // covering 27 call sites, matching the source scan the drift guard performs.
 // The scan counts os.RemoveAll and os.Rename, and also Rename, RemoveAll and
 // Remove called on an os.Root handle (a parameter typed *os.Root, or the result
-// of os.OpenRoot), which the root-bound rename in skillresidue uses.
+// of os.OpenRoot, or of OpenRoot on such a handle), which the root-bound rename in
+// skillresidue and the config-root hooks removal use.
 //
 // Rows carry either a Protection or an Exemption, never both and never neither.
 // The exempt rows rest on three materially different grounds — same-call rewind
@@ -151,7 +152,7 @@ var destructiveTargetRegistry = []destructiveSite{
 			"a RemovalSchedule.",
 	},
 	{
-		File: "internal/cli/update.go", Function: "ensureSettingsEnvInConfigRoot", Sites: 1,
+		File: "internal/cli/update.go", Function: "removeConfigRootMoaiHooks", Sites: 1,
 		Protection: "Deletion-radius pinning is M4's REQ-UDS-011/014: this site removes a subdirectory " +
 			"of a Claude config root under the operator's HOME, outside the project root, so a widened " +
 			"radius — not a missing backup — is the failure mode. A HOME-scoped backup is out of scope " +

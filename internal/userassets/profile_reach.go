@@ -68,7 +68,7 @@ const maxReachFileBytes = 8 << 20
 // ProfileReach is the read-only answer for ONE profile and ONE project copy.
 type ProfileReach struct {
 	Profile string     // profile directory name
-	Root    string     // absolute profile skills|agents root that was read; the profile directory itself for an entry that was not read
+	Root    string     // absolute profile skills|agents root of a listed profile (named even when it could not be read); the profile directory itself for an entry outside the enumeration, which is never read
 	State   ReachState // what was found
 	Reason  string     // one line for the report
 }
