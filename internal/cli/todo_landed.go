@@ -234,9 +234,16 @@ func validateSuppliedSHA(sha, ref string) (string, error) {
 				"todo landed: the %s check could not run (%v); nothing was written",
 				landedCheckUnrunnable, unrunnable)}
 		}
+		hint := ""
+		if branch, remote := strings.CutPrefix(ref, "origin/"); remote && branch != "" {
+			// card t2071: under af-flow a card's merge sits on the local
+			// branch until the leader's batch push, so origin/<branch> has not
+			// reached it yet.
+			hint = fmt.Sprintf(" (a card merged into local %s and not yet pushed is recorded with --ref %s)", branch, branch)
+		}
 		return "", &exitCodeError{code: 1, msg: fmt.Sprintf(
-			"todo landed: the %s check failed: commit %s is not reachable from %s; nothing was written",
-			landedCheckReachability, resolved, ref)}
+			"todo landed: the %s check failed: commit %s is not reachable from %s%s; nothing was written",
+			landedCheckReachability, resolved, ref, hint)}
 	}
 	// The RESOLVED form, never the input: an abbreviation that is unique
 	// today can become ambiguous as the repository grows, and a stored value

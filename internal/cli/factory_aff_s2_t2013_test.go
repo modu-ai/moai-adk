@@ -532,3 +532,58 @@ func TestAFFS2CompleteWithoutProvisionedReleaseBranchKeepsMainRoute(t *testing.T
 		t.Errorf("the existing route wrote hold records: %v", holds)
 	}
 }
+
+// TestAFFS2ReleaseRouteRequiresExplicitOptIn — card t2098: the release route
+// is default-OFF by operator decision (the af-flow landing surface is local
+// main; the release branch is never a lane landing surface), so the route
+// predicate answers false for an af-flow profile that carries only a
+// non-empty release_branch_prefix, and true only for a profile that opts in
+// through release_route: true. The fixture is the route's own world,
+// minimal: a repo whose primary checkout holds main, the fixed release
+// branch checked out in a linked worktree, an af-flow git-strategy.yaml, and
+// no factory session markers.
+func TestAFFS2ReleaseRouteRequiresExplicitOptIn(t *testing.T) {
+	sdClearLaneEnv(t)
+	cfg := filepath.Join(t.TempDir(), "gitconfig")
+	if err := os.WriteFile(cfg, []byte("[user]\n\tname = Route Test\n\temail = route@example.invalid\n[init]\n\tdefaultBranch = main\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("GIT_CONFIG_GLOBAL", cfg)
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
+
+	for _, tc := range []struct {
+		name   string
+		route  bool
+		wantOK bool
+	}{
+		{"release_route absent", false, false},
+		{"release_route true", true, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			affs2Git(t, root, "init", "-q", "-b", "main")
+			affs2Write(t, filepath.Join(root, "base.txt"), "base\n")
+			affs2Git(t, root, "add", "base.txt")
+			affs2Git(t, root, "commit", "-q", "-m", "base")
+			body := "git_strategy:\n    mode: manual\n    manual:\n        workflow: af-flow\n        release_branch_prefix: release/\n"
+			if tc.route {
+				body += "        release_route: true\n"
+			}
+			affs2Write(t, filepath.Join(root, ".moai", "config", "sections", "git-strategy.yaml"), body)
+			relWT := filepath.Join(root, ".claude", "worktrees", "release-main-batch")
+			affs2Git(t, root, "branch", affs2ReleaseBranch)
+			affs2Git(t, root, "worktree", "add", "-q", relWT, affs2ReleaseBranch)
+
+			branch, tree, ok := factoryReleaseRoute(root)
+			if ok != tc.wantOK {
+				t.Fatalf("factoryReleaseRoute ok = %v, want %v (branch %q tree %q)", ok, tc.wantOK, branch, tree)
+			}
+			// factorySameTree: git reports darwin /private/var paths where
+			// t.TempDir() hands out /var, so the trees are compared by
+			// identity, not by string.
+			if ok && (branch != affs2ReleaseBranch || !factorySameTree(tree, relWT)) {
+				t.Errorf("route = %q %q, want %q (the release worktree)", branch, tree, affs2ReleaseBranch)
+			}
+		})
+	}
+}

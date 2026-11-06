@@ -6,7 +6,12 @@ git_strategy:
     gitlab:
         instance_url: ""
     manual:
-        workflow: git-flow
+        # [2026-10-21 leader flip, operator delegation +Jev/Codex] git-flow → github-flow:
+        # 전용 통합 워크트리가 폐지되고 primary가 main을 보유(공유 표면 — 클린 유지 불가)하여
+        # 통합 병합 경로가 모든 착지를 차단. PR 엣지(factory_card.go factoryCompleteCard)로 전환.
+        # 운영자 10-19 결정(동기화 PR 병합 후 github-flow) 실행. t1831이 최종 값을 재조정할 것.
+        # [2026-10-28 운영자 확인] 현재 값은 agentic-trunk (사고 복구 때 10-23 diff로 github-flow가 잘못 복원돼 정정).
+        workflow: af-flow
         environment: local
         github_integration: false
         push_to_remote: false
