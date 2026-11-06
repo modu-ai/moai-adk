@@ -166,6 +166,15 @@ F2 전제 분석(PowerShell Set-Location의 Win32 cwd 불동기, MSYS 셸 cwd �
 - `go test ... -run 'TestApply_BusyTree|TestApply_AllFailures|TestApply_StrandedTree|TestMigrateSummary|TestApply_FailedTrees' -count=1` → ok 11.477s
 - 재사용 귀속: 구현원 실행분(같은 트리 키) — darwin vet 0, win-386 vet 0, gofmt 무출력, 6시험 -v 전부 PASS 15.148s
 
+## 영수증 보강 + 사슬 재개 (2026-11-06 ~07:26Z)
+
+- 리더 판정: 정리안 **(a)** 채택 — 감사 대상 cd7b5803bd(영수증 rcpt-affc80b4b23c072c0447fef3 결합), deb65b740f는 판정 파일만 추가한 커밋, 신규 Codex 호출 없음. complete는 v3.2.1-rc.1 설치 확인 뒤(t2098은 이미 main 착지)
+- 2차 codex_audit(de2d 재감사 조항): rcpt-affc80b4b23c072c0447fef3, 수리 델타 codex 판정 pass·결함 0. 최종 verdict.md는 audited_sha를 cd7b5803bd로 재고정(정리안 (a) 이행), `verdict: PASS`·`audited_sha:` 각 1줄 (직독 확인)
+- 8859 금지 절차(d-20261103T000836Z-af10): 이번 세션 미사용 확인 — 전 갱신 renewed, 만료 재임대 호출 없음
+- merge-ready 1차 거절 원문: `Factory stage: card evidence refused: no sync-audit verdict file under /Users/goos/.moai/worktrees/projects/moai-adk-go/t2094/.moai/reports/t2094.`
+- 원인(소스 직독, internal/homestate/card_evidence_readers.go:100): 판정 파일 글롭이 `<phase>*.md`=`sync-audit*.md` — `verdict.md`는 미매칭. 또한 audited_sha가 기록 증거 커밋의 접두사여야 함(T5/T11) — 기록 deb65b740f vs 판정 audited cd7b5803bd 불일치 → 리더 예고대로 rebind-evidence 경로
+- 조치: 디스크 개명 verdict.md → sync-audit-iter2.md(-iter 최댓값 규칙) + 트리 청결을 위해 개명 커밋 → `moai factory rebind-evidence t2094 --reason ...` (기록 증거 deb65b740f→cd7b5803bd, 감사 행에 사유 원문 기록) → merge-ready 재시도
+
 ### Gaps
 
 - 감시 측정 명령의 `find … -newer /tmp` 세그먼트가 워크트리 가드에 거부됨(외부 경로 참조). 같은 채널을 `stat`/`ls -lT` 직독으로 확보했으므로 결정에 미반영 — 거부 자체는 이 절에 기록(§3.1 refused-tool degradation).
