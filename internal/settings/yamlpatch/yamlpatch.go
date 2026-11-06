@@ -233,13 +233,18 @@ func lineSplice(data []byte, edits []KeyEdit) ([]byte, bool, error) {
 			if cur.Kind != yaml.MappingNode {
 				return nil, false, nil
 			}
+			// card t1974: a line splice cannot see that an anchored node is shared
+			// by its aliases; hand the edit to the re-encode path, which refuses.
+			if cur.Anchor != "" {
+				return nil, false, nil
+			}
 			idx := findKey(cur, key)
 			if idx < 0 {
 				return nil, false, nil // upsert — needs the re-encode path
 			}
 			val := cur.Content[idx+1]
 			if i == len(e.Path)-1 {
-				if val.Kind != yaml.ScalarNode {
+				if val.Kind != yaml.ScalarNode || val.Anchor != "" {
 					return nil, false, nil
 				}
 				if val.Line <= 0 || val.Line > len(strings.Split(string(data), "\n")) {
@@ -366,6 +371,11 @@ func applyEdit(root *yaml.Node, e KeyEdit) error {
 		if cur.Kind != yaml.MappingNode {
 			return fmt.Errorf("path %q: segment %q parent is not a mapping", pathDesc, key)
 		}
+		// card t1974: a mapping carrying an anchor is shared by its aliases, so
+		// editing or adding a key inside it changes every alias too. Refuse.
+		if cur.Anchor != "" {
+			return fmt.Errorf("path %q: segment %q parent carries anchor &%s, so an edit would change every alias of it; edit the file by hand", pathDesc, key, cur.Anchor)
+		}
 
 		idx := findKey(cur, key)
 		if idx < 0 {
@@ -445,6 +455,11 @@ func removeKey(root *yaml.Node, path []string) {
 func setScalar(n *yaml.Node, value string, quoted bool, pathDesc string) error {
 	if n.Kind != yaml.ScalarNode {
 		return fmt.Errorf("path %q: target is not a scalar", pathDesc)
+	}
+	// card t1974: an anchored scalar is shared by its aliases; setting it changes
+	// every alias, so a sibling key would change silently. Refuse, file unchanged.
+	if n.Anchor != "" {
+		return fmt.Errorf("path %q: target carries anchor &%s, so an edit would change every alias of it; edit the file by hand", pathDesc, n.Anchor)
 	}
 	n.Value = value
 	if quoted {
