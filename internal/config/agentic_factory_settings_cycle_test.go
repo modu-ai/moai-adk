@@ -129,3 +129,35 @@ func TestAgenticFactorySettings_SecretThroughAnchorStillRefused(t *testing.T) {
 		t.Fatalf("err = %v", err)
 	}
 }
+
+func TestAfsHasSecretKey_CycleAndSharing(t *testing.T) {
+	parse := func(src string) *yaml.Node {
+		t.Helper()
+		var doc yaml.Node
+		if err := yaml.Unmarshal([]byte(src), &doc); err != nil {
+			t.Fatal(err)
+		}
+		return doc.Content[0]
+	}
+	cases := []struct {
+		name        string
+		src         string
+		found, loop bool
+	}{
+		{"self reference in a map", "&c\nnested: *c\n", false, true},
+		{"self reference in a list", "&c\n- *c\n", false, true},
+		{"indirect cycle", "&a\nb: &b\n  back: *a\n", false, true},
+		{"shared anchor, no cycle", "x: &s {k: v}\ny: *s\nz: [*s, *s]\n", false, false},
+		{"secret through a shared anchor", "x: &s {secret: v}\ny: *s\n", true, false},
+		{"plain secret", "secret: v\n", true, false},
+		{"no secret", "a: [1, {b: c}]\n", false, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			found, loop := afsHasSecretKey(parse(tc.src))
+			if found != tc.found || loop != tc.loop {
+				t.Fatalf("got found=%v cycle=%v, want found=%v cycle=%v", found, loop, tc.found, tc.loop)
+			}
+		})
+	}
+}
