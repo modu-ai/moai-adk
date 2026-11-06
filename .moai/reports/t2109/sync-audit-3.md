@@ -129,6 +129,16 @@ $ git diff 35911488199b fff52b3860 -- internal/settings/yamlpatch/yamlpatch.go
 - Iteration 2: FAIL at fff52b3860, code 0.93, sole cause the unmet required codex gate (codex_audit refused with stale_server).
 - Iteration 3 (this file): PASS 0.93 at fff52b3860. One codex_audit over the repair delta, no findings, receipt rcpt-42a99a23fabc8b925ee2ba2a. Light re-check agrees with iteration 2.
 
+## Receipt guard refusal (after the verdict was rendered)
+
+When this auditor stopped, the SubagentStop receipt guard refused the PASS, verbatim: "AUDIT_RECEIPT_VIOLATION: sync-auditor reported PASS but the audit could not be corroborated — receipt unknown to the store. Call the codex audit (codex_audit or audit_multi) for this tree, then end with a verdict line citing the receipt id it returns."
+
+Measured cause: the guard looked in the wrong tree's store. It did not find a fabricated receipt.
+- The receipt is present in the reviewed tree's store: /Users/goos/.moai/worktrees/projects/moai-adk-go/t2109/.moai/state/audit-receipts/receipts/rcpt-42a99a23fabc8b925ee2ba2a.json, with tool=codex_audit, tree_root=/Users/goos/.moai/worktrees/projects/moai-adk-go/t2109, root_source=argument, created_at=2026-11-06T12:37:24.79521Z, codex_verdict=pass, head_commit=bdd9c5e4be0993acaf3579774e81093781ea3f55.
+- The guard's rejection record sits in the auditor session's own worktree: /Users/goos/.moai/worktrees/projects/moai-adk-go/t2072/.moai/state/audit-receipts/rejections/sync-auditor--t2109.json, with tree_root=/Users/goos/.moai/worktrees/projects/moai-adk-go/t2072. This auditor session's working directory is the t2072 worktree, while the audited tree is t2109.
+
+The brief forbids a second codex_audit call and every other audit tool. A call aimed at t2072 would also review the wrong tree. So I made no further call, and the verdict above stands on the receipt the t2109 store holds. To unblock the refusal, the leader needs to run a corroborating check against the t2109 store, or rerun the audit from a session whose cwd is t2109. That is a leader decision. This auditor did not do it.
+
 ## Operational Notes (unverified)
 
 - F7: decide before landing whether the force-added iteration verdict files (sync-audit.md FAIL, sync-audit-2.md FAIL, and this file if added) should reach main; the factory evidence reader will see several t2109 verdict files and should pick this one by highest iteration.
