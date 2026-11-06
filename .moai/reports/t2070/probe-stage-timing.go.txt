@@ -1,0 +1,156 @@
+package worktree
+
+// Card t2070 measurement probe: per-stage wall time of the migration plan and
+// of one tree's move, against an isolated fixture of many registered trees.
+// Opt-in (MOAI_T2070_PROBE=N) so it never runs in the normal suite.
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"strconv"
+	"testing"
+	"time"
+
+	"github.com/modu-ai/moai-adk/internal/hook"
+	"github.com/modu-ai/moai-adk/internal/worktreeroot"
+)
+
+func TestT2070TimingProbe(t *testing.T) {
+	n, _ := strconv.Atoi(os.Getenv("MOAI_T2070_PROBE"))
+	if n <= 0 {
+		t.Skip("MOAI_T2070_PROBE not set")
+	}
+	w := m6NewWorld(t)
+	legacy := filepath.Join(w.repo, ".moai", "worktrees")
+	t0 := time.Now()
+	for i := 0; i < n; i++ {
+		name := fmt.Sprintf("bulk%03d", i)
+		m6Git(t, w.repo, "worktree", "add", "-q", "-b", "WT-"+name, "--", filepath.Join(legacy, name))
+	}
+	t.Logf("fixture: %d extra trees created in %v", n, time.Since(t0))
+
+	out, _ := listGitOutput(w.repo, "worktree", "list", "--porcelain")
+	recs, _ := ParseWorktreeList(out)
+	// stage 0: whole plan
+	p0 := time.Now()
+	plans, err := planMigrationFor(w.repo, time.Now(), true)
+	planTotal := time.Since(p0)
+	if err != nil {
+		t.Fatalf("plan: %v", err)
+	}
+	t.Logf("PLAN total: %v for %d registered / %d plans (%.1f ms/tree)", planTotal, len(recs), len(plans), float64(planTotal.Milliseconds())/float64(len(plans)))
+
+	// per-call costs, summed over every tree
+	var tClassify, tPathFor, tCanon, tRegistry, tAnchored, tLstat time.Duration
+	for _, rec := range recs {
+		a := time.Now()
+		_ = Classify(WorktreeRecord{Path: rec.Path, Branch: rec.Branch}, ClassifyContext{PrimaryRoot: w.repo, HomeProjectsDir: homeProjectsDir()})
+		tClassify += time.Since(a)
+		a = time.Now()
+		_, _ = worktreeroot.PathFor(w.repo, filepath.Base(rec.Path))
+		tPathFor += time.Since(a)
+		a = time.Now()
+		_, _ = resolveTreePath(rec.Path)
+		tCanon += time.Since(a)
+		a = time.Now()
+		_ = worktreeRegistryProbe(w.repo, rec.Path)
+		tRegistry += time.Since(a)
+		a = time.Now()
+		_ = liveAnchoredProbe(rec.Path, w.repo, time.Now())
+		tAnchored += time.Since(a)
+		a = time.Now()
+		_, _ = os.Lstat(rec.Path)
+		tLstat += time.Since(a)
+	}
+	a := time.Now()
+	_, _ = loadMoveList(w.repo)
+	tLoad := time.Since(a)
+	a = time.Now()
+	_, _ = listGitOutput(w.repo, "worktree", "list", "--porcelain")
+	tList := time.Since(a)
+	a = time.Now()
+	_, _ = defaultActiveProcessCWDs()
+	tLsof := time.Since(a)
+	cwds, _ := defaultActiveProcessCWDs()
+	a = time.Now()
+	for _, rec := range recs {
+		_ = processUsesWorktree(cwds, rec.Path)
+	}
+	t.Logf("PLAN processUsesWorktree: %v over %d trees x %d process cwds", time.Since(a), len(recs), len(cwds))
+	t.Logf("PLAN parts (sum over %d trees): Classify %v | PathFor %v | resolveTreePath %v | registryProbe %v | liveAnchored %v | Lstat %v | loadMoveList(once) %v | worktree list(once) %v | lsof(once) %v",
+		len(recs), tClassify, tPathFor, tCanon, tRegistry, tAnchored, tLstat, tLoad, tList, tLsof)
+
+	// one tree's move, step by step
+	var p *migratePlan
+	for i := range plans {
+		if plans[i].source == w.movedTree {
+			p = &plans[i]
+		}
+	}
+	if p == nil {
+		t.Fatalf("no plan for movedTree")
+	}
+	s := time.Now()
+	d1, _ := captureManifestChecked(p.source)
+	tM1 := time.Since(s)
+	s = time.Now()
+	id, _ := EnsureInstanceToken(p.source)
+	tTok := time.Since(s)
+	s = time.Now()
+	_ = forwardGitMove(w.repo, p.source, p.destination)
+	tMove := time.Since(s)
+	s = time.Now()
+	_ = hook.RekeyWorktreeEntry(w.repo, p.source, p.destination)
+	tRekey := time.Since(s)
+	s = time.Now()
+	_ = rebindCardForPath(w.repo, p.source, p.destination)
+	tRebind := time.Since(s)
+	s = time.Now()
+	d2, _ := captureManifestChecked(p.destination)
+	tM2 := time.Since(s)
+	t.Logf("MOVE one tree: manifest-before %v | token %v | git worktree move %v | rekey %v | card rebind %v | manifest-after %v | match=%v ident=%s",
+		tM1, tTok, tMove, tRekey, tRebind, tM2, d1 == d2, id.Ident())
+
+	// serial vs concurrent `git worktree move` of 8 trees each, same repository
+	var serial, conc []migratePlan
+	for _, pl := range plans {
+		if pl.class != "moai-made" || pl.skip != "" || pl.source == w.movedTree {
+			continue
+		}
+		switch {
+		case len(serial) < 8:
+			serial = append(serial, pl)
+		case len(conc) < 8:
+			conc = append(conc, pl)
+		}
+	}
+	s = time.Now()
+	for _, pl := range serial {
+		if err := forwardGitMove(w.repo, pl.source, pl.destination); err != nil {
+			t.Errorf("serial move %s: %v", pl.source, err)
+		}
+	}
+	t.Logf("MOVE 8 serial: %v (%v/tree)", time.Since(s), time.Since(s)/8)
+	s = time.Now()
+	errs := make(chan error, len(conc))
+	for _, pl := range conc {
+		go func(pl migratePlan) { errs <- forwardGitMove(w.repo, pl.source, pl.destination) }(pl)
+	}
+	failed := 0
+	for range conc {
+		if err := <-errs; err != nil {
+			failed++
+			t.Logf("concurrent move error: %v", err)
+		}
+	}
+	t.Logf("MOVE 8 concurrent: %v, failed=%d", time.Since(s), failed)
+	listed, _ := registeredPaths(w.repo)
+	missing := 0
+	for _, pl := range append(append([]migratePlan{}, serial...), conc...) {
+		if !pathListed(listed, pl.destination) {
+			missing++
+		}
+	}
+	t.Logf("after moves: %d registered, %d destinations not listed", len(listed), missing)
+}
