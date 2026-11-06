@@ -284,3 +284,38 @@ RED 확인: 구현 전 `go vet ./internal/cli/worktree/` 와 `go vet ./internal/
 | `go test -count=1 -run 'Worktree\|Rekey\|Registry' ./internal/hook/` | 0 | `ok .../internal/hook 10.143s` |
 | `go test -count=1 -v -run 'Update\|InitGit\|Progress\|UserLock\|Migrat' ./internal/cli/` | 0 | `ok .../internal/cli 180.650s` (`--- PASS` 362, `--- FAIL` 0) |
 | `golangci-lint run ./internal/cli/worktree/... ./internal/cli/ ./internal/config/... ./internal/hook/ ./internal/homestate/ ./internal/worktreeroot/` | 0 | `0 issues.` |
+
+### 5차 리뷰 반영 (K1, K2)
+
+수정 커밋 `b74bc4a26b`.
+
+**K1. 같은 초에 만든 저널의 순서가 뒤집힘 (C12 에서 유입)**
+- 원인: 충돌 저널 `<stamp>-1.json` 은 사전순으로 `<stamp>.json` 보다 앞선다(`-` 가 `.` 보다 작다). `--verify` 는 정렬 목록의 마지막을, `journalRecording` 은 뒤에서부터 찾았으므로 둘 다 더 오래된 저널을 최신으로 골랐다.
+- 수정: 저널 디렉터리를 읽는 곳이 두 곳뿐이어서(`runMigrateVerify`, `journalRecording`) 둘 다 공용 `orderedJournals` 를 거친다. 이름을 `<stamp>` 와 숫자 접미사로 나눠 접미사 없음 = 0 으로 정렬한다(`-2` 가 `-10` 앞). 파일명 규칙은 바꾸지 않아 기존 저널이 그대로 읽힌다.
+- 테스트(RED 출력: `order = 20260101T000000-10.json,20260101T000000-2.json,20260101T000000.json,...`, `journalRecording = .../20260101T000000.json, want the newer`, `verify judged the older journal`):
+  - `TestOrderedJournals_CollisionSuffixSortsAfterTheBareName`
+  - `TestJournalRecording_PicksTheSecondJournalOfTheSameSecond`
+  - `TestVerify_PicksTheSecondJournalOfTheSameSecond` (오래된 저널은 `pending`, 새 저널은 `moved`; 새 저널이 이겨야 성공)
+
+**K2. 읽을 수 없는 신원을 "없음"으로 취급해 `reversed` 로 보호를 풂 (C6/C13 에서 유입)**
+- 원인: 정방향 이동 오류 뒤, 목적지 신원이 일치하지 않으면(읽기 실패 포함) 곧바로 `reversed` 줄을 써서 `MovedBy` 보호를 풀었다. 상대 gitdir 포인터가 풀리지 않는 순간에는 원위치도 없는데 보호가 풀린다.
+- 수정: `forwardFailureLocation` 이 위치를 판정한다. 목적지가 있고 신원이 일치하면 역이동 순서, 원위치가 존재하고 단계 신원을 갖고 있으며 목적지가 없거나 읽을 수 있는 다른 신원일 때만 `reversed` 로 보호를 푼다. 그 밖의 모든 경우(목적지 신원을 읽을 수 없음, 경로를 stat 할 수 없음, 어느 쪽도 신원이 없음)는 양 끝을 적은 `pending` 줄을 쓰고 트리를 실패로 센다.
+- 같은 패턴 감사 결과: `reversed`/`restored` 줄을 쓰는 곳을 모두 확인했다. `m6ReverseMoveWhy`, 롤백의 목적지 존재 분기, `treeMovedBack`, 롤백의 수렴 분기는 이미 신원 일치를 요구했다. 고친 곳은 둘이다. 롤백이 목적지를 stat 할 수 없을 때 부재로 보고 `restored` 를 쓰던 것, 롤백이 원위치를 stat 할 수 없을 때 "양쪽 다 없음"으로 조용히 건너뛰던 것. 둘 다 `ErrNotExist` 일 때만 부재로 보고, 나머지는 `pending` 으로 유지해 롤백이 0 이 아닌 코드로 끝난다.
+- 테스트(RED 출력: `a \`reversed\` line was written for a tree whose location is unknown`, `MovedBy released the protection`, `rollback treated an uninspectable destination as absent`, `rollback skipped a step whose source it could not inspect`):
+  - `TestMigrateApply_ForwardFailure_UnreadableDestinationIdentity_StaysPending` — 시임이 실제 git 이동 뒤 목적지의 `.git` 을 풀리지 않는 포인터로 바꾸고 오류를 반환한다. 원위치 없음. 결과는 `pending`, 두 트리 실패, 포인터 복구 뒤 `MovedBy` 가 true.
+  - `TestRollback_UnstatableDestination_IsNotTreatedAsAbsent`, `TestRollback_UnstatableSource_IsNotTreatedAsGone` (상위 디렉터리를 `chmod 000`; root 에서는 건너뜀).
+
+**5차 재검증 (레인 한정)**
+
+| 명령 | 종료 코드 | 마지막 줄 |
+|---|---|---|
+| `go build ./...` | 0 | 출력 없음 |
+| `go vet ./internal/cli/... ./internal/config/... ./internal/hook/ ./internal/homestate/ ./internal/worktreeroot/` | 0 | 출력 없음 |
+| `GOOS=windows go vet ./internal/cli/worktree/...` | 0 | 출력 없음 |
+| `GOOS=windows go test -c -o /dev/null ./internal/cli/worktree/` | 0 | 출력 없음 |
+| `gofmt -l internal/` | 0 | 출력 0바이트 |
+| `go test -count=1 ./internal/cli/worktree/...` | 0 | `ok .../internal/cli/worktree 343.620s` |
+| `go test -count=1 -v -run 'Update\|InitGit\|Progress\|UserLock\|Migrat' ./internal/cli/` | 0 | `ok .../internal/cli 255.731s` (`--- PASS` 362, `--- FAIL` 0) |
+| `golangci-lint run ./internal/cli/worktree/... ./internal/cli/ ./internal/config/... ./internal/hook/ ./internal/homestate/ ./internal/worktreeroot/` | 0 | `0 issues.` |
+
+한계: 위치 불명으로 `pending` 이 된 트리는 사람이 `--rollback` 으로 수렴시켜야 한다. 이 라운드에서 `internal/hook`, `internal/homestate`, `internal/worktreeroot` 의 코드는 바뀌지 않아 vet 만 다시 돌렸고 테스트는 4차 정리 때의 결과를 따른다.
