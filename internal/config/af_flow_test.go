@@ -8,6 +8,10 @@ import "testing"
 
 const afFlowPrefixLine = "        release_branch_prefix: release/\n"
 
+// afFlowRouteLine is the release route's explicit opt-in (card t2098): the
+// route arms only when release_route is true, never on a bare prefix.
+const afFlowRouteLine = "        release_route: true\n"
+
 func TestAFFlowAllowedValue(t *testing.T) {
 	got := AllowedWorkflows()
 	if len(got) != 5 {
@@ -54,8 +58,17 @@ func TestAFFlowLoaderNormalizesLegacy(t *testing.T) {
 			if !cfg.AgenticTrunkWorkflow || !cfg.UsesLocalIntegration() {
 				t.Errorf("AgenticTrunkWorkflow=%v UsesLocalIntegration=%v, want both true", cfg.AgenticTrunkWorkflow, cfg.UsesLocalIntegration())
 			}
+			// Card t2098: the release route is opt-in, default OFF by operator
+			// decision (the af-flow landing surface is local main) — a
+			// non-empty release_branch_prefix alone arms nothing.
+			if got := LoadAgenticTrunkReleaseBranch(root); got != "" {
+				t.Errorf("LoadAgenticTrunkReleaseBranch = %q, want \"\" (release_route absent)", got)
+			}
+			// release_route: true is the explicit opt-in (card t2098); the
+			// fixed release branch resolves only through it.
+			dispositionWrite(t, root, gitStrategyBody("manual", v, afFlowPrefixLine+afFlowRouteLine))
 			if got := LoadAgenticTrunkReleaseBranch(root); got != "release/main-batch" {
-				t.Errorf("LoadAgenticTrunkReleaseBranch = %q, want release/main-batch", got)
+				t.Errorf("LoadAgenticTrunkReleaseBranch = %q, want release/main-batch (release_route: true)", got)
 			}
 		})
 	}

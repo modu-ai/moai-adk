@@ -128,39 +128,55 @@ func TestT2056_PlainSessionAndAbsentFileAreUnchanged(t *testing.T) {
 }
 
 // TestT2056_ReleaseBranchReaderSharesTheDefault — card-review (d7e46307e4):
-// LoadAgenticTrunkReleaseBranch gates on the same workflow. In a factory
-// session an unset workflow reads as af-flow, so a release_branch_prefix
-// yields the release branch there too — otherwise the two readers disagree and
-// `factory complete` takes the main route instead of the release route. An
-// explicit non-af-flow workflow, and a plain session, still yield "".
+// LoadAgenticTrunkReleaseBranch gates on the same workflow. Card t2098
+// narrows the reader further: the release route is opt-in through
+// release_route: true (default OFF by operator decision — the af-flow
+// landing surface is local main), so a release_branch_prefix alone yields ""
+// in every session kind, and the opt-in bodies keep the workflow gate. In a
+// factory session an unset workflow still reads as af-flow — otherwise the
+// two readers disagree and `factory complete` takes the main route instead
+// of the release route.
 func TestT2056_ReleaseBranchReaderSharesTheDefault(t *testing.T) {
-	withPrefix := func(workflow string) string {
+	withPrefix := func(workflow string, route bool) string {
 		body := "git_strategy:\n  mode: manual\n  manual:\n    release_branch_prefix: release/\n"
+		if route {
+			body += "    release_route: true\n"
+		}
 		if workflow != "" {
 			body += "    workflow: " + workflow + "\n"
 		}
 		return body
 	}
 	type tc struct {
-		name, session, body, want string
+		name, session, workflow, want string
+		route                         bool
 	}
 	for _, c := range []tc{
-		{"factory leader, key missing", "leader", withPrefix(""), "release/main-batch"},
-		{"factory lane, key missing", "lane", withPrefix(""), "release/main-batch"},
-		{"factory lane, explicit af-flow", "lane", withPrefix("af-flow"), "release/main-batch"},
-		{"factory lane, explicit github-flow", "lane", withPrefix("github-flow"), ""},
-		{"plain session, key missing", "", withPrefix(""), ""},
-		{"plain session, explicit af-flow", "", withPrefix("af-flow"), "release/main-batch"},
+		{name: "factory leader, key missing, route off", session: "leader", workflow: withPrefix("", false)},
+		{name: "factory lane, key missing, route off", session: "lane", workflow: withPrefix("", false)},
+		{name: "factory lane, explicit af-flow, route off", session: "lane", workflow: withPrefix("af-flow", false)},
+		{name: "factory lane, explicit github-flow, route off", session: "lane", workflow: withPrefix("github-flow", false)},
+		{name: "plain session, key missing, route off", session: "", workflow: withPrefix("", false)},
+		{name: "plain session, explicit af-flow, route off", session: "", workflow: withPrefix("af-flow", false)},
+		{name: "factory leader, key missing, route on", session: "leader", workflow: withPrefix("", true), want: "release/main-batch"},
+		{name: "factory lane, key missing, route on", session: "lane", workflow: withPrefix("", true), want: "release/main-batch"},
+		{name: "factory lane, explicit af-flow, route on", session: "lane", workflow: withPrefix("af-flow", true), want: "release/main-batch"},
+		{name: "factory lane, explicit github-flow, route on", session: "lane", workflow: withPrefix("github-flow", true)},
+		{name: "plain session, key missing, route on", session: "", workflow: withPrefix("", true)},
+		{name: "plain session, explicit af-flow, route on", session: "", workflow: withPrefix("af-flow", true), want: "release/main-batch"},
 	} {
 		t2056Session(t, c.session)
-		root, _ := t2056Project(t, c.body)
-		if got := LoadAgenticTrunkReleaseBranch(root); got != c.want {
+		root, _ := t2056Project(t, c.workflow)
+		got := LoadAgenticTrunkReleaseBranch(root)
+		if got != c.want {
 			t.Errorf("%s: LoadAgenticTrunkReleaseBranch = %q, want %q", c.name, got, c.want)
 		}
-		// The two readers never disagree about whether the project is af-flow.
+		// The two readers never disagree about whether the project is af-flow
+		// when the route is opted in (card t2098: with the route off the
+		// release reader is "" by the gate, not by disagreement).
 		isAFF := LoadGitFlowIntegrationConfig(root).Workflow == WorkflowAFFlow
-		if (LoadAgenticTrunkReleaseBranch(root) != "") != isAFF {
-			t.Errorf("%s: the release-branch reader and the workflow reader disagree (workflow af-flow=%v, release branch=%q)", c.name, isAFF, LoadAgenticTrunkReleaseBranch(root))
+		if c.route && (got != "") != isAFF {
+			t.Errorf("%s: the release-branch reader and the workflow reader disagree (workflow af-flow=%v, release branch=%q)", c.name, isAFF, got)
 		}
 	}
 }
