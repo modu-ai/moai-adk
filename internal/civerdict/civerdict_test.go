@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -208,6 +209,9 @@ func mustJSON(t *testing.T, r civerdict.Record) []byte {
 // dir is unreadable for Load / reported by LoadAll — never silent success.
 func TestErrorPaths(t *testing.T) {
 	t.Run("save-readonly-dir", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("Windows has no POSIX read-only directory: chmod cannot block file creation in a directory, so the unwritable-record-dir failure cannot be provoked; stays covered on POSIX")
+		}
 		root := t.TempDir()
 		dir := filepath.Join(root, ".moai", "state", "ci-verdicts")
 		if err := os.MkdirAll(dir, 0o755); err != nil {

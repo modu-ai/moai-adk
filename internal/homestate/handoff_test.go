@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -21,7 +22,7 @@ func TestHomeLayoutAndProjectRuntimePermissions(t *testing.T) {
 		if err != nil {
 			t.Fatalf("stat %s: %v", rel, err)
 		}
-		if got := info.Mode().Perm(); got != 0o700 {
+		if got := info.Mode().Perm(); runtime.GOOS != "windows" && got != 0o700 { // Windows has no POSIX mode bits
 			t.Errorf("%s mode=%#o, want 0700", rel, got)
 		}
 	}
@@ -39,7 +40,7 @@ func TestHomeLayoutAndProjectRuntimePermissions(t *testing.T) {
 		if err != nil {
 			t.Fatalf("stat %s: %v", path, err)
 		}
-		if got := info.Mode().Perm(); got != 0o700 {
+		if got := info.Mode().Perm(); runtime.GOOS != "windows" && got != 0o700 { // Windows has no POSIX mode bits
 			t.Errorf("%s mode=%#o, want 0700", path, got)
 		}
 	}
@@ -114,7 +115,7 @@ func TestProjectLayoutPermissions(t *testing.T) {
 		if err != nil {
 			t.Fatalf("stat %s: %v", path, err)
 		}
-		if got := info.Mode().Perm(); got != 0o700 {
+		if got := info.Mode().Perm(); runtime.GOOS != "windows" && got != 0o700 { // Windows has no POSIX mode bits
 			t.Errorf("%s mode=%#o, want 0700", path, got)
 		}
 	}
@@ -153,7 +154,7 @@ func TestFactorySQLiteArtifactsArePrivateWhileOpen(t *testing.T) {
 		if err != nil {
 			t.Fatalf("stat %s: %v", path, err)
 		}
-		if got := info.Mode().Perm(); got != 0o600 {
+		if got := info.Mode().Perm(); runtime.GOOS != "windows" && got != 0o600 { // Windows has no POSIX mode bits
 			t.Errorf("%s mode=%#o, want 0600", filepath.Base(path), got)
 		}
 	}
