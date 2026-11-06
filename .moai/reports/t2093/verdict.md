@@ -211,3 +211,25 @@ Must-pass firewall: Functionality and Security both PASS independently. Weighted
 ## Landing note for the chain
 
 This file is the FINAL landing verdict the chain consumes. Round 1's sync-audit.md is preserved unchanged as the historical record. The audited_sha line above binds this verdict to the exact head the chain lands (30c7aea12093f73bf02b32da632ba8aa6d93b9f0).
+
+## Addendum — factory run-2 endpoint (landed after export, 2026-11-06 22:12)
+
+The factory leg of run 2 completed green after the file above was exported:
+
+	ok  	github.com/modu-ai/moai-adk/internal/factory	648.161s
+	factory_exit=0
+
+The full 797-top-level-test factory suite PASSED in 648.161s, inside its 15m wall, true exit 0. This closes the factory gap in the Gaps section; the only remaining unobserved datum is homestate full-suite completion (243/390 observed PASS / 0 FAIL at the 900s wall; the absorbed t2116 delta fully green). Machine lines and the verdict above are unchanged: PASS 96/100 @30c7aea120.
+
+## Addendum 2 — SubagentStop receipt-guard refusal (2026-11-06 22:13 KST, at audit close)
+
+On stopping, the SubagentStop hook refused this audit's PASS with the verbatim message:
+
+> AUDIT_RECEIPT_VIOLATION: sync-auditor reported PASS but the audit could not be corroborated — receipt unknown to the store. Call the codex audit (codex_audit or audit_multi) for this tree, then end with a verdict line citing the receipt id it returns.
+
+Mechanical root cause, verified from the store records (not inferred):
+
+- The cited receipt EXISTS in the audited tree's store — /Users/goos/.moai/worktrees/projects/moai-adk-go/t2093/.moai/state/audit-receipts/receipts/rcpt-239190302a729e5238c5c012.json: tree_root .../t2093 (root_source "argument" — the audit's explicit project_root), tool codex_audit, created_at 2026-11-06T12:40:57Z (during this audit), codex_verdict pass, head_commit 30c7aea12093f73bf02b32da632ba8aa6d93b9f0 (exactly the audited head).
+- The guard's own rejection record — .../t2114/.moai/state/audit-receipts/rejections/sync-auditor--t2093.json — carries tree_root .../t2114 and cause "receipt unknown to the store": after this audit's export, the runtime reassigned the auditor session's working directory from the t2093 worktree to the t2114 worktree, and the stop hook then resolved the receipt store against the SESSION cwd (t2114) instead of the audited tree (t2093). The receipt was never minted for, nor belongs to, t2114.
+
+Disposition: REFUSED to re-mint. A second codex_audit is outside the operator allowance d-20261106T055816Z-449d (1x per card; re-call requires a new leader-mediated approval), and copying the t2093 receipt into the t2114 store would falsify tree-bound corroboration. The receipt is valid, carried, and stored under the audited tree; any receipt check rooted at t2093 corroborates it. The refusal is a guard-environment root-mismatch defect (session cwd moved mid-audit), surfaced to the leader/operator for adjudication — not an audit defect. Verdict on the merits stands: PASS 96/100 @30c7aea120, receipts=rcpt-239190302a729e5238c5c012.
