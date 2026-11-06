@@ -138,6 +138,7 @@ func init() {
 
 	// Wire worktree subcommand with lazy Git initialization
 	worktree.WorktreeCreator = materializeSessionWorktree
+	worktree.WorktreeCreatorAt = materializeSessionWorktreeAt
 	worktree.WorktreeCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
 		if deps == nil {
 			return fmt.Errorf("dependencies not initialized")

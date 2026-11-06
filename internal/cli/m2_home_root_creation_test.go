@@ -263,7 +263,9 @@ func TestM2_NoLegacyDestinationConstructions(t *testing.T) {
 
 	// The two destination functions read their paths from the resolver.
 	for _, check := range []struct{ file, fn, mustContain, mustNotContain string }{
-		{"session_worktree.go", "materializeSessionWorktree", "worktreeroot.PathFor", "sessionWorktreeSubdir"},
+		// card t2058: materializeSessionWorktree and materializeSessionWorktreeAt
+		// are thin wrappers; the destination is built in the shared body.
+		{"session_worktree.go", "materializeSessionWorktreeBase", "worktreeroot.PathFor", "sessionWorktreeSubdir"},
 		{"worktree_branch_flag.go", "launcherWorktreeMaterializeReal", "worktreeroot.PathFor", `".claude", "worktrees"`},
 	} {
 		src, err := os.ReadFile(filepath.Join(check.file))
