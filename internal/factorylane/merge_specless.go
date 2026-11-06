@@ -139,12 +139,21 @@ func checkSyncAuditVerdictFile(git GitRunner, repoDir, card, develop string) (st
 			return refuse("the change from audited_sha %s to HEAD %s could not be listed: %v", auditedFull, head, err)
 		}
 		evidenceDir := ".moai/reports/" + card + "/"
+		outside := ""
 		for _, changed := range strings.Split(diffOut, "\x00") {
 			if changed != "" && !strings.HasPrefix(changed, evidenceDir) {
-				if absorbed, why := absorbOnlyChange(git, develop, auditedFull, head, card); !absorbed {
-					return refuse("audited_sha %s is stale: HEAD %s differs from it outside %s (first changed path: %s) and the change is not a plain absorb of %s: %s", auditedFull, head, evidenceDir, changed, develop, why)
-				}
+				outside = changed
 				break
+			}
+		}
+		// A merge after the audited commit is judged by the absorb check even
+		// when the tree matches the audited one: an absorb that discards main's
+		// change (-X ours, a deleted file) leaves no differing path. A failure
+		// to list merges fails closed.
+		merges, mErr := git.Git("rev-list", "--min-parents=2", auditedFull+".."+head)
+		if outside != "" || mErr != nil || strings.TrimSpace(merges) != "" {
+			if absorbed, why := absorbOnlyChange(git, develop, auditedFull, head, card); !absorbed {
+				return refuse("audited_sha %s is stale: HEAD %s is not the audited tree plus a plain absorb of %s (first path outside %s: %q): %s", auditedFull, head, develop, evidenceDir, outside, why)
 			}
 		}
 	}
