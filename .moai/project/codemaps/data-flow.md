@@ -1,6 +1,18 @@
 # 데이터 흐름
 
-## 현재 흐름 보완 — 4c4217a1 (card t1991 판)
+## 현재 흐름 보완 — 67b4734d6b (card t2061 판)
+
+기준 `4c4217a19` 뒤 소스 197개 창에서 움직인 흐름은 넷이다. 아래는 소스의 문서 주석과 호출 배선을 읽은 결과이며 실행으로 재현한 것이 아니다.
+
+**① Agentic Factory 카드 흐름**(Issue #1948, `internal/agenticfactory`). 권위는 프로젝트당 SQLite 하나(`<moaiHome>/db/<projectKey>/af/ledger.db`)이고 포지 이슈는 읽지도 쓰지도 않는다. (1) `moai af claim`이 `ledger.Store.Claim`으로 다음 카드를 잡고 카드 id와 fencing epoch을 낸다 — 이후의 모든 쓰기는 id와 epoch을 WHERE에 싣고, 낡은 epoch은 `ErrStaleEpoch`로 행을 바꾸지 않는다. 죽은 보유자 회수(`Claim`·`Reap`)는 후보를 모아 생존을 **트랜잭션 밖**에서 프로브한 뒤, 쓰기 트랜잭션에서 후보의 epoch·heartbeat_at이 프로브 때와 같은지 다시 확인하고 회수한다(살아 있는 프로세스는 회수하지 않으며 판정 불가는 생존으로 본다). (2) `moai af move`가 `core.CheckMove`를 거쳐 단계를 옮긴다 — `claimed → implementing → verifying → ready → landing → done`이고 `blocked`·`on-hold`는 단계가 아닌 일시 정지로 떠난 단계에만 복귀한다(`runner`). (3) `moai af evidence`가 red·green·gate·review·merge 증거를 커밋에 묶어 기록하고, 다른 HEAD에 묶인 증거는 받지 않는다. (4) `moai af enqueue`가 후보 커밋을 병합 큐에 올린다. (5) `moai af land`가 `mergeq`로 후보 워크트리에서 병합 결과를 게이트에 통과시킨 뒤(검증은 착지 잠금 밖) 잠금 안에서 재확인하고 `git update-ref` 한 번으로 설정된 로컬 트렁크 ref를 비교-교체로 옮긴다 — main이나 원격은 건드리지 않는다. 재시작이 큐 행을 verifying·landing에 남겼다면 `moai af reconcile`이 git 조상 관계로 정리한다. 읽기 쪽 흐름은 쓰기 경로와 분리되어 있다: `monitor`는 쓰기 동사가 없는 읽기 인터페이스만 받고, 웹 보드의 원장은 읽기 전용으로 열려(`internal/cli/web.go` — 파일이 없거나 스키마가 다르면 nil 리더로 "제공되지 않음") 만들거나 마이그레이션하지 않으며, 패널에 닿는 모든 텍스트는 `core.Sanitize`를 거친다.
+
+**② 원장 임대 박동 흐름.** 카드를 쥔 세션의 UserPromptSubmit·PostToolUse 훅이 `LedgerHeartbeatSeam`을 부른다 — 세션당 30초 제한이고 카드가 없는 세션에서는 불활성이다(`internal/hook/ledger_heartbeat.go`). 루프로 도는 레인은 턴 사이에 사용자 프롬프트가 없으므로 도구 완료가 박동을 맡는다.
+
+**③ 대기·깨움 흐름**(card t2013). `moai factory wait <card>`가 대기 사유(`--on <선행 카드>` 또는 `--operator`)와 깨울 주체(`--waker`)를 팩토리 기록에 쓰고, 착지 엣지가 조건을 만족하면 누구를 깨울지 **한 번 출력**한다 — 전송은 그 동사를 부른 세션이 하며 시작 여부는 임대 보유자와 진행 기록에서 확인한다(`internal/cli/factory_wait.go`, `internal/homestate/card_wait.go`·`card_wake_events.go`의 `wake.<phase>` 이벤트). 같은 기록은 stop-goal 평가에도 쓰인다: 목표가 미충족이어도 카드가 다음 확인 이벤트를 가진 열린 wait를 쥐면 `goal.Eval.ValidWait`가 참을 돌려주고, 평가기는 모든 상한·시계·정체·충족 불가 판정을 마친 **뒤에야** 이를 묻는다 — wait는 차단을 조용히 할 뿐 상한을 우회하지 않으며, 이 턴도 `Progress` 항목을 남겨 정체 가드가 계속 작동한다.
+
+**④ fetch-web 흐름**(SPEC-FETCH-WEB-001). `moai fetch web <url> "<question>"`과 MCP `fetch_web`은 같은 `RunFetchPipeline`을 지난다. 게이트 `workflow.jev.enabled`를 어떤 전송도 만들기 **전에** 읽고, 꺼져 있으면 네트워크 요청 0회·stderr 대체 안내·종료 코드 2다. 켜져 있으면 SSRF 방어 클라이언트(`NewPageClient` — 비공개 주소 거절, 리다이렉트 상한)로 페이지를 가져와 블록으로 나누고(`blocks.go`), 두 단계 Jev로 질문과의 관련도를 점수화해(`scoring.go`) 남긴 블록을 가공하지 않고 돌려준다(`output.go`). 토큰 수는 근사치다. `~/.moai/cache/jev` 디스크 캐시를 풀 수 있으면 쓰고 못 풀면 캐시 없이 네트워크로 진행한다(fail-open); 캐시 적중은 현재 요청의 질문 순서로 재배열하고, 일부 질문만 답한 OK 응답은 저장도 적중 인정도 하지 않는다.
+
+## 이전 흐름 보완 — 4c4217a1 (card t1991 판)
 
 기준 `9286f6b6ba` 뒤 커밋 21개 창에서 움직인 흐름은 셋이다.
 

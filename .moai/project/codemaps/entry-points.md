@@ -1,8 +1,24 @@
 # 진입점
 
-## 현재 진입점 보완 — 4c4217a1 (card t1991 판)
+## 현재 진입점 보완 — 67b4734d6b (card t2061 판)
 
-기준 `9286f6b6ba` 뒤 커밋 21개 창에서 움직인 진입점이다. 새 동사는 하나(`moai todo classify`), 새 플래그는 하나(`--rebind-to`)이고 나머지는 기존 동사의 동작 변화다. 소스 대조 상세는 `modules.md` 현재 변경 경계 절이 운반한다.
+기준 `4c4217a19` 뒤 소스 197개 창에서 움직인 진입점이다. 새 최상위 명령은 `moai af`(공개)·`moai agentic-factory`(숨김)·`moai fetch`·`moai jevmeasure`이고, 새 하위 동사는 `moai factory wait`·`moai factory checkpoint`이며, 새 MCP 도구는 `fetch_web`이다. 소스 대조 상세는 `modules.md` 현재 변경 경계 절이 운반한다.
+
+- `moai af`(`internal/cli/af.go`의 `newAFCmd`가 `internal/cli/root.go`에 등록 — Agentic Factory 카드 흐름, Issue #1948). 로컬 원장 하나만 여는 무의존 명령이라 `root.go`의 deps-free 목록에 `af`가 올랐다. 하위 동사: `claim`(다음 카드를 잡고 id와 fencing epoch 출력)·`move <card>`(잡은 카드를 단계로 이동)·`resume <card>`(재회수 한도에서 장부가 보류한 카드를 운영자 판단으로 재개)·`evidence <card>`(red·green·gate·review·merge 증거를 커밋에 묶어 기록)·`enqueue <card>`(후보 커밋을 병합 큐에 올림)·`release <card>`·`reap`(보유 프로세스가 사라진 카드 회수)와, `internal/cli/af_land.go`의 `land <card>`(검증은 잠금 밖, 트렁크 이동은 잠금 안)·`reconcile`(재시작이 남긴 verifying·landing 큐 행을 git 조상 관계로 정리). 게이트 프로세스는 자기 프로세스 그룹에서 돈다(`af_gate_unix.go`·`af_gate_windows.go`).
+- `moai agentic-factory`(`internal/cli/agentic_factory.go`, `Hidden: true`) — 잠정 뼈대. 이름은 SPEC-AGENTIC-FACTORY-001이 나중에 확정한다.
+- `moai factory wait <card>`(`internal/cli/factory_wait.go`, card t2013) — 대기 사유를 `--on <선행 카드>` 또는 `--operator`로, 깨울 주체를 `--waker <lane|leader|operator>`로 팩토리 기록에 남기고 착지 엣지가 조건을 만족하면 누구를 깨울지 한 번 출력한다. 조건을 바꾸는 동사는 깨움을 **출력만** 하고 전송은 호출한 세션이 한다.
+- `moai factory checkpoint <card>`(`internal/cli/factory_checkpoint.go`, card t2013) — 팩토리 기록과 카드 워크트리의 git 상태로 최소 재개 체크포인트(`key: value`)를 만들어 `.moai/reports/<card>/checkpoint.md`에 쓰고 출력한다.
+- 런처 레인 진입(`internal/cli/cc.go`·`factory.go`·`launcher_retired_entries.go`, card t2021) — `moai cc -l`/`moai glm -l`(`--lane`)이 다음 빈 `lane-<n>` 라벨로 합류하는 유일한 진입이다. 인자를 받지 않고, 한 실행에 진입 토큰은 하나이며(`-f`와 함께면 오류), `-l --name lane-<n>`은 죽은 레인의 재합류다. 옛 `-a`/`--agent`는 제거되어 `-l/--lane`을 알리는 거절문으로 막힌다(`--` 뒤에 와도 거절). 절대 경로 `-w`는 이 저장소의 등록된 워크트리일 때만 재진입하고 아니면 쓰기 전에 거절한다.
+- `moai fetch web <url> "<question>"`(`internal/cli/fetch_web.go`의 `newFetchCmd`, SPEC-FETCH-WEB-001) — 페이지를 가져와 질문에 답하는 원문 발췌를 돌려준다(Jev 점수). `workflow.jev.enabled`가 꺼져 있으면(배포 기본) 네트워크 요청 0회, stderr에 WebFetch 대체 안내를 내고 종료 코드 2다.
+- MCP 도구 `fetch_web`(`internal/cli/mcp_fetch_web.go`, `internal/cli/mcp_server.go`에서 `RunFetchPipeline`으로 연결, `internal/mcp/catalog.go` 등록 `WriteCapable: false`) — CLI와 같은 파이프라인 진입점을 공유하며 같은 게이트 꺼짐 계약을 따른다. 게이트 세션의 읽기 전용 부분집합에는 일부러 넣지 않았다(게이트 세션은 네트워크 읽기를 하지 않는다).
+- `moai jevmeasure bench --cases <cases.json> [--run <run.json>] [--baseline <path>] [--run-out <path>]`(`internal/cli/jevmeasure_cmd.go`, 패키지 `internal/jevmeasure`) — jevfetch 모양의 벤치 케이스를 돌려 포함율과 토큰 절감을 기준선과 비교한다.
+- `moai gate` — 전체 실행 기한을 단계에서 도출하며(`internal/hook/quality/gate_overall_budget.go`의 `OverallBudget`), `gate.yaml`의 `timeouts.total`이 명시적 재정의다(card t2020).
+- stop-goal 훅(`internal/cli/hook_stop_goal.go`·`hook_stop_goal_wait.go`) — 목표가 미충족이어도 세션의 카드가 다음 확인 이벤트를 가진 열린 `factory wait` 기록을 쥐면 턴 종료를 막지 않는다(`goal.Eval.ValidWait`). UserPromptSubmit·PostToolUse 훅은 카드를 쥔 세션에서 30초 제한으로 원장 임대를 갱신한다(`internal/hook/ledger_heartbeat.go`).
+- 웹 콘솔(`moai web`, `internal/cli/web.go`)에 Agentic Factory 읽기 전용 보드와 브라우저 선택 화면이 붙었다(`internal/web/board.go`·`browser_select.go`; `/api/browser`).
+
+## 이전 진입점 보완 — 4c4217a1 (card t1991 판)
+
+기준 `9286f6b6ba` 뒤 커밋 21개 창에서 움직인 진입점이다. 새 동사는 하나(`moai todo classify`), 새 플래그는 하나(`--rebind-to`)이고 나머지는 기존 동사의 동작 변화다. 소스 대조 상세는 `modules.md` 이전 변경 경계(t1991 판) 절이 운반한다.
 
 - `moai todo classify <id> --mode <serial|parallelizable> --reason <text>`(신규, `internal/cli/todo_classify_cmd.go`의 `newTodoClassifyCmd`가 `internal/cli/todo.go`에 등록 — card t1737, SPEC-FACTORY-DEFAULT-MODE-001). 사람의 재분류 판단 하나를 큐의 한 번의 잠금 쓰기로 기록한다. 결정자 플래그는 받지 않고, 거절은 큐 파일을 바이트 단위로 그대로 둔다.
 - `moai factory runs --retire <죽은 런> --rebind-to <산 런>`(신규 플래그, `internal/cli/factory_handoff_recover.go`의 `runRebindRetire` — card t1963). 죽은 런의 진행 중 카드를 산 런으로 옮기고 원본을 은퇴시키는 통합이다. 리더·운영자 전용이라 레인 세션은 거절되고, `--retire` 없이 `--rebind-to`만 주면 아무것도 바꾸지 않고 거절한다. 플래그가 없으면 은퇴 동작은 그대로다.
