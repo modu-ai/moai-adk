@@ -147,27 +147,20 @@ func runMigratePlanOrApply(cmd *cobra.Command, root string, apply, asJSON bool) 
 			progress = newTreeProgress(cmd.ErrOrStderr())
 		}
 		report, err := runMigrationEngineWith(root, apply, "migrate", progress)
+		// The rows are printed BEFORE any error (card t2053, C8): a run that
+		// handled trees and then failed must still say what happened to them.
+		if err == nil || len(report.rows) > 0 {
+			if rerr := printMigrationReport(cmd, report, asJSON); rerr != nil {
+				return rerr
+			}
+		}
 		if err != nil {
 			return err
 		}
-		if asJSON {
-			body, jerr := json.MarshalIndent(report.rows, "", "  ")
-			if jerr != nil {
-				return jerr
+		if report.reversed > 0 || report.failed > 0 || report.interrupted > 0 {
+			if report.interrupted > 0 {
+				return fmt.Errorf("migration completed with %d reversed, %d failed and %d interrupted trees", report.reversed, report.failed, report.interrupted)
 			}
-			_, _ = fmt.Fprintln(cmd.OutOrStdout(), string(body))
-		} else {
-			for _, r := range report.rows {
-				line := fmt.Sprintf("%s\t%s → %s\t[%s]", r.Class, r.Source, r.Destination, r.Outcome)
-				if r.SkipReason != "" {
-					line += " (" + r.SkipReason + ")"
-				}
-				_, _ = fmt.Fprintln(cmd.OutOrStdout(), line)
-			}
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "moved %d, skipped %d, failed %d, reversed %d\n",
-				report.moved, report.skipped, report.failed, report.reversed)
-		}
-		if report.reversed > 0 || report.failed > 0 {
 			return fmt.Errorf("migration completed with %d reversed and %d failed trees", report.reversed, report.failed)
 		}
 		return nil
@@ -176,6 +169,36 @@ func runMigratePlanOrApply(cmd *cobra.Command, root string, apply, asJSON bool) 
 		return run()
 	}
 	return withMigrationLock(root, run)
+}
+
+// printMigrationReport renders the verb's report: the JSON rows, or the text
+// rows, the counts and — when trees failed or were reversed — the journal.
+func printMigrationReport(cmd *cobra.Command, report *migrationReport, asJSON bool) error {
+	if asJSON {
+		body, jerr := json.MarshalIndent(report.rows, "", "  ")
+		if jerr != nil {
+			return jerr
+		}
+		_, _ = fmt.Fprintln(cmd.OutOrStdout(), string(body))
+		return nil
+	}
+	for _, r := range report.rows {
+		line := fmt.Sprintf("%s\t%s → %s\t[%s]", r.Class, r.Source, r.Destination, r.Outcome)
+		if r.SkipReason != "" {
+			line += " (" + r.SkipReason + ")"
+		}
+		_, _ = fmt.Fprintln(cmd.OutOrStdout(), line)
+	}
+	summary := fmt.Sprintf("moved %d, skipped %d, failed %d, reversed %d",
+		report.moved, report.skipped, report.failed, report.reversed)
+	if report.interrupted > 0 {
+		summary += fmt.Sprintf(", interrupted %d", report.interrupted)
+	}
+	_, _ = fmt.Fprintln(cmd.OutOrStdout(), summary)
+	if report.journal != "" && report.failed+report.reversed > 0 {
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "journal: %s (undo with: moai worktree migrate --rollback %s)\n", report.journal, report.journal)
+	}
+	return nil
 }
 
 // migrationRow is one line of the migration report. The fields are exported
@@ -187,6 +210,10 @@ type migrationRow struct {
 	Destination string `json:"destination"`
 	Outcome     string `json:"outcome"`
 	SkipReason  string `json:"skip_reason,omitempty"`
+	// Journal names the journal that records this row's tree when the row is a
+	// failure, a reversal or an interrupted migration: the file --rollback
+	// reads (card t2053, C7).
+	Journal string `json:"journal,omitempty"`
 }
 
 // migrationReport carries the run's outcome counts.
@@ -196,6 +223,11 @@ type migrationReport struct {
 	skipped  int
 	failed   int
 	reversed int
+	// interrupted counts trees a previous run left unfinished (card t2053,
+	// C7); the rerun neither moves nor reports them as clean.
+	interrupted int
+	// journal is this run's journal path ("" when the run wrote none).
+	journal string
 }
 
 // migratePlan is one tree of the plan: the classification drives the
@@ -205,6 +237,10 @@ type migratePlan struct {
 	head, branch        string
 	class               string
 	skip                string
+	// interrupted marks a tree whose last move-list line is an unsettled
+	// `pending` (card t2053, C7); journal names the journal recording it.
+	interrupted bool
+	journal     string
 }
 
 // ErrCommandTimeout marks a subprocess the migration stopped waiting for (card
@@ -362,6 +398,28 @@ func planMigrationFor(root string, now time.Time, apply bool) ([]migratePlan, er
 		} else {
 			p.destination = dest
 		}
+		// A tree the migration left unfinished is not a candidate and not a
+		// stale registration: it is reported as interrupted, naming the journal
+		// that recovers it (card t2053, C7) — never as something to prune.
+		destExists := false
+		if p.destination != "" {
+			_, statErr := os.Lstat(p.destination)
+			destExists = statErr == nil
+		}
+		atDestination := p.destination != "" && worktreeroot.Same(rec.Path, p.destination)
+		if rec.Prunable || destExists || atDestination {
+			if journal, interrupted := interruptedMigration(root, rec.Path, p.destination); interrupted {
+				p.interrupted, p.journal = true, journal
+				p.skip = interruptedReason(root, journal)
+				plans = append(plans, p)
+				continue
+			}
+		}
+		// A tree already standing at its destination has nothing to migrate and
+		// earns no row (C16).
+		if atDestination {
+			continue
+		}
 		// The same skip causes as planLegacyWorktreeMigrationFor.
 		switch {
 		case rec.Prunable:
@@ -394,6 +452,72 @@ func planMigrationFor(root string, now time.Time, apply bool) ([]migratePlan, er
 		plans = append(plans, p)
 	}
 	return plans, nil
+}
+
+// interruptedMigration reports whether the move list's latest location line
+// for a tree touching any of paths is an unsettled `pending` — a migration that
+// started and was never settled, restored or reversed — and the journal that
+// records it (card t2053, C7).
+func interruptedMigration(root string, paths ...string) (string, bool) {
+	latest := map[string]mlRecord{}
+	for _, rec := range loadMoveList(root) {
+		if rec.Ident != "" && isLocationLine(rec.Result) {
+			latest[rec.Ident] = rec
+		}
+	}
+	for ident, rec := range latest {
+		if rec.Result != "pending" {
+			continue
+		}
+		for _, p := range paths {
+			if p != "" && (worktreeroot.Same(rec.OldPath, p) || worktreeroot.Same(rec.NewPath, p)) {
+				return journalRecording(root, ident), true
+			}
+		}
+	}
+	return "", false
+}
+
+// journalRecording is the newest journal under the migration state directory
+// holding a step for ident ("" when none does).
+func journalRecording(root, ident string) string {
+	dir := filepath.Dir(moveListPath(root))
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return ""
+	}
+	for i := len(entries) - 1; i >= 0; i-- {
+		name := entries[i].Name()
+		if !strings.HasSuffix(name, ".json") {
+			continue
+		}
+		data, rerr := os.ReadFile(filepath.Join(dir, name))
+		if rerr != nil {
+			continue
+		}
+		var journal struct {
+			Steps []journalStep `json:"steps"`
+		}
+		if json.Unmarshal(data, &journal) != nil {
+			continue
+		}
+		for _, s := range journal.Steps {
+			if s.Ident == ident {
+				return filepath.Join(dir, name)
+			}
+		}
+	}
+	return ""
+}
+
+// interruptedReason is the row text of an interrupted migration: the way out is
+// the journal's rollback, never `git worktree prune` (which would drop the
+// registration of a tree that still exists at the destination).
+func interruptedReason(root, journal string) string {
+	if journal == "" {
+		journal = filepath.Join(filepath.Dir(moveListPath(root)), "<journal>.json")
+	}
+	return fmt.Sprintf("interrupted migration — run `moai worktree migrate --rollback %s`", journal)
 }
 
 // migrationReport builders
@@ -559,6 +683,12 @@ func runMigrationEngineWith(root string, apply bool, trigger string, progress *t
 			Class: p.class, Source: p.source, Destination: p.destination,
 			Outcome: "planned", SkipReason: p.skip,
 		}
+		if p.interrupted {
+			row.Outcome, row.Journal = "interrupted", p.journal
+			report.interrupted++
+			report.rows = append(report.rows, row)
+			continue
+		}
 		if p.class != string(ClassMoaiMade) {
 			row.Outcome = "skipped"
 			row.SkipReason = "class " + p.class + " is never moved"
@@ -580,6 +710,12 @@ func runMigrationEngineWith(root string, apply bool, trigger string, progress *t
 		progress.tree(treeIndex, p.source)
 		out := migrateOneTree(root, p, mlPath, trigger, journal)
 		row.Outcome, row.SkipReason = out.Outcome, out.Reason
+		if journal != nil && journal.path != "" {
+			report.journal = journal.path
+			if out.Outcome == "failed" || out.Outcome == "reversed" {
+				row.Journal = journal.path
+			}
+		}
 		if mlErr := out.MLErr; mlErr != nil {
 			writeErrs = append(writeErrs, fmt.Sprintf("%s: %v", p.source, mlErr))
 		}
@@ -796,41 +932,56 @@ func runUpdateConsolidation(root string, dryRun bool, out io.Writer) error {
 			progress = newTreeProgress(out)
 		}
 		report, err := runMigrationEngineWith(root, !dryRun, "update", progress)
-		if err != nil {
-			return err
+		// Rows first, error after (card t2053, C8).
+		if err == nil || len(report.rows) > 0 {
+			printUpdateReport(out, report, dryRun)
 		}
-		moved := report.moved
-		if dryRun {
-			for _, r := range report.rows {
-				switch r.Outcome {
-				case "planned":
-					_, _ = fmt.Fprintf(out, "Worktree migration planned %s -> %s\n", r.Source, r.Destination)
-				case "skipped":
-					_, _ = fmt.Fprintf(out, "Worktree migration skipped %s: %s\n", r.Source, r.SkipReason)
-				}
-			}
-			return nil
-		}
-		for _, r := range report.rows {
-			switch r.Outcome {
-			case "skipped":
-				_, _ = fmt.Fprintf(out, "Worktree migration skipped %s: %s\n", r.Source, r.SkipReason)
-			case "failed", "reversed":
-				// A reversed move is a tree that is NOT migrated: the
-				// engine moved it back (AC-WHR-019(f)).
-				_, _ = fmt.Fprintf(out, "Worktree migration failed %s: %s\n", r.Source, r.SkipReason)
-			case "moved":
-				_, _ = fmt.Fprintf(out, "Worktree migration moved %s -> %s\n", r.Source, r.Destination)
-			}
-		}
-		_, _ = fmt.Fprintf(out, "Worktree migration: %d moved, %d skipped, %d failed\n",
-			moved, report.skipped, report.failed+report.reversed)
-		return nil
+		return err
 	}
 	if dryRun {
 		return run()
 	}
 	return withMigrationLock(root, run)
+}
+
+// printUpdateReport renders the update consolidation's lines.
+func printUpdateReport(out io.Writer, report *migrationReport, dryRun bool) {
+	if dryRun {
+		for _, r := range report.rows {
+			switch r.Outcome {
+			case "planned":
+				_, _ = fmt.Fprintf(out, "Worktree migration planned %s -> %s\n", r.Source, r.Destination)
+			case "skipped":
+				_, _ = fmt.Fprintf(out, "Worktree migration skipped %s: %s\n", r.Source, r.SkipReason)
+			case "interrupted":
+				_, _ = fmt.Fprintf(out, "Worktree migration interrupted %s: %s\n", r.Source, r.SkipReason)
+			}
+		}
+		return
+	}
+	for _, r := range report.rows {
+		switch r.Outcome {
+		case "skipped":
+			_, _ = fmt.Fprintf(out, "Worktree migration skipped %s: %s\n", r.Source, r.SkipReason)
+		case "interrupted":
+			_, _ = fmt.Fprintf(out, "Worktree migration interrupted %s: %s\n", r.Source, r.SkipReason)
+		case "failed", "reversed":
+			// A reversed move is a tree that is NOT migrated: the
+			// engine moved it back (AC-WHR-019(f)).
+			_, _ = fmt.Fprintf(out, "Worktree migration failed %s: %s\n", r.Source, r.SkipReason)
+		case "moved":
+			_, _ = fmt.Fprintf(out, "Worktree migration moved %s -> %s\n", r.Source, r.Destination)
+		}
+	}
+	summary := fmt.Sprintf("Worktree migration: %d moved, %d skipped, %d failed",
+		report.moved, report.skipped, report.failed+report.reversed)
+	if report.interrupted > 0 {
+		summary += fmt.Sprintf(", %d interrupted", report.interrupted)
+	}
+	_, _ = fmt.Fprintln(out, summary)
+	if report.journal != "" && report.failed+report.reversed > 0 {
+		_, _ = fmt.Fprintf(out, "Worktree migration journal: %s (undo with: moai worktree migrate --rollback %s)\n", report.journal, report.journal)
+	}
 }
 
 // m6ReverseMove runs the one reverse order — move back, re-key back, rebind
@@ -1034,10 +1185,30 @@ func rebindCardForPath(root, oldPath, newPath string) error {
 	if err != nil {
 		return fmt.Errorf("find the card recording %s: %w", oldPath, err)
 	}
+	recorded := oldPath
 	if !ok {
+		// The binding may be recorded under another spelling of the same
+		// directory (card t2053, C10): match canonically and rebind from the
+		// spelling the row actually carries.
+		bindings, berr := db.CardWorktreeBindings(context.Background())
+		if berr != nil {
+			return fmt.Errorf("list the card bindings: %w", berr)
+		}
+		want := worktreeroot.CanonicalSpelling(oldPath)
+		for _, b := range bindings {
+			if worktreeroot.CanonicalSpelling(b.Path) == want {
+				cardID, recorded, ok = b.CardID, b.Path, true
+				break
+			}
+		}
+		if !ok {
+			return nil
+		}
+	}
+	if recorded == newPath {
 		return nil
 	}
-	_, err = db.RebindCardWorktree(context.Background(), cardID, oldPath, newPath, "worktree-migrate", time.Now())
+	_, err = db.RebindCardWorktree(context.Background(), cardID, recorded, newPath, "worktree-migrate", time.Now())
 	return err
 }
 
@@ -1528,25 +1699,17 @@ func captureLegacyManifest(tree string) string {
 		ContentDigest string
 	}
 	var m legacyManifest
-	timedOut := false
-	git := func(args ...string) string {
-		if timedOut {
-			return ""
-		}
-		out, err := listGitOutput(tree, args...)
-		if err != nil && errors.Is(err, ErrCommandTimeout) {
-			timedOut = true
-		}
-		return out
-	}
-	m.HEAD = strings.TrimSpace(git("rev-parse", "HEAD"))
-	m.Branch = strings.TrimSpace(git("rev-parse", "--abbrev-ref", "HEAD"))
-	m.Unpushed = git("rev-list", "HEAD", "--not", "--remotes")
+	g := &manifestGit{tree: tree}
+	git := func(args ...string) string { return g.run(false, args...) }
+	gitHEAD := func(args ...string) string { return g.run(true, args...) }
+	m.HEAD = strings.TrimSpace(gitHEAD("rev-parse", "HEAD"))
+	m.Branch = strings.TrimSpace(gitHEAD("rev-parse", "--abbrev-ref", "HEAD"))
+	m.Unpushed = gitHEAD("rev-list", "HEAD", "--not", "--remotes")
 	m.Status = git("status", "--porcelain")
 	m.Diff = git("diff", "--cached") + git("diff")
 	untracked := splitNul(git("ls-files", "--others", "-z"))
 	ignored := splitNul(git("ls-files", "--others", "--ignored", "--exclude-standard", "-z"))
-	if timedOut {
+	if g.err != nil {
 		return ""
 	}
 	m.IgnoredCount = len(ignored)
@@ -1563,6 +1726,45 @@ func captureLegacyManifest(tree string) string {
 	}
 	sum := sha256.Sum256(b)
 	return hex.EncodeToString(sum[:])
+}
+
+// manifestGit runs the git reads of a manifest capture and remembers the first
+// failure (card t2053, C9). A manifest read in which any git call exited
+// non-zero — or timed out — proves nothing about the tree: two such captures
+// would compare equal and certify a tree nobody inspected. The one benign
+// failure is an unborn HEAD, where the HEAD-relative reads fail by nature.
+type manifestGit struct {
+	tree   string
+	err    error
+	unborn *bool
+}
+
+// run executes one git read; headRelative marks a read that fails on an unborn
+// HEAD without that meaning anything.
+func (g *manifestGit) run(headRelative bool, args ...string) string {
+	if g.err != nil {
+		return ""
+	}
+	out, err := listGitOutput(g.tree, args...)
+	if err == nil {
+		return out
+	}
+	if headRelative && !errors.Is(err, ErrCommandTimeout) && g.unbornHEAD() {
+		return out
+	}
+	g.err = fmt.Errorf("git %s: %w", args[0], err)
+	return out
+}
+
+// unbornHEAD reports whether HEAD names a branch that has no commit yet.
+func (g *manifestGit) unbornHEAD() bool {
+	if g.unborn == nil {
+		_, symErr := listGitOutput(g.tree, "symbolic-ref", "-q", "HEAD")
+		_, verErr := listGitOutput(g.tree, "rev-parse", "--verify", "-q", "HEAD")
+		unborn := symErr == nil && verErr != nil
+		g.unborn = &unborn
+	}
+	return *g.unborn
 }
 
 // captureManifestChecked is captureManifest plus the reason a manifest could
@@ -1590,21 +1792,13 @@ func captureManifestChecked(tree string) (string, error) {
 // equal and certify a tree nobody inspected.
 func captureTreeManifest(tree string) (treeManifest, error) {
 	var m treeManifest
-	var timedOut error
-	git := func(args ...string) string {
-		if timedOut != nil {
-			return ""
-		}
-		out, err := listGitOutput(tree, args...)
-		if err != nil && errors.Is(err, ErrCommandTimeout) {
-			timedOut = fmt.Errorf("git %s: %w", args[0], err)
-		}
-		return out
-	}
+	g := &manifestGit{tree: tree}
+	git := func(args ...string) string { return g.run(false, args...) }
+	gitHEAD := func(args ...string) string { return g.run(true, args...) }
 
-	m.HEAD = strings.TrimSpace(git("rev-parse", "HEAD"))
-	m.Branch = strings.TrimSpace(git("rev-parse", "--abbrev-ref", "HEAD"))
-	m.Unpushed = git("rev-list", "HEAD", "--not", "--remotes")
+	m.HEAD = strings.TrimSpace(gitHEAD("rev-parse", "HEAD"))
+	m.Branch = strings.TrimSpace(gitHEAD("rev-parse", "--abbrev-ref", "HEAD"))
+	m.Unpushed = gitHEAD("rev-list", "HEAD", "--not", "--remotes")
 	m.Status = git("status", "--porcelain")
 	// The tracked-change content (REQ-WHR-017's content digest over the
 	// tracked-change diff — card t1640 review F7): a content mutation that
@@ -1616,8 +1810,8 @@ func captureTreeManifest(tree string) (treeManifest, error) {
 
 	untracked := splitNul(git("ls-files", "--others", "--exclude-standard", "-z"))
 	ignored := splitNul(git("ls-files", "--others", "--ignored", "--exclude-standard", "-z"))
-	if timedOut != nil {
-		return m, timedOut
+	if g.err != nil {
+		return m, g.err
 	}
 	m.IgnoredCount = len(ignored)
 	m.ContentDigest = hashUntrackedContent(tree, untracked)
