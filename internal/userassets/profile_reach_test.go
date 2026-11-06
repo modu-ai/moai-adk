@@ -586,7 +586,7 @@ func TestRealProfileDirNamesUnreadableBase(t *testing.T) {
 		t.Errorf("ResolveRoots error must name the store path %s; got %v", store, err)
 	}
 	if _, err := ClaudeConfigRoots(f.home); err == nil {
-		t.Error("ClaudeConfigRoots must error on an unreadable store, not return the bare ~/.claude")
+		t.Error("ClaudeConfigRoots must error on an unreadable store, not return the bare default root")
 	}
 	names, err := RealProfileDirNames(f.home)
 	if err == nil {

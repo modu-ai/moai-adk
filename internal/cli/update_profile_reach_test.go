@@ -107,7 +107,7 @@ func TestEnsureGlobalSettingsEnv_ProfileConfigRootsReach(t *testing.T) {
 	}
 	// The default root has no settings file — none is created.
 	if _, err := os.Stat(filepath.Join(tmp, ".claude", "settings.json")); !os.IsNotExist(err) {
-		t.Errorf("~/.claude/settings.json should not be created, stat err = %v", err)
+		t.Errorf("the default root's settings.json should not be created, stat err = %v", err)
 	}
 }
 
@@ -256,7 +256,7 @@ func TestUpdateGlobalSettingsEnv_UnreadableProfileStoreErrors(t *testing.T) {
 
 	err := ensureGlobalSettingsEnv()
 	if err == nil {
-		t.Fatal("ensureGlobalSettingsEnv must propagate an unreadable profile store, not clean ~/.claude only")
+		t.Fatal("ensureGlobalSettingsEnv must propagate an unreadable profile store, not clean the default root only")
 	}
 	if !strings.Contains(err.Error(), store) {
 		t.Errorf("error must name the store path %s; got %v", store, err)
@@ -279,6 +279,7 @@ func TestDoctorSkillReachCustomConfigDirGuidance(t *testing.T) {
 	if strings.Contains(check.Message, "run 'moai update'") {
 		t.Errorf("advice is not actionable for a config dir outside moai's install roots: %q", check.Message)
 	}
+	// home-guard:allow asserts the wording of the doctor advice, not a home access
 	if !strings.Contains(check.Message, "claude-profiles") || !strings.Contains(check.Message, "~/.claude") {
 		t.Errorf("guidance must name moai's managed root families: %q", check.Message)
 	}
