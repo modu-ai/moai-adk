@@ -57,3 +57,24 @@
 
 ### Residual risk
 - A clean auto-merge whose semantics interact between main's and the card's changes in one file is not detectable by text-level checks.
+
+## Repair round 2 (sync-audit-iter2 FAIL 0.77, G1 blocking)
+
+### Changes
+- RED `4ed05288c1`: `internal/factorylane/merge_specless_repair2_t2121_test.go`; verbatim failing run in `.moai/reports/t2121/red-repair2-output.txt` (N8 `-X ours` absorb and N4c deleted-main-file absorb: `sync-audit passed=true, want false`).
+- GREEN `de262310a7`: `checkSyncAuditVerdictFile` now calls `absorbOnlyChange` when audited != HEAD and either a path outside the evidence dir differs, or `git rev-list --min-parents=2 audited..HEAD` lists a merge, or that listing fails (fail-closed). Evidence-dir-only history with no merge keeps the old path.
+- Tests: N8, N4c refuse; N2a, N3a clean absorbs pass; no-merge evidence-dir-only passes; G3 `BinaryPinned` (merge driver injects binary content) and `TextconvPinned` (merge driver injects text under a constant textconv).
+- Mutants run by temporary edit, source restored (diff is only the G1 change): dropping `--binary` fails `TestT2121AbsorbRepair2BinaryPinned`; dropping `--no-textconv` fails `TestT2121AbsorbRepair2TextconvPinned`. Both killed.
+
+### Result tails
+- `go test ./internal/factorylane/ -count=1` -> `ok  github.com/modu-ai/moai-adk/internal/factorylane 77.373s`
+- `go test ./internal/cli/ -run MergeReady -count=1` -> `ok ... 28.566s`
+- `go test ./internal/cli/ -run SpecLess -count=1` -> `ok ... 16.001s`
+- `go test ./internal/cli/ -run FactoryMerge -count=1` -> `ok ... 17.493s`
+- `go vet ./internal/factorylane/` exit 0; `gofmt -l internal/factorylane` empty.
+
+### Gaps
+- G2 (a `refs/tags/main` tag shadowing the `main` branch in `develop+"^{commit}"`) is NOT touched; follow-up card candidate (resolve via `refs/heads/<develop>`).
+- G3 tests rely on a POSIX shell for the merge driver and textconv; skipped on Windows.
+- Repo-wide and full `./internal/cli/` suites not run; CI owns that verdict (PENDING). Tests ran from this tree via `go test`.
+- The G1 fix commit's `git commit` was refused once by the worktree guard as a compound command; reran as separate commands.
