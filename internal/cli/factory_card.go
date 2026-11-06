@@ -925,20 +925,22 @@ func factoryCardQueueTitle(root, cardID string) string {
 }
 
 // factoryCardQueueBaseSHA returns the card's recorded base SHA (card t2058: a
-// repair card's failed release-CI candidate), or "" when the card carries none
-// or the queue cannot be read — a card without a base is cut from the
-// configured base branch exactly as before.
-func factoryCardQueueBaseSHA(root, cardID string) string {
+// repair card's failed release-CI candidate). "" with a nil error means the
+// card carries none — it is cut from the configured base branch exactly as
+// before. A queue that cannot be read is an ERROR, never "no base": the lease
+// could not tell a repair card from an ordinary one and would cut the repair
+// from the wrong base.
+func factoryCardQueueBaseSHA(root, cardID string) (string, error) {
 	rec, err := todoReadStoreAt(root).LoadPure()
 	if err != nil {
-		return ""
+		return "", fmt.Errorf("read the card's base SHA from the queue: %w", err)
 	}
 	for _, it := range rec.Items {
 		if it.ID == cardID && it.Issuance != nil {
-			return strings.TrimSpace(it.Issuance.BaseSHA)
+			return strings.TrimSpace(it.Issuance.BaseSHA), nil
 		}
 	}
-	return ""
+	return "", nil
 }
 
 // factoryEnsureCardWorktree is the REQ-SD-011 record step of a successful
@@ -961,7 +963,11 @@ func factoryEnsureCardWorktree(ctx context.Context, root, runID string, card hom
 		return "", false, errors.New("worktree creator is not initialized")
 	}
 	slug := factoryWorktreeSlug(card.CardID, factoryCardQueueTitle(root, card.CardID), card.SpecID)
-	wt, err := factoryCreateAndRenameWorktreeAt(root, card.CardID, slug, factoryCardQueueBaseSHA(root, card.CardID), out)
+	baseSHA, err := factoryCardQueueBaseSHA(root, card.CardID)
+	if err != nil {
+		return "", false, err
+	}
+	wt, err := factoryCreateAndRenameWorktreeAt(root, card.CardID, slug, baseSHA, out)
 	if err != nil {
 		return "", false, err
 	}

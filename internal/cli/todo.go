@@ -916,6 +916,12 @@ func newTodoAddCmd() *cobra.Command {
 			// BEFORE the pick branch (card t1454 card-review r2 finding 7):
 			// `--pick` carries the issuance flags too — an early return here
 			// left them unvalidated and unsaved.
+			// card t2058: a base the caller asked for but left blank (an unset
+			// shell variable) is an error, never "no base" — the lease would
+			// cut the repair from the configured branch, the wrong base.
+			if scan.haveBaseSHA && strings.TrimSpace(scan.baseSHA) == "" {
+				return fmt.Errorf("todo add: --base-sha needs a full 40-hex commit SHA (got an empty value)")
+			}
 			var iss *factory.BacklogIssuance
 			if scan.haveOrigin || scan.haveParent || scan.haveSizeLines || scan.haveFiles || scan.haveBaseSHA {
 				iss = &factory.BacklogIssuance{Origin: scan.origin, SpawnedBy: scan.parent, BaseSHA: strings.TrimSpace(scan.baseSHA)}
