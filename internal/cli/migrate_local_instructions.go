@@ -16,6 +16,10 @@ import (
 // migration; the verb never writes a second backup for the same file.
 const localInstructionsBackupDir = ".moai/backups/local-instructions"
 
+// migratePreRemoveHook is a test-only seam (card t2117 C2); see its call site
+// in migrateLocalInstructions. Never set outside tests.
+var migratePreRemoveHook func()
+
 func init() { migrateCmd.AddCommand(newMigrateLocalInstructionsCmd(findProjectRoot)) }
 
 // newMigrateLocalInstructionsCmd builds `moai migrate local-instructions`, the
@@ -85,6 +89,13 @@ func migrateLocalInstructions(root string, out io.Writer, now time.Time) error {
 	}
 	if err := writeExclusive(agentsPath, body, perm); err != nil {
 		return fmt.Errorf("write %s: %w", codexLocalInstructionName, err)
+	}
+	// migratePreRemoveHook is the deterministic test seam for the read->remove
+	// race (card t2117 C2): tests set it to interpose a write to CLAUDE.local.md
+	// between the destination write and the source remove. Nil in production;
+	// calling it there is a no-op.
+	if migratePreRemoveHook != nil {
+		migratePreRemoveHook()
 	}
 	if err := os.Remove(claudePath); err != nil {
 		// Leaving both files would recreate the coexistence the verb exists to end.

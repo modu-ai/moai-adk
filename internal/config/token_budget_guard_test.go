@@ -344,6 +344,38 @@ func TestAlwaysLoadedSurfaceEnumeration(t *testing.T) {
 	}
 }
 
+// TestAlwaysLoadedSurfaceIncludesLocalAndImports (card t2117 C3): the real
+// always-loaded prefix also carries the repo-root local instruction file and
+// the @-import closure of the instruction anchor. The surface must enumerate
+// both, resolving a relative import against the IMPORTING file's directory
+// (docs/extra.md importing ./leaf.md means docs/leaf.md, not root/leaf.md).
+func TestAlwaysLoadedSurfaceIncludesLocalAndImports(t *testing.T) {
+	root := t.TempDir()
+	// The enumeration helper walks the rules tree; it must exist (empty here —
+	// this test is about the local-file and import-closure members).
+	if err := os.MkdirAll(filepath.Join(root, ".claude", "rules", "moai"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeFile(t, filepath.Join(root, "AGENTS.md"), "# Agents\n\n@docs/extra.md\n")
+	writeFile(t, filepath.Join(root, "AGENTS.local.md"), "# Local\n")
+	writeFile(t, filepath.Join(root, "docs", "extra.md"), "# Extra\n\n@./leaf.md\n")
+	writeFile(t, filepath.Join(root, "docs", "leaf.md"), "# Leaf\n")
+
+	surface, err := alwaysLoadedSurface(root)
+	if err != nil {
+		t.Fatalf("alwaysLoadedSurface: %v", err)
+	}
+	for _, want := range []string{
+		filepath.Join(root, "AGENTS.local.md"),
+		filepath.Join(root, "docs", "extra.md"),
+		filepath.Join(root, "docs", "leaf.md"),
+	} {
+		if !slices.Contains(surface, want) {
+			t.Errorf("always-loaded surface omits %s (local instruction file / @-import closure member)", want)
+		}
+	}
+}
+
 // TestHasPathsRestriction covers the frontmatter predicate incl. the AC-TEF-004
 // edge: a file with malformed/unterminated frontmatter is treated conservatively
 // as always-loaded (NOT restricted → counted).
