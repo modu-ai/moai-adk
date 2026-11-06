@@ -201,6 +201,12 @@ func specLessEvidenceRel(repoDir, card string) string {
 // a file main also touched legitimately change on absorb, and hunk line numbers
 // shift when main inserts lines earlier in the file, while the removed/added
 // lines themselves are what the audit read. Anything unresolvable fails closed.
+//
+// Blanking the hunk positions cannot see a card hunk moved to another place, so
+// each absorb merge is also re-derived: merging its two parents again must give
+// exactly the merge's own tree (remergeMismatch). The blanking stays — without
+// it a clean absorb where main inserts lines before the card's hunk would be
+// refused (TestT2121AbsorbRepair/P10).
 func absorbOnlyChange(git GitRunner, develop, audited, head, card string) (bool, string) {
 	if strings.TrimSpace(develop) == "" {
 		return false, "the integration branch is unknown"
@@ -222,10 +228,16 @@ func absorbOnlyChange(git GitRunner, develop, audited, head, card string) (bool,
 			continue
 		}
 		if len(f) > 2 { // a merge: every merged-in parent must already be in develop
+			if len(f) > 3 {
+				return false, fmt.Sprintf("merge %s is an octopus merge (%d parents), which is not a plain absorb of %s", f[0], len(f)-1, develop)
+			}
 			for _, p := range f[2:] {
 				if _, err := git.Git("merge-base", "--is-ancestor", p, dev); err != nil {
 					return false, fmt.Sprintf("merge %s brings in %s, which is not part of %s", f[0], p, develop)
 				}
+			}
+			if why := remergeMismatch(git, f[0], f[1], f[2]); why != "" {
+				return false, why
 			}
 			continue
 		}
@@ -254,13 +266,42 @@ func absorbOnlyChange(git GitRunner, develop, audited, head, card string) (bool,
 	return true, ""
 }
 
+// remergeMismatch re-merges the two parents of an absorb merge with
+// `git merge-tree --write-tree` and returns a refusal reason, or "" when the
+// result equals the merge commit's tree. A conflicting re-merge (exit 1) means
+// the merge carried hand-resolved content; any other failure — including a git
+// older than 2.38, which lacks --write-tree — fails closed.
+func remergeMismatch(git GitRunner, merge, p1, p2 string) string {
+	out, err := git.Git("merge-tree", "--write-tree", p1, p2)
+	if err != nil {
+		var exitErr *GitExitError
+		if errors.As(err, &exitErr) && exitErr.ExitCode == 1 {
+			return fmt.Sprintf("merge %s was resolved by hand: re-merging its parents conflicts", merge)
+		}
+		return fmt.Sprintf("merge %s cannot be re-derived (fail-closed; `git merge-tree --write-tree` needs git >= 2.38): %v", merge, err)
+	}
+	want, _, _ := strings.Cut(strings.TrimSpace(out), "\n")
+	got, err := git.Git("rev-parse", "--verify", merge+"^{tree}")
+	if err != nil {
+		return fmt.Sprintf("merge %s tree could not be read: %v", merge, err)
+	}
+	if strings.TrimSpace(want) != strings.TrimSpace(got) {
+		return fmt.Sprintf("merge %s differs from a plain re-merge of its parents (tree %s, expected %s)", merge, strings.TrimSpace(got), strings.TrimSpace(want))
+	}
+	return ""
+}
+
 // cardPatch returns the normalized card diff of tip against its merge-base with dev.
 func cardPatch(git GitRunner, dev, tip, evidenceDir string) (string, error) {
 	base, err := git.Git("merge-base", dev, tip)
 	if err != nil || strings.TrimSpace(base) == "" {
 		return "", fmt.Errorf("no merge-base between %s and %s: %v", dev, tip, err)
 	}
-	out, err := git.Git("diff", "--no-ext-diff", "--no-color", "--no-renames", "-U0", strings.TrimSpace(base), tip, "--", ".", ":(exclude)"+evidenceDir)
+	// --binary puts blob content into the patch (a binary or -diff file would
+	// otherwise print only "Binary files differ", its sole change signal being
+	// the index line dropped below); --no-textconv keeps a textconv driver from
+	// hiding content.
+	out, err := git.Git("diff", "--no-ext-diff", "--no-textconv", "--binary", "--no-color", "--no-renames", "-U0", strings.TrimSpace(base), tip, "--", ".", ":(exclude)"+evidenceDir)
 	if err != nil {
 		return "", fmt.Errorf("the card diff at %s could not be computed: %v", tip, err)
 	}
