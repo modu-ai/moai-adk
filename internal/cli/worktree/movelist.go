@@ -510,9 +510,7 @@ func appendMoveListLine(mlPath, line string) error {
 	return nil
 }
 
-// revLines returns the non-empty lines of the file, last first. It used to
-// return them in file order under this same comment, so the duplicate check
-// compared a new line with the FIRST line of the file (card t2106).
+// revLines returns the non-empty lines of the file, last first.
 func revLines(data string) []string {
 	lines := strings.Split(data, "\n")
 	var out []string
@@ -520,9 +518,6 @@ func revLines(data string) []string {
 		if strings.TrimSpace(lines[i]) != "" {
 			out = append(out, lines[i])
 		}
-	}
-	for i, j := 0, len(out)-1; i < j; i, j = i+1, j-1 {
-		out[i], out[j] = out[j], out[i]
 	}
 	return out
 }
