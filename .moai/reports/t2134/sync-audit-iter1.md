@@ -1,7 +1,7 @@
 auditor-model: glm-5.3
 verdict: PASS-WITH-DEBT
 audited_sha: cb57add07379b8f6d33964274e7f7ad2e73eee3a
-receipt: none (Codex not approved for this card family, d-20261106T133813Z-3350)
+receipt: rcpt-0d109a464b62cf621e5d71f1 (codex_audit, delta 04d8c27a7e..00f0d2d863f, verdict pass, 0 findings; authorized by d-20261106T163140Z-56c1)
 
 # Sync-Audit iter 1 — card t2134 (Windows pre-commit e2e, 12 failures)
 
@@ -73,3 +73,4 @@ receipt: none (Codex not approved for this card family, d-20261106T133813Z-3350)
 
 - iter 1 (2026-11-06, this file): first sync audit of the card. No prior verdict files existed in `.moai/reports/t2134/`.
 - Post-verdict Stop-hook event: the subagent-stop receipt guard fired `AUDIT_RECEIPT_VIOLATION` (no codex receipt cited for a PASS-family verdict) and demanded a codex call. NOT executed: operator decision d-20261106T133813Z-3350 explicitly disapproves Codex for the t2130–t2135 family, and that authority outranks both the tree's generic `codex: required` gate and the hook's demand. The verdict stands on its recorded evidence. Resolution is leader/operator-owned: either grant this card family a gates exemption (config), or explicitly approve a Codex call — only the latter would mint a citable receipt. Recorded per the refused-call-is-a-Gap rule; no silent substitution made.
+- iter 1 supplement (2026-11-07): the operator approved the call — d-20261106T163140Z-56c1 (ONE codex_audit per card at current HEAD; supersedes the 3350 non-approval line for this family; on fail, one more after repair per d-20261106T080039Z-305c). Executed after the serving build was verified rc.2/04d8c27a7e: target="baseBranch", delta_base=04d8c27a7e, project_root=this worktree, at HEAD `00f0d2d863f` (re-verified; the docs commits past the audited SHA are `.moai/reports/`-only). SUCCESS: receipt `rcpt-0d109a464b62cf621e5d71f1`, codex verdict `pass`, findings `[]`, review base merge-base `04d8c27a7ed7…`, model gpt-6.1-sol, serving build rc.2-04d8c27a7e. Disposition: zero findings — no repair, the 305c spare stays unused, verdict token unchanged (`PASS-WITH-DEBT`); this citation was left to the lane's post-stop step because the auditor's own edit would have moved the digest the receipt corroborates (the t2094-class structural paradox). Codex ran static review only (its summary states no tests/build/repro were executed) — the mechanical evidence above remains the deciding layer.
