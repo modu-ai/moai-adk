@@ -230,12 +230,12 @@ func parseOwnershipBatch(r io.Reader) (*ownershipBatch, error) {
 		seg := ownershipSeg{oldPath: segOld}
 		if newStat != "" {
 			seg.rec = &ownershipTransitionRecord{
-				PreviousStatus:  oldStatus,
-				CurrentStatus:   newStat,
-				CommitSubject:   meta.subject,
-				CommitSHA:       meta.hash,
-				AuthoredByAgent: parseAuthoredByAgent(meta.body),
+				PreviousStatus: oldStatus,
+				CurrentStatus:  newStat,
+				CommitSubject:  meta.subject,
+				CommitSHA:      meta.hash,
 			}
+			applyTrailerAttribution(seg.rec, meta.body)
 		}
 		b.byPath[segPath] = append(b.byPath[segPath], len(b.segs))
 		b.segs = append(b.segs, seg)

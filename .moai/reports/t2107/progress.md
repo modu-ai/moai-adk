@@ -26,3 +26,15 @@
 
 ## Residual-risk
 Treating a multi-actor squash body as `unmeasured` reduces the rule's reach for squash-merged SPEC transitions (they become Info, not Warning). That is the honest state: ownership cannot be attributed from a squash body. A stronger option (tie the status hunk to its sub-commit trailer) would need the pre-squash history, which this repository does not keep on the first-parent line.
+
+## Implementation (after the batch FF; main b25adf4fca absorbed --no-ff)
+- RED/GREEN: `internal/spec/lint_ownership_squash_t2107_test.go` (multi-actor squash body -> Info Unmeasured naming the actors; one distinct actor repeated stays judged, wrong one stays Invalid; single trailer and no trailer unchanged; batched lookup equals the per-SPEC oracle; `distinctAuthoredByAgents` unit). Pre-fix the multi-actor body produced Invalid (first trailer rule); observed: the first RED run failed on the actor-naming assertion once record wiring existed, and the pre-wiring behaviour is the measured 55b20438fd false positive.
+- Code: `distinctAuthoredByAgents` + `applyTrailerAttribution` + record field `AmbiguousActors` in `lint_ownership.go`; both lookups (per-SPEC and batched `lint_ownership_batch.go`) use the helper; `Check` reports Unmeasured for ambiguous bodies before the no-trailer branch.
+- Verification: `go test ./internal/spec -count=1` exit 0 (whole package); focused `-run 'Ownership|LintGitBatch|AuthoredBy|SplitGitLog'` ok.
+- Real history (binary built from this tree, by path): `moai spec lint SPEC-FACTORY-COMPLETION-RECOVERY-001` -> `INFO OwnershipTransitionUnmeasured ... commit 55b20438fd...` (no warning).
+- Doc: spec-frontmatter-schema.md Unmeasured sentence extended (local + template mirror).
+
+## Gaps (implementation)
+- The `lint.skip` of t2105 is NOT in this tree (t2105 is not absorbed; it was left out of the batch), so its removal cannot be done here; it must follow t2105's landing (one-line frontmatter correction through manager-spec re-delegation). The real-history check above ran without any skip.
+- Corpus-wide lint with the baseline (long run) not yet run; the baseline file is untouched.
+- Template/local parity test and `go vet` not yet run on the final tree.
