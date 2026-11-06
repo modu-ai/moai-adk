@@ -24,6 +24,9 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
+
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // stressWorld is a repository with n registered trees under <repo>/.moai/worktrees
@@ -264,4 +267,218 @@ func TestGitWorktreeMove_TheSameTreeMovedTwiceAtOnceFailsForOne(t *testing.T) {
 		w.trees[0] = dstB
 	}
 	w.verifyAgainstGit(t, 1)
+}
+
+// ---- the engine's batches ----
+
+// countingMover replaces the forward move with one that records how many moves
+// are in flight at once and holds each call until a second one is in flight (or
+// two seconds pass), so overlap is observed rather than hoped for.
+func countingMover(t *testing.T) (peak *int32, restore func()) {
+	t.Helper()
+	orig := forwardGitMove
+	var inFlight, high int32
+	forwardGitMove = func(root, from, to string) error {
+		n := atomic.AddInt32(&inFlight, 1)
+		for {
+			p := atomic.LoadInt32(&high)
+			if n <= p || atomic.CompareAndSwapInt32(&high, p, n) {
+				break
+			}
+		}
+		for deadline := time.Now().Add(2 * time.Second); time.Now().Before(deadline) && atomic.LoadInt32(&inFlight) < 2; {
+			time.Sleep(5 * time.Millisecond)
+		}
+		err := orig(root, from, to)
+		atomic.AddInt32(&inFlight, -1)
+		return err
+	}
+	return &high, func() { forwardGitMove = orig }
+}
+
+func TestMigrationEngine_MovesABatchTogetherAndFinishesInPlanOrder(t *testing.T) {
+	w := pipelineWorld(t, 6)
+	peak, restore := countingMover(t)
+	t.Cleanup(restore)
+
+	report := applyUnderLock(t, w)
+
+	if report.moved < 7 {
+		t.Fatalf("moved %d trees; the world has at least 7 movable", report.moved)
+	}
+	if got := atomic.LoadInt32(peak); got < 2 {
+		t.Errorf("git worktree move ran one tree at a time (peak %d); a batch should overlap", got)
+	} else if int(got) > config.DefaultWorktreeMigrateMoveConcurrency {
+		t.Errorf("peak %d moves in flight exceeds the cap %d", got, config.DefaultWorktreeMigrateMoveConcurrency)
+	}
+	// Rows and the move list keep the plan's order.
+	var rowNames []string
+	for _, r := range report.rows {
+		if r.Outcome == "moved" {
+			rowNames = append(rowNames, filepath.Base(r.Source))
+		}
+	}
+	ml, err := loadMoveList(w.repo)
+	if err != nil {
+		t.Fatalf("move list: %v", err)
+	}
+	var recorded []string
+	for _, e := range ml {
+		if e.Result == "moved" {
+			recorded = append(recorded, filepath.Base(e.OldPath))
+		}
+	}
+	if strings.Join(rowNames, ",") != strings.Join(recorded, ",") {
+		t.Errorf("move-list order %v differs from the report's %v", recorded, rowNames)
+	}
+	// Nothing is left pending in the journal.
+	for _, j := range journalsOf(t, w.repo) {
+		for _, s := range t2053ReadJournalSteps(t, j) {
+			if s.Outcome == "pending" {
+				t.Errorf("journal step for %s is still pending after a complete run", s.OldPath)
+			}
+		}
+	}
+}
+
+func TestMigrationEngine_ConcurrencyOneIsTheOldSerialRun(t *testing.T) {
+	w := pipelineWorld(t, 4)
+	orig := moveConcurrency
+	moveConcurrency = 1
+	t.Cleanup(func() { moveConcurrency = orig })
+	var inFlight, peak int32
+	origMove := forwardGitMove
+	forwardGitMove = func(root, from, to string) error {
+		n := atomic.AddInt32(&inFlight, 1)
+		if n > atomic.LoadInt32(&peak) {
+			atomic.StoreInt32(&peak, n)
+		}
+		time.Sleep(20 * time.Millisecond)
+		err := origMove(root, from, to)
+		atomic.AddInt32(&inFlight, -1)
+		return err
+	}
+	t.Cleanup(func() { forwardGitMove = origMove })
+
+	report := applyUnderLock(t, w)
+	if report.moved < 5 {
+		t.Fatalf("moved %d trees", report.moved)
+	}
+	if peak != 1 {
+		t.Errorf("a cap of 1 must keep moves strictly serial; peak %d", peak)
+	}
+}
+
+func journalsOf(t *testing.T, repo string) []string {
+	t.Helper()
+	matches, err := filepath.Glob(filepath.Join(repo, ".moai", "state", "worktree-migrate", "*.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return matches
+}
+
+// stopAt makes the engine stop at the named batch phase, as a kill there would.
+func stopAt(phase string) (restore func(), seen *[]string) {
+	orig := migrationBatchHook
+	var sources []string
+	migrationBatchHook = func(p string, s []string) error {
+		if p == phase {
+			sources = append([]string(nil), s...)
+			return fmt.Errorf("stopped at %s", phase)
+		}
+		return nil
+	}
+	return func() { migrationBatchHook = orig }, &sources
+}
+
+// A run killed after a batch's pending lines but before any of its moves leaves
+// several trees pending at once, every one still at its source. The rerun must
+// settle each earlier step and move them all.
+func TestMigrationEngine_StoppedAfterAWholeBatchIsPreparedThenRerunMovesEverything(t *testing.T) {
+	w := pipelineWorld(t, 5)
+	restore, sources := stopAt("prepared")
+	err := withMigrationLock(w.repo, func() error {
+		_, rerr := runMigrationEngineWith(w.repo, true, "migrate", nil)
+		return rerr
+	})
+	restore()
+	if err == nil {
+		t.Fatalf("the injected stop did not stop the run")
+	}
+	if len(*sources) < 2 {
+		t.Fatalf("the batch held %d trees; the scenario needs several", len(*sources))
+	}
+	pending := 0
+	for _, j := range journalsOf(t, w.repo) {
+		for _, s := range t2053ReadJournalSteps(t, j) {
+			if s.Outcome == "pending" {
+				pending++
+			}
+		}
+	}
+	if pending < len(*sources) {
+		t.Errorf("journal holds %d pending steps for a batch of %d", pending, len(*sources))
+	}
+	for _, src := range *sources {
+		if _, serr := os.Stat(src); serr != nil {
+			t.Errorf("a tree of the batch left its source before any move: %v", serr)
+		}
+	}
+
+	// The rerun (the operator runs `moai migrate --apply` again).
+	report := applyUnderLock(t, w)
+	if report.interrupted != 0 {
+		t.Errorf("the rerun left %d trees interrupted; each was provably unmoved and should settle", report.interrupted)
+	}
+	for _, src := range *sources {
+		if _, serr := os.Stat(src); serr == nil {
+			t.Errorf("%s is still at its source after the rerun", src)
+		}
+	}
+}
+
+// A run killed after a batch's moves returned but before the re-key, rebind
+// and comparison leaves several trees physically moved with the registry and
+// the card still naming the old path. --rollback must bring every one back.
+func TestMigrationEngine_StoppedAfterABatchMovedThenRollbackRestoresEveryTree(t *testing.T) {
+	w := pipelineWorld(t, 5)
+	restore, sources := stopAt("moved")
+	err := withMigrationLock(w.repo, func() error {
+		_, rerr := runMigrationEngineWith(w.repo, true, "migrate", nil)
+		return rerr
+	})
+	restore()
+	if err == nil {
+		t.Fatalf("the injected stop did not stop the run")
+	}
+	if len(*sources) < 2 {
+		t.Fatalf("the batch held %d trees; the scenario needs several", len(*sources))
+	}
+	for _, src := range *sources {
+		if _, serr := os.Stat(src); serr == nil {
+			t.Fatalf("%s is still at its source; the batch's moves did not happen", src)
+		}
+	}
+	journals := journalsOf(t, w.repo)
+	if len(journals) != 1 {
+		t.Fatalf("want one journal, got %v", journals)
+	}
+
+	m4InRepo(t, w.repo)
+	if out, rerr := m4RunMigrate(t, "--rollback", journals[0]); rerr != nil {
+		t.Fatalf("rollback: %v\n%s", rerr, out)
+	}
+	listed, lerr := registeredPaths(w.repo)
+	if lerr != nil {
+		t.Fatal(lerr)
+	}
+	for _, src := range *sources {
+		if _, serr := os.Stat(src); serr != nil {
+			t.Errorf("%s was not brought back by the rollback: %v", src, serr)
+		}
+		if !pathListed(listed, src) {
+			t.Errorf("git does not list %s after the rollback", src)
+		}
+	}
 }
