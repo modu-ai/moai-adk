@@ -321,6 +321,34 @@ func branchTipSHA(git GitRunner, branch string) (sha, refusal string, ok bool) {
 	return sha, "", true
 }
 
+// integrationRevSHA resolves the integration name (MergeTripleInput.Develop) to
+// a commit SHA for use as a git revision operand (card t2144). Git resolves a
+// bare name tags-before-heads, so a local tag named like the integration branch
+// would redirect every check to the tag's commit. Resolution order:
+//
+//  1. refs/heads/<name> by exact ref path (`show-ref --verify`), which a tag
+//     cannot shadow — unless the name is already fully qualified (refs/...);
+//  2. the name as given — a remote-tracking ref such as origin/main, or a
+//     fully qualified refs/... name — verified to be a commit.
+//
+// Neither resolving is a fail-closed refusal naming the name and both
+// candidate forms. The SHA, not any spelling, is what callers then consume.
+func integrationRevSHA(git GitRunner, name string) (sha, refusal string, ok bool) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return "", "the integration branch is unknown (fail-closed)", false
+	}
+	if !strings.HasPrefix(name, "refs/") {
+		if out, err := git.Git("show-ref", "--verify", "--hash", "refs/heads/"+name); err == nil && strings.TrimSpace(out) != "" {
+			return strings.TrimSpace(out), "", true
+		}
+	}
+	if out, err := git.Git("rev-parse", "--verify", "--quiet", name+"^{commit}"); err == nil && strings.TrimSpace(out) != "" {
+		return strings.TrimSpace(out), "", true
+	}
+	return "", fmt.Sprintf("the integration ref %q cannot be resolved to a commit as refs/heads/%s or as %s (fail-closed)", name, name, name), false
+}
+
 // checkConflictFree evaluates condition (b): the merge-tree dry-run. Exit 0
 // is clean; exit 1 is git's conflict verdict — a check RESULT, recorded with
 // the conflicted paths; any other failure refuses fail-closed, because a
@@ -331,7 +359,11 @@ func checkConflictFree(git GitRunner, developRef, branch string) (string, bool) 
 	if !pinOK {
 		return fmt.Sprintf("merge-tree %s + %s not attempted: %s", developRef, branchRef, pinRefusal), false
 	}
-	out, err := git.Git("merge-tree", "--write-tree", developRef, tip)
+	devSHA, devRefusal, devOK := integrationRevSHA(git, developRef)
+	if !devOK {
+		return fmt.Sprintf("merge-tree %s + %s not attempted: %s", developRef, branchRef, devRefusal), false
+	}
+	out, err := git.Git("merge-tree", "--write-tree", devSHA, tip)
 	if err == nil {
 		return fmt.Sprintf("merge-tree %s + %s@%s clean; result tree %s", developRef, branchRef, tip, strings.TrimSpace(out)), true
 	}
@@ -354,7 +386,11 @@ func checkTreeIdentityPreMerge(git GitRunner, developRef, branch string) (bool, 
 	if !pinOK {
 		return false, fmt.Sprintf("merge-tree %s + %s not attempted: %s", developRef, branchRef, pinRefusal)
 	}
-	out, err := git.Git("merge-tree", "--write-tree", developRef, tip)
+	devSHA, devRefusal, devOK := integrationRevSHA(git, developRef)
+	if !devOK {
+		return false, fmt.Sprintf("merge-tree %s + %s not attempted: %s", developRef, branchRef, devRefusal)
+	}
+	out, err := git.Git("merge-tree", "--write-tree", devSHA, tip)
 	if err != nil {
 		return false, fmt.Sprintf("merge-tree %s + %s@%s could not run: %v — tree identity cannot be evaluated (fail-closed)", developRef, branchRef, tip, err)
 	}
