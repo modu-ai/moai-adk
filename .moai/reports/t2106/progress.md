@@ -43,3 +43,8 @@ All move-list writers go through `appendMoveListLine` (migrate.go: intent `pendi
 - Basis for the Codex call: the repository gate `audit.gates.codex: required` and the leader-relayed standing decision d-20261106T064700Z-de2d (max 2 per card), which I read on the decision board. The question I put to this session's user about the call was unanswered ("No response after 60s"), so the user did not approve this call; it rests on the standing decision. Disclosed here.
 - Own re-run on the audited HEAD after the audit: target test + `TestAppendMoveListLine_` `-count=3` -> ok (9.2 s).
 - Auditor measured old code (movelist.go overlaid with 9cf8a1fc14): target test failed 3 of 10 with `pending,reversed,moved`.
+
+## Landing preparation (after the complete freeze was lifted)
+- Lease recovered by the formal path (`moai factory next --card t2106 --run to2bbk` from the primary checkout, then `stage t2106 merge-ready 901273f155` -> v13). No refused-stage reset (8859) was used.
+- Local main 04d8c27a7e merged into the card branch (merge commit cd86c39b4c, no conflicts). Re-measure on that tree: `go test ./internal/cli/worktree -run 'TestApply_PendingIntentButNeverMoved_IsSettledThenMoved|TestAppendMoveListLine_' -count=5 -json` -> exit 0; in the JSON 35 pass events at test level, 0 `"Action":"fail"` events.
+- First `moai factory complete` was refused: card has no SPEC, so its merge evidence must be `.moai/reports/t2106/verdict.md`. `verdict.md` is a byte copy of the auditor's `sync-audit.md` (same machine lines, `verdict: PASS-WITH-DEBT`, `audited_sha: 901273f1558dcadfb090f564d14e90270ef148d8`); the audit itself was not redone.
