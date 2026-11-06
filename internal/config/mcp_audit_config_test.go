@@ -63,11 +63,11 @@ func TestAuditConfig_DefaultProfile(t *testing.T) {
 	if a.Claude.Effort != "high" {
 		t.Errorf("default Claude.Effort = %q, want high", a.Claude.Effort)
 	}
-	if a.Codex.Model != "gpt-6.1-sol" {
-		t.Errorf("default Codex.Model = %q, want gpt-6.1-sol", a.Codex.Model)
+	if a.Codex.Model != "gpt-6.1-terra" {
+		t.Errorf("default Codex.Model = %q, want gpt-6.1-terra (card t1980 scope expansion)", a.Codex.Model)
 	}
-	if a.Codex.Effort != "high" {
-		t.Errorf("default Codex.Effort = %q, want high", a.Codex.Effort)
+	if a.Codex.Effort != "xhigh" {
+		t.Errorf("default Codex.Effort = %q, want xhigh (card t1980 scope expansion)", a.Codex.Effort)
 	}
 	if a.GLM.Model != "glm-5.3" {
 		t.Errorf("default GLM.Model = %q, want glm-5.3", a.GLM.Model)

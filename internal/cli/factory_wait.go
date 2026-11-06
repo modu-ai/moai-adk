@@ -123,7 +123,7 @@ func factoryWaitDisplay(stored string) (reason, missing string) {
 }
 
 func newFactoryWaitCommand() *cobra.Command {
-	var on, waker, reason, actor, scope, next, ack string
+	var on, waker, reason, actor, scope, next, ack, run string
 	var operator, resolve bool
 	cmd := &cobra.Command{
 		Use:   "wait <card>",
@@ -158,7 +158,7 @@ func newFactoryWaitCommand() *cobra.Command {
 			if cmd.Flags().Changed("next") {
 				nextArg = &next
 			}
-			return factoryRecordWait(ctx, cmd.OutOrStdout(), factoryCardRoot(), args[0], on, operator, waker, reason, actor, scopeArg, nextArg)
+			return factoryRecordWait(ctx, cmd.OutOrStdout(), factoryCardRoot(), args[0], on, operator, waker, reason, actor, run, scopeArg, nextArg)
 		},
 	}
 	cmd.Flags().StringVar(&on, "on", "", "predecessor card whose landing releases the wait (default: the card's --after hint)")
@@ -170,6 +170,7 @@ func newFactoryWaitCommand() *cobra.Command {
 	cmd.Flags().StringVar(&scope, "scope", "", "the refused operation, path, or permission that caused the wait (one line)")
 	cmd.Flags().StringVar(&next, "next", "", "the event that triggers the next check of this wait (one line)")
 	cmd.Flags().StringVar(&ack, "ack", "", "record the waker's wake event instead of a wait: received (acknowledged) or started (began the work); each is recorded once, in order")
+	cmd.Flags().StringVar(&run, "run", "", "factory run id, used to read the card's --after hint when --on is omitted (default: the single active run; a run whose row is not active refuses stale)")
 	return cmd
 }
 
@@ -260,7 +261,7 @@ func factoryResolveOperatorWait(ctx context.Context, out io.Writer, root, cardID
 // factoryRecordWait records one wait for cardID. With --on empty and no
 // --operator the card's existing `after` hint is the predecessor, reusing the
 // dependency already recorded rather than restating it.
-func factoryRecordWait(ctx context.Context, out io.Writer, root, cardID, on string, operator bool, waker, reason, actor string, scope, next *string) error {
+func factoryRecordWait(ctx context.Context, out io.Writer, root, cardID, on string, operator bool, waker, reason, actor, run string, scope, next *string) error {
 	waitReason, err := factoryWaitReason(reason, scope, next)
 	if err != nil {
 		return fmt.Errorf("factory wait: %w", err)
@@ -279,7 +280,7 @@ func factoryRecordWait(ctx context.Context, out io.Writer, root, cardID, on stri
 	default:
 		w.CondKind, w.CondRef = homestate.WaitCondPredecessorLanded, on
 		if w.CondRef == "" {
-			runID, err := resolveFactoryCardRun(ctx, root, "")
+			runID, err := resolveFactoryCardRun(ctx, root, run)
 			if err != nil {
 				return fmt.Errorf("factory wait: no --on given and the run is unresolved: %w", err)
 			}

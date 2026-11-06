@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"testing"
 	"time"
@@ -79,7 +80,11 @@ func TestBuildPrivateGTDProjectionPrivacy(t *testing.T) {
 		perm os.FileMode
 	}{{dir, 0o700}, {result.DataPath, 0o600}, {result.MetaPath, 0o600}} {
 		info, err := os.Stat(check.path)
-		if err != nil || info.Mode().Perm() != check.perm {
+		if err != nil {
+			t.Fatalf("%s stat err=%v", check.path, err)
+		}
+		// Windows reports 0666/0777; POSIX mode bits are not portable there.
+		if runtime.GOOS != "windows" && info.Mode().Perm() != check.perm {
 			t.Fatalf("%s mode=%v err=%v, want %v", check.path, info.Mode().Perm(), err, check.perm)
 		}
 	}

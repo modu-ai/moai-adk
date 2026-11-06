@@ -127,10 +127,14 @@ func TestAnEarlierHoldersBeatDoesNotStaleTheNextHoldersStop(t *testing.T) {
 		t.Fatal(err)
 	}
 	now = now.Add(time.Second)
+	// The takeover re-reads the owner's process under the lock, so the first holder's
+	// process is gone when it goes ahead; its presence file stays behind.
+	s.probe = probeOf(homestate.ProcessIdentityDead, "fp")
 	next, err := s.TakeOverUnverified(i, "sess-a", rec.Epoch, "sess-b", "d2", "run-2", "test", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
+	s.probe = probeOf(homestate.ProcessIdentityLive, "fp")
 	now = now.Add(time.Second)
 	name, err := s.RecordSafeStop(i, "sess-b", next.Epoch, "second owner stops")
 	if err != nil {

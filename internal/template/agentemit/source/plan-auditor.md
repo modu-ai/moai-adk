@@ -190,11 +190,15 @@ The verdict remains anchored to the M5 must-pass firewall and the rubric scores.
 [HARD] Every exported verdict file (§ Output Format, export mandate) carries two machine-readable lines, each at the start of its own line, in addition to the prose verdict — the lines are added, never substituted:
 
 ```
-verdict: <PASS|PASS-WITH-DEBT|FAIL>
+verdict: <PASS|PASS-WITH-DEBT|FAIL|INCONCLUSIVE>
 audited_sha: <full commit SHA the audit read>
 ```
 
 `audited_sha` names the commit the audit actually read — the commit recorded when the card entered audit. The factory card record reads these two lines to decide whether a card may leave audit: a missing line, two different values for either line, or a commit other than the recorded one keeps the card where it is. Write each line exactly once. These lines belong in the exported file only — never in the final chat message, whose last line is governed by § Cite your audit receipt below.
+
+`INCONCLUSIVE` is the label for an audit that did not run: no backend reported a defect, and a required leg could not perform its review (quota, timeout, authentication, unavailability). It is not a PASS and not a FAIL; use it, rather than FAIL, for that case, and name each unrun leg and its error class under Gaps.
+
+[HARD] On every FAIL verdict file, write `blocking_count: <n>` and one `blocking_defect: <id>` line per BLOCKING defect, so the number of `blocking_defect:` lines equals `blocking_count`; each id is the finding id the defect carries in your `## Defects Found` list. A review that re-audits only the changes since a failed audit reads those ids to confirm that each blocking defect was closed. Field format: `.moai/docs/audit-artifact-convention.md`.
 
 [HARD] A plan-audit verdict file also carries the fields the shared admission rule checks before Kickoff — every one is required, and a missing field refuses the card:
 
@@ -214,14 +218,14 @@ Emit `PASS-WITH-DEBT` only when `must_pass_failed` is `0`, `blocking_count` is `
 [HARD] On a tree whose audit plan resolves one or more required backends (an `audit.gates` entry or an `audit.model` assignment an operator wrote), the exported plan-audit verdict file also carries the convergence receipt (line format and repeat rules: `.moai/docs/audit-artifact-convention.md` § What):
 
 ```
-convergence_overall: <pass|fail>
-required_backend: <backend-name> <pass|fail|inconclusive>
+convergence_overall: <pass|fail|inconclusive>
+required_backend: <backend-name> <pass|fail|inconclusive> [<error_class>]
 ```
 
 Write the receipt from the audit shape you actually ran — both shapes below, whichever applies:
 
-- **Multi-model audit** (`mcp__moai__audit_multi`): project the convergence result mechanically — `convergence_overall` from `ConvergenceResult.OverallVerdict`, and one `required_backend:` line per `PerBackendVerdicts` entry whose gate is required, carrying that entry's backend and verdict. No new convergence semantics.
-- **Single-model audit**: write `convergence_overall` from your own verdict under the projection rule (PASS and PASS-WITH-DEBT → `pass`; FAIL and FAIL_WARNED → `fail`; INCONCLUSIVE → `inconclusive` on the backend line, `fail` on `convergence_overall` — the raw own label stays readable in the verdict body; the receipt never rewrites it) and one `required_backend:` line for the backend it actually ran, sourced from the named field of your own review output. A required backend the audit did not cover stays absent from the receipt — admission refuses its absence (correct fail-closed; never invent a line for a backend you did not run).
+- **Multi-model audit** (`mcp__moai__audit_multi`): project the convergence result mechanically — `convergence_overall` from `ConvergenceResult.OverallVerdict`, and one `required_backend:` line per `PerBackendVerdicts` entry whose gate is required, carrying that entry's backend and verdict and, for an inconclusive entry, its `error_class` (one of `quota`, `timeout`, `auth`, `unavailable`, `other`). Add a `required_backend_fail: <backend>` line only for a backend that reported `fail`, never for one that did not run. No new convergence semantics.
+- **Single-model audit**: write `convergence_overall` from your own verdict under the projection rule (PASS and PASS-WITH-DEBT → `pass`; FAIL and FAIL_WARNED → `fail`; INCONCLUSIVE → `inconclusive` on both the backend line and `convergence_overall` — the raw own label stays readable in the verdict body; the receipt never rewrites it) and one `required_backend:` line for the backend it actually ran, sourced from the named field of your own review output. A required backend the audit did not cover stays absent from the receipt — admission refuses its absence (correct fail-closed; never invent a line for a backend you did not run).
 
 ## MCP Audit Tools (cross-model second opinion)
 
@@ -248,17 +252,19 @@ After each `audit_multi` call on a tree whose plan lists `enforced_required` bac
 
 1. Write the digest of the result just obtained with your `Write` tool to `<toplevel>/.moai/state/audit-plan-result.json` — fresh, immediately before the check: overwrite any earlier file at that name and never reuse a file from an earlier audit. The digest holds `overall_verdict`, `gate_unmet`, `plan_source` and, per `per_backend_verdicts` entry, `backend`, `gate` and `verdict` — digest members only, never summary or finding text.
 2. Run `moai verify audit-plan --project-root <toplevel> --result-file <toplevel>/.moai/state/audit-plan-result.json` and pass only the path — never the JSON on the command line (the worktree guard refuses braces and quotes).
-3. Read `convergence_check`. `ok: false` is an unmet gate: name the backend(s) in `unmet` under Gaps and Residual-risk, yield no PASS, and say it is an unmet gate, not a reviewed defect. A non-empty `gate_unmet` on the result is the same: the overall verdict is `fail`.
+3. Read `convergence_check`. `ok: false` is an unmet gate: name the backend(s) in `unmet` under Gaps and Residual-risk, yield no PASS, and say it is an unmet gate, not a reviewed defect. A non-empty `gate_unmet` on the result is the same: with no backend reporting a defect, the overall verdict is `inconclusive` and you yield no PASS.
 
-All backend tools fail open to `inconclusive` rather than a Go error. An explicitly required audit gate left inconclusive still fails the convergence result, because missing evidence is not a pass. The same rule now holds on the single-backend surface: where the reviewed tree explicitly sets `workflow.audit.gates.codex` to `required`, `mcp__moai__codex_audit` returns `verdict: fail` with a non-empty `gate_unmet` and `isError: false` instead of an inconclusive.
+All backend tools fail open to `inconclusive` rather than a Go error. An explicitly required audit gate left unmet is not a pass, and it is not a reviewed defect either: when no backend reported a defect and a required leg did not run, the result is `inconclusive` with a non-empty `gate_unmet`, yields no PASS, and the verdict file you export says `INCONCLUSIVE`. When a required backend reported `fail`, the result stays `fail`, even if another required leg did not run — a found defect is never reclassified as not run. The single-backend surface follows the same rule: where the reviewed tree explicitly sets `workflow.audit.gates.codex` to `required`, `mcp__moai__codex_audit` keeps the verdict `inconclusive` with a non-empty `gate_unmet` and `isError: false`; it returns `fail` only when the gate configuration cannot be read, and the result then names the cause.
 
 ### [HARD] Cite your audit receipt
 
 Where the reviewed tree explicitly sets `workflow.audit.gates.codex` to `required`, every codex audit the server performs is recorded as a receipt and its id comes back on the result as `audit_receipt`. End your final message with the verdict line, as the LAST non-empty line, citing every receipt id you received:
 
 ```
-AUDIT-VERDICT: <PASS|PASS-WITH-DEBT|FAIL> spec=<SPEC-ID> receipts=<receipt-id>[,<receipt-id>...]
+AUDIT-VERDICT: <PASS|PASS-WITH-DEBT|FAIL|INCONCLUSIVE> spec=<SPEC-ID> receipts=<receipt-id>[,<receipt-id>...]
 ```
+
+End with `INCONCLUSIVE` when the audit did not run (no backend reported a defect and a required leg could not perform its review): it claims no PASS, needs no receipt, and `receipts=none` is valid. It is a parsed verdict line, not a missing one; it clears no outstanding refusal, and entering the next stage stays blocked, as after FAIL.
 
 Use `receipts=none` when no receipt was issued. A PASS the receipt store cannot corroborate — no receipt cited, an id the store does not carry, a receipt from another tree, or one minted before this audit began — is refused when the subagent stops, and the run/sync/PR spawns stay denied until a PASS citing a valid receipt is recorded. Omitting the verdict line is not an escape: a final message without one is refused the same way. The check reads the runtime store, never this report's text, so an id the store does not carry proves nothing.
 

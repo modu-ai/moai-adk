@@ -1017,7 +1017,8 @@ func TestSelfReview_SourceReferencesNoAuditMachinery(t *testing.T) {
 		}
 		for line := range strings.SplitSeq(srReadFile(t, e.Name()), "\n") {
 			if (strings.Contains(line, "recordAuditReceipt(") || strings.Contains(line, "recordAuditReceiptAt(") ||
-				strings.Contains(line, "recordAuditReceiptBound(") || strings.Contains(line, "recordAuditReceiptAtBound(")) &&
+				strings.Contains(line, "recordAuditReceiptBound(") || strings.Contains(line, "recordAuditReceiptAtBound(") ||
+				strings.Contains(line, "recordAuditReceiptClassed(")) &&
 				!strings.HasPrefix(strings.TrimSpace(line), "//") {
 				sites++
 			}
@@ -1026,10 +1027,16 @@ func TestSelfReview_SourceReferencesNoAuditMachinery(t *testing.T) {
 	// Card t1632: codex_audit records its receipt on every verdict-bearing exit
 	// (binary missing, REQ-MN-019 baseBranch unresolvable -> inconclusive "target
 	// not applied", review ran — every other return is a tool error carrying no
-	// verdict), so the total is 7: the writers (3) plus the three codex_audit
+	// verdict), so the total was 7: the writers (3) plus the three codex_audit
 	// calls and the one audit_multi call.
-	if sites != 7 {
-		t.Errorf("recordAuditReceipt* call sites appear on %d non-comment lines, want the 7 the receipt writers and their callers occupy (the self-review tools add none)", sites)
+	//
+	// SPEC-AUDIT-ENGINE-CONVERGENCE-001 REQ-AEC-006 folds the three writers into
+	// recordAuditReceiptClassed, which also records the error class of an unrun
+	// codex leg: the one definition (1), the three codex_audit calls (3) and the
+	// one audit_multi call (1) — 5. The guard that matters is unchanged: the
+	// self-review tools add none (above).
+	if sites != 5 {
+		t.Errorf("recordAuditReceipt* call sites appear on %d non-comment lines, want the 5 the receipt writer and its callers occupy (the self-review tools add none)", sites)
 	}
 }
 

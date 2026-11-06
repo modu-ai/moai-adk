@@ -48,6 +48,27 @@ func ReadGitLabUsernameFromConfig(projectRoot string) string {
 	return readUserField(projectRoot, "gitlab_username")
 }
 
+// ReadGitLabInstanceURLFromConfig reads git_strategy.gitlab.instance_url from
+// git-strategy.yaml. Returns an empty string if the file is missing, unparsable,
+// or the value is absent.
+func ReadGitLabInstanceURLFromConfig(projectRoot string) string {
+	data, err := os.ReadFile(filepath.Join(moaiSectionsDir(projectRoot), "git-strategy.yaml"))
+	if err != nil {
+		return ""
+	}
+	var parsed struct {
+		GitStrategy struct {
+			GitLab struct {
+				InstanceURL string `yaml:"instance_url"`
+			} `yaml:"gitlab"`
+		} `yaml:"git_strategy"`
+	}
+	if err := yaml.Unmarshal(data, &parsed); err != nil {
+		return ""
+	}
+	return parsed.GitStrategy.GitLab.InstanceURL
+}
+
 // readUserField reads a specific field from the user section of user.yaml.
 func readUserField(projectRoot, field string) string {
 	userPath := filepath.Join(moaiSectionsDir(projectRoot), "user.yaml")

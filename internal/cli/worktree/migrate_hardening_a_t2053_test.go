@@ -61,7 +61,7 @@ func TestJournalWrite_ReplacesTheFileAtomically(t *testing.T) {
 	if err != nil {
 		t.Fatalf("stat: %v", err)
 	}
-	if os.SameFile(before, after) {
+	if t2085SameFileIsMeaningful() && os.SameFile(before, after) {
 		t.Errorf("the journal was rewritten in place (same inode): a kill mid-write leaves a truncated journal")
 	}
 	body, _ := os.ReadFile(path)

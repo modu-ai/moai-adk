@@ -1870,7 +1870,7 @@ func TestSyncLocalSettingsPATH(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Stat error: %v", err)
 		}
-		if got := info.Mode().Perm(); got != 0o600 {
+		if got := info.Mode().Perm(); runtime.GOOS != "windows" && got != 0o600 { // Windows has no POSIX mode bits
 			t.Errorf("settings.local.json mode = %o, want 600", got)
 		}
 	})

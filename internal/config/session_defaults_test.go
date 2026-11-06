@@ -22,7 +22,7 @@ func TestSessionDefaultsShippedTable(t *testing.T) {
 	want := map[string]map[string]ModelEffort{
 		SessionBackendCC:    {SessionRoleLeader: {"opus", "high"}, SessionRoleLane: {"sonnet", "medium"}},
 		SessionBackendGLM:   {SessionRoleLeader: {"opus", "high"}, SessionRoleLane: {"sonnet", "medium"}},
-		SessionBackendCodex: {SessionRoleLeader: {CodexModelSol, "high"}, SessionRoleLane: {CodexModelSol, "medium"}},
+		SessionBackendCodex: {SessionRoleLeader: {CodexModelTerra, "xhigh"}, SessionRoleLane: {CodexModelTerra, "xhigh"}},
 	}
 	for backend, roles := range want {
 		for role, w := range roles {
@@ -56,7 +56,7 @@ func TestSessionDefaultsModeSelectsSource(t *testing.T) {
 	if got, _ := llm.ResolveSessionDefault(SessionBackendCC, SessionRoleLane); got != (ModelEffort{"opus", "low"}) {
 		t.Errorf("custom mode cc lane = %+v, want opus/low from llm.yaml", got)
 	}
-	if got, _ := llm.ResolveSessionDefault(SessionBackendCodex, SessionRoleLeader); got != (ModelEffort{CodexModelSol, "xhigh"}) {
+	if got, _ := llm.ResolveSessionDefault(SessionBackendCodex, SessionRoleLeader); got != (ModelEffort{CodexModelTerra, "xhigh"}) {
 		t.Errorf("custom mode codex leader = %+v, want the shipped model with the custom effort", got)
 	}
 	// an empty mode reads as default.
@@ -241,7 +241,7 @@ func TestSessionDefaultsResolveRejectsInvalid(t *testing.T) {
 		want          ModelEffort
 	}{
 		{SessionBackendCC, SessionRoleLane, ModelEffort{"sonnet", "medium"}},
-		{SessionBackendCodex, SessionRoleLane, ModelEffort{CodexModelSol, "medium"}},
+		{SessionBackendCodex, SessionRoleLane, ModelEffort{CodexModelTerra, "xhigh"}},
 		{SessionBackendGLM, SessionRoleLeader, ModelEffort{"opus", "high"}},
 	} {
 		if got, ok := llm.ResolveSessionDefault(tc.backend, tc.role); !ok || got != tc.want {
@@ -265,7 +265,7 @@ func TestSessionDefaultsModelSurroundingWhitespace(t *testing.T) {
 	}{
 		"surrounding newline and tab": {"\ngpt-custom\t", "gpt-custom", true},
 		"surrounding control char":    {"\x01gpt-custom ", "gpt-custom", true},
-		"interior newline":            {" gpt\nx ", CodexModelSol, false},
+		"interior newline":            {" gpt\nx ", CodexModelTerra, false},
 	} {
 		cfg := NewDefaultConfig()
 		cfg.LLM.Defaults.Sessions.Mode = SessionDefaultsModeCustom

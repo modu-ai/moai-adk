@@ -106,7 +106,10 @@ func ParseWorktreeList(porcelain string) ([]WorktreeRecord, error) {
 		switch head {
 		case "worktree":
 			flush()
-			cur = &WorktreeRecord{Path: rest}
+			// git prints forward slashes on every OS; every other path in the
+			// engine is spelled with the OS separator, so a record's Path is
+			// converted once here (a no-op off Windows, card t2085).
+			cur = &WorktreeRecord{Path: filepath.FromSlash(rest)}
 		case "HEAD":
 			if cur != nil {
 				cur.Head = rest

@@ -76,6 +76,15 @@ type Ready struct {
 
 // Preparer builds and verifies the worktree in an exclusively held slot. It only
 // prepares: it writes no product code or SPEC.
+//
+// Intake treats preparing as repeatable and records no intent before the call
+// (unlike publish and register, whose effects are remote and not idempotent): a
+// process that dies or times out mid-prepare is retried by calling PrepareWorktree
+// again for the same request and slot. An implementation is bound by that
+// contract: a second call must succeed against whatever an interrupted earlier call
+// left in the slot, must touch nothing outside the slot, and must return only after
+// it has stopped writing, on an error or a timeout as well. No implementation
+// exists in this repository yet; the tests use fakes.
 type Preparer interface {
 	PrepareWorktree(ctx context.Context, req claim.Request, slot string) (Ready, error)
 }
@@ -241,6 +250,17 @@ func (in *Intake) publish(ctx context.Context, req claim.Request) (claim.Request
 			return rec, err
 		}
 	}
+	// Record the intent before the send: a process that dies after the host created
+	// the Issue restarts on an unknown effect (looked up by key, never repeated on a
+	// guess), not on a clean StageAccepted that would publish a second Issue. A
+	// confirmed Issue, a failure, or ConfirmNotCreated replaces the row.
+	if _, err := in.Store.UpdateRequest(req.Key, func(r *claim.Request) error {
+		r.Blocked = &claim.Blocked{Step: claim.StageAccepted, Detail: "publish in flight", Unknown: true,
+			Resume: "look the effect up (Advance); another attempt needs ConfirmNotCreated"}
+		return nil
+	}); err != nil {
+		return claim.Request{}, err
+	}
 	sctx, cancel := in.step(ctx)
 	defer cancel()
 	issue, ref, err := in.pub.PublishIssue(sctx, req)
@@ -268,6 +288,16 @@ func (in *Intake) publish(ctx context.Context, req claim.Request) (claim.Request
 }
 
 func (in *Intake) register(ctx context.Context, req claim.Request) (claim.Request, error) {
+	// Intent first, as in publish: a process that dies after the branch was
+	// registered restarts on an unknown effect and looks it up, not on a clean
+	// StageIssueConfirmed that would register it again.
+	if _, err := in.Store.UpdateRequest(req.Key, func(r *claim.Request) error {
+		r.Blocked = &claim.Blocked{Step: claim.StageIssueConfirmed, Detail: "branch registration in flight", Unknown: true,
+			Resume: "look the effect up (Advance); another attempt needs ConfirmNotCreated"}
+		return nil
+	}); err != nil {
+		return claim.Request{}, err
+	}
 	sctx, cancel := in.step(ctx)
 	defer cancel()
 	b, err := in.br.RegisterBranch(sctx, req)
