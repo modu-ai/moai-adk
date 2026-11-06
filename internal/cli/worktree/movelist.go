@@ -491,8 +491,7 @@ func appendMoveListLine(mlPath, line string) error {
 		return fmt.Errorf("read the move list %s before appending: %w", mlPath, rerr)
 	}
 	// The dedupe: compare against the latest entry naming either path.
-	rev := revLines(string(data))
-	if len(rev) > 0 && rev[0] == line {
+	if latest, ok := latestLineNamingPathsOf(string(data), line); ok && latest == line {
 		return nil // identical re-run: nothing to append
 	}
 	fh, err := os.OpenFile(mlPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
@@ -511,7 +510,9 @@ func appendMoveListLine(mlPath, line string) error {
 	return nil
 }
 
-// revLines returns the non-empty lines of the file, last first.
+// revLines returns the non-empty lines of the file, last first. It used to
+// return them in file order under this same comment, so the duplicate check
+// compared a new line with the FIRST line of the file (card t2106).
 func revLines(data string) []string {
 	var out []string
 	for _, l := range strings.Split(data, "\n") {
@@ -519,5 +520,45 @@ func revLines(data string) []string {
 			out = append(out, l)
 		}
 	}
+	for i, j := 0, len(out)-1; i < j; i, j = i+1, j-1 {
+		out[i], out[j] = out[j], out[i]
+	}
 	return out
+}
+
+// latestLineNamingPathsOf returns the latest line of the file that names either
+// of the two paths of line (old_path or new_path, in either position), the text
+// the duplicate check compares against. A line that is not a record - or whose
+// paths are empty - names no path, so it is judged against the latest line of
+// the file only. ok is false when the file has nothing to compare with.
+func latestLineNamingPathsOf(data, line string) (string, bool) {
+	rev := revLines(data)
+	if len(rev) == 0 {
+		return "", false
+	}
+	var want mlRecord
+	if err := json.Unmarshal([]byte(line), &want); err != nil || (want.OldPath == "" && want.NewPath == "") {
+		return rev[0], true
+	}
+	for _, l := range rev {
+		var have mlRecord
+		if err := json.Unmarshal([]byte(l), &have); err != nil {
+			continue
+		}
+		if namesAny(have, want.OldPath, want.NewPath) {
+			return l, true
+		}
+	}
+	return "", false
+}
+
+// namesAny reports whether rec names one of the non-empty paths as its old or
+// new path.
+func namesAny(rec mlRecord, paths ...string) bool {
+	for _, p := range paths {
+		if p != "" && (rec.OldPath == p || rec.NewPath == p) {
+			return true
+		}
+	}
+	return false
 }
