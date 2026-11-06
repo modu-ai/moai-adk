@@ -1,0 +1,7 @@
+[t2144] docs(audit): sync-audit-iter2 FAIL 0.90 for b73989497a, code sound, required Codex check unmet (card t2144)
+
+F1 closed, 7/7 mutants caught, 7 verification commands pass. The FAIL is the audit-plan rule: Codex is a required
+backend and codex_audit was refused with stale_server before any review (MCP server still rc.2). No receipt.
+Optional N1 (refs/ names not checked to be commits). Re-run codex_audit once after the /mcp reconnect.
+
+🗿 MoAI
