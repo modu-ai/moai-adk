@@ -1,25 +1,58 @@
 auditor-model: glm-5.3
 
 verdict: PASS
-audited_sha: 3db7aea4f5a9465c1f6771cb69a86fe3d5746e86
+audited_sha: cd7b5803bd72a1d93545baff1e12cd7f5f1083be
 
 # t2094 sync-audit verdict — audit iteration 2 (current)
 
-> **Receipt-gate status (iteration 2) — PASS judgment recorded, landing blocked.**
-> The audit judgment below is PASS on the evidence. The runtime receipt guard
-> refuses to corroborate it: the only codex receipt for this card
-> (`rcpt-78c868a9f2988feca76a0b71`) was minted during iteration 1 and is bound
-> to `1852d1a34d`, so it predates the iteration-2 audit window and cannot
-> corroborate a PASS at `3db7aea4f5`. The guard's prescribed remedy — a fresh
-> `codex_audit` call — is withheld deliberately: the card's single-call
-> allowance is spent and operator decision d-20261106T055816Z-449d requires
-> NEW operator approval, routed through the leader, for any re-call; a Stop
-> hook is not a source of operator approval. The card therefore stays in
-> audit until either (a) the leader obtains operator approval and a
-> corroborating codex_audit runs against `3db7aea4f5`, or (b) the
-> leader/operator explicitly accepts this PASS on the in-session evidence
-> with the gate waived. No quality finding drives this hold — only the
-> corroboration gate.
+> **Corroboration state (iteration 2, final) — PASS, corroborated.**
+> Operator standing rule d-20261106T064700Z-de2d (superseding the single-call
+> cap of d-20261106T055816Z-449d) authorized the card's second and final
+> `codex_audit` call, scoped to the repair delta. The call ran against this
+> tree with `delta_base` `1852d1a34deec532f4e715fff2053920141e3cf0` and
+> returned verdict **pass, zero findings** — receipt
+> **`rcpt-affc80b4b23c072c0447fef3`**, bound to head
+> `cd7b5803bd72a1d93545baff1e12cd7f5f1083be` (the card's second receipt; the
+> first, `rcpt-78c868a9f2988feca76a0b71`, remains recorded under iteration 1,
+> bound to `1852d1a34d`). No new finding to adjudicate; the PASS judgment
+> below stands.
+>
+> **Head divergence record (process note, reported per the
+> actively-audited-worktree rule):** between the iteration-2 judgment and the
+> corroboration call, HEAD moved from `3db7aea4f5` to `cd7b5803bd` — the
+> lane's documentation commit of this verdict snapshot and progress.md
+> (`[t2094] docs(audit): record the sync-audit iteration-2 verdict …`, +319
+> lines, both files under `.moai/reports/t2094/`). Inspected in full before
+> proceeding: `git diff 3db7aea4f5..cd7b5803bd -- internal/cli/worktree/` is
+> empty — the audited code surface is byte-identical at both heads, and the
+> targeted suite was re-run at `cd7b5803bd` (`ok … 9.266s`, exit 0) so every
+> evidence line below attributes cleanly to the corroborated head.
+> `audited_sha` therefore names `cd7b5803bd`; the quality judgment itself was
+> formed on the identical code surface of `3db7aea4f5`.
+
+> **Stop-guard collision record (for the leader/harness owner).** The second
+> Stop-hook refusal reports the receipt "judged a different tree state (head
+> or digest moved)". Measured state at refusal: HEAD is UNCHANGED at
+> `cd7b5803bd` — the exact head the receipt `rcpt-affc80b4b23c072c0447fef3`
+> was minted against — and the working tree carries exactly one modification,
+> `M .moai/reports/t2094/verdict.md`: this file's own post-call update, the
+> one write the corroboration instructions explicitly sanctioned. Because the
+> lane's `cd7b5803bd` commit force-added this file, updating it after the
+> codex call (required — the receipt id is unknowable before the call)
+> necessarily moves the tree digest the guard compares. The cycle is
+> structural: a tracked verdict file + a receipt guard comparing tree state
+> means no receipt can ever contain its own id. A third codex call would not
+> break the cycle (the operator cap of two calls under
+> d-20261106T064700Z-de2d is exhausted in any case). Leader-side remedies, in
+> order of cleanliness: (a) re-pin the card's recorded audit head to
+> `cd7b5803bd` (the head the current receipt already binds — code surface
+> byte-identical to `3db7aea4f5`, evidence re-verified) and accept the
+> existing receipt; (b) commit this final verdict file (tree clean at the new
+> head), obtain ONE new operator-authorized codex call bound to that head
+> with the file already final — sequence: final file → commit → call → zero
+> writes → stop; (c) fix the harness guard to exclude the verdict artifact
+> from its digest. The audit itself is complete and its judgment is PASS;
+> only the mechanical corroboration landing is blocked.
 
 Card t2094 (Class B, no SPEC; acceptance = card text). Audited commit
 `3db7aea4f5a9465c1f6771cb69a86fe3d5746e86` (repair round 1; parent
@@ -97,6 +130,7 @@ relied on for any claim above; where my numbers exist they are my own runs.
 
 1. **Iteration 1** — FAIL 76/100 @ `1852d1a34d` — 4 blocking in-diff defects (F1 PowerShell literal, F2 bash stdin EOF, F3 hint gate under-coverage, F4 orphaned grandchild); codex second opinion `fail`, receipt `rcpt-78c868a9f2988feca76a0b71`. Full record preserved below.
 2. **Iteration 2** — PASS 89/100 @ `3db7aea4f5` — F1-F4 fixed and verified on the delta; no repair-born blocking finding; F8 (pre-existing movelist flake) recorded outside, follow-up candidate.
+3. **Corroboration** — codex re-audit of the repair delta under operator rule d-20261106T064700Z-de2d: verdict `pass`, zero findings, receipt `rcpt-affc80b4b23c072c0447fef3` bound to `cd7b5803bd` (code surface byte-identical to `3db7aea4f5`; targeted suite re-verified at that head, `ok 9.266s`). Final verdict: **PASS**, corroborated.
 
 ---
 
