@@ -96,4 +96,21 @@ Card t2117 · run to2bbk · lane-31 · Class B (run → sync, RED 먼저) · 202
 - 위 레인 기록("판정 토큰 불변: PASS-WITH-DEBT")은 정정 이전 시점 기록 — 정정이 최종
 - 운영자 결정 d-20261106T134133Z-aa98(결정판 직독 일치): Codex P2 부채 미수용 — F7+F3+를 이 카드에서 한 커밋으로 수리(RED 먼저) → 재감사 → de2d 잔여 1회를 수리 델타에. 수리 2라운드 같은 구현자 재개
 
+## 수리 2라운드 결과 (2026-11-06 ~22:52 local)
+
+- 커밋: `d9442b09f3f9716d7de2b661fe2e266cc13f4c6a` — `[t2117] fix(config): count both local instruction slots; resolve symlinks before the import boundary (card t2117)` (parent 16e4bc90ff, 2파일 +117/−42, 트리 깨끗함 — 직독)
+- F3+ RED 원문: TestAlwaysLoadedSurfaceRefusesSymlinkEscapeImport FAIL — "surface counts /var/folders/.../linked.md — a symlink whose target escapes repoRoot" (0.00s). 수리: 경계 판정을 실경로 기준으로 — filepath.EvalSymlinks(resolved) vs equally-resolved realRoot(macOS /var→/private/var 전부 거부 방지), 대상 또는 심볼릭 조상의 이탈 거부, 댕글링 링크는 해석 실패로 스킵, 루트 내 표기는 원래 철자 유지. GREEN PASS 0.00s
+- F7 RED 원문: TestAlwaysLoadedSurfaceCountsBothLocalSlots FAIL 2행 — "surface omits .../CLAUDE.local.md"·".../legacy-import.md" (0.01s). 수리: localInstructionSlot→localInstructionSlots(존재하는 모든 정규 파일 슬롯), alwaysLoadedSurface 전 슬롯 열거, instructionImportMembers 전 슬롯 시드. GREEN PASS 0.01s
+- Lstat/EvalSymlinks 상호작용(지시 이행): hook 측 BFS는 C1 가드가 os.Lstat로 심볼릭을 비정규로 거부하므로 이탈 미도달 — 수리 불요(보고서 명시). config 측은 os.Stat로 링크를 따르는 것이 설계라 경계에서 해석 추가
+- 레인 재검증(격리 환경 귀속: GOTOOLCHAIN=go1.27.1 GOCACHE=/tmp/t2117-gocache): `go test ./internal/config/ -run 'TestAlwaysLoaded' -count=1` → ok 0.333s, `go test ./internal/hook/ -run 'Instruction' -count=1` → ok 0.996s. 스페셜리스트 실행분(같은 트리 키) 재사용: VET-CONFIG-OK, 실트리 예산 65,156/77,600 통과(이 트리는 AGENTS.local.md 단일 슬롯이라 F7 기여 0), gofmt 무출력
+- merge-ready 상태 적합성: 카드는 merge-ready(v12) 유지 — 수리 커밋은 워크트리 작업으로 stage 전이 불요, 재감사 후 rebind로 증거 갱신 예정(리더 지시 확인 항목)
+
+## 재감사 iter2 결과 (2026-11-06 ~23:05 local)
+
+- 판정: **PASS** — 조화 93.5 (기능성 96 / 보안성 92 / 장인정신 94 / 일관성 92), 수리 유발 차단 결함 0
+- 판정 파일 `.moai/reports/t2117/sync-audit-iter2.md` (verdict:/audited_sha: 각 1줄, audited=d9442b09f3f9716d7de2b661fe2e266cc13f4c6a — 직독 확인). iter1 미변경
+- F3+·F7 모두 fixed-and-verified — 감사관이 추출 프리-수리 트리에 신규 시험 2건만 얹어 RED 독립 재현(escape: "surface counts .../linked.md" FAIL, slots: CLAUDE.local.md+legacy-import.md 누락 FAIL) + 수리 HEAD에서 GREEN(config 6시험 ok 1.019s, hook ok 1.548s, cli ok 1.934s, 실트리 예산 65156/77600 안정). 수리의 RED가 워킹트리 방식(시험+수리 동커밋)인 점은 독립 재현으로 보완, 파일에 순서 유의 기록
+- codex 재감사(최종 허용분 소모, de2d 2/2): **pass·결함 0** — 영수증 **rcpt-660e3171b7294d5d3462c03a**(build 04d8c27a7e, 범위 16e4bc90ff→d9442b09f3). 신규 선택적 발견 N1(N Low, EvalSymlinks-Stat TOCTOU — 수용 부류)/N2·N3(Info) — 차단 없음
+- 결정 기록: decided_by=lane-31 sync-audit-iter2 evidence_refs=.moai/reports/t2117/sync-audit-iter2.md ladder_path=Claude sync-auditor + de2d 2/2 codex — PASS 수용, merge-ready 재확인 후 착지 대기
+
 ### Gaps
