@@ -196,7 +196,13 @@ func printMigrationReport(cmd *cobra.Command, report *migrationReport, asJSON bo
 		summary += fmt.Sprintf(", interrupted %d", report.interrupted)
 	}
 	_, _ = fmt.Fprintln(cmd.OutOrStdout(), summary)
-	if report.journal != "" && report.failed+report.reversed > 0 {
+	// The rollback hint names moves this run actually has something to undo
+	// for (card t2094, F3): a run whose only failures are trees that never
+	// moved — a busy tree the OS refused to rename — must not advertise
+	// --rollback, which would have nothing to undo. A stranded failure (the
+	// reverse order did not complete; the pending line survived) keeps the
+	// hint: the journal holds a move --rollback must converge.
+	if report.journal != "" && (report.moved > 0 || report.interrupted > 0 || report.stranded > 0) {
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "journal: %s (undo with: moai worktree migrate --rollback %s)\n", report.journal, report.journal)
 	}
 	return nil
@@ -227,6 +233,11 @@ type migrationReport struct {
 	// interrupted counts trees a previous run left unfinished (card t2053,
 	// C7); the rerun neither moves nor reports them as clean.
 	interrupted int
+	// stranded counts failed trees whose settling pending line survived — the
+	// tree stands at the destination, or its location could not be established
+	// (card t2094, F3): the journal holds a move --rollback must converge, so
+	// the summary's rollback hint prints for these too.
+	stranded int
 	// journal is this run's journal path ("" when the run wrote none).
 	journal string
 }
@@ -1074,6 +1085,9 @@ func runMigrationEngineWith(root string, apply bool, trigger string, progress *t
 			report.reversed++
 		case "failed":
 			report.failed++
+			if out.Stranded {
+				report.stranded++
+			}
 		default:
 			report.skipped++
 		}
@@ -1095,6 +1109,10 @@ type treeOutcome struct {
 	Ident    string
 	Manifest string // the pre-move manifest digest (the rollback's settled precondition)
 	MLErr    error  // a move-list write error that outlives a successful move
+	// Stranded marks a failed tree whose settling pending line survived: the
+	// tree stands at the destination or its location is unknown, and
+	// --rollback is the convergence path (card t2094, F3).
+	Stranded bool
 }
 
 // manifestCapture is the seam for the before-the-move manifest of one tree.
@@ -1261,14 +1279,14 @@ func finishTree(root string, p migratePlan, mlPath, trigger string, prep treePre
 			// failing to write it surfaces through MLErr.
 			mlErr := appendMoveListLine(mlPath, m6MoveLineTriggerReason(trigger, "reversed", p.destination, p.source, id.Ident(),
 				"the forward move failed before the tree moved"))
-			return treeOutcome{Outcome: "failed", Reason: reason, Ident: id.Ident(), Manifest: digest, MLErr: mlErr}
+			return treeOutcome{Outcome: "failed", Reason: failedAtSourceReason(p, err), Ident: id.Ident(), Manifest: digest, MLErr: mlErr}
 		default:
 			// The tree's location cannot be established (K2): an unreadable
 			// identity is not an absent tree. The protection stays and the
 			// pending line records both ends for --rollback to converge.
 			const msg = "the tree's location could not be established after the failed move"
 			mlErr := appendMoveListLine(mlPath, m6MoveLineTriggerReason(trigger, "pending", p.destination, p.source, id.Ident(), msg))
-			return treeOutcome{Outcome: "failed", Reason: fmt.Sprintf("%s; %s (pending)", reason, msg), Ident: id.Ident(), Manifest: digest, MLErr: mlErr}
+			return treeOutcome{Outcome: "failed", Reason: fmt.Sprintf("%s; %s (pending)", reason, msg), Ident: id.Ident(), Manifest: digest, MLErr: mlErr, Stranded: true}
 		}
 	}
 
@@ -1334,6 +1352,26 @@ func forwardFailureLocation(p migratePlan, ident string) string {
 	return locationUnknown
 }
 
+// failedAtSourceReason names the cause of a forward move that failed with the
+// tree still at its source (card t2094, F3). A move refusing to rename the
+// tree directory usually means a process holds it as its working directory —
+// the Windows rename refusal — and a bare git error names nothing the user can
+// act on, so the working directories are probed again and, when the source is
+// inside the returned set, the reason becomes the busy-tree guidance. A probe
+// that errors or is OS-guarded keeps the git error — the underlying error is
+// never lost.
+func failedAtSourceReason(p migratePlan, moveErr error) string {
+	reason := fmt.Sprintf("git worktree move: %v", moveErr)
+	cwds, err := activeProcessCWDProbe()
+	if err != nil {
+		return reason
+	}
+	if !newProcessCWDIndex(cwds).usesWorktree(p.source) {
+		return reason
+	}
+	return fmt.Sprintf("a process is inside this worktree — close it or move its working directory elsewhere, then run the migration again (%v)", moveErr)
+}
+
 // reverseAfterFailure runs the one reverse order after a failed step and
 // translates its result into the outcome (card t1640 review P1-4): the tree
 // counts as reversed only when the reverse move SUCCEEDED — a failed
@@ -1346,7 +1384,9 @@ func reverseAfterFailure(root string, p migratePlan, id TreeIdentity, mlPath, tr
 	if movedBack {
 		out.Outcome, out.Reason = "reversed", reason
 	} else {
-		out.Outcome = "failed"
+		// The reverse order did not complete: the settling pending line
+		// survived and --rollback is the convergence path (card t2094, F3).
+		out.Outcome, out.Stranded = "failed", true
 		if mlErr != nil {
 			out.Reason = fmt.Sprintf("%s; %s and the pending line could not be written (%v)", reason, why, mlErr)
 		} else {
