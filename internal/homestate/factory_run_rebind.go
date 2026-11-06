@@ -275,7 +275,16 @@ func (f *FactoryDB) RebindRun(ctx context.Context, req RebindRequest, opts Recon
 				return RebindResult{}, rebindRefusal("card %s: run %s already holds a TERMINAL %s row (evidence %q, source %q); the live row of run %s stays and the conflict needs a fresh decision",
 					c.CardID, tgt.RunID, tgtCard.State, tgtCard.EvidenceSHA, c.EvidenceSHA, src.RunID)
 			}
-			if diverged := divergentColumns(c, tgtCard); len(diverged) > 0 {
+			// The lease guard above already established that this source row
+			// holds no VALID lease, so its lease columns are dead data and
+			// never stranded work (card t2104, #1938): a row that differs
+			// from the live row only there is still a duplicate. Without
+			// this a second dead run's expired lease (renewed at another
+			// time) refused, leaving that run active and unretirable.
+			diverged := slices.DeleteFunc(divergentColumns(c, tgtCard), func(col string) bool {
+				return col == "lease_holder" || col == "lease_expires_at"
+			})
+			if len(diverged) > 0 {
 				return RebindResult{}, rebindRefusal("card %s: run %s already holds a %s row diverging on %s (target evidence %q, source %q); the live row of run %s stays and the conflict needs a fresh decision",
 					c.CardID, tgt.RunID, tgtCard.State, strings.Join(diverged, ", "), tgtCard.EvidenceSHA, c.EvidenceSHA, src.RunID)
 			}
