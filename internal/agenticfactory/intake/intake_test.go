@@ -153,11 +153,15 @@ type fakePrep struct {
 	host    string
 	err     error
 	slots   []string
+	crash   bool // the worktree IS prepared, then the process dies before anything is recorded
 }
 
 func (f *fakePrep) PrepareWorktree(_ context.Context, req claim.Request, slot string) (Ready, error) {
 	f.calls.Add(1)
 	f.slots = append(f.slots, slot)
+	if f.crash {
+		panic("process died after the worktree was prepared")
+	}
 	if f.err != nil {
 		return Ready{}, f.err
 	}
