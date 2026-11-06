@@ -28,3 +28,9 @@ Changes: marker line `// home-guard:allow deliberate input: ...` directly above 
 
 ## Residual-risk
 Merge with main may add other new violations.
+
+## 대기 기록 (lane-28, 2026-11-07)
+
+- sync-audit iter-1 FAIL @76b6dad266 (커밋 6ef059250b): 코드 0.93 전 차원 PASS, 차단 결함 없음. 사유는 audit-plan의 codex required(workflow.yaml:38)와 배차문의 Codex 미승인 충돌 — 영수증 없음.
+- 기다리는 것: 리더/운영자 판정 (a) Codex 리뷰 승인 → 재감사 / (b) Claude 단독 결과 수용. 상대: 리더(uds:/tmp/cc-socks/82930.sock), 보고 전송함.
+- 재확인 시점: 리더 메시지가 새 턴으로 들어올 때. 카드는 sync 단계 유지, 트리 보존.
