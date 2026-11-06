@@ -324,29 +324,33 @@ func branchTipSHA(git GitRunner, branch string) (sha, refusal string, ok bool) {
 // integrationRevSHA resolves the integration name (MergeTripleInput.Develop) to
 // a commit SHA for use as a git revision operand (card t2144). Git resolves a
 // bare name tags-before-heads, so a local tag named like the integration branch
-// would redirect every check to the tag's commit. Resolution order:
+// (or like a remote-tracking ref, origin/main) would redirect every check to the
+// tag's commit. Resolution is by EXACT ref path only, never a revision
+// expression:
 //
-//  1. refs/heads/<name> by exact ref path (`show-ref --verify`), which a tag
-//     cannot shadow — unless the name is already fully qualified (refs/...);
-//  2. the name as given — a remote-tracking ref such as origin/main, or a
-//     fully qualified refs/... name — verified to be a commit.
+//  1. a name already starting with refs/ is verified as that exact path;
+//  2. otherwise refs/heads/<name>, then refs/remotes/<name>.
 //
-// Neither resolving is a fail-closed refusal naming the name and both
-// candidate forms. The SHA, not any spelling, is what callers then consume.
+// There is no tag lookup and no rev-parse fallback, so suffixed names such as
+// main~0 or main^ fail closed. A local branch literally named origin/main wins
+// over the remote-tracking ref, as in git itself (audit F2, deliberate).
+// Nothing resolving is a refusal naming the candidate forms. The SHA, not any
+// spelling, is what callers then consume.
 func integrationRevSHA(git GitRunner, name string) (sha, refusal string, ok bool) {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return "", "the integration branch is unknown (fail-closed)", false
 	}
-	if !strings.HasPrefix(name, "refs/") {
-		if out, err := git.Git("show-ref", "--verify", "--hash", "refs/heads/"+name); err == nil && strings.TrimSpace(out) != "" {
+	candidates := []string{"refs/heads/" + name, "refs/remotes/" + name}
+	if strings.HasPrefix(name, "refs/") {
+		candidates = []string{name}
+	}
+	for _, ref := range candidates {
+		if out, err := git.Git("show-ref", "--verify", "--hash", ref); err == nil && strings.TrimSpace(out) != "" {
 			return strings.TrimSpace(out), "", true
 		}
 	}
-	if out, err := git.Git("rev-parse", "--verify", "--quiet", name+"^{commit}"); err == nil && strings.TrimSpace(out) != "" {
-		return strings.TrimSpace(out), "", true
-	}
-	return "", fmt.Sprintf("the integration ref %q cannot be resolved to a commit as refs/heads/%s or as %s (fail-closed)", name, name, name), false
+	return "", fmt.Sprintf("the integration ref %q cannot be resolved to a commit as %s (fail-closed)", name, strings.Join(candidates, " or ")), false
 }
 
 // checkConflictFree evaluates condition (b): the merge-tree dry-run. Exit 0
