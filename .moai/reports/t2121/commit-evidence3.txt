@@ -1,0 +1,6 @@
+[t2121] docs(audit): sync-audit-iter3 verdict PASS-WITH-DEBT 0.89 for 54f6e04e13, Claude-only (card t2121)
+
+G1 and G3 closed, no blocking finding. Codex budget (2 calls) was spent in iter1 and iter2, so this iteration
+carries no Codex receipt; the SubagentStop receipt guard refused the auditor stop and the leader decides.
+
+🗿 MoAI
