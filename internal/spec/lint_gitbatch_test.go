@@ -37,7 +37,36 @@ func newGBRepo(t *testing.T) *gbRepo {
 	r.git("config", "user.email", "t2087@example.com")
 	r.git("config", "user.name", "t2087")
 	r.git("config", "commit.gpgsign", "false")
+	// No detached background writer: git otherwise launches `maintenance run
+	// --auto --detach` after each commit, which repacks inside .git/objects and
+	// can outlive the test into the t.TempDir RemoveAll cleanup.
+	r.git("config", "gc.auto", "0")
+	r.git("config", "maintenance.auto", "false")
 	return r
+}
+
+// TestLintGitBatch_FixtureDisablesBackgroundMaintenance pins the cleanup-flake
+// fix: git detaches `maintenance run --auto` (repack, commit-graph) after every
+// commit, and that background writer can still be inside .git/objects when the
+// t.TempDir cleanup runs RemoveAll ("directory not empty"). The fixture repo
+// must therefore never leave a background writer behind.
+func TestLintGitBatch_FixtureDisablesBackgroundMaintenance(t *testing.T) {
+	r := newGBRepo(t)
+	for i := range 3 {
+		r.spec(fmt.Sprintf("SPEC-MNT-%03d", i), "draft", "")
+		r.commit(fmt.Sprintf("feat: plan %d", i), "Authored-By-Agent: manager-spec")
+	}
+	for key, want := range map[string]string{"gc.auto": "0", "maintenance.auto": "false"} {
+		cmd := exec.Command("git", "config", "--get", key)
+		cmd.Dir = r.dir
+		out, err := cmd.Output()
+		if got := strings.TrimSpace(string(out)); err != nil || got != want {
+			t.Errorf("fixture config %s = %q (err %v), want %q", key, got, err, want)
+		}
+	}
+	if packs, err := filepath.Glob(filepath.Join(r.dir, ".git", "objects", "pack", "*.pack")); err != nil || len(packs) != 0 {
+		t.Errorf("fixture repo grew packs (%v, err %v): a background repack ran", packs, err)
+	}
 }
 
 func (r *gbRepo) git(args ...string) {
