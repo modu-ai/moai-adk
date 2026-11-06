@@ -1032,26 +1032,13 @@ func runMigrationEngineWith(root string, apply bool, trigger string, progress *t
 	return report, nil
 }
 
-// treeOutcome is migrateOneTree's verdict for one tree.
+// treeOutcome is migrateOneTreeWith's verdict for one tree.
 type treeOutcome struct {
 	Outcome  string // moved | reversed | failed | skipped
 	Reason   string
 	Ident    string
 	Manifest string // the pre-move manifest digest (the rollback's settled precondition)
 	MLErr    error  // a move-list write error that outlives a successful move
-}
-
-// migrateOneTree moves one tree through the journaled step order —
-// manifest, journal-pending (F3: before the move), intent line (the
-// instance token first), git worktree move, state re-key, card rebind,
-// manifest comparison — and, on any failure, the one reverse order (move
-// back, re-key back, rebind back). Every reverse move first compares the
-// tree's identity with the journal's and refuses a mismatch with a
-// `refused` line (REQ-WHR-017/018).
-func migrateOneTree(root string, p migratePlan, mlPath, trigger string, journal *migrationJournal) treeOutcome {
-	return migrateOneTreeWith(root, p, mlPath, trigger, journal, func() (string, error) {
-		return manifestCapture(p.source)
-	})
 }
 
 // manifestCapture is the seam for the before-the-move manifest of one tree.
@@ -1114,7 +1101,13 @@ func (pf *manifestPrefetcher) get(i int) (string, error) {
 // stop ends the read-ahead; captures already running finish on their own.
 func (pf *manifestPrefetcher) stop() { pf.once.Do(func() { close(pf.quit) }) }
 
-// migrateOneTreeWith is migrateOneTree with the before-the-move manifest handed
+// migrateOneTreeWith moves one tree through the journaled step order —
+// manifest, journal-pending (F3: before the move), intent line (the
+// instance token first), git worktree move, state re-key, card rebind,
+// manifest comparison — and, on any failure, the one reverse order (move
+// back, re-key back, rebind back). Every reverse move first compares the
+// tree's identity with the journal's and refuses a mismatch with a
+// `refused` line (REQ-WHR-017/018). The before-the-move manifest is handed
 // in: the engine reads it ahead of time for the trees waiting behind the one
 // being moved (card t2070).
 func migrateOneTreeWith(root string, p migratePlan, mlPath, trigger string, journal *migrationJournal, before func() (string, error)) treeOutcome {
