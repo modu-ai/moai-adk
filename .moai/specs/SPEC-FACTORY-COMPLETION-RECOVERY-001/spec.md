@@ -4,7 +4,7 @@ title: "Factory completion-judgment and recovery repair: leader receipt gate, au
 version: "0.4.0"
 status: in-progress
 created: 2026-10-06
-updated: 2026-11-02
+updated: 2026-11-06
 author: manager-spec
 priority: P1
 phase: "v3.2.0"
@@ -12,6 +12,10 @@ module: "internal/cli"
 lifecycle: spec-anchored
 tags: "factory,todo,auto-done,receipt-gate,lease-reaper,reassign,watchdog,ci-reader,run-lifecycle,dead-owner-run,near-dup,gtd-relations,agentic-trunk,integration-window,aff-s2"
 tier: L
+# t2105 documented debt: the draft -> in-progress commit 55b20438fd carries Authored-By-Agent: manager-spec (the matrix expects manager-develop); history is not rewritten. Remove this skip once the next status transition by its owner lands.
+lint:
+  skip:
+    - OwnershipTransitionInvalid
 ---
 
 ## §A — History
