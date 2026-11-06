@@ -48,10 +48,10 @@ func TestAgenticFactorySettings_RefCycleChild(t *testing.T) {
 	}
 	_, err := LoadAgenticFactorySettings(root)
 	if err == nil {
-		os.Stdout.WriteString("RESULT:nil\n")
+		_, _ = os.Stdout.WriteString("RESULT:nil\n")
 		return
 	}
-	os.Stdout.WriteString("RESULT:" + err.Error() + "\n")
+	_, _ = os.Stdout.WriteString("RESULT:" + err.Error() + "\n")
 }
 
 // A self-referencing YAML reference under webhook.routes must be a config
