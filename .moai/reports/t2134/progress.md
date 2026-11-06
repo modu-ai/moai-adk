@@ -59,4 +59,12 @@ Card t2134 · run to2bbk · lane-31 · Class B (재현·귀속 먼저, Windows �
 - Windows 실행 판정 전부 → CI. 잔여 불확실 2가지: 유효 PATH에서 git.exe가 #!/bin/sh 훅을 스폰하는지(로그에 sh-직접호출 선례만 존재), MSYS `command -v`의 .exe 해석 — cli-3 재실행 판정
 - 형제 4건 + 기관 C — 범위 밖, 후속 카드/리더 판단 기록
 
+## sync 감사 1라운드 결과 (2026-11-06 ~23:45 local)
+
+- 판정: **PASS-WITH-DEBT** — 가중 0.93 (기능성 92 / 보안성 96 / 장인정신 90 / 일관성 94). 판정 파일 `.moai/reports/t2134/sync-audit-iter1.md` (verdict:/audited_sha:/receipt: 줄 직독 확인, audited=cb57add07379b8f6d33964274e7f7ad2e73eee3a)
+- 부채(판정 명시): 기관 C(훅 측 gofmt -l /dev/stdin Windows 블로커 — 동결 존중 미수리) + 형제 2건(precommit_vet_output_e2e_test.go:50 기관 A)
+- 영수증 상태: **none — 이 패밀리 Codex 미승인(d-20261106T133813Z-3350, 결정판 직독 근거)**. 트리 일반 설정 gates.codex: required의 Stop-hook가 PASS-계열 판정에 영수증을 요구했으나 감사관이 호출 대신 운영자 비승인 우선을 적용, 거부 이벤트·처분을 판정 파일 Iteration history에 기록(침묵 대체 없음, 게이트 압력으로 토큰 변경 없음). 해소(패밀리 gates 면제 또는 명시적 Codex 승인)는 리더/운영자 소관 — 리더 전달
+- 감사관 자체 검증: 표적 9/9 PASS, 패밀리 광역 ok 20.649s, windows vet/compile exit 0, gofmt 무출력, 귀속 표 코드 대조
+- 결정 기록: decided_by=lane-31 sync-audit-r1 evidence_refs=.moai/reports/t2134/sync-audit-iter1.md ladder_path=Claude sync-auditor(af-flow, Codex 미승인 패밀리) — PASS-WITH-DEBT 수용
+
 ### Gaps
