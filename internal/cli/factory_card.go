@@ -3165,6 +3165,16 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 				card.CardID, card.State, card.MergeSHA, why, target)
 			return nil
 		}
+		// And only when the card branch has not moved past that merge: a fix
+		// committed on the card branch after the merge is not in the recorded
+		// merge, and archiving the card would call it landed. No record field
+		// is needed — the card's own HEAD and the recorded MergeSHA answer it
+		// (card t2059, review of fa98cfb9ae).
+		if why := factoryCardHeadNotInMerge(card); why != "" {
+			_, _ = fmt.Fprintf(out, "%s %s merge=%s (already merged; the queue card is left open: %s)\n",
+				card.CardID, card.State, card.MergeSHA, why)
+			return nil
+		}
 		_, _ = fmt.Fprintf(out, "%s %s merge=%s branch=%s (already merged; reconciling the queue close)\n",
 			card.CardID, card.State, card.MergeSHA, target)
 		factoryCloseLaneCard(out, root, runID, card, lane, target)
@@ -3757,7 +3767,15 @@ func factoryMergeReachable(dir, mergeSHA, branch string) (bool, error) {
 	}
 	// The full ref: a tag named like the branch outranks it in git's name
 	// resolution and would answer for the wrong ref.
-	_, err := factoryGitRead(dir, "merge-base", "--is-ancestor", mergeSHA, "refs/heads/"+strings.TrimPrefix(branch, "refs/heads/"))
+	return factoryCommitContained(dir, mergeSHA, "refs/heads/"+strings.TrimPrefix(branch, "refs/heads/"))
+}
+
+// factoryCommitContained reports whether ancestor is an ancestor of (or equal
+// to) descendant, read in dir with `git merge-base --is-ancestor` (card t2057,
+// t2059). A negative answer (git exits 1) is (false, nil); anything git cannot
+// resolve or answer is an error, never read as "not an ancestor".
+func factoryCommitContained(dir, ancestor, descendant string) (bool, error) {
+	_, err := factoryGitRead(dir, "merge-base", "--is-ancestor", ancestor, descendant)
 	if err == nil {
 		return true, nil
 	}
@@ -3766,6 +3784,29 @@ func factoryMergeReachable(dir, mergeSHA, branch string) (bool, error) {
 		return false, nil
 	}
 	return false, err
+}
+
+// factoryCardHeadNotInMerge answers "" when the card branch's current HEAD is
+// contained in the recorded merge, and otherwise a short reason the re-run
+// prints when it leaves the queue card open (card t2059). A HEAD or a merge
+// git cannot resolve is a reason too — never read as contained.
+func factoryCardHeadNotInMerge(card homestate.Card) string {
+	dir := strings.TrimSpace(card.WorktreePath)
+	if dir == "" {
+		return "the card has no recorded worktree to read the card branch HEAD from"
+	}
+	head, err := factoryGitRead(dir, "rev-parse", "--verify", "--quiet", "HEAD^{commit}")
+	if err != nil || head == "" {
+		return fmt.Sprintf("the card branch HEAD could not be read (%v)", err)
+	}
+	contained, err := factoryCommitContained(dir, head, card.MergeSHA)
+	if err != nil {
+		return fmt.Sprintf("the card branch HEAD could not be compared with the recorded merge (%v)", err)
+	}
+	if !contained {
+		return fmt.Sprintf("the card branch HEAD %s is not contained in the recorded merge", factory.ShortSHA(head))
+	}
+	return ""
 }
 
 // factoryRepoDir names the repository directory the worktree lookup runs
