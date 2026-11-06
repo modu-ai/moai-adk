@@ -125,9 +125,7 @@ func TestMigrateApply_ForwardFailure_UnreadableDestinationIdentity_StaysPending(
 // destination that cannot be inspected is not an absent destination, so the
 // rollback must not write `restored` on that reading.
 func TestRollback_UnstatableDestination_IsNotTreatedAsAbsent(t *testing.T) {
-	if os.Geteuid() == 0 {
-		t.Skip("root ignores directory modes")
-	}
+	t2053SkipIfRoot(t) // root and Windows both ignore the directory mode this test relies on
 	w, p, id, mlPath := t2053ReverseWorld(t)
 	m6Git(t, w.repo, "worktree", "move", p.destination, p.source) // really back, really registered
 	journal := t2053RollbackJournal(t, p, id)
@@ -150,9 +148,7 @@ func TestRollback_UnstatableDestination_IsNotTreatedAsAbsent(t *testing.T) {
 // destination absent, a source that cannot be inspected is not a source that is
 // gone; the step must not be skipped as "nothing to do".
 func TestRollback_UnstatableSource_IsNotTreatedAsGone(t *testing.T) {
-	if os.Geteuid() == 0 {
-		t.Skip("root ignores directory modes")
-	}
+	t2053SkipIfRoot(t) // root and Windows both ignore the directory mode this test relies on
 	w, p, id, _ := t2053ReverseWorld(t)
 	m6Git(t, w.repo, "worktree", "move", p.destination, p.source)
 	journal := t2053RollbackJournal(t, p, id)

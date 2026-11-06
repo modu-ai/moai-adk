@@ -30,6 +30,11 @@ func t2085SkipOnWindows(t *testing.T, reason string) {
 	}
 }
 
+// t2085SameFileIsMeaningful reports whether os.SameFile can tell a replaced
+// file from the original here. On Windows it cannot (t2085ReasonSameFile), so
+// that one assertion is skipped there and the rest of the test still runs.
+func t2085SameFileIsMeaningful() bool { return runtime.GOOS != "windows" }
+
 const (
 	t2085ReasonPosixMode = "the fixture is an unreadable path made with chmod; Windows ignores POSIX mode bits, so the input stays readable"
 	t2085ReasonShim      = "the fault is injected by a #!/bin/sh script placed first on PATH; Windows cannot execute it, so the fault never happens"
