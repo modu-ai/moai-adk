@@ -130,6 +130,21 @@ type ModeProfile struct {
 	ReleaseBranchPrefix string `yaml:"release_branch_prefix"` // manual mode, git-flow only
 	RCVersionFormat     string `yaml:"rc_version_format"`     // manual mode, git-flow only
 
+	// ReleaseRoute arms the af-flow release completion route (card t2098).
+	// Default OFF, and absent unmarshals to false: the route arms only when
+	// an af-flow profile explicitly sets release_route: true, so
+	// LoadAgenticTrunkReleaseBranch resolves prefix + "main-batch" for
+	// factoryReleaseRoute only through the explicit opt-in. Operator rule
+	// (decision 2026-11-06): under af-flow the landing surface is local main
+	// — the release branch is never a lane landing surface. The key narrows
+	// SPEC-FACTORY-COMPLETION-RECOVERY-001 REQ-FCR-026's Where clause by that
+	// operator decision (.moai/reports/af-flow-v2-20261106/design-diff.md
+	// §2 step S0, "release route off — route deactivation or a config key");
+	// the route's own semantics are unchanged. Modelled so a typed save
+	// re-marshals it instead of silently deleting it (see the round-trip
+	// hazard note above).
+	ReleaseRoute bool `yaml:"release_route"` // af-flow only; default false
+
 	// LeadPushThreshold is the manual-mode batch-push trigger (SPEC-MAIN-COMMIT-BAN-001
 	// REQ-3.3): the lead closes the push batch when
 	// `git rev-list --count origin/<develop>..<develop>` reaches this count.

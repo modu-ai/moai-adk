@@ -41,10 +41,14 @@ const factoryFastCheckID = "factory-complete-fast"
 
 // factoryReleaseRoute reports the release route's branch and worktree when every
 // condition of REQ-FCR-026 holds: an af-flow profile, a non-empty
-// release_branch_prefix, and the fixed release branch checked out in a worktree
-// that is not the primary checkout. Any condition missing — including an
-// unprovisioned branch (decision-index Q9) — answers false and leaves the
-// existing routes in force.
+// release_branch_prefix explicitly opted in through release_route: true, and
+// the fixed release branch checked out in a worktree that is not the primary
+// checkout. Card t2098 made the route opt-in and default-OFF by operator
+// decision (the af-flow landing surface is local main — the release branch is
+// never a lane landing surface); the gate lives in the loader
+// (ModeProfile.ReleaseRoute), so the predicate logic here is unchanged. Any
+// condition missing — including an unprovisioned branch (decision-index Q9) —
+// answers false and leaves the existing routes in force.
 func factoryReleaseRoute(root string) (branch, tree string, ok bool) {
 	branch = config.LoadAgenticTrunkReleaseBranch(root)
 	if branch == "" {

@@ -15,14 +15,21 @@ const agenticTrunkReleaseBatchName = "main-batch"
 // LoadAgenticTrunkReleaseBranch returns the fixed af-flow release branch
 // of the project at projectRoot — the active profile's release_branch_prefix
 // followed by "main-batch", e.g. "release/main-batch" — or "" when the active
-// profile's workflow is not af-flow, the prefix is empty, or the file is
-// unreadable. It is a separate read on purpose: GitFlowIntegrationConfig does
-// not carry the prefix, and widening that struct would move the other
-// consumers of the integration target.
+// profile's workflow is not af-flow, the prefix is empty, the profile has not
+// opted in through release_route: true, or the file is unreadable. It is a
+// separate read on purpose: GitFlowIntegrationConfig does not carry the
+// prefix, and widening that struct would move the other consumers of the
+// integration target.
 //
 // Card t2056: the workflow gate reads the same effective workflow as
 // LoadGitFlowIntegrationConfig (effectiveWorkflow), so in a factory leader or
 // lane session a profile that sets no workflow counts as af-flow here too.
+//
+// Card t2098: the release route is opt-in (ModeProfile.ReleaseRoute) —
+// default OFF by operator decision (the af-flow landing surface is local
+// main; the release branch is never a lane landing surface), narrowing
+// SPEC-FACTORY-COMPLETION-RECOVERY-001 REQ-FCR-026's Where clause by that
+// decision. A non-empty release_branch_prefix alone arms nothing.
 func LoadAgenticTrunkReleaseBranch(projectRoot string) string {
 	_, factorySession := DetectRoleMarker(os.Getenv)
 	return loadAgenticTrunkReleaseBranch(projectRoot, factorySession)
@@ -42,7 +49,7 @@ func loadAgenticTrunkReleaseBranch(projectRoot string, factorySession bool) stri
 		return ""
 	}
 	prefix := strings.TrimSpace(profile.ReleaseBranchPrefix)
-	if prefix == "" {
+	if prefix == "" || !profile.ReleaseRoute {
 		return ""
 	}
 	return prefix + agenticTrunkReleaseBatchName
