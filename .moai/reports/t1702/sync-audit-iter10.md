@@ -16,7 +16,7 @@ audited_sha: f8bf1b6669a700f7b037b681983dbf7ab5eed719
 
 점수: 93/100. Functionality 95 PASS, Security 95 PASS, Craft 92 PASS, Consistency 90 PASS.
 
-Codex leg: not run this round (operator ruling d-20261106T162918Z-afc8; the Codex pass of iter9 covers a29bc40be5, not this delta)
+Codex leg: ran in round 11 under operator decision d-20261106T163514Z-ab00 (delta a29bc40be5..HEAD c7ba8935ea), verdict pass, no findings, receipt rcpt-6e9fbc048e591236c0be4f48 (see "Codex leg (round 11)"); iter10 itself ran Claude-only under d-20261106T162918Z-afc8
 
 ## 저장소 필수 Codex 게이트와 이 판정의 관계
 
@@ -164,8 +164,19 @@ main:internal/cli/factory_fixture_home_test.go:36:		t.Errorf("MoaiHome() = %q re
 - iter9: FAIL @a29bc40be5 — R1, N5, N6 닫힘, Codex pass(rcpt-2973cf866890155ca03162e5), 가드 탐색에서 BLOCKING H1(초기 커밋에서 생김).
 - iter10(이번): PASS @f8bf1b6669 — H1 닫힘, 새 결함 없음. Claude 단독(d-20261106T162918Z-afc8), Codex 미실행, 이 SHA의 영수증 없음.
 
-## 영수증 가드 차단 기록 (판정 제출 직후)
+## 영수증 가드 차단 기록 (판정 제출 직후) — 해결됨(round 11 영수증 rcpt-6e9fbc048e591236c0be4f48)
+
+아래는 이력으로 남긴다. 이 차단은 round 11의 Codex 호출과 그 영수증으로 해소되었다(아래 "Codex leg (round 11)").
 
 감사관이 멈출 때 SubagentStop 훅이 PASS를 거부했다. 원문은 다음과 같다. "AUDIT_RECEIPT_VIOLATION: sync-auditor reported PASS but the audit could not be corroborated — no receipt cited. Call the codex audit (codex_audit or audit_multi) for this tree, then end with a verdict line citing the receipt id it returns."
 
 운영자 결정 d-20261106T162918Z-afc8은 이 회차에 Codex를 더 부르지 말라고 했고, 영수증 가드가 막으면 우회하지 말고 보고하라고 했다. 그래서 훅이 요구한 codex_audit/audit_multi 호출을 하지 않았다. 훅을 통과시키려고 판정을 FAIL로 바꾸지도 않았다. 코드 판정은 위 근거대로 PASS로 둔다. 이 SHA에 대해 영수증 가드가 받아들이는 PASS 기록은 없다. 여기서 감사를 멈추고, 처리는 리더와 운영자의 결정에 맡긴다(운영자 승인 아래 Codex를 한 번 더 부를지, 또는 다른 처리를 할지).
+
+## Codex leg (round 11)
+
+- 근거: 운영자 결정 d-20261106T163514Z-ab00(kind=ceiling-exception, digest d34f43a57e79). 원문: "One third codex_audit for the t1702 sync stage, scoped to the delta a29bc40be5..f8bf1b6669 (4 test-text lines). Supersedes the no-codex line of d-20261106T162918Z-afc8. On pass: stage merge-ready; on fail: report, no further call." `moai decision read --scope card:t1702`를 스크래치패드 파일로 받아 id로 찾아 읽었다.
+- 호출: `mcp__moai__codex_audit`를 한 번만 불렀다. 인자는 `project_root=/Users/goos/MoAI/moai-adk-go/.moai/worktrees/t1702`, `target=baseBranch`, `delta_base=a29bc40be5`, `mode=native`. 거부나 재시도는 없었다.
+- 범위: 도구 스키마에 검토 대상 head를 지정하는 인자가 없어서 워크트리 HEAD c7ba8935ea7642ba1d305ecb1da416785da4088a를 기준으로 검토했다. 반환된 `review_base`는 "delta_base (merge base a29bc40be5ba143fed1543c84cfd4c146d1ba370)"이다. `git diff --stat f8bf1b6669 HEAD`는 `.moai/reports/t1702/sync-audit-iter10.md` 한 파일(171줄 추가)뿐이므로, Codex가 본 코드 델타는 a29bc40be5..f8bf1b6669와 같다. 추가로 이 기록 파일 하나가 함께 보였다.
+- 결과 원문: `"verdict":"pass","summary":"Verdict: pass","findings":[],"next_steps":[]`, `"audit_receipt":"rcpt-6e9fbc048e591236c0be4f48"`, `"build_commit":"04d8c27a7e"`, `resolved_model "gpt-6.1-sol"`, `requested_effort "high"`, `error_code ""`.
+- 해석: 결함이 없다. 판정은 PASS 그대로 둔다. 필수 codex 게이트는 이 델타에 대해 영수증 rcpt-6e9fbc048e591236c0be4f48로 충족되었다. iter9 영수증 rcpt-2973cf866890155ca03162e5는 a29bc40be5까지를 다룬 것이고, 이번 회차 영수증으로 인용하지 않는다.
+- Gaps: 판정 서버 빌드는 04d8c27a7e다. 이 트리 HEAD와 같은 빌드가 아니다. 다만 Codex 검토는 트리의 diff를 읽은 것이고, 이 트리의 도구로 측정한 결과가 아니다. 호출 뒤에 바꾼 파일은 이 기록 파일 하나뿐이다.
