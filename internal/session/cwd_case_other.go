@@ -9,3 +9,10 @@ func realpathPlatform(dir string) string {
 	_ = dir
 	return ""
 }
+
+// caseFoldsPlatform reports whether the platform's volumes fold path case
+// for the containment tests: not measured off darwin (t1293 does not
+// guess), so the containment tests stay literal.
+func caseFoldsPlatform() bool {
+	return false
+}

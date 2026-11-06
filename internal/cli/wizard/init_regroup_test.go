@@ -30,10 +30,11 @@ var groupReadRe = regexp.MustCompile(`\.Group([^A-Za-z0-9_.]|$)`)
 
 // TestInitRegroup_TwoPages is AC-ITI-018: buildFormGroups over InitQuestions
 // yields one group per Group label; conversation_language + user_name open the
-// first, agent_wiring + autonomy_tier share the second carrying Group
-// "Agents & Autonomy", and no init question keeps the retired
-// "Quality & Workflow" label. The stepper denominator is deliberately NOT
-// asserted here (AC-ITI-021's property).
+// first, autonomy_tier carries the second Group "Agents & Autonomy"
+// (agent_wiring went with the general codex execution surface removal, card
+// t1909), and no init question keeps the retired "Quality & Workflow" label.
+// The stepper denominator is deliberately NOT asserted here (AC-ITI-021's
+// property).
 //
 // The count moved 2 -> 3 with SPEC-JEV-OPTIN-MEASURE-001 REQ-JEVO-005: the Jev
 // opt-in carries its own Group label, because appending it to
@@ -54,25 +55,23 @@ func TestInitRegroup_TwoPages(t *testing.T) {
 	// Membership + relative order (index-independent: the AC-ITI-021 denominator
 	// mutant inserts an extra question right after user_name, and this AC must
 	// still PASS under it). conversation_language + user_name open the set,
-	// agent_wiring + autonomy_tier close it, all four in this relative order.
+	// autonomy_tier closes it, all three in this relative order.
 	position := map[string]int{}
 	for i := range questions {
 		position[questions[i].ID] = i
 	}
-	for _, id := range []string{"conversation_language", "user_name", "agent_wiring", "autonomy_tier"} {
+	for _, id := range []string{"conversation_language", "user_name", "autonomy_tier"} {
 		if _, ok := position[id]; !ok {
 			t.Fatalf("init set lacks %q", id)
 		}
 	}
 	if position["conversation_language"] >= position["user_name"] ||
-		position["user_name"] >= position["agent_wiring"] ||
-		position["agent_wiring"] >= position["autonomy_tier"] {
+		position["user_name"] >= position["autonomy_tier"] {
 		t.Errorf("init order broken: %v", position)
 	}
 	for _, tc := range []struct{ id, want string }{
 		{"conversation_language", "Basic"},
 		{"user_name", "Basic"},
-		{"agent_wiring", "Agents & Autonomy"},
 		{"autonomy_tier", "Agents & Autonomy"},
 	} {
 		if got := questions[position[tc.id]].Group; got != tc.want {
@@ -92,9 +91,10 @@ func TestInitRegroup_TwoPages(t *testing.T) {
 // NOT asserted here (AC-ITI-018's property).
 //
 // N moved 4 -> 5 with SPEC-JEV-OPTIN-MEASURE-001 REQ-JEVO-005 (the init-only
-// Jev opt-in, on its own page), and 5 -> 6 with SPEC-FEEDBACK-PARTICIPATION-001
-// REQ-ANON-003 (the participation opt-in, on its own page after it). The test
-// name keeps its historical number.
+// Jev opt-in, on its own page), 5 -> 6 with SPEC-FEEDBACK-PARTICIPATION-001
+// REQ-ANON-003 (the participation opt-in, on its own page after it), and
+// 6 -> 5 with card t1909 (the agent_wiring harness selector removed). The
+// test name keeps its historical number.
 func TestInitStepper_Denominator4(t *testing.T) {
 	result := &WizardResult{}
 	form := buildUnifiedForm(InitQuestions("/tmp/init-denominator"), result, "")
@@ -106,7 +106,7 @@ func TestInitStepper_Denominator4(t *testing.T) {
 	pages := []struct {
 		questions int
 		first     int
-	}{{questions: 2, first: 1}, {questions: 2, first: 3}, {questions: 1, first: 5}}
+	}{{questions: 2, first: 1}, {questions: 1, first: 3}, {questions: 1, first: 4}}
 	for i, p := range pages {
 		frame := ptycaptest.StripANSI(d.View())
 		var firstLine string
@@ -116,10 +116,10 @@ func TestInitStepper_Denominator4(t *testing.T) {
 				break
 			}
 		}
-		if got := strings.Count(firstLine, "●") + strings.Count(firstLine, "○"); got != 6 {
-			t.Errorf("page %d first line carries %d ●/○ marks, want 6; line: %q", i+1, got, firstLine)
+		if got := strings.Count(firstLine, "●") + strings.Count(firstLine, "○"); got != 5 {
+			t.Errorf("page %d first line carries %d ●/○ marks, want 5; line: %q", i+1, got, firstLine)
 		}
-		if want := strconv.Itoa(p.first) + " / 6"; !strings.HasSuffix(firstLine, want) {
+		if want := strconv.Itoa(p.first) + " / 5"; !strings.HasSuffix(firstLine, want) {
 			t.Errorf("page %d first line %q must end with %q", i+1, firstLine, want)
 		}
 		for range p.questions {
@@ -185,23 +185,22 @@ func TestGroupLabel_NotRendered(t *testing.T) {
 	}
 
 	// Real init half: page 2 (after answering the Basic page) carries the
-	// agent_wiring question title and never the group label. The title string
-	// tracks the REQ-IH-013 (SPEC-INIT-HARNESS-001) deployment-consequence
-	// wording — this is the render pin, updated with the wording change.
+	// autonomy_tier question title and never the group label. (The
+	// agent_wiring title went with the question, card t1909.)
 	result := &WizardResult{}
 	initForm := buildUnifiedForm(InitQuestions("/tmp/init-label"), result, "")
 	id := ptycaptest.NewFormDriver(t, initForm)
 	id.Enter() // conversation_language
 	id.Enter() // user_name -> regrouped page
 	initFrame := ptycaptest.StripANSI(id.View())
-	if !strings.Contains(initFrame, "Select the agent harness to deploy and wire") {
-		t.Error("init frames lack the agent_wiring title — the walk did not cover the regrouped group")
+	if !strings.Contains(initFrame, "Select the session permission mode") {
+		t.Error("init frames lack the autonomy_tier title — the walk did not cover the regrouped group")
 	}
 	if strings.Contains(initFrame, "Agents & Autonomy") {
 		t.Error("init frames render the group label Agents & Autonomy")
 	}
-	// Agents & Autonomy (2 selects) -> Judgment Capability -> Participation.
-	for range 4 {
+	// Agents & Autonomy (1 select) -> Judgment Capability -> Participation.
+	for range 3 {
 		id.Enter()
 	}
 	if initForm.State != huh.StateCompleted {
@@ -260,11 +259,12 @@ func TestGroupLabel_NotRendered(t *testing.T) {
 }
 
 // TestInitRegroup_SecondGroupGolden is the regression guard AC-ITI-021 asks
-// for: the regrouped second page (two question titles, stepper ending
-// "3 / 6"). It changes under BOTH mutants (group split, extra question), so
-// it is a regression guard only — never counted as evidence for either
-// property. The denominator moved 4 -> 5 with the init-only Jev opt-in and
-// 5 -> 6 with SPEC-FEEDBACK-PARTICIPATION-001 REQ-ANON-003.
+// for: the regrouped second page (stepper ending "3 / 5"; one question title
+// since the agent_wiring removal, card t1909). It changes under BOTH mutants
+// (group split, extra question), so it is a regression guard only — never
+// counted as evidence for either property. The denominator moved 4 -> 5 with
+// the init-only Jev opt-in, 5 -> 6 with SPEC-FEEDBACK-PARTICIPATION-001
+// REQ-ANON-003, and 6 -> 5 with card t1909.
 func TestInitRegroup_SecondGroupGolden(t *testing.T) {
 	result := &WizardResult{}
 	form := buildUnifiedForm(InitQuestions("/tmp/init-regroup-golden"), result, "")
@@ -275,8 +275,8 @@ func TestInitRegroup_SecondGroupGolden(t *testing.T) {
 	if err := ptycaptest.CompareGolden("testdata/axis", "init-regroup-second-group", frame, *updateAxisGolden); err != nil {
 		t.Fatal(err)
 	}
-	// Agents & Autonomy (2 selects) -> Judgment Capability -> Participation.
-	for range 4 {
+	// Agents & Autonomy (1 select) -> Judgment Capability -> Participation.
+	for range 3 {
 		d.Enter()
 	}
 	if form.State != huh.StateCompleted {

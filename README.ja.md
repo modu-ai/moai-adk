@@ -21,7 +21,7 @@
   <a href="https://codecov.io/gh/modu-ai/moai-adk"><img src="https://codecov.io/gh/modu-ai/moai-adk/branch/main/graph/badge.svg" alt="Codecov"></a>
   <br>
   <a href="https://go.dev/"><img src="https://img.shields.io/badge/Go-1.26+-00ADD8?style=flat&logo=go&logoColor=white" alt="Go"></a>
-  <a href="https://github.com/modu-ai/moai-adk/releases"><img src="https://img.shields.io/badge/Release-v3.1.3-blue.svg" alt="Release"></a>
+  <a href="https://github.com/modu-ai/moai-adk/releases"><img src="https://img.shields.io/badge/Release-v3.1.2-blue.svg" alt="Release"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/License-Apache--2.0-blue.svg" alt="License: Apache-2.0"></a>
 </p>
 
@@ -50,26 +50,27 @@ moai cc -f                    # リーダー — ファクトリーを開く
 moai cc -l                    # レーン、各自別ターミナルで — 次の空き番号で合流
 moai cc -l                    # lane-1、lane-2 … の順に付く
 moai glm -l                   # GLM バックエンドのレーン
-moai codex -l                 # Codex のレーン
 ```
 
-`-f`（長い形 `--factory`）がリーダーを開き、`-l`（長い形 `--lane`）が稼働中のファクトリーにレーンとして合流する。どちらも引数を取らない。レーン番号はオペレーターが選ぶものではなく、自動で割り当てられる。レーンは**ターミナルを 1 つずつ新しく開いて手動で**立ち上げる。セッションが別のセッションの代わりに立つことはない。`moai codex` にリーダーの進入はなく、レーンとしてしか合流できない。
+`-f`（長い形 `--factory`）がリーダーを開き、`-l`が稼働中のファクトリーにレーンとして合流する。どちらも引数を取らない。レーン番号はオペレーターが選ぶものではなく、自動で割り当てられる。レーンは**ターミナルを 1 つずつ新しく開いて手動で**立ち上げる。セッションが別のセッションの代わりに立つことはない。
 
-1 回の起動に進入トークンは 1 つだけなので、`-f` と `-l` の併用はエラーになる。値を付けた形（`moai cc -f <値>`、`moai cc -l lane-2`）も 1 行のエラーで拒否され、エラー文が正しい形を教えてくれる。かつてのマルチセッション・ボードモードの `-k` は削除済みで、`moai cg` は移行案内を表示して終了する（`moai migrate cg` で先に確認できる）。`moai gpt` は存在せず、GPT モデルは `moai codex` で動かす。
+1 回の起動に進入トークンは 1 つだけなので、`-f` と `-l` の併用はエラーになる。値を付けた形（`moai cc -f <値>`、`moai cc -l lane-2`）も 1 行のエラーで拒否され、エラー文が正しい形を教えてくれる。かつてのマルチセッション・ボードモードの `-k` は削除済みです。
 
 ### どのバックエンドで動かすか
 
-バックエンドはレーンごとに選ぶ。`moai cc -l` は Claude、`moai glm -l` は GLM、`moai codex -l` は Codex のレーンだ。リーダーは判定を下す席ではなく、キューを見張ってカードを運ぶ席なので、待たせ続けても安い GLM（`moai glm -f`）が合う。あるアカウントが 429 で詰まり始めたら、レーンをアカウントに分散して置く運用が効く。この組み合わせはあくまで一例で、全セッションをひとつのバックエンドに統一しても構わない。
+バックエンドはレーンごとに選ぶ。`moai cc -l` は Claude、`moai glm -l` は GLM のレーンだ。リーダーは判定を下す席ではなく、キューを見張ってカードを運ぶ席なので、待たせ続けても安い GLM（`moai glm -f`）が合う。あるアカウントが 429 で詰まり始めたら、レーンをアカウントに分散して置く運用が効く。この組み合わせはあくまで一例で、全セッションをひとつのバックエンドに統一しても構わない。
 
 ### レーン N 本で複数のカードを同時に
 
 レーンは `-l` をもう一度打って 1 本ずつ増やす。番号は自動割り当てなので、`--name`/`-n` を併せて渡すとエラーになる。番号は生きているセッションが握っているものだけを飛ばす。死んだレーンの claim はその番号をもう塞がないが、自動割り当ては常に生存中の最高番号+1を取るだけで、途中の空き番号は埋めない。レーンの所有権は `~/.moai/db/<project-key>/factory/factory.db` に記録される。起点ディレクトリが一時ディレクトリなら（絶対 `MOAI_HOME` オーバーライドなし）プロジェクトローカルの `<base>/.moai/db/<project-key>/factory/` の下に記録される。バックログキューと同じ例外だ。従来の `.moai/state/factory/workers.json` は一度だけ取り込まれ、ロールバック用の証跡として残る。
 
+データベースのパスは推測せず、`moai paths` で確認します。`~/.moai/db/todo.db` のように推測したパスを `sqlite3` で開くと空のファイルが作られるため、開きません。直接読む必要があるときは、`.db`、`.db-wal`、`.db-shm` を一緒にコピーしたスナップショットだけを読み、普段は `moai todo list --json` や `moai factory status` などの CLI を優先します。
+
 1 本のレーンは最大 10 個の `Agent()` サブエージェントを同時に走らせ、書き込みを担うスポーンはそれぞれの worktree に隔離される。レーンを一度に全部立ち上げてはいけない。まず最初の 1 本を上げ、実際に出力が出ているのを確かめてから残りを立ち上げる。カードがレーンをまたいで分割されることはない。
 
-ファクトリー run は、自分を所有するセッションのプロセス識別を記録する。リーダーが死んだ run は、次にレーンが合流した時点で自動的に retire されるので、その合流が `AMBIGUOUS_FACTORY` で止まることはない。逆も防がれている。レーンが合流するとき run の記録が欠落または退役済みで、リーダー・セッションが生きていれば、合流はそのリーダーを検証し（pid とプロセス開始フィンガープリント、対象は長い形の `--leader <名前>` で指定、既定値は `leader`）、run の記録を復元してそのまま合流する。検証済みリーダーが二人以上なら、候補を全員名指してフェイルクローズする。`--leader` は `-l`/`--lane` とだけ組み合わせるセレクターで、進入トークンの短縮形ではない。`moai factory runs` は全 run を所有者の生死とともに一覧し、`moai factory runs --retire <run-id>` は指定した run を手で retire する。所有者が実際に死んでいなければ拒否される。
+ファクトリー run は、自分を所有するセッションのプロセス識別を記録する。リーダーが死んだ run は、次にレーンが合流した時点で自動的に retire されるので、その合流が `AMBIGUOUS_FACTORY` で止まることはない。逆も防がれている。レーンが合流するとき run の記録が欠落または退役済みで、リーダー・セッションが生きていれば、合流はそのリーダーを検証し（pid とプロセス開始フィンガープリント、対象は長い形の `--leader <名前>` で指定、既定値は `leader`）、run の記録を復元してそのまま合流する。検証済みリーダーが二人以上なら、候補を全員名指してフェイルクローズする。`--leader` は `-l` とだけ組み合わせるセレクターで、進入トークンの短縮形ではない。`moai factory runs` は全 run を所有者の生死とともに一覧し、`moai factory runs --retire <run-id>` は指定した run を手で retire する。所有者が実際に死んでいなければ拒否され、完了・失敗・中止のいずれでもないカードが残っている run も拒否される。拒否時にはそのカードの一覧と代わりに使える手段（`moai cc -l --factory-run <run-id>` で合流、`moai cc -f --factory-run <run-id>` で引き継ぎ、カードごとに `moai factory decide <カード> --choice abandon --run <run-id>`）が表示される。合流と引き継ぎは run が有効な間だけ使え、カードの中止は取り消せない。強制的に retire するフラグはない。すでに retire 済みの run を指定すると、書き込みなしで結果を知らせ、残っているカードを並べる。そのようなカードが残る有効な run は `moai factory relaunch --from-run` でも有効なまま残され、`left active (N in-progress cards)` と報告される。retire 済みの run には手を付けない（`not active (retired), left untouched`）。
 
-run が死んだり入れ替わったりしても、レーンのセッションは環境に固定された古い run を指し続ける。そのレーンは `moai factory relaunch` で生きている run に付け直す。このコマンドはプロバイダー自身のレーン合流行（`moai cc -l`、`moai glm -l`、Codex は `moai codex -l` のみ）をそのまま再実行し、オプションは `--provider`・`--lane`・`--run`・`--from-run <run-id>`・`--dry-run` だ。`-l` は引数を取らないので、`--lane` を渡しても合流行には載らない。コマンドが stderr でそう知らせ、レーンは次の空き番号で合流する。`--from-run` はその run が有効で所有者が死んでいる場合に限って先に retire し、`--dry-run` は実行行を表示するだけで何も変えない。1 つの run の中でカードを順に回す `--clear-policy relaunch` ループとは別の、1 回限りのコマンドである。stale-run の案内文も、文章の代わりにこのコマンドを埋めた行を表示する。
+run が死んだり入れ替わったりしても、レーンのセッションは環境に固定された古い run を指し続ける。そのレーンは `moai factory relaunch` で生きている run に付け直す。このコマンドはプロバイダー自身のレーン合流行（`moai cc -l`、`moai glm -l`）をそのまま再実行し、オプションは `--provider`・`--lane`・`--run`・`--from-run <run-id>`・`--dry-run` だ。`-l` は引数を取らないので、`--lane` を渡しても合流行には載らない。コマンドが stderr でそう知らせ、レーンは次の空き番号で合流する。`--from-run` はその run が有効で所有者が死んでいる場合に限って先に retire し、`--dry-run` は実行行を表示するだけで何も変えない。1 つの run の中でカードを順に回す `--clear-policy relaunch` ループとは別の、1 回限りのコマンドである。stale-run の案内文も、文章の代わりにこのコマンドを埋めた行を表示する。
 
 > 詳しくは: [ファクトリーモード](https://adk.mo.ai.kr/ja/advanced/factory-mode)
 
@@ -285,8 +286,8 @@ cd my-project
 
 
 > **GPT ゲートウェイの撤回（2026-09-16）。** 内蔵トランスレーションゲートウェイで GPT モデルを
-> Claude Code に載せていた旧 `moai gpt` ランチャーは削除されました。GPT モデルはネイティブハーネスの
-> `moai codex`（Codex CLI）から利用してください。上記の `--llm gpt` init 値には影響しません —
+> Claude Code に載せていた旧ランチャーは削除されました。GPT モデルはネイティブハーネスの
+> Codex CLI から利用してください。上記の `--llm gpt` init 値には影響しません —
 > 撤回されたランチャーではなく、Codex 専用デプロイを選ぶ値です。
 ```bash
 moai init my-project --llm gpt   # Codex のみのプロジェクト
@@ -363,7 +364,7 @@ SPEC ごとに独立した作業ツリーを与える。`moai cc -w <名前>` �
 
 ### ファクトリーモード
 
-`-f`（`--factory`）がファクトリーリーダーを、`-l`（`--lane`）がレーンを開く。どちらも引数を取らない。リーダー 1 つがキューのカードを番号付きのレーンへ運び、レーンはカード 1 枚を `plan → run → sync` で最後まで受け持つ。起動手順は上の「v3.2 の新機能 — ファクトリーモード」節にある。
+`-f`（`--factory`）がファクトリーリーダーを、`-l`がレーンを開く。どちらも引数を取らない。リーダー 1 つがキューのカードを番号付きのレーンへ運び、レーンはカード 1 枚を `plan → run → sync` で最後まで受け持つ。起動手順は上の「v3.2 の新機能 — ファクトリーモード」節にある。
 
 セッションの系譜は **Origin-Trail Chain** が別に担う。ファクトリーモードとは独立で、リーダーもレーンも要らない。`moai cc -w <名前>` のようにワークツリーを指定して立ち上げたセッションは、すべてチェーンに載る。append-only の JSONL 系譜ツリーでワークツリーの祖先を追跡し、深さの健忘（`/clear` 後のルートからリーフへのチェーン復元）を解決し、ハートビートが途絶えたセッションを `stale` と判定する。
 
@@ -380,7 +381,7 @@ SPEC ごとに独立した作業ツリーを与える。`moai cc -w <名前>` �
 
 ### CG の廃止と設定の移行
 
-`moai cg` は廃止されました。Claude や GLM を起動せず、移行案内を表示して終了します。`moai cc` の別名ではありません。`llm.team_mode: cg` が残るプロジェクトでは、セッションを起動する前に移行先を明示的に選ぶ必要があります。
+CG ランチャーは廃止されました。移行手順は [CG の廃止と設定の移行](https://adk.mo.ai.kr/ja/multi-llm/cg-mode/) を参照してください。
 
 ```bash
 moai migrate cg
@@ -585,7 +586,7 @@ SPEC ごとに独立した作業ツリーを与え、2 つのエージェント�
 
 ### CG の廃止と設定の移行
 
-`moai cg` は廃止されました。Claude や GLM を起動せず、移行案内を表示して終了します。`moai cc` の別名ではありません。`llm.team_mode: cg` が残るプロジェクトでは、セッションを起動する前に移行先を明示的に選ぶ必要があります。
+CG ランチャーは廃止されました。移行手順は [CG の廃止と設定の移行](https://adk.mo.ai.kr/ja/multi-llm/cg-mode/) を参照してください。
 
 ```bash
 moai migrate cg
@@ -738,7 +739,6 @@ Claude の各ティアは `ANTHROPIC_DEFAULT_*_MODEL` 環境変数を通じて G
 | `moai update` | 最新版へ更新 (ローカルファイル保存 · 3-way マージ+衝突サイドカー · 削除前アーカイブ) |
 | `moai graph <build\|query>` | コードベースグラフ (edges.jsonl) の生成・照会 — 呼び出し元の検索、影響半径、マイルストーンの交差検査 |
 | `moai cc` / `moai glm` | Claude 専用 / GLM 専用のセッション |
-| `moai codex [cli\|status\|app]` | Codex ランチャー — 引数なしで呼ぶと Codex CLI を起動する。`status` は準備状態を表示するだけで何も起動しない |
 | `moai worktree <sync\|done\|sweep\|hoist\|remove\|clean\|recover\|snapshot\|verify\|restore>` | Git worktree の保守 (ワークツリーへの出入りはランチャーの仕事) |
 | `moai session <list\|register\|current>` | マルチセッション調整 |
 | `moai spec <audit\|archive\|lint\|list\|new>` | SPEC ライフサイクル・ツール |

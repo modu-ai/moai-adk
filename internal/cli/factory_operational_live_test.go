@@ -94,10 +94,16 @@ func prepareOperationalProject(root, bin string, env []string) error {
 	// "--no-plugin": this child is the production binary, not a Go test binary, so
 	// the install step's test-binary refusal does not cover it; without the
 	// opt-out a real codex on PATH would be driven against the real home (F14).
-	cmd := exec.CommandContext(ctx, bin, "init", "--non-interactive", "--llm", "gpt", "--no-hooks", "--no-plugin", "--root", root)
+	// Card t1909: init deploys the claude harness only, so the scenario's Codex
+	// wiring — the shape a pre-removal `--llm gpt` init produced and the hook
+	// surface the keep-set still serves — is wired directly below.
+	cmd := exec.CommandContext(ctx, bin, "init", "--non-interactive", "--no-hooks", "--no-plugin", "--root", root)
 	cmd.Dir, cmd.Env = root, env
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("production init: %w: %s", err, out)
+	}
+	if _, err := codexwiring.Wire(root, os.Stdout, os.Stderr); err != nil {
+		return fmt.Errorf("codex wiring: %w", err)
 	}
 	return nil
 }

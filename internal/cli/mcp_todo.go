@@ -53,20 +53,18 @@ func registerTodoMCPTools(add func(name string, tool mcp.Tool, handler server.To
 }
 
 // handleTodoClaim wraps runTodoClaimRoot (todo_claim.go) — the same body
-// `moai todo claim` runs, anchored at the resolved root. The REQ-SD-015
-// refusal rides in the handler (an MCP call never crosses the todo tree's
-// PersistentPreRunE) and is the SAME predicate and the SAME one-line text
-// the CLI guard prints — the flag form grants nothing here either
-// (SPEC-TODO-CLAIM-LEASE-001 REQ-TCL-013; the surface name comes from the
-// claim command itself, the value todoRefuseLaneMutation reads off the
-// executing subcommand).
+// `moai todo claim` runs, anchored at the resolved root. The operator gate
+// (SPEC-MCP-NEUTRALITY-001 REQ-MN-003) requires a POSITIVE operator mark: a
+// lane-marked session keeps the SAME one-line text the CLI guard prints and
+// an unmarked session is unknown attribution; both refuse as structured
+// results (is_error false), never on the error channel.
 func handleTodoClaim(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	root, err := resolveToolProjectRoot(req)
 	if err != nil {
 		return toolErr("todo_claim", err), nil
 	}
-	if factoryLaneRefusal() {
-		return toolErr("todo_claim", errors.New(todoLaneMutationRefusalText(newTodoClaimCmd().Name()))), nil
+	if res := mcpTodoOperatorGate("todo_claim", newTodoClaimCmd().Name()); res != nil {
+		return res, nil
 	}
 	lane := strings.TrimSpace(req.GetString("lane", ""))
 	renew := strings.TrimSpace(req.GetString("renew", ""))
@@ -86,18 +84,19 @@ func handleTodoClaim(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolR
 
 // handleTodoAdd wraps runTodoAddAppendRoot (todo.go) — the same body
 // `moai todo add` runs, anchored at the resolved root.
+//
+// The operator gate (SPEC-MCP-NEUTRALITY-001 REQ-MN-003) replaces the
+// REQ-SD-015 lane refusal at this surface: only a positive operator mark may
+// mutate the queue, so a lane-marked session keeps the SAME one-line refusal
+// the CLI guard prints and an unmarked session is unknown attribution. Both
+// refuse as structured results (is_error false) and no queue byte moves.
 func handleTodoAdd(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	root, err := resolveToolProjectRoot(req)
 	if err != nil {
 		return toolErr("todo_add", err), nil
 	}
-	// REQ-SD-015: the queue-mutation refusal holds on a lane marker, a lane
-	// label, or the Codex backend — the same predicate and the same one-line
-	// refusal the CLI guard prints, and no queue byte moves. The surface
-	// name comes from the add command itself, the same value
-	// todoRefuseLaneMutation reads off the executing subcommand.
-	if factoryLaneRefusal() {
-		return toolErr("todo_add", errors.New(todoLaneMutationRefusalText(newTodoAddCmd().Name()))), nil
+	if res := mcpTodoOperatorGate("todo_add", newTodoAddCmd().Name()); res != nil {
+		return res, nil
 	}
 	text := strings.TrimSpace(req.GetString("text", ""))
 	if text == "" {

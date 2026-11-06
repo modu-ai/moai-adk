@@ -104,11 +104,15 @@ type GLMJobCancelOutput struct {
 // "the server broke". A record file that is present but malformed is reported
 // the same way rather than decoded into an empty record.
 func handleGLMJobStatus(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	rec, errResult := loadGLMJobFor(glmJobStatusToolName, req)
+	root, source, rootErr := resolveToolProjectRootWithSource(req)
+	if rootErr != nil {
+		return toolErr(glmJobStatusToolName, rootErr), nil
+	}
+	rec, errResult := loadGLMJobFor(glmJobStatusToolName, req, root)
 	if errResult != nil {
 		return errResult, nil
 	}
-	return toolJSON(glmJobStatusToolName, rec), nil
+	return toolJSONWithRoot(glmJobStatusToolName, rec, root, source), nil
 }
 
 // ─── glm_job_result ───
@@ -117,7 +121,11 @@ func handleGLMJobStatus(_ context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 // current status of a non-terminal one. It never waits for the call: a running
 // job is reported as running and the caller decides whether to ask again.
 func handleGLMJobResult(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	rec, errResult := loadGLMJobFor(glmJobResultToolName, req)
+	root, source, rootErr := resolveToolProjectRootWithSource(req)
+	if rootErr != nil {
+		return toolErr(glmJobResultToolName, rootErr), nil
+	}
+	rec, errResult := loadGLMJobFor(glmJobResultToolName, req, root)
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -133,7 +141,7 @@ func handleGLMJobResult(_ context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	} else {
 		out.Note = glmJobResultPendingNote
 	}
-	return toolJSON(glmJobResultToolName, out), nil
+	return toolJSONWithRoot(glmJobResultToolName, out, root, source), nil
 }
 
 // ─── glm_job_cancel ───
@@ -145,7 +153,11 @@ func handleGLMJobResult(_ context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 // record of what this server lifetime actually started, so a job absent from
 // it is refused rather than cancelled.
 func handleGLMJobCancel(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	rec, errResult := loadGLMJobFor(glmJobCancelToolName, req)
+	root, source, rootErr := resolveRequiredToolProjectRoot(req)
+	if rootErr != nil {
+		return toolErr(glmJobCancelToolName, rootErr), nil
+	}
+	rec, errResult := loadGLMJobFor(glmJobCancelToolName, req, root)
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -155,7 +167,7 @@ func handleGLMJobCancel(_ context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	// Already finished: report the terminal status and send nothing.
 	if glmJobTerminal(rec.Status) {
 		out.Note = glmJobCancelTerminalNote
-		return toolJSON(glmJobCancelToolName, out), nil
+		return toolJSONWithRoot(glmJobCancelToolName, out, root, source), nil
 	}
 
 	// Ownership. An entry exists only for a job this server lifetime started
@@ -175,8 +187,11 @@ func handleGLMJobCancel(_ context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	// while the cancellation is in flight would otherwise write completed or
 	// failed over the cancel; runGLMBackgroundJob keeps a cancelled status
 	// untouched, and this ordering is what puts the status there in time for
-	// that guard to see it.
-	if updated, err := currentGLMJobRegistry().update(rec.ID, func(r *GLMJobRecord) {
+	// that guard to see it. The update hits the REQUEST-resolved root — the
+	// same registry the record was just read from (r6b: producer and consumer
+	// resolve the same root rule; a server-rooted update left the record at the
+	// named root uncancelled while _root claimed it).
+	if updated, err := newGLMJobRegistry(root).update(rec.ID, func(r *GLMJobRecord) {
 		r.Status = glmJobStatusCancelled
 	}); err != nil {
 		out.Error = err.Error()
@@ -193,28 +208,26 @@ func handleGLMJobCancel(_ context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	// Grace window: give the revoked call a bounded chance to end on its own.
 	if glmAwaitJobExit(rec.ID, glmJobCancelGrace) {
 		out.Note = glmJobCancelExitedNote
-		return toolJSON(glmJobCancelToolName, out), nil
+		return toolJSONWithRoot(glmJobCancelToolName, out, root, source), nil
 	}
 	out.Note = glmJobCancelGraceNote
-	return toolJSON(glmJobCancelToolName, out), nil
+	return toolJSONWithRoot(glmJobCancelToolName, out, root, source), nil
 }
 
 // ─── shared helpers ───
 
-// currentGLMJobRegistry returns the registry rooted at the current project.
-func currentGLMJobRegistry() *glmJobRegistry {
-	return newGLMJobRegistry(projectDirResolver())
-}
-
-// loadGLMJobFor reads the job named by the request's job_id argument. It
-// returns either the record or the structured error result the tool should
-// return verbatim — never both, and never a Go error.
-func loadGLMJobFor(tool string, req mcp.CallToolRequest) (GLMJobRecord, *mcp.CallToolResult) {
+// loadGLMJobFor reads the job named by the request's job_id argument from the
+// REQUEST's project root (t1632 / REQ-MN-004): glm_task creates the record
+// under the caller's tree, so the query/cancel surfaces read the caller's
+// tree too — producer and consumer resolve the same root rule. It returns
+// either the record or the structured error result the tool should return
+// verbatim — never both, and never a Go error.
+func loadGLMJobFor(tool string, req mcp.CallToolRequest, root string) (GLMJobRecord, *mcp.CallToolResult) {
 	jobID := req.GetString(glmJobIDArg, "")
 	if jobID == "" {
 		return GLMJobRecord{}, toolErr(tool, errGLMJobIDRequired)
 	}
-	rec, err := currentGLMJobRegistry().load(jobID)
+	rec, err := newGLMJobRegistry(root).load(jobID)
 	if err != nil {
 		if glmJobNotFound(err) {
 			return GLMJobRecord{}, toolErr(tool, fmt.Errorf("no job record for id %s", jobID))

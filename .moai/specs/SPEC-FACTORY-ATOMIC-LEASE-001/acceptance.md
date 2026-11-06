@@ -861,10 +861,10 @@ default wait constant is not smaller than lanes (10) × the worst observed step 
 **Covers**: AC-FAL-007 maps REQ-FAL-006, REQ-FAL-001
 
 Let `C` be `factoryLeaseClaimWaitCap` (the claim deadline plus the claim busy timeout, plan D2; 1.0 s at the
-starting values) and `B` be `kanban.LockWaitBudget()` (3.3 s). The margin used below is **500 ms**, a stated
+starting values) and `B` be `factory.LockWaitBudget()` (8.25 s; `internal/factory/backlog_store.go` line 1053, `func LockWaitBudget() time.Duration { return stateLockWaitBudget }`). The margin used below is **500 ms**, a stated
 heuristic and not a derivation: it covers one lock retry wait (at most 50 ms, `boardLockWaitMax`), one queue
 mutation at the lock's sizing figure (33 ms), the overshoot of the claim past its cap measured in L14 (about
-30 ms beyond the sum), and scheduler delay; WM4 records the observed maximum and may tighten it.
+30 ms beyond the sum), scheduler delay, and local post-processing after the release, up to the drift-log reconcile mark (the interval of AC-FAL-015 clause (vii)); WM4 records the observed maximum and may tighten it. Pre-lock work of the verb is outside the measured interval of either criterion and is not covered by the margin: the parent-checkout check, the root resolution and the run resolution (`internal/cli/factory_card.go` lines 1612–1620; the run resolution opens the factory record when `--run` is absent) all run before the measured interval of clause (c), which starts after the factory-record open, immediately before the queue-lock wait. The lease function's own factory-record open (`homestate.OpenFactoryBounded`, `factory_card.go` lines 383 and 1400) lies before the measured interval and is not covered by the margin.
 
 **Given** (a) a record write transaction held by a second connection for three times `C` and a queued
 nominee; (b) the same stall started only when the claim's third record write is about to begin, after the
@@ -883,11 +883,11 @@ nominates the card, and a second lane runs bare `factory next`,
   the card's row is `assigned` to the lane and its queue item stays `picked` (spec §F R4, second shape); the
   second invocation leases the card (exit 0) — that last expectation is read from the code and is the one
   thing here not yet observed;
-- (c) the nominated lease returns within `B` + 500 ms with exit 4 and a detail that names the queue lock; the
+- (c) the measured interval for both forms starts when the factory-record open completes and immediately before the queue-lock wait; the clock read happens once per lease call, immediately before the first queue-lock wait of that call; a later attempt inside the bare form's loop adds no read; the read goes through a test seam, with no log and no record write; the interval ends at the lease return. The factory-record open lies outside the measured interval. The nominated lease returns within `B` + 500 ms with exit 4 and a detail that names the queue lock; the
   bare form returns within `B` + 500 ms — **one attempt, not five** — with **exit 1**, the queue lock's
   timeout error on standard error, nothing on standard output (in particular not `no card is available`),
   and no record row written for any card (spec §H DL-1; the rejected re-selecting design would have run for
-  about 5 × 3.3 s = 16.5 s before printing exit 3 with `no card is available`); and
+  about 5 × 8.25 s = 41.25 s before printing exit 3 with `no card is available`); and
 - the bare form's arm (c) under (a)'s record stall returns within `C` + 500 ms with exit 1 and the promoted
   item left `picked` (spec §F R4, third shape), which the next bare pass after the stall adopts through arm
   (b) or (b2).
@@ -913,12 +913,12 @@ nominates the card, and a second lane runs bare `factory next`,
 **Given** the lease claim deadline and busy-timeout constants (`factoryLeaseClaimDeadline`,
 `factoryLeaseClaimBusyTimeout`) and their sum `factoryLeaseClaimWaitCap`, **When**
 `TestFactoryLeaseCapWithinBoardBudget` runs, **Then** `factoryLeaseClaimWaitCap` × 3 is not greater than
-the queue lock's wait budget as `kanban.LockWaitBudget()` returns it, and the test reads that accessor
+the queue lock's wait budget as `factory.LockWaitBudget()` returns it, and the test reads that accessor
 rather than a literal (the precedent is `slot_lease_cross_test.go`'s stall-release guard).
 
 - **Command**: `go test ./internal/cli -run '^TestFactoryLeaseCapWithinBoardBudget$' -count=1 -v`. Pass condition: S4, N = 1.
 - **RED-now cell**: L8 first row (`factoryLeaseClaimWaitCap` absent from the tree, exit 1); L6 gives the budget
-  the guard will read, 3.3 s. Swept count at the pin: 0 (L10); at WM1: to be recorded at WM1 (at the WM1 seam
+  the guard will read, 8.25 s. Swept count at the pin: 0 (L10); at WM1: to be recorded at WM1 (at the WM1 seam
   commit the constant exists and the accessor is a stub returning zero, so the test fails alone on
   `cap × 3 > 0` — the stated reason; no stub panics, plan WM1).
 - **Green-path cell**: WM4; the test prints `--- PASS` once.
@@ -1178,8 +1178,7 @@ by the test, in five fixtures:
   ordinary path, as `factory assign` makes it;
 - (d) *verb level* — fixtures (a) and (b) again, each driven through the verb (`factory next --card <id>`
   and bare `factory next`, by `qasRunNext`) with the worktree creator stubbed (`nmIsolatedWorktrees`), the
-  lock held for 2 s from before the verb starts by a timer that records the instant and then releases the
-  lock;
+  lock held from before the verb starts and released no earlier than 100 ms after the write-start signal (the first `factoryCardNow` read after the worktree creator returns, the argument of `RecordCardWorktree`, `internal/cli/factory_card.go` line 653 in the working tree of this amendment; line 637 at HEAD `1ced8cab9`), with a backstop timer at more than three times `C`, as in fixtures (a) and (b), that releases it if the signal has not come first; the test records the instant of each release. The 100 ms is a **test premise, not a measured quantity**: an ordering lower bound that guarantees the card-worktree write attempt starts before the release. The measured interval of clause (vii) runs from that release to the drift-log reconcile mark, which is a state change; the premise is a lower bound, so a longer hold is safer for it and leaves the measured interval unchanged;
 - (e) *record level, re-read* — the entry is unreconciled when the claim's write reads the log, and a test
   seam between that unlocked read and the claim's try for the lock (plan D2 step 3, WM1: an inert package
   variable in `internal/homestate`, e.g. `recordUnavailableAfterReadHook`, the name the implementer's)
@@ -1214,13 +1213,12 @@ opt-in,
   any event is the claim's repeat; and
 - (vii) *(verb)* in (d), for each form, the verb exits 0 with its output unchanged, the card is `leased` with
   its worktree recorded, and the verb's own card-worktree record write — the ordinary path, which REQ-FAL-014's
-  last sentence keeps as it is — **waited** for the held lock and then reconciled: the verb returned **not
-  before** the instant the test's timer released the lock and **within the 500 ms margin after it**, and once it
-  returned the log's unreconciled count for the run is 0 with exactly one `record.drift` event for the entry.
-  The measured expectation this clause encodes is the card-worktree write's, at record level: with one
-  unreconciled entry and the log's lock held 2 s it returned after 2.000–2.004 s with `unreconciled-after=0`
-  (audit-measured — plan-audit iteration 3, probe B, 2.004 s, 2.001 s and 2.003 s, a scratch probe not in the
-  repository — and this author's re-measurement of the same call, ledger L24: 2.0007 s, 2.0015 s and 2.0006 s).
+  last sentence keeps as it is — **waited** for the held lock and then reconciled: the drift-log reconcile mark was observed **not
+  before** the instant the lock was released and **within the 500 ms margin after it**, where the mark is the instant the first unlocked read of the record-unavailable log (`homestate.ReadRecordUnavailable`) finds no unreconciled entry left for the run; and once the verb has returned, the log's unreconciled count for the run is 0 with exactly one `record.drift` event for the entry. The measured interval runs from the release to that mark; the output path (the landed check, which runs after the card-worktree write returns) lies outside it. No network call shall run inside the measured interval: the open-PR query (`gh pr list`) shall be issued before the queue lock is taken, so the interval holds only local post-processing. The 500 ms bound is measured under the condition that the host's 1-minute load average is at or below its core count, with CI as the deciding surface; under higher load the tail may exceed it, and that is not a defect of the verb.
+  The baseline measurement behind this clause is the card-worktree write's return, at record level: with one
+  unreconciled entry and the log's lock held 2 s, as in the baseline measurement (not a hold released at the write-start signal), it returned after 2.000–2.004 s with `unreconciled-after=0`
+  (audit-measured under the same 2 s hold — plan-audit iteration 3, probe B, 2.004 s, 2.001 s and 2.003 s, a scratch probe not in the
+  repository — and this author's re-measurement of the same call, ledger L24: 2.0007 s, 2.0015 s and 2.0006 s). The write returns only after the mark is set (the settle step sets it just before the return), so that figure bounds the mark's instant from above; the mark's own instant has no measurement in this ledger. This figure is an upper bound derived from the values measured at the old end point (the verb's return); it is not a baseline measurement of the mark's instant itself.
 
 - **Command** (two plain calls): (1) `go test ./internal/homestate ./internal/cli -run '^(TestRecordWriteReconcileBoundedSkipsOnContention|TestRecordWriteReconcileDefaultStillWaits|TestRecordWriteReconcileBoundedRereadsUnderLock|TestFactoryLeaseDriftLogStallBounded|TestFactoryLeaseDriftLogVerbWorktreeWriteWaits)$' -count=10 -race -v -timeout 25m` (S1, S2) — clauses (i) to (iv), (vi) and (vii); the first two names live in `internal/homestate` (fixture (c), clauses (ii) to (iv)), the third in `internal/homestate` (fixture (e), clause (vi)), and two in `internal/cli`: `TestFactoryLeaseDriftLogStallBounded` (fixtures (a) and (b), called at the lease function, clauses (i) to (iii)) and `TestFactoryLeaseDriftLogVerbWorktreeWriteWaits` (fixture (d), driven through the verb, clause (vii)). Pass condition: S4 with N = 10, each of the five names printing `--- PASS` ten times. (2) `go test ./internal/homestate -run '^(TestFR_RecordUnavailableLogAndReconcile|TestFR_UnavailableTornLineSkippedAndReported|TestFR_UnavailableLogAppendSurvivesRewrite|TestFR_UnavailableLogConcurrentAppendsNoLoss|TestAppendRecordUnavailableFailureModes|TestMarkRecordUnavailableReconciledFailureModes)$' -count=1 -v -timeout 25m` — clause (v); S4 with N = 1, six names (the baseline is L23).
 - **RED-now cell**: **L19.** At the pin, with one unreconciled entry and the log lock held for 3 s, the claim's
@@ -1233,9 +1231,12 @@ opt-in,
   construction as well. The probe is at the record-write level, which is where the wait lives (every claim
   write is a `withCardTx`, spec §A.2 O15); the criterion's tests at the lease function and at the verb
   (fixtures (a), (b) and (d)) and the re-read test (fixture (e)) arrive in WM1 and are not themselves
-  observed red. Clause (vii) has no RED-now cell by nature: it pins today's behavior, which L24 observed
-  green at record level, so it is a regression guard inside this release-blocking criterion and must pass
-  at the WM1 seam-and-stub tree and after every later commit. Clause (vi) has none at the pin either: its
+  observed red. Clause (vii) has no RED-now cell in this ledger: it pins the amended contract (from the release to the drift-log reconcile mark,
+  within the 500 ms margin, only local post-processing runs, and no network call runs inside that
+  interval). L24 observed only the record-level wait and reconciliation, so clause (vii) is a regression guard
+  for that wait inside this release-blocking criterion and must pass at the WM1 seam-and-stub tree and after
+  every later commit. The no-network part is met only once the open-PR query moves before the queue lock
+  (Amendments). Clause (vi) has none at the pin either: its
   test needs the seam of fixture (e), which the tree does not have, so no probe was made for it (the
   leader allowed no new probe requirement for this round); its first observation — and the reason it is red
   at the seam-and-stub tree, if it is — is **to be recorded at WM1**, and no expected output is claimed
@@ -1243,7 +1244,7 @@ opt-in,
 - **Green-path cell**: WM4 — the claim-scoped non-waiting reconciliation lands with the busy-timeout open
   variant and the claim deadline, and WM3 alone must not be integrated without it (plan WM4). After it,
   (i) returns in a few milliseconds and the five names print `--- PASS` ten times each; (vi) goes green
-  with the re-read step of plan D2 step 3, and (vii) stays green throughout.
+  with the re-read step of plan D2 step 3, and (vii) holds throughout: no network call runs inside its interval, which runs from the release to the drift-log reconcile mark and holds only local post-processing within the 500 ms margin.
 - **Mutation**: MU15 (the claim's reconciliation made to wait for the log's lock, as the pin does) turns (i)
   red — the lease runs the holder's whole hold, at least three times `C`; MU16 (the skip applied to every
   record write) turns the ordinary-path half of (iv) red — the ordinary write returns before the hold ends
@@ -1259,7 +1260,7 @@ opt-in,
   once the lock is obtained is not bounded by the cap and grows with the log's length (measured 0.15–0.26 s
   at 2000 entries, L19); a drift entry for a run other than the lease's own is not touched by this
   criterion (unchanged); the verb's own card-worktree write, `factory stage`, `complete` and the lease
-  renewal still wait for a held log lock with no bound (clause (vii) pins that the card-worktree write waits
+  renewal still wait for a held log lock with no bound (clause (vii) pins that the card-worktree write waits for the held lock, released after the write-start signal (clause (d))
   and reconciles, not that it is bounded; spec §F R18); and clause (vi) forces the mark between the claim's
   read and its lock with a seam, not the overlap of two live writers, which can still reconcile one entry
   twice (spec §F R16).

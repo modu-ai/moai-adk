@@ -21,7 +21,7 @@ draft: false
 | **示例** | `moai init my-project` | `/moai plan "认证功能"` |
 
 - 在终端运行 `moai plan` 不会生效 — `/moai plan` 只在 Claude Code 内有效。
-- 在 Claude Code 中输入 `/moai init` 也不会生效 — `moai init` 是终端命令。
+- `moai init` 是用于设置项目的终端命令；在 Claude Code 中，用 `/moai project` 生成项目文档。
 
 ---
 

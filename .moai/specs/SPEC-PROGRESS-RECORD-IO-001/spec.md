@@ -2,9 +2,9 @@
 id: SPEC-PROGRESS-RECORD-IO-001
 title: "Progress record I/O semantics — Go-native darwin metadata seeding (F14 exec-window closure)"
 version: "0.1.0"
-status: implemented
+status: completed
 created: 2026-10-08
-updated: 2026-10-09
+updated: 2026-10-23
 author: lane-5 (MoAI factory)
 priority: P1
 phase: "v3.2.0"
@@ -38,6 +38,18 @@ tier: M
   rationale (N1/N2) corrected to the measured GitHub-Flow regime (committed `AGENTS.local.md`
   §4.1, 2026-10-05 transition); the write-allowed/delete-denied rename residual
   (`audit_ceiling.go:721`) absorbed as documentation (decision-index Q5, default-applied).
+- **2026-10-23 (status record repair, card t1929)** — frontmatter status restored
+  `implemented` → `completed`, the canonical lifecycle edge (Status Transition Ownership
+  Matrix row 3), undoing the mis-toked revert `fa1f04b9f4` (2026-10-09, card t1598) whose
+  recorded pair `completed → implemented` is outside the canonical set
+  (`internal/spec/lint_transition.go:65-77`) and kept this SPEC the sole non-advisory
+  StatusTransitionInvalid on the spec-lint baseline gate (recorded 0 → current 1 at tree
+  c3c86e795d). This restores the recorded close of commit `8d10007ca9` (2026-10-08;
+  progress.md §E.4 sync_commit_sha 8d10007ca9804eeb58bcb0a34aca922989603198) — a record
+  repair under the leader disposition of 2026-10-23 (산출물 실제 보완; the substance repairs
+  themselves landed on main at `17a3b98de2`, PR #1859, card t1914), not a new close claim.
+  AC-CI-007 remains this SPEC's own pending surface (progress.md §E.4, untouched); the
+  follow-up close path is unaffected.
 
 ---
 

@@ -152,7 +152,11 @@ The `handle-pre-tool.sh` PreToolUse hook, on detecting a Bash command whose subc
 
 ### (5) Additive-only — no regression to AGENTS.md safeguards
 
-This doctrine is **strictly additive**. It layers a Bash-specific risk tier on top of the existing uniform PreToolUse hook behavior. It does NOT contradict, weaken, or supersede `AGENTS.md §13 Safe Development Protocol` or `worktree-integration.md Parallel Execution Safeguards`. Both sections remain the authoritative compatibility targets; this doctrine only adds a Bash-specific risk-amplifier lens that was previously absent.
+This doctrine is **strictly additive**. It layers a Bash-specific risk tier on top of the existing uniform PreToolUse hook behavior. It does NOT contradict, weaken, or supersede `AGENTS.md §13 Safe Development Protocol` or `agent-common-protocol.md § Parallel Execution`. Both sections remain the authoritative compatibility targets; this doctrine only adds a Bash-specific risk-amplifier lens that was previously absent.
+
+## New Dependencies
+
+[HARD] Verify a new dependency exists before adding it: look the exact name and version up in the registry or module proxy (`go list -m <module>@<version>`, `npm view <pkg> version`, `pip index versions <pkg>`, or the language's equivalent) and cite the output. A name recalled from memory is not evidence it exists; an unverified name risks a hallucinated or typosquatted package.
 
 ## Advisory-Check Discipline
 

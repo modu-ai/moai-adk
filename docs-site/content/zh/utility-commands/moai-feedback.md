@@ -28,10 +28,8 @@ draft: false
 # 标准形式
 > /moai feedback
 
-# 简短别名
-> /moai fb
-> /moai bug
-> /moai issue
+# 直接斜杠命令
+> /moai:feedback
 ```
 
 执行命令后,会引导您选择反馈类型并输入内容。

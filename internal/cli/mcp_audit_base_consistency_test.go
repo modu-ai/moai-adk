@@ -112,7 +112,7 @@ type movingRefCodexSession struct {
 	toSHA string
 }
 
-func (s *movingRefCodexSession) start(context.Context, string, []string) (codexConn, error) {
+func (s *movingRefCodexSession) start(context.Context, string, []string, string) (codexConn, error) {
 	return &movingRefCodexConn{fakeCodexConn: fakeCodexConn{lines: s.lines, sent: &s.sent}, s: s}, nil
 }
 

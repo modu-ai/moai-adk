@@ -48,6 +48,10 @@ const codexProtocolRejection = `{"error":{"code":-32600,"message":"Invalid reque
 // handshake response, so it is the FIRST thing the session client sees.
 func TestRunCodexReviewRPC_SurfacesServerError(t *testing.T) {
 	withStubCodex(t, []string{codexProtocolRejection})
+	// Card t1632 CI repair: the REQ-MN-009 containment listing runs a real
+	// `codex mcp list` first; stub it so the replayed handshake rejection is
+	// the first thing the session sees.
+	stubCodexContainmentListing(t)
 
 	out, err := runCodexReviewRPC(context.Background(), "/usr/bin/true", codexMethodReviewStart, map[string]any{})
 	if err == nil {

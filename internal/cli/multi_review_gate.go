@@ -49,7 +49,7 @@ import (
 //  4. no session id / missing state file     → ALLOW (fail-open; no result yet)
 //  5. malformed state file                   → ALLOW (fail-open; corrupt JSON)
 //  6. overall_verdict = pass                 → ALLOW (all required PASS, or an advisory-only conflict — never blocks)
-//  7. overall_verdict = fail                 → BLOCK (the gate's ONLY block path — a required FAIL, or a gate the project explicitly configured `required` left unmet by a fail-open inconclusive; both arrive as overall=fail from the convergence engine)
+//  7. overall_verdict = fail, or overall_verdict = inconclusive carrying gate_unmet → BLOCK (convergenceBlocksStop — a required FAIL, or a gate the project explicitly configured `required` that could not run, REQ-MN-021)
 //
 // `enabled` is read by the caller (runMultiReviewGate via
 // readMultiReviewGateEnabled) and passed in so this function stays free of
@@ -58,9 +58,10 @@ import (
 // The gate does NOT distinguish "fail because all required agree on fail" from
 // "fail because of a required split" — both surface as overall=fail in the
 // ConvergenceResult (the convergence engine resolves them identically per
-// REQ-AMM-006 #2/#3). Nor does it distinguish them from "fail because a gate
-// explicitly configured `required` was left unmet by a fail-open inconclusive"
-// — the engine's enforcement layers that on as the same overall=fail. The
+// REQ-AMM-006 #2/#3). A gate explicitly configured `required` that could not
+// run is recorded by the engine as overall=inconclusive plus gate_unmet
+// (REQ-MN-021, no longer overall=fail); convergenceBlocksStop blocks on that
+// too, so an unmet required gate cannot end the turn. The
 // residual_risk_note in the result already names which backend(s) failed (or
 // which gate went unmet); this gate's BLOCK reason echoes that note so the
 // operator sees the same trail at the Stop surface.
@@ -89,7 +90,7 @@ func HandleMultiReviewGate(input *hook.HookInput, enabled bool, projectDir, sess
 	// can hold one result per tree for the session; any fail blocks, whichever
 	// tree the gate's input named (SPEC-WORKTREE-STATE-ROOT-001 REQ-WSR-007).
 	for _, result := range results {
-		if result.OverallVerdict == overallVerdictFail {
+		if convergenceBlocksStop(result) {
 			return &hook.HookOutput{
 				Decision: hook.DecisionBlock, // (7) the gate's ONLY BLOCK path
 				Reason:   blockReason(result),
@@ -97,6 +98,21 @@ func HandleMultiReviewGate(input *hook.HookInput, enabled bool, projectDir, sess
 		}
 	}
 	return allow, nil // pass / advisory conflict / fail-open to claude ⇒ ALLOW
+}
+
+// convergenceBlocksStop is the one block predicate both Stop consumers share
+// (the Claude hook above and the Codex chain's multi-review member). A stop is
+// blocked by a required FAIL (overall=fail) and by a gate the project
+// explicitly configured `required` that could not run: REQ-MN-021 records that
+// outcome as overall=inconclusive carrying gate_unmet — a could-not-run is not
+// a reviewed fail, but it must not read as a pass either, so it blocks. An
+// inconclusive result with no gate_unmet (an advisory or default-gated backend
+// that failed open) still allows the stop.
+func convergenceBlocksStop(r ConvergenceResult) bool {
+	if r.OverallVerdict == overallVerdictFail {
+		return true
+	}
+	return r.OverallVerdict == VerdictInconclusive && strings.TrimSpace(r.GateUnmet) != ""
 }
 
 // blockReason builds the BLOCK decision's reason from the ConvergenceResult.

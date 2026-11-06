@@ -1,0 +1,68 @@
+# t1894 — lane-8 disk wait (2026-10-22)
+
+Card t1894 re-leased by lane-8 on run tn8rpj (`moai factory next --card t1894 --run tn8rpj`); worktree re-entered at `3a163bf413`, branch `WT-fail-safe-serial`, tree clean.
+
+## State read from disk
+
+- `plan-hold-final.md`: the 8108 exception allowed exactly ONE correction round; iteration 3 returned FAIL 0.89 with blocker D28. By that contract FAIL = hold, and the ceiling disposition (another exception round / split per `plan-hold.md` option B / accept with codex-gate waiver) is operator-held.
+- The leader's 2026-10-22 dispatch carries no disposition: `cmd` is "card body as written", and the closing line is the generic repair-test-push-draft-PR cycle.
+
+## Wait
+
+| Field | Value |
+|---|---|
+| Reason | Ceiling disposition for D28 is a keep-set (operator-held) call; the dispatch does not name one. A repair round without it would exceed the 8108 contract. |
+| Whom | leader (relaying the operator) |
+| Question | Which disposition: (i) one more exception round, (ii) split, or (iii) accept with waiver? |
+| Recheck point | On the next awaken: re-read this directory and the leader's reply; if the disposition is named, proceed with plan repair via `manager-spec` (D28) then a fresh `plan-auditor`; Q7 still blocks only the autonomous Kickoff. |
+
+No repair, spawn, or push was performed in this wake.
+
+## Disposition received (2026-10-22, lane-8 wake)
+
+Source: leader message (relaying operator delegation; jev MCP unavailable, leader judged directly). Decision: **(i) one additional exception round approved** — `manager-spec` repairs D28 (a sixth fence-pair-vs-base comparison number, OR disclosure of the joint-move limit in the three statements: acceptance.md AC-MJ-020 prose, design.md D-10 row + Unit bullet, checker docstring), then one fresh `plan-auditor`.
+Condition: if a new D29+ blocker appears, NO further exception — switch to the split (`plan-hold.md` option B).
+Reason given: small, precise candidate fix; independently reproduced by lane and auditor; same-day precedents of the same shape.
+Lane action: proceed to plan repair; wait is closed.
+
+## Plan audit iter4 result (2026-10-22, lane-8)
+
+Verdict file: `.moai/reports/t1894/plan-audit-iter4.md` — **PASS 0.91** (Tier L threshold 0.85), blocking_count 0, required codex gate pass, receipt `rcpt-53fe87f0509e1f8019bc86e3`, audited_sha `a2dd9f15671ff349a2479a88810e9c464a913437`, plan-artifact hash `0daae3d5fa87edd5406fc295e87eda87243fa8ad20af7b0ae73290782a05b626`. D28 closed. New findings D29/D30 (wording) and D31 (attribution note) are optional and non-blocking.
+
+decision record: decided_by=lane-8(claude)/orchestrator evidence_refs=.moai/reports/t1894/plan-audit-iter4.md,rcpt-53fe87f0509e1f8019bc86e3 ladder_path=①disk-evidence — the leader's condition "new D29+ => split" is read as a new BLOCKING defect (FAIL); D29-D31 are optional non-blocking, so no split. The plan stage ends PASS.
+
+Next gate: plan -> run Kickoff. Q7 (FOUNDER row, empty) still blocks the AUTONOMOUS Kickoff form (spec/handoff: "blocks only the autonomous Kickoff"); that is operator-held (keep-set). Run phase also waits on leader slot order. Lane does not enter run until the Kickoff gate is met.
+
+## Kickoff (2026-10-23, lane-8)
+
+Q7 answer, as RELAYED by the leader (session socket 50218; the relay is the leader's keep-set role, the answer is the operator's 10-23 verdict as the leader states it — not read by this lane from the operator directly): "the verdict's phrase is the whole condition". The SPEC's own decision-gate rule (decision-index.md Q7 gate note) names exactly this statement as one of the ways the autonomous Kickoff form is unblocked. The decision-index row itself is SPEC body (manager-spec's); the lane does not edit it, and this record is the operator-answer record.
+
+Autonomous Kickoff evidence (auto-semantics §9.1 / spec-workflow Plan Audit Gate skip contract), each re-measured in this run:
+- verdict PASS: `.moai/reports/t1894/plan-audit-iter4.md` (0.91, blocking 0, receipt rcpt-53fe87f0509e1f8019bc86e3)
+- score 0.91 >= Tier L threshold 0.85
+- plan-artifact hash unchanged since the verdict: `mcp audit_cache compute_hash` now `0daae3d5fa87edd5406fc295e87eda87243fa8ad20af7b0ae73290782a05b626` = the audited hash; `git diff --stat a2dd9f1567 HEAD -- .moai/specs` empty
+- no open blocker: Q7 answered (above); D29-D31 optional and non-blocking
+
+decision record: decided_by=lane-8(claude)/orchestrator evidence_refs=.moai/reports/t1894/plan-audit-iter4.md,rcpt-53fe87f0509e1f8019bc86e3,leader-relayed operator Q7 answer 10-23 ladder_path=auto-semantics §9.1 autonomous plan->run Kickoff (audit-cross evidence)
+
+## Kickoff mechanics blocked (2026-10-23, lane-8)
+
+Stage transitions applied this wake (run tn8rpj): leased -> plan (v7) -> plan-audit (v8, evidence a2dd9f15671ff349a2479a88810e9c464a913437:.moai/specs/SPEC-CARD-MODE-JUDGMENT-001/spec.md). `moai factory stage t1894 kickoff` then REFUSED: "card carries no valid SPEC id (""), so the plan-artifact hash cannot be checked" — the factory card record is `no-link` (picked without --spec). The lane has no verb that attaches a SPEC id (`moai todo set-spec` is not a command; the card's SPEC link is queue/ledger state — no direct ledger edits). Environment-impossible for the lane => keep-set => reported to the leader.
+
+Second, independent mechanical gate behind it: the autonomous edge (kickoff -> run, T8a) refuses while the FOUNDER row Q7 in `.moai/specs/SPEC-CARD-MODE-JUDGMENT-001/decision-index.md` has an empty `Operator verdict:`; that file is part of the plan-artifact hash (internal/runtime/audit_cache.go), so recording the relayed Q7 answer there changes the hash and invalidates the iter4 PASS (a delta re-audit would be needed). The human edge (kickoff -> assigned, `moai factory decide --gate kickoff --choice approve`, decider=human) reads neither.
+
+Options for the leader (lane does not choose among keep-set acts): (1) attach SPEC-CARD-MODE-JUDGMENT-001 to the card; then lane runs stage kickoff; (2a) human-path approve by the operator/leader at kickoff, or (2b) manager-spec writes the Q7 verdict row + one delta plan-audit, then the autonomous edge.
+Card state now: run tn8rpj, state plan-audit v8, lease renewed by stage calls.
+
+## Kickoff met (2026-10-23, lane-8) — card at run v13
+
+decision record: decided_by=lane-8(claude)/orchestrator evidence_refs=.moai/reports/t1894/plan-audit-iter5.md,rcpt-e6173f9d83a33a2cf3be2185 (PASS 0.91, hash 68c195f0707f1621d3869cd60387ab01c82027d90ca74d8c86c0c582a57fa5b0, audited_sha 21974dddf24359a8a7bd742740aed592319394f1),leader-relayed Q7 answer 10-23 ladder_path=auto-semantics §9.1 autonomous Kickoff: `moai factory stage t1894 kickoff` (v12) then `moai factory decide t1894 --gate kickoff --choice approve --decider audit` -> run (v13).
+Notes: (1) SPEC attached by the leader (set-spec). (2) The first iter5 admission failed on a report-format defect (body line `Overall Score: 0.91 (Tier L threshold 0.85)` collided with the machine key `overall_score` => duplicate key); fixed by the auditor in its own files (iter4/iter5), no verdict/score/hash/finding change; the engine's §G refusal record from the failed attempt stays in progress.md as the truthful record. (3) Phase 4 mode: serial (progress.md §F).
+
+## Landing prep (2026-10-23, lane-8)
+
+- Card at merge-ready (v18); card-review: `card-review.md` (codex, scope card, pass, no findings). Audit chain: plan-audit-iter5 PASS 0.91, sync-audit FAIL 0.80 (S1) -> fixes -> sync-audit-iter2 PASS-WITH-DEBT 0.89 (rcpt-a4b24c097a712091ae9c1d06); N2/N3 accuracy fixes 567f288277 landed after that audit (unaudited, documents only).
+- origin/main was 113 commits ahead (merge-tree dry run: conflicts only in CHANGELOG.md and internal/template/catalog.yaml). Absorbed in merge commit `1f631e5134`: CHANGELOG entries kept from both sides; catalog.yaml `moai-lane-watchdog` and `moai` hashes regenerated with `gen-catalog-hashes.go`; binding_ledger.json and the watchdog SKILL.md auto-merged. On the absorbed tree the 14 template + 6 cli AC-MJ-014 guards pass (go-heavy lease held; two single invocations).
+- Frozen-manifest cost (plan.md "A landing race ... turns lines/paths red on lines that are not the lane's"): on the absorbed tree `closed-world-check.py lines` prints W `3 0 3 0 0` (both sides) because main itself changed 3 lines of `moai-lane-watchdog/SKILL.md` since the card base (`git diff --numstat 74ad197380 origin/main` = 3/3); all other rows `0 0 0 0 0`. The closed-world verdict of this card is therefore the one measured on the pre-absorb tree (HEAD 094006c2dd, `lines` all zero, `paths` 0) and the audits' trees; the absorbed tree adds main's unrelated changes. `paths` against the base also lists main's files on the absorbed tree for the same reason.
+- Open debts for the leader: sync-audit N1 (factory-dispatch.md ~L177 vs the new transition-boundary line; follow-up card recommended), S4 (R-9, operator-held). AC-MJ-015 (lane acknowledgement) is the leader's.
+- Landing: per the leader's dispatch, push + `gh pr create --draft`; no `moai factory complete`, no merge.

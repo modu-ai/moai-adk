@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/testguard"
 )
 
 // prMergeSeams snapshots the M8 package-level function-variable seams so a test
@@ -80,6 +81,7 @@ func wtListEntry(path, branch string) string {
 // auto_cleanup is OFF (the distributed default), the on-touch invocation is a
 // no-op — no git invocation, no notice.
 func TestPRMergeCleanup_ToggleOffNoOp(t *testing.T) {
+	testguard.RedirectHome(t)
 	listCalled := false
 	swapPRMergeSeams(t, prMergeSeams{
 		wtList: func() (string, error) { listCalled = true; return "", nil },
@@ -97,6 +99,7 @@ func TestPRMergeCleanup_ToggleOffNoOp(t *testing.T) {
 // TestPRMergeCleanup_NilCfgNoOp proves nil-safety: a nil cfg (config load
 // failure) degrades to OFF, never panics.
 func TestPRMergeCleanup_NilCfgNoOp(t *testing.T) {
+	testguard.RedirectHome(t)
 	listCalled := false
 	swapPRMergeSeams(t, prMergeSeams{
 		wtList: func() (string, error) { listCalled = true; return "", nil },
@@ -113,6 +116,7 @@ func TestPRMergeCleanup_NilCfgNoOp(t *testing.T) {
 // TestPRMergeCleanup_GhPresentMergedRemoves is AC-SW-023 primary path: gh
 // available + PR state MERGED → worktree removed + distinguishable notice.
 func TestPRMergeCleanup_GhPresentMergedRemoves(t *testing.T) {
+	testguard.RedirectHome(t)
 	wtPath := "/repo/.claude/worktrees/WT-abcdef12-web"
 	wtBranch := "WT-abcdef12-web"
 	var removedPath string
@@ -148,6 +152,7 @@ func TestPRMergeCleanup_GhPresentMergedRemoves(t *testing.T) {
 // TestPRMergeCleanup_GhPresentOpenDoesNotRemove: gh available + PR OPEN → not
 // merged, not a candidate.
 func TestPRMergeCleanup_GhPresentOpenDoesNotRemove(t *testing.T) {
+	testguard.RedirectHome(t)
 	removeCalled := false
 	swapPRMergeSeams(t, prMergeSeams{
 		wtList: func() (string, error) {
@@ -175,6 +180,7 @@ func TestPRMergeCleanup_GhPresentOpenDoesNotRemove(t *testing.T) {
 // the same squash-merged PR with gh available IS detected (state == MERGED).
 // This is the falsification counterpart to the squash-blind fallback below.
 func TestPRMergeCleanup_GhPresentSeesSquashMerge(t *testing.T) {
+	testguard.RedirectHome(t)
 	var removedPath string
 	wtPath := "/repo/.claude/worktrees/WT-squash01-init"
 	swapPRMergeSeams(t, prMergeSeams{
@@ -203,6 +209,7 @@ func TestPRMergeCleanup_GhPresentSeesSquashMerge(t *testing.T) {
 // TestPRMergeCleanup_GhAbsentBranchMergedRemoves is AC-SW-023 fallback path: gh
 // absent + branch listed in `git branch --merged origin/main` → removed.
 func TestPRMergeCleanup_GhAbsentBranchMergedRemoves(t *testing.T) {
+	testguard.RedirectHome(t)
 	wtBranch := "WT-fedcba09-profile"
 	wtPath := "/repo/.claude/worktrees/" + wtBranch
 	var removedPath string
@@ -232,6 +239,7 @@ func TestPRMergeCleanup_GhAbsentBranchMergedRemoves(t *testing.T) {
 // blindness: gh absent + PR squash-merged (branch NOT in --merged list) →
 // worktree NOT removed + a notice documents the fallback's blindness.
 func TestPRMergeCleanup_SquashBlindFallbackPreserves(t *testing.T) {
+	testguard.RedirectHome(t)
 	removeCalled := false
 	wtBranch := "WT-squash02-web"
 	wtPath := "/repo/.claude/worktrees/" + wtBranch
@@ -261,6 +269,7 @@ func TestPRMergeCleanup_SquashBlindFallbackPreserves(t *testing.T) {
 // notice is emitted exactly once per invocation (not per-worktree) when gh is
 // absent, even with zero candidates.
 func TestPRMergeCleanup_GhAbsentEmitsBlindnessNoticeOnce(t *testing.T) {
+	testguard.RedirectHome(t)
 	swapPRMergeSeams(t, prMergeSeams{
 		wtList:       func() (string, error) { return wtListPorcelainPrimary(), nil }, // no WT- worktrees
 		ghLookPath:   func() bool { return false },
@@ -279,6 +288,7 @@ func TestPRMergeCleanup_GhAbsentEmitsBlindnessNoticeOnce(t *testing.T) {
 // TestPRMergeCleanup_DirtyPreserves is AC-SW-024: merged branch + dirty
 // worktree → NOT removed; notice names the path.
 func TestPRMergeCleanup_DirtyPreserves(t *testing.T) {
+	testguard.RedirectHome(t)
 	removeCalled := false
 	wtPath := "/repo/.claude/worktrees/WT-dirty01-init"
 	swapPRMergeSeams(t, prMergeSeams{
@@ -313,6 +323,7 @@ func TestPRMergeCleanup_DirtyPreserves(t *testing.T) {
 // TestPRMergeCleanup_DirtyCheckErrorPreserves is EC-11 fail-open: a status
 // error preserves the worktree (never risk deleting an unverifiable state).
 func TestPRMergeCleanup_DirtyCheckErrorPreserves(t *testing.T) {
+	testguard.RedirectHome(t)
 	removeCalled := false
 	wtPath := "/repo/.claude/worktrees/WT-errstat-init"
 	swapPRMergeSeams(t, prMergeSeams{
@@ -343,6 +354,7 @@ func TestPRMergeCleanup_DirtyCheckErrorPreserves(t *testing.T) {
 // TestPRMergeCleanup_WorktreeListErrorFailOpen proves a list failure is
 // non-blocking: a notice is emitted and the on-touch invocation proceeds.
 func TestPRMergeCleanup_WorktreeListErrorFailOpen(t *testing.T) {
+	testguard.RedirectHome(t)
 	swapPRMergeSeams(t, prMergeSeams{
 		wtList: func() (string, error) { return "", errFakeNotGitRepo },
 	})
@@ -357,6 +369,7 @@ func TestPRMergeCleanup_WorktreeListErrorFailOpen(t *testing.T) {
 // ignored by the cleanup sweep (e.g. a feature branch checked out as a
 // worktree).
 func TestPRMergeCleanup_OnlyWTBranchesConsidered(t *testing.T) {
+	testguard.RedirectHome(t)
 	stateCalls := 0
 	swapPRMergeSeams(t, prMergeSeams{
 		wtList: func() (string, error) {
@@ -386,6 +399,7 @@ func TestPRMergeCleanup_OnlyWTBranchesConsidered(t *testing.T) {
 // TestPRMergeCleanup_DetachedWorktreeIgnored proves a detached-HEAD worktree
 // (no branch line in porcelain) is skipped, not treated as a candidate.
 func TestPRMergeCleanup_DetachedWorktreeIgnored(t *testing.T) {
+	testguard.RedirectHome(t)
 	stateCalled := false
 	swapPRMergeSeams(t, prMergeSeams{
 		wtList: func() (string, error) {
@@ -405,6 +419,7 @@ func TestPRMergeCleanup_DetachedWorktreeIgnored(t *testing.T) {
 // TestPRMergeCleanup_RemovalFailureFailOpen proves a `git worktree remove`
 // failure is non-blocking: a notice names the failure and the sweep continues.
 func TestPRMergeCleanup_RemovalFailureFailOpen(t *testing.T) {
+	testguard.RedirectHome(t)
 	swapPRMergeSeams(t, prMergeSeams{
 		wtList: func() (string, error) {
 			return wtListPorcelainPrimary() + wtListEntry("/repo/.claude/worktrees/WT-rmfail-web", "WT-rmfail-web"), nil
@@ -428,6 +443,7 @@ func TestPRMergeCleanup_RemovalFailureFailOpen(t *testing.T) {
 // branch where `git branch --merged origin/main` itself errors (no origin/main
 // ref, git failure). The worktree is preserved (cannot confirm merge state).
 func TestPRMergeCleanup_FallbackBranchMergedErrorPreserves(t *testing.T) {
+	testguard.RedirectHome(t)
 	removeCalled := false
 	wtPath := "/repo/.claude/worktrees/WT-fberr-web"
 	swapPRMergeSeams(t, prMergeSeams{
@@ -458,6 +474,7 @@ func TestPRMergeCleanup_FallbackBranchMergedErrorPreserves(t *testing.T) {
 // notice prefix MUST be distinct from the session-exit prefix so the two are
 // attributable in combined output.
 func TestPRMergeCleanup_NoticeDistinguishableFromSessionExit(t *testing.T) {
+	testguard.RedirectHome(t)
 	if PRMergeCleanupNoticePrefix == SessionExitCleanupNoticePrefix {
 		t.Fatalf("prefix collision: both %q", PRMergeCleanupNoticePrefix)
 	}
@@ -494,6 +511,7 @@ func chdirTemp(t *testing.T, tmp string) {
 // invokes prMergeCleanup (gated by the toggle). The seam counter increments
 // only when AutoCleanup is wired through the RunE.
 func TestPRMergeCleanup_OnTouchFiresAtSessionRegister(t *testing.T) {
+	testguard.RedirectHome(t)
 	listCalled := false
 	swapPRMergeSeams(t, prMergeSeams{
 		wtList: func() (string, error) { listCalled = true; return "", errFakeNotGitRepo },
@@ -518,6 +536,7 @@ func TestPRMergeCleanup_OnTouchFiresAtSessionRegister(t *testing.T) {
 // Listing is a read path: neither cleanup nor its external git/gh probes may
 // delay the response, regardless of the mutation-only AutoCleanup preference.
 func TestSessionListNeverRunsPRCleanup(t *testing.T) {
+	testguard.RedirectHome(t)
 	for _, enabled := range []bool{false, true} {
 		t.Run(map[bool]string{false: "cleanup-off", true: "cleanup-on"}[enabled], func(t *testing.T) {
 			calls := 0
@@ -554,6 +573,7 @@ func TestSessionListNeverRunsPRCleanup(t *testing.T) {
 // control (AC-SW-022): with AutoCleanup OFF, the on-touch invocation is a
 // no-op at the registration trigger site.
 func TestPRMergeCleanup_OnTouchToggleOffSkipsAtSessionRegister(t *testing.T) {
+	testguard.RedirectHome(t)
 	listCalled := false
 	swapPRMergeSeams(t, prMergeSeams{
 		wtList: func() (string, error) { listCalled = true; return "", nil },
@@ -577,6 +597,7 @@ func TestPRMergeCleanup_OnTouchToggleOffSkipsAtSessionRegister(t *testing.T) {
 // This is a static source assertion (falsifiable: adding a stray reference
 // anywhere else fails the test).
 func TestPRMergeCleanup_TriggerInvariant_OtherSubcommandsDoNotFire(t *testing.T) {
+	testguard.RedirectHome(t)
 	// session.go is the ONLY file allowed to reference prMergeCleanup by call.
 	data, err := os.ReadFile("session.go")
 	if err != nil {
@@ -612,6 +633,7 @@ func writeAutoCleanupConfig(t *testing.T, projectDir string) {
 // TestParseWorktreeList_BranchExtraction verifies the porcelain parser
 // extracts (path, branch) pairs and strips the refs/heads/ prefix.
 func TestParseWorktreeList_BranchExtraction(t *testing.T) {
+	testguard.RedirectHome(t)
 	porcelain := wtListPorcelainPrimary() +
 		wtListEntry("/repo/.claude/worktrees/WT-abcd1234-web", "WT-abcd1234-web")
 	entries := parseWorktreeList(porcelain)
@@ -629,6 +651,7 @@ func TestParseWorktreeList_BranchExtraction(t *testing.T) {
 // TestParseWorktreeList_DetachedEntrySkipped verifies a detached-HEAD entry
 // (no branch line) is excluded from candidates (empty branch).
 func TestParseWorktreeList_DetachedEntrySkipped(t *testing.T) {
+	testguard.RedirectHome(t)
 	porcelain := "worktree /repo/.claude/worktrees/detached\nHEAD 2222222222222222222222222222222222222222\ndetached\n"
 	entries := parseWorktreeList(porcelain)
 	for _, e := range entries {
@@ -644,6 +667,7 @@ func TestParseWorktreeList_DetachedEntrySkipped(t *testing.T) {
 // documented `{"state":"MERGED",...}` JSON shape. The seam is swapped to the
 // real parser with a stubbed command output via a helper.
 func TestGhPRViewStateReal_ParseShape(t *testing.T) {
+	testguard.RedirectHome(t)
 	got := parseGhPRStateJSON(`{"number":1,"state":"MERGED","title":"x"}`)
 	if got != "MERGED" {
 		t.Fatalf("parse gh state: expected MERGED, got %q", got)

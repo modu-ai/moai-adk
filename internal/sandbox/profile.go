@@ -121,6 +121,9 @@ func GenerateBwrapArgs(opts SandboxOptions) ([]string, error) {
 	// Base isolation flags
 	args = append(args, "--unshare-all")
 	args = append(args, "--die-with-parent")
+	// Create the isolated parent before binding requested scopes beneath it.
+	// Mounting it afterwards would hide every granted scope under /tmp.
+	args = append(args, "--tmpfs", "/tmp")
 
 	// plan mode: no writes (all paths ro-bind)
 	if opts.PlanMode {
@@ -152,7 +155,6 @@ func GenerateBwrapArgs(opts SandboxOptions) ([]string, error) {
 	home, _ := os.UserHomeDir()
 	cacheDir := filepath.Join(home, ".cache")
 	args = append(args, "--bind", cacheDir, cacheDir)
-	args = append(args, "--tmpfs", "/tmp")
 
 	// Network: --unshare-net is already included via --unshare-all.
 	// Allowlist hosts would require an actual socat/forward setup, but at the

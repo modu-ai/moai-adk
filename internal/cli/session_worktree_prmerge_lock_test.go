@@ -11,6 +11,8 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/testguard"
 )
 
 // deadPID is above every platform's pid_max, so `kill(pid, 0)` reports ESRCH
@@ -27,6 +29,7 @@ func wtListLockedEntry(path, branch, reason string) string {
 // TestParseWorktreeList_CapturesLockReason is AC-WR-008: git's own `locked `
 // prefix is stripped, and a bare `locked` line is a lock with an empty reason.
 func TestParseWorktreeList_CapturesLockReason(t *testing.T) {
+	testguard.RedirectHome(t)
 	reason := "claude session t207 (pid 36912 start Sun Aug 23 07:26:09 2026)"
 	porcelain := wtListPorcelainPrimary() + "\n" +
 		wtListLockedEntry("/repo/.claude/worktrees/t207", "WT-web-live-todo", reason) + "\n" +
@@ -56,6 +59,7 @@ func TestParseWorktreeList_CapturesLockReason(t *testing.T) {
 // so letting it answer would leave the guard 4-of-5 blind — and the lock alone
 // must preserve the tree, naming itself as the source.
 func TestPRMergeCleanup_T207SamplePreservedByLock(t *testing.T) {
+	testguard.RedirectHome(t)
 	tree := t.TempDir() // no registry written: the registry source sees nothing
 	branch := "WT-web-live-todo"
 	reason := "claude session t207 (pid " + itoaTest(os.Getpid()) + " start Sun Aug 23 07:26:09 2026)"
@@ -98,6 +102,7 @@ func TestPRMergeCleanup_T207SamplePreservedByLock(t *testing.T) {
 // TestPRMergeCleanup_PorcelainFailureRemovesNothing is AC-WR-016: an
 // unreadable worktree listing removes nothing and says so.
 func TestPRMergeCleanup_PorcelainFailureRemovesNothing(t *testing.T) {
+	testguard.RedirectHome(t)
 	removeCalled := false
 	swapPRMergeSeams(t, prMergeSeams{
 		wtList:     func() (string, error) { return "", errFakeNotGitRepo },
@@ -133,6 +138,7 @@ func TestPRMergeCleanup_PorcelainFailureRemovesNothing(t *testing.T) {
 // preserved one branch earlier, as anchored-by-lock. Both preserve, and both
 // notices name `locked` — which is what the criterion asserts.
 func TestPRMergeCleanup_RefusalClassNamesCause(t *testing.T) {
+	testguard.RedirectHome(t)
 	tree := t.TempDir()
 	branch := "WT-dead-lock"
 	reason := "claude session t212 (pid " + itoaTest(deadPID) + " start Sun Aug 23 07:26:09 2026)"
@@ -171,6 +177,7 @@ func TestPRMergeCleanup_RefusalClassNamesCause(t *testing.T) {
 // EC-12), so every unlisted member takes this path: git refuses, the sweep
 // names the cause from git's own message, and the sweep CONTINUES.
 func TestPRMergeCleanup_RefusalFallThroughNamesCauseAndContinues(t *testing.T) {
+	testguard.RedirectHome(t)
 	first := t.TempDir()
 	second := t.TempDir()
 	const gitRefusal = "working trees containing submodules cannot be moved or removed"
@@ -221,6 +228,7 @@ func TestPRMergeCleanup_RefusalFallThroughNamesCauseAndContinues(t *testing.T) {
 // next implementer reads it where the decision lives rather than only in the
 // SPEC.
 func TestPRMergeCleanup_IgnoredContentPolicyP2(t *testing.T) {
+	testguard.RedirectHome(t)
 	regenerable := t.TempDir()
 	agentMemory := t.TempDir()
 	unclassifiable := t.TempDir()

@@ -79,9 +79,15 @@ func TestTemplateGitignoreIgnoresLocalArtifacts(t *testing.T) {
 		{".moai/lessons-inbox.jsonl", true, "lessons inbox (REQ-CAP-001/002)"},
 		{".moai/harness/learning-history/archive/2026-07.jsonl.gz.corrupt", true, "corrupt archive (REQ-CAP-001/003)"},
 		{".moai/harness/learning-history/archive/2026-07.jsonl.gz", true, "monthly learning archive (REQ-CAP-001/010)"},
-		// Control: the tier-promotions ledger inside the same directory stays
-		// trackable — the archive rule must not swallow the whole tree.
-		{".moai/harness/learning-history/tier-promotions.jsonl", false, "tracked learning ledger"},
+		// Card t1682: the whole learning-history directory is harness runtime
+		// output, including the tier-promotions ledger (live hooks rewrite it).
+		// This case was a "stays trackable" control before the template adopted
+		// the repository root rule; the control role is now held by
+		// .moai/harness/README.md below.
+		{".moai/harness/learning-history/tier-promotions.jsonl", true, "learning ledger is runtime output"},
+		{".moai/harness/observations.yaml", true, "harness observations (runtime)"},
+		{".moai/harness/usage-log.jsonl.prune-state", true, "usage-log prune state (runtime)"},
+		{".moai/harness/README.md", false, "harness documentation stays trackable"},
 
 		// Scaffolds — must stay trackable so the directories ship.
 		{".moai/logs/.gitkeep", false, "logs directory scaffold"},

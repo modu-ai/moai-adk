@@ -72,12 +72,9 @@ var isInteractiveStdin = func() bool {
 
 // runWizardFn runs the init wizard. Injectable seam for the network-order
 // contract test (AC-TUX2-001). There is a single entry point: the mode-flag
-// dispatch is retired (REQ-WIZ-018), so every init run gets the same 3-page set.
-// The agent_wiring default is pre-filled from the harness an interrupted run
-// recorded, when the resume checkpoint applies (card t1591); the read precedes
-// the wizard, which takes its defaults when the form is built.
+// dispatch is retired (REQ-WIZ-018), so every init run gets the same pages.
 var runWizardFn = func(rootFlag, locale, userName string) (*wizard.WizardResult, error) {
-	return wizard.RunWithAgentWiringDefault(rootFlag, locale, userName, resumeAgentWiringDefault(userHomeDirOrEmpty(), rootFlag))
+	return wizard.RunWithDefaults(rootFlag, locale, userName)
 }
 
 // startDeferredUpdateNotice launches the non-blocking deferred binary-update

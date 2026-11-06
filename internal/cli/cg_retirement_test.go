@@ -4,10 +4,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/factory"
-	"github.com/modu-ai/moai-adk/internal/template"
-	"github.com/spf13/cobra"
 	"io"
 	"os"
 	"os/exec"
@@ -15,6 +11,11 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
+	"github.com/modu-ai/moai-adk/internal/template"
+	"github.com/spf13/cobra"
 )
 
 func TestCGRetiredCommandHasNoRootRegistration(t *testing.T) {

@@ -7,6 +7,7 @@ import (
 	"go/token"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -88,6 +89,24 @@ func TestCheckJev_EnabledWithCredentialAndReachableEndpoint(t *testing.T) {
 	}
 	if !strings.Contains(text, "wxyz") {
 		t.Errorf("the report does not carry the four-character hint: %q", text)
+	}
+}
+
+// AC-JRM-008 — the verbose detail names the request alias and never an
+// interpreted version: the doctor sends no judgment request, so it cannot
+// know which version would answer.
+func TestDoctorJev_VerboseNamesAliasAndNoInterpretedVersion(t *testing.T) {
+	root := jevProject(t, true)
+	stubProbe(t, nil)
+	if err := jevcred.Save("NOT-A-REAL-KEY-0123456789wxyz"); err != nil {
+		t.Fatal(err)
+	}
+	got := checkJev(root, true)
+	if !strings.Contains(got.Detail, "request model jev-latest") {
+		t.Errorf("detail does not contain %q: %q", "request model jev-latest", got.Detail)
+	}
+	if regexp.MustCompile(`model jev-\d+\.\d+\.\d+`).MatchString(got.Detail) {
+		t.Errorf("detail names an interpreted version: %q", got.Detail)
 	}
 }
 
@@ -226,6 +245,7 @@ func TestJevCallPath_HasExactlyTheDeclaredConsumers(t *testing.T) {
 		"jev_skill_suggest.go": "SPEC-JEV-CONSUMERS-001 M6 — Consumer B, skill suggestion (gate-unrun)",
 		"mcp_jev.go":           "SPEC-JEV-GOAL-DIST-001 M8a — the MCP tool wrapper (thin caller, inert behind workflow.jev.enabled; gate off constructs no request)",
 		"todo_auto_rank.go":    "SPEC-TODO-AUTO-PRIORITY-001 M2 — the `todo --auto` selection-order consumer (inert behind workflow.jev.enabled; a Jev answer orders candidates and nothing else; no ordering accuracy is claimed)",
+		"fetch_web.go":         "SPEC-FETCH-WEB-001 — the fetch-web CLI command (pipeline consumer: constructs the gated client for page-block scoring; output is the filtered page a user reads — no completion verdict, merge approval, or queue mutation reach)",
 	}
 
 	hits := jevImporters(t, ".")

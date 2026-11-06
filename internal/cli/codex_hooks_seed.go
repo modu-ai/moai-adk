@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 
 	"github.com/modu-ai/moai-adk/internal/codexwiring"
+	"github.com/modu-ai/moai-adk/internal/worktreeroot"
 )
 
 // sessionWorktreeSeedCodexHooks is the seam over the real seeding call so
@@ -52,16 +53,16 @@ func seedWorktreeEntryHooks(tree string, warn io.Writer) {
 	sessionWorktreeSeedCodexHooks(tree, warn)
 }
 
-// seedAdmittedWorktreeHooks resolves the -w/--worktree value of an already
-// validated launcher argv the same way ccWorktreeWriterPrecheck and
-// resolveWorktreeL2Path do, and applies the launcher-entry backfill. The entry
+// seedAdmittedWorktreeHooksFor applies the launcher-entry backfill to the tree
+// the stage-B first-match -w/--worktree read of an already validated launcher
+// argv names (the same read ccWorktreeWriterPrecheck consumes). The entry
 // flows call it at their post-admission point so the backfill only runs on an
 // admitted launch. Resolution mirrors resolveWorktreeL2Path's: an absolute
 // value is used directly (prefix validation already happened), a short name
 // resolves against <root>/.claude/worktrees/<name>.
-func seedAdmittedWorktreeHooks(args []string, warn io.Writer) {
-	value, ok := worktreeFlagValue(args)
-	if !ok || value == "" {
+func seedAdmittedWorktreeHooksFor(read worktreeRead, warn io.Writer) {
+	value := read.Value
+	if !read.Has || value == "" {
 		return
 	}
 	tree := value
@@ -70,7 +71,21 @@ func seedAdmittedWorktreeHooks(args []string, warn io.Writer) {
 		if err != nil || root == "" {
 			return
 		}
-		tree = filepath.Join(root, ".claude", "worktrees", value)
+		// SPEC-WORKTREE-HOME-ROOT-001 M3 (REQ-WHR-007): a short name naming
+		// a single existing tree resolves to that tree; a name at no tree
+		// keeps the legacy .claude spelling.
+		tree = resolveShortWorktreeTree(root, value)
 	}
 	seedWorktreeEntryHooks(tree, warn)
+}
+
+// resolveShortWorktreeTree maps a launcher short name onto the tree it
+// names: the single tree across the three roots when one exists, otherwise
+// the legacy .claude spelling (the branch-Y pass-through default). Shared
+// by the readers that resolve an already-validated short name.
+func resolveShortWorktreeTree(root, value string) string {
+	if cands, err := worktreeroot.Candidates(root, value); err == nil && len(cands) == 1 {
+		return cands[0].Path
+	}
+	return filepath.Join(root, ".claude", "worktrees", value)
 }

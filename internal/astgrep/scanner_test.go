@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/astgrep"
@@ -474,7 +475,7 @@ func main() { fmt.Println("hello") }
 		t.Fatalf("failed to create rules directory: %v", err)
 	}
 
-	ruleYAML := "---\nid: sgconfig-test-rule\nlanguage: go\nseverity: warning\nmessage: \"fmt.Println 사용\"\npattern: 'fmt.Println($X)'\n"
+	ruleYAML := "---\nid: sgconfig-test-rule\nlanguage: go\nseverity: warning\nmessage: \"hello literal\"\nrule:\n  pattern: '\"hello\"'\n"
 	if err := os.WriteFile(filepath.Join(goDir, "test.yml"), []byte(ruleYAML), 0o644); err != nil {
 		t.Fatalf("failed to write rule file: %v", err)
 	}
@@ -495,9 +496,63 @@ func main() { fmt.Println("hello") }
 		t.Fatalf("Scan() error = %v", err)
 	}
 
-	// scan via sgconfig.yml path must succeed (findings depend on sg behavior)
-	if findings == nil {
-		t.Error("Scan() with sgconfig.yml returned nil")
+	// The rule is written in the nested `rule:` form sg requires: a top-level
+	// `pattern:` is an unparseable rule, which a load failure now reports. It is a
+	// string-literal pattern because call-expression patterns such as
+	// fmt.Println($X) match nothing under sg 0.40.5.
+	// It matches the "hello" literal in main.go, so an empty result means no match.
+	if len(findings) == 0 {
+		t.Error("Scan() with sgconfig.yml returned no findings; the \"hello\" literal rule must match main.go")
+	}
+}
+
+// unloadableRuleYAML is a rule document sg cannot parse (the id is an unclosed
+// flow sequence). sg refuses to load a ruleset containing it: exit 8, empty
+// stdout, and "Error: Cannot parse rule <path>" on stderr. Duplicate rule ids do
+// NOT trigger this on sg 0.40.5 — both rules load and fire — so they cannot stand
+// in for a load failure.
+const unloadableRuleYAML = "id: [unclosed\nlanguage: go\nseverity: error\nmessage: broken\nrule:\n  pattern: log.Printf($A, $B)\n"
+
+// TestScanner_RulesetLoadFailureIsAnError: a ruleset sg cannot load must come back
+// from Scan as an error. scanWithConfig discarded sg's exit status and returned a
+// clean empty result whenever stdout was empty, so a load failure was
+// indistinguishable from "scanned, nothing found".
+func TestScanner_RulesetLoadFailureIsAnError(t *testing.T) {
+	if _, err := exec.LookPath("sg"); err != nil {
+		t.Skip("sg CLI is not in PATH — the ruleset load failure needs a real sg to occur")
+	}
+
+	root := t.TempDir()
+	rulesDir := filepath.Join(root, "rules")
+	goDir := filepath.Join(rulesDir, "go")
+	if err := os.MkdirAll(goDir, 0o755); err != nil {
+		t.Fatalf("failed to create rules directory: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(rulesDir, "sgconfig.yml"), []byte("ruleDirs:\n  - go\n"), 0o644); err != nil {
+		t.Fatalf("failed to write sgconfig.yml: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(goDir, "broken.yml"), []byte(unloadableRuleYAML), 0o644); err != nil {
+		t.Fatalf("failed to write broken rule: %v", err)
+	}
+	goCode := "package main\n\nimport \"log\"\n\nfunc main() {\n\tlog.Printf(\"x\", 1)\n}\n"
+	if err := os.WriteFile(filepath.Join(root, "main.go"), []byte(goCode), 0o644); err != nil {
+		t.Fatalf("failed to write target file: %v", err)
+	}
+
+	s := astgrep.NewScanner(&astgrep.ScannerConfig{RulesDir: rulesDir, SGBinary: "sg"})
+	findings, err := s.Scan(context.Background(), root)
+	if err == nil {
+		t.Fatalf("Scan() error = nil with %d finding(s); an unloadable ruleset must be reported, not returned as a clean scan", len(findings))
+	}
+	if !errors.Is(err, astgrep.ErrRulesetLoad) {
+		t.Errorf("errors.Is(err, ErrRulesetLoad) = false for %q; the load failure must match the sentinel through Unwrap", err)
+	}
+	var loadErr *astgrep.RulesetLoadError
+	if !errors.As(err, &loadErr) || loadErr.Detail == "" {
+		t.Errorf("errors.As(err, *RulesetLoadError) with a non-empty Detail = false for %q", err)
+	}
+	if !strings.Contains(err.Error(), "Cannot parse rule") {
+		t.Errorf("Scan() error = %q; want the first line of sg's stderr (\"Error: Cannot parse rule ...\") in it", err.Error())
 	}
 }
 

@@ -14,6 +14,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/testguard"
 )
 
 const gfdSessGitHubFlowYAML = "git_strategy:\n    mode: manual\n    manual:\n        workflow: github-flow\n"
@@ -142,6 +144,7 @@ func ghWasCalled(t *testing.T, marker string) bool {
 // "landed" from layers 1-2; F5 — which only the PR layer can confirm — is
 // "preserve" (the next sweep's layer 3 decides); no cell runs `gh`.
 func TestSessionExitLandingNoNetwork(t *testing.T) {
+	testguard.RedirectHome(t)
 	marker := withGHShim(t)
 
 	cells := []struct {
@@ -199,6 +202,7 @@ func TestSessionExitLandingNoNetwork(t *testing.T) {
 // on origin/develop under a github-flow project is NOT landed; and under git-flow
 // the develop-based answer is unchanged.
 func TestSessionExitLandingFollowsIntegrationTarget(t *testing.T) {
+	testguard.RedirectHome(t)
 	t.Run("git_flow_develop_unchanged", func(t *testing.T) {
 		f := gfdSessRepo(t, "develop", gfdSessGitFlowYAML)
 		f.cardCommit(t, 5, "card")

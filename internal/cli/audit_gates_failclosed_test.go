@@ -110,7 +110,9 @@ func TestResolveAuditGatesConfigErrorDistinct(t *testing.T) {
 
 	t.Run("absent file stays the legitimate not-configured result", func(t *testing.T) {
 		t.Parallel()
-		root := newProbeProject(t, "SPEC-GATEABS-011")
+		// A bare temp dir: newProbeProject sets CLAUDE_PROJECT_DIR (REQ-MN-001
+		// confinement), which a parallel subtest must not touch.
+		root := t.TempDir()
 		gates, _, err := resolveAuditGates(root)
 		if err != nil {
 			t.Fatalf("an absent workflow.yaml is not-configured, not an error: %v", err)

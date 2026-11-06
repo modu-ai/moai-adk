@@ -290,13 +290,12 @@ func renderUpdateOutcome(w io.Writer, fileCount int, detail updateOutcomeDetail,
 		note := "Archive drift backup: " + drift + " (pre-drift customizations recoverable there)"
 		_, _ = fmt.Fprintln(w, paintToken(note, th.Dim, false))
 	}
-	// REQ-ICU-006 (F15, accept-manual-recovery): the restore step re-lays only
-	// sections/*.yaml, so customizations outside sections/ are not
-	// merge-restored; the summary names them and points at the backup. The
-	// merge-restore expansion was judged over-engineering (spec §REQ-ICU-006) —
-	// the backup itself is the recovery path.
+	// REQ-ICU-006 (M2): the restore merges sections/*.yaml with the 3-way merge and
+	// restores evaluator-profiles/ and astgrep-rules/ beside the new template (see
+	// backup.RestoreUnmanagedConfigDirs). This line states that rule; the per-file
+	// outcome is reported in the run output.
 	if backupPath != "" {
-		advisory := "Config restore covers .moai/config/sections/*.yaml only — customizations under evaluator-profiles/ and astgrep-rules/ are not merge-restored; recover them from the backup"
+		advisory := "Config restore merges .moai/config/sections/*.yaml (3-way); evaluator-profiles/ and astgrep-rules/ are restored beside the new template, and a differing backup copy is kept as <name>.from-<stamp>"
 		_, _ = fmt.Fprintln(w, paintToken(advisory, th.Dim, false))
 	}
 }

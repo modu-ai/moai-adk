@@ -6,7 +6,7 @@
 // sandbox), and the launcher writes the verdict or report file with exactly
 // that text. The exception is Codex-only: the Claude agent
 // definitions (the local copy under the repository .claude tree and the
-// neutral template copy) carry no trace of it, and the Claude audit workflow
+// template copy) carry no trace of it, and the Claude audit workflow
 // is untouched.
 package agentemit_test
 
@@ -81,7 +81,7 @@ func TestCodexAuditRolesReadOnlyScopedException(t *testing.T) {
 		}
 	}
 
-	// Claude path unchanged: neither the neutral template copy (C2) nor the
+	// Claude path unchanged: neither the template copy (C2) nor the
 	// local copy (C1) carries the Codex-only instruction.
 	for role := range codexAuditRoles {
 		for _, p := range []string{
@@ -139,7 +139,7 @@ func TestCodexAuditRolesReadOnlyScopedException(t *testing.T) {
 		if err != nil {
 			continue // refused at manifest validation
 		}
-		if _, err := agentemit.EmitAll(os.DirFS(templatesDir), agentMDRoot, man); err == nil {
+		if _, err := agentemit.EmitAll(os.DirFS(repoRoot), sourceRoot, man); err == nil {
 			t.Errorf("%s: emitter accepted the mutant; want refusal", label)
 		}
 	}

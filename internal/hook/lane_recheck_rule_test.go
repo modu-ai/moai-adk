@@ -20,7 +20,7 @@ import (
 // the recheck prompt must invoke stay verbatim in every locale the way the MCP
 // tool names do. The arm expression is rendered from the configured renewal
 // period and is checked by TestLaneRuleCarriesConfiguredRenewInterval.
-var recheckRuleTokens = [...]string{"CronCreate", "CronList", "CronDelete", "moai-lane-watchdog"}
+var recheckRuleTokens = [...]string{"ScheduleWakeup", "/loop", "/moai goal", "moai-lane-watchdog"}
 
 // recheckLocaleScript is the script the appended recheck paragraph must be
 // written in per locale; a locale whose paragraph is still the English sentence
@@ -47,7 +47,7 @@ func scriptRunes(s string, table *unicode.RangeTable) int {
 	return n
 }
 
-func TestLaneRuleCarriesStandingRecheckCron(t *testing.T) {
+func TestLaneRuleCarriesTheSelfPacedWake(t *testing.T) {
 	for _, backend := range []string{factory.BackendClaude, factory.BackendGLM} {
 		for _, dispatch := range []string{config.FactoryDispatchAuto, config.FactoryDispatchManual} {
 			for _, source := range []string{"startup", "clear"} {

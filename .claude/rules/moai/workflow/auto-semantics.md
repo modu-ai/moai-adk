@@ -100,7 +100,7 @@ binds the awaken turn's FIRST action and introduces no hook surface; who arms
 the scheduler that fires the awaken is §5.1. The dual-harness hook-parity
 precedent applies only if a future iteration adds a hook surface.
 
-Canonical awaken prompt (the prompt of the lane's standing recheck cron, §5.1):
+Canonical awaken prompt (the prompt of the lane's self-paced wake, §5.1):
 
 ```text
 Each iteration: run the lane stall watchdog FIRST — invoke
@@ -114,26 +114,26 @@ do not idle-spin on the wait.
 
 A lane that has stopped cannot wake itself, and a turn ended by an API error
 (a 429) leaves no model action in which to arm anything. The carrier is
-therefore **standing**: armed once at card intake, before the first stage, and
-kept until the completion report.
+therefore **standing**: a next wake is always scheduled before the lane can stop — the first at card intake, before the first stage, and each wake schedules the next while the lane executes the card.
 
-- **Arm.** `CronCreate` with `cron: "*/N * * * *"`, where N is the value of
-  `workflow.factory_lease.renew_interval` in minutes (`*/5 * * * *` at the
-  default), `recurring: true`, and the canonical awaken prompt above. The minute
-  step starts at minute 0, so
-  no two consecutive scheduled wakes are further apart than one renewal period, including across the hour boundary.
+- **Arm.** No recurring `CronCreate`. At the end of each wake, if work remains,
+  the lane schedules exactly ONE next wake with `ScheduleWakeup` (or the
+  equivalent self-paced mechanism) at a delay relative to now, carrying the
+  canonical awaken prompt above and never longer than
+  `workflow.factory_lease.renew_interval` (5 minutes at the default). If no
+  work remains, it schedules nothing, records `idle: backlog empty <time>` once,
+  and stops.
   Never a one-shot at an absolute clock time: a local/UTC slip lands it in the
   past and it never fires (observed on card t1393), and it covers one wait
   rather than the stall that follows it. Each fire runs the watchdog's renewal
-  first (§0a of the watchdog skill), so the renewal period is also the cadence
-  at which the card lease is renewed.
-- **Keep.** `CronList` at card takeover (intake or the in-session transition to a newly leased card) and after any session reset; re-arm when
-  the entry is missing, or when its expression no longer matches the configured
-  renewal period. A changed renewal period takes effect at the next arm. A
-  recurring job expires after 7 days — a card that outlives that re-arms it.
-  Delete it (`CronDelete`) when the completion report is sent; the next card
-  arms its own.
-- **Read disk, not messages.** Every wake — the cron, a leader message, a
+  first (§0a of the watchdog skill), which renews the lease of the card the lane
+  is executing, so the renewal period is also the cadence at which that lease
+  is renewed.
+- **Keep.** At card takeover (intake, the in-session transition to a newly leased card, or the resumption of execution after a wait) and after any session reset, confirm a next wake is scheduled; schedule one when it is missing.
+  A changed renewal period takes effect at the next scheduling. Nothing recurring
+  exists to expire or delete: a wake that finds no work left schedules no
+  successor, and the next card schedules its own.
+- **Read disk, not messages.** Every wake — the self-paced wake, a leader message, a
   teammate's idle notice — starts with the watchdog pass, which reads the
   evidence on disk (the three channels of §3, the card's progress record, the
   reports, the commits, a delegate's deliverable). A message says when to
@@ -159,7 +159,7 @@ category, or a cross-card conflict), never a judgment request.
 | ① disk evidence | read the deciding artifact directly: audit verdict files, the card's progress record, plan-audit verdicts, evidence paths | yes |
 | ② decision board | poll the shared decision store (§11) — leader-level rulings land there | yes |
 | ③ audit cross | the `moai` MCP audit tools (`codex_audit` / `glm_audit` / `claude_audit` / `audit_multi`) for an independent second opinion; fail-open on tool absence | yes |
-| ④ jev_ask | the MCP judgment tool, ONLY while `workflow.jev.enabled` is true (ships false); repeatable, side-effect-free parameters; its answer is ADVISORY INPUT (§12) | yes, gated |
+| ④ jev_ask | the MCP judgment tool, ONLY while `workflow.jev.enabled` is true (ships false); repeatable, side-effect-free parameters; its answer is ADVISORY INPUT (§12), kept as a shadow record (§12) | yes, gated |
 | ⑤ self-judgment | the lane decides from ①–④ and writes the decision record (§10) in the card's progress record; it proceeds on its own authority | yes, terminal |
 
 ## 7. Outcome → action transitions
@@ -198,8 +198,8 @@ Every ladder step carries a per-runner path. The Claude runner is `moai cc`
 | ⑤ self-judgment + decision record | the card's progress record on disk (§10) | same disk record — harness-indifferent |
 
 A step impossible on a runner names its substitute — never implicitly
-impossible. The awaken carrier on the Claude runner is the standing recheck
-cron (§5.1). The codex runner has no session cron tool; its substitute is the
+impossible. The awaken carrier on the Claude runner is the self-paced wake
+(§5.1). The codex runner has no self-paced wake tool; its substitute is the
 leader's evidence read plus the explicit wait record on disk — a named gap,
 never an implicit one.
 
@@ -208,7 +208,8 @@ never an implicit one.
 The human gates, each with a disposition. KEEP is admissible ONLY in three
 categories: **environment-impossible** (execution itself cannot proceed —
 missing credentials/runner), **operator-held** work, and **irreversible
-operations touching external shared systems**. Any KEEP outside these three
+operations touching external shared systems** (for example an origin push, or a schema
+migration applied to a shared database). Any KEEP outside these three
 carries its justification right here, in this inventory.
 
 | Gate | Disposition |
@@ -366,6 +367,11 @@ never the SOLE basis of a completion, merge, queue-change, or operator
 keep-set gate decision — those are advisory-input-plus-lane-judgment, or the
 operator's own answer where a keep-set category holds.
 
+Shadow record: when a lane escalates a judgment to this step, the decision
+record (§10) keeps the verbatim `jev_ask` request and the verbatim response,
+including its `model` field, in the card's evidence path. The record observes;
+the DECISION stays with the lane exactly as above.
+
 ## 13. The queue read-only boundary
 
 Queue mutation verbs (`add`, `drop`, `edit`, `relate`/`unrelate`) and
@@ -383,18 +389,17 @@ blocked-by remedy resolves by evidence, never by relation bookkeeping.
 A wait is legitimate only as an **explicit wait** — a disk record naming:
 
 ```text
-wait record: id=w-<card>-<UTC> waiting_on=<subject> reason=<why> recheck=<condition or next check point>
+wait record: id=w-<card>-<UTC> waiting_on=<subject> reason=<why> scope=<refused operation/path/permission | none> recheck=<condition or next check point>
 ```
 
 recorded on the card's evidence path (the decision board is the leader's;
 a lane never writes it). A wait ends only when a board record's `resolves`
 field names its id — any other record for the same card leaves it open.
-While a wait whose `waiting_on` names the leader is open, the lane keeps a
-one-shot recheck (`CronCreate` with `recurring: false`) at
-`workflow.watchdog.wait_recheck_minutes` (default 5, never below 5) from
-now, re-armed by each fire that finds the wait still open and not re-armed
-once it resolves; the standing carrier of §5.1 stays armed. The codex runner
-has no cron tool: there the leader's board write plus the nudge is the named
+While a wait whose `waiting_on` names the leader is open, the lane keeps
+one relative-time wake (`ScheduleWakeup`, a delay from now no longer than
+`workflow.factory_lease.renew_interval`), re-scheduled by each wake that finds
+the wait still open and not re-scheduled once it resolves; the self-paced wake of §5.1 is scheduled only while the lane executes the card (an open wait on the leader is not execution). The codex runner
+has no self-paced wake tool: there the leader's board write plus the nudge is the named
 substitute. When the leader resolves a judgment a lane waits on, it records
 the ruling (`moai decision record ... --resolves <wait-id>`) before sending
 any message, sends only the record id as a nudge, and never re-sends a
@@ -404,6 +409,8 @@ recheck shows no change, and never prompts the operator on its own behalf.
 Where no on-disk gate state exists (a gate mid-question), the recheck
 degrades to ladder steps ①–④ — the wait note is then the only record, and
 progress resumes only on evidence.
+
+A refusal binds only its own scope; permitted work the refusal does not affect continues (a real permission refusal is never bypassed). Audit request record before asking: `audit request: card=<id> sha=<full 40> checks=<running checks|none> slot=<n> owner=<lane> next=<event>` — an audit request without a candidate SHA is not a reason to wait.
 
 ## 15. Cross-references
 

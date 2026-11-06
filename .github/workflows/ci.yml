@@ -64,6 +64,12 @@ jobs:
     timeout-minutes: 5
     outputs:
       go_code: ${{ steps.f.outputs.go_code }}
+      # Verification input classes for the always-on cost jobs below (card
+      # t1536, SPEC-RELEASE-PIPELINE-001 M2). Defined in the same shared filter
+      # file, with per-root evidence naming the job that reads each class.
+      binary_inputs: ${{ steps.f.outputs.binary_inputs }}
+      browser_inputs: ${{ steps.f.outputs.browser_inputs }}
+      harness_inputs: ${{ steps.f.outputs.harness_inputs }}
     steps:
       - uses: actions/checkout@v7
       # go_code covers BOTH Go sources AND the non-Go repo inputs the Go
@@ -240,7 +246,15 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: test-stream-ci-test-ubuntu-latest
-          path: test-stream.json.gz
+          # The retry wrapper's first-failure record (scripts/ci/retry-flaky.sh
+          # writes it before the re-run) rides the same upload, so a retried
+          # flake leaves its first failure behind. The record sits under a
+          # hidden directory, hence include-hidden-files. Absent when no retry
+          # ran (REQ-RPC-009).
+          path: |
+            test-stream.json.gz
+            .moai/logs/ci-flaky-retry.attempt1.json
+          include-hidden-files: true
           retention-days: 7
           if-no-files-found: warn
 
@@ -384,7 +398,15 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: test-stream-ci-race-cli-1
-          path: test-stream-race-cli-1.json.gz
+          # The retry wrapper's first-failure record (scripts/ci/retry-flaky.sh
+          # writes it before the re-run) rides the same upload, so a retried
+          # flake leaves its first failure behind. The record sits under a
+          # hidden directory, hence include-hidden-files. Absent when no retry
+          # ran (REQ-RPC-009).
+          path: |
+            test-stream-race-cli-1.json.gz
+            .moai/logs/ci-flaky-retry.attempt1.json
+          include-hidden-files: true
           retention-days: 7
           if-no-files-found: warn
 
@@ -436,7 +458,15 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: test-stream-ci-race-cli-2
-          path: test-stream-race-cli-2.json.gz
+          # The retry wrapper's first-failure record (scripts/ci/retry-flaky.sh
+          # writes it before the re-run) rides the same upload, so a retried
+          # flake leaves its first failure behind. The record sits under a
+          # hidden directory, hence include-hidden-files. Absent when no retry
+          # ran (REQ-RPC-009).
+          path: |
+            test-stream-race-cli-2.json.gz
+            .moai/logs/ci-flaky-retry.attempt1.json
+          include-hidden-files: true
           retention-days: 7
           if-no-files-found: warn
 
@@ -487,7 +517,15 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: test-stream-ci-race-cli-3
-          path: test-stream-race-cli-3.json.gz
+          # The retry wrapper's first-failure record (scripts/ci/retry-flaky.sh
+          # writes it before the re-run) rides the same upload, so a retried
+          # flake leaves its first failure behind. The record sits under a
+          # hidden directory, hence include-hidden-files. Absent when no retry
+          # ran (REQ-RPC-009).
+          path: |
+            test-stream-race-cli-3.json.gz
+            .moai/logs/ci-flaky-retry.attempt1.json
+          include-hidden-files: true
           retention-days: 7
           if-no-files-found: warn
 
@@ -539,7 +577,15 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: test-stream-ci-race-cli-4
-          path: test-stream-race-cli-4.json.gz
+          # The retry wrapper's first-failure record (scripts/ci/retry-flaky.sh
+          # writes it before the re-run) rides the same upload, so a retried
+          # flake leaves its first failure behind. The record sits under a
+          # hidden directory, hence include-hidden-files. Absent when no retry
+          # ran (REQ-RPC-009).
+          path: |
+            test-stream-race-cli-4.json.gz
+            .moai/logs/ci-flaky-retry.attempt1.json
+          include-hidden-files: true
           retention-days: 7
           if-no-files-found: warn
 
@@ -592,7 +638,15 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: test-stream-ci-race-rosterguard
-          path: test-stream-race-rosterguard.json.gz
+          # The retry wrapper's first-failure record (scripts/ci/retry-flaky.sh
+          # writes it before the re-run) rides the same upload, so a retried
+          # flake leaves its first failure behind. The record sits under a
+          # hidden directory, hence include-hidden-files. Absent when no retry
+          # ran (REQ-RPC-009).
+          path: |
+            test-stream-race-rosterguard.json.gz
+            .moai/logs/ci-flaky-retry.attempt1.json
+          include-hidden-files: true
           retention-days: 7
           if-no-files-found: warn
 
@@ -649,7 +703,15 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: test-stream-ci-race-remainder
-          path: test-stream-race-remainder.json.gz
+          # The retry wrapper's first-failure record (scripts/ci/retry-flaky.sh
+          # writes it before the re-run) rides the same upload, so a retried
+          # flake leaves its first failure behind. The record sits under a
+          # hidden directory, hence include-hidden-files. Absent when no retry
+          # ran (REQ-RPC-009).
+          path: |
+            test-stream-race-remainder.json.gz
+            .moai/logs/ci-flaky-retry.attempt1.json
+          include-hidden-files: true
           retention-days: 7
           if-no-files-found: warn
 
@@ -767,12 +829,25 @@ jobs:
           if-no-files-found: warn
 
   # ---------------------------------------------------------------------------
-  # Lint: Static analysis with golangci-lint (always runs — fast, required check)
+  # Lint: Static analysis with golangci-lint (required check; input-class gated
+  # on pull_request events - see the gate note below and `lint-skip-marker`)
   # ---------------------------------------------------------------------------
   lint:
     name: Lint
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # Input-class gate (card t1536, SPEC-RELEASE-PIPELINE-001 REQ-RPC-002):
+    # on pull_request events this job runs only when its input class matched
+    # (shared filter .github/test-input-filters.yml, evidence per root). It
+    # fails open: when `detect` did not conclude success the job runs, because
+    # an unclassifiable diff never skips a cost job silently. push and
+    # workflow_dispatch are exempt (decision-index Q8) - the tagged main commit
+    # and every candidate keep real runs. The condition is !cancelled()-guarded,
+    # never always(): always() would start the job, and keep it running, after
+    # the run is cancelled, reversing the conditional cancellation at the top of
+    # this file.
+    needs: detect
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.detect.result != 'success' || needs.detect.outputs.binary_inputs == 'true' || needs.detect.outputs.harness_inputs == 'true') }}
 
     steps:
       - name: Checkout code
@@ -807,19 +882,88 @@ jobs:
       - name: Run golangci-lint
         run: golangci-lint run --timeout=5m
 
+      # SPEC-CI-CODEX-REVIEW-001: the merge gate script is the one shell program the auto-merge
+      # workflow trusts for its decision; ubuntu-latest runners ship shellcheck.
+      - name: Shellcheck the Codex review gate script
+        run: shellcheck scripts/ci/codex-review-gate.sh
+
       - name: Build moai binary for agent lint
         run: go build -o ./bin/moai ./cmd/moai/
 
       - name: Run moai agent lint
         run: ./bin/moai agent lint
 
+      # Classification verdict (REQ-RPC-003). Runs after the verification steps
+      # whatever they concluded and fails this job - so the required name
+      # `Lint` - on a pull_request whose classification did not conclude
+      # success. Without it a failed `detect` plus green verification steps
+      # would publish `success` under the required name; with it every check run
+      # published under the name (this job and the skip-marker) concludes failure.
+      - name: Classification verdict (a failed classification never publishes a passing required name)
+        if: ${{ always() && github.event_name == 'pull_request' && needs.detect.result != 'success' }}
+        shell: bash
+        run: |
+          echo "::error::detect concluded '${{ needs.detect.result }}', so the input classification was not evaluated; the required name Lint cannot pass on an unevaluated classification."
+          exit 1
+
   # ---------------------------------------------------------------------------
-  # Build: Cross-compile for all target platforms (always runs — required check)
+  # Lint skip-marker (REQ-RPC-003, decision-index Q4): publishes the required
+  # name `Lint` when the real job is gated off. Runs on pull_request events only
+  # (Q8), under a !cancelled()-guarded condition, when `detect` did not conclude
+  # success OR the classification positively observed a non-match. It passes -
+  # naming the intentional exclusion - only when `detect` concluded success; when
+  # `detect` did not, its step fails, so both check runs under the name conclude
+  # failure and no rule for resolving two same-named check runs is relied on.
+  # ---------------------------------------------------------------------------
+  lint-skip-marker:
+    name: Lint
+    runs-on: ubuntu-latest
+    needs: detect
+    timeout-minutes: 5
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && (needs.detect.result != 'success' || (needs.detect.outputs.binary_inputs != 'true' && needs.detect.outputs.harness_inputs != 'true')) }}
+    steps:
+      - name: Classification did not conclude success (fail the required name)
+        if: ${{ needs.detect.result != 'success' }}
+        shell: bash
+        run: |
+          echo "::error::detect concluded '${{ needs.detect.result }}', so no input class was evaluated; the required name Lint is not satisfied by a marker over an unevaluated classification."
+          exit 1
+
+      - name: Skip (no lint inputs changed)
+        if: ${{ needs.detect.result == 'success' }}
+        shell: bash
+        run: |
+          {
+            echo "### Lint: skipped by the input classification"
+            echo ""
+            echo "The \`detect\` job positively observed that this change touches no"
+            echo "\`binary_inputs\` or \`harness_inputs\` root, so the lint job did not run and this"
+            echo "marker satisfies the required check."
+            echo ""
+            echo "- Class definitions: \`.github/test-input-filters.yml\` (evidence per root)"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # ---------------------------------------------------------------------------
+  # Build: Cross-compile for all target platforms (required checks; input-class
+  # gated on pull_request events - see the gate note below and
+  # `build-skip-marker`)
   # ---------------------------------------------------------------------------
   build:
     name: Build (${{ matrix.goos }}/${{ matrix.goarch }})
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # Input-class gate (card t1536, SPEC-RELEASE-PIPELINE-001 REQ-RPC-002):
+    # on pull_request events this job runs only when its input class matched
+    # (shared filter .github/test-input-filters.yml, evidence per root). It
+    # fails open: when `detect` did not conclude success the job runs, because
+    # an unclassifiable diff never skips a cost job silently. push and
+    # workflow_dispatch are exempt (decision-index Q8) - the tagged main commit
+    # and every candidate keep real runs. The condition is !cancelled()-guarded,
+    # never always(): always() would start the job, and keep it running, after
+    # the run is cancelled, reversing the conditional cancellation at the top of
+    # this file.
+    needs: detect
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.detect.result != 'success' || needs.detect.outputs.binary_inputs == 'true') }}
     strategy:
       fail-fast: false
       matrix:
@@ -881,16 +1025,90 @@ jobs:
           path: moai-${{ matrix.goos }}-${{ matrix.goarch }}*
           retention-days: 7
 
+      # Classification verdict (REQ-RPC-003). Runs after the verification steps
+      # whatever they concluded and fails this job - so the required name
+      # `Build (${{ matrix.goos }}/${{ matrix.goarch }})` - on a pull_request whose classification did not conclude
+      # success. Without it a failed `detect` plus green verification steps
+      # would publish `success` under the required name; with it every check run
+      # published under the name (this job and the skip-marker) concludes failure.
+      - name: Classification verdict (a failed classification never publishes a passing required name)
+        if: ${{ always() && github.event_name == 'pull_request' && needs.detect.result != 'success' }}
+        shell: bash
+        run: |
+          echo "::error::detect concluded '${{ needs.detect.result }}', so the input classification was not evaluated; the required name Build (${{ matrix.goos }}/${{ matrix.goarch }}) cannot pass on an unevaluated classification."
+          exit 1
+
+  # ---------------------------------------------------------------------------
+  # Build skip-marker (REQ-RPC-003, decision-index Q4): publishes the five
+  # required `Build (...)` names when the real matrix is gated off, under the same
+  # rules as `lint-skip-marker`. The matrix below MUST list exactly the real
+  # build matrix's legs (TestCIGatedFamilyVerdictSemantics fails when a name is
+  # published by only one side).
+  # ---------------------------------------------------------------------------
+  build-skip-marker:
+    name: Build (${{ matrix.goos }}/${{ matrix.goarch }})
+    runs-on: ubuntu-latest
+    needs: detect
+    timeout-minutes: 5
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && (needs.detect.result != 'success' || needs.detect.outputs.binary_inputs != 'true') }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+          - goos: linux
+            goarch: arm64
+          - goos: darwin
+            goarch: amd64
+          - goos: darwin
+            goarch: arm64
+          - goos: windows
+            goarch: amd64
+    steps:
+      - name: Classification did not conclude success (fail the required name)
+        if: ${{ needs.detect.result != 'success' }}
+        shell: bash
+        run: |
+          echo "::error::detect concluded '${{ needs.detect.result }}', so no input class was evaluated; the required name Build (${{ matrix.goos }}/${{ matrix.goarch }}) is not satisfied by a marker over an unevaluated classification."
+          exit 1
+
+      - name: Skip (no build inputs changed)
+        if: ${{ needs.detect.result == 'success' }}
+        shell: bash
+        run: |
+          {
+            echo "### Build (${{ matrix.goos }}/${{ matrix.goarch }}): skipped by the input classification"
+            echo ""
+            echo "The \`detect\` job positively observed that this change touches no"
+            echo "\`binary_inputs\` root, so the cross-compile did not run and this marker"
+            echo "satisfies the required check."
+            echo ""
+            echo "- Class definitions: \`.github/test-input-filters.yml\` (evidence per root)"
+          } >> "$GITHUB_STEP_SUMMARY"
+
   # ---------------------------------------------------------------------------
   # Constitution Check: Verify FROZEN/EVOLVABLE zone registry integrity
   # SPEC-V3R2-CON-001 — continue-on-error so CI doesn't block on missing registry
-  # Always runs (fast, advisory-only)
+  # Input-class gated on pull_request events (advisory, no required name)
   # ---------------------------------------------------------------------------
   constitution-check:
     name: Constitution Check
     runs-on: ubuntu-latest
     timeout-minutes: 15
     continue-on-error: true
+    # Input-class gate (card t1536, SPEC-RELEASE-PIPELINE-001 REQ-RPC-002):
+    # on pull_request events this job runs only when its input class matched
+    # (shared filter .github/test-input-filters.yml, evidence per root). It
+    # fails open: when `detect` did not conclude success the job runs, because
+    # an unclassifiable diff never skips a cost job silently. push and
+    # workflow_dispatch are exempt (decision-index Q8) - the tagged main commit
+    # and every candidate keep real runs. The condition is !cancelled()-guarded,
+    # never always(): always() would start the job, and keep it running, after
+    # the run is cancelled, reversing the conditional cancellation at the top of
+    # this file.
+    needs: detect
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.detect.result != 'success' || needs.detect.outputs.binary_inputs == 'true' || needs.detect.outputs.harness_inputs == 'true') }}
 
     steps:
       - name: Checkout code
@@ -950,7 +1168,29 @@ jobs:
   test-browser:
     name: Test (browser fire guard)
     runs-on: ubuntu-latest
+    # Budget (SPEC-RELEASE-PIPELINE-001 REQ-RPC-007/008, card t1536). The job
+    # keeps its 20 minutes; each phase is a separately bounded stage so a slow
+    # green phase cannot consume the mutation phase's budget:
+    #   setup 1 + green 16 + mutation 2 + evidence 1 = 20.
+    # Measured on four green main runs (38991715666, 38697937293, 38673824546,
+    # 37861953651): green 13m05s / 12m17s / 13m43s / 12m44s, mutation 1m11s /
+    # 1m09s / 1m16s / 59s, steps before the green phase about 45s. The ceilings
+    # keep a margin over those maxima; run-to-run variance beyond four runs is
+    # unmeasured. TestStageCeilingBelowJobBudget and TestBrowserPhaseSplit hold
+    # the arithmetic, with the allowances as test constants.
     timeout-minutes: 20
+    # Input-class gate (card t1536, SPEC-RELEASE-PIPELINE-001 REQ-RPC-002):
+    # on pull_request events this job runs only when its input class matched
+    # (shared filter .github/test-input-filters.yml, evidence per root). It
+    # fails open: when `detect` did not conclude success the job runs, because
+    # an unclassifiable diff never skips a cost job silently. push and
+    # workflow_dispatch are exempt (decision-index Q8) - the tagged main commit
+    # and every candidate keep real runs. The condition is !cancelled()-guarded,
+    # never always(): always() would start the job, and keep it running, after
+    # the run is cancelled, reversing the conditional cancellation at the top of
+    # this file.
+    needs: detect
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.detect.result != 'success' || needs.detect.outputs.browser_inputs == 'true') }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
@@ -1010,14 +1250,19 @@ jobs:
         shell: bash
         run: python3 internal/web/testdata/appjs_fire_probe.py --lint-manifest
 
+      # Stage ceiling 16 (step-level): Go's own -timeout (15m) fires first, so a
+      # hung driver test leaves a goroutine dump instead of a killed step.
       - name: Green phase — gated driver tests (in-process surface)
+        timeout-minutes: 16
         env:
           MOAI_BROWSER_GUARD: "1"
           MOAI_BROWSER_GUARD_SETTLE_STAGE2: "1"
         shell: bash
-        run: go test ./internal/web/ -run 'AppJs.*Fire' -v -count=1 -timeout 17m
+        run: go test ./internal/web/ -run 'AppJs.*Fire' -v -count=1 -timeout 15m
 
+      # Stage ceiling 2 (step-level), independent of the green phase's.
       - name: Red phase — mutation cycle (0 → 1 → 0, real-binary surface)
+        timeout-minutes: 2
         shell: bash
         run: |
           set -euo pipefail
@@ -1115,3 +1360,18 @@ jobs:
           start_server
           expect_exit 0 python3 internal/web/testdata/appjs_fire_probe.py \
             --cdp-port "$CDP_PORT" --primary-entries-only "$PORT" t1060-ci-post-restore
+
+      # The mutation phase's own diagnosable trail (REQ-RPC-008): server and
+      # Chrome logs and the probe reports survive a failing or ceiling-hit phase.
+      # always(), warn-on-absent: a green run that wrote none is not an error.
+      - name: Upload fire-guard evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: fire-guard-evidence
+          path: |
+            ${{ runner.temp }}/fire-guard/*.log
+            ${{ runner.temp }}/fire-guard/*.json
+            ${{ runner.temp }}/fire-guard/last.out
+          retention-days: 7
+          if-no-files-found: warn

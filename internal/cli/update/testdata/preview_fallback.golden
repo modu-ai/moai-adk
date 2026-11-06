@@ -9,5 +9,5 @@ moai update — change preview
 | conflict                1 |
 +---------------------------+
 
-Conflicts (resolve before proceeding — see the recover hint in the run output)
+Conflicts (listed for review; this non-interactive run does not pause to resolve them)
   conflict                .moai/config/config.yaml

@@ -81,7 +81,12 @@ func checkIntegrationLock(input *HookInput, projectRoot string) (decision string
 		}
 	}
 
-	lock, err := factory.ReadIntegrationLock(projectRoot)
+	// The record lives at the repository common root — where the CLI verbs and the MCP
+	// handler write it — so a project root naming a linked worktree reads the same record
+	// they wrote (card t1680). The resolution runs only here, after the command is known
+	// to be a merge, so the disabled and non-merge paths spawn no git process. Where git
+	// cannot answer the root is used verbatim, so uncertainty still allows.
+	lock, err := factory.ReadIntegrationLock(factory.IntegrationCommonRoot(projectRoot))
 	if err != nil {
 		// Fail open, loudly. See the package comment: refusing every merge in
 		// the repository because one JSON file is malformed is a worse

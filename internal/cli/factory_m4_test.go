@@ -351,82 +351,6 @@ func TestSD_AC006_LaneCycleWithoutRemote(t *testing.T) {
 	}
 }
 
-// sdLaunchPathArgv is one entry of AC-SD-007's enumeration: a launch path
-// this SPEC adds, with the engine binary and the captured argv it hands it.
-type sdLaunchPathArgv struct {
-	name   string
-	binary string
-	argv   []string
-}
-
-// AC-SD-007 — no launch path spawns a headless engine. The walk reads the
-// enumeration below; M5 (the codex relaunch) appends its entry to the slice
-// without restructuring the walk.
-func TestSD_AC007_NoHeadlessEngineArgv(t *testing.T) {
-	// The capture fixtures: one factory run with a leader, one lane launch
-	// per entry.
-	capture := func(t *testing.T, name string, entry func([]string) error) sdLaunchPathArgv {
-		t.Helper()
-		root, _ := fcFixture(t)
-		sdRecordLeaderRun(t, root, fcRun, factory.BackendClaude)
-		t.Chdir(root)
-		captured := sdDriveLaneLaunch(t, root, entry)
-		return sdLaunchPathArgv{name: name, binary: captured.binary, argv: captured.argv}
-	}
-
-	// M4 scope: the launch paths that exist are the cc and glm lane launches
-	// (both hand the claude engine its mode). M5 appends the codex relaunch
-	// entry here — the walk below already knows the codex arm.
-	captureCodex := func(t *testing.T) sdLaunchPathArgv {
-		t.Helper()
-		root, store := fcFixture(t)
-		fcQueue(t, store, factory.BacklogStatePicked)
-		sdRecordLeaderRun(t, root, fcRun, factory.BackendClaude)
-		t.Chdir(root)
-		sdScrubLauncherEnv(t)
-		var argv []string
-		prevLook, prevDirect := codexLookPath, codexDirectLaunchFn
-		codexLookPath = func(string) (string, error) { return "/sentinel/codex", nil }
-		codexDirectLaunchFn = func(c *exec.Cmd) error {
-			argv = append([]string(nil), c.Args...)
-			return nil
-		}
-		t.Cleanup(func() { codexLookPath, codexDirectLaunchFn = prevLook, prevDirect })
-		if _, _, err := runCodexCmd(t, "-l"); err != nil {
-			t.Fatalf("codex lane: %v", err)
-		}
-		return sdLaunchPathArgv{name: "codex -l", binary: "codex", argv: argv}
-	}
-	paths := []sdLaunchPathArgv{
-		capture(t, "cc -l", sdCCEntry),
-		capture(t, "glm -l", sdGLMEntry),
-		captureCodex(t),
-	}
-	if len(paths) < 3 {
-		t.Fatalf("the enumeration lost the M4 lane launches or the M5 codex relaunch: %d entries", len(paths))
-	}
-
-	for _, p := range paths {
-		switch p.binary {
-		case "claude", "glm":
-			// The claude engine's headless form is -p/--print.
-			if slices.Contains(p.argv, "-p") || slices.Contains(p.argv, "--print") {
-				t.Errorf("%s: claude argv carries a headless flag: %v", p.name, p.argv)
-			}
-		case "codex":
-			// The codex engine's headless form is the `exec` subcommand; a
-			// lane launch hands the interactive session (M5's argv lands in
-			// this arm).
-			if slices.Contains(p.argv, "exec") {
-				t.Errorf("%s: codex argv carries the exec subcommand: %v", p.name, p.argv)
-			}
-		default:
-			t.Errorf("%s: engine binary %q is not a known interactive engine", p.name, p.binary)
-		}
-	}
-}
-
-// sdReadSource reads one production file for the AC-SD-017 source scan.
 func sdReadSource(t *testing.T, path string) string {
 	t.Helper()
 	raw, err := os.ReadFile(filepath.Clean(path))
@@ -479,7 +403,6 @@ func TestSD_AC017_StampedMarkerArmsContractGuard(t *testing.T) {
 	scanned := map[string]string{
 		"factory.go":             stampBody,
 		"factory_card.go":        sdReadSource(t, filepath.Join(cliDir, "factory_card.go")),
-		"codex_launcher.go":      sdReadSource(t, filepath.Join(cliDir, "codex_launcher.go")),
 		"contract_sign_guard.go": sdReadSource(t, filepath.Join(cliDir, "..", "hook", "contract_sign_guard.go")),
 	}
 	for name, body := range scanned {

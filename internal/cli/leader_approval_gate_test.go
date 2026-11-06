@@ -410,6 +410,8 @@ func TestFactoryDecideUsesTargetProjectRoot(t *testing.T) {
 // decisions never touch the queue record — a corrupt backlog database
 // cannot block an abandon.
 func TestDecideAbandonWorksWithCorruptQueue(t *testing.T) {
+	// The operator gate (REQ-MN-003): the deciding session carries the positive mark.
+	t.Setenv(config.EnvFactoryRole, "operator")
 	root, _ := fcFixture(t)
 	fcPlace(t, root, homestate.Card{CardID: "t1", State: homestate.CardAssigned, OwnerLabel: "worker-1", Version: 1})
 	// Materialize the queue, then corrupt it.

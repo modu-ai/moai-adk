@@ -1,10 +1,13 @@
 package config
 
 import (
+	"os"
+	"path/filepath"
 	"slices"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/pkg/models"
+	"gopkg.in/yaml.v3"
 )
 
 func TestNewDefaultConfig(t *testing.T) {
@@ -686,5 +689,48 @@ func TestNewDefaultConfigContainsGitConvention(t *testing.T) {
 	if cfg.GitConvention.Convention != DefaultGitConvention {
 		t.Errorf("GitConvention.Convention: got %q, want %q",
 			cfg.GitConvention.Convention, DefaultGitConvention)
+	}
+}
+
+// TestWorkflowFactorySelfDispatchDefault pins the self-dispatch kill-switch
+// default (SPEC-CARD-ELIGIBLE-PULL-001 REQ-CEP-007): the compiled default for
+// workflow.factory.self_dispatch is false, and both shipped workflow.yaml
+// surfaces — this repository's own .moai/config/sections/workflow.yaml and the
+// deploy template under internal/template/templates — carry the key at the
+// same false default. The yaml field is a *bool so an ABSENT key fails the
+// assertion rather than reading as a vacuous false.
+func TestWorkflowFactorySelfDispatchDefault(t *testing.T) {
+	t.Parallel()
+
+	if NewDefaultWorkflowConfig().Factory.SelfDispatch {
+		t.Errorf("Workflow.Factory.SelfDispatch: got true, want false (REQ-CEP-007 default-off kill-switch)")
+	}
+	repoRoot := findRepoRootFromCaller(t)
+	for _, rel := range []string{
+		filepath.Join(".moai", "config", "sections", "workflow.yaml"),
+		filepath.Join("internal", "template", "templates", ".moai", "config", "sections", "workflow.yaml"),
+	} {
+		path := filepath.Join(repoRoot, rel)
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("os.ReadFile(%q): %v", path, err)
+		}
+		var doc struct {
+			Workflow struct {
+				Factory struct {
+					SelfDispatch *bool `yaml:"self_dispatch"`
+				} `yaml:"factory"`
+			} `yaml:"workflow"`
+		}
+		if err := yaml.Unmarshal(data, &doc); err != nil {
+			t.Fatalf("yaml.Unmarshal(%q): %v", path, err)
+		}
+		if doc.Workflow.Factory.SelfDispatch == nil {
+			t.Errorf("%s: workflow.factory.self_dispatch key absent — REQ-CEP-007 requires the key shipped, not implied", rel)
+			continue
+		}
+		if *doc.Workflow.Factory.SelfDispatch {
+			t.Errorf("%s: workflow.factory.self_dispatch: got true, want false", rel)
+		}
 	}
 }

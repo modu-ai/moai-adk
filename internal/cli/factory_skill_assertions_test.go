@@ -9,9 +9,9 @@ package cli
 //   - cc / glm rows go through parseLauncherEntry (the entry parse runCC and
 //     runGLM call first; AC-001..AC-009 and TestLaneEntryComposesWithLaneOptions
 //     use it);
-//   - codex rows go through codexFactoryEntryClassify (the head classifier
-//     runCodex calls first; TestCodexFactoryFlagRefusals reaches it);
 //   - the retired rows go through runCG and the root command table.
+//   (The codex rows and their head-classifier replay were removed with the
+//   codex general surface, card t1909 step ⑤.)
 //
 // The same assertions run over the local skill and its template twin, the way
 // the neighbouring document-versus-behavior test (docSurfaces) covers both
@@ -131,15 +131,19 @@ func entryShape(row entryRow) string {
 // launcher, entry token, or accepted/refused polarity goes unreplayed.
 var factorySkillRequiredShapes = []string{
 	"accepted:cc:f", "accepted:glm:f",
-	"accepted:cc:l", "accepted:glm:l", "accepted:codex:l",
+	"accepted:cc:l", "accepted:glm:l",
 	"refused:cc:f-arg", "refused:glm:f-arg",
-	"refused:cc:l-arg", "refused:glm:l-arg", "refused:codex:l-arg",
-	"refused:codex:f",
+	"refused:cc:l-arg", "refused:glm:l-arg",
 	"retired:cg", "retired:gpt",
 }
 
-// checkEntryRow replays one row against the launcher seam and returns the
-// complaint, or "" when the document and the launcher agree.
+func errString(err error) string {
+	if err == nil {
+		return "<nil>"
+	}
+	return err.Error()
+}
+
 func checkEntryRow(row entryRow) string {
 	switch row.launcher {
 	case "cc", "glm":
@@ -171,20 +175,7 @@ func checkEntryRow(row entryRow) string {
 		default:
 			return "a " + row.verdict + " row cannot name a " + row.launcher + " launcher"
 		}
-	case "codex":
-		class, diag := codexFactoryEntryClassify(row.args)
-		switch row.verdict {
-		case "accepted":
-			if class != codexFactoryEntryLane || diag != "" || row.role != "lane" {
-				return "documented as a codex lane entry but the head classifier disagrees (class=" + strconv.Itoa(int(class)) + " diag=" + strconv.Quote(diag) + ")"
-			}
-		case "refused":
-			if class != codexFactoryEntryOther || diag == "" {
-				return "documented as refused but the codex head classifier does not refuse it"
-			}
-		default:
-			return "a " + row.verdict + " row cannot name the codex launcher"
-		}
+
 	case "cg":
 		if row.verdict != "retired" {
 			return "moai cg is retired, not " + row.verdict
@@ -207,11 +198,74 @@ func checkEntryRow(row entryRow) string {
 	return ""
 }
 
-func errString(err error) string {
-	if err == nil {
-		return "<nil>"
+func factorySkillProblems(t *testing.T, root, text string, named map[string][]string, writers []string) []string {
+	t.Helper()
+	var problems []string
+	add := func(format string, args ...any) { problems = append(problems, fmt.Sprintf(format, args...)) }
+
+	// 1. The entry-form table: every row replays against the launcher seam.
+	rows := parseEntryRows(text)
+	if len(rows) == 0 {
+		add("the skill carries no machine-readable entry-form rows (| accepted/refused/retired | `moai ...` | role |)")
 	}
-	return err.Error()
+	commands := map[string]bool{}
+	shapes := map[string]bool{}
+	for _, row := range rows {
+		commands[row.command] = true
+		shapes[entryShape(row)] = true
+		if msg := checkEntryRow(row); msg != "" {
+			add("entry row %q: %s", row.command, msg)
+		}
+	}
+	for _, want := range factorySkillRequiredShapes {
+		if !shapes[want] {
+			add("entry table has no %s row", want)
+		}
+	}
+	for _, span := range backtickSpan.FindAllStringSubmatch(text, -1) {
+		if launcherSpan.MatchString(span[1]) && !commands[span[1]] {
+			add("prose presents the entry form %q that no table row replays", span[1])
+		}
+	}
+
+	// 2. The session record: the path equals the resolved RecordPath, the
+	// field set equals the Record JSON keys, and the writer column holds.
+	wantPath, err := filepath.Rel(root, factory.RecordPath(root, "<session-id>"))
+	if err != nil {
+		t.Fatalf("relative record path: %v", err)
+	}
+	wantPath = filepath.ToSlash(wantPath)
+	pathSpans := 0
+	for _, span := range backtickSpan.FindAllStringSubmatch(text, -1) {
+		if strings.Contains(span[1], "<session-id>.json") {
+			pathSpans++
+			if span[1] != wantPath {
+				add("record path %q does not equal the resolved RecordPath %q", span[1], wantPath)
+			}
+		}
+	}
+	if pathSpans == 0 {
+		add("the skill states no session-record path (want `%s`)", wantPath)
+	}
+	problems = append(problems, recordTableProblems(text, named, writers)...)
+
+	// 3. The block cap: the skill's value is the launcher's value.
+	if m := blockCapSpan.FindStringSubmatch(text); m == nil {
+		add("the skill states no `%s=<n>` block-cap value", config.EnvClaudeCodeStopHookBlockCap)
+	} else if got, _ := strconv.Atoi(m[1]); got != DefaultRaisedStopHookBlockCap {
+		add("block cap %d does not equal DefaultRaisedStopHookBlockCap %d", got, DefaultRaisedStopHookBlockCap)
+	}
+
+	// 4. What the skill must not assert.
+	for _, f := range factorySkillForbidden {
+		if loc := f.pattern.FindString(text); loc != "" {
+			add("forbidden text %q: %s", loc, f.reason)
+		}
+	}
+	if loc := removedFormPattern.FindString(text); loc != "" {
+		add("names the removed entry form %q", loc)
+	}
+	return problems
 }
 
 // recordJSONKeys returns the JSON keys of factory.Record, sorted.
@@ -292,79 +346,6 @@ func recordWriters(t *testing.T, root string) []string {
 	return writers
 }
 
-// factorySkillProblems checks one skill text against the tree and returns
-// every disagreement. An empty slice is a pass.
-func factorySkillProblems(t *testing.T, root, text string, named map[string][]string, writers []string) []string {
-	t.Helper()
-	var problems []string
-	add := func(format string, args ...any) { problems = append(problems, fmt.Sprintf(format, args...)) }
-
-	// 1. The entry-form table: every row replays against the launcher seam.
-	rows := parseEntryRows(text)
-	if len(rows) == 0 {
-		add("the skill carries no machine-readable entry-form rows (| accepted/refused/retired | `moai ...` | role |)")
-	}
-	commands := map[string]bool{}
-	shapes := map[string]bool{}
-	for _, row := range rows {
-		commands[row.command] = true
-		shapes[entryShape(row)] = true
-		if msg := checkEntryRow(row); msg != "" {
-			add("entry row %q: %s", row.command, msg)
-		}
-	}
-	for _, want := range factorySkillRequiredShapes {
-		if !shapes[want] {
-			add("entry table has no %s row", want)
-		}
-	}
-	for _, span := range backtickSpan.FindAllStringSubmatch(text, -1) {
-		if launcherSpan.MatchString(span[1]) && !commands[span[1]] {
-			add("prose presents the entry form %q that no table row replays", span[1])
-		}
-	}
-
-	// 2. The session record: the path equals the resolved RecordPath, the
-	// field set equals the Record JSON keys, and the writer column holds.
-	wantPath, err := filepath.Rel(root, factory.RecordPath(root, "<session-id>"))
-	if err != nil {
-		t.Fatalf("relative record path: %v", err)
-	}
-	wantPath = filepath.ToSlash(wantPath)
-	pathSpans := 0
-	for _, span := range backtickSpan.FindAllStringSubmatch(text, -1) {
-		if strings.Contains(span[1], "<session-id>.json") {
-			pathSpans++
-			if span[1] != wantPath {
-				add("record path %q does not equal the resolved RecordPath %q", span[1], wantPath)
-			}
-		}
-	}
-	if pathSpans == 0 {
-		add("the skill states no session-record path (want `%s`)", wantPath)
-	}
-	problems = append(problems, recordTableProblems(text, named, writers)...)
-
-	// 3. The block cap: the skill's value is the launcher's value.
-	if m := blockCapSpan.FindStringSubmatch(text); m == nil {
-		add("the skill states no `%s=<n>` block-cap value", config.EnvClaudeCodeStopHookBlockCap)
-	} else if got, _ := strconv.Atoi(m[1]); got != DefaultRaisedStopHookBlockCap {
-		add("block cap %d does not equal DefaultRaisedStopHookBlockCap %d", got, DefaultRaisedStopHookBlockCap)
-	}
-
-	// 4. What the skill must not assert.
-	for _, f := range factorySkillForbidden {
-		if loc := f.pattern.FindString(text); loc != "" {
-			add("forbidden text %q: %s", loc, f.reason)
-		}
-	}
-	if loc := removedFormPattern.FindString(text); loc != "" {
-		add("names the removed entry form %q", loc)
-	}
-	return problems
-}
-
-// recordTableProblems checks the record section's field table.
 func recordTableProblems(text string, named map[string][]string, writers []string) []string {
 	var problems []string
 	loc := recordSectionHead.FindStringIndex(text)
@@ -433,13 +414,6 @@ var factorySkillMutants = []struct {
 			return strings.Replace(s, "| accepted | `moai cc -l`", "| refused | `moai cc -l`", 1)
 		},
 		want: "documented as refused but the launcher accepts it",
-	},
-	{
-		name: "a codex leader entry documented as accepted",
-		mutate: func(s string) string {
-			return strings.Replace(s, "| refused | `moai codex --factory`", "| accepted | `moai codex --factory`", 1)
-		},
-		want: "documented as a codex lane entry but the head classifier disagrees",
 	},
 	{
 		name: "the old record path",

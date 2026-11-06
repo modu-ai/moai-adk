@@ -21,7 +21,6 @@ package auditreceipt
 // decided by exit status and output shape, and is never retried.
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
 	"os"
@@ -83,28 +82,31 @@ func SingleGitPath(out string) (string, error) {
 	return filepath.EvalSymlinks(lines[0])
 }
 
-// WorktreeEntry is one `git worktree list --porcelain` record.
+// WorktreeEntry is one `git worktree list --porcelain -z` record.
 type WorktreeEntry struct {
 	Path     string // canonical; "" when the listed path cannot be canonicalized
 	Prunable bool
 }
 
-// parseWorktreePorcelain parses `git worktree list --porcelain`. Every record
-// must open with a `worktree <path>` line; any other shape is an error. A
-// listed path that cannot be canonicalized (a deleted directory) is kept with
-// an empty canonical path so it simply never matches.
+// parseWorktreePorcelain parses `git worktree list --porcelain -z` output
+// (l57-r7 finding 3). Measured grammar: in -z mode every FIELD is terminated
+// by a NUL — `worktree <path>`, the attribute fields, and an EMPTY field at
+// each entry boundary — and a path is verbatim inside its own field, so a
+// worktree whose path contains a newline is listed and parsed whole; the
+// line-based parse truncated it at the newline. Every entry must open with a
+// `worktree <path>` field; any other shape is an error. A listed path that
+// cannot be canonicalized (a deleted directory) is kept with an empty
+// canonical path so it simply never matches.
 func parseWorktreePorcelain(out string) ([]WorktreeEntry, error) {
 	var entries []WorktreeEntry
 	inRecord := false
-	sc := bufio.NewScanner(strings.NewReader(out))
-	for sc.Scan() {
-		line := sc.Text()
-		if line == "" {
+	for _, field := range strings.Split(out, "\x00") {
+		if field == "" {
 			inRecord = false
 			continue
 		}
 		if !inRecord {
-			path, ok := strings.CutPrefix(line, "worktree ")
+			path, ok := strings.CutPrefix(field, "worktree ")
 			if !ok || !filepath.IsAbs(path) {
 				return nil, errors.New("unexpected git worktree list shape")
 			}
@@ -116,12 +118,9 @@ func parseWorktreePorcelain(out string) ([]WorktreeEntry, error) {
 			inRecord = true
 			continue
 		}
-		if line == "prunable" || strings.HasPrefix(line, "prunable ") {
+		if field == "prunable" || strings.HasPrefix(field, "prunable ") {
 			entries[len(entries)-1].Prunable = true
 		}
-	}
-	if err := sc.Err(); err != nil {
-		return nil, err
 	}
 	if len(entries) == 0 {
 		return nil, errors.New("git worktree list returned no entries")
@@ -156,7 +155,9 @@ func IdentifyPrimaryCheckout(dir string) (string, []WorktreeEntry, error) {
 	if err != nil || primaryGit != common {
 		return "", nil, ErrAmbiguousLayout
 	}
-	listOut, err := RunScrubbedGit(dir, "worktree", "list", "--porcelain")
+	// -z (l57-r7 finding 3): the NUL form — a worktree path containing a
+	// newline survives its own field verbatim.
+	listOut, err := RunScrubbedGit(dir, "worktree", "list", "--porcelain", "-z")
 	if err != nil {
 		return "", nil, fmt.Errorf("git could not list worktrees: %w", err)
 	}

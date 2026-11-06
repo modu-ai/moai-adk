@@ -13,7 +13,9 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/core/git"
 	"github.com/modu-ai/moai-adk/internal/factory"
+	"github.com/modu-ai/moai-adk/internal/paths"
 	"github.com/modu-ai/moai-adk/internal/session"
+	"github.com/modu-ai/moai-adk/internal/worktreeroot"
 )
 
 func newDoneCmd() *cobra.Command {
@@ -241,6 +243,32 @@ func isL1WorktreePath(targetPath string) bool {
 		// Separator-safe: a sibling sharing the root's text is not L1.
 		if strings.HasPrefix(target, l1Root+string(os.PathSeparator)) {
 			return true
+		}
+	}
+	// SPEC-WORKTREE-HOME-ROOT-001 M3 (REQ-WHR-009): classify by creation
+	// class through the M1 classifier — every moai-made tree at the home
+	// root is an L1 session tree, including one whose branch does not begin
+	// with WT- (the marker witness). The tier decision consumes the same
+	// shared function as list, migrate and the consolidation (AC-WHR-013).
+	if home, homeErr := paths.MoaiHome(); homeErr == nil {
+		projectsDir := canonicalTierPath(filepath.Join(home, "worktrees", "projects"))
+		if rel, relErr := filepath.Rel(projectsDir, target); relErr == nil && rel != "." &&
+			rel != ".." && !strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
+			key := rel
+			if i := strings.Index(rel, string(os.PathSeparator)); i >= 0 {
+				key = rel[:i]
+			}
+			ctx := ClassifyContext{
+				PrimaryRoot:     mainRoot,
+				HomeProjectsDir: projectsDir,
+			}
+			if owner, ok := worktreeroot.OwnerMarkerOf(filepath.Join(projectsDir, key)); ok {
+				ctx.OwnerID = owner
+				ctx.MarkerOwners = map[string]string{key: owner}
+			}
+			if cls := Classify(WorktreeRecord{Path: targetPath}, ctx); cls.Class == ClassMoaiMade {
+				return true
+			}
 		}
 	}
 	return false

@@ -214,3 +214,37 @@ func TestQAS_AC007_ConfigDefaultsMirrorTemplate(t *testing.T) {
 		}
 	})
 }
+
+// TestQuotaSlotSurviveAlarmTypeError pins sync-audit iter2 N2: a YAML type
+// error in one card_age_alarm key must not revert the OTHER workflow
+// consumers. The quota gate keys and the slot-lease default keep the file's
+// written values through their own isolated decodes (the cardAgeAlarmFile /
+// factoryLeaseFile pattern), while the alarm block itself degrades to its
+// compiled defaults on its own path. Before the fix the three loaders decoded
+// the whole shared WorkflowConfig, so the alarm-key type error failed every
+// decode at once and the quota gate reverted to enabled=false with the
+// unmeasured 128 scan bound and the slot lease to its 30m default.
+func TestQuotaSlotSurviveAlarmTypeError(t *testing.T) {
+	t.Setenv(EnvConfigDir, "")
+	root := qasProjectWith(t, "workflow:\n"+
+		"  quota_gate:\n"+
+		"    enabled: true\n"+
+		"    max_scan_dirs: 17\n"+
+		"  slot_lease:\n"+
+		"    default_max_duration: 47m\n"+
+		"  card_age_alarm:\n"+
+		"    enabled: true\n"+
+		"    gate_warn_after: [6h]\n")
+	if got := LoadQuotaGate(root); !got.Enabled || got.FiveHourHoldPct != 90 {
+		t.Errorf("LoadQuotaGate = %+v, want the written enabled gate (holds at their defaults) — an alarm-key type error must not revert the quota gate to disabled", got)
+	}
+	if bound := LoadQuotaScanBound(root); bound != 17 {
+		t.Errorf("LoadQuotaScanBound = %d, want the written 17 — an alarm-key type error must not revert the scan bound to the default", bound)
+	}
+	if d := LoadSlotLeaseDefaultMaxDuration(root); d != "47m" {
+		t.Errorf("LoadSlotLeaseDefaultMaxDuration = %q, want the written 47m — an alarm-key type error must not revert the slot lease to the default", d)
+	}
+	if alarm := LoadCardAgeAlarm(root); alarm != NewDefaultWorkflowConfig().CardAgeAlarm {
+		t.Errorf("LoadCardAgeAlarm = %+v, want the compiled defaults — the type-invalid alarm block degrades on its own path", alarm)
+	}
+}

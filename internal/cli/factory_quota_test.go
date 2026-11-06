@@ -347,7 +347,15 @@ func TestQAS_AC008_ClaudeLaneHeldAtThreshold(t *testing.T) {
 	}
 	leasedRun := func(t *testing.T, five, seven *statusline.QuotaWindowRecord) {
 		t.Helper()
-		root, _ := qasFixture(t, qasFixtureOpts{five: five, seven: seven})
+		root, store := qasFixture(t, qasFixtureOpts{five: five, seven: seven})
+		// SPEC-CARD-ELIGIBLE-PULL-001 update (third sweep): the below-
+		// threshold lease cells use an unowned picked card (t2) as their
+		// arm-(b) vehicle; the flag is armed and the vehicle carries a spec
+		// id so the quota-boundary subject stays covered behind the gate.
+		// RED observed pre-fix at HEAD: both lease cells failed with
+		// "t2 = picked holder=\"\", want leased/lane-1".
+		cepSelfDispatchYAML(t, root, true)
+		cepSetSpecID(t, store, "t2", "SPEC-QAS-LEASE-001")
 		out, stderr, err := qasRunNext(t, "--run", fcRun)
 		if err != nil {
 			t.Fatalf("next: %v (stderr %q)", err, stderr)

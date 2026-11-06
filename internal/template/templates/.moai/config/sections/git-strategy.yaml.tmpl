@@ -10,6 +10,15 @@ git_strategy:
   # with no base operand, exactly as before this key existed. Set it to your
   # repository's integration branch — e.g. main, develop, trunk.
   worktree_base_branch: ""
+
+  # Project-folder key under the home-level worktree root
+  # (~/.moai/worktrees/projects/<project-key>). Empty = derive the key from
+  # the primary checkout's directory name (the neutral default). A value
+  # here pins the first assignment only: an already-assigned repository
+  # keeps its recorded key, a value that is not one safe path segment is
+  # rejected, and a pin naming another repository's folder refuses instead
+  # of suffixing.
+  worktree_project_key: ""
   gitlab:
     instance_url: "{{yamlEscape .GitLabInstanceURL}}"  # GitLab instance URL
 

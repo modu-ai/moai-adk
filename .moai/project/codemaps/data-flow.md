@@ -1,5 +1,49 @@
 # 데이터 흐름
 
+## 현재 흐름 보완 — 67b4734d6b (card t2061 판)
+
+기준 `4c4217a19` 뒤 소스 197개 창에서 움직인 흐름은 넷이다. 아래는 소스의 문서 주석과 호출 배선을 읽은 결과이며 실행으로 재현한 것이 아니다.
+
+**① Agentic Factory 카드 흐름**(Issue #1948, `internal/agenticfactory`). 권위는 프로젝트당 SQLite 하나(`<moaiHome>/db/<projectKey>/af/ledger.db`)이고 포지 이슈는 읽지도 쓰지도 않는다. (1) `moai af claim`이 `ledger.Store.Claim`으로 다음 카드를 잡고 카드 id와 fencing epoch을 낸다 — 이후의 모든 쓰기는 id와 epoch을 WHERE에 싣고, 낡은 epoch은 `ErrStaleEpoch`로 행을 바꾸지 않는다. 죽은 보유자 회수(`Claim`·`Reap`)는 후보를 모아 생존을 **트랜잭션 밖**에서 프로브한 뒤, 쓰기 트랜잭션에서 후보의 epoch·heartbeat_at이 프로브 때와 같은지 다시 확인하고 회수한다(살아 있는 프로세스는 회수하지 않으며 판정 불가는 생존으로 본다). (2) `moai af move`가 `core.CheckMove`를 거쳐 단계를 옮긴다 — `claimed → implementing → verifying → ready → landing → done`이고 `blocked`·`on-hold`는 단계가 아닌 일시 정지로 떠난 단계에만 복귀한다(`runner`). (3) `moai af evidence`가 red·green·gate·review·merge 증거를 커밋에 묶어 기록하고, 다른 HEAD에 묶인 증거는 받지 않는다. (4) `moai af enqueue`가 후보 커밋을 병합 큐에 올린다. (5) `moai af land`가 `mergeq`로 후보 워크트리에서 병합 결과를 게이트에 통과시킨 뒤(검증은 착지 잠금 밖) 잠금 안에서 재확인하고 `git update-ref` 한 번으로 설정된 로컬 트렁크 ref를 비교-교체로 옮긴다 — main이나 원격은 건드리지 않는다. 재시작이 큐 행을 verifying·landing에 남겼다면 `moai af reconcile`이 git 조상 관계로 정리한다. 읽기 쪽 흐름은 쓰기 경로와 분리되어 있다: `monitor`는 쓰기 동사가 없는 읽기 인터페이스만 받고, 웹 보드의 원장은 읽기 전용으로 열려(`internal/cli/web.go` — 파일이 없거나 스키마가 다르면 nil 리더로 "제공되지 않음") 만들거나 마이그레이션하지 않으며, 패널에 닿는 모든 텍스트는 `core.Sanitize`를 거친다.
+
+**② 원장 임대 박동 흐름.** 카드를 쥔 세션의 UserPromptSubmit·PostToolUse 훅이 `LedgerHeartbeatSeam`을 부른다 — 세션당 30초 제한이고 카드가 없는 세션에서는 불활성이다(`internal/hook/ledger_heartbeat.go`). 루프로 도는 레인은 턴 사이에 사용자 프롬프트가 없으므로 도구 완료가 박동을 맡는다.
+
+**③ 대기·깨움 흐름**(card t2013). `moai factory wait <card>`가 대기 사유(`--on <선행 카드>` 또는 `--operator`)와 깨울 주체(`--waker`)를 팩토리 기록에 쓰고, 착지 엣지가 조건을 만족하면 누구를 깨울지 **한 번 출력**한다 — 전송은 그 동사를 부른 세션이 하며 시작 여부는 임대 보유자와 진행 기록에서 확인한다(`internal/cli/factory_wait.go`, `internal/homestate/card_wait.go`·`card_wake_events.go`의 `wake.<phase>` 이벤트). 같은 기록은 stop-goal 평가에도 쓰인다: 목표가 미충족이어도 카드가 다음 확인 이벤트를 가진 열린 wait를 쥐면 `goal.Eval.ValidWait`가 참을 돌려주고, 평가기는 모든 상한·시계·정체·충족 불가 판정을 마친 **뒤에야** 이를 묻는다 — wait는 차단을 조용히 할 뿐 상한을 우회하지 않으며, 이 턴도 `Progress` 항목을 남겨 정체 가드가 계속 작동한다.
+
+**④ fetch-web 흐름**(SPEC-FETCH-WEB-001). `moai fetch web <url> "<question>"`과 MCP `fetch_web`은 같은 `RunFetchPipeline`을 지난다. 게이트 `workflow.jev.enabled`를 어떤 전송도 만들기 **전에** 읽고, 꺼져 있으면 네트워크 요청 0회·stderr 대체 안내·종료 코드 2다. 켜져 있으면 SSRF 방어 클라이언트(`NewPageClient` — 비공개 주소 거절, 리다이렉트 상한)로 페이지를 가져와 블록으로 나누고(`blocks.go`), 두 단계 Jev로 질문과의 관련도를 점수화해(`scoring.go`) 남긴 블록을 가공하지 않고 돌려준다(`output.go`). 토큰 수는 근사치다. `~/.moai/cache/jev` 디스크 캐시를 풀 수 있으면 쓰고 못 풀면 캐시 없이 네트워크로 진행한다(fail-open); 캐시 적중은 현재 요청의 질문 순서로 재배열하고, 일부 질문만 답한 OK 응답은 저장도 적중 인정도 하지 않는다.
+
+## 이전 흐름 보완 — 4c4217a1 (card t1991 판)
+
+기준 `9286f6b6ba` 뒤 커밋 21개 창에서 움직인 흐름은 셋이다.
+
+**① 죽은 런 통합 흐름**(card t1963·t1973, SPEC-FACTORY-COMPLETION-RECOVERY-001). 리더가 다시 시작하면 새 프로세스는 새 소유자 스탬프를 얻고 이전 런은 구조적으로 죽었지만 그 카드는 아직 진행 중이다. 흐름은 다섯 걸음이다. (1) 런처(`internal/cli/factory_run_adopt.go`)가 `PlanLeaderEntry`로 활성 런을 한 번 분류한다 — 읽기 전용이며, 살아 있거나 판정 불가인 런이 하나라도 있으면 `Blocked`가 서서 입양이 없다. 자기 스탬프로 죽은 런이 없어도(피어·부팅 증명으로만 죽은 것으로 판정된 런뿐이어도) 입양이 없고, 최신 후보가 codex가 이끈 런이거나 살아 있는 레거시 피어를 쥔 런이면 그 하나만 보고 입양 없이 끝난다 — 더 오래된 후보로 내려가지 않는다. 이 경우 새로 만든 id가 유지되고, 후보마다 경고와 의도적 `--factory-run` 명령 한 줄이 나온다. (2) 자기 스탬프로 죽은 런 중 최신 것을 `AdoptRun`이 소유자 스탬프 compare-and-set으로 입양한다 — 경쟁에서 진 리더는 실패하지 않고 새 id를 유지한다(`ErrAdoptStampChanged`). (3) 나머지 죽은 런마다 `RebindRun`이 한 번의 쓰기 트랜잭션에서 소유자 죽음·대상 생존·워커 부재·제3 런 점유 없음을 다시 읽어 확인하고, 비종결 카드를 대상 런으로 옮긴다(대상이 같은 카드를 이미 쥔 구조적 중복 행만 `card.rebound` 포인터와 함께 abandoned로 — 한 열이라도 갈리면 전체 거절). (4) 카드 배차 결속을 대상으로 다시 가리키고 원본을 `retired`로 뒤집으며 `moved_cards`·`abandoned_cards`·`rebound_to`가 실린 `run.retired` 이벤트 하나를 남긴다. (5) 이후 이 이벤트 쌍(`status='retired'` + `rebound_to`)이 은퇴한 런을 가리키는 쓰기를 모두 막는다 — 런 기록·재개·카드 행 생성·결속 쓰기·레인 등록·배차 복구(`RepairDispatchAtomic`이 검사와 쓰기를 한 트랜잭션에 묶는다). 읽는 쪽은 옮겨진 카드의 이력을 원본 런에서 따라온다: `LoadCardEvents`가 원본 런 이벤트를 합치고(A→B→C 사슬은 마지막 런으로 귀속), `CardEngagementStart`가 첫 이벤트 시각을 같은 규칙으로 읽는다. 저장된 행은 어느 것도 고치거나 지우지 않는다. 같은 `RebindRun`을 `moai factory runs --retire --rebind-to`와 레인 합류 선택기의 `m<번호>`도 부른다. 임대 쪽(`RecordPickedReconciled`)은 새 임대와 같은 트랜잭션에서 죽은 런이 남긴 같은 카드의 중복 행을 abandoned로 옮긴다.
+
+**② Jev 결정 장부 흐름**(card t1762, SPEC-JEV-LEDGER-001) — 아직 호출자가 없는 반쪽 흐름이다. 설정 쪽: `workflow.jev.consumers`는 오류 없이 디코드되어 노드 그대로 보관되고 `ResolveJevConsumer`가 나중에 값으로 해석하며, 네 mode 모두 유효 모드 `shadow`가 된다. 기록 쪽: `jevledger.New(projectRoot)`는 I/O가 없고 `Append(Row)`가 호출될 때 `OutcomeLabel=unlabeled`(모드가 shadow이거나 `Action`이 비어 있으면 `Action=none`)를 덮어 한 줄로 직렬화한 뒤 `.moai/state/jev/decisions.jsonl`의 열린 핸들에 `O_APPEND` 쓰기 한 번으로 붙인다. 디렉터리·파일을 만들지 못하거나 열린 핸들이 일반 파일이 아니면(링크·FIFO·장치·디렉터리) 행을 버리고 이유를 반환값으로만 알린다. 장부를 읽는 경로가 없고 비테스트 호출자도 아직 없어, 지금 이 흐름은 실행 중에 어떤 바이트도 만들지 않는다.
+
+**③ settings PATH 분리 흐름**(card t1957, GH #1827). `moai init`·`moai update`·클린 재설치는 커밋되는 `.claude/settings.json`에 SmartPATH만 렌더하고, 같은 실행에서 `SyncLocalSettingsPATH`가 `settings.local.json`의 `env.PATH`를 쓴다. 값은 `joinPATHDeduped`가 만든다 — 런처의 상속 PATH를 첫 등장 순서 그대로 두고(반복 항목만 버린다), 상속 PATH에 없는 SmartPATH 항목만 그 뒤에 덧붙인다. 상속 PATH가 비면 SmartPATH만 쓴다. 쓰기는 형제 잠금 파일 아래 읽고-고치고-쓰기, 임시 파일 rename, 0600이며 이전 `env.PATH`는 읽어 오지 않는다. 다른 키는 그대로 보존된다. 갱신 실패는 경고로 남고 실행을 막지 않는다.
+
+## 이전 흐름 보완 — 656e4d3 (card t1640 판)
+
+이 창에서 실제로 움직인 흐름은 넷이다. **① 홈 루트 착지 흐름** — MoAI의 홈 루트 트리 생성 경로들(`moai worktree new`·런처의 `--branch` 암 `moai cc -w <name> --branch <existing>`(REQ-WHR-005b)·`moai factory next`의 카드 머티리얼라이저)이 `worktreeroot.Resolve`의 일회성 프로젝트 키(오너 마커+common-dir 기록)로 `<MoaiHome>/worktrees/projects/<key>/<name>`에 착지하고, legacy 뿌리는 `Candidates`의 폴백 후보로만 남는다. 런처의 짧은 이름 `-w`는 생성 경로가 아니다 — 존재 트리 진입(pass-through 또는 chdir)만 한다(REQ-WHR-006 브랜치-Y, 델타 감사 F5 정정). 별도로 훅의 생성기(`internal/hook/worktree_create.go`)는 claude-native 트리를 legacy `.claude/worktrees`에 직접 만든다(리졸버 미경유). **② 이관 흐름** — `moai worktree migrate`가 트리별로 매니페스트(HEAD·브랜치·미푸시·ignored 다이제스트)→인텐트→이동→레지스트리 재키(`RekeyWorktreeEntry`)→카드 재결속→대조를 저널(`pending`/`settle`) 아래 수행하고, 죽은 실행은 `--rollback`이 역순으로 되돌린다. 이동 저널의 역조회(`MovedBy`)가 정리 가드가 freshly-migrated 트리를 건드리지 않게 한다. **③ 런처 진입 흐름** — 짧은 `-w` 이름이 Candidates에서 home 후보 하나로 유일 해석되면 chdir 후 argv에서 선택을 벗겨 백엔드에 절대 경로 `--worktree`가 가지 않는다. **④ 팩토리 임대 흐름의 보강** — `factoryNextLeaseOnceEligibility` 진입에서 착지 베이스가 ctx 주입되고(REQ-WHR-007) 외래 트리 거부·carry-over가 리졸버 리프+legacy 리프를 모두 검사한다. 부수: `factory status`의 카드 나이 경보(t1838, 읽기 전용), `contract decide`의 Jev 통지 전파(t1803), agentemit 렌더 게이트(t1649 — `make build`가 drift를 잡는다).
+
+## 이전 흐름 보완 — 2fccfd2 (card t1931 후속 판)
+
+이 창에서 실제로 움직인 흐름은 셋이다. **① merged-PR 관측(card t1930 수리)** — `moai factory complete`가 merge-ready 카드의 PR을 먼저 읽어 MERGED+mergeCommit이면 readiness 삼중을 건너뛰고 `pr-open` 관측 경로로 바로 보낸다: 스쿼시 병합 뒤 브랜치 커밋이 main 이력에서 벗어나 merge-tree가 충돌로 읽는 경우에도, GitHub가 이미 병합한 사실이 관측으로 기록된다. **② evidence 재결속(card t1930 수리)** — `moai factory rebind-evidence`가 카드의 최신 감사 판정 파일이 기록한 audited_sha로 evidence_sha를 version-fenced 재결속하고, 감사 행을 커밋 뒤에 남긴다. 두 흐름 모두 operator-approved SQL 예외(t1832·t1536)와 대체 관계다. **③ MCP refusal structuring(card t1632)** — moai MCP 도구가 거부 응답을 구조화해 돌리고(`mcp_refusal.go`) 호출 로그를 남긴다(`mcp_server_call_log.go`) — 거부가 조용히 사라지지 않는다. runtime regular-file 경계 3파일(t1536)은 감사 캐시 상태 판독의 NOFOLLOW 열기 경로로 감사 대상 위조를 좁힌다.
+
+## 이전 흐름 보완 — 8c36a79 (card t1931 판)
+
+이 창에서 실제로 움직인 흐름은 셋이다. **① trunk backup(card t1832)** — `moai integration backup`이 로컬 main의 뒷받침 커밋을 `refs/heads/sync/main`으로 force-push해 배치 push 전까지 로컬 main이 유일한 사본이 되지 않게 한다. refspec은 한 번 해석해 인쇄한 SHA를 그대로 밀어 올리고(push.recurseSubmodules off·태그 누출 방지 플래그 포함), 밀기 전 뒤 쪽 원격을 다시 읽어 보고된 SHA = 전송 SHA를 보장한다. **② serial-slot 보유자 생존(card t1828)** — 만료 임대의 슬롯 해제가 생존 판정을 통과해야만 일어난다: 레인 죽음·워처 재해석·재배정 HeartbeatAt 클리어 세 갈래가 판정을 공유하고, 만료 수거→재임대 복구(8859 순서)가 판정의 회복 경로다. **③ 병합 준비 SHA 고정(card t1928)** — merge-tree dry-run이 브랜치 참조 문자열 대신 `show-ref --verify --hash`로 핀한 tip SHA를 소비해 이름 충돌(t1920·t1928 감사 F1/F4)이 probe를 다른 대상으로 돌리지 못하게 묶는다. hook 레지스트리 sync/async 정리(card t1913)는 흐름 추가가 아니라 같은 경계의 판정 정리다(commit identity 가드·PostToolUse 실패가 registry의 비동기 슬롯으로 옮겨간 것). #1896 나머지는 `moai codex role-audit` 런처와 런치 기본값·버그리포트 등록의 배선 보강이고 t1909 판이 끊어 놓은 Codex 감사 흐름의 등록 파일 확정이다.
+
+## 이전 흐름 보완 — d5c083e (card t1909 판)
+
+Codex 일반 실행 흐름은 이 판에서 끊겼다 — 대화형 launch(`moai codex`)·factory 진입(`-f lane`)·init-offer 게이트·잡 제어·위임(codex_task)의 경로가 삭제됐고, 살아 남는 Codex 흐름은 **읽기 전용 감사**뿐이다: `moai codex audit|role-audit`(신규 `codex_cmd.go` 부모 아래 `codex_audit_launch.go`가 등록·연결)와 MCP `codex_audit`·`codex_role_audit{,_status,_result}`(`mcp_codex.go`에서 신규 `mcp_codex_audit.go`로 분리된 구현 — `codex exec -s read-only`와 app-server JSON-RPC는 같다). `moai verify sync-gate`·`moai verify codex-review`의 훅 밖 검사 동사와 Codex Stop 체인 러너도 이 판에서 사라졌다(훅 쪽 `codex_review_gate.go` 게이트와 `internal/codexwiring` 선언은 남는다). MCP 표면에서 codex_task·codex_job_* 4개 도구가 빠져 카탈로그는 35개다.
+
+## 이전 bf0a35f10 기준의 흐름 보완
+
+후보 CI 흐름은 카드의 검증된 변경과 통합 기준으로 merge-tree 후보를 생성하고, `ci/<card>`에 게시한 다음 pending 증거를 기록하는 순서다. `integration candidate --observe`가 실제 실행 결과를 읽어 후보 SHA·대상·통합 tip에 묶는다. 착지 경로는 이 값들과 green 판정이 모두 맞는 후보만 받는다. 게시나 관측 요청 자체는 CI 통과 증거가 아니다.
+
+카드 메타데이터 변경은 호출자·설정·상태를 검증한 뒤 record와 queue를 갱신하고 감사 이벤트를 append한다. 큐 쓰기가 실패하면 record의 보상 복구를 시도한다. 복구 실패나 감사 이벤트 손실은 별도 오류로 보고하며, 양쪽 저장소가 수렴해도 감사가 누락되면 완료로 감추지 않는다. 업데이트의 백업 정리는 후보 census와 보존 조건을 확인한 뒤 삭제·보존 결과를 알리고, 스킬 잔여 폴더 처리는 사용자 파일과 기존 이름 변경 대상을 보존한다.
+
 ## 현재 최종 통합 트리의 흐름 — e65b3b
 
 기준은 `e65b3b469c0ee71195b0b568b4b66d0b364b6f3d`다. 다음은 실제 호출부와 저장 경로의 소스 대조이며 외부 실행·OS 런타임의 성공 판정이 아니다.
@@ -271,8 +315,8 @@ cmd/moai/main.go → cli.Execute()
 internal/cli/root.go                    rootCmd.AddCommand(newMCPServerCmd())
 internal/cli/mcp_server.go              newMCPServerCmd — stdio JSON-RPC 루프
 internal/cli/mcp_server.go              .moai/config/sections/mcp.yaml 로드 (파일 없으면 전 도구 등록)
-internal/cli/mcp_server.go              add(name, mcp.NewTool(...), handler) × 30
-internal/mcp/catalog.go                 MoaiMCPTools — 이름·WriteCapable 단일 선언 (30개)
+internal/cli/mcp_server.go              add(name, mcp.NewTool(...), handler) × 22 + 등록 헬퍼
+internal/mcp/catalog.go                 MoaiMCPTools — 이름·WriteCapable 단일 선언 (35개, t1909 판)
                                           (가드 테스트가 일치를 강제)
 
 핸들러 → 내부 코어 (CLI와 같은 코어를 공유한다)
@@ -282,11 +326,16 @@ internal/mcp/catalog.go                 MoaiMCPTools — 이름·WriteCapable �
   spec_progress     internal/spec         ListDocs()
   verify_snapshot   internal/verify       Load() · RecordCheck()
   graph_*           internal/graph        query · codequery · shortestpath
-  codex_* / glm_*   internal/cli          mcp_codex.go · mcp_glm.go → 외부 에이전트 프로세스
+  codex_audit       internal/cli          mcp_codex_audit.go (t1909 판 분할) → codex app-server JSON-RPC
+  codex_role_audit* internal/cli          codex_audit_launch.go · codex_audit_mcp.go → codex exec -s read-only
+  codex_setup       internal/cli          mcp_codex.go (모델 해석 resolveCodexModelEffort 유지)
+  glm_*             internal/cli          mcp_glm.go → 외부 에이전트 프로세스
   claude_audit      internal/cli          mcp_claude*.go → claude CLI 서브프로세스 (읽기 전용 리뷰)
   audit_multi       internal/cli          mcp_convergence.go — Claude 백엔드는 claude_audit 수행 함수 재사용
-  session_msg_*     internal/sessionmsg   —
 ```
+
+> `session_msg_*`·`factory_msg_*` 도구 행은 이 판보다 앞서 비등록 전환됐다(`internal/sessionmsg`
+> 패키지와 `internal/factorymsg` Store API는 살아 있지만 MCP 공개는 하지 않는다).
 
 MCP 표면이 CLI와 **같은 코어를 공유**한다는 점이 이 경로의 핵심입니다 — MCP는 별도 구현이 아니라
 같은 도메인 패키지에 대한 두 번째 어댑터입니다.
@@ -672,7 +721,7 @@ primary 체크아웃을 가리키므로, 그 값을 썼다면 영수증은 카�
 세션 워크트리 L1 생성기로 내려가 프로젝트의
 `.moai/worktrees/<name>`을 만든다. Claude Code가 자체 생성한
 `.claude/worktrees/<name>`은 별도 위치로 남는다. `moai codex -w <name>`은
-`internal/cli/codex_launcher.go`에서 두 위치의 **기존** 트리를 조회한다.
+`the retired codex launcher (removed card t1909)`에서 두 위치의 **기존** 트리를 조회한다.
 둘 다 있으면 이름만으로 고르지 않고 절대 경로를 요구한다. 없는 이름은 만들지 않는다.
 
 `moai update`는 템플릿 배포 전에 `internal/cli/update_worktree_migration.go`를 호출한다.

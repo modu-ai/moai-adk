@@ -136,6 +136,17 @@ func liveWriteTranscript(t *testing.T, name string, tap *probeTap) {
 func TestCodexLive_ReviewStartBaseBranchIsNotRejected(t *testing.T) {
 	bin := liveCodexBinary(t)
 	tap := probeInstallRunner(t)
+	// The spawn pins CODEX_HOME to the resolved home (codexChildEnv). Under the
+	// sandboxed test HOME that path does not exist, and codex refuses to start on
+	// a CODEX_HOME that is missing. Give the round trip an isolated, existing,
+	// empty home — it must not read the operator's real codex config either.
+	codexHome := filepath.Join(t.TempDir(), ".codex")
+	if err := os.MkdirAll(codexHome, 0o700); err != nil {
+		t.Fatalf("create the isolated CODEX_HOME: %v", err)
+	}
+	t.Setenv("CODEX_HOME", codexHome)
+	// REQ-MN-009: this test judges the review/start request, not containment.
+	stubCodexContainmentListing(t)
 	repo := seedBaseBranchRepo(t)
 
 	// NOTE ON COST: unlike the opt-in probe in codex_live_protocol_probe_test.go,

@@ -1,5 +1,39 @@
 # 의존성 그래프
 
+## 현재 의존성 측정 — 67b4734d6b (card t2061 판)
+
+Darwin/arm64에서 `go list ./internal/... ./cmd/... ./pkg/...`는 모듈 패키지 **198**개를 낸다(t1991 판 176 대비 +22 — `internal/agenticfactory` 아래 21개와 `internal/fetchweb`; 21개 중 `retirement`는 테스트 파일만 있다). 모듈 내부 import 쌍은 `go list -json=ImportPath,Imports`의 비테스트 `Imports` 중 모듈 `internal`·`cmd`·`pkg` 경로를 센 값으로 **581**개다(t1991 판 531과 같은 집계, +50). 두 판 사이에 쌍 집합 대조는 하지 않았으므로 +50은 방향 신호이며 쌍 하나하나의 신규성은 아래 소스 확인분에만 해당한다(Gaps).
+
+**Agentic Factory 내부 엣지**(각 패키지의 `go list` Imports에서 직접 읽음). `core`는 모듈 내부 임포트가 없는 잎이다. `core`만 임포트하는 패키지: `ledger`·`effect`·`review`. `ledger/importer`→`core`·`ledger`. `monitor`→`core`(그리고 자기 하위). `monitor/flow`→`core`·`ledger`·`internal/homestate`. `reconcile`→`core`·`effect`·`monitor`. `monitor/adapt`→`claim`·`core`·`ctxmodel`·`effect`·`monitor`·`reconcile`·`internal/homestate`. `claim`→`core`·`internal/homestate`. `runner`→`claim`·`core`·`internal/homestate`. `intake`→`claim`·`core`·`runner`. `identity`→`claim`·`core`·`runner`·`internal/homestate`. `mergeq`→`core`·`ledger`·`internal/gitenv`. `checkpoint`·`ctxmodel`→`claim`·`core`·`internal/gitenv`. 모듈 내부 임포트가 없는 패키지: `measure`·`browser`(표준 라이브러리만; `browser`는 `os/exec`).
+
+**Agentic Factory로 들어오는 바깥 엣지.** `internal/cli`(`af.go`→`core`·`ledger`·`mergeq`·`monitor/flow`; `af_land.go`→`core`·`ledger`·`mergeq`; `web.go`→`ledger`·`monitor/flow`), `internal/web`(`app.go`→`browser`·`monitor/flow`; `board.go`→`core`·`ledger`·`monitor/flow`; `browser_select.go`→`browser`; `refine.go`→`core`; `server.go`→`ledger`·`monitor/flow`), `internal/hook/ledger_heartbeat.go`→`ledger`. Agentic Factory가 기존 factory 계통으로 나가는 엣지는 `internal/homestate`(claim·runner·identity·monitor/adapt·monitor/flow)와 `internal/gitenv`(mergeq·checkpoint·ctxmodel) 둘이며 `internal/factory`로는 가지 않는다(`core`의 문서가 의존 없음을 선언한다).
+
+**그 밖의 신규 엣지.** `internal/fetchweb`→`internal/jev`(표준 라이브러리 밖으로는 `golang.org/x/net/html/charset`); `internal/jevmeasure`→`internal/fetchweb`·`internal/jev`; `internal/tokenusage`→`internal/atomicfile`(`section_writer.go`의 `WriteFileIfChanged` 사용); `internal/cli`→`internal/fetchweb`·`internal/jevmeasure`(`fetch_web.go`·`jevmeasure_cmd.go`). `internal/jev`는 표준 라이브러리만 임포트한다.
+
+## 이전 의존성 측정 — 4c4217a1 (card t1991 판)
+
+Darwin/arm64에서 `go list ./internal/... ./cmd/... ./pkg/...`는 모듈 패키지 **176**개를 낸다(t1640 판 175 대비 +1 — 신규 패키지 `internal/jevledger`). 모듈 내부 import 쌍은 `go list -json=ImportPath,Imports`의 비테스트 `Imports` 항목 중 모듈 `internal`·`cmd`·`pkg` 경로를 센 값으로 **531**개다. 이전 판의 530은 `go list -deps -json` 산출이라 집계 경로가 다르므로 +1은 방향 신호일 뿐 기준 쌍 집합 대조가 아니다(Gaps). 이 창에서 신규성을 소스로 확인한 쌍은 하나다 — `internal/template`→`internal/lockfile`(`settings.go`의 `SyncLocalSettingsPATH`가 `settings.local.json`을 형제 잠금 파일 아래서 갱신하려고 쓴다; `internal/template`에서 이 패키지를 import 하는 파일은 이것 하나다). `internal/jevledger`는 표준 라이브러리만 import 하므로 나가는 모듈 내부 엣지가 0이고, 비테스트 import 하는 쪽도 0이다(`go list` Imports에 이름이 나타나는 곳은 자기 `ImportPath` 한 줄뿐) — 순환에 낄 수 없는 잎이며 `internal/jev`도 import 하지 않는다(경계는 `boundary_test.go`의 import 허용 목록이 지킨다). `internal/config/jev_consumers.go`는 이미 쓰던 `gopkg.in/yaml.v3`와 표준 라이브러리만 import 한다. `go.mod`·`go.sum`은 창 안에서 변하지 않았다(외부 의존성 집계는 아래 절 그대로).
+
+## 이전 의존성 측정 — 656e4d3 (card t1640 판)
+
+Darwin/arm64의 `go list -deps -json ./internal/... ./cmd/... ./pkg/...` 결과에서 모듈 패키지는 **175**개(+2), 모듈 내부 import 쌍은 **530**개(+10)다 — t1931 후속 판 대비 움직임은 전부 worktree-home-root와 agentemit 진입점이 만든 새 경계다(델타 감사 F2 정정 — 초판 174·529는 파서 결함). **신규 패키지 경계 2개**: `internal/worktreeroot`(잎 — stdlib+`internal/paths`만 임포트)와 `internal/template/agentemit/cmd/agents-emit`(card t1649). `internal/cli/worktree`·`internal/template/agentemit` 본체는 기준 커밋에 존재한다(F3 정정). **검증된 신규 패키지 쌍 5개**(jq 유니크 쌍 집계 기계 산출): `internal/cli`→`internal/worktreeroot`, `internal/cli/worktree`→`internal/worktreeroot`, `internal/factory`→`internal/worktreeroot`, `internal/worktreeroot`→`internal/paths`, `internal/template/agentemit/cmd/agents-emit`→`internal/template/agentemit`. 나머지 +5쌍은 기존 패키지 간 신규 쌍으로 기준 커밋과의 쌍 집합 대조 없이는 신규성을 검증할 수 없어 이 판에서 열거하지 않는다(Gaps). **config→worktreeroot 엣지는 없다**(F1 정정 — 리졸버가 핀을 자체 스캔으로 읽고 config 쪽 로더는 의존 없이 병존). **제거된 엣지**: `claudeNativeWorktreeSubdir` 상수 소비 — `.claude/worktrees`는 리졸버 Candidates의 legacy-claude 폴백으로만 남는다. **불변 경계**: `internal/hook`은 `worktreeroot`를 임포트하지 않는다 — moai-made 홈 루트 생성은 internal/cli 리졸버로 수렴하지만 훅의 생성기(`worktree_create.go`)는 legacy `.claude/worktrees`에 claude-native 트리를 직접 만든다(리졸버 미경유 — 델타 감사 F7 정정). 이 판 측정의 fan-out 상위는 cli·hook·web, fan-in 상위는 config·defs·atomicfile 순으로 구성이 유지된다.
+
+## 이전 의존성 측정 — 2fccfd2 (card t1931 후속 판)
+
+Darwin/arm64의 `go list -deps -json ./internal/... ./cmd/... ./pkg/...` 결과에서 모듈 패키지는 173개, 모듈 내부 import 쌍은 520개다. 상위 두 경로 요소로 접고 self-edge를 제거하면 325쌍이다 — t1931 판과 같은 플랫폼의 재측정으로, 창(8c36a7904b..2fccfd2b34)이 패키지나 import 경계를 만들지 않았다: 7개 신규 파일이 전부 기존 패키지(`internal/cli`·`internal/runtime`)에 들어왔다. 이 판 측정(개별 패키지 쌍 기준)의 fan-out 상위는 cli·hook·web 순이고 fan-in 상위는 config·defs·atomicfile 순이다 — 구성은 t1931 판과 같다. `go.mod`·`go.sum`은 **이 창에서 움직였다**: dependabot #1839가 직접 의존성 6개(gomod-minor-patch 그룹)를 갱신(go.mod 7행)하고 재해시(go.sum 21행)했으며, #1840이 `actions/checkout` 4→7로 올렸다. 이 집계는 현재 플랫폼의 빌드 선택을 반영하므로 다른 OS의 성공 여부를 뜻하지 않는다.
+
+## 이전 의존성 측정 — 8c36a79 (card t1931 판)
+
+Darwin/arm64의 `go list -deps -json ./internal/... ./cmd/... ./pkg/...` 결과에서 모듈 패키지는 173개, 모듈 내부 import 쌍은 520개다. 상위 두 경로 요소로 접고 self-edge를 제거하면 325쌍이다 — 이전 판(t1909)의 세 집계와 같지만 이전 판은 Linux/amd64 관측이므로 **플랫폼이 다른 두 측정이 같은 값**이다. 창(d5c083e86d..8c36a7904b)이 패키지나 import 경계를 만들지 않았기 때문이다: `integration_backup.go`·`mcp_codex_audit.go` 등 신규 파일은 전부 기존 패키지(`internal/cli`·`internal/homestate` 등) 안에 들어왔다. 이 판 측정(Darwin/arm64, 개별 패키지 쌍 기준)의 fan-out 상위는 cli 120·hook 53·web 17이고 fan-in 상위는 config 44·defs 21·atomicfile 19다(이전 판의 cli 77·hook 41·config 32는 Linux/amd64 상위 집계 기준의 관측값 — 기준·플랫폼이 달라 직접 비교하지 않는다). `go.mod`·`go.sum`은 창에서 변하지 않았다. 이 집계는 현재 플랫폼의 빌드 선택을 반영하므로 다른 OS의 성공 여부를 뜻하지 않는다.
+
+## 이전 의존성 측정 — d5c083e (card t1909 판)
+
+Linux/amd64의 `go list -deps -json ./internal/... ./cmd/... ./pkg/...` 결과에서 모듈 패키지는 173개, 모듈 내부 import 쌍은 520개다. 상위 두 경로 요소로 접고 self-edge를 제거하면 325쌍이다 — 앞 판의 세 집계와 정확히 같다(card t1909가 지운 것은 기존 패키지 안의 파일들이지 패키지나 import 경계가 아니었다). 주요 fan-out은 cli 77·hook 41·web 16이고 fan-in은 config 32·paths 16·atomicfile 15로 이 역시 앞 판과 같다. `go.mod`·`go.sum`은 창에서 변하지 않았다. 아래 과거 판의 수치는 해당 판의 관측값으로 남긴다. 이 집계는 현재 플랫폼의 빌드 선택을 반영하므로 다른 OS의 성공 여부를 뜻하지 않는다.
+
+## 이전 의존성 측정 — bf0a35f10
+
+Linux/amd64의 `go list -deps -json ./internal/... ./cmd/... ./pkg/...` 결과에서 모듈 패키지는 173개, 모듈 내부 import 쌍은 520개다. 상위 두 경로 요소로 접고 self-edge를 제거하면 325쌍이다. 주요 fan-out은 cli 77·hook 41·web 16이고 fan-in은 config 32·paths 16·atomicfile 15다. 새 `internal/cli/update/skillresidue`와 `internal/testguard`는 표준 라이브러리만 import한다. 아래 과거 판의 수치는 해당 판의 관측값으로 남긴다. 이 집계는 현재 플랫폼의 빌드 선택을 반영하므로 다른 OS의 성공 여부를 뜻하지 않는다.
+
 ## t1469 판의 의존성 — main 흡수 병합 트리
 
 기준은 카드 t1469 병합 트리(HEAD `77e296541`, origin/main 흡수 `1f3606d0f` 직후)다. `go list -deps -json ./...`에서 모듈 패키지 174개, 내부 import 512쌍, 최상위 집계 320쌍을 측정했다. 앵커 `e65b3b469`의 170/481/306 대비 패키지 +4(`internal/bugreport`+`captureframesprobe`·`internal/feedback/outbox`·`internal/feedback/publish`), 엣지 +31/+14다. 새 의존성은 피드백 참여 파이프라인이 연다 — `internal/bugreport`는 `internal/config`·`internal/paths`·`pkg/version`을, `internal/feedback/outbox`는 `internal/config`·`internal/paths`·`pkg/version`을, `internal/feedback/publish`는 `internal/config`를 새로 import 한다(민감정보 마스킹은 기존 `internal/feedback` 스크러버 재사용). `internal/atomicfile`의 신규 bootid·owner·section 파일은 기존 소비자 관계를 바꾸지 않는다. 아래 fan-in/out 표와 순환 절은 이전 판 수치로 남긴다(이번 판의 최상위 fan-in 최상위는 `internal/config` 48·`internal/harness` 25·`internal/cli` 24, fan-out 최상위는 `internal/cli` 167·`internal/hook` 64다).

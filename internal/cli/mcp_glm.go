@@ -233,16 +233,19 @@ func resolveGLMAuditModelEffort(projectRoot string) (config.ModelEffort, error) 
 //
 // It NEVER invokes AskUserQuestion (subagent boundary, REQ-MCP-014).
 func handleGLMAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	// The tree comes from resolveToolProjectRoot — the same caller-named-root
-	// contract codex_audit has (SPEC-MCP-WORKTREE-ROOT-001): a worktree session
-	// MUST be able to name its own tree, because the server's own resolution
-	// names the primary checkout. Absent ⇒ resolveProjectDir(), exactly what
-	// this call did before the parameter existed. An unusable path is a tool
-	// error, not the fail-open verdict — fail-open covers a broken GLM, not a
-	// caller input the caller can correct. Resolved BEFORE the key check so a
-	// caller-input error keeps its precedence (codex_audit resolves the same
-	// way before touching its backend).
-	root, rootErr := resolveToolProjectRoot(req)
+	// The tree comes from resolveValidatedToolProjectRoot — the same
+	// caller-named-root contract codex_audit has (SPEC-MCP-WORKTREE-ROOT-001),
+	// and the same AUDIT-SURFACE exemption from the REQ-MN-005 confinement the
+	// codex and claude audit handlers carry: an audit is asked to judge OTHER
+	// repositories too, so confining it to the server's own worktree set would
+	// refuse exactly the audits the surface exists to run. Absent ⇒
+	// resolveProjectDir(), exactly what this call did before the parameter
+	// existed. An unusable path is a tool error, not the fail-open verdict —
+	// fail-open covers a broken GLM, not a caller input the caller can correct.
+	// Resolved BEFORE the key check so a caller-input error keeps its
+	// precedence (codex_audit resolves the same way before touching its
+	// backend).
+	root, _, rootErr := resolveValidatedToolProjectRoot(req)
 	if rootErr != nil {
 		return toolErr("glm_audit", rootErr), nil
 	}
@@ -269,7 +272,7 @@ func handleGLMAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTool
 	target := req.GetString("target", codexTargetUncommitted)
 	token := extractProgressToken(req)
 
-	notifyMCPProgress(ctx, token, 0, "glm 감사 시작 — 리뷰 대상 diff 수집 중...")
+	notifyMCPProgress(ctx, token, 0, "glm audit start - collecting the review diff...")
 	// GLM cannot read the tree, so the change has to be collected here and
 	// carried in the request. No diff ⇒ no review: fail open to inconclusive
 	// rather than ask z.ai for a verdict on code it will never see (card t178).
@@ -292,28 +295,48 @@ func handleGLMAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTool
 	// a base ref moving while z.ai answers cannot make the two disagree (t1426).
 	var base *reviewBase
 	var diff string
+	var truncated bool
 	var err error
 	if target == codexTargetBaseBranch {
 		var b reviewBase
 		if b, err = resolveReviewBase(root); err == nil {
 			base = &b
-			diff, err = collectReviewDiffAt(root, b)
+			// Card-review P2-8: the baseBranch path carries the truncation
+			// mark too — a tail-cut diff is a tail-cut verdict on this target.
+			diff, truncated, err = collectReviewDiffAtFlagged(root, b)
 		}
 	} else {
-		diff, err = collectReviewDiff(root, target)
+		diff, truncated, err = collectReviewDiffFlagged(root, target)
 	}
 	if err != nil {
 		return review(glmInconclusive("no reviewable change: " + err.Error())), nil
 	}
+	// REQ-MN-024: the result marks material the review could not see — a
+	// tail-cut diff (truncated) and the untracked files a diff cannot carry.
+	excluded := listReviewUntracked(root)
 	if strings.TrimSpace(diff) == "" {
+		if len(excluded) > 0 {
+			// Changes exist; a diff just cannot carry them. Do not read as a
+			// clean tree.
+			out := glmInconclusive("no reviewable change: the only changes at " + target + " are untracked files a diff cannot carry")
+			out.ExcludedUntracked = excluded
+			return review(out), nil
+		}
 		return review(glmInconclusive("no reviewable change: target " + target + " produced an empty diff")), nil
 	}
 
-	notifyMCPProgress(ctx, token, 0.05, "glm 감사 — z.ai 요청 준비 중...")
+	notifyMCPProgress(ctx, token, 0.05, "glm audit - preparing the z.ai request...")
 	out := callGLMAudit(ctx, key, me.Model, me.Effort, focus, diff, token)
 	if base != nil {
 		out.ReviewBase = base.String()
 	}
+	// REQ-MN-020: the auditor model rides the verdict's provenance, exactly as
+	// the claude_audit verdict records it.
+	out.Provenance = auditProvenanceFor("glm", req.GetString("model", ""), me.Model, me.Effort)
+	// REQ-MN-024: the material marks ride the verdict — the tail-cut flag and
+	// the untracked files the diff could not carry.
+	out.Truncated = truncated
+	out.ExcludedUntracked = excluded
 	return review(out), nil
 }
 
@@ -346,7 +369,7 @@ func callGLMAudit(ctx context.Context, key, model, effort, focus, diff string, t
 	httpReq.Header.Set("x-api-key", key)
 	httpReq.Header.Set("anthropic-version", glmAnthropicVersion)
 
-	notifyMCPProgress(ctx, token, 0.1, "z.ai에 감사 요청 전송 중...")
+	notifyMCPProgress(ctx, token, 0.1, "sending the audit request to z.ai...")
 	resp, err := glmHTTPClient.Do(httpReq)
 	if err != nil {
 		return glmInconclusive("z.ai request failed: " + err.Error())
@@ -363,7 +386,7 @@ func callGLMAudit(ctx context.Context, key, model, effort, focus, diff string, t
 	if err != nil {
 		return glmInconclusive("cannot read z.ai response: " + err.Error())
 	}
-	notifyMCPProgress(ctx, token, 0.8, "z.ai 응답 수신 — ReviewOutput 파싱 중...")
+	notifyMCPProgress(ctx, token, 0.8, "z.ai response received - parsing ReviewOutput...")
 	return parseGLMReview(raw)
 }
 
@@ -375,6 +398,18 @@ func callGLMAudit(ctx context.Context, key, model, effort, focus, diff string, t
 // (live-gate finding, SPEC-V3R6-AUDIT-MODEL-PIN-001 M5). The audit prompt
 // constrains the model to JSON; a malformed or empty-verdict response fails
 // open to VerdictInconclusive (never a hard error).
+// glmNarrowReview is the NARROW decode target for the model text
+// (SPEC-MCP-NEUTRALITY-001 REQ-MN-023): only the fields a model review
+// legitimately carries. Unmarshalling the FULL ReviewOutput would let the
+// model text set provenance, receipt, gate, or review-base fields — the
+// parse copies the narrow fields into a fresh ReviewOutput instead.
+type glmNarrowReview struct {
+	Verdict   string    `json:"verdict"`
+	Summary   string    `json:"summary"`
+	Findings  []Finding `json:"findings"`
+	NextSteps []string  `json:"next_steps"`
+}
+
 func parseGLMReview(raw []byte) ReviewOutput {
 	var env glmMessagesResponse
 	if err := json.Unmarshal(raw, &env); err != nil {
@@ -395,16 +430,22 @@ func parseGLMReview(raw []byte) ReviewOutput {
 	if text == "" {
 		return glmInconclusive("z.ai response carried no text content")
 	}
-	var out ReviewOutput
+	var narrow glmNarrowReview
 	// z.ai occasionally wraps the JSON in a markdown code fence despite the
 	// prompt's "no code fences" constraint; strip fences + surrounding prose so
 	// the Unmarshal sees a bare object.
 	jsonBody := extractJSONObject(text)
-	if err := json.Unmarshal([]byte(jsonBody), &out); err != nil {
+	if err := json.Unmarshal([]byte(jsonBody), &narrow); err != nil {
 		return glmInconclusive("z.ai content was not a ReviewOutput JSON: " + err.Error())
 	}
-	if strings.TrimSpace(out.Verdict) == "" {
+	if strings.TrimSpace(narrow.Verdict) == "" {
 		return glmInconclusive("z.ai response carried no verdict")
+	}
+	out := ReviewOutput{
+		Verdict:   narrow.Verdict,
+		Summary:   narrow.Summary,
+		Findings:  narrow.Findings,
+		NextSteps: narrow.NextSteps,
 	}
 	if out.Findings == nil {
 		out.Findings = []Finding{} // normalize empty to [] for §G.4 uniformity

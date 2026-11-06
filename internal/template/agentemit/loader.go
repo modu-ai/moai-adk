@@ -1,6 +1,6 @@
-// loader.go — neutral-layer .md parsing.
+// loader.go — agent source .md parsing.
 //
-// The .md structure contract (verified against the 12 template files):
+// The .md structure contract (verified against the 12 agent sources):
 // YAML frontmatter between two "---" lines, in field order name,
 // description (block scalar |), tools (CSV string), model, effort, color,
 // permissionMode, memory, skills (optional YAML array), hooks (optional) —
@@ -32,7 +32,8 @@ type agentFrontmatter struct {
 	Skills      []string `yaml:"skills"`
 }
 
-// ParseAgentDoc parses one agent .md source into its neutral form. It is
+// ParseAgentDoc parses one agent .md source (already rendered to one view) into
+// its AgentDoc form. It is
 // fail-closed: a missing opening/closing delimiter, a missing or
 // stem-mismatched name, a missing tools line, or an empty CSV token is an
 // error naming the file and the offending value.

@@ -3,7 +3,8 @@ package cli
 // update_outcome_roots_test.go — SPEC-INIT-UPDATE-CONSISTENCY-001 REQ-ICU-004
 // (F13 summary half) and REQ-ICU-006 (F15 manual-recovery advisory): the
 // update outcome summary names EVERY backup root the run created, and states
-// that customizations outside .moai/config/sections are not merge-restored.
+// that customizations outside .moai/config/sections are kept beside the new
+// template as <name>.from-<backup stamp>.
 // The three-root structure itself is record-only (update_namespace_protect.go
 // package doc — no consolidation).
 
@@ -50,8 +51,8 @@ func TestRenderUpdateOutcome_NoRootsNoNewRows(t *testing.T) {
 	if strings.Contains(out, "Namespace backup:") || strings.Contains(out, "Archive drift backup:") {
 		t.Errorf("zero-root render must not add backup rows, got:\n%s", out)
 	}
-	if strings.Contains(out, "not merge-restored") {
-		t.Errorf("no config backup → no manual-recovery advisory, got:\n%s", out)
+	if strings.Contains(out, ".from-") {
+		t.Errorf("no config backup → no side-copy advisory, got:\n%s", out)
 	}
 }
 
@@ -72,8 +73,11 @@ func TestRenderUpdateOutcome_ConfigOnlyLegacyShape(t *testing.T) {
 	if strings.Contains(out, "Namespace backup:") || strings.Contains(out, "Archive drift backup:") {
 		t.Errorf("single-root render must not add namespace/drift rows, got:\n%s", out)
 	}
-	if !strings.Contains(out, "not merge-restored") {
-		t.Errorf("REQ-ICU-006 advisory must accompany a config backup, got:\n%s", out)
+	if strings.Contains(out, "not merge-restored") {
+		t.Errorf("advisory still says the directories are not restored, got:\n%s", out)
+	}
+	if !strings.Contains(out, ".from-") {
+		t.Errorf("advisory must state the side-copy rule for a config backup, got:\n%s", out)
 	}
 	if !strings.Contains(out, "evaluator-profiles/") || !strings.Contains(out, "astgrep-rules/") {
 		t.Errorf("advisory must name the non-section customization directories, got:\n%s", out)

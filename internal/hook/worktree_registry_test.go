@@ -30,7 +30,9 @@ func TestRegisterWorktree(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			projectDir := t.TempDir()
-			registerWorktree(projectDir, tt.path, tt.branch, tt.agentName)
+			if err := registerWorktree(projectDir, tt.path, tt.branch, tt.agentName); err != nil {
+				t.Fatalf("registerWorktree: %v", err)
+			}
 
 			stateFile := worktreeStateFile(projectDir)
 			entries := loadWorktreeEntries(stateFile)
@@ -57,9 +59,15 @@ func TestRegisterWorktree(t *testing.T) {
 func TestRegisterMultipleWorktrees(t *testing.T) {
 	projectDir := t.TempDir()
 
-	registerWorktree(projectDir, "/wt/a", "branch-a", "agent-a")
-	registerWorktree(projectDir, "/wt/b", "branch-b", "agent-b")
-	registerWorktree(projectDir, "/wt/c", "branch-c", "agent-c")
+	if err := registerWorktree(projectDir, "/wt/a", "branch-a", "agent-a"); err != nil {
+		t.Fatalf("registerWorktree(a): %v", err)
+	}
+	if err := registerWorktree(projectDir, "/wt/b", "branch-b", "agent-b"); err != nil {
+		t.Fatalf("registerWorktree(b): %v", err)
+	}
+	if err := registerWorktree(projectDir, "/wt/c", "branch-c", "agent-c"); err != nil {
+		t.Fatalf("registerWorktree(c): %v", err)
+	}
 
 	entries := loadWorktreeEntries(worktreeStateFile(projectDir))
 	if len(entries) != 3 {
@@ -70,11 +78,19 @@ func TestRegisterMultipleWorktrees(t *testing.T) {
 func TestUnregisterWorktree(t *testing.T) {
 	projectDir := t.TempDir()
 
-	registerWorktree(projectDir, "/wt/keep", "main", "agent-1")
-	registerWorktree(projectDir, "/wt/remove", "feat", "agent-2")
-	registerWorktree(projectDir, "/wt/also-keep", "develop", "agent-3")
+	if err := registerWorktree(projectDir, "/wt/keep", "main", "agent-1"); err != nil {
+		t.Fatalf("registerWorktree(keep): %v", err)
+	}
+	if err := registerWorktree(projectDir, "/wt/remove", "feat", "agent-2"); err != nil {
+		t.Fatalf("registerWorktree(remove): %v", err)
+	}
+	if err := registerWorktree(projectDir, "/wt/also-keep", "develop", "agent-3"); err != nil {
+		t.Fatalf("registerWorktree(also-keep): %v", err)
+	}
 
-	unregisterWorktree(projectDir, "/wt/remove")
+	if err := unregisterWorktree(projectDir, "/wt/remove"); err != nil {
+		t.Fatalf("unregisterWorktree: %v", err)
+	}
 
 	entries := loadWorktreeEntries(worktreeStateFile(projectDir))
 	if len(entries) != 2 {
@@ -91,10 +107,14 @@ func TestUnregisterWorktree(t *testing.T) {
 func TestUnregisterNonExistentWorktree(t *testing.T) {
 	projectDir := t.TempDir()
 
-	registerWorktree(projectDir, "/wt/existing", "main", "agent-1")
+	if err := registerWorktree(projectDir, "/wt/existing", "main", "agent-1"); err != nil {
+		t.Fatalf("registerWorktree: %v", err)
+	}
 
 	// Unregistering a path that does not exist should be a no-op.
-	unregisterWorktree(projectDir, "/wt/nonexistent")
+	if err := unregisterWorktree(projectDir, "/wt/nonexistent"); err != nil {
+		t.Fatalf("unregisterWorktree: %v", err)
+	}
 
 	entries := loadWorktreeEntries(worktreeStateFile(projectDir))
 	if len(entries) != 1 {

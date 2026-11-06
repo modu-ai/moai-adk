@@ -29,12 +29,13 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/modu-ai/moai-adk/internal/bugreport"
 	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
+
+	"github.com/modu-ai/moai-adk/internal/bugreport"
 
 	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
 	updatemerge "github.com/modu-ai/moai-adk/internal/cli/update/merge"
@@ -460,11 +461,12 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 	homeDir, _ := userHomeDirFn()
 	goBinPath := detectGoBinPathForUpdate(homeDir)
 	userValues := loadUpdateUserValues(projectRoot)
+	smartPath := template.BuildSmartPATH()
 	tmplCtx := template.NewTemplateContext(
 		template.WithGoBinPath(goBinPath),
 		template.WithResolvedMoaiPath(resolveMoaiExecutable()),
 		template.WithHomeDir(homeDir),
-		template.WithSmartPATH(template.BuildSmartPATH()),
+		template.WithSmartPATH(smartPath),
 		template.WithPlatform(runtime.GOOS),
 		template.WithVersion(version.GetVersion()),
 		template.WithHookOptIn(readHookOptInEnabled(projectRoot)),
@@ -478,6 +480,15 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 
 	if deployErr := deployWithMirrorNotice(ctx, deployer, projectRoot, mgr, tmplCtx, errOut); deployErr != nil {
 		return result, recovery.fail("step 5: reinstall templates", deployErr)
+	}
+	// GH #1827 (card t1957): the committed settings.json keeps SmartPATH only
+	// (machine-independent); this machine's session PATH goes to the
+	// gitignored settings.local.json, merged key-by-key over the project file.
+	// Rebuilt from a fresh capture every run — never inherited from the file's
+	// previous value. Best-effort non-blocking; a failure is a warning on
+	// errOut, matching the snapshot writes above.
+	if err := template.SyncLocalSettingsPATH(projectRoot, os.Getenv("PATH"), smartPath); err != nil {
+		_, _ = fmt.Fprintf(errOut, "[clean-reinstall] settings.local.json env.PATH refresh failed: %v\n", err)
 	}
 	// SPEC-UPDATE-SETTINGS-BASE-SNAPSHOT-001 (REQ-USB-001): stage the
 	// settings.json render this deploy wrote, before the Step 5.5 merge and the
@@ -531,6 +542,16 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 		if restoreErr != nil {
 			return result, recovery.fail("step 5.5: restore .moai/config sections", restoreErr)
 		}
+		// M2: evaluator-profiles/ and astgrep-rules/ restore beside the section
+		// merge, as on the template-sync path. A failure warns; the section restore
+		// succeeded.
+		unmanagedRefs, unmanagedErr := backup.RestoreUnmanagedConfigDirs(projectRoot, configBackupPath)
+		if unmanagedErr != nil {
+			_, _ = fmt.Fprintf(out, "[clean-reinstall] unmanaged config restore warning: %v\n", unmanagedErr)
+		}
+		for _, msg := range unmanagedRestoreMessages(unmanagedRefs, configBackupPath) {
+			_, _ = fmt.Fprintf(out, "[clean-reinstall] %s\n", msg)
+		}
 		removedModelKeys, stripErr := stripRetiredModelConfig(out, projectRoot, configBackupPath)
 		if stripErr != nil {
 			_, _ = fmt.Fprintf(out, "[clean-reinstall] retired model key removal warning: %v\n", stripErr)
@@ -542,9 +563,22 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 		// counts runs across both backup roots: this run's v2-to-v3-* forensic
 		// backup and its config backup share one run marker, so they are kept or
 		// pruned together, and an unmarked directory is a candidate only under a
-		// name a moai writer produces.
-		if deleted := backup.CleanupOldBackups(projectRoot, 5); deleted > 0 {
-			_, _ = fmt.Fprintf(out, "[clean-reinstall] Cleaned up %d old config backup(s)\n", deleted)
+		// name a moai writer produces. A backup root that is a symbolic link or
+		// leads outside the project is refused, and nothing is pruned.
+		if backup.OldBackupRootRefused(projectRoot) || backup.NamespaceBackupRootRefused(projectRoot) {
+			_, _ = fmt.Fprintln(out, "[clean-reinstall] skipped old config backup pruning: the backup root is a symbolic link or leads outside the project")
+		} else {
+			// Budgeted retention (SPEC-UPDATE-BACKUP-RETENTION-001): an older run
+			// that holds the last copy of a past file version within the
+			// state.backup_past_versions_keep budget is kept, and every removed or
+			// retained run is named.
+			rep := backup.PruneBackups(projectRoot, 5, config.LoadBackupPastVersionsKeep(projectRoot))
+			if rep.Removed > 0 {
+				_, _ = fmt.Fprintf(out, "[clean-reinstall] Cleaned up %d old config backup(s)\n", rep.Removed)
+			}
+			for _, line := range backupRetentionReportLines(rep, projectRoot) {
+				_, _ = fmt.Fprintf(out, "[clean-reinstall] %s\n", line)
+			}
 		}
 	}
 	// MergeUserFiles preserves the user's version on any merge failure, so a

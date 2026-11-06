@@ -30,6 +30,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/execerr"
 	"github.com/modu-ai/moai-adk/internal/hook"
 	"github.com/modu-ai/moai-adk/internal/session"
+	"github.com/modu-ai/moai-adk/internal/worktreeroot"
 	"github.com/spf13/cobra"
 )
 
@@ -46,9 +47,6 @@ const SessionWorktreeBranchPrefix = "WT-"
 // sessionWorktreeSubdir is MoAI's harness-neutral worktree landing directory
 // relative to the primary checkout's project root.
 const sessionWorktreeSubdir = ".moai" + string(filepath.Separator) + "worktrees"
-
-// Claude's short-name -w flag still resolves inside this native directory.
-const claudeNativeWorktreeSubdir = ".claude" + string(filepath.Separator) + "worktrees"
 
 // Function-variable seams for test injection. Each has a Real counterpart
 // below; tests swap these via swapSessionWorktreeSeams and restore on cleanup.
@@ -211,6 +209,22 @@ func sessionWorktreeBranchName(subcommand string) string {
 // rather than extracting a helper — the shell-out is simpler and the
 // extraction would be premature given M3/M6 will reuse this same wrapper.
 func materializeSessionWorktree(branch string, out io.Writer) (string, error) {
+	return materializeSessionWorktreeBase(branch, "", false, out)
+}
+
+// materializeSessionWorktreeAt is the same materializer cut from an explicit
+// full commit SHA (card t2058: a repair card's worktree starts at the failed
+// release-CI candidate). Unlike the configured-base cut, an unresolvable SHA is
+// an error — never a fall-back to another base, because a repair on the wrong
+// base is the failure this path exists to prevent.
+func materializeSessionWorktreeAt(branch, baseSHA string, out io.Writer) (string, error) {
+	return materializeSessionWorktreeBase(branch, strings.TrimSpace(baseSHA), true, out)
+}
+
+// materializeSessionWorktreeBase is the shared body. forced selects the
+// explicit-SHA cut; otherwise the base comes from configuration exactly as
+// before.
+func materializeSessionWorktreeBase(branch, forcedBase string, forced bool, out io.Writer) (string, error) {
 	commonDir, err := sessionWorktreeGitCommonDir()
 	if err != nil {
 		return "", fmt.Errorf("resolve git common dir: %w", err)
@@ -220,7 +234,14 @@ func materializeSessionWorktree(branch string, out io.Writer) (string, error) {
 	// common dir itself, but moai init/profile/web operate inside a working
 	// tree, so the parent is correct.
 	projectRoot := filepath.Dir(commonDir)
-	destDir := filepath.Join(projectRoot, sessionWorktreeSubdir, branch)
+	// SPEC-WORKTREE-HOME-ROOT-001 M2 (REQ-WHR-005a): the destination comes
+	// from the resolver — <MoaiHome>/worktrees/projects/<project-key>/<branch>
+	// — not from the in-repo .moai/worktrees root. The existence guard, the
+	// base-branch cut and every later step are unchanged.
+	destDir, err := worktreeroot.PathFor(projectRoot, branch)
+	if err != nil {
+		return "", fmt.Errorf("resolve home-root destination: %w", err)
+	}
 	if _, statErr := os.Lstat(destDir); statErr == nil {
 		return "", fmt.Errorf("worktree %q already exists at %s", branch, destDir)
 	} else if !os.IsNotExist(statErr) {
@@ -233,14 +254,30 @@ func materializeSessionWorktree(branch string, out io.Writer) (string, error) {
 	// wrong base. Empty or unresolvable falls back to that no-operand form
 	// (plan §A D4): a tree on the wrong base is recoverable, a tree that failed
 	// to materialize blocks the lane.
-	base := config.LoadWorktreeBaseBranch(projectRoot)
-	if base != "" && !sessionWorktreeBaseResolvable(base) {
-		base = ""
+	base := forcedBase
+	if forced {
+		// An explicit SHA must name a commit this repository has; it is checked
+		// before anything is created, so a refusal leaves no tree behind.
+		if err := sessionWorktreeCommitExists(projectRoot, forcedBase); err != nil {
+			return "", err
+		}
+	} else {
+		base = config.LoadWorktreeBaseBranch(projectRoot)
+		if base != "" && !sessionWorktreeBaseResolvable(base) {
+			base = ""
+		}
 	}
 
 	wtPath, err := sessionWorktreeGitWorktreeAdd(destDir, branch, base)
 	if err != nil {
 		return "", fmt.Errorf("git worktree add: %w", err)
+	}
+	if forced {
+		// The cut is verified, not assumed: the new tree's HEAD is the SHA.
+		head, herr := factoryGitRead(wtPath, "rev-parse", "HEAD")
+		if herr != nil || head != forcedBase {
+			return "", fmt.Errorf("the new worktree %s is not at the requested base %s (HEAD %q, %v)", wtPath, forcedBase, head, herr)
+		}
 	}
 
 	// REQ-SW-020 (M2 init-only config): set init.defaultBranch=main on the
@@ -263,6 +300,19 @@ func materializeSessionWorktree(branch string, out io.Writer) (string, error) {
 	// (REQ-HN-007).
 	sessionWorktreeSeedCodexHooks(wtPath, out)
 	return wtPath, nil
+}
+
+// sessionWorktreeCommitExists reports an error unless sha is a full 40-hex
+// SHA naming a commit in the repository at projectRoot (card t2058). The
+// message names the SHA and the usual cause (not fetched).
+func sessionWorktreeCommitExists(projectRoot, sha string) error {
+	if !issuanceBaseSHAValid(sha) {
+		return fmt.Errorf("the card's base %q is not a full 40-hex commit SHA", sha)
+	}
+	if _, err := factoryGitRead(projectRoot, "cat-file", "-e", sha+"^{commit}"); err != nil {
+		return fmt.Errorf("the card's base commit %s is not in this repository (fetch it first): %w", sha, err)
+	}
+	return nil
 }
 
 // --- real implementations (overridable in tests via the seams above) ---
@@ -1011,9 +1061,9 @@ func worktreeWriterRefusal(tree string) error {
 // -w <tree>` when the tree already exists. It never writes a lock: Claude
 // Code writes its own at EnterWorktree, and a lock written here would anchor
 // the tree to a launcher that is about to be replaced.
-func ccWorktreeWriterPrecheck(args []string) error {
-	value, ok := worktreeFlagValue(args)
-	if !ok || value == "" {
+func ccWorktreeWriterPrecheck(read worktreeRead) error {
+	value := read.Value
+	if !read.Has || value == "" {
 		return nil // bare -w creates a fresh tree; nothing to share yet
 	}
 	tree := value
@@ -1024,7 +1074,10 @@ func ccWorktreeWriterPrecheck(args []string) error {
 				return nil
 			}
 		}
-		tree = filepath.Join(root, claudeNativeWorktreeSubdir, value)
+		// SPEC-WORKTREE-HOME-ROOT-001 M3 (REQ-WHR-007): the short name
+		// resolves across the three roots; a name at no tree keeps the
+		// legacy spelling.
+		tree = resolveShortWorktreeTree(root, value)
 	}
 	if info, err := os.Stat(tree); err != nil || !info.IsDir() {
 		return nil // Claude Code creates it; there is no writer to collide with

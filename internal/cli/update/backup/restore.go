@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/defs"
@@ -262,6 +263,14 @@ func RestoreMoaiConfigLegacy(projectRoot, backupDir, configDir string) error {
 		// The run marker is backup bookkeeping, never a user file: it must not
 		// land in the project (SPEC-UPDATE-REPAIR-RC30-001 D9).
 		if filepath.Base(relPath) == RunMarkerName {
+			return nil
+		}
+
+		// The unmanaged config directories belong to RestoreUnmanagedConfigDirs,
+		// which every caller runs next and which honors the skip filter for
+		// profiles and rules the reconciliation archived or preserved. Writing
+		// them here would bring those files back (card t1799).
+		if topDir, _, _ := strings.Cut(filepath.ToSlash(relPath), "/"); slices.Contains(unmanagedConfigDirs, topDir) {
 			return nil
 		}
 

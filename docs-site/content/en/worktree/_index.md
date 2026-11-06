@@ -88,8 +88,8 @@ flowchart TD
 
     subgraph Phase2["Phase 2: Implement (Terminals 2, 3, 4...)"]
         B1["moai glm -w SPEC-AUTH-001"] --> B2[Worktree created and entered]
-        B2 --> B3["moai run SPEC-ID"]
-        B3 --> B4["moai sync SPEC-ID"]
+        B2 --> B3["/moai run SPEC-ID"]
+        B3 --> B4["/moai sync SPEC-ID"]
     end
 
     subgraph Phase3["Phase 3: Merge & Cleanup"]

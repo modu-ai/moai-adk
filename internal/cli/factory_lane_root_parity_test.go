@@ -10,6 +10,8 @@ package cli
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -62,7 +64,19 @@ func laneParityRun(t *testing.T, verb, duration, surface string) string {
 		case "complete":
 			args["card"], args["run"] = "t1", fcRun
 		}
-		_, callErr = sdCallTool(t, factoryRenewMCPHandler(t, tool), args)
+		text, err := sdCallTool(t, factoryRenewMCPHandler(t, tool), args)
+		callErr = err
+		// REQ-MN-001: a policy refusal is a structured result (refused:true), not an
+		// error result — read it back as the refusal the verb prints.
+		if callErr == nil {
+			var payload struct {
+				Refused bool   `json:"refused"`
+				Reason  string `json:"reason"`
+			}
+			if json.Unmarshal([]byte(text), &payload) == nil && payload.Refused {
+				callErr = errors.New(payload.Reason)
+			}
+		}
 	}
 	card := laneParityCard(t, root)
 	if callErr != nil {

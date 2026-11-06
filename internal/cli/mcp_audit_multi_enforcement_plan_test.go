@@ -92,15 +92,17 @@ func TestAuditMulti_SuppliedGateOverridesConfiguredRequiredAtEnforcement(t *test
 	})
 
 	// The neighbours stay as they are: a supplied `required` is not itself an
-	// opt-in, but it does not cancel a configured one either.
+	// opt-in, but it does not cancel a configured one either. REQ-MN-021
+	// revises what the enforced outcome looks like — could-not-run stays at
+	// the distinct not-converged outcome, never a converged fail.
 	t.Run("required over a configured required still fails closed", func(t *testing.T) {
 		root := newAuditMultiBaselineRoot(t, planWorkflowYAML(config.AuditModelMulti, nil))
 		_, res, m := planCall(t, root, map[string]any{"gates": map[string]any{"codex": "required"}}, codexDown)
 		if res.IsError {
 			t.Fatalf("unexpected error result: %s", toolResultText(res))
 		}
-		if m["overall_verdict"] != "fail" || m["gate_unmet"] != BackendCodex {
-			t.Errorf("overall_verdict = %v, gate_unmet = %v, want fail / codex", m["overall_verdict"], m["gate_unmet"])
+		if m["overall_verdict"] != VerdictInconclusive || m["gate_unmet"] != BackendCodex {
+			t.Errorf("overall_verdict = %v, gate_unmet = %v, want %q / codex (REQ-MN-021 not-converged)", m["overall_verdict"], m["gate_unmet"], VerdictInconclusive)
 		}
 	})
 	t.Run("required over an unconfigured tree stays fail-open", func(t *testing.T) {
@@ -109,8 +111,8 @@ func TestAuditMulti_SuppliedGateOverridesConfiguredRequiredAtEnforcement(t *test
 		if res.IsError {
 			t.Fatalf("unexpected error result: %s", toolResultText(res))
 		}
-		if m["overall_verdict"] != "pass" {
-			t.Errorf("overall_verdict = %v, want pass (an argument-sourced required is not explicit)", m["overall_verdict"])
+		if m["overall_verdict"] != VerdictInconclusive {
+			t.Errorf("overall_verdict = %v, want %q (could-not-run stays not-converged; an argument-sourced required is not explicit)", m["overall_verdict"], VerdictInconclusive)
 		}
 		if _, present := m["gate_unmet"]; present {
 			t.Errorf("gate_unmet = %v, want absent", m["gate_unmet"])
@@ -122,8 +124,8 @@ func TestAuditMulti_SuppliedGateOverridesConfiguredRequiredAtEnforcement(t *test
 		if res.IsError {
 			t.Fatalf("unexpected error result: %s", toolResultText(res))
 		}
-		if m["overall_verdict"] != "fail" || m["gate_unmet"] != BackendCodex {
-			t.Errorf("overall_verdict = %v, gate_unmet = %v, want fail / codex", m["overall_verdict"], m["gate_unmet"])
+		if m["overall_verdict"] != VerdictInconclusive || m["gate_unmet"] != BackendCodex {
+			t.Errorf("overall_verdict = %v, gate_unmet = %v, want %q / codex (REQ-MN-021 not-converged)", m["overall_verdict"], m["gate_unmet"], VerdictInconclusive)
 		}
 	})
 }
@@ -173,16 +175,16 @@ func TestAuditMulti_EnforcementFollowsTheCallStartPlan(t *testing.T) {
 	t.Run("a required gate cannot be edited away mid-call", func(t *testing.T) {
 		root := newAuditMultiBaselineRoot(t, planWorkflowYAML(config.AuditModelMulti, nil))
 		m := callAuditMultiRewritingConfig(t, root, planWorkflowYAML(config.AuditModelClaude, nil), codexDown)
-		if m["overall_verdict"] != "fail" || m["gate_unmet"] != BackendCodex {
-			t.Errorf("overall_verdict = %v, gate_unmet = %v, want fail / codex (the call-start plan required codex)", m["overall_verdict"], m["gate_unmet"])
+		if m["overall_verdict"] != VerdictInconclusive || m["gate_unmet"] != BackendCodex {
+			t.Errorf("overall_verdict = %v, gate_unmet = %v, want %q / codex (the call-start plan required codex; REQ-MN-021 not-converged)", m["overall_verdict"], m["gate_unmet"], VerdictInconclusive)
 		}
 	})
 
 	t.Run("a gate cannot be edited in mid-call", func(t *testing.T) {
 		root := newAuditMultiBaselineRoot(t, distributedAuditPinsYAML)
 		m := callAuditMultiRewritingConfig(t, root, planWorkflowYAML(config.AuditModelMulti, nil), codexDown)
-		if m["overall_verdict"] != "pass" {
-			t.Errorf("overall_verdict = %v, want pass (nothing was configured at call start)", m["overall_verdict"])
+		if m["overall_verdict"] != VerdictInconclusive {
+			t.Errorf("overall_verdict = %v, want %q (could-not-run stays not-converged; nothing was configured at call start)", m["overall_verdict"], VerdictInconclusive)
 		}
 		if _, present := m["gate_unmet"]; present {
 			t.Errorf("gate_unmet = %v, want absent", m["gate_unmet"])
@@ -237,6 +239,9 @@ func TestCallStartEnforcement(t *testing.T) {
 // TestRunMultiAudit_CarrylessCallerKeepsTheReReadFallback: a caller that hands
 // runMultiAudit no enforcement gates still gets the post-fan-out re-read of the
 // tree's configuration — the behaviour every direct caller had before M8.
+// REQ-MN-021 revises the enforced verdict: a codex left without a verdict is a
+// could-not-run, so the re-read names it in gate_unmet and the overall stays at
+// the distinct not-converged outcome (never a converged fail, never pass).
 func TestRunMultiAudit_CarrylessCallerKeepsTheReReadFallback(t *testing.T) {
 	root := newAuditMultiBaselineRoot(t, planWorkflowYAML(config.AuditModelMulti, nil))
 	rc := &recordingCallerMulti{verdictBy: map[string]ReviewOutput{BackendCodex: inconclusiveVerdict("codex unavailable")}}
@@ -252,8 +257,8 @@ func TestRunMultiAudit_CarrylessCallerKeepsTheReReadFallback(t *testing.T) {
 		t.Fatal("precondition: a carry-less config has no enforcement gates")
 	}
 	res := runMultiAudit(context.Background(), ReviewOutput{}, "", "", cfg, nil)
-	if res.OverallVerdict != "fail" || res.GateUnmet != BackendCodex {
-		t.Errorf("overall = %q, gate_unmet = %q, want fail / codex from the re-read", res.OverallVerdict, res.GateUnmet)
+	if res.OverallVerdict != VerdictInconclusive || res.GateUnmet != BackendCodex {
+		t.Errorf("overall = %q, gate_unmet = %q, want %q / codex from the re-read (REQ-MN-021 not-converged)", res.OverallVerdict, res.GateUnmet, VerdictInconclusive)
 	}
 }
 
@@ -278,8 +283,8 @@ func TestAuditMulti_ReceiptExposureFollowsTheCallStartGate(t *testing.T) {
 	t.Run("a required gate edited away mid-call still exposes the receipt of the unmet failure", func(t *testing.T) {
 		root := newAuditMultiBaselineRoot(t, planWorkflowYAML(config.AuditModelMulti, nil))
 		m := callAuditMultiRewritingConfig(t, root, planWorkflowYAML(config.AuditModelClaude, nil), inconclusiveVerdict("codex unavailable"))
-		if m["overall_verdict"] != "fail" || m["gate_unmet"] != BackendCodex {
-			t.Fatalf("overall_verdict = %v, gate_unmet = %v, want fail / codex (precondition)", m["overall_verdict"], m["gate_unmet"])
+		if m["overall_verdict"] != VerdictInconclusive || m["gate_unmet"] != BackendCodex {
+			t.Fatalf("overall_verdict = %v, gate_unmet = %v, want %q / codex (precondition; REQ-MN-021 not-converged)", m["overall_verdict"], m["gate_unmet"], VerdictInconclusive)
 		}
 		if id, ok := receiptID(m); !ok {
 			t.Errorf("audit_receipt = %q, want an id: the call-start plan required codex, so the failure's receipt is exposed (REQ-ACV-009)", id)

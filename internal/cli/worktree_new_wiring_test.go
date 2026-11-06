@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	wtcmd "github.com/modu-ai/moai-adk/internal/cli/worktree"
+	"github.com/modu-ai/moai-adk/internal/paths"
+	"github.com/modu-ai/moai-adk/internal/worktreeroot"
 )
 
 func TestWorktreeNew_MissingNameFangErrorNamesExpectedArgument(t *testing.T) {
@@ -36,6 +38,11 @@ func TestWorktreeNew_MissingNameFangErrorNamesExpectedArgument(t *testing.T) {
 
 func TestWorktreeNew_WiresTheSharedMaterializer(t *testing.T) {
 	root := t.TempDir()
+	// SPEC-WORKTREE-HOME-ROOT-001 M2: the landing destination is the
+	// resolver's home projects root, which needs a real repository and a
+	// sandboxed MOAI_HOME.
+	m4InitRepoInPlace(t, root)
+	t.Setenv(paths.EnvHome, t.TempDir())
 	var addCalls int
 	var gotDest, gotBranch string
 	swapSessionWorktreeSeams(t, swSeams{
@@ -55,7 +62,11 @@ func TestWorktreeNew_WiresTheSharedMaterializer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create through adapter: %v", err)
 	}
-	wantPath := filepath.Join(root, ".moai", "worktrees", "probe-card")
+	homeRoot, rerr := worktreeroot.Root(root)
+	if rerr != nil {
+		t.Fatalf("resolve home root: %v", rerr)
+	}
+	wantPath := filepath.Join(homeRoot, "probe-card")
 	if gotPath != wantPath || gotDest != wantPath || gotBranch != "probe-card" {
 		t.Fatalf("path=%q dest=%q branch=%q, want path/dest=%q branch=probe-card", gotPath, gotDest, gotBranch, wantPath)
 	}
@@ -66,7 +77,15 @@ func TestWorktreeNew_WiresTheSharedMaterializer(t *testing.T) {
 
 func TestWorktreeNew_RefusesPlainDirectoryBeforeGit(t *testing.T) {
 	root := t.TempDir()
-	dest := filepath.Join(root, ".moai", "worktrees", "plain-dir")
+	m4InitRepoInPlace(t, root)
+	t.Setenv(paths.EnvHome, t.TempDir())
+	homeRoot, rerr := worktreeroot.Root(root)
+	if rerr != nil {
+		t.Fatalf("resolve home root: %v", rerr)
+	}
+	// The plain directory sits at the CURRENT landing destination (the home
+	// projects root, M2) — the collision must block creation before git runs.
+	dest := filepath.Join(homeRoot, "plain-dir")
 	if err := os.MkdirAll(dest, 0o755); err != nil {
 		t.Fatal(err)
 	}

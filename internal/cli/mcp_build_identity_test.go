@@ -673,7 +673,31 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 		// rev-parse closure), moving it 277→287. The line is the same doc mention
 		// of the primitive, and no line added above it is a comparison — same
 		// count, only the coordinate moved.
-		"integration.go:287": true,
+		// Re-measured at card t1823: card t1589 (a310ff444) added one line above
+		// this doc comment (the gitenv.Env() assignment in canonicalTreeSpelling),
+		// moving it 287→288. Same doc mention, no added line is a comparison.
+		// Re-measured at card t1632 (merge of main c3aa6b057): the card's own
+		// additions above this doc comment moved it 288→301. Same doc mention
+		// of the primitive, no added line is a comparison — same count, only
+		// the coordinate moved.
+		// Re-measured at card t1632 (absorb of release head 6a523191ea): the
+		// absorbed t1576 integration-branch resolution landed above this
+		// comparison, moving it 301→317. Same comparison, same count — only
+		// the coordinate moved.
+		// Re-measured at card t1632 CI repair (HEAD 1d4bf5773b, PR #1894
+		// main-base re-target): the sweep reported :317 MISSING and a NEW hit
+		// at :258. Verified the same t1576 doc mention (the "merge-base
+		// ..HEAD … exit status 128" quote) already sat at :258 at the
+		// release-head absorb e80010e89c — the :317 baseline predates the
+		// absorb's final conflict resolution and counted lines the resolution
+		// did not keep. Same doc mention of the primitive, no ancestry call
+		// executes here — same count, only the coordinate moved.
+		// Union resolution (card t1632 second main absorb, 5995962990): both
+		// lineages converge — main's t1928 currentBranch repair landed the same
+		// lines this merge carries, and the doc mention measures at :267 in the
+		// merged integration.go (grep-verified). Same hit; no added line is an
+		// ancestry comparison.
+		"integration.go:267": true,
 		// Re-measured at card t948: the coverage-budget constant and its
 		// deadline attribution were added above these two comparisons, moving
 		// them from 245/253. Same two comparisons, same count — only the
@@ -683,7 +707,14 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 		// Re-measured at card t1468: card t1426 added the base-selection
 		// ladder above this comparison, moving it from :95. Same single
 		// review-diff base measurement, same count — only the coordinate moved.
-		"mcp_review_material.go:175": true,
+		// Re-measured at card t1632 (merge of main c3aa6b057): the card's review
+		// material additions above this comparison moved it 175→210. Same single
+		// review-diff base measurement, same count — only the coordinate moved.
+		// Re-measured at card t1632 (absorb of release head 6a523191ea): the
+		// restored t1426 collectReviewDiffAt (17 lines) above this comparison
+		// moved it 210→227. Same single review-diff base measurement, same
+		// count — only the coordinate moved.
+		"mcp_review_material.go:227": true,
 		"todo_landed.go:231":         true,
 		// Re-measured at card t1502: M4's card-close wiring added three lines
 		// above this comparison, moving it from :349. Same single ancestry
@@ -749,9 +780,39 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 		// same doc-mention family as the t1453 844 precedent). Same single
 		// comparison plus one doc mention — same count of actual ancestry
 		// comparisons.
-		"session_worktree.go:839": true,
-		"session_worktree.go:845": true,
-		"session_worktree.go:879": true,
+		// Re-measured at card t1640 (SPEC-WORKTREE-HOME-ROOT-001 M3): the
+		// ccWorktreeWriterPrecheck short-name resolution (+2, REQ-WHR-007)
+		// and the M2 launcher-handoff insertions above the predicate added
+		// 8 lines over the three hits, moving the arm-(i) comment 839→847,
+		// the doc mention 845→853 and the comparison 879→887. Same two hits
+		// and one mention — same count of actual ancestry comparisons; no
+		// added line is an ancestry comparison.
+		// Re-measured at the #1858 CI repair: removing the dead
+		// claudeNativeWorktreeSubdir constant above the predicate pulled the
+		// three hits up 3 lines (847→844, 853→850, 887→884). No comparison
+		// was added or removed — the same three hits at new offsets.
+		// Re-measured at card t2069: card t2058 (failed-candidate SHA repair
+		// worktree) added 45 lines above the predicate in session_worktree.go
+		// (materializeSessionWorktreeBase and its helpers), moving the same
+		// three hits 844→889, 850→895, 884→929. No comparison was added or
+		// removed — the same two hits and one mention at new offsets.
+		"session_worktree.go:889": true,
+		"session_worktree.go:895": true,
+		"session_worktree.go:929": true,
+		// Card t2057/t2059 (registered at card t2069): factoryCommitContained
+		// answers "is commit A reachable from ref B" for the factory completion
+		// path — factoryMergeReachable asks whether the recorded merge is on the
+		// configured target branch before the queue card closes, and
+		// factoryCardHeadNotInMerge asks whether the card branch HEAD is
+		// contained in that recorded merge. :3813 is the doc comment naming
+		// `git merge-base --is-ancestor` (a doc mention; no call runs there) and
+		// :3817 is the call. Both are reachability questions about two repo
+		// revisions (landing evidence), the same family as the todo_landed /
+		// disposal-landing coordinates above — not a comparison of the running
+		// binary against its source, so binlag.Evaluate is not their owner
+		// (REQ-ABI-006 governs binary-vs-source freshness only).
+		"factory_card.go:3813": true,
+		"factory_card.go:3817": true,
 		// SPEC-TODO-CARD-ISSUANCE-001 (card t1454): the in-flight lane
 		// changed-files probe — productionLaneFilesProbe resolves the fork
 		// point between the integration branch and the card's lane branch
@@ -781,8 +842,28 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 		// the call itself. Both are branch-ancestry questions about two
 		// revisions, not a comparison of the running binary against its
 		// source, so binlag.Evaluate does not own them.
-		"local_main_resync.go:414": true,
-		"local_main_resync.go:417": true,
+		// Re-measured at card t1823: card t1619 (first seen in merge cd19e5494)
+		// added 21 lines above the helper — the localMainResyncBeforeFastForward
+		// test seam (+6) and the one-mutation-section rewrite of the
+		// revalidate-and-fast-forward step (+15) — moving the doc mention
+		// 414→435 and the call 417→438. Same two hits, same count; no added line
+		// is an ancestry comparison.
+		// Re-measured at card t1670: the localMainResyncAfterRevalidate test
+		// seam (+8) and its call at the end of localMainResyncRevalidate (+1)
+		// added 9 lines above the helper, moving the doc mention 435→444 and
+		// the call 438→447. Same two hits, same count; no added line is an
+		// ancestry comparison.
+		// Re-measured at card t1670, iteration 4: the localMainResyncReadWindow
+		// ownership-read seam (+7) added 7 lines above the helper, moving the doc
+		// mention 444→451 and the call 447→454. Same two hits, same count; no
+		// added line is an ancestry comparison.
+		// Re-measured at card t1670, iteration 6: the localMainResyncFastForward
+		// fast-forward seam (+11) added above the helper, and the call-site comment
+		// shrunk from two lines to one (-1), moved the doc mention 451→461 and the
+		// call 454→464. Same two hits, same count; no added line is an ancestry
+		// comparison.
+		"local_main_resync.go:461": true,
+		"local_main_resync.go:464": true,
 	}
 	got := map[string]bool{}
 	entries, err := os.ReadDir(".")

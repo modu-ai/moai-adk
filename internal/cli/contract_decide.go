@@ -21,6 +21,11 @@ import (
 	"github.com/modu-ai/moai-adk/internal/contract/receipt"
 )
 
+// contractDecideJev is the decide command's Jev seam. Nil means the kickoff
+// package's own default client; tests install a fake, so no test contacts the
+// endpoint (the autoRankJevDoer pattern).
+var contractDecideJev kickoff.JevAsker
+
 func newContractDecideCmd() *cobra.Command {
 	var specID, judgement string
 	var asJSON bool
@@ -71,6 +76,7 @@ func runContractDecide(cmd *cobra.Command, card, specID, judgementPath string, a
 		RegistryRuleIDs:     env.ruleIDs,
 		RegistryFrozenFiles: env.frozenFiles,
 		DoctrineAmended:     kickoff.JevDoctrineAmended,
+		Jev:                 contractDecideJev,
 	})
 	switch {
 	case errors.Is(err, receipt.ErrIntegrity):
@@ -82,6 +88,13 @@ func runContractDecide(cmd *cobra.Command, card, specID, judgementPath string, a
 		return contractUsageError(cmd, "decide: decider-jev-refused: %v", err)
 	case err != nil:
 		return contractUsageError(cmd, "decide: %v", err)
+	}
+	// The notice goes through the command's stderr (ErrOrStderr), not the
+	// process-global jevNoticeWriter: an in-process caller that configured
+	// SetErr must see the notice on the stderr it configured (card t1803
+	// review: the global writer bypasses that configuration).
+	if res.JevNotice != "" {
+		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), res.JevNotice)
 	}
 	out := cmd.OutOrStdout()
 	if asJSON {

@@ -50,7 +50,9 @@ func TestGTDAllTodoVerbsParity(t *testing.T) {
 	// hold/unhold join the surface per SPEC-TODO-HOLD-STATE-001 (REQ-THS-006/008).
 	// claim joins per SPEC-TODO-CLAIM-LEASE-001 (REQ-TCL-005).
 	// merge joins per SPEC-TODO-CARD-ISSUANCE-001 (REQ-TCI-019); trace joins per REQ-TCI-015.
-	todoWant := []string{"add", "analyze", "auto-done", "claim", "done", "drop", "edit", "export-json", "history", "hold", "landed", "list", "merge", "move", "next", "pr", "relate", "show", "trace", "triage", "undone", "undrop", "unhold", "unpick", "unrelate", "why"}
+	// classify joins per SPEC-FACTORY-DEFAULT-MODE-001 (REQ-FDM-004) — gtdWant
+	// inherits it through the clone below.
+	todoWant := []string{"add", "analyze", "auto-done", "claim", "classify", "done", "drop", "edit", "export-json", "history", "hold", "landed", "list", "merge", "move", "next", "pr", "relate", "show", "trace", "triage", "undone", "undrop", "unhold", "unpick", "unrelate", "why"}
 	sort.Strings(todoWant)
 	gtdWant := append(slices.Clone(todoWant), "capture", "clarify", "organize", "reflect", "engage", "answer")
 	sort.Strings(gtdWant)

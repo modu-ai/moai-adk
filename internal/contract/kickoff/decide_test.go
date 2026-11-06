@@ -91,7 +91,7 @@ func (f *dfx) writeReport(r auditReport) {
 func jevAnswer(choice string, p float64) jev.Result {
 	return jev.Result{Availability: jev.Available, Answers: []jev.Answer{{
 		QuestionID: "start", Kind: jev.KindChoice, Choice: choice, Probability: p,
-	}}}
+	}}, Usage: jev.Usage{Model: "jev-9.8.7", RequestModel: jev.ModelID}}
 }
 
 func judgement(agent, answer string) []byte {
@@ -423,6 +423,47 @@ func TestDecideAuthorExclusion(t *testing.T) {
 	}
 }
 
+// TestDecide_JevCrossCheckReasonNamesInterpretedModel — AC-JRM-009: the
+// receipt's Jev reason names the interpreted model the answer reported, not
+// the request alias.
+func TestDecide_JevCrossCheckReasonNamesInterpretedModel(t *testing.T) {
+	f := newDecide(t, "manager-spec")
+	f.jevRes = jevAnswer("approve", 0.8)
+	r0, e0 := f.counts()
+	f.mustDecide(f.input("llm+jev", "approve", true))
+	r := f.assertReceipt(r0, e0)
+	if r.JevAnswer == nil {
+		t.Fatal("no Jev answer in the receipt")
+	}
+	if !strings.Contains(r.JevAnswer.Reason, "jev-9.8.7") {
+		t.Errorf("reason %q does not name the interpreted model jev-9.8.7", r.JevAnswer.Reason)
+	}
+	if strings.Contains(r.JevAnswer.Reason, jev.ModelID) {
+		t.Errorf("reason %q names the request alias %q", r.JevAnswer.Reason, jev.ModelID)
+	}
+}
+
+// TestDecide_UnattributedJevTakesTheFallback — an unattributed Jev result is
+// not an answer: the R2 path applies with the jev_call_failed reason.
+func TestDecide_UnattributedJevTakesTheFallback(t *testing.T) {
+	for _, llm := range []string{"approve", "reject"} {
+		t.Run(llm, func(t *testing.T) {
+			f := newDecide(t, "manager-spec")
+			f.jevRes = jev.Result{Availability: jev.Unattributed, Condition: "no interpreted model id"}
+			r0, e0 := f.counts()
+			res := f.mustDecide(f.input("llm+jev", llm, true))
+			if res.Outcome != llm || res.Rule != "R2" || res.FallbackReason != "jev_call_failed" {
+				t.Fatalf("outcome %q rule %q fallback %q, want %q R2 jev_call_failed", res.Outcome, res.Rule, res.FallbackReason, llm)
+			}
+			r := f.assertReceipt(r0, e0)
+			if r.EffectiveDecider != "llm" || r.Fallback == nil || !r.Fallback.Applied ||
+				r.Fallback.Reason == nil || *r.Fallback.Reason != "jev_call_failed" || r.JevAnswer != nil {
+				t.Errorf("receipt %+v", r)
+			}
+		})
+	}
+}
+
 // TestDecideJevFallback — R2, Jev-side failures fall back to llm alone
 // (AC-GR-025).
 func TestDecideJevFallback(t *testing.T) {
@@ -463,4 +504,43 @@ func TestDecideJevFallback(t *testing.T) {
 			})
 		}
 	}
+}
+
+// TestDecide_JevNoticeSurfaces — card t1803 (D21 re-scope): the DeciderLLMJev
+// branch carries the at-most-one notice line out on DecideResult.JevNotice —
+// computed once from the one call, in the R2 fallback and the answered
+// sub-branch alike — and every other decider path leaves it empty.
+func TestDecide_JevNoticeSurfaces(t *testing.T) {
+	t.Run("answered with a change notice", func(t *testing.T) {
+		f := newDecide(t, "manager-spec")
+		f.jevRes = jevAnswer("approve", 0.8)
+		f.jevRes.Notice = "jev now answers as jev-9.9"
+		res := f.mustDecide(f.input("llm+jev", "approve", true))
+		if res.JevNotice != "jev now answers as jev-9.9" {
+			t.Errorf("JevNotice = %q, want the change notice", res.JevNotice)
+		}
+	})
+	t.Run("fallback carries its unavailability notice", func(t *testing.T) {
+		f := newDecide(t, "manager-spec")
+		f.jevRes = jev.Result{Availability: jev.Unreachable, Condition: "no network"}
+		res := f.mustDecide(f.input("llm+jev", "approve", true))
+		if res.Rule != "R2" || res.FallbackReason != "jev_call_failed" {
+			t.Fatalf("rule %q fallback %q, want R2 jev_call_failed", res.Rule, res.FallbackReason)
+		}
+		if res.JevNotice != "jev unavailable (unreachable): no network" {
+			t.Errorf("JevNotice = %q, want the unavailability notice", res.JevNotice)
+		}
+	})
+	t.Run("decider llm leaves it empty", func(t *testing.T) {
+		f := newDecide(t, "manager-spec")
+		f.jevRes = jevAnswer("approve", 0.8)
+		f.jevRes.Notice = "jev now answers as jev-9.9"
+		res := f.mustDecide(f.input("llm", "approve", true))
+		if res.JevNotice != "" {
+			t.Errorf("JevNotice = %q on the decider-llm path, want empty", res.JevNotice)
+		}
+		if f.jevCalls != 0 {
+			t.Errorf("Jev called %d times under decider llm", f.jevCalls)
+		}
+	})
 }

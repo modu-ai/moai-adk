@@ -99,6 +99,19 @@ type ReconcileOptions struct {
 	// LegacyPeerRecordAbsent reports that the run has no lead-peer record at all —
 	// not merely one the Fallback failed to read. Nil disables the boot proof.
 	LegacyPeerRecordAbsent func(runID string) bool
+	// WorkerProbe reports the liveness of a registered worker's pid
+	// (REQ-FCR-022). Nil uses the platform probe. Only a positive Dead makes a
+	// worker row not count as a live record; an undecided probe counts as live.
+	WorkerProbe func(pid int) ProcessIdentityState
+}
+
+// workerProbe resolves the worker liveness probe: the caller's override, else
+// the platform pid probe.
+func (o ReconcileOptions) workerProbe() func(int) ProcessIdentityState {
+	if o.WorkerProbe != nil {
+		return o.WorkerProbe
+	}
+	return platformPIDState
 }
 
 // SystemBootTime reports when this host last booted, or false where the
@@ -167,6 +180,12 @@ func retirable(c OwnerClassification) bool { return c == OwnerDead }
 // ClassifyRuns reports every run row with its owner classification.
 func (f *FactoryDB) ClassifyRuns(ctx context.Context, opts ReconcileOptions) ([]RunOwner, error) {
 	return f.classifyRuns(ctx, opts, "")
+}
+
+// ClassifyActiveRuns is ClassifyRuns restricted to the rows whose status is active — the same listing
+// ReconcileActiveRuns classifies — and, like ClassifyRuns, a pure read: it retires nothing and moves nothing.
+func (f *FactoryDB) ClassifyActiveRuns(ctx context.Context, opts ReconcileOptions) ([]RunOwner, error) {
+	return f.classifyRuns(ctx, opts, "active")
 }
 
 func (f *FactoryDB) classifyRuns(ctx context.Context, opts ReconcileOptions, status string) (_ []RunOwner, err error) {
@@ -334,14 +353,36 @@ UNION ALL SELECT heartbeat_at FROM workers WHERE run_id=?1
 UNION ALL SELECT created_at FROM dead_letters WHERE run_id=?1`
 
 // ReconcileActiveRuns retires every active run whose owner is classified dead
-// and reports what remains. It only ever reduces the active set — it never
-// selects among survivors, so fail-closed resolution is preserved.
+// and reports what remains. It only ever reduces the active set and never picks
+// one survivor over another, so fail-closed resolution is preserved; but it is
+// not a read: retiring a run can move its cards and delete its dead worker rows.
+//
+// A dead run that still holds unfinished cards is retired by MOVING those cards
+// to the one live run (consolidateIntoLive), but only when exactly one owner is
+// Live and none is Indeterminate: an indeterminate owner may be a live leader,
+// and with none or several live runs there is no single place to move them, so
+// the run stays active with its cards in place. The move re-keys the cards and
+// removes the run's positively-dead worker rows; leader_approvals do not follow
+// (REQ-FCR-023: a moved card needs a fresh approval), and the source's
+// run.retired event names the moved card ids so that loss is visible.
 func (f *FactoryDB) ReconcileActiveRuns(ctx context.Context, opts ReconcileOptions) (Reconciliation, error) {
 	owners, err := f.classifyRuns(ctx, opts, "active")
 	if err != nil {
 		return Reconciliation{}, err
 	}
 	result := Reconciliation{}
+	// The one live run is where a dead run's unfinished cards go; with none or
+	// several there is no unambiguous target and the cards stay where they are.
+	var live []RunOwner
+	indeterminate := false
+	for _, o := range owners {
+		switch o.Classification {
+		case OwnerLive:
+			live = append(live, o)
+		case OwnerIndeterminate:
+			indeterminate = true
+		}
+	}
 	for _, o := range owners {
 		if !retirable(o.Classification) {
 			continue
@@ -352,9 +393,15 @@ func (f *FactoryDB) ReconcileActiveRuns(ctx context.Context, opts ReconcileOptio
 		// by the retirement it races with (sync-audit t1707 F3). The
 		// authoritative preserved/retired outcome is what the transaction
 		// decided, not the pre-read.
-		retired, err := f.retireRunUnlessLive(ctx, o.RunID, o.Classification, o.Basis)
+		retired, err := f.retireRunUnlessLive(ctx, o.RunID, o.Classification, o.Basis, opts.workerProbe())
 		if err != nil {
 			return Reconciliation{}, err
+		}
+		if !retired && len(live) == 1 && !indeterminate {
+			retired, err = f.consolidateIntoLive(ctx, o, live[0], opts)
+			if err != nil {
+				return Reconciliation{}, err
+			}
 		}
 		if !retired {
 			o.Status = "active"
@@ -390,7 +437,14 @@ func (f *FactoryDB) RetireRunIfDead(ctx context.Context, runID string, opts Reco
 		if !retirable(o.Classification) {
 			return o.Classification, fmt.Errorf("%w: run %s owner classified %s", ErrRunOwnerNotDead, runID, o.Classification)
 		}
-		if err := f.retireRun(ctx, runID, o.Classification, o.Basis); err != nil {
+		// An already-retired run with a dead owner is an idempotent no-op: no
+		// write, no card read, no second run.retired event. It sits AFTER the
+		// owner gate (a live owner is still refused) and BEFORE the card guard,
+		// which binds active runs only.
+		if o.Status == "retired" {
+			return o.Classification, nil
+		}
+		if err := f.retireRun(ctx, o); err != nil {
 			return o.Classification, err
 		}
 		return o.Classification, nil
@@ -401,21 +455,54 @@ func (f *FactoryDB) RetireRunIfDead(ctx context.Context, runID string, opts Reco
 // retireRun transitions one active run to 'retired' and appends a run.retired
 // event carrying the classification and the proof basis that established it
 // (REQ-010b). The row is preserved: deleting it would make the retirement
-// itself unobservable. This is the deliberate path — the operator's
-// RetireRunIfDead and the migration pass — which retires regardless of the
-// records the run carries.
-func (f *FactoryDB) retireRun(ctx context.Context, runID string, c OwnerClassification, basis ProofBasis) error {
+// itself unobservable. This is the operator's deliberate path
+// (SPEC-FACTORY-RETIRE-GUARD-001): inside one write-locked transaction —
+// status -> stamp -> cards -> flip -> event — it refuses a run whose classified
+// owner stamp is no longer on the row, refuses a run that still holds
+// non-terminal cards, and flips only under that stamp, appending the event only
+// when exactly one row changed. The transaction is BEGIN IMMEDIATE (the
+// factory DSN carries _txlock=immediate, pool size 1), so no write can commit
+// between the card read and the flip.
+//
+// @MX:NOTE: [AUTO] order inside the transaction is status -> stamp -> cards -> flip -> event; the stamp check precedes the card read so a restamped run never yields the cards error
+// @MX:REASON: the cards error lists an irreversible abandon exit; it must only be shown for a run whose classified owner is still on the row (SPEC-FACTORY-RETIRE-GUARD-001 plan §C.2)
+func (f *FactoryDB) retireRun(ctx context.Context, owner RunOwner) error {
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	tx, err := f.DB.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
-	if _, err := tx.ExecContext(ctx, `UPDATE runs SET status='retired', updated_at=? WHERE run_id=? AND status='active'`, now, runID); err != nil {
+	changed := fmt.Errorf("%w: run %s changed owner or status since classification", ErrRunOwnerNotDead, owner.RunID)
+	var status, start string
+	var pid int
+	if err := tx.QueryRowContext(ctx, `SELECT status, lead_pid, lead_process_start FROM runs WHERE run_id=?`, owner.RunID).Scan(&status, &pid, &start); err != nil {
 		return err
 	}
-	payload := fmt.Sprintf(`{"classification":%q,"basis":%q}`, string(c), string(basis))
-	if _, err := tx.ExecContext(ctx, `INSERT INTO events(run_id,kind,payload_json,created_at) VALUES(?,'run.retired',?,?)`, runID, payload, now); err != nil {
+	if status != "active" || pid != owner.LeadPID || start != owner.LeadProcessStart {
+		return changed
+	}
+	cards, err := inProgressCards(ctx, tx, owner.RunID)
+	if err != nil {
+		return err
+	}
+	if len(cards) > 0 {
+		return &RunInProgressCardsError{RunID: owner.RunID, Cards: cards}
+	}
+	res, err := tx.ExecContext(ctx, `UPDATE runs SET status='retired', updated_at=? WHERE run_id=? AND status='active' AND lead_pid=? AND lead_process_start=?`,
+		now, owner.RunID, owner.LeadPID, owner.LeadProcessStart)
+	if err != nil {
+		return err
+	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affected != 1 {
+		return changed
+	}
+	payload := fmt.Sprintf(`{"classification":%q,"basis":%q}`, string(owner.Classification), string(owner.Basis))
+	if _, err := tx.ExecContext(ctx, `INSERT INTO events(run_id,kind,payload_json,created_at) VALUES(?,'run.retired',?,?)`, owner.RunID, payload, now); err != nil {
 		return err
 	}
 	return tx.Commit()
@@ -428,19 +515,22 @@ func (f *FactoryDB) retireRun(ctx context.Context, runID string, c OwnerClassifi
 // (sync-audit t1707 F3). It reports whether the run was retired: false means
 // live records were found inside the transaction and the run stays active for
 // the caller's preserved list.
-func (f *FactoryDB) retireRunUnlessLive(ctx context.Context, runID string, c OwnerClassification, basis ProofBasis) (retired bool, err error) {
+func (f *FactoryDB) retireRunUnlessLive(ctx context.Context, runID string, c OwnerClassification, basis ProofBasis, probe func(int) ProcessIdentityState) (retired bool, err error) {
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	tx, err := f.DB.BeginTx(ctx, nil)
 	if err != nil {
 		return false, err
 	}
 	defer func() { _ = tx.Rollback() }()
-	live, err := runHasLiveRecords(ctx, tx, runID)
+	live, err := runHasLiveRecords(ctx, tx, runID, probe)
 	if err != nil {
 		return false, err
 	}
 	if live {
 		return false, nil
+	}
+	if err := reapDeadWorkers(ctx, tx, runID, probe, time.Now().UTC()); err != nil {
+		return false, err
 	}
 	if _, err := tx.ExecContext(ctx, `UPDATE runs SET status='retired', updated_at=? WHERE run_id=? AND status='active'`, now, runID); err != nil {
 		return false, err

@@ -1,22 +1,23 @@
-// golden_test.go — SPEC-CODEX-DUAL-AGENTS-001 MS3 golden guards.
+// golden_test.go — SPEC-CODEX-DUAL-AGENTS-001 MS3 golden guards, retargeted by
+// SPEC-AGENT-CORE4-001 (REQ-AC4-011).
 //
-// These tests run the emitter against the REAL 12 template .md sources and
-// pin the committed artifacts under templates/.codex/agents/moai/. They are
-// the drift guard: a hand-edited .toml or a behavior change in the emitter
-// or manifest fails here until regenerated via:
-//
-//	AGENTEMIT_UPDATE=1 go test ./internal/template/agentemit/...
-//
-// (the `make agents-emit` target wraps this). The .md side is never written
-// by anything in this package — the regression ban is by construction, and
-// these tests make it observable.
+// These tests run the emitter against the REAL agent sources under
+// internal/template/agentemit/source and pin the committed artifacts: the
+// Codex TOML set under templates/.codex/agents/moai and the Markdown set under
+// templates/.claude/agents/moai. They are the drift guard: a hand-edited copy
+// or a behavior change in the emitter or manifest fails here until the copies
+// are regenerated with `make agents-emit` (the agent source is the only edit
+// surface). Nothing in this package writes a copy during a test run; the
+// regeneration path is the agents-emit command.
 package agentemit_test
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"fmt"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -31,8 +32,11 @@ import (
 // templatesDir is the template tree root relative to this package's dir.
 const templatesDir = "../templates"
 
-// agentMDRoot is the neutral-layer source root inside the template tree.
+// agentMDRoot is the rendered Claude definition set (C2) inside the template tree.
 const agentMDRoot = ".claude/agents/moai"
+
+// sourceRoot is the agent source directory, relative to the repository root.
+const sourceRoot = "internal/template/agentemit/source"
 
 // expectedMCPCarriers is the AC-007 inventory: exactly these 7 agents carry
 // mcp__moai__* tokens (plan.md §A.2, verified against the template tree).
@@ -42,17 +46,17 @@ var expectedMCPCarriers = map[string]bool{
 	"sync-auditor": true,
 }
 
-// emitRealSet runs the emitter over the committed template tree.
+// emitRealSet runs the emitter over the committed agent sources.
 func emitRealSet(t *testing.T) *agentemit.Publication {
 	t.Helper()
 	man, err := agentemit.LoadManifest()
 	if err != nil {
 		t.Fatalf("LoadManifest: %v", err)
 	}
-	fsys := os.DirFS(templatesDir)
-	pub, err := agentemit.EmitAll(fsys, agentMDRoot, man)
+	fsys := os.DirFS(repoRoot)
+	pub, err := agentemit.EmitAll(fsys, sourceRoot, man)
 	if err != nil {
-		t.Fatalf("EmitAll over real template set: %v", err)
+		t.Fatalf("EmitAll over real agent sources: %v", err)
 	}
 	if len(pub.CodexTOML) != 12 {
 		t.Fatalf("emitted %d TOMLs, want 12", len(pub.CodexTOML))
@@ -65,14 +69,37 @@ func committedTOMLPath(emitted string) string {
 	return filepath.Join(templatesDir, filepath.FromSlash(emitted))
 }
 
+// committedMarkdownPath resolves the committed C2 definition rendered from the
+// agent source at sourcePath.
+func committedMarkdownPath(sourcePath string) string {
+	return filepath.Join(templatesDir, filepath.FromSlash(agentMDRoot), path.Base(sourcePath))
+}
+
+// markdownDiffs returns the sorted source paths whose rendered bytes differ
+// from the committed C2 definition. Both the equality test and the mismatch
+// test use it, so a comparison that cannot fail is caught by the second.
+func markdownDiffs(t *testing.T, rendered map[string][]byte) []string {
+	t.Helper()
+	var diffs []string
+	for p, data := range rendered {
+		committed, err := os.ReadFile(committedMarkdownPath(p))
+		if err != nil {
+			t.Fatalf("%s: committed .md unreadable: %v", p, err)
+		}
+		if !bytes.Equal(committed, data) {
+			diffs = append(diffs, p)
+		}
+	}
+	sort.Strings(diffs)
+	return diffs
+}
+
 // TestGoldenCommittedArtifactsMatchEmission is the AC-001/AC-004 drift guard:
 // every emitted TOML must be byte-identical (sha256) to the committed
-// artifact, and every published .md byte-identical to the committed .md.
-// With AGENTEMIT_UPDATE=1 it (re)writes the committed .toml artifacts instead
-// (the maintainer regeneration path).
+// artifact, and every rendered Claude definition equal to the committed .md.
+// The copies are regenerated with `make agents-emit`.
 func TestGoldenCommittedArtifactsMatchEmission(t *testing.T) {
 	pub := emitRealSet(t)
-	update := os.Getenv("AGENTEMIT_UPDATE") == "1"
 
 	emittedPaths := make([]string, 0, len(pub.CodexTOML))
 	for p := range pub.CodexTOML {
@@ -83,37 +110,52 @@ func TestGoldenCommittedArtifactsMatchEmission(t *testing.T) {
 	for _, p := range emittedPaths {
 		data := pub.CodexTOML[p]
 		sum := fmt.Sprintf("%x", sha256.Sum256(data))
-		if update {
-			if err := os.MkdirAll(filepath.Dir(committedTOMLPath(p)), 0o755); err != nil {
-				t.Fatalf("update mkdir: %v", err)
-			}
-			if err := os.WriteFile(committedTOMLPath(p), data, 0o644); err != nil {
-				t.Fatalf("update write %s: %v", p, err)
-			}
-			t.Logf("updated %s (sha256 %s)", p, sum[:12])
-			continue
-		}
 		committed, err := os.ReadFile(committedTOMLPath(p))
 		if err != nil {
-			t.Errorf("%s: committed artifact missing (%v) — regenerate with AGENTEMIT_UPDATE=1", p, err)
+			t.Errorf("%s: committed artifact missing (%v) — regenerate with `make agents-emit`", p, err)
 			continue
 		}
 		if fmt.Sprintf("%x", sha256.Sum256(committed)) != sum {
-			t.Errorf("%s: committed artifact differs from emission (sha256 mismatch) — regenerate or stop hand-editing", p)
+			t.Errorf("%s: committed artifact differs from emission (sha256 mismatch) — edit the agent source and run `make agents-emit`", p)
 		}
 	}
 
-	// AC-001's .md face: the markdown publication is byte-identical to the
-	// committed .md files (identity pass-through, never re-rendered).
-	for p, data := range pub.Markdown {
-		committed, err := os.ReadFile(filepath.Join(templatesDir, filepath.FromSlash(p)))
-		if err != nil {
-			t.Fatalf("%s: committed .md unreadable: %v", p, err)
+	// AC-001's .md face: the Claude render of every agent source equals the
+	// committed .md definition (REQ-AC4-011: equality with a fresh render
+	// replaces the former identity pass-through).
+	t.Run("markdown_equals_fresh_render", func(t *testing.T) {
+		for _, p := range markdownDiffs(t, pub.Markdown) {
+			t.Errorf("%s: committed .md differs from a fresh render of its agent source — edit the source and run `make agents-emit`", p)
 		}
-		if string(committed) != string(data) {
-			t.Errorf("%s: markdown publication differs from committed .md", p)
-		}
+	})
+}
+
+// TestGoldenMarkdownMismatchDetected closes the mutants of the comparison above
+// (`if false`, comparing a value with itself): one byte of a rendered
+// definition is flipped in memory and the same comparison must report exactly
+// that file.
+func TestGoldenMarkdownMismatchDetected(t *testing.T) {
+	pub := emitRealSet(t)
+	if diffs := markdownDiffs(t, pub.Markdown); len(diffs) != 0 {
+		t.Fatalf("precondition: committed .md must equal a fresh render, differs: %v", diffs)
 	}
+	t.Run("injected_mismatch_is_red", func(t *testing.T) {
+		var victim string
+		for p := range pub.Markdown {
+			if victim == "" || p < victim {
+				victim = p
+			}
+		}
+		flipped := map[string][]byte{}
+		for p, data := range pub.Markdown {
+			flipped[p] = append([]byte(nil), data...)
+		}
+		flipped[victim][len(flipped[victim])/2] ^= 0x01
+		diffs := markdownDiffs(t, flipped)
+		if len(diffs) != 1 || diffs[0] != victim {
+			t.Errorf("flipping one byte of %s must make the comparison report exactly that file, got %v", victim, diffs)
+		}
+	})
 }
 
 // TestRealSetMarkdownTreeUnmodified is AC-002: running the emitter (success
@@ -236,8 +278,8 @@ func TestRealSetCodexShape(t *testing.T) {
 }
 
 // TestRealSetBodiesByteEqual verifies AC-003/R-005 against the REAL sources:
-// every emitted developer_instructions decodes byte-equal to the .md body of
-// its agent, and name equals the frontmatter name, 12 of 12.
+// every emitted developer_instructions decodes byte-equal to the Codex-view
+// body of its agent source, and name equals the frontmatter name, 12 of 12.
 func TestRealSetBodiesByteEqual(t *testing.T) {
 	pub := emitRealSet(t)
 	man, err := agentemit.LoadManifest()
@@ -250,14 +292,18 @@ func TestRealSetBodiesByteEqual(t *testing.T) {
 			t.Fatalf("decode %s: %v", path, err)
 		}
 		name, _ := doc["name"].(string)
-		mdPath := filepath.Join(templatesDir, filepath.FromSlash(agentMDRoot), name+".md")
-		raw, err := os.ReadFile(mdPath)
+		srcPath := filepath.Join(repoRoot, filepath.FromSlash(sourceRoot), name+".md")
+		raw, err := os.ReadFile(srcPath)
 		if err != nil {
-			t.Fatalf("read source %s: %v", mdPath, err)
+			t.Fatalf("read source %s: %v", srcPath, err)
 		}
-		parsed, err := agentemit.ParseAgentDoc(name+".md", raw)
+		view, err := agentemit.RenderView(name+".md", raw, agentemit.ViewCodex)
 		if err != nil {
-			t.Fatalf("parse source %s: %v", mdPath, err)
+			t.Fatalf("render Codex view of %s: %v", srcPath, err)
+		}
+		parsed, err := agentemit.ParseAgentDoc(name+".md", view)
+		if err != nil {
+			t.Fatalf("parse source %s: %v", srcPath, err)
 		}
 		if parsed.Name != name {
 			t.Errorf("%s: TOML name %q != frontmatter name %q", path, name, parsed.Name)
@@ -335,7 +381,7 @@ func TestNeutralityByInheritance(t *testing.T) {
 			t.Fatalf("decode %s: %v", path, err)
 		}
 		name, _ := doc["name"].(string)
-		raw, err := os.ReadFile(filepath.Join(templatesDir, filepath.FromSlash(agentMDRoot), name+".md"))
+		raw, err := os.ReadFile(filepath.Join(repoRoot, filepath.FromSlash(sourceRoot), name+".md"))
 		if err != nil {
 			t.Fatalf("read source for %s: %v", path, err)
 		}
@@ -348,10 +394,9 @@ func TestNeutralityByInheritance(t *testing.T) {
 	}
 }
 
-// TestPublicationPathHygiene pins the regeneration path's blast radius: the
-// codex publication contains only .toml paths under .codex/ and the markdown
-// publication only the .md source paths — update mode therefore has no .md
-// write target (AC-002 for the one write surface this package owns).
+// TestPublicationPathHygiene pins the emission's blast radius: the codex
+// publication contains only .toml paths under .codex/ and the markdown
+// publication only the .md files of the agent source directory.
 func TestPublicationPathHygiene(t *testing.T) {
 	pub := emitRealSet(t)
 	for p := range pub.CodexTOML {
@@ -360,8 +405,8 @@ func TestPublicationPathHygiene(t *testing.T) {
 		}
 	}
 	for p := range pub.Markdown {
-		if !strings.HasPrefix(p, agentMDRoot+"/") || !strings.HasSuffix(p, ".md") {
-			t.Errorf("markdown publication path outside the .md source root: %s", p)
+		if !strings.HasPrefix(p, sourceRoot+"/") || !strings.HasSuffix(p, ".md") {
+			t.Errorf("markdown publication path outside the agent source root: %s", p)
 		}
 	}
 }

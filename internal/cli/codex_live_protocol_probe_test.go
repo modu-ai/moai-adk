@@ -83,8 +83,8 @@ func (t *probeTap) dump() []string {
 // publishing the tap so the test can read the transcript afterwards.
 type probeRunner struct{ out **probeTap }
 
-func (r probeRunner) start(ctx context.Context, binaryPath string, args []string) (codexConn, error) {
-	conn, err := (realCodexSessionRunner{}).start(ctx, binaryPath, args)
+func (r probeRunner) start(ctx context.Context, binaryPath string, args []string, dir string) (codexConn, error) {
+	conn, err := (realCodexSessionRunner{}).start(ctx, binaryPath, args, dir)
 	if err != nil {
 		return nil, err
 	}

@@ -216,7 +216,7 @@ Three duties route through the resident deputy by default:
 |---|---|
 | Dispatch address-block sending | Send fixed-field dispatch blocks to the lanes of ALREADY-PICKED cards, with delivery-shape verification (below). The queue on disk remains the delegation channel — a `SendMessage` is a nudge, never the delegation itself. |
 | Bounded CI-watch polls | Poll a card's CI checks to terminal states and return those states as a report to the leader. |
-| CodeRabbit two-condition READS | Read the combined-status `CodeRabbit` entry (context state `success` AND description `Review completed`) plus the `Merge Risk:` line matching the current `headRefOid`, and REPORT both conditions to the leader. Read and report — never adjudicate the slot-wait outcome. |
+| Native Codex artifact READS | Report the trusted bot identity, current full head SHA, completed code-review summary, clean receipt, and unresolved findings. Report only; the leader retains the verdict and final merge approval. |
 | First-pass evidence reading + recommendation | Read a card's completion evidence and return findings as recommendations, each prefixed `RECOMMEND:` — a recommendation is never a verdict. |
 | Summary reporting | Fold delegated observations into a report returned to the leader session. |
 
@@ -228,7 +228,7 @@ The following acts are retained by the leader session (or the operator) exclusiv
 2. **Final PASS/FAIL verdicts** — the `FINAL VERDICT:` token is forbidden in deputy output; first-pass reads carry `RECOMMEND:` only. The verdict's home is the leader, never the executor (`factory-dispatch.md` § The verdict's home).
 3. **Operator gates** — the orchestrator-exclusive user-question tool stays forbidden (the NOT-for clause in the frontmatter); the deputy returns blocker reports, never prompts.
 4. **Queue mutations** — any `moai gtd` add / pick / done / edit / drop. Deputy dispatch is limited to ALREADY-PICKED cards; admission and closure are operator and leader acts (`factory-dispatch.md` § Entry into the queue is an operator act).
-5. **CodeRabbit discipline adjudication** — deciding slot-wait outcomes belongs to the leader; the deputy reports the two-condition read and nothing more.
+5. **Native review evidence adjudication** — the leader judges current-head evidence and retains the final verdict; the deputy reports observed artifacts and gaps only.
 6. **Cross-session dispute coordination** — facts may be relayed by the deputy; the decision in a dispute belongs to the leader.
 
 ### Delivery-shape verification (lost-dispatch protocol)

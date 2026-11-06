@@ -630,6 +630,13 @@ func goldenReplay(t *testing.T, root string) map[string]string {
 // by the add path's decider seam — the declared, AC-tested extension of that
 // SPEC). The other five goldens are unchanged; a future silent drift of the
 // JSON disclosure still fails here.
+//
+// Provenance update — card t1737 (SPEC-FACTORY-DEFAULT-MODE-001): the four
+// classification.mode fields in list-json.txt were updated serial →
+// parallelizable — the approved M1 default flip (REQ-FDM-002): the default
+// decider now answers the absent-read default, so a fixture seed records
+// parallelizable under decider default. Field values only, no regeneration,
+// no unrelated fields; the other five goldens are unchanged.
 func TestLiveReadersUnchangedByHistoryVerb(t *testing.T) {
 	root := replayGoldenFixture(t)
 	streams := goldenReplay(t, root)

@@ -21,7 +21,7 @@ They are two completely different things. This is the most common confusion, so 
 | **Example** | `moai init my-project` | `/moai plan "auth feature"` |
 
 - Running `moai plan` in the terminal does nothing — `/moai plan` is only valid inside Claude Code.
-- Typing `/moai init` in Claude Code does nothing — `moai init` is a terminal command.
+- `moai init` is a terminal command that sets up a project; inside Claude Code, generate project documentation with `/moai project`.
 
 ---
 

@@ -31,8 +31,10 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/cli/specid"
+	"github.com/modu-ai/moai-adk/internal/gitenv"
 	"github.com/modu-ai/moai-adk/internal/paths"
 	"github.com/modu-ai/moai-adk/internal/spec"
+	"github.com/modu-ai/moai-adk/internal/worktreeroot"
 )
 
 // branchProbe is the package-level indirection over exec.Command used by
@@ -56,6 +58,11 @@ type WorktreeBases struct {
 	Claude string
 	// MoAI is the persistent user-level base (<home>/.moai/worktrees).
 	MoAI string
+	// Home is the home-level projects base
+	// (<MoaiHome>/worktrees/projects), scanned at its two-segment depth
+	// <key>/<card> (SPEC-WORKTREE-HOME-ROOT-001 M3, REQ-WHR-007). Empty
+	// when MoaiHome cannot be resolved: the legacy bases then stand alone.
+	Home string
 }
 
 // DefaultWorktreeBases resolves the scanned bases for production callers.
@@ -63,6 +70,9 @@ func DefaultWorktreeBases(primaryRoot string) WorktreeBases {
 	bases := WorktreeBases{Claude: filepath.Join(primaryRoot, ".claude", "worktrees")}
 	if moaiBase, err := paths.WorktreesDir(); err == nil {
 		bases.MoAI = moaiBase
+	}
+	if home, err := paths.MoaiHome(); err == nil {
+		bases.Home = filepath.Join(home, "worktrees", "projects")
 	}
 	return bases
 }
@@ -114,11 +124,30 @@ func ReadCardStatus(primaryRoot, specID string, bases WorktreeBases) (*CardStatu
 	// The live-worktree observation, over both scanned bases. The path's
 	// final segment is the card's identity, so the candidate worktree for a
 	// card is deterministic; its REPORTED branch decides the source.
+	// The live-worktree candidates, home root first: the home projects
+	// directory is scanned at its two-segment depth
+	// <MoaiHome>/worktrees/projects/<key>/<specID>
+	// (SPEC-WORKTREE-HOME-ROOT-001 M3, REQ-WHR-007), then the two legacy
+	// bases at their flat depth. The scan is scoped to THIS repository's
+	// recorded key (card t1640 review P1-5): the home root is cross-project,
+	// and a whole-home `*` sweep can pre-select another repository's tree
+	// that happens to carry the same specID. A repository with no recorded
+	// key has no home-root trees of its own; the legacy bases stand alone.
+	var scanPaths []string
+	if bases.Home != "" {
+		if key := worktreeroot.RecordedKey(primaryRoot); key != "" {
+			if matches, err := filepath.Glob(filepath.Join(bases.Home, key, specID)); err == nil {
+				scanPaths = append(scanPaths, matches...)
+			}
+		}
+	}
 	for _, base := range []string{bases.MoAI, bases.Claude} {
 		if base == "" {
 			continue
 		}
-		wtPath := filepath.Join(base, specID)
+		scanPaths = append(scanPaths, filepath.Join(base, specID))
+	}
+	for _, wtPath := range scanPaths {
 		if !isGitWorktreeDir(wtPath) {
 			continue
 		}
@@ -176,13 +205,15 @@ func branchNamesSpec(branch, specID string) bool {
 // for a detached HEAD. An unreadable HEAD reference is an error.
 func reportedBranch(wtPath string) (string, error) {
 	cmd := branchProbe("git", "-C", wtPath, "symbolic-ref", "--quiet", "--short", "HEAD")
-	// Pin the C locale: git localizes its messages through gettext when
-	// catalogs are installed, and the no-file classification below matches
-	// git's phrasing — a localized message would invert it. LC_ALL=C forces
-	// the canonical English output regardless of the host locale (re-review
-	// ITEM 2; a described mechanism, not a reproduced defect — this host
-	// ships no catalogs).
-	cmd.Env = append(os.Environ(), "LC_ALL=C")
+	// The worktree names the repository; an inherited GIT_DIR / GIT_WORK_TREE
+	// would outrank -C and answer about the caller's repository (card t1710,
+	// t1589's scrub). LC_ALL=C is pinned on top: git localizes its messages
+	// through gettext when catalogs are installed, and the no-file
+	// classification below matches git's phrasing — a localized message would
+	// invert it. LC_ALL=C forces the canonical English output regardless of
+	// the host locale (re-review ITEM 2; a described mechanism, not a
+	// reproduced defect — this host ships no catalogs).
+	cmd.Env = append(gitenv.Env(), "LC_ALL=C")
 	var out, errBuf bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &errBuf
@@ -217,9 +248,12 @@ func isExitStatusOne(err error) bool {
 func readBranchStatus(primaryRoot, specID, branch, wtPath string) (*CardStatus, error) {
 	rel := fmt.Sprintf(".moai/specs/%s/spec.md", specID)
 	cmd := exec.Command("git", "-C", primaryRoot, "show", fmt.Sprintf("%s:%s", branch, rel))
-	// Same locale pin as reportedBranch: isNoSuchPath matches git's English
-	// phrasing, so the classification must not depend on the host locale.
-	cmd.Env = append(os.Environ(), "LC_ALL=C")
+	// The primary root names the repository and the locale pin matches
+	// reportedBranch: isNoSuchPath matches git's English phrasing, so the
+	// classification must not depend on the host locale — and the scrub keeps
+	// an inherited GIT_DIR from redirecting the read to another repository
+	// (card t1710).
+	cmd.Env = append(gitenv.Env(), "LC_ALL=C")
 	var out, errBuf bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &errBuf

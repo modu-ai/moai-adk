@@ -12,11 +12,14 @@ package cli
 
 import (
 	"bytes"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/paths"
 	"github.com/modu-ai/moai-adk/internal/profile"
+	"github.com/modu-ai/moai-adk/internal/testguard"
 	"github.com/spf13/cobra"
 )
 
@@ -26,11 +29,17 @@ import (
 // (WT-<session-short>-profile). This re-exercises the shared wrapper (M1/M2)
 // at the profile subcommand value.
 func TestEnterSessionWorktree_ProfileSubcommand(t *testing.T) {
+	testguard.RedirectHome(t)
 	t.Setenv("MOAI_SESSION_WORKTREE", "1")
+	// SPEC-WORKTREE-HOME-ROOT-001 M3: the resolver in the materializer needs
+	// a real repository and a sandboxed MOAI_HOME.
+	repo := m2Repo(t)
+	home := m2Real(t, t.TempDir())
+	t.Setenv(paths.EnvHome, home)
 	swapSessionWorktreeSeams(t, swSeams{
 		inWt:      func() bool { return false },
 		short:     func() string { return "abcdef12" },
-		commonDir: func() (string, error) { return "/repo/.git", nil },
+		commonDir: func() (string, error) { return filepath.Join(repo, ".git"), nil },
 		add:       func(dest, branch, base string) (string, error) { return dest, nil },
 		configSet: func(string, string, string) error { return nil },
 	})
@@ -121,6 +130,7 @@ func TestEmitProfileScopeNotice_FalsificationRoundTrip(t *testing.T) {
 // the enumeration; it is not invoked here to avoid touching the real global
 // profile dir.)
 func TestProfileReadOnlySubverbs_DoNotInvokeAutoEntry(t *testing.T) {
+	testguard.RedirectHome(t)
 	t.Setenv("MOAI_SESSION_WORKTREE", "1")
 	swapSessionWorktreeSeams(t, swSeams{
 		inWt: func() bool { return false },

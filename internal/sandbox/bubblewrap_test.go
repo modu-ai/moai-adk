@@ -2,7 +2,9 @@ package sandbox
 
 import (
 	"errors"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
@@ -23,14 +25,24 @@ func TestBubblewrap_ExecHello(t *testing.T) {
 		t.Skip("bubblewrap backend reports unavailable")
 	}
 
+	// The sandbox mounts only the granted scopes; it does not expose the
+	// host's echo binary or dynamic loader. Supply a static executable within
+	// the existing writable scope instead of granting extra runtime paths.
+	scope := t.TempDir()
+	helper := filepath.Join(scope, "echo-helper")
+	build := exec.Command("go", "build", "-o", helper, "./testdata/echo")
+	build.Env = append(os.Environ(), "CGO_ENABLED=0")
+	if output, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("build static sandbox helper: %v (output %q)", err, output)
+	}
 	opts := SandboxOptions{
-		WritableScope:  []string{t.TempDir()},
+		WritableScope:  []string{scope},
 		MaxOutputBytes: 16 * 1024 * 1024,
 	}
 
-	out, err := b.Exec(opts, []string{"echo", "hello"})
+	out, err := b.Exec(opts, []string{helper, "hello"})
 	if err != nil {
-		t.Fatalf("bubblewrap exec: %v", err)
+		t.Fatalf("bubblewrap exec: %v (output %q)", err, out)
 	}
 	if !strings.Contains(string(out), "hello") {
 		t.Errorf("bubblewrap exec: expected 'hello' in output, got %q", string(out))

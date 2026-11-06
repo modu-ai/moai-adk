@@ -14,11 +14,12 @@ package cli
 // never modified (spec.md §G).
 
 import (
+	"io"
 	"strings"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
-	"github.com/modu-ai/moai-adk/internal/cli/wizard"
+	"github.com/modu-ai/moai-adk/internal/codexwiring"
 )
 
 // codexFindingPhrases are the directive/c finding phrases only a codex-WIRING
@@ -46,17 +47,22 @@ func pinInitHome(t *testing.T) string {
 	return homeDir
 }
 
-// TestRunInit_ThenDoctorCodexWiringHealthy — REQ-CEG-001 / AC-CEG-001: the
-// REAL init path, answering codex, produces a project the doctor "Codex
-// Wiring" judgment passes clean. The sanity leg (assertCodexArtifacts) runs
-// FIRST so a silently-unwired init cannot vacuously pass the OK assertion.
+// TestRunInit_ThenDoctorCodexWiringHealthy — REQ-CEG-001 / AC-CEG-001, narrowed
+// by card t1909: init no longer wires Codex (the harness deployment is
+// claude-only), so the codex-wired tree under judgment is produced by the REAL
+// init path followed by codexwiring.Wire — the same producer an operator of a
+// pre-removal project ran. The doctor "Codex Wiring" judgment must pass clean
+// on it. The sanity leg (assertCodexArtifacts) runs FIRST so a
+// silently-unwired project cannot vacuously pass the OK assertion.
 func TestRunInit_ThenDoctorCodexWiringHealthy(t *testing.T) {
-	wiz := &wizard.WizardResult{AgentWiring: "gpt"}
 	homeDir := pinInitHome(t)
 
-	projectDir, _ := runInitForAutonomyAtHomeCapturingOut(t, homeDir, wiz, nil)
+	projectDir, _ := runInitForAutonomyAtHomeCapturingOut(t, homeDir, nil, nil)
+	if _, err := codexwiring.Wire(projectDir, io.Discard, io.Discard); err != nil {
+		t.Fatalf("wire the initialized project: %v", err)
+	}
 
-	// Sanity leg — the init actually wired the project (anti-vacuous).
+	// Sanity leg — the wiring actually landed (anti-vacuous).
 	assertCodexArtifacts(t, projectDir, true)
 
 	// Hermetic doctor judgment on the project init produced.
@@ -83,10 +89,9 @@ func TestRunInit_ThenDoctorCodexWiringHealthy(t *testing.T) {
 // a Warn. The sanity leg asserts the wiring artifacts really are absent, so
 // the OK cannot pass by way of a silent wiring failure.
 func TestRunInit_ClaudeOnlyThenDoctorStaysSilent(t *testing.T) {
-	wiz := &wizard.WizardResult{AgentWiring: "claude"}
 	homeDir := pinInitHome(t)
 
-	projectDir, _ := runInitForAutonomyAtHomeCapturingOut(t, homeDir, wiz, nil)
+	projectDir, _ := runInitForAutonomyAtHomeCapturingOut(t, homeDir, nil, nil)
 
 	// Sanity leg — the claude-only init really left no codex wiring.
 	assertCodexArtifacts(t, projectDir, false)

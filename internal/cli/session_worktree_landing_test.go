@@ -26,6 +26,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/testguard"
 )
 
 // realLandingRepo stages a real git repository with a bare `origin` remote
@@ -101,6 +103,7 @@ func realLandingRepo(t *testing.T, withDevelop bool) (repoDir, wtPath string) {
 // defect (REQ-WSS-306: a push alone does not satisfy the landing
 // confirmation).
 func TestCleanupSessionWorktree_PushedUnmergedPreserved(t *testing.T) {
+	testguard.RedirectHome(t)
 	_, wtPath := realLandingRepo(t, true)
 
 	var out bytes.Buffer
@@ -119,6 +122,7 @@ func TestCleanupSessionWorktree_PushedUnmergedPreserved(t *testing.T) {
 // refs/remotes/origin/develop, disposal proceeds exactly as before — the
 // cheap shared path the guard must not freeze.
 func TestCleanupSessionWorktree_MergedIntoDevelopRemoved(t *testing.T) {
+	testguard.RedirectHome(t)
 	repoDir, wtPath := realLandingRepo(t, true)
 	git := func(args ...string) {
 		cmd := exec.Command("git", args...)
@@ -152,6 +156,7 @@ func TestCleanupSessionWorktree_MergedIntoDevelopRemoved(t *testing.T) {
 // upstream — the verbatim cumulative patch matches and disposal proceeds.
 // SPEC-WORKTREE-SQUASH-MERGE-001: reachability alone cannot see a squash.
 func TestCleanupSessionWorktree_SquashMergedPatchIdRemoved(t *testing.T) {
+	testguard.RedirectHome(t)
 	repoDir, wtPath := realLandingRepo(t, true)
 	git := func(args ...string) {
 		cmd := exec.Command("git", args...)
@@ -183,6 +188,7 @@ func TestCleanupSessionWorktree_SquashMergedPatchIdRemoved(t *testing.T) {
 // confirm against — preservation with a notice is the only safe answer, and
 // the stale/absent ref can never misjudge toward removal.
 func TestCleanupSessionWorktree_MissingIntegrationRefPreserved(t *testing.T) {
+	testguard.RedirectHome(t)
 	_, wtPath := realLandingRepo(t, false)
 
 	var out bytes.Buffer
@@ -200,6 +206,7 @@ func TestCleanupSessionWorktree_MissingIntegrationRefPreserved(t *testing.T) {
 // ①/③ of REQ-WSS-302: an unreadable landing answer preserves, exactly like
 // the dirty and unpushed guards' error paths.
 func TestCleanupSessionWorktree_LandingCheckErrorPreserved(t *testing.T) {
+	testguard.RedirectHome(t)
 	_, wtPath := realLandingRepo(t, true)
 	swapSessionWorktreeSeams(t, swSeams{
 		landed: func(string) (bool, error) { return false, errors.New("git cherry exploded") },
@@ -226,6 +233,7 @@ func TestCleanupSessionWorktree_LandingCheckErrorPreserved(t *testing.T) {
 // content. With the divergent squash on origin/develop the exit must
 // preserve.
 func TestSessionExitWhitespaceDivergencePreserves(t *testing.T) {
+	testguard.RedirectHome(t)
 	repoDir, wtPath := realLandingRepo(t, true)
 	git := func(args ...string) {
 		cmd := exec.Command("git", args...)

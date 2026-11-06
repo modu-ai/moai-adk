@@ -67,7 +67,7 @@ func TestInitResumeSettlesTemplateSnapshots(t *testing.T) {
 	var out, errOut strings.Builder
 	cmd.SetOut(&out)
 	cmd.SetErr(&errOut)
-	if err := resumeInitializedProject(cmd, &opts, agentWiringClaude, false, nil, profile.ProfilePreferences{}); err != nil {
+	if err := resumeInitializedProject(cmd, &opts, false, nil, profile.ProfilePreferences{}); err != nil {
 		t.Fatalf("the resume failed: %v", err)
 	}
 

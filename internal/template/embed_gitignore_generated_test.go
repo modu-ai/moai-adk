@@ -28,6 +28,15 @@ import (
 var generatedArtifactIgnoreRules = []string{
 	// `moai graph build` (internal/cli/graph.go) — edges.jsonl + edges.meta.json.
 	".moai/project/graph/",
+
+	// Harness runtime data (card t1682) — live session hooks rewrite these on
+	// every run, so a tracked copy keeps the checkout dirty. The repository
+	// root .gitignore already ignores them; the shipped template must too.
+	".moai/harness/observations.yaml",
+	".moai/harness/usage-log.jsonl",
+	".moai/harness/usage-log.jsonl.prune-state",
+	".moai/harness/usage-log.jsonl.prune-heal",
+	".moai/harness/learning-history/",
 }
 
 func TestEmbeddedGitignoreCoversGeneratedArtifacts(t *testing.T) {

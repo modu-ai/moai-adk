@@ -468,14 +468,19 @@ type seamCounts struct{ resolve, probe, list int }
 func countingSeams(t *testing.T) *seamCounts {
 	t.Helper()
 	c := &seamCounts{}
-	prevPath, prevProbe, prevList := factoryHookDBPath, factoryHookProbeRun, factoryHookActiveRuns
-	factoryHookDBPath = func(root string) (string, error) { c.resolve++; return prevPath(root) }
+	prevPath, prevProbe, prevList := factoryHookNamespace, factoryHookProbeRun, factoryHookActiveRuns
+	factoryHookNamespace = func(ctx context.Context, root string) (factorymsg.Namespace, error) {
+		c.resolve++
+		return prevPath(ctx, root)
+	}
 	factoryHookProbeRun = func(ctx context.Context, dbPath, run string) (factorymsg.RunState, string, error) {
 		c.probe++
 		return prevProbe(ctx, dbPath, run)
 	}
 	factoryHookActiveRuns = func(ctx context.Context, dbPath string) ([]string, error) { c.list++; return prevList(ctx, dbPath) }
-	t.Cleanup(func() { factoryHookDBPath, factoryHookProbeRun, factoryHookActiveRuns = prevPath, prevProbe, prevList })
+	t.Cleanup(func() {
+		factoryHookNamespace, factoryHookProbeRun, factoryHookActiveRuns = prevPath, prevProbe, prevList
+	})
 	return c
 }
 

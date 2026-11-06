@@ -132,6 +132,9 @@ if [ -f "$d/sleep" ]; then
   echo $! > "$d/child.pid"
   wait
 fi
+while [ -f "$d/hold" ]; do
+  sleep 0.05
+done
 if [ -f "$d/delay" ]; then
   sleep "$(cat "$d/delay")"
 fi

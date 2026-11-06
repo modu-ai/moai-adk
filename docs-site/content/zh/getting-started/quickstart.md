@@ -380,7 +380,7 @@ graph TD
 
 ## 个人指令文件 —— `AGENTS.local.md`
 
-希望在项目中遵守的个人规则写在项目根目录的 `AGENTS.local.md` 里。它被 Git 忽略，`moai update` 不会改动它，Claude Code 和 `moai codex` 都会读取。与团队共享的契约在 `AGENTS.md`，Claude 专属设置在 `CLAUDE.md`——这三个文件就是完整的指令结构。
+希望在项目中遵守的个人规则写在项目根目录的 `AGENTS.local.md` 里。它被 Git 忽略，`moai update` 不会改动它，Claude Code 和 Codex 都会读取。与团队共享的契约在 `AGENTS.md`，Claude 专属设置在 `CLAUDE.md`——这三个文件就是完整的指令结构。
 
 如果有旧版本留下的 `CLAUDE.local.md`，迁移一次即可：
 

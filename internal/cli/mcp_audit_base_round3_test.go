@@ -7,8 +7,9 @@ package cli
 //     never as a bare name that does not resolve in the tree.
 //  2. codex must be sent the captured merge-base SHA, not a branch name it
 //     re-resolves later, so review_base names exactly what codex compared.
-//  3. An adversarial (turn/start) audit carries no target and names no base,
-//     so it must not claim a review_base.
+//  3. An adversarial (turn/start) audit carries no target OBJECT; REQ-MN-019
+//     supersedes the original "claims no review_base" pin — the resolved base
+//     rides the prompt and review_base names it.
 
 import (
 	"context"
@@ -70,7 +71,16 @@ func TestCodexAudit_SendsTheCapturedMergeBaseNotABranchName(t *testing.T) {
 	}
 }
 
-func TestCodexAudit_AdversarialBaseBranchClaimsNoReviewBase(t *testing.T) {
+// TestCodexAudit_AdversarialBaseBranchSendsNoTargetObjectAndNamesTheBase pins
+// two shapes: turn/start carries no target OBJECT (the prompt is the carrier,
+// the one shape the original t1426 pin guarded that stays true), and the
+// result's review_base is NON-empty. The second is REQ-MN-019
+// (SPEC-MCP-NEUTRALITY-001): an adversarial audit asked for baseBranch APPLIES
+// the resolved target in the prompt, so the result NAMES the base it judged
+// (TestCodexAudit_AdversarialBaseBranchAppliesTheTarget pins the prompt side).
+// The test was previously named ...ClaimsNoReviewBase, the opposite of the
+// review_base assertion (card t1632 audit N3).
+func TestCodexAudit_AdversarialBaseBranchSendsNoTargetObjectAndNamesTheBase(t *testing.T) {
 	repo, _ := newIntegrationBaseRepo(t, "develop")
 	sess := withCodexSession(t, codexSessionScript("clean change, no findings"))
 
@@ -91,9 +101,10 @@ func TestCodexAudit_AdversarialBaseBranchClaimsNoReviewBase(t *testing.T) {
 		t.Fatalf("no turn/start was sent; sent=%v", sess.sent)
 	}
 	if _, has := turnStart["target"]; has {
-		t.Errorf("turn/start must carry no target; params=%v", turnStart)
+		t.Errorf("turn/start must carry no target object; params=%v", turnStart)
 	}
-	if base := reviewOutputField(res, "review_base"); base != "" {
-		t.Errorf("review_base = %q on an adversarial audit whose turn/start names no base; want it omitted", base)
+	// REQ-MN-019: the result names the base the prompt carried.
+	if base := reviewOutputField(res, "review_base"); base == "" {
+		t.Errorf("review_base is empty on an adversarial audit whose prompt carried a resolved base; want the base named (REQ-MN-019)")
 	}
 }

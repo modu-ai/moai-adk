@@ -3,17 +3,20 @@
 // t1619_unix_coverage_test.go — card t1619 bundle A: the unix-only arms of the
 // changed-line closure in internal/userassets. The lock-guard helpers are
 // defined in lock_guard_unix.go, and the mid-write case needs the POSIX
-// file-size limit. Each test drives a real input and asserts the observed
+// file-size limit, lowered only in a helper child process. Each test drives a real input and asserts the observed
 // outcome. No production code is changed.
 package userassets
 
 import (
+	"bytes"
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"syscall"
 	"testing"
+	"time"
 )
 
 // TestClassifyPidlessMarkerFailsClosedWhenProbeCannotOpen covers the probe
@@ -62,29 +65,92 @@ func TestConfinedWriteRefusesParentPathThatIsAFile(t *testing.T) {
 	}
 }
 
-// TestConfinedWriteRemovesTempWhenWriteFails covers the mid-write failure arm.
-// The file-size limit is lowered to zero for the duration of one write, so the
-// temp file's write fails with EFBIG. The arm must remove the temp file and
-// return the write error, and the limit is restored in cleanup.
-func TestConfinedWriteRemovesTempWhenWriteFails(t *testing.T) {
-	home := t.TempDir()
+// fsizeHelperEnv names the home directory the helper process writes under. The
+// helper entry is a no-op while it is unset.
+const fsizeHelperEnv = "GO_USERASSETS_FSIZE_HELPER_HOME"
+
+// TestConfinedWriteFsizeHelperProcess is the helper-process fixture for
+// TestConfinedWriteRemovesTempWhenWriteFails. The file-size limit is per
+// process, so lowering it in the binary that runs the suite makes that binary's
+// own bookkeeping writes fail with EFBIG. The helper lowers it in a child
+// process only, performs one confined write, and restores the limit before
+// reporting.
+func TestConfinedWriteFsizeHelperProcess(t *testing.T) {
+	home := os.Getenv(fsizeHelperEnv)
+	if home == "" {
+		t.Skip("helper process for TestConfinedWriteRemovesTempWhenWriteFails")
+	}
 	root := resolvedSkillsRoot(t, home)
 	inst := &Installer{Home: home, MoaiVersion: "test"}
 
-	var saved syscall.Rlimit
-	if err := syscall.Getrlimit(syscall.RLIMIT_FSIZE, &saved); err != nil {
-		t.Fatalf("getrlimit RLIMIT_FSIZE: %v", err)
-	}
-	t.Cleanup(func() { _ = syscall.Setrlimit(syscall.RLIMIT_FSIZE, &saved) })
+	saved := getFsizeLimit(t)
 	zero := syscall.Rlimit{Cur: 0, Max: saved.Max}
 	if err := syscall.Setrlimit(syscall.RLIMIT_FSIZE, &zero); err != nil {
 		t.Fatalf("lower RLIMIT_FSIZE for one write: %v", err)
 	}
-
 	err := inst.confinedWrite(root, "sub/leaf.txt", []byte("payload\n"), true)
+	if restoreErr := syscall.Setrlimit(syscall.RLIMIT_FSIZE, &saved); restoreErr != nil {
+		t.Fatalf("restore RLIMIT_FSIZE: %v", restoreErr)
+	}
 	if !errors.Is(err, syscall.EFBIG) {
 		t.Fatalf("confinedWrite with a zero file-size limit = %v, want EFBIG", err)
 	}
+	t.Log("fsize-helper: write failed with EFBIG")
+}
+
+func getFsizeLimit(t *testing.T) syscall.Rlimit {
+	t.Helper()
+	var lim syscall.Rlimit
+	if err := syscall.Getrlimit(syscall.RLIMIT_FSIZE, &lim); err != nil {
+		t.Fatalf("getrlimit RLIMIT_FSIZE: %v", err)
+	}
+	return lim
+}
+
+// TestConfinedWriteRemovesTempWhenWriteFails covers the mid-write failure arm.
+// A child process lowers its file-size limit to zero for one write, so the temp
+// file's write fails with EFBIG. The arm must remove the temp file and return
+// the write error. The limit is never lowered in this process: the test samples
+// it while the child runs and asserts it never moved.
+func TestConfinedWriteRemovesTempWhenWriteFails(t *testing.T) {
+	home := t.TempDir()
+	root := resolvedSkillsRoot(t, home)
+	before := getFsizeLimit(t)
+
+	cmd := exec.Command(os.Args[0], "-test.run=^TestConfinedWriteFsizeHelperProcess$", "-test.v", "-test.timeout=60s")
+	cmd.Env = append(os.Environ(), fsizeHelperEnv+"="+home)
+	var out bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &out, &out
+	if err := cmd.Start(); err != nil {
+		t.Fatalf("start helper process: %v", err)
+	}
+	done := make(chan error, 1)
+	go func() { done <- cmd.Wait() }()
+
+	var waitErr error
+	var drift []syscall.Rlimit
+sample:
+	for {
+		select {
+		case waitErr = <-done:
+			break sample
+		default:
+			if cur := getFsizeLimit(t); cur != before {
+				drift = append(drift, cur)
+			}
+			time.Sleep(time.Millisecond)
+		}
+	}
+	if waitErr != nil {
+		t.Fatalf("helper process: %v\n%s", waitErr, out.String())
+	}
+	if !strings.Contains(out.String(), "fsize-helper: write failed with EFBIG") {
+		t.Fatalf("helper process did not report the EFBIG write failure:\n%s", out.String())
+	}
+	if after := getFsizeLimit(t); len(drift) != 0 || after != before {
+		t.Fatalf("this process's file-size limit moved while the helper ran: before=%v drift=%v after=%v", before, drift, after)
+	}
+
 	entries, readErr := os.ReadDir(filepath.Join(root.dir, "sub"))
 	if readErr != nil || len(entries) != 0 {
 		t.Fatalf("the failed write left entries behind: %v (%v)", entries, readErr)

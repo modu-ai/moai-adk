@@ -103,8 +103,10 @@ func TestHookEntryParity_ChainEventRegistered(t *testing.T) {
 	if got.Timeout != 5 {
 		t.Errorf("chain-event.sh timeout = %d, want 5", got.Timeout)
 	}
-	if got.Async {
-		t.Error("chain-event.sh must carry no async key (async=false); it is synchronous")
+	// SPEC-HOOK-SYNC-ASYNC-001 M5 (REQ-HSA-002): the chain-ledger append is
+	// fail-open and emits no decision output, so the entry converts to async.
+	if !got.Async {
+		t.Error("chain-event.sh must carry async=true; SPEC-HOOK-SYNC-ASYNC-001 M5 converts it to async")
 	}
 }
 

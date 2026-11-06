@@ -632,6 +632,7 @@ func TestAutoFallbackReasonMapping(t *testing.T) {
 		{jev.Oversize, "jev-oversize"},
 		{jev.SecretDetected, "jev-secret-detected"},
 		{jev.Malformed, "jev-malformed"},
+		{jev.Unattributed, "jev-unattributed"},
 	}
 	seen := map[string]jev.Availability{}
 	for _, tc := range cases {
@@ -1209,6 +1210,41 @@ func TestAutoRankJevMalformedAnswer(t *testing.T) {
 	}
 }
 
+// TestAutoRankJevNotice — card t1803 (D21 re-scope): the at-most-one notice
+// line of the one Jev call reaches the stage's notes on both branches —
+// appended to the notes of an answered order, and carried as the notes of an
+// unavailable one, so the selection record names what the call observed.
+func TestAutoRankJevNotice(t *testing.T) {
+	items := []factory.BacklogItem{rankTestItem("t1", "card one", "", false)}
+	record := rankTestRecord(items)
+
+	t.Run("answered with a change notice", func(t *testing.T) {
+		reply := func(jev.Request) jev.Result {
+			return jev.Result{Availability: jev.Available,
+				Answers: []jev.Answer{rankScoreAnswer("t1", 3, 0.5)},
+				Notice:  "jev now answers as jev-X"}
+		}
+		res := autoRank(record, items, rankLanded(nil), (&rankJevStub{reply: reply}).ask)
+		if res.Source != autoRankSourceJev {
+			t.Fatalf("source = %q, want jev", res.Source)
+		}
+		if got := strings.Join(res.Notes, "\n"); !strings.Contains(got, "jev now answers as jev-X") {
+			t.Errorf("notes %v lack the change notice", res.Notes)
+		}
+	})
+
+	t.Run("unavailable notice becomes the note", func(t *testing.T) {
+		reply := rankReplyResult(jev.Result{Availability: jev.Unreachable, Condition: "no network"})
+		res := autoRank(record, items, rankLanded(nil), (&rankJevStub{reply: reply}).ask)
+		if res.Reason != autoRankReasonUnreachable {
+			t.Fatalf("reason = %q, want %q", res.Reason, autoRankReasonUnreachable)
+		}
+		if got := strings.Join(res.Notes, "\n"); !strings.Contains(got, "jev unavailable (unreachable): no network") {
+			t.Errorf("notes %v lack the unavailability notice", res.Notes)
+		}
+	})
+}
+
 // TestAutoRankRescueFirst — AC-TAP-008 (REQ-TAP-009, M2): dead-owner picked
 // targets stay at the head on every ranking source, and the ranking neither
 // reorders them nor sends them to Jev.
@@ -1404,7 +1440,7 @@ func TestAutoLiveJevRanker(t *testing.T) {
 		if err := jevcred.Save("NOT-A-REAL-KEY-live-ranker-0123456789"); err != nil {
 			t.Fatal(err)
 		}
-		d := &rankFakeDoer{status: 200, body: `{"answers":{"t1":{"type":"score","score":3,"confidence":0.75}}}`}
+		d := &rankFakeDoer{status: 200, body: `{"model":"jev-9.8.7","answers":{"t1":{"type":"score","score":3,"confidence":0.75}}}`}
 		rankUseDoer(t, d)
 		res := liveAutoJevRanker(req)
 		if !res.OK() || d.calls != 1 {
@@ -1412,6 +1448,19 @@ func TestAutoLiveJevRanker(t *testing.T) {
 		}
 		if len(res.Answers) != 1 || res.Answers[0].Score != 3 || res.Answers[0].Probability != 0.75 {
 			t.Errorf("answers = %+v, want one score-3 answer with confidence 0.75", res.Answers)
+		}
+	})
+
+	t.Run("gate on with a credential and no versioned model is unattributed", func(t *testing.T) {
+		t.Setenv("CLAUDE_PROJECT_DIR", jevProject(t, true))
+		if err := jevcred.Save("NOT-A-REAL-KEY-live-ranker-0123456789"); err != nil {
+			t.Fatal(err)
+		}
+		d := &rankFakeDoer{status: 200, body: `{"answers":{"t1":{"type":"score","score":3,"confidence":0.75}}}`}
+		rankUseDoer(t, d)
+		res := liveAutoJevRanker(req)
+		if res.Availability != jev.Unattributed || len(res.Answers) != 0 {
+			t.Errorf("availability=%q answers=%+v, want unattributed with no answers", res.Availability, res.Answers)
 		}
 	})
 

@@ -241,8 +241,8 @@ func TestConverge_BelowTwo_NoDivergence_FlagNilNotFalse_AC_APC_002(t *testing.T)
 		if r.DisagreementFlag != nil {
 			t.Errorf("disagreement_flag non-nil (points at %t); want nil — no comparable participant pair exists", *r.DisagreementFlag)
 		}
-		if r.OverallVerdict != overallVerdictFail {
-			t.Errorf("overall_verdict = %q, want fail (required Claude gate unmet)", r.OverallVerdict)
+		if r.OverallVerdict != VerdictInconclusive {
+			t.Errorf("overall_verdict = %q, want %q (required Claude gate unmet: could-not-run stays not-converged, REQ-MN-021)", r.OverallVerdict, VerdictInconclusive)
 		}
 		if r.ResidualRiskNote == "" {
 			t.Error("residual_risk_note empty; want required-gate evidence")

@@ -27,10 +27,12 @@ var reviewGateWrappers = map[string]float64{
 
 // reviewGateEntryWrappers is the delayed block's NEXT-TURN-ENTRY wrapper
 // (SPEC-GATE-BOTTLENECK-001 REQ-GBN-002), registered on UserPromptSubmit. It
-// only reads the receipt store — no RPC — so it keeps the 5s fast-hook
-// budget the event's registration ceiling allows.
+// only reads the receipt store — no RPC. The entry is pinned at 30 seconds,
+// the Claude Code command-hook default for UserPromptSubmit (card t1775; per
+// https://code.claude.com/docs/en/hooks, checked 2026-10-15). That reference
+// documents a default, not a maximum.
 var reviewGateEntryWrappers = map[string]float64{
-	"handle-codex-review-entry.sh": 5,
+	"handle-codex-review-entry.sh": 30,
 }
 
 // stopHookEntry models one entry of a settings.json Stop array. The two
@@ -169,6 +171,38 @@ func TestReviewEntryRegisteredInRepoSettings(t *testing.T) {
 	}
 	assertRegisteredIn(t, ".claude/settings.json",
 		parseUserPromptSubmitHooks(t, string(raw)), reviewGateEntryWrappers, "UserPromptSubmit")
+}
+
+// TestUserPromptSubmitTimeoutParity pins the two UserPromptSubmit command entries
+// card t1775 moved to 30s (handle-user-prompt-submit.sh and the codex-review
+// entry): this repo's .claude/settings.json and the rendered template must carry
+// the same timeout for each, so a local edit cannot drift from the deployed surface.
+func TestUserPromptSubmitTimeoutParity(t *testing.T) {
+	path := filepath.Join(repoRootFromTemplatePkg(t), ".claude", "settings.json")
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read %s: %v", path, err)
+	}
+	local := timeoutsByScriptName(parseUserPromptSubmitHooks(t, string(raw)))
+	rendered := timeoutsByScriptName(parseUserPromptSubmitHooks(t,
+		renderTemplate(t, ".claude/settings.json.tmpl", testContext("darwin"))))
+	for _, script := range []string{"handle-user-prompt-submit.sh", "handle-codex-review-entry.sh"} {
+		if _, ok := rendered[script]; !ok {
+			t.Fatalf("%s missing from the rendered UserPromptSubmit array", script)
+		}
+		if local[script] != rendered[script] {
+			t.Errorf("%s: local timeout %v, rendered template timeout %v", script, local[script], rendered[script])
+		}
+	}
+}
+
+// timeoutsByScriptName maps each entry's hook script basename to its timeout.
+func timeoutsByScriptName(entries []stopHookEntry) map[string]float64 {
+	out := make(map[string]float64, len(entries))
+	for _, e := range entries {
+		out[e.script()] = e.Timeout
+	}
+	return out
 }
 
 // TestReviewGateWrappersSelfGateBeforeBinaryResolution pins the cost

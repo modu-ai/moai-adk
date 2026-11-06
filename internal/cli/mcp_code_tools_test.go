@@ -21,6 +21,11 @@ func mcpCodeFixture(t *testing.T) string {
 	if err := os.MkdirAll(filepath.Join(root, "internal", "svc"), 0o755); err != nil {
 		t.Fatal(err)
 	}
+	// The REQ-MN-005 confinement accepts a validated project_root only as a
+	// registered worktree of the server's own repository, so an in-process
+	// fixture must BE that repository and the server root for the test.
+	initGitRepo(t, root)
+	t.Setenv("CLAUDE_PROJECT_DIR", root)
 	src := `package svc
 
 import "fmt"
@@ -87,8 +92,15 @@ func TestGraphFileAPI_RejectsSymlinkEscape(t *testing.T) {
 // rejected, not silently replaced by the default tree.
 func TestGraphTools_HonorProjectRoot(t *testing.T) {
 	treeA := mcpCodeFixture(t)
-	treeB := mcpCodeFixture(t)
-	// treeB gains a caller of Finish the doc layer cannot know.
+	// treeB is a REGISTERED WORKTREE of treeA's repository (REQ-MN-005
+	// confines a validated project_root to the server's own repository — two
+	// independent repositories cannot both pass). It gains a caller of Finish
+	// the doc layer cannot know, as uncommitted worktree content.
+	treeB := filepath.Join(filepath.Dir(treeA), filepath.Base(treeA)+"-b")
+	fcGit(t, treeA, "worktree", "add", "-q", treeB, "-b", "WT-graph-b")
+	if err := os.MkdirAll(filepath.Join(treeB, "internal", "svc"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.WriteFile(filepath.Join(treeB, "internal", "svc", "extra.go"),
 		[]byte("package svc\n\nfunc Extra() {\n\tFinish()\n}\n"), 0o644); err != nil {
 		t.Fatal(err)
@@ -100,6 +112,9 @@ func TestGraphTools_HonorProjectRoot(t *testing.T) {
 	if err := graph.WriteJSONL(filepath.Join(treeB, ".moai", "project", "graph", "edges.jsonl"), edgesB); err != nil {
 		t.Fatal(err)
 	}
+	// The server root stays treeA (the second fixture would have re-stamped
+	// it): both trees pass confinement as trees of one repository.
+	t.Setenv("CLAUDE_PROJECT_DIR", treeA)
 
 	// Trace in tree A: Finish's callers exclude Extra.
 	reqA := mcp.CallToolRequest{}

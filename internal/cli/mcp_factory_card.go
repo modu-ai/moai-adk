@@ -29,13 +29,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
@@ -45,8 +45,9 @@ func registerFactoryCardMCPTools(add func(name string, tool mcp.Tool, handler se
 	add("factory_next", mcp.NewTool(
 		"factory_next",
 		mcp.WithDescription("Lease the lane's next card through the factory record — the MCP form of `moai factory next` (no --wait). Lane session only; runs from the parent checkout named by project_root. Same implementation, same record changes, same refusals. With card it leases exactly that card or returns the refusal line `factory next: refused <token>: <detail>` as an error result."),
-		mcp.WithString("run", mcp.Description("Factory run id (default: the single active run).")),
+		mcp.WithString("run", mcp.Description("Factory run id (default: the single active run). A run that is not the active run refuses stale-run.")),
 		mcp.WithString("card", mcp.Description("Optional: the card id to lease (the session's own judged pick). Leased through the same version-checked edges, or refused with a reason token; the quota hold and the Codex skip apply as to any new card. Absent: the unnominated priority-order lease.")),
+		optionalFactoryActorOption(),
 		requiredProjectRootOption(),
 		mcp.WithReadOnlyHintAnnotation(false),
 	), handleFactoryNext)
@@ -57,7 +58,8 @@ func registerFactoryCardMCPTools(add func(name string, tool mcp.Tool, handler se
 		mcp.WithString("card", mcp.Required(), mcp.Description("The card id.")),
 		mcp.WithString("state", mcp.Required(), mcp.Description("The F1 state to transition to (e.g. plan-audit).")),
 		mcp.WithString("evidence", mcp.Description("Optional evidence: `<sha>` where the edge reads a commit only, `<sha>:<repo-relative-artifact>` where it also names the artifact.")),
-		mcp.WithString("run", mcp.Description("Factory run id (default: the single active run).")),
+		mcp.WithString("run", mcp.Description("Factory run id (default: the single active run). A run that is not the active run refuses stale-run.")),
+		optionalFactoryActorOption(),
 		requiredProjectRootOption(),
 		mcp.WithReadOnlyHintAnnotation(false),
 	), handleFactoryStage)
@@ -66,7 +68,8 @@ func registerFactoryCardMCPTools(add func(name string, tool mcp.Tool, handler se
 		"factory_complete",
 		mcp.WithDescription("Take a merge-ready card through merging to merged-local by the F1 merge gate — the MCP form of `moai factory complete` (no re-measure positional; complete records the merge evidence itself). Lane session only; a Codex lane is refused. The integration window stays held — release is the lane's next step. Under github-flow the same call delivers by pull request instead: it pushes the card branch, opens a PR against the integration target and records pr-open (no local merge, no window); a later call records merged-pr once the PR is observed merged."),
 		mcp.WithString("card", mcp.Required(), mcp.Description("The card id.")),
-		mcp.WithString("run", mcp.Description("Factory run id (default: the single active run).")),
+		mcp.WithString("run", mcp.Description("Factory run id (default: the single active run). A run that is not the active run refuses stale-run.")),
+		optionalFactoryActorOption(),
 		requiredProjectRootOption(),
 		mcp.WithReadOnlyHintAnnotation(false),
 	), handleFactoryComplete)
@@ -76,7 +79,7 @@ func registerFactoryCardMCPTools(add func(name string, tool mcp.Tool, handler se
 		mcp.WithDescription("Record one operator decision — the MCP form of `moai factory decide` (one card per call). Refused for a lane session: decide records the operator's decisions. "+projectRootDesc),
 		mcp.WithString("card", mcp.Required(), mcp.Description("The card id.")),
 		mcp.WithString("gate", mcp.Description("Decision gate: kickoff or push. Empty with a lifecycle choice decides the card's pause state.")),
-		mcp.WithString("choice", mcp.Description("approve|reject (kickoff), or resume|block|unblock|abandon.")),
+		mcp.WithString("choice", mcp.Description("approve|reject (kickoff), done|push (gate push: done is the default for a merged-local card whatever the remote and needs the leader receipt; push takes the pushed route), or resume|block|unblock|abandon.")),
 		mcp.WithString("run", mcp.Description("Factory run id (default: the single active run).")),
 		projectRootOption(),
 		mcp.WithReadOnlyHintAnnotation(false),
@@ -86,10 +89,21 @@ func registerFactoryCardMCPTools(add func(name string, tool mcp.Tool, handler se
 		"factory_renew",
 		mcp.WithDescription("Extend the lane's card lease by the configured duration — the MCP form of `moai factory renew --json` (SPEC-FACTORY-LEASE-RENEW-001 REQ-FLR-002). Lane session only. Returns the same JSON outcome as the verb: result (renewed, refused-expired, refused-not-holder, or error) and expires_at. A refused renewal writes nothing and is returned as that result, not as a tool error."),
 		mcp.WithString("card", mcp.Required(), mcp.Description("The card id.")),
-		mcp.WithString("run", mcp.Description("Factory run id (default: the single active run).")),
+		mcp.WithString("run", mcp.Description("Factory run id (default: the single active run). A run that is not the active run refuses stale-run.")),
+		optionalFactoryActorOption(),
 		requiredProjectRootOption(),
 		mcp.WithReadOnlyHintAnnotation(false),
 	), handleFactoryRenew)
+}
+
+// optionalFactoryActorOption declares the actor argument (SPEC-MCP-NEUTRALITY-001
+// REQ-MN-003): the lane label the call acts as, with the spawn environment's
+// factory-worker key (internal/config/envkeys.go EnvMoaiFactoryWorker) as the
+// default only. An explicit actor lets a caller name its lane when the
+// environment does not carry it.
+func optionalFactoryActorOption() mcp.ToolOption {
+	return mcp.WithString("actor", mcp.Description(
+		"Optional: the lane label this call acts as. Default: the spawn environment's "+config.EnvMoaiFactoryWorker+". An empty value with no environment label refuses as unknown attribution."))
 }
 
 // requiredProjectRootOption declares project_root on a tool where the
@@ -114,24 +128,37 @@ func requiredProjectRootOption() mcp.ToolOption {
 func mcpRequiredProjectRoot(req mcp.CallToolRequest, tool string) (string, error) {
 	raw := strings.TrimSpace(req.GetString(projectRootArg, ""))
 	if raw == "" {
-		return "", fmt.Errorf("%s: project_root is required — pass the tree to act on (your git rev-parse --show-toplevel)", tool)
+		// The handler's toolErr adds the "tool: " prefix — the error stays
+		// unprefixed so the wire text reads "factory_stage: project_root is
+		// required — ..." (one prefix, not two; the t1632 absorb merge).
+		return "", errors.New("project_root is required — pass the tree to act on (your git rev-parse --show-toplevel)")
 	}
 	return validateProjectRoot(raw)
 }
 
 // handleFactoryNext is the MCP form of `moai factory next` (no --wait): one
-// selection+lease for the lane, then the REQ-SD-011 worktree step.
+// selection+lease for the lane, then the REQ-SD-011 worktree step. The policy
+// gates refuse as structured results (SPEC-MCP-NEUTRALITY-001 REQ-MN-001):
+// serial-slot / owned / raced carry their closed-set codes, the identity and
+// parent-checkout classes carry refused:true, and none rides the error
+// channel. The actor argument (REQ-MN-003) names whose label acts; the spawn
+// environment is the default only. An explicit run that is not the active
+// run refuses stale-run before any row is read.
 func handleFactoryNext(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	launch, err := mcpRequiredProjectRoot(req, "factory_next")
 	if err != nil {
 		return toolErr("factory_next", err), nil
 	}
 	if !factoryLaneAdmission() {
-		return toolErr("factory_next", factoryNotALaneError("next")), nil
+		return toolRefusal(mcpIdentityRefusal(factoryNotALaneError("next").Error())), nil
 	}
-	lane := strings.TrimSpace(os.Getenv(config.EnvMoaiFactoryWorker))
-	if lane == "" {
-		return toolErr("factory_next", fmt.Errorf("factory next: %s is empty — a lane session carries its lane label there", config.EnvMoaiFactoryWorker)), nil
+	// The same lane-label resolution the verb runs (factoryLaneLabel, the t1914
+	// parity contract, card t1632 main-absorb r9): the actor argument wins, the
+	// environment is the default, and BOTH the empty case and a legacy spelling
+	// refuse on the error channel with the verb's exact wording.
+	lane, err := factoryLaneLabel("next", mcpFactoryActor(req))
+	if err != nil {
+		return toolErr("factory_next", err), nil
 	}
 	// The parent-checkout assertion names the caller's own tree, so it stays on the raw
 	// project_root: a linked worktree is refused here, as the verb refuses it. A check run
@@ -139,10 +166,14 @@ func handleFactoryNext(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallT
 	// silently disable the refusal. The record and the lease keys come from the factory root
 	// of that tree, which after the assertion is the parent checkout itself (sync-audit N2).
 	if err := factoryAssertParentCheckout(launch); err != nil {
-		return toolErr("factory_next", err), nil
+		return mcpParentCheckoutRefusal(err), nil
 	}
 	root := factoryRootOf(launch)
-	runID, err := resolveFactoryCardRun(ctx, root, req.GetString("run", ""))
+	explicitRun := req.GetString("run", "")
+	if res := mcpStaleRunCheck(ctx, root, explicitRun, "factory_next"); res != nil {
+		return res, nil
+	}
+	runID, err := resolveFactoryCardRun(ctx, root, explicitRun)
 	if err != nil {
 		return toolErr("factory_next", fmt.Errorf("factory next: %w", err)), nil
 	}
@@ -154,11 +185,18 @@ func handleFactoryNext(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallT
 	}
 	// The same quota gate as the CLI verb, through the same shared evaluation.
 	held, holdLine := (&factoryQuotaLatch{}).evaluate(root)
+	// The open-PR query runs before the lease, as in the CLI verb, so the output
+	// below issues no query after the queue lock is released (AC-FAL-015 (vii)).
+	openPRs := factoryNextPRSnapshot(ctx, root, runID, lane, nominee, held)
 	var card homestate.Card
 	leased := false
+	// The gate's refusals of the last pass (SPEC-CARD-ELIGIBLE-PULL-001
+	// REQ-CEP-005): rendered through the same shared text the CLI verb prints.
+	var gateRefusals []factoryEligibleRefusal
 	if nominee != "" {
 		// The nominated lease: the same implementation the CLI verb calls, the
-		// same refusal line (design.md §3 — one implementation per verb).
+		// same refusal line (design.md §3 — one implementation per verb); the
+		// closed-set refusal tokens surface as structured results.
 		quotaHold := ""
 		if held {
 			quotaHold = holdLine
@@ -169,12 +207,15 @@ func handleFactoryNext(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallT
 		case err == nil:
 			leased = true
 		case errors.As(err, &refusal):
+			if payload, ok := mcpNominateRefusalPayload(refusal); ok {
+				return toolRefusal(payload), nil
+			}
 			return toolErr("factory_next", refusal), nil
 		default:
 			return toolErr("factory_next", fmt.Errorf("factory next: %w", err)), nil
 		}
 	} else {
-		card, leased, err = factoryNextLeaseOnceGated(ctx, root, runID, lane, held)
+		card, leased, gateRefusals, err = factoryNextLeaseOnceEligibility(ctx, root, runID, lane, held)
 		if err != nil {
 			return toolErr("factory_next", fmt.Errorf("factory next: %w", err)), nil
 		}
@@ -184,7 +225,7 @@ func handleFactoryNext(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallT
 			// A hold is the whole, non-error result text — never the empty-queue text.
 			return mcp.NewToolResultText(holdLine), nil
 		}
-		return mcp.NewToolResultText("no card is available"), nil
+		return mcp.NewToolResultText(factoryNextNoCardText(gateRefusals)), nil
 	}
 	wt, _, err := factoryEnsureCardWorktree(ctx, root, runID, card, lane, io.Discard)
 	if err != nil {
@@ -194,20 +235,23 @@ func handleFactoryNext(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallT
 	}
 	card.WorktreePath = wt
 	out, errOut := &bytes.Buffer{}, &bytes.Buffer{}
-	if err := factoryNextWriteOutput(out, errOut, root, card); err != nil {
+	if err := factoryNextWriteOutput(out, errOut, root, card, openPRs); err != nil {
 		return toolErr("factory_next", err), nil
 	}
 	return mcp.NewToolResultText(strings.TrimRight(out.String(), "\n")), nil
 }
 
-// handleFactoryStage is the MCP form of `moai factory stage`.
+// handleFactoryStage is the MCP form of `moai factory stage`. The actor
+// argument (REQ-MN-003) names whose label applies the edge; a stale run
+// refuses before any row is read, and the F1 holder refusal surfaces as the
+// owned policy code (SPEC-MCP-NEUTRALITY-001 REQ-MN-001/003).
 func handleFactoryStage(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	launch, err := mcpRequiredProjectRoot(req, "factory_stage")
 	if err != nil {
 		return toolErr("factory_stage", err), nil
 	}
 	if !factoryLaneAdmission() {
-		return toolErr("factory_stage", factoryNotALaneError("stage")), nil
+		return toolRefusal(mcpIdentityRefusal(factoryNotALaneError("stage").Error())), nil
 	}
 	cardID := strings.TrimSpace(req.GetString("card", ""))
 	state := strings.TrimSpace(req.GetString("state", ""))
@@ -216,50 +260,100 @@ func handleFactoryStage(ctx context.Context, req mcp.CallToolRequest) (*mcp.Call
 	}
 	// The factory root of the caller's tree, as the verb resolves its own (factoryCardRoot), so a
 	// linked worktree's lease keys come from the primary checkout on both surfaces (sync-audit N2).
-	card, err := factoryStageCard(ctx, factoryRootOf(launch), cardID, state, req.GetString("evidence", ""), req.GetString("run", ""), strings.TrimSpace(os.Getenv(config.EnvMoaiFactoryWorker)))
+	root := factoryRootOf(launch)
+	explicitRun := req.GetString("run", "")
+	if res := mcpStaleRunCheck(ctx, root, explicitRun, "factory_stage"); res != nil {
+		return res, nil
+	}
+	// The same lane-label resolution the verb runs (factoryLaneLabel, the t1914
+	// parity contract, card t1632 main-absorb r9) — the error channel carries
+	// the verb's exact wording for both the empty case and a legacy spelling.
+	lane, err := factoryLaneLabel("stage", mcpFactoryActor(req))
 	if err != nil {
+		return toolErr("factory_stage", err), nil
+	}
+	card, err := factoryStageCard(ctx, root, cardID, state, req.GetString("evidence", ""), explicitRun, lane)
+	if err != nil {
+		if res, ok := mcpLeaseHolderRefusal(err); ok {
+			return res, nil
+		}
 		return toolErr("factory_stage", err), nil
 	}
 	return mcp.NewToolResultText(fmt.Sprintf("%s %s v%d lease renewed", card.CardID, card.State, card.Version)), nil
 }
 
-// handleFactoryComplete is the MCP form of `moai factory complete`.
+// handleFactoryComplete is the MCP form of `moai factory complete`. The actor
+// argument (REQ-MN-003) names the completing lane; a stale run refuses before
+// any row is read (REQ-MN-003).
 func handleFactoryComplete(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	launch, err := mcpRequiredProjectRoot(req, "factory_complete")
 	if err != nil {
 		return toolErr("factory_complete", err), nil
 	}
 	if !factoryLaneAdmission() {
-		return toolErr("factory_complete", factoryNotALaneError("complete")), nil
+		return toolRefusal(mcpIdentityRefusal(factoryNotALaneError("complete").Error())), nil
 	}
-	lane := strings.TrimSpace(os.Getenv(config.EnvMoaiFactoryWorker))
-	if lane == "" {
-		return toolErr("factory_complete", fmt.Errorf("factory complete: %s is empty — a lane session carries its lane label there", config.EnvMoaiFactoryWorker)), nil
+	// The same lane-label resolution the verb runs (factoryLaneLabel, the t1914
+	// parity contract, card t1632 main-absorb r9) — the error channel carries
+	// the verb's exact wording for both the empty case and a legacy spelling.
+	lane, err := factoryLaneLabel("complete", mcpFactoryActor(req))
+	if err != nil {
+		return toolErr("factory_complete", err), nil
 	}
 	cardID := strings.TrimSpace(req.GetString("card", ""))
 	if cardID == "" {
 		return toolErr("factory_complete", errors.New("factory complete: card is required")), nil
 	}
+	root := factoryRootOf(launch)
+	explicitRun := req.GetString("run", "")
+	if res := mcpStaleRunCheck(ctx, root, explicitRun, "factory_complete"); res != nil {
+		return res, nil
+	}
 	out := &bytes.Buffer{}
-	// The record and the git-flow config come from the factory root of the caller's tree (sync-audit N2).
-	// The integration window stays at the caller's own tree, as before: the verb's window root is
-	// integrationLockRoot(), a separate rule that this repair does not change.
-	if err := factoryCompleteCard(ctx, out, factoryRootOf(launch), launch, cardID, "", req.GetString("run", ""), lane); err != nil {
+	// The record and the git-flow config live at the factory root of the caller's tree, the parent checkout
+	// (sync-audit N2, card t1680 (b)). The integration window and the re-measure record live at the
+	// repository common root (factory.IntegrationCommonRoot, card t1680 (b) F1): both surfaces resolve the
+	// lock root to the repository common root, so a CLAUDE_PROJECT_DIR naming a linked worktree no longer
+	// splits them. The handler cannot call integrationLockRoot() itself — it reads the process environment and
+	// working directory, which this long-lived server cannot use for a caller's tree.
+	if err := factoryCompleteCard(ctx, out, root, factory.IntegrationCommonRoot(launch), cardID, "", explicitRun, lane); err != nil {
+		if res, ok := mcpLeaseHolderRefusal(err); ok {
+			return res, nil
+		}
 		return toolErr("factory_complete", err), nil
 	}
 	return mcp.NewToolResultText(strings.TrimRight(out.String(), "\n")), nil
 }
 
 // handleFactoryDecide is the MCP form of `moai factory decide` (one card per
-// call). The REQ-SD-016 lane refusal — a lane by marker, label, or Codex
-// backend — is the same refusal the CLI guard returns.
+// call). The REQ-MN-003 operator gate is the ONE predicate the CLI verb runs
+// (factoryDecideGate, M2 Part A absorb), in this order: a positive operator
+// mark admits first; a lane session is refused on the ERROR channel with the
+// CLI-identical boundary text (factoryDecideLaneRefusal); an unmarked session
+// gets the structured unknown-attribution refusal (SPEC-MCP-NEUTRALITY-001
+// REQ-MN-001) carrying the CLI-identical text.
 func handleFactoryDecide(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	root, err := resolveToolProjectRoot(req)
+	launch, err := resolveToolProjectRoot(req)
 	if err != nil {
 		return toolErr("factory_decide", err), nil
 	}
-	if factoryLaneRefusal() {
-		return toolErr("factory_decide", factoryDecideLaneRefusal()), nil
+	// The factory root of the caller's tree, as the verb resolves its own (factoryCardRoot): the record,
+	// the git-flow config and the queue are read at the parent checkout on both surfaces (card t1680 (a)).
+	root := factoryRootOf(launch)
+	// The REQ-MN-003 operator gate is the ONE predicate both surfaces run
+	// (factoryDecideGate, M2 Part A absorb), in the SAME order: a positive
+	// operator mark admits FIRST (card t1632 card-review P2-A: an operator-marked
+	// session on the Codex backend trips factoryLaneRefusal() on the backend
+	// value alone, and the CLI verb admits it), then a lane session keeps the
+	// CLI-identical boundary refusal (factoryDecideLaneRefusal) on the ERROR
+	// channel (card t1632 main-absorb r9, the t1914 parity contract), and an
+	// unmarked session's unknown-attribution refusal stays a structured result
+	// (REQ-MN-001).
+	if !mcpOperatorAuthority() {
+		if factoryLaneRefusal() {
+			return toolErr("factory_decide", factoryDecideLaneRefusal()), nil
+		}
+		return toolRefusal(mcpIdentityRefusal(factoryUnknownAttributionError("factory decide").Error())), nil
 	}
 	cardID := strings.TrimSpace(req.GetString("card", ""))
 	if cardID == "" {
@@ -269,10 +363,10 @@ func handleFactoryDecide(ctx context.Context, req mcp.CallToolRequest) (*mcp.Cal
 	choice := req.GetString("choice", "")
 	switch {
 	case gate == "kickoff" && (choice == "approve" || choice == "reject"):
-	case gate == "push" && choice == "":
+	case gate == "push" && (choice == "" || choice == "done" || choice == "push"):
 	case gate == "" && (choice == "resume" || choice == "block" || choice == "unblock" || choice == "abandon"):
 	default:
-		return toolErr("factory_decide", errors.New("factory decide: want --gate kickoff --choice approve|reject, --gate push, or --choice resume|block|unblock|abandon")), nil
+		return toolErr("factory_decide", errors.New("factory decide: want --gate kickoff --choice approve|reject, --gate push [--choice done|push], or --choice resume|block|unblock|abandon")), nil
 	}
 	out := &bytes.Buffer{}
 	if err := factoryDecideCards(ctx, root, out, []string{cardID}, gate, choice, req.GetString("run", "")); err != nil {
@@ -285,18 +379,21 @@ func handleFactoryDecide(ctx context.Context, req mcp.CallToolRequest) (*mcp.Cal
 // factoryRenewCard the verb calls (SPEC-FACTORY-LEASE-RENEW-001 REQ-FLR-002). Every
 // renewal outcome is returned as its JSON text, so that a refusal is data the watchdog
 // reads and not a tool error. The outcome carries the same detail the verb's error
-// carries. Only the lane gates and the card argument are tool errors.
+// carries. Only the lane gates, the actor validation, the stale-run check, and the
+// card argument are tool errors or structured refusals.
 func handleFactoryRenew(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	launch, err := mcpRequiredProjectRoot(req, "factory_renew")
 	if err != nil {
 		return toolErr("factory_renew", err), nil
 	}
 	if !factoryLaneAdmission() {
-		return toolErr("factory_renew", factoryNotALaneError("renew")), nil
+		return toolRefusal(mcpIdentityRefusal(factoryNotALaneError("renew").Error())), nil
 	}
-	// The same lane-label check the verb runs (factoryLaneLabelFromEnv): a legacy spelling
-	// such as worker-1 is refused before any work, on both surfaces (sync-audit F1).
-	lane, err := factoryLaneLabelFromEnv("renew")
+	// The same lane-label resolution the verb runs (factoryLaneLabel, the t1914
+	// parity contract, card t1632 main-absorb r9): the actor argument wins, the
+	// environment is the default, and the error channel carries the verb's
+	// exact wording for both the empty case and a legacy spelling (AC-SD-021).
+	lane, err := factoryLaneLabel("renew", mcpFactoryActor(req))
 	if err != nil {
 		return toolErr("factory_renew", err), nil
 	}
@@ -308,7 +405,11 @@ func handleFactoryRenew(ctx context.Context, req mcp.CallToolRequest) (*mcp.Call
 	// launch directory (factoryRootOf). A linked-worktree caller then reads the same lease keys
 	// as the verb (sync-audit F2).
 	root := factoryRootOf(launch)
-	outcome, _ := factoryRenewCard(ctx, root, cardID, req.GetString("run", ""), lane)
+	explicitRun := req.GetString("run", "")
+	if res := mcpStaleRunCheck(ctx, root, explicitRun, "factory_renew"); res != nil {
+		return res, nil
+	}
+	outcome, _ := factoryRenewCard(ctx, root, cardID, explicitRun, lane)
 	body, err := json.Marshal(outcome)
 	if err != nil {
 		return toolErr("factory_renew", err), nil

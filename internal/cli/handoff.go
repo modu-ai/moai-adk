@@ -38,7 +38,8 @@ func newHandoffCmd() *cobra.Command {
 		GroupID: "tools",
 		Long: "Save, clear, or show the reverse auto-resume handoff pending record\n" +
 			"(~/.moai/db/<project-key>/factory/factory.db). When handoff.mode=auto, the next\n" +
-			"SessionStart on /clear injects the saved record as session context.",
+			"SessionStart on /clear injects the saved record as session context.\n" +
+			"Run `moai paths` for the confirmed database path; never guess it.",
 	}
 
 	var projectDir string
@@ -66,6 +67,9 @@ func newHandoffSaveCmd(projectDir *string) *cobra.Command {
 	saveCmd := &cobra.Command{
 		Use:   "save",
 		Short: "Save a paste-ready resume body as the pending handoff record",
+		Long: "Save a paste-ready resume body as the pending handoff record.\n\n" +
+			"The record lives in the project factory database; `moai paths` prints its\n" +
+			"confirmed path. Never guess a database path.",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			b := body
 			if useStdin {

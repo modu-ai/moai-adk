@@ -179,8 +179,17 @@ func TestCodexAuditMCPTool(t *testing.T) {
 	// result observe it; the verdict lands with exactly the returned text.
 	msg := "## 판정\n\nPASS\n"
 	fake.setExec(msg, 0)
-	fake.write(t, "delay", "1")
-	start := time.Now()
+	// The fake audit holds on a gate file until the test removes it, so "start
+	// returned before the audit ended" is a state (the job is still running while
+	// the gate is closed), not a wall-clock bound that load can overshoot (t1807).
+	// The loop also ends if the fake's directory disappears at cleanup.
+	fake.write(t, "hold", "")
+	// Hang guard, not a measured bound: a start that blocked on the audit would
+	// otherwise wait on the gate forever; opening it later surfaces the failure
+	// as a non-running state.
+	hold := filepath.Join(fake.dir, "hold")
+	guard := time.AfterFunc(20*time.Second, func() { _ = os.Remove(hold) })
+	defer guard.Stop()
 	res, m := callRoleAuditTool(t, c, codexRoleAuditToolName, map[string]any{
 		"role": "sync-auditor", "worktree_root": repo.a1, "task": "audit it", "out": legalOut,
 	})
@@ -191,12 +200,12 @@ func TestCodexAuditMCPTool(t *testing.T) {
 	if jobID == "" || m["state"] != "running" {
 		t.Fatalf("start result = %v, want a job id in state running", m)
 	}
-	if time.Since(start) > 900*time.Millisecond {
-		t.Errorf("start blocked for %s — it must return before the audit ends", time.Since(start))
-	}
 	_, running := callRoleAuditTool(t, c, codexRoleAuditResultToolName, map[string]any{"job_id": jobID})
 	if running["state"] != "running" {
 		t.Errorf("result during the run = %v, want state running without blocking", running)
+	}
+	if err := os.Remove(hold); err != nil {
+		t.Fatal(err)
 	}
 	deadline := time.Now().Add(20 * time.Second)
 	var st map[string]any
@@ -263,8 +272,7 @@ func TestCodexAuditMCPTool(t *testing.T) {
 		})
 	}
 
-	// The accepted jobs run in the background (the fake codex still sleeps on
-	// the delay file from step 4) and write into the fake-codex and repository
+	// The accepted jobs run in the background and write into the fake-codex and repository
 	// temp dirs. Wait for each to leave the running state before returning, or
 	// t.TempDir cleanup races a live writer ("directory not empty").
 	for _, id := range acceptJobs {

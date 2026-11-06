@@ -171,15 +171,21 @@ type Absence struct {
 
 // Report is the measurement artifact.
 type Report struct {
-	Consumer  string
-	ModelID   string
-	Shape     jev.AnswerKind
-	Source    Source
-	Baseline  Baseline
-	Arms      []ArmResult
-	Delta     float64
-	Threshold *Threshold
-	Absence   *Absence
+	Consumer string
+	// ModelID is the interpreted model id the answered calls reported: the
+	// version that answered (REQ-JRM-006). It is empty when no answered call
+	// named one, and Validate then refuses the artifact (REQ-JRM-007).
+	ModelID string
+	// RequestModel is the request alias every call sent. It sits beside ModelID
+	// and is never an attribution (REQ-JRM-007).
+	RequestModel string
+	Shape        jev.AnswerKind
+	Source       Source
+	Baseline     Baseline
+	Arms         []ArmResult
+	Delta        float64
+	Threshold    *Threshold
+	Absence      *Absence
 }
 
 // BestArm returns the arm with the highest accuracy. Ties resolve to the
@@ -219,7 +225,12 @@ func (r Report) Verdict() (Verdict, string) {
 // Validate checks the artifact's internal obligations.
 func (r Report) Validate() error {
 	if r.ModelID == "" {
-		return fmt.Errorf("jevmeasure: report cites no model id (REQ-JEVO-014)")
+		return fmt.Errorf("jevmeasure: report cites no interpreted model id; no answered call named one (REQ-JEVO-014 as amended; REQ-JRM-007)")
+	}
+	if !jev.ValidInterpretedModel(r.ModelID) {
+		return fmt.Errorf(
+			"jevmeasure: report cites %q, which is not an interpreted model id (REQ-JEVO-014 as amended; REQ-JRM-007); the request alias is never an attribution",
+			r.ModelID)
 	}
 	if r.Absence != nil {
 		if strings.TrimSpace(r.Absence.Control.Description) == "" {
@@ -241,13 +252,15 @@ func (r Report) Validate() error {
 	return nil
 }
 
-// Render produces the human-readable artifact. It always names the pinned
-// model id and always prints the baseline beside the accuracy: raw accuracy
-// without its base rate is unreadable, and has already misled once.
+// Render produces the human-readable artifact. It names the interpreted model on
+// its model line and the request alias on its own request-model line, and it
+// always prints the baseline beside the accuracy: raw accuracy without its base
+// rate is unreadable, and has already misled once.
 func (r Report) Render() string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "consumer: %s\n", r.Consumer)
-	fmt.Fprintf(&b, "model: %s (pinned)\n", r.ModelID)
+	fmt.Fprintf(&b, "model: %s (interpreted by the endpoint)\n", r.ModelID)
+	fmt.Fprintf(&b, "request model: %s (alias sent)\n", r.RequestModel)
 	fmt.Fprintf(&b, "shape: %s\n", r.Shape)
 	fmt.Fprintf(&b, "source: %s\n", r.Source)
 	fmt.Fprintf(&b, "constant-answer baseline: always %q = %.3f (%d/%d)\n",
@@ -274,7 +287,8 @@ func (r Report) Render() string {
 	return b.String()
 }
 
-// Run measures a set against an answerer, in both arms.
+// Run measures a set against an answerer, in both arms, and cites the one
+// interpreted model the answered calls report (REQ-JRM-006).
 //
 // The caller's Source is inferred rather than declared: only a *jev.Client is
 // treated as live. A declared-by-the-caller source would be the one field a
@@ -302,12 +316,15 @@ func Run(ctx context.Context, answerer Answerer, set Set, build BuildFunc) (Repo
 	}
 
 	rep := Report{
-		Consumer: set.Consumer,
-		ModelID:  jev.ModelID,
-		Shape:    set.Shape,
-		Source:   sourceOf(answerer),
-		Baseline: baseline,
+		Consumer:     set.Consumer,
+		RequestModel: jev.ModelID,
+		Shape:        set.Shape,
+		Source:       sourceOf(answerer),
+		Baseline:     baseline,
 	}
+	// The interpreted model is collected from the answered calls of both arms
+	// (REQ-JRM-006). No attribution field is ever set from the request alias.
+	models := map[string]bool{}
 
 	for _, arm := range Arms() {
 		res := ArmResult{Arm: arm, N: len(set.Samples)}
@@ -318,6 +335,11 @@ func Run(ctx context.Context, answerer Answerer, set Set, build BuildFunc) (Repo
 				return Report{}, fmt.Errorf("jevmeasure: build request for sample %q arm %s: %w", s.ID, arm, err)
 			}
 			result := answerer.Ask(ctx, req)
+			// REQ-JRM-006: an OK response that reports a valid interpreted model
+			// counts toward the straddle even when it carries no answers.
+			if result.OK() && len(result.Answers) == 0 && jev.ValidInterpretedModel(result.Usage.Model) {
+				models[result.Usage.Model] = true
+			}
 			if !result.OK() || len(result.Answers) == 0 {
 				res.Unavailable++
 				cond := result.NoticeLine()
@@ -328,6 +350,7 @@ func Run(ctx context.Context, answerer Answerer, set Set, build BuildFunc) (Repo
 				continue
 			}
 			res.Answered++
+			models[result.Usage.Model] = true
 			answer := result.Answers[0]
 			res.Probabilities = append(res.Probabilities, answer.Probability)
 			if labelOf(answer, set.Labels) == s.Label {
@@ -343,8 +366,34 @@ func Run(ctx context.Context, answerer Answerer, set Set, build BuildFunc) (Repo
 		rep.Arms = append(rep.Arms, res)
 	}
 
+	// One interpreted model per measurement (REQ-JRM-006). Two versions in one run
+	// would be one number over two systems, so the run returns no artifact. Zero
+	// versions leaves ModelID empty, and Validate refuses the artifact (REQ-JRM-007).
+	if len(models) > 1 {
+		return Report{}, straddleError(models)
+	}
+	for id := range models {
+		rep.ModelID = id
+	}
+
 	rep.Delta = rep.Arms[1].Accuracy - rep.Arms[0].Accuracy
 	return rep, nil
+}
+
+// straddleError names the interpreted model ids a straddled run reported, in
+// sorted order, so the refusal states which versions it could not reconcile.
+func straddleError(models map[string]bool) error {
+	ids := make([]string, 0, len(models))
+	for id := range models {
+		if id == "" {
+			id = "(no interpreted model)"
+		}
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	return fmt.Errorf(
+		"jevmeasure: the answered calls of this run report more than one interpreted model (%s); a measurement that straddles model versions is refused — re-run it under one id (REQ-JRM-006)",
+		strings.Join(ids, ", "))
 }
 
 // sourceOf reports whether the answerer is the live client.

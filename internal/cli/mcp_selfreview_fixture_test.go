@@ -178,8 +178,20 @@ func newSelfReviewNonGitTree(t *testing.T) string {
 // selfReviewCall invokes one self-review tool through an in-process client and
 // returns the raw result plus its structured content as a generic map. A
 // transport-level error (for example "tool not found") fails the test.
+//
+// REQ-MN-005 confinement: the fixture trees live in their own repositories, so
+// the server-root seam is stubbed to the call's own project_root — the
+// confinement then verifies the tree as a registered worktree of that same
+// repository, the exact shape the production path takes for a tree the server
+// actually serves. A call without a project_root keeps the production
+// resolver.
 func selfReviewCall(t *testing.T, tool string, args map[string]any) (*mcp.CallToolResult, map[string]any) {
 	t.Helper()
+	if pr, ok := args["project_root"].(string); ok && pr != "" {
+		prev := projectDirResolver
+		projectDirResolver = func() string { return pr }
+		t.Cleanup(func() { projectDirResolver = prev })
+	}
 	srv := newMoaiMCPServer()
 	c, err := client.NewInProcessClient(srv)
 	if err != nil {
@@ -224,6 +236,14 @@ func (s *noteSession) SessionID() string                                   { ret
 // counts the notifications the server sends back, and returns that count.
 func selfReviewNotifications(t *testing.T, tool string, args map[string]any) int {
 	t.Helper()
+	// REQ-MN-005 confinement (same reasoning as selfReviewCall): the fixture
+	// tree is its own repository, so the server-root seam follows the call's
+	// project_root.
+	if pr, ok := args["project_root"].(string); ok && pr != "" {
+		prev := projectDirResolver
+		projectDirResolver = func() string { return pr }
+		t.Cleanup(func() { projectDirResolver = prev })
+	}
 	srv := newMoaiMCPServer()
 	sess := &noteSession{ch: make(chan mcp.JSONRPCNotification, 256)}
 	ctx := srv.WithContext(context.Background(), sess)
@@ -409,7 +429,7 @@ func (b *selfReviewBlockingReviewer) wait(ctx context.Context) bool {
 // what a killed codex process looks like to the driver (stdout closes).
 type selfReviewBlockingCodexSession struct{ *selfReviewBlockingReviewer }
 
-func (s selfReviewBlockingCodexSession) start(ctx context.Context, _ string, _ []string) (codexConn, error) {
+func (s selfReviewBlockingCodexSession) start(ctx context.Context, _ string, _ []string, _ string) (codexConn, error) {
 	return &selfReviewBlockingCodexConn{b: s.selfReviewBlockingReviewer, ctx: ctx}, nil
 }
 

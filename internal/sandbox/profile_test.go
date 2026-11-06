@@ -88,6 +88,43 @@ func TestProfile_GenerateBwrapArgs(t *testing.T) {
 	}
 }
 
+// A later tmpfs mount would hide explicitly granted scopes under /tmp.
+func TestProfile_BwrapTmpfsPrecedesScopes(t *testing.T) {
+	t.Parallel()
+
+	args, err := GenerateBwrapArgs(SandboxOptions{
+		WritableScope: []string{"/tmp/worktree"},
+		ReadOnlyScope: []string{"/tmp/input"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	tmpfsAt := -1
+	for i := 0; i+1 < len(args); i++ {
+		if args[i] == "--tmpfs" && args[i+1] == "/tmp" {
+			tmpfsAt = i
+			break
+		}
+	}
+	if tmpfsAt < 0 {
+		t.Fatal("profile must retain the isolated /tmp tmpfs")
+	}
+	for _, scope := range []string{"/tmp/worktree", "/tmp/input"} {
+		found := false
+		for i := 0; i+2 < len(args); i++ {
+			if (args[i] == "--bind" || args[i] == "--ro-bind") && args[i+1] == scope && args[i+2] == scope {
+				found = true
+				if i < tmpfsAt {
+					t.Errorf("scope %s is hidden by the later /tmp tmpfs: %v", scope, args)
+				}
+			}
+		}
+		if !found {
+			t.Errorf("requested scope %s is not mounted", scope)
+		}
+	}
+}
+
 // TestProfile_GenerateDockerSnippet verifies Docker snippet generation.
 // RED: fails until profile.go::generateDockerSnippet is created.
 func TestProfile_GenerateDockerSnippet(t *testing.T) {

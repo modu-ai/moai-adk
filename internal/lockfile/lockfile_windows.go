@@ -3,6 +3,7 @@
 package lockfile
 
 import (
+	"errors"
 	"os"
 	"sync"
 )
@@ -39,6 +40,29 @@ func Lock(f *os.File) error {
 	mu.Lock()
 	return nil
 }
+
+// TryLock acquires the process-local mutex for the given file without
+// blocking, returning an error when another holder owns it
+// (SPEC-WORKTREE-HOME-ROOT-001 M5, design.md D-12: the state-file lock is
+// try-and-bounded-wait). Nothing else about the lockfile surface changes.
+func TryLock(f *os.File) error {
+	fileLocksMu.Lock()
+	path := f.Name()
+	mu, ok := fileLocks[path]
+	if !ok {
+		mu = &sync.Mutex{}
+		fileLocks[path] = mu
+	}
+	fileLocksMu.Unlock()
+	if mu.TryLock() {
+		return nil
+	}
+	return errLockHeld
+}
+
+// errLockHeld reports a try-acquisition refused because another holder owns
+// the lock (Windows TryLock arm).
+var errLockHeld = errors.New("lock already held")
 
 // Unlock releases the process-local mutex for the given file on Windows.
 func Unlock(f *os.File) error {

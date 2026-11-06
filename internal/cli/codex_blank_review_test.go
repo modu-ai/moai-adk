@@ -191,9 +191,9 @@ func TestCodexBlankReview_AC001_BlankBodyDoesNotSynthesizePass(t *testing.T) {
 // does NOT establish that the guard would behave correctly if reached — nothing
 // on the current production path can reach it with a blank-but-non-empty value.
 func TestCodexBlankReview_GuardKeepsSharedDiscriminator(t *testing.T) {
-	raw, err := os.ReadFile("mcp_codex.go")
+	raw, err := os.ReadFile("mcp_codex_audit.go")
 	if err != nil {
-		t.Fatalf("read mcp_codex.go: %v — an unreadable source file makes every assertion below vacuous", err)
+		t.Fatalf("read mcp_codex_audit.go: %v — an unreadable source file makes every assertion below vacuous", err)
 	}
 	src := string(raw)
 
@@ -205,7 +205,7 @@ func TestCodexBlankReview_GuardKeepsSharedDiscriminator(t *testing.T) {
 		"func codexReviewTextIsBlank(",
 	} {
 		if !strings.Contains(src, sentinel) {
-			t.Fatalf("sentinel %q absent from mcp_codex.go — this test is no longer measuring what it claims", sentinel)
+			t.Fatalf("sentinel %q absent from mcp_codex_audit.go — this test is no longer measuring what it claims", sentinel)
 		}
 	}
 
@@ -400,7 +400,7 @@ func TestCodexBlankReview_AC005_BlankAndUnavailableAreDistinguishable(t *testing
 	// The PREFIX, asserted specifically. Substring presence plus inequality is
 	// not enough: a summary reading "codex unavailable: blank review output …"
 	// satisfies both of those and still collapses state A into the
-	// unavailable-backend wording — the exact outcome mcp_codex.go's own comment
+	// unavailable-backend wording — the exact outcome mcp_codex_audit.go's own comment
 	// calls "a new silence, not a repair". A sync-audit mutant that made that
 	// rewrite passed the whole suite, which is why this pair exists.
 	const unavailablePrefix = "codex unavailable: "
@@ -434,6 +434,10 @@ func TestCodexBlankReview_AC006_BlankBodyIsNeverFail(t *testing.T) {
 // workflow.audit.gates.codex=required, a blank-output inconclusive carries the
 // GateUnmet annotation, so the unmet gate is visible to a machine consumer.
 // Covers REQ-CBR-009. Exercises applyGateUnmet without modifying it.
+// REQ-MN-021 supersedes the fail conversion: a blank output is a could-not-run
+// (the backend answered nothing usable), so the verdict stays inconclusive and
+// gate_unmet names the unmet gate + the could-not-run state — blocking lives at
+// the convergence surface.
 func TestCodexBlankReview_AC007_RequiredGateAnnotatesBlankOutput(t *testing.T) {
 	root := newProbeProject(t, "SPEC-BLANKGATE-904")
 	writeCodexAuditGate(t, root, config.AuditGateRequired)
@@ -444,13 +448,15 @@ func TestCodexBlankReview_AC007_RequiredGateAnnotatesBlankOutput(t *testing.T) {
 		t.Fatalf("fail-open stays a structured result, never a tool error")
 	}
 	got := structuredMap(t, res)
-	// Superseded verdict clause: an explicitly required gate now blocks with
-	// verdict fail; the gate_unmet annotation below is kept unchanged.
-	if v, _ := got["verdict"].(string); v != "fail" {
-		t.Errorf("verdict = %q, want fail", v)
+	if v, _ := got["verdict"].(string); v != VerdictInconclusive {
+		t.Errorf("verdict = %q, want %q (could-not-run stays not-performed, REQ-MN-021)", v, VerdictInconclusive)
 	}
-	if g, _ := got["gate_unmet"].(string); g == "" {
-		t.Error("gate_unmet is empty — a required gate whose backend produced no verdict text must be recorded as unmet")
+	g, _ := got["gate_unmet"].(string)
+	if g == "" {
+		t.Fatal("gate_unmet is empty — a required gate whose backend produced no verdict text must be recorded as unmet")
+	}
+	if !strings.Contains(g, "could-not-run") {
+		t.Errorf("gate_unmet = %q, want it to carry could-not-run", g)
 	}
 }
 
@@ -539,21 +545,19 @@ func TestCodexBlankReview_AC009_BlankItemDoesNotClobberRealOne(t *testing.T) {
 
 // TestCodexBlankReview_M5_InconclusiveDoesNotBlockTheConvergenceLayer measures
 // what spec.md §E recorded as a plan-phase STATIC TRACE rather than a result: a
-// codex `inconclusive` leaves the all-pass arm, lands codex in
-// fail_open_backends, and overall_verdict follows the CLAUDE anchor — so this
-// repair does NOT close the gate hole and never claimed to. Making a required
-// codex gate actually block is #1632 axis 3, a sibling card.
-//
-// This is a measurement of pre-existing convergence behavior, not an assertion
-// that this SPEC changed it: no convergence-layer code is touched by this card.
+// codex `inconclusive` lands codex in fail_open_backends and the overall is a
+// not-converged inconclusive — SPEC-MCP-NEUTRALITY-001 REQ-MN-021/022 supersede
+// the original claude-anchor fall-through to pass (the M5 wording below is kept
+// for the history it measures): a required codex gate left without a verdict no
+// longer rides to pass, and equally never converts into a reviewed fail.
 func TestCodexBlankReview_M5_InconclusiveDoesNotBlockTheConvergenceLayer(t *testing.T) {
 	got := converge([]PerBackendVerdict{
 		{Backend: BackendClaude, Gate: config.AuditGateRequired, Verdict: "pass"},
 		{Backend: BackendCodex, Gate: config.AuditGateRequired, Verdict: VerdictInconclusive,
 			Summary: codexBlankReviewSummary},
 	})
-	if got.OverallVerdict != "pass" {
-		t.Errorf("overall_verdict = %q, want pass — a codex inconclusive falls back to the claude anchor; the blank-output repair changes what codex REPORTS, not what the convergence layer DECIDES", got.OverallVerdict)
+	if got.OverallVerdict != VerdictInconclusive {
+		t.Errorf("overall_verdict = %q, want %q — a required codex inconclusive is a could-not-run: the distinct not-converged outcome, never the old claude-anchor pass (REQ-MN-022)", got.OverallVerdict, VerdictInconclusive)
 	}
 	found := false
 	for _, b := range got.FailOpenBackends {

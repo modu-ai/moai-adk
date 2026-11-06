@@ -27,8 +27,8 @@ import (
 )
 
 func TestNoNewEnvLiteralsInDiff(t *testing.T) { // AC-SRL-009
-	base := srlDiffBase(t)
 	root := srlRepoRoot(t)
+	base := srlDiffBase(t, root)
 	out, err := exec.Command("git", "-C", root, "diff", base, "--",
 		"internal/hook", "internal/factorymsg", "internal/cli",
 		":!*envkeys.go", ":!*_test.go").Output()
@@ -69,14 +69,18 @@ func srlRepoRoot(t *testing.T) string {
 	return strings.TrimSpace(string(out))
 }
 
-// srlDiffBase resolves the card's diff base as the merge-base with the
-// integration branch. With no resolvable base ref (a shallow CI checkout)
-// it returns HEAD — the sweep is then empty and the log line says so, which
-// the verdict records rather than reading as a silent pass.
-func srlDiffBase(t *testing.T) string {
+// srlDiffBase resolves the card's diff base as the merge-base with local
+// main (agentic-trunk), falling back to origin/main where local main is
+// absent. It MUST NOT resolve through develop/origin/develop: origin/develop
+// was deleted (2026-10-17) and local develop is a stale branch, so that
+// merge-base lands on an old fork point and every env literal landed on main
+// since then reads as added by the card (card t1856 false positive). With no
+// resolvable base ref (a shallow CI checkout) it returns HEAD — the sweep is
+// then empty and the log line says so, which the verdict records rather than
+// reading as a silent pass.
+func srlDiffBase(t *testing.T, root string) string {
 	t.Helper()
-	root := srlRepoRoot(t)
-	for _, ref := range []string{"develop", "origin/develop"} {
+	for _, ref := range []string{"main", "origin/main"} {
 		if out, err := exec.Command("git", "-C", root, "merge-base", "HEAD", ref).Output(); err == nil {
 			return strings.TrimSpace(string(out))
 		}

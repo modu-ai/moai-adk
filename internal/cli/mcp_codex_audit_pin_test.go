@@ -2,8 +2,6 @@ package cli
 
 import (
 	"context"
-	"os"
-	"path/filepath"
 	"testing"
 )
 
@@ -16,21 +14,6 @@ import (
 // auditCodexPinYAML is a workflow.yaml body carrying only the codex audit pin.
 func auditCodexPinYAML(model, effort string) string {
 	return "workflow:\n  audit:\n    codex:\n      model: " + model + "\n      effort: " + effort + "\n"
-}
-
-// writeLLMYAML writes a leftover llm.yaml agent-overrides cell for the former
-// codex audit agent key ("sync-auditor") INTO the given root (unlike writeCodexLLMFixture, which creates its
-// own temp dir — here the llm cell and the workflow pin must share one tree).
-func writeLLMYAML(t *testing.T, root, model, effort string) {
-	t.Helper()
-	sections := filepath.Join(root, ".moai", "config", "sections")
-	if err := os.MkdirAll(sections, 0o755); err != nil {
-		t.Fatalf("mkdir sections: %v", err)
-	}
-	body := "llm:\n  agent_overrides:\n    sync-auditor:\n      model: " + model + "\n      effort: " + effort + "\n"
-	if err := os.WriteFile(filepath.Join(sections, "llm.yaml"), []byte(body), 0o600); err != nil {
-		t.Fatalf("write llm.yaml: %v", err)
-	}
 }
 
 // AC-AMP-002 positive arm — a populated audit.codex pin reaches BOTH
@@ -61,41 +44,6 @@ func TestCodexAuditPin_ReachesTransmittedParams(t *testing.T) {
 	}
 }
 
-// AC-AMP-002 MF2 negative arm (REQ-AMP-008) — under the SAME populated pin, a
-// codex_task turn carries NO pinned model/effort: the task path keeps the
-// pin-free resolution. This is the regression test for the shared-seam
-// leak path codex_task.go → openCodexSessionOn → resolveCodexModelEffort.
-func TestCodexAuditPin_TaskTurnCarriesNoPin(t *testing.T) {
-	root := t.TempDir()
-	// The pin IS resolvable in this tree (workflow.yaml present) AND a leftover
-	// llm.yaml cell is present too — the task path must transmit neither: no
-	// pin (audit-entry-only) and no per-agent cell (design D5).
-	writeCodexWorkflowYAML(t, root, auditCodexPinYAML("gpt-6.1-sol", "high"))
-	writeLLMYAML(t, root, "gpt-5-codex", "medium")
-	withCodexProjectDir(t, root)
-	prev := codexLookPath
-	codexLookPath = func(string) (string, error) { return "/fake/codex", nil }
-	t.Cleanup(func() { codexLookPath = prev })
-	sess := withCodexSession(t, codexTaskScript("trn-1", "task output"))
-
-	callCodexTask(t, map[string]any{"prompt": "do the task"})
-
-	thread := sentParams(t, sess.sent, 1)
-	if got, _ := thread["model"].(string); got == "gpt-6.1-sol" {
-		t.Error("codex_task thread/start must NOT carry the audit pin — the pin is audit-entry-only (REQ-AMP-008)")
-	}
-	turn := sentParams(t, sess.sent, 2)
-	for _, field := range []string{"model", "effort"} {
-		if _, ok := turn[field]; ok {
-			t.Errorf("codex_task turn/start carries %q = %v; want it omitted (neither the pin nor a per-agent cell reaches the task path)", field, turn[field])
-		}
-	}
-}
-
-// AC-AMP-003 state (c) — an unservable pinned model (a Claude id) falls back
-// to the audit terminal fallback (SPEC-MODEL-MATRIX-UPDATE-001 REQ-MMU-001:
-// {gpt-6.1-sol, high} — previously "no model, no effort"), and a leftover
-// llm.yaml cell does not step in (design D5).
 func TestCodexAuditPin_UnservableFallsBackToBackendDefault(t *testing.T) {
 	root := writeCodexLLMFixture(t, "gpt-5-codex", "medium")
 	writeCodexWorkflowYAML(t, root, auditCodexPinYAML("opus", "high"))

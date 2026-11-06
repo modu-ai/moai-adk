@@ -341,6 +341,9 @@ func newFactoryApproveCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			if strings.TrimSpace(row.EvidenceSHA) == "" {
+				return fmt.Errorf("factory approve: card %s records no evidence hash to bind — run `moai factory rebind-evidence %s --run %s --reason <why>` first (a squash-landed card takes its landing commit from `moai todo landed --sha`)", cardID, cardID, runID)
+			}
 			if strings.TrimSpace(issuer) == "" {
 				issuer = strings.TrimSpace(os.Getenv(config.EnvMoaiFactoryWorker))
 			}
@@ -366,6 +369,16 @@ func newFactoryApproveCommand() *cobra.Command {
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(),
 				"approved %s run=%s version=%d evidence=%s issuer=%s\n",
 				approval.CardID, approval.RunID, approval.FactoryVersion, evidence, approval.Issuer)
+			// The done gate reads the receipt against the row the dispatch
+			// binding names, and a receipt is bound to one run on purpose
+			// (REQ-FCR-001). Naming another run is allowed, but the leader
+			// should learn at issuance that it will not close the card
+			// (card t1964), not when `todo done` refuses.
+			if gate, linked, gerr := db.RecordedCardRowReadonly(ctx, cardID); gerr == nil && linked && gate.RunID != runID {
+				_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
+					"note: %s's completion gate reads run %s; this receipt for run %s will not satisfy `moai todo done` — rebind and approve with --run %s\n",
+					cardID, gate.RunID, runID, gate.RunID)
+			}
 			return nil
 		},
 	}

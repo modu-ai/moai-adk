@@ -3,7 +3,7 @@
 // response decoding, and usage accounting.
 //
 // @MX:ANCHOR: [AUTO] TypeSafe System One call-path SSOT — the only client implementation
-// @MX:REASON: a second client would double the size bounds, the fail-open policy, the secret screening, and the model pin, and the four would drift independently (REQ-JEVC-002)
+// @MX:REASON: a second client would double the size bounds, the fail-open policy, the secret screening, and the request alias with its attribution, and the four would drift independently (REQ-JEVC-002)
 //
 // Three properties shape the whole package, and each is the reason a more
 // obvious design was rejected:
@@ -55,26 +55,42 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
-// ModelID is the PINNED model identifier every request carries.
+// ModelID is the request alias every request carries: the model value the
+// package sends. It names the vendor's alias, not a version, and it is never a
+// citation of the model that answered. The answering model is the interpreted
+// model id the response reports, which ValidInterpretedModel checks and which
+// every result, usage record, and answer label carries.
 //
 // It is a compiled constant rather than operator-visible configuration, per the
 // repository rule that model names, endpoint URLs, and API headers live in Go
-// constants. The pin is the load-bearing part: the vendor's moving alias
-// (`jev-latest`) would make every measurement and every cost record
-// unattributable, because the model that answered could differ between two
-// readings of the same record. REQ-JEVC-003 forbids the alias appearing in any
-// request this package constructs.
-//
-// The literal is the vendor's VERSIONED id — the family name plus three
-// dot-separated numbers. `jev-1.13` names the release family in the vendor's
-// prose but is NOT an id the endpoint accepts, and no test in this package can
-// catch that substitution on its own: every transport test answers a fake
-// server that echoes whatever id it is handed, so a malformed pin travels the
-// whole suite green and fails only in production. The shape is therefore
-// asserted mechanically by TestModelID_MatchesVendorVersionedShape.
-const ModelID = "jev-1.13.0"
+// constants. The alias is what the request asks for. The attribution comes from
+// the response, not from this constant, so a vendor move of the version behind
+// the alias shows up in the record instead of being silently re-attributed. Its
+// value is asserted by TestRequestModel_IsTheAliasNotAVersion.
+const ModelID = "jev-latest"
+
+// VerifiedInterpretedModel is the interpreted model id the measurement
+// regression set was last run against. Measured 2026-10-15: the request alias
+// resolved to this version at that time. It changes only by a code change made
+// after the regression set has been re-run against the new id. An answered call
+// reporting any other id earns the client one change notice.
+const VerifiedInterpretedModel = "jev-1.13.0"
+
+// interpretedModelShape is the vendor's versioned model id: the family name and
+// three dot-separated numbers, as in jev-1.13.0. The bare family name (jev-1.13)
+// and the request alias (jev-latest) do not match, because neither names the
+// model that answered.
+var interpretedModelShape = regexp.MustCompile(`^jev-[0-9]+\.[0-9]+\.[0-9]+$`)
+
+// ValidInterpretedModel reports whether s is an interpreted model id in the
+// versioned shape. A response whose model is not valid yields no attributable
+// answer: its result is Unattributed (REQ-JRM-003).
+func ValidInterpretedModel(s string) bool {
+	return interpretedModelShape.MatchString(s)
+}
 
 // EndpointURL is the System One endpoint. Compiled, for the same reason the
 // model id is: no configuration path may aim a request somewhere else.
@@ -133,6 +149,10 @@ const (
 	SecretDetected Availability = "secret-detected"
 	// Malformed — the request carried no question to ask.
 	Malformed Availability = "malformed"
+	// Unattributed — the endpoint answered OK, but its response names no
+	// interpreted model id in the versioned shape. No answer is returned: an
+	// answer that cannot be attributed to a version is not an answer (REQ-JRM-003).
+	Unattributed Availability = "unattributed"
 )
 
 // AnswerKind is the typed shape of an answer. System One answers a typed
@@ -203,6 +223,10 @@ type Answer struct {
 	Choice      string     `json:"choice,omitempty"`
 	Score       float64    `json:"score,omitempty"`
 	Probability float64    `json:"probability"`
+	// Model is the interpreted model id the response reported for the call that
+	// produced this answer: the version that answered. Ask sets it on every answer
+	// it returns, and it is empty only for an answer built by hand.
+	Model string `json:"model,omitempty"`
 	// Probabilities is the per-option (choice) or per-level-index (score)
 	// distribution the vendor returned. Empty for a noul.
 	Probabilities map[string]float64 `json:"probabilities,omitempty"`
@@ -211,11 +235,16 @@ type Answer struct {
 }
 
 // Label renders the answer as a labelled model signal (REQ-JEVC-013). It names
-// the marker and the pinned model, and deliberately avoids any word that reads
-// as a mechanical measurement — a reader must be able to tell this apart from
-// something that was measured.
+// the marker and the interpreted model that answered, and deliberately avoids
+// any word that reads as a mechanical measurement — a reader must be able to
+// tell this apart from something that was measured. An answer with no
+// interpreted model renders as "unattributed", never as the request alias.
 func (a Answer) Label() string {
-	prefix := fmt.Sprintf("[%s · %s] %s", SignalLabel, ModelID, a.QuestionID)
+	model := a.Model
+	if model == "" {
+		model = "unattributed"
+	}
+	prefix := fmt.Sprintf("[%s · %s] %s", SignalLabel, model, a.QuestionID)
 	switch a.Kind {
 	case KindChoice:
 		return fmt.Sprintf("%s = %s (confidence=%.2f)", prefix, a.Choice, a.Probability)
@@ -227,11 +256,23 @@ func (a Answer) Label() string {
 }
 
 // Usage is the per-call record REQ-JEVC-004 requires: the input-token count the
-// call was charged for and the model id that answered, so a later cost or
-// provenance question is answerable from the record rather than recollection.
+// call was charged for, the interpreted model id that answered, and the request
+// alias that was sent (REQ-JRM-004). The two model fields are held apart, so a
+// later cost or provenance question is answerable from the record and a reader
+// cannot take the alias for the version that answered.
 type Usage struct {
-	InputTokens int    `json:"input_tokens"`
-	Model       string `json:"model"`
+	InputTokens int `json:"input_tokens"`
+	// Model is the interpreted model id the response reported: the version that
+	// answered. It is empty when the call was not answered (refused before the
+	// send, unavailable, or unattributed).
+	Model string `json:"model"`
+	// RequestModel is the request alias this call sent. It is recorded in its own
+	// field, separate from Model.
+	RequestModel string `json:"request_model"`
+	// FromCache marks a record whose answer was served from the disk cache
+	// (REQ-FW-013): no network request was made. The new-vs-cache separation
+	// lives in this flag so a cost question is answerable from the log alone.
+	FromCache bool `json:"from_cache"`
 }
 
 // Result is what every call returns. There is no error return: see the package
@@ -243,14 +284,37 @@ type Result struct {
 	Condition string
 	Answers   []Answer
 	Usage     Usage
+	// Notice is set only on the change notice: the first answered call of a
+	// client whose interpreted model id differs from VerifiedInterpretedModel.
+	Notice string
+	// StaleCacheWarning is set when a cache serve came from a prior-model
+	// entry after the alias moved past it (REQ-FW-013, keep-and-warn): the
+	// answer is still the model's own answer, and the entry is kept, but the
+	// reader is told which version produced it.
+	StaleCacheWarning string
 }
 
 // OK reports whether the call produced answers.
 func (r Result) OK() bool { return r.Availability == Available }
 
 // NoticeLine renders the at-most-one notice line a consumer may emit
-// (REQ-JEVC-007). An available result has nothing to notice and returns empty.
+// (REQ-JEVC-007). When the change notice and the cache staleness warning
+// are BOTH set — a stale cache serve on a client whose notice has not fired
+// — the two facts ride the one line together; the one-line budget must not
+// silently drop the staleness warning (L2, t1968 leader audit). Otherwise
+// it returns the change notice when one is set, then the cache staleness
+// warning, then the unavailability condition. An available result with
+// neither notice nor warning returns empty.
 func (r Result) NoticeLine() string {
+	if r.Notice != "" && r.StaleCacheWarning != "" {
+		return r.Notice + " " + r.StaleCacheWarning
+	}
+	if r.Notice != "" {
+		return r.Notice
+	}
+	if r.StaleCacheWarning != "" {
+		return r.StaleCacheWarning
+	}
 	if r.Availability == Available {
 		return ""
 	}
@@ -283,22 +347,46 @@ type Client struct {
 	Endpoint string
 	// MaxRetries bounds retries of a request that is BOTH declared repeatable
 	// and failed provably before delivery. Every other failure is never
-	// retried, whatever this holds.
+	// retried, whatever this holds. The Retry-After backoff consumes the SAME
+	// budget (REQ-FW-012 composing with REQ-JEVC-008, not overriding it).
 	MaxRetries int
+
+	// CacheDir enables the disk cache when non-empty (REQ-FW-011): responses
+	// cached under a body-SHA + resolved-model-id key, served without a
+	// network request. Production callers set it from DefaultCacheDir()
+	// (~/.moai/cache/jev); tests ALWAYS override it with a temp dir.
+	CacheDir string
+	// ModelOverride is the explicit per-request interpretation model id for
+	// the cache key — step 1 of the lookup sequence (plan B5). Empty means
+	// alias resolution from the persisted map. An override's cache miss goes
+	// to the network — never another model's entry (the N5 applicability
+	// condition) — and the entry a network answer writes is attributed to
+	// the model id the response reported, which is the override's own
+	// exactly when the endpoint answers with it.
+	ModelOverride string
+	// MaxConcurrency caps concurrently in-flight requests (REQ-FW-012's
+	// semaphore limb). Zero means no cap; New sets a default.
+	MaxConcurrency int
 
 	mu    sync.Mutex
 	usage []Usage
+	// changeNoticed records that this client already issued the change notice.
+	// Guarded by mu.
+	changeNoticed bool
+	// sem is the lazily-built concurrency semaphore. Guarded by mu.
+	sem chan struct{}
 }
 
-// New returns a client for the given gate state, wired to the pinned endpoint.
+// New returns a client for the given gate state, wired to the compiled endpoint.
 // The credential reader is left nil deliberately: this package does not import
 // internal/jevcred, so the caller supplies it (jevcred.Load) and the two
 // packages stay independently testable.
 func New(enabled bool) *Client {
 	return &Client{
-		Enabled:    enabled,
-		Endpoint:   EndpointURL,
-		MaxRetries: 1,
+		Enabled:        enabled,
+		Endpoint:       EndpointURL,
+		MaxRetries:     1,
+		MaxConcurrency: defaultMaxConcurrency,
 	}
 }
 
@@ -327,8 +415,8 @@ func EstimateTokens(s string) int {
 	return (len(s) + bytesPerTokenEstimate - 1) / bytesPerTokenEstimate
 }
 
-// wireRequest is the on-the-wire payload. The pinned model id is written here
-// and nowhere else, so there is exactly one place a moving alias could enter.
+// wireRequest is the on-the-wire payload. The request alias is written here and
+// nowhere else, so every request this package constructs carries the same one.
 //
 // The layout follows the vendor's documented schema: `questions` is an OBJECT
 // keyed by the caller's question id (the id is not a field), and each entry
@@ -350,7 +438,8 @@ type wireQuestion struct {
 }
 
 // wireResponse is the documented response: `answers` is an object keyed by the
-// question id the caller sent.
+// question id the caller sent, and `model` names the version that answered. The
+// model is read here and attributed in Ask; it is never assumed.
 type wireResponse struct {
 	Model   string                `json:"model"`
 	Answers map[string]wireAnswer `json:"answers"`
@@ -432,11 +521,12 @@ func toWire(req Request) wireRequest {
 
 // fromWire flattens the answer map into the caller-facing list, in the
 // request's question order; answers for ids the request did not carry follow,
-// sorted by id, so the result is deterministic.
-func fromWire(questions []Question, answers map[string]wireAnswer) []Answer {
+// sorted by id, so the result is deterministic. Every answer carries the
+// interpreted model id the response reported.
+func fromWire(questions []Question, answers map[string]wireAnswer, model string) []Answer {
 	out := make([]Answer, 0, len(answers))
 	convert := func(id string, w wireAnswer) Answer {
-		a := Answer{QuestionID: id, Kind: w.Type, Probabilities: w.Probabilities}
+		a := Answer{QuestionID: id, Kind: w.Type, Model: model, Probabilities: w.Probabilities}
 		switch w.Type {
 		case KindNoul:
 			a.Probability = w.Noul
@@ -468,6 +558,59 @@ func fromWire(questions []Question, answers map[string]wireAnswer) []Answer {
 	return out
 }
 
+// answersInRequestOrder reassembles cached answers into the CURRENT
+// request's question order (L1, t1968 leader audit): the wire questions
+// travel as a MAP, so two requests differing only in question order marshal
+// to one body and share one cache key — a hit that positionally reused the
+// stored slice would answer the asking request in the STORING request's
+// order. Matching is by question IDENTITY from the cached entry, never by
+// position; answers for ids the request did not carry follow, sorted by id,
+// matching fromWire's deterministic tail.
+func answersInRequestOrder(questions []Question, answers []Answer) []Answer {
+	byID := make(map[string]Answer, len(answers))
+	for _, a := range answers {
+		byID[a.QuestionID] = a
+	}
+	out := make([]Answer, 0, len(answers))
+	used := make(map[string]bool, len(questions))
+	for _, q := range questions {
+		if a, ok := byID[q.ID]; ok {
+			out = append(out, a)
+			used[q.ID] = true
+		}
+	}
+	extra := make([]string, 0)
+	for _, a := range answers {
+		if !used[a.QuestionID] {
+			extra = append(extra, a.QuestionID)
+		}
+	}
+	sort.Strings(extra)
+	for _, id := range extra {
+		out = append(out, byID[id])
+	}
+	return out
+}
+
+// answersComplete reports whether every requested question id carries an
+// answer (N1, t1968 sync-audit iter6). An OK response that answered only
+// part of the request is a transient endpoint fault, not a verdict — it is
+// neither stored nor admitted as a cache hit, so the fault cannot persist
+// past the outage. Extra answers for ids the request did not carry are not
+// incompleteness.
+func answersComplete(questions []Question, answers []Answer) bool {
+	have := make(map[string]bool, len(answers))
+	for _, a := range answers {
+		have[a.QuestionID] = true
+	}
+	for _, q := range questions {
+		if !have[q.ID] {
+			return false
+		}
+	}
+	return true
+}
+
 // Ask runs one call. The order of checks is load-bearing:
 //
 //  1. the GATE, because a disabled capability must construct no request at all
@@ -481,6 +624,12 @@ func fromWire(questions []Question, answers map[string]wireAnswer) []Answer {
 //
 // Every one of the five returns a typed unavailable result. None returns an
 // error, and none panics.
+//
+// Once the request is sent, the result is decided on the response. An OK
+// response whose interpreted model id is not in the versioned shape is
+// Unattributed and returns no answers. Every sent call is recorded in the usage
+// log, whatever its outcome, with the request alias and, only when the call was
+// answered, the interpreted model id.
 func (c *Client) Ask(ctx context.Context, req Request) Result {
 	if !c.Enabled {
 		return Result{
@@ -518,21 +667,123 @@ func (c *Client) Ask(ctx context.Context, req Request) Result {
 		return Result{Availability: Malformed, Condition: "request could not be encoded: " + err.Error()}
 	}
 
-	// The call is charged from here on, whatever the outcome: a sent-but-refused
-	// call still consumed input tokens.
-	usage := Usage{InputTokens: requestTokens(req), Model: ModelID}
-	c.record(usage)
-
-	res, answers := c.send(ctx, body, req.Repeatable)
-	if res.OK() {
-		res.Answers = fromWire(req.Questions, answers)
+	// Disk cache (REQ-FW-011): a hit is served with no network request at
+	// all. The lookup key is the body SHA combined with the RESOLVED model
+	// id — never the request alias. Cache errors are fail-open: a damaged or
+	// unreadable cache degrades to a network call, never to a failed one.
+	sha := bodySHA(body)
+	if c.CacheDir != "" {
+		if keyModel, aliasResolved, resolvable := c.resolveModel(); resolvable {
+			// N1 serve leg: an entry that does not answer every requested
+			// question (the shape a pre-repair client could have written) is
+			// not admitted as a hit — the lookup misses and the call goes to
+			// the network for a complete answer.
+			if entry, hit, stale, _ := c.cacheLookup(sha, keyModel, aliasResolved); hit && answersComplete(req.Questions, entry.Answers) {
+				served := serveCacheHit(entry, stale)
+				// L1 (t1968 leader audit): the hit must answer in the CURRENT
+				// request's question order — the stored slice carries the
+				// storing request's order, and the wire's question MAP makes
+				// the two requests share this one key.
+				served.Answers = answersInRequestOrder(req.Questions, served.Answers)
+				// N2: the change notice applies to cache serves too, against
+				// the ENTRY's model — consumers of a served answer learn the
+				// model-versus-verified divergence the same way the network
+				// path reports it.
+				served.Notice = c.changeNotice(entry.Model)
+				u := entry.Usage
+				u.RequestModel = ModelID
+				u.FromCache = true
+				c.record(u)
+				served.Usage = u
+				return served
+			}
+		}
 	}
+
+	res, answers, model := c.send(ctx, body, req.Repeatable)
+	// Attribution is decided on the response, never assumed. An OK response that
+	// names no valid interpreted model has no attributable answer, so none is
+	// returned (REQ-JRM-003).
+	if res.OK() {
+		if ValidInterpretedModel(model) {
+			res.Answers = fromWire(req.Questions, answers, model)
+			res.Notice = c.changeNotice(model)
+			if c.CacheDir != "" {
+				// Stored under the model id the RESPONSE reported — the
+				// only authoritative attribution. The wire carries the
+				// request alias even under a pinned override, so the
+				// response id is what the call actually resolved to;
+				// keying a mismatched answer under the override would
+				// serve later override lookups a wrong-model answer as a
+				// clean hit (card t1968 review N2). The entry is the
+				// override's own exactly when the endpoint answers with
+				// the override id; the alias map still moves only on
+				// alias-resolved observations.
+				//
+				// N1 (t1968 sync-audit iter6): only COMPLETE answers are
+				// stored. An OK response missing some requested ids is a
+				// transient endpoint fault; caching it would persist the
+				// fault — every later identical request would hit the
+				// incomplete entry from_cache=true. The alias map still
+				// records the reported model: the id is authoritative even
+				// when the answer set is not.
+				if answersComplete(req.Questions, res.Answers) {
+					entry := cacheEntry{
+						BodySHA:   sha,
+						Model:     model,
+						Answers:   res.Answers,
+						Usage:     Usage{InputTokens: requestTokens(req), Model: model, RequestModel: ModelID},
+						CreatedAt: time.Now(),
+					}
+					_ = c.cacheStore(entry)
+				}
+				if c.ModelOverride == "" {
+					_ = c.updateAliasMap(ctx, model)
+				}
+			}
+		} else {
+			res = Result{
+				Availability: Unattributed,
+				Condition:    "endpoint response names no interpreted model id in the shape jev-<major>.<minor>.<patch>; no answer is attributable",
+			}
+		}
+	}
+
+	// Every call that reached the send is charged, whatever the outcome: a
+	// sent-but-refused call still consumed input tokens. The record is written
+	// once, after the send returns, and it names the interpreted model only for an
+	// answered call. The request alias is always recorded in its own field.
+	usage := Usage{InputTokens: requestTokens(req), RequestModel: ModelID}
+	if res.OK() {
+		usage.Model = model
+	}
+	c.record(usage)
 	res.Usage = usage
 	return res
 }
 
-// send performs the round trip with the retry policy applied.
-func (c *Client) send(ctx context.Context, body []byte, repeatable bool) (Result, map[string]wireAnswer) {
+// changeNotice returns the one-line change notice when model differs from
+// VerifiedInterpretedModel and this client has not yet issued it, and marks the
+// client as noticed. Otherwise it returns empty.
+func (c *Client) changeNotice(model string) string {
+	if model == VerifiedInterpretedModel {
+		return ""
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.changeNoticed {
+		return ""
+	}
+	c.changeNoticed = true
+	return fmt.Sprintf("jev interpreted model changed: answered by %s, verified %s (internal/jev/jev.go:VerifiedInterpretedModel); "+
+		"until the measurement regression set is re-run against the new id and the verified id is changed, "+
+		"consumers that show or select on a Jev answer return to shadow", model, VerifiedInterpretedModel)
+}
+
+// send performs the round trip with the retry policy applied. It returns the
+// result, the raw answer map, and the interpreted model id the response reported
+// (empty when there was no decodable response).
+func (c *Client) send(ctx context.Context, body []byte, repeatable bool) (Result, map[string]wireAnswer, string) {
 	endpoint := c.Endpoint
 	if endpoint == "" {
 		endpoint = EndpointURL
@@ -551,14 +802,25 @@ func (c *Client) send(ctx context.Context, body []byte, repeatable bool) (Result
 	for attempt := 0; attempt < attempts; attempt++ {
 		httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
 		if err != nil {
-			return Result{Availability: Unreachable, Condition: "request could not be built: " + err.Error()}, nil
+			return Result{Availability: Unreachable, Condition: "request could not be built: " + err.Error()}, nil, ""
 		}
 		httpReq.Header.Set("Content-Type", "application/json")
 		httpReq.Header.Set("User-Agent", UserAgent)
 		httpReq.Header.Set("Authorization", "Bearer "+c.credentialHeader())
 
+		// The semaphore caps in-flight round trips (REQ-FW-012). The slot is
+		// held until the response BODY has been read and closed — a round
+		// trip is in flight while its body streams, so releasing at the
+		// headers would let decode-time reads exceed MaxConcurrency. Waits
+		// and retries still never hold it: both sleep limbs run only after
+		// the slot has been returned.
+		release, semErr := c.semaphore(ctx)
+		if semErr != nil {
+			return Result{Availability: Unreachable, Condition: "request canceled while waiting for a concurrency slot: " + semErr.Error()}, nil, ""
+		}
 		resp, err := doer.Do(httpReq)
 		if err != nil {
+			release()
 			last = Result{Availability: Unreachable, Condition: "transport failed: " + err.Error()}
 			// REQ-JEVC-008: retry ONLY a failure that is provably pre-delivery.
 			// An ambiguous failure — a read error, a timeout, anything that is
@@ -567,11 +829,27 @@ func (c *Client) send(ctx context.Context, body []byte, repeatable bool) (Result
 			if preDelivery(err) {
 				continue
 			}
-			return last, nil
+			return last, nil, ""
 		}
-		return decode(resp)
+		res, answers, model := decode(resp) // reads the body to EOF and closes it
+		release()
+		// Retry-After limb (REQ-FW-012): a REPEATABLE request facing 429, 529,
+		// or another 5xx with a Retry-After header waits the parsed (and
+		// bounded) delay and retries, consuming the same attempt budget as
+		// the pre-delivery limb — one budget, not two. A non-repeatable
+		// request is never retried whatever the header says, composing with
+		// REQ-JEVC-008 rather than overriding it.
+		if retryableStatus(resp.StatusCode) && repeatable && attempt+1 < attempts {
+			if d, ok := parseRetryAfter(resp.Header.Get("Retry-After")); ok {
+				if sleepErr := retryAfterSleep(ctx, d); sleepErr == nil {
+					continue
+				}
+				return res, nil, "" // canceled while waiting
+			}
+		}
+		return res, answers, model
 	}
-	return last, nil
+	return last, nil, ""
 }
 
 // credentialHeader re-reads the credential for the Authorization header. It is
@@ -595,35 +873,36 @@ func preDelivery(err error) bool {
 	return false
 }
 
-// decode maps the HTTP response to a Result and, on success, the raw answer
-// map; Ask flattens the map in request order (fromWire).
-func decode(resp *http.Response) (Result, map[string]wireAnswer) {
+// decode maps the HTTP response to a Result, the raw answer map on success, and
+// the interpreted model id the response reported. Ask attributes the answers
+// (see Ask) and flattens the map in request order (fromWire).
+func decode(resp *http.Response) (Result, map[string]wireAnswer, string) {
 	defer func() { _ = resp.Body.Close() }()
 
 	switch resp.StatusCode {
 	case http.StatusUnauthorized:
-		return Result{Availability: Unauthorized, Condition: "endpoint returned HTTP 401"}, nil
+		return Result{Availability: Unauthorized, Condition: "endpoint returned HTTP 401"}, nil, ""
 	case http.StatusTooManyRequests:
-		return Result{Availability: RateLimited, Condition: "endpoint returned HTTP 429"}, nil
+		return Result{Availability: RateLimited, Condition: "endpoint returned HTTP 429"}, nil, ""
 	case 529:
-		return Result{Availability: Overloaded, Condition: "endpoint returned HTTP 529"}, nil
+		return Result{Availability: Overloaded, Condition: "endpoint returned HTTP 529"}, nil, ""
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return Result{
 			Availability: Unreachable,
 			Condition:    fmt.Sprintf("endpoint returned HTTP %d", resp.StatusCode),
-		}, nil
+		}, nil, ""
 	}
 
 	raw, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return Result{Availability: Unreachable, Condition: "response could not be read: " + err.Error()}, nil
+		return Result{Availability: Unreachable, Condition: "response could not be read: " + err.Error()}, nil, ""
 	}
 	var wire wireResponse
 	if err := json.Unmarshal(raw, &wire); err != nil {
-		return Result{Availability: Unreachable, Condition: "response could not be decoded: " + err.Error()}, nil
+		return Result{Availability: Unreachable, Condition: "response could not be decoded: " + err.Error()}, nil, ""
 	}
-	return Result{Availability: Available}, wire.Answers
+	return Result{Availability: Available}, wire.Answers, wire.Model
 }
 
 // checkBounds applies both size bounds (REQ-JEVC-009) and reports which one was
@@ -635,10 +914,7 @@ func checkBounds(req Request) (string, bool) {
 	longest := 0
 	total := state
 	for _, q := range req.Questions {
-		n := 0
-		for _, part := range questionParts(q) {
-			n += EstimateTokens(part)
-		}
+		n := QuestionTokens(q)
 		total += n
 		if n > longest {
 			longest = n
@@ -674,6 +950,19 @@ func questionParts(q Question) []string {
 	parts = append(parts, q.Text)
 	parts = append(parts, q.Choices...)
 	return append(parts, q.Levels...)
+}
+
+// QuestionTokens estimates the tokens a question's caller-supplied text
+// contributes to a request — the same accounting checkBounds applies.
+// Exposed so a caller batching questions into multiple requests (fetchweb's
+// stage-2 splitter) sizes each batch with the numbers the bound itself will
+// use, rather than re-deriving an accounting that can drift.
+func QuestionTokens(q Question) int {
+	n := 0
+	for _, part := range questionParts(q) {
+		n += EstimateTokens(part)
+	}
+	return n
 }
 
 // credentialShapedPatterns are the credential shapes the screener refuses. The

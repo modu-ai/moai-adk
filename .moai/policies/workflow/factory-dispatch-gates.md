@@ -1,17 +1,17 @@
 ---
-description: "Gate-measurement companion for factory-dispatch.md — the CodeRabbit endpoint measurement, review lens selection table, the pre-merge settings-drift assertion, and the verification-load incident record"
-paths: "**/factory-dispatch*.md,**/.claude/agents/moai/manager-lead.md,**/.claude/skills/moai/workflows/gtd.md"
+description: "Gate-measurement companion for factory-dispatch.md — native Codex review evidence, review lens selection, the pre-merge settings-drift assertion, and the verification-load incident record"
+paths: "**/factory-dispatch*.md,**/.codex/agents/moai/manager-lead.toml,**/.claude/agents/moai/manager-lead.md,**/.claude/skills/moai/workflows/gtd.md"
 ---
 
 # Factory Dispatch — Sync-Gate and Integration Measurements
 
-> Companion of `factory-dispatch.md` (the always-loaded stub), split from `factory-dispatch-detail.md` by its per-file budget. The stub keeps every [HARD] rule; this file owns the gate measurements behind the stub's review and integration clauses: why the CodeRabbit read uses the combined endpoint, how the leader picks review lenses, what `acquire` asserts about the caller's tree, and the verification-load incident record. Load when choosing review lenses for a dispatch, running the settings-drift assertion, or reviewing a lane's verification recipe. Siblings: `factory-dispatch-detail.md` (dispatch cycle and coordination) and `factory-dispatch-cards.md` (card lifecycle and traceability).
+> Companion of `factory-dispatch.md` (the always-loaded stub), split from `factory-dispatch-detail.md` by its per-file budget. The stub keeps every [HARD] rule; this file owns the evidence model behind the stub's native review and integration clauses, the review lens selection table, what `acquire` asserts about the caller's tree, and the verification-load incident record. Load when reviewing native Codex artifacts, choosing review lenses for a dispatch, running the settings-drift assertion, or reviewing a lane's verification recipe. Siblings: `factory-dispatch-detail.md` (dispatch cycle and coordination) and `factory-dispatch-cards.md` (card lifecycle and traceability).
 
-## CodeRabbit endpoint measurement
+## Native Codex review evidence
 
-The CodeRabbit predicate in the stub assumes the **combined** status endpoint, `/commits/{sha}/status`, which returns only the most recent status per context — measured on this repository, exactly one CodeRabbit entry per head. That assumption is the load-bearing part, so it is stated rather than left implicit: do not substitute the plural `/commits/{sha}/statuses`, which returns the full history newest-first. Measured on one head there: five CodeRabbit entries running from `Review queued` through `Review completed`, so a positional pick on that endpoint is wrong in one direction or the other — `last` selects the oldest. Where history is genuinely wanted, select by maximum `created_at` rather than by position.
+The Codex review gate reads trusted native artifacts against the exact full pull-request head SHA. It requires distinct completed code and security legs, clean receipts that agree with the current summary, and no reported or unresolved finding in the complete review input. Missing or running evidence remains pending while the wait is open; at the last pass it withholds progress. Stale, malformed, failed, ambiguous, or finding-bearing evidence refuses the gate.
 
-Branch protection is not the lever: the status state is `success` precisely in the failing case, so adding CodeRabbit to the required contexts admits the unreviewed pull request just as readily. The distinction lives in the description — which is why an automated merge gate closing this hole does not close the path a human merges by hand.
+`gh pr checks` and required status contexts report CI state; they are not proof that either native review leg ran. The `review` step in `.github/workflows/auto-merge.yml` invokes `scripts/ci/codex-review-gate.sh` and keeps review evidence separate from CI checks. See `.moai/specs/SPEC-CI-CODEX-REVIEW-001/` for the precise parser, identity, head-binding, wait, and refusal contract.
 
 ## Review lens selection
 

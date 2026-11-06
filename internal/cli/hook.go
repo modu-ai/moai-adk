@@ -412,16 +412,11 @@ func runHookEvent(cmd *cobra.Command, event hook.EventType) error {
 	// SPEC-HOOK-PRETOOL-PERF-001 M0: env-gated dispatch timing.
 	dispatchStart := time.Now()
 	var output *hook.HookOutput
-	if harnessCodex && event == hook.EventStop {
-		// SPEC-DUAL-HARNESS-HOOK-PARITY-001 M2d (design §D2): the one Codex
-		// Stop handler runs the whole Claude Stop chain. Member 1 is this
-		// registry's own dispatch, so a dispatch fault still reaches the
-		// fail-closed branch below unchanged.
-		res := newCodexStopChain(resolveCodexStopRoot(input), input).run(ctx)
-		output, err = res.Output, res.Fault
-	} else {
-		output, err = deps.HookRegistry.Dispatch(ctx, event, input)
-	}
+	// card t1909 (t1910 removal): the dual-harness codex Stop chain is gone,
+	// so every harness dispatches through the registry directly — including
+	// codex Stop events, whose former chain members were removed with the
+	// general codex surface.
+	output, err = deps.HookRegistry.Dispatch(ctx, event, input)
 	if deps.PerfTiming != nil {
 		deps.PerfTiming.MarkDispatch(dispatchStart, time.Now())
 	}

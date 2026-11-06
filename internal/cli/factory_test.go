@@ -336,9 +336,11 @@ func TestParseLauncherEntryMerge(t *testing.T) {
 
 	t.Run("-l plus an operator --name is a conflict", func(t *testing.T) {
 		t.Parallel()
-		if _, err := parseLauncherEntry([]string{"-l", "--name", "lane-3"}); err == nil ||
+		// A canonical lane-<n> name is the rejoin form (factory_lane_rejoin_t2013_test.go);
+		// every other name keeps the conflict.
+		if _, err := parseLauncherEntry([]string{"-l", "--name", "board-watch"}); err == nil ||
 			!strings.Contains(err.Error(), "already names the role") {
-			t.Errorf("parseLauncherEntry(-l --name lane-3) = %v, want the naming conflict", err)
+			t.Errorf("parseLauncherEntry(-l --name board-watch) = %v, want the naming conflict", err)
 		}
 	})
 
@@ -807,6 +809,7 @@ func TestCCFactoryEntryRecordsFailOpenRunMetadata(t *testing.T) {
 	clearFactoryTestEnv(t)
 	root := t.TempDir()
 	t.Setenv(config.EnvClaudeProjectDir, root)
+	t.Chdir(root) // the anchor guard reads the working directory (SPEC-LAUNCHER-ARGV-001)
 	t.Setenv("MOAI_HOME", t.TempDir())
 	c := installFactoryLaunchSeam(t)
 	if err := runCC(ccCmd, []string{"-f"}); err != nil {
@@ -848,8 +851,13 @@ func TestCC_FactoryEntryThroughRunCC(t *testing.T) {
 	// via launchProjectRoot -> resolveProjectDir ($CLAUDE_PROJECT_DIR or cwd) —
 	// not the findProjectRootFn stub installFactoryLaunchSeam swaps in. Under
 	// that resolver the registries land in internal/cli/.moai; pointing the env
-	// at a temp dir keeps both writes in the test-owned sandbox.
-	t.Setenv(config.EnvClaudeProjectDir, t.TempDir())
+	// at a temp dir keeps both writes in the test-owned sandbox. The working
+	// directory enters the same sandbox: the anchor guard reads it
+	// (SPEC-LAUNCHER-ARGV-001), so a leader launch here must not be measured in
+	// the checkout running the test.
+	sandbox := t.TempDir()
+	t.Setenv(config.EnvClaudeProjectDir, sandbox)
+	t.Chdir(sandbox)
 
 	t.Run("bare -f is the one-lane factory lead", func(t *testing.T) {
 		clearFactoryTestEnv(t)
@@ -1036,6 +1044,7 @@ func TestGLM_FactoryLaneEntry(t *testing.T) {
 func TestGLM_FactoryLeadRunIsJoinableByLane(t *testing.T) {
 	root := t.TempDir()
 	t.Setenv(config.EnvClaudeProjectDir, root)
+	t.Chdir(root) // the anchor guard reads the working directory (SPEC-LAUNCHER-ARGV-001)
 	t.Setenv("MOAI_HOME", t.TempDir())
 	// REQ-SD-005: the lane half of this drive needs a git working tree — seed
 	// one so the join is measured through the launch gate, not refused by it.

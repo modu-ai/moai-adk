@@ -29,7 +29,7 @@ Most of what accumulates in the backlog is chores: a one-line fix, a stale refer
 | B — defect, cause unknown | Something is wrong and the cause has not been established | `run → sync`; `plan` is skipped, so no SPEC exists |
 | C — design change | The change contains a decision, or spans subsystems | All three stages |
 
-The Class-A evidence rule is the same shape as the CodeRabbit section of the stub: a class that skips review on a claim nobody checked is exactly the unobserved-claim hazard this rule forbids everywhere else; writing the justification down is not the same as verifying it.
+The Class-A evidence rule is the same shape as the native review evidence rule in the stub: a class that skips review on a claim nobody checked is exactly the unobserved-claim hazard this rule forbids everywhere else; writing the justification down is not the same as verifying it.
 
 The parallelism comes from the across-cards axis: each lane carries a whole card, so three lanes put three cards in flight (§ Sub-agent execution within a lane for the within-card axis; § Factory in-lane 3-stage for the stages). Research fan-out during `plan` is Class-C-only.
 

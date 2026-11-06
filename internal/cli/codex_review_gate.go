@@ -297,7 +297,7 @@ func isPassVerdict(verdict string) bool {
 // the only addition. A fresh pass never reaches this helper, so it stays silent.
 func codexGateAllowed(state string) *hook.HookOutput {
 	return &hook.HookOutput{
-		SystemMessage: "codex review gate: turn allowed without a fresh pass (state: " + state + ")",
+		SystemMessage: "codex review gate: no fresh pass — turn allowed, not a review PASS (state: " + state + ")",
 	}
 }
 
@@ -706,6 +706,15 @@ func reviewExclusionRoot(dir string) string {
 		return root
 	}
 	return dir
+}
+
+// codexReviewStateRoot is the ONE root the receipt producer and the Stop
+// chain's receipt reader share (SPEC-MCP-NEUTRALITY-001 REQ-MN-025): the git
+// toplevel of the session tree, falling back to the tree itself when git
+// cannot resolve one. A session started in a subdirectory reads the receipt
+// the producer wrote for the same state instead of a false "receipt absent".
+func codexReviewStateRoot(dir string) string {
+	return reviewExclusionRoot(dir)
 }
 
 // runtimeConfigOnlyFindings reports whether EVERY finding of a review targets

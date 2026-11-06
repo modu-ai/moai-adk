@@ -56,7 +56,10 @@ func TestWorktreeCmd_HasSubcommands(t *testing.T) {
 // subcommands retired. Card t1070 deliberately removed "new" from this list:
 // it is now a creation-only adapter, while entry remains launcher-owned.
 func TestWorktreeCmd_RetiredSubcommands(t *testing.T) {
-	retired := []string{"list", "switch", "go", "config", "status"}
+	// SPEC-WORKTREE-HOME-ROOT-001 M4 revives `list` as a read-only,
+	// classifier-driven inventory verb (REQ-WHR-010); its earlier retired
+	// disposition named a different, location-based implementation.
+	retired := []string{"switch", "go", "config", "status"}
 	for _, name := range retired {
 		for _, cmd := range WorktreeCmd.Commands() {
 			if cmd.Name() == name {
@@ -68,7 +71,7 @@ func TestWorktreeCmd_RetiredSubcommands(t *testing.T) {
 
 func TestWorktreeCmd_SubcommandCount(t *testing.T) {
 	count := len(WorktreeCmd.Commands())
-	const expected = 11 // new + sync, remove, clean, sweep, recover, done, hoist + guard snapshot/verify/restore
+	const expected = 13 // new + sync, remove, clean, sweep, recover, done, hoist, list, migrate + guard snapshot/verify/restore (list: M4; migrate: SPEC-WORKTREE-HOME-ROOT-001 M6)
 	if count != expected {
 		t.Errorf("worktree should have %d subcommands, got %d", expected, count)
 	}

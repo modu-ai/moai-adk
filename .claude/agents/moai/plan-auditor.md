@@ -689,7 +689,7 @@ Defects from previous iteration:
 
 ## Retry Loop Contract
 
-This agent is invoked by the orchestrator up to 3 times per SPEC (max_iterations: 3 per harness.yaml).
+This agent is invoked by the orchestrator up to the tier ceiling per SPEC (`plan_audit_tier_ceilings` in harness.yaml; Tier L is 3).
 
 On iteration 1: Full audit against all criteria.
 

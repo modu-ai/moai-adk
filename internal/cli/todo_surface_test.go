@@ -105,7 +105,12 @@ var frozenTodoSurface = map[string][]string{
 // (REQ-TCI-019, the operator fold-and-drop verb; no flags) and `trace`
 // (REQ-TCI-015, the transitive relation read; flags: --kind, --depth —
 // read-only, on the lane read-only list).
-var permittedVerbAdditions = []string{"export-json", "undone", "history", "landed", "auto-done", "triage", "hold", "unhold", "claim", "show", "merge", "trace"}
+//
+// SPEC-FACTORY-DEFAULT-MODE-001 declares `classify` (REQ-FDM-004, the
+// official reclassify verb:
+// `classify <id> --mode <serial|parallelizable> --reason <text>` — flags:
+// --mode, --reason, both required; a queue mutation, refused in a lane).
+var permittedVerbAdditions = []string{"export-json", "undone", "history", "landed", "auto-done", "triage", "hold", "unhold", "claim", "classify", "show", "merge", "trace"}
 
 // permittedFlagAdditions records flags added to an ALREADY-FROZEN verb, which
 // is a re-flagging and therefore needs its own declaration rather than an edit
@@ -148,11 +153,15 @@ var permittedFlagAdditions = map[string][]string{
 	//     SPEC-TODO-CARD-ISSUANCE-001 M2 (REQ-TCI-004/-006/-009): the
 	//     issuance attribute inputs and the no-write preview.
 	//
-	// Both opt-in: absent, `add` records no issuance attributes and
+	//   - --base-sha — card t2058 (operator-directed release-CI recovery): the
+	//     full commit SHA a repair card's worktree is cut from, recorded as
+	//     the optional base_sha key of the card's issuance record.
+	//
+	// All opt-in: absent, `add` records no issuance attributes and
 	// classifies through the deterministic default decider, behaving as the
 	// frozen surface says.
 	"add <text>": {
-		"classification-file=string()",
+		"base-sha=string()", "classification-file=string()",
 		"dry-run=bool(false)", "files=string()", "origin=string()",
 		"parent=string()", "size-lines=string()",
 	},

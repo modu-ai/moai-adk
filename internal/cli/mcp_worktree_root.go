@@ -65,7 +65,16 @@ func validateLinkedWorktreeRoot(raw, canonical string) (string, error) {
 	}
 	top, err := singleGitPath(out)
 	if err != nil {
-		return reject("git could not inspect it as a worktree (unexpected output)")
+		// l57-r7 finding 3: a toplevel whose path contains a newline is
+		// legitimately multi-line output, and `rev-parse` has no -z form — the
+		// anchor (canonical, the value being validated) is what disambiguates:
+		// the multi-line reading is accepted only when git answered exactly
+		// canonical.
+		if trimmed := strings.TrimSuffix(out, "\n"); trimmed == canonical {
+			top = canonical
+		} else {
+			return reject("git could not inspect it as a worktree (unexpected output)")
+		}
 	}
 	if top != canonical {
 		return reject("it is not the top level of a worktree (a subdirectory of " + top + ")")

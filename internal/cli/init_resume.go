@@ -58,33 +58,16 @@ func userHomeDirOrEmpty() string {
 // MCP entry → Codex wiring → section retrack; gate round 35-6 included). Gate round 47-4:
 // the wizard's Jev answer rides in — a resume that skipped it left
 // jev.enabled false against an explicit wizard selection.
-func resumeInitializedProject(cmd *cobra.Command, opts *project.InitOptions, wiring agentWiring, wizardRan bool, wizardResult *wizard.WizardResult, prefs profile.ProfilePreferences) error {
+func resumeInitializedProject(cmd *cobra.Command, opts *project.InitOptions, wizardRan bool, wizardResult *wizard.WizardResult, prefs profile.ProfilePreferences) error {
 	homeDir, homeErr := userHomeDirFn()
 	if homeErr != nil {
 		return fmt.Errorf("resolve user home: %w", homeErr)
 	}
 
-	// Finding 1 (card t1591): the harness the FAILING run selected is the
-	// record of the interrupted --llm, and a resume with no explicit selection
-	// of its own reads it back. The file layout does not decide it: neither
-	// claude nor both writes CLAUDE.md any more, and both deploy the same
-	// .claude/ surface, so the layout cannot tell them apart.
-	if recorded, ok := resumeWiringFromRecord(cmd, wizardResult, opts.ProjectRoot); ok {
-		wiring = recorded
-	} else if legacyLayoutSpeaks(cmd, opts.ProjectRoot, wiring) {
-		// Gate round 51-3 (legacy fallback, applies only without a record): the
-		// deployed LAYOUT is the interrupted record of the original --llm
-		// selection. A re-run without options resolves the claude default;
-		// applying it over a deployed GPT layout records harness:claude while
-		// the Codex wiring is skipped — config and on-disk layout stay
-		// permanently mismatched.
-		wiring = agentWiringGPT
-	}
-
-	// Item C (card t1591): a harness change is refused, not half-applied. The check
-	// runs after the wiring decision and before any side effect; the user lock below
-	// creates a guard file under the user home, so the refusal precedes it as well.
-	if err := refuseResumeHarnessChange(opts.ProjectRoot, wiring); err != nil {
+	// The harness selection is claude-only (card t1909). A legacy record or
+	// layout from a pre-removal gpt/both init can no longer be restored — it
+	// is refused instead, so the resume never mis-wires a deployed tree.
+	if err := refuseResumeHarnessChange(opts.ProjectRoot); err != nil {
 		return err
 	}
 	lock, lockErr := userassets.AcquireUserLock(homeDir, userLockWaitWindow)
@@ -134,14 +117,10 @@ func resumeInitializedProject(cmd *cobra.Command, opts *project.InitOptions, wir
 	// Gate round 35-6: the AUTONOMY TIER this run answered is applied too —
 	// the failed attempt never reached the bundle, and a resume that skips
 	// it leaves permissions.defaultMode empty (the gate repro).
-	projectSettingsPath := filepath.Join(opts.ProjectRoot, ".claude", "settings.json")
-	if wiring == agentWiringGPT {
-		projectSettingsPath = ""
-	}
 	if err := applyAutonomyTierBundleFn(
 		opts.ProjectRoot,
 		filepath.Join(homeDir, ".claude", "settings.json"),
-		projectSettingsPath,
+		filepath.Join(opts.ProjectRoot, ".claude", "settings.json"),
 		opts.AutonomyTier,
 	); err != nil {
 		return fmt.Errorf("apply autonomy tier: %w", err)
@@ -168,9 +147,9 @@ func resumeInitializedProject(cmd *cobra.Command, opts *project.InitOptions, wir
 		return fmt.Errorf("apply participation selection: %w", err)
 	}
 	// DEBT R4: the resume is judged by CONTENT downstream — the harness
-	// config, the MCP entry, and the Codex wiring the failed attempt never
-	// wrote are all written here, in the production order.
-	if err := template.ApplyHarness(opts.ProjectRoot, string(wiring)); err != nil {
+	// config and the MCP entry the failed attempt never wrote are written
+	// here, in the production order. The harness is claude-only (card t1909).
+	if err := template.ApplyHarness(opts.ProjectRoot, string(agentWiringClaude)); err != nil {
 		return fmt.Errorf("apply harness: %w", err)
 	}
 	// Gate round 44-4: the deploy-mode record is part of the same post-path —
@@ -198,22 +177,8 @@ func resumeInitializedProject(cmd *cobra.Command, opts *project.InitOptions, wir
 	if commitErr := installPreCommitHookOptional(opts.ProjectRoot, getBoolFlag(cmd, "no-hooks"), cmd.ErrOrStderr(), cmd.ErrOrStderr()); commitErr != nil {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Pre-commit hook installation failed: %v\n", commitErr)
 	}
-	mcpDeclined := !opts.MCPProvision
-	switch wiring {
-	case agentWiringGPT:
-		mcpDeclined = true
-	case agentWiringBoth:
-		mcpDeclined = false
-	}
-	if err := provisionMCPEntryUnlessDeclined(cmd.OutOrStdout(), opts.ProjectRoot, mcpDeclined); err != nil {
+	if err := provisionMCPEntryUnlessDeclined(cmd.OutOrStdout(), opts.ProjectRoot, !opts.MCPProvision); err != nil {
 		return fmt.Errorf("provision MCP entry: %w", err)
-	}
-	// Codex wiring (card t1591, repair round): on the resume path a wiring failure
-	// is a failed post-step, not a warning. Returning here skips the snapshot
-	// settle, the section retrack, and the marker and record retirement below, so
-	// the next run resumes from the marker and the selection record.
-	if err := wireCodex(cmd, wiring, opts.ProjectRoot); err != nil {
-		return fmt.Errorf("codex wiring: %w", err)
 	}
 	// Finding 2 (card t1591): the resume is this flow's end, so it settles the
 	// snapshot lifecycle the way a healthy init does (init.go): the settings.json
@@ -266,51 +231,27 @@ func deployedWiringIsGPT(projectRoot string) bool {
 	return err == nil
 }
 
-// legacyLayoutSpeaks reports whether the deployed layout decides the resume's
-// harness through the legacy fallback. It speaks only for the claude default, and
-// only when the resume has no record and no explicit --llm (card t1591, Item B).
-// An explicit --llm is the current invocation's answer. A record that exists is
-// the interrupted run's own selection, and a changed wizard answer must win over
-// the layout while it stands. The --llm check is the one resumeWiringFromRecord
-// applies.
-func legacyLayoutSpeaks(cmd *cobra.Command, projectRoot string, wiring agentWiring) bool {
-	if wiring != agentWiringClaude || !deployedWiringIsGPT(projectRoot) {
-		return false
-	}
-	if cmd.Flags().Changed("llm") && getStringFlag(cmd, "llm") != "" {
-		return false
-	}
-	_, recorded := readResumeWiring(projectRoot)
-	return !recorded
-}
-
-// refuseResumeHarnessChange refuses a resume whose effective wiring contradicts the
-// deployed harness (card t1591, Item C). The resume restores the content the failed
-// run never wrote and deploys no template files, so a harness switch would rewrite
-// llm.yaml over the old harness's files and still report success, without the new
-// harness's files. The deployed harness is read in order: the selection record the
-// failing run left (an exact match); with no record, the GPT layout, .claude/ absent
-// (an exact match with gpt); with no record, the claude-side layout, .claude/ present
-// (claude and both deploy the same surface and the layout cannot tell them apart, so
-// only a gpt request contradicts it). With none of this evidence, nothing is refused.
-func refuseResumeHarnessChange(projectRoot string, wiring agentWiring) error {
+// refuseResumeHarnessChange refuses a resume whose deployed harness is not the
+// claude harness init now deploys (card t1591, Item C, narrowed by card t1909:
+// the claude harness is the only deployment, so nothing can be restored INTO a
+// legacy gpt/both tree). The resume restores the content the failed run never
+// wrote and deploys no template files, so resuming a gpt/both tree as claude
+// would rewrite llm.yaml over the old harness's files and still report success,
+// without the claude harness's own files — a mismatched tree. The deployed
+// harness is read in order: the selection record the failing run left; with no
+// record, the GPT layout, .claude/ absent with AGENTS.md present. With none of
+// this evidence, nothing is refused.
+func refuseResumeHarnessChange(projectRoot string) error {
 	if recorded, ok := readResumeWiring(projectRoot); ok {
-		if wiring == recorded {
+		if recorded == agentWiringClaude {
 			return nil
 		}
-		return resumeHarnessRefusal(recorded, "the selection the failing run recorded", wiring,
-			"--llm "+string(recorded)+" (or accept the recorded default in the wizard)")
+		return resumeHarnessRefusal(recorded, "the selection the failing run recorded", agentWiringClaude,
+			"--force (moai init deploys the claude harness only; the recorded "+string(recorded)+" deployment cannot be resumed)")
 	}
 	if deployedWiringIsGPT(projectRoot) {
-		if wiring == agentWiringGPT {
-			return nil
-		}
-		return resumeHarnessRefusal(agentWiringGPT, "the GPT layout; no selection record", wiring, "--llm gpt")
-	}
-	if _, err := os.Stat(filepath.Join(projectRoot, ".claude")); err == nil && wiring == agentWiringGPT {
-		return resumeHarnessRefusal(agentWiringClaude,
-			"the claude-side layout; no selection record, and claude and both cannot be told apart on disk", wiring,
-			"--llm claude (or --llm both, if that was the deployment)")
+		return resumeHarnessRefusal(agentWiringGPT, "the GPT layout; no selection record", agentWiringClaude,
+			"--force (moai init deploys the claude harness only; a GPT-layout deployment cannot be resumed)")
 	}
 	return nil
 }
@@ -322,7 +263,7 @@ func resumeHarnessRefusal(deployed agentWiring, basis string, requested agentWir
 	return fmt.Errorf("resume refused: harness %q is deployed (%s), and this run requests harness %q. "+
 		"The resume restores the content the failed run never wrote and deploys no template files, "+
 		"so it cannot switch the harness: the requested harness's files would never be deployed. "+
-		"Resume with %s, or re-run with --force to reinitialize from scratch",
+		"Resume with %s to reinitialize from scratch",
 		deployed, basis, requested, resumeWith)
 }
 
@@ -362,41 +303,6 @@ func readResumeWiring(projectRoot string) (agentWiring, bool) {
 		return wiring, true
 	}
 	return "", false
-}
-
-// resumeWiringFromRecord returns the recorded selection when the resume was
-// given no explicit selection of its own. An explicit --llm, or a wizard
-// agent_wiring answer, is the current invocation's answer and wins over the
-// record — the same precedence resolveAgentWiringWithWizard applies. That answer is
-// then checked against the deployed harness: a mismatch is refused, never applied
-// over the deployed files (refuseResumeHarnessChange).
-func resumeWiringFromRecord(cmd *cobra.Command, wizardResult *wizard.WizardResult, projectRoot string) (agentWiring, bool) {
-	if cmd.Flags().Changed("llm") && getStringFlag(cmd, "llm") != "" {
-		return "", false
-	}
-	if wizardResult != nil && wizardResult.AgentWiring != "" {
-		return "", false
-	}
-	return readResumeWiring(projectRoot)
-}
-
-// resumeAgentWiringDefault returns the harness the init wizard's agent_wiring
-// question pre-fills for a resume: the selection the interrupted run recorded.
-// The record is read only when the resume checkpoint applies (card t1591). A
-// record without a checkpoint is stale and pre-fills nothing, and so does an
-// unresolvable home, which would otherwise read CWD-relative .moai paths. "" keeps
-// the shipped claude default. The read runs before the wizard builds its form,
-// because the form takes its default at build time; the operator's answer
-// overrides it on submit.
-func resumeAgentWiringDefault(homeDir, projectRoot string) string {
-	if homeDir == "" || !initResumeCheckpoint(homeDir, projectRoot) {
-		return ""
-	}
-	wiring, ok := readResumeWiring(projectRoot)
-	if !ok {
-		return ""
-	}
-	return string(wiring)
 }
 
 // clearResumeWiring retires the selection record once the resume completed.

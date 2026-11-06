@@ -25,14 +25,24 @@ import (
 	"github.com/modu-ai/moai-adk/internal/civerdict"
 )
 
-// ghRunner runs a gh command and returns its standard output. Injectable so
-// tests fabricate gh output without network (AC-CV-002/003).
-type ghRunner func(args ...string) ([]byte, error)
+// ghRunner runs a gh command for the given project root and returns its
+// standard output. Injectable so tests fabricate gh output without network
+// (AC-CV-002/003). The root is part of the seam because gh resolves the
+// repository from its working directory: the runner must run gh IN the root
+// whose verdict is being judged, not in whatever directory the process
+// happens to sit in (card t1710, sync-audit F1 — the positional vector
+// beside the environmental one).
+type ghRunner func(root string, args ...string) ([]byte, error)
 
-// defaultGhRunner runs gh with output capture, folding stderr into the error
-// so a degraded query names its fault.
-func defaultGhRunner(args ...string) ([]byte, error) {
+// defaultGhRunner runs gh in root with output capture, folding stderr into
+// the error so a degraded query names its fault. The environment is the
+// delivery edge's gh environment (card t1710): an inherited GIT_DIR or a
+// stray GH_REPO would retarget the query, and cmd.Dir pins the repository gh
+// resolves to the tree being judged.
+func defaultGhRunner(root string, args ...string) ([]byte, error) {
 	cmd := exec.Command("gh", args...)
+	cmd.Dir = root
+	cmd.Env = factoryGHEnv()
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	out, err := cmd.Output()
@@ -123,7 +133,7 @@ type ghRun struct {
 // Degradation is fail-open house discipline (REQ-CV-003): one clear line,
 // exit 0, no record.
 func runCIVerdictFetch(c *cobra.Command, runner ghRunner, root, head, producer string) error {
-	out, err := runner("run", "list", "--commit", head, "--limit", "1", "--json", "conclusion,databaseId")
+	out, err := runner(root, "run", "list", "--commit", head, "--limit", "1", "--json", "conclusion,databaseId")
 	if err != nil {
 		if errors.Is(err, exec.ErrNotFound) {
 			_, _ = fmt.Fprintln(c.OutOrStdout(), "ci-verdict: gh not found — cannot observe CI for head "+head+"; no record written")

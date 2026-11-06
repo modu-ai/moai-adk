@@ -19,3 +19,10 @@ state:
     # `moai clean --home --force`. Remove the key to silence the check
     # entirely (an absent key yields no warning).
     profile_max_bytes: 8589934592
+
+    # state.backup_past_versions_keep is the per-file budget of past versions
+    # the update's backup pruning protects. Backups are pruned in whole runs;
+    # beyond the newest runs kept, an older run is retained while it holds the
+    # only copy of one of the newest N past versions of a file. A value below 1
+    # is read as the default, so the protection cannot be switched off here.
+    backup_past_versions_keep: 3

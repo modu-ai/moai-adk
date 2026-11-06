@@ -82,6 +82,7 @@ func newSeparateGitDirRepo(t *testing.T) (s, w3 string) {
 // and codex receives W as its cwd.
 func TestLinkedWorktree_TreeOperationsTargetTheWorktree(t *testing.T) {
 	fx := newUntrackedFixture(t, wtWorkflowNoGate)
+	t.Setenv("CLAUDE_PROJECT_DIR", fx.P) // REQ-MN-005: the server repository is the primary checkout
 	wtWriteFile(t, filepath.Join(fx.W, "tracked.txt"), "change-in-W\n")
 	wtWriteFile(t, filepath.Join(fx.P, "tracked.txt"), "change-in-P\n")
 
@@ -254,6 +255,7 @@ func TestLinkedWorktree_DanglingSiblingDoesNotRejectW(t *testing.T) {
 // AC-MWU-011: a graph query on W never answers from P's graph artifact.
 func TestLinkedWorktree_GraphNeverFromPrimary(t *testing.T) {
 	fx := newUntrackedFixture(t, wtWorkflowNoGate)
+	t.Setenv("CLAUDE_PROJECT_DIR", fx.P) // REQ-MN-005: the server repository is the primary checkout
 	wtWriteFile(t, filepath.Join(fx.P, "internal", "svc", "svc.go"),
 		"package svc\n\nfunc Run() { Finish() }\n\nfunc Finish() {}\n")
 	edges, _, _, err := graph.BuildWithCodeLayers(fx.P)

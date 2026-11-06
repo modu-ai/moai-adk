@@ -1,6 +1,50 @@
 # 아키텍처 개요
 
-## 현재 최종 통합 트리 — t1469 판 (main 흡수 병합 트리)
+## 현재 소스 기준 — 67b4734d6b (2026-11-06 재갱신, card t2061 판)
+
+기준 커밋은 card t2061 트리의 HEAD `67b4734d6b`다. 직전 스탬프 `4c4217a19` 뒤 설명 대상 소스 197개(추가 127·수정 70·삭제 0)가 움직였고, 직전 `moai graph check`는 `described-source-diff 196`(임계 40)을 보고했다. 창의 본체는 **Agentic Factory**(Issue #1948)다 — `internal/agenticfactory` 아래 21개 패키지(그중 `retirement`는 테스트 파일만 있다)가 프로젝트당 SQLite 원장 하나를 유일한 권위로 삼아 카드를 claim → 구현 → 검증 → 병합 큐 → 로컬 트렁크 착지로 옮기는 별도 계통을 열었다. 기존 `internal/factory`·`internal/homestate`의 슬롯 임대 계통은 그대로 있고 둘은 나란히 선다. 소스에서 확인한 의존 방향은 이렇다: `core`는 I/O 없는 잎이고, `ledger`·`effect`·`review`·`monitor`는 `core`만 임포트하며, `claim`은 `core`와 `internal/homestate`, `runner`는 `claim`·`core`·`homestate`, `mergeq`는 `core`·`ledger`·`internal/gitenv`, `monitor/adapt`는 `claim`·`ctxmodel`·`effect`·`monitor`·`reconcile`·`homestate`를 임포트한다. 바깥의 소비자는 `internal/cli`(`af.go`·`af_land.go`·`web.go`가 `core`·`ledger`·`mergeq`·`monitor/flow`), `internal/web`(`board.go`·`browser_select.go`·`refine.go`·`app.go`·`server.go`가 `browser`·`core`·`ledger`·`monitor/flow`), `internal/hook/ledger_heartbeat.go`(`ledger`)다.
+
+창의 나머지 흐름은 다섯이다. **card t2013**: factory 완료 복구 이어달리기 — `moai factory wait`·`moai factory checkpoint` 동사와 카드 대기·깨움·hold 기록(`internal/homestate`), stop-goal 훅이 정당한 대기를 알아보는 `goal.Eval.ValidWait`, af-flow 고정 릴리스 브랜치 경로. **card t2020**: 게이트 전체 실행 예산을 단계에서 도출. **card t2021**: 런처 레인 진입이 `-l`/`--lane`이 되고 옛 `-a`/`--agent`는 제거. **SPEC-FETCH-WEB-001**: 신규 패키지 `internal/fetchweb`과 `moai fetch web`·MCP 도구 `fetch_web`, Jev 디스크 캐시. **card t2014·t2045**: 사용자 자산 실패 요약, 워크플로 값 `agentic-trunk` → `af-flow` 개명(상태줄 라벨 `AF-Flow`). 책임별 대조는 `modules.md` 현재 변경 경계 절이 운반하고, 진입점은 `entry-points.md`, 의존은 `dependencies.md`, 흐름은 `data-flow.md`가 운반한다.
+
+Darwin/arm64에서 규모를 재측정했다(명령 `find internal cmd pkg -name '*.go' -not -name '*_test.go'` 와 `-name '*_test.go'`의 파일 수 — 이 트리 직접 측정): 비테스트 Go 파일 **1891**(직전 판 1764 대비 +127, 창의 추가 수와 같다), 테스트 **3906**(+382). `go list ./internal/... ./cmd/... ./pkg/...`의 모듈 패키지는 **198**개(직전 176 대비 +22 — Agentic Factory 21개와 `internal/fetchweb`), 모듈 내부 import 쌍은 **581**개(+50; 집계는 직전 판과 같은 `go list -json=ImportPath,Imports`의 비테스트 `Imports` 중 모듈 `internal`·`cmd`·`pkg` 경로). 임베드 템플릿 파일은 `find internal/template/templates -type f`로 **663**개다. 이는 소스·배선 조사 결과이며 OS 런타임이나 원격 CI 성공의 보장으로 확대하지 않는다.
+
+## 이전 소스 기준 — 4c4217a1 (2026-10-27 재갱신, card t1991 판)
+
+기준 커밋은 origin/main 팁 `4c4217a19d`(card t1991 트리의 HEAD)다. 직전 스탬프 `9286f6b6ba` 뒤 커밋 21개가 착지했고, 이 판은 그 창을 소스와 대조해 문서를 갱신한 것이다 — 직전 `moai graph check`는 `described-source-diff 53`(임계 40)을 보고했다. 창의 본체는 여섯 카드다. **t1762**(SPEC-JEV-LEDGER-001): 신규 패키지 `internal/jevledger`가 Jev 질문 1건당 한 줄을 `.moai/state/jev/decisions.jsonl`에 남기는 fail-open 기록기를 열었고, `internal/config/jev_consumers.go`가 `workflow.jev.consumers.*` 설정면을 오류 없는 디코드로 열었다 — 비테스트 호출자는 아직 없다. **t1963·t1973**(SPEC-FACTORY-COMPLETION-RECOVERY-001): `internal/homestate`가 죽은 런 통합(`RebindRun` — 한 쓰기 트랜잭션, 구조적 중복 행만 포기 처리)과 리더 진입 분류(`PlanLeaderEntry`), 통합이 은퇴시킨 런으로의 쓰기 거절, 임대·배차 복구의 원자화를 더했다. **t1737**: 분류 없는 카드의 읽기 기본값이 parallelizable로 바뀌고 재분류 동사 `moai todo classify`가 열렸다. **t1831**(agentic-trunk): 직전 절들이 서술한 몫이 이 창의 PR #1908로 착지했다. **t1957**: 커밋되는 `settings.json`에서 세션 PATH가 빠지고 gitignore된 `settings.local.json`으로 갔다. 그 밖에 t1962·t1964·t1959(factory 카드 경로 수리)와 t1790(통합 재측정 기준 브랜치 해석)이 있다. 상세는 `modules.md` 현재 변경 경계 절이 운반한다.
+
+Darwin/arm64에서 규모를 재측정했다(측정 명령 `find internal cmd pkg -name '*.go' -not -name '*_test.go'` 와 `find internal cmd pkg -name '*_test.go'`의 줄 수 — 깨끗한 작업 트리 기준, 이전 판의 `git ls-tree` 집계와 방법이 달라 증감은 방향 신호다): 비테스트 Go 파일 **1764**, 테스트 **3524**. `go list ./internal/... ./cmd/... ./pkg/...`의 모듈 패키지는 **176**개(직전 판 175 대비 +1 — `internal/jevledger`), 모듈 내부 import 쌍은 **531**개다(§ `dependencies.md`). 이는 소스·배선 조사 결과이며 OS 런타임이나 원격 CI 성공 판정은 아니다.
+
+## 이전 소스 기준 — 4998dc47 (2026-10-24 재갱신, card t1737 판)
+
+기준 커밋은 본 카드 트리의 HEAD `4998dc47`(브랜치 `WT-spec-factory-default` — 흡수 병합 `1c49ac4376`이 origin/main `9286f6b6ba`를 받고 테스트 픽스처 수리 `4998dc479f`가 얹힌 트리)다. 창의 본체는 카드 t1737(SPEC-FACTORY-DEFAULT-MODE-001)의 분류 기본값 분리다: `internal/factory/classification.go`에서 absent-read 기본(`AbsentCardClassification` 신규 — 분류 없는 읽기가 parallelizable을 도출, REQ-FDM-001)과 decider-실패 fail-safe(`DefaultCardClassification` — serial 유지, REQ-FDM-003)가 갈라졌고, 신규 동사 파일 `internal/cli/todo_classify_cmd.go`(`moai todo classify <id> --mode <serial|parallelizable> --reason <text>`, REQ-FDM-004 — todo.go의 등록 1행 포함)이 열렸다. 흡수 병합이 운반한 t1828 holder-liveness 시그니처(`factorySerialSlotHeld` 3인자·`factorySerialInFlightExcluding` 6인자+2값 반환)에 `todoClassifySerialSlotConflict` 호출부를 맞춘 적응(`9147f14adb`)과 serial-slot 거부 픽스처의 명시적 serial 분류 보강(`4998dc479f`)이 같은 창에 속한다(§ `modules.md` internal/factory·internal/cli t1737 판). Darwin/arm64에서 규모 재측정(측정 명령 `git ls-tree -r --name-only HEAD -- internal/ cmd/ pkg/ | grep '\.go$'` — `.go` 한정, `_test.go` 분리): 비테스트 Go 파일 1752→**1753**(+1 — `todo_classify_cmd.go`), 테스트 3467→**3479**(+12 — serial-slot 픽스처·분류 시험 보강). 스탬프 `42b237567af0` 대비 비테스트 소스 diff는 41개 — 그 본체는 스탬프 이후 main 창(#1907 등)과 본 카드 창의 합이다. 이는 소스·배선 조사 결과이며 OS 런타임이나 원격 CI 성공 판정은 아니다.
+
+## 이전 소스 기준 — c1f54078 (2026-10-24 재갱신, card t1831 판)
+
+기준 커밋은 `9286f6b6ba`(origin/main 팁, provenance 스탬프와 동일한 신선도 닻 — 본 창의 측정은 PR #1908 팁 `c1f540782f` 트리에서 수행했다. O2 통일: 두 SHA는 이 한 문장으로만 표기한다). 창은 본 카드 PR #1908(card t1831, SPEC-GIT-STRATEGY-AGENTIC-TRUNK-001) 단독 몫이다. Darwin/arm64에서 `go list -deps -json ./internal/... ./cmd/... ./pkg/...`를 실행해 모듈 패키지 **175**개, 내부 import 쌍 **530**개 — t1640 판과 두 값 모두 같다(신규 패키지도 패키지 간 import 쌍도 없다 — 카드의 신규 파일 둘은 기존 패키지 안이다). 창의 설명 대상 소스는 **13개(추가 2·수정 11·삭제 0)**다. 규모 재측정(측정 명령 `git ls-tree -r --name-only <rev> -- internal/ cmd/ pkg/ | grep '\.go$'` — `.go` 한정, `_test.go` 분리): 비테스트 Go 파일 1752→**1754**(+2), 테스트 3467→**3483**(+16 — 카드의 판정 테스트 추가). 임베드 원본 624 불변. 이는 소스·배선 조사 결과이며 OS 런타임이나 원격 CI 성공 판정은 아니다.
+
+## 이전 소스 기준 — 656e4d3 (2026-10-24 재갱신, card t1640 판)
+
+기준 커밋은 `42b237567af0`(provenance 스탬프와 동일한 신선도 닻 — 본 창의 측정은 그 위의 팁 `656e4d3c8b`에서 수행했다. O2 통일: 두 SHA는 이 한 문장으로만 표기한다). PR #1858은 실측 100파일의 변경을 운반했고(카드 본문 추정 98과 달리 흡수 해소분까지 포함한 diffstat 실측 — O1 정정) 그 위에 세 차례 흡수 해소가 얹힌 트리다. Darwin/arm64에서 `go list -deps -json ./internal/... ./cmd/... ./pkg/...`를 실행해 모듈 패키지 **175**개, 내부 import 쌍 **530**개 — t1931 후속 판(173·520) 대비 패키지 +2, 쌍 +10다(델타 감사 F2 정정 — 초판의 174·529는 파서 결함이었다). +10 중 검증된 신규 패키지 쌍 5개: `internal/cli`→`internal/worktreeroot`, `internal/cli/worktree`→`internal/worktreeroot`, `internal/factory`→`internal/worktreeroot`, `internal/worktreeroot`→`internal/paths`, `internal/template/agentemit/cmd/agents-emit`→`internal/template/agentemit`. 창의 설명 대상 소스는 **86개(추가 25·수정 61·삭제 0)**. 신규 패키지 둘: `internal/worktreeroot`(홈 루트 리졸버 유일 SSOT)와 `internal/template/agentemit/cmd/agents-emit`(에이전트 렌더러 진입점, card t1649 #1843) — `internal/cli/worktree`와 `internal/template/agentemit` 본체는 기준 커밋에 이미 존재한다(델타 감사 F3 정정). 규모 재측정(측정 명령 `git ls-tree -r --name-only <rev> -- internal/ cmd/ pkg/ | grep '\.go$'` — `.go` 한정, `_test.go` 분리): 비테스트 Go 파일 1739→**1752**(+13), 테스트 3433→**3467**(+34). 이는 소스·배선 조사 결과이며 OS 런타임이나 원격 CI 성공 판정은 아니다.
+
+## 이전 소스 기준 — 2fccfd2 (2026-10-23 재갱신, card t1931 후속 판)
+
+기준 커밋은 `2fccfd2b34`(origin/main 현재 팁 — t1931 판의 `8c36a7904b` 위에 여덟 커밋: #1900 t1930 factory-complete 수리 병합, #1901 t1929 spec-lint 수리, #1898 t1536 release pipeline 가드, #1894 t1632 MCP neutrality, #1903 t1910 문서, dependabot 2건(actions/checkout 4→7·gomod 6개)). Darwin/arm64에서 `go list -deps -json ./internal/... ./cmd/... ./pkg/...`를 실행해 모듈 패키지 173개, 내부 import 쌍 520개, 상위 두 경로 요소 집계 325쌍 — t1931 판과 세 값 모두 같다(같은 플랫폼의 측정). 창의 설명 대상 소스는 **49개(추가 7·수정 42·삭제 0)**: t1930의 `factory_card_rebind.go`(rebind-evidence 동사·merged-PR 관측·carry-over 수리), t1632의 `mcp_refusal.go`·`mcp_server_call_log.go`, t1536의 runtime regular-file 경계 3파일(`audit_cache_state.go`·`regular_file.go`·`regular_open_nofollow.go`·`regular_open_stat.go`). 신규 패키지는 없다. 규모 재측정(측정 명령 `git ls-tree -r --name-only <rev> -- internal/ cmd/ pkg/ | grep '\.go$'` — `.go` 한정, `_test.go` 분리): 비테스트 Go 파일 1732→**1739**(+7), 테스트 3389→**3433**(+44 — t1536·t1930의 시험 보강). 모듈 패키지 176, 최상위 디렉터리 90, 임베드 원본 624 불변. `go.mod`·`go.sum`은 이 창에서 움직였다 — dependabot의 직접 6개 버전 갱신(go.mod 7행)과 재해시(go.sum 21행)다(§ `dependencies.md`). 이는 소스·배선 조사 결과이며 OS 런타임이나 원격 CI 성공 판정은 아니다.
+
+## 이전 소스 기준 — 8c36a79 (2026-10-23 갱신, card t1931 판)
+
+기준 커밋은 `8c36a7904b`(origin/main 현재 팁 — card t1909 스쿼시 병합 #1896 위에 여섯 병합이 얹힌 트리)다. 이 기계(Darwin/arm64)에서 `go list -deps -json ./internal/... ./cmd/... ./pkg/...`를 실행해 모듈 패키지 173개, 내부 import 쌍 520개, 상위 두 경로 요소로 접고 self-edge를 뺀 쌍 325개를 확인했다 — 이전 판(t1909)의 세 값과 같지만 이전 판은 Linux/amd64 관측이므로 "같은 baseline"이 아니라 **플랫폼이 다른 두 측정이 같은 값**이다. 창은 `d5c083e86d..8c36a7904b`로, 설명 대상 소스는 **27개(추가 1·수정 26·삭제 0)**로 좁다. 여섯 병합이 운반한 것이다: trunk backup sync 가드(card t1832, `integration_backup.go` 신규 +138), serial-slot 보유자 생존 판정(card t1828), `EvaluateMergeTriple` SHA 고정 probe와 `--abbrev-ref` 잔여 정리(card t1928), fail-safe 직렬 카드 모드 판정(card t1894), hook 레지스트리 sync/async 정리(card t1913), 그리고 #1896의 나머지(codex 감사 런처 등록·런치 기본·버그리포트 등록·배포 템플릿 갱신). 신규 패키지는 없다(`internal/sandbox/testdata/echo`는 테스트 전용 testdata). 규모 재측정(측정 명령 `git ls-tree -r --name-only <rev> -- internal/ cmd/ pkg/ | grep '\.go$'` — `.go` 한정, `_test.go`는 별도 분리; 확장자 필터 없이는 비-Go 1317개가 섞인다): 비테스트 Go 파일 1731→**1732**(+1), 테스트 3385→**3389**(+4) — 창에서 실제로 움직인 규모다. 모듈 패키지 176, 최상위 디렉터리 90(`go list ./...`·디렉터리 census), 임베드 원본 **624**(`git ls-tree -r --name-only HEAD -- internal/template/templates | wc -l` — 창 중 불변). `go.mod`·`go.sum`은 창에서 한 줄도 움직이지 않았다. 이는 소스·배선 조사 결과이며 OS 런타임이나 원격 CI 성공 판정은 아니다.
+
+## 이전 소스 기준 — d5c083e (2026-10-23 갱신, card t1909 판)
+
+기준 커밋은 `d5c083e86d6d206f68735a3a63df69fe561facbb`(card t1909 제거 창 + origin/main 흡수 병합)다. Linux/amd64에서 `go list -deps -json ./internal/... ./cmd/... ./pkg/...`를 실행해 모듈 패키지 173개, 내부 import 쌍 520개, 상위 두 경로 요소로 접고 self-edge를 뺀 쌍 325개를 확인했다 — 앞 판과 세 값이 모두 같다. 창의 설명 대상 소스는 60개(추가 3·삭제 24·수정 33)로, 본체는 card t1909의 일반 moai-codex 실행·factory·init 표면 철수다(§ `modules.md` t1909 판 절). 의존성 집계와 `go.mod`·`go.sum`은 창에서 한 줄도 움직이지 않았다. 규모 표의 일곱 값은 아래에서 다시 쟀다. 이는 소스·배선 조사 결과이며 OS 런타임이나 원격 CI 성공 판정은 아니다.
+
+## 이전 소스 기준 — bf0a35f10 (2026-10-22 갱신)
+
+기준 커밋은 `bf0a35f10e423d8f0768e637b74a58e143a5d7d6`이다. Linux/amd64에서 `go list -deps -json ./internal/... ./cmd/... ./pkg/...`를 실행해 모듈 패키지 173개, 내부 import 쌍 520개, 상위 두 경로 요소로 접고 self-edge를 뺀 쌍 325개를 확인했다. 패키지 수에는 테스트를 지원하는 `internal/testguard`와 `internal/skills`도 들어간다. 이 수치는 아래 과거 판의 OS별 집계와 구분한다.
+
+이전 provenance 앵커 `db0c514d3`와 이 커밋 사이의 설명 대상 Go 소스는 283개다(추가 93·수정 187·삭제 3). 테스트 파일과 testdata 경로는 제외하고 생성된 Go 파일은 포함하는 `mx.IsDescribedWorthy` 기준이다. 현재 구조에는 업데이트의 스킬 잔여 폴더 처리, 테스트 HOME 보호, 후보 CI와 통합 기준 검증, 카드 메타데이터 감사 기록이 반영돼 있다. MCP 메시징 도구는 퇴역했고 현재 카탈로그는 39개 도구를 등록한다. 이는 소스·배선 조사 결과이며 OS 런타임이나 원격 CI 성공 판정은 아니다.
+
+## 이전 최종 통합 트리 — t1469 판 (main 흡수 병합 트리)
 
 기준은 카드 t1469 병합 트리(브랜치 `WT-always-loaded-char-budget`, HEAD `77e296541` — origin/main 흡수 병합 `1f3606d0f` 직후)다. `find internal cmd pkg`와 `go list -deps -json ./...`를 이 트리에서 실행했다. 비테스트 Go 파일 1663개, 테스트 Go 파일 3086개, 모듈 패키지는 174개, 최상위 디렉터리는 89개(`internal` 85·`cmd` 2·`pkg` 2)다. 내부 import 엣지는 패키지 단위 512쌍, 최상위로 접고 self-edge를 뺀 집계는 320쌍이다. 임베드 원본은 624파일이다.
 
@@ -66,18 +110,18 @@
 
 | 값 | 수치 | 산출 명령 |
 |---|---|---|
-| 비테스트 Go 파일 | 1663 | `find internal cmd pkg -name '*.go' -not -name '*_test.go' \| wc -l` |
-| 테스트 Go 파일 | 3086 | `find internal cmd pkg -name '*_test.go' \| wc -l` |
-| Go 패키지 총수 | 174 | `go list ./... \| wc -l` |
-| 최상위 디렉터리 | 89 | `internal` 85(`ls -d internal/*/`) + `cmd` 2 + `pkg` 2 |
-| 내부 import 엣지 (패키지 단위) | 512 | `go list -deps -json ./...`의 프로젝트 패키지 `Imports` 중 **모듈 내부 경로**(`github.com/modu-ai/moai-adk/` 접두 — `internal`·`pkg`·`cmd` 전부 포함; `internal` 전용 필터로는 이 값보다 작게 나온다 — t1456 판에서 t1443 감사 F1대로 문언을 실측 필터와 일치시켰다) |
-| 내부 import 엣지 (최상위 집계) | 320 | 위를 `internal/<X>` · `pkg/<X>` · `cmd/<X>` 수준으로 접고 self-edge 제거 |
+| 비테스트 Go 파일 | 1731 | `find internal cmd pkg -name '*.go' -not -name '*_test.go' \| wc -l` |
+| 테스트 Go 파일 | 3385 | `find internal cmd pkg -name '*_test.go' \| wc -l` |
+| Go 패키지 총수 | 176 | `go list ./... \| wc -l` |
+| 최상위 디렉터리 | 90 | `internal` 86(`ls -d internal/*/`) + `cmd` 2 + `pkg` 2 |
+| 내부 import 엣지 (패키지 단위) | 520 | `go list -deps -json ./...`의 프로젝트 패키지 `Imports` 중 **모듈 내부 경로**(`github.com/modu-ai/moai-adk/` 접두 — `internal`·`pkg`·`cmd` 전부 포함; `internal` 전용 필터로는 이 값보다 작게 나온다 — t1456 판에서 t1443 감사 F1대로 문언을 실측 필터와 일치시켰다) |
+| 내부 import 엣지 (최상위 집계) | 325 | 위를 `internal/<X>` · `pkg/<X>` · `cmd/<X>` 수준으로 접고 self-edge 제거 |
 | 임베드 템플릿 파일 | 624 | `find internal/template/templates -type f \| wc -l` |
 
-테스트 대 비테스트 비율은 **1.86 : 1**입니다. `go list`의 패키지 가운데 테스트 Go 파일이
-0개인 곳은 6개입니다. 그중 `cmd/moai`·`cmd/t657-merge`·`internal/template/scripts`·
+일곱 값은 모두 t1909 판(d5c083e86d 트리)의 직접 측정값이다. 테스트 대 비테스트 비율은 **1.96 : 1**입니다. `go list`의 패키지 가운데 테스트 Go 파일이
+0개인 곳은 7개입니다. 그중 `cmd/moai`·`cmd/t657-merge`·`internal/template/scripts`·
 `scripts/convert-nextra-to-hextra`는 실행 파일이고, `internal/closure/closuretest`·
-`internal/escalation/escalationtest`는 다른 패키지의 테스트가 쓰는 픽스처입니다.
+`internal/escalation/escalationtest`·bugreport의 `captureframesprobe`는 다른 패키지의 테스트가 쓰는 픽스처입니다.
 `internal/skills`는 비테스트 Go 파일이 없는 테스트 전용 디렉터리입니다.
 
 > **엣지 수 정정 이력.** 앵커 `25a3212a9` 판은 패키지 단위 엣지를 1638로 적었지만 당시

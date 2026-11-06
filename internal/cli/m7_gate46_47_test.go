@@ -15,12 +15,7 @@ package cli
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
-
-	"github.com/modu-ai/moai-adk/internal/cli/wizard"
-	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/userassets"
 )
 
 func corruptUserManifestHome(t *testing.T) string {
@@ -76,120 +71,5 @@ func TestInitResumeCheckpointReadsBothDeploymentFaces(t *testing.T) {
 	healthyHome := t.TempDir()
 	if initResumeCheckpoint(healthyHome, deployed) {
 		t.Fatal("a healthy user store routed a deployed project into resume")
-	}
-}
-
-func TestInitResumeAppliesJevSelection(t *testing.T) {
-	home := t.TempDir()
-	t.Setenv("HOME", home)
-	t.Setenv("MOAI_SANDBOX_PROOF", "")
-	t.Setenv("MOAI_DISABLE_BYPASS_PERMISSIONS_MODE", "")
-
-	seamsForInit(t)
-	// The wizard ANSWERED yes to Jev (gate 47-4: the resume must keep it)
-	// and DECLINED participation (gate 50-3: the resume must record the
-	// decline — Asked:true, Enabled:false).
-	t.Setenv("CI", "")
-	origWizard := runWizardFn
-	runWizardFn = func(_, _, _ string) (*wizard.WizardResult, error) {
-		return &wizard.WizardResult{AutonomyTier: "automatic", JevEnabled: true, ParticipationEnabled: false}, nil
-	}
-	t.Cleanup(func() { runWizardFn = origWizard })
-
-	projectDir := filepath.Join(t.TempDir(), "jev-resume-proj")
-	injectInitWindowFailure(t)
-
-	cmd1 := newInitTestCmd()
-	var out1, err1b strings.Builder
-	cmd1.SetOut(&out1)
-	cmd1.SetErr(&err1b)
-	if err := runInit(cmd1, []string{projectDir}); err == nil {
-		t.Fatal("the post-executor injection did not bite: run 1 succeeded")
-	}
-
-	cmd2 := newInitTestCmd()
-	var out2, err2b strings.Builder
-	cmd2.SetOut(&out2)
-	cmd2.SetErr(&err2b)
-	if err := runInit(cmd2, []string{projectDir}); err != nil {
-		t.Fatalf("run 2 (the resume) failed: %v", err)
-	}
-
-	// The Jev selection survived the resume: workflow.yaml's jev.enabled
-	// reads true (the shipped default is false).
-	wf, err := os.ReadFile(filepath.Join(projectDir, ".moai", "config", "sections", "workflow.yaml"))
-	if err != nil {
-		t.Fatalf("workflow.yaml missing after resume: %v", err)
-	}
-	if !jevEnabledInWorkflowYAML(string(wf)) {
-		t.Fatalf("the resume lost the wizard's Jev selection (gate 47-4) — workflow.yaml jev block:\n%s", wf)
-	}
-
-	// Gate 50-3: the participation DECLINE was recorded (Asked, disabled) —
-	// a resume without the step left the consent invisible.
-	p := config.ReadUserParticipation()
-	if !p.Asked {
-		t.Fatalf("the resume never recorded the participation answer (Asked=false) — gate 50-3")
-	}
-	if p.Enabled {
-		t.Fatalf("the wizard's participation DECLINE flipped to enabled after the resume — gate 50-3")
-	}
-}
-
-// jevEnabledInWorkflowYAML reads the jev: block's enabled: value — a small
-// targeted scan (the shipped default carries enabled: false).
-func jevEnabledInWorkflowYAML(content string) bool {
-	lines := strings.Split(content, "\n")
-	inJev := false
-	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		switch {
-		case strings.HasPrefix(trimmed, "jev:"):
-			inJev = true
-		case inJev && strings.HasPrefix(line, " ") && strings.HasPrefix(trimmed, "enabled:"):
-			return strings.TrimSpace(strings.TrimPrefix(trimmed, "enabled:")) == "true"
-		case inJev && trimmed != "" && !strings.HasPrefix(line, " "):
-			return false // the jev block ended
-		}
-	}
-	return false
-}
-
-// TestJournalClearedAfterResume pins the paired invariant: the resume that
-// consumes the interruption clears the journal (the next run sees no
-// checkpoint).
-func TestJournalClearedAfterResume(t *testing.T) {
-	home := t.TempDir()
-	t.Setenv("HOME", home)
-	t.Setenv("MOAI_SANDBOX_PROOF", "")
-	t.Setenv("MOAI_DISABLE_BYPASS_PERMISSIONS_MODE", "")
-
-	// A stale pending journal from the failed attempt.
-	if err := userassets.WriteJournal(userassets.JournalPath(home), &userassets.PendingJournal{BundlesSelection: []string{"backend"}}); err != nil {
-		t.Fatal(err)
-	}
-
-	seamsForInit(t)
-	projectDir := filepath.Join(t.TempDir(), "journal-clear-proj")
-	injectInitWindowFailure(t)
-
-	cmd1 := newInitTestCmd()
-	var out1, err1b strings.Builder
-	cmd1.SetOut(&out1)
-	cmd1.SetErr(&err1b)
-	if err := runInit(cmd1, []string{projectDir}); err == nil {
-		t.Fatal("the post-executor injection did not bite: run 1 succeeded")
-	}
-
-	cmd2 := newInitTestCmd()
-	var out2, err2b strings.Builder
-	cmd2.SetOut(&out2)
-	cmd2.SetErr(&err2b)
-	if err := runInit(cmd2, []string{projectDir}); err != nil {
-		t.Fatalf("run 2 (the resume) failed: %v", err)
-	}
-
-	if _, err := os.Stat(userassets.JournalPath(home)); !os.IsNotExist(err) {
-		t.Fatalf("the pending journal survived the resume (stat err = %v) — the next run would re-enter the checkpoint", err)
 	}
 }

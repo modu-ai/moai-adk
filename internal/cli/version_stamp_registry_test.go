@@ -51,7 +51,10 @@ const (
 	// count compared with itself is always equal and asserts nothing.
 	// (35 → 34: SPEC-CAPACITY-RECLAIM-001 AC-CAP-004 untracked
 	// .moai/lessons-inbox.jsonl; the registry names tracked files only.)
-	expectedRegistryEntries = 34
+	// (34 → 101: the v3.2.0 bump — the release had been cited as a planned
+	// version and as v3.2.0-rc.N across 67 tracked files before the fallback
+	// reached it, so those citations entered the sweep as prose.)
+	expectedRegistryEntries = 101
 
 	// expectedStampEntries is the number of entries classified stamp. Held
 	// separately from expectedRegistryEntries on purpose: deriving one from
@@ -126,6 +129,77 @@ var versionStampRegistry = []versionStampEntry{
 	{path: "docs-site/content/zh/getting-started/faq.md", class: versionStampClassProse},
 	{path: "docs-site/content/zh/guides/claude-cloud.md", class: versionStampClassProse},
 	{path: "docs-site/content/zh/utility-commands/moai-feedback.md", class: versionStampClassProse},
+
+	// Prose — v3.2.0 bump: citations of the planned release and of its
+	// v3.2.0-rc.N candidates (the token is a substring of every rc tag),
+	// authored before the fallback reached v3.2.0. No bump rewrites them.
+	{path: ".claude/rules/moai/design/constitution.md", class: versionStampClassProse},
+	{path: ".goreleaser.yml", class: versionStampClassProse},
+	{path: ".moai/config/sections/design.yaml", class: versionStampClassProse},
+	{path: ".moai/config/sections/project.yaml", class: versionStampClassProse},
+	{path: ".moai/learning/2026-09-03-moai-todo.html", class: versionStampClassProse},
+	{path: ".moai/learning/2026-09-03-moai-todo.md", class: versionStampClassProse},
+	{path: ".moai/policies/design/constitution.md", class: versionStampClassProse},
+	{path: "internal/bugreport/identity.go", class: versionStampClassProse},
+	{path: "internal/bugreport/spool.go", class: versionStampClassProse},
+	{path: "internal/cli/update_version_skew.go", class: versionStampClassProse},
+	{path: "internal/factory/settings_drift.go", class: versionStampClassProse},
+	{path: "internal/feedback/testdata/bugreport_issue_v1.golden", class: versionStampClassProse},
+	{path: "internal/feedback/testdata/bugreport_summary_prompt_v1.golden", class: versionStampClassProse},
+	{path: "internal/spec/testdata/artifactstatus/four-artifacts/spec.md", class: versionStampClassProse},
+	{path: "internal/spec/testdata/artifactstatus/grandfathered/spec.md", class: versionStampClassProse},
+	{path: "internal/spec/testdata/artifactstatus/no-status/spec.md", class: versionStampClassProse},
+	{path: "internal/spec/testdata/artifactstatus/plan-status/spec.md", class: versionStampClassProse},
+	{path: "internal/spec/testdata/artifactstatus/spec-progress-only/spec.md", class: versionStampClassProse},
+	{path: "internal/spec/testdata/coveragesibling/sibling-table-expand/spec.md", class: versionStampClassProse},
+	{path: "internal/spec/testdata/coveragesibling/sibling-table-no-header/spec.md", class: versionStampClassProse},
+	{path: "internal/spec/testdata/coveragesibling/sibling-table-req-first/spec.md", class: versionStampClassProse},
+	{path: "internal/spec/testdata/coveragesibling/sibling-table-scoped/spec.md", class: versionStampClassProse},
+	{path: "internal/spec/testdata/duplicateacid/citing-above/spec.md", class: versionStampClassProse},
+	{path: "internal/spec/testdata/duplicateacid/single-declaration/spec.md", class: versionStampClassProse},
+	{path: "internal/spec/testdata/movingref/divergence/spec.md", class: versionStampClassProse},
+	{path: "internal/spec/testdata/movingref/marker-empty/spec.md", class: versionStampClassProse},
+	{path: "internal/spec/testdata/movingref/marker-reason/spec.md", class: versionStampClassProse},
+	{path: "internal/spec/testdata/movingref/no-claim/spec.md", class: versionStampClassProse},
+	{path: "internal/spec/testdata/movingref/pinned-sha/spec.md", class: versionStampClassProse},
+	{path: "internal/spec/testdata/movingref/r4-cm1-positional/spec.md", class: versionStampClassProse},
+	{path: "internal/spec/testdata/movingref/r4-cm2-command-token/spec.md", class: versionStampClassProse},
+	{path: "internal/spec/testdata/movingref/r4-form/spec.md", class: versionStampClassProse},
+	{path: "internal/spec/testdata/movingref/r4-korean/spec.md", class: versionStampClassProse},
+	{path: "internal/spec/testdata/movingref/sibling-progress/spec.md", class: versionStampClassProse},
+	{path: "internal/spec/testdata/movingref/three-dot/spec.md", class: versionStampClassProse},
+	{path: "internal/spec/testdata/movingref/unpinned-anchor/spec.md", class: versionStampClassProse},
+	{path: "internal/spec/testdata/syncsha/placeholder-suffixed/spec.md", class: versionStampClassProse},
+	{path: "internal/spec/testdata/syncsha/placeholder/spec.md", class: versionStampClassProse},
+	{path: "internal/spec/testdata/syncsha/prose/spec.md", class: versionStampClassProse},
+	{path: "internal/spec/testdata/syncsha/sha-above41/spec.md", class: versionStampClassProse},
+	{path: "internal/spec/testdata/syncsha/sha-annotated/spec.md", class: versionStampClassProse},
+	{path: "internal/spec/testdata/syncsha/sha-below6/spec.md", class: versionStampClassProse},
+	{path: "internal/spec/testdata/syncsha/sha-full/spec.md", class: versionStampClassProse},
+	{path: "internal/spec/testdata/syncsha/sha-min7/spec.md", class: versionStampClassProse},
+	{path: "internal/spec/testdata/syncsha/sha-quoted/spec.md", class: versionStampClassProse},
+	{path: "internal/spec/testdata/syncsha/sha-short/spec.md", class: versionStampClassProse},
+	{path: "internal/spec/testdata/syncsha/sha-uppercase/spec.md", class: versionStampClassProse},
+	{path: "internal/spec/testdata/vacuous_assert_e2e/green/.moai/specs/SPEC-FIXTURE-VTA-001/spec.md", class: versionStampClassProse},
+	{path: "internal/spec/testdata/vacuous_assert_e2e/red/.moai/specs/SPEC-FIXTURE-VTA-001/spec.md", class: versionStampClassProse},
+	{path: "internal/template/templates/.claude/rules/moai/design/constitution.md", class: versionStampClassProse},
+	{path: "internal/template/templates/.moai/config/sections/design.yaml", class: versionStampClassProse},
+	{path: "internal/template/testdata/release-drafter-cleanup.json", class: versionStampClassProse},
+	{path: "reports/harness-full-audit-20260923-01a0cddd.html", class: versionStampClassProse},
+	{path: "reports/harness-full-audit-20260923-01a0cddd.md", class: versionStampClassProse},
+	{path: "reports/moai-claude-codex-factory-live-20260924.html", class: versionStampClassProse},
+	{path: "reports/moai-claude-codex-factory-live-20260924.md", class: versionStampClassProse},
+	{path: "reports/moai-codex-appserver-live-verification-20260924.html", class: versionStampClassProse},
+	{path: "reports/moai-codex-appserver-live-verification-20260924.md", class: versionStampClassProse},
+	{path: "reports/moai-codex-platform-redesign-20260923.html", class: versionStampClassProse},
+	{path: "reports/moai-codex-platform-redesign-20260923.md", class: versionStampClassProse},
+	{path: "reports/moai-factory-mcp-matrix-live-20260924.html", class: versionStampClassProse},
+	{path: "reports/moai-factory-mcp-matrix-live-20260924.md", class: versionStampClassProse},
+	{path: "reports/moai-proxy-feasibility-plan-20260910.md", class: versionStampClassProse},
+	{path: "reports/moai-proxy-three-provider-redesign-20260910.html", class: versionStampClassProse},
+	{path: "reports/moai-proxy-three-provider-redesign-20260910.md", class: versionStampClassProse},
+	{path: "reports/workflow-performance-audit-20260911/report.md", class: versionStampClassProse},
+	{path: "scripts/release.sh", class: versionStampClassProse},
 }
 
 // TestVersionStampRegistryShape holds the registry's data invariants: the two
@@ -437,8 +511,9 @@ func TestVersionStampSyntheticVacuity(t *testing.T) {
 		in.population = in.population[:len(in.population)-1]
 		delete(in.contents, dropped.path)
 		findings := judgeVersionStampRegistry(in.token, in.population, in.contents, in.registry, in.docStamps)
-		if len(findings) != 1 || findings[0] != "registry entries=33 expected=34" {
-			t.Errorf("check did not emit expected failure: registry entries=33 expected=34 (got %v)", findings)
+		want := fmt.Sprintf("registry entries=%d expected=%d", expectedRegistryEntries-1, expectedRegistryEntries)
+		if len(findings) != 1 || findings[0] != want {
+			t.Errorf("check did not emit expected failure: %s (got %v)", want, findings)
 		}
 	})
 	t.Run("holds the stamp classification count", func(t *testing.T) {
@@ -589,7 +664,7 @@ func TestVersionStampSyntheticPopulationReach(t *testing.T) {
 		const unreadable = "dist/artifact.bin"
 		in.population = append(in.population, unreadable)
 		findings := judgeVersionStampRegistry(in.token, in.population, in.contents, in.registry, in.docStamps)
-		want := "judged=34 handed=35"
+		want := fmt.Sprintf("judged=%d handed=%d", expectedRegistryEntries, expectedRegistryEntries+1)
 		if len(findings) != 1 || findings[0] != want {
 			t.Errorf("check did not emit expected failure: %s (got %v)", want, findings)
 		}
@@ -658,6 +733,10 @@ var versionStampTokenLine = regexp.MustCompile(`(?m)^\s*Version = "([^"]+)"`)
 // document. Not one blanket clause: the groups hide different amounts for
 // different reasons, and a single clause would hide that.
 //
+// go.mod and go.sum are the dependency manifests: they carry third-party
+// module versions, which can coincide with the project token (card t1987:
+// modernc.org/gc/v3 v3.2.0) and never carry a stamp of our own.
+//
 // Matching follows the semantics the exclusion counts were measured with: a
 // trailing slash is a directory prefix, a bare name is an exact path, and a
 // star crosses path segments. The stars matter — a segment-bound star would
@@ -669,6 +748,8 @@ var versionStampExclusionGroups = []string{
 	"CHANGELOG.md",
 	"*_test.go",
 	"docs-site/content/*/changelog*",
+	"go.mod",
+	"go.sum",
 }
 
 // versionStampExclusionGlobRes holds the compiled forms of the groups that
@@ -746,8 +827,12 @@ func trackedPopulation(t *testing.T, root string) []string {
 		t.Fatalf("list tracked files: %v", err)
 	}
 	var population []string
+	// git prints a name without quoting spaces, so the raw line is the exact
+	// file name and must not be trimmed: a trimmed "go.mod " would hide behind
+	// the go.mod exclusion. Names git has to quote (control characters, quotes,
+	// backslash, non-ASCII under core.quotePath) are listed quoted, do not
+	// resolve to a file, and surface through the judged/handed count.
 	for _, line := range strings.Split(string(out), "\n") {
-		line = strings.TrimSpace(line)
 		if line == "" || versionStampExcluded(line) {
 			continue
 		}

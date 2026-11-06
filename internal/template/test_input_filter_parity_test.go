@@ -100,8 +100,12 @@ var requiredGoCodeRoots = []string{
 	".github/workflows/release-pr-multi-os.yml",
 	".github/test-input-filters.yml",
 	".github/branch-protection.json.gtmpl",
+	".github/workflows/**",
+	".github/required-checks.yml",
+	".coderabbit.yaml",
 	".moai/**",
 	"internal/template/templates/**",
+	"internal/template/testdata/**",
 	"internal/template/catalog.yaml",
 	".claude/agents/**",
 	".claude/rules/moai/**",
@@ -115,6 +119,9 @@ var requiredGoCodeRoots = []string{
 	"scripts/release.sh",
 	"scripts/verify-release-provenance.sh",
 	".goreleaser.yml",
+	// Card t1858: the release_gate pin tests (internal/config, internal/template)
+	// read this file; an edit to it alone must run them.
+	".github/required-checks.yml",
 }
 
 func TestTestInputFiltersCoversGoTestInputs(t *testing.T) {

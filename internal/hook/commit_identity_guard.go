@@ -74,16 +74,27 @@ var commitVerbs = map[string]bool{
 // fails when a literal is missing from this list (AC-CIG-010) — 60 literals
 // after the landing/sweep/t1379/t1395/quota-dirs fixture emails joined the
 // enumeration and the t1453 landing-predicate fixture email (gfd-test) was
-// registered.
+// registered; 61 with the t1856 env-diff-base fixture email; 62 with the t1680
+// common-root fixture email; 63 with the t1913 codex-review-entry fixture
+// email (SPEC-HOOK-SYNC-ASYNC-001 M3); 76 with the t1640
+// (SPEC-WORKTREE-HOME-ROOT-001) fixture emails (bases, cls-test, list, m3,
+// m6, ml-test, tier, wr-test, rfx, sfx-cli) joined under the t1913 addition;
+// 77 with the t1831 af-flow fixture email; 78 with the t2013 factory
+// checkpoint fixture email; 80 with the t2034 mergeq gate fixture emails
+// (g@e, t@e).
 var builtinCommitIdentityDenyEmails = []string{
 	"a@e.invalid",
 	"anchor-test@example.com",
 	"audit@example.invalid",
+	"bases@example.com",
 	"board-test@example.com",
 	"branch-guard-test@example.com",
 	"c@e.invalid",
 	"chain-test@example.com",
+	"cls-test@example.com",
+	"cp@example.invalid",
 	"disposal-test@example.com",
+	"env-diff-base-test@example.invalid",
 	"f@e.com",
 	"f@example.com",
 	"f3@example.com",
@@ -93,16 +104,23 @@ var builtinCommitIdentityDenyEmails = []string{
 	"fixture@example.test",
 	"fixture@t516.invalid",
 	"fx@example.com",
+	"g@e",
 	"gfd-test@example.com",
 	"guard-test@example.invalid",
 	"guard@test",
 	"landing-test@example.com",
+	"list@example.com",
 	"m2-test@example.com",
+	"m3@example.com",
+	"m6@example.com",
 	"migration-test@example.com",
+	"ml-test@example.com",
 	"o@e.x",
 	"other@example.com",
 	"probe-test@example.com",
 	"qwr@example.invalid",
+	"rfx@example.com",
+	"sfx-cli@example.com",
 	"slot-cli-test@example.com",
 	"slot-lease-test@example.com",
 	"someone@example.invalid",
@@ -110,8 +128,11 @@ var builtinCommitIdentityDenyEmails = []string{
 	"sub@e.x",
 	"sweep-test@example.com",
 	"sync-gate-test@example.com",
+	"t@e",
 	"t@example.com",
 	"t@example.invalid",
+	"t@example.test",
+	"t@fixture",
 	"t@local",
 	"t@t",
 	"t@t.local",
@@ -123,6 +144,8 @@ var builtinCommitIdentityDenyEmails = []string{
 	"t1379@example.invalid",
 	"t1395@example.invalid",
 	"t1404@example.invalid",
+	"t1680@example.invalid",
+	"t1831@test.local",
 	"t371@example.com",
 	"t461@example.test",
 	"t488@example.invalid",
@@ -139,6 +162,8 @@ var builtinCommitIdentityDenyEmails = []string{
 	"test@example.invalid",
 	"test@test.com",
 	"tier-guard-test@example.com",
+	"tier@example.com",
+	"wr-test@example.com",
 }
 
 // effectiveDenyEmails returns the union of the built-in list and extra

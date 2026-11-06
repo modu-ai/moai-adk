@@ -124,19 +124,56 @@ the detector (fail-open) without a real review.
   `mcp_convergence.go:768-770`).
   Command: `go test ./internal/cli/ -run TestWSR003 -count=1`.
 
-- **AC-WSR-004 (other roots unchanged; REQ-WSR-005).**
-  Given fixture F's `P`, fixture T's `WT`, and fixture B,
-  When `codex_audit`, `audit_multi` (session `S`), and `verify_snapshot` record are
-  each called with that root as `project_root`, once normally and once with a `PATH`
-  from which git cannot be found,
-  Then the receipt, the convergence result for `S`, and the snapshot land under that
-  root's own `.moai/state` at the path the base tree uses, in every run, and no
-  primary identification is attempted (the PATH-without-git run behaves
-  identically).
-  RED cell (regression guard): a mutant that applies the store-root mapping to every
-  root that is a linked worktree moves `WT`'s files to T's primary checkout, and the
-  test fails on that mutant. The base tree passes this criterion; it is a
-  preservation check, and the mutant is its discriminating input.
+- **AC-WSR-004 (confined set refuses foreign roots, audit surface accepts validated
+  roots; REQ-WSR-005; amended at 0.3.0 and narrowed).**
+  Two server configurations: **S_F**, a server whose own repository is fixture F's `P`,
+  and **S_T**, a server whose own repository is fixture T's primary checkout. Each leg
+  runs once with the ordinary `PATH` (run **git**) and once with a `PATH` from which git
+  cannot be found (run **no-git**).
+  **Group A — confined set** (`verify_snapshot` record, `verify_trend`, `spec_progress`,
+  `spec_audit`, `spec_drift`):
+  Given the registered legs — S_F with `P`; S_T with T's primary; S_T with `WT` —
+  When the tools run in run **git**,
+  Then the snapshot (and the catalogue answer) is served from that root's own
+  `.moai/state` / `.moai/specs` at the path the base tree uses.
+  Given the foreign legs — S_T with `P`, S_F with `WT`, and S_F and S_T each with
+  fixture B —
+  When the tools run in run **git**,
+  Then each call returns a tool error result whose text names `project_root` and the
+  confinement reason (a different repository, or not a git worktree), and a recursive listing of the whole `t.TempDir()` tree
+  taken before the call is identical to the one taken after it.
+  Given every leg above —
+  When the tools run in run **no-git**,
+  Then each call returns the same kind of tool error result and the before/after listing is
+  identical (fail closed).
+  **Group B — audit surface** (`codex_audit` with seam verdict `pass`, `audit_multi`
+  with session `S` and stub backends):
+  Given every leg above, foreign and non-git included (fixture B carrying `.moai`),
+  When the tools run in run **git** and in run **no-git**,
+  Then the receipt and the convergence result for `S` land under that root's own
+  `.moai/state` at the path the base tree uses, in every run; no call returns a
+  confinement refusal; and no primary identification is attempted. Bare fixture B needs
+  no git at all.
+  RED-now: derived from the prior criterion's text and the narrowed requirement, not
+  executed at amendment time; the run phase records the observed per-leg result on the
+  tree it starts from in progress.md §E.2. Group A is red on any tree that still
+  accepts a foreign root (the prior criterion pinned acceptance), and Group B is red on
+  any tree that confines the audit surface.
+  Green path: the card t1632 lane's `TestWSR004`, with the confinement call on the
+  confined set only, flips it; the passing output reports TestWSR004 as passed with a
+  subtest named per group and leg, and the swept count is non-zero (`[no tests to run]`
+  is not a pass).
+  Discriminating mutants (derived, not executed at amendment time; the run phase
+  executes each once and records the failing predicate in progress.md §E.2):
+  (i) the confined set accepts a foreign root and writes under it — fails Group A's
+  error-result and listing predicates; (ii) the confined set refuses but creates the state
+  directory first — fails only the listing predicate; (iii) the confined set falls back
+  to the root as given when git is missing — fails Group A's no-git run; (iv) the
+  store-root mapping is applied to every linked worktree — moves `WT`'s files to T's
+  primary checkout and fails the `WT` leg of run **git**; (v) the audit surface wrongly
+  refuses a validated foreign root — fails Group B's foreign and fixture-B legs;
+  (vi) the confined set wrongly accepts one — the same predicate as (i), recorded as
+  the mirror of (v) so the two directions are asserted together.
   Predecessor tests: `go test ./internal/cli/ ./internal/hook/ ./internal/auditreceipt/ ./internal/verify/ -count=1`
   passes with exactly two existing tests edited, both named here —
   (i) `TestConfigOrphanedWorktree_PrimaryGateEnforced`
@@ -152,7 +189,7 @@ the detector (fail-open) without a real review.
   asserts only the presence of the `worktree_warning` key and the unchanged
   `_root.warning` text (L238, L256-L266), so it passes unedited. Any other existing
   test that fails is a blocker report, not an edit.
-  Command: `go test ./internal/cli/ -run TestWSR004 -count=1`, plus the predecessor
+  Command: `go test ./internal/cli/ -run '^TestWSR004$' -count=1`, plus the predecessor
   run above.
 
 ### Paired readers

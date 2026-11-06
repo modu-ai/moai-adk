@@ -45,7 +45,6 @@ import (
 	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/homestate"
-	"github.com/spf13/cobra"
 )
 
 // Environment names of the fake codex. The helper runs only when the role env
@@ -78,8 +77,8 @@ const (
 	// tuiQuiet is the "exactly once / nothing happens" window.
 	tuiQuiet = 500 * time.Millisecond
 	// tuiResumeHelpFixture is the vendored `codex resume --help` text of
-	// codex-cli 0.161.0.
-	tuiResumeHelpFixture = "testdata/codex-0.161.0/resume-help.txt"
+	// codex-cli 0.162.1 (byte-identical to the 0.161.0 capture).
+	tuiResumeHelpFixture = "testdata/codex-0.162.1/resume-help.txt"
 )
 
 // ---------------------------------------------------------------- fake codex
@@ -1062,7 +1061,7 @@ func TestManagedCodexRemoteSupportProbe(t *testing.T) {
 			t.Fatal(err)
 		}
 		if !managedCodexRemoteSupport(string(b)) {
-			t.Errorf("the vendored codex-cli 0.161.0 resume help must be read as supporting --remote and --remote-auth-token-env")
+			t.Errorf("the vendored codex-cli 0.162.1 resume help must be read as supporting --remote and --remote-auth-token-env")
 		}
 	})
 	t.Run("no_options_unsupported", func(t *testing.T) {
@@ -2042,82 +2041,3 @@ func registerTUILoopbackLeader(ctx context.Context, t *testing.T, store *factory
 }
 
 // ---------------------------------------------------------------- AC-MT-016
-
-func TestManagedTUINeverReachedWithoutOptIn(t *testing.T) {
-	// ownerRoute restores the production owner behind the divert seam, with the
-	// probe and TUI spawn seams counting.
-	ownerRoute := func(t *testing.T) (probes, spawns *atomic.Int64, direct *int) {
-		withManagedCodexWiring(t)
-		direct = captureCodexDirectDoor(t)
-		managedFactoryCodexLaunchFunc = func(bin string, args, env []string, dir string) error {
-			return runManagedFactoryCodex(bin, args, env, dir, os.Stdin)
-		}
-		probes, spawns = &atomic.Int64{}, &atomic.Int64{}
-		origProbe, origCmd := managedCodexRemoteProbe, managedCodexTUICommand
-		managedCodexRemoteProbe = func(string, []string, string) (bool, string) { probes.Add(1); return false, "counting probe" }
-		managedCodexTUICommand = func(name string, arg ...string) *exec.Cmd { spawns.Add(1); return origCmd(name, arg...) }
-		orig := managedTerminalCheck
-		managedTerminalCheck = func(*os.File) bool { return true }
-		t.Cleanup(func() {
-			managedCodexRemoteProbe, managedCodexTUICommand, managedTerminalCheck = origProbe, origCmd, orig
-		})
-		t.Setenv("MOAI_HOME", t.TempDir())
-		return probes, spawns, direct
-	}
-	launch := func(t *testing.T) error {
-		return runCodex(&cobra.Command{Use: "codex"}, []string{"cli"})
-	}
-	// ownerDirect reaches the owner entry itself with a launch environment that
-	// is outside the gate: the owner enforces the same gate as the divert, so a
-	// direct caller never triggers the probe either. The sentinel binary does not
-	// exist, so a run that gets past the decision ends at its Start.
-	ownerDirect := func(env ...string) {
-		_ = runManagedFactoryCodex(sentinelCodexBinaryPath, []string{sentinelCodexBinaryPath}, env, "", os.Stdin)
-	}
-	const run = config.EnvFactoryRunID + "=run-wire0001"
-	const lane = config.EnvMoaiFactoryWorker + "=lane-2"
-
-	t.Run("no_switch", func(t *testing.T) {
-		probes, spawns, direct := ownerRoute(t)
-		if err := launch(t); err != nil {
-			t.Fatal(err)
-		}
-		ownerDirect(run, lane)
-		if probes.Load() != 0 || spawns.Load() != 0 || *direct != 1 {
-			t.Errorf("probe=%d tui spawns=%d direct door=%d, want 0/0/1", probes.Load(), spawns.Load(), *direct)
-		}
-	})
-	t.Run("switch_only", func(t *testing.T) {
-		probes, spawns, direct := ownerRoute(t)
-		managedOptIn(t)
-		if err := launch(t); err != nil {
-			t.Fatal(err)
-		}
-		ownerDirect(config.EnvMoaiFactoryManaged+"=1", run)
-		if probes.Load() != 0 || spawns.Load() != 0 || *direct != 1 {
-			t.Errorf("probe=%d tui spawns=%d direct door=%d, want 0/0/1", probes.Load(), spawns.Load(), *direct)
-		}
-	})
-	t.Run("stamps_only", func(t *testing.T) {
-		probes, spawns, direct := ownerRoute(t)
-		factoryLaneEnv(t)
-		if err := launch(t); err != nil {
-			t.Fatal(err)
-		}
-		ownerDirect(run, lane)
-		if probes.Load() != 0 || spawns.Load() != 0 || *direct != 1 {
-			t.Errorf("probe=%d tui spawns=%d direct door=%d, want 0/0/1", probes.Load(), spawns.Load(), *direct)
-		}
-	})
-	t.Run("opted_in_probes_once", func(t *testing.T) {
-		probes, spawns, direct := ownerRoute(t)
-		factoryLaneEnv(t)
-		managedOptIn(t)
-		// The sentinel codex binary does not exist, so the owner ends at its
-		// Start; the probe decision comes first.
-		_ = launch(t)
-		if probes.Load() != 1 || spawns.Load() != 0 || *direct != 0 {
-			t.Errorf("probe=%d tui spawns=%d direct door=%d, want 1/0/0", probes.Load(), spawns.Load(), *direct)
-		}
-	})
-}

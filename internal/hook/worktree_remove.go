@@ -45,7 +45,9 @@ func (h *worktreeRemoveHandler) Handle(ctx context.Context, input *HookInput) (*
 	// grow a stray <subdir>/.moai/state/worktrees.json (card t1165).
 	if input.WorktreePath != "" {
 		if root := resolveProjectRoot(input); root != "" {
-			unregisterWorktree(root, input.WorktreePath)
+			if err := unregisterWorktree(root, input.WorktreePath); err != nil {
+				slog.Warn("worktree_remove: failed to unregister worktree", "path", input.WorktreePath, "error", err)
+			}
 		}
 	}
 

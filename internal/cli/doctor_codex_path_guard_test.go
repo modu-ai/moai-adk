@@ -132,3 +132,12 @@ func TestCodexStaleSkillFinding_ClassificationPrecedesConversion(t *testing.T) {
 		t.Errorf("recorded stat calls = %v, want none", rec.paths)
 	}
 }
+
+// overrideSeparator pins the config-path separator seam to '\\' and restores
+// it via t.Cleanup.
+func overrideSeparator(t *testing.T) {
+	t.Helper()
+	orig := configPathSeparator
+	t.Cleanup(func() { configPathSeparator = orig })
+	configPathSeparator = '\\'
+}

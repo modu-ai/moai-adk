@@ -170,6 +170,7 @@ func Decide(in DecideInput) (DecideResult, error) {
 		req, jres := askJev(in, c, j)
 		rd.JevRequest, _ = json.Marshal(req)
 		rd.JevResponse, _ = json.Marshal(jres)
+		res.JevNotice = jres.NoticeLine()
 		ja, fallback := jevVerdict(in, jres)
 		if fallback != "" {
 			rule = "R2"
@@ -180,7 +181,7 @@ func Decide(in DecideInput) (DecideResult, error) {
 			r.EffectiveDecider = contract.DeciderLLMJev
 			r.JevAnswer = &contract.ReceiptJevAnswer{
 				ReceiptAnswer: contract.ReceiptAnswer{Answer: ja.Choice, Confidence: &ja.Probability,
-					Reason: "Jev cross-check signal (" + jev.ModelID + ").", ReasonRefs: j.ReasonRefs},
+					Reason: "Jev cross-check signal (" + jres.Usage.Model + ").", ReasonRefs: j.ReasonRefs},
 				RequestSHA256: receipt.SHA256Hex(rd.JevRequest),
 				RawResponse:   string(rd.JevResponse),
 			}

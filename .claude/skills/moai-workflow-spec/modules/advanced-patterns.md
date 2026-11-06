@@ -56,9 +56,9 @@ Workflow Template:
 ### Automated Quality Checks
 
 EARS Pattern Validation:
-- Verify each requirement uses exactly one EARS pattern
+- Verify each requirement uses one pattern or one GEARS compound clause (Where/While/When chained before a single "shall")
 - Check for pattern-appropriate keywords (WHEN/THEN, IF/THEN, etc.)
-- Detect mixed patterns within single requirements
+- Detect legacy IF/THEN mixed into a GEARS clause
 - Flag ambiguous language that needs clarification
 
 Test Coverage Validation:

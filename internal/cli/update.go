@@ -181,6 +181,13 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("--binary and --templates-only are mutually exclusive")
 	}
 
+	// --dry-run promises no filesystem change. The --config and --binary paths
+	// housekeep (and --binary installs) before the dry-run branch, and the config
+	// wizard writes on confirm, so the combinations are refused up front.
+	if getBoolFlag(cmd, "dry-run") && (editConfig || binaryOnly) {
+		return fmt.Errorf("--dry-run cannot be combined with --config or --binary: those paths change the filesystem before any preview")
+	}
+
 	// REQ-ITI-001: `moai update` carries NO profile entry — no confirmation, no
 	// profile wizard, whatever stdin and the flags are. The profile wizard
 	// starts only from `moai profile setup` / `--setup`.
@@ -188,6 +195,10 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	// Handle --config / -c mode (edit configuration only, no template updates)
 	// This takes priority over all other flags
 	if editConfig {
+		// M6: the configuration path writes project state too, so it runs the
+		// same housekeeping under the update lock (marker-guarded; a busy lock
+		// skips, because the other update housekeeps).
+		runUpdateHousekeepingLocked(updateProjectRoot())
 		return runInitWizard(cmd, true) // true = reconfigure mode
 	}
 
@@ -306,6 +317,13 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		defer releaseLock()
 	}
 
+	// M6: a --binary run never re-execs, so it housekeeps here, under the lock it
+	// already holds, and its report reaches the terminal block. Every other entry
+	// point housekeeps after the binary step (see the post-dry-run call below).
+	if binaryOnly {
+		runUpdateProgressStep(out, "Cleaning up leftover state...", "Leftover state checked", func() { runUpdateHousekeeping(lockRoot) })
+	}
+
 	// Step 1: Binary update (unless skipped)
 	if !shouldSkipBinaryUpdate(cmd) {
 		updated, err := runBinaryUpdateStep(cmd)
@@ -377,6 +395,15 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		//
 		return emitDryRunReinstallPlan(cmd, cwd, getBoolFlag(cmd, "force"), th)
 	}
+
+	// M6: housekeeping (state residue + skill-folder residue). It runs here, after
+	// the dry-run return and under the update lock, so every project-mutating path
+	// reaches it: --force, --templates-only, the normal flow, and the re-exec'd
+	// child (a parent that re-execs replaces its process and never gets this far,
+	// so no report is lost with a discarded ledger). The lowercase skill.md rename is
+	// held back: the template sync that follows may still be cancelled at its
+	// confirmation, and applyDeferredSkillRenames runs only once that is settled.
+	runUpdateProgressStep(out, "Cleaning up leftover state...", "Leftover state checked", func() { runUpdateHousekeepingDeferRenames(lockRoot) })
 
 	// This is after the dry-run return and under the update lock. It also runs
 	// when template sync is version-matched, so a later update can retry trees
@@ -579,16 +606,6 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-
-	// SPEC-CODEX-WIRING-001 (REQ-CW-009): refresh the Codex wiring in projects
-	// that already carry it — file existence is the standing opt-in, so a
-	// claude-only project gets nothing created. Deliberately BEFORE the
-	// syncSkipped early return below: an "Up to date · Skipping sync" update
-	// still owes a wired project its regeneration pass (AC-CW-008 clause 2),
-	// and the wiring refresh does not depend on template redeploy. A
-	// content-changing refresh prints the re-trust guidance (REQ-CW-008)
-	// inside the helper.
-	refreshCodexWiringBestEffort(out, cmd.ErrOrStderr())
 
 	// SPEC-UPDATE-MIRROR-HEAL-001 (REQ-UMH-001): restore a deleted
 	// .agents/skills mirror. SPEC-USER-ASSET-INSTALL-001 (final-class item 6,
@@ -839,13 +856,18 @@ func runBinaryUpdateStep(cmd *cobra.Command) (updated bool, err error) {
 	currentVersion := version.GetVersion()
 
 	// Check for available update
+	// Card t2053: the check reaches the network and can take seconds; label it.
+	checkLine := tui.ProgressLine(out, "Checking for a moai binary update...", &th)
 	available, info, err := deps.UpdateChecker.IsUpdateAvailable(currentVersion)
 	if err != nil {
+		checkLine.Fail("Binary update check failed")
 		return false, fmt.Errorf("check for update: %w", err)
 	}
 	if !available {
+		checkLine.Done("moai binary is up to date")
 		return false, nil
 	}
+	checkLine.Done("A newer moai binary is available")
 
 	// Card t1527 D1: the "Current version" line is dropped here — the top of
 	// runUpdate already printed it seconds earlier, and the identity band after
@@ -1140,6 +1162,15 @@ func ensureSettingsEnvInConfigRoot(configRoot string) error {
 		return nil
 	}
 
+	// Canonical form of the file as read, so the write below can be skipped when
+	// the cleanup leaves the settings meaning unchanged (card t1703). The env
+	// refresh deletes and re-adds PATH, which flags needsUpdate even when the
+	// value is identical.
+	originalCanonical, err := json.Marshal(existingSettings)
+	if err != nil {
+		return fmt.Errorf("marshal existing global settings: %w", err)
+	}
+
 	needsUpdate := false
 
 	// Clean up legacy hooks including orphaned scripts and deprecated Python hooks
@@ -1218,6 +1249,11 @@ func ensureSettingsEnvInConfigRoot(configRoot string) error {
 	}
 
 	if !needsUpdate {
+		return nil
+	}
+
+	// Same meaning as the file on disk: leave its bytes and mtime alone.
+	if finalCanonical, err := json.Marshal(existingSettings); err == nil && string(finalCanonical) == string(originalCanonical) {
 		return nil
 	}
 

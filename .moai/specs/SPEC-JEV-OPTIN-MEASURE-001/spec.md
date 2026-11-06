@@ -1,10 +1,10 @@
 ---
 id: SPEC-JEV-OPTIN-MEASURE-001
 title: "Jev opt-in surfaces and the measurement gate"
-version: "0.1.0"
+version: "0.2.0"
 status: completed
 created: 2026-09-20
-updated: 2026-09-20
+updated: 2026-10-15
 author: manager-spec
 priority: P2
 phase: "v3.1.0 target"
@@ -13,6 +13,7 @@ lifecycle: spec-anchored
 tags: "jev, typesafe, opt-in, wizard, web-console, measurement, baseline"
 tier: L
 depends_on: [SPEC-JEV-CORE-001]
+amendment_of: SPEC-JEV-OPTIN-MEASURE-001
 ---
 
 # SPEC-JEV-OPTIN-MEASURE-001
@@ -21,7 +22,18 @@ depends_on: [SPEC-JEV-CORE-001]
 
 | Date | Version | Change | Author |
 |---|---|---|---|
+| 2026-10-15 | 0.2.0 | **Amendment to a `completed` SPEC, card t1768 (`SPEC-JEV-RESOLVED-MODEL-001`). Status `completed → in-progress (amendment)`; `amendment_of: SPEC-JEV-OPTIN-MEASURE-001`.** Operator decision of 2026-10-15 (brain session): the request model is the alias `jev-latest`, and the endpoint's response reports the interpreted version. A measurement must therefore cite the interpreted model id the response returned, not the request alias. §B goal phrase, REQ-JEVO-014, AC-JEVO-010, and AC-JEVO-011 change; AC-JEVO-011 now checks that outputs cite the interpreted version, and the alias appears only in its own labelled field. No requirement is removed or renumbered, and no other acceptance criterion changes. `sync_commit_sha` (`52c460d30`) is NOT rewritten. | manager-spec |
 | 2026-09-20 | 0.1.0 | Split from SPEC-JEV-INTEGRATION-001 (card t1020) on the M2+M3 seam. Carries the two opt-in entrances, the shared persistence path, the measurement harness, and the question-design rules. Operator decision folded in: the wizard question joins the **init-only** set, so the setting is not reachable through reconfigure — three requirements encode that and its consequence. | manager-spec |
+
+## Amendments
+
+- Amendment: v0.2.0, card t1768, carried by `SPEC-JEV-RESOLVED-MODEL-001`. In place.
+- Prior completed version: 0.1.0 (status `completed`; the close is recorded in `progress.md` §E.4).
+- prior_completed_sha: 52c460d30
+- Rationale: the endpoint's response reports the interpreted model id, so a measurement can cite the version that answered. The request alias `jev-latest` is no longer a citation of the answering model. The amended text uses the terms defined in SPEC-JEV-RESOLVED-MODEL-001 (the interpreted model id and the request alias).
+- Scope: §B goal phrase; REQ-JEVO-014 (text); AC-JEVO-010 and AC-JEVO-011 (text, in `acceptance.md`). Nothing else changes. `plan.md`, `research.md`, and the prior `progress.md` are historical records and are not rewritten.
+- Sync commit SHA: not changed. The `sync_commit_sha` in `progress.md` §E.4 stays `52c460d30`. It records which tree was synced, not which text currently stands, and an amendment does not rewrite it.
+- Return to completed: at the sync phase of `SPEC-JEV-RESOLVED-MODEL-001`, this SPEC's frontmatter `status` returns to `completed`, a frontmatter-only change. The sync record of this amendment is that SPEC's `progress.md` §E.4.
 
 ## Position in the chain
 
@@ -45,7 +57,7 @@ The measurement's hard part is not running it. It is knowing what number to comp
 
 ## §B. Goal
 
-Two entrances to one persistence path, each stating the privacy cost where the choice is made; and a measurement harness that produces, per consumer, a labelled answer set scored against a constant-answer baseline in two language arms, under a pinned model id — with the verdict binding.
+Two entrances to one persistence path, each stating the privacy cost where the choice is made; and a measurement harness that produces, per consumer, a labelled answer set scored against a constant-answer baseline in two language arms, citing the interpreted model id — with the verdict binding.
 
 ---
 
@@ -83,7 +95,7 @@ Two entrances to one persistence path, each stating the privacy cost where the c
 
 **REQ-JEVO-013** (Unwanted) A threshold shall not be copied from vendor documentation — the figures `0.6` and `0.85` appearing there are illustrative — and shall not be transferred between a Noul question and a Choice question.
 
-**REQ-JEVO-014** (Ubiquitous) Every measurement result shall cite the pinned model id it was taken under.
+**REQ-JEVO-014** (Ubiquitous) **[AMENDED 2026-10-15 — v0.2.0; see HISTORY]** Every measurement result shall cite the interpreted model id that the endpoint returned for its answered calls, and shall name the request alias only in a separately labelled field.
 
 **REQ-JEVO-015** (Ubiquitous) A measurement reporting an absence — a zero-hit, a no-difference, a null result — shall be accompanied by a positive control demonstrating the measuring apparatus fires on that path.
 

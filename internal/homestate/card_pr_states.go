@@ -105,6 +105,16 @@ func planPREdge(ctx context.Context, cur Card, edge transitionEdge, req Transiti
 // the card worktree is on a branch that is not the integration branch, and that
 // branch's tip is the tip on the remote-tracking ref — what the PR carries is
 // what the worktree holds.
+//
+// The branch read is `git symbolic-ref --quiet HEAD`, not `rev-parse
+// --abbrev-ref HEAD`: when a tag shares the card branch's name, --abbrev-ref
+// disambiguates to `heads/<branch>`, which validBranchName accepts and the
+// remote-tracking composition below then turns into
+// refs/remotes/<remote>/heads/<branch> — a healthy pushed tree refused as
+// "never pushed" (card t1928; the same class t1834 and t1920 fixed in the
+// factory and merge-step reads). Only the refs/heads/ prefix is stripped. On
+// a detached HEAD symbolic-ref exits non-zero, taking the same "not on a
+// branch" refusal the old literal-"HEAD" arm produced.
 func verifyPROpen(ctx context.Context, dir string, req TransitionRequest) (map[string]string, error) {
 	number, url := strings.TrimSpace(req.PRNumber), strings.TrimSpace(req.PRURL)
 	if n, err := strconv.Atoi(number); err != nil || n <= 0 || url == "" || strings.ContainsAny(url, " \t\r\n") {
@@ -113,8 +123,12 @@ func verifyPROpen(ctx context.Context, dir string, req TransitionRequest) (map[s
 	if !validBranchName(req.IntegrationBranch) {
 		return nil, evidenceErr("integration branch %q is not usable", req.IntegrationBranch)
 	}
-	branch, err := gitRead(ctx, dir, "rev-parse", "--abbrev-ref", "HEAD")
-	if err != nil || !validBranchName(branch) || branch == "HEAD" {
+	branch, err := gitRead(ctx, dir, "symbolic-ref", "--quiet", "HEAD")
+	if err != nil {
+		return nil, evidenceErr("the card worktree is not on a branch")
+	}
+	branch = strings.TrimPrefix(strings.TrimSpace(branch), "refs/heads/")
+	if !validBranchName(branch) || branch == "HEAD" {
 		return nil, evidenceErr("the card worktree is not on a branch")
 	}
 	if branch == req.IntegrationBranch {

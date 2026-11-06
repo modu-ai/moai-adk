@@ -14,12 +14,9 @@ package cli
 //     whose PROCESS env already carries the stamps.
 
 import (
-	"os"
-	"os/exec"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/spf13/cobra"
 )
 
 // managedOptIn turns the managed switch on for the test.
@@ -90,94 +87,6 @@ func TestManagedLaunchRequiresOptIn(t *testing.T) {
 		}
 		if managed.calls != 1 {
 			t.Fatalf("managed calls=%d, want 1", managed.calls)
-		}
-	})
-}
-
-// captureCodexDirectDoor routes the direct door to a counter instead of the
-// fixture's fail-if-reached stub.
-func captureCodexDirectDoor(t *testing.T) *int {
-	t.Helper()
-	calls := 0
-	orig := codexDirectLaunchFn
-	codexDirectLaunchFn = func(*exec.Cmd) error { calls++; return nil }
-	t.Cleanup(func() { codexDirectLaunchFn = orig })
-	return &calls
-}
-
-func TestManagedCodexLaunchRequiresOptIn(t *testing.T) {
-	t.Run("stamps in the process env without the switch reach the direct door", func(t *testing.T) {
-		_, managed := withManagedCodexWiring(t)
-		direct := captureCodexDirectDoor(t)
-		factoryLaneEnv(t)
-		if err := runCodex(&cobra.Command{Use: "codex"}, []string{"cli"}); err != nil {
-			t.Fatal(err)
-		}
-		if managed.calls != 0 || *direct != 1 {
-			t.Fatalf("managed calls=%d direct calls=%d, want 0/1", managed.calls, *direct)
-		}
-	})
-	t.Run("the switch without stamps reaches the direct door", func(t *testing.T) {
-		_, managed := withManagedCodexWiring(t)
-		direct := captureCodexDirectDoor(t)
-		managedOptIn(t)
-		if err := runCodex(&cobra.Command{Use: "codex"}, []string{"cli"}); err != nil {
-			t.Fatal(err)
-		}
-		if managed.calls != 0 || *direct != 1 {
-			t.Fatalf("managed calls=%d direct calls=%d, want 0/1", managed.calls, *direct)
-		}
-	})
-	t.Run("switch and stamps divert with the launch dir", func(t *testing.T) {
-		root, managed := withManagedCodexWiring(t)
-		factoryLaneEnv(t)
-		managedOptIn(t)
-		if err := runCodex(&cobra.Command{Use: "codex"}, []string{"cli"}); err != nil {
-			t.Fatal(err)
-		}
-		if managed.calls != 1 || managed.dir != root {
-			t.Fatalf("managed calls=%d dir=%q, want 1 call in %q", managed.calls, managed.dir, root)
-		}
-	})
-}
-
-// A managed Codex launch (switch + stamps, plain `moai codex`) leaves before
-// the launcher's child-env assembly and exec-handoff steps, so under -d the
-// trace lacks those lines and no RUST_LOG injection reaches the owner's env.
-// The control run (no switch) proves the same launch traces both once.
-func TestManagedCodexLaunchSkipsLaterDebugSteps(t *testing.T) {
-	t.Run("control: ordinary launch traces both steps once", func(t *testing.T) {
-		withManagedCodexWiring(t)
-		captureCodexDirectDoor(t)
-		factoryLaneEnv(t)
-		_, stderr, err := runCodexCmd(t, "-d")
-		if err != nil {
-			t.Fatal(err)
-		}
-		for _, step := range []string{"child-env assembly", "exec handoff"} {
-			if got := debugTraceStepLines(stderr, step); got != 1 {
-				t.Errorf("control step %q traced %d times, want 1:\n%s", step, got, stderr)
-			}
-		}
-	})
-	t.Run("managed launch skips them and carries no RUST_LOG injection", func(t *testing.T) {
-		_, managed := withManagedCodexWiring(t)
-		factoryLaneEnv(t)
-		managedOptIn(t)
-		_, stderr, err := runCodexCmd(t, "-d")
-		if err != nil {
-			t.Fatal(err)
-		}
-		if managed.calls != 1 {
-			t.Fatalf("managed calls=%d, want 1", managed.calls)
-		}
-		for _, step := range []string{"child-env assembly", "exec handoff"} {
-			if got := debugTraceStepLines(stderr, step); got != 0 {
-				t.Errorf("managed launch traced %q %d times; the divert is expected to leave first:\n%s", step, got, stderr)
-			}
-		}
-		if _, set := os.LookupEnv(config.EnvRustLog); !set && managed.envValue(config.EnvRustLog) != "" {
-			t.Errorf("managed env carries an injected %s", config.EnvRustLog)
 		}
 	})
 }

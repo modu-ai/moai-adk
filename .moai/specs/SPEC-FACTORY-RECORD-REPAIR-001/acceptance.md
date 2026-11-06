@@ -25,7 +25,7 @@ When L runs the factory renew verb for X,
 Then the lease expiry becomes the request time plus the configured duration, the verb prints that expiry, and the card's version is unchanged.
 
 - Classification: regression guard (decision-index Q1, operator verdict `d-20261010T053034Z-1a19`). Not a release gate.
-- Verification: `go test ./internal/cli/ -run '^TestFactoryRenewExtendsLiveLease$' -v -count=1`; passes only with `=== RUN TestFactoryRenewExtendsLiveLease` and `--- PASS: TestFactoryRenewExtendsLiveLease`.
+- Verification: `go test ./internal/cli/ -run '^TestFactoryRenewExtendsLiveLease$' -v -count=1`; passes only with `=== RUN TestFactoryRenewExtendsLiveLease` and `--- PASS: TestFactoryRenewExtendsLiveLease `.
 - Predicted failure (not observed): the renew verb is not registered, so the test fails on its expiry assertion once it drives the command tree. A compile failure would be TOOL_FAILURE.
 - Stops firing: if the test is renamed, moved, or excluded, the ledger row loses its `=== RUN` line and reads FAIL with `[no tests to run]`, which the sync audit reads from `progress.md` §E.2.
 - Green path: M2.
@@ -37,7 +37,7 @@ When L renews X through the MCP tool, and then, on the same state, through the f
 Then both return the same expiry fields, and for an expired lease both return the same refusal class.
 
 - Classification: regression guard (decision-index Q1, operator verdict `d-20261010T053034Z-1a19`). Not a release gate.
-- Verification: `go test ./internal/cli/ -run '^TestFactoryRenewMatchesMCP$' -v -count=1`; passes only with `=== RUN TestFactoryRenewMatchesMCP` and `--- PASS: TestFactoryRenewMatchesMCP`.
+- Verification: `go test ./internal/cli/ -run '^TestFactoryRenewMatchesMCP$' -v -count=1`; passes only with `=== RUN TestFactoryRenewMatchesMCP` and `--- PASS: TestFactoryRenewMatchesMCP `.
 - Predicted failure (not observed): no MCP renew tool is declared, so the MCP leg fails on its result assertion.
 - Stops firing: if the test is renamed, moved, or excluded, the ledger row loses its `=== RUN` line and reads FAIL with `[no tests to run]`, which the sync audit reads from `progress.md` §E.2.
 - Green path: M2.
@@ -62,7 +62,7 @@ When L runs the factory renew verb for X,
 Then the request is refused, and the card's state, version, and event count are unchanged.
 
 - Classification: regression guard (decision-index Q1, operator verdict `d-20261010T053034Z-1a19`; refusal per Q9 (a)). Not a release gate.
-- Verification: `go test ./internal/homestate/ -run '^TestRenewRefusesExpiredWithoutWrite$' -v -count=1`; passes only with `=== RUN TestRenewRefusesExpiredWithoutWrite` and `--- PASS: TestRenewRefusesExpiredWithoutWrite`.
+- Verification: `go test ./internal/homestate/ -run '^TestRenewRefusesExpiredWithoutWrite$' -v -count=1`; passes only with `=== RUN TestRenewRefusesExpiredWithoutWrite` and `--- PASS: TestRenewRefusesExpiredWithoutWrite `.
 - Predicted failure (not observed): `RenewLease` reaps the expired lease before it checks the holder (`internal/homestate/card_transition.go:452-457`), which bumps the version and appends `lease.expired`, so the unchanged-version assertion fails. At HEAD 35d242f34 the command the audit ran for this name printed `[no tests to run]`, because no test of this name exists yet (plan-audit-iter1 E4; re-confirmed at HEAD 53ea27f4f, plan-audit-iter2 E7).
 - Stops firing: if the test is renamed, moved, or excluded, the ledger row loses its `=== RUN` line and reads FAIL with `[no tests to run]`, which the sync audit reads from `progress.md` §E.2.
 - Green path: M2.
@@ -74,7 +74,7 @@ When its procedure and allowed tools are read,
 Then the first procedural step renews the lane's own card lease, the renew command is among the allowed tools, the measurement step follows the renewal, the procedure states the renewal interval bound (no longer than one half of `workflow.factory_lease.duration`), and the procedure states that a renewal the factory record refuses is recorded and the lane progress measurement still runs in that pass.
 
 - Classification: regression guard (decision-index Q1, operator verdict `d-20261010T053034Z-1a19`). Not a release gate.
-- Verification: `go test ./internal/template/ -run '^TestLaneWatchdogRenewsFirst$' -v -count=1`; passes only with `=== RUN TestLaneWatchdogRenewsFirst` and `--- PASS: TestLaneWatchdogRenewsFirst`.
+- Verification: `go test ./internal/template/ -run '^TestLaneWatchdogRenewsFirst$' -v -count=1`; passes only with `=== RUN TestLaneWatchdogRenewsFirst` and `--- PASS: TestLaneWatchdogRenewsFirst `.
 - Predicted failure (not observed): the current procedure opens with measurement (§1) and lists no renew command (`allowed-tools`, SKILL.md line 17).
 - Limit: this checks procedure text, not runtime behaviour, so a text-only change passes it (spec.md Residual risk).
 - Stops firing: if the test is renamed, moved, or excluded, the ledger row loses its `=== RUN` line and reads FAIL with `[no tests to run]`, which the sync audit reads from `progress.md` §E.2.
@@ -101,7 +101,7 @@ When a caller other than L requests a transition on X, and separately L's own re
 Then each refusal text names the factory stage verb that L runs to re-lease X.
 
 - Classification: regression guard (decision-index Q1 and Q8, operator verdict `d-20261010T053034Z-1a19`, option (a)). Not a release gate.
-- Verification: `go test ./internal/homestate/ -run '^TestExpiredRefusalNamesRecoveryVerb$' -v -count=1`; passes only with `=== RUN TestExpiredRefusalNamesRecoveryVerb` and `--- PASS: TestExpiredRefusalNamesRecoveryVerb`.
+- Verification: `go test ./internal/homestate/ -run '^TestExpiredRefusalNamesRecoveryVerb$' -v -count=1`; passes only with `=== RUN TestExpiredRefusalNamesRecoveryVerb` and `--- PASS: TestExpiredRefusalNamesRecoveryVerb `.
 - Predicted failure (not observed): the refusal texts name no verb (`internal/homestate/card_transition.go:315` and `:456`).
 - Sequence on this tree before the repair: the first transition request reaps the expired lease, then `moai factory next --card <card-id>` (or the MCP factory_next with project_root set to the parent checkout) re-leases it, then a same-stage return follows. REQ-FRR-006 replaces that sequence with one step. The named command is the stage verb because a holder inside its card worktree cannot run the next verb (`internal/cli/factory_card.go:189-201`).
 - Stops firing: if the test is renamed, moved, or excluded, the ledger row loses its `=== RUN` line and reads FAIL with `[no tests to run]`, which the sync audit reads from `progress.md` §E.2.
@@ -129,7 +129,7 @@ When a different label M runs the factory renew verb for X, or calls the MCP ren
 Then each request is refused, and the card's state, version, and events are unchanged.
 
 - Classification: regression guard (decision-index Q1, operator verdict `d-20261010T053034Z-1a19`). Not a release gate.
-- Verification: `go test ./internal/cli/ -run '^TestNonHolderRenewRefusedCLIAndMCP$' -v -count=1`; passes only with `=== RUN TestNonHolderRenewRefusedCLIAndMCP` and `--- PASS: TestNonHolderRenewRefusedCLIAndMCP`.
+- Verification: `go test ./internal/cli/ -run '^TestNonHolderRenewRefusedCLIAndMCP$' -v -count=1`; passes only with `=== RUN TestNonHolderRenewRefusedCLIAndMCP` and `--- PASS: TestNonHolderRenewRefusedCLIAndMCP `.
 - Predicted failure (not observed): a missing renew verb fails the request with a different error; the test pins the holder-refusal class (`ErrLeaseHolder`), so a missing verb cannot satisfy it.
 - Stops firing: if the test is renamed, moved, or excluded, its ledger row loses its `=== RUN` line and reads FAIL with `[no tests to run]`, which the sync audit reads from `progress.md` §E.2.
 - Green path: M2.

@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -74,8 +75,11 @@ func newAuditMultiBaselineRoot(t *testing.T, workflowYAML string) string {
 }
 
 // auditMultiBaselineCases are the two backend situations covered per root: every
-// backend passes, and the codex backend cannot answer. The second must stay a
-// pass (fail-open) when no `gates` argument and no explicit gate is present.
+// backend passes, and the codex backend cannot answer. The second is the
+// could-not-run case — REQ-MN-021/022 keep it at the distinct not-converged
+// outcome when no `gates` argument and no explicit gate is present (the
+// fail-open pass the old contract produced is superseded, and equally never a
+// converged fail).
 func auditMultiBaselineCases() map[string]map[string]ReviewOutput {
 	codexInconclusive := ReviewOutput{
 		Verdict: VerdictInconclusive, Summary: "codex unavailable",
@@ -175,7 +179,11 @@ func compareAuditMultiGolden(t *testing.T, name string, got []byte) {
 
 // assertNoPlanMembers checks the two members a later milestone adds only when a
 // plan is in force: neither may appear for a call with no configuration, or with
-// pins only, and no gate may be reported unmet.
+// pins only, and no gate may be reported unmet. REQ-MN-021/022 supersede the
+// original blanket pass expectation: a case whose codex backend cannot answer
+// is a could-not-run — the distinct not-converged outcome (never the old
+// fail-open pass, equally never a converged fail). The pass expectation stays
+// for the case where every backend answered.
 func assertNoPlanMembers(t *testing.T, name string, got []byte) {
 	t.Helper()
 	var m map[string]any
@@ -187,8 +195,12 @@ func assertNoPlanMembers(t *testing.T, name string, got []byte) {
 			t.Errorf("%s: result carries %q, want it absent", name, k)
 		}
 	}
-	if m["overall_verdict"] != "pass" {
-		t.Errorf("%s: overall_verdict = %v, want pass (fail-open)", name, m["overall_verdict"])
+	wantOverall := "pass"
+	if strings.Contains(name, "codex-inconclusive") {
+		wantOverall = VerdictInconclusive
+	}
+	if m["overall_verdict"] != wantOverall {
+		t.Errorf("%s: overall_verdict = %v, want %s", name, m["overall_verdict"], wantOverall)
 	}
 }
 

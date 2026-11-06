@@ -20,8 +20,8 @@ type ToolDef struct {
 	// (mcp.tools.<name>.enabled).
 	Name string
 	// WriteCapable is true for the tools whose handler may mutate state
-	// (goal_arm, verify_snapshot, codex_task, codex_job_cancel,
-	// codex_role_audit, glm_task, glm_job_cancel, codex_audit, audit_multi,
+	// (goal_arm, verify_snapshot, codex_role_audit,
+	// glm_task, glm_job_cancel, codex_audit, audit_multi,
 	// the session-messaging broker's three mutating tools, and the factory
 	// message family's three) and false for the read-only tools (including the
 	// graph code-query additions, SPEC-V3R6-GRAPH-FRESHNESS-001 M5). The exact
@@ -63,15 +63,15 @@ var moaiMCPTools = []ToolDef{
 	{Name: "claude_audit", WriteCapable: false},
 	{Name: "codex_audit", WriteCapable: true},
 	{Name: "codex_setup", WriteCapable: false},
-	{Name: "codex_task", WriteCapable: true},
-	{Name: "codex_job_status", WriteCapable: false},
-	{Name: "codex_job_result", WriteCapable: false},
-	{Name: "codex_job_cancel", WriteCapable: true},
 	// Codex read-only role launcher: start writes a verdict and a launch
 	// record under the caller's .moai/reports/; status and result only read.
 	{Name: "codex_role_audit", WriteCapable: true},
 	{Name: "codex_role_audit_status", WriteCapable: false},
 	{Name: "codex_role_audit_result", WriteCapable: false},
+	// codex_role_audit_cancel joins with SPEC-MCP-NEUTRALITY-001 REQ-MN-014:
+	// a role-audit job is bounded by the SERVER's lifetime, so the explicit
+	// cancel surface exists (the shutdown pass is its server-exit half).
+	{Name: "codex_role_audit_cancel", WriteCapable: true},
 	{Name: "glm_task", WriteCapable: true},
 	{Name: "glm_job_status", WriteCapable: false},
 	{Name: "glm_job_result", WriteCapable: false},
@@ -82,15 +82,6 @@ var moaiMCPTools = []ToolDef{
 	{Name: "codex_review", WriteCapable: false},
 	{Name: "glm_review", WriteCapable: false},
 	{Name: "audit_multi", WriteCapable: true},
-	{Name: "session_msg_register", WriteCapable: true},
-	{Name: "session_msg_list", WriteCapable: false},
-	{Name: "session_msg_send", WriteCapable: true},
-	{Name: "session_msg_poll", WriteCapable: true},
-	{Name: "factory_msg_send", WriteCapable: true},
-	{Name: "factory_msg_list", WriteCapable: true},
-	{Name: "factory_msg_body", WriteCapable: false},
-	{Name: "factory_msg_receipt", WriteCapable: true},
-	{Name: "factory_msg_status", WriteCapable: false},
 	// Graph code-query family (SPEC-V3R6-GRAPH-FRESHNESS-001 M5): all
 	// read-only surfaces over the per-tree graph artifacts. The shortest-
 	// path addition rides SPEC-GRAPH-REPORT-001 REQ-GR-001.
@@ -103,6 +94,12 @@ var moaiMCPTools = []ToolDef{
 	// workflow.jev.enabled — the shipped default is false, and while the
 	// chain's fitness gate stands unrun no surface may present it as available.
 	{Name: "jev_ask", WriteCapable: false},
+	// fetch_web (SPEC-FETCH-WEB-001 REQ-FW-009): the verbatim-excerpt web
+	// reader over the same pipeline the `moai fetch web` CLI command runs.
+	// Read-only with respect to project state (it fetches a page and scores
+	// it; it writes nothing), but deliberately NOT on the gate-session
+	// read-only subset: a gate session performs no network reads.
+	{Name: "fetch_web", WriteCapable: false},
 	// Factory card + queue tools (SPEC-FACTORY-SELF-DISPATCH-001
 	// REQ-SD-014): the MCP forms of `moai factory next/stage/complete/decide`
 	// and `moai todo add/list`, each the same implementation its CLI
@@ -113,6 +110,12 @@ var moaiMCPTools = []ToolDef{
 	// render (on the lane read-only allowlist, like its CLI verb).
 	{Name: "todo_add", WriteCapable: true},
 	{Name: "todo_list", WriteCapable: false},
+	// todo_claim joins the catalogue with SPEC-MCP-NEUTRALITY-001 REQ-MN-006:
+	// the tool was registered (internal/cli/mcp_todo.go) but catalogue-absent,
+	// and the catalogue-seeded enablement map silently dropped it — a dead
+	// registration no guard saw (plan B4). Write-capable: a claim leases and
+	// mutates the queue.
+	{Name: "todo_claim", WriteCapable: true},
 	{Name: "factory_next", WriteCapable: true},
 	{Name: "factory_stage", WriteCapable: true},
 	{Name: "factory_complete", WriteCapable: true},
@@ -138,4 +141,31 @@ func MoaiMCPToolNames() []string {
 		names[i] = t.Name
 	}
 	return names
+}
+
+// HasTool reports whether name carries a catalogue row (SPEC-MCP-NEUTRALITY-001
+// REQ-MN-006): the registration gate consults it so a registered name absent
+// from the catalogue fails the construction instead of serving silence.
+func HasTool(name string) bool {
+	for _, t := range moaiMCPTools {
+		if t.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
+// IsWriteCapable reports whether name carries a write-capable catalogue row
+// (SPEC-MCP-NEUTRALITY-001 REQ-MN-013): the server's staleness guard refuses
+// write-capable tools while the serving build is stale. A catalogue-absent
+// name reads as write-capable — the fail-closed direction (the registration
+// gate already refuses absent names, so this branch is unreachable through
+// the wired surface).
+func IsWriteCapable(name string) bool {
+	for _, t := range moaiMCPTools {
+		if t.Name == name {
+			return t.WriteCapable
+		}
+	}
+	return true
 }

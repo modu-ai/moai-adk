@@ -93,6 +93,17 @@ func TestFactoryNextBundleSerialLane(t *testing.T) {
 	for _, id := range []string{"t1", "t2", "t3", "t4"} {
 		fcClassify(t, store, id, factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
 	}
+	// SPEC-CARD-ELIGIBLE-PULL-001 update (sync-audit round 6, F14 re-sweep): the
+	// (a)/(b) clauses below assert that the unowned bundle members t3/t4 are
+	// SKIPPED by the generic arm (b), not leased and not an error. With the
+	// default-OFF kill switch that arm is dormant, so those assertions would
+	// hold without the bundle-order skip ever running; the flag is armed and
+	// the members carry spec ids (condition 2 is fail-closed) so the skip is
+	// what keeps them back. Scenario C below leases through arm (b-priority),
+	// which the flag never touches, and needs no arming.
+	cepSelfDispatchYAML(t, root, true)
+	cepSetSpecID(t, store, "t3", "SPEC-BUNDLE-LANE-001")
+	cepSetSpecID(t, store, "t4", "SPEC-BUNDLE-LANE-001")
 	sdRegisterLane(t, root, "lane-1")
 	sdRegisterLane(t, root, "lane-2")
 	t.Chdir(root)
@@ -164,6 +175,15 @@ func TestFactoryBundleKeepsSerialSlot(t *testing.T) {
 	fcClassify(t, store, "t2", factory.ClassPriorityNormal, false, factory.ClassModeSerial)
 	fcClassify(t, store, "t3", factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
 	fcClassify(t, store, "t4", factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
+	// SPEC-CARD-ELIGIBLE-PULL-001 update (sync-audit round 6, F14 re-sweep): the
+	// "t4 is lane-1's" clause below is a skip decided by generic arm (b), which
+	// the default-OFF kill switch leaves dormant — the no-card answer would then
+	// hold without the bundle skip ever running. The flag is armed and the
+	// bundle members carry spec ids (condition 2 is fail-closed) so the skip
+	// is what keeps t4 from lane-2.
+	cepSelfDispatchYAML(t, root, true)
+	cepSetSpecID(t, store, "t3", "SPEC-BUNDLE-SLOT-001")
+	cepSetSpecID(t, store, "t4", "SPEC-BUNDLE-SLOT-001")
 	sdRegisterLane(t, root, "lane-1")
 	sdRegisterLane(t, root, "lane-2")
 	t.Chdir(root)
@@ -360,9 +380,19 @@ func TestFactoryNextSkipsHubCandidateWhosePredecessorIsUnmerged(t *testing.T) {
 // gated its successor forever when only the current run's rows were read.
 func TestFactoryNextAfterGuardCountsOtherRunsMerges(t *testing.T) {
 	root, store := fcFixture(t)
+	// SPEC-CARD-ELIGIBLE-PULL-001 update: the unowned-picked lease this test
+	// uses as its vehicle now sits behind the self-dispatch flag — armed here
+	// so the subject (the after guard's merged-set scope) keeps its coverage.
+	// The gate's condition 4 is what the subject rides: a predecessor merged
+	// under run-prev must read as merged, or the candidate is refused
+	// predecessor-unmerged instead of leased.
+	cepSelfDispatchYAML(t, root, true)
 	// t1 is queue-held with no row in the current run: its merge lives only
 	// in run-prev, and no arm may take or re-record t1 itself.
 	fcQueue(t, store, factory.BacklogStateHold, factory.BacklogStatePicked)
+	// Amendment 0.3.0: t2 carries a spec id — condition 2 is fail-closed, and
+	// this test's vehicle is the (b) lease of t2.
+	cepSetSpecID(t, store, "t2", "SPEC-AFTERGUARD-001")
 	fcClassify(t, store, "t1", factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
 	fcClassify(t, store, "t2", factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
 	fcPlace(t, root,

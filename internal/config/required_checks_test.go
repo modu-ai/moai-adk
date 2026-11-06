@@ -75,8 +75,8 @@ func TestLoadRequiredChecks_Missing(t *testing.T) {
 	}
 }
 
-// TestNoHardcodedContexts verifies that branch_protection.go and github_init.go
-// do NOT contain the literal string "Test (ubuntu-latest)".
+// TestNoHardcodedContexts verifies that branch_protection.go does NOT contain the
+// literal string "Test (ubuntu-latest)".
 // Only the loader file (required_checks.go) may reference context names.
 func TestNoHardcodedContexts(t *testing.T) {
 	// Find project root: walk up from this test's directory until go.mod is found.
@@ -84,7 +84,6 @@ func TestNoHardcodedContexts(t *testing.T) {
 
 	filesToCheck := []string{
 		filepath.Join(root, "internal", "cli", "branch_protection.go"),
-		filepath.Join(root, "internal", "cli", "github_init.go"),
 	}
 
 	forbidden := "Test (ubuntu-latest)"
@@ -92,8 +91,9 @@ func TestNoHardcodedContexts(t *testing.T) {
 	for _, f := range filesToCheck {
 		data, err := os.ReadFile(f)
 		if err != nil {
-			// File may not exist yet (branch_protection.go created in W1-T06).
-			t.Logf("skipping %s (not found): %v", f, err)
+			// A scan target that cannot be read is a failure, never a silent skip: a path
+			// renamed or deleted away would otherwise leave the scan sweeping nothing.
+			t.Errorf("scan target %s is unreadable: %v", f, err)
 			continue
 		}
 		if strings.Contains(string(data), forbidden) {

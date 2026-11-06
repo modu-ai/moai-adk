@@ -330,7 +330,9 @@ func (c *GateConfig) attachCeiling(result *AuditResult) {
 	if result == nil || result.ReportPath == "" {
 		return
 	}
-	data, err := os.ReadFile(result.ReportPath)
+	// ReportPath is the stored caller path on a cache hit, so the read checks
+	// the opened file: a FIFO or link there is refused, never waited on.
+	data, err := readRegularFile(result.ReportPath, maxVerdictFileBytes)
 	if err != nil {
 		return
 	}

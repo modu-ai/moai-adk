@@ -38,9 +38,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // GLM job status enum. The set is closed: update refuses a value outside it
@@ -330,4 +333,42 @@ func newGLMJobID() (string, error) {
 		return "", fmt.Errorf("glm job id: %w", err)
 	}
 	return glmJobIDPrefix + time.Now().UTC().Format("20060102T150405Z") + "-" + hex.EncodeToString(buf[:]), nil
+}
+
+const (
+	// codexJobSummaryEllipsis marks a request summary truncated at the bound.
+	codexJobSummaryEllipsis = "…"
+
+	// codexJobRedacted replaces a credential-shaped value in a request summary.
+	codexJobRedacted = "[redacted]"
+)
+
+// codexJobBearerToken matches an HTTP bearer credential. It runs BEFORE the
+// key/value pattern below, because "Authorization: Bearer <token>" would
+// otherwise redact only the literal word "Bearer" and leave the token.
+var codexJobBearerToken = regexp.MustCompile(`(?i)\bbearer\s+\S+`)
+
+// codexJobSecretKeyValue matches a credential-shaped key followed by its value
+// in either `k=v` or `k: v` form. The key and separator are preserved so the
+// summary still says WHAT was redacted.
+var codexJobSecretKeyValue = regexp.MustCompile(
+	`(?i)\b(api[_-]?key|apikey|access[_-]?token|auth[_-]?token|token|secret|password|passwd|authorization)\b(\s*[:=]\s*)\S+`)
+
+// codexJobSecretToken matches credentials recognizable by their own prefix,
+// which appear with no key beside them.
+var codexJobSecretToken = regexp.MustCompile(
+	`(?i)\b(sk|rk)-[A-Za-z0-9_\-]{8,}|\bgh[pousr]_[A-Za-z0-9]{16,}|\bxox[abprs]-[A-Za-z0-9\-]{8,}|\bAKIA[0-9A-Z]{16}\b`)
+
+// codexJobSummary redacts credential-shaped content from a request description
+// and then bounds its length. Order matters: truncating first could split a
+// credential across the boundary and leave a usable prefix in the record.
+func codexJobSummary(s string) string {
+	s = strings.TrimSpace(s)
+	s = codexJobBearerToken.ReplaceAllString(s, codexJobRedacted)
+	s = codexJobSecretKeyValue.ReplaceAllString(s, "${1}${2}"+codexJobRedacted)
+	s = codexJobSecretToken.ReplaceAllString(s, codexJobRedacted)
+	if len(s) > config.DefaultCodexJobSummaryMaxLen {
+		s = strings.TrimSpace(s[:config.DefaultCodexJobSummaryMaxLen]) + codexJobSummaryEllipsis
+	}
+	return s
 }

@@ -19,8 +19,10 @@ import (
 // assertGateFail checks the codex_audit fail + gate_unmet shape of AC-MWU-014.
 func assertGateFail(t *testing.T, label string, out ReviewOutput, wantReceipt bool) {
 	t.Helper()
-	if out.Verdict != "fail" || out.GateUnmet == "" {
-		t.Fatalf("%s: want verdict fail with gate_unmet, got verdict=%q gate_unmet=%q summary=%q",
+	// REQ-MN-021: a required gate whose backend could not run is the distinct
+	// not-performed outcome (inconclusive) carrying gate_unmet — never a pass.
+	if out.Verdict != VerdictInconclusive || out.GateUnmet == "" {
+		t.Fatalf("%s: want verdict inconclusive with gate_unmet, got verdict=%q gate_unmet=%q summary=%q",
 			label, out.Verdict, out.GateUnmet, out.Summary)
 	}
 	if wantReceipt && out.AuditReceipt == "" {
@@ -49,6 +51,7 @@ func multiAuditOn(t *testing.T, root string) ConvergenceResult {
 // gitdir does not resolve.
 func TestConfigOrphanedWorktree_PrimaryGateEnforced(t *testing.T) {
 	fx := newUntrackedFixture(t, wtWorkflowCodexRequired)
+	t.Setenv("CLAUDE_PROJECT_DIR", fx.P) // REQ-MN-005: the server repository is the primary checkout
 
 	for round, label := range []string{"first call", "after W/.moai/state exists"} {
 		if round == 1 {
@@ -59,8 +62,8 @@ func TestConfigOrphanedWorktree_PrimaryGateEnforced(t *testing.T) {
 		out := codexAuditOn(t, fx.W)
 		assertGateFail(t, "codex_audit "+label, out, true)
 		r := multiAuditOn(t, fx.W)
-		if r.OverallVerdict != overallVerdictFail || !strings.Contains(r.GateUnmet, BackendCodex) {
-			t.Fatalf("audit_multi %s: want overall fail with gate_unmet naming codex, got overall=%q gate_unmet=%q",
+		if r.OverallVerdict != VerdictInconclusive || !strings.Contains(r.GateUnmet, BackendCodex) {
+			t.Fatalf("audit_multi %s: want overall inconclusive (REQ-MN-021) with gate_unmet naming codex, got overall=%q gate_unmet=%q",
 				label, r.OverallVerdict, r.GateUnmet)
 		}
 		if round == 0 {
@@ -217,6 +220,7 @@ func TestConfigOrphanedWorktree_OtherRootsKeepFailOpen(t *testing.T) {
 // fallback naming W both warnings appear.
 func TestConfigOrphanedWorktree_CatalogueWarning(t *testing.T) {
 	fx := newUntrackedFixture(t, wtWorkflowNoGate)
+	t.Setenv("CLAUDE_PROJECT_DIR", fx.P) // REQ-MN-005: the server repository is the primary checkout
 	key := "t0000000000000:wt-probe"
 	calls := map[string]func(root string) string{
 		"spec_progress": func(root string) string {

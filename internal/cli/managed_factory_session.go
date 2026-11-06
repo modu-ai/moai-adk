@@ -30,6 +30,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"os/exec"
 	"strings"
@@ -435,7 +436,10 @@ func claimManagedFactoryInbox(store *factorymsg.Store, pid int, start string) ([
 	if _, err := store.SettleReceiptControls(ctx, peer); err != nil {
 		return nil, err
 	}
-	return store.Claim(ctx, peer, factorymsg.MaxBatch, config.DefaultManagedSessionClaimLease)
+	// ClaimFresh, not Claim: a turn that fails leaves its claim untouched and is
+	// never retried by this layer, so a row the endpoint still holds must not be
+	// delivered again inside its lease (the claim contract of AC-MH-008).
+	return store.ClaimFresh(ctx, peer, factorymsg.MaxBatch, config.DefaultManagedSessionClaimLease)
 }
 
 // managedFactoryInboxWiring is the claim/prompt pair both managed owners hand
@@ -524,6 +528,17 @@ func runManagedFactoryStreamSession(backend, bin string, args, env []string, std
 	ticker := time.NewTicker(config.DefaultManagedSessionPollInterval)
 	defer ticker.Stop()
 	return driveManagedFactorySession(session, stdin, ticker.C, claim, toPrompt)
+}
+
+// closeFactoryToolStore closes a broker handle after a tool call or managed
+// session has produced its result. The result already reflects what the store
+// committed, so a close failure is logged rather than rewriting a completed
+// call into an error. (Relocated here from the removed mcp_factory_msg.go,
+// card t1908; managed_codex_factory.go shares it.)
+func closeFactoryToolStore(tool string, s *factorymsg.Store) {
+	if err := s.Close(); err != nil {
+		slog.Warn("factory message broker close failed", "tool", tool, "error", err)
+	}
 }
 
 // managedFactoryLaunch routes the launcher's factory divert (design.md D-7)

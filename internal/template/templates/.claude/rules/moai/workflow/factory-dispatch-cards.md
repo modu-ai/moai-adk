@@ -29,17 +29,31 @@ Most of what accumulates in the backlog is chores: a one-line fix, a stale refer
 | B — defect, cause unknown | Something is wrong and the cause has not been established | `run → sync`; `plan` is skipped, so no SPEC exists |
 | C — design change | The change contains a decision, or spans subsystems | All three stages |
 
-The Class-A evidence rule is the same shape as the CodeRabbit section of the stub: a class that skips review on a claim nobody checked is exactly the unobserved-claim hazard this rule forbids everywhere else; writing the justification down is not the same as verifying it.
+The Class-A evidence rule is the same shape as the native Codex evidence section of the stub: a class that skips review on a claim nobody checked is exactly the unobserved-claim hazard this rule forbids everywhere else; writing the justification down is not the same as verifying it.
 
 The parallelism comes from the across-cards axis: each lane carries a whole card, so three lanes put three cards in flight (§ Sub-agent execution within a lane for the within-card axis; § Factory in-lane 3-stage for the stages). Research fan-out during `plan` is Class-C-only.
 
+### Mode judgment — serial or parallelizable
+
+Class names the stages a card needs; mode names whether it may run beside other cards. The two axes are independent. Decide the mode at issuance, from the card's expected file set — never from the queue's default. A card is `serial` only when it edits the same files or shared state as an in-flight card, or edits a slot-gated surface (factory/todo core, release pipeline, shared migrations); every other card is `parallelizable`. The reason recorded with the classification states the file set and the conflict check and, for a `serial` card, names the conflicting card (the conflict check names the shared state or the slot-gated surface it found). Supply the judgment with `--classification-file` (decider `human`); no card is issued on the fail-safe default. A card that reached the queue on the default is reissued with an explicit classification. For a Class C card, give `--spec` when the card is picked: it cannot be added after assign.
+
+## Card size ceiling — split before dispatch
+
+Rationale as the card states it: failed agent PRs are larger and touch more files (arXiv:2601.15195); DORA small batches; the Copilot coding agent's workflow-run approval default.
+
+Whoever issues or classifies a card states its expected size — files touched and lines changed — in the card text. The operative rule is: **when the work exceeds the stated estimate, split the card before dispatch**; a lane that finds the estimate exceeded mid-run stops and reports instead of widening the change. As an illustration only, a card expected to touch more than about 10 files or 400 changed lines is a candidate for splitting; the numbers are examples, not a policy threshold.
+
+## Workflow-file changes need operator review
+
+A card whose agent-authored branch changes any file under `.github/workflows/` is marked **operator review required before landing**. Detect it with `git diff --name-only <base>...HEAD -- .github/workflows` (non-empty output means marked). This is an operator-held gate in the keep-set style, not automation: the lane's verdict text states the marking, the lane does NOT self-land it (it stops before Deliver, the step where `moai factory complete` would open the PR, and reports to the leader), and the leader's checklist lists the card until the operator has reviewed it.
+
 ## Lane card transition — statement structure
 
-The leader's statement at `done` names three things, in this order, and asks the operator to clear nothing:
+The leader's statement at `done` names three things, in this order:
 
 1. **What closed** — the card and the evidence that was read.
 2. **Which session moves on** — the lane, by name.
-3. **What happens next** — the lane runs the in-session transition (`ExitWorktree(keep)`, lease, `EnterWorktree`), and the next card it is routed.
+3. **What happens next** — after preserving evidence, dirty changes, unpushed commits, active checks or handoff, and unsubmitted input, the lane runs `ExitWorktree(keep)`, the default-branch check, the operator's `/clear`, and then requests the next card it is routed (lease, `EnterWorktree`).
 
 ## Isolation rationale
 

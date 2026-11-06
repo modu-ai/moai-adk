@@ -21,7 +21,7 @@ import (
 // cited as a measurement of anything.
 
 // TestGateDemonstration_ArtifactSatisfiesAC010 runs the whole gate and checks
-// the artifact carries everything AC-JEVO-010 requires of it: the pinned model
+// the artifact carries everything AC-JEVO-010 requires of it: the interpreted model
 // id, both language arms with per-arm results and the delta, and the
 // constant-answer baseline for that question shape.
 func TestGateDemonstration_ArtifactSatisfiesAC010(t *testing.T) {
@@ -58,8 +58,11 @@ func TestGateDemonstration_ArtifactSatisfiesAC010(t *testing.T) {
 	}
 
 	// AC-JEVO-010, item by item.
-	if rep.ModelID != jev.ModelID {
-		t.Errorf("model id = %q, want the pinned %q", rep.ModelID, jev.ModelID)
+	if rep.ModelID != "jev-9.8.7" {
+		t.Errorf("model id = %q, want the interpreted %q", rep.ModelID, "jev-9.8.7")
+	}
+	if rep.RequestModel != jev.ModelID {
+		t.Errorf("request model = %q, want the request alias %q", rep.RequestModel, jev.ModelID)
 	}
 	if len(rep.Arms) != 2 {
 		t.Fatalf("arms = %d, want both language arms", len(rep.Arms))

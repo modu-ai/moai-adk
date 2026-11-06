@@ -18,6 +18,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/paths"
 	"github.com/modu-ai/moai-adk/internal/web"
 )
 
@@ -50,7 +51,15 @@ func runWebHarness(t *testing.T, seams swSeams, opts ...func(*runWebHarnessCfg))
 
 	// webRunFn → no-op (web.Run blocks; we never want to start a real server).
 	origRun := webRunFn
-	webRunFn = func(ctx context.Context, _ web.Config) error { return nil }
+	webRunFn = func(ctx context.Context, c web.Config) error {
+		if cfg.captured != nil {
+			*cfg.captured = c
+		}
+		if cfg.onRun != nil {
+			cfg.onRun(c) // runs while the server would still be up
+		}
+		return nil
+	}
 	t.Cleanup(func() { webRunFn = origRun })
 
 	// Port reclamation: ensurePortFree returns nil when the port is free.
@@ -91,6 +100,8 @@ func runWebHarness(t *testing.T, seams swSeams, opts ...func(*runWebHarnessCfg))
 type runWebHarnessCfg struct {
 	materializePath string
 	projectRoot     string
+	captured        *web.Config      // when set, receives the Config runWeb handed to web.Run
+	onRun           func(web.Config) // when set, runs inside the web.Run stand-in, before it returns
 }
 
 // withRootDir sets the temp dir findProjectRootFn returns.
@@ -102,7 +113,12 @@ func withRootDir(p string) func(*runWebHarnessCfg) {
 // materialization (inWt=false, add returns the given path, configSet succeeds).
 // The add seam also mkdir's the dest so runWeb's subsequent os.Chdir succeeds —
 // wtMaterialized only flips true when the process actually enters the worktree.
-func materializeSeams(dest string) swSeams {
+func materializeSeams(t *testing.T, dest string) swSeams {
+	// SPEC-WORKTREE-HOME-ROOT-001 M2/M3: the materializer resolves the
+	// landing destination through the home projects root, which needs a real
+	// git repository at dest and a sandboxed MOAI_HOME.
+	m4InitRepoInPlace(t, dest)
+	t.Setenv(paths.EnvHome, t.TempDir())
 	return swSeams{
 		inWt:      func() bool { return false },
 		short:     func() string { return "abcdef12" },
@@ -139,7 +155,7 @@ func (e *strErr) Error() string { return e.s }
 func TestRunWeb_AutoEntryOn_SuppressesAdvisory(t *testing.T) {
 	t.Setenv("MOAI_SESSION_WORKTREE", "1")
 	dest := t.TempDir()
-	out, _, _ := runWebHarness(t, materializeSeams(dest), withRootDir(dest))
+	out, _, _ := runWebHarness(t, materializeSeams(t, dest), withRootDir(dest))
 
 	if strings.Contains(out.String(), advisoryMarker) {
 		t.Errorf("REQ-SW-013: advisory should be SUPPRESSED on materialization, but stdout contains it:\n%s", out.String())
@@ -154,7 +170,7 @@ func TestRunWeb_AutoEntryOn_SuppressesAdvisory(t *testing.T) {
 func TestRunWeb_AutoEntryOff_AdvisoryFires(t *testing.T) {
 	// MOAI_SESSION_WORKTREE deliberately UNSET.
 	root := t.TempDir()
-	out, _, _ := runWebHarness(t, materializeSeams(root), withRootDir(root))
+	out, _, _ := runWebHarness(t, materializeSeams(t, root), withRootDir(root))
 
 	if !strings.Contains(out.String(), advisoryMarker) {
 		t.Errorf("REQ-SW-001: advisory MUST fire when feature is OFF, but stdout lacks it:\n%s", out.String())

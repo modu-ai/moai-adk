@@ -47,7 +47,7 @@ flowchart TD
 
 ## Tier 3 の記録が積まれるファイル
 
-Tier 3 の記録は `AGENTS.local.md` の Learned セクションに追記されます。3 ファイル構成 — 共通の契約 `AGENTS.md`、Claude 専用の層 `CLAUDE.md`、個人の指示 `AGENTS.local.md` — の中で、このファイルは個人の指示を受け持ち、Claude Code と `moai codex` の両方が読みます。そのため一度昇格した観察は、どのハーネスで作業しても適用されます。Git で無視され `moai update` も触れないので、記録がアップデートで消えることもありません。
+Tier 3 の記録は `AGENTS.local.md` の Learned セクションに追記されます。3 ファイル構成 — 共通の契約 `AGENTS.md`、Claude 専用の層 `CLAUDE.md`、個人の指示 `AGENTS.local.md` — の中で、このファイルは個人の指示を受け持ち、Claude Code と Codex の両方が読みます。そのため一度昇格した観察は、どのハーネスで作業しても適用されます。Git で無視され `moai update` も触れないので、記録がアップデートで消えることもありません。
 
 まだ `CLAUDE.local.md` を使っているプロジェクトでは、先に `moai migrate local-instructions` で移してください。`moai update` と `moai doctor` は `CLAUDE.local.md` を見つけると同じ案内を出力します。
 

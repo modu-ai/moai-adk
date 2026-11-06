@@ -9,17 +9,50 @@ package cli
 // SPEC-V3R3-PROJECT-HARNESS-001 suite — a different harness axis entirely.
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 )
 
+// initLegacyCodexOnlyProject seeds the codex-only project shape the doctor
+// downgrade serves: llm.harness recorded as gpt and no .claude/ surface. Init
+// is claude-only since the general codex execution surface removal (card
+// t1909), so the shape a pre-removal `--llm gpt` init produced is seeded by
+// hand — the doctor behavior under test is the one existing gpt trees still
+// get.
+func initLegacyCodexOnlyProject(t *testing.T) string {
+	t.Helper()
+	projectDir, _ := runInitForAutonomy(t, nil, nil)
+
+	llmPath := filepath.Join(projectDir, ".moai", "config", "sections", "llm.yaml")
+	data, err := os.ReadFile(llmPath)
+	if err != nil {
+		t.Fatalf("read llm.yaml: %v", err)
+	}
+	updated := strings.Replace(string(data), `harness: "claude"`, `harness: "gpt"`, 1)
+	if updated == string(data) {
+		updated = strings.Replace(string(data), "harness: claude", "harness: gpt", 1)
+	}
+	if updated == string(data) {
+		t.Fatalf("llm.yaml carries no harness line to rewrite:\n%s", data)
+	}
+	if err := os.WriteFile(llmPath, []byte(updated), 0o644); err != nil {
+		t.Fatalf("rewrite llm.yaml harness: %v", err)
+	}
+	if err := os.RemoveAll(filepath.Join(projectDir, ".claude")); err != nil {
+		t.Fatalf("drop the .claude/ surface: %v", err)
+	}
+	return projectDir
+}
+
 // TestDoctorCodexOnlyDowngradesClaudeSurfaces verifies AC-IH-010 on the
 // check-result level: after a codex-only init, every claude-surface check
 // reports the informational downgrade instead of a warning/failure.
 func TestDoctorCodexOnlyDowngradesClaudeSurfaces(t *testing.T) {
-	projectDir, _ := runInitForAutonomy(t, nil, map[string]string{"llm": "gpt"})
+	projectDir := initLegacyCodexOnlyProject(t)
 
 	t.Chdir(projectDir)
 	groups := runGroupedChecks(false, "")
@@ -54,7 +87,7 @@ func TestDoctorCodexOnlyDowngradesClaudeSurfaces(t *testing.T) {
 // TestDoctorCodexOnlyOutputCarriesInfoLine asserts the downgrade produced an
 // INFO finding naming harness=codex (the AC-IH-010 green-path message).
 func TestDoctorCodexOnlyOutputCarriesInfoLine(t *testing.T) {
-	projectDir, _ := runInitForAutonomy(t, nil, map[string]string{"llm": "gpt"})
+	projectDir := initLegacyCodexOnlyProject(t)
 
 	t.Chdir(projectDir)
 	groups := runGroupedChecks(false, "")

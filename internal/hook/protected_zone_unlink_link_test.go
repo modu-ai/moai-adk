@@ -290,6 +290,18 @@ func zoneAbsOperand(root, final string) string {
 	return `"` + zoneRootedDotDotPath(root, final, false) + `"`
 }
 
+// zoneBashText rewrites the native separators of a shell-command fixture to
+// "/" (card t1893). The command text is parsed as BASH: an unquoted
+// backslash is an escape the parser removes, so a Windows-host path such as
+// C:\Users\RUNNER~1\Temp\x concatenated into a command reaches the guard as
+// C:UsersRUNNER~1Tempx — a path that names nothing, which the guard
+// correctly allows (windows-latest job 117833434303: every denied row of
+// TestUserRootSymlinkSiblings read "expected denied, observed allowed").
+// Git-bash spells such a path with "/" as well. A no-op on POSIX hosts.
+func zoneBashText(command string) string {
+	return strings.ReplaceAll(command, "\\", "/")
+}
+
 // TestZoneAbsOperandQuotedAndVolumeFree — repair round 7 P2: the absolute
 // shell-command fixture composes through the round-6 helper (volume split
 // BEFORE the ".." prefix) and QUOTES the operand — on a Windows host the raw
@@ -524,6 +536,14 @@ func TestZoneUnlinkLinkOwnWindowsSeparators(t *testing.T) {
 // observation.
 func TestZoneResolveWalkWindowsRootedDotDot(t *testing.T) {
 	root := newUnlinkLinkRoot(t)
+	// A drive-rooted spelling names the CURRENT drive, and the fixture composes
+	// it from the root with the volume split off (card t1893). When the temp
+	// root and the process cwd sit on different drives — windows-latest keeps
+	// TEMP on C: and the workspace on D: — "\Users\..." resolves on the cwd's
+	// drive, where no fixture exists, and every walk below stops at the first
+	// missing component. Anchoring the cwd on the root's volume makes the
+	// current drive the fixture's drive; a no-op where they already coincide.
+	t.Chdir(root)
 	windowsPath := zoneRootedDotDotPath(root, "/zonelink", true)
 	resolved, ok := zoneResolveWalk(windowsPath, 0, true)
 	if !ok {

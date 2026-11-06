@@ -1,10 +1,12 @@
 // emit.go — dual-publication orchestration.
 //
-// EmitAll reads every .md under agentsRoot, parses each into the neutral
-// form, validates it against the mapping manifest (fail-closed), and renders
-// the deterministic Codex TOML set. The .md publication is identity: source
-// bytes pass through untouched (Option A — the emitter never re-renders the
-// neutral layer, so the moai update regression ban holds by construction).
+// EmitAll reads every .md agent source under agentsRoot and renders both
+// publications from it. The Claude publication is the Claude view of the source
+// (claude-only blocks kept, codex-only blocks dropped); the Codex publication
+// is the TOML rendered from the Codex view (the reverse), validated against the
+// mapping manifest (fail-closed). Neither publication is derived from the
+// other. A source without block markers renders to itself in the Claude view,
+// which is why the shipped definitions are carried byte for byte.
 package agentemit
 
 import (
@@ -15,8 +17,9 @@ import (
 	"strings"
 )
 
-// EmitAll produces the dual publication of the agent set under agentsRoot.
-// On any validation error it returns (nil, err) — no partial artifact set.
+// EmitAll produces the dual publication of the agent source set under
+// agentsRoot. On any validation error it returns (nil, err) — no partial
+// artifact set.
 func EmitAll(fsys fs.FS, agentsRoot string, man Manifest) (*Publication, error) {
 	pub, _, err := emitAll(fsys, agentsRoot, man)
 	return pub, err
@@ -34,6 +37,11 @@ func emitAll(fsys fs.FS, agentsRoot string, man Manifest) (*Publication, []AxisV
 			return nil
 		}
 		if strings.HasSuffix(p, ".md") {
+			// The walk never follows links; a symlinked entry is refused here
+			// rather than read through later.
+			if !d.Type().IsRegular() {
+				return fmt.Errorf("agentemit: agent source %s is not a regular file — refusing to follow a symlink or other non-regular entry", p)
+			}
 			files = append(files, p)
 		}
 		return nil
@@ -60,7 +68,21 @@ func emitAll(fsys fs.FS, agentsRoot string, man Manifest) (*Publication, []AxisV
 		if err != nil {
 			return nil, nil, fmt.Errorf("agentemit: read %s: %w", file, err)
 		}
-		doc, err := ParseAgentDoc(file, data)
+		claudeView, err := RenderView(file, data, ViewClaude)
+		if err != nil {
+			return nil, nil, err
+		}
+		codexView, err := RenderView(file, data, ViewCodex)
+		if err != nil {
+			return nil, nil, err
+		}
+		// Both views are validated: a marker block may sit inside the
+		// frontmatter, so the Claude view can carry a tools token or YAML the
+		// Codex view never sees, and it must not ship unchecked.
+		if _, _, err := parseAndClassify(man, file, claudeView); err != nil {
+			return nil, nil, err
+		}
+		doc, hasMCP, err := parseAndClassify(man, file, codexView)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -68,17 +90,6 @@ func emitAll(fsys fs.FS, agentsRoot string, man Manifest) (*Publication, []AxisV
 			return nil, nil, fmt.Errorf("%s: duplicate agent name %q (also declared by %s) — Codex namespace collision", file, doc.Name, prev)
 		}
 		seenName[doc.Name] = file
-
-		hasMCP := false
-		for _, tok := range doc.Tools {
-			class, ok := classifyToken(man, tok)
-			if !ok {
-				return nil, nil, fmt.Errorf("%s: unknown tool token %q — not mapped to any class in the Codex mapping manifest", file, tok)
-			}
-			if class == "moai-mcp" {
-				hasMCP = true
-			}
-		}
 
 		tomlData, sandbox, err := renderTOML(doc, man, hasMCP)
 		if err != nil {
@@ -95,8 +106,8 @@ func emitAll(fsys fs.FS, agentsRoot string, man Manifest) (*Publication, []AxisV
 		}
 		tomls = append(tomls, artifact{path: codexTOMLPath(man, file), data: tomlData})
 
-		// Identity pass-through: the published .md bytes ARE the source bytes.
-		md[file] = data
+		// The published .md is the Claude view of the source.
+		md[file] = claudeView
 	}
 
 	pub := &Publication{Markdown: md, CodexTOML: make(map[string][]byte, len(tomls))}
@@ -104,6 +115,27 @@ func emitAll(fsys fs.FS, agentsRoot string, man Manifest) (*Publication, []AxisV
 		pub.CodexTOML[a.path] = a.data
 	}
 	return pub, verdicts, nil
+}
+
+// parseAndClassify parses one rendered view of an agent source and classifies
+// every tools token against the mapping manifest (fail-closed). It reports
+// whether the view carries a moai-mcp tool.
+func parseAndClassify(man Manifest, file string, view []byte) (AgentDoc, bool, error) {
+	doc, err := ParseAgentDoc(file, view)
+	if err != nil {
+		return AgentDoc{}, false, err
+	}
+	hasMCP := false
+	for _, tok := range doc.Tools {
+		class, ok := classifyToken(man, tok)
+		if !ok {
+			return AgentDoc{}, false, fmt.Errorf("%s: unknown tool token %q — not mapped to any class in the Codex mapping manifest", file, tok)
+		}
+		if class == "moai-mcp" {
+			hasMCP = true
+		}
+	}
+	return doc, hasMCP, nil
 }
 
 // codexTOMLPath resolves the emitted TOML path for one .md source according

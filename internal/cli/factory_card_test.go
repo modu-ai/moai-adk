@@ -15,8 +15,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
+	"github.com/modu-ai/moai-adk/internal/paths"
 )
 
 // The F1 factory-record CLI tests. Every test builds its own project root
@@ -36,7 +38,16 @@ func fcFixture(t *testing.T) (string, *factory.BacklogStore) {
 	}
 	t.Setenv("GIT_CONFIG_GLOBAL", cfg)
 	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
+	// SPEC-WORKTREE-HOME-ROOT-001 M3: the factory-next flow resolves the
+	// card's landing directory through the home projects root — the
+	// assignment must land in a sandbox, never the real ~/.moai.
+	t.Setenv(paths.EnvHome, t.TempDir())
 	root, store := todoFixture(t)
+	// todoFixture clears MOAI_HOME, which makes paths.MoaiHome fall back to
+	// $HOME/.moai; point HOME at a sandbox so that fallback stays inside the
+	// test (card t2047: without it each test left a project folder in the real
+	// ~/.moai/worktrees/projects, 21.8k by 2026-11-05).
+	t.Setenv("HOME", t.TempDir())
 	prev := factoryCardNow
 	factoryCardNow = func() time.Time { return fcNow }
 	t.Cleanup(func() { factoryCardNow = prev })
@@ -103,8 +114,8 @@ func fcPlace(t *testing.T, root string, rows ...homestate.Card) {
 		if c.UpdatedAt == "" {
 			c.UpdatedAt = "2026-09-26T00:00:00Z"
 		}
-		if _, err := db.DB.Exec(`INSERT INTO cards(run_id,card_id,owner_label,state,version,evidence_path,updated_at,stage,lease_holder,lease_expires_at,heartbeat_at,decision_gate,decision_question,decision_resume,merge_sha,worktree_path,evidence_sha,hint_after) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-			c.RunID, c.CardID, c.OwnerLabel, c.State, c.Version, c.EvidencePath, c.UpdatedAt, c.Stage, c.LeaseHolder, c.LeaseExpiresAt, c.HeartbeatAt, c.DecisionGate, c.DecisionQuestion, c.DecisionResume, c.MergeSHA, c.WorktreePath, c.EvidenceSHA, c.HintAfter); err != nil {
+		if _, err := db.DB.Exec(`INSERT INTO cards(run_id,card_id,owner_label,state,version,evidence_path,updated_at,stage,lease_holder,lease_expires_at,heartbeat_at,decision_gate,decision_question,decision_resume,merge_sha,worktree_path,evidence_sha,hint_after,spec_id,bundle_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+			c.RunID, c.CardID, c.OwnerLabel, c.State, c.Version, c.EvidencePath, c.UpdatedAt, c.Stage, c.LeaseHolder, c.LeaseExpiresAt, c.HeartbeatAt, c.DecisionGate, c.DecisionQuestion, c.DecisionResume, c.MergeSHA, c.WorktreePath, c.EvidenceSHA, c.HintAfter, c.SpecID, c.BundleID); err != nil {
 			t.Fatalf("place %s: %v", c.CardID, err)
 		}
 	}
@@ -305,6 +316,8 @@ func TestFR_AC014_AssignHints(t *testing.T) {
 // decider is refused outright.
 func TestFR_AC015_DecideKickoffBatch(t *testing.T) {
 	root, _ := fcFixture(t)
+	// The operator gate (REQ-MN-003): the deciding session carries the positive mark.
+	t.Setenv(config.EnvFactoryRole, "operator")
 	fcPlace(t, root,
 		homestate.Card{CardID: "k1", State: homestate.CardKickoff, OwnerLabel: "worker-1", Stage: homestate.CardPlanAudit, DecisionGate: homestate.DecisionGateKickoff},
 		homestate.Card{CardID: "k2", State: homestate.CardKickoff, OwnerLabel: "worker-1", Stage: homestate.CardPlanAudit, DecisionGate: homestate.DecisionGateKickoff},
@@ -344,6 +357,8 @@ func TestFR_AC015_DecideKickoffBatch(t *testing.T) {
 // block, and abandon move the card as the table says.
 func TestFR_AC016_DecideQuestionChoices(t *testing.T) {
 	root, _ := fcFixture(t)
+	// The operator gate (REQ-MN-003): the deciding session carries the positive mark.
+	t.Setenv(config.EnvFactoryRole, "operator")
 	fcPlace(t, root,
 		homestate.Card{CardID: "q1", State: homestate.CardRun, OwnerLabel: "worker-1", Stage: homestate.CardRun, LeaseHolder: "worker-1", LeaseExpiresAt: fcNow.Add(time.Hour).Format(time.RFC3339Nano)},
 		homestate.Card{CardID: "q2", State: homestate.CardNeedsDecision, OwnerLabel: "worker-1", DecisionGate: homestate.DecisionGateQuestion, DecisionQuestion: "push now?", DecisionResume: homestate.CardMergedLocal},
@@ -394,6 +409,8 @@ func TestFR_AC016_DecideQuestionChoices(t *testing.T) {
 // AC-002 (command half) — a legacy row is abandoned through decide.
 func TestFR_AC002_LegacyAbandonViaDecide(t *testing.T) {
 	root, _ := fcFixture(t)
+	// The operator gate (REQ-MN-003): the deciding session carries the positive mark.
+	t.Setenv(config.EnvFactoryRole, "operator")
 	fcPlace(t, root, homestate.Card{CardID: "legacy", State: "in_progress", Version: 2, OwnerLabel: "worker-1"})
 	if _, _, err := runFactory(t, "decide", "legacy", "--choice", "resume", "--run", fcRun); err == nil {
 		t.Fatal("resume on a legacy row was accepted")
@@ -409,6 +426,8 @@ func TestFR_AC002_LegacyAbandonViaDecide(t *testing.T) {
 // AC-013 (command half) — a kickoff decision made long after the lease
 // duration is accepted with no lease expiry.
 func TestFR_AC013_DecideAfterClockAdvance(t *testing.T) {
+	// The operator gate (REQ-MN-003): the deciding session carries the positive mark.
+	t.Setenv(config.EnvFactoryRole, "operator")
 	root, _ := fcFixture(t)
 	fcPlace(t, root, homestate.Card{CardID: "kick", State: homestate.CardKickoff, OwnerLabel: "worker-1", Stage: homestate.CardPlanAudit, DecisionGate: homestate.DecisionGateKickoff})
 	factoryCardNow = func() time.Time { return fcNow.Add(2 * homestate.FactoryLeaseDuration) }
@@ -431,6 +450,8 @@ func TestFR_AC013_DecideAfterClockAdvance(t *testing.T) {
 // AC-017 (command half) — unblock keeps the stage and refuses a card that is
 // not blocked.
 func TestFR_AC017_DecideUnblock(t *testing.T) {
+	// The operator gate (REQ-MN-003): the deciding session carries the positive mark.
+	t.Setenv(config.EnvFactoryRole, "operator")
 	root, _ := fcFixture(t)
 	fcPlace(t, root,
 		homestate.Card{CardID: "b1", State: homestate.CardBlocked, OwnerLabel: "worker-1", Stage: homestate.CardSync},
@@ -454,18 +475,22 @@ func TestFR_AC017_DecideUnblock(t *testing.T) {
 // AC-018 (command half) — the push gate reads the remote-tracking ref and
 // never fetches; a repository with no remote goes straight to done.
 func TestFR_AC018_DecidePushGate(t *testing.T) {
+	// The operator gate (REQ-MN-003): the deciding session carries the positive mark.
+	t.Setenv(config.EnvFactoryRole, "operator")
 	root, store := fcFixture(t)
 	fcGitFlowConfig(t, root)
 	dir, merge := fcRepo(t, true)
 	fcPlace(t, root, homestate.Card{CardID: "p1", State: homestate.CardMergedLocal, OwnerLabel: "worker-1", MergeSHA: merge, WorktreePath: dir})
-	if _, _, err := runFactory(t, "decide", "p1", "--gate", "push", "--run", fcRun); err == nil {
+	// card t2059: the pushed route is an explicit choice (--choice push); the
+	// default destination is done, so these two calls name the route.
+	if _, _, err := runFactory(t, "decide", "p1", "--gate", "push", "--choice", "push", "--run", fcRun); err == nil {
 		t.Fatal("push accepted before the remote-tracking ref contains the merge")
 	}
 	if c := fcCard(t, root, "p1"); c.State != homestate.CardMergedLocal {
 		t.Fatalf("p1 = %s, want merged-local", c.State)
 	}
 	fcGit(t, dir, "push", "-q", "origin", "integration")
-	if _, _, err := runFactory(t, "decide", "p1", "--gate", "push", "--run", fcRun); err != nil {
+	if _, _, err := runFactory(t, "decide", "p1", "--gate", "push", "--choice", "push", "--run", fcRun); err != nil {
 		t.Fatalf("push after the ref advanced: %v", err)
 	}
 	if c := fcCard(t, root, "p1"); c.State != homestate.CardPushed {
@@ -529,7 +554,11 @@ func TestFactoryDecidePushChainsApprovalVersion(t *testing.T) {
 		EvidenceHash: merge, Issuer: "lead", IssuerRole: homestate.ApprovalIssuerLeader,
 	})
 
-	if _, _, err := runFactory(t, "decide", cardID, "--gate", "push", "--run", fcRun); err != nil {
+	// The operator gate (SPEC-MCP-NEUTRALITY-001 REQ-MN-003, M2 Part A): the
+	// deciding session carries the positive mark — env absence grants nothing.
+	t.Setenv(config.EnvFactoryRole, "operator")
+	// card t2059: the with-remote pushed route is the explicit choice now.
+	if _, _, err := runFactory(t, "decide", cardID, "--gate", "push", "--choice", "push", "--run", fcRun); err != nil {
 		t.Fatalf("decide push: %v", err)
 	}
 	if c := fcCard(t, root, cardID); c.State != homestate.CardPushed || c.Version != 2 {
@@ -552,6 +581,8 @@ func TestFactoryDecidePushChainsApprovalVersion(t *testing.T) {
 // AC-021 — assign, status, and decide never alter the queue schema or write a
 // queue item row.
 func TestFR_AC021_QueueSchemaUntouched(t *testing.T) {
+	// The operator gate (REQ-MN-003): the deciding session carries the positive mark.
+	t.Setenv(config.EnvFactoryRole, "operator")
 	root, store := fcFixture(t)
 	fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStatePicked)
 	dbPath := filepath.Join(filepath.Dir(todoBacklogPath(root)), "backlog.db")

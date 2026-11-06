@@ -42,7 +42,7 @@ func t1619ResumeCall(t *testing.T, projectRoot string) error {
 	cmd.SetOut(&out)
 	cmd.SetErr(&errOut)
 	opts := &project.InitOptions{ProjectRoot: projectRoot}
-	return resumeInitializedProject(cmd, opts, agentWiringClaude, false, nil, profile.ProfilePreferences{})
+	return resumeInitializedProject(cmd, opts, false, nil, profile.ProfilePreferences{})
 }
 
 // t1619ResumeRunCapture runs init on projectDir like resumeRun and also returns the
@@ -458,7 +458,7 @@ func TestInitResumeRetrackFailureWarnsAndKeepsMarker(t *testing.T) {
 func TestInitResumeWiringRecordWriteFailureIsReturned(t *testing.T) {
 	projectRoot := t.TempDir()
 	t1619MustWrite(t, filepath.Join(projectRoot, ".moai", "state"), "not a directory\n")
-	if err := persistResumeWiring(projectRoot, agentWiringBoth); err == nil {
+	if err := persistResumeWiring(projectRoot, agentWiringClaude); err == nil {
 		t.Fatal("a selection record under a blocked state directory must report the failure")
 	}
 }
@@ -534,20 +534,6 @@ func TestInitResumeHealthyUserManifestIsLeftInPlace(t *testing.T) {
 	}
 	if len(matches) != 0 {
 		t.Fatalf("a healthy manifest was quarantined as corrupt: %q", matches)
-	}
-}
-
-// TestInitResumeWiringDefaultIsEmptyWithoutCheckpointOrRecord — the wizard's harness
-// default comes only from a recorded selection behind a resume checkpoint. An unresolvable
-// home pre-fills nothing, and so does a checkpoint with no recorded selection.
-func TestInitResumeWiringDefaultIsEmptyWithoutCheckpointOrRecord(t *testing.T) {
-	projectRoot := t.TempDir()
-	if got := resumeAgentWiringDefault("", projectRoot); got != "" {
-		t.Fatalf("an unresolvable home must pre-fill no harness, got %q", got)
-	}
-	t1619MustWrite(t, t1619MarkerPath(projectRoot), "resume in progress\n")
-	if got := resumeAgentWiringDefault(t.TempDir(), projectRoot); got != "" {
-		t.Fatalf("a checkpoint without a recorded selection must pre-fill no harness, got %q", got)
 	}
 }
 

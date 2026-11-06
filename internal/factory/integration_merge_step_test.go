@@ -490,6 +490,87 @@ func TestMergeStepMergeFailureCleanAbortsCause6(t *testing.T) {
 	requireWindowReleasedAndCPromoted(t, f)
 }
 
+// TestMergeStepRealContentConflictAbortsAndReleases drives the step into a REAL
+// git conflict (card t2013, AC-FCR-026 (c), sync-audit finding F4). Every
+// pre-merge gate passes on the record's base, so the only way the integration
+// tip can diverge from the pinned card is a commit that lands after the in-section
+// tip re-read and before the merge subprocess; the Git seam presents exactly that
+// commit (an add/add of the card's path with different bytes) immediately before
+// the first real `git merge`, and everything after it runs real git: the merge
+// stops at a conflict (exit 1, MERGE_HEAD, unmerged index entry), the step's own
+// `git merge --abort` clears it, and the window is released. The cause-6 test
+// above simulates the stop; this one does not.
+func TestMergeStepRealContentConflictAbortsAndReleases(t *testing.T) {
+	f := newMergeFixture(t)
+	card := f.withCardTree(readyCardPtr())
+	seams := f.seams(card)
+	realGit := factorylane.ExecGitRunner{Dir: f.integ}
+	run := func(args ...string) string {
+		t.Helper()
+		out, err := realGit.Git(args...)
+		if err != nil {
+			t.Fatalf("git %v: %v", args, err)
+		}
+		return strings.TrimSpace(out)
+	}
+	tipBefore := run("rev-parse", "refs/heads/develop")
+	var racedTip, mergeStdout string
+	var mergeErr error
+	seams.Git = func(args ...string) (string, error) {
+		isMerge := len(args) >= 1 && args[0] == "merge" && !containsArg(args, "--abort")
+		if isMerge && racedTip == "" {
+			if err := os.WriteFile(filepath.Join(f.integ, "card.txt"), []byte("release work\n"), 0o644); err != nil {
+				return "", err
+			}
+			run("add", "-f", "card.txt")
+			run("-c", "user.email=t@t.local", "-c", "user.name=t", "commit", "-q", "-m", "release adds card.txt")
+			racedTip = run("rev-parse", "refs/heads/develop")
+		}
+		out, err := realGit.Git(args...)
+		if isMerge {
+			mergeStdout, mergeErr = out, err
+		}
+		return out, err
+	}
+
+	_, err := RunMergeStep(f.input(), seams)
+	requireCode(t, err, MergeExitMergeFailed)
+
+	// The stop was a real conflict, not a gate: git exited 1 and named it.
+	var exit *factorylane.GitExitError
+	if !errors.As(mergeErr, &exit) || exit.ExitCode != 1 {
+		t.Fatalf("the merge call error = %v, want git exit 1 (a conflict)", mergeErr)
+	}
+	if !strings.Contains(mergeStdout+exit.Stdout+exit.Stderr, "CONFLICT") {
+		t.Fatalf("git did not report a CONFLICT: stdout %q stderr %q", mergeStdout+exit.Stdout, exit.Stderr)
+	}
+	if racedTip == "" || racedTip == tipBefore {
+		t.Fatalf("the tip never moved before the merge (before %s, raced %s)", tipBefore, racedTip)
+	}
+
+	// The abort left the integration worktree exactly as the race left it.
+	if _, statErr := os.Stat(filepath.Join(f.integ, ".git", "MERGE_HEAD")); !os.IsNotExist(statErr) {
+		t.Fatalf("MERGE_HEAD survived the abort: %v", statErr)
+	}
+	if status := run("status", "--porcelain"); status != "" {
+		t.Fatalf("the integration worktree is not clean after the abort:\n%s", status)
+	}
+	if unmerged := run("ls-files", "-u"); unmerged != "" {
+		t.Fatalf("unmerged index entries remain:\n%s", unmerged)
+	}
+	if got := run("rev-parse", "refs/heads/develop"); got != racedTip {
+		t.Fatalf("develop moved %s -> %s although the merge failed", racedTip, got)
+	}
+	if merges := run("rev-list", "--merges", "--count", "refs/heads/develop"); merges != "0" {
+		t.Fatalf("a merge commit exists on develop: %s", merges)
+	}
+	body, readErr := os.ReadFile(filepath.Join(f.integ, "card.txt"))
+	if readErr != nil || string(body) != "release work\n" {
+		t.Fatalf("card.txt = %q (%v), want the release side untouched by conflict markers", body, readErr)
+	}
+	requireWindowReleasedAndCPromoted(t, f)
+}
+
 // containsArg reports whether the invocation carries arg.
 func containsArg(args []string, arg string) bool {
 	for _, a := range args {
@@ -1102,6 +1183,24 @@ func TestResolveCardBranchRefusalsNameTheCard(t *testing.T) {
 		_, err := resolveCardBranch(f.cardTree, stepCard)
 		requireRefusalNamesCard(t, err)
 	})
+}
+
+func TestResolveCardBranchSurvivesTagSharingTheBranchName(t *testing.T) {
+	// card t1920 (live observation from card t1834's audit): with a tag
+	// named like the card branch, `rev-parse --abbrev-ref HEAD`
+	// disambiguates to heads/WT-... and the WT- prefix check refused a
+	// healthy candidate tree — the integration-window entry decision was
+	// distorted by a tag, not by any real branch problem. The resolver must
+	// read the checked-out branch itself.
+	f := newMergeFixture(t)
+	stepMustGit(t, f.cardTree, "tag", stepCardBranch, "HEAD")
+	branch, err := resolveCardBranch(f.cardTree, stepCard)
+	if err != nil {
+		t.Fatalf("a tag shadowing the card branch's name must not refuse the healthy WT- tree: %v", err)
+	}
+	if branch != stepCardBranch {
+		t.Fatalf("resolveCardBranch must read the card branch %q, got %q", stepCardBranch, branch)
+	}
 }
 
 // requireRefusalNamesCard fails unless the resolver refused and the refusal

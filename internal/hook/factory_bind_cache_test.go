@@ -22,12 +22,12 @@ func countOpens(t *testing.T, fail bool) *int {
 	t.Helper()
 	n := 0
 	prev := factoryHookOpenStore
-	factoryHookOpenStore = func(ctx context.Context, root, run string) (*factorymsg.Store, error) {
+	factoryHookOpenStore = func(namespace factorymsg.Namespace, ctx context.Context, run string) (*factorymsg.Store, error) {
 		n++
 		if fail {
 			return nil, errors.New("open past budget")
 		}
-		return prev(ctx, root, run)
+		return prev(namespace, ctx, run)
 	}
 	t.Cleanup(func() { factoryHookOpenStore = prev })
 	return &n
@@ -125,7 +125,7 @@ func TestFDA_DegradedInboxStateWarnsAndNotifiesRateLimited(t *testing.T) {
 	slog.SetDefault(slog.New(slog.NewTextHandler(&logs, &slog.HandlerOptions{Level: slog.LevelWarn})))
 	t.Cleanup(func() { slog.SetDefault(prevLogger) })
 	prevOpen := factoryHookOpenInbox
-	factoryHookOpenInbox = func(string, string, time.Duration) (*factorymsg.Store, error) {
+	factoryHookOpenInbox = func(context.Context, string, string, time.Duration) (*factorymsg.Store, error) {
 		return nil, errors.New("database is locked")
 	}
 	t.Cleanup(func() { factoryHookOpenInbox = prevOpen })

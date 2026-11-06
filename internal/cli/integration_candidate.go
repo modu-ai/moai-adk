@@ -664,12 +664,14 @@ func ghRunStates(root, candidateBranch string) ([]factory.CandidateRunState, err
 	return runs, nil
 }
 
-// candidateGhRunner runs gh with the repo-scoping environment removed (the same
-// scrub the verb's git children take).
+// candidateGhRunner runs gh with the delivery edge's gh environment (card
+// t1710): the repo-scoping git scrub plus the GH_REPO drop — gh honors
+// GH_REPO over its working directory, so a stray value would retarget the
+// candidate's gh calls to another repository.
 func candidateGhRunner(dir string, args ...string) (string, error) {
 	cmd := exec.Command("gh", args...)
 	cmd.Dir = dir
-	cmd.Env = gitenv.Env()
+	cmd.Env = factoryGHEnv()
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
 	if err := cmd.Run(); err != nil {

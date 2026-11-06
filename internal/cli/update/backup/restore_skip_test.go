@@ -49,3 +49,38 @@ func TestRestoreMoaiConfigRetained_SkipsArchivedEntries(t *testing.T) {
 		t.Errorf("unfiltered section not restored: %q (err=%v)", data, readErr)
 	}
 }
+
+// Card t1799 (codex P2): a backup with no sections/ directory takes the legacy
+// restore path, which wrote evaluator-profiles/ and astgrep-rules/ files back
+// before the unmanaged restore (and its skip filter) ran, so a profile the
+// reconciliation archived and removed came back.
+func TestRestoreMoaiConfigRetained_LegacyPathLeavesUnmanagedDirsToSkipAwareRestore(t *testing.T) {
+	root := t.TempDir()
+	backupDir := filepath.Join(t.TempDir(), "20260101_000000")
+	writeUnmanagedFile(t, filepath.Join(backupDir, "evaluator-profiles", "retired.md"), "retired profile")
+	writeUnmanagedFile(t, filepath.Join(backupDir, "astgrep-rules", "go", "kept.yml"), "kept rule")
+
+	if _, err := RestoreMoaiConfigRetained(root, backupDir, nil); err != nil {
+		t.Fatalf("restore: %v", err)
+	}
+	for _, rel := range []string{"evaluator-profiles/retired.md", "astgrep-rules/go/kept.yml"} {
+		p := filepath.Join(root, ".moai", "config", filepath.FromSlash(rel))
+		if _, err := os.Stat(p); !os.IsNotExist(err) {
+			t.Errorf("%s was written by the legacy restore path (stat err=%v)", rel, err)
+		}
+	}
+
+	// The skip-aware unmanaged restore still owns these directories.
+	refs, err := RestoreUnmanagedConfigDirsSkipping(root, backupDir, func(p string) bool {
+		return p == ".moai/config/evaluator-profiles/retired.md"
+	})
+	if err != nil {
+		t.Fatalf("unmanaged restore: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, ".moai", "config", "evaluator-profiles", "retired.md")); !os.IsNotExist(err) {
+		t.Errorf("skipped profile came back (stat err=%v)", err)
+	}
+	if len(refs) != 1 || refs[0].Path != ".moai/config/astgrep-rules/go/kept.yml" || refs[0].Action != "restored" {
+		t.Errorf("refs = %+v, want only the unskipped rule restored", refs)
+	}
+}

@@ -4,7 +4,7 @@
 // shipped at templates/.claude/skills/moai-workflow-project/scripts/navigator-regen.sh.
 // The script is the deterministic core: it reads a SPEC registry + git log,
 // emits three markdown files under .moai/project/navigator/, and writes a
-// last-regen-commit sentinel. These tests exercise AC-PN-001..008, 013, 015, 016
+// last-regen-commit sentinel. These tests exercise AC-PN-001..008, 013, 015-017
 // against fixture projects built under t.TempDir().
 //
 // The script is invoked as a shell subprocess so the tests are black-box over
@@ -607,5 +607,64 @@ func TestACPN016_LSELBoundary(t *testing.T) {
 		if strings.TrimSpace(string(b)) != "LSEL_SENTINEL" {
 			t.Errorf("AC-PN-016: LSEL surface %s was modified by regen", p)
 		}
+	}
+}
+
+// TestACPN017_ProgressMapPreservesEmptyPhaseColumns verifies the GH #1827
+// (item 3) fix: a SPEC whose phase/module frontmatter fields are EMPTY must
+// keep its progress-map.md row aligned — the empty columns stay empty and
+// provenance lands in its own columns. The previous `IFS=$'\t' read` loop
+// collapsed consecutive tabs (tab is IFS whitespace), shifting the
+// provenance values into phase/module and leaving the last columns empty.
+func TestACPN017_ProgressMapPreservesEmptyPhaseColumns(t *testing.T) {
+	dir := t.TempDir()
+	initFixtureRepo(t, dir)
+	// A draft SPEC carrying only id/title/status: phase and module extract
+	// to the empty string, so its TSV row carries two consecutive tabs.
+	writeSPEC(t, dir, "SPEC-BARE-001", "Bare", "draft", "", "")
+	if err := gitRun(dir, "add", ".moai/specs"); err != nil {
+		t.Fatal(err)
+	}
+	if err := gitRun(dir, "commit", "-m", "feat: bare spec"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runRegen(t, dir); err != nil {
+		t.Fatalf("regen: %v", err)
+	}
+
+	_, _, progFile := navigatorFiles(dir)
+	data, err := os.ReadFile(progFile)
+	if err != nil {
+		t.Fatalf("read %s: %v", progFile, err)
+	}
+	var row string
+	for _, ln := range strings.Split(string(data), "\n") {
+		if strings.HasPrefix(ln, "| SPEC-BARE-001 |") {
+			row = ln
+			break
+		}
+	}
+	if row == "" {
+		t.Fatalf("SPEC-BARE-001 row missing from progress-map.md:\n%s", string(data))
+	}
+	// Column contract: | spec-id | status | phase | last-commit-sha | last-commit-at | frontier-milestone |
+	cells := strings.Split(strings.Trim(row, "|"), "|")
+	for i := range cells {
+		cells[i] = strings.TrimSpace(cells[i])
+	}
+	if len(cells) != 6 {
+		t.Fatalf("progress-map row has %d cells, want 6: %q", len(cells), row)
+	}
+	if cells[2] != "" {
+		t.Errorf("phase column = %q, want empty (unshifted); row: %q", cells[2], row)
+	}
+	if !sha40Re.MatchString(cells[3]) {
+		t.Errorf("last-commit-sha column = %q, want 40-char hex; row: %q", cells[3], row)
+	}
+	if !iso8601Re.MatchString(cells[4]) {
+		t.Errorf("last-commit-at column = %q, want ISO-8601; row: %q", cells[4], row)
+	}
+	if cells[5] != "draft" {
+		t.Errorf("frontier-milestone column = %q, want draft (status fallback); row: %q", cells[5], row)
 	}
 }

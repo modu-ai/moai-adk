@@ -377,7 +377,13 @@ func TestQWR_AC008_SurfacesSeeWorktreeReading(t *testing.T) {
 	})
 
 	t.Run("leases_when_no_record_anywhere", func(t *testing.T) {
-		root, _, _ := qwrWorktreeOnly(t, qasFixtureOpts{}, nil)
+		root, _, store := qwrWorktreeOnly(t, qasFixtureOpts{}, nil)
+		// SPEC-CARD-ELIGIBLE-PULL-001 update (third sweep): the lease cell's
+		// t2 is an arm-(b) vehicle; armed with a spec id so the subject — the
+		// lease proving no quota record was read — stays covered behind the
+		// gate. RED observed pre-fix at HEAD: "t2 = picked, want leased".
+		cepSelfDispatchYAML(t, root, true)
+		cepSetSpecID(t, store, "t2", "SPEC-QWR-LEASE-001")
 		out, stderr, err := qasRunNext(t, "--run", fcRun)
 		if err != nil {
 			t.Fatalf("next: %v (stderr %q)", err, stderr)
@@ -544,7 +550,12 @@ func qwrErrString(err error) string {
 // shapes are exercised at the statusline layer only.
 func TestQWR_AC010b_CliRootWithoutGitMetadata(t *testing.T) {
 	t.Run("unregistered_directory_is_not_read", func(t *testing.T) {
-		root, _ := qasFixture(t, qasFixtureOpts{noRecord: true})
+		root, store := qasFixture(t, qasFixtureOpts{noRecord: true})
+		// SPEC-CARD-ELIGIBLE-PULL-001 update (third sweep): the lease is the
+		// cell's proof the stray record was not read; its t2 is an arm-(b)
+		// vehicle — armed with a spec id behind the gate.
+		cepSelfDispatchYAML(t, root, true)
+		cepSetSpecID(t, store, "t2", "SPEC-QWR-STRAY-001")
 		if _, err := os.Stat(filepath.Join(root, ".git", "worktrees")); err == nil {
 			t.Fatal("the fixture's .git carries a worktrees directory; the shape under test is a repository without one")
 		}

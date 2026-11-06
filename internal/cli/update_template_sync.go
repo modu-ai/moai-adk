@@ -193,11 +193,17 @@ func newArchiveDriftRoots(projectRoot string, before map[string]bool) []string {
 //
 // runTemplateSyncWithReporter synchronizes templates with progress reporting.
 // runTemplateSyncWithReporter drives the update step table.
-// migrationRemoved carries the paths the per-file user-asset migration
-// removed before this call (gate round 12) — the outcome's deletion tally
-// counts them with their own content-safe disposition, since the
-// reconciliation can no longer see an already-removed file.
-func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressReporter, skipConfirm bool, migrationRemoved []string) error {
+// migrationRun names the per-file project-asset migration this call runs
+// INSIDE the flow, after the Backup stage (REQ-RC30-004, card t1668 M1 step
+// 4): the run backup exists before the first removal, and the migration
+// shares this function's manifest manager so its drops and KeptBy marks ride
+// the same in-memory view the Deploy-stage Save persists. A nil
+// migrationRun (the legacy runTemplateSync path and the direct test calls)
+// runs no migration. The migration's removed paths reach the outcome's
+// deletion tally through the context with their own content-safe
+// disposition (gate round 12), since the reconciliation can no longer see an
+// already-removed file.
+func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressReporter, skipConfirm bool, migrationRun *migrationRunContext) error {
 	out := cmd.OutOrStdout()
 	// The mirror notice is a warning, so it gets its own stderr writer rather
 	// than riding `out` — which is stdout here (internal/cli/CLAUDE.md:14).
@@ -244,7 +250,17 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 		plVersion.Done("Already up-to-date")
 		_, _ = fmt.Fprintln(out)
 		_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: false, Label: report.RenderOutcome(report.OutcomeAlreadyUpToDate, 0, ""), Theme: &th}))
+		// No confirmation applies on this path, so the held-back skill.md renames run here.
+		applyDeferredSkillRenames(projectRoot)
 		return nil
+	}
+
+	// M3: a project whose recorded template version is newer than this binary
+	// would have its rules downgraded by the sync below. Warn; do not block.
+	if err == nil {
+		if msg, warn := versionSkewWarning(packageVersion, projectVersion); warn {
+			updateLedger.referencef("%s", msg)
+		}
 	}
 
 	plVersion.Done("Version check complete")
@@ -283,6 +299,13 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	if err != nil {
 		return fmt.Errorf("construct harness deployer: %w", err)
 	}
+	// SPEC-INIT-HARNESS-001 (audit N1): capture the harness ONCE here — the
+	// same pre-deploy read the deployer switch just resolved — and gate the
+	// settings.local.json PATH refresh below on this value. Reading it again
+	// after the Deploy Templates stage would observe llm.yaml rewritten to
+	// the template default (`claude`), making the codex-only guard inert and
+	// re-creating .claude/** paths in gpt projects.
+	harnessAtStart := config.ReadHarness(".")
 
 	// t40 defect 2: AnalyzeFiles skips IsMoaiManaged paths, so analysis.Files
 	// carries only the merged/added files. Count the managed re-deployments
@@ -347,6 +370,10 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 		}
 		return nil
 	}
+
+	// The user confirmed (or no confirmation applies), so the held-back skill.md renames
+	// run now. A cancelled update returned above and leaves every skill file as it was.
+	applyDeferredSkillRenames(projectRoot)
 
 	// SPEC-INIT-SHRINK-001 (REQ-015, OD-4 settled (a, amended)): on a
 	// record-less project the migration trigger runs AFTER the user
@@ -606,11 +633,12 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				// Seam-routed per REQ-UGE-004 (test isolation).
 				homeDir, _ := userHomeDirFn()
 				goBinPath := detectGoBinPathForUpdate(homeDir)
+				smartPath := template.BuildSmartPATH()
 				tmplCtx := template.NewTemplateContext(
 					template.WithGoBinPath(goBinPath),
 					template.WithResolvedMoaiPath(resolveMoaiExecutable()),
 					template.WithHomeDir(homeDir),
-					template.WithSmartPATH(template.BuildSmartPATH()),
+					template.WithSmartPATH(smartPath),
 					template.WithPlatform(runtime.GOOS),
 					template.WithVersion(version.GetVersion()),
 					template.WithHookOptIn(readHookOptInEnabled(projectRoot)),
@@ -622,6 +650,21 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 					pl.Fail(fmt.Sprintf("Deployment failed: %v", deployErr))
 					captureTemplateDeployFailure(deployErr)
 					return fmt.Errorf("deploy templates: %w", deployErr)
+				}
+				// GH #1827 (card t1957): the committed settings.json keeps
+				// SmartPATH only (machine-independent); this machine's session
+				// PATH goes to the gitignored settings.local.json, merged
+				// key-by-key over the project file. Rebuilt from a fresh capture
+				// every run — never inherited from the file's previous value.
+				// Gated on the PRE-DEPLOY harness captured next to the deployer
+				// construction (audit N1): the post-deploy llm.yaml carries the
+				// template default and would defeat the codex-only guard.
+				// Best-effort non-blocking; a failure is a warning on errOut,
+				// matching the snapshot writes below.
+				if harnessAtStart != "gpt" {
+					if err := template.SyncLocalSettingsPATH(projectRoot, os.Getenv("PATH"), smartPath); err != nil {
+						_, _ = fmt.Fprintf(errOut, "  settings.local.json env.PATH refresh failed: %v\n", err)
+					}
 				}
 				// SPEC-UPDATE-SETTINGS-BASE-SNAPSHOT-001 (REQ-USB-001): stage the
 				// settings.json render this deploy wrote, before the Restore
@@ -778,6 +821,30 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 					mergeableBackups = append(mergeableBackups, updatemerge.FileBackup{Path: mf, Data: data})
 				}
 			}
+
+			// REQ-RC30-004 (card t1668 M1 step 4): the per-file project
+			// migration runs HERE — after the Backup stage's writes, so the
+			// run backup exists before the first removal (AC-RC30-03), and
+			// still before every destructive deploy step. The manifest
+			// instance is shared (mgr above): the migration's drops and
+			// KeptBy marks land in the same in-memory view the Deploy-stage
+			// Save persists, closing the lost-update window where a stale
+			// pre-migration view resurrected dropped entries and wiped the
+			// KeptBy marks (plan-audit-iter2 R1's reproduction). The
+			// removals ride migrationRun for the outcome tally and the
+			// post-flow final-state verification.
+			if migrationRun != nil {
+				if homeDir, homeErr := userHomeDirFn(); homeErr == nil {
+					migrationRun.mgr = mgr
+					migrationRun.runBackupDir = configBackupPath
+					_, migErr := migrateProjectCommonAssets(projectRoot, homeDir, migrationRun.userAssetsInstalled, nil, func(format string, args ...interface{}) {
+						_, _ = fmt.Fprintf(out, format+"\n", args...)
+					}, migrationRun)
+					if migErr != nil {
+						_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "moai: migration warning: %v\n", migErr)
+					}
+				}
+			}
 		case "Restore Settings":
 			// Handle restore step with captured backup path
 			if configBackupPath != "" {
@@ -824,6 +891,26 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 					return recovery.fail(step.name, restoreErr)
 				}
 				plRestore.Done("User settings restored")
+				// M2: evaluator-profiles/ and astgrep-rules/ restore beside the section
+				// merge. A differing copy is kept as <name>.from-<stamp>, never written
+				// over the new template. A failure warns; the section restore succeeded.
+				// F33: the same exclusion as the section restore above. A profile or
+				// astgrep rule the reconciliation archived and removed, or preserved,
+				// is not written back from the backup in this run.
+				unmanagedSkip := make(map[string]bool, len(reconSummary.ArchivedRemoved)+len(reconSummary.Preserved))
+				for _, a := range reconSummary.ArchivedRemoved {
+					unmanagedSkip[a] = true
+				}
+				for _, p := range reconSummary.Preserved {
+					unmanagedSkip[p] = true
+				}
+				unmanagedRefs, unmanagedErr := backup.RestoreUnmanagedConfigDirsSkipping(projectRoot, configBackupPath, func(refPath string) bool { return unmanagedSkip[refPath] })
+				if unmanagedErr != nil {
+					updateLedger.requiref(sevWarn, "unmanaged config restore failed: %v", unmanagedErr)
+				}
+				for _, msg := range unmanagedRestoreMessages(unmanagedRefs, configBackupPath) {
+					updateLedger.referencef("%s", msg)
+				}
 				// Strip the retired per-agent model/effort keys the merge just
 				// retained (old-only keys are kept), after the backup holds their
 				// originals. Stripped keys leave the retained list so each is
@@ -870,9 +957,20 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				if retrackErr := retrackSectionFiles(projectRoot, errOut); retrackErr != nil {
 					emitSeverityLine(errOut, sevWarn, resolveTheme(), "manifest retrack (config sections) failed: %v", retrackErr)
 				}
-				deletedCount := backup.CleanupOldBackups(projectRoot, 5)
-				if deletedCount > 0 {
-					_, _ = fmt.Fprintf(out, "  %s Cleaned up %d old backup(s)\n", uikit.SymSuccess(), deletedCount)
+				if backup.OldBackupRootRefused(projectRoot) || backup.NamespaceBackupRootRefused(projectRoot) {
+					emitSeverityLine(errOut, sevWarn, resolveTheme(), "skipped old backup pruning: the old backup root or the namespace backup root is a symbolic link or leads outside the project")
+				} else {
+					// Budgeted retention (SPEC-UPDATE-BACKUP-RETENTION-001): an
+					// older run that holds the last copy of a past file version
+					// within the state.backup_past_versions_keep budget is kept, and
+					// every removed or retained run is named in the ledger.
+					rep := pruneBackupsWithProgress(out, projectRoot)
+					if rep.Removed > 0 {
+						_, _ = fmt.Fprintf(out, "  %s Cleaned up %d old backup(s)\n", uikit.SymSuccess(), rep.Removed)
+					}
+					for _, line := range backupRetentionReportLines(rep, projectRoot) {
+						updateLedger.referencef("%s", line)
+					}
 				}
 			}
 			// Merge .gitignore: preserve user-added patterns via EntryMerge
@@ -1035,7 +1133,12 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	// Gate round 12 (card t1547): the asset migration's confirmed-counterpart
 	// removals are deletions too — the tally carries them with their own
 	// content-safe disposition (the user copy holds the bytes), on every arm:
-	// the migration runs after the confirm gate regardless of branch.
+	// the migration runs after the confirm gate regardless of branch (and,
+	// since card t1668 M1, after the Backup stage inside this flow).
+	var migrationRemoved []string
+	if migrationRun != nil {
+		migrationRemoved = migrationRun.removed
+	}
 	detail.MigrationRemoved = len(migrationRemoved)
 	detail.RemovedManaged += len(migrationRemoved)
 	renderUpdateOutcome(out, len(analysis.Files), detail, configBackupPath, th)
@@ -1054,10 +1157,6 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	if unresolved := len(reconSummary.Conflicts); unresolved > 0 {
 		updateLedger.requiref(sevErr, "%d conflicting file(s) flagged by the 3-way merge — resolve them before the next template sync (see the backup at %s)", unresolved, configBackupPath)
 	}
-
-	// REQ-DHR-007: a .codex/ template the target harness profile (or this
-	// version) no longer ships is reported and left in place, never deleted.
-	reportUndeployedCodexTemplates(errOut, projectRoot, mgr.Manifest().Files, restoredSet)
 
 	// Card t1527 D5: the tail's mid-noise emitters move into the terminal
 	// block — the hook-restart step is ACTION REQUIRED, the -c hint and the
@@ -1161,6 +1260,9 @@ func runTemplateSyncWithProgress(cmd *cobra.Command, userAssetsInstalled bool) (
 	if verr == nil && packageVersion == projectVersion && !forceUpdate && versionMatchSkipsSync(projectRoot) {
 		_, _ = fmt.Fprintln(out)
 		_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: false, Label: report.RenderOutcome(report.OutcomeAlreadyUpToDate, 0, ""), Theme: &th}))
+		// No confirmation applies on a same-version run, so the held-back skill.md renames
+		// run here. A run cancelled at the confirmation below does not reach this point.
+		applyDeferredSkillRenames(projectRoot)
 		return true, nil
 	}
 
@@ -1194,28 +1296,32 @@ func runTemplateSyncWithProgress(cmd *cobra.Command, userAssetsInstalled bool) (
 		}
 	}
 
-	// Item 5 (fix round 3), relocated by the repair round (gate r5 finding):
-	// the per-file project migration runs HERE — after the confirmation gate
-	// above, whose cancel return already exited — so a cancelled update
-	// leaves the project's managed assets byte-intact. The user-side install
-	// (runUpdate, before this prompt) still precedes the removal, and
-	// userAssetsInstalled gates every removal: a failed or skipped install
-	// leaves the project-side assets in place (leader scope addition #5 —
-	// the stale-counterpart deletion hazard). The removed paths ride into
-	// the reporter so the outcome's deletion tally carries them (gate round
-	// 12 — a removal that only bumped a counter vanished from every list).
-	var migrationRemoved []string
-	if homeDir, homeErr := userHomeDirFn(); homeErr == nil {
-		removed, err := migrateProjectCommonAssets(projectRoot, homeDir, userAssetsInstalled, nil, func(format string, args ...interface{}) {
-			_, _ = fmt.Fprintf(out, format+"\n", args...)
-		})
-		if err != nil {
-			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "moai: migration warning: %v\n", err)
-		}
-		migrationRemoved = removed
+	// Item 5 (fix round 3), relocated by the repair round (gate r5 finding),
+	// then by card t1668 M1 step 4 (REQ-RC30-004): the per-file project
+	// migration runs INSIDE the reporter flow below, after its Backup stage —
+	// the run backup exists before the first removal (AC-RC30-03) — while
+	// staying after this confirmation gate, whose cancel return already
+	// exited, so a cancelled update leaves the project's managed assets
+	// byte-intact. The user-side install (runUpdate, before this prompt)
+	// still precedes the removal, and userAssetsInstalled gates every
+	// removal: a failed or skipped install leaves the project-side assets in
+	// place (leader scope addition #5 — the stale-counterpart deletion
+	// hazard). The reporter shares its manifest manager with the migration
+	// (the lost-update fix), and the removals ride the run context into the
+	// outcome's deletion tally (gate round 12) and the final-state
+	// verification below.
+	migRun := &migrationRunContext{userAssetsInstalled: userAssetsInstalled}
+	if err := runTemplateSyncWithReporter(cmd, nil, true, migRun); err != nil {
+		return false, err
 	}
-
-	return false, runTemplateSyncWithReporter(cmd, nil, true, migrationRemoved)
+	// Card t1668 M1 step 4 (b): the post-flow final-state verification — the
+	// disk manifest must still show the migration's outcome after the FULL
+	// flow (KeptBy marks intact, dropped entries absent). Non-fatal by
+	// design: the run completed, and the removal copies in the run backup
+	// remain the recovery path; the sentinel-prefixed lines are the
+	// regression signal.
+	verifyMigrationFinalState(projectRoot, migRun, cmd.ErrOrStderr())
+	return false, nil
 }
 
 // toPreviewInputs maps a merge.MergeAnalysis into the neutral

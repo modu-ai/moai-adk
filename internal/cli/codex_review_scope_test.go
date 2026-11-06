@@ -83,8 +83,14 @@ func TestCodexReviewGate_TreeScopeRequestShapeUnchanged(t *testing.T) {
 		t.Fatalf("2nd request = %v, want %s", threadReq["method"], codexMethodThreadStart)
 	}
 	threadParams, _ := threadReq["params"].(map[string]any)
-	if got, _ := threadParams["cwd"].(string); got != f.root {
-		t.Errorf("thread/start cwd = %q, want the resolved tree %q", got, f.root)
+	// The producer anchors on the git toplevel — resolve before comparing
+	// (macOS /var symlink).
+	resolvedRoot, rerr := filepath.EvalSymlinks(f.root)
+	if rerr != nil {
+		t.Fatalf("eval fixture root: %v", rerr)
+	}
+	if got, _ := threadParams["cwd"].(string); got != resolvedRoot {
+		t.Errorf("thread/start cwd = %q, want the resolved tree %q", got, resolvedRoot)
 	}
 	req := sentRequest(t, sess.sent[2])
 	if req["method"] != codexMethodReviewStart {
@@ -276,8 +282,14 @@ func TestCodexReviewGate_StaleEnvKeepsTreeScope(t *testing.T) {
 		t.Fatalf("expected >=3 sent requests; got %d", len(sess.sent))
 	}
 	threadParams, _ := sentRequest(t, sess.sent[1])["params"].(map[string]any)
-	if got, _ := threadParams["cwd"].(string); got != f.primary {
-		t.Errorf("tree-scope cwd = %q, want the resolved tree %q", got, f.primary)
+	// The producer anchors on the git toplevel — resolve before comparing
+	// (macOS /var symlink).
+	resolvedPrimary, rerr := filepath.EvalSymlinks(f.primary)
+	if rerr != nil {
+		t.Fatalf("eval fixture primary: %v", rerr)
+	}
+	if got, _ := threadParams["cwd"].(string); got != resolvedPrimary {
+		t.Errorf("tree-scope cwd = %q, want the resolved tree %q", got, resolvedPrimary)
 	}
 	params, _ := sentRequest(t, sess.sent[2])["params"].(map[string]any)
 	target, _ := params["target"].(map[string]any)

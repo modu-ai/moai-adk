@@ -3,7 +3,7 @@
 > **Role-injection delivery.** Factory leader and lane sessions receive the role core of this rule and of `cross-session-messaging.md` through the SessionStart hook (sources startup, clear, compact). The unmarked leader-grade entry points — the manager-lead agent, the factory foreman skill, the todo `--auto` path — carry a read-first directive (`moai:role-rules-required`) to read the full body at `workflow/factory-dispatch.md`. This stub holds the rule's non-role-core blocks; the full body keeps the role-core regions and every procedure body.
 
 
-> **Detail companion**: `factory-dispatch-detail.md` owns the long tables, dispatch-cycle walkthrough, and coordination rationale — also per-card sub-agent execution, the Factory in-lane 3-stage, and the `manager-lead` working mode. Sibling companions: `factory-dispatch-cards.md` (card classification, traceability, the pre-dispatch cross-check) and `factory-dispatch-gates.md` (sync-gate review lenses, the CodeRabbit measurement, the settings-drift assertion, the verification-load incident record). The stub keeps every [HARD] rule and pointer; load a companion when classifying a card, routing one, or choosing review lenses.
+> **Detail companion**: `factory-dispatch-detail.md`: dispatch cycle and coordination rationale; `factory-dispatch-cards.md`: classification and traceability; `factory-dispatch-gates.md`: native Codex review and integration gates; `factory-dispatch-mechanics.md`: worktree and landing procedures.
 
 ## Scope — when this rule is live
 
@@ -17,7 +17,7 @@ One boundary: nudge delivery rides on cross-session messaging, absent on native 
 
 ## Entry into the queue is an operator act
 
-The one reconciliation is named, not excepted: `/moai:todo --auto` is the operator's batch approval: it authorizes the invoked session to take cards from the queue on its own judgment, and nothing else; a lane session only through a lease (`moai factory next --card <id>`), never a keep-set card. The `--auto` cycle derives its authority solely from that invocation, never from queue emptiness, card readiness, or a peer's request. The cycle carries one auto-scoped ranking exception: it may rank the queued candidates it is about to accept (a Jev signal when the capability is available, else recorded priority and readiness), which changes its selection order only — it never reorders, admits, drops or edits cards, the queue itself is unchanged, and the invocation remains the operator's batch approval. Detail: the gtd workflow's `--auto` section. That batch authorization is the card-pick gate's AUTONOMOUS form (`.claude/rules/moai/workflow/auto-semantics.md` §9.3) — the `--auto` invocation IS the approval; queue ADMISSION (production) stays the operator's.
+A reconciliation is named, not excepted: `/moai:todo --auto` is the operator's batch approval: it authorizes the invoked session to take cards from the queue on its own judgment, and nothing else; a lane session only through a lease (`moai factory next --card <id>`), never a keep-set card. The `--auto` cycle derives its authority solely from that invocation, never from queue emptiness, card readiness, or a peer's request. The cycle carries one auto-scoped ranking exception: it may rank the queued candidates it is about to accept (a Jev signal when available, else recorded priority and readiness), which changes its selection order only — it never reorders, admits, drops or edits cards, the queue itself is unchanged, and the invocation remains the operator's batch approval. That batch authorization is the card-pick gate's AUTONOMOUS form (`.claude/rules/moai/workflow/auto-semantics.md` §9.3) — the `--auto` invocation IS the approval; queue ADMISSION (production) stays the operator's.
 
 A card the operator chose to start when it was issued is not a silent promotion: that answer IS the promotion, given explicitly before anything moved, and the same whole-card routing follows.
 
@@ -25,7 +25,7 @@ A card the operator chose to start when it was issued is not a silent promotion:
 
 [HARD] A dispatch is a fixed-field block (`card:` `spec:` `cmd:` `wt:` `evidence:`; `lens:` optional) — never prose, ≤10 lines. [HARD] Read the send result: `routing` = lost (re-send `name [ref]`); a delivery notice = held or refused.
 
-[HARD] A stuck lane records a disk wait and ends its turn — never idles on a reply; on awaken: stall watchdog first (`moai-lane-watchdog`), then the `auto-semantics.md` §6 ladder; a recurring recheck cron (`CronCreate`, every renewal period of `workflow.factory_lease.renew_interval`) stays armed to the completion report.
+[HARD] A stuck lane records a disk wait and ends its turn, never idling on a reply; on awaken: `moai-lane-watchdog` first, then the `auto-semantics.md` §6 ladder; no recurring `CronCreate`, no absolute-clock one-shot — each wake schedules one next wake (`ScheduleWakeup`, a delay relative to now, never longer than `renew_interval`) while work remains, else records `idle: backlog empty <time>` once and stops.
 
 ## Card classes — not every card needs every stage
 
@@ -37,21 +37,19 @@ The leader classifies each card as it leaves `backlog` and names the entry stage
 
 ## Completion is read, never trusted
 
-Where the phase's declared evidence includes an audit verdict, the leader reads the verdict **file** under `.moai/reports/<card-id>/` per `.moai/docs/audit-artifact-convention.md`; an absent, unreadable, or uncommitted verdict file is a gap exactly like a missing progress record.
+Where the phase's declared evidence includes an audit verdict, the leader reads the verdict **file** under `.moai/reports/<card-id>/` per `.moai/docs/audit-artifact-convention.md`; an absent or unreadable verdict file, or one whose `audited_sha` is not bound to the card's HEAD, is a gap exactly like a missing progress record.
 
 For a lane card the declared evidence list also carries `.moai/reports/<card-id>/card-review.md`; a card whose progress record neither cites a readable `card-review.md` nor records a reason for its absence is a gap and stays in its stage.
 
 **The final PASS/FAIL verdict is the leader's**, read from the evidence on disk and never delegated to the lane that produced the work. Why the division is structural: `factory-dispatch-detail.md` § The verdict's home.
 
-## CodeRabbit is not read from `gh pr checks`
+### Native Codex review evidence
 
-[HARD] A CodeRabbit `gh pr checks` row is not evidence — counts only with combined-endpoint `success`+`Review completed` and a matching `Merge Risk:` line.
-
-Anything else is a gap, not a pass. `Review rate limited` means the review never started, and a card carrying it does not leave `sync`. (Endpoint choice: `factory-dispatch-gates.md` § CodeRabbit endpoint measurement.)
+[HARD] **Native Codex review evidence.** The trusted Codex summary and clean receipt must agree on the full head SHA and show no findings or unresolved findings. Missing, failed, running, stale, malformed, or contradictory evidence or a head/review change before merge withholds integration. Keep functional and security checks separate.
 
 ## Lane card transition
 
-The leader never asks the operator to clear a lane; the in-session sequence is in the role core of `factory-dispatch.md`.
+At completion, after evidence, dirty changes, active checks or handoff, and unsubmitted input are preserved: `ExitWorktree(keep)`, default-branch check, the operator's `/clear` (the session cannot run it), next card request (`factory-dispatch.md`).
 
 Where the next card reuses a lane, the leader re-sends the full pointer instruction rather than assuming the session remembers.
 
@@ -61,23 +59,20 @@ The leader's own session is cleared between cards: once a card reaches `done`, t
 
 [HARD] A card session stays in its worktree (`moai cc -w`); between cards it moves in-session (`ExitWorktree(keep)`, lease, `EnterWorktree`); the integration-tree merge entry keeps its own re-entry rule.
 
-[HARD] A verified lane merges its own branch into the batch release branch (`release/vX.Y.Z`) — git-flow variant; github-flow default: `moai factory complete`'s PR edge (mechanics § standard landing). Where it applies: `moai integration acquire` first, `EnterWorktree` in, `--no-ff`, `HEAD` re-read before commit/push, never force; batch PR with the leader.
+[HARD] A verified lane merges its own branch into the batch release branch (`release/vX.Y.Z`) — git-flow variant; github-flow default: `moai factory complete`'s PR edge (mechanics § standard landing). Where it applies: `moai integration acquire` first, `EnterWorktree` in, `--no-ff`, `HEAD` re-read before commit/push, never force; batch PR with the leader. Under af-flow the lane takes no `release/vX.Y.Z` branch and runs no push: `moai factory complete` lands the card through the integration-window local merge into `main`; the only push is the leader's batch PR from `release/main-batch-YYYYMMDD`.
 
 ## Factory Mode — the card travels whole
 
 `moai cc -f` launches the leader and lane sessions join with `moai cc -l`, labelled `lane-<n>`; the leader routes each card WHOLE to a free lane, which carries it `plan → run → sync` in-session and owns it end to end. Mechanics and the card-class effect on the entry stage: `factory-dispatch-mechanics.md` § Factory Mode mechanics · `factory-dispatch-detail.md` § Factory in-lane 3-stage.
 
-**Lane spawn authority (standing).** A lane is an orchestrator for its card: it spawns, with the Agent tool and WITHOUT asking, the specialist the Status Transition Ownership Matrix names for the stage at hand — plan-phase artifacts to `manager-spec`, implementation to `manager-develop`, sync-phase docs to `manager-docs`, plus the chain's prescribed auditors. Depth-1 only: agents a lane spawns are leaf workers and never spawn further agents. This authority is part of the lane's bootstrap context (the SessionStart join notice carries it verbatim), and it is deliberately NOT a per-dispatch grant: the runtime's default "don't spawn unless the user asks" guidance does not bind a lane, and a leader's approval can neither grant nor revoke what the bootstrap already grants — the leader is not the lane's user.
+**Lane spawn authority (standing).** A lane is an orchestrator for its card: it spawns, with the Agent tool and WITHOUT asking, the specialist the Status Transition Ownership Matrix names for the stage at hand — plan-phase artifacts to `manager-spec`, implementation to `manager-develop`, sync-phase docs to `manager-docs`, plus the chain's prescribed auditors. Depth-1 only: agents a lane spawns are leaf workers and never spawn further agents. This authority is part of the lane's bootstrap context (the SessionStart join notice carries it verbatim), and NOT a per-dispatch grant: the runtime's default "don't spawn unless the user asks" guidance does not bind a lane, and a leader's approval can neither grant nor revoke what the bootstrap already grants — the leader is not the lane's user.
 
 ## Boundaries — what this protocol does not do
 
-- **No gate bypass.** Approval gates keep their evidence standard inside a dispatch cycle. The plan→run Kickoff's default form is the autonomous transition — independent audit cross + evidence criteria + a written decision record (`.claude/rules/moai/workflow/auto-semantics.md` §9.1) — which is the gate's new default form, not a bypass; keep-set gates (environment-impossible, operator-held, irreversible external-shared operations) still require the operator, and operator-form Kickoff rows that wait together are presented through the batch gate summary (`.claude/rules/moai/workflow/auto-semantics.md` §9.2).
+- **No gate bypass.** Approval gates keep their evidence standard inside a dispatch cycle. The plan→run Kickoff's default form is the autonomous transition — independent audit cross + evidence criteria + a written decision record (`.claude/rules/moai/workflow/auto-semantics.md` §9.1), not a bypass; keep-set gates (environment-impossible, operator-held, irreversible external-shared operations) still require the operator, and operator-form Kickoff rows that wait together are presented through the batch gate summary (`.claude/rules/moai/workflow/auto-semantics.md` §9.2).
 - **No question delegation.** Lane sessions return blocker reports; the operator is asked by the leader, through `AskUserQuestion`.
 
 ## Cross-references
-
----
-
 
 ---
 

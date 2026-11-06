@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/testguard"
 )
 
 // TestCleanupSessionWorktree_GitHubFlowSquash drives cleanupSessionWorktree: a
@@ -15,6 +17,7 @@ import (
 // that only the PR layer can confirm is preserved with a notice naming the
 // CONFIGURED integration ref. `gh` is a recording shim; it must stay uncalled.
 func TestCleanupSessionWorktree_GitHubFlowSquash(t *testing.T) {
+	testguard.RedirectHome(t)
 	marker := withGHShim(t)
 
 	t.Run("two_commit_squash_is_removed", func(t *testing.T) {
@@ -57,6 +60,7 @@ func TestCleanupSessionWorktree_GitHubFlowSquash(t *testing.T) {
 }
 
 func TestCleanupSessionWorktreePreservesWhitespaceDistinctContent(t *testing.T) {
+	testguard.RedirectHome(t)
 	f := gfdSessRepo(t, "main", gfdSessGitHubFlowYAML)
 	card := "package fixture\nconst value = \"a  b\"\n"
 	remote := "package fixture\nconst value = \"a b\"\n"
@@ -84,6 +88,7 @@ func TestCleanupSessionWorktreePreservesWhitespaceDistinctContent(t *testing.T) 
 }
 
 func TestCleanupSessionWorktreePreservesRepeatedLocationCollision(t *testing.T) {
+	testguard.RedirectHome(t)
 	f := gfdSessRepo(t, "main", gfdSessGitHubFlowYAML)
 	seed := "package fixture\nfunc first() string {\n return \"old\"\n}\nfunc second() string {\n return \"old\"\n}\n"
 	if err := os.WriteFile(filepath.Join(f.repo, "value.go"), []byte(seed), 0o600); err != nil {

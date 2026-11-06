@@ -62,6 +62,7 @@ func shortestPathNodeID(i int) string { return "internal/w/chain.go:" + shortest
 
 func shortestPathCall(t *testing.T, root, from, to string) *mcp.CallToolResult {
 	t.Helper()
+	confineTestRoot(t, root) // REQ-MN-005: the root must be a worktree of the server's repository
 	req := mcp.CallToolRequest{}
 	req.Params.Arguments = map[string]any{"from": from, "to": to, "project_root": root}
 	res, err := handleGraphShortestPath(context.Background(), req)

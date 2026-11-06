@@ -88,25 +88,26 @@ Never add files directly to the local project directories without also adding th
 
 **Verification**: Before committing, check that every new file under `.claude/`, `.moai/`, or `.agency/` has a corresponding file in `internal/template/templates/`.
 
-### [HARD] §2.0 There are three copies of the agent definitions, and the third is not edited by hand
+### [HARD] §2.0 There are three copies of the agent definitions, and only the agent source is edited by hand (C1 of the eight agents not yet generated is the exception until piece 2)
 
-Agent definitions exist in three copies, but **only one of them is not a hand-edit target.**
+Agent definitions exist in three copies, rendered from one edit surface: the agent source layer `internal/template/agentemit/source/*.md`. **The agent source is the sole edit surface**; none of the three copies is a hand-edit target for the generated agents.
 
 | Copy | Path | Nature |
 |---|---|---|
-| C1 | `.claude/agents/moai/*.md` | Local dogfooding, hand-edited |
-| C2 | `internal/template/templates/.claude/agents/moai/*.md` | Distribution mirror, hand-edited — **the neutral source layer** |
-| C3 | `internal/template/templates/.codex/agents/moai/*.toml` | **Machine-emitted from C2** (`internal/template/agentemit`) |
+| C1 | `.claude/agents/moai/*.md` | Local dogfooding; rendered from the agent source and byte-identical to C2 for the generated agents (builder-harness, e2e-tester, manager-design, super-advisor); hand-edited for the remaining agents until piece 2 absorbs or retires them |
+| Source | `internal/template/agentemit/source/*.md` | **The only hand-edited layer for the generated agents** |
+| C2 | `internal/template/templates/.claude/agents/moai/*.md` | Distribution mirror, **rendered from the agent source** |
+| C3 | `internal/template/templates/.codex/agents/moai/*.toml` | **Machine-rendered from the agent source** (`internal/template/agentemit`) |
 
-[HARD] **If you have edited `internal/template/templates/.claude/agents/moai/*.md`, run `make agents-emit`.** Otherwise `internal/template/templates/.codex/agents/moai/*.toml` stays stale, and a binary built in that state runs with the old definitions embedded. C1 ↔ C2 is **not** a byte-identical relationship (an intentional divergence); the generation relationship runs in one direction only, C2 → C3.
+[HARD] **If you have edited the agent source `internal/template/agentemit/source/*.md`, run `make agents-emit`.** Hand-editing C2 turns `make build` red through `agents-emit-check`. Otherwise `internal/template/templates/.codex/agents/moai/*.toml` stays stale, and a binary built in that state runs with the old definitions embedded. C1 is byte-identical to C2 for the generated agents (builder-harness, e2e-tester, manager-design, super-advisor); the remaining agents join when piece 2 absorbs or retires them. The generation relationship runs in one direction only, source → C1, C2, C3 for the generated agents; C1 of the remaining agents is not rendered until piece 2.
 
-[HARD] **Do not hand-edit C3.** A hand edit is silently overwritten at the next emission. If something needs fixing, fix C2 and regenerate.
+[HARD] **Do not hand-edit C3.** A hand edit is silently overwritten at the next emission. If something needs fixing, fix the agent source and regenerate.
 
 Where a miss gets caught — three checkpoints each look at a different axis:
 
 | Check | What it examines | When |
 |---|---|---|
-| `make build` (preceded by `agents-emit-check`) | Source layer: committed `.toml` vs the output emitted from `.md` | Every local build. **Read-only — does not regenerate** |
+| `make build` (preceded by `agents-emit-check`) | Source layer: committed `.toml` vs the output rendered from the agent source | Every local build. **Read-only — does not regenerate** |
 | `go test ./internal/template/agentemit/...` | The same axis | Every CI run |
 | `make embed-check` / `moai doctor --check "Agent Emit Embed"` | **Embed axis**: the bytes actually embedded in an already-built binary vs. the committed copy | Manual. `BIN=<path>` can also target the installed binary |
 
@@ -179,29 +180,29 @@ The language policy is defined in `.claude/rules/moai/development/coding-standar
 
 Conventional Commits — `<type>(<scope>): <description>` + an optional body/footer. Types: feat, fix, docs, style, refactor, perf, test, chore, revert. For examples and the full format, see `.moai/docs/local-dev-guide.md` § 4a.
 
-### §4.0 Default development flow (local-main integration)
+### §4.0 Default development flow — agentic-trunk (local-main integration)
 
-Card work lands on local `main` in the primary checkout, and the remote `origin/main` advances only through release PRs. Clauses marked in §4.1 are superseded by this section; clauses without a marker remain in force as written.
+The flow is **agentic-trunk: lane worktree, serial landing into main, leader release batch per lead_push_threshold, tagged release.** Per-card delivery follows the target-holder routing: where only the primary checkout holds `main` (this repository — the 2026-10-21 rescope of SPEC-GIT-STRATEGY-AGENTIC-TRUNK-001 abolished the dedicated integration worktree), the completed card lands through its pull request, which the leader merges with no auto-merge request; where a dedicated integration worktree holds `main`, the card lands through the integration-window local merge of item 2. The landing surface — whichever tree holds `main` — performs landing and resync only, plus the operator-requested rc build (lane protocol §9): it is never used for card work, and it stays clean. Clauses marked in §4.1 are superseded by this section; clauses without a marker remain in force as written. (The live `git_strategy.manual.workflow` value converts at the leader's post-landing cutover; until then the temporary bridge `github-flow` is in force, and this section describes the post-cutover flow.)
 
 **[HARD] 1. Branch base**
 
-Card worktrees branch from local `main`. Because origin/main can fall behind local `main`, it is not used as the branch base. In this repository, this section replaces the template sentence "Create the fresh tree from the remote default branch." The distributed template does not change.
+Card worktrees branch from local `main`. Because origin/main can fall behind local `main`, it is not used as the branch base. In this repository, this section replaces the template sentence "Create the fresh tree from the remote default branch." The distributed template does not change. A card worktree is created only through `moai factory next` or `moai worktree new`. When the configured base (`git_strategy.worktree_base_branch`, `main` here) resolves, it branches from the named ref `main` and not from HEAD; when the base is empty or does not resolve, creation falls back to the invoking tree's HEAD. Claude Code's default `--worktree` (remote default branch) is not used for card work. After creation, confirm that the new tree's HEAD equals `main`; that confirmation, not the creation path, is the check.
 
 **[HARD] 2. Merge landing**
 
-- The landing surface is in effect when `workflow.local_main_integration.enabled` is `true`, the HEAD of the primary checkout points at `main`, and no separate integration worktree holds `main`. If the conditions are not met, the tool does not merge and explains why.
-- Merging is performed only by `moai integration merge --card <id>`. `moai factory complete` calls this command from lane sessions. Agents writing `git merge` directly in Bash is still refused. This path is a designed exception.
-- The tool (1) takes the integration window, (2) reads HEAD symbolically and confirms that it points at `main`, (3) confirms that the primary checkout is clean (item 3), and (4) pins the tip commit of the card branch; then it refuses if any ignored or untracked file sits on the paths the merge will write or on their ancestor or descendant paths. The tool does not delete or stash files. It then (5) performs a no-fast-forward merge with autostash turned off, (6) compares the first parent, HEAD, and the status set against their pre-merge values, and (7) records the merge SHA and tree and releases the integration window (`moai integration release`).
+- Where a dedicated integration worktree holds `main`, the landing surface is that worktree and the tool refuses when no tree holds it. Where only the primary checkout holds `main` (this repository), the completed card takes the pull-request edge instead: the completion path (`moai factory complete` / merge-ready) opens the card's pull request, and the leader merges it — the merge request is never an auto-merge request (`--auto` was removed from the pr-open path by M5b of SPEC-GIT-STRATEGY-AGENTIC-TRUNK-001).
+- Where the integration-window local merge applies, merging is performed only by `moai integration merge --card <id>`, which `moai factory complete` calls from lane sessions. Where the pull-request route applies, the lane never merges: the leader merges the card's pull request. On either route, an agent writing `git merge` directly in Bash is still refused — the designed exception covers only the tool path.
+- Where the local-merge route applies, the tool (1) takes the integration window, (2) reads HEAD symbolically and confirms that it points at `main`, (3) applies the clean check of item 3, and (4) pins the tip commit of the card branch; then it refuses if any ignored or untracked file sits on the paths the merge will write or on their ancestor or descendant paths. The tool does not delete or stash files. It then (5) performs a no-fast-forward merge with autostash turned off, (6) compares the first parent, HEAD, and the status set against their pre-merge values, and (7) records the merge SHA and tree and releases the integration window (`moai integration release`).
 
-**[HARD] 3. Clean-primary rule**
+**[HARD] 3. Clean-tree rule**
 
-To land from the primary checkout, the output of `git status --porcelain=v1 -z --untracked-files=all` must be empty. Because several sessions write to the primary, the owner of an uncommitted change cannot be identified. If there are changes, the merge is refused, and the changes are moved to a card worktree or left to the session that owns them. Do not use stash, because it spans the entire repository. The overlap rule (REQ-LMF-005) applies to a separate integration worktree.
+A landing tree must be clean: `git status --porcelain=v1 -z --untracked-files=all` must be empty, or the merge is refused. A separate integration worktree gets the overlap rule (REQ-LMF-005). Diagnose each untracked or modified file in the tree that holds `main` (commit it in its owning card worktree, move it there, or ignore it); never stash. Read `main` source through `git show main:<path>`, or — where a dedicated integration worktree holds it — in that worktree rather than the primary's working tree; `git show` does not cover a smudge or clean filter, end-of-line conversion, uncommitted changes, or a later move of `main`. (In this repository the primary checkout holds `main`, so its working tree is `main`'s tree.)
 
 **[HARD] 4. Resynchronization**
 
-When a release batch lands on `origin/main`, local `main` follows it. The tool performs this as a fast-forward-only update inside the integration window; it is not done from the operator's terminal.
+When a release batch lands on `origin/main`, local `main` follows it. The tool performs this as a fast-forward-only update inside the integration window; it is not done from the operator's terminal. `moai integration resync` refuses when another tree holds `main` and no moai verb moves the primary checkout to the current local `main` tip; both are planned in t1847.
 
-- (1) Take the window, and confirm that HEAD points at `main` and that the primary checkout is clean.
+- (1) Take the window, and confirm that HEAD points at `main` and that the tree being updated is clean.
 - (2) Run `git fetch origin main` and check its exit status. Pin the `origin/main` value obtained as the baseline, and make every later remote comparison against this value.
 - (3) Read the ancestry relation between HEAD and the baseline. If HEAD is behind the baseline, check for ignored-file overwrites, then fast-forward. If the baseline is an ancestor of HEAD, or the two values are the same, report that no update is needed and leave HEAD where it is. If neither is an ancestor of the other, the histories have diverged: refuse, and HEAD does not move.
 - (4) After the move, re-read HEAD to confirm that it equals the baseline and still points at `main`; then report the old and new SHAs and release the window.
@@ -234,7 +235,7 @@ The pre-push hook's verdict on pushes of `main:release/*` has not yet been measu
 - The green condition takes precedence over the count trigger. Every card merge must pass the merge-tree re-measurement in the integration window, and while the `origin/main` CI of the most recently landed batch is red, the next batch is held. If that CI verdict does not yet exist, it is not a reason to hold.
 - If the threshold is 0 or the key is absent, the trigger is off, and the leader decides when to close a batch. This is not an error condition.
 
-Basis: SPEC-LOCAL-MAIN-FLOW-001 (spec REQ-LMF-010·REQ-LMF-011·§G; plan §B2·§B3·§B3a·§B4·§B7·§B9·§G.1).
+Basis: SPEC-LOCAL-MAIN-FLOW-001 (spec REQ-LMF-010·REQ-LMF-011·§G; plan §B2·§B3·§B3a·§B4·§B7·§B9·§G.1). Rescope 0.4.0 of SPEC-GIT-STRATEGY-AGENTIC-TRUNK-001 (2026-10-21) renamed the model `agentic-trunk` and adopted the target-holder routing (card pull request merged by the leader with no auto-merge request where only the primary holds `main`; integration-window local merge where a dedicated worktree holds it); the landing and resync tool paths are unchanged.
 
 ### §4.1 Integration chain (main)
 

@@ -550,15 +550,16 @@ func TestRunExternalDelegationDoctrine(t *testing.T) {
 					t.Errorf("positive control failed: the whole-word counter matched allow_write or writes (%d)", n)
 				}
 
-				// Positive controls: the expression must fire on a known-bad
-				// string and on the real tool registration, otherwise an empty
-				// result above could come from a broken expression.
+				// Positive control: the expression must fire on a known-bad
+				// string, otherwise an empty result above could come from a
+				// broken expression. (The former second control — the real
+				// codex_task registration in internal/cli/mcp_server.go — went
+				// with the general codex execution surface removal, card
+				// t1909: no live tool registration carries a write
+				// instruction any more, so the built-in bad string is the
+				// expression's positive control.)
 				if !rxdWriteInstruction.MatchString("pass the `write` argument as `true`") {
 					t.Errorf("positive control failed: the write-instruction expression does not match the built-in bad string")
-				}
-				registration := rxdRead(t, root, "internal/cli/mcp_server.go")
-				if len(rxdWriteHits("internal/cli/mcp_server.go", registration)) == 0 {
-					t.Errorf("positive control failed: the write-instruction expression does not match internal/cli/mcp_server.go")
 				}
 			}
 		})

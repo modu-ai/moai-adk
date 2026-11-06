@@ -108,3 +108,61 @@ func TestServedModel_RefusalIsTreeScoped(t *testing.T) {
 	}
 	_ = filepath.Join // keep filepath linked if assertions above change
 }
+
+// Card t1861 — a served refusal attributed to a CARD id (a card-flow audit's
+// verdict line names the card, and since the spec= widening that line parses)
+// must keep the spawn-side deny's conservative reach: the spawn-matching axis
+// extracts only SPEC ids from prompts, so a card-attributed refusal cannot be
+// discriminated per-milestone and must deny every phase-entry spawn of the
+// tree, exactly as an unknown-spec refusal does. The widening alone regressed
+// this: the skip condition let a card-attributed refusal past a SPEC-named
+// spawn that the pre-widening unknown-spec record used to deny (F1,
+// sync-audit round 1).
+func TestServedModel_CardSpecRefusalStillDeniesPhaseEntry(t *testing.T) {
+	seedCard := func(t *testing.T, root, spec string) {
+		t.Helper()
+		r := auditreceipt.Rejection{AgentType: "sync-auditor", SpecID: spec, Kind: auditreceipt.KindServed,
+			Cause: auditreceipt.CauseServedModelDrift + ": expected opus, served [glm-5.3-flash]", TreeRoot: root}
+		if err := auditreceipt.WriteRejectionIn(root, &r); err != nil {
+			t.Fatalf("WriteRejectionIn: %v", err)
+		}
+	}
+
+	t.Run("a_card_refusal_denies_a_SPEC_named_spawn", func(t *testing.T) {
+		for _, spec := range []string{"t1861", "card-t1861"} {
+			t.Run(spec, func(t *testing.T) {
+				root := newServedGateTree(t, "true", "")
+				seedCard(t, root, spec)
+				ok, reason := denied(runSpawn(t, spawnWithPrompt(root, "manager-develop",
+					"M6 work for SPEC-M6-006: implement the milestone")))
+				if !ok || !strings.HasPrefix(reason, servedModelViolation) {
+					t.Fatalf("card refusal %q: denied=%v reason=%q, want a %s deny", spec, ok, reason, servedModelViolation)
+				}
+			})
+		}
+	})
+
+	t.Run("a_card_refusal_denies_a_promptless_spawn", func(t *testing.T) {
+		root := newServedGateTree(t, "true", "")
+		seedCard(t, root, "t1861")
+		ok, reason := denied(runSpawn(t, spawnWithPrompt(root, "manager-git", "go")))
+		if !ok || !strings.HasPrefix(reason, servedModelViolation) {
+			t.Fatalf("denied=%v reason=%q, want a %s deny", ok, reason, servedModelViolation)
+		}
+	})
+
+	t.Run("SPEC_attribution_axis_unchanged", func(t *testing.T) {
+		// The t1323 axis must survive the repair: a SPEC-attributed refusal
+		// still skips an unrelated milestone's SPEC-named spawn.
+		root := newServedGateTree(t, "true", "")
+		r := auditreceipt.Rejection{AgentType: "plan-auditor", SpecID: "SPEC-T1240-001", Kind: auditreceipt.KindServed,
+			Cause: auditreceipt.CauseServedModelDrift, TreeRoot: root}
+		if err := auditreceipt.WriteRejectionIn(root, &r); err != nil {
+			t.Fatalf("WriteRejectionIn: %v", err)
+		}
+		if ok, reason := denied(runSpawn(t, spawnWithPrompt(root, "manager-develop",
+			"M6 work for SPEC-M6-006: implement the milestone"))); ok {
+			t.Fatalf("unrelated-spec spawn denied: %q", reason)
+		}
+	})
+}

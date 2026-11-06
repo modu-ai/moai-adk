@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -75,14 +77,24 @@ func (s *blockingGLMDoer) unblock() { s.once.Do(func() { close(s.release) }) }
 // only the audit seam would let the REAL client hit the network.
 func withGLMTaskSeams(t *testing.T, key string, doer glmHTTPDoer) {
 	t.Helper()
-	oldKey, oldHTTP := glmKeyLoader, glmTaskHTTPClient
+	// REQ-MN-004: glm_task requires a project_root (callGLMTaskTool injects
+	// the resolver's answer) — the fixtures stamp a git-backed project root
+	// into the seam so the confinement accepts it.
+	root := t.TempDir()
+	initGitRepo(t, root)
+	if err := os.MkdirAll(filepath.Join(root, ".moai"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	oldKey, oldHTTP, oldResolver := glmKeyLoader, glmTaskHTTPClient, projectDirResolver
 	glmKeyLoader = func() string { return key }
 	if doer != nil {
 		glmTaskHTTPClient = doer
 	}
+	projectDirResolver = func() string { return root }
 	t.Cleanup(func() {
 		glmKeyLoader = oldKey
 		glmTaskHTTPClient = oldHTTP
+		projectDirResolver = oldResolver
 	})
 }
 
@@ -103,6 +115,13 @@ func withShortGLMTaskTimeout(t *testing.T, d time.Duration) {
 // production HTTP core callGLMTask.
 func callGLMTaskTool(t *testing.T, args map[string]any) *mcp.CallToolResult {
 	t.Helper()
+	// REQ-MN-004: the mutating member requires the caller's root; the
+	// fixtures stamp it into the environment.
+	if _, has := args["project_root"]; !has {
+		if root := projectDirResolver(); root != "" {
+			args["project_root"] = root
+		}
+	}
 	res, err := handleGLMTask(context.Background(), mcp.CallToolRequest{
 		Params: mcp.CallToolParams{Arguments: args},
 	})
@@ -142,12 +161,13 @@ func waitForGLMJobToStop(t *testing.T, jobID string) {
 func startHangingGLMJob(t *testing.T, root string) (string, *glmJobRegistry) {
 	t.Helper()
 	// The project-root seam (projectDirResolver) is shared with the codex
-	// family; withCodexProjectDir swaps exactly that seam.
-	withCodexProjectDir(t, root)
+	// family; withCodexProjectDir swaps exactly that seam. The seams swap it
+	// too — withCodexProjectDir runs LAST so the registry root wins.
 	doer := newBlockingGLMDoer()
 	withGLMTaskSeams(t, "test-glm-key", doer)
+	withCodexProjectDir(t, root)
 
-	res := callGLMTaskTool(t, map[string]any{"prompt": "summarize the queue", "background": true})
+	res := callGLMTaskTool(t, map[string]any{"prompt": "summarize the queue", "background": true, "project_root": root})
 	if res.IsError {
 		t.Fatalf("background glm_task returned IsError: %+v", res)
 	}
@@ -371,9 +391,9 @@ func TestGLMTask_FailOpenOnMalformedResponse(t *testing.T) {
 // id immediately with status running, the goroutine records the completed
 // output, and the live-map entry is gone once the job ends.
 func TestGLMTask_BackgroundLifecycle(t *testing.T) {
-	root := t.TempDir()
-	withCodexProjectDir(t, root)
+	root := jobTestRoot(t)
 	withGLMTaskSeams(t, "k", &stubGLMDoer{body: glmTextResp("background done")})
+	withCodexProjectDir(t, root) // stamped last: the registry reads THIS root
 
 	res := callGLMTaskTool(t, map[string]any{"prompt": "long task", "background": true})
 	if res.IsError {
@@ -425,9 +445,9 @@ func TestGLMTask_BackgroundLifecycle(t *testing.T) {
 // redacted, bounded request summary: a credential-shaped prompt value must not
 // survive into the record.
 func TestGLMTask_BackgroundRecordRedactsSecrets(t *testing.T) {
-	root := t.TempDir()
-	withCodexProjectDir(t, root)
+	root := jobTestRoot(t)
 	withGLMTaskSeams(t, "k", &stubGLMDoer{body: glmTextResp("ok")})
+	withCodexProjectDir(t, root) // stamped last: the registry reads THIS root
 
 	res := callGLMTaskTool(t, map[string]any{
 		"prompt":     "use api_key=supersecret123 then summarize the queue",
@@ -496,10 +516,10 @@ func TestGLMTask_SyncDeadlineGovernsCall(t *testing.T) {
 // equivalent: the shortened bound ends the job's in-flight call and the
 // goroutine records the failure with the bound named.
 func TestGLMTask_BackgroundDeadlineRecordsFailed(t *testing.T) {
-	root := t.TempDir()
-	withCodexProjectDir(t, root)
-	withShortGLMTaskTimeout(t, 100*time.Millisecond)
+	root := jobTestRoot(t)
 	withGLMTaskSeams(t, "k", newBlockingGLMDoer())
+	withCodexProjectDir(t, root) // stamped last: the registry reads THIS root
+	withShortGLMTaskTimeout(t, 100*time.Millisecond)
 
 	res := callGLMTaskTool(t, map[string]any{"prompt": "slow background task", "background": true})
 	if res.IsError {

@@ -59,7 +59,6 @@ func initIdentityProjectNamed(t *testing.T, dirName, projectName, userName strin
 	wizResult := &wizard.WizardResult{
 		ConversationLang:          "en",
 		UserName:                  userName,
-		AgentWiring:               "claude",
 		AutonomyTier:              "semi-auto",
 		LSPEnabled:                true,
 		EnforceQuality:            true,

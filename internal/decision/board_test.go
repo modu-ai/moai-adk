@@ -1,6 +1,9 @@
 package decision
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -220,6 +223,161 @@ func TestRecord_LineRendersTheDecisionRecordForm(t *testing.T) {
 	want := "decision record: decided_by=claude+leader evidence_refs=.moai/reports/t1/plan-audit-iter3.md ladder_path=②"
 	if !strings.HasPrefix(line, want) {
 		t.Fatalf("Line() = %q, want prefix %q", line, want)
+	}
+}
+
+// TestBoardLineRejectsForgedRows pins the newline-injection repair on
+// Record.Line: a field value carrying a line break must render neutralized,
+// so the one-line record form stays one physical row and cannot forge the
+// digest or detail lines that follow it in read output.
+func TestBoardLineRejectsForgedRows(t *testing.T) {
+	forged := "\n  digest: deadbeefcafe"
+	for name, mutate := range map[string]func(*Record){
+		"decided_by":    func(r *Record) { r.DecidedBy += forged },
+		"evidence_refs": func(r *Record) { r.EvidenceRefs += forged },
+		"ladder_path":   func(r *Record) { r.LadderPath += forged },
+		"id":            func(r *Record) { r.ID += forged },
+		"scope":         func(r *Record) { r.Scope += forged },
+		"kind":          func(r *Record) { r.Kind += forged },
+	} {
+		r := validRuling("card:t1")
+		mutate(&r)
+		line := r.Line()
+		if strings.ContainsAny(line, "\n\r") {
+			t.Errorf("%s: Line() split into physical lines: %q", name, line)
+		}
+		if !strings.Contains(line, `\n  digest: deadbeefcafe`) {
+			t.Errorf("%s: Line() dropped the field payload instead of escaping it: %q", name, line)
+		}
+	}
+	crlf := validRuling("card:t1")
+	crlf.DecidedBy += "\r\n  body: forged"
+	if line := crlf.Line(); strings.ContainsAny(line, "\n\r") {
+		t.Errorf("CRLF payload split the rendered row: %q", line)
+	}
+}
+
+// unescapeLine is the reader side of the escape contract: it reverses the
+// backslash-first mapping left-to-right, so a value rendered by escapeLine
+// recovers its exact original bytes.
+func unescapeLine(s string) string {
+	var b strings.Builder
+	for i := 0; i < len(s); i++ {
+		if s[i] != '\\' || i+1 >= len(s) {
+			b.WriteByte(s[i])
+			continue
+		}
+		i++
+		switch s[i] {
+		case '\\':
+			b.WriteByte('\\')
+		case 'n':
+			b.WriteByte('\n')
+		case 'r':
+			b.WriteByte('\r')
+		case 't':
+			b.WriteByte('\t')
+		default:
+			b.WriteByte('\\')
+			b.WriteByte(s[i])
+		}
+	}
+	return b.String()
+}
+
+// TestBoardLineEscapePairsWithOneLine pins the single-valued rendering
+// property Record.Line shares with oneLine in internal/cli/decision.go: the
+// backslash is escaped BEFORE the control bytes, so a field whose original
+// text holds a literal backslash-n sequence can never render identical to a
+// field holding a real newline, and a reverse-escaping reader recovers the
+// exact original field value.
+func TestBoardLineEscapePairsWithOneLine(t *testing.T) {
+	t.Run("no collision between literal escape text and control bytes", func(t *testing.T) {
+		for _, pair := range [][2]string{
+			{"a\\nb", "a\nb"}, // literal backslash-n vs real LF
+			{"a\\rb", "a\rb"}, // literal backslash-r vs real CR
+			{"a\\tb", "a\tb"}, // literal backslash-t vs real TAB
+		} {
+			literal := validRuling("card:t1")
+			literal.Scope = pair[0]
+			control := validRuling("card:t1")
+			control.Scope = pair[1]
+			if literal.Line() == control.Line() {
+				t.Errorf("input %q collided with %q: both rendered %q", pair[0], pair[1], literal.Line())
+			}
+		}
+	})
+	t.Run("round-trip through Line recovers the original field", func(t *testing.T) {
+		for _, in := range []string{
+			"a\\nb",      // literal backslash-n
+			"a\nb",       // real LF
+			"a\\tb",      // literal backslash-t
+			"a\tb",       // real TAB
+			"a\\",        // trailing backslash
+			"\\\\n",      // double backslash then n
+			"a\r\nb",     // real CRLF
+			"a\\nb\\nc",  // literal backslash-n, twice
+			"plain-text", // no escapes at all
+		} {
+			r := validRuling("card:t1")
+			r.Scope = in
+			line := r.Line()
+			got := ""
+			for _, tok := range strings.Fields(line) {
+				if rest, ok := strings.CutPrefix(tok, "scope="); ok {
+					got = unescapeLine(rest)
+				}
+			}
+			if got != in {
+				t.Errorf("round-trip broke for %q: Line() = %q, unescaped back to %q", in, line, got)
+			}
+		}
+	})
+}
+
+func TestRecord_DigestPinsTheStoredBoardLine(t *testing.T) {
+	board := filepath.Join(t.TempDir(), "board.jsonl")
+	first, err := Append(board, validRuling("card:t1"), AppendOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondRec := validRuling("card:t1")
+	secondRec.Body = "a different body"
+	second, err := Append(board, secondRec, AppendOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(board)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stored := map[string]string{}
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimRight(line, "\n")
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		var rec Record
+		if err := json.Unmarshal([]byte(line), &rec); err != nil {
+			t.Fatalf("board line %q: %v", line, err)
+		}
+		sum := sha256.Sum256([]byte(line))
+		stored[rec.ID] = hex.EncodeToString(sum[:6])
+	}
+	for _, rec := range []Record{first, second} {
+		got := rec.Digest()
+		if got != stored[rec.ID] {
+			t.Fatalf("Digest()=%q for id %s, want the sha256 prefix %q over the stored board line", got, rec.ID, stored[rec.ID])
+		}
+		if len(got) != 12 || got != strings.ToLower(got) {
+			t.Fatalf("Digest()=%q, want 12 lowercase hex characters", got)
+		}
+		if again := rec.Digest(); again != got {
+			t.Fatalf("Digest() is not stable across calls: %q then %q", got, again)
+		}
+	}
+	if first.Digest() == second.Digest() {
+		t.Fatalf("records with different bodies share the digest %q", first.Digest())
 	}
 }
 

@@ -160,6 +160,14 @@ func TestParseVerdictLine(t *testing.T) {
 		"empty":            {"   \n\n", false, "", "", 0},
 		"malformed-spec":   {"AUDIT-VERDICT: PASS spec=nope receipts=none", false, "", "", 0},
 		"malformed-prefix": {"VERDICT: PASS spec=SPEC-X-001 receipts=none", false, "", "", 0},
+		// Card t1861: a card-flow audit has no SPEC id, so the verdict line names
+		// the card. Both observed spellings must parse (t1854 bare, t1856
+		// card-prefixed); the near-miss shapes stay refused.
+		"card-spec":            {"AUDIT-VERDICT: PASS spec=t1854 receipts=rcpt-0123456789abcdef0123", true, "PASS", "t1854", 1},
+		"card-spec-prefixed":   {"AUDIT-VERDICT: PASS-WITH-DEBT spec=card-t1856 receipts=none", true, "PASS-WITH-DEBT", "card-t1856", 0},
+		"card-spec-no-digits":  {"AUDIT-VERDICT: PASS spec=t receipts=none", false, "", "", 0},
+		"card-spec-no-t":       {"AUDIT-VERDICT: PASS spec=1854 receipts=none", false, "", "", 0},
+		"card-spec-empty-tail": {"AUDIT-VERDICT: PASS spec=card- receipts=none", false, "", "", 0},
 	} {
 		t.Run(name, func(t *testing.T) {
 			got, ok := ParseVerdictLine(tc.msg)

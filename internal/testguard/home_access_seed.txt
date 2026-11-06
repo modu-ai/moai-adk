@@ -1,0 +1,184 @@
+internal/cli/audit_pin_live_test.go	~/ literal	"SKIP: GLM credential absent (~/.moai/.env.glm carries no key)\n"+	0
+internal/cli/bundle_test.go	os.UserHomeDir	home, err := os.UserHomeDir()	0
+internal/cli/bundle_test.go	os.UserHomeDir	home, _ := os.UserHomeDir()	0
+internal/cli/bundle_test.go	os.UserHomeDir	home, _ := os.UserHomeDir()	1
+internal/cli/bundle_test.go	os.UserHomeDir	home, _ := os.UserHomeDir()	2
+internal/cli/bundle_test.go	os.UserHomeDir	home, _ := os.UserHomeDir()	3
+internal/cli/codex_role_live_test.go	~/ literal	t.Skip("NOT_RUN no Codex login at ~/.codex/auth.json")	0
+internal/cli/codex_skills_dotdot_test.go	~/ literal	{"home_escape_to_etc", "~/../../etc/x", codexPathOddlyFormed},	0
+internal/cli/codex_skills_dotdot_test.go	~/ literal	{"home_escape_to_parent", "~/..", codexPathOddlyFormed},	0
+internal/cli/codex_skills_dotdot_test.go	~/ literal	{"home_inner_dotdot_intended_change", "~/a/../b/SKILL.md", codexPathOddlyFormed},	0
+internal/cli/codex_skills_dotdot_test.go	~/ literal	{"clean_home_relative", "~/ok/SKILL.md", codexPathHomeRelative},	0
+internal/cli/codex_skills_dotdot_test.go	~/ literal	{"dotdot_prefixed_name_is_not_a_segment", "~/..ok/SKILL.md", codexPathHomeRelative},	0
+internal/cli/codex_skills_dotdot_test.go	~/ literal	Path: "~/../../etc/x",	0
+internal/cli/codex_skills_dotdot_test.go	~/ literal	Path: "~/ok/SKILL.md",	0
+internal/cli/codex_skills_dotdot_test.go	~/ literal	const decl = "~/../../etc/x"	0
+internal/cli/codex_skills_path_shape_test.go	~/ literal	homeArm = `~/x\SKILL.md`	0
+internal/cli/codex_skills_path_shape_test.go	~/ literal	{"clean_home_relative", "~/ok/SKILL.md", codexPathHomeRelative},	0
+internal/cli/codex_skills_path_shape_test.go	~/ literal	Path: `~/x\SKILL.md`,	0
+internal/cli/codex_skills_path_shape_test.go	~/ literal	Path: "~/ok/SKILL.md",	0
+internal/cli/codex_skills_path_shape_test.go	~/ literal	const decl = `~/x\SKILL.md`	0
+internal/cli/codex_skills_path_shape_test.go	~/ literal	Path: "~/ok/SKILL.md",	1
+internal/cli/codex_skills_prune_readback_test.go	~/ literal	v := judgeCodexSkillEntry(readbackEntry("~/x/SKILL.md"))	0
+internal/cli/codex_skills_prune_test.go	~/ literal	"path = \"~/gone/SKILL.md\"\n")	0
+internal/cli/codex_skills_prune_test.go	~/ literal	"[[skills.config]]\npath = \"~/unresolvable/SKILL.md\"\n",	0
+internal/cli/codex_skills_prune_test.go	~/ literal	"~/unresolvable/SKILL.md",	0
+internal/cli/codex_skills_prune_test.go	~/ literal	if strings.Contains(long, "Only ~/.moai is touched") {	0
+internal/cli/codex_skills_prune_test.go	~/ literal	t.Errorf("the help still claims only ~/.moai is touched:\n%s", long)	0
+internal/cli/codex_skills_prune_test.go	~/ literal	if !strings.Contains(long, "~/.codex/config.toml") {	0
+internal/cli/codex_skills_prune_test.go	~/ literal	t.Errorf("the help does not disclose the ~/.codex/config.toml scope:\n%s", long)	0
+internal/cli/coverage_improvement_test.go	os.UserHomeDir	homeDir, _ := os.UserHomeDir()	0
+internal/cli/coverage_improvement_test.go	os.UserHomeDir	homeDir, _ := os.UserHomeDir()	1
+internal/cli/deprecated_paths_text_reference_test.go	~/ literal	if i >= 2 && content[i-2:i] == "~/" {	0
+internal/cli/deprecated_paths_text_reference_test.go	~/ literal	if referencesDeprecatedProjectPath("state: ~/.moai/db/<project-key>", deprecated) {	0
+internal/cli/deprecated_paths_text_reference_test.go	~/ literal	t.Fatal("home-scoped ~/.moai/db was mistaken for deprecated project-local .moai/db")	0
+internal/cli/doctor_agentemit_embed_test.go	~/ literal	t.Fatalf("mkdir fake ~/.moai: %v", err)	0
+internal/cli/doctor_agentemit_embed_test.go	~/ literal	t.Fatalf("nearestProjectRoot(%q) = %q, want not found — the global ~/.moai must not read as a project root", nested, root)	0
+internal/cli/doctor_agentemit_embed_test.go	~/ literal	t.Errorf("message = %q, want the not-a-project phrasing — a home-owned ~/.moai must not read as a project", c.Message)	0
+internal/cli/doctor_codex_stale_skill_test.go	~/ literal	if want := "~/.codex/config.toml: 4 stale skill entries"; f.summary != want {	0
+internal/cli/doctor_codex_stale_skill_test.go	~/ literal	{Path: "~/t563-live/SKILL.md", EnabledKey: "true"},	0
+internal/cli/doctor_codex_stale_skill_test.go	~/ literal	{Path: "~/t563-gone/SKILL.md", EnabledKey: "false"},	0
+internal/cli/doctor_codex_stale_skill_test.go	~/ literal	if want := "~/.codex/config.toml: 1 stale skill entry"; f.summary != want {	0
+internal/cli/doctor_codex_stale_skill_test.go	~/ literal	if want := "~/.codex/config.toml: 2 skill entries with a path shape this check cannot resolve"; f.summary != want {	0
+internal/cli/doctor_codex_stale_skill_test.go	~/ literal	if want := "~/.codex/config.toml: 2 skill entries with a path shape this check cannot resolve"; f.summary != want {	1
+internal/cli/doctor_codex_stale_skill_test.go	~/ literal	{Path: "~/t563-unreachable/SKILL.md", EnabledKey: "true"},	0
+internal/cli/doctor_codex_stale_skill_test.go	~/ literal	{Path: "~/t563-unreachable/SKILL.md", EnabledKey: "true"},	1
+internal/cli/doctor_codex_stale_skill_test.go	~/ literal	if want := "~/.codex/config.toml: 1 stale skill entry"; f.summary != want {	1
+internal/cli/doctor_codex_stale_skill_test.go	~/ literal	{Path: "~/t563-seam-gone/SKILL.md", EnabledKey: "true"},	0
+internal/cli/doctor_codex_stale_skill_test.go	~/ literal	if want := "~/.codex/config.toml: 2 stale skill entries"; f.summary != want {	0
+internal/cli/doctor_codex_stale_skill_test.go	~/ literal	if want := "~/.codex/config.toml: 1 stale skill entry"; f.summary != want {	2
+internal/cli/doctor_codex_stale_skill_test.go	~/ literal	if want := "~/.codex/config.toml: 1 stale skill entry"; f.summary != want {	3
+internal/cli/doctor_codex_test.go	~/ literal	{Path: "~/t468-live/SKILL.md", EnabledKey: "true"},	0
+internal/cli/doctor_codex_test.go	~/ literal	{Path: "~/t468-definitely-absent/SKILL.md", EnabledKey: "true"},	0
+internal/cli/doctor_codex_test.go	~/ literal	{Path: "~/t468-seam-target/SKILL.md", EnabledKey: "true"},	0
+internal/cli/doctor_disk_test.go	~/ literal	t.Errorf("Status = %q, want ok for absent ~/.moai", check.Status)	0
+internal/cli/doctor_disk_test.go	~/ literal	if !strings.Contains(check.Message, "no ~/.moai") {	0
+internal/cli/doctor_disk_test.go	~/ literal	for _, want := range []string{"~/.moai", "claude-profiles", "releases", "~/.claude", "(report-only)"} {	0
+internal/cli/doctor_flag_slot_test.go	~/ literal	if !strings.Contains(check.Message, "~/.claude.json") {	0
+internal/cli/factory_live_test.go	os.UserHomeDir	var factoryLiveOperatorHomeFn = os.UserHomeDir	0
+internal/cli/glm_task_test.go	~/ literal	if errText, _ := got["error"].(string); !strings.Contains(errText, "~/.moai/.env.glm") {	0
+internal/cli/glm_task_test.go	~/ literal	t.Errorf("error = %q, want it to name the key file ~/.moai/.env.glm", errText)	0
+internal/cli/glm_tools_test.go	~/ literal	t.Error("--scope project 사용 시 ~/.claude.json 이 변경됨 (REQ-GMC-008 위반)")	0
+internal/cli/init_user_asset_retry_test.go	~/ literal	t.Errorf("L0 agent missing under ~/.codex/agents after the retry: %v", err)	0
+internal/cli/init_user_asset_test.go	~/ literal	t.Errorf("L0 agent %s missing under ~/.claude/agents: %v", agent, err)	0
+internal/cli/init_user_asset_test.go	~/ literal	t.Errorf("L0 agent %s missing under ~/.codex/agents: %v", agent, err)	0
+internal/cli/live_harness_test.go	~/ literal	t.Skip("NOT_RUN no Codex login at ~/.codex/auth.json")	0
+internal/cli/m7_gate49_migration_test.go	~/ literal	converted := template.NormalizeCodexRoleForDeploy([]byte("contract: ~/.claude/skills/moai/workflows/design.md\n"))	0
+internal/cli/m7_gate49_migration_test.go	~/ literal	if strings.Contains(string(converted), "~/.moai/workflows/") {	0
+internal/cli/m7_gate49_migration_test.go	~/ literal	t.Fatalf("the home-anchored workflow reference landed on the nonexistent ~/.moai/workflows (gate 49 NEW-1): %s", converted)	0
+internal/cli/m7_gate49_migration_test.go	~/ literal	if !strings.Contains(string(converted), "~/.agents/skills/moai/workflows/design.md") {	0
+internal/cli/m7_gate49_migration_test.go	~/ literal	tomlSource := []byte("name = \"manager-x\"\ncontract = \"~/.claude/skills/moai/workflows/design.md\"\n")	0
+internal/cli/main_test.go	~/ literal	"developer's real ~/.moai/claude-profiles/launch.yaml.")	0
+internal/cli/main_test.go	os.UserHomeDir	home, err := os.UserHomeDir()	0
+internal/cli/memory_test.go	os.UserHomeDir	realHome, err := os.UserHomeDir() // captured BEFORE HOME is overridden	0
+internal/cli/migrate_profiles_test.go	os.UserHomeDir	realHome, err := os.UserHomeDir() // captured BEFORE HOME is overridden	0
+internal/cli/parity_live_test.go	~/ literal	parityNotRunSkip(t, ac, attempted, "no Codex login at ~/.codex/auth.json")	0
+internal/cli/parity_live_test.go	~/ literal	t.Errorf("isolation broken: the operator's ~/.codex/%s changed during the live run", rel)	0
+internal/cli/parity_live_test.go	~/ literal	l.record(parityPass, attempted, "both runs passed the isolation detector; ~/.codex hashes are compared at cleanup")	0
+internal/cli/preference/home_isolation_test.go	os.UserHomeDir	realHome, err := os.UserHomeDir() // captured BEFORE HOME is overridden	0
+internal/cli/review_fix2_test.go	os.UserHomeDir	home, _ := os.UserHomeDir()	0
+internal/cli/todo_help_store_test.go	~/ literal	if !strings.Contains(long, "~/.moai/db/<project-key>/todo/backlog.db") {	0
+internal/cli/todo_help_store_test.go	~/ literal	t.Errorf("todo Long help does not name the canonical home store ~/.moai/db/<project-key>/todo/backlog.db")	0
+internal/cli/update_deny_migration_test.go	~/ literal	"Read(~/.ssh/**)",	0
+internal/cli/update_deny_migration_test.go	~/ literal	"Read(~/.aws/**)",	0
+internal/cli/update_deny_migration_test.go	~/ literal	"Read(~/.config/gcloud/**)",	0
+internal/cli/update_deny_migration_test.go	~/ literal	"Edit(~/.ssh/**)",	0
+internal/cli/update_deny_migration_test.go	~/ literal	"Edit(~/.aws/**)",	0
+internal/cli/update_deny_migration_test.go	~/ literal	"Edit(~/.config/gcloud/**)",	0
+internal/cli/update_deny_migration_test.go	~/ literal	"Write(~/.ssh/**)",	0
+internal/cli/update_deny_migration_test.go	~/ literal	"Write(~/.aws/**)",	0
+internal/cli/update_deny_migration_test.go	~/ literal	"Write(~/.config/gcloud/**)",	0
+internal/cli/update_deny_migration_test.go	~/ literal	"Grep(~/.ssh/**)",	0
+internal/cli/update_deny_migration_test.go	~/ literal	"Grep(~/.aws/**)",	0
+internal/cli/update_deny_migration_test.go	~/ literal	"Grep(~/.config/gcloud/**)",	0
+internal/cli/update_deny_migration_test.go	~/ literal	"Glob(~/.ssh/**)",	0
+internal/cli/update_deny_migration_test.go	~/ literal	"Glob(~/.aws/**)",	0
+internal/cli/update_deny_migration_test.go	~/ literal	"Glob(~/.config/gcloud/**)",	0
+internal/cli/update_deny_migration_test.go	~/ literal	"Read(~/.ssh/**)",	1
+internal/cli/update_deny_migration_test.go	~/ literal	"Read(~/.aws/**)",	1
+internal/cli/update_deny_migration_test.go	~/ literal	"Read(~/.config/gcloud/**)",	1
+internal/cli/update_deny_migration_test.go	~/ literal	"Edit(~/.ssh/**)",	1
+internal/cli/update_deny_migration_test.go	~/ literal	"Edit(~/.aws/**)",	1
+internal/cli/update_deny_migration_test.go	~/ literal	"Edit(~/.config/gcloud/**)",	1
+internal/cli/update_deny_migration_test.go	~/ literal	"Read(./secrets/**)", "Read(~/.ssh/**)", "Read(~/.aws/**)", "Read(~/.config/gcloud/**)",	0
+internal/cli/update_deny_migration_test.go	~/ literal	"Edit(./secrets/**)", "Edit(~/.ssh/**)", "Edit(~/.aws/**)", "Edit(~/.config/gcloud/**)",	0
+internal/cli/update_deny_migration_test.go	~/ literal	"Bash(rm -rf ~/\\* *)",	0
+internal/cli/update_deny_migration_test.go	~/ literal	"Bash(rm -rf ~/*)",	0
+internal/cli/update_deny_migration_test.go	~/ literal	"Bash(rm -rf ~/\\* *)",	1
+internal/cli/update_dry_run_reach_test.go	~/ literal	const dryRunSeededDenyEntry = "Write(~/.ssh/**)"	0
+internal/cli/update_repair_test.go	os.UserHomeDir	realHome, err := os.UserHomeDir()	0
+internal/cli/update_test.go	~/ literal	t.Error("~/.claude/hooks/moai should be removed by ensureGlobalSettingsEnv")	0
+internal/cli/update_user_asset_test.go	os.UserHomeDir	home, _ := os.UserHomeDir()	0
+internal/cli/update_user_asset_test.go	os.UserHomeDir	home, _ := os.UserHomeDir()	1
+internal/config/merge_test.go	~/ literal	SrcUser: "~/.moai/settings.json",	0
+internal/config/merge_test.go	~/ literal	SrcUser: "~/.moai/settings.json",	1
+internal/config/merge_test.go	~/ literal	SrcUser: "~/.moai/settings.json",	2
+internal/config/merge_test.go	~/ literal	if path == "~/.moai/settings.json" {	0
+internal/config/merge_test.go	~/ literal	SrcUser: "~/.moai/settings.json",	3
+internal/config/merge_test.go	~/ literal	if path == "~/.moai/settings.json" {	1
+internal/config/merge_test.go	~/ literal	SrcUser: "~/.moai/settings.json",	4
+internal/feedback/classify_test.go	~/ literal	title: "hook writes to ~/.ssh/id_rsa",	0
+internal/feedback/scrub_test.go	~/ literal	if !strings.Contains(res.Body, "~/proj/main.go") {	0
+internal/feedback/scrub_test.go	~/ literal	if !strings.Contains(res.Body, "~/x") || strings.Contains(res.Body, home+"/") {	0
+internal/hook/contract_sign_guard_test.go	~/ literal	"~/go/bin/moai contract sign",	0
+internal/hook/dangerous_removal_test.go	~/ literal	"rm -rf ~/go/pkg/mod/cache/tmp",	0
+internal/hook/dangerous_removal_test.go	~/ literal	"rm -rf ~/go/pkg/mod/cache/tmp",	1
+internal/hook/home_isolation_test.go	os.UserHomeDir	realHome, err := os.UserHomeDir() // captured BEFORE HOME is overridden	0
+internal/hook/home_isolation_test.go	os.UserHomeDir	realHome, err := os.UserHomeDir() // captured BEFORE the overrides	0
+internal/hook/m0_frozen_guard_red_test.go	~/ literal	"rm -f ~/.claude/skills/moai-foundation-core/SKILL.md",	0
+internal/hook/m4_user_root_parity_test.go	~/ literal	tilde := userRootZoneForms("~/.claude/agents/moai/plan-auditor.md")	0
+internal/hook/m7_gate43_44_test.go	~/ literal	sentinel, reason := writeDecision(t, root, "~/.moai/user-assets.json")	0
+internal/hook/m7_gate43_44_test.go	~/ literal	if s, _ := writeDecision(t, root, "~/.moai/user-note.txt"); s != "" {	0
+internal/hook/m7_gate43_44_test.go	~/ literal	t.Fatalf("an untracked user note under ~/.moai was denied: %s (the over-protection the narrowing removes)", s)	0
+internal/hook/m7_gate43_44_test.go	~/ literal	if s, _ := writeDecision(t, root, "~/.claude/skills/moai-alpha/SKILL.md"); s == "" {	0
+internal/hook/m7_gate43_44_test.go	~/ literal	"~/.moai/user-assets.json",	0
+internal/hook/m7_gate43_44_test.go	~/ literal	"~/.moai", // the containing directory itself	0
+internal/hook/m7_gate43_44_test.go	~/ literal	"~/.moai/", // trailing-slash spelling of the same deletion	0
+internal/hook/m7_gate43_44_test.go	~/ literal	"~/.MOAI/user-assets.json",	0
+internal/hook/m7_gate43_44_test.go	~/ literal	"~/.MOAI",	0
+internal/hook/m7_gate43_44_test.go	~/ literal	"~/.moai/user-note.txt", // an untracked sibling — the normal judgment	0
+internal/hook/m7_gate43_44_test.go	~/ literal	"~/.moai/subdir/x", // a deeper path — the normal judgment	0
+internal/hook/m7_gate43_44_test.go	~/ literal	"~/.moai/subdir/", // a deeper directory — the normal judgment	0
+internal/hook/m7_gate43_44_test.go	~/ literal	"~/.claude/skills/x.md", // outside .moai entirely	0
+internal/hook/m7_gate43_44_test.go	~/ literal	"~/.moai/user-assets.json",	1
+internal/hook/m7_gate43_44_test.go	~/ literal	"~/.moai",	0
+internal/hook/m7_gate43_44_test.go	~/ literal	"~/.moai/./user-assets.json",	0
+internal/hook/m7_gate43_44_test.go	~/ literal	"~/.moai/.",	0
+internal/hook/m7_gate43_44_test.go	~/ literal	t.Fatalf("candidate %q escaped protection — the symlinked ~/.moai lost its manifest (gate 46-2 / 48-1)", p)	0
+internal/hook/pre_tool_test.go	~/ literal	t.Error("AllowedExternalPaths should not be empty (should include ~/.claude/plans)")	0
+internal/hook/t1619_zone_coverage_test.go	~/ literal	if forms := userManifestProtectForms("~/.moai/user-assets.json"); forms != nil {	0
+internal/hook/t1619_zone_coverage_test.go	~/ literal	category, display, covered := zoneUserRootCovered("~/.moai/user-assets.json",	0
+internal/hook/t1619_zone_coverage_test.go	~/ literal	category, display, covered = zoneUserRootCovered("~/.moai/user-assets.json",	0
+internal/hook/t1619_zone_unix_coverage_test.go	~/ literal	"~/.claude/skills/moai-x/SKILL.md",	0
+internal/hook/t1619_zone_unix_coverage_test.go	~/ literal	if forms := userManifestProtectForms("~/loopfile"); forms != nil {	0
+internal/hook/user_root_symlink_delete_test.go	~/ literal	t.Errorf("rm of the real path %s behind the symlinked managed asset was allowed — the delete of the tracked asset ~/.claude/skills/demo/SKILL.md is not protected by its real path", realSkill)	0
+internal/hook/user_root_symlink_real_path_test.go	~/ literal	t.Errorf("%s to the real path %s behind the symlinked managed asset was allowed — the tracked asset ~/.claude/skills/demo/SKILL.md is not protected by its real path", tool, realSkill)	0
+internal/paths/paths_test.go	os.UserHomeDir	want, wantErr := os.UserHomeDir()	0
+internal/permission/stack_sec_harden_test.go	~/ literal	{"stdout append redirect", "go test >> ~/.bashrc"},	0
+internal/profile/main_test.go	~/ literal	"rewrites the developer's real ~/.moai/claude-profiles/launch.yaml.")	0
+internal/profile/main_test.go	os.UserHomeDir	home, err := os.UserHomeDir()	0
+internal/profile/profile_test.go	os.UserHomeDir	home, _ := os.UserHomeDir()	0
+internal/profile/profile_test.go	os.UserHomeDir	home, err := os.UserHomeDir()	0
+internal/profile/zz_sandbox_guard_test.go	~/ literal	"~/.moai/claude-profiles. The test that clears it (TestGetBaseDir_Default " +	0
+internal/profile/zz_sandbox_guard_test.go	os.UserHomeDir	home, err := os.UserHomeDir()	0
+internal/sandbox/profile_test.go	~/ literal	t.Error("SBPL profile must contain LSP carve-out for ~/.cache")	0
+internal/shell/config_test.go	os.UserHomeDir	home, err := os.UserHomeDir()	0
+internal/shell/config_test.go	~/ literal	path: "~/.zshenv",	0
+internal/statusline/usage_test.go	~/ literal	t.Errorf("token = %q, want %q (credentials at ~/.claude/.credentials.json not read)",	0
+internal/statusline/usage_test.go	~/ literal	t.Errorf("token = %q, want %q (nested credentials at ~/.claude/.credentials.json not read)",	0
+internal/template/commandemit/golden_test.go	~/ literal	for _, branch := range []string{"invoke `Skill(\"moai\")` with arguments", "read `~/.agents/skills/moai/SKILL.md`"} {	0
+internal/template/internal_content_leak_test.go	~/ literal	pattern: regexp.MustCompile(`~/\.claude/projects/-Users-|\.moai/backups/agent-archive-`),	0
+internal/template/settings_powershell_deny_test.go	~/ literal	"Bash(rm -rf ~/*)": "builtin",	0
+internal/template/settings_test.go	~/ literal	"Bash(rm -rf ~/*)",	0
+internal/template/settings_test.go	~/ literal	"Bash(rm -rf ~/\\* *)",	0
+internal/template/settings_test.go	os.UserHomeDir	homeDir, _ := os.UserHomeDir()	0
+internal/tui/prompt_test.go	~/ literal	out := tui.Prompt("yuna@air", "~/work/my-app", "main", false, "", &th)	0
+internal/tui/prompt_test.go	~/ literal	if !strings.Contains(out, "~/work/my-app") {	0
+internal/tui/prompt_test.go	~/ literal	out := tui.Prompt("goos@mac", "~/MoAI/moai-adk", "feat/SPEC-001", true, "", &th)	0
+internal/tui/prompt_test.go	~/ literal	clean := tui.Prompt("user@host", "~/project", "main", false, "", &th)	0
+internal/tui/prompt_test.go	~/ literal	dirty := tui.Prompt("user@host", "~/project", "main", true, "", &th)	0
+internal/tui/prompt_test.go	~/ literal	out := tui.Prompt("yuna@air", "~/work", "main", false, "moai doctor", &th)	0
+internal/tui/prompt_test.go	~/ literal	out := tui.Prompt("user@host", "~/", "main", false, "", nil)	0
+internal/tui/table_test.go	~/ literal	{16, "yuna@air ~/work/my-app", "호스트 prompt"},	0
+internal/web/main_test.go	~/ literal	"can rewrite the developer's ~/.moai/claude-profiles/launch.yaml.")	0
+internal/web/main_test.go	os.UserHomeDir	home, err := os.UserHomeDir()	0

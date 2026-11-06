@@ -35,18 +35,18 @@ build: agents-emit-check commands-emit-check tool-policy-drift-check embed-manif
 	@go run ./internal/template/scripts/gen-catalog-hashes.go --all
 	go build $(LDFLAGS) -o bin/$(BINARY_NAME) ./cmd/moai
 
-agents-emit: ## Regenerate the .codex/agents/moai TOMLs from the neutral .md layer
-	AGENTEMIT_UPDATE=1 go test ./internal/template/agentemit/... -run TestGoldenCommittedArtifactsMatchEmission
+agents-emit: ## Regenerate the rendered agent copies from the agent source layer (internal/template/agentemit/source)
+	go run ./internal/template/agentemit/cmd/agents-emit
 
-# Read-only source-layer drift check, wired ahead of `build` so a missed
-# regeneration turns red locally instead of waiting for CI. It NEVER writes:
-# regeneration stays behind the explicit `agents-emit` verb, because a build
-# that silently overwrote a hand edit would erase the evidence CI needs to see.
-# AGENTEMIT_UPDATE is scrubbed so an inherited value cannot flip this into the
-# regeneration branch.
-agents-emit-check: ## Verify the committed .codex TOMLs match the .md source layer (read-only; never regenerates)
-	@AGENTEMIT_UPDATE= go test ./internal/template/agentemit/... -run TestGoldenCommittedArtifactsMatchEmission -count=1 \
-		|| { printf 'agent-emit drift: committed .codex/agents/moai/*.toml differ from the .md source layer — run `make agents-emit`\n' >&2; exit 1; }
+# Read-only drift check, wired ahead of `build` so a hand edit of a rendered
+# agent copy (or a missed regeneration after editing an agent source) turns red
+# locally instead of waiting for CI. It NEVER writes: regeneration stays behind
+# the explicit `agents-emit` verb, because a build that silently overwrote a
+# hand edit would erase the evidence CI needs to see. On success it prints
+# `specs=<n> copies=<k> diff=0`.
+agents-emit-check: ## Verify the rendered agent copies match a fresh render of the agent source layer (read-only; never regenerates)
+	@go run ./internal/template/agentemit/cmd/agents-emit -check \
+		|| { printf 'agent-emit drift: a rendered agent copy differs from its agent source (internal/template/agentemit/source) — edit the source, never the copy, then run `make agents-emit`\n' >&2; exit 1; }
 
 commands-emit: ## Regenerate the .agents/skills/moai-<command> SKILL.md artifacts from the command sources
 	COMMAND_EMIT_UPDATE=1 go test ./internal/template/commandemit/... -run TestGoldenCommittedArtifactsMatchEmission

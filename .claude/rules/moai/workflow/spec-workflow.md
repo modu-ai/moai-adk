@@ -44,6 +44,8 @@ Route A/B step tables + the `merge_method` (default `squash`) footnote: see `spe
 
   Post-condition: the worktree branch is integrated — PR state `MERGED` in PR-integrating workflows (merged with the resolved `merge_method`), or the branch merged into the develop integration worktree under the integration-window discipline in git-flow workflows; `git status --porcelain` in the worktree returns empty; and `main` received no Late-branch commits at any point of the flow. Failure mode: disposing the worktree before the branch is integrated destroys the only copy of the work — an unpushed worktree branch is the work's only instance. For the complete worktree-branch Late-branch invocation pattern, see `.claude/agents/moai/manager-git.md` § Late-Branch Invocation Pattern.
 
+  Where the integration branch is held by a dedicated worktree (the `WT-*` integration route shared by git-flow and af-flow), it is checked out in exactly one dedicated worktree, at a fixed path. That worktree performs landing and resync only: it is never used to edit or experiment, and it stays clean. The primary checkout is the human and leader workspace and does not check out the integration branch. Routes that commit directly to the branch (Route A) or that run no dedicated integration worktree are outside this sentence.
+
 [SHOULD] anti-patterns (advisory): see `spec-workflow-detail.md` § Anti-patterns — SPEC Phase Discipline.
 
 ## Conditional Design Route (UI-surfaced SPECs)
@@ -266,7 +268,7 @@ Each transition below is stated per route (§ SPEC Phase Discipline): Route A tr
 
 Plan to Run:
 - Trigger: (A) plan-phase artifacts committed + pushed to `main`, or (B) plan PR merged (squash) — each AND SPEC approval: under the default-autonomous Kickoff transition (`.claude/rules/moai/workflow/auto-semantics.md` §9.1), the audit-cross evidence path IS the default entry; the operator approval named here is the form keep-set cases keep (annotation cycle completed, user confirmed "Proceed").
-- Pre-condition: plan.md records `plan_complete_at` + `plan_status: audit-ready` in progress.md; on Route B the plan PR is additionally in MERGED state.
+- Pre-condition: plan.md records a bare `audit_ready: true` line (the line the Kickoff gate reads) + `plan_complete_at` + `plan_status: audit-ready` in progress.md; on Route B the plan PR is additionally in MERGED state.
 - Action: Execute /clear, then `/moai run SPEC-XXX` — on `main` (Route A) or `feat/SPEC-XXX` (Route B default), or inside `moai cc -w SPEC-XXX` where the user opted into a worktree (§ SPEC Phase Discipline Step 2).
 - Gate: `/moai run` Phase 1 (Plan Audit Gate) executes automatically before any implementation (details below).
 - [ZONE:Evolvable] Plan Audit Gate skip policy (single authoritative contract):

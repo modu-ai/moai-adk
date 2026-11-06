@@ -21,9 +21,10 @@ type WizardResult struct {
 	// Development methodology
 	DevelopmentMode string // Development mode: ddd, tdd
 
-	// Report format — html+md or md. Persisted to report.yaml at init.
-	// Empty resolves to the html+md default at persistence time.
-	ReportFormat string // Report output format: html+md, md
+	// Report format — html+md, md, or artifact. Persisted to report.yaml
+	// (report.format) at init. Empty resolves to the html+md default at
+	// persistence time.
+	ReportFormat string // Report output format: html+md, md, artifact
 
 	// Git settings
 	GitMode           string // Git automation mode: manual, personal, team
@@ -48,14 +49,7 @@ type WizardResult struct {
 	// AutonomyTier (SPEC-AUTONOMY-TIERS-001 M7): the interactive autonomy-tier
 	// selection. Reuses the config.AutonomyTier* enum. Empty when the wizard did
 	// not collect a selection (--non-interactive → downstream resolves semi-auto).
-	AutonomyTier string // workflow.autonomy_tier
-
-	// AgentWiring (SPEC-INIT-HARNESS-PROMPT-001 REQ-IHP-001/002): the
-	// interactive LLM-harness selection, reusing the --llm closed set
-	// {claude, codex, both}. Empty means the wizard did not run (or did not
-	// reach the question), which resolveAgentWiringWithWizard resolves to the
-	// claude fallback — the same fallback the flag path has always used.
-	AgentWiring string // agent harness: claude, codex, both
+	AutonomyTier string // applied as the Claude Code permission defaultMode (user-scope settings.json); not a workflow.yaml key
 
 	// JevEnabled (SPEC-JEV-OPTIN-MEASURE-001 REQ-JEVO-001/005): the init-only
 	// Jev opt-in. False is both the zero value and the declined answer, which

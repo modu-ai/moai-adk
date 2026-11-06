@@ -23,10 +23,9 @@ There are only two entry tokens, and neither takes an argument. `-f` opens the l
 | What you want | Command | Role |
 |---------------|---------|------|
 | Open the factory leader | `moai cc -f` · `moai glm -f` (long form `--factory`) | Leader |
-| Join the running factory as a lane | `moai cc -l` · `moai glm -l` · `moai codex -l` (long form `--lane`) | Lane |
+| Join the running factory as a lane | `moai cc -l` · `moai glm -l` | Lane |
 
 - `-l` joins the running factory and takes the **next lane number automatically**. You do not pick the number; it is one past the highest live lane. If no factory is running, the join is refused.
-- `moai codex` has no leader entry. It can only join as a lane; open the leader with `moai cc -f` or `moai glm -f`.
 - A launch carries at most one entry token. `-f` together with `-l` is an error.
 
 ```bash
@@ -37,7 +36,6 @@ $ moai cc -f
 $ moai cc -l
 $ moai cc -l
 $ moai glm -l      # a lane on the GLM backend, same form
-$ moai codex -l    # a Codex lane
 ```
 
 You start lanes **by hand, one per terminal**. There is no path for a session to start another session on your behalf.
@@ -50,10 +48,9 @@ An entry carrying a value is refused with a one-line error. The message names th
 |--------------|-----|
 | `moai cc -f <value>` (a SPEC ID, a number, a lane label) | `-f` takes no argument. Open the leader with `-f` alone and join lanes with `-l` |
 | `moai cc -l <value>` (a name such as `lane-2`) | A lane does not name itself. The number is assigned automatically |
-| `-f` on `moai codex` | Codex has no leader entry (use `moai cc -f` or `moai glm -f`) |
 | `-f` and `-l` in one launch | Only one entry token is allowed |
 | The retired `-k` entry | The old multi-session board mode was removed. The error message points to `-f` and `-l` |
-| `moai cg`, `moai gpt` | `moai cg` is retired and exits with a migration notice (preview with `moai migrate cg`). `moai gpt` does not exist; GPT models run through `moai codex` |
+| `moai cg`, `moai gpt` | `moai cg` is retired and exits with a migration notice (preview with `moai migrate cg`). `moai gpt` does not exist |
 
 ## When several runs are alive
 
@@ -61,16 +58,16 @@ A lane join reads the run record first. Two selectors can accompany `-l`.
 
 | Selector | Role |
 |----------|------|
-| `--leader <name>` | Picks which leader session to join (default `leader`). It composes with `-l` or `--lane` only, and is not a short form of any entry token |
+| `--leader <name>` | Picks which leader session to join (default `leader`). It composes with `-l` only, and is not a short form of any entry token |
 | `--factory-run <run-id>` | Picks the run to join by its id |
 
-`--leader` and `--factory-run` are different selectors and cannot be combined. If more than one run is alive and the join cannot decide where to go, it is refused, and the error tells you to choose either `--factory-run <run-id>` or `--leader <leader-name>` together with `-l`. A run whose owner is dead can be retired with `moai factory runs --retire <run-id>`.
+`--leader` and `--factory-run` are different selectors and cannot be combined. If more than one run is alive and the join cannot decide where to go, what happens depends on the session. In an interactive terminal, `-l` opens a chooser that lists each run with its run id, whether its leader is alive, the leader's name, its start time in KST, its last lane activity, and its in-progress card count. You can join one of them or cancel, and for a run whose leader is dead and which holds no in-progress cards you can also retire it and then join the run that remains (the prompt text is in Korean). Without a terminal the join is refused instead: the error lists every candidate with its start time in KST and tells you to choose either `--factory-run <run-id>` or `--leader <leader-name>` together with `-l`. An explicit `--factory-run`, or a named `--leader`, never opens the chooser. A run whose owner is dead can be retired with `moai factory runs --retire <run-id>`. If the run still holds cards that are not done, failed, or abandoned, the command refuses instead of retiring it, and lists those cards together with the exits you can use (join with `moai cc -l --factory-run <run-id>`, adopt with `moai cc -f --factory-run <run-id>`, or end each card with `moai factory decide <card> --choice abandon --run <run-id>`). Joining and adopting work only while the run is active, and abandoning a card cannot be undone. There is no force flag. Pointing the command at a run that is already retired reports the result without a second write and lists the cards still stranded there. For an active run that still holds such cards, `moai factory relaunch --from-run` also leaves the run active and reports `left active (N in-progress cards)`; an already-retired run is left untouched (`not active (retired), left untouched`).
 
 **A join still works when the run record is missing but the leader is alive.** When there is no active record at all (the record retired itself, or the leader never wrote one), the join is not refused outright. It verifies the live leader session of this project by pid and process-start fingerprint, restores the run record under that leader's identity, and then joins through the ordinary gate. If more than one leader is verified, it names every candidate and fails closed; if none is, the refusal stands.
 
 ## Lane options
 
-These options attach to a lane on `moai cc -l` and `moai glm -l`. Codex lanes take no policy.
+These options attach to a lane on `moai cc -l` and `moai glm -l`.
 
 | Option | Effect |
 |--------|--------|
@@ -120,6 +117,8 @@ Do not switch on all lanes at once. Bring up the first lane, wait until it actua
 ## Lane numbers and the run record
 
 Which lane holds which number is recorded in `~/.moai/db/<project-key>/factory/factory.db`. A new lane takes **one past the highest live lane** and does not fill a gap: with live lane-1 and lane-3, the new lane is lane-4. A dead lane's claim no longer blocks a number. Because lane numbers are assigned automatically, combining `--name`/`-n` with `-l` is an error.
+
+Find the database paths with `moai paths` instead of guessing them. Opening a guessed path such as `~/.moai/db/todo.db` with `sqlite3` creates an empty file, so never do it. If you must read directly, read only a snapshot copy of `.db`, `.db-wal`, and `.db-shm` together; otherwise prefer the CLI, such as `moai todo list --json` and `moai factory status`.
 
 The leader's socket opens at `/tmp/moai-socket-factory/<run-id>`, and the bootstrap notice tells you the actual path. When a leader or lane session starts, it writes one session record to `.moai/state/todo/<session-id>.json` holding its role, backend, and entry time.
 

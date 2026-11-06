@@ -29,7 +29,7 @@ metadata:
 ##### Worktree Context Detection
 
 Detect if the current session is running within a MoAI worktree:
-- Check if current git directory path contains `/.moai/worktrees/` component
+- Check if current git directory path contains `/.moai/worktrees/` component, a `/worktrees/projects/` component (the home projects root), or a `~/.moai/worktrees/` prefix
 - OR check if `.moai/worktrees/registry.json` has an active entry for current SPEC-ID
 - Store result as `is_worktree_context` boolean; it selects the worktree delivery route (Phase 13 Step 3.2) and the worktree next-step options (Phase 14), but it never decides auto-merge
 

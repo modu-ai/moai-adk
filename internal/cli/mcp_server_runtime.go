@@ -20,8 +20,10 @@ package cli
 import (
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/modu-ai/moai-adk/pkg/version"
@@ -46,6 +48,11 @@ type mcpServerRuntimeRecord struct {
 // a project. Empty projectDir yields an empty path (caller skips the write).
 func mcpServerRuntimeDir(projectDir string) string {
 	if projectDir == "" {
+		return ""
+	}
+	// REQ-MN-015: the stamp must not CREATE a .moai tree in an arbitrary cwd —
+	// a directory that is not already a moai project has no record to write.
+	if info, err := os.Stat(filepath.Join(projectDir, ".moai")); err != nil || !info.IsDir() {
 		return ""
 	}
 	return filepath.Join(projectDir, ".moai", "state", "mcp-server")
@@ -102,6 +109,103 @@ func removeMCPServerRuntimeRecord(path string) {
 		return
 	}
 	_ = os.Remove(path)
+}
+
+// ─── per-call staleness (SPEC-MCP-NEUTRALITY-001 REQ-MN-013) ──────────────────
+
+// binaryIdentity is the executable identity captured ONCE at server start:
+// a later in-place reinstall of the same path changes what a fresh os.Stat
+// of that path reads, so the staleness comparison must run against the
+// identity the server STARTED with — the AGENTS.md §14 reconnect contract
+// rests on the stale server being able to recognize itself (card-review
+// P1-3).
+type binaryIdentity struct {
+	Path     string
+	Size     int64
+	ModTime  time.Time
+	Captured bool
+}
+
+// servingBinaryIdentity is captured at process start, before serving begins.
+// Captured is false for a non-moai executable (the test process) or a capture
+// failure — the check is then INERT, exactly as the old same-file reading was
+// for a test binary.
+var servingBinaryIdentity = captureExecutableIdentity()
+
+// moaiLookPath is the installed-binary resolution seam (tests swap it).
+var moaiLookPath = exec.LookPath
+
+func captureExecutableIdentity() binaryIdentity {
+	path, err := os.Executable()
+	if err != nil {
+		return binaryIdentity{}
+	}
+	if base := filepath.Base(path); !strings.HasPrefix(base, "moai") {
+		// The test binary (or any non-moai executable): no identity, inert check.
+		return binaryIdentity{}
+	}
+	if resolved, rerr := filepath.EvalSymlinks(path); rerr == nil {
+		path = resolved
+	}
+	fi, err := os.Stat(path)
+	if err != nil {
+		return binaryIdentity{}
+	}
+	return binaryIdentity{Path: path, Size: fi.Size(), ModTime: fi.ModTime(), Captured: true}
+}
+
+// serverStaleness compares the identity the EXECUTABLE SERVING this call
+// captured AT START against the installed `moai` binary on PATH: a different
+// file (size or mtime moved since start) is the post-reinstall skew — the
+// serving process keeps running the old build while the host's next spawn
+// would use the new one. Comparing against the START-TIME identity (not a
+// fresh stat of the serving path) is what an in-place reinstall cannot fool:
+// both end-of-call stats of the same path read the new file and would call a
+// stale server fresh (card-review P1-3). The judgment is BUILD identity
+// (size+mtime), not location (t1632): the same build installed at a second
+// PATH location is the same build — only a moved size or mtime is the skew.
+// The check is INERT when no start-time identity was captured.
+type serverStaleness struct {
+	Stale     bool   `json:"stale_server"`
+	Serving   string `json:"serving"`
+	Installed string `json:"installed"`
+	Version   string `json:"version"`
+	Commit    string `json:"commit"`
+}
+
+func serverStalenessInfo() serverStaleness {
+	info := serverStaleness{Version: version.GetVersion(), Commit: version.GetCommit()}
+	if !servingBinaryIdentity.Captured {
+		// Non-moai executable (the test process) or a capture failure: inert.
+		return info
+	}
+	info.Serving = servingBinaryIdentity.Path
+	installed, err := moaiLookPath("moai")
+	if err != nil {
+		return info
+	}
+	if resolved, err := filepath.EvalSymlinks(installed); err == nil {
+		installed = resolved
+	}
+	info.Installed = installed
+	installedStat, err := os.Stat(installed)
+	if err != nil {
+		return info
+	}
+	// t1632: freshness is judged on content identity — size+mtime, the data
+	// the start-time capture already carries — never on the PATH alone. Why
+	// size+mtime and not a content hash or a build stamp: the identity is
+	// already captured at start (no extra binary read per call), it is the
+	// same signal the same-path case above always trusted, a hash would
+	// re-read the binary on every tool call, and a stamp would require
+	// executing the installed binary. An in-place reinstall still moves size
+	// or mtime, so the skew this check exists for stays detected.
+	if installedStat.Size() == servingBinaryIdentity.Size &&
+		installedStat.ModTime().Equal(servingBinaryIdentity.ModTime) {
+		return info
+	}
+	info.Stale = true
+	return info
 }
 
 // readMCPServerRuntimeRecords returns every parseable record in the project's

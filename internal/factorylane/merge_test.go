@@ -26,6 +26,7 @@ import (
 type fakeGit struct {
 	mergeTreeOut string
 	mergeTreeErr error
+	branchTip    string            // the show-ref --verify --hash answer (the pinned branch tip SHA)
 	revParse     map[string]string // joined args -> stdout
 	seen         []string
 }
@@ -35,6 +36,11 @@ func (f *fakeGit) Git(args ...string) (string, error) {
 	switch args[0] {
 	case "merge-tree":
 		return f.mergeTreeOut, f.mergeTreeErr
+	case "show-ref":
+		if f.branchTip == "" {
+			return "", fmt.Errorf("fakeGit: no branch tip scripted")
+		}
+		return f.branchTip + "\n", nil
 	case "rev-parse":
 		if v, ok := f.revParse[strings.Join(args, " ")]; ok {
 			return v, nil
@@ -74,8 +80,12 @@ func tripleFixture(t *testing.T, syncStatus string) (MergeTripleInput, *fakeGit)
 		// Clean merge; the result tree equals the branch tree (the absorbed
 		// shape) so tree-identity passes.
 		mergeTreeOut: "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b\n",
+		// card t1928 (audit F4): the probes consume the branch tip SHA that
+		// show-ref --verify resolves — script both the pin and the reads
+		// keyed to the SHA.
+		branchTip: "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b",
 		revParse: map[string]string{
-			"rev-parse WT-card^{tree}": "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b\n",
+			"rev-parse 1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b^{tree}": "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b\n",
 		},
 	}
 	return in, fake
@@ -256,6 +266,7 @@ func TestEvaluateMergeTriple_TreeIdentityLiteralFormOnMergeCommit(t *testing.T) 
 	// Diverging trees on the merge commit fail and name the condition.
 	fake2 := &fakeGit{
 		mergeTreeOut: "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b\n",
+		branchTip:    "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b",
 		revParse: map[string]string{
 			"rev-parse abcabcabcabcabcabcabcabcabcabcabcabcabc1^{tree}":   "ffffffffffffffffffffffffffffffffffffffff\n",
 			"rev-parse abcabcabcabcabcabcabcabcabcabcabcabcabc1^2^{tree}": "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b\n",
@@ -573,6 +584,192 @@ func TestLatestMergeCheckRunUnreadableRecordErrors(t *testing.T) {
 	}
 	if _, err := store.LatestMergeCheckRun("lane-4", "t9004"); err == nil {
 		t.Fatalf("corrupt record read as no runs")
+	}
+}
+
+// card t1928 (independent audit F1): the triple's git probes must consume the
+// card branch's fully qualified ref, not the bare name. Git resolves a bare
+// name tags-before-heads (gitrevisions rule 3 over rule 4), so a tag sharing
+// the card branch's name redirects every probe — merge-tree (b, c) and
+// rev-parse <branch>^{tree} (c, d) — to the TAG's commits: a real branch
+// conflicted against develop read all_passed on the tag's clean state. The
+// probes must read refs/heads/<branch> and surface the branch's real conflict.
+func TestEvaluateMergeTripleConflictProbeSurvivesTagSharingTheBranchName(t *testing.T) {
+	dir, git := gitInTempRepo(t)
+	write := func(name, content string) {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// develop and the card branch edit the same file differently from a
+	// common base — the REAL branch is conflicted, an unready merge candidate.
+	write("shared.txt", "base\n")
+	git("add", ".")
+	git("commit", "-m", "base")
+	git("checkout", "-b", "WT-card")
+	write("shared.txt", "card\n")
+	git("add", ".")
+	git("commit", "-m", "card work")
+	git("checkout", "develop")
+	write("shared.txt", "develop\n")
+	git("add", ".")
+	git("commit", "-m", "develop work")
+
+	// A tag named like the card branch points at develop's tip: from here on
+	// the bare name resolves to the tag, not the branch.
+	git("tag", "WT-card", "develop")
+
+	runner := ExecGitRunner{Dir: dir}
+	revParse := func(rev string) string {
+		out, err := runner.Git("rev-parse", rev)
+		if err != nil {
+			t.Fatalf("rev-parse %s: %v", rev, err)
+		}
+		return strings.TrimSpace(out)
+	}
+
+	// Non-vacuity: the BRANCH really is conflicted (exit 1), and the bare
+	// name really resolves to the tag's commit at develop's tip.
+	if _, err := runner.Git("merge-tree", "--write-tree", "develop", "refs/heads/WT-card"); err == nil {
+		t.Fatalf("fixture: the real card branch must be conflicted against develop")
+	} else {
+		var exitErr *GitExitError
+		if !errors.As(err, &exitErr) || exitErr.ExitCode != 1 {
+			t.Fatalf("fixture: merge-tree on the real branch failed other than by conflict: %v", err)
+		}
+	}
+	if revParse("WT-card") != revParse("develop") {
+		t.Fatalf("fixture: the tag must shadow the branch name at develop's tip")
+	}
+
+	in, _ := tripleFixture(t, "complete")
+	in.RepoDir = dir
+
+	run, err := EvaluateMergeTriple(in, runner)
+	if err != nil {
+		t.Fatalf("EvaluateMergeTriple errored: %v", err)
+	}
+	if run.AllPassed {
+		t.Fatalf("a conflicted card branch passed the triple — the probes read the tag's commits, not the branch's: %+v", run)
+	}
+	if run.FailedCondition != CheckConflictFree {
+		t.Fatalf("failing condition = %q, want the branch's real conflict %q: %+v", run.FailedCondition, CheckConflictFree, run)
+	}
+}
+
+// card t1928 (audit F1, site d): the re-measure candidate tree is read through
+// rev-parse <branch>^{tree} — with a tag sharing the branch's name the bare
+// form answers the TAG's tree, so the record would be keyed to (or validated
+// against) a tree the branch never produced. The read must answer the
+// branch's tree.
+func TestEvaluateMergeTripleRemeasureTreeSurvivesTagSharingTheBranchName(t *testing.T) {
+	dir, git := gitInTempRepo(t)
+	write := func(name, content string) {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// The card branch adds a file on top of develop — a clean, absorbable
+	// merge whose tree differs from develop's.
+	write("base.txt", "base\n")
+	git("add", ".")
+	git("commit", "-m", "base")
+	git("checkout", "-b", "WT-card")
+	write("card.txt", "card\n")
+	git("add", ".")
+	git("commit", "-m", "card work")
+
+	// A tag named like the card branch points at develop's tip (whose tree
+	// has no card.txt).
+	git("tag", "WT-card", "develop")
+
+	runner := ExecGitRunner{Dir: dir}
+	revParse := func(rev string) string {
+		out, err := runner.Git("rev-parse", rev)
+		if err != nil {
+			t.Fatalf("rev-parse %s: %v", rev, err)
+		}
+		return strings.TrimSpace(out)
+	}
+	if revParse("WT-card") != revParse("develop") {
+		t.Fatalf("fixture: the tag must shadow the branch name at develop's tip")
+	}
+
+	var got string
+	in, _ := tripleFixture(t, "complete")
+	in.RepoDir = dir
+	in.VerifyRemeasure = func(treeSHA string) (string, error) {
+		got = treeSHA
+		return "go test ./... (recorded)", nil
+	}
+
+	run, err := EvaluateMergeTriple(in, runner)
+	if err != nil {
+		t.Fatalf("EvaluateMergeTriple errored: %v", err)
+	}
+	if !run.AllPassed {
+		t.Fatalf("a clean absorbable merge must pass the triple on the branch's own state: %+v", run)
+	}
+	if want := revParse("refs/heads/WT-card^{tree}"); got != want {
+		t.Fatalf("the re-measure candidate tree = %s, want the BRANCH's tree %s (the bare name answered the tag's tree)", got, want)
+	}
+}
+
+// card t1928 (independent audit delta F4): even the qualified
+// refs/heads/<branch> operand is shadowable — gitrevisions rule 3 answers a
+// tag literally NAMED "refs/heads/<branch>" when the exact ref path is
+// absent. The probes must consume the branch's SHA, resolved through
+// `git show-ref --verify --hash` (an exact-path check a tag can never
+// satisfy); an unverifiable branch refuses fail-closed. A SHA cannot be
+// shadowed — this is the terminal fix for the tag-shadow class.
+func TestEvaluateMergeTripleSurvivesATagNamedLikeTheQualifiedBranchRef(t *testing.T) {
+	dir, git := gitInTempRepo(t)
+	write := func(name, content string) {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// develop carries one commit; NO refs/heads/WT-card branch exists. A tag
+	// literally named "refs/heads/WT-card" points at develop's tip.
+	write("shared.txt", "base\n")
+	git("add", ".")
+	git("commit", "-m", "base")
+	git("tag", "refs/heads/WT-card", "develop")
+
+	runner := ExecGitRunner{Dir: dir}
+	revParse := func(rev string) string {
+		out, err := runner.Git("rev-parse", rev)
+		if err != nil {
+			t.Fatalf("rev-parse %s: %v", rev, err)
+		}
+		return strings.TrimSpace(out)
+	}
+
+	// Non-vacuity: the qualified operand really does resolve — to the TAG
+	// (rule 3), not to any branch — and the exact-path show-ref --verify the
+	// pin relies on really does refuse it.
+	if revParse("refs/heads/WT-card") != revParse("develop") {
+		t.Fatalf("fixture: the fake tag must shadow the qualified operand at develop's tip")
+	}
+	if _, err := runner.Git("show-ref", "--verify", "--hash", "refs/heads/WT-card"); err == nil {
+		t.Fatalf("fixture: show-ref --verify must refuse a branch that does not exist (the fake tag must not satisfy it)")
+	}
+
+	in, _ := tripleFixture(t, "complete")
+	in.RepoDir = dir
+
+	run, err := EvaluateMergeTriple(in, runner)
+	if err != nil {
+		t.Fatalf("EvaluateMergeTriple errored: %v", err)
+	}
+	if run.AllPassed {
+		t.Fatalf("the triple passed by probing a FAKE TAG named like the qualified branch ref (no branch exists): %+v", run)
+	}
+	if run.FailedCondition != CheckConflictFree {
+		t.Fatalf("failing condition = %q, want the unverifiable-branch refusal at %q: %+v", run.FailedCondition, CheckConflictFree, run)
 	}
 }
 

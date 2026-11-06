@@ -8,7 +8,7 @@ import (
 // Build-time variables injected via -ldflags.
 // Default version for RC/test builds (overridden by -ldflags in production)
 var (
-	Version = "v3.1.3"
+	Version = "v3.2.0"
 	Commit  = "none"
 	Date    = "unknown"
 	// BuildID is the monotone build identity — the tag plus the commit

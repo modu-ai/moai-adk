@@ -4,7 +4,7 @@ How the **leader** session of Factory Mode moves a card through the queue: what 
 
 > **Loading scope**: Intentionally always-loaded. A session learns it is the factory leader from the SessionStart context, not from a file path, so a `paths:`-restricted rule would never reach it. Cost to a session that never dispatches: the stub below, restated once per turn; every procedure body lives in the lazy companions.
 
-> **Detail companion**: `factory-dispatch-detail.md` owns the long tables, dispatch-cycle walkthrough, and coordination rationale — also per-card sub-agent execution, the Factory in-lane 3-stage, and the `manager-lead` working mode. Sibling companions: `factory-dispatch-cards.md` (card classification, traceability, the pre-dispatch cross-check) and `factory-dispatch-gates.md` (sync-gate review lenses, the CodeRabbit measurement, the settings-drift assertion, the verification-load incident record). The stub keeps every [HARD] rule and pointer; load a companion when classifying a card, routing one, or choosing review lenses.
+> **Detail companion**: `factory-dispatch-detail.md` owns the long tables, dispatch-cycle walkthrough, and coordination rationale — also per-card sub-agent execution, the Factory in-lane 3-stage, and the `manager-lead` working mode. Sibling companions: `factory-dispatch-cards.md` (card classification, traceability, the pre-dispatch cross-check) and `factory-dispatch-gates.md` (native Codex review evidence, review lens selection, the settings-drift assertion, the verification-load incident record). The stub keeps every [HARD] rule and pointer; load a companion when classifying a card, routing one, or choosing review lenses.
 
 > **Mechanics companion**: `factory-dispatch-mechanics.md` owns the lane-and-lens bodies relocated from this file — § Review lens selection · § Serializing a heavy run across lanes (`moai slot` lease) · § Factory Mode mechanics · § Isolation (launcher table, worktree tiers, `WT-` branch naming, the traceability carriers) · § Verification-load detail · § Integration into the release branch (the self-serve window procedure) · § Boundaries · § Cross-references. Load it when classifying a card, provisioning or disposing a card worktree, running lane-local verification, or entering the integration window.
 
@@ -107,7 +107,7 @@ The measured precedent this rule codifies: lane-1 card t1330 held a 7-task list 
 
 [HARD] **A completion report reaches the leader as a `RECOMMEND:` summary, not as raw reading batches** — turn occupancy moves; the leader's own evidence-read before advancing a card does not (§ Completion is read, never trusted).
 
-[HARD] **The deputy never holds a power of consequence.** Final PASS/FAIL verdicts, final merge approval (`LEAD-MERGE-APPROVED`), operator gates, card issuance and `done` (`moai gtd` mutations), CodeRabbit slot-wait adjudication, and cross-session dispute coordination stay with the leader session. Round-report measurement and drafting are the deputy's; the asserted figures are the leader's — every figure names its measurer. Nothing structural moves with the delegation: the queue stays the channel, completion stays evidence the leader read, and the verdict's home stays the lead.
+[HARD] **The deputy never holds a power of consequence.** Final PASS/FAIL verdicts, final merge approval (`LEAD-MERGE-APPROVED`), operator gates, card issuance and `done` (`moai gtd` mutations), native review evidence adjudication, and cross-session dispute coordination stay with the leader session. Round-report measurement and drafting are the deputy's; the asserted figures are the leader's — every figure names its measurer. Nothing structural moves with the delegation: the queue stays the channel, completion stays evidence the leader read, and the verdict's home stays the lead.
 
 ## Completion is read, never trusted
 
@@ -119,20 +119,11 @@ For a lane card the declared evidence list also carries `.moai/reports/<card-id>
 
 **The final PASS/FAIL verdict is the leader's**, read from the evidence on disk and never delegated to the lane that produced the work. Why the division is structural: `factory-dispatch-detail.md` § The verdict's home.
 
-### CodeRabbit is not read from `gh pr checks`
+### Native Codex review evidence is separate from check status
 
-[HARD] A `gh pr checks` row naming CodeRabbit is not evidence that a review happened: the status is `success` **even when no review ran**, and the row prints `pass` byte-identically in both cases. A row counts only when BOTH hold:
+[HARD] A `gh pr checks` row or a successful CI job does not establish that native Codex review ran. The Codex review gate reads trusted native review artifacts against the current full `headRefOid`: both the code and security legs must be completed and clean, their receipts and summary must agree, and current findings must be absent. Missing or running evidence remains pending while the review window is open and cannot pass at its final check; stale, malformed, failed, finding-bearing, or ambiguous evidence refuses the gate. The deputy reports the observed identities, full head SHA, leg states, receipts, findings, and any gaps; the leader retains the verdict and merge decision.
 
-1. The **combined** endpoint `/commits/{sha}/status` shows `state == "success"` **and** description `Review completed`:
-
-    ```bash
-    gh api "repos/$REPO/commits/$HEAD_SHA/status" \
-      --jq '.statuses[] | select(.context == "CodeRabbit" and .state == "success") | .description'
-    ```
-
-2. A `Merge Risk:` line exists whose commit prefix matches the current `headRefOid`.
-
-Anything else is a gap, not a pass. `Review rate limited` means the review never started, and a card carrying it does not leave `sync`. (Endpoint choice: `factory-dispatch-gates.md` § CodeRabbit endpoint measurement.)
+The implementation is `scripts/ci/codex-review-gate.sh`, invoked by the `review` step in `.github/workflows/auto-merge.yml`. The complete parsing and wait contract is in `.moai/specs/SPEC-CI-CODEX-REVIEW-001/`.
 
 ## Lane card transition — in-session, no clear
 

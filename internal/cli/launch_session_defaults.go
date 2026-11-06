@@ -14,10 +14,8 @@ package cli
 //     ANTHROPIC_DEFAULT_*_MODEL slot env); the Claude-vocabulary effort is
 //     translated through llm.glm.effort (high -> max, medium -> high) and the
 //     resulting z.ai state is wired verbatim (buildEnvForGLMLaunchState).
-//   - Codex: -m <model> and -c model_reasoning_effort="<effort>" on the lane
-//     (`moai codex -l`) only; a plain `moai codex` keeps .codex/config.toml.
 //
-// An explicit operator --model / --effort / -m / -c effort wins.
+// An explicit operator --model / --effort wins.
 
 import (
 	"fmt"
@@ -75,15 +73,10 @@ func warnSessionRejections(rejected []config.SessionDefaultRejection, field stri
 	}
 }
 
-// factorySessionDefault resolves the session default for a Claude-hosted
-// factory launch (cc or glm backend). ok is false outside a factory session.
-func factorySessionDefault(env []string, root string) (backend string, me config.ModelEffort, ok bool) {
-	backend, me, _, ok = factorySessionDefaultChecked(env, root)
-	return backend, me, ok
-}
-
-// factorySessionDefaultChecked is factorySessionDefault plus the llm.yaml
-// cells the resolver rejected and replaced with the built-in default.
+// factorySessionDefaultChecked resolves the session default for a
+// Claude-hosted factory launch (cc or glm backend), plus the llm.yaml cells
+// the resolver rejected and replaced with the built-in default. ok is false
+// outside a factory session.
 func factorySessionDefaultChecked(env []string, root string) (backend string, me config.ModelEffort, rejected []config.SessionDefaultRejection, ok bool) {
 	role := factorySessionRole(env)
 	if role == "" {
@@ -152,56 +145,4 @@ func factorySessionClaudeEffort(env []string, root string) (string, bool) {
 		return me.Effort, true
 	}
 	return "", false
-}
-
-// codexSessionDefaultArgsFn is the seam the codex lane launch calls; the
-// launch-mechanics tests that pin an exact argv neutralize it the way they
-// neutralize codexMoaiHomeAddDirArgs, and TestCodexPlainLaunchCarriesNoModelArgs
-// and TestCodexLaneLaunchCarriesSessionDefaults restore the real body.
-var codexSessionDefaultArgsFn = codexSessionDefaultArgs
-
-// codexSessionDefaultArgs returns the -m / -c model_reasoning_effort argv a
-// `moai codex` launch prepends for role (lane = `moai codex -l`; the leader
-// pair is reserved for a future `moai codex -f`), skipping each half the
-// operator already supplied in tail. A rejected llm.yaml cell is warned about
-// and replaced by the built-in default.
-func codexSessionDefaultArgs(root, role string, tail []string) []string {
-	me, rejected, ok := sessionLLMConfig(root).ResolveSessionDefaultChecked(config.SessionBackendCodex, role)
-	if !ok {
-		return nil
-	}
-	warnSessionRejections(rejected, "")
-	var out []string
-	if me.Model != "" && !codexTailHasModel(tail) {
-		out = append(out, "-m", me.Model)
-	}
-	if me.Effort != "" && !codexTailHasEffort(tail) {
-		out = append(out, "-c", `model_reasoning_effort="`+me.Effort+`"`)
-	}
-	return out
-}
-
-func codexTailHasModel(tail []string) bool {
-	for _, a := range tail {
-		if a == "-m" || a == "--model" || strings.HasPrefix(a, "--model=") || strings.HasPrefix(a, "-m=") {
-			return true
-		}
-	}
-	return false
-}
-
-func codexTailHasEffort(tail []string) bool {
-	for i, a := range tail {
-		v := ""
-		switch {
-		case (a == "-c" || a == "--config") && i+1 < len(tail):
-			v = tail[i+1]
-		case strings.HasPrefix(a, "--config="):
-			v = strings.TrimPrefix(a, "--config=")
-		}
-		if strings.HasPrefix(strings.TrimSpace(v), "model_reasoning_effort") {
-			return true
-		}
-	}
-	return false
 }

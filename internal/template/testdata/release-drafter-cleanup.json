@@ -1,0 +1,6 @@
+[
+  {"tagName": "stale-draft", "isDraft": true, "createdAt": "2020-01-01T00:00:00Z", "targetCommitish": "main"},
+  {"tagName": "fresh-draft", "isDraft": true, "createdAt": "2999-01-01T00:00:00Z", "targetCommitish": "main"},
+  {"tagName": "release-branch-draft", "isDraft": true, "createdAt": "2020-01-01T00:00:00Z", "targetCommitish": "release/v3.2.0"},
+  {"tagName": "published-release", "isDraft": false, "createdAt": "2020-01-01T00:00:00Z", "targetCommitish": "main"}
+]

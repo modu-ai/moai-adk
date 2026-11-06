@@ -2,17 +2,22 @@
 
 // Darwin candidate readers (design.md §E): `ps` for argv and the environment
 // of same-uid processes (`ps eww` appends the environment to the command
-// column), `lsof -d cwd` for the working directory — the t1038 probe chain's
-// mechanism. Every reader declines (false) rather than guessing: a decline
-// downstream is an honest NO_ACTIVE_FACTORY, never a wrong join.
+// column), a direct proc_info call for the working directory (t1807 replaced
+// the `lsof -d cwd` subprocess, whose cap load exceeded). Every reader declines
+// (false) rather than guessing: a decline downstream is an honest
+// NO_ACTIVE_FACTORY, never a wrong join.
 package discovery
 
 import (
+	"bytes"
 	"context"
 	"os/exec"
 	"strconv"
 	"strings"
 	"time"
+	"unsafe"
+
+	"golang.org/x/sys/unix"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 )
@@ -65,19 +70,37 @@ func platformEnv(ctx context.Context, pid int) (map[string]string, bool) {
 	return env, true
 }
 
-// platformCwd reads the candidate's working directory.
-func platformCwd(ctx context.Context, pid int) (string, bool) {
-	ctx, cancel := readerContext(ctx)
-	defer cancel()
-	out, err := exec.CommandContext(ctx, "lsof", "-a", "-p", strconv.Itoa(pid), "-d", "cwd", "-Fn").Output()
-	if err != nil {
+// proc_info(PROC_INFO_CALL_PIDINFO, pid, PROC_PIDVNODEPATHINFO, ...) fills a
+// struct proc_vnodepathinfo: two vnode_info_path records (cwd, then root), each
+// a 152-byte vnode_info followed by a MAXPATHLEN path. The cwd path starts at
+// offset 152 (xnu bsd/sys/proc_info.h; layout stable across macOS releases).
+const (
+	procInfoCallPidInfo  = 2
+	procPidVnodePathInfo = 9
+	vnodeInfoSize        = 152
+	maxPathLen           = 1024
+)
+
+// platformCwd reads the candidate's working directory with one kernel call, the
+// way /proc is read on Linux — no `lsof` subprocess, whose 3 s cap was exceeded
+// under load and turned a live leader into verified=0 (card t1807, t1772).
+// A same-uid candidate is readable; a foreign or exited pid declines.
+//
+// @MX:NOTE: [AUTO] raw proc_info syscall because release builds are CGO-free
+// (libproc's proc_pidinfo is a libSystem wrapper over this same call).
+func platformCwd(_ context.Context, pid int) (string, bool) {
+	buf := make([]byte, 2*(vnodeInfoSize+maxPathLen))
+	n, _, errno := unix.Syscall6(unix.SYS_PROC_INFO, procInfoCallPidInfo, uintptr(pid), procPidVnodePathInfo, 0,
+		uintptr(unsafe.Pointer(&buf[0])), uintptr(len(buf)))
+	if errno != 0 || int(n) < vnodeInfoSize+maxPathLen {
 		return "", false
 	}
-	for _, line := range strings.Split(string(out), "\n") {
-		// lsof field output: p<pid>, then the pathname record n<path>.
-		if path, found := strings.CutPrefix(line, "n"); found && path != "" {
-			return path, true
-		}
+	path := buf[vnodeInfoSize : vnodeInfoSize+maxPathLen]
+	if end := bytes.IndexByte(path, 0); end >= 0 {
+		path = path[:end]
 	}
-	return "", false
+	if len(path) == 0 {
+		return "", false
+	}
+	return string(path), true
 }

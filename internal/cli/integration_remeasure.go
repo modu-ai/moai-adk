@@ -1,11 +1,17 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factory"
+	"github.com/modu-ai/moai-adk/internal/gitenv"
 	"github.com/spf13/cobra"
 )
 
@@ -33,7 +39,11 @@ func newIntegrationRemeasureCmd() *cobra.Command {
 			if wdErr != nil {
 				return fmt.Errorf("integration remeasure: resolve the working directory: %w", wdErr)
 			}
-			rec, err := factory.RunRemeasure(root, worktree, configuredIntegrationBranch(), command)
+			baseBranch, baseErr := remeasureBaseBranch(root, worktree)
+			if baseErr != nil {
+				return baseErr
+			}
+			rec, err := factory.RunRemeasure(root, worktree, baseBranch, command)
 			if err != nil {
 				return err
 			}
@@ -48,6 +58,84 @@ func newIntegrationRemeasureCmd() *cobra.Command {
 		},
 	}
 	return cmd
+}
+
+// remeasureBaseBranch names the integration branch the re-measure records as
+// its absorbed base (card t1790, GH #1817). The configured target comes first.
+// git-strategy.yaml is gitignored, so a checkout that never had the file (a
+// fresh clone, a CI workspace) resolved an empty branch and the verb asked git
+// for the fork point of the ref `refs/heads/` (no branch name), which died with
+// exit status 128.
+//
+// Only a file that is really ABSENT lets the remote's default branch (origin/HEAD)
+// stand in. A file that exists but resolves no target (unparsable, empty, no
+// mode, unreadable, git-flow outside manual mode, an empty develop_branch, an
+// unknown workflow, an empty environment) is a misconfiguration: like every
+// sibling consumer the verb refuses it with the cause-specific guidance, before
+// the command runs, instead of recording a re-measure against a branch the
+// project does not integrate into (sync-audit iter1 F1, iter2 R1). When nothing
+// resolves, the verb refuses with guidance rather than call git with an empty ref.
+func remeasureBaseBranch(root, worktree string) (string, error) {
+	cfg := config.LoadGitFlowIntegrationConfig(root)
+	branch := strings.TrimSpace(cfg.IntegrationTarget)
+	if branch == "" {
+		// EmptyTargetUnreadable also covers a file that EXISTS but is broken,
+		// empty, mode-less or unreadable, so the cause alone cannot gate the
+		// fallback (sync-audit iter2 R1): only a file that is really absent does.
+		if _, statErr := os.Stat(filepath.Join(root, ".moai", "config", "sections", "git-strategy.yaml")); !errors.Is(statErr, fs.ErrNotExist) {
+			guidance := cfg.EmptyTargetGuidance(root, "")
+			if guidance == "" {
+				guidance = "the configured git strategy resolves no integration branch"
+			}
+			return "", fmt.Errorf("integration remeasure: no integration target is configured, so the base would be a guess: %s", guidance)
+		}
+		branch = remoteDefaultBranch(worktree)
+	}
+	if branch != "" {
+		// The record names the base through refs/heads/<branch>, so that local
+		// branch must exist before the command runs: a remote default branch
+		// with no local counterpart (a clone that checked out another branch)
+		// would otherwise fail when the fork point is computed, AFTER the
+		// command (card-review).
+		//
+		// The check must accept a branch NAME only: rev-parse --verify resolves any
+		// revision expression (`main^{tree}`, `main~1`, `main@{0}`), which passed
+		// the check and then died in the fork-point lookup after the command
+		// (sync-audit iter3 F1). check-ref-format rejects a name that cannot be a
+		// ref, and show-ref --verify accepts only an exact existing ref.
+		ref := "refs/heads/" + branch
+		for _, argv := range [][]string{{"check-ref-format", ref}, {"show-ref", "--verify", "--quiet", ref}} {
+			check := exec.Command("git", argv...)
+			check.Dir = worktree
+			check.Env = gitenv.Env()
+			if err := check.Run(); err != nil {
+				return "", fmt.Errorf("integration remeasure: the integration branch %q has no local branch refs/heads/%s; create it (git branch %s origin/%s) or fix git_strategy, then re-run", branch, branch, branch, branch)
+			}
+		}
+		return branch, nil
+	}
+	return "", fmt.Errorf("integration remeasure: no integration branch to measure against: %s/.moai/config/sections/git-strategy.yaml (gitignored; read from the primary checkout) is absent or unreadable and the remote default branch (refs/remotes/origin/HEAD) does not resolve; restore the git strategy file there, or, when the remote is named origin, run `git remote set-head origin --auto`, then re-run", root)
+}
+
+// remoteDefaultBranch reads the branch refs/remotes/origin/HEAD points at, or
+// "" when it does not resolve. The FULL ref is read (no --short): a local branch
+// or tag named origin/main makes the short form print remotes/origin/main, which
+// no prefix strip recovers (sync-audit iter1 F2). A target outside
+// refs/remotes/origin/ is not a default branch this verb can name.
+func remoteDefaultBranch(worktree string) string {
+	cmd := exec.Command("git", "symbolic-ref", "--quiet", "refs/remotes/origin/HEAD")
+	cmd.Dir = worktree
+	cmd.Env = gitenv.Env()
+	out, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+	const prefix = "refs/remotes/origin/"
+	ref := strings.TrimSpace(string(out))
+	if !strings.HasPrefix(ref, prefix) {
+		return ""
+	}
+	return strings.TrimPrefix(ref, prefix)
 }
 
 // shellJoinArgs joins the argv the caller passed after -- into the one

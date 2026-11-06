@@ -67,3 +67,29 @@ func TestParticipationSummarizerEnvCarriesTheBaseEnvironment(t *testing.T) {
 		t.Fatalf("the summarizer environment fails the audit env validator: %v", err)
 	}
 }
+
+// TestParticipationSummarizerEnvDropsProxyVariables pins the l57-r2 audit
+// finding: the summarizer's env builder runs the denylist scrub, which kept
+// HTTPS_PROXY — and Summarize validates its own env, so under a proxy variable
+// the summary died at validation BEFORE summarizing. The audit path's
+// allowlist never lets a proxy through; the denylist path must drop the same
+// family the validator rejects.
+func TestParticipationSummarizerEnvDropsProxyVariables(t *testing.T) {
+	t.Setenv("HTTPS_PROXY", "http://proxy.example.com:8080")
+	t.Setenv("NO_PROXY", "localhost")
+
+	env := claudeParticipationEnv()
+	found := map[string]bool{}
+	for _, entry := range env {
+		key, _, _ := strings.Cut(entry, "=")
+		found[key] = true
+	}
+	for _, banned := range []string{"HTTPS_PROXY", "NO_PROXY"} {
+		if found[banned] {
+			t.Fatalf("the summarizer environment carries %s — the audit env validator rejects proxy variables, so Summarize dies before summarizing (l57-r2 finding 3)", banned)
+		}
+	}
+	if err := validateClaudeAuditEnv(env); err != nil {
+		t.Fatalf("the summarizer environment fails the audit env validator under a proxy environment: %v", err)
+	}
+}

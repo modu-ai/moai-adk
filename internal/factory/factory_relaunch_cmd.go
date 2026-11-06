@@ -87,10 +87,11 @@ func (c RelaunchCommand) Line() string {
 
 // LaunchArgs renders the launcher argv that follows `moai`: for cc and glm
 // `<provider> -l [--factory-run <id>]`, for codex the only line its entry
-// accepts, `codex -l`. The lane entry `-l` takes no argument and claims the
+// accepts, `codex -l`. The lane entry (`-l` on cc, glm and codex) takes no argument and claims the
 // next free slot, so a pinned Lane label does not travel into the launch
 // (SPEC-LAUNCHER-ENTRY-FLAGS-001: no entry selects one lane any more).
 func (c RelaunchCommand) LaunchArgs() []string {
+	// cc, glm and codex all join through -l.
 	args := []string{c.Provider, "-l"}
 	if !c.isCodex() && c.Run != "" {
 		args = append(args, "--factory-run", c.Run)

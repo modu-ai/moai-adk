@@ -66,6 +66,23 @@ const (
 // the case the cancel path refuses rather than acts on.
 var glmLiveJobs sync.Map // job id (string) → context.CancelFunc
 
+// glmBackgroundJobs joins the server's shutdown pass: the server exit waits
+// for the cancelled background goroutines to observe their revocation and
+// write their terminal records (SPEC-MCP-NEUTRALITY-001 REQ-MN-014).
+var glmBackgroundJobs sync.WaitGroup
+
+// stopGLMBackgroundJobs cancels every RUNNING background GLM job and joins
+// the goroutines — the server-exit half of REQ-MN-014's job-lifetime contract
+// (a background job is bounded by the SERVER's lifetime, so the server's
+// shutdown pass cancels it).
+func stopGLMBackgroundJobs() {
+	glmLiveJobs.Range(func(_, value any) bool {
+		value.(context.CancelFunc)()
+		return true
+	})
+	glmBackgroundJobs.Wait()
+}
+
 // glmTaskHTTPClient is the task-path HTTP seam. It deliberately carries NO
 // client Timeout (Timeout 0 = unbounded): DefaultGLMTaskTimeout is the sole
 // wall-clock bound on a glm_task call and is enforced through the request
@@ -137,10 +154,16 @@ func resolveGLMTaskModel() string {
 // caller-actionable faults — a missing prompt, and a state directory that
 // cannot be written.
 func handleGLMTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	// REQ-MN-004: the glm_task job record writes under the caller's tree —
+	// the argument is required and confined (mutating family member).
+	glmRoot, _, glmErr := resolveRequiredToolProjectRoot(req)
+	if glmErr != nil {
+		return toolErr(glmTaskToolName, glmErr), nil
+	}
 	prompt := req.GetString("prompt", "")
 	background := req.GetBool("background", false)
 	token := extractProgressToken(req)
-	notifyMCPProgress(ctx, token, 0, "glm 태스크 시작 — 프롬프트 접수")
+	notifyMCPProgress(ctx, token, 0, "glm task start - prompt accepted")
 
 	if prompt == "" {
 		return toolErr(glmTaskToolName, errors.New("prompt is required")), nil
@@ -207,8 +230,11 @@ func handleGLMTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolR
 
 	// Background: the record is created BEFORE the call is handed off, so an
 	// unwritable state directory is reported to the caller as a structured
-	// error rather than surfacing later as a job nobody can observe.
-	registry := newGLMJobRegistry(projectDirResolver())
+	// error rather than surfacing later as a job nobody can observe. The
+	// registry is rooted at the VALIDATED caller root (t1632): the job record
+	// belongs to the tree the request named, and the glm_job_* query/cancel
+	// surfaces read the same root.
+	registry := newGLMJobRegistry(glmRoot)
 	rec, err := registry.create(glmJobSpec{
 		Model:          model,
 		RequestSummary: prompt,
@@ -236,7 +262,11 @@ func handleGLMTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolR
 		return toolErr(glmTaskToolName, err), nil
 	}
 
-	go runGLMBackgroundJob(jobCtx, cancel, registry, rec.ID, key, model, prompt, system, maxTokens)
+	glmBackgroundJobs.Add(1)
+	go func() {
+		defer glmBackgroundJobs.Done()
+		runGLMBackgroundJob(jobCtx, cancel, registry, rec.ID, key, model, prompt, system, maxTokens)
+	}()
 
 	result.Status = glmJobStatusRunning
 	result.JobID = rec.ID
@@ -323,7 +353,7 @@ func callGLMTask(ctx context.Context, key, model, prompt, system string, maxToke
 	httpReq.Header.Set("x-api-key", key)
 	httpReq.Header.Set("anthropic-version", glmAnthropicVersion)
 
-	notifyMCPProgress(ctx, token, 0.1, "z.ai에 태스크 요청 전송 중...")
+	notifyMCPProgress(ctx, token, 0.1, "sending the task request to z.ai...")
 	resp, err := glmTaskHTTPClient.Do(httpReq)
 	if err != nil {
 		// The task bound firing is a named, structured failure — never a raw
@@ -344,7 +374,7 @@ func callGLMTask(ctx context.Context, key, model, prompt, system string, maxToke
 	if err != nil {
 		return "", "", fmt.Errorf("cannot read z.ai response: %w", err)
 	}
-	notifyMCPProgress(ctx, token, 0.8, "z.ai 응답 수신 — 텍스트 추출 중...")
+	notifyMCPProgress(ctx, token, 0.8, "z.ai response received - extracting text...")
 
 	var env glmMessagesResponse
 	if err := json.Unmarshal(raw, &env); err != nil {
@@ -354,4 +384,13 @@ func callGLMTask(ctx context.Context, key, model, prompt, system string, maxToke
 		return "", "", errors.New("z.ai response carried no content")
 	}
 	return env.Content[0].Text, glmServedModel(env.Model), nil
+}
+
+// appendCodexNote joins two result notes, keeping both statements rather than
+// letting the second silently replace the first.
+func appendCodexNote(existing, add string) string {
+	if existing == "" {
+		return add
+	}
+	return existing + " " + add
 }

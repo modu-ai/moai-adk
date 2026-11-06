@@ -19,6 +19,7 @@ func TestMCPServerEnvVarsKeepFactoryMarkers(t *testing.T) {
 	for _, name := range []string{
 		"MOAI_KANBAN_ID",
 		"MOAI_KANBAN_BACKEND",
+		"MOAI_FACTORY_ROLE",
 		"MOAI_FACTORY_WORKER",
 		"MOAI_FACTORY_WORKERS",
 	} {

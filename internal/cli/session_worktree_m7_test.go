@@ -18,8 +18,12 @@ package cli
 
 import (
 	"bytes"
+	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/paths"
+	"github.com/modu-ai/moai-adk/internal/testguard"
 )
 
 // m7Seams is the M7-only subset of swSeams. Tests build an swSeams that swaps
@@ -74,6 +78,7 @@ func swapM7Seams(t *testing.T, s m7Seams) {
 // TestApplyGitConfig_SafeDirectoryRegistered is AC-SW-018: materialization
 // registers the worktree path via `git config --global --add safe.directory`.
 func TestApplyGitConfig_SafeDirectoryRegistered(t *testing.T) {
+	testguard.RedirectHome(t)
 	var added []string
 	swapM7Seams(t, m7Seams{
 		safeDirAdd: func(p string) error { added = append(added, p); return nil },
@@ -97,6 +102,7 @@ func TestApplyGitConfig_SafeDirectoryRegistered(t *testing.T) {
 // back via safe.directory --get-all. The seam simulates git's idempotent
 // `--add` semantics: the entry is added only if not already present.
 func TestApplyGitConfig_SafeDirectoryIdempotent(t *testing.T) {
+	testguard.RedirectHome(t)
 	var entries []string
 	swapM7Seams(t, m7Seams{
 		safeDirAdd: func(p string) error {
@@ -137,6 +143,7 @@ func TestApplyGitConfig_SafeDirectoryIdempotent(t *testing.T) {
 // call entirely, this test's premise (res.safeDirectoryApplied toggles with
 // the seam) would no longer hold.
 func TestApplyGitConfig_SafeDirectoryFalsification(t *testing.T) {
+	testguard.RedirectHome(t)
 	// Case A: safeDirAdd records → applied true.
 	swapM7Seams(t, m7Seams{
 		safeDirAdd: func(string) error { return nil },
@@ -167,6 +174,7 @@ func TestApplyGitConfig_SafeDirectoryFalsification(t *testing.T) {
 // gitconfig carries BOTH user.name and user.email, the helper reads them
 // read-only and applies both worktree-scoped. The profile is NOT consulted.
 func TestApplyGitConfig_IdentityAppliedFromGlobal(t *testing.T) {
+	testguard.RedirectHome(t)
 	var setCalls []struct{ dir, key, val string }
 	swapM7Seams(t, m7Seams{
 		safeDirAdd: func(string) error { return nil },
@@ -220,6 +228,7 @@ func TestApplyGitConfig_IdentityAppliedFromGlobal(t *testing.T) {
 // no-op — no worktree-scoped identity is applied, and a notice names the
 // no-op.
 func TestApplyGitConfig_NoGlobalIdentityIsNoOp(t *testing.T) {
+	testguard.RedirectHome(t)
 	var setCalls []struct{ dir, key, val string }
 	swapM7Seams(t, m7Seams{
 		safeDirAdd: func(string) error { return nil },
@@ -255,6 +264,7 @@ func TestApplyGitConfig_NoGlobalIdentityIsNoOp(t *testing.T) {
 // result reports the identity was NOT applied even though the global source
 // carried it.
 func TestApplyGitConfig_IdentityFalsification(t *testing.T) {
+	testguard.RedirectHome(t)
 	swapM7Seams(t, m7Seams{
 		safeDirAdd: func(string) error { return nil },
 		globalGet: func(key string) string {
@@ -295,6 +305,7 @@ func TestApplyGitConfig_IdentityFalsification(t *testing.T) {
 // when global has user.name but no user.email, only user.name is applied and a
 // notice names the partial identity.
 func TestApplyGitConfig_PartialIdentity(t *testing.T) {
+	testguard.RedirectHome(t)
 	var setKeys []string
 	swapM7Seams(t, m7Seams{
 		safeDirAdd: func(string) error { return nil },
@@ -339,6 +350,7 @@ func TestApplyGitConfig_PartialIdentity(t *testing.T) {
 // writes the local repo config in all git versions) so no separate code path
 // is needed; the notice is the user-facing signal.
 func TestApplyGitConfig_GitUnder220FallbackNotice(t *testing.T) {
+	testguard.RedirectHome(t)
 	swapM7Seams(t, m7Seams{
 		safeDirAdd: func(string) error { return nil },
 		globalGet: func(key string) string {
@@ -365,6 +377,7 @@ func TestApplyGitConfig_GitUnder220FallbackNotice(t *testing.T) {
 // TestApplyGitConfig_Git220PlusNoFallbackNotice is the negative control: a
 // modern git does NOT emit the fallback notice.
 func TestApplyGitConfig_Git220PlusNoFallbackNotice(t *testing.T) {
+	testguard.RedirectHome(t)
 	swapM7Seams(t, m7Seams{
 		safeDirAdd: func(string) error { return nil },
 		globalGet:  func(string) string { return "" },
@@ -380,6 +393,7 @@ func TestApplyGitConfig_Git220PlusNoFallbackNotice(t *testing.T) {
 // TestGitVersionReal_ParsesModernGit verifies the real git-version parser
 // returns a non-empty, sane version on a machine with git installed.
 func TestGitVersionReal_ParsesModernGit(t *testing.T) {
+	testguard.RedirectHome(t)
 	v := gitVersionReal()
 	if v.Major < 2 {
 		t.Fatalf("gitVersionReal: expected major >= 2 on dev machine, got %+v", v)
@@ -392,6 +406,7 @@ func TestGitVersionReal_ParsesModernGit(t *testing.T) {
 // TestGitVersionInfo_SupportsWorktreeConfigBoundary is the unit test for the
 // version-boundary predicate: 2.20+ supports, 2.19 does not.
 func TestGitVersionInfo_SupportsWorktreeConfigBoundary(t *testing.T) {
+	testguard.RedirectHome(t)
 	cases := []struct {
 		name string
 		v    gitVersionInfo
@@ -421,6 +436,7 @@ func TestGitVersionInfo_SupportsWorktreeConfigBoundary(t *testing.T) {
 // (E7 blocker). When the profile gains the fields, this test is updated to
 // exercise the opt-in path.
 func TestApplyGitConfig_OptionsNoOpNoProfileFields(t *testing.T) {
+	testguard.RedirectHome(t)
 	var setKeys []string
 	swapM7Seams(t, m7Seams{
 		safeDirAdd: func(string) error { return nil },
@@ -460,12 +476,18 @@ func TestApplyGitConfig_OptionsNoOpNoProfileFields(t *testing.T) {
 // materialization calls safe.directory add at least once for the materialized
 // path.
 func TestEnterSessionWorktree_M7WiringInvokesHelper(t *testing.T) {
+	testguard.RedirectHome(t)
 	t.Setenv("MOAI_SESSION_WORKTREE", "1")
+	// SPEC-WORKTREE-HOME-ROOT-001 M3: real repository + sandboxed MOAI_HOME
+	// for the resolver inside the materializer.
+	repo := m2Repo(t)
+	home := m2Real(t, t.TempDir())
+	t.Setenv(paths.EnvHome, home)
 	var safeAdds []string
 	swapSessionWorktreeSeams(t, swSeams{
 		inWt:      func() bool { return false },
 		short:     func() string { return "abcdef12" },
-		commonDir: func() (string, error) { return "/repo/.git", nil },
+		commonDir: func() (string, error) { return filepath.Join(repo, ".git"), nil },
 		add:       func(dest, branch, base string) (string, error) { return dest, nil },
 		configSet: func(string, string, string) error { return nil },
 	})
@@ -488,6 +510,7 @@ func TestEnterSessionWorktree_M7WiringInvokesHelper(t *testing.T) {
 // REQ-SW-018: when the feature is OFF, the helper MUST NOT run (no
 // safe.directory mutation).
 func TestEnterSessionWorktree_DefaultOffDoesNotInvokeHelper(t *testing.T) {
+	testguard.RedirectHome(t)
 	t.Setenv("MOAI_SESSION_WORKTREE", "")
 	safeAddCalled := false
 	swapM7Seams(t, m7Seams{
@@ -508,6 +531,7 @@ func TestEnterSessionWorktree_DefaultOffDoesNotInvokeHelper(t *testing.T) {
 // E9: when auto-cleanup removes a worktree, the matching safe.directory entry
 // is unset so the global allowlist does not accumulate (BI-7 reverse).
 func TestCleanupSessionWorktree_UnsetsSafeDirectoryOnRemoval(t *testing.T) {
+	testguard.RedirectHome(t)
 	var unsetPaths []string
 	swapSessionWorktreeSeams(t, swSeams{
 		remove:     func(string) error { return nil },
@@ -529,6 +553,7 @@ func TestCleanupSessionWorktree_UnsetsSafeDirectoryOnRemoval(t *testing.T) {
 // exit / dirty), the safe.directory entry MUST NOT be unset (the worktree
 // still exists on disk and still needs the entry).
 func TestCleanupSessionWorktree_DoesNotUnsetWhenPreserved(t *testing.T) {
+	testguard.RedirectHome(t)
 	unsetCalled := false
 	swapSessionWorktreeSeams(t, swSeams{
 		remove:     func(string) error { unsetCalled = true; return nil },
@@ -572,6 +597,7 @@ func TestCleanupSessionWorktree_DoesNotUnsetWhenPreserved(t *testing.T) {
 // documents the invariant: even when the global gitconfig is empty, the
 // helper does NOT fall back to any profile field (it is a verified no-op).
 func TestApplyGitConfig_ProfileNotConsulted(t *testing.T) {
+	testguard.RedirectHome(t)
 	swapM7Seams(t, m7Seams{
 		safeDirAdd: func(string) error { return nil },
 		globalGet:  func(string) string { return "" }, // empty global

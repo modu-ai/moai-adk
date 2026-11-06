@@ -19,26 +19,44 @@ import (
 // TestFactorySerialSlotHeldRequiresADriver — the slot predicate matrix. A row
 // without an owner holds nothing (the t1453 wedge: picked, ownerless,
 // lease-less, refusing every lease for a day); every driven row keeps the
-// pre-existing behavior.
+// pre-existing behavior; an expired lease holds or frees by its holder's
+// liveness (card t1828).
 func TestFactorySerialSlotHeldRequiresADriver(t *testing.T) {
 	now := time.Now()
 	live := now.Add(time.Hour).Format(time.RFC3339Nano)
 	expired := now.Add(-time.Minute).Format(time.RFC3339Nano)
 	cases := []struct {
-		name string
-		card homestate.Card
-		want bool
+		name  string
+		card  homestate.Card
+		alive bool // what the holder-liveness reader answers
+		want  bool
 	}{
-		{"picked without owner or lease holds nothing", homestate.Card{CardID: "t1453", State: homestate.CardPicked}, false},
-		{"picked with an owner holds", homestate.Card{CardID: "t1", State: homestate.CardPicked, OwnerLabel: "lane-5"}, true},
-		{"assigned with an owner holds", homestate.Card{CardID: "t2", State: homestate.CardAssigned, OwnerLabel: "lane-2"}, true},
-		{"leased with a live lease holds", homestate.Card{CardID: "t3", State: homestate.CardLeased, OwnerLabel: "lane-1", LeaseHolder: "lane-1", LeaseExpiresAt: live}, true},
-		{"an expired lease frees", homestate.Card{CardID: "t4", State: homestate.CardLeased, OwnerLabel: "lane-1", LeaseHolder: "lane-1", LeaseExpiresAt: expired}, false},
-		{"merge-ready frees", homestate.Card{CardID: "t5", State: homestate.CardMergeReady, OwnerLabel: "lane-1"}, false},
+		{"picked without owner or lease holds nothing", homestate.Card{CardID: "t1453", State: homestate.CardPicked}, false, false},
+		{"picked with an owner holds", homestate.Card{CardID: "t1", State: homestate.CardPicked, OwnerLabel: "lane-5"}, true, true},
+		{"assigned with an owner holds", homestate.Card{CardID: "t2", State: homestate.CardAssigned, OwnerLabel: "lane-2"}, true, true},
+		{"an assigned row with a heartbeat holds while its session is live", homestate.Card{CardID: "t7", State: homestate.CardAssigned, OwnerLabel: "lane-2", HeartbeatAt: now.Add(-time.Minute).Format(time.RFC3339Nano)}, true, true},
+		{"an assigned row with a heartbeat frees when its session is dead", homestate.Card{CardID: "t8", State: homestate.CardAssigned, OwnerLabel: "lane-2", HeartbeatAt: now.Add(-time.Minute).Format(time.RFC3339Nano)}, false, false},
+		{"leased with a live lease holds", homestate.Card{CardID: "t3", State: homestate.CardLeased, OwnerLabel: "lane-1", LeaseHolder: "lane-1", LeaseExpiresAt: live}, true, true},
+		{"an expired lease with a dead holder frees", homestate.Card{CardID: "t4", State: homestate.CardLeased, OwnerLabel: "lane-1", LeaseHolder: "lane-1", LeaseExpiresAt: expired}, false, false},
+		{"an expired lease with a live holder holds", homestate.Card{CardID: "t6", State: homestate.CardLeased, OwnerLabel: "lane-1", LeaseHolder: "lane-1", LeaseExpiresAt: expired}, true, true},
+		{"merge-ready frees", homestate.Card{CardID: "t5", State: homestate.CardMergeReady, OwnerLabel: "lane-1"}, true, false},
 	}
 	for _, tc := range cases {
-		if got := factorySerialSlotHeld(tc.card, now); got != tc.want {
+		asked := ""
+		holderAlive := func(c homestate.Card) bool { asked = c.OwnerLabel; return tc.alive }
+		if got := factorySerialSlotHeld(tc.card, now, holderAlive); got != tc.want {
 			t.Errorf("%s: held=%v, want %v", tc.name, got, tc.want)
+		}
+		// The roster is consulted only where liveness decides: an expired
+		// lease of a driven row, or an assigned row carrying a heartbeat
+		// (card t1828 sync-audit F1).
+		wantAsked := tc.card.OwnerLabel != "" && (tc.card.LeaseExpired(now) ||
+			(tc.card.State == homestate.CardAssigned && tc.card.HeartbeatAt != ""))
+		if wantAsked && asked == "" {
+			t.Errorf("%s: holder liveness never consulted", tc.name)
+		}
+		if !wantAsked && asked != "" {
+			t.Errorf("%s: holder liveness consulted for %q without an expired lease", tc.name, asked)
 		}
 	}
 }
@@ -61,12 +79,39 @@ func TestFactoryNextIgnoresDriverlessPickedRow(t *testing.T) {
 	}
 }
 
+// flSeedDrivenQueueItem backs the t1453 driven row with a queue item carrying
+// an explicit serial classification (SPEC-FACTORY-DEFAULT-MODE-001
+// REQ-FDM-001): a row's serial-ness reads through the queue, so a driven row
+// whose id names no queue item derives the absent-read default
+// (parallelizable) and no longer holds the slot. Both t1513 control tests
+// seed the item so their subject — the DRIVEN row's hold — survives the
+// default flip instead of passing on the concurrent serial lease's
+// contribution.
+func flSeedDrivenQueueItem(t *testing.T, store *factory.BacklogStore) {
+	t.Helper()
+	if err := store.Mutate(func(rec *factory.BacklogRecord) error {
+		rec.Items = append(rec.Items, factory.BacklogItem{
+			ID:      "t1453",
+			Text:    "driven row card",
+			AddedAt: "2026-09-26T00:00:00Z",
+			State:   factory.BacklogStatePicked,
+		})
+		return nil
+	}); err != nil {
+		t.Fatalf("seed t1453: %v", err)
+	}
+	fcClassify(t, store, "t1453", factory.ClassPriorityNormal, false, factory.ClassModeSerial)
+}
+
 // TestFactoryNextStillRefusedBehindADrivenRow — the control arm: with an
 // owned serial row in flight (no lease, owner recorded), the slot still holds
-// and `factory next` is refused serial-slot.
+// and `factory next` is refused serial-slot. The driven row is serial through
+// its queue item's explicit classification (flSeedDrivenQueueItem) — the
+// flip's queue-absent rows read parallelizable and release the slot.
 func TestFactoryNextStillRefusedBehindADrivenRow(t *testing.T) {
-	root, _ := flSerialPair(t)
+	root, store := flSerialPair(t)
 	nmIsolatedWorktrees(t, "t1", "t2")
+	flSeedDrivenQueueItem(t, store)
 	fcPlace(t, root, homestate.Card{CardID: "t1453", State: homestate.CardPicked, OwnerLabel: "lane-2"})
 	nmLaneEnv(t, "lane-1", "")
 	_, stderr, err := qasRunNext(t, "--run", fcRun, "--card", "t1")
@@ -83,8 +128,9 @@ func TestFactoryNextStillRefusedBehindADrivenRow(t *testing.T) {
 // row releases the slot and a lease goes through; a later T2 assign sets the
 // owner and the row holds the slot again.
 func TestFactoryNextRefusesAgainAfterLaterAssign(t *testing.T) {
-	root, _ := flSerialPair(t)
+	root, store := flSerialPair(t)
 	nmIsolatedWorktrees(t, "t1", "t2")
+	flSeedDrivenQueueItem(t, store)
 	ctx := context.Background()
 	now := time.Now()
 

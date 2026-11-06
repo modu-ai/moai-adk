@@ -153,12 +153,30 @@ func pathWithinTree(child, root string) bool {
 	return false
 }
 
-// underPath is the literal prefix test on cleaned paths.
+// underPath is the literal prefix test on cleaned paths, extended with the
+// platform's case folding (card t1640 review F4 / REQ-WHR-016's
+// case-aliased arm): darwin APFS is case-insensitive and case-preserving —
+// research §R1 measured 25 of this repository's real trees registered
+// under the lowercase spelling — so a recorded cwd spelled in the other
+// case of the tree path is the same tree, and its sessions anchor it. Off
+// darwin the comparison stays literal: case-sensitive filesystems have no
+// case axis, and Windows case handling is unmeasured (t1293 does not
+// guess).
 func underPath(child, root string) bool {
 	c := filepath.Clean(child)
 	r := filepath.Clean(root)
 	if c == r {
 		return true
 	}
-	return strings.HasPrefix(c, r+string(filepath.Separator))
+	if strings.HasPrefix(c, r+string(filepath.Separator)) {
+		return true
+	}
+	if caseFoldsPlatform() {
+		lc, lr := strings.ToLower(c), strings.ToLower(r)
+		if lc == lr {
+			return true
+		}
+		return strings.HasPrefix(lc, lr+string(filepath.Separator))
+	}
+	return false
 }

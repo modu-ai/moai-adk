@@ -37,6 +37,14 @@ Do not read or write the store directly — run the `moai gtd` commands: they
 hold a cross-process lock across every mutation, so concurrent sessions cannot
 lose cards or collide ids.
 
+Database paths — never guess:
+
+- Find the database files with `moai paths`; never guess them.
+- Forbidden guessed paths: `~/.moai/todo.db`, `~/.moai/backlog.db`, `~/.moai/db/todo.db`, `~/.moai/db/factory.db`, `~/.moai/db/<key>/backlog.db`, `<root>/.moai/state/backlog.db`, `<root>/.moai/state/factory.db`, `<root>/.moai/state/factory/factory.db`.
+- Never `sqlite3`-open a guessed path: opening a missing file creates an empty one.
+- Direct reads only on a snapshot copy of `.db`, `.db-wal`, and `.db-shm` together.
+- Prefer the CLI: `moai todo list --json`, `moai factory status`.
+
 ## Commands
 
 When the operator says `/moai gtd "<description>"`, run

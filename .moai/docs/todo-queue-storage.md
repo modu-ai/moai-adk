@@ -124,6 +124,20 @@ Your options, in order of preference:
 3. `backlog.db` is a standard SQLite file, so standard SQLite integrity and
    recovery tools can inspect the backup without changing the live copy.
 
+## Finding the database files
+
+Never guess a database path; ask the project which paths it uses.
+
+Find the database files with `moai paths`; never guess them. It prints the project key and the confirmed paths of the queue, the factory, and the factory broker databases, by the root rule the `moai todo` verbs and the factory card root use (`CLAUDE_PROJECT_DIR` first). `moai factory runs` and `moai factory handoff recover-resume` resolve the project from the current directory instead, so they agree with `moai paths` only when `CLAUDE_PROJECT_DIR` names the project of the current directory. `moai paths --field todo-db` prints one bare value, `moai paths --json` one JSON object.
+
+Forbidden guessed paths: `~/.moai/todo.db`, `~/.moai/backlog.db`, `~/.moai/db/todo.db`, `~/.moai/db/factory.db`, `~/.moai/db/<key>/backlog.db`, `<root>/.moai/state/backlog.db`, `<root>/.moai/state/factory.db`, `<root>/.moai/state/factory/factory.db`. The list is illustrative: only the output of `moai paths` is valid.
+
+Never `sqlite3`-open a guessed path: opening a missing file creates an empty one, and that zero-byte file is later mistaken for a real database. `sqlite3 -readonly` refuses to create one, but a read-only open of a guessed path still reads the wrong file.
+
+Direct reads only on a snapshot copy of `.db`, `.db-wal`, and `.db-shm` together. Copy all three files to a scratch directory and open the copy; reading the live files directly can miss committed data that still sits in the write-ahead log.
+
+Prefer the CLI: `moai todo list --json`, `moai factory status`. They take the lock the store needs and answer from the live database.
+
 ## The home directory
 
 Each project that uses home storage has one stable key below `~/.moai/db/`.

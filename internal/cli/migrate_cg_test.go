@@ -3,12 +3,13 @@ package cli
 import (
 	"bytes"
 	"errors"
-	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/spf13/cobra"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/spf13/cobra"
 )
 
 const migrationCGInput = "llm:\n  team_mode: cg # retain\n  credential_ref: KEEP_REFERENCE\n"

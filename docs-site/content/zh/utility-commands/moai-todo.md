@@ -62,6 +62,8 @@ flowchart TD
 
 对于常规项目目录，队列保存在 `~/.moai/db/<project-key>/todo/backlog.db` 这一个 SQLite 数据库里。不过，如果项目起点位于临时目录（`os.TempDir()`、`/tmp`、`/var/folders` 之下），在没有绝对路径 `MOAI_HOME` 覆盖的情况下，队列会改为项目本地保存在 `<base>/.moai/state/todo/backlog.db`。项目键会把链接型工作树统一到主目录中的同一条队列，数据库不会被提交。下面的形状是 `moai todo list --json` 与 `moai todo export-json` 输出的记录形状，数据库里也是同样的字段。迁移与降级方法见项目内的 `.moai/docs/todo-queue-storage.md`。
 
+数据库路径不要猜，用 `moai paths` 确认。用 `sqlite3` 打开 `~/.moai/db/todo.db` 这类猜出来的路径，会创建出一个空文件，所以不要这样做。确需直接读取时，只读把 `.db`、`.db-wal`、`.db-shm` 一起复制出来的快照；平时优先使用 `moai todo list --json`、`moai factory status` 等 CLI。
+
 ```json
 {
   "version": 1,

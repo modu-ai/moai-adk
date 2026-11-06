@@ -21,10 +21,9 @@ func TestPage3QuestionsStructure(t *testing.T) {
 	}
 
 	want := []entry{
-		// SPEC-INIT-QUIET-WIZARD-001: page 3 keeps only the harness selector
-		// ("Quality & Workflow") and the autonomy tier ("Autonomy"); both are
-		// ungated.
-		{"agent_wiring", QuestionTypeSelect, true, false},
+		// SPEC-INIT-QUIET-WIZARD-001: page 3 keeps only the autonomy tier
+		// ("Autonomy"), ungated (the agent_wiring harness selector went with
+		// the general codex execution surface removal, card t1909).
 		{"autonomy_tier", QuestionTypeSelect, true, false},
 		// SPEC-JEV-OPTIN-MEASURE-001 REQ-JEVO-005: the init-only Jev opt-in
 		// joins this page. It is a confirm, so it carries no Options, and it is
@@ -70,8 +69,8 @@ func TestPage3VisibleWithoutBridge(t *testing.T) {
 	quick := &WizardResult{EnforceQuality: true, DesignEnabled: true, ClaudeDesignEnabled: true}
 	visible := FilteredQuestions(all, quick)
 
-	if QuestionByID(visible, "agent_wiring") == nil {
-		t.Error(`page-3 question "agent_wiring" must be visible with no bridge answered`)
+	if QuestionByID(visible, "autonomy_tier") == nil {
+		t.Error(`page-3 question "autonomy_tier" must be visible with no bridge answered`)
 	}
 }
 
@@ -87,8 +86,8 @@ func TestPage3Questions_Ungated(t *testing.T) {
 	questions := Page3Questions(tmpDir)
 
 	visible := FilteredQuestions(questions, &WizardResult{DesignEnabled: true})
-	if QuestionByID(visible, "agent_wiring") == nil {
-		t.Error(`page-3 question "agent_wiring" must be visible`)
+	if QuestionByID(visible, "autonomy_tier") == nil {
+		t.Error(`page-3 question "autonomy_tier" must be visible`)
 	}
 
 	// Structural half: nothing on page 3 is gated.
@@ -228,8 +227,8 @@ func TestTotalVisibleQuestions_Page3AlwaysCounted(t *testing.T) {
 	// opt-in on its own page, taking the set to 5.
 	// SPEC-FEEDBACK-PARTICIPATION-001 REQ-ANON-003 adds the participation
 	// opt-in on its own page, taking the set to 6.
-	if got != 6 {
-		t.Errorf("TotalVisibleQuestions = %d, want 6 (2 Basic + 2 Agents & Autonomy + 1 Judgment Capability + 1 Participation)", got)
+	if got != 5 {
+		t.Errorf("TotalVisibleQuestions = %d, want 5 (2 Basic + 1 Agents & Autonomy + 1 Judgment Capability + 1 Participation)", got)
 	}
 	// Agents & Autonomy page membership: the agent_wiring harness selector and
 	// the autonomy-tier selector. The Jev opt-in sits on its own page, and the
@@ -247,8 +246,8 @@ func TestTotalVisibleQuestions_Page3AlwaysCounted(t *testing.T) {
 			participation++
 		}
 	}
-	if n != 2 {
-		t.Errorf("visible Agents & Autonomy questions = %d, want 2", n)
+	if n != 1 {
+		t.Errorf("visible Agents & Autonomy questions = %d, want 1", n)
 	}
 	if jev != 1 {
 		t.Errorf("visible Judgment Capability questions = %d, want 1", jev)

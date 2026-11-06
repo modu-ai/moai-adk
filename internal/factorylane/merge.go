@@ -211,18 +211,24 @@ func EvaluateMergeTriple(in MergeTripleInput, git GitRunner) (MergeCheckRun, err
 		remeasureDetail = "not checked (no re-measure reader wired)"
 		remeasureOK = true // the triple's own shape is unchanged for legacy callers
 	} else {
-		treeOut, err := git.Git("rev-parse", in.Branch+"^{tree}")
-		if err != nil {
-			remeasureDetail = fmt.Sprintf("the candidate tree of %s cannot be read: %v", in.Branch, err)
+		tip, pinRefusal, pinOK := branchTipSHA(git, in.Branch)
+		if !pinOK {
+			remeasureDetail = fmt.Sprintf("the candidate tree cannot be read: %s", pinRefusal)
 			remeasureOK = false
 		} else {
-			command, recErr := in.VerifyRemeasure(strings.TrimSpace(treeOut))
-			if recErr != nil {
-				remeasureDetail = fmt.Sprintf("no valid re-measure record for the candidate tree (%v)", recErr)
+			treeOut, err := git.Git("rev-parse", tip+"^{tree}")
+			if err != nil {
+				remeasureDetail = fmt.Sprintf("the candidate tree of %s@%s cannot be read: %v", cardBranchRef(in.Branch), tip, err)
 				remeasureOK = false
 			} else {
-				remeasureDetail = fmt.Sprintf("re-measure record valid; recorded command: %s", command)
-				remeasureOK = true
+				command, recErr := in.VerifyRemeasure(strings.TrimSpace(treeOut))
+				if recErr != nil {
+					remeasureDetail = fmt.Sprintf("no valid re-measure record for the candidate tree (%v)", recErr)
+					remeasureOK = false
+				} else {
+					remeasureDetail = fmt.Sprintf("re-measure record valid; recorded command: %s", command)
+					remeasureOK = true
+				}
 			}
 		}
 	}
@@ -282,20 +288,58 @@ func syncStatusFromE4(content string) (string, bool) {
 	return "", false
 }
 
+// cardBranchRef is the one fully qualified spelling of the card branch: every
+// git probe of the triple consumes the branch through it, because git resolves
+// a bare name tags-before-heads (gitrevisions rule 3 over rule 4) and a tag
+// sharing the branch's name would silently redirect the probe to the tag's
+// commits (card t1928, independent audit F1 — the same-name-tag pathology the
+// t1920 resolver fix moved off the record read onto the probes). The run
+// record keeps the display name (MergeCheckRun.Branch); only the rev operands
+// are qualified. Same shape as internal/factory's integrationBranchRef
+// (card t1834) and base_freshness's refs/heads pinning.
+func cardBranchRef(branch string) string {
+	return "refs/heads/" + branch
+}
+
+// branchTipSHA resolves the card branch's tip SHA through
+// `git show-ref --verify --hash` — an exact-ref-path check that only the real
+// branch can satisfy — and that SHA, not any ref spelling, is what the
+// triple's probes then consume. Neither operand form is safe unverified: a
+// bare name resolves tags-before-heads (card t1928 audit F1), and even the
+// qualified refs/heads/<branch> string is shadowable, because gitrevisions
+// rule 3 answers a tag literally NAMED "refs/heads/<branch>" when the exact
+// path is absent (audit F4). A SHA cannot be shadowed; this is the terminal
+// fix for the tag-shadow class. A branch whose existence cannot be verified
+// is a fail-closed refusal — the returned refusal text names the exact check.
+func branchTipSHA(git GitRunner, branch string) (sha, refusal string, ok bool) {
+	ref := cardBranchRef(branch)
+	out, err := git.Git("show-ref", "--verify", "--hash", ref)
+	sha = strings.TrimSpace(out)
+	if err != nil || sha == "" {
+		return "", fmt.Sprintf("git show-ref --verify --hash %s failed: %v — the card branch's existence cannot be verified (fail-closed)", ref, err), false
+	}
+	return sha, "", true
+}
+
 // checkConflictFree evaluates condition (b): the merge-tree dry-run. Exit 0
 // is clean; exit 1 is git's conflict verdict — a check RESULT, recorded with
 // the conflicted paths; any other failure refuses fail-closed, because a
 // check that cannot run is not a pass.
 func checkConflictFree(git GitRunner, developRef, branch string) (string, bool) {
-	out, err := git.Git("merge-tree", "--write-tree", developRef, branch)
+	branchRef := cardBranchRef(branch)
+	tip, pinRefusal, pinOK := branchTipSHA(git, branch)
+	if !pinOK {
+		return fmt.Sprintf("merge-tree %s + %s not attempted: %s", developRef, branchRef, pinRefusal), false
+	}
+	out, err := git.Git("merge-tree", "--write-tree", developRef, tip)
 	if err == nil {
-		return fmt.Sprintf("merge-tree %s + %s clean; result tree %s", developRef, branch, strings.TrimSpace(out)), true
+		return fmt.Sprintf("merge-tree %s + %s@%s clean; result tree %s", developRef, branchRef, tip, strings.TrimSpace(out)), true
 	}
 	var exitErr *GitExitError
 	if errors.As(err, &exitErr) && exitErr.ExitCode == 1 {
-		return fmt.Sprintf("merge-tree %s + %s reports unresolved conflicts:\n%s", developRef, branch, strings.TrimSpace(exitErr.Stdout)), false
+		return fmt.Sprintf("merge-tree %s + %s@%s reports unresolved conflicts:\n%s", developRef, branchRef, tip, strings.TrimSpace(exitErr.Stdout)), false
 	}
-	return fmt.Sprintf("merge-tree %s + %s could not run: %v — fail-closed", developRef, branch, err), false
+	return fmt.Sprintf("merge-tree %s + %s@%s could not run: %v — fail-closed", developRef, branchRef, tip, err), false
 }
 
 // checkTreeIdentityPreMerge evaluates condition (c) before the merge exists:
@@ -305,14 +349,19 @@ func checkConflictFree(git GitRunner, developRef, branch string) (string, bool) 
 // merged branch, so the two forms decide identically (verified on a real
 // repository in TestMergeTriple_PreMergeFormMatchesLiteralPostMergeForm).
 func checkTreeIdentityPreMerge(git GitRunner, developRef, branch string) (bool, string) {
-	out, err := git.Git("merge-tree", "--write-tree", developRef, branch)
+	branchRef := cardBranchRef(branch)
+	tip, pinRefusal, pinOK := branchTipSHA(git, branch)
+	if !pinOK {
+		return false, fmt.Sprintf("merge-tree %s + %s not attempted: %s", developRef, branchRef, pinRefusal)
+	}
+	out, err := git.Git("merge-tree", "--write-tree", developRef, tip)
 	if err != nil {
-		return false, fmt.Sprintf("merge-tree %s + %s could not run: %v — tree identity cannot be evaluated (fail-closed)", developRef, branch, err)
+		return false, fmt.Sprintf("merge-tree %s + %s@%s could not run: %v — tree identity cannot be evaluated (fail-closed)", developRef, branchRef, tip, err)
 	}
 	mergeTree := strings.TrimSpace(out)
-	branchOut, err := git.Git("rev-parse", branch+"^{tree}")
+	branchOut, err := git.Git("rev-parse", tip+"^{tree}")
 	if err != nil {
-		return false, fmt.Sprintf("rev-parse %s^{{tree}} failed: %v", branch, err)
+		return false, fmt.Sprintf("rev-parse %s^{{tree}} failed: %v", tip, err)
 	}
 	branchTree := strings.TrimSpace(branchOut)
 	if mergeTree != branchTree {

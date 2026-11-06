@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"testing"
 	"time"
@@ -23,6 +24,25 @@ import (
 // stops the test framework's flag parsing — so the process is live, same-uid,
 // and shaped exactly like the leader argv discovery reads.
 func TestDiscoverLeaderVerifiesLiveProcessWithPlatformReaders(t *testing.T) {
+	verifyLiveHelperLeader(t)
+}
+
+// The cwd confirmation must not depend on a spawned `lsof`: its 3 s cap is
+// exceeded on a loaded machine, which silently turned a live leader into
+// verified=0 (card t1807, t1772). A hanging `lsof` first on PATH stands in for
+// that load deterministically; the platform reader must not even call it.
+func TestDiscoverLeaderCwdDoesNotSpawnLsof(t *testing.T) {
+	bin := t.TempDir()
+	script := "#!/bin/sh\nexec sleep 30\n"
+	if err := os.WriteFile(filepath.Join(bin, "lsof"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	verifyLiveHelperLeader(t)
+}
+
+func verifyLiveHelperLeader(t *testing.T) {
+	t.Helper()
 	if runtime.GOOS != "darwin" && runtime.GOOS != "linux" {
 		t.Skipf("live-process smoke runs where the platform readers exist; GOOS=%s degrades to a refusal", runtime.GOOS)
 	}

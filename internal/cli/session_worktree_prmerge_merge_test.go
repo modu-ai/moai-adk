@@ -15,6 +15,8 @@ import (
 	"bytes"
 	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/testguard"
 )
 
 // ghNoAnswer is the seam stub for "gh produced nothing usable".
@@ -24,6 +26,7 @@ func ghNoAnswer(string) (string, bool) { return "", false }
 // no-answer routes the decision to `git branch --merged`, which removes the
 // tree. Before M1 this path was unreachable — "" ended the decision.
 func TestPRMergeCleanup_GhNoAnswerConsultsGitFallback(t *testing.T) {
+	testguard.RedirectHome(t)
 	branch := "WT-forge-counts"
 	tree := "/repo/.claude/worktrees/" + branch
 
@@ -62,6 +65,7 @@ func TestPRMergeCleanup_GhNoAnswerConsultsGitFallback(t *testing.T) {
 // fallback, so consulting it after a determinate answer could only contradict
 // a better source — git fills a hole, it never overrides.
 func TestPRMergeCleanup_GhOpenSkipsGitFallback(t *testing.T) {
+	testguard.RedirectHome(t)
 	branch := "WT-open-pr"
 	tree := "/repo/.claude/worktrees/" + branch
 
@@ -101,6 +105,7 @@ func TestPRMergeCleanup_GhOpenSkipsGitFallback(t *testing.T) {
 // cause-specific token (REQ-WR-023) so this tree is distinguishable from one
 // preserved for any other reason.
 func TestPRMergeCleanup_UndeterminedMergePreserves(t *testing.T) {
+	testguard.RedirectHome(t)
 	branch := "WT-undetermined"
 	tree := "/repo/.claude/worktrees/" + branch
 
@@ -146,6 +151,7 @@ func TestPRMergeCleanup_UndeterminedMergePreserves(t *testing.T) {
 // Variant (b) additionally asserts the dirty cause token — the one of the five
 // cause tokens no other criterion exercises.
 func TestPRMergeCleanup_ZeroUniqueCommitPreserved(t *testing.T) {
+	testguard.RedirectHome(t)
 	t.Run("clean tree is removed", func(t *testing.T) {
 		branch := "WT-zero-unique-clean"
 		tree := "/repo/.claude/worktrees/" + branch

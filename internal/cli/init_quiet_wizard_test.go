@@ -59,14 +59,13 @@ var quietWizardComparedSections = []string{
 	quietWizardLLMYAML,
 }
 
-// quietWizardKeptAnswers returns the injected wizard result: the four kept
+// quietWizardKeptAnswers returns the injected wizard result: the kept
 // answers plus the fixed defaults RunWithDefaults seeds, so opts match a
 // production interactive run that accepted every default.
-func quietWizardKeptAnswers(agentWiring string) *wizard.WizardResult {
+func quietWizardKeptAnswers() *wizard.WizardResult {
 	return &wizard.WizardResult{
 		ConversationLang:          "en",
 		UserName:                  "tester",
-		AgentWiring:               agentWiring,
 		AutonomyTier:              "semi-auto",
 		LSPEnabled:                true,
 		EnforceQuality:            true,
@@ -322,7 +321,7 @@ func quietWizardFirstDiff(a, b []byte) string {
 // interactive init that received only the four kept answers leaves every
 // removed key at the value an all-defaults run resolves to.
 func TestRunInit_QuietWizardUnsetResolvesToDefaults(t *testing.T) {
-	projectDir, _ := quietWizardRunInit(t, t.TempDir(), quietWizardKeptAnswers("claude"), nil)
+	projectDir, _ := quietWizardRunInit(t, t.TempDir(), quietWizardKeptAnswers(), nil)
 
 	if found := quietWizardObserveDefaults(projectDir, quietWizardProjectDirName); len(found) != 0 {
 		t.Errorf("removed keys did not resolve to their defaults (%d findings):\n%s", len(found), quietWizardFormatMismatches(found))
@@ -337,7 +336,7 @@ func TestRunInit_QuietWizardUnsetResolvesToDefaults(t *testing.T) {
 // SPEC-INIT-UPDATE-CONSISTENCY-001 — the ghost key is gone from the generated
 // file, so there is no line left to flip.)
 func TestRunInit_QuietWizardObserverDetectsNonDefault(t *testing.T) {
-	projectDir, _ := quietWizardRunInit(t, t.TempDir(), quietWizardKeptAnswers("claude"), nil)
+	projectDir, _ := quietWizardRunInit(t, t.TempDir(), quietWizardKeptAnswers(), nil)
 
 	if found := quietWizardObserveDefaults(projectDir, quietWizardProjectDirName); len(found) != 0 {
 		t.Fatalf("original project must have 0 findings before the control is meaningful (%d):\n%s", len(found), quietWizardFormatMismatches(found))
@@ -385,7 +384,7 @@ func TestRunInit_QuietWizardSectionFilesMatchNonInteractive(t *testing.T) {
 	var interactiveDir, nonInteractiveDir string
 
 	t.Run("interactive", func(t *testing.T) {
-		interactiveDir, _ = quietWizardRunInit(t, interactiveRoot, quietWizardKeptAnswers("claude"), nil)
+		interactiveDir, _ = quietWizardRunInit(t, interactiveRoot, quietWizardKeptAnswers(), nil)
 	})
 	t.Run("non_interactive", func(t *testing.T) {
 		nonInteractiveDir, _ = quietWizardRunInit(t, nonInteractiveRoot, nil, nil)
@@ -433,47 +432,29 @@ func TestRunInit_QuietWizardSectionFilesMatchNonInteractive(t *testing.T) {
 	}
 }
 
-// TestRunInit_QuietWizardProvisionsMCPByDefault asserts AC-IQW-009: with no
-// MCP field in the injected result, the interactive path runs the .mcp.json
-// ensure-entry call by default — announced for claude and both — and the codex
-// harness rule still skips it.
+// TestRunInit_QuietWizardProvisionsMCPByDefault asserts AC-IQW-009 (the
+// claude-only half that survives card t1909): with no MCP field in the
+// injected result, the interactive path runs the .mcp.json ensure-entry call
+// by default and announces it. The codex/both provisioning overrides are gone
+// with the harness selection.
 func TestRunInit_QuietWizardProvisionsMCPByDefault(t *testing.T) {
-	cases := []struct {
-		wiring           string
-		wantAnnouncement bool
-	}{
-		{wiring: "claude", wantAnnouncement: true},
-		{wiring: "gpt", wantAnnouncement: false},
-		{wiring: "both", wantAnnouncement: true},
-	}
-	for _, tc := range cases {
-		t.Run(tc.wiring, func(t *testing.T) {
-			projectDir, stdout := quietWizardRunInit(t, t.TempDir(), quietWizardKeptAnswers(tc.wiring), nil)
+	projectDir, stdout := quietWizardRunInit(t, t.TempDir(), quietWizardKeptAnswers(), nil)
 
-			if got := strings.Contains(stdout, mcpProvisionAnnouncement); got != tc.wantAnnouncement {
-				t.Errorf("harness %s: provisioning announcement present = %t, want %t\nstdout:\n%s", tc.wiring, got, tc.wantAnnouncement, stdout)
-			}
-			if tc.wiring == "gpt" {
-				// Reachability: the codex selection reached the wiring consumer,
-				// so the absent announcement is the harness rule, not a lost answer.
-				assertCodexArtifacts(t, projectDir, true)
-			}
-			if tc.wantAnnouncement {
-				var mcpDoc struct {
-					MCPServers map[string]json.RawMessage `json:"mcpServers"`
-				}
-				data, err := os.ReadFile(filepath.Join(projectDir, ".mcp.json"))
-				if err != nil {
-					t.Fatalf("read .mcp.json: %v", err)
-				}
-				if err := json.Unmarshal(data, &mcpDoc); err != nil {
-					t.Fatalf("parse .mcp.json: %v", err)
-				}
-				if _, ok := mcpDoc.MCPServers["moai"]; !ok {
-					t.Errorf("harness %s: .mcp.json has no mcpServers.moai entry", tc.wiring)
-				}
-			}
-		})
+	if !strings.Contains(stdout, mcpProvisionAnnouncement) {
+		t.Errorf("interactive init must run the .mcp.json ensure-entry call by default\nstdout:\n%s", stdout)
+	}
+	var mcpDoc struct {
+		MCPServers map[string]json.RawMessage `json:"mcpServers"`
+	}
+	data, err := os.ReadFile(filepath.Join(projectDir, ".mcp.json"))
+	if err != nil {
+		t.Fatalf("read .mcp.json: %v", err)
+	}
+	if err := json.Unmarshal(data, &mcpDoc); err != nil {
+		t.Fatalf("parse .mcp.json: %v", err)
+	}
+	if _, ok := mcpDoc.MCPServers["moai"]; !ok {
+		t.Error(".mcp.json has no mcpServers.moai entry")
 	}
 }
 
@@ -484,7 +465,7 @@ func TestRunInit_QuietWizardProvisionsMCPByDefault(t *testing.T) {
 // reader); the flag no longer exists, so the test instead pins that no mode
 // key reaches project.yaml on this path.
 func TestRunInit_QuietWizardFlagsStillPersist(t *testing.T) {
-	projectDir, _ := quietWizardRunInit(t, t.TempDir(), quietWizardKeptAnswers("claude"), map[string]string{
+	projectDir, _ := quietWizardRunInit(t, t.TempDir(), quietWizardKeptAnswers(), map[string]string{
 		"worktree-auto-create": "true",
 	})
 	sections := filepath.Join(projectDir, defs.MoAIDir, defs.SectionsSubdir)

@@ -29,6 +29,7 @@ import (
 	"context"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -80,21 +81,26 @@ func TestCodexReviewGatePrimaryCheckoutSkip(t *testing.T) {
 	// policy axis, and REQ-CGSC-002 requires a basis distinguishable from a
 	// plain tree_scope row (whose basis reads "no card branch: …").
 	row := (*skips)[0]
-	if row.Dir != root {
-		t.Errorf("the primary-skip row must carry the resolved tree, got dir %q want %q", row.Dir, root)
+	// The gate anchors on the git toplevel, which git reports symlink-resolved —
+	// resolve the expected side before comparing (macOS /var symlink).
+	resolvedRoot, rerr := filepath.EvalSymlinks(root)
+	if rerr != nil {
+		t.Fatalf("eval fixture root: %v", rerr)
 	}
-	if !strings.Contains(row.Basis, "primary") || !strings.Contains(row.Basis, root) {
-		t.Errorf("the primary-skip basis must name the primary reason and the tree path (%s), not a plain tree_scope basis; got %q", root, row.Basis)
+	if row.Dir != resolvedRoot {
+		t.Errorf("the primary-skip row must carry the resolved tree, got dir %q want %q", row.Dir, resolvedRoot)
+	}
+	if !strings.Contains(row.Basis, "primary") || !strings.Contains(row.Basis, resolvedRoot) {
+		t.Errorf("the primary-skip basis must name the primary reason and the tree path (%s), not a plain tree_scope basis; got %q", resolvedRoot, row.Basis)
 	}
 }
 
 // TestCodexReviewGatePrimaryPolicySharedByBothPaths pins REQ-CGSC-003: for the
-// SAME session state (the primary checkout, tree_scope review), BOTH automatic
-// paths — the Claude Stop hook (HandleCodexReviewGate) and Codex Stop-chain
-// member 6 (codexReviewMember) — apply the one primary-scope policy and skip.
-//
-// RED on the pre-implementation tree: neither path knows the primary axis, so
-// the gate reviews and the chain takes the receipt route.
+// SAME session state (the primary checkout, tree_scope review), the automatic
+// path — the Claude Stop hook (HandleCodexReviewGate) — applies the one
+// primary-scope policy and skips. (The Codex Stop-chain member-6 arm was
+// removed with the chain, card t1909 step ⑤; the policy pin stays on the gate
+// path.)
 func TestCodexReviewGatePrimaryPolicySharedByBothPaths(t *testing.T) {
 	root := primaryScopeFixture(t)
 
@@ -103,10 +109,9 @@ func TestCodexReviewGatePrimaryPolicySharedByBothPaths(t *testing.T) {
 	gatePath(t, root, root)
 	gateSkipped := len(*skips) == 1 && !p.reviewed()
 
-	got := chainPath(t, root)
-	if !gateSkipped || !chainSkipped(got) {
-		t.Errorf("both automatic paths must skip a primary-checkout tree session; gate skipped=%v (rows %d), chain skipped=%v (outcome %+v)",
-			gateSkipped, len(*skips), chainSkipped(got), got)
+	if !gateSkipped {
+		t.Errorf("the gate path must skip a primary-checkout tree session; gate skipped=%v (rows %d)",
+			gateSkipped, len(*skips))
 	}
 }
 

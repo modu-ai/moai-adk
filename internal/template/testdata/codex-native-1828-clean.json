@@ -1,0 +1,46 @@
+[
+  {
+    "id": 6265731690,
+    "user": {
+      "id": 199175422,
+      "login": "chatgpt-codex-connector[bot]",
+      "type": "Bot"
+    },
+    "body": "<!-- codex-pull-request-review-summary -->\n<!-- codex-review-state:v1 {\"code_review\":{\"commit_sha\":\"ab609cafbf8f421164100c626db93048f888655f\",\"has_any_findings\":false,\"has_unresolved_findings\":false,\"status\":\"completed\"},\"security_review\":{\"commit_sha\":\"ab609cafbf8f421164100c626db93048f888655f\",\"has_any_findings\":false,\"has_unresolved_findings\":false,\"status\":\"completed\"}} -->\n<!-- codex-security-review:v1 {\"blockingSeverityThreshold\":\"P0\",\"headSha\":\"ab609cafbf8f421164100c626db93048f888655f\",\"mergeGateEnabled\":false,\"pullRequestNumber\":1828,\"repository\":\"modu-ai/moai-adk\",\"status\":\"completed\"} -->",
+    "created_at": "2026-10-19T11:04:57Z",
+    "updated_at": "2026-10-19T13:00:28Z"
+  },
+  {
+    "id": 6266869543,
+    "user": {
+      "id": 199175422,
+      "login": "chatgpt-codex-connector[bot]",
+      "type": "Bot"
+    },
+    "body": "<!-- codex-review-receipt:v1 -->\n### 🛡️ Codex Security Review\nSecurity review completed. No security issues were found in this pull request.\n**Reviewed commit:** `c6aa8406ad`",
+    "created_at": "2026-10-19T12:10:04Z",
+    "updated_at": "2026-10-19T12:10:04Z"
+  },
+  {
+    "id": 6267776147,
+    "user": {
+      "id": 199175422,
+      "login": "chatgpt-codex-connector[bot]",
+      "type": "Bot"
+    },
+    "body": "<!-- codex-review-receipt:v1 -->\nCodex Review: Didn't find any major issues. Chef's kiss.\n**Reviewed commit:** `ab609cafbf`",
+    "created_at": "2026-10-19T12:58:46Z",
+    "updated_at": "2026-10-19T12:58:46Z"
+  },
+  {
+    "id": 6267807385,
+    "user": {
+      "id": 199175422,
+      "login": "chatgpt-codex-connector[bot]",
+      "type": "Bot"
+    },
+    "body": "<!-- codex-review-receipt:v1 -->\n### 🛡️ Codex Security Review\nSecurity review completed. No security issues were found in this pull request.\n**Reviewed commit:** `ab609cafbf`",
+    "created_at": "2026-10-19T13:00:23Z",
+    "updated_at": "2026-10-19T13:00:23Z"
+  }
+]

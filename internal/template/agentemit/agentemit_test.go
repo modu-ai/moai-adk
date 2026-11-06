@@ -1,8 +1,8 @@
 // agentemit_test.go — SPEC-CODEX-DUAL-AGENTS-001 MS1 specification tests.
 //
-// Test-first suite for the agent dual-publication emitter (Option A: the .md
-// files ARE the neutral layer; the Codex TOML is a transform of
-// (.md x agents-codex.yaml manifest)).
+// Test-first suite for the agent dual-publication emitter (the agent source .md
+// files are the one edit surface; the Codex TOML is a transform of
+// (Codex view of the source x agents-codex.yaml manifest)).
 //
 // Fixtures live in fstest.MapFS (no disk writes). The TOML decoder used for
 // round-trip assertions is an INDEPENDENT test-side implementation of the
@@ -81,7 +81,7 @@ func fullFixtureSet() fstest.MapFS {
 }
 
 // ---------------------------------------------------------------------------
-// Group A — loader (neutral-layer parse contract)
+// Group A — loader (agent source parse contract)
 // ---------------------------------------------------------------------------
 
 // TestParseAgentDocParsesFrontmatterContract verifies the .md structure
@@ -372,9 +372,9 @@ func TestEmitAllDeterministic(t *testing.T) {
 	}
 }
 
-// TestEmitAllMarkdownIdentityIsPassThrough pins Option A: the .md publication
-// is identity — emitted markdown bytes equal source bytes (the emitter never
-// re-renders the neutral layer; R-002/R-003 by construction).
+// TestEmitAllMarkdownIdentityIsPassThrough pins that a marker-free source
+// publishes to itself: emitted markdown bytes equal source bytes (the Claude
+// view of a source without block markers is the source; R-002/R-003).
 func TestEmitAllMarkdownIdentityIsPassThrough(t *testing.T) {
 	man := mustManifest(t)
 	set := fullFixtureSet()

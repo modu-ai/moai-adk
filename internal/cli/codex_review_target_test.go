@@ -154,6 +154,9 @@ func runNativeAudit(t *testing.T, root, target string) (*fakeCodexSession, *mcp.
 	if err != nil {
 		t.Fatalf("handleCodexAudit(%s): %v", target, err)
 	}
+	if res.IsError {
+		t.Logf("DEBUG handler isError: %s", resultTextOf(res))
+	}
 	return sess, res
 }
 

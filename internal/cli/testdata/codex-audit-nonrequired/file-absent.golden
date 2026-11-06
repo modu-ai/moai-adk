@@ -3,6 +3,7 @@
   "structured": {
     "build_commit": "\u003cbuild_commit\u003e",
     "build_lag": "\u003cbuild_lag\u003e",
+    "could_not_run": true,
     "findings": [],
     "next_steps": [
       "fall back to the active auditor (claude)"
@@ -13,6 +14,7 @@
   "text": {
     "build_commit": "\u003cbuild_commit\u003e",
     "build_lag": "\u003cbuild_lag\u003e",
+    "could_not_run": true,
     "findings": [],
     "next_steps": [
       "fall back to the active auditor (claude)"

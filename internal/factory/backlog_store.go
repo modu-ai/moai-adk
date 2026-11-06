@@ -146,6 +146,11 @@ type BacklogIssuance struct {
 	SizeLines  *int     `json:"size_lines,omitempty"`
 	Files      []string `json:"files,omitempty"`
 	DropReason string   `json:"drop_reason,omitempty"`
+	// BaseSHA (card t2058) is the full commit SHA a repair card's worktree is
+	// cut from — the failed release-CI candidate — instead of the project's
+	// configured base branch. Optional and additive inside this nullable JSON
+	// record, so no SQL schema changes and an absent key reads as before.
+	BaseSHA string `json:"base_sha,omitempty"`
 }
 
 // IssuanceOrigins is the closed origin set (design §4.1). The add path

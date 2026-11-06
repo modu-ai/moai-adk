@@ -16,9 +16,17 @@ func TestReviewTwoHubCombinedCycle(t *testing.T) {
 		}
 		t.Run(name, func(t *testing.T) {
 			root, store := fcFixture(t)
+			// SPEC-CARD-ELIGIBLE-PULL-001 update (sync-audit F6): the normal
+			// variant's three bare leases are arm-(b) vehicles; the flag is
+			// armed and every candidate carries a spec id so the subject —
+			// the combined hub/after order making progress — stays covered
+			// behind the gate. The nominated variant shares the fixture; the
+			// ids are inert on its --card path.
+			cepSelfDispatchYAML(t, root, true)
 			fcQueue(t, store, factory.BacklogStatePicked, factory.BacklogStatePicked, factory.BacklogStatePicked)
 			for _, id := range []string{"t1", "t2", "t3"} {
 				fcClassify(t, store, id, factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
+				cepSetSpecID(t, store, id, "SPEC-2HUB-"+id)
 			}
 			fbSeedFiles(t, store, "t1", "internal/template/catalog.yaml")
 			fbSeedFiles(t, store, "t2", "internal/template/catalog.yaml", "internal/config/defaults.go")

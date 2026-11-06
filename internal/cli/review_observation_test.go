@@ -33,7 +33,16 @@ import (
 
 func TestReviewFindingMergedPRPredecessor(t *testing.T) {
 	root, store := fcFixture(t)
+	// SPEC-CARD-ELIGIBLE-PULL-001 update: this arm-(b) lease is the test's
+	// vehicle; the self-dispatch flag is armed so the subject (a merged-pr
+	// predecessor must not block its successor) keeps its coverage behind
+	// the gate — the gate's condition 4 carries it (a merged-pr predecessor
+	// reads as merged, so depsMet holds and the lease proceeds).
+	cepSelfDispatchYAML(t, root, true)
 	fcQueue(t, store, factory.BacklogStateHold, factory.BacklogStatePicked)
+	// Amendment 0.3.0: t2 carries a spec id — condition 2 is fail-closed, and
+	// this test's vehicle is the (b) lease of t2.
+	cepSetSpecID(t, store, "t2", "SPEC-REVIEW-001")
 	for _, id := range []string{"t1", "t2"} {
 		fcClassify(t, store, id, factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
 	}
@@ -761,11 +770,21 @@ func TestReviewFindingBundleMultiHubMemberWaits(t *testing.T) {
 // record row and no claim.
 func TestReviewFindingNoRecordArmSkipsBlockedCandidate(t *testing.T) {
 	root, store := fcFixture(t)
+	// SPEC-CARD-ELIGIBLE-PULL-001 update (third sweep): BOTH rowless picked
+	// cards here are arm-(b2) candidates — t2 (the blocked one) and t3 (the
+	// ready one) — so under the OFF default the pass answers no-card. The
+	// flag is armed and both carry spec ids: t2's first disqualifier is then
+	// the hub wait (condition 4), the actual subject, and t3 leases through
+	// the evaluated gate. RED observed pre-fix at HEAD: the bare pass
+	// returned "" (t3 dormant) under OFF.
+	cepSelfDispatchYAML(t, root, true)
 	// Queue order matters: the blocked candidate t2 precedes the ready t3,
 	// so arm (b2) meets the skip first. t1 is the unmerged sharer (recorded,
 	// queue-held so no arm takes it); t2 is the rowless picked candidate
 	// sharing its hub path; t3 is the ready card behind it.
 	fcQueue(t, store, factory.BacklogStateHold, factory.BacklogStatePicked, factory.BacklogStatePicked)
+	cepSetSpecID(t, store, "t2", "SPEC-BLOCKED-001")
+	cepSetSpecID(t, store, "t3", "SPEC-READY-001")
 	for _, id := range []string{"t1", "t2", "t3"} {
 		fcClassify(t, store, id, factory.ClassPriorityNormal, false, factory.ClassModeParallelizable)
 	}

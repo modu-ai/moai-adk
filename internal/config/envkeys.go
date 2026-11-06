@@ -40,6 +40,25 @@ const (
 	// optimization is bypassed (SPEC-HOOK-PRETOOL-PERF-001).
 	EnvConfigCacheDisabled = "MOAI_CONFIG_CACHE_DISABLED"
 
+	// EnvCodexAuditLeg marks the codex child of an audit leg with "1" (t1788). The
+	// child's Stop chain skips every member that asks the model to run a
+	// verification command, which would otherwise nest a verification inside the
+	// leg's own review.
+	EnvCodexAuditLeg = "MOAI_CODEX_AUDIT_LEG"
+
+	// Orca pane-ownership variables (t1869). Orca injects these into the shell of
+	// the pane it owns; its agent hook reads them to report state into that pane.
+	// A codex review/audit/task child that inherits them reports into the parent's
+	// pane, so the review path removes exactly these keys (never the whole ORCA_
+	// namespace: ORCA_APP_VERSION and similar are not pane-owned).
+	EnvOrcaPaneKey         = "ORCA_PANE_KEY"
+	EnvOrcaTabID           = "ORCA_TAB_ID"
+	EnvOrcaWorktreeID      = "ORCA_WORKTREE_ID"
+	EnvOrcaAgentLaunchTok  = "ORCA_AGENT_LAUNCH_TOKEN"
+	EnvOrcaAgentPane       = "ORCA_AGENT_PANE"
+	EnvOrcaTerminalHandle  = "ORCA_TERMINAL_HANDLE"
+	EnvOrcaAgentHookPrefix = "ORCA_AGENT_HOOK_"
+
 	// EnvDevelopmentMode overrides the development methodology (ddd or tdd).
 	EnvDevelopmentMode = "MOAI_DEVELOPMENT_MODE"
 
@@ -390,6 +409,15 @@ const (
 	// internal/cli back without a cycle, and both carriers are unexported,
 	// which is why the pin lives inside the carrier packages.
 	FactoryRoleLane = "lane"
+
+	// FactoryRoleOperator is the positive operator mark the operator-only
+	// surfaces require (SPEC-MCP-NEUTRALITY-001 REQ-MN-003, decision-index Q2
+	// default): the role vocabulary MOAI_FACTORY_ROLE already carries gains an
+	// operator value, so authority comes from a launcher-stamped marker and
+	// never from the ABSENCE of lane variables. The MCP operator-only verbs
+	// (factory_decide, operator todo_add, operator todo_claim) refuse an
+	// unmarked session as unknown attribution.
+	FactoryRoleOperator = "operator"
 
 	// EnvFactoryClearPolicy carries the clear policy a Claude-harness
 	// factory lane launch selected (SPEC-FACTORY-SELF-DISPATCH-001

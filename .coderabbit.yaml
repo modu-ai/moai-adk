@@ -62,7 +62,7 @@ reviews:
     - path: "cmd/**"
       instructions: "Review CLI entry points for proper cobra command setup and flag handling"
   auto_review:
-    enabled: true
+    enabled: false
     drafts: false
     base_branches:
       - main
@@ -71,7 +71,7 @@ reviews:
       - "release/*"
 
 chat:
-  auto_reply: true
+  auto_reply: false
 
 knowledge_base:
   learnings:

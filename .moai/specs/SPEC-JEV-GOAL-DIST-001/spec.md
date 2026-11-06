@@ -4,7 +4,7 @@ title: "Jev goal --auto governor seat, MCP wrapper, and distribution"
 version: "0.2.0"
 status: completed
 created: 2026-09-20
-updated: 2026-09-22
+updated: 2026-10-19
 author: manager-spec
 priority: P2
 phase: "v3.1.0 target"
@@ -134,7 +134,7 @@ No open question is owned by this SPEC. The chain questions this SPEC consumes o
 
 | # | Question | Recorded owner | Status | Bearing on this SPEC |
 |---|---|---|---|---|
-| Q2 | Is the pinned model id compiled, or operator-visible configuration? | `SPEC-JEV-CORE-001` | **OPEN** (CORE §E) | Shapes the `workflow.jev` config block the wrapper's gate reads; CORE owns it, this SPEC records it. |
+| Q2 | Is the request model alias compiled, or operator-visible configuration? | `SPEC-JEV-CORE-001` | **OPEN** (CORE §E) | Shapes the `workflow.jev` config block the wrapper's gate reads; CORE owns it, this SPEC records it. |
 | Q4 | Is a credential-reveal route wanted? | `SPEC-JEV-CORE-001` | **OPEN** (CORE §E) | None — REQ-JEVC-020 is satisfied without it. |
 | Q3 | Labelled-set size per consumer | `SPEC-JEV-OPTIN-MEASURE-001` | **OPEN** (carried to OPTIN's Kickoff gate) | Gates the consumers' fitted thresholds; with seat (i) withdrawn it reaches this SPEC only through a future re-scope. |
 | R1 | Which surface carries the `moai web` pointer | `SPEC-JEV-OPTIN-MEASURE-001` | **RESOLVED** (OPTIN progress.md §E.1 — the wizard `Description`, all four locales) | None. |

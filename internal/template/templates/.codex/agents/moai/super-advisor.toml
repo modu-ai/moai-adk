@@ -6,8 +6,8 @@ description = '''
 On-demand high-reasoning consultation across all phases (plan, run, sync, mx).
 Returns non-binding prescriptions (diagnoses, options, recommendations) — the
 orchestrator remains the decision owner. Spawned via per-spawn Agent(general-purpose)
-with the super-advisor role profile; the orchestrator injects Opus (max/medium tiers)
-or Sonnet (low tier) at spawn time via the runtime-arg channel (NOT a frontmatter pin).
+with the super-advisor role profile; the model and effort are declared in this
+file's frontmatter and a spawn passes neither unless a rule names an override.
 Use PROACTIVELY for high-stakes reasoning consultation when the orchestrator needs a
 second opinion before an irreversible delegation or escalation.
 Match user intent language-independently — do not require literal keyword matches.
@@ -35,12 +35,13 @@ question is "what should I do here?", route to super-advisor.
 
 ## `[1m]`-safe Wiring
 
-The frontmatter declares no `model:` and no `effort:`, and the orchestrator passes
-neither on the spawn (per `.claude/rules/moai/development/model-policy.md` §
-Inherit-by-Default), so super-advisor runs on the main session's model and effort.
-This sidesteps the Anthropic `[1m]` entitlement inheritance bug (#45847 / #51060 /
-#36670): a subagent that pins a concrete model ID fails to inherit the parent
-session's `[1m]` entitlement and fails to spawn.
+The frontmatter declares this role's `model:` and `effort:` (role table:
+`.claude/rules/moai/core/agent-common-protocol.md` § Subagent Model and Effort),
+and the orchestrator passes neither on the spawn unless a rule names an override
+(`.claude/rules/moai/development/model-policy.md` § Inherit-by-Default). The
+`[1m]` entitlement inheritance bug (#45847 / #51060 / #36670) is the cost of a
+concrete pin: a subagent that pins a model can fail to inherit the parent
+session's `[1m]` entitlement.
 
 ## Escalation Doctrine (E1-E4)
 
@@ -121,7 +122,7 @@ Static `skills:` preload is kept to a minimum (token diet — progressive disclo
 
 ## Cross-References
 
-- Advisor/Evaluator separation: `~/.claude/agents/{plan-auditor,sync-auditor}.md`.
+- Advisor/Evaluator separation: `.claude/agents/moai/{plan-auditor,sync-auditor}.md`.
 - Entry conditions (E1-E4) doctrine home: `.claude/rules/moai/core/agent-common-protocol-reference.md` § Super-Advisor Escalation (E1-E4).
 - Per-spawn `Agent(general-purpose)` pattern basis: `.claude/rules/moai/workflow/archived-agent-rejection.md` §C.
 - Read-only verification batching (single-turn parallel Bash): `.claude/rules/moai/core/agent-common-protocol.md` § Parallel Execution.

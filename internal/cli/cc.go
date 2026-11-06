@@ -38,7 +38,9 @@ Flags:
   -b, --bypass                  Shorthand for --permission-mode bypassPermissions
   -c, --continue                Continue previous session
   -m, --model <model>           Override model selection
-  -w, --worktree [name]         Launch in an isolated git worktree (.claude/worktrees/<name>/);
+  -w, --worktree [name]         Launch in an isolated git worktree (.claude/worktrees/<name>/
+                                when created new; an existing tree of the same name under
+                                <MoaiHome>/worktrees/projects/<project-key> is re-entered);
                                 name omitted = auto-generated (same as claude --worktree)
       --branch <existing>         With -w <name>: create the worktree checked out at an
                                 EXISTING branch (e.g. moai cc -w develop --branch develop
@@ -60,9 +62,9 @@ Factory Mode (dedicated -f and -l entries):
                                 messages — each card goes WHOLE to one lane,
                                 which carries it through plan -> run -> sync
                                 in-session.
-  -l, --lane                   Join the running factory as a LANE: the next
-                                free lane-<n> label is claimed for this
-                                session. The flag takes no argument. If the
+  -l, --lane                   Join the running factory as a LANE (a
+                                lane-<n> session): the next free lane-<n>
+                                label is claimed for this session. The flag takes no argument. If the
                                 run's record is missing or retired while a
                                 live leader session exists, the join verifies
                                 that leader (pid + process-start) and
@@ -72,10 +74,18 @@ Factory Mode (dedicated -f and -l entries):
                                 record-absence verification targets
                                 (default: leader). A legacy spelling of the
                                 leader name is refused.
-  One entry token per launch: -f beside -l is an error. A lane number
+  One entry token per launch: -f beside -l is an error. The former -a/--agent
+  spelling is removed and refused with a line naming -l/--lane. A lane number
   held by a live session is bumped to the next free number.
   Legacy role and label spellings (the pre-rename nouns, any letter case)
   are refused — the error names the canonical lane-<n> label.
+
+  Git workflow: a -f or -l session reads an UNSET git_strategy workflow (the
+  key missing or blank in the active mode profile) as af-flow. An explicit
+  setting always wins — github-flow, git-flow and every other value are never
+  replaced, and the legacy agentic-trunk still reads as af-flow. The default
+  is applied when the setting is read: .moai/config/sections/git-strategy.yaml
+  is never rewritten, and plain sessions and moai init are unchanged.
 
   Genealogy: the pre-3.1 "factory" flag (-f/--factory) was RENAMED to -k
   in #1513 (7f61332ef). -f briefly returned as the factory fan-out flag and
@@ -178,7 +188,7 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 		return err
 	}
 	// The entry parse (t118): parseLauncherEntry refuses the retired -k
-	// spelling, then covers the factory surface (-f for the leader, -l / --lane
+	// spelling, then covers the factory surface (-f for the leader, -l
 	// for a lane). Parsed after --spawn is stripped (a spawned session re-issues
 	// this command and must carry the token through) and before worktree
 	// handling (so an entry token can never be mistaken for a -w value). The
@@ -193,6 +203,17 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 	factoryLabel, isFactoryLane := parseFactoryLaneLabel(filteredArgs)
 	switch resolveFactoryBranch(entry.FactoryEnabled, isFactoryLane) {
 	case factoryBranchLeader:
+		// SPEC-LAUNCHER-ARGV-001 REQ-LA-004: the anchor guard judges the launch
+		// view BEFORE any session mutation — the role marker, the run record, the
+		// settings preparation and the worktree materialization all wait behind
+		// it. The override flag is the launcher's own option, consumed here; the
+		// assignment (never :=) keeps the function-level filteredArgs the one the
+		// rest of the entry sees.
+		var anchorOverride bool
+		filteredArgs, anchorOverride = consumeAllowCardAnchor(filteredArgs)
+		if err := enforceLeaderAnchorGuard(backend, leaderLaunchDir(), launchProjectRoot(), resolveLaunchView(filteredArgs), anchorOverride, cmd.ErrOrStderr()); err != nil {
+			return err
+		}
 		// The operator-supplied `leader-<run-id>` name is adopted (see
 		// factory_launch_helpers.go leaderRunID) — the run id, the session name, and the lane
 		// commands the notice prints stay on one run.
@@ -246,7 +267,7 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 		// the bumped value must reach the backend argv — the session name is
 		// the address the leader dispatches to.
 		endClaim := debugTiming.beginDebug(factoryStepLaneClaim, "")
-		finalLabel, claimErr := resolveFactoryLaneName(launchProjectRoot(), factoryLabel, backend, entry.FactoryAutoNumber, cmd.ErrOrStderr())
+		finalLabel, claimErr := claimFactoryLaneForEntry(launchProjectRoot(), factoryLabel, backend, entry, cmd.ErrOrStderr())
 		endClaim()
 		if claimErr == nil {
 			debugTiming.annotateDetail("label=" + finalLabel)
@@ -273,35 +294,67 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 		filteredArgs = laneJoinChildArgv(filteredArgs, finalLabel, settingsFlag)
 		defer settingsCleanup()
 	}
+	// SPEC-LAUNCHER-ARGV-001: the launch argv is resolved ONCE here (launch_view.go).
+	// The readers below receive the stage values the view carries — none of them
+	// re-reads raw arguments — and the view's LaunchArgs is the argv handed to the
+	// launch seam.
+	view := resolveLaunchView(filteredArgs)
 	// SPEC-WORKTREE-ENTRY-STRATEGY-001 M3a: validate absolute-path -w values
-	// BEFORE normalizeWorktreeFlag so out-of-prefix paths are rejected with a
+	// BEFORE the token normalization so out-of-prefix paths are rejected with a
 	// clear error (AC-WES-010c) and L2 (~/.moai/worktrees/) paths are accepted
-	// (AC-WES-010a). normalizeWorktreeFlag remains the owner of short-name
-	// token normalization (AC-WES-010b).
+	// (AC-WES-010a). The normalization stays the owner of short-name token
+	// rewriting (AC-WES-010b).
 	endWt := debugTiming.beginDebug(launchStepWorktree, "")
-	if err := resolveWorktreeL2Path(filteredArgs, cmd.ErrOrStderr()); err != nil {
+	if err := validateWorktreeL2Value(view.StageA, cmd.ErrOrStderr()); err != nil {
+		endWt()
+		return err
+	}
+	// An absolute -w value re-enters an existing tree only: an unregistered path
+	// is refused here, before the materialization, the hook seed, the settings
+	// cleanup and the exec below touch anything.
+	if err := validateAbsoluteWorktreeRegistered(view.StageB); err != nil {
 		endWt()
 		return err
 	}
 	// Card t295: `-w <name> --branch <existing>` materializes the worktree at
-	// the existing branch before launch; the flag tokens are stripped so the
-	// backend re-enters the tree that now exists. No-op without --branch.
-	filteredArgs, err = resolveWorktreeExistingBranch(filteredArgs, cmd.ErrOrStderr())
+	// the existing branch before launch; the flag tokens are already stripped
+	// from the view's LaunchArgs so the backend re-enters the tree that now
+	// exists. No-op without --branch.
+	err = view.materializeBranch(cmd.ErrOrStderr())
 	endWt()
 	if err != nil {
 		return err
 	}
 	// A tree another live session is anchored in gets no second writer. The
 	// check only reads; Claude Code writes its own lock on entry.
-	if err := ccWorktreeWriterPrecheck(filteredArgs); err != nil {
+	if err := ccWorktreeWriterPrecheck(view.StageB); err != nil {
 		return err
 	}
 	// SPEC-HANDOFF-NEUTRAL-001 REQ-HN-006: launcher-entry backfill — applied
 	// only now that the admission above succeeded, so a refused launch leaves
 	// the tree untouched (audit F0, sync-audit-opus.md).
-	seedAdmittedWorktreeHooks(filteredArgs, cmd.ErrOrStderr())
+	seedAdmittedWorktreeHooksFor(view.StageB, cmd.ErrOrStderr())
 	endHandoff := debugTiming.beginDebug(launchStepLaunchHandoff, "")
-	filteredArgs = normalizeWorktreeFlag(filteredArgs)
+	// SPEC-WORKTREE-HOME-ROOT-001 M2 (REQ-WHR-006), entry form repaired by
+	// M8R (card t1640 review P1-2): a short name naming an existing home-root
+	// tree ENTERS that tree — the launcher starts the backend inside it and
+	// hands it no worktree selection. The argv rewrite this used to be is
+	// measured-rejected: PM-3 (operator ruling bd72) recorded claude 2.1.303
+	// exiting 1 on absolute --worktree values at argument validation. Every
+	// other short name passes through unchanged (branch Y — the launcher
+	// creates nothing).
+	// The view owns the launch argv (SPEC-LAUNCHER-ARGV-001): what the exec
+	// boundary receives is the view's normalized LaunchArgs, exactly as the
+	// old unconditional rewrite assignment delivered.
+	filteredArgs = view.LaunchArgs
+	if entryDir := existingWorktreeEntryDir(view.LaunchArgs); entryDir != "" {
+		filteredArgs = stripWorktreeSelection(view.LaunchArgs)
+		if cherr := os.Chdir(entryDir); cherr != nil {
+			endHandoff()
+			return fmt.Errorf("enter the existing worktree %s: %w", entryDir, cherr)
+		}
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "moai: entering the existing worktree %s\n", entryDir)
+	}
 	endHandoff()
 	if debugRequested {
 		// REQ-009's cc/glm form: the backend launch replaces this process

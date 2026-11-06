@@ -48,7 +48,6 @@ guides/ci-autonomy.md
 guides/github-integration.md
 utility-commands/moai-codemaps.md
 utility-commands/moai.md
-workflow-commands/moai-design.md
 workflow-commands/moai-project.md
 workflow-commands/moai-run.md
 worktree/examples.md

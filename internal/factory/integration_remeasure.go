@@ -600,6 +600,7 @@ func gitIntegrationWorktreeClean(dir string) (bool, string, error) {
 func gitHeadSHA(dir string) (string, error) {
 	cmd := exec.Command("git", "rev-parse", "HEAD")
 	cmd.Dir = dir
+	cmd.Env = gitenv.Env() // an inherited GIT_DIR would outrank cmd.Dir
 	out, err := cmd.Output()
 	if err != nil {
 		return "", fmt.Errorf("read HEAD of %s: %v", dir, err)
@@ -612,6 +613,7 @@ func gitHeadSHA(dir string) (string, error) {
 func gitMergeBase(dir, baseRef string) (string, error) {
 	cmd := exec.Command("git", "merge-base", baseRef, "HEAD")
 	cmd.Dir = dir
+	cmd.Env = gitenv.Env() // an inherited GIT_DIR would outrank cmd.Dir
 	out, err := cmd.Output()
 	if err != nil {
 		return "", fmt.Errorf("merge-base %s..HEAD in %s: %v", baseRef, dir, err)
@@ -632,6 +634,13 @@ func gitMergeBase(dir, baseRef string) (string, error) {
 // refuses it — so a later reader can see what ran rather than only that it
 // failed.
 func RunRemeasure(projectRoot, worktree, baseBranch, command string) (*RemeasureRecord, error) {
+	// An empty base never reaches git: `merge-base refs/heads/ HEAD` dies with
+	// exit status 128 AFTER the command has run (card t1790, GH #1817), so the
+	// refusal comes first and names what is missing.
+	baseBranch = strings.TrimSpace(baseBranch) // the guard and the ref below read the same value
+	if baseBranch == "" {
+		return nil, fmt.Errorf("integration remeasure: no integration branch to measure against; the caller must resolve one (git-strategy.yaml or the remote default branch) before the command runs")
+	}
 	clean, status, err := gitIntegrationWorktreeClean(worktree)
 	if err != nil {
 		return nil, err
@@ -646,6 +655,12 @@ func RunRemeasure(projectRoot, worktree, baseBranch, command string) (*Remeasure
 
 	cmd := exec.Command("sh", "-c", command)
 	cmd.Dir = worktree
+	// The command measures THIS candidate: an inherited GIT_DIR / GIT_WORK_TREE
+	// would outrank cmd.Dir and point any git the command runs at another
+	// repository, and the record would then vouch for a tree never measured. Only
+	// the repository-selecting variables go; the rest of the user's environment
+	// (PATH, HOME, TMPDIR, GOFLAGS, ...) still reaches the command.
+	cmd.Env = gitenv.Env()
 	outBytes, runErr := cmd.Output()
 	exitCode := 0
 	if runErr != nil {
@@ -686,7 +701,7 @@ func RunRemeasure(projectRoot, worktree, baseBranch, command string) (*Remeasure
 	}
 
 	tree := headTreeSHA(worktree, headAfter)
-	base, err := gitMergeBase(worktree, baseBranch)
+	base, err := gitMergeBase(worktree, integrationBranchRef(baseBranch))
 	if err != nil {
 		return nil, err
 	}
@@ -722,6 +737,7 @@ func RunRemeasure(projectRoot, worktree, baseBranch, command string) (*Remeasure
 func headTreeSHA(dir, commit string) string {
 	cmd := exec.Command("git", "rev-parse", commit+"^{tree}")
 	cmd.Dir = dir
+	cmd.Env = gitenv.Env() // an inherited GIT_DIR would outrank cmd.Dir
 	out, err := cmd.Output()
 	if err != nil {
 		return ""

@@ -47,7 +47,7 @@ flowchart TD
 
 ## Tier 3 记录写入的文件
 
-Tier 3 记录会追加到 `AGENTS.local.md` 的 Learned 段。在三文件结构中——通用契约 `AGENTS.md`、Claude 专属层 `CLAUDE.md`、个人指令 `AGENTS.local.md`——这个文件负责个人指令，Claude Code 和 `moai codex` 都会读取它。因此一旦晋升，观察在任何 harness 中都会生效。该文件被 Git 忽略，`moai update` 也不会改动它，记录不会因更新而丢失。
+Tier 3 记录会追加到 `AGENTS.local.md` 的 Learned 段。在三文件结构中——通用契约 `AGENTS.md`、Claude 专属层 `CLAUDE.md`、个人指令 `AGENTS.local.md`——这个文件负责个人指令，Claude Code 和 Codex 都会读取它。因此一旦晋升，观察在任何 harness 中都会生效。该文件被 Git 忽略，`moai update` 也不会改动它，记录不会因更新而丢失。
 
 如果项目仍在使用 `CLAUDE.local.md`，请先用 `moai migrate local-instructions` 迁移。`moai update` 和 `moai doctor` 一旦发现 `CLAUDE.local.md`，都会输出同样的提示。
 

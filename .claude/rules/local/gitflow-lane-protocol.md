@@ -1,11 +1,13 @@
 ---
-description: "git-flow lane protocol (repo-local) — card worktrees branch from local main, lanes land through the integration verb on local main, origin/main is the CI verdict surface, batch releases reach origin/main only through a release PR"
+description: "af-flow lane protocol (repo-local) — card worktrees branch from local main, per-card delivery follows the target-holder routing (card pull request merged by the leader with no auto-merge request where only the primary holds main; integration-window local merge where a dedicated worktree holds it), origin/main is the CI verdict surface, batch releases reach origin/main only through a release PR"
 paths: ".moai/specs/**,.claude/skills/moai/workflows/run.md,.claude/skills/moai/workflows/sync.md,.claude/rules/local/repo-local-pr-policy.md,AGENTS.local.md,internal/cli/**,internal/hook/**"
 ---
 
-# git-flow Lane Protocol (moai-adk-go, local-only)
+# af-flow Lane Protocol (moai-adk-go, local-only)
 
-> **2026-08-27, operator instruction.** This repository switched from GitHub Flow to git-flow. It deliberately reverses the "local-only, disposable `develop`, no remote push" decision that backlog card t281 set on 2026-08-26. The model and its rationale are in `AGENTS.local.md` §4.1; this file is the **operating rule** that lanes and the factory leader follow as written.
+> **2026-10-21, rescope 0.4.0 (SPEC-GIT-STRATEGY-AGENTIC-TRUNK-001, operator-corrected).** This repository's model is **af-flow: lane worktree, serial landing into main, leader release batch per lead_push_threshold, tagged release.** Per-card delivery follows the target-holder routing: where only the primary checkout holds `main` (this repository — the rescope abolished the dedicated integration worktree), the completed card lands through its pull request, which the leader merges with no auto-merge request; where a dedicated integration worktree holds `main`, the card lands through the integration-window local merge (`moai integration merge --card`). The live `git_strategy.manual.workflow` value converts at the leader's post-landing cutover; until then the leader's temporary bridge `github-flow` is in force, and this file describes the post-cutover flow.
+>
+> **2026-08-27, operator instruction (history).** This repository had then moved its integration model from GitHub Flow to a git-flow-style local-landing regime, deliberately reversing the "local-only, disposable `develop`, no remote push" decision that backlog card t281 set on 2026-08-26. The 2026-10-21 rescope above supersedes that regime's landing surface; the model and its rationale are in `AGENTS.local.md` §4.0, and this file is the **operating rule** that lanes and the factory leader follow as written.
 >
 > This is a local-only file (siblings: `ci-watch-protocol.md`, `repo-local-pr-policy.md`, `lifecycle-sync-gate.md`). Do not mirror it into `internal/template/templates/`.
 
@@ -14,6 +16,8 @@ paths: ".moai/specs/**,.claude/skills/moai/workflows/run.md,.claude/skills/moai/
 ## 1. Branch point — card worktrees branch from local `main`
 
 [HARD] Create card worktrees **from local `main`**, not from `origin/main` (§4.0 §1).
+
+[HARD] A card worktree is created only through `moai factory next` or `moai worktree new`. When the configured base (`git_strategy.worktree_base_branch`, `main` here) resolves, it branches from the named ref `main` and not from HEAD; when the base is empty or does not resolve, creation falls back to the invoking tree's HEAD (`internal/cli/session_worktree.go:236-237`). Claude Code's default `--worktree` (which branches from the remote default branch) is not used for card work. After creation, confirm that the new tree's HEAD equals `main`; that confirmation, not the creation path, is the check. A lease-time warning for the fallback is planned in t1847; it does not exist today.
 
 [HARD] **Local `main` is both the card base and the landing surface** (§4.0 §1·§2). `origin/main` advances only through release batches, so it is normal for local `main` to be ahead. A `↓N` on the status line means a batch has reached `origin/main` but has not been resynchronized yet; in that case the resynchronization of §4.0 §4 applies.
 
@@ -25,14 +29,16 @@ paths: ".moai/specs/**,.claude/skills/moai/workflows/run.md,.claude/skills/moai/
   - Codex `-l` lane: the supervising launcher picks the card worktree and starts the child session with `codex -C <worktree absolute path>`. The child session reads that tree's `AGENTS.local.md`, works there, and does not call `moai cc -w`. A session started by the `moai codex` launcher loads this file into `developer_instructions`.
   - If the tree does not exist, create it first with `moai worktree new <card-id>`. **Bare `git worktree add` is prohibited.** Git would know the tree while MoAI would not, so `done`/`clean`/`recover` would have no target to close.
 - Immediately after creation, confirm that the card tree's `HEAD` and local `main` point to the same commit. If they differ, do not start work; correct the branch base first.
-- Immediately after creation, rename the branch in place: `git branch -m WT-<slug>`. Take the slug from **what the card does** (lowercase `a-z0-9-`, at most 3 tokens, at most 24 characters), and **do not put the card id in it**. The worktree directory keeps the card id (`.claude/worktrees/<card-id>`).
+- Immediately after creation, rename the branch in place: `git branch -m WT-<slug>`. Take the slug from **what the card does** (lowercase `a-z0-9-`, at most 3 tokens, at most 24 characters), and **do not put the card id in it**. The worktree directory keeps the card id (`.claude/worktrees/<card-id>`). The derivation is now automated and honors the same shape (metadata prefixes skipped, label tokens dropped, SPEC-id fallback); branches created before it carry legacy numeric slugs (`WT-3-2-2` shape) — rename them in place the same way inside the card tree: renaming the checked-out branch is safe (the tree, its lock, and the session anchoring are unaffected) and card tooling keys on the worktree path, not the branch name (`resolveCardBranch` resolves through `card.WorktreePath`), so the card record and evidence paths carry unchanged.
 - A new card gets a new worktree. If the session is anchored to the previous card's tree, return to the primary checkout with `ExitWorktree` before creating it; otherwise the new card's work stacks on top of the old card's branch.
 - **The three traceability carriers stay in force**: the dispatch's `card:` field, the card id in **every** commit message on the branch, and the evidence path (`.moai/reports/<card-id>/…`). Branch names no longer identify the card, so do not omit any of the three.
 - [HARD] A lane session starts inside its card worktree and stays there. Between cards a Claude Code lane moves only by the in-session transition (`ExitWorktree(keep)`, `moai factory next` from the primary checkout, `EnterWorktree` of the leased tree, verify the toplevel); no operator clear is involved. The canonical source for this transition is the Lane card transition and Isolation sections of the distributed rule `.claude/rules/moai/workflow/factory-dispatch.md`, and it is not restated here. Returning to the primary checkout (`ExitWorktree`, §6) is outside the scope of this prohibition.
 
-## 2. Integration surface — the primary checkout (`main`)
+## 2. Integration surface — the landing surface (`main`)
 
-[HARD] The landing surface is the **primary checkout** (when HEAD points at `main`, §4.0 §2). If a separate integration worktree holds `main`, that worktree is the surface. A lane does not check out `main` in its own card tree (git checks out a given branch in only one worktree).
+[HARD] The tree that holds `main` is the landing surface (§4.0 §2). In this repository the primary checkout holds `main` (the 2026-10-21 rescope abolished the dedicated integration worktree `.claude/worktrees/main`); in projects that keep one, `main` is checked out in exactly one dedicated integration worktree at a fixed path and the primary checkout does not check out `main`. Whichever tree holds `main` performs landing and resync only, plus the operator-requested rc build of §9: it is never used for card work or experiments, and a landing tree must be clean. A lane does not check out `main` in its own card tree (git checks out a given branch in only one worktree).
+
+[HARD] Read `main` source through `git show main:<path>`, or — where a dedicated integration worktree holds it — inside that worktree rather than the primary checkout's working tree. In this repository the primary checkout holds `main`, so its working tree is `main`'s tree. `git show` reads the committed blob only: it does not reproduce a smudge or clean filter or end-of-line conversion that a working-tree copy carries, it shows no uncommitted change, and it says nothing about a later move of `main`. Keep the tree that holds `main` clean: diagnose each untracked or modified file there one by one (commit it in the card worktree that owns it, move it to that worktree, or cover it with an ignore rule) rather than leaving it in place — the landing tree's cleanliness is a precondition of the merge. Today no moai verb moves the primary checkout to the current local `main` tip; `moai integration resync` updates it in place (§11), and a primary-follow step is planned in t1847.
 
 [HARD] **The canonical merge procedure is not here.** The canonical source for merging into local `main` is `AGENTS.local.md` §4.0 §2 (the tool path). The `WT-*` path in Step 3.2 of the distributed skill `.claude/skills/moai/workflows/sync/delivery.md` does not apply to this repository wherever it conflicts with that canonical source. The procedure is not restated here, because two copies diverge as soon as they exist.
 
@@ -40,11 +46,11 @@ paths: ".moai/specs/**,.claude/skills/moai/workflows/run.md,.claude/skills/moai/
 
 Repo-specific matters:
 
-- When no separate integration worktree holds `main`, the surface is the primary checkout. There is no provisioning procedure; `.claude/worktrees/develop` and `moai cc -w develop --branch develop` (2026-09-02) from the develop era are history.
+- Where a dedicated integration worktree is used, the tool does not provision it: `moai integration merge` refuses when no tree holds `main`, and the leader provisions the tree (`internal/cli/integration_merge.go:145-157`). There is no provisioning procedure here. In this repository no dedicated worktree exists: the primary checkout holds `main`, and a completed card takes the pull-request edge of the completion path instead of the local-merge path (AGENTS.local.md §4.0 §2). The statusline landing-surface display and a configuration key that designates the integration worktree path are planned in t1847 and do not exist today. `.claude/worktrees/develop` and `moai cc -w develop --branch develop` (2026-09-02) from the develop era are history.
 - The integration branch is `main`. Batches land on `origin/main` via `release/main-batch-YYYYMMDD` (§4.0 §6), and the CI of origin/main is the verdict surface (§4).
 - After the merge, if work remains on your own card, re-enter with `EnterWorktree(<card-id>)`. `ExitWorktree` returns you to the primary checkout, not to your own tree.
 
-[HARD] Merging from within your own worktree with `git -C <primary path> merge …` **is refused by the worktree-session guard**. Merges into local `main` go only through the tool path (`moai integration merge --card`) (§4.0 §2).
+[HARD] Merging from within your own worktree with `git -C <primary path> merge …` **is refused by the worktree-session guard**. Where the integration-window local merge applies, merges into local `main` go only through the tool path (`moai integration merge --card`) (§4.0 §2); where only the primary holds `main` (this repository), the card lands through its pull request and the leader merges it — the completion path requests no auto-merge. On either route a hand-written `git merge` into `main` is not a lane's path.
 
 [HARD] **Candidate-path exception — operator approval 2026-10-03 (REQ-CCI-016).** `moai integration candidate --card <card-id>` is the path that pushes a candidate commit to `ci/<card-id>`. It neither takes nor touches the integration window (`moai integration acquire`/`release`). Merges and integration-branch pushes remain a single bulk action by the leader, as in §4.
 
@@ -58,7 +64,7 @@ Repo-specific matters:
 > This record does not mechanically separate the lanes. `acquire` itself does not make its read-modify-write sequence atomic, so if two lanes try to acquire at the same moment, both may believe they hold the window. This is a coordination signal, not a permission boundary; this record is the mechanical layer. Under the open policy, a lane promoted to the front of the queue and holding the window merges without a leader nomination.
 
 ```bash
-moai integration acquire --name <lane> --card <card-id>   # before entering the integration worktree
+moai integration acquire --name <lane> --card <card-id>   # before taking the integration window
 moai integration status                  # who holds it
 moai integration release                 # after sending the completion report
 ```
@@ -78,7 +84,7 @@ If either differs from what you assumed, do not proceed; report the divergence.
 
 ## 4. Push — the leader does it in bulk; lanes never push
 
-**Lanes do not push `main`.** This rule is the current form of the 2026-09-02 operator instruction (at that time it covered develop). A lane's responsibility ends at the local merge: it passes the merge commit SHA (including the card id) to the leader in its completion report, and nothing further. The leader performs batch releases in **bulk**: it collects the merge SHAs from completion reports, closes the batch, and pushes to `release/main-batch-YYYYMMDD` by the procedure in §4.0 §6.
+**Lanes do not push `main`.** This rule is the current form of the 2026-09-02 operator instruction (at that time it covered develop). A lane's responsibility ends at its card's landing hand-off: where the local-merge route applies, it passes the merge commit SHA (including the card id) to the leader in its completion report; where only the primary holds `main` (this repository), the completion path has opened the card's pull request and the lane reports it — the lane never merges. The leader performs batch releases in **bulk**: it merges the card pull requests (never by an auto-merge request — the leader merges deliberately), collects the merge SHAs from completion reports, closes the batch when the trigger below fires, and pushes to `release/main-batch-YYYYMMDD` by the procedure in §4.0 §6.
 
 **Candidate-path exception — operator approval 2026-10-03 (REQ-CCI-016).** For this one path only, this replaces `WT push · CI request prohibited`. A lane may push a candidate commit made by `moai integration candidate --card <card-id>` to `ci/<card-id>` to receive a CI verdict before landing, and the landing gate requires a green verdict for that candidate. Pushing the integration branch remains, as before, a bulk action by the leader. The remaining rules of this section (landing verification, batch trigger, green condition) do not change, and this section's develop descriptions are to be read under the transition notice (drift) in AGENTS.local.md §4.1.
 
@@ -98,7 +104,7 @@ The lane performing a merge resolves the conflicts that merge causes. A conflict
 
 ## 6. After the merge — a lane does not pick its own card
 
-- After completing the local merge and reporting the merge SHA to the leader, return to the primary checkout with `ExitWorktree` and **wait until the leader dispatches the next card.** A lane does not take a card from the queue. This wait is not an open-ended wait but an **explicit wait** — a wait that leaves a wait record on disk (reason, target, and re-check point). On an awaken turn, before card work resumes, the lane runs the lane-stall watchdog first: it invokes Skill("moai-lane-watchdog") and follows it. The watchdog re-measures three progress channels (HEAD SHA, evidence mtime, integration-window state), classifies the cause, and when a judgment is needed, resolves it without waiting for a reply through the decision ladder (disk evidence → decision board → audit cross-check → jev_ask → lead chat as a last resort). Do not read the absence of a reply as the absence of progress. The canonical source for this wait and ladder doctrine is `.claude/rules/moai/workflow/auto-semantics.md`. The watchdog's queue-readonly boundary holds in combination with SPEC-RELATION-PICKUP-FILTER-001, which owns the queue-level pickup filter (a lane still does not pick cards — the same boundary as the prohibition above).
+- After completing the local merge and reporting the merge SHA to the leader, return to the primary checkout with `ExitWorktree` and **wait until the leader dispatches the next card.** A lane does not take a card from the queue. This wait is not an open-ended wait but an **explicit wait** — a wait that leaves a wait record on disk (reason, target, and re-check point). On an awaken turn, before card work resumes, the lane runs the lane-stall watchdog first: it invokes Skill("moai-lane-watchdog") and follows it. The watchdog re-measures three progress channels (HEAD SHA, evidence mtime, integration-window state), classifies the cause, and when a judgment is needed, resolves it without waiting for a reply through the decision ladder (disk evidence → decision board → audit cross-check → jev_ask → the lane's own judgment with a decision record; the leader only at a gate boundary — a keep-set category or a cross-card conflict). Do not read the absence of a reply as the absence of progress. The canonical source for this wait and ladder doctrine is `.claude/rules/moai/workflow/auto-semantics.md`. The watchdog's queue-readonly boundary holds in combination with SPEC-RELATION-PICKUP-FILTER-001, which owns the queue-level pickup filter (a lane still does not pick cards — the same boundary as the prohibition above).
 - **Self-dispatch lane exception — card lease.** A lane of a self-dispatch factory run may lease the next waiting card with `moai factory next` (the only promotion a lane performs). Apart from this exception, queue changes (`add`, `drop`, `done`, `edit`, etc.) and `moai contract sign` are prohibited for lanes.
 - **Self-dispatch lane exception — merge window.** A Claude self-dispatch lane does not request the window from the leader. Through the integration procedure of `moai factory complete`, which calls `moai integration merge --card`, it takes the integration window itself and merges its own card into local `main` (this lane replaces "ask the leader to merge" in the first item above). A lane never runs a hand-made git merge into main; it merges only with moai integration merge --card, or with moai factory complete, which calls it. Codex lanes are not covered by this exception: they stop at merge-ready (REQ-SD-025). Neither exception changes the prohibition above (other queue changes plus `moai contract sign`).
 - [HARD] **A card worktree is disposed of only after the batch carrying its merge has landed on `origin/main` (§4.0 §5).** Until then, that tree is the only copy of the work. The remote landing is produced by the leader's batch release (§4, §7). An L1 tree (`.claude/worktrees/…`) is not a target of `moai worktree done`; close it through the keep/remove prompt at session end, or with `git worktree unlock` followed by `git worktree remove`.
@@ -134,7 +140,7 @@ The lane performing a merge resolves the conflicts that merge causes. A conflict
 ## 9. rc build — on operator request, from the local main tree
 
 ```bash
-# Inside the tree whose HEAD is local main (the primary checkout)
+# Inside the integration worktree (the tree whose HEAD is local main)
 # If macOS's /usr/bin dev tools exit 69 because of the Xcode license, prefer the installed CLT.
 if [ -x /Library/Developer/CommandLineTools/usr/bin/make ]; then
   PATH="/Library/Developer/CommandLineTools/usr/bin:$PATH"
@@ -146,6 +152,7 @@ rm -f ~/go/bin/moai && cp bin/moai ~/go/bin/moai
 sh scripts/verify-local-install.sh       # byte identity + installed-binary version SHA / exit 0
 ```
 
+- The build runs in the integration worktree because that is the tree whose HEAD is local `main`; the build is expected to write ignored outputs, but it can regenerate a tracked file such as the template catalog. Run the `git status --short` check above afterwards; if a tracked file changed, stop and report it instead of committing from this tree.
 - [HARD] A bare `cp` overwrite that omits `rm -f` has a precedent of producing **exit 137 (SIGKILL)** on the next invocation — the reinstall must be a clean one that replaces the inode. (`make install` is equivalent.)
 - [HARD] **Bare `go install ./cmd/moai` is prohibited.** It does not carry the Makefile's `LDFLAGS`, so the version, commit, and date get baked in as compile-time defaults, and then the binary-lag verification itself becomes impossible.
 - [HARD] Do not use macOS `strings` to verify the installed binary. Whether the Xcode license has been accepted would halt the verdict on the product binary. `scripts/verify-local-install.sh` uses `cmp` to confirm that `bin/moai` and the installed binary are byte-identical, and it runs the installed binary's `version` directly to observe, together, the short SHA of HEAD at measurement time and exit 0. If the default `git` is unavailable, it automatically retries with the `git` from macOS Command Line Tools; if neither works, it must receive the expected short SHA as the third argument. `make verify-local-install` is a convenience alias that calls the same script.
@@ -153,6 +160,8 @@ sh scripts/verify-local-install.sh       # byte identity + installed-binary vers
 - If you get 137, run `rm -f` and `cp` again.
 
 ## 10. Release — outside the lane's scope
+
+**Current model (af-flow):** there is no per-version release branch. The leader's release batch per `lead_push_threshold` landings (§4) is the delivery step, and the release itself is a tagged release cut from `main` after a batch lands. Lanes neither cut releases nor tag, and they never push `main`.
 
 **[SUPERSEDED — pending OQ-7]** Once the local rc test passes, branch `release/vX.Y.Z` **from `develop`**, and the `release` harness takes it from there. `origin/main` is updated only through release PRs — including batch releases (`release/main-batch-YYYYMMDD`) (§4.0 §6; branch protection `enforce_admins: true`). Lanes neither create release branches nor open PRs to main.
 
@@ -175,7 +184,7 @@ git rev-list --count --left-right origin/main...main
 
 [HARD] **The update path is one tool path only — a fast-forward-only merge inside the integration window (§4.0 §4).**
 
-- Do not do this from the operator's terminal. The tool takes the integration window, confirms that HEAD points at `main` and that the primary checkout is clean, and then performs a fast-forward-only update (§4.0 §4). The command name is decided at execution time, so it is not written here.
+- Do not do this from the operator's terminal. The tool takes the integration window, confirms that HEAD points at `main` and that the tree being updated is clean, and then performs a fast-forward-only update (§4.0 §4). Today `moai integration resync` applies to the primary checkout only and refuses when another tree holds `main` (`internal/cli/local_main_resync.go:361`); running it in the dedicated integration worktree is planned in t1847, and this file gives no hand-run `git` substitute.
 - Do not update with `git branch` / `git checkout` in the primary checkout. The BranchGuard (`workflow.yaml` `branch_guard.enabled`, local opt-in) blocks those patterns, and the two exemption paths (direct `claude --agent` execution and `MOAI_BRANCH_GUARD_EXEMPT=1`) are **unreachable from subagents spawned through the tool.** Do not recommend the operator-terminal sentinel path for subagents — a procedure that relies on an unreachable exemption is not a procedure that can be depended on.
 - Operating with `git -C <primary path> …` from within your own worktree is refused by the worktree-session guard, for the same reason as §2. **The tool path is the only authorized path.**
 - Coordinate the update window using the §3 mechanism as it is (so the merge window and the update do not overlap). The rc build and clean reinstall after the update are owned by the §9 runbook — not restated here.
@@ -185,10 +194,10 @@ git rev-list --count --left-right origin/main...main
 ## Cross-references
 
 - `.claude/skills/moai/workflows/sync/delivery.md` Step 3.2 — canonical source of the `WT-*` integration procedure (owned by the distributed skill; this document covers only repo-specific matters)
-- `AGENTS.local.md` §4.1 — the rationale for this model and its transition record (reversal of t281; the current status of the rejection reasons of 2026-08-14)
+- `AGENTS.local.md` §4.0 — the model (`af-flow`) and its flow definition; §4.1 keeps the transition record (reversal of t281; the current status of the rejection reasons of 2026-08-14)
 - `.claude/rules/local/repo-local-pr-policy.md` — the `main` branch protection and the mandatory-PR rule
 - `.moai/docs/git-workflow-doctrine.md` (§18) / `.moai/docs/git-local-workflow-doctrine.md` (§23) — parent doctrines (some parts superseded; see the notes at the top)
-- **[SUPERSEDED by §4.0]** `.moai/config/sections/git-strategy.yaml` — `git_strategy.manual.workflow: git-flow` plus the develop/release keys (must be re-applied after `moai update`; `AGENTS.local.md` §2.3)
+- **[SUPERSEDED by §4.0]** `.moai/config/sections/git-strategy.yaml` — under the superseded regime `git_strategy.manual.workflow` carried `git-flow` plus the develop/release keys; the live value is the leader's temporary bridge `github-flow` until the post-landing cutover converts it to `af-flow` (M6 of SPEC-GIT-STRATEGY-AGENTIC-TRUNK-001; `AGENTS.local.md` §2.3 for the re-apply rule)
 
 ---
 

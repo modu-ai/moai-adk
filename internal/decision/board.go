@@ -8,6 +8,7 @@ import (
 	"bufio"
 	"bytes"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -65,11 +66,36 @@ type Record struct {
 	Cards        []string `json:"cards,omitempty"`
 }
 
+// escapeLine neutralizes the line-break and tab bytes of one record field so
+// the rendered one-line form stays one physical line: a field value cannot
+// split the row or forge a detail line after it. The backslash is escaped
+// first, so the mapping is single-valued — a field whose original text holds
+// a literal backslash-n sequence can never render identical to a field
+// holding a real newline. Pairs with oneLine in internal/cli/decision.go.
+func escapeLine(s string) string {
+	s = strings.ReplaceAll(s, "\\", "\\\\")
+	return strings.NewReplacer("\n", "\\n", "\r", "\\r", "\t", "\\t").Replace(s)
+}
+
 // Line renders the record in the one-line decision-record form so existing
 // greps over decision records keep working.
 func (r Record) Line() string {
 	return fmt.Sprintf("decision record: decided_by=%s evidence_refs=%s ladder_path=%s id=%s scope=%s kind=%s",
-		r.DecidedBy, r.EvidenceRefs, r.LadderPath, r.ID, r.Scope, r.Kind)
+		escapeLine(r.DecidedBy), escapeLine(r.EvidenceRefs), escapeLine(r.LadderPath),
+		escapeLine(r.ID), escapeLine(r.Scope), escapeLine(r.Kind))
+}
+
+// Digest returns the 12-hex-character prefix of the SHA-256 over the
+// record's canonical JSON form — the same bytes Append writes — so a
+// decision-index row can cite this record digest-pinned.
+func (r Record) Digest() string {
+	b, err := json.Marshal(r)
+	if err != nil {
+		// Record holds only strings and []string; Marshal cannot fail here.
+		return ""
+	}
+	sum := sha256.Sum256(b)
+	return hex.EncodeToString(sum[:6])
 }
 
 // AppendOptions carries the inputs Append cannot derive itself.

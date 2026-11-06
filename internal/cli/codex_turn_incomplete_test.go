@@ -73,7 +73,7 @@ type cancelOnItemSession struct {
 	sent     []string
 }
 
-func (s *cancelOnItemSession) start(context.Context, string, []string) (codexConn, error) {
+func (s *cancelOnItemSession) start(context.Context, string, []string, string) (codexConn, error) {
 	return &cancelOnItemConn{s: s}, nil
 }
 
@@ -104,6 +104,11 @@ func TestCodexTurnReview_ContextEnded_DiscardsPartial(t *testing.T) {
 	t.Cleanup(func() { codexRunner, codexLookPath, codexSession = prevRunner, prevLook, prevSess })
 	codexRunner = stubCodexRunner{}
 	codexLookPath = func(string) (string, error) { return "/fake/codex", nil }
+	// Card t1632 CI repair: the REQ-MN-009 containment listing runs a REAL
+	// `codex mcp list` before the session opens, so /fake/codex failed the
+	// fork/exec there and the turn never started. Stub it empty — the same
+	// rule withCodexSession applies — so the cancellation subject is reached.
+	stubCodexContainmentListing(t)
 
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
@@ -153,7 +158,7 @@ type ctxHungCodexSession struct {
 	sent   []string
 }
 
-func (s *ctxHungCodexSession) start(ctx context.Context, _ string, _ []string) (codexConn, error) {
+func (s *ctxHungCodexSession) start(ctx context.Context, _ string, _ []string, _ string) (codexConn, error) {
 	return &ctxHungCodexConn{s: s, ctx: ctx}, nil
 }
 
@@ -201,6 +206,7 @@ func hungCodexAuditCall(t *testing.T, root string) (map[string]any, time.Duratio
 	codexRunner = stubCodexRunner{}
 	codexLookPath = func(string) (string, error) { return "/fake/codex", nil }
 	codexSession = &ctxHungCodexSession{lines: codexSessionScript("unused")[:3], safety: 3 * time.Second}
+	stubCodexContainmentListing(t) // REQ-MN-009: the pre-open listing needs a stub binary
 	backendCall = func(ctx context.Context, backend, target, focus, projectRoot string) ReviewOutput {
 		if backend == BackendCodex {
 			return performCodexAudit(ctx, target, focus, projectRoot)
@@ -257,8 +263,8 @@ func TestAuditMulti_CodexLegDeadline_FailsClosedNamed(t *testing.T) {
 	if summary, _ := entry["summary"].(string); !strings.Contains(summary, "timed out") {
 		t.Errorf("codex summary = %q, want it to name a timeout", summary)
 	}
-	if m["overall_verdict"] != "fail" {
-		t.Errorf("overall_verdict = %v, want fail (a required gate with no verdict)", m["overall_verdict"])
+	if m["overall_verdict"] != VerdictInconclusive {
+		t.Errorf("overall_verdict = %v, want %q (a required gate with no verdict is not-converged, REQ-MN-022)", m["overall_verdict"], VerdictInconclusive)
 	}
 	if m["gate_unmet"] != BackendCodex {
 		t.Errorf("gate_unmet = %v, want %q", m["gate_unmet"], BackendCodex)
@@ -284,8 +290,8 @@ func TestAuditMulti_CodexLegDeadline_UnconfiguredFailsOpen(t *testing.T) {
 	if entry["verdict"] != VerdictInconclusive {
 		t.Errorf("codex verdict = %v, want %q", entry["verdict"], VerdictInconclusive)
 	}
-	if m["overall_verdict"] != "pass" {
-		t.Errorf("overall_verdict = %v, want pass (an unconfigured tree stays fail-open)", m["overall_verdict"])
+	if m["overall_verdict"] != VerdictInconclusive {
+		t.Errorf("overall_verdict = %v, want %q (an unconfigured tree is never a converged pass or fail, REQ-MN-022)", m["overall_verdict"], VerdictInconclusive)
 	}
 	if _, present := m["gate_unmet"]; present {
 		t.Errorf("gate_unmet = %v, want absent", m["gate_unmet"])
@@ -306,6 +312,7 @@ func TestAuditMulti_CodexLegDeadline_CallerCancelIsNotATimeout(t *testing.T) {
 	codexRunner = stubCodexRunner{}
 	codexLookPath = func(string) (string, error) { return "/fake/codex", nil }
 	codexSession = &ctxHungCodexSession{lines: codexSessionScript("unused")[:3], safety: 3 * time.Second}
+	stubCodexContainmentListing(t) // REQ-MN-009: the pre-open listing needs a stub binary
 
 	ctx, cancel := context.WithCancel(t.Context())
 	time.AfterFunc(40*time.Millisecond, cancel)

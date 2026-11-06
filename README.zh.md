@@ -21,7 +21,7 @@
   <a href="https://codecov.io/gh/modu-ai/moai-adk"><img src="https://codecov.io/gh/modu-ai/moai-adk/branch/main/graph/badge.svg" alt="Codecov"></a>
   <br>
   <a href="https://go.dev/"><img src="https://img.shields.io/badge/Go-1.26+-00ADD8?style=flat&logo=go&logoColor=white" alt="Go"></a>
-  <a href="https://github.com/modu-ai/moai-adk/releases"><img src="https://img.shields.io/badge/Release-v3.1.3-blue.svg" alt="Release"></a>
+  <a href="https://github.com/modu-ai/moai-adk/releases"><img src="https://img.shields.io/badge/Release-v3.1.2-blue.svg" alt="Release"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/License-Apache--2.0-blue.svg" alt="License: Apache-2.0"></a>
 </p>
 
@@ -50,26 +50,27 @@ moai cc -f                    # 主导 —— 打开工厂
 moai cc -l                    # 泳道，各自在单独的终端里 —— 按下一个空号加入
 moai cc -l                    # 按 lane-1、lane-2 …… 的顺序依次编号
 moai glm -l                   # GLM 后端的泳道
-moai codex -l                 # Codex 泳道
 ```
 
-`-f`（长形式 `--factory`）打开主导，`-l`（长形式 `--lane`）以泳道身份加入正在运行的工厂。两者都不带参数。泳道编号不由操作者挑选，而是自动分配。泳道**要由人手在新的终端里逐个启动**，会话不能替别的会话启动。`moai codex` 没有主导入口，只能以泳道身份加入。
+`-f`（长形式 `--factory`）打开主导，`-l`以泳道身份加入正在运行的工厂。两者都不带参数。泳道编号不由操作者挑选，而是自动分配。泳道**要由人手在新的终端里逐个启动**，会话不能替别的会话启动。
 
-一次启动只能带一个进入令牌，所以 `-f` 与 `-l` 同时给出会报错。带了值的形式（`moai cc -f <值>`、`moai cc -l lane-2`）会被一行错误拒绝，错误信息会指出正确的形式。早先那种多会话分列运行的模式所用的 `-k` 已被移除；`moai cg` 会显示迁移提示后退出（可先用 `moai migrate cg` 预览）。`moai gpt` 不存在，GPT 模型通过 `moai codex` 运行。
+一次启动只能带一个进入令牌，所以 `-f` 与 `-l` 同时给出会报错。带了值的形式（`moai cc -f <值>`、`moai cc -l lane-2`）会被一行错误拒绝，错误信息会指出正确的形式。早先那种多会话分列运行的模式所用的 `-k` 已被移除。
 
 ### 后端怎么搭配
 
-后端按泳道分别选择：`moai cc -l` 是 Claude 泳道，`moai glm -l` 是 GLM 泳道，`moai codex -l` 是 Codex 泳道。主导不是下判定的位置，而是守着队列搬卡片的位置，适合常驻等待成本不高的 GLM（`moai glm -f`）。一个账号开始被 429 限流时，把各条泳道分散到不同账号是行之有效的做法。这只是一种搭配，把全部会话统一到单一后端也没问题。
+后端按泳道分别选择：`moai cc -l` 是 Claude 泳道，`moai glm -l` 是 GLM 泳道。主导不是下判定的位置，而是守着队列搬卡片的位置，适合常驻等待成本不高的 GLM（`moai glm -f`）。一个账号开始被 429 限流时，把各条泳道分散到不同账号是行之有效的做法。这只是一种搭配，把全部会话统一到单一后端也没问题。
 
 ### N 条泳道同时搬运多张卡片
 
 想加泳道，再执行一次 `-l` 即可。编号自动分配，所以同时给 `--name`/`-n` 会报错。只有被存活会话占用的编号才会被跳过。泳道死了，它的占用不再挡住那个编号，但自动分配总是取存活最高编号 +1，不会回填中间的空号。泳道归属记录在 `~/.moai/db/<project-key>/factory/factory.db` 中。启动目录是临时目录时（没有绝对 `MOAI_HOME` 覆盖），则记录在项目本地的 `<base>/.moai/db/<project-key>/factory/` 下，与 backlog 队列同一例外。旧的 `.moai/state/factory/workers.json` 只导入一次，之后仅作为回滚凭据保留。
 
+数据库路径不要猜，用 `moai paths` 确认。用 `sqlite3` 打开 `~/.moai/db/todo.db` 这类猜出来的路径，会创建出一个空文件，所以不要这样做。确需直接读取时，只读把 `.db`、`.db-wal`、`.db-shm` 一起复制出来的快照；平时优先使用 `moai todo list --json`、`moai factory status` 等 CLI。
+
 一条泳道最多并发运行 10 个 `Agent()` 子智能体，其中承担写入的生成各自隔离在自己的工作树里。不要一次把所有泳道全开：先起第一条，确认它真的开始产出，再启动其余。卡片绝不会被拆到多条泳道上。
 
-工厂 run 会记录持有它的会话的进程标识，因此主导已经死掉的 run，会在下一条泳道加入时自动退役，那次加入不会卡在 `AMBIGUOUS_FACTORY` 上。反方向同样有闸门：泳道加入时若运行记录缺失或已退役，而主导会话还活着，加入会先验证该主导（pid 加进程启动指纹，目标用长形式 `--leader <名称>` 指定，默认 `leader`），恢复其运行记录后照常加入。验证通过的主导有两个或更多时，逐一点名候选并失败关闭。`--leader` 是只能与 `-l`/`--lane` 搭配的选择器，不是任何进入令牌的短形式。`moai factory runs` 列出每个 run 及其属主的存活状态，`moai factory runs --retire <run-id>` 手动退役指定的 run，属主没有真正死掉就会被拒绝。
+工厂 run 会记录持有它的会话的进程标识，因此主导已经死掉的 run，会在下一条泳道加入时自动退役，那次加入不会卡在 `AMBIGUOUS_FACTORY` 上。反方向同样有闸门：泳道加入时若运行记录缺失或已退役，而主导会话还活着，加入会先验证该主导（pid 加进程启动指纹，目标用长形式 `--leader <名称>` 指定，默认 `leader`），恢复其运行记录后照常加入。验证通过的主导有两个或更多时，逐一点名候选并失败关闭。`--leader` 是只能与 `-l` 搭配的选择器，不是任何进入令牌的短形式。`moai factory runs` 列出每个 run 及其属主的存活状态，`moai factory runs --retire <run-id>` 手动退役指定的 run。属主没有真正死掉会被拒绝，run 里还有处于完成、失败、放弃之外状态的卡片时同样会被拒绝，并列出这些卡片和可以改用的办法（用 `moai cc -l --factory-run <run-id>` 加入，用 `moai cc -f --factory-run <run-id>` 接管，或对每张卡片执行 `moai factory decide <卡片> --choice abandon --run <run-id>`）。加入和接管只在 run 处于活动状态时有效，放弃卡片无法撤销。没有强制退役的标志。对已经退役的 run 再次执行，只报告结果而不再写入，并列出仍滞留的卡片。仍有此类卡片的活动 run，`moai factory relaunch --from-run` 同样让它保持活动状态，并报告 `left active (N in-progress cards)`；已经退役的 run 则原样不动（`not active (retired), left untouched`）。
 
-run 死掉或被替换之后，泳道会话仍然指向环境里固定下来的旧 run。这条泳道用 `moai factory relaunch` 重新接回存活的 run。该命令原样重新执行各提供方自己的泳道加入行（`moai cc -l`、`moai glm -l`，Codex 只有 `moai codex -l`），选项为 `--provider`、`--lane`、`--run`、`--from-run <run-id>`、`--dry-run`。`-l` 不带参数，所以给了 `--lane` 也不会带到加入行上：命令会在 stderr 里说明，泳道按下一个空号加入。`--from-run` 只在该 run 仍为活动且属主已死时才先将其退役，`--dry-run` 只打印启动行，不改动任何东西。它是一次性命令，有别于在同一个 run 里逐张处理卡片的 `--clear-policy relaunch` 循环。stale-run 提示也不再是一段文字，而是直接打印填好参数的这条命令。
+run 死掉或被替换之后，泳道会话仍然指向环境里固定下来的旧 run。这条泳道用 `moai factory relaunch` 重新接回存活的 run。该命令原样重新执行各提供方自己的泳道加入行（`moai cc -l`、`moai glm -l`），选项为 `--provider`、`--lane`、`--run`、`--from-run <run-id>`、`--dry-run`。`-l` 不带参数，所以给了 `--lane` 也不会带到加入行上：命令会在 stderr 里说明，泳道按下一个空号加入。`--from-run` 只在该 run 仍为活动且属主已死时才先将其退役，`--dry-run` 只打印启动行，不改动任何东西。它是一次性命令，有别于在同一个 run 里逐张处理卡片的 `--clear-policy relaunch` 循环。stale-run 提示也不再是一段文字，而是直接打印填好参数的这条命令。
 
 > 详见：[工厂模式](https://adk.mo.ai.kr/zh/advanced/factory-mode)
 
@@ -284,8 +285,8 @@ cd my-project
 默认路径（插件模式）下，技能与命令不再复制进项目 —— 由 moai 插件承载。`.claude/` 表面的其余部分（代理、规则、钩子注册、设置）照旧部署。要把技能和命令保留为本地文件，用 `--no-plugin`（完整本地部署 —— 含 `.mcp.json` 的 moai 条目与 Codex 镜像）；要把可选包目录也一并本地部署，用 `--all`。部署模式记录在 `.moai/config/sections/llm.yaml` 的 `deployment_mode`，`moai update` 按该记录保持同样的范围。插件安装未能得到确认的项目会记录在安全的一侧，即 `local`。
 
 
-> **GPT 网关已撤回（2026-09-16）。** 通过内置翻译网关把 GPT 模型接入 Claude Code 的旧 `moai gpt`
-> 启动器已移除。GPT 模型请通过原生 harness 使用：`moai codex`（Codex CLI）。上方的 `--llm gpt`
+> **GPT 网关已撤回（2026-09-16）。** 通过内置翻译网关把 GPT 模型接入 Claude Code 的旧
+> 启动器已移除。GPT 模型请通过原生 harness 使用：Codex CLI。上方的 `--llm gpt`
 > init 值不受影响 —— 它选择的是 Codex 专用部署，而不是已撤回的启动器。
 ```bash
 moai init my-project --llm gpt   # 仅 Codex 项目
@@ -362,7 +363,7 @@ claude        # 或者 moai cc —— 在项目里运行 Claude Code
 
 ### 工厂模式
 
-`-f`（`--factory`）打开工厂主导，`-l`（`--lane`）打开泳道。两者都不带参数。一个主导把队列里的卡片交给带编号的泳道，泳道则把一张卡片从 `plan → run → sync` 一路做完。启动顺序见上文“v3.2 新功能 —— 工厂模式”一节。
+`-f`（`--factory`）打开工厂主导，`-l`打开泳道。两者都不带参数。一个主导把队列里的卡片交给带编号的泳道，泳道则把一张卡片从 `plan → run → sync` 一路做完。启动顺序见上文“v3.2 新功能 —— 工厂模式”一节。
 
 会话的谱系由 **Origin-Trail Chain** 另行负责。它与工厂模式相互独立，不需要主导，也不需要泳道，凡是像 `moai cc -w <名称>` 这样指定了 worktree 的会话，都会记入链条。它用一棵 append-only 的 JSONL 谱系树追踪 worktree 祖先、解决深度遗忘（`/clear` 之后从根到叶恢复链条），并把心跳停了的会话标为 `stale`。
 
@@ -379,7 +380,7 @@ claude        # 或者 moai cc —— 在项目里运行 Claude Code
 
 ### CG 停用与配置迁移
 
-`moai cg` 已停用。它会显示迁移提示并退出，不会启动 Claude 或 GLM，也不是 `moai cc` 的别名。项目中若仍有 `llm.team_mode: cg`，必须先明确选择迁移方案，才能启动会话。
+CG 启动器已停用。迁移步骤请参阅 [CG 停用与配置迁移](https://adk.mo.ai.kr/zh/multi-llm/cg-mode/)。
 
 ```bash
 moai migrate cg
@@ -584,7 +585,7 @@ moai cc -w feature-billing --spawn   # billing 开新窗口，保留当前会话
 
 ### CG 停用与配置迁移
 
-`moai cg` 已停用。它会显示迁移提示并退出，不会启动 Claude 或 GLM，也不是 `moai cc` 的别名。项目中若仍有 `llm.team_mode: cg`，必须先明确选择迁移方案，才能启动会话。
+CG 启动器已停用。迁移步骤请参阅 [CG 停用与配置迁移](https://adk.mo.ai.kr/zh/multi-llm/cg-mode/)。
 
 ```bash
 moai migrate cg
@@ -737,7 +738,6 @@ Claude 的每一档通过 `ANTHROPIC_DEFAULT_*_MODEL` 环境变量映射到 GLM 
 | `moai update` | 升级到最新版（保留本地文件 · 3-way 合并与冲突 sidecar · 删除前归档） |
 | `moai graph <build\|query>` | 生成/查询代码库图（edges.jsonl）—— 找调用方、波及范围、里程碑交叉检查 |
 | `moai cc` / `moai glm` | Claude 专用 / GLM 专用会话 |
-| `moai codex [cli\|status\|app]` | Codex 启动器 — 不带动词调用即启动 Codex CLI；`status` 只显示就绪状态，不启动任何东西 |
 | `moai worktree <sync\|done\|sweep\|hoist\|remove\|clean\|recover\|snapshot\|verify\|restore>` | Git worktree 维护（进出工作树是启动器的职责） |
 | `moai session <list\|register\|current>` | 多会话协调 |
 | `moai spec <audit\|archive\|lint\|list\|new>` | SPEC 生命周期工具 |

@@ -3,6 +3,7 @@ package cli_test
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -165,6 +166,54 @@ func TestAstGrepCmd_SarifFormat(t *testing.T) {
 	}
 	if doc["version"] != "2.1.0" {
 		t.Errorf("SARIF version = %v, want 2.1.0", doc["version"])
+	}
+}
+
+// TestAstGrepCmd_RulesetLoadFailureExitsNonZero: a rules directory sg cannot load
+// must not read as "no findings" with exit 0. The command exits non-zero and puts
+// the first line of sg's error on stderr; stdout stays free of a clean-scan line.
+func TestAstGrepCmd_RulesetLoadFailureExitsNonZero(t *testing.T) {
+	if _, err := exec.LookPath("sg"); err != nil {
+		t.Skip("sg CLI is not in PATH — the ruleset load failure needs a real sg to occur")
+	}
+
+	root := t.TempDir()
+	rulesDir := filepath.Join(root, "rules")
+	goDir := filepath.Join(rulesDir, "go")
+	if err := os.MkdirAll(goDir, 0o755); err != nil {
+		t.Fatalf("failed to create rules directory: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(rulesDir, "sgconfig.yml"), []byte("ruleDirs:\n  - go\n"), 0o644); err != nil {
+		t.Fatalf("failed to write sgconfig.yml: %v", err)
+	}
+	// An unparseable rule document: sg exits non-zero and loads nothing.
+	brokenRule := "id: [unclosed\nlanguage: go\nseverity: error\nmessage: broken\nrule:\n  pattern: log.Printf($A, $B)\n"
+	if err := os.WriteFile(filepath.Join(goDir, "broken.yml"), []byte(brokenRule), 0o644); err != nil {
+		t.Fatalf("failed to write broken rule: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "main.go"), []byte("package main\n\nfunc main() {}\n"), 0o644); err != nil {
+		t.Fatalf("failed to write target file: %v", err)
+	}
+
+	var outBuf, errBuf bytes.Buffer
+	cmd := cli.NewAstGrepCmd()
+	cmd.SetOut(&outBuf)
+	cmd.SetErr(&errBuf)
+	if err := cmd.Flags().Set("rules-dir", rulesDir); err != nil {
+		t.Fatalf("failed to set --rules-dir: %v", err)
+	}
+	cmd.SetArgs([]string{root})
+	err := cmd.Execute()
+
+	var coded interface{ ExitCode() int }
+	if err == nil || !errors.As(err, &coded) || coded.ExitCode() == 0 {
+		t.Fatalf("Execute() error = %v; want a non-zero exit for an unloadable ruleset (stdout=%q)", err, outBuf.String())
+	}
+	if !strings.Contains(errBuf.String(), "Cannot parse rule") {
+		t.Errorf("stderr = %q; want the first line of the sg error (\"Error: Cannot parse rule ...\")", errBuf.String())
+	}
+	if strings.Contains(outBuf.String(), "no findings") {
+		t.Errorf("stdout = %q; an unloadable ruleset must not print \"no findings\"", outBuf.String())
 	}
 }
 
