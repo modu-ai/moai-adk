@@ -19,6 +19,8 @@ package paths
 import (
 	"os"
 	"path/filepath"
+	"sync"
+	"testing"
 )
 
 // EnvHome mirrors config.EnvHome (internal/config/envkeys.go — the canonical
@@ -73,7 +75,37 @@ func MoaiHome() (string, error) {
 	if err != nil {
 		return "", err
 	}
+	if testing.Testing() && home == startupHome {
+		// A test binary that did not redirect HOME or MOAI_HOME would write
+		// into the operator's real ~/.moai (tens of thousands of dead
+		// worktree-registry entries accumulated this way). Give it a
+		// process-scoped temporary home instead. Production binaries never
+		// take this branch: testing.Testing() is false outside test binaries.
+		return testHome()
+	}
 	return filepath.Join(home, moaiDir), nil
+}
+
+// startupHome is the user's home as the process started. A test that points
+// HOME at its own temp dir resolves to a different value and keeps the
+// ordinary <HOME>/.moai layout; only a test still standing on the real home
+// is redirected.
+var startupHome, _ = Home()
+
+var (
+	testHomeOnce sync.Once
+	testHomeDir  string
+	testHomeErr  error
+)
+
+// testHome returns the process-scoped temporary MoAI home used under
+// `go test` when nothing redirected it. It is created once and deliberately
+// never removed by this library: the OS temp directory owns its lifetime.
+func testHome() (string, error) {
+	testHomeOnce.Do(func() {
+		testHomeDir, testHomeErr = os.MkdirTemp("", "moai-test-home-")
+	})
+	return testHomeDir, testHomeErr
 }
 
 // StateDir returns ~/.moai/state.
