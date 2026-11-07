@@ -47,6 +47,9 @@ func TestSubagentStop_InconclusiveLastLine_IsAParsedLine_NotAMissingOne(t *testi
 func TestSubagentStop_InconclusiveLastLine_ClearsNoOutstandingRefusal(t *testing.T) {
 	seed := func(t *testing.T, root string) {
 		t.Helper()
+		// SPEC-Z-001 must be a live SPEC in the tree: a rejection for a SPEC with
+		// no directory is stale and no longer denies the spawn (batch 2026-11-07).
+		seedLiveSpec(t, root, "SPEC-Z-001")
 		for _, r := range []auditreceipt.Rejection{
 			{AgentType: auditreceipt.AgentPlanAuditor, SpecID: auditreceipt.UnknownSpec, Cause: auditreceipt.CauseVerdictLineMissing},
 			{AgentType: auditreceipt.AgentPlanAuditor, SpecID: "SPEC-Z-001", Cause: auditreceipt.CauseNoReceiptCited},
