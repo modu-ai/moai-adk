@@ -28,6 +28,7 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/auditverdict"
+	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
 var (
@@ -46,6 +47,12 @@ func checkSyncAuditVerdictFile(git GitRunner, repoDir, card string) (string, boo
 	}
 	rel := ".moai/reports/" + card + "/verdict.md"
 	path := filepath.Join(repoDir, filepath.FromSlash(rel))
+	// The shared selector (homestate.SelectCardVerdictFile): verdict.md, else
+	// the newest sync-audit*.md. An absent file keeps the verdict.md refusal.
+	if selected, serr := homestate.SelectCardVerdictFile(repoDir, card); serr == nil {
+		path = selected
+		rel = ".moai/reports/" + card + "/" + filepath.Base(selected)
+	}
 	refuse := func(format string, args ...any) (string, bool) {
 		return fmt.Sprintf("card %s has no SPEC, so its merge evidence is %s — %s. "+
 			"Produce that file on the card branch with the machine lines `verdict: PASS` (or `verdict: PASS-WITH-DEBT`) and `audited_sha: <full commit SHA the audit read>` "+
