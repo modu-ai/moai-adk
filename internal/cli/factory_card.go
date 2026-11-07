@@ -3084,6 +3084,19 @@ func newFactoryCompleteCommand() *cobra.Command {
 	return cmd
 }
 
+// factoryCompleteBatchPending is the af-flow per-card complete: for a
+// merge-ready (or merging) card it reports that the card waits for the leader
+// batch. It writes nothing and runs no git or gh call. A card in any other
+// state is refused, so the line never claims a readiness the record lacks.
+func factoryCompleteBatchPending(ctx context.Context, out io.Writer, root, cardID, run string) error {
+	if !factoryCardStateIs(ctx, root, cardID, run, homestate.CardMergeReady) &&
+		!factoryCardStateIs(ctx, root, cardID, run, homestate.CardMerging) {
+		return fmt.Errorf("factory complete: card %s is not merge-ready; under af-flow complete takes a merge-ready card and reports it for the leader batch", cardID)
+	}
+	_, _ = fmt.Fprintf(out, "factory complete: %s is merge-ready and waits for the leader batch (af-flow: the operator fast-forwards main from the audited batch; see factory-dispatch-mechanics.md § Batch landing); nothing was pushed.\n", cardID)
+	return nil
+}
+
 // factoryCardStateIs reports whether cardID's recorded factory state equals
 // state. Every read failure answers false: the caller falls through to the
 // ordinary routing, whose own gates reproduce the standing refusals — a read
@@ -3142,7 +3155,14 @@ func factoryCompleteCard(ctx context.Context, out io.Writer, root, lockRoot, car
 	// pull-request edge, never main. Any condition missing leaves the judgment
 	// below untouched.
 	relBranch, relTree, releaseRoute := factoryReleaseRoute(root)
-	if !releaseRoute && (factoryGitHubFlow(root) || factoryAgenticTrunkPrimaryRoute(root)) {
+	// Under af-flow the primary-only shape is no longer a pull-request route:
+	// the leader lands an audited BATCH and the operator fast-forwards main, so
+	// a per-card complete reports the card as batch-pending and pushes nothing
+	// (no fetch, no gh, no state change).
+	if !releaseRoute && factoryAgenticTrunkPrimaryRoute(root) {
+		return factoryCompleteBatchPending(ctx, out, root, cardID, run)
+	}
+	if !releaseRoute && factoryGitHubFlow(root) {
 		return factoryCompleteGitHubFlow(ctx, out, root, cardID, remeasure, run, lane)
 	}
 	// The same session identity acquire resolves: a window whose holder is

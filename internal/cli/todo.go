@@ -154,6 +154,8 @@ func todoLandedRefResolved() (string, factory.LandedRefLevel) {
 // disclosure line.
 func todoRefLevelSource(level factory.LandedRefLevel) string {
 	switch level {
+	case factory.LandedRefAgenticTrunk:
+		return factory.LandedRefLevelSource(level)
 	case factory.LandedRefOriginHEAD:
 		return "refs/remotes/origin/HEAD"
 	default:
