@@ -1,6 +1,22 @@
 # 데이터 흐름
 
-## 현재 흐름 보완 — 67b4734d6b (card t2061 판)
+## 현재 흐름 보완 — 5543d99672 (2026-11-07 배치 판)
+
+기준 `cf4ad8510d` 뒤 소스 44개 창에서 움직인 흐름은 여섯이다. 아래는 소스의 문서 주석과 호출 배선을 읽은 결과이며 실행으로 재현한 것이 아니다. 소스 대조 상세는 `modules.md` 현재 변경 경계 절이 운반한다.
+
+**① af-flow 카드 착지·종료 흐름.** af-flow는 카드별로 푸시하지 않고 리더가 감사한 배치를 운영자가 `main`에 빨리감기한다. 그래서 primary 체크아웃만 `main`을 쥔 프로젝트에서 `moai factory complete`는 PR을 만들지 않는다 — merge-ready(또는 merging) 카드면 "리더 배치를 기다린다"는 한 줄만 내고 git·gh·상태 쓰기를 하지 않으며, 다른 상태의 카드는 거절한다. 착지 ref 해석(`LandedRefForWithLevel`)도 같은 이유로 af-flow 단계(`LandedRefAgenticTrunk`)를 먼저 답한다: 원격 추적 ref가 아니라 로컬 통합 브랜치다. 배치가 `main`에 닿은 뒤 카드를 닫는 길이 `moai factory close-landed <card> --sha <merge> --run <run>`이다(리더 전용). 조상 확인(커밋이 착지 ref에 있어야 한다) → `todo landed`(같은 기록이 있으면 건너뜀) → `rebind-evidence`(이미 묶였으면 쓰지 않음) → `approve` → `todo done` 순으로 각 동사의 명령 객체를 호출하고, 처음 거절한 단계의 번호와 이름으로 멈춘다. 큐에 없고 보관된 카드는 "이미 done"으로 끝난다.
+
+**② 낡은 MCP 서버의 쓰기 대행 흐름.** MCP 서버는 시작한 빌드로 계속 돈다. 설치된 `moai`가 바뀐 뒤 쓰기 가능 호출이 오면 서버는 거절하지 않고 호출 한 건을 `<설치본> mcp-server --call <tool> --input-json -`로 다시 실행한다. 인자는 표준입력으로, 환경은 그대로 물려주고 `MOAI_MCP_ONESHOT=1`만 더한다. 일회 호출 쪽은 같은 도구 레지스트리에서 핸들러를 이름으로 찾아 한 번 부르고 결과 JSON을 출력하며, 그 플래그가 서 있으면 다시 대행하지 않는다. 서버는 결과를 해석해 `stale_server: proxied to the installed build …` 메타데이터를 덧붙여 돌려준다. 실행·해석이 실패하면 낡은 서버 거절 문구에 대행 실패 사유를 붙여 낸다.
+
+**③ 판정 파일 선택과 증거 결속 흐름.** 카드의 감사 판정을 읽는 세 곳(T13 가드, 재결속 판독, SPEC 없는 병합 삼중)이 `SelectCardVerdictFile` 하나를 거친다: `.moai/reports/<card>/verdict.md`가 일반 파일이면 그것, 아니면 가장 높은 회차의 `sync-audit*.md`. 판정이 기록한 `audited_sha`를 카드의 증거 커밋에 묶을 때(`bindAuditedToEvidence`)는 접두 일치면 통과하고, 아니면 감사 커밋이 증거 커밋의 조상이며 둘 사이에서 바뀐 모든 경로가 `.moai/reports/<card>/` 아래일 때만 통과한다(판정 파일은 자신이 감사한 코드 뒤에 커밋되므로 자기 커밋을 가리킬 수 없다). 첫 범위 밖 경로는 거절문에 이름으로 실린다. 병합 준비의 SHA 해석(`integrationRevSHA`)은 통합 브랜치 이름을 정확한 ref 경로로만 푼다.
+
+**④ 감사 영수증 거절의 낡음 판정 흐름.** PreToolUse 스폰 가드가 영수증 종류의 거절 표식을 훑을 때, 표식이 가리키는 SPEC 디렉터리가 트리에서 사라졌거나 `spec.md` 상태가 `completed`·`archived`이면 그 표식을 건너뛴다(`staleRejectionReason`). 건너뛴 사유는 로그로만 남고 기록 파일은 그대로다. 알 수 없는 SPEC 표식은 계속 막는다.
+
+**⑤ `graph check`의 사건 인지 판정 흐름.** 층별 측정(`checkCodemaps` 등)은 그대로이고 그 뒤에 `ClassifyVerdicts(event, policy, thresholds)`가 `block`/`warn` 등급을 붙인다. 사건은 `--event` 또는 `GITHUB_EVENT_NAME`이고 정책은 `gate.yaml`의 `graph_freshness.inherited_codemaps_drift`(기본 `warn`)다. 경고로 낮추는 조건은 모두 만족해야 한다 — pull_request 사건, codemaps 층만 stale, 변경의 기여 측정됨, 변경이 codemaps 본문·스탬프를 첫 부모와 같게 둠(`CodemapsInputsStable`: 링크·무시된 파일이 없고 스탬프 바이트가 첫 부모의 blob과 같다), 기준만의 개수(`BaseCount`, 앵커와 첫 부모 사이를 직접 잰 값)가 이미 임계 이상(`DriftInherited`). 이때 종료 코드는 0이고 경고 주석이 나간다(`--json`이면 표준 출력 JSON을 지키려고 주석은 표준 오류). 어느 하나라도 빠지면 막는다 — `crossed-by-change`, `originated`, `anchor-moved` 또는 측정 불가는 모두 막는 출처다.
+
+**⑥ 사용자 자산이 프로필 루트에 닿는 흐름.** 설치는 실행당 한 번 고정 네 루트와 실제 프로필 디렉터리(`~/.moai/claude-profiles/<name>`)의 Claude 쪽 두 루트를 해석·검증해 스냅샷을 만들고, 설치 대상 열거와 요약(`RootsReached`)이 모두 그 스냅샷에서 나온다. 프로필 저장소를 읽을 수 없으면 성공처럼 끝내지 않고 오류다. 전역 설정 정리도 같은 루트 목록을 돌며 각 루트의 `hooks/moai`를 `os.Root` 안에서 링크 없이 지운다. 훅 구역 가드의 보호 루트 집합도 같은 유도에서 나온다.
+
+## 직전 흐름 보완 — 67b4734d6b (card t2061 판)
 
 기준 `4c4217a19` 뒤 소스 197개 창에서 움직인 흐름은 넷이다. 아래는 소스의 문서 주석과 호출 배선을 읽은 결과이며 실행으로 재현한 것이 아니다.
 
@@ -515,6 +531,8 @@ moai factory next (CLI 또는 MCP factory_next)
   → 레인 세션이 그 트리에서 일한다 (SessionStart 룰이 다음 카드 절차를 싣는다 — REQ-SD-019)
 moai factory stage                엣지 적용 + 임대 갱신 (병합 준비→병합 중 엣지는 거부)
 moai factory complete             통합 브랜치 해석 → merge --no-ff → 병합 기록 → 종료 문장
+  └ af-flow(primary만 main 보유)는 PR도 병합도 하지 않는다: merge-ready 카드를 배치 대기로 보고만 한다
+    (factoryCompleteBatchPending) — 착지 뒤 닫기는 리더의 moai factory close-landed
   └ clear-policy 별로: each = /clear 요청, when-full = 문턱 도달 시에만, relaunch = 세션 종료
      후 런처(factory_lane_relaunch.go)가 다음 카드로 새 세션을 기동
 ```

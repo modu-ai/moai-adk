@@ -1,6 +1,18 @@
 # 진입점
 
-## 현재 진입점 보완 — 67b4734d6b (card t2061 판)
+## 현재 진입점 보완 — 5543d99672 (2026-11-07 배치 판)
+
+기준 `cf4ad8510d` 뒤 소스 44개 창에서 움직인 진입점이다. 새 공개 동사는 `moai factory close-landed` 하나이고, 숨은 `moai mcp-server --call`이 하나, 새 진단 검사가 `moai doctor`에 하나, 새 플래그가 `moai graph check --event`이다. 등록 수치(`AddCommand(` 개수, MCP 도구 수)는 본 판에서 재측정하지 않았다 — 이 창은 MCP 도구를 더하거나 빼지 않았다. 소스 대조 상세는 `modules.md` 현재 변경 경계 절이 운반한다.
+
+- `moai factory close-landed <card> --sha <merge-sha> --run <run> [--ref <target>] [--reason <text>]`(`internal/cli/factory_close_landed.go`의 `newFactoryCloseLandedCommand`가 `internal/cli/factory_handoff_recover.go`의 factory 하위 명령 등록에 합류). 이미 착지 ref에 있는 카드를 한 동사로 닫는다: 조상 확인, `todo landed`, `rebind-evidence`, `approve`, `todo done`. `--ref`를 생략하면 프로젝트의 착지 ref(af-flow에서는 로컬 `main`)다. 리더 경로 전용이라 레인 환경(`MOAI_FACTORY_ROLE=lane`)이면 거절한다. 이미 만족한 단계는 건너뛰고 처음 거절한 단계가 사슬을 멈춘다.
+- `moai factory complete` — af-flow에서 primary 체크아웃만 `main`을 쥔 프로젝트는 PR 경로로 가지 않고 merge-ready·merging 카드를 배치 대기로 보고만 한다(쓰기·git·gh 없음, 그 밖의 상태는 거절). 위 PR 경로 서술은 af-flow가 아닌 구성에 해당한다.
+- `moai factory rebind-evidence` — 이미 묶인 카드를 다시 부르면 "already bound; nothing to do"로 종료 코드 0이다(멱등).
+- `moai mcp-server --call <tool> --input-json <json|->`(숨김, `internal/cli/mcp_server_proxy.go`) — 도구 한 건을 한 번 실행해 결과 JSON을 출력하는 일회 형태다. 낡은 서버가 쓰기 가능 호출을 설치된 빌드로 대행할 때 쓰며(`MOAI_MCP_ONESHOT=1`), 서빙 루프는 시작하지 않는다.
+- `moai graph check --event <name>` — 판정 등급을 정하는 CI 사건이다(생략하면 `GITHUB_EVENT_NAME`). pull_request에서 기준이 물려준 codemaps 표류만 경고로 낮춰 종료 코드 0이 될 수 있다. 아래 「CI가 소비하는 종료 코드 표면」의 표는 이 예외를 함께 읽는다.
+- `moai doctor` — 「Skill Reach」 검사가 활성 Claude 설정 루트가 핵심 스킬을 해석하는지 보고만 한다(설치하지 않는다).
+- 훅 PreToolUse 경로 가드는 자동 메모리 디렉터리(`projects/<slug>/memory`)와 세션 스크래치패드 루트를 쓰기 허용 위치로 더했고, 스폰 가드는 완료·소멸한 SPEC의 낡은 감사 거절 표식을 건너뛴다.
+
+## 이전 진입점 보완 — 67b4734d6b (card t2061 판)
 
 기준 `4c4217a19` 뒤 소스 197개 창에서 움직인 진입점이다. 새 최상위 명령은 `moai af`(공개)·`moai agentic-factory`(숨김)·`moai fetch`·`moai jevmeasure`이고, 새 하위 동사는 `moai factory wait`·`moai factory checkpoint`이며, 새 MCP 도구는 `fetch_web`이다. 소스 대조 상세는 `modules.md` 현재 변경 경계 절이 운반한다.
 
@@ -553,6 +565,7 @@ codex 탭(행 모델은 `internal/web/codexmirror.go`, 렌더는 그 짝 `.templ
 |---|---|---|
 | `0` | 모든 층 fresh | — |
 | `1` | 한 층 이상 stale 또는 absent | described-source-diff ≥ 40, codemaps 본문 부재(C1), 인용된 경로 부재 |
+| (`0`, 예외) | pull_request에서 codemaps만 stale이고 기준이 물려준 표류 | 변경이 본문·스탬프를 건드리지 않고 기준만의 개수가 이미 임계 이상일 때 경고 주석과 함께(`inherited_codemaps_drift: warn`); 푸시 사건은 항상 `1` |
 | `2` | system error — 측정 자체가 성립하지 않음 | 스탬프 커밋 미해석, 스탬프가 HEAD의 조상이 아님, `gate.yaml` 파싱 실패 |
 
 exit 2 경로는 층 표를 렌더하지 않습니다. 숫자 행이 없는 것이 계약입니다 — 성립한 적 없는
