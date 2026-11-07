@@ -182,3 +182,5 @@ internal/tui/prompt_test.go	~/ literal	out := tui.Prompt("user@host", "~/", "mai
 internal/tui/table_test.go	~/ literal	{16, "yuna@air ~/work/my-app", "호스트 prompt"},	0
 internal/web/main_test.go	~/ literal	"can rewrite the developer's ~/.moai/claude-profiles/launch.yaml.")	0
 internal/web/main_test.go	os.UserHomeDir	home, err := os.UserHomeDir()	0
+internal/hook/pre_tool_memory_scratchpad_test.go	~/ literal	wantBoundaryAllow(t, "memory dir under ~/.claude", memoryFile, decision, reason)	0
+internal/paths/paths_test.go	os.UserHomeDir	real, err := os.UserHomeDir()	0

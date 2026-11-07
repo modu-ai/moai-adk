@@ -128,6 +128,19 @@ func (w *crWorld) head() string {
 // mark writes one receipt-kind rejection mark for this tree and returns its path.
 func (w *crWorld) mark(agent, spec, cause string) string {
 	w.t.Helper()
+	// The phase-entry spawn guard skips a rejection whose SPEC directory is
+	// absent or closed (stale). A mark these tests write stands for a LIVE
+	// refusal, so a SPEC-shaped id gets an in-progress spec directory.
+	if strings.HasPrefix(spec, "SPEC-") {
+		dir := filepath.Join(w.tree, ".moai", "specs", spec)
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			w.t.Fatalf("mkdir spec dir: %v", err)
+		}
+		body := "---\nid: " + spec + "\nstatus: in-progress\n---\n"
+		if err := os.WriteFile(filepath.Join(dir, "spec.md"), []byte(body), 0o644); err != nil {
+			w.t.Fatalf("write spec.md: %v", err)
+		}
+	}
 	r := auditreceipt.Rejection{AgentType: agent, SpecID: spec, Cause: cause, TreeRoot: w.tree}
 	if err := auditreceipt.WriteRejection(w.tree, &r); err != nil {
 		w.t.Fatalf("WriteRejection: %v", err)
