@@ -72,6 +72,7 @@ func TestAuditorFail_ClearsOwnVerdictLineMissingRejectionAndUnblocksFixSpawn(t *
 func TestAuditorFail_KeepsDifferentCauseRejection(t *testing.T) {
 	root := newGateTree(t, "required")
 	role := auditreceipt.AgentPlanAuditor
+	seedLiveSpec(t, root, "SPEC-X-001")
 	seedFailClearRejection(t, root, root, "", role, auditreceipt.UnknownSpec, auditreceipt.CauseVerdictLineMissing)
 	seedFailClearRejection(t, root, root, "", role, "SPEC-X-001", auditreceipt.CauseNoReceiptCited)
 

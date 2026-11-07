@@ -318,6 +318,8 @@ func TestWSR007_RejectionsArePerTree(t *testing.T) {
 	fx := newWSRHookFixture(t, wsrGateRequired)
 	w2 := fx.addWorktree(t, "W2")
 
+	seedLiveSpec(t, fx.W, "SPEC-X-001")
+	seedLiveSpec(t, w2, "SPEC-X-001")
 	wsrStart(t, fx.W, "A1")
 	a1 := wsrStop(t, fx.W, "A1", wsrVerdict("SPEC-X-001", ""), false)
 
