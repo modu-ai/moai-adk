@@ -155,6 +155,11 @@ func classifyProject(dir string, olderThan time.Duration, now time.Time) (verdic
 	if !ok || owner == "" {
 		return pruneKept, owner, "owner marker absent, unreadable or empty"
 	}
+	if !filepath.IsAbs(owner) {
+		// writeMarker records canonical absolute paths only; a relative owner
+		// would be judged against the working directory, so it is never DEAD.
+		return pruneKept, owner, "owner path is not absolute"
+	}
 	if _, err := os.Stat(owner); err == nil {
 		return pruneKept, owner, "owner path exists"
 	} else if !os.IsNotExist(err) {

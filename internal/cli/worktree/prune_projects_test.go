@@ -154,3 +154,12 @@ func TestSweepNoticeOwnerlessProjects(t *testing.T) {
 		t.Errorf("notice printed at the threshold:\n%s", out)
 	}
 }
+
+func TestPruneProjects_RelativeOwnerIsKept(t *testing.T) {
+	root := pruneFixture(t)
+	dir := addProject(t, root, "relative-owner", "some/relative/repo", 3*time.Hour)
+	runPrune(t, "--yes")
+	if _, err := os.Stat(dir); err != nil {
+		t.Errorf("entry with a relative owner was removed: %v", err)
+	}
+}
