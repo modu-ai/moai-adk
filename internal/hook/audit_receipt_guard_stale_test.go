@@ -40,6 +40,11 @@ func TestCheckAuditReceiptSpawn_StaleRejections(t *testing.T) {
 		{"spec archived", []rej{{"SPEC-ARCH-001", "archived"}}, false, nil, nil},
 		{"spec in-progress", []rej{{"SPEC-LIVE-001", "in-progress"}}, true, []string{"SPEC-LIVE-001"}, nil},
 		{"unknown spec", []rej{{auditreceipt.UnknownSpec, ""}}, true, []string{auditreceipt.UnknownSpec}, nil},
+		// A card-flow rejection is keyed by the card id; no .moai/specs/<id>
+		// directory ever exists for it, so absence says nothing — it stays live
+		// (IsCardSpecID: treated like unknown-spec, conservative).
+		{"card id", []rej{{"t2106", ""}}, true, []string{"t2106"}, nil},
+		{"card id with prefix", []rej{{"card-t2106", ""}}, true, []string{"card-t2106"}, nil},
 		{"live plus stale", []rej{{"SPEC-LIVE-001", "in-progress"}, {"SPEC-GONE-001", ""}, {"SPEC-DONE-001", "completed"}}, true,
 			[]string{"SPEC-LIVE-001"}, []string{"SPEC-GONE-001", "SPEC-DONE-001"}},
 	}

@@ -524,7 +524,10 @@ var rejectionSpecStatusPattern = regexp.MustCompile(`(?m)^status:\s*(.+?)\s*$`)
 // @MX:NOTE: [AUTO] staleness only trims the PreToolUse spawn deny; SubagentStart/Stop paths and the record files are unchanged
 func staleRejectionReason(tree string, r auditreceipt.Rejection) (string, bool) {
 	id := r.SpecID
-	if id == "" || id == auditreceipt.UnknownSpec || id != filepath.Base(id) || id == "." || id == ".." {
+	// A card id (t2106, card-t2106) never has a .moai/specs/<id> directory, so
+	// its absence is not evidence the refusal is stale: like UnknownSpec it stays
+	// live (auditreceipt.IsCardSpecID — conservative, never per-milestone).
+	if id == "" || id == auditreceipt.UnknownSpec || auditreceipt.IsCardSpecID(id) || id != filepath.Base(id) || id == "." || id == ".." {
 		return "", false
 	}
 	dir := filepath.Join(tree, ".moai", "specs", id)
