@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "tree_root": "/Users/goos/.moai/worktrees/projects/moai-adk-go/t2062",
-  "commit_sha": "cf4ad8510d8ba9aabe6a804cadf043611390b31b",
+  "tree_root": "/Users/goos/.moai/worktrees/projects/moai-adk-go/af-batch-cfg-20261107",
+  "commit_sha": "5543d996725c72ace000033287ce2e68586d66b0",
   "dirty": false,
   "described_roots": [
     "internal",
@@ -9,5 +9,5 @@
     "pkg"
   ],
   "generated_by": "codemaps-gen",
-  "generated_at": "2026-11-07T00:44:09Z"
+  "generated_at": "2026-11-07T02:50:17Z"
 }
