@@ -210,9 +210,9 @@ func worktreeStateFile(projectDir string) string {
 }
 
 // stateLockPath returns the lock file of the state file at path: the same
-// name with a .lock suffix, created on first acquisition. An OS-held flock
-// (Unix) or process-local mutex (Windows) on it is the state-file lock of
-// design.md D-12.
+// name with a .lock suffix, created on first acquisition. An OS-held lock on
+// it (flock on Unix, a LockFileEx byte-range lock on Windows) is the
+// state-file lock of design.md D-12.
 func stateLockPath(stateFile string) string {
 	return stateFile + ".lock"
 }

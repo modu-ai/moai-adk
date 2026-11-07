@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -83,12 +84,44 @@ type LayerReport struct {
 	Threshold int    `json:"threshold"`
 	Verdict   string `json:"verdict"`
 	Reason    string `json:"reason,omitempty"`
+	// VerdictClass says whether a non-fresh layer fails the check ("block") or
+	// is only announced ("warn"); empty on a fresh layer. It is a SEPARATE
+	// field: Verdict keeps stating the fact about the tree (an inherited
+	// codemaps drift stays "stale"), and only ClassifyVerdicts sets the class
+	// (check_policy.go).
+	VerdictClass string `json:"verdict_class,omitempty"`
+	// DriftOrigin states where a stale codemaps count came from: inherited,
+	// crossed-by-change, originated, or anchor-moved (the change moved the
+	// codemaps stamp or body, or that could not be ruled out; see
+	// check_policy.go). Only inherited can warn. Empty when the contribution is
+	// unmeasured or the layer is not stale codemaps.
+	DriftOrigin string `json:"drift_origin,omitempty"`
+	// CodemapsInputsStable is true only when the codemaps body AND its
+	// provenance stamp are byte-for-byte what the first parent carried (nothing
+	// tracked changed, nothing untracked or ignored sits under the codemaps
+	// directory, no entry there is a link, and the stamp equals the base blob).
+	// It is the premise that makes BaseCount a statement about the BASE:
+	// the base and the cumulative count share one anchor only while the stamp
+	// and body did not move. nil means it was not measured; that, like false, is never inherited.
+	CodemapsInputsStable *bool `json:"codemaps_inputs_stable,omitempty"`
 
 	// Contribution is the change under judgment's OWN described-worthy count,
 	// measured against the checkout's first-parent predecessor (REQ-GFC-007).
-	// It is REPORTED, never gated on: gating it would eliminate the
-	// accumulated-drift signal the cumulative metric exists to carry
-	// (spec.md §D.3, third rejection).
+	// It is always REPORTED. Since card t2001 (user request R208) it is also
+	// read, narrowly, by ClassifyVerdicts: on a pull_request event a codemaps
+	// layer that is the ONLY non-fresh layer, whose contribution is measured,
+	// whose codemaps stamp and body the change left alone, and whose BASE alone
+	// (BaseCount, measured directly; not Value minus Contribution, which
+	// miscounts when the change re-edits files the base already moved) is
+	// already at or over the threshold is
+	// announced (VerdictClass warn) instead of failed. A count the change took
+	// over the line (crossed-by-change), one it put over alone (originated), and
+	// one whose window the change moved (anchor-moved) all still block. REQ-GFC-007 and spec.md §D.3 (third rejection) said
+	// the contribution is never gated on, because gating it could eliminate
+	// the accumulated-drift signal; that decision is deliberately narrowed,
+	// not removed: the cumulative count and the threshold are unchanged, a
+	// push event and every other layer still block, and an unmeasured (nil)
+	// contribution blocks. The SPEC text follows separately.
 	//
 	// nil means the base does not exist — a root commit, or an unborn HEAD.
 	// That case is reported absent rather than defaulted to 0, because 0 is
@@ -102,6 +135,14 @@ type LayerReport struct {
 	// ContributionAbsentReason names why Contribution is nil. Absent must be
 	// legible, not merely a missing field.
 	ContributionAbsentReason string `json:"contribution_absent_reason,omitempty"`
+	// BaseCount is the BASE's own described-worthy count: the files that differ
+	// between the content anchor and the first parent, same predicate and union
+	// as Value. It is measured directly rather than derived as Value minus
+	// Contribution, because Value is the union of the base's and the change's
+	// file sets and the two overlap when the change re-edits files the base
+	// already moved. nil means it could not be measured (no first parent, no
+	// anchor, a git error); nil is never treated as inherited.
+	BaseCount *int `json:"base_count,omitempty"`
 
 	// ContentAnchor is the sha the described-source diff was measured from.
 	// It is REPORTED, never gated on: the verdict is decided by Value against
@@ -524,6 +565,7 @@ func checkCodemaps(projectRoot string, th Thresholds) (LayerReport, error) {
 	}
 	rep.Value = len(driving)
 	attachContribution(projectRoot, roots, &rep)
+	attachBaseCount(projectRoot, roots, anchor, &rep)
 	if rep.Value >= th.CodemapsChangedFiles {
 		rep.Verdict = VerdictStale
 		// REQ-GFC-008 is guarded on the stale verdict: a fresh layer has
@@ -801,6 +843,92 @@ func attachContribution(projectRoot string, roots []string, rep *LayerReport) {
 	}
 	rep.Contribution = &n
 	rep.ContributionBase = base
+	rep.CodemapsInputsStable = codemapsInputsStable(projectRoot, base)
+}
+
+// attachBaseCount measures the base's own described-worthy count: the files
+// that differ between the content anchor and the first parent (committed state
+// on both sides; no untracked listing, the base is a commit). Same predicate as
+// the cumulative count. It leaves BaseCount nil whenever the first parent or
+// the comparison is unavailable, which the policy treats as unmeasured.
+func attachBaseCount(projectRoot string, roots []string, anchor string, rep *LayerReport) {
+	if rep.Contribution == nil || rep.ContributionBase == "" || anchor == "" {
+		return
+	}
+	out, err := gitOutput(projectRoot, append([]string{"diff", "--name-only", anchor, rep.ContributionBase, "--"}, roots...)...)
+	if err != nil {
+		return
+	}
+	n := 0
+	for _, line := range strings.Split(out, "\n") {
+		if p := strings.TrimSpace(line); p != "" && mx.IsDescribedWorthy(p) {
+			n++
+		}
+	}
+	rep.BaseCount = &n
+}
+
+// codemapsInputsStable reports whether everything under the codemaps directory
+// (the body AND provenance.json) is what the first parent carried: no tracked
+// difference against base and no untracked file under it. Only then do the
+// cumulative count and the base count share one measurement anchor, which is
+// what lets BaseCount stand for the base's own share of the cumulative count.
+//
+// Path lists alone cannot prove that: git records a symlink as its link string
+// and never lists an ignored file, while checkCodemaps reads the stamp's BYTES
+// through the filesystem. So sameness is proven on those bytes: every entry
+// under the directory must be a regular file or directory (no link, no device),
+// no ignored file may sit under it, and the stamp on disk must equal the
+// first parent's blob byte for byte. Whenever sameness cannot be proven — a
+// link, an ignored file, a missing base blob, any git or read error — it
+// returns nil, and nil is never treated as stable (fail closed).
+func codemapsInputsStable(projectRoot, base string) *bool {
+	const dir = ".moai/project/codemaps/"
+	if !regularCodemapsTree(filepath.Join(projectRoot, filepath.FromSlash(dir))) {
+		return nil
+	}
+	tracked, err := gitOutput(projectRoot, "diff", "--name-only", base, "--", dir)
+	if err != nil {
+		return nil
+	}
+	untracked, err := gitOutput(projectRoot, "ls-files", "--others", "--exclude-standard", "--", dir)
+	if err != nil {
+		return nil
+	}
+	ignored, err := gitOutput(projectRoot, "ls-files", "--others", "--ignored", "--exclude-standard", "--", dir)
+	if err != nil || hasNonBlankLine(ignored) {
+		return nil
+	}
+	const stamp = dir + "provenance.json"
+	onDisk, err := os.ReadFile(filepath.Join(projectRoot, filepath.FromSlash(stamp)))
+	if err != nil {
+		return nil
+	}
+	atBase, err := gitOutput(projectRoot, "show", base+":"+stamp)
+	if err != nil {
+		return nil
+	}
+	stable := !hasNonBlankLine(tracked) && !hasNonBlankLine(untracked) && string(onDisk) == atBase
+	return &stable
+}
+
+// regularCodemapsTree reports whether the codemaps directory and everything
+// under it is made of plain directories and regular files. Lstat-style walking
+// never follows a link, so a symlink anywhere in it (stamp or body) makes the
+// bytes a reader sees differ from what git tracks and the answer false.
+func regularCodemapsTree(root string) bool {
+	if info, err := os.Lstat(root); err != nil || !info.IsDir() {
+		return false
+	}
+	ok := true
+	err := filepath.WalkDir(root, func(_ string, d fs.DirEntry, err error) error {
+		if err != nil || (!d.IsDir() && !d.Type().IsRegular()) {
+			ok = false
+			return filepath.SkipAll
+		}
+		return nil
+	})
+	return ok && err == nil
 }
 
 // attachDrivingPaths records the paths driving a stale count, truncated to the

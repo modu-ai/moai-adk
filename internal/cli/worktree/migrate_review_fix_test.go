@@ -394,7 +394,9 @@ func TestMigrateNamesIntegrationClass(t *testing.T) {
 		t.Fatalf("dry run: %v\n%s", err, out)
 	}
 	for _, line := range strings.Split(out, "\n") {
-		if strings.Contains(line, integ) {
+		// The plan prints the source column in git's slash form and the
+		// destination in the host form; compare in slash form.
+		if strings.Contains(filepath.ToSlash(line), filepath.ToSlash(integ)) {
 			if !strings.Contains(line, "integration") {
 				t.Errorf("the integration tree is not classified integration: %q", line)
 			}

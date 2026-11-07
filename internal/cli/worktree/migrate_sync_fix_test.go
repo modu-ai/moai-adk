@@ -279,7 +279,9 @@ func TestJournal_WriteErrorFailsTheRun(t *testing.T) {
 
 	out, err := m4RunMigrate(t, "--apply")
 	if err == nil {
-		t.Errorf("the apply exits 0 although every journal write failed; output:\n%s", out)
+		// Stop here: the check below reads err.Error(), and an apply that
+		// moved nothing (so no journal write ever failed) returns a nil err.
+		t.Fatalf("the apply exits 0 although every journal write failed; output:\n%s", out)
 	}
 	if !strings.Contains(out, "journal") && !strings.Contains(err.Error(), "journal") {
 		t.Errorf("the failure does not name the journal: %v", err)
@@ -356,7 +358,8 @@ func TestMigrationSkipsOnUnreadableRegistry(t *testing.T) {
 	if err != nil {
 		t.Fatalf("apply: %v\n%s", err, out)
 	}
-	if !strings.Contains(out, w.movedTree) || !strings.Contains(out, "registry") {
+	// The plan prints the source column in git's slash form; compare in slash form.
+	if !strings.Contains(filepath.ToSlash(out), filepath.ToSlash(w.movedTree)) || !strings.Contains(out, "registry") {
 		t.Errorf("the tree with an unreadable registry was not skipped with a registry reason:\n%s", out)
 	}
 	if _, statErr := os.Lstat(filepath.Join(w.homeRoot, "legacy6")); statErr == nil {
