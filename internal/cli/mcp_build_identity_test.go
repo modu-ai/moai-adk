@@ -815,8 +815,20 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 		// import lines in factory_card.go moved the same two hits
 		// 3813→3815, 3817→3819. Same comment, same call — only the
 		// coordinates moved (the t948 precedent).
-		"factory_card.go:3815": true,
-		"factory_card.go:3819": true,
+		// Re-measured again at the same landing's second chain: the af-flow
+		// batch-pending edge of `factory complete` added twenty lines above the
+		// helper, moving the same two hits 3815→3835, 3819→3839.
+		"factory_card.go:3835": true,
+		"factory_card.go:3839": true,
+		// `moai factory close-landed` (2026-11-07 batch chain): the leader's
+		// one-verb close of a card whose delivering commit already sits on
+		// the landing target. :8 is the doc comment listing the chain's first
+		// step, `git merge-base --is-ancestor <sha> <ref>` — a doc mention;
+		// the call itself is factoryCommitContained in factory_card.go (the
+		// :3839 hit above). The same landing-evidence reachability family as
+		// factoryMergeReachable — not a binary-vs-source comparison, so
+		// binlag.Evaluate is not its owner.
+		"factory_close_landed.go:8": true,
 		// SPEC-TODO-CARD-ISSUANCE-001 (card t1454): the in-flight lane
 		// changed-files probe — productionLaneFilesProbe resolves the fork
 		// point between the integration branch and the card's lane branch
