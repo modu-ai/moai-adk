@@ -297,18 +297,27 @@ func graphCheckEvent(flagValue string) string {
 }
 
 // driftOriginSentence states, as a fact, where the codemaps count came from.
-// Base alone is value - contribution; the wording follows graph's three-way
-// DriftOrigin and never calls a count "inherited" unless the base carried it.
+// The base's figure is LayerReport.BaseCount, measured directly; it is never
+// derived as value - contribution, because Value is the union of the base's and
+// the change's file sets and a subtraction undercounts when they overlap. When
+// BaseCount is unmeasured (nil) no base number is printed. The wording follows
+// graph's three-way DriftOrigin and never calls a count "inherited" unless the
+// base carried it.
 func driftOriginSentence(l graph.LayerReport) string {
 	if l.Contribution == nil {
 		return "origin not stated"
 	}
-	base := l.Value - *l.Contribution
 	switch l.DriftOrigin {
 	case graph.DriftInherited:
-		return fmt.Sprintf("inherited — the base alone carries %d >= threshold %d, this change added %d", base, l.Threshold, *l.Contribution)
+		if l.BaseCount == nil {
+			return fmt.Sprintf("inherited — threshold %d, this change added %d (the base's own count was not measured)", l.Threshold, *l.Contribution)
+		}
+		return fmt.Sprintf("inherited — the base alone carries %d >= threshold %d, this change added %d", *l.BaseCount, l.Threshold, *l.Contribution)
 	case graph.DriftCrossedByChange:
-		return fmt.Sprintf("crossed by this change — the base carried %d < threshold %d, this change added %d and took the count over the line", base, l.Threshold, *l.Contribution)
+		if l.BaseCount == nil {
+			return fmt.Sprintf("crossed by this change — threshold %d, this change added %d and took the count over the line (the base's own count was not measured)", l.Threshold, *l.Contribution)
+		}
+		return fmt.Sprintf("crossed by this change — the base carried %d < threshold %d, this change added %d and took the count over the line", *l.BaseCount, l.Threshold, *l.Contribution)
 	case graph.DriftOriginated:
 		return fmt.Sprintf("originated by this change — it alone is %d >= threshold %d", *l.Contribution, l.Threshold)
 	case graph.DriftAnchorMoved:
