@@ -29,7 +29,8 @@
 - `moai factory rebind-evidence <card> --run <run> --reason <text>`(`internal/cli/factory_card_rebind.go`) — 감사 판정 경로가 막히면 운영자가 `todo landed --sha`로 기록한 착지 커밋을 증거로 받고(card t1962), 단계가 빈 행은 착지 기록에서 다시 묶는다(card t1964). `moai factory approve`는 증거 해시가 없는 카드를 거절하며 다른 런을 지정하면 완료 게이트가 읽는 런을 stderr로 알린다.
 - `moai integration remeasure`(`internal/cli/integration_remeasure.go`) — 기준 브랜치를 명령 실행 전에 해석하고 못 구하면 안내와 함께 거절한다(card t1790, GH #1817).
 - `moai init` · `moai update` · 클린 재설치 — 셋 모두 `template.SyncLocalSettingsPATH`로 gitignore된 `.claude/settings.local.json`의 `env.PATH`를 새로 쓴다(card t1957, GH #1827). 값은 상속 PATH의 순서를 그대로 두고 빠진 SmartPATH 항목만 뒤에 덧붙인다. codex 전용 하네스에서 건너뛰는 것은 `moai init`과 일반 `moai update`뿐이다 — 클린 재설치(`update_clean_install.go`)는 하네스 조건 없이 호출하므로 codex 전용 하네스에서도 이 파일을 만든다.
-- 배선되지 않은 표면 하나: `internal/jevledger`의 `Recorder.Append`는 비테스트 호출자가 아직 없다 — 훅 진입점 어디도 장부에 쓰지 않는다.
+- 배선되지 않은 표면 하나: `internal/jevledger`의 `Recorder.Append`는 비테스트 호출자가 아직 없다 — 훅 진입점 어디도 장부에 쓰지 않는다. 장부를 읽는 쪽은 `moai jev cost`가 생겨 읽기 전용 집계로 닿는다.
+- 이 창의 새 명령: `moai jev cost [--json]`(Jev 결정 장부 집계 보고, 호출을 하지 않는 표시 전용)와 `moai verify clear-rejection <agent-type> <spec-id> --evidence <path>`(운영자 승인 시 현재 트리의 영수증 종류 거절 표식 하나를 해제 — 사람 경로 전용, 종료 코드 0 해제·1 거절·2 사용법). 기존 명령의 새 플래그: `moai todo add --base-sha <40hex>`, `moai factory wait --run <id>`.
 
 ## 이전 진입점 보완 — 656e4d3 (card t1640 판)
 
