@@ -93,8 +93,8 @@ func LauncherProfileDirName(name string) bool {
 	if name == "" {
 		return false
 	}
-	return !(strings.Contains(name, "/") || strings.Contains(name, "\\") ||
-		strings.HasPrefix(name, ".") || filepath.IsAbs(name))
+	return !strings.Contains(name, "/") && !strings.Contains(name, "\\") &&
+		!strings.HasPrefix(name, ".") && !filepath.IsAbs(name)
 }
 
 // UserProfileDirNames returns the sorted names of the real profile

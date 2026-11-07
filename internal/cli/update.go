@@ -1085,14 +1085,6 @@ func configRootMoaiHooksDir(configRoot string) string {
 	return filepath.Join(configRoot, "hooks", "moai")
 }
 
-// pathIsSymlink reports whether p itself (not its target) is a symbolic
-// link — the Lstat judgment the hooks cleanup refuses on (card t1702
-// audit iter4 F1).
-func pathIsSymlink(p string) bool {
-	fi, err := os.Lstat(p)
-	return err == nil && fi.Mode()&os.ModeSymlink != 0
-}
-
 // @MX:ANCHOR: [AUTO] ensureGlobalSettingsEnv is the global settings and hooks cleanup shared by the init, update, and init-resume paths; it removes the moai hooks dir from every Claude config root a session can use
 // @MX:REASON: [AUTO] fan_in=3 non-test call sites: runInit (init.go), runTemplateSyncWithReporter (update_template_sync.go), resumeInitializedProject (init_resume.go)
 // ensureGlobalSettingsEnv cleans up moai-managed settings from every Claude

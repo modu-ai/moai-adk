@@ -50,7 +50,7 @@ func TestOpenRegularForRead_FifoIsRefusedWithoutBlocking(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer root.Close()
+	defer func() { _ = root.Close() }()
 	done := make(chan error, 1)
 	go func() {
 		f, err := openRegularForRead(root, "f")

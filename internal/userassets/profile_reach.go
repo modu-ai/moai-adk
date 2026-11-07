@@ -166,7 +166,7 @@ func readProfileCopy(dir, rel string, want [32]byte) (ReachState, string) {
 	if err != nil {
 		return ReachUnknown, "profile root cannot be opened: " + err.Error()
 	}
-	defer root.Close()
+	defer func() { _ = root.Close() }()
 	fi, err := root.Lstat(rel)
 	switch {
 	case errors.Is(err, fs.ErrNotExist):
@@ -183,7 +183,7 @@ func readProfileCopy(dir, rel string, want [32]byte) (ReachState, string) {
 	if err != nil {
 		return ReachUnknown, "file cannot be opened: " + err.Error()
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	// The open follows a link that stays inside the root: the handle must be the
 	// very file the Lstat inspected (audit iter7 N4).
 	if hs, herr := f.Stat(); herr != nil || !os.SameFile(fi, hs) {
