@@ -26,7 +26,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -468,12 +467,7 @@ func (f *FactoryDB) earliestCardEvent(ctx context.Context, run, cardID string) (
 // comparison parseAuditVerdict adds — the rebind reader is the one place the
 // recorded value is precisely what is being recomputed.
 func readNewestVerdict(dir, cardID, phase string) (auditVerdict, error) {
-	pattern := filepath.Join(dir, ".moai", "reports", cardID, phase+"*.md")
-	matches, err := filepath.Glob(pattern)
-	if err != nil || len(matches) == 0 {
-		return auditVerdict{}, evidenceErr("no %s verdict file under %s", phase, filepath.Dir(pattern))
-	}
-	newest, err := newestVerdictFile(matches)
+	newest, err := locateVerdictFile(dir, cardID, phase)
 	if err != nil {
 		return auditVerdict{}, err
 	}
