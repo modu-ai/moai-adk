@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -283,5 +284,38 @@ func TestResolution_PerCall(t *testing.T) {
 	want := filepath.Join(secondHome, ".moai")
 	if second != want {
 		t.Errorf("second MoaiHome() = %q, want %q", second, want)
+	}
+}
+
+// TestMoaiHome_UnderGoTestNeverTouchesRealHome pins that a test binary which
+// redirected neither HOME nor MOAI_HOME still resolves to a process-scoped
+// temporary home, never the operator's real ~/.moai.
+func TestMoaiHome_UnderGoTestNeverTouchesRealHome(t *testing.T) {
+	t.Setenv("MOAI_HOME", "")
+	real, err := os.UserHomeDir()
+	if err != nil {
+		t.Skipf("no user home: %v", err)
+	}
+	first, err := MoaiHome()
+	if err != nil {
+		t.Fatalf("MoaiHome() error = %v", err)
+	}
+	if rel, rerr := filepath.Rel(real, first); rerr == nil && !strings.HasPrefix(rel, "..") {
+		t.Errorf("MoaiHome() = %q is under the real home %q", first, real)
+	}
+	second, _ := MoaiHome()
+	if first != second {
+		t.Errorf("MoaiHome() unstable across calls: %q then %q", first, second)
+	}
+}
+
+// TestMoaiHome_AbsoluteOverrideUnchangedUnderTest pins that the test
+// redirection never shadows an explicit absolute MOAI_HOME.
+func TestMoaiHome_AbsoluteOverrideUnchangedUnderTest(t *testing.T) {
+	override := t.TempDir()
+	t.Setenv("MOAI_HOME", override)
+	got, err := MoaiHome()
+	if err != nil || got != override {
+		t.Errorf("MoaiHome() = %q, %v; want %q, nil", got, err, override)
 	}
 }
