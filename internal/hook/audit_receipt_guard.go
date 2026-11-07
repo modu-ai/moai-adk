@@ -4,10 +4,14 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"os"
+	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/auditreceipt"
+	"github.com/modu-ai/moai-adk/internal/spec"
 )
 
 // audit_receipt_guard.go — SPEC-CODEX-AUDIT-GATE-AXES-001 axis (b), hook half.
@@ -488,6 +492,11 @@ func checkAuditReceiptSpawn(input *HookInput) (decision, reason string) {
 		if auditreceipt.RejectionKind(r) != auditreceipt.KindReceipt {
 			continue
 		}
+		if reason, stale := staleRejectionReason(g.tree, r); stale {
+			slog.Info("stale audit rejection skipped",
+				"agent_type", r.AgentType, "spec_id", r.SpecID, "rejected_at", r.RejectedAt, "reason", reason)
+			continue
+		}
 		parts = append(parts, fmt.Sprintf("%s / %s / %s", r.AgentType, r.SpecID, r.Cause))
 	}
 	if len(parts) == 0 {
@@ -496,4 +505,53 @@ func checkAuditReceiptSpawn(input *HookInput) (decision, reason string) {
 	return DecisionDeny, fmt.Sprintf(
 		"%s: %s cannot be spawned while an audit PASS stands unproven in %s. Outstanding: %s. Re-run the audit through codex_audit or audit_multi and let the auditor end with a verdict line citing the receipt.",
 		auditReceiptViolation, sp.Agent, g.tree, strings.Join(parts, "; "))
+}
+
+// Reasons a receipt-kind rejection no longer blocks a spawn.
+const (
+	staleReasonSpecDirAbsent = "spec-dir-absent"
+	staleReasonSpecCompleted = "spec-completed"
+)
+
+var rejectionSpecStatusPattern = regexp.MustCompile(`(?m)^status:\s*(.+?)\s*$`)
+
+// staleRejectionReason reports whether a rejection names a SPEC that is gone
+// from tree or already closed (status completed/archived), so the refusal can
+// no longer gate a phase entry. The unknown-spec sentinel and any SpecID that
+// is not a plain directory name are never stale (keep blocking); an unreadable
+// spec.md is not stale either. The record file is never touched.
+//
+// @MX:NOTE: [AUTO] staleness only trims the PreToolUse spawn deny; SubagentStart/Stop paths and the record files are unchanged
+func staleRejectionReason(tree string, r auditreceipt.Rejection) (string, bool) {
+	id := r.SpecID
+	if id == "" || id == auditreceipt.UnknownSpec || id != filepath.Base(id) || id == "." || id == ".." {
+		return "", false
+	}
+	dir := filepath.Join(tree, ".moai", "specs", id)
+	if fi, err := os.Stat(dir); err != nil {
+		if os.IsNotExist(err) {
+			return staleReasonSpecDirAbsent, true
+		}
+		return "", false
+	} else if !fi.IsDir() {
+		return staleReasonSpecDirAbsent, true
+	}
+	body, err := os.ReadFile(filepath.Join(dir, "spec.md"))
+	if err != nil {
+		return "", false
+	}
+	// Frontmatter only: the first block between the leading --- fences.
+	text := string(body)
+	if rest, ok := strings.CutPrefix(text, "---\n"); ok {
+		if end := strings.Index(rest, "\n---"); end >= 0 {
+			text = rest[:end]
+		}
+	}
+	if m := rejectionSpecStatusPattern.FindStringSubmatch(text); len(m) > 1 {
+		switch spec.NormalizeStatusValue(m[1]) {
+		case "completed", "archived":
+			return staleReasonSpecCompleted, true
+		}
+	}
+	return "", false
 }
