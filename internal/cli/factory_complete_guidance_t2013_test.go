@@ -112,7 +112,7 @@ func TestT2013_CompletionGuidanceWording(t *testing.T) {
 func TestT2013_CompletionGuidanceOnlyOnCompletedEdges(t *testing.T) {
 	t.Run("pr-open prints no completion guidance", func(t *testing.T) {
 		sdClearLaneEnv(t)
-		f := agenticTrunkPrimaryFixture(t)
+		f := ghfNew(t, ghfOpts{syncStatus: "complete"})
 		_ = newGHDouble(t, f)
 		out, err := ghfComplete(t)
 		if err != nil {
@@ -126,7 +126,7 @@ func TestT2013_CompletionGuidanceOnlyOnCompletedEdges(t *testing.T) {
 
 	t.Run("pr still open on the re-run prints no completion guidance", func(t *testing.T) {
 		sdClearLaneEnv(t)
-		f := agenticTrunkPrimaryFixture(t)
+		f := ghfNew(t, ghfOpts{syncStatus: "complete"})
 		_ = newGHDouble(t, f)
 		if _, err := ghfComplete(t); err != nil {
 			t.Fatalf("first complete: %v", err)
@@ -146,7 +146,7 @@ func TestT2013_CompletionGuidanceOnlyOnCompletedEdges(t *testing.T) {
 
 	t.Run("pr closed without merging prints no completion guidance", func(t *testing.T) {
 		sdClearLaneEnv(t)
-		f := agenticTrunkPrimaryFixture(t)
+		f := ghfNew(t, ghfOpts{syncStatus: "complete"})
 		d := newGHDouble(t, f)
 		if _, err := ghfComplete(t); err != nil {
 			t.Fatalf("first complete: %v", err)
@@ -165,7 +165,7 @@ func TestT2013_CompletionGuidanceOnlyOnCompletedEdges(t *testing.T) {
 	t.Run("pr merged (merged-pr) prints the ordered guidance", func(t *testing.T) {
 		sdClearLaneEnv(t)
 		t.Setenv(config.EnvFactoryClearPolicy, config.FactoryClearPolicyEach)
-		f := agenticTrunkPrimaryFixture(t)
+		f := ghfNew(t, ghfOpts{syncStatus: "complete"})
 		d := newGHDouble(t, f)
 		if _, err := ghfComplete(t); err != nil {
 			t.Fatalf("first complete: %v", err)

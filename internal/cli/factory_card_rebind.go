@@ -253,7 +253,9 @@ func runFactoryRebindEvidence(cmd *cobra.Command, cardID, reason, run string) er
 			return lerr
 		}
 		if audited && latest == full {
-			return fmt.Errorf("card %s already records evidence %s and the audit surface's latest rebind-evidence row already records it (converged-and-audited duplicate)", cardID, full)
+			// Idempotent: a scripted close chain can be re-run (exit 0, no write).
+			_, _ = fmt.Fprintf(out, "rebind-evidence: %s already bound to %s; nothing to do\n", cardID, shortSHA(full))
+			return nil
 		}
 		auditOld := ""
 		if audited {

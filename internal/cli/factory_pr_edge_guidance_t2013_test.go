@@ -24,7 +24,7 @@ var t2013PREdgeMarkers = []string{
 func TestT2013_PREdgeGuidanceDraftAndNonRequiredChecks(t *testing.T) {
 	t.Run("pr-open edge prints both sentences", func(t *testing.T) {
 		sdClearLaneEnv(t)
-		f := agenticTrunkPrimaryFixture(t)
+		f := ghfNew(t, ghfOpts{syncStatus: "complete"})
 		_ = newGHDouble(t, f)
 		out, err := ghfComplete(t)
 		if err != nil {
@@ -42,7 +42,7 @@ func TestT2013_PREdgeGuidanceDraftAndNonRequiredChecks(t *testing.T) {
 
 	t.Run("pr still open on the re-run does not repeat it", func(t *testing.T) {
 		sdClearLaneEnv(t)
-		f := agenticTrunkPrimaryFixture(t)
+		f := ghfNew(t, ghfOpts{syncStatus: "complete"})
 		_ = newGHDouble(t, f)
 		if _, err := ghfComplete(t); err != nil {
 			t.Fatalf("first complete: %v", err)
@@ -60,7 +60,7 @@ func TestT2013_PREdgeGuidanceDraftAndNonRequiredChecks(t *testing.T) {
 
 	t.Run("merged-pr edge does not carry it", func(t *testing.T) {
 		sdClearLaneEnv(t)
-		f := agenticTrunkPrimaryFixture(t)
+		f := ghfNew(t, ghfOpts{syncStatus: "complete"})
 		d := newGHDouble(t, f)
 		if _, err := ghfComplete(t); err != nil {
 			t.Fatalf("first complete: %v", err)
