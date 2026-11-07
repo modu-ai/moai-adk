@@ -89,6 +89,10 @@ provision the entry (M4).`,
 			if exposure == "" {
 				exposure = mcpServerExposureFromEnv()
 			}
+			if call, _ := c.Flags().GetString("call"); call != "" {
+				input, _ := c.Flags().GetString("input-json")
+				return runMCPServerOneShot(c.Context(), os.Stdin, os.Stdout, call, input, exposure)
+			}
 			return runMCPServerWithIOAndExposure(os.Stdin, os.Stdout, exposure)
 		},
 	}
@@ -96,6 +100,12 @@ provision the entry (M4).`,
 	// (the MOAI_MCP_EXPOSURE env is the equivalent input), restricting the
 	// served surface to the gate read-only subset.
 	cmd.Flags().String("exposure", "", `Serve a restricted surface: "gate" serves only the gate read-only subset (set by the gate child's containment overrides).`)
+	// Hidden one-shot form: a stale server runs one write-capable call through
+	// this (installed) build with it. The one-shot never proxies.
+	cmd.Flags().String("call", "", "Invoke one tool once and print the result JSON (internal one-shot form).")
+	cmd.Flags().String("input-json", mcpInputFromStdin, "Tool arguments as JSON, or - to read stdin (with --call).")
+	_ = cmd.Flags().MarkHidden("call")
+	_ = cmd.Flags().MarkHidden("input-json")
 	return cmd
 }
 
@@ -238,8 +248,8 @@ func moaiMCPServerInstructions() string {
 	return fmt.Sprintf(
 		"moai self-hosted MCP server, build %s (pid %d). "+
 			"This process was spawned by the host and keeps running the build it started with: "+
-			"after reinstalling the moai binary, reconnect the server so the host respawns it, "+
-			"otherwise newly added tools stay absent from tools/list. "+
+			"after reinstalling the moai binary, write calls are proxied to the installed build until you reconnect the server so the host respawns it; "+
+			"reconnect is still needed, otherwise newly added tools stay absent from tools/list. "+
 			"Run `moai doctor` to compare the running server against the installed binary.",
 		version.GetFullVersion(), os.Getpid(),
 	)
@@ -262,8 +272,13 @@ func mcpStalenessGuard(name string, handler server.ToolHandlerFunc) server.ToolH
 		guidance := fmt.Sprintf(
 			"stale_server: the serving moai build (%s) differs from the installed build (%s) — reconnect the moai MCP server (restart the host session) so the installed build serves",
 			info.Serving, info.Installed)
-		if mcpCallIsWriteCapable(name, req) {
-			res := toolErr(name, fmt.Errorf("the serving moai build is stale — %s", guidance))
+		if mcpCallIsWriteCapable(name, req) && !mcpOneShotActive() {
+			proxied, perr := proxyMCPCallToInstalled(ctx, info.Installed, name, req)
+			if perr == nil {
+				note := fmt.Sprintf("stale_server: proxied to the installed build %s — reconnect the moai MCP server so the installed build serves directly", info.Installed)
+				return addMCPStalenessMetadata(proxied, info, note), nil
+			}
+			res := toolErr(name, fmt.Errorf("the serving moai build is stale — %s (proxy to the installed build failed: %v)", guidance, perr))
 			return addMCPStalenessMetadata(res, info, guidance), nil
 		}
 		res, err := handler(ctx, req)
