@@ -77,6 +77,15 @@ func m6NewWorld(t *testing.T) *m6World {
 	home := m6Real(t, t.TempDir())
 	t.Setenv(paths.EnvHome, home)
 	t.Setenv("HOME", home)
+	// The default probe shells out to lsof, which does not exist on Windows and
+	// answers about every process on the host elsewhere. Either way it is not
+	// part of what these rehearsals pin: a probe that cannot answer is a skip
+	// cause, so on Windows every tree was skipped and nothing moved (card
+	// t2064). The world reports no active process; tests that exercise the real
+	// scan or a specific occupant set the seam themselves.
+	origProbe := activeProcessCWDProbe
+	activeProcessCWDProbe = func() ([]string, error) { return nil, nil }
+	t.Cleanup(func() { activeProcessCWDProbe = origProbe })
 
 	repo := filepath.Join(m6Real(t, t.TempDir()), "mig-repo")
 	if err := os.MkdirAll(repo, 0o755); err != nil {
@@ -149,7 +158,9 @@ func m6NewWorld(t *testing.T) *m6World {
 // m6Registered reports whether git still registers path.
 func m6Registered(t *testing.T, repo, path string) bool {
 	t.Helper()
-	return strings.Contains(m6Git(t, repo, "worktree", "list", "--porcelain"), path)
+	// git prints forward slashes on every OS; path is spelled with the OS
+	// separator, so compare in git's spelling (card t2085).
+	return strings.Contains(m6Git(t, repo, "worktree", "list", "--porcelain"), filepath.ToSlash(path))
 }
 
 // TestMigrateVerb_IsRegistered pins the registration clause: the migrate

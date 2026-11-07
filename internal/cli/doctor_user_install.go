@@ -15,6 +15,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/manifest"
+	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/internal/userassets"
 )
 
@@ -44,13 +45,22 @@ func checkUserInstallIntegrity(homeDir string, verbose bool) DiagnosticCheck {
 		return check
 	}
 
-	roots := userassets.ResolveRoots(homeDir)
-	rootDirs := make(map[userassets.RootSlug]string, len(roots))
-	for _, r := range roots {
+	rootList, err := userassets.ResolveRoots(homeDir)
+	if err != nil {
+		// An enumeration failure must surface as a warn, never as the "no
+		// profiles exist" disguise — with the store unreadable, the manifest
+		// comparison below could not see the profile roots at all (card
+		// t1702 audit round 4).
+		check.Status = uikit.CheckWarn
+		check.Message = fmt.Sprintf("cannot enumerate the install roots (profile store unreadable) — tracked files not compared: %v", err)
+		return check
+	}
+	rootDirs := make(map[userassets.RootSlug]string, len(rootList))
+	for _, r := range rootList {
 		rootDirs[r.Slug] = r.Dir
 	}
 
-	missing, modified := 0, 0
+	verified, missing, modified, unverifiable := 0, 0, 0, 0
 	for key, fe := range m.Files {
 		slug, rel, ok := splitManifestKeyUser(key)
 		if !ok {
@@ -58,6 +68,14 @@ func checkUserInstallIntegrity(homeDir string, verbose bool) DiagnosticCheck {
 		}
 		dir, known := rootDirs[slug]
 		if !known {
+			// F3 (card t1702 audit iter4): a record under a root that is not
+			// currently enumerated (a deleted profile, say) was skipped
+			// while the summary still counted len(m.Files) as verified.
+			// Count it separately — never as verified.
+			unverifiable++
+			if verbose {
+				check.Detail += fmt.Sprintf("\nunverifiable (root not enumerated): %s", key)
+			}
 			continue
 		}
 		abs := filepath.Join(dir, filepath.FromSlash(rel))
@@ -75,20 +93,28 @@ func checkUserInstallIntegrity(homeDir string, verbose bool) DiagnosticCheck {
 			if verbose {
 				check.Detail += fmt.Sprintf("\nmodified: %s", key)
 			}
+			continue
 		}
+		verified++
 	}
 
-	untracked := countUntrackedUserFiles(roots, m)
+	untracked := countUntrackedUserFiles(rootList, m)
 	switch {
 	case missing > 0 || modified > 0:
 		check.Status = uikit.CheckWarn
 		check.Message = fmt.Sprintf("%d manifest-tracked file(s) missing, %d modified — 'moai update' repairs manifest-hash matches; edits stay preserved", missing, modified)
+		if unverifiable > 0 {
+			check.Message += fmt.Sprintf("; %d record(s) under roots not currently enumerated — not counted as verified", unverifiable)
+		}
+	case unverifiable > 0:
+		check.Status = uikit.CheckWarn
+		check.Message = fmt.Sprintf("%d file(s) verified; %d record(s) under roots not currently enumerated (stale profile or unreadable store) — not counted as verified; 'moai update' reconciles", verified, unverifiable)
 	case untracked > 0:
 		check.Status = uikit.CheckOK
-		check.Message = fmt.Sprintf("%d file(s) verified; %d untracked file(s) in the user roots (informational, never removed)", len(m.Files)-missing, untracked)
+		check.Message = fmt.Sprintf("%d file(s) verified; %d untracked file(s) in the user roots (informational, never removed)", verified, untracked)
 	default:
 		check.Status = uikit.CheckOK
-		check.Message = fmt.Sprintf("%d file(s) verified", len(m.Files))
+		check.Message = fmt.Sprintf("%d file(s) verified", verified)
 	}
 	return check
 }
@@ -122,6 +148,87 @@ func splitManifestKeyUser(key string) (userassets.RootSlug, string, bool) {
 		return "", "", false
 	}
 	return userassets.RootSlug(slug), rest, true
+}
+
+// checkProfileSkillReach verifies that ONE active Claude config root can
+// resolve the core skills a standard install lands: a SKILL.md per
+// embedded-catalog core entry under <root>/skills/<name>/ (card t1702). The
+// caller resolves the active root (CLAUDE_CONFIG_DIR when set, else
+// ~/.claude) plus its DISPLAY form — the env value verbatim, or the literal
+// "~/.claude" for the fallback — so the rendered message stays free of
+// machine-specific absolute paths (the doctor golden snapshots require that
+// hermeticity). Repair 3 (card t1702 audit P2): when the active root is
+// OUTSIDE moai's install roots (a user's own config dir), the warning names
+// what would actually fix it instead of advising 'moai update', which
+// cannot reach that root. Report-only: it never installs.
+func checkProfileSkillReach(activeRoot, displayRoot, homeDir string, verbose bool) DiagnosticCheck {
+	check := DiagnosticCheck{Name: "Skill Reach"}
+
+	cat, err := template.LoadEmbeddedCatalog()
+	if err != nil {
+		check.Status = uikit.CheckWarn
+		check.Message = fmt.Sprintf("cannot load embedded catalog: %v", err)
+		return check
+	}
+	core := cat.Catalog.Core.Skills
+	if len(core) == 0 {
+		check.Status = uikit.CheckOK
+		check.Message = "no core skills in the embedded catalog"
+		return check
+	}
+
+	missing := 0
+	for _, e := range core {
+		if _, err := os.Stat(filepath.Join(activeRoot, "skills", e.Name, "SKILL.md")); err == nil {
+			continue
+		}
+		missing++
+		if verbose {
+			check.Detail += fmt.Sprintf("\nmissing: %s", e.Name)
+		}
+	}
+	if missing > 0 {
+		check.Status = uikit.CheckWarn
+		installable, enumErr := activeRootIsInstallable(homeDir, activeRoot)
+		switch {
+		case enumErr != nil:
+			// The store cannot be inspected, so "outside moai's install
+			// roots" would be an unobserved claim — name the enumeration
+			// failure instead (card t1702 audit round 4).
+			check.Message = fmt.Sprintf("%d of %d core skill(s) NOT resolvable from %s — cannot confirm this config root is moai-managed (profile store unreadable): %v", missing, len(core), displayRoot, enumErr)
+		case installable:
+			check.Message = fmt.Sprintf("%d of %d core skill(s) NOT resolvable from %s — run 'moai update' to install into the active config root", missing, len(core), displayRoot)
+		default:
+			check.Message = fmt.Sprintf("%d of %d core skill(s) NOT resolvable from %s — this config dir is outside moai's install roots (~/.claude and the profile dirs under ~/.moai/claude-profiles); point CLAUDE_CONFIG_DIR at a managed root or copy the core skills in manually", missing, len(core), displayRoot)
+		}
+		return check
+	}
+	check.Status = uikit.CheckOK
+	check.Message = fmt.Sprintf("%d core skill(s) resolvable from %s", len(core), displayRoot)
+	return check
+}
+
+// activeRootIsInstallable reports whether 'moai update' can install into
+// the active root: the root must be ~/.claude or exactly one of the real
+// profile dirs under the profile base — the two families ResolveRoots
+// enumerates (repair 3, card t1702 audit P2). A profile store that exists
+// but cannot be read yields an error so the caller can distinguish "outside
+// the families" from "cannot judge" (card t1702 audit round 4).
+func activeRootIsInstallable(homeDir, activeRoot string) (bool, error) {
+	if activeRoot == filepath.Join(homeDir, ".claude") {
+		return true, nil
+	}
+	base := userassets.ProfileRootsBase(homeDir)
+	names, err := userassets.RealProfileDirNames(homeDir)
+	if err != nil {
+		return false, err
+	}
+	for _, name := range names {
+		if activeRoot == filepath.Join(base, name) {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // checkProjectVsLock compares the project tree against the project lock file

@@ -340,6 +340,7 @@ func runSweep(cmd *cobra.Command, _ []string) error {
 	}
 
 	records, lockErr := classifySweepVerdicts(worktrees, base)
+	noticeOwnerlessProjects(cmd)
 
 	if asJSON {
 		if err := renderSweepJSON(cmd, records); err != nil {

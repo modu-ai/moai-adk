@@ -153,11 +153,15 @@ var permittedFlagAdditions = map[string][]string{
 	//     SPEC-TODO-CARD-ISSUANCE-001 M2 (REQ-TCI-004/-006/-009): the
 	//     issuance attribute inputs and the no-write preview.
 	//
-	// Both opt-in: absent, `add` records no issuance attributes and
+	//   - --base-sha — card t2058 (operator-directed release-CI recovery): the
+	//     full commit SHA a repair card's worktree is cut from, recorded as
+	//     the optional base_sha key of the card's issuance record.
+	//
+	// All opt-in: absent, `add` records no issuance attributes and
 	// classifies through the deterministic default decider, behaving as the
 	// frozen surface says.
 	"add <text>": {
-		"classification-file=string()",
+		"base-sha=string()", "classification-file=string()",
 		"dry-run=bool(false)", "files=string()", "origin=string()",
 		"parent=string()", "size-lines=string()",
 	},

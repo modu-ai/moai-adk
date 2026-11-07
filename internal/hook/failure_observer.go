@@ -235,9 +235,6 @@ const lessonsInboxSchemaVersion = 1
 // are logged and swallowed (a learning-loop write must never block the session).
 func appendLessonsInboxStub(root, eventKey, summary, source string) {
 	inboxPath := filepath.Join(root, ".moai", "lessons-inbox.jsonl")
-	// Write-time size cap + bounded rotation (SPEC-INBOX-DRAIN-GAP-001
-	// REQ-IBX-001..004) — fails open; see enforceInboxCap.
-	enforceInboxCap(root, inboxPath)
 	stub := lessonsInboxStub{
 		Timestamp: time.Now().UTC().Format(time.RFC3339),
 		EventKey:  eventKey,
@@ -259,6 +256,20 @@ func appendLessonsInboxStub(root, eventKey, summary, source string) {
 	if err != nil {
 		slog.Warn("failure observer: open lessons-inbox", "error", err)
 		return
+	}
+	// Write-time size cap + bounded rotation (SPEC-INBOX-DRAIN-GAP-001
+	// REQ-IBX-001..004) — fails open. The size comes from the handle just
+	// opened, not from the path (R228). Rotation renames the live file, which
+	// Windows refuses while a handle of ours is open, so close before rotating
+	// and reopen after.
+	if inboxRotationDue(root, inboxPath, f) {
+		_ = f.Close()
+		rotateInboxForCap(inboxPath)
+		f, err = os.OpenFile(inboxPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
+		if err != nil {
+			slog.Warn("failure observer: reopen lessons-inbox after rotation", "error", err)
+			return
+		}
 	}
 	defer func() { _ = f.Close() }()
 	if _, err := f.Write(data); err != nil {

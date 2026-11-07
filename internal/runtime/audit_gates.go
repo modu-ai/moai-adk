@@ -41,14 +41,17 @@ type GateSet struct {
 // @MX:REASON: fan_in 3 measured — kickoff planAuditCheck, homestate admitVerdictFile, and GateConfig.attachCeiling; an unreadable configuration must refuse (D21), never fold into the empty set
 // @MX:SPEC: SPEC-AUDIT-CEILING-001
 func ResolveRequiredBackends(treeRoot string) (GateSet, error) {
-	if auditreceipt.IsConfigOrphanedRoot(treeRoot) {
-		primary, _, err := auditreceipt.IdentifyPrimaryCheckout(treeRoot)
-		if err != nil {
-			// Parity with resolveAuditGates (REQ-MWU-011/012): the codex gate
-			// is treated as required, with the note naming the assumption.
-			return GateSet{Required: []string{"codex"}, Note: auditreceipt.GateAssumedRequiredNote}, nil
-		}
+	primary, _, perr := auditreceipt.IdentifyPrimaryCheckout(treeRoot)
+	switch {
+	case perr == nil:
+		// The gate policy is the repository's, not the card branch's: a linked
+		// worktree carries a stale copy of workflow.yaml from when it was cut,
+		// so the primary checkout's section is the one that governs.
 		treeRoot = primary
+	case auditreceipt.IsConfigOrphanedRoot(treeRoot):
+		// Parity with resolveAuditGates (REQ-MWU-011/012): the codex gate
+		// is treated as required, with the note naming the assumption.
+		return GateSet{Required: []string{"codex"}, Note: auditreceipt.GateAssumedRequiredNote}, nil
 	}
 	path := filepath.Join(treeRoot, ".moai", "config", "sections", "workflow.yaml")
 	data, err := os.ReadFile(path)

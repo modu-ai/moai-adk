@@ -110,7 +110,7 @@ func LoadCompletionReceipt(root, path string, exp CompletionExpectation) (Comple
 	if errors.Is(err, os.ErrNotExist) {
 		return CompletionReceipt{}, errors.New("mission completion: receipt_missing")
 	}
-	if err != nil || !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 || info.Mode().Perm() != 0o600 {
+	if err != nil || !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 || !hostPrivateModeOK(info.Mode().Perm(), 0o600) {
 		return CompletionReceipt{}, errors.New("mission completion: receipt_unsafe")
 	}
 	resolved, err := filepath.EvalSymlinks(path)

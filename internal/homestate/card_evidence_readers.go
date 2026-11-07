@@ -15,9 +15,12 @@ import (
 )
 
 var (
-	shaPattern          = regexp.MustCompile(`^[0-9a-f]{7,64}$`)
-	cardIDPattern       = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
-	verdictLinePattern  = regexp.MustCompile(`^verdict: (PASS|PASS-WITH-DEBT|FAIL)$`)
+	shaPattern    = regexp.MustCompile(`^[0-9a-f]{7,64}$`)
+	cardIDPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
+	// The fourth label, INCONCLUSIVE, is an audit that did not run
+	// (SPEC-AUDIT-ENGINE-CONVERGENCE-001 REQ-AEC-007): the card stays in audit
+	// as for FAIL, and the shared admission rule names the unrun backend and class.
+	verdictLinePattern  = regexp.MustCompile(`^verdict: (PASS|PASS-WITH-DEBT|FAIL|INCONCLUSIVE)$`)
 	auditedSHAPattern   = regexp.MustCompile(`^audited_sha: ([0-9a-f]{12,40})$`)
 	verdictIterPattern  = regexp.MustCompile(`-iter(\d+)`)
 	maxEvidenceFileSize = int64(4 << 20)
@@ -97,12 +100,7 @@ func readAuditVerdict(dir, cardID, phase, evidenceSHA string) (auditVerdict, err
 	if strings.TrimSpace(dir) == "" {
 		return auditVerdict{}, evidenceErr("card has no worktree path")
 	}
-	pattern := filepath.Join(dir, ".moai", "reports", cardID, phase+"*.md")
-	matches, err := filepath.Glob(pattern)
-	if err != nil || len(matches) == 0 {
-		return auditVerdict{}, evidenceErr("no %s verdict file under %s", phase, filepath.Dir(pattern))
-	}
-	newest, err := newestVerdictFile(matches)
+	newest, err := locateVerdictFile(dir, cardID, phase)
 	if err != nil {
 		return auditVerdict{}, err
 	}
@@ -110,7 +108,57 @@ func readAuditVerdict(dir, cardID, phase, evidenceSHA string) (auditVerdict, err
 	if err != nil {
 		return auditVerdict{}, evidenceErr("verdict file %s: %v", newest, err)
 	}
-	return parseAuditVerdict(newest, raw, evidenceSHA)
+	v, err := parseAuditVerdictFields(newest, raw)
+	if err != nil {
+		return v, err
+	}
+	return v, bindAuditedToEvidence(dir, cardID, v, evidenceSHA)
+}
+
+// evidenceGitRead is the git runner the audited-to-evidence binding uses;
+// tests replace it.
+var evidenceGitRead = gitRead
+
+// bindAuditedToEvidence is the T13 binding: the verdict's audited_sha is a
+// prefix of the recorded evidence commit, or an ancestor of it whose offset
+// to the evidence commit lies wholly under .moai/reports/<card>/ (the verdict
+// file is committed after the code it audits, and a verdict cannot name the
+// commit that adds it). Any other offset refuses, naming the first
+// offending path.
+func bindAuditedToEvidence(dir, cardID string, v auditVerdict, evidenceSHA string) error {
+	recorded := strings.ToLower(strings.TrimSpace(evidenceSHA))
+	if recorded != "" && strings.HasPrefix(recorded, v.AuditedSHA) {
+		return nil
+	}
+	mismatch := func(why string) error {
+		return evidenceErr("verdict file %s audited %s, not the recorded evidence commit %q%s", v.Path, v.AuditedSHA, recorded, why)
+	}
+	if recorded == "" {
+		return mismatch("")
+	}
+	ctx := context.Background()
+	audited, err := resolveCommit(ctx, dir, v.AuditedSHA)
+	if err != nil {
+		return mismatch(": the audited commit does not resolve")
+	}
+	evidence, err := resolveCommit(ctx, dir, recorded)
+	if err != nil {
+		return mismatch(": the evidence commit does not resolve")
+	}
+	if _, err := evidenceGitRead(ctx, dir, "merge-base", "--is-ancestor", audited, evidence); err != nil {
+		return mismatch(": the audited commit is not an ancestor of the evidence commit")
+	}
+	out, err := evidenceGitRead(ctx, dir, "diff", "--name-only", "-z", audited, evidence)
+	if err != nil {
+		return mismatch(": the change between them could not be listed")
+	}
+	reportsDir := ".moai/reports/" + cardID + "/"
+	for _, changed := range strings.Split(out, "\x00") {
+		if changed != "" && !strings.HasPrefix(changed, reportsDir) {
+			return mismatch(fmt.Sprintf(": the evidence commit differs from the audited one outside %s (first changed path: %s)", reportsDir, changed))
+		}
+	}
+	return nil
 }
 
 // ParseAuditVerdictFile applies the E-VERDICT line rules to one file's bytes
@@ -122,6 +170,20 @@ func ParseAuditVerdictFile(path string, raw []byte, evidenceSHA string) (verdict
 }
 
 func parseAuditVerdict(path string, raw []byte, evidenceSHA string) (auditVerdict, error) {
+	out, err := parseAuditVerdictFields(path, raw)
+	if err != nil {
+		return out, err
+	}
+	recorded := strings.ToLower(strings.TrimSpace(evidenceSHA))
+	if recorded == "" || !strings.HasPrefix(recorded, out.AuditedSHA) {
+		return out, evidenceErr("verdict file %s audited %s, not the recorded evidence commit %q", path, out.AuditedSHA, recorded)
+	}
+	return out, nil
+}
+
+// parseAuditVerdictFields applies the single-value line rules without any
+// comparison against a recorded commit.
+func parseAuditVerdictFields(path string, raw []byte) (auditVerdict, error) {
 	verdicts, shas := map[string]bool{}, map[string]bool{}
 	for _, line := range strings.Split(string(raw), "\n") {
 		line = strings.TrimRight(line, " \t\r")
@@ -152,10 +214,6 @@ func parseAuditVerdict(path string, raw []byte, evidenceSHA string) (auditVerdic
 		}
 	default:
 		return out, evidenceErr("verdict file %s carries conflicting `audited_sha:` lines", path)
-	}
-	recorded := strings.ToLower(strings.TrimSpace(evidenceSHA))
-	if recorded == "" || !strings.HasPrefix(recorded, out.AuditedSHA) {
-		return out, evidenceErr("verdict file %s audited %s, not the recorded evidence commit %q", path, out.AuditedSHA, recorded)
 	}
 	return out, nil
 }
@@ -238,6 +296,12 @@ func readBoundedFile(path string) ([]byte, error) {
 	}
 	return os.ReadFile(path)
 }
+
+// NewestVerdictFile is the rebind-evidence selection, exported so the audit
+// tools choose "the newest verdict file" by the very rule the factory card
+// record uses (SPEC-AUDIT-ENGINE-CONVERGENCE-001 REQ-AEC-001) instead of a
+// second reader.
+func NewestVerdictFile(paths []string) (string, error) { return newestVerdictFile(paths) }
 
 // newestVerdictFile picks the highest iteration number in the file name (a
 // name without `-iter<N>` is iteration 1), then the latest modification time.

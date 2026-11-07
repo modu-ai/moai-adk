@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/lockfile"
+	"github.com/modu-ai/moai-adk/internal/worktreeroot"
 )
 
 // WorktreeEntry records a currently active isolated worktree.
@@ -181,6 +182,19 @@ func rekeyWorktreeEntry(projectDir, from, to string) error {
 			}
 		}
 		if !found {
+			// The entry may spell the same directory differently (a symlinked
+			// parent such as /var vs /private/var, a trailing separator): the
+			// move re-keys the entry that denotes the tree (card t2053, C10).
+			want := worktreeroot.CanonicalSpelling(from)
+			for i := range entries {
+				if worktreeroot.CanonicalSpelling(entries[i].Path) == want {
+					entries[i].Path = to
+					found = true
+					break
+				}
+			}
+		}
+		if !found {
 			return fmt.Errorf("worktree registry: no entry keyed to %s", from)
 		}
 		return saveWorktreeEntriesAtomic(stateFile, entries)
@@ -196,9 +210,9 @@ func worktreeStateFile(projectDir string) string {
 }
 
 // stateLockPath returns the lock file of the state file at path: the same
-// name with a .lock suffix, created on first acquisition. An OS-held flock
-// (Unix) or process-local mutex (Windows) on it is the state-file lock of
-// design.md D-12.
+// name with a .lock suffix, created on first acquisition. An OS-held lock on
+// it (flock on Unix, a LockFileEx byte-range lock on Windows) is the
+// state-file lock of design.md D-12.
 func stateLockPath(stateFile string) string {
 	return stateFile + ".lock"
 }

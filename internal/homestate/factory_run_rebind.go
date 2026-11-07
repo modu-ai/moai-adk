@@ -31,6 +31,14 @@ type RebindRequest struct {
 	Source            RunOwner
 	Target            RunOwner
 	RequireStampBasis bool
+	// AbandonExpiredLeaseDuplicate is the explicit operator/leader verb's opt-in
+	// (`moai factory runs --retire <dead> --rebind-to <live>`, card t2104,
+	// #1938): when true, the source row's lease columns are ignored in the
+	// duplicate-pair comparison, so an EXPIRED lease (the valid-lease guard has
+	// already refused a live one) does not stop the row being abandoned with a
+	// pointer. False — every automatic caller — keeps lease divergence a
+	// refusal: resolving a run never silently abandons a card row.
+	AbandonExpiredLeaseDuplicate bool
 }
 
 // RebindResult lists the card ids the consolidation re-keyed and the ones it
@@ -154,9 +162,10 @@ func divergentColumns(src, tgt Card) []string {
 //	    abandoned with a pointer) — not those of terminal cards left in the source,
 //	(6) flips the source to retired and appends one run.retired event.
 //
-// Any refusal and any failure rolls everything back. No row is deleted, and
-// leader_approvals is never touched (REQ-FCR-023): a re-keyed card needs a
-// fresh approval under the target run.
+// Any refusal and any failure rolls everything back. Cards and events are never
+// deleted; the one deletion is the source's positively-dead worker rows (each
+// leaves a worker.reaped event), and leader_approvals is never touched
+// (REQ-FCR-023): a re-keyed card needs a fresh approval under the target run.
 //
 // @MX:ANCHOR: [AUTO] the single consolidation operation behind leader entry, `runs --retire --rebind-to` and the join prompt's m<n>
 // @MX:REASON: three operator-facing surfaces call it (fan_in >= 3); a guard dropped here is dropped for all of them, and a wrong move strands or steals a live run's cards
@@ -274,7 +283,19 @@ func (f *FactoryDB) RebindRun(ctx context.Context, req RebindRequest, opts Recon
 				return RebindResult{}, rebindRefusal("card %s: run %s already holds a TERMINAL %s row (evidence %q, source %q); the live row of run %s stays and the conflict needs a fresh decision",
 					c.CardID, tgt.RunID, tgtCard.State, tgtCard.EvidenceSHA, c.EvidenceSHA, src.RunID)
 			}
-			if diverged := divergentColumns(c, tgtCard); len(diverged) > 0 {
+			// Explicit verb only (AbandonExpiredLeaseDuplicate): the lease
+			// guard above already established that this source row holds no
+			// VALID lease, so its lease columns are dead data and never
+			// stranded work (card t2104, #1938): a row that differs from the
+			// live row only there is still a duplicate. The automatic
+			// reconcile path leaves the flag false and keeps refusing.
+			diverged := divergentColumns(c, tgtCard)
+			if req.AbandonExpiredLeaseDuplicate {
+				diverged = slices.DeleteFunc(diverged, func(col string) bool {
+					return col == "lease_holder" || col == "lease_expires_at"
+				})
+			}
+			if len(diverged) > 0 {
 				return RebindResult{}, rebindRefusal("card %s: run %s already holds a %s row diverging on %s (target evidence %q, source %q); the live row of run %s stays and the conflict needs a fresh decision",
 					c.CardID, tgt.RunID, tgtCard.State, strings.Join(diverged, ", "), tgtCard.EvidenceSHA, c.EvidenceSHA, src.RunID)
 			}
@@ -301,6 +322,11 @@ func (f *FactoryDB) RebindRun(ctx context.Context, req RebindRequest, opts Recon
 		}
 	}
 	if err := rebindInject(rebindPointAfterCards); err != nil {
+		return RebindResult{}, err
+	}
+	// refuseLiveWorker passed, so every worker row of the source is positively
+	// dead: they leave with the run instead of outliving it.
+	if err := reapDeadWorkers(ctx, tx, src.RunID, opts.workerProbe(), now); err != nil {
 		return RebindResult{}, err
 	}
 	// Step 5 — the binding of every card step 4 moved, re-keyed or abandoned with

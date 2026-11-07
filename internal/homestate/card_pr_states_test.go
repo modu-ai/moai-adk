@@ -76,7 +76,7 @@ func TestFactoryCompleteGitHubFlowPR(t *testing.T) {
 
 	t.Run("merged_pr_reaches_done_with_a_remote_configured", func(t *testing.T) {
 		db := frOpen(t)
-		repo := frNewRepo(t, true) // the repository has a remote: merged-local → done is refused here
+		repo := frNewRepo(t, true) // the repository has a remote: merged-local → done needs the leader's receipt here
 		ctx := context.Background()
 		frPlace(t, db, Card{RunID: frRun, CardID: "viaPR", State: CardMergedPR, Version: 1, WorktreePath: repo.Dir, MergeSHA: repo.Merge})
 		done, err := db.Transition(ctx, TransitionRequest{RunID: frRun, CardID: "viaPR", To: CardDone, ExpectedVersion: 1, Actor: "operator", Decider: DeciderHuman, Now: frNow})
@@ -86,10 +86,14 @@ func TestFactoryCompleteGitHubFlowPR(t *testing.T) {
 		if done.State != CardDone {
 			t.Fatalf("state = %s, want done", done.State)
 		}
-		// The control: the git-flow state keeps its refusal.
+		// The control: merged-local → done never completes without the
+		// leader's receipt. Before card t2057 a configured remote refused the
+		// edge outright (ErrIllegalTransition); since the operator's 11-06
+		// decision the edge is admitted with a remote too, so the refusal here
+		// is the missing receipt binding (REQ-FCR-002b).
 		frPlace(t, db, Card{RunID: frRun, CardID: "viaLocal", State: CardMergedLocal, Version: 1, WorktreePath: repo.Dir, MergeSHA: repo.Merge})
-		if _, err := db.Transition(ctx, TransitionRequest{RunID: frRun, CardID: "viaLocal", To: CardDone, ExpectedVersion: 1, Actor: "operator", Decider: DeciderHuman, Now: frNow}); !errors.Is(err, ErrIllegalTransition) {
-			t.Fatalf("merged-local → done with a remote: err = %v, want ErrIllegalTransition (git-flow unchanged)", err)
+		if _, err := db.Transition(ctx, TransitionRequest{RunID: frRun, CardID: "viaLocal", To: CardDone, ExpectedVersion: 1, Actor: "operator", Decider: DeciderHuman, Now: frNow}); !errors.Is(err, ErrApprovalCardMismatch) && !errors.Is(err, ErrApprovalMissing) {
+			t.Fatalf("merged-local → done with a remote and no receipt: err = %v, want a receipt refusal (ErrApprovalCardMismatch or ErrApprovalMissing)", err)
 		}
 	})
 }

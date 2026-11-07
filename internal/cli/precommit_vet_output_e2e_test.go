@@ -47,7 +47,12 @@ func writeVetOutputRepo(t *testing.T, src string) func() (string, error) {
 	if err != nil {
 		t.Skip("go not on PATH; the step under test is skipped by the hook itself")
 	}
-	hookPath := filepath.Dir(goPath) + ":/usr/bin:/bin:/usr/sbin:/sbin"
+	// hookE2EPath (card t2141, ported from t2134): the old hardcoded
+	// colon-separated POSIX PATH is one nonexistent entry on Windows, so
+	// git.exe could not spawn the hook there at all (CI run 42147372729,
+	// windows cli-3). The go directory carries both gofmt and go for the
+	// fast subset.
+	hookPath := hookE2EPath(t, filepath.Dir(goPath))
 
 	root := t.TempDir()
 	if out, err := exec.Command("git", "init", "-q", root).CombinedOutput(); err != nil {

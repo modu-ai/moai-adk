@@ -209,6 +209,22 @@ func sessionWorktreeBranchName(subcommand string) string {
 // rather than extracting a helper — the shell-out is simpler and the
 // extraction would be premature given M3/M6 will reuse this same wrapper.
 func materializeSessionWorktree(branch string, out io.Writer) (string, error) {
+	return materializeSessionWorktreeBase(branch, "", false, out)
+}
+
+// materializeSessionWorktreeAt is the same materializer cut from an explicit
+// full commit SHA (card t2058: a repair card's worktree starts at the failed
+// release-CI candidate). Unlike the configured-base cut, an unresolvable SHA is
+// an error — never a fall-back to another base, because a repair on the wrong
+// base is the failure this path exists to prevent.
+func materializeSessionWorktreeAt(branch, baseSHA string, out io.Writer) (string, error) {
+	return materializeSessionWorktreeBase(branch, strings.TrimSpace(baseSHA), true, out)
+}
+
+// materializeSessionWorktreeBase is the shared body. forced selects the
+// explicit-SHA cut; otherwise the base comes from configuration exactly as
+// before.
+func materializeSessionWorktreeBase(branch, forcedBase string, forced bool, out io.Writer) (string, error) {
 	commonDir, err := sessionWorktreeGitCommonDir()
 	if err != nil {
 		return "", fmt.Errorf("resolve git common dir: %w", err)
@@ -238,14 +254,30 @@ func materializeSessionWorktree(branch string, out io.Writer) (string, error) {
 	// wrong base. Empty or unresolvable falls back to that no-operand form
 	// (plan §A D4): a tree on the wrong base is recoverable, a tree that failed
 	// to materialize blocks the lane.
-	base := config.LoadWorktreeBaseBranch(projectRoot)
-	if base != "" && !sessionWorktreeBaseResolvable(base) {
-		base = ""
+	base := forcedBase
+	if forced {
+		// An explicit SHA must name a commit this repository has; it is checked
+		// before anything is created, so a refusal leaves no tree behind.
+		if err := sessionWorktreeCommitExists(projectRoot, forcedBase); err != nil {
+			return "", err
+		}
+	} else {
+		base = config.LoadWorktreeBaseBranch(projectRoot)
+		if base != "" && !sessionWorktreeBaseResolvable(base) {
+			base = ""
+		}
 	}
 
 	wtPath, err := sessionWorktreeGitWorktreeAdd(destDir, branch, base)
 	if err != nil {
 		return "", fmt.Errorf("git worktree add: %w", err)
+	}
+	if forced {
+		// The cut is verified, not assumed: the new tree's HEAD is the SHA.
+		head, herr := factoryGitRead(wtPath, "rev-parse", "HEAD")
+		if herr != nil || head != forcedBase {
+			return "", fmt.Errorf("the new worktree %s is not at the requested base %s (HEAD %q, %v)", wtPath, forcedBase, head, herr)
+		}
 	}
 
 	// REQ-SW-020 (M2 init-only config): set init.defaultBranch=main on the
@@ -268,6 +300,19 @@ func materializeSessionWorktree(branch string, out io.Writer) (string, error) {
 	// (REQ-HN-007).
 	sessionWorktreeSeedCodexHooks(wtPath, out)
 	return wtPath, nil
+}
+
+// sessionWorktreeCommitExists reports an error unless sha is a full 40-hex
+// SHA naming a commit in the repository at projectRoot (card t2058). The
+// message names the SHA and the usual cause (not fetched).
+func sessionWorktreeCommitExists(projectRoot, sha string) error {
+	if !issuanceBaseSHAValid(sha) {
+		return fmt.Errorf("the card's base %q is not a full 40-hex commit SHA", sha)
+	}
+	if _, err := factoryGitRead(projectRoot, "cat-file", "-e", sha+"^{commit}"); err != nil {
+		return fmt.Errorf("the card's base commit %s is not in this repository (fetch it first): %w", sha, err)
+	}
+	return nil
 }
 
 // --- real implementations (overridable in tests via the seams above) ---

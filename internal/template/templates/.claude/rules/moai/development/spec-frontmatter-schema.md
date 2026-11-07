@@ -50,7 +50,7 @@ Two files sit outside this sub-section: `spec.md`, which carries the canonical `
 
 | Field | Type | Constraints | Notes |
 |-------|------|-------------|-------|
-| `id` | string | `^SPEC-[A-Z][A-Z0-9]+-[0-9]{3}$` | Domain-namespaced identifier |
+| `id` | string | `^SPEC(-[A-Z][A-Z0-9]*)+-[0-9]{3}$` | Domain-namespaced identifier (one or more domain segments); `internal/cli/specid` / `moai spec lint` is the authority, so this doc must not restate a different shape |
 | `title` | string | non-empty, quoted | Human-readable description |
 | `version` | string | semver `X.Y.Z`, quoted | Start at `"0.1.0"` |
 | `status` | enum | See Status Enum below | Lifecycle state |
@@ -113,7 +113,7 @@ Per the canonical agent-responsibility realignment policy (DRI ownership at agen
 
 | Section | Purpose | Parsed by era.go? | Owner / when written |
 |---------|---------|-------------------|----------------------|
-| `## §E.1 Plan-phase Audit-Ready Signal` | Plan-phase completion signal (`plan_status: audit-ready`, `plan_complete_at`); write a bare `audit_ready: true` line (the kickoff gate also tolerates one leading `- ` or `* ` bullet marker) | No (only §E.2-§E.5 headings + the two SHA fields are matched) | manager-spec (plan-phase) |
+| `## §E.1 Plan-phase Audit-Ready Signal` | Plan-phase completion signal: a bare `audit_ready: true` line (the line the Kickoff gate reads; it also tolerates one leading `- ` or `* ` bullet marker), plus `plan_status: audit-ready` and `plan_complete_at` | No (only §E.2-§E.5 headings + the two SHA fields are matched) | manager-spec (plan-phase) |
 | `## §E.2 Run-phase Evidence` | Run-phase evidence; the literal `§E.2` heading is the run-evidence START marker era.go detects | **YES** — literal `§E.2` heading | manager-develop (run-phase) |
 | `## §E.3 Run-phase Audit-Ready Signal` | Run-phase completion signal | **YES** — literal `§E.3` heading | manager-develop (run-phase) |
 | `## §E.4 Sync-phase Audit-Ready Signal` | Sync-phase close; carries the literal `sync_commit_sha:` field (populated by the single sync commit) | **YES** — literal `§E.4` heading + `sync_commit_sha` field | manager-docs (sync commit) |
@@ -199,7 +199,7 @@ The rule emits three finding codes:
 
 - **`OwnershipTransitionInvalid`** (Warning severity): Emitted when the transition commit carries an `Authored-By-Agent:` trailer whose actor does NOT match the canonical owner for that transition. Example: a trailer reading `manager-docs` on a `draft → in-progress` transition (which the matrix above assigns to `manager-develop`) triggers a finding.
 - **`OwnershipTransitionUnreachable`** (Info severity): Emitted when the rule cannot read git history for the SPEC file (non-git environment, fresh clone without history, or `git log --follow` error). Graceful observation — no panic, no error escalation.
-- **`OwnershipTransitionUnmeasured`** (Info severity): Emitted when a transition was found but its commit carries no `Authored-By-Agent:` trailer. A statement about measurement state, not a violation — the transition cannot be attributed, so it is reported instead of passing silently.
+- **`OwnershipTransitionUnmeasured`** (Info severity): Emitted when a transition was found but cannot be attributed: its commit carries no `Authored-By-Agent:` trailer, OR its body carries trailers of more than one distinct actor (a squash-merge body concatenates the trailers of every squashed sub-commit, and the sub-commit that changed `status:` cannot be recovered from the squash commit). A statement about measurement state, not a violation — it is reported instead of passing silently, and never judged on whichever trailer came first. Repeated trailers of ONE actor are still judged normally.
 
 Three transitions are silent by design (not gaps):
 

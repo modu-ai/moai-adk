@@ -1,0 +1,20 @@
+codemaps  metric=described-source-diff value=44 threshold=40 verdict=stale
+mx-index  metric=inventory-content-diff value=0 threshold=1 verdict=absent  (mx-index absent (untracked runtime artifact — fresh worktree state))
+edges     metric=source-fingerprint-mismatch value=0 threshold=0 verdict=absent  (edges.jsonl absent (untracked derived artifact — fresh worktree state))
+citations metric=positive-cited-path-absence value=0 threshold=0 verdict=fresh
+graph check: layer codemaps verdict=stale value=44 threshold=40 — 
+  measured from: cf4ad8510 (working-tree-differs-from-stamp)
+  contribution: 6 described-worthy file(s) vs first parent b7f9ea81d (crossed by this change — the base carried 39 < threshold 40, this change added 6 and took the count over the line)
+    internal/cli/doctor.go
+    internal/cli/doctor_user_install.go
+    internal/cli/factory_card.go
+    internal/cli/factory_card_rebind.go
+    internal/cli/factory_close_landed.go
+    internal/cli/factory_handoff_recover.go
+    internal/cli/graph_check.go
+    internal/cli/hook_install_precommit.go
+    internal/cli/mcp_server.go
+    internal/cli/mcp_server_proxy.go
+    ... and 34 more (listing bounded)
+graph check: layer mx-index verdict=absent value=0 threshold=1 — mx-index absent (untracked runtime artifact — fresh worktree state)
+graph check: layer edges verdict=absent value=0 threshold=0 — edges.jsonl absent (untracked derived artifact — fresh worktree state)

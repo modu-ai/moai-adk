@@ -128,6 +128,12 @@ Repeat per unit of change — one atomic transformation (`ddd` IMPROVE), or one 
 4. **Check completion**: all tests passing, LSP errors == 0, type errors == 0, no regression from baseline. Loop prevention: max 100 iterations, stale detection after 5 no-progress iterations.
 5. **Record progress**: document the change; update metrics (`ddd`) or coverage (`tdd`) and task status through the harness's `task-list` capability (absent it, the same status goes in the completion report as prose).
 
+**Repair stop rule.** When an audit finding lies inside the diff of your previous repair (a defect born of that repair) and this happens 2 consecutive times, stop patching: choose revert, redesign, narrow scope, or split the card, and record the choice in the progress record. The threshold 2 is a STARTING value, not measured on general code.
+
+**New dependency.** Before adding a dependency, verify it exists per `.claude/rules/moai/development/coding-standards.md` § New Dependencies and cite the lookup output.
+
+**Delegation preamble.** A write-capable spawn prompt carries the short preamble in `.claude/rules/moai/development/manager-develop-prompt-template.md` § Delegation Preamble; follow it when it is present.
+
 ### STEP 5 — Complete and report (both)
 
 - Run the tests the change can affect (memory guard: batches when needed)

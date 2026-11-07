@@ -1,0 +1,16 @@
+# Example instance of the Agentic Factory provider configuration (DRAFT).
+#
+# Only explicit operator choices appear here. Every key that is not written
+# resolves through: response header, then the schema default, then UNKNOWN.
+# The gitlab block is empty on purpose: min_seconds_between_mutating_requests,
+# retry_backoff_multiplier, retry_max_attempts and poll_interval_seconds have no
+# documented default, so they resolve to UNKNOWN, not to a number.
+workflow:
+  agentic_factory:
+    provider:
+      selected: gitlab
+    github:
+      rate_limit:
+        min_seconds_between_mutating_requests: 2
+    gitlab:
+      rate_limit: {}

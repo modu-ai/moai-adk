@@ -728,11 +728,14 @@ func (f *FactoryDB) planTransition(ctx context.Context, tx *sql.Tx, cur Card, ed
 			return plan, fmt.Errorf("%w: %v", ErrEvidence, err)
 		}
 		if edge.guard == guardNoRemote {
-			if remote {
-				return plan, fmt.Errorf("%w: merged-local → done is refused while a remote is configured", ErrIllegalTransition)
-			}
-			// REQ-FCR-002b: a repository with no remote still does not
-			// complete without the leader's receipt — the gate runs inside
+			// card t2057 (operator decision 11-06): merged-local → done is
+			// admitted whether or not a remote is configured — the local
+			// merge plus the leader's evidence receipt is the Done standard;
+			// release CI, review and the remote merge are managed apart. The
+			// edge keeps the name guardNoRemote.
+			//
+			// REQ-FCR-002b: the edge still does not complete without the
+			// leader's receipt, remote or not — the gate runs inside
 			// this transition's transaction, so it binds the row as the
 			// transition will commit it.
 			if err := verifyTransitionApproval(ctx, tx, cur, req.ApprovalUUID); err != nil {
@@ -744,6 +747,9 @@ func (f *FactoryDB) planTransition(ctx context.Context, tx *sql.Tx, cur Card, ed
 			plan.approvalRebindTo = cur.Version + 1
 			plan.approvalRebindUUID = strings.TrimSpace(req.ApprovalUUID)
 			plan.note = "no remote — leader approval verified"
+			if remote {
+				plan.note = "leader approval verified"
+			}
 		} else {
 			if !remote {
 				return plan, fmt.Errorf("%w: merged-local → pushed requires a configured remote", ErrIllegalTransition)

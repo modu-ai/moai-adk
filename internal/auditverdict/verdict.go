@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -67,6 +68,13 @@ type Fields struct {
 	// the receipt vocabulary (pass|fail|inconclusive); any entry makes the
 	// file inadmissible.
 	MalformedReceipts int
+	// BlockingDefects collects every `blocking_defect: <id>` line's id, one
+	// per BLOCKING defect, in file order. Repeats collect, so a file that
+	// names an id twice carries it twice and the count check against
+	// BlockingCount sees the repeat (SPEC-AUDIT-ENGINE-CONVERGENCE-001
+	// REQ-AEC-004 (ii)). It decides no admission here; the delta chain gate
+	// reads it.
+	BlockingDefects []string
 }
 
 // Receipt is the convergence receipt a required-backend tree's verdict file
@@ -77,6 +85,23 @@ type Receipt struct {
 	Present            bool
 	ConvergenceOverall string
 	Backends           map[string]string
+	// Classes maps a backend recorded inconclusive to its error class, when the
+	// line carried one (SPEC-AUDIT-ENGINE-CONVERGENCE-001 REQ-AEC-007). A class
+	// is allowed only after `inconclusive` and only from ErrorClasses.
+	Classes map[string]string
+}
+
+// ErrorClasses is the closed set of error classes a `required_backend:
+// <backend> inconclusive <class>` line may carry (REQ-AEC-006).
+var ErrorClasses = []string{"quota", "timeout", "auth", "unavailable", "other"}
+
+func validErrorClass(c string) bool {
+	for _, k := range ErrorClasses {
+		if c == k {
+			return true
+		}
+	}
+	return false
 }
 
 var (
@@ -131,6 +156,12 @@ func Parse(raw []byte) Fields {
 			if value != "" {
 				f.RequiredBackendFails = append(f.RequiredBackendFails, value)
 			}
+		case "blocking_defect":
+			// Every occurrence collects: the id list is compared to
+			// blocking_count, so a repeated id must stay visible.
+			if value != "" {
+				f.BlockingDefects = append(f.BlockingDefects, value)
+			}
 		}
 		switch key {
 		case "verdict":
@@ -152,7 +183,7 @@ func Parse(raw []byte) Fields {
 		case "plan_artifact_hash", "plan-artifact-hash":
 			f.PlanArtifactHash = value
 		case "convergence_overall":
-			if v := strings.ToLower(value); v == "pass" || v == "fail" {
+			if v := strings.ToLower(value); v == "pass" || v == "fail" || v == "inconclusive" {
 				f.Receipt.Present = true
 				f.Receipt.ConvergenceOverall = v
 			} else {
@@ -165,10 +196,24 @@ func Parse(raw []byte) Fields {
 			// recorded verdict differs; a value outside the receipt vocabulary
 			// stays malformed.
 			f.Receipt.Present = true
-			name, verdict, _ := strings.Cut(value, " ")
-			verdict = strings.TrimSpace(verdict)
-			name = strings.TrimSpace(name)
-			if name == "" || (verdict != "pass" && verdict != "fail" && verdict != "inconclusive") {
+			// <backend> <pass|fail|inconclusive> [<class>]: a class is allowed
+			// only after inconclusive and only from the closed set; a class
+			// after pass or fail, an unknown class, or a further token is a
+			// malformed line (SPEC-AUDIT-ENGINE-CONVERGENCE-001 spec.md section G).
+			tokens := strings.Fields(value)
+			if len(tokens) < 2 || len(tokens) > 3 {
+				f.MalformedReceipts++
+				break
+			}
+			name, verdict, class := tokens[0], tokens[1], ""
+			if len(tokens) == 3 {
+				class = tokens[2]
+			}
+			if verdict != "pass" && verdict != "fail" && verdict != "inconclusive" {
+				f.MalformedReceipts++
+				break
+			}
+			if class != "" && (verdict != "inconclusive" || !validErrorClass(class)) {
 				f.MalformedReceipts++
 				break
 			}
@@ -182,6 +227,12 @@ func Parse(raw []byte) Fields {
 				f.Receipt.Backends = map[string]string{}
 			}
 			f.Receipt.Backends[name] = verdict
+			if class != "" {
+				if f.Receipt.Classes == nil {
+					f.Receipt.Classes = map[string]string{}
+				}
+				f.Receipt.Classes[name] = class
+			}
 		}
 	}
 	return f
@@ -208,7 +259,7 @@ func normalizeDecisionValue(key, value string) (string, bool) {
 		return strconv.Itoa(n), true
 	case "convergence_overall":
 		v := strings.ToLower(value)
-		return v, v == "pass" || v == "fail"
+		return v, v == "pass" || v == "fail" || v == "inconclusive"
 	}
 	return value, value != ""
 }
@@ -297,6 +348,14 @@ func admitBase(f Fields, phase Phase, threshold float64, hashOK bool) (bool, str
 	if f.Receipt.ConvergenceOverall == "fail" {
 		return false, "convergence receipt records overall fail"
 	}
+	// An inconclusive overall means a required leg did not run and no backend
+	// reported a defect (SPEC-AUDIT-ENGINE-CONVERGENCE-001 REQ-AEC-007): it
+	// refuses exactly as FAIL does, whatever the own label, and the reason names
+	// each unrun backend with its class. It follows the fail steps above, so a
+	// recorded backend fail or an overall fail is reported first.
+	if f.Receipt.ConvergenceOverall == "inconclusive" {
+		return false, "convergence receipt records overall inconclusive: " + unrunBackends(f.Receipt)
+	}
 	if !AdmitLabel(f.Label) {
 		if f.Label == "" {
 			return false, "no verdict"
@@ -331,6 +390,31 @@ func admitBase(f Fields, phase Phase, threshold float64, hashOK bool) (bool, str
 		}
 	}
 	return true, ""
+}
+
+// unrunBackends renders the backends a receipt records inconclusive, in name
+// order, each with its class when the line carried one:
+// "codex (quota), glm (timeout)".
+func unrunBackends(r Receipt) string {
+	var names []string
+	for name, v := range r.Backends {
+		if v == "inconclusive" {
+			names = append(names, name)
+		}
+	}
+	if len(names) == 0 {
+		return "no required_backend line records the unrun leg"
+	}
+	sort.Strings(names)
+	parts := make([]string, 0, len(names))
+	for _, n := range names {
+		if c := r.Classes[n]; c != "" {
+			parts = append(parts, n+" ("+c+")")
+		} else {
+			parts = append(parts, n)
+		}
+	}
+	return strings.Join(parts, ", ")
 }
 
 // ReceiptRefusal reports whether the verdict carries a required-backend

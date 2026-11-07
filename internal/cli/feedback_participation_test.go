@@ -107,7 +107,7 @@ func TestOutboxLogAppendOnly0600(t *testing.T) {
 	if err != nil {
 		t.Fatalf("stat log: %v", err)
 	}
-	if info.Mode().Perm() != 0o600 {
+	if !permMatchesOnHost(info.Mode().Perm(), 0o600) {
 		t.Fatalf("log mode = %v, want 0600", info.Mode().Perm())
 	}
 	raw, err := os.ReadFile(logPath)

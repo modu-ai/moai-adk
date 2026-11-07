@@ -185,7 +185,7 @@ File-based persistent memory is also the raw material for MoAI-ADK's **recursive
 
 ## Local instructions in a MoAI-ADK project — `AGENTS.local.md`
 
-Claude Code itself reads `CLAUDE.local.md`, but a MoAI-ADK project keeps personal instructions in `AGENTS.local.md`. The `@AGENTS.local.md` import at the end of `CLAUDE.md` loads it into Claude Code, and `moai codex` passes the same file to Codex. The shared contract is `AGENTS.md`, the Claude-only layer is `CLAUDE.md`, and personal instructions are `AGENTS.local.md` — the three-file structure.
+Claude Code itself reads `CLAUDE.local.md`, but a MoAI-ADK project keeps personal instructions in `AGENTS.local.md`. The `@AGENTS.local.md` import at the end of `CLAUDE.md` loads it into Claude Code, and Codex receives the same file. The shared contract is `AGENTS.md`, the Claude-only layer is `CLAUDE.md`, and personal instructions are `AGENTS.local.md` — the three-file structure.
 
 Keeping both `CLAUDE.local.md` and `AGENTS.local.md` makes Claude Code read both, so similar instructions load twice. Move an existing `CLAUDE.local.md` with `moai migrate local-instructions`. That command refuses while both files exist; merge them by hand in that case.
 

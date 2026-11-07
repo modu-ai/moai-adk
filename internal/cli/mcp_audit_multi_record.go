@@ -108,6 +108,19 @@ func appendSecondReviewRecord(cfg MultiAuditConfig, result ConvergenceResult, ta
 	}
 	rec.Scope.BaseBranch, _ = resolveReviewBaseBranchName(root)
 	rec.Scope.BaseSHA, _ = resolveReviewMergeBase(root)
+	if adm := cfg.deltaAdmission; adm != nil {
+		// A delta the chain gate admitted (REQ-AEC-005): the delta base is the
+		// scope base, so the changed-file count and the diff digest below
+		// describe the delta, and the record names the record it extends, the
+		// ids its confirmation named, and the digest of each FAIL verdict file
+		// the closure set was read from.
+		rec.Scope.BaseSHA = cfg.DeltaBase
+		rec.Delta = true
+		rec.DeltaBase = cfg.DeltaBase
+		rec.ExtendsReceipt = adm.Extends
+		rec.ConfirmedIDs = adm.Confirmed
+		rec.VerdictDigests = adm.Digests
+	}
 	if rec.Scope.BaseSHA != "" && rec.HeadSHA != "" {
 		if n, cerr := gitio.ChangedFileCount(root, rec.Scope.BaseSHA, rec.HeadSHA); cerr == nil {
 			rec.Scope.ChangedFiles = n

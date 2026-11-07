@@ -28,6 +28,9 @@
 // Fail-honest semantics: a single null lens is tolerated (its gap is named in the synthesis);
 //   TWO OR MORE null lenses abort the Synthesize phase and return insufficient_coverage naming the
 //   failed lenses — a synthesis over half the lenses would smooth over unknown unknowns.
+//   Return contract: every return carries `status` — 'ok' (research_md present), 'insufficient_coverage'
+//   (>= 2 null lenses, or no surviving report), or 'invalid_synthesis' (synthesizer returned a null,
+//   empty, or non-string result; no research_md field).
 //   Explorer output is fixed-heading MARKDOWN (not a forced schema): schema-forced output is brittle
 //   under rate limiting (a truncated JSON is unusable; truncated markdown degrades gracefully), and
 //   research narrative fits headings better than JSON.
@@ -55,8 +58,13 @@ export const meta = {
 // determinism: all inputs injected via args; no wall-clock, no random in body
 const TOPIC = (args && args.topic) || '(unspecified research topic)'
 const DEFAULT_LENSES = ['codebase-precedent', 'external-docs', 'constraints-risks', 'prior-SPEC-memory']
+// args.lenses is honored only as a non-empty array of non-empty strings; anything else (an empty
+// array is truthy, so it must be rejected explicitly) falls back to DEFAULT_LENSES. Duplicates are dropped.
+const requestedLenses = args && args.lenses
+const lensesValid = Array.isArray(requestedLenses) && requestedLenses.length > 0 &&
+  requestedLenses.every((l) => typeof l === 'string' && l.trim() !== '')
 // hard cap: at most 4 lenses — a fifth lens is silently dropped
-const LENSES = ((args && args.lenses) || DEFAULT_LENSES).slice(0, 4)
+const LENSES = (lensesValid ? [...new Set(requestedLenses)] : DEFAULT_LENSES).slice(0, 4)
 
 // Per-lens tool guidance (element 3 of the 4-element prompt). Known lenses map to a concrete tool
 // set; an unknown custom lens falls back to the general read-only toolset.
@@ -114,6 +122,12 @@ if (failedLenses.length >= 2) {
 // null-filter the agent results before aggregation: keep only the lenses that actually returned.
 const validReports = perLensReports.filter((r) => r.report)
 
+// No surviving report at all (e.g. a single requested lens that returned null): there is nothing to
+// synthesize, so say so instead of calling the synthesizer over an empty set.
+if (validReports.length === 0) {
+  return { status: 'insufficient_coverage', failed_lenses: failedLenses, lenses: LENSES, per_lens_reports: perLensReports }
+}
+
 const SYNTHESIZE_PROMPT = (surviving, failed) => `You are a read-only research synthesizer. Do NOT modify any file.
 Merge the per-lens research reports below into ONE coherent research narrative for the topic "${TOPIC}".
 
@@ -133,4 +147,9 @@ Return ONLY the markdown body (a string). Do NOT write any file — the orchestr
 
 const research_md = await agent(SYNTHESIZE_PROMPT(validReports, failedLenses), { label: 'synthesize:research', phase: 'Synthesize', agentType: 'Explore' })
 
-return { lenses: LENSES, per_lens_reports: perLensReports, research_md }
+// A null / empty / non-string synthesizer result is not a research narrative: report it, never return it as research_md.
+if (typeof research_md !== 'string' || research_md.trim() === '') {
+  return { status: 'invalid_synthesis', lenses: LENSES, per_lens_reports: perLensReports }
+}
+
+return { status: 'ok', lenses: LENSES, per_lens_reports: perLensReports, research_md }

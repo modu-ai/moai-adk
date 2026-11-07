@@ -1,0 +1,6 @@
+[t2121] docs(audit): sync-audit-iter4 verdict PASS-WITH-DEBT 0.89 for 683aadcf4e with Codex receipt (card t2121)
+
+Third codex_audit call under operator decision d-20261106T163139Z-169b, delta_base 0a1192eeac, result pass,
+receipt rcpt-c39b37d96f3130a5fc69ad9e. Debts carried: H1, H2, G2 (follow-up card t2144).
+
+🗿 MoAI

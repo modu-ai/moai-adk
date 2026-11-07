@@ -598,7 +598,7 @@ func equalIssuance(a, b *BacklogIssuance) bool {
 	if a == nil {
 		return true
 	}
-	if a.SpawnedBy != b.SpawnedBy || a.Origin != b.Origin || a.DropReason != b.DropReason {
+	if a.SpawnedBy != b.SpawnedBy || a.Origin != b.Origin || a.DropReason != b.DropReason || a.BaseSHA != b.BaseSHA {
 		return false
 	}
 	if !equalIntPtr(a.SizeLines, b.SizeLines) {

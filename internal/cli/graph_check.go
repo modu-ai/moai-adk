@@ -36,6 +36,7 @@ const (
 func newGraphCheckCmd() *cobra.Command {
 	var rootArg string
 	var asJSON bool
+	var eventArg string
 
 	cmd := &cobra.Command{
 		Use:   "check",
@@ -74,6 +75,21 @@ mtime, which an mtime metric would misread as freshly regenerated.
 
 Exit codes: 0 all fresh · 1 stale or absent · 2 system error.
 
+One narrow exception turns a stale report into exit 0 plus a warning: on a
+pull_request event (--event, else GITHUB_EVENT_NAME), when the codemaps layer
+is the ONLY non-fresh layer, this change left the codemaps body and its
+provenance stamp exactly as the first parent carried them, and the BASE alone
+(value minus this change's measured contribution) is already at or over the
+codemaps threshold. The JSON report states the origin as drift_origin:
+inherited (base >= threshold), crossed-by-change (base < threshold <= value),
+originated (contribution >= threshold), or anchor-moved (the change touched the
+body or stamp, or that could not be measured, so value is not measured from the
+base's window); only inherited downgrades, with verdict=stale kept and
+verdict_class=warn added. crossed-by-change, originated, anchor-moved, a push
+event (main, release/*), an absent layer, edges or citations failures, and an
+unmeasured contribution all still exit 1. gate.graph_freshness.inherited_codemaps_drift
+= block restores exit 1 for the inherited case too.
+
 Thresholds are configured in gate.yaml (graph_freshness section).`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			projectRoot, err := resolveGraphRoot(rootArg)
@@ -81,7 +97,7 @@ Thresholds are configured in gate.yaml (graph_freshness section).`,
 				return err
 			}
 
-			th, cfgErr := graphCheckThresholds(projectRoot)
+			th, driftPolicy, cfgErr := graphCheckThresholds(projectRoot)
 			if cfgErr != nil {
 				// A PRESENT-but-malformed gate.yaml is a system error (exit 2,
 				// CR round-2 3855149230): silently checking under defaults
@@ -101,6 +117,10 @@ Thresholds are configured in gate.yaml (graph_freshness section).`,
 				writeUnreachableStampRecovery(cmd.ErrOrStderr(), err)
 				return &exitCodeError{code: exitSystemError, msg: fmt.Sprintf("graph check: %v", err)}
 			}
+
+			// Classify before rendering so the JSON report carries verdict_class.
+			// The verdict itself is never rewritten (card t2001, R208).
+			res.ClassifyVerdicts(graphCheckEvent(eventArg), driftPolicy, th)
 
 			if asJSON {
 				data, err := json.MarshalIndent(res, "", "  ")
@@ -124,6 +144,15 @@ Thresholds are configured in gate.yaml (graph_freshness section).`,
 				return nil
 			}
 			errs := cmd.ErrOrStderr()
+			if !res.Blocking() {
+				// Every non-fresh layer was downgraded to a warning: announce it
+				// and exit 0. The verdict above stays stale.
+				writeInheritedDriftWarnings(cmd.OutOrStdout(), errs, asJSON, res.Warnings())
+				for _, l := range res.Warnings() {
+					writeLayerAttribution(errs, l)
+				}
+				return nil
+			}
 			for _, l := range res.OffendingLayers() {
 				_, _ = fmt.Fprintf(errs, "graph check: layer %s verdict=%s value=%d threshold=%d — %s\n",
 					l.Layer, l.Verdict, l.Value, l.Threshold, l.Reason)
@@ -136,6 +165,7 @@ Thresholds are configured in gate.yaml (graph_freshness section).`,
 
 	cmd.Flags().StringVar(&rootArg, "root", "", "project root (defaults to the auto-detected project root)")
 	cmd.Flags().BoolVar(&asJSON, "json", false, "machine-readable JSON report on stdout")
+	cmd.Flags().StringVar(&eventArg, "event", "", "CI event being judged (pull_request | push); defaults to GITHUB_EVENT_NAME. Only a pull_request may downgrade an inherited codemaps drift to a warning; any other event, or none, blocks")
 
 	return cmd
 }
@@ -172,8 +202,10 @@ func writeUnreachableStampRecovery(errs io.Writer, err error) {
 // the struct but renders only the count leaves the reader exactly where this
 // SPEC found them: unable to tell an inherited red from one they caused.
 //
-// The contribution is REPORTED here, never gated on — the exit code is still
-// decided by the cumulative count alone.
+// The contribution is REPORTED here. The exit code is decided by the cumulative
+// count, except for the one narrow downgrade of graph.ClassifyVerdicts (card
+// t2001, user request R208): a pull_request whose only non-fresh layer is a
+// codemaps drift it did not originate is announced, not failed.
 func writeLayerAttribution(errs io.Writer, l graph.LayerReport) {
 	// The measurement window comes first: without it a reader cannot tell
 	// which two points the count spans, and the codemaps layer no longer
@@ -192,12 +224,8 @@ func writeLayerAttribution(errs io.Writer, l graph.LayerReport) {
 		if len(base) > 9 {
 			base = base[:9]
 		}
-		verb := "originated by this change"
-		if *l.Contribution == 0 {
-			verb = "inherited — this change contributed none of it"
-		}
 		_, _ = fmt.Fprintf(errs, "  contribution: %d described-worthy file(s) vs first parent %s (%s)\n",
-			*l.Contribution, base, verb)
+			*l.Contribution, base, driftOriginSentence(l))
 	case l.ContributionAbsentReason != "":
 		// Absent, and said so. A fabricated 0 would read as the inheriting
 		// signature on every checkout that has no comparison base.
@@ -215,8 +243,9 @@ func writeLayerAttribution(errs io.Writer, l graph.LayerReport) {
 // Absent or partial config keeps the reasoned defaults; a PRESENT but
 // malformed gate.yaml is an error the caller surfaces as exit 2 — a broken
 // config must not silently pass a tree its intended thresholds would fail.
-func graphCheckThresholds(projectRoot string) (graph.Thresholds, error) {
+func graphCheckThresholds(projectRoot string) (graph.Thresholds, string, error) {
 	th := graph.DefaultThresholds()
+	policy := config.DefaultGraphFreshnessInheritedCodemapsDrift
 	moaiDir := filepath.Join(projectRoot, ".moai")
 
 	// Pre-validate a present gate.yaml (CR round-2 3855149230): the shared
@@ -227,14 +256,14 @@ func graphCheckThresholds(projectRoot string) (graph.Thresholds, error) {
 	if data, err := os.ReadFile(gatePath); err == nil {
 		var probe map[string]any
 		if yamlErr := yaml.Unmarshal(data, &probe); yamlErr != nil {
-			return th, fmt.Errorf("gate.yaml present but unparseable: %w", yamlErr)
+			return th, policy, fmt.Errorf("gate.yaml present but unparseable: %w", yamlErr)
 		}
 	}
 
 	loader := config.NewLoader()
 	cfg, err := loader.Load(moaiDir)
 	if err != nil {
-		return th, nil // absent/partial config: documented defaults path
+		return th, policy, nil // absent/partial config: documented defaults path
 	}
 	gf := cfg.Gate.GraphFreshness
 	if gf.CodemapsChangedFiles > 0 {
@@ -243,5 +272,79 @@ func graphCheckThresholds(projectRoot string) (graph.Thresholds, error) {
 	if gf.MXIndexChangedFiles > 0 {
 		th.MXIndexChangedFiles = gf.MXIndexChangedFiles
 	}
-	return th, nil
+	// The inherited-drift policy: empty keeps the default; a value other than
+	// warn|block is a malformed config and, like a malformed file, a system
+	// error — a typo must not silently pick a side of a gate.
+	switch gf.InheritedCodemapsDrift {
+	case "":
+	case graph.InheritedDriftWarn, graph.InheritedDriftBlock:
+		policy = gf.InheritedCodemapsDrift
+	default:
+		return th, policy, fmt.Errorf("gate.graph_freshness.inherited_codemaps_drift %q must be %q or %q",
+			gf.InheritedCodemapsDrift, graph.InheritedDriftWarn, graph.InheritedDriftBlock)
+	}
+	return th, policy, nil
+}
+
+// graphCheckEvent resolves the CI event the check is judging: the --event flag
+// when given, else GITHUB_EVENT_NAME. An unknown or empty event is returned
+// as-is and the policy treats it as blocking.
+func graphCheckEvent(flagValue string) string {
+	if flagValue != "" {
+		return flagValue
+	}
+	return os.Getenv("GITHUB_EVENT_NAME")
+}
+
+// driftOriginSentence states, as a fact, where the codemaps count came from.
+// The base's figure is LayerReport.BaseCount, measured directly; it is never
+// derived as value - contribution, because Value is the union of the base's and
+// the change's file sets and a subtraction undercounts when they overlap. When
+// BaseCount is unmeasured (nil) no base number is printed. The wording follows
+// graph's three-way DriftOrigin and never calls a count "inherited" unless the
+// base carried it.
+func driftOriginSentence(l graph.LayerReport) string {
+	if l.Contribution == nil {
+		return "origin not stated"
+	}
+	switch l.DriftOrigin {
+	case graph.DriftInherited:
+		if l.BaseCount == nil {
+			return fmt.Sprintf("inherited — threshold %d, this change added %d (the base's own count was not measured)", l.Threshold, *l.Contribution)
+		}
+		return fmt.Sprintf("inherited — the base alone carries %d >= threshold %d, this change added %d", *l.BaseCount, l.Threshold, *l.Contribution)
+	case graph.DriftCrossedByChange:
+		if l.BaseCount == nil {
+			return fmt.Sprintf("crossed by this change — threshold %d, this change added %d and took the count over the line (the base's own count was not measured)", l.Threshold, *l.Contribution)
+		}
+		return fmt.Sprintf("crossed by this change — the base carried %d < threshold %d, this change added %d and took the count over the line", *l.BaseCount, l.Threshold, *l.Contribution)
+	case graph.DriftOriginated:
+		return fmt.Sprintf("originated by this change — it alone is %d >= threshold %d", *l.Contribution, l.Threshold)
+	case graph.DriftAnchorMoved:
+		return "origin not attributable — this change touched the codemaps body or stamp (or that could not be ruled out), so its measurement window is not the base's"
+	default:
+		return "origin not stated"
+	}
+}
+
+// writeInheritedDriftWarnings announces the layers that were downgraded from
+// block to warn. In text mode the GitHub annotation goes to stdout, where the
+// runner reads workflow commands; in --json mode stdout must stay a single JSON
+// document, so the annotation goes to stderr instead. The text never offers a
+// bare re-stamp as a remedy: a stamp rewritten over an untouched body turns a
+// stale tree green without regenerating anything.
+func writeInheritedDriftWarnings(out, errs io.Writer, asJSON bool, warns []graph.LayerReport) {
+	dst := out
+	if asJSON {
+		dst = errs
+	}
+	for _, l := range warns {
+		contribution := "unmeasured"
+		if l.Contribution != nil {
+			contribution = fmt.Sprintf("%d", *l.Contribution)
+		}
+		_, _ = fmt.Fprintf(dst,
+			"::warning title=graph-freshness::layer %s is %s (value=%d >= threshold=%d), inherited: the base alone carries the count (%s), this change contributed %s described-worthy file(s), and every other layer is fresh. Regenerate the %s body (/moai codemaps) and stamp it; a bare re-stamp is not a fix.\n",
+			l.Layer, l.Verdict, l.Value, l.Threshold, driftOriginSentence(l), contribution, l.Layer)
+	}
 }

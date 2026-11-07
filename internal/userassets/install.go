@@ -75,7 +75,12 @@ type Result struct {
 	Divergences         []string
 	SharedSurvivors     []string // E3: entries kept because a remaining selection or L0 shares them
 	DeferredDeps        []string // R-f-②: deletions deferred — the entry is a declared dependency of a preserved asset
-	Unconverted         []string // M3 REQ-CNV-002: Codex-face files whose CONVERTED bytes still carry a harness-specific reference with no conversion mapping — named per file, never silently shipped
+	// RootsReached lists the sorted root slugs of the validated snapshot
+	// this result was produced over (final-round repair, card t1702):
+	// summaries consume it instead of re-scanning the disk, so a profile
+	// dir appearing after the snapshot is never reported as reached.
+	RootsReached []string
+	Unconverted  []string // M3 REQ-CNV-002: Codex-face files whose CONVERTED bytes still carry a harness-specific reference with no conversion mapping — named per file, never silently shipped
 }
 
 // FileOutcome is one file-level failure (REQ-013: path + reason).
@@ -107,15 +112,23 @@ func (in *Installer) Install(selection []string) (*Result, error) {
 	now := in.now()
 	res := &Result{}
 
-	// Resolve the four roots once per run (C2).
-	roots := make(map[RootSlug]resolvedRoot, 4)
-	for _, r := range ResolveRoots(in.Home) {
+	// Resolve the four roots once per run (C2). A profile store that exists
+	// but cannot be read is an error, never "no profiles exist" (card t1702
+	// audit round 4): finishing "successfully" while nothing lands in the
+	// real profiles is precisely the defect.
+	rootList, err := ResolveRoots(in.Home)
+	if err != nil {
+		return nil, fmt.Errorf("enumerate install roots: %w", err)
+	}
+	roots := make(map[RootSlug]resolvedRoot, len(rootList))
+	for _, r := range rootList {
 		rr, err := resolveRoot(in.Home, r)
 		if err != nil {
 			return nil, fmt.Errorf("resolve root %s: %w", r.Slug, err)
 		}
 		roots[r.Slug] = rr
 	}
+	res.RootsReached = sortedRootSlugs(roots)
 
 	manifestPath := ManifestPath(in.Home)
 	manifest, err := Load(manifestPath)
@@ -198,7 +211,11 @@ func (in *Installer) Install(selection []string) (*Result, error) {
 		}
 	}
 	manifest.Bundles = normalizeSelection(selection)
-	targets, emptyTargets, err := in.installTargets(manifest.Bundles)
+	// Repair 1 (card t1702 audit P1): targets are enumerated from the SAME
+	// roots snapshot resolved+validated above — never from a fresh disk
+	// scan — so a profile dir appearing mid-install cannot mint targets
+	// outside the validated set.
+	targets, emptyTargets, err := in.installTargets(manifest.Bundles, roots)
 	if err != nil {
 		return nil, err
 	}
@@ -230,6 +247,14 @@ func (in *Installer) Install(selection []string) (*Result, error) {
 	installable := make([]installTarget, 0, len(targets))
 	reEvaluate := make([]installTarget, 0)
 	for _, tgt := range targets {
+		// Repair 1 (card t1702 audit P1): refuse any target whose root is
+		// missing from the validated snapshot BEFORE the first write — the
+		// journal stage and every asset write below run only against
+		// validated roots, and the run fails wholesale instead of writing
+		// partially.
+		if rr, ok := roots[tgt.root]; !ok || rr.dir == "" {
+			return nil, fmt.Errorf("userassets: install target %q names root %q outside the validated root snapshot — refusing before any write", tgt.manifestKey, tgt.root)
+		}
 		if claimed, ok := manifest.Files[tgt.manifestKey]; ok && claimed.installedByJournal {
 			// Sharpening (review-fix round 2): journal-recovered files STILL
 			// flow through normal update evaluation — the truth table
@@ -396,6 +421,20 @@ type resolvedRoot struct {
 	dir  string // absolute, symlink-resolved
 }
 
+// sortedRootSlugs lists a validated snapshot's live slugs, sorted
+// (final-round repair, card t1702 — summaries consume this list instead of
+// re-scanning the disk after the run).
+func sortedRootSlugs(roots map[RootSlug]resolvedRoot) []string {
+	slugs := make([]string, 0, len(roots))
+	for slug, rr := range roots {
+		if rr.dir != "" {
+			slugs = append(slugs, string(slug))
+		}
+	}
+	sort.Strings(slugs)
+	return slugs
+}
+
 // resolveRoot creates the root directory if needed and resolves symlinks —
 // a root that is itself a symlink (dotfile-manager ~/.claude) is a legal
 // boundary at its RESOLVED location (C2 edge 1).
@@ -432,27 +471,50 @@ type installTarget struct {
 	codexFace bool // the target lands on a Codex-deployment face
 }
 
-// installTargets enumerates the destination files for L0 ∪ selection:
-// skill entries land whole-tree in BOTH skill roots (Claude + Codex); agent
-// entries land flat in both agent roots — the Claude body from
-// .claude/agents/moai/<name>.md, the Codex body from the emitted
-// .codex/agents/moai/<name>.toml (REQ-022).
+// rootSlugsOfKind returns the install roots whose base kind matches one of
+// the given kinds, taken from the VALIDATED snapshot the caller carries
+// through the run (repair 1, card t1702 audit P1) — never from a fresh
+// disk scan, so a profile dir appearing mid-run cannot mint targets outside
+// the validated set. Sorted for determinism (map order).
+func (in *Installer) rootSlugsOfKind(roots map[RootSlug]resolvedRoot, kinds ...RootSlug) []RootSlug {
+	kindSet := make(map[RootSlug]bool, len(kinds))
+	for _, k := range kinds {
+		kindSet[k] = true
+	}
+	slugs := make([]RootSlug, 0, len(roots))
+	for slug, rr := range roots {
+		if rr.dir != "" && kindSet[RootKind(slug)] {
+			slugs = append(slugs, slug)
+		}
+	}
+	sort.Slice(slugs, func(i, j int) bool { return slugs[i] < slugs[j] })
+	return slugs
+}
+
+// installTargets enumerates the destination files for L0 ∪ selection over
+// the validated root snapshot (repair 1, card t1702 audit P1):
+// skill entries land whole-tree in EVERY skills-kind root (Claude base +
+// Codex home-level + each profile's Claude-side root); agent entries land
+// flat in every agent-kind root — the Claude body from
+// .claude/agents/moai/<name>.md into the Claude base and profile roots, the
+// Codex body from the emitted .codex/agents/moai/<name>.toml into the
+// home-level Codex root (REQ-022; card t1702 gap 1).
 //
 // REQ-UMF-006 (SPEC-UPDATE-MIGRATION-FIX-001): the second result names every
 // directory entry that yields no file target. The caller reports each one as a
 // failure with its reason; none of them is counted as installed.
-func (in *Installer) installTargets(selection []string) ([]installTarget, []string, error) {
+func (in *Installer) installTargets(selection []string, roots map[RootSlug]resolvedRoot) ([]installTarget, []string, error) {
 	entries := in.collectEntries(selection)
 	var targets []installTarget
 	var emptyTargets []string
 	for _, e := range entries {
 		switch {
 		case strings.HasSuffix(e.Path, "/"):
-			// Skill directory — both harness roots. Source paths are
+			// Skill directory — every skills-kind root. Source paths are
 			// catalog paths with the templates/ prefix stripped
 			// (EmbeddedTemplates exposes the stripped FS).
 			before := len(targets)
-			for _, slug := range []RootSlug{RootClaudeSkills, RootAgentsSkills} {
+			for _, slug := range in.rootSlugsOfKind(roots, RootClaudeSkills, RootAgentsSkills) {
 				ts, err := in.dirTargets(slug, e, strings.TrimSuffix(srcPath(e.Path), "/"))
 				if err != nil {
 					return nil, nil, err
@@ -464,18 +526,20 @@ func (in *Installer) installTargets(selection []string) ([]installTarget, []stri
 				emptyTargets = append(emptyTargets, e.Name)
 			}
 		case strings.HasSuffix(e.Path, ".md"):
-			// Claude agent body.
-			t, err := in.fileTarget(RootClaudeAgents, e.Name+".md", srcPath(e.Path), e)
-			if err != nil {
-				return nil, nil, err
+			// Claude agent body — every claude-agents-kind root.
+			for _, slug := range in.rootSlugsOfKind(roots, RootClaudeAgents) {
+				t, err := in.fileTarget(slug, e.Name+".md", srcPath(e.Path), e)
+				if err != nil {
+					return nil, nil, err
+				}
+				targets = append(targets, t)
 			}
-			targets = append(targets, t)
-			// Codex agent body — the emitted TOML (REQ-022).
+			// Codex agent body — the emitted TOML (REQ-022), home-level only.
 			tomlPath := ".codex/agents/moai/" + e.Name + ".toml"
 			if _, err := fs.Stat(in.Source, tomlPath); err != nil {
 				return nil, nil, fmt.Errorf("codex agent TOML for %s: %w", e.Name, err)
 			}
-			t, err = in.fileTarget(RootCodexAgents, e.Name+".toml", tomlPath, e)
+			t, err := in.fileTarget(RootCodexAgents, e.Name+".toml", tomlPath, e)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -749,6 +813,13 @@ const (
 // journal re-serialization).
 func (in *Installer) applyTarget(tgt installTarget, manifest *Manifest, roots map[RootSlug]resolvedRoot, res *Result) (string, bool, error) {
 	root := roots[tgt.root]
+	// Repair 1 (card t1702 audit P1): an empty root means the slug is
+	// missing from the validated snapshot — a write here would go through a
+	// CWD-relative path. Named refusal, mirroring removeManifestKey's
+	// unknown-slug gate (the write-side twin of that deletion gate).
+	if root.dir == "" {
+		return "", false, fmt.Errorf("userassets: unknown root slug %q for key %q — write refused (root missing from the validated root snapshot)", tgt.root, tgt.manifestKey)
+	}
 	abs := filepath.Join(root.dir, filepath.FromSlash(tgt.rel))
 
 	// M3 (REQ-CNV-001): the shipped bytes come from the target's OWN

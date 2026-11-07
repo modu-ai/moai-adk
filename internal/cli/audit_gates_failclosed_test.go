@@ -210,3 +210,31 @@ func TestGateErrorPropagatesToCallerSites(t *testing.T) {
 		}
 	})
 }
+
+// AC-AEC-005 (SPEC-AUDIT-ENGINE-CONVERGENCE-001 REQ-AEC-014), the code half of what
+// the auditor definitions now say: on the single-backend path a required codex gate
+// that could not run keeps the verdict inconclusive with a non-empty gate_unmet —
+// it is not a reported defect and not a fail — while an unreadable gate configuration
+// is the one case that returns fail. Controls: both pass today; the definitions are
+// held to this behavior by the template tests.
+func TestAEC005_ApplyGateUnmet_RequiredUnmetStaysInconclusive(t *testing.T) {
+	root := writeTreeWorkflow(t, "workflow:\n  audit:\n    gates:\n      codex: required\n")
+	out := applyGateUnmet(inconclusiveReview("probe cause"), root)
+	if out.Verdict != VerdictInconclusive {
+		t.Errorf("verdict = %q, want %q for a required gate that could not run", out.Verdict, VerdictInconclusive)
+	}
+	if strings.TrimSpace(out.GateUnmet) == "" {
+		t.Errorf("gate_unmet is empty, want the unmet required gate named")
+	}
+}
+
+func TestAEC005_ApplyGateUnmet_UnreadableConfigurationIsTheOnlyFail(t *testing.T) {
+	if out := applyGateUnmet(inconclusiveReview("probe cause"), writeTreeWorkflow(t, unparseableWorkflow)); out.Verdict != "fail" {
+		t.Errorf("verdict = %q for an unreadable gate configuration, want fail", out.Verdict)
+	}
+	// An unconfigured gate is neither: the fail-open inconclusive is untouched.
+	out := applyGateUnmet(inconclusiveReview("probe cause"), writeTreeWorkflow(t, "workflow:\n  audit: {}\n"))
+	if out.Verdict != VerdictInconclusive || out.GateUnmet != "" {
+		t.Errorf("an unconfigured gate: verdict %q gate_unmet %q, want inconclusive with none", out.Verdict, out.GateUnmet)
+	}
+}

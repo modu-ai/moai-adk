@@ -434,3 +434,28 @@ func TestResolveOwnerPID_InheritedStampCollapsesDistinctSessions(t *testing.T) {
 		}
 	})
 }
+
+// TestAncestorSessionPID_SkipsCommonProcessWrappers: `timeout 30 moai af claim` keeps `timeout` as the parent for
+// the life of the call. Like a shell, none of these wrappers is the session, and the PID worth recording is the
+// session's (card issue-1948: the lease holder must outlive the command).
+func TestAncestorSessionPID_SkipsCommonProcessWrappers(t *testing.T) {
+	for _, wrapper := range []string{"timeout", "gtimeout", "nohup", "sudo", "xargs", "script", "npx", "nice", "stdbuf"} {
+		const (
+			sessionPID = 5100
+			shellPID   = 5200
+			wrapperPID = 5300
+			moaiPID    = 5400
+		)
+		tree := map[int]fakeProcess{
+			moaiPID:    {ppid: wrapperPID, comm: "moai"},
+			wrapperPID: {ppid: shellPID, comm: wrapper},
+			shellPID:   {ppid: sessionPID, comm: "zsh"},
+			sessionPID: {ppid: 500, comm: "claude"},
+			500:        {ppid: 1, comm: "zsh"},
+		}
+		withFakeAncestry(t, tree, map[int]bool{sessionPID: true, shellPID: true, wrapperPID: true, moaiPID: true, 500: true})
+		if got := ancestorSessionPID(moaiPID); got != sessionPID {
+			t.Errorf("%s: ancestorSessionPID = %d, want the session PID %d", wrapper, got, sessionPID)
+		}
+	}
+}

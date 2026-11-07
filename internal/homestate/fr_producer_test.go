@@ -54,7 +54,10 @@ func frExampleLine(body, prefix string) string {
 // example passes the E-VERDICT reader; and the AUDIT-VERDICT chat-message
 // line stays the last instruction so ParseVerdictLine keeps working.
 func TestFR_AC020_VerdictLineProducer(t *testing.T) {
-	const formatLine = "verdict: <PASS|PASS-WITH-DEBT|FAIL>"
+	// The four-label line: the convention carries it from AC-AEC-002b on and the
+	// auditor definitions from AC-AEC-005 on (SPEC-AUDIT-ENGINE-CONVERGENCE-001).
+	const formatLine = "verdict: <PASS|PASS-WITH-DEBT|FAIL|INCONCLUSIVE>"
+	const conventionFormatLine = formatLine
 	for _, rel := range append(append([]string{}, frAuditorFiles...), frConventionFiles...) {
 		body := frReadRepoFile(t, rel)
 		if n := strings.Count(body, "audited_sha:"); n < 1 {
@@ -105,7 +108,7 @@ func TestFR_AC020_VerdictLineProducer(t *testing.T) {
 		t.Fatalf("convention example lines missing: verdict=%q audited_sha=%q", verdictTmpl, shaTmpl)
 	}
 	body := "# Plan audit\n\nProse verdict: the plan holds.\n\n" +
-		strings.Replace(verdictTmpl, formatLine[len("verdict: "):], "PASS", 1) + "\n" +
+		strings.Replace(verdictTmpl, conventionFormatLine[len("verdict: "):], "PASS", 1) + "\n" +
 		shaTmpl[:strings.Index(shaTmpl, "<")] + repo.Commit + "\n"
 	// The plan-audit field block the convention adds for the shared admission
 	// predicate, filled with values that satisfy it.

@@ -1739,18 +1739,83 @@ func (h *preToolHandler) isAllowedExternalPath(resolvedPath string) bool {
 	return false
 }
 
-// allowedExternalPaths returns the policy's built-in allowlist plus any
+// allowedExternalPaths returns the policy's built-in allowlist, any
 // directories the user registered in Claude Code settings under
-// permissions.additionalDirectories (issue #1162). Both .claude/settings.json
-// and .claude/settings.local.json are consulted, relative to the project dir,
-// so /add-dir (which writes there) is honored by the path guard.
+// permissions.additionalDirectories (issue #1162), and the two locations
+// Claude Code itself directs the model to write (issue #1951, card t2102):
+// the project's auto-memory directory and the per-project session scratchpad
+// root. Both .claude/settings.json and .claude/settings.local.json are
+// consulted, relative to the project dir, so /add-dir (which writes there) is
+// honored by the path guard.
 func (h *preToolHandler) allowedExternalPaths() []string {
 	var paths []string
 	if h.policy != nil {
 		paths = append(paths, h.policy.AllowedExternalPaths...)
 	}
+	if projectRoot := h.projectRoot(); projectRoot != "" {
+		if absRoot, absErr := filepath.Abs(projectRoot); absErr == nil {
+			paths = append(paths, claudeMemoryPaths(absRoot)...)
+			paths = append(paths, claudeScratchpadRoots(absRoot)...)
+		}
+	}
 	paths = append(paths, loadAdditionalDirectories(h.projectRoot())...)
 	return paths
+}
+
+// claudeMemoryPaths returns the project's auto-memory directory entries as
+// Claude Code addresses it — <claude-home>/projects/<projectSlug>/memory —
+// where claude-home is $CLAUDE_CONFIG_DIR when set (MoAI launcher profiles
+// relocate it) and ~/.claude otherwise (same dual source the session-start
+// memory budget reads). Returns nil when the home directory cannot be
+// resolved. This is the harness-designated memory write surface (issue
+// #1951, card t2102): only the memory/ subtree is allowed, never the wider
+// projects/<slug> directory, so settings and transcripts outside memory/
+// stay behind the boundary.
+//
+// Like claudeScratchpadRoots, the entry also carries its resolved form
+// (resolveThroughExistingParent): on macOS /var is a symlink to /private/var,
+// so the target-side walk of a first-ever memory write — whose leaf
+// directories do not exist yet, leaving EvalSymlinks on the entry no
+// candidate to add — resolves through the symlinked ancestor while the
+// lexical base cannot, and the write would be denied.
+func claudeMemoryPaths(projectRoot string) []string {
+	home := os.Getenv(config.EnvClaudeConfigDir)
+	if home == "" {
+		userHome, err := os.UserHomeDir()
+		if err != nil {
+			return nil
+		}
+		home = filepath.Join(userHome, ".claude")
+	}
+	memoryDir := filepath.Join(home, "projects", projectSlug(projectRoot), "memory")
+	paths := []string{memoryDir}
+	if resolved, ok := resolveThroughExistingParent(memoryDir); ok && resolved != memoryDir {
+		paths = append(paths, resolved)
+	}
+	return paths
+}
+
+// claudeScratchpadRoots returns the per-project session scratchpad root(s)
+// Claude Code creates under the temp dir:
+// <tmp>/claude-<uid>/<projectSlug>/<session-uuid>/scratchpad/. The WHOLE
+// per-project subtree is allowed rather than one session's directory because
+// the hook never learns the session id — covering every session's scratchpad
+// is the only form the allow entry can take (issue #1951, card t2102).
+//
+// Each base is also resolved through its existing parents, mirroring the
+// target-side resolution the boundary check applies to the file being written
+// (resolveThroughExistingParent). Without it, a macOS /tmp -> /private/tmp
+// symlink splits the two spellings: the fresh session's not-yet-created
+// scratchpad leaf resolves through the symlinked ancestor while the lexical
+// base cannot (EvalSymlinks fails on a missing leaf), so the first scratchpad
+// write of every new session would be denied.
+func claudeScratchpadRoots(projectRoot string) []string {
+	base := filepath.Join(os.TempDir(), fmt.Sprintf("claude-%d", os.Getuid()), projectSlug(projectRoot))
+	roots := []string{base}
+	if resolved, ok := resolveThroughExistingParent(base); ok && resolved != base {
+		roots = append(roots, resolved)
+	}
+	return roots
 }
 
 // loadAdditionalDirectories reads permissions.additionalDirectories from the

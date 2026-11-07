@@ -139,27 +139,62 @@ func RotateLessonsInboxArchive(inboxPath string) (InboxRotationStats, error) {
 	return st, nil
 }
 
-// enforceInboxCap applies the write-time size cap ahead of an append
-// (REQ-IBX-001..004). Steady-state cost is one stat (NFC-2): the marker is
-// probed only after the live file is observed at or over the cap, and the
-// boundary is inclusive ("at or over", REQ-IBX-003 / acceptance §B).
+// inboxPathStat reads the live inbox through its path. It is the fallback for
+// when the open handle cannot report its own size, and a seam so a test can
+// make the path-based size disagree with the real file: on Windows the
+// path-based read (GetFileAttributesEx, a directory-entry read) can lag a file
+// other handles are still writing.
+var inboxPathStat = os.Stat
+
+// inboxLiveSize returns the live inbox size as the OPEN append handle reports
+// it (GetFileInformationByHandle on Windows, fstat elsewhere), which is exact.
+// Only when the handle cannot answer does it fall back to the path.
+func inboxLiveSize(f *os.File, inboxPath string) (int64, error) {
+	if info, err := f.Stat(); err == nil {
+		return info.Size(), nil
+	}
+	info, err := inboxPathStat(inboxPath)
+	if err != nil {
+		return 0, err
+	}
+	return info.Size(), nil
+}
+
+// inboxRotationDue applies the write-time size cap ahead of an append
+// (REQ-IBX-001..004) and reports whether the live inbox must rotate now. f is
+// the append handle the caller already holds, so the size costs no extra open
+// (NFC-2: steady-state cost stays one stat). The marker is probed only after
+// the live file is observed at or over the cap, and the boundary is inclusive
+// ("at or over", REQ-IBX-003 / acceptance §B).
 //
 // Stand-down (REQ-IBX-002): marker present → no rotation, no trim — the local
 // drain owns the inbox lifecycle on that machine (NFC-4).
 //
-// Fail-open (REQ-IBX-009): a failed rotation logs a warning and the append
-// proceeds best-effort on the existing file.
-func enforceInboxCap(root, inboxPath string) {
-	info, err := os.Stat(inboxPath)
+// Every early return says why (R228): a cap that did not rotate is never
+// silent. The caller closes f before rotating, because Windows refuses to
+// rename a file that still has an open handle.
+func inboxRotationDue(root, inboxPath string, f *os.File) bool {
+	size, err := inboxLiveSize(f, inboxPath)
 	if err != nil {
-		return // absent inbox — nothing to cap
+		slog.Warn("failure observer: lessons-inbox size unreadable; cap check skipped", "error", err)
+		return false
 	}
-	if info.Size() < config.DefaultInboxMaxBytes {
-		return // under cap (inclusive boundary handled by >= below)
+	if size < config.DefaultInboxMaxBytes {
+		slog.Debug("failure observer: lessons-inbox below cap; no rotation",
+			"size", size, "cap", config.DefaultInboxMaxBytes)
+		return false
 	}
 	if LSELDrainMarkerPresent(root) {
-		return // curator stand-down (REQ-IBX-002)
+		slog.Debug("failure observer: lessons-inbox curator stand-down; no rotation", "size", size)
+		return false
 	}
+	return true
+}
+
+// rotateInboxForCap rotates the live inbox into the bounded archive chain.
+// Fail-open (REQ-IBX-009): a failed rotation logs a warning and the append
+// proceeds best-effort on the existing file.
+func rotateInboxForCap(inboxPath string) {
 	if _, err := RotateLessonsInboxArchive(inboxPath); err != nil {
 		slog.Warn("failure observer: lessons-inbox rotation failed; appending to existing file",
 			"error", err)

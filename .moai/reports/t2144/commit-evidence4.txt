@@ -1,0 +1,6 @@
+[t2144] docs(audit): sync-audit-iter3 = final PASS-WITH-DEBT 0.91 verdict copy, highest iteration (card t2144)
+
+Same bytes as verdict.md (audited_sha b73989497a, receipt rcpt-185288dcaa28642f8c9fd53b). The merge-ready evidence
+reader takes the highest sync-audit-iterN file, which was the FAIL iter2; iter3 makes the newest iteration the PASS.
+
+🗿 MoAI

@@ -135,6 +135,7 @@ Protect sensitive information and prevent harmful actions.
 
 Rules:
 - Never commit secrets to version control
+- Never write secret values (tokens, keys, passwords) into logs, reports, or evidence files; record the variable name or a redaction instead
 - Validate all external inputs
 - Follow OWASP guidelines for web security
 - Use environment variables for credentials

@@ -220,7 +220,7 @@ func TestFactoryRebindEvidenceCatchUp(t *testing.T) {
 		}
 	})
 
-	t.Run("converged_and_audited_duplicate_refuses", func(t *testing.T) {
+	t.Run("converged_and_audited_duplicate_is_a_noop", func(t *testing.T) {
 		root, _, baseFull := rebindFixture(t)
 		converge(t, root, baseFull)
 		db := fcOpen(t, root)
@@ -231,8 +231,12 @@ func TestFactoryRebindEvidenceCatchUp(t *testing.T) {
 			t.Fatal(err)
 		}
 		_ = db.Close()
-		if _, err := rebindRun(t, "duplicate"); err == nil || !strings.Contains(err.Error(), "duplicate") {
-			t.Fatalf("err = %v, want the converged-and-audited duplicate refusal", err)
+		out, err := rebindRun(t, "duplicate")
+		if err != nil {
+			t.Fatalf("err = %v, want exit 0 for the converged-and-audited duplicate", err)
+		}
+		if !strings.Contains(out, "already bound to") || !strings.Contains(out, "nothing to do") {
+			t.Errorf("output %q lacks the nothing-to-do note", out)
 		}
 		if n := mdAuditCount(t, root); n != 1 {
 			t.Errorf("audit rows = %d, want the seeded row only", n)

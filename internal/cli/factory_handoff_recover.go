@@ -92,8 +92,11 @@ func newFactoryCommand() *cobra.Command {
 	factory.AddCommand(newFactoryAssignCommand(), newFactoryBundleCommand(), newFactoryStatusCommand(), newFactoryDecideCommand(),
 		newFactoryNextCommand(), newFactoryStageCommand(), newFactoryCompleteCommand(), newFactoryRenewCommand())
 	factory.AddCommand(newFactorySetSpecCommand(), newFactoryReclassifyCommand())
+	factory.AddCommand(newFactoryWaitCommand())
+	factory.AddCommand(newFactoryCheckpointCommand())
 	factory.AddCommand(newFactoryRebindEvidenceCommand()) // card t1930 defect ④
 	factory.AddCommand(newFactoryApproveCommand())
+	factory.AddCommand(newFactoryCloseLandedCommand())
 	factory.AddCommand(newFactoryMessagingCommand(), newFactoryFallbackCommand())
 	factory.AddCommand(newFactoryPickupCommand())
 	factory.AddCommand(newFactoryMergeCommand())
@@ -209,7 +212,7 @@ func runRebindRetire(cmd *cobra.Command, db *homestate.FactoryDB, opts homestate
 	if tgt == nil {
 		return fmt.Errorf("factory run %s not found (the --rebind-to target)", target)
 	}
-	res, err := db.RebindRun(cmd.Context(), homestate.RebindRequest{Source: *src, Target: *tgt}, opts)
+	res, err := db.RebindRun(cmd.Context(), homestate.RebindRequest{Source: *src, Target: *tgt, AbandonExpiredLeaseDuplicate: true}, opts)
 	if err != nil {
 		return err
 	}

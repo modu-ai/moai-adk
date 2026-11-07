@@ -4,16 +4,20 @@ package hook
 // USERASSET-DEPLOY-GUARD-001 M4, REQ-GRD-001/002, design §5).
 //
 // The config list may declare entries of the kind "user-root:<slug>/…"
-// naming files inside one of the four USER-INSTALL roots; the zone
-// resolver emits the matching namespaced forms for targets under the user
-// home, and the deny path further limits protection to files the user
-// manifest TRACKS — a user-created file in a managed directory is not a
-// managed asset and stays editable (the over-protection guard).
+// naming files inside one of the USER-INSTALL roots (the four fixed roots
+// plus the profile-derived roots); the zone resolver emits the matching
+// namespaced forms for targets under the user home, and the deny path
+// further limits protection to files the user manifest TRACKS — a
+// user-created file in a managed directory is not a managed asset and
+// stays editable (the over-protection guard).
 //
 // Import direction: hook does not import userassets. The slug→directory
-// table below is pinned to userassets.ResolveRoots by a parity test
-// (test-only import — the production dependency direction stays
-// hook ← config only), so a drift turns the parity test red.
+// derivation lives in config (the package hook already imports) as the
+// ONE shared source userassets.ResolveRoots also derives from (card t1702
+// audit iter4 F2: the former static four-entry table here left the
+// profile roots `claude-skills@<p>` / `claude-agents@<p>` outside the
+// protection zone whenever profiles existed), and a parity test pins the
+// two derivations together against a HOME with real profile dirs.
 
 import (
 	"encoding/json"
@@ -24,14 +28,31 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 )
 
-// userRootSlugDirs maps the user-install root slugs to their home-relative
-// directories. MUST agree with userassets.ResolveRoots — the parity test
-// pins it.
-var userRootSlugDirs = map[string]string{
-	"claude-skills": ".claude/skills",
-	"claude-agents": ".claude/agents",
-	"agents-skills": ".agents/skills",
-	"codex-agents":  ".codex/agents",
+// userRootDirRels derives the slug→home-relative-dir set the zone guard
+// judges: the four fixed roots plus, for each REAL profile directory under
+// the profile store, the two profile-derived roots — everything from the
+// shared config derivation (card t1702 audit iter4 F2). An unreadable
+// profile store yields the fixed roots only: the guard's per-root posture
+// is fail-open (a root that cannot be shown to exist has nothing on disk
+// to protect).
+func userRootDirRels(home string) map[string]string {
+	dirs := make(map[string]string, 4)
+	for _, r := range config.UserRootFixedDirs() {
+		dirs[r.Slug] = r.Rel
+	}
+	names, err := config.UserProfileDirNames(home)
+	if err != nil {
+		return dirs
+	}
+	for _, name := range names {
+		for _, b := range config.UserRootProfileBases() {
+			slug := b.Slug + "@" + name
+			if rel, ok := config.UserRootSlugRel(slug); ok {
+				dirs[slug] = rel
+			}
+		}
+	}
+	return dirs
 }
 
 // userRootFormPrefix namespaces a user-root target form.
@@ -96,7 +117,7 @@ func userRootZoneForms(cand string) []zoneForm {
 		out = append(out, f)
 	}
 	unresolvedSlash := filepath.ToSlash(abs)
-	for slug, dir := range userRootSlugDirs {
+	for slug, dir := range userRootDirRels(home) {
 		resolvedRoot, ok := zoneResolve(filepath.Join(home, filepath.FromSlash(dir)))
 		if !ok {
 			continue // root absent — nothing of it is on disk to protect
@@ -156,7 +177,7 @@ func userRootZoneForms(cand string) []zoneForm {
 		targetFolded := config.FoldZoneText(filepath.ToSlash(resolvedTarget))
 		for _, key := range userRootManagedKeys(home) {
 			slug, rest, found := strings.Cut(key, "/")
-			dir, dirOK := userRootSlugDirs[slug]
+			dir, dirOK := config.UserRootSlugRel(slug)
 			if !found || !dirOK || rest == "" || hasDotDotSegment(rest) {
 				continue
 			}
@@ -291,7 +312,7 @@ func userRootTracksAny(home, display string) bool {
 	// Resolve the candidate's real location and compare it against every
 	// tracked key's real location (the filesystem's own mapping).
 	slug, rest, cutOK := strings.Cut(strings.TrimSuffix(key, "/"), "/")
-	dir, dirOK := userRootSlugDirs[slug]
+	dir, dirOK := config.UserRootSlugRel(slug)
 	if !cutOK || !dirOK {
 		return false
 	}
@@ -302,7 +323,7 @@ func userRootTracksAny(home, display string) bool {
 	candRealFolded := config.FoldZoneText(filepath.ToSlash(candReal))
 	for k := range m.Files {
 		kslug, krest, ok := strings.Cut(strings.TrimSuffix(k, "/"), "/")
-		kdir, kdirOK := userRootSlugDirs[kslug]
+		kdir, kdirOK := config.UserRootSlugRel(kslug)
 		if !ok || !kdirOK {
 			continue
 		}

@@ -182,17 +182,21 @@ func TestFactoryRebindEvidenceRefusals(t *testing.T) {
 			t.Errorf("audit rows = %d, want 0 on a refusal", n)
 		}
 	})
-	t.Run("a_second_run_on_a_converged_and_audited_record_is_a_duplicate", func(t *testing.T) {
+	t.Run("a_second_run_on_a_converged_and_audited_record_is_idempotent", func(t *testing.T) {
 		root, _, _ := rebindFixture(t)
 		if out, err := rebindRun(t, "first rebind"); err != nil {
 			t.Fatalf("first rebind: %v\nout: %s", err, out)
 		}
 		before := fcCard(t, root, "t1")
-		if _, err := rebindRun(t, "second rebind"); err == nil || !strings.Contains(err.Error(), "converged-and-audited duplicate") {
-			t.Fatalf("err = %v, want the duplicate refusal", err)
+		out, err := rebindRun(t, "second rebind")
+		if err != nil {
+			t.Fatalf("second rebind: %v, want exit 0 (idempotent)", err)
+		}
+		if !strings.Contains(out, "rebind-evidence: t1 already bound to ") || !strings.Contains(out, "; nothing to do") {
+			t.Errorf("output %q lacks the nothing-to-do note", out)
 		}
 		if after := fcCard(t, root, "t1"); after.Version != before.Version {
-			t.Errorf("a duplicate refusal changed the record: v%d → v%d", before.Version, after.Version)
+			t.Errorf("an idempotent re-run changed the record: v%d → v%d", before.Version, after.Version)
 		}
 		if n := mdAuditCount(t, root); n != 1 {
 			t.Errorf("audit rows = %d, want the single row of the first run", n)

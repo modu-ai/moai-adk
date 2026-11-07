@@ -207,7 +207,7 @@ form a listing shows, marker included) and refuses the undrop on a mismatch.`,
 					// keys.
 					if iss := rec.Items[i].Issuance; iss != nil && iss.DropReason != "" {
 						iss.DropReason = ""
-						if iss.SpawnedBy == "" && iss.Origin == "" && iss.SizeLines == nil && len(iss.Files) == 0 {
+						if iss.SpawnedBy == "" && iss.Origin == "" && iss.SizeLines == nil && len(iss.Files) == 0 && iss.BaseSHA == "" {
 							rec.Items[i].Issuance = nil
 						}
 					}

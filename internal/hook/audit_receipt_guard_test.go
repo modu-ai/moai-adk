@@ -256,6 +256,7 @@ func TestSubagentStop_ReentryWarnsAcceptanceClearsRoleFailIsInert(t *testing.T) 
 // rejection is outstanding, and only those.
 func TestPreToolUse_DeniesPhaseEntrySpawnsWhileRejectionOutstanding(t *testing.T) {
 	blocked := newGateTree(t, "required")
+	seedLiveSpec(t, blocked, "SPEC-X-001")
 	rj := auditreceipt.Rejection{AgentType: auditreceipt.AgentPlanAuditor, SpecID: "SPEC-X-001", Cause: auditreceipt.CauseNoReceiptCited}
 	if err := auditreceipt.WriteRejection(blocked, &rj); err != nil {
 		t.Fatalf("WriteRejection: %v", err)
@@ -765,6 +766,7 @@ func TestSubagentStop_SequentialAuditorReceiptReuseIsRefused(t *testing.T) {
 		t.Run(arm.name, func(t *testing.T) {
 			root := newGateTree(t, "required")
 			session := "sess-rr-seq"
+			seedLiveSpec(t, root, "SPEC-RR-001")
 			now := freezeClock(t)
 
 			// Instance 1 begins and mints r1 during its lifetime.

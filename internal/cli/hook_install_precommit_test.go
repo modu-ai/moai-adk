@@ -576,7 +576,9 @@ func moduleShimPath(t *testing.T) string {
 		t.Skip("shim-PATH construction is POSIX-only")
 	}
 	shim := t.TempDir()
-	for _, tool := range []string{"git", "grep", "sort", "dirname", "sed", "awk", "tr", "go", "gofmt"} {
+	// rm joined the hook's tool dependencies in card t2141: the portable
+	// gofmt handoff cleans its temp file after every staged-file check.
+	for _, tool := range []string{"git", "grep", "sort", "dirname", "sed", "awk", "tr", "rm", "go", "gofmt"} {
 		real, err := exec.LookPath(tool)
 		if err != nil {
 			t.Skipf("required tool %q not found: %v", tool, err)

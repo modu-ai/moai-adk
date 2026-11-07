@@ -193,7 +193,7 @@ MoAI-ADK는 위의 Claude Code 메모리 기반 위에서 동작합니다. 프�
 
 ## MoAI-ADK 프로젝트의 로컬 지침 — `AGENTS.local.md`
 
-Claude Code 자체는 `CLAUDE.local.md`를 읽지만, MoAI-ADK 프로젝트는 개인 지침을 `AGENTS.local.md`에 둡니다. `CLAUDE.md` 마지막의 `@AGENTS.local.md` 가져오기가 이 파일을 Claude Code에 싣고, 같은 파일을 `moai codex`가 Codex에 전달합니다. 공통 계약은 `AGENTS.md`, Claude 전용 층은 `CLAUDE.md`, 개인 지침은 `AGENTS.local.md` — 세 파일 구조입니다.
+Claude Code 자체는 `CLAUDE.local.md`를 읽지만, MoAI-ADK 프로젝트는 개인 지침을 `AGENTS.local.md`에 둡니다. `CLAUDE.md` 마지막의 `@AGENTS.local.md` 가져오기가 이 파일을 Claude Code에 싣고, Codex도 같은 파일을 전달받습니다. 공통 계약은 `AGENTS.md`, Claude 전용 층은 `CLAUDE.md`, 개인 지침은 `AGENTS.local.md` — 세 파일 구조입니다.
 
 `CLAUDE.local.md`와 `AGENTS.local.md`를 함께 두면 Claude Code가 두 파일을 모두 읽어 비슷한 지침이 두 번 실립니다. 기존 `CLAUDE.local.md`는 `moai migrate local-instructions`로 옮기세요. 두 파일이 모두 있으면 이 명령은 거부하므로, 그때는 손으로 합칩니다.
 

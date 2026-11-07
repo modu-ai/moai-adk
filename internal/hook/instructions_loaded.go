@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // instructionsLoadedHandler processes InstructionsLoaded events.
@@ -159,10 +161,11 @@ func resolveInstructionFile(projectRoot string) string {
 // hand-written path list):
 //
 //  1. the instruction-file anchor (AGENTS.md; legacy projects: CLAUDE.md);
-//  2. the transitive closure of `^@` import lines in the anchor — repo-
-//     relative paths resolved under projectRoot; missing members are skipped,
-//     imports escaping projectRoot are not followed, and the traversal is
-//     cycle-safe via a visited set;
+//  2. the transitive closure of `^@` import lines in the anchor — relative
+//     paths resolved against the importing file's directory, confined to
+//     projectRoot; missing and non-regular members are skipped, imports
+//     escaping projectRoot are not followed, and the traversal is cycle-safe
+//     via a visited set;
 //  3. every *.md under .claude/rules/moai/ whose frontmatter — when the file
 //     starts with a --- block — lacks a top-level `paths:` key (the
 //     always-loaded rule set).
@@ -194,13 +197,22 @@ func instructionFileSet(projectRoot string) []string {
 		if seen[cur] {
 			continue
 		}
+		// @MX:NOTE: [AUTO] t2117 C1 — a non-regular entry (FIFO, socket, device) must never reach ReadFile: a writer-less FIFO at an instruction-file path blocks the read forever. Lstat (the entry itself must be a regular file, links included in the refusal), same discipline as the migration verb.
+		if info, lerr := os.Lstat(cur); lerr != nil || !info.Mode().IsRegular() {
+			continue // missing or non-regular member: skip silently-and-continue
+		}
 		data, err := os.ReadFile(cur)
 		if err != nil {
-			continue // missing/unreadable member: skip silently-and-continue
+			continue // unreadable member: skip silently-and-continue
 		}
 		add(cur)
 		for _, imp := range parseImports(string(data)) {
-			if resolved := resolveUnder(projectRoot, imp); resolved != "" && !seen[resolved] {
+			// t2117 C4: a relative import resolves from the IMPORTING file's
+			// directory (sub/dir/AGENTS.md importing ./more.md means
+			// sub/dir/more.md), then the project-boundary check applies —
+			// root-relative resolution silently queued the wrong path and
+			// missed the real nested target.
+			if resolved := resolveUnder(projectRoot, filepath.Dir(cur), imp); resolved != "" && !seen[resolved] {
 				queue = append(queue, resolved)
 			}
 		}
@@ -225,32 +237,22 @@ func instructionFileSet(projectRoot string) []string {
 	return set
 }
 
-// parseImports extracts the repo-relative targets of `^@` import lines.
-// Everything from the first whitespace after the path token onward is
-// ignored; a line with nothing usable after the @ is skipped.
+// parseImports extracts the path tokens of `^@` import lines. The single
+// implementation lives in internal/config (ParseInstructionImports) so the
+// token-budget surface parses imports with the same parser (card t2117 C3);
+// this wrapper keeps the handler's call sites unchanged.
 func parseImports(content string) []string {
-	var imports []string
-	for _, line := range strings.Split(content, "\n") {
-		trimmed := strings.TrimSpace(line)
-		if !strings.HasPrefix(trimmed, "@") {
-			continue
-		}
-		fields := strings.Fields(trimmed[len("@"):])
-		if len(fields) == 0 {
-			continue
-		}
-		imports = append(imports, fields[0])
-	}
-	return imports
+	return config.ParseInstructionImports(content)
 }
 
-// resolveUnder resolves a repo-relative import path under projectRoot,
-// refusing absolute paths and any target that escapes projectRoot.
-func resolveUnder(projectRoot, rel string) string {
+// resolveUnder resolves a relative import path against the importing file's
+// directory dir — not the project root (card t2117 C4) — refusing absolute
+// paths and any target that escapes projectRoot.
+func resolveUnder(projectRoot, dir, rel string) string {
 	if rel == "" || filepath.IsAbs(rel) {
 		return ""
 	}
-	cleaned := filepath.Clean(filepath.Join(projectRoot, rel))
+	cleaned := filepath.Clean(filepath.Join(dir, rel))
 	escaped, err := filepath.Rel(projectRoot, cleaned)
 	if err != nil || escaped == ".." || strings.HasPrefix(escaped, ".."+string(filepath.Separator)) {
 		return ""

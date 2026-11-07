@@ -52,25 +52,13 @@ func runInitWizard(cmd *cobra.Command, reconfigure bool) error {
 	// REQ-1: Read locale from language.yaml
 	locale := wizard.ReadLocaleFromProject(cwd)
 
-	// REQ-2: Read existing username from config (used as default value)
-	existingGitHubUsername := wizard.ReadGitHubUsernameFromConfig(cwd)
-	existingGitLabUsername := wizard.ReadGitLabUsernameFromConfig(cwd)
-
 	// REQ-3: Check whether gh CLI is authenticated
 	ghAuthenticated := wizard.IsGhAuthenticated()
 
 	// Generate default questions and set defaults from existing values
+	// (REQ-2: the stored usernames are the defaults).
 	questions := wizard.ReconfigureQuestions(cwd)
-	if existingGitHubUsername != "" {
-		if q := wizard.QuestionByID(questions, "github_username"); q != nil {
-			q.Default = existingGitHubUsername
-		}
-	}
-	if existingGitLabUsername != "" {
-		if q := wizard.QuestionByID(questions, "gitlab_username"); q != nil {
-			q.Default = existingGitLabUsername
-		}
-	}
+	prefillReconfigureDefaults(questions, cwd)
 	// REQ-3: Skip github_token question when gh auth is authenticated
 	if ghAuthenticated {
 		if q := wizard.QuestionByID(questions, "github_token"); q != nil {
@@ -108,6 +96,28 @@ func runInitWizard(cmd *cobra.Command, reconfigure bool) error {
 	_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: false, Label: "Configuration updated successfully", Theme: &th}))
 
 	return nil
+}
+
+// prefillReconfigureDefaults sets each reconfigure question's default from the
+// value already stored in the project, so pressing Enter keeps what is there.
+func prefillReconfigureDefaults(questions []wizard.Question, cwd string) {
+	if v := wizard.ReadGitHubUsernameFromConfig(cwd); v != "" {
+		if q := wizard.QuestionByID(questions, "github_username"); q != nil {
+			q.Default = v
+		}
+	}
+	if v := wizard.ReadGitLabUsernameFromConfig(cwd); v != "" {
+		if q := wizard.QuestionByID(questions, "gitlab_username"); q != nil {
+			q.Default = v
+		}
+	}
+	// A stored self-hosted instance URL is the default, so Enter keeps it instead
+	// of replacing it with gitlab.com (t2108).
+	if v := wizard.ReadGitLabInstanceURLFromConfig(cwd); v != "" {
+		if q := wizard.QuestionByID(questions, "gitlab_instance_url"); q != nil {
+			q.Default = v
+		}
+	}
 }
 
 // applyWizardReconfigureSteps applies the reconfigure wizard's config updates
@@ -276,15 +286,26 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 			gitStrategy["provider"] = result.GitProvider
 		}
 
-		// Save GitLab instance URL (REQ-5)
-		if result.GitLabInstanceURL != "" {
-			var gitlabSection map[string]any
-			if existing, ok := gitStrategy["gitlab"].(map[string]any); ok {
-				gitlabSection = existing
+		// Save GitLab instance URL (REQ-5). A blank answer for a gitlab provider
+		// keeps the stored URL, and only when none is stored means the default
+		// (t1972 F5, t2108); under another provider the question is not asked, so
+		// a blank URL writes nothing.
+		var gitlabSection map[string]any
+		if existing, ok := gitStrategy["gitlab"].(map[string]any); ok {
+			gitlabSection = existing
+		} else {
+			gitlabSection = make(map[string]any)
+		}
+		gitlabURL := result.GitLabInstanceURL
+		if gitlabURL == "" && result.GitProvider == "gitlab" {
+			if stored, _ := gitlabSection["instance_url"].(string); stored != "" {
+				gitlabURL = stored
 			} else {
-				gitlabSection = make(map[string]any)
+				gitlabURL = wizard.DefaultGitLabInstanceURL
 			}
-			gitlabSection["instance_url"] = result.GitLabInstanceURL
+		}
+		if gitlabURL != "" {
+			gitlabSection["instance_url"] = gitlabURL
 			gitStrategy["gitlab"] = gitlabSection
 		}
 

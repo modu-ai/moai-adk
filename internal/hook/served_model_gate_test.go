@@ -285,6 +285,7 @@ func TestServedModel_RefusalDeniesPhaseEntry(t *testing.T) {
 	t.Run("b_served_and_receipt_refusals_together", func(t *testing.T) {
 		root := newServedGateTree(t, "true", "required")
 		seedServed(t, root)
+		seedLiveSpec(t, root, "SPEC-Y-002")
 		legacy := auditreceipt.Rejection{AgentType: "plan-auditor", SpecID: "SPEC-Y-002", Cause: auditreceipt.CauseNoReceiptCited}
 		if err := auditreceipt.WriteRejection(root, &legacy); err != nil {
 			t.Fatalf("WriteRejection: %v", err)

@@ -4,10 +4,14 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"os"
+	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/auditreceipt"
+	"github.com/modu-ai/moai-adk/internal/spec"
 )
 
 // audit_receipt_guard.go — SPEC-CODEX-AUDIT-GATE-AXES-001 axis (b), hook half.
@@ -176,6 +180,9 @@ func checkAuditorStop(input *HookInput) *HookOutput {
 	}
 
 	line, parsed := auditreceipt.ParseVerdictLine(input.LastAssistantMessage)
+	if parsed && line.Verdict == auditreceipt.VerdictInconclusive {
+		return stopInconclusive(g, input, line)
+	}
 	if parsed && !line.IsPass() {
 		// A FAIL needs no receipt: it is not claiming an audit approved anything.
 		if !g.assumed() {
@@ -268,6 +275,38 @@ func checkAuditorStop(input *HookInput) *HookOutput {
 			"%s: %s reported %s but the audit could not be corroborated — %s. Call the codex audit (codex_audit or audit_multi) for this tree, then end with a verdict line citing the receipt id it returns.",
 			auditReceiptViolation, input.AgentType, passLabel(parsed, line), cause),
 	}
+}
+
+// stopInconclusive handles a parsed INCONCLUSIVE last line (SPEC-AUDIT-ENGINE-
+// CONVERGENCE-001 REQ-AEC-007). The audit did not run, so the line claims no PASS
+// and no receipt is demanded; it is a parsed line, so it records no
+// CauseVerdictLineMissing and blocks nothing; and, unlike a parsed FAIL, it answers
+// no earlier refusal, so it clears none — whatever was outstanding stays, and the
+// phase-entry spawns it denies stay denied. The instance ends as after a FAIL. The
+// message carries the error class a cited receipt records, so the reader learns
+// why the audit did not run.
+func stopInconclusive(g guardTree, input *HookInput, line auditreceipt.VerdictLine) *HookOutput {
+	if !g.assumed() {
+		_, key := readStartMarker(g.store, input)
+		consumeStartMarker(g.store, key)
+		recordAuditorEnd(g.store, endAggregationKey(g.store, input, key))
+	}
+	class := ""
+	if !g.assumed() {
+		for _, id := range line.Receipts {
+			if r, err := auditreceipt.ReadReceipt(g.store, id); err == nil && r.ErrorClass != "" {
+				class = r.ErrorClass
+				break
+			}
+		}
+	}
+	why := "error class not recorded"
+	if class != "" {
+		why = "error_class " + class
+	}
+	return &HookOutput{SystemMessage: fmt.Sprintf(
+		"%s ended %s for %s (%s): the audit did not run, so no PASS is claimed and no outstanding refusal is cleared.",
+		input.AgentType, line.Verdict, line.SpecID, why)}
 }
 
 func passLabel(parsed bool, line auditreceipt.VerdictLine) string {
@@ -453,6 +492,11 @@ func checkAuditReceiptSpawn(input *HookInput) (decision, reason string) {
 		if auditreceipt.RejectionKind(r) != auditreceipt.KindReceipt {
 			continue
 		}
+		if reason, stale := staleRejectionReason(g.tree, r); stale {
+			slog.Info("stale audit rejection skipped",
+				"agent_type", r.AgentType, "spec_id", r.SpecID, "rejected_at", r.RejectedAt, "reason", reason)
+			continue
+		}
 		parts = append(parts, fmt.Sprintf("%s / %s / %s", r.AgentType, r.SpecID, r.Cause))
 	}
 	if len(parts) == 0 {
@@ -461,4 +505,56 @@ func checkAuditReceiptSpawn(input *HookInput) (decision, reason string) {
 	return DecisionDeny, fmt.Sprintf(
 		"%s: %s cannot be spawned while an audit PASS stands unproven in %s. Outstanding: %s. Re-run the audit through codex_audit or audit_multi and let the auditor end with a verdict line citing the receipt.",
 		auditReceiptViolation, sp.Agent, g.tree, strings.Join(parts, "; "))
+}
+
+// Reasons a receipt-kind rejection no longer blocks a spawn.
+const (
+	staleReasonSpecDirAbsent = "spec-dir-absent"
+	staleReasonSpecCompleted = "spec-completed"
+)
+
+var rejectionSpecStatusPattern = regexp.MustCompile(`(?m)^status:\s*(.+?)\s*$`)
+
+// staleRejectionReason reports whether a rejection names a SPEC that is gone
+// from tree or already closed (status completed/archived), so the refusal can
+// no longer gate a phase entry. The unknown-spec sentinel and any SpecID that
+// is not a plain directory name are never stale (keep blocking); an unreadable
+// spec.md is not stale either. The record file is never touched.
+//
+// @MX:NOTE: [AUTO] staleness only trims the PreToolUse spawn deny; SubagentStart/Stop paths and the record files are unchanged
+func staleRejectionReason(tree string, r auditreceipt.Rejection) (string, bool) {
+	id := r.SpecID
+	// A card id (t2106, card-t2106) never has a .moai/specs/<id> directory, so
+	// its absence is not evidence the refusal is stale: like UnknownSpec it stays
+	// live (auditreceipt.IsCardSpecID — conservative, never per-milestone).
+	if id == "" || id == auditreceipt.UnknownSpec || auditreceipt.IsCardSpecID(id) || id != filepath.Base(id) || id == "." || id == ".." {
+		return "", false
+	}
+	dir := filepath.Join(tree, ".moai", "specs", id)
+	if fi, err := os.Stat(dir); err != nil {
+		if os.IsNotExist(err) {
+			return staleReasonSpecDirAbsent, true
+		}
+		return "", false
+	} else if !fi.IsDir() {
+		return staleReasonSpecDirAbsent, true
+	}
+	body, err := os.ReadFile(filepath.Join(dir, "spec.md"))
+	if err != nil {
+		return "", false
+	}
+	// Frontmatter only: the first block between the leading --- fences.
+	text := string(body)
+	if rest, ok := strings.CutPrefix(text, "---\n"); ok {
+		if end := strings.Index(rest, "\n---"); end >= 0 {
+			text = rest[:end]
+		}
+	}
+	if m := rejectionSpecStatusPattern.FindStringSubmatch(text); len(m) > 1 {
+		switch spec.NormalizeStatusValue(m[1]) {
+		case "completed", "archived":
+			return staleReasonSpecCompleted, true
+		}
+	}
+	return "", false
 }

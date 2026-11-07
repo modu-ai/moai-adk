@@ -1,35 +1,111 @@
 package hook
 
 // m4_user_root_parity_test.go — SPEC-USERASSET-DEPLOY-GUARD-001 M4 parity
-// (REQ-GRD-002, design §5): the hook's slug→directory table MUST agree
-// with userassets.ResolveRoots — the import direction stays production-
-// hook ← config only, so the agreement is pinned by this TEST-ONLY import:
-// a drift on either side turns this test red.
+// (REQ-GRD-002, design §5): the hook's slug→directory derivation MUST
+// agree with userassets.ResolveRoots — the import direction stays
+// production-hook ← config only, so the agreement is pinned by this
+// TEST-ONLY import: a drift on either side turns this test red. F2 (card
+// t1702 audit iter4): the parity MUST run against a HOME with real
+// profile dirs — the empty-HOME arm sees only the 4 fixed roots and was
+// green while the profile roots sat outside the hook's protection zone.
 
 import (
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/userassets"
 )
 
 func TestUserRootSlugDirsMatchUserassetsRoots(t *testing.T) {
 	home := t.TempDir()
-	roots := userassets.ResolveRoots(home)
-	if len(roots) != len(userRootSlugDirs) {
-		t.Fatalf("root count drifted: userassets has %d, the hook table has %d", len(roots), len(userRootSlugDirs))
+	for _, name := range []string{"work", "zeta"} {
+		if err := os.MkdirAll(filepath.Join(home, ".moai", "claude-profiles", name), 0o755); err != nil {
+			t.Fatalf("create profile dir %s: %v", name, err)
+		}
+	}
+	// A junk dir must never enumerate on either side.
+	if err := os.MkdirAll(filepath.Join(home, ".moai", "claude-profiles", "Junk Dir"), 0o755); err != nil {
+		t.Fatalf("create junk dir: %v", err)
+	}
+
+	roots, err := userassets.ResolveRoots(home)
+	if err != nil {
+		t.Fatalf("ResolveRoots: %v", err)
+	}
+	if len(roots) != 8 {
+		t.Fatalf("with two real profiles ResolveRoots = %d roots, want 8 (4 fixed + 2 per profile)", len(roots))
+	}
+	dirs := userRootDirRels(home)
+	if len(dirs) != len(roots) {
+		t.Fatalf("root count drifted: userassets has %d, the hook derivation has %d", len(roots), len(dirs))
 	}
 	for _, r := range roots {
-		dir, ok := userRootSlugDirs[string(r.Slug)]
+		dir, ok := dirs[string(r.Slug)]
 		if !ok {
-			t.Fatalf("slug %q is missing from the hook's user-root table", r.Slug)
+			t.Fatalf("slug %q is missing from the hook's user-root derivation", r.Slug)
 		}
 		want := filepath.ToSlash(r.Dir)
 		got := filepath.ToSlash(filepath.Join(home, filepath.FromSlash(dir)))
 		if got != want {
 			t.Errorf("slug %q: hook dir %q != userassets root %q", r.Slug, got, want)
 		}
+	}
+	if _, junk := dirs["claude-skills@Junk Dir"]; junk {
+		t.Error("a junk profile dir was enumerated into the hook derivation")
+	}
+
+	// The empty-HOME arm (the pre-F2 parity shape): 4 fixed roots only.
+	emptyRoots, err := userassets.ResolveRoots(t.TempDir())
+	if err != nil {
+		t.Fatalf("ResolveRoots(empty home): %v", err)
+	}
+	emptyDirs := userRootDirRels(t.TempDir())
+	if len(emptyRoots) != 4 || len(emptyDirs) != 4 {
+		t.Errorf("empty home: userassets %d / hook %d roots, want 4/4", len(emptyRoots), len(emptyDirs))
+	}
+}
+
+// TestUserRootZoneFormsCoverProfileRoots pins F2's behavioral repair (card
+// t1702 audit iter4): a target inside a PROFILE install root emits its
+// namespaced user-root form (the former static table never knew profile
+// slugs, so profile-root files had zero protection forms), and the tracked
+// judgment resolves a profile-slug manifest key.
+func TestUserRootZoneFormsCoverProfileRoots(t *testing.T) {
+	home := t.TempDir()
+	prev := zoneHomeFn
+	zoneHomeFn = func() (string, error) { return home, nil }
+	t.Cleanup(func() { zoneHomeFn = prev })
+
+	target := filepath.Join(home, ".moai", "claude-profiles", "work", "skills", "moai", "SKILL.md")
+	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(target, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	want := "user-root:claude-skills@work/moai/SKILL.md"
+	wantFolded := config.FoldZoneText(want)
+	found := false
+	var emitted []string
+	for _, f := range userRootZoneForms(target) {
+		emitted = append(emitted, f.Display)
+		if f.Folded == wantFolded {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("profile-root target emitted %v — no form folds to %s; the profile root is outside the protection zone", emitted, want)
+	}
+
+	manifest := `{"schema_version": 1, "files": {"claude-skills@work/moai/SKILL.md": {"sha256": "ab"}}}`
+	if err := os.WriteFile(filepath.Join(home, ".moai", "user-assets.json"), []byte(manifest), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if !userRootTracksAny(home, want) {
+		t.Fatal("a manifest-tracked profile-root key read untracked — the profile root is outside the protection zone")
 	}
 }
 

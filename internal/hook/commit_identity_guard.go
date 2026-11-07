@@ -79,7 +79,10 @@ var commitVerbs = map[string]bool{
 // email (SPEC-HOOK-SYNC-ASYNC-001 M3); 76 with the t1640
 // (SPEC-WORKTREE-HOME-ROOT-001) fixture emails (bases, cls-test, list, m3,
 // m6, ml-test, tier, wr-test, rfx, sfx-cli) joined under the t1913 addition;
-// 77 with the t1831 agentic-trunk fixture email.
+// 77 with the t1831 af-flow fixture email; 78 with the t2013 factory
+// checkpoint fixture email; 80 with the t2034 mergeq gate fixture emails
+// (g@e, t@e); 83 with the t2081 parallel-migration and t2087 lint git-batch
+// fixture emails.
 var builtinCommitIdentityDenyEmails = []string{
 	"a@e.invalid",
 	"anchor-test@example.com",
@@ -90,6 +93,7 @@ var builtinCommitIdentityDenyEmails = []string{
 	"c@e.invalid",
 	"chain-test@example.com",
 	"cls-test@example.com",
+	"cp@example.invalid",
 	"disposal-test@example.com",
 	"env-diff-base-test@example.invalid",
 	"f@e.com",
@@ -101,6 +105,7 @@ var builtinCommitIdentityDenyEmails = []string{
 	"fixture@example.test",
 	"fixture@t516.invalid",
 	"fx@example.com",
+	"g@e",
 	"gfd-test@example.com",
 	"guard-test@example.invalid",
 	"guard@test",
@@ -124,8 +129,10 @@ var builtinCommitIdentityDenyEmails = []string{
 	"sub@e.x",
 	"sweep-test@example.com",
 	"sync-gate-test@example.com",
+	"t@e",
 	"t@example.com",
 	"t@example.invalid",
+	"t@example.test",
 	"t@fixture",
 	"t@local",
 	"t@t",
@@ -140,6 +147,8 @@ var builtinCommitIdentityDenyEmails = []string{
 	"t1404@example.invalid",
 	"t1680@example.invalid",
 	"t1831@test.local",
+	"t2081@example.com",
+	"t2087@example.com",
 	"t371@example.com",
 	"t461@example.test",
 	"t488@example.invalid",

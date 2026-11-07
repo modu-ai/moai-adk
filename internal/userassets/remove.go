@@ -36,14 +36,29 @@ func (in *Installer) PruneUnselected(manifest *Manifest) (*Result, error) {
 	if err := manifest.CanRemove(); err != nil {
 		return nil, err
 	}
-	roots := make(map[RootSlug]resolvedRoot, 4)
-	for _, r := range ResolveRoots(in.Home) {
+	// Resolve the roots once per run. A profile store that exists but cannot
+	// be read keeps the round-2 contract (card t1702 audit round 2): the run
+	// continues over the FIXED roots and profile-side keys surface through
+	// the per-key refusal arm (records preserved + reported) instead of
+	// aborting. The store error itself is recorded as a failure so the prune
+	// never reads as a clean "no profiles exist" (card t1702 audit round 4).
+	rootList, enumErr := ResolveRoots(in.Home)
+	if enumErr != nil {
+		rootList = fixedRoots(in.Home)
+		res.Failures = append(res.Failures, FileOutcome{
+			Path:   ProfileRootsBase(in.Home),
+			Reason: "profile store unreadable — profile-root records preserved and reported per key: " + enumErr.Error(),
+		})
+	}
+	roots := make(map[RootSlug]resolvedRoot, len(rootList))
+	for _, r := range rootList {
 		rr, err := resolveRoot(in.Home, r)
 		if err != nil {
 			return nil, fmt.Errorf("resolve root %s: %w", r.Slug, err)
 		}
 		roots[r.Slug] = rr
 	}
+	res.RootsReached = sortedRootSlugs(roots)
 	allowed := map[string]bool{}
 	preserved := []template.Entry{}
 	for _, e := range in.preservedEntries(manifest.Bundles) {
@@ -76,7 +91,7 @@ func (in *Installer) PruneUnselected(manifest *Manifest) (*Result, error) {
 	allowedKeys := map[string]bool{}
 	for _, e := range preserved {
 		if allowed[e.Name] {
-			for _, k := range in.entryManifestKeys(e) {
+			for _, k := range in.entryManifestKeys(roots, e) {
 				allowedKeys[k] = true
 			}
 		}
@@ -91,6 +106,13 @@ func (in *Installer) PruneUnselected(manifest *Manifest) (*Result, error) {
 	for _, k := range keys {
 		slug, rel, ok := splitManifestKey(k)
 		if !ok {
+			continue
+		}
+		// Repair 2 (card t1702 audit P2): a key naming a profile root whose
+		// directory vanished is stale — its files are gone with the dir, so
+		// the record drops (missing-file arm) and the prune converges
+		// instead of erroring "unknown root slug" on every later run.
+		if roots[slug].dir == "" && in.dropStaleProfileRecord(slug, k, manifest, res) {
 			continue
 		}
 		name, ok := owningEntryName(rel)
@@ -228,15 +250,28 @@ func (in *Installer) RemoveBundle(manifest *Manifest, name string, remaining []s
 	if err := manifest.CanRemove(); err != nil {
 		return nil, err // REQ-021 refusal against an unknown schema
 	}
-	// Resolve the roots once (same posture as Install).
-	roots := make(map[RootSlug]resolvedRoot, 4)
-	for _, r := range ResolveRoots(in.Home) {
+	// Resolve the roots once (same posture as Install). Enumeration failure
+	// keeps the round-2 contract as in PruneUnselected: continue over the
+	// fixed roots, record the store error as a failure, let the per-key
+	// refusal arm preserve + report profile-side keys (card t1702 audit
+	// rounds 2 and 4).
+	rootList, enumErr := ResolveRoots(in.Home)
+	if enumErr != nil {
+		rootList = fixedRoots(in.Home)
+		res.Failures = append(res.Failures, FileOutcome{
+			Path:   ProfileRootsBase(in.Home),
+			Reason: "profile store unreadable — profile-root records preserved and reported per key: " + enumErr.Error(),
+		})
+	}
+	roots := make(map[RootSlug]resolvedRoot, len(rootList))
+	for _, r := range rootList {
 		rr, err := resolveRoot(in.Home, r)
 		if err != nil {
 			return nil, fmt.Errorf("resolve root %s: %w", r.Slug, err)
 		}
 		roots[r.Slug] = rr
 	}
+	res.RootsReached = sortedRootSlugs(roots)
 
 	// Preserved = L0 ∪ remaining selections. Their declared dependencies are
 	// the R-f-② deferral set — EXCLUDING the dispatcher's own dep list (its
@@ -361,6 +396,12 @@ func (in *Installer) removeKeys(entry template.Entry, keys []string, manifest *M
 		if !ok {
 			continue
 		}
+		// Repair 2 (card t1702 audit P2): same stale-profile convergence as
+		// PruneUnselected — a bundle key whose profile dir vanished drops
+		// its record instead of erroring forever.
+		if roots[slug].dir == "" && in.dropStaleProfileRecord(slug, k, manifest, res) {
+			continue
+		}
 		if err := in.removeManifestKey(entry, k, slug, rel, roots[slug], manifest, res); err != nil {
 			res.Failures = append(res.Failures, FileOutcome{Path: k, Reason: err.Error()})
 		}
@@ -402,8 +443,10 @@ func (in *Installer) preservedEntries(selection []string) []template.Entry {
 	return entries
 }
 
-// entryManifestKeys lists the manifest keys one entry's destinations carry.
-func (in *Installer) entryManifestKeys(e template.Entry) []string {
+// entryManifestKeys lists the manifest keys one entry's destinations carry —
+// one per skills/agents-kind root taken from the caller's validated root
+// snapshot (repair 1, card t1702 audit P1), profile roots included.
+func (in *Installer) entryManifestKeys(roots map[RootSlug]resolvedRoot, e template.Entry) []string {
 	var keys []string
 	switch {
 	case strings.HasSuffix(e.Path, "/"):
@@ -413,18 +456,42 @@ func (in *Installer) entryManifestKeys(e template.Entry) []string {
 				return nil
 			}
 			rel := strings.TrimPrefix(p, srcDir+"/")
-			keys = append(keys,
-				string(RootClaudeSkills)+"/"+e.Name+"/"+rel,
-				string(RootAgentsSkills)+"/"+e.Name+"/"+rel)
+			for _, slug := range in.rootSlugsOfKind(roots, RootClaudeSkills, RootAgentsSkills) {
+				keys = append(keys, string(slug)+"/"+e.Name+"/"+rel)
+			}
 			return nil
 		})
 	case strings.HasSuffix(e.Path, ".md"):
-		keys = append(keys, string(RootClaudeAgents)+"/"+e.Name+".md")
+		for _, slug := range in.rootSlugsOfKind(roots, RootClaudeAgents) {
+			keys = append(keys, string(slug)+"/"+e.Name+".md")
+		}
 		if _, err := fs.Stat(in.Source, ".codex/agents/moai/"+e.Name+".toml"); err == nil {
 			keys = append(keys, string(RootCodexAgents)+"/"+e.Name+".toml")
 		}
 	}
 	return keys
+}
+
+// dropStaleProfileRecord applies repair 2 (card t1702 audit P2) to one
+// manifest key: a key naming a PROFILE root whose directory has vanished
+// tracks files that lived inside that dir and are gone with it. The drop
+// fires ONLY on confirmed absence — os.IsNotExist (final-round repair):
+// any other Stat error (an unreadable store, say) means the files may
+// still exist, so the record stays and the caller's unknown-root refusal
+// reports the key instead. Reports whether the record was dropped; a
+// still-existing profile, an unconfirmed store, a non-profile slug, or a
+// corrupt slug shape returns false and the caller's refusal path applies.
+func (in *Installer) dropStaleProfileRecord(slug RootSlug, key string, manifest *Manifest, res *Result) bool {
+	base, profile, found := strings.Cut(string(slug), "@")
+	if !found || (base != string(RootClaudeSkills) && base != string(RootClaudeAgents)) {
+		return false
+	}
+	if _, err := os.Stat(filepath.Join(ProfileRootsBase(in.Home), profile)); !os.IsNotExist(err) {
+		return false // present, or absence unconfirmed — never drop
+	}
+	delete(manifest.Files, key)
+	res.Removed++
+	return true
 }
 
 // readShippedForKey reads the shipped bytes for one destination key.
@@ -451,9 +518,11 @@ func (in *Installer) readShippedForKey(e template.Entry, key string) ([]byte, er
 }
 
 // sourcePathFor maps a (root slug, entry, rel) triple back to the source
-// tree path (stripped FS form).
+// tree path (stripped FS form). Profile-derived slugs judge by their base
+// kind (RootKind), so a profile root shares its home-level counterpart's
+// shipped source (card t1702).
 func (in *Installer) sourcePathFor(slug RootSlug, e template.Entry, rel string) (string, bool) {
-	switch slug {
+	switch RootKind(slug) {
 	case RootClaudeSkills, RootAgentsSkills:
 		// F10 (review-fix round 2): use the entry's ACTUAL catalog path —
 		// published command skills live under .agents/skills, not .claude/

@@ -192,6 +192,7 @@ func TestWorktreeRegistry_InvalidJSONFailsEveryWriterByteIdentical(t *testing.T)
 // entry. The children are this test's own binary re-executed with the
 // M5_HELPER env guard, bounded by the command's context timeout.
 func TestWorktreeRegistry_TwoWritersAcrossProcessesLoseNeitherEntry(t *testing.T) {
+	skipWindowsCrossProcessLock(t)
 	paths := []string{
 		"/repo/.claude/worktrees/t6",
 		"/repo/.claude/worktrees/t7",
@@ -239,6 +240,7 @@ func TestWorktreeRegistry_TwoWritersAcrossProcessesLoseNeitherEntry(t *testing.T
 // makes the writer lapse with the distinct error, the file byte-identical,
 // and neither an early return nor a hang past the bound.
 func TestWorktreeRegistry_HeldLockPastLoweredBoundLapses(t *testing.T) {
+	skipWindowsCrossProcessLock(t)
 	projectDir, stateFile := m5Fixture(t, "/repo/.claude/worktrees/t1")
 	lockPath := stateFile + ".lock"
 

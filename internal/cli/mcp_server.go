@@ -89,6 +89,10 @@ provision the entry (M4).`,
 			if exposure == "" {
 				exposure = mcpServerExposureFromEnv()
 			}
+			if call, _ := c.Flags().GetString("call"); call != "" {
+				input, _ := c.Flags().GetString("input-json")
+				return runMCPServerOneShot(c.Context(), os.Stdin, os.Stdout, call, input, exposure)
+			}
 			return runMCPServerWithIOAndExposure(os.Stdin, os.Stdout, exposure)
 		},
 	}
@@ -96,6 +100,12 @@ provision the entry (M4).`,
 	// (the MOAI_MCP_EXPOSURE env is the equivalent input), restricting the
 	// served surface to the gate read-only subset.
 	cmd.Flags().String("exposure", "", `Serve a restricted surface: "gate" serves only the gate read-only subset (set by the gate child's containment overrides).`)
+	// Hidden one-shot form: a stale server runs one write-capable call through
+	// this (installed) build with it. The one-shot never proxies.
+	cmd.Flags().String("call", "", "Invoke one tool once and print the result JSON (internal one-shot form).")
+	cmd.Flags().String("input-json", mcpInputFromStdin, "Tool arguments as JSON, or - to read stdin (with --call).")
+	_ = cmd.Flags().MarkHidden("call")
+	_ = cmd.Flags().MarkHidden("input-json")
 	return cmd
 }
 
@@ -145,6 +155,9 @@ func runMCPServerWithIOAndExposure(stdin io.Reader, stdout io.Writer, exposure s
 	defer func() {
 		stopGLMBackgroundJobs()
 		stopCodexRoleAuditJobs()
+		// A tool call still inside a codex session when the server leaves would
+		// otherwise leave the session's process group (a group of its own).
+		shutdownCodexSessions()
 	}()
 	// ServeStdio waits for in-flight tool workers on EOF before cancelling its
 	// internal context. A worker stalled in an app-server handshake would keep
@@ -238,8 +251,8 @@ func moaiMCPServerInstructions() string {
 	return fmt.Sprintf(
 		"moai self-hosted MCP server, build %s (pid %d). "+
 			"This process was spawned by the host and keeps running the build it started with: "+
-			"after reinstalling the moai binary, reconnect the server so the host respawns it, "+
-			"otherwise newly added tools stay absent from tools/list. "+
+			"after reinstalling the moai binary, write calls are proxied to the installed build until you reconnect the server so the host respawns it; "+
+			"reconnect is still needed, otherwise newly added tools stay absent from tools/list. "+
 			"Run `moai doctor` to compare the running server against the installed binary.",
 		version.GetFullVersion(), os.Getpid(),
 	)
@@ -262,8 +275,13 @@ func mcpStalenessGuard(name string, handler server.ToolHandlerFunc) server.ToolH
 		guidance := fmt.Sprintf(
 			"stale_server: the serving moai build (%s) differs from the installed build (%s) — reconnect the moai MCP server (restart the host session) so the installed build serves",
 			info.Serving, info.Installed)
-		if mcpCallIsWriteCapable(name, req) {
-			res := toolErr(name, fmt.Errorf("the serving moai build is stale — %s", guidance))
+		if mcpCallIsWriteCapable(name, req) && !mcpOneShotActive() {
+			proxied, perr := proxyMCPCallToInstalled(ctx, info.Installed, name, req)
+			if perr == nil {
+				note := fmt.Sprintf("stale_server: proxied to the installed build %s — reconnect the moai MCP server so the installed build serves directly", info.Installed)
+				return addMCPStalenessMetadata(proxied, info, note), nil
+			}
+			res := toolErr(name, fmt.Errorf("the serving moai build is stale — %s (proxy to the installed build failed: %v)", guidance, perr))
 			return addMCPStalenessMetadata(res, info, guidance), nil
 		}
 		res, err := handler(ctx, req)
@@ -743,7 +761,9 @@ func registerMoaiMCPToolsWithExposure(s *server.MCPServer, projectDir, exposure 
 		// to the card — one second-review record lands in the card evidence
 		// directory. Empty ⇒ byte-identical pre-change behavior.
 		mcp.WithString("card_id", mcp.Description("Optional card id binding this review as the card's second review (writes second-review.jsonl into the card evidence directory). Empty ⇒ no record.")),
-		mcp.WithString("delta_base", mcp.Description(deltaBaseDescription)),
+		mcp.WithString("delta_base", mcp.Description(auditMultiDeltaBaseDescription)),
+		mcp.WithObject(blockingClosedArg, mcp.Description(blockingClosedDescription)),
+		mcp.WithArray(rerunLegsArg, mcp.Description(rerunLegsDescription), mcp.Items(map[string]any{"type": "string"})),
 		// Pass-through semantics: this fan-out handed its backends no root
 		// before the parameter existed, so an absent parameter must keep
 		// handing them none rather than substituting a default.

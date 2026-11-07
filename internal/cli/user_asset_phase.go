@@ -14,7 +14,9 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
@@ -28,7 +30,7 @@ import (
 // (lock, catalog, roots) return an error; per-file failures continue and are
 // surfaced in the summary (REQ-013).
 func ensureUserAssetsLocked(homeDir string, selection []string, out io.Writer) error {
-	lock, err := userassets.AcquireUserLock(homeDir, userLockWaitWindow)
+	lock, err := acquireUserLockNotified(homeDir, userLockWaitWindow, out)
 	if err != nil {
 		return fmt.Errorf("acquire user-asset lock: %w", err)
 	}
@@ -58,6 +60,34 @@ func ensureUserAssetsLocked(homeDir string, selection []string, out io.Writer) e
 // userLockWaitWindow bounds how long a run waits on the user-level lock.
 // Generous: a cold-tree first install can legitimately take minutes.
 const userLockWaitWindow = 2 * time.Minute
+
+// userLockNoticeDelay is how long the lock wait stays silent before the notice
+// below prints. A variable so a test can shorten it.
+var userLockNoticeDelay = config.DefaultUserLockNoticeDelay
+
+// acquireUserLockNotified is userassets.AcquireUserLock plus one line of
+// feedback (card t2053): when the lock is still not held after
+// userLockNoticeDelay, it prints once to out that another process holds the
+// moai user lock and how long this run will wait for it. A lock taken at once
+// prints nothing; the notice never repeats. Update and init share it.
+func acquireUserLockNotified(homeDir string, window time.Duration, out io.Writer) (*userassets.UserLock, error) {
+	var mu sync.Mutex
+	finished := false
+	notice := time.AfterFunc(userLockNoticeDelay, func() {
+		mu.Lock()
+		defer mu.Unlock()
+		if finished {
+			return
+		}
+		_, _ = fmt.Fprintf(out, "Waiting for the moai user lock, held by another process (waiting at most %s)...\n", window)
+	})
+	lock, err := userassets.AcquireUserLock(homeDir, window)
+	notice.Stop()
+	mu.Lock()
+	finished = true
+	mu.Unlock()
+	return lock, err
+}
 
 // newUserAssetInstaller builds the installer over the embedded catalog and
 // tree.
@@ -115,7 +145,7 @@ func writeInstallSummary(out io.Writer, label string, res *userassets.Result) {
 // (REQ-024's upgrade arm ordering). The recorded bundle selection is
 // preserved — the phase passes the manifest's own list back as the selection.
 func runUserAssetUpdatePhase(homeDir string, out io.Writer) error {
-	lock, err := userassets.AcquireUserLock(homeDir, userLockWaitWindow)
+	lock, err := acquireUserLockNotified(homeDir, userLockWaitWindow, out)
 	if err != nil {
 		return fmt.Errorf("acquire user-asset lock: %w", err)
 	}
@@ -151,6 +181,7 @@ func runUserAssetUpdatePhase(homeDir string, out io.Writer) error {
 	}
 
 	writeInstallSummary(out, "user-asset update", ensureRes)
+	_, _ = fmt.Fprintln(out, userAssetRootsLine(ensureRes))
 	if pruneRes != nil {
 		_, _ = fmt.Fprintf(out, "user-asset prune: %d removed, %d divergence-preserved\n",
 			pruneRes.Removed, pruneRes.DivergencePreserved)
@@ -165,7 +196,76 @@ func runUserAssetUpdatePhase(homeDir string, out io.Writer) error {
 		}
 	}
 	announceUnselectedOptionalPacks(".", saved.Bundles, out)
+	recordUserAssetFailures(homeDir, ensureRes, pruneRes)
 	return nil
+}
+
+// userAssetRootsLine renders the update summary's roots-reached line (card
+// t1702). Final-round repair: the line renders from the install RESULT's
+// validated root snapshot (RootsReached) — never a post-hoc disk
+// re-enumeration — so a profile dir appearing after the snapshot is never
+// reported as reached. Count-aware, profile names included.
+func userAssetRootsLine(res *userassets.Result) string {
+	if res == nil || len(res.RootsReached) == 0 {
+		return "user-asset roots reached: (none recorded)"
+	}
+	base := 0
+	profileRoots := 0
+	nameSet := map[string]bool{}
+	var profiles []string
+	for _, slug := range res.RootsReached {
+		if _, name, found := strings.Cut(slug, "@"); found {
+			profileRoots++
+			if !nameSet[name] {
+				nameSet[name] = true
+				profiles = append(profiles, name)
+			}
+		} else {
+			base++
+		}
+	}
+	if len(profiles) == 0 {
+		return fmt.Sprintf("user-asset roots reached: %d base roots (no Claude profile dirs)", base)
+	}
+	sort.Strings(profiles)
+	return fmt.Sprintf("user-asset roots reached: %d base roots + %d profile roots (%s)",
+		base, profileRoots, strings.Join(profiles, ", "))
+}
+
+// recordUserAssetFailures puts refused or failed user-asset files into the
+// closing "Post-update actions" block (card t2014). The per-file rows above
+// scroll away, and the "Up to date" line that ends a same-version run judges
+// the project templates only, so without this row a run with refusals reads as
+// fully current. It records only: no refusal is lifted, no file or record is
+// touched, and the phase's return value is unchanged.
+//
+// A failure recorded against the install journal is not a refused file: the
+// installer adds it after the file was already written, once per written file.
+// Those are counted apart and named once in their own row, so the file count
+// stays the number of files the run did not write.
+func recordUserAssetFailures(homeDir string, results ...*userassets.Result) {
+	journal := userassets.JournalPath(homeDir)
+	files, journalFailures := 0, 0
+	for _, r := range results {
+		if r == nil {
+			continue
+		}
+		for _, f := range r.Failures {
+			if f.Path == journal {
+				journalFailures++
+			} else {
+				files++
+			}
+		}
+	}
+	if files > 0 {
+		updateLedger.requiref(sevWarn,
+			"user-asset update: %d file(s) refused or failed (see the failure rows above); they were left as they were, and the 'Up to date' line covers the project templates only", files)
+	}
+	if journalFailures > 0 {
+		updateLedger.requiref(sevWarn,
+			"user-asset update: the install journal could not be saved (%d write failure(s)); the files this run wrote are in place, and re-running `moai update` re-checks them", journalFailures)
+	}
 }
 
 // announceUnselectedOptionalPacks names each optional pack the recorded

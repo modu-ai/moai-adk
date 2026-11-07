@@ -1,0 +1,7 @@
+[t2121] docs(audit): sync-audit verdict FAIL 0.70 for 7723481e7e, two blocking findings (card t2121)
+
+Independent Claude sync-auditor plus one codex_audit call (receipt rcpt-e11ac44f0a5ac8f7d8cabdf7,
+audited_sha 7723481e7eef685cf26d3a431fa8c0cbb56d0a85). F1: binary/-diff content changes pass the card-diff
+comparison; F2: moved hunks pass because @@ positions are blanked. Repair follows.
+
+🗿 MoAI

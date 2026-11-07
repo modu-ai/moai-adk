@@ -19,15 +19,17 @@ Resolve the delivery strategy from `.moai/config/sections/git-strategy.yaml`:
 1. Read `git_strategy.mode` — the name of the active profile.
 2. Read `git_strategy.{mode}.workflow` — this value, and only this value, selects the delivery strategy.
 
-The canonical value domain is exactly `github-flow`, `git-flow` and `agentic-trunk`.
+The canonical value domain is exactly `github-flow`, `git-flow` and `af-flow`.
+
+A stored value of `agentic-trunk` — the former spelling of `af-flow` — is normalized to `af-flow` before the domain check below. It is accepted on read only and is not a fourth member of the domain, matching the config loader's `NormalizeWorkflow`; nothing is rewritten in `git-strategy.yaml`.
 
 | Strategy | Branch Model | PR Behavior | Best For |
 |----------|-------------|-------------|----------|
 | github-flow | Feature branches off the main branch | Auto-create PR to the main branch | Team/OSS projects |
 | git-flow | develop/release/hotfix/worktree branches | PR to the appropriate base, or integration-worktree merge | Enterprise and multi-lane projects |
-| agentic-trunk | main plus WT-* branches | integration-worktree merge, no PR | multi-lane projects landing locally with batch pull requests |
+| af-flow | main plus WT-* branches | integration-worktree merge, no PR | multi-lane projects landing locally with batch pull requests |
 
-**Unmatched value stops delivery.** When the resolved `git_strategy.{mode}.workflow` value is neither `github-flow`, `git-flow` nor `agentic-trunk`, stop the delivery step and report the offending value together with the canonical domain `{github-flow, git-flow, agentic-trunk}`. Do not create a pull request and do not push. A missing `workflow` subkey under the active mode is an unmatched value, not a default — there is no fallback strategy.
+**Unmatched value stops delivery.** When the resolved `git_strategy.{mode}.workflow` value, after that normalization, is neither `github-flow`, `git-flow` nor `af-flow`, stop the delivery step and report the offending value together with the canonical domain `{github-flow, git-flow, af-flow}`. Do not create a pull request and do not push. A missing `workflow` subkey under the active mode is an unmatched value, not a default — there is no fallback strategy.
 
 Branch handling is a separate axis and is not read from this key: whether each SPEC gets its own branch is governed by `git_strategy.{mode}.automation.auto_branch` and the `branch_creation` settings.
 
@@ -280,7 +282,7 @@ Detect current branch type and route accordingly. The route list is normative an
 7. Exit the integration worktree and report the branch name, merge commit, and evidence path
 8. Precondition: when the designated integration worktree does not exist, stop and report — provisioning it is the coordinating session's act
 
-Where the integration branch is held by a dedicated worktree (the `WT-*` integration route shared by git-flow and agentic-trunk), it is checked out in exactly one dedicated worktree, at a fixed path. That worktree performs landing and resync only: it is never used to edit or experiment, and it stays clean. The primary checkout is the human and leader workspace and does not check out the integration branch. Routes that commit directly to the branch (Route A) or that run no dedicated integration worktree are outside this sentence.
+Where the integration branch is held by a dedicated worktree (the `WT-*` integration route shared by git-flow and af-flow), it is checked out in exactly one dedicated worktree, at a fixed path. That worktree performs landing and resync only: it is never used to edit or experiment, and it stays clean. The primary checkout is the human and leader workspace and does not check out the integration branch. Routes that commit directly to the branch (Route A) or that run no dedicated integration worktree are outside this sentence.
 
 **feature/* branch** → PR to `develop`:
 1. Push branch: `git push -u origin <branch>`
@@ -311,7 +313,7 @@ Where the integration branch is held by a dedicated worktree (the `WT-*` integra
 - Report the branch name together with that route list; create no pull request and push nothing
 - Do not improvise a route and do not fall back to another strategy's behavior
 
-##### Strategy: agentic-trunk
+##### Strategy: af-flow
 
 Detect current branch type and route accordingly. The route list is normative and evaluated in the order given, so a branch matching more than one pattern takes the first match.
 
@@ -325,7 +327,7 @@ Detect current branch type and route accordingly. The route list is normative an
 7. Precondition — before stopping, judge where the trunk branch is checked out: when only the primary checkout holds the trunk branch, deliver by the pull-request edge instead — `moai factory complete` opens the card's pull request and the coordinating session merges it (no integration worktree exists to enter)
 8. Stop and report only when no worktree holds the trunk branch at all — provisioning the dedicated integration worktree is the coordinating session's act
 
-Where the integration branch is held by a dedicated worktree (the `WT-*` integration route shared by git-flow and agentic-trunk), it is checked out in exactly one dedicated worktree, at a fixed path. That worktree performs landing and resync only: it is never used to edit or experiment, and it stays clean. The primary checkout is the human and leader workspace and does not check out the integration branch. Routes that commit directly to the branch (Route A) or that run no dedicated integration worktree are outside this sentence.
+Where the integration branch is held by a dedicated worktree (the `WT-*` integration route shared by git-flow and af-flow), it is checked out in exactly one dedicated worktree, at a fixed path. That worktree performs landing and resync only: it is never used to edit or experiment, and it stays clean. The primary checkout is the human and leader workspace and does not check out the integration branch. Routes that commit directly to the branch (Route A) or that run no dedicated integration worktree are outside this sentence.
 
 **main branch** → direct work context:
 - The session works on the trunk itself; report the branch state and continue with the sync record — no per-card pull request exists in this model

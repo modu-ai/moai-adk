@@ -20,6 +20,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/factory"
 	"github.com/modu-ai/moai-adk/internal/homestate"
+	"github.com/modu-ai/moai-adk/internal/sqliteuri"
 	_ "modernc.org/sqlite"
 )
 
@@ -203,7 +204,7 @@ func ValidateActiveRun(ctx context.Context, projectRoot, runID string) (err erro
 	if _, err := os.Stat(path); err != nil {
 		return ErrRunNotActive
 	}
-	db, err := sql.Open("sqlite", "file:"+filepath.ToSlash(path)+"?_pragma=busy_timeout(100)")
+	db, err := sql.Open("sqlite", sqliteuri.File(path, url.Values{"_pragma": {"busy_timeout(100)"}}))
 	if err != nil {
 		return err
 	}
@@ -277,6 +278,14 @@ func OpenExistingWithContext(parent context.Context, projectRoot, runID string, 
 	var count int
 	if err := db.QueryRowContext(ctx, `SELECT count(*) FROM peers`).Scan(&count); err != nil {
 		_ = db.Close()
+		// Card t2068: the file exists before its first opener has committed the
+		// schema (the first connection creates the file, the schema statement
+		// runs after). That is "not initialized yet", not a broken broker: take
+		// the full open, whose CREATE ... IF NOT EXISTS is serialized by the
+		// immediate write lock against the opener still initializing.
+		if strings.Contains(err.Error(), "no such table") {
+			return openResolvedWithContext(ctx, namespace, runID, nil)
+		}
 		return nil, err
 	}
 	if err := ensureSchema(ctx, db); err != nil {
@@ -405,18 +414,9 @@ func ResolveActiveRun(ctx context.Context, projectRoot, explicit string) (_ stri
 		}
 		return explicit, nil
 	}
-	rows, err := db.DB.QueryContext(ctx, `SELECT run_id FROM runs WHERE status='active' ORDER BY run_id`)
+	runs, err := activeRunIDs(ctx, db)
 	if err != nil {
 		return "", err
-	}
-	defer closeInto(&err, rows, "active run rows")
-	var runs []string
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
-			return "", err
-		}
-		runs = append(runs, id)
 	}
 	switch len(runs) {
 	case 0:
@@ -428,7 +428,8 @@ func ResolveActiveRun(ctx context.Context, projectRoot, explicit string) (_ stri
 	// a single-active-run join pays nothing. It only ever REMOVES provably-dead
 	// owners from the active set — it never selects among survivors, so the
 	// fail-closed behaviour below is preserved and ambiguity that survives it
-	// is real ambiguity.
+	// is real ambiguity. Removing a dead owner's run may MOVE its unfinished
+	// cards to the one live run (ReconcileActiveRuns), which is a write.
 	rec, err := db.ReconcileActiveRuns(ctx, ReconcileOptionsFor(projectRoot))
 	if err != nil {
 		return "", err
@@ -440,6 +441,62 @@ func ResolveActiveRun(ctx context.Context, projectRoot, explicit string) (_ stri
 		return rec.Remaining[0].RunID, nil
 	default:
 		return "", &AmbiguousRunsError{Owners: rec.Remaining}
+	}
+}
+
+// activeRunIDs lists, sorted, the ids of every run whose status is active.
+func activeRunIDs(ctx context.Context, db *homestate.FactoryDB) (_ []string, err error) {
+	rows, err := db.DB.QueryContext(ctx, `SELECT run_id FROM runs WHERE status='active' ORDER BY run_id`)
+	if err != nil {
+		return nil, err
+	}
+	defer closeInto(&err, rows, "active run rows")
+	var runs []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		runs = append(runs, id)
+	}
+	return runs, rows.Err()
+}
+
+// ResolveActiveRunReadOnly is ResolveActiveRun without the reconciliation: it writes no row of any table.
+// Zero active runs answer ErrRunNotActive and one answers that run, as ResolveActiveRun does. With several,
+// it never retires a dead owner or moves its cards; it returns an *AmbiguousRunsError whose Owners list EVERY
+// active run, dead owners included, each with its owner classification, so the caller decides from facts it
+// can read. A verb that must write only its own rows (the run-less lease renewal) resolves through here; the
+// leader start path keeps ResolveActiveRun, whose reconciliation is deliberate (#1948 section 8).
+//
+// @MX:NOTE: [AUTO] read-only counterpart of ResolveActiveRun; keep it free of ReconcileActiveRuns and of any RebindRun/retire call
+func ResolveActiveRunReadOnly(ctx context.Context, projectRoot string) (_ string, err error) {
+	db, err := homestate.OpenFactory(projectRoot)
+	if err != nil {
+		return "", err
+	}
+	defer closeInto(&err, db, "factory state")
+	runs, err := activeRunIDs(ctx, db)
+	if err != nil {
+		return "", err
+	}
+	switch len(runs) {
+	case 0:
+		return "", ErrRunNotActive
+	case 1:
+		return runs[0], nil
+	}
+	owners, err := db.ClassifyActiveRuns(ctx, ReconcileOptionsFor(projectRoot))
+	if err != nil {
+		return "", err
+	}
+	switch len(owners) {
+	case 0:
+		return "", ErrRunNotActive
+	case 1:
+		return owners[0].RunID, nil
+	default:
+		return "", &AmbiguousRunsError{Owners: owners}
 	}
 }
 
@@ -857,7 +914,7 @@ func (s *Store) runLead(ctx context.Context) (Peer, error) {
 	if err != nil {
 		return Peer{}, err
 	}
-	db, err := sql.Open("sqlite", "file:"+filepath.ToSlash(path)+"?_pragma=busy_timeout(100)")
+	db, err := sql.Open("sqlite", sqliteuri.File(path, url.Values{"_pragma": {"busy_timeout(100)"}}))
 	if err != nil {
 		return Peer{}, err
 	}

@@ -25,6 +25,16 @@ The bound is the holder's own declaration: past it another lane may take the res
 
 While it executes the card, a lane renews its own card lease at the start of each watchdog pass with `moai factory renew <card>` (MCP tool `factory_renew`, the same implementation): the renewal extends the lease from the request time by `workflow.factory_lease.duration`, and a renewal of an expired lease is refused with no write.
 
+When a renewal is refused as expired, the registered owner of the card runs
+`moai factory next --card <id> --run <run-id>` from the primary checkout (MCP tool `factory_next`, the
+same implementation). For a card that is leased with an expired lease, held by its recorded owner, that
+one call applies the expiry and leases the card to the owner again in a single step, keeping stage,
+worktree, evidence and uncommitted work; the verb never touches the worktree. The lane then re-runs the
+stage verb in its worktree. `moai factory renew` on an expired lease still refuses without writing, and the earlier
+recovery through a refused stage call is retired and must not be used. Another lane, or the leader, does
+not re-lease a card it does not own this way. A refused renewal (expired or not holder) is recorded,
+never retried inside one watchdog pass, and an expired lease alone never wakes or reassigns anyone.
+
 ### Lease renewal — only the card being executed
 
 Executing means the lane is carrying out a stage of the card — plan, run, sync, the card-review, or the landing sequence — and is not waiting on a slot, a trigger, or the operator.
@@ -33,7 +43,7 @@ A lane renews the lease of the card it is executing, and of no other card: only 
 
 A lease on a merge-ready, held (operator-wait), or serial-waiting card may expire; expiry is harmless, because at the landing slot the leader reassigns the card or the lane re-leases it with `factory next --card`, the stage preserved.
 
-The lane's standing recheck cron is kept while the lane executes the card; a lane waiting on a slot or a trigger arms and keeps no polling cron for that wait, and the leader sends a notice when a slot or a landing turn opens.
+The lane's self-paced wake is scheduled while the lane executes the card; a lane waiting on a slot or a trigger schedules no polling wake for that wait, and the leader sends a notice when a slot or a landing turn opens.
 
 ## Isolation — launcher, tiers, branch naming, and the traceability carriers
 
@@ -44,7 +54,8 @@ The launcher table (per-harness entry forms):
 | Need | Form |
 |---|---|
 | Create a harness-neutral L1 worktree | `moai worktree new <name>` |
-| Start Claude Code in a MoAI tree | `moai cc -w <absolute-worktree-path>` (`--spawn` for a new window; Claude may ask to approve an external worktree path) |
+| Start Claude Code in a MoAI tree | `moai cc -w <absolute-worktree-path>` (`--spawn` for a new window): the launcher enters the path only when it is a registered worktree of this repository, `.moai/worktrees/*` trees included; an unregistered absolute path is refused before anything is written |
+| Rejoin a lane whose session died | `moai cc -l --name <lane-label>` with the canonical `lane-<n>`: granted only when no live session holds that label, refused otherwise; the launcher moves no lease |
 | Start a Claude-native worktree | `moai cc -w <name>` creates or enters `.claude/worktrees/<name>` |
 | Re-enter or leave in the current Claude Code session | `EnterWorktree(<path>)` / `ExitWorktree` |
 | Start a Codex app chat in a new tree | Select Worktree and the starting branch in the new chat |
@@ -153,23 +164,101 @@ file the completion report names:
    distributed default) the verb runs the merge-readiness triple against
    the integration target, pushes the card branch, opens the pull request
    (its title carries the card id — the traceability carrier), and requests
-   auto-merge; a re-run after the PR merges records `merged-pr`. The
-   git-flow variant (integration window, `--no-ff` merge, release-branch
+   auto-merge; a re-run after the PR merges records `merged-pr`. A draft PR
+   does not start the native review; once the handoff evidence is complete,
+   the leader's ready conversion (or a leader request) is the review starting
+   point, and leaving the PR in draft while waiting is not a wait reason. A
+   failing check outside the protected required set (Lint, Build, Analyze)
+   does not block the ready conversion; when the cause is on main, record it
+   in Gaps and proceed. After the PR is opened the lane
+   records its wait with `moai factory wait` and ends its turn. A failing
+   required check (Lint, Build, Analyze) after the PR is open is
+   repaired by the same lane, in the same card worktree, with forward commits;
+   it is neither reassigned nor re-opened as a new card. The lane's own PR
+   merge is confirmed by a one-shot recheck (or the leader's message)
+   followed by `moai factory complete` again — no polling loop, and
+   the wake: line covers predecessor landings only. The git-flow variant (integration window, `--no-ff` merge, release-branch
    push) is the section above and applies only where the project's git
    strategy names git-flow.
-4. **Close** — the merged-pr record closes the lane's own queue card by the
+4. **Close** — local verification, the card's merge into local `main` (the
+   af-flow edge) or its merged-pr record (the github-flow edge), and the
+   recorded evidence close the lane's own queue card by the
    runtime-completion archive authority (`auto-semantics.md` §13): the
    archive lands with the landing verdict the edge answered, and the
    runtime completion row is recorded. No leader `todo done` is needed.
-5. **Read the review on the pull request** — require trusted native Codex artifacts bound to the current full head SHA and no unresolved findings. Missing, failed, stale, or contradictory evidence is a gap, never a pass.
-6. **Sweep** — once the remote landing is confirmed, `moai worktree sweep`
-   disposes the card tree (owner check, dirty trees skipped — the
-   `worktree-integration.md` disposal contract).
+   Release CI, review, audit, and the remote merge are managed apart from
+   Close and do not hold it.
+5. **Read the review on the pull request** — require trusted native Codex artifacts bound to the current full head SHA and no unresolved findings at blocking severity (P0/P1); P2 and lower are recorded in the batch debt list and withhold nothing. Missing, failed, stale, or contradictory evidence is a gap, never a pass; it withholds the remote integration, not the card's Close.
+6. **Sweep** — once the remote landing is confirmed and the pre-disposal
+   check holds, `moai worktree sweep` disposes the card tree (owner check,
+   dirty trees skipped — the `worktree-integration.md` disposal contract).
+   The check preserves or confirms the SHA, branch, card link, and
+   completion evidence, and that no uncommitted, unpushed, or shared work
+   remains and the tree can be recovered after a restart. A check that
+   cannot be answered preserves the tree, which also keeps the failed
+   candidate's SHA and branch available to a later repair card.
+
+The order is local verification, the merge into local `main` (or the pull
+request edge), evidence recorded, Close, the pre-disposal check, then the
+sweep once the remote landing is confirmed.
 
 The landing writes one decision record (`auto-semantics.md` §10) in the
 card's progress record, and the completion report to the leader carries the
 PR URL and the merge SHA — information, not a gate. The lane's verdict is
 its own, evidenced by the review receipt, CI, and the readiness triple.
+
+## Batch landing — the af-flow default
+
+Under af-flow (`workflow.git_strategy: af-flow`; local `main` is the landing
+target and the remote sees one batch PR) the per-card `moai factory complete`
+edge is the fallback, not the path. Its interlock — absorb `main`, re-audit,
+`audited_sha == HEAD`, complete — restarts every time `main` moves, and with
+several lanes landing it moves faster than a card can converge (run to2bbk:
+31 complete attempts, 0 landed, 150 audit spawns against 64 implementation
+spawns). The default is the batch:
+
+1. **Candidate** — the leader (or a session the leader delegates it to)
+   reads the factory ledger for `merge-ready` cards whose latest audit is
+   PASS or PASS-WITH-DEBT and bound to the card head (`audited_sha ==
+   HEAD`), and builds the candidate as a first-parent chain of `--no-ff`
+   merges on the current `main` tip, one merge per card, in card order,
+   without touching any ref (`git merge-tree --write-tree` + `commit-tree`).
+   A card whose merge conflicts, whose head moved after its audit, or whose
+   audit is FAIL is left out and named in the manifest
+   (`.moai/reports/af-batch-<date>/manifest.json`: base, tip, landed rows
+   with card, branch, head, audit file, merge SHA; conflicts; excluded).
+2. **Verify** — on a detached worktree at the tip: `go build ./...`,
+   `go vet ./...`, the tests of every package the chain changed, and the
+   full test of the widest changed package. A failure that is one card's
+   own omission (a fixture left unregistered, a line-pinned baseline moved
+   by another card's import) is closed by a **batch repair commit** on top
+   of the chain — one file, RED observed before and GREEN after, recorded in
+   that card's progress record — never by dropping the card. A failure that
+   is two cards cancelling each other drops one of them and rebuilds.
+3. **One audit** — one Claude batch-integrity audit (`sync-auditor`,
+   `.moai/reports/af-batch-<date>/verdict.md`, `audited_sha` = the tip
+   including repairs). Its scope is the chain: merge integrity, cross-card
+   interaction, the repairs' RED→GREEN. It re-audits no card's design.
+   Codex and GLM are not called unless the operator approved the cost.
+   Non-blocking findings go into **one debt list** for the batch
+   (`.moai/reports/af-batch-<date>/debts.md`), not a card per finding;
+   the leader turns the list into at most one follow-up card.
+4. **Operator FF** — the operator fast-forwards `main` to the audited tip by
+   hand (`git merge --ff-only <tip>`); no session changes branch state in
+   the primary checkout. The command and the verdict path are handed to the
+   operator together.
+5. **Close chain** — after `git merge-base --is-ancestor <tip> main` holds,
+   the leader runs the formal chain of `.moai/docs/af-flow-landed-card-close.md`
+   for every landed row (`todo landed --sha <merge SHA>` → `rebind-evidence`
+   → `approve` → `todo done`), stopping at the first refusal. Lanes holding
+   a manifest card stop their own `complete` attempts the moment the
+   candidate is announced; a card left out of the manifest keeps the
+   per-card path.
+
+The batch is bounded by one audit, not by a count of cards: a candidate is
+cut whenever merge-ready cards are waiting and the previous batch has closed.
+Nothing here relaxes an evidence standard — every card in the chain carries
+its own PASS audit bound to its head, and the batch audit is added on top.
 
 ## The leader's remaining role
 
@@ -185,6 +274,7 @@ a duty not listed is a lane's:
 | Serial-slot policy | the ordering gate on new leases, and its recorded wedge repairs |
 | Delegated-dispatch promotion | promoting queued cards to a free live lane without a per-card pick, in the case and within the limits stated once in `factory-dispatch-detail.md` § Delegated-dispatch promotion |
 | Keep-set gate relay | environment-impossible, operator-held, and irreversible external-shared decisions reach the operator through the leader |
+| Batch landing | under af-flow the leader cuts, verifies, and has audited the batch candidate, hands the FF command to the operator, and runs the close chain (§ Batch landing — the af-flow default); the per-card `complete` edge stays the lane's fallback |
 | Workflow-file review checklist | cards marked "operator review required before landing" (`factory-dispatch-cards.md` § Workflow-file changes need operator review) wait on the operator; the leader lists them |
 
 Everything that used to sit with the leader per card — the completion
@@ -192,6 +282,18 @@ verdict, the merge approval, the `todo done`, the stage advancement — is
 the lane's now, under the same evidence discipline: the lane self-verifies
 with a receipt, and a completion is still read, never trusted — by the lane
 itself.
+
+One leader check pass runs in this fixed order, each step read from the tree,
+the tool, or the PR and never from a reply:
+
+1. lane liveness;
+2. each card tree's HEAD, dirty state, and unpushed state;
+3. the PR's protected required checks;
+4. the blocking cause;
+5. whether a predecessor condition was released;
+6. independent work that can be assigned meanwhile;
+7. the same owner repairing its own failure;
+8. ACK or action confirmation.
 
 ## Boundaries
 
@@ -246,7 +348,7 @@ Subshell and `env -u` variants, their measured refusal shapes, and the script-fi
 ### Integration into the release branch is self-served
 
 
-This section is the **git-flow variant**. Under github-flow — the distributed default — the delivery is `moai factory complete`'s pull-request edge, and the full sequence is `factory-dispatch-mechanics.md` § The lane's standard landing. Under agentic-trunk the lane takes no `release/vX.Y.Z` branch and runs no push: `moai factory complete` lands the card through the integration-window local merge into `main`, and the only push is the leader's batch pull request from `release/main-batch-YYYYMMDD`.
+This section is the **git-flow variant**. Under github-flow — the distributed default — the delivery is `moai factory complete`'s pull-request edge, and the full sequence is `factory-dispatch-mechanics.md` § The lane's standard landing. Under af-flow the lane takes no `release/vX.Y.Z` branch and runs no push: `moai factory complete` lands the card through the integration-window local merge into `main`, and the only push is the leader's batch pull request from `release/main-batch-YYYYMMDD`.
 
 
 ### Boundaries — what this protocol does not do

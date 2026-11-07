@@ -38,6 +38,10 @@ const (
 	LandedRefOriginHEAD LandedRefLevel = 2
 	// LandedRefDefault — level 3: the compiled-in default.
 	LandedRefDefault LandedRefLevel = 3
+	// LandedRefAgenticTrunk — af-flow: the landing target is the LOCAL
+	// integration branch (nothing is pushed per card), so the landed ref is
+	// that local branch, answered before any remote-tracking level.
+	LandedRefAgenticTrunk LandedRefLevel = 4
 )
 
 // landedRefGitRun is the seam chain level 2 reads through. It is a variable
@@ -65,6 +69,11 @@ var landedRefGitRun CommandRunner = func(name string, args ...string) (string, e
 // @MX:REASON: fan_in reached 3 when the worktree surfaces adopted the chain (REQ-GFC-005); a change to the level order or the write-form shape now moves every landing question in the product
 // @MX:SPEC: SPEC-TODO-LANDING-ATTRIBUTION-001
 func LandedRefForWithLevel(projectRoot string) (string, LandedRefLevel) {
+	// af-flow lands in LOCAL main and pushes only in the leader's batch, so
+	// the remote-tracking ref would never contain a landed card.
+	if cfg := config.LoadGitFlowIntegrationConfig(projectRoot); cfg.AgenticTrunkWorkflow && strings.TrimSpace(cfg.IntegrationTarget) != "" {
+		return strings.TrimSpace(cfg.IntegrationTarget), LandedRefAgenticTrunk
+	}
 	if base := strings.TrimSpace(config.LoadWorktreeBaseBranch(projectRoot)); base != "" {
 		return "origin/" + base, LandedRefConfigured
 	}
@@ -87,6 +96,8 @@ func LandedRefForWithLevel(projectRoot string) (string, LandedRefLevel) {
 // (REQ-GFC-002); the todo surface keeps its own todoRefLevelSource wrapper.
 func LandedRefLevelSource(level LandedRefLevel) string {
 	switch level {
+	case LandedRefAgenticTrunk:
+		return "the af-flow local integration target"
 	case LandedRefConfigured:
 		return "git_strategy.worktree_base_branch"
 	case LandedRefOriginHEAD:

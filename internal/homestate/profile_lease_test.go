@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -26,8 +27,13 @@ func TestProfileLeasesAreGlobalAndPrivate(t *testing.T) {
 	if store.Path != want {
 		t.Fatalf("path=%q want=%q", store.Path, want)
 	}
-	if info, err := os.Stat(want); err != nil || info.Mode().Perm() != 0o600 {
-		t.Fatalf("mode=%v err=%v", info.Mode().Perm(), err)
+	info, err := os.Stat(want)
+	if err != nil {
+		t.Fatalf("stat err=%v", err)
+	}
+	// Windows has no POSIX mode bits (reports 0666); existence is the portable part.
+	if runtime.GOOS != "windows" && info.Mode().Perm() != 0o600 {
+		t.Fatalf("mode=%v", info.Mode().Perm())
 	}
 }
 

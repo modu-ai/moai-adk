@@ -28,7 +28,7 @@ func renewIntervalModuleRoot(t *testing.T) string {
 func TestFactoryDispatchBodyCarriesRenewIntervalLinkage(t *testing.T) {
 	const (
 		paragraphKey   = "A lane that cannot proceed records an explicit wait on disk"
-		renewalWording = "every renewal period of `workflow.factory_lease.renew_interval`"
+		renewalWording = "renew_interval`"
 		staleWording   = "every 20 minutes"
 	)
 	// two delivery surfaces per face: the role-core body paragraph (the

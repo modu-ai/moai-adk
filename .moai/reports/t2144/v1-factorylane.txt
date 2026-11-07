@@ -1,0 +1,2 @@
+ok  	github.com/modu-ai/moai-adk/internal/factorylane	200.963s
+exit=0

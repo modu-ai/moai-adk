@@ -66,8 +66,9 @@ func TestLockExcludesSecondHandleWhileHeld(t *testing.T) {
 	}
 	defer func() { _ = f1.Close() }()
 
-	// The path string must match f1.Name() exactly: the Windows implementation
-	// keys its mutex map on that string.
+	// A second handle on the same path, in the same process: both the Unix
+	// flock and the Windows byte-range lock belong to the handle, so the second
+	// one must wait for the first.
 	f2, err := os.OpenFile(lockPath, os.O_RDWR, 0o600)
 	if err != nil {
 		t.Fatalf("open second handle: %v", err)
@@ -117,8 +118,8 @@ func TestLockExcludesSecondHandleWhileHeld(t *testing.T) {
 }
 
 // TestUnlockWithoutLockIsNoError pins the documented tolerance of releasing a
-// file that was never locked (lockfile_windows.go returns nil for an unknown
-// path; flock(LOCK_UN) on an unlocked descriptor likewise succeeds). Call sites
+// file that was never locked (lockfile_windows.go maps ERROR_NOT_LOCKED to nil;
+// flock(LOCK_UN) on an unlocked descriptor likewise succeeds). Call sites
 // unlock from deferred cleanup paths that can run before a successful Lock.
 func TestUnlockWithoutLockIsNoError(t *testing.T) {
 	lockPath := filepath.Join(t.TempDir(), "never-locked.lock")

@@ -791,9 +791,44 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 		// claudeNativeWorktreeSubdir constant above the predicate pulled the
 		// three hits up 3 lines (847→844, 853→850, 887→884). No comparison
 		// was added or removed — the same three hits at new offsets.
-		"session_worktree.go:844": true,
-		"session_worktree.go:850": true,
-		"session_worktree.go:884": true,
+		// Re-measured at card t2069: card t2058 (failed-candidate SHA repair
+		// worktree) added 45 lines above the predicate in session_worktree.go
+		// (materializeSessionWorktreeBase and its helpers), moving the same
+		// three hits 844→889, 850→895, 884→929. No comparison was added or
+		// removed — the same two hits and one mention at new offsets.
+		"session_worktree.go:889": true,
+		"session_worktree.go:895": true,
+		"session_worktree.go:929": true,
+		// Card t2057/t2059 (registered at card t2069): factoryCommitContained
+		// answers "is commit A reachable from ref B" for the factory completion
+		// path — factoryMergeReachable asks whether the recorded merge is on the
+		// configured target branch before the queue card closes, and
+		// factoryCardHeadNotInMerge asks whether the card branch HEAD is
+		// contained in that recorded merge. :3813 is the doc comment naming
+		// `git merge-base --is-ancestor` (a doc mention; no call runs there) and
+		// :3817 is the call. Both are reachability questions about two repo
+		// revisions (landing evidence), the same family as the todo_landed /
+		// disposal-landing coordinates above — not a comparison of the running
+		// binary against its source, so binlag.Evaluate is not their owner
+		// (REQ-ABI-006 governs binary-vs-source freshness only).
+		// Re-measured at the af-batch-20261107 landing: card t2118's two
+		// import lines in factory_card.go moved the same two hits
+		// 3813→3815, 3817→3819. Same comment, same call — only the
+		// coordinates moved (the t948 precedent).
+		// Re-measured again at the same landing's second chain: the af-flow
+		// batch-pending edge of `factory complete` added twenty lines above the
+		// helper, moving the same two hits 3815→3835, 3819→3839.
+		"factory_card.go:3835": true,
+		"factory_card.go:3839": true,
+		// `moai factory close-landed` (2026-11-07 batch chain): the leader's
+		// one-verb close of a card whose delivering commit already sits on
+		// the landing target. :8 is the doc comment listing the chain's first
+		// step, `git merge-base --is-ancestor <sha> <ref>` — a doc mention;
+		// the call itself is factoryCommitContained in factory_card.go (the
+		// :3839 hit above). The same landing-evidence reachability family as
+		// factoryMergeReachable — not a binary-vs-source comparison, so
+		// binlag.Evaluate is not its owner.
+		"factory_close_landed.go:8": true,
 		// SPEC-TODO-CARD-ISSUANCE-001 (card t1454): the in-flight lane
 		// changed-files probe — productionLaneFilesProbe resolves the fork
 		// point between the integration branch and the card's lane branch

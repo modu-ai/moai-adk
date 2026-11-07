@@ -119,16 +119,29 @@ func newAnchorRepo(t *testing.T) *anchorRepo {
 	if err := os.MkdirAll(filepath.Join(root, ".moai"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	anchorGit(t, root, "init", "-q")
-	anchorGit(t, root, "config", "user.email", "anchor-test@example.com")
-	anchorGit(t, root, "config", "user.name", "Anchor Test")
-	anchorGit(t, root, "config", "commit.gpgsign", "false")
+	// Every launcher-anchor cell builds its own repository, so each git process here
+	// is paid once per cell: init names the branch, the identity and the no-signing
+	// and no-auto-maintenance settings go straight into the repository config (a
+	// config spawn per key, and the commit's maintenance child, are not needed).
+	anchorGit(t, root, "init", "-q", "-b", "main")
+	cfg, err := os.OpenFile(filepath.Join(root, ".git", "config"), os.O_APPEND|os.O_WRONLY, 0o644)
+	if err != nil {
+		t.Fatalf("open the repository config: %v", err)
+	}
+	const settings = "[user]\n\temail = anchor-test@example.com\n\tname = Anchor Test\n[commit]\n\tgpgsign = false\n[maintenance]\n\tauto = false\n[gc]\n\tauto = 0\n"
+	if _, err := cfg.WriteString(settings); err != nil {
+		_ = cfg.Close()
+		t.Fatalf("write the repository config: %v", err)
+	}
+	if err := cfg.Close(); err != nil {
+		t.Fatalf("close the repository config: %v", err)
+	}
 	if err := os.WriteFile(filepath.Join(root, "README.md"), []byte("seed\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	anchorGit(t, root, "add", "README.md")
 	anchorGit(t, root, "commit", "-q", "-m", "seed")
-	r := &anchorRepo{root: root, base: anchorGit(t, root, "branch", "--show-current")}
+	r := &anchorRepo{root: root, base: "main"}
 
 	// Keep every registry the anchor decision consults inside the fixture.
 	t.Setenv(config.EnvClaudeProjectDir, root)

@@ -1,19 +1,48 @@
 # 진입점
 
-## 현재 진입점 보완 — 4c4217a1 (card t1991 판)
+## 현재 진입점 보완 — 5543d99672 (2026-11-07 배치 판)
 
-기준 `9286f6b6ba` 뒤 커밋 21개 창에서 움직인 진입점이다. 새 동사는 하나(`moai todo classify`), 새 플래그는 하나(`--rebind-to`)이고 나머지는 기존 동사의 동작 변화다. 소스 대조 상세는 `modules.md` 현재 변경 경계 절이 운반한다.
+기준 `cf4ad8510d` 뒤 소스 44개 창에서 움직인 진입점이다. 새 공개 동사는 `moai factory close-landed` 하나이고, 숨은 `moai mcp-server --call`이 하나, 새 진단 검사가 `moai doctor`에 하나, 새 플래그가 `moai graph check --event`이다. 등록 수치(`AddCommand(` 개수, MCP 도구 수)는 본 판에서 재측정하지 않았다 — 이 창은 MCP 도구를 더하거나 빼지 않았다. 소스 대조 상세는 `modules.md` 현재 변경 경계 절이 운반한다.
+
+- `moai factory close-landed <card> --sha <merge-sha> --run <run> [--ref <target>] [--reason <text>]`(`internal/cli/factory_close_landed.go`의 `newFactoryCloseLandedCommand`가 `internal/cli/factory_handoff_recover.go`의 factory 하위 명령 등록에 합류). 이미 착지 ref에 있는 카드를 한 동사로 닫는다: 조상 확인, `todo landed`, `rebind-evidence`, `approve`, `todo done`. `--ref`를 생략하면 프로젝트의 착지 ref(af-flow에서는 로컬 `main`)다. 리더 경로 전용이라 레인 환경(`MOAI_FACTORY_ROLE=lane`)이면 거절한다. 이미 만족한 단계는 건너뛰고 처음 거절한 단계가 사슬을 멈춘다.
+- `moai factory complete` — af-flow에서 primary 체크아웃만 `main`을 쥔 프로젝트는 PR 경로로 가지 않고 merge-ready·merging 카드를 배치 대기로 보고만 한다(쓰기·git·gh 없음, 그 밖의 상태는 거절). 위 PR 경로 서술은 af-flow가 아닌 구성에 해당한다.
+- `moai factory rebind-evidence` — 이미 묶인 카드를 다시 부르면 "already bound; nothing to do"로 종료 코드 0이다(멱등).
+- `moai mcp-server --call <tool> --input-json <json|->`(숨김, `internal/cli/mcp_server_proxy.go`) — 도구 한 건을 한 번 실행해 결과 JSON을 출력하는 일회 형태다. 낡은 서버가 쓰기 가능 호출을 설치된 빌드로 대행할 때 쓰며(`MOAI_MCP_ONESHOT=1`), 서빙 루프는 시작하지 않는다.
+- `moai graph check --event <name>` — 판정 등급을 정하는 CI 사건이다(생략하면 `GITHUB_EVENT_NAME`). pull_request에서 기준이 물려준 codemaps 표류만 경고로 낮춰 종료 코드 0이 될 수 있다. 아래 「CI가 소비하는 종료 코드 표면」의 표는 이 예외를 함께 읽는다.
+- `moai doctor` — 「Skill Reach」 검사가 활성 Claude 설정 루트가 핵심 스킬을 해석하는지 보고만 한다(설치하지 않는다).
+- 훅 PreToolUse 경로 가드는 자동 메모리 디렉터리(`projects/<slug>/memory`)와 세션 스크래치패드 루트를 쓰기 허용 위치로 더했고, 스폰 가드는 완료·소멸한 SPEC의 낡은 감사 거절 표식을 건너뛴다.
+
+## 이전 진입점 보완 — 67b4734d6b (card t2061 판)
+
+기준 `4c4217a19` 뒤 소스 197개 창에서 움직인 진입점이다. 새 최상위 명령은 `moai af`(공개)·`moai agentic-factory`(숨김)·`moai fetch`·`moai jevmeasure`이고, 새 하위 동사는 `moai factory wait`·`moai factory checkpoint`이며, 새 MCP 도구는 `fetch_web`이다. 소스 대조 상세는 `modules.md` 현재 변경 경계 절이 운반한다.
+
+- `moai af`(`internal/cli/af.go`의 `newAFCmd`가 `internal/cli/root.go`에 등록 — Agentic Factory 카드 흐름, Issue #1948). 로컬 원장 하나만 여는 무의존 명령이라 `root.go`의 deps-free 목록에 `af`가 올랐다. 하위 동사: `claim`(다음 카드를 잡고 id와 fencing epoch 출력)·`move <card>`(잡은 카드를 단계로 이동)·`resume <card>`(재회수 한도에서 장부가 보류한 카드를 운영자 판단으로 재개)·`evidence <card>`(red·green·gate·review·merge 증거를 커밋에 묶어 기록)·`enqueue <card>`(후보 커밋을 병합 큐에 올림)·`release <card>`·`reap`(보유 프로세스가 사라진 카드 회수)와, `internal/cli/af_land.go`의 `land <card>`(검증은 잠금 밖, 트렁크 이동은 잠금 안)·`reconcile`(재시작이 남긴 verifying·landing 큐 행을 git 조상 관계로 정리). 게이트 프로세스는 자기 프로세스 그룹에서 돈다(`af_gate_unix.go`·`af_gate_windows.go`).
+- `moai agentic-factory`(`internal/cli/agentic_factory.go`, `Hidden: true`) — 잠정 뼈대. 이름은 SPEC-AGENTIC-FACTORY-001이 나중에 확정한다.
+- `moai factory wait <card>`(`internal/cli/factory_wait.go`, card t2013) — 대기 사유를 `--on <선행 카드>` 또는 `--operator`로, 깨울 주체를 `--waker <lane|leader|operator>`로 팩토리 기록에 남기고 착지 엣지가 조건을 만족하면 누구를 깨울지 한 번 출력한다. 조건을 바꾸는 동사는 깨움을 **출력만** 하고 전송은 호출한 세션이 한다.
+- `moai factory checkpoint <card>`(`internal/cli/factory_checkpoint.go`, card t2013) — 팩토리 기록과 카드 워크트리의 git 상태로 최소 재개 체크포인트(`key: value`)를 만들어 `.moai/reports/<card>/checkpoint.md`에 쓰고 출력한다.
+- 런처 레인 진입(`internal/cli/cc.go`·`factory.go`·`launcher_retired_entries.go`, card t2021) — `moai cc -l`/`moai glm -l`(`--lane`)이 다음 빈 `lane-<n>` 라벨로 합류하는 유일한 진입이다. 인자를 받지 않고, 한 실행에 진입 토큰은 하나이며(`-f`와 함께면 오류), `-l --name lane-<n>`은 죽은 레인의 재합류다. 옛 `-a`/`--agent`는 제거되어 `-l/--lane`을 알리는 거절문으로 막힌다(`--` 뒤에 와도 거절). 절대 경로 `-w`는 이 저장소의 등록된 워크트리일 때만 재진입하고 아니면 쓰기 전에 거절한다.
+- `moai fetch web <url> "<question>"`(`internal/cli/fetch_web.go`의 `newFetchCmd`, SPEC-FETCH-WEB-001) — 페이지를 가져와 질문에 답하는 원문 발췌를 돌려준다(Jev 점수). `workflow.jev.enabled`가 꺼져 있으면(배포 기본) 네트워크 요청 0회, stderr에 WebFetch 대체 안내를 내고 종료 코드 2다.
+- MCP 도구 `fetch_web`(`internal/cli/mcp_fetch_web.go`, `internal/cli/mcp_server.go`에서 `RunFetchPipeline`으로 연결, `internal/mcp/catalog.go` 등록 `WriteCapable: false`) — CLI와 같은 파이프라인 진입점을 공유하며 같은 게이트 꺼짐 계약을 따른다. 게이트 세션의 읽기 전용 부분집합에는 일부러 넣지 않았다(게이트 세션은 네트워크 읽기를 하지 않는다).
+- `moai jevmeasure bench --cases <cases.json> [--run <run.json>] [--baseline <path>] [--run-out <path>]`(`internal/cli/jevmeasure_cmd.go`, 패키지 `internal/jevmeasure`) — jevfetch 모양의 벤치 케이스를 돌려 포함율과 토큰 절감을 기준선과 비교한다.
+- `moai gate` — 전체 실행 기한을 단계에서 도출하며(`internal/hook/quality/gate_overall_budget.go`의 `OverallBudget`), `gate.yaml`의 `timeouts.total`이 명시적 재정의다(card t2020).
+- stop-goal 훅(`internal/cli/hook_stop_goal.go`·`hook_stop_goal_wait.go`) — 목표가 미충족이어도 세션의 카드가 다음 확인 이벤트를 가진 열린 `factory wait` 기록을 쥐면 턴 종료를 막지 않는다(`goal.Eval.ValidWait`). UserPromptSubmit·PostToolUse 훅은 카드를 쥔 세션에서 30초 제한으로 원장 임대를 갱신한다(`internal/hook/ledger_heartbeat.go`).
+- 웹 콘솔(`moai web`, `internal/cli/web.go`)에 Agentic Factory 읽기 전용 보드와 브라우저 선택 화면이 붙었다(`internal/web/board.go`·`browser_select.go`; `/api/browser`).
+
+## 이전 진입점 보완 — 4c4217a1 (card t1991 판)
+
+기준 `9286f6b6ba` 뒤 커밋 21개 창에서 움직인 진입점이다. 새 동사는 하나(`moai todo classify`), 새 플래그는 하나(`--rebind-to`)이고 나머지는 기존 동사의 동작 변화다. 소스 대조 상세는 `modules.md` 이전 변경 경계(t1991 판) 절이 운반한다.
 
 - `moai todo classify <id> --mode <serial|parallelizable> --reason <text>`(신규, `internal/cli/todo_classify_cmd.go`의 `newTodoClassifyCmd`가 `internal/cli/todo.go`에 등록 — card t1737, SPEC-FACTORY-DEFAULT-MODE-001). 사람의 재분류 판단 하나를 큐의 한 번의 잠금 쓰기로 기록한다. 결정자 플래그는 받지 않고, 거절은 큐 파일을 바이트 단위로 그대로 둔다.
 - `moai factory runs --retire <죽은 런> --rebind-to <산 런>`(신규 플래그, `internal/cli/factory_handoff_recover.go`의 `runRebindRetire` — card t1963). 죽은 런의 진행 중 카드를 산 런으로 옮기고 원본을 은퇴시키는 통합이다. 리더·운영자 전용이라 레인 세션은 거절되고, `--retire` 없이 `--rebind-to`만 주면 아무것도 바꾸지 않고 거절한다. 플래그가 없으면 은퇴 동작은 그대로다.
 - 리더 시작(`moai cc -f` / `moai glm -f`) — `internal/cli/factory_run_adopt.go`의 `leaderEntryRunAdoption`이 이어받기 인자 없이 최신 죽은 런을 입양하고(`PlanLeaderEntry` 분류), 나머지 죽은 런을 그 안으로 합친다(`consolidateDeadRuns`). 입양하지 않고 새로 만든 id를 유지하는 경우는 다섯이다 — 활성 런 중 살아 있거나 판정 불가인 것이 하나라도 있을 때, 자기 스탬프로 죽은 후보가 없을 때, 가장 최신 후보가 codex가 이끈 런일 때, 가장 최신 후보가 살아 있는 레거시 피어 기록을 쥐고 있을 때(`leaderAdoptionRefusal`), 입양 경쟁에서 질 때(`ErrAdoptStampChanged`). 최신 후보만 보므로 거절돼도 더 오래된 후보로 내려가지 않는다(`TestLeaderStartAutoAdoptGuards` v-a·v-b). 이 경우 후보마다 경고 한 줄과 의도적 `--factory-run <id>` 명령이 나가고(경쟁 패배는 경고 한 줄), 입양된 뒤에도 codex가 이끈 런·살아 있는 레거시 피어를 쥔 런·피어나 부팅 증명으로만 죽은 런·생존 워커가 있는 런은 통합에서 빠져 활성으로 남고 이유가 한 줄씩 나온다. 자동 복구는 최신 후보 하나의 입양과 안전한 런의 통합까지이고, 그 밖은 사람이 `moai cc -f --factory-run <id>`로 의도적으로 입양하거나 `moai factory runs --retire <id>`로 은퇴시킨다. 은퇴한 런 id로의 런 시작은 `recordFactoryRunStart`가 큐 쪽 기록 **앞에서** 거절한다.
 - 레인 합류(`moai cc -l` / `moai glm -l`)의 런 선택기(`internal/cli/factory_run_select.go`)에 `m<번호>`가 더해졌다 — 죽은 런을 유일한 산 런에 합쳐 정리한 뒤 합류한다(`mergeChosenRun`).
-- `moai factory merge ready`(`internal/cli/factory_merge.go`) — `--spec`이 더는 필수 플래그가 아니다. 생략하거나 카드 id를 넘기면 팩토리 기록의 SpecID를 따르고, 기록이 비었거나 없는 카드만 SPEC 없는 검증 파일 경로를 탄다(card t1959, GH #1913). agentic-trunk에서 primary 체크아웃만 `main`을 쥔 프로젝트는 통합 창 대신 PR 경로 안내를 받는다.
+- `moai factory merge ready`(`internal/cli/factory_merge.go`) — `--spec`이 더는 필수 플래그가 아니다. 생략하거나 카드 id를 넘기면 팩토리 기록의 SpecID를 따르고, 기록이 비었거나 없는 카드만 SPEC 없는 검증 파일 경로를 탄다(card t1959, GH #1913). af-flow에서 primary 체크아웃만 `main`을 쥔 프로젝트는 통합 창 대신 PR 경로 안내를 받는다.
 - `moai factory complete` — PR 경로가 `gh pr merge` 자동 병합 요청을 보내지 않는다(리더가 병합, card t1831 M5b). 이미 `pr-open`인 카드는 현재 홀더 구성과 무관하게 PR 경로를 유지한다.
 - `moai factory rebind-evidence <card> --run <run> --reason <text>`(`internal/cli/factory_card_rebind.go`) — 감사 판정 경로가 막히면 운영자가 `todo landed --sha`로 기록한 착지 커밋을 증거로 받고(card t1962), 단계가 빈 행은 착지 기록에서 다시 묶는다(card t1964). `moai factory approve`는 증거 해시가 없는 카드를 거절하며 다른 런을 지정하면 완료 게이트가 읽는 런을 stderr로 알린다.
 - `moai integration remeasure`(`internal/cli/integration_remeasure.go`) — 기준 브랜치를 명령 실행 전에 해석하고 못 구하면 안내와 함께 거절한다(card t1790, GH #1817).
 - `moai init` · `moai update` · 클린 재설치 — 셋 모두 `template.SyncLocalSettingsPATH`로 gitignore된 `.claude/settings.local.json`의 `env.PATH`를 새로 쓴다(card t1957, GH #1827). 값은 상속 PATH의 순서를 그대로 두고 빠진 SmartPATH 항목만 뒤에 덧붙인다. codex 전용 하네스에서 건너뛰는 것은 `moai init`과 일반 `moai update`뿐이다 — 클린 재설치(`update_clean_install.go`)는 하네스 조건 없이 호출하므로 codex 전용 하네스에서도 이 파일을 만든다.
-- 배선되지 않은 표면 하나: `internal/jevledger`의 `Recorder.Append`는 비테스트 호출자가 아직 없다 — 훅 진입점 어디도 장부에 쓰지 않는다.
+- 배선되지 않은 표면 하나: `internal/jevledger`의 `Recorder.Append`는 비테스트 호출자가 아직 없다 — 훅 진입점 어디도 장부에 쓰지 않는다. 장부를 읽는 쪽은 `moai jev cost`가 생겨 읽기 전용 집계로 닿는다.
+- 이 창의 새 명령: `moai jev cost [--json]`(Jev 결정 장부 집계 보고, 호출을 하지 않는 표시 전용)와 `moai verify clear-rejection <agent-type> <spec-id> --evidence <path>`(운영자 승인 시 현재 트리의 영수증 종류 거절 표식 하나를 해제 — 사람 경로 전용, 종료 코드 0 해제·1 거절·2 사용법). 기존 명령의 새 플래그: `moai todo add --base-sha <40hex>`, `moai factory wait --run <id>`.
 
 ## 이전 진입점 보완 — 656e4d3 (card t1640 판)
 
@@ -536,6 +565,7 @@ codex 탭(행 모델은 `internal/web/codexmirror.go`, 렌더는 그 짝 `.templ
 |---|---|---|
 | `0` | 모든 층 fresh | — |
 | `1` | 한 층 이상 stale 또는 absent | described-source-diff ≥ 40, codemaps 본문 부재(C1), 인용된 경로 부재 |
+| (`0`, 예외) | pull_request에서 codemaps만 stale이고 기준이 물려준 표류 | 변경이 본문·스탬프를 건드리지 않고 기준만의 개수가 이미 임계 이상일 때 경고 주석과 함께(`inherited_codemaps_drift: warn`); 푸시 사건은 항상 `1` |
 | `2` | system error — 측정 자체가 성립하지 않음 | 스탬프 커밋 미해석, 스탬프가 HEAD의 조상이 아님, `gate.yaml` 파싱 실패 |
 
 exit 2 경로는 층 표를 렌더하지 않습니다. 숫자 행이 없는 것이 계약입니다 — 성립한 적 없는

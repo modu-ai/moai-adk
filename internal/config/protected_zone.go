@@ -147,6 +147,13 @@ func (e ZoneEntry) Match(foldedRel string) bool {
 		if !ok {
 			return false
 		}
+		// Card t1702 (iter5 F2): a profile-derived root arrives as
+		// `<base>@<profile>/<rest>`. An entry is declared with the BASE slug
+		// (the declaration grammar admits [a-z0-9-] only, so a profile form
+		// cannot be declared separately), so the profile suffix is dropped
+		// before the comparison and the base entry covers the same subtree
+		// under every profile root.
+		rest = foldProfileSlug(rest)
 		// Gate round 27-5: a DIRECTORY candidate arrives without the
 		// trailing slash (rm -rf …/moai-alpha), while the dir-form entry
 		// carries it — judge both spellings, like the shell judgment does.
@@ -163,6 +170,24 @@ func (e ZoneEntry) Match(foldedRel string) bool {
 		}
 	}
 	return false
+}
+
+// foldProfileSlug rewrites the leading slug of a user-root remainder from its
+// profile form `<base>@<profile>` to the base slug, keeping the rest of the
+// path. Only the per-profile bases (config.UserRootProfileBases) fold, and only
+// with a non-empty profile name; every other remainder is returned unchanged,
+// so a slug that merely shares a prefix, an unknown base, or an empty base or
+// profile never gains coverage by this rewrite.
+func foldProfileSlug(rest string) string {
+	slug, tail := rest, ""
+	if i := strings.IndexByte(rest, '/'); i >= 0 {
+		slug, tail = rest[:i], rest[i:]
+	}
+	base, profile, found := strings.Cut(slug, "@")
+	if !found || profile == "" || !isUserRootProfileBase(base) {
+		return rest
+	}
+	return base + tail
 }
 
 // protectedZoneDoc is the manifest document. Categories is kept as a node so the

@@ -89,6 +89,12 @@ T1-T3 carry a copy-able condition template; T4 is a decision-route trigger with 
 
 Canonical native documentation: `https://code.claude.com/docs/en/goal`.
 
+## Native `/goal` and long waits
+
+Because the native `/goal` has no stop guard and no turn ceiling, a session that has only a wait left is re-entered with empty turns. For waits, a long-wait goal uses `/moai goal`: its turn ceiling (MaxTurns) and three consecutive stagnant turns end it. When only waiting remains, run `/goal clear`.
+
+An unmet `/moai goal` does not block the turn end while the session's card holds an open `factory wait` record that names a next check event. The stop-goal hook reads the factory record read-only, resolves the card from the hook input's cwd, and counts a wait as valid only when it is still open and its reason carries a `next=` event other than `unknown`; a wait without a next event, a woken wait, an unreadable record, or a cwd outside any recorded card worktree leaves the block as it was. The turn counter still advances and every bound still applies: the turn ceiling, the wall-clock bound, the unsatisfiable exit, and the three-identical-turns stagnation guard all win over the wait, so a wait never extends a goal beyond its ceiling. A wait cannot show that independent work remains; step 6 of the leader check pass covers that.
+
 ## Cross-references
 
 - `.claude/rules/moai/workflow/native-invocation-model.md` § Classification Matrix / § Axis B — the invocation classification and the automation justification the Native `/goal` Prohibition rests on
