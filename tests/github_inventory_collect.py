@@ -191,7 +191,8 @@ def record(repo, fixtures_dir, now):
                        "has_projects": repo_meta["has_projects"]},
         "gh_version": gh_version,
         "api_version_header": None,
-        "auth_scopes": scopes,
+        # Only the fact REQ-00B-08 needs; the token's other scopes are not recorded.
+        "project_scope": "read:project" in scopes or "project" in scopes,
         "requests": log,
     }
     files = {
@@ -358,15 +359,14 @@ def settings_inventory(fx, manifest, forms_root, recorded=None):
     meta = fx["meta"]
     labels, axis_counts, groups = label_inventory(fx["labels"])
     issues = fx["issues-open"] + fx["issues-closed"]
-    scopes = meta["auth_scopes"]
     return {
         "schema_version": SCHEMA_VERSION,
         "fetched_at": meta["fetched_at"],
         "repository": meta["repository"],
         "gh_version": meta["gh_version"],
         "api_version": meta["api_version_header"] or "gh default (no X-GitHub-Api-Version header sent)",
-        "auth_scopes": scopes,
-        "projects": "readable" if "read:project" in scopes or "project" in scopes else PROJECTS_UNAVAILABLE,
+        "project_scope": meta["project_scope"],
+        "projects": "readable" if meta["project_scope"] else PROJECTS_UNAVAILABLE,
         "requests": meta["requests"],
         "labels": labels,
         "label_axis_counts": axis_counts,

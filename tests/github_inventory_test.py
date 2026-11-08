@@ -116,7 +116,8 @@ class InventoryTest(unittest.TestCase):
         self.assertEqual(inventory["schema_version"], 1)
         for key in ("fetched_at", "gh_version", "api_version", "repository"):
             self.assertTrue(inventory[key])
-        if "read:project" not in inventory["auth_scopes"] and "project" not in inventory["auth_scopes"]:
+        self.assertNotIn("auth_scopes", inventory)
+        if not inventory["project_scope"]:
             self.assertEqual(inventory["projects"], collect.PROJECTS_UNAVAILABLE)
 
     def test_manifest_reconciliation_is_reported(self):
@@ -128,7 +129,7 @@ class InventoryTest(unittest.TestCase):
 
     def test_projects_unavailable_without_scope(self):
         fx = collect.load_fixtures(FIXTURES)
-        fx["meta"] = dict(fx["meta"], auth_scopes=["repo"])
+        fx["meta"] = dict(fx["meta"], project_scope=False)
         manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
         inventory = collect.settings_inventory(fx, manifest, ROOT, collect.read_shasum(FORMS_SHA))
         self.assertEqual(inventory["projects"], "unavailable(read:project scope missing)")

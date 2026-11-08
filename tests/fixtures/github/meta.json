@@ -1,14 +1,8 @@
 {
   "api_version_header": null,
-  "auth_scopes": [
-    "admin:org",
-    "delete_repo",
-    "gist",
-    "repo",
-    "workflow"
-  ],
   "fetched_at": "2026-11-08T07:56:10Z",
   "gh_version": "gh version 2.92.0 (2026-04-28)",
+  "project_scope": false,
   "repository": {
     "default_branch": "main",
     "full_name": "modu-ai/moai-adk",

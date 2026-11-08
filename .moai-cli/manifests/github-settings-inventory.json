@@ -1,12 +1,5 @@
 {
   "api_version": "gh default (no X-GitHub-Api-Version header sent)",
-  "auth_scopes": [
-    "admin:org",
-    "delete_repo",
-    "gist",
-    "repo",
-    "workflow"
-  ],
   "dependencies": {
     "1987": [
       1985
@@ -1209,6 +1202,7 @@
     "merged": 1324,
     "total": 1536
   },
+  "project_scope": false,
   "projects": "unavailable(read:project scope missing)",
   "prs_open": [],
   "repository": {
