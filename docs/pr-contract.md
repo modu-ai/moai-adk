@@ -46,7 +46,7 @@ moai-cli pr-body-render <worktree> (--task <key> | --record <file> --claim-comme
 
 06-A의 acquire·release 동작은 바꾸지 않고 이벤트만 덧붙인다. 같은 명령을 다시 실행해 record가 그대로이면 이벤트를 쓰지 않는다.
 
-`pr_create` intent의 payload는 본문이 아니라 무엇을 만드는지(task, epoch, Issue, base 브랜치)를 담는다. 그래서 커밋이 늘어 본문이 바뀌어도 같은 intent로 취급된다. 본문 marker(`moai-op`)와 06-B가 기록하는 marker(`moai:op`)는 표기가 다르지만, `parse_op_markers`로 읽으면 같은 operation이다. 06-B의 기본 reconcile은 Issue 댓글을 조회하므로, PR 본문으로 확인하려면 `--remote-probe` 명령을 써야 한다.
+`pr_create` intent의 payload는 본문이 아니라 무엇을 만드는지(task, epoch, Issue, base 브랜치)를 담는다. 그래서 커밋이 늘어 본문이 바뀌어도 같은 intent로 취급된다. 본문 marker(`moai-op`)와 06-B가 기록하는 marker(`moai:op`)는 표기가 다르다. 그래도 06-B reconcile은 marker를 파싱한 operation으로 비교하므로(#2101) 둘을 같은 marker로 본다. 다만 06-B의 기본 reconcile은 Issue 댓글만 조회한다. 그래서 `pr_create`는 판정하지 않고 `uncertain` 그대로 두며, `not_run`(다른 effect가 막혔으면 `blocked`)과 `--remote-probe`가 필요하다는 안내를 낸다(#2101). PR 본문으로 확인하려면 `--remote-probe` 명령을 넘겨야 한다. 판정이 confirmed가 되면 `pr-confirm`으로 `pr_ready`를 기록한다.
 
 ## record 파일은 권위가 아니다
 
