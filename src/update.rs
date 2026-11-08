@@ -31,7 +31,6 @@ use sha2::{Digest, Sha256};
 use std::{
     collections::BTreeMap,
     fs,
-    io::Write as _,
     path::{Path, PathBuf},
 };
 
@@ -400,9 +399,16 @@ fn known_good_copies(
             if format!("{:x}", Sha256::digest(&existing)) == hex {
                 continue;
             }
-            store_copy(&path, false, &bytes)?;
+            // 01-B temp+rename (REQ-01B-03): stage() re-verifies the on-disk bytes
+            // right before the rename, and the rename swaps the inode, so a hard
+            // link sharing the corrupt copy keeps its own bytes — an in-place
+            // truncate would corrupt every link (#2103).
+            publish_replace(&path, Some(&existing), &bytes)?;
         } else {
-            store_copy(&path, true, &bytes)?;
+            // Exclusive create through the same engine (REQ-01B-04): the temp file
+            // is hard-linked into place and the publish fails explicitly if the
+            // path appeared meanwhile.
+            publish_exclusive(&path, &bytes)?;
         }
         // Read-back verification: what is on disk must be the digest the name
         // promises (save-time digest re-verification).
@@ -412,24 +418,6 @@ fn known_good_copies(
         }
     }
     Ok(())
-}
-
-/// Writes `bytes` to `path` — exclusive create when `create_new`, truncate-replace
-/// otherwise — and fsyncs.
-fn store_copy(path: &Path, create_new: bool, bytes: &[u8]) -> Result<()> {
-    let opened = if create_new {
-        fs::OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(path)
-    } else {
-        fs::OpenOptions::new().write(true).truncate(true).open(path)
-    };
-    let mut file = opened.map_err(|_| "known-good copy create failed".to_string())?;
-    file.write_all(bytes)
-        .map_err(|_| "known-good copy write failed")?;
-    file.sync_all()
-        .map_err(|_| "known-good copy sync failed".into())
 }
 
 fn owned_map(receipt: Option<&HostReceipt>) -> BTreeMap<String, String> {

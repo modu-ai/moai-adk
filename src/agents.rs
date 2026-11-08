@@ -69,6 +69,13 @@ struct OwnedFile {
     path: String,
     section_id: Option<String>,
     baseline_sha256: String,
+    /// What produced the entry (`workflow`, `native-role`, `skill-projection`);
+    /// 03-C #2109 added it as an additive field. Manifests written before it
+    /// existed (and agents.rs's own writes) leave it unset, and the
+    /// `generation:…` section_id tag remains the read-compatible discriminator
+    /// for those.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    kind: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -628,6 +635,7 @@ pub(crate) fn agents_apply_amended(
             path: path.into(),
             section_id: Some(section.into()),
             baseline_sha256: digest(bytes),
+            kind: None,
         });
     }
     let step = |applied: &[String], path: &str, e: String| {
@@ -915,6 +923,29 @@ pub(crate) fn agents_apply_amended(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn owned_files_without_kind_still_deserialize() {
+        // #2109 AC-2: manifests written before the additive `kind` field existed
+        // (agents.rs and 03-C writes) read unchanged; an entry carrying kind reads
+        // too, and both shapes round-trip through the manifest type.
+        let old = json!({
+            "path": "AGENTS.md",
+            "section_id": "moai-workflow",
+            "baseline_sha256": "sha256:971e386609930516d7c92f3ad25ef05793f923f978c6b01a11f5a018e94f5b0b"
+        });
+        let parsed: OwnedFile = serde_json::from_value(old).unwrap();
+        assert_eq!(parsed.kind, None);
+        assert_eq!(parsed.section_id.as_deref(), Some("moai-workflow"));
+        let new = json!({
+            "path": ".moai-cli/workflows/review-flow/SKILL.md",
+            "kind": "workflow",
+            "section_id": "generation:workflow:review-flow",
+            "baseline_sha256": "sha256:971e386609930516d7c92f3ad25ef05793f923f978c6b01a11f5a018e94f5b0b"
+        });
+        let parsed: OwnedFile = serde_json::from_value(new).unwrap();
+        assert_eq!(parsed.kind.as_deref(), Some("workflow"));
+    }
 
     #[test]
     fn block_detection_and_malformed_markers() {

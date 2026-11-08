@@ -872,6 +872,12 @@ pub fn generation_apply(
                 };
                 list.push(json!({
                     "path": f.path,
+                    // The bare kind (#2109) is the primary discriminator; the
+                    // generation:… section_id tag stays for readers of manifests
+                    // written before the kind field existed.
+                    "kind": kind.strip_prefix("generation:").and_then(|rest| {
+                        rest.split(':').next()
+                    }),
                     "section_id": kind,
                     "baseline_sha256": rendered,
                 }));
