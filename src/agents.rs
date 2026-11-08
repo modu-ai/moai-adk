@@ -551,7 +551,7 @@ pub fn agents_plan(root: &Path, request: AgentsRequest) -> Result<AgentsPlan> {
     Ok(plan)
 }
 
-fn write_replace(path: &Path, before: Option<&[u8]>, after: &[u8]) -> Result<()> {
+pub(crate) fn write_replace(path: &Path, before: Option<&[u8]>, after: &[u8]) -> Result<()> {
     if read_opt(path)?.as_deref() != before {
         return Err("target changed since plan; re-preview required".into());
     }
