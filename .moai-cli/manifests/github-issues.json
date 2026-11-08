@@ -2592,5 +2592,303 @@
    }
   ]
  },
- "dispatch_journal": []
+ "dispatch_journal": [
+  {
+   "at": "2026-11-08T08:2xZ",
+   "issue": 1985,
+   "key": "00-A",
+   "lane": "agent-4",
+   "branch": "issue/1985-00-A",
+   "base": "origin/v2026.11.0@a6c67ba2d",
+   "claim": "lane posts claim comment (⑤); leader verifies read-side",
+   "status": "in_progress step 3 (collector); scope += tree_digest public fn",
+   "worktree": ".moai-cli/worktrees/issue-1985-00-A"
+  },
+  {
+   "at": "2026-11-08T08:2xZ",
+   "issue": 1986,
+   "key": "00-B",
+   "lane": "agent-3",
+   "branch": "issue/1986-00-B",
+   "base": "origin/v2026.11.0@a6c67ba2d",
+   "claim": "lane posts claim comment (⑤); leader verifies read-side",
+   "status": "pr_ready→in_review: PR #2017 (head 900bbd1ad, AUDIT PASS relayed 6719166728); leader pre-merge checks done, merge awaiting user approval",
+   "worktree": ".moai-cli/worktrees/issue-1986-00-B"
+  }
+ ],
+ "design_update_r8": {
+  "applied_at_utc": "2026-11-08T07:54:11Z",
+  "design_revision": "2026-11-08-r8",
+  "changes": "ROOT: 6 lines damaged by r6 regex restored from r5 (git 970e81f8) with partial-decision parenthetical; 06-A: ⑤ REQ-06A-12..17 + AC-06A-8..10 actually inserted (r6 claim was false: insertion guarded by pre-existing REQ-06A-10), REQ-06A-03/08 aligned, HOLD residues; 02-D REQ-02D-05 + hub residue; non-owner changeable lists aligned to owners (00-D,08-A,08-C,03-C,00-C,07-C,08-D,05-C)",
+  "results": [
+   {
+    "key": "00-C",
+    "number": 1974,
+    "status": "updated",
+    "body_sha256": "3c563c15f2bd3cd00ae1758c45116c7c28c27775fdef7c9ff6f39eea36738cd5"
+   },
+   {
+    "key": "00-D",
+    "number": 1987,
+    "status": "updated",
+    "body_sha256": "72a039af34993f9dc1efba3064f5c5fae9b73a9b0ec4149b27c90422166d9a2f"
+   },
+   {
+    "key": "02-D",
+    "number": 1994,
+    "status": "updated",
+    "body_sha256": "5a6c5c49bb0535c194e1d973345f63490f31f0589047694896e1850f509a4211"
+   },
+   {
+    "key": "03-C",
+    "number": 1997,
+    "status": "updated",
+    "body_sha256": "69847fade5fa643ab5c1099c0fd2fdd007fad46436e9f17ef0a30ad376e049fa"
+   },
+   {
+    "key": "05-C",
+    "number": 2003,
+    "status": "updated",
+    "body_sha256": "7ce549fdc1e2c80e7bc0ccd46a20be3cb55eaad2822481a1fbb760e562bb5c4b"
+   },
+   {
+    "key": "06-A",
+    "number": 2005,
+    "status": "updated",
+    "body_sha256": "feeb836ff590be6907b88d6c45c80c618b2d1da00e64ef482e64c65524e66cd3"
+   },
+   {
+    "key": "07-C",
+    "number": 2010,
+    "status": "updated",
+    "body_sha256": "065c305e9df7ab2bca654fe225394149d8ca59c52ad93aaa8afa9ff9abf415b4"
+   },
+   {
+    "key": "08-A",
+    "number": 2012,
+    "status": "updated",
+    "body_sha256": "ab167e5bd81c13ff71e11b2e1101e8c3a93756692db466d92dd46e37adce4ca7"
+   },
+   {
+    "key": "08-C",
+    "number": 2014,
+    "status": "updated",
+    "body_sha256": "22d20e6610fc15dc39828ab0aa38f6cf11cd52b44612faa809e271aedc86979a"
+   },
+   {
+    "key": "08-D",
+    "number": 2015,
+    "status": "updated",
+    "body_sha256": "1dcb892ce920f73c9e1d0437c8bea4505442af119ce356810129f8faeac0ff1c"
+   },
+   {
+    "key": "RC-ROOT",
+    "number": 1975,
+    "status": "updated",
+    "body_sha256": "3e93c94adf165054a67dbb9588def8cd37b47f7c63716bba573f73a39f0ea499"
+   }
+  ]
+ },
+ "design_update_r9": {
+  "applied_at_utc": "2026-11-08T08:00:35Z",
+  "design_revision": "2026-11-08-r9",
+  "changes": "00-A: HOLD-00A-1=A, HOLD-00A-3=tracked, AC-3 redefined (Go runtime paths excluded + fixture write check) per user decisions after agent-4 blocked report",
+  "results": [
+   {
+    "key": "00-A",
+    "number": 1985,
+    "status": "updated",
+    "body_sha256": "751a1c2f2e884984cb0a09f8a1b6b1f15747d3e527fa9eaad77ae5bd88c51262"
+   }
+  ]
+ },
+ "design_update_r10": {
+  "applied_at_utc": "2026-11-08T08:08:33Z",
+  "design_revision": "2026-11-08-r10",
+  "changes": "06-A: completion 1~13, plan step 5b for ⑤, test line, AC-06A-11..13, REQ-06A-11 scope wording; non-owner plan/changeable/test sections aligned in 08-A,03-C,07-C,00-C,08-C,08-D,05-C (agent-2 r8)",
+  "results": [
+   {
+    "key": "00-C",
+    "number": 1974,
+    "status": "updated",
+    "body_sha256": "f54d0bb68617bcd411f9e0398da4b0a38bd31055d8cdc72e8d4b8c03995a257f"
+   },
+   {
+    "key": "03-C",
+    "number": 1997,
+    "status": "updated",
+    "body_sha256": "234103f37ccbc380ef6526e5d1c12839cd0678e95076eb622e9cdc5d010b8853"
+   },
+   {
+    "key": "05-C",
+    "number": 2003,
+    "status": "updated",
+    "body_sha256": "c6e1b0fcd7096a0aa40b64e2cd1e3d53ac80ca76492747826542277fae208a75"
+   },
+   {
+    "key": "06-A",
+    "number": 2005,
+    "status": "updated",
+    "body_sha256": "d10c5add2b9abbda2ff2dc08cc5fb1a54235a76caf9023fb9ed402636e779d5a"
+   },
+   {
+    "key": "07-C",
+    "number": 2010,
+    "status": "updated",
+    "body_sha256": "ba2227db02956a7195003480498f4f66569331555005ea537d25fbccc57866ab"
+   },
+   {
+    "key": "08-A",
+    "number": 2012,
+    "status": "updated",
+    "body_sha256": "faa771ebe3a49406b11f7f01a825313dd2025a8619e03310bea02f38e9927555"
+   },
+   {
+    "key": "08-C",
+    "number": 2014,
+    "status": "updated",
+    "body_sha256": "5785e93277c1c4e04f47e39f2cadbb634a7ccfa3a525b59328f8c71555007814"
+   },
+   {
+    "key": "08-D",
+    "number": 2015,
+    "status": "updated",
+    "body_sha256": "b19848aede5f6813cf1e3c6de642566f45de6dadf024b9bf1850a86184a22fc8"
+   }
+  ]
+ },
+ "design_update_r11": {
+  "applied_at_utc": "2026-11-08T08:14:14Z",
+  "design_revision": "2026-11-08-r11",
+  "changes": "00-B HOLD-00B-2/3 decided (RC1 temporary); owner Issues receive transferred deliverables: 08-D workflows (rc-ci, rc-e2e)+AC-08D-7, 06-C PR template+pr-contract (REQ-06C-13, AC-06C-9, plan 7b), 07-B outbox.rs+PROMO-OUTBOX, 00-A tree_digest public fn + 00A-AC-8, 01-B generation hook 5b; 00-C AC-00C-07 bound to REQ-06C-13; 08-A pr-contract excluded (agent-2 r10). First script run aborted before PATCH; this run completed it. r11b: hash-check round ordering fixed (numeric), 00-C/08-A/08-D patched, tree_digest signature Result<String,String> (agent-4) in 00-A/05-C.",
+  "results": [
+   {
+    "key": "00-A",
+    "number": 1985,
+    "status": "updated",
+    "body_sha256": "0f987cca44c751fd570209806be0937b76362fb154de0728c9809c784531292d"
+   },
+   {
+    "key": "00-B",
+    "number": 1986,
+    "status": "updated",
+    "body_sha256": "2c839b186b84f1c737e6b905261cae787db7efc035220eb1b36944eaa283ffb6"
+   },
+   {
+    "key": "01-B",
+    "number": 1989,
+    "status": "updated",
+    "body_sha256": "a192ac62b657604a4b84d230a81173063375edbe0831aa58856ec65ebc9968b9"
+   },
+   {
+    "key": "06-C",
+    "number": 2007,
+    "status": "updated",
+    "body_sha256": "edaf39f4906d4177e2bc31c6de3b6baa462183a402bfd9f0f2150896e1169f07"
+   },
+   {
+    "key": "07-B",
+    "number": 2009,
+    "status": "updated",
+    "body_sha256": "6b845d647b4174be44c30a15c0ff3e8ac45ca5007390e2ea46eaffac0f0fb0c9"
+   },
+   {
+    "key": "00-A",
+    "number": 1985,
+    "status": "updated",
+    "body_sha256": "af9c2de91a1cc887e837b42e9cf6995cb596bf48f376e0f3df58e98019335d82"
+   },
+   {
+    "key": "00-C",
+    "number": 1974,
+    "status": "updated",
+    "body_sha256": "fd937fbbd75d7c7e38d7761d1d876c291c7cdfc5916cef5bf0755f4766fe64f7"
+   },
+   {
+    "key": "05-C",
+    "number": 2003,
+    "status": "updated",
+    "body_sha256": "e06fd7de587a2031e8a0ccddfbf4813303d3e6e7e6f8ac60a5725acbf16e4318"
+   },
+   {
+    "key": "08-A",
+    "number": 2012,
+    "status": "updated",
+    "body_sha256": "ae0c1f0b9fe5b21e7b695d84a658c09d16685663c4b0cde0e8e15b0a9c3d4898"
+   },
+   {
+    "key": "08-D",
+    "number": 2015,
+    "status": "updated",
+    "body_sha256": "da0dde597a1627f29c3764464351de3b8d8429d717d10c7abd9d70d3a5be2615"
+   }
+  ]
+ },
+ "design_update_r12": {
+  "applied_at_utc": "2026-11-08T08:17:32Z",
+  "design_revision": "2026-11-08-r12",
+  "changes": "leader lint: hub residual \"claim 규약(P08 ⑤ 포함)\" in 8 issues → decided wording; 08-D duplicate AC-08D-7 → AC-08D-8",
+  "results": [
+   {
+    "key": "00-D",
+    "number": 1987,
+    "status": "updated",
+    "body_sha256": "fc35478fd5d8d29665fe567e28a461a03b75482eaa8ae505ba29ecdf5d03cac5"
+   },
+   {
+    "key": "01-C",
+    "number": 1990,
+    "status": "updated",
+    "body_sha256": "baaa20e67f751d16f47621da3b45b49611947f7df72eb14042cbbc218f78f630"
+   },
+   {
+    "key": "02-B",
+    "number": 1992,
+    "status": "updated",
+    "body_sha256": "c7b67778325260d2eb70e1c978b0b71976027dad39cbd5ff54b0eebd6a0435f0"
+   },
+   {
+    "key": "02-C",
+    "number": 1993,
+    "status": "updated",
+    "body_sha256": "fd285f90c1dc1dde601402fffe5cf808794295167ec20d9589f874b8d942e519"
+   },
+   {
+    "key": "06-C",
+    "number": 2007,
+    "status": "updated",
+    "body_sha256": "58bc71895747d4aaeeb9fb88fd41b99d9a9ffd06d20eac1d2d50da87a953c110"
+   },
+   {
+    "key": "07-A",
+    "number": 2008,
+    "status": "updated",
+    "body_sha256": "b3b29e643d5d5e20f9dfc764393e82e83ca3f223b25823054c1651cedb465f44"
+   },
+   {
+    "key": "07-C",
+    "number": 2010,
+    "status": "updated",
+    "body_sha256": "5cd43c30dc1a9fabbea96f5b71be207e054b0bec668e8a78f36c63740b5fe8fb"
+   },
+   {
+    "key": "07-D",
+    "number": 2011,
+    "status": "updated",
+    "body_sha256": "f25b38d31db9b125342ed24d07c82f36c00799429e8592a4c4a20ff9b7e6d5cd"
+   },
+   {
+    "key": "08-D",
+    "number": 2015,
+    "status": "updated",
+    "body_sha256": "5ca8af4b237edb90ee02e383c03505a7f2811ebceef71fb44a85daaaba7d7fe0"
+   },
+   {
+    "key": "00-C",
+    "number": 1974,
+    "status": "updated (AC-00C-07 grep -q, agent-2 r11)",
+    "body_sha256": "095fef39ee8a4807ee8722caa60352dde0adf37b54862a67221d9298a4a0dd6f"
+   }
+  ]
+ }
 }
