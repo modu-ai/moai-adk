@@ -24,8 +24,11 @@ pub enum Kind {
     Partial,
     Io,
     Internal,
+    /// git ran and failed for a reason other than "not a repository" (Issue #2033).
+    GitFailed,
     /// 07-A (#2008): authentication or permission refused, or a rate limit outlived the retry
-    /// budget. Added to the 00-D vocabulary as the 18:2x decision allows (recorded in docs).
+    /// budget. An addition to the 00-D vocabulary as #1990 HOLD-C2 / REQ-01C-02 (r27) allows
+    /// when recorded in docs.
     Blocked,
     /// 07-A (#2008): the host CLI (`gh`) was missing, gave no HTTP response, or an unexpected
     /// status.
@@ -46,6 +49,7 @@ impl Kind {
             Kind::Partial => "partial",
             Kind::Io => "io",
             Kind::Internal => "internal",
+            Kind::GitFailed => "git_failed",
             Kind::Blocked => "blocked",
             Kind::Transport => "transport",
         }
@@ -66,6 +70,9 @@ const RULES: &[(&str, Kind)] = &[
     ("partial apply", Kind::Partial),
     ("partial creation possible", Kind::Partial),
     ("conflict in ", Kind::Conflict),
+    // identity's `git failed: <git summary>`; ahead of the generic words the summary may hold.
+    // The bare `git failed` of baseline (no colon) stays `io` below.
+    ("git failed: ", Kind::GitFailed),
     // forge-read (07-A #2008): its messages carry these prefixes; they precede the generic
     // words because a transport message may quote `unavailable` or `refused`.
     ("forge blocked: ", Kind::Blocked),
@@ -278,6 +285,10 @@ mod tests {
             ("poll state write failed", Io),
             ("poll state replace failed", Io),
             ("MOAI_FORGE_GH_BIN must be an absolute path to an existing file", InvalidInput),
+            // identity git failure (#2033); the last two would match `git output` without the rule
+            ("git failed: detected dubious ownership in repository at", GitFailed),
+            ("git failed: git output exceeded the size limit", GitFailed),
+            ("git failed: git output was not UTF-8", GitFailed),
         ];
         for (message, kind) in cases {
             assert_eq!(classify(message), kind, "{message}");

@@ -40,7 +40,12 @@ Every internal operation prints exactly one JSON object on stdout:
 - success: `{"protocol_version": 1, "operation": "<name>", "ok": true, "result": {...}}`
 - failure: `{"protocol_version": 1, "operation": "<name>", "ok": false, "error": {"kind", "message", "retryable", "next_actions"?}}`
 
-stderr carries one human line: the same `message` for an operation failure, clap's first line for a command-line error. Exit codes stay 0 (ok), 1 (failure) and 2 (command-line error, `kind: usage`); callers tell failures apart by `kind`, from the 00-D list: `usage`, `invalid_input`, `input_too_large`, `unsupported_protocol_version`, `stale_plan`, `permission_reference_missing`, `not_found`, `conflict`, `partial`, `io`, `internal`. 07-A (#2008) adds two kinds for `forge.read`: `blocked` and `transport` (see the GitHub TODO reader section). `retryable` is true only for `io` and `transport`, the kinds where resending the unchanged request can succeed. `next_actions` appears only on `stale_plan` and `partial` from an `*.apply` and names the matching `*.plan`. A message no rule recognises is `internal`, never a guessed kind. The envelope message for a command-line error names no argument value; stderr keeps clap's line for people.
+stderr carries one human line: the same `message` for an operation failure, clap's first line for a command-line error. Exit codes stay 0 (ok), 1 (failure) and 2 (command-line error, `kind: usage`). Callers tell failures apart by `kind`, 14 in all:
+- the 00-D list: `usage`, `invalid_input`, `input_too_large`, `unsupported_protocol_version`, `stale_plan`, `permission_reference_missing`, `not_found`, `conflict`, `partial`, `io`, `internal`;
+- `git_failed` (Issue #2033): `identity` found git, but git failed for a reason other than "not a repository", for example a `safe.directory` ownership refusal. Not retryable.
+- `blocked` and `transport` (07-A #2008, `forge.read`; see the GitHub TODO reader section). These additions follow #1990 HOLD-C2 / REQ-01C-02 (r27).
+
+`retryable` is true only for `io` and `transport`, the kinds where resending the unchanged request can succeed. `next_actions` appears only on `stale_plan` and `partial` from an `*.apply`, and names the matching `*.plan`. A message no rule recognises is `internal`, never a guessed kind. The envelope message for a command-line error names no argument value; stderr keeps clap's line for people.
 
 Not enveloped: `--help` and `--version`, the launchers, and command lines whose first word names no internal operation (clap's own output and exit 2), because no operation can be attributed to them. There is no `request_id`: the decided envelope has none. The input types (`Profile`, `Plan`, `AgentsRequest`, `AgentsPlan`) are unchanged, so a caller passes an envelope's `result`, not the envelope, to the matching `*.apply`.
 
@@ -54,13 +59,13 @@ The Rust RC writes project data under `<project>/.moai-cli/` and will install un
 
 ### Identity and state-root resolver (`identity`)
 
-`moai-cli identity PATH` reports where a path sits in git and which state roots apply to it. It writes nothing and follows no symlink. Boundaries come only from `git rev-parse --path-format=absolute --git-common-dir --git-dir --is-bare-repository --is-inside-work-tree` (and `--show-toplevel` inside a work tree), run with a fixed argv, `LC_ALL=C`, discarded stderr and `GIT_DIR`/`GIT_WORK_TREE`/`GIT_COMMON_DIR`/`GIT_INDEX_FILE`/`GIT_NAMESPACE` removed; whether `.git` is a directory or a gitfile is never inspected. `--path-format` needs git 2.31 or later.
+`moai-cli identity PATH` reports where a path sits in git and which state roots apply to it. It writes nothing and follows no symlink. Boundaries come only from `git rev-parse --path-format=absolute --git-common-dir --git-dir --is-bare-repository --is-inside-work-tree` (and `--show-toplevel` inside a work tree), run with a fixed argv, `LC_ALL=C`, and `GIT_DIR`/`GIT_WORK_TREE`/`GIT_COMMON_DIR`/`GIT_INDEX_FILE`/`GIT_NAMESPACE`, the injected-config variables `GIT_CONFIG_PARAMETERS`/`GIT_CONFIG_COUNT`/`GIT_CONFIG_KEY_*`/`GIT_CONFIG_VALUE_*` and the discovery variables `GIT_CEILING_DIRECTORIES`/`GIT_DISCOVERY_ACROSS_FILESYSTEM` removed (Issue #2033); stderr is read only to classify a failure, and only its first line, cut before any quote or path separator, can reach the output; whether `.git` is a directory or a gitfile is never inspected. `--path-format` needs git 2.31 or later.
 
-Output is one flat JSON object (the current contract: no envelope, exit 0/1):
+The result is one flat JSON object inside the envelope's `result` (exit 0). When git runs but fails for any reason other than "not a git repository" (a `safe.directory` ownership refusal, a damaged repository, oversized or non UTF-8 output), there is no result: the envelope carries `error.kind: git_failed` with the message `git failed: <path-free summary>` and exit 1 (Issue #2033).
 
 | Field | Meaning |
 |---|---|
-| `identity_status` | `ok`, `no_git` (not inside a repository) or `git_unavailable` (no `git` on PATH). Anything but `ok` leaves every identity field `null`; nothing is guessed |
+| `identity_status` | `ok`, `no_git` (git reported "not a git repository") or `git_unavailable` (no `git` on PATH). Anything but `ok` leaves every identity field `null`; nothing is guessed |
 | `workspace_kind` | `primary` (common dir equals git dir), `linked` (a `git worktree`), `bare`, or `git_dir` (inside a non-bare `.git` directory) |
 | `clone_anchor`, `workspace_git_dir`, `work_tree` | canonical absolute paths of the common dir, the git dir and the top level (`work_tree` is `null` for `bare` and `git_dir`) |
 | `clone_id`, `workspace_id` | `sha256:` of the canonical common dir and git dir; two worktrees of one clone share `clone_id` and differ in `workspace_id` |
@@ -123,8 +128,8 @@ Known gaps: the provisional Python adapter has no migration for projects install
 
 Error kinds:
 - From the 00-D vocabulary: `invalid_input`, `input_too_large`, `unsupported_protocol_version` (request `schema_version`), `not_found` (404 or a missing project directory), `io` (poll state) and `internal`.
-- Added to `contract::Kind` by this adapter (the 18:2x decision allows additions when they are recorded):
-  - `blocked`: authentication failed (401), access denied (403), or a rate limit outlived the retry budget. The envelope marks it `retryable: false`, because it needs a change or a wait first. The library `ForgeError` keeps `retryable: true` for the rate-limit case.
+- Added to `contract::Kind` by this adapter (#1990 HOLD-C2 / REQ-01C-02 (r27) allows additions when they are recorded):
+  - `blocked`: authentication failed (401), access denied (403), or a rate limit outlived the retry budget. In the CLI envelope `blocked` is always `retryable: false`: resending the same request at once cannot succeed, because it needs new credentials, a permission change, or waiting until the reset. Only the library value `ForgeError.retryable` is `true` for the rate-limit case, so a library caller knows waiting will help. That value is not in the envelope.
   - `transport`: gh is missing, gave no HTTP response, or the response had an unexpected status. It is `retryable: true`.
 - Every forge message carries its kind's phrase (`forge blocked: `, `gh transport: `, …). The unit test `every_error_kind_matches_the_contract_classifier` checks that `ForgeError::kind` and `classify(message)` agree, and the contract table test lists the forge messages.
 
@@ -141,7 +146,7 @@ Retries follow GitHub's headers:
 - `retry-after` first.
 - Otherwise `x-ratelimit-remaining: 0` waits until `x-ratelimit-reset`.
 - Any other 403/429 that is a rate limit waits `60 s << attempt`.
-- After `max_retries` waits the result is `blocked` (`retryable: true`). 401 and other 403s are `blocked` at once.
+- After `max_retries` waits the result is `blocked`: `retryable: false` in the envelope, `ForgeError.retryable == true` in the library. 401 and other 403s are `blocked` at once, with `retryable: false` in both.
 
 The config is visible in every result:
 - `overlap_s` 60 and `max_retries` 3 are interim values (leader, 2026-11-08).
