@@ -40,9 +40,9 @@ const UPDATE_SCHEMA_VERSION: u32 = 1;
 /// Host projection roots under the home, in fixed plan order. 02-B/02-C expose explicit
 /// target paths rather than constants, so the design-verified values stand in here
 /// (Issue impl plan step 1).
-const HOSTS: [&str; 2] = ["claude", "codex"];
+pub(crate) const HOSTS: [&str; 2] = ["claude", "codex"];
 /// Same bounded-file rule as every other state file.
-const FILE_LIMIT: u64 = 262_144;
+pub(crate) const FILE_LIMIT: u64 = 262_144;
 const WALK_DEPTH: usize = 32;
 const WALK_ENTRIES: usize = 8192;
 const WALK_FILES: usize = 4096;
@@ -56,12 +56,12 @@ fn skills_dir(host: &str) -> &'static str {
     }
 }
 
-fn projection_root(home: &Path, host: &str) -> PathBuf {
+pub(crate) fn projection_root(home: &Path, host: &str) -> PathBuf {
     home.join(skills_dir(host)).join("moai")
 }
 
 /// UTC RFC3339 second precision; local copy of install.rs's private formatter.
-fn now_rfc3339() -> String {
+pub(crate) fn now_rfc3339() -> String {
     let secs = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_secs())
@@ -86,7 +86,7 @@ fn now_rfc3339() -> String {
     )
 }
 
-fn sha256_hex(bytes: &[u8]) -> String {
+pub(crate) fn sha256_hex(bytes: &[u8]) -> String {
     format!("sha256:{:x}", Sha256::digest(bytes))
 }
 
@@ -243,7 +243,8 @@ pub struct HostReceipt {
     pub plan_digest: String,
     pub package_digest: String,
     pub package_version: String,
-    /// pending | committed (REQ-04B-04/05: a failed apply stays pending)
+    /// pending | committed (REQ-04B-04/05: a failed apply stays pending) | recovered
+    /// (04-C #2000: a pending host whose changes were all reverted; read like committed)
     pub status: String,
     pub started_at: String,
     pub finished_at: Option<String>,
@@ -258,7 +259,12 @@ pub struct HostReceipt {
 
 /// Receipt path; `create` also creates the directory chain (apply only — the plan must
 /// not write anything, so it passes `false`).
-fn host_receipt_path(home: &Path, install_id: &str, host: &str, create: bool) -> Result<PathBuf> {
+pub(crate) fn host_receipt_path(
+    home: &Path,
+    install_id: &str,
+    host: &str,
+    create: bool,
+) -> Result<PathBuf> {
     let dir = home
         .join(crate::HOME_STATE_DIR)
         .join("installations")
@@ -287,7 +293,7 @@ fn host_receipt_path(home: &Path, install_id: &str, host: &str, create: bool) ->
     Ok(dir.join(format!("{host}.json")))
 }
 
-fn load_host_receipt(path: &Path) -> Result<Option<HostReceipt>> {
+pub(crate) fn load_host_receipt(path: &Path) -> Result<Option<HostReceipt>> {
     match fs::symlink_metadata(path) {
         Ok(m) if m.file_type().is_symlink() => Err("host receipt is a symlink; refused".into()),
         Ok(_) => {
@@ -306,7 +312,11 @@ fn load_host_receipt(path: &Path) -> Result<Option<HostReceipt>> {
 
 /// Writes the receipt through the 01-B publish engine (temp + fsync + rename + parent
 /// directory fsync), REQ-04B-04(a).
-fn save_host_receipt(home: &Path, install_id: &str, receipt: &HostReceipt) -> Result<()> {
+pub(crate) fn save_host_receipt(
+    home: &Path,
+    install_id: &str,
+    receipt: &HostReceipt,
+) -> Result<()> {
     let path = host_receipt_path(home, install_id, &receipt.host, true)?;
     let bytes =
         serde_json::to_vec_pretty(receipt).map_err(|_| "receipt encode failed".to_string())?;
@@ -525,7 +535,7 @@ fn preflight(home: &Path, host: &str) -> (Option<String>, Option<ProjectionScan>
 // --- plan ---------------------------------------------------------------------------
 
 /// Computes the current installation id through 04-A's public API (no 04-A changes).
-fn current_install_id(home: &Path) -> Result<String> {
+pub(crate) fn current_install_id(home: &Path) -> Result<String> {
     let exe = std::env::current_exe().map_err(|_| "current executable unavailable".to_string())?;
     Ok(plan_receipt(&exe, home, InstallerOwner::Unknown)?.install_id)
 }
@@ -551,6 +561,15 @@ pub fn plan_update(home: &Path, staged: &StagedPackage) -> Result<UpdatePlan> {
         } else {
             let path = host_receipt_path(&canonical_home, &install_id, host, false)?;
             load_host_receipt(&path)?
+        };
+        // REQ-04C-04 (04-C #2000): a pending host takes no new apply until recovered; the
+        // other hosts plan as usual.
+        let (blocked, scan) = match &receipt {
+            Some(r) if r.status == "pending" => (
+                Some("host receipt is pending; run recovery-plan first".to_string()),
+                None,
+            ),
+            _ => (blocked, scan),
         };
         if receipt.is_some() && latest_version.is_none() {
             latest_version = receipt.as_ref().map(|r| r.package_version.clone());

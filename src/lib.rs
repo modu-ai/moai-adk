@@ -13,6 +13,7 @@ pub mod identity;
 pub mod install;
 pub mod plan;
 pub mod profile;
+pub mod recovery;
 pub mod run;
 pub mod session;
 pub mod spec;
