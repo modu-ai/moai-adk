@@ -1,9 +1,11 @@
 """Local structural checks for the RC1 GitHub assets (Issue forms and label taxonomy).
 
 These checks run offline against repository files. They do not prove that GitHub renders the
-forms (forms are read from the default branch only) or that remote labels match; the remote
+forms (forms are read from the default branch only) or that the live remote labels match; the label
+manifest is compared offline against the snapshot that 00-B (#1986) recorded, and a live
 comparison is a separate, explicitly authorized `gh` step recorded in the Issue report.
 """
+import json
 import pathlib
 import re
 import unittest
@@ -17,6 +19,7 @@ FORMS = [
     ROOT / ".github/ISSUE_TEMPLATE/moai-investigation.yml",
 ]
 LABELS = ROOT / ".github/moai/labels.yml"
+REMOTE_LABELS = ROOT / "tests/fixtures/github/labels.json"
 ALLOWED_BLOCK_TYPES = {"markdown", "input", "textarea", "dropdown", "checkboxes"}
 FORBIDDEN_TOP_KEYS = {"labels", "assignees", "projects", "type"}
 SECRET_SHAPES = re.compile(r"(ghp_|github_pat_|sk-[A-Za-z0-9]|-----BEGIN|/Users/|C:\\\\)")
@@ -65,6 +68,19 @@ class IssueFormTest(unittest.TestCase):
             self.assertEqual(len(redaction), 1)
             self.assertTrue(all(o.get("required") for o in redaction[0]["attributes"]["options"]))
 
+    def test_checklist_starts_unchecked_and_decisions_start_on_hold(self):
+        # REQ-00C-02: a new Issue never arrives with a ticked item or a decided choice.
+        for path in FORMS:
+            with self.subTest(form=path.name):
+                blocks = {b.get("id"): b for b in yaml.safe_load(path.read_text(encoding="utf-8"))["body"]}
+                items = [line for line in blocks["checklist"]["attributes"]["value"].splitlines() if line.strip()]
+                self.assertTrue(items)
+                self.assertTrue(all(line.startswith("- [ ] ") for line in items), items)
+                decisions = blocks["decisions"]["attributes"]["value"]
+                states = re.findall(r"상태: (\S+)", decisions)
+                self.assertTrue(states)
+                self.assertEqual(set(states), {"HOLD"})
+
 
 class LabelTaxonomyTest(unittest.TestCase):
     def test_label_manifest_is_consistent(self):
@@ -80,6 +96,21 @@ class LabelTaxonomyTest(unittest.TestCase):
             self.assertTrue(item["description"].strip())
             self.assertLessEqual(len(item["description"]), 100)
         self.assertFalse(any(name.startswith("status:") for name in everything), "status is never a label")
+
+    def test_label_manifest_matches_the_recorded_remote(self):
+        # REQ-00C-03 / REQ-00C-08, offline: compare against the 00-B (#1986) recorded label snapshot.
+        # A failure here means the remote moved or the manifest drifted; neither is fixed by editing
+        # the snapshot by hand.
+        data = yaml.safe_load(LABELS.read_text(encoding="utf-8"))
+        remote = {item["name"]: item for item in json.loads(REMOTE_LABELS.read_text(encoding="utf-8"))}
+        reused = [name for group in data["reused"].values() for name in group]
+        self.assertEqual([n for n in reused if n not in remote], [], "reused labels must exist remotely")
+        for item in data["added"]:
+            with self.subTest(label=item["name"]):
+                self.assertIn(item["name"], remote)
+                self.assertEqual(remote[item["name"]]["color"], item["color"])
+                self.assertEqual(remote[item["name"]]["description"], item["description"])
+        self.assertEqual([p["name"] for p in data["proposed_not_created"] if p["name"] in remote], [])
 
 
 if __name__ == "__main__":
