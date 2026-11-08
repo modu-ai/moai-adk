@@ -356,3 +356,6 @@ dist-ssr/
 /AGENTS.md
 # Rust build output of the root package (isolated builds use CARGO_TARGET_DIR)
 /target/
+# Lane worktrees for every host (user decision 2026-11-08): inside the primary checkout so the Go hook allows
+# edits, outside .claude/; a nested worktree holds a .git file, so git lists it as untracked unless ignored here
+/.moai-cli/worktrees/

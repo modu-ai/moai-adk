@@ -1,0 +1,4930 @@
+[
+  {
+    "id": 3484087627,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87PqvVL",
+    "number": 2,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Bug: `moai init`이 비대화형 환경에서 실패",
+    "type": null
+  },
+  {
+    "id": 3486761181,
+    "labels": [
+      "bug",
+      "documentation"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87P08Dd",
+    "number": 5,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[BUG] Claude Code Hook 경로 오류 - `/clear` 명령 실행 시 MODULE_NOT_FOUND",
+    "type": null
+  },
+  {
+    "id": 3495124516,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87QU14k",
+    "number": 9,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "moai init hangs at Step 2 (Configuration) on Windows Git Bash",
+    "type": null
+  },
+  {
+    "id": 3502714812,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87Qxy-8",
+    "number": 13,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "gh 인증이 https로 되어있는 경우 에러가 납니다.",
+    "type": null
+  },
+  {
+    "id": 3508153664,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87RGi1A",
+    "number": 16,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Bug] Bun 설치 시 템플릿 파일 누락 (v0.2.29)",
+    "type": null
+  },
+  {
+    "id": 3512143429,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87RVw5F",
+    "number": 18,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "moai init 명령어가 스켈레톤 코드를 생성하지 않습니다.",
+    "type": null
+  },
+  {
+    "id": 3524527842,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87SFAbi",
+    "number": 25,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Windows에서 Claude Code 훅이 무한 대기 상태에 빠지는 문제",
+    "type": null
+  },
+  {
+    "id": 3524528115,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87SFAfz",
+    "number": 26,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "버그: moai-adk init 실행 시 CLAUDE.md 오류 발생 및 .claude 커맨드 미생성",
+    "type": null
+  },
+  {
+    "id": 3527957412,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87SSFuk",
+    "number": 31,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "윈도우 환경에서 스크립트가 오류나는 경우가 잦음.",
+    "type": null
+  },
+  {
+    "id": 3529106854,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87SWeWm",
+    "number": 35,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "README.md 수정 제안",
+    "type": null
+  },
+  {
+    "id": 3529112694,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87SWfx2",
+    "number": 36,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Auto-detect programming language 인식 오류",
+    "type": null
+  },
+  {
+    "id": 3530057838,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87SaGhu",
+    "number": 41,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Cluade code 2.0.22 업데이트 후 slash command에 alfred가 안뜹니다.",
+    "type": null
+  },
+  {
+    "id": 3530537809,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87Sb7tR",
+    "number": 43,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "custom-commands 적용되지 않는 문제",
+    "type": null
+  },
+  {
+    "id": 3530880128,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87SdPSA",
+    "number": 44,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "0.4.0 업데이트 이후에도 hook 에러가 지속 발생됩니다.",
+    "type": null
+  },
+  {
+    "id": 3531410590,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87SfQye",
+    "number": 45,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "🐛 Windows PowerShell 환경에서 PreToolUse Hook 에러 메시지 발생",
+    "type": null
+  },
+  {
+    "id": 3531421801,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87SfThp",
+    "number": 46,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "🐛 moai-adk init 명령어에서 버전이 0.3.0으로 잘못 표시됨",
+    "type": null
+  },
+  {
+    "id": 3538506346,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87S6VJq",
+    "number": 51,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "moai-adk==0.4.5 설치시 나타나는 문제",
+    "type": null
+  },
+  {
+    "id": 3543019889,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87TLjFx",
+    "number": 52,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "버전 0.4.10에서 모든 프롬프트 동작 안 함",
+    "type": null
+  },
+  {
+    "id": 3548318063,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87Tfwlv",
+    "number": 53,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "claude --dangerously-skip-permissions 에서 alfred가 질문을 물어보고 그냥 skip 해버림.",
+    "type": null
+  },
+  {
+    "id": 3554497288,
+    "labels": [
+      "medium",
+      "spec"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87T3VMI",
+    "number": 60,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[MANUAL-TEST] GitHub Issue Automation Test (vv0.1.1)",
+    "type": null
+  },
+  {
+    "id": 3554505700,
+    "labels": [
+      "high",
+      "planning",
+      "spec"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87T3XPk",
+    "number": 61,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[SPEC-INSTALL-001] Install Prompts Redesign - Developer Name, Git Mandatory & PR Automation (v0.2.0)",
+    "type": null
+  },
+  {
+    "id": 3555397976,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87T6xFY",
+    "number": 66,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Hooks 중 SessionStart 가 있을 경우, Claude Code 가 멈춰버림",
+    "type": null
+  },
+  {
+    "id": 3557967324,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87UEkXc",
+    "number": 68,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "사용자 인증",
+    "type": null
+  },
+  {
+    "id": 3557967369,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87UEkYJ",
+    "number": 69,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "댓글 시스템",
+    "type": null
+  },
+  {
+    "id": 3557967420,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87UEkY8",
+    "number": 70,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "알림 기능",
+    "type": null
+  },
+  {
+    "id": 3557997415,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87UErtn",
+    "number": 71,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "알림 기능",
+    "type": null
+  },
+  {
+    "id": 3558014682,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87UEv7a",
+    "number": 72,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "테스트 이슈 #1",
+    "type": null
+  },
+  {
+    "id": 3558014744,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87UEv8Y",
+    "number": 73,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "테스트 이슈 #2",
+    "type": null
+  },
+  {
+    "id": 3558014802,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87UEv9S",
+    "number": 74,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "테스트 이슈 #3",
+    "type": null
+  },
+  {
+    "id": 3558014854,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87UEv-G",
+    "number": 75,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "테스트 이슈 #4",
+    "type": null
+  },
+  {
+    "id": 3558014907,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87UEv-7",
+    "number": 76,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "테스트 이슈 #5",
+    "type": null
+  },
+  {
+    "id": 3561400894,
+    "labels": [
+      "enhancement",
+      "high",
+      "planning",
+      "spec"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87URqo-",
+    "number": 82,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[SPEC-UPDATE-REFACTOR-002] moai-adk Self-Update Integration Feature",
+    "type": null
+  },
+  {
+    "id": 3561402155,
+    "labels": [
+      "high",
+      "planning",
+      "spec"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87URq8r",
+    "number": 84,
+    "state": "closed",
+    "state_reason": "not_planned",
+    "title": "[SPEC-INSTALL-001] Install Prompts Redesign - Developer Name, Git Mandatory & PR Automation (v0.2.0)",
+    "type": null
+  },
+  {
+    "id": 3561755386,
+    "labels": [
+      "high",
+      "planning",
+      "spec"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87UTBL6",
+    "number": 85,
+    "state": "closed",
+    "state_reason": "not_planned",
+    "title": "[SPEC-UPDATE-REFACTOR-002] moai-adk Self-Update Integration Feature (v0.0.1)",
+    "type": null
+  },
+  {
+    "id": 3561881561,
+    "labels": [
+      "high",
+      "planning",
+      "spec"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87UTf_Z",
+    "number": 86,
+    "state": "closed",
+    "state_reason": "not_planned",
+    "title": "[SPEC-UPDATE-REFACTOR-002] moai-adk Self-Update Integration Feature (v0.0.1)",
+    "type": null
+  },
+  {
+    "id": 3561966030,
+    "labels": [
+      "high",
+      "planning",
+      "spec"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87UT0nO",
+    "number": 87,
+    "state": "closed",
+    "state_reason": "not_planned",
+    "title": "[SPEC-UPDATE-REFACTOR-002] moai-adk Self-Update Integration Feature (v0.0.2)",
+    "type": null
+  },
+  {
+    "id": 3562070235,
+    "labels": [
+      "high",
+      "planning",
+      "spec"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87UUODb",
+    "number": 89,
+    "state": "closed",
+    "state_reason": "not_planned",
+    "title": "[SPEC-UPDATE-REFACTOR-002] moai-adk Self-Update Integration Feature (v0.0.2)",
+    "type": null
+  },
+  {
+    "id": 3562108890,
+    "labels": [
+      "high",
+      "planning",
+      "spec"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87UUXfa",
+    "number": 90,
+    "state": "closed",
+    "state_reason": "not_planned",
+    "title": "[SPEC-UPDATE-REFACTOR-002] moai-adk Self-Update Integration Feature (v0.0.3)",
+    "type": null
+  },
+  {
+    "id": 3562108896,
+    "labels": [
+      "high",
+      "planning",
+      "spec"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87UUXfg",
+    "number": 91,
+    "state": "closed",
+    "state_reason": "not_planned",
+    "title": "[SPEC-UPDATE-REFACTOR-002] moai-adk Self-Update Integration Feature (v0.0.3)",
+    "type": null
+  },
+  {
+    "id": 3562117403,
+    "labels": [
+      "high",
+      "planning",
+      "spec"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87UUZkb",
+    "number": 93,
+    "state": "closed",
+    "state_reason": "not_planned",
+    "title": "[SPEC-UPDATE-REFACTOR-002] moai-adk Self-Update Integration Feature (v0.0.3)",
+    "type": null
+  },
+  {
+    "id": 3562590396,
+    "labels": [
+      "critical",
+      "planning",
+      "spec"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87UWNC8",
+    "number": 96,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[SPEC-LANG-FIX-001] Complete Language Localization System Implementation (v0.0.1)",
+    "type": null
+  },
+  {
+    "id": 3563194182,
+    "labels": [
+      "bug",
+      "critical"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87UYgdG",
+    "number": 101,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "🐛 [BUG] 테스트",
+    "type": null
+  },
+  {
+    "id": 3563590277,
+    "labels": [
+      "high",
+      "planning",
+      "spec"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87UaBKF",
+    "number": 104,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[SPEC-DOC-TAG-001] @DOC 태그 자동 생성 인프라 (v0.0.1)",
+    "type": null
+  },
+  {
+    "id": 3563893235,
+    "labels": [
+      "high",
+      "planning",
+      "spec"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87UbLHz",
+    "number": 106,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[SPEC-DOC-TAG-003] @DOC 태그 자동 생성 - 배치 마이그레이션 (Phase 3) (v0.0.1)",
+    "type": null
+  },
+  {
+    "id": 3564065530,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87Ub1L6",
+    "number": 107,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "SessionStart 멈춤 이슈",
+    "type": null
+  },
+  {
+    "id": 3564515491,
+    "labels": [
+      "high",
+      "planning",
+      "spec"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87UdjCj",
+    "number": 109,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[SPEC-DOC-TAG-004] # @SPEC:DOC-TAG-004 (v0.0.1)",
+    "type": null
+  },
+  {
+    "id": 3564520560,
+    "labels": [
+      "high",
+      "planning",
+      "spec"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87UdkRw",
+    "number": 111,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[SPEC-UPDATE-ENHANCE-001]  (v0.0.1)",
+    "type": null
+  },
+  {
+    "id": 3565041721,
+    "labels": [
+      "critical",
+      "enhancement"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87Ufjg5",
+    "number": 112,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "✨ [FEATURE] 피드백 테스트",
+    "type": null
+  },
+  {
+    "id": 3565279712,
+    "labels": [
+      "high",
+      "planning",
+      "spec"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87Ugdng",
+    "number": 116,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[SPEC-DOCS-004]  (v0.0.1)",
+    "type": null
+  },
+  {
+    "id": 3566888047,
+    "labels": [
+      "improvement",
+      "medium"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87UmmRv",
+    "number": 121,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Tech Debt] Remove duplicate files in .claude/hooks/alfred (core/ vs shared/core/)",
+    "type": null
+  },
+  {
+    "id": 3567358957,
+    "labels": [
+      "high",
+      "planning",
+      "spec"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87UoZPt",
+    "number": 124,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[SPEC-UPDATE-CACHE-FIX-001] UV Tool Upgrade Cache Refresh Auto-Retry Implementation (v0.0.1)",
+    "type": null
+  },
+  {
+    "id": 3568683904,
+    "labels": [
+      "bug",
+      "critical"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87UtcuA",
+    "number": 129,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Windows Compatibility: signal.SIGALRM Not Supported - All Hooks Fail",
+    "type": null
+  },
+  {
+    "id": 3569136809,
+    "labels": [
+      "bug",
+      "high"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87UvLSp",
+    "number": 131,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "🐛 [BUG] tdd-implementer creates Python workflows for JavaScript projects",
+    "type": null
+  },
+  {
+    "id": 3570095714,
+    "labels": [
+      "high",
+      "planning",
+      "spec"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87Uy1Zi",
+    "number": 133,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[SPEC-LANGUAGE-DETECTION-001] JavaScript/TypeScript 프로젝트 CI/CD 워크플로우 언어 감지 및 템플릿 분리 (vv0.0.1)",
+    "type": null
+  },
+  {
+    "id": 3570710283,
+    "labels": [
+      "enhancement",
+      "medium",
+      "planning",
+      "spec"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87U1LcL",
+    "number": 134,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[SPEC-LANGUAGE-DETECTION-EXTENDED-001] 11개 언어 전담 CI/CD 워크플로우 확장 (v0.0.1)",
+    "type": null
+  },
+  {
+    "id": 3570851640,
+    "labels": [
+      "high",
+      "planning",
+      "spec"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87U1t84",
+    "number": 136,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[SPEC-SESSION-CLEANUP-001] Alfred 커맨드 완료 후 세션 정리 및 다음 단계 안내 프레임워크",
+    "type": null
+  },
+  {
+    "id": 3570854595,
+    "labels": [
+      "high",
+      "planning",
+      "spec"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87U1urD",
+    "number": 138,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[SPEC-SESSION-CLEANUP-001]  (v0.1.0)",
+    "type": null
+  },
+  {
+    "id": 3571192307,
+    "labels": [
+      "high",
+      "planning",
+      "spec"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87U3BHz",
+    "number": 139,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[SPEC-SESSION-CLEANUP-002]  (v0.0.1)",
+    "type": null
+  },
+  {
+    "id": 3572433788,
+    "labels": [
+      "high",
+      "planning",
+      "spec"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87U7wN8",
+    "number": 146,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[SPEC-SPEC-BUGFIX-002]  (v)",
+    "type": null
+  },
+  {
+    "id": 3573147954,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87U-eky",
+    "number": 152,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "backup 안내문구",
+    "type": null
+  },
+  {
+    "id": 3573253669,
+    "labels": [
+      "planning",
+      "spec"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87U-4Yl",
+    "number": 153,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[SPEC-] Claude Code의 /compact 수행후 \"SessionStart:compact hook error\" 안내 출력됨",
+    "type": null
+  },
+  {
+    "id": 3573643104,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87VAXdg",
+    "number": 154,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "MoAI-ADK, version 0.12.1 : hook error이 계속됩니다.",
+    "type": null
+  },
+  {
+    "id": 3573657393,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87VAa8x",
+    "number": 155,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "구현계획이 없는데 승인을 자주 요청하네요....",
+    "type": null
+  },
+  {
+    "id": 3576835370,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87VMi0q",
+    "number": 159,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "uv tool upgrade moai-adk는 현재 0.13.0버전으로 업그레이드가 안됩니다.",
+    "type": null
+  },
+  {
+    "id": 3577588024,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87VPak4",
+    "number": 161,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Windows에서 hook들이 $CLAUDE_PROJECT_DIR 미설정으로 오류나고 있습니다.",
+    "type": null
+  },
+  {
+    "id": 3577766458,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87VQGI6",
+    "number": 162,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "기존 프로젝트의 /project 아래 파일이 moai-adk init . 후 혹은 /alfred:o-project 후 모두 덮어써짐",
+    "type": null
+  },
+  {
+    "id": 3577773797,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87VQH7l",
+    "number": 163,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "SessionStart:startup hook errror",
+    "type": null
+  },
+  {
+    "id": 3577781108,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87VQJt0",
+    "number": 164,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Previous files are backed up in .moai-backups/{timestamp}/ 라고 나오는데 {timestamp} 폴더가 안 생김",
+    "type": null
+  },
+  {
+    "id": 3577789546,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87VQLxq",
+    "number": 165,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "/alfred:o-project 후 config.json파일",
+    "type": null
+  },
+  {
+    "id": 3579210949,
+    "labels": [
+      "high",
+      "planning",
+      "spec"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87VVmzF",
+    "number": 167,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[SPEC-CLAUDE-CODE-FEATURES-001]  (v0.0.1)",
+    "type": null
+  },
+  {
+    "id": 3584069199,
+    "labels": [
+      "documentation",
+      "planning",
+      "spec"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87VoI5P",
+    "number": 174,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[SPEC-CLAUDE-PHILOSOPHY-001] CLAUDE.md 철학 재정렬 및 Skill 분리",
+    "type": null
+  },
+  {
+    "id": 3584455491,
+    "labels": [
+      "documentation",
+      "high",
+      "improvement",
+      "reported"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87VpnND",
+    "number": 176,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "v0.15.2 설치 과정 리뷰",
+    "type": null
+  },
+  {
+    "id": 3585130931,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87VsMGz",
+    "number": 178,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "v0.16.0 설치",
+    "type": null
+  },
+  {
+    "id": 3585429394,
+    "labels": [
+      "bug",
+      "critical",
+      "documentation",
+      "improvement"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87VtU-S",
+    "number": 179,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Bug: /clear command deletes MoAI-ADK system files",
+    "type": null
+  },
+  {
+    "id": 3588821160,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87V6RCo",
+    "number": 187,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "moai-adk update overwrites project-specific GitHub workflows",
+    "type": null
+  },
+  {
+    "id": 3588836663,
+    "labels": [
+      "documentation",
+      "high",
+      "planning"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87V6U03",
+    "number": 188,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[DOC-DOCS-001] MoAI-ADK 온라인 문서 시스템",
+    "type": null
+  },
+  {
+    "id": 3601614428,
+    "labels": [
+      "high",
+      "planning",
+      "spec"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87WrEZc",
+    "number": 195,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[SPEC-CLAUDE-STATUSLINE-001]  (v1.2.0)",
+    "type": null
+  },
+  {
+    "id": 3605618385,
+    "labels": [
+      "planning",
+      "spec"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87W6V7R",
+    "number": 203,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[SPEC-MIGRATION-001] Next.js 16 + Nextra 4.6.0 문서 사이트 마이그레이션",
+    "type": null
+  },
+  {
+    "id": 3605643203,
+    "labels": [
+      "documentation",
+      "enhancement",
+      "high",
+      "spec"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87W6b_D",
+    "number": 204,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Next.js 16 + Nextra 4.6.0 통합 마이그레이션",
+    "type": null
+  },
+  {
+    "id": 3607110063,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87XACGv",
+    "number": 206,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "🐛 [BUG] version field missing in .moai/config.json",
+    "type": null
+  },
+  {
+    "id": 3607112081,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87XACmR",
+    "number": 207,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "🐛 [BUG] All hooks and commands execute twice (duplicate execution)",
+    "type": null
+  },
+  {
+    "id": 3611496753,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87XQxEx",
+    "number": 209,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Windows에서 init시 mcp config 문법 문제",
+    "type": null
+  },
+  {
+    "id": 3614640816,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87Xcwqw",
+    "number": 210,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "/alfred:0-project 명령어 사용법",
+    "type": null
+  },
+  {
+    "id": 3616593130,
+    "labels": [
+      "bug"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87XkNTq",
+    "number": 211,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "🐛 [BUG] 버그가 있어요 테스트 입니다",
+    "type": null
+  },
+  {
+    "id": 3617278816,
+    "labels": [
+      "documentation",
+      "enhancement"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87Xm0tg",
+    "number": 213,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "⚡ Yoda Master 기능 추가 - 로컬 강의 자료 생성 시스템",
+    "type": null
+  },
+  {
+    "id": 3618897756,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87Xs_9c",
+    "number": 214,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "The \"moai-alfred-ask-user-questions\" skill",
+    "type": null
+  },
+  {
+    "id": 3619588251,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87Xvoib",
+    "number": 215,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "project/product.md 업데이트",
+    "type": null
+  },
+  {
+    "id": 3623177747,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87X9U4T",
+    "number": 221,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "claude code 실행시 버전 unknown으로 나오는 문제",
+    "type": null
+  },
+  {
+    "id": 3623225202,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87X9gdy",
+    "number": 222,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "/alfred:0-project 실행시 기존 플젝이 있는 경우",
+    "type": null
+  },
+  {
+    "id": 3623560031,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87X-yNf",
+    "number": 223,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "git 충돌 자동 방지 의견",
+    "type": null
+  },
+  {
+    "id": 3628123454,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87YQMU-",
+    "number": 225,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[BUG] /alfred:0-project command hangs during initialization - Task delegation fails",
+    "type": null
+  },
+  {
+    "id": 3628155321,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87YQUG5",
+    "number": 226,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "🐛 [CRITICAL] moai-adk init creates incomplete config that fails own validation + oversized CLAUDE.md",
+    "type": null
+  },
+  {
+    "id": 3629609927,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87YV3PH",
+    "number": 229,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "statusline.sh가 지속적으로 실행됩니다.",
+    "type": null
+  },
+  {
+    "id": 3645594410,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87ZS1sq",
+    "number": 231,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Docker 환경에서 의존성 누락 및 stdin 처리 문제로 Claude Code 세션 크래시",
+    "type": null
+  },
+  {
+    "id": 3659406659,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87aHh1D",
+    "number": 233,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Your GLM API Key is in the source code",
+    "type": null
+  },
+  {
+    "id": 3681543974,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87bb-cm",
+    "number": 236,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "CLAUDE.md 가 있는 기존 프로젝트에서 /moai:0-project 실행시 기존 내용은 모두 삭제되나요?",
+    "type": null
+  },
+  {
+    "id": 3687120334,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87bxP3O",
+    "number": 237,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "*key* in the gitignore",
+    "type": null
+  },
+  {
+    "id": 3713862318,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87dXQqu",
+    "number": 242,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "SPEC 문서 디렉토리 구조 인식 개선 필요",
+    "type": null
+  },
+  {
+    "id": 3725295664,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87eC4Aw",
+    "number": 243,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "sessionStart hook 실행 후 config 내용 로드 제대로 안됨.",
+    "type": null
+  },
+  {
+    "id": 3733002552,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87egRk4",
+    "number": 244,
+    "state": "closed",
+    "state_reason": "not_planned",
+    "title": "Feature Request: Add Automatic Orchestration Triggers for True Alfred Experience",
+    "type": null
+  },
+  {
+    "id": 3733092818,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87egnnS",
+    "number": 245,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Bug: session_start hook fails to load config, shows 'unknown' values and unnecessary setup prompt",
+    "type": null
+  },
+  {
+    "id": 3772386465,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87g2gyh",
+    "number": 246,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "moai-adk update 실행 시 setting 파일 날아감.",
+    "type": null
+  },
+  {
+    "id": 3785363485,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87hoBAd",
+    "number": 248,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "statusline 수정이 안 되는 버그",
+    "type": null
+  },
+  {
+    "id": 3786936430,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87huBBu",
+    "number": 249,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Windows hook error - UnicodeEncodeError with emoji characters in cp1252 terminal",
+    "type": null
+  },
+  {
+    "id": 3795036997,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87iM6tF",
+    "number": 250,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "업그레이드를 해도 버전 표시가 제대로 안되는 이슈",
+    "type": null
+  },
+  {
+    "id": 3795547855,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87iO3bP",
+    "number": 251,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "'manager-spec' not found",
+    "type": null
+  },
+  {
+    "id": 3798551433,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87iaUuJ",
+    "number": 252,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Bug? Subdirectories in `.claude/commands/` not scanned",
+    "type": null
+  },
+  {
+    "id": 3802225588,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87ioVu0",
+    "number": 253,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "버전 1.0으로 업데이트 불가 (PyPI 배포 필요)",
+    "type": null
+  },
+  {
+    "id": 3803328106,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87isi5q",
+    "number": 254,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Stuck on Project Initialization",
+    "type": null
+  },
+  {
+    "id": 3805639482,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87i1XM6",
+    "number": 255,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "스펙 생성 + 워크트리 생성 옵션 시 스펙 커밋 강제화",
+    "type": null
+  },
+  {
+    "id": 3806248322,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87i3r2C",
+    "number": 256,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Initialization Failed! when init",
+    "type": null
+  },
+  {
+    "id": 3813827097,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87jUmIZ",
+    "number": 257,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "manager-spec 에이전트를 왜 자꾸 못 찾을까요 ㅠㅠ",
+    "type": null
+  },
+  {
+    "id": 3815535836,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87jbHTc",
+    "number": 258,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "z.ai 연동이 아닌, claude code 구독 토큰을 사용하는듯 합니다.",
+    "type": null
+  },
+  {
+    "id": 3815565414,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87jbOhm",
+    "number": 259,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Windows: Hook commands fail due to mixed path separators in settings.json",
+    "type": null
+  },
+  {
+    "id": 3815720704,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87jb0cA",
+    "number": 260,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "bug: post_tool__linter.py import errors (ToolType, get_tool_registry undefined)",
+    "type": null
+  },
+  {
+    "id": 3816127668,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87jdXy0",
+    "number": 261,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "MoAI manager agents crash with JavaScript heap out of memory",
+    "type": null
+  },
+  {
+    "id": 3824424301,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87j9BVt",
+    "number": 263,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Bug] SessionStart hook displays 'error' despite successful execution",
+    "type": null
+  },
+  {
+    "id": 3824629421,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87j9zat",
+    "number": 264,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "sync가 안 되는 버그",
+    "type": null
+  },
+  {
+    "id": 3825027131,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87j_Ug7",
+    "number": 265,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[BUG] settings.json hooks format incompatible with Claude Code - \"Expected array, but received undefined\"",
+    "type": null
+  },
+  {
+    "id": 3825173211,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87j_4Lb",
+    "number": 266,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "v1.3.7 업데이트 후 sessionStrat hook error",
+    "type": null
+  },
+  {
+    "id": 3825300675,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87kAXTD",
+    "number": 267,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "/moai:2-run 워크플로우 설계 불일치: Greenfield 프로젝트에서 TDD/DDD 자동 선택 필요",
+    "type": null
+  },
+  {
+    "id": 3825921017,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87kCuv5",
+    "number": 268,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "ESC key causes terminal input freeze in v1.3.7",
+    "type": null
+  },
+  {
+    "id": 3826396183,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87kEiwX",
+    "number": 269,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Bug] PostToolUse linter hook fails with NameError: ToolType not defined",
+    "type": null
+  },
+  {
+    "id": 3826402959,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87kEkaP",
+    "number": 270,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[BUG] moai-worktree: 경로 중복 버그",
+    "type": null
+  },
+  {
+    "id": 3828092613,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87kLA7F",
+    "number": 271,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Windows moai-adk 설치 불가",
+    "type": null
+  },
+  {
+    "id": 3828168259,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87kLTZD",
+    "number": 272,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Windows 에서 init시 mcp 에러",
+    "type": null
+  },
+  {
+    "id": 3828197711,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87kLalP",
+    "number": 273,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "SessionStart:startup hook error",
+    "type": null
+  },
+  {
+    "id": 3828400210,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87kMMBS",
+    "number": 274,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "statusline 불러오지 못하는 문제",
+    "type": null
+  },
+  {
+    "id": 3829696494,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87kRIfu",
+    "number": 275,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "템플릿에서 statusLine 설정 제외 요청",
+    "type": null
+  },
+  {
+    "id": 3831566714,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87kYRF6",
+    "number": 276,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "statusline 표시 안됨",
+    "type": null
+  },
+  {
+    "id": 3831616662,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87kYdSW",
+    "number": 277,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "moai rank hooks 버그",
+    "type": null
+  },
+  {
+    "id": 3831648426,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87kYlCq",
+    "number": 278,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "SessionStart Hook 오류 - PyYAML 의존성 미설치",
+    "type": null
+  },
+  {
+    "id": 3831687309,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87kYuiN",
+    "number": 279,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "output-style name mismatch prevents Alfred auto-loading",
+    "type": null
+  },
+  {
+    "id": 3831692443,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87kYvyb",
+    "number": 280,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "/moai:9-feedback 명령에서 language.yaml의 documentation 설정 자동 적용 필요",
+    "type": null
+  },
+  {
+    "id": 3831719715,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87kY2cj",
+    "number": 281,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "moai init 시 CLAUDE.md를 CLAUDE.local.md로 자동 변환 기능",
+    "type": null
+  },
+  {
+    "id": 3832334392,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87kbMg4",
+    "number": 282,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "JavaScript heap out of memory error during manager-spec agent execution",
+    "type": null
+  },
+  {
+    "id": 3832340438,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87kbN_W",
+    "number": 283,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[BUG] statusline-config.yaml의 context_window 설정이 로드되지 않음",
+    "type": null
+  },
+  {
+    "id": 3832355279,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87kbRnP",
+    "number": 284,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Memory Error: Node.js heap exhaustion during execution (~4GB limit)",
+    "type": null
+  },
+  {
+    "id": 3836032756,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87kpTb0",
+    "number": 285,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "moai rank sync 실패 - cache_read_tokens 서버 제한 초과",
+    "type": null
+  },
+  {
+    "id": 3836891696,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87kslIw",
+    "number": 286,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Windows 하단 상태 표시줄 이모지 미표시",
+    "type": null
+  },
+  {
+    "id": 3840697471,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87k7GR_",
+    "number": 287,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "moai rank sync incorrectly counts duplicates as failed",
+    "type": null
+  },
+  {
+    "id": 3840737972,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87k7QK0",
+    "number": 288,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "session_start hook fails to detect moai-adk version with uv tool installation",
+    "type": null
+  },
+  {
+    "id": 3841579725,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87k-drN",
+    "number": 289,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "다른 컴퓨터에서 moai sync 가 안 되는 문제",
+    "type": null
+  },
+  {
+    "id": 3841652582,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87k-vdm",
+    "number": 290,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "manager-docs 에이전트 실행 중 Node.js 메모리 부족 크래시",
+    "type": null
+  },
+  {
+    "id": 3841669670,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87k-zom",
+    "number": 291,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "JavaScript Heap Out of Memory during manager-ddd Phase 1.5 Implementation",
+    "type": null
+  },
+  {
+    "id": 3843922837,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87lHZuV",
+    "number": 292,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "CLAUDE_CODE_MAX_OUTPUT_TOKENS 관련",
+    "type": null
+  },
+  {
+    "id": 3847274602,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87lUMBq",
+    "number": 293,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Please create a plugin, a light version of this, so we can install only relevant files related to current codebase, its too heavy as of now",
+    "type": null
+  },
+  {
+    "id": 3847883225,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87lWgnZ",
+    "number": 294,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "fix(skill): Invalid ast-grep configuration in moai-tool-ast-grep skill",
+    "type": null
+  },
+  {
+    "id": 3852216987,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87lnCqb",
+    "number": 295,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "WSL support blocked in latest update and forced PowerShell usage",
+    "type": null
+  },
+  {
+    "id": 3852425156,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87ln1fE",
+    "number": 296,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "moai update 를 실행할 때마다 ~/.local/bin PATH를 찾치 못하는 문제 발생.",
+    "type": null
+  },
+  {
+    "id": 3852957292,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87lp3Zs",
+    "number": 297,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "v1.8.7 mcp 연결이 안됩니다.",
+    "type": null
+  },
+  {
+    "id": 3853232294,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87lq6im",
+    "number": 298,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "moai init 만 해도 context 가 너무 큰거 같습니다.",
+    "type": null
+  },
+  {
+    "id": 3854256325,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87lu0jF",
+    "number": 299,
+    "state": "closed",
+    "state_reason": "not_planned",
+    "title": "moai-adk rank sync shows \"Submitted: 0\" despite successful API responses",
+    "type": null
+  },
+  {
+    "id": 3854258317,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87lu1CN",
+    "number": 300,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[버그] moai-adk rank sync가 성공적인 제출에도 'Submitted: 0' 표시",
+    "type": null
+  },
+  {
+    "id": 3854298350,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87lu-zu",
+    "number": 301,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "moai-adk rank sync 버그: API 응답 파싱 오류로 \"Submitted: 0\" 표시",
+    "type": null
+  },
+  {
+    "id": 3858153070,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87l9r5u",
+    "number": 302,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "moai init 으로 새프로젝트 생성후 PATH 를 제대로 불러오지 못하는 문제 재발생.",
+    "type": null
+  },
+  {
+    "id": 3859939957,
+    "labels": [
+      "bug",
+      "triage"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87mEgJ1",
+    "number": 303,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Bug]",
+    "type": null
+  },
+  {
+    "id": 3864413345,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87mVkSh",
+    "number": 304,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "moai init 명령으로 생성한 프로젝트 파일 중 변수 치환 오류",
+    "type": null
+  },
+  {
+    "id": 3864497794,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87mV46C",
+    "number": 305,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Bug] moai-foundation-memory SKILL.md가 존재하지 않는 API 문서화",
+    "type": null
+  },
+  {
+    "id": 3864504053,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87mV6b1",
+    "number": 306,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "SessionStart:startup hook error",
+    "type": null
+  },
+  {
+    "id": 3866220481,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87mcdfB",
+    "number": 307,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "1.9.0 설치했지만 CLAUDE.md 이전 버전 사용",
+    "type": null
+  },
+  {
+    "id": 3866378469,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87mdEDl",
+    "number": 308,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "CLAUDE.md 파일 내 참조 정보로 인해 생성된 CLAUDE.md 깨짐",
+    "type": null
+  },
+  {
+    "id": 3866488419,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87mde5j",
+    "number": 309,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "moai init 실행 시 영어 CLAUDE.md 대신 언어별 템플릿(CLAUDE.ko.md) 사용됨",
+    "type": null
+  },
+  {
+    "id": 3868055569,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87mjdgR",
+    "number": 310,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "1.11.2 moai init 오류",
+    "type": null
+  },
+  {
+    "id": 3868083153,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87mjkPR",
+    "number": 311,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "1.11.2 moai init 생성 후 SessionStart:startup hook error",
+    "type": null
+  },
+  {
+    "id": 3868407071,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87mkzUf",
+    "number": 312,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "uv 버전 업데이트 안됨 1.11.2 -> 1.121",
+    "type": null
+  },
+  {
+    "id": 3868463075,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87mlA_j",
+    "number": 313,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Bug] All skills appear in / autocomplete regardless of user-invocable setting",
+    "type": null
+  },
+  {
+    "id": 3875886483,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87nBVWT",
+    "number": 314,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "moai 버전업 후에 cp949 error",
+    "type": null
+  },
+  {
+    "id": 3878466405,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87nLLNl",
+    "number": 315,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "moai init creates config files in wrong directory (.moai/local/sections/ instead of .moai/config/sections/)",
+    "type": null
+  },
+  {
+    "id": 3878500083,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87nLTbz",
+    "number": 316,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "대용량 파일 읽기 기법이 스킬에 정의되어 있으나 실제 적용되지 않음 (Large file reading techniques defined in skills but not actually applied)",
+    "type": null
+  },
+  {
+    "id": 3880424763,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87nSpU7",
+    "number": 317,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "안정화 버전과 최신 버전 구분을 건의드립니다.",
+    "type": null
+  },
+  {
+    "id": 3884165591,
+    "labels": [
+      "bug",
+      "triage"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87ng6nX",
+    "number": 318,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Bug] syncing templates (1.4.0 -> 1.14.0)",
+    "type": null
+  },
+  {
+    "id": 3884207599,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87nhE3v",
+    "number": 319,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "All pre-installed plugins fail to load after moai-adk installation",
+    "type": null
+  },
+  {
+    "id": 3903235898,
+    "labels": [
+      "bug",
+      "triage"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87opqc6",
+    "number": 320,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Bug] plan 시 확인한 의존성 패키지 버전의 검증 오류",
+    "type": null
+  },
+  {
+    "id": 3904259527,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87otkXH",
+    "number": 321,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Bug: handle-session-end.sh not generated during moai update",
+    "type": null
+  },
+  {
+    "id": 3904281433,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87otptZ",
+    "number": 322,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "SessionStart hook returns empty {} - greeting not displayed",
+    "type": null
+  },
+  {
+    "id": 3904368286,
+    "labels": [
+      "bug",
+      "triage"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87ot-6e",
+    "number": 323,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Bug] v2에 대해 PowerShell 설치 스크립트가 동작하지 않음",
+    "type": null
+  },
+  {
+    "id": 3904384235,
+    "labels": [
+      "bug",
+      "triage"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87ouCzr",
+    "number": 324,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Bug] v2에 대해 WSL2에서 참조 경로가 올바르지 않음",
+    "type": null
+  },
+  {
+    "id": 3908299332,
+    "labels": [
+      "bug",
+      "triage"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87o8-pE",
+    "number": 325,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Bug] v1에서, claude code의 PATH를 MoAI가 강제로 재설정함",
+    "type": null
+  },
+  {
+    "id": 3909583208,
+    "labels": [
+      "question"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87pB4Fo",
+    "number": 327,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Test] @claude workflow integration test",
+    "type": null
+  },
+  {
+    "id": 3911221196,
+    "labels": [
+      "question"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87pIH_M",
+    "number": 338,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Question] Excessive token usage and time spent on codebase scanning during every run command",
+    "type": null
+  },
+  {
+    "id": 3911312260,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87pIeOE",
+    "number": 339,
+    "state": "closed",
+    "state_reason": "not_planned",
+    "title": "SKILL.md pre-execution git commands fail in non-git   directories after moai init",
+    "type": null
+  },
+  {
+    "id": 3911319838,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87pIgEe",
+    "number": 340,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "SKILL.md pre-execution git commands fail in non-git directories after moai init",
+    "type": null
+  },
+  {
+    "id": 3911845997,
+    "labels": [
+      "question"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87pKght",
+    "number": 341,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Question] Windows11 PS 설치시 에러 개선 내용",
+    "type": null
+  },
+  {
+    "id": 3911937194,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87pK2yq",
+    "number": 342,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "macOS Unicode NFD/NFC path mismatch causes false 'Path traversal detected' in hooks",
+    "type": null
+  },
+  {
+    "id": 3912135811,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87pLnSD",
+    "number": 343,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "moai init fails with git errors in non-git directories",
+    "type": null
+  },
+  {
+    "id": 3912544881,
+    "labels": [
+      "bug"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87pNLJx",
+    "number": 344,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Bug] claude settins.json 오류 발생.",
+    "type": null
+  },
+  {
+    "id": 3913589874,
+    "labels": [
+      "bug"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87pRKRy",
+    "number": 347,
+    "state": "closed",
+    "state_reason": "not_planned",
+    "title": "[Bug] MoAI-ADK 1.14.5에서 2.2.1로 업그레이드 실패 - 'moai version' 명령어 없음",
+    "type": null
+  },
+  {
+    "id": 3914147606,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87pTScW",
+    "number": 348,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "/moai project 실행 시 git 저장소가 아닌 경우 Pre-execution Context 명령 실패",
+    "type": null
+  },
+  {
+    "id": 3914260431,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87pTt_P",
+    "number": 349,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Bug] moai update 후 statusline 버전이 이전 버전으로 표시됨 (config.yaml 버전 미갱신)",
+    "type": null
+  },
+  {
+    "id": 3914261016,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87pTuIY",
+    "number": 350,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Bug] moai update 시 ~/.local/bin PATH 경고가 설정 완료 후에도 반복 표시됨",
+    "type": null
+  },
+  {
+    "id": 3914344437,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87pUCf1",
+    "number": 351,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "moai status: User 값 비어있음",
+    "type": null
+  },
+  {
+    "id": 3916210385,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87pbKDR",
+    "number": 354,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Bug] Global settings.json hooks + SKILL.md git commands cause failures in new projects",
+    "type": null
+  },
+  {
+    "id": 3916888380,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87pdvk8",
+    "number": 355,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Bug: manager-spec agent claims edits were applied but file content unchanged",
+    "type": null
+  },
+  {
+    "id": 3919037363,
+    "labels": [
+      "bug"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87pl8Oz",
+    "number": 356,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Bug] Powershell 설치 스크립트의 아키텍처 확인 요청 명령의 호환성 오류",
+    "type": null
+  },
+  {
+    "id": 3920184543,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87pqUTf",
+    "number": 362,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Global CLAUDE.md @import triggers external import security warning with no documentation",
+    "type": null
+  },
+  {
+    "id": 3920211619,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87pqa6j",
+    "number": 363,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Stop hook handle-stop.sh deployed to global but settings reference $CLAUDE_PROJECT_DIR",
+    "type": null
+  },
+  {
+    "id": 3920311859,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87pqzYz",
+    "number": 364,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "moai statusline: Binary distribution format error and duplicate version display",
+    "type": null
+  },
+  {
+    "id": 3920888368,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87ptAIw",
+    "number": 365,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Bug] moai binary installed as gzip+tar archive instead of executable",
+    "type": null
+  },
+  {
+    "id": 3925141854,
+    "labels": [
+      "question"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87p9Ole",
+    "number": 367,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Spec-driven development does not fully complete all specs in a single run",
+    "type": null
+  },
+  {
+    "id": 3926159530,
+    "labels": [
+      "enhancement"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87qBHCq",
+    "number": 368,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Add GitLab and Custom GitLab Instance Support",
+    "type": null
+  },
+  {
+    "id": 3926584241,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87qCuux",
+    "number": 369,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "moai rank sync fails to find Claude Code CLI transcripts (wrong search path)",
+    "type": null
+  },
+  {
+    "id": 3926638773,
+    "labels": [
+      "enhancement"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87qC8C1",
+    "number": 370,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Custom Commit Message Conventions with Auto-Adjustment",
+    "type": null
+  },
+  {
+    "id": 3929218939,
+    "labels": [
+      "bug"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87qMx97",
+    "number": 372,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Bug] Rate Limit Error After v2.2.8 Update",
+    "type": null
+  },
+  {
+    "id": 3929233262,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87qM1du",
+    "number": 373,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "rank sync: FindTranscripts() only searches Desktop App path, misses CLI transcripts",
+    "type": null
+  },
+  {
+    "id": 3940472214,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87q3tWW",
+    "number": 376,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "statusline: output too long, causes vertical scrolling in narrow terminals",
+    "type": null
+  },
+  {
+    "id": 3943958248,
+    "labels": [
+      "bug"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87rFAbo",
+    "number": 380,
+    "state": "closed",
+    "state_reason": "not_planned",
+    "title": "[Bug]",
+    "type": null
+  },
+  {
+    "id": 3944332629,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87rGb1V",
+    "number": 381,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "install.sh corrupts ~/.claude/settings.json when jq is unavailable",
+    "type": null
+  },
+  {
+    "id": 3944355663,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87rGhdP",
+    "number": 382,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "MoAI output style template claims English but contains Korean text",
+    "type": null
+  },
+  {
+    "id": 3945323658,
+    "labels": [
+      "question"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87rKNyK",
+    "number": 383,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Question] GLM API 키 등록 관련 질의 건,",
+    "type": null
+  },
+  {
+    "id": 3945815305,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87rMF0J",
+    "number": 384,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "feat(glm): Support GLM backend for Agent Teams in tmux mode",
+    "type": null
+  },
+  {
+    "id": 3950380589,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87rdgYt",
+    "number": 391,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "bug: rank sync batch submission fails due to snake_case vs camelCase JSON field mismatch",
+    "type": null
+  },
+  {
+    "id": 3950447232,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87rdwqA",
+    "number": 392,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "feat: Add project-scale-aware test strategy for DDD workflow (skip full vitest run on large codebases)",
+    "type": null
+  },
+  {
+    "id": 3953159432,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87roG0I",
+    "number": 397,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "SessionStart:startup hook error when switching to Opus 4.6",
+    "type": null
+  },
+  {
+    "id": 3953280403,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87rokWT",
+    "number": 398,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Windows] moai update fails with \"Access is denied\" due to file locking",
+    "type": null
+  },
+  {
+    "id": 3955159902,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87rvvNe",
+    "number": 399,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "moai rank sync --force: 100% batch submission failure (all sessions fail)",
+    "type": null
+  },
+  {
+    "id": 3955569393,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87rxTLx",
+    "number": 400,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Windows: self-update fails due to mandatory file lock on running executable",
+    "type": null
+  },
+  {
+    "id": 3955592254,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87rxYw-",
+    "number": 402,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "All `moai hook *` commands return exit code 1 on successful execution",
+    "type": null
+  },
+  {
+    "id": 3955747866,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87rx-wa",
+    "number": 405,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Bug] Windows: moai rank login fails - cmd.exe & character not escaped in URL",
+    "type": null
+  },
+  {
+    "id": 3955821459,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87ryQuT",
+    "number": 406,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "moai init on Windows generates /bin/bash in .mcp.json causing MCP server connection failures",
+    "type": null
+  },
+  {
+    "id": 3973577314,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87s1_pi",
+    "number": 409,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Bug] moai glm 명령이 glm-5 모델로 제대로 변경되지 않음 (v2.4.7)",
+    "type": null
+  },
+  {
+    "id": 3974273265,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87s4pjx",
+    "number": 410,
+    "state": "closed",
+    "state_reason": "not_planned",
+    "title": "moai init should detect parent CLAUDE.md and skip full duplication",
+    "type": null
+  },
+  {
+    "id": 3974322866,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87s41qy",
+    "number": 411,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Bug] paths: frontmatter in ~/.claude/rules/ uses broken YAML array syntax — all conditional rules never load",
+    "type": null
+  },
+  {
+    "id": 3976564301,
+    "labels": [
+      "bug"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87tBY5N",
+    "number": 413,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Bug] session_end: killed orphaned tmux session",
+    "type": null
+  },
+  {
+    "id": 3976953567,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87tC37f",
+    "number": 416,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "fix(hook): SessionEnd 훅이 CG mode teammate 세션이 아닌 사용자 tmux 세션까지 종료시킴",
+    "type": null
+  },
+  {
+    "id": 3981130002,
+    "labels": [
+      "bug"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87tSzkS",
+    "number": 419,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Bug] small small one - strange text when PowerShell 7.5.4 install",
+    "type": null
+  },
+  {
+    "id": 3981648282,
+    "labels": [
+      "enhancement",
+      "wontfix"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87tUyGa",
+    "number": 420,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Feature] Russian language",
+    "type": null
+  },
+  {
+    "id": 3986799745,
+    "labels": [
+      "bug"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87tobyB",
+    "number": 422,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Bug] [Windows] 한글 경로 포함 시 TEMP 파일 접근 오류 (EINVAL)",
+    "type": null
+  },
+  {
+    "id": 3988046536,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87ttMLI",
+    "number": 426,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "agent-authoring.md loaded on every session due to @ reference bypass of paths frontmatter",
+    "type": null
+  },
+  {
+    "id": 3991811803,
+    "labels": [
+      "question"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87t7jbb",
+    "number": 429,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Question] \"ANTHROPIC_DEFAULT_HAIKU_MODEL\": \"glm-4.7-flashx\"",
+    "type": null
+  },
+  {
+    "id": 3992926398,
+    "labels": [
+      "enhancement"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87t_zi-",
+    "number": 430,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Feature] 무한 루프 run , sync 지원을 위한 쉘스크립트 지원",
+    "type": null
+  },
+  {
+    "id": 3994009903,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87uD8Ev",
+    "number": 432,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Bug: `moai cc` causes 401 authentication error when switching from GLM to Claude mode",
+    "type": null
+  },
+  {
+    "id": 3995142752,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87uIQpg",
+    "number": 433,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "session-end hook incorrectly removes ANTHROPIC_AUTH_TOKEN during GLM env cleanup",
+    "type": null
+  },
+  {
+    "id": 3995256599,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87uIscX",
+    "number": 434,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Claude Code 재시작 후 /login 세션이 유지되지 않음",
+    "type": null
+  },
+  {
+    "id": 3995489096,
+    "labels": [
+      "bug"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87uJlNI",
+    "number": 436,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Bug] 프로젝트 초기화 후 실행 시 hook 관련 설정 오류",
+    "type": null
+  },
+  {
+    "id": 3998314493,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87uUW_9",
+    "number": 437,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Bug: GLM model \"glm-4.7-flashx\" not available in Z.ai coding plans",
+    "type": null
+  },
+  {
+    "id": 4001187223,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87ufUWX",
+    "number": 443,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "builder-skill: Skill files created at wrong path (moai/library/ instead of moai-{category}-{name}/SKILL.md)",
+    "type": null
+  },
+  {
+    "id": 4001310741,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87ufygV",
+    "number": 445,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Claude Code login 반복 인증 버그 (업데이트 후에도 지속됨)",
+    "type": null
+  },
+  {
+    "id": 4002039954,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87uikiS",
+    "number": 448,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "session-end hook removes GLM env vars in persistent GLM mode, causing login on every new session",
+    "type": null
+  },
+  {
+    "id": 4019301239,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87vkat3",
+    "number": 464,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Feature] statusline에 토큰 사용량(5시간, 7일) 정보 표시",
+    "type": null
+  },
+  {
+    "id": 4019342110,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87vkkse",
+    "number": 465,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Bug: AskUserQuestion returns empty response when called after Skill load in same turn",
+    "type": null
+  },
+  {
+    "id": 4020862437,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87vqX3l",
+    "number": 467,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "moai update hardcodes Linux PATH into settings.json, breaking MCP servers on macOS",
+    "type": null
+  },
+  {
+    "id": 4026379806,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87v_a4e",
+    "number": 468,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Agent Teams: GLM 환경 변수가 팀원에게 상속되지 않음",
+    "type": null
+  },
+  {
+    "id": 4027596527,
+    "labels": [
+      "enhancement"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87wED7v",
+    "number": 470,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Feature]",
+    "type": null
+  },
+  {
+    "id": 4037000516,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87wn71E",
+    "number": 474,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Hook input JSON format mismatch with Claude Code — all hooks fail with 'missing required field session_id'",
+    "type": null
+  },
+  {
+    "id": 4048890590,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87xVSre",
+    "number": 476,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "/moai plan --worktree creates worktree outside repo (sibling directory instead of .moai/worktrees/)",
+    "type": null
+  },
+  {
+    "id": 4054884419,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87xsKBD",
+    "number": 495,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[WSL] v2.7.9 업데이트 후 env.PATH 덮어쓰기로 Windows 실행 파일 접근 불가",
+    "type": null
+  },
+  {
+    "id": 4054950562,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87xsaKi",
+    "number": 496,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "moai statusline shows 0% for 5H/7H on Linux due to wrong credentials path",
+    "type": null
+  },
+  {
+    "id": 4056292956,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87xxh5c",
+    "number": 504,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Bare relative paths in skill workflow references cause file-not-found in team mode",
+    "type": null
+  },
+  {
+    "id": 4062191073,
+    "labels": [
+      "bug"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87yIB3h",
+    "number": 511,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Bug] Language randomly switches to Korean.",
+    "type": null
+  },
+  {
+    "id": 4063024683,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87yLNYr",
+    "number": 512,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "manager-git creates PR targeting `main` instead of reading `main_branch` from git-strategy.yaml",
+    "type": null
+  },
+  {
+    "id": 4068162496,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87yezvA",
+    "number": 517,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Bug] moai update overwrites user-customized files (.mcp.json, settings.json, status_line.sh, .gitignore)",
+    "type": null
+  },
+  {
+    "id": 4069590171,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87ykQSb",
+    "number": 521,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "go-git worktree fallback to system git on every worktree operation",
+    "type": null
+  },
+  {
+    "id": 4069676509,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87yklXd",
+    "number": 522,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Bug] Literal {} directory created under worktree when agent memory: project resolves path",
+    "type": null
+  },
+  {
+    "id": 4075787686,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87y75Wm",
+    "number": 525,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "rank sync: ToolUsage and CodeMetrics fields never populated",
+    "type": null
+  },
+  {
+    "id": 4082417201,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87zVL4x",
+    "number": 531,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Cross-platform: hardcoded macOS paths in generated scripts prevent statusline and hooks from working on Windows",
+    "type": null
+  },
+  {
+    "id": 4085631792,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87zhcsw",
+    "number": 532,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "moai update -c: 모델 선택 프롬프트 누락",
+    "type": null
+  },
+  {
+    "id": 4090103145,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87zygVp",
+    "number": 533,
+    "state": "closed",
+    "state_reason": "not_planned",
+    "title": "Bug: Missing 'fi' statement in handle-user-prompt-submit.sh hook script",
+    "type": null
+  },
+  {
+    "id": 4093109581,
+    "labels": [
+      "enhancement"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87z9-VN",
+    "number": 537,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Feature] [Enhancement] Add system memory awareness to test execution workflows",
+    "type": null
+  },
+  {
+    "id": 4096071527,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL870JRdn",
+    "number": 538,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "PostToolUse hook fails with 'missing required field session_id'",
+    "type": null
+  },
+  {
+    "id": 4101275077,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL870dH3F",
+    "number": 541,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "PostToolUse hook fires for tools outside matcher pattern",
+    "type": null
+  },
+  {
+    "id": 4104922486,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL870rCV2",
+    "number": 543,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Docs] 문서 전반의 오탈자: '디렉토리' → '디렉터리' 표준어 수정 요청",
+    "type": null
+  },
+  {
+    "id": 4114021187,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL871NvtD",
+    "number": 549,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "`moai statusline` ignores configured segments and stdin JSON input",
+    "type": null
+  },
+  {
+    "id": 4116088847,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL871VogP",
+    "number": 550,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "feat: Integrate interface-design plugin with /moai plan for design consistency and site-specific UI/UX",
+    "type": null
+  },
+  {
+    "id": 4118899588,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL871gWuE",
+    "number": 552,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "plan.md Phase 3 uses ambiguous 'WorktreeManager' instead of 'moai worktree new'",
+    "type": null
+  },
+  {
+    "id": 4119593087,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL871jAB_",
+    "number": 556,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Statusline: 4 out of 8 configured segments not rendered (v2.7.20)",
+    "type": null
+  },
+  {
+    "id": 4125438148,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL8715TDE",
+    "number": 560,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "bug: sync.md hardcodes `main` in github_flow strategy, ignoring git-strategy.yaml main_branch",
+    "type": null
+  },
+  {
+    "id": 4140501412,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL872ywmk",
+    "number": 563,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Bug] isolation: \"worktree\" agent bypass when prompt contains absolute paths",
+    "type": null
+  },
+  {
+    "id": 4157463102,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL873zdo-",
+    "number": 565,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "bug: hook wrappers leak stderr causing false errors in Claude Code",
+    "type": null
+  },
+  {
+    "id": 4166016950,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL874UF-2",
+    "number": 574,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Add a description to improve Dispatch discoverability",
+    "type": null
+  },
+  {
+    "id": 4187854455,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL875nZZ3",
+    "number": 598,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "bug(update): ensureGlobalSettingsEnv removes PATH from global settings.json, breaking Claude Code in non-moai directories",
+    "type": null
+  },
+  {
+    "id": 4231726471,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL878OwWH",
+    "number": 615,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "bug: UserPromptSubmit hook exit code 1 - stdin JSON schema mismatch",
+    "type": null
+  },
+  {
+    "id": 4236813662,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL878iKVe",
+    "number": 618,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Feature] Replace or augment Pencil MCP with Pencil CLI for .pen file operations",
+    "type": null
+  },
+  {
+    "id": 4240292539,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL878vbq7",
+    "number": 619,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "ESLint 품질 게이트가 Python-only 프로젝트에서 git commit 차단",
+    "type": null
+  },
+  {
+    "id": 4244168736,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL878-OAg",
+    "number": 626,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[routing] --team flag parsed but team/*.md workflows never loaded (only review routes correctly)",
+    "type": null
+  },
+  {
+    "id": 4259244453,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL8793uml",
+    "number": 640,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Bug: moai glm + --team 모드 조합 시 팀원 401 인증 에러",
+    "type": null
+  },
+  {
+    "id": 4259421631,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL8794Z2_",
+    "number": 641,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[meta] Split PR #635 into 3 focused PRs (scope creep)",
+    "type": null
+  },
+  {
+    "id": 4259421690,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL8794Z36",
+    "number": 642,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "astgrep: filterByLang + binary allowlist + loop cancel + stderr + silent break",
+    "type": null
+  },
+  {
+    "id": 4259421740,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL8794Z4s",
+    "number": 643,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "gopls bridge: file:// URI encoding + collectDiagnostics event drop + shutdown leaks",
+    "type": null
+  },
+  {
+    "id": 4259421794,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL8794Z5i",
+    "number": 644,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "astgrep SARIF: tool.driver.rules array has non-deterministic order",
+    "type": null
+  },
+  {
+    "id": 4259421854,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL8794Z6e",
+    "number": 645,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "test: add unit tests for RunAstGrepGateV2 quality gate",
+    "type": null
+  },
+  {
+    "id": 4259448746,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL8794geq",
+    "number": 646,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[bug] statusline 간헐적 사라짐 — usage collector가 stdin rate_limits 무시하고 Anthropic API 블로킹 호출",
+    "type": null
+  },
+  {
+    "id": 4259897410,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL8796OBC",
+    "number": 652,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "품질 게이트가 Flutter 프로젝트에서 dart test 대신 flutter test를 사용해야 함",
+    "type": null
+  },
+  {
+    "id": 4259959890,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL8796dRS",
+    "number": 653,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "GLM 모드에서 statusline 컨텍스트 게이지가 Claude 모델 기준 1M으로 잘못 표시됨",
+    "type": null
+  },
+  {
+    "id": 4276198386,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87-4Zvy",
+    "number": 667,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "pre-tool hook runs dotnet format unconditionally, blocks all Bash on macOS cross-compile projects",
+    "type": null
+  },
+  {
+    "id": 4279393913,
+    "labels": [
+      "spec"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87_El55",
+    "number": 671,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[SPEC-OPUS47-COMPAT-001] Claude Code v2.1.110/111 + Opus 4.7 프롬프트 철학 호환성",
+    "type": null
+  },
+  {
+    "id": 4282645379,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87_Q_uD",
+    "number": 675,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "sync.md still instructs creating session boundary tags for removed `/moai context`",
+    "type": null
+  },
+  {
+    "id": 4290145139,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL87_tmtz",
+    "number": 676,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Bug] moai glm 실행 후 Claude Code 진입 시 context window limit 에러",
+    "type": null
+  },
+  {
+    "id": 4299873040,
+    "labels": [
+      "bug"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABAErbEA",
+    "number": 683,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Bug] moai lsp doctor와 moai mcp lsp가 TypeScript 서버를 감지하지 못함 (v2.12.0)",
+    "type": null
+  },
+  {
+    "id": 4307015735,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABALfYNw",
+    "number": 694,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Feedback for “MoAI-ADK Documentation”",
+    "type": null
+  },
+  {
+    "id": 4309760669,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABAOG6nQ",
+    "number": 699,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Integration: ThumbGate enforcement layer for moai-adk",
+    "type": null
+  },
+  {
+    "id": 4335223537,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABAmZC8Q",
+    "number": 733,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "moai update 2.18.0: embedded template `.github/workflows/llm-panel.yml.tmpl:28` parse failure — unexpected \"}\"",
+    "type": null
+  },
+  {
+    "id": 4340794568,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABArtEyA",
+    "number": 738,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "GLM model access error when changing mode",
+    "type": null
+  },
+  {
+    "id": 4342277318,
+    "labels": [
+      "question"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABAtHkxg",
+    "number": 740,
+    "state": "closed",
+    "state_reason": "not_planned",
+    "title": "Where is 2.17.0 release ?",
+    "type": null
+  },
+  {
+    "id": 4354164544,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABA4dHQA",
+    "number": 742,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "fix: moai glm context window size not reflected in Claude Code /context display",
+    "type": null
+  },
+  {
+    "id": 4356923122,
+    "labels": [
+      "bug",
+      "improvement",
+      "medium"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABA7Fe8g",
+    "number": 751,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "fix(statusline): statusline disappears during API streaming stalls + missing 1M mode/effort/rate-limit indicators",
+    "type": null
+  },
+  {
+    "id": 4362965223,
+    "labels": [
+      "enhancement",
+      "spec"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABBA2Q5w",
+    "number": 756,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[SPEC-GLM-MCP-001] Z.AI 공식 MCP 서버 통합 (Vision + Web Search + Web Reader)",
+    "type": null
+  },
+  {
+    "id": 4376259703,
+    "labels": [
+      "priority:P2",
+      "spec",
+      "type:refactor"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABBNhsdw",
+    "number": 778,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[SPEC-V3R3-RETIRED-DDD-001] manager-ddd retired stub standardization",
+    "type": null
+  },
+  {
+    "id": 4376387830,
+    "labels": [
+      "enhancement"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABBNpg9g",
+    "number": 780,
+    "state": "closed",
+    "state_reason": "not_planned",
+    "title": "[Feature]  Do you support the OpenRouter Api?",
+    "type": null
+  },
+  {
+    "id": 4379338181,
+    "labels": [
+      "enhancement"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABBQdlxQ",
+    "number": 782,
+    "state": "closed",
+    "state_reason": "not_planned",
+    "title": "[Feature] can you port this to Google Antigravity?",
+    "type": null
+  },
+  {
+    "id": 4386878718,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABBXp0_g",
+    "number": 786,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Quality gate forces `dotnet test` on Unity projects, ignoring `gate.enabled: false` (v2.14.0)",
+    "type": null
+  },
+  {
+    "id": 4422047402,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABB5MWqg",
+    "number": 854,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Feedback for “CLI Reference”",
+    "type": null
+  },
+  {
+    "id": 4423622010,
+    "labels": [
+      "spec"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABB6sdeg",
+    "number": 859,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[SPEC-V3R4-CATALOG-001] 3-Tier Catalog Manifest",
+    "type": null
+  },
+  {
+    "id": 4450554299,
+    "labels": [
+      "spec"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABCUYRuw",
+    "number": 919,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[SPEC-V3R4-HARNESS-003] Embedding-Cluster Classifier (Tier-2 Pattern Aggregation Upgrade)",
+    "type": null
+  },
+  {
+    "id": 4454241786,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABCX5V-g",
+    "number": 932,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[plan-phase] SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001: drift.go chore(spec) skip",
+    "type": null
+  },
+  {
+    "id": 4455012268,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABCYoXrA",
+    "number": 936,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[plan-phase] SPEC-V3R4-LINT-SKIP-CLEANUP-001: 55 SPECs lint.skip cleanup",
+    "type": null
+  },
+  {
+    "id": 4479159140,
+    "labels": [
+      "area:cli",
+      "area:templates",
+      "priority:P1",
+      "spec",
+      "status:in-progress",
+      "type:docs"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABCvqLZA",
+    "number": 1014,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[SPEC-V3R5-CONSTITUTION-DUAL-001] Constitution Dual-Zone Formalization with Validate CLI",
+    "type": null
+  },
+  {
+    "id": 4482895839,
+    "labels": [
+      "area:hooks",
+      "area:workflow",
+      "priority:P0",
+      "spec",
+      "status:in-progress",
+      "type:feature"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABCzOP3w",
+    "number": 1022,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "SPEC-V3R5-HARNESS-AUTONOMY-001: Harness Autonomy — 4-Tier Self-Evolution + 5-Layer Safety + Cold-Start Seeds (Mega-Sprint W3)",
+    "type": null
+  },
+  {
+    "id": 4579880442,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABEPtt-g",
+    "number": 1055,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Hardcoded Korean \"(권장)\" marker in English-default always-loaded templates (CLAUDE.md, moai-constitution.md)",
+    "type": null
+  },
+  {
+    "id": 4586638115,
+    "labels": [
+      "bug"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABEWKLIw",
+    "number": 1056,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Bug] Missing files pointed by .claude\\rules\\moai\\languages\\csharp.md",
+    "type": null
+  },
+  {
+    "id": 4597231224,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABEgQueA",
+    "number": 1058,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "SKILL.md frontmatter audit: which keys does the `moai` binary actually read? (`metadata`/`progressive_disclosure`/`license`/`compatibility` appear inert; `triggers` read only for `my-harness-*`)",
+    "type": null
+  },
+  {
+    "id": 4601249806,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABEkGADg",
+    "number": 1059,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "skill-authoring.md rule (gated `**/.claude/skills/**`) loads on every `/moai` command — workflow bodies live under `.claude/skills/`",
+    "type": null
+  },
+  {
+    "id": 4604359420,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABEnDy_A",
+    "number": 1061,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Sync-phase PR merge method is hardcoded to `--squash` and not configurable (despite an unused `merge`/`squash`/`rebase` abstraction in `internal/github`)",
+    "type": null
+  },
+  {
+    "id": 4655473559,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABFXzjlw",
+    "number": 1064,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Bug] git_strategy Save expands sentinel into default tree, breaking project-config section isolation",
+    "type": null
+  },
+  {
+    "id": 4658661734,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABFa2JZg",
+    "number": 1065,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "moai glm does not reflect glm.models from .moai/config/sections/llm.yaml after GLM 5.2 update",
+    "type": null
+  },
+  {
+    "id": 4693268921,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABF72ZuQ",
+    "number": 1068,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Windows] moai init이 생성한 statusline.sh가 phantom 경로(~/go/bin/moai)를 박아 statusline 미표시",
+    "type": null
+  },
+  {
+    "id": 4712786220,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABGOdpLA",
+    "number": 1069,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "moai update: llm-panel.yml.tmpl 파싱 오류로 템플릿 동기화 실패",
+    "type": null
+  },
+  {
+    "id": 4851472282,
+    "labels": [
+      "type:fix"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABISuXmg",
+    "number": 1081,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Bug] 템플릿의 `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1` 환경 변수 설정이 Linux/bash 사용자의 `$HOME` 디렉토리에 Stub 파일을 생성",
+    "type": null
+  },
+  {
+    "id": 4876723162,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABIqzj2g",
+    "number": 1084,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Bug] v2→v3 clean reinstall re-runs on every 'moai update', overwriting config sections (language.yaml/design.yaml)",
+    "type": null
+  },
+  {
+    "id": 4880152092,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABIuE2HA",
+    "number": 1086,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "`moai update` in a non-project directory silently installs a full template tree (v3.0.0-rc12)",
+    "type": null
+  },
+  {
+    "id": 4880152180,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABIuE2dA",
+    "number": 1087,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "doctor: Harness 5-Layer fails when only learning's usage-log.jsonl exists (v3.0.0-rc12)",
+    "type": null
+  },
+  {
+    "id": 4880152259,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABIuE2ww",
+    "number": 1088,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "doctor: Skills Allowlist reports unknown moai- skills right after fresh template install (v3.0.0-rc12)",
+    "type": null
+  },
+  {
+    "id": 4880738004,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABIuom1A",
+    "number": 1089,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "hook post-tool-failure always returns UnknownFailure; writes trace-unknown.jsonl (v3.0.0-rc12)",
+    "type": null
+  },
+  {
+    "id": 4885143271,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABIy1e5w",
+    "number": 1090,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "zone-registry.md is required by doctor + `moai constitution` but is never shipped in the embedded templates (v3.0.0-rc12)",
+    "type": null
+  },
+  {
+    "id": 4925082749,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABJY7MfQ",
+    "number": 1094,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "moai update deletes the \"User Custom Patterns (preserved by moai update)\" block in .gitignore",
+    "type": null
+  },
+  {
+    "id": 4925645610,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABJZdjKg",
+    "number": 1096,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Bug] statusLine 템플릿이 비-Windows 분기에서 따옴표 누락 — 공백 포함 경로에서 상태바 미표시",
+    "type": null
+  },
+  {
+    "id": 4929310839,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABJc9Qdw",
+    "number": 1099,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "prompting-best-practices.md paths gate loads on every /moai command (recurrence of #1059 class)",
+    "type": null
+  },
+  {
+    "id": 4929502276,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABJdI8RA",
+    "number": 1101,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "v2→v3 settings merge preserves retired Write()/Glob() deny rules, causing Claude Code startup warnings on every upgraded project",
+    "type": null
+  },
+  {
+    "id": 4965889610,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABJ_12Sg",
+    "number": 1131,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "bug(update): clean-reinstall 이 .gitignore 커스텀 패턴 블록 삭제",
+    "type": null
+  },
+  {
+    "id": 4965939431,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABJ_445w",
+    "number": 1132,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "bug(update): v2→v3 clean-reinstall 이 [MIGRATE_TARGET_EXISTS] 로 차단, --force 미전달",
+    "type": null
+  },
+  {
+    "id": 4975026074,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABKIjfmg",
+    "number": 1162,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "moai hook pre-tool의 경로 가드가 permissions.additionalDirectories를 무시해 멀티 저장소 세션에서 Write/Edit가 전부 차단됨",
+    "type": null
+  },
+  {
+    "id": 4984666126,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABKRv4Dg",
+    "number": 1175,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "TestCanary_sortMostRecent asserts on directory mtime it never sets — passes by accident on POSIX, flaky on Windows",
+    "type": null
+  },
+  {
+    "id": 4994316676,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABKa85hA",
+    "number": 1198,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "UserPromptSubmit hook: spec-derived sessionTitle is re-emitted every prompt — identical titles across all sessions in a project, /rename silently clobbered",
+    "type": null
+  },
+  {
+    "id": 5005362263,
+    "labels": [
+      "bug"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABKlfEVw",
+    "number": 1225,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[CI/windows] TestBranchGuard_Latency fails on Windows — now hidden by ubuntu-only PR CI (#1222)",
+    "type": null
+  },
+  {
+    "id": 5019264285,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABKyvlHQ",
+    "number": 1243,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "moai update가 .moai/config/sections/*.yaml + .gitignore 로컬 커스터마이징을 템플릿 기본값으로 덮어씀",
+    "type": null
+  },
+  {
+    "id": 5034588546,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABLBW5gg",
+    "number": 1265,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Bug] gate.yaml is never loaded in v3 — quality gate cannot be disabled (Loader.Load lacks loadGateSection; #786 recurrence)",
+    "type": null
+  },
+  {
+    "id": 5035999063,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABLCs_Vw",
+    "number": 1267,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Bug] llm.agent_overrides in llm.yaml does not survive moai update",
+    "type": null
+  },
+  {
+    "id": 5061781020,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABLbSmHA",
+    "number": 1345,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Bug] moai update strips all comments from .moai/config/sections/*.yaml",
+    "type": null
+  },
+  {
+    "id": 5071773913,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABLk0g2Q",
+    "number": 1376,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Per-agent model profile not enforced on subagent spawns — silently falls back to parent model",
+    "type": null
+  },
+  {
+    "id": 5076834005,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABLppW1Q",
+    "number": 1377,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "moai update clean-reinstall이 .gitignore 사용자 규칙과 .moai/project/brand/ 콘텐츠를 손실시킴",
+    "type": null
+  },
+  {
+    "id": 5100902270,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABMAmXfg",
+    "number": 1414,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "moai update v2→v3 clean reinstall이 migrate agency 멱등성 부재로 무한 실패 (MIGRATE_TARGET_EXISTS)",
+    "type": null
+  },
+  {
+    "id": 5100903999,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABMAmePw",
+    "number": 1415,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "clean reinstall이 매 실행 재진입(deprecated=true 비수렴)하며 .gitignore를 매번 v3 템플릿으로 덮어씀",
+    "type": null
+  },
+  {
+    "id": 5129374357,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABMbwKlQ",
+    "number": 1467,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "statusline: fetchUsageFromOAuthAPI hangs in credential-less/sandboxed envs (TestBuilderNormalizesMode 10m timeout)",
+    "type": null
+  },
+  {
+    "id": 5163321409,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABM8IIQQ",
+    "number": 1568,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Bug] moai init fails with \"project already initialized\" in a brand-new empty directory (v3.1.0 regression)",
+    "type": null
+  },
+  {
+    "id": 5164136425,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABM8536Q",
+    "number": 1570,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "moai hook worktree-create returns empty stdout + exit 0, aborting all isolation: worktree agent spawns",
+    "type": null
+  },
+  {
+    "id": 5178870528,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABNK9LAA",
+    "number": 1583,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "칸반 디스패치가 조용히 유실됨 — 은퇴한 AGENT_TEAMS env가 bare name을 팀 메일함으로 라우팅",
+    "type": null
+  },
+  {
+    "id": 5186840517,
+    "labels": [
+      "type:fix"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABNSjnxQ",
+    "number": 1584,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Bug] 남은 harness 결함 1건",
+    "type": null
+  },
+  {
+    "id": 5204635691,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABNjhwKw",
+    "number": 1587,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "`moai glm tools enable --force` 플래그가 무시됨 — 토큰 충돌 시 덮어쓰기 불가 (3.1.1)",
+    "type": null
+  },
+  {
+    "id": 5219958864,
+    "labels": [
+      "bug"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABNyJAUA",
+    "number": 1593,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "moai doctor returns exit 0 despite Fail>0",
+    "type": null
+  },
+  {
+    "id": 5219959743,
+    "labels": [
+      "bug"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABNyJDvw",
+    "number": 1594,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "moai doctor reports Constitution Registry 'ok' without calling constitution validate",
+    "type": null
+  },
+  {
+    "id": 5219959872,
+    "labels": [
+      "bug"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABNyJEQA",
+    "number": 1595,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "constitution validate ignores [SUPERSEDED] prefix and canary_gate:false",
+    "type": null
+  },
+  {
+    "id": 5223082343,
+    "labels": [
+      "enhancement"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABN1HpZw",
+    "number": 1596,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "칸반 부트스트랩이 세션 이름(lead)을 선언만 하고 런타임에 등록하지 않음",
+    "type": null
+  },
+  {
+    "id": 5225778803,
+    "labels": [
+      "bug",
+      "enhancement"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABN3sOcw",
+    "number": 1597,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "moai todo — 알 수 없는 동사가 에러 대신 add 폴스루로 카드 생성",
+    "type": null
+  },
+  {
+    "id": 5227967276,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABN5xzLA",
+    "number": 1616,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "zone-registry.md ships as a template and its clause entries have drifted from the rules text they cite (65 DRIFT errors); local repairs are reverted by moai update",
+    "type": null
+  },
+  {
+    "id": 5231504058,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABN9Jqug",
+    "number": 1631,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "moai gate silently skips lint entirely on non-eslint JS projects (biome, oxlint)",
+    "type": null
+  },
+  {
+    "id": 5232155206,
+    "labels": [
+      "type:fix"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABN9xaRg",
+    "number": 1632,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Bug] Codex audit gate: structured output is empty and the gate is not enforced",
+    "type": null
+  },
+  {
+    "id": 5234280029,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABN_zGXQ",
+    "number": 1639,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "moai gate: passing run prints 0 bytes; configured step timeout not enforced (60s config → 915s alive); manual gates unserialized",
+    "type": null
+  },
+  {
+    "id": 5234290852,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABN_zwpA",
+    "number": 1640,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "mcp-server project_root falls back to a stale MOAI_PROJECT_DIR after worktree switches; documented project_root parameter not implemented on catalog tools",
+    "type": null
+  },
+  {
+    "id": 5234293281,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABN_z6IQ",
+    "number": 1641,
+    "state": "closed",
+    "state_reason": "not_planned",
+    "title": "pre-commit hook: go vet runs from the repository root's go.mod, blocking all Go commits in monorepos where the module lives in a subdirectory",
+    "type": null
+  },
+  {
+    "id": 5242703205,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABOH1NZQ",
+    "number": 1654,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "moai todo: unregistered verb + id silently falls through to add — \"moai todo pick t268\" creates a junk card",
+    "type": null
+  },
+  {
+    "id": 5252264513,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABOQ8yQQ",
+    "number": 1658,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "위험명령 가드 정규식이 양방향으로 틀렸다 — 플래그 순서로 우회되고, 따옴표 안 데이터를 오탐한다",
+    "type": null
+  },
+  {
+    "id": 5252478179,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABORJ04w",
+    "number": 1659,
+    "state": "closed",
+    "state_reason": "not_planned",
+    "title": "워크트리 가드가 heredoc 본문의 중괄호에만 접기를 적용하지 않는다 — 같은 자리의 명령 치환은 정상 처리됨",
+    "type": null
+  },
+  {
+    "id": 5252513196,
+    "labels": [
+      "bug"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABORL9rA",
+    "number": 1660,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "goal_arm MCP 래퍼가 산문 조건을 mechanical로 통째 저장 — model 조건 분류 누락으로 매 턴엔드 exit 2 차단",
+    "type": null
+  },
+  {
+    "id": 5252513311,
+    "labels": [
+      "bug"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABORL-Hw",
+    "number": 1661,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "graph-freshness 체크가 origin/main HEAD에서 실패 — codemaps 스탬프 객체가 체크아웃에 부재 (#1648 착지 결함)",
+    "type": null
+  },
+  {
+    "id": 5261944828,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABOaLn_A",
+    "number": 1674,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "GLM 리드 세션에서 세션 간 메시징 반복 두절 (Claude 리드는 정상)",
+    "type": null
+  },
+  {
+    "id": 5263721774,
+    "labels": [
+      "bug"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABOb4FLg",
+    "number": 1675,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "폴백 프로필(__no_such_profile__)에서 statusline이 프로젝트 statusline.yaml 설정을 무시 — gh 폴링 부활·issues/PR 0/0 표시",
+    "type": null
+  },
+  {
+    "id": 5267017901,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABOfBQrQ",
+    "number": 1678,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "codex_task 가 즉시 실패하면서 '10m timeout' 이라는 사실과 다른 사유를 보고한다",
+    "type": null
+  },
+  {
+    "id": 5268298402,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABOgPaog",
+    "number": 1679,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "pre-commit fast-subset go vet fails on every Go-touching commit when the Go module lives below the repo top level (multi-root monorepo)",
+    "type": null
+  },
+  {
+    "id": 5268973761,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABOg4owQ",
+    "number": 1680,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Heavy gate (moai gate) detects language markers only at the project top — nested modules get silently zero toolchain coverage (all 16 languages)",
+    "type": null
+  },
+  {
+    "id": 5269773600,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABOhpdIA",
+    "number": 1682,
+    "state": "closed",
+    "state_reason": "not_planned",
+    "title": "세션 간 메시징 두절의 진짜 원인 가설: ~/.claude.json 의 tengu_harbor_kite 공유 슬롯 (last-writer-wins) — #1674 후속",
+    "type": null
+  },
+  {
+    "id": 5291105151,
+    "labels": [
+      "type:feature"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABO1_bfw",
+    "number": 1683,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Feature] SPEC Review에 Human Decision Authority Guardrail 도입 제안",
+    "type": null
+  },
+  {
+    "id": 5300107434,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABO-k4qg",
+    "number": 1686,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "PreToolUse 가드의 내장 패턴 rm\\s+-rf\\s+/ 에 앵커가 없다 — 모든 절대경로 삭제를 막고, 표기만 바꾸면 통과 (3.1.2)",
+    "type": null
+  },
+  {
+    "id": 5308347373,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABPGbz7Q",
+    "number": 1687,
+    "state": "closed",
+    "state_reason": "not_planned",
+    "title": "codex_task background job: false '10m0s timeout' report on immediate process-ownership failure",
+    "type": null
+  },
+  {
+    "id": 5309562229,
+    "labels": [
+      "enhancement"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABPHl9dQ",
+    "number": 1688,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Docs site deployment rebuilds on every push to every branch — add ignored build step (path filter)",
+    "type": null
+  },
+  {
+    "id": 5343242457,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABPnto2Q",
+    "number": 1690,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Windows: settings.json env.PATH 에 POSIX 경로가 섞여 exec form 훅이 bash 를 찾지 못함 (3.1.2)",
+    "type": null
+  },
+  {
+    "id": 5348398956,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABPsoXbA",
+    "number": 1691,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "moai-gate: failed run flips core.bare; gate-child pytest commits fixture files into the host repo",
+    "type": null
+  },
+  {
+    "id": 5358819427,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABP2kYYw",
+    "number": 1692,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "`spec status --sync-git` ignores `--dry-run` and writes to spec.md (data-loss risk)",
+    "type": null
+  },
+  {
+    "id": 5358819678,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABP2kZXg",
+    "number": 1693,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Status locator matches `Status`/`Notes` table rows (and backticked prose), reporting `Notes` as a SPEC status and flagging false drift",
+    "type": null
+  },
+  {
+    "id": 5366232477,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABP9o1nQ",
+    "number": 1694,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": ".moai/state/ cache directories created in arbitrary subdirectories instead of resolving to the project root (v3.1.2)",
+    "type": null
+  },
+  {
+    "id": 5371941962,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABQDFUSg",
+    "number": 1696,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "spec lint: CoverageIncomplete false positive — spec.md-only scan misses ACs living in acceptance.md",
+    "type": null
+  },
+  {
+    "id": 5393063253,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABQXOdVQ",
+    "number": 1697,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Feature] Allow pinning the Claude Code binary version — moai auto-adopts a broken release on third-party endpoints",
+    "type": null
+  },
+  {
+    "id": 5430090695,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABQ6ibxw",
+    "number": 1703,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "stop-goal Stop 훅: 판정 JSON 뒤에 CLI 헬프 텍스트가 stdout에 추가 출력되어 Claude Code JSON 파싱 실패",
+    "type": null
+  },
+  {
+    "id": 5432946178,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABQ9QuAg",
+    "number": 1704,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "moai worktree clean --json: emits no JSON and prunes, while its help says it removes nothing",
+    "type": null
+  },
+  {
+    "id": 5432946455,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABQ9QvFw",
+    "number": 1705,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Shipped template calls workflow.worktree.auto_cleanup an unread reserved key, but it gates two worktree-removal paths",
+    "type": null
+  },
+  {
+    "id": 5436861747,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABRA_tMw",
+    "number": 1708,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Security Guardian weak-crypto fires on the word md5 in prose — verdicts recording file-identity checks are reported as findings",
+    "type": null
+  },
+  {
+    "id": 5444564620,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABRIV2jA",
+    "number": 1709,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Bug] Web console save always returns 500 — mcp.yaml is never provisioned by init/update",
+    "type": null
+  },
+  {
+    "id": 5444565140,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABRIV4lA",
+    "number": 1710,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Bug] app.js: stampRefreshed referenced across an IIFE boundary — ReferenceError kills GLM key reveal and data-copy handlers",
+    "type": null
+  },
+  {
+    "id": 5444661204,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABRIbv1A",
+    "number": 1711,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "moai web: stampRefreshed ReferenceError aborts app.js; no heartbeat writer; registry not worktree-aware",
+    "type": null
+  },
+  {
+    "id": 5529312399,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABSZKcjw",
+    "number": 1714,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "SessionStart binary auto-update ignores MOAI_SKIP_BINARY_UPDATE",
+    "type": null
+  },
+  {
+    "id": 5529312571,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABSZKdOw",
+    "number": 1715,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "codex_task resume_last resumes another work item's thread when several exist for the project",
+    "type": null
+  },
+  {
+    "id": 5564436421,
+    "labels": [
+      "bug"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABS6qPxQ",
+    "number": 1716,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "격리 작업 트리에 .moai가 없어 codex_audit가 감사를 거부함",
+    "type": null
+  },
+  {
+    "id": 5568869107,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABS-4y8w",
+    "number": 1717,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Always-loaded template rules (~200k chars) exceed Claude Code's new instruction-size limit on every session",
+    "type": null
+  },
+  {
+    "id": 5577631628,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABTHPnjA",
+    "number": 1718,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "codex_audit returns inconclusive and empty findings while summary reports file-line FAIL defects",
+    "type": null
+  },
+  {
+    "id": 5604694650,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABThDaeg",
+    "number": 1730,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "`moai cc` expands model aliases to a compiled model ID, so sessions lag the model Claude Code's alias selects",
+    "type": null
+  },
+  {
+    "id": 5604694838,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABThDbNg",
+    "number": 1731,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Web console: Save with no changes rewrites the user, quality and llm sections, dropping user-added keys and comments",
+    "type": null
+  },
+  {
+    "id": 5608274668,
+    "labels": [
+      "bug"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABTkd67A",
+    "number": 1732,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "moai todo add 가 near-duplicate 판정 카드를 행 생성 없이 주석으로 흡수 (3회 재현)",
+    "type": null
+  },
+  {
+    "id": 5627638745,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABT27z2Q",
+    "number": 1734,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "moai todo: 두 단어 이상 구문의 add 폴백이 mistyped 동사(show)를 무음으로 쓰레기 카드로 승격",
+    "type": null
+  },
+  {
+    "id": 5629344537,
+    "labels": [
+      "bug"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABT4j7GQ",
+    "number": 1735,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "Codex 읽기 전용 감사 역할의 sandbox_mode 불일치로 plan-auditor 실행 실패",
+    "type": null
+  },
+  {
+    "id": 5629522374,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABT4uxxg",
+    "number": 1736,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "SPEC 상태 전환 지침이 stateless lint 규칙과 충돌",
+    "type": null
+  },
+  {
+    "id": 5629594367,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABT4zK_w",
+    "number": 1737,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "factory_msg_send의 선택 correlation_id 생략 시 전송 거부",
+    "type": null
+  },
+  {
+    "id": 5671991794,
+    "labels": [
+      "type:fix"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABUhO58g",
+    "number": 1746,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[Bug] Installed rule files exceed Claude Code's 150k-char instruction limit (220.9k chars across 17 files)",
+    "type": null
+  },
+  {
+    "id": 5673905150,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABUjDr_g",
+    "number": 1747,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "[bug] sync-audit-4dim 워크플로 스크립트 — Workflow 런타임 파싱 거부(148:23) · 로컬↔템플릿 분기 동반",
+    "type": null
+  },
+  {
+    "id": 5754673418,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABVwFZCg",
+    "number": 1813,
+    "state": "closed",
+    "state_reason": "not_planned",
+    "title": "moai cc -w <name>: same-name .moai/worktrees tree exists → divergent .claude tree silently created",
+    "type": null
+  },
+  {
+    "id": 5772733072,
+    "labels": [
+      "bug"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABWBTqkA",
+    "number": 1817,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "깨끗한 연결 worktree의 integration remeasure가 Merge-Base ..HEAD 오류로 실패",
+    "type": null
+  },
+  {
+    "id": 5841980558,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABXDWMjg",
+    "number": 1822,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "settings.json 템플릿의 deny 규칙 3개가 `*`와 끝 `:*`를 섞어 쓴다 — Claude Code 2.1.299가 시작마다 경고하고 규칙은 와일드카드로 동작하지 않는다 (3.1.2)",
+    "type": null
+  },
+  {
+    "id": 5848406425,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABXJeZmQ",
+    "number": 1824,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "moai ast-grep: 룰셋 적재 실패를 \"no findings\" + exit 0 으로 삼켜 통과와 구별되지 않습니다",
+    "type": null
+  },
+  {
+    "id": 5901334633,
+    "labels": [
+      "bug"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABX784aQ",
+    "number": 1827,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "템플릿 훅/스크립트 5건 결함 (exec 이중 실행, PATH 덮어쓰기, TSV 빈 열, trap 미실행, manager-git 지침 충돌)",
+    "type": null
+  },
+  {
+    "id": 5922183456,
+    "labels": [
+      "bug"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABYP1ZIA",
+    "number": 1847,
+    "state": "closed",
+    "state_reason": "not_planned",
+    "title": "팩토리 launcher가 단독 - 및 슬래시 worktree 이름의 실제 대상을 놓침",
+    "type": null
+  },
+  {
+    "id": 5922882736,
+    "labels": [
+      "bug"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABYQgEsA",
+    "number": 1849,
+    "state": "closed",
+    "state_reason": "not_planned",
+    "title": "Codex 팩토리 리더의 실행 전 오류가 소유자 기록을 남김",
+    "type": null
+  },
+  {
+    "id": 5963545257,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABY3R6qQ",
+    "number": 1865,
+    "state": "closed",
+    "state_reason": "duplicate",
+    "title": "Always-loaded rules bundle (~220k chars) exceeds Claude Code 150k instruction-file limit — mode-scoped loading + stub slimming",
+    "type": null
+  },
+  {
+    "id": 6020748894,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABZt1WXg",
+    "number": 1913,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "팩토리: SPEC 없는 Class B 카드가 sync → merge-ready 로 넘어갈 경로가 없음 (merge ready --spec 필수)",
+    "type": null
+  },
+  {
+    "id": 6032106772,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABZ4qlFA",
+    "number": 1924,
+    "state": "closed",
+    "state_reason": "not_planned",
+    "title": "factory decide: MOAI_FACTORY_ROLE=operator is never stamped; operator-action cards cannot leave plan",
+    "type": null
+  },
+  {
+    "id": 6032636206,
+    "labels": [
+      "bug"
+    ],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABZ5K5Lg",
+    "number": 1926,
+    "state": "closed",
+    "state_reason": "not_planned",
+    "title": "factory: --spec 없이 발급된 카드가 plan-audit→kickoff를 통과하지 못함 (set-spec 미출시·기본 비활성)",
+    "type": null
+  },
+  {
+    "id": 6051475885,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABaLIxrQ",
+    "number": 1938,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "factory: 죽은 run의 leased 만료 카드를 살아 있는 레인에 재발급할 정식 명령이 없음",
+    "type": null
+  },
+  {
+    "id": 6091950602,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABaxvKCg",
+    "number": 1948,
+    "state": "closed",
+    "state_reason": "not_planned",
+    "title": "[P0] AgenticFactory 우선 완성: GitHub Issues 기반 실행·관찰·안전 게이트 및 단계적 카드 이관",
+    "type": null
+  },
+  {
+    "id": 6095336526,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABa090Tg",
+    "number": 1949,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "팩토리 카드를 착지 근거로 리더가 닫는 경로 필요 (단계 기록 없는 카드가 배포 후에도 done 거부)",
+    "type": null
+  },
+  {
+    "id": 6114184675,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABbG8N4w",
+    "number": 1950,
+    "state": "closed",
+    "state_reason": "not_planned",
+    "title": "[Bug] Windows env.PATH defect (#1690) also breaks Claude Code clipboard image paste (Alt+V) — please release the fix",
+    "type": null
+  },
+  {
+    "id": 6129691256,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABbVuqeA",
+    "number": 1951,
+    "state": "closed",
+    "state_reason": "completed",
+    "title": "PreToolUse 훅이 Claude Code 기억 폴더·scratchpad 쓰기를 「Path traversal」로 차단함",
+    "type": null
+  },
+  {
+    "id": 6135002784,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABbay2oA",
+    "number": 1952,
+    "state": "closed",
+    "state_reason": "not_planned",
+    "title": "PreToolUse git push/--force patterns match across shell separators and heredoc bodies, causing false prompts and blocks",
+    "type": null
+  },
+  {
+    "id": 6182473865,
+    "labels": [],
+    "milestone": null,
+    "node_id": "I_kwDOPw9rL88AAAABcIEQiQ",
+    "number": 1967,
+    "state": "closed",
+    "state_reason": "not_planned",
+    "title": "manager-develop 위임이 worktree 미사용 작업장에서 취소됨",
+    "type": null
+  }
+]

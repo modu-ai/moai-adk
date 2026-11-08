@@ -1,0 +1,8 @@
+30056696d635099c01480f9b056a245cd2ad9431f83f0a605b21a450d0945767  .github/ISSUE_TEMPLATE/agentic-factory-01-parent-issue.yml
+78e1a62106f9c1e03177fa7329b12b0ead78aec4371676b76c68baf72802913c  .github/ISSUE_TEMPLATE/agentic-factory-02-child-issue.yml
+0236f2a2251dca2a8f4532830227802efad9173965e4ebfbc59e59f824d11792  .github/ISSUE_TEMPLATE/agentic-factory-03-spec-change.yml
+b2a87b7682be9bd4838f27242a5480b4b0cdefba0bf4ac0bd90e0874773d6a1a  .github/ISSUE_TEMPLATE/moai-bugfix.yml
+6ab415cb6d69105f97357c42fbf5fe1cb22697c218df2a86b3449bc1bb8eca63  .github/ISSUE_TEMPLATE/moai-feature.yml
+f8f4bf176cd2f0c19a084e17fa93a1600f2adf8bb009dd0d6f58e55b6e3ef3fb  .github/ISSUE_TEMPLATE/moai-investigation.yml
+aa6bc438d5093f7f1662eae61f2f44ca66eedc9ac9116ce165b2f95d757a225e  .github/PULL_REQUEST_TEMPLATE/agentic-factory-11-handoff.md
+8dc3fd482b8cbc5f65a31f5b75f5acbedca042a35efe6392cdd59a249cb324a5  .github/workflows/label-sync.yml

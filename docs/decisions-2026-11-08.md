@@ -27,6 +27,15 @@
 | 17:0x | AGENTS.* 재설계 | 재귀적 자가 생성 구조로 본문 재작성, `moai-cli agents-plan/apply`로 관리 구간 재생성(state unchanged, plan digest sha256:a8ad47c0…) | AGENTS.md, AGENTS.local.md | 다음 세션부터 이 절차로 계속 개선 |
 | 17:1x | 공유 interface 소유자(중복 12묶음) | 상류 Issue 소유: tree digest→00-A, GitHub 읽기 adapter→00-B, `.moai-cli` 하위 경로(P09)·agents.rs 리팩터→01-B, exit code→01-C, host 설정 병합·toml_edit→02-B, 지원표 문서→02-C, redaction 모듈→03-B, PR 템플릿·write_scope→06-C, outbox marker→07-B, `.github/workflows`→08-D | 중복 묶음을 적은 모든 Issue | 비소유 Issue는 참조만 |
 | 17:1x | 첫 배차 | 00-A #1985→agent-4, 00-B #1986→agent-3 (worktree `issue/<n>-<key>`, PR→v2026.11.0) | #1985 #1986 | agent-2 r7 재검토 병행 |
+| 17:3x | 00-A HOLD-00A-1 수집기 위치 | A: Rust `moai-cli baseline-inventory` | #1985 | agent-4 blocked 보고로 상정 |
+| 17:3x | 00-A HOLD-00A-3 산출물 추적 | `.moai-cli/manifests/baseline/` tracked + 개인 경로·secret 검사 | #1985 | — |
+| 17:3x | 00-A AC-3 재정의 | Go 런타임 경로(`.moai/logs/`·`state/`·`db/`) 제외 + fixture에서 moai-cli 직접 쓰기 0 | #1985 | 전체 `.moai/` 전후 동일은 Go 훅 때문에 성립 불가(실측) |
+| 17:3x | 레인 소유 댓글 게시 경로 | worktree 가드가 `gh`·Write를 막는 동안 **리더가 레인 보고를 대신 게시**(게시문에 "레인 agent-N 보고 중계" 명시). 가드는 변경하지 않음 | 모든 레인 | 독립성 약화는 알려진 trade-off |
+| 16:5x | 레인 worktree 위치 | ~~리더 결정: `.claude/worktrees/`~~ → agent-4 이의(`.claude/` 보존 경계·00-A 측정 오염)로 철회. **사용자 결정 16:5x→17:0x: primary 안 `.moai-cli/worktrees/<issue>-<key>`를 Claude·Codex 공통 기본 위치로**, `.gitignore`에 `/.moai-cli/worktrees/` 추가(리더; 중첩 worktree는 `.git` 파일 때문에 ignore 없이는 untracked로 표시됨). Go 훅은 변경하지 않음. agent-3(`.claude/worktrees/issue-1986-00-B`)·agent-4(형제 디렉터리) 모두 이동 | 모든 레인 | Go `moai` 훅은 primary 밖 Edit/Write 거부(바이너리 내부 검사) |
+| 17:1x | 00-B HOLD-00B-3 수집기 위치 | RC1 임시: `tests/` Python 유지; Rust 이전은 07-A #2008 후속 | #1986 | agent-2 조건부 FAIL 해소 조건 |
+| 17:1x | 00-B HOLD-00B-2 API 버전 pin | RC1 임시: gh 기본(헤더 미전송) 유지; pin은 07-A에서 | #1986 | fixture 재기록 없음 |
+| 17:1x | 00-A 범위(리더 확정, 소유자 결정의 귀결) | tree digest 소유 Issue로서 공용 `tree_digest(root, excludes)` 함수를 00-A PR에 포함(00A-AC-8); 05-C는 호출만 | #1985 #2003 | agent-2 r10 "주인 없는 산출물" 해소 |
+| 17:1x | 인수 산출물 재배치 | workflows(rc-ci·rc-e2e)→08-D, PR 템플릿·pr-contract→06-C(REQ-06C-13), outbox.rs→07-B, generation 훅→01-B | #2015 #2007 #2009 #1989 | r11 |
 
 부분 결정 분리: P08은 claim 방식(⑤+①)만 결정, lease·heartbeat 수치 HOLD · P15는 ZCode 헤드리스 범위만 결정, 나머지 host 지원표 HOLD.
 
