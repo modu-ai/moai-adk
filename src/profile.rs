@@ -7,8 +7,9 @@
 //! the profile `project-apply` last wrote, recorded in
 //! `.moai-cli/manifests/profile-baseline.json`; the generation manifest records only
 //! the digest, and updating it stays 03-C's job. A file without a recoverable baseline
-//! is treated as user-edited throughout: any key the input would change is a conflict
-//! and nothing is written. General YAML (comments, anchors, block style) keeps the v1
+//! is treated as user-edited throughout: any key except the MoAI-owned
+//! `schema_version` lands on a conflict when the input would change it, and nothing is
+//! written. General YAML (comments, anchors, block style) keeps the v1
 //! behaviour: edits are refused with "existing YAML requires preservation review"
 //! until the lossless-editing HOLD is decided.
 
@@ -272,7 +273,19 @@ fn compute_delta(baseline: Option<&Value>, current: Option<&Value>, desired: &Va
         let d = desired_map.get(key);
         let c = current_map.and_then(|m| m.get(key));
         let b = baseline_map.and_then(|m| m.get(key));
-        match decide(b, c, d) {
+        // schema_version is MoAI-owned schema state, never user content (leader decision
+        // on the #2052 audit): a v1 file upgrades to v2 even without a baseline, while
+        // every other key keeps the conservative no-baseline conflict.
+        let decision = if key == "schema_version" {
+            if c == d {
+                KeyDecision::KeepCurrent
+            } else {
+                KeyDecision::Apply
+            }
+        } else {
+            decide(b, c, d)
+        };
+        match decision {
             KeyDecision::KeepCurrent => delta.unchanged.push(key.into()),
             KeyDecision::Apply => match (c.is_some(), d.is_some()) {
                 (false, true) => delta.added.push(key.into()),
@@ -357,9 +370,10 @@ pub fn plan(root: &Path, profile: Profile) -> Result<Plan> {
 }
 
 /// Rebuilds the profile object for an `update`: applied keys take the desired value,
-/// user-preserved keys and unknown user keys stay byte-for-byte as they are. The whole
-/// object is re-serialized with sorted keys; preserving hand-written key order needs
-/// the `preserve_order` decision (a Cargo.lock change) and stays a HOLD.
+/// user-preserved keys and unknown user keys stay byte-for-byte as they are.
+/// `serde_json` runs with `preserve_order` (Issue #1992, leader RC1 decision H1 = B),
+/// so existing keys keep their file order and keys `delta.added` appends them at the
+/// end of the object.
 fn splice_update(current: &[u8], desired: &Value, delta: &Delta) -> Result<Vec<u8>> {
     let mut value: Value = serde_json::from_slice(current)
         .map_err(|_| "existing YAML requires preservation review")?;

@@ -7,7 +7,7 @@
   "additionalProperties": false,
   "required": ["schema_version", "project_id", "purpose", "tools", "development_methods", "hosts"],
   "properties": {
-    "schema_version": {"type": "integer", "minimum": 0},
+    "schema_version": {"enum": [1, 2]},
     "project_id": {"type": "string"},
     "purpose": {"type": "string"},
     "tools": {"type": "array", "items": {"type": "string"}},

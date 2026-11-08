@@ -294,9 +294,8 @@ fn general_yaml_is_preserved_by_refusal() {
 
 #[test]
 fn profile_v1_file_still_readable_under_v2() {
-    // REQ-03A-01: v1 files stay readable with defaulted new fields. An in-place upgrade
-    // needs a baseline, so a hand-made v1 file plans a conservative conflict and is
-    // preserved until a recorded apply establishes one.
+    // REQ-03A-01: v1 files stay readable with defaulted new fields, and a matching v2
+    // input plans the upgrade instead of stalling on the schema marker (audit #2052).
     let root = TempDir::new().unwrap();
     fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
     let file = root.path().join(".moai-cli/project.yaml");
@@ -317,8 +316,9 @@ fn profile_v1_file_still_readable_under_v2() {
         &["project-plan", root.path().to_str().unwrap()],
         &v2_input(),
     ));
-    assert_eq!(plan["action"], "conflict");
-    assert!(plan["delta"]["conflict"]
+    assert_eq!(plan["action"], "update");
+    assert!(plan["delta"]["conflict"].as_array().unwrap().is_empty());
+    assert!(plan["delta"]["changed"]
         .as_array()
         .unwrap()
         .contains(&json!("schema_version")));
@@ -326,7 +326,59 @@ fn profile_v1_file_still_readable_under_v2() {
         .as_array()
         .unwrap()
         .contains(&json!("interview_revision")));
+    // The plan is read-only: the v1 file waits for the apply.
     assert_eq!(fs::read(&file).unwrap(), bytes);
+}
+
+#[test]
+fn profile_v1_file_without_baseline_upgrades_to_v2() {
+    // Audit #2052 FAIL fix (leader decision a): schema_version is MoAI-owned, so a v1
+    // file with no baseline record upgrades to v2 as an `update`. Other keys keep the
+    // no-baseline rule — a value the input would change stays a conflict.
+    let root = TempDir::new().unwrap();
+    let file = root.path().join(".moai-cli/project.yaml");
+    fs::create_dir_all(file.parent().unwrap()).unwrap();
+    let v1 = json!({
+        "schema_version": 1, "project_id": "demo", "purpose": "Build a small editor",
+        "tools": ["Rust"], "development_methods": ["TDD"], "hosts": ["claude", "codex"]
+    });
+    write_json(&file, &v1);
+    let input = v2_input();
+    let plan = ok_result(&cli(
+        &["project-plan", root.path().to_str().unwrap()],
+        &input,
+    ));
+    assert_eq!(plan["action"], "update");
+    assert!(plan["delta"]["conflict"].as_array().unwrap().is_empty());
+    let result = apply_result(&root, &plan);
+    assert_eq!(result["state"], "updated");
+    let after = json_file(&file);
+    assert_eq!(after["schema_version"], json!(2));
+    assert_eq!(after["interview_revision"], json!("rc1-fixture-1"));
+    assert_eq!(after["purpose"], json!("Build a small editor"));
+    assert_eq!(after["tools"], json!(["Rust"]));
+    assert_eq!(after["decisions"][0]["id"], json!("d1"));
+    // The apply recorded the baseline, so the same input is `unchanged` afterwards.
+    let again = ok_result(&cli(
+        &["project-plan", root.path().to_str().unwrap()],
+        &input,
+    ));
+    assert_eq!(again["action"], "unchanged");
+    // A v1 value the input would change is still a conflict without a baseline; the
+    // schema marker alone never unlocks the other keys.
+    let root2 = TempDir::new().unwrap();
+    let file2 = root2.path().join(".moai-cli/project.yaml");
+    fs::create_dir_all(file2.parent().unwrap()).unwrap();
+    write_json(&file2, &v1);
+    let mut clashing = v2_input();
+    clashing["purpose"] = json!("Different purpose");
+    let plan = ok_result(&cli(
+        &["project-plan", root2.path().to_str().unwrap()],
+        &clashing,
+    ));
+    assert_eq!(plan["action"], "conflict");
+    assert_eq!(plan["delta"]["conflict"], json!(["purpose"]));
+    assert!(String::from_utf8_lossy(&fs::read(&file2).unwrap()).contains("Build a small editor"));
 }
 #[test]
 fn stale_and_tampered_plans_do_not_overwrite() {
