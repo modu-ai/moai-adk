@@ -1,0 +1,12 @@
+   Compiling moai-cli v2026.11.0-rc.1 (/Users/goos/MoAI/moai-adk/.moai-cli/worktrees/2015-08-D)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.12s
+     Running tests/e2e_host_fixture.rs (/tmp/moai-rc-target-agent-7/debug/deps/e2e_host_fixture-02b7f373ce464369)
+
+running 5 tests
+test e2e_clean_clone_carries_portable_read_plan_assets ... ok
+test e2e_digest_mismatch_is_fail_closed ... ok
+test e2e_never_writes_outside_temp_home ... ok
+test e2e_setup_update_interrupt_restore_preserves_user_edits ... ok
+test e2e_second_update_is_diff_zero ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 8.28s
