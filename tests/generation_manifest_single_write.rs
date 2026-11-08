@@ -114,6 +114,54 @@ fn generation_paths(m: &Value) -> Vec<String> {
     paths
 }
 
+/// #2109's bare `kind` rides the single manifest publish: the hook's value is
+/// re-decoded through the typed `OwnedFile`, which must keep it, and an interrupted
+/// apply leaves the previous `kind` entries in place.
+#[test]
+fn single_publish_keeps_owned_file_kind() {
+    let root = generation_project();
+    let out = apply(&root, &plan(&root, "en"));
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stdout)
+    );
+    let kinds = |m: &Value| -> Vec<(String, Value)> {
+        let mut v: Vec<(String, Value)> = m["owned_files"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|f| {
+                f["section_id"]
+                    .as_str()
+                    .is_some_and(|s| s.starts_with("generation:"))
+            })
+            .map(|f| (f["path"].as_str().unwrap().to_string(), f["kind"].clone()))
+            .collect();
+        v.sort_by(|a, b| a.0.cmp(&b.0));
+        v
+    };
+    let before = kinds(&manifest(&root));
+    assert!(!before.is_empty());
+    assert!(
+        before.iter().all(|(_, k)| *k == json!("workflow")),
+        "every generation entry carries kind after the typed re-decode: {before:?}"
+    );
+
+    let second = plan(&root, "ko");
+    let dir = root.path().join(WORKFLOW_DIR);
+    let original = fs::metadata(&dir).unwrap().permissions();
+    fs::set_permissions(&dir, fs::Permissions::from_mode(0o555)).unwrap();
+    let out = apply(&root, &second);
+    fs::set_permissions(&dir, original).unwrap();
+    assert!(!out.status.success());
+    assert_eq!(
+        kinds(&manifest(&root)),
+        before,
+        "kind survives the interruption"
+    );
+}
+
 /// AC-1/AC-2: a generation file publish fails after `agents_apply` has already
 /// rewritten the manifest. The manifest must still carry the generation baselines
 /// and the linkage fields the previous successful apply recorded.
