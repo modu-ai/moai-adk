@@ -278,8 +278,9 @@ fn launch(
 }
 
 /// Internal operations (01-C #1990): subcommand word and operation name. The launchers are
-/// developer tools and stay outside the envelope contract.
-const OPERATIONS: [(&str, &str); 15] = [
+/// developer tools and stay outside the envelope contract. A slice, not a fixed-length array:
+/// two branches each bumping the length to the same number merged silently (#2044).
+const OPERATIONS: &[(&str, &str)] = &[
     ("package-inspect", "package.inspect"),
     ("project-plan", "project.plan"),
     ("project-apply", "project.apply"),
