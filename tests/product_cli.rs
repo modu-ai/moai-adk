@@ -993,6 +993,23 @@ fn tree_digest_stable_sensitive_and_excludes() {
     assert_ne!(d1, moai_cli::tree_digest(r, &["skip/"]).unwrap());
 }
 #[test]
+fn baseline_lists_paths_the_checksum_format_cannot_carry() {
+    let (root, _) = baseline_fixture();
+    write_file(root.path(), "back\\slash.txt", b"x\n");
+    let (out, v) = baseline(&root, &[]);
+    assert!(out.status.success(), "{:?}", out.stderr);
+    assert_eq!(
+        v["inventory"]["checksum_unrepresentable"],
+        json!(["back\\slash.txt"])
+    );
+    assert!(!v["checksums"].as_str().unwrap().contains("slash"));
+    assert!(v["inventory"]["changes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|c| c["path"] == json!("back\\slash.txt")));
+}
+#[test]
 fn baseline_without_or_with_unknown_commit_degrades_without_error() {
     let (root, _) = baseline_fixture();
     let (out, v) = baseline(&root, &[]);

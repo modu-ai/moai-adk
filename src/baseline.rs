@@ -606,11 +606,16 @@ pub fn inventory(project: &Path, go_commit: Option<&str>, go_repo: Option<&Path>
     let mut excluded_changes = 0;
     let changed = changes(&root, &mut excluded_changes)?;
     let mut sums = BTreeMap::new();
+    // shasum-format lines cannot carry these paths unescaped; they stay in `files`/`changes`
+    // and are listed here so the omission is visible rather than silent.
+    let mut unrepresentable = BTreeSet::new();
     for f in files.iter().chain(changed.iter()) {
         if let (Some(p), Some(s), Some("file")) =
             (f["path"].as_str(), f["sha256"].as_str(), f["kind"].as_str())
         {
-            if !p.contains('\n') && !p.contains('\\') {
+            if p.contains('\n') || p.contains('\\') {
+                unrepresentable.insert(p.to_string());
+            } else {
                 sums.insert(p.to_string(), s[7..].to_string());
             }
         }
@@ -642,6 +647,7 @@ pub fn inventory(project: &Path, go_commit: Option<&str>, go_repo: Option<&Path>
             "schema_version": 1, "collected_at": collected_at, "head_sha": head,
             "files": files, "changes": changed,
             "excluded_prefixes": EXCLUDED_PREFIXES, "excluded_changes": excluded_changes,
+            "checksum_unrepresentable": unrepresentable,
             "measurements": measurements,
             "measured_at": "collected_at",
         },

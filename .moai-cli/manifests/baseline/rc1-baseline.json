@@ -1,6 +1,6 @@
 {
   "branch": "v2026.11.0",
-  "collected_at": "2026-11-08T08:15:16Z",
+  "collected_at": "2026-11-08T08:22:41Z",
   "head_sha": "a6c67ba2d2750c42e0d46b9c5a626db38dc0b555",
   "home": [
     {
@@ -22,6 +22,10 @@
       {
         "ref": "refs/heads/2026.11.0-rc.1",
         "sha": "f6808390bd83c53e44964ed1d4645727945ea1cc"
+      },
+      {
+        "ref": "refs/heads/issue/1985-00-A",
+        "sha": "7d99f6dbce1f1f660328391e2062876488ec77fc"
       },
       {
         "ref": "refs/heads/issue/1986-00-B",
@@ -47,7 +51,7 @@
     },
     {
       "branch": "refs/heads/issue/1985-00-A",
-      "head": "64e4459e00e31afcf612f4595df79697a7f90aff",
+      "head": "7d99f6dbce1f1f660328391e2062876488ec77fc",
       "path": ".moai-cli/worktrees/issue-1985-00-A"
     },
     {

@@ -33,6 +33,7 @@ jq -j .checksums out.json > rc1-inventory.sha256   # -j: 마지막 빈 줄이 �
 - git은 `--no-optional-locks`로 호출해 index를 갱신하지 않는다. Go 기준선은 `cat-file -e`와 `ls-tree -r -z`로만 읽고 checkout·reset·fetch는 하지 않는다.
 - 현재 설치본의 git blob id는 `hash-object --no-filters`(`-w` 없음)로 계산한다. 콘텐츠 해시는 SHA-256(`sha256:<64 lowercase hex>`)이고 git object(SHA-1)는 대조용으로만 함께 적는다.
 - 심볼릭 링크는 따라가지 않고 링크 대상 문자열을 해시한다. 체크섬 파일에는 넣지 않는다(`shasum`은 링크를 따라가기 때문).
+- 줄바꿈이나 `\`가 들어간 경로는 shasum 형식으로 그대로 적을 수 없어 체크섬 파일에서 빠진다. 대신 `files`/`changes`에는 남고, 빠진 경로는 `inventory.checksum_unrepresentable`에 나열한다(이번 측정에서는 0건).
 - `status --porcelain=v2`는 v1과 달리 형식 안정성이 문서로 보장되지 않으므로, `#` 헤더와 모르는 레코드는 건너뛴다.
 - 레인 worktree(`.claude/worktrees/`, `.moai-cli/worktrees/`, `.worktrees/`)는 측정 대상에서 빼고, 뺀 개수를 `excluded_changes`·`excluded_active_files`에 남긴다.
 
@@ -54,18 +55,19 @@ jq -j .checksums out.json > rc1-inventory.sha256   # -j: 마지막 빈 줄이 �
 - 빈 디렉터리는 반영되지 않는다. `excludes`는 root 기준 경로이며 그 경로 자체와 하위가 빠진다. 특수 파일, 읽을 수 없는 파일, non-UTF-8 경로는 오류로 드러낸다.
 - `claude-diff.json`의 `active_tree_digest`는 현재 설치본 `.claude/`(`worktrees/` 제외)의 값이다.
 
-## 측정 결과 (2026-11-08T08:15:16Z, HEAD a6c67ba2d2750c42e0d46b9c5a626db38dc0b555)
+## 측정 결과 (2026-11-08T08:22:41Z, HEAD a6c67ba2d2750c42e0d46b9c5a626db38dc0b555)
 
 | 항목 | 값 | 측정 명령 |
 |---|---|---|
 | tracked 파일 | 116 | `git ls-files -s -z` |
-| 변경된 tracked 파일 | 19 | `git status --porcelain=v2 -z --untracked-files=all` |
+| 변경된 tracked 파일 | 24 | `git status --porcelain=v2 -z --untracked-files=all` |
 | untracked 파일 | 50 | 같은 명령 |
 | 체크섬 행 | 166 | tracked·변경 행 중 일반 파일 |
 | worktree | 3 | `git worktree list --porcelain -z` |
 | Go 기준선 `.claude` | 600 | `git ls-tree -r -z 4fa2aa9… -- .claude` |
 | Go template `.claude` | 512 | 같은 명령, `internal/template/templates` |
 | 현재 설치본 `.claude/` | 186 | 파일 시스템 walk(링크 비추종, worktree 제외 0) |
+| 참고: Issue 본문의 template 513 | — | moai-adk-go 작업 트리 `find` 값. 위 512는 기준선 커밋의 `ls-tree` 값이라 기준이 다르다 |
 | 분류 합계 | 654 = identical 479 + baseline-only 89 + template-only 52 + differing 32 + active-only 2 | `claude-diff.json` |
 
 변경·untracked 파일 수는 이 시점의 primary checkout 작업 트리를 반영한다. 다른 세션이 작업 중이면 값이 바뀌며, 이 수치는 위 시각에만 유효하다.

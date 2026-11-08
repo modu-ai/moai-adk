@@ -466,7 +466,7 @@
       "object_index": "0140e6b892896be1f73477ce3e109b0c6b1d362e",
       "orig_path": null,
       "path": ".moai-cli/manifests/github-issues.json",
-      "sha256": "sha256:b56088eb027d3189edcce56b29f6f27436ce3b97fe8cb9a61bb0005f01b738d9",
+      "sha256": "sha256:5842f55e9c813fffd59c0b64176ca8a9828010c7541966f2d1d06edd88bf428c",
       "status": "ordinary",
       "xy": ".M"
     },
@@ -476,7 +476,7 @@
       "object_index": "2780534d28081d115f6e326619b975a579ad5c83",
       "orig_path": null,
       "path": ".moai-cli/reports/issue-bodies/1974-00-C.md",
-      "sha256": "sha256:fd937fbbd75d7c7e38d7761d1d876c291c7cdfc5916cef5bf0755f4766fe64f7",
+      "sha256": "sha256:095fef39ee8a4807ee8722caa60352dde0adf37b54862a67221d9298a4a0dd6f",
       "status": "ordinary",
       "xy": ".M"
     },
@@ -516,7 +516,7 @@
       "object_index": "50105046f9194c87ecc4a4cef22151e9209b4e8f",
       "orig_path": null,
       "path": ".moai-cli/reports/issue-bodies/1987-00-D.md",
-      "sha256": "sha256:72a039af34993f9dc1efba3064f5c5fae9b73a9b0ec4149b27c90422166d9a2f",
+      "sha256": "sha256:fc35478fd5d8d29665fe567e28a461a03b75482eaa8ae505ba29ecdf5d03cac5",
       "status": "ordinary",
       "xy": ".M"
     },
@@ -527,6 +527,36 @@
       "orig_path": null,
       "path": ".moai-cli/reports/issue-bodies/1989-01-B.md",
       "sha256": "sha256:a192ac62b657604a4b84d230a81173063375edbe0831aa58856ec65ebc9968b9",
+      "status": "ordinary",
+      "xy": ".M"
+    },
+    {
+      "kind": "file",
+      "object_head": "482fb910faae818f64dc13479e7aa6c0bb1d156c",
+      "object_index": "482fb910faae818f64dc13479e7aa6c0bb1d156c",
+      "orig_path": null,
+      "path": ".moai-cli/reports/issue-bodies/1990-01-C.md",
+      "sha256": "sha256:baaa20e67f751d16f47621da3b45b49611947f7df72eb14042cbbc218f78f630",
+      "status": "ordinary",
+      "xy": ".M"
+    },
+    {
+      "kind": "file",
+      "object_head": "7aead420618af32b3ec8f4935c3a274b88e4de07",
+      "object_index": "7aead420618af32b3ec8f4935c3a274b88e4de07",
+      "orig_path": null,
+      "path": ".moai-cli/reports/issue-bodies/1992-02-B.md",
+      "sha256": "sha256:c7b67778325260d2eb70e1c978b0b71976027dad39cbd5ff54b0eebd6a0435f0",
+      "status": "ordinary",
+      "xy": ".M"
+    },
+    {
+      "kind": "file",
+      "object_head": "1bc8987afdcc0ff8591af9e82a1d59b04ef8281e",
+      "object_index": "1bc8987afdcc0ff8591af9e82a1d59b04ef8281e",
+      "orig_path": null,
+      "path": ".moai-cli/reports/issue-bodies/1993-02-C.md",
+      "sha256": "sha256:fd285f90c1dc1dde601402fffe5cf808794295167ec20d9589f874b8d942e519",
       "status": "ordinary",
       "xy": ".M"
     },
@@ -576,7 +606,17 @@
       "object_index": "2e00b7cb26cc0d2f3f38ce9e2ce999e3c6cc9108",
       "orig_path": null,
       "path": ".moai-cli/reports/issue-bodies/2007-06-C.md",
-      "sha256": "sha256:edaf39f4906d4177e2bc31c6de3b6baa462183a402bfd9f0f2150896e1169f07",
+      "sha256": "sha256:58bc71895747d4aaeeb9fb88fd41b99d9a9ffd06d20eac1d2d50da87a953c110",
+      "status": "ordinary",
+      "xy": ".M"
+    },
+    {
+      "kind": "file",
+      "object_head": "c1345e193bbd5e0d2fba5a500fdc837db985727b",
+      "object_index": "c1345e193bbd5e0d2fba5a500fdc837db985727b",
+      "orig_path": null,
+      "path": ".moai-cli/reports/issue-bodies/2008-07-A.md",
+      "sha256": "sha256:b3b29e643d5d5e20f9dfc764393e82e83ca3f223b25823054c1651cedb465f44",
       "status": "ordinary",
       "xy": ".M"
     },
@@ -596,7 +636,17 @@
       "object_index": "74801717ab2aef86629858acd2508c782262a0aa",
       "orig_path": null,
       "path": ".moai-cli/reports/issue-bodies/2010-07-C.md",
-      "sha256": "sha256:ba2227db02956a7195003480498f4f66569331555005ea537d25fbccc57866ab",
+      "sha256": "sha256:5cd43c30dc1a9fabbea96f5b71be207e054b0bec668e8a78f36c63740b5fe8fb",
+      "status": "ordinary",
+      "xy": ".M"
+    },
+    {
+      "kind": "file",
+      "object_head": "2c1bacbaadceef5c646bed08a404da3ae0e73862",
+      "object_index": "2c1bacbaadceef5c646bed08a404da3ae0e73862",
+      "orig_path": null,
+      "path": ".moai-cli/reports/issue-bodies/2011-07-D.md",
+      "sha256": "sha256:f25b38d31db9b125342ed24d07c82f36c00799429e8592a4c4a20ff9b7e6d5cd",
       "status": "ordinary",
       "xy": ".M"
     },
@@ -626,7 +676,7 @@
       "object_index": "3ca412680f37f4342d3c787ba938f1622309a7fb",
       "orig_path": null,
       "path": ".moai-cli/reports/issue-bodies/2015-08-D.md",
-      "sha256": "sha256:da0dde597a1627f29c3764464351de3b8d8429d717d10c7abd9d70d3a5be2615",
+      "sha256": "sha256:5ca8af4b237edb90ee02e383c03505a7f2811ebceef71fb44a85daaaba7d7fe0",
       "status": "ordinary",
       "xy": ".M"
     },
@@ -646,7 +696,7 @@
       "object_index": "27b972af7c875a2bc5d12e34f67234b004db75bb",
       "orig_path": null,
       "path": "docs/decisions-2026-11-08.md",
-      "sha256": "sha256:2b3d3549c1d9265eef958ea674fab14d4eccd01618d05491e85adb2312587387",
+      "sha256": "sha256:8020faa7f7be891da6054b4196a78cc27971e183836d97e3fe1a0370c7ff178d",
       "status": "ordinary",
       "xy": ".M"
     },
@@ -691,7 +741,8 @@
       "xy": "??"
     }
   ],
-  "collected_at": "2026-11-08T08:15:16Z",
+  "checksum_unrepresentable": [],
+  "collected_at": "2026-11-08T08:22:41Z",
   "excluded_changes": 0,
   "excluded_prefixes": [
     ".claude/worktrees/",
@@ -753,7 +804,7 @@
       "mode": "100644",
       "object": "0140e6b892896be1f73477ce3e109b0c6b1d362e",
       "path": ".moai-cli/manifests/github-issues.json",
-      "sha256": "sha256:b56088eb027d3189edcce56b29f6f27436ce3b97fe8cb9a61bb0005f01b738d9"
+      "sha256": "sha256:5842f55e9c813fffd59c0b64176ca8a9828010c7541966f2d1d06edd88bf428c"
     },
     {
       "kind": "file",
@@ -788,7 +839,7 @@
       "mode": "100644",
       "object": "2780534d28081d115f6e326619b975a579ad5c83",
       "path": ".moai-cli/reports/issue-bodies/1974-00-C.md",
-      "sha256": "sha256:fd937fbbd75d7c7e38d7761d1d876c291c7cdfc5916cef5bf0755f4766fe64f7"
+      "sha256": "sha256:095fef39ee8a4807ee8722caa60352dde0adf37b54862a67221d9298a4a0dd6f"
     },
     {
       "kind": "file",
@@ -879,7 +930,7 @@
       "mode": "100644",
       "object": "50105046f9194c87ecc4a4cef22151e9209b4e8f",
       "path": ".moai-cli/reports/issue-bodies/1987-00-D.md",
-      "sha256": "sha256:72a039af34993f9dc1efba3064f5c5fae9b73a9b0ec4149b27c90422166d9a2f"
+      "sha256": "sha256:fc35478fd5d8d29665fe567e28a461a03b75482eaa8ae505ba29ecdf5d03cac5"
     },
     {
       "kind": "file",
@@ -900,7 +951,7 @@
       "mode": "100644",
       "object": "482fb910faae818f64dc13479e7aa6c0bb1d156c",
       "path": ".moai-cli/reports/issue-bodies/1990-01-C.md",
-      "sha256": "sha256:1a1832c605577e65a91a1f42764522f4d780fbb0249c445c06e868b6c57e7e49"
+      "sha256": "sha256:baaa20e67f751d16f47621da3b45b49611947f7df72eb14042cbbc218f78f630"
     },
     {
       "kind": "file",
@@ -914,14 +965,14 @@
       "mode": "100644",
       "object": "7aead420618af32b3ec8f4935c3a274b88e4de07",
       "path": ".moai-cli/reports/issue-bodies/1992-02-B.md",
-      "sha256": "sha256:db1fcc03fafdad9e942fb467f4ba21cab01f0e8c4dac32f9df0f432f3d4d0a6a"
+      "sha256": "sha256:c7b67778325260d2eb70e1c978b0b71976027dad39cbd5ff54b0eebd6a0435f0"
     },
     {
       "kind": "file",
       "mode": "100644",
       "object": "1bc8987afdcc0ff8591af9e82a1d59b04ef8281e",
       "path": ".moai-cli/reports/issue-bodies/1993-02-C.md",
-      "sha256": "sha256:6bcaa96efc7709ea85e74cfcbbe404f19d9b0117dfb10ead2932db6b4bc42aa5"
+      "sha256": "sha256:fd285f90c1dc1dde601402fffe5cf808794295167ec20d9589f874b8d942e519"
     },
     {
       "kind": "file",
@@ -1019,14 +1070,14 @@
       "mode": "100644",
       "object": "2e00b7cb26cc0d2f3f38ce9e2ce999e3c6cc9108",
       "path": ".moai-cli/reports/issue-bodies/2007-06-C.md",
-      "sha256": "sha256:edaf39f4906d4177e2bc31c6de3b6baa462183a402bfd9f0f2150896e1169f07"
+      "sha256": "sha256:58bc71895747d4aaeeb9fb88fd41b99d9a9ffd06d20eac1d2d50da87a953c110"
     },
     {
       "kind": "file",
       "mode": "100644",
       "object": "c1345e193bbd5e0d2fba5a500fdc837db985727b",
       "path": ".moai-cli/reports/issue-bodies/2008-07-A.md",
-      "sha256": "sha256:84c2921932c7ea0cdc29c0d43592c59686c8e1ee1757bdba72597fcba542d786"
+      "sha256": "sha256:b3b29e643d5d5e20f9dfc764393e82e83ca3f223b25823054c1651cedb465f44"
     },
     {
       "kind": "file",
@@ -1040,14 +1091,14 @@
       "mode": "100644",
       "object": "74801717ab2aef86629858acd2508c782262a0aa",
       "path": ".moai-cli/reports/issue-bodies/2010-07-C.md",
-      "sha256": "sha256:ba2227db02956a7195003480498f4f66569331555005ea537d25fbccc57866ab"
+      "sha256": "sha256:5cd43c30dc1a9fabbea96f5b71be207e054b0bec668e8a78f36c63740b5fe8fb"
     },
     {
       "kind": "file",
       "mode": "100644",
       "object": "2c1bacbaadceef5c646bed08a404da3ae0e73862",
       "path": ".moai-cli/reports/issue-bodies/2011-07-D.md",
-      "sha256": "sha256:1c8e0f48def60d7b53d014926a1e8d99f063063876d23056bdd3da907962b405"
+      "sha256": "sha256:f25b38d31db9b125342ed24d07c82f36c00799429e8592a4c4a20ff9b7e6d5cd"
     },
     {
       "kind": "file",
@@ -1075,7 +1126,7 @@
       "mode": "100644",
       "object": "3ca412680f37f4342d3c787ba938f1622309a7fb",
       "path": ".moai-cli/reports/issue-bodies/2015-08-D.md",
-      "sha256": "sha256:da0dde597a1627f29c3764464351de3b8d8429d717d10c7abd9d70d3a5be2615"
+      "sha256": "sha256:5ca8af4b237edb90ee02e383c03505a7f2811ebceef71fb44a85daaaba7d7fe0"
     },
     {
       "kind": "file",
@@ -1215,7 +1266,7 @@
       "mode": "100644",
       "object": "27b972af7c875a2bc5d12e34f67234b004db75bb",
       "path": "docs/decisions-2026-11-08.md",
-      "sha256": "sha256:2b3d3549c1d9265eef958ea674fab14d4eccd01618d05491e85adb2312587387"
+      "sha256": "sha256:8020faa7f7be891da6054b4196a78cc27971e183836d97e3fe1a0370c7ff178d"
     },
     {
       "kind": "file",
@@ -1523,7 +1574,7 @@
     {
       "command": "git status --porcelain=v2 -z --untracked-files=all",
       "name": "changed_tracked",
-      "value": 19
+      "value": 24
     },
     {
       "command": "git status --porcelain=v2 -z --untracked-files=all",
