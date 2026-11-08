@@ -2,7 +2,7 @@
 
 ## Input
 
-The approved contract, the exact diff, runner receipts (planned; not implemented in 2026.11.0-rc.1), and findings.
+The approved contract, the exact diff, runner receipts (the internal `audit-reduce` operation re-runs the verification and uses only its own receipt; storing verdicts is not implemented in 2026.11.0-rc.1), and findings.
 
 ## Output
 
@@ -10,7 +10,7 @@ Findings from an independent context and an evidence-bound verdict.
 
 ## Procedure
 
-1. Give only the necessary review package to a host-native context kept separate from the implementation.
+1. Give only the necessary review package to a host-native context kept separate from the implementation: the approved SPEC digest, the exact candidate commit and diff, the verification commands, and an instruction to stay read-only.
 2. Cross-check sources, digests, test traces, unrun checks, and the allowed scope directly.
 3. Record functional, security, consistency, and maintainability findings, with the conditions for fixing each.
 4. Have a deterministic admission step confirm the must-pass conditions and their evidence.

@@ -1,18 +1,16 @@
 {
+  "case": "project-plan-create",
   "args": [
     "project-plan",
     "<root>"
   ],
-  "case": "project-plan-create",
-  "exit": 0,
-  "masked_keys": [
-    "target_binding",
-    "plan_digest",
-    "collected_at",
-    "receipt"
-  ],
-  "stderr": "",
   "stdin": {
+    "schema_version": 2,
+    "project_id": "demo",
+    "purpose": "Build a small editor",
+    "tools": [
+      "Rust"
+    ],
     "development_methods": [
       "TDD"
     ],
@@ -20,22 +18,22 @@
       "claude",
       "codex"
     ],
-    "project_id": "demo",
-    "purpose": "Build a small editor",
-    "schema_version": 1,
-    "tools": [
-      "Rust"
-    ]
+    "interview_revision": "rc1-fixture-1"
   },
+  "exit": 0,
   "stdout": {
-    "ok": true,
-    "operation": "project.plan",
     "protocol_version": 1,
+    "operation": "project.plan",
+    "ok": true,
     "result": {
-      "action": "create",
-      "expected_sha256": null,
-      "plan_digest": "<masked>",
+      "protocol_version": 1,
       "profile": {
+        "schema_version": 2,
+        "project_id": "demo",
+        "purpose": "Build a small editor",
+        "tools": [
+          "Rust"
+        ],
         "development_methods": [
           "TDD"
         ],
@@ -43,15 +41,37 @@
           "claude",
           "codex"
         ],
-        "project_id": "demo",
-        "purpose": "Build a small editor",
-        "schema_version": 1,
-        "tools": [
-          "Rust"
-        ]
+        "interview_revision": "rc1-fixture-1"
       },
-      "protocol_version": 1,
-      "target_binding": "<masked>"
+      "expected_sha256": null,
+      "target_binding": "<masked>",
+      "action": "create",
+      "delta": {
+        "added": [
+          "development_methods",
+          "hosts",
+          "interview_revision",
+          "project_id",
+          "purpose",
+          "schema_version",
+          "tools"
+        ],
+        "changed": [],
+        "removed": [],
+        "unchanged": [
+          "decisions",
+          "package_pin"
+        ],
+        "conflict": []
+      },
+      "plan_digest": "<masked>"
     }
-  }
+  },
+  "stderr": "",
+  "masked_keys": [
+    "target_binding",
+    "plan_digest",
+    "collected_at",
+    "receipt"
+  ]
 }

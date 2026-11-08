@@ -1,21 +1,17 @@
 {
+  "case": "session-dry-run",
   "args": [
     "session",
     "--name",
     "agent-1",
     "--dry-run"
   ],
-  "case": "session-dry-run",
-  "exit": 0,
-  "masked_keys": [
-    "target_binding",
-    "plan_digest",
-    "collected_at",
-    "receipt"
-  ],
-  "stderr": "",
   "stdin": null,
+  "exit": 0,
   "stdout": {
+    "host": "claude",
+    "role": "agent",
+    "name": "agent-1",
     "argv": [
       "claude",
       "--name",
@@ -26,11 +22,15 @@
       "medium"
     ],
     "env_keys": [],
-    "executed": false,
-    "host": "claude",
-    "host_loaded": false,
-    "name": "agent-1",
     "notes": [],
-    "role": "agent"
-  }
+    "host_loaded": false,
+    "executed": false
+  },
+  "stderr": "",
+  "masked_keys": [
+    "target_binding",
+    "plan_digest",
+    "collected_at",
+    "receipt"
+  ]
 }
