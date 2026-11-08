@@ -436,7 +436,18 @@ fn is_create(current: Option<&Vec<u8>>) -> bool {
 
 /// `generation-plan`: the read-only judgment (REQ-03C-01). The agents portion is the
 /// public `agents_plan`; nothing is written.
+/// Canonical `workflow_reference` form: exactly one trailing slash. The recorded
+/// configuration and the existing golden AGENTS.md renders carry the slash, and
+/// `agents.rs` (untouched here) embeds the value verbatim — so the two spellings of
+/// one meaning are normalized to the slash-terminated form before planning (Issue
+/// #2095). A canonical request renders byte-identically to before.
+fn normalize_workflow_reference(raw: &str) -> String {
+    format!("{}/", raw.trim_end_matches('/'))
+}
+
 pub fn generation_plan(root: &Path, request: GenerationRequest) -> Result<GenerationPlan> {
+    let mut request = request;
+    request.workflow_reference = normalize_workflow_reference(&request.workflow_reference);
     validate(&request)?;
     let root = root
         .canonicalize()
@@ -689,6 +700,10 @@ pub fn generation_apply(
     {
         return Err("permission reference required".into());
     }
+    // Same canonical form at the apply entry: an old plan recorded before #2095 with
+    // the raw spelling then fails the digest re-check and must re-preview.
+    let mut p = p;
+    p.request.workflow_reference = normalize_workflow_reference(&p.request.workflow_reference);
     let current = generation_plan(root, p.request.clone())?;
     if p.protocol_version != 1
         || confirmed != p.plan_digest
