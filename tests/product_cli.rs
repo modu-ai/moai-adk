@@ -775,6 +775,212 @@ fn session_rejects_lower_ranked_advisor_and_unknown_host() {
     assert!(!out.status.success());
 }
 
+/// Runs the launcher syntax (00-F #2028). Tests use `--dry-run` only and never start a host.
+fn launcher(args: &[&str], token: Option<&str>) -> std::process::Output {
+    let mut c = Command::new(env!("CARGO_BIN_EXE_moai-cli"));
+    c.args(args).env_remove("CLAUDE_CODE_DISABLE_ADVISOR_TOOL");
+    match token {
+        Some(t) => c.env("ANTHROPIC_AUTH_TOKEN", t),
+        None => c.env_remove("ANTHROPIC_AUTH_TOKEN"),
+    };
+    c.output().unwrap()
+}
+fn launched(out: &std::process::Output) -> Value {
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let v: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(v["executed"], json!(false));
+    v
+}
+#[test]
+fn launcher_leader_default_claude() {
+    let expected = json!([
+        "claude",
+        "--name",
+        "leader",
+        "--model",
+        "opus",
+        "--effort",
+        "medium",
+        "--advisor",
+        "fable",
+        "--dangerously-skip-permissions"
+    ]);
+    for args in [
+        &["-l", "--dry-run"][..],
+        &["cc", "-l", "--dry-run"][..],
+        &["--leader", "--dry-run"][..],
+    ] {
+        let v = launched(&launcher(args, None));
+        assert_eq!(v["argv"], expected, "{args:?}");
+        assert_eq!(
+            (v["host"].clone(), v["role"].clone()),
+            (json!("claude"), json!("leader"))
+        );
+        assert_eq!(v["env_keys"], json!([]));
+    }
+    // `-a` without a host is the Claude Code agent with a fixed default name.
+    let v = launched(&launcher(&["-a", "--dry-run"], None));
+    assert_eq!(v["role"], json!("agent"));
+    assert_eq!(v["argv"][2], json!("agent-1"));
+    assert!(v["notes"].to_string().contains("HOLD"));
+    // Ambiguous or empty invocations fail instead of guessing.
+    assert!(!launcher(&["-l", "-a", "--dry-run"], None).status.success());
+    assert!(!launcher(&["-l", "cc", "--dry-run"], None).status.success());
+    assert!(!launcher(&["cc", "--dry-run"], None).status.success());
+    assert!(!launcher(&["-a", "zcode", "--dry-run"], None)
+        .status
+        .success());
+    assert!(!launcher(&[], None).status.success());
+}
+#[test]
+fn launcher_flags_can_be_disabled() {
+    let v = launched(&launcher(
+        &[
+            "cc",
+            "-a",
+            "--name",
+            "agent-3",
+            "--no-advisor",
+            "--permissions",
+            "--dry-run",
+        ],
+        None,
+    ));
+    assert_eq!(
+        v["argv"],
+        json!(["claude", "--name", "agent-3", "--model", "opus", "--effort", "medium"])
+    );
+    let v = launched(&launcher(
+        &[
+            "-a",
+            "--name",
+            "agent-4",
+            "--model",
+            "sonnet",
+            "--effort",
+            "high",
+            "--dry-run",
+        ],
+        None,
+    ));
+    let argv = v["argv"].to_string();
+    assert!(argv.contains(r#""--model","sonnet","--effort","high","--advisor","fable""#));
+    assert!(!launcher(&["-l", "--effort", "turbo", "--dry-run"], None)
+        .status
+        .success());
+    assert!(!launcher(&["-l", "--name", "two words", "--dry-run"], None)
+        .status
+        .success());
+}
+#[test]
+fn launcher_glm_requires_token_name_only() {
+    let sentinel = "moai-test-sentinel-not-a-real-token";
+    let out = launcher(&["glm", "-a", "--dry-run"], None);
+    assert!(!out.status.success());
+    let err = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        err.contains("ANTHROPIC_AUTH_TOKEN") && err.contains("blocked"),
+        "{err}"
+    );
+    assert!(out.stdout.is_empty());
+    let out = launcher(&["glm", "-l", "--dry-run"], Some(sentinel));
+    let text = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(
+        !text.contains(sentinel),
+        "the token value must never be printed"
+    );
+    let v = launched(&out);
+    assert_eq!(v["host"], json!("glm"));
+    assert_eq!(
+        v["env_keys"],
+        json!([
+            "ANTHROPIC_BASE_URL",
+            "API_TIMEOUT_MS",
+            "ANTHROPIC_AUTH_TOKEN"
+        ])
+    );
+    assert_eq!(
+        v["argv"],
+        json!([
+            "claude",
+            "--name",
+            "leader",
+            "--model",
+            "opus",
+            "--effort",
+            "medium",
+            "--dangerously-skip-permissions"
+        ])
+    );
+    assert!(v["notes"].to_string().contains("advisor"));
+}
+#[test]
+fn launcher_codex_argv() {
+    let v = launched(&launcher(&["codex", "-l", "--dry-run"], None));
+    assert_eq!(
+        v["argv"],
+        json!([
+            "codex",
+            "-s",
+            "workspace-write",
+            "-a",
+            "on-request",
+            "MoAI session name: leader"
+        ])
+    );
+    assert_eq!(v["host"], json!("codex"));
+    assert!(v["notes"].to_string().contains("cross-session"));
+    let v = launched(&launcher(
+        &[
+            "-a",
+            "codex",
+            "--name",
+            "agent-2",
+            "--model",
+            "some-model",
+            "--dry-run",
+        ],
+        None,
+    ));
+    assert_eq!(
+        v["argv"],
+        json!([
+            "codex",
+            "-s",
+            "workspace-write",
+            "-a",
+            "on-request",
+            "-m",
+            "some-model",
+            "MoAI session name: agent-2"
+        ])
+    );
+    let v = launched(&launcher(
+        &[
+            "codex",
+            "-a",
+            "--name",
+            "agent-5",
+            "--dry-run",
+            "first task",
+        ],
+        None,
+    ));
+    assert_eq!(
+        v["argv"].as_array().unwrap().last().unwrap(),
+        &json!("MoAI session name: agent-5\nfirst task")
+    );
+    assert!(!v["argv"].to_string().contains("dangerously"));
+}
+
 fn git_in(dir: &std::path::Path, args: &[&str]) {
     let out = Command::new("git")
         .args([
