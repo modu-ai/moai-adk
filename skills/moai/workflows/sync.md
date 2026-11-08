@@ -6,7 +6,7 @@ A candidate that passed, the latest base, document and Issue revisions, and the 
 
 ## Output
 
-A document diff, an Issue report, an integration receipt, and a closure. The receipt's field contract is below; a command that writes it and the place it is stored are not decided yet (HOLD P06, P09), so in 2026.11.0-rc.1 the receipt is the report text plus the PR body, and every field that was not measured is written as `not_run`.
+A document diff, an Issue report, an integration receipt, and a closure. The receipt's field contract is below. In 2026.11.0-rc.1 it is produced by this procedure with `git` and `gh`, not by a dedicated command, and it is carried in the PR body and the Issue report rather than in a file; every field that was not measured is written as `not_run`. Per-file apply receipts are a different record and stay under the project state directory's `receipts` folder.
 
 ## States
 
