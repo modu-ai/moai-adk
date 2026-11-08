@@ -53,6 +53,10 @@ impl Kind {
 // The wrapping messages (`partial apply: ...; failed at X: <inner>`, `conflict in X: <detail>`)
 // come first because they quote an inner message that would otherwise match.
 const RULES: &[(&str, Kind)] = &[
+    (
+        "unsupported protocol_version",
+        Kind::UnsupportedProtocolVersion,
+    ),
     ("partial apply", Kind::Partial),
     ("partial creation possible", Kind::Partial),
     ("conflict in ", Kind::Conflict),
@@ -143,6 +147,7 @@ mod tests {
     fn every_current_message_has_a_deliberate_kind() {
         use Kind::*;
         let cases = [
+            ("unsupported protocol_version; supported: 1", UnsupportedProtocolVersion),
             ("input exceeds 64 KiB", InputTooLarge),
             ("invalid typed JSON input", InvalidInput),
             ("stdin read failed", Io),

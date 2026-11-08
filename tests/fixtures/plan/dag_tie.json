@@ -1,0 +1,6 @@
+[
+  {"id": "zeta", "depends_on": ["root"], "write_paths": ["src/zeta.rs"], "verifier_refs": ["AC-S-1"], "host": null},
+  {"id": "alpha", "depends_on": ["root"], "write_paths": ["src/alpha.rs"], "verifier_refs": ["AC-S-1"], "host": null},
+  {"id": "mid", "depends_on": ["root"], "write_paths": ["src/mid.rs"], "verifier_refs": ["AC-S-1"], "host": null},
+  {"id": "root", "depends_on": [], "write_paths": ["src/root.rs"], "verifier_refs": ["AC-S-1"], "host": null}
+]

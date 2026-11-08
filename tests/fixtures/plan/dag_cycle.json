@@ -1,0 +1,7 @@
+[
+  {"id": "A", "depends_on": ["C"], "write_paths": ["src/a.rs"], "verifier_refs": ["AC-S-1"], "host": null},
+  {"id": "B", "depends_on": ["A"], "write_paths": ["src/b.rs"], "verifier_refs": ["AC-S-1"], "host": null},
+  {"id": "C", "depends_on": ["B"], "write_paths": ["src/c.rs"], "verifier_refs": ["AC-S-1"], "host": null},
+  {"id": "D", "depends_on": ["D"], "write_paths": ["src/d.rs"], "verifier_refs": ["AC-S-1"], "host": null},
+  {"id": "E", "depends_on": ["A"], "write_paths": ["src/e.rs"], "verifier_refs": ["AC-S-1"], "host": null}
+]

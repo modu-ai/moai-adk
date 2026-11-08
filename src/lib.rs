@@ -2,6 +2,7 @@ pub mod agents;
 pub mod baseline;
 pub mod contract;
 pub mod identity;
+pub mod plan;
 pub mod session;
 pub mod spec;
 pub use agents::{agents_apply, agents_plan, AgentsPlan, AgentsRequest};
