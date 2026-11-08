@@ -82,8 +82,8 @@ untracked 5개는 공유 기본 checkout에만 있고 Issue worktree에는 없�
 | ID | 주제 | 이번 작업에서 한 일 | 결정되지 않은 것 |
 | --- | --- | --- | --- |
 | HOLD-00B-1 | label 체계 | 현황표·축 분류·동의어 후보만 작성, 원격 label 변경 0 | `status:*`·bare 상태 label 사용 여부, 동의어 정리, `type:epic` 또는 org Issue type `Epic`, `area:router/update/forge` 신설, Issue type과 `type:*` label 중 무엇을 쓸지 |
-| HOLD-00B-2 | REST API 버전 고정 | 헤더 없이 수집하고 `api_version`에 그 사실과 gh 버전을 기록 | `X-GitHub-Api-Version: 2026-03-10` 고정 여부. 고정하면 fixture를 다시 기록해야 한다 |
-| HOLD-00B-3 | 수집기 위치 | Issue 파일 범위가 지정한 `tests/` Python으로 구현 | Rust `moai-cli` 내부 명령으로 옮길지(07-A의 읽기 경로와 연결). 이번 구현이 이 선택을 확정하지 않는다 |
+| HOLD-00B-2 | REST API 버전 고정 | 헤더 없이 수집하고 `api_version`에 그 사실과 gh 버전을 기록 | **RC1 임시 결정(사용자, 2026-11-08 18:1x): gh 기본(헤더 미전송) 유지.** `2026-03-10` 고정은 07-A(#2008)에서 다루며, 고정하면 fixture를 다시 기록해야 한다 |
+| HOLD-00B-3 | 수집기 위치 | Issue 파일 범위가 지정한 `tests/` Python으로 구현 | **RC1 임시 결정(사용자, 2026-11-08 18:1x): `tests/` Python 유지.** Rust `moai-cli` 명령으로 옮기는 일은 07-A(#2008) 후속 |
 
 함께 남은 연결 HOLD: 00-C(#1974)가 00-B를 기다리는 dependency는 manifest의 `exception_not_linked`대로 원격에 연결되어 있지 않다.
 
