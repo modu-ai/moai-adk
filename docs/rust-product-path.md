@@ -24,13 +24,13 @@ The Rust RC writes project data under `<project>/.moai-cli/` and will install un
 
 ### Identity and state-root resolver (`identity`)
 
-`moai-cli identity PATH` reports where a path sits in git and which state roots apply to it. It writes nothing and follows no symlink. Boundaries come only from `git rev-parse --path-format=absolute --git-common-dir --git-dir --is-bare-repository --is-inside-work-tree` (and `--show-toplevel` inside a work tree), run with a fixed argv, `LC_ALL=C`, discarded stderr and `GIT_DIR`/`GIT_WORK_TREE`/`GIT_COMMON_DIR`/`GIT_INDEX_FILE`/`GIT_NAMESPACE` removed; whether `.git` is a directory or a gitfile is never inspected. `--path-format` needs git 2.31 or later.
+`moai-cli identity PATH` reports where a path sits in git and which state roots apply to it. It writes nothing and follows no symlink. Boundaries come only from `git rev-parse --path-format=absolute --git-common-dir --git-dir --is-bare-repository --is-inside-work-tree` (and `--show-toplevel` inside a work tree), run with a fixed argv, `LC_ALL=C`, and `GIT_DIR`/`GIT_WORK_TREE`/`GIT_COMMON_DIR`/`GIT_INDEX_FILE`/`GIT_NAMESPACE`, the injected-config variables `GIT_CONFIG_PARAMETERS`/`GIT_CONFIG_COUNT`/`GIT_CONFIG_KEY_*`/`GIT_CONFIG_VALUE_*` and the discovery variables `GIT_CEILING_DIRECTORIES`/`GIT_DISCOVERY_ACROSS_FILESYSTEM` removed (Issue #2033); stderr is read only to classify a failure, and only its first line, cut before any quote or path separator, can reach the output; whether `.git` is a directory or a gitfile is never inspected. `--path-format` needs git 2.31 or later.
 
 Output is one flat JSON object (the current contract: no envelope, exit 0/1):
 
 | Field | Meaning |
 |---|---|
-| `identity_status` | `ok`, `no_git` (not inside a repository) or `git_unavailable` (no `git` on PATH). Anything but `ok` leaves every identity field `null`; nothing is guessed |
+| `identity_status` | `ok`, `no_git` (git reported "not a git repository"), `git_failed` (git ran and failed for another reason, such as a `safe.directory` ownership refusal or a damaged repository; `reason` is `git failed: <path-free summary>`) or `git_unavailable` (no `git` on PATH). Anything but `ok` leaves every identity field `null`; nothing is guessed |
 | `workspace_kind` | `primary` (common dir equals git dir), `linked` (a `git worktree`), `bare`, or `git_dir` (inside a non-bare `.git` directory) |
 | `clone_anchor`, `workspace_git_dir`, `work_tree` | canonical absolute paths of the common dir, the git dir and the top level (`work_tree` is `null` for `bare` and `git_dir`) |
 | `clone_id`, `workspace_id` | `sha256:` of the canonical common dir and git dir; two worktrees of one clone share `clone_id` and differ in `workspace_id` |

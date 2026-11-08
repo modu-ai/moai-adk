@@ -1788,6 +1788,15 @@ fn ident(
     home: &std::path::Path,
     path_env: Option<&str>,
 ) -> (std::process::Output, Value) {
+    ident_env(path, home, path_env, &[])
+}
+/// Like `ident`, with extra caller environment variables (Issue #2033).
+fn ident_env(
+    path: &std::path::Path,
+    home: &std::path::Path,
+    path_env: Option<&str>,
+    envs: &[(&str, &str)],
+) -> (std::process::Output, Value) {
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_moai-cli"));
     cmd.arg("identity")
         .arg(path)
@@ -1795,7 +1804,8 @@ fn ident(
         .env("GIT_CONFIG_GLOBAL", "/dev/null")
         .env("GIT_CONFIG_NOSYSTEM", "1")
         .env_remove("GIT_DIR")
-        .env_remove("GIT_WORK_TREE");
+        .env_remove("GIT_WORK_TREE")
+        .envs(envs.iter().copied());
     if let Some(p) = path_env {
         cmd.env("PATH", p);
     }
@@ -1973,6 +1983,75 @@ fn identity_outside_git_and_missing_git_binary() {
     assert_eq!(v["identity_status"], json!("git_unavailable"));
     assert_eq!(v["clone_id"], Value::Null);
     assert_eq!(v["project_state_root"], Value::Null);
+}
+
+/// Issue #2033 AC-IDF-1: caller environment that would redirect git or change discovery
+/// must not move any reported boundary.
+#[test]
+fn identity_ignores_injected_git_environment() {
+    let repo = TempDir::new().unwrap();
+    let elsewhere = TempDir::new().unwrap();
+    let home = TempDir::new().unwrap();
+    committed_repo(repo.path());
+    fs::create_dir(repo.path().join("sub")).unwrap();
+    let x = elsewhere.path().to_str().unwrap();
+    let worktree_params = format!("'core.worktree'='{x}'");
+    let ceiling = repo.path().to_str().unwrap();
+    // Measured on git 2.54: injected core.bare=true turns a git dir into "bare" through
+    // either config channel, and a ceiling at the repository hides it from a subdirectory.
+    let cases: [&[(&str, &str)]; 6] = [
+        &[
+            ("GIT_CONFIG_COUNT", "1"),
+            ("GIT_CONFIG_KEY_0", "core.worktree"),
+            ("GIT_CONFIG_VALUE_0", x),
+        ],
+        &[
+            ("GIT_CONFIG_COUNT", "1"),
+            ("GIT_CONFIG_KEY_0", "core.bare"),
+            ("GIT_CONFIG_VALUE_0", "true"),
+        ],
+        &[("GIT_CONFIG_PARAMETERS", &worktree_params)],
+        &[("GIT_CONFIG_PARAMETERS", "'core.bare'='true'")],
+        &[("GIT_CEILING_DIRECTORIES", ceiling)],
+        &[("GIT_DISCOVERY_ACROSS_FILESYSTEM", "1")],
+    ];
+    for path in [repo.path().join("sub"), repo.path().join(".git")] {
+        let (out, clean) = ident(&path, home.path(), None);
+        assert!(out.status.success(), "{:?}", out.stderr);
+        assert_eq!(clean["identity_status"], json!("ok"));
+        for envs in cases {
+            let (out, v) = ident_env(&path, home.path(), None, envs);
+            assert!(out.status.success(), "{envs:?}: {:?}", out.stderr);
+            assert_eq!(v, clean, "{path:?} {envs:?} moved the boundary");
+        }
+    }
+}
+
+/// Issue #2033 AC-IDF-2: git present but failing is `git_failed`, not `no_git`, and the
+/// reason carries git's message without any path.
+#[test]
+fn identity_reports_git_failure_separately_from_no_git() {
+    let repo = TempDir::new().unwrap();
+    let home = TempDir::new().unwrap();
+    committed_repo(repo.path());
+    // safe.directory refusal; GIT_CONFIG_GLOBAL=/dev/null leaves no exception configured.
+    let (out, v) = ident_env(
+        repo.path(),
+        home.path(),
+        None,
+        &[("GIT_TEST_ASSUME_DIFFERENT_OWNER", "1")],
+    );
+    assert!(out.status.success(), "{:?}", out.stderr);
+    assert_eq!(v["identity_status"], json!("git_failed"));
+    let reason = v["reason"].as_str().unwrap();
+    assert!(reason.contains("dubious ownership"), "{reason}");
+    assert!(
+        !reason.contains('/') && !reason.contains('\''),
+        "path echoed: {reason}"
+    );
+    for k in ["workspace_kind", "clone_anchor", "clone_id", "workspace_id"] {
+        assert_eq!(v[k], Value::Null, "{k} must not be guessed");
+    }
 }
 
 #[test]

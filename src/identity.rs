@@ -22,41 +22,95 @@ type Result<T> = std::result::Result<T, String>;
 const GIT_OUTPUT_LIMIT: usize = 64 * 1024;
 const ID_DERIVATION: &str = "sha256-canonical-path-v0";
 
+/// Caller variables that would redirect git to another repository, inject configuration
+/// (`core.bare`, `core.worktree`, ...) or change how it discovers one (Issue #2033).
+const GIT_ENV_REMOVED: &[&str] = &[
+    "GIT_DIR",
+    "GIT_WORK_TREE",
+    "GIT_COMMON_DIR",
+    "GIT_INDEX_FILE",
+    "GIT_NAMESPACE",
+    "GIT_CONFIG_PARAMETERS",
+    "GIT_CONFIG_COUNT",
+    "GIT_CEILING_DIRECTORIES",
+    "GIT_DISCOVERY_ACROSS_FILESYSTEM",
+];
+/// Under `LC_ALL=C` git starts its "no repository here" message with this text.
+const NOT_A_REPOSITORY: &str = "not a git repository";
+
 enum Git {
     Unavailable,
-    Failed,
+    /// git ran and failed; carries a path-free summary of its message.
+    Failed(String),
     Lines(Vec<String>),
 }
 
-/// Runs `git -C <dir> rev-parse <args>` with a fixed argv. Variables that would redirect git
-/// to another repository are removed, the locale is fixed, and stderr is discarded so no path
-/// or git message reaches the caller.
+/// First line of git's stderr without its `fatal:`/`error:` prefix, cut before the first
+/// quote or path separator so no repository path reaches the caller.
+fn failure_summary(stderr: &[u8]) -> String {
+    let text = String::from_utf8_lossy(stderr);
+    let line = text.lines().next().unwrap_or("").trim();
+    let line = line
+        .strip_prefix("fatal:")
+        .or_else(|| line.strip_prefix("error:"))
+        .unwrap_or(line)
+        .trim();
+    let cut = line.find(['\'', '"', '/', '\\']).unwrap_or(line.len());
+    let summary: String = line[..cut].trim_end().chars().take(160).collect();
+    if summary.is_empty() {
+        "git rev-parse failed".into()
+    } else {
+        summary
+    }
+}
+
+/// Runs `git -C <dir> rev-parse <args>` with a fixed argv. Variables that would redirect or
+/// reconfigure git are removed and the locale is fixed. stderr is read only to classify a
+/// failure; what reaches the caller is `failure_summary`, never a path.
 fn rev_parse(dir: &Path, args: &[&str]) -> Git {
-    let out = Command::new("git")
-        .arg("--no-optional-locks")
+    let mut cmd = Command::new("git");
+    cmd.arg("--no-optional-locks")
         .arg("-C")
         .arg(dir)
         .arg("rev-parse")
-        .args(args)
-        .env_remove("GIT_DIR")
-        .env_remove("GIT_WORK_TREE")
-        .env_remove("GIT_COMMON_DIR")
-        .env_remove("GIT_INDEX_FILE")
-        .env_remove("GIT_NAMESPACE")
+        .args(args);
+    for key in GIT_ENV_REMOVED {
+        cmd.env_remove(key);
+    }
+    // GIT_CONFIG_KEY_<n>/GIT_CONFIG_VALUE_<n> are numbered, so they are matched by prefix.
+    for (key, _) in std::env::vars_os() {
+        let k = key.to_string_lossy();
+        if k.starts_with("GIT_CONFIG_KEY_") || k.starts_with("GIT_CONFIG_VALUE_") {
+            cmd.env_remove(&key);
+        }
+    }
+    let out = cmd
         .env("GIT_OPTIONAL_LOCKS", "0")
         .env("LC_ALL", "C")
         .stdin(Stdio::null())
-        .stderr(Stdio::null())
+        .stderr(Stdio::piped())
         .output();
     let Ok(out) = out else {
         return Git::Unavailable;
     };
-    if !out.status.success() || out.stdout.len() > GIT_OUTPUT_LIMIT {
-        return Git::Failed;
+    if !out.status.success() {
+        return Git::Failed(failure_summary(&out.stderr));
+    }
+    if out.stdout.len() > GIT_OUTPUT_LIMIT {
+        return Git::Failed("git output exceeded the size limit".into());
     }
     match String::from_utf8(out.stdout) {
         Ok(text) => Git::Lines(text.lines().map(str::to_string).collect()),
-        Err(_) => Git::Failed,
+        Err(_) => Git::Failed("git output was not UTF-8".into()),
+    }
+}
+
+/// `no_git` only when git said so; any other git failure is `git_failed` with its summary.
+fn failed(summary: &str, home: Value) -> Value {
+    if summary.starts_with(NOT_A_REPOSITORY) {
+        empty("no_git", "not inside a git repository", home)
+    } else {
+        empty("git_failed", &format!("git failed: {summary}"), home)
     }
 }
 
@@ -102,7 +156,8 @@ fn empty(status: &str, reason: &str, home: Value) -> Value {
 }
 
 /// Resolves the identity of `path`. Never writes. Returns `Err` only for an unusable input
-/// path or a refused symlink; "not a repository" and "git missing" are typed statuses.
+/// path or a refused symlink; "not a repository", "git failed" and "git missing" are typed
+/// statuses.
 pub fn identity(path: &Path) -> Result<Value> {
     let meta = fs::symlink_metadata(path).map_err(|_| "path unavailable")?;
     if meta.file_type().is_symlink() {
@@ -130,7 +185,7 @@ pub fn identity(path: &Path) -> Result<Value> {
         ],
     ) {
         Git::Unavailable => return Ok(empty("git_unavailable", "git was not found on PATH", home)),
-        Git::Failed => return Ok(empty("no_git", "not inside a git repository", home)),
+        Git::Failed(summary) => return Ok(failed(&summary, home)),
         Git::Lines(l) if l.len() == 4 => l,
         Git::Lines(_) => return Err("unexpected git rev-parse output".into()),
     };
@@ -144,7 +199,8 @@ pub fn identity(path: &Path) -> Result<Value> {
             Git::Unavailable => {
                 return Ok(empty("git_unavailable", "git was not found on PATH", home))
             }
-            _ => return Err("git did not report a work tree".into()),
+            Git::Failed(summary) => return Ok(failed(&summary, home)),
+            Git::Lines(_) => return Err("git did not report a work tree".into()),
         }
     } else {
         None
