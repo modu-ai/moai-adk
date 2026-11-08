@@ -445,3 +445,44 @@ fn forge_read_rejects_bad_input_without_requests() {
         "no state for rejected input"
     );
 }
+
+// ---- #2048: a stalled gh must not block the caller ----
+
+/// A `gh` that prints nothing and never exits on its own. The `sleep` runs as a grandchild of
+/// the shell, so it keeps the output pipes open even if only the shell is ended.
+#[cfg(unix)]
+fn stalled_gh(dir: &std::path::Path) -> std::path::PathBuf {
+    let path = dir.join("gh-stalled");
+    fs::write(&path, "#!/bin/sh\n# test stub: gh that hangs\nsleep 30\n").unwrap();
+    use std::os::unix::fs::PermissionsExt;
+    fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
+    path
+}
+
+#[cfg(unix)]
+#[test]
+fn transport_times_out_on_stalled_gh() {
+    use moai_cli::forge::transport::{GhTransport, Transport};
+    use std::time::{Duration, Instant};
+    let tmp = tempfile::tempdir().unwrap();
+    let bin = stalled_gh(tmp.path()).to_str().unwrap().to_string();
+    let req = HttpRequest {
+        method: "GET".into(),
+        url: "https://api.github.com/repos/acme/widgets".into(),
+        headers: Default::default(),
+        body: None,
+    };
+    let (tx, rx) = std::sync::mpsc::channel();
+    let started = Instant::now();
+    std::thread::spawn(move || {
+        let t = GhTransport { bin };
+        let _ = tx.send(t.send(&req));
+    });
+    // The stub sleeps 30s; the caller must get an answer long before that.
+    let answer = rx
+        .recv_timeout(Duration::from_secs(10))
+        .expect("GhTransport::send did not return within 10s on a stalled gh");
+    let err = answer.expect_err("a stalled gh is not a response");
+    assert!(started.elapsed() < Duration::from_secs(10));
+    assert!(err.contains("timed out"), "{err}");
+}
