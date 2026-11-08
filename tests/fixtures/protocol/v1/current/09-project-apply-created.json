@@ -12,7 +12,8 @@
   "masked_keys": [
     "target_binding",
     "plan_digest",
-    "collected_at"
+    "collected_at",
+    "receipt"
   ],
   "stderr": "",
   "stdin": {
@@ -44,6 +45,7 @@
     "result": {
       "host_verified": false,
       "profile_digest": "sha256:60571df23ab38dd309f928ebbb001b1accc1f3c0d527069543ce3d7f7a375fbf",
+      "receipt": "<masked>",
       "state": "created"
     }
   }
