@@ -151,6 +151,29 @@ enum Command {
     Identity {
         path: PathBuf,
     },
+    /// Claim a task (06-A #2005): typed JSON request on stdin; posts exactly one claim
+    /// comment (⑤) behind the same-host journal serialization (①) and records the record.
+    ClaimAcquire {
+        project: PathBuf,
+    },
+    /// Read the current claim record of a task key; byte-identical when repeated.
+    ClaimShow {
+        project: PathBuf,
+        /// The 16-hex task key an acquire returned.
+        #[arg(long)]
+        task: String,
+    },
+    /// Close the active claim as `cancelled`; the epoch must match the current record.
+    ClaimRelease {
+        project: PathBuf,
+        #[arg(long)]
+        task: String,
+        #[arg(long)]
+        epoch: u64,
+        /// Recorded in the release effect.
+        #[arg(long)]
+        reason: Option<String>,
+    },
     /// Read-only Claude Code check: whether a session started in PROJECT reads AGENTS.md.
     ClaudeDoctor {
         project: PathBuf,
@@ -326,6 +349,9 @@ const OPERATIONS: &[(&str, &str)] = &[
     ("claude-doctor", "claude.doctor"),
     ("codex-projection-plan", "codex.projection_plan"),
     ("codex-doctor", "codex.doctor"),
+    ("claim-acquire", "claim.acquire"),
+    ("claim-show", "claim.show"),
+    ("claim-release", "claim.release"),
     ("todo-promote-preview", "todo.promote.plan"),
     ("todo-promote-apply", "todo.promote.apply"),
     ("run-verify", "run.verify"),
@@ -501,6 +527,25 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             go_repo.as_deref(),
         ),
         Command::Identity { path } => moai_cli::identity::identity(&path),
+        Command::ClaimAcquire { project } => moai_cli::claim::acquire_cli(
+            &project,
+            input::<moai_cli::claim::ClaimRequest>()?,
+            &moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        Command::ClaimShow { project, task } => moai_cli::claim::show_cli(&project, &task),
+        Command::ClaimRelease {
+            project,
+            task,
+            epoch,
+            reason,
+        } => moai_cli::claim::release_cli(
+            &project,
+            &task,
+            epoch,
+            reason.as_deref().unwrap_or("unspecified"),
+            &moai_cli::forge::policy::SystemClock,
+        ),
         Command::ClaudeDoctor { project } => moai_cli::claude::doctor(&project),
         Command::CodexProjectionPlan {
             package,
