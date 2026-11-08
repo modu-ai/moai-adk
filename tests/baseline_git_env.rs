@@ -64,3 +64,29 @@ fn baseline_reads_project_despite_injected_git_dir() {
     let text = String::from_utf8_lossy(&out.stdout);
     assert!(!text.contains(&other_head), "read the injected repository");
 }
+
+fn error_kind(out: &std::process::Output) -> Value {
+    let v: Value = serde_json::from_slice(&out.stdout).unwrap();
+    v["error"]["kind"].clone()
+}
+
+#[test]
+fn baseline_git_failures_follow_the_identity_rule() {
+    // A git failure other than "not a git repository" is `git_failed` (#2033 rule).
+    let bare = tempfile::tempdir().unwrap();
+    git(bare.path(), &["init", "-q", "--bare"]);
+    let (out, _) = inventory(bare.path(), &[]);
+    assert!(!out.status.success());
+    assert_eq!(error_kind(&out), Value::from("git_failed"));
+    let text = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        !text.contains(bare.path().to_str().unwrap()),
+        "path reached the output"
+    );
+
+    // Not a repository keeps its existing kind.
+    let plain = tempfile::tempdir().unwrap();
+    let (out, _) = inventory(plain.path(), &[]);
+    assert!(!out.status.success());
+    assert_eq!(error_kind(&out), Value::from("not_found"));
+}
