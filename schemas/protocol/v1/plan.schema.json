@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:moai:protocol:v1:plan",
+  "title": "Project plan (current, describes src/lib.rs Plan)",
+  "description": "Output of project-plan and input of project-apply. target_binding is the digest of the absolute target path, so it and plan_digest differ between directories by design.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["protocol_version", "profile", "expected_sha256", "target_binding", "action", "plan_digest"],
+  "properties": {
+    "protocol_version": {"type": "integer", "minimum": 0},
+    "profile": {"$ref": "urn:moai:protocol:v1:profile"},
+    "expected_sha256": {"oneOf": [{"type": "null"}, {"$ref": "urn:moai:protocol:v1:digest"}]},
+    "target_binding": {"$ref": "urn:moai:protocol:v1:digest"},
+    "action": {"enum": ["create", "unchanged"]},
+    "plan_digest": {"$ref": "urn:moai:protocol:v1:digest"}
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:moai:protocol:v1:variants:hold-00d-3:error-A",
+  "title": "Candidate error object on stderr, HOLD-00D-3 option A",
+  "description": "Draft only; HOLD-00D-3 belongs to 01-C #1990 and is undecided. message never echoes input values, paths or secret-shaped strings (REQ-00D-11). kind values are the draft list in hold-00d-4-exit-codes.json.",
+  "type": "object",
+  "required": ["protocol_version", "error"],
+  "properties": {
+    "protocol_version": {"type": "integer", "minimum": 1},
+    "error": {
+      "type": "object",
+      "required": ["kind", "message"],
+      "properties": {
+        "kind": {"type": "string"},
+        "message": {"type": "string"},
+        "detail": {"type": "object"}
+      }
+    }
+  }
+}

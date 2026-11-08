@@ -1,0 +1,33 @@
+{
+  "args": [
+    "session",
+    "--name",
+    "agent-1",
+    "--dry-run"
+  ],
+  "case": "session-dry-run",
+  "exit": 0,
+  "masked_keys": [
+    "target_binding",
+    "plan_digest",
+    "collected_at"
+  ],
+  "stderr": "",
+  "stdin": null,
+  "stdout": {
+    "argv": [
+      "claude",
+      "--name",
+      "agent-1",
+      "--model",
+      "opus",
+      "--effort",
+      "medium"
+    ],
+    "executed": false,
+    "host": "claude",
+    "host_loaded": false,
+    "notes": [],
+    "role": "agent"
+  }
+}

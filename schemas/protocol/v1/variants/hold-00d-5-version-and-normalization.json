@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "status": "draft",
+  "hold": "HOLD-00D-5 (P06) is undecided",
+  "version_options": {
+    "integer_additive": {
+      "summary": "integer protocol_version (today 1); additions keep the number, removals, type changes and new required fields raise it",
+      "breaking": ["field removed", "type changed", "enum value removed", "field made required", "validation tightened"],
+      "additive": ["optional field added", "enum value added", "optional parameter added"]
+    },
+    "semver_string": {
+      "summary": "SemVer 2.0.0 strings for protocol and schema separately; needs comparison logic and still needs compatibility fixtures"
+    }
+  },
+  "current_observed": {
+    "protocol_version": "integer; Plan and AgentsPlan emit 1; project-apply and agents-plan reject anything but 1, each with its generic error (fixtures 07 and 15)",
+    "schema_version": "integer; Profile accepts any non-negative value today"
+  },
+  "normalization_options": {
+    "serde_tuple": {
+      "summary": "current: serde_json compact serialization of a field tuple in struct order (src/lib.rs plan_digest)",
+      "example_file": "tests/fixtures/protocol/v1/variants/hold-00d-5/serde-tuple-example.json",
+      "example_value": "(1u32, \"create\")",
+      "example_sha256": "ca9f0e126be9ad01d010599d4e736a25712bc2adf19557989feb841d495597f7"
+    },
+    "rfc8785_jcs": {
+      "summary": "RFC 8785 canonical JSON (sorted keys, no whitespace); would change every existing digest",
+      "example_file": "tests/fixtures/protocol/v1/variants/hold-00d-5/jcs-example.json",
+      "example_value": "{\"protocol_version\":1,\"action\":\"create\"} canonicalized by hand",
+      "example_sha256": "634ea62f1f4e7e52c39f083551c7e721033006422080e6c99e99b718b18889a4",
+      "note": "hand-canonicalized; no JCS implementation was run"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "args": [
+    "agents-plan",
+    "<root>"
+  ],
+  "case": "agents-plan-protocol-version-2",
+  "exit": 1,
+  "masked_keys": [
+    "target_binding",
+    "plan_digest",
+    "collected_at"
+  ],
+  "stderr": "invalid agents request; no values were logged\n",
+  "stdin": {
+    "language": "ko",
+    "local_file": "none",
+    "protocol_version": 2,
+    "workflow_reference": "skills/moai/workflows/"
+  },
+  "stdout": null
+}
