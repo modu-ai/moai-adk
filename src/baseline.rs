@@ -119,7 +119,7 @@ fn content(root: &Path, rel: &str) -> Result<(&'static str, Option<String>)> {
 }
 
 /// RFC 3339 UTC seconds from the system clock (civil-from-days, no external crate).
-fn utc_now() -> String {
+pub(crate) fn utc_now() -> String {
     let secs = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_secs() as i64)
