@@ -1,4 +1,5 @@
 pub mod agents;
+pub mod apply;
 pub mod baseline;
 pub mod claude;
 pub mod contract;
@@ -21,7 +22,7 @@ use profile::read;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::{
-    fs,
+    fs::{self},
     path::{Path, PathBuf},
 };
 

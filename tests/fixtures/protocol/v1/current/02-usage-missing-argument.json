@@ -1,24 +1,25 @@
 {
+  "case": "usage-missing-argument",
   "args": [
     "project-plan"
   ],
-  "case": "usage-missing-argument",
-  "exit": 2,
-  "masked_keys": [
-    "target_binding",
-    "plan_digest",
-    "collected_at"
-  ],
-  "stderr": "error: the following required arguments were not provided:\n",
   "stdin": null,
+  "exit": 2,
   "stdout": {
+    "protocol_version": 1,
+    "operation": "project.plan",
+    "ok": false,
     "error": {
       "kind": "usage",
       "message": "required arguments were not provided; see --help",
       "retryable": false
-    },
-    "ok": false,
-    "operation": "project.plan",
-    "protocol_version": 1
-  }
+    }
+  },
+  "stderr": "error: the following required arguments were not provided:\n",
+  "masked_keys": [
+    "target_binding",
+    "plan_digest",
+    "collected_at",
+    "receipt"
+  ]
 }

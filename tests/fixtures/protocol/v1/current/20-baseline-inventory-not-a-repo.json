@@ -1,25 +1,26 @@
 {
+  "case": "baseline-inventory-not-a-repo",
   "args": [
     "baseline-inventory",
     "<root>"
   ],
-  "case": "baseline-inventory-not-a-repo",
-  "exit": 1,
-  "masked_keys": [
-    "target_binding",
-    "plan_digest",
-    "collected_at"
-  ],
-  "stderr": "git rev-parse exited 128\n",
   "stdin": null,
+  "exit": 1,
   "stdout": {
+    "protocol_version": 1,
+    "operation": "baseline.inventory",
+    "ok": false,
     "error": {
       "kind": "not_found",
       "message": "git rev-parse exited 128",
       "retryable": false
-    },
-    "ok": false,
-    "operation": "baseline.inventory",
-    "protocol_version": 1
-  }
+    }
+  },
+  "stderr": "git rev-parse exited 128\n",
+  "masked_keys": [
+    "target_binding",
+    "plan_digest",
+    "collected_at",
+    "receipt"
+  ]
 }

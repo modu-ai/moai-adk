@@ -1,17 +1,16 @@
 {
+  "case": "project-plan-unknown-field",
   "args": [
     "project-plan",
     "<root>"
   ],
-  "case": "project-plan-unknown-field",
-  "exit": 1,
-  "masked_keys": [
-    "target_binding",
-    "plan_digest",
-    "collected_at"
-  ],
-  "stderr": "invalid or nonportable profile; no values were logged\n",
   "stdin": {
+    "schema_version": 2,
+    "project_id": "demo",
+    "purpose": "Build a small editor",
+    "tools": [
+      "Rust"
+    ],
     "development_methods": [
       "TDD"
     ],
@@ -20,22 +19,24 @@
       "codex"
     ],
     "interview_revision": "rc1-fixture-1",
-    "project_id": "demo",
-    "purpose": "Build a small editor",
-    "schema_version": 2,
-    "tools": [
-      "Rust"
-    ],
     "unexpected": 1
   },
+  "exit": 1,
   "stdout": {
+    "protocol_version": 1,
+    "operation": "project.plan",
+    "ok": false,
     "error": {
       "kind": "invalid_input",
       "message": "invalid or nonportable profile; no values were logged",
       "retryable": false
-    },
-    "ok": false,
-    "operation": "project.plan",
-    "protocol_version": 1
-  }
+    }
+  },
+  "stderr": "invalid or nonportable profile; no values were logged\n",
+  "masked_keys": [
+    "target_binding",
+    "plan_digest",
+    "collected_at",
+    "receipt"
+  ]
 }

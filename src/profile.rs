@@ -245,10 +245,11 @@ enum KeyDecision {
     Conflict,
 }
 
-/// The baseline/current/desired table from `agents.rs decide()`. Lifting that function
-/// into a shared module is the 01-B refactor (#1989, open), so the semantics are
-/// mirrored here on purpose. Missing values are distinct from present values, and
-/// drift away from the baseline is never overwritten (REQ-03A-03).
+/// The baseline/current/desired table from `agents.rs decide()`. The 01-B refactor
+/// (#1989) landed a shared `apply::decide`, but it compares digests; this table keeps
+/// the same semantics for JSON key values, mirrored on purpose. Missing values are
+/// distinct from present values, and drift away from the baseline is never overwritten
+/// (REQ-03A-03).
 fn decide(
     baseline: Option<&Value>,
     current: Option<&Value>,
@@ -437,7 +438,11 @@ fn write_replace(path: &Path, before: Option<&[u8]>, after: &[u8]) -> Result<()>
     Ok(())
 }
 
-fn write_baseline(root: &Path, bytes: &[u8], profile_value: &Value) -> Result<()> {
+fn write_baseline(
+    root: &Path,
+    bytes: &[u8],
+    profile_value: &Value,
+) -> Result<(Option<String>, String)> {
     let record = json!({
         "schema_version": 1,
         "profile_digest": digest(bytes),
@@ -449,7 +454,9 @@ fn write_baseline(root: &Path, bytes: &[u8], profile_value: &Value) -> Result<()
     fs::create_dir_all(path.parent().expect("baseline parent"))
         .map_err(|_| "project state directory unavailable")?;
     let before = read(&path)?;
-    write_replace(&path, before.as_deref(), &out)
+    let before_digest = before.as_deref().map(digest);
+    write_replace(&path, before.as_deref(), &out)?;
+    Ok((before_digest, digest(&out)))
 }
 
 pub fn apply(root: &Path, p: Plan, confirmed: &str, permission: &str) -> Result<Value> {
@@ -468,20 +475,58 @@ pub fn apply(root: &Path, p: Plan, confirmed: &str, permission: &str) -> Result<
     {
         return Err("stale or altered plan; re-preview required".into());
     }
+    let target_rel = format!("{PROJECT_STATE_DIR}/project.yaml");
+    let baseline_rel = format!("{PROJECT_STATE_DIR}/manifests/profile-baseline.json");
     if p.action == "conflict" {
-        // REQ-03A-03: the user-edited keys are named, never their values; nothing is written.
-        return Err(format!(
+        // REQ-03A-03: the user-edited keys are named, never their values; nothing is
+        // written. REQ-01B-01 mirrored: the refused outcome is recorded so 04-C recovery
+        // tooling can see why nothing was applied.
+        let request_id = crate::apply::new_request_id("project.apply", &p.plan_digest);
+        let mut receipt = crate::apply::Receipt::new(&request_id, "project.apply", root);
+        receipt.entry(
+            &target_rel,
+            "conflict",
+            p.expected_sha256.as_deref(),
+            None,
+            false,
+            Some(format!(
+                "user-edited keys ({}) preserved",
+                p.delta.conflict.join(", ")
+            )),
+        );
+        receipt.status = "refused".into();
+        let mut message = format!(
             "conflict in project.yaml: user-edited keys ({}) preserved; nothing applied",
             p.delta.conflict.join(", ")
-        ));
+        );
+        if let Err(e) = receipt.save(root) {
+            message.push_str(&format!("; receipt not recorded: {e}"));
+        }
+        return Err(message);
     }
+    let request_id = crate::apply::new_request_id("project.apply", &p.plan_digest);
+    let mut receipt = crate::apply::Receipt::new(&request_id, "project.apply", root);
     if p.action == "unchanged" {
+        // REQ-01B-10: a re-run writes nothing; the receipt records zero publishes.
         let bytes = read(&target(root)?)?.unwrap_or_default();
+        receipt.entry(
+            &target_rel,
+            "unchanged",
+            Some(&digest(&bytes)),
+            Some(&digest(&bytes)),
+            false,
+            None,
+        );
+        receipt.status = "complete".into();
+        receipt
+            .save(root)
+            .map_err(|e| format!("receipt not recorded: {e}"))?;
         return Ok(json!({
             "state": "unchanged",
             "profile_digest": digest(&bytes),
             "interview_revision": p.profile.interview_revision,
-            "host_verified": false
+            "host_verified": false,
+            "receipt": request_id
         }));
     }
     let desired = serde_json::to_value(&p.profile).expect("typed profile");
@@ -507,10 +552,82 @@ pub fn apply(root: &Path, p: Plan, confirmed: &str, permission: &str) -> Result<
         .map_err(|_| "project state directory unavailable")?;
     let path = target(root)?;
     let before = read(&path)?;
-    write_replace(&path, before.as_deref(), &bytes)?;
-    if let Err(e) = write_baseline(root, &bytes, &desired) {
+    let before_digest = before.as_deref().map(digest);
+    // REQ-01B-08: keep the before bytes before publishing so recovery can restore
+    // content; a created file needs no backup (recovery removes it).
+    if let Some(b) = before.as_deref() {
+        if let Err(e) = crate::apply::save_before_bytes(root, &request_id, &target_rel, b) {
+            receipt.entry(
+                &target_rel,
+                &p.action,
+                before_digest.as_deref(),
+                None,
+                false,
+                Some(e.clone()),
+            );
+            receipt.status = "partial".into();
+            let message = format!("backup of {target_rel} before publish failed: {e}");
+            return Err(match receipt.save(root) {
+                Ok(()) => message,
+                Err(se) => format!("{message}; receipt not recorded: {se}"),
+            });
+        }
+    }
+    if let Err(e) = write_replace(&path, before.as_deref(), &bytes) {
+        receipt.entry(
+            &target_rel,
+            &p.action,
+            before_digest.as_deref(),
+            None,
+            false,
+            Some(e.clone()),
+        );
+        receipt.status = "partial".into();
+        return Err(match receipt.save(root) {
+            Ok(()) => e,
+            Err(se) => format!("{e}; receipt not recorded: {se}"),
+        });
+    }
+    receipt.entry(
+        &target_rel,
+        &p.action,
+        before_digest.as_deref(),
+        Some(&digest(&bytes)),
+        true,
+        None,
+    );
+    // The baseline record lives under manifests/ and coexists with the 01-B receipt
+    // store under receipts/.
+    match write_baseline(root, &bytes, &desired) {
+        Ok((baseline_before, after_baseline)) => {
+            receipt.entry(
+                &baseline_rel,
+                if baseline_before.is_some() {
+                    "replace"
+                } else {
+                    "create"
+                },
+                baseline_before.as_deref(),
+                Some(&after_baseline),
+                true,
+                None,
+            );
+            receipt.status = "complete".into();
+        }
+        Err(e) => {
+            receipt.entry(&baseline_rel, "create", None, None, false, Some(e.clone()));
+            receipt.status = "partial".into();
+            let message =
+                format!("partial apply: applied [project.yaml]; failed at {baseline_rel}: {e}");
+            return Err(match receipt.save(root) {
+                Ok(()) => message,
+                Err(se) => format!("{message}; receipt not recorded: {se}"),
+            });
+        }
+    }
+    if let Err(e) = receipt.save(root) {
         return Err(format!(
-            "partial apply: applied [project.yaml]; failed at .moai-cli/manifests/profile-baseline.json: {e}"
+            "published {target_rel} but its receipt was not recorded: {e}"
         ));
     }
     Ok(json!({
@@ -518,6 +635,7 @@ pub fn apply(root: &Path, p: Plan, confirmed: &str, permission: &str) -> Result<
         "profile_digest": digest(&bytes),
         "interview_revision": p.profile.interview_revision,
         "host_verified": false,
+        "receipt": request_id,
         "next_actions": ["update profile_sha256 and interview_revision in .moai-cli/manifests/generation.json through the 03-C generation apply; project.apply does not write the manifest"]
     }))
 }

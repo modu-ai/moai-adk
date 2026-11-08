@@ -13,6 +13,10 @@
 //! - `codex`: Codex CLI `-s workspace-write -a on-request [-m <model>] [PROMPT]`, per
 //!   https://learn.chatgpt.com/docs/developer-commands?surface=cli. Codex has no session-name
 //!   flag, so the name travels in the first prompt.
+//!
+//! Without a role (`moai-cli cc|glm|codex` with neither `-l` nor `-a`, Issue #2053) the launcher
+//! opens a plain host session: no role is guessed, no session name is added, and
+//! `--dangerously-skip-permissions` is never added. `-l|-a` argv are unchanged.
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
@@ -22,6 +26,11 @@ const EFFORTS: [&str; 6] = ["low", "medium", "high", "xhigh", "max", "ultracode"
 const ADVISOR_ALIASES: [&str; 3] = ["fable", "opus", "sonnet"];
 const DEFAULT_MODEL: &str = "opus";
 const DEFAULT_EFFORT: &str = "medium";
+/// HOLD-L1 (#2053, user decision pending): a session without a role still gets the launcher's
+/// Claude defaults (`--model opus --effort medium --advisor fable`) when true (option A, the
+/// interim choice); false passes no model, effort or advisor flag so the user's own Claude
+/// settings apply (option B). This constant is the only place to change.
+pub const ROLELESS_LAUNCHER_DEFAULTS: bool = true;
 /// z.ai Anthropic-compatible endpoint and timeout from the z.ai Claude Code guide.
 pub const GLM_ENV: [(&str, &str); 2] = [
     ("ANTHROPIC_BASE_URL", "https://api.z.ai/api/anthropic"),
@@ -33,9 +42,13 @@ const MAX_PROMPT: usize = 4096;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SessionRequest {
-    pub role: String,
+    /// `leader` or `agent`; `None` is a plain host session (#2053).
+    #[serde(default)]
+    pub role: Option<String>,
     pub host: String,
-    pub name: String,
+    /// `None` adds no session name (no `--name`, no name prompt).
+    #[serde(default)]
+    pub name: Option<String>,
     /// `None` uses the host default: `opus` on Claude hosts, Codex's own default on codex.
     #[serde(default)]
     pub model: Option<String>,
@@ -77,29 +90,44 @@ fn clean(field: &str, value: &str) -> Result<(), String> {
     Ok(())
 }
 
+/// Whether the launcher's model/effort defaults apply: always with a role, and without one
+/// only under HOLD-L1 option A.
+pub fn launcher_defaults(role: Option<&str>) -> bool {
+    role.is_some() || ROLELESS_LAUNCHER_DEFAULTS
+}
+
 fn claude_argv(r: &SessionRequest, notes: &mut Vec<&'static str>) -> Result<Vec<String>, String> {
-    let model = r.model.as_deref().unwrap_or(DEFAULT_MODEL);
-    let effort = r.effort.as_deref().unwrap_or(DEFAULT_EFFORT);
-    if !EFFORTS.contains(&effort) {
-        return Err("effort must be one of low|medium|high|xhigh|max|ultracode".into());
+    let defaults = launcher_defaults(r.role.as_deref());
+    let model = r.model.as_deref().or(defaults.then_some(DEFAULT_MODEL));
+    let effort = r.effort.as_deref().or(defaults.then_some(DEFAULT_EFFORT));
+    if let Some(e) = effort {
+        if !EFFORTS.contains(&e) {
+            return Err("effort must be one of low|medium|high|xhigh|max|ultracode".into());
+        }
     }
-    clean("model", model)?;
+    if let Some(m) = model {
+        clean("model", m)?;
+    }
     clean("claude_bin", &r.claude_bin)?;
-    let mut argv = vec![
-        r.claude_bin.clone(),
-        "--name".into(),
-        r.name.clone(),
-        "--model".into(),
-        model.into(),
-        "--effort".into(),
-        effort.into(),
-    ];
+    let mut argv = vec![r.claude_bin.clone()];
+    if let Some(n) = &r.name {
+        argv.push("--name".into());
+        argv.push(n.clone());
+    }
+    if let Some(m) = model {
+        argv.push("--model".into());
+        argv.push(m.into());
+    }
+    if let Some(e) = effort {
+        argv.push("--effort".into());
+        argv.push(e.into());
+    }
     if let Some(a) = &r.advisor {
         clean("advisor", a)?;
         if !ADVISOR_ALIASES.contains(&a.as_str()) && !a.starts_with("claude-") {
             return Err("advisor must be fable|opus|sonnet or a full claude-* model id".into());
         }
-        match (rank(model), rank(a)) {
+        match (model.and_then(rank), rank(a)) {
             (Some(m), Some(x)) if x < m => {
                 return Err("advisor must rank at or above the main model".into())
             }
@@ -147,7 +175,11 @@ fn codex_argv(r: &SessionRequest, notes: &mut Vec<&'static str>) -> Result<Vec<S
     if r.advisor.is_some() || r.skip_permissions {
         notes.push("advisor and permission-skip apply to Claude hosts only; codex runs with -s workspace-write -a on-request");
     }
-    let mut prompt = format!("MoAI session name: {}", r.name);
+    let mut parts: Vec<String> = r
+        .name
+        .iter()
+        .map(|n| format!("MoAI session name: {n}"))
+        .collect();
     if let Some(extra) = &r.prompt {
         if extra.len() > MAX_PROMPT
             || extra
@@ -156,11 +188,14 @@ fn codex_argv(r: &SessionRequest, notes: &mut Vec<&'static str>) -> Result<Vec<S
         {
             return Err("invalid prompt".into());
         }
-        prompt.push('\n');
-        prompt.push_str(extra);
+        parts.push(extra.clone());
     }
-    argv.push(prompt);
-    notes.push("codex has no session-name flag: the name is carried in the first prompt");
+    if !parts.is_empty() {
+        argv.push(parts.join("\n"));
+    }
+    if r.name.is_some() {
+        notes.push("codex has no session-name flag: the name is carried in the first prompt");
+    }
     notes.push("codex sessions have no cross-session channel in RC1 (no ListAgents/SendMessage)");
     Ok(argv)
 }
@@ -169,14 +204,28 @@ fn codex_argv(r: &SessionRequest, notes: &mut Vec<&'static str>) -> Result<Vec<S
 /// `{host, role, name, argv, env_keys, notes, executed:false, host_loaded:false}`.
 /// `env_keys` lists variable names only, never values.
 pub fn compose(r: &SessionRequest) -> Result<Value, String> {
-    if !ROLES.contains(&r.role.as_str()) {
-        return Err("role must be leader or agent".into());
+    if let Some(role) = &r.role {
+        if !ROLES.contains(&role.as_str()) {
+            return Err("role must be leader or agent".into());
+        }
     }
     if !HOSTS.contains(&r.host.as_str()) {
         return Err(format!("unknown host {} (claude|glm|codex)", r.host));
     }
-    clean("name", &r.name)?;
+    if let Some(n) = &r.name {
+        clean("name", n)?;
+    }
     let mut notes = Vec::new();
+    if r.role.is_none() {
+        notes.push("no role: a plain host session; no role, session name or permission skip is added (#2053)");
+        if r.host != "codex" {
+            notes.push(if ROLELESS_LAUNCHER_DEFAULTS {
+                "HOLD-L1: model, effort and advisor defaults follow option A (opus, medium, fable) until the user decides"
+            } else {
+                "HOLD-L1: no model, effort or advisor flag; the user's Claude settings apply"
+            });
+        }
+    }
     let mut env_keys: Vec<&str> = Vec::new();
     let argv = match r.host.as_str() {
         "codex" => codex_argv(r, &mut notes)?,

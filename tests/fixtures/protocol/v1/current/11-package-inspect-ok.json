@@ -1,26 +1,27 @@
 {
+  "case": "package-inspect-ok",
   "args": [
     "package-inspect",
     "<root>"
   ],
-  "case": "package-inspect-ok",
-  "exit": 0,
-  "masked_keys": [
-    "target_binding",
-    "plan_digest",
-    "collected_at"
-  ],
-  "stderr": "",
   "stdin": null,
+  "exit": 0,
   "stdout": {
-    "ok": true,
-    "operation": "package.inspect",
     "protocol_version": 1,
+    "operation": "package.inspect",
+    "ok": true,
     "result": {
       "digest": "sha256:10a599b9e4d7df5e80269f46eddf9dce384180097f65d7a378b64271d8cc5b44",
       "digest_algorithm": "moai-package-tree-v1",
-      "host_loaded": false,
-      "publisher_trust": "not_verified"
+      "publisher_trust": "not_verified",
+      "host_loaded": false
     }
-  }
+  },
+  "stderr": "",
+  "masked_keys": [
+    "target_binding",
+    "plan_digest",
+    "collected_at",
+    "receipt"
+  ]
 }

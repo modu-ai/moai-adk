@@ -1,25 +1,26 @@
 {
+  "case": "package-inspect-missing-skill",
   "args": [
     "package-inspect",
     "<root>"
   ],
-  "case": "package-inspect-missing-skill",
-  "exit": 1,
-  "masked_keys": [
-    "target_binding",
-    "plan_digest",
-    "collected_at"
-  ],
-  "stderr": "package SKILL.md missing\n",
   "stdin": null,
+  "exit": 1,
   "stdout": {
+    "protocol_version": 1,
+    "operation": "package.inspect",
+    "ok": false,
     "error": {
       "kind": "not_found",
       "message": "package SKILL.md missing",
       "retryable": false
-    },
-    "ok": false,
-    "operation": "package.inspect",
-    "protocol_version": 1
-  }
+    }
+  },
+  "stderr": "package SKILL.md missing\n",
+  "masked_keys": [
+    "target_binding",
+    "plan_digest",
+    "collected_at",
+    "receipt"
+  ]
 }

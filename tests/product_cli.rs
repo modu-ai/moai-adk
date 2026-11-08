@@ -1107,7 +1107,8 @@ fn launcher_leader_default_claude() {
     // Ambiguous or empty invocations fail instead of guessing.
     assert!(!launcher(&["-l", "-a", "--dry-run"], None).status.success());
     assert!(!launcher(&["-l", "cc", "--dry-run"], None).status.success());
-    assert!(!launcher(&["cc", "--dry-run"], None).status.success());
+    // A host word without -l|-a is a plain host session since #2053 (tests/launcher_roleless.rs).
+    assert!(launcher(&["cc", "--dry-run"], None).status.success());
     assert!(!launcher(&["-a", "zcode", "--dry-run"], None)
         .status
         .success());
@@ -1552,7 +1553,7 @@ fn baseline_without_or_with_unknown_commit_degrades_without_error() {
 
 const PROTOCOL_FIXTURES: &str = "tests/fixtures/protocol/v1/current";
 /// Values that depend on the temporary directory or the clock, not on the contract.
-const MASKED_KEYS: [&str; 3] = ["target_binding", "plan_digest", "collected_at"];
+const MASKED_KEYS: [&str; 4] = ["target_binding", "plan_digest", "collected_at", "receipt"];
 
 fn masked_values(v: &Value, out: &mut Vec<String>) {
     match v {

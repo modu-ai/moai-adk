@@ -1,4 +1,5 @@
 {
+  "case": "project-apply-created",
   "args": [
     "project-apply",
     "<root>",
@@ -7,15 +8,26 @@
     "--permission-reference",
     "fixture-approved"
   ],
-  "case": "project-apply-created",
-  "exit": 0,
-  "masked_keys": [
-    "target_binding",
-    "plan_digest",
-    "collected_at"
-  ],
-  "stderr": "",
   "stdin": {
+    "protocol_version": 1,
+    "profile": {
+      "schema_version": 2,
+      "project_id": "demo",
+      "purpose": "Build a small editor",
+      "tools": [
+        "Rust"
+      ],
+      "development_methods": [
+        "TDD"
+      ],
+      "hosts": [
+        "claude",
+        "codex"
+      ],
+      "interview_revision": "rc1-fixture-1"
+    },
+    "expected_sha256": null,
+    "target_binding": "<masked>",
     "action": "create",
     "delta": {
       "added": [
@@ -28,46 +40,36 @@
         "tools"
       ],
       "changed": [],
-      "conflict": [],
       "removed": [],
       "unchanged": [
         "decisions",
         "package_pin"
-      ]
-    },
-    "expected_sha256": null,
-    "plan_digest": "<masked>",
-    "profile": {
-      "development_methods": [
-        "TDD"
       ],
-      "hosts": [
-        "claude",
-        "codex"
-      ],
-      "interview_revision": "rc1-fixture-1",
-      "project_id": "demo",
-      "purpose": "Build a small editor",
-      "schema_version": 2,
-      "tools": [
-        "Rust"
-      ]
+      "conflict": []
     },
-    "protocol_version": 1,
-    "target_binding": "<masked>"
+    "plan_digest": "<masked>"
   },
+  "exit": 0,
   "stdout": {
-    "ok": true,
-    "operation": "project.apply",
     "protocol_version": 1,
+    "operation": "project.apply",
+    "ok": true,
     "result": {
-      "host_verified": false,
+      "state": "created",
+      "profile_digest": "sha256:52aa26c380ef197266ebad62b70dc7866f5fb658cc856e114f6919e13bc5a06a",
       "interview_revision": "rc1-fixture-1",
+      "host_verified": false,
+      "receipt": "<masked>",
       "next_actions": [
         "update profile_sha256 and interview_revision in .moai-cli/manifests/generation.json through the 03-C generation apply; project.apply does not write the manifest"
-      ],
-      "profile_digest": "sha256:52aa26c380ef197266ebad62b70dc7866f5fb658cc856e114f6919e13bc5a06a",
-      "state": "created"
+      ]
     }
-  }
+  },
+  "stderr": "",
+  "masked_keys": [
+    "target_binding",
+    "plan_digest",
+    "collected_at",
+    "receipt"
+  ]
 }
