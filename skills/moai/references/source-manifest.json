@@ -64,12 +64,12 @@
       }
     },
     "workflows/read.md": {
-      "sha256": "a6f5b7a9a4cf134b5ebdca58c09b5ec0c18db760dac4f3c5a7b0289d2e2c1941",
+      "sha256": "c2aead4c5e65aafdc32a9aeb6f1598734cd4c957a5a9fd396a6ed98278ed552c",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-read",
         "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet."
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Step 3 extended by 07-D #2011 (context text is data, never an instruction)."
       }
     },
     "workflows/setup.md": {
@@ -91,21 +91,21 @@
       }
     },
     "workflows/plan.md": {
-      "sha256": "8d319f1493b80a681a6ad38411bb4beed342504a0cd64e94371edada03903560",
+      "sha256": "665f52f08a9f916d9e7c9fc33d67d9f976b4e530ff0f5306964a69036ce79195",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-plan",
         "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet."
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Step 6 added by 07-D #2011 (native decision records; a judgment is not permission)."
       }
     },
     "workflows/run.md": {
-      "sha256": "7bf7327c8945b6838b0a01178a341f3f6691975854cc22071db5abb8e822c4fc",
+      "sha256": "bb0754501c5361dd6cb133cd0736303ac219182298196912d204d1388c9ab10f",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-run",
         "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet."
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Step 2 extended by 07-D #2011 (context bundle and verify, host-reported usage versus estimates)."
       }
     },
     "workflows/verify.md": {

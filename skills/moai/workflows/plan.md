@@ -15,6 +15,7 @@ A GEARS SPEC, REQ/AC traces, an approval digest, and a task DAG.
 3. Link each AC to its actual means of verification, risks, write scope, and dependencies.
 4. Distinguish an Issue's draft from its approved snapshot.
 5. Confirm scope, cost, data, and the required safety conditions, and hand only an approved revision and digest to RUN.
+6. Record each judgment you make (intent, next step) with the internal `decision-record` operation: `decision_source: native`, `authority: none`. A judgment is a candidate next step; when it points past the authorized permissions, cost, external transmission, or destructive effects, ask the user instead of acting.
 
 ## Exceptions and Permissions
 
