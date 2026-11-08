@@ -28,7 +28,7 @@ evidence_status: not_run
 - AC-IDF-3: 검사 묶음·독립 AUDIT PASS → 통합 · 결과: not_run
 
 ## 범위
-- 변경 가능: `src/identity.rs`, `tests/product_cli.rs`, `docs/rust-product-path.md`(+ 01-C 통합 뒤 `docs/protocol-v1.md` kind 어휘)
+- 변경 가능: `src/identity.rs`, `tests/product_cli.rs`, `docs/rust-product-path.md`(+ 01-C 통합 뒤 `docs/protocol-v1.md` kind 어휘, `src/contract.rs`의 `Kind::GitFailed` 추가와 classify 규칙 — r28, 리더 (b)안 지시 2026-11-08 10:0x에 따른 범위 확장; decisions 19:1x 행)
 - 변경 금지: `src/agents.rs`, 공유 상수
 
 ## 의존성
