@@ -148,6 +148,8 @@ impl Fixture {
         r["status"] = json!("pending");
         r["operation"] = json!("update.apply");
         r["finished_at"] = Value::Null;
+        // What 04-B writes since #2091: the version this apply replaces.
+        r["version_before"] = r["package_version"].clone();
         r["entries"] = json!([
             {"path": "workflows/new.md", "action": "create", "before_sha256": null,
              "after_sha256": sha(NEW_V2.as_bytes()), "published": true, "error": null},
@@ -272,8 +274,17 @@ fn recovery_restores_only_this_request_changes_and_keeps_other_host() {
     assert_eq!(codex["receipt_status"], json!("recovered"));
     assert_eq!(codex["recovered"], json!(["workflows/new.md", "SKILL.md"]));
     assert_eq!(codex["conflicts"], json!([]));
-    assert_eq!(codex["version_before"], Value::Null);
-    assert!(codex["version_before_basis"].is_string());
+    // REQ-04C-06: the receipt's version_before reaches the report (#2091).
+    assert_eq!(
+        codex["version_before"],
+        f.receipt("claude")["package_version"]
+    );
+    assert!(codex["version_before"].is_string());
+    assert_eq!(codex["version_before_basis"], Value::Null);
+    assert_eq!(
+        codex["version_after"],
+        f.receipt("claude")["package_version"]
+    );
     assert!(!f.codex().join("workflows/new.md").exists());
     assert_eq!(
         sha(&fs::read(f.codex().join("SKILL.md")).unwrap()),
@@ -467,8 +478,98 @@ fn recovery_refuses_without_known_good_or_on_tamper() {
     let plan = f.plan();
     let codex = host(&plan, "codex");
     assert_eq!(codex["receipt_status"], json!("pending"));
-    // SKILL.md was replaced before the failure: without a known-good copy it is preserved.
-    assert_eq!(file(codex, "SKILL.md")["reason"], json!("no_known_good"));
+    // SKILL.md was replaced before the failure; 04-B (#2091) kept its known-good copy, so
+    // it is revertible. The files under the sabotaged `workflows` path are not regular
+    // files and are preserved as conflicts.
+    let skill = file(codex, "SKILL.md");
+    assert_eq!(
+        (skill["class"].as_str(), skill["action"].as_str()),
+        (Some("matches_after"), Some("restore"))
+    );
+    assert_eq!(
+        file(codex, "workflows/new.md")["reason"],
+        json!("not_a_regular_file")
+    );
+}
+
+/// AC-04C-02 against 04-B's real known-good copy and REQ-04C-06 `version_before`: the
+/// receipt 04-B itself wrote (sabotaged mid-apply) is recovered from the copy 04-B stored,
+/// and the report carries the version that failed apply replaced.
+#[test]
+fn recovery_uses_real_known_good_and_reports_version_before() {
+    let f = fixture();
+    let claude_before = f.digest_of(&f.claude());
+    fs::remove_dir_all(f.codex().join("workflows")).unwrap();
+    fs::write(f.codex().join("workflows"), b"not a directory\n").unwrap();
+    let home = f.home.to_str().unwrap();
+    let stage = f.stage2.to_str().unwrap();
+    let (ok, v) = run(&["update-plan", home, stage], None);
+    assert!(ok, "{v}");
+    let p = v["result"].clone();
+    let (ok, v) = run(
+        &[
+            "update-apply",
+            home,
+            stage,
+            "--plan-digest",
+            p["plan_digest"].as_str().unwrap(),
+            "--permission-reference",
+            "fixture-approved",
+        ],
+        Some(&p),
+    );
+    assert!(ok, "{v}");
+    let receipt = f.receipt("codex");
+    assert_eq!(receipt["status"], json!("pending"));
+    assert!(
+        receipt["version_before"].is_string(),
+        "04-B records version_before: {receipt}"
+    );
+    // The copy 04-B stored, under the REQ-04C-03 path.
+    let hex = sha(SKILL_V1.as_bytes());
+    assert!(f
+        .hosts_dir()
+        .join("codex/known-good")
+        .join(hex.strip_prefix("sha256:").unwrap())
+        .is_file());
+    assert_eq!(
+        fs::read_to_string(f.codex().join("SKILL.md")).unwrap(),
+        SKILL_V2
+    );
+    // claude committed v2 in the same run; it must stay as it is now.
+    let claude_after_update = f.digest_of(&f.claude());
+    assert_ne!(claude_after_update, claude_before);
+
+    let plan = f.plan();
+    assert_eq!(
+        host(&plan, "codex")["version_before"],
+        receipt["version_before"]
+    );
+    let (ok, v) = f.apply(&plan);
+    assert!(ok, "{v}");
+    let codex = host(&v["result"], "codex");
+    assert_eq!(codex["recovered"], json!(["SKILL.md"]));
+    assert_eq!(codex["version_before"], receipt["version_before"]);
+    assert_eq!(codex["version_before_basis"], Value::Null);
+    // Conflicts remain under the sabotaged path, so the host stays pending and the run is
+    // partial; SKILL.md is back to its v1 bytes from the real copy.
+    assert_eq!(v["result"]["status"], json!("partial"));
+    assert_eq!(codex["receipt_status"], json!("pending"));
+    assert_eq!(
+        fs::read_to_string(f.codex().join("SKILL.md")).unwrap(),
+        SKILL_V1
+    );
+    assert_eq!(
+        f.digest_of(&f.claude()),
+        claude_after_update,
+        "committed host untouched"
+    );
+    // claude's committed v2 receipt also records the version it replaced: no basis needed.
+    assert!(host(&v["result"], "claude")["version_before"].is_string());
+    assert_eq!(
+        host(&v["result"], "claude")["version_before_basis"],
+        Value::Null
+    );
 }
 
 /// AC-04C-05: a pending host refuses a new update-apply until recovered; the committed

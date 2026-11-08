@@ -22,9 +22,9 @@
 //!
 //! Leader RC1 decisions (2026-11-08, recorded on #2000): recovery is triggered only by these
 //! two explicit commands (P06 = A); the known-good location is the REQ-04C-03 path (P09).
-//! 04-B does not yet store known-good copies or the previous version (follow-up #2089), so
-//! until it does every replaced file classifies as `conflict(no_known_good)` and
-//! `version_before` is null with its reason.
+//! 04-B stores the known-good copies and the receipt's `version_before` (#2089/#2091); a
+//! receipt written before that, or a first apply, has neither, so a replaced file is then
+//! `conflict(no_known_good)` and `version_before` is null with its reason.
 // @MX:DEBT [P09 retention] Known-good copies have no retention period and no GC in RC1.
 // UPGRADE when P09 retention is decided: prune copies no committed/pending receipt names.
 
@@ -68,7 +68,21 @@ pub struct RecoveryHost {
     pub receipt_status: String,
     pub blocked_reason: Option<String>,
     pub package_version: Option<String>,
+    /// The receipt's `version_before` (#2091): the version the failed apply replaced.
+    pub version_before: Option<String>,
     pub files: Vec<RecoveryFile>,
+}
+
+/// Why `version_before` is null, or null when it is known (REQ-04C-06).
+fn version_before_basis(h: &RecoveryHost) -> Value {
+    match (&h.version_before, h.receipt_status.as_str()) {
+        (Some(_), _) => Value::Null,
+        (None, "none") => json!("no host receipt"),
+        (None, "blocked") => json!("host receipt unreadable or refused"),
+        (None, _) => json!(
+            "not recorded: a first apply on this host, or a receipt written before version_before existed (#2091)"
+        ),
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -210,6 +224,7 @@ pub fn recovery_plan(home: &Path) -> Result<RecoveryPlan> {
             receipt_status: "none".into(),
             blocked_reason: None,
             package_version: None,
+            version_before: None,
             files: Vec::new(),
         };
         let receipt = match load_host_receipt(&path) {
@@ -227,6 +242,7 @@ pub fn recovery_plan(home: &Path) -> Result<RecoveryPlan> {
             continue;
         };
         h.package_version = Some(receipt.package_version.clone());
+        h.version_before = receipt.version_before.clone();
         h.receipt_status = receipt.status.clone();
         if receipt.status == "pending" {
             let root = projection_root(&canonical_home, host);
@@ -334,7 +350,8 @@ pub fn recovery_apply(
             // Committed, recovered, absent or blocked: never written (REQ-04C-05).
             conflicts_remain |= h.receipt_status == "blocked";
             reports.push(json!({"host": h.host, "receipt_status": h.receipt_status,
-                "blocked_reason": h.blocked_reason, "version_before": null,
+                "blocked_reason": h.blocked_reason, "version_before": h.version_before,
+                "version_before_basis": version_before_basis(h),
                 "version_after": h.package_version, "applied": [], "failed": [],
                 "recovered": [], "conflicts": [], "written": false}));
             continue;
@@ -446,10 +463,8 @@ pub fn recovery_apply(
         reverted_anywhere.extend(reverted.iter().cloned());
         reports.push(json!({"host": h.host, "receipt_status": status,
             "blocked_reason": null,
-            // The pending receipt replaced the committed one, so the version this host had
-            // before the failed apply is not recorded anywhere (04-B schema).
-            "version_before": null,
-            "version_before_basis": "not recorded: the pending receipt replaced the previous committed receipt",
+            "version_before": h.version_before,
+            "version_before_basis": version_before_basis(h),
             "version_after": h.package_version, "applied": applied, "failed": [],
             "recovered": reverted, "conflicts": conflicts, "written": true}));
     }

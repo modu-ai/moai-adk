@@ -455,7 +455,7 @@ Leader RC1 decisions (2026-11-08):
 
 - Recovery runs only through these two explicit commands (P06 = A).
 - The known-good path is the one above (P09). It has no retention period or GC in RC1 (`@MX:DEBT`).
-- 04-B does not store known-good copies or the previous version yet (follow-up #2089). Until it does, a replaced file is `conflict(no_known_good)` and `version_before` is null with its basis.
+- 04-B stores the known-good copy of every file it overwrites and the receipt's `version_before` (#2089, merged as #2091). The report passes `version_before` through. For a receipt written before that, or a first apply, a replaced file is `conflict(no_known_good)` and `version_before` is null with `version_before_basis`.
 
 Tests: `tests/recovery_cli.rs` (temporary HOME only).
 
