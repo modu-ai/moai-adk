@@ -240,6 +240,26 @@ enum Command {
     RunVerify {
         project: PathBuf,
     },
+    /// Read-only: PROJECT's HEAD commit and a digest of its tracked changes (07-D #2011).
+    SnapshotDescribe {
+        project: PathBuf,
+    },
+    /// Read-only: requested file ranges with digests and a budget (typed request on stdin).
+    ContextBundle {
+        project: PathBuf,
+    },
+    /// Read-only: re-check a bundle's ranges against the files now (typed request on stdin).
+    ContextVerify {
+        project: PathBuf,
+    },
+    /// Append one native decision record (stdin) to `.moai-cli/decisions/<RUN>.jsonl`.
+    DecisionRecord {
+        project: PathBuf,
+        #[arg(long)]
+        run: String,
+        #[arg(long)]
+        permission_reference: String,
+    },
     /// Temporary (05-D #2004; the name is fixed after P06): independent audit of PROJECT. Re-runs
     /// the approved verification itself and decides admission; receipts on stdin never count.
     AuditReduce {
@@ -334,8 +354,9 @@ fn launch(
         name,
         model: o.model,
         effort: o.effort,
-        // Claude defaults (operator 2026-11-08): advisor fable; without a role only under
-        // HOLD-L1 option A. The permission skip (interim) applies to `-l|-a` only (#2053).
+        // Claude defaults (user decision 2026-11-08, HOLD-L1 = A, #2053): roleless `cc`
+        // takes the launcher defaults (advisor fable, model, effort) too. The permission
+        // skip stays `-l|-a` only — a roleless session gets none.
         advisor: (host != "codex" && !o.no_advisor && moai_cli::session::launcher_defaults(role))
             .then(|| "fable".into()),
         skip_permissions: role.is_some() && host != "codex" && !o.permissions,
@@ -378,6 +399,10 @@ const OPERATIONS: &[(&str, &str)] = &[
     ("todo-promote-preview", "todo.promote.plan"),
     ("todo-promote-apply", "todo.promote.apply"),
     ("run-verify", "run.verify"),
+    ("snapshot-describe", "snapshot.describe"),
+    ("context-bundle", "context.bundle"),
+    ("context-verify", "context.verify"),
+    ("decision-record", "decision.record"),
     ("audit-reduce", "audit.reduce"),
     ("install-inspect", "install.inspect"),
     ("update-plan", "update.plan"),
@@ -457,8 +482,11 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             serde_json::json!({"digest":moai_cli::package_digest(&package)?,"digest_algorithm":"moai-package-tree-v1","publisher_trust":"not_verified","host_loaded":false}),
         ),
         Command::ProjectPlan { project } => {
-            serde_json::to_value(plan(&project, input::<Profile>()?)?)
-                .map_err(|_| "encode failed".into())
+            // REQ-03A-08: an unknown input key or a non-v2 schema_version is refused with
+            // the profile message; no input value is echoed.
+            let profile: Profile = serde_json::from_value(input::<serde_json::Value>()?)
+                .map_err(|_| "invalid or nonportable profile; no values were logged".to_string())?;
+            serde_json::to_value(plan(&project, profile)?).map_err(|_| "encode failed".into())
         }
         Command::ProjectApply {
             project,
@@ -658,6 +686,14 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             serde_json::to_value(moai_cli::run::run(&project, &request, &current)?)
                 .map_err(|_| "encode failed".into())
         }
+        Command::SnapshotDescribe { project } => moai_cli::context::snapshot(&project),
+        Command::ContextBundle { project } => moai_cli::context::bundle(&project, &input()?),
+        Command::ContextVerify { project } => moai_cli::context::verify(&project, &input()?),
+        Command::DecisionRecord {
+            project,
+            run,
+            permission_reference,
+        } => moai_cli::decision::append(&project, &run, &input()?, &permission_reference),
         Command::AuditReduce { project } => {
             let request = input::<moai_cli::audit::AuditInput>()?;
             if request.protocol_version != contract::PROTOCOL_VERSION {
