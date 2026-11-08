@@ -742,9 +742,10 @@ pub fn generation_apply(
     let (profile, profile_bytes) = read_profile(&root)?;
     let mut files_created: Vec<String> = Vec::new();
     let mut files_merged: Vec<String> = Vec::new();
+    // Lives past the hook: it reads `complete` only after the manifest publish (#2119).
+    let mut receipt = Receipt::new(&request_id, "generation.apply", &root);
     let mut hook = |root: &Path, manifest: &mut Value| -> Result<()> {
         // 2. The generation files, through the 01-B engine with a receipt.
-        let mut receipt = Receipt::new(&request_id, "generation.apply", root);
         for f in &p.files {
             let Some(kind) = &f.kind else {
                 continue;
@@ -892,8 +893,8 @@ pub fn generation_apply(
             map.insert("profile_sha256".into(), json!(digest(&profile_bytes)));
         }
         // The manifest entry itself is recorded in the agents.apply receipt, which keeps
-        // the pre-apply manifest bytes for recovery.
-        receipt.status = "complete".into();
+        // the pre-apply manifest bytes for recovery. Saved as `partial` here: the
+        // manifest publish is still ahead.
         receipt
             .save(root)
             .map_err(|e| format!("published files but the receipt was not recorded: {e}"))
@@ -905,6 +906,10 @@ pub fn generation_apply(
         permission,
         &mut hook,
     )?;
+    receipt.status = "complete".into();
+    receipt
+        .save(&root)
+        .map_err(|e| format!("published files but the receipt was not recorded: {e}"))?;
     let agents_applied: Vec<String> = agents_result
         .get("applied")
         .and_then(Value::as_array)
