@@ -123,6 +123,11 @@ enum Command {
     PlanAdmit {
         project: PathBuf,
     },
+    /// Temporary (05-C #2003; the name is fixed after P06): re-check the pinned contract and
+    /// run the approved verification commands in PROJECT as argv; returns a receipt.
+    RunVerify {
+        project: PathBuf,
+    },
     /// Claude Code session launcher: `cc -l|-a`.
     Cc(HostLaunch),
     /// Claude Code on z.ai GLM: `glm -l|-a` (needs ANTHROPIC_AUTH_TOKEN in the environment).
@@ -211,7 +216,7 @@ fn launch(
 
 /// Internal operations (01-C #1990): subcommand word and operation name. The launchers are
 /// developer tools and stay outside the envelope contract.
-const OPERATIONS: [(&str, &str); 10] = [
+const OPERATIONS: [(&str, &str); 11] = [
     ("package-inspect", "package.inspect"),
     ("project-plan", "project.plan"),
     ("project-apply", "project.apply"),
@@ -222,6 +227,7 @@ const OPERATIONS: [(&str, &str); 10] = [
     ("identity", "identity"),
     ("forge-read", "forge.read"),
     ("plan-admit", "plan.admit"),
+    ("run-verify", "run.verify"),
 ];
 fn operation_of(word: &str) -> Option<&'static str> {
     OPERATIONS
@@ -343,6 +349,15 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             }
             let current = moai_cli::plan::current_revision(&project)?;
             serde_json::to_value(moai_cli::plan::admit(&request, &current))
+                .map_err(|_| "encode failed".into())
+        }
+        Command::RunVerify { project } => {
+            let request = input::<moai_cli::run::RunRequest>()?;
+            if request.protocol_version != contract::PROTOCOL_VERSION {
+                return Err("unsupported protocol_version; supported: 1".into());
+            }
+            let current = moai_cli::plan::current_revision(&project)?;
+            serde_json::to_value(moai_cli::run::run(&project, &request, &current)?)
                 .map_err(|_| "encode failed".into())
         }
         _ => unreachable!("launchers run through run_launcher"),
