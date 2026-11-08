@@ -361,6 +361,24 @@
    "title": "[RC1][설치와 UPDATE] 04-D Go 사용자 마이그레이션(bridge): moai update(Go) → moai-cli 설치·상태 이전·Go 제거",
    "reused": false,
    "created_by": "user approval 2026-11-08 (new issue 04-D)"
+  },
+  "00-E": {
+   "number": 2020,
+   "id": 6269185631,
+   "node_id": "I_kwDOPw9rL88AAAABdawuXw",
+   "url": "https://github.com/modu-ai/moai-adk/issues/2020",
+   "title": "[RC1][부트스트랩] 00-E .github 재구성 — Go 세대 제거 후 RC1 전용 workflows·PR 템플릿·label 동기화",
+   "reused": false,
+   "created_by": "user instruction 2026-11-08 17:4x (.github rebuild)"
+  },
+  "BUG-AGENTS-MISSING-BLOCK": {
+   "number": 2022,
+   "id": 6269251299,
+   "node_id": "I_kwDOPw9rL88AAAABda0u4w",
+   "url": "https://github.com/modu-ai/moai-adk/issues/2022",
+   "title": "[RC1][결함] agents-plan이 관리 구간이 삭제된 AGENTS.md를 unchanged로 판정",
+   "reused": false,
+   "created_by": "leader-found defect 2026-11-08 during AGENTS split"
   }
  },
  "links": [
@@ -614,6 +632,18 @@
    "tag": "EP-05>04-D",
    "parent": 1980,
    "child": 2016,
+   "status": "linked"
+  },
+  {
+   "tag": "EP-01>00-E",
+   "parent": 1976,
+   "child": 2020,
+   "status": "linked"
+  },
+  {
+   "tag": "EP-02>BUG-AGENTS-MISSING-BLOCK",
+   "parent": 1977,
+   "child": 2022,
    "status": "linked"
   }
  ],
@@ -924,6 +954,12 @@
    "issue": 2016,
    "blocked_by": 1999,
    "status": "linked"
+  },
+  {
+   "tag": "00-E<-00-C",
+   "issue": 2020,
+   "blocked_by": 1974,
+   "status": "linked (00-C closed? no — issue open; PR merged)"
   }
  ],
  "errors": [],
@@ -2601,7 +2637,7 @@
    "branch": "issue/1985-00-A",
    "base": "origin/v2026.11.0@a6c67ba2d",
    "claim": "lane posts claim comment (⑤); leader verifies read-side",
-   "status": "in_progress step 3 (collector); scope += tree_digest public fn",
+   "status": "integrated: PR #2018 auto-merged cd6a94418 (agent-2 PASS bc22c6428 → leader moai/audit → auto-merge)",
    "worktree": ".moai-cli/worktrees/issue-1985-00-A"
   },
   {
@@ -2612,8 +2648,49 @@
    "branch": "issue/1986-00-B",
    "base": "origin/v2026.11.0@a6c67ba2d",
    "claim": "lane posts claim comment (⑤); leader verifies read-side",
-   "status": "pr_ready→in_review: PR #2017 (head 900bbd1ad, AUDIT PASS relayed 6719166728); leader pre-merge checks done, merge awaiting user approval",
+   "status": "integrated: PR #2017 merged 1a1529004 (user approval; leader merge)",
    "worktree": ".moai-cli/worktrees/issue-1986-00-B"
+  },
+  {
+   "at": "2026-11-08T08:24:40Z",
+   "issue": 1974,
+   "key": "00-C",
+   "lane": "agent-3",
+   "branch": "issue/1974-00-C",
+   "base": "origin/v2026.11.0@1a1529004",
+   "worktree": ".moai-cli/worktrees/issue-1974-00-C",
+   "claim": "lane posts claim comment (⑤); leader relays reports",
+   "status": "integrated: PR #2019 auto-merged 110a93775 (moai/audit status by leader after agent-2 PASS)"
+  },
+  {
+   "at": "2026-11-08T08:37:19Z",
+   "issue": 2020,
+   "key": "00-E",
+   "lane": "agent-3",
+   "branch": "issue/2020-00-E",
+   "base": "origin/v2026.11.0@110a93775",
+   "worktree": ".moai-cli/worktrees/issue-2020-00-E",
+   "status": "dispatched"
+  },
+  {
+   "at": "2026-11-08T08:40:14Z",
+   "issue": 1987,
+   "key": "00-D",
+   "lane": "agent-4",
+   "branch": "issue/1987-00-D",
+   "base": "origin/v2026.11.0@cd6a94418",
+   "worktree": ".moai-cli/worktrees/issue-1987-00-D",
+   "status": "dispatched"
+  },
+  {
+   "at": "2026-11-08T08:46:52Z",
+   "issue": 2022,
+   "key": "BUG-AGENTS-MISSING-BLOCK",
+   "lane": "leader",
+   "branch": "issue/2022-bug-agents-missing-block",
+   "base": "origin/v2026.11.0@cd6a94418",
+   "worktree": ".moai-cli/worktrees/issue-2022-bug",
+   "status": "dispatched (leader implements; agent-2 audits)"
   }
  ],
  "design_update_r8": {
@@ -2888,6 +2965,112 @@
     "number": 1974,
     "status": "updated (AC-00C-07 grep -q, agent-2 r11)",
     "body_sha256": "095fef39ee8a4807ee8722caa60352dde0adf37b54862a67221d9298a4a0dd6f"
+   }
+  ]
+ },
+ "design_update_r13": {
+  "applied_at_utc": "2026-11-08T08:34:45Z",
+  "design_revision": "2026-11-08-r13",
+  "changes": "00-A AC-3 2nd redefinition (Go hook append *.jsonl rule); 00-C AC-00C-03 --limit 200, AC-00C-09 redefined (agent-2 audit)",
+  "results": [
+   {
+    "key": "00-C",
+    "number": 1974,
+    "status": "updated",
+    "body_sha256": "00fafca409f0d4ec05e2a4a8054c9b6b9f8d911e0773770d7653257f125f90b8"
+   },
+   {
+    "key": "00-A",
+    "number": 1985,
+    "status": "updated",
+    "body_sha256": "52044b3ef7a90569816e8599f264368946192a25ad647ace95fb45d918126bd0"
+   },
+   {
+    "key": "00-E",
+    "number": 2020,
+    "status": "created",
+    "body_sha256": "737993496fab065a18dcc455b424b103f45539d120d9615f67492d06c31df9c0"
+   }
+  ]
+ },
+ "integration_policy": {
+  "decided_at": "2026-11-08 17:3x KST",
+  "ruleset_id": 26791615,
+  "required_status": "moai/audit",
+  "mode": "agentic auto-merge (leader sets status after reading independent audit PASS; gh pr merge --auto --merge)"
+ },
+ "removed_go_github_files": {
+  "at": "2026-11-08T08:34:48Z",
+  "count": 23,
+  "basis": "user instruction 2026-11-08 17:4x; 00-C AC-5 verified 23/23 identical to moai-adk-go internal/template/templates",
+  "sha256_record": "leader scratchpad go-github-removed.sha256 (not committed)"
+ },
+ "design_update_r14": {
+  "applied_at_utc": "2026-11-08T08:41:57Z",
+  "design_revision": "2026-11-08-r14",
+  "changes": "00-E r2 per agent-2 design review (owners, pull_request_target observation, cache decision B, permissions, AC-1/AC-5 commands, PyYAML, diff range, main workflows risk HOLD); 08-D/06-C reflect 00-E precedence",
+  "results": [
+   {
+    "key": "00-E",
+    "number": 2020,
+    "status": "updated",
+    "body_sha256": "302502b73dcd0f191d52441ffe07afd2267466eeb8e52a43b4aeff8e55d96feb"
+   },
+   {
+    "key": "08-D",
+    "number": 2015,
+    "status": "updated",
+    "body_sha256": "9e9d50735135b47b0e7844a1ce5144441b9d642bc45c552f9433ef691e1174c0"
+   },
+   {
+    "key": "06-C",
+    "number": 2007,
+    "status": "updated",
+    "body_sha256": "16754260f7c60d815bd6cd84372824b3a1a6bd54d5df216bb90cfc8922969aae"
+   }
+  ]
+ },
+ "design_update_r15": {
+  "applied_at_utc": "2026-11-08T08:44:34Z",
+  "design_revision": "2026-11-08-r15",
+  "changes": "00-E r3: rc-label-sync.yml name, lowercase pull_request_template.md (also 06-C/00-C), AC-00E-1 regex (agent-3 feedback)",
+  "results": [
+   {
+    "key": "00-E",
+    "number": 2020,
+    "status": "updated",
+    "body_sha256": "587195d635cc4733055c9135dafede30562b728bc84abe2631bdfc9fc2b82e02"
+   },
+   {
+    "key": "06-C",
+    "number": 2007,
+    "status": "updated",
+    "body_sha256": "39700140bfdfcdcea4e6975c47935789bd473ee704cae0682e97379c9b3187a7"
+   },
+   {
+    "key": "00-C",
+    "number": 1974,
+    "status": "updated",
+    "body_sha256": "68246aeddbca63faa06fcd5a720308482eca636eae4573889dda4abf92995804"
+   }
+  ]
+ },
+ "design_update_r16": {
+  "applied_at_utc": "2026-11-08T08:46:14Z",
+  "design_revision": "2026-11-08-r16",
+  "changes": "00-D r2: ledger 3 files, 8 commands, per-session target dir, AC-3 variants structure (agent-4 feedback)",
+  "results": [
+   {
+    "key": "00-D",
+    "number": 1987,
+    "status": "updated",
+    "body_sha256": "4d2220daf1e96804355d0da304b2016e23c45d41690518ca60430ca885c1037c"
+   },
+   {
+    "key": "BUG-AGENTS-MISSING-BLOCK",
+    "number": 2022,
+    "status": "created",
+    "body_sha256": "fb440fee01a5ec1b00bfa21700c1b681ef6530dab39ae4f378e88267d831ee13"
    }
   ]
  }

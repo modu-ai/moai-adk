@@ -36,6 +36,13 @@
 | 17:1x | 00-B HOLD-00B-2 API 버전 pin | RC1 임시: gh 기본(헤더 미전송) 유지; pin은 07-A에서 | #1986 | fixture 재기록 없음 |
 | 17:1x | 00-A 범위(리더 확정, 소유자 결정의 귀결) | tree digest 소유 Issue로서 공용 `tree_digest(root, excludes)` 함수를 00-A PR에 포함(00A-AC-8); 05-C는 호출만 | #1985 #2003 | agent-2 r10 "주인 없는 산출물" 해소 |
 | 17:1x | 인수 산출물 재배치 | workflows(rc-ci·rc-e2e)→08-D, PR 템플릿·pr-contract→06-C(REQ-06C-13), outbox.rs→07-B, generation 훅→01-B | #2015 #2007 #2009 #1989 | r11 |
+| 17:3x | 통합 정책(에이전틱) | **모든 통합을 에이전틱 자율로**: ruleset `RC1 integration gate (v2026.11.0)`(id 26791615; PR 필수, 필수 status `moai/audit`, force-push·삭제 금지, bypass 없음). 리더가 독립 감사 PASS를 읽고 head SHA에 `moai/audit=success`를 올린 뒤 `gh pr merge --auto --merge`; head가 바뀌면 status 무효 → 재감사. 레인·봇은 merge 불가. 리더 문서 커밋도 PR 경로 | 모든 PR | 첫 적용 PR #2019 |
+| 17:3x | Issue 원장 거울(`github-issues.json`·본문 사본) | 07-A/07-B 구현 때까지 그대로 사용(제품급 대체는 그 Issue에서) | #2008 #2009 | 리더 설명 뒤 결정 |
+| 17:3x | 00-A AC-3 제외 범위 | "Go 훅 append 전용 `*.jsonl`" 규칙으로 제외(`.moai/logs/`·`state/`·`db/` + `.moai/evolution/telemetry/*.jsonl`·`harness/usage-log.jsonl`·`lessons-inbox.jsonl` 등); 제외 목록을 산출물에 기록; 검증 명령은 원장 3파일 기준 | #1985 | PR #2018 재감사 뒤 통합 |
+| 17:4x | 00-E cargo 캐시 전략(리더 RC1 임시) | B 매번 `cargo fetch --locked` 뒤 `--offline`(의존성 4개, 액션 추가 없음); A actions/cache는 08-D 재평가. 소유 변경: rc-ci.yml 1차·PR 템플릿 1차 → 00-E #2020; 08-D는 release·rc-e2e·필수 체크 등록, 06-C는 렌더러·pr-contract | #2020 #2015 #2007 | agent-2 설계 검토 반영 |
+| 17:3x | 통합 게이트 보강(agent-2 지적, 리더 적용) | `strict_required_status_checks_policy: true`(base 최신 아니면 merge 불가 → `gh pr update-branch` 뒤 재감사). verdict 첫 줄 형식 고정: `AUDIT #<n> (<key>) head <40hex> base <40hex> — verdict: PASS\|FAIL`(수식어 금지), 리더는 그 줄만으로 판정하고 head==PR head 확인. 알려진 빈틈: 모든 세션이 같은 GitHub 계정이라 status 출처(integration_id) 고정 불가 — 감사 전용 GitHub App은 후속(HOLD); status description/target_url에 감사 댓글 링크 기록으로 사후 대조 | 모든 PR | — |
+| 17:3x | Go 세대 `.github` 제거·재구성 | 사용자 지시: untracked Go 세대 `.github` 23파일 제거(00-C AC-5가 moai-adk-go 템플릿과 23/23 동일 확인; sha256 기록은 리더 scratchpad), RC1 전용으로 재구성은 신규 Issue로 배차(workflows·PR 템플릿·labeler 선행 구현; 08-D·06-C는 그 위에 확장) | 신규 Issue, #2015 #2007 | 소유자 표 조정 |
+| 17:3x | AGENTS 역할 분리 | `AGENTS.md` = moai-adk 기본 워크플로·규칙(제품 템플릿 성격), `AGENTS.local.md` = moai-adk 로컬 개발 규칙(역할·lane loop·통합 정책·보존 경계·구현 지도·검사 명령) | AGENTS.md, AGENTS.local.md | 재생성은 agents-plan/apply |
 
 부분 결정 분리: P08은 claim 방식(⑤+①)만 결정, lease·heartbeat 수치 HOLD · P15는 ZCode 헤드리스 범위만 결정, 나머지 host 지원표 HOLD.
 
