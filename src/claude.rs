@@ -289,6 +289,211 @@ pub fn plan_settings(
     Ok(((conflicts.is_empty()).then_some(candidate), conflicts))
 }
 
+const SETTINGS_FILE: &str = ".claude/settings.json";
+/// Ownership receipt under the project state root; 04-B UPDATE reads it as the baseline.
+const SETTINGS_RECEIPT: &str = "manifests/claude-settings.json";
+
+fn read_existing(path: &Path) -> Result<Option<Vec<u8>>> {
+    match fs::symlink_metadata(path) {
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(_) => Err("target metadata unavailable".into()),
+        Ok(m) if m.file_type().is_symlink() => Err("symlink target refused".into()),
+        Ok(m) if !m.is_file() || m.len() > READ_LIMIT => {
+            Err("target is not a bounded regular file".into())
+        }
+        Ok(_) => fs::read(path)
+            .map(Some)
+            .map_err(|_| "target read failed".into()),
+    }
+}
+
+fn refuse_symlink_dir(path: &Path) -> Result<()> {
+    match fs::symlink_metadata(path) {
+        Ok(m) if m.file_type().is_symlink() => Err("symlink target refused".into()),
+        _ => Ok(()),
+    }
+}
+
+/// One planned settings change: everything the plan digest binds and apply re-checks.
+struct SettingsState {
+    settings: PathBuf,
+    receipt: PathBuf,
+    before: Option<Vec<u8>>,
+    receipt_before: Option<Vec<u8>>,
+    owned: Map<String, Value>,
+    current: Map<String, Value>,
+    candidate: Option<Map<String, Value>>,
+    conflicts: Vec<String>,
+    /// New settings bytes; `None` when the file stays as it is.
+    after: Option<Vec<u8>>,
+    digest: String,
+}
+
+fn settings_state(project: &Path, desired: &Map<String, Value>) -> Result<SettingsState> {
+    let root = fs::canonicalize(project).map_err(|_| "project directory unavailable")?;
+    if !root.is_dir() {
+        return Err("project must be a directory".into());
+    }
+    let state_dir = root.join(crate::PROJECT_STATE_DIR);
+    for dir in [
+        root.join(".claude"),
+        state_dir.clone(),
+        state_dir.join("manifests"),
+    ] {
+        refuse_symlink_dir(&dir)?;
+    }
+    let (settings, receipt) = (root.join(SETTINGS_FILE), state_dir.join(SETTINGS_RECEIPT));
+    let before = read_existing(&settings)?;
+    let receipt_before = read_existing(&receipt)?;
+    let owned = match &receipt_before {
+        None => Map::new(),
+        Some(bytes) => {
+            let r: Value = serde_json::from_slice(bytes)
+                .map_err(|_| "claude settings receipt requires preservation review")?;
+            match (&r["schema_version"], &r["owned"]) {
+                (Value::Number(n), Value::Object(o)) if n.as_u64() == Some(1) => o.clone(),
+                _ => return Err("claude settings receipt requires preservation review".into()),
+            }
+        }
+    };
+    let current = match &before {
+        None => Map::new(),
+        Some(bytes) => match serde_json::from_slice::<Value>(bytes) {
+            Ok(Value::Object(m)) => m,
+            _ => return Err("existing settings.json requires preservation review".into()),
+        },
+    };
+    let (candidate, conflicts) = plan_settings(&owned, &current, desired)?;
+    let after = candidate.as_ref().filter(|c| **c != current).map(|c| {
+        let mut b = serde_json::to_vec_pretty(c).expect("JSON object");
+        b.push(b'\n');
+        b
+    });
+    use crate::spec::Canonical;
+    let canonical =
+        |m: &Map<String, Value>| crate::spec::SortedKeys.bytes(&Value::Object(m.clone()));
+    let digest = crate::digest(
+        &serde_json::to_vec(&(
+            1,
+            crate::digest(&canonical(desired)),
+            before.as_deref().map(crate::digest),
+            receipt_before.as_deref().map(crate::digest),
+            after.as_deref().map(crate::digest),
+            &conflicts,
+        ))
+        .expect("plan tuple"),
+    );
+    Ok(SettingsState {
+        settings,
+        receipt,
+        before,
+        receipt_before,
+        owned,
+        current,
+        candidate,
+        conflicts,
+        after,
+        digest,
+    })
+}
+
+/// Previews setting `desired` (managed keys only) in `PROJECT/.claude/settings.json`. Never
+/// writes. The returned `plan_digest` binds the current file, the receipt and the result.
+pub fn settings_plan(project: &Path, desired: &Map<String, Value>) -> Result<Value> {
+    let s = settings_state(project, desired)?;
+    let action = match (&s.candidate, &s.after, &s.before) {
+        (None, _, _) => "conflict",
+        (Some(_), None, _) => "unchanged",
+        (Some(_), Some(_), None) => "create",
+        (Some(_), Some(_), Some(_)) => "update",
+    };
+    Ok(json!({
+        "action": action,
+        "settings_path": SETTINGS_FILE,
+        "conflicts": s.conflicts,
+        "expected_sha256": s.before.as_deref().map(crate::digest),
+        "planned_sha256": s.after.as_deref().map(crate::digest),
+        "plan_digest": s.digest,
+        "writes": false,
+    }))
+}
+
+/// Applies a previewed settings plan: re-plans against the files now, requires the same
+/// digest, replaces the settings file only when it changes, then records ownership. A key is
+/// owned only when MoAI already owned it or set it now; an equal value the user already had is
+/// left unowned. The two files are not one atomic transaction; a failure between them is
+/// reported as partial and a re-run completes it.
+pub fn settings_apply(
+    project: &Path,
+    desired: &Map<String, Value>,
+    plan_digest: &str,
+    permission: &str,
+) -> Result<Value> {
+    // Authorization stays with the host; the reference is caller metadata, not a verifier.
+    if ["", "null", "placeholder"].contains(&permission.trim())
+        || permission.len() > 128
+        || permission.chars().any(char::is_control)
+    {
+        return Err("permission reference required".into());
+    }
+    let s = settings_state(project, desired)?;
+    if !s.conflicts.is_empty() {
+        return Err(format!(
+            "conflict in {SETTINGS_FILE}: {} changed outside MoAI; nothing applied",
+            s.conflicts.join(", ")
+        ));
+    }
+    if s.digest != plan_digest {
+        return Err("stale or altered plan; re-preview required".into());
+    }
+    let mut files = Vec::new();
+    if let Some(after) = &s.after {
+        crate::agents::write_replace(&s.settings, s.before.as_deref(), after)?;
+        files.push(SETTINGS_FILE);
+    }
+    let owned: Map<String, Value> = desired
+        .iter()
+        .filter(|(k, v)| s.owned.contains_key(*k) || s.current.get(*k) != Some(*v))
+        .map(|(k, v)| (k.clone(), v.clone()))
+        .collect();
+    let final_bytes = s.after.as_deref().or(s.before.as_deref());
+    let mut receipt = serde_json::to_vec_pretty(&json!({
+        "schema_version": 1,
+        "settings_path": SETTINGS_FILE,
+        "owned": owned,
+        "settings_sha256": final_bytes.map(crate::digest),
+    }))
+    .expect("receipt");
+    receipt.push(b'\n');
+    if s.receipt_before.as_deref() != Some(receipt.as_slice()) {
+        let rel = format!("{}/{SETTINGS_RECEIPT}", crate::PROJECT_STATE_DIR);
+        if let Err(e) =
+            crate::agents::write_replace(&s.receipt, s.receipt_before.as_deref(), &receipt)
+        {
+            return Err(if files.is_empty() {
+                e
+            } else {
+                format!("partial apply: applied [{SETTINGS_FILE}]; failed at {rel}: {e}")
+            });
+        }
+    }
+    let created: Vec<&str> = if s.before.is_none() {
+        files.clone()
+    } else {
+        vec![]
+    };
+    Ok(json!({
+        "state": if files.is_empty() { "unchanged" } else { "applied" },
+        "files_changed": files,
+        "files_created": created,
+        "owned_keys": owned.keys().collect::<Vec<_>>(),
+        "settings_sha256_before": s.before.as_deref().map(crate::digest),
+        "settings_sha256_after": final_bytes.map(crate::digest),
+        "host_loaded": "not_run",
+        "execution_verified": "not_run",
+    }))
+}
+
 /// Claude-only frontmatter fields a projection may add, with the values each accepts.
 /// Fields that grant tools or register hooks (`allowed-tools`, `hooks`, ...) are not offered:
 /// package content never widens permissions, and the RC1 hook set is empty (P04 = A).
@@ -537,6 +742,152 @@ mod tests {
         assert_eq!(keys, expected);
         expected.sort();
         assert_eq!(result.unwrap().len(), expected.len());
+    }
+
+    // SETTINGS-PRESERVE: every case runs in a temporary project; no real settings are touched.
+    fn project_with(settings: Option<&str>) -> tempfile::TempDir {
+        let p = tempfile::TempDir::new().unwrap();
+        if let Some(text) = settings {
+            fs::create_dir(p.path().join(".claude")).unwrap();
+            fs::write(p.path().join(SETTINGS_FILE), text).unwrap();
+        }
+        p
+    }
+    fn sha(p: &Path) -> Option<String> {
+        fs::read(p).ok().map(|b| crate::digest(&b))
+    }
+    fn apply_now(p: &Path, desired: &Map<String, Value>) -> Result<Value> {
+        let plan = settings_plan(p, desired)?;
+        settings_apply(
+            p,
+            desired,
+            plan["plan_digest"].as_str().unwrap(),
+            "test-ref",
+        )
+    }
+    const USER_FILE: &str = "{\n  \"model\": \"sonnet\",\n  \"hooks\": {\n    \"Stop\": [\n      {\n        \"user\": true\n      }\n    ]\n  },\n  \"zz-unknown\": 1\n}\n";
+
+    #[test]
+    fn claude_settings_apply_creates_preserves_and_is_idempotent() {
+        // Created from nothing; the receipt owns what MoAI set.
+        let p = project_with(None);
+        let style = obj(json!({"outputStyle": "MoAI"}));
+        let r = apply_now(p.path(), &style).unwrap();
+        assert_eq!(r["files_created"], json!([SETTINGS_FILE]));
+        assert_eq!(
+            fs::read_to_string(p.path().join(SETTINGS_FILE)).unwrap(),
+            "{\n  \"outputStyle\": \"MoAI\"\n}\n"
+        );
+        // An existing user file keeps every byte; the managed key is appended at the end.
+        let p = project_with(Some(USER_FILE));
+        let line = obj(json!({"statusLine": {"type": "command", "command": "moai-statusline"}}));
+        let r = apply_now(p.path(), &line).unwrap();
+        assert_eq!(r["state"], json!("applied"));
+        assert_eq!(r["owned_keys"], json!(["statusLine"]));
+        let after = fs::read_to_string(p.path().join(SETTINGS_FILE)).unwrap();
+        let expected = USER_FILE.replacen(
+            "  \"zz-unknown\": 1\n}",
+            "  \"zz-unknown\": 1,\n  \"statusLine\": {\n    \"type\": \"command\",\n    \"command\": \"moai-statusline\"\n  }\n}",
+            1,
+        );
+        assert_eq!(after, expected);
+        // Re-running plans and writes nothing: same bytes, same receipt.
+        let receipt = p.path().join(".moai-cli").join(SETTINGS_RECEIPT);
+        let (s1, r1) = (sha(&p.path().join(SETTINGS_FILE)), sha(&receipt));
+        assert_eq!(
+            settings_plan(p.path(), &line).unwrap()["action"],
+            json!("unchanged")
+        );
+        let again = apply_now(p.path(), &line).unwrap();
+        assert_eq!(again["state"], json!("unchanged"));
+        assert_eq!(
+            (sha(&p.path().join(SETTINGS_FILE)), sha(&receipt)),
+            (s1, r1)
+        );
+        // Dropping the key from `desired` removes only what MoAI owned.
+        apply_now(p.path(), &Map::new()).unwrap();
+        assert_eq!(
+            fs::read_to_string(p.path().join(SETTINGS_FILE)).unwrap(),
+            USER_FILE
+        );
+    }
+
+    #[test]
+    fn claude_settings_apply_refuses_conflicts_stale_plans_and_bad_targets() {
+        // A user statusLine is a conflict; the file stays byte-identical.
+        let user = "{\"statusLine\":{\"type\":\"command\",\"command\":\"orca\"}}";
+        let p = project_with(Some(user));
+        let path = p.path().join(SETTINGS_FILE);
+        let before = sha(&path);
+        let desired = obj(json!({"statusLine": {"type": "command", "command": "moai"}}));
+        let plan = settings_plan(p.path(), &desired).unwrap();
+        assert_eq!(plan["action"], json!("conflict"));
+        let err = settings_apply(
+            p.path(),
+            &desired,
+            plan["plan_digest"].as_str().unwrap(),
+            "r",
+        )
+        .unwrap_err();
+        assert_eq!(
+            crate::contract::classify(&err),
+            crate::contract::Kind::Conflict,
+            "{err}"
+        );
+        assert_eq!(sha(&path), before);
+        // A user edit after the preview makes the plan stale.
+        let p = project_with(Some(USER_FILE));
+        let style = obj(json!({"outputStyle": "MoAI"}));
+        let plan = settings_plan(p.path(), &style).unwrap();
+        fs::write(p.path().join(SETTINGS_FILE), "{\"model\":\"opus\"}\n").unwrap();
+        let err = settings_apply(p.path(), &style, plan["plan_digest"].as_str().unwrap(), "r")
+            .unwrap_err();
+        assert_eq!(
+            crate::contract::classify(&err),
+            crate::contract::Kind::StalePlan
+        );
+        assert_eq!(
+            fs::read_to_string(p.path().join(SETTINGS_FILE)).unwrap(),
+            "{\"model\":\"opus\"}\n"
+        );
+        // An identical value the user already had is not adopted, and the file is untouched.
+        let p = project_with(Some("{\"outputStyle\": \"MoAI\"}\n"));
+        let r = apply_now(p.path(), &style).unwrap();
+        assert_eq!(
+            (r["state"].clone(), r["owned_keys"].clone()),
+            (json!("unchanged"), json!([]))
+        );
+        // Placeholder permission, non-object JSON, and a symlinked settings file are refused.
+        let p = project_with(Some("[1]"));
+        let plan_err = settings_plan(p.path(), &style).unwrap_err();
+        assert_eq!(
+            crate::contract::classify(&plan_err),
+            crate::contract::Kind::Conflict
+        );
+        let p = project_with(None);
+        let plan = settings_plan(p.path(), &style).unwrap();
+        let err = settings_apply(
+            p.path(),
+            &style,
+            plan["plan_digest"].as_str().unwrap(),
+            "placeholder",
+        )
+        .unwrap_err();
+        assert_eq!(
+            crate::contract::classify(&err),
+            crate::contract::Kind::PermissionReferenceMissing
+        );
+        let outside = tempfile::TempDir::new().unwrap();
+        fs::write(outside.path().join("s.json"), "{}").unwrap();
+        fs::create_dir(p.path().join(".claude")).unwrap();
+        std::os::unix::fs::symlink(outside.path().join("s.json"), p.path().join(SETTINGS_FILE))
+            .unwrap();
+        assert!(settings_plan(p.path(), &style).is_err());
+        assert_eq!(
+            fs::read_to_string(outside.path().join("s.json")).unwrap(),
+            "{}"
+        );
+        assert!(!p.path().join(".moai-cli").exists());
     }
 
     #[test]
