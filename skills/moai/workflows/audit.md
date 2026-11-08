@@ -16,6 +16,8 @@ Findings from an independent context and an evidence-bound verdict.
 4. Have a deterministic admission step confirm the must-pass conditions and their evidence.
 5. If the reviewer changes code, verify the result again as a new candidate.
 
+The review package and the way a verdict reaches integration are described in the SYNC workflow (procedure steps 7 and 8).
+
 ## Exceptions and Permissions
 
 Self-assessment in the same context and a judge's recommendation do not replace the required independent audit. If a reviewer cannot be created or the evidence is insufficient, the result is blocked or unknown.
