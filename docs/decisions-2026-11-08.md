@@ -46,7 +46,8 @@
 | 17:5x | `/goal` 조건 재설정 | 허브 양방향 통신 항목(다음 버전 보류)을 제외하고 RC1 레인 루프로 재설정: 열린 PR·진행 카드가 에이전틱 게이트로 모두 통합되고 레인이 다음 Issue를 받아 반복 중이며 리더가 리뷰·수리 배차를 journal·decisions에 기록 | 세션 goal | 평가기 미충족 반복 해소 |
 | 18:0x | 론처 우선(허브 보류 재확인) | `moai -l/-a`, `moai cc|glm|codex -l|-a` 론처만 구축; 세션 간 통신은 Claude Code 내장 크로스 세션 메시징만. Claude 기본: `opus` + `--advisor fable` + **`--dangerously-skip-permissions`(임시 기본, 추후 설정에서 선택)**. Issue 00-F로 배차 | 00-F | Codex `codex queue`는 존재하나 RC1 미사용 |
 | 18:1x | Rust 툴체인 고정(리더 RC1 임시) | rc-ci 러너 1.99 vs 로컬 1.94.1 불일치(PR #2027 clippy 실패)로 `rust-toolchain.toml`에 1.94.1 고정; 최신 stable 상향은 08-D | #2029 | agent-2 #2020 감사 예고 적중 |
-| 18:1x | Issue 닫기 기준 | PR merge + 독립 AUDIT PASS + AC 전부 passed(플랫폼 not_run은 명시)이면 리더가 완료 댓글과 함께 `completed`로 닫음 | #1986 #1974 #1985 #2020 #2022 #2024 | 의존성 해소를 위해 필요 |
+| 18:1x | Issue 닫기 기준(리더 운영 결정) | PR merge + 독립 AUDIT PASS + AC 전부 passed(플랫폼 not_run은 명시)이면 리더가 완료 댓글과 함께 `completed`로 닫음 | #1986 #1974 #1985 #2020 #2022 #2024 | 의존성 해소를 위해 필요 |
+| 18:2x | 01-A 임시 결정(리더 RC1; P05·P12 결정 전) | HOLD-1 A sha256(common-dir) 임시 + `@MX:DEBT` / HOLD-2 A `~/.moai-cli` 고정 / HOLD-3 A git 하위 프로세스(의존성 0) / identity 출력은 현행 계약(envelope 없음, exit 0/1; 00-D 확정 시 01-C 조정) / AC-01A-5는 홈 전수 해시 금지(00-A HOLD-00A-2 정합) | #1988 | agent-4 blocked 보고 해소 |
 
 부분 결정 분리: P08은 claim 방식(⑤+①)만 결정, lease·heartbeat 수치 HOLD · P15는 ZCode 헤드리스 범위만 결정, 나머지 host 지원표 HOLD.
 

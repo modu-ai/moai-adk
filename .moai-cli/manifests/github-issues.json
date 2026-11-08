@@ -2755,7 +2755,7 @@
    "branch": "issue/2028-00-F",
    "base": "origin/v2026.11.0@f094d29f8",
    "worktree": ".moai-cli/worktrees/issue-2028-00-F",
-   "status": "dispatched"
+   "status": "PR #2030 open; AUDIT FAIL (00-D golden fixture conflict) → fixtures 01+18 re-record approved; full re-audit next"
   },
   {
    "at": "2026-11-08T09:10:45Z",
@@ -2765,7 +2765,7 @@
    "branch": "issue/2029-toolchain-pin",
    "base": "origin/v2026.11.0@ae5cea38b",
    "worktree": ".moai-cli/worktrees/issue-2029-toolchain",
-   "status": "dispatched"
+   "status": "PR #2031 open (head 96d9283fa); rc-ci pending; agent-2 review next"
   },
   {
    "at": "2026-11-08T09:13:04Z",
@@ -2775,7 +2775,7 @@
    "branch": "issue/1988-01-A",
    "base": "origin/v2026.11.0@c4a7d221d",
    "worktree": ".moai-cli/worktrees/issue-1988-01-A",
-   "status": "dispatched"
+   "status": "claimed; blocked→interim decisions r21 delivered; implementing"
   }
  ],
  "design_update_r8": {
@@ -3245,6 +3245,12 @@
     "number": 2029,
     "status": "created",
     "body_sha256": "af4653a3c58f3d5e1d0c8236b7f4b82729a6ba133e5c434d073ffde271ceec69"
+   },
+   {
+    "key": "INFRA-RUST-TOOLCHAIN-PIN",
+    "number": 2029,
+    "status": "updated (premise corrected: auto-install)",
+    "body_sha256": "6bff82c9115fc82e122a97877f646cc5d6e8240dc8374ce27a640addc5ca15cb"
    }
   ]
  },
@@ -3265,5 +3271,30 @@
    "issue": 2008,
    "key": "07-A"
   }
- ]
+ ],
+ "design_update_r21": {
+  "applied_at_utc": "2026-11-08T09:14:58Z",
+  "design_revision": "2026-11-08-r21",
+  "changes": "01-A interim leader decisions: HOLD-1 A sha256(common-dir)+DEBT, HOLD-2 A ~/.moai-cli, HOLD-3 A git subprocess, step 1 current contract, AC-01A-5 no home full hash (00-A HOLD-00A-2)",
+  "results": [
+   {
+    "key": "01-A",
+    "number": 1988,
+    "status": "updated",
+    "body_sha256": "f40610d0892f4c6a5102cf172caee3a7d8a29b5b009448ba72c6bec8db3af02e"
+   },
+   {
+    "key": "00-F",
+    "number": 2028,
+    "status": "updated (r2: usage fixtures in scope, AC-6 post-integration, PROMPT note, ultracode unverified)",
+    "body_sha256": "1bde7d372ddb2fdfc6cb4c76ac8669cf340edfd3dfc75760e5f48a78409414aa"
+   },
+   {
+    "key": "00-F",
+    "number": 2028,
+    "status": "updated (r3: fixtures 01+18 in scope)",
+    "body_sha256": "402a3f2ce074487d1f876a1f61fa48db9ed70a0c6c91c5533ff910b4903a6328"
+   }
+  ]
+ }
 }

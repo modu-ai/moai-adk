@@ -14,7 +14,7 @@ evidence_status: not_run
 로컬 `cargo clippy -D warnings` 0인데 러너(Rust 1.99 clippy)가 `clippy::unnecessary_sort_by`(tests/product_cli.rs:1147)로 실패. 로컬 `rustc 1.94.1`, `clippy 0.1.94`. 레인·감사자의 "clippy 0"이 CI 통과를 보장하지 못함(agent-2 #2020 감사에서 비차단 위험으로 예고).
 
 ## 리더 결정(RC1 임시, 2026-11-08 18:1x; 출처 docs/decisions-2026-11-08.md)
-`rust-toolchain.toml`로 **로컬에 이미 있는 1.94.1**을 고정한다(모든 세션이 재설치 없이 즉시 일치; 러너는 rustup이 파일을 읽어 그 버전을 설치). 최신 stable로의 상향은 08-D(release gate)에서 결정.
+`rust-toolchain.toml`로 **1.94.1**을 고정한다. 정정(agent-1 실측): 로컬의 1.94.1은 `stable-<host>` 이름이라 `channel = "1.94.1"`은 별개 툴체인 `1.94.1-<host>`를 가리키며, rustup 기본(`RUSTUP_AUTO_INSTALL=1`)으로 첫 실행 때 네트워크로 설치된다(이 머신에는 2026-11-08 설치 완료·사용자 유지 결정). 러너도 같은 방식으로 설치. 최신 stable로의 상향은 08-D(release gate)에서 결정.
 
 ## 수정 방향
 - 저장소 루트에 `rust-toolchain.toml`(`[toolchain] channel = "1.94.1"`, `components = ["clippy", "rustfmt"]`, `profile = "minimal"`).
