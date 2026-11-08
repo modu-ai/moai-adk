@@ -361,6 +361,60 @@
    "title": "[RC1][설치와 UPDATE] 04-D Go 사용자 마이그레이션(bridge): moai update(Go) → moai-cli 설치·상태 이전·Go 제거",
    "reused": false,
    "created_by": "user approval 2026-11-08 (new issue 04-D)"
+  },
+  "00-E": {
+   "number": 2020,
+   "id": 6269185631,
+   "node_id": "I_kwDOPw9rL88AAAABdawuXw",
+   "url": "https://github.com/modu-ai/moai-adk/issues/2020",
+   "title": "[RC1][부트스트랩] 00-E .github 재구성 — Go 세대 제거 후 RC1 전용 workflows·PR 템플릿·label 동기화",
+   "reused": false,
+   "created_by": "user instruction 2026-11-08 17:3x (.github rebuild)"
+  },
+  "BUG-AGENTS-MISSING-BLOCK": {
+   "number": 2022,
+   "id": 6269251299,
+   "node_id": "I_kwDOPw9rL88AAAABda0u4w",
+   "url": "https://github.com/modu-ai/moai-adk/issues/2022",
+   "title": "[RC1][결함] agents-plan이 관리 구간이 삭제된 AGENTS.md를 unchanged로 판정",
+   "reused": false,
+   "created_by": "leader-found defect 2026-11-08 during AGENTS split"
+  },
+  "BUG-TEST-HELPER-BROKEN-PIPE": {
+   "number": 2024,
+   "id": 6269266326,
+   "node_id": "I_kwDOPw9rL88AAAABda1plg",
+   "url": "https://github.com/modu-ai/moai-adk/issues/2024",
+   "title": "[RC1][결함] tests/product_cli.rs cli() 헬퍼 BrokenPipe panic — rc-ci 첫 실행 실패",
+   "reused": false,
+   "created_by": "leader, rc-ci failure on PR #2021 2026-11-08"
+  },
+  "00-F": {
+   "number": 2028,
+   "id": 6269394895,
+   "node_id": "I_kwDOPw9rL88AAAABda9fzw",
+   "url": "https://github.com/modu-ai/moai-adk/issues/2028",
+   "title": "[RC1][공통 skill과 host] 00-F 개발 세션 론처 — moai -l|-a, moai cc|glm|codex -l|-a (허브 없이)",
+   "reused": false,
+   "created_by": "user instruction 2026-11-08 18:0x (launcher first, hub later)"
+  },
+  "INFRA-RUST-TOOLCHAIN-PIN": {
+   "number": 2029,
+   "id": 6269420970,
+   "node_id": "I_kwDOPw9rL88AAAABda_Fqg",
+   "url": "https://github.com/modu-ai/moai-adk/issues/2029",
+   "title": "[RC1][결함] 로컬 1.94.1 vs rc-ci 러너 1.99 Rust 툴체인 불일치 — rust-toolchain.toml 고정",
+   "reused": false,
+   "created_by": "leader, rc-ci clippy mismatch on PR #2027 (agent-2)"
+  },
+  "BUG-IDENTITY-GIT-ENV-AND-FAILED": {
+   "number": 2033,
+   "id": 6269689383,
+   "node_id": "I_kwDOPw9rL88AAAABdbPeJw",
+   "url": "https://github.com/modu-ai/moai-adk/issues/2033",
+   "title": "[RC1][결함] identity: git 환경 변수 주입 미차단, Git::Failed를 no_git으로 보고",
+   "reused": false,
+   "created_by": "leader from 01-A audit follow-ups 2026-11-08"
   }
  },
  "links": [
@@ -614,6 +668,42 @@
    "tag": "EP-05>04-D",
    "parent": 1980,
    "child": 2016,
+   "status": "linked"
+  },
+  {
+   "tag": "EP-01>00-E",
+   "parent": 1976,
+   "child": 2020,
+   "status": "linked"
+  },
+  {
+   "tag": "EP-02>BUG-AGENTS-MISSING-BLOCK",
+   "parent": 1977,
+   "child": 2022,
+   "status": "linked"
+  },
+  {
+   "tag": "EP-02>BUG-TEST-HELPER-BROKEN-PIPE",
+   "parent": 1977,
+   "child": 2024,
+   "status": "linked"
+  },
+  {
+   "tag": "EP-03>00-F",
+   "parent": 1978,
+   "child": 2028,
+   "status": "linked"
+  },
+  {
+   "tag": "EP-09>INFRA-RUST-TOOLCHAIN-PIN",
+   "parent": 1984,
+   "child": 2029,
+   "status": "linked"
+  },
+  {
+   "tag": "EP-02>BUG-IDENTITY-GIT-ENV-AND-FAILED",
+   "parent": 1977,
+   "child": 2033,
    "status": "linked"
   }
  ],
@@ -923,6 +1013,18 @@
    "tag": "04-D<-04-B",
    "issue": 2016,
    "blocked_by": 1999,
+   "status": "linked"
+  },
+  {
+   "tag": "00-E<-00-C",
+   "issue": 2020,
+   "blocked_by": 1974,
+   "status": "linked (00-C closed? no — issue open; PR merged)"
+  },
+  {
+   "tag": "BUG-IDENTITY-GIT-ENV-AND-FAILED<-01-A",
+   "issue": 2033,
+   "blocked_by": 1988,
    "status": "linked"
   }
  ],
@@ -2601,7 +2703,7 @@
    "branch": "issue/1985-00-A",
    "base": "origin/v2026.11.0@a6c67ba2d",
    "claim": "lane posts claim comment (⑤); leader verifies read-side",
-   "status": "in_progress step 3 (collector); scope += tree_digest public fn",
+   "status": "integrated: PR #2018 auto-merged cd6a94418 (agent-2 PASS bc22c6428 → leader moai/audit → auto-merge); issue closed (completed) 2026-11-08",
    "worktree": ".moai-cli/worktrees/issue-1985-00-A"
   },
   {
@@ -2612,8 +2714,139 @@
    "branch": "issue/1986-00-B",
    "base": "origin/v2026.11.0@a6c67ba2d",
    "claim": "lane posts claim comment (⑤); leader verifies read-side",
-   "status": "pr_ready→in_review: PR #2017 (head 900bbd1ad, AUDIT PASS relayed 6719166728); leader pre-merge checks done, merge awaiting user approval",
+   "status": "integrated: PR #2017 merged 1a1529004 (user approval; leader merge); issue closed (completed) 2026-11-08",
    "worktree": ".moai-cli/worktrees/issue-1986-00-B"
+  },
+  {
+   "at": "2026-11-08T08:24:40Z",
+   "issue": 1974,
+   "key": "00-C",
+   "lane": "agent-3",
+   "branch": "issue/1974-00-C",
+   "base": "origin/v2026.11.0@1a1529004",
+   "worktree": ".moai-cli/worktrees/issue-1974-00-C",
+   "claim": "lane posts claim comment (⑤); leader relays reports",
+   "status": "integrated: PR #2019 auto-merged 110a93775 (moai/audit status by leader after agent-2 PASS); issue closed (completed) 2026-11-08"
+  },
+  {
+   "at": "2026-11-08T08:37:19Z",
+   "issue": 2020,
+   "key": "00-E",
+   "lane": "agent-3",
+   "branch": "issue/2020-00-E",
+   "base": "origin/v2026.11.0@110a93775",
+   "worktree": ".moai-cli/worktrees/issue-2020-00-E",
+   "status": "integrated: PR #2021 auto-merged f094d29f8 (agent-2 PASS 7234accbb → leader moai/audit → auto-merge); rc-ci live; issue closed (completed) 2026-11-08"
+  },
+  {
+   "at": "2026-11-08T08:40:14Z",
+   "issue": 1987,
+   "key": "00-D",
+   "lane": "agent-4",
+   "branch": "issue/1987-00-D",
+   "base": "origin/v2026.11.0@cd6a94418",
+   "worktree": ".moai-cli/worktrees/issue-1987-00-D",
+   "status": "integrated: PR #2027 auto-merged c4a7d221d; issue closed (completed) 2026-11-08"
+  },
+  {
+   "at": "2026-11-08T08:46:52Z",
+   "issue": 2022,
+   "key": "BUG-AGENTS-MISSING-BLOCK",
+   "lane": "leader",
+   "branch": "issue/2022-bug-agents-missing-block",
+   "base": "origin/v2026.11.0@cd6a94418",
+   "worktree": ".moai-cli/worktrees/issue-2022-bug",
+   "status": "AUDIT PASS 0c0daeb6f (PR #2026); behind after #2021 → update-branch + delta re-audit pending; issue closed (completed) 2026-11-08"
+  },
+  {
+   "at": "2026-11-08T08:49:05Z",
+   "issue": 2024,
+   "key": "BUG-TEST-HELPER-BROKEN-PIPE",
+   "lane": "leader",
+   "branch": "issue/2024-bug-broken-pipe",
+   "base": "origin/v2026.11.0@cd6a94418",
+   "worktree": ".moai-cli/worktrees/issue-2024-bug-pipe",
+   "status": "integrated: PR #2025 auto-merged ac555ff6b (agent-2 PASS 67e95b6b3 → leader moai/audit → auto-merge); issue closed (completed) 2026-11-08"
+  },
+  {
+   "at": "2026-11-08T09:07:07Z",
+   "issue": 2028,
+   "key": "00-F",
+   "lane": "agent-3",
+   "branch": "issue/2028-00-F",
+   "base": "origin/v2026.11.0@f094d29f8",
+   "worktree": ".moai-cli/worktrees/issue-2028-00-F",
+   "status": "integrated: PR #2030 auto-merged 8ff1db71b; issue closed (completed); AC-6 operator measurement pending"
+  },
+  {
+   "at": "2026-11-08T09:10:45Z",
+   "issue": 2029,
+   "key": "INFRA-RUST-TOOLCHAIN-PIN",
+   "lane": "agent-1",
+   "branch": "issue/2029-toolchain-pin",
+   "base": "origin/v2026.11.0@ae5cea38b",
+   "worktree": ".moai-cli/worktrees/issue-2029-toolchain",
+   "status": "integrated: PR #2031 auto-merged d0a5daea5; issue closed (completed)"
+  },
+  {
+   "at": "2026-11-08T09:13:04Z",
+   "issue": 1988,
+   "key": "01-A",
+   "lane": "agent-4 [e4237d] (new session; 1013f1 gone, c3a17f standby)",
+   "branch": "issue/1988-01-A",
+   "base": "origin/v2026.11.0@c4a7d221d",
+   "worktree": ".moai-cli/worktrees/issue-1988-01-A",
+   "status": "integrated: PR #2032 auto-merged 7f9eaacc5; issue closed (completed)"
+  },
+  {
+   "at": "2026-11-08T09:19:50Z",
+   "issue": 1990,
+   "key": "01-C",
+   "lane": "agent-1",
+   "branch": "issue/1990-01-C",
+   "base": "origin/v2026.11.0@d0a5daea5",
+   "worktree": ".moai-cli/worktrees/issue-1990-01-C",
+   "status": "claimed; blocked on user HOLDs (envelope, MCP scope, revision) → user question; step 4 in progress"
+  },
+  {
+   "at": "2026-11-08T09:26:02Z",
+   "issue": 1991,
+   "key": "02-A",
+   "lane": "agent-3",
+   "branch": "issue/1991-02-A",
+   "base": "origin/v2026.11.0@8ff1db71b",
+   "worktree": ".moai-cli/worktrees/issue-1991-02-A",
+   "status": "PR #2034 open (head b014df7fb, rc-ci success); report relayed; agent-2 review requested"
+  },
+  {
+   "at": "2026-11-08T09:45:52Z",
+   "issue": 2001,
+   "key": "05-A",
+   "lane": "agent-1 [d54a06] (spare session after restart)",
+   "branch": "issue/2001-05-A",
+   "base": "origin/v2026.11.0@8ff1db71b",
+   "worktree": ".moai-cli/worktrees/issue-2001-05-A",
+   "status": "claimed (relay); interim: H1 trait+sorted serde_json, H2 src/spec.rs, H3 library API only, AC-05A-6 not_run/blocked"
+  },
+  {
+   "at": "2026-11-08T09:45:52Z",
+   "issue": 2008,
+   "key": "07-A",
+   "lane": "agent-3 [437ee1] (spare session after restart)",
+   "branch": "issue/2008-07-A",
+   "base": "origin/v2026.11.0@8ff1db71b",
+   "worktree": ".moai-cli/worktrees/issue-2008-07-A",
+   "status": "claimed (relay); interim decisions: gh api subprocess A, token via gh, poll config w/ x-poll-interval, envelope (a) self-emitted"
+  },
+  {
+   "at": "2026-11-08T09:51:30Z",
+   "issue": 2033,
+   "key": "BUG-IDENTITY-GIT-ENV-AND-FAILED",
+   "lane": "agent-4 [e4237d]",
+   "branch": "issue/2033-identity-followup",
+   "base": "origin/v2026.11.0@7f9eaacc5",
+   "worktree": ".moai-cli/worktrees/issue-2033-identity",
+   "status": "dispatched"
   }
  ],
  "design_update_r8": {
@@ -2888,6 +3121,337 @@
     "number": 1974,
     "status": "updated (AC-00C-07 grep -q, agent-2 r11)",
     "body_sha256": "095fef39ee8a4807ee8722caa60352dde0adf37b54862a67221d9298a4a0dd6f"
+   }
+  ]
+ },
+ "design_update_r13": {
+  "applied_at_utc": "2026-11-08T08:34:45Z",
+  "design_revision": "2026-11-08-r13",
+  "changes": "00-A AC-3 2nd redefinition (Go hook append *.jsonl rule); 00-C AC-00C-03 --limit 200, AC-00C-09 redefined (agent-2 audit)",
+  "results": [
+   {
+    "key": "00-C",
+    "number": 1974,
+    "status": "updated",
+    "body_sha256": "00fafca409f0d4ec05e2a4a8054c9b6b9f8d911e0773770d7653257f125f90b8"
+   },
+   {
+    "key": "00-A",
+    "number": 1985,
+    "status": "updated",
+    "body_sha256": "52044b3ef7a90569816e8599f264368946192a25ad647ace95fb45d918126bd0"
+   },
+   {
+    "key": "00-E",
+    "number": 2020,
+    "status": "created",
+    "body_sha256": "737993496fab065a18dcc455b424b103f45539d120d9615f67492d06c31df9c0"
+   }
+  ]
+ },
+ "integration_policy": {
+  "decided_at": "2026-11-08 17:3x KST",
+  "ruleset_id": 26791615,
+  "required_status": "moai/audit",
+  "mode": "agentic auto-merge (leader sets status after reading independent audit PASS; gh pr merge --auto --merge)"
+ },
+ "removed_go_github_files": {
+  "count": 23,
+  "basis": "user instruction 2026-11-08 17:3x; 00-C AC-5 verified 23/23 identical to moai-adk-go internal/template/templates",
+  "sha256_record": "leader scratchpad go-github-removed.sha256 (not committed)",
+  "recorded_at": "2026-11-08T08:34:48Z",
+  "deleted_at_approx": "2026-11-08 17:32-17:33 KST (directory mtime)"
+ },
+ "design_update_r14": {
+  "applied_at_utc": "2026-11-08T08:41:57Z",
+  "design_revision": "2026-11-08-r14",
+  "changes": "00-E r2 per agent-2 design review (owners, pull_request_target observation, cache decision B, permissions, AC-1/AC-5 commands, PyYAML, diff range, main workflows risk HOLD); 08-D/06-C reflect 00-E precedence",
+  "results": [
+   {
+    "key": "00-E",
+    "number": 2020,
+    "status": "updated",
+    "body_sha256": "302502b73dcd0f191d52441ffe07afd2267466eeb8e52a43b4aeff8e55d96feb"
+   },
+   {
+    "key": "08-D",
+    "number": 2015,
+    "status": "updated",
+    "body_sha256": "9e9d50735135b47b0e7844a1ce5144441b9d642bc45c552f9433ef691e1174c0"
+   },
+   {
+    "key": "06-C",
+    "number": 2007,
+    "status": "updated",
+    "body_sha256": "16754260f7c60d815bd6cd84372824b3a1a6bd54d5df216bb90cfc8922969aae"
+   }
+  ]
+ },
+ "design_update_r15": {
+  "applied_at_utc": "2026-11-08T08:44:34Z",
+  "design_revision": "2026-11-08-r15",
+  "changes": "00-E r3: rc-label-sync.yml name, lowercase pull_request_template.md (also 06-C/00-C), AC-00E-1 regex (agent-3 feedback)",
+  "results": [
+   {
+    "key": "00-E",
+    "number": 2020,
+    "status": "updated",
+    "body_sha256": "587195d635cc4733055c9135dafede30562b728bc84abe2631bdfc9fc2b82e02"
+   },
+   {
+    "key": "06-C",
+    "number": 2007,
+    "status": "updated",
+    "body_sha256": "39700140bfdfcdcea4e6975c47935789bd473ee704cae0682e97379c9b3187a7"
+   },
+   {
+    "key": "00-C",
+    "number": 1974,
+    "status": "updated",
+    "body_sha256": "68246aeddbca63faa06fcd5a720308482eca636eae4573889dda4abf92995804"
+   }
+  ]
+ },
+ "design_update_r16": {
+  "applied_at_utc": "2026-11-08T08:46:14Z",
+  "design_revision": "2026-11-08-r16",
+  "changes": "00-D r2: ledger 3 files, 8 commands, per-session target dir, AC-3 variants structure (agent-4 feedback)",
+  "results": [
+   {
+    "key": "00-D",
+    "number": 1987,
+    "status": "updated",
+    "body_sha256": "4d2220daf1e96804355d0da304b2016e23c45d41690518ca60430ca885c1037c"
+   },
+   {
+    "key": "BUG-AGENTS-MISSING-BLOCK",
+    "number": 2022,
+    "status": "created",
+    "body_sha256": "fb440fee01a5ec1b00bfa21700c1b681ef6530dab39ae4f378e88267d831ee13"
+   },
+   {
+    "key": "BUG-TEST-HELPER-BROKEN-PIPE",
+    "number": 2024,
+    "status": "created",
+    "body_sha256": "cad569b7fbafa43373a201744a6571e78ca894c20dbf3ccd3f2675f3704e487e"
+   },
+   {
+    "key": "BUG-AGENTS-MISSING-BLOCK",
+    "number": 2022,
+    "status": "updated (r2: reporting defect, not decision; agent-1 finding)",
+    "body_sha256": "0f47723aadd41ab69307f42c659f31509060fda6fa47765469dcaf58a4dd377b"
+   }
+  ]
+ },
+ "design_update_r17": {
+  "applied_at_utc": "2026-11-08T08:54:05Z",
+  "design_revision": "2026-11-08-r17",
+  "changes": "00-D r3: AC-4 *.schema.json glob, AC-5 request language en + trailing slash, session target dir binary path (agent-4)",
+  "results": [
+   {
+    "key": "00-D",
+    "number": 1987,
+    "status": "updated",
+    "body_sha256": "d2f9d2d021ff7be38ea636f70eee1635074f5783bd3632c9610935f51e93e035"
+   }
+  ]
+ },
+ "design_update_r18": {
+  "applied_at_utc": "2026-11-08T08:54:38Z",
+  "design_revision": "2026-11-08-r18",
+  "changes": "gitignore fixture risk note in 02-B/02-C/03-C/04-B (agent-2 #2023 audit)",
+  "results": [
+   {
+    "key": "02-B",
+    "number": 1992,
+    "status": "updated",
+    "body_sha256": "f7a540da273f49de96ea316050876943a7ee6526d55631a99bc4096a482957c3"
+   },
+   {
+    "key": "02-C",
+    "number": 1993,
+    "status": "updated",
+    "body_sha256": "4220f1eff9eaa6396c79b9c2ce322daa2d3dd7a1575f9faf4b4ac92dfc84e55d"
+   },
+   {
+    "key": "03-C",
+    "number": 1997,
+    "status": "updated",
+    "body_sha256": "4f8c815697508db05cd96d7b3deb1a20147b9ac729237f39aaaa73fa8a85cabe"
+   },
+   {
+    "key": "04-B",
+    "number": 1999,
+    "status": "updated",
+    "body_sha256": "535397a7f2c81863e0aff623e71831366ad370982e704fb660834096ef988e7d"
+   }
+  ]
+ },
+ "design_update_r19": {
+  "applied_at_utc": "2026-11-08T08:58:05Z",
+  "design_revision": "2026-11-08-r19",
+  "changes": "00-D r4: AC-4 schema files only + validator not_run until HOLD-00D-2; AC-5 jq excludes generation.json (agent-2 audit, agent-4)",
+  "results": [
+   {
+    "key": "00-D",
+    "number": 1987,
+    "status": "updated",
+    "body_sha256": "262a2e3d271cd68fc0e04b5096e18c92963a1952f5dfb3f3f19da0010cad9147"
+   }
+  ]
+ },
+ "design_update_r20": {
+  "applied_at_utc": "2026-11-08T09:07:07Z",
+  "design_revision": "2026-11-08-r20",
+  "changes": "00-F launcher issue created (user: launcher only, hub later; opus+advisor fable+skip-permissions default)",
+  "results": [
+   {
+    "key": "00-F",
+    "number": 2028,
+    "status": "created",
+    "body_sha256": "94be6649d4bdac52565eaaf2c0f005eed8537aa3c8dd2dc9a45d7f915d8035fd"
+   },
+   {
+    "key": "INFRA-RUST-TOOLCHAIN-PIN",
+    "number": 2029,
+    "status": "created",
+    "body_sha256": "af4653a3c58f3d5e1d0c8236b7f4b82729a6ba133e5c434d073ffde271ceec69"
+   },
+   {
+    "key": "INFRA-RUST-TOOLCHAIN-PIN",
+    "number": 2029,
+    "status": "updated (premise corrected: auto-install)",
+    "body_sha256": "6bff82c9115fc82e122a97877f646cc5d6e8240dc8374ce27a640addc5ca15cb"
+   }
+  ]
+ },
+ "pending_dispatch": [],
+ "design_update_r21": {
+  "applied_at_utc": "2026-11-08T09:14:58Z",
+  "design_revision": "2026-11-08-r21",
+  "changes": "01-A interim leader decisions: HOLD-1 A sha256(common-dir)+DEBT, HOLD-2 A ~/.moai-cli, HOLD-3 A git subprocess, step 1 current contract, AC-01A-5 no home full hash (00-A HOLD-00A-2)",
+  "results": [
+   {
+    "key": "01-A",
+    "number": 1988,
+    "status": "updated",
+    "body_sha256": "f40610d0892f4c6a5102cf172caee3a7d8a29b5b009448ba72c6bec8db3af02e"
+   },
+   {
+    "key": "00-F",
+    "number": 2028,
+    "status": "updated (r2: usage fixtures in scope, AC-6 post-integration, PROMPT note, ultracode unverified)",
+    "body_sha256": "1bde7d372ddb2fdfc6cb4c76ac8669cf340edfd3dfc75760e5f48a78409414aa"
+   },
+   {
+    "key": "00-F",
+    "number": 2028,
+    "status": "updated (r3: fixtures 01+18 in scope)",
+    "body_sha256": "402a3f2ce074487d1f876a1f61fa48db9ed70a0c6c91c5533ff910b4903a6328"
+   },
+   {
+    "key": "00-F",
+    "number": 2028,
+    "status": "updated (time 18:1x)",
+    "body_sha256": "336f02be92266a4f95cff3133f77e3f1d00ef53c9b63015435a5dd4d28155f45"
+   }
+  ]
+ },
+ "design_update_r22": {
+  "applied_at_utc": "2026-11-08T09:21:06Z",
+  "design_revision": "2026-11-08-r22",
+  "changes": "01-A AC-01A-5: mtime comparison excludes Go runtime paths (00-A AC-3 rule)",
+  "results": [
+   {
+    "key": "01-A",
+    "number": 1988,
+    "status": "updated",
+    "body_sha256": "fa192cf68e131a7c3743a2d5b9420c9f346bf9eba633fd1566268a340ee42f78"
+   },
+   {
+    "key": "01-A",
+    "number": 1988,
+    "status": "updated (times 18:1x)",
+    "body_sha256": "c44c6cf2c8f4c4282d36623f8a7be359acd03f3a91abd3568173a09927310e34"
+   }
+  ]
+ },
+ "design_update_r23": {
+  "applied_at_utc": "2026-11-08T09:25:39Z",
+  "design_revision": "2026-11-08-r23",
+  "changes": "user decisions: envelope B, MCP scope A, exit codes A; 01-C scope expanded to fixtures/docs; 00-D HOLD-1/3/4 decided",
+  "results": [
+   {
+    "key": "01-C",
+    "number": 1990,
+    "status": "updated",
+    "body_sha256": "4d382ab33f980945257babc11caf7a8c02001a06b1650723360f1f5fa2bf47f1"
+   },
+   {
+    "key": "00-D",
+    "number": 1987,
+    "status": "updated",
+    "body_sha256": "7218c8e71b0b781e6fe9589eaef28fa09f59afe1198c84478fae8c9059a3f79c"
+   }
+  ]
+ },
+ "followup_candidates": [
+  {
+   "from": "01-A #1988 audit (agent-2/agent-4)",
+   "items": [
+    "identity: strip GIT_CONFIG_PARAMETERS/GIT_CONFIG_COUNT/KEY_*/VALUE_*, GIT_CEILING_DIRECTORIES, GIT_DISCOVERY_ACROSS_FILESYSTEM before git calls",
+    "identity: distinguish Git::Failed (safe.directory refusal, corrupt repo) from no_git instead of reporting 'not inside a git repository'"
+   ],
+   "status": "issued as #2033"
+  }
+ ],
+ "design_update_r24": {
+  "applied_at_utc": "2026-11-08T09:43:29Z",
+  "design_revision": "2026-11-08-r24",
+  "changes": "02-A interim: SKILL language A (English), lint A (tests only), REQ-02A-08 depth definition",
+  "results": [
+   {
+    "key": "02-A",
+    "number": 1991,
+    "status": "updated",
+    "body_sha256": "a341d3dd9c95446cca47e52a6bce1454a26fa0fefe6e3884cfa00e6044cd04b0"
+   },
+   {
+    "key": "01-C",
+    "number": 1990,
+    "status": "updated (r24: request_id removed, envelope shape aligned, MCP ACs not_applicable)",
+    "body_sha256": "95438a3f3742c7720aa5e6c277babd1a2567d74df0654a285376effb9de8bb64"
+   },
+   {
+    "key": "02-A",
+    "number": 1991,
+    "status": "updated (legacy-asset-map scope)",
+    "body_sha256": "22f0b77c739a64c43d1e19e0afac498e026ee977755e55ca111326ae289a6408"
+   },
+   {
+    "key": "BUG-IDENTITY-GIT-ENV-AND-FAILED",
+    "number": 2033,
+    "status": "created",
+    "body_sha256": "2f0508ea5d0035ddb02d39e2c1c17cb0e42e1c81ff0d5eaa583dcc0d76fff2ca"
+   }
+  ]
+ },
+ "design_update_r25": {
+  "applied_at_utc": "2026-11-08T09:48:14Z",
+  "design_revision": "2026-11-08-r25",
+  "changes": "05-A/07-A interim leader decisions after lane questions",
+  "results": [
+   {
+    "key": "05-A",
+    "number": 2001,
+    "status": "updated",
+    "body_sha256": "94be3d4b4b556fe6888016ff4fb8322e1b8cc89965ec2ffa98773d02c184ac5f"
+   },
+   {
+    "key": "07-A",
+    "number": 2008,
+    "status": "updated",
+    "body_sha256": "ad33576b1fca651f1fb4959838de58917ff1f66af0304e265fe9af335f9e9fb0"
    }
   ]
  }
