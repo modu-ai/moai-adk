@@ -26,6 +26,13 @@ pub enum Kind {
     Internal,
     /// git ran and failed for a reason other than "not a repository" (Issue #2033).
     GitFailed,
+    /// 07-A (#2008): authentication or permission refused, or a rate limit outlived the retry
+    /// budget. An addition to the 00-D vocabulary as #1990 HOLD-C2 / REQ-01C-02 (r27) allows
+    /// when recorded in docs.
+    Blocked,
+    /// 07-A (#2008): the host CLI (`gh`) was missing, gave no HTTP response, or an unexpected
+    /// status.
+    Transport,
 }
 
 impl Kind {
@@ -43,11 +50,15 @@ impl Kind {
             Kind::Io => "io",
             Kind::Internal => "internal",
             Kind::GitFailed => "git_failed",
+            Kind::Blocked => "blocked",
+            Kind::Transport => "transport",
         }
     }
-    /// Only an I/O failure may succeed when the same request is sent again unchanged.
+    /// Only an I/O or transport failure may succeed when the same request is sent again
+    /// unchanged. `blocked` needs a change first (credentials, permission, or waiting until the
+    /// rate-limit reset named in the message).
     pub fn retryable(self) -> bool {
-        self == Kind::Io
+        matches!(self, Kind::Io | Kind::Transport)
     }
 }
 
@@ -56,16 +67,26 @@ impl Kind {
 // The wrapping messages (`partial apply: ...; failed at X: <inner>`, `conflict in X: <detail>`)
 // come first because they quote an inner message that would otherwise match.
 const RULES: &[(&str, Kind)] = &[
-    (
-        "unsupported protocol_version",
-        Kind::UnsupportedProtocolVersion,
-    ),
     ("partial apply", Kind::Partial),
     ("partial creation possible", Kind::Partial),
     ("conflict in ", Kind::Conflict),
     // identity's `git failed: <git summary>`; ahead of the generic words the summary may hold.
     // The bare `git failed` of baseline (no colon) stays `io` below.
     ("git failed: ", Kind::GitFailed),
+    // forge-read (07-A #2008): its messages carry these prefixes; they precede the generic
+    // words because a transport message may quote `unavailable` or `refused`.
+    ("forge blocked: ", Kind::Blocked),
+    ("gh transport: ", Kind::Transport),
+    ("forge resource not found", Kind::NotFound),
+    (
+        "unsupported request schema_version",
+        Kind::UnsupportedProtocolVersion,
+    ),
+    // plan-admit (05-B #2002): the request's protocol_version is not 1.
+    (
+        "unsupported protocol_version",
+        Kind::UnsupportedProtocolVersion,
+    ),
     ("input exceeds 64 KiB", Kind::InputTooLarge),
     (
         "permission reference required",
@@ -164,6 +185,11 @@ mod tests {
             ("target changed since plan; re-preview required", StalePlan),
             ("target changed during apply; temporary file discarded", StalePlan),
             ("partial apply: applied [a]; failed at b: x", Partial),
+            // The wrapper wins over the plan-admit version phrase it may quote.
+            (
+                "partial apply: applied [a]; failed at b: unsupported protocol_version; supported: 1",
+                Partial,
+            ),
             (
                 "partial apply: applied [AGENTS.md]; failed at .gitignore: target changed since plan",
                 Partial,
@@ -249,6 +275,27 @@ mod tests {
             ("unexpected git rev-parse output", Io),
             ("git did not report a work tree", Io),
             ("git reported a path that cannot be resolved", Io),
+            // forge-read (07-A #2008)
+            ("forge blocked: authentication failed (401)", Blocked),
+            ("forge blocked: access denied (403)", Blocked),
+            ("forge blocked: rate limited after 3 retries", Blocked),
+            ("gh transport: cannot start gh: NotFound", Transport),
+            ("gh transport: gh api returned no HTTP response (exit Some(1)): x", Transport),
+            ("gh transport: refused: only https://api.github.com/ URLs are requested", Transport),
+            ("gh transport: GET returned HTTP 500", Transport),
+            ("gh transport: 304 without a cached response", Transport),
+            ("gh transport: repository response carried no id", Transport),
+            ("forge resource not found or not visible to this account (404)", NotFound),
+            ("unsupported request schema_version", UnsupportedProtocolVersion),
+            ("owner and repo must be GitHub names", InvalidInput),
+            ("state must be open, closed or all", InvalidInput),
+            ("overlap_s must be >= 0 and max_pages > 0", InvalidInput),
+            ("page limit exceeded (config.max_pages 50)", InvalidInput),
+            ("poll state directory is a symlink or not a directory; refused", InvalidInput),
+            ("poll state directory unavailable", Io),
+            ("poll state write failed", Io),
+            ("poll state replace failed", Io),
+            ("MOAI_FORGE_GH_BIN must be an absolute path to an existing file", InvalidInput),
             // identity git failure (#2033); the last two would match `git output` without the rule
             ("git failed: detected dubious ownership in repository at", GitFailed),
             ("git failed: git output exceeded the size limit", GitFailed),

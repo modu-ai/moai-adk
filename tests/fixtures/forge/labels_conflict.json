@@ -1,0 +1,35 @@
+{
+  "description": "Synthetic. A person edited issue 7 after the caller read it, so the label write must stop; a later unchanged issue allows add/remove through the dedicated endpoints only.",
+  "conflict": [
+    {
+      "request": {"method": "GET", "url": "https://api.github.com/repos/acme/widgets/issues/7"},
+      "response": {"status": 200, "headers": {"etag": "\"i7-2\""}, "body": {"id": 7001, "number": 7, "updated_at": "2026-11-01T10:00:00Z", "body": "spec", "labels": [{"name": "type:feature"}, {"name": "priority:P1"}]}}
+    }
+  ],
+  "applied": [
+    {
+      "request": {"method": "GET", "url": "https://api.github.com/repos/acme/widgets/issues/7"},
+      "response": {"status": 200, "headers": {"etag": "\"i7-1\""}, "body": {"id": 7001, "number": 7, "updated_at": "2026-11-01T00:00:00Z", "body": "spec", "labels": [{"name": "type:feature"}]}}
+    },
+    {
+      "request": {"method": "POST", "url": "https://api.github.com/repos/acme/widgets/issues/7/labels"},
+      "response": {"status": 200, "headers": {}, "body": [{"name": "type:feature"}, {"name": "host:codex"}]}
+    },
+    {
+      "request": {"method": "GET", "url": "https://api.github.com/repos/acme/widgets/issues/7"},
+      "response": {"status": 200, "headers": {}, "body": {"id": 7001, "number": 7, "updated_at": "2026-11-01T00:00:00Z", "body": "spec", "labels": [{"name": "type:feature"}, {"name": "host:codex"}]}}
+    },
+    {
+      "request": {"method": "DELETE", "url": "https://api.github.com/repos/acme/widgets/issues/7/labels/priority%3AP1%20old"},
+      "response": {"status": 200, "headers": {}, "body": []}
+    },
+    {
+      "request": {"method": "GET", "url": "https://api.github.com/repos/acme/widgets/issues/7"},
+      "response": {"status": 200, "headers": {}, "body": {"id": 7001, "number": 7, "updated_at": "2026-11-01T00:00:00Z", "body": "spec"}}
+    },
+    {
+      "request": {"method": "POST", "url": "https://api.github.com/repos/acme/widgets/issues/7/assignees"},
+      "response": {"status": 201, "headers": {}, "body": {"id": 7001}}
+    }
+  ]
+}
