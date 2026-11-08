@@ -54,6 +54,20 @@
 | 18:5x | 05-A·07-A 임시 결정(리더 RC1) | 05-A: 정렬 직렬화 trait 임시(JCS 후속), 단일 crate `src/spec.rs`, 라이브러리 API만(subcommand는 01-C 뒤), AC-05A-6 not_run · 07-A: `gh api` subprocess, 토큰은 gh가 관리, poll 설정값(`x-poll-interval` 우선, overlap 60s·retry 3 잠정), envelope 직접 출력 후 01-C helper로 교체 · 02-A: legacy 자산 1,107행 목록은 `.moai-cli/manifests/legacy-asset-map.json`(package 64 KiB 상한) | #2001 #2008 #1991 | 레인 질문 해소 |
 | 18:5x | 여분 세션 활용(운영) | 재시작으로 생긴 여분 세션 agent-1 [d54a06]→05-A, agent-3 [437ee1]→07-A 배차(레인 5개) | #2001 #2008 | 사용자 "1~4레인 계속" 지시 범위 |
 | 18:5x | 본문 사본 기준(리더 운영 결정, agent-2 제안) | 리더 문서 PR의 "사본 = 라이브" 기준을 "사본 = manifest가 기록한 body_sha256(기록 시각 포함)"으로 바꾸고, 커밋 뒤 라이브 변동은 다음 리더 문서 PR에서 따라잡음 — 레인·사용자 결정으로 본문이 계속 바뀌어 매 커밋 깨지는 경합 해소 | 리더 문서 PR | — |
+| 18:5x | 05-A REQ-05A-08 재정의(리더) | 비밀 형태 + 개인 절대 경로(`/Users/`·`/home/`·`~/`·`C:\`)만 거부; 요구 문장의 일반 경로·`:`는 허용(portable() 전면 적용 안 함). AC-05A-6은 not_run/blocked 처분 | #2001 | agent-2 감사 |
+| 19:0x | 통합(게이트) | PR #2035(01-C) merge 557e03f86 → #1990 done · PR #2037(05-A) merge c267abeaec(update-branch 3e25c1cec delta PASS) → #2001 done · 05-B #2002를 agent-1에 배차 | #1990 #2001 #2002 | — |
+| 19:0x | 07-A 충돌 처리(리더) | #2036이 01-C와 src/main.rs·lib.rs 충돌(agent-2 FAIL: DIRTY). A안 채택 — base merge 때 forge-read를 01-C `contract` helper 경로로 전환(추가 kind `blocked`·`transport` 등록), 전체 재감사. "helper 교체는 후속" 임시 지시 철회(이중 envelope 방지) | #2008 | agent-3 보고 |
+| 19:0x | #2033 통합 순서(리더) | PASS(a6375d867)였으나 01-C 선통합으로 (b) 채택 — agent-4가 base merge + `git_failed` kind를 envelope에 반영 뒤 재감사 | #2033 | agent-4 요청 |
+| 19:0x | 02-D ZCode 출처 이원화(리더 승인) | 앱 문서와 CLI 저장소 문서(zai-org/ZCode)의 차이를 덮어쓰지 않고 지원표 ZCode 행을 surface `app`/`cli` 두 줄로 분리; 02-C는 이 형식을 따름 | #1994 #1993 | agent-3 보고 |
+| 19:1x | 05-B 임시 결정(리더 RC1; 사용자 확인 권장) | cycle = Kahn 순서 + Tarjan SCC 구성원 / expected revision = commit ID, dirty overlay gap / plan 결과 제품 저장 없음(시험 tempdir) / 임시 subcommand `plan-admit`(operation `plan.admit`, 01-C helper) / write_paths 중첩은 05-B 비공개 prefix 함수, 인터페이스 소유 06-C 유지 | #2002 | agent-1 질의 |
+| 19:1x | 통합(게이트) | PR #2039(02-D) merge f473f0251 → #1994 done · 02-C #1993을 agent-3 [de88f8]에 배차(TOML 병합기는 02-B 소유, 02-C에서 구현 금지) | #1994 #1993 | — |
+| 19:1x | 00-D 오류 kind 어휘 확장(리더 RC1 임시) | #2033 PR #2038이 12번째 kind `git_failed`(retryable false, "git failed: " 접두 규칙)를 `src/contract.rs`·`docs/protocol-v1.md`·fixture KINDS에 추가 — 01-C 11종 결정의 확장, 기존 메시지 kind 불변(agent-2 확인). #2033 본문 범위에 src/contract.rs 추가(r28 예정). 07-A는 `blocked`·`transport` 추가 예정 | #2033 #1990 #2008 | agent-2 비차단 |
+| 19:1x | 통합(게이트) | PR #2038(#2033 identity 결함) merge 3adabd859 → #2033 done · 02-B #1992를 agent-4에 배차 · #2036(07-A)은 PASS 뒤 contract.rs 충돌 → agent-3가 3adabd859로 해결(kind 14종, "18:2x" 인용을 #1990 HOLD-C2/REQ-01C-02로 정정) 후 전체 재감사 | #2033 #1992 #2008 | — |
+| 19:1x | 02-C 임시 결정(리더 RC1; 사용자 확인 권장) | TOML 파서 없음(B; not_evaluated 보고, 표면·의존성은 02-B 소유) / hook 0개 / `--target` 명시 필수 / Desktop·CLI `$moai` 실측 not_run(운영자 실측 여부 사용자 결정) / fixture 2건 AC 재정의 / `tests/codex_adapter.rs` 신규 허용 | #1993 | agent-3 질의 |
+| 19:1x | 02-B 임시 결정(리더 RC1; 사용자 확인 권장) | JSON 키 순서 = serde_json `preserve_order`(의존성 추가, 네트워크 fetch 1회, lock 포함) / RC1 TOML 읽기·쓰기 없음(Codex 설정 병합 후속 Issue) / hook 0개(HA-08 n/a) / Python adapter는 Rust 대체·fixture 참고(삭제는 사용자 승인) / Claude 지원표 행은 02-B 작성 / `claude -p` 실측은 토큰·전역 hook 발화라 not_run(사용자 결정) | #1992 | agent-4 계획 |
+| 19:2x | 통합(게이트) | PR #2036(07-A) merge 88d347c58 → #2008 done(kind 14종 확정) · 07-B #2009를 agent-3 [437ee1]에 배차 · #2040(05-B)은 contract.rs 겹침으로 감사 전 레인 base merge 지시 | #2008 #2009 #2002 | — |
+| 19:2x | 07-B 임시 결정(리더 RC1; 사용자 확인 권장) | 중복·marker 조회 = issues list+since + 로컬 매치(search API 후속) / tasks.md 경로 인자 필수·기본값 없음 / redaction = lib.rs 보수 필터 + disclosure_review 필수, gitleaks HOLD / tests/todo_promotion_cli.rs | #2009 | agent-3 질의 |
+| 19:0x | 01-C 본문 r27 정정(기록) | REQ-01C-02 `code`→`kind` 11종, HOLD-00D-1 배너 제거, request_id 제거 반영(머지 뒤 기록 정정) | #1990 | agent-2 비차단 |
 
 부분 결정 분리: P08은 claim 방식(⑤+①)만 결정, lease·heartbeat 수치 HOLD · P15는 ZCode 헤드리스 범위만 결정, 나머지 host 지원표 HOLD.
 

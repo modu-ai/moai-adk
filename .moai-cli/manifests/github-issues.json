@@ -2806,7 +2806,7 @@
    "branch": "issue/1990-01-C",
    "base": "origin/v2026.11.0@d0a5daea5",
    "worktree": ".moai-cli/worktrees/issue-1990-01-C",
-   "status": "claimed; blocked on user HOLDs (envelope, MCP scope, revision) → user question; step 4 in progress"
+   "status": "done — PR #2035 merged 557e03f86 (audit eee17019f PASS); body fixes pending (REQ-01C-02 kind, HOLD banner, request_id)"
   },
   {
    "at": "2026-11-08T09:26:02Z",
@@ -2816,7 +2816,7 @@
    "branch": "issue/1991-02-A",
    "base": "origin/v2026.11.0@8ff1db71b",
    "worktree": ".moai-cli/worktrees/issue-1991-02-A",
-   "status": "PR #2034 open (head b014df7fb, rc-ci success); report relayed; agent-2 review requested"
+   "status": "integrated: PR #2034 auto-merged 36e634fc7; issue closed (completed)"
   },
   {
    "at": "2026-11-08T09:45:52Z",
@@ -2826,7 +2826,7 @@
    "branch": "issue/2001-05-A",
    "base": "origin/v2026.11.0@8ff1db71b",
    "worktree": ".moai-cli/worktrees/issue-2001-05-A",
-   "status": "claimed (relay); interim: H1 trait+sorted serde_json, H2 src/spec.rs, H3 library API only, AC-05A-6 not_run/blocked"
+   "status": "done — PR #2037 merged c267abeaec (audit 46b275cd5 PASS + delta 3e25c1cec PASS); followup: has_personal_path case sensitivity"
   },
   {
    "at": "2026-11-08T09:45:52Z",
@@ -2836,7 +2836,7 @@
    "branch": "issue/2008-07-A",
    "base": "origin/v2026.11.0@8ff1db71b",
    "worktree": ".moai-cli/worktrees/issue-2008-07-A",
-   "status": "claimed (relay); interim decisions: gh api subprocess A, token via gh, poll config w/ x-poll-interval, envelope (a) self-emitted"
+   "status": "done — PR #2036 merged 88d347c58 (audit 5e124eec8 PASS, 3rd); kinds blocked/transport added (14 total)"
   },
   {
    "at": "2026-11-08T09:51:30Z",
@@ -2846,7 +2846,45 @@
    "branch": "issue/2033-identity-followup",
    "base": "origin/v2026.11.0@7f9eaacc5",
    "worktree": ".moai-cli/worktrees/issue-2033-identity",
-   "status": "dispatched"
+   "status": "done — PR #2038 merged 3adabd859 (audit 07dd1c0df PASS full + ef36583ad delta PASS); kind git_failed added (12th)"
+  },
+  {
+   "at": "2026-11-08T09:59:09Z",
+   "issue": 1994,
+   "key": "02-D",
+   "lane": "agent-3 [de88f8]",
+   "branch": "issue/1994-02-D",
+   "base": "origin/v2026.11.0@36e634fc7",
+   "worktree": ".moai-cli/worktrees/issue-1994-02-D",
+   "status": "done — PR #2039 merged f473f0251 (audit 7d2d0ebe0 PASS); followup: 05-permissions source on headless row (fold into 02-C)"
+  },
+  {
+   "issue": 2002,
+   "key": "05-B",
+   "lane": "agent-1",
+   "base": "c267abeaec45cce7ca056a45a1b1d71813dfa394",
+   "status": "PR #2040 open (head d66696038, base 3adabd859 → behind 88d347c58, contract.rs overlap); lane merging base before audit"
+  },
+  {
+   "issue": 1993,
+   "key": "02-C",
+   "lane": "agent-3 [de88f8]",
+   "base": "f473f0251168a7f08b1a11f30c864835182b9feb",
+   "status": "claimed 6720209670 (relay); interim decisions 1-6 recorded; implementing"
+  },
+  {
+   "issue": 1992,
+   "key": "02-B",
+   "lane": "agent-4 [e4237d]",
+   "base": "3adabd8591720673c99b5507161bdceccb2207d9",
+   "status": "claimed 6720235544; plan received; interim H1 B(preserve_order) H1' A H2 A H3 A M5 not_run; implementing M1"
+  },
+  {
+   "issue": 2009,
+   "key": "07-B",
+   "lane": "agent-3 [437ee1]",
+   "base": "88d347c58870799287aeea6ec0987cfd54560753",
+   "status": "claimed 6720297455 (relay); interim decisions (1)B (2)arg path (3)lib filter; implementing"
   }
  ],
  "design_update_r8": {
@@ -3403,6 +3441,10 @@
     "identity: distinguish Git::Failed (safe.directory refusal, corrupt repo) from no_git instead of reporting 'not inside a git repository'"
    ],
    "status": "issued as #2033"
+  },
+  {
+   "from": "02-B/02-C",
+   "title": "Codex config.toml 관리 key 병합(toml_edit 도입 여부) — RC1 제외, 후속 Issue 등록 예정"
   }
  ],
  "design_update_r24": {
@@ -3452,7 +3494,74 @@
     "number": 2008,
     "status": "updated",
     "body_sha256": "ad33576b1fca651f1fb4959838de58917ff1f66af0304e265fe9af335f9e9fb0"
+   },
+   {
+    "key": "02-A",
+    "number": 1991,
+    "status": "updated (AC command fixes: ASCII backtick, session target dir)",
+    "body_sha256": "661594586d66943a14c7773c3b73eaabbf696ae71b945ef04ac1dbef8787602b"
    }
   ]
+ },
+ "leader_docs_prs": [
+  {
+   "pr": 2023,
+   "merged": "b37cdf2dd",
+   "audit": "agent-2 43e404 PASS b652c5ed6",
+   "contents": "AGENTS.local.md split, .gitignore, decisions through 18:5x, ledger r13-r25, body snapshots"
+  }
+ ],
+ "design_update_r26": {
+  "applied_at_utc": "2026-11-08T09:57:54Z",
+  "design_revision": "2026-11-08-r26",
+  "changes": "05-A REQ-05A-08 personal-path rule, AC-05A-6 disposition (agent-2 audit)",
+  "results": [
+   {
+    "key": "05-A",
+    "number": 2001,
+    "status": "updated",
+    "body_sha256": "c984920fb2fc0f0fa0aeec374672737128739cff04b3655fda583d2847b2b0c6"
+   }
+  ]
+ },
+ "design_update_r27": {
+  "date": "2026-11-08",
+  "issues": [
+   1990
+  ],
+  "summary": "01-C body: REQ-01C-02 code→kind 11종, HOLD-00D-1 배너 제거, request_id 제거 반영 (agent-2 비차단 지적, post-merge 기록 정정)",
+  "body_sha256": {
+   "1990": "fd770a11fb230efe4645f60b26086882c7cf3ce5670120541e57e4252f7893ea"
+  }
+ },
+ "design_update_r28": {
+  "date": "2026-11-08",
+  "issues": [
+   2033
+  ],
+  "summary": "#2033 scope line: add src/contract.rs Kind::GitFailed (leader option-b instruction)",
+  "body_sha256": {
+   "2033": "1b12308f5075db48a5ebc489a4761b1fa0626a9c85ec51223fe643ad423f7edf"
+  }
+ },
+ "design_update_r29": {
+  "date": "2026-11-08",
+  "issues": [
+   2008
+  ],
+  "summary": "#2008 scope: add src/contract.rs (blocked/transport kinds), docs/protocol-v1.md, docs/rust-product-path.md (leader option-A instruction)",
+  "body_sha256": {
+   "2008": "c0169db2f825d5cfec0a334ce57cf010e06a79dac84f07531955df11fdee54d0"
+  }
+ },
+ "design_update_r30": {
+  "date": "2026-11-08",
+  "issues": [
+   1993
+  ],
+  "summary": "#1993 AC redefinition per leader decisions 1-6 (no TOML parser, hook 0, --target required, E2E not_run, tests/codex_adapter.rs)",
+  "body_sha256": {
+   "1993": "f929002e698922007f4a017fb7e75677b98cc85fdaf7d7f5234c992b3c666332"
+  }
  }
 }
