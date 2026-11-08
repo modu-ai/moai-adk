@@ -64,7 +64,12 @@ Known gaps: the provisional Python adapter has no migration for projects install
 
 `skills/moai/` holds the canonical, host-neutral package: `SKILL.md` (`name: moai`, no Claude-only frontmatter, `$ARGUMENTS` or dynamic shell context), `references/routes.json` (eight routes, `classification_is_authorization: false`) and `workflows/{read,setup,update,plan,run,verify,audit,sync}.md`. `package-inspect skills/moai` digests it. Host projections, discovery and invocation are not implemented or verified.
 
-## Validation and scope
+## Development session launcher (`session`)
+
+`moai-cli session --role leader|agent --name <label> [--host claude] [--model opus] [--effort medium] [--advisor <model>] [--claude-bin claude] [--dry-run]` composes and starts a host session for repository development. Output is typed JSON: `host`, `role`, `argv`, `notes`, `executed`, `exit_code` (after a real start), `host_loaded: false` (the launcher never proves what the host loaded). `--dry-run` prints the command without starting anything; tests use only that path.
+
+Flags are composed only from options documented by the host (checked 2026-11-08): `--name`, `--model`, `--effort` (`low|medium|high|xhigh|max|ultracode`) and `--advisor <model>` from https://code.claude.com/docs/en/cli-reference and https://code.claude.com/docs/en/advisor. Advisor rules enforced locally: alias `fable|opus|sonnet` or a `claude-*` id; it must rank at or above the main model (unknown ids are passed with a note); `CLAUDE_CODE_DISABLE_ADVISOR_TOOL=1` in the environment is reported because the host then ignores the flag. Operator defaults for this repository: main `opus` at `medium`, advisor `fable` for hard reasoning. Hosts other than Claude Code return an error in this slice; Codex is a later Issue. Not verified: that the local Claude build honours `--advisor` (the flag is hidden from `claude --help`); the first real launch should confirm with `/advisor`.
+
 
 Temporary-directory CLI fixtures cover actual profile creation, repeat preservation, unknown keys, stale/tampered/cross-project plans, YAML comments, secret-shaped inputs without diagnostic echo, symlinks, package support-file integrity and pin precedence/failure. Cargo dependencies are locked; build and tests use isolated temporary Cargo home/target directories.
 

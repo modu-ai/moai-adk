@@ -22,5 +22,12 @@
 | 16:4x | ZCode·ACP | ZCode 헤드리스만, ACP 후속 | #1994 | — |
 | 16:4x | 원격·Orca/Hide | RC1 제외(후속) | #1994 | — |
 | 16:4x | **통신 허브 전체** | **RC1 보류 → 다음 버전**. 위 허브 4행(전송·수명·승인·UX)은 다음 버전 적용용 기록 | 11개 Issue | 사용자: "일단 허브 보류, 기존 계획대로, 1번째 버전 빠르게 구현" |
+| 17:0x | 개발 세션 모델 | 주 모델 `opus` effort `medium`, 고난이도 추론은 advisor `fable`(공식 문서 `--advisor`/`advisorModel` 확인 2026-11-08). 추후 설정에서 선택 | AGENTS.md, AGENTS.local.md, `moai-cli session` | 레인·리더 공통 |
+| 17:0x | 개발 런처 | `moai-cli session --role leader|agent --name … [--advisor fable] [--dry-run]`(Claude만; Codex 후속). 제품 UX `moai -l/-a`는 방향만 | src/session.rs, docs/rust-product-path.md | — |
+| 17:0x | AGENTS.* 재설계 | 재귀적 자가 생성 구조로 본문 재작성, `moai-cli agents-plan/apply`로 관리 구간 재생성(state unchanged, plan digest sha256:a8ad47c0…) | AGENTS.md, AGENTS.local.md | 다음 세션부터 이 절차로 계속 개선 |
+| 17:1x | 공유 interface 소유자(중복 12묶음) | 상류 Issue 소유: tree digest→00-A, GitHub 읽기 adapter→00-B, `.moai-cli` 하위 경로(P09)·agents.rs 리팩터→01-B, exit code→01-C, host 설정 병합·toml_edit→02-B, 지원표 문서→02-C, redaction 모듈→03-B, PR 템플릿·write_scope→06-C, outbox marker→07-B, `.github/workflows`→08-D | 중복 묶음을 적은 모든 Issue | 비소유 Issue는 참조만 |
+| 17:1x | 첫 배차 | 00-A #1985→agent-4, 00-B #1986→agent-3 (worktree `issue/<n>-<key>`, PR→v2026.11.0) | #1985 #1986 | agent-2 r7 재검토 병행 |
+
+부분 결정 분리: P08은 claim 방식(⑤+①)만 결정, lease·heartbeat 수치 HOLD · P15는 ZCode 헤드리스 범위만 결정, 나머지 host 지원표 HOLD.
 
 P12에서 아직 HOLD인 것: OS/arch matrix, locale, release matrix. P04(첫 RC 인증 순서), P05(package 경계·bridge 범위 나머지), P06, P08~P11, P14, P15는 HOLD 유지.

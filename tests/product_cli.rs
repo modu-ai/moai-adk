@@ -686,3 +686,62 @@ fn legacy_manifest_with_personal_file_in_owned_files_is_still_read() {
         .iter()
         .all(|f| !f["section_id"].is_null()));
 }
+
+fn session(args: &[&str]) -> std::process::Output {
+    Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+        .arg("session")
+        .args(args)
+        .output()
+        .unwrap()
+}
+#[test]
+fn session_dry_run_composes_documented_claude_flags() {
+    let out = session(&[
+        "--role",
+        "leader",
+        "--name",
+        "leader",
+        "--advisor",
+        "fable",
+        "--dry-run",
+    ]);
+    assert!(out.status.success(), "{:?}", out.stderr);
+    let v: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(v["executed"], json!(false));
+    assert_eq!(
+        v["argv"],
+        json!([
+            "claude",
+            "--name",
+            "leader",
+            "--model",
+            "opus",
+            "--effort",
+            "medium",
+            "--advisor",
+            "fable"
+        ])
+    );
+    let plain = session(&["--name", "agent-3", "--dry-run"]);
+    let v: Value = serde_json::from_slice(&plain.stdout).unwrap();
+    assert_eq!(v["role"], json!("agent"));
+    assert!(!v["argv"].to_string().contains("advisor"));
+}
+#[test]
+fn session_rejects_lower_ranked_advisor_and_unknown_host() {
+    let out = session(&[
+        "--name",
+        "a",
+        "--model",
+        "fable",
+        "--advisor",
+        "opus",
+        "--dry-run",
+    ]);
+    assert!(!out.status.success());
+    assert!(String::from_utf8_lossy(&out.stderr).contains("rank"));
+    let out = session(&["--name", "a", "--host", "codex", "--dry-run"]);
+    assert!(!out.status.success());
+    let out = session(&["--name", "a", "--effort", "turbo", "--dry-run"]);
+    assert!(!out.status.success());
+}

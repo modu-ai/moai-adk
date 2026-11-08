@@ -2,10 +2,10 @@
 # [RC1] 2026.11.0-rc.1 전체 범위·gate·영역 상위 Issue
 
 ## 목표와 사용자 가치
-릴리스 `2026.11.0-rc.1`의 범위·릴리스 gate·미결(HOLD) 목록·영역 상위 Issue 9개(#1976~#1984)를 한곳에서 추적하는 지점이다. 작업 큐가 아니며 owner를 갖지 않는다. 가치는 (1) 설계 정본 §4/§5·00:1286 릴리스 gate가 GitHub 객체(milestone #1, sub-issue 9, blocked_by 49)로 실제 투영됐는지 재조회로 확인할 수 있고, (2) 필수 실패 gate(사용자 파일 손실·무승인 mutation·wrong-worktree·secret 유출·근거 없는 PASS·stale admission·중복 외부 효과) 0건을 영역별 증거 링크로 모아 release review 판정의 입력이 되며, (3) 사용자가 아직 정하지 않은 P04~P15를 HOLD 선택지로 보존해 작성자·템플릿이 임의 확정하지 못하게 하는 데 있다. 2026-11-08 사용자 지시로 PR 통합 대상은 `v2026.11.0`(원격·로컬 모두 f6808390bd83c53e44964ed1d4645727945ea1cc, `2026.11.0-rc.1` ref 보존)이며, 이 Issue는 그 SHA·보호 상태·HOLD 조건을 최종 확인하는 체크포인트다.
+릴리스 `2026.11.0-rc.1`의 범위·릴리스 gate·미결(HOLD) 목록·영역 상위 Issue 9개(#1976~#1984)를 한곳에서 추적하는 지점이다. 작업 큐가 아니며 owner를 갖지 않는다. 가치는 (1) 설계 정본 §4/§5·00:1286 릴리스 gate가 GitHub 객체(milestone #1, sub-issue 9, blocked_by 49)로 실제 투영됐는지 재조회로 확인할 수 있고, (2) 필수 실패 gate(사용자 파일 손실·무승인 mutation·wrong-worktree·secret 유출·근거 없는 PASS·stale admission·중복 외부 효과) 0건을 영역별 증거 링크로 모아 release review 판정의 입력이 되며, (3) 사용자가 아직 정하지 않은 P04~P15 — ZCode 헤드리스 범위 결정됨(2026-11-08), 그 외 host 지원표 HOLD 조건을 최종 확인하는 체크포인트다.
 
 ## 비목표와 범위
-비목표: leaf 32개의 구현·검증 내용을 이 Issue에 복제하지 않는다. P04~P15를 이 Issue 작성으로 결정하지 않는다. GitHub 객체(milestone·label·type·ruleset·branch protection) 신설·변경, Go 세대 Issue/PR/branch/tag 일괄 정리, MoAI Desktop(M5)은 범위 밖. 원격 `main`·`2026.11.0-rc.1`·사용자 dirty 변경(`.github/ISSUE_TEMPLATE/moai-*.yml` 0.2.0 한국어화, `.github/moai/README.md` 언어 규칙, `docs/github-plan-proposal.md` 통합 브랜치 행)은 건드리지 않는다. 범위: 본문의 gate 체크리스트·HOLD 목록·영역 링크·verification matrix 갱신(기존 본문 해시 확인 뒤 정확 diff), 발행 manifest `.moai-cli/manifests/github-issues.json` receipt 기록.
+비목표: leaf 32개의 구현·검증 내용을 이 Issue에 복제하지 않는다. P04~P15 — ZCode 헤드리스 범위 결정됨(2026-11-08), 그 외 host 지원표 HOLD 목록·영역 링크·verification matrix 갱신(기존 본문 해시 확인 뒤 정확 diff), 발행 manifest `.moai-cli/manifests/github-issues.json` receipt 기록.
 
 ## 근거와 확정 결정
 | 주장 | 출처 | 확인일 · 버전 | 상태 |
@@ -28,7 +28,7 @@
 ## SPEC 요구(GEARS)
 - [REQ-ROOT-01] 시스템(리더)은 항상 #1975 본문에 릴리스 gate 5항목(양 host 발견·호출→SETUP→UPDATE / 서버·DB 없는 Issues online 완주 / API 없는 native 판단 완주 / 필수 실패 gate 0건 / 독립 release review)을 체크리스트로 유지하고, 각 항목은 영역 Issue의 증거(명령·exit code·receipt·exact SHA) 링크 없이는 체크 상태로 바꾸지 않아야 한다.
 - [REQ-ROOT-02] WHEN 영역 상위 Issue(#1976~#1984) 하나가 닫히면, 리더는 `closed_as`가 completed인지와 하위 leaf 전부가 completed인지 재조회한 뒤에만 해당 영역 행을 완료로 표시해야 한다(cancelled·not_planned는 완료가 아니다).
-- [REQ-ROOT-03] WHILE P04·P05·P06·P08·P09·P10·P11·P12·P14·P15 중 하나라도 HOLD인 동안, `RC release review` 행은 blocked로 유지되고 본문의 HOLD 표에는 각 항목의 선택지·영향·근거·확인일이 남아 있어야 한다. 작성자·템플릿은 HOLD를 확정하지 않는다.
+- [REQ-ROOT-03] WHILE P04·P05·P06·P08 — claim 방식 ⑤+① 결정됨(2026-11-08), lease·heartbeat 수치 HOLD를 확정하지 않는다.
 - [REQ-ROOT-04] WHERE PR 통합 대상이 `v2026.11.0`(기본 브랜치 아님)이면, 시스템은 PR 본문에 `Refs #n`·exact candidate SHA·로컬 build/test 증거·독립 review 링크를 요구하고 `Closes #n` auto-close에 의존하지 않으며, Issue 종료는 리더가 증거 확인 후 수행해야 한다.
 - [REQ-ROOT-05] IF 통합 직전 재조회한 `origin/v2026.11.0` SHA가 본문·manifest에 기록된 SHA와 다르거나 보호 규칙(ruleset/branch protection) 상태가 바뀌었으면, 시스템은 통합을 멈추고 차이를 보고해야 한다(force·reset·기존 ref 삭제 금지).
 - [REQ-ROOT-06] 시스템은 항상 verification matrix(§11 GH-PLAN-COVERAGE…GH-RC-PATH-ISOLATION 11행 + 12:201 RL-01~RL-10)에 행별 상태를 passed / failed / not_run / blocked / stale 중 하나로 기록하고, 실행하지 않은 행을 passed로 쓰지 않아야 한다.
@@ -119,7 +119,7 @@
 - **P06 typed protocol의 schema·error/status·version 규칙과 MCP/CLI parity 범위** (P06) · 상태: HOLD
   - A. 현재 구현(exit 0/1, 동작명 상태 어휘)을 00-D에서 설계 어휘(0/1/2, proposed/applied/not_required/blocked/unknown)로 정렬 · 영향: #1973 산출물 변경, 시험 갱신 · 근거: #1973 댓글 revision 1·2 Gap 목록, docs/rust-product-path.md Known gaps (2026-11-08)
   - B. MCP parity를 rc.1에서 제외하고 CLI만 · 영향: 01-C 범위 축소, 기존 MCP 소비자 mapping 지연 · 근거: 설계 01:264 P06 미결 (2026-11-08)
-- **P08 단일 owner handoff·재시작 복구 primitive** (P08) · 상태: HOLD
+- **P08 — claim 방식 ⑤+① 결정됨(2026-11-08), lease·heartbeat 수치 HOLD
   - A. 로컬 journal + OS lock(단일 리더), 무응답 자동 takeover 없음 · 영향: 여러 Mac 동시 배차 불가, 명시 handoff만 · 근거: 승인 계획 §8, 설계 11:72·11:116, docs/github-plan-proposal.md §3.1 (2026-11-08)
   - B. 원격 Git ref create-if-absent 또는 CI concurrency를 claim primitive로 · 영향: 원격 왕복·권한 필요, exactly-once 주장 불가 · 근거: docs/github-plan-proposal.md §5-10 선택지 ①~④ (2026-11-08)
 - **P09 승인 SPEC snapshot·대형 artifact 저장소와 retention** (P09) · 상태: HOLD
@@ -136,7 +136,7 @@
   - B. CI matrix로 Linux/Windows 추가 후 지원표 확장 · 영향: GitHub Actions 추가 → 00-C 비목표(Actions 자동화 추가)와 충돌 가능 · 근거: #1974 Non-goals (2026-11-08)
 - **P14 후속 Desktop framework·OS·signing** (P14) · 상태: HOLD
   - A. rc.1 범위 밖으로 두고 #1975에는 링크만 · 영향: 없음(확정: Desktop은 후속) · 근거: 설계 01:280, 12:173 (2026-11-08)
-- **P15 jj·추가 ADE·외부 task UI 선택 adapter 순서** (P15) · 상태: HOLD
+- **P15 — ZCode 헤드리스 범위 결정됨(2026-11-08), 그 외 host 지원표 HOLD
   - A. rc.1 미포함, 후속 milestone 후보로만 기록 · 영향: 없음 · 근거: 설계 01:282, 승인 계획 §4 (2026-11-08)
 - **`v2026.11.0` 브랜치 보호(ruleset/branch protection) 도입 여부**  · 상태: HOLD
   - A. ruleset 추가: PR 필수·force push 차단·삭제 차단(enforcement active) · 영향: 원격 설정 변경(외부 효과) → 사용자 승인 필요; 리더 FF/merge 절차도 PR 경유로 바뀜 · 근거: 현재 protection 404·tag ruleset만 존재(로컬 조회), about-rulesets 문서 (2026-11-08)
@@ -169,4 +169,4 @@
 언어 규칙: 제목·본문·SPEC·체크리스트·설명 문구는 한국어로 쓰고, 코드 식별자·명령·경로·파일명은 원형을 유지한다.
 
 출처: https://chatgpt.com/space/page_66acadc28bdc8191875556986da72e6b (Page updated_at 2026-11-08T05:42:40Z) · 상세 설계 근거: `.moai-cli/manifests/issue-design-research.corrected.json`
-> P12 중 결정됨(2026-11-08, docs/decisions-2026-11-08.md): 배포 채널·서명·tag 접두사·binary 경로·Windows 교체. 나머지 P12·P04·P05(일부)·P06·P08~P11·P14·P15는 HOLD.
+> P12 중 결정됨(2026-11-08, docs/decisions-2026-11-08.md): 배포 채널·서명·tag 접두사·binary 경로·Windows 교체. 나머지 P12·P04·P05(일부)·P06·P08 — claim 방식 ⑤+① 결정됨(2026-11-08), lease·heartbeat 수치 HOLD.

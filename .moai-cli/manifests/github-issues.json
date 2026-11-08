@@ -1972,6 +1972,21 @@
    "decision": "RC1 보류 → 다음 버전; 기존 계획대로 1번째 버전 빠르게 구현"
   },
   {
+   "at": "2026-11-08 17:0x KST",
+   "topic": "개발 세션 모델/런처",
+   "decision": "opus medium + advisor fable; moai-cli session"
+  },
+  {
+   "at": "2026-11-08 17:1x KST",
+   "topic": "공유 interface 소유자",
+   "decision": "상류 Issue 소유(제안 표 확정)"
+  },
+  {
+   "at": "2026-11-08 17:1x KST",
+   "topic": "첫 배차",
+   "decision": "00-A→agent-4, 00-B→agent-3"
+  },
+  {
    "source_doc": "docs/decisions-2026-11-08.md"
   }
  ],
@@ -2352,5 +2367,230 @@
     "body_sha256": "077d469185b3137aec1ee7a4dc17763eca44d7cd96c73271680b5d82022f844a"
    }
   ]
- }
+ },
+ "design_update_r6": {
+  "applied_at_utc": "2026-11-08T07:37:14Z",
+  "design_revision": "2026-11-08-r6",
+  "changes": "06-A rewritten to claim ⑤ primary + ① auxiliary (REQ-06A-10..15, AC-06A-10..12), HOLD narrowed to lease numbers; 06-B hub residual; 02-D L111 decided; ROOT P08/P15 partial-decision split; 04-D allowlist concrete paths",
+  "results": [
+   {
+    "key": "02-D",
+    "number": 1994,
+    "status": "updated",
+    "body_sha256": "c209c81e4f3d699646b9a99615f5c37d6e4a1dbfd2883e689ca02e0fb7eab7a7"
+   },
+   {
+    "key": "04-D",
+    "number": 2016,
+    "status": "updated",
+    "body_sha256": "b43c254f45d83cf2c2809c8e64fc7315dd175802a6a73646e35e1b38078a79b9"
+   },
+   {
+    "key": "06-A",
+    "number": 2005,
+    "status": "updated",
+    "body_sha256": "3377432f9bda2ec43d300735cf0d892e2077eefc3f02aca20e912956c5ec7ed2"
+   },
+   {
+    "key": "06-B",
+    "number": 2006,
+    "status": "updated",
+    "body_sha256": "b0df9bbc165ea1edd7f5fe2ba53bfb67e631bacf08d93eeb6a16737c8849bed5"
+   },
+   {
+    "key": "RC-ROOT",
+    "number": 1975,
+    "status": "updated",
+    "body_sha256": "fe2431a51318debdba849e497c601388c5fd61a7fbeeae3b6be812a69670ee33"
+   },
+   {
+    "key": "02-D",
+    "number": 1994,
+    "status": "updated (r6 fix-up: L111 decided)",
+    "body_sha256": "5b3759a7936fbc06c6897a2c465de13f0b1eb43f3ff09d908daea3937f35fad6"
+   }
+  ]
+ },
+ "design_update_r7": {
+  "applied_at_utc": "2026-11-08T07:47:53Z",
+  "design_revision": "2026-11-08-r7",
+  "changes": "shared-interface owners confirmed by user (12 groups) in every overlap section",
+  "results": [
+   {
+    "key": "00-A",
+    "number": 1985,
+    "status": "updated",
+    "body_sha256": "50ad8fca515e371df1e426ae2e6860dbf3a55350a0948e156f6390cd511d4ded"
+   },
+   {
+    "key": "00-B",
+    "number": 1986,
+    "status": "updated",
+    "body_sha256": "908a10be42d3d8f2114164c904e9a39748b02b1513b7d816c7652de56461e8e4"
+   },
+   {
+    "key": "00-C",
+    "number": 1974,
+    "status": "updated",
+    "body_sha256": "e8e4f522907343ea7daa21bed1a9fd354fe5395827fff9ce1d3e28400775deab"
+   },
+   {
+    "key": "00-D",
+    "number": 1987,
+    "status": "updated",
+    "body_sha256": "ce744348cfc0191f998885d19a9bd77d4f8e32c004552d09f8c2de3444606e47"
+   },
+   {
+    "key": "01-B",
+    "number": 1989,
+    "status": "updated",
+    "body_sha256": "e654913ca68df6f0e8ecc0a71a1db0a84c906401062e2b011c711b3dc41cc0ea"
+   },
+   {
+    "key": "01-C",
+    "number": 1990,
+    "status": "updated",
+    "body_sha256": "1a1832c605577e65a91a1f42764522f4d780fbb0249c445c06e868b6c57e7e49"
+   },
+   {
+    "key": "02-B",
+    "number": 1992,
+    "status": "updated",
+    "body_sha256": "db1fcc03fafdad9e942fb467f4ba21cab01f0e8c4dac32f9df0f432f3d4d0a6a"
+   },
+   {
+    "key": "02-C",
+    "number": 1993,
+    "status": "updated",
+    "body_sha256": "6bcaa96efc7709ea85e74cfcbbe404f19d9b0117dfb10ead2932db6b4bc42aa5"
+   },
+   {
+    "key": "02-D",
+    "number": 1994,
+    "status": "updated",
+    "body_sha256": "a41ef3d26597931315fb93294f4f2006e570e8306f52ef97a42cfea3dfbe15ac"
+   },
+   {
+    "key": "03-A",
+    "number": 1995,
+    "status": "updated",
+    "body_sha256": "fc7bf6c95f4effc29ad172d05f0ea26b4b4ceb5c02334b5c65b0fb1661937181"
+   },
+   {
+    "key": "03-B",
+    "number": 1996,
+    "status": "updated",
+    "body_sha256": "4c97c9aa7fd0de0f02a15c66db5dc2d7850a7d81079739381af53988b7c30c83"
+   },
+   {
+    "key": "03-C",
+    "number": 1997,
+    "status": "updated",
+    "body_sha256": "8d285d5464f18659e6e505a12f8e41c933c0fdef77449f9a039c0492cb3450ca"
+   },
+   {
+    "key": "04-A",
+    "number": 1998,
+    "status": "updated",
+    "body_sha256": "18ef874017a7f0887f350fdd56a72cc1d53930d1bfbbe7ec2853771b0bf0aba6"
+   },
+   {
+    "key": "04-B",
+    "number": 1999,
+    "status": "updated",
+    "body_sha256": "a285034e348d48f83f42a98f64a8df1dd8a26a5477e00b85daafc9e96b764061"
+   },
+   {
+    "key": "05-B",
+    "number": 2002,
+    "status": "updated",
+    "body_sha256": "709e4f78f657f4098103a3889516b1920842758f506680651eb326ff2d2a5f4f"
+   },
+   {
+    "key": "05-C",
+    "number": 2003,
+    "status": "updated",
+    "body_sha256": "f0b65b5f03add303bb52abbbee660c40d0bc1ab53fbbead1c1d72d6ef36a9611"
+   },
+   {
+    "key": "05-D",
+    "number": 2004,
+    "status": "updated",
+    "body_sha256": "7ad4426e79c24c9c4da67c6dce6bf0f46007f25d7ea06e63c97bb0b7dde2cc17"
+   },
+   {
+    "key": "06-A",
+    "number": 2005,
+    "status": "updated",
+    "body_sha256": "138a411007db90cf2a254aea6eac0588cea50b7d5c062d20f320cee066dc6ce6"
+   },
+   {
+    "key": "06-B",
+    "number": 2006,
+    "status": "updated",
+    "body_sha256": "2c1318e74e60b92bc6c4261f183822b97e9addcee2b96acfefd285175a8cf7b8"
+   },
+   {
+    "key": "06-C",
+    "number": 2007,
+    "status": "updated",
+    "body_sha256": "642e1c3082435571f801f58edbd2f10cad55460f2ab044abc3f45a6f092be5fd"
+   },
+   {
+    "key": "07-A",
+    "number": 2008,
+    "status": "updated",
+    "body_sha256": "84c2921932c7ea0cdc29c0d43592c59686c8e1ee1757bdba72597fcba542d786"
+   },
+   {
+    "key": "07-B",
+    "number": 2009,
+    "status": "updated",
+    "body_sha256": "0abeb41bc3e460207d97157faedcb802d425c69fa4c780210d84b642dc6ce33d"
+   },
+   {
+    "key": "07-C",
+    "number": 2010,
+    "status": "updated",
+    "body_sha256": "783a9bc2aa2e9f0695f05494620a6f743c8301b2dd7ca4cb189f7654daf48fd4"
+   },
+   {
+    "key": "07-D",
+    "number": 2011,
+    "status": "updated",
+    "body_sha256": "1c8e0f48def60d7b53d014926a1e8d99f063063876d23056bdd3da907962b405"
+   },
+   {
+    "key": "08-A",
+    "number": 2012,
+    "status": "updated",
+    "body_sha256": "fdc4d2454e958047d2df988b02375e37f3fde27eaebb5af07014d10bc97da5c9"
+   },
+   {
+    "key": "08-B",
+    "number": 2013,
+    "status": "updated",
+    "body_sha256": "cb6378ae77b8b71d9c37a7f7701c0ee8795422cd92128c725e4d167cb4925bb6"
+   },
+   {
+    "key": "08-C",
+    "number": 2014,
+    "status": "updated",
+    "body_sha256": "be62d04756733c69219de306d279ee628d7793f7759921af82286d7014f295a2"
+   },
+   {
+    "key": "08-D",
+    "number": 2015,
+    "status": "updated",
+    "body_sha256": "d82c054ddde5923c32f497768ba59d3043bc27ba1b3432cc541f79ec7e4953cd"
+   },
+   {
+    "key": "EP-03",
+    "number": 1978,
+    "status": "updated",
+    "body_sha256": "c1c3cac4cb11a2f005368ae1fb451e042aff854c6aec90445d258cc175661f61"
+   }
+  ]
+ },
+ "dispatch_journal": []
 }

@@ -1,5 +1,7 @@
 pub mod agents;
+pub mod session;
 pub use agents::{agents_apply, agents_plan, AgentsPlan, AgentsRequest};
+pub use session::{launch as session_launch, SessionRequest};
 
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};

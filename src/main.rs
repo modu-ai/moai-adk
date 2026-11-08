@@ -1,6 +1,7 @@
 use clap::{Parser, Subcommand};
 use moai_cli::{
-    agents_apply, agents_plan, apply, plan, resolve, AgentsPlan, AgentsRequest, Plan, Profile,
+    agents_apply, agents_plan, apply, plan, resolve, session_launch, AgentsPlan, AgentsRequest,
+    Plan, Profile, SessionRequest,
 };
 use std::{
     io::{self, Read},
@@ -45,6 +46,29 @@ enum Command {
         plan_digest: String,
         #[arg(long)]
         permission_reference: String,
+    },
+    /// Start a leader or agent development session on a host CLI (Claude Code only for now).
+    Session {
+        /// leader | agent
+        #[arg(long, default_value = "agent")]
+        role: String,
+        #[arg(long, default_value = "claude")]
+        host: String,
+        /// Session display name, e.g. leader or agent-3 (passed as `--name`).
+        #[arg(long)]
+        name: String,
+        #[arg(long, default_value = "opus")]
+        model: String,
+        #[arg(long, default_value = "medium")]
+        effort: String,
+        /// Advisor model for hard reasoning (fable|opus|sonnet or full id); omit to disable.
+        #[arg(long)]
+        advisor: Option<String>,
+        #[arg(long, default_value = "claude")]
+        claude_bin: String,
+        /// Print the composed command as JSON instead of starting the host.
+        #[arg(long)]
+        dry_run: bool,
     },
 }
 fn input<T: serde::de::DeserializeOwned>() -> Result<T, String> {
@@ -95,6 +119,27 @@ fn run() -> Result<serde_json::Value, String> {
             input::<AgentsPlan>()?,
             &plan_digest,
             &permission_reference,
+        ),
+        Command::Session {
+            role,
+            host,
+            name,
+            model,
+            effort,
+            advisor,
+            claude_bin,
+            dry_run,
+        } => session_launch(
+            &SessionRequest {
+                role,
+                host,
+                name,
+                model,
+                effort,
+                advisor,
+                claude_bin,
+            },
+            dry_run,
         ),
     }
 }
