@@ -82,12 +82,12 @@
       }
     },
     "workflows/update.md": {
-      "sha256": "dc6873ffd3b2ff4469e66813e90c0c36d5e3eb264abec04a6eda09227543a93b",
+      "sha256": "fd288b9d917b7a898b20c35ea0c465ffb8825a0ccd74ae95e34310b4f54561cc",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-update",
         "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet."
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template. The 2026.11.0-rc.1 UPDATE implementation (04-B #1999) replaced the not-implemented status note with the implemented scope; the backup/rollback step remains 04-C."
       }
     },
     "workflows/plan.md": {

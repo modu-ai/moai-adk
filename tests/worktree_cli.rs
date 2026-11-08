@@ -20,6 +20,8 @@ const COMMENT_ID: i64 = 6_721_450_649;
 
 fn git(dir: &Path, args: &[&str]) -> String {
     let out = Command::new("git")
+        // #2092 (as #2082/#2088): background maintenance off for every fixture git call.
+        .args(["-c", "gc.auto=0", "-c", "maintenance.auto=false"])
         .args([
             "-c",
             "user.email=test@example.invalid",

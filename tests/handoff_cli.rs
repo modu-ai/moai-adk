@@ -119,6 +119,9 @@ fn seed_record(
 
 fn git(dir: &Path, args: &[&str]) -> String {
     let out = Command::new("git")
+        // #2092 (as #2082/#2088): background maintenance can leave temporary lock files
+        // while a snapshot comparison runs — turn it off for every fixture git call.
+        .args(["-c", "gc.auto=0", "-c", "maintenance.auto=false"])
         .args(args)
         .current_dir(dir)
         .env("GIT_CONFIG_GLOBAL", "/dev/null")
