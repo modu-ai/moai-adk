@@ -269,8 +269,9 @@ fn resolve(root: &Path, req: &ItemRequest, ignored: &mut Option<bool>) -> Resolv
         Ok(inside) if named_secret(inside) => return Resolved::Blocked("secret_pattern"),
         Ok(inside) => inside.to_string_lossy().into_owned(),
     };
-    // Both the requested name and the file it resolves to: an alias of an ignored file is
-    // as ignored as the file (Codex review #2057).
+    // Both the requested name and the file it resolves to: a symlink alias of an ignored
+    // file is as ignored as the file (Codex review #2057). A hardlink alias is not caught:
+    // canonicalize resolves symlinks only and check-ignore answers on paths, never inodes.
     let check = |path: &str| {
         git(root)
             .args(["check-ignore", "-q", "--", path])
