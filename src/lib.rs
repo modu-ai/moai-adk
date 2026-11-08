@@ -8,6 +8,7 @@ pub mod decision;
 pub mod forge;
 pub mod hosts;
 pub mod identity;
+pub mod install;
 pub mod plan;
 pub mod run;
 pub mod session;

@@ -25,11 +25,17 @@ const HOME_ENTRIES: [&str; 3] = [".claude", ".moai", ".agents"];
 const TEMPLATE_PREFIX: &str = "internal/template/templates/";
 
 fn git(dir: &Path, args: &[&str], stdin: Option<&[u8]>) -> Result<(i32, Vec<u8>)> {
-    let mut child = Command::new("git")
-        .arg("--no-optional-locks")
-        .arg("-C")
-        .arg(dir)
-        .args(args)
+    run_git(dir, args, stdin).map(|(code, out, _)| (code, out))
+}
+/// Runs git with a fixed argv. The caller's `GIT_DIR`, `GIT_WORK_TREE`, injected config and
+/// discovery variables are removed and the locale is fixed (`identity::scrub_git_env`), so
+/// PROJECT is the repository read (Issue #2054). Returns exit code, stdout and stderr; stderr
+/// is only used to classify a failure.
+fn run_git(dir: &Path, args: &[&str], stdin: Option<&[u8]>) -> Result<(i32, Vec<u8>, Vec<u8>)> {
+    let mut cmd = Command::new("git");
+    cmd.arg("--no-optional-locks").arg("-C").arg(dir).args(args);
+    crate::identity::scrub_git_env(&mut cmd);
+    let mut child = cmd
         .env("GIT_OPTIONAL_LOCKS", "0")
         .env("GIT_TERMINAL_PROMPT", "0")
         .stdin(if stdin.is_some() {
@@ -38,7 +44,7 @@ fn git(dir: &Path, args: &[&str], stdin: Option<&[u8]>) -> Result<(i32, Vec<u8>)
             Stdio::null()
         })
         .stdout(Stdio::piped())
-        .stderr(Stdio::null())
+        .stderr(Stdio::piped())
         .spawn()
         .map_err(|_| "git unavailable")?;
     if let Some(bytes) = stdin {
@@ -50,12 +56,21 @@ fn git(dir: &Path, args: &[&str], stdin: Option<&[u8]>) -> Result<(i32, Vec<u8>)
             .map_err(|_| "git stdin write failed")?;
     }
     let out = child.wait_with_output().map_err(|_| "git failed")?;
-    Ok((out.status.code().unwrap_or(-1), out.stdout))
+    Ok((out.status.code().unwrap_or(-1), out.stdout, out.stderr))
 }
+/// A failure other than "not a git repository" is `git failed: <path-free summary>`
+/// (`git_failed`, as in #2033); "not a git repository" keeps `git <cmd> exited <code>`.
 fn git_ok(dir: &Path, args: &[&str]) -> Result<Vec<u8>> {
-    match git(dir, args, None)? {
-        (0, out) => Ok(out),
-        (code, _) => Err(format!("git {} exited {code}", args[0])),
+    match run_git(dir, args, None)? {
+        (0, out, _) => Ok(out),
+        (code, _, err) => {
+            let summary = crate::identity::failure_summary(&err);
+            if err.is_empty() || summary.starts_with(crate::identity::NOT_A_REPOSITORY) {
+                Err(format!("git {} exited {code}", args[0]))
+            } else {
+                Err(format!("git failed: {summary}"))
+            }
+        }
     }
 }
 fn text(bytes: Vec<u8>) -> Result<String> {
