@@ -114,6 +114,13 @@ enum Command {
     ForgeRead {
         project: PathBuf,
     },
+    /// Create or update the one report comment of a run on its Issue (typed JSON payload on
+    /// stdin; envelope on stdout). Large output goes to artifact references, not the body.
+    ForgeReport {
+        project: PathBuf,
+        #[arg(long)]
+        permission_reference: String,
+    },
     /// Preview promotion of selected local TODOs to GitHub Issues (reads only; typed JSON
     /// request on stdin naming `tasks_path`, `target` and `selected`; envelope on stdout).
     TodoPromotePreview {
@@ -131,6 +138,10 @@ enum Command {
     /// Read-only clone/workspace identity and state roots of a path (typed JSON on stdout).
     Identity {
         path: PathBuf,
+    },
+    /// Read-only Claude Code check: whether a session started in PROJECT reads AGENTS.md.
+    ClaudeDoctor {
+        project: PathBuf,
     },
     /// Plan a Codex projection of the common package into an explicit target; writes nothing.
     CodexProjectionPlan {
@@ -187,6 +198,11 @@ enum Command {
     /// Temporary (05-B #2002; the name is fixed after P06): RUN admission of an approved plan.
     /// Typed request on stdin; reads the project's `HEAD^{commit}` with git, writes nothing.
     PlanAdmit {
+        project: PathBuf,
+    },
+    /// Temporary (05-C #2003; the name is fixed after P06): re-check the pinned contract and
+    /// run the approved verification commands in PROJECT as argv; returns a receipt.
+    RunVerify {
         project: PathBuf,
     },
     /// Claude Code session launcher: `cc -l|-a`.
@@ -276,8 +292,9 @@ fn launch(
 }
 
 /// Internal operations (01-C #1990): subcommand word and operation name. The launchers are
-/// developer tools and stay outside the envelope contract.
-const OPERATIONS: [(&str, &str); 15] = [
+/// developer tools and stay outside the envelope contract. A slice, not a fixed-length array:
+/// two branches each bumping the length to the same number merged silently (#2044).
+const OPERATIONS: &[(&str, &str)] = &[
     ("package-inspect", "package.inspect"),
     ("project-plan", "project.plan"),
     ("project-apply", "project.apply"),
@@ -287,11 +304,14 @@ const OPERATIONS: [(&str, &str); 15] = [
     ("baseline-inventory", "baseline.inventory"),
     ("identity", "identity"),
     ("forge-read", "forge.read"),
+    ("forge-report", "forge.report"),
     ("plan-admit", "plan.admit"),
+    ("claude-doctor", "claude.doctor"),
     ("codex-projection-plan", "codex.projection_plan"),
     ("codex-doctor", "codex.doctor"),
     ("todo-promote-preview", "todo.promote.plan"),
     ("todo-promote-apply", "todo.promote.apply"),
+    ("run-verify", "run.verify"),
     ("install-inspect", "install.inspect"),
 ];
 fn operation_of(word: &str) -> Option<&'static str> {
@@ -391,6 +411,31 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             &plan_digest,
             &permission_reference,
         ),
+        Command::ForgeReport {
+            project,
+            permission_reference,
+        } => {
+            let mut bytes = Vec::new();
+            io::stdin()
+                .take(65537)
+                .read_to_end(&mut bytes)
+                .map_err(|_| "stdin read failed")?;
+            if bytes.len() > 65536 {
+                return Err(
+                    "input exceeds 64 KiB; put large output in an artifact reference, not the payload"
+                        .into(),
+                );
+            }
+            let payload: moai_cli::forge::report::ReportPayload =
+                serde_json::from_slice(&bytes).map_err(|_| "invalid typed JSON input")?;
+            moai_cli::forge::report::report_cli(
+                &project,
+                payload,
+                &permission_reference,
+                &moai_cli::forge::transport::GhTransport::from_env()?,
+                &moai_cli::forge::policy::SystemClock,
+            )
+        }
         Command::ForgeRead { project } => moai_cli::forge::forge_read_cli(
             &project,
             input::<moai_cli::forge::ReadRequest>()?,
@@ -425,6 +470,7 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             go_repo.as_deref(),
         ),
         Command::Identity { path } => moai_cli::identity::identity(&path),
+        Command::ClaudeDoctor { project } => moai_cli::claude::doctor(&project),
         Command::CodexProjectionPlan {
             package,
             target,
@@ -478,6 +524,15 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             }
             let current = moai_cli::plan::current_revision(&project)?;
             serde_json::to_value(moai_cli::plan::admit(&request, &current))
+                .map_err(|_| "encode failed".into())
+        }
+        Command::RunVerify { project } => {
+            let request = input::<moai_cli::run::RunRequest>()?;
+            if request.protocol_version != contract::PROTOCOL_VERSION {
+                return Err("unsupported protocol_version; supported: 1".into());
+            }
+            let current = moai_cli::plan::current_revision(&project)?;
+            serde_json::to_value(moai_cli::run::run(&project, &request, &current)?)
                 .map_err(|_| "encode failed".into())
         }
         _ => unreachable!("launchers run through run_launcher"),

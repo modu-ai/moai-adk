@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "stable_run_id": "rc1-07c-demo",
+  "issue": {
+    "provider": "github",
+    "host": "github.com",
+    "project": {"owner": "acme", "repo": "widgets", "repository_id": 101},
+    "issue": {"id": 7001, "node_id": "I_7001", "number": 7}
+  },
+  "status": "review",
+  "candidate_revision": "1111111111111111111111111111111111111111",
+  "work": "Report renderer and single marker comment",
+  "checks": [
+    {"name": "unit tests", "command": "cargo test --offline --locked", "revision": "1111111111111111111111111111111111111111", "exit_code": 0, "result": "passed", "tail": ["test result: ok. 7 passed"]},
+    {"name": "live publish", "command": "gh api repos/acme/widgets/issues/7/comments", "revision": "1111111111111111111111111111111111111111", "exit_code": null, "result": "not_run"}
+  ],
+  "gaps": ["live publish needs a user-designated test Issue"],
+  "next": "Independent audit",
+  "evidence_links": ["https://github.com/acme/widgets/pull/12"]
+}

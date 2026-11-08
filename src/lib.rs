@@ -1,13 +1,16 @@
 pub mod agents;
 pub mod baseline;
+pub mod claude;
 pub mod contract;
 pub mod forge;
 pub mod hosts;
 pub mod identity;
 pub mod install;
 pub mod plan;
+pub mod run;
 pub mod session;
 pub mod spec;
+pub mod verify;
 pub use agents::{agents_apply, agents_plan, AgentsPlan, AgentsRequest};
 pub use baseline::tree_digest;
 pub use session::{launch as session_launch, SessionRequest};

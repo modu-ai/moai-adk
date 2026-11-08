@@ -1,6 +1,6 @@
 # Host 지원표 (RC1)
 
-이 문서의 열 정의와 Claude Code·Codex 행은 02-C #1993 소유이고, ZCode 행은 02-D #1994가 썼다. 열 형식은 02-D가 먼저 정했고 02-C가 따른다(리더 결정 2026-11-08). host마다 surface를 나누고 항목마다 출처를 적는다. 출처가 둘 이상이면 ` ; `로 잇는다. 08-D #2015 release 검토가 이 표를 읽는다. Claude Code 행은 아직 없다(02-B #1992).
+이 문서의 열 정의와 Codex 행은 02-C #1993, Claude Code 행은 02-B #1992, ZCode 행은 02-D #1994 소유다. 열 형식은 02-D가 먼저 정했고 02-C가 따른다(리더 결정 2026-11-08). host마다 surface를 나누고 항목마다 출처를 적는다. 출처가 둘 이상이면 ` ; `로 잇는다. 08-D #2015 release 검토가 이 표를 읽는다. Claude Code 행의 소유는 리더 결정(2026-11-08)이다.
 
 ## 상태 어휘
 
@@ -54,6 +54,24 @@ ZCode에는 1차 출처가 두 가지다. surface `app`은 데스크톱 앱 문�
 - 최신 릴리스는 `v3.17.2`(2026-11-04)다. 저장소 license는 Apache-2.0이다.
 
 상세 인용, 앱과 CLI의 차이, adapter gap, 선택지는 `docs/zcode-support.md`에 있다.
+
+## Claude Code (02-B 초안)
+
+02-B #1992가 02-D 형식으로 쓴 행이다(리더 결정 2026-11-08: Claude 행은 02-B가 직접 작성). surface `cli`는 터미널 대화형 세션이다. 모든 행은 2026-11-08에 공식 문서를 읽고 확인했고, 로컬 version은 2.1.319(macOS)다. Claude Code 세션 실측은 하지 않았다(`claude -p` 실행은 운영자 토큰과 전역 hook이 걸려 사용자 결정으로 넘김). 그래서 `probed` 행이 없다. cloud 세션 행은 이번에 출처를 읽지 않아 넣지 않았다.
+
+| host | surface | item | capability_status | unknown_class | 내용 | source |
+| --- | --- | --- | --- | --- | --- | --- |
+| Claude Code | cli | agents_loading | documented | | v2.1.277부터 `AGENTS.md`·`.claude/AGENTS.md`를 작업 디렉터리와 상위에서 읽는다. 같은 범위의 `CLAUDE.md`·`.claude/CLAUDE.md`·`CLAUDE.local.md` 하나라도 있으면 기본값(`claude-md-or-agents-md`)에서 읽지 않는다. `~/.claude/CLAUDE.md`·managed CLAUDE·`.claude/rules/`는 억제하지 않는다. `pluginConfigs.cc-plugin-agents-md@builtin.options.instructionFiles`(2.1.285 전 `agents-md@builtin`, 2.1.285부터는 두 id를 모두 읽음)는 user·`--settings`·managed에서만 읽고 project·local settings는 무시한다. `moai-cli claude-doctor`가 이 규칙으로 판정한다 | https://code.claude.com/docs/en/memory |
+| Claude Code | cli | agents_import | documented | | CLAUDE.md의 `@AGENTS.md` import는 어떤 설정값에서도 한 번만 읽힌다. import는 최대 4단계, 상대 경로는 import한 파일 기준이다 | https://code.claude.com/docs/en/memory |
+| Claude Code | cli | skill_path | documented | | personal `~/.claude/skills/<name>/SKILL.md`, project `.claude/skills/<name>/SKILL.md`, `--add-dir` 디렉터리의 `.claude/skills/`. 같은 이름이면 enterprise > personal > project | https://code.claude.com/docs/en/skills |
+| Claude Code | cli | skill_reload | documented | | 세션 시작 뒤 새로 만든 최상위 skills 디렉터리는 감시하지 않으므로 `/reload-skills`가 필요하다(이후 변경도 다시). 그 밖의 `SKILL.md` 변경은 세션 안에서 바로 반영된다 | https://code.claude.com/docs/en/skills |
+| Claude Code | cli | skill_limits | documented | | frontmatter 필드는 모두 선택이며 `description`만 권장한다. `description`+`when_to_use`는 목록에서 1,536자로 잘린다. 모르는 필드는 오류 없이 무시한다 | https://code.claude.com/docs/en/skills |
+| Claude Code | cli | explicit_invocation | documented | | `/` 메뉴에 skill `name`(기본값은 디렉터리 이름)이 명령으로 나온다. MoAI는 `/moai` | https://code.claude.com/docs/en/skills |
+| Claude Code | cli | output_style | documented | | `~/.claude/output-styles`·`.claude/output-styles`·managed. settings `outputStyle`(대소문자 구분)로 고른다. 시작 때 읽으므로 새 파일·수정은 재시작이 필요하다. 메인 대화와 fork에만 적용되고 다른 subagent에는 적용되지 않는다 | https://code.claude.com/docs/en/output-styles |
+| Claude Code | cli | statusline | documented | | settings `statusLine{type:"command", command, padding, refreshInterval, hideVimModeIndicator}`. stdin JSON으로 `model.*`·`workspace.*`·`cost.*`·`context_window.*`·`session_id`·`output_style.name` 등을 받는다. 300ms debounce, 실행 중인 스크립트는 새 갱신이 오면 취소된다 | https://code.claude.com/docs/en/statusline |
+| Claude Code | cli | hooks | documented | | user·project·local·managed settings, plugin `hooks/hooks.json`, skill·subagent frontmatter. exit 0은 JSON 적용, exit 2는 막을 수 있는 이벤트에서 차단, 그 밖은 비차단 오류. `PermissionRequest`는 `hookSpecificOutput.decision.behavior`(allow/deny)로만 정하고 exit 2를 따르지 않는다. 프롬프트를 띄울 수 없는 세션에서 결정이 없으면 거부한다. command hook 기본 timeout은 600초. MoAI RC1 hook은 0개(P04 = A) | https://code.claude.com/docs/en/hooks |
+
+출처 고정: 공식 문서 페이지에는 발행일이 없어 읽은 날짜(2026-11-08)와 로컬 version 2.1.319로 고정한다. 판정 규칙과 계약 전문은 `docs/claude-adapter-contract.md`에 있다.
 
 ## Codex (02-C)
 

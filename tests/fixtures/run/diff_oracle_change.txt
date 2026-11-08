@@ -1,0 +1,6 @@
+src/run.rs
+tests/run_verify.rs
+tests/fixtures/run/receipt_self_report.json
+crates/report/golden/summary.txt
+tools/check_test.py
+docs/rust-product-path.md

@@ -279,9 +279,16 @@ fn repo() -> tempfile::TempDir {
     dir
 }
 fn plan_admit(project: &Path, input: &[u8]) -> Value {
+    let (ok, v) = plan_admit_env(project, input, &[]);
+    assert!(ok, "{v}");
+    v
+}
+/// `plan-admit` with extra caller environment; returns (exit 0, envelope).
+fn plan_admit_env(project: &Path, input: &[u8], envs: &[(&str, &str)]) -> (bool, Value) {
     let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
         .arg("plan-admit")
         .arg(project)
+        .envs(envs.iter().copied())
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -293,12 +300,89 @@ fn plan_admit(project: &Path, input: &[u8]) -> Value {
         Err(e) => panic!("stdin write failed: {e}"),
     }
     let out = child.wait_with_output().unwrap();
-    assert!(
-        out.status.success(),
-        "{}",
-        String::from_utf8_lossy(&out.stderr)
+    let v = serde_json::from_slice(&out.stdout)
+        .unwrap_or_else(|_| panic!("no envelope: {}", String::from_utf8_lossy(&out.stderr)));
+    (out.status.success(), v)
+}
+
+/// Issue #2043 AC-BUG-1: caller variables that point git at another repository or inject
+/// configuration must not change which HEAD admission reads; other git failures are
+/// `git_failed` as in #2033.
+#[test]
+fn plan_revision_ignores_injected_git_environment() {
+    if !git_available() {
+        eprintln!("not_run: git is not available on this machine");
+        return;
+    }
+    let a = repo();
+    let b = repo();
+    fs::write(b.path().join("a.txt"), "other\n").unwrap();
+    git(b.path(), &["commit", "-q", "-am", "other"]);
+    let head_a = current_revision(a.path()).unwrap();
+    let head_b = current_revision(b.path()).unwrap();
+    assert_ne!(head_a, head_b);
+    let mut req = request("dag_linear");
+    req.expected_revision = head_a.clone();
+    let input = serde_json::to_vec(&req).unwrap();
+    let b_git = b.path().join(".git");
+    let b_git = b_git.to_str().unwrap();
+    let b_dir = b.path().to_str().unwrap();
+    let params = format!("'core.worktree'='{b_dir}'");
+    let cases: [&[(&str, &str)]; 6] = [
+        &[("GIT_DIR", b_git)],
+        &[("GIT_DIR", b_git), ("GIT_WORK_TREE", b_dir)],
+        &[("GIT_COMMON_DIR", b_git)],
+        &[("GIT_CONFIG_PARAMETERS", &params)],
+        &[
+            ("GIT_CONFIG_COUNT", "1"),
+            ("GIT_CONFIG_KEY_0", "core.bare"),
+            ("GIT_CONFIG_VALUE_0", "true"),
+        ],
+        &[("GIT_CEILING_DIRECTORIES", a.path().to_str().unwrap())],
+    ];
+    for envs in cases {
+        let (ok, v) = plan_admit_env(a.path(), &input, envs);
+        assert!(ok, "{envs:?}: {v}");
+        assert_eq!(
+            v["result"]["current_revision"],
+            json!(head_a),
+            "{envs:?} moved HEAD"
+        );
+        assert_eq!(v["result"]["decision"], "ready", "{envs:?}");
+    }
+    // Pinned to B's HEAD under a GIT_DIR pointing at B: still A's HEAD, so stale, not ready.
+    let mut wrong = request("dag_linear");
+    wrong.expected_revision = head_b.clone();
+    let (ok, v) = plan_admit_env(
+        a.path(),
+        &serde_json::to_vec(&wrong).unwrap(),
+        &[("GIT_DIR", b_git)],
     );
-    serde_json::from_slice(&out.stdout).unwrap()
+    assert!(ok);
+    assert_eq!(v["result"]["decision"], "stale");
+
+    // git present but refusing (safe.directory ownership): git_failed, no path in the message.
+    let (ok, v) = plan_admit_env(
+        a.path(),
+        &input,
+        &[
+            ("GIT_TEST_ASSUME_DIFFERENT_OWNER", "1"),
+            ("GIT_CONFIG_GLOBAL", "/dev/null"),
+            ("GIT_CONFIG_NOSYSTEM", "1"),
+        ],
+    );
+    assert!(!ok);
+    assert_eq!(v["error"]["kind"], "git_failed", "{v}");
+    let msg = v["error"]["message"].as_str().unwrap();
+    assert!(
+        msg.starts_with("git failed: ") && !msg.contains('/'),
+        "{msg}"
+    );
+    // Not a repository keeps its earlier, non-git_failed classification.
+    let plain = tempfile::TempDir::new().unwrap();
+    let (ok, v) = plan_admit_env(plain.path(), &input, &[("GIT_DIR", b_git)]);
+    assert!(!ok);
+    assert_eq!(v["error"]["kind"], "not_found", "{v}");
 }
 
 #[test]
