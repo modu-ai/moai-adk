@@ -1264,7 +1264,7 @@ fn baseline_without_or_with_unknown_commit_degrades_without_error() {
 
 const PROTOCOL_FIXTURES: &str = "tests/fixtures/protocol/v1/current";
 /// Values that depend on the temporary directory or the clock, not on the contract.
-const MASKED_KEYS: [&str; 3] = ["target_binding", "plan_digest", "collected_at"];
+const MASKED_KEYS: [&str; 4] = ["target_binding", "plan_digest", "collected_at", "receipt"];
 
 fn masked_values(v: &Value, out: &mut Vec<String>) {
     match v {

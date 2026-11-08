@@ -5,14 +5,11 @@
 //! the markers is preserved byte for byte. A conflict is reported, never resolved by
 //! overwriting. AGENTS.local.md is created once and never modified afterwards.
 
+use crate::apply::{self, decide, read_opt, relative_ok, root_of, target, Decision};
 use crate::{digest, read_profile, Profile};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use std::{
-    fs::{self, OpenOptions},
-    io::Write,
-    path::{Path, PathBuf},
-};
+use std::path::Path;
 
 type Result<T> = std::result::Result<T, String>;
 
@@ -98,35 +95,6 @@ struct Manifest {
     activation_status: String,
 }
 
-#[derive(Debug, PartialEq, Eq)]
-enum Decision {
-    KeepCurrent,
-    Apply,
-    Conflict,
-}
-
-/// Three-way decision on digests. Missing values are distinct from present values and
-/// drift away from the baseline is never overwritten.
-fn decide(baseline: Option<&str>, current: Option<&str>, desired: Option<&str>) -> Decision {
-    if current == desired || desired == baseline {
-        Decision::KeepCurrent
-    } else if current == baseline {
-        Decision::Apply
-    } else {
-        Decision::Conflict
-    }
-}
-
-fn relative_ok(s: &str) -> bool {
-    !s.is_empty()
-        && s.len() <= 256
-        && !s.starts_with('/')
-        && !s.contains('\\')
-        && !s.contains(':')
-        && !s.chars().any(char::is_control)
-        && !s.split('/').any(|seg| seg == "..")
-}
-
 fn validate(r: &AgentsRequest) -> Result<()> {
     if r.protocol_version != 1
         || !(r.language == "en" || r.language == "ko")
@@ -136,51 +104,6 @@ fn validate(r: &AgentsRequest) -> Result<()> {
         return Err("invalid agents request; no values were logged".into());
     }
     Ok(())
-}
-
-fn root_of(root: &Path) -> Result<PathBuf> {
-    let root = root
-        .canonicalize()
-        .map_err(|_| "project directory unavailable")?;
-    if !root.is_dir() {
-        return Err("project must be a directory".into());
-    }
-    Ok(root)
-}
-
-/// Resolves a repo-relative target and refuses symlinks on the target or any ancestor
-/// below the project root.
-fn target(root: &Path, rel: &str) -> Result<PathBuf> {
-    let path = root.join(rel);
-    let mut cursor = path.clone();
-    loop {
-        match fs::symlink_metadata(&cursor) {
-            Ok(meta) if meta.file_type().is_symlink() => {
-                return Err("symlink target refused".into())
-            }
-            Ok(_) => (),
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => (),
-            Err(_) => return Err("target metadata unavailable".into()),
-        }
-        match cursor.parent() {
-            Some(parent) if parent.starts_with(root) && parent != root => cursor = parent.into(),
-            _ => break,
-        }
-    }
-    Ok(path)
-}
-
-fn read_opt(path: &Path) -> Result<Option<Vec<u8>>> {
-    match fs::metadata(path) {
-        Ok(m) if !m.is_file() || m.len() > 262_144 => {
-            Err("target is not a bounded regular file".into())
-        }
-        Ok(_) => fs::read(path)
-            .map(Some)
-            .map_err(|_| "target read failed".into()),
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
-        Err(_) => Err("target metadata unavailable".into()),
-    }
 }
 
 fn markers(id: &str, comment: &str) -> (String, String) {
@@ -288,7 +211,12 @@ fn render_local(r: &AgentsRequest) -> String {
 
 fn render_ignore() -> String {
     let (begin, end) = markers(IGNORE_SECTION, "hash");
-    format!("{begin}\nAGENTS.local.md\n{end}\n")
+    // HOLD-B1 (leader interim 2026-11-08): apply receipts stay out of git alongside the
+    // personal file; src/apply.rs::RECEIPTS_DIR is the single source of the path.
+    format!(
+        "{begin}\nAGENTS.local.md\n{}/\n{end}\n",
+        apply::RECEIPTS_DIR
+    )
 }
 
 fn ignore_has_rule(text: &str) -> bool {
@@ -330,7 +258,9 @@ fn baseline_for(m: Option<&Manifest>, path: &str) -> Option<String> {
 const BLOCK_ABSENT: &str =
     "managed block absent; user deletion preserved (re-adopt requires an explicit request)";
 
-fn section_plan(
+/// Three-way plan of one managed file. Exposed (Issue #1989, 5b) so 03-C's
+/// `generation.rs` can call the engine per `FileKind` instead of reimplementing it.
+pub fn section_plan(
     path: &str,
     tracked: bool,
     section: &str,
@@ -551,54 +481,8 @@ pub fn agents_plan(root: &Path, request: AgentsRequest) -> Result<AgentsPlan> {
     Ok(plan)
 }
 
-fn write_replace(path: &Path, before: Option<&[u8]>, after: &[u8]) -> Result<()> {
-    if read_opt(path)?.as_deref() != before {
-        return Err("target changed since plan; re-preview required".into());
-    }
-    let parent = path.parent().ok_or("target parent unavailable")?;
-    fs::create_dir_all(parent).map_err(|_| "target directory unavailable")?;
-    let nanos = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_nanos())
-        .unwrap_or(0);
-    let temp = parent.join(format!(".moai-apply-{}-{nanos}.tmp", std::process::id()));
-    let mut file = OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(&temp)
-        .map_err(|_| "temporary file refused")?;
-    #[cfg(unix)]
-    if let Ok(meta) = fs::metadata(path) {
-        let _ = fs::set_permissions(&temp, meta.permissions());
-    }
-    let written = file
-        .write_all(after)
-        .and_then(|_| file.sync_all())
-        .map_err(|_| "temporary write failed".to_string());
-    if written.is_err() || read_opt(path)?.as_deref() != before {
-        let _ = fs::remove_file(&temp);
-        return Err("target changed during apply; temporary file discarded".into());
-    }
-    let published = if before.is_none() {
-        // Exclusive publish: a hard link fails when the target appeared meanwhile.
-        fs::hard_link(&temp, path)
-            .map_err(|_| "exclusive create refused")
-            .map(|_| ())
-    } else {
-        fs::rename(&temp, path).map_err(|_| "atomic replace failed")
-    };
-    if before.is_none() || published.is_err() {
-        let _ = fs::remove_file(&temp);
-    }
-    published?;
-    if let Ok(dir) = fs::File::open(parent) {
-        let _ = dir.sync_all();
-    }
-    Ok(())
-}
-
 /// The written file must contain exactly one managed block whose bytes equal the rendering.
-fn assert_single_block(out: &[u8], begin: &str, end: &str, rendered: &str) -> Result<()> {
+pub fn assert_single_block(out: &[u8], begin: &str, end: &str, rendered: &str) -> Result<()> {
     let text = std::str::from_utf8(out).map_err(|_| "rendered output is not UTF-8")?;
     match find_block(text, begin, end)? {
         Some((s, e, _)) if &text[s..e] == rendered => Ok(()),
@@ -606,7 +490,9 @@ fn assert_single_block(out: &[u8], begin: &str, end: &str, rendered: &str) -> Re
     }
 }
 
-fn splice(
+/// Splices the rendered block into `current` (create prefix / in-block replace / append).
+/// Exposed (Issue #1989, 5b) for 03-C's generation renderer.
+pub fn splice(
     current: Option<&[u8]>,
     begin: &str,
     end: &str,
@@ -656,13 +542,34 @@ pub fn agents_apply(
         return Err("stale or altered plan; re-preview required".into());
     }
     if let Some(c) = p.files.iter().find(|f| f.action == "conflict") {
-        return Err(format!(
+        // REQ-01B-01: a conflict writes no target byte; the refused outcome is recorded
+        // so 04-C recovery tooling can see why nothing was applied.
+        let request_id = apply::new_request_id("agents.apply", &p.plan_digest);
+        let mut receipt = apply::Receipt::new(&request_id, "agents.apply", root);
+        for f in p.files.iter().filter(|f| f.action == "conflict") {
+            receipt.entry(
+                &f.path,
+                "conflict",
+                f.expected_sha256.as_deref(),
+                f.rendered_sha256.as_deref(),
+                false,
+                f.detail.clone(),
+            );
+        }
+        receipt.status = "refused".into();
+        let mut message = format!(
             "conflict in {}: {}; nothing applied",
             c.path,
             c.detail.as_deref().unwrap_or("review required")
-        ));
+        );
+        if let Err(e) = receipt.save(root) {
+            message.push_str(&format!("; receipt not recorded: {e}"));
+        }
+        return Err(message);
     }
     let root = root_of(root)?;
+    let request_id = apply::new_request_id("agents.apply", &p.plan_digest);
+    let mut receipt = apply::Receipt::new(&request_id, "agents.apply", &root);
     let (profile, profile_bytes) = read_profile(&root)?;
     let previous = read_manifest(&root, &profile.project_id)?;
     let mut applied = Vec::new();
@@ -697,6 +604,13 @@ pub fn agents_apply(
             applied.join(", ")
         )
     };
+    // Saves the receipt at a failure point and appends a note when the receipt itself
+    // could not be recorded — the receipt gap is never silent (REQ-01B-06).
+    let receipt_failure =
+        |receipt: &apply::Receipt, root: &Path, message: &str| match receipt.save(root) {
+            Ok(()) => message.to_string(),
+            Err(e) => format!("{message}; receipt not recorded: {e}"),
+        };
 
     for f in &p.files {
         if f.path == MANIFEST {
@@ -713,6 +627,14 @@ pub fn agents_apply(
             let Some(bytes) = read_opt(&path)? else {
                 continue;
             };
+            receipt.entry(
+                &f.path,
+                "unchanged",
+                Some(&digest(&bytes)),
+                Some(&digest(&bytes)),
+                false,
+                None,
+            );
             match f.section_id.as_deref() {
                 None => {
                     // A personal file that already exists is recorded as seen so it is never
@@ -747,7 +669,21 @@ pub fn agents_apply(
         let path = target(&root, &f.path)?;
         let before = read_opt(&path)?;
         if before.as_deref().map(digest) != f.expected_sha256 {
-            return Err(step(&applied, &f.path, "target changed since plan".into()));
+            // REQ-01B-02: the file and everything after it stays untouched; the
+            // stale_target outcome goes into the receipt.
+            receipt.entry(
+                &f.path,
+                "stale_target",
+                before.as_deref().map(digest).as_deref(),
+                None,
+                false,
+                Some("target changed since plan".into()),
+            );
+            return Err(receipt_failure(
+                &receipt,
+                &root,
+                &step(&applied, &f.path, "target changed since plan".into()),
+            ));
         }
         let (bytes, section) = match f.path.as_str() {
             "AGENTS.md" => {
@@ -768,7 +704,47 @@ pub fn agents_apply(
             "AGENTS.local.md" => (render_local(&p.request).into_bytes(), None),
             _ => return Err("unknown planned path".into()),
         };
-        write_replace(&path, before.as_deref(), &bytes).map_err(|e| step(&applied, &f.path, e))?;
+        // REQ-01B-08: keep the before bytes before publishing so recovery can restore
+        // content; a created file needs no backup (recovery removes it).
+        if let Some(b) = before.as_deref() {
+            apply::save_before_bytes(&root, &request_id, &f.path, b)
+                .map_err(|e| step(&applied, &f.path, e))?;
+        }
+        let publish = if before.is_none() {
+            apply::publish_exclusive(&path, &bytes)
+        } else {
+            apply::publish_replace(&path, before.as_deref(), &bytes)
+        };
+        if let Err(e) = publish {
+            receipt.entry(
+                &f.path,
+                &f.action,
+                before.as_deref().map(digest).as_deref(),
+                None,
+                false,
+                Some(e.clone()),
+            );
+            return Err(receipt_failure(
+                &receipt,
+                &root,
+                &step(&applied, &f.path, e),
+            ));
+        }
+        receipt.entry(
+            &f.path,
+            &f.action,
+            before.as_deref().map(digest).as_deref(),
+            Some(&digest(&bytes)),
+            true,
+            None,
+        );
+        if let Err(e) = receipt.save(&root) {
+            return Err(format!(
+                "partial apply: applied [{}]; published {} but its receipt was not recorded: {e}",
+                applied.join(", "),
+                f.path
+            ));
+        }
         // Baseline is the managed text MoAI wrote, not the whole user file.
         match section {
             Some(AGENTS_SECTION) => record(
@@ -819,15 +795,71 @@ pub fn agents_apply(
         .find(|f| f.path == MANIFEST)
         .ok_or("manifest missing from plan")?;
     if before.as_deref().map(digest) != manifest_plan.expected_sha256 {
-        return Err(step(&applied, MANIFEST, "target changed since plan".into()));
+        receipt.entry(
+            MANIFEST,
+            "stale_target",
+            before.as_deref().map(digest).as_deref(),
+            None,
+            false,
+            Some("target changed since plan".into()),
+        );
+        return Err(receipt_failure(
+            &receipt,
+            &root,
+            &step(&applied, MANIFEST, "target changed since plan".into()),
+        ));
     }
     if before.as_deref() != Some(manifest_bytes.as_slice()) {
-        write_replace(&manifest_path, before.as_deref(), &manifest_bytes)
-            .map_err(|e| step(&applied, MANIFEST, e))?;
+        if let Some(b) = before.as_deref() {
+            apply::save_before_bytes(&root, &request_id, MANIFEST, b)
+                .map_err(|e| step(&applied, MANIFEST, e))?;
+        }
+        let publish = if before.is_none() {
+            apply::publish_exclusive(&manifest_path, &manifest_bytes)
+        } else {
+            apply::publish_replace(&manifest_path, before.as_deref(), &manifest_bytes)
+        };
+        if let Err(e) = publish {
+            receipt.entry(
+                MANIFEST,
+                &manifest_plan.action,
+                before.as_deref().map(digest).as_deref(),
+                None,
+                false,
+                Some(e.clone()),
+            );
+            return Err(receipt_failure(
+                &receipt,
+                &root,
+                &step(&applied, MANIFEST, e),
+            ));
+        }
+        receipt.entry(
+            MANIFEST,
+            &manifest_plan.action,
+            before.as_deref().map(digest).as_deref(),
+            Some(&digest(&manifest_bytes)),
+            true,
+            None,
+        );
+        if let Err(e) = receipt.save(&root) {
+            return Err(format!(
+                "partial apply: applied [{}]; published {MANIFEST} but its receipt was not recorded: {e}",
+                applied.join(", ")
+            ));
+        }
         applied.push(MANIFEST.into());
     }
+    receipt.status = "complete".into();
+    receipt.save(&root).map_err(|e| {
+        format!(
+            "applied [{}]; receipt not recorded: {e}",
+            applied.join(", ")
+        )
+    })?;
     Ok(json!({
         "state": if applied.is_empty() { "unchanged" } else { "applied" },
+        "receipt": request_id,
         "applied": applied,
         "files_created": !applied.is_empty(),
         "manifest_sha256": digest(&manifest_bytes),
@@ -842,29 +874,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn three_way_decisions() {
-        assert_eq!(decide(None, None, Some("new")), Decision::Apply);
-        assert_eq!(
-            decide(Some("old"), Some("old"), Some("new")),
-            Decision::Apply
-        );
-        assert_eq!(
-            decide(Some("old"), Some("user"), Some("old")),
-            Decision::KeepCurrent
-        );
-        assert_eq!(
-            decide(Some("old"), Some("new"), Some("new")),
-            Decision::KeepCurrent
-        );
-        assert_eq!(decide(None, Some("user"), Some("new")), Decision::Conflict);
-        assert_eq!(
-            decide(Some("old"), Some("user"), Some("new")),
-            Decision::Conflict
-        );
-        assert_eq!(decide(Some("old"), None, Some("new")), Decision::Conflict);
-    }
-
-    #[test]
     fn block_detection_and_malformed_markers() {
         let (b, e) = markers("x", "html");
         let text = format!("user\n\n{b}\nbody\n{e}\nmore\n");
@@ -877,13 +886,5 @@ mod tests {
         assert!(find_block("plain", &b, &e).unwrap().is_none());
     }
 
-    #[test]
-    fn relative_paths_are_bounded() {
-        assert!(relative_ok("skills/moai/workflows/"));
-        assert!(!relative_ok("/abs"));
-        assert!(!relative_ok("../up"));
-        assert!(!relative_ok("a/../b"));
-        assert!(!relative_ok("C:\\x"));
-        assert!(!relative_ok(""));
-    }
+    // relative_paths_are_bounded moved to src/apply.rs with the shared helper.
 }

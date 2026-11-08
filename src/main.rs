@@ -99,6 +99,17 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
+    /// Revert exactly the files one apply request published, from its receipt
+    /// (Issue #1989, 01-B). Files changed since the apply are skipped, never overwritten.
+    ApplyRecover {
+        project: PathBuf,
+        /// Receipt id printed by the apply result (`receipt` field) or the file stem
+        /// under `<PROJECT>/.moai-cli/receipts/`.
+        #[arg(long)]
+        receipt: String,
+        #[arg(long)]
+        permission_reference: String,
+    },
     /// Read-only baseline inventory of a checkout (typed JSON on stdout).
     BaselineInventory {
         project: PathBuf,
@@ -256,13 +267,14 @@ fn launch(
 
 /// Internal operations (01-C #1990): subcommand word and operation name. The launchers are
 /// developer tools and stay outside the envelope contract.
-const OPERATIONS: [(&str, &str); 12] = [
+const OPERATIONS: [(&str, &str); 13] = [
     ("package-inspect", "package.inspect"),
     ("project-plan", "project.plan"),
     ("project-apply", "project.apply"),
     ("package-resolve", "package.resolve"),
     ("agents-plan", "agents.plan"),
     ("agents-apply", "agents.apply"),
+    ("apply-recover", "apply.recover"),
     ("baseline-inventory", "baseline.inventory"),
     ("identity", "identity"),
     ("forge-read", "forge.read"),
@@ -367,6 +379,11 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             &plan_digest,
             &permission_reference,
         ),
+        Command::ApplyRecover {
+            project,
+            receipt,
+            permission_reference,
+        } => moai_cli::apply::recover(&project, &receipt, &permission_reference),
         Command::ForgeRead { project } => moai_cli::forge::forge_read_cli(
             &project,
             input::<moai_cli::forge::ReadRequest>()?,

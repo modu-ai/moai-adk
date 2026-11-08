@@ -12,7 +12,8 @@
   "masked_keys": [
     "target_binding",
     "plan_digest",
-    "collected_at"
+    "collected_at",
+    "receipt"
   ],
   "stderr": "",
   "stdin": {
@@ -66,6 +67,7 @@
       "host_loaded": false,
       "host_notes": [],
       "manifest_sha256": "sha256:f4d9af31163b14bede547faf06556ffd4a8ee1ea155de447048c7c5e8b0cb94c",
+      "receipt": "<masked>",
       "state": "applied"
     }
   }
