@@ -350,6 +350,21 @@ enum Command {
         #[arg(long)]
         integration_order: Option<String>,
     },
+    /// Record the PR's ACK (06-C #2007, REQ-06C-11): confirm the `pr_create` intent and, once
+    /// it is confirmed, move the claim record to `pr_ready`.
+    PrConfirm {
+        project: PathBuf,
+        #[arg(long)]
+        task: String,
+        #[arg(long = "operation-id")]
+        operation_id: String,
+        /// What the remote returned, e.g. the PR number (empty allowed for uncertain).
+        #[arg(long = "response-id", default_value = "")]
+        response_id: String,
+        /// The observed outcome, e.g. `opened`; `uncertain` marks a lost answer.
+        #[arg(long = "observed-state")]
+        observed_state: String,
+    },
     /// Render the PR body of a claim (06-C #2007): Refs, exact SHAs, receipts, op marker.
     PrBodyRender {
         project: PathBuf,
@@ -642,6 +657,7 @@ const OPERATIONS: &[(&str, &str)] = &[
     ("update-apply", "update.apply"),
     ("recovery-plan", "recovery.plan"),
     ("recovery-apply", "recovery.apply"),
+    ("pr-confirm", "pr.confirm"),
 ];
 fn operation_of(word: &str) -> Option<&'static str> {
     OPERATIONS
@@ -953,12 +969,14 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             branch_prefix,
             path,
             plan_digest,
-        } => moai_cli::worktree::apply(
+        } => moai_cli::worktree::apply_and_record(
             &project,
             &source.load(&project)?,
+            source.task.is_some(),
             &branch_prefix,
             path.as_deref(),
             &plan_digest,
+            &moai_cli::forge::policy::SystemClock,
         ),
         Command::ScopeCheck {
             project,
@@ -967,12 +985,29 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
         } => {
             let mine = source.load(&project)?;
             let others = moai_cli::worktree::active_records(&project)?;
-            Ok(moai_cli::scope::check(
+            moai_cli::scope::check_and_record(
+                &project,
                 &mine,
+                source.task.is_some(),
                 &others,
                 integration_order.as_deref(),
-            ))
+                &moai_cli::forge::policy::SystemClock,
+            )
         }
+        Command::PrConfirm {
+            project,
+            task,
+            operation_id,
+            response_id,
+            observed_state,
+        } => moai_cli::pr_link::confirm_and_record(
+            &project,
+            &task,
+            &operation_id,
+            &response_id,
+            &observed_state,
+            &moai_cli::forge::policy::SystemClock,
+        ),
         Command::PrBodyRender {
             project,
             source,
@@ -995,8 +1030,10 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             } else {
                 Vec::new()
             };
-            moai_cli::pr_link::render(
+            moai_cli::pr_link::render_and_record(
+                &project,
                 &rec,
+                source.task.is_some(),
                 &receipts,
                 &moai_cli::pr_link::RenderInput {
                     base_branch: &base_branch,
@@ -1009,6 +1046,7 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
                     changes: &changes,
                     gaps: &gap,
                 },
+                &moai_cli::forge::policy::SystemClock,
             )
         }
         Command::InstallInspect { json: _ } => {

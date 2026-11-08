@@ -13,15 +13,20 @@
 //! accepted as given (REQ-06C-12). The branch prefix is an open HOLD, so it is a required
 //! input with no default.
 //!
-//! Records: the claim journal belongs to 06-A (#2005) and has no public write path, so the
-//! measured identity is returned as `record_update_request`. A record can also come from a
-//! file (`--record`) for a claim that never went through the local journal; such a file is
-//! the caller's input, not an authority, and is accepted only when it agrees with the Issue
-//! claim comment it names (`--claim-comment`).
+//! Records: every 06-C command returns its record change as `record_update_request`. When
+//! the record came from the local journal (`--task`), the change is also committed through
+//! 06-B's public `Journal::commit` under the journal lock ([`commit_update`]): the worktree
+//! identity, `blocked(reason=scope_conflict)`, an integration order, and `pr_ready` with the
+//! `pr_create` effect intent. 06-A's acquire/release behaviour is unchanged; these are
+//! additional events. A record can also come from a file (`--record`) for a claim that never
+//! went through the local journal; such a file is the caller's input, not an authority, is
+//! accepted only when it agrees with the Issue claim comment it names (`--claim-comment`),
+//! and is never written back: the journal holds no record for it.
 use crate::claim::{
-    self, claim_token, parse_claim_line, ClaimRecord, Journal, WorktreeId, ACTIVE_STATES,
+    self, claim_token, is_key, parse_claim_line, ClaimRecord, Journal, WorktreeId, ACTIVE_STATES,
 };
 use crate::digest;
+use crate::forge::policy::{format_utc, Clock};
 use crate::spec::{Canonical, SortedKeys};
 use serde_json::{json, Value};
 use std::{
@@ -33,7 +38,103 @@ use std::{
 
 type Result<T> = std::result::Result<T, String>;
 
-pub const RECORD_UPDATE_OWNER: &str = "06-A #2005 (claim journal has no public write path)";
+pub const RECORD_UPDATE_OWNER: &str =
+    "06-C via 06-B Journal::commit when the record came from --task; not written for --record";
+
+/// The journal of `project`, opened for writing and locked; a held lock is a conflict at
+/// once (06-A busy-never-waits, REQ-06A-05).
+pub fn open_locked_journal(project: &Path) -> Result<Journal> {
+    let journal = Journal::open(&claim::journal_root(project)?)?;
+    if !journal.try_lock()? {
+        return Err("conflict in claim journal: another process holds the journal lock".into());
+    }
+    Ok(journal)
+}
+
+/// Applies `change` to the current record of `key` and commits it as one journal event.
+/// The record must still be at `epoch` and active; a change that leaves the record as it
+/// was writes nothing (`applied: false`), so a repeated command adds no event.
+pub fn commit_update<C: Clock>(
+    journal: &Journal,
+    key: &str,
+    epoch: u64,
+    event: &str,
+    clock: &C,
+    change: impl FnOnce(&mut ClaimRecord),
+) -> Result<Value> {
+    if !is_key(key) {
+        return Err("task must be a 16 hex character claim key".into());
+    }
+    let events = journal.read_events()?;
+    let current = events
+        .iter()
+        .rev()
+        .find(|e| e.record.task_key == key)
+        .map(|e| e.record.clone())
+        .ok_or("claim record not found for task")?;
+    if current.epoch != epoch {
+        return Err(format!(
+            "conflict in claim journal: stale_epoch {epoch}; current record epoch is {}",
+            current.epoch
+        ));
+    }
+    if !ACTIVE_STATES.contains(&current.state.as_str()) {
+        return Err(format!(
+            "conflict in claim journal: the record is not active ({})",
+            current.state
+        ));
+    }
+    let mut next = current.clone();
+    change(&mut next);
+    if next == current {
+        return Ok(json!({"applied": false, "event": event, "state": current.state}));
+    }
+    next.last_observed_at = format_utc(clock.now());
+    journal.commit(event, &next)?;
+    Ok(json!({"applied": true, "event": event, "state": next.state}))
+}
+
+/// `worktree-apply` plus the record write (REQ-06C-02): a created worktree's measured
+/// identity becomes `record.worktree` when the record came from the journal.
+#[allow(clippy::too_many_arguments)]
+pub fn apply_and_record<C: Clock>(
+    project: &Path,
+    rec: &ClaimRecord,
+    from_journal: bool,
+    prefix: &str,
+    path: Option<&Path>,
+    plan_digest: &str,
+    clock: &C,
+) -> Result<Value> {
+    let journal = if from_journal {
+        Some(open_locked_journal(project)?)
+    } else {
+        None
+    };
+    let mut out = apply(project, rec, prefix, path, plan_digest)?;
+    out["record_update"] = if out["decision"] != "created" {
+        json!({"applied": false, "reason": "no worktree was created"})
+    } else if let Some(journal) = &journal {
+        let id: WorktreeId =
+            serde_json::from_value(out["identity"].clone()).map_err(|_| "encode failed")?;
+        commit_update(
+            journal,
+            &rec.task_key,
+            rec.epoch,
+            "worktree_recorded",
+            clock,
+            |r| r.worktree = id,
+        )?
+    } else {
+        not_written()
+    };
+    Ok(out)
+}
+
+/// The `record_update` field for a record that came from a file: nothing is written.
+pub fn not_written() -> Value {
+    json!({"applied": false, "reason": "the record came from --record; the journal holds no record for it"})
+}
 
 fn git(dir: &Path, args: &[&str]) -> Result<String> {
     let out = Command::new("git")
