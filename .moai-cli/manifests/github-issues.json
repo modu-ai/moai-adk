@@ -369,7 +369,7 @@
    "url": "https://github.com/modu-ai/moai-adk/issues/2020",
    "title": "[RC1][부트스트랩] 00-E .github 재구성 — Go 세대 제거 후 RC1 전용 workflows·PR 템플릿·label 동기화",
    "reused": false,
-   "created_by": "user instruction 2026-11-08 17:4x (.github rebuild)"
+   "created_by": "user instruction 2026-11-08 17:3x (.github rebuild)"
   },
   "BUG-AGENTS-MISSING-BLOCK": {
    "number": 2022,
