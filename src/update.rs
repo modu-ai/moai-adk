@@ -1,0 +1,1019 @@
+//! Host projection UPDATE (Issue #1999, 04-B).
+//!
+//! `update-plan` inventories every host projection (Claude `~/.claude/skills/moai/`,
+//! Codex `~/.agents/skills/moai/` — the design-verified paths; project-level projections
+//! are a P04 HOLD and are not included), compares each file three-way (baseline = the
+//! ownership manifest of the latest host receipt, current = bytes on disk, new = the
+//! staged package) and writes nothing. `update-apply` recomputes the plan and refuses
+//! any other digest, then walks the host transaction (REQ-04B-04): pending receipt
+//! (fsynced publish) → per-file unique temp + fsync + rename through the 01-B engine
+//! (`apply::publish_replace` / `apply::publish_exclusive`, each re-verifying the target
+//! and fsyncing the parent directory) → full re-verification → committed receipt. A
+//! failed host keeps its `pending` receipt with the PRE-apply ownership manifest
+//! (recovery is 04-C) and never touches a host that already committed. A crashed
+//! apply therefore reads back as per-file `conflict` where the stage differs and
+//! `unchanged` where the bytes already match — never as a silent overwrite.
+//!
+//! Host receipts live beside the 04-A install receipt:
+//! `~/.moai-cli/installations/<install_id>/hosts/<host>.json`. The `install_id` is the
+//! 04-A derivation, obtained through the public `install::plan_receipt` so this module
+//! does not modify 04-A. Host config keys (Claude `settings.json`, Codex `config.toml`)
+//! are out of scope (P04 HOLD — the REQs name projections only). Projections are
+//! independent copies; a symlinked projection is `blocked`, never followed (REQ-04B-08),
+//! and user files are never deleted or overwritten (REQ-04B-09).
+
+use crate::apply::{decide, publish_exclusive, publish_replace, read_opt, relative_ok, Decision};
+use crate::contract::PROTOCOL_VERSION;
+use crate::install::{plan_receipt, InstallerOwner};
+use serde::{Deserialize, Serialize};
+use serde_json::json;
+use sha2::{Digest, Sha256};
+use std::{
+    collections::BTreeMap,
+    fs,
+    path::{Path, PathBuf},
+};
+
+type Result<T> = std::result::Result<T, String>;
+
+const UPDATE_SCHEMA_VERSION: u32 = 1;
+/// Host projection roots under the home, in fixed plan order. 02-B/02-C expose explicit
+/// target paths rather than constants, so the design-verified values stand in here
+/// (Issue impl plan step 1).
+const HOSTS: [&str; 2] = ["claude", "codex"];
+/// Same bounded-file rule as every other state file.
+const FILE_LIMIT: u64 = 262_144;
+const WALK_DEPTH: usize = 32;
+const WALK_ENTRIES: usize = 8192;
+const WALK_FILES: usize = 4096;
+const WALK_BYTES: usize = 16 * 1024 * 1024;
+
+fn skills_dir(host: &str) -> &'static str {
+    match host {
+        "claude" => ".claude/skills",
+        "codex" => ".agents/skills",
+        other => unreachable!("unknown host {other}"),
+    }
+}
+
+fn projection_root(home: &Path, host: &str) -> PathBuf {
+    home.join(skills_dir(host)).join("moai")
+}
+
+/// UTC RFC3339 second precision; local copy of install.rs's private formatter.
+fn now_rfc3339() -> String {
+    let secs = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let days = (secs / 86400) as i64;
+    let rem = secs % 86400;
+    let z = days + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z.rem_euclid(146_097);
+    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
+    let y = yoe + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 };
+    let y = if m <= 2 { y + 1 } else { y };
+    format!(
+        "{y:04}-{m:02}-{d:02}T{:02}:{:02}:{:02}Z",
+        rem / 3600,
+        (rem % 3600) / 60,
+        rem % 60
+    )
+}
+
+fn sha256_hex(bytes: &[u8]) -> String {
+    format!("sha256:{:x}", Sha256::digest(bytes))
+}
+
+// --- staged package -----------------------------------------------------------------
+
+/// The staged new package: `moai-package-tree-v1` digest plus every file's bytes.
+pub struct StagedPackage {
+    pub digest: String,
+    pub files: BTreeMap<String, Vec<u8>>,
+}
+
+/// Stages the package directory. `package_digest` is the single source of the digest
+/// (and of the SKILL.md/symlink/size rules); the walk below mirrors its limits to also
+/// carry the bytes.
+pub fn stage_package(src: &Path) -> Result<StagedPackage> {
+    let digest = crate::package_digest(src)?;
+    let mut files = BTreeMap::new();
+    let mut entries = 0usize;
+    let mut total = 0usize;
+    walk_files(src, src, &mut files, &mut entries, &mut total, 0)?;
+    Ok(StagedPackage { digest, files })
+}
+
+fn walk_files(
+    root: &Path,
+    dir: &Path,
+    files: &mut BTreeMap<String, Vec<u8>>,
+    entries: &mut usize,
+    total: &mut usize,
+    depth: usize,
+) -> Result<()> {
+    if depth > WALK_DEPTH {
+        return Err("package nesting limit exceeded".into());
+    }
+    for entry in fs::read_dir(dir).map_err(|_| "package directory unavailable")? {
+        *entries += 1;
+        if *entries > WALK_ENTRIES {
+            return Err("package entry limit exceeded".into());
+        }
+        let path = entry.map_err(|_| "package entry unavailable")?.path();
+        let meta = fs::symlink_metadata(&path).map_err(|_| "package metadata unavailable")?;
+        if meta.file_type().is_symlink() {
+            return Err("package symlink refused".into());
+        }
+        if meta.is_dir() {
+            walk_files(root, &path, files, entries, total, depth + 1)?;
+        } else if meta.is_file() {
+            if meta.len() > FILE_LIMIT {
+                return Err("package file exceeds the size limit".into());
+            }
+            let rel = path
+                .strip_prefix(root)
+                .map_err(|_| "package path invalid")?
+                .to_str()
+                .ok_or("non UTF-8 package path")?
+                .replace('\\', "/");
+            if !relative_ok(&rel) {
+                return Err("nonportable package path".into());
+            }
+            let bytes = fs::read(&path).map_err(|_| "package read failed")?;
+            *total += bytes.len();
+            if *total > WALK_BYTES {
+                return Err("package too large".into());
+            }
+            files.insert(rel, bytes);
+        } else {
+            return Err("package special file refused".into());
+        }
+        if files.len() > WALK_FILES {
+            return Err("package file limit exceeded".into());
+        }
+    }
+    Ok(())
+}
+
+// --- plan types ---------------------------------------------------------------------
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct FilePlan {
+    pub host: String,
+    pub path: String,
+    /// create | update | unchanged | conflict | preserved | remove_blocked
+    pub action: String,
+    pub baseline_sha256: Option<String>,
+    pub current_sha256: Option<String>,
+    pub new_sha256: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct HostPlan {
+    pub host: String,
+    pub projection_root: String,
+    /// ok | blocked (REQ-04B-02: one blocked host never stops the others)
+    pub preflight: String,
+    pub blocked_reason: Option<String>,
+    pub files: Vec<FilePlan>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct ProtocolRange {
+    pub min: u32,
+    pub max: u32,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct FileHash {
+    pub host: String,
+    pub path: String,
+    pub sha256: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct UpdatePlan {
+    pub schema_version: u32,
+    pub protocol_version: u32,
+    pub protocol_range: ProtocolRange,
+    /// Canonical home; binds the plan so a replay under another HOME is refused.
+    pub home: String,
+    pub scope: Vec<String>,
+    pub source_version: Option<String>,
+    pub target_version: String,
+    pub package_digest: String,
+    pub hosts: Vec<HostPlan>,
+    pub expected_file_hashes: Vec<FileHash>,
+    pub rollback_manifest: Vec<FileHash>,
+    pub plan_digest: String,
+}
+
+// --- host receipt -------------------------------------------------------------------
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HostReceiptEntry {
+    pub path: String,
+    pub action: String,
+    pub before_sha256: Option<String>,
+    pub after_sha256: Option<String>,
+    pub published: bool,
+    pub error: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HostReceipt {
+    pub schema_version: u32,
+    pub install_id: String,
+    pub host: String,
+    pub operation: String,
+    pub plan_digest: String,
+    pub package_digest: String,
+    pub package_version: String,
+    /// pending | committed (REQ-04B-04/05: a failed apply stays pending)
+    pub status: String,
+    pub started_at: String,
+    pub finished_at: Option<String>,
+    /// This apply's file actions (before/after per file).
+    pub entries: Vec<HostReceiptEntry>,
+    /// Ownership manifest: every file this host owns and its sha at this receipt's
+    /// commit point. The plan's baseline comes from here (REQ-04B-01). A pending
+    /// receipt keeps the PRE-apply manifest, so a crashed apply surfaces as per-file
+    /// conflict instead of a silent overwrite (04-C recovers).
+    pub owned: Vec<FileHash>,
+}
+
+/// Receipt path; `create` also creates the directory chain (apply only — the plan must
+/// not write anything, so it passes `false`).
+fn host_receipt_path(home: &Path, install_id: &str, host: &str, create: bool) -> Result<PathBuf> {
+    let dir = home
+        .join(crate::HOME_STATE_DIR)
+        .join("installations")
+        .join(install_id)
+        .join("hosts");
+    if create {
+        // Refuse a symlink in any component below ~/.moai-cli before creating.
+        let mut cursor = dir.as_path();
+        let mut parts: Vec<PathBuf> = Vec::new();
+        while let Some(parent) = cursor.parent() {
+            parts.push(cursor.to_path_buf());
+            cursor = parent;
+            if cursor.file_name().map(|n| n == crate::HOME_STATE_DIR) == Some(true) {
+                break;
+            }
+        }
+        for part in parts.iter().rev() {
+            if let Ok(m) = fs::symlink_metadata(part) {
+                if m.file_type().is_symlink() {
+                    return Err("installations receipt path is a symlink; refused".into());
+                }
+            }
+        }
+        fs::create_dir_all(&dir).map_err(|_| "host receipt directory unavailable")?;
+    }
+    Ok(dir.join(format!("{host}.json")))
+}
+
+fn load_host_receipt(path: &Path) -> Result<Option<HostReceipt>> {
+    match fs::symlink_metadata(path) {
+        Ok(m) if m.file_type().is_symlink() => Err("host receipt is a symlink; refused".into()),
+        Ok(_) => {
+            let meta = fs::metadata(path).map_err(|_| "host receipt metadata unavailable")?;
+            if !meta.is_file() || meta.len() > FILE_LIMIT {
+                return Err("host receipt is not a bounded regular file".into());
+            }
+            let bytes = fs::read(path).map_err(|_| "host receipt read failed")?;
+            let receipt: HostReceipt = serde_json::from_slice(&bytes)
+                .map_err(|_| "invalid host receipt; no values were logged".to_string())?;
+            Ok(Some(receipt))
+        }
+        Err(_) => Ok(None),
+    }
+}
+
+/// Writes the receipt through the 01-B publish engine (temp + fsync + rename + parent
+/// directory fsync), REQ-04B-04(a).
+fn save_host_receipt(home: &Path, install_id: &str, receipt: &HostReceipt) -> Result<()> {
+    let path = host_receipt_path(home, install_id, &receipt.host, true)?;
+    let bytes =
+        serde_json::to_vec_pretty(receipt).map_err(|_| "receipt encode failed".to_string())?;
+    let before = read_opt(&path)?;
+    publish_replace(&path, before.as_deref(), &bytes)
+}
+
+fn owned_map(receipt: Option<&HostReceipt>) -> BTreeMap<String, String> {
+    let mut map = BTreeMap::new();
+    if let Some(r) = receipt {
+        for f in &r.owned {
+            map.insert(f.path.clone(), f.sha256.clone());
+        }
+    }
+    map
+}
+
+fn owned_vec(host: &str, map: &BTreeMap<String, String>) -> Vec<FileHash> {
+    map.iter()
+        .map(|(p, s)| FileHash {
+            host: host.to_string(),
+            path: p.clone(),
+            sha256: s.clone(),
+        })
+        .collect()
+}
+
+// --- inventory / preflight ----------------------------------------------------------
+
+struct ProjectionScan {
+    files: BTreeMap<String, String>, // rel -> sha256
+}
+
+/// Reads the projection tree (shas only). Only called on an existing root: any
+/// structural hazard (symlink, special file, oversized/unreadable file) becomes an
+/// `Err` that the caller turns into the host's `blocked` reason (REQ-04B-02).
+fn scan_projection(root: &Path) -> std::result::Result<ProjectionScan, String> {
+    let meta =
+        fs::symlink_metadata(root).map_err(|_| "projection directory unavailable".to_string())?;
+    if meta.file_type().is_symlink() {
+        return Err("projection path is a symlink; refused".into());
+    }
+    if !meta.is_dir() {
+        return Err("projection path is not a directory".into());
+    }
+    let mut files = BTreeMap::new();
+    let mut entries = 0usize;
+    let mut total = 0usize;
+    scan_walk(root, root, &mut files, &mut entries, &mut total, 0)?;
+    Ok(ProjectionScan { files })
+}
+
+fn scan_walk(
+    root: &Path,
+    dir: &Path,
+    files: &mut BTreeMap<String, String>,
+    entries: &mut usize,
+    total: &mut usize,
+    depth: usize,
+) -> std::result::Result<(), String> {
+    if depth > WALK_DEPTH {
+        return Err("projection nesting limit exceeded".into());
+    }
+    for entry in fs::read_dir(dir).map_err(|_| "projection directory unavailable")? {
+        *entries += 1;
+        if *entries > WALK_ENTRIES {
+            return Err("projection entry limit exceeded".into());
+        }
+        let path = entry.map_err(|_| "projection entry unavailable")?.path();
+        let meta = fs::symlink_metadata(&path).map_err(|_| "projection metadata unavailable")?;
+        if meta.file_type().is_symlink() {
+            return Err("projection contains a symlink; refused".into());
+        }
+        if meta.is_dir() {
+            scan_walk(root, &path, files, entries, total, depth + 1)?;
+        } else if meta.is_file() {
+            if meta.len() > FILE_LIMIT {
+                return Err("projection file exceeds the size limit".into());
+            }
+            let rel = path
+                .strip_prefix(root)
+                .map_err(|_| "projection path invalid")?
+                .to_str()
+                .ok_or("non UTF-8 projection path")?
+                .replace('\\', "/");
+            let bytes = fs::read(&path).map_err(|_| "projection read failed")?;
+            *total += bytes.len();
+            if *total > WALK_BYTES {
+                return Err("projection too large".into());
+            }
+            files.insert(rel, sha256_hex(&bytes));
+        } else {
+            return Err("projection special file refused".into());
+        }
+        if files.len() > WALK_FILES {
+            return Err("projection file limit exceeded".into());
+        }
+    }
+    Ok(())
+}
+
+/// Refuses a symlink in any existing component between the home and the projection root.
+fn ancestor_symlinks(home: &Path, root: &Path) -> Result<()> {
+    let mut cursor = root.to_path_buf();
+    while cursor.starts_with(home) && cursor != home {
+        match fs::symlink_metadata(&cursor) {
+            Ok(m) if m.file_type().is_symlink() => {
+                return Err("projection path is a symlink; refused".into())
+            }
+            Ok(_) => (),
+            Err(_) => (), // missing components are created at apply time
+        }
+        cursor = cursor
+            .parent()
+            .ok_or("projection path invalid")?
+            .to_path_buf();
+    }
+    Ok(())
+}
+
+/// Cross-filesystem projection (unix device ids): receipt and files would live on
+/// different filesystems, weakening the crash ordering. Non-unix platforms skip the
+/// check and make no claim.
+#[cfg(unix)]
+fn cross_filesystem(home: &Path, root: &Path) -> Result<bool> {
+    use std::os::unix::fs::MetadataExt;
+    let state = home.join(crate::HOME_STATE_DIR);
+    match (fs::metadata(&state), fs::metadata(root)) {
+        (Ok(a), Ok(b)) => Ok(a.dev() != b.dev()),
+        _ => Ok(false),
+    }
+}
+
+#[cfg(not(unix))]
+fn cross_filesystem(_home: &Path, _root: &Path) -> Result<bool> {
+    Ok(false)
+}
+
+fn writable(path: &Path) -> bool {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::metadata(path)
+            .map(|m| m.permissions().mode() & 0o200 != 0)
+            .unwrap_or(false)
+    }
+    #[cfg(not(unix))]
+    {
+        fs::metadata(path).is_ok()
+    }
+}
+
+/// Runs the host preflight (REQ-04B-02) and, when safe, the projection scan in one
+/// pass. Returns the `blocked` reason (if any) and the scan (an absent projection is
+/// an empty scan, not a block). Every hazard becomes a reason; nothing escapes as a
+/// global error.
+fn preflight(home: &Path, host: &str) -> (Option<String>, Option<ProjectionScan>) {
+    let root = projection_root(home, host);
+    if let Err(e) = ancestor_symlinks(home, &root) {
+        return (Some(e), None);
+    }
+    let meta = match fs::symlink_metadata(&root) {
+        Err(_) => {
+            // Absent projection: apply may create it, so the nearest existing ancestor
+            // must be writable.
+            let mut cursor = match root.parent() {
+                Some(p) => p.to_path_buf(),
+                None => return (Some("projection path invalid".into()), None),
+            };
+            loop {
+                if fs::symlink_metadata(&cursor).is_ok() {
+                    if !writable(&cursor) {
+                        return (
+                            Some("skills parent directory is not writable; refused".into()),
+                            None,
+                        );
+                    }
+                    break;
+                }
+                match cursor.parent() {
+                    Some(p) => cursor = p.to_path_buf(),
+                    None => break,
+                }
+            }
+            return (
+                None,
+                Some(ProjectionScan {
+                    files: BTreeMap::new(),
+                }),
+            );
+        }
+        Ok(m) => m,
+    };
+    if meta.file_type().is_symlink() {
+        return (Some("projection path is a symlink; refused".into()), None);
+    }
+    let scan = match scan_projection(&root) {
+        Ok(s) => s,
+        Err(e) => return (Some(e), None),
+    };
+    if !writable(&root) {
+        return (
+            Some("projection directory is not writable; refused".into()),
+            None,
+        );
+    }
+    if cross_filesystem(home, &root).unwrap_or(false) {
+        return (
+            Some("cross-filesystem projection; receipt and files must share one filesystem".into()),
+            None,
+        );
+    }
+    (None, Some(scan))
+}
+
+// --- plan ---------------------------------------------------------------------------
+
+/// Computes the current installation id through 04-A's public API (no 04-A changes).
+fn current_install_id(home: &Path) -> Result<String> {
+    let exe = std::env::current_exe().map_err(|_| "current executable unavailable".to_string())?;
+    Ok(plan_receipt(&exe, home, InstallerOwner::Unknown)?.install_id)
+}
+
+/// Read-only three-way plan over every host (REQ-04B-01/02/03). Writes nothing.
+pub fn plan_update(home: &Path, staged: &StagedPackage) -> Result<UpdatePlan> {
+    let canonical_home = fs::canonicalize(home).map_err(|_| "home directory unavailable")?;
+    let install_id = current_install_id(&canonical_home)?;
+    let mut hosts = Vec::new();
+    let mut expected = Vec::new();
+    let mut rollback = Vec::new();
+    let mut latest_version: Option<String> = None;
+
+    for host in HOSTS {
+        let root = projection_root(&canonical_home, host);
+        let root_text = root
+            .to_str()
+            .ok_or("non UTF-8 projection path")?
+            .to_string();
+        let (blocked, scan) = preflight(&canonical_home, host);
+        let receipt = if blocked.is_some() {
+            None
+        } else {
+            let path = host_receipt_path(&canonical_home, &install_id, host, false)?;
+            load_host_receipt(&path)?
+        };
+        if receipt.is_some() && latest_version.is_none() {
+            latest_version = receipt.as_ref().map(|r| r.package_version.clone());
+        }
+        let owned = owned_map(receipt.as_ref());
+        let mut files = Vec::new();
+
+        // Package files vs disk, three-way per file (REQ-04B-01).
+        for (rel, new_bytes) in &staged.files {
+            let new_sha = sha256_hex(new_bytes);
+            let baseline = owned.get(rel).cloned();
+            let current = scan.as_ref().and_then(|s| s.files.get(rel).cloned());
+            let action = match decide(
+                baseline.as_deref(),
+                current.as_deref(),
+                Some(new_sha.as_str()),
+            ) {
+                Decision::KeepCurrent => {
+                    if current.as_deref() == Some(new_sha.as_str()) {
+                        "unchanged"
+                    } else {
+                        // desired == baseline: the template did not change; keep the
+                        // user's edit (AC-04B-03).
+                        "preserved"
+                    }
+                }
+                Decision::Apply => {
+                    if current.is_none() {
+                        "create"
+                    } else {
+                        "update"
+                    }
+                }
+                Decision::Conflict => "conflict",
+            };
+            if action == "create" || action == "update" {
+                expected.push(FileHash {
+                    host: (*host).to_string(),
+                    path: rel.clone(),
+                    sha256: new_sha.clone(),
+                });
+                if let Some(before) = &current {
+                    rollback.push(FileHash {
+                        host: (*host).to_string(),
+                        path: rel.clone(),
+                        sha256: before.clone(),
+                    });
+                }
+            }
+            files.push(FilePlan {
+                host: (*host).to_string(),
+                path: rel.clone(),
+                action: action.to_string(),
+                baseline_sha256: baseline,
+                current_sha256: current,
+                new_sha256: Some(new_sha),
+            });
+        }
+
+        // Disk files the package does not carry (REQ-04B-09): never deleted, reported.
+        if let Some(scan) = &scan {
+            for (rel, current_sha) in &scan.files {
+                if staged.files.contains_key(rel) {
+                    continue;
+                }
+                let owned_here = owned.contains_key(rel);
+                files.push(FilePlan {
+                    host: (*host).to_string(),
+                    path: rel.clone(),
+                    action: if owned_here {
+                        // We applied it before and the new package dropped it: removal
+                        // would be needed, but RC1 never deletes (04-C decides).
+                        "remove_blocked"
+                    } else {
+                        "preserved"
+                    }
+                    .to_string(),
+                    baseline_sha256: owned.get(rel).cloned(),
+                    current_sha256: Some(current_sha.clone()),
+                    new_sha256: None,
+                });
+            }
+        }
+
+        files.sort_by(|a, b| a.path.cmp(&b.path));
+        hosts.push(HostPlan {
+            host: (*host).to_string(),
+            projection_root: root_text,
+            preflight: if blocked.is_some() { "blocked" } else { "ok" }.into(),
+            blocked_reason: blocked,
+            files,
+        });
+    }
+
+    let plan = UpdatePlan {
+        schema_version: UPDATE_SCHEMA_VERSION,
+        protocol_version: PROTOCOL_VERSION,
+        protocol_range: ProtocolRange {
+            min: PROTOCOL_VERSION,
+            max: PROTOCOL_VERSION,
+        },
+        home: canonical_home
+            .to_str()
+            .ok_or("non UTF-8 home path")?
+            .to_string(),
+        scope: HOSTS.iter().map(|h| (*h).to_string()).collect(),
+        source_version: latest_version,
+        target_version: env!("CARGO_PKG_VERSION").to_string(),
+        package_digest: staged.digest.clone(),
+        hosts,
+        expected_file_hashes: expected,
+        rollback_manifest: rollback,
+        plan_digest: String::new(),
+    };
+    let mut core = plan.clone();
+    core.plan_digest = String::new();
+    let mut plan = plan;
+    plan.plan_digest = crate::digest(&serde_json::to_vec(&core).map_err(|_| "encode failed")?);
+    Ok(plan)
+}
+
+// --- apply --------------------------------------------------------------------------
+
+fn validate_permission(permission: &str) -> Result<()> {
+    if ["", "null", "placeholder"].contains(&permission.trim())
+        || permission.len() > 128
+        || permission.chars().any(char::is_control)
+    {
+        return Err("permission reference required".into());
+    }
+    Ok(())
+}
+
+/// One host's apply outcome.
+struct HostOutcome {
+    host: String,
+    status: String, // applied | unchanged | conflict | blocked | failed
+    files: Vec<serde_json::Value>,
+    receipt_status: Option<String>,
+    reload_required: String, // no | yes | unknown
+    reload_basis: String,
+    blocked_reason: Option<String>,
+}
+
+/// Applies the plan host by host (REQ-04B-03..06). Refuses anything but a freshly
+/// recomputed identical digest before touching a single file.
+pub fn apply_update(
+    home: &Path,
+    staged: &StagedPackage,
+    plan: &UpdatePlan,
+    plan_digest: &str,
+    permission_reference: &str,
+) -> Result<serde_json::Value> {
+    validate_permission(permission_reference)?;
+    let fresh = plan_update(home, staged)?;
+    // The whole plan BODY must equal a fresh recompute (a tampered body with a stolen
+    // digest field is still refused), and the caller's digest must bind both.
+    if plan.schema_version != UPDATE_SCHEMA_VERSION
+        || plan.protocol_version != PROTOCOL_VERSION
+        || *plan != fresh
+        || fresh.plan_digest != plan_digest
+        || plan.plan_digest != plan_digest
+    {
+        return Err("stale or altered plan; re-preview required".into());
+    }
+    let canonical_home = fs::canonicalize(home).map_err(|_| "home directory unavailable")?;
+    let install_id = current_install_id(&canonical_home)?;
+
+    let mut outcomes: Vec<HostOutcome> = Vec::new();
+    let mut published_anywhere = false;
+    let mut any_failed = false;
+    let mut any_conflict_only = false;
+
+    for host_plan in &fresh.hosts {
+        let host = host_plan.host.as_str();
+        if host_plan.preflight == "blocked" {
+            // REQ-04B-02: a blocked host is never written; the others go on.
+            outcomes.push(HostOutcome {
+                host: host.to_string(),
+                status: "blocked".into(),
+                files: Vec::new(),
+                receipt_status: None,
+                reload_required: "no".into(),
+                reload_basis: "no files written".into(),
+                blocked_reason: host_plan.blocked_reason.clone(),
+            });
+            continue;
+        }
+
+        let root = projection_root(&canonical_home, host);
+        let writes: Vec<&FilePlan> = host_plan
+            .files
+            .iter()
+            .filter(|f| f.action == "create" || f.action == "update")
+            .collect();
+        let conflict_only = host_plan.files.iter().any(|f| f.action == "conflict");
+
+        if writes.is_empty() {
+            // Nothing to write: report, never touch (REQ-04B-07 rerun; conflicts keep
+            // the user bytes, REQ-04B-09).
+            let status = if conflict_only {
+                "conflict"
+            } else {
+                "unchanged"
+            };
+            any_conflict_only |= conflict_only;
+            let files = host_plan
+                .files
+                .iter()
+                .map(|f| file_result(f, false, None))
+                .collect();
+            outcomes.push(HostOutcome {
+                host: host.to_string(),
+                status: status.into(),
+                files,
+                receipt_status: None,
+                reload_required: "no".into(),
+                reload_basis: "no files written".into(),
+                blocked_reason: None,
+            });
+            continue;
+        }
+
+        // Transaction start: pending receipt BEFORE the first file write (REQ-04B-04a),
+        // carrying the pre-apply ownership manifest.
+        let receipt_path = host_receipt_path(&canonical_home, &install_id, host, true)?;
+        let previous = load_host_receipt(&receipt_path)?;
+        let pre_owned = owned_map(previous.as_ref());
+        let top_skills_existed = fs::symlink_metadata(home.join(skills_dir(host))).is_ok();
+        let mut receipt = HostReceipt {
+            schema_version: crate::install::RECEIPT_SCHEMA_VERSION,
+            install_id: install_id.clone(),
+            host: host.to_string(),
+            operation: "update.apply".into(),
+            plan_digest: plan_digest.to_string(),
+            package_digest: staged.digest.clone(),
+            package_version: fresh.target_version.clone(),
+            status: "pending".into(),
+            started_at: now_rfc3339(),
+            finished_at: None,
+            entries: writes
+                .iter()
+                .map(|f| HostReceiptEntry {
+                    path: f.path.clone(),
+                    action: f.action.clone(),
+                    before_sha256: f.current_sha256.clone(),
+                    after_sha256: f.new_sha256.clone(),
+                    published: false,
+                    error: None,
+                })
+                .collect(),
+            owned: owned_vec(host, &pre_owned),
+        };
+        save_host_receipt(&canonical_home, &install_id, &receipt)?;
+
+        // (b) per file: 01-B engine (unique temp + fsync + rename / exclusive create),
+        // each re-verifying the target right before publish and fsyncing its directory.
+        let mut owned_now = pre_owned.clone();
+        let mut host_published = 0usize;
+        let mut failed: Option<String> = None;
+        for (idx, w) in writes.iter().enumerate() {
+            let target = root.join(&w.path);
+            let new_bytes = staged
+                .files
+                .get(&w.path)
+                .ok_or_else(|| "package file disappeared".to_string())?;
+            // Re-verify the current bytes still match the plan (REQ-04B-03); an
+            // unreadable target is THIS host's failure, not a global error.
+            let before = match read_opt(&target) {
+                Ok(b) => b,
+                Err(e) => {
+                    failed = Some(e);
+                    receipt.entries[idx].error = failed.clone();
+                    break;
+                }
+            };
+            let before_sha = before.as_deref().map(sha256_hex);
+            if before_sha != w.current_sha256 {
+                failed = Some("target changed during apply; temporary file discarded".into());
+                receipt.entries[idx].error = failed.clone();
+                break;
+            }
+            let result = if w.action == "create" {
+                publish_exclusive(&target, new_bytes)
+            } else {
+                publish_replace(&target, before.as_deref(), new_bytes)
+            };
+            match result {
+                Ok(()) => {
+                    let written = read_opt(&target)?;
+                    let written_sha = written.as_deref().map(sha256_hex);
+                    if written_sha.as_deref() != w.new_sha256.as_deref() {
+                        failed = Some("published bytes do not match the plan".into());
+                        receipt.entries[idx].error = failed.clone();
+                        break;
+                    }
+                    receipt.entries[idx].published = true;
+                    owned_now.insert(w.path.clone(), written_sha.expect("sha of a written file"));
+                    host_published += 1;
+                }
+                Err(e) => {
+                    failed = Some(e);
+                    receipt.entries[idx].error = failed.clone();
+                    break;
+                }
+            }
+        }
+        published_anywhere |= host_published > 0;
+
+        if let Some(_err) = failed {
+            // REQ-04B-05: keep the receipt pending WITH THE PRE-APPLY OWNERSHIP
+            // manifest, report failed, never roll back another host (04-C recovers).
+            any_failed = true;
+            receipt.finished_at = Some(now_rfc3339());
+            save_host_receipt(&canonical_home, &install_id, &receipt)?;
+            let files = writes
+                .iter()
+                .zip(&receipt.entries)
+                .map(|(f, e)| file_result_with(f, e))
+                .collect();
+            outcomes.push(HostOutcome {
+                host: host.to_string(),
+                status: "failed".into(),
+                files,
+                receipt_status: Some("pending".into()),
+                reload_required: "unknown".into(),
+                reload_basis: "apply failed mid-transaction; host state is pending (04-C recovery)"
+                    .into(),
+                blocked_reason: None,
+            });
+            continue;
+        }
+
+        // (c) every touched directory was fsynced by publish_replace/publish_exclusive;
+        // (d) full re-verification, then committed (ownership manifest moves forward).
+        for w in &writes {
+            let target = root.join(&w.path);
+            let written = read_opt(&target)?;
+            if written.as_deref().map(sha256_hex).as_deref() != w.new_sha256.as_deref() {
+                return Err("published bytes do not match the plan".into());
+            }
+        }
+        receipt.owned = owned_vec(host, &owned_now);
+        receipt.status = "committed".into();
+        receipt.finished_at = Some(now_rfc3339());
+        save_host_receipt(&canonical_home, &install_id, &receipt)?;
+
+        let (reload, basis) = reload_state(host, top_skills_existed, host_published > 0);
+        let mut all: Vec<serde_json::Value> = writes
+            .iter()
+            .zip(&receipt.entries)
+            .map(|(f, e)| file_result_with(f, e))
+            .collect();
+        for f in host_plan
+            .files
+            .iter()
+            .filter(|f| f.action != "create" && f.action != "update")
+        {
+            all.push(file_result(f, false, None));
+        }
+        outcomes.push(HostOutcome {
+            host: host.to_string(),
+            status: "applied".into(),
+            files: all,
+            receipt_status: Some("committed".into()),
+            reload_required: reload.into(),
+            reload_basis: basis,
+            blocked_reason: None,
+        });
+    }
+
+    let overall = if any_failed {
+        "partial"
+    } else if !outcomes.is_empty() && outcomes.iter().all(|o| o.status == "blocked") {
+        "blocked"
+    } else if published_anywhere {
+        "applied"
+    } else if any_conflict_only {
+        "conflict"
+    } else {
+        "unchanged"
+    };
+    Ok(json!({
+        "status": overall,
+        "plan_digest": plan_digest,
+        "package_digest": staged.digest,
+        "package_version": fresh.target_version,
+        "hosts": outcomes.iter().map(host_outcome_json).collect::<Vec<_>>(),
+        "host_loaded": false,
+        "execution_verified": "not_run",
+        "reload_note": "host loading is not measured here (08-C owns the live check)",
+        "writes": false,
+    }))
+}
+
+/// REQ-04B-06: reload state and its documented basis per host.
+fn reload_state(
+    host: &str,
+    top_skills_existed_before: bool,
+    wrote: bool,
+) -> (&'static str, String) {
+    match host {
+        "claude" => {
+            if wrote && !top_skills_existed_before {
+                (
+                    "yes",
+                    "the top-level skills directory was created; running sessions need /reload-skills (code.claude.com/docs/en/skills, 2026-11-08)".into(),
+                )
+            } else if wrote {
+                (
+                    "no",
+                    "Claude reflects skill file changes live (code.claude.com/docs/en/skills, 2026-11-08)".into(),
+                )
+            } else {
+                ("no", "no files written".into())
+            }
+        }
+        "codex" => {
+            if wrote {
+                (
+                    "unknown",
+                    "Codex detects skill changes automatically; restart if they are not shown (learn.chatgpt.com/docs/build-skills, 2026-11-08)".into(),
+                )
+            } else {
+                ("no", "no files written".into())
+            }
+        }
+        other => unreachable!("unknown host {other}"),
+    }
+}
+
+fn file_result(f: &FilePlan, published: bool, error: Option<String>) -> serde_json::Value {
+    json!({
+        "path": f.path,
+        "action": f.action,
+        "before_sha256": f.current_sha256,
+        "after_sha256": if published { f.new_sha256.clone() } else { None },
+        "published": published,
+        "error": error,
+    })
+}
+
+fn file_result_with(f: &FilePlan, e: &HostReceiptEntry) -> serde_json::Value {
+    json!({
+        "path": f.path,
+        "action": f.action,
+        "before_sha256": e.before_sha256,
+        "after_sha256": if e.published { e.after_sha256.clone() } else { None },
+        "published": e.published,
+        "error": e.error.clone(),
+    })
+}
+
+fn host_outcome_json(o: &HostOutcome) -> serde_json::Value {
+    json!({
+        "host": o.host,
+        "status": o.status,
+        "files": o.files,
+        "receipt_status": o.receipt_status,
+        "reload_required": o.reload_required,
+        "reload_basis": o.reload_basis,
+        "blocked_reason": o.blocked_reason,
+        "host_loaded": false,
+        "execution_verified": "not_run",
+    })
+}

@@ -22,6 +22,7 @@ pub mod scope;
 pub mod session;
 pub mod sources;
 pub mod spec;
+pub mod update;
 pub mod verify;
 pub mod worktree;
 pub use agents::{agents_apply, agents_plan, AgentsPlan, AgentsRequest};
