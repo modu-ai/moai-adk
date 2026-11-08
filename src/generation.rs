@@ -4,8 +4,10 @@
 //! The AGENTS.md managed section, the personal file opt-in and the `.gitignore`
 //! section are the existing agents machinery: `generation` derives an
 //! `AgentsRequest`, calls the public `agents_plan` for its read-only judgment and
-//! `agents_apply` for its publication (receipts, baseline recovery, manifest write
-//! included). `src/agents.rs` itself is 01-B #1989's and is never modified here; the
+//! the `agents_apply` engine for its publication (receipts, baseline recovery, manifest
+//! write included) through the crate-internal `agents_apply_amended` hook, so the
+//! generation state joins the one manifest publish (#2114). `src/agents.rs` is 01-B
+//! #1989's; its public API and behavior are unchanged; the
 //! generation-specific files — portable project workflows under
 //! `.moai-cli/workflows/<id>/`, native role files `.claude/agents/<role>.md` and
 //! `.codex/agents/<role>.toml`, and skill projections `.claude/skills/<id>/SKILL.md`
@@ -31,7 +33,7 @@
 //! line, and a source whose license is not reviewed blocks every file that cites it
 //! (REQ-03C-08).
 
-use crate::agents::{agents_apply, agents_plan, AgentsPlan, AgentsRequest, FilePlan};
+use crate::agents::{agents_apply_amended, agents_plan, AgentsPlan, AgentsRequest, FilePlan};
 use crate::apply::{
     decide, new_request_id, publish_exclusive, publish_replace, read_opt, root_of,
     save_before_bytes, Decision, Receipt,
@@ -683,11 +685,12 @@ fn rendered_text_for(root: &Path, p: &GenerationPlan, f: &GenerationFilePlan) ->
 }
 
 /// `generation-apply` (REQ-03C-03/04/11): re-plans the whole request and refuses any
-/// drift, applies the agents portion through `agents_apply` with its own freshly
-/// computed digest, publishes the generation files with the 01-B engine, and records
-/// the generation baselines plus `workflow_id`, `interview_revision` and
-/// `profile_sha256` in `generation.json` last. A mid-sequence failure reports
-/// `partial apply` with what landed.
+/// drift, applies the agents portion through the `agents_apply` engine with its own
+/// freshly computed digest, publishes the generation files with the 01-B engine from
+/// its hook, and records the generation baselines plus `workflow_id`,
+/// `interview_revision` and `profile_sha256` in the one `generation.json` publish that
+/// comes last (#2114). A mid-sequence failure reports `partial apply` with what landed
+/// and leaves the previous manifest in place.
 pub fn generation_apply(
     root: &Path,
     p: GenerationPlan,
@@ -722,7 +725,7 @@ pub fn generation_apply(
     let root = root_of(root)?;
 
     // 1. The agents portion: AGENTS.md managed section, personal opt-in, .gitignore,
-    //    and the manifest write agents.rs owns. The freshly re-planned digest is the
+    //    and the single manifest publish agents.rs owns. The freshly re-planned digest is the
     //    inner confirmation; the outer generation check already refused drift.
     let agents_request = AgentsRequest {
         protocol_version: 1,
@@ -731,59 +734,81 @@ pub fn generation_apply(
         local_file: p.request.local_file.clone(),
     };
     let agents_plan: AgentsPlan = agents_plan(&root, agents_request.clone())?;
-    let agents_result = agents_apply(
-        &root,
-        agents_plan.clone(),
-        &agents_plan.plan_digest,
-        permission,
-    )?;
-
-    // 2. The generation files, through the 01-B engine with a receipt.
+    // 2 and 3 run inside the agents hook, after the agents files and before the one
+    //    manifest publish (#2114): a failure here leaves the previous manifest intact.
     let request_id = new_request_id("generation.apply", &p.plan_digest);
-    let mut receipt = Receipt::new(&request_id, "generation.apply", &root);
+    let (profile, profile_bytes) = read_profile(&root)?;
     let mut files_created: Vec<String> = Vec::new();
     let mut files_merged: Vec<String> = Vec::new();
-    for f in &p.files {
-        let Some(kind) = &f.kind else {
-            continue;
-        };
-        if !kind.starts_with("generation:") || f.path == MANIFEST {
-            continue;
-        }
-        if f.action == "unchanged" {
-            continue;
-        }
-        let rendered_text = rendered_text_for(&root, &p, f)?;
-        let bytes = rendered_text.into_bytes();
-        let path_abs = root.join(&f.path);
-        let before = read_opt(&path_abs)?;
-        let fail = |receipt: &Receipt, message: String| -> String {
-            match receipt.save(&root) {
-                Ok(()) => message,
-                Err(se) => format!("{message}; receipt not recorded: {se}"),
+    let mut hook = |root: &Path, manifest: &mut Value| -> Result<()> {
+        // 2. The generation files, through the 01-B engine with a receipt.
+        let mut receipt = Receipt::new(&request_id, "generation.apply", root);
+        for f in &p.files {
+            let Some(kind) = &f.kind else {
+                continue;
+            };
+            if !kind.starts_with("generation:") || f.path == MANIFEST {
+                continue;
             }
-        };
-        if before.as_deref().map(digest).as_deref() != f.expected_sha256.as_deref() {
-            receipt.entry(
-                &f.path,
-                &f.action,
-                before.as_deref().map(digest).as_deref(),
-                None,
-                false,
-                Some("target changed since plan".into()),
-            );
-            receipt.status = "partial".into();
-            return Err(fail(
-                &receipt,
-                format!(
-                    "partial apply: applied [{}]; failed at {}: target changed since plan",
-                    files_created.join(", "),
-                    f.path
-                ),
-            ));
-        }
-        if let Some(b) = before.as_deref() {
-            if let Err(e) = save_before_bytes(&root, &request_id, &f.path, b) {
+            if f.action == "unchanged" {
+                continue;
+            }
+            let rendered_text = rendered_text_for(root, &p, f)?;
+            let bytes = rendered_text.into_bytes();
+            let path_abs = root.join(&f.path);
+            let before = read_opt(&path_abs)?;
+            let fail = |receipt: &Receipt, message: String| -> String {
+                match receipt.save(root) {
+                    Ok(()) => message,
+                    Err(se) => format!("{message}; receipt not recorded: {se}"),
+                }
+            };
+            if before.as_deref().map(digest).as_deref() != f.expected_sha256.as_deref() {
+                receipt.entry(
+                    &f.path,
+                    &f.action,
+                    before.as_deref().map(digest).as_deref(),
+                    None,
+                    false,
+                    Some("target changed since plan".into()),
+                );
+                receipt.status = "partial".into();
+                return Err(fail(
+                    &receipt,
+                    format!(
+                        "partial apply: applied [{}]; failed at {}: target changed since plan",
+                        files_created.join(", "),
+                        f.path
+                    ),
+                ));
+            }
+            if let Some(b) = before.as_deref() {
+                if let Err(e) = save_before_bytes(root, &request_id, &f.path, b) {
+                    receipt.entry(
+                        &f.path,
+                        &f.action,
+                        before.as_deref().map(digest).as_deref(),
+                        None,
+                        false,
+                        Some(e.clone()),
+                    );
+                    receipt.status = "partial".into();
+                    return Err(fail(
+                        &receipt,
+                        format!(
+                            "partial apply: applied [{}]; failed at {}: {e}",
+                            files_created.join(", "),
+                            f.path
+                        ),
+                    ));
+                }
+            }
+            let publish = if before.is_none() {
+                publish_exclusive(&path_abs, &bytes)
+            } else {
+                publish_replace(&path_abs, before.as_deref(), &bytes)
+            };
+            if let Err(e) = publish {
                 receipt.entry(
                     &f.path,
                     &f.action,
@@ -802,129 +827,82 @@ pub fn generation_apply(
                     ),
                 ));
             }
-        }
-        let publish = if before.is_none() {
-            publish_exclusive(&path_abs, &bytes)
-        } else {
-            publish_replace(&path_abs, before.as_deref(), &bytes)
-        };
-        if let Err(e) = publish {
             receipt.entry(
                 &f.path,
                 &f.action,
                 before.as_deref().map(digest).as_deref(),
+                Some(&digest(&bytes)),
+                true,
                 None,
-                false,
-                Some(e.clone()),
             );
-            receipt.status = "partial".into();
-            return Err(fail(
-                &receipt,
-                format!(
-                    "partial apply: applied [{}]; failed at {}: {e}",
-                    files_created.join(", "),
-                    f.path
-                ),
-            ));
-        }
-        receipt.entry(
-            &f.path,
-            &f.action,
-            before.as_deref().map(digest).as_deref(),
-            Some(&digest(&bytes)),
-            true,
-            None,
-        );
-        if before.is_none() {
-            files_created.push(f.path.clone());
-        } else {
-            files_merged.push(f.path.clone());
-        }
-    }
-
-    // 3. The manifest: record generation baselines and the profile linkage. Only
-    //    keys the agents.rs schema already knows are touched; agents_apply's write
-    //    (which resets the linkage fields) is amended afterwards.
-    let manifest_path = root.join(MANIFEST);
-    let before_bytes = read_opt(&manifest_path)?;
-    let mut manifest: Value = match before_bytes.as_deref() {
-        Some(bytes) => serde_json::from_slice(bytes)
-            .map_err(|_| "generation manifest unreadable; inspect before generating".to_string())?,
-        None => json!({"schema_version": 1}),
-    };
-    let (profile, profile_bytes) = read_profile(&root)?;
-    if let Some(map) = manifest.as_object_mut() {
-        let list = map
-            .entry("owned_files")
-            .or_insert_with(|| json!([]))
-            .as_array_mut()
-            .expect("owned_files array");
-        list.retain(|f| {
-            let path = f.get("path").and_then(Value::as_str).unwrap_or("");
-            !p.files.iter().any(|pf| {
-                pf.kind
-                    .as_deref()
-                    .is_some_and(|k| k.starts_with("generation:"))
-                    && pf.path == path
-            })
-        });
-        for f in &p.files {
-            let Some(kind) = &f.kind else {
-                continue;
-            };
-            if !kind.starts_with("generation:") || f.action == "conflict" {
-                continue;
+            if before.is_none() {
+                files_created.push(f.path.clone());
+            } else {
+                files_merged.push(f.path.clone());
             }
-            let Some(rendered) = &f.rendered_sha256 else {
-                continue;
-            };
-            list.push(json!({
-                "path": f.path,
-                // The bare kind (#2109) is the primary discriminator; the
-                // generation:… section_id tag stays for readers of manifests
-                // written before the kind field existed.
-                "kind": kind.strip_prefix("generation:").and_then(|rest| {
-                    rest.split(':').next()
-                }),
-                "section_id": kind,
-                "baseline_sha256": rendered,
-            }));
         }
-        map.insert("workflow_id".into(), json!(p.request.workflow_id));
-        map.insert(
-            "interview_revision".into(),
-            json!(profile.interview_revision),
-        );
-        map.insert("profile_sha256".into(), json!(digest(&profile_bytes)));
-    }
-    let mut out = serde_json::to_vec_pretty(&manifest).map_err(|_| "encode failed")?;
-    out.push(b'\n');
-    if let Some(b) = before_bytes.as_deref() {
-        save_before_bytes(&root, &request_id, MANIFEST, b).map_err(|e| {
-            format!(
-                "partial apply: applied [{}]; failed at {MANIFEST}: {e}",
-                files_created.join(", ")
-            )
-        })?;
-    }
-    publish_replace(&manifest_path, before_bytes.as_deref(), &out).map_err(|e| {
-        format!(
-            "partial apply: applied [{}]; failed at {MANIFEST}: {e}",
-            files_created.join(", ")
-        )
-    })?;
-    receipt.entry(
-        MANIFEST,
-        "merge",
-        before_bytes.as_deref().map(digest).as_deref(),
-        Some(&digest(&out)),
-        true,
-        None,
-    );
-    receipt.status = "complete".into();
-    receipt
-        .save(&root)
-        .map_err(|e| format!("published files but the receipt was not recorded: {e}"))?;
+
+        // 3. The manifest: record generation baselines and the profile linkage on the
+        //    value agents_apply is about to publish. Only keys the agents.rs schema
+        //    already knows are touched (agents_apply re-decodes the typed schema).
+        if let Some(map) = manifest.as_object_mut() {
+            let list = map
+                .entry("owned_files")
+                .or_insert_with(|| json!([]))
+                .as_array_mut()
+                .expect("owned_files array");
+            list.retain(|f| {
+                let path = f.get("path").and_then(Value::as_str).unwrap_or("");
+                !p.files.iter().any(|pf| {
+                    pf.kind
+                        .as_deref()
+                        .is_some_and(|k| k.starts_with("generation:"))
+                        && pf.path == path
+                })
+            });
+            for f in &p.files {
+                let Some(kind) = &f.kind else {
+                    continue;
+                };
+                if !kind.starts_with("generation:") || f.action == "conflict" {
+                    continue;
+                }
+                let Some(rendered) = &f.rendered_sha256 else {
+                    continue;
+                };
+                list.push(json!({
+                    "path": f.path,
+                    // The bare kind (#2109) is the primary discriminator; the
+                    // generation:… section_id tag stays for readers of manifests
+                    // written before the kind field existed.
+                    "kind": kind.strip_prefix("generation:").and_then(|rest| {
+                        rest.split(':').next()
+                    }),
+                    "section_id": kind,
+                    "baseline_sha256": rendered,
+                }));
+            }
+            map.insert("workflow_id".into(), json!(p.request.workflow_id));
+            map.insert(
+                "interview_revision".into(),
+                json!(profile.interview_revision),
+            );
+            map.insert("profile_sha256".into(), json!(digest(&profile_bytes)));
+        }
+        // The manifest entry itself is recorded in the agents.apply receipt, which keeps
+        // the pre-apply manifest bytes for recovery.
+        receipt.status = "complete".into();
+        receipt
+            .save(root)
+            .map_err(|e| format!("published files but the receipt was not recorded: {e}"))
+    };
+    let agents_result = agents_apply_amended(
+        &root,
+        agents_plan.clone(),
+        &agents_plan.plan_digest,
+        permission,
+        &mut hook,
+    )?;
     let agents_applied: Vec<String> = agents_result
         .get("applied")
         .and_then(Value::as_array)
