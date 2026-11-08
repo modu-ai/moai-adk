@@ -12,7 +12,8 @@
   "masked_keys": [
     "target_binding",
     "plan_digest",
-    "collected_at"
+    "collected_at",
+    "receipt"
   ],
   "stderr": "permission reference required\n",
   "stdin": {

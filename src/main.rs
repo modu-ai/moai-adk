@@ -52,9 +52,10 @@ struct LaunchOpts {
     dry_run: bool,
 }
 
-/// `moai-cli cc|glm|codex -l|-a [options] [PROMPT]`.
+/// `moai-cli cc|glm|codex [-l|-a] [options] [PROMPT]`. Without `-l|-a` it is a plain host
+/// session: no role is guessed (Issue #2053).
 #[derive(Args)]
-#[command(group(ArgGroup::new("role").required(true).args(["leader", "agent"])))]
+#[command(group(ArgGroup::new("role").args(["leader", "agent"])))]
 struct HostLaunch {
     /// Leader session.
     #[arg(short = 'l', long = "leader")]
@@ -96,6 +97,17 @@ enum Command {
         project: PathBuf,
         #[arg(long)]
         plan_digest: String,
+        #[arg(long)]
+        permission_reference: String,
+    },
+    /// Revert exactly the files one apply request published, from its receipt
+    /// (Issue #1989, 01-B). Files changed since the apply are skipped, never overwritten.
+    ApplyRecover {
+        project: PathBuf,
+        /// Receipt id printed by the apply result (`receipt` field) or the file stem
+        /// under `<PROJECT>/.moai-cli/receipts/`.
+        #[arg(long)]
+        receipt: String,
         #[arg(long)]
         permission_reference: String,
     },
@@ -256,33 +268,37 @@ fn host_of(word: &str) -> Result<&'static str, String> {
     }
 }
 
-/// Builds the session request for the launcher syntax (REQ-00F-01..04).
+/// Builds the session request for the launcher syntax (REQ-00F-01..04). `leader` is
+/// `Some(true)` for `-l`, `Some(false)` for `-a` and `None` without a role (#2053).
 fn launch(
     host: &str,
-    leader: bool,
+    leader: Option<bool>,
     o: LaunchOpts,
     prompt: Option<String>,
 ) -> Result<serde_json::Value, String> {
-    let role = if leader { "leader" } else { "agent" };
+    let role = leader.map(|l| if l { "leader" } else { "agent" });
     let name_given = o.name.is_some();
+    // A role brings its default name; a plain session gets none.
     let name = o
         .name
-        .unwrap_or_else(|| if leader { "leader" } else { "agent-1" }.into());
+        .or_else(|| leader.map(|l| if l { "leader" } else { "agent-1" }.into()));
     let request = SessionRequest {
-        role: role.into(),
+        role: role.map(str::to_string),
         host: host.into(),
         name,
         model: o.model,
         effort: o.effort,
-        // Claude defaults (operator 2026-11-08): advisor fable, permission skip (interim).
-        advisor: (host != "codex" && !o.no_advisor).then(|| "fable".into()),
-        skip_permissions: host != "codex" && !o.permissions,
+        // Claude defaults (operator 2026-11-08): advisor fable; without a role only under
+        // HOLD-L1 option A. The permission skip (interim) applies to `-l|-a` only (#2053).
+        advisor: (host != "codex" && !o.no_advisor && moai_cli::session::launcher_defaults(role))
+            .then(|| "fable".into()),
+        skip_permissions: role.is_some() && host != "codex" && !o.permissions,
         prompt,
         claude_bin: "claude".into(),
         codex_bin: "codex".into(),
     };
     let mut v = session_launch(&request, o.dry_run)?;
-    if !leader && !name_given {
+    if leader == Some(false) && !name_given {
         // HOLD (00-F): automatic agent numbering is undecided; RC1 uses a fixed default.
         if let Some(notes) = v["notes"].as_array_mut() {
             notes.push("agent name defaulted to agent-1 (automatic numbering is HOLD); pass --name agent-<n>".into());
@@ -301,6 +317,7 @@ const OPERATIONS: &[(&str, &str)] = &[
     ("package-resolve", "package.resolve"),
     ("agents-plan", "agents.plan"),
     ("agents-apply", "agents.apply"),
+    ("apply-recover", "apply.recover"),
     ("baseline-inventory", "baseline.inventory"),
     ("identity", "identity"),
     ("forge-read", "forge.read"),
@@ -321,21 +338,30 @@ fn operation_of(word: &str) -> Option<&'static str> {
         .map(|&(_, op)| op)
 }
 
+/// `-l` → leader, `-a` → agent, neither → no role (never guessed).
+fn role_of(h: &HostLaunch) -> Option<bool> {
+    match (h.leader, h.agent) {
+        (true, _) => Some(true),
+        (false, true) => Some(false),
+        (false, false) => None,
+    }
+}
+
 /// Launcher paths (`-l`, `-a`, `cc|glm|codex`, `session`): plain JSON or a plain error line.
 fn run_launcher(cli: Cli) -> Result<serde_json::Value, String> {
     let Some(command) = cli.command else {
         return match (cli.leader, cli.agent) {
-            (true, _) => launch("claude", true, cli.launch, None),
-            (false, Some(word)) => launch(host_of(&word)?, false, cli.launch, None),
+            (true, _) => launch("claude", Some(true), cli.launch, None),
+            (false, Some(word)) => launch(host_of(&word)?, Some(false), cli.launch, None),
             (false, None) => Err(
                 "usage: moai-cli -l | -a [cc|glm|codex] | moai-cli cc|glm|codex -l|-a | moai-cli <command>; see --help".into(),
             ),
         };
     };
     match command {
-        Command::Cc(h) => launch("claude", h.leader, h.launch, h.prompt),
-        Command::Glm(h) => launch("glm", h.leader, h.launch, h.prompt),
-        Command::Codex(h) => launch("codex", h.leader, h.launch, h.prompt),
+        Command::Cc(h) => launch("claude", role_of(&h), h.launch, h.prompt),
+        Command::Glm(h) => launch("glm", role_of(&h), h.launch, h.prompt),
+        Command::Codex(h) => launch("codex", role_of(&h), h.launch, h.prompt),
         Command::Session {
             role,
             host,
@@ -354,9 +380,9 @@ fn run_launcher(cli: Cli) -> Result<serde_json::Value, String> {
             }
             session_launch(
                 &SessionRequest {
-                    role,
+                    role: Some(role),
                     host,
-                    name,
+                    name: Some(name),
                     model: Some(model),
                     effort: Some(effort),
                     advisor,
@@ -411,6 +437,11 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             &plan_digest,
             &permission_reference,
         ),
+        Command::ApplyRecover {
+            project,
+            receipt,
+            permission_reference,
+        } => moai_cli::apply::recover(&project, &receipt, &permission_reference),
         Command::ForgeReport {
             project,
             permission_reference,
