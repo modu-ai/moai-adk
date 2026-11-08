@@ -31,6 +31,7 @@ use sha2::{Digest, Sha256};
 use std::{
     collections::BTreeMap,
     fs,
+    io::Write as _,
     path::{Path, PathBuf},
 };
 
@@ -243,6 +244,11 @@ pub struct HostReceipt {
     pub plan_digest: String,
     pub package_digest: String,
     pub package_version: String,
+    /// The previous receipt's `package_version` — the version this apply replaces
+    /// (REQ-04C-06 recovery input, #2089). Absent on a first apply. `default` keeps
+    /// pre-#2089 receipts readable.
+    #[serde(default)]
+    pub version_before: Option<String>,
     /// pending | committed (REQ-04B-04/05: a failed apply stays pending)
     pub status: String,
     pub started_at: String,
@@ -312,6 +318,85 @@ fn save_host_receipt(home: &Path, install_id: &str, receipt: &HostReceipt) -> Re
         serde_json::to_vec_pretty(receipt).map_err(|_| "receipt encode failed".to_string())?;
     let before = read_opt(&path)?;
     publish_replace(&path, before.as_deref(), &bytes)
+}
+
+/// REQ-04C-03 (#2089): preserve every file this host will overwrite as a known-good
+/// copy BEFORE the apply transaction starts (the pending receipt included) — a copy
+/// failure starts nothing for the host. Copies live at
+/// `~/.moai-cli/installations/<id>/hosts/<host>/known-good/<hex>`, where `<hex>` is the
+/// bare-hex sha256 of the exact before bytes — a filename-valid form like `install_id`;
+/// the receipt's `before_sha256` carries the same digest with its `sha256:` prefix, so
+/// recovery derives the path by stripping that prefix. `create` actions have no before
+/// bytes and get no copy. Exclusive create: a file already present under the same
+/// digest name is reused. No retention or GC: copies accumulate for the life of the
+/// installation.
+// @MX:DEBT: known-good copies accumulate with no retention or GC
+// @MX:CEILING: RC1 fixture scale — a handful of hosts and files per installation
+// @MX:UPGRADE: the real installer ships (P12 release matrix) — add retention/GC then
+fn known_good_copies(
+    home: &Path,
+    install_id: &str,
+    host: &str,
+    root: &Path,
+    writes: &[&FilePlan],
+) -> Result<()> {
+    for w in writes {
+        if w.action != "update" {
+            continue;
+        }
+        let target = root.join(&w.path);
+        let bytes = read_opt(&target)?.ok_or("known-good: update target missing")?;
+        let hex = format!("{:x}", Sha256::digest(&bytes));
+        let dir = home
+            .join(crate::HOME_STATE_DIR)
+            .join("installations")
+            .join(install_id)
+            .join("hosts")
+            .join(host)
+            .join("known-good");
+        // Refuse a symlink in any component below ~/.moai-cli before creating (same
+        // hygiene as the receipt path).
+        let mut cursor = dir.as_path();
+        let mut parts: Vec<PathBuf> = Vec::new();
+        while let Some(parent) = cursor.parent() {
+            parts.push(cursor.to_path_buf());
+            cursor = parent;
+            if cursor.file_name().map(|n| n == crate::HOME_STATE_DIR) == Some(true) {
+                break;
+            }
+        }
+        for part in parts.iter().rev() {
+            if let Ok(m) = fs::symlink_metadata(part) {
+                if m.file_type().is_symlink() {
+                    return Err("installations known-good path is a symlink; refused".into());
+                }
+            }
+        }
+        fs::create_dir_all(&dir).map_err(|_| "known-good directory unavailable")?;
+        let path = dir.join(&hex);
+        let mut file = match fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&path)
+        {
+            Ok(f) => f,
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+                // Reuse only a regular file under the digest name; a directory or
+                // symlink planted at the path is a refusal, not a reuse.
+                let m =
+                    fs::symlink_metadata(&path).map_err(|_| "known-good copy state unavailable")?;
+                if m.is_file() {
+                    continue;
+                }
+                return Err("known-good digest path is not a regular file".into());
+            }
+            Err(_) => return Err("known-good copy create failed".into()),
+        };
+        file.write_all(&bytes)
+            .map_err(|_| "known-good copy write failed")?;
+        file.sync_all().map_err(|_| "known-good copy sync failed")?;
+    }
+    Ok(())
 }
 
 fn owned_map(receipt: Option<&HostReceipt>) -> BTreeMap<String, String> {
@@ -774,6 +859,22 @@ pub fn apply_update(
             continue;
         }
 
+        // REQ-04C-03 (#2089): known-good copies of every overwritten file, BEFORE the
+        // transaction starts; a copy failure starts nothing for this host.
+        if let Err(e) = known_good_copies(&canonical_home, &install_id, host, &root, &writes) {
+            any_failed = true;
+            outcomes.push(HostOutcome {
+                host: host.to_string(),
+                status: "failed".into(),
+                files: Vec::new(),
+                receipt_status: None,
+                reload_required: "no".into(),
+                reload_basis: format!("known-good copy failed; host not started: {e}"),
+                blocked_reason: None,
+            });
+            continue;
+        }
+
         // Transaction start: pending receipt BEFORE the first file write (REQ-04B-04a),
         // carrying the pre-apply ownership manifest.
         let receipt_path = host_receipt_path(&canonical_home, &install_id, host, true)?;
@@ -788,6 +889,7 @@ pub fn apply_update(
             plan_digest: plan_digest.to_string(),
             package_digest: staged.digest.clone(),
             package_version: fresh.target_version.clone(),
+            version_before: previous.as_ref().map(|p| p.package_version.clone()),
             status: "pending".into(),
             started_at: now_rfc3339(),
             finished_at: None,
