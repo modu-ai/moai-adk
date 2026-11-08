@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "status": "draft",
+  "hold": "HOLD-00D-3 and HOLD-00D-4 belong to 01-C #1990 and are undecided; 00-D only lays out the options",
+  "draft_kinds": ["usage", "invalid_input", "input_too_large", "unsupported_protocol_version", "stale_plan", "permission_reference_missing", "not_found", "conflict", "partial", "io", "internal"],
+  "current_observed": {
+    "source": "tests/fixtures/protocol/v1/current/ (measured from the binary at cd6a94418)",
+    "rows": [
+      {"fixture": "01-usage-unknown-subcommand", "exit": 2, "stderr_start": "error: unrecognized subcommand", "draft_kind": "usage"},
+      {"fixture": "02-usage-missing-argument", "exit": 2, "stderr_start": "error: the following required arguments were not provided", "draft_kind": "usage"},
+      {"fixture": "03-project-plan-unknown-field", "exit": 1, "stderr_start": "invalid typed JSON input", "draft_kind": "invalid_input"},
+      {"fixture": "04-project-plan-malformed-json", "exit": 1, "stderr_start": "invalid typed JSON input", "draft_kind": "invalid_input"},
+      {"fixture": "05-project-plan-input-over-limit", "exit": 1, "stderr_start": "input exceeds 64 KiB", "draft_kind": "input_too_large"},
+      {"fixture": "07-project-apply-protocol-version-2", "exit": 1, "stderr_start": "stale or altered plan; re-preview required", "draft_kind": "unsupported_protocol_version", "gap": "today this is indistinguishable from a stale plan"},
+      {"fixture": "08-project-apply-placeholder-permission", "exit": 1, "stderr_start": "permission reference required", "draft_kind": "permission_reference_missing"},
+      {"fixture": "12-package-inspect-missing-skill", "exit": 1, "stderr_start": "package SKILL.md missing", "draft_kind": "not_found"},
+      {"fixture": "14-package-resolve-no-package", "exit": 1, "stderr_start": "user package required without pin", "draft_kind": "invalid_input"},
+      {"fixture": "15-agents-plan-protocol-version-2", "exit": 1, "stderr_start": "invalid agents request; no values were logged", "draft_kind": "unsupported_protocol_version", "gap": "today this is indistinguishable from any other invalid request"},
+      {"fixture": "19-session-invalid-effort", "exit": 1, "stderr_start": "effort must be one of", "draft_kind": "invalid_input"},
+      {"fixture": "20-baseline-inventory-not-a-repo", "exit": 1, "stderr_start": "git rev-parse exited 128", "draft_kind": "not_found"}
+    ]
+  },
+  "options": {
+    "A": {
+      "summary": "keep 0 / 1 / 2 (clap); kinds only inside the typed error",
+      "table": {"ok": 0, "usage": 2, "invalid_input": 1, "input_too_large": 1, "unsupported_protocol_version": 1, "stale_plan": 1, "permission_reference_missing": 1, "not_found": 1, "conflict": 1, "partial": 1, "io": 1, "internal": 1}
+    },
+    "B": {
+      "summary": "sysexits(3) subset; FreeBSD marks the interface deprecated, Windows masking unverified",
+      "table": {"ok": 0, "usage": 64, "invalid_input": 65, "input_too_large": 65, "unsupported_protocol_version": 65, "stale_plan": 75, "permission_reference_missing": 77, "not_found": 66, "conflict": 73, "partial": 74, "io": 74, "internal": 70}
+    },
+    "C": {
+      "summary": "small own table below 64",
+      "table": {"ok": 0, "usage": 2, "invalid_input": 1, "input_too_large": 1, "unsupported_protocol_version": 6, "stale_plan": 3, "permission_reference_missing": 4, "not_found": 1, "conflict": 3, "partial": 5, "io": 1, "internal": 1}
+    }
+  }
+}

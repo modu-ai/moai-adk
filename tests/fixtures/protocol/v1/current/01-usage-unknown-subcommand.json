@@ -1,0 +1,15 @@
+{
+  "args": [
+    "no-such-command"
+  ],
+  "case": "usage-unknown-subcommand",
+  "exit": 2,
+  "masked_keys": [
+    "target_binding",
+    "plan_digest",
+    "collected_at"
+  ],
+  "stderr": "error: unrecognized subcommand 'no-such-command'\n\nUsage: moai-cli <COMMAND>\n\nFor more information, try '--help'.\n",
+  "stdin": null,
+  "stdout": null
+}

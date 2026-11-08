@@ -1,0 +1,31 @@
+{
+  "args": [
+    "project-plan",
+    "<root>"
+  ],
+  "case": "project-plan-unknown-field",
+  "exit": 1,
+  "masked_keys": [
+    "target_binding",
+    "plan_digest",
+    "collected_at"
+  ],
+  "stderr": "invalid typed JSON input\n",
+  "stdin": {
+    "development_methods": [
+      "TDD"
+    ],
+    "hosts": [
+      "claude",
+      "codex"
+    ],
+    "project_id": "demo",
+    "purpose": "Build a small editor",
+    "schema_version": 1,
+    "tools": [
+      "Rust"
+    ],
+    "unexpected": 1
+  },
+  "stdout": null
+}

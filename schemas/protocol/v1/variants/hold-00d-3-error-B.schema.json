@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:moai:protocol:v1:variants:hold-00d-3:error-B",
+  "title": "Candidate failure envelope on stdout, HOLD-00D-3 option B",
+  "description": "Draft only; HOLD-00D-3 belongs to 01-C #1990 and is undecided. Failure travels in the stdout envelope with ok false; stderr carries a human message only. Maps directly to MCP isError true.",
+  "type": "object",
+  "required": ["protocol_version", "operation", "ok", "error"],
+  "properties": {
+    "protocol_version": {"type": "integer", "minimum": 1},
+    "operation": {"type": "string"},
+    "ok": {"const": false},
+    "error": {
+      "type": "object",
+      "required": ["kind", "message"],
+      "properties": {
+        "kind": {"type": "string"},
+        "message": {"type": "string"},
+        "detail": {"type": "object"}
+      }
+    }
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "args": [
+    "project-apply",
+    "<root>",
+    "--plan-digest",
+    "<masked>",
+    "--permission-reference",
+    "fixture-approved"
+  ],
+  "case": "project-apply-protocol-version-2",
+  "exit": 1,
+  "masked_keys": [
+    "target_binding",
+    "plan_digest",
+    "collected_at"
+  ],
+  "stderr": "stale or altered plan; re-preview required\n",
+  "stdin": {
+    "action": "create",
+    "expected_sha256": null,
+    "plan_digest": "<masked>",
+    "profile": {
+      "development_methods": [
+        "TDD"
+      ],
+      "hosts": [
+        "claude",
+        "codex"
+      ],
+      "project_id": "demo",
+      "purpose": "Build a small editor",
+      "schema_version": 1,
+      "tools": [
+        "Rust"
+      ]
+    },
+    "protocol_version": 2,
+    "target_binding": "<masked>"
+  },
+  "stdout": null
+}
