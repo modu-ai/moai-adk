@@ -9,7 +9,11 @@
 //! `cc-plugin-agents-md@builtin` from v2.1.285 and `agents-md@builtin` before.
 //! The result is a prediction from files and settings; whether a session actually loaded the
 //! file is `host_loaded: not_run` until a session receipt exists.
-use serde_json::{json, Value};
+//!
+//! `projection` renders the Claude copy of the common package's `SKILL.md` (REQ-02B-01/03):
+//! the body stays byte-identical to the canonical one and the frontmatter only gains fields
+//! from the Claude allow-list (https://code.claude.com/docs/en/skills, read 2026-11-08).
+use serde_json::{json, Map, Value};
 use std::{
     fs,
     io::Read,
@@ -236,9 +240,191 @@ pub fn doctor(project: &Path) -> Result<Value> {
     Ok(out)
 }
 
+/// Claude-only frontmatter fields a projection may add, with the values each accepts.
+/// Fields that grant tools or register hooks (`allowed-tools`, `hooks`, ...) are not offered:
+/// package content never widens permissions, and the RC1 hook set is empty (P04 = A).
+const CLAUDE_FIELDS: [(&str, &[&str]); 9] = [
+    ("when_to_use", &[]),
+    ("argument-hint", &[]),
+    ("model", &[]),
+    ("agent", &[]),
+    ("disable-model-invocation", &["true", "false"]),
+    ("user-invocable", &["true", "false"]),
+    ("effort", &["low", "medium", "high", "xhigh", "max"]),
+    ("context", &["fork"]),
+    ("shell", &["bash", "powershell"]),
+];
+
+/// The YAML scalar for one added field: an enumerated word as is, free text as a JSON
+/// (YAML double-quoted) string on a single line.
+fn field_value(key: &str, value: &Value) -> Result<String> {
+    let (_, allowed) = CLAUDE_FIELDS
+        .iter()
+        .find(|(k, _)| *k == key)
+        .ok_or("unknown claude frontmatter field")?;
+    let word = match value {
+        Value::Bool(b) => b.to_string(),
+        Value::String(s) => s.clone(),
+        _ => return Err("invalid claude frontmatter value".into()),
+    };
+    if !allowed.is_empty() {
+        return if allowed.contains(&word.as_str()) {
+            Ok(word)
+        } else {
+            Err("invalid claude frontmatter value".into())
+        };
+    }
+    if word.trim().is_empty() || word.len() > 1024 || word.chars().any(char::is_control) {
+        return Err("invalid claude frontmatter value".into());
+    }
+    Ok(serde_json::to_string(&word).expect("string"))
+}
+
+/// Splits `---\n<frontmatter>\n---\n<body>`; the body is returned as raw bytes.
+fn split_frontmatter(bytes: &[u8]) -> Result<(&str, &[u8])> {
+    let rest = bytes
+        .strip_prefix(b"---\n")
+        .ok_or("SKILL.md frontmatter missing")?;
+    let end = rest
+        .windows(5)
+        .position(|w| w == b"\n---\n")
+        .ok_or("SKILL.md frontmatter missing")?;
+    let fm = std::str::from_utf8(&rest[..end]).map_err(|_| "SKILL.md is not UTF-8")?;
+    Ok((fm, &rest[end + 5..]))
+}
+
+/// Renders the Claude projection of `package` (the common skill directory). `skills_root` is
+/// the target `.claude/skills` directory (personal or project); when it does not exist yet a
+/// session that is already running needs `/reload-skills` to see the skill. Never writes.
+pub fn projection(package: &Path, skills_root: &Path, added: &Map<String, Value>) -> Result<Value> {
+    let package_digest = crate::package_digest(package)?;
+    let skill = read_bounded(&package.join("SKILL.md")).ok_or("package SKILL.md missing")?;
+    let (fm, body) = split_frontmatter(&skill)?;
+    let present: Vec<&str> = fm
+        .lines()
+        .filter(|l| !l.starts_with([' ', '\t', '#']))
+        .filter_map(|l| l.split_once(':').map(|(k, _)| k.trim()))
+        .collect();
+    if !present.contains(&"name") || !present.contains(&"description") {
+        return Err("SKILL.md frontmatter missing".into());
+    }
+    let mut keys: Vec<&String> = added.keys().collect();
+    keys.sort();
+    let mut lines = String::new();
+    let mut recorded = Map::new();
+    for key in keys {
+        if present.contains(&key.as_str()) {
+            return Err("canonical frontmatter field override refused".into());
+        }
+        let scalar = field_value(key, &added[key])?;
+        lines.push_str(&format!("{key}: {scalar}\n"));
+        recorded.insert(key.clone(), added[key].clone());
+    }
+    let mut projected = format!("---\n{fm}\n{lines}---\n").into_bytes();
+    projected.extend_from_slice(body);
+    let reload = fs::symlink_metadata(skills_root).is_err();
+    Ok(json!({
+        "skill_md": String::from_utf8(projected.clone()).expect("UTF-8 parts"),
+        "manifest": {
+            "canonical_package_digest": package_digest,
+            "canonical_skill_sha256": crate::digest(&skill),
+            "projected_skill_sha256": crate::digest(&projected),
+            "body_sha256": crate::digest(body),
+            "frontmatter_added": recorded,
+            "supporting_files": "byte-identical copies of the package",
+        },
+        "target": text(&skills_root.join("moai"))?,
+        "reload_skills_required": reload,
+        "files_created": false,
+        "host_loaded": "not_run",
+        "execution_verified": "not_run",
+    }))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn package() -> PathBuf {
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai")
+    }
+    fn added(pairs: &[(&str, Value)]) -> Map<String, Value> {
+        pairs
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.clone()))
+            .collect()
+    }
+
+    #[test]
+    fn projection_keeps_the_canonical_body_and_records_additions() {
+        let skills = tempfile::TempDir::new().unwrap();
+        let canonical = fs::read(package().join("SKILL.md")).unwrap();
+        let plain = projection(&package(), skills.path(), &Map::new()).unwrap();
+        assert_eq!(plain["skill_md"].as_str().unwrap().as_bytes(), canonical);
+        assert_eq!(plain["reload_skills_required"], json!(false));
+        assert_eq!(plain["files_created"], json!(false));
+        let v = projection(
+            &package(),
+            &skills.path().join("absent"),
+            &added(&[
+                ("user-invocable", json!(true)),
+                ("effort", json!("high")),
+                ("when_to_use", json!("say \"moai\": plan")),
+            ]),
+        )
+        .unwrap();
+        let text = v["skill_md"].as_str().unwrap();
+        let (fm, body) = split_frontmatter(text.as_bytes()).unwrap();
+        assert_eq!(body, split_frontmatter(&canonical).unwrap().1);
+        assert_eq!(v["manifest"]["body_sha256"], json!(crate::digest(body)));
+        assert!(fm.ends_with(
+            "effort: high\nuser-invocable: true\nwhen_to_use: \"say \\\"moai\\\": plan\""
+        ));
+        assert_eq!(v["manifest"]["frontmatter_added"]["effort"], json!("high"));
+        assert_eq!(v["reload_skills_required"], json!(true));
+    }
+
+    #[test]
+    fn projection_refuses_overrides_grants_and_bad_values() {
+        let skills = tempfile::TempDir::new().unwrap();
+        for (k, v, msg) in [
+            (
+                "name",
+                json!("other"),
+                "canonical frontmatter field override refused",
+            ),
+            (
+                "description",
+                json!("x"),
+                "canonical frontmatter field override refused",
+            ),
+            (
+                "allowed-tools",
+                json!("Bash"),
+                "unknown claude frontmatter field",
+            ),
+            ("hooks", json!("x"), "unknown claude frontmatter field"),
+            ("effort", json!("ultra"), "invalid claude frontmatter value"),
+            (
+                "user-invocable",
+                json!("yes"),
+                "invalid claude frontmatter value",
+            ),
+            (
+                "when_to_use",
+                json!("two\nlines"),
+                "invalid claude frontmatter value",
+            ),
+            ("model", json!(3), "invalid claude frontmatter value"),
+        ] {
+            let err = projection(&package(), skills.path(), &added(&[(k, v)])).unwrap_err();
+            assert_eq!(err, msg, "{k}");
+            assert_ne!(
+                crate::contract::classify(&err),
+                crate::contract::Kind::Internal
+            );
+        }
+    }
 
     #[test]
     fn version_parsing_is_strict() {
