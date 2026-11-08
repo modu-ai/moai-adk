@@ -132,6 +132,10 @@ enum Command {
     Identity {
         path: PathBuf,
     },
+    /// Read-only Claude Code check: whether a session started in PROJECT reads AGENTS.md.
+    ClaudeDoctor {
+        project: PathBuf,
+    },
     /// Plan a Codex projection of the common package into an explicit target; writes nothing.
     CodexProjectionPlan {
         package: PathBuf,
@@ -279,8 +283,9 @@ fn launch(
 }
 
 /// Internal operations (01-C #1990): subcommand word and operation name. The launchers are
-/// developer tools and stay outside the envelope contract.
-const OPERATIONS: [(&str, &str); 16] = [
+/// developer tools and stay outside the envelope contract. A slice, not a fixed-length array:
+/// two branches each bumping the length to the same number merged silently (#2044).
+const OPERATIONS: &[(&str, &str)] = &[
     ("package-inspect", "package.inspect"),
     ("project-plan", "project.plan"),
     ("project-apply", "project.apply"),
@@ -291,6 +296,7 @@ const OPERATIONS: [(&str, &str); 16] = [
     ("identity", "identity"),
     ("forge-read", "forge.read"),
     ("plan-admit", "plan.admit"),
+    ("claude-doctor", "claude.doctor"),
     ("codex-projection-plan", "codex.projection_plan"),
     ("codex-doctor", "codex.doctor"),
     ("todo-promote-preview", "todo.promote.plan"),
@@ -429,6 +435,7 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             go_repo.as_deref(),
         ),
         Command::Identity { path } => moai_cli::identity::identity(&path),
+        Command::ClaudeDoctor { project } => moai_cli::claude::doctor(&project),
         Command::CodexProjectionPlan {
             package,
             target,

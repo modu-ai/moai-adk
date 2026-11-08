@@ -1,4 +1,5 @@
-"""Offline checks for docs/host-support-matrix.md (ZCode rows: 02-D #1994; Codex rows: 02-C #1993).
+"""Offline checks for docs/host-support-matrix.md (ZCode rows: 02-D #1994; Codex rows: 02-C #1993;
+Claude Code rows: 02-B #1992).
 
 The matrix records what official sources say; these tests keep its shape honest. They do
 not re-fetch the sources (an independent audit does) and do not prove any host behaviour.
@@ -26,7 +27,11 @@ CODEX_SURFACES = {"all", "desktop", "cli", "ide"}
 SOURCES = {
     "ZCode": re.compile(r"^https://(zcode\.z\.ai/en/docs(/[A-Za-z-]+)?|github\.com/zai-org/ZCode/blob/[0-9a-f]{40}/\S+)$"),
     "Codex": re.compile(r"^https://learn\.chatgpt\.com/docs/[a-z0-9/-]+$"),
+    "Claude Code": re.compile(r"^https://code\.claude\.com/docs/en/[a-z0-9-]+$"),
 }
+# 02-B: the Claude Code items, all on the interactive terminal surface.
+CLAUDE_ITEMS = ["agents_loading", "agents_import", "skill_path", "skill_reload", "skill_limits",
+                "explicit_invocation", "output_style", "statusline", "hooks"]
 SUPPORTED_WORDS = re.compile(r"지원\s*\||\bsupported\b|\bcertified\b", re.IGNORECASE)
 
 
@@ -104,6 +109,17 @@ class HostMatrixTest(unittest.TestCase):
         trust = [r for r in self.codex if r["item"] == "trust_layer"][0]
         self.assertIn("not_evaluated", trust["내용"])
         self.assertIn("codex-cli 0.163.0", self.text)
+
+    def test_host_matrix_claude_rows_have_each_item_once_with_source(self):
+        claude = [r for r in self.rows if r["host"] == "Claude Code"]
+        self.assertEqual({r["surface"] for r in claude}, {"cli"})
+        items = [r["item"] for r in claude]
+        self.assertEqual(sorted(items), sorted(CLAUDE_ITEMS), "one row per item")
+        for r in claude:
+            self.check_row(r)
+            # No session ran, so nothing may claim a probed or certified state.
+            self.assertEqual(r["capability_status"], "documented")
+        self.assertIn("2.1.319", self.text)
 
     def test_host_matrix_no_supported_label_without_certified_status(self):
         # REQ-02D-01 / ZCODE-MATRIX-02, for every host: documented or unknown never reads as supported.

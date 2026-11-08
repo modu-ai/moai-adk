@@ -254,7 +254,9 @@ fn promote_only_selected_after_preview() {
         rows[0]["target"],
         json!({"owner": "acme", "repo": "widgets", "visibility": "private"})
     );
-    let keys: Vec<&String> = rows[0].as_object().unwrap().keys().collect();
+    // The key set, not its order: serde_json keeps insertion order (preserve_order, #1992).
+    let mut keys: Vec<&String> = rows[0].as_object().unwrap().keys().collect();
+    keys.sort();
     assert_eq!(
         keys,
         [
