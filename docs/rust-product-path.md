@@ -11,6 +11,7 @@ The root Cargo package builds `moai-cli` version `2026.11.0-rc.1`. It directly e
 
 - `moai-cli agents-plan PROJECT`: typed JSON request on stdin (`protocol_version`, `language` `en|ko`, `workflow_reference` repo-relative directory that must exist, `local_file` `none|ignored|tracked`); JSON plan on stdout. No writes. Reads the existing `.moai-cli/project.yaml` and `.moai-cli/manifests/generation.json`.
 - `moai-cli agents-apply PROJECT --plan-digest DIGEST --permission-reference REFERENCE`: the exact plan on stdin. Re-plans against the current tree, refuses stale or altered plans and any plan with a `conflict` file, writes target files before the manifest, and reports `partial apply` with the applied list on a mid-sequence failure.
+- `moai-cli baseline-inventory PROJECT [--go-baseline-commit SHA] [--go-repo REPO]`: read-only baseline (Issue #1985). One JSON on stdout with `baseline`, `inventory`, `claude_diff` and `checksums` (shasum-compatible text); writes nothing, never follows symlinks, reads the Go baseline with `cat-file`/`ls-tree` only and records home entries as existence only. The library also exports `tree_digest(root, excludes) -> Result<String, String>` (format `moai-tree-v1`), the tree digest other Issues call instead of re-implementing. Details: `docs/baseline-rc1.md`.
 
 These commands are internal contracts for future native skill adapters. Users are not required to manually invoke them for SETUP. Host discovery, trust verification and skill invocation remain not_run.
 

@@ -47,6 +47,16 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
+    /// Read-only baseline inventory of a checkout (typed JSON on stdout).
+    BaselineInventory {
+        project: PathBuf,
+        /// Go-generation baseline commit whose `.claude` trees are compared (read with ls-tree only).
+        #[arg(long)]
+        go_baseline_commit: Option<String>,
+        /// Extra repository to look up the baseline commit in when the project lacks it.
+        #[arg(long)]
+        go_repo: Option<PathBuf>,
+    },
     /// Start a leader or agent development session on a host CLI (Claude Code only for now).
     Session {
         /// leader | agent
@@ -119,6 +129,15 @@ fn run() -> Result<serde_json::Value, String> {
             input::<AgentsPlan>()?,
             &plan_digest,
             &permission_reference,
+        ),
+        Command::BaselineInventory {
+            project,
+            go_baseline_commit,
+            go_repo,
+        } => moai_cli::baseline::inventory(
+            &project,
+            go_baseline_commit.as_deref(),
+            go_repo.as_deref(),
         ),
         Command::Session {
             role,

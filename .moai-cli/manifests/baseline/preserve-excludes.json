@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "applies_to": "preserve-before.moai.sha256",
+  "decision": "docs/decisions-2026-11-08.md 17:3x rows 32 and 41 (00A-AC-3 redefinition and exclusion scope)",
+  "rule": "exclude .moai/logs/, .moai/state/, .moai/db/ and every .moai/**/*.jsonl (Go hook append-only runtime files)",
+  "pattern": "^\\.moai/((logs|state|db)/|.*\\.jsonl$)",
+  "derivation": "rows deleted from the ledger committed in 64e4459e0 (measured 2026-11-08T07:50:52Z); no file was re-hashed",
+  "rows_before": 339,
+  "rows_excluded": 71,
+  "rows_after": 268,
+  "excluded_by_rule": {
+    ".moai/logs/": 25,
+    ".moai/state/": 43,
+    ".moai/db/": 0,
+    "*.jsonl": 3
+  },
+  "excluded_jsonl": [
+    ".moai/evolution/telemetry/usage-2026-11-08.jsonl",
+    ".moai/harness/usage-log.jsonl",
+    ".moai/lessons-inbox.jsonl"
+  ],
+  "verify": [
+    "cd <primary> && shasum -a 256 -c --strict --status .moai-cli/manifests/baseline/preserve-before.claude.sha256",
+    "cd <primary> && shasum -a 256 -c --strict --status .moai-cli/manifests/baseline/preserve-before.moai.sha256",
+    "cd <moai-adk-go> && shasum -a 256 -c --strict --status <primary>/.moai-cli/manifests/baseline/preserve-before.go-dirty.sha256"
+  ]
+}

@@ -1,6 +1,8 @@
 pub mod agents;
+pub mod baseline;
 pub mod session;
 pub use agents::{agents_apply, agents_plan, AgentsPlan, AgentsRequest};
+pub use baseline::tree_digest;
 pub use session::{launch as session_launch, SessionRequest};
 
 use serde::{Deserialize, Serialize};
