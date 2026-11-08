@@ -11,6 +11,7 @@
 | `.moai-cli/manifests/baseline/rc1-inventory.sha256` | shasum 호환 체크섬(`<hex>  <path>`), 일반 파일만 | — |
 | `.moai-cli/manifests/baseline/claude-diff.json` | Go 기준선 `.claude`, Go template `.claude`, 현재 설치본 `.claude/` 세 집합의 경로별 분류 | 1 |
 | `.moai-cli/manifests/baseline/preserve-before.*` | 작업 시작 전 보존 원장(읽기 전용으로 2026-11-08T07:50:52Z 수집). 수집기 코드보다 먼저 별도 커밋으로 기록했다 | — |
+| `.moai-cli/manifests/baseline/preserve-excludes.json` | `.moai` 원장에서 뺀 Go 런타임 경로의 규칙과 개수 | 1 |
 
 산출물의 경로는 모두 저장소 상대 경로다. 저장소 밖 worktree는 `<outside-project>`, 사용자 홈 항목은 `~/...`로만 적고 내용은 열거하지 않는다(REQ-00A-08·09).
 
@@ -72,11 +73,25 @@ jq -j .checksums out.json > rc1-inventory.sha256   # -j: 마지막 빈 줄이 �
 
 변경·untracked 파일 수는 이 시점의 primary checkout 작업 트리를 반영한다. 다른 세션이 작업 중이면 값이 바뀌며, 이 수치는 위 시각에만 유효하다.
 
+## 보존 원장과 제외 규칙 (00A-AC-3)
+
+보존 원장은 작업 전(2026-11-08T07:50:52Z)에 읽기만으로 만들었고, 수집기 코드보다 먼저 단독 커밋(64e4459e0)으로 남겼다.
+
+- `preserve-before.claude.sha256`: primary `.claude/` 186파일
+- `preserve-before.moai.sha256`: primary `.moai/` 중 Go 런타임 파일을 뺀 268파일
+- `preserve-before.go-dirty.sha256`: moai-adk-go 작업 트리에서 수정 상태인 24파일(`status --porcelain`으로 실측)
+
+`.moai/`는 실행 중인 Go 훅이 계속 쓰기 때문에 전체를 전후 비교할 수 없다. 사용자 결정(docs/decisions-2026-11-08.md)에 따라 `.moai/logs/`·`.moai/state/`·`.moai/db/`와 `.moai/**/*.jsonl`(Go 훅이 덧붙여 쓰는 로그)을 뺐다. 원래 339행에서 71행(logs 25, state 43, db 0, jsonl 3)을 지웠을 뿐 다시 해시하지 않았으므로, 남은 268행도 작업 전 측정값이다. 규칙과 개수는 `preserve-excludes.json`에 있고, 원래 339행은 64e4459e0에서 볼 수 있다.
+
 ## 검증 명령
 
 ```sh
 # AC-2: 측정한 checkout(primary)에서 실행
 shasum -a 256 -c --strict --status .moai-cli/manifests/baseline/rc1-inventory.sha256
+# AC-3: primary 루트에서 앞의 두 개, moai-adk-go 루트에서 세 번째
+shasum -a 256 -c --strict --status .moai-cli/manifests/baseline/preserve-before.claude.sha256
+shasum -a 256 -c --strict --status .moai-cli/manifests/baseline/preserve-before.moai.sha256
+shasum -a 256 -c --strict --status <primary>/.moai-cli/manifests/baseline/preserve-before.go-dirty.sha256
 # AC-5
 jq -e '([.rows[]|select(.class==null)]|length)==0 and ([.rows[].class]|length)==.total' .moai-cli/manifests/baseline/claude-diff.json
 # AC-8
