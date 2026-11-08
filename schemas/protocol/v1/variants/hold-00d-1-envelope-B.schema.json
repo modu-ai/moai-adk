@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:moai:protocol:v1:variants:hold-00d-1:envelope-B",
+  "title": "Candidate envelope, HOLD-00D-1 option B (common upper status + domain status)",
+  "description": "Draft only; HOLD-00D-1 is undecided. status is the common upper tier and may be absent when the domain state has no upper value (see status-crosswalk.json variant B); domain_status always carries the domain token.",
+  "type": "object",
+  "required": ["protocol_version", "operation", "domain_status", "result"],
+  "properties": {
+    "protocol_version": {"type": "integer", "minimum": 1},
+    "operation": {"type": "string"},
+    "status": {"enum": ["ok", "blocked", "unknown", "failed", "not_run"]},
+    "domain_status": {
+      "type": "object",
+      "required": ["domain", "token"],
+      "properties": {
+        "domain": {"enum": ["lifecycle", "verdict", "attempt", "sync", "issue_claim", "issue_report", "migration"]},
+        "token": {"type": "string"}
+      }
+    },
+    "result": {"type": "object"}
+  }
+}

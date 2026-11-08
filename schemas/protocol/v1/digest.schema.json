@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:moai:protocol:v1:digest",
+  "title": "Digest string (current, src/lib.rs digest/valid_digest)",
+  "type": "string",
+  "pattern": "^sha256:[0-9a-f]{64}$"
+}

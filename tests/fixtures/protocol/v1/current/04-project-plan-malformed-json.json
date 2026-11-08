@@ -1,0 +1,16 @@
+{
+  "args": [
+    "project-plan",
+    "<root>"
+  ],
+  "case": "project-plan-malformed-json",
+  "exit": 1,
+  "masked_keys": [
+    "target_binding",
+    "plan_digest",
+    "collected_at"
+  ],
+  "stderr": "invalid typed JSON input\n",
+  "stdin": "{",
+  "stdout": null
+}

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:moai:protocol:v1:package-result",
+  "title": "Package inspect/resolve result (current, src/main.rs and src/lib.rs resolve)",
+  "description": "package-inspect omits source; package-resolve adds it. host_loaded and publisher_trust are fixed honesty markers, not measurements.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["digest", "digest_algorithm", "host_loaded", "publisher_trust"],
+  "properties": {
+    "source": {"enum": ["repo_pin", "user"]},
+    "digest": {"$ref": "urn:moai:protocol:v1:digest"},
+    "digest_algorithm": {"const": "moai-package-tree-v1"},
+    "host_loaded": {"const": false},
+    "publisher_trust": {"const": "not_verified"}
+  }
+}
