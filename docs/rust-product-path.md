@@ -14,12 +14,34 @@ The Rust toolchain is pinned by `rust-toolchain.toml` (1.94.1 with clippy and ru
 - `moai-cli agents-plan PROJECT`: typed JSON request on stdin (`protocol_version`, `language` `en|ko`, `workflow_reference` repo-relative directory that must exist, `local_file` `none|ignored|tracked`); JSON plan on stdout. No writes. Reads the existing `.moai-cli/project.yaml` and `.moai-cli/manifests/generation.json`.
 - `moai-cli agents-apply PROJECT --plan-digest DIGEST --permission-reference REFERENCE`: the exact plan on stdin. Re-plans against the current tree, refuses stale or altered plans and any plan with a `conflict` file, writes target files before the manifest, and reports `partial apply` with the applied list on a mid-sequence failure.
 - `moai-cli baseline-inventory PROJECT [--go-baseline-commit SHA] [--go-repo REPO]`: read-only baseline (Issue #1985). One JSON on stdout with `baseline`, `inventory`, `claude_diff` and `checksums` (shasum-compatible text); writes nothing, never follows symlinks, reads the Go baseline with `cat-file`/`ls-tree` only and records home entries as existence only. The library also exports `tree_digest(root, excludes) -> Result<String, String>` (format `moai-tree-v1`), the tree digest other Issues call instead of re-implementing. Details: `docs/baseline-rc1.md`.
+- `moai-cli identity PATH`: read-only clone/workspace identity (Issue #1988), described below.
 
 These commands are internal contracts for future native skill adapters. Users are not required to manually invoke them for SETUP. Host discovery, trust verification and skill invocation remain not_run.
 
 ## State directories during the RC period
 
 The Rust RC writes project data under `<project>/.moai-cli/` and will install under `~/.moai-cli/` (constants `PROJECT_STATE_DIR`, `HOME_STATE_DIR` in `src/lib.rs`; no install command exists yet). The Go generation keeps `<project>/.moai/` and `~/.moai/`; both coexist and the Rust tool never reads, moves, renames or writes the Go directories. The design documents name the final location `.moai/`; switching the folder name is a later, separate step decided by the user (2026-11-08). The provisional Python Claude adapter follows the same rule (`.moai-cli/statusline.py`, `.moai-cli/claude-settings-owner.json`, `.moai-cli/licenses/`).
+
+### Identity and state-root resolver (`identity`)
+
+`moai-cli identity PATH` reports where a path sits in git and which state roots apply to it. It writes nothing and follows no symlink. Boundaries come only from `git rev-parse --path-format=absolute --git-common-dir --git-dir --is-bare-repository --is-inside-work-tree` (and `--show-toplevel` inside a work tree), run with a fixed argv, `LC_ALL=C`, discarded stderr and `GIT_DIR`/`GIT_WORK_TREE`/`GIT_COMMON_DIR`/`GIT_INDEX_FILE`/`GIT_NAMESPACE` removed; whether `.git` is a directory or a gitfile is never inspected. `--path-format` needs git 2.31 or later.
+
+Output is one flat JSON object (the current contract: no envelope, exit 0/1):
+
+| Field | Meaning |
+|---|---|
+| `identity_status` | `ok`, `no_git` (not inside a repository) or `git_unavailable` (no `git` on PATH). Anything but `ok` leaves every identity field `null`; nothing is guessed |
+| `workspace_kind` | `primary` (common dir equals git dir), `linked` (a `git worktree`), `bare`, or `git_dir` (inside a non-bare `.git` directory) |
+| `clone_anchor`, `workspace_git_dir`, `work_tree` | canonical absolute paths of the common dir, the git dir and the top level (`work_tree` is `null` for `bare` and `git_dir`) |
+| `clone_id`, `workspace_id` | `sha256:` of the canonical common dir and git dir; two worktrees of one clone share `clone_id` and differ in `workspace_id` |
+| `project_id`, `profile_status` | from `.moai-cli/project.yaml` when present: `present`, `missing` or `unreadable` |
+| `project_state_root` | `<work_tree>/.moai-cli`; `null` without a work tree |
+| `home_state_root` | `$HOME/.moai-cli`; `null` without `HOME` |
+| `id_derivation`, `writes` | `sha256-canonical-path-v0`; always `false` |
+
+A symlinked input path, a symlinked `<work_tree>/.moai-cli` or a symlinked `~/.moai-cli` is refused with exit 1, as are a missing path and a file; error messages never echo the path. The Go generation's `.moai/`, `~/.moai/` and `MOAI_HOME` are never returned.
+
+Provisional (leader RC1 decision 2026-11-08 18:1x, until P05 and P12 are decided): git as a subprocess rather than a library crate (HOLD-3); ids derived from paths with nothing recorded (HOLD-1, marked `@MX:DEBT` in `src/identity.rs`: moving or renaming the repository changes every id, and the scheme is to be re-evaluated when 06-A consumes it); the home root fixed at `~/.moai-cli` with no override or XDG mapping (HOLD-2).
 
 ## Profile v1
 
