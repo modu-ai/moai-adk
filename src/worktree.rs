@@ -67,6 +67,17 @@ pub fn head(project: &Path) -> Result<String> {
     Ok(git(project, &["rev-parse", "HEAD"])?.trim().to_string())
 }
 
+/// `(status, path)` of every path changed between the merge base of `base` and HEAD, and HEAD.
+pub fn changes(project: &Path, base: &str) -> Result<Vec<(String, String)>> {
+    let range = format!("{base}...HEAD");
+    let out = git(project, &["diff", "--name-status", "--no-renames", &range])?;
+    Ok(out
+        .lines()
+        .filter_map(|l| l.split_once('\t'))
+        .map(|(s, p)| (s.to_string(), p.to_string()))
+        .collect())
+}
+
 pub fn is_sha(s: &str) -> bool {
     s.len() == 40
         && s.bytes()

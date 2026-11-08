@@ -35,6 +35,8 @@ pub struct RenderInput<'a> {
     pub allow_close: bool,
     pub not_run: &'a [String],
     pub review_link: Option<&'a str>,
+    /// `(status, path)` from `git diff --name-status <base>...<candidate>`.
+    pub changes: &'a [(String, String)],
 }
 
 /// Closing keywords found in `text`, as ASCII words (any case).
@@ -114,6 +116,16 @@ pub fn render(rec: &ClaimRecord, receipts: &[Receipt], input: &RenderInput) -> R
             .collect::<Vec<_>>()
             .join("\n")
     };
+    let change_rows = if input.changes.is_empty() {
+        "| (변경 없음) | base와 candidate 사이에 바뀐 경로가 없다 |".to_string()
+    } else {
+        input
+            .changes
+            .iter()
+            .map(|(status, path)| format!("| `{}` | {} |", cell(path), cell(status)))
+            .collect::<Vec<_>>()
+            .join("\n")
+    };
     let review = input
         .review_link
         .unwrap_or("<대기: 독립 review 판정 뒤 채운다>");
@@ -130,6 +142,10 @@ pub fn render(rec: &ClaimRecord, receipts: &[Receipt], input: &RenderInput) -> R
 - base: `{base_branch}` @ `{base}`\n\
 - candidate head: `{head}` (exact SHA, 독립 review가 본 SHA와 같아야 한다)\n\
 - SPEC: `{sid}` · revision `{srev}` · digest `{spec_digest}`\n\n\
+## 변경\n\n\
+| 경로 | git 상태 |\n\
+| --- | --- |\n\
+{change_rows}\n\n\
 ## 실행한 검사와 exit\n\n\
 | 명령 | exit | 요약 |\n\
 | --- | --- | --- |\n\

@@ -20,6 +20,7 @@ moai-cli pr-body-render <worktree> (--task <key> | --record <file> --claim-comme
 | 대상 | 논리 키(예: `06-C`), epoch, claim 토큰 `Moai-Claim: <n>#<claim 댓글 id>` |
 | SPEC | `spec_ref`의 id, revision, digest(없으면 `null`) |
 | exact SHA | base는 `v2026.11.0` @ 40자 SHA, candidate는 렌더 시점의 worktree HEAD 40자 SHA다. 독립 review가 본 SHA와 같아야 한다. |
+| 변경 | base와 candidate의 merge base부터 candidate까지 바뀐 경로와 git 상태(`git diff --name-status <base>...HEAD`) |
 | 로컬 시험 증거 | VERIFY receipt(05-C #2003)의 검사마다 명령, exit code, 결과, 통과·실패 수를 적는다. receipt가 없으면 `not_run`으로 적는다. |
 | 독립 review | 판정과 판정 댓글 링크를 적을 자리다. 판정이 나오기 전에는 대기로 둔다. |
 | not_run / blocked | 실행하지 않은 검사와 그 이유, 기다리는 결정이나 HOLD를 적는다. 표에서 빼지 않는다. |

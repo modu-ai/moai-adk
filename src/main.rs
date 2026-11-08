@@ -724,6 +724,11 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             let receipts: Vec<moai_cli::run::Receipt> =
                 serde_json::from_slice(&bytes).map_err(|_| "invalid receipts file")?;
             let head = moai_cli::worktree::head(&project)?;
+            let changes = if moai_cli::worktree::is_sha(&base_sha) {
+                moai_cli::worktree::changes(&project, &base_sha)?
+            } else {
+                Vec::new()
+            };
             moai_cli::pr_link::render(
                 &rec,
                 &receipts,
@@ -735,6 +740,7 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
                     allow_close,
                     not_run: &not_run,
                     review_link: review_link.as_deref(),
+                    changes: &changes,
                 },
             )
         }

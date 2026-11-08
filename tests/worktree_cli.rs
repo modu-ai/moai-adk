@@ -591,6 +591,10 @@ fn pr_body_has_required_fields() {
     let f = fixture();
     let tmp = tempfile::tempdir().unwrap();
     let receipts = receipts_file(tmp.path(), &f.base, "cargo test --offline --locked");
+    fs::create_dir_all(f.repo.join("src")).unwrap();
+    fs::write(f.repo.join("src/new.rs"), "// new\n").unwrap();
+    git(&f.repo, &["add", "src/new.rs"]);
+    git(&f.repo, &["commit", "-q", "-m", "change"]);
     let env = envelope(&render(
         &f,
         &receipts,
@@ -613,6 +617,8 @@ fn pr_body_has_required_fields() {
         "- not_run: `cargo fmt --check` (receipt a1)",
         "- not_run: live gh (fake only)",
         "## 독립 review",
+        "## 변경",
+        "| `src/new.rs` | A |",
     ] {
         assert!(body.contains(needle), "missing {needle:?} in\n{body}");
     }
