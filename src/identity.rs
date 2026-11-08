@@ -36,7 +36,24 @@ const GIT_ENV_REMOVED: &[&str] = &[
     "GIT_DISCOVERY_ACROSS_FILESYSTEM",
 ];
 /// Under `LC_ALL=C` git starts its "no repository here" message with this text.
-const NOT_A_REPOSITORY: &str = "not a git repository";
+pub(crate) const NOT_A_REPOSITORY: &str = "not a git repository";
+
+/// Removes every variable in [`GIT_ENV_REMOVED`] and the numbered
+/// `GIT_CONFIG_KEY_<n>`/`GIT_CONFIG_VALUE_<n>` pairs from `cmd`, and fixes the locale so
+/// failures can be classified. Shared by every git subprocess (`plan`, Issue #2043).
+pub(crate) fn scrub_git_env(cmd: &mut Command) {
+    for key in GIT_ENV_REMOVED {
+        cmd.env_remove(key);
+    }
+    // GIT_CONFIG_KEY_<n>/GIT_CONFIG_VALUE_<n> are numbered, so they are matched by prefix.
+    for (key, _) in std::env::vars_os() {
+        let k = key.to_string_lossy();
+        if k.starts_with("GIT_CONFIG_KEY_") || k.starts_with("GIT_CONFIG_VALUE_") {
+            cmd.env_remove(&key);
+        }
+    }
+    cmd.env("LC_ALL", "C");
+}
 
 enum Git {
     Unavailable,
@@ -47,7 +64,7 @@ enum Git {
 
 /// First line of git's stderr without its `fatal:`/`error:` prefix, cut before the first
 /// quote or path separator so no repository path reaches the caller.
-fn failure_summary(stderr: &[u8]) -> String {
+pub(crate) fn failure_summary(stderr: &[u8]) -> String {
     let text = String::from_utf8_lossy(stderr);
     let line = text.lines().next().unwrap_or("").trim();
     let line = line
@@ -74,19 +91,9 @@ fn rev_parse(dir: &Path, args: &[&str]) -> Git {
         .arg(dir)
         .arg("rev-parse")
         .args(args);
-    for key in GIT_ENV_REMOVED {
-        cmd.env_remove(key);
-    }
-    // GIT_CONFIG_KEY_<n>/GIT_CONFIG_VALUE_<n> are numbered, so they are matched by prefix.
-    for (key, _) in std::env::vars_os() {
-        let k = key.to_string_lossy();
-        if k.starts_with("GIT_CONFIG_KEY_") || k.starts_with("GIT_CONFIG_VALUE_") {
-            cmd.env_remove(&key);
-        }
-    }
+    scrub_git_env(&mut cmd);
     let out = cmd
         .env("GIT_OPTIONAL_LOCKS", "0")
-        .env("LC_ALL", "C")
         .stdin(Stdio::null())
         .stderr(Stdio::piped())
         .output();

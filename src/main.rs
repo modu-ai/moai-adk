@@ -114,6 +114,20 @@ enum Command {
     ForgeRead {
         project: PathBuf,
     },
+    /// Preview promotion of selected local TODOs to GitHub Issues (reads only; typed JSON
+    /// request on stdin naming `tasks_path`, `target` and `selected`; envelope on stdout).
+    TodoPromotePreview {
+        project: PathBuf,
+    },
+    /// Promote the previewed TODOs: refuses a different `--preview-digest`, records an outbox
+    /// intent before each create and `published` only after a confirming GET.
+    TodoPromoteApply {
+        project: PathBuf,
+        #[arg(long)]
+        preview_digest: String,
+        #[arg(long)]
+        permission_reference: String,
+    },
     /// Read-only clone/workspace identity and state roots of a path (typed JSON on stdout).
     Identity {
         path: PathBuf,
@@ -140,6 +154,10 @@ enum Command {
         /// Recorded in the release effect.
         #[arg(long)]
         reason: Option<String>,
+    },
+    /// Read-only Claude Code check: whether a session started in PROJECT reads AGENTS.md.
+    ClaudeDoctor {
+        project: PathBuf,
     },
     /// Plan a Codex projection of the common package into an explicit target; writes nothing.
     CodexProjectionPlan {
@@ -189,6 +207,11 @@ enum Command {
     /// Temporary (05-B #2002; the name is fixed after P06): RUN admission of an approved plan.
     /// Typed request on stdin; reads the project's `HEAD^{commit}` with git, writes nothing.
     PlanAdmit {
+        project: PathBuf,
+    },
+    /// Temporary (05-C #2003; the name is fixed after P06): re-check the pinned contract and
+    /// run the approved verification commands in PROJECT as argv; returns a receipt.
+    RunVerify {
         project: PathBuf,
     },
     /// Claude Code session launcher: `cc -l|-a`.
@@ -278,8 +301,8 @@ fn launch(
 }
 
 /// Internal operations (01-C #1990): subcommand word and operation name. The launchers are
-/// developer tools and stay outside the envelope contract. A length-free slice: registries
-/// grow often, and a fixed length turns every parallel-row merge into a conflict (PR #2044).
+/// developer tools and stay outside the envelope contract. A slice, not a fixed-length array:
+/// two branches each bumping the length to the same number merged silently (#2044).
 const OPERATIONS: &[(&str, &str)] = &[
     ("package-inspect", "package.inspect"),
     ("project-plan", "project.plan"),
@@ -291,11 +314,15 @@ const OPERATIONS: &[(&str, &str)] = &[
     ("identity", "identity"),
     ("forge-read", "forge.read"),
     ("plan-admit", "plan.admit"),
+    ("claude-doctor", "claude.doctor"),
     ("codex-projection-plan", "codex.projection_plan"),
     ("codex-doctor", "codex.doctor"),
     ("claim-acquire", "claim.acquire"),
     ("claim-show", "claim.show"),
     ("claim-release", "claim.release"),
+    ("todo-promote-preview", "todo.promote.plan"),
+    ("todo-promote-apply", "todo.promote.apply"),
+    ("run-verify", "run.verify"),
 ];
 fn operation_of(word: &str) -> Option<&'static str> {
     OPERATIONS
@@ -400,6 +427,24 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             &moai_cli::forge::transport::GhTransport::from_env()?,
             &moai_cli::forge::policy::SystemClock,
         ),
+        Command::TodoPromotePreview { project } => moai_cli::forge::promote::preview_cli(
+            &project,
+            input::<moai_cli::forge::promote::PromoteRequest>()?,
+            &moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        Command::TodoPromoteApply {
+            project,
+            preview_digest,
+            permission_reference,
+        } => moai_cli::forge::promote::apply_cli(
+            &project,
+            input::<moai_cli::forge::promote::PromoteRequest>()?,
+            &preview_digest,
+            &permission_reference,
+            &moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
+        ),
         Command::BaselineInventory {
             project,
             go_baseline_commit,
@@ -429,6 +474,7 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             reason.as_deref().unwrap_or("unspecified"),
             &moai_cli::forge::policy::SystemClock,
         ),
+        Command::ClaudeDoctor { project } => moai_cli::claude::doctor(&project),
         Command::CodexProjectionPlan {
             package,
             target,
@@ -474,6 +520,15 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             }
             let current = moai_cli::plan::current_revision(&project)?;
             serde_json::to_value(moai_cli::plan::admit(&request, &current))
+                .map_err(|_| "encode failed".into())
+        }
+        Command::RunVerify { project } => {
+            let request = input::<moai_cli::run::RunRequest>()?;
+            if request.protocol_version != contract::PROTOCOL_VERSION {
+                return Err("unsupported protocol_version; supported: 1".into());
+            }
+            let current = moai_cli::plan::current_revision(&project)?;
+            serde_json::to_value(moai_cli::run::run(&project, &request, &current)?)
                 .map_err(|_| "encode failed".into())
         }
         _ => unreachable!("launchers run through run_launcher"),

@@ -233,6 +233,24 @@ fn snapshot_digest_is_canonical_sensitive_and_immutable() {
     assert_eq!(content_digest(&approved_again(&a), &SortedKeys), da);
 }
 
+/// Issue #1992: serde_json now preserves key order, so SortedKeys sorts by itself. The digest
+/// is pinned to the value measured before `preserve_order` was enabled (2026-11-08).
+#[test]
+fn sorted_keys_is_independent_of_map_order() {
+    use moai_cli::spec::Canonical;
+    let a = doc("snapshot_canonical_a.json");
+    assert_eq!(
+        content_digest(&a, &SortedKeys),
+        "sha256:6326dbfddd4c2dad69536ca96b339b1625078b238a940f6014c00ed2dbdb8f6f"
+    );
+    let shuffled: serde_json::Value =
+        serde_json::from_str(r#"{"b":1,"a":{"d":[{"y":1,"x":2}],"c":2}}"#).unwrap();
+    assert_eq!(
+        SortedKeys.bytes(&shuffled),
+        br#"{"a":{"c":2,"d":[{"x":2,"y":1}]},"b":1}"#
+    );
+}
+
 fn approved_again(a: &SpecDocument) -> SpecDocument {
     approve(a, &SortedKeys)
 }

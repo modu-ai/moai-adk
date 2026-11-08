@@ -6,7 +6,7 @@ An approved SPEC, a plan, a base, a write scope, and an owner.
 
 ## Output
 
-A patch, receipts from actual verification (planned; not implemented in 2026.11.0-rc.1), and the remaining gaps.
+A patch, receipts from actual verification (the internal `run-verify` operation returns them on stdout; storing them is not implemented in 2026.11.0-rc.1), and the remaining gaps.
 
 ## Procedure
 

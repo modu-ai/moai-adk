@@ -1,0 +1,19 @@
+{
+  "producer": {"kind": "runner-receipt"},
+  "task_id": "T1",
+  "attempt_id": "A-agent",
+  "spec_ref": "SPEC-T-SNAP@1",
+  "spec_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "plan_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "base_revision": "1111111111111111111111111111111111111111",
+  "tree_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "policy_digest": null,
+  "toolchain": {"rustc": "rustc 1.94.1", "cargo": "cargo 1.94.1"},
+  "method": {"change_strategy": "preserve", "domain_modeling": "not-required", "legacy_mode": null},
+  "phase": "baseline",
+  "required_evidence": ["baseline", "after", "intent-diff"],
+  "checks": [],
+  "oracle_changes": [],
+  "red_confirmed": null,
+  "result": "passed"
+}
