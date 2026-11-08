@@ -379,10 +379,12 @@ pub fn identity(path: &Path) -> Result<WorktreeId> {
             "--git-common-dir",
             "--git-dir",
             "HEAD",
+            "--abbrev-ref",
+            "HEAD",
         ],
     )?;
     let lines: Vec<&str> = out.lines().collect();
-    let [top, common, gitdir, head] = lines[..] else {
+    let [top, common, gitdir, head, abbrev] = lines[..] else {
         return Err("unexpected git rev-parse output".into());
     };
     Ok(WorktreeId {
@@ -390,9 +392,9 @@ pub fn identity(path: &Path) -> Result<WorktreeId> {
         git_dir: gitdir.into(),
         path: top.into(),
         head: head.into(),
-        // 06-B/2107 additive field; filling it from the created branch is 06-C's own
-        // follow-up (this measure deliberately keeps its single rev-parse shape).
-        branch: None,
+        // #2131: the branch checked out at claim time, from the same rev-parse call.
+        // A detached HEAD prints `HEAD` (git forbids a branch of that name), so it is None.
+        branch: (abbrev != "HEAD").then(|| abbrev.to_string()),
     })
 }
 
