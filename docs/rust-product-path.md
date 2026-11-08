@@ -34,6 +34,7 @@ One row per internal operation: the name a skill adapter or a later MCP tool ref
 | `codex.doctor` | `codex-doctor PROJECT` | `moai_cli::hosts::codex::doctor` | — | `--cwd`, `--codex-home`, `--home`, `--fallback`, `--max-bytes` | `host`, `project_root`, `cwd`, `agents`, `trust`, `codex_layer`, `skills`, `writes`, `host_loaded`, `execution_verified` | no |
 | `plan.admit` (temporary name, fixed after P06) | `plan-admit PROJECT` | `moai_cli::plan::admit` | `AdmissionRequest` | — | `decision`, `reasons`, `expected_revision`, `current_revision`, `plan`, `pinned` (see below) | no |
 | `run.verify` (temporary name, fixed after P06) | `run-verify PROJECT` | `moai_cli::run::run` | `RunRequest` | — | `decision`, `reasons`, `receipt` (see below) | none by the tool; the verification commands it runs may write in PROJECT |
+| `audit.reduce` (temporary name, fixed after P06) | `audit-reduce PROJECT` | `moai_cli::audit::audit` | `AuditInput` | — | `status`, `admission`, `reasons`, `candidate`, `observed`, `reviewer`, `independence`, `pr_binding`, `run_decision`, `run_reasons`, `must_pass`, `stale_receipts`, `excluded_self_reports`, `findings`, `waivers`, `receipt` (see below) | none by the tool; it re-runs the verification commands, which may write in PROJECT |
 
 Only the two `*.apply` operations mutate files, and both refuse to run without the confirmed `plan_digest` and a non-placeholder permission reference; whatever transport carries them later keeps that boundary (REQ-01C-03). The launchers (`-l`, `-a`, `cc|glm|codex`, `session`; see below) are developer tools, not internal operations, and stay out of this table. Not implemented yet: `apply.recover`.
 
@@ -215,6 +216,32 @@ Known gaps: the expected revision is a commit id, so uncommitted changes are not
 - **Retry budget.** `budget_exhausted` stops once `max_attempts` attempts ran and the last ones failed on the same checks; there is no default and no budget means no retry decision. `remaining_evidence` lists the steps still missing. The caller holds the attempt history.
 
 Known gaps: receipts and command output are not written anywhere (P09, owned by 01-B #1989); failure classes are a text heuristic (libtest JSON is unstable) and `--list` is not run, so the test selection is the filters and the summed counts; a trusted `preserve` baseline is impossible until receipts are stored or signed; the tree digest is taken before the run, so a command that writes in `PROJECT` (a new `Cargo.lock`, for example) makes the receipt stale at once; `plan::current_revision` does not clear `GIT_DIR` and related variables (#2043); receipts are unsigned and claim no tamper resistance.
+
+## Independent AUDIT and completion admission (05-D #2004)
+
+`audit-reduce PROJECT` (a temporary name until P06) is the auditor's own run. It reads an `AuditInput` on stdin: `protocol_version`, `request_id`, the `candidate` under audit (`commit`, `tree_digest`, `workspace_id`), the 05-C `run` request, `required_checks` (indexes into the snapshot's verification commands; required), the author's `self_reports`, `findings`, an optional reviewer `opinion` (`pass` or `fail` with a summary), the `reviewer`, `waivers_allowed` and `waivers`, and the PR as `gh api …/pulls/<n>` JSON (`pr`, fetched by the caller) or `pr_lookup_failed`. It observes PROJECT itself (`HEAD^{commit}`, the 00-A tree digest without `.git` and `target`, the 01-A `identity` workspace id, `rustc -V`/`cargo -V`), re-runs the verification through 05-C, and decides with the pure `audit::reduce`. Receipts on stdin are self-reports and never count; only the receipt of the auditor's own run does (leader decision D1, 2026-11-08). Tests: `tests/audit_admission.rs` and the PLAN→AUDIT chain in `tests/workflow_e2e.rs`, fixtures under `tests/fixtures/audit/`.
+
+The decision, first match wins:
+
+| Condition | `admission` | `status` | Reason |
+| --- | --- | --- | --- |
+| reviewer not independent (table below) | blocked | blocked | `independence-missing` |
+| PROJECT has no workspace id | held | unknown | `workspace-unknown` |
+| PROJECT's workspace id differs from the candidate's | rejected | failed | `foreign-workspace` |
+| PROJECT's commit or tree differs from the candidate (a reviewer edit makes a new candidate) | rejected | stale | `candidate-changed` |
+| PR `head.sha` differs from the candidate commit | rejected | stale | `pr-head-mismatch` |
+| PR lookup failed or the JSON has no `head.sha` | held | unknown | `pr-lookup-failed` |
+| reviewer opinion contradicts the evidence, either way | held | unknown | `opinion-conflicts-with-evidence`, also added as a finding |
+| the receipt's summary is `unknown` (the change touched the oracle) | held | unknown | `oracle-changed` |
+| a required check is not `passed` and not waived | rejected | the worst of failed, blocked, stale, not_run, unknown | `must-pass-not-met` |
+| otherwise | admitted | passed | — |
+
+- **Must-pass.** Each required check takes its status from the auditor's runner receipt: `passed`, `failed`, `not_run`; `unknown` when the receipt lacks task, attempt or start and end times (REQ-05D-01); `stale` when the receipt's tree, spec, plan or policy digest or toolchain differs from the approved contracts and what the auditor observed (listed in `stale_receipts`); `blocked` or `stale` when 05-C ran nothing. Results are never averaged: one non-passing required check rejects.
+- **Independence** (leader decision H1, conservative until 02-B/02-C measure more; the reviewer fields are self-declared, recorded and judged by this table, not verified): Claude `fresh` and any `separate-session` are independent; Claude `fork`, Codex `fresh` (subagent context inheritance is undocumented) and Codex `fork` proceed with a recorded limitation; `same-session`, an unknown host or an unknown sharing value is blocked. A reviewer that is not read-only proceeds with the limitation that an edit makes a new candidate.
+- **Waivers.** Only with `waivers_allowed`, only for `quality` gates (`check:<index>` of a required check), only before `expires_at` (`YYYY-MM-DDTHH:MM:SSZ`, compared with the current UTC time). `security`, `secret` and `permission` gates are never waivable. A waived check keeps its original status in `must_pass` with `waived: true`; every waiver is recorded with its outcome (`waived` or `refused`) and refusal reason.
+- **Opinions** are never evidence: agreement changes nothing, disagreement holds the verdict. Semantic review is a native host reviewer only (leader decision H2); the reducer receives findings and calls no API.
+
+Known gaps: the verdict is not stored anywhere (P09, owned by 01-B #1989); everything on stdin, including the reviewer identity and the candidate, can be forged, and local digests are not signatures; the PR binding compares JSON the caller fetched and makes no network call; Codex independence stays a limitation until measured; a large `AuditInput` can exceed the 64 KiB stdin limit; `plan::current_revision` does not clear `GIT_DIR` and related variables (#2043).
 
 ## Common skill package skeleton
 

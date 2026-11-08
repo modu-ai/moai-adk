@@ -1,4 +1,5 @@
 pub mod agents;
+pub mod audit;
 pub mod baseline;
 pub mod contract;
 pub mod forge;
