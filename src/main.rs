@@ -9,6 +9,32 @@ use std::{
     process::ExitCode,
 };
 
+/// Where a 06-C command reads its claim record: the local journal, or a record file that must
+/// agree with the Issue claim comment it names (the file is input, not an authority).
+#[derive(Args)]
+struct RecordSource {
+    /// The 16-hex task key of a record in the local claim journal.
+    #[arg(long)]
+    task: Option<String>,
+    /// A ClaimRecord JSON file (a claim relayed outside the local journal).
+    #[arg(long)]
+    record: Option<PathBuf>,
+    /// The Issue claim comment as JSON (`id`, `body`); required with --record.
+    #[arg(long)]
+    claim_comment: Option<PathBuf>,
+}
+
+impl RecordSource {
+    fn load(&self, project: &std::path::Path) -> Result<moai_cli::claim::ClaimRecord, String> {
+        moai_cli::worktree::load_record(
+            project,
+            self.task.as_deref(),
+            self.record.as_deref(),
+            self.claim_comment.as_deref(),
+        )
+    }
+}
+
 #[derive(Parser)]
 #[command(
     name = "moai-cli",
@@ -223,6 +249,65 @@ enum Command {
         #[arg(long)]
         max_bytes: Option<u64>,
     },
+    /// Plan the branch and worktree of a claim (06-C #2007). Writes nothing.
+    WorktreePlan {
+        project: PathBuf,
+        #[command(flatten)]
+        source: RecordSource,
+        /// Branch prefix (HOLD: no default; the user decides it).
+        #[arg(long)]
+        branch_prefix: String,
+        /// Worktree path; default `<primary>/.moai-cli/worktrees/<issue>-<logical_key>`.
+        #[arg(long)]
+        path: Option<PathBuf>,
+    },
+    /// Create the planned worktree with `git worktree add --lock -b` (06-C #2007); refuses
+    /// without `--force` when the branch, path or task already has a worktree.
+    WorktreeApply {
+        project: PathBuf,
+        #[command(flatten)]
+        source: RecordSource,
+        #[arg(long)]
+        branch_prefix: String,
+        #[arg(long)]
+        path: Option<PathBuf>,
+        #[arg(long)]
+        plan_digest: String,
+    },
+    /// write_scope overlap of a claim against the other active claims (06-C #2007).
+    ScopeCheck {
+        project: PathBuf,
+        #[command(flatten)]
+        source: RecordSource,
+        /// The task the leader orders first (task key, logical key or `#<issue>`).
+        #[arg(long)]
+        integration_order: Option<String>,
+    },
+    /// Render the PR body of a claim (06-C #2007): Refs, exact SHAs, receipts, op marker.
+    PrBodyRender {
+        project: PathBuf,
+        #[command(flatten)]
+        source: RecordSource,
+        /// JSON array of VERIFY receipts (05-C #2003); `[]` renders not_run.
+        #[arg(long)]
+        receipts: PathBuf,
+        #[arg(long)]
+        base_sha: String,
+        #[arg(long)]
+        base_branch: String,
+        #[arg(long)]
+        default_branch: String,
+        /// Accepted and warned about; closing keywords are never rendered.
+        #[arg(long)]
+        allow_close: bool,
+        #[arg(long)]
+        not_run: Vec<String>,
+        #[arg(long)]
+        review_link: Option<String>,
+        /// Extra bullet for the remaining-gap section (repeatable).
+        #[arg(long)]
+        gap: Vec<String>,
+    },
     /// Read-only installation inspection (04-A #1998): PATH generations, receipts under
     /// `~/.moai-cli/installations/`, Go-generation path existence. Writes nothing.
     InstallInspect {
@@ -419,6 +504,10 @@ const OPERATIONS: &[(&str, &str)] = &[
     ("decision-record", "decision.record"),
     ("audit-reduce", "audit.reduce"),
     ("install-inspect", "install.inspect"),
+    ("worktree-plan", "worktree.plan"),
+    ("worktree-apply", "worktree.apply"),
+    ("scope-check", "scope.check"),
+    ("pr-body-render", "pr.body.render"),
     ("update-plan", "update.plan"),
     ("update-apply", "update.apply"),
     ("recovery-plan", "recovery.plan"),
@@ -654,6 +743,81 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
                 .unwrap_or_else(|| home.join(".codex"));
             let cwd = cwd.unwrap_or_else(|| project.clone());
             codex::doctor(&project, &cwd, &codex_home, &home, &fallback, max_bytes)
+        }
+        Command::WorktreePlan {
+            project,
+            source,
+            branch_prefix,
+            path,
+        } => moai_cli::worktree::plan(
+            &project,
+            &source.load(&project)?,
+            &branch_prefix,
+            path.as_deref(),
+        ),
+        Command::WorktreeApply {
+            project,
+            source,
+            branch_prefix,
+            path,
+            plan_digest,
+        } => moai_cli::worktree::apply(
+            &project,
+            &source.load(&project)?,
+            &branch_prefix,
+            path.as_deref(),
+            &plan_digest,
+        ),
+        Command::ScopeCheck {
+            project,
+            source,
+            integration_order,
+        } => {
+            let mine = source.load(&project)?;
+            let others = moai_cli::worktree::active_records(&project)?;
+            Ok(moai_cli::scope::check(
+                &mine,
+                &others,
+                integration_order.as_deref(),
+            ))
+        }
+        Command::PrBodyRender {
+            project,
+            source,
+            receipts,
+            base_sha,
+            base_branch,
+            default_branch,
+            allow_close,
+            not_run,
+            review_link,
+            gap,
+        } => {
+            let rec = source.load(&project)?;
+            let bytes = std::fs::read(&receipts).map_err(|_| "receipts file not found")?;
+            let receipts: Vec<moai_cli::run::Receipt> =
+                serde_json::from_slice(&bytes).map_err(|_| "invalid receipts file")?;
+            let head = moai_cli::worktree::head(&project)?;
+            let changes = if moai_cli::worktree::is_sha(&base_sha) {
+                moai_cli::worktree::changes(&project, &base_sha)?
+            } else {
+                Vec::new()
+            };
+            moai_cli::pr_link::render(
+                &rec,
+                &receipts,
+                &moai_cli::pr_link::RenderInput {
+                    base_branch: &base_branch,
+                    default_branch: &default_branch,
+                    base_sha: &base_sha,
+                    candidate_sha: &head,
+                    allow_close,
+                    not_run: &not_run,
+                    review_link: review_link.as_deref(),
+                    changes: &changes,
+                    gaps: &gap,
+                },
+            )
         }
         Command::InstallInspect { json: _ } => {
             let home = std::env::var_os("HOME")
