@@ -1102,7 +1102,13 @@ impl FixtureRun {
             .stderr(Stdio::piped())
             .spawn()
             .unwrap();
-        child.stdin.take().unwrap().write_all(stdin).unwrap();
+        // Same rule as cli(): a child that exits before reading stdin surfaces as EPIPE on
+        // fast runners. The fixture records exit, stdout and stderr, never the write itself.
+        match child.stdin.take().unwrap().write_all(stdin) {
+            Ok(()) => {}
+            Err(e) if e.kind() == std::io::ErrorKind::BrokenPipe => {}
+            Err(e) => panic!("stdin write failed: {e}"),
+        }
         let out = child.wait_with_output().unwrap();
         let stdin_v = if stdin.is_empty() {
             Value::Null
