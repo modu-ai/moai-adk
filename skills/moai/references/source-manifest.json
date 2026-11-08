@@ -1,0 +1,139 @@
+{
+  "schema_version": 1,
+  "covers": "every file under skills/moai/ except this manifest",
+  "design_source": {
+    "id": "design-22",
+    "title": "MoAI 생성 파일 원문 템플릿과 적용 계약",
+    "url": "https://chatgpt.com/space/page_396f36aa5d588191b92f8572bccc3bab",
+    "updated_at": "2026-11-08T04:19:15.740708Z",
+    "snapshot": "design-snapshot/22-page_396f36aa5d588191b92f8572bccc3bab.md",
+    "snapshot_sha256": "62bc9bcaa8661731e377c50512d44be7272c81c6e45a36e9f69b55993800c394",
+    "snapshot_check": "matches SHA256SUMS.txt of the RC1 handoff bundle (read 2026-11-08)"
+  },
+  "legacy_source": {
+    "repository": "modu-ai/moai-adk",
+    "revision": "4fa2aa9db2e0add0f1299e35407141b2b41c5ec0",
+    "license": "Apache-2.0",
+    "license_evidence": "LICENSE at the revision begins 'Apache License Version 2.0, January 2004' (read 2026-11-08)",
+    "inventory": "asset-inventory/moai-skills-rules-inventory-20261108.csv",
+    "inventory_sha256": "1c772fda6290e2a39643acf15e9d4702d8b72923671336a9b4f4d8f25f969f8b",
+    "blob_check": {
+      "method": "git ls-tree -r <revision>, compared with each row's git_blob_sha1",
+      "rows": 1107,
+      "matched": 1107,
+      "mismatched": [],
+      "missing_at_revision": []
+    },
+    "note": "Pointers only: no legacy bytes are copied into the package.",
+    "asset_map": {
+      "path": ".moai-cli/manifests/legacy-asset-map.json",
+      "location": "repository only; not part of the installed package",
+      "sha256": "24cb01bcb32dc9fa9b94fc5138c9f312ff0400c4f80c385ddd2d3ff09fff16fa",
+      "rows": 1107,
+      "status": "all unchecked",
+      "rows_by_intent": {
+        "read": 359,
+        "setup": 328,
+        "update": 218,
+        "plan": 202,
+        "run": 543,
+        "verify": 288,
+        "audit": 292,
+        "sync": 383
+      },
+      "rows_without_intent": 28
+    }
+  },
+  "files": {
+    "SKILL.md": {
+      "sha256": "bff1c53b61ae749391f93e74f554d97a118b5984a970cc6a3d198f700f9d9f58",
+      "origin": {
+        "kind": "design-template",
+        "template_id": "router-core",
+        "adoption": "adopted",
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet."
+      }
+    },
+    "references/routes.json": {
+      "sha256": "15062ee4f93a57727f428322df11286ffd7f4376e3ecee6d20ff0c7872e608f4",
+      "origin": {
+        "kind": "design-template",
+        "template_id": "router-routes",
+        "adoption": "adopted",
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet."
+      }
+    },
+    "workflows/read.md": {
+      "sha256": "a6f5b7a9a4cf134b5ebdca58c09b5ec0c18db760dac4f3c5a7b0289d2e2c1941",
+      "origin": {
+        "kind": "design-template",
+        "template_id": "workflow-read",
+        "adoption": "adopted",
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet."
+      }
+    },
+    "workflows/setup.md": {
+      "sha256": "64318cb5979b5e32b832bf3dc91f8252d0b368908a3e029a884e58608ad055f9",
+      "origin": {
+        "kind": "design-template",
+        "template_id": "workflow-setup",
+        "adoption": "adopted",
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet."
+      }
+    },
+    "workflows/update.md": {
+      "sha256": "dc6873ffd3b2ff4469e66813e90c0c36d5e3eb264abec04a6eda09227543a93b",
+      "origin": {
+        "kind": "design-template",
+        "template_id": "workflow-update",
+        "adoption": "adopted",
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet."
+      }
+    },
+    "workflows/plan.md": {
+      "sha256": "8d319f1493b80a681a6ad38411bb4beed342504a0cd64e94371edada03903560",
+      "origin": {
+        "kind": "design-template",
+        "template_id": "workflow-plan",
+        "adoption": "adopted",
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet."
+      }
+    },
+    "workflows/run.md": {
+      "sha256": "fe8c2eb621bc509cec415990db5f9c2bbf9c18f32177b073bc9fbbbda1336240",
+      "origin": {
+        "kind": "design-template",
+        "template_id": "workflow-run",
+        "adoption": "adopted",
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet."
+      }
+    },
+    "workflows/verify.md": {
+      "sha256": "92297882eaaba10b0767c64f9d95955423e5e02edd63229820abfb9971df3603",
+      "origin": {
+        "kind": "design-template",
+        "template_id": "workflow-verify",
+        "adoption": "adopted",
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet."
+      }
+    },
+    "workflows/audit.md": {
+      "sha256": "963d31db1b05a0f1377104ae04b4b721cc14d89994f0c4045d09561f16f23cbd",
+      "origin": {
+        "kind": "design-template",
+        "template_id": "workflow-audit",
+        "adoption": "adopted",
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet."
+      }
+    },
+    "workflows/sync.md": {
+      "sha256": "3f238ec7f139aaffcd5b87d64ce22af828b3230d896d75e9bd108d1c16070ba7",
+      "origin": {
+        "kind": "design-template",
+        "template_id": "workflow-sync",
+        "adoption": "adopted",
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet."
+      }
+    }
+  }
+}
