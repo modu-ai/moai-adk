@@ -1,4 +1,5 @@
 {
+  "case": "session-invalid-effort",
   "args": [
     "session",
     "--name",
@@ -7,15 +8,14 @@
     "turbo",
     "--dry-run"
   ],
-  "case": "session-invalid-effort",
+  "stdin": null,
   "exit": 1,
+  "stdout": null,
+  "stderr": "effort must be one of low|medium|high|xhigh|max|ultracode\n",
   "masked_keys": [
     "target_binding",
     "plan_digest",
     "collected_at",
     "receipt"
-  ],
-  "stderr": "effort must be one of low|medium|high|xhigh|max|ultracode\n",
-  "stdin": null,
-  "stdout": null
+  ]
 }
