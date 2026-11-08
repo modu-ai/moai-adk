@@ -165,7 +165,7 @@ impl Fixture {
         )
         .unwrap();
     }
-    /// Places the known-good copy of `bytes` for `host` (what #2089 will store at apply).
+    /// Places the known-good copy of `bytes` for `host` (what 04-B stores at apply since #2091).
     fn known_good(&self, host: &str, bytes: &str) {
         let s = sha(bytes.as_bytes());
         let dir = self.hosts_dir().join(host).join("known-good");
@@ -346,8 +346,9 @@ fn recovery_preserves_user_edit_made_after_failure() {
 /// never retry.
 #[test]
 fn recovery_refuses_without_known_good_or_on_tamper() {
-    // (a) No known-good copy (04-B today): the replaced file is conflict(no_known_good);
-    // the created file is still removed.
+    // (a) No known-good copy (the hand-built crash stores none, as for a receipt written
+    // before #2091 or a copy since lost; 04-B now stores one per replaced file): the
+    // replaced file is conflict(no_known_good); the created file is still removed.
     let f = fixture();
     f.crash_codex();
     let plan = f.plan();
