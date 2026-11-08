@@ -114,16 +114,16 @@ class LabelTaxonomyTest(unittest.TestCase):
 
 
 WORKFLOWS = ROOT / ".github/workflows"
-PR_TEMPLATE = ROOT / ".github/PULL_REQUEST_TEMPLATE.md"
+PR_TEMPLATE = ROOT / ".github/pull_request_template.md"
 PINNED_USES = re.compile(r"^[\w.-]+/[\w./-]+@[0-9a-f]{40}$")
-# The only write scope a workflow may hold: label-sync's manual apply job creates labels.
-ALLOWED_WRITES = {("label-sync.yml", "apply"): {"issues"}}
+# The only write scope a workflow may hold: rc-label-sync's manual apply job creates labels.
+ALLOWED_WRITES = {("rc-label-sync.yml", "apply"): {"issues"}}
 
 
 class WorkflowTest(unittest.TestCase):
     def workflows(self):
         paths = sorted(WORKFLOWS.glob("*.yml"))
-        self.assertEqual([p.name for p in paths], ["label-sync.yml", "rc-ci.yml"])
+        self.assertEqual([p.name for p in paths], ["rc-ci.yml", "rc-label-sync.yml"])
         return [(p, yaml.safe_load(p.read_text(encoding="utf-8"))) for p in paths]
 
     def test_permissions_are_least_privilege(self):
@@ -155,11 +155,11 @@ class WorkflowTest(unittest.TestCase):
             self.assertIn(command, script)
 
     def test_label_sync_is_a_dry_run_unless_applied_by_hand(self):
-        flow = dict(self.workflows())[WORKFLOWS / "label-sync.yml"]
+        flow = dict(self.workflows())[WORKFLOWS / "rc-label-sync.yml"]
         triggers = flow.get("on", flow.get(True))
         self.assertIs(triggers["workflow_dispatch"]["inputs"]["apply"]["default"], False)
         self.assertIn("workflow_dispatch", flow["jobs"]["apply"]["if"])
-        text = (WORKFLOWS / "label-sync.yml").read_text(encoding="utf-8")
+        text = (WORKFLOWS / "rc-label-sync.yml").read_text(encoding="utf-8")
         self.assertIn(".github/moai/labels.yml", text)
         self.assertIsNone(re.search(r"gh label (delete|edit)|--force", text), "no label edits or deletes")
 
@@ -175,11 +175,21 @@ class PullRequestTemplateTest(unittest.TestCase):
 
 
 class PreviousGenerationTest(unittest.TestCase):
+    def removed(self):
+        lines = (ROOT / ".github/moai/removed-go-generation-paths.txt").read_text(encoding="utf-8").splitlines()
+        return [line for line in lines if line.strip()]
+
     def test_previous_generation_files_are_not_recreated(self):
-        names = [str(p.relative_to(ROOT)) for p in (ROOT / ".github").rglob("*") if p.is_file()]
-        self.assertEqual([n for n in names if "agentic-factory" in n], [])
-        for gone in (".github/labels.yml", ".github/branch-protection.json.gtmpl", ".github/actions"):
-            self.assertFalse((ROOT / gone).exists(), gone)
+        removed = self.removed()
+        self.assertEqual(len(removed), 23)
+        self.assertEqual(len(set(removed)), 23)
+        self.assertEqual([p for p in removed if (ROOT / p).exists()], [])
+
+    def test_readme_records_the_same_removed_paths(self):
+        readme = (ROOT / ".github/moai/README.md").read_text(encoding="utf-8")
+        block = re.search(r"Removed paths:\n\n```text\n(.*?)\n```", readme, re.S)
+        self.assertIsNotNone(block)
+        self.assertEqual(sorted(block.group(1).splitlines()), sorted(self.removed()))
 
 
 if __name__ == "__main__":

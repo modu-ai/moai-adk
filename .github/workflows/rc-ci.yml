@@ -59,13 +59,14 @@ jobs:
             echo "| $label | \`$*\` | $code |" >> "$summary"
             [ "$code" -eq 0 ] || failed=1
           }
-          # No dependency cache on the runner: fetch once against Cargo.lock, then run the
-          # set offline exactly as lanes do locally.
+          # Dependency strategy B (RC1 interim decision, 2026-11-08 17:4x; actions/cache is
+          # re-evaluated in 08-D): fetch once against Cargo.lock, then run the set offline
+          # exactly as lanes do locally.
           run fetch cargo fetch --locked
           echo "- dependencies: no cache; fetched with \`cargo fetch --locked\` before the offline steps" >> "$summary"
           run test cargo test --offline --locked
           run clippy cargo clippy --offline --locked --all-targets -- -D warnings
           run fmt cargo fmt --check
           run unittest python -m unittest discover -s tests -p '*_test.py'
-          run diff-check git diff --check "${{ github.event.pull_request.base.sha || 'HEAD~1' }}" HEAD
+          run diff-check git diff --check "${{ github.event.pull_request.base.sha || 'HEAD~1' }}...${{ github.event.pull_request.head.sha || 'HEAD' }}"
           exit "$failed"
