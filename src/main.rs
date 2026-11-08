@@ -114,6 +114,20 @@ enum Command {
     ForgeRead {
         project: PathBuf,
     },
+    /// Preview promotion of selected local TODOs to GitHub Issues (reads only; typed JSON
+    /// request on stdin naming `tasks_path`, `target` and `selected`; envelope on stdout).
+    TodoPromotePreview {
+        project: PathBuf,
+    },
+    /// Promote the previewed TODOs: refuses a different `--preview-digest`, records an outbox
+    /// intent before each create and `published` only after a confirming GET.
+    TodoPromoteApply {
+        project: PathBuf,
+        #[arg(long)]
+        preview_digest: String,
+        #[arg(long)]
+        permission_reference: String,
+    },
     /// Read-only clone/workspace identity and state roots of a path (typed JSON on stdout).
     Identity {
         path: PathBuf,
@@ -260,7 +274,7 @@ fn launch(
 
 /// Internal operations (01-C #1990): subcommand word and operation name. The launchers are
 /// developer tools and stay outside the envelope contract.
-const OPERATIONS: [(&str, &str); 13] = [
+const OPERATIONS: [(&str, &str); 15] = [
     ("package-inspect", "package.inspect"),
     ("project-plan", "project.plan"),
     ("project-apply", "project.apply"),
@@ -274,6 +288,8 @@ const OPERATIONS: [(&str, &str); 13] = [
     ("claude-doctor", "claude.doctor"),
     ("codex-projection-plan", "codex.projection_plan"),
     ("codex-doctor", "codex.doctor"),
+    ("todo-promote-preview", "todo.promote.plan"),
+    ("todo-promote-apply", "todo.promote.apply"),
 ];
 fn operation_of(word: &str) -> Option<&'static str> {
     OPERATIONS
@@ -375,6 +391,24 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
         Command::ForgeRead { project } => moai_cli::forge::forge_read_cli(
             &project,
             input::<moai_cli::forge::ReadRequest>()?,
+            &moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        Command::TodoPromotePreview { project } => moai_cli::forge::promote::preview_cli(
+            &project,
+            input::<moai_cli::forge::promote::PromoteRequest>()?,
+            &moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        Command::TodoPromoteApply {
+            project,
+            preview_digest,
+            permission_reference,
+        } => moai_cli::forge::promote::apply_cli(
+            &project,
+            input::<moai_cli::forge::promote::PromoteRequest>()?,
+            &preview_digest,
+            &permission_reference,
             &moai_cli::forge::transport::GhTransport::from_env()?,
             &moai_cli::forge::policy::SystemClock,
         ),
