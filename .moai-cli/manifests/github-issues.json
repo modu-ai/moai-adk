@@ -2090,6 +2090,16 @@
   },
   {
    "source_doc": "docs/decisions-2026-11-08.md"
+  },
+  {
+   "time": "2026-11-08T11:2xZ",
+   "id": "ADK_LANE_LOOP/ADK_LOCAL_GUIDANCE_20261108_01",
+   "text": "lanes do not wait for merge: PR → durable report → stop writes, confirm no uncommitted loss → leave worktree (keep) → next non-conflicting ready card; leader queue owns review/audit/repair/merge; no new/duplicate writers; add to AGENTS.local.md"
+  },
+  {
+   "time": "2026-11-08T11:2xZ",
+   "id": "ADK_1989_CONFIRMED_20261108_01",
+   "text": "#1989: receipts only in .moai-cli/receipts, not committed; new-file creation never overwrites; conflicts with user edits preserved and reported, no auto-merge. hard_link is NOT a user-approved primitive. Not approval of other HOLDs/permissions/deletion/publishing/deploy."
   }
  ],
  "design_update_r3": {
@@ -2863,28 +2873,97 @@
    "key": "05-B",
    "lane": "agent-1",
    "base": "c267abeaec45cce7ca056a45a1b1d71813dfa394",
-   "status": "PR #2040 open (head d66696038, base 3adabd859 → behind 88d347c58, contract.rs overlap); lane merging base before audit"
+   "status": "done — PR #2040 merged ca61bf461 (audit 3f0140799 PASS); followup #2043 (plan git env)"
   },
   {
    "issue": 1993,
    "key": "02-C",
    "lane": "agent-3 [de88f8]",
    "base": "f473f0251168a7f08b1a11f30c864835182b9feb",
-   "status": "claimed 6720209670 (relay); interim decisions 1-6 recorded; implementing"
+   "status": "done — PR #2042 merged e324e0c72 (audit 7bb563a89 PASS + delta af89a8259 PASS)"
   },
   {
    "issue": 1992,
    "key": "02-B",
    "lane": "agent-4 [e4237d]",
    "base": "3adabd8591720673c99b5507161bdceccb2207d9",
-   "status": "claimed 6720235544; plan received; interim H1 B(preserve_order) H1' A H2 A H3 A M5 not_run; implementing M1"
+   "status": "done — PR #2044 merged 74f381f3b (audit 7489d15d4 PASS + 5cef67ab5 delta PASS after leader-induced OPERATIONS semantic conflict repair)"
   },
   {
    "issue": 2009,
    "key": "07-B",
    "lane": "agent-3 [437ee1]",
    "base": "88d347c58870799287aeea6ec0987cfd54560753",
-   "status": "claimed 6720297455 (relay); interim decisions (1)B (2)arg path (3)lib filter; implementing"
+   "status": "done — PR #2045 merged d968e022f (audit 861975767 PASS + 5249634 PASS after conflict resolution)"
+  },
+  {
+   "issue": 2003,
+   "key": "05-C",
+   "lane": "agent-1 [0dd806]",
+   "base": "ca61bf4619f7ee7e467cc79adc32d853c4bd2046",
+   "status": "done — PR #2046 merged 8d60ad566 (audit 5ad9cf315 PASS, 2nd)"
+  },
+  {
+   "issue": 2043,
+   "key": "BUG-PLAN-GIT-ENV",
+   "lane": "agent-3 [437ee1]",
+   "status": "PR #2049 head 40179fdef (base 74f381f3b); lane handed off; leader queue: rc-ci 42475607418 + agent-2 audit"
+  },
+  {
+   "issue": 1989,
+   "key": "01-B",
+   "lane": "agent-5 [767ceb]",
+   "base": "e324e0c72a27854d13535d6d021be15c8ee3c1f4",
+   "status": "claimed 6720575359; HOLD B1/B2/B3 = A/A/A; implementing"
+  },
+  {
+   "issue": 2005,
+   "key": "06-A",
+   "lane": "agent-6 [742cb6]",
+   "base": "e324e0c72a27854d13535d6d021be15c8ee3c1f4",
+   "status": "claimed 6720575543; implementing"
+  },
+  {
+   "issue": 1998,
+   "key": "04-A",
+   "lane": "agent-7 [fa13f6]",
+   "base": "e324e0c72a27854d13535d6d021be15c8ee3c1f4",
+   "status": "claimed 6720575941; implementing"
+  },
+  {
+   "issue": 1995,
+   "key": "03-A",
+   "lane": "agent-8 [45deae]",
+   "base": "e324e0c72a27854d13535d6d021be15c8ee3c1f4",
+   "status": "claimed 6720575717; HOLD-2 = A; implementing"
+  },
+  {
+   "issue": 2010,
+   "key": "07-C",
+   "lane": "agent-3 [437ee1]",
+   "base": "d968e022fb67d243ed48a254012f4b6951ca04ab",
+   "status": "PR #2047 head c300973bf DIRTY vs 74f381f3b (OPERATIONS); repair by agent-3 [437ee1] in preserved worktree"
+  },
+  {
+   "issue": 2004,
+   "key": "05-D",
+   "lane": "agent-1 [0dd806]",
+   "base": "8d60ad5665a1e32f8f76fec8026e5e12ea1301e5",
+   "status": "claimed 6720834171; D1 (a) D2 (a) H1-H5 I1-I2 recorded; implementing"
+  },
+  {
+   "issue": 2011,
+   "key": "07-D",
+   "lane": "agent-4 [f4bd07]",
+   "base": "8d60ad5665a1e32f8f76fec8026e5e12ea1301e5",
+   "status": "claimed 6720862818; H1 A, H2 A+D, H3 budget required; implementing"
+  },
+  {
+   "issue": 2048,
+   "key": "BUG-FORGE-TRANSPORT-TIMEOUT",
+   "lane": "agent-3 [89e867] (claim session agent-3c-89e867)",
+   "base": "8d60ad5665a1e32f8f76fec8026e5e12ea1301e5",
+   "status": "claimed 6720862992; RED reproduced (exit 101, stalled gh stub >10s), RED-only commit 49d7549c8; GREEN in progress"
   }
  ],
  "design_update_r8": {
@@ -3445,6 +3524,14 @@
   {
    "from": "02-B/02-C",
    "title": "Codex config.toml 관리 key 병합(toml_edit 도입 여부) — RC1 제외, 후속 Issue 등록 예정"
+  },
+  {
+   "from": "#2043 lane report",
+   "title": "src/baseline.rs git() does not scrub GIT_ENV_REMOVED (candidate, unverified by run)"
+  },
+  {
+   "from": "#2043 lane report",
+   "title": "05-C check argv inherits caller GIT_* env — intent decision for 05-C"
   }
  ],
  "design_update_r24": {
@@ -3509,6 +3596,19 @@
    "merged": "b37cdf2dd",
    "audit": "agent-2 43e404 PASS b652c5ed6",
    "contents": "AGENTS.local.md split, .gitignore, decisions through 18:5x, ledger r13-r25, body snapshots"
+  },
+  {
+   "pr": 2041,
+   "head": "ff0eaf9bf",
+   "base": "88d347c58",
+   "audit": "agent-2 PASS ff0eaf9bf + delta c2d40a90",
+   "contents": "decisions 19:0x-19:2x, ledger r27-r30, body snapshots 1990/2033/2008/1993/1991/2001",
+   "merged": "87f9551ba"
+  },
+  {
+   "pr": null,
+   "branch": "leader/docs-20261108-r31",
+   "contents": "AGENTS.local.md lane cycle + update-branch semantic-conflict check; decisions 19:4x-20:2x; ledger r31; 1989 body snapshot"
   }
  ],
  "design_update_r26": {
@@ -3562,6 +3662,59 @@
   "summary": "#1993 AC redefinition per leader decisions 1-6 (no TOML parser, hook 0, --target required, E2E not_run, tests/codex_adapter.rs)",
   "body_sha256": {
    "1993": "f929002e698922007f4a017fb7e75677b98cc85fdaf7d7f5234c992b3c666332"
+  }
+ },
+ "session_notes": [
+  {
+   "time": "2026-11-08T10:3xZ",
+   "note": "agent-2 [43e404] disappeared; agent-2 [0cbdac] designated auditor; agent-1 [d54a06] → [0dd806]"
+  },
+  {
+   "time": "2026-11-08T10:38Z",
+   "note": "agent-4 [e4237d] socket gone; lane continues as agent-4 [f4bd07]"
+  },
+  {
+   "time": "2026-11-08T10:4xZ",
+   "note": "leader restarted: [2f8ef2] → [05d8b8]; agent-3 [de88f8] gone after 02-C; agent-3 [846b32] = duplicate of 437ee1, assigned 01-B as spare lane"
+  },
+  {
+   "time": "2026-11-08T10:5xZ",
+   "note": "user launched agent-5..8; dispatched 01-B/06-A/04-A/03-A; ADK_CONTINUE_20261108_T2J_01 received"
+  },
+  {
+   "time": "2026-11-08T11:2xZ",
+   "note": "leader restarted → [a963ab]; ADK_RESTORE_FINAL_20261108_01 + ADK_LOCAL_GUIDANCE_20261108_01 received; lane-loop rule (no waiting for merge) broadcast to agent-1,3,4,5,6,7,8 + auditor; agent-3 [89e867] new session, not assigned (no new/duplicate writers)"
+  }
+ ],
+ "launcher_verification": [
+  {
+   "date": "2026-11-08",
+   "tree": "e324e0c72",
+   "binary": "/tmp/moai-rc-target-leader/release/moai-cli (release, offline, locked)",
+   "dry_run": {
+    "cc -l": "claude --name leader --model opus --effort medium --advisor fable --dangerously-skip-permissions",
+    "cc -a": "same, --name agent-1 (numbering HOLD)",
+    "codex -l|-a": "codex -s workspace-write -a on-request \"MoAI session name: <n>\"",
+    "glm -l|-a": "blocked: ANTHROPIC_AUTH_TOKEN not set (leader shell)",
+    "cc (no role)": "error: <--leader|--agent> required"
+   },
+   "install_path": "~/.moai-cli/bin/moai-cli absent (04-A #1998)",
+   "host_loaded": "not_run (operator measurement AC-00F-6)",
+   "hosts": {
+    "claude": "2.1.319",
+    "codex": "codex-cli 0.163.0",
+    "zcode": "not installed"
+   }
+  }
+ ],
+ "design_update_r31": {
+  "date": "2026-11-08",
+  "issues": [
+   1989
+  ],
+  "summary": "#1989 HOLD-B1/B3 decided, HOLD-B2 requirement only (no overwrite); primitive = lane technical choice (user ADK_1989_CONFIRMED_20261108_01)",
+  "body_sha256": {
+   "1989": "ce93234d51c3e538241894243b1e946fa6b651fff5ac6066c1fcbf94cbdbc212"
   }
  }
 }
