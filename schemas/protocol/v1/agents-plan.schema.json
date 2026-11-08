@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:moai:protocol:v1:agents-plan",
+  "title": "AGENTS plan (current, describes src/agents.rs AgentsPlan and FilePlan)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["protocol_version", "request", "project_id", "profile_sha256", "target_binding", "files", "host_notes", "warnings", "plan_digest"],
+  "properties": {
+    "protocol_version": {"type": "integer", "minimum": 0},
+    "request": {"$ref": "urn:moai:protocol:v1:agents-request"},
+    "project_id": {"type": "string"},
+    "profile_sha256": {"$ref": "urn:moai:protocol:v1:digest"},
+    "target_binding": {"$ref": "urn:moai:protocol:v1:digest"},
+    "files": {"type": "array", "items": {"$ref": "#/$defs/file_plan"}},
+    "host_notes": {"type": "array", "items": {"type": "string"}},
+    "warnings": {"type": "array", "items": {"type": "string"}},
+    "plan_digest": {"$ref": "urn:moai:protocol:v1:digest"}
+  },
+  "$defs": {
+    "file_plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "action", "tracked_by_default", "expected_sha256", "section_id", "baseline_sha256", "rendered_sha256", "detail"],
+      "properties": {
+        "path": {"type": "string"},
+        "action": {"enum": ["create", "merge", "append", "unchanged", "conflict"]},
+        "tracked_by_default": {"type": "boolean"},
+        "expected_sha256": {"type": ["string", "null"]},
+        "section_id": {"type": ["string", "null"]},
+        "baseline_sha256": {"type": ["string", "null"]},
+        "rendered_sha256": {"type": ["string", "null"]},
+        "detail": {"type": ["string", "null"]}
+      }
+    }
+  }
+}

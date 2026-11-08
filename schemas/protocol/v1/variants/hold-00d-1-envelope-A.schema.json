@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:moai:protocol:v1:variants:hold-00d-1:envelope-A",
+  "title": "Candidate envelope, HOLD-00D-1 option A (single canonical status)",
+  "description": "Draft only; HOLD-00D-1 is undecided. status takes the variant A canonical enum from status-crosswalk.json.",
+  "type": "object",
+  "required": ["protocol_version", "operation", "status", "result"],
+  "properties": {
+    "protocol_version": {"type": "integer", "minimum": 1},
+    "operation": {"type": "string"},
+    "status": {"enum": ["not_started", "in_progress", "awaiting_review", "authorized", "applied", "verified", "completed", "failed", "blocked", "conflict", "unknown", "stale", "not_run", "cancelled"]},
+    "result": {"type": "object"}
+  }
+}

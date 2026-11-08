@@ -1329,3 +1329,205 @@ fn protocol_fixtures_record_current_contract() {
     on_disk.sort();
     assert_eq!(on_disk, run.seen, "fixture set differs from the case list");
 }
+
+fn repo_json(rel: &str) -> Value {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(rel);
+    serde_json::from_slice(&fs::read(&path).unwrap_or_else(|_| panic!("missing {rel}"))).unwrap()
+}
+
+#[test]
+fn status_crosswalk_is_complete_and_never_promotes() {
+    let x = repo_json("schemas/protocol/v1/status-crosswalk.json");
+    let mut source: Vec<String> = Vec::new();
+    for s in x["sources"].as_array().unwrap() {
+        for t in s["tokens"].as_array().unwrap() {
+            source.push(format!(
+                "{}:{}",
+                s["domain"].as_str().unwrap(),
+                t.as_str().unwrap()
+            ));
+        }
+    }
+    source.sort();
+    let from = x["forbidden_promotions"]["from"].as_array().unwrap();
+    let to = x["forbidden_promotions"]["to"].as_array().unwrap();
+    let variants = x["variants"].as_object().unwrap();
+    assert_eq!(variants.keys().collect::<Vec<_>>(), ["A", "B"]);
+    for (name, v) in variants {
+        let allowed = v
+            .get("canonical_enum")
+            .or_else(|| v.get("common_enum"))
+            .unwrap()
+            .as_array()
+            .unwrap();
+        let mut keys = Vec::new();
+        for row in v["rows"].as_array().unwrap() {
+            let key = format!(
+                "{}:{}",
+                row["domain"].as_str().unwrap(),
+                row["source_token"].as_str().unwrap()
+            );
+            let (canonical, reason) = (&row["canonical"], &row["no_map_reason"]);
+            assert!(
+                canonical.is_null() != reason.is_null(),
+                "{name} {key}: exactly one of canonical / no_map_reason"
+            );
+            if !canonical.is_null() {
+                assert!(
+                    allowed.contains(canonical),
+                    "{name} {key}: value outside enum"
+                );
+                assert!(
+                    !(from.contains(&row["source_token"]) && to.contains(canonical)),
+                    "{name} {key}: forbidden promotion to {canonical}"
+                );
+            }
+            keys.push(key);
+        }
+        keys.sort();
+        assert_eq!(
+            keys, source,
+            "{name}: rows must cover every source token once"
+        );
+    }
+}
+
+#[test]
+fn protocol_schemas_declare_2020_12_and_cover_current_fixtures() {
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("schemas/protocol/v1");
+    let mut ids = Vec::new();
+    for sub in ["", "variants"] {
+        for e in fs::read_dir(dir.join(sub)).unwrap() {
+            let name = e.unwrap().file_name().to_string_lossy().into_owned();
+            if name.ends_with(".schema.json") {
+                let s = repo_json(&format!("schemas/protocol/v1/{sub}/{name}").replace("//", "/"));
+                assert_eq!(
+                    s["$schema"],
+                    json!("https://json-schema.org/draft/2020-12/schema"),
+                    "{name}"
+                );
+                ids.push(s["$id"].as_str().unwrap().to_string());
+            }
+        }
+    }
+    let unique: std::collections::BTreeSet<_> = ids.iter().collect();
+    assert_eq!(unique.len(), ids.len(), "duplicate $id");
+    // Key coverage only, not schema validation (the validator is HOLD-00D-2): every current
+    // success output carries exactly the required keys and nothing outside properties.
+    for (schema, fixture) in [
+        ("plan", "06-project-plan-create"),
+        ("plan", "10-project-plan-unchanged"),
+        ("agents-plan", "16-agents-plan-create"),
+        ("package-result", "11-package-inspect-ok"),
+        ("package-result", "13-package-resolve-user"),
+    ] {
+        let s = repo_json(&format!("schemas/protocol/v1/{schema}.schema.json"));
+        let out = &repo_json(&format!("{PROTOCOL_FIXTURES}/{fixture}.json"))["stdout"];
+        let props = s["properties"].as_object().unwrap();
+        for k in s["required"].as_array().unwrap() {
+            assert!(
+                out.get(k.as_str().unwrap()).is_some(),
+                "{fixture}: missing {k}"
+            );
+        }
+        for k in out.as_object().unwrap().keys() {
+            assert!(
+                props.contains_key(k),
+                "{fixture}: {k} not in {schema} schema"
+            );
+        }
+    }
+}
+
+#[test]
+fn exit_code_table_matches_current_fixtures() {
+    let t = repo_json("schemas/protocol/v1/variants/hold-00d-4-exit-codes.json");
+    let kinds: Vec<&str> = t["draft_kinds"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|k| k.as_str().unwrap())
+        .collect();
+    let mut failing = Vec::new();
+    for e in fs::read_dir(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(PROTOCOL_FIXTURES))
+        .unwrap()
+    {
+        let name = e.unwrap().file_name().to_string_lossy().into_owned();
+        let f = repo_json(&format!("{PROTOCOL_FIXTURES}/{name}"));
+        if f["exit"] != json!(0) {
+            failing.push(name.trim_end_matches(".json").to_string());
+        }
+    }
+    failing.sort();
+    let rows = t["current_observed"]["rows"].as_array().unwrap();
+    let mut listed: Vec<String> = rows
+        .iter()
+        .map(|r| r["fixture"].as_str().unwrap().to_string())
+        .collect();
+    listed.sort();
+    assert_eq!(
+        listed, failing,
+        "every failing fixture is in the observed table"
+    );
+    for r in rows {
+        let f = repo_json(&format!(
+            "{PROTOCOL_FIXTURES}/{}.json",
+            r["fixture"].as_str().unwrap()
+        ));
+        assert_eq!(f["exit"], r["exit"], "{}", r["fixture"]);
+        assert!(f["stderr"]
+            .as_str()
+            .unwrap()
+            .starts_with(r["stderr_start"].as_str().unwrap()));
+        assert!(kinds.contains(&r["draft_kind"].as_str().unwrap()));
+    }
+    for (name, opt) in t["options"].as_object().unwrap() {
+        let table = opt["table"].as_object().unwrap();
+        assert_eq!(table["ok"], json!(0), "{name}");
+        for k in &kinds {
+            let code = table[*k]
+                .as_u64()
+                .unwrap_or_else(|| panic!("{name} lacks {k}"));
+            assert!(code > 0 && code < 256, "{name} {k}");
+        }
+    }
+    // Option A is the only one today's binary already satisfies.
+    let a = t["options"]["A"]["table"].as_object().unwrap();
+    for r in rows {
+        assert_eq!(
+            a[r["draft_kind"].as_str().unwrap()],
+            r["exit"],
+            "{}",
+            r["fixture"]
+        );
+    }
+}
+
+#[test]
+fn digest_normalization_examples_are_reproducible() {
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/fixtures/protocol/v1/variants/hold-00d-5");
+    let tuple = fs::read(dir.join("serde-tuple-example.json")).unwrap();
+    assert_eq!(tuple, serde_json::to_vec(&(1u32, "create")).unwrap());
+    let jcs = fs::read(dir.join("jcs-example.json")).unwrap();
+    let n = repo_json("schemas/protocol/v1/variants/hold-00d-5-version-and-normalization.json");
+    let opts = &n["normalization_options"];
+    assert_eq!(
+        moai_cli::digest(&tuple),
+        format!(
+            "sha256:{}",
+            opts["serde_tuple"]["example_sha256"].as_str().unwrap()
+        )
+    );
+    assert_eq!(
+        moai_cli::digest(&jcs),
+        format!(
+            "sha256:{}",
+            opts["rfc8785_jcs"]["example_sha256"].as_str().unwrap()
+        )
+    );
+    assert_ne!(
+        tuple, jcs,
+        "the two normalizations disagree on the same data"
+    );
+}
