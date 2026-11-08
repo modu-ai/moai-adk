@@ -211,7 +211,8 @@ fn render_local(r: &AgentsRequest) -> String {
 
 fn render_ignore() -> String {
     let (begin, end) = markers(IGNORE_SECTION, "hash");
-    // HOLD-B1 (leader interim 2026-11-08): apply receipts stay out of git alongside the
+    // HOLD-B1 (user-confirmed 2026-11-08, ADK_1989_CONFIRMED_20261108_01): apply
+    // receipts stay out of git alongside the
     // personal file; src/apply.rs::RECEIPTS_DIR is the single source of the path.
     format!(
         "{begin}\nAGENTS.local.md\n{}/\n{end}\n",
