@@ -113,5 +113,74 @@ class LabelTaxonomyTest(unittest.TestCase):
         self.assertEqual([p["name"] for p in data["proposed_not_created"] if p["name"] in remote], [])
 
 
+WORKFLOWS = ROOT / ".github/workflows"
+PR_TEMPLATE = ROOT / ".github/PULL_REQUEST_TEMPLATE.md"
+PINNED_USES = re.compile(r"^[\w.-]+/[\w./-]+@[0-9a-f]{40}$")
+# The only write scope a workflow may hold: label-sync's manual apply job creates labels.
+ALLOWED_WRITES = {("label-sync.yml", "apply"): {"issues"}}
+
+
+class WorkflowTest(unittest.TestCase):
+    def workflows(self):
+        paths = sorted(WORKFLOWS.glob("*.yml"))
+        self.assertEqual([p.name for p in paths], ["label-sync.yml", "rc-ci.yml"])
+        return [(p, yaml.safe_load(p.read_text(encoding="utf-8"))) for p in paths]
+
+    def test_permissions_are_least_privilege(self):
+        for path, flow in self.workflows():
+            with self.subTest(workflow=path.name):
+                self.assertEqual(flow["permissions"], {"contents": "read"})
+                for job_id, job in flow["jobs"].items():
+                    self.assertIn("permissions", job, "every job states its own permissions")
+                    writes = {k for k, v in job["permissions"].items() if v == "write"}
+                    self.assertEqual(writes, ALLOWED_WRITES.get((path.name, job_id), set()), job_id)
+
+    def test_every_action_is_pinned_to_a_commit_sha(self):
+        for path, flow in self.workflows():
+            for job_id, job in flow["jobs"].items():
+                for step in job.get("steps", []):
+                    if "uses" in step:
+                        with self.subTest(workflow=path.name, job=job_id, uses=step["uses"]):
+                            self.assertRegex(step["uses"], PINNED_USES)
+
+    def test_rc_ci_reports_the_rc_ci_check_on_prs_to_the_integration_branch(self):
+        flow = dict(self.workflows())[WORKFLOWS / "rc-ci.yml"]
+        triggers = flow.get("on", flow.get(True))  # PyYAML reads a bare `on:` key as True
+        self.assertEqual(triggers["pull_request"]["branches"], ["v2026.11.0"])
+        self.assertEqual(flow["jobs"]["rc-ci"]["name"], "rc-ci")
+        script = "\n".join(s.get("run", "") for s in flow["jobs"]["rc-ci"]["steps"])
+        for command in ("cargo test --offline --locked", "cargo clippy --offline --locked --all-targets -- -D warnings",
+                        "cargo fmt --check", "unittest discover -s tests -p '*_test.py'", "git diff --check",
+                        "GITHUB_STEP_SUMMARY"):
+            self.assertIn(command, script)
+
+    def test_label_sync_is_a_dry_run_unless_applied_by_hand(self):
+        flow = dict(self.workflows())[WORKFLOWS / "label-sync.yml"]
+        triggers = flow.get("on", flow.get(True))
+        self.assertIs(triggers["workflow_dispatch"]["inputs"]["apply"]["default"], False)
+        self.assertIn("workflow_dispatch", flow["jobs"]["apply"]["if"])
+        text = (WORKFLOWS / "label-sync.yml").read_text(encoding="utf-8")
+        self.assertIn(".github/moai/labels.yml", text)
+        self.assertIsNone(re.search(r"gh label (delete|edit)|--force", text), "no label edits or deletes")
+
+
+class PullRequestTemplateTest(unittest.TestCase):
+    def test_template_carries_the_rc1_pr_contract(self):
+        text = PR_TEMPLATE.read_text(encoding="utf-8")
+        for field in ("Refs #", "Moai-Claim:", "exact", "40자 SHA", "실행한 검사와 exit", "독립 review",
+                      "not_run", "blocked", "--body-file"):
+            self.assertIn(field, text)
+        self.assertIsNone(re.search(r"(?im)^\s*(closes|fixes|resolves) #", text), "no auto-close keyword")
+        self.assertIsNone(SECRET_SHAPES.search(text))
+
+
+class PreviousGenerationTest(unittest.TestCase):
+    def test_previous_generation_files_are_not_recreated(self):
+        names = [str(p.relative_to(ROOT)) for p in (ROOT / ".github").rglob("*") if p.is_file()]
+        self.assertEqual([n for n in names if "agentic-factory" in n], [])
+        for gone in (".github/labels.yml", ".github/branch-protection.json.gtmpl", ".github/actions"):
+            self.assertFalse((ROOT / gone).exists(), gone)
+
+
 if __name__ == "__main__":
     unittest.main()
