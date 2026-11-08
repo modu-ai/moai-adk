@@ -1,0 +1,25 @@
+{
+  "description": "Synthetic, secret-free comment page 3 of 3 for Issue acme/widgets#7; no marker comment for run rc1-07c-demo.",
+  "comments": [
+    {
+      "id": 5007,
+      "node_id": "IC_5007",
+      "html_url": "https://github.com/acme/widgets/issues/7#issuecomment-5007",
+      "updated_at": "2026-11-08T07:00:00Z",
+      "user": {
+        "login": "someone"
+      },
+      "body": "comment 7"
+    },
+    {
+      "id": 5008,
+      "node_id": "IC_5008",
+      "html_url": "https://github.com/acme/widgets/issues/7#issuecomment-5008",
+      "updated_at": "2026-11-08T08:00:00Z",
+      "user": {
+        "login": "someone"
+      },
+      "body": "comment 8"
+    }
+  ]
+}

@@ -7,8 +7,9 @@ use serde::{Deserialize, Serialize};
 use std::{
     cell::RefCell,
     collections::BTreeMap,
-    io::Write,
+    io::{Read, Write},
     process::{Command, Stdio},
+    time::{Duration, Instant},
 };
 
 type Result<T> = std::result::Result<T, String>;
@@ -68,6 +69,45 @@ pub fn redact(text: &str) -> String {
 /// the exit code alone is never read as success or failure.
 pub struct GhTransport {
     pub bin: String,
+    /// Upper bound for one `gh api` call; past it the whole process group is ended and the
+    /// call fails as `transport` (#2048).
+    pub timeout: Duration,
+}
+
+// @MX:NOTE: [AUTO] default bound for one gh call; not derived from a measurement (unmeasured)
+/// Default upper bound for one `gh api` call (unmeasured; chosen above gh's own retry window).
+pub const GH_TIMEOUT: Duration = Duration::from_secs(60);
+
+/// How long the output readers may take after gh ended (or was ended).
+const OUTPUT_GRACE: Duration = Duration::from_secs(2);
+
+/// Ends every process left in gh's process group (unix: `kill -KILL -- -<pgid>`, as argv), the
+/// same way `verify::run_check` does. An empty group makes `kill` fail, which is fine.
+fn end_group(pid: u32) {
+    #[cfg(unix)]
+    {
+        let _ = Command::new("kill")
+            .args(["-KILL", "--", &format!("-{pid}")])
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status();
+    }
+    #[cfg(not(unix))]
+    let _ = pid;
+}
+
+/// Reads a pipe on its own thread and hands the bytes over a channel, so the wait is bounded.
+fn drain<R: Read + Send + 'static>(pipe: Option<R>) -> std::sync::mpsc::Receiver<Vec<u8>> {
+    let (tx, rx) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let mut buf = Vec::new();
+        if let Some(mut p) = pipe {
+            let _ = p.read_to_end(&mut buf);
+        }
+        let _ = tx.send(buf);
+    });
+    rx
 }
 
 impl GhTransport {
@@ -76,14 +116,20 @@ impl GhTransport {
     /// through PATH it is accepted only as an absolute path to an existing regular file.
     pub fn from_env() -> Result<Self> {
         let Some(raw) = std::env::var_os("MOAI_FORGE_GH_BIN") else {
-            return Ok(GhTransport { bin: "gh".into() });
+            return Ok(GhTransport {
+                bin: "gh".into(),
+                timeout: GH_TIMEOUT,
+            });
         };
         let path = std::path::PathBuf::from(&raw);
         let regular = std::fs::metadata(&path)
             .map(|m| m.is_file())
             .unwrap_or(false);
         match path.to_str() {
-            Some(s) if path.is_absolute() && regular => Ok(GhTransport { bin: s.into() }),
+            Some(s) if path.is_absolute() && regular => Ok(GhTransport {
+                bin: s.into(),
+                timeout: GH_TIMEOUT,
+            }),
             _ => Err("MOAI_FORGE_GH_BIN must be an absolute path to an existing file".into()),
         }
     }
@@ -139,22 +185,53 @@ impl Transport for GhTransport {
         cmd.stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
+        // Its own process group, so anything gh starts ends with it.
+        #[cfg(unix)]
+        std::os::unix::process::CommandExt::process_group(&mut cmd, 0);
+        let started = Instant::now();
         let mut child = cmd
             .spawn()
             .map_err(|e| format!("cannot start {}: {}", self.bin, e.kind()))?;
-        if let (Some(body), Some(mut stdin)) = (&req.body, child.stdin.take()) {
-            // Ignore a broken pipe: gh may exit before reading a body it rejects.
-            let _ = stdin.write_all(body.to_string().as_bytes());
+        let stdin = child.stdin.take();
+        if let (Some(body), Some(mut stdin)) = (req.body.clone(), stdin) {
+            // On its own thread: a gh that never reads must not block the bounded wait below.
+            // A broken pipe is ignored: gh may exit before reading a body it rejects.
+            std::thread::spawn(move || {
+                let _ = stdin.write_all(body.to_string().as_bytes());
+            });
         }
-        let out = child
-            .wait_with_output()
-            .map_err(|_| "gh did not finish".to_string())?;
-        let stdout = String::from_utf8_lossy(&out.stdout);
+        let out = drain(child.stdout.take());
+        let err = drain(child.stderr.take());
+        let status = loop {
+            match child.try_wait() {
+                Ok(Some(s)) => break Some(s),
+                Ok(None) if started.elapsed() >= self.timeout => break None,
+                Ok(None) => std::thread::sleep(Duration::from_millis(10)),
+                Err(_) => break None,
+            }
+        };
+        if status.is_none() {
+            let _ = child.kill();
+            let _ = child.wait();
+        }
+        // Whatever gh left running (children holding the pipes) ends with it.
+        end_group(child.id());
+        if status.is_none() {
+            return Err(format!(
+                "gh did not answer: timed out after {} ms",
+                self.timeout.as_millis()
+            ));
+        }
+        let stdout = out
+            .recv_timeout(OUTPUT_GRACE)
+            .map_err(|_| "gh output did not close after gh exited".to_string())?;
+        let stderr = err.recv_timeout(OUTPUT_GRACE).unwrap_or_default();
+        let stdout = String::from_utf8_lossy(&stdout);
         parse_gh_output(&stdout).ok_or_else(|| {
-            let err = redact(String::from_utf8_lossy(&out.stderr).trim());
+            let err = redact(String::from_utf8_lossy(&stderr).trim());
             format!(
                 "gh api returned no HTTP response (exit {:?}): {}",
-                out.status.code(),
+                status.and_then(|s| s.code()),
                 err.chars().take(200).collect::<String>()
             )
         })

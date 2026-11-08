@@ -140,7 +140,8 @@ Error kinds:
 - From the 00-D vocabulary: `invalid_input`, `input_too_large`, `unsupported_protocol_version` (request `schema_version`), `not_found` (404 or a missing project directory), `io` (poll state) and `internal`.
 - Added to `contract::Kind` by this adapter (#1990 HOLD-C2 / REQ-01C-02 (r27) allows additions when they are recorded):
   - `blocked`: authentication failed (401), access denied (403), or a rate limit outlived the retry budget. In the CLI envelope `blocked` is always `retryable: false`: resending the same request at once cannot succeed, because it needs new credentials, a permission change, or waiting until the reset. Only the library value `ForgeError.retryable` is `true` for the rate-limit case, so a library caller knows waiting will help. That value is not in the envelope.
-  - `transport`: gh is missing, gave no HTTP response, or the response had an unexpected status. It is `retryable: true`.
+  - `transport`: gh is missing, gave no HTTP response, did not answer within the call bound, or the response had an unexpected status. It is `retryable: true`.
+- Call bound (#2048): each `gh api` call runs in its own process group and is bounded by `GhTransport.timeout` (`GH_TIMEOUT`, 60 s, unmeasured). Past it the whole group is ended, so a grandchild holding the output pipes cannot keep the caller waiting, and the call fails as `gh transport: gh did not answer: timed out after <ms> ms`. Output readers get 2 s after gh ends. Callers that already treat a transport failure on a write as uncertain (07-B, 07-C) see this as one more transport failure. Test: `tests/forge_cli.rs` `transport_times_out_on_stalled_gh`.
 - Every forge message carries its kind's phrase (`forge blocked: `, `gh transport: `, …). The unit test `every_error_kind_matches_the_contract_classifier` checks that `ForgeError::kind` and `classify(message)` agree, and the contract table test lists the forge messages.
 
 What one run does:
