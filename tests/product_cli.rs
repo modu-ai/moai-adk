@@ -20,13 +20,28 @@ fn cli(args: &[&str], input: &Value) -> std::process::Output {
         .stderr(Stdio::piped())
         .spawn()
         .unwrap();
-    child
+    // The child may validate its arguments and exit before reading stdin; on a fast
+    // runner that surfaces as EPIPE here. The tests assert the child's exit status and
+    // output, never that the stdin write completed, so only a broken pipe is tolerated.
+    match child
         .stdin
         .take()
         .unwrap()
         .write_all(input.to_string().as_bytes())
-        .unwrap();
+    {
+        Ok(()) => {}
+        Err(e) if e.kind() == std::io::ErrorKind::BrokenPipe => {}
+        Err(e) => panic!("stdin write failed: {e}"),
+    }
     child.wait_with_output().unwrap()
+}
+#[test]
+fn stdin_broken_pipe_does_not_panic() {
+    // `package-inspect` never reads stdin and fails fast on a missing path, so a
+    // payload larger than the pipe buffer reproduces the runner-only EPIPE.
+    let big = json!({"pad": "x".repeat(256 * 1024)});
+    let out = cli(&["package-inspect", "/nonexistent/moai-rc-pipe-test"], &big);
+    assert!(!out.status.success());
 }
 fn create(root: &TempDir, input: &Value) -> Value {
     let p = root.path().to_str().unwrap();
