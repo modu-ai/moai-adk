@@ -264,7 +264,9 @@ Flags are composed only from options documented by the host (checked 2026-11-08)
 
 ### Launcher syntax (00-F #2028)
 
-`moai-cli -l | -a [cc|glm|codex]` and `moai-cli cc|glm|codex -l|-a [--name N] [--model M] [--effort E] [--no-advisor] [--permissions] [--dry-run] [PROMPT]` build the same session request. `-l` is the leader (name `leader`); `-a` is an agent (name from `--name`, otherwise `agent-1` with a note — automatic numbering is HOLD). The default host is `cc`. Ambiguous calls (`-l -a`, `-l cc`, a host word without `-l|-a`, an unknown host, no arguments) fail instead of guessing. Output adds `name` and `env_keys` (variable names only) to the `session` JSON.
+`moai-cli -l | -a [cc|glm|codex]` and `moai-cli cc|glm|codex -l|-a [--name N] [--model M] [--effort E] [--no-advisor] [--permissions] [--dry-run] [PROMPT]` build the same session request. `-l` is the leader (name `leader`); `-a` is an agent (name from `--name`, otherwise `agent-1` with a note — automatic numbering is HOLD). The default host is `cc`. Ambiguous calls (`-l -a`, `-l cc`, an unknown host, no arguments) fail instead of guessing. Output adds `name` and `env_keys` (variable names only) to the `session` JSON.
+
+A host word without `-l|-a` (`moai-cli cc|glm|codex [options] [PROMPT]`, Issue #2053, user decision ADK_ROLELESS_CC_20261108_01) opens a plain host session. No role is guessed, and `--dry-run` shows `role: null` and `name: null`. No session name is added (no `--name`, and codex gets no name line); an explicit `--name` is passed through. `--dangerously-skip-permissions` is never added, so this path brings no new permission bypass. The glm token check and env are unchanged. HOLD-L1 decides whether the launcher's Claude defaults apply without a role. It is one constant, `session::ROLELESS_LAUNCHER_DEFAULTS`. The interim value is option A (`--model opus --effort medium --advisor fable`); option B would pass none of these flags and leave the user's Claude settings in charge. `-l|-a` argv are unchanged byte for byte. Tests: `tests/launcher_roleless.rs`, `--dry-run` only. A real host start is not_run.
 
 | Host | Composed command | Notes |
 | --- | --- | --- |
