@@ -150,10 +150,7 @@ fn marker(local: &str, attempt: u32) -> String {
 }
 
 /// Design-22 shaped tasks file. T-3 is never selected; its text must never leave.
-const TASKS: &str = "# Tasks\nProject: demo\nOwner: user\nRevision: 3\nBase digest: sha256:00\n\n\
-- [ ] T-1 · Add login page · state=ready · acceptance=form renders\n  - Evidence: not_run\n  - Next: write the view\n  - External issue: none\n  - disclosure_review: approved\n\
-- [ ] T-3 · Unselected payroll cleanup · state=ready · acceptance=none\n  - Next: private-note-unselected\n  - External issue: none\n  - disclosure_review: approved\n\
-- [ ] T-4 · Fix flaky upload test · state=ready · acceptance=green\n  - Evidence: not_run\n  - disclosure_review: approved\n";
+const TASKS: &str = include_str!("fixtures/forge/promote/tasks_three.md");
 
 fn project_with(tasks: &str) -> (tempfile::TempDir, PathBuf) {
     let tmp = tempfile::tempdir().unwrap();
@@ -227,11 +224,22 @@ fn created(number: i64, title: &str, local: &str, attempt: u32) -> Value {
     )
 }
 
+/// T-4 as GitHub would echo it after creation.
+fn created_t4(number: i64) -> Value {
+    issue(
+        number,
+        "Fix flaky upload test",
+        &format!("- acceptance: green\n\n{}", marker("T-4", 1)),
+    )
+}
+
 #[test]
 fn promote_only_selected_after_preview() {
+    // Three tasks, two selected (TASK-FORGE-MIGRATE).
     let (_tmp, project) = project_with(TASKS);
+    let tasks_before = fs::read(project.join("tasks.md")).unwrap();
     let req = request(&["T-1", "T-4"]);
-    let existing = json!([issue(5, "Fix flaky upload test", "reported earlier")]);
+    let existing = json!([issue(5, "Unrelated report", "reported earlier")]);
     let (result, digest) = preview_digest(&project, &req, vec![repo(), list(existing.clone())]);
     let rows = result["rows"].as_array().unwrap();
     assert_eq!(
@@ -241,10 +249,7 @@ fn promote_only_selected_after_preview() {
         ["T-1", "T-4"]
     );
     assert_eq!(rows[0]["state"], "preview_only");
-    assert_eq!(
-        rows[1]["state"], "duplicate_candidate",
-        "display only (REQ-PROMO-009)"
-    );
+    assert_eq!(rows[1]["state"], "preview_only");
     assert_eq!(
         rows[0]["target"],
         json!({"owner": "acme", "repo": "widgets", "visibility": "private"})
@@ -294,12 +299,23 @@ fn promote_only_selected_after_preview() {
             Reply::Resp(status(201, created(12, "Add login page", "T-1", 1))),
         ),
         issue_get(12, created(12, "Add login page", "T-1", 1)),
+        (
+            "POST",
+            CREATE.into(),
+            Reply::Resp(status(201, created_t4(13))),
+        ),
+        issue_get(13, created_t4(13)),
     ]);
     let c = FakeClock::new();
     let out = promote::apply(&project, &req, &digest, "ref-2009", &client(&t, &c)).unwrap();
     assert_eq!(t.remaining(), 0);
+    assert_eq!(
+        t.methods(),
+        ["GET", "GET", "POST", "GET", "POST", "GET"],
+        "each create is confirmed by GET"
+    );
     let posts = t.posts();
-    assert_eq!(posts.len(), 1, "only the preview_only row is created");
+    assert_eq!(posts.len(), 2);
     let body = posts[0].body.as_ref().unwrap();
     assert_eq!(body["title"], "Add login page");
     let sent = body["body"].as_str().unwrap();
@@ -316,15 +332,48 @@ fn promote_only_selected_after_preview() {
         out["outcomes"][0],
         json!({"local_id": "T-1", "outcome": "published", "number": 12})
     );
-    assert_eq!(out["outcomes"][1]["outcome"], "not_sent");
+    assert_eq!(out["outcomes"][1]["outcome"], "published");
     let map = promotions(&project).unwrap();
-    assert_eq!(map["records"].as_array().unwrap().len(), 1);
-    assert_eq!(map["records"][0]["state"], "published");
+    let records = map["records"].as_array().unwrap();
     assert_eq!(
-        map["records"][0]["remote"]["issue"],
+        records.len(),
+        2,
+        "two mappings, none for the unselected task"
+    );
+    assert!(records.iter().all(|r| r["state"] == "published"));
+    assert_eq!(
+        records[0]["remote"]["issue"],
         json!({"id": 9012, "node_id": "I_12", "number": 12})
     );
-    assert_eq!(map["records"][0]["remote"]["project"]["repository_id"], 101);
+    assert_eq!(records[1]["remote"]["issue"]["number"], 13);
+    assert_eq!(records[0]["remote"]["project"]["repository_id"], 101);
+    assert!(!map.to_string().contains("T-3"));
+    // PROMO-PRESERVE: the user's tasks.md is never edited; only .moai-cli/forge changes.
+    assert_eq!(fs::read(project.join("tasks.md")).unwrap(), tasks_before);
+    let others: Vec<PathBuf> = files_under(&project)
+        .into_iter()
+        .filter(|p| !p.starts_with(project.join(".moai-cli")))
+        .collect();
+    assert_eq!(others, [project.join("tasks.md")]);
+
+    // A similar title only marks a candidate (REQ-PROMO-009): never linked to the
+    // existing Issue and, as implemented, not created either.
+    let (_tmp2, project2) = project_with(TASKS);
+    let similar = json!([issue(5, "Fix flaky upload test", "reported earlier")]);
+    let req4 = request(&["T-4"]);
+    let (result, digest) = preview_digest(&project2, &req4, vec![repo(), list(similar.clone())]);
+    assert_eq!(result["rows"][0]["state"], "duplicate_candidate");
+    let t = Script::new(vec![repo(), list(similar)]);
+    let out = promote::apply(&project2, &req4, &digest, "ref-2009", &client(&t, &c)).unwrap();
+    assert!(t.posts().is_empty());
+    assert_eq!(
+        out["outcomes"][0],
+        json!({"local_id": "T-4", "outcome": "not_sent", "state": "duplicate_candidate"})
+    );
+    assert!(
+        promotions(&project2).is_none(),
+        "no link to the similar Issue"
+    );
 }
 
 #[test]

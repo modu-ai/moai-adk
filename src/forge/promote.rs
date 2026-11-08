@@ -564,7 +564,7 @@ pub fn apply<T: Transport, C: Clock>(
         .collect();
     let mut outcomes = Vec::new();
     let mut stop: Option<String> = None;
-    let mut last_write: Option<i64> = None;
+    let mut wrote = false;
     let now = || format_utc(client.clock.now());
 
     for row in &pv.rows {
@@ -642,11 +642,10 @@ pub fn apply<T: Transport, C: Clock>(
                     detail: json!({"payload_digest": crate::digest(payload.to_string().as_bytes())}),
                 })?;
                 outbox::save(project, &entry)?;
-                if let Some(prev) = last_write {
-                    let gap = client.clock.now() - prev;
-                    if gap < 1 {
-                        client.clock.sleep((1 - gap) as u64);
-                    }
+                // The clock counts whole seconds, so a full second is slept between writes
+                // rather than trusting a one-second difference that may be milliseconds.
+                if wrote {
+                    client.clock.sleep(1);
                 }
                 let sent = client.send_with_backoff(&HttpRequest {
                     method: "POST".into(),
@@ -657,7 +656,7 @@ pub fn apply<T: Transport, C: Clock>(
                     headers: Default::default(),
                     body: Some(payload),
                 });
-                last_write = Some(client.clock.now());
+                wrote = true;
                 let uncertain = |entry: &mut OutboxEntry, why: String| -> Result<(), ForgeError> {
                     entry.advance(
                         OutboxState::PublishUnknown,
@@ -823,7 +822,7 @@ pub fn apply<T: Transport, C: Clock>(
             .collect();
         return Err(ForgeError::of(
             "partial",
-            format!("partial apply: published {done:?}; {why}"),
+            format!("partial apply: published [{}]; {why}", done.join(", ")),
         ));
     }
     Ok(
