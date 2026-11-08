@@ -245,6 +245,9 @@ pub fn doctor(project: &Path) -> Result<Value> {
 /// so `hooks` is not managed.
 pub const MANAGED_SETTINGS: [&str; 2] = ["outputStyle", "statusLine"];
 
+/// A planned settings object (`None` on conflict) and the conflicting keys.
+pub type SettingsPlan = (Option<Map<String, Value>>, Vec<String>);
+
 /// Three-way plan for the managed keys of a Claude `settings.json` (SETTINGS-PRESERVE).
 /// `baseline` holds what MoAI owned after its last apply, `current` the file now, `desired`
 /// what MoAI wants. A key changes only when the user left it as MoAI owned it; a key the user
@@ -255,7 +258,7 @@ pub fn plan_settings(
     baseline: &Map<String, Value>,
     current: &Map<String, Value>,
     desired: &Map<String, Value>,
-) -> Result<(Option<Map<String, Value>>, Vec<String>)> {
+) -> Result<SettingsPlan> {
     if baseline
         .keys()
         .chain(desired.keys())
