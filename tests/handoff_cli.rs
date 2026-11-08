@@ -70,6 +70,7 @@ fn worktree_id(path: &Path, head: &str) -> WorktreeId {
         git_dir: path.join(".git").to_string_lossy().into_owned(),
         path: path.to_string_lossy().into_owned(),
         head: head.to_string(),
+        branch: None,
     }
 }
 
@@ -668,6 +669,140 @@ fn reconcile_rate_limited_waits() {
     assert_eq!(
         effect["state"], "uncertain",
         "state unchanged until retry-after"
+    );
+}
+
+/// AC-1 (#2126): when the record knows its branch, the pr_create effect is judged from
+/// the narrow `pulls?head=<owner>:<branch>` query — a hit confirms with ZERO full-list
+/// GETs (asserted from the sent log). The `moai-op` spelling matches through the
+/// identity comparison.
+#[test]
+fn reconcile_pr_create_head_query_confirms_without_full_scan() {
+    let tmp = tempfile::tempdir().unwrap();
+    let repo = tmp.path().join("repo");
+    git_repo(&repo);
+    let clock = FakeClock::at(CLOCK0);
+    let marker = "<!-- moai:op pr_create:101:op-9:1 -->";
+    let mut effect = publish_effect("pr_create-101-op-9-1", marker, "uncertain");
+    effect["kind"] = json!("pr_create");
+    let mut record = seed_record(&repo, 35, 1, owner("session", "agent-x"), vec![effect]);
+    record.worktree.branch = Some("issue/2007-06-C-e2".into());
+    let key = record.task_key.clone();
+    let journal = journal_of(&repo);
+    journal.commit("acquire", &record).unwrap();
+
+    let head_url = "https://api.github.com/repos/acme/widgets/pulls?head=acme:issue/2007-06-C-e2&state=all&per_page=100";
+    let full_url = "https://api.github.com/repos/acme/widgets/pulls?state=all&per_page=100";
+    let page = json!([
+        {"number": 77, "state": "open", "body": format!("Implements it\n\n<!-- moai-op pr_create:101:op-9:1 -->")},
+    ]);
+    let t = RecordedTransport::new(vec![exchange("GET", head_url, 200, page)]);
+    let out = effects_reconcile(&journal, &key, None, &t, &clock).unwrap();
+
+    assert_eq!(out["verdict"], "passed");
+    assert_eq!(out["transitions"][0]["to"], "confirmed");
+    assert_eq!(out["transitions"][0]["response_id"], "77");
+    let sent = t.sent.borrow();
+    assert_eq!(sent.len(), 1, "only the head query ran");
+    assert_eq!(sent[0].url, head_url);
+    assert!(
+        !sent.iter().any(|r| r.url == full_url),
+        "AC-1: a head-query hit performs zero full-list GETs"
+    );
+    let events = journal.read_events().unwrap();
+    let effect = events
+        .last()
+        .unwrap()
+        .record
+        .effects
+        .iter()
+        .find(|e| e["operation_id"] == "pr_create-101-op-9-1")
+        .unwrap();
+    assert_eq!(effect["state"], "confirmed");
+}
+
+/// AC-1 fallback (#2126): the head query answering empty falls back to the full scan —
+/// both URLs run, and the full scan's marker confirms.
+#[test]
+fn reconcile_pr_create_head_empty_falls_back_to_full_scan() {
+    let tmp = tempfile::tempdir().unwrap();
+    let repo = tmp.path().join("repo");
+    git_repo(&repo);
+    let clock = FakeClock::at(CLOCK0);
+    let marker = "<!-- moai:op pr_create:101:op-9:1 -->";
+    let mut effect = publish_effect("pr_create-101-op-9-1", marker, "uncertain");
+    effect["kind"] = json!("pr_create");
+    let mut record = seed_record(&repo, 36, 1, owner("session", "agent-x"), vec![effect]);
+    record.worktree.branch = Some("renamed-branch".into());
+    let key = record.task_key.clone();
+    let journal = journal_of(&repo);
+    journal.commit("acquire", &record).unwrap();
+
+    // The branch query answers empty (the PR was made from a different branch), and the
+    // full scan finds the marker.
+    let head_url = "https://api.github.com/repos/acme/widgets/pulls?head=acme:renamed-branch&state=all&per_page=100";
+    let full_url = "https://api.github.com/repos/acme/widgets/pulls?state=all&per_page=100";
+    let t = RecordedTransport::new(vec![
+        exchange("GET", head_url, 200, json!([])),
+        exchange(
+            "GET",
+            full_url,
+            200,
+            json!([{"number": 90, "body": format!("x\n\n<!-- moai-op pr_create:101:op-9:1 -->")}]),
+        ),
+    ]);
+    let out = effects_reconcile(&journal, &key, None, &t, &clock).unwrap();
+    assert_eq!(out["verdict"], "passed");
+    assert_eq!(out["transitions"][0]["to"], "confirmed");
+    assert_eq!(out["transitions"][0]["response_id"], "90");
+    let sent = t.sent.borrow();
+    assert_eq!(sent.len(), 2, "head query, then the full scan");
+    assert_eq!(sent[0].url, head_url);
+    assert_eq!(sent[1].url, full_url);
+}
+
+/// AC-1 ambiguity (#2126): two PRs on the branch carrying the same operation identity —
+/// the winner is unclear, the state stays uncertain, and the full scan is not consulted.
+#[test]
+fn reconcile_pr_create_head_ambiguous_stays_uncertain() {
+    let tmp = tempfile::tempdir().unwrap();
+    let repo = tmp.path().join("repo");
+    git_repo(&repo);
+    let clock = FakeClock::at(CLOCK0);
+    let marker = "<!-- moai:op pr_create:101:op-9:1 -->";
+    let mut effect = publish_effect("pr_create-101-op-9-1", marker, "uncertain");
+    effect["kind"] = json!("pr_create");
+    let mut record = seed_record(&repo, 37, 1, owner("session", "agent-x"), vec![effect]);
+    record.worktree.branch = Some("issue/2007-06-C-e2".into());
+    let key = record.task_key.clone();
+    let journal = journal_of(&repo);
+    journal.commit("acquire", &record).unwrap();
+
+    let head_url = "https://api.github.com/repos/acme/widgets/pulls?head=acme:issue/2007-06-C-e2&state=all&per_page=100";
+    let full_url = "https://api.github.com/repos/acme/widgets/pulls?state=all&per_page=100";
+    let t = RecordedTransport::new(vec![exchange(
+        "GET",
+        head_url,
+        200,
+        json!([
+            {"number": 77, "body": format!("one\n\n<!-- moai-op pr_create:101:op-9:1 -->")},
+            {"number": 78, "body": format!("two\n\n<!-- moai:op pr_create:101:op-9:1 -->")},
+        ]),
+    )]);
+    let before = fs::read(journal_dir(&repo).join("journal.log")).unwrap();
+    let out = effects_reconcile(&journal, &key, None, &t, &clock).unwrap();
+    assert_eq!(out["verdict"], "uncertain");
+    assert!(out["transitions"][0]["why"]
+        .as_str()
+        .unwrap()
+        .contains("ambiguous"));
+    assert!(
+        !t.sent.borrow().iter().any(|r| r.url == full_url),
+        "an ambiguous head answer is not retried against the full list"
+    );
+    assert_eq!(
+        fs::read(journal_dir(&repo).join("journal.log")).unwrap(),
+        before
     );
 }
 

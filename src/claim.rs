@@ -152,6 +152,11 @@ pub struct WorktreeId {
     pub path: String,
     /// Full 40-hex HEAD of the work tree at claim time.
     pub head: String,
+    /// 06-B/2107 additive: the branch name the claim works on (checked against
+    /// `pulls?head=<owner>:<branch>` when reconciling a pr_create effect). Old records
+    /// deserialize unchanged; `None` falls back to the full pull-list scan.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub branch: Option<String>,
 }
 
 /// One claim record (REQ-06A-01). `comment_id`/`claim_token` are the ⑤ fencing token
@@ -342,6 +347,45 @@ fn git_head(work_tree: &str) -> Result<String> {
     }
 }
 
+/// The checked-out branch of the work tree at claim time (#2126) — the name a later
+/// pr_create reconcile can query with `pulls?head=<owner>:<branch>`. `None` on a
+/// detached HEAD (git answers `HEAD`) or anything that is not a plain branch name;
+/// reconcile then falls back to the full pull-list scan.
+fn git_branch(work_tree: &str) -> Result<Option<String>> {
+    let mut cmd = Command::new("git");
+    cmd.arg("--no-optional-locks")
+        .arg("-C")
+        .arg(work_tree)
+        .arg("rev-parse")
+        .arg("--abbrev-ref")
+        .arg("HEAD");
+    identity::scrub_git_env(&mut cmd);
+    let out = cmd
+        .env("GIT_OPTIONAL_LOCKS", "0")
+        .stdin(Stdio::null())
+        .stderr(Stdio::piped())
+        .output()
+        .map_err(|_| "git unavailable".to_string())?;
+    if !out.status.success() {
+        // The HEAD read already classified any real git failure; a missing branch name
+        // is not one — the claim still records, reconcile just loses the shortcut.
+        return Ok(None);
+    }
+    let s = String::from_utf8(out.stdout)
+        .map_err(|_| "non UTF-8 git output")?
+        .trim()
+        .to_string();
+    let plain = !s.is_empty()
+        && s != "HEAD"
+        && s.len() <= 200
+        && !s.chars().any(|c| c.is_control() || c.is_whitespace());
+    if plain {
+        Ok(Some(s))
+    } else {
+        Ok(None)
+    }
+}
+
 fn worktree_id(identity: &Value) -> Result<WorktreeId> {
     let path = identity["work_tree"]
         .as_str()
@@ -357,6 +401,7 @@ fn worktree_id(identity: &Value) -> Result<WorktreeId> {
             .to_string(),
         path: path.to_string(),
         head: git_head(path)?,
+        branch: git_branch(path)?,
     })
 }
 

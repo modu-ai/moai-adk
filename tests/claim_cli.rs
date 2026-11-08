@@ -98,6 +98,7 @@ fn worktree() -> WorktreeId {
         git_dir: "/tmp/repo/.git/worktrees/lane".into(),
         path: "/tmp/repo".into(),
         head: "b".repeat(40),
+        branch: None,
     }
 }
 

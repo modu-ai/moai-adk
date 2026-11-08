@@ -390,6 +390,9 @@ pub fn identity(path: &Path) -> Result<WorktreeId> {
         git_dir: gitdir.into(),
         path: top.into(),
         head: head.into(),
+        // 06-B/2107 additive field; filling it from the created branch is 06-C's own
+        // follow-up (this measure deliberately keeps its single rev-parse shape).
+        branch: None,
     })
 }
 
