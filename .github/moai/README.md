@@ -29,6 +29,10 @@ Progress, verification results and next steps are posted as one owned report com
 
 Existing remote labels (`type:*`, `priority:P0..P3`, `area:*`) are reused and never deleted or recoloured. RC1 adds `host:claude` and `host:codex` because every RC gate is verified per host, and `area:setup` for the SETUP slice. Status is reported in the Issue comment, not through `status:*` labels: labels and assignees are not a distributed lock.
 
+## Language rule
+
+Issue titles, bodies, SPEC text, checklists and form descriptions are written in Korean (user decision 2026-11-08). Code identifiers, commands, paths and file names stay verbatim. The three forms carry a checklist block (all items unchecked at creation) and a decisions block whose options stay `HOLD` until the user decides.
+
 ## Known limits
 
 - GitHub reads Issue forms from the default branch only. Until the RC branch reaches the default branch the forms are inert; `gh issue create --body-file` is used meanwhile. Form rendering on GitHub: not_run.

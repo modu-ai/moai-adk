@@ -63,7 +63,7 @@ flowchart TD
 
 | 계층 | GitHub 표현 | 내용 | 완료 조건 |
 | --- | --- | --- | --- |
-| 릴리스 | milestone `2026.11.0-rc.1` 1개 | 릴리스 gate `00:1286` | gate 전부 + 실패 gate 0건 + RC 승격 행 `00:1296` |
+| 릴리스 | milestone `2026.11.0-rc.1` 1개, 통합 브랜치 `v2026.11.0`(2026-11-08 확정; `2026.11.0-rc.1` ref 보존) | 릴리스 gate `00:1286` | gate 전부 + 실패 gate 0건 + RC 승격 행 `00:1296` |
 | 단계 epic | 상위 Issue 7개(M0~M5 + RC 승격), owner 없음(work queue 아님) | `00:1290-1296` 제공 결과·완료 조건 인용, 포함 F ID, stable acceptance ID, 하위 task 목록 | 하위 task 전부 `closed_as completed` AND acceptance ID 증거 링크(필요조건; Done 정의 `00:585`가 충분조건) |
 | task | sub-issue(native 관계), #1973 형식 = 1 Issue 1 owner | F ID, acceptance ID, SPEC reference(inline AC 또는 snapshot ref+digest), write scope, 검증 명령, Dependencies, evidence | AC별 검증 결과(passed/failed/not_run/blocked/stale) + 독립 AUDIT verdict + PR·통합 revision |
 | SPEC | Issue가 아님 | 작은 task는 본문 inline AC; 큰 변경은 승인 snapshot(Git 경로+digest) + `contracts.lock` pin | digest 고정, 승인 레코드 연결 |

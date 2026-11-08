@@ -1,0 +1,346 @@
+[
+ {
+  "key": "EP-02",
+  "number": 1977,
+  "mode": "replace",
+  "len": 7262,
+  "hash_match": true,
+  "over_limit": false
+ },
+ {
+  "key": "01-A",
+  "number": 1988,
+  "mode": "replace",
+  "len": 16445,
+  "hash_match": true,
+  "over_limit": false
+ },
+ {
+  "key": "01-B",
+  "number": 1989,
+  "mode": "replace",
+  "len": 19049,
+  "hash_match": true,
+  "over_limit": false
+ },
+ {
+  "key": "01-C",
+  "number": 1990,
+  "mode": "replace",
+  "len": 17684,
+  "hash_match": true,
+  "over_limit": false
+ },
+ {
+  "key": "EP-07",
+  "number": 1982,
+  "mode": "replace",
+  "len": 8427,
+  "hash_match": true,
+  "over_limit": false
+ },
+ {
+  "key": "06-A",
+  "number": 2005,
+  "mode": "replace",
+  "len": 18947,
+  "hash_match": true,
+  "over_limit": false
+ },
+ {
+  "key": "06-B",
+  "number": 2006,
+  "mode": "replace",
+  "len": 16321,
+  "hash_match": true,
+  "over_limit": false
+ },
+ {
+  "key": "06-C",
+  "number": 2007,
+  "mode": "replace",
+  "len": 18513,
+  "hash_match": true,
+  "over_limit": false
+ },
+ {
+  "key": "EP-04",
+  "number": 1979,
+  "mode": "replace",
+  "len": 6405,
+  "hash_match": true,
+  "over_limit": false
+ },
+ {
+  "key": "03-A",
+  "number": 1995,
+  "mode": "replace",
+  "len": 15332,
+  "hash_match": true,
+  "over_limit": false
+ },
+ {
+  "key": "03-B",
+  "number": 1996,
+  "mode": "replace",
+  "len": 19702,
+  "hash_match": true,
+  "over_limit": false
+ },
+ {
+  "key": "03-C",
+  "number": 1997,
+  "mode": "replace",
+  "len": 20527,
+  "hash_match": true,
+  "over_limit": false
+ },
+ {
+  "key": "EP-05",
+  "number": 1980,
+  "mode": "replace",
+  "len": 10592,
+  "hash_match": true,
+  "over_limit": false
+ },
+ {
+  "key": "04-A",
+  "number": 1998,
+  "mode": "replace",
+  "len": 20080,
+  "hash_match": true,
+  "over_limit": false
+ },
+ {
+  "key": "04-B",
+  "number": 1999,
+  "mode": "replace",
+  "len": 15915,
+  "hash_match": true,
+  "over_limit": false
+ },
+ {
+  "key": "04-C",
+  "number": 2000,
+  "mode": "replace",
+  "len": 12983,
+  "hash_match": true,
+  "over_limit": false
+ },
+ {
+  "key": "EP-06",
+  "number": 1981,
+  "mode": "replace",
+  "len": 7999,
+  "hash_match": true,
+  "over_limit": false
+ },
+ {
+  "key": "05-A",
+  "number": 2001,
+  "mode": "replace",
+  "len": 14387,
+  "hash_match": true,
+  "over_limit": false
+ },
+ {
+  "key": "05-B",
+  "number": 2002,
+  "mode": "replace",
+  "len": 12685,
+  "hash_match": true,
+  "over_limit": false
+ },
+ {
+  "key": "05-C",
+  "number": 2003,
+  "mode": "replace",
+  "len": 18250,
+  "hash_match": true,
+  "over_limit": false
+ },
+ {
+  "key": "05-D",
+  "number": 2004,
+  "mode": "replace",
+  "len": 16053,
+  "hash_match": true,
+  "over_limit": false
+ },
+ {
+  "key": "EP-01",
+  "number": 1976,
+  "mode": "replace",
+  "len": 6378,
+  "hash_match": true,
+  "over_limit": false
+ },
+ {
+  "key": "00-A",
+  "number": 1985,
+  "mode": "replace",
+  "len": 17957,
+  "hash_match": true,
+  "over_limit": false
+ },
+ {
+  "key": "00-B",
+  "number": 1986,
+  "mode": "replace",
+  "len": 18624,
+  "hash_match": true,
+  "over_limit": false
+ },
+ {
+  "key": "00-D",
+  "number": 1987,
+  "mode": "replace",
+  "len": 27800,
+  "hash_match": true,
+  "over_limit": false
+ },
+ {
+  "key": "EP-09",
+  "number": 1984,
+  "mode": "replace",
+  "len": 6868,
+  "hash_match": true,
+  "over_limit": false
+ },
+ {
+  "key": "08-A",
+  "number": 2012,
+  "mode": "replace",
+  "len": 19218,
+  "hash_match": true,
+  "over_limit": false
+ },
+ {
+  "key": "08-B",
+  "number": 2013,
+  "mode": "replace",
+  "len": 17486,
+  "hash_match": true,
+  "over_limit": false
+ },
+ {
+  "key": "08-C",
+  "number": 2014,
+  "mode": "replace",
+  "len": 17640,
+  "hash_match": true,
+  "over_limit": false
+ },
+ {
+  "key": "08-D",
+  "number": 2015,
+  "mode": "replace",
+  "len": 20563,
+  "hash_match": true,
+  "over_limit": false
+ },
+ {
+  "key": "EP-03",
+  "number": 1978,
+  "mode": "replace",
+  "len": 7737,
+  "hash_match": true,
+  "over_limit": false
+ },
+ {
+  "key": "02-A",
+  "number": 1991,
+  "mode": "replace",
+  "len": 14055,
+  "hash_match": true,
+  "over_limit": false
+ },
+ {
+  "key": "02-B",
+  "number": 1992,
+  "mode": "replace",
+  "len": 15032,
+  "hash_match": true,
+  "over_limit": false
+ },
+ {
+  "key": "02-C",
+  "number": 1993,
+  "mode": "replace",
+  "len": 15366,
+  "hash_match": true,
+  "over_limit": false
+ },
+ {
+  "key": "02-D",
+  "number": 1994,
+  "mode": "replace",
+  "len": 11327,
+  "hash_match": true,
+  "over_limit": false
+ },
+ {
+  "key": "RC-ROOT",
+  "number": 1975,
+  "mode": "replace",
+  "len": 21894,
+  "hash_match": true,
+  "over_limit": false
+ },
+ {
+  "key": "00-C",
+  "number": 1974,
+  "mode": "append",
+  "len": 20418,
+  "hash_match": true,
+  "over_limit": false
+ },
+ {
+  "key": "precursor-1973",
+  "number": 1973,
+  "mode": "append",
+  "len": 20642,
+  "hash_match": true,
+  "over_limit": false
+ },
+ {
+  "key": "EP-08",
+  "number": 1983,
+  "mode": "replace",
+  "len": 9636,
+  "hash_match": true,
+  "over_limit": false
+ },
+ {
+  "key": "07-A",
+  "number": 2008,
+  "mode": "replace",
+  "len": 17158,
+  "hash_match": true,
+  "over_limit": false
+ },
+ {
+  "key": "07-B",
+  "number": 2009,
+  "mode": "replace",
+  "len": 15631,
+  "hash_match": true,
+  "over_limit": false
+ },
+ {
+  "key": "07-C",
+  "number": 2010,
+  "mode": "replace",
+  "len": 15781,
+  "hash_match": true,
+  "over_limit": false
+ },
+ {
+  "key": "07-D",
+  "number": 2011,
+  "mode": "replace",
+  "len": 20998,
+  "hash_match": true,
+  "over_limit": false
+ }
+]

@@ -1,0 +1,2356 @@
+{
+ "schema_version": 1,
+ "repository": "modu-ai/moai-adk",
+ "milestone": "2026.11.0-rc.1",
+ "source": {
+  "page": "https://chatgpt.com/space/page_66acadc28bdc8191875556986da72e6b",
+  "page_updated_at": "2026-11-08T05:42:40.217790Z",
+  "copy_sha256": "5b6c011c014c89e446da102fd53eb67a788ebad8112c8118173840ffe03a627d",
+  "sections": "§4 (9 영역), §5 (32 leaf), §6 공통 포맷"
+ },
+ "issues": {
+  "00-C": {
+   "number": 1974,
+   "id": 6267911411,
+   "node_id": "I_kwDOPw9rL88AAAABdZi88w",
+   "url": "https://github.com/modu-ai/moai-adk/issues/1974",
+   "title": "[task] RC1 부트스트랩: .github Issue form·label·milestone과 저장소 로컬 파일 정책",
+   "reused": true
+  },
+  "precursor-1973": {
+   "number": 1973,
+   "id": 6267911221,
+   "node_id": "I_kwDOPw9rL88AAAABdZi8NQ",
+   "url": "https://github.com/modu-ai/moai-adk/issues/1973",
+   "title": "[task] M1 SETUP slice: AGENTS.md 관리 구간 생성기(agents-plan/apply) + 공통 skill 뼈대(skills/moai)",
+   "reused": true
+  },
+  "RC-ROOT": {
+   "number": 1975,
+   "id": 6268136419,
+   "node_id": "I_kwDOPw9rL88AAAABdZwr4w",
+   "url": "https://github.com/modu-ai/moai-adk/issues/1975",
+   "title": "[RC1] 2026.11.0-rc.1 전체 범위·gate·영역 상위 Issue",
+   "reused": false
+  },
+  "EP-01": {
+   "number": 1976,
+   "id": 6268136682,
+   "node_id": "I_kwDOPw9rL88AAAABdZws6g",
+   "url": "https://github.com/modu-ai/moai-adk/issues/1976",
+   "title": "[RC1][EP-01] 기준선과 계약",
+   "reused": false
+  },
+  "EP-02": {
+   "number": 1977,
+   "id": 6268136939,
+   "node_id": "I_kwDOPw9rL88AAAABdZwt6w",
+   "url": "https://github.com/modu-ai/moai-adk/issues/1977",
+   "title": "[RC1][EP-02] Rust 실행과 저장",
+   "reused": false
+  },
+  "EP-03": {
+   "number": 1978,
+   "id": 6268137141,
+   "node_id": "I_kwDOPw9rL88AAAABdZwutQ",
+   "url": "https://github.com/modu-ai/moai-adk/issues/1978",
+   "title": "[RC1][EP-03] 공통 skill과 host",
+   "reused": false
+  },
+  "EP-04": {
+   "number": 1979,
+   "id": 6268137390,
+   "node_id": "I_kwDOPw9rL88AAAABdZwvrg",
+   "url": "https://github.com/modu-ai/moai-adk/issues/1979",
+   "title": "[RC1][EP-04] 최초 설정과 맞춤 생성",
+   "reused": false
+  },
+  "EP-05": {
+   "number": 1980,
+   "id": 6268137588,
+   "node_id": "I_kwDOPw9rL88AAAABdZwwdA",
+   "url": "https://github.com/modu-ai/moai-adk/issues/1980",
+   "title": "[RC1][EP-05] 설치와 UPDATE",
+   "reused": false
+  },
+  "EP-06": {
+   "number": 1981,
+   "id": 6268137843,
+   "node_id": "I_kwDOPw9rL88AAAABdZwxcw",
+   "url": "https://github.com/modu-ai/moai-adk/issues/1981",
+   "title": "[RC1][EP-06] PLAN RUN VERIFY AUDIT",
+   "reused": false
+  },
+  "EP-07": {
+   "number": 1982,
+   "id": 6268138063,
+   "node_id": "I_kwDOPw9rL88AAAABdZwyTw",
+   "url": "https://github.com/modu-ai/moai-adk/issues/1982",
+   "title": "[RC1][EP-07] 실행 소유권과 통합",
+   "reused": false
+  },
+  "EP-08": {
+   "number": 1983,
+   "id": 6268138263,
+   "node_id": "I_kwDOPw9rL88AAAABdZwzFw",
+   "url": "https://github.com/modu-ai/moai-adk/issues/1983",
+   "title": "[RC1][EP-08] Forge 보고와 판단 context",
+   "reused": false
+  },
+  "EP-09": {
+   "number": 1984,
+   "id": 6268138513,
+   "node_id": "I_kwDOPw9rL88AAAABdZw0EQ",
+   "url": "https://github.com/modu-ai/moai-adk/issues/1984",
+   "title": "[RC1][EP-09] RC 인증과 문서",
+   "reused": false
+  },
+  "00-A": {
+   "number": 1985,
+   "id": 6268138743,
+   "node_id": "I_kwDOPw9rL88AAAABdZw09w",
+   "url": "https://github.com/modu-ai/moai-adk/issues/1985",
+   "title": "[RC1][기준선과 계약] 00-A 기존 RC와 legacy 자산 기준선 대조",
+   "reused": false
+  },
+  "00-B": {
+   "number": 1986,
+   "id": 6268138965,
+   "node_id": "I_kwDOPw9rL88AAAABdZw11Q",
+   "url": "https://github.com/modu-ai/moai-adk/issues/1986",
+   "title": "[RC1][기준선과 계약] 00-B 기존 GitHub 설정과 작업 목록 대조",
+   "reused": false
+  },
+  "00-D": {
+   "number": 1987,
+   "id": 6268139181,
+   "node_id": "I_kwDOPw9rL88AAAABdZw2rQ",
+   "url": "https://github.com/modu-ai/moai-adk/issues/1987",
+   "title": "[RC1][기준선과 계약] 00-D 공통 protocol과 상태 의미 고정",
+   "reused": false
+  },
+  "01-A": {
+   "number": 1988,
+   "id": 6268139383,
+   "node_id": "I_kwDOPw9rL88AAAABdZw3dw",
+   "url": "https://github.com/modu-ai/moai-adk/issues/1988",
+   "title": "[RC1][Rust 실행과 저장] 01-A Rust 파일 resolver와 작업 identity 구현",
+   "reused": false
+  },
+  "01-B": {
+   "number": 1989,
+   "id": 6268139608,
+   "node_id": "I_kwDOPw9rL88AAAABdZw4WA",
+   "url": "https://github.com/modu-ai/moai-adk/issues/1989",
+   "title": "[RC1][Rust 실행과 저장] 01-B 파일 적용과 rollback receipt 구현",
+   "reused": false
+  },
+  "01-C": {
+   "number": 1990,
+   "id": 6268139804,
+   "node_id": "I_kwDOPw9rL88AAAABdZw5HA",
+   "url": "https://github.com/modu-ai/moai-adk/issues/1990",
+   "title": "[RC1][Rust 실행과 저장] 01-C CLI와 선택 MCP의 동일 계약 연결",
+   "reused": false
+  },
+  "02-A": {
+   "number": 1991,
+   "id": 6268140001,
+   "node_id": "I_kwDOPw9rL88AAAABdZw54Q",
+   "url": "https://github.com/modu-ai/moai-adk/issues/1991",
+   "title": "[RC1][공통 skill과 host] 02-A 단일 MoAI router와 workflow 재설계",
+   "reused": false
+  },
+  "02-B": {
+   "number": 1992,
+   "id": 6268140209,
+   "node_id": "I_kwDOPw9rL88AAAABdZw6sQ",
+   "url": "https://github.com/modu-ai/moai-adk/issues/1992",
+   "title": "[RC1][공통 skill과 host] 02-B Claude 발견 호출과 native adapter 검증",
+   "reused": false
+  },
+  "02-C": {
+   "number": 1993,
+   "id": 6268140418,
+   "node_id": "I_kwDOPw9rL88AAAABdZw7gg",
+   "url": "https://github.com/modu-ai/moai-adk/issues/1993",
+   "title": "[RC1][공통 skill과 host] 02-C Codex Desktop 발견 호출과 adapter 검증",
+   "reused": false
+  },
+  "02-D": {
+   "number": 1994,
+   "id": 6268140632,
+   "node_id": "I_kwDOPw9rL88AAAABdZw8WA",
+   "url": "https://github.com/modu-ai/moai-adk/issues/1994",
+   "title": "[RC1][공통 skill과 host] 02-D ZCode 지원표와 adapter gap 검증",
+   "reused": false
+  },
+  "03-A": {
+   "number": 1995,
+   "id": 6268140839,
+   "node_id": "I_kwDOPw9rL88AAAABdZw9Jw",
+   "url": "https://github.com/modu-ai/moai-adk/issues/1995",
+   "title": "[RC1][최초 설정과 맞춤 생성] 03-A 최초 딥 인터뷰 profile 구현",
+   "reused": false
+  },
+  "03-B": {
+   "number": 1996,
+   "id": 6268141075,
+   "node_id": "I_kwDOPw9rL88AAAABdZw-Ew",
+   "url": "https://github.com/modu-ai/moai-adk/issues/1996",
+   "title": "[RC1][최초 설정과 맞춤 생성] 03-B 외부 skill 탐색 검토와 provenance 구현",
+   "reused": false
+  },
+  "03-C": {
+   "number": 1997,
+   "id": 6268141303,
+   "node_id": "I_kwDOPw9rL88AAAABdZw-9w",
+   "url": "https://github.com/modu-ai/moai-adk/issues/1997",
+   "title": "[RC1][최초 설정과 맞춤 생성] 03-C 프로젝트별 맞춤 파일 생성 구현",
+   "reused": false
+  },
+  "04-A": {
+   "number": 1998,
+   "id": 6268141506,
+   "node_id": "I_kwDOPw9rL88AAAABdZw_wg",
+   "url": "https://github.com/modu-ai/moai-adk/issues/1998",
+   "title": "[RC1][설치와 UPDATE] 04-A moai-cli와 Go의 설치 세대 분리",
+   "reused": false
+  },
+  "04-B": {
+   "number": 1999,
+   "id": 6268141706,
+   "node_id": "I_kwDOPw9rL88AAAABdZxAig",
+   "url": "https://github.com/modu-ai/moai-adk/issues/1999",
+   "title": "[RC1][설치와 UPDATE] 04-B 모든 설치 host UPDATE 구현",
+   "reused": false
+  },
+  "04-C": {
+   "number": 2000,
+   "id": 6268141983,
+   "node_id": "I_kwDOPw9rL88AAAABdZxBnw",
+   "url": "https://github.com/modu-ai/moai-adk/issues/2000",
+   "title": "[RC1][설치와 UPDATE] 04-C UPDATE 부분 실패와 복구 검증",
+   "reused": false
+  },
+  "05-A": {
+   "number": 2001,
+   "id": 6268142217,
+   "node_id": "I_kwDOPw9rL88AAAABdZxCiQ",
+   "url": "https://github.com/modu-ai/moai-adk/issues/2001",
+   "title": "[RC1][PLAN RUN VERIFY AUDIT] 05-A GEARS와 legacy EARS 요구 계약 구현",
+   "reused": false
+  },
+  "05-B": {
+   "number": 2002,
+   "id": 6268142454,
+   "node_id": "I_kwDOPw9rL88AAAABdZxDdg",
+   "url": "https://github.com/modu-ai/moai-adk/issues/2002",
+   "title": "[RC1][PLAN RUN VERIFY AUDIT] 05-B PLAN과 task DAG admission 구현",
+   "reused": false
+  },
+  "05-C": {
+   "number": 2003,
+   "id": 6268142659,
+   "node_id": "I_kwDOPw9rL88AAAABdZxEQw",
+   "url": "https://github.com/modu-ai/moai-adk/issues/2003",
+   "title": "[RC1][PLAN RUN VERIFY AUDIT] 05-C RUN 방법론과 실제 VERIFY 연결",
+   "reused": false
+  },
+  "05-D": {
+   "number": 2004,
+   "id": 6268142884,
+   "node_id": "I_kwDOPw9rL88AAAABdZxFJA",
+   "url": "https://github.com/modu-ai/moai-adk/issues/2004",
+   "title": "[RC1][PLAN RUN VERIFY AUDIT] 05-D 독립 AUDIT와 완료 admission 구현",
+   "reused": false
+  },
+  "06-A": {
+   "number": 2005,
+   "id": 6268143192,
+   "node_id": "I_kwDOPw9rL88AAAABdZxGWA",
+   "url": "https://github.com/modu-ai/moai-adk/issues/2005",
+   "title": "[RC1][실행 소유권과 통합] 06-A 단일 리더와 Issue claim 계약 구현",
+   "reused": false
+  },
+  "06-B": {
+   "number": 2006,
+   "id": 6268143400,
+   "node_id": "I_kwDOPw9rL88AAAABdZxHKA",
+   "url": "https://github.com/modu-ai/moai-adk/issues/2006",
+   "title": "[RC1][실행 소유권과 통합] 06-B 중단 재조회와 명시 handoff 검증",
+   "reused": false
+  },
+  "06-C": {
+   "number": 2007,
+   "id": 6268143620,
+   "node_id": "I_kwDOPw9rL88AAAABdZxIBA",
+   "url": "https://github.com/modu-ai/moai-adk/issues/2007",
+   "title": "[RC1][실행 소유권과 통합] 06-C 세션별 worktree와 PR 연결 구현",
+   "reused": false
+  },
+  "07-A": {
+   "number": 2008,
+   "id": 6268143841,
+   "node_id": "I_kwDOPw9rL88AAAABdZxI4Q",
+   "url": "https://github.com/modu-ai/moai-adk/issues/2008",
+   "title": "[RC1][Forge 보고와 판단 context] 07-A GitHub TODO와 polling adapter 구현",
+   "reused": false
+  },
+  "07-B": {
+   "number": 2009,
+   "id": 6268144054,
+   "node_id": "I_kwDOPw9rL88AAAABdZxJtg",
+   "url": "https://github.com/modu-ai/moai-adk/issues/2009",
+   "title": "[RC1][Forge 보고와 판단 context] 07-B 로컬 TODO 선택 승격 구현",
+   "reused": false
+  },
+  "07-C": {
+   "number": 2010,
+   "id": 6268144304,
+   "node_id": "I_kwDOPw9rL88AAAABdZxKsA",
+   "url": "https://github.com/modu-ai/moai-adk/issues/2010",
+   "title": "[RC1][Forge 보고와 판단 context] 07-C 간결 보고와 artifact 참조 구현",
+   "reused": false
+  },
+  "07-D": {
+   "number": 2011,
+   "id": 6268144562,
+   "node_id": "I_kwDOPw9rL88AAAABdZxLsg",
+   "url": "https://github.com/modu-ai/moai-adk/issues/2011",
+   "title": "[RC1][Forge 보고와 판단 context] 07-D native 판단과 context 기본 연결",
+   "reused": false
+  },
+  "08-A": {
+   "number": 2012,
+   "id": 6268144769,
+   "node_id": "I_kwDOPw9rL88AAAABdZxMgQ",
+   "url": "https://github.com/modu-ai/moai-adk/issues/2012",
+   "title": "[RC1][RC 인증과 문서] 08-A 최신 base 통합과 SYNC 연결",
+   "reused": false
+  },
+  "08-B": {
+   "number": 2013,
+   "id": 6268144983,
+   "node_id": "I_kwDOPw9rL88AAAABdZxNVw",
+   "url": "https://github.com/modu-ai/moai-adk/issues/2013",
+   "title": "[RC1][RC 인증과 문서] 08-B 검증된 .github를 Rust 템플릿으로 승격",
+   "reused": false
+  },
+  "08-C": {
+   "number": 2014,
+   "id": 6268145224,
+   "node_id": "I_kwDOPw9rL88AAAABdZxOSA",
+   "url": "https://github.com/modu-ai/moai-adk/issues/2014",
+   "title": "[RC1][RC 인증과 문서] 08-C RC host OS E2E와 restore",
+   "reused": false
+  },
+  "08-D": {
+   "number": 2015,
+   "id": 6268145436,
+   "node_id": "I_kwDOPw9rL88AAAABdZxPHA",
+   "url": "https://github.com/modu-ai/moai-adk/issues/2015",
+   "title": "[RC1][RC 인증과 문서] 08-D 문서 지원표와 release 검토",
+   "reused": false
+  },
+  "04-D": {
+   "number": 2016,
+   "id": 6268637297,
+   "node_id": "I_kwDOPw9rL88AAAABdaPQcQ",
+   "url": "https://github.com/modu-ai/moai-adk/issues/2016",
+   "title": "[RC1][설치와 UPDATE] 04-D Go 사용자 마이그레이션(bridge): moai update(Go) → moai-cli 설치·상태 이전·Go 제거",
+   "reused": false,
+   "created_by": "user approval 2026-11-08 (new issue 04-D)"
+  }
+ },
+ "links": [
+  {
+   "tag": "RC-ROOT>EP-01",
+   "parent": 1975,
+   "child": 1976,
+   "status": "linked"
+  },
+  {
+   "tag": "RC-ROOT>EP-02",
+   "parent": 1975,
+   "child": 1977,
+   "status": "linked"
+  },
+  {
+   "tag": "RC-ROOT>EP-03",
+   "parent": 1975,
+   "child": 1978,
+   "status": "linked"
+  },
+  {
+   "tag": "RC-ROOT>EP-04",
+   "parent": 1975,
+   "child": 1979,
+   "status": "linked"
+  },
+  {
+   "tag": "RC-ROOT>EP-05",
+   "parent": 1975,
+   "child": 1980,
+   "status": "linked"
+  },
+  {
+   "tag": "RC-ROOT>EP-06",
+   "parent": 1975,
+   "child": 1981,
+   "status": "linked"
+  },
+  {
+   "tag": "RC-ROOT>EP-07",
+   "parent": 1975,
+   "child": 1982,
+   "status": "linked"
+  },
+  {
+   "tag": "RC-ROOT>EP-08",
+   "parent": 1975,
+   "child": 1983,
+   "status": "linked"
+  },
+  {
+   "tag": "RC-ROOT>EP-09",
+   "parent": 1975,
+   "child": 1984,
+   "status": "linked"
+  },
+  {
+   "tag": "EP-01>00-A",
+   "parent": 1976,
+   "child": 1985,
+   "status": "linked"
+  },
+  {
+   "tag": "EP-01>00-B",
+   "parent": 1976,
+   "child": 1986,
+   "status": "linked"
+  },
+  {
+   "tag": "EP-01>00-C",
+   "parent": 1976,
+   "child": 1974,
+   "status": "linked"
+  },
+  {
+   "tag": "EP-01>00-D",
+   "parent": 1976,
+   "child": 1987,
+   "status": "linked"
+  },
+  {
+   "tag": "EP-02>01-A",
+   "parent": 1977,
+   "child": 1988,
+   "status": "linked"
+  },
+  {
+   "tag": "EP-02>01-B",
+   "parent": 1977,
+   "child": 1989,
+   "status": "linked"
+  },
+  {
+   "tag": "EP-02>01-C",
+   "parent": 1977,
+   "child": 1990,
+   "status": "linked"
+  },
+  {
+   "tag": "EP-03>02-A",
+   "parent": 1978,
+   "child": 1991,
+   "status": "linked"
+  },
+  {
+   "tag": "EP-03>02-B",
+   "parent": 1978,
+   "child": 1992,
+   "status": "linked"
+  },
+  {
+   "tag": "EP-03>02-C",
+   "parent": 1978,
+   "child": 1993,
+   "status": "linked"
+  },
+  {
+   "tag": "EP-03>02-D",
+   "parent": 1978,
+   "child": 1994,
+   "status": "linked"
+  },
+  {
+   "tag": "EP-04>03-A",
+   "parent": 1979,
+   "child": 1995,
+   "status": "linked"
+  },
+  {
+   "tag": "EP-04>03-B",
+   "parent": 1979,
+   "child": 1996,
+   "status": "linked"
+  },
+  {
+   "tag": "EP-04>03-C",
+   "parent": 1979,
+   "child": 1997,
+   "status": "linked"
+  },
+  {
+   "tag": "EP-05>04-A",
+   "parent": 1980,
+   "child": 1998,
+   "status": "linked"
+  },
+  {
+   "tag": "EP-05>04-B",
+   "parent": 1980,
+   "child": 1999,
+   "status": "linked"
+  },
+  {
+   "tag": "EP-05>04-C",
+   "parent": 1980,
+   "child": 2000,
+   "status": "linked"
+  },
+  {
+   "tag": "EP-06>05-A",
+   "parent": 1981,
+   "child": 2001,
+   "status": "linked"
+  },
+  {
+   "tag": "EP-06>05-B",
+   "parent": 1981,
+   "child": 2002,
+   "status": "linked"
+  },
+  {
+   "tag": "EP-06>05-C",
+   "parent": 1981,
+   "child": 2003,
+   "status": "linked"
+  },
+  {
+   "tag": "EP-06>05-D",
+   "parent": 1981,
+   "child": 2004,
+   "status": "linked"
+  },
+  {
+   "tag": "EP-07>06-A",
+   "parent": 1982,
+   "child": 2005,
+   "status": "linked"
+  },
+  {
+   "tag": "EP-07>06-B",
+   "parent": 1982,
+   "child": 2006,
+   "status": "linked"
+  },
+  {
+   "tag": "EP-07>06-C",
+   "parent": 1982,
+   "child": 2007,
+   "status": "linked"
+  },
+  {
+   "tag": "EP-08>07-A",
+   "parent": 1983,
+   "child": 2008,
+   "status": "linked"
+  },
+  {
+   "tag": "EP-08>07-B",
+   "parent": 1983,
+   "child": 2009,
+   "status": "linked"
+  },
+  {
+   "tag": "EP-08>07-C",
+   "parent": 1983,
+   "child": 2010,
+   "status": "linked"
+  },
+  {
+   "tag": "EP-08>07-D",
+   "parent": 1983,
+   "child": 2011,
+   "status": "linked"
+  },
+  {
+   "tag": "EP-09>08-A",
+   "parent": 1984,
+   "child": 2012,
+   "status": "linked"
+  },
+  {
+   "tag": "EP-09>08-B",
+   "parent": 1984,
+   "child": 2013,
+   "status": "linked"
+  },
+  {
+   "tag": "EP-09>08-C",
+   "parent": 1984,
+   "child": 2014,
+   "status": "linked"
+  },
+  {
+   "tag": "EP-09>08-D",
+   "parent": 1984,
+   "child": 2015,
+   "status": "linked"
+  },
+  {
+   "tag": "EP-05>04-D",
+   "parent": 1980,
+   "child": 2016,
+   "status": "linked"
+  }
+ ],
+ "dependencies": [
+  {
+   "tag": "00-D<-00-A",
+   "issue": 1987,
+   "blocked_by": 1985,
+   "status": "linked"
+  },
+  {
+   "tag": "01-A<-00-D",
+   "issue": 1988,
+   "blocked_by": 1987,
+   "status": "linked"
+  },
+  {
+   "tag": "01-B<-01-A",
+   "issue": 1989,
+   "blocked_by": 1988,
+   "status": "linked"
+  },
+  {
+   "tag": "01-C<-00-D",
+   "issue": 1990,
+   "blocked_by": 1987,
+   "status": "linked"
+  },
+  {
+   "tag": "02-A<-00-A",
+   "issue": 1991,
+   "blocked_by": 1985,
+   "status": "linked"
+  },
+  {
+   "tag": "02-A<-00-D",
+   "issue": 1991,
+   "blocked_by": 1987,
+   "status": "linked"
+  },
+  {
+   "tag": "02-B<-02-A",
+   "issue": 1992,
+   "blocked_by": 1991,
+   "status": "linked"
+  },
+  {
+   "tag": "02-B<-01-C",
+   "issue": 1992,
+   "blocked_by": 1990,
+   "status": "linked"
+  },
+  {
+   "tag": "02-C<-02-A",
+   "issue": 1993,
+   "blocked_by": 1991,
+   "status": "linked"
+  },
+  {
+   "tag": "02-C<-01-C",
+   "issue": 1993,
+   "blocked_by": 1990,
+   "status": "linked"
+  },
+  {
+   "tag": "02-D<-02-A",
+   "issue": 1994,
+   "blocked_by": 1991,
+   "status": "linked",
+   "note": "observed on remote after the interrupted run; not recorded by the run itself"
+  },
+  {
+   "tag": "03-A<-01-B",
+   "issue": 1995,
+   "blocked_by": 1989,
+   "status": "linked"
+  },
+  {
+   "tag": "03-A<-02-A",
+   "issue": 1995,
+   "blocked_by": 1991,
+   "status": "linked"
+  },
+  {
+   "tag": "03-B<-03-A",
+   "issue": 1996,
+   "blocked_by": 1995,
+   "status": "linked"
+  },
+  {
+   "tag": "03-C<-03-B",
+   "issue": 1997,
+   "blocked_by": 1996,
+   "status": "linked"
+  },
+  {
+   "tag": "03-C<-01-B",
+   "issue": 1997,
+   "blocked_by": 1989,
+   "status": "linked"
+  },
+  {
+   "tag": "04-A<-01-A",
+   "issue": 1998,
+   "blocked_by": 1988,
+   "status": "linked"
+  },
+  {
+   "tag": "04-A<-01-C",
+   "issue": 1998,
+   "blocked_by": 1990,
+   "status": "linked"
+  },
+  {
+   "tag": "04-B<-04-A",
+   "issue": 1999,
+   "blocked_by": 1998,
+   "status": "linked"
+  },
+  {
+   "tag": "04-B<-02-B",
+   "issue": 1999,
+   "blocked_by": 1992,
+   "status": "linked"
+  },
+  {
+   "tag": "04-B<-02-C",
+   "issue": 1999,
+   "blocked_by": 1993,
+   "status": "linked"
+  },
+  {
+   "tag": "04-B<-01-B",
+   "issue": 1999,
+   "blocked_by": 1989,
+   "status": "linked"
+  },
+  {
+   "tag": "04-C<-04-B",
+   "issue": 2000,
+   "blocked_by": 1999,
+   "status": "linked"
+  },
+  {
+   "tag": "05-A<-00-D",
+   "issue": 2001,
+   "blocked_by": 1987,
+   "status": "linked"
+  },
+  {
+   "tag": "05-B<-05-A",
+   "issue": 2002,
+   "blocked_by": 2001,
+   "status": "linked"
+  },
+  {
+   "tag": "05-C<-05-B",
+   "issue": 2003,
+   "blocked_by": 2002,
+   "status": "linked"
+  },
+  {
+   "tag": "05-C<-01-C",
+   "issue": 2003,
+   "blocked_by": 1990,
+   "status": "linked"
+  },
+  {
+   "tag": "05-D<-05-C",
+   "issue": 2004,
+   "blocked_by": 2003,
+   "status": "linked"
+  },
+  {
+   "tag": "06-A<-00-D",
+   "issue": 2005,
+   "blocked_by": 1987,
+   "status": "linked"
+  },
+  {
+   "tag": "06-A<-01-A",
+   "issue": 2005,
+   "blocked_by": 1988,
+   "status": "linked"
+  },
+  {
+   "tag": "06-B<-06-A",
+   "issue": 2006,
+   "blocked_by": 2005,
+   "status": "linked"
+  },
+  {
+   "tag": "06-C<-06-A",
+   "issue": 2007,
+   "blocked_by": 2005,
+   "status": "linked"
+  },
+  {
+   "tag": "06-C<-05-C",
+   "issue": 2007,
+   "blocked_by": 2003,
+   "status": "linked"
+  },
+  {
+   "tag": "07-A<-00-B",
+   "issue": 2008,
+   "blocked_by": 1986,
+   "status": "linked"
+  },
+  {
+   "tag": "07-A<-00-D",
+   "issue": 2008,
+   "blocked_by": 1987,
+   "status": "linked"
+  },
+  {
+   "tag": "07-B<-07-A",
+   "issue": 2009,
+   "blocked_by": 2008,
+   "status": "linked"
+  },
+  {
+   "tag": "07-C<-07-A",
+   "issue": 2010,
+   "blocked_by": 2008,
+   "status": "linked"
+  },
+  {
+   "tag": "07-C<-05-D",
+   "issue": 2010,
+   "blocked_by": 2004,
+   "status": "linked"
+  },
+  {
+   "tag": "07-D<-02-A",
+   "issue": 2011,
+   "blocked_by": 1991,
+   "status": "linked"
+  },
+  {
+   "tag": "07-D<-05-B",
+   "issue": 2011,
+   "blocked_by": 2002,
+   "status": "linked"
+  },
+  {
+   "tag": "08-A<-06-C",
+   "issue": 2012,
+   "blocked_by": 2007,
+   "status": "linked"
+  },
+  {
+   "tag": "08-A<-07-C",
+   "issue": 2012,
+   "blocked_by": 2010,
+   "status": "linked"
+  },
+  {
+   "tag": "08-B<-00-C",
+   "issue": 2013,
+   "blocked_by": 1974,
+   "status": "linked"
+  },
+  {
+   "tag": "08-B<-03-C",
+   "issue": 2013,
+   "blocked_by": 1997,
+   "status": "linked"
+  },
+  {
+   "tag": "08-C<-04-C",
+   "issue": 2014,
+   "blocked_by": 2000,
+   "status": "linked"
+  },
+  {
+   "tag": "08-C<-05-D",
+   "issue": 2014,
+   "blocked_by": 2004,
+   "status": "linked"
+  },
+  {
+   "tag": "08-C<-08-A",
+   "issue": 2014,
+   "blocked_by": 2012,
+   "status": "linked"
+  },
+  {
+   "tag": "08-C<-08-B",
+   "issue": 2014,
+   "blocked_by": 2013,
+   "status": "linked"
+  },
+  {
+   "tag": "08-D<-08-C",
+   "issue": 2015,
+   "blocked_by": 2014,
+   "status": "linked"
+  },
+  {
+   "tag": "04-D<-04-A",
+   "issue": 2016,
+   "blocked_by": 1998,
+   "status": "linked"
+  },
+  {
+   "tag": "04-D<-04-B",
+   "issue": 2016,
+   "blocked_by": 1999,
+   "status": "linked"
+  }
+ ],
+ "errors": [],
+ "reconciled_at_utc": "2026-11-08T06:05:23Z",
+ "reconcile_note": "Run of 2026-11-08 ~05:56-06:03Z was interrupted twice by permission rejections that arrived after execution started. Remote re-read: 43 issues (2 reused + 41 new), 41 parent links (root->9 areas, areas->32 leaves incl. #1974), 11 blocked_by relations. 38 dependency relations from the approved §5 table remain unlinked; no duplicate or unrecorded issues were found.",
+ "remaining_dependencies": 0,
+ "exception_not_linked": [
+  "00-C<-00-B (#1974 <- #1986): HOLD — retroactive dependency on already-started work; undecided by the user as of 2026-11-08, not linked"
+ ],
+ "verified_at_utc": "2026-11-08T06:10:05Z",
+ "hold_dependencies": 1,
+ "bypass_copy_record": {
+  "path": ".moai-cli/tools/publish_rc1_issues.py",
+  "created": "2026-11-08T06:01 KST 15:01",
+  "deleted": "2026-11-08 15:08:38 KST by rm -rf .moai-cli/tools following the earlier UI answer 'delete', before the later preservation instruction arrived",
+  "recovery": "none performed",
+  "scratchpad_original": "exists; no further writes"
+ },
+ "body_snapshot_before_design": {
+  "taken_at_utc": "2026-11-08T06:23:05Z",
+  "issues": {
+   "00-C": {
+    "number": 1974,
+    "body_sha256": "e04c3ecd95330d9f8259c15389dd3361e14427749ffe4568cef88188198daed1",
+    "body_len": 2350,
+    "updated_at": "2026-11-08T06:10:45Z",
+    "title": "[task] RC1 부트스트랩: .github Issue form·label·milestone과 저장소 로컬 파일 정책"
+   },
+   "precursor-1973": {
+    "number": 1973,
+    "body_sha256": "8d434c9cfa88962bfe1da55c49926733f488602029aebbe08cf9d4820150c9ec",
+    "body_len": 3365,
+    "updated_at": "2026-11-08T05:45:37Z",
+    "title": "[task] M1 SETUP slice: AGENTS.md 관리 구간 생성기(agents-plan/apply) + 공통 skill 뼈대(skills/moai)"
+   },
+   "RC-ROOT": {
+    "number": 1975,
+    "body_sha256": "dc0a6fbcb7ad0c2c0b9171bf84af8aa2d479f737bcc02bf1c3d7c2f90f526933",
+    "body_len": 1683,
+    "updated_at": "2026-11-08T05:55:59Z",
+    "title": "[RC1] 2026.11.0-rc.1 전체 범위·gate·영역 상위 Issue"
+   },
+   "EP-01": {
+    "number": 1976,
+    "body_sha256": "0782e836fd3578c5748de15f669419f32c45b72a6fc51ebe4d8a8f5e0cd1e373",
+    "body_len": 1197,
+    "updated_at": "2026-11-08T05:56:02Z",
+    "title": "[RC1][EP-01] 기준선과 계약"
+   },
+   "EP-02": {
+    "number": 1977,
+    "body_sha256": "e18c8206b9b238715e5f1aa470461e7c2cfb755579cbe43244c70deefa73c4be",
+    "body_len": 1206,
+    "updated_at": "2026-11-08T05:56:04Z",
+    "title": "[RC1][EP-02] Rust 실행과 저장"
+   },
+   "EP-03": {
+    "number": 1978,
+    "body_sha256": "455bc768cf68ebffa779a8aff452ddf48de4e6161fe79fa0e242da522d39c865",
+    "body_len": 1220,
+    "updated_at": "2026-11-08T05:56:06Z",
+    "title": "[RC1][EP-03] 공통 skill과 host"
+   },
+   "EP-04": {
+    "number": 1979,
+    "body_sha256": "158db134443633dc50b172ecd21b7c360765d8d8a2ccdd01b431fb03ffe775ae",
+    "body_len": 1211,
+    "updated_at": "2026-11-08T05:56:08Z",
+    "title": "[RC1][EP-04] 최초 설정과 맞춤 생성"
+   },
+   "EP-05": {
+    "number": 1980,
+    "body_sha256": "16afda1e17278ca0d8a66925c9446778d4ad00d5c2c1075eb9512c553754f20b",
+    "body_len": 1209,
+    "updated_at": "2026-11-08T05:56:11Z",
+    "title": "[RC1][EP-05] 설치와 UPDATE"
+   },
+   "EP-06": {
+    "number": 1981,
+    "body_sha256": "b2d30e57b44997ec410781c8ce788477ec6fd299b4ee836f8bf867ea727fda17",
+    "body_len": 1235,
+    "updated_at": "2026-11-08T05:56:13Z",
+    "title": "[RC1][EP-06] PLAN RUN VERIFY AUDIT"
+   },
+   "EP-07": {
+    "number": 1982,
+    "body_sha256": "10cfa79575d8852fe464eb23cf910f60b076225da1361f0bb00f798618c3b471",
+    "body_len": 1208,
+    "updated_at": "2026-11-08T05:56:15Z",
+    "title": "[RC1][EP-07] 실행 소유권과 통합"
+   },
+   "EP-08": {
+    "number": 1983,
+    "body_sha256": "debc72e0692a6a7ee98d0afb700039335568797ce26f571cd3d1b1fa718af24f",
+    "body_len": 1246,
+    "updated_at": "2026-11-08T05:56:17Z",
+    "title": "[RC1][EP-08] Forge 보고와 판단 context"
+   },
+   "EP-09": {
+    "number": 1984,
+    "body_sha256": "71e934804fa07dfe235aecc082c3a7f26ec07683021737796ea710ca4493b51f",
+    "body_len": 1216,
+    "updated_at": "2026-11-08T05:56:20Z",
+    "title": "[RC1][EP-09] RC 인증과 문서"
+   },
+   "00-A": {
+    "number": 1985,
+    "body_sha256": "fd169f5fcd6757776b60b860a7b28e68e554091111e485994606de88bf6bf107",
+    "body_len": 2014,
+    "updated_at": "2026-11-08T05:56:22Z",
+    "title": "[RC1][기준선과 계약] 00-A 기존 RC와 legacy 자산 기준선 대조"
+   },
+   "00-B": {
+    "number": 1986,
+    "body_sha256": "fc10f3f73030ef7f25a9f648a43bb651899f3e210a2d7cd6dd4b9b854e014b65",
+    "body_len": 2003,
+    "updated_at": "2026-11-08T05:56:24Z",
+    "title": "[RC1][기준선과 계약] 00-B 기존 GitHub 설정과 작업 목록 대조"
+   },
+   "00-D": {
+    "number": 1987,
+    "body_sha256": "4d306f3cafc9faa541ef6e22f9ca2ac04cac01db2e712e7dc5ade5508704fd84",
+    "body_len": 2190,
+    "updated_at": "2026-11-08T05:56:26Z",
+    "title": "[RC1][기준선과 계약] 00-D 공통 protocol과 상태 의미 고정"
+   },
+   "01-A": {
+    "number": 1988,
+    "body_sha256": "b4ba24ea73efce75f0089c6d7137b46081e190977ef84dfa1f34b06ecdba2b4d",
+    "body_len": 2044,
+    "updated_at": "2026-11-08T05:56:29Z",
+    "title": "[RC1][Rust 실행과 저장] 01-A Rust 파일 resolver와 작업 identity 구현"
+   },
+   "01-B": {
+    "number": 1989,
+    "body_sha256": "e759aa9ba6b67ae4e817622bd6f49823827a0562078fbe091f898c1a2cdfc8de",
+    "body_len": 2190,
+    "updated_at": "2026-11-08T05:56:31Z",
+    "title": "[RC1][Rust 실행과 저장] 01-B 파일 적용과 rollback receipt 구현"
+   },
+   "01-C": {
+    "number": 1990,
+    "body_sha256": "6d5340c531e4a419548e5aeffffcc70651003991155b361a4319eb1b33389bee",
+    "body_len": 2172,
+    "updated_at": "2026-11-08T05:56:33Z",
+    "title": "[RC1][Rust 실행과 저장] 01-C CLI와 선택 MCP의 동일 계약 연결"
+   },
+   "02-A": {
+    "number": 1991,
+    "body_sha256": "06b94f40545ee667ec35d60dd8c24262c526d87ffff012fce2a8a73f002e23c4",
+    "body_len": 2188,
+    "updated_at": "2026-11-08T05:56:35Z",
+    "title": "[RC1][공통 skill과 host] 02-A 단일 MoAI router와 workflow 재설계"
+   },
+   "02-B": {
+    "number": 1992,
+    "body_sha256": "d2324e34e6d4bb064b03e843024ee6e44a88e702ae84d9fdd44d531d19cb2df9",
+    "body_len": 2027,
+    "updated_at": "2026-11-08T05:56:37Z",
+    "title": "[RC1][공통 skill과 host] 02-B Claude 발견 호출과 native adapter 검증"
+   },
+   "02-C": {
+    "number": 1993,
+    "body_sha256": "aa50d974f424dbb4ae5e014f8cfbf0c95fdd0e4d5251e31a87092e8766d2f9d6",
+    "body_len": 2016,
+    "updated_at": "2026-11-08T05:56:39Z",
+    "title": "[RC1][공통 skill과 host] 02-C Codex Desktop 발견 호출과 adapter 검증"
+   },
+   "02-D": {
+    "number": 1994,
+    "body_sha256": "4ae78254da79d772c10a04f72286591c4db9384e40670b08c975af302c525c18",
+    "body_len": 2164,
+    "updated_at": "2026-11-08T05:56:41Z",
+    "title": "[RC1][공통 skill과 host] 02-D ZCode 지원표와 adapter gap 검증"
+   },
+   "03-A": {
+    "number": 1995,
+    "body_sha256": "fc4b2d6b39d88d1f473b85a64eafb8b7417ebf4b71b3bf69f402d2951b8a082d",
+    "body_len": 2171,
+    "updated_at": "2026-11-08T05:56:44Z",
+    "title": "[RC1][최초 설정과 맞춤 생성] 03-A 최초 딥 인터뷰 profile 구현"
+   },
+   "03-B": {
+    "number": 1996,
+    "body_sha256": "6482f4814ab947738fd5fad0f8406e7a3541d8d0dea65218bf86b786272c144a",
+    "body_len": 2015,
+    "updated_at": "2026-11-08T05:56:46Z",
+    "title": "[RC1][최초 설정과 맞춤 생성] 03-B 외부 skill 탐색 검토와 provenance 구현"
+   },
+   "03-C": {
+    "number": 1997,
+    "body_sha256": "1ab122d5375cc2c36b693e8f886319de5eb36f97cdc7cb445dbafc9a1811bb9f",
+    "body_len": 2187,
+    "updated_at": "2026-11-08T05:56:48Z",
+    "title": "[RC1][최초 설정과 맞춤 생성] 03-C 프로젝트별 맞춤 파일 생성 구현"
+   },
+   "04-A": {
+    "number": 1998,
+    "body_sha256": "c7574dd220e7467514726550f3578a16c9cdbab8dffe782d9fe8dd2415777549",
+    "body_len": 2282,
+    "updated_at": "2026-11-08T05:56:50Z",
+    "title": "[RC1][설치와 UPDATE] 04-A moai-cli와 Go의 설치 세대 분리"
+   },
+   "04-B": {
+    "number": 1999,
+    "body_sha256": "f742356c1c625bc94a5ed284d8a6e4886fdd2799a9b63e26d7d671ffac2ad60a",
+    "body_len": 2031,
+    "updated_at": "2026-11-08T05:56:53Z",
+    "title": "[RC1][설치와 UPDATE] 04-B 모든 설치 host UPDATE 구현"
+   },
+   "04-C": {
+    "number": 2000,
+    "body_sha256": "cdaeb156cd3f6b2b136c1cb4c7ea2ae4106c6d2bffde36a28345d3476456c780",
+    "body_len": 1990,
+    "updated_at": "2026-11-08T05:56:55Z",
+    "title": "[RC1][설치와 UPDATE] 04-C UPDATE 부분 실패와 복구 검증"
+   },
+   "05-A": {
+    "number": 2001,
+    "body_sha256": "33c621232dd1118dcb9fbd524e138198ada2d098ee214894c5af164a2f443172",
+    "body_len": 2014,
+    "updated_at": "2026-11-08T05:56:57Z",
+    "title": "[RC1][PLAN RUN VERIFY AUDIT] 05-A GEARS와 legacy EARS 요구 계약 구현"
+   },
+   "05-B": {
+    "number": 2002,
+    "body_sha256": "83e47f4147a034bac31cc828ae7aaaaf9f9e4c29b70869650b7bfbcd3c94927a",
+    "body_len": 2021,
+    "updated_at": "2026-11-08T05:56:59Z",
+    "title": "[RC1][PLAN RUN VERIFY AUDIT] 05-B PLAN과 task DAG admission 구현"
+   },
+   "05-C": {
+    "number": 2003,
+    "body_sha256": "260f3c42af419d7340030abb2bcb6449d2ea6acc375c130c4b8c7593a25388ae",
+    "body_len": 2040,
+    "updated_at": "2026-11-08T05:57:01Z",
+    "title": "[RC1][PLAN RUN VERIFY AUDIT] 05-C RUN 방법론과 실제 VERIFY 연결"
+   },
+   "05-D": {
+    "number": 2004,
+    "body_sha256": "b93fd6d1abfe7e6c1585e94230dc5c54f30d71597e84d2372280ac636a87555a",
+    "body_len": 2023,
+    "updated_at": "2026-11-08T05:57:04Z",
+    "title": "[RC1][PLAN RUN VERIFY AUDIT] 05-D 독립 AUDIT와 완료 admission 구현"
+   },
+   "06-A": {
+    "number": 2005,
+    "body_sha256": "f704cd41b6eee3ef43beaa595b03b6778dc2025d382f9fd8fc7deb3ff4dc9ccc",
+    "body_len": 2191,
+    "updated_at": "2026-11-08T05:57:06Z",
+    "title": "[RC1][실행 소유권과 통합] 06-A 단일 리더와 Issue claim 계약 구현"
+   },
+   "06-B": {
+    "number": 2006,
+    "body_sha256": "b114bc576b86f4f86fbeecfaabe849073953d575d26954a5b97013f0ecb222a2",
+    "body_len": 2170,
+    "updated_at": "2026-11-08T05:57:09Z",
+    "title": "[RC1][실행 소유권과 통합] 06-B 중단 재조회와 명시 handoff 검증"
+   },
+   "06-C": {
+    "number": 2007,
+    "body_sha256": "09b0db01ce93499f9758d93893346870182d8917ca3bbc5eecda1a1a4aa9254d",
+    "body_len": 2020,
+    "updated_at": "2026-11-08T05:57:11Z",
+    "title": "[RC1][실행 소유권과 통합] 06-C 세션별 worktree와 PR 연결 구현"
+   },
+   "07-A": {
+    "number": 2008,
+    "body_sha256": "0a5b4531896dc6fe0e193e41cfa28f0755b3b02e9047b19725f2ea6f890f8145",
+    "body_len": 2051,
+    "updated_at": "2026-11-08T05:57:13Z",
+    "title": "[RC1][Forge 보고와 판단 context] 07-A GitHub TODO와 polling adapter 구현"
+   },
+   "07-B": {
+    "number": 2009,
+    "body_sha256": "5a263c884917d1b613c8e2ba817ea978557079e7d0912edd79c515d368ff65d9",
+    "body_len": 2009,
+    "updated_at": "2026-11-08T05:57:15Z",
+    "title": "[RC1][Forge 보고와 판단 context] 07-B 로컬 TODO 선택 승격 구현"
+   },
+   "07-C": {
+    "number": 2010,
+    "body_sha256": "47a995013c6963cb8750946e6ff20666caae28c0d332eefecfd8cd357646b265",
+    "body_len": 2182,
+    "updated_at": "2026-11-08T05:57:18Z",
+    "title": "[RC1][Forge 보고와 판단 context] 07-C 간결 보고와 artifact 참조 구현"
+   },
+   "07-D": {
+    "number": 2011,
+    "body_sha256": "2d8bbbf9fc0ac81a96770d5fa0fcec83dd6f07c269c0ddfa86e03c3d5bf4dc1d",
+    "body_len": 2206,
+    "updated_at": "2026-11-08T05:57:20Z",
+    "title": "[RC1][Forge 보고와 판단 context] 07-D native 판단과 context 기본 연결"
+   },
+   "08-A": {
+    "number": 2012,
+    "body_sha256": "3142e5607bc92fcfedc12389dc98e28cf36f5176043164a200923e6d3a4c4541",
+    "body_len": 2017,
+    "updated_at": "2026-11-08T05:57:22Z",
+    "title": "[RC1][RC 인증과 문서] 08-A 최신 base 통합과 SYNC 연결"
+   },
+   "08-B": {
+    "number": 2013,
+    "body_sha256": "aaf0e708cdac71779f4c6b2e0139e2882ab3a6d888e4baf1dff084829cb41a70",
+    "body_len": 2181,
+    "updated_at": "2026-11-08T05:57:25Z",
+    "title": "[RC1][RC 인증과 문서] 08-B 검증된 .github를 Rust 템플릿으로 승격"
+   },
+   "08-C": {
+    "number": 2014,
+    "body_sha256": "a8431a54c34dc7fe9a35ee70ea710699ceb8c4a5cff1b3881d26a1c01a99ecba",
+    "body_len": 2205,
+    "updated_at": "2026-11-08T05:57:27Z",
+    "title": "[RC1][RC 인증과 문서] 08-C RC host OS E2E와 restore"
+   },
+   "08-D": {
+    "number": 2015,
+    "body_sha256": "828809b849b792a92403795d2b4c0f305182f3cb2db73736eb699b31452ea9e3",
+    "body_len": 2167,
+    "updated_at": "2026-11-08T05:57:29Z",
+    "title": "[RC1][RC 인증과 문서] 08-D 문서 지원표와 release 검토"
+   }
+  }
+ },
+ "design_update": {
+  "applied_at_utc": "2026-11-08T06:51:19Z",
+  "design_revision": "2026-11-08-r1",
+  "source": ".moai-cli/manifests/issue-design-research.corrected.json",
+  "results": [
+   {
+    "key": "EP-02",
+    "number": 1977,
+    "status": "updated",
+    "mode": "replace",
+    "len": 7262,
+    "body_sha256": "8a728c2a116fe2a7c6e78ef7053c1cc1f8f023fcefd81ec27cd460a4c000f42c",
+    "updated_at": "2026-11-08T06:49:34Z"
+   },
+   {
+    "key": "01-A",
+    "number": 1988,
+    "status": "updated",
+    "mode": "replace",
+    "len": 16445,
+    "body_sha256": "614b3679aa4073159d1956b155bf1789e6b945092a62bee702a92ef055886c2b",
+    "updated_at": "2026-11-08T06:49:36Z"
+   },
+   {
+    "key": "01-B",
+    "number": 1989,
+    "status": "updated",
+    "mode": "replace",
+    "len": 19049,
+    "body_sha256": "f2d0ed2b9b02d65f76b69e04c7c4de8da234e6d5574f7264d926f95d89a28a3c",
+    "updated_at": "2026-11-08T06:49:39Z"
+   },
+   {
+    "key": "01-C",
+    "number": 1990,
+    "status": "updated",
+    "mode": "replace",
+    "len": 17684,
+    "body_sha256": "bc065630d63afec82de0ccdb4640f6132ae3feed404c3dd1988dbd394018e199",
+    "updated_at": "2026-11-08T06:49:42Z"
+   },
+   {
+    "key": "EP-07",
+    "number": 1982,
+    "status": "updated",
+    "mode": "replace",
+    "len": 8427,
+    "body_sha256": "ee047414e6306b0b98be032750198914a3072b419bcc850f5771dc22ba3d1f56",
+    "updated_at": "2026-11-08T06:49:44Z"
+   },
+   {
+    "key": "06-A",
+    "number": 2005,
+    "status": "updated",
+    "mode": "replace",
+    "len": 18947,
+    "body_sha256": "09920c559c16bf0d7f42258d1f0cac7a479c2bff41798fa4ffff1df9a9c96a7e",
+    "updated_at": "2026-11-08T06:49:47Z"
+   },
+   {
+    "key": "06-B",
+    "number": 2006,
+    "status": "updated",
+    "mode": "replace",
+    "len": 16321,
+    "body_sha256": "513239cc1db5d30e6f187517f1e947fcea28a3a2bf5a13fa09bfbc6ae74156ce",
+    "updated_at": "2026-11-08T06:49:49Z"
+   },
+   {
+    "key": "06-C",
+    "number": 2007,
+    "status": "updated",
+    "mode": "replace",
+    "len": 18513,
+    "body_sha256": "9a26ebabb86749be0b981d940c6626ddb3871347a925c52d6a2f0743fbfe6c06",
+    "updated_at": "2026-11-08T06:49:52Z"
+   },
+   {
+    "key": "EP-04",
+    "number": 1979,
+    "status": "updated",
+    "mode": "replace",
+    "len": 6405,
+    "body_sha256": "142f649d99fd439a014251697348d185f65b9436de091bb89e4d3168302e051d",
+    "updated_at": "2026-11-08T06:49:54Z"
+   },
+   {
+    "key": "03-A",
+    "number": 1995,
+    "status": "updated",
+    "mode": "replace",
+    "len": 15332,
+    "body_sha256": "d871492ade8b8fee32f8c793a2317256efa46d1201a38f97ac1063eddc9c05b3",
+    "updated_at": "2026-11-08T06:49:57Z"
+   },
+   {
+    "key": "03-B",
+    "number": 1996,
+    "status": "updated",
+    "mode": "replace",
+    "len": 19702,
+    "body_sha256": "15e580b9043560c31d64fdaa6ca5bb713952d5283d4e7df32f4f9a667ff5b581",
+    "updated_at": "2026-11-08T06:49:59Z"
+   },
+   {
+    "key": "03-C",
+    "number": 1997,
+    "status": "updated",
+    "mode": "replace",
+    "len": 20527,
+    "body_sha256": "d1ac99ad3451f1423ebeedcdc1bb0e999a3a2b4e40d3ddace583de9610760921",
+    "updated_at": "2026-11-08T06:50:02Z"
+   },
+   {
+    "key": "EP-05",
+    "number": 1980,
+    "status": "updated",
+    "mode": "replace",
+    "len": 10592,
+    "body_sha256": "316ecb2449afe30a5e5082f7866553a69eee16fae3207090dfbf1fe57fd1a909",
+    "updated_at": "2026-11-08T06:50:05Z"
+   },
+   {
+    "key": "04-A",
+    "number": 1998,
+    "status": "updated",
+    "mode": "replace",
+    "len": 20080,
+    "body_sha256": "9ac3c90219c0dd9201aaec4c20aec26374d607c54e4e9c2fdcbcbfc7d2e5a110",
+    "updated_at": "2026-11-08T06:50:07Z"
+   },
+   {
+    "key": "04-B",
+    "number": 1999,
+    "status": "updated",
+    "mode": "replace",
+    "len": 15915,
+    "body_sha256": "73ed97848f9fe7eba6d796315ee6286d721f7965f4ac19251a8b789a7cd3e6b2",
+    "updated_at": "2026-11-08T06:50:10Z"
+   },
+   {
+    "key": "04-C",
+    "number": 2000,
+    "status": "updated",
+    "mode": "replace",
+    "len": 12983,
+    "body_sha256": "0d3bfb73e14eb6672c3def3eed889c532503e1cf7a7928e4ed20a5780cda700f",
+    "updated_at": "2026-11-08T06:50:12Z"
+   },
+   {
+    "key": "EP-06",
+    "number": 1981,
+    "status": "updated",
+    "mode": "replace",
+    "len": 7999,
+    "body_sha256": "5f5f1e1019eaec799d4f7319136a2b24e48f87c971f636b6d58a18c49ae607b6",
+    "updated_at": "2026-11-08T06:50:15Z"
+   },
+   {
+    "key": "05-A",
+    "number": 2001,
+    "status": "updated",
+    "mode": "replace",
+    "len": 14387,
+    "body_sha256": "d61ced5c6cd6f6d33eec07dd047052ddb8ee13d95fbf17a238b566664b5f99db",
+    "updated_at": "2026-11-08T06:50:17Z"
+   },
+   {
+    "key": "05-B",
+    "number": 2002,
+    "status": "updated",
+    "mode": "replace",
+    "len": 12685,
+    "body_sha256": "405673c909763ce28bdc2c67dc301037327c8246ee12f4c11da7d85bea27d6ce",
+    "updated_at": "2026-11-08T06:50:20Z"
+   },
+   {
+    "key": "05-C",
+    "number": 2003,
+    "status": "updated",
+    "mode": "replace",
+    "len": 18250,
+    "body_sha256": "5923613be47921af323181f44145a7bdabe7466973df7cfc05615c5c9a811856",
+    "updated_at": "2026-11-08T06:50:22Z"
+   },
+   {
+    "key": "05-D",
+    "number": 2004,
+    "status": "updated",
+    "mode": "replace",
+    "len": 16053,
+    "body_sha256": "e9274c298a6e1ba708e74d55b956b9e1c10693ca2f3b913b2e79b3245ca31d4b",
+    "updated_at": "2026-11-08T06:50:24Z"
+   },
+   {
+    "key": "EP-01",
+    "number": 1976,
+    "status": "updated",
+    "mode": "replace",
+    "len": 6378,
+    "body_sha256": "5266900e435bd96c5de79b882f863b6c5fa306763b888e0034c1112cb22f320b",
+    "updated_at": "2026-11-08T06:50:27Z"
+   },
+   {
+    "key": "00-A",
+    "number": 1985,
+    "status": "updated",
+    "mode": "replace",
+    "len": 17957,
+    "body_sha256": "4242aea41afe0767c31d2d508917292a58009dacd4e7c3b0c2c4c2fe9f93268c",
+    "updated_at": "2026-11-08T06:50:29Z"
+   },
+   {
+    "key": "00-B",
+    "number": 1986,
+    "status": "updated",
+    "mode": "replace",
+    "len": 18624,
+    "body_sha256": "b98f6dfa93a3a342473ee50ec15e088a2b98f5220cbc78b0d706c596f6d587dd",
+    "updated_at": "2026-11-08T06:50:31Z"
+   },
+   {
+    "key": "00-D",
+    "number": 1987,
+    "status": "updated",
+    "mode": "replace",
+    "len": 27800,
+    "body_sha256": "34a115ed562a07182bbfffbceb6cf98c0d0b0d04aeca1bda7b2e862adbfe9992",
+    "updated_at": "2026-11-08T06:50:34Z"
+   },
+   {
+    "key": "EP-09",
+    "number": 1984,
+    "status": "updated",
+    "mode": "replace",
+    "len": 6868,
+    "body_sha256": "2914094533704336d6893557bfb2995d7c22196d788d7a77a7e31d5a0a5f6abc",
+    "updated_at": "2026-11-08T06:50:36Z"
+   },
+   {
+    "key": "08-A",
+    "number": 2012,
+    "status": "updated",
+    "mode": "replace",
+    "len": 19218,
+    "body_sha256": "fe8d5e3dde84cacf6365426809b2e4d80df5470f400d69f225c07cfe557dcf09",
+    "updated_at": "2026-11-08T06:50:39Z"
+   },
+   {
+    "key": "08-B",
+    "number": 2013,
+    "status": "updated",
+    "mode": "replace",
+    "len": 17486,
+    "body_sha256": "8c4e356ccc41c7c55273d7a9b4ab50c5323c5607f82ecc66c9fa28e34945298d",
+    "updated_at": "2026-11-08T06:50:41Z"
+   },
+   {
+    "key": "08-C",
+    "number": 2014,
+    "status": "updated",
+    "mode": "replace",
+    "len": 17640,
+    "body_sha256": "b4b282c0f22b151d5e11dcdee5a0f9542d8451a7d01767bbe96c73268ba40dc1",
+    "updated_at": "2026-11-08T06:50:44Z"
+   },
+   {
+    "key": "08-D",
+    "number": 2015,
+    "status": "updated",
+    "mode": "replace",
+    "len": 20563,
+    "body_sha256": "8a13da519e49d686f2cc64bf4b2bd1a994d4665768b53dbefd302c46222826ce",
+    "updated_at": "2026-11-08T06:50:46Z"
+   },
+   {
+    "key": "EP-03",
+    "number": 1978,
+    "status": "updated",
+    "mode": "replace",
+    "len": 7737,
+    "body_sha256": "e9efbba92fbd938493819573133e004fe395874b08d90638c896bc2a3c5711e2",
+    "updated_at": "2026-11-08T06:50:48Z"
+   },
+   {
+    "key": "02-A",
+    "number": 1991,
+    "status": "updated",
+    "mode": "replace",
+    "len": 14055,
+    "body_sha256": "cdff5eb72e556798a80c1c22663f9a592c37eb56d2eb6ad5691ccdaa9148c13c",
+    "updated_at": "2026-11-08T06:50:51Z"
+   },
+   {
+    "key": "02-B",
+    "number": 1992,
+    "status": "updated",
+    "mode": "replace",
+    "len": 15032,
+    "body_sha256": "6bc3b3dc2008813cc4f69b1f7104c8486d48183ed31710299e6b2016324e24aa",
+    "updated_at": "2026-11-08T06:50:53Z"
+   },
+   {
+    "key": "02-C",
+    "number": 1993,
+    "status": "updated",
+    "mode": "replace",
+    "len": 15366,
+    "body_sha256": "24b733dae81c375ed977b17dba9d3b586ba67377a422ca3845c7e5414d4f7dcd",
+    "updated_at": "2026-11-08T06:50:55Z"
+   },
+   {
+    "key": "02-D",
+    "number": 1994,
+    "status": "updated",
+    "mode": "replace",
+    "len": 11327,
+    "body_sha256": "4265a3b3012d48928cfa2e2ec9766474f03afc16a560fc44977ec3c4c1115242",
+    "updated_at": "2026-11-08T06:50:58Z"
+   },
+   {
+    "key": "RC-ROOT",
+    "number": 1975,
+    "status": "updated",
+    "mode": "replace",
+    "len": 21894,
+    "body_sha256": "7249e1208a218a8b95e850e4d2f13c18468cb311767e6634245411cd4c067012",
+    "updated_at": "2026-11-08T06:51:00Z"
+   },
+   {
+    "key": "00-C",
+    "number": 1974,
+    "status": "updated",
+    "mode": "append",
+    "len": 20418,
+    "body_sha256": "16619b49e289c889bc99618fac09e9ae564c6e136f350d35ad40200da8fc4196",
+    "updated_at": "2026-11-08T06:51:02Z"
+   },
+   {
+    "key": "precursor-1973",
+    "number": 1973,
+    "status": "updated",
+    "mode": "append",
+    "len": 20642,
+    "body_sha256": "65ccb51e15265743e8c853bbdcef72cabbe8cccb3290c34d7919599e7c0c0d53",
+    "updated_at": "2026-11-08T06:51:05Z"
+   },
+   {
+    "key": "EP-08",
+    "number": 1983,
+    "status": "updated",
+    "mode": "replace",
+    "len": 9636,
+    "body_sha256": "404426b66ffd6d34b27cdb18bfd14e79922e92052d575c29d14c948d3a5199ce",
+    "updated_at": "2026-11-08T06:51:08Z"
+   },
+   {
+    "key": "07-A",
+    "number": 2008,
+    "status": "updated",
+    "mode": "replace",
+    "len": 17158,
+    "body_sha256": "83bf2041061e66378068781622f8e2fc8e92ab484f92fff9dcd1fb1af2584448",
+    "updated_at": "2026-11-08T06:51:10Z"
+   },
+   {
+    "key": "07-B",
+    "number": 2009,
+    "status": "updated",
+    "mode": "replace",
+    "len": 15631,
+    "body_sha256": "69d23c86c6ed36dfcaa54a135242228625913462a2a7451b12b1cc0450bee212",
+    "updated_at": "2026-11-08T06:51:12Z"
+   },
+   {
+    "key": "07-C",
+    "number": 2010,
+    "status": "updated",
+    "mode": "replace",
+    "len": 15781,
+    "body_sha256": "6c6f6677de3944b3c12149022fa4a01a65465d7cac2a75b9e20c2900aeb56372",
+    "updated_at": "2026-11-08T06:51:15Z"
+   },
+   {
+    "key": "07-D",
+    "number": 2011,
+    "status": "updated",
+    "mode": "replace",
+    "len": 20998,
+    "body_sha256": "3e7d3759539aa68066939c1fa7292e25347e855de8358394f9d5d375e2d2170c",
+    "updated_at": "2026-11-08T06:51:17Z"
+   }
+  ]
+ },
+ "design_update_r2": {
+  "applied_at_utc": "2026-11-08T07:06:37Z",
+  "design_revision": "2026-11-08-r2",
+  "changes": "agent-2 r1 review fixes (harmonized 3, overlaps owner-undecided sections, 06-A adopt→HOLD, #1973 stale marker, 04-A row split, 01-A numbers, wording), 04-A user decisions (channel A, attestation A, tag prefix B, path A) + Go→Rust migration requirement, session-hub research sections on 11 issues",
+  "results": [
+   {
+    "key": "00-A",
+    "number": 1985,
+    "status": "updated",
+    "len": 18160,
+    "body_sha256": "c900efdad31e730c10080043f0e28e5e7d897f70810d576ada18af055a42d9af"
+   },
+   {
+    "key": "00-B",
+    "number": 1986,
+    "status": "updated",
+    "len": 18745,
+    "body_sha256": "f058136699d20a90bf629fb3a08f6056297396bf86d8a150f2a877ad9d297ab9"
+   },
+   {
+    "key": "00-C",
+    "number": 1974,
+    "status": "updated",
+    "len": 20749,
+    "body_sha256": "738a7b9370ddc756d374ba58a3b47c853842c734fccacae05dadb93d17a0c994"
+   },
+   {
+    "key": "00-D",
+    "number": 1987,
+    "status": "updated",
+    "len": 28690,
+    "body_sha256": "85ba473ec1c249ae3312aae088c2d23c5da7b4fbca8baec22890c81d15742894"
+   },
+   {
+    "key": "01-A",
+    "number": 1988,
+    "status": "updated",
+    "len": 16453,
+    "body_sha256": "28c915ca87863cfcddb3d86a53cc78d9fd2435d3045acb2d488f40194f4efedc"
+   },
+   {
+    "key": "01-B",
+    "number": 1989,
+    "status": "updated",
+    "len": 19423,
+    "body_sha256": "889c436743242d44661dfbc7f4edcc5372cc6b65de34efe96a81feb42ec5b7c5"
+   },
+   {
+    "key": "01-C",
+    "number": 1990,
+    "status": "updated",
+    "len": 18157,
+    "body_sha256": "d9c8a14e1ffb7fb4a2bfbaa28b0db9b1d840d03e988759fb048e59037693fac2"
+   },
+   {
+    "key": "02-B",
+    "number": 1992,
+    "status": "updated",
+    "len": 15827,
+    "body_sha256": "df8b2ae8e0a22f15a13cf86585535043f330e6a5f975a88ee6710efa1833b076"
+   },
+   {
+    "key": "02-C",
+    "number": 1993,
+    "status": "updated",
+    "len": 16268,
+    "body_sha256": "47378bebdf4952c4515d9f0093f14cf809a6fec7e0de301ad21a560c21dcd86c"
+   },
+   {
+    "key": "02-D",
+    "number": 1994,
+    "status": "updated",
+    "len": 12183,
+    "body_sha256": "2cca6a936673a86dadff4d3012ec1565aeb87b3168ec315c49dad4c94cc10f91"
+   },
+   {
+    "key": "03-A",
+    "number": 1995,
+    "status": "updated",
+    "len": 15531,
+    "body_sha256": "85aa92f1b47fa208f41f5938e2da61bb870eedff8157c8742ffe3c075328bfd6"
+   },
+   {
+    "key": "03-B",
+    "number": 1996,
+    "status": "updated",
+    "len": 19862,
+    "body_sha256": "5167da545c1cf1311bcabb6245b8228d620041f64baa9f965429db6a26bc1c65"
+   },
+   {
+    "key": "03-C",
+    "number": 1997,
+    "status": "updated",
+    "len": 20915,
+    "body_sha256": "fe1cd33335f4d86fe1f191b8f666e52a2a2c53782aa0e8f7a487c74c33b1589f"
+   },
+   {
+    "key": "04-A",
+    "number": 1998,
+    "status": "updated",
+    "len": 21643,
+    "body_sha256": "99a150b8389dc8cf129bef75508e8b5abc4d1b7a8edb4e86c237d2f29a7c4fb5"
+   },
+   {
+    "key": "04-B",
+    "number": 1999,
+    "status": "updated",
+    "len": 16376,
+    "body_sha256": "83f071446d84d49909543a49779a37d7b88890af6eac18b08c02a8cc550f1637"
+   },
+   {
+    "key": "05-B",
+    "number": 2002,
+    "status": "updated",
+    "len": 12823,
+    "body_sha256": "3de2c9c1e90dacb240e075a1444fd6f3f5580ce108cfa573fe5cd66de0fbf12a"
+   },
+   {
+    "key": "05-C",
+    "number": 2003,
+    "status": "updated",
+    "len": 18504,
+    "body_sha256": "4913954fde11482de952889edbeb7dcf1362378134fb4caf35e4d22954c2fc5f"
+   },
+   {
+    "key": "06-A",
+    "number": 2005,
+    "status": "updated",
+    "len": 19679,
+    "body_sha256": "080a327232afde77d9e5481d544e8596f9bdbd28aa9362f5f66651d60d36d5de"
+   },
+   {
+    "key": "06-B",
+    "number": 2006,
+    "status": "updated",
+    "len": 16965,
+    "body_sha256": "8820b71a7ce6989166e822edb33709b40ef89e7b6944f2d16c3b466c04b0fd49"
+   },
+   {
+    "key": "06-C",
+    "number": 2007,
+    "status": "updated",
+    "len": 19244,
+    "body_sha256": "ee7ff3e13659d75f399cbe8aa01bbb9a01166f926ff4286253bffbc7e46e3849"
+   },
+   {
+    "key": "07-A",
+    "number": 2008,
+    "status": "updated",
+    "len": 17677,
+    "body_sha256": "4ba287c754653e98f7e2d064c56910b1a3f7feae28c4b21ca6fc02e6a0cfd10a"
+   },
+   {
+    "key": "07-B",
+    "number": 2009,
+    "status": "updated",
+    "len": 16135,
+    "body_sha256": "6cb765aa72402597bacb8615a8e9b508f95022a6f65c1051597167589924e2a5"
+   },
+   {
+    "key": "07-C",
+    "number": 2010,
+    "status": "updated",
+    "len": 16596,
+    "body_sha256": "8174d0480418f5f7c993ffceaaab21272e275e0cc6169076ab89fe85c4aff775"
+   },
+   {
+    "key": "07-D",
+    "number": 2011,
+    "status": "updated",
+    "len": 21416,
+    "body_sha256": "56ec6352017c96f9b595c7edfb8cd0a49614a7f3053409cc0908333ad4a83007"
+   },
+   {
+    "key": "08-A",
+    "number": 2012,
+    "status": "updated",
+    "len": 19549,
+    "body_sha256": "7d9272ece7b7c1b4272687e12e08a1f76bd5c709d66aa37417717b15f77e4fb1"
+   },
+   {
+    "key": "08-B",
+    "number": 2013,
+    "status": "updated",
+    "len": 17648,
+    "body_sha256": "771a2a384b507118a096f4298298076cecba188fc8fff495993573b3f774df15"
+   },
+   {
+    "key": "08-C",
+    "number": 2014,
+    "status": "updated",
+    "len": 18030,
+    "body_sha256": "be9657d013adfd4e2423638d2674b3ad9458e243cef14af3ceee792bb36922de"
+   },
+   {
+    "key": "08-D",
+    "number": 2015,
+    "status": "updated",
+    "len": 20953,
+    "body_sha256": "c59c993a767118f790f8bb326d4a2ee2adc6d468c3e707ffd618c726002faf72"
+   },
+   {
+    "key": "EP-03",
+    "number": 1978,
+    "status": "updated",
+    "len": 7957,
+    "body_sha256": "a8569f80cf8eda8f9d1d746f998c9f3db6f61c467fa6e9e6a1caa12142f1993a"
+   },
+   {
+    "key": "EP-04",
+    "number": 1979,
+    "status": "updated",
+    "len": 6434,
+    "body_sha256": "a873cd5e0376fbc7245b5342959b707088d8de8f90157bfaa1557d3bc6c9f51c"
+   },
+   {
+    "key": "EP-05",
+    "number": 1980,
+    "status": "updated",
+    "len": 11875,
+    "body_sha256": "e87953e99ceda58ed0e08746737535c47510bfffbba9eb1c464fee66d3aea75d"
+   },
+   {
+    "key": "EP-06",
+    "number": 1981,
+    "status": "updated",
+    "len": 8070,
+    "body_sha256": "85d404e72ea25a878438c6d1d658cf7767b61297a4b27379f7eb979767dc8b84"
+   },
+   {
+    "key": "precursor-1973",
+    "number": 1973,
+    "status": "updated",
+    "len": 20854,
+    "body_sha256": "307dbcdfc7372ad5868144be3fd9bc0eddf91163576b76223d55fd5d92df89fc"
+   }
+  ]
+ },
+ "user_decisions": [
+  {
+   "at": "2026-11-08 15:5x KST",
+   "topic": "04-A 배포·설치 채널",
+   "decision": "A GitHub Releases + dist installer"
+  },
+  {
+   "at": "2026-11-08 15:5x KST",
+   "topic": "04-A 서명·검증",
+   "decision": "A attestation only"
+  },
+  {
+   "at": "2026-11-08 15:5x KST",
+   "topic": "04-A tag/feed namespace",
+   "decision": "B same repo, prefix moai-cli-v<version>"
+  },
+  {
+   "at": "2026-11-08 15:5x KST",
+   "topic": "04-A binary 경로",
+   "decision": "A ~/.moai-cli/bin/moai-cli"
+  },
+  {
+   "at": "2026-11-08 16:0x KST",
+   "topic": "마이그레이션 요구",
+   "decision": "Go `moai update` → moai-cli 설치·상태 이전·Go 제거"
+  },
+  {
+   "at": "2026-11-08 16:1x KST",
+   "topic": "Windows 교체",
+   "decision": "A self-replace"
+  },
+  {
+   "at": "2026-11-08 16:1x KST",
+   "topic": "브리지 위치",
+   "decision": "B Go 최소 + Rust moai-cli migrate --from-go"
+  },
+  {
+   "at": "2026-11-08 16:1x KST",
+   "topic": "Go 제거 시점",
+   "decision": "B 검증 통과 시 자동, 백업 보관"
+  },
+  {
+   "at": "2026-11-08 16:1x KST",
+   "topic": "마이그레이션 Issue",
+   "decision": "A 신규 04-D 발행"
+  },
+  {
+   "at": "2026-11-08 16:3x KST",
+   "topic": "허브 전송 조합",
+   "decision": "H-B + H-A (RC1), H-C 후속"
+  },
+  {
+   "at": "2026-11-08 16:3x KST",
+   "topic": "허브 수명",
+   "decision": "L1 리더 세션 결합"
+  },
+  {
+   "at": "2026-11-08 16:3x KST",
+   "topic": "승인 중계",
+   "decision": "C 사전 정책 + 예외만 중계"
+  },
+  {
+   "at": "2026-11-08 16:3x KST",
+   "topic": "런처 UX(가정)",
+   "decision": "moai / moai -l / moai -a <host> / moai cc alias"
+  },
+  {
+   "at": "2026-11-08 16:4x KST",
+   "topic": "04-D Go 제거 범위",
+   "decision": "A binary + Go 전용 캐시만"
+  },
+  {
+   "at": "2026-11-08 16:4x KST",
+   "topic": "P08 claim",
+   "decision": "⑤ 댓글 id fencing + ① 로컬 journal"
+  },
+  {
+   "at": "2026-11-08 16:4x KST",
+   "topic": "ZCode·ACP",
+   "decision": "ZCode headless only; ACP later"
+  },
+  {
+   "at": "2026-11-08 16:4x KST",
+   "topic": "원격·Orca/Hide",
+   "decision": "RC1 제외"
+  },
+  {
+   "at": "2026-11-08 16:4x KST",
+   "topic": "통신 허브",
+   "decision": "RC1 보류 → 다음 버전; 기존 계획대로 1번째 버전 빠르게 구현"
+  },
+  {
+   "source_doc": "docs/decisions-2026-11-08.md"
+  }
+ ],
+ "design_update_r3": {
+  "applied_at_utc": "2026-11-08T07:16:28Z",
+  "design_revision": "2026-11-08-r3",
+  "changes": "MCP current revision 2026-07-28 (P06 HOLD reopened), 04-A decisions propagated to 08-D/ROOT/04-B/EP-05, Windows A / bridge B / Go removal B / new 04-D, overlaps omissions, cells, codex mcp-server removed, P08 option ⑤, official URLs in hub sections, decision provenance docs/decisions-2026-11-08.md",
+  "results": [
+   {
+    "key": "00-A",
+    "number": 1985,
+    "status": "updated",
+    "len": 18344,
+    "body_sha256": "c147df3625081952a9385d1ac3e9af9b8514fbae00ae610ac1b7c2a3ec953217"
+   },
+   {
+    "key": "00-B",
+    "number": 1986,
+    "status": "updated",
+    "len": 19000,
+    "body_sha256": "5bfc42c79dc3bfb63a02c46cdf836f7affac94c87c976bcd8f9a4940b4a3baba"
+   },
+   {
+    "key": "00-D",
+    "number": 1987,
+    "status": "updated",
+    "len": 29274,
+    "body_sha256": "0e85b6364a31e48bb54ceb1759bd12986a9f98f48ff77cfdd78d08c7dec909a0"
+   },
+   {
+    "key": "01-C",
+    "number": 1990,
+    "status": "updated",
+    "len": 18757,
+    "body_sha256": "31cadc7235f8a0ecc466b6fb36d057c65214505ee6de5706f639ad2cb4040b79"
+   },
+   {
+    "key": "02-B",
+    "number": 1992,
+    "status": "updated",
+    "len": 16176,
+    "body_sha256": "8ddaa5045e1691d6de73ac92f6f24e23f0f266de964c4df502976217c874ea91"
+   },
+   {
+    "key": "02-C",
+    "number": 1993,
+    "status": "updated",
+    "len": 16497,
+    "body_sha256": "ff59efa4ce453eb08959c4044a0f8c97732d27378fa610defc473d36a1658fb4"
+   },
+   {
+    "key": "02-D",
+    "number": 1994,
+    "status": "updated",
+    "len": 12503,
+    "body_sha256": "4d63849aef66c99ad0a8a964a5932d52b4f080debc8a9cab40f26e69881efe72"
+   },
+   {
+    "key": "03-A",
+    "number": 1995,
+    "status": "updated",
+    "len": 15547,
+    "body_sha256": "6f1e5ca14ea5efba125add31607bed70c9b1d0cd09741f2d8a7ed7b35dd7c731"
+   },
+   {
+    "key": "04-A",
+    "number": 1998,
+    "status": "updated",
+    "len": 22509,
+    "body_sha256": "aa8f6ae7c024a313bcf4c59782e20d68fcb83f7ad57fbb90a4eb4349d584430d"
+   },
+   {
+    "key": "04-B",
+    "number": 1999,
+    "status": "updated",
+    "len": 16585,
+    "body_sha256": "2426aabbf37f389cc113563e23790218d51ee37e7378708f40e73e0d5eb6cde1"
+   },
+   {
+    "key": "05-B",
+    "number": 2002,
+    "status": "updated",
+    "len": 13007,
+    "body_sha256": "00fc8ace68d6983e60dff9cfcce17366bf9f568553d7a00625bcd3619be0e702"
+   },
+   {
+    "key": "05-C",
+    "number": 2003,
+    "status": "updated",
+    "len": 18688,
+    "body_sha256": "53c6e7d6b4c060caa840f50144a541e9b290467671aff2498c433b5ab6205258"
+   },
+   {
+    "key": "05-D",
+    "number": 2004,
+    "status": "updated",
+    "len": 16266,
+    "body_sha256": "5093b68f069386ff33d8e6e95f5f9cd5b220ae3d34a8bb94c0a008362a1396bf"
+   },
+   {
+    "key": "06-A",
+    "number": 2005,
+    "status": "updated",
+    "len": 20356,
+    "body_sha256": "0ead4cf005363ce49b95a1f517653c1b12349f425f5f12ec3531743a8f37509f"
+   },
+   {
+    "key": "06-B",
+    "number": 2006,
+    "status": "updated",
+    "len": 17343,
+    "body_sha256": "c85d8b3ee6e725e8211b8c393bd99fd20ffba257e775aec0e04788d7c57d1a53"
+   },
+   {
+    "key": "06-C",
+    "number": 2007,
+    "status": "updated",
+    "len": 19536,
+    "body_sha256": "58d0e10a102a4a2c4aeb78486530f15da5d24d7ecbc237bdf00ffcfba7a65bc8"
+   },
+   {
+    "key": "07-A",
+    "number": 2008,
+    "status": "updated",
+    "len": 18373,
+    "body_sha256": "7e907c7bf0c38cdcbb30250d312a02e2f345c1cdff0724b1bdea9d3a89bed263"
+   },
+   {
+    "key": "07-C",
+    "number": 2010,
+    "status": "updated",
+    "len": 16820,
+    "body_sha256": "6652a66176ab646fbcd6f4b6547989916134fff66a0d196ff5269008d12f7749"
+   },
+   {
+    "key": "07-D",
+    "number": 2011,
+    "status": "updated",
+    "len": 21739,
+    "body_sha256": "09d75dc9ea57d273099ff8c8afcefd2a02ff59121d8100f57c0121996431d8e8"
+   },
+   {
+    "key": "08-A",
+    "number": 2012,
+    "status": "updated",
+    "len": 19733,
+    "body_sha256": "5f1b2176a061ba558d81f473ff7dcfb13d98c55488ccfcb2cb1cd5dcce6241e9"
+   },
+   {
+    "key": "08-D",
+    "number": 2015,
+    "status": "updated",
+    "len": 21656,
+    "body_sha256": "01080117d968a3ed5ed802d53fc4084de7e08b77f379e830fafd5f8bba11b4cf"
+   },
+   {
+    "key": "EP-02",
+    "number": 1977,
+    "status": "updated",
+    "len": 7436,
+    "body_sha256": "3731a75e86a357d41032cbcf4a9d9113089843f142767196e68b77a7be887051"
+   },
+   {
+    "key": "EP-05",
+    "number": 1980,
+    "status": "updated",
+    "len": 11906,
+    "body_sha256": "b5b2436620b5983a63f5a8304ea49d0e05abbf170f3a67725c63b5afcb44a050"
+   },
+   {
+    "key": "RC-ROOT",
+    "number": 1975,
+    "status": "updated",
+    "len": 22077,
+    "body_sha256": "deb1b0ca7bf807978323413a750ebc2272fcb5eb4f08b0e6176975c9c343f356"
+   }
+  ]
+ },
+ "design_update_r4": {
+  "applied_at_utc": "2026-11-08T07:27:15Z",
+  "design_revision": "2026-11-08-r4",
+  "changes": "ROOT L22 inversion fix + count 44, EP-05 lists #2016, 01-C L32/L41, 08-D direct fixes (AC command, status), 04-D: REQ/AC ids, test names, allowlist HOLD-04D-4 (P13 conflict), attestation offline verified, self-replace permission unverified, best practices/research log; hub decisions (H-B+H-A, L1, approval C, launcher UX) propagated to 11 issues",
+  "results": [
+   {
+    "key": "00-D",
+    "number": 1987,
+    "status": "updated",
+    "len": 30052,
+    "body_sha256": "043a635fbf96671c3d2524e90985df74ece31bda2ed55b2bdb796b4485f53b6c"
+   },
+   {
+    "key": "01-C",
+    "number": 1990,
+    "status": "updated",
+    "len": 19538,
+    "body_sha256": "3dd073c187b1e42247b2d753c23713e8b63cb887dd827a46dda1de3a13f9df4d"
+   },
+   {
+    "key": "02-B",
+    "number": 1992,
+    "status": "updated",
+    "len": 16954,
+    "body_sha256": "3debfcd200624345b5edcc3380068a5b494691f5c4c68185f00a5e55d2325f00"
+   },
+   {
+    "key": "02-C",
+    "number": 1993,
+    "status": "updated",
+    "len": 17275,
+    "body_sha256": "f17f060ced3d216e9f2dcd38f2b278717e6fef9a8b791ee09ac2f9c48c0f1432"
+   },
+   {
+    "key": "02-D",
+    "number": 1994,
+    "status": "updated",
+    "len": 13281,
+    "body_sha256": "b8d3c3f932eada80d8c9114e1b01b483ab56e483707fb01c3ba9a9c5463251c1"
+   },
+   {
+    "key": "04-D",
+    "number": 2016,
+    "status": "updated",
+    "len": 8367,
+    "body_sha256": "69654223b7aa873933dad9b15821aae6504b81779ac1c1462c73fd0a437dce5e"
+   },
+   {
+    "key": "06-A",
+    "number": 2005,
+    "status": "updated",
+    "len": 21134,
+    "body_sha256": "864078e75ecc34c3fb594d7e604441b67596df54cbd1775e6ddac90212c3da3e"
+   },
+   {
+    "key": "06-B",
+    "number": 2006,
+    "status": "updated",
+    "len": 18121,
+    "body_sha256": "fd387e0fc2c261b41fd025fb0e97a58377d85ddf7a9150be19a074768381089b"
+   },
+   {
+    "key": "06-C",
+    "number": 2007,
+    "status": "updated",
+    "len": 20314,
+    "body_sha256": "bc1ef4ab47740cf9424c5800850682ffb1f9b0be89826391c90aa1a64f6463c3"
+   },
+   {
+    "key": "07-A",
+    "number": 2008,
+    "status": "updated",
+    "len": 19151,
+    "body_sha256": "bf14b1fc37d1eac01700b2c5fbcb8912722242fa1f699279fcf1d68f38fd6bf7"
+   },
+   {
+    "key": "07-C",
+    "number": 2010,
+    "status": "updated",
+    "len": 17598,
+    "body_sha256": "79a0173fee89ef2201dcea800772f5a5a7ae59c3bda20add13bebc13d10eebb3"
+   },
+   {
+    "key": "07-D",
+    "number": 2011,
+    "status": "updated",
+    "len": 22517,
+    "body_sha256": "b0e20abed27a4461b752486d68f475e807307b2a7f5281367f860681f80b9bd4"
+   },
+   {
+    "key": "08-D",
+    "number": 2015,
+    "status": "updated",
+    "len": 21823,
+    "body_sha256": "457a09ea40cbce9330a8a3197f8f7def1d4243e5b5c92361d53ee6c7d0594caf"
+   },
+   {
+    "key": "EP-05",
+    "number": 1980,
+    "status": "updated",
+    "len": 11999,
+    "body_sha256": "689c2288d4f13c48389507d5a54939f50edebcecb5c47f6dc7d9a4832d683b26"
+   },
+   {
+    "key": "RC-ROOT",
+    "number": 1975,
+    "status": "updated",
+    "len": 22214,
+    "body_sha256": "6aa5deccbd5a66985e6122bfc543d4b43c92ce2941965f4ff35b18c9bc13c4ab"
+   }
+  ]
+ },
+ "design_update_r5": {
+  "applied_at_utc": "2026-11-08T07:32:30Z",
+  "design_revision": "2026-11-08-r5",
+  "changes": "04-D decision A (allowlist), REQ-04D-03/04 neutral→decided, source fix; ROOT count; 08-D wording; hub deferred to next version note on 11 issues; claim ⑤+① on 06-A; ZCode/ACP/remote on 02-D",
+  "results": [
+   {
+    "key": "00-D",
+    "number": 1987,
+    "status": "updated",
+    "body_sha256": "4399d6fd97fb1f4926131e4a9bee7ab0b92a46c1763e54dbe2178354cc472e75"
+   },
+   {
+    "key": "01-C",
+    "number": 1990,
+    "status": "updated",
+    "body_sha256": "c9598a0b29b0d08bd32eafd7818ed1c65068ead744d0b1ac0bdff3374681b15a"
+   },
+   {
+    "key": "02-B",
+    "number": 1992,
+    "status": "updated",
+    "body_sha256": "38069f43260b084fc1b09240635f4abec9dde88803b608862f07ec9e033c918a"
+   },
+   {
+    "key": "02-C",
+    "number": 1993,
+    "status": "updated",
+    "body_sha256": "d37296e26d5fb66beb2f39d8c400d9ff5bbd5701bdf86a4ab03aeab1ac6839d2"
+   },
+   {
+    "key": "02-D",
+    "number": 1994,
+    "status": "updated",
+    "body_sha256": "c209c81e4f3d699646b9a99615f5c37d6e4a1dbfd2883e689ca02e0fb7eab7a7"
+   },
+   {
+    "key": "04-D",
+    "number": 2016,
+    "status": "updated",
+    "body_sha256": "404c57b4c119fcef25d6ef362151bfbb7b6bda81f361591423616ec3990c619d"
+   },
+   {
+    "key": "06-A",
+    "number": 2005,
+    "status": "updated",
+    "body_sha256": "7501d166076b99a0a7ef25ba9e2b1a1b65c6454b409b0c2b3bd4a534de0d9987"
+   },
+   {
+    "key": "06-B",
+    "number": 2006,
+    "status": "updated",
+    "body_sha256": "2d7fd34f46eef3912987c8b10127fec7f1d841a9fbf306e795f0134e589d5598"
+   },
+   {
+    "key": "06-C",
+    "number": 2007,
+    "status": "updated",
+    "body_sha256": "53e987a08251a7dad4143656b781af121f21627c2b9b67e0594a8f6ba67665c8"
+   },
+   {
+    "key": "07-A",
+    "number": 2008,
+    "status": "updated",
+    "body_sha256": "d6e215801ba82cd1419a0c79e70841f3b7a4aae789b80664eb2bbafa0ead5a32"
+   },
+   {
+    "key": "07-C",
+    "number": 2010,
+    "status": "updated",
+    "body_sha256": "17bb91c341276bc841f0a8e409112ebbbd62315e1bc92b12dfa8ed6392a8ffbf"
+   },
+   {
+    "key": "07-D",
+    "number": 2011,
+    "status": "updated",
+    "body_sha256": "1c15bf3dc86472dec3d8c200a5fb593baa99332832465099618141d3104b7665"
+   },
+   {
+    "key": "08-D",
+    "number": 2015,
+    "status": "updated",
+    "body_sha256": "35c8a3bd6623299755e53a33243ad570c829aff94d3babbcc6dacff189eb48f4"
+   },
+   {
+    "key": "RC-ROOT",
+    "number": 1975,
+    "status": "updated",
+    "body_sha256": "077d469185b3137aec1ee7a4dc17763eca44d7cd96c73271680b5d82022f844a"
+   }
+  ]
+ }
+}
