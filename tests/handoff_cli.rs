@@ -657,6 +657,66 @@ fn reconcile_rate_limited_waits() {
     );
 }
 
+/// AC-1/AC-2 (#2099): the built-in probe reads Issue comments only, so it cannot judge a
+/// pr_create effect — even when a comment happens to carry the same operation's marker in
+/// the `moai-op` spelling. A false "confirmed absent" is a duplicate-PR hazard, because
+/// sync.md retries only what not_performed names.
+#[test]
+fn reconcile_builtin_never_judges_pr_create() {
+    let tmp = tempfile::tempdir().unwrap();
+    let repo = tmp.path().join("repo");
+    git_repo(&repo);
+    let clock = FakeClock::at(CLOCK0);
+    let marker = "<!-- moai:op pr_create:101:op-9:1 -->";
+    let mut effect = publish_effect("pr_create-101-op-9-1", marker, "uncertain");
+    effect["kind"] = json!("pr_create");
+    let record = seed_record(&repo, 28, 1, owner("session", "agent-x"), vec![effect]);
+    let key = record.task_key.clone();
+    let journal = journal_of(&repo);
+    journal.commit("acquire", &record).unwrap();
+
+    // The PR marker appears in a comment body in the moai-op spelling — a literal
+    // contains() misses it, and judging a PR from comments would be wrong anyway.
+    let page = json!([{"id": 5001, "body": "report\n\n<!-- moai-op pr_create:101:op-9:1 -->"}]);
+    let t = RecordedTransport::new(vec![exchange("GET", &comments_url(28), 200, page)]);
+    let before = fs::read(journal_dir(&repo).join("journal.log")).unwrap();
+    let out = effects_reconcile(&journal, &key, None, &t, &clock).unwrap();
+
+    assert!(
+        !out["transitions"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|x| x["to"] == "not_performed"),
+        "a PR must never be judged absent from comments: {}",
+        out
+    );
+    let events = journal.read_events().unwrap();
+    let effect = events
+        .last()
+        .unwrap()
+        .record
+        .effects
+        .iter()
+        .find(|e| e["operation_id"] == "pr_create-101-op-9-1")
+        .unwrap();
+    assert_eq!(
+        effect["state"], "uncertain",
+        "comments cannot judge a pr_create; the state stays"
+    );
+    // Nothing was judged at all: not_run, with the probe requirement named.
+    assert_eq!(out["verdict"], "not_run");
+    assert!(out["transitions"][0]["why"]
+        .as_str()
+        .unwrap()
+        .contains("--remote-probe"));
+    assert_eq!(
+        fs::read(journal_dir(&repo).join("journal.log")).unwrap(),
+        before,
+        "no judged transition writes nothing"
+    );
+}
+
 #[test]
 fn reconcile_builtin_gh_probe_reads_only() {
     let tmp = tempfile::tempdir().unwrap();
