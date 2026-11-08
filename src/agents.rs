@@ -327,6 +327,9 @@ fn baseline_for(m: Option<&Manifest>, path: &str) -> Option<String> {
     })
 }
 
+const BLOCK_ABSENT: &str =
+    "managed block absent; user deletion preserved (re-adopt requires an explicit request)";
+
 fn section_plan(
     path: &str,
     tracked: bool,
@@ -369,7 +372,13 @@ fn section_plan(
         Some(&rendered_digest),
     );
     plan.action = match (decision, present, block_digest.is_some()) {
-        (Decision::KeepCurrent, _, _) => "unchanged",
+        (Decision::KeepCurrent, _, _) => {
+            // A block removed after a baseline stays removed; say so instead of passing silently.
+            if present && block_digest.is_none() && baseline.is_some() {
+                plan.detail = Some(BLOCK_ABSENT.into());
+            }
+            "unchanged"
+        }
         (Decision::Apply, false, _) => "create",
         (Decision::Apply, true, false) => "append",
         (Decision::Apply, true, true) => "merge",
@@ -450,6 +459,9 @@ pub fn agents_plan(root: &Path, request: AgentsRequest) -> Result<AgentsPlan> {
             }
             None => rendered_len,
         };
+        if agents_file.detail.as_deref() == Some(BLOCK_ABSENT) {
+            warnings.push(BLOCK_ABSENT.into());
+        }
         if agents_file.action != "conflict" && projected > 32 * 1024 {
             warnings
                 .push("AGENTS.md may exceed the 32 KiB default instruction budget of Codex".into());

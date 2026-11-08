@@ -451,6 +451,20 @@ fn agents_user_edits_are_preserved_or_reported_as_conflict() {
     let plan: Value =
         serde_json::from_slice(&agents_plan(&root, &agents_request("ko", "none")).stdout).unwrap();
     assert_eq!(actions(&plan)[0].1, "unchanged");
+    // The deletion is reported, not silent.
+    let absent = "managed block absent; user deletion preserved";
+    assert!(plan["files"][0]["detail"]
+        .as_str()
+        .is_some_and(|d| d.contains(absent)));
+    assert_eq!(
+        plan["warnings"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|w| w.as_str().is_some_and(|w| w.contains(absent)))
+            .count(),
+        1
+    );
     assert!(agents_apply(&root, &plan).status.success());
     assert_eq!(fs::read_to_string(&file).unwrap(), "# demo\n\nno block\n");
     let plan: Value =
