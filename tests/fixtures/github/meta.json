@@ -1,0 +1,204 @@
+{
+  "api_version_header": null,
+  "auth_scopes": [
+    "admin:org",
+    "delete_repo",
+    "gist",
+    "repo",
+    "workflow"
+  ],
+  "fetched_at": "2026-11-08T07:56:10Z",
+  "gh_version": "gh version 2.92.0 (2026-04-28)",
+  "repository": {
+    "default_branch": "main",
+    "full_name": "modu-ai/moai-adk",
+    "has_projects": false,
+    "id": 1057975087
+  },
+  "requests": [
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk"
+    },
+    {
+      "method": "GET",
+      "path": "rate_limit"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/labels?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "orgs/modu-ai/issue-types"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/milestones?state=all&per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues?state=all&per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/1975/sub_issues?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/1976/sub_issues?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/1977/sub_issues?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/1978/sub_issues?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/1979/sub_issues?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/1980/sub_issues?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/1981/sub_issues?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/1982/sub_issues?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/1983/sub_issues?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/1984/sub_issues?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/1987/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/1988/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/1989/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/1990/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/1991/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/1992/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/1993/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/1994/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/1995/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/1996/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/1997/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/1998/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/1999/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/2000/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/2001/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/2002/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/2003/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/2004/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/2005/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/2006/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/2007/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/2008/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/2009/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/2010/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/2011/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/2012/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/2013/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/2014/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/2015/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/2016/dependencies/blocked_by?per_page=100"
+    }
+  ]
+}

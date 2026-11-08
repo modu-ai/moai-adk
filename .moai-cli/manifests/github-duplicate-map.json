@@ -1,0 +1,379 @@
+{
+  "counts": {
+    "duplicate_candidates": 0,
+    "issues_closed": 420,
+    "issues_open": 44,
+    "open_mapped_rc1": 44,
+    "open_non_rc1": 0
+  },
+  "duplicate_candidates": [],
+  "fetched_at": "2026-11-08T07:56:10Z",
+  "issues_open": [
+    {
+      "id": 6267911221,
+      "logical_key": "precursor-1973",
+      "node_id": "I_kwDOPw9rL88AAAABdZi8NQ",
+      "non_rc1": false,
+      "number": 1973,
+      "title": "[task] M1 SETUP slice: AGENTS.md 관리 구간 생성기(agents-plan/apply) + 공통 skill 뼈대(skills/moai)"
+    },
+    {
+      "id": 6267911411,
+      "logical_key": "00-C",
+      "node_id": "I_kwDOPw9rL88AAAABdZi88w",
+      "non_rc1": false,
+      "number": 1974,
+      "title": "[task] RC1 부트스트랩: .github Issue form·label·milestone과 저장소 로컬 파일 정책"
+    },
+    {
+      "id": 6268136419,
+      "logical_key": "RC-ROOT",
+      "node_id": "I_kwDOPw9rL88AAAABdZwr4w",
+      "non_rc1": false,
+      "number": 1975,
+      "title": "[RC1] 2026.11.0-rc.1 전체 범위·gate·영역 상위 Issue"
+    },
+    {
+      "id": 6268136682,
+      "logical_key": "EP-01",
+      "node_id": "I_kwDOPw9rL88AAAABdZws6g",
+      "non_rc1": false,
+      "number": 1976,
+      "title": "[RC1][EP-01] 기준선과 계약"
+    },
+    {
+      "id": 6268136939,
+      "logical_key": "EP-02",
+      "node_id": "I_kwDOPw9rL88AAAABdZwt6w",
+      "non_rc1": false,
+      "number": 1977,
+      "title": "[RC1][EP-02] Rust 실행과 저장"
+    },
+    {
+      "id": 6268137141,
+      "logical_key": "EP-03",
+      "node_id": "I_kwDOPw9rL88AAAABdZwutQ",
+      "non_rc1": false,
+      "number": 1978,
+      "title": "[RC1][EP-03] 공통 skill과 host"
+    },
+    {
+      "id": 6268137390,
+      "logical_key": "EP-04",
+      "node_id": "I_kwDOPw9rL88AAAABdZwvrg",
+      "non_rc1": false,
+      "number": 1979,
+      "title": "[RC1][EP-04] 최초 설정과 맞춤 생성"
+    },
+    {
+      "id": 6268137588,
+      "logical_key": "EP-05",
+      "node_id": "I_kwDOPw9rL88AAAABdZwwdA",
+      "non_rc1": false,
+      "number": 1980,
+      "title": "[RC1][EP-05] 설치와 UPDATE"
+    },
+    {
+      "id": 6268137843,
+      "logical_key": "EP-06",
+      "node_id": "I_kwDOPw9rL88AAAABdZwxcw",
+      "non_rc1": false,
+      "number": 1981,
+      "title": "[RC1][EP-06] PLAN RUN VERIFY AUDIT"
+    },
+    {
+      "id": 6268138063,
+      "logical_key": "EP-07",
+      "node_id": "I_kwDOPw9rL88AAAABdZwyTw",
+      "non_rc1": false,
+      "number": 1982,
+      "title": "[RC1][EP-07] 실행 소유권과 통합"
+    },
+    {
+      "id": 6268138263,
+      "logical_key": "EP-08",
+      "node_id": "I_kwDOPw9rL88AAAABdZwzFw",
+      "non_rc1": false,
+      "number": 1983,
+      "title": "[RC1][EP-08] Forge 보고와 판단 context"
+    },
+    {
+      "id": 6268138513,
+      "logical_key": "EP-09",
+      "node_id": "I_kwDOPw9rL88AAAABdZw0EQ",
+      "non_rc1": false,
+      "number": 1984,
+      "title": "[RC1][EP-09] RC 인증과 문서"
+    },
+    {
+      "id": 6268138743,
+      "logical_key": "00-A",
+      "node_id": "I_kwDOPw9rL88AAAABdZw09w",
+      "non_rc1": false,
+      "number": 1985,
+      "title": "[RC1][기준선과 계약] 00-A 기존 RC와 legacy 자산 기준선 대조"
+    },
+    {
+      "id": 6268138965,
+      "logical_key": "00-B",
+      "node_id": "I_kwDOPw9rL88AAAABdZw11Q",
+      "non_rc1": false,
+      "number": 1986,
+      "title": "[RC1][기준선과 계약] 00-B 기존 GitHub 설정과 작업 목록 대조"
+    },
+    {
+      "id": 6268139181,
+      "logical_key": "00-D",
+      "node_id": "I_kwDOPw9rL88AAAABdZw2rQ",
+      "non_rc1": false,
+      "number": 1987,
+      "title": "[RC1][기준선과 계약] 00-D 공통 protocol과 상태 의미 고정"
+    },
+    {
+      "id": 6268139383,
+      "logical_key": "01-A",
+      "node_id": "I_kwDOPw9rL88AAAABdZw3dw",
+      "non_rc1": false,
+      "number": 1988,
+      "title": "[RC1][Rust 실행과 저장] 01-A Rust 파일 resolver와 작업 identity 구현"
+    },
+    {
+      "id": 6268139608,
+      "logical_key": "01-B",
+      "node_id": "I_kwDOPw9rL88AAAABdZw4WA",
+      "non_rc1": false,
+      "number": 1989,
+      "title": "[RC1][Rust 실행과 저장] 01-B 파일 적용과 rollback receipt 구현"
+    },
+    {
+      "id": 6268139804,
+      "logical_key": "01-C",
+      "node_id": "I_kwDOPw9rL88AAAABdZw5HA",
+      "non_rc1": false,
+      "number": 1990,
+      "title": "[RC1][Rust 실행과 저장] 01-C CLI와 선택 MCP의 동일 계약 연결"
+    },
+    {
+      "id": 6268140001,
+      "logical_key": "02-A",
+      "node_id": "I_kwDOPw9rL88AAAABdZw54Q",
+      "non_rc1": false,
+      "number": 1991,
+      "title": "[RC1][공통 skill과 host] 02-A 단일 MoAI router와 workflow 재설계"
+    },
+    {
+      "id": 6268140209,
+      "logical_key": "02-B",
+      "node_id": "I_kwDOPw9rL88AAAABdZw6sQ",
+      "non_rc1": false,
+      "number": 1992,
+      "title": "[RC1][공통 skill과 host] 02-B Claude 발견 호출과 native adapter 검증"
+    },
+    {
+      "id": 6268140418,
+      "logical_key": "02-C",
+      "node_id": "I_kwDOPw9rL88AAAABdZw7gg",
+      "non_rc1": false,
+      "number": 1993,
+      "title": "[RC1][공통 skill과 host] 02-C Codex Desktop 발견 호출과 adapter 검증"
+    },
+    {
+      "id": 6268140632,
+      "logical_key": "02-D",
+      "node_id": "I_kwDOPw9rL88AAAABdZw8WA",
+      "non_rc1": false,
+      "number": 1994,
+      "title": "[RC1][공통 skill과 host] 02-D ZCode 지원표와 adapter gap 검증"
+    },
+    {
+      "id": 6268140839,
+      "logical_key": "03-A",
+      "node_id": "I_kwDOPw9rL88AAAABdZw9Jw",
+      "non_rc1": false,
+      "number": 1995,
+      "title": "[RC1][최초 설정과 맞춤 생성] 03-A 최초 딥 인터뷰 profile 구현"
+    },
+    {
+      "id": 6268141075,
+      "logical_key": "03-B",
+      "node_id": "I_kwDOPw9rL88AAAABdZw-Ew",
+      "non_rc1": false,
+      "number": 1996,
+      "title": "[RC1][최초 설정과 맞춤 생성] 03-B 외부 skill 탐색 검토와 provenance 구현"
+    },
+    {
+      "id": 6268141303,
+      "logical_key": "03-C",
+      "node_id": "I_kwDOPw9rL88AAAABdZw-9w",
+      "non_rc1": false,
+      "number": 1997,
+      "title": "[RC1][최초 설정과 맞춤 생성] 03-C 프로젝트별 맞춤 파일 생성 구현"
+    },
+    {
+      "id": 6268141506,
+      "logical_key": "04-A",
+      "node_id": "I_kwDOPw9rL88AAAABdZw_wg",
+      "non_rc1": false,
+      "number": 1998,
+      "title": "[RC1][설치와 UPDATE] 04-A moai-cli와 Go의 설치 세대 분리"
+    },
+    {
+      "id": 6268141706,
+      "logical_key": "04-B",
+      "node_id": "I_kwDOPw9rL88AAAABdZxAig",
+      "non_rc1": false,
+      "number": 1999,
+      "title": "[RC1][설치와 UPDATE] 04-B 모든 설치 host UPDATE 구현"
+    },
+    {
+      "id": 6268141983,
+      "logical_key": "04-C",
+      "node_id": "I_kwDOPw9rL88AAAABdZxBnw",
+      "non_rc1": false,
+      "number": 2000,
+      "title": "[RC1][설치와 UPDATE] 04-C UPDATE 부분 실패와 복구 검증"
+    },
+    {
+      "id": 6268142217,
+      "logical_key": "05-A",
+      "node_id": "I_kwDOPw9rL88AAAABdZxCiQ",
+      "non_rc1": false,
+      "number": 2001,
+      "title": "[RC1][PLAN RUN VERIFY AUDIT] 05-A GEARS와 legacy EARS 요구 계약 구현"
+    },
+    {
+      "id": 6268142454,
+      "logical_key": "05-B",
+      "node_id": "I_kwDOPw9rL88AAAABdZxDdg",
+      "non_rc1": false,
+      "number": 2002,
+      "title": "[RC1][PLAN RUN VERIFY AUDIT] 05-B PLAN과 task DAG admission 구현"
+    },
+    {
+      "id": 6268142659,
+      "logical_key": "05-C",
+      "node_id": "I_kwDOPw9rL88AAAABdZxEQw",
+      "non_rc1": false,
+      "number": 2003,
+      "title": "[RC1][PLAN RUN VERIFY AUDIT] 05-C RUN 방법론과 실제 VERIFY 연결"
+    },
+    {
+      "id": 6268142884,
+      "logical_key": "05-D",
+      "node_id": "I_kwDOPw9rL88AAAABdZxFJA",
+      "non_rc1": false,
+      "number": 2004,
+      "title": "[RC1][PLAN RUN VERIFY AUDIT] 05-D 독립 AUDIT와 완료 admission 구현"
+    },
+    {
+      "id": 6268143192,
+      "logical_key": "06-A",
+      "node_id": "I_kwDOPw9rL88AAAABdZxGWA",
+      "non_rc1": false,
+      "number": 2005,
+      "title": "[RC1][실행 소유권과 통합] 06-A 단일 리더와 Issue claim 계약 구현"
+    },
+    {
+      "id": 6268143400,
+      "logical_key": "06-B",
+      "node_id": "I_kwDOPw9rL88AAAABdZxHKA",
+      "non_rc1": false,
+      "number": 2006,
+      "title": "[RC1][실행 소유권과 통합] 06-B 중단 재조회와 명시 handoff 검증"
+    },
+    {
+      "id": 6268143620,
+      "logical_key": "06-C",
+      "node_id": "I_kwDOPw9rL88AAAABdZxIBA",
+      "non_rc1": false,
+      "number": 2007,
+      "title": "[RC1][실행 소유권과 통합] 06-C 세션별 worktree와 PR 연결 구현"
+    },
+    {
+      "id": 6268143841,
+      "logical_key": "07-A",
+      "node_id": "I_kwDOPw9rL88AAAABdZxI4Q",
+      "non_rc1": false,
+      "number": 2008,
+      "title": "[RC1][Forge 보고와 판단 context] 07-A GitHub TODO와 polling adapter 구현"
+    },
+    {
+      "id": 6268144054,
+      "logical_key": "07-B",
+      "node_id": "I_kwDOPw9rL88AAAABdZxJtg",
+      "non_rc1": false,
+      "number": 2009,
+      "title": "[RC1][Forge 보고와 판단 context] 07-B 로컬 TODO 선택 승격 구현"
+    },
+    {
+      "id": 6268144304,
+      "logical_key": "07-C",
+      "node_id": "I_kwDOPw9rL88AAAABdZxKsA",
+      "non_rc1": false,
+      "number": 2010,
+      "title": "[RC1][Forge 보고와 판단 context] 07-C 간결 보고와 artifact 참조 구현"
+    },
+    {
+      "id": 6268144562,
+      "logical_key": "07-D",
+      "node_id": "I_kwDOPw9rL88AAAABdZxLsg",
+      "non_rc1": false,
+      "number": 2011,
+      "title": "[RC1][Forge 보고와 판단 context] 07-D native 판단과 context 기본 연결"
+    },
+    {
+      "id": 6268144769,
+      "logical_key": "08-A",
+      "node_id": "I_kwDOPw9rL88AAAABdZxMgQ",
+      "non_rc1": false,
+      "number": 2012,
+      "title": "[RC1][RC 인증과 문서] 08-A 최신 base 통합과 SYNC 연결"
+    },
+    {
+      "id": 6268144983,
+      "logical_key": "08-B",
+      "node_id": "I_kwDOPw9rL88AAAABdZxNVw",
+      "non_rc1": false,
+      "number": 2013,
+      "title": "[RC1][RC 인증과 문서] 08-B 검증된 .github를 Rust 템플릿으로 승격"
+    },
+    {
+      "id": 6268145224,
+      "logical_key": "08-C",
+      "node_id": "I_kwDOPw9rL88AAAABdZxOSA",
+      "non_rc1": false,
+      "number": 2014,
+      "title": "[RC1][RC 인증과 문서] 08-C RC host OS E2E와 restore"
+    },
+    {
+      "id": 6268145436,
+      "logical_key": "08-D",
+      "node_id": "I_kwDOPw9rL88AAAABdZxPHA",
+      "non_rc1": false,
+      "number": 2015,
+      "title": "[RC1][RC 인증과 문서] 08-D 문서 지원표와 release 검토"
+    },
+    {
+      "id": 6268637297,
+      "logical_key": "04-D",
+      "node_id": "I_kwDOPw9rL88AAAABdaPQcQ",
+      "non_rc1": false,
+      "number": 2016,
+      "title": "[RC1][설치와 UPDATE] 04-D Go 사용자 마이그레이션(bridge): moai update(Go) → moai-cli 설치·상태 이전·Go 제거"
+    }
+  ],
+  "observed": {
+    "closed_with_any_spec_id": 36,
+    "closed_with_rc1_key": 0,
+    "closed_with_rc1_spec_id": 0,
+    "max_title_similarity": 0.2
+  },
+  "repository": "modu-ai/moai-adk",
+  "rules": {
+    "decision": "candidate only; a person confirms or rejects each duplicate",
+    "logical_key": "\\b(EP-0[1-9]|0[0-9]-[A-D])\\b",
+    "spec_id": "SPEC-RC1-[A-Z0-9-]+",
+    "title_similar": "token Jaccard >= 0.50 after stripping [..] prefixes"
+  },
+  "schema_version": 1
+}

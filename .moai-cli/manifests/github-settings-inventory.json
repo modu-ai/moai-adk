@@ -1,0 +1,1632 @@
+{
+  "api_version": "gh default (no X-GitHub-Api-Version header sent)",
+  "auth_scopes": [
+    "admin:org",
+    "delete_repo",
+    "gist",
+    "repo",
+    "workflow"
+  ],
+  "dependencies": {
+    "1987": [
+      1985
+    ],
+    "1988": [
+      1987
+    ],
+    "1989": [
+      1988
+    ],
+    "1990": [
+      1987
+    ],
+    "1991": [
+      1985,
+      1987
+    ],
+    "1992": [
+      1990,
+      1991
+    ],
+    "1993": [
+      1990,
+      1991
+    ],
+    "1994": [
+      1991
+    ],
+    "1995": [
+      1989,
+      1991
+    ],
+    "1996": [
+      1995
+    ],
+    "1997": [
+      1989,
+      1996
+    ],
+    "1998": [
+      1988,
+      1990
+    ],
+    "1999": [
+      1989,
+      1992,
+      1993,
+      1998
+    ],
+    "2000": [
+      1999
+    ],
+    "2001": [
+      1987
+    ],
+    "2002": [
+      2001
+    ],
+    "2003": [
+      1990,
+      2002
+    ],
+    "2004": [
+      2003
+    ],
+    "2005": [
+      1987,
+      1988
+    ],
+    "2006": [
+      2005
+    ],
+    "2007": [
+      2003,
+      2005
+    ],
+    "2008": [
+      1986,
+      1987
+    ],
+    "2009": [
+      2008
+    ],
+    "2010": [
+      2004,
+      2008
+    ],
+    "2011": [
+      1991,
+      2002
+    ],
+    "2012": [
+      2007,
+      2010
+    ],
+    "2013": [
+      1974,
+      1997
+    ],
+    "2014": [
+      2000,
+      2004,
+      2012,
+      2013
+    ],
+    "2015": [
+      2014
+    ],
+    "2016": [
+      1998,
+      1999
+    ]
+  },
+  "fetched_at": "2026-11-08T07:56:10Z",
+  "forms": [
+    {
+      "adoption": "not_adopted_preserved",
+      "path": ".github/ISSUE_TEMPLATE/agentic-factory-01-parent-issue.yml",
+      "sha256": "30056696d635099c01480f9b056a245cd2ad9431f83f0a605b21a450d0945767",
+      "tracked": "untracked"
+    },
+    {
+      "adoption": "not_adopted_preserved",
+      "path": ".github/ISSUE_TEMPLATE/agentic-factory-02-child-issue.yml",
+      "sha256": "78e1a62106f9c1e03177fa7329b12b0ead78aec4371676b76c68baf72802913c",
+      "tracked": "untracked"
+    },
+    {
+      "adoption": "not_adopted_preserved",
+      "path": ".github/ISSUE_TEMPLATE/agentic-factory-03-spec-change.yml",
+      "sha256": "0236f2a2251dca2a8f4532830227802efad9173965e4ebfbc59e59f824d11792",
+      "tracked": "untracked"
+    },
+    {
+      "adoption": "adopted",
+      "path": ".github/ISSUE_TEMPLATE/moai-bugfix.yml",
+      "sha256": "b2a87b7682be9bd4838f27242a5480b4b0cdefba0bf4ac0bd90e0874773d6a1a",
+      "tracked": "tracked"
+    },
+    {
+      "adoption": "adopted",
+      "path": ".github/ISSUE_TEMPLATE/moai-feature.yml",
+      "sha256": "6ab415cb6d69105f97357c42fbf5fe1cb22697c218df2a86b3449bc1bb8eca63",
+      "tracked": "tracked"
+    },
+    {
+      "adoption": "adopted",
+      "path": ".github/ISSUE_TEMPLATE/moai-investigation.yml",
+      "sha256": "f8f4bf176cd2f0c19a084e17fa93a1600f2adf8bb009dd0d6f58e55b6e3ef3fb",
+      "tracked": "tracked"
+    },
+    {
+      "adoption": "not_adopted_preserved",
+      "path": ".github/PULL_REQUEST_TEMPLATE/agentic-factory-11-handoff.md",
+      "sha256": "aa6bc438d5093f7f1662eae61f2f44ca66eedc9ac9116ce165b2f95d757a225e",
+      "tracked": "untracked"
+    },
+    {
+      "adoption": "not_adopted_preserved",
+      "path": ".github/workflows/label-sync.yml",
+      "sha256": "8dc3fd482b8cbc5f65a31f5b75f5acbedca042a35efe6392cdd59a249cb324a5",
+      "tracked": "untracked"
+    }
+  ],
+  "forms_hash_source": "recorded shasum file",
+  "gh_version": "gh version 2.92.0 (2026-04-28)",
+  "issue_counts": {
+    "by_state_reason": {
+      "completed": 388,
+      "duplicate": 1,
+      "not_planned": 31,
+      "null": 44
+    },
+    "by_type": {
+      "null": 464
+    },
+    "closed": 420,
+    "open": 44
+  },
+  "issue_types": [
+    {
+      "color": "yellow",
+      "id": 23014082,
+      "is_enabled": true,
+      "name": "Task"
+    },
+    {
+      "color": "red",
+      "id": 23014083,
+      "is_enabled": true,
+      "name": "Bug"
+    },
+    {
+      "color": "blue",
+      "id": 23014084,
+      "is_enabled": true,
+      "name": "Feature"
+    }
+  ],
+  "label_axis_counts": {
+    "area": 14,
+    "functional": 7,
+    "host": 2,
+    "legacy-synonym": 26,
+    "priority": 5,
+    "status": 9,
+    "type": 9,
+    "unknown": 22
+  },
+  "label_files": [
+    {
+      "adoption": "not_adopted_preserved",
+      "path": ".github/agentic-factory/labels.proposed.yml",
+      "sha256": "8cc4268fd519a935e853a0b82f6ca2ba323cab62ffca90c23ba405e23b13f6f6",
+      "tracked": "untracked"
+    },
+    {
+      "adoption": "not_adopted_preserved",
+      "path": ".github/labels.yml",
+      "sha256": "8cbf4be9d5e42f25e75c4dabf0019837b41c6ab1480cee6eb0e8c25eb6d77b8c",
+      "tracked": "untracked"
+    },
+    {
+      "adoption": "adopted",
+      "path": ".github/moai/labels.yml",
+      "sha256": "93f6cefc674006a97d53c0ddbf3b9e97635659de47976d8236af635ac92d14a2",
+      "tracked": "tracked"
+    }
+  ],
+  "labels": [
+    {
+      "axis": "unknown",
+      "color": "0d9488",
+      "default": false,
+      "description": "Content generated by AI",
+      "id": 10838555959,
+      "name": "ai-generated",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "unknown",
+      "color": "06b6d4",
+      "default": false,
+      "description": "Reviewed by AI",
+      "id": 10838555964,
+      "name": "ai-reviewed",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "unknown",
+      "color": "0075ca",
+      "default": false,
+      "description": "REST/GraphQL API related",
+      "id": 9634089517,
+      "name": "api",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "area",
+      "color": "5319e7",
+      "default": false,
+      "description": "ast-grep integration subsystem",
+      "id": 10838555993,
+      "name": "area:astgrep",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "area",
+      "color": "e3d21c",
+      "default": false,
+      "description": "CI/CD infrastructure",
+      "id": 10838555970,
+      "name": "area:ci",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "area",
+      "color": "00add8",
+      "default": false,
+      "description": "CLI commands and UX",
+      "id": 10838555996,
+      "name": "area:cli",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "area",
+      "color": "d4c5f9",
+      "default": false,
+      "description": "Configuration files (.moai/, .claude/)",
+      "id": 10838555969,
+      "name": "area:config",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "area",
+      "color": "0366d6",
+      "default": false,
+      "description": "External dependencies",
+      "id": 10838555975,
+      "name": "area:deps",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "area",
+      "color": "0e8a16",
+      "default": false,
+      "description": "docs-site (Hugo 4-locale documentation)",
+      "id": 10838555973,
+      "name": "area:docs-site",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "area",
+      "color": "5319e7",
+      "default": false,
+      "description": "Harness subsystem (self-evolving harness v2)",
+      "id": 10950023871,
+      "name": "area:harness",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "area",
+      "color": "f9d0c4",
+      "default": false,
+      "description": "Hook system",
+      "id": 10838555968,
+      "name": "area:hooks",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "area",
+      "color": "5319e7",
+      "default": false,
+      "description": "LSP subsystem",
+      "id": 10838555991,
+      "name": "area:lsp",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "area",
+      "color": "5319e7",
+      "default": false,
+      "description": "MX validator subsystem",
+      "id": 10838555972,
+      "name": "area:mx",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "area",
+      "color": "ee0701",
+      "default": false,
+      "description": "Security-related area",
+      "id": 10838555979,
+      "name": "area:security",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "area",
+      "color": "c2e0c6",
+      "default": false,
+      "description": "SETUP: project profile, AGENTS.md generation, host projections",
+      "id": 13000094325,
+      "name": "area:setup",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "area",
+      "color": "c5def5",
+      "default": false,
+      "description": "internal/template/templates/ (project templates)",
+      "id": 10838555977,
+      "name": "area:templates",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "area",
+      "color": "1d76db",
+      "default": false,
+      "description": "SPEC workflow (plan/run/sync)",
+      "id": 10838555978,
+      "name": "area:workflow",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "unknown",
+      "color": "d73a4a",
+      "default": false,
+      "description": "Authentication and authorization",
+      "id": 9634089587,
+      "name": "auth",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "unknown",
+      "color": "0e8a16",
+      "default": false,
+      "description": "Automatically merge when CI passes",
+      "id": 10568905701,
+      "name": "automerge",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "legacy-synonym",
+      "color": "d73a4a",
+      "default": false,
+      "description": "Waiting for external dependency resolution",
+      "id": 9634089094,
+      "name": "blocked",
+      "synonym_basis": "issue-body",
+      "synonym_of": "status:blocked"
+    },
+    {
+      "axis": "unknown",
+      "color": "d73a4a",
+      "default": false,
+      "description": "Will break backward compatibility",
+      "id": 9634089943,
+      "name": "breaking-change",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "legacy-synonym",
+      "color": "d73a4a",
+      "default": true,
+      "description": "Something is not working",
+      "id": 9293893006,
+      "name": "bug",
+      "synonym_basis": "issue-body",
+      "synonym_of": "type:fix"
+    },
+    {
+      "axis": "legacy-synonym",
+      "color": "fbca04",
+      "default": false,
+      "description": "Maintenance tasks and dependencies",
+      "id": 9634088681,
+      "name": "chore",
+      "synonym_basis": "issue-body",
+      "synonym_of": "type:chore"
+    },
+    {
+      "axis": "legacy-synonym",
+      "color": "e3d21c",
+      "default": false,
+      "description": "CI/CD and GitHub Actions changes",
+      "id": 10155108703,
+      "name": "ci",
+      "synonym_basis": "name-match",
+      "synonym_of": "type:ci"
+    },
+    {
+      "axis": "unknown",
+      "color": "a5d8ff",
+      "default": false,
+      "description": "Reviewed by CodeRabbit",
+      "id": 10838555956,
+      "name": "coderabbit",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "legacy-synonym",
+      "color": "d4c5f9",
+      "default": false,
+      "description": "Configuration file changes (.moai, .claude)",
+      "id": 10161860466,
+      "name": "config",
+      "synonym_basis": "name-match",
+      "synonym_of": "area:config"
+    },
+    {
+      "axis": "legacy-synonym",
+      "color": "B60205",
+      "default": false,
+      "description": "Critical priority",
+      "id": 9530983199,
+      "name": "critical",
+      "synonym_basis": "issue-body",
+      "synonym_of": "priority:P0"
+    },
+    {
+      "axis": "unknown",
+      "color": "1f883d",
+      "default": false,
+      "description": "Database layer and queries",
+      "id": 9634089557,
+      "name": "database",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "functional",
+      "color": "0366d6",
+      "default": false,
+      "description": "Dependency updates",
+      "id": 10838555958,
+      "name": "dependencies",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "legacy-synonym",
+      "color": "0e8a16",
+      "default": false,
+      "description": "Documentation file changes",
+      "id": 9634088725,
+      "name": "docs",
+      "synonym_basis": "name-match",
+      "synonym_of": "type:docs"
+    },
+    {
+      "axis": "legacy-synonym",
+      "color": "0e8a16",
+      "default": true,
+      "description": "Documentation improvements",
+      "id": 9293893011,
+      "name": "documentation",
+      "synonym_basis": "name-match",
+      "synonym_of": "type:docs"
+    },
+    {
+      "axis": "status",
+      "color": "1f883d",
+      "default": false,
+      "description": "Completed and verified",
+      "id": 9634089329,
+      "name": "done",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "functional",
+      "color": "cfd3d7",
+      "default": true,
+      "description": "This issue or pull request already exists",
+      "id": 9634089440,
+      "name": "duplicate",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "functional",
+      "color": "0075ca",
+      "default": true,
+      "description": "New feature or improvement request",
+      "id": 9293893023,
+      "name": "enhancement",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "legacy-synonym",
+      "color": "1f883d",
+      "default": false,
+      "description": "A new capability or enhancement request",
+      "id": 9634088612,
+      "name": "feature",
+      "synonym_basis": "issue-body",
+      "synonym_of": "type:feature"
+    },
+    {
+      "axis": "legacy-synonym",
+      "color": "A8E6CF",
+      "default": false,
+      "description": "New feature request from users",
+      "id": 9557042799,
+      "name": "feature-request",
+      "synonym_basis": "issue-body",
+      "synonym_of": "type:feature"
+    },
+    {
+      "axis": "unknown",
+      "color": "00add8",
+      "default": false,
+      "description": "Go source code changes",
+      "id": 10161860461,
+      "name": "go",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "functional",
+      "color": "7ae07a",
+      "default": true,
+      "description": "Good for newcomers",
+      "id": 9634089719,
+      "name": "good first issue",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "functional",
+      "color": "008672",
+      "default": true,
+      "description": "Extra attention is needed",
+      "id": 9634089782,
+      "name": "help wanted",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "legacy-synonym",
+      "color": "D93F0B",
+      "default": false,
+      "description": "High priority",
+      "id": 9530983293,
+      "name": "high",
+      "synonym_basis": "name-match",
+      "synonym_of": "priority:P1"
+    },
+    {
+      "axis": "legacy-synonym",
+      "color": "f9d0c4",
+      "default": false,
+      "description": "Hook system changes",
+      "id": 10161860476,
+      "name": "hooks",
+      "synonym_basis": "name-match",
+      "synonym_of": "area:hooks"
+    },
+    {
+      "axis": "host",
+      "color": "d4a5ff",
+      "default": false,
+      "description": "Must be verified on Claude Code",
+      "id": 13000094199,
+      "name": "host:claude",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "host",
+      "color": "74d2ff",
+      "default": false,
+      "description": "Must be verified on Codex",
+      "id": 13000094271,
+      "name": "host:codex",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "unknown",
+      "color": "FFD93D",
+      "default": false,
+      "description": "Code quality, refactoring, tech debt",
+      "id": 9557042835,
+      "name": "improvement",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "legacy-synonym",
+      "color": "ffd700",
+      "default": false,
+      "description": "Currently being worked on",
+      "id": 9634089173,
+      "name": "in-progress",
+      "synonym_basis": "issue-body",
+      "synonym_of": "status:in-progress"
+    },
+    {
+      "axis": "unknown",
+      "color": "1D76DB",
+      "default": false,
+      "description": "Infrastructure and DevOps changes",
+      "id": 9634088946,
+      "name": "infra",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "unknown",
+      "color": "1D76DB",
+      "default": false,
+      "description": "Cloud and infrastructure",
+      "id": 9634089661,
+      "name": "infrastructure",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "status",
+      "color": "ffd700",
+      "default": false,
+      "description": "Team actively investigating the issue",
+      "id": 9634089033,
+      "name": "investigating",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "legacy-synonym",
+      "color": "85E89D",
+      "default": false,
+      "description": "Low priority",
+      "id": 9530983418,
+      "name": "low",
+      "synonym_basis": "name-match",
+      "synonym_of": "priority:P3"
+    },
+    {
+      "axis": "legacy-synonym",
+      "color": "FBCA04",
+      "default": false,
+      "description": "Medium priority",
+      "id": 9530983347,
+      "name": "medium",
+      "synonym_basis": "name-match",
+      "synonym_of": "priority:P2"
+    },
+    {
+      "axis": "unknown",
+      "color": "fbca04",
+      "default": false,
+      "description": "Requires design or architecture review",
+      "id": 9634089854,
+      "name": "needs design",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "unknown",
+      "color": "d73a4a",
+      "default": false,
+      "description": "Requires security audit",
+      "id": 9634089904,
+      "name": "needs security review",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "legacy-synonym",
+      "color": "fbca04",
+      "default": false,
+      "description": "Performance optimization and benchmarking",
+      "id": 9634088890,
+      "name": "performance",
+      "synonym_basis": "name-match",
+      "synonym_of": "type:performance"
+    },
+    {
+      "axis": "unknown",
+      "color": "006b75",
+      "default": false,
+      "description": "Pinned and exempt from stale bot",
+      "id": 10838555953,
+      "name": "pinned",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "unknown",
+      "color": "1D76DB",
+      "default": false,
+      "description": "Planning phase",
+      "id": 9530983106,
+      "name": "planning",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "priority",
+      "color": "b60205",
+      "default": false,
+      "description": "Critical — immediate response required",
+      "id": 10838555966,
+      "name": "priority:P0",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "priority",
+      "color": "d93f0b",
+      "default": false,
+      "description": "High",
+      "id": 10838555971,
+      "name": "priority:P1",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "priority",
+      "color": "fbca04",
+      "default": false,
+      "description": "Medium",
+      "id": 10838555957,
+      "name": "priority:P2",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "priority",
+      "color": "85e89d",
+      "default": false,
+      "description": "Low — backlog",
+      "id": 10838555976,
+      "name": "priority:P3",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "priority",
+      "color": "c2c2c2",
+      "default": false,
+      "description": "Icebox — deferred indefinitely",
+      "id": 10838555974,
+      "name": "priority:P4",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "legacy-synonym",
+      "color": "b60205",
+      "default": false,
+      "description": "Critical priority - requires immediate attention",
+      "id": 10838555950,
+      "name": "priority:critical",
+      "synonym_basis": "issue-body",
+      "synonym_of": "priority:P0"
+    },
+    {
+      "axis": "legacy-synonym",
+      "color": "d93f0b",
+      "default": false,
+      "description": "High priority - should be addressed soon",
+      "id": 10838555954,
+      "name": "priority:high",
+      "synonym_basis": "name-match",
+      "synonym_of": "priority:P1"
+    },
+    {
+      "axis": "legacy-synonym",
+      "color": "c2c2c2",
+      "default": false,
+      "description": "Low priority - when time permits",
+      "id": 10838555952,
+      "name": "priority:low",
+      "synonym_basis": "name-match",
+      "synonym_of": "priority:P3"
+    },
+    {
+      "axis": "legacy-synonym",
+      "color": "fbca04",
+      "default": false,
+      "description": "Medium priority - normal queue",
+      "id": 10838555955,
+      "name": "priority:medium",
+      "synonym_basis": "name-match",
+      "synonym_of": "priority:P2"
+    },
+    {
+      "axis": "functional",
+      "color": "8b5cf6",
+      "default": true,
+      "description": "Questions or discussions",
+      "id": 9293893047,
+      "name": "question",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "status",
+      "color": "1f883d",
+      "default": false,
+      "description": "Ready for implementation",
+      "id": 9634089128,
+      "name": "ready",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "legacy-synonym",
+      "color": "d2dae6",
+      "default": false,
+      "description": "Code restructuring without behavior change",
+      "id": 9634088643,
+      "name": "refactor",
+      "synonym_basis": "name-match",
+      "synonym_of": "type:refactor"
+    },
+    {
+      "axis": "unknown",
+      "color": "FF6B6B",
+      "default": false,
+      "description": "User-reported issue via /alfred:9-feedback",
+      "id": 9557042759,
+      "name": "reported",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "unknown",
+      "color": "fbca04",
+      "default": false,
+      "description": "Needs comprehensive testing",
+      "id": 9634089976,
+      "name": "requires-testing",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "legacy-synonym",
+      "color": "0075ca",
+      "default": false,
+      "description": "In code review process",
+      "id": 9634089220,
+      "name": "review",
+      "synonym_basis": "issue-body",
+      "synonym_of": "status:review"
+    },
+    {
+      "axis": "unknown",
+      "color": "0075ca",
+      "default": false,
+      "description": "Client SDK and libraries",
+      "id": 9634089694,
+      "name": "sdk",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "legacy-synonym",
+      "color": "ee0701",
+      "default": false,
+      "description": "Security-related issue",
+      "id": 9634088849,
+      "name": "security",
+      "synonym_basis": "name-match",
+      "synonym_of": "type:security"
+    },
+    {
+      "axis": "unknown",
+      "color": "0E8A16",
+      "default": false,
+      "description": "SPEC document related",
+      "id": 9530982983,
+      "name": "spec",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "unknown",
+      "color": "ededed",
+      "default": false,
+      "description": "Marked as stale due to inactivity",
+      "id": 10838555963,
+      "name": "stale",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "status",
+      "color": "d73a4a",
+      "default": false,
+      "description": "Blocked on external dependency",
+      "id": 10838555980,
+      "name": "status:blocked",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "status",
+      "color": "ffd700",
+      "default": false,
+      "description": "Currently being worked on",
+      "id": 10838555998,
+      "name": "status:in-progress",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "status",
+      "color": "ffffa5",
+      "default": false,
+      "description": "Waiting for additional information from reporter",
+      "id": 10838555984,
+      "name": "status:needs-info",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "status",
+      "color": "0075ca",
+      "default": false,
+      "description": "In code review",
+      "id": 10838555982,
+      "name": "status:review",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "legacy-synonym",
+      "color": "c5def5",
+      "default": false,
+      "description": "Template file changes",
+      "id": 10161860471,
+      "name": "templates",
+      "synonym_basis": "name-match",
+      "synonym_of": "area:templates"
+    },
+    {
+      "axis": "legacy-synonym",
+      "color": "d876e3",
+      "default": false,
+      "description": "Test suite improvements and coverage",
+      "id": 9634088776,
+      "name": "test",
+      "synonym_basis": "name-match",
+      "synonym_of": "type:test"
+    },
+    {
+      "axis": "status",
+      "color": "fbca04",
+      "default": false,
+      "description": "In QA and testing phase",
+      "id": 9634089297,
+      "name": "testing",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "legacy-synonym",
+      "color": "bfd4f2",
+      "default": false,
+      "description": "Test file changes",
+      "id": 10161860463,
+      "name": "tests",
+      "synonym_basis": "name-match",
+      "synonym_of": "type:test"
+    },
+    {
+      "axis": "status",
+      "color": "d73a4a",
+      "default": false,
+      "description": "Waiting for team analysis and triage",
+      "id": 9634088982,
+      "name": "triage",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "type",
+      "color": "fbca04",
+      "default": false,
+      "description": "Maintenance (dependencies, cleanup)",
+      "id": 10774795878,
+      "name": "type:chore",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "type",
+      "color": "e3d21c",
+      "default": false,
+      "description": "CI/CD change",
+      "id": 10792285999,
+      "name": "type:ci",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "type",
+      "color": "0075ca",
+      "default": false,
+      "description": "Documentation only change",
+      "id": 10774722353,
+      "name": "type:docs",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "type",
+      "color": "1f883d",
+      "default": false,
+      "description": "New feature or capability",
+      "id": 10792017910,
+      "name": "type:feature",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "type",
+      "color": "d73a4a",
+      "default": false,
+      "description": "Bug fix",
+      "id": 10774795874,
+      "name": "type:fix",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "type",
+      "color": "16b863",
+      "default": false,
+      "description": "Performance improvement",
+      "id": 12550885825,
+      "name": "type:performance",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "type",
+      "color": "d2dae6",
+      "default": false,
+      "description": "Code restructuring without behavior change",
+      "id": 10838555967,
+      "name": "type:refactor",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "type",
+      "color": "ee0701",
+      "default": false,
+      "description": "Security fix or hardening",
+      "id": 10838555965,
+      "name": "type:security",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "type",
+      "color": "d876e3",
+      "default": false,
+      "description": "Test addition or improvement",
+      "id": 10792017916,
+      "name": "type:test",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "unknown",
+      "color": "a371f7",
+      "default": false,
+      "description": "User interface and frontend",
+      "id": 9634089633,
+      "name": "ui",
+      "synonym_basis": null,
+      "synonym_of": null
+    },
+    {
+      "axis": "functional",
+      "color": "ffffff",
+      "default": true,
+      "description": "This will not be worked on",
+      "id": 9634089358,
+      "name": "wontfix",
+      "synonym_basis": null,
+      "synonym_of": null
+    }
+  ],
+  "manifest_reconciliation": {
+    "dependencies": {
+      "extra_remote": [],
+      "manifest_linked": 51,
+      "missing_remote": [],
+      "remote": 51
+    },
+    "sub_issues": {
+      "extra_remote": [],
+      "manifest_linked": 42,
+      "missing_remote": [],
+      "remote": 42
+    }
+  },
+  "milestones": [
+    {
+      "closed_issues": 0,
+      "id": 19322978,
+      "number": 1,
+      "open_issues": 44,
+      "state": "open",
+      "title": "2026.11.0-rc.1"
+    }
+  ],
+  "pr_counts": {
+    "by_state": {
+      "closed": 1536
+    },
+    "merged": 1324,
+    "total": 1536
+  },
+  "projects": "unavailable(read:project scope missing)",
+  "prs_open": [],
+  "repository": {
+    "default_branch": "main",
+    "full_name": "modu-ai/moai-adk",
+    "has_projects": false,
+    "id": 1057975087
+  },
+  "requests": [
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk"
+    },
+    {
+      "method": "GET",
+      "path": "rate_limit"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/labels?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "orgs/modu-ai/issue-types"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/milestones?state=all&per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues?state=all&per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/1975/sub_issues?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/1976/sub_issues?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/1977/sub_issues?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/1978/sub_issues?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/1979/sub_issues?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/1980/sub_issues?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/1981/sub_issues?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/1982/sub_issues?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/1983/sub_issues?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/1984/sub_issues?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/1987/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/1988/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/1989/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/1990/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/1991/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/1992/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/1993/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/1994/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/1995/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/1996/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/1997/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/1998/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/1999/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/2000/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/2001/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/2002/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/2003/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/2004/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/2005/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/2006/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/2007/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/2008/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/2009/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/2010/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/2011/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/2012/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/2013/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/2014/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/2015/dependencies/blocked_by?per_page=100"
+    },
+    {
+      "method": "GET",
+      "path": "repos/modu-ai/moai-adk/issues/2016/dependencies/blocked_by?per_page=100"
+    }
+  ],
+  "schema_version": 1,
+  "sub_issues": {
+    "1975": [
+      1976,
+      1977,
+      1978,
+      1979,
+      1980,
+      1981,
+      1982,
+      1983,
+      1984
+    ],
+    "1976": [
+      1974,
+      1985,
+      1986,
+      1987
+    ],
+    "1977": [
+      1988,
+      1989,
+      1990
+    ],
+    "1978": [
+      1991,
+      1992,
+      1993,
+      1994
+    ],
+    "1979": [
+      1995,
+      1996,
+      1997
+    ],
+    "1980": [
+      1998,
+      1999,
+      2000,
+      2016
+    ],
+    "1981": [
+      2001,
+      2002,
+      2003,
+      2004
+    ],
+    "1982": [
+      2005,
+      2006,
+      2007
+    ],
+    "1983": [
+      2008,
+      2009,
+      2010,
+      2011
+    ],
+    "1984": [
+      2012,
+      2013,
+      2014,
+      2015
+    ]
+  },
+  "synonym_groups": [
+    {
+      "basis": "issue-body",
+      "canonical": "type:fix",
+      "canonical_present": true,
+      "members": [
+        "bug"
+      ]
+    },
+    {
+      "basis": "issue-body",
+      "canonical": "type:feature",
+      "canonical_present": true,
+      "members": [
+        "feature",
+        "feature-request"
+      ]
+    },
+    {
+      "basis": "issue-body",
+      "canonical": "type:chore",
+      "canonical_present": true,
+      "members": [
+        "chore"
+      ]
+    },
+    {
+      "basis": "name-match",
+      "canonical": "type:ci",
+      "canonical_present": true,
+      "members": [
+        "ci"
+      ]
+    },
+    {
+      "basis": "name-match",
+      "canonical": "type:docs",
+      "canonical_present": true,
+      "members": [
+        "docs",
+        "documentation"
+      ]
+    },
+    {
+      "basis": "name-match",
+      "canonical": "type:performance",
+      "canonical_present": true,
+      "members": [
+        "performance"
+      ]
+    },
+    {
+      "basis": "name-match",
+      "canonical": "type:refactor",
+      "canonical_present": true,
+      "members": [
+        "refactor"
+      ]
+    },
+    {
+      "basis": "name-match",
+      "canonical": "type:security",
+      "canonical_present": true,
+      "members": [
+        "security"
+      ]
+    },
+    {
+      "basis": "name-match",
+      "canonical": "type:test",
+      "canonical_present": true,
+      "members": [
+        "test",
+        "tests"
+      ]
+    },
+    {
+      "basis": "issue-body",
+      "canonical": "priority:P0",
+      "canonical_present": true,
+      "members": [
+        "critical",
+        "priority:critical"
+      ]
+    },
+    {
+      "basis": "name-match",
+      "canonical": "priority:P1",
+      "canonical_present": true,
+      "members": [
+        "high",
+        "priority:high"
+      ]
+    },
+    {
+      "basis": "name-match",
+      "canonical": "priority:P2",
+      "canonical_present": true,
+      "members": [
+        "medium",
+        "priority:medium"
+      ]
+    },
+    {
+      "basis": "name-match",
+      "canonical": "priority:P3",
+      "canonical_present": true,
+      "members": [
+        "low",
+        "priority:low"
+      ]
+    },
+    {
+      "basis": "issue-body",
+      "canonical": "status:blocked",
+      "canonical_present": true,
+      "members": [
+        "blocked"
+      ]
+    },
+    {
+      "basis": "issue-body",
+      "canonical": "status:in-progress",
+      "canonical_present": true,
+      "members": [
+        "in-progress"
+      ]
+    },
+    {
+      "basis": "issue-body",
+      "canonical": "status:review",
+      "canonical_present": true,
+      "members": [
+        "review"
+      ]
+    },
+    {
+      "basis": "name-match",
+      "canonical": "area:hooks",
+      "canonical_present": true,
+      "members": [
+        "hooks"
+      ]
+    },
+    {
+      "basis": "name-match",
+      "canonical": "area:templates",
+      "canonical_present": true,
+      "members": [
+        "templates"
+      ]
+    },
+    {
+      "basis": "name-match",
+      "canonical": "area:config",
+      "canonical_present": true,
+      "members": [
+        "config"
+      ]
+    }
+  ]
+}
