@@ -200,6 +200,73 @@ enum Command {
         #[arg(long)]
         reason: Option<String>,
     },
+    /// Explicit leader handoff (06-B #2006): liveness probe, worktree evidence, close as
+    /// `handed_off`; an alive or indeterminate owner needs --force-explicit.
+    ClaimHandoff {
+        project: PathBuf,
+        /// The 16-hex task key an acquire returned.
+        #[arg(long)]
+        task: String,
+        /// The epoch the request saw; a mismatch is a `stale_request` refusal (REQ-06B-01).
+        #[arg(long = "from-epoch")]
+        from_epoch: u64,
+        #[arg(long)]
+        reason: String,
+        /// Override the alive/indeterminate gate; the reason stays required.
+        #[arg(long = "force-explicit")]
+        force_explicit: bool,
+        /// This host's id; the liveness probe runs only for a local-process owner whose
+        /// host_id matches.
+        #[arg(long)]
+        host_id: Option<String>,
+    },
+    /// Record an external-write intent before it is sent (REQ-06B-06); payload JSON on
+    /// stdin gives the intent digest. A stale epoch is fenced (REQ-06B-08).
+    EffectIntend {
+        project: PathBuf,
+        #[arg(long)]
+        task: String,
+        /// The epoch the caller believes it is publishing under.
+        #[arg(long)]
+        epoch: u64,
+        /// Operation word (portable name, 07-B format).
+        #[arg(long)]
+        operation: String,
+        #[arg(long = "project-id")]
+        project_id: String,
+        #[arg(long = "local-id")]
+        local_id: String,
+        #[arg(long)]
+        attempt: u32,
+        /// The publish kind, e.g. comment_post or pr_create.
+        #[arg(long)]
+        kind: String,
+    },
+    /// Confirm an intended effect after the write returned, or mark it uncertain.
+    EffectConfirm {
+        project: PathBuf,
+        #[arg(long)]
+        task: String,
+        #[arg(long = "operation-id")]
+        operation_id: String,
+        /// What the remote returned (empty allowed for uncertain).
+        #[arg(long = "response-id", default_value = "")]
+        response_id: String,
+        /// The observed outcome; `uncertain` marks the interrupted case.
+        #[arg(long = "observed-state")]
+        observed_state: String,
+    },
+    /// Reconcile uncertain effects against the remote by their stable marker (GET only,
+    /// never re-creates). `--remote-probe` replaces the built-in comment lookup (tests).
+    EffectsReconcile {
+        project: PathBuf,
+        #[arg(long)]
+        task: String,
+        /// Probe command: exit 0 + `{"remote_id":...}` found, 4 absent, 5 + seconds
+        /// rate limited.
+        #[arg(long = "remote-probe")]
+        remote_probe: Option<String>,
+    },
     /// Read-only Claude Code check: whether a session started in PROJECT reads AGENTS.md.
     ClaudeDoctor {
         project: PathBuf,
@@ -328,6 +395,30 @@ enum Command {
     /// Read-only: PROJECT's HEAD commit and a digest of its tracked changes (07-D #2011).
     SnapshotDescribe {
         project: PathBuf,
+    },
+    /// Plan external skill source candidates read-only (03-B #1996): typed request on
+    /// stdin; judgment envelope on stdout; writes nothing.
+    SkillSourcePlan {
+        project: PathBuf,
+    },
+    /// Install approved skill sources into the host official skill folders (03-B
+    /// #1996): the exact plan on stdin, `--plan-digest` and `--permission-reference`.
+    SkillSourceApply {
+        project: PathBuf,
+        #[arg(long)]
+        plan_digest: String,
+        #[arg(long)]
+        permission_reference: String,
+    },
+    /// Record that every file of an installed skill was actually read (03-B #1996).
+    SkillReadReceipt {
+        project: PathBuf,
+        /// Installed skill directory to walk and hash.
+        #[arg(long)]
+        dir: PathBuf,
+        /// Installed skill name (Agent Skills spec shape).
+        #[arg(long)]
+        name: String,
     },
     /// Read-only: requested file ranges with digests and a budget (typed request on stdin).
     ContextBundle {
@@ -481,10 +572,17 @@ const OPERATIONS: &[(&str, &str)] = &[
     ("claim-acquire", "claim.acquire"),
     ("claim-show", "claim.show"),
     ("claim-release", "claim.release"),
+    ("claim-handoff", "claim.handoff"),
+    ("effect-intend", "effect.intend"),
+    ("effect-confirm", "effect.confirm"),
+    ("effects-reconcile", "effects.reconcile"),
     ("todo-promote-preview", "todo.promote.plan"),
     ("todo-promote-apply", "todo.promote.apply"),
     ("run-verify", "run.verify"),
     ("snapshot-describe", "snapshot.describe"),
+    ("skill-source-plan", "skill_source.plan"),
+    ("skill-source-apply", "skill_source.apply"),
+    ("skill-read-receipt", "skill_source.read_receipt"),
     ("context-bundle", "context.bundle"),
     ("context-verify", "context.verify"),
     ("decision-record", "decision.record"),
@@ -689,6 +787,68 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             reason.as_deref().unwrap_or("unspecified"),
             &moai_cli::forge::policy::SystemClock,
         ),
+        Command::ClaimHandoff {
+            project,
+            task,
+            from_epoch,
+            reason,
+            force_explicit,
+            host_id,
+        } => moai_cli::handoff::claim_handoff_cli(
+            &project,
+            &task,
+            from_epoch,
+            &reason,
+            force_explicit,
+            host_id.as_deref(),
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        Command::EffectIntend {
+            project,
+            task,
+            epoch,
+            operation,
+            project_id,
+            local_id,
+            attempt,
+            kind,
+        } => moai_cli::handoff::effect_intend_cli(
+            &project,
+            &task,
+            epoch,
+            &operation,
+            &project_id,
+            &local_id,
+            attempt,
+            &kind,
+            input::<serde_json::Value>()?.to_string().as_bytes(),
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        Command::EffectConfirm {
+            project,
+            task,
+            operation_id,
+            response_id,
+            observed_state,
+        } => moai_cli::handoff::effect_confirm_cli(
+            &project,
+            &task,
+            &operation_id,
+            &response_id,
+            &observed_state,
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        Command::EffectsReconcile {
+            project,
+            task,
+            remote_probe,
+        } => moai_cli::handoff::effects_reconcile_cli(
+            &project,
+            &task,
+            remote_probe.as_deref(),
+            &moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
+        ),
         Command::ClaudeDoctor { project } => moai_cli::claude::doctor(&project),
         Command::CodexProjectionPlan {
             package,
@@ -851,6 +1011,30 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
                 .map_err(|_| "encode failed".into())
         }
         Command::SnapshotDescribe { project } => moai_cli::context::snapshot(&project),
+        Command::SkillSourcePlan { project } => serde_json::to_value(moai_cli::sources::plan(
+            &project,
+            input::<moai_cli::sources::SourcesRequest>()?,
+        )?)
+        .map_err(|_| "encode failed".into()),
+        Command::SkillSourceApply {
+            project,
+            plan_digest,
+            permission_reference,
+        } => {
+            let home = std::env::var_os("HOME")
+                .map(PathBuf::from)
+                .ok_or("home directory missing; set HOME")?;
+            moai_cli::sources::sources_apply(
+                &project,
+                &home,
+                input::<moai_cli::sources::SourcePlan>()?,
+                &plan_digest,
+                &permission_reference,
+            )
+        }
+        Command::SkillReadReceipt { project, dir, name } => {
+            moai_cli::sources::read_receipt(&project, &dir, &name)
+        }
         Command::ContextBundle { project } => moai_cli::context::bundle(&project, &input()?),
         Command::ContextVerify { project } => moai_cli::context::verify(&project, &input()?),
         Command::DecisionRecord {

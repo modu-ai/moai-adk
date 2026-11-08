@@ -73,6 +73,8 @@ fn lib_req(session: &str, lease_until: &str) -> ClaimRequest {
             kind: "session".into(),
             id: session.into(),
             host_id: None,
+            pid: None,
+            process_start: None,
         },
         attempt: None,
         base_revision: "a".repeat(40),
@@ -727,6 +729,7 @@ fn claim_show_is_byte_identical() {
 
 fn git(dir: &Path, args: &[&str]) {
     let status = Command::new("git")
+        .args(["-c", "gc.auto=0", "-c", "maintenance.auto=false"])
         .args(args)
         .current_dir(dir)
         .env("GIT_CONFIG_GLOBAL", "/dev/null")
