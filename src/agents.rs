@@ -747,8 +747,23 @@ pub(crate) fn agents_apply_amended(
         // REQ-01B-08: keep the before bytes before publishing so recovery can restore
         // content; a created file needs no backup (recovery removes it).
         if let Some(b) = before.as_deref() {
-            apply::save_before_bytes(&root, &request_id, &f.path, b)
-                .map_err(|e| step(&applied, &f.path, e))?;
+            if let Err(e) = apply::save_before_bytes(&root, &request_id, &f.path, b) {
+                // #2125: a failed file backup is recorded like the #2123 manifest
+                // path, so the receipt still names the file that was not published.
+                receipt.entry(
+                    &f.path,
+                    &f.action,
+                    Some(&digest(b)),
+                    None,
+                    false,
+                    Some(e.clone()),
+                );
+                return Err(receipt_failure(
+                    &receipt,
+                    &root,
+                    &step(&applied, &f.path, e),
+                ));
+            }
         }
         let publish = if before.is_none() {
             apply::publish_exclusive(&path, &bytes)
@@ -1099,14 +1114,8 @@ mod tests {
         )
         .unwrap();
         let digest = second.plan_digest.clone();
-        let err = agents_apply_amended(
-            root.path(),
-            second,
-            &digest,
-            "fixture",
-            &mut |_, _| Ok(()),
-        )
-        .unwrap_err();
+        let err = agents_apply_amended(root.path(), second, &digest, "fixture", &mut |_, _| Ok(()))
+            .unwrap_err();
         fs::set_permissions(&receipts, fs::Permissions::from_mode(0o755)).unwrap();
         assert!(
             err.contains("partial apply") && err.contains("AGENTS.md"),
