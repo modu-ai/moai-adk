@@ -1,18 +1,16 @@
 {
+  "case": "project-plan-unchanged",
   "args": [
     "project-plan",
     "<root>"
   ],
-  "case": "project-plan-unchanged",
-  "exit": 0,
-  "masked_keys": [
-    "target_binding",
-    "plan_digest",
-    "collected_at",
-    "receipt"
-  ],
-  "stderr": "",
   "stdin": {
+    "schema_version": 2,
+    "project_id": "demo",
+    "purpose": "Build a small editor",
+    "tools": [
+      "Rust"
+    ],
     "development_methods": [
       "TDD"
     ],
@@ -20,22 +18,22 @@
       "claude",
       "codex"
     ],
-    "project_id": "demo",
-    "purpose": "Build a small editor",
-    "schema_version": 1,
-    "tools": [
-      "Rust"
-    ]
+    "interview_revision": "rc1-fixture-1"
   },
+  "exit": 0,
   "stdout": {
-    "ok": true,
-    "operation": "project.plan",
     "protocol_version": 1,
+    "operation": "project.plan",
+    "ok": true,
     "result": {
-      "action": "unchanged",
-      "expected_sha256": "sha256:60571df23ab38dd309f928ebbb001b1accc1f3c0d527069543ce3d7f7a375fbf",
-      "plan_digest": "<masked>",
+      "protocol_version": 1,
       "profile": {
+        "schema_version": 2,
+        "project_id": "demo",
+        "purpose": "Build a small editor",
+        "tools": [
+          "Rust"
+        ],
         "development_methods": [
           "TDD"
         ],
@@ -43,15 +41,36 @@
           "claude",
           "codex"
         ],
-        "project_id": "demo",
-        "purpose": "Build a small editor",
-        "schema_version": 1,
-        "tools": [
-          "Rust"
-        ]
+        "interview_revision": "rc1-fixture-1"
       },
-      "protocol_version": 1,
-      "target_binding": "<masked>"
+      "expected_sha256": "sha256:52aa26c380ef197266ebad62b70dc7866f5fb658cc856e114f6919e13bc5a06a",
+      "target_binding": "<masked>",
+      "action": "unchanged",
+      "delta": {
+        "added": [],
+        "changed": [],
+        "removed": [],
+        "unchanged": [
+          "decisions",
+          "development_methods",
+          "hosts",
+          "interview_revision",
+          "package_pin",
+          "project_id",
+          "purpose",
+          "schema_version",
+          "tools"
+        ],
+        "conflict": []
+      },
+      "plan_digest": "<masked>"
     }
-  }
+  },
+  "stderr": "",
+  "masked_keys": [
+    "target_binding",
+    "plan_digest",
+    "collected_at",
+    "receipt"
+  ]
 }
