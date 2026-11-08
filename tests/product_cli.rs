@@ -5,8 +5,10 @@ use std::{
     process::{Command, Stdio},
 };
 use tempfile::TempDir;
+/// v2 profile input (REQ-03A-01/08): `project-plan` accepts schema_version 2 only;
+/// v1 files stay readable through `read_profile` with defaulted new fields.
 fn profile(pin: Option<String>) -> Value {
-    let mut v = json!({"schema_version":1,"project_id":"demo","purpose":"Build a small editor","tools":["Rust"],"development_methods":["TDD"],"hosts":["claude","codex"]});
+    let mut v = json!({"schema_version":2,"project_id":"demo","purpose":"Build a small editor","tools":["Rust"],"development_methods":["TDD"],"hosts":["claude","codex"],"interview_revision":"rc1-fixture-1"});
     if let Some(pin) = pin {
         v["package_pin"] = json!(pin);
     }
@@ -79,18 +81,304 @@ fn create_repeat_and_unknown_user_keys_preserved() {
     let file = root.path().join(".moai-cli/project.yaml");
     let mut value: Value = serde_json::from_slice(&fs::read(&file).unwrap()).unwrap();
     value["custom"] = json!({"user":true});
-    let bytes = serde_json::to_vec(&value).unwrap();
+    let mut bytes = serde_json::to_vec_pretty(&value).unwrap();
+    bytes.push(b'\n');
     fs::write(&file, &bytes).unwrap();
+    // 03A-AC-4: the identical input plans `unchanged`, and the second apply leaves the
+    // file — unknown user key included — byte-for-byte identical.
+    let second = ok_result(&cli(
+        &["project-plan", root.path().to_str().unwrap()],
+        &input,
+    ));
+    assert_eq!(second["action"], "unchanged");
+    assert!(second["delta"]["conflict"].as_array().unwrap().is_empty());
     create(&root, &input);
     assert_eq!(fs::read(&file).unwrap(), bytes);
-    let mut changed = input;
-    changed["purpose"] = json!("Different purpose");
-    assert!(
-        !cli(&["project-plan", root.path().to_str().unwrap()], &changed)
-            .status
-            .success()
+}
+
+fn apply_result(root: &TempDir, plan: &Value) -> Value {
+    let out = cli(
+        &[
+            "project-apply",
+            root.path().to_str().unwrap(),
+            "--plan-digest",
+            plan["plan_digest"].as_str().unwrap(),
+            "--permission-reference",
+            "fixture-approved",
+        ],
+        plan,
     );
+    assert!(out.status.success(), "{:?}", out.stderr);
+    ok_result(&out)
+}
+
+fn v2_input() -> Value {
+    let mut v = profile(None);
+    v["decisions"] = json!([
+        {"id":"d1","topic":"tools","value":"Rust","source":"user","scope":"project"}
+    ]);
+    v
+}
+
+fn json_file(path: &std::path::Path) -> Value {
+    serde_json::from_slice(&fs::read(path).unwrap()).unwrap()
+}
+
+fn write_json(path: &std::path::Path, value: &Value) -> Vec<u8> {
+    let mut bytes = serde_json::to_vec_pretty(value).unwrap();
+    bytes.push(b'\n');
+    fs::write(path, &bytes).unwrap();
+    bytes
+}
+
+#[test]
+fn profile_v2_create_and_secret_rejection() {
+    // 03A-AC-1: a v2 profile creates the file with the new keys, and a secret-shaped
+    // decision value is refused and echoed nowhere.
+    let root = TempDir::new().unwrap();
+    let input = v2_input();
+    let plan = ok_result(&cli(
+        &["project-plan", root.path().to_str().unwrap()],
+        &input,
+    ));
+    assert_eq!(plan["action"], "create");
+    let added = plan["delta"]["added"].as_array().unwrap();
+    assert!(added.contains(&json!("decisions")) && added.contains(&json!("interview_revision")));
+    assert_eq!(added.len(), 8);
+    let result = apply_result(&root, &plan);
+    assert_eq!(result["state"], "created");
+    assert_eq!(result["interview_revision"], json!("rc1-fixture-1"));
+    assert_eq!(result["host_verified"], json!(false));
+    assert!(result["next_actions"][0]
+        .as_str()
+        .unwrap()
+        .contains("generation.json"));
+    let file = root.path().join(".moai-cli/project.yaml");
+    let value = json_file(&file);
+    assert_eq!(value["schema_version"], json!(2));
+    assert_eq!(value["interview_revision"], json!("rc1-fixture-1"));
+    assert_eq!(value["decisions"][0]["id"], json!("d1"));
+    let baseline = json_file(
+        &root
+            .path()
+            .join(".moai-cli/manifests/profile-baseline.json"),
+    );
+    assert_eq!(baseline["schema_version"], json!(1));
+    assert_eq!(
+        baseline["profile"]["interview_revision"],
+        json!("rc1-fixture-1")
+    );
+    let mut secret = v2_input();
+    secret["decisions"] = json!([
+        {"id":"d2","topic":"credentials","value":"password=fixture-only","source":"user","scope":"project"}
+    ]);
+    let out = cli(&["project-plan", root.path().to_str().unwrap()], &secret);
+    assert!(!out.status.success());
+    let failure: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(failure["error"]["kind"], "invalid_input");
+    assert!(!String::from_utf8_lossy(&out.stdout).contains("password=fixture-only"));
+    assert!(!String::from_utf8_lossy(&out.stderr).contains("password=fixture-only"));
+}
+
+#[test]
+fn profile_reconfigure_delta_preserves_user_keys() {
+    // 03A-AC-2: a reconfigure that changes other keys applies as `update`; the
+    // user-edited key and the unknown user key survive with their values intact.
+    let root = TempDir::new().unwrap();
+    let input = v2_input();
+    create(&root, &input);
+    let file = root.path().join(".moai-cli/project.yaml");
+    let mut value = json_file(&file);
+    value["purpose"] = json!("Build a better editor"); // user edit away from the baseline
+    value["custom"] = json!({"user": true});
+    write_json(&file, &value);
+    let mut next = input.clone(); // purpose stays at the baseline value; tools change
+    next["tools"] = json!(["Python"]);
+    let plan = ok_result(&cli(
+        &["project-plan", root.path().to_str().unwrap()],
+        &next,
+    ));
+    assert_eq!(plan["action"], "update");
+    assert_eq!(plan["delta"]["changed"], json!(["tools"]));
+    assert!(plan["delta"]["conflict"].as_array().unwrap().is_empty());
+    assert!(plan["delta"]["unchanged"]
+        .as_array()
+        .unwrap()
+        .contains(&json!("purpose")));
+    apply_result(&root, &plan);
+    let after = json_file(&file);
+    assert_eq!(after["tools"], json!(["Python"]));
+    assert_eq!(after["purpose"], json!("Build a better editor"));
+    assert_eq!(after["custom"], json!({"user": true}));
+    assert!(String::from_utf8_lossy(&fs::read(&file).unwrap()).contains("Build a better editor"));
+    // The refreshed baseline makes the same input `unchanged` on the next run.
+    let again = ok_result(&cli(
+        &["project-plan", root.path().to_str().unwrap()],
+        &next,
+    ));
+    assert_eq!(again["action"], "unchanged");
+}
+
+#[test]
+fn profile_conflict_writes_nothing() {
+    // 03A-AC-3: a key the user changed and the input changes too is a conflict; apply
+    // writes nothing and the file hash is identical before and after.
+    let root = TempDir::new().unwrap();
+    create(&root, &v2_input());
+    let file = root.path().join(".moai-cli/project.yaml");
+    let mut value = json_file(&file);
+    value["purpose"] = json!("User choice");
+    write_json(&file, &value);
+    let mut clashing = v2_input();
+    clashing["purpose"] = json!("Different purpose");
+    let plan = ok_result(&cli(
+        &["project-plan", root.path().to_str().unwrap()],
+        &clashing,
+    ));
+    assert_eq!(plan["action"], "conflict");
+    assert_eq!(plan["delta"]["conflict"], json!(["purpose"]));
+    let before = fs::read(&file).unwrap();
+    let baseline_before = fs::read(
+        root.path()
+            .join(".moai-cli/manifests/profile-baseline.json"),
+    )
+    .unwrap();
+    let out = cli(
+        &[
+            "project-apply",
+            root.path().to_str().unwrap(),
+            "--plan-digest",
+            plan["plan_digest"].as_str().unwrap(),
+            "--permission-reference",
+            "fixture-approved",
+        ],
+        &plan,
+    );
+    assert!(!out.status.success());
+    let failure: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(failure["error"]["kind"], "conflict");
+    // REQ-03A-06: no input value is echoed in the refusal.
+    assert!(!String::from_utf8_lossy(&out.stdout).contains("User choice"));
+    assert!(!String::from_utf8_lossy(&out.stderr).contains("Different purpose"));
+    assert_eq!(fs::read(&file).unwrap(), before);
+    assert_eq!(
+        fs::read(
+            root.path()
+                .join(".moai-cli/manifests/profile-baseline.json")
+        )
+        .unwrap(),
+        baseline_before
+    );
+}
+
+#[test]
+fn general_yaml_is_preserved_by_refusal() {
+    // 03A-AC-5 / REQ-03A-04: until the lossless-editing HOLD is decided, a general YAML
+    // file (comments, block style) is read-only: plans refuse and the file is preserved.
+    let root = TempDir::new().unwrap();
+    let dir = root.path().join(".moai-cli");
+    fs::create_dir_all(&dir).unwrap();
+    let file = dir.join("project.yaml");
+    let yaml = b"# my comment\npurpose: keep me\nhosts:\n  - claude\n";
+    fs::write(&file, yaml).unwrap();
+    let out = cli(
+        &["project-plan", root.path().to_str().unwrap()],
+        &v2_input(),
+    );
+    assert!(!out.status.success());
+    let failure: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(failure["error"]["kind"], "conflict");
+    assert!(String::from_utf8_lossy(&out.stdout).contains("preservation review"));
+    assert_eq!(fs::read(&file).unwrap(), yaml);
+}
+
+#[test]
+fn profile_v1_file_still_readable_under_v2() {
+    // REQ-03A-01: v1 files stay readable with defaulted new fields, and a matching v2
+    // input plans the upgrade instead of stalling on the schema marker (audit #2052).
+    let root = TempDir::new().unwrap();
+    fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
+    let file = root.path().join(".moai-cli/project.yaml");
+    fs::create_dir_all(file.parent().unwrap()).unwrap();
+    let v1 = json!({
+        "schema_version": 1, "project_id": "demo", "purpose": "Build a small editor",
+        "tools": ["Rust"], "development_methods": ["TDD"], "hosts": ["claude", "codex"]
+    });
+    let bytes = write_json(&file, &v1);
+    // Readable through the v2 reader: agents-plan succeeds on the v1 file.
+    assert!(cli(
+        &["agents-plan", root.path().to_str().unwrap()],
+        &agents_request("en", "none")
+    )
+    .status
+    .success());
+    let plan = ok_result(&cli(
+        &["project-plan", root.path().to_str().unwrap()],
+        &v2_input(),
+    ));
+    assert_eq!(plan["action"], "update");
+    assert!(plan["delta"]["conflict"].as_array().unwrap().is_empty());
+    assert!(plan["delta"]["changed"]
+        .as_array()
+        .unwrap()
+        .contains(&json!("schema_version")));
+    assert!(plan["delta"]["added"]
+        .as_array()
+        .unwrap()
+        .contains(&json!("interview_revision")));
+    // The plan is read-only: the v1 file waits for the apply.
     assert_eq!(fs::read(&file).unwrap(), bytes);
+}
+
+#[test]
+fn profile_v1_file_without_baseline_upgrades_to_v2() {
+    // Audit #2052 FAIL fix (leader decision a): schema_version is MoAI-owned, so a v1
+    // file with no baseline record upgrades to v2 as an `update`. Other keys keep the
+    // no-baseline rule — a value the input would change stays a conflict.
+    let root = TempDir::new().unwrap();
+    let file = root.path().join(".moai-cli/project.yaml");
+    fs::create_dir_all(file.parent().unwrap()).unwrap();
+    let v1 = json!({
+        "schema_version": 1, "project_id": "demo", "purpose": "Build a small editor",
+        "tools": ["Rust"], "development_methods": ["TDD"], "hosts": ["claude", "codex"]
+    });
+    write_json(&file, &v1);
+    let input = v2_input();
+    let plan = ok_result(&cli(
+        &["project-plan", root.path().to_str().unwrap()],
+        &input,
+    ));
+    assert_eq!(plan["action"], "update");
+    assert!(plan["delta"]["conflict"].as_array().unwrap().is_empty());
+    let result = apply_result(&root, &plan);
+    assert_eq!(result["state"], "updated");
+    let after = json_file(&file);
+    assert_eq!(after["schema_version"], json!(2));
+    assert_eq!(after["interview_revision"], json!("rc1-fixture-1"));
+    assert_eq!(after["purpose"], json!("Build a small editor"));
+    assert_eq!(after["tools"], json!(["Rust"]));
+    assert_eq!(after["decisions"][0]["id"], json!("d1"));
+    // The apply recorded the baseline, so the same input is `unchanged` afterwards.
+    let again = ok_result(&cli(
+        &["project-plan", root.path().to_str().unwrap()],
+        &input,
+    ));
+    assert_eq!(again["action"], "unchanged");
+    // A v1 value the input would change is still a conflict without a baseline; the
+    // schema marker alone never unlocks the other keys.
+    let root2 = TempDir::new().unwrap();
+    let file2 = root2.path().join(".moai-cli/project.yaml");
+    fs::create_dir_all(file2.parent().unwrap()).unwrap();
+    write_json(&file2, &v1);
+    let mut clashing = v2_input();
+    clashing["purpose"] = json!("Different purpose");
+    let plan = ok_result(&cli(
+        &["project-plan", root2.path().to_str().unwrap()],
+        &clashing,
+    ));
+    assert_eq!(plan["action"], "conflict");
+    assert_eq!(plan["delta"]["conflict"], json!(["purpose"]));
+    assert!(String::from_utf8_lossy(&fs::read(&file2).unwrap()).contains("Build a small editor"));
 }
 #[test]
 fn stale_and_tampered_plans_do_not_overwrite() {

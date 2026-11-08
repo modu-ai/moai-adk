@@ -1,26 +1,26 @@
 {
+  "case": "project-plan-malformed-json",
   "args": [
     "project-plan",
     "<root>"
   ],
-  "case": "project-plan-malformed-json",
+  "stdin": "{",
   "exit": 1,
+  "stdout": {
+    "protocol_version": 1,
+    "operation": "project.plan",
+    "ok": false,
+    "error": {
+      "kind": "invalid_input",
+      "message": "invalid typed JSON input",
+      "retryable": false
+    }
+  },
+  "stderr": "invalid typed JSON input\n",
   "masked_keys": [
     "target_binding",
     "plan_digest",
     "collected_at",
     "receipt"
-  ],
-  "stderr": "invalid typed JSON input\n",
-  "stdin": "{",
-  "stdout": {
-    "error": {
-      "kind": "invalid_input",
-      "message": "invalid typed JSON input",
-      "retryable": false
-    },
-    "ok": false,
-    "operation": "project.plan",
-    "protocol_version": 1
-  }
+  ]
 }
