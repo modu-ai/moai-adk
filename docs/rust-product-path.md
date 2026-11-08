@@ -30,6 +30,8 @@ One row per internal operation: the name a skill adapter or a later MCP tool ref
 | `agents.apply` | `agents-apply PROJECT` | `moai_cli::agents_apply` | `AgentsPlan` | `--plan-digest`, `--permission-reference` | `state`, `applied`, `files_created`, `manifest_sha256`, `host_notes`, `host_loaded`, `execution_verified` | `AGENTS.md`, `AGENTS.local.md`, `.gitignore`, `.moai-cli/manifests/generation.json` |
 | `baseline.inventory` | `baseline-inventory PROJECT` | `moai_cli::baseline::inventory` | — | `--go-baseline-commit`, `--go-repo` | `schema_version`, `collected_at`, `baseline`, `inventory`, `claude_diff`, `checksums` | no |
 | `identity` | `identity PATH` | `moai_cli::identity::identity` | — | — | `identity_status`, `reason`, `workspace_kind`, `clone_anchor`, `workspace_git_dir`, `work_tree`, `clone_id`, `workspace_id`, `id_derivation`, `project_id`, `profile_status`, `project_state_root`, `home_state_root`, `writes` (see below) | no |
+| `codex.projection_plan` | `codex-projection-plan PACKAGE` | `moai_cli::hosts::codex::projection_plan` | — | `--target` (required), `--display-name`, `--short-description`, `--default-prompt`, `--allow-implicit-invocation`, `--status-line`, `--disable-bundled-skills` | `host`, `target`, `package_digest`, `files`, `skill_md_identical`, `config_changes`, `hooks`, `invocation`, `notes`, `files_created`, `host_loaded`, `execution_verified` | no |
+| `codex.doctor` | `codex-doctor PROJECT` | `moai_cli::hosts::codex::doctor` | — | `--cwd`, `--codex-home`, `--home`, `--fallback`, `--max-bytes` | `host`, `project_root`, `cwd`, `agents`, `trust`, `codex_layer`, `skills`, `writes`, `host_loaded`, `execution_verified` | no |
 | `plan.admit` (temporary name, fixed after P06) | `plan-admit PROJECT` | `moai_cli::plan::admit` | `AdmissionRequest` | — | `decision`, `reasons`, `expected_revision`, `current_revision`, `plan`, `pinned` (see below) | no |
 
 Only the two `*.apply` operations mutate files, and both refuse to run without the confirmed `plan_digest` and a non-placeholder permission reference; whatever transport carries them later keeps that boundary (REQ-01C-03). The launchers (`-l`, `-a`, `cc|glm|codex`, `session`; see below) are developer tools, not internal operations, and stay out of this table. Not implemented yet: `apply.recover`.
@@ -207,6 +209,28 @@ Package structure is checked by tests only (`cargo test --offline --locked skill
 - `package-inspect` is repeatable and refuses a tree without `SKILL.md`.
 
 Reference depth is counted outside the route indirection. `SKILL.md` may name only `references/routes.json`, routes point at workflows, and a workflow names no other package file. The SKILL.md → routes → workflow chain is the sanctioned layout, not a depth violation. Package text stays English (RC1 interim decision; a Korean projection is a later step). Not run here: `npx skills-ref validate skills/moai`, because Node is only a lazy nvm shell function in this environment and nothing is installed for the check.
+
+## Codex adapter (02-C #1993)
+
+`codex-projection-plan` and `codex-doctor` plan and diagnose a Codex projection of the common package. Neither one writes anything. The contract, sources and gaps are in `docs/codex-adapter-contract.md`.
+
+`codex-projection-plan`:
+- It requires `--target`, an absolute directory named `moai` outside the package. No default location is chosen: `~/.agents/skills/moai` against `<repo>/.agents/skills/moai` is a HOLD.
+- It plans every package file as a byte-identical copy with its sha256.
+- It adds `agents/openai.yaml` with only `interface.display_name`, `short_description` and `default_prompt`. `policy.allow_implicit_invocation` is written only when the flag is passed, so Codex's documented default (`true`) is kept by omission.
+- Requested `tui.status_line` items and `[skills.bundled] enabled = false` come back as `config_changes.status: hold` with every item in `unverified_items`. The official reference lists no item identifiers, and nothing is written.
+- No hooks are generated.
+
+`codex-doctor` walks the AGENTS.md chain the Codex docs describe:
+- the first non-empty global `AGENTS.override.md` or `AGENTS.md` under `--codex-home`;
+- then, from the project root down to `--cwd`, at most one file per directory, in the order override, `AGENTS.md`, then each `--fallback` name;
+- it sums the project chain with blank-line joins against `--max-bytes` (default 32768) and never creates `AGENTS.override.md`.
+
+It also lists `moai` skills found under `.agents/skills` from the working directory up to the project root, `$HOME/.agents/skills` and `/etc/codex/skills`, and warns when more than one exists, because Codex does not merge same-name skills.
+
+There is no TOML parser: the TOML surface belongs to 02-B #1992 (leader RC1 decision, 2026-11-08). So `config.toml` is never read, and the doctor reports `trust`, inline `[hooks]` and `tui.status_line` as `not_evaluated`. It never reports a project as trusted. `project_doc_fallback_filenames` and `project_doc_max_bytes` arrive as arguments instead.
+
+`host_loaded` and `execution_verified` stay false. Desktop `$moai` and CLI `$moai` runs are not_run from a lane: the first needs the GUI, the second sends a prompt to OpenAI. Local evidence is `codex --version` → `codex-cli 0.163.0` only.
 
 ## Development session launcher (`session`)
 
