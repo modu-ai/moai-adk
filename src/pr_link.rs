@@ -9,15 +9,23 @@
 //! branch, so `v2026.11.0` PRs pass this output to `gh pr create --body-file`.
 //!
 //! The body ends with an operation marker in the form `forge::outbox::parse_op_markers`
-//! reads (`<!-- moai-op pr_create:<repository_id>:<task_key>:<epoch> -->`), the lookup key for
-//! 06-B's reconcile (REQ-06C-09). 06-B (#2006) has not landed, so no effect intent is recorded
-//! and reconcile is reported `not_run`. The `pr_ready` state is returned as a
-//! `record_update_request` for 06-A's owner; nothing here promotes a record (REQ-06C-11).
+//! reads (`<!-- moai-op pr_create:<repository_id>:<task_key>:<epoch> -->`, r33), the lookup
+//! key for 06-B's reconcile (REQ-06C-09). [`render_and_record`] records the matching 06-B
+//! `effect-intend{kind: pr_create}` (same operation, project, local id and attempt, so
+//! `parse_op_markers` reads both markers as one operation) when the record came from the
+//! journal. Rendering is not opening: the record moves to `pr_ready` only at the PR's ACK
+//! (REQ-06C-11, "PR 개설·ACK"), through [`confirm_and_record`] (`pr-confirm`), which confirms
+//! the intent with 06-B's `effect_confirm` — or takes an effect a reconcile already
+//! confirmed — and never goes further than `pr_ready`. An `uncertain` ACK leaves the state
+//! alone; `effects-reconcile` resolves it first.
 use crate::claim::{claim_token, ClaimRecord};
 use crate::digest;
+use crate::forge::policy::Clock;
 use crate::run::Receipt;
 use crate::verify::CheckResult;
-use crate::worktree::{is_sha, RECORD_UPDATE_OWNER};
+use crate::worktree::{
+    commit_update, is_sha, not_written, open_locked_journal, RECORD_UPDATE_OWNER,
+};
 use serde_json::{json, Value};
 
 type Result<T> = std::result::Result<T, String>;
@@ -160,7 +168,7 @@ pub fn render(rec: &ClaimRecord, receipts: &[Receipt], input: &RenderInput) -> R
 {not_run_lines}\n\n\
 ## 남은 gap과 위험\n\n\
 - PR 개설은 완료가 아니다. 통합과 Issue 종료는 리더가 판정한다.\n\
-- reconcile: not_run (06-B #2006 미완, op marker만 기록)\n\
+- reconcile: not_run (렌더는 effect intent만 기록한다. 조회는 `effects-reconcile`이 uncertain effect에만 한다)\n\
 {gap_lines}\n\
 {marker}\n",
         lk = rec.logical_key,
@@ -196,13 +204,140 @@ pub fn render(rec: &ClaimRecord, receipts: &[Receipt], input: &RenderInput) -> R
         "closing_keywords": 0,
         "operation_id": op,
         "marker": marker,
-        "reconcile": "not_run: 06-B #2006 not landed; marker recorded only",
+        "reconcile": "not_run: effects-reconcile probes only an uncertain effect",
         "warnings": warnings,
         "record_update_request": {
             "task_key": rec.task_key,
             "epoch": rec.epoch,
             "state": "pr_ready",
+            "at": "the pr_create ACK (pr-confirm), not the render",
         },
         "record_update_owner": RECORD_UPDATE_OWNER,
+    }))
+}
+
+/// The intent payload: what is being created, not the body text, so a re-render after a
+/// new commit is the same intent (06-B rejects a different payload under one key).
+fn intent_payload(rec: &ClaimRecord, base_branch: &str) -> Vec<u8> {
+    json!({
+        "operation": "pr_create",
+        "task_key": rec.task_key,
+        "epoch": rec.epoch,
+        "issue_number": rec.task_ref.issue_number,
+        "base_branch": base_branch,
+    })
+    .to_string()
+    .into_bytes()
+}
+
+/// [`render`] plus the record write (REQ-06C-09): the 06-B `pr_create` intent only; the
+/// state stays as it is until the ACK ([`confirm_and_record`]). A record from a file is
+/// rendered only; nothing is written for it.
+pub fn render_and_record<C: Clock>(
+    project: &std::path::Path,
+    rec: &ClaimRecord,
+    from_journal: bool,
+    receipts: &[Receipt],
+    input: &RenderInput,
+    clock: &C,
+) -> Result<Value> {
+    let journal = if from_journal {
+        Some(open_locked_journal(project)?)
+    } else {
+        None
+    };
+    let mut out = render(rec, receipts, input)?;
+    let Some(journal) = journal else {
+        out["record_update"] = not_written();
+        out["effect_intent"] = Value::Null;
+        return Ok(out);
+    };
+    let epoch = u32::try_from(rec.epoch).map_err(|_| "epoch out of range for an operation id")?;
+    let intent = crate::handoff::effect_intend(
+        &journal,
+        &rec.task_key,
+        rec.epoch,
+        "pr_create",
+        &rec.task_ref.repository_id.to_string(),
+        &rec.task_key,
+        epoch,
+        "pr_create",
+        &intent_payload(rec, input.base_branch),
+        clock,
+    )?;
+    out["effect_intent"] = json!({
+        "operation_id": intent["operation_id"],
+        "marker": intent["marker"],
+        "state": intent["state"],
+        "intent_digest": intent["intent_digest"],
+    });
+    out["record_update"] = json!({
+        "applied": intent["notes"].is_null(),
+        "event": "effect_intend",
+        "state": "unchanged until the pr_create ACK (pr-confirm)",
+    });
+    Ok(out)
+}
+
+/// `pr-confirm` (REQ-06C-11): the PR was opened and its ACK observed. An `intended`
+/// `pr_create` effect is confirmed through 06-B's `effect_confirm` (`uncertain` when the
+/// answer was lost); a `confirmed` effect — the reconcile case — is taken as is. Only a
+/// confirmed effect moves the record to `pr_ready`.
+pub fn confirm_and_record<C: Clock>(
+    project: &std::path::Path,
+    key: &str,
+    operation_id: &str,
+    response_id: &str,
+    observed_state: &str,
+    clock: &C,
+) -> Result<Value> {
+    let journal = open_locked_journal(project)?;
+    let current = journal
+        .read_events()?
+        .into_iter()
+        .rev()
+        .find(|e| e.record.task_key == key)
+        .map(|e| e.record)
+        .ok_or("claim record not found for task")?;
+    let effect = current
+        .effects
+        .iter()
+        .find(|e| e["operation_id"] == operation_id && e["kind"] == "pr_create")
+        .cloned()
+        .ok_or_else(|| {
+            format!("unknown operation_id {operation_id}; no pr_create was intended under it")
+        })?;
+    let confirm = if effect["state"] == "intended" {
+        crate::handoff::effect_confirm(
+            &journal,
+            key,
+            operation_id,
+            response_id,
+            observed_state,
+            clock,
+        )?
+    } else {
+        Value::Null
+    };
+    let state = if confirm.is_null() {
+        effect["state"].clone()
+    } else {
+        confirm["state"].clone()
+    };
+    let record_update = if state == "confirmed" {
+        commit_update(&journal, key, current.epoch, "pr_ready", clock, |r| {
+            r.state = "pr_ready".into()
+        })?
+    } else {
+        json!({
+            "applied": false,
+            "reason": format!("the pr_create effect is {state}; pr_ready waits for a confirmed ACK"),
+        })
+    };
+    Ok(json!({
+        "operation_id": operation_id,
+        "effect_confirm": confirm,
+        "effect_state": state,
+        "record_update": record_update,
     }))
 }
