@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://modu-ai/moai-adk/schemas/e2e-receipt.schema.json",
+  "title": "08-C E2E receipt (REQ-08C-01, Issue #2014)",
+  "description": "One line per E2E measurement. This receipt is the ONLY input to the 08-D support table (docs/host-support-matrix.md); a combination without a passed receipt is not supported, and every not_run/blocked combination must appear here unhidden.",
+  "type": "object",
+  "required": ["ac", "os", "arch", "host", "host_exact_version", "mode", "skill_digest", "moai_cli_sha", "result", "ran_at"],
+  "additionalProperties": true,
+  "properties": {
+    "ac": {
+      "type": "string",
+      "description": "The acceptance criterion this receipt measures, e.g. AC-08C-3."
+    },
+    "os": { "type": "string", "description": "uname -s or the runner OS label (P12: macOS only in RC1)." },
+    "arch": { "type": "string", "description": "uname -m or the runner arch label." },
+    "host": {
+      "type": "string",
+      "enum": ["claude-code", "codex", "none"],
+      "description": "The host under test; none for T1 fixture runs."
+    },
+    "host_exact_version": {
+      "type": ["string", "null"],
+      "description": "The exact host binary version the run used (claude --version / codex --version output)."
+    },
+    "mode": { "type": "string", "enum": ["local", "worktree", "cloud"] },
+    "skill_digest": {
+      "type": "string",
+      "description": "sha256 of the projected skills/moai/SKILL.md the run loaded."
+    },
+    "moai_cli_sha": {
+      "type": ["string", "null"],
+      "description": "sha256 of the moai-cli binary involved; null when none exists (clean clone)."
+    },
+    "result": { "type": "string", "enum": ["passed", "failed", "not_run", "blocked"] },
+    "ran_at": { "type": "string", "description": "RFC3339 UTC, second precision, measured when the run finished." },
+    "detail": {
+      "type": ["string", "null"],
+      "description": "Path to the raw output the verdict was read from. Credential VALUES never appear in a receipt or its detail files."
+    }
+  }
+}
