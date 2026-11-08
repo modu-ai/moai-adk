@@ -8,6 +8,7 @@ pub mod context;
 pub mod contract;
 pub mod decision;
 pub mod forge;
+pub mod handoff;
 pub mod hosts;
 pub mod identity;
 pub mod install;
