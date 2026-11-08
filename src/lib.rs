@@ -1,6 +1,7 @@
 pub mod agents;
 pub mod baseline;
 pub mod contract;
+pub mod identity;
 pub mod session;
 pub use agents::{agents_apply, agents_plan, AgentsPlan, AgentsRequest};
 pub use baseline::tree_digest;

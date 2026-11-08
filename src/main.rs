@@ -109,6 +109,10 @@ enum Command {
         #[arg(long)]
         go_repo: Option<PathBuf>,
     },
+    /// Read-only clone/workspace identity and state roots of a path (typed JSON on stdout).
+    Identity {
+        path: PathBuf,
+    },
     /// Claude Code session launcher: `cc -l|-a`.
     Cc(HostLaunch),
     /// Claude Code on z.ai GLM: `glm -l|-a` (needs ANTHROPIC_AUTH_TOKEN in the environment).
@@ -197,7 +201,7 @@ fn launch(
 
 /// Internal operations (01-C #1990): subcommand word and operation name. The launchers are
 /// developer tools and stay outside the envelope contract.
-const OPERATIONS: [(&str, &str); 7] = [
+const OPERATIONS: [(&str, &str); 8] = [
     ("package-inspect", "package.inspect"),
     ("project-plan", "project.plan"),
     ("project-apply", "project.apply"),
@@ -205,6 +209,7 @@ const OPERATIONS: [(&str, &str); 7] = [
     ("agents-plan", "agents.plan"),
     ("agents-apply", "agents.apply"),
     ("baseline-inventory", "baseline.inventory"),
+    ("identity", "identity"),
 ];
 fn operation_of(word: &str) -> Option<&'static str> {
     OPERATIONS
@@ -312,6 +317,7 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             go_baseline_commit.as_deref(),
             go_repo.as_deref(),
         ),
+        Command::Identity { path } => moai_cli::identity::identity(&path),
         _ => unreachable!("launchers run through run_launcher"),
     }
 }

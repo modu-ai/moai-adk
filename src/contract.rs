@@ -78,9 +78,13 @@ const RULES: &[(&str, Kind)] = &[
     ("package unavailable", Kind::NotFound),
     ("package directory unavailable", Kind::NotFound),
     ("git rev-parse exited", Kind::NotFound),
+    ("path unavailable", Kind::NotFound),
     ("encode failed", Kind::Internal),
     ("rendered output", Kind::Internal),
     ("git output", Kind::Io),
+    ("unexpected git", Kind::Io),
+    ("git did not report", Kind::Io),
+    ("git reported a path", Kind::Io),
     ("malformed ls-", Kind::Io),
     ("read failed", Kind::Io),
     ("write failed", Kind::Io),
@@ -224,6 +228,16 @@ mod tests {
             ("target is not a bounded regular file", InvalidInput),
             ("HEAD is not a 40 hex commit", InvalidInput),
             ("package path invalid", InvalidInput),
+            // identity (01-A #1988)
+            ("path unavailable", NotFound),
+            ("path must be a directory", InvalidInput),
+            ("path is a symlink; refused", InvalidInput),
+            ("project state root is a symlink; refused", InvalidInput),
+            ("home state root is a symlink; refused", InvalidInput),
+            ("non UTF-8 path", InvalidInput),
+            ("unexpected git rev-parse output", Io),
+            ("git did not report a work tree", Io),
+            ("git reported a path that cannot be resolved", Io),
         ];
         for (message, kind) in cases {
             assert_eq!(classify(message), kind, "{message}");
