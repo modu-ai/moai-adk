@@ -17,5 +17,14 @@
     "protocol_version": 2,
     "workflow_reference": "skills/moai/workflows/"
   },
-  "stdout": null
+  "stdout": {
+    "error": {
+      "kind": "invalid_input",
+      "message": "invalid agents request; no values were logged",
+      "retryable": false
+    },
+    "ok": false,
+    "operation": "agents.plan",
+    "protocol_version": 1
+  }
 }

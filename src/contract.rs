@@ -1,0 +1,250 @@
+//! Output contract of the internal CLI (Issue #1990, 01-C; user decision 2026-11-08).
+//!
+//! Every internal operation prints one envelope on stdout:
+//! success `{protocol_version, operation, ok: true, result}`,
+//! failure `{protocol_version, operation, ok: false, error{kind, message, retryable, next_actions?}}`.
+//! stderr carries one human line. Exit codes stay 0 (ok), 1 (failure) and 2 (usage); the
+//! failure is told apart by `kind`, from the 00-D vocabulary. The developer launchers
+//! (`-l`, `-a`, `cc`, `glm`, `codex`, `session`) are outside this contract.
+
+use serde_json::{json, Value};
+
+pub const PROTOCOL_VERSION: u32 = 1;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Kind {
+    Usage,
+    InvalidInput,
+    InputTooLarge,
+    UnsupportedProtocolVersion,
+    StalePlan,
+    PermissionReferenceMissing,
+    NotFound,
+    Conflict,
+    Partial,
+    Io,
+    Internal,
+}
+
+impl Kind {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Kind::Usage => "usage",
+            Kind::InvalidInput => "invalid_input",
+            Kind::InputTooLarge => "input_too_large",
+            Kind::UnsupportedProtocolVersion => "unsupported_protocol_version",
+            Kind::StalePlan => "stale_plan",
+            Kind::PermissionReferenceMissing => "permission_reference_missing",
+            Kind::NotFound => "not_found",
+            Kind::Conflict => "conflict",
+            Kind::Partial => "partial",
+            Kind::Io => "io",
+            Kind::Internal => "internal",
+        }
+    }
+    /// Only an I/O failure may succeed when the same request is sent again unchanged.
+    pub fn retryable(self) -> bool {
+        self == Kind::Io
+    }
+}
+
+// @MX:NOTE: [AUTO] Error messages stay the source of truth; this ordered table maps them to a
+// kind. First match wins, so specific phrases precede the generic words at the end.
+// The wrapping messages (`partial apply: ...; failed at X: <inner>`, `conflict in X: <detail>`)
+// come first because they quote an inner message that would otherwise match.
+const RULES: &[(&str, Kind)] = &[
+    ("partial apply", Kind::Partial),
+    ("partial creation possible", Kind::Partial),
+    ("conflict in ", Kind::Conflict),
+    ("input exceeds 64 KiB", Kind::InputTooLarge),
+    (
+        "permission reference required",
+        Kind::PermissionReferenceMissing,
+    ),
+    ("stale or altered plan", Kind::StalePlan),
+    ("changed since plan", Kind::StalePlan),
+    ("changed during apply", Kind::StalePlan),
+    ("requires preservation review", Kind::Conflict),
+    ("exclusive create refused", Kind::Conflict),
+    ("malformed managed markers", Kind::Conflict),
+    ("not uniquely locatable", Kind::Conflict),
+    ("generation manifest", Kind::Conflict),
+    ("digest mismatch", Kind::Conflict),
+    ("SKILL.md missing", Kind::NotFound),
+    ("project profile missing", Kind::NotFound),
+    ("reference directory missing", Kind::NotFound),
+    ("project directory unavailable", Kind::NotFound),
+    ("project root unavailable", Kind::NotFound),
+    ("package unavailable", Kind::NotFound),
+    ("package directory unavailable", Kind::NotFound),
+    ("git rev-parse exited", Kind::NotFound),
+    ("encode failed", Kind::Internal),
+    ("rendered output", Kind::Internal),
+    ("git output", Kind::Io),
+    ("malformed ls-", Kind::Io),
+    ("read failed", Kind::Io),
+    ("write failed", Kind::Io),
+    ("replace failed", Kind::Io),
+    ("temporary", Kind::Io),
+    ("unavailable", Kind::Io),
+    ("unreadable", Kind::Io),
+    ("disappeared", Kind::Io),
+    ("git failed", Kind::Io),
+    ("hash-object failed", Kind::Io),
+    ("exited", Kind::Io),
+    ("invalid", Kind::InvalidInput),
+    ("nonportable", Kind::InvalidInput),
+    ("UTF-8", Kind::InvalidInput),
+    ("limit exceeded", Kind::InvalidInput),
+    ("too large", Kind::InvalidInput),
+    ("must be", Kind::InvalidInput),
+    ("require", Kind::InvalidInput),
+    ("forbidden", Kind::InvalidInput),
+    ("refused", Kind::InvalidInput),
+    ("outside", Kind::InvalidInput),
+    ("unknown", Kind::InvalidInput),
+    ("missing", Kind::InvalidInput),
+    ("not a ", Kind::InvalidInput),
+];
+
+/// Kind of an existing error message; an unlisted message is `internal`, never guessed.
+pub fn classify(message: &str) -> Kind {
+    RULES
+        .iter()
+        .find(|(phrase, _)| message.contains(phrase))
+        .map_or(Kind::Internal, |&(_, kind)| kind)
+}
+
+pub fn success(operation: &str, result: Value) -> Value {
+    json!({"protocol_version": PROTOCOL_VERSION, "operation": operation, "ok": true, "result": result})
+}
+
+/// A stale or partially applied plan names the plan operation to call next.
+pub fn failure(operation: &str, kind: Kind, message: &str) -> Value {
+    let mut error =
+        json!({"kind": kind.as_str(), "message": message, "retryable": kind.retryable()});
+    if matches!(kind, Kind::StalePlan | Kind::Partial) {
+        if let Some(prefix) = operation.strip_suffix(".apply") {
+            error["next_actions"] = json!([format!("{prefix}.plan")]);
+        }
+    }
+    json!({"protocol_version": PROTOCOL_VERSION, "operation": operation, "ok": false, "error": error})
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn every_current_message_has_a_deliberate_kind() {
+        use Kind::*;
+        let cases = [
+            ("input exceeds 64 KiB", InputTooLarge),
+            ("invalid typed JSON input", InvalidInput),
+            ("stdin read failed", Io),
+            ("encode failed", Internal),
+            ("permission reference required", PermissionReferenceMissing),
+            ("stale or altered plan; re-preview required", StalePlan),
+            ("target changed since plan", StalePlan),
+            ("target changed since plan; re-preview required", StalePlan),
+            ("target changed during apply; temporary file discarded", StalePlan),
+            ("partial apply: applied [a]; failed at b: x", Partial),
+            (
+                "partial apply: applied [AGENTS.md]; failed at .gitignore: target changed since plan",
+                Partial,
+            ),
+            (
+                "conflict in AGENTS.md: managed block missing or removed; baseline mismatch; nothing applied",
+                Conflict,
+            ),
+            ("partial creation possible; preserve and inspect target", Partial),
+            ("conflict in AGENTS.md: managed block edited; nothing applied", Conflict),
+            ("existing YAML requires preservation review", Conflict),
+            ("exclusive create refused", Conflict),
+            ("malformed managed markers", Conflict),
+            ("rendered block not uniquely locatable; refused", Conflict),
+            ("generation manifest unreadable; inspect before regenerating", Conflict),
+            ("generation manifest belongs to another schema or project", Conflict),
+            ("pinned package digest mismatch; fallback forbidden", Conflict),
+            ("package SKILL.md missing", NotFound),
+            ("project profile missing", NotFound),
+            ("workflow reference directory missing; generate it first", NotFound),
+            ("project directory unavailable", NotFound),
+            ("project root unavailable", NotFound),
+            ("package unavailable", NotFound),
+            ("package directory unavailable", NotFound),
+            ("git rev-parse exited 128", NotFound),
+            ("rendered output is not UTF-8", Internal),
+            ("non UTF-8 git output", Io),
+            ("malformed ls-files record", Io),
+            ("malformed ls-tree record", Io),
+            ("target read failed", Io),
+            ("temporary write failed", Io),
+            ("temporary file refused", Io),
+            ("atomic replace failed", Io),
+            ("target metadata unavailable", Io),
+            ("target parent unavailable", Io),
+            ("target directory unavailable", Io),
+            ("project state directory unavailable", Io),
+            ("package metadata unavailable", Io),
+            ("package entry unavailable", Io),
+            ("directory entry unavailable", Io),
+            ("git unavailable", Io),
+            ("git stdin unavailable", Io),
+            ("git stdin write failed", Io),
+            ("git failed", Io),
+            ("hash-object failed", Io),
+            ("package file disappeared", Io),
+            ("symlink unreadable", Io),
+            ("unreadable file x", Io),
+            ("git ls-files exited 1", Io),
+            ("ls-remote exited 2", Io),
+            ("invalid profile", InvalidInput),
+            ("invalid or nonportable profile; no values were logged", InvalidInput),
+            ("invalid agents request; no values were logged", InvalidInput),
+            ("explicit null pin is invalid", InvalidInput),
+            ("nonportable package path", InvalidInput),
+            ("non UTF-8 project path", InvalidInput),
+            ("target is not UTF-8", InvalidInput),
+            ("package entry limit exceeded", InvalidInput),
+            ("package nesting limit exceeded", InvalidInput),
+            ("package too large", InvalidInput),
+            ("project must be a directory", InvalidInput),
+            ("go baseline commit must be 40 lowercase hex", InvalidInput),
+            ("user package required without pin", InvalidInput),
+            ("explicit pin requires repository package; fallback forbidden", InvalidInput),
+            ("symlink target refused", InvalidInput),
+            ("package symlink refused", InvalidInput),
+            ("package special file refused", InvalidInput),
+            ("special file refused: x", InvalidInput),
+            ("profile value contains managed-marker syntax; refused", InvalidInput),
+            ("path outside root", InvalidInput),
+            ("unknown planned path", InvalidInput),
+            ("manifest missing from plan", InvalidInput),
+            ("target is not a bounded regular file", InvalidInput),
+            ("HEAD is not a 40 hex commit", InvalidInput),
+            ("package path invalid", InvalidInput),
+        ];
+        for (message, kind) in cases {
+            assert_eq!(classify(message), kind, "{message}");
+        }
+        assert_eq!(classify("something new"), Internal);
+    }
+
+    #[test]
+    fn envelopes_carry_the_decided_fields() {
+        let ok = success("project.plan", json!({"a": 1}));
+        assert_eq!(
+            ok,
+            json!({"protocol_version":1,"operation":"project.plan","ok":true,"result":{"a":1}})
+        );
+        let stale = failure("agents.apply", Kind::StalePlan, "target changed since plan");
+        assert_eq!(stale["ok"], json!(false));
+        assert_eq!(stale["error"]["kind"], "stale_plan");
+        assert_eq!(stale["error"]["retryable"], json!(false));
+        assert_eq!(stale["error"]["next_actions"], json!(["agents.plan"]));
+        let io = failure("package.inspect", Kind::Io, "package entry unavailable");
+        assert_eq!(io["error"]["retryable"], json!(true));
+        assert!(io["error"].get("next_actions").is_none());
+    }
+}
