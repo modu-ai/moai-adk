@@ -14,7 +14,7 @@ A document diff, an Issue report, an integration receipt (planned; not implement
 2. Classify differences between the implementation and the SPEC as omissions, amendments, or document mismatches.
 3. Diff only managed documents, and preserve user edits.
 4. Confirm the target and permission for each of push, merge, report, and release separately. When a forge is connected for the first time and local TODOs are moved over, preview the list, the visibility scope, and the secret-free body, and promote only the items the user selects to Issues.
-5. Record external effects with a stable operation marker and an outbox, then query the actual result again.
+5. Record external effects with a stable operation marker and an outbox (`effect-intend` before the send, `effect-confirm` after the response), then query the actual result again (`effects-reconcile` moves an uncertain effect to confirmed or not_performed and never re-creates it).
 6. Report successes, failures, what was not run, the remaining work, and artifact retention details.
 
 ## Exceptions and Permissions

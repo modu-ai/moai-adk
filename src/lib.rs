@@ -5,6 +5,7 @@ pub mod claim;
 pub mod claude;
 pub mod contract;
 pub mod forge;
+pub mod handoff;
 pub mod hosts;
 pub mod identity;
 pub mod install;

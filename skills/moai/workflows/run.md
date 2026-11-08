@@ -14,7 +14,7 @@ A patch, receipts from actual verification (the internal `run-verify` operation 
 2. Read only the sources the task needs, and choose a change strategy.
 3. For TDD, confirm why RED fails before moving to GREEN and refactoring. Cover existing behavior with characterization tests. For domain changes, review the bounded context and its terminology together.
 4. Change only the allowed scope with the host's native tools, and repeat actual verification.
-5. When the base or the SPEC changes, mark existing receipts stale.
+5. When the base or the SPEC changes, mark existing receipts stale. After a stalled or interrupted attempt, do not re-send anything: read the owner and effects back (`claim-show`, `effects-reconcile`) and resume only on what the records prove.
 6. Hand the verified exact candidate to a separate AUDIT.
 
 ## Exceptions and Permissions

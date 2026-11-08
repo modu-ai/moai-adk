@@ -174,6 +174,73 @@ enum Command {
         #[arg(long)]
         reason: Option<String>,
     },
+    /// Explicit leader handoff (06-B #2006): liveness probe, worktree evidence, close as
+    /// `handed_off`; an alive or indeterminate owner needs --force-explicit.
+    ClaimHandoff {
+        project: PathBuf,
+        /// The 16-hex task key an acquire returned.
+        #[arg(long)]
+        task: String,
+        /// The epoch the request saw; a mismatch is a `stale_request` refusal (REQ-06B-01).
+        #[arg(long = "from-epoch")]
+        from_epoch: u64,
+        #[arg(long)]
+        reason: String,
+        /// Override the alive/indeterminate gate; the reason stays required.
+        #[arg(long = "force-explicit")]
+        force_explicit: bool,
+        /// This host's id; the liveness probe runs only for a local-process owner whose
+        /// host_id matches.
+        #[arg(long)]
+        host_id: Option<String>,
+    },
+    /// Record an external-write intent before it is sent (REQ-06B-06); payload JSON on
+    /// stdin gives the intent digest. A stale epoch is fenced (REQ-06B-08).
+    EffectIntend {
+        project: PathBuf,
+        #[arg(long)]
+        task: String,
+        /// The epoch the caller believes it is publishing under.
+        #[arg(long)]
+        epoch: u64,
+        /// Operation word (portable name, 07-B format).
+        #[arg(long)]
+        operation: String,
+        #[arg(long = "project-id")]
+        project_id: String,
+        #[arg(long = "local-id")]
+        local_id: String,
+        #[arg(long)]
+        attempt: u32,
+        /// The publish kind, e.g. comment_post or pr_create.
+        #[arg(long)]
+        kind: String,
+    },
+    /// Confirm an intended effect after the write returned, or mark it uncertain.
+    EffectConfirm {
+        project: PathBuf,
+        #[arg(long)]
+        task: String,
+        #[arg(long = "operation-id")]
+        operation_id: String,
+        /// What the remote returned (empty allowed for uncertain).
+        #[arg(long = "response-id", default_value = "")]
+        response_id: String,
+        /// The observed outcome; `uncertain` marks the interrupted case.
+        #[arg(long = "observed-state")]
+        observed_state: String,
+    },
+    /// Reconcile uncertain effects against the remote by their stable marker (GET only,
+    /// never re-creates). `--remote-probe` replaces the built-in comment lookup (tests).
+    EffectsReconcile {
+        project: PathBuf,
+        #[arg(long)]
+        task: String,
+        /// Probe command: exit 0 + `{"remote_id":...}` found, 4 absent, 5 + seconds
+        /// rate limited.
+        #[arg(long = "remote-probe")]
+        remote_probe: Option<String>,
+    },
     /// Read-only Claude Code check: whether a session started in PROJECT reads AGENTS.md.
     ClaudeDoctor {
         project: PathBuf,
@@ -352,6 +419,10 @@ const OPERATIONS: &[(&str, &str)] = &[
     ("claim-acquire", "claim.acquire"),
     ("claim-show", "claim.show"),
     ("claim-release", "claim.release"),
+    ("claim-handoff", "claim.handoff"),
+    ("effect-intend", "effect.intend"),
+    ("effect-confirm", "effect.confirm"),
+    ("effects-reconcile", "effects.reconcile"),
     ("todo-promote-preview", "todo.promote.plan"),
     ("todo-promote-apply", "todo.promote.apply"),
     ("run-verify", "run.verify"),
@@ -544,6 +615,68 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             &task,
             epoch,
             reason.as_deref().unwrap_or("unspecified"),
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        Command::ClaimHandoff {
+            project,
+            task,
+            from_epoch,
+            reason,
+            force_explicit,
+            host_id,
+        } => moai_cli::handoff::claim_handoff_cli(
+            &project,
+            &task,
+            from_epoch,
+            &reason,
+            force_explicit,
+            host_id.as_deref(),
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        Command::EffectIntend {
+            project,
+            task,
+            epoch,
+            operation,
+            project_id,
+            local_id,
+            attempt,
+            kind,
+        } => moai_cli::handoff::effect_intend_cli(
+            &project,
+            &task,
+            epoch,
+            &operation,
+            &project_id,
+            &local_id,
+            attempt,
+            &kind,
+            input::<serde_json::Value>()?.to_string().as_bytes(),
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        Command::EffectConfirm {
+            project,
+            task,
+            operation_id,
+            response_id,
+            observed_state,
+        } => moai_cli::handoff::effect_confirm_cli(
+            &project,
+            &task,
+            &operation_id,
+            &response_id,
+            &observed_state,
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        Command::EffectsReconcile {
+            project,
+            task,
+            remote_probe,
+        } => moai_cli::handoff::effects_reconcile_cli(
+            &project,
+            &task,
+            remote_probe.as_deref(),
+            &moai_cli::forge::transport::GhTransport::from_env()?,
             &moai_cli::forge::policy::SystemClock,
         ),
         Command::ClaudeDoctor { project } => moai_cli::claude::doctor(&project),
