@@ -487,6 +487,20 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
+    /// Read-only recovery plan for UPDATE hosts left `pending` (04-C #2000; names P06 HOLD).
+    RecoveryPlan {
+        /// User home root whose `.moai-cli` host receipts and projections are read.
+        home: PathBuf,
+    },
+    /// Revert only this request's changes on pending hosts (04-C #2000). The previewed
+    /// plan travels on stdin and must match a fresh recompute.
+    RecoveryApply {
+        home: PathBuf,
+        #[arg(long)]
+        plan_digest: String,
+        #[arg(long)]
+        permission_reference: String,
+    },
     /// Claude Code session launcher: `cc -l|-a`.
     Cc(HostLaunch),
     /// Claude Code on z.ai GLM: `glm -l|-a` (needs ANTHROPIC_AUTH_TOKEN in the environment).
@@ -626,6 +640,8 @@ const OPERATIONS: &[(&str, &str)] = &[
     ("github-apply", "github.apply"),
     ("update-plan", "update.plan"),
     ("update-apply", "update.apply"),
+    ("recovery-plan", "recovery.plan"),
+    ("recovery-apply", "recovery.apply"),
 ];
 fn operation_of(word: &str) -> Option<&'static str> {
     OPERATIONS
@@ -1031,6 +1047,18 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
                 &plan_digest,
                 &permission_reference,
             )
+        }
+        Command::RecoveryPlan { home } => {
+            serde_json::to_value(moai_cli::recovery::recovery_plan(&home)?)
+                .map_err(|_| "encode failed".into())
+        }
+        Command::RecoveryApply {
+            home,
+            plan_digest,
+            permission_reference,
+        } => {
+            let plan = input::<moai_cli::recovery::RecoveryPlan>()?;
+            moai_cli::recovery::recovery_apply(&home, &plan, &plan_digest, &permission_reference)
         }
         Command::PlanAdmit { project } => {
             let request = input::<moai_cli::plan::AdmissionRequest>()?;
