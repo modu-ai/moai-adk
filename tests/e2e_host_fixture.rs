@@ -501,16 +501,19 @@ fn e2e_clean_clone_carries_portable_read_plan_assets() {
         .trim()
         .to_string();
     if !discovery.status.success() || discovered.is_empty() {
-        // Explicit not_run report: this tree carries no git metadata (e.g. an exported
-        // source archive), so there is no repository to clean-clone. Recorded visibly,
-        // not as a silent pass — docs/e2e-matrix.md carries the combination as not_run.
-        eprintln!(
+        // Explicit not_run that cargo cannot count as ok (Issue #2104): this tree
+        // carries no git metadata (e.g. an exported source archive), so there is no
+        // repository to clean-clone. A silent return read as a vacuous pass — the
+        // one thing RL-10 forbids — so the unmeasurable condition surfaces as a
+        // failure naming its reason. docs/e2e-matrix.md records the combination as
+        // not_run; inside a git checkout this path is never taken.
+        panic!(
             "NOT RUN: e2e_clean_clone_carries_portable_read_plan_assets — no git \
              metadata in this tree ({}); the clean-clone portability check was not \
-             performed",
+             performed. Run from a git checkout, or record the combination as \
+             not_run in docs/e2e-matrix.md",
             String::from_utf8_lossy(&discovery.stderr).trim()
         );
-        return;
     }
     let gitdir = PathBuf::from(discovered);
     let gitdir = if gitdir.is_absolute() {

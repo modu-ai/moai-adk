@@ -549,6 +549,22 @@ pub fn agents_apply(
     confirmed: &str,
     permission: &str,
 ) -> Result<Value> {
+    agents_apply_amended(root, p, confirmed, permission, &mut |_, _| Ok(()))
+}
+
+/// `agents_apply` with one caller hook between the agents file publishes and the
+/// single manifest publish (Issue #2114). `amend` may publish its own files and edit
+/// the manifest value; the result must still decode as the manifest schema. An `amend`
+/// error returns before the manifest is touched, so the previous manifest — with what
+/// an earlier apply recorded — stays on disk instead of a reset intermediate.
+// @MX:NOTE [#2114] generation_apply's only path to the manifest; one publish per apply.
+pub(crate) fn agents_apply_amended(
+    root: &Path,
+    p: AgentsPlan,
+    confirmed: &str,
+    permission: &str,
+    amend: &mut dyn FnMut(&Path, &mut Value) -> Result<()>,
+) -> Result<Value> {
     // Caller authorization remains host-owned; this reference is not an authorization verifier.
     if ["", "null", "placeholder"].contains(&permission.trim())
         || permission.len() > 128
@@ -809,8 +825,6 @@ pub fn agents_apply(
         created_once: created,
         activation_status: "pending-validation".into(),
     };
-    let mut manifest_bytes = serde_json::to_vec_pretty(&manifest).expect("typed manifest");
-    manifest_bytes.push(b'\n');
     let manifest_path = target(&root, MANIFEST)?;
     let before = read_opt(&manifest_path)?;
     let manifest_plan = p
@@ -833,6 +847,19 @@ pub fn agents_apply(
             &step(&applied, MANIFEST, "target changed since plan".into()),
         ));
     }
+    let mut value = serde_json::to_value(&manifest).expect("typed manifest");
+    if let Err(e) = amend(&root, &mut value) {
+        return Err(receipt_failure(&receipt, &root, &e));
+    }
+    let manifest: Manifest = serde_json::from_value(value).map_err(|_| {
+        step(
+            &applied,
+            MANIFEST,
+            "amended manifest outside the schema".into(),
+        )
+    })?;
+    let mut manifest_bytes = serde_json::to_vec_pretty(&manifest).expect("typed manifest");
+    manifest_bytes.push(b'\n');
     if before.as_deref() != Some(manifest_bytes.as_slice()) {
         if let Some(b) = before.as_deref() {
             apply::save_before_bytes(&root, &request_id, MANIFEST, b)
