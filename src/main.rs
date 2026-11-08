@@ -360,8 +360,9 @@ fn launch(
         name,
         model: o.model,
         effort: o.effort,
-        // Claude defaults (operator 2026-11-08): advisor fable; without a role only under
-        // HOLD-L1 option A. The permission skip (interim) applies to `-l|-a` only (#2053).
+        // Claude defaults (user decision 2026-11-08, HOLD-L1 = A, #2053): roleless `cc`
+        // takes the launcher defaults (advisor fable, model, effort) too. The permission
+        // skip stays `-l|-a` only — a roleless session gets none.
         advisor: (host != "codex" && !o.no_advisor && moai_cli::session::launcher_defaults(role))
             .then(|| "fable".into()),
         skip_permissions: role.is_some() && host != "codex" && !o.permissions,

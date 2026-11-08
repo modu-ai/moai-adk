@@ -18,6 +18,6 @@ Limits, recorded rather than resolved:
 - Duplicate detection reads the whole Issue list (`state=all`) and compares normalized titles (word Jaccard ≥ 0.8). It does not use `since`: an old Issue with the same marker or title must still be found. The search API is follow-up work (interim decision B).
 - The disclosure gate is a conservative shape filter shared with the profile filter (`SECRET_SHAPES` in `src/lib.rs`) plus a few more shapes. It is not a secret scanner. A scanner such as gitleaks is HOLD; the shared redaction module belongs to 03-B #1996.
 - `uncertain` is a fifth preview state beyond the four named in the Issue, so an unknown publish is visible instead of looking like `preview_only`.
-- `GhTransport` has no request timeout (07-A transport, out of this card's scope); a hung `gh` blocks apply. A timeout reported by `gh` is handled as uncertain.
+- `GhTransport` bounds each `gh api` call at `GH_TIMEOUT` = 60 s (#2048, PR #2051). Past the bound `gh` is killed and its whole process group ended (unix `kill -KILL -- -<pgid>`; `gh` runs in its own group), and the call fails as `transport` — the same bucket as a timeout reported by `gh` — which apply records `uncertain`. Still open: the 60 s value is unmeasured against real calls, and the process-group teardown is written for unix (`#[cfg(unix)]`); Windows behavior is unverified.
 - The permission reference is checked for presence and shape only; caller authorization remains host-owned.
 - Live GitHub writes were not run (`not_run`); tests use a scripted transport and a stub `gh` that refuses writes.
