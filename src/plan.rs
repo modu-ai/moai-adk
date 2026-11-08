@@ -456,25 +456,35 @@ pub fn admit(req: &AdmissionRequest, current_revision: &str) -> AdmissionDecisio
 }
 
 /// `git rev-parse --verify --end-of-options HEAD^{commit}` in `project`, run with an argv
-/// array (no shell). A missing repository or commit is an error, never a guessed revision.
+/// array (no shell) and the same environment cleaning as `identity`, so `GIT_DIR` and related
+/// caller variables cannot point it at another repository (Issue #2043). A missing
+/// repository or commit is an error, never a guessed revision; any other git failure is
+/// `git failed: <path-free summary>` (`git_failed`, as in #2033).
 pub fn current_revision(project: &Path) -> Result<String> {
-    let out = Command::new("git")
-        .arg("-C")
-        .arg(project)
-        .args([
-            "rev-parse",
-            "--verify",
-            "--quiet",
-            "--end-of-options",
-            "HEAD^{commit}",
-        ])
+    let mut cmd = Command::new("git");
+    cmd.arg("-C").arg(project).args([
+        "rev-parse",
+        "--verify",
+        "--quiet",
+        "--end-of-options",
+        "HEAD^{commit}",
+    ]);
+    crate::identity::scrub_git_env(&mut cmd);
+    let out = cmd
+        .stdin(std::process::Stdio::null())
         .output()
         .map_err(|_| "git unavailable")?;
     if !out.status.success() {
-        return Err(format!(
-            "git rev-parse exited {}",
-            out.status.code().unwrap_or(-1)
-        ));
+        // `--quiet` keeps a missing commit silent; "not a git repository" is still printed.
+        let quiet = String::from_utf8_lossy(&out.stderr).trim().is_empty();
+        let summary = crate::identity::failure_summary(&out.stderr);
+        if quiet || summary.starts_with(crate::identity::NOT_A_REPOSITORY) {
+            return Err(format!(
+                "git rev-parse exited {}",
+                out.status.code().unwrap_or(-1)
+            ));
+        }
+        return Err(format!("git failed: {summary}"));
     }
     let rev = String::from_utf8(out.stdout).map_err(|_| "non UTF-8 git output")?;
     let rev = rev.trim();
