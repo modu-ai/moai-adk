@@ -1,0 +1,20 @@
+{
+  "acceptance_refs": [],
+  "behavior": "renew its lease before it expires",
+  "condition_kinds": [
+    "while"
+  ],
+  "grammar_version": "gears@2026-01-14",
+  "id": "REQ-T-002",
+  "observable_result": null,
+  "source_refs": [],
+  "subject": "the lane session",
+  "syntax": "GEARS",
+  "text": "While a lane holds a claim, the lane session shall renew its lease before it expires.",
+  "unresolved": [],
+  "when": null,
+  "where": [],
+  "while": [
+    "a lane holds a claim"
+  ]
+}

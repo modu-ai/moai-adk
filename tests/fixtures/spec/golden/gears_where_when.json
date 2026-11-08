@@ -1,0 +1,21 @@
+{
+  "acceptance_refs": [],
+  "behavior": "run cargo test",
+  "condition_kinds": [
+    "where",
+    "when"
+  ],
+  "grammar_version": "gears@2026-01-14",
+  "id": "REQ-T-001",
+  "observable_result": null,
+  "source_refs": [],
+  "subject": "the CI runner",
+  "syntax": "GEARS",
+  "text": "Where the project uses Rust, when a pull request opens, the CI runner shall run cargo test.",
+  "unresolved": [],
+  "when": "a pull request opens",
+  "where": [
+    "the project uses Rust"
+  ],
+  "while": []
+}

@@ -1,0 +1,16 @@
+{
+  "acceptance_refs": [],
+  "behavior": "reject a verdict that names no head SHA",
+  "condition_kinds": [],
+  "grammar_version": "gears@2026-01-14",
+  "id": "REQ-T-003",
+  "observable_result": null,
+  "source_refs": [],
+  "subject": "The audit lane",
+  "syntax": "GEARS",
+  "text": "The audit lane shall reject a verdict that names no head SHA.",
+  "unresolved": [],
+  "when": null,
+  "where": [],
+  "while": []
+}
