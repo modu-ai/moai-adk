@@ -109,6 +109,11 @@ enum Command {
         #[arg(long)]
         go_repo: Option<PathBuf>,
     },
+    /// Read GitHub Issues and comments as TODO (GET only; typed JSON request on stdin,
+    /// envelope on stdout). Poll state: `<PROJECT>/.moai-cli/forge/poll-state.json`.
+    ForgeRead {
+        project: PathBuf,
+    },
     /// Claude Code session launcher: `cc -l|-a`.
     Cc(HostLaunch),
     /// Claude Code on z.ai GLM: `glm -l|-a` (needs ANTHROPIC_AUTH_TOKEN in the environment).
@@ -246,6 +251,12 @@ fn run() -> Result<serde_json::Value, String> {
             &plan_digest,
             &permission_reference,
         ),
+        Command::ForgeRead { project } => Ok(moai_cli::forge::forge_read_cli(
+            &project,
+            input::<moai_cli::forge::ReadRequest>(),
+            &moai_cli::forge::transport::GhTransport::from_env(),
+            &moai_cli::forge::policy::SystemClock,
+        )),
         Command::BaselineInventory {
             project,
             go_baseline_commit,
@@ -293,7 +304,12 @@ fn main() -> ExitCode {
     match run() {
         Ok(value) => {
             println!("{value}");
-            ExitCode::SUCCESS
+            // An envelope (`forge-read`) reports failure in-band with `ok: false`.
+            if value.get("ok") == Some(&serde_json::Value::Bool(false)) {
+                ExitCode::from(1)
+            } else {
+                ExitCode::SUCCESS
+            }
         }
         Err(message) => {
             eprintln!("{message}");
