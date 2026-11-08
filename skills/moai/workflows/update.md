@@ -6,7 +6,7 @@ The installation owner, the version and digest on every installed host, and the 
 
 ## Output
 
-An update plan covering all hosts, a change preview, a backup or known-good state, and per-host apply and reload receipts (planned; not implemented in 2026.11.0-rc.1).
+An update plan covering all hosts, a per-file three-way change preview, and per-host pending→committed apply receipts with reload state (`update-plan` / `update-apply` in 2026.11.0-rc.1; the backup/rollback path is 04-C and not implemented yet).
 
 ## Procedure
 
