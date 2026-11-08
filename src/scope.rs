@@ -3,9 +3,9 @@
 //! Two claims conflict when some path could fall under both of their write_scope entries.
 //! A conflict marks the new claim `blocked(reason=scope_conflict)` unless the leader names an
 //! integration order (`--integration-order <task_ref>`), in which case it is allowed and the
-//! order is recorded. This module computes the decision only: the claim journal belongs to
-//! 06-A (#2005) and has no public write path, so the record change is returned as a
-//! `record_update_request` for 06-A's owner to apply.
+//! order is recorded. [`check`] computes the decision and returns the record change as
+//! `record_update_request`; [`check_and_record`] also commits it to the claim journal through
+//! 06-B's `Journal::commit` when the record came from the journal (`--task`).
 //!
 //! The overlap test is the interface 05-B's private `plan::paths_overlap` is meant to move to
 //! (decision 2026-11-08 19:1x); 06-C does not edit `src/plan.rs`.
@@ -171,6 +171,52 @@ pub fn check(
         "record_update_request": request,
         "record_update_owner": crate::worktree::RECORD_UPDATE_OWNER,
     })
+}
+
+/// [`check`] plus the record write: `blocked` with a `scope_conflict` effect, or an
+/// `integration_order` effect when the leader's order allowed the overlap. A repeated
+/// check with the same outcome adds no event.
+pub fn check_and_record<C: crate::forge::policy::Clock>(
+    project: &std::path::Path,
+    mine: &ClaimRecord,
+    from_journal: bool,
+    records: &[ClaimRecord],
+    integration_order: Option<&str>,
+    clock: &C,
+) -> std::result::Result<Value, String> {
+    use crate::worktree::{commit_update, not_written, open_locked_journal};
+    let mut out = check(mine, records, integration_order);
+    let effect = match out["decision"].as_str() {
+        Some("blocked") => Some(json!({"kind": "scope_conflict", "conflicts": out["conflicts"]})),
+        Some("allowed_with_order") => {
+            Some(json!({"kind": "integration_order", "order": integration_order}))
+        }
+        _ => None,
+    };
+    out["record_update"] = match (effect, from_journal) {
+        (None, _) => json!({"applied": false, "reason": "no scope conflict"}),
+        (Some(_), false) => not_written(),
+        (Some(effect), true) => {
+            let blocked = out["decision"] == "blocked";
+            let journal = open_locked_journal(project)?;
+            commit_update(
+                &journal,
+                &mine.task_key,
+                mine.epoch,
+                "scope_check",
+                clock,
+                |r| {
+                    if blocked {
+                        r.state = "blocked".into();
+                    }
+                    if r.effects.last() != Some(&effect) {
+                        r.effects.push(effect);
+                    }
+                },
+            )?
+        }
+    };
+    Ok(out)
 }
 
 #[cfg(test)]
