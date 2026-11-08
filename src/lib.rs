@@ -3,6 +3,7 @@ pub mod baseline;
 pub mod claude;
 pub mod contract;
 pub mod forge;
+pub mod hosts;
 pub mod identity;
 pub mod plan;
 pub mod session;

@@ -1,7 +1,7 @@
 use clap::{error::ErrorKind, ArgGroup, Args, Parser, Subcommand};
 use moai_cli::{
-    agents_apply, agents_plan, apply, contract, plan, resolve, session_launch, AgentsPlan,
-    AgentsRequest, Plan, Profile, SessionRequest,
+    agents_apply, agents_plan, apply, contract, hosts::codex, plan, resolve, session_launch,
+    AgentsPlan, AgentsRequest, Plan, Profile, SessionRequest,
 };
 use std::{
     io::{self, Read},
@@ -122,6 +122,51 @@ enum Command {
     ClaudeDoctor {
         project: PathBuf,
     },
+    /// Plan a Codex projection of the common package into an explicit target; writes nothing.
+    CodexProjectionPlan {
+        package: PathBuf,
+        /// Absolute skill directory named `moai`, e.g. ~/.agents/skills/moai (no default).
+        #[arg(long)]
+        target: PathBuf,
+        #[arg(long, default_value = "MoAI")]
+        display_name: String,
+        #[arg(
+            long,
+            default_value = "Set up, plan, implement, verify, audit and sync through one workflow"
+        )]
+        short_description: String,
+        #[arg(long, default_value = "Use $moai to read this project's status")]
+        default_prompt: String,
+        /// Write `policy.allow_implicit_invocation`; omitted keeps Codex's default.
+        #[arg(long)]
+        allow_implicit_invocation: Option<bool>,
+        /// Requested `tui.status_line` item (repeatable); reported as HOLD, never written.
+        #[arg(long = "status-line")]
+        status_line: Vec<String>,
+        /// Requested `[skills.bundled] enabled = false`; reported as HOLD, never written.
+        #[arg(long)]
+        disable_bundled_skills: bool,
+    },
+    /// Read-only Codex doctor: AGENTS chain and budget, skill duplicates, `.codex/` layer.
+    CodexDoctor {
+        /// Project root (Codex walks from here down to the working directory).
+        project: PathBuf,
+        /// Working directory inside the project (default: the project root).
+        #[arg(long)]
+        cwd: Option<PathBuf>,
+        /// Codex home holding the global AGENTS files (default: $CODEX_HOME, else ~/.codex).
+        #[arg(long)]
+        codex_home: Option<PathBuf>,
+        /// Home holding `.agents/skills` (default: $HOME).
+        #[arg(long)]
+        home: Option<PathBuf>,
+        /// `project_doc_fallback_filenames` entry (repeatable; config.toml is not read).
+        #[arg(long)]
+        fallback: Vec<String>,
+        /// `project_doc_max_bytes` (default 32768; config.toml is not read).
+        #[arg(long)]
+        max_bytes: Option<u64>,
+    },
     /// Temporary (05-B #2002; the name is fixed after P06): RUN admission of an approved plan.
     /// Typed request on stdin; reads the project's `HEAD^{commit}` with git, writes nothing.
     PlanAdmit {
@@ -215,7 +260,7 @@ fn launch(
 
 /// Internal operations (01-C #1990): subcommand word and operation name. The launchers are
 /// developer tools and stay outside the envelope contract.
-const OPERATIONS: [(&str, &str); 11] = [
+const OPERATIONS: [(&str, &str); 13] = [
     ("package-inspect", "package.inspect"),
     ("project-plan", "project.plan"),
     ("project-apply", "project.apply"),
@@ -227,6 +272,8 @@ const OPERATIONS: [(&str, &str); 11] = [
     ("forge-read", "forge.read"),
     ("plan-admit", "plan.admit"),
     ("claude-doctor", "claude.doctor"),
+    ("codex-projection-plan", "codex.projection_plan"),
+    ("codex-doctor", "codex.doctor"),
 ];
 fn operation_of(word: &str) -> Option<&'static str> {
     OPERATIONS
@@ -342,6 +389,44 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
         ),
         Command::Identity { path } => moai_cli::identity::identity(&path),
         Command::ClaudeDoctor { project } => moai_cli::claude::doctor(&project),
+        Command::CodexProjectionPlan {
+            package,
+            target,
+            display_name,
+            short_description,
+            default_prompt,
+            allow_implicit_invocation,
+            status_line,
+            disable_bundled_skills,
+        } => codex::projection_plan(
+            &package,
+            &target,
+            &codex::OpenAiYaml {
+                display_name,
+                short_description,
+                default_prompt,
+                allow_implicit_invocation,
+            },
+            &status_line,
+            disable_bundled_skills,
+        ),
+        Command::CodexDoctor {
+            project,
+            cwd,
+            codex_home,
+            home,
+            fallback,
+            max_bytes,
+        } => {
+            let home = home
+                .or_else(|| std::env::var_os("HOME").map(PathBuf::from))
+                .ok_or("home directory missing; pass --home")?;
+            let codex_home = codex_home
+                .or_else(|| std::env::var_os("CODEX_HOME").map(PathBuf::from))
+                .unwrap_or_else(|| home.join(".codex"));
+            let cwd = cwd.unwrap_or_else(|| project.clone());
+            codex::doctor(&project, &cwd, &codex_home, &home, &fallback, max_bytes)
+        }
         Command::PlanAdmit { project } => {
             let request = input::<moai_cli::plan::AdmissionRequest>()?;
             if request.protocol_version != contract::PROTOCOL_VERSION {
