@@ -937,12 +937,14 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             branch_prefix,
             path,
             plan_digest,
-        } => moai_cli::worktree::apply(
+        } => moai_cli::worktree::apply_and_record(
             &project,
             &source.load(&project)?,
+            source.task.is_some(),
             &branch_prefix,
             path.as_deref(),
             &plan_digest,
+            &moai_cli::forge::policy::SystemClock,
         ),
         Command::ScopeCheck {
             project,
@@ -951,11 +953,14 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
         } => {
             let mine = source.load(&project)?;
             let others = moai_cli::worktree::active_records(&project)?;
-            Ok(moai_cli::scope::check(
+            moai_cli::scope::check_and_record(
+                &project,
                 &mine,
+                source.task.is_some(),
                 &others,
                 integration_order.as_deref(),
-            ))
+                &moai_cli::forge::policy::SystemClock,
+            )
         }
         Command::PrBodyRender {
             project,
@@ -979,8 +984,10 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             } else {
                 Vec::new()
             };
-            moai_cli::pr_link::render(
+            moai_cli::pr_link::render_and_record(
+                &project,
                 &rec,
+                source.task.is_some(),
                 &receipts,
                 &moai_cli::pr_link::RenderInput {
                     base_branch: &base_branch,
@@ -993,6 +1000,7 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
                     changes: &changes,
                     gaps: &gap,
                 },
+                &moai_cli::forge::policy::SystemClock,
             )
         }
         Command::InstallInspect { json: _ } => {

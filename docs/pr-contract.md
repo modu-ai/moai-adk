@@ -35,9 +35,17 @@ moai-cli pr-body-render <worktree> (--task <key> | --record <file> --claim-comme
 
 PR을 열면 claim은 `pr_ready`가 될 뿐이고, `integrated`나 완료로 올라가지 않는다. 통합은 리더가 독립 AUDIT 판정을 읽고, head가 같은지 확인한 뒤 `moai/audit` 상태를 붙여서 진행한다. 병합할 때는 merge REST의 `sha` 파라미터나 `gh pr merge --match-head-commit <candidate>`로 candidate SHA를 고정한다. head가 다르면 409로 거부되며, 이 고정은 08-A #2012가 넘겨받는 인터페이스다.
 
-## claim record는 06-A가 갱신한다
+## claim record 갱신
 
-06-A #2005의 claim journal에는 공개된 쓰기 경로가 없다. 그래서 06-C 명령은 record를 직접 바꾸지 않는다. 측정한 worktree identity, `blocked(reason=scope_conflict)`, `pr_ready`는 결과의 `record_update_request`로만 돌려준다. 이를 실제 record에 반영하는 일은 06-A의 후속 작업이다.
+06-C 명령은 바뀌는 내용을 항상 결과의 `record_update_request`로 돌려준다. record가 로컬 journal에서 왔을 때(`--task`)는 06-B가 공개한 `Journal::commit`으로 journal에도 기록한다. 기록 대상은 다음과 같다.
+
+- 측정한 worktree identity: `worktree_recorded` 이벤트
+- `blocked(reason=scope_conflict)` 또는 통합 순서: `scope_check` 이벤트
+- `pr_create` effect intent와 `pr_ready`: `effect_intend`, `pr_ready` 이벤트
+
+06-A의 acquire·release 동작은 바꾸지 않고 이벤트만 덧붙인다. 같은 명령을 다시 실행해 record가 그대로이면 이벤트를 쓰지 않는다.
+
+`pr_create` intent의 payload는 본문이 아니라 무엇을 만드는지(task, epoch, Issue, base 브랜치)를 담는다. 그래서 커밋이 늘어 본문이 바뀌어도 같은 intent로 취급된다. 본문 marker(`moai-op`)와 06-B가 기록하는 marker(`moai:op`)는 표기가 다르지만, `parse_op_markers`로 읽으면 같은 operation이다. 06-B의 기본 reconcile은 Issue 댓글을 조회하므로, PR 본문으로 확인하려면 `--remote-probe` 명령을 써야 한다.
 
 ## record 파일은 권위가 아니다
 
@@ -45,6 +53,5 @@ PR을 열면 claim은 `pr_ready`가 될 뿐이고, `integrated`나 완료로 올
 
 ## 아직 정하지 않은 것
 
-- branch prefix는 HOLD다. `worktree-plan`은 `--branch-prefix`를 기본값 없이 필수로 받는다. REQ-06C-01의 `<prefix>/<logical_key>-<issue>-e<epoch>`, 레인들이 지금 쓰는 `issue/<n>-<key>`, 06-A의 `claim_branch_suffix`(`c<issue>-<comment_id>`)는 서로 다르고, 셋의 관계는 사용자가 정한다.
+- branch prefix는 확정됐다(리더, 사용자의 "HOLD만 해제" 결정, #1975 댓글 6721834190). `worktree-plan`은 `--branch-prefix`를 기본값 없이 필수로 받고, RC1 레인은 `issue/<n>-<key>`를 쓴다.
 - 템플릿을 단일 파일로 둘지 디렉터리로 둘지도 HOLD다(REQ-06C-13). 지금은 단일 파일 `.github/pull_request_template.md`(00-E #2020 1차 작성)를 그대로 쓴다.
-- 06-B #2006의 effect intend와 reconcile이 아직 들어오지 않아서, 렌더러는 marker만 기록하고 reconcile은 `not_run`으로 보고한다.
