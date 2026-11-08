@@ -53,6 +53,8 @@ The package digest algorithm `moai-package-tree-v1` frames sorted UTF-8 relative
 | recorded | edited or removed, template changed | `conflict`; nothing is applied |
 | any | duplicate, unterminated or orphaned markers | `conflict` |
 
+A removed block is never restored: the plan stays `unchanged` and reports the deletion in the file's `detail` and in `warnings` ("managed block absent; user deletion preserved").
+
 `AGENTS.local.md` is opt-in through `local_file`. `ignored` creates it once and appends a `# moai:managed:begin id=moai-local` section to `.gitignore` unless a line equal to `AGENTS.local.md` or `/AGENTS.local.md` already exists (effective git ignore status is not verified; no git command is run). `tracked` creates it once and adds no ignore rule. The design default for generated projects is `ignored`; `tracked` exists because the user decided on 2026-11-08 that this development repository may track `AGENTS.local.md` while `AGENTS.md`, `.claude/` and `.moai/` stay untracked. The file is never modified or recreated afterwards.
 
 Rendered profile values are checked before any write: a value containing `<!--`, `-->` or `moai:managed:` is refused, and the spliced result must contain exactly one managed block whose bytes equal the rendering. New files are published by writing a uniquely named temporary file and hard-linking it to the target, which fails if the target appeared meanwhile; existing files are replaced by rename. An update interrupted between the file write and the manifest write is repaired on the next apply: a block already equal to the rendering becomes the baseline.
