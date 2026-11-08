@@ -244,6 +244,30 @@ enum Command {
     SnapshotDescribe {
         project: PathBuf,
     },
+    /// Plan external skill source candidates read-only (03-B #1996): typed request on
+    /// stdin; judgment envelope on stdout; writes nothing.
+    SkillSourcePlan {
+        project: PathBuf,
+    },
+    /// Install approved skill sources into the host official skill folders (03-B
+    /// #1996): the exact plan on stdin, `--plan-digest` and `--permission-reference`.
+    SkillSourceApply {
+        project: PathBuf,
+        #[arg(long)]
+        plan_digest: String,
+        #[arg(long)]
+        permission_reference: String,
+    },
+    /// Record that every file of an installed skill was actually read (03-B #1996).
+    SkillReadReceipt {
+        project: PathBuf,
+        /// Installed skill directory to walk and hash.
+        #[arg(long)]
+        dir: PathBuf,
+        /// Installed skill name (Agent Skills spec shape).
+        #[arg(long)]
+        name: String,
+    },
     /// Read-only: requested file ranges with digests and a budget (typed request on stdin).
     ContextBundle {
         project: PathBuf,
@@ -381,6 +405,9 @@ const OPERATIONS: &[(&str, &str)] = &[
     ("todo-promote-apply", "todo.promote.apply"),
     ("run-verify", "run.verify"),
     ("snapshot-describe", "snapshot.describe"),
+    ("skill-source-plan", "skill_source.plan"),
+    ("skill-source-apply", "skill_source.apply"),
+    ("skill-read-receipt", "skill_source.read_receipt"),
     ("context-bundle", "context.bundle"),
     ("context-verify", "context.verify"),
     ("decision-record", "decision.record"),
@@ -645,6 +672,30 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
                 .map_err(|_| "encode failed".into())
         }
         Command::SnapshotDescribe { project } => moai_cli::context::snapshot(&project),
+        Command::SkillSourcePlan { project } => serde_json::to_value(moai_cli::sources::plan(
+            &project,
+            input::<moai_cli::sources::SourcesRequest>()?,
+        )?)
+        .map_err(|_| "encode failed".into()),
+        Command::SkillSourceApply {
+            project,
+            plan_digest,
+            permission_reference,
+        } => {
+            let home = std::env::var_os("HOME")
+                .map(PathBuf::from)
+                .ok_or("home directory missing; set HOME")?;
+            moai_cli::sources::sources_apply(
+                &project,
+                &home,
+                input::<moai_cli::sources::SourcePlan>()?,
+                &plan_digest,
+                &permission_reference,
+            )
+        }
+        Command::SkillReadReceipt { project, dir, name } => {
+            moai_cli::sources::read_receipt(&project, &dir, &name)
+        }
         Command::ContextBundle { project } => moai_cli::context::bundle(&project, &input()?),
         Command::ContextVerify { project } => moai_cli::context::verify(&project, &input()?),
         Command::DecisionRecord {
