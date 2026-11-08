@@ -1021,3 +1021,311 @@ fn baseline_without_or_with_unknown_commit_degrades_without_error() {
     let (out, _) = baseline(&root, &["--go-baseline-commit", "HEAD"]);
     assert!(!out.status.success());
 }
+
+// ---- Current protocol contract fixtures (Issue #1987, 00-D) ------------------------------
+//
+// Records what every subcommand prints today (exit code, stdout, stderr) as golden files under
+// tests/fixtures/protocol/v1/current/. This is the baseline the protocol draft is measured
+// against; it describes behavior, it does not choose a contract. Run with
+// MOAI_UPDATE_FIXTURES=1 to rewrite the files instead of comparing.
+
+const PROTOCOL_FIXTURES: &str = "tests/fixtures/protocol/v1/current";
+/// Values that depend on the temporary directory or the clock, not on the contract.
+const MASKED_KEYS: [&str; 3] = ["target_binding", "plan_digest", "collected_at"];
+
+fn masked_values(v: &Value, out: &mut Vec<String>) {
+    match v {
+        Value::Object(m) => {
+            for (k, x) in m {
+                match (MASKED_KEYS.contains(&k.as_str()), x.as_str()) {
+                    (true, Some(s)) => out.push(s.to_string()),
+                    _ => masked_values(x, out),
+                }
+            }
+        }
+        Value::Array(a) => a.iter().for_each(|x| masked_values(x, out)),
+        _ => {}
+    }
+}
+fn mask_text(s: &str, masks: &[(String, String)]) -> String {
+    masks.iter().fold(s.to_string(), |acc, (from, to)| {
+        acc.replace(from.as_str(), to)
+    })
+}
+fn mask_value(v: &Value, masks: &[(String, String)]) -> Value {
+    match v {
+        Value::String(s) => json!(mask_text(s, masks)),
+        Value::Array(a) => Value::Array(a.iter().map(|x| mask_value(x, masks)).collect()),
+        Value::Object(m) => Value::Object(
+            m.iter()
+                .map(|(k, x)| (mask_text(k, masks), mask_value(x, masks)))
+                .collect(),
+        ),
+        other => other.clone(),
+    }
+}
+fn as_json_or_text(bytes: &[u8]) -> Value {
+    serde_json::from_slice(bytes)
+        .unwrap_or_else(|_| json!(String::from_utf8_lossy(bytes).into_owned()))
+}
+
+struct FixtureRun {
+    roots: Vec<std::path::PathBuf>,
+    home: TempDir,
+    seen: Vec<String>,
+}
+impl FixtureRun {
+    /// Runs one case and compares (or rewrites) its golden file. Returns parsed stdout.
+    fn case(&mut self, name: &str, args: &[&str], stdin: &[u8]) -> Value {
+        let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+            .args(args)
+            .env("HOME", self.home.path())
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_CONFIG_NOSYSTEM", "1")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap();
+        child.stdin.take().unwrap().write_all(stdin).unwrap();
+        let out = child.wait_with_output().unwrap();
+        let stdin_v = if stdin.is_empty() {
+            Value::Null
+        } else {
+            as_json_or_text(stdin)
+        };
+        let stdout_v = if out.stdout.is_empty() {
+            Value::Null
+        } else {
+            as_json_or_text(&out.stdout)
+        };
+        let mut secrets = Vec::new();
+        masked_values(&stdin_v, &mut secrets);
+        masked_values(&stdout_v, &mut secrets);
+        let mut masks: Vec<(String, String)> = Vec::new();
+        for r in &self.roots {
+            for spelling in [r.clone(), fs::canonicalize(r).unwrap()] {
+                masks.push((spelling.to_str().unwrap().to_string(), "<root>".into()));
+            }
+        }
+        masks.extend(secrets.into_iter().map(|s| (s, "<masked>".to_string())));
+        masks.sort_by(|a, b| b.0.len().cmp(&a.0.len()));
+        let record = json!({
+            "case": name,
+            "args": mask_value(&json!(args), &masks),
+            "stdin": mask_value(&stdin_v, &masks),
+            "exit": out.status.code(),
+            "stdout": mask_value(&stdout_v, &masks),
+            "stderr": mask_text(&String::from_utf8_lossy(&out.stderr), &masks),
+            "masked_keys": MASKED_KEYS,
+        });
+        let file = format!(
+            "{}/{:02}-{name}.json",
+            PROTOCOL_FIXTURES,
+            self.seen.len() + 1
+        );
+        self.seen.push(file.clone());
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(&file);
+        if std::env::var_os("MOAI_UPDATE_FIXTURES").is_some() {
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            let mut text = serde_json::to_string_pretty(&record).unwrap();
+            text.push('\n');
+            fs::write(&path, text).unwrap();
+        } else {
+            let golden: Value = serde_json::from_slice(
+                &fs::read(&path).unwrap_or_else(|_| panic!("missing fixture {file}")),
+            )
+            .unwrap();
+            assert_eq!(golden, record, "protocol fixture drift: {file}");
+        }
+        stdout_v
+    }
+}
+
+#[test]
+fn protocol_fixtures_record_current_contract() {
+    let project = TempDir::new().unwrap();
+    let p = project.path().to_str().unwrap().to_string();
+    let package = TempDir::new().unwrap();
+    let pkg = package.path().to_str().unwrap().to_string();
+    let empty = TempDir::new().unwrap();
+    let e = empty.path().to_str().unwrap().to_string();
+    let repo = TempDir::new().unwrap();
+    let r = repo.path().to_str().unwrap().to_string();
+    fs::create_dir_all(project.path().join("skills/moai/workflows")).unwrap();
+    fs::write(package.path().join("SKILL.md"), "router\n").unwrap();
+    let mut run = FixtureRun {
+        roots: [&project, &package, &empty, &repo]
+            .iter()
+            .map(|t| t.path().to_path_buf())
+            .collect(),
+        home: TempDir::new().unwrap(),
+        seen: Vec::new(),
+    };
+    run.roots.push(run.home.path().to_path_buf());
+    let prof = profile(None).to_string();
+
+    run.case("usage-unknown-subcommand", &["no-such-command"], b"");
+    run.case("usage-missing-argument", &["project-plan"], b"");
+    let mut extra = profile(None);
+    extra["unexpected"] = json!(1);
+    run.case(
+        "project-plan-unknown-field",
+        &["project-plan", &p],
+        extra.to_string().as_bytes(),
+    );
+    run.case("project-plan-malformed-json", &["project-plan", &p], b"{");
+    run.case(
+        "project-plan-input-over-limit",
+        &["project-plan", &p],
+        &vec![b' '; 65537],
+    );
+    let plan = run.case(
+        "project-plan-create",
+        &["project-plan", &p],
+        prof.as_bytes(),
+    );
+    let digest = plan["plan_digest"].as_str().unwrap().to_string();
+    let mut v2 = plan.clone();
+    v2["protocol_version"] = json!(2);
+    run.case(
+        "project-apply-protocol-version-2",
+        &[
+            "project-apply",
+            &p,
+            "--plan-digest",
+            &digest,
+            "--permission-reference",
+            "fixture-approved",
+        ],
+        v2.to_string().as_bytes(),
+    );
+    run.case(
+        "project-apply-placeholder-permission",
+        &[
+            "project-apply",
+            &p,
+            "--plan-digest",
+            &digest,
+            "--permission-reference",
+            "placeholder",
+        ],
+        plan.to_string().as_bytes(),
+    );
+    run.case(
+        "project-apply-created",
+        &[
+            "project-apply",
+            &p,
+            "--plan-digest",
+            &digest,
+            "--permission-reference",
+            "fixture-approved",
+        ],
+        plan.to_string().as_bytes(),
+    );
+    run.case(
+        "project-plan-unchanged",
+        &["project-plan", &p],
+        prof.as_bytes(),
+    );
+    run.case("package-inspect-ok", &["package-inspect", &pkg], b"");
+    run.case(
+        "package-inspect-missing-skill",
+        &["package-inspect", &e],
+        b"",
+    );
+    run.case(
+        "package-resolve-user",
+        &["package-resolve", &p, "--user-package", &pkg],
+        b"",
+    );
+    run.case("package-resolve-no-package", &["package-resolve", &p], b"");
+    let mut req2 = agents_request("ko", "none");
+    req2["protocol_version"] = json!(2);
+    run.case(
+        "agents-plan-protocol-version-2",
+        &["agents-plan", &p],
+        req2.to_string().as_bytes(),
+    );
+    let aplan = run.case(
+        "agents-plan-create",
+        &["agents-plan", &p],
+        agents_request("ko", "none").to_string().as_bytes(),
+    );
+    let adigest = aplan["plan_digest"].as_str().unwrap().to_string();
+    run.case(
+        "agents-apply-ok",
+        &[
+            "agents-apply",
+            &p,
+            "--plan-digest",
+            &adigest,
+            "--permission-reference",
+            "fixture-approved",
+        ],
+        aplan.to_string().as_bytes(),
+    );
+    run.case(
+        "session-dry-run",
+        &["session", "--name", "agent-1", "--dry-run"],
+        b"",
+    );
+    run.case(
+        "session-invalid-effort",
+        &[
+            "session",
+            "--name",
+            "agent-1",
+            "--effort",
+            "turbo",
+            "--dry-run",
+        ],
+        b"",
+    );
+    run.case(
+        "baseline-inventory-not-a-repo",
+        &["baseline-inventory", &e],
+        b"",
+    );
+    // Fixed identity and dates make the fixture repository's commit id reproducible.
+    write_file(repo.path(), "a.txt", b"a\n");
+    for args in [
+        &["init", "-q", "-b", "main"][..],
+        &["add", "a.txt"][..],
+        &["commit", "-q", "-m", "fixture"][..],
+    ] {
+        let out = Command::new("git")
+            .args([
+                "-c",
+                "user.name=fixture",
+                "-c",
+                "user.email=fixture@example.invalid",
+            ])
+            .args(["-c", "commit.gpgsign=false"])
+            .arg("-C")
+            .arg(repo.path())
+            .args(args)
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_CONFIG_NOSYSTEM", "1")
+            .env("GIT_AUTHOR_DATE", "2026-11-08T00:00:00Z")
+            .env("GIT_COMMITTER_DATE", "2026-11-08T00:00:00Z")
+            .output()
+            .unwrap();
+        assert!(out.status.success(), "git {args:?}");
+    }
+    run.case("baseline-inventory-ok", &["baseline-inventory", &r], b"");
+
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(PROTOCOL_FIXTURES);
+    let mut on_disk: Vec<String> = fs::read_dir(&dir)
+        .unwrap()
+        .map(|e| {
+            format!(
+                "{PROTOCOL_FIXTURES}/{}",
+                e.unwrap().file_name().to_string_lossy()
+            )
+        })
+        .collect();
+    on_disk.sort();
+    assert_eq!(on_disk, run.seen, "fixture set differs from the case list");
+}

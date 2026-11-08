@@ -1,0 +1,57 @@
+{
+  "args": [
+    "agents-plan",
+    "<root>"
+  ],
+  "case": "agents-plan-create",
+  "exit": 0,
+  "masked_keys": [
+    "target_binding",
+    "plan_digest",
+    "collected_at"
+  ],
+  "stderr": "",
+  "stdin": {
+    "language": "ko",
+    "local_file": "none",
+    "protocol_version": 1,
+    "workflow_reference": "skills/moai/workflows/"
+  },
+  "stdout": {
+    "files": [
+      {
+        "action": "create",
+        "baseline_sha256": null,
+        "detail": null,
+        "expected_sha256": null,
+        "path": "AGENTS.md",
+        "rendered_sha256": "sha256:4f221da171bc851fb904308839145aa84671632a4b8c83a6068065a75ffc6e95",
+        "section_id": "moai-workflow",
+        "tracked_by_default": true
+      },
+      {
+        "action": "create",
+        "baseline_sha256": null,
+        "detail": null,
+        "expected_sha256": null,
+        "path": ".moai-cli/manifests/generation.json",
+        "rendered_sha256": null,
+        "section_id": null,
+        "tracked_by_default": true
+      }
+    ],
+    "host_notes": [],
+    "plan_digest": "<masked>",
+    "profile_sha256": "sha256:60571df23ab38dd309f928ebbb001b1accc1f3c0d527069543ce3d7f7a375fbf",
+    "project_id": "demo",
+    "protocol_version": 1,
+    "request": {
+      "language": "ko",
+      "local_file": "none",
+      "protocol_version": 1,
+      "workflow_reference": "skills/moai/workflows/"
+    },
+    "target_binding": "<masked>",
+    "warnings": []
+  }
+}
