@@ -240,6 +240,55 @@ pub fn doctor(project: &Path) -> Result<Value> {
     Ok(out)
 }
 
+/// Top-level `settings.json` keys MoAI may own (REQ-02B-06/07). `outputStyle` is managed only
+/// when the user asks for it; it is never set by default. The RC1 hook set is empty (P04 = A),
+/// so `hooks` is not managed.
+pub const MANAGED_SETTINGS: [&str; 2] = ["outputStyle", "statusLine"];
+
+/// Three-way plan for the managed keys of a Claude `settings.json` (SETTINGS-PRESERVE).
+/// `baseline` holds what MoAI owned after its last apply, `current` the file now, `desired`
+/// what MoAI wants. A key changes only when the user left it as MoAI owned it; a key the user
+/// changed, or one MoAI never owned that differs, is a conflict and nothing is planned. Every
+/// other key, and the order of keys, stays as in `current`. Missing, `null` and other values
+/// are all distinct.
+pub fn plan_settings(
+    baseline: &Map<String, Value>,
+    current: &Map<String, Value>,
+    desired: &Map<String, Value>,
+) -> Result<(Option<Map<String, Value>>, Vec<String>)> {
+    if baseline
+        .keys()
+        .chain(desired.keys())
+        .any(|k| !MANAGED_SETTINGS.contains(&k.as_str()))
+    {
+        return Err("unmanaged claude settings key refused".into());
+    }
+    let mut keys: Vec<&String> = baseline.keys().chain(desired.keys()).collect();
+    keys.sort();
+    keys.dedup();
+    let mut candidate = current.clone();
+    let mut conflicts = Vec::new();
+    for key in keys {
+        let (old, now, new) = (baseline.get(key), current.get(key), desired.get(key));
+        if now == new || new == old {
+            continue;
+        }
+        if now != old {
+            conflicts.push(key.clone());
+            continue;
+        }
+        match new {
+            // Insert keeps an existing key's position and appends a new one.
+            Some(v) => {
+                candidate.insert(key.clone(), v.clone());
+            }
+            // Filtering keeps the order of the remaining keys with or without preserve_order.
+            None => candidate = candidate.into_iter().filter(|(k, _)| k != key).collect(),
+        }
+    }
+    Ok(((conflicts.is_empty()).then_some(candidate), conflicts))
+}
+
 /// Claude-only frontmatter fields a projection may add, with the values each accepts.
 /// Fields that grant tools or register hooks (`allowed-tools`, `hooks`, ...) are not offered:
 /// package content never widens permissions, and the RC1 hook set is empty (P04 = A).
@@ -382,6 +431,112 @@ mod tests {
         ));
         assert_eq!(v["manifest"]["frontmatter_added"]["effort"], json!("high"));
         assert_eq!(v["reload_skills_required"], json!(true));
+    }
+
+    fn obj(v: Value) -> Map<String, Value> {
+        v.as_object().unwrap().clone()
+    }
+
+    // Ported from tests/claude_settings_plan_test.py (the provisional Python planner).
+    #[test]
+    fn claude_settings_adds_only_selected_keys_and_preserves_unknown_values() {
+        let current = obj(json!({"model": "sonnet", "hooks": {"Start": [{"user": true}]}}));
+        let (result, conflicts) = plan_settings(
+            &Map::new(),
+            &current,
+            &obj(json!({"outputStyle": "MoAI-Easy"})),
+        )
+        .unwrap();
+        assert!(conflicts.is_empty());
+        let mut expected = current.clone();
+        expected.insert("outputStyle".into(), json!("MoAI-Easy"));
+        assert_eq!(result.unwrap(), expected);
+    }
+
+    #[test]
+    fn claude_settings_user_owned_or_modified_setting_is_a_whole_plan_conflict() {
+        let current =
+            obj(json!({"model": "sonnet", "statusLine": {"type": "command", "command": "orca"}}));
+        let desired = obj(
+            json!({"outputStyle": "MoAI-Easy", "statusLine": {"type": "command", "command": "moai"}}),
+        );
+        let (result, conflicts) = plan_settings(&Map::new(), &current, &desired).unwrap();
+        assert_eq!(result, None);
+        assert_eq!(conflicts, ["statusLine"]);
+    }
+
+    #[test]
+    fn claude_settings_three_way_update_idempotence_and_user_drift() {
+        let baseline = obj(json!({"outputStyle": "old"}));
+        let new = obj(json!({"outputStyle": "new"}));
+        let (result, c) =
+            plan_settings(&baseline, &obj(json!({"outputStyle": "old"})), &new).unwrap();
+        assert_eq!((result.clone(), c.len()), (Some(new.clone()), 0));
+        // Re-running against the applied file plans no change.
+        let again = plan_settings(&new, &result.clone().unwrap(), &new).unwrap();
+        assert_eq!(again, (result, vec![]));
+        let user = obj(json!({"outputStyle": "user"}));
+        assert_eq!(
+            plan_settings(&baseline, &user, &obj(json!({"outputStyle": "old"}))).unwrap(),
+            (Some(user.clone()), vec![])
+        );
+        assert_eq!(
+            plan_settings(&baseline, &user, &new).unwrap(),
+            (None, vec!["outputStyle".to_string()])
+        );
+    }
+
+    #[test]
+    fn claude_settings_missing_null_and_boolean_are_distinct() {
+        let p = |b, c, d| plan_settings(&obj(b), &obj(c), &obj(d)).unwrap();
+        assert_eq!(
+            p(
+                json!({}),
+                json!({"outputStyle": null}),
+                json!({"outputStyle": "new"})
+            ),
+            (None, vec!["outputStyle".to_string()])
+        );
+        assert_eq!(
+            p(
+                json!({"outputStyle": null}),
+                json!({"outputStyle": null}),
+                json!({})
+            ),
+            (Some(Map::new()), vec![])
+        );
+        assert_eq!(
+            p(
+                json!({"outputStyle": true}),
+                json!({"outputStyle": 1}),
+                json!({"outputStyle": false})
+            ),
+            (None, vec!["outputStyle".to_string()])
+        );
+    }
+
+    #[test]
+    fn claude_settings_refuses_unmanaged_keys_and_keeps_order() {
+        for (b, d) in [
+            (json!({}), json!({"permissions": {}})),
+            (json!({"hooks": {}}), json!({})),
+        ] {
+            let err = plan_settings(&obj(b), &Map::new(), &obj(d)).unwrap_err();
+            assert_eq!(
+                crate::contract::classify(&err),
+                crate::contract::Kind::InvalidInput
+            );
+        }
+        // Removing an owned key keeps the user's other keys where they were.
+        let current: Map<String, Value> =
+            serde_json::from_str(r#"{"z":1,"outputStyle":"MoAI","a":2,"m":3}"#).unwrap();
+        let (result, _) =
+            plan_settings(&obj(json!({"outputStyle": "MoAI"})), &current, &Map::new()).unwrap();
+        let keys: Vec<&String> = result.as_ref().unwrap().keys().collect();
+        let mut expected: Vec<&String> = current.keys().filter(|k| *k != "outputStyle").collect();
+        assert_eq!(keys, expected);
+        expected.sort();
+        assert_eq!(result.unwrap().len(), expected.len());
     }
 
     #[test]
