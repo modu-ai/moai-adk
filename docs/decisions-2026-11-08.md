@@ -48,6 +48,11 @@
 | 18:1x | Rust 툴체인 고정(리더 RC1 임시) | rc-ci 러너 1.99 vs 로컬 1.94.1 불일치(PR #2027 clippy 실패)로 `rust-toolchain.toml`에 1.94.1 고정; 최신 stable 상향은 08-D | #2029 | agent-2 #2020 감사 예고 적중 |
 | 18:1x | Issue 닫기 기준(리더 운영 결정) | PR merge + 독립 AUDIT PASS + AC 전부 passed(플랫폼 not_run은 명시)이면 리더가 완료 댓글과 함께 `completed`로 닫음 | #1986 #1974 #1985 #2020 #2022 #2024 | 의존성 해소를 위해 필요 |
 | 18:1x | 01-A 임시 결정(리더 RC1; P05·P12 결정 전; 사용자 확인 권장) | HOLD-1 A sha256(common-dir) 임시 + `@MX:DEBT` / HOLD-2 A `~/.moai-cli` 고정 / HOLD-3 A git 하위 프로세스(의존성 0) / identity 출력은 현행 계약(envelope 없음, exit 0/1; 00-D 확정 시 01-C 조정) / AC-01A-5는 홈 전수 해시 금지(00-A HOLD-00A-2 정합) | #1988 | agent-4 blocked 보고 해소 |
+| 18:2x | 00-D/01-C 계약(사용자 결정) | HOLD-00D-1 = **B 모든 출력에 envelope** `{protocol_version, operation, ok, result\|error}`(계약 변경: 00-D golden fixture·docs 재기록은 01-C 범위) · HOLD-C1 = **A CLI만, MCP는 다음 버전**(AC-01C-2/3/4 not_applicable) · HOLD-00D-4/C2 = **A exit 0/1/2 유지 + 오류 객체 `kind`로 구분**. 파생(리더, 01-C 소유): HOLD-00D-3 = 실패 envelope stdout(`ok:false, error{kind, message, retryable, next_actions?}`, kind 어휘는 00-D 11종 기준) + stderr 사람용 1줄; P06 revision·HOLD-C3는 MCP 후속과 함께 HOLD 유지 | #1990 #1987 | agent-1 blocked 해소 |
+| 18:4x | 02-A 임시 결정(리더 RC1) | SKILL.md·workflow 본문 언어 A 영어 유지 / package lint A 테스트만(subcommand 후속) / REQ-02A-08 참조 깊이는 routes 간접 참조를 뺀 workflow 바깥 참조로 정의 | #1991 | agent-3 요청 |
+| 18:3x | 세션 재시작(운영) | 모든 세션 재시작으로 동명 세션 중복(agent-1·2·3·4 각 2개) — 최신 세션만 활성 레인으로 지정(ref 포함 주소), 구세션은 대기 지시 | 전 레인 | — |
+| 18:5x | 05-A·07-A 임시 결정(리더 RC1) | 05-A: 정렬 직렬화 trait 임시(JCS 후속), 단일 crate `src/spec.rs`, 라이브러리 API만(subcommand는 01-C 뒤), AC-05A-6 not_run · 07-A: `gh api` subprocess, 토큰은 gh가 관리, poll 설정값(`x-poll-interval` 우선, overlap 60s·retry 3 잠정), envelope 직접 출력 후 01-C helper로 교체 · 02-A: legacy 자산 1,107행 목록은 `.moai-cli/manifests/legacy-asset-map.json`(package 64 KiB 상한) | #2001 #2008 #1991 | 레인 질문 해소 |
+| 18:5x | 여분 세션 활용(운영) | 재시작으로 생긴 여분 세션 agent-1 [d54a06]→05-A, agent-3 [437ee1]→07-A 배차(레인 5개) | #2001 #2008 | 사용자 "1~4레인 계속" 지시 범위 |
 
 부분 결정 분리: P08은 claim 방식(⑤+①)만 결정, lease·heartbeat 수치 HOLD · P15는 ZCode 헤드리스 범위만 결정, 나머지 host 지원표 HOLD.
 

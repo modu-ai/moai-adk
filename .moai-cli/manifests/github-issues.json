@@ -406,6 +406,15 @@
    "title": "[RC1][결함] 로컬 1.94.1 vs rc-ci 러너 1.99 Rust 툴체인 불일치 — rust-toolchain.toml 고정",
    "reused": false,
    "created_by": "leader, rc-ci clippy mismatch on PR #2027 (agent-2)"
+  },
+  "BUG-IDENTITY-GIT-ENV-AND-FAILED": {
+   "number": 2033,
+   "id": 6269689383,
+   "node_id": "I_kwDOPw9rL88AAAABdbPeJw",
+   "url": "https://github.com/modu-ai/moai-adk/issues/2033",
+   "title": "[RC1][결함] identity: git 환경 변수 주입 미차단, Git::Failed를 no_git으로 보고",
+   "reused": false,
+   "created_by": "leader from 01-A audit follow-ups 2026-11-08"
   }
  },
  "links": [
@@ -689,6 +698,12 @@
    "tag": "EP-09>INFRA-RUST-TOOLCHAIN-PIN",
    "parent": 1984,
    "child": 2029,
+   "status": "linked"
+  },
+  {
+   "tag": "EP-02>BUG-IDENTITY-GIT-ENV-AND-FAILED",
+   "parent": 1977,
+   "child": 2033,
    "status": "linked"
   }
  ],
@@ -1005,6 +1020,12 @@
    "issue": 2020,
    "blocked_by": 1974,
    "status": "linked (00-C closed? no — issue open; PR merged)"
+  },
+  {
+   "tag": "BUG-IDENTITY-GIT-ENV-AND-FAILED<-01-A",
+   "issue": 2033,
+   "blocked_by": 1988,
+   "status": "linked"
   }
  ],
  "errors": [],
@@ -2755,7 +2776,7 @@
    "branch": "issue/2028-00-F",
    "base": "origin/v2026.11.0@f094d29f8",
    "worktree": ".moai-cli/worktrees/issue-2028-00-F",
-   "status": "PR #2030 open; AUDIT FAIL (00-D golden fixture conflict) → fixtures 01+18 re-record approved; full re-audit next"
+   "status": "integrated: PR #2030 auto-merged 8ff1db71b; issue closed (completed); AC-6 operator measurement pending"
   },
   {
    "at": "2026-11-08T09:10:45Z",
@@ -2765,17 +2786,67 @@
    "branch": "issue/2029-toolchain-pin",
    "base": "origin/v2026.11.0@ae5cea38b",
    "worktree": ".moai-cli/worktrees/issue-2029-toolchain",
-   "status": "PR #2031 open (head 96d9283fa); rc-ci pending; agent-2 review next"
+   "status": "integrated: PR #2031 auto-merged d0a5daea5; issue closed (completed)"
   },
   {
    "at": "2026-11-08T09:13:04Z",
    "issue": 1988,
    "key": "01-A",
-   "lane": "agent-4",
+   "lane": "agent-4 [e4237d] (new session; 1013f1 gone, c3a17f standby)",
    "branch": "issue/1988-01-A",
    "base": "origin/v2026.11.0@c4a7d221d",
    "worktree": ".moai-cli/worktrees/issue-1988-01-A",
-   "status": "claimed; blocked→interim decisions r21 delivered; implementing"
+   "status": "integrated: PR #2032 auto-merged 7f9eaacc5; issue closed (completed)"
+  },
+  {
+   "at": "2026-11-08T09:19:50Z",
+   "issue": 1990,
+   "key": "01-C",
+   "lane": "agent-1",
+   "branch": "issue/1990-01-C",
+   "base": "origin/v2026.11.0@d0a5daea5",
+   "worktree": ".moai-cli/worktrees/issue-1990-01-C",
+   "status": "claimed; blocked on user HOLDs (envelope, MCP scope, revision) → user question; step 4 in progress"
+  },
+  {
+   "at": "2026-11-08T09:26:02Z",
+   "issue": 1991,
+   "key": "02-A",
+   "lane": "agent-3",
+   "branch": "issue/1991-02-A",
+   "base": "origin/v2026.11.0@8ff1db71b",
+   "worktree": ".moai-cli/worktrees/issue-1991-02-A",
+   "status": "PR #2034 open (head b014df7fb, rc-ci success); report relayed; agent-2 review requested"
+  },
+  {
+   "at": "2026-11-08T09:45:52Z",
+   "issue": 2001,
+   "key": "05-A",
+   "lane": "agent-1 [d54a06] (spare session after restart)",
+   "branch": "issue/2001-05-A",
+   "base": "origin/v2026.11.0@8ff1db71b",
+   "worktree": ".moai-cli/worktrees/issue-2001-05-A",
+   "status": "claimed (relay); interim: H1 trait+sorted serde_json, H2 src/spec.rs, H3 library API only, AC-05A-6 not_run/blocked"
+  },
+  {
+   "at": "2026-11-08T09:45:52Z",
+   "issue": 2008,
+   "key": "07-A",
+   "lane": "agent-3 [437ee1] (spare session after restart)",
+   "branch": "issue/2008-07-A",
+   "base": "origin/v2026.11.0@8ff1db71b",
+   "worktree": ".moai-cli/worktrees/issue-2008-07-A",
+   "status": "claimed (relay); interim decisions: gh api subprocess A, token via gh, poll config w/ x-poll-interval, envelope (a) self-emitted"
+  },
+  {
+   "at": "2026-11-08T09:51:30Z",
+   "issue": 2033,
+   "key": "BUG-IDENTITY-GIT-ENV-AND-FAILED",
+   "lane": "agent-4 [e4237d]",
+   "branch": "issue/2033-identity-followup",
+   "base": "origin/v2026.11.0@7f9eaacc5",
+   "worktree": ".moai-cli/worktrees/issue-2033-identity",
+   "status": "dispatched"
   }
  ],
  "design_update_r8": {
@@ -3254,24 +3325,7 @@
    }
   ]
  },
- "pending_dispatch": [
-  {
-   "issue": 1990,
-   "key": "01-C"
-  },
-  {
-   "issue": 1991,
-   "key": "02-A"
-  },
-  {
-   "issue": 2001,
-   "key": "05-A"
-  },
-  {
-   "issue": 2008,
-   "key": "07-A"
-  }
- ],
+ "pending_dispatch": [],
  "design_update_r21": {
   "applied_at_utc": "2026-11-08T09:14:58Z",
   "design_revision": "2026-11-08-r21",
@@ -3294,6 +3348,110 @@
     "number": 2028,
     "status": "updated (r3: fixtures 01+18 in scope)",
     "body_sha256": "402a3f2ce074487d1f876a1f61fa48db9ed70a0c6c91c5533ff910b4903a6328"
+   },
+   {
+    "key": "00-F",
+    "number": 2028,
+    "status": "updated (time 18:1x)",
+    "body_sha256": "336f02be92266a4f95cff3133f77e3f1d00ef53c9b63015435a5dd4d28155f45"
+   }
+  ]
+ },
+ "design_update_r22": {
+  "applied_at_utc": "2026-11-08T09:21:06Z",
+  "design_revision": "2026-11-08-r22",
+  "changes": "01-A AC-01A-5: mtime comparison excludes Go runtime paths (00-A AC-3 rule)",
+  "results": [
+   {
+    "key": "01-A",
+    "number": 1988,
+    "status": "updated",
+    "body_sha256": "fa192cf68e131a7c3743a2d5b9420c9f346bf9eba633fd1566268a340ee42f78"
+   },
+   {
+    "key": "01-A",
+    "number": 1988,
+    "status": "updated (times 18:1x)",
+    "body_sha256": "c44c6cf2c8f4c4282d36623f8a7be359acd03f3a91abd3568173a09927310e34"
+   }
+  ]
+ },
+ "design_update_r23": {
+  "applied_at_utc": "2026-11-08T09:25:39Z",
+  "design_revision": "2026-11-08-r23",
+  "changes": "user decisions: envelope B, MCP scope A, exit codes A; 01-C scope expanded to fixtures/docs; 00-D HOLD-1/3/4 decided",
+  "results": [
+   {
+    "key": "01-C",
+    "number": 1990,
+    "status": "updated",
+    "body_sha256": "4d382ab33f980945257babc11caf7a8c02001a06b1650723360f1f5fa2bf47f1"
+   },
+   {
+    "key": "00-D",
+    "number": 1987,
+    "status": "updated",
+    "body_sha256": "7218c8e71b0b781e6fe9589eaef28fa09f59afe1198c84478fae8c9059a3f79c"
+   }
+  ]
+ },
+ "followup_candidates": [
+  {
+   "from": "01-A #1988 audit (agent-2/agent-4)",
+   "items": [
+    "identity: strip GIT_CONFIG_PARAMETERS/GIT_CONFIG_COUNT/KEY_*/VALUE_*, GIT_CEILING_DIRECTORIES, GIT_DISCOVERY_ACROSS_FILESYSTEM before git calls",
+    "identity: distinguish Git::Failed (safe.directory refusal, corrupt repo) from no_git instead of reporting 'not inside a git repository'"
+   ],
+   "status": "issued as #2033"
+  }
+ ],
+ "design_update_r24": {
+  "applied_at_utc": "2026-11-08T09:43:29Z",
+  "design_revision": "2026-11-08-r24",
+  "changes": "02-A interim: SKILL language A (English), lint A (tests only), REQ-02A-08 depth definition",
+  "results": [
+   {
+    "key": "02-A",
+    "number": 1991,
+    "status": "updated",
+    "body_sha256": "a341d3dd9c95446cca47e52a6bce1454a26fa0fefe6e3884cfa00e6044cd04b0"
+   },
+   {
+    "key": "01-C",
+    "number": 1990,
+    "status": "updated (r24: request_id removed, envelope shape aligned, MCP ACs not_applicable)",
+    "body_sha256": "95438a3f3742c7720aa5e6c277babd1a2567d74df0654a285376effb9de8bb64"
+   },
+   {
+    "key": "02-A",
+    "number": 1991,
+    "status": "updated (legacy-asset-map scope)",
+    "body_sha256": "22f0b77c739a64c43d1e19e0afac498e026ee977755e55ca111326ae289a6408"
+   },
+   {
+    "key": "BUG-IDENTITY-GIT-ENV-AND-FAILED",
+    "number": 2033,
+    "status": "created",
+    "body_sha256": "2f0508ea5d0035ddb02d39e2c1c17cb0e42e1c81ff0d5eaa583dcc0d76fff2ca"
+   }
+  ]
+ },
+ "design_update_r25": {
+  "applied_at_utc": "2026-11-08T09:48:14Z",
+  "design_revision": "2026-11-08-r25",
+  "changes": "05-A/07-A interim leader decisions after lane questions",
+  "results": [
+   {
+    "key": "05-A",
+    "number": 2001,
+    "status": "updated",
+    "body_sha256": "94be3d4b4b556fe6888016ff4fb8322e1b8cc89965ec2ffa98773d02c184ac5f"
+   },
+   {
+    "key": "07-A",
+    "number": 2008,
+    "status": "updated",
+    "body_sha256": "ad33576b1fca651f1fb4959838de58917ff1f66af0304e265fe9af335f9e9fb0"
    }
   ]
  }
