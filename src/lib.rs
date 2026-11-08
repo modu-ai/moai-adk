@@ -1,5 +1,6 @@
 pub mod agents;
 pub mod baseline;
+pub mod claude;
 pub mod contract;
 pub mod identity;
 pub mod session;

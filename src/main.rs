@@ -113,6 +113,10 @@ enum Command {
     Identity {
         path: PathBuf,
     },
+    /// Read-only Claude Code check: whether a session started in PROJECT reads AGENTS.md.
+    ClaudeDoctor {
+        project: PathBuf,
+    },
     /// Claude Code session launcher: `cc -l|-a`.
     Cc(HostLaunch),
     /// Claude Code on z.ai GLM: `glm -l|-a` (needs ANTHROPIC_AUTH_TOKEN in the environment).
@@ -201,7 +205,7 @@ fn launch(
 
 /// Internal operations (01-C #1990): subcommand word and operation name. The launchers are
 /// developer tools and stay outside the envelope contract.
-const OPERATIONS: [(&str, &str); 8] = [
+const OPERATIONS: [(&str, &str); 9] = [
     ("package-inspect", "package.inspect"),
     ("project-plan", "project.plan"),
     ("project-apply", "project.apply"),
@@ -210,6 +214,7 @@ const OPERATIONS: [(&str, &str); 8] = [
     ("agents-apply", "agents.apply"),
     ("baseline-inventory", "baseline.inventory"),
     ("identity", "identity"),
+    ("claude-doctor", "claude.doctor"),
 ];
 fn operation_of(word: &str) -> Option<&'static str> {
     OPERATIONS
@@ -318,6 +323,7 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             go_repo.as_deref(),
         ),
         Command::Identity { path } => moai_cli::identity::identity(&path),
+        Command::ClaudeDoctor { project } => moai_cli::claude::doctor(&project),
         _ => unreachable!("launchers run through run_launcher"),
     }
 }
