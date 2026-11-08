@@ -198,6 +198,16 @@ fn write_probe(dir: &Path, name: &str, script: &str) -> PathBuf {
 }
 
 fn exchange(method: &str, url: &str, status: u16, body: Value) -> Exchange {
+    exchange_with_headers(method, url, status, body, &[])
+}
+
+fn exchange_with_headers(
+    method: &str,
+    url: &str,
+    status: u16,
+    body: Value,
+    headers: &[(&str, &str)],
+) -> Exchange {
     Exchange {
         request: HttpRequest {
             method: method.into(),
@@ -207,7 +217,11 @@ fn exchange(method: &str, url: &str, status: u16, body: Value) -> Exchange {
         },
         response: HttpResponse {
             status,
-            headers: Default::default(),
+            // Response headers are stored lower-cased, the way the real gh parser does.
+            headers: headers
+                .iter()
+                .map(|(k, v)| (k.to_ascii_lowercase(), v.to_string()))
+                .collect(),
             body: Some(body),
         },
     }
@@ -657,12 +671,12 @@ fn reconcile_rate_limited_waits() {
     );
 }
 
-/// AC-1/AC-2 (#2099): the built-in probe reads Issue comments only, so it cannot judge a
-/// pr_create effect — even when a comment happens to carry the same operation's marker in
-/// the `moai-op` spelling. A false "confirmed absent" is a duplicate-PR hazard, because
-/// sync.md retries only what not_performed names.
+/// AC-1/AC-2 (#2099), updated by #2107: a pr_create effect routes to the pull-list
+/// lookup, never to the comments — a comment carrying the same operation's marker in the
+/// `moai-op` spelling must NOT confirm a PR. When the pull lookup cannot answer (the
+/// recorded script here has no exchange for it), the effect stays uncertain.
 #[test]
-fn reconcile_builtin_never_judges_pr_create() {
+fn reconcile_pr_create_routes_to_pulls_not_comments() {
     let tmp = tempfile::tempdir().unwrap();
     let repo = tmp.path().join("repo");
     git_repo(&repo);
@@ -675,8 +689,8 @@ fn reconcile_builtin_never_judges_pr_create() {
     let journal = journal_of(&repo);
     journal.commit("acquire", &record).unwrap();
 
-    // The PR marker appears in a comment body in the moai-op spelling — a literal
-    // contains() misses it, and judging a PR from comments would be wrong anyway.
+    // Only a comments exchange is recorded; if the probe correctly routes pr_create to
+    // the pull list, this page is never fetched and never confirms anything.
     let page = json!([{"id": 5001, "body": "report\n\n<!-- moai-op pr_create:101:op-9:1 -->"}]);
     let t = RecordedTransport::new(vec![exchange("GET", &comments_url(28), 200, page)]);
     let before = fs::read(journal_dir(&repo).join("journal.log")).unwrap();
@@ -691,6 +705,15 @@ fn reconcile_builtin_never_judges_pr_create() {
         "a PR must never be judged absent from comments: {}",
         out
     );
+    assert!(
+        t.sent.borrow().iter().all(|r| !r.url.contains("/issues/")),
+        "pr_create is judged from the pull list, not the comments: {:?}",
+        t.sent
+            .borrow()
+            .iter()
+            .map(|r| r.url.clone())
+            .collect::<Vec<_>>()
+    );
     let events = journal.read_events().unwrap();
     let effect = events
         .last()
@@ -702,19 +725,214 @@ fn reconcile_builtin_never_judges_pr_create() {
         .unwrap();
     assert_eq!(
         effect["state"], "uncertain",
-        "comments cannot judge a pr_create; the state stays"
+        "an unanswered pull lookup leaves the state"
     );
-    // Nothing was judged at all: not_run, with the probe requirement named.
-    assert_eq!(out["verdict"], "not_run");
-    assert!(out["transitions"][0]["why"]
-        .as_str()
-        .unwrap()
-        .contains("--remote-probe"));
+    assert_eq!(
+        out["verdict"], "uncertain",
+        "the lookup failed, so the run is uncertain"
+    );
     assert_eq!(
         fs::read(journal_dir(&repo).join("journal.log")).unwrap(),
         before,
         "no judged transition writes nothing"
     );
+}
+
+/// AC-1 (#2107): the built-in pull lookup judges a pr_create effect from the PR body
+/// marker — identity matching makes both spellings one marker. Exactly one PR carrying
+/// it confirms; none is a confirmed absence; more than one is ambiguous and stays
+/// uncertain. GETs only.
+#[test]
+fn reconcile_builtin_judges_pr_create_from_pulls() {
+    let pulls_url = "https://api.github.com/repos/acme/widgets/pulls?state=all&per_page=100";
+    let clock = FakeClock::at(CLOCK0);
+    let effect_for = |issue: i64, marker: &str| {
+        let tmp = tempfile::tempdir().unwrap();
+        let repo = tmp.path().join("repo");
+        git_repo(&repo);
+        let mut effect = publish_effect("pr_create-101-op-9-1", marker, "uncertain");
+        effect["kind"] = json!("pr_create");
+        let record = seed_record(&repo, issue, 1, owner("session", "agent-x"), vec![effect]);
+        let key = record.task_key.clone();
+        let journal = journal_of(&repo);
+        journal.commit("acquire", &record).unwrap();
+        (tmp, repo, key, journal)
+    };
+    let marker = "<!-- moai:op pr_create:101:op-9:1 -->";
+
+    // Found: one open PR body carries the marker in the moai-op spelling.
+    let (_t1, _repo, key, journal) = effect_for(29, marker);
+    let page = json!([
+        {"number": 77, "body": format!("Implements it\n\n<!-- moai-op pr_create:101:op-9:1 -->")},
+        {"number": 78, "body": "unrelated"},
+    ]);
+    let t = RecordedTransport::new(vec![exchange("GET", pulls_url, 200, page)]);
+    let out = effects_reconcile(&journal, &key, None, &t, &clock).unwrap();
+    assert_eq!(out["verdict"], "passed");
+    assert_eq!(out["transitions"][0]["to"], "confirmed");
+    assert_eq!(out["transitions"][0]["response_id"], "77");
+    let sent = t.sent.borrow();
+    assert!(sent.iter().all(|r| r.method == "GET"));
+    assert!(
+        sent.iter().all(|r| r.url.contains("/pulls")),
+        "the probe reads the pull list"
+    );
+    let events = journal.read_events().unwrap();
+    let effect = events
+        .last()
+        .unwrap()
+        .record
+        .effects
+        .iter()
+        .find(|e| e["operation_id"] == "pr_create-101-op-9-1")
+        .unwrap();
+    assert_eq!(effect["state"], "confirmed");
+
+    // Absent: no open PR carries it — a confirmed absence, judged from the PR list.
+    let (_t2, _repo, key, journal) = effect_for(30, marker);
+    let t = RecordedTransport::new(vec![exchange(
+        "GET",
+        pulls_url,
+        200,
+        json!([{"number": 78, "body": "unrelated"}]),
+    )]);
+    let out = effects_reconcile(&journal, &key, None, &t, &clock).unwrap();
+    assert_eq!(out["transitions"][0]["to"], "not_performed");
+
+    // Ambiguous: two PRs carry the same operation identity — the winner is unclear, so
+    // the state stays and the run is uncertain (a duplicate would be hiding here).
+    let (_t3, repo, key, journal) = effect_for(31, marker);
+    let page = json!([
+        {"number": 77, "body": format!("one\n\n<!-- moai-op pr_create:101:op-9:1 -->")},
+        {"number": 78, "body": format!("two\n\n<!-- moai:op pr_create:101:op-9:1 -->")},
+    ]);
+    let t = RecordedTransport::new(vec![exchange("GET", pulls_url, 200, page)]);
+    let before = fs::read(journal_dir(&repo).join("journal.log")).unwrap();
+    let out = effects_reconcile(&journal, &key, None, &t, &clock).unwrap();
+    assert_eq!(out["verdict"], "uncertain");
+    assert!(out["transitions"][0]["why"]
+        .as_str()
+        .unwrap()
+        .contains("ambiguous"));
+    let events = journal.read_events().unwrap();
+    let effect = events
+        .last()
+        .unwrap()
+        .record
+        .effects
+        .iter()
+        .find(|e| e["operation_id"] == "pr_create-101-op-9-1")
+        .unwrap();
+    assert_eq!(effect["state"], "uncertain");
+    assert_eq!(
+        fs::read(journal_dir(&repo).join("journal.log")).unwrap(),
+        before
+    );
+}
+
+/// #2116 repair: a not_performed verdict is only ever a FULL-scan verdict. A merged or
+/// closed PR carrying the marker still confirms (the #2101 no-false-absence rule —
+/// scanning open PRs only would have judged it absent and triggered a duplicate PR); a
+/// scan that hit the page cap never saw everything, so the effect stays uncertain; only
+/// a scan that saw every page with zero hits may say not_performed.
+#[test]
+fn reconcile_pr_create_absence_requires_a_full_scan() {
+    let pulls_url = "https://api.github.com/repos/acme/widgets/pulls?state=all&per_page=100";
+    let clock = FakeClock::at(CLOCK0);
+    let marker = "<!-- moai:op pr_create:101:op-9:1 -->";
+    let setup = |issue: i64| {
+        let tmp = tempfile::tempdir().unwrap();
+        let repo = tmp.path().join("repo");
+        git_repo(&repo);
+        let mut effect = publish_effect("pr_create-101-op-9-1", marker, "uncertain");
+        effect["kind"] = json!("pr_create");
+        let record = seed_record(&repo, issue, 1, owner("session", "agent-x"), vec![effect]);
+        let key = record.task_key.clone();
+        let journal = journal_of(&repo);
+        journal.commit("acquire", &record).unwrap();
+        // `tmp` stays alive with the caller: dropping it deletes the journal.
+        (tmp, repo, key, journal)
+    };
+
+    // ① The marker lives in a CLOSED PR's body: confirmed, never a false absence.
+    let (_t, _repo, key, journal) = setup(32);
+    let page = json!([
+        {"number": 77, "state": "closed", "body": format!("merged\n\n<!-- moai-op pr_create:101:op-9:1 -->")},
+        {"number": 78, "state": "merged", "body": "unrelated"},
+    ]);
+    let t = RecordedTransport::new(vec![exchange("GET", pulls_url, 200, page)]);
+    let out = effects_reconcile(&journal, &key, None, &t, &clock).unwrap();
+    assert_eq!(out["verdict"], "passed");
+    assert_eq!(out["transitions"][0]["to"], "confirmed");
+    assert_eq!(out["transitions"][0]["response_id"], "77");
+    let events = journal.read_events().unwrap();
+    let effect = events
+        .last()
+        .unwrap()
+        .record
+        .effects
+        .iter()
+        .find(|e| e["operation_id"] == "pr_create-101-op-9-1")
+        .unwrap();
+    assert_eq!(effect["state"], "confirmed");
+
+    // ② The scan hits the 50-page cap before seeing everything: the effect stays
+    // uncertain — a capped scan is never a confirmed absence — and nothing is written.
+    // The recorded request URLs follow the Link chain exactly (page 1, 2, ...); the cap
+    // fires on the 51st iteration before any request is sent.
+    let (_t, repo, key, journal) = setup(33);
+    let page_url = |n: usize| -> String {
+        if n == 0 {
+            pulls_url.to_string()
+        } else {
+            format!("{pulls_url}&page={n}")
+        }
+    };
+    let mut script = Vec::new();
+    for i in 0..50 {
+        let body = json!([{"number": 1000 + i, "state": "closed", "body": "unrelated"}]);
+        let link = format!("<{}>; rel=\"next\"", page_url(i + 1));
+        script.push(exchange_with_headers(
+            "GET",
+            &page_url(i),
+            200,
+            body,
+            &[("Link", link.as_str())],
+        ));
+    }
+    let before = fs::read(journal_dir(&repo).join("journal.log")).unwrap();
+    let t = RecordedTransport::new(script);
+    let out = effects_reconcile(&journal, &key, None, &t, &clock).unwrap();
+    assert_eq!(out["verdict"], "uncertain", "{}", out);
+    assert!(out["transitions"][0]["why"]
+        .as_str()
+        .unwrap()
+        .contains("page limit"));
+    assert_eq!(
+        fs::read(journal_dir(&repo).join("journal.log")).unwrap(),
+        before,
+        "a capped scan writes nothing"
+    );
+
+    // ③ A scan that saw every page (two here) with zero hits is a confirmed absence.
+    let (_t, _repo, key, journal) = setup(34);
+    let page2_url = "https://api.github.com/repos/acme/widgets/pulls?state=all&per_page=100&page=2";
+    let t = RecordedTransport::new(vec![
+        exchange_with_headers(
+            "GET",
+            pulls_url,
+            200,
+            json!([{"number": 78, "state": "open", "body": "unrelated"}]),
+            &[(
+                "Link",
+                "<https://api.github.com/repos/acme/widgets/pulls?state=all&per_page=100&page=2>; rel=\"next\"",
+            )],
+        ),
+        exchange("GET", page2_url, 200, json!([{"number": 79, "body": "also unrelated"}])),
+    ]);
+    let out = effects_reconcile(&journal, &key, None, &t, &clock).unwrap();
+    assert_eq!(out["verdict"], "passed");
+    assert_eq!(out["transitions"][0]["to"], "not_performed");
 }
 
 #[test]

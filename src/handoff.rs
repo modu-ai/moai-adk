@@ -481,6 +481,48 @@ fn fetch_comments<T: Transport, C: Clock>(
     Ok(comments)
 }
 
+/// Reads every pull request of the repository — `state=all` (#2116: a merged or closed
+/// PR carrying the marker is still evidence of creation; scanning only open PRs would
+/// report a false absence) — and matches the uncertain markers against this single pass
+/// (#2107). A PR list item carries `number` and `body`. The page cap stays: a scan that
+/// could not see every page must NOT be read as a confirmed absence, so the caller turns
+/// the error into an uncertain effect.
+fn fetch_pulls<T: Transport, C: Clock>(
+    client: &Client<'_, T, C>,
+    t: &TaskRef,
+) -> std::result::Result<Vec<(i64, String)>, ForgeError> {
+    let mut url = Some(format!(
+        "https://api.github.com/repos/{}/{}/pulls?state=all&per_page=100",
+        t.owner, t.repo
+    ));
+    let mut pulls = Vec::new();
+    let mut pages = 0;
+    while let Some(u) = url {
+        pages += 1;
+        if pages > 50 {
+            return Err(ForgeError {
+                kind: "invalid_input",
+                message: "reconcile pull page limit exceeded (50)".into(),
+                retryable: false,
+            });
+        }
+        let resp = client.get(&u, None)?;
+        let arr = resp
+            .body
+            .as_ref()
+            .and_then(Value::as_array)
+            .cloned()
+            .unwrap_or_default();
+        for p in &arr {
+            if let (Some(number), Some(body)) = (p["number"].as_i64(), p["body"].as_str()) {
+                pulls.push((number, body.to_string()));
+            }
+        }
+        url = resp.header("link").and_then(|l| next_link(Some(l)));
+    }
+    Ok(pulls)
+}
+
 fn run_probe_command(cmd: &str, marker: &str) -> Probe {
     let out = Command::new(cmd)
         .arg(marker)
@@ -519,12 +561,16 @@ fn run_probe_command(cmd: &str, marker: &str) -> Probe {
     }
 }
 
-/// The publish kinds whose artifact lives in an Issue comment body, which the built-in
-/// comment lookup can therefore legitimately confirm. A pr_create (and any kind not on
-/// this list — the conservative default) needs `--remote-probe`: absence of its marker in
-/// comments is not a confirmed absence of the artifact (#2099).
-fn comment_confirmable(kind: &str) -> bool {
-    kind == "comment_post"
+/// The remote lookup the built-in probe can run for a kind (`#2101` gate, extended by
+/// #2107): a comment-borne kind is judged from Issue comments, a pr_create marker lives
+/// in the PR body and is judged from the pull list, and an unknown kind stays
+/// unjudgeable — the conservative default (#2099).
+fn builtin_lookup(kind: &str) -> Option<&'static str> {
+    match kind {
+        "comment_post" => Some("comments"),
+        "pr_create" => Some("pulls"),
+        _ => None,
+    }
 }
 
 /// Whether a remote body carries the marker. The artifact may spell the operation marker
@@ -579,25 +625,33 @@ pub fn effects_reconcile<T: Transport, C: Clock>(
     let mut blocked = false;
     let mut failed = 0;
     let mut left_unjudgeable = false;
-    // The built-in probe fetches the comments once for the comment-confirmable effects;
-    // kinds comments cannot judge are never fetched for and never judged (#2099).
-    let needs_comments = remote_probe.is_none()
-        && uncertain
-            .iter()
-            .any(|&i| comment_confirmable(current.effects[i]["kind"].as_str().unwrap_or_default()));
-    let comments = if needs_comments {
-        let client = Client::new(transport, clock, Default::default(), Default::default());
-        match fetch_comments(&client, &record.task_ref) {
-            Ok(c) => Ok(c),
-            Err(e) if e.kind == "blocked" => {
-                blocked = true;
-                Err(e)
-            }
-            Err(e) => Err(e),
-        }
-    } else {
-        Ok(Vec::new())
+    // The built-in probe fetches each remote source once for the effects routed to it
+    // (comments for comment-borne kinds, pulls for pr_create — #2107); kinds with no
+    // built-in lookup are never fetched for and never judged (#2099).
+    let needs = |source: &str| {
+        remote_probe.is_none()
+            && uncertain.iter().any(|&i| {
+                builtin_lookup(current.effects[i]["kind"].as_str().unwrap_or_default())
+                    == Some(source)
+            })
     };
+    let client = Client::new(transport, clock, Default::default(), Default::default());
+    type Items = std::result::Result<Vec<(i64, String)>, ForgeError>;
+    let mut fetched: std::collections::BTreeMap<&'static str, Items> = Default::default();
+    for source in ["comments", "pulls"] {
+        if needs(source) {
+            let r = match source {
+                "comments" => fetch_comments(&client, &record.task_ref),
+                _ => fetch_pulls(&client, &record.task_ref),
+            };
+            if let Err(e) = &r {
+                if e.kind == "blocked" {
+                    blocked = true;
+                }
+            }
+            fetched.insert(source, r);
+        }
+    }
     for i in uncertain {
         let effect = current.effects[i].clone();
         let marker = effect["marker"].as_str().unwrap_or_default().to_string();
@@ -608,23 +662,33 @@ pub fn effects_reconcile<T: Transport, C: Clock>(
         let kind = effect["kind"].as_str().unwrap_or_default().to_string();
         let verdict = match remote_probe {
             Some(cmd) => run_probe_command(cmd, &marker),
-            None if !comment_confirmable(&kind) => Probe::Unjudgeable,
-            None => match &comments {
-                Err(e) if e.kind == "blocked" => Probe::Limited {
+            None => match builtin_lookup(&kind).and_then(|s| fetched.get(s).map(|r| (s, r))) {
+                None => Probe::Unjudgeable,
+                Some((_, Err(e))) if e.kind == "blocked" => Probe::Limited {
                     retry_after_s: None,
                 },
-                Err(e) => Probe::Failed {
+                Some((_, Err(e))) => Probe::Failed {
                     why: e.message.clone(),
                 },
-                Ok(comments) => match comments
-                    .iter()
-                    .find(|(_, body)| marker_matches(body, &marker))
-                {
-                    Some((id, _)) => Probe::Found {
-                        remote_id: id.to_string(),
-                    },
-                    None => Probe::Absent,
-                },
+                Some((_, Ok(items))) => {
+                    let matches: Vec<&(i64, String)> = items
+                        .iter()
+                        .filter(|(_, body)| marker_matches(body, &marker))
+                        .collect();
+                    match matches.len() {
+                        1 => Probe::Found {
+                            remote_id: matches[0].0.to_string(),
+                        },
+                        0 => Probe::Absent,
+                        _ => Probe::Failed {
+                            why: format!(
+                                "{n} remote artifacts carry the same operation marker; the \
+                                 winner is ambiguous",
+                                n = matches.len()
+                            ),
+                        },
+                    }
+                }
             },
         };
         match verdict {
