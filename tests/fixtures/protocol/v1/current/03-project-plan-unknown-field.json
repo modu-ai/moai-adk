@@ -27,5 +27,14 @@
     ],
     "unexpected": 1
   },
-  "stdout": null
+  "stdout": {
+    "error": {
+      "kind": "invalid_input",
+      "message": "invalid typed JSON input",
+      "retryable": false
+    },
+    "ok": false,
+    "operation": "project.plan",
+    "protocol_version": 1
+  }
 }

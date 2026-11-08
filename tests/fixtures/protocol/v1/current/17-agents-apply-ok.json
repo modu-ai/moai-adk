@@ -53,15 +53,20 @@
     "warnings": []
   },
   "stdout": {
-    "applied": [
-      "AGENTS.md",
-      ".moai-cli/manifests/generation.json"
-    ],
-    "execution_verified": false,
-    "files_created": true,
-    "host_loaded": false,
-    "host_notes": [],
-    "manifest_sha256": "sha256:f4d9af31163b14bede547faf06556ffd4a8ee1ea155de447048c7c5e8b0cb94c",
-    "state": "applied"
+    "ok": true,
+    "operation": "agents.apply",
+    "protocol_version": 1,
+    "result": {
+      "applied": [
+        "AGENTS.md",
+        ".moai-cli/manifests/generation.json"
+      ],
+      "execution_verified": false,
+      "files_created": true,
+      "host_loaded": false,
+      "host_notes": [],
+      "manifest_sha256": "sha256:f4d9af31163b14bede547faf06556ffd4a8ee1ea155de447048c7c5e8b0cb94c",
+      "state": "applied"
+    }
   }
 }

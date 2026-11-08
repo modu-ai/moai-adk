@@ -13,9 +13,14 @@
   "stderr": "",
   "stdin": null,
   "stdout": {
-    "digest": "sha256:10a599b9e4d7df5e80269f46eddf9dce384180097f65d7a378b64271d8cc5b44",
-    "digest_algorithm": "moai-package-tree-v1",
-    "host_loaded": false,
-    "publisher_trust": "not_verified"
+    "ok": true,
+    "operation": "package.inspect",
+    "protocol_version": 1,
+    "result": {
+      "digest": "sha256:10a599b9e4d7df5e80269f46eddf9dce384180097f65d7a378b64271d8cc5b44",
+      "digest_algorithm": "moai-package-tree-v1",
+      "host_loaded": false,
+      "publisher_trust": "not_verified"
+    }
   }
 }

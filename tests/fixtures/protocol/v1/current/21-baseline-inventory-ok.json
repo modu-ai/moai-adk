@@ -13,104 +13,109 @@
   "stderr": "",
   "stdin": null,
   "stdout": {
-    "baseline": {
-      "branch": "main",
-      "collected_at": "<masked>",
-      "head_sha": "9afa00b97696fba68a011a585f7db1e0219f6606",
-      "home": [
-        {
-          "exists": false,
-          "path": "~/.claude"
+    "ok": true,
+    "operation": "baseline.inventory",
+    "protocol_version": 1,
+    "result": {
+      "baseline": {
+        "branch": "main",
+        "collected_at": "<masked>",
+        "head_sha": "9afa00b97696fba68a011a585f7db1e0219f6606",
+        "home": [
+          {
+            "exists": false,
+            "path": "~/.claude"
+          },
+          {
+            "exists": false,
+            "path": "~/.moai"
+          },
+          {
+            "exists": false,
+            "path": "~/.agents"
+          }
+        ],
+        "path_rule": "paths are relative to the project root; worktrees outside it read <outside-project>; home entries are ~-relative and recorded as existence only",
+        "remote_heads": {
+          "reason": "ls-remote exited 128",
+          "status": "unavailable"
         },
-        {
-          "exists": false,
-          "path": "~/.moai"
-        },
-        {
-          "exists": false,
-          "path": "~/.agents"
-        }
-      ],
-      "path_rule": "paths are relative to the project root; worktrees outside it read <outside-project>; home entries are ~-relative and recorded as existence only",
-      "remote_heads": {
-        "reason": "ls-remote exited 128",
-        "status": "unavailable"
+        "schema_version": 1,
+        "worktrees": [
+          {
+            "branch": "refs/heads/main",
+            "head": "9afa00b97696fba68a011a585f7db1e0219f6606",
+            "path": "."
+          }
+        ]
       },
-      "schema_version": 1,
-      "worktrees": [
-        {
-          "branch": "refs/heads/main",
-          "head": "9afa00b97696fba68a011a585f7db1e0219f6606",
-          "path": "."
-        }
-      ]
-    },
-    "checksums": "87428fc522803d31065e7bce3cf03fe475096631e5e07bbd7a0fde60c4cf25c7  a.txt\n",
-    "claude_diff": {
+      "checksums": "87428fc522803d31065e7bce3cf03fe475096631e5e07bbd7a0fde60c4cf25c7  a.txt\n",
+      "claude_diff": {
+        "collected_at": "<masked>",
+        "head_sha": "9afa00b97696fba68a011a585f7db1e0219f6606",
+        "reason": "no --go-baseline-commit",
+        "rules": {
+          "class": "baseline-only|template-only|active-only when present in one set; identical when present in two or more sets with one blob id; differing otherwise",
+          "excluded": [
+            ".claude/worktrees/",
+            ".moai-cli/worktrees/",
+            ".worktrees/"
+          ],
+          "key": "path relative to the .claude directory of each set",
+          "origin": "generated when the template set holds the path, else source",
+          "scope": "private when the file name contains .local. or ends with .local, else shared",
+          "tracking": "current checkout: tracked (ls-files), ignored (check-ignore), untracked, or absent"
+        },
+        "schema_version": 1,
+        "status": "not_collected"
+      },
       "collected_at": "<masked>",
-      "head_sha": "9afa00b97696fba68a011a585f7db1e0219f6606",
-      "reason": "no --go-baseline-commit",
-      "rules": {
-        "class": "baseline-only|template-only|active-only when present in one set; identical when present in two or more sets with one blob id; differing otherwise",
-        "excluded": [
+      "inventory": {
+        "changes": [],
+        "checksum_unrepresentable": [],
+        "collected_at": "<masked>",
+        "excluded_changes": 0,
+        "excluded_prefixes": [
           ".claude/worktrees/",
           ".moai-cli/worktrees/",
           ".worktrees/"
         ],
-        "key": "path relative to the .claude directory of each set",
-        "origin": "generated when the template set holds the path, else source",
-        "scope": "private when the file name contains .local. or ends with .local, else shared",
-        "tracking": "current checkout: tracked (ls-files), ignored (check-ignore), untracked, or absent"
+        "files": [
+          {
+            "kind": "file",
+            "mode": "100644",
+            "object": "78981922613b2afb6025042ff6bd878ac1994e85",
+            "path": "a.txt",
+            "sha256": "sha256:87428fc522803d31065e7bce3cf03fe475096631e5e07bbd7a0fde60c4cf25c7"
+          }
+        ],
+        "head_sha": "9afa00b97696fba68a011a585f7db1e0219f6606",
+        "measured_at": "collected_at",
+        "measurements": [
+          {
+            "command": "git ls-files -s -z",
+            "name": "tracked_files",
+            "value": 1
+          },
+          {
+            "command": "git status --porcelain=v2 -z --untracked-files=all",
+            "name": "changed_tracked",
+            "value": 0
+          },
+          {
+            "command": "git status --porcelain=v2 -z --untracked-files=all",
+            "name": "untracked_files",
+            "value": 0
+          },
+          {
+            "command": "sha256 of regular files among tracked and changed rows",
+            "name": "checksum_rows",
+            "value": 1
+          }
+        ],
+        "schema_version": 1
       },
-      "schema_version": 1,
-      "status": "not_collected"
-    },
-    "collected_at": "<masked>",
-    "inventory": {
-      "changes": [],
-      "checksum_unrepresentable": [],
-      "collected_at": "<masked>",
-      "excluded_changes": 0,
-      "excluded_prefixes": [
-        ".claude/worktrees/",
-        ".moai-cli/worktrees/",
-        ".worktrees/"
-      ],
-      "files": [
-        {
-          "kind": "file",
-          "mode": "100644",
-          "object": "78981922613b2afb6025042ff6bd878ac1994e85",
-          "path": "a.txt",
-          "sha256": "sha256:87428fc522803d31065e7bce3cf03fe475096631e5e07bbd7a0fde60c4cf25c7"
-        }
-      ],
-      "head_sha": "9afa00b97696fba68a011a585f7db1e0219f6606",
-      "measured_at": "collected_at",
-      "measurements": [
-        {
-          "command": "git ls-files -s -z",
-          "name": "tracked_files",
-          "value": 1
-        },
-        {
-          "command": "git status --porcelain=v2 -z --untracked-files=all",
-          "name": "changed_tracked",
-          "value": 0
-        },
-        {
-          "command": "git status --porcelain=v2 -z --untracked-files=all",
-          "name": "untracked_files",
-          "value": 0
-        },
-        {
-          "command": "sha256 of regular files among tracked and changed rows",
-          "name": "checksum_rows",
-          "value": 1
-        }
-      ],
       "schema_version": 1
-    },
-    "schema_version": 1
+    }
   }
 }
