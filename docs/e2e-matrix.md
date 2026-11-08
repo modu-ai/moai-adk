@@ -1,6 +1,6 @@
 # E2E matrix (08-C #2014, RC1)
 
-이 문서는 08-C E2E receipt(`schemas/e2e-receipt.schema.json`, REQ-08C-01)의 조합별 상태를 기록한다. 이 표만이 08-D #2015 지원표(`docs/host-support-matrix.md`)의 E2E 입력이다. 열·형식은 지원표 소유 Issue 02-C #1993이 정한 것을 따른다(host | surface | item | capability_status | unknown_class | 내용 | source); receipt 필드(os·arch·host·host_exact_version·mode·skill_digest·moai_cli_sha·result)는 각 행의 receipt JSON으로 남긴다. 실행하지 않은 조합은 숨기지 않고 그대로 적는다.
+이 문서는 08-C E2E receipt(`schemas/e2e-receipt.schema.json`, REQ-08C-01)의 조합별 상태를 기록한다. 이 표만이 08-D #2015 지원표(`docs/support-matrix.md`)의 E2E 입력이다. 열·형식은 지원표 소유 Issue 02-C #1993이 정한 것을 따른다(host | surface | item | capability_status | unknown_class | 내용 | source); receipt 필드(os·arch·host·host_exact_version·mode·skill_digest·moai_cli_sha·result)는 각 행의 receipt JSON으로 남긴다. 실행하지 않은 조합은 숨기지 않고 그대로 적는다.
 
 ## 상태 어휘
 

@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://modu-ai/moai-adk/schemas/e2e-receipt.schema.json",
   "title": "08-C E2E receipt (REQ-08C-01, Issue #2014)",
-  "description": "One line per E2E measurement. This receipt is the ONLY input to the 08-D support table (docs/host-support-matrix.md); a combination without a passed receipt is not supported, and every not_run/blocked combination must appear here unhidden.",
+  "description": "One line per E2E measurement. This receipt is the ONLY input to the 08-D support table (docs/support-matrix.md); a combination without a passed receipt is not supported, and every not_run/blocked combination must appear here unhidden.",
   "type": "object",
   "required": ["ac", "os", "arch", "host", "host_exact_version", "mode", "skill_digest", "moai_cli_sha", "result", "ran_at"],
   "additionalProperties": true,
