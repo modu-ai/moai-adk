@@ -392,37 +392,77 @@ pub fn recover(root: &Path, receipt_id: &str, permission: &str) -> Result<Value>
     let bytes = read_opt(&path)?.ok_or("receipt not found")?;
     let receipt: Receipt = serde_json::from_slice(&bytes)
         .map_err(|_| "receipt unreadable; inspect before recovering".to_string())?;
-    let mut reverted = Vec::new();
+    // Every path is checked before anything changes, so a refused receipt changes nothing.
+    let published: Vec<(&ReceiptEntry, PathBuf)> = receipt
+        .entries
+        .iter()
+        .filter(|e| e.published)
+        .map(|e| {
+            guard_recoverable_path(&e.path)?;
+            Ok((e, target(&root, &e.path)?))
+        })
+        .collect::<Result<_>>()?;
+    let mut reverted: Vec<String> = Vec::new();
     let mut skipped = Vec::new();
-    for entry in &receipt.entries {
-        if !entry.published {
-            continue;
-        }
-        guard_recoverable_path(&entry.path)?;
-        let target = target(&root, &entry.path)?;
-        let current = read_opt(&target)?;
-        let current_digest = current.as_deref().map(crate::digest);
-        if current_digest.as_deref() != entry.after_sha256.as_deref() {
-            skipped.push(json!({"path": entry.path, "reason": "user_changed_since_apply"}));
-            continue;
-        }
-        match &entry.before_sha256 {
-            None => {
-                // The request created this file; reverting means removing it.
-                fs::remove_file(&target).map_err(|_| "target remove failed")?;
+    for (i, (entry, target)) in published.iter().enumerate() {
+        let step = || -> Result<bool> {
+            let current = read_opt(target)?;
+            let current_digest = current.as_deref().map(crate::digest);
+            if current_digest.as_deref() != entry.after_sha256.as_deref() {
+                return Ok(false);
             }
-            Some(before_digest) => {
-                let bytes = read_opt(&before_bytes_path(&root, receipt_id, &entry.path)?)?
-                    .ok_or("receipt backup not found; inspect before recovering")?;
-                if crate::digest(&bytes) != *before_digest {
-                    return Err("receipt backup digest mismatch; inspect before recovering".into());
+            match &entry.before_sha256 {
+                None => {
+                    // The request created this file; reverting means removing it.
+                    fs::remove_file(target).map_err(|_| "target remove failed")?;
                 }
-                // The stage-time re-check compares against the file's current bytes, so
-                // a change between the digest check and the rename still refuses.
-                publish_replace(&target, current.as_deref(), &bytes)?;
+                Some(before_digest) => {
+                    let bytes = read_opt(&before_bytes_path(&root, receipt_id, &entry.path)?)?
+                        .ok_or("receipt backup not found; inspect before recovering")?;
+                    if crate::digest(&bytes) != *before_digest {
+                        return Err(
+                            "receipt backup digest mismatch; inspect before recovering".into()
+                        );
+                    }
+                    // The stage-time re-check compares against the file's current bytes, so
+                    // a change between the digest check and the rename still refuses.
+                    publish_replace(target, current.as_deref(), &bytes)?;
+                }
+            }
+            Ok(true)
+        };
+        match step() {
+            Ok(true) => reverted.push(entry.path.clone()),
+            Ok(false) => {
+                skipped.push(json!({"path": entry.path, "reason": "user_changed_since_apply"}))
+            }
+            // Nothing changed yet: the plain refusal is the whole truth.
+            Err(e) if reverted.is_empty() => return Err(e),
+            // Part of the request is already reverted (Issue #2072): say exactly what.
+            Err(e) => {
+                let skipped_list: Vec<String> = skipped
+                    .iter()
+                    .map(|s| {
+                        format!(
+                            "{}: {}",
+                            s["path"].as_str().unwrap_or(""),
+                            s["reason"].as_str().unwrap_or("")
+                        )
+                    })
+                    .collect();
+                let rest: Vec<&str> = published[i + 1..]
+                    .iter()
+                    .map(|(e, _)| e.path.as_str())
+                    .collect();
+                return Err(format!(
+                    "partial apply: recover {receipt_id} reverted [{}]; failed at {}: {e}; skipped [{}]; not attempted [{}]",
+                    reverted.join(", "),
+                    entry.path,
+                    skipped_list.join(", "),
+                    rest.join(", "),
+                ));
             }
         }
-        reverted.push(entry.path.clone());
     }
     Ok(json!({
         "state": if reverted.is_empty() { "nothing_to_revert" } else { "reverted" },

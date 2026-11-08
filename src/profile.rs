@@ -17,8 +17,7 @@ use crate::{digest, PROJECT_STATE_DIR, SECRET_SHAPES};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 use std::{
-    fs::{self, OpenOptions},
-    io::Write,
+    fs,
     path::{Path, PathBuf},
 };
 
@@ -392,50 +391,18 @@ fn splice_update(current: &[u8], desired: &Value, delta: &Delta) -> Result<Vec<u
     Ok(out)
 }
 
+/// Publishes `after` through the 01-B apply engine (#2071): a replace when the plan saw
+/// bytes, an exclusive create when it saw none. The plan's bytes are checked here first,
+/// so a change since the preview keeps its stale-plan message; the engine re-checks after
+/// staging.
 fn write_replace(path: &Path, before: Option<&[u8]>, after: &[u8]) -> Result<()> {
     if read(path)?.as_deref() != before {
         return Err("target changed since plan; re-preview required".into());
     }
-    let parent = path.parent().ok_or("target parent unavailable")?;
-    fs::create_dir_all(parent).map_err(|_| "target directory unavailable")?;
-    let nanos = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_nanos())
-        .unwrap_or(0);
-    let temp = parent.join(format!(".moai-apply-{}-{nanos}.tmp", std::process::id()));
-    let mut file = OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(&temp)
-        .map_err(|_| "temporary file refused")?;
-    #[cfg(unix)]
-    if let Ok(meta) = fs::metadata(path) {
-        let _ = fs::set_permissions(&temp, meta.permissions());
+    match before {
+        Some(_) => crate::apply::publish_replace(path, before, after),
+        None => crate::apply::publish_exclusive(path, after),
     }
-    let written = file
-        .write_all(after)
-        .and_then(|_| file.sync_all())
-        .map_err(|_| "temporary write failed".to_string());
-    if written.is_err() || read(path)?.as_deref() != before {
-        let _ = fs::remove_file(&temp);
-        return Err("target changed during apply; temporary file discarded".into());
-    }
-    let published = if before.is_none() {
-        // Exclusive publish: a hard link fails when the target appeared meanwhile.
-        fs::hard_link(&temp, path)
-            .map_err(|_| "exclusive create refused")
-            .map(|_| ())
-    } else {
-        fs::rename(&temp, path).map_err(|_| "atomic replace failed")
-    };
-    if before.is_none() || published.is_err() {
-        let _ = fs::remove_file(&temp);
-    }
-    published?;
-    if let Ok(dir) = fs::File::open(parent) {
-        let _ = dir.sync_all();
-    }
-    Ok(())
 }
 
 fn write_baseline(
