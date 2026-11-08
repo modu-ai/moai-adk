@@ -1,0 +1,59 @@
+{
+  "branch": "v2026.11.0",
+  "collected_at": "2026-11-08T08:15:16Z",
+  "head_sha": "a6c67ba2d2750c42e0d46b9c5a626db38dc0b555",
+  "home": [
+    {
+      "exists": true,
+      "path": "~/.claude"
+    },
+    {
+      "exists": true,
+      "path": "~/.moai"
+    },
+    {
+      "exists": true,
+      "path": "~/.agents"
+    }
+  ],
+  "path_rule": "paths are relative to the project root; worktrees outside it read <outside-project>; home entries are ~-relative and recorded as existence only",
+  "remote_heads": {
+    "heads": [
+      {
+        "ref": "refs/heads/2026.11.0-rc.1",
+        "sha": "f6808390bd83c53e44964ed1d4645727945ea1cc"
+      },
+      {
+        "ref": "refs/heads/issue/1986-00-B",
+        "sha": "900bbd1ad8afed67a3d91da5e156594d76635954"
+      },
+      {
+        "ref": "refs/heads/main",
+        "sha": "4fa2aa9db2e0add0f1299e35407141b2b41c5ec0"
+      },
+      {
+        "ref": "refs/heads/v2026.11.0",
+        "sha": "a6c67ba2d2750c42e0d46b9c5a626db38dc0b555"
+      }
+    ],
+    "status": "collected"
+  },
+  "schema_version": 1,
+  "worktrees": [
+    {
+      "branch": "refs/heads/v2026.11.0",
+      "head": "a6c67ba2d2750c42e0d46b9c5a626db38dc0b555",
+      "path": "."
+    },
+    {
+      "branch": "refs/heads/issue/1985-00-A",
+      "head": "64e4459e00e31afcf612f4595df79697a7f90aff",
+      "path": ".moai-cli/worktrees/issue-1985-00-A"
+    },
+    {
+      "branch": "refs/heads/issue/1986-00-B",
+      "head": "900bbd1ad8afed67a3d91da5e156594d76635954",
+      "path": ".moai-cli/worktrees/issue-1986-00-B"
+    }
+  ]
+}

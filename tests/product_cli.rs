@@ -745,3 +745,262 @@ fn session_rejects_lower_ranked_advisor_and_unknown_host() {
     let out = session(&["--name", "a", "--effort", "turbo", "--dry-run"]);
     assert!(!out.status.success());
 }
+
+fn git_in(dir: &std::path::Path, args: &[&str]) {
+    let out = Command::new("git")
+        .args([
+            "-c",
+            "user.name=fixture",
+            "-c",
+            "user.email=fixture@example.invalid",
+        ])
+        .args(["-c", "commit.gpgsign=false", "-c", "core.autocrlf=false"])
+        .args(["-c", "core.excludesFile=/dev/null"])
+        .arg("-C")
+        .arg(dir)
+        .args(args)
+        .output()
+        .unwrap();
+    assert!(out.status.success(), "git {args:?}: {:?}", out.stderr);
+}
+fn write_file(root: &std::path::Path, rel: &str, bytes: &[u8]) {
+    let path = root.join(rel);
+    fs::create_dir_all(path.parent().unwrap()).unwrap();
+    fs::write(path, bytes).unwrap();
+}
+/// Every path and byte under `dir`, `.git` included, without following symlinks.
+fn tree_state(dir: &std::path::Path) -> Vec<(String, Vec<u8>)> {
+    fn walk(root: &std::path::Path, dir: &std::path::Path, out: &mut Vec<(String, Vec<u8>)>) {
+        for e in fs::read_dir(dir).unwrap() {
+            let p = e.unwrap().path();
+            let rel = p.strip_prefix(root).unwrap().to_string_lossy().into_owned();
+            let m = fs::symlink_metadata(&p).unwrap();
+            if m.file_type().is_symlink() {
+                let t = fs::read_link(&p).unwrap();
+                out.push((rel, t.to_string_lossy().as_bytes().to_vec()));
+            } else if m.is_dir() {
+                out.push((rel, Vec::new()));
+                walk(root, &p, out);
+            } else {
+                out.push((rel, fs::read(&p).unwrap()));
+            }
+        }
+    }
+    let mut out = Vec::new();
+    walk(dir, dir, &mut out);
+    out.sort();
+    out
+}
+/// Fixture repo: a Go-style baseline commit with `.claude` and template `.claude`, then an
+/// ignored installed `.claude/` that partly differs, a lane worktree directory inside it,
+/// CRLF bytes, a symlink, one modified and one untracked file.
+fn baseline_fixture() -> (TempDir, String) {
+    let root = tempfile::Builder::new()
+        .prefix("moai baseline ")
+        .tempdir()
+        .unwrap();
+    let r = root.path();
+    git_in(r, &["init", "-q", "-b", "main"]);
+    write_file(r, ".claude/same.md", b"same\n");
+    write_file(r, ".claude/changed.md", b"old\n");
+    write_file(r, ".claude/gone.md", b"gone\n");
+    write_file(r, "internal/template/templates/.claude/same.md", b"same\n");
+    write_file(r, "internal/template/templates/.claude/tpl.md", b"tpl\n");
+    write_file(
+        r,
+        "internal/template/templates/.claude/settings.local.json",
+        b"{}\n",
+    );
+    write_file(r, "crlf.txt", b"a\r\nb\r\n");
+    write_file(r, "edited.txt", b"before\n");
+    std::os::unix::fs::symlink("crlf.txt", r.join("link")).unwrap();
+    git_in(r, &["add", "-A"]);
+    git_in(r, &["commit", "-q", "-m", "baseline"]);
+    let out = Command::new("git")
+        .arg("-C")
+        .arg(r)
+        .args(["rev-parse", "HEAD"])
+        .output()
+        .unwrap();
+    let commit = String::from_utf8(out.stdout).unwrap().trim().to_string();
+    git_in(r, &["rm", "-q", "-r", "--cached", ".claude"]);
+    write_file(r, ".gitignore", b".claude/\n");
+    git_in(r, &["add", ".gitignore"]);
+    git_in(r, &["commit", "-q", "-m", "install"]);
+    fs::remove_file(r.join(".claude/gone.md")).unwrap();
+    write_file(r, ".claude/changed.md", b"new\n");
+    write_file(r, ".claude/mine.md", b"mine\n");
+    write_file(r, ".claude/worktrees/lane/x.md", b"lane\n");
+    write_file(r, ".moai-cli/worktrees/lane/y.md", b"lane\n");
+    write_file(r, "edited.txt", b"after\n");
+    write_file(r, "new.txt", b"new\n");
+    (root, commit)
+}
+fn baseline(root: &TempDir, extra: &[&str]) -> (std::process::Output, Value) {
+    let out = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+        .arg("baseline-inventory")
+        .arg(root.path())
+        .args(extra)
+        .output()
+        .unwrap();
+    let v = serde_json::from_slice(&out.stdout).unwrap_or(Value::Null);
+    (out, v)
+}
+#[test]
+fn baseline_inventory_is_read_only_repeatable_and_relative() {
+    let (root, commit) = baseline_fixture();
+    let before = tree_state(root.path());
+    let (out1, v1) = baseline(&root, &["--go-baseline-commit", &commit]);
+    assert!(out1.status.success(), "{:?}", out1.stderr);
+    let (_, v2) = baseline(&root, &["--go-baseline-commit", &commit]);
+    assert_eq!(
+        before,
+        tree_state(root.path()),
+        "collector wrote to the tree"
+    );
+    let strip = |v: &Value| {
+        let mut v = v.clone();
+        for k in ["", "baseline", "inventory", "claude_diff"] {
+            let o = if k.is_empty() { &mut v } else { &mut v[k] };
+            o.as_object_mut().unwrap().remove("collected_at");
+        }
+        v
+    };
+    assert_eq!(strip(&v1), strip(&v2));
+    let raw = String::from_utf8(out1.stdout).unwrap();
+    let canon = fs::canonicalize(root.path()).unwrap();
+    assert!(!raw.contains(canon.to_str().unwrap()));
+    assert!(!raw.contains(root.path().to_str().unwrap()));
+    if let Some(home) = std::env::var_os("HOME") {
+        assert!(!raw.contains(home.to_str().unwrap()));
+    }
+    let head = Command::new("git")
+        .arg("-C")
+        .arg(root.path())
+        .args(["rev-parse", "HEAD"])
+        .output()
+        .unwrap();
+    assert_eq!(
+        v1["baseline"]["head_sha"],
+        json!(String::from_utf8(head.stdout).unwrap().trim())
+    );
+    assert_eq!(
+        v1["baseline"]["remote_heads"]["status"],
+        json!("unavailable")
+    );
+    assert!(v1["baseline"]["home"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|h| h["path"].as_str().unwrap().starts_with("~/")));
+    let files = v1["inventory"]["files"].as_array().unwrap();
+    let file = |p: &str| {
+        files
+            .iter()
+            .find(|f| f["path"] == json!(p))
+            .unwrap()
+            .clone()
+    };
+    assert_eq!(
+        file("crlf.txt")["sha256"],
+        json!(moai_cli::digest(b"a\r\nb\r\n"))
+    );
+    assert_eq!(file("link")["kind"], json!("symlink"));
+    assert_eq!(file("link")["sha256"], json!(moai_cli::digest(b"crlf.txt")));
+    assert_eq!(
+        file("edited.txt")["sha256"],
+        json!(moai_cli::digest(b"after\n"))
+    );
+    let changes = v1["inventory"]["changes"].as_array().unwrap();
+    let paths: Vec<&str> = changes
+        .iter()
+        .map(|c| c["path"].as_str().unwrap())
+        .collect();
+    assert_eq!(paths, vec!["edited.txt", "new.txt"]);
+    assert_eq!(changes[1]["status"], json!("untracked"));
+    assert_eq!(v1["inventory"]["excluded_changes"], json!(1));
+    let sums = v1["checksums"].as_str().unwrap();
+    assert!(sums.contains("  crlf.txt\n"));
+    assert!(!sums.contains("  link\n"), "symlinks are not followed");
+    assert!(sums.contains("  new.txt\n"));
+}
+#[test]
+fn baseline_claude_diff_classifies_every_path_once() {
+    let (root, commit) = baseline_fixture();
+    let (out, v) = baseline(&root, &["--go-baseline-commit", &commit]);
+    assert!(out.status.success(), "{:?}", out.stderr);
+    let d = &v["claude_diff"];
+    assert_eq!(d["status"], json!("collected"));
+    assert_eq!(d["source"], json!("project"));
+    assert_eq!(d["excluded_active_files"], json!(1));
+    let rows = d["rows"].as_array().unwrap();
+    assert_eq!(d["total"], json!(rows.len()));
+    let class = |p: &str| {
+        let r = rows
+            .iter()
+            .find(|r| r["path"] == json!(p))
+            .unwrap_or_else(|| panic!("{p} missing from {rows:?}"));
+        (r["class"].as_str().unwrap().to_string(), r.clone())
+    };
+    assert_eq!(class("same.md").0, "identical");
+    assert_eq!(class("changed.md").0, "differing");
+    assert_eq!(class("gone.md").0, "baseline-only");
+    assert_eq!(class("tpl.md").0, "template-only");
+    assert_eq!(class("mine.md").0, "active-only");
+    let (_, local) = class("settings.local.json");
+    assert_eq!(local["scope"], json!("private"));
+    assert_eq!(local["origin"], json!("generated"));
+    let (_, mine) = class("mine.md");
+    assert_eq!(mine["tracking"], json!("ignored"));
+    assert_eq!(mine["origin"], json!("source"));
+    assert!(rows
+        .iter()
+        .all(|r| !r["path"].as_str().unwrap().starts_with("worktrees/")));
+}
+#[test]
+fn tree_digest_stable_sensitive_and_excludes() {
+    let root = tempfile::Builder::new()
+        .prefix("moai tree ")
+        .tempdir()
+        .unwrap();
+    let r = root.path();
+    write_file(r, "a.txt", b"a\r\n");
+    write_file(r, "dir/b.txt", b"b\n");
+    write_file(r, "skip/c.txt", b"c\n");
+    std::os::unix::fs::symlink("a.txt", r.join("link")).unwrap();
+    let before = tree_state(r);
+    let d1 = moai_cli::tree_digest(r, &["skip/"]).unwrap();
+    assert_eq!(d1, moai_cli::tree_digest(r, &["skip/"]).unwrap());
+    assert_eq!(before, tree_state(r), "tree_digest wrote to the tree");
+    assert!(d1.starts_with("sha256:") && d1.len() == 71);
+    write_file(r, "skip/c.txt", b"changed\n");
+    write_file(r, "skip/new.txt", b"new\n");
+    assert_eq!(d1, moai_cli::tree_digest(r, &["skip"]).unwrap());
+    assert_ne!(d1, moai_cli::tree_digest(r, &[]).unwrap());
+    write_file(r, "dir/b.txt", b"B\n");
+    let d2 = moai_cli::tree_digest(r, &["skip/"]).unwrap();
+    assert_ne!(d1, d2);
+    write_file(r, "dir/b.txt", b"b\n");
+    assert_eq!(d1, moai_cli::tree_digest(r, &["skip/"]).unwrap());
+    fs::remove_file(r.join("link")).unwrap();
+    std::os::unix::fs::symlink("dir/b.txt", r.join("link")).unwrap();
+    assert_ne!(d1, moai_cli::tree_digest(r, &["skip/"]).unwrap());
+    fs::remove_file(r.join("link")).unwrap();
+    std::os::unix::fs::symlink("a.txt", r.join("link")).unwrap();
+    fs::create_dir(r.join("empty")).unwrap();
+    assert_eq!(d1, moai_cli::tree_digest(r, &["skip/"]).unwrap());
+    fs::rename(r.join("a.txt"), r.join("z.txt")).unwrap();
+    assert_ne!(d1, moai_cli::tree_digest(r, &["skip/"]).unwrap());
+}
+#[test]
+fn baseline_without_or_with_unknown_commit_degrades_without_error() {
+    let (root, _) = baseline_fixture();
+    let (out, v) = baseline(&root, &[]);
+    assert!(out.status.success(), "{:?}", out.stderr);
+    assert_eq!(v["claude_diff"]["status"], json!("not_collected"));
+    let (out, v) = baseline(&root, &["--go-baseline-commit", &"a".repeat(40)]);
+    assert!(out.status.success(), "{:?}", out.stderr);
+    assert_eq!(v["claude_diff"]["status"], json!("commit_not_found"));
+    let (out, _) = baseline(&root, &["--go-baseline-commit", "HEAD"]);
+    assert!(!out.status.success());
+}
