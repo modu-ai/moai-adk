@@ -27,7 +27,7 @@ HOME=$(mktemp -d) cargo test --offline --locked --test e2e_host_fixture -- --noc
 | none (T1 fixture) | cli | e2e_setup_update_interrupt_restore_preserves_user_edits (AC-08C-1) | probed | | 임시 HOME·프로젝트에서 project-plan/apply(project-plan, project-apply, 01-B) + update-apply v1(04-B 양 host 설치) 후, 실제 중단(읽기 전용 projection 디렉터리로 apply가 트랜잭션 중간 실패) → recovery-plan/recovery-apply가 known-good에서 대체 파일 복구, 사용자 편집(routes.json) 바이트 보존, 성공 host(codex)는 committed v2 유지, 가짜 Go 상태 digest 불변 | cargo test 실행 기록(아래 receipt) |
 | none (T1 fixture) | cli | e2e_digest_mismatch_is_fail_closed (AC-08C-2) | probed | | plan digest 계산 뒤 stage 바이트 변조 → update-apply 거절, HOME 트리 전체 바이트 동일 | cargo test 실행 기록 |
 | none (T1 fixture) | cli | e2e_second_update_is_diff_zero (HA-02) | probed | | 동일 stage 재요청: 모든 action이 unchanged/preserved, apply 후 HOME digest 0 diff | cargo test 실행 기록 |
-| none (T1 fixture) | cli | e2e_never_writes_outside_temp_home (AC-08C-7) | probed | | sandbox-exec deny-home(실제 HOME 쓰기 전면 거절) 아래에서 update-apply 성공 — HOME 리다이렉션이 사라져도 사용자 상태를 못 쓴다. 가짜 Go 상태 digest 불변. 실제 `~/.moai` 대량 해시 대조는 동시 변동으로 신뢰 불가하여 이 방식으로 갈음(리더 허용 방식) | cargo test 실행 기록 |
+| none (T1 fixture) | cli | e2e_never_writes_outside_temp_home (AC-08C-7) | probed | | **macOS 전용 측정** — sandbox-exec deny-home(실제 HOME 쓰기 전면 거절) 아래에서 update-apply 성공 — HOME 리다이렉션이 사라져도 사용자 상태를 못 쓴다. 가짜 Go 상태 digest 불변. 실제 `~/.moai` 대량 해시 대조는 동시 변동으로 신뢰 불가하여 이 방식으로 갈음(리더 허용 방식). 이 시험은 `#[cfg(target_os = "macos")]`로 한정 — Linux에는 sandbox-exec가 없어 **컴파일되지 않으며(숨은 skip 아님) Linux CI는 AC-08C-7 not_run. Linux CI 통과는 AC-08C-7 측정이 아니다** | cargo test 실행 기록(macOS) |
 | none (T1 fixture) | cli | e2e_clean_clone_carries_portable_read_plan_assets (AC-08C-8, T1 절반) | probed | | binary 없는 clean clone에 skills/moai 전체(SKILL.md frontmatter·routes.json·routes가 참조하는 workflow 전부)가 존재 — READ/PLAN 포터블 자산 완결 | cargo test 실행 기록 |
 
 T1 receipt 필드(위 5행 공통): os=Darwin, arch=aarch64, host=none, mode=local, skill_digest=SKILL.md sha256(실행 시점 기록), moai_cli_sha=빌드 바이너리 sha256, ran_at=실행 시각 실측. raw 결과는 `cargo test` 출력 그대로가 detail이며 자격증명이 없다.
@@ -50,6 +50,7 @@ T1 receipt 필드(위 5행 공통): os=Darwin, arch=aarch64, host=none, mode=loc
 | --- | --- | --- | --- | --- | --- |
 | macOS (Darwin) | aarch64 | none (T1) | local | T1 표 참조 — 5시험 probed | RC1 유일 실측 조합 |
 | macOS (Darwin) | aarch64 | Claude Code | local | AC-08C-3·6 not_run | 운영자 실측 대기 |
+| ubuntu-24.04 | x86_64 | none (T1) | local | **AC-08C-7 not_run**(sandbox 없음 — 시험 미컴파일), 나머지 T1 4시험은 CI 실행 | **Linux CI 통과 ≠ AC-08C-7 측정** |
 | macOS (Darwin) | aarch64 | Codex | local | AC-08C-4 not_run | 운영자 실측 대기 |
 | ubuntu-24.04 / windows-2025 / arm 변형 | — | — | local | not_run | P12 HOLD — RC1에서 workflow 만들지 않음(08-D에 not_run 반영) |
 | — | — | — | worktree / cloud | not_run | RC1 범위 밖 |
