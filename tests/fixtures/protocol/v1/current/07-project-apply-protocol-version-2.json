@@ -37,5 +37,17 @@
     "protocol_version": 2,
     "target_binding": "<masked>"
   },
-  "stdout": null
+  "stdout": {
+    "error": {
+      "kind": "stale_plan",
+      "message": "stale or altered plan; re-preview required",
+      "next_actions": [
+        "project.plan"
+      ],
+      "retryable": false
+    },
+    "ok": false,
+    "operation": "project.apply",
+    "protocol_version": 1
+  }
 }

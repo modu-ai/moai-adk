@@ -12,5 +12,14 @@
   ],
   "stderr": "user package required without pin\n",
   "stdin": null,
-  "stdout": null
+  "stdout": {
+    "error": {
+      "kind": "invalid_input",
+      "message": "user package required without pin",
+      "retryable": false
+    },
+    "ok": false,
+    "operation": "package.resolve",
+    "protocol_version": 1
+  }
 }
