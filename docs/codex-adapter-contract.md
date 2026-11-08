@@ -19,7 +19,7 @@ not_run은 Desktop 발견·호출이 실패했다는 뜻이 아니다. 그래서
 | 페이지 | 인용 |
 | --- | --- |
 | https://learn.chatgpt.com/docs/build-skills | "For repositories, Codex scans `.agents/skills` in every directory from your current working directory up to the repository root." / "The `SKILL.md` file must include `name` and `description`." / "If two skills share the same `name`, Codex doesn’t merge them; both can appear in skill selectors." / "Codex supports symlinked skill folders and follows the symlink target when scanning these locations." / "Codex detects skill changes automatically. If an update doesn’t appear, restart Codex." / "`allow_implicit_invocation` (default: `true`)" / "In Codex CLI or the IDE extension, run `/skills` or type `$` to mention a skill." |
-| https://learn.chatgpt.com/docs/agent-configuration/agents-md | "Codex reads `AGENTS.override.md` if it exists. Otherwise, Codex reads `AGENTS.md`." / "Codex uses only the first non-empty file at this level." / "Starting at the project root (typically the Git root), Codex walks down to your current working directory." / "Codex includes at most one file per directory." / "Codex concatenates files from the root down, joining them with blank lines." / "stops adding files once the combined size reaches the limit defined by `project_doc_max_bytes` (32 KiB by default)." / "Files closer to your current directory override earlier guidance because they appear later in the combined prompt." |
+| https://learn.chatgpt.com/docs/agent-configuration/agents-md | "Codex reads `AGENTS.override.md` if it exists. Otherwise, Codex reads `AGENTS.md`." / "Codex uses only the first non-empty file at this level." / "Starting at the project root (typically the Git root), Codex walks down to your current working directory." / "Codex includes at most one file per directory." / "Codex concatenates files from the root down, joining them with blank lines." / "Codex skips empty files" / Troubleshoot: "Ensure instruction files contain content; Codex ignores empty files." / "stops adding files once the combined size reaches the limit defined by `project_doc_max_bytes` (32 KiB by default)." / "Files closer to your current directory override earlier guidance because they appear later in the combined prompt." |
 | https://learn.chatgpt.com/docs/config-file/config-reference | `projects.<path>.trust_level`: "Mark a project or worktree as trusted or untrusted (`"trusted"` \| `"untrusted"`)." / "Untrusted projects skip project-scoped `.codex/` layers, including project-local config, hooks, and rules." / `tui.status_line`: "Ordered list of TUI footer status-line item identifiers. `null` disables the status line." (ID 목록은 없음) / `project_doc_max_bytes`: "Maximum bytes read from `AGENTS.md` when building project instructions." (기본값 표기 없음) / `personality`: "Deprecated compatibility setting." |
 | https://learn.chatgpt.com/docs/hooks | "If a single layer contains both `hooks.json` and inline `[hooks]`, Codex merges them and warns at startup." / "Higher-precedence config layers don't replace lower-precedence hooks." / "Non-managed hooks must be reviewed and trusted before they run." |
 | https://learn.chatgpt.com/docs/app/slash-commands | "You can also explicitly invoke skills by typing `$` in the chat composer." / "Enabled skills also appear in the slash command list." (명령 표에 `/skills` 없음) |
@@ -44,7 +44,7 @@ not_run은 Desktop 발견·호출이 실패했다는 뜻이 아니다. 그래서
 
 - `PROJECT`는 project root이고, 호출자가 정한다(Codex는 "typically the Git root"라고만 한다). `--cwd`는 그 안이어야 한다(기본은 root). `--codex-home`의 기본은 `$CODEX_HOME`, 없으면 `~/.codex`다. `--home`의 기본은 `$HOME`이다. 모두 읽기만 한다.
 - `agents.global`: `--codex-home`의 `AGENTS.override.md` → `AGENTS.md` 중 첫 비어 있지 않은 파일이다.
-- `agents.project_chain`과 `included`: root부터 cwd까지 디렉터리마다 `AGENTS.override.md` → `AGENTS.md` → `--fallback` 이름 순으로 첫 파일 하나를 고른다.
+- `agents.project_chain`과 `included`: root부터 cwd까지 디렉터리마다 `AGENTS.override.md` → `AGENTS.md` → `--fallback` 이름 순으로, 비어 있지 않은 첫 파일 하나를 고른다. 빈 파일(공백만 있는 파일 포함)은 건너뛴다. 근거는 페이지의 "Codex skips empty files"와 Troubleshoot의 "Codex ignores empty files"다. 빈 파일 다음에 같은 디렉터리의 다음 이름으로 넘어가는 것은 **추론**이다. 페이지는 이를 전역 단계("the first non-empty file at this level")에만 명시하고, project 디렉터리에 대해서는 적지 않는다.
 - `project_bytes`는 빈 줄로 이은 합이고, 이것을 `max_bytes`와 비교해 `over_budget`과 처음 넘는 파일 `over_budget_at`을 보고한다. 전역 파일이 같은 예산에 들어가는지, 넘는 파일을 자르는지 빼는지는 문서에 없어 `budget_note`로 남긴다.
 - `agents_override_created: false`다. 개인 보충용 override를 만들지 않는다(REQ-02C-05).
 - `trust`: `{status: "not_evaluated", reason, consequence}`. config.toml을 읽지 않으므로 untrusted여서 생기는 `blocked_by_trust`를 판정할 수 없고, trust 상태를 바꾸지도 않는다(REQ-02C-06).
@@ -56,7 +56,7 @@ not_run은 Desktop 발견·호출이 실패했다는 뜻이 아니다. 그래서
 
 | AC | 시험(`cargo test --offline --locked --test codex_adapter <이름>`) |
 | --- | --- |
-| AGENTS-BUDGET | `codex_agents_chain_plain`, `codex_agents_chain_override`, `codex_agents_chain_fallback`, `codex_agents_chain_over_budget` |
+| AGENTS-BUDGET | `codex_agents_chain_plain`, `codex_agents_chain_override`, `codex_agents_chain_fallback`, `codex_agents_chain_over_budget`, `codex_agents_chain_skips_empty_files`(감사 지적으로 추가) |
 | TRUST-NO-CLAIM | `codex_doctor_never_claims_trust` |
 | CONFIG-HOLD-NO-WRITE | `codex_config_requests_report_hold_without_writes` |
 | STATUS-FIELD-PARITY | `codex_statusline_items_are_unverified` |

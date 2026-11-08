@@ -132,6 +132,21 @@ fn codex_agents_chain_override() {
 }
 
 #[test]
+fn codex_agents_chain_skips_empty_files() {
+    // "Codex skips empty files" (AGENTS.md page). Falling through to the next name in the
+    // same directory is inferred; the page does not say it for project directories.
+    let f = fixture();
+    write(&f.root.join("AGENTS.override.md"), "\n  \n");
+    write(&f.root.join("AGENTS.md"), "root\n");
+    write(&f.root.join("a/AGENTS.md"), "");
+    let (ok, v) = doctor(&f, &[]);
+    assert!(ok, "{v}");
+    assert_eq!(included(&v), vec![s(&f.root.join("AGENTS.md")).to_string()]);
+    assert_eq!(v["result"]["agents"]["project_bytes"], 5);
+    assert!(v["result"]["agents"]["project_chain"][1]["included"].is_null());
+}
+
+#[test]
 fn codex_agents_chain_fallback() {
     let f = fixture();
     write(&f.root.join("TEAM.md"), "team\n");

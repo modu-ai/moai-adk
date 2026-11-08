@@ -172,12 +172,12 @@ fn read_text(path: &Path) -> Result<Option<String>> {
     }
 }
 
-/// The first of `names` in `dir` that exists (and is non-empty when `skip_empty`).
-fn first_doc(dir: &Path, names: &[String], skip_empty: bool) -> Result<Option<(PathBuf, String)>> {
+/// The first of `names` in `dir` that exists and is not empty ("Codex skips empty files").
+fn first_doc(dir: &Path, names: &[String]) -> Result<Option<(PathBuf, String)>> {
     for name in names {
         let path = dir.join(name);
         if let Some(text) = read_text(&path)? {
-            if skip_empty && text.trim().is_empty() {
+            if text.trim().is_empty() {
                 continue;
             }
             return Ok(Some((path, text)));
@@ -230,7 +230,7 @@ pub fn doctor(
     };
     // Global level: AGENTS.override.md if present, else AGENTS.md; the first non-empty file.
     let global_names = vec!["AGENTS.override.md".to_string(), "AGENTS.md".to_string()];
-    let g_hit = first_doc(codex_home, &global_names, true)?;
+    let g_hit = first_doc(codex_home, &global_names)?;
     let global = json!({"dir": codex_home, "considered": global_names,
         "included": g_hit.as_ref().map(|(p, _)| p), "bytes": g_hit.as_ref().map(|(_, t)| t.len())});
     // Project level: root down to cwd, at most one file per directory.
@@ -251,7 +251,9 @@ pub fn doctor(
     let mut over_at: Option<PathBuf> = None;
     for dir in &dirs {
         let considered = &names;
-        let hit = first_doc(dir, &names, false)?;
+        // "Codex skips empty files" (AGENTS.md page). Moving on to the next name in the same
+        // directory after an empty one is inferred; the page does not say so for projects.
+        let hit = first_doc(dir, &names)?;
         let entry = match &hit {
             None => json!({"dir": dir, "considered": considered, "included": null}),
             Some((path, text)) => {
