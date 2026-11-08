@@ -327,9 +327,11 @@ fn save_host_receipt(home: &Path, install_id: &str, receipt: &HostReceipt) -> Re
 /// bare-hex sha256 of the exact before bytes — a filename-valid form like `install_id`;
 /// the receipt's `before_sha256` carries the same digest with its `sha256:` prefix, so
 /// recovery derives the path by stripping that prefix. `create` actions have no before
-/// bytes and get no copy. Exclusive create: a file already present under the same
-/// digest name is reused. No retention or GC: copies accumulate for the life of the
-/// installation.
+/// bytes and get no copy. Exclusive create: an existing regular file under the same
+/// digest name is reused only after verifying it holds that digest's bytes — a
+/// mismatched copy (a partial write from a failed save) is replaced with the true
+/// bytes, and every fresh copy is read back and verified. No retention or GC: copies
+/// accumulate for the life of the installation.
 // @MX:DEBT: known-good copies accumulate with no retention or GC
 // @MX:CEILING: RC1 fixture scale — a handful of hosts and files per installation
 // @MX:UPGRADE: the real installer ships (P12 release matrix) — add retention/GC then
@@ -374,29 +376,50 @@ fn known_good_copies(
         }
         fs::create_dir_all(&dir).map_err(|_| "known-good directory unavailable")?;
         let path = dir.join(&hex);
-        let mut file = match fs::OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(&path)
-        {
-            Ok(f) => f,
-            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
-                // Reuse only a regular file under the digest name; a directory or
-                // symlink planted at the path is a refusal, not a reuse.
-                let m =
-                    fs::symlink_metadata(&path).map_err(|_| "known-good copy state unavailable")?;
-                if m.is_file() {
-                    continue;
-                }
+        if fs::symlink_metadata(&path).is_ok() {
+            // A file under this digest name already exists: reuse only a regular
+            // file that actually holds its digest's bytes — a partial write from a
+            // failed earlier save must not survive as a "known-good" copy. A
+            // directory or symlink planted at the path is a refusal, not a reuse;
+            // a mismatched regular file is replaced with the true bytes.
+            let m = fs::symlink_metadata(&path).map_err(|_| "known-good copy state unavailable")?;
+            if !m.is_file() {
                 return Err("known-good digest path is not a regular file".into());
             }
-            Err(_) => return Err("known-good copy create failed".into()),
-        };
-        file.write_all(&bytes)
-            .map_err(|_| "known-good copy write failed")?;
-        file.sync_all().map_err(|_| "known-good copy sync failed")?;
+            let existing = fs::read(&path).map_err(|_| "known-good copy read failed")?;
+            if format!("{:x}", Sha256::digest(&existing)) == hex {
+                continue;
+            }
+            store_copy(&path, false, &bytes)?;
+        } else {
+            store_copy(&path, true, &bytes)?;
+        }
+        // Read-back verification: what is on disk must be the digest the name
+        // promises (save-time digest re-verification).
+        let stored = fs::read(&path).map_err(|_| "known-good copy read failed")?;
+        if format!("{:x}", Sha256::digest(&stored)) != hex {
+            return Err("known-good copy does not hold its digest's bytes".into());
+        }
     }
     Ok(())
+}
+
+/// Writes `bytes` to `path` — exclusive create when `create_new`, truncate-replace
+/// otherwise — and fsyncs.
+fn store_copy(path: &Path, create_new: bool, bytes: &[u8]) -> Result<()> {
+    let opened = if create_new {
+        fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(path)
+    } else {
+        fs::OpenOptions::new().write(true).truncate(true).open(path)
+    };
+    let mut file = opened.map_err(|_| "known-good copy create failed".to_string())?;
+    file.write_all(bytes)
+        .map_err(|_| "known-good copy write failed")?;
+    file.sync_all()
+        .map_err(|_| "known-good copy sync failed".into())
 }
 
 fn owned_map(receipt: Option<&HostReceipt>) -> BTreeMap<String, String> {

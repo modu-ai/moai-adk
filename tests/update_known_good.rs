@@ -336,3 +336,40 @@ fn known_good_failure_starts_nothing_for_the_host() {
     assert_eq!(r["operation"], json!("update.apply"));
     assert!(r["version_before"].is_null());
 }
+
+#[test]
+fn stale_or_partial_copy_is_replaced_with_true_bytes() {
+    let (_root, home, stage1, stage2) = setup();
+    let v1_skill = stage_v1()[0].1.clone();
+
+    let plan1 = plan_via_cli(&home, &stage1);
+    apply_ok(
+        &home,
+        &stage1,
+        &plan1,
+        plan1["plan_digest"].as_str().unwrap(),
+    );
+    let install_id = receipt_json(&home)["install_id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+
+    // Plant a stale copy — e.g. the remains of a failed earlier save — at the
+    // digest path the v2 apply will reuse for SKILL.md.
+    let stale = known_good_dir(&home, &install_id).join(file_hex(v1_skill.as_bytes()));
+    fs::create_dir_all(stale.parent().unwrap()).unwrap();
+    fs::write(&stale, b"partial bytes from a failed save\n").unwrap();
+
+    let plan2 = plan_via_cli(&home, &stage2);
+    apply_ok(
+        &home,
+        &stage2,
+        &plan2,
+        plan2["plan_digest"].as_str().unwrap(),
+    );
+
+    // The reuse path verified the name against the bytes and replaced the stale
+    // copy with the true pre-overwrite bytes.
+    assert_eq!(fs::read(&stale).unwrap(), v1_skill.as_bytes());
+    assert_eq!(receipt_json(&home)["status"], json!("committed"));
+}
