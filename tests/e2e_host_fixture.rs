@@ -405,6 +405,11 @@ fn e2e_second_update_is_diff_zero() {
 /// file writes anywhere under the caller's REAL home, so a lost HOME redirection fails
 /// loudly instead of writing user state. Also asserts the fixture's fake Go-generation
 /// digest and that the receipt/known-good state stays inside the temporary HOME.
+/// Measured on macOS only: `sandbox-exec` does not exist on Linux, so on that platform
+/// this test is not compiled (an explicit cfg gate, not a hidden skip) and
+/// docs/e2e-matrix.md records AC-08C-7 as not_run there — a green Linux CI is NOT an
+/// AC-08C-7 measurement.
+#[cfg(target_os = "macos")]
 #[test]
 fn e2e_never_writes_outside_temp_home() {
     let real_home = std::env::var("HOME").unwrap();
@@ -483,7 +488,7 @@ fn e2e_never_writes_outside_temp_home() {
 #[test]
 fn e2e_clean_clone_carries_portable_read_plan_assets() {
     let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let gitdir = Command::new("git")
+    let discovery = Command::new("git")
         .args([
             "-C",
             manifest.to_str().unwrap(),
@@ -492,8 +497,22 @@ fn e2e_clean_clone_carries_portable_read_plan_assets() {
         ])
         .output()
         .unwrap();
-    assert!(gitdir.status.success(), "repo discovery failed");
-    let gitdir = PathBuf::from(String::from_utf8_lossy(&gitdir.stdout).trim());
+    let discovered = String::from_utf8_lossy(&discovery.stdout)
+        .trim()
+        .to_string();
+    if !discovery.status.success() || discovered.is_empty() {
+        // Explicit not_run report: this tree carries no git metadata (e.g. an exported
+        // source archive), so there is no repository to clean-clone. Recorded visibly,
+        // not as a silent pass — docs/e2e-matrix.md carries the combination as not_run.
+        eprintln!(
+            "NOT RUN: e2e_clean_clone_carries_portable_read_plan_assets — no git \
+             metadata in this tree ({}); the clean-clone portability check was not \
+             performed",
+            String::from_utf8_lossy(&discovery.stderr).trim()
+        );
+        return;
+    }
+    let gitdir = PathBuf::from(discovered);
     let gitdir = if gitdir.is_absolute() {
         gitdir
     } else {
