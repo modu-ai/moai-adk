@@ -245,6 +245,24 @@ enum Command {
     AuditReduce {
         project: PathBuf,
     },
+    /// Read-only UPDATE preview over every host projection (04-B #1999; the command name
+    /// is P06 HOLD). HOME is the user home root; STAGE is the package directory to apply.
+    UpdatePlan {
+        /// User home root whose `.moai-cli` and host projections are inspected.
+        home: PathBuf,
+        /// Package directory carrying SKILL.md (staged new state).
+        stage: PathBuf,
+    },
+    /// Apply a previewed UPDATE host by host (04-B #1999; pending→committed receipts).
+    /// The previewed plan travels on stdin and must match a fresh recompute.
+    UpdateApply {
+        home: PathBuf,
+        stage: PathBuf,
+        #[arg(long)]
+        plan_digest: String,
+        #[arg(long)]
+        permission_reference: String,
+    },
     /// Claude Code session launcher: `cc -l|-a`.
     Cc(HostLaunch),
     /// Claude Code on z.ai GLM: `glm -l|-a` (needs ANTHROPIC_AUTH_TOKEN in the environment).
@@ -362,6 +380,8 @@ const OPERATIONS: &[(&str, &str)] = &[
     ("run-verify", "run.verify"),
     ("audit-reduce", "audit.reduce"),
     ("install-inspect", "install.inspect"),
+    ("update-plan", "update.plan"),
+    ("update-apply", "update.apply"),
 ];
 fn operation_of(word: &str) -> Option<&'static str> {
     OPERATIONS
@@ -598,6 +618,27 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
                 .ok_or("home directory missing; install-inspect requires HOME")?;
             let path_env = std::env::var("PATH").unwrap_or_default();
             moai_cli::install::inspect(&home, &path_env)
+        }
+        Command::UpdatePlan { home, stage } => {
+            let staged = moai_cli::update::stage_package(&stage)?;
+            serde_json::to_value(moai_cli::update::plan_update(&home, &staged)?)
+                .map_err(|_| "encode failed".into())
+        }
+        Command::UpdateApply {
+            home,
+            stage,
+            plan_digest,
+            permission_reference,
+        } => {
+            let staged = moai_cli::update::stage_package(&stage)?;
+            let plan = input::<moai_cli::update::UpdatePlan>()?;
+            moai_cli::update::apply_update(
+                &home,
+                &staged,
+                &plan,
+                &plan_digest,
+                &permission_reference,
+            )
         }
         Command::PlanAdmit { project } => {
             let request = input::<moai_cli::plan::AdmissionRequest>()?;
