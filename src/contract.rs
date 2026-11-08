@@ -102,6 +102,8 @@ const RULES: &[(&str, Kind)] = &[
     ("generation manifest", Kind::Conflict),
     ("digest mismatch", Kind::Conflict),
     ("SKILL.md missing", Kind::NotFound),
+    // Generic suffix, after every specific rule above it (first match wins).
+    ("not found", Kind::NotFound),
     ("project profile missing", Kind::NotFound),
     ("reference directory missing", Kind::NotFound),
     ("project directory unavailable", Kind::NotFound),
@@ -208,6 +210,8 @@ mod tests {
             ("generation manifest belongs to another schema or project", Conflict),
             ("pinned package digest mismatch; fallback forbidden", Conflict),
             ("package SKILL.md missing", NotFound),
+            ("receipt not found", NotFound),
+            ("receipt backup not found; inspect before recovering", NotFound),
             ("project profile missing", NotFound),
             ("workflow reference directory missing; generate it first", NotFound),
             ("project directory unavailable", NotFound),

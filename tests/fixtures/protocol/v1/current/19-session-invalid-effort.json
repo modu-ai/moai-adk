@@ -12,7 +12,8 @@
   "masked_keys": [
     "target_binding",
     "plan_digest",
-    "collected_at"
+    "collected_at",
+    "receipt"
   ],
   "stderr": "effort must be one of low|medium|high|xhigh|max|ultracode\n",
   "stdin": null,
