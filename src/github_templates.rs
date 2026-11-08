@@ -12,8 +12,9 @@
 //!   static tests (②A: no YAML crate, Cargo.toml keeps its dependencies);
 //! - `config.yml` is not a template (③B: the development copy has none).
 //!
-//! The profile has no GitHub field yet, so generation is opted in by the request
-//! (`github_issues: true`); a folder that merely exists never triggers it (REQ-08B-04).
+//! Generation is opted in by the profile key `github_issues` (Issue #2106) or by the
+//! request flag of the same name; an explicit request flag wins over the profile, and a
+//! folder that merely exists never triggers it (REQ-08B-04).
 //! Baselines live in their own manifest `.moai-cli/manifests/github.json` with the
 //! `owned_files[].baseline_sha256` shape of `generation.json`: that file's writers are
 //! private to agents.rs and generation.rs, so 08-B adds no third writer to it.
@@ -63,8 +64,33 @@ pub const TEMPLATES: &[(&str, &str)] = &[
 #[serde(deny_unknown_fields)]
 pub struct GithubRequest {
     pub protocol_version: u32,
-    /// The project chose GitHub Issues (explicit until the profile carries the choice).
-    pub github_issues: bool,
+    /// Explicit opt-in for this run. When absent, the profile's `github_issues` decides;
+    /// when present, it wins over the profile.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub github_issues: Option<bool>,
+}
+
+/// Resolves the opt-in: the request flag first, then the profile key. A missing profile
+/// or key means not opted in; an unreadable profile is an error, never a guess.
+fn opted_in(root: &Path, request: &GithubRequest) -> Result<(bool, String)> {
+    if let Some(flag) = request.github_issues {
+        return Ok((flag, format!("opt-in from request.github_issues = {flag}")));
+    }
+    let profile_path = root.join(crate::PROJECT_STATE_DIR).join("project.yaml");
+    if read_opt(&profile_path)?.is_none() {
+        return Ok((
+            false,
+            "opt-in: request.github_issues absent and no project profile".into(),
+        ));
+    }
+    let (profile, _) = crate::profile::read_profile(root)?;
+    Ok(match profile.github_issues {
+        Some(flag) => (flag, format!("opt-in from profile github_issues = {flag}")),
+        None => (
+            false,
+            "opt-in: request.github_issues and profile github_issues both absent".into(),
+        ),
+    })
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -162,11 +188,9 @@ pub fn github_plan(root: &Path, request: GithubRequest) -> Result<GithubPlan> {
     let root = root_of(root)?;
     let mut files = Vec::new();
     let mut notes = Vec::new();
-    if !request.github_issues {
-        notes.push(
-            "not generated: request.github_issues is false; an existing .github/ never opts in"
-                .into(),
-        );
+    let (enabled, source) = opted_in(&root, &request)?;
+    if !enabled {
+        notes.push("not generated: not opted in; an existing .github/ never opts in".into());
     } else {
         let baselines = manifest_baselines(&root)?;
         for (rel, text) in TEMPLATES {
@@ -209,6 +233,7 @@ pub fn github_plan(root: &Path, request: GithubRequest) -> Result<GithubPlan> {
             "GitHub reads Issue forms only from the default branch; rendering is not_run".into(),
         );
     }
+    notes.push(source);
     let mut plan = GithubPlan {
         protocol_version: 1,
         request,
