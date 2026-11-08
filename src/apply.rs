@@ -19,11 +19,12 @@ use std::{
 
 type Result<T> = std::result::Result<T, String>;
 
-/// HOLD-B1 (leader interim 2026-11-08, P09 pending): receipts live under the project
+/// HOLD-B1 (user-confirmed 2026-11-08, ADK_1989_CONFIRMED_20261108_01, P09 pending):
+/// receipts live under the project
 /// state dir and stay out of git through the agents-managed `.gitignore` block. The
 /// constant is the swap point for the later home-side layout. Worktree deletion loses
 /// the receipt with the tree — a documented known gap.
-// @MX:DEBT [P09 pending] Project-local receipt directory, decided as HOLD-B1 A (leader interim 2026-11-08).
+// @MX:DEBT [P09 pending] Project-local receipt directory, HOLD-B1 A user-confirmed 2026-11-08 (ADK_1989_CONFIRMED_20261108_01).
 // @MX:CEILING Worktree deletion loses the receipt with the tree; the recovery gap is documented in docs/rust-product-path.md.
 // @MX:UPGRADE Move to the home-side runs layout when P09 resolves — this constant is the single swap point.
 pub const RECEIPTS_DIR: &str = ".moai-cli/receipts";
