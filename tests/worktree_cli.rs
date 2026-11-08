@@ -598,7 +598,12 @@ fn pr_body_has_required_fields() {
     let env = envelope(&render(
         &f,
         &receipts,
-        &["--not-run", "live gh (fake only)"],
+        &[
+            "--not-run",
+            "live gh (fake only)",
+            "--gap",
+            "branch prefix is a HOLD",
+        ],
     ));
     assert_eq!(env["ok"], true, "{env}");
     let r = &env["result"];
@@ -619,6 +624,7 @@ fn pr_body_has_required_fields() {
         "## 독립 review",
         "## 변경",
         "| `src/new.rs` | A |",
+        "- branch prefix is a HOLD\n\n<!-- moai-op",
     ] {
         assert!(body.contains(needle), "missing {needle:?} in\n{body}");
     }

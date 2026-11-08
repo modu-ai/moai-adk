@@ -35,6 +35,8 @@ pub struct RenderInput<'a> {
     pub allow_close: bool,
     pub not_run: &'a [String],
     pub review_link: Option<&'a str>,
+    /// Extra bullets for the remaining-gap section.
+    pub gaps: &'a [String],
     /// `(status, path)` from `git diff --name-status <base>...<candidate>`.
     pub changes: &'a [(String, String)],
 }
@@ -126,6 +128,7 @@ pub fn render(rec: &ClaimRecord, receipts: &[Receipt], input: &RenderInput) -> R
             .collect::<Vec<_>>()
             .join("\n")
     };
+    let gap_lines: String = input.gaps.iter().map(|g| format!("- {g}\n")).collect();
     let review = input
         .review_link
         .unwrap_or("<대기: 독립 review 판정 뒤 채운다>");
@@ -157,7 +160,8 @@ pub fn render(rec: &ClaimRecord, receipts: &[Receipt], input: &RenderInput) -> R
 {not_run_lines}\n\n\
 ## 남은 gap과 위험\n\n\
 - PR 개설은 완료가 아니다. 통합과 Issue 종료는 리더가 판정한다.\n\
-- reconcile: not_run (06-B #2006 미완, op marker만 기록)\n\n\
+- reconcile: not_run (06-B #2006 미완, op marker만 기록)\n\
+{gap_lines}\n\
 {marker}\n",
         lk = rec.logical_key,
         epoch = rec.epoch,

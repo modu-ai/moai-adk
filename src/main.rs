@@ -304,6 +304,9 @@ enum Command {
         not_run: Vec<String>,
         #[arg(long)]
         review_link: Option<String>,
+        /// Extra bullet for the remaining-gap section (repeatable).
+        #[arg(long)]
+        gap: Vec<String>,
     },
     /// Read-only installation inspection (04-A #1998): PATH generations, receipts under
     /// `~/.moai-cli/installations/`, Go-generation path existence. Writes nothing.
@@ -751,6 +754,7 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             allow_close,
             not_run,
             review_link,
+            gap,
         } => {
             let rec = source.load(&project)?;
             let bytes = std::fs::read(&receipts).map_err(|_| "receipts file not found")?;
@@ -774,6 +778,7 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
                     not_run: &not_run,
                     review_link: review_link.as_deref(),
                     changes: &changes,
+                    gaps: &gap,
                 },
             )
         }
