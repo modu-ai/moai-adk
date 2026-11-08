@@ -12,5 +12,14 @@
   ],
   "stderr": "git rev-parse exited 128\n",
   "stdin": null,
-  "stdout": null
+  "stdout": {
+    "error": {
+      "kind": "not_found",
+      "message": "git rev-parse exited 128",
+      "retryable": false
+    },
+    "ok": false,
+    "operation": "baseline.inventory",
+    "protocol_version": 1
+  }
 }

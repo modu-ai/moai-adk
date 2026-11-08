@@ -9,7 +9,16 @@
     "plan_digest",
     "collected_at"
   ],
-  "stderr": "error: the following required arguments were not provided:\n  <PROJECT>\n\nUsage: moai-cli project-plan <PROJECT>\n\nFor more information, try '--help'.\n",
+  "stderr": "error: the following required arguments were not provided:\n",
   "stdin": null,
-  "stdout": null
+  "stdout": {
+    "error": {
+      "kind": "usage",
+      "message": "required arguments were not provided; see --help",
+      "retryable": false
+    },
+    "ok": false,
+    "operation": "project.plan",
+    "protocol_version": 1
+  }
 }

@@ -35,6 +35,12 @@ fn cli(args: &[&str], input: &Value) -> std::process::Output {
     }
     child.wait_with_output().unwrap()
 }
+/// Result of an internal operation: asserts the success envelope (01-C #1990) and unwraps it.
+fn ok_result(out: &std::process::Output) -> Value {
+    let v: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(v["ok"], json!(true), "{v}");
+    v["result"].clone()
+}
 #[test]
 fn stdin_broken_pipe_does_not_panic() {
     // `package-inspect` never reads stdin and fails fast on a missing path, so a
@@ -47,7 +53,7 @@ fn create(root: &TempDir, input: &Value) -> Value {
     let p = root.path().to_str().unwrap();
     let preview = cli(&["project-plan", p], input);
     assert!(preview.status.success(), "{:?}", preview.stderr);
-    let plan: Value = serde_json::from_slice(&preview.stdout).unwrap();
+    let plan: Value = ok_result(&preview);
     let result = cli(
         &[
             "project-apply",
@@ -91,7 +97,7 @@ fn stale_and_tampered_plans_do_not_overwrite() {
     let root = TempDir::new().unwrap();
     let p = root.path().to_str().unwrap();
     let out = cli(&["project-plan", p], &profile(None));
-    let mut plan: Value = serde_json::from_slice(&out.stdout).unwrap();
+    let mut plan: Value = ok_result(&out);
     let digest = plan["plan_digest"].as_str().unwrap().to_owned();
     plan["profile"]["purpose"] = json!("Tampered");
     assert!(!cli(
@@ -152,7 +158,7 @@ fn pin_precedence_integrity_and_no_fallback() {
     ];
     let result = cli(&args, &Value::Null);
     assert!(result.status.success());
-    let value: Value = serde_json::from_slice(&result.stdout).unwrap();
+    let value: Value = ok_result(&result);
     assert_eq!(value["source"], "repo_pin");
     assert_eq!(value["digest"], pin);
     fs::write(repo.path().join("SKILL.md"), "modified").unwrap();
@@ -180,10 +186,7 @@ fn pin_precedence_integrity_and_no_fallback() {
         &Value::Null,
     );
     assert!(result.status.success());
-    assert_eq!(
-        serde_json::from_slice::<Value>(&result.stdout).unwrap()["source"],
-        "user"
-    );
+    assert_eq!(ok_result(&result)["source"], "user");
 }
 #[test]
 fn nonportable_or_secret_shaped_input_is_rejected_without_echo() {
@@ -198,7 +201,11 @@ fn nonportable_or_secret_shaped_input_is_rejected_without_echo() {
         input["purpose"] = json!(value);
         let out = cli(&["project-plan", root.path().to_str().unwrap()], &input);
         assert!(!out.status.success());
-        assert!(out.stdout.is_empty());
+        // stdout carries the failure envelope (01-C #1990); neither stream echoes the value.
+        let failure: Value = serde_json::from_slice(&out.stdout).unwrap();
+        assert_eq!(failure["ok"], json!(false));
+        assert_eq!(failure["error"]["kind"], "invalid_input");
+        assert!(!String::from_utf8_lossy(&out.stdout).contains(value));
         assert!(!String::from_utf8_lossy(&out.stderr).contains(value));
         assert!(!root.path().join(".moai-cli").exists());
     }
@@ -234,7 +241,7 @@ fn plan_cannot_be_replayed_in_another_project() {
         &["project-plan", first.path().to_str().unwrap()],
         &profile(None),
     );
-    let plan: Value = serde_json::from_slice(&result.stdout).unwrap();
+    let plan: Value = ok_result(&result);
     let result = cli(
         &[
             "project-apply",
@@ -294,7 +301,7 @@ fn agents_project(language: &str, local_file: &str) -> (TempDir, Value) {
         "{:?}",
         String::from_utf8_lossy(&out.stderr)
     );
-    let plan: Value = serde_json::from_slice(&out.stdout).unwrap();
+    let plan: Value = ok_result(&out);
     let applied = agents_apply(&root, &plan);
     assert!(
         applied.status.success(),
@@ -328,7 +335,7 @@ fn agents_generation_is_idempotent_and_preserves_user_body() {
     let request = agents_request("en", "ignored");
     let out = agents_plan(&root, &request);
     assert!(out.status.success());
-    let plan: Value = serde_json::from_slice(&out.stdout).unwrap();
+    let plan: Value = ok_result(&out);
     assert_eq!(
         actions(&plan),
         vec![
@@ -370,7 +377,7 @@ fn agents_generation_is_idempotent_and_preserves_user_body() {
     .map(|p| fs::read(root.path().join(p)).unwrap())
     .collect();
     let out = agents_plan(&root, &request);
-    let plan: Value = serde_json::from_slice(&out.stdout).unwrap();
+    let plan: Value = ok_result(&out);
     assert!(actions(&plan)
         .iter()
         .all(|(_, a)| a == "unchanged" || a == "merge"));
@@ -383,7 +390,7 @@ fn agents_generation_is_idempotent_and_preserves_user_body() {
     );
     let result = agents_apply(&root, &plan);
     assert!(result.status.success());
-    let value: Value = serde_json::from_slice(&result.stdout).unwrap();
+    let value: Value = ok_result(&result);
     assert_eq!(value["state"], "unchanged");
     assert_eq!(value["host_loaded"], false);
     let after: Vec<Vec<u8>> = [
@@ -407,8 +414,7 @@ fn agents_user_edits_are_preserved_or_reported_as_conflict() {
     // Edit outside the managed block: still unchanged, bytes preserved.
     let outside = format!("{generated}\n## User appendix\nkeep me\n");
     fs::write(&file, &outside).unwrap();
-    let plan: Value =
-        serde_json::from_slice(&agents_plan(&root, &agents_request("en", "none")).stdout).unwrap();
+    let plan: Value = ok_result(&agents_plan(&root, &agents_request("en", "none")));
     assert_eq!(actions(&plan)[0].1, "unchanged");
     assert!(agents_apply(&root, &plan).status.success());
     assert_eq!(fs::read_to_string(&file).unwrap(), outside);
@@ -420,14 +426,13 @@ fn agents_user_edits_are_preserved_or_reported_as_conflict() {
     );
     assert_ne!(edited, outside);
     fs::write(&file, &edited).unwrap();
-    let plan: Value =
-        serde_json::from_slice(&agents_plan(&root, &agents_request("en", "none")).stdout).unwrap();
+    let plan: Value = ok_result(&agents_plan(&root, &agents_request("en", "none")));
     assert_eq!(actions(&plan)[0].1, "unchanged");
 
     // Template changes (language) after a user edit inside the block: conflict, nothing applied.
     let out = agents_plan(&root, &agents_request("ko", "none"));
     assert!(out.status.success());
-    let plan: Value = serde_json::from_slice(&out.stdout).unwrap();
+    let plan: Value = ok_result(&out);
     assert_eq!(actions(&plan)[0].1, "conflict");
     let result = agents_apply(&root, &plan);
     assert!(!result.status.success());
@@ -436,8 +441,7 @@ fn agents_user_edits_are_preserved_or_reported_as_conflict() {
 
     // Unedited block + template change: merge replaces only the block.
     fs::write(&file, &outside).unwrap();
-    let plan: Value =
-        serde_json::from_slice(&agents_plan(&root, &agents_request("ko", "none")).stdout).unwrap();
+    let plan: Value = ok_result(&agents_plan(&root, &agents_request("ko", "none")));
     assert_eq!(actions(&plan)[0].1, "merge");
     assert!(agents_apply(&root, &plan).status.success());
     let merged = fs::read_to_string(&file).unwrap();
@@ -448,8 +452,7 @@ fn agents_user_edits_are_preserved_or_reported_as_conflict() {
     // User removes the managed block while the template is unchanged: the deletion is
     // respected (never re-appended silently). Once the template changes, it is a conflict.
     fs::write(&file, "# demo\n\nno block\n").unwrap();
-    let plan: Value =
-        serde_json::from_slice(&agents_plan(&root, &agents_request("ko", "none")).stdout).unwrap();
+    let plan: Value = ok_result(&agents_plan(&root, &agents_request("ko", "none")));
     assert_eq!(actions(&plan)[0].1, "unchanged");
     // The deletion is reported, not silent.
     let absent = "managed block absent; user deletion preserved";
@@ -467,8 +470,7 @@ fn agents_user_edits_are_preserved_or_reported_as_conflict() {
     );
     assert!(agents_apply(&root, &plan).status.success());
     assert_eq!(fs::read_to_string(&file).unwrap(), "# demo\n\nno block\n");
-    let plan: Value =
-        serde_json::from_slice(&agents_plan(&root, &agents_request("en", "none")).stdout).unwrap();
+    let plan: Value = ok_result(&agents_plan(&root, &agents_request("en", "none")));
     assert_eq!(actions(&plan)[0].1, "conflict");
 
     // Malformed markers: conflict.
@@ -477,8 +479,7 @@ fn agents_user_edits_are_preserved_or_reported_as_conflict() {
         "<!-- moai:managed:begin id=moai-workflow -->\nno end\n",
     )
     .unwrap();
-    let plan: Value =
-        serde_json::from_slice(&agents_plan(&root, &agents_request("ko", "none")).stdout).unwrap();
+    let plan: Value = ok_result(&agents_plan(&root, &agents_request("ko", "none")));
     assert_eq!(actions(&plan)[0].1, "conflict");
 }
 
@@ -496,9 +497,7 @@ fn agents_local_file_is_opt_in_and_never_rewritten() {
     assert!(!root.path().join(".gitignore").exists());
     assert!(actions(&plan).iter().all(|(p, _)| p != ".gitignore"));
     fs::write(root.path().join("AGENTS.local.md"), "personal\n").unwrap();
-    let plan: Value =
-        serde_json::from_slice(&agents_plan(&root, &agents_request("ko", "tracked")).stdout)
-            .unwrap();
+    let plan: Value = ok_result(&agents_plan(&root, &agents_request("ko", "tracked")));
     assert!(agents_apply(&root, &plan).status.success());
     assert_eq!(
         fs::read(root.path().join("AGENTS.local.md")).unwrap(),
@@ -506,9 +505,7 @@ fn agents_local_file_is_opt_in_and_never_rewritten() {
     );
     // Deleted by the user: not recreated.
     fs::remove_file(root.path().join("AGENTS.local.md")).unwrap();
-    let plan: Value =
-        serde_json::from_slice(&agents_plan(&root, &agents_request("ko", "tracked")).stdout)
-            .unwrap();
+    let plan: Value = ok_result(&agents_plan(&root, &agents_request("ko", "tracked")));
     assert!(agents_apply(&root, &plan).status.success());
     assert!(!root.path().join("AGENTS.local.md").exists());
 }
@@ -526,7 +523,7 @@ fn agents_plan_rejects_replay_tamper_missing_reference_and_shadowing_is_reported
     fs::write(root.path().join("AGENTS.override.md"), "codex override\n").unwrap();
     let out = agents_plan(&root, &agents_request("en", "none"));
     assert!(out.status.success());
-    let plan: Value = serde_json::from_slice(&out.stdout).unwrap();
+    let plan: Value = ok_result(&out);
     let notes = plan["host_notes"].as_array().unwrap();
     assert_eq!(notes.len(), 2);
     // Replay in another project is refused.
@@ -588,9 +585,7 @@ fn agents_apply_refuses_symlinked_parents_and_recovers_from_partial_apply() {
     let manifests = root.path().join(".moai-cli/manifests");
     fs::create_dir_all(&manifests).unwrap();
     fs::set_permissions(&manifests, fs::Permissions::from_mode(0o555)).unwrap();
-    let plan: Value =
-        serde_json::from_slice(&agents_plan(&root, &agents_request("en", "tracked")).stdout)
-            .unwrap();
+    let plan: Value = ok_result(&agents_plan(&root, &agents_request("en", "tracked")));
     let result = agents_apply(&root, &plan);
     assert!(!result.status.success());
     let stderr = String::from_utf8_lossy(&result.stderr);
@@ -603,9 +598,7 @@ fn agents_apply_refuses_symlinked_parents_and_recovers_from_partial_apply() {
     assert!(!manifests.join("generation.json").exists());
     // Resume: the already-written block is adopted as baseline and the rest completes.
     fs::set_permissions(&manifests, fs::Permissions::from_mode(0o755)).unwrap();
-    let plan: Value =
-        serde_json::from_slice(&agents_plan(&root, &agents_request("en", "tracked")).stdout)
-            .unwrap();
+    let plan: Value = ok_result(&agents_plan(&root, &agents_request("en", "tracked")));
     assert_eq!(actions(&plan)[0].1, "unchanged");
     assert!(agents_apply(&root, &plan).status.success());
     let manifest: Value = serde_json::from_slice(
@@ -629,14 +622,12 @@ fn interrupted_update_refreshes_baseline_instead_of_false_conflict() {
     let (root, _) = agents_project("en", "none");
     let manifest = root.path().join(".moai-cli/manifests/generation.json");
     let v1_manifest = fs::read(&manifest).unwrap();
-    let plan: Value =
-        serde_json::from_slice(&agents_plan(&root, &agents_request("ko", "none")).stdout).unwrap();
+    let plan: Value = ok_result(&agents_plan(&root, &agents_request("ko", "none")));
     assert_eq!(actions(&plan)[0].1, "merge");
     assert!(agents_apply(&root, &plan).status.success());
     // Simulate the crash between the AGENTS.md write and the manifest write.
     fs::write(&manifest, &v1_manifest).unwrap();
-    let plan: Value =
-        serde_json::from_slice(&agents_plan(&root, &agents_request("ko", "none")).stdout).unwrap();
+    let plan: Value = ok_result(&agents_plan(&root, &agents_request("ko", "none")));
     assert_eq!(actions(&plan)[0].1, "unchanged");
     assert!(agents_apply(&root, &plan).status.success());
     let refreshed: Value = serde_json::from_slice(&fs::read(&manifest).unwrap()).unwrap();
@@ -651,7 +642,7 @@ fn interrupted_update_refreshes_baseline_instead_of_false_conflict() {
     fs::create_dir_all(root.path().join("docs/wf")).unwrap();
     let mut request = agents_request("ko", "none");
     request["workflow_reference"] = json!("docs/wf/");
-    let plan: Value = serde_json::from_slice(&agents_plan(&root, &request).stdout).unwrap();
+    let plan: Value = ok_result(&agents_plan(&root, &request));
     assert_eq!(actions(&plan)[0].1, "merge");
     assert!(agents_apply(&root, &plan).status.success());
 }
@@ -698,9 +689,7 @@ fn legacy_manifest_with_personal_file_in_owned_files_is_still_read() {
     value.as_object_mut().unwrap().remove("created_once");
     fs::write(&manifest, serde_json::to_vec_pretty(&value).unwrap()).unwrap();
     fs::remove_file(root.path().join("AGENTS.local.md")).unwrap();
-    let plan: Value =
-        serde_json::from_slice(&agents_plan(&root, &agents_request("en", "tracked")).stdout)
-            .unwrap();
+    let plan: Value = ok_result(&agents_plan(&root, &agents_request("en", "tracked")));
     // Created once before: the user's deletion is respected and the file is not recreated.
     assert!(actions(&plan)
         .iter()
@@ -1084,7 +1073,10 @@ fn baseline(root: &TempDir, extra: &[&str]) -> (std::process::Output, Value) {
         .args(extra)
         .output()
         .unwrap();
-    let v = serde_json::from_slice(&out.stdout).unwrap_or(Value::Null);
+    // Success carries the inventory under `result`; a failure envelope has none (Null).
+    let v = serde_json::from_slice::<Value>(&out.stdout)
+        .map(|v| v["result"].clone())
+        .unwrap_or(Value::Null);
     (out, v)
 }
 #[test]
@@ -1431,7 +1423,8 @@ fn protocol_fixtures_record_current_contract() {
         "project-plan-create",
         &["project-plan", &p],
         prof.as_bytes(),
-    );
+    )["result"]
+        .clone();
     let digest = plan["plan_digest"].as_str().unwrap().to_string();
     let mut v2 = plan.clone();
     v2["protocol_version"] = json!(2);
@@ -1499,7 +1492,8 @@ fn protocol_fixtures_record_current_contract() {
         "agents-plan-create",
         &["agents-plan", &p],
         agents_request("ko", "none").to_string().as_bytes(),
-    );
+    )["result"]
+        .clone();
     let adigest = aplan["plan_digest"].as_str().unwrap().to_string();
     run.case(
         "agents-apply-ok",
@@ -1660,7 +1654,8 @@ fn protocol_schemas_declare_2020_12_and_cover_current_fixtures() {
     let unique: std::collections::BTreeSet<_> = ids.iter().collect();
     assert_eq!(unique.len(), ids.len(), "duplicate $id");
     // Key coverage only, not schema validation (the validator is HOLD-00D-2): every current
-    // success output carries exactly the required keys and nothing outside properties.
+    // success output carries exactly the required keys and nothing outside properties. Since
+    // 01-C #1990 the operation result sits under the envelope's `result`.
     for (schema, fixture) in [
         ("plan", "06-project-plan-create"),
         ("plan", "10-project-plan-unchanged"),
@@ -1669,7 +1664,7 @@ fn protocol_schemas_declare_2020_12_and_cover_current_fixtures() {
         ("package-result", "13-package-resolve-user"),
     ] {
         let s = repo_json(&format!("schemas/protocol/v1/{schema}.schema.json"));
-        let out = &repo_json(&format!("{PROTOCOL_FIXTURES}/{fixture}.json"))["stdout"];
+        let out = &repo_json(&format!("{PROTOCOL_FIXTURES}/{fixture}.json"))["stdout"]["result"];
         let props = s["properties"].as_object().unwrap();
         for k in s["required"].as_array().unwrap() {
             assert!(
@@ -1750,6 +1745,87 @@ fn exit_code_table_matches_current_fixtures() {
     }
 }
 
+/// AC-01C-1 (Issue #1990): every internal operation answers with the decided envelope and a
+/// typed error; the launchers and words that name no operation do not. Runs over the golden
+/// fixtures, which `protocol_fixtures_record_current_contract` binds to the binary's output.
+#[test]
+fn envelope_fields_and_error_codes() {
+    // `identity` is covered by identity_primary_checkout and the refusal test; it has no
+    // golden fixture because its output carries the fixture HOME path.
+    const OPS: [&str; 8] = [
+        "package-inspect",
+        "project-plan",
+        "project-apply",
+        "package-resolve",
+        "agents-plan",
+        "agents-apply",
+        "baseline-inventory",
+        "identity",
+    ];
+    const KINDS: [&str; 11] = [
+        "usage",
+        "invalid_input",
+        "input_too_large",
+        "unsupported_protocol_version",
+        "stale_plan",
+        "permission_reference_missing",
+        "not_found",
+        "conflict",
+        "partial",
+        "io",
+        "internal",
+    ];
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(PROTOCOL_FIXTURES);
+    let mut seen = (0, 0, 0);
+    for e in fs::read_dir(dir).unwrap() {
+        let name = e.unwrap().file_name().to_string_lossy().into_owned();
+        let f = repo_json(&format!("{PROTOCOL_FIXTURES}/{name}"));
+        let word = f["args"][0].as_str().unwrap_or_default();
+        let out = &f["stdout"];
+        if !OPS.contains(&word) {
+            assert!(
+                out.get("ok").is_none(),
+                "{name}: launcher or unknown word got an envelope"
+            );
+            continue;
+        }
+        let op = word.replacen('-', ".", 1);
+        assert_eq!(out["protocol_version"], json!(1), "{name}");
+        assert_eq!(out["operation"], json!(op), "{name}");
+        let exit = f["exit"].as_i64().unwrap();
+        assert_eq!(out["ok"], json!(exit == 0), "{name}");
+        if exit == 0 {
+            assert_eq!(out.as_object().unwrap().len(), 4, "{name}");
+            assert!(out["result"].is_object(), "{name}");
+            seen.0 += 1;
+            continue;
+        }
+        assert_eq!(out.as_object().unwrap().len(), 4, "{name}");
+        let err = &out["error"];
+        let kind = err["kind"].as_str().unwrap();
+        assert!(KINDS.contains(&kind), "{name}: {kind}");
+        assert!(err["message"].is_string(), "{name}");
+        assert_eq!(err["retryable"], json!(kind == "io"), "{name}");
+        assert_eq!(
+            exit == 2,
+            kind == "usage",
+            "{name}: exit {exit} kind {kind}"
+        );
+        let line = f["stderr"].as_str().unwrap();
+        assert_eq!(line.lines().count(), 1, "{name}: stderr is one human line");
+        if kind == "usage" {
+            seen.2 += 1;
+        } else {
+            assert_eq!(line.trim_end(), err["message"].as_str().unwrap(), "{name}");
+            seen.1 += 1;
+        }
+    }
+    assert!(
+        seen.0 > 0 && seen.1 > 0 && seen.2 > 0,
+        "success, failure and usage cases all present: {seen:?}"
+    );
+}
+
 #[test]
 fn digest_normalization_examples_are_reproducible() {
     let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -1777,6 +1853,268 @@ fn digest_normalization_examples_are_reproducible() {
         tuple, jcs,
         "the two normalizations disagree on the same data"
     );
+}
+
+// ---- Common skill package structure (02-A #1991) -------------------------------------------
+//
+// Run with `cargo test --offline --locked skill_package`. Reference depth (REQ-02A-08) is
+// counted outside the route indirection: SKILL.md may point only at references/routes.json,
+// routes.json points at the workflows, and a workflow points at no other package file.
+mod skill_package {
+    use super::cli;
+    use serde_json::{json, Value};
+    use std::{
+        fs,
+        path::{Path, PathBuf},
+    };
+    use tempfile::TempDir;
+
+    const INTENTS: [&str; 8] = [
+        "READ", "SETUP", "UPDATE", "PLAN", "RUN", "VERIFY", "AUDIT", "SYNC",
+    ];
+    const MANIFEST: &str = "references/source-manifest.json";
+    // Claude Code-only frontmatter (https://code.claude.com/docs/en/skills, read 2026-11-08).
+    const CLAUDE_ONLY: [&str; 9] = [
+        "allowed-tools",
+        "argument-hint",
+        "disable-model-invocation",
+        "user-invocable",
+        "context",
+        "agent",
+        "hooks",
+        "paths",
+        "model",
+    ];
+    const ALLOWED_KEYS: [&str; 4] = ["name", "description", "license", "metadata"];
+
+    fn root() -> PathBuf {
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai")
+    }
+    fn files(dir: &Path, base: &Path, out: &mut Vec<String>) {
+        for entry in fs::read_dir(dir).unwrap() {
+            let path = entry.unwrap().path();
+            if path.is_dir() {
+                files(&path, base, out);
+            } else {
+                out.push(
+                    path.strip_prefix(base)
+                        .unwrap()
+                        .to_str()
+                        .unwrap()
+                        .replace('\\', "/"),
+                );
+            }
+        }
+    }
+    fn package_files() -> Vec<String> {
+        let mut out = Vec::new();
+        files(&root(), &root(), &mut out);
+        out.sort();
+        out
+    }
+    /// Top-level frontmatter keys; nested `metadata:` lines are indented and skipped.
+    fn frontmatter(text: &str) -> (Vec<(String, String)>, &str) {
+        let rest = text
+            .strip_prefix("---\n")
+            .expect("SKILL.md starts with ---");
+        let end = rest.find("\n---\n").expect("frontmatter is closed");
+        let keys = rest[..end]
+            .lines()
+            .filter(|l| !l.starts_with(' ') && !l.trim().is_empty())
+            .map(|l| {
+                let (k, v) = l.split_once(':').expect("key: value");
+                (k.trim().to_string(), v.trim().to_string())
+            })
+            .collect();
+        (keys, &rest[end + 5..])
+    }
+    fn package_paths_in(text: &str) -> Vec<String> {
+        ["references/", "workflows/", "resources/", "agents/"]
+            .iter()
+            .flat_map(|p| text.match_indices(p).map(|(i, _)| i))
+            .map(|i| {
+                text[i..]
+                    .chars()
+                    .take_while(|c| !c.is_whitespace() && !matches!(c, '`' | ')' | ',' | '"'))
+                    .collect::<String>()
+                    .trim_end_matches('.')
+                    .to_string()
+            })
+            .collect()
+    }
+
+    #[test]
+    fn skill_package_frontmatter_is_host_neutral() {
+        let text = fs::read_to_string(root().join("SKILL.md")).unwrap();
+        let (keys, body) = frontmatter(&text);
+        let names: Vec<&str> = keys.iter().map(|(k, _)| k.as_str()).collect();
+        for k in &names {
+            assert!(
+                ALLOWED_KEYS.contains(k),
+                "frontmatter key {k} is not host-neutral"
+            );
+            assert!(!CLAUDE_ONLY.contains(k));
+        }
+        let get = |k: &str| keys.iter().find(|(n, _)| n == k).map(|(_, v)| v.as_str());
+        // Agent Skills: name 1-64 [a-z0-9-] matching the directory; description 1-1024.
+        let name = get("name").expect("name");
+        assert_eq!(name, root().file_name().unwrap().to_str().unwrap());
+        assert!(!name.is_empty() && name.len() <= 64);
+        assert!(name
+            .chars()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-'));
+        let description = get("description").expect("description");
+        assert!(!description.is_empty() && description.chars().count() <= 1024);
+        // No Claude argument substitution or dynamic shell context in the shared body.
+        assert!(!text.contains("$ARGUMENTS"));
+        assert!(!text.contains("!`"));
+        assert!(
+            text.lines().count() <= 500,
+            "SKILL.md stays under 500 lines"
+        );
+        // One hop: the router names only the route table.
+        assert_eq!(package_paths_in(body), vec!["references/routes.json"]);
+        // REQ-02A-05: no fixed agent definitions are shipped.
+        assert!(package_files()
+            .iter()
+            .all(|p| !p.starts_with("agents/") && !p.ends_with(".toml")));
+    }
+
+    #[test]
+    fn routes_reference_existing_workflows() {
+        let routes: Value =
+            serde_json::from_slice(&fs::read(root().join("references/routes.json")).unwrap())
+                .unwrap();
+        assert_eq!(routes["schema_version"], json!(1));
+        assert_eq!(routes["classification_is_authorization"], json!(false));
+        let table = routes["routes"].as_object().unwrap();
+        let mut keys: Vec<&str> = table.keys().map(String::as_str).collect();
+        keys.sort();
+        let mut want = INTENTS.to_vec();
+        want.sort();
+        assert_eq!(keys, want);
+        for (intent, route) in table {
+            let reference = route["reference"].as_str().unwrap();
+            assert_eq!(
+                reference,
+                format!("../workflows/{}.md", intent.to_ascii_lowercase()),
+                "{intent}"
+            );
+            assert!(
+                root().join("references").join(reference).is_file(),
+                "{intent}"
+            );
+            assert!(route["requires_binary"].is_boolean(), "{intent}");
+            // A workflow loads no further package file (depth beyond the route table).
+            let body = fs::read_to_string(root().join("references").join(reference)).unwrap();
+            assert_eq!(package_paths_in(&body), Vec::<String>::new(), "{intent}");
+            assert!(
+                !body.contains("$ARGUMENTS") && !body.contains("!`"),
+                "{intent}"
+            );
+            assert!(body.lines().count() <= 500, "{intent}");
+        }
+    }
+
+    #[test]
+    fn source_manifest_covers_every_package_file() {
+        let manifest: Value =
+            serde_json::from_slice(&fs::read(root().join(MANIFEST)).unwrap()).unwrap();
+        assert_eq!(manifest["schema_version"], json!(1));
+        let entries = manifest["files"].as_object().unwrap();
+        let mut covered: Vec<&str> = entries.keys().map(String::as_str).collect();
+        covered.sort();
+        let mut present = package_files();
+        present.retain(|p| p != MANIFEST);
+        assert_eq!(
+            covered, present,
+            "every package file except the manifest has an entry"
+        );
+        for (path, entry) in entries {
+            let bytes = fs::read(root().join(path)).unwrap();
+            assert_eq!(
+                format!("sha256:{}", entry["sha256"].as_str().unwrap()),
+                moai_cli::digest(&bytes),
+                "{path}: manifest sha256 is stale"
+            );
+            for key in ["kind", "template_id", "adoption", "reason"] {
+                assert!(entry["origin"][key].is_string(), "{path}: origin.{key}");
+            }
+        }
+        let legacy = &manifest["legacy_source"];
+        assert_eq!(legacy["license"], json!("Apache-2.0"));
+        assert_eq!(legacy["revision"].as_str().unwrap().len(), 40);
+        assert_eq!(legacy["blob_check"]["mismatched"], json!([]));
+        assert_eq!(legacy["blob_check"]["missing_at_revision"], json!([]));
+        // The full legacy list lives outside the package (installs never carry it), pinned
+        // by sha256; the package keeps only counts.
+        let map_ref = &legacy["asset_map"];
+        let map_path =
+            Path::new(env!("CARGO_MANIFEST_DIR")).join(map_ref["path"].as_str().unwrap());
+        assert!(!map_path.starts_with(root()));
+        let map_bytes = fs::read(&map_path).unwrap();
+        assert_eq!(
+            format!("sha256:{}", map_ref["sha256"].as_str().unwrap()),
+            moai_cli::digest(&map_bytes),
+            "legacy asset map changed without updating the manifest"
+        );
+        let map: Value = serde_json::from_slice(&map_bytes).unwrap();
+        assert_eq!(map["revision"], legacy["revision"]);
+        assert_eq!(map["inventory_sha256"], legacy["inventory_sha256"]);
+        let assets = map["assets"].as_array().unwrap();
+        assert_eq!(map_ref["rows"], json!(assets.len()));
+        assert_eq!(legacy["blob_check"]["rows"], json!(assets.len()));
+        let intents: Vec<String> = INTENTS.iter().map(|i| i.to_ascii_lowercase()).collect();
+        for i in &intents {
+            let n = assets
+                .iter()
+                .filter(|a| a["intents"].as_array().unwrap().contains(&json!(i)))
+                .count();
+            assert_eq!(map_ref["rows_by_intent"][i], json!(n), "{i}");
+        }
+        for a in assets {
+            // Unmapped originals stay unchecked; nothing is marked done or dropped.
+            assert_eq!(a["status"], json!("unchecked"), "{}", a["path"]);
+            assert_eq!(a["sha256"].as_str().unwrap().len(), 64);
+            let mapped = a["intents"].as_array().unwrap();
+            assert!(mapped
+                .iter()
+                .all(|i| intents.contains(&i.as_str().unwrap().to_string())));
+            if mapped.is_empty() {
+                assert!(a["proposed_route"].is_string(), "{}", a["path"]);
+            }
+        }
+        // Pointers only: no legacy bytes are copied into the package.
+        assert!(package_files()
+            .iter()
+            .all(|p| !p.contains("source-assets/")));
+    }
+
+    #[test]
+    fn package_inspect_rejects_missing_skill_md() {
+        let real = root();
+        let args = ["package-inspect", real.to_str().unwrap()];
+        let first = cli(&args, &Value::Null);
+        assert!(
+            first.status.success(),
+            "{}",
+            String::from_utf8_lossy(&first.stderr)
+        );
+        assert_eq!(
+            first.stdout,
+            cli(&args, &Value::Null).stdout,
+            "digest is repeatable"
+        );
+        let copy = TempDir::new().unwrap();
+        fs::create_dir(copy.path().join("workflows")).unwrap();
+        fs::write(copy.path().join("workflows/read.md"), "# READ").unwrap();
+        let out = cli(
+            &["package-inspect", copy.path().to_str().unwrap()],
+            &Value::Null,
+        );
+        assert!(!out.status.success());
+        assert!(String::from_utf8_lossy(&out.stderr).contains("SKILL.md"));
+    }
 }
 
 // ---- identity (Issue #1988, 01-A) ---------------------------------------------------------
@@ -1810,7 +2148,10 @@ fn ident_env(
         cmd.env("PATH", p);
     }
     let out = cmd.output().unwrap();
-    let v = serde_json::from_slice(&out.stdout).unwrap_or(Value::Null);
+    // The identity sits under the envelope's `result` (01-C #1990); a failure has none.
+    let v = serde_json::from_slice::<Value>(&out.stdout)
+        .map(|v| v["result"].clone())
+        .unwrap_or(Value::Null);
     (out, v)
 }
 fn canon(p: &std::path::Path) -> String {
@@ -1843,6 +2184,11 @@ fn identity_primary_checkout() {
     let before = (tree_state(repo.path()), tree_state(home.path()));
     let (out, v) = ident(repo.path(), home.path(), None);
     assert!(out.status.success(), "{:?}", out.stderr);
+    // AC-01C-1: identity answers with the same envelope as the other internal operations.
+    let envelope: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(envelope["protocol_version"], json!(1));
+    assert_eq!(envelope["operation"], json!("identity"));
+    assert_eq!(envelope["ok"], json!(true));
     let git_dir = canon(&repo.path().join(".git"));
     assert_eq!(v["identity_status"], json!("ok"));
     assert_eq!(v["workspace_kind"], json!("primary"));
@@ -2068,12 +2414,23 @@ fn identity_refuses_symlinks_and_bad_paths_without_echo() {
     for p in [&link, &missing, &file] {
         let (out, _) = ident(p, home.path(), None);
         assert!(!out.status.success(), "{p:?} must be refused");
-        assert!(out.stdout.is_empty());
-        let err = String::from_utf8_lossy(&out.stderr);
-        assert!(
-            !err.contains(base.path().to_str().unwrap()),
-            "path echoed: {err}"
-        );
+        // A failure envelope on stdout (01-C #1990); neither stream echoes the path.
+        let failure: Value = serde_json::from_slice(&out.stdout).unwrap();
+        assert_eq!(failure["ok"], json!(false));
+        assert_eq!(failure["operation"], json!("identity"));
+        let expected = if p == &missing {
+            "not_found"
+        } else {
+            "invalid_input"
+        };
+        assert_eq!(failure["error"]["kind"], json!(expected), "{p:?}");
+        for stream in [&out.stdout, &out.stderr] {
+            let text = String::from_utf8_lossy(stream);
+            assert!(
+                !text.contains(base.path().to_str().unwrap()),
+                "path echoed: {text}"
+            );
+        }
     }
     // A symlinked project state root is refused like target() refuses it.
     let elsewhere = TempDir::new().unwrap();

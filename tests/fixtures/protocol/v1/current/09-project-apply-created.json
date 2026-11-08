@@ -38,8 +38,13 @@
     "target_binding": "<masked>"
   },
   "stdout": {
-    "host_verified": false,
-    "profile_digest": "sha256:60571df23ab38dd309f928ebbb001b1accc1f3c0d527069543ce3d7f7a375fbf",
-    "state": "created"
+    "ok": true,
+    "operation": "project.apply",
+    "protocol_version": 1,
+    "result": {
+      "host_verified": false,
+      "profile_digest": "sha256:60571df23ab38dd309f928ebbb001b1accc1f3c0d527069543ce3d7f7a375fbf",
+      "state": "created"
+    }
   }
 }
