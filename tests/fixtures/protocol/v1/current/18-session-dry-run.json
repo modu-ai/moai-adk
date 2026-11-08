@@ -24,9 +24,11 @@
       "--effort",
       "medium"
     ],
+    "env_keys": [],
     "executed": false,
     "host": "claude",
     "host_loaded": false,
+    "name": "agent-1",
     "notes": [],
     "role": "agent"
   }
