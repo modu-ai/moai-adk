@@ -1762,7 +1762,7 @@ fn envelope_fields_and_error_codes() {
         "baseline-inventory",
         "identity",
     ];
-    const KINDS: [&str; 11] = [
+    const KINDS: [&str; 12] = [
         "usage",
         "invalid_input",
         "input_too_large",
@@ -1774,6 +1774,7 @@ fn envelope_fields_and_error_codes() {
         "partial",
         "io",
         "internal",
+        "git_failed",
     ];
     let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(PROTOCOL_FIXTURES);
     let mut seen = (0, 0, 0);
@@ -2373,30 +2374,36 @@ fn identity_ignores_injected_git_environment() {
     }
 }
 
-/// Issue #2033 AC-IDF-2: git present but failing is `git_failed`, not `no_git`, and the
-/// reason carries git's message without any path.
+/// Issue #2033 AC-IDF-2: git present but failing is a `git_failed` error envelope, not the
+/// `no_git` status, and the message carries git's summary without any path.
 #[test]
 fn identity_reports_git_failure_separately_from_no_git() {
     let repo = TempDir::new().unwrap();
     let home = TempDir::new().unwrap();
     committed_repo(repo.path());
     // safe.directory refusal; GIT_CONFIG_GLOBAL=/dev/null leaves no exception configured.
-    let (out, v) = ident_env(
+    let (out, _) = ident_env(
         repo.path(),
         home.path(),
         None,
         &[("GIT_TEST_ASSUME_DIFFERENT_OWNER", "1")],
     );
-    assert!(out.status.success(), "{:?}", out.stderr);
-    assert_eq!(v["identity_status"], json!("git_failed"));
-    let reason = v["reason"].as_str().unwrap();
-    assert!(reason.contains("dubious ownership"), "{reason}");
-    assert!(
-        !reason.contains('/') && !reason.contains('\''),
-        "path echoed: {reason}"
-    );
-    for k in ["workspace_kind", "clone_anchor", "clone_id", "workspace_id"] {
-        assert_eq!(v[k], Value::Null, "{k} must not be guessed");
+    assert_eq!(out.status.code(), Some(1), "{:?}", out.stderr);
+    let env: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(env["operation"], json!("identity"));
+    assert_eq!(env["ok"], json!(false));
+    assert!(env.get("result").is_none());
+    let err = &env["error"];
+    assert_eq!(err["kind"], json!("git_failed"));
+    assert_eq!(err["retryable"], json!(false));
+    let message = err["message"].as_str().unwrap();
+    assert!(message.contains("dubious ownership"), "{message}");
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    for text in [message, stderr.as_ref()] {
+        assert!(
+            !text.contains('/') && !text.contains('\''),
+            "path echoed: {text}"
+        );
     }
 }
 

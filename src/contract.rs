@@ -24,6 +24,8 @@ pub enum Kind {
     Partial,
     Io,
     Internal,
+    /// git ran and failed for a reason other than "not a repository" (Issue #2033).
+    GitFailed,
 }
 
 impl Kind {
@@ -40,6 +42,7 @@ impl Kind {
             Kind::Partial => "partial",
             Kind::Io => "io",
             Kind::Internal => "internal",
+            Kind::GitFailed => "git_failed",
         }
     }
     /// Only an I/O failure may succeed when the same request is sent again unchanged.
@@ -56,6 +59,9 @@ const RULES: &[(&str, Kind)] = &[
     ("partial apply", Kind::Partial),
     ("partial creation possible", Kind::Partial),
     ("conflict in ", Kind::Conflict),
+    // identity's `git failed: <git summary>`; ahead of the generic words the summary may hold.
+    // The bare `git failed` of baseline (no colon) stays `io` below.
+    ("git failed: ", Kind::GitFailed),
     ("input exceeds 64 KiB", Kind::InputTooLarge),
     (
         "permission reference required",
@@ -238,6 +244,10 @@ mod tests {
             ("unexpected git rev-parse output", Io),
             ("git did not report a work tree", Io),
             ("git reported a path that cannot be resolved", Io),
+            // identity git failure (#2033); the last two would match `git output` without the rule
+            ("git failed: detected dubious ownership in repository at", GitFailed),
+            ("git failed: git output exceeded the size limit", GitFailed),
+            ("git failed: git output was not UTF-8", GitFailed),
         ];
         for (message, kind) in cases {
             assert_eq!(classify(message), kind, "{message}");

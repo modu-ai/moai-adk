@@ -105,12 +105,13 @@ fn rev_parse(dir: &Path, args: &[&str]) -> Git {
     }
 }
 
-/// `no_git` only when git said so; any other git failure is `git_failed` with its summary.
-fn failed(summary: &str, home: Value) -> Value {
+/// `no_git` status only when git said so; any other git failure is an error whose message
+/// (`git failed: <summary>`) the contract classifies as `git_failed` (Issue #2033).
+fn failed(summary: &str, home: Value) -> Result<Value> {
     if summary.starts_with(NOT_A_REPOSITORY) {
-        empty("no_git", "not inside a git repository", home)
+        Ok(empty("no_git", "not inside a git repository", home))
     } else {
-        empty("git_failed", &format!("git failed: {summary}"), home)
+        Err(format!("git failed: {summary}"))
     }
 }
 
@@ -156,8 +157,8 @@ fn empty(status: &str, reason: &str, home: Value) -> Value {
 }
 
 /// Resolves the identity of `path`. Never writes. Returns `Err` only for an unusable input
-/// path or a refused symlink; "not a repository", "git failed" and "git missing" are typed
-/// statuses.
+/// path, a refused symlink or a git failure (`git failed: ...`); "not a repository" and "git
+/// missing" are typed statuses.
 pub fn identity(path: &Path) -> Result<Value> {
     let meta = fs::symlink_metadata(path).map_err(|_| "path unavailable")?;
     if meta.file_type().is_symlink() {
@@ -185,7 +186,7 @@ pub fn identity(path: &Path) -> Result<Value> {
         ],
     ) {
         Git::Unavailable => return Ok(empty("git_unavailable", "git was not found on PATH", home)),
-        Git::Failed(summary) => return Ok(failed(&summary, home)),
+        Git::Failed(summary) => return failed(&summary, home),
         Git::Lines(l) if l.len() == 4 => l,
         Git::Lines(_) => return Err("unexpected git rev-parse output".into()),
     };
@@ -199,7 +200,7 @@ pub fn identity(path: &Path) -> Result<Value> {
             Git::Unavailable => {
                 return Ok(empty("git_unavailable", "git was not found on PATH", home))
             }
-            Git::Failed(summary) => return Ok(failed(&summary, home)),
+            Git::Failed(summary) => return failed(&summary, home),
             Git::Lines(_) => return Err("git did not report a work tree".into()),
         }
     } else {
