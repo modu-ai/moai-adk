@@ -39,7 +39,7 @@ fn roleless_cc_is_a_plain_claude_session() {
         !a.iter().any(|x| x == "--dangerously-skip-permissions"),
         "AC-1: no new permission bypass"
     );
-    // HOLD-L1 option A (interim): the launcher's Claude defaults, from one constant.
+    // User decision 2026-11-08 (HOLD-L1 = A, #2062): the launcher's Claude defaults.
     const { assert!(moai_cli::session::ROLELESS_LAUNCHER_DEFAULTS) };
     assert_eq!(
         a,
@@ -54,7 +54,8 @@ fn roleless_cc_is_a_plain_claude_session() {
         ]
     );
     let notes = v["notes"].to_string();
-    assert!(notes.contains("HOLD-L1"), "{notes}");
+    assert!(!notes.contains("HOLD"), "decided, no HOLD wording: {notes}");
+    assert!(notes.contains("user decision 2026-11-08: A"), "{notes}");
     assert!(notes.contains("no role"));
     // Options still apply; an explicit name is passed through, a role is never guessed.
     let (_, v, _) = dry(
