@@ -177,6 +177,13 @@ enum Command {
         #[arg(long)]
         max_bytes: Option<u64>,
     },
+    /// Read-only installation inspection (04-A #1998): PATH generations, receipts under
+    /// `~/.moai-cli/installations/`, Go-generation path existence. Writes nothing.
+    InstallInspect {
+        /// Accepted for the REQ-04A-02 invocation form; output is always the JSON envelope.
+        #[arg(long)]
+        json: bool,
+    },
     /// Temporary (05-B #2002; the name is fixed after P06): RUN admission of an approved plan.
     /// Typed request on stdin; reads the project's `HEAD^{commit}` with git, writes nothing.
     PlanAdmit {
@@ -270,7 +277,7 @@ fn launch(
 
 /// Internal operations (01-C #1990): subcommand word and operation name. The launchers are
 /// developer tools and stay outside the envelope contract.
-const OPERATIONS: [(&str, &str); 14] = [
+const OPERATIONS: [(&str, &str); 15] = [
     ("package-inspect", "package.inspect"),
     ("project-plan", "project.plan"),
     ("project-apply", "project.apply"),
@@ -285,6 +292,7 @@ const OPERATIONS: [(&str, &str); 14] = [
     ("codex-doctor", "codex.doctor"),
     ("todo-promote-preview", "todo.promote.plan"),
     ("todo-promote-apply", "todo.promote.apply"),
+    ("install-inspect", "install.inspect"),
 ];
 fn operation_of(word: &str) -> Option<&'static str> {
     OPERATIONS
@@ -454,6 +462,14 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
                 .unwrap_or_else(|| home.join(".codex"));
             let cwd = cwd.unwrap_or_else(|| project.clone());
             codex::doctor(&project, &cwd, &codex_home, &home, &fallback, max_bytes)
+        }
+        Command::InstallInspect { json: _ } => {
+            let home = std::env::var_os("HOME")
+                .filter(|h| !h.is_empty())
+                .map(PathBuf::from)
+                .ok_or("home directory missing; install-inspect requires HOME")?;
+            let path_env = std::env::var("PATH").unwrap_or_default();
+            moai_cli::install::inspect(&home, &path_env)
         }
         Command::PlanAdmit { project } => {
             let request = input::<moai_cli::plan::AdmissionRequest>()?;
