@@ -1,31 +1,31 @@
 {
+  "case": "agents-plan-protocol-version-2",
   "args": [
     "agents-plan",
     "<root>"
   ],
-  "case": "agents-plan-protocol-version-2",
+  "stdin": {
+    "protocol_version": 2,
+    "language": "ko",
+    "workflow_reference": "skills/moai/workflows/",
+    "local_file": "none"
+  },
   "exit": 1,
+  "stdout": {
+    "protocol_version": 1,
+    "operation": "agents.plan",
+    "ok": false,
+    "error": {
+      "kind": "invalid_input",
+      "message": "invalid agents request; no values were logged",
+      "retryable": false
+    }
+  },
+  "stderr": "invalid agents request; no values were logged\n",
   "masked_keys": [
     "target_binding",
     "plan_digest",
     "collected_at",
     "receipt"
-  ],
-  "stderr": "invalid agents request; no values were logged\n",
-  "stdin": {
-    "language": "ko",
-    "local_file": "none",
-    "protocol_version": 2,
-    "workflow_reference": "skills/moai/workflows/"
-  },
-  "stdout": {
-    "error": {
-      "kind": "invalid_input",
-      "message": "invalid agents request; no values were logged",
-      "retryable": false
-    },
-    "ok": false,
-    "operation": "agents.plan",
-    "protocol_version": 1
-  }
+  ]
 }
