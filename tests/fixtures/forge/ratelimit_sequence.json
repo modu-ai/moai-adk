@@ -1,0 +1,21 @@
+{
+  "description": "Synthetic. retry-after, then primary limit exhausted, then a secondary limit without headers, then success.",
+  "exchanges": [
+    {
+      "request": {"method": "GET", "url": "https://api.github.com/repos/acme/widgets"},
+      "response": {"status": 403, "headers": {"retry-after": "3"}, "body": {"message": "You have exceeded a secondary rate limit."}}
+    },
+    {
+      "request": {"method": "GET", "url": "https://api.github.com/repos/acme/widgets"},
+      "response": {"status": 403, "headers": {"x-ratelimit-limit": "5000", "x-ratelimit-remaining": "0", "x-ratelimit-reset": "1794000100", "x-ratelimit-resource": "core"}, "body": {"message": "API rate limit exceeded."}}
+    },
+    {
+      "request": {"method": "GET", "url": "https://api.github.com/repos/acme/widgets"},
+      "response": {"status": 429, "headers": {}, "body": {"message": "You have exceeded a secondary rate limit."}}
+    },
+    {
+      "request": {"method": "GET", "url": "https://api.github.com/repos/acme/widgets"},
+      "response": {"status": 200, "headers": {"etag": "\"repo-1\""}, "body": {"id": 101, "full_name": "acme/widgets"}}
+    }
+  ]
+}

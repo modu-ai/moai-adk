@@ -1,0 +1,40 @@
+{
+  "description": "Synthetic, secret-free. Phase 1 reads the repository and its issues; phase 2 re-reads with the overlap cursor; phase 3 asks the same URLs again and GitHub answers 304.",
+  "phases": [
+    [
+      {
+        "request": {"method": "GET", "url": "https://api.github.com/repos/acme/widgets"},
+        "response": {"status": 200, "headers": {"etag": "\"repo-1\"", "x-ratelimit-limit": "5000", "x-ratelimit-remaining": "4999", "x-ratelimit-reset": "1794134668", "x-ratelimit-resource": "core"}, "body": {"id": 101, "full_name": "acme/widgets"}}
+      },
+      {
+        "request": {"method": "GET", "url": "https://api.github.com/repos/acme/widgets/issues?state=open&sort=updated&direction=asc&per_page=100"},
+        "response": {"status": 200, "headers": {"etag": "W/\"issues-1\"", "x-ratelimit-limit": "5000", "x-ratelimit-remaining": "4998", "x-ratelimit-reset": "1794134668", "x-ratelimit-resource": "core"}, "body": [
+          {"id": 7001, "node_id": "I_7001", "number": 7, "title": "Add a parser", "state": "open", "state_reason": null, "labels": [{"name": "type:feature"}], "updated_at": "2026-11-01T00:00:00Z", "body": "spec"},
+          {"id": 8001, "node_id": "PR_8001", "number": 8, "title": "Parser PR", "state": "open", "state_reason": null, "labels": [], "updated_at": "2026-10-31T12:00:00Z", "pull_request": {"url": "https://api.github.com/repos/acme/widgets/pulls/8"}}
+        ]}
+      }
+    ],
+    [
+      {
+        "request": {"method": "GET", "url": "https://api.github.com/repos/acme/widgets", "headers": {"If-None-Match": "\"repo-1\""}},
+        "response": {"status": 304, "headers": {"etag": "\"repo-1\"", "x-ratelimit-limit": "5000", "x-ratelimit-remaining": "4998", "x-ratelimit-reset": "1794134668", "x-ratelimit-resource": "core"}}
+      },
+      {
+        "request": {"method": "GET", "url": "https://api.github.com/repos/acme/widgets/issues?state=open&sort=updated&direction=asc&per_page=100&since=2026-10-31T23:59:00Z"},
+        "response": {"status": 200, "headers": {"etag": "W/\"issues-2\""}, "body": [
+          {"id": 7001, "node_id": "I_7001", "number": 7, "title": "Add a parser", "state": "open", "state_reason": null, "labels": [{"name": "type:feature"}], "updated_at": "2026-11-01T00:00:00Z", "body": "spec"}
+        ]}
+      }
+    ],
+    [
+      {
+        "request": {"method": "GET", "url": "https://api.github.com/repos/acme/widgets", "headers": {"If-None-Match": "\"repo-1\""}},
+        "response": {"status": 304, "headers": {"etag": "\"repo-1\""}}
+      },
+      {
+        "request": {"method": "GET", "url": "https://api.github.com/repos/acme/widgets/issues?state=open&sort=updated&direction=asc&per_page=100&since=2026-10-31T23:59:00Z", "headers": {"If-None-Match": "W/\"issues-2\""}},
+        "response": {"status": 304, "headers": {"etag": "W/\"issues-2\"", "x-ratelimit-limit": "5000", "x-ratelimit-remaining": "4998", "x-ratelimit-reset": "1794134668", "x-ratelimit-resource": "core"}}
+      }
+    ]
+  ]
+}

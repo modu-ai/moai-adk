@@ -109,6 +109,11 @@ enum Command {
         #[arg(long)]
         go_repo: Option<PathBuf>,
     },
+    /// Read GitHub Issues and comments as TODO (GET only; typed JSON request on stdin,
+    /// envelope on stdout). Poll state: `<PROJECT>/.moai-cli/forge/poll-state.json`.
+    ForgeRead {
+        project: PathBuf,
+    },
     /// Read-only clone/workspace identity and state roots of a path (typed JSON on stdout).
     Identity {
         path: PathBuf,
@@ -201,7 +206,7 @@ fn launch(
 
 /// Internal operations (01-C #1990): subcommand word and operation name. The launchers are
 /// developer tools and stay outside the envelope contract.
-const OPERATIONS: [(&str, &str); 8] = [
+const OPERATIONS: [(&str, &str); 9] = [
     ("package-inspect", "package.inspect"),
     ("project-plan", "project.plan"),
     ("project-apply", "project.apply"),
@@ -210,6 +215,7 @@ const OPERATIONS: [(&str, &str); 8] = [
     ("agents-apply", "agents.apply"),
     ("baseline-inventory", "baseline.inventory"),
     ("identity", "identity"),
+    ("forge-read", "forge.read"),
 ];
 fn operation_of(word: &str) -> Option<&'static str> {
     OPERATIONS
@@ -307,6 +313,12 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             input::<AgentsPlan>()?,
             &plan_digest,
             &permission_reference,
+        ),
+        Command::ForgeRead { project } => moai_cli::forge::forge_read_cli(
+            &project,
+            input::<moai_cli::forge::ReadRequest>()?,
+            &moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
         ),
         Command::BaselineInventory {
             project,

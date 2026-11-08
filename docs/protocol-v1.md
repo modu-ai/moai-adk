@@ -4,7 +4,14 @@
 
 코드(`src/`)는 바꾸지 않았다. 구현 계획 6단계(Rust 오류 타입·exit 매핑·version 검사)는 선택지가 정해진 뒤에 한다.
 
-> **갱신(01-C #1990, 2026-11-08 사용자 결정)**: HOLD-00D-1·3·4가 결정되어 01-C가 구현했다. 모든 내부 operation은 stdout에 envelope 하나를 낸다. 성공은 `{protocol_version, operation, ok: true, result}`, 실패는 `{protocol_version, operation, ok: false, error{kind, message, retryable, next_actions?}}`이다. exit는 0/1/2를 유지하고, 실패 종류는 이 문서의 `kind` 11종에 `git_failed`(Issue #2033, `identity`에서 git이 저장소 밖이 아닌 다른 이유로 실패, 재시도 불가)를 더한 12종으로 구분한다. 고른 envelope에는 상태 필드가 없으므로 아래 envelope 후보 A·B(`status`/`domain_status`) 어느 쪽과도 같지 않다. 실패 쪽 모양은 오류 후보 B와 같다. 런처(`-l`, `-a`, `cc|glm|codex`, `session`)는 대상이 아니다. 아래 `현행 계약` 절의 fixture는 이 변경에 맞춰 다시 기록했다. 세부 규칙은 `docs/rust-product-path.md`의 `Output envelope` 절에 있다.
+> **갱신(01-C #1990, 2026-11-08 사용자 결정)**: HOLD-00D-1·3·4가 결정되어 01-C가 구현했다. 모든 내부 operation은 stdout에 envelope 하나를 낸다. 성공은 `{protocol_version, operation, ok: true, result}`, 실패는 `{protocol_version, operation, ok: false, error{kind, message, retryable, next_actions?}}`이다. exit는 0/1/2를 유지하고, 실패 종류는 `kind` 14종으로 구분한다. 이 문서의 11종에 다음 세 가지를 더한 것이다.
+> - `git_failed`(Issue #2033): `identity`에서 git이 "저장소 밖"이 아닌 다른 이유로 실패한 경우. 재시도 불가.
+> - `blocked`(07-A #2008, `forge.read`): 인증 실패(401), 권한 거부(403), 또는 재시도 예산을 넘긴 rate limit. 재시도 불가.
+> - `transport`(07-A #2008, `forge.read`): gh가 없거나, HTTP 응답이 없거나, 예상하지 못한 상태 코드. 재시도 가능.
+>
+> 추가는 #1990 HOLD-C2 / REQ-01C-02(r27)의 "필요 시 추가는 docs에 기록" 조항을 따랐고, 기존 11종의 의미는 바꾸지 않았다.
+>
+> 고른 envelope에는 상태 필드가 없으므로 아래 envelope 후보 A·B(`status`/`domain_status`) 어느 쪽과도 같지 않다. 실패 쪽 모양은 오류 후보 B와 같다. 런처(`-l`, `-a`, `cc|glm|codex`, `session`)는 대상이 아니다. 아래 `현행 계약` 절의 fixture는 이 변경에 맞춰 다시 기록했다. 세부 규칙은 `docs/rust-product-path.md`의 `Output envelope` 절에 있다.
 
 ## HOLD 현황
 
