@@ -611,6 +611,12 @@ pub(crate) fn agents_apply_amended(
     let mut receipt = apply::Receipt::new(&request_id, "agents.apply", &root);
     let (profile, profile_bytes) = read_profile(&root)?;
     let previous = read_manifest(&root, &profile.project_id)?;
+    // #2127: the generation linkage belongs to the last generation apply; an
+    // agents-only apply carries it forward instead of resetting it.
+    let (workflow_id, interview_revision) = previous
+        .as_ref()
+        .map(|m| (m.workflow_id.clone(), m.interview_revision.clone()))
+        .unwrap_or_default();
     let mut applied = Vec::new();
     let (mut owned, mut created): (Vec<OwnedFile>, Vec<String>) = match previous {
         Some(m) => {
@@ -814,8 +820,8 @@ pub(crate) fn agents_apply_amended(
         template_version: TEMPLATE_VERSION.into(),
         project_id: profile.project_id.clone(),
         profile_sha256: digest(&profile_bytes),
-        interview_revision: None,
-        workflow_id: None,
+        interview_revision,
+        workflow_id,
         workflow_reference: p.request.workflow_reference.clone(),
         source_kind: "generated".into(),
         sources: Vec::new(),
