@@ -1,4 +1,5 @@
 pub mod agents;
+pub mod apply;
 pub mod baseline;
 pub mod claim;
 pub mod claude;
@@ -19,8 +20,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::{
-    fs::{self, OpenOptions},
-    io::Write,
+    fs::{self},
     path::{Path, PathBuf},
 };
 
@@ -214,24 +214,43 @@ pub fn apply(root: &Path, p: Plan, confirmed: &str, permission: &str) -> Result<
     {
         return Err("stale or altered plan; re-preview required".into());
     }
-    if p.action == "unchanged" {
-        return Ok(json!({"state":"unchanged","host_verified":false}));
-    }
     let path = target(root)?;
+    let request_id = apply::new_request_id("project.apply", &p.plan_digest);
+    let mut receipt = apply::Receipt::new(&request_id, "project.apply", root);
+    if p.action == "unchanged" {
+        // REQ-01B-10: a re-run writes nothing; the receipt records zero publishes.
+        receipt.status = "complete".into();
+        receipt
+            .save(root)
+            .map_err(|e| format!("receipt not recorded: {e}"))?;
+        return Ok(json!({
+            "state":"unchanged","host_verified":false,"receipt":request_id
+        }));
+    }
     fs::create_dir_all(path.parent().expect("target parent"))
         .map_err(|_| "project state directory unavailable")?;
     let path = target(root)?;
-    let mut file = OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(path)
-        .map_err(|_| "exclusive create refused")?;
+    // Exclusive create through the apply engine (HOLD-B2): stage in a unique temp
+    // sibling and publish via hard link, so a crash mid-write never leaves a partial
+    // profile file behind.
     let mut bytes = serde_json::to_vec_pretty(&p.profile).expect("typed profile");
     bytes.push(b'\n');
-    file.write_all(&bytes)
-        .and_then(|_| file.sync_all())
-        .map_err(|_| "partial creation possible; preserve and inspect target")?;
-    Ok(json!({"state":"created","profile_digest":digest(&bytes),"host_verified":false}))
+    apply::publish_exclusive(&path, &bytes)?;
+    receipt.entry(
+        &format!("{PROJECT_STATE_DIR}/project.yaml"),
+        "create",
+        None,
+        Some(&digest(&bytes)),
+        true,
+        None,
+    );
+    receipt.status = "complete".into();
+    receipt.save(root).map_err(|e| {
+        format!("published {PROJECT_STATE_DIR}/project.yaml but its receipt was not recorded: {e}")
+    })?;
+    Ok(json!({
+        "state":"created","profile_digest":digest(&bytes),"host_verified":false,"receipt":request_id
+    }))
 }
 // Digest v1: sorted UTF-8 relative file paths and bytes, each framed by a u64 big-endian length.
 // Symlinks and special files are rejected. This is content integrity, not publisher trust.
