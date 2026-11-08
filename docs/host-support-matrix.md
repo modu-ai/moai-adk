@@ -1,0 +1,56 @@
+# Host 지원표 (RC1)
+
+이 문서의 열 정의와 Claude Code·Codex 행은 02-C #1993 소유다. 02-C가 아직 착수하지 않아, 지금은 02-D #1994가 쓴 ZCode 행만 있다. 열 형식은 02-D가 먼저 정했고, 02-C는 이 형식을 따른다(리더 결정 2026-11-08). host마다 surface를 나누고 항목마다 출처를 적는 형식이다. 08-D #2015 release 검토가 이 표를 읽는다.
+
+## 상태 어휘
+
+`capability_status`는 설계 10 §2의 capability 상태 모델을 따른다.
+
+| 값 | 뜻 |
+| --- | --- |
+| `unknown` | 공식 출처가 기능을 명시하지 않는다. 경로나 동작을 추정해 적지 않는다 |
+| `documented` | 공식 출처가 명시한다. 실측하지 않았다 |
+| `probed` | 해당 version·OS 조합에서 실측 receipt가 있다 |
+| `certified` | 실제 앱 E2E가 있다. 이 상태만 "지원"으로 표기할 수 있다 |
+| `stale` | 확인 뒤 출처나 제품이 바뀌어 다시 확인해야 한다 |
+
+`unknown` 행은 `unknown_class`에 다음 셋 중 하나를 둔다.
+
+| 값 | 뜻 |
+| --- | --- |
+| `표시 불가` | 그 표면에서 해당 기능을 보여 줄 수 없다 |
+| `대안` | 다른 기능으로 대신할 수 있다 |
+| `시험 대기` | 실측해야 알 수 있다 |
+
+## ZCode (02-D 초안)
+
+ZCode에는 1차 출처가 두 가지다. surface `app`은 데스크톱 앱 문서(zcode.z.ai)이고, surface `cli`는 `zai-org/ZCode` 저장소의 CLI 사용 문서다. RC1은 헤드리스 경로(`cli`)만 다룬다(사용자 결정 2026-11-08 16:4x). 두 출처가 서로 다르게 말하는 항목은 각자의 상태로 적고, 한쪽이 다른 쪽을 덮어쓰지 않는다. 모든 행은 2026-11-08에 확인했고 version은 3.17.2다. 실측은 하지 않았다(로컬에 `zcode` 없음).
+
+| host | surface | item | capability_status | unknown_class | 내용 | source |
+| --- | --- | --- | --- | --- | --- | --- |
+| ZCode | app | agents_loading | documented | | 전역 `~/.zcode/AGENTS.md` 뒤에 workspace `AGENTS.md`를 이어 붙인다. 디렉터리 단계 병합, 하위 디렉터리 스캔, `@import`/`@include` 전개는 하지 않는다. `CLAUDE.md`는 onboarding 1회 이전 소스로만 쓴다 | https://zcode.z.ai/en/docs/agents |
+| ZCode | app | skill_path | documented | | 사용자 수준 `~/.zcode/skills/<skill-name>/SKILL.md`. Project 경로는 문서에 없다 | https://zcode.z.ai/en/docs/skill |
+| ZCode | app | skill_limits | documented | | `name`·`description`이 필수다. description이 1024자를 넘으면 skill 전체가 빠지고, 본문이 100KB를 넘으면 잘린다 | https://zcode.z.ai/en/docs/skill |
+| ZCode | app | explicit_invocation | documented | | 채팅 입력에서 `$`를 쳐 skill을 고른다 | https://zcode.z.ai/en/docs/skill |
+| ZCode | app | import_dialog | documented | | Settings → Skills Import가 Claude Code·Codex CLI·OpenClaw·Augment·Windsurf의 skill 디렉터리를 Symlink/Copy, Global/Project로 가져온다. 정확한 소스 경로는 문서에 없다 | https://zcode.z.ai/en/docs/skill |
+| ZCode | app | hooks | documented | | `~/.zcode/cli/config.json`(`hooks.enabled: true`)과 plugin `hooks/hooks.json`만 실행한다. project hook은 현재 버전에서 실행하지 않는다(`config_project_hooks_ignored`). `.claude/settings.json`·`.agents/settings.json`은 읽기 전용 표시다 | https://zcode.z.ai/en/docs/hooks |
+| ZCode | app | plugin_manifest | documented | | `.zcode-plugin/plugin.json`을 먼저, `.claude-plugin/plugin.json`을 다음으로 찾는다. Claude Code marketplace를 미리 싣는다 | https://zcode.z.ai/en/docs/plugin |
+| ZCode | app | statusline | unknown | 시험 대기 | 문서 내비게이션과 ADE Tools 페이지에 statusline이 없다 | https://zcode.z.ai/en/docs |
+| ZCode | app | output_style | unknown | 대안 | 문서에 output style이 없다. 응답 형식은 공통 workflow의 출력 계약으로 대신한다 | https://zcode.z.ai/en/docs |
+| ZCode | cli | agents_loading | documented | | `~/.zcode/AGENTS.md`를 먼저, workspace `AGENTS.md`를 다음에 둔다. workspace 파일은 `workingDirectory`에서 project root까지 위로 찾는다(설계 문서) | https://github.com/zai-org/ZCode/blob/a60ba6a7e5a06742270ca605f5d2cc2766afa7e1/apps/zcode-cli/docs/design/agents-user-instructions-merge.md |
+| ZCode | cli | skill_path | documented | | 사용자와 project의 `.zcode/skills`·`.agents/skills`를 기본으로 찾는다. Git 작업 트리에서는 작업 트리 루트 쪽으로 찾고, 같은 위치면 `.zcode`가 `.agents`보다 우선한다. `skills.roots`로 루트를 더할 수 있다 | https://github.com/zai-org/ZCode/blob/a60ba6a7e5a06742270ca605f5d2cc2766afa7e1/apps/zcode-cli/docs/usage/08-skills.md |
+| ZCode | cli | skill_limits | unknown | 시험 대기 | CLI 문서에 description·본문 길이 제한이 없다(앱 문서의 1024자·100KB가 CLI에도 적용되는지 미확인) | https://github.com/zai-org/ZCode/blob/a60ba6a7e5a06742270ca605f5d2cc2766afa7e1/apps/zcode-cli/docs/usage/08-skills.md |
+| ZCode | cli | explicit_invocation | unknown | 대안 | 헤드리스 호출에서 skill을 고르는 문법이 문서에 없다. `--prompt` 문장에서 skill 이름을 직접 부르는 방식은 시험이 필요하다. `zcode skills list --cwd <dir> --json`으로 로드 여부를 확인할 수 있다 | https://github.com/zai-org/ZCode/blob/a60ba6a7e5a06742270ca605f5d2cc2766afa7e1/apps/zcode-cli/docs/usage/02-cli-reference.md |
+| ZCode | cli | import_dialog | unknown | 표시 불가 | Import 대화상자는 앱 UI다. CLI 문서에는 없다 | https://github.com/zai-org/ZCode/blob/a60ba6a7e5a06742270ca605f5d2cc2766afa7e1/apps/zcode-cli/docs/usage/08-skills.md |
+| ZCode | cli | hooks | documented | | 사용자 설정·project 설정·plugin이 hook을 낼 수 있다. project hook은 기본으로 신뢰하지 않으며, `zcode hooks trust review\|grant\|status\|revoke --workspace <dir>`로 digest 단위 신뢰가 필요하다. 이벤트 7종 | https://github.com/zai-org/ZCode/blob/a60ba6a7e5a06742270ca605f5d2cc2766afa7e1/apps/zcode-cli/docs/usage/09-hooks.md |
+| ZCode | cli | plugin_manifest | documented | | `.zcode-plugin/plugin.json` 구조를 쓴다. 호환 manifest 필드가 런타임에 구현됐다는 보장은 없고 로드 진단이 기준이다 | https://github.com/zai-org/ZCode/blob/a60ba6a7e5a06742270ca605f5d2cc2766afa7e1/apps/zcode-cli/docs/usage/10-plugins.md |
+| ZCode | cli | statusline | unknown | 표시 불가 | 헤드리스 출력(`text`/`json`/`stream-json`)에는 statusline 개념이 없다 | https://github.com/zai-org/ZCode/blob/a60ba6a7e5a06742270ca605f5d2cc2766afa7e1/apps/zcode-cli/docs/usage/02-cli-reference.md |
+| ZCode | cli | output_style | unknown | 대안 | output style 문서가 없다. `--output-format json\|stream-json` 결과를 읽어 공통 출력 계약으로 대신한다 | https://github.com/zai-org/ZCode/blob/a60ba6a7e5a06742270ca605f5d2cc2766afa7e1/apps/zcode-cli/docs/usage/02-cli-reference.md |
+| ZCode | cli | headless_invocation | documented | | `zcode --prompt "<task>" --cwd <abs> --mode plan\|build\|edit\|yolo\|guarded --output-format text\|json\|stream-json [--resume <id>]`. `--prompt`의 기본 mode는 `yolo`이고, `plan`도 OS 수준 읽기 전용 sandbox가 아니다 | https://github.com/zai-org/ZCode/blob/0a1fc56d279fd1001f78387bd81aec1c26767411/apps/zcode-cli/docs/usage/02-cli-reference.md |
+
+출처 고정:
+- 앱 문서 페이지에는 발행일이 없다. 다운로드 링크가 3.17.2를 가리킨다.
+- CLI 문서는 `zai-org/ZCode`의 commit에 고정했다. `usage/` 디렉터리 최신 commit `a60ba6a7e5a06742270ca605f5d2cc2766afa7e1`(2026-10-30), `02-cli-reference.md` 최신 commit `0a1fc56d279fd1001f78387bd81aec1c26767411`(2026-10-19)이다.
+- 최신 릴리스는 `v3.17.2`(2026-11-04)다. 저장소 license는 Apache-2.0이다.
+
+상세 인용, 앱과 CLI의 차이, adapter gap, 선택지는 `docs/zcode-support.md`에 있다.
