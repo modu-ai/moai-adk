@@ -102,7 +102,9 @@ const RULES: &[(&str, Kind)] = &[
     ("generation manifest", Kind::Conflict),
     ("digest mismatch", Kind::Conflict),
     ("SKILL.md missing", Kind::NotFound),
-    // Generic suffix, after every specific rule above it (first match wins).
+    // Generic "not found" suffix. First match wins, so the specific phrases before it
+    // (the forge rule above) keep their kinds; the phrases after it do not contain
+    // this text, so its position among them is harmless.
     ("not found", Kind::NotFound),
     ("project profile missing", Kind::NotFound),
     ("reference directory missing", Kind::NotFound),
