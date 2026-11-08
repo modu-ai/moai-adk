@@ -1,0 +1,37 @@
+{
+  "snapshot": null,
+  "unresolved": [],
+  "verification_commands": [ "cargo test --offline --locked" ],
+  "policy_revision": "rc1-r1",
+  "scope": [ "src/receipt.rs" ],
+  "acceptance": [
+    {
+      "verification": { "selector": "receipts_cover_applied_files", "kind": "test" },
+      "observable_result": "receipt lists every applied path",
+      "id": "AC-S-1"
+    }
+  ],
+  "requirements": [
+    {
+      "unresolved": [],
+      "source_refs": [],
+      "acceptance_refs": [ "AC-S-1" ],
+      "observable_result": "a receipt row per applied file",
+      "condition_kinds": [],
+      "behavior": "record a receipt for every applied file",
+      "subject": "The installer",
+      "when": null,
+      "while": [],
+      "where": [],
+      "grammar_version": "gears@2026-01-14",
+      "syntax": "GEARS",
+      "text": "The installer shall record a receipt for every applied file.",
+      "id": "REQ-S-001"
+    }
+  ],
+  "source": null,
+  "syntax": "GEARS",
+  "status": "proposed",
+  "revision": 1,
+  "spec_id": "SPEC-T-SNAP"
+}
