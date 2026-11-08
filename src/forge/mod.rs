@@ -11,6 +11,7 @@
 pub mod outbox;
 pub mod policy;
 pub mod promote;
+pub mod report;
 pub mod transport;
 pub mod write;
 
