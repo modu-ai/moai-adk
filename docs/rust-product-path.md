@@ -42,7 +42,12 @@ Every internal operation prints exactly one JSON object on stdout:
 - success: `{"protocol_version": 1, "operation": "<name>", "ok": true, "result": {...}}`
 - failure: `{"protocol_version": 1, "operation": "<name>", "ok": false, "error": {"kind", "message", "retryable", "next_actions"?}}`
 
-stderr carries one human line: the same `message` for an operation failure, clap's first line for a command-line error. Exit codes stay 0 (ok), 1 (failure) and 2 (command-line error, `kind: usage`); callers tell failures apart by `kind`, from the 00-D list: `usage`, `invalid_input`, `input_too_large`, `unsupported_protocol_version`, `stale_plan`, `permission_reference_missing`, `not_found`, `conflict`, `partial`, `io`, `internal`. `retryable` is true only for `io`, the one kind where resending the unchanged request can succeed. `next_actions` appears only on `stale_plan` and `partial` from an `*.apply` and names the matching `*.plan`. A message no rule recognises is `internal`, never a guessed kind. The envelope message for a command-line error names no argument value; stderr keeps clap's line for people.
+stderr carries one human line: the same `message` for an operation failure, clap's first line for a command-line error. Exit codes stay 0 (ok), 1 (failure) and 2 (command-line error, `kind: usage`). Callers tell failures apart by `kind`, 14 in all:
+- the 00-D list: `usage`, `invalid_input`, `input_too_large`, `unsupported_protocol_version`, `stale_plan`, `permission_reference_missing`, `not_found`, `conflict`, `partial`, `io`, `internal`;
+- `git_failed` (Issue #2033): `identity` found git, but git failed for a reason other than "not a repository", for example a `safe.directory` ownership refusal. Not retryable.
+- `blocked` and `transport` (07-A #2008, `forge.read`; see the GitHub TODO reader section). These additions follow #1990 HOLD-C2 / REQ-01C-02 (r27).
+
+`retryable` is true only for `io` and `transport`, the kinds where resending the unchanged request can succeed. `next_actions` appears only on `stale_plan` and `partial` from an `*.apply`, and names the matching `*.plan`. A message no rule recognises is `internal`, never a guessed kind. The envelope message for a command-line error names no argument value; stderr keeps clap's line for people.
 
 Not enveloped: `--help` and `--version`, the launchers, and command lines whose first word names no internal operation (clap's own output and exit 2), because no operation can be attributed to them. There is no `request_id`: the decided envelope has none. The input types (`Profile`, `Plan`, `AgentsRequest`, `AgentsPlan`) are unchanged, so a caller passes an envelope's `result`, not the envelope, to the matching `*.apply`.
 
@@ -56,13 +61,13 @@ The Rust RC writes project data under `<project>/.moai-cli/` and will install un
 
 ### Identity and state-root resolver (`identity`)
 
-`moai-cli identity PATH` reports where a path sits in git and which state roots apply to it. It writes nothing and follows no symlink. Boundaries come only from `git rev-parse --path-format=absolute --git-common-dir --git-dir --is-bare-repository --is-inside-work-tree` (and `--show-toplevel` inside a work tree), run with a fixed argv, `LC_ALL=C`, discarded stderr and `GIT_DIR`/`GIT_WORK_TREE`/`GIT_COMMON_DIR`/`GIT_INDEX_FILE`/`GIT_NAMESPACE` removed; whether `.git` is a directory or a gitfile is never inspected. `--path-format` needs git 2.31 or later.
+`moai-cli identity PATH` reports where a path sits in git and which state roots apply to it. It writes nothing and follows no symlink. Boundaries come only from `git rev-parse --path-format=absolute --git-common-dir --git-dir --is-bare-repository --is-inside-work-tree` (and `--show-toplevel` inside a work tree), run with a fixed argv, `LC_ALL=C`, and `GIT_DIR`/`GIT_WORK_TREE`/`GIT_COMMON_DIR`/`GIT_INDEX_FILE`/`GIT_NAMESPACE`, the injected-config variables `GIT_CONFIG_PARAMETERS`/`GIT_CONFIG_COUNT`/`GIT_CONFIG_KEY_*`/`GIT_CONFIG_VALUE_*` and the discovery variables `GIT_CEILING_DIRECTORIES`/`GIT_DISCOVERY_ACROSS_FILESYSTEM` removed (Issue #2033); stderr is read only to classify a failure, and only its first line, cut before any quote or path separator, can reach the output; whether `.git` is a directory or a gitfile is never inspected. `--path-format` needs git 2.31 or later.
 
-Output is one flat JSON object (the current contract: no envelope, exit 0/1):
+The result is one flat JSON object inside the envelope's `result` (exit 0). When git runs but fails for any reason other than "not a git repository" (a `safe.directory` ownership refusal, a damaged repository, oversized or non UTF-8 output), there is no result: the envelope carries `error.kind: git_failed` with the message `git failed: <path-free summary>` and exit 1 (Issue #2033).
 
 | Field | Meaning |
 |---|---|
-| `identity_status` | `ok`, `no_git` (not inside a repository) or `git_unavailable` (no `git` on PATH). Anything but `ok` leaves every identity field `null`; nothing is guessed |
+| `identity_status` | `ok`, `no_git` (git reported "not a git repository") or `git_unavailable` (no `git` on PATH). Anything but `ok` leaves every identity field `null`; nothing is guessed |
 | `workspace_kind` | `primary` (common dir equals git dir), `linked` (a `git worktree`), `bare`, or `git_dir` (inside a non-bare `.git` directory) |
 | `clone_anchor`, `workspace_git_dir`, `work_tree` | canonical absolute paths of the common dir, the git dir and the top level (`work_tree` is `null` for `bare` and `git_dir`) |
 | `clone_id`, `workspace_id` | `sha256:` of the canonical common dir and git dir; two worktrees of one clone share `clone_id` and differ in `workspace_id` |
@@ -118,6 +123,54 @@ Rendered profile values are checked before any write: a value containing `<!--`,
 The manifest follows the design template (`schema_version` 1, `generator_version`, `template_version` `rc1`, `project_id`, `interview_revision` null, `workflow_id` null, `source_kind`, `sources`, `canonical_sha256`, `projections`, `owned_files`, `activation_status` `pending-validation`) plus `profile_sha256`, `workflow_reference` (the directory the managed text points at) and `created_once` (personal files MoAI created once or found already present at an apply; no digest, user-owned, never recreated after deletion). Manifests written before `created_once` existed listed `AGENTS.local.md` in `owned_files` and are migrated on the next apply. Per-file plan entries carry `tracked_by_default`, the design intent for generated projects, not a measured git state. The plan reports pre-existing `CLAUDE.md`, `.claude/CLAUDE.md`, `CLAUDE.local.md` and `AGENTS.override.md` in `host_notes` (preserved, never edited) and warns when the projected `AGENTS.md` exceeds 32 KiB. Apply results carry `files_created`, `host_loaded: false` and `execution_verified: false`; host loading is not_run.
 
 Known gaps: the provisional Python adapter has no migration for projects installed under the old `.moai/` receipt path; the `project-agents` template fields verified stack, verification commands, target users and success criteria are not rendered yet (the profile has no such fields); when `AGENTS.md` is absent the generator writes `# <project_id>` outside the block, which is user-owned from then on; hard-link publishing is untested on filesystems without hard links; no `<state_root>` per-file apply receipt (a partial apply is reported on stderr only); the ignored receipt path is undecided in the design; per-file plan values are operation names (`create`, `append`, `merge`, `unchanged`, `conflict`) rather than the design's `proposed/applied/not_required/blocked/unknown`; an out-of-range `protocol_version` is still reported through the generic stale-plan or invalid-request message, so it surfaces as `stale_plan` or `invalid_input` rather than `unsupported_protocol_version`; the error `kind` is derived from the existing message text by an ordered table (`src/contract.rs`), not from typed errors at the source; hard links are not rejected; concurrent writers are not excluded beyond hash re-checks.
+
+## GitHub TODO reader (`forge-read`, 07-A #2008)
+
+`moai-cli forge-read PROJECT` takes `{"schema_version":1,"owner","repo","state":"open|closed|all","include_comments":true,"config":{…}}` on stdin (unknown keys rejected) and is an internal operation (`forge.read`) under the Output envelope rules above: `main` wraps the result with `contract::success`, a failure becomes `contract::failure` with the kind `contract::classify` derives from the message, exit 1, and stderr carries the same message.
+
+Error kinds:
+- From the 00-D vocabulary: `invalid_input`, `input_too_large`, `unsupported_protocol_version` (request `schema_version`), `not_found` (404 or a missing project directory), `io` (poll state) and `internal`.
+- Added to `contract::Kind` by this adapter (#1990 HOLD-C2 / REQ-01C-02 (r27) allows additions when they are recorded):
+  - `blocked`: authentication failed (401), access denied (403), or a rate limit outlived the retry budget. In the CLI envelope `blocked` is always `retryable: false`: resending the same request at once cannot succeed, because it needs new credentials, a permission change, or waiting until the reset. Only the library value `ForgeError.retryable` is `true` for the rate-limit case, so a library caller knows waiting will help. That value is not in the envelope.
+  - `transport`: gh is missing, gave no HTTP response, or the response had an unexpected status. It is `retryable: true`.
+- Every forge message carries its kind's phrase (`forge blocked: `, `gh transport: `, …). The unit test `every_error_kind_matches_the_contract_classifier` checks that `ForgeError::kind` and `classify(message)` agree, and the contract table test lists the forge messages.
+
+What one run does:
+- It sends GET requests only, one at a time: the repository (for `repository_id`), then the Issue list, then the Issue comment list (`sort=updated&direction=asc&per_page=100`).
+- Every page after the first is the `Link: rel="next"` URL sent byte for byte; the client never builds page numbers.
+- Every URL already seen is re-sent with `If-None-Match`. A 304 is answered from the cached projection, and `cache_hit` is true when every page came back 304.
+- The next `since` cursor is the newest `updated_at` read minus `overlap_s`. It comes from the data rather than the clock, so a repository with no changes is asked the same URL again and answers 304. Items repeated by the overlap are deduplicated by id, keeping the newest copy.
+- Pull requests in the Issue list are kept with `kind: pull_request`. Comments keep only id, node_id, issue number and `updated_at` — no body, no login.
+
+Each item carries `ref = (provider, host, project{owner, repo, repository_id}, issue{id, node_id, number}, updated_at, etag)`. Identity is `(provider, host, repository_id, issue.id)` (`forge::identity`): names are display data and `number` is never a key.
+
+Retries follow GitHub's headers:
+- `retry-after` first.
+- Otherwise `x-ratelimit-remaining: 0` waits until `x-ratelimit-reset`.
+- Any other 403/429 that is a rate limit waits `60 s << attempt`.
+- After `max_retries` waits the result is `blocked`: `retryable: false` in the envelope, `ForgeError.retryable == true` in the library. 401 and other 403s are `blocked` at once, with `retryable: false` in both.
+
+The config is visible in every result:
+- `overlap_s` 60 and `max_retries` 3 are interim values (leader, 2026-11-08).
+- `poll_interval_s` is unmeasured (P11) and has no default; `x-poll-interval` wins when present (`next_poll_after_s`).
+- `max_pages` 50 is a safety bound.
+
+Poll state is `PROJECT/.moai-cli/forge/poll-state.json`, written as a temporary file plus rename. Symlinked or non-directory state folders are refused, nothing is written under `.moai/`, and nothing is written when the run fails. A state file for another repository is ignored and replaced on the next success.
+
+Transport is `gh api -X GET -i <URL>` (RC1 interim decision: no new crate; the same path as the 00-B collector). The token stays in gh's keyring or the caller's `GH_TOKEN`; this program never reads it, and token-shaped text is redacted from any gh stderr it surfaces. gh exits 1 on 304 and on 4xx while still printing the status line and headers, so the parsed status line decides, not the exit code (observed with gh 2.92.0 on 2026-11-08). `MOAI_FORGE_GH_BIN` swaps the gh executable and exists for tests only. Risk: whoever sets it chooses the program that runs, so it must never be set on a product path. It is accepted only as an absolute path to an existing file; anything else is `invalid_input`, so a bare name cannot resolve to another program through PATH.
+
+`forge::write::Writer` holds the edit-preserving write helpers for 07-B/07-C; it has no CLI command here.
+- Labels change only through `POST …/labels` (add) and `DELETE …/labels/{name}` (remove one). Assignees change only through `POST`/`DELETE …/assignees`. There is never a PATCH or PUT of a whole set.
+- Each write re-reads the issue first and returns `conflict` without sending anything when `updated_at` or the body digest differs from the caller's last read. GitHub does not support conditional requests on unsafe methods, so this re-read is the guard.
+- Writes are kept at least one second apart.
+
+Tests (`tests/forge_cli.rs`) replay synthetic fixtures from `tests/fixtures/forge/` with an injected clock, or point the CLI at a stub gh. They use no network and never sleep.
+
+Not verified here:
+- write helpers against the live API;
+- comment pagination and 304 on a busy live repository;
+- GitLab (`iid`, "on or after" `updated_after`, keyset pagination) — the reference schema leaves room for it but nothing is implemented;
+- whether `since` should move from the Issue list to `updated` sort plus local filtering for very large repositories.
 
 ## Requirement contract: GEARS and legacy EARS (05-A #2001)
 
