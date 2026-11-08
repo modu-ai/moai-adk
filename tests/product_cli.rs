@@ -1144,7 +1144,7 @@ impl FixtureRun {
             }
         }
         masks.extend(secrets.into_iter().map(|s| (s, "<masked>".to_string())));
-        masks.sort_by(|a, b| b.0.len().cmp(&a.0.len()));
+        masks.sort_by_key(|a| std::cmp::Reverse(a.0.len()));
         let record = json!({
             "case": name,
             "args": mask_value(&json!(args), &masks),
