@@ -54,7 +54,8 @@ jobs:
           run() {
             local label="$1"; shift
             echo "::group::$label"
-            "$@"; local code=$?
+            local code=0
+            "$@" || code=$? # the step shell runs with -e -o pipefail; keep going and record the exit
             echo "::endgroup::"
             echo "| $label | \`$*\` | $code |" >> "$summary"
             [ "$code" -eq 0 ] || failed=1
