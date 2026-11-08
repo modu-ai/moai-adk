@@ -14,9 +14,11 @@
 //! (`.agents/skills/…`) — are planned and published in this module through the public
 //! 01-B apply engine (`decide`, `publish_exclusive`/`publish_replace`,
 //! `save_before_bytes`, `Receipt`). Baselines of generation files live in the same
-//! `generation.json` `owned_files` list, tagged by a `section_id` of the shape
-//! `generation:<kind>:…` — a schema-compatible encoding that keeps the manifest
-//! readable by agents.rs (whose `OwnedFile` rejects unknown fields).
+//! `generation.json` `owned_files` list, recorded with an additive `kind` field
+//! (`workflow`, `native-role`, `skill-projection`; #2109) plus a `section_id` tag of
+//! the shape `generation:<kind>:…` kept so manifests written before the kind field
+//! stay readable (agents.rs's `OwnedFile` rejects unknown fields, and its own writes
+//! leave `kind` unset).
 //!
 //! The delegation is stale-safe: `generation_apply` first re-plans the whole
 //! generation request and refuses any drift, then re-plans the agents portion and
