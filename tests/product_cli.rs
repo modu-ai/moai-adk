@@ -1855,6 +1855,268 @@ fn digest_normalization_examples_are_reproducible() {
     );
 }
 
+// ---- Common skill package structure (02-A #1991) -------------------------------------------
+//
+// Run with `cargo test --offline --locked skill_package`. Reference depth (REQ-02A-08) is
+// counted outside the route indirection: SKILL.md may point only at references/routes.json,
+// routes.json points at the workflows, and a workflow points at no other package file.
+mod skill_package {
+    use super::cli;
+    use serde_json::{json, Value};
+    use std::{
+        fs,
+        path::{Path, PathBuf},
+    };
+    use tempfile::TempDir;
+
+    const INTENTS: [&str; 8] = [
+        "READ", "SETUP", "UPDATE", "PLAN", "RUN", "VERIFY", "AUDIT", "SYNC",
+    ];
+    const MANIFEST: &str = "references/source-manifest.json";
+    // Claude Code-only frontmatter (https://code.claude.com/docs/en/skills, read 2026-11-08).
+    const CLAUDE_ONLY: [&str; 9] = [
+        "allowed-tools",
+        "argument-hint",
+        "disable-model-invocation",
+        "user-invocable",
+        "context",
+        "agent",
+        "hooks",
+        "paths",
+        "model",
+    ];
+    const ALLOWED_KEYS: [&str; 4] = ["name", "description", "license", "metadata"];
+
+    fn root() -> PathBuf {
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai")
+    }
+    fn files(dir: &Path, base: &Path, out: &mut Vec<String>) {
+        for entry in fs::read_dir(dir).unwrap() {
+            let path = entry.unwrap().path();
+            if path.is_dir() {
+                files(&path, base, out);
+            } else {
+                out.push(
+                    path.strip_prefix(base)
+                        .unwrap()
+                        .to_str()
+                        .unwrap()
+                        .replace('\\', "/"),
+                );
+            }
+        }
+    }
+    fn package_files() -> Vec<String> {
+        let mut out = Vec::new();
+        files(&root(), &root(), &mut out);
+        out.sort();
+        out
+    }
+    /// Top-level frontmatter keys; nested `metadata:` lines are indented and skipped.
+    fn frontmatter(text: &str) -> (Vec<(String, String)>, &str) {
+        let rest = text
+            .strip_prefix("---\n")
+            .expect("SKILL.md starts with ---");
+        let end = rest.find("\n---\n").expect("frontmatter is closed");
+        let keys = rest[..end]
+            .lines()
+            .filter(|l| !l.starts_with(' ') && !l.trim().is_empty())
+            .map(|l| {
+                let (k, v) = l.split_once(':').expect("key: value");
+                (k.trim().to_string(), v.trim().to_string())
+            })
+            .collect();
+        (keys, &rest[end + 5..])
+    }
+    fn package_paths_in(text: &str) -> Vec<String> {
+        ["references/", "workflows/", "resources/", "agents/"]
+            .iter()
+            .flat_map(|p| text.match_indices(p).map(|(i, _)| i))
+            .map(|i| {
+                text[i..]
+                    .chars()
+                    .take_while(|c| !c.is_whitespace() && !matches!(c, '`' | ')' | ',' | '"'))
+                    .collect::<String>()
+                    .trim_end_matches('.')
+                    .to_string()
+            })
+            .collect()
+    }
+
+    #[test]
+    fn skill_package_frontmatter_is_host_neutral() {
+        let text = fs::read_to_string(root().join("SKILL.md")).unwrap();
+        let (keys, body) = frontmatter(&text);
+        let names: Vec<&str> = keys.iter().map(|(k, _)| k.as_str()).collect();
+        for k in &names {
+            assert!(
+                ALLOWED_KEYS.contains(k),
+                "frontmatter key {k} is not host-neutral"
+            );
+            assert!(!CLAUDE_ONLY.contains(k));
+        }
+        let get = |k: &str| keys.iter().find(|(n, _)| n == k).map(|(_, v)| v.as_str());
+        // Agent Skills: name 1-64 [a-z0-9-] matching the directory; description 1-1024.
+        let name = get("name").expect("name");
+        assert_eq!(name, root().file_name().unwrap().to_str().unwrap());
+        assert!(!name.is_empty() && name.len() <= 64);
+        assert!(name
+            .chars()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-'));
+        let description = get("description").expect("description");
+        assert!(!description.is_empty() && description.chars().count() <= 1024);
+        // No Claude argument substitution or dynamic shell context in the shared body.
+        assert!(!text.contains("$ARGUMENTS"));
+        assert!(!text.contains("!`"));
+        assert!(
+            text.lines().count() <= 500,
+            "SKILL.md stays under 500 lines"
+        );
+        // One hop: the router names only the route table.
+        assert_eq!(package_paths_in(body), vec!["references/routes.json"]);
+        // REQ-02A-05: no fixed agent definitions are shipped.
+        assert!(package_files()
+            .iter()
+            .all(|p| !p.starts_with("agents/") && !p.ends_with(".toml")));
+    }
+
+    #[test]
+    fn routes_reference_existing_workflows() {
+        let routes: Value =
+            serde_json::from_slice(&fs::read(root().join("references/routes.json")).unwrap())
+                .unwrap();
+        assert_eq!(routes["schema_version"], json!(1));
+        assert_eq!(routes["classification_is_authorization"], json!(false));
+        let table = routes["routes"].as_object().unwrap();
+        let mut keys: Vec<&str> = table.keys().map(String::as_str).collect();
+        keys.sort();
+        let mut want = INTENTS.to_vec();
+        want.sort();
+        assert_eq!(keys, want);
+        for (intent, route) in table {
+            let reference = route["reference"].as_str().unwrap();
+            assert_eq!(
+                reference,
+                format!("../workflows/{}.md", intent.to_ascii_lowercase()),
+                "{intent}"
+            );
+            assert!(
+                root().join("references").join(reference).is_file(),
+                "{intent}"
+            );
+            assert!(route["requires_binary"].is_boolean(), "{intent}");
+            // A workflow loads no further package file (depth beyond the route table).
+            let body = fs::read_to_string(root().join("references").join(reference)).unwrap();
+            assert_eq!(package_paths_in(&body), Vec::<String>::new(), "{intent}");
+            assert!(
+                !body.contains("$ARGUMENTS") && !body.contains("!`"),
+                "{intent}"
+            );
+            assert!(body.lines().count() <= 500, "{intent}");
+        }
+    }
+
+    #[test]
+    fn source_manifest_covers_every_package_file() {
+        let manifest: Value =
+            serde_json::from_slice(&fs::read(root().join(MANIFEST)).unwrap()).unwrap();
+        assert_eq!(manifest["schema_version"], json!(1));
+        let entries = manifest["files"].as_object().unwrap();
+        let mut covered: Vec<&str> = entries.keys().map(String::as_str).collect();
+        covered.sort();
+        let mut present = package_files();
+        present.retain(|p| p != MANIFEST);
+        assert_eq!(
+            covered, present,
+            "every package file except the manifest has an entry"
+        );
+        for (path, entry) in entries {
+            let bytes = fs::read(root().join(path)).unwrap();
+            assert_eq!(
+                format!("sha256:{}", entry["sha256"].as_str().unwrap()),
+                moai_cli::digest(&bytes),
+                "{path}: manifest sha256 is stale"
+            );
+            for key in ["kind", "template_id", "adoption", "reason"] {
+                assert!(entry["origin"][key].is_string(), "{path}: origin.{key}");
+            }
+        }
+        let legacy = &manifest["legacy_source"];
+        assert_eq!(legacy["license"], json!("Apache-2.0"));
+        assert_eq!(legacy["revision"].as_str().unwrap().len(), 40);
+        assert_eq!(legacy["blob_check"]["mismatched"], json!([]));
+        assert_eq!(legacy["blob_check"]["missing_at_revision"], json!([]));
+        // The full legacy list lives outside the package (installs never carry it), pinned
+        // by sha256; the package keeps only counts.
+        let map_ref = &legacy["asset_map"];
+        let map_path =
+            Path::new(env!("CARGO_MANIFEST_DIR")).join(map_ref["path"].as_str().unwrap());
+        assert!(!map_path.starts_with(root()));
+        let map_bytes = fs::read(&map_path).unwrap();
+        assert_eq!(
+            format!("sha256:{}", map_ref["sha256"].as_str().unwrap()),
+            moai_cli::digest(&map_bytes),
+            "legacy asset map changed without updating the manifest"
+        );
+        let map: Value = serde_json::from_slice(&map_bytes).unwrap();
+        assert_eq!(map["revision"], legacy["revision"]);
+        assert_eq!(map["inventory_sha256"], legacy["inventory_sha256"]);
+        let assets = map["assets"].as_array().unwrap();
+        assert_eq!(map_ref["rows"], json!(assets.len()));
+        assert_eq!(legacy["blob_check"]["rows"], json!(assets.len()));
+        let intents: Vec<String> = INTENTS.iter().map(|i| i.to_ascii_lowercase()).collect();
+        for i in &intents {
+            let n = assets
+                .iter()
+                .filter(|a| a["intents"].as_array().unwrap().contains(&json!(i)))
+                .count();
+            assert_eq!(map_ref["rows_by_intent"][i], json!(n), "{i}");
+        }
+        for a in assets {
+            // Unmapped originals stay unchecked; nothing is marked done or dropped.
+            assert_eq!(a["status"], json!("unchecked"), "{}", a["path"]);
+            assert_eq!(a["sha256"].as_str().unwrap().len(), 64);
+            let mapped = a["intents"].as_array().unwrap();
+            assert!(mapped
+                .iter()
+                .all(|i| intents.contains(&i.as_str().unwrap().to_string())));
+            if mapped.is_empty() {
+                assert!(a["proposed_route"].is_string(), "{}", a["path"]);
+            }
+        }
+        // Pointers only: no legacy bytes are copied into the package.
+        assert!(package_files()
+            .iter()
+            .all(|p| !p.contains("source-assets/")));
+    }
+
+    #[test]
+    fn package_inspect_rejects_missing_skill_md() {
+        let real = root();
+        let args = ["package-inspect", real.to_str().unwrap()];
+        let first = cli(&args, &Value::Null);
+        assert!(
+            first.status.success(),
+            "{}",
+            String::from_utf8_lossy(&first.stderr)
+        );
+        assert_eq!(
+            first.stdout,
+            cli(&args, &Value::Null).stdout,
+            "digest is repeatable"
+        );
+        let copy = TempDir::new().unwrap();
+        fs::create_dir(copy.path().join("workflows")).unwrap();
+        fs::write(copy.path().join("workflows/read.md"), "# READ").unwrap();
+        let out = cli(
+            &["package-inspect", copy.path().to_str().unwrap()],
+            &Value::Null,
+        );
+        assert!(!out.status.success());
+        assert!(String::from_utf8_lossy(&out.stderr).contains("SKILL.md"));
+    }
+}
+
 // ---- identity (Issue #1988, 01-A) ---------------------------------------------------------
 
 /// Runs `moai-cli identity <path>` with a fixture HOME and no user git config. `path_env`
