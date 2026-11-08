@@ -29,7 +29,11 @@ pub const SCHEMA_VERSION: u32 = 1;
 pub const API: &str = "https://api.github.com";
 const POLL_STATE: &str = "forge/poll-state.json";
 
-/// Error carried in the envelope's `error`. `kind` ∈ blocked | invalid_input | transport.
+/// Error carried in the envelope's `error`. `kind` uses the 00-D vocabulary decided for 01-C
+/// (`invalid_input`, `input_too_large`, `unsupported_protocol_version`, `not_found`, `io`) plus
+/// two kinds this adapter adds and documents in docs/rust-product-path.md: `blocked`
+/// (authentication, permission, or a rate limit that outlived the retry budget) and `transport`
+/// (gh missing or not returning an HTTP response, or an unexpected status).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ForgeError {
     pub kind: &'static str,
@@ -38,6 +42,16 @@ pub struct ForgeError {
 }
 
 impl ForgeError {
+    fn of(kind: &'static str, message: impl Into<String>) -> Self {
+        ForgeError {
+            kind,
+            message: message.into(),
+            retryable: false,
+        }
+    }
+    fn io(message: impl Into<String>) -> Self {
+        Self::of("io", message)
+    }
     fn blocked(message: impl Into<String>, retryable: bool) -> Self {
         ForgeError {
             kind: "blocked",
@@ -265,9 +279,9 @@ impl<'a, T: Transport, C: Clock> Client<'a, T, C> {
                 }
                 Ok(resp)
             }
-            (404, _) => Err(ForgeError::blocked(
+            (404, _) => Err(ForgeError::of(
+                "not_found",
                 "not found or not visible to this account (404)",
-                false,
             )),
             (s, _) => Err(ForgeError::transport(format!("GET returned HTTP {s}"))),
         }
@@ -337,7 +351,10 @@ pub fn read<T: Transport, C: Clock>(
     clock: &C,
 ) -> Result<(Value, PollState), ForgeError> {
     if req.schema_version != SCHEMA_VERSION {
-        return Err(ForgeError::invalid("unsupported schema_version"));
+        return Err(ForgeError::of(
+            "unsupported_protocol_version",
+            "unsupported request schema_version",
+        ));
     }
     if !valid_name(&req.owner) || !valid_name(&req.repo) {
         return Err(ForgeError::invalid("owner and repo must be GitHub names"));
@@ -580,8 +597,9 @@ fn state_path(project: &Path) -> Result<PathBuf, ForgeError> {
                 ))
             }
             Ok(_) => {}
-            Err(_) => fs::create_dir(&dir)
-                .map_err(|_| ForgeError::transport("cannot create state directory"))?,
+            Err(_) => {
+                fs::create_dir(&dir).map_err(|_| ForgeError::io("cannot create state directory"))?
+            }
         }
     }
     Ok(project.join(crate::PROJECT_STATE_DIR).join(POLL_STATE))
@@ -600,19 +618,18 @@ pub fn load_state(project: &Path) -> Option<PollState> {
 pub fn save_state(project: &Path, state: &PollState) -> Result<(), ForgeError> {
     let path = state_path(project)?;
     let tmp = path.with_extension(format!("json.tmp-{}", std::process::id()));
-    let bytes =
-        serde_json::to_vec_pretty(state).map_err(|_| ForgeError::transport("encode failed"))?;
+    let bytes = serde_json::to_vec_pretty(state).map_err(|_| ForgeError::io("encode failed"))?;
     let mut f = OpenOptions::new()
         .write(true)
         .create_new(true)
         .open(&tmp)
-        .map_err(|_| ForgeError::transport("cannot write poll state"))?;
+        .map_err(|_| ForgeError::io("cannot write poll state"))?;
     f.write_all(&bytes)
         .and_then(|_| f.sync_all())
-        .map_err(|_| ForgeError::transport("cannot write poll state"))?;
+        .map_err(|_| ForgeError::io("cannot write poll state"))?;
     fs::rename(&tmp, &path).map_err(|_| {
         let _ = fs::remove_file(&tmp);
-        ForgeError::transport("cannot replace poll state")
+        ForgeError::io("cannot replace poll state")
     })
 }
 
@@ -623,11 +640,21 @@ pub fn forge_read_cli<T: Transport, C: Clock>(
     transport: &T,
     clock: &C,
 ) -> Value {
-    let outcome = raw.map_err(ForgeError::invalid).and_then(|req| {
-        let prior = load_state(project);
-        let (result, state) = read(&req, prior, transport, clock)?;
-        save_state(project, &state)?;
-        Ok(result)
-    });
+    let outcome = raw
+        .map_err(|m| {
+            // `input()` reports the 64 KiB limit and malformed or unknown-field JSON as text.
+            let kind = if m.contains("exceeds") {
+                "input_too_large"
+            } else {
+                "invalid_input"
+            };
+            ForgeError::of(kind, m)
+        })
+        .and_then(|req| {
+            let prior = load_state(project);
+            let (result, state) = read(&req, prior, transport, clock)?;
+            save_state(project, &state)?;
+            Ok(result)
+        });
     envelope("forge-read", outcome)
 }

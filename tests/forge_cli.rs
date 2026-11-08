@@ -394,17 +394,40 @@ fn walk(root: &std::path::Path) -> Vec<String> {
 fn forge_read_rejects_bad_input_without_requests() {
     let tmp = tempfile::tempdir().unwrap();
     let gh = tmp.path().join("no-such-gh");
-    for input in [
-        r#"{"schema_version":1,"owner":"acme","repo":"widgets","token":"x"}"#,
-        r#"{"schema_version":2,"owner":"acme","repo":"widgets"}"#,
-        r#"{"schema_version":1,"owner":"../etc","repo":"widgets"}"#,
-        r#"{"schema_version":1,"owner":"acme","repo":"widgets","state":"merged"}"#,
+    for (input, kind) in [
+        (
+            r#"{"schema_version":1,"owner":"acme","repo":"widgets","token":"x"}"#,
+            "invalid_input",
+        ),
+        (
+            r#"{"schema_version":2,"owner":"acme","repo":"widgets"}"#,
+            "unsupported_protocol_version",
+        ),
+        (
+            r#"{"schema_version":1,"owner":"../etc","repo":"widgets"}"#,
+            "invalid_input",
+        ),
+        (
+            r#"{"schema_version":1,"owner":"acme","repo":"widgets","state":"merged"}"#,
+            "invalid_input",
+        ),
     ] {
         let out = forge_read(tmp.path(), &gh, input);
         assert!(!out.status.success(), "{input}");
         let v: Value = serde_json::from_slice(&out.stdout).unwrap();
-        assert_eq!(v["error"]["kind"], json!("invalid_input"), "{input}");
+        assert_eq!(v["error"]["kind"], json!(kind), "{input}");
+        // stderr carries one human line naming the kind.
+        let err = String::from_utf8_lossy(&out.stderr);
+        assert_eq!(err.lines().count(), 1, "{err}");
+        assert!(err.starts_with(kind), "{err}");
     }
+    let big = format!(
+        r#"{{"schema_version":1,"owner":"acme","repo":"{}"}}"#,
+        "x".repeat(70_000)
+    );
+    let out = forge_read(tmp.path(), &gh, &big);
+    let v: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(v["error"]["kind"], json!("input_too_large"));
     assert!(
         !tmp.path().join(".moai-cli").exists(),
         "no state for rejected input"

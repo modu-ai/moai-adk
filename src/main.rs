@@ -114,6 +114,10 @@ enum Command {
     ForgeRead {
         project: PathBuf,
     },
+    /// Read-only clone/workspace identity and state roots of a path (typed JSON on stdout).
+    Identity {
+        path: PathBuf,
+    },
     /// Claude Code session launcher: `cc -l|-a`.
     Cc(HostLaunch),
     /// Claude Code on z.ai GLM: `glm -l|-a` (needs ANTHROPIC_AUTH_TOKEN in the environment).
@@ -266,6 +270,7 @@ fn run() -> Result<serde_json::Value, String> {
             go_baseline_commit.as_deref(),
             go_repo.as_deref(),
         ),
+        Command::Identity { path } => moai_cli::identity::identity(&path),
         Command::Session {
             role,
             host,
@@ -304,8 +309,15 @@ fn main() -> ExitCode {
     match run() {
         Ok(value) => {
             println!("{value}");
-            // An envelope (`forge-read`) reports failure in-band with `ok: false`.
+            // An envelope (`forge-read`) reports failure in-band with `ok: false`; stderr adds
+            // one human-readable line (01-C HOLD-00D-3 derivation).
             if value.get("ok") == Some(&serde_json::Value::Bool(false)) {
+                let e = &value["error"];
+                eprintln!(
+                    "{}: {}",
+                    e["kind"].as_str().unwrap_or("error"),
+                    e["message"].as_str().unwrap_or("")
+                );
                 ExitCode::from(1)
             } else {
                 ExitCode::SUCCESS
