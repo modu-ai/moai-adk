@@ -57,6 +57,10 @@ enum Command {
         #[arg(long)]
         go_repo: Option<PathBuf>,
     },
+    /// Read-only clone/workspace identity and state roots of a path (typed JSON on stdout).
+    Identity {
+        path: PathBuf,
+    },
     /// Start a leader or agent development session on a host CLI (Claude Code only for now).
     Session {
         /// leader | agent
@@ -139,6 +143,7 @@ fn run() -> Result<serde_json::Value, String> {
             go_baseline_commit.as_deref(),
             go_repo.as_deref(),
         ),
+        Command::Identity { path } => moai_cli::identity::identity(&path),
         Command::Session {
             role,
             host,

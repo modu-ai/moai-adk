@@ -1566,3 +1566,233 @@ fn digest_normalization_examples_are_reproducible() {
         "the two normalizations disagree on the same data"
     );
 }
+
+// ---- identity (Issue #1988, 01-A) ---------------------------------------------------------
+
+/// Runs `moai-cli identity <path>` with a fixture HOME and no user git config. `path_env`
+/// replaces PATH when given (used to make git unavailable).
+fn ident(
+    path: &std::path::Path,
+    home: &std::path::Path,
+    path_env: Option<&str>,
+) -> (std::process::Output, Value) {
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_moai-cli"));
+    cmd.arg("identity")
+        .arg(path)
+        .env("HOME", home)
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .env("GIT_CONFIG_NOSYSTEM", "1")
+        .env_remove("GIT_DIR")
+        .env_remove("GIT_WORK_TREE");
+    if let Some(p) = path_env {
+        cmd.env("PATH", p);
+    }
+    let out = cmd.output().unwrap();
+    let v = serde_json::from_slice(&out.stdout).unwrap_or(Value::Null);
+    (out, v)
+}
+fn canon(p: &std::path::Path) -> String {
+    fs::canonicalize(p).unwrap().to_str().unwrap().to_string()
+}
+fn committed_repo(dir: &std::path::Path) {
+    git_in(dir, &["init", "-q", "-b", "main"]);
+    write_file(dir, "a.txt", b"a\n");
+    git_in(dir, &["add", "a.txt"]);
+    git_in(dir, &["commit", "-q", "-m", "fixture"]);
+}
+/// REQ-01A-05: no returned string may point at the Go generation's state.
+fn assert_no_go_state(v: &Value) {
+    for (k, x) in v.as_object().unwrap() {
+        if let Some(s) = x.as_str() {
+            assert!(
+                !s.ends_with("/.moai") && !s.contains("/.moai/") && !s.contains("MOAI_HOME"),
+                "{k} points at Go state: {s}"
+            );
+        }
+    }
+}
+
+#[test]
+fn identity_primary_checkout() {
+    let repo = TempDir::new().unwrap();
+    let home = TempDir::new().unwrap();
+    committed_repo(repo.path());
+    fs::create_dir(repo.path().join("sub")).unwrap();
+    let before = (tree_state(repo.path()), tree_state(home.path()));
+    let (out, v) = ident(repo.path(), home.path(), None);
+    assert!(out.status.success(), "{:?}", out.stderr);
+    let git_dir = canon(&repo.path().join(".git"));
+    assert_eq!(v["identity_status"], json!("ok"));
+    assert_eq!(v["workspace_kind"], json!("primary"));
+    assert_eq!(v["clone_anchor"], json!(git_dir));
+    assert_eq!(v["workspace_git_dir"], json!(git_dir));
+    assert_eq!(v["clone_id"], v["workspace_id"]);
+    assert_eq!(v["clone_id"], json!(moai_cli::digest(git_dir.as_bytes())));
+    assert_eq!(v["work_tree"], json!(canon(repo.path())));
+    assert_eq!(
+        v["project_state_root"],
+        json!(format!("{}/.moai-cli", canon(repo.path())))
+    );
+    assert_eq!(
+        v["home_state_root"],
+        json!(home.path().join(".moai-cli").to_str().unwrap())
+    );
+    assert_eq!(v["profile_status"], json!("missing"));
+    assert_eq!(v["project_id"], Value::Null);
+    assert_eq!(v["writes"], json!(false));
+    assert_no_go_state(&v);
+    // A subdirectory resolves to the same workspace; two runs print identical bytes.
+    let (sub, _) = ident(&repo.path().join("sub"), home.path(), None);
+    assert_eq!(sub.stdout, out.stdout);
+    assert_eq!(ident(repo.path(), home.path(), None).0.stdout, out.stdout);
+    assert_eq!(
+        before,
+        (tree_state(repo.path()), tree_state(home.path())),
+        "identity wrote to the repository or HOME"
+    );
+    assert!(!home.path().join(".moai-cli").exists());
+    // The profile's project_id is reported separately from the path-derived ids.
+    create(&repo, &profile(None));
+    let (_, v) = ident(repo.path(), home.path(), None);
+    assert_eq!(v["profile_status"], json!("present"));
+    assert_eq!(v["project_id"], json!("demo"));
+}
+
+#[test]
+fn identity_linked_worktree_shares_clone_id() {
+    let repo = TempDir::new().unwrap();
+    let side = TempDir::new().unwrap();
+    let home = TempDir::new().unwrap();
+    committed_repo(repo.path());
+    let wt = side.path().join("wt");
+    git_in(
+        repo.path(),
+        &["worktree", "add", "-q", "-b", "lane", wt.to_str().unwrap()],
+    );
+    let (o1, primary) = ident(repo.path(), home.path(), None);
+    let (o2, linked) = ident(&wt, home.path(), None);
+    assert!(o1.status.success() && o2.status.success());
+    assert_eq!(primary["workspace_kind"], json!("primary"));
+    assert_eq!(linked["workspace_kind"], json!("linked"));
+    assert_eq!(primary["clone_id"], linked["clone_id"]);
+    assert_eq!(primary["clone_anchor"], linked["clone_anchor"]);
+    assert_ne!(primary["workspace_id"], linked["workspace_id"]);
+    assert_ne!(linked["clone_anchor"], linked["workspace_git_dir"]);
+    assert_eq!(linked["work_tree"], json!(canon(&wt)));
+    assert_eq!(
+        linked["project_state_root"],
+        json!(format!("{}/.moai-cli", canon(&wt)))
+    );
+    assert_no_go_state(&linked);
+}
+
+#[test]
+fn identity_bare_separate_gitdir_gitfile() {
+    let base = TempDir::new().unwrap();
+    let home = TempDir::new().unwrap();
+    let b = base.path();
+    // Bare repository: no work tree, so no project state root is offered.
+    git_in(b, &["init", "-q", "--bare", "bare.git"]);
+    let (out, v) = ident(&b.join("bare.git"), home.path(), None);
+    assert!(out.status.success(), "{:?}", out.stderr);
+    assert_eq!(v["workspace_kind"], json!("bare"));
+    assert_eq!(v["clone_anchor"], json!(canon(&b.join("bare.git"))));
+    assert_eq!(v["work_tree"], Value::Null);
+    assert_eq!(v["project_state_root"], Value::Null);
+    // --separate-git-dir: `.git` is a gitfile, the repository lives elsewhere.
+    git_in(
+        b,
+        &[
+            "init",
+            "-q",
+            "--separate-git-dir",
+            b.join("sep.git").to_str().unwrap(),
+            b.join("sep-wt").to_str().unwrap(),
+        ],
+    );
+    assert!(b.join("sep-wt/.git").is_file());
+    let (_, v) = ident(&b.join("sep-wt"), home.path(), None);
+    assert_eq!(v["workspace_kind"], json!("primary"));
+    assert_eq!(v["clone_anchor"], json!(canon(&b.join("sep.git"))));
+    assert_eq!(v["work_tree"], json!(canon(&b.join("sep-wt"))));
+    // Hand-written gitfile pointing at a moved repository.
+    let m = b.join("moved");
+    fs::create_dir(&m).unwrap();
+    committed_repo(&m);
+    fs::rename(m.join(".git"), b.join("moved.git")).unwrap();
+    fs::write(
+        m.join(".git"),
+        format!("gitdir: {}\n", b.join("moved.git").to_str().unwrap()),
+    )
+    .unwrap();
+    let (_, v) = ident(&m, home.path(), None);
+    assert_eq!(v["workspace_kind"], json!("primary"));
+    assert_eq!(v["clone_anchor"], json!(canon(&b.join("moved.git"))));
+    assert_eq!(v["work_tree"], json!(canon(&m)));
+    // Inside a non-bare git dir there is no work tree either.
+    let (_, v) = ident(&b.join("moved.git"), home.path(), None);
+    assert_eq!(v["workspace_kind"], json!("git_dir"));
+    assert_eq!(v["project_state_root"], Value::Null);
+}
+
+#[test]
+fn identity_outside_git_and_missing_git_binary() {
+    let plain = TempDir::new().unwrap();
+    let home = TempDir::new().unwrap();
+    let (out, v) = ident(plain.path(), home.path(), None);
+    assert!(out.status.success(), "{:?}", out.stderr);
+    assert_eq!(v["identity_status"], json!("no_git"));
+    for k in [
+        "workspace_kind",
+        "clone_anchor",
+        "workspace_git_dir",
+        "work_tree",
+        "clone_id",
+        "workspace_id",
+        "project_id",
+        "project_state_root",
+    ] {
+        assert_eq!(v[k], Value::Null, "{k} must not be guessed");
+    }
+    let repo = TempDir::new().unwrap();
+    committed_repo(repo.path());
+    let (out, v) = ident(repo.path(), home.path(), Some(""));
+    assert!(out.status.success(), "{:?}", out.stderr);
+    assert_eq!(v["identity_status"], json!("git_unavailable"));
+    assert_eq!(v["clone_id"], Value::Null);
+    assert_eq!(v["project_state_root"], Value::Null);
+}
+
+#[test]
+fn identity_refuses_symlinks_and_bad_paths_without_echo() {
+    let base = TempDir::new().unwrap();
+    let home = TempDir::new().unwrap();
+    let repo = base.path().join("repo");
+    fs::create_dir(&repo).unwrap();
+    committed_repo(&repo);
+    let link = base.path().join("link");
+    std::os::unix::fs::symlink(&repo, &link).unwrap();
+    let missing = base.path().join("does-not-exist");
+    let file = repo.join("a.txt");
+    for p in [&link, &missing, &file] {
+        let (out, _) = ident(p, home.path(), None);
+        assert!(!out.status.success(), "{p:?} must be refused");
+        assert!(out.stdout.is_empty());
+        let err = String::from_utf8_lossy(&out.stderr);
+        assert!(
+            !err.contains(base.path().to_str().unwrap()),
+            "path echoed: {err}"
+        );
+    }
+    // A symlinked project state root is refused like target() refuses it.
+    let elsewhere = TempDir::new().unwrap();
+    std::os::unix::fs::symlink(elsewhere.path(), repo.join(".moai-cli")).unwrap();
+    let (out, _) = ident(&repo, home.path(), None);
+    assert!(!out.status.success());
+    assert!(String::from_utf8_lossy(&out.stderr).contains("symlink"));
+    fs::remove_file(repo.join(".moai-cli")).unwrap();
+    // So is a symlinked home state root.
+    std::os::unix::fs::symlink(elsewhere.path(), home.path().join(".moai-cli")).unwrap();
+    let (out, _) = ident(&repo, home.path(), None);
+    assert!(!out.status.success());
+}
