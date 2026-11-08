@@ -552,8 +552,25 @@ pub trait Canonical {
 pub struct SortedKeys;
 impl Canonical for SortedKeys {
     fn bytes(&self, value: &Value) -> Vec<u8> {
-        // serde_json is built without `preserve_order`, so object keys serialize sorted.
-        serde_json::to_vec(value).expect("JSON value serializes")
+        serde_json::to_vec(&sorted(value)).expect("JSON value serializes")
+    }
+}
+
+/// A copy with every object's keys in byte order. serde_json is built with `preserve_order`
+/// (Issue #1992), so the sort is done here instead of relying on the map type.
+fn sorted(value: &Value) -> Value {
+    match value {
+        Value::Object(map) => {
+            let mut keys: Vec<&String> = map.keys().collect();
+            keys.sort();
+            Value::Object(
+                keys.into_iter()
+                    .map(|k| (k.clone(), sorted(&map[k])))
+                    .collect(),
+            )
+        }
+        Value::Array(items) => Value::Array(items.iter().map(sorted).collect()),
+        other => other.clone(),
     }
 }
 
