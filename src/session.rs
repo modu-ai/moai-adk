@@ -26,10 +26,10 @@ const EFFORTS: [&str; 6] = ["low", "medium", "high", "xhigh", "max", "ultracode"
 const ADVISOR_ALIASES: [&str; 3] = ["fable", "opus", "sonnet"];
 const DEFAULT_MODEL: &str = "opus";
 const DEFAULT_EFFORT: &str = "medium";
-/// HOLD-L1 (#2053, user decision pending): a session without a role still gets the launcher's
-/// Claude defaults (`--model opus --effort medium --advisor fable`) when true (option A, the
-/// interim choice); false passes no model, effort or advisor flag so the user's own Claude
-/// settings apply (option B). This constant is the only place to change.
+/// User decision 2026-11-08 (#2053 HOLD-L1 = A, #2062): a session without a role still gets the
+/// launcher's Claude defaults (`--model opus --effort medium --advisor fable`), never a
+/// permission skip. False would pass no model, effort or advisor flag so the user's own Claude
+/// settings apply (option B, not chosen). This constant is the only place to change.
 pub const ROLELESS_LAUNCHER_DEFAULTS: bool = true;
 /// z.ai Anthropic-compatible endpoint and timeout from the z.ai Claude Code guide.
 pub const GLM_ENV: [(&str, &str); 2] = [
@@ -91,7 +91,7 @@ fn clean(field: &str, value: &str) -> Result<(), String> {
 }
 
 /// Whether the launcher's model/effort defaults apply: always with a role, and without one
-/// only under HOLD-L1 option A.
+/// while [`ROLELESS_LAUNCHER_DEFAULTS`] is true (user decision 2026-11-08: A).
 pub fn launcher_defaults(role: Option<&str>) -> bool {
     role.is_some() || ROLELESS_LAUNCHER_DEFAULTS
 }
@@ -220,9 +220,9 @@ pub fn compose(r: &SessionRequest) -> Result<Value, String> {
         notes.push("no role: a plain host session; no role, session name or permission skip is added (#2053)");
         if r.host != "codex" {
             notes.push(if ROLELESS_LAUNCHER_DEFAULTS {
-                "HOLD-L1: model, effort and advisor defaults follow option A (opus, medium, fable) until the user decides"
+                "launcher defaults without a role: model opus, effort medium, advisor fable (user decision 2026-11-08: A)"
             } else {
-                "HOLD-L1: no model, effort or advisor flag; the user's Claude settings apply"
+                "no model, effort or advisor flag without a role; the user's Claude settings apply"
             });
         }
     }
