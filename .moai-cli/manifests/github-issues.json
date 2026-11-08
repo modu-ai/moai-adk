@@ -2725,7 +2725,7 @@
    "branch": "issue/1987-00-D",
    "base": "origin/v2026.11.0@cd6a94418",
    "worktree": ".moai-cli/worktrees/issue-1987-00-D",
-   "status": "AUDIT PASS c8ded4ec5 (relayed); PR #2027 behind after #2021 → update-branch + delta re-audit pending"
+   "status": "integrated: PR #2027 auto-merged c4a7d221d; issue closed (completed) 2026-11-08"
   },
   {
    "at": "2026-11-08T08:46:52Z",
@@ -2765,6 +2765,16 @@
    "branch": "issue/2029-toolchain-pin",
    "base": "origin/v2026.11.0@ae5cea38b",
    "worktree": ".moai-cli/worktrees/issue-2029-toolchain",
+   "status": "dispatched"
+  },
+  {
+   "at": "2026-11-08T09:13:04Z",
+   "issue": 1988,
+   "key": "01-A",
+   "lane": "agent-4",
+   "branch": "issue/1988-01-A",
+   "base": "origin/v2026.11.0@c4a7d221d",
+   "worktree": ".moai-cli/worktrees/issue-1988-01-A",
    "status": "dispatched"
   }
  ],
@@ -3237,5 +3247,23 @@
     "body_sha256": "af4653a3c58f3d5e1d0c8236b7f4b82729a6ba133e5c434d073ffde271ceec69"
    }
   ]
- }
+ },
+ "pending_dispatch": [
+  {
+   "issue": 1990,
+   "key": "01-C"
+  },
+  {
+   "issue": 1991,
+   "key": "02-A"
+  },
+  {
+   "issue": 2001,
+   "key": "05-A"
+  },
+  {
+   "issue": 2008,
+   "key": "07-A"
+  }
+ ]
 }
