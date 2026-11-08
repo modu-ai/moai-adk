@@ -1,0 +1,1 @@
+{"id": "REQ-T-001", "text": "Where the project uses Rust, when a pull request opens, the CI runner shall run cargo test."}

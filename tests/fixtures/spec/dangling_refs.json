@@ -1,0 +1,42 @@
+{
+  "spec_id": "SPEC-T-DANGLING",
+  "revision": 1,
+  "status": "proposed",
+  "syntax": "GEARS",
+  "source": null,
+  "requirements": [
+    {
+      "id": "REQ-D-001",
+      "text": "The installer shall record a receipt for every applied file.",
+      "syntax": "GEARS",
+      "grammar_version": "gears@2026-01-14",
+      "where": [],
+      "while": [],
+      "when": null,
+      "subject": "The installer",
+      "behavior": "record a receipt for every applied file",
+      "condition_kinds": [],
+      "observable_result": "a receipt row per applied file",
+      "acceptance_refs": ["AC-D-1", "AC-D-9"],
+      "source_refs": ["REQ-D-404"],
+      "unresolved": []
+    }
+  ],
+  "acceptance": [
+    {
+      "id": "AC-D-1",
+      "observable_result": "receipt lists every applied path",
+      "verification": {"kind": "test", "selector": "receipts_cover_applied_files"}
+    },
+    {
+      "id": "AC-D-2",
+      "observable_result": "nothing references this criterion",
+      "verification": {"kind": "test", "selector": "orphan"}
+    }
+  ],
+  "scope": [],
+  "policy_revision": null,
+  "verification_commands": [],
+  "unresolved": [],
+  "snapshot": null
+}
