@@ -12,7 +12,7 @@
 //! behaviour: edits are refused with "existing YAML requires preservation review"
 //! until the lossless-editing HOLD is decided.
 
-use crate::{digest, PROJECT_STATE_DIR};
+use crate::{digest, PROJECT_STATE_DIR, SECRET_SHAPES};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 use std::{
@@ -128,21 +128,10 @@ fn portable(s: &str) -> bool {
     !s.trim().is_empty()
         && s.len() <= 2048
         && !s.chars().any(char::is_control)
-        && ![
-            "/",
-            "\\",
-            "~/",
-            ":\\",
-            "sk-",
-            "ghp_",
-            "github_pat_",
-            "-----begin",
-            "password=",
-            "token=",
-            "api_key=",
-        ]
-        .iter()
-        .any(|x| lower.contains(x))
+        && !["/", "\\", "~/", ":\\"]
+            .iter()
+            .chain(SECRET_SHAPES.iter())
+            .any(|x| lower.contains(x))
 }
 fn portable_id(s: &str) -> bool {
     !s.is_empty()

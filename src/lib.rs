@@ -1,13 +1,16 @@
 pub mod agents;
 pub mod baseline;
+pub mod claude;
 pub mod contract;
 pub mod forge;
 pub mod hosts;
 pub mod identity;
 pub mod plan;
 pub mod profile;
+pub mod run;
 pub mod session;
 pub mod spec;
+pub mod verify;
 pub use agents::{agents_apply, agents_plan, AgentsPlan, AgentsRequest};
 pub use baseline::tree_digest;
 pub use profile::{apply, plan, read_profile, DecisionRecord, Delta, Plan, Profile};
@@ -33,7 +36,18 @@ pub const HOME_STATE_DIR: &str = ".moai-cli";
 pub fn digest(bytes: &[u8]) -> String {
     format!("sha256:{:x}", Sha256::digest(bytes))
 }
-
+/// Credential-shaped substrings of the conservative profile filter, lower-cased. Shared with
+/// the 07-B promotion gate (`forge::promote`) so both refuse the same shapes; this is not a
+/// general secret detector (the common redaction module belongs to 03-B #1996).
+pub(crate) const SECRET_SHAPES: [&str; 7] = [
+    "sk-",
+    "ghp_",
+    "github_pat_",
+    "-----begin",
+    "password=",
+    "token=",
+    "api_key=",
+];
 // Digest v1: sorted UTF-8 relative file paths and bytes, each framed by a u64 big-endian length.
 // Symlinks and special files are rejected. This is content integrity, not publisher trust.
 pub fn package_digest(root: &Path) -> Result<String> {
