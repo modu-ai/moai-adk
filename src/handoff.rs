@@ -432,6 +432,10 @@ enum Probe {
     Limited {
         retry_after_s: Option<u64>,
     },
+    /// The built-in comment lookup cannot judge this kind (#2099): a pr_create (or any
+    /// unknown) marker lives in the PR body, not in a comment, and absence in comments is
+    /// NOT a confirmed absence. State stays untouched; --remote-probe judges it.
+    Unjudgeable,
     /// The probe could not answer; the effect stays uncertain.
     Failed {
         why: String,
@@ -515,6 +519,29 @@ fn run_probe_command(cmd: &str, marker: &str) -> Probe {
     }
 }
 
+/// The publish kinds whose artifact lives in an Issue comment body, which the built-in
+/// comment lookup can therefore legitimately confirm. A pr_create (and any kind not on
+/// this list — the conservative default) needs `--remote-probe`: absence of its marker in
+/// comments is not a confirmed absence of the artifact (#2099).
+fn comment_confirmable(kind: &str) -> bool {
+    kind == "comment_post"
+}
+
+/// Whether a remote body carries the marker. The artifact may spell the operation marker
+/// `moai:op` or `moai-op` — compare the parsed identity (operation, project, local id,
+/// attempt), not the literal text (#2099); an unparseable marker falls back to literal.
+fn marker_matches(body: &str, marker: &str) -> bool {
+    match parse_op_markers(marker).first() {
+        Some(want) => parse_op_markers(body).iter().any(|m| {
+            m.operation == want.operation
+                && m.project_id == want.project_id
+                && m.local_id == want.local_id
+                && m.attempt == want.attempt
+        }),
+        None => body.contains(marker),
+    }
+}
+
 /// Reconciles every `uncertain` publish effect against the remote. Reads only — the
 /// function has no write path at all, so nothing is ever re-created (REQ-06B-07). The
 /// journal is written once, only when at least one effect moved; a rate-limited probe
@@ -551,8 +578,14 @@ pub fn effects_reconcile<T: Transport, C: Clock>(
     let mut retry_after = Vec::new();
     let mut blocked = false;
     let mut failed = 0;
-    // The built-in probe fetches the comments once for every uncertain effect.
-    let comments = if remote_probe.is_none() {
+    let mut left_unjudgeable = false;
+    // The built-in probe fetches the comments once for the comment-confirmable effects;
+    // kinds comments cannot judge are never fetched for and never judged (#2099).
+    let needs_comments = remote_probe.is_none()
+        && uncertain
+            .iter()
+            .any(|&i| comment_confirmable(current.effects[i]["kind"].as_str().unwrap_or_default()));
+    let comments = if needs_comments {
         let client = Client::new(transport, clock, Default::default(), Default::default());
         match fetch_comments(&client, &record.task_ref) {
             Ok(c) => Ok(c),
@@ -572,8 +605,10 @@ pub fn effects_reconcile<T: Transport, C: Clock>(
             .as_str()
             .unwrap_or_default()
             .to_string();
+        let kind = effect["kind"].as_str().unwrap_or_default().to_string();
         let verdict = match remote_probe {
             Some(cmd) => run_probe_command(cmd, &marker),
+            None if !comment_confirmable(&kind) => Probe::Unjudgeable,
             None => match &comments {
                 Err(e) if e.kind == "blocked" => Probe::Limited {
                     retry_after_s: None,
@@ -581,7 +616,10 @@ pub fn effects_reconcile<T: Transport, C: Clock>(
                 Err(e) => Probe::Failed {
                     why: e.message.clone(),
                 },
-                Ok(comments) => match comments.iter().find(|(_, body)| body.contains(&marker)) {
+                Ok(comments) => match comments
+                    .iter()
+                    .find(|(_, body)| marker_matches(body, &marker))
+                {
                     Some((id, _)) => Probe::Found {
                         remote_id: id.to_string(),
                     },
@@ -622,6 +660,16 @@ pub fn effects_reconcile<T: Transport, C: Clock>(
                     "why": "rate limited; state unchanged until retry-after (REQ-06B-09)",
                 }));
             }
+            Probe::Unjudgeable => {
+                left_unjudgeable = true;
+                transitions.push(json!({
+                    "operation_id": operation_id, "from": "uncertain", "to": "uncertain",
+                    "why": format!(
+                        "the built-in probe reads Issue comments only and cannot judge kind \
+                         {kind}; pass --remote-probe (REQ-06B-07)"
+                    ),
+                }));
+            }
             Probe::Failed { why } => {
                 failed += 1;
                 transitions.push(json!({
@@ -637,7 +685,13 @@ pub fn effects_reconcile<T: Transport, C: Clock>(
         record.last_observed_at = now_of(clock);
         journal.commit("effects_reconcile", &record)?;
     }
-    let verdict = if blocked {
+    let judged = transitions
+        .iter()
+        .filter(|t| t["to"] == json!("confirmed") || t["to"] == json!("not_performed"))
+        .count();
+    let verdict = if left_unjudgeable && judged == 0 && failed == 0 && !blocked {
+        "not_run"
+    } else if left_unjudgeable || blocked {
         "blocked"
     } else if failed > 0 {
         "uncertain"
@@ -645,6 +699,13 @@ pub fn effects_reconcile<T: Transport, C: Clock>(
         "passed"
     };
     let mut notes = Vec::new();
+    if left_unjudgeable {
+        notes.push(
+            "some effects cannot be judged from Issue comments; pass --remote-probe to judge \
+             them (REQ-06B-07, #2099)"
+                .into(),
+        );
+    }
     if blocked {
         notes.push(
             "a probe was rate limited; effects keep their state until retry-after (REQ-06B-09)"
