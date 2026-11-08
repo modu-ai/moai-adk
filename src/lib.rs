@@ -9,6 +9,7 @@ pub mod contract;
 pub mod decision;
 pub mod forge;
 pub mod generation;
+pub mod github_templates;
 pub mod handoff;
 pub mod hosts;
 pub mod identity;

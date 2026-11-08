@@ -425,6 +425,20 @@ enum Command {
     GenerationPlan {
         project: PathBuf,
     },
+    /// Plan the GitHub templates of a project (08-B #2013): typed request on stdin
+    /// (`github_issues` opts in); read-only.
+    GithubPlan {
+        project: PathBuf,
+    },
+    /// Apply an approved GitHub template plan (08-B #2013): the exact plan on stdin,
+    /// `--plan-digest` and `--permission-reference`.
+    GithubApply {
+        project: PathBuf,
+        #[arg(long)]
+        plan_digest: String,
+        #[arg(long)]
+        permission_reference: String,
+    },
     /// Apply an approved generation plan (03-C #1997): the exact plan on stdin,
     /// `--plan-digest` and `--permission-reference`.
     GenerationApply {
@@ -622,6 +636,8 @@ const OPERATIONS: &[(&str, &str)] = &[
     ("worktree-apply", "worktree.apply"),
     ("scope-check", "scope.check"),
     ("pr-body-render", "pr.body.render"),
+    ("github-plan", "github.plan"),
+    ("github-apply", "github.apply"),
     ("update-plan", "update.plan"),
     ("update-apply", "update.apply"),
     ("recovery-plan", "recovery.plan"),
@@ -1079,6 +1095,23 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
         Command::SkillReadReceipt { project, dir, name } => {
             moai_cli::sources::read_receipt(&project, &dir, &name)
         }
+        Command::GithubPlan { project } => {
+            serde_json::to_value(moai_cli::github_templates::github_plan(
+                &project,
+                input::<moai_cli::github_templates::GithubRequest>()?,
+            )?)
+            .map_err(|_| "encode failed".into())
+        }
+        Command::GithubApply {
+            project,
+            plan_digest,
+            permission_reference,
+        } => moai_cli::github_templates::github_apply(
+            &project,
+            input::<moai_cli::github_templates::GithubPlan>()?,
+            &plan_digest,
+            &permission_reference,
+        ),
         Command::GenerationPlan { project } => {
             serde_json::to_value(moai_cli::generation::generation_plan(
                 &project,
