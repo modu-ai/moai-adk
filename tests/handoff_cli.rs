@@ -678,12 +678,7 @@ fn reconcile_builtin_never_judges_pr_create() {
     // The PR marker appears in a comment body in the moai-op spelling — a literal
     // contains() misses it, and judging a PR from comments would be wrong anyway.
     let page = json!([{"id": 5001, "body": "report\n\n<!-- moai-op pr_create:101:op-9:1 -->"}]);
-    let t = RecordedTransport::new(vec![exchange(
-        "GET",
-        &comments_url(28),
-        200,
-        page,
-    )]);
+    let t = RecordedTransport::new(vec![exchange("GET", &comments_url(28), 200, page)]);
     let before = fs::read(journal_dir(&repo).join("journal.log")).unwrap();
     let out = effects_reconcile(&journal, &key, None, &t, &clock).unwrap();
 
@@ -711,12 +706,10 @@ fn reconcile_builtin_never_judges_pr_create() {
     );
     // Nothing was judged at all: not_run, with the probe requirement named.
     assert_eq!(out["verdict"], "not_run");
-    assert!(
-        out["transitions"][0]["why"]
-            .as_str()
-            .unwrap()
-            .contains("--remote-probe")
-    );
+    assert!(out["transitions"][0]["why"]
+        .as_str()
+        .unwrap()
+        .contains("--remote-probe"));
     assert_eq!(
         fs::read(journal_dir(&repo).join("journal.log")).unwrap(),
         before,
