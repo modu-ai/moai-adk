@@ -1,0 +1,372 @@
+//! One worktree per claim (Issue #2007, 06-C; REQ-06C-01..04, 10, 12).
+//!
+//! `worktree-plan` computes the branch and path for a claim and writes nothing.
+//! `worktree-apply` re-derives the plan, refuses on a digest mismatch, detects an existing
+//! owner itself (branch already used by a worktree, branch ref present, path present, or a
+//! worktree locked for the same task) and only then runs
+//! `git worktree add --lock --reason "moai claim <task_key> e<epoch>" -b <branch> <path> <base>`.
+//! It never forces the add, and the primary worktree's HEAD, branch and index are never
+//! written: the only mutating git call in this file is that `worktree add`.
+//!
+//! Decided inputs (docs/decisions-2026-11-08.md): the default root is the user's lane location
+//! `<primary>/.moai-cli/worktrees/<issue>-<logical_key>` (16:5x→17:0x); any other path is
+//! accepted as given (REQ-06C-12). The branch prefix is an open HOLD, so it is a required
+//! input with no default.
+//!
+//! Records: the claim journal belongs to 06-A (#2005) and has no public write path, so the
+//! measured identity is returned as `record_update_request`. A record can also come from a
+//! file (`--record`) for a claim that never went through the local journal; such a file is
+//! the caller's input, not an authority, and is accepted only when it agrees with the Issue
+//! claim comment it names (`--claim-comment`).
+use crate::claim::{
+    self, claim_token, parse_claim_line, ClaimRecord, Journal, WorktreeId, ACTIVE_STATES,
+};
+use crate::digest;
+use crate::spec::{Canonical, SortedKeys};
+use serde_json::{json, Value};
+use std::{
+    collections::BTreeMap,
+    fs,
+    path::{Path, PathBuf},
+    process::{Command, Stdio},
+};
+
+type Result<T> = std::result::Result<T, String>;
+
+pub const RECORD_UPDATE_OWNER: &str = "06-A #2005 (claim journal has no public write path)";
+
+fn git(dir: &Path, args: &[&str]) -> Result<String> {
+    let out = Command::new("git")
+        .args(args)
+        .current_dir(dir)
+        .output()
+        .map_err(|_| "git unavailable".to_string())?;
+    if !out.status.success() {
+        let err = String::from_utf8_lossy(&out.stderr);
+        return Err(format!(
+            "git failed: {}",
+            err.lines().next().unwrap_or("no message")
+        ));
+    }
+    String::from_utf8(out.stdout).map_err(|_| "non UTF-8 git output".to_string())
+}
+
+fn git_ok(dir: &Path, args: &[&str]) -> Result<bool> {
+    Command::new("git")
+        .args(args)
+        .current_dir(dir)
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .map(|s| s.success())
+        .map_err(|_| "git unavailable".to_string())
+}
+
+/// The 40-hex HEAD of `project` (the candidate SHA of a PR body).
+pub fn head(project: &Path) -> Result<String> {
+    Ok(git(project, &["rev-parse", "HEAD"])?.trim().to_string())
+}
+
+pub fn is_sha(s: &str) -> bool {
+    s.len() == 40
+        && s.bytes()
+            .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+}
+
+// ---- record input ----
+
+fn read_json(path: &Path, what: &str) -> Result<Value> {
+    let bytes = fs::read(path).map_err(|_| format!("{what} file not found"))?;
+    serde_json::from_slice(&bytes).map_err(|_| format!("invalid {what} file"))
+}
+
+/// The record a command works on: from the local journal (`task`), or from a file checked
+/// against the Issue claim comment (`record` + `comment`).
+pub fn load_record(
+    project: &Path,
+    task: Option<&str>,
+    record: Option<&Path>,
+    comment: Option<&Path>,
+) -> Result<ClaimRecord> {
+    match (task, record) {
+        (Some(key), None) => {
+            let shown = claim::show(&claim::journal_root(project)?, key)?;
+            serde_json::from_value(shown["record"].clone())
+                .map_err(|_| "claim record not found for task".to_string())
+        }
+        (None, Some(path)) => {
+            let rec: ClaimRecord = serde_json::from_value(read_json(path, "record")?)
+                .map_err(|_| "invalid record file".to_string())?;
+            let comment = comment.ok_or("--record requires --claim-comment")?;
+            check_against_comment(&rec, &read_json(comment, "claim comment")?)?;
+            Ok(rec)
+        }
+        _ => Err("exactly one of --task or --record is required".into()),
+    }
+}
+
+/// A record file must agree with the Issue claim comment: comment id, session, epoch, lease
+/// and (when present) the claim token. Any difference refuses the record.
+pub fn check_against_comment(rec: &ClaimRecord, comment: &Value) -> Result<()> {
+    let id = comment["id"]
+        .as_i64()
+        .ok_or("invalid claim comment file: id must be an integer")?;
+    let line = comment["body"]
+        .as_str()
+        .and_then(parse_claim_line)
+        .ok_or("invalid claim comment file: no moai-claim line in body")?;
+    let mut diffs = Vec::new();
+    if rec.comment_id != Some(id) {
+        diffs.push("comment_id");
+    }
+    if rec.owner.id != line.session {
+        diffs.push("session");
+    }
+    if rec.epoch != line.epoch {
+        diffs.push("epoch");
+    }
+    if rec.lease_until.as_deref() != Some(line.lease_until.as_str()) {
+        diffs.push("lease_until");
+    }
+    if let Some(token) = &rec.claim_token {
+        if *token != claim_token(rec.task_ref.issue_number, id) {
+            diffs.push("claim_token");
+        }
+    }
+    if diffs.is_empty() {
+        Ok(())
+    } else {
+        Err(format!(
+            "conflict in record: {} differs from the Issue claim comment; record refused",
+            diffs.join(", ")
+        ))
+    }
+}
+
+/// The latest record of every task in the local journal, active ones only.
+pub fn active_records(project: &Path) -> Result<Vec<ClaimRecord>> {
+    let events = Journal::open_read(&claim::journal_root(project)?)?.read_events()?;
+    let mut latest: BTreeMap<String, ClaimRecord> = BTreeMap::new();
+    for e in events {
+        latest.insert(e.record.task_key.clone(), e.record);
+    }
+    Ok(latest
+        .into_values()
+        .filter(|r| ACTIVE_STATES.contains(&r.state.as_str()))
+        .collect())
+}
+
+// ---- plan ----
+
+struct Entry {
+    path: String,
+    head: String,
+    branch: Option<String>,
+    locked: Option<String>,
+}
+
+fn worktrees(project: &Path) -> Result<Vec<Entry>> {
+    let text = git(project, &["worktree", "list", "--porcelain"])?;
+    let mut out = Vec::new();
+    for block in text.split("\n\n").filter(|b| !b.trim().is_empty()) {
+        let mut e = Entry {
+            path: String::new(),
+            head: String::new(),
+            branch: None,
+            locked: None,
+        };
+        for line in block.lines() {
+            if let Some(v) = line.strip_prefix("worktree ") {
+                e.path = v.into();
+            } else if let Some(v) = line.strip_prefix("HEAD ") {
+                e.head = v.into();
+            } else if let Some(v) = line.strip_prefix("branch ") {
+                e.branch = Some(v.into());
+            } else if line == "locked" {
+                e.locked = Some(String::new());
+            } else if let Some(v) = line.strip_prefix("locked ") {
+                e.locked = Some(v.into());
+            }
+        }
+        out.push(e);
+    }
+    Ok(out)
+}
+
+fn entry_json(e: &Entry) -> Value {
+    json!({"path": e.path, "head": e.head, "branch": e.branch, "locked": e.locked})
+}
+
+fn valid_prefix(p: &str) -> bool {
+    !p.is_empty()
+        && !p.starts_with('/')
+        && !p.ends_with('/')
+        && !p.split('/').any(|s| s.is_empty() || s == "." || s == "..")
+        && p.bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b"-_./".contains(&b))
+}
+
+// @MX:DEBT: [AUTO] the branch prefix is a required input with no default (HOLD, leader 2026-11-08)
+// @MX:CEILING: REQ-06C-01 layout `<prefix>/<logical_key>-<issue>-e<epoch>`; it differs from the
+//   lanes' `issue/<n>-<key>` and from 06-A's `claim_branch_suffix` (`c<issue>-<comment_id>`)
+// @MX:UPGRADE: when the user decides the prefix and its relation to the 06-A suffix
+/// The plan for a claim's worktree (REQ-06C-01): no git change, byte-identical for equal input.
+pub fn plan(project: &Path, rec: &ClaimRecord, prefix: &str, path: Option<&Path>) -> Result<Value> {
+    if !valid_prefix(prefix) {
+        return Err("invalid --branch-prefix: segments of [A-Za-z0-9._-] separated by /".into());
+    }
+    if !is_sha(&rec.base_revision) {
+        return Err("invalid record: base_revision must be 40 lowercase hex".into());
+    }
+    let issue = rec.task_ref.issue_number;
+    let branch = format!("{prefix}/{}-{issue}-e{}", rec.logical_key, rec.epoch);
+    if !git_ok(project, &["check-ref-format", "--branch", &branch])? {
+        return Err(format!("invalid branch name {branch}"));
+    }
+    let primary = worktrees(project)?
+        .into_iter()
+        .next()
+        .map(|e| PathBuf::from(e.path))
+        .ok_or("project root unavailable")?;
+    let path = match path {
+        Some(p) if p.is_absolute() => p.to_path_buf(),
+        Some(p) => primary.join(p),
+        None => primary
+            .join(".moai-cli")
+            .join("worktrees")
+            .join(format!("{issue}-{}", rec.logical_key)),
+    };
+    let content = json!({
+        "task_key": rec.task_key,
+        "logical_key": rec.logical_key,
+        "issue_number": issue,
+        "epoch": rec.epoch,
+        "branch": branch,
+        "path": path.to_string_lossy(),
+        "base_sha": rec.base_revision,
+        "primary": primary.to_string_lossy(),
+        "lock_reason": format!("moai claim {} e{}", rec.task_key, rec.epoch),
+    });
+    let digest = digest(&SortedKeys.bytes(&content));
+    let mut out = content;
+    out["plan_digest"] = json!(digest);
+    out["writes"] = json!(false);
+    Ok(out)
+}
+
+// ---- apply ----
+
+/// Measured identity of a worktree; never inferred from the `.git` shape or a basename (D42).
+pub fn identity(path: &Path) -> Result<WorktreeId> {
+    let out = git(
+        path,
+        &[
+            "rev-parse",
+            "--path-format=absolute",
+            "--show-toplevel",
+            "--git-common-dir",
+            "--git-dir",
+            "HEAD",
+        ],
+    )?;
+    let lines: Vec<&str> = out.lines().collect();
+    let [top, common, gitdir, head] = lines[..] else {
+        return Err("unexpected git rev-parse output".into());
+    };
+    Ok(WorktreeId {
+        common_dir: common.into(),
+        git_dir: gitdir.into(),
+        path: top.into(),
+        head: head.into(),
+    })
+}
+
+fn conflict(reason: &str, plan: &Value, existing: Vec<Value>) -> Value {
+    json!({
+        "decision": "conflict",
+        "reason": reason,
+        "branch": plan["branch"],
+        "path": plan["path"],
+        "existing": existing,
+        "record_update_request": Value::Null,
+    })
+}
+
+/// REQ-06C-02/03: create the worktree, or report the existing owner; the add is never forced.
+pub fn apply(
+    project: &Path,
+    rec: &ClaimRecord,
+    prefix: &str,
+    path: Option<&Path>,
+    plan_digest: &str,
+) -> Result<Value> {
+    let p = plan(project, rec, prefix, path)?;
+    if p["plan_digest"] != plan_digest {
+        return Err("stale or altered plan; re-preview required".into());
+    }
+    let branch = p["branch"].as_str().unwrap_or_default().to_string();
+    let target = PathBuf::from(p["path"].as_str().unwrap_or_default());
+    let reason = p["lock_reason"].as_str().unwrap_or_default().to_string();
+    let task_lock = format!("moai claim {} ", rec.task_key);
+    let entries = worktrees(project)?;
+    let full_ref = format!("refs/heads/{branch}");
+    let in_use: Vec<Value> = entries
+        .iter()
+        .filter(|e| e.branch.as_deref() == Some(full_ref.as_str()))
+        .map(entry_json)
+        .collect();
+    if !in_use.is_empty() {
+        return Ok(conflict("branch_in_use", &p, in_use));
+    }
+    let same_task: Vec<Value> = entries
+        .iter()
+        .filter(|e| {
+            e.locked
+                .as_deref()
+                .is_some_and(|l| l.starts_with(&task_lock))
+        })
+        .map(entry_json)
+        .collect();
+    if !same_task.is_empty() {
+        return Ok(conflict("task_has_worktree", &p, same_task));
+    }
+    if git_ok(project, &["show-ref", "--verify", "--quiet", &full_ref])? {
+        let head = git(project, &["rev-parse", &full_ref])?;
+        return Ok(conflict(
+            "branch_exists",
+            &p,
+            vec![json!({"branch": full_ref, "head": head.trim()})],
+        ));
+    }
+    if target.exists() {
+        let at: Vec<Value> = entries
+            .iter()
+            .filter(|e| Path::new(&e.path) == target)
+            .map(entry_json)
+            .collect();
+        return Ok(conflict("path_exists", &p, at));
+    }
+    let target_s = target.to_string_lossy().to_string();
+    let base = p["base_sha"].as_str().unwrap_or_default().to_string();
+    git(
+        project,
+        &[
+            "worktree", "add", "--lock", "--reason", &reason, "-b", &branch, &target_s, &base,
+        ],
+    )?;
+    let id = identity(&target)?;
+    Ok(json!({
+        "decision": "created",
+        "plan_digest": plan_digest,
+        "branch": branch,
+        "path": target_s,
+        "locked": reason,
+        "identity": id,
+        "record_update_request": {
+            "task_key": rec.task_key,
+            "epoch": rec.epoch,
+            "worktree": id,
+        },
+        "record_update_owner": RECORD_UPDATE_OWNER,
+    }))
+}
