@@ -17,6 +17,7 @@ pub mod install;
 pub mod plan;
 pub mod pr_link;
 pub mod profile;
+pub mod recovery;
 pub mod redact;
 pub mod run;
 pub mod scope;

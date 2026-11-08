@@ -656,15 +656,13 @@ fn update_result_reports_per_host_and_partial() {
         .iter()
         .find(|h| h["host"] == json!("codex"))
         .unwrap();
-    let published_but_uncommitted = codex_plan["files"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .find(|f| f["path"] == json!("SKILL.md"))
-        .unwrap();
-    // The bytes on disk already equal the desired state, so the file reads unchanged
-    // (no silent overwrite; the pending receipt is 04-C's to resolve).
-    assert_eq!(published_but_uncommitted["action"], json!("unchanged"));
+    // REQ-04C-04 (04-C #2000): the pending host takes no new apply until recovery-plan /
+    // recovery-apply resolves it; it is blocked, never silently overwritten.
+    assert_eq!(codex_plan["preflight"], json!("blocked"));
+    assert_eq!(
+        codex_plan["blocked_reason"],
+        json!("host receipt is pending; run recovery-plan first")
+    );
     // claude, committed, plans cleanly against the new stage.
     assert_eq!(plan_action(&p3, "claude", "SKILL.md"), "unchanged");
 }
