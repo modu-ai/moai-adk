@@ -91,6 +91,17 @@ Known gaps: the provisional Python adapter has no migration for projects install
 
 `skills/moai/` holds the canonical, host-neutral package: `SKILL.md` (`name: moai`, no Claude-only frontmatter, `$ARGUMENTS` or dynamic shell context), `references/routes.json` (eight routes, `classification_is_authorization: false`) and `workflows/{read,setup,update,plan,run,verify,audit,sync}.md`. `package-inspect skills/moai` digests it. Host projections, discovery and invocation are not implemented or verified.
 
+`references/source-manifest.json` (02-A #1991) records where every other package file came from: the design-22 template id (`router-core`, `router-routes`, `workflow-*`), the template Page and snapshot sha256, and the file's current sha256, so a stale entry fails a test. It also pins the legacy source the package is meant to inherit: `modu-ai/moai-adk` at `4fa2aa9db2e0add0f1299e35407141b2b41c5ec0`, Apache-2.0 (read from `LICENSE` at that revision). The inventory's 1,107 rows match `git ls-tree` at that revision blob for blob. The row list itself is `.moai-cli/manifests/legacy-asset-map.json` in the repository, pinned by sha256 and kept outside the package. Two reasons: package files are read with a 64 KiB per-file bound, and the list is about 400 KB that installs would carry while the router never loads it. Every row stays `unchecked`: a row's `intents` and `proposed_action` are an earlier proposal, not an adoption. No legacy bytes are copied into the package.
+
+Package structure is checked by tests only (`cargo test --offline --locked skill_package`). No `package-inspect --lint` subcommand exists; that was the RC1 interim choice for HOLD P06. The tests check four things:
+
+- `SKILL.md` frontmatter holds only `name`, `description` and optionally `license` or `metadata`. `name` matches the directory. There is no Claude-only key, `$ARGUMENTS` or `` !` `` context, and the file stays at 500 lines or fewer.
+- The eight routes point at existing `workflows/<intent>.md` files, and `classification_is_authorization` is false.
+- The manifest covers every package file with a current sha256.
+- `package-inspect` is repeatable and refuses a tree without `SKILL.md`.
+
+Reference depth is counted outside the route indirection. `SKILL.md` may name only `references/routes.json`, routes point at workflows, and a workflow names no other package file. The SKILL.md → routes → workflow chain is the sanctioned layout, not a depth violation. Package text stays English (RC1 interim decision; a Korean projection is a later step). Not run here: `npx skills-ref validate skills/moai`, because Node is only a lazy nvm shell function in this environment and nothing is installed for the check.
+
 ## Development session launcher (`session`)
 
 `moai-cli session --role leader|agent --name <label> [--host claude] [--model opus] [--effort medium] [--advisor <model>] [--claude-bin claude] [--dry-run]` composes and starts a host session for repository development. Output is typed JSON: `host`, `role`, `argv`, `notes`, `executed`, `exit_code` (after a real start), `host_loaded: false` (the launcher never proves what the host loaded). `--dry-run` prints the command without starting anything; tests use only that path.
