@@ -91,6 +91,38 @@ fn package_files(root: &Path, dir: &Path, out: &mut Vec<(String, Vec<u8>)>) -> R
     Ok(())
 }
 
+/// REQ-02C-01: the projected SKILL.md frontmatter holds only `name: moai` and `description`.
+fn check_frontmatter(skill: &[u8]) -> Result<()> {
+    let text = std::str::from_utf8(skill).map_err(|_| "invalid package: SKILL.md is not UTF-8")?;
+    let body = text
+        .strip_prefix("---\n")
+        .and_then(|rest| rest.split_once("\n---\n"))
+        .map(|(front, _)| front)
+        .ok_or("invalid package: SKILL.md frontmatter missing")?;
+    let mut keys = Vec::new();
+    for line in body.lines().filter(|l| !l.trim().is_empty()) {
+        if line.starts_with([' ', '\t']) {
+            return Err(
+                "invalid package: SKILL.md frontmatter must hold only name and description".into(),
+            );
+        }
+        let (key, value) = line
+            .split_once(':')
+            .ok_or("invalid package: SKILL.md frontmatter line without a key")?;
+        keys.push((key.trim(), value.trim()));
+    }
+    let names: Vec<&str> = keys.iter().map(|(k, _)| *k).collect();
+    if names.len() != 2 || !names.contains(&"name") || !names.contains(&"description") {
+        return Err(
+            "invalid package: SKILL.md frontmatter must hold only name and description".into(),
+        );
+    }
+    if keys.iter().any(|(k, v)| *k == "name" && *v != "moai") {
+        return Err("invalid package: SKILL.md name must be moai".into());
+    }
+    Ok(())
+}
+
 /// Plans a Codex projection of the common package into `target` without writing anything.
 /// `status_line` and `disable_bundled_skills` are config requests: they are reported as HOLD.
 pub fn projection_plan(
@@ -118,12 +150,23 @@ pub fn projection_plan(
             "invalid package: agents/ belongs to the Codex projection, not the package".into(),
         );
     }
+    let skill = &files
+        .iter()
+        .find(|(rel, _)| rel == "SKILL.md")
+        .ok_or("package SKILL.md missing")?
+        .1;
+    check_frontmatter(skill)?;
     let mut plan: Vec<Value> = files
         .iter()
         .map(|(rel, bytes)| {
             json!({"path": rel, "action": "copy", "source": "package", "sha256": digest(bytes)})
         })
         .collect();
+    // REQ-02C-01: the planned SKILL.md is the package's bytes, read again and compared.
+    let reread = fs::read(package_abs.join("SKILL.md")).map_err(|_| "package read failed")?;
+    let skill_md_identical = plan
+        .iter()
+        .any(|e| e["path"] == "SKILL.md" && e["sha256"] == digest(&reread));
     let rendered = openai_yaml(yaml)?;
     plan.push(
         json!({"path": "agents/openai.yaml", "action": "create", "source": "adapter",
@@ -143,7 +186,7 @@ pub fn projection_plan(
         "target": target,
         "package_digest": package_digest,
         "files": plan,
-        "skill_md_identical": true,
+        "skill_md_identical": skill_md_identical,
         "config_changes": config,
         "hooks": {"generated": [], "reason": "RC1 interim decision: no Codex hooks are generated"},
         "invocation": {"desktop": "$moai in the composer", "cli": "/skills or $moai", "ide": "/skills or $moai"},

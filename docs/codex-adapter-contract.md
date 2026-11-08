@@ -35,7 +35,7 @@ not_run은 Desktop 발견·호출이 실패했다는 뜻이 아니다. 그래서
 ### `codex.projection_plan` (`codex-projection-plan PACKAGE --target DIR`)
 
 - `--target`: 절대 경로여야 하고, 마지막 이름이 `moai`여야 하고, package 바깥이어야 한다. 없으면 `usage`, 조건에 어긋나면 `invalid_input`이다.
-- 파일 계획: package의 모든 파일을 sha256이 같은 복사(`action: copy`)로 계획한다. 그래서 `SKILL.md`는 02-A canonical body와 바이트가 같다(REQ-02C-01). package 안에 `agents/`가 있으면 거부한다. `agents/openai.yaml`은 adapter metadata이지 package 파일이 아니기 때문이다.
+- 파일 계획: package의 모든 파일을 sha256이 같은 복사(`action: copy`)로 계획한다. 그래서 `SKILL.md`는 02-A canonical body와 바이트가 같다(REQ-02C-01). `skill_md_identical`은 고정값이 아니라, 계획한 `SKILL.md`의 sha256을 package에서 다시 읽은 바이트와 비교한 결과다. 계획 전에 `SKILL.md` frontmatter가 `name: moai`와 `description` 두 키만 갖는지 확인하고, 다른 키가 있거나 둘 중 하나가 없으면 `invalid_input`으로 거부한다. package 안에 `agents/`가 있으면 거부한다. `agents/openai.yaml`은 adapter metadata이지 package 파일이 아니기 때문이다.
 - `agents/openai.yaml`: `interface.display_name`·`short_description`·`default_prompt`만 쓴다. `policy.allow_implicit_invocation`은 `--allow-implicit-invocation`을 줬을 때만 쓴다. 주지 않으면 키가 없어 Codex 기본값(`true`)이 그대로 유지된다(REQ-02C-02). 값은 큰따옴표 YAML 문자열로 escape한다(PyYAML `safe_load`로 다시 읽어 확인). 제어 문자가 있거나 256자를 넘으면 거부한다.
 - 설정 요청: `--status-line ID`(반복 가능)와 `--disable-bundled-skills`는 `config_changes: {status: "hold", requested, unverified_items, writes: []}`로 돌려준다. 모든 status-line ID는 `unverified_items`에 들어간다(REQ-02C-07). 요청이 없으면 `status: none_requested`다.
 - 결과: `hooks.generated: []`, `files_created: []`, `host_loaded: false`, `execution_verified: false`.
@@ -62,6 +62,7 @@ not_run은 Desktop 발견·호출이 실패했다는 뜻이 아니다. 그래서
 | STATUS-FIELD-PARITY | `codex_statusline_items_are_unverified` |
 | HA-07-DUPLICATE(재정의) | `codex_hooks_not_generated` |
 | PROJECTION-PLAN-NO-WRITE | `codex_projection_plan_writes_nothing`, `codex_openai_yaml_only_explicit_fields` |
+| REQ-02C-01 | `codex_projection_requires_host_neutral_frontmatter`(감사 비차단 지적으로 추가) |
 | REQ-02C-04 | `codex_duplicate_moai_skill_is_warned` |
 | 오류 kind | `codex_messages_have_a_deliberate_kind` |
 | HA-01-CODEX, HA-10-SPIKE | not_run(레인). 운영자 실측 여부는 사용자 결정 대기 |

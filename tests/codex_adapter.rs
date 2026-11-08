@@ -383,6 +383,38 @@ fn codex_projection_plan_writes_nothing() {
 }
 
 #[test]
+fn codex_projection_requires_host_neutral_frontmatter() {
+    // REQ-02C-01: the projected SKILL.md is the package's bytes, with only name and description.
+    let f = fixture();
+    let target = f.home.join(".agents/skills/moai");
+    let (ok, v) = run(&["codex-projection-plan", &package(), "--target", s(&target)]);
+    assert!(ok, "{v}");
+    assert_eq!(v["result"]["skill_md_identical"], true);
+    let bad = TempDir::new().unwrap();
+    for (front, label) in [
+        (
+            "name: moai\ndescription: d\nallowed-tools: Bash\n",
+            "extra key",
+        ),
+        ("name: other\ndescription: d\n", "wrong name"),
+        ("name: moai\n", "no description"),
+    ] {
+        write(
+            &bad.path().join("SKILL.md"),
+            &format!("---\n{front}---\n\nbody\n"),
+        );
+        let (ok, v) = run(&[
+            "codex-projection-plan",
+            s(bad.path()),
+            "--target",
+            s(&target),
+        ]);
+        assert!(!ok, "{label}");
+        assert_eq!(v["error"]["kind"], "invalid_input", "{label}");
+    }
+}
+
+#[test]
 fn codex_messages_have_a_deliberate_kind() {
     use moai_cli::contract::{classify, Kind::*};
     for (message, kind) in [
@@ -408,6 +440,21 @@ fn codex_messages_have_a_deliberate_kind() {
         ("invalid max-bytes: must be positive", InvalidInput),
         ("home directory missing; pass --home", InvalidInput),
         ("package read failed", Io),
+        ("invalid package: SKILL.md is not UTF-8", InvalidInput),
+        (
+            "invalid package: SKILL.md frontmatter missing",
+            InvalidInput,
+        ),
+        (
+            "invalid package: SKILL.md frontmatter line without a key",
+            InvalidInput,
+        ),
+        (
+            "invalid package: SKILL.md frontmatter must hold only name and description",
+            InvalidInput,
+        ),
+        ("invalid package: SKILL.md name must be moai", InvalidInput),
+        ("package SKILL.md missing", NotFound),
         ("project directory unavailable", NotFound),
         ("path unavailable", NotFound),
     ] {
