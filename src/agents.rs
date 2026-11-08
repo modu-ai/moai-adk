@@ -876,8 +876,23 @@ pub(crate) fn agents_apply_amended(
     manifest_bytes.push(b'\n');
     if before.as_deref() != Some(manifest_bytes.as_slice()) {
         if let Some(b) = before.as_deref() {
-            apply::save_before_bytes(&root, &request_id, MANIFEST, b)
-                .map_err(|e| step(&applied, MANIFEST, e))?;
+            if let Err(e) = apply::save_before_bytes(&root, &request_id, MANIFEST, b) {
+                // #2123: a failed backup is recorded like the #2119 decode failure,
+                // so the receipt still names the manifest that was not published.
+                receipt.entry(
+                    MANIFEST,
+                    &manifest_plan.action,
+                    Some(&digest(b)),
+                    None,
+                    false,
+                    Some(e.clone()),
+                );
+                return Err(receipt_failure(
+                    &receipt,
+                    &root,
+                    &step(&applied, MANIFEST, e),
+                ));
+            }
         }
         let publish = if before.is_none() {
             apply::publish_exclusive(&manifest_path, &manifest_bytes)
@@ -938,6 +953,89 @@ pub(crate) fn agents_apply_amended(
 mod tests {
     use super::*;
     use std::fs;
+
+    /// #2123: the manifest's before-bytes backup fails (its backup directory is
+    /// blocked by a regular file, planted by the hook after this run created its
+    /// `<request-id>.before/`). The apply fails and the agents.apply receipt records
+    /// the manifest row as not published, with the error.
+    #[test]
+    fn manifest_backup_failure_is_recorded_in_receipt() {
+        let root = tempfile::TempDir::new().unwrap();
+        fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
+        fs::create_dir_all(root.path().join(".moai-cli")).unwrap();
+        let profile = json!({"schema_version":2,"project_id":"demo","purpose":"Build a small editor","tools":["Rust"],"development_methods":["TDD"],"hosts":["claude","codex"],"interview_revision":"rc1-fixture-1"});
+        fs::write(
+            root.path().join(".moai-cli/project.yaml"),
+            serde_json::to_vec_pretty(&profile).unwrap(),
+        )
+        .unwrap();
+        let request = |language: &str| AgentsRequest {
+            protocol_version: 1,
+            language: language.into(),
+            workflow_reference: "skills/moai/workflows/".into(),
+            local_file: "tracked".into(),
+        };
+        let first = agents_plan(root.path(), request("en")).unwrap();
+        let digest = first.plan_digest.clone();
+        agents_apply(root.path(), first, &digest, "fixture").unwrap();
+        let receipts = root.path().join(apply::RECEIPTS_DIR);
+        let backups = |dir: &Path| -> Vec<std::path::PathBuf> {
+            fs::read_dir(dir)
+                .unwrap()
+                .map(|e| e.unwrap().path())
+                .filter(|p| p.extension().and_then(|e| e.to_str()) == Some("before"))
+                .collect()
+        };
+        assert!(
+            backups(&receipts).is_empty(),
+            "the first apply only created"
+        );
+
+        // en -> ko merges AGENTS.md (its before bytes create this run's backup dir)
+        // and changes the manifest, so the manifest backup is attempted.
+        let second = agents_plan(root.path(), request("ko")).unwrap();
+        let digest = second.plan_digest.clone();
+        let err = agents_apply_amended(root.path(), second, &digest, "fixture", &mut |_, _| {
+            let dirs = backups(&receipts);
+            assert_eq!(dirs.len(), 1, "this run's backup dir: {dirs:?}");
+            fs::write(dirs[0].join(".moai-cli"), b"blocks the manifest backup").unwrap();
+            Ok(())
+        })
+        .unwrap_err();
+        assert!(
+            err.contains("partial apply") && err.contains(MANIFEST),
+            "{err}"
+        );
+
+        let mut manifest_rows = Vec::new();
+        for entry in fs::read_dir(&receipts).unwrap() {
+            let path = entry.unwrap().path();
+            if path.extension().and_then(|e| e.to_str()) != Some("json") {
+                continue;
+            }
+            let v: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+            if v["operation"] != json!("agents.apply") || v["status"] == json!("complete") {
+                continue;
+            }
+            assert_eq!(v["status"], json!("partial"), "{v}");
+            manifest_rows.extend(
+                v["entries"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .filter(|e| e["path"] == json!(MANIFEST))
+                    .cloned(),
+            );
+        }
+        assert_eq!(manifest_rows.len(), 1, "{manifest_rows:?}");
+        assert_eq!(manifest_rows[0]["published"], json!(false));
+        assert!(
+            manifest_rows[0]["error"]
+                .as_str()
+                .is_some_and(|e| !e.is_empty()),
+            "{manifest_rows:?}"
+        );
+    }
 
     /// #2119 path 1: a hook that succeeds but leaves the manifest outside the schema
     /// fails the apply, and the agents.apply receipt records that manifest failure.
