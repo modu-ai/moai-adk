@@ -149,14 +149,6 @@ class FormsTest(unittest.TestCase):
         adopted = {p for p, (_, adoption) in collect.FORM_PATHS.items() if adoption == "adopted"}
         self.assertEqual(adopted, checked)
 
-    def test_tracked_form_hashes_match_this_checkout(self):
-        recorded = collect.read_shasum(FORMS_SHA)
-        for rel, (tracked, _) in collect.FORM_PATHS.items():
-            if tracked == "tracked":
-                with self.subTest(path=rel):
-                    live = collect.file_inventory({rel: ("tracked", "adopted")}, ROOT)[0]["sha256"]
-                    self.assertEqual(live, recorded[rel])
-
 
 class DuplicateMapTest(unittest.TestCase):
     def test_every_open_issue_is_mapped(self):

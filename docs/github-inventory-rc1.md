@@ -10,7 +10,7 @@
 | `.moai-cli/manifests/github-duplicate-map.json` | 열린 Issue의 논리 키 매핑, 닫힌 Issue 중복 후보(사람 판단용 `candidate`), 후보 규칙과 관측값 |
 | `.moai-cli/manifests/github-forms.sha256` | 양식 8개 경로의 sha256(`shasum -a 256 -c` 형식) |
 | `tests/github_inventory_collect.py` | 수집기(표준 라이브러리만 사용, GET 전용, `python3 -I`로 실행 가능) |
-| `tests/github_inventory_test.py` | 오프라인 테스트 18개(네트워크·`gh` 호출 없음) |
+| `tests/github_inventory_test.py` | 오프라인 테스트 17개(네트워크·`gh` 호출 없음) |
 | `tests/fixtures/github/*.json` | 기록·편집된 원격 응답(필드 화이트리스트만 남김) |
 | `tests/fixtures/github/forms-primary.sha256` | 기본 checkout에서 기록한 양식·label 파일 sha256 |
 
@@ -75,7 +75,7 @@
 
 label 파일 3종(`.github/moai/labels.yml` 채택, `.github/labels.yml`·`.github/agentic-factory/labels.proposed.yml` 미채택-보존)도 `label_files`에 같은 방식으로 기록했다. 채택 양식 3종은 `tests/github_assets_test.py`가 검사하는 목록과 같다(테스트로 확인).
 
-untracked 5개는 공유 기본 checkout에만 있고 Issue worktree에는 없다. 그래서 sha256은 worktree에 들어가기 전에 기본 checkout에서 `shasum -a 256`으로 기록해 `forms-primary.sha256`에 담았다. tracked 3종은 worktree에서 다시 계산해 같은 값임을 테스트로 확인한다. `shasum -c`(00B-AC-6)는 기본 checkout 루트에서 실행해야 8개 모두 검사된다.
+untracked 5개는 공유 기본 checkout에만 있고 Issue worktree에는 없다. 그래서 sha256은 worktree에 들어가기 전에 기본 checkout에서 `shasum -a 256`으로 기록해 `forms-primary.sha256`에 담았다. tracked 3종은 작업 당시 worktree에서 다시 계산해 같은 값임을 확인했다. 이 양식들은 00-C(#1974)가 고칠 수 있으므로 상시 테스트로 고정하지 않는다. `shasum -c`(00B-AC-6)는 이 작업 전후 무변경을 보는 일회성 검사이고, 기본 checkout 루트에서 실행해야 8개 모두 검사된다.
 
 ## HOLD — 사용자 결정 대기
 
