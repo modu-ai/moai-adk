@@ -1,5 +1,6 @@
 pub mod agents;
 pub mod baseline;
+pub mod claim;
 pub mod contract;
 pub mod forge;
 pub mod hosts;

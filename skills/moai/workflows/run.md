@@ -10,7 +10,7 @@ A patch, receipts from actual verification (planned; not implemented in 2026.11.
 
 ## Procedure
 
-1. Preflight the project and worktree, the dirty snapshot, the owner, the epoch, and permissions.
+1. Preflight the project and worktree, the dirty snapshot, and permissions; read the owner and epoch from the claim journal (`claim-show`) before writing, and claim through it when nobody holds the task.
 2. Read only the sources the task needs, and choose a change strategy.
 3. For TDD, confirm why RED fails before moving to GREEN and refactoring. Cover existing behavior with characterization tests. For domain changes, review the bounded context and its terminology together.
 4. Change only the allowed scope with the host's native tools, and repeat actual verification.

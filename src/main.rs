@@ -118,6 +118,29 @@ enum Command {
     Identity {
         path: PathBuf,
     },
+    /// Claim a task (06-A #2005): typed JSON request on stdin; posts exactly one claim
+    /// comment (⑤) behind the same-host journal serialization (①) and records the record.
+    ClaimAcquire {
+        project: PathBuf,
+    },
+    /// Read the current claim record of a task key; byte-identical when repeated.
+    ClaimShow {
+        project: PathBuf,
+        /// The 16-hex task key an acquire returned.
+        #[arg(long)]
+        task: String,
+    },
+    /// Close the active claim as `cancelled`; the epoch must match the current record.
+    ClaimRelease {
+        project: PathBuf,
+        #[arg(long)]
+        task: String,
+        #[arg(long)]
+        epoch: u64,
+        /// Recorded in the release effect.
+        #[arg(long)]
+        reason: Option<String>,
+    },
     /// Plan a Codex projection of the common package into an explicit target; writes nothing.
     CodexProjectionPlan {
         package: PathBuf,
@@ -255,8 +278,9 @@ fn launch(
 }
 
 /// Internal operations (01-C #1990): subcommand word and operation name. The launchers are
-/// developer tools and stay outside the envelope contract.
-const OPERATIONS: [(&str, &str); 12] = [
+/// developer tools and stay outside the envelope contract. A length-free slice: registries
+/// grow often, and a fixed length turns every parallel-row merge into a conflict (PR #2044).
+const OPERATIONS: &[(&str, &str)] = &[
     ("package-inspect", "package.inspect"),
     ("project-plan", "project.plan"),
     ("project-apply", "project.apply"),
@@ -269,6 +293,9 @@ const OPERATIONS: [(&str, &str); 12] = [
     ("plan-admit", "plan.admit"),
     ("codex-projection-plan", "codex.projection_plan"),
     ("codex-doctor", "codex.doctor"),
+    ("claim-acquire", "claim.acquire"),
+    ("claim-show", "claim.show"),
+    ("claim-release", "claim.release"),
 ];
 fn operation_of(word: &str) -> Option<&'static str> {
     OPERATIONS
@@ -383,6 +410,25 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             go_repo.as_deref(),
         ),
         Command::Identity { path } => moai_cli::identity::identity(&path),
+        Command::ClaimAcquire { project } => moai_cli::claim::acquire_cli(
+            &project,
+            input::<moai_cli::claim::ClaimRequest>()?,
+            &moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        Command::ClaimShow { project, task } => moai_cli::claim::show_cli(&project, &task),
+        Command::ClaimRelease {
+            project,
+            task,
+            epoch,
+            reason,
+        } => moai_cli::claim::release_cli(
+            &project,
+            &task,
+            epoch,
+            reason.as_deref().unwrap_or("unspecified"),
+            &moai_cli::forge::policy::SystemClock,
+        ),
         Command::CodexProjectionPlan {
             package,
             target,

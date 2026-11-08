@@ -100,7 +100,7 @@
       }
     },
     "workflows/run.md": {
-      "sha256": "fe8c2eb621bc509cec415990db5f9c2bbf9c18f32177b073bc9fbbbda1336240",
+      "sha256": "488b28b4a16e90a58dea8dfc49dcfd23771da0173539dee94a6f5479cbcbd5a3",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-run",
