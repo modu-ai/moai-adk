@@ -558,6 +558,25 @@ pub fn agents_apply(
 /// error returns before the manifest is touched, so the previous manifest — with what
 /// an earlier apply recorded — stays on disk instead of a reset intermediate.
 // @MX:NOTE [#2114] generation_apply's only path to the manifest; one publish per apply.
+/// The receipt row for a failed before-bytes backup (#2125): the file is named
+/// with `published=false`, the error, and its before digest, so recovery tooling
+/// sees the file that never reached its backup.
+fn failed_backup_entry(
+    path: &str,
+    action: &str,
+    before: &[u8],
+    error: &str,
+) -> apply::ReceiptEntry {
+    apply::ReceiptEntry {
+        path: path.into(),
+        decision: action.into(),
+        before_sha256: Some(digest(before)),
+        after_sha256: None,
+        published: false,
+        error: Some(error.to_string()),
+    }
+}
+
 pub(crate) fn agents_apply_amended(
     root: &Path,
     p: AgentsPlan,
@@ -750,14 +769,9 @@ pub(crate) fn agents_apply_amended(
             if let Err(e) = apply::save_before_bytes(&root, &request_id, &f.path, b) {
                 // #2125: a failed file backup is recorded like the #2123 manifest
                 // path, so the receipt still names the file that was not published.
-                receipt.entry(
-                    &f.path,
-                    &f.action,
-                    Some(&digest(b)),
-                    None,
-                    false,
-                    Some(e.clone()),
-                );
+                receipt
+                    .entries
+                    .push(failed_backup_entry(&f.path, &f.action, b, &e));
                 return Err(receipt_failure(
                     &receipt,
                     &root,
@@ -1184,6 +1198,27 @@ mod tests {
                 .is_some_and(|e| e.contains("outside the schema")),
             "{manifest_rows:?}"
         );
+    }
+
+    /// #2125: the row recorded for a failed before-bytes backup names the file,
+    /// stays unpublished, carries the error, and pins the before digest — deleting
+    /// any of those from the row breaks this assertion.
+    #[test]
+    fn failed_backup_entry_records_the_gap_row() {
+        let before = b"AGENTS.md before bytes";
+        let row = failed_backup_entry(
+            "AGENTS.md",
+            "merge",
+            before,
+            "receipt backup directory unavailable",
+        );
+        assert_eq!(row.path, "AGENTS.md");
+        assert_eq!(row.decision, "merge");
+        assert!(!row.published);
+        let expected_before = digest(before);
+        assert_eq!(row.before_sha256.as_deref(), Some(expected_before.as_str()));
+        assert_eq!(row.after_sha256, None);
+        assert!(row.error.as_deref().is_some_and(|e| !e.is_empty()));
     }
 
     #[test]
