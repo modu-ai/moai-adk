@@ -114,6 +114,13 @@ enum Command {
     ForgeRead {
         project: PathBuf,
     },
+    /// Create or update the one report comment of a run on its Issue (typed JSON payload on
+    /// stdin; envelope on stdout). Large output goes to artifact references, not the body.
+    ForgeReport {
+        project: PathBuf,
+        #[arg(long)]
+        permission_reference: String,
+    },
     /// Preview promotion of selected local TODOs to GitHub Issues (reads only; typed JSON
     /// request on stdin naming `tasks_path`, `target` and `selected`; envelope on stdout).
     TodoPromotePreview {
@@ -270,7 +277,7 @@ fn launch(
 
 /// Internal operations (01-C #1990): subcommand word and operation name. The launchers are
 /// developer tools and stay outside the envelope contract.
-const OPERATIONS: [(&str, &str); 14] = [
+const OPERATIONS: [(&str, &str); 15] = [
     ("package-inspect", "package.inspect"),
     ("project-plan", "project.plan"),
     ("project-apply", "project.apply"),
@@ -280,6 +287,7 @@ const OPERATIONS: [(&str, &str); 14] = [
     ("baseline-inventory", "baseline.inventory"),
     ("identity", "identity"),
     ("forge-read", "forge.read"),
+    ("forge-report", "forge.report"),
     ("plan-admit", "plan.admit"),
     ("codex-projection-plan", "codex.projection_plan"),
     ("codex-doctor", "codex.doctor"),
@@ -383,6 +391,31 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             &plan_digest,
             &permission_reference,
         ),
+        Command::ForgeReport {
+            project,
+            permission_reference,
+        } => {
+            let mut bytes = Vec::new();
+            io::stdin()
+                .take(65537)
+                .read_to_end(&mut bytes)
+                .map_err(|_| "stdin read failed")?;
+            if bytes.len() > 65536 {
+                return Err(
+                    "input exceeds 64 KiB; put large output in an artifact reference, not the payload"
+                        .into(),
+                );
+            }
+            let payload: moai_cli::forge::report::ReportPayload =
+                serde_json::from_slice(&bytes).map_err(|_| "invalid typed JSON input")?;
+            moai_cli::forge::report::report_cli(
+                &project,
+                payload,
+                &permission_reference,
+                &moai_cli::forge::transport::GhTransport::from_env()?,
+                &moai_cli::forge::policy::SystemClock,
+            )
+        }
         Command::ForgeRead { project } => moai_cli::forge::forge_read_cli(
             &project,
             input::<moai_cli::forge::ReadRequest>()?,
