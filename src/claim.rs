@@ -95,11 +95,20 @@ pub struct TaskRef {
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct Owner {
-    /// `session`, `leader`, `operator`, ... (bounded free form).
+    /// `session`, `leader`, `operator`, `local-process`, `remote-task`, `ci` (bounded free
+    /// form). `local-process` is the only kind 06-B probes for liveness.
     pub kind: String,
     pub id: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub host_id: Option<String>,
+    /// 06-B additive: the OS pid of a `local-process` owner, recorded at claim time so a
+    /// later handoff can probe liveness (REQ-06B-02). Old records deserialize unchanged.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pid: Option<u32>,
+    /// 06-B additive: the process start time (`ps -o lstart=` under `LC_ALL=C`); comparing
+    /// it guards against pid reuse. Recorded with `pid`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub process_start: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -198,7 +207,9 @@ pub fn claim_branch_suffix(issue_number: i64, comment_id: i64) -> String {
     format!("c{issue_number}-{comment_id}")
 }
 
-fn is_active(state: &str) -> bool {
+/// Whether `state` holds the claim (blocks a new acquire). `handed_off` (06-B) is not
+/// active: the handoff closes the record and the next acquire writes the new epoch.
+pub fn is_active(state: &str) -> bool {
     ACTIVE_STATES.contains(&state)
 }
 
@@ -206,7 +217,7 @@ fn is_live(lease_until: &str, now: i64) -> bool {
     parse_utc(lease_until).is_some_and(|t| t > now)
 }
 
-fn is_key(s: &str) -> bool {
+pub fn is_key(s: &str) -> bool {
     s.len() == 16
         && s.bytes()
             .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
@@ -571,6 +582,15 @@ impl Journal {
             }
         }
         Ok(out)
+    }
+
+    /// Commits one journal event: the append (authority, fsync) lands first, then the
+    /// record file (cache) is replaced atomically. The single write surface for every
+    /// consumer that records effects, handoffs or transitions on a record (06-B and later;
+    /// tests seed journals through it).
+    pub fn commit(&self, event: &str, record: &ClaimRecord) -> Result<()> {
+        append_event(&self.dir, event, record)?;
+        write_record_file(&self.dir, record)
     }
 }
 
