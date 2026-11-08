@@ -3000,10 +3000,11 @@
   "mode": "agentic auto-merge (leader sets status after reading independent audit PASS; gh pr merge --auto --merge)"
  },
  "removed_go_github_files": {
-  "at": "2026-11-08T08:34:48Z",
   "count": 23,
-  "basis": "user instruction 2026-11-08 17:4x; 00-C AC-5 verified 23/23 identical to moai-adk-go internal/template/templates",
-  "sha256_record": "leader scratchpad go-github-removed.sha256 (not committed)"
+  "basis": "user instruction 2026-11-08 17:3x; 00-C AC-5 verified 23/23 identical to moai-adk-go internal/template/templates",
+  "sha256_record": "leader scratchpad go-github-removed.sha256 (not committed)",
+  "recorded_at": "2026-11-08T08:34:48Z",
+  "deleted_at_approx": "2026-11-08 17:32-17:33 KST (directory mtime)"
  },
  "design_update_r14": {
   "applied_at_utc": "2026-11-08T08:41:57Z",
