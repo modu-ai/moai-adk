@@ -1275,6 +1275,7 @@ fn git_in(dir: &std::path::Path, args: &[&str]) {
         ])
         .args(["-c", "commit.gpgsign=false", "-c", "core.autocrlf=false"])
         .args(["-c", "core.excludesFile=/dev/null"])
+        .args(["-c", "gc.auto=0", "-c", "maintenance.auto=false"])
         .arg("-C")
         .arg(dir)
         .args(args)
@@ -1833,6 +1834,7 @@ fn protocol_fixtures_record_current_contract() {
                 "user.email=fixture@example.invalid",
             ])
             .args(["-c", "commit.gpgsign=false"])
+            .args(["-c", "gc.auto=0", "-c", "maintenance.auto=false"])
             .arg("-C")
             .arg(repo.path())
             .args(args)
