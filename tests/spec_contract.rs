@@ -70,9 +70,23 @@ fn gears_parse_refuses_secret_shaped_or_oversized_text_without_echo() {
         "The runner shall read ghp_0123456789.".to_string(),
         "The runner shall\u{7} beep.".to_string(),
         format!("The runner shall {}.", "x".repeat(70 * 1024)),
+        // Personal absolute paths (REQ-05A-08, #2001 r26).
+        "The runner shall read /Users/someone/notes.md.".to_string(),
+        "The runner shall read `/home/someone/notes.md`.".to_string(),
+        "The runner shall read ~/notes.md.".to_string(),
+        "The runner shall read C:\\Users\\someone.".to_string(),
     ] {
         let err = parse_gears("REQ-X", &text).unwrap_err();
         assert!(!err.reason.contains("abc123") && !err.reason.contains("ghp_"));
+        assert!(!err.reason.contains("someone") && !err.reason.contains("notes"));
+    }
+    // Repository-relative paths, other absolute paths, `:` and ordinary slashes stay allowed.
+    for text in [
+        "The generator shall write skills/moai/SKILL.md.",
+        "The runner shall write `/tmp/out` and read src/x.rs:12.",
+        "The runner shall accept and/or reject 1/2 of the cases.",
+    ] {
+        assert!(parse_gears("REQ-X", text).is_ok(), "{text}");
     }
     // A word that merely ends in "sk-" is not a secret.
     assert!(parse_gears("REQ-X", "The task-runner shall start.").is_ok());

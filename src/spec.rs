@@ -123,9 +123,18 @@ pub struct SyntaxError {
     pub reason: String,
 }
 
-/// Size, control characters and secret-shaped strings, as the profile `portable()` rule
-/// checks them; line breaks and tabs stay allowed and `/` is not refused (paths are normal
-/// in requirement text). `sk-` counts only at the start of a word.
+/// Personal absolute paths (REQ-05A-08 as redefined in #2001 r26): `/Users/`, `/home/`,
+/// `~/` and `C:\`, ignoring case. Other paths and `:` appear in requirements normally.
+fn has_personal_path(lower: &str) -> bool {
+    ["/users/", "/home/", "~/", "c:\\"]
+        .iter()
+        .any(|p| lower.contains(p))
+}
+
+/// Size, control characters, secret-shaped strings and personal absolute paths (#2001 r26),
+/// taken from the profile `portable()` rule with two differences for requirement text: line
+/// breaks and tabs are allowed, and only personal absolute paths are refused instead of every
+/// `/`. `sk-` counts only at the start of a word.
 fn check_text(s: &str) -> std::result::Result<(), &'static str> {
     if s.len() > MAX_INPUT {
         return Err("input exceeds 64 KiB");
@@ -154,6 +163,9 @@ fn check_text(s: &str) -> std::result::Result<(), &'static str> {
         });
     if secret {
         return Err("invalid spec text: secret-shaped value; no values were logged");
+    }
+    if has_personal_path(&lower) {
+        return Err("invalid spec text: personal absolute path; no values were logged");
     }
     Ok(())
 }
