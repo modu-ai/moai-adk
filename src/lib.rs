@@ -1,7 +1,9 @@
 pub mod agents;
 pub mod baseline;
 pub mod claude;
+pub mod context;
 pub mod contract;
+pub mod decision;
 pub mod forge;
 pub mod hosts;
 pub mod identity;

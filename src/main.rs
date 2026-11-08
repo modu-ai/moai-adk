@@ -191,6 +191,26 @@ enum Command {
     RunVerify {
         project: PathBuf,
     },
+    /// Read-only: PROJECT's HEAD commit and a digest of its tracked changes (07-D #2011).
+    SnapshotDescribe {
+        project: PathBuf,
+    },
+    /// Read-only: requested file ranges with digests and a budget (typed request on stdin).
+    ContextBundle {
+        project: PathBuf,
+    },
+    /// Read-only: re-check a bundle's ranges against the files now (typed request on stdin).
+    ContextVerify {
+        project: PathBuf,
+    },
+    /// Append one native decision record (stdin) to `.moai-cli/decisions/<RUN>.jsonl`.
+    DecisionRecord {
+        project: PathBuf,
+        #[arg(long)]
+        run: String,
+        #[arg(long)]
+        permission_reference: String,
+    },
     /// Claude Code session launcher: `cc -l|-a`.
     Cc(HostLaunch),
     /// Claude Code on z.ai GLM: `glm -l|-a` (needs ANTHROPIC_AUTH_TOKEN in the environment).
@@ -297,6 +317,10 @@ const OPERATIONS: &[(&str, &str)] = &[
     ("todo-promote-preview", "todo.promote.plan"),
     ("todo-promote-apply", "todo.promote.apply"),
     ("run-verify", "run.verify"),
+    ("snapshot-describe", "snapshot.describe"),
+    ("context-bundle", "context.bundle"),
+    ("context-verify", "context.verify"),
+    ("decision-record", "decision.record"),
 ];
 fn operation_of(word: &str) -> Option<&'static str> {
     OPERATIONS
@@ -486,6 +510,14 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             serde_json::to_value(moai_cli::run::run(&project, &request, &current)?)
                 .map_err(|_| "encode failed".into())
         }
+        Command::SnapshotDescribe { project } => moai_cli::context::snapshot(&project),
+        Command::ContextBundle { project } => moai_cli::context::bundle(&project, &input()?),
+        Command::ContextVerify { project } => moai_cli::context::verify(&project, &input()?),
+        Command::DecisionRecord {
+            project,
+            run,
+            permission_reference,
+        } => moai_cli::decision::append(&project, &run, &input()?, &permission_reference),
         _ => unreachable!("launchers run through run_launcher"),
     }
 }

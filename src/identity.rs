@@ -64,16 +64,12 @@ fn failure_summary(stderr: &[u8]) -> String {
     }
 }
 
-/// Runs `git -C <dir> rev-parse <args>` with a fixed argv. Variables that would redirect or
-/// reconfigure git are removed and the locale is fixed. stderr is read only to classify a
-/// failure; what reaches the caller is `failure_summary`, never a path.
-fn rev_parse(dir: &Path, args: &[&str]) -> Git {
+/// `git --no-optional-locks -C <dir>` with every caller variable that would redirect or
+/// reconfigure git removed, the locale fixed and stdin closed (Issue #2033). Shared by the
+/// read-only modules that run git (identity, context).
+pub(crate) fn git(dir: &Path) -> Command {
     let mut cmd = Command::new("git");
-    cmd.arg("--no-optional-locks")
-        .arg("-C")
-        .arg(dir)
-        .arg("rev-parse")
-        .args(args);
+    cmd.arg("--no-optional-locks").arg("-C").arg(dir);
     for key in GIT_ENV_REMOVED {
         cmd.env_remove(key);
     }
@@ -84,10 +80,19 @@ fn rev_parse(dir: &Path, args: &[&str]) -> Git {
             cmd.env_remove(&key);
         }
     }
-    let out = cmd
-        .env("GIT_OPTIONAL_LOCKS", "0")
+    cmd.env("GIT_OPTIONAL_LOCKS", "0")
         .env("LC_ALL", "C")
-        .stdin(Stdio::null())
+        .stdin(Stdio::null());
+    cmd
+}
+
+/// Runs `git -C <dir> rev-parse <args>` with a fixed argv. Variables that would redirect or
+/// reconfigure git are removed and the locale is fixed. stderr is read only to classify a
+/// failure; what reaches the caller is `failure_summary`, never a path.
+fn rev_parse(dir: &Path, args: &[&str]) -> Git {
+    let out = git(dir)
+        .arg("rev-parse")
+        .args(args)
         .stderr(Stdio::piped())
         .output();
     let Ok(out) = out else {
