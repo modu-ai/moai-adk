@@ -1,6 +1,6 @@
 # Host 지원표 (RC1)
 
-이 문서의 열 정의와 Claude Code·Codex 행은 02-C #1993 소유다. 02-C가 아직 착수하지 않아, 지금은 02-D #1994가 쓴 ZCode 행만 있다. 열 형식은 02-D가 먼저 정했고, 02-C는 이 형식을 따른다(리더 결정 2026-11-08). host마다 surface를 나누고 항목마다 출처를 적는 형식이다. 08-D #2015 release 검토가 이 표를 읽는다.
+이 문서의 열 정의와 Claude Code·Codex 행은 02-C #1993 소유이고, ZCode 행은 02-D #1994가 썼다. 열 형식은 02-D가 먼저 정했고 02-C가 따른다(리더 결정 2026-11-08). host마다 surface를 나누고 항목마다 출처를 적는다. 출처가 둘 이상이면 ` ; `로 잇는다. 08-D #2015 release 검토가 이 표를 읽는다. Claude Code 행은 아직 없다(02-B #1992).
 
 ## 상태 어휘
 
@@ -46,7 +46,7 @@ ZCode에는 1차 출처가 두 가지다. surface `app`은 데스크톱 앱 문�
 | ZCode | cli | plugin_manifest | documented | | `.zcode-plugin/plugin.json` 구조를 쓴다. 호환 manifest 필드가 런타임에 구현됐다는 보장은 없고 로드 진단이 기준이다 | https://github.com/zai-org/ZCode/blob/a60ba6a7e5a06742270ca605f5d2cc2766afa7e1/apps/zcode-cli/docs/usage/10-plugins.md |
 | ZCode | cli | statusline | unknown | 표시 불가 | 헤드리스 출력(`text`/`json`/`stream-json`)에는 statusline 개념이 없다 | https://github.com/zai-org/ZCode/blob/a60ba6a7e5a06742270ca605f5d2cc2766afa7e1/apps/zcode-cli/docs/usage/02-cli-reference.md |
 | ZCode | cli | output_style | unknown | 대안 | output style 문서가 없다. `--output-format json\|stream-json` 결과를 읽어 공통 출력 계약으로 대신한다 | https://github.com/zai-org/ZCode/blob/a60ba6a7e5a06742270ca605f5d2cc2766afa7e1/apps/zcode-cli/docs/usage/02-cli-reference.md |
-| ZCode | cli | headless_invocation | documented | | `zcode --prompt "<task>" --cwd <abs> --mode plan\|build\|edit\|yolo\|guarded --output-format text\|json\|stream-json [--resume <id>]`. `--prompt`의 기본 mode는 `yolo`이고, `plan`도 OS 수준 읽기 전용 sandbox가 아니다 | https://github.com/zai-org/ZCode/blob/0a1fc56d279fd1001f78387bd81aec1c26767411/apps/zcode-cli/docs/usage/02-cli-reference.md |
+| ZCode | cli | headless_invocation | documented | | `zcode --prompt "<task>" --cwd <abs> --mode plan\|build\|edit\|yolo\|guarded --output-format text\|json\|stream-json [--resume <id>]`. `--prompt`의 기본 mode는 `yolo`이고, `plan`도 OS 수준 읽기 전용 sandbox가 아니다 | https://github.com/zai-org/ZCode/blob/0a1fc56d279fd1001f78387bd81aec1c26767411/apps/zcode-cli/docs/usage/02-cli-reference.md ; https://github.com/zai-org/ZCode/blob/a60ba6a7e5a06742270ca605f5d2cc2766afa7e1/apps/zcode-cli/docs/usage/05-permissions.md |
 
 출처 고정:
 - 앱 문서 페이지에는 발행일이 없다. 다운로드 링크가 3.17.2를 가리킨다.
@@ -54,3 +54,29 @@ ZCode에는 1차 출처가 두 가지다. surface `app`은 데스크톱 앱 문�
 - 최신 릴리스는 `v3.17.2`(2026-11-04)다. 저장소 license는 Apache-2.0이다.
 
 상세 인용, 앱과 CLI의 차이, adapter gap, 선택지는 `docs/zcode-support.md`에 있다.
+
+## Codex (02-C)
+
+Codex 공식 문서는 Desktop 앱, CLI, IDE 확장을 함께 설명한다. 세 표면에 똑같이 적용된다고 쓴 항목은 surface `all`로, 표면별로 다르게 쓴 항목은 `desktop`·`cli`·`ide`로 적는다. 모든 행은 2026-11-08에 확인했다. 문서 페이지에는 version과 발행일이 없다. 로컬에서 관측한 것은 `codex --version` → `codex-cli 0.163.0` 하나뿐이고, 그 결과로 올린 행은 없다. Desktop과 CLI의 `$moai` 실측은 not_run이다. Desktop은 GUI라 레인에서 할 수 없고, CLI는 실제 호출이 OpenAI로 prompt를 보낸다. 운영자 실측 여부는 사용자 결정이다. not_run은 Desktop 발견·호출이 "실패"했다는 뜻이 아니므로 HA-10의 RC blocked 조건이 아니다.
+
+| host | surface | item | capability_status | unknown_class | 내용 | source |
+| --- | --- | --- | --- | --- | --- | --- |
+| Codex | all | skill_path | documented | | 작업 디렉터리부터 저장소 루트까지 각 디렉터리의 `.agents/skills`, `$HOME/.agents/skills`, `/etc/codex/skills`, 번들 system skill을 찾는다. symlink 폴더도 따라간다. 변경은 자동 감지하고, 안 보이면 재시작한다 | https://learn.chatgpt.com/docs/build-skills |
+| Codex | all | skill_required_fields | documented | | `SKILL.md`에 `name`·`description`이 필요하다. 같은 `name`의 skill은 병합하지 않고 둘 다 selector에 나올 수 있다 | https://learn.chatgpt.com/docs/build-skills |
+| Codex | all | openai_yaml | documented | | `agents/openai.yaml`의 `interface.display_name`·`short_description`·`icon_small`·`icon_large`·`brand_color`·`default_prompt`, `policy.allow_implicit_invocation`(기본 `true`), `dependencies.tools`. Codex는 name·description을 먼저 싣고 쓰기로 했을 때 `SKILL.md` 전체를 읽는다 | https://learn.chatgpt.com/docs/build-skills |
+| Codex | all | agents_loading | documented | | 전역은 `AGENTS.override.md`가 있으면 그것, 없으면 `AGENTS.md`(첫 비어 있지 않은 파일)이다. project는 root(보통 Git root)에서 작업 디렉터리까지 내려가며 디렉터리마다 최대 1개(override → `AGENTS.md` → `project_doc_fallback_filenames`)를 빈 줄로 잇는다. 가까운 파일이 뒤에 와서 앞 지침을 덮는다 | https://learn.chatgpt.com/docs/agent-configuration/agents-md |
+| Codex | all | agents_budget | documented | | 합산 크기가 `project_doc_max_bytes`(기본 32 KiB)에 이르면 더 붙이지 않는다. config reference에는 이 기본값이 없고 AGENTS.md 페이지에만 있다. 넘는 파일을 자르는지 빼는지는 적혀 있지 않다 | https://learn.chatgpt.com/docs/agent-configuration/agents-md ; https://learn.chatgpt.com/docs/config-file/config-reference |
+| Codex | all | trust_layer | documented | | `projects.<path>.trust_level`은 `"trusted"` 또는 `"untrusted"`다. untrusted project는 project의 `.codex/` 레이어(config, hooks, rules)를 건너뛴다. MoAI doctor는 config.toml을 읽지 않으므로 trust를 판정하지 않는다(`not_evaluated`) | https://learn.chatgpt.com/docs/config-file/config-reference |
+| Codex | all | hooks | documented | | 주요 위치는 `~/.codex/hooks.json`, `~/.codex/config.toml`, `<repo>/.codex/hooks.json`, `<repo>/.codex/config.toml`이다. 한 레이어에 `hooks.json`과 inline `[hooks]`가 함께 있으면 병합하고 시작 때 경고한다. 비관리 hook은 검토·신뢰 뒤에만 실행한다. cloud orchestration에서는 command·local-config·plugin hook을 지원하지 않는다 | https://learn.chatgpt.com/docs/hooks ; https://learn.chatgpt.com/docs/config-file/config-reference |
+| Codex | desktop | explicit_invocation | documented | | composer에 `$`를 쳐서 skill을 명시 호출한다. 켜진 skill은 slash 목록에도 나온다. 이 페이지의 slash 명령 표에는 `/skills`가 없다 | https://learn.chatgpt.com/docs/app/slash-commands |
+| Codex | cli | explicit_invocation | documented | | `/skills`를 실행하거나 `$`로 skill을 부른다 | https://learn.chatgpt.com/docs/build-skills |
+| Codex | ide | explicit_invocation | documented | | CLI와 같다. `/skills`를 실행하거나 `$`로 skill을 부른다 | https://learn.chatgpt.com/docs/build-skills |
+| Codex | cli | status_line | documented | | `tui.status_line`은 `array<string> \| null`이고 `null`이면 status line을 끈다. 항목 ID 목록은 문서에 없어 MoAI는 어떤 ID도 쓰지 않는다(`unverified_items`) | https://learn.chatgpt.com/docs/config-file/config-reference |
+| Codex | desktop | status_line | unknown | 시험 대기 | `tui.status_line`은 TUI 설정이다. Desktop 앱에 같은 표시가 있는지는 문서에 없다 | https://learn.chatgpt.com/docs/config-file/config-reference |
+| Codex | ide | status_line | unknown | 시험 대기 | IDE 확장에서 `tui.status_line`이 쓰이는지는 문서에 없다 | https://learn.chatgpt.com/docs/config-file/config-reference |
+
+출처 메모:
+- hooks 페이지의 handler 종류(`command`·`mcp_tool`, `prompt`·`agent`는 무시), exit 0 의미, PreToolUse 오류 때의 동작은 이번 조회에서 원문을 읽지 못했다(긴 페이지의 요약만 확보). 그래서 표에 넣지 않았다.
+- `features.hooks` 기본값도 확인하지 못했다.
+
+상세 인용, adapter 계약, gap은 `docs/codex-adapter-contract.md`에 있다.
