@@ -32,6 +32,7 @@ use crate::forge::{Client, ForgeError};
 use crate::{digest, identity};
 use serde_json::{json, Value};
 use std::{
+    cell::{Cell, RefCell},
     path::Path,
     process::{Command, Stdio},
 };
@@ -490,11 +491,19 @@ fn fetch_comments<T: Transport, C: Clock>(
 fn fetch_pulls<T: Transport, C: Clock>(
     client: &Client<'_, T, C>,
     t: &TaskRef,
+    head: Option<&str>,
 ) -> std::result::Result<Vec<(i64, String)>, ForgeError> {
-    let mut url = Some(format!(
-        "https://api.github.com/repos/{}/{}/pulls?state=all&per_page=100",
-        t.owner, t.repo
-    ));
+    let mut url = Some(match head {
+        // #2126: the narrow query for the claim's own branch — usually one page.
+        Some(b) => format!(
+            "https://api.github.com/repos/{}/{}/pulls?head={b}&state=all&per_page=100",
+            t.owner, t.repo
+        ),
+        None => format!(
+            "https://api.github.com/repos/{}/{}/pulls?state=all&per_page=100",
+            t.owner, t.repo
+        ),
+    });
     let mut pulls = Vec::new();
     let mut pages = 0;
     while let Some(u) = url {
@@ -564,13 +573,23 @@ fn run_probe_command(cmd: &str, marker: &str) -> Probe {
 /// The remote lookup the built-in probe can run for a kind (`#2101` gate, extended by
 /// #2107): a comment-borne kind is judged from Issue comments, a pr_create marker lives
 /// in the PR body and is judged from the pull list, and an unknown kind stays
-/// unjudgeable — the conservative default (#2099).
+/// unjudgeable — the conservative default (#2099). A pr_create with a known branch tries
+/// the narrow `pulls?head=` query first and only falls back to the full scan when that
+/// answers empty (#2126).
 fn builtin_lookup(kind: &str) -> Option<&'static str> {
     match kind {
         "comment_post" => Some("comments"),
         "pr_create" => Some("pulls"),
         _ => None,
     }
+}
+
+/// The recorded branch the head query may use: plain, bounded, no control or whitespace
+/// characters. Anything else (a detached HEAD recorded `None`) keeps the full-scan path.
+fn head_branch(branch: Option<&str>) -> Option<&str> {
+    branch.filter(|s| {
+        !s.is_empty() && s.len() <= 200 && !s.chars().any(|c| c.is_control() || c.is_whitespace())
+    })
 }
 
 /// Whether a remote body carries the marker. The artifact may spell the operation marker
@@ -622,12 +641,14 @@ pub fn effects_reconcile<T: Transport, C: Clock>(
     let mut record = current.clone();
     let mut transitions = Vec::new();
     let mut retry_after = Vec::new();
-    let mut blocked = false;
+    let blocked = Cell::new(false);
     let mut failed = 0;
     let mut left_unjudgeable = false;
-    // The built-in probe fetches each remote source once for the effects routed to it
-    // (comments for comment-borne kinds, pulls for pr_create — #2107); kinds with no
-    // built-in lookup are never fetched for and never judged (#2099).
+    // The built-in probe fetches each remote source lazily, at most once: comments for
+    // comment-borne kinds, the narrow `pulls?head=<owner>:<branch>` query for a pr_create
+    // whose record knows its branch (#2126), and the full pull-list scan only when the
+    // head query answered empty or no branch is known (#2107/#2116 semantics). Kinds with
+    // no built-in lookup are never fetched for and never judged (#2099).
     let needs = |source: &str| {
         remote_probe.is_none()
             && uncertain.iter().any(|&i| {
@@ -635,24 +656,76 @@ pub fn effects_reconcile<T: Transport, C: Clock>(
                     == Some(source)
             })
     };
+    let branch = head_branch(record.worktree.branch.as_deref());
     let client = Client::new(transport, clock, Default::default(), Default::default());
     type Items = std::result::Result<Vec<(i64, String)>, ForgeError>;
-    let mut fetched: std::collections::BTreeMap<&'static str, Items> = Default::default();
-    for source in ["comments", "pulls"] {
-        if needs(source) {
+    let fetched: RefCell<std::collections::BTreeMap<&'static str, Items>> =
+        RefCell::new(Default::default());
+    // Fetches one source on first use; `None` when the source has no effects to serve.
+    let ensure = |source: &'static str| -> Option<Items> {
+        if !fetched.borrow().contains_key(source) {
+            let needed = match source {
+                "head" => branch.is_some() && needs("pulls"),
+                _ => needs(source),
+            };
+            if !needed {
+                return None;
+            }
             let r = match source {
                 "comments" => fetch_comments(&client, &record.task_ref),
-                _ => fetch_pulls(&client, &record.task_ref),
+                "head" => fetch_pulls(
+                    &client,
+                    &record.task_ref,
+                    Some(&format!(
+                        "{}:{}",
+                        record.task_ref.owner,
+                        branch.expect("needs_head implies a known branch")
+                    )),
+                ),
+                _ => fetch_pulls(&client, &record.task_ref, None),
             };
             if let Err(e) = &r {
                 if e.kind == "blocked" {
-                    blocked = true;
+                    blocked.set(true);
                 }
             }
-            fetched.insert(source, r);
+            fetched.borrow_mut().insert(source, r);
         }
-    }
-    for i in uncertain {
+        fetched.borrow().get(source).cloned()
+    };
+    // The full pull-list scan with #2116 semantics: one match confirms, zero is a
+    // confirmed absence, more than one is ambiguous.
+    let full_scan = |marker: &str| -> Probe {
+        match ensure("pulls") {
+            None => Probe::Unjudgeable,
+            Some(Err(e)) if e.kind == "blocked" => Probe::Limited {
+                retry_after_s: None,
+            },
+            Some(Err(e)) => Probe::Failed {
+                why: e.message.clone(),
+            },
+            Some(Ok(items)) => {
+                let matches: Vec<&(i64, String)> = items
+                    .iter()
+                    .filter(|(_, body)| marker_matches(body, marker))
+                    .collect();
+                match matches.len() {
+                    1 => Probe::Found {
+                        remote_id: matches[0].0.to_string(),
+                    },
+                    0 => Probe::Absent,
+                    _ => Probe::Failed {
+                        why: format!(
+                            "{n} remote artifacts carry the same operation marker; the winner \
+                             is ambiguous",
+                            n = matches.len()
+                        ),
+                    },
+                }
+            }
+        }
+    };
+    for &i in uncertain.iter() {
         let effect = current.effects[i].clone();
         let marker = effect["marker"].as_str().unwrap_or_default().to_string();
         let operation_id = effect["operation_id"]
@@ -662,33 +735,74 @@ pub fn effects_reconcile<T: Transport, C: Clock>(
         let kind = effect["kind"].as_str().unwrap_or_default().to_string();
         let verdict = match remote_probe {
             Some(cmd) => run_probe_command(cmd, &marker),
-            None => match builtin_lookup(&kind).and_then(|s| fetched.get(s).map(|r| (s, r))) {
+            None => match builtin_lookup(&kind) {
                 None => Probe::Unjudgeable,
-                Some((_, Err(e))) if e.kind == "blocked" => Probe::Limited {
-                    retry_after_s: None,
-                },
-                Some((_, Err(e))) => Probe::Failed {
-                    why: e.message.clone(),
-                },
-                Some((_, Ok(items))) => {
-                    let matches: Vec<&(i64, String)> = items
-                        .iter()
-                        .filter(|(_, body)| marker_matches(body, &marker))
-                        .collect();
-                    match matches.len() {
-                        1 => Probe::Found {
-                            remote_id: matches[0].0.to_string(),
-                        },
-                        0 => Probe::Absent,
-                        _ => Probe::Failed {
-                            why: format!(
-                                "{n} remote artifacts carry the same operation marker; the \
-                                 winner is ambiguous",
-                                n = matches.len()
-                            ),
-                        },
-                    }
+                Some("pulls") => {
+                    // #2126: the narrow head query first when the branch is known — a hit
+                    // confirms with zero full-list GETs, an empty answer falls back to the
+                    // full scan, a failed or ambiguous lookup stays uncertain.
+                    let head_probe = if branch.is_some() {
+                        match ensure("head") {
+                            Some(Ok(items)) => {
+                                let m: Vec<&(i64, String)> = items
+                                    .iter()
+                                    .filter(|(_, body)| marker_matches(body, &marker))
+                                    .collect();
+                                match m.len() {
+                                    1 => Some(Probe::Found {
+                                        remote_id: m[0].0.to_string(),
+                                    }),
+                                    0 => None, // fall back to the full scan
+                                    _ => Some(Probe::Failed {
+                                        why: format!(
+                                            "{n} pull requests on the branch carry the same \
+                                             operation marker; ambiguous",
+                                            n = m.len()
+                                        ),
+                                    }),
+                                }
+                            }
+                            Some(Err(e)) if e.kind == "blocked" => Some(Probe::Limited {
+                                retry_after_s: None,
+                            }),
+                            Some(Err(e)) => Some(Probe::Failed {
+                                why: e.message.clone(),
+                            }),
+                            None => None,
+                        }
+                    } else {
+                        None
+                    };
+                    head_probe.unwrap_or_else(|| full_scan(&marker))
                 }
+                Some(_) => match ensure("comments") {
+                    None => Probe::Unjudgeable,
+                    Some(Err(e)) if e.kind == "blocked" => Probe::Limited {
+                        retry_after_s: None,
+                    },
+                    Some(Err(e)) => Probe::Failed {
+                        why: e.message.clone(),
+                    },
+                    Some(Ok(items)) => {
+                        let matches: Vec<&(i64, String)> = items
+                            .iter()
+                            .filter(|(_, body)| marker_matches(body, &marker))
+                            .collect();
+                        match matches.len() {
+                            1 => Probe::Found {
+                                remote_id: matches[0].0.to_string(),
+                            },
+                            0 => Probe::Absent,
+                            _ => Probe::Failed {
+                                why: format!(
+                                    "{n} remote artifacts carry the same operation marker; the \
+                                     winner is ambiguous",
+                                    n = matches.len()
+                                ),
+                            },
+                        }
+                    }
+                },
             },
         };
         match verdict {
@@ -715,7 +829,7 @@ pub fn effects_reconcile<T: Transport, C: Clock>(
                 }));
             }
             Probe::Limited { retry_after_s } => {
-                blocked = true;
+                blocked.set(true);
                 if let Some(s) = retry_after_s {
                     retry_after.push(s);
                 }
@@ -753,9 +867,9 @@ pub fn effects_reconcile<T: Transport, C: Clock>(
         .iter()
         .filter(|t| t["to"] == json!("confirmed") || t["to"] == json!("not_performed"))
         .count();
-    let verdict = if left_unjudgeable && judged == 0 && failed == 0 && !blocked {
+    let verdict = if left_unjudgeable && judged == 0 && failed == 0 && !blocked.get() {
         "not_run"
-    } else if left_unjudgeable || blocked {
+    } else if left_unjudgeable || blocked.get() {
         "blocked"
     } else if failed > 0 {
         "uncertain"
@@ -770,7 +884,7 @@ pub fn effects_reconcile<T: Transport, C: Clock>(
                 .into(),
         );
     }
-    if blocked {
+    if blocked.get() {
         notes.push(
             "a probe was rate limited; effects keep their state until retry-after (REQ-06B-09)"
                 .into(),
