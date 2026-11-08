@@ -1,6 +1,7 @@
 pub mod agents;
 pub mod apply;
 pub mod baseline;
+pub mod claim;
 pub mod claude;
 pub mod contract;
 pub mod forge;
