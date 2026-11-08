@@ -1,13 +1,16 @@
 pub mod agents;
 pub mod apply;
 pub mod baseline;
+pub mod claude;
 pub mod contract;
 pub mod forge;
 pub mod hosts;
 pub mod identity;
 pub mod plan;
+pub mod run;
 pub mod session;
 pub mod spec;
+pub mod verify;
 pub use agents::{agents_apply, agents_plan, AgentsPlan, AgentsRequest};
 pub use baseline::tree_digest;
 pub use session::{launch as session_launch, SessionRequest};
@@ -60,26 +63,27 @@ fn valid_digest(s: &str) -> bool {
             .bytes()
             .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
 }
+/// Credential-shaped substrings of the conservative profile filter, lower-cased. Shared with
+/// the 07-B promotion gate (`forge::promote`) so both refuse the same shapes; this is not a
+/// general secret detector (the common redaction module belongs to 03-B #1996).
+pub(crate) const SECRET_SHAPES: [&str; 7] = [
+    "sk-",
+    "ghp_",
+    "github_pat_",
+    "-----begin",
+    "password=",
+    "token=",
+    "api_key=",
+];
 fn portable(s: &str) -> bool {
     let lower = s.to_ascii_lowercase();
     !s.trim().is_empty()
         && s.len() <= 2048
         && !s.chars().any(char::is_control)
-        && ![
-            "/",
-            "\\",
-            "~/",
-            ":\\",
-            "sk-",
-            "ghp_",
-            "github_pat_",
-            "-----begin",
-            "password=",
-            "token=",
-            "api_key=",
-        ]
-        .iter()
-        .any(|x| lower.contains(x))
+        && !["/", "\\", "~/", ":\\"]
+            .iter()
+            .chain(SECRET_SHAPES.iter())
+            .any(|x| lower.contains(x))
 }
 fn validate(p: &Profile) -> Result<()> {
     let id_ok = !p.project_id.is_empty()

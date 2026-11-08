@@ -481,6 +481,21 @@ pub fn agents_plan(root: &Path, request: AgentsRequest) -> Result<AgentsPlan> {
     Ok(plan)
 }
 
+/// Compatibility publish used by 02-B's `claude.rs`: exclusive create when no before
+/// bytes exist, atomic replace otherwise. The body lives in the shared engine
+/// (`crate::apply`, Issue #1989, 01-B owner of the agents.rs refactor); the pre-check
+/// keeps the historical "changed since plan" message for existing callers.
+pub(crate) fn write_replace(path: &Path, before: Option<&[u8]>, after: &[u8]) -> Result<()> {
+    if read_opt(path)?.as_deref() != before {
+        return Err("target changed since plan; re-preview required".into());
+    }
+    if before.is_none() {
+        apply::publish_exclusive(path, after)
+    } else {
+        apply::publish_replace(path, before, after)
+    }
+}
+
 /// The written file must contain exactly one managed block whose bytes equal the rendering.
 pub fn assert_single_block(out: &[u8], begin: &str, end: &str, rendered: &str) -> Result<()> {
     let text = std::str::from_utf8(out).map_err(|_| "rendered output is not UTF-8")?;

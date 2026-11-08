@@ -2453,3 +2453,180 @@ fn identity_refuses_symlinks_and_bad_paths_without_echo() {
     let (out, _) = ident(&repo, home.path(), None);
     assert!(!out.status.success());
 }
+
+// ---- claude-doctor (Issue #1992, 02-B) --------------------------------------------------
+
+/// A PATH directory holding a fake `claude` that prints `version_line` (or nothing on PATH
+/// when `None`), so no real Claude Code runs.
+fn fake_claude(version_line: Option<&str>) -> TempDir {
+    let bin = TempDir::new().unwrap();
+    if let Some(line) = version_line {
+        let script = bin.path().join("claude");
+        fs::write(&script, format!("#!/bin/sh\necho '{line}'\n")).unwrap();
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(&script, fs::Permissions::from_mode(0o755)).unwrap();
+    }
+    bin
+}
+/// Runs `moai-cli claude-doctor <project>` with a fixture HOME and fake claude; returns the
+/// envelope's `result` (Null on failure).
+fn doctor(
+    project: &std::path::Path,
+    home: &std::path::Path,
+    bin: &TempDir,
+) -> (std::process::Output, Value) {
+    let path = format!("{}:/usr/bin:/bin", bin.path().display());
+    let out = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+        .arg("claude-doctor")
+        .arg(project)
+        .env("HOME", home)
+        .env("PATH", path)
+        .output()
+        .unwrap();
+    let v = serde_json::from_slice::<Value>(&out.stdout)
+        .map(|v| v["result"].clone())
+        .unwrap_or(Value::Null);
+    (out, v)
+}
+
+/// HA-03-CLAUDE: the four AGENTS/CLAUDE combinations, judged without writing anything.
+#[test]
+fn claude_doctor_agents_loading_combinations() {
+    let home = TempDir::new().unwrap();
+    let bin = fake_claude(Some("2.1.319 (Claude Code)"));
+    let case = |files: &[(&str, &str)]| {
+        let p = TempDir::new().unwrap();
+        write_file(p.path(), "AGENTS.md", b"# rules\n");
+        for (rel, body) in files {
+            write_file(p.path(), rel, body.as_bytes());
+        }
+        let before = tree_state(p.path());
+        let (out, v) = doctor(p.path(), home.path(), &bin);
+        assert!(out.status.success(), "{:?}", out.stderr);
+        assert_eq!(before, tree_state(p.path()), "doctor wrote to the project");
+        assert_eq!(v["writes"], json!(false));
+        assert_eq!(v["host_loaded"], json!("not_run"));
+        assert_eq!(v["claude_version"], json!("2.1.319"));
+        (p, v)
+    };
+    let (_p1, agents_only) = case(&[]);
+    assert_eq!(agents_only["agents_md_status"], json!("loaded"));
+    assert_eq!(agents_only["load_path"], json!("direct"));
+    assert_eq!(agents_only["instruction_files_source"], json!("default"));
+    let (_p2, claude_md) = case(&[("CLAUDE.md", "# mine\n")]);
+    assert_eq!(
+        claude_md["agents_md_status"],
+        json!("suppressed_by_claude_md")
+    );
+    assert_eq!(claude_md["suggestions"].as_array().unwrap().len(), 2);
+    let (_p3, local) = case(&[("CLAUDE.local.md", "# private\n")]);
+    assert_eq!(local["agents_md_status"], json!("suppressed_by_claude_md"));
+    assert!(local["suppressing_files"][0]
+        .as_str()
+        .unwrap()
+        .ends_with("/CLAUDE.local.md"));
+    let (_p4, import) = case(&[("CLAUDE.md", "# mine\n@AGENTS.md\n")]);
+    assert_eq!(import["agents_md_status"], json!("loaded"));
+    assert_eq!(import["load_path"], json!("import"));
+    // An import inside a code fence or a code span is not an import.
+    let (_p5, quoted) = case(&[("CLAUDE.md", "```\n@AGENTS.md\n```\nsee `@AGENTS.md`\n")]);
+    assert_eq!(quoted["agents_md_status"], json!("suppressed_by_claude_md"));
+    // Also when the span holds more than the import, or never closes (Codex review #2044).
+    for body in ["`See @AGENTS.md for rules`\n", "see `x @AGENTS.md\n"] {
+        let (_p, v) = case(&[("CLAUDE.md", body)]);
+        assert_eq!(
+            v["agents_md_status"],
+            json!("suppressed_by_claude_md"),
+            "{body}"
+        );
+    }
+    // A suppressing file above the start directory counts too.
+    let (p6, _) = case(&[(".claude/CLAUDE.md", "# team\n")]);
+    fs::create_dir(p6.path().join("sub")).unwrap();
+    let (_, sub) = doctor(&p6.path().join("sub"), home.path(), &bin);
+    assert_eq!(sub["agents_md_status"], json!("suppressed_by_claude_md"));
+}
+
+/// A project under HOME: the user's own ~/.claude/CLAUDE.md does not suppress AGENTS.md,
+/// while a CLAUDE.md in HOME itself is an ordinary directory above and does (agent-2 #2044).
+#[test]
+fn claude_doctor_ignores_the_user_claude_md() {
+    let home = TempDir::new().unwrap();
+    let bin = fake_claude(Some("2.1.319 (Claude Code)"));
+    let project = home.path().join("work/repo");
+    write_file(&project, "AGENTS.md", b"# rules\n");
+    write_file(home.path(), ".claude/CLAUDE.md", b"# my global notes\n");
+    let (out, v) = doctor(&project, home.path(), &bin);
+    assert!(out.status.success(), "{:?}", out.stderr);
+    assert_eq!(v["agents_md_status"], json!("loaded"));
+    assert_eq!(v["suppressing_files"], json!([]));
+    write_file(home.path(), "CLAUDE.md", b"# home dir file\n");
+    let (_, v) = doctor(&project, home.path(), &bin);
+    assert_eq!(v["agents_md_status"], json!("suppressed_by_claude_md"));
+}
+
+#[test]
+fn claude_doctor_versions_and_user_settings() {
+    let home = TempDir::new().unwrap();
+    let p = TempDir::new().unwrap();
+    write_file(p.path(), "AGENTS.md", b"# rules\n");
+    write_file(p.path(), "CLAUDE.md", b"# mine\n");
+    for (line, status) in [
+        (None, "unknown"),
+        (Some("not a version"), "unknown"),
+        (Some("2.1.276 (Claude Code)"), "unsupported_version"),
+        (Some("2.1.277 (Claude Code)"), "suppressed_by_claude_md"),
+    ] {
+        let (out, v) = doctor(p.path(), home.path(), &fake_claude(line));
+        assert!(out.status.success(), "{:?}", out.stderr);
+        assert_eq!(v["agents_md_status"], json!(status), "{line:?}");
+    }
+    let bin = fake_claude(Some("2.1.319 (Claude Code)"));
+    let settings = |body: &str| write_file(home.path(), ".claude/settings.json", body.as_bytes());
+    settings(
+        r#"{"pluginConfigs":{"cc-plugin-agents-md@builtin":{"options":{"instructionFiles":"claude-md-and-agents-md"}}}}"#,
+    );
+    let (_, v) = doctor(p.path(), home.path(), &bin);
+    assert_eq!(v["agents_md_status"], json!("loaded"));
+    assert_eq!(v["instruction_files_source"], json!("user_settings"));
+    // Before 2.1.285 the plugin id was agents-md@builtin; the new id is not read there.
+    let (_, v) = doctor(p.path(), home.path(), &fake_claude(Some("2.1.280")));
+    assert_eq!(v["agents_md_status"], json!("suppressed_by_claude_md"));
+    settings(
+        r#"{"pluginConfigs":{"agents-md@builtin":{"options":{"instructionFiles":"claude-md-and-agents-md"}}}}"#,
+    );
+    let (_, v) = doctor(p.path(), home.path(), &fake_claude(Some("2.1.280")));
+    assert_eq!(v["agents_md_status"], json!("loaded"));
+    // From 2.1.285 an entry under the older id is still read.
+    let (_, v) = doctor(p.path(), home.path(), &bin);
+    assert_eq!(v["agents_md_status"], json!("loaded"));
+    // Project settings are ignored for this entry.
+    fs::remove_file(home.path().join(".claude/settings.json")).unwrap();
+    write_file(
+        p.path(),
+        ".claude/settings.json",
+        br#"{"pluginConfigs":{"cc-plugin-agents-md@builtin":{"options":{"instructionFiles":"claude-md-and-agents-md"}}}}"#,
+    );
+    let (_, v) = doctor(p.path(), home.path(), &bin);
+    assert_eq!(v["agents_md_status"], json!("suppressed_by_claude_md"));
+    // Unreadable user settings and an excluding value are reported, never guessed.
+    settings("{not json");
+    let (out, v) = doctor(p.path(), home.path(), &bin);
+    assert!(out.status.success());
+    assert_eq!(v["agents_md_status"], json!("unknown"));
+    settings(
+        r#"{"pluginConfigs":{"cc-plugin-agents-md@builtin":{"options":{"instructionFiles":"claude-md"}}}}"#,
+    );
+    let (_, v) = doctor(p.path(), home.path(), &bin);
+    assert_eq!(v["agents_md_status"], json!("unknown"));
+    // No AGENTS.md at all is unknown, not loaded.
+    let bare = TempDir::new().unwrap();
+    let (_, v) = doctor(bare.path(), home.path(), &bin);
+    assert_eq!(v["agents_md_status"], json!("unknown"));
+    // Bad paths are refused through the envelope.
+    let (out, _) = doctor(&p.path().join("missing"), home.path(), &bin);
+    assert_eq!(out.status.code(), Some(1));
+    let env: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(env["operation"], json!("claude.doctor"));
+    assert_eq!(env["error"]["kind"], json!("not_found"));
+}
