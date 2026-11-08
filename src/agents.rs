@@ -1039,6 +1039,84 @@ mod tests {
 
     /// #2119 path 1: a hook that succeeds but leaves the manifest outside the schema
     /// fails the apply, and the agents.apply receipt records that manifest failure.
+    /// #2125 RED: a FILE backup failure in the loop returns through the bare `?`
+    /// without a receipt row and without the receipt-gap note (REQ-01B-06: the
+    /// receipt gap is never silent). The injection makes the receipts directory
+    /// unwritable, so the AGENTS.md merge in a language change cannot store its
+    /// before bytes; the fixed path records the file row (published=false, the
+    /// error, the before digest) and calls receipt_failure, whose save attempt
+    /// names the gap even though the directory refuses the file.
+    #[test]
+    fn file_backup_failure_names_the_receipt_gap() {
+        use std::os::unix::fs::PermissionsExt;
+        let root = tempfile::TempDir::new().unwrap();
+        fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
+        fs::create_dir_all(root.path().join(".moai-cli")).unwrap();
+        let profile = json!({"schema_version":2,"project_id":"demo","purpose":"Build a small editor","tools":["Rust"],"development_methods":["TDD"],"hosts":["claude","codex"],"interview_revision":"rc1-fixture-1"});
+        fs::write(
+            root.path().join(".moai-cli/project.yaml"),
+            serde_json::to_vec_pretty(&profile).unwrap(),
+        )
+        .unwrap();
+        let first = agents_plan(
+            root.path(),
+            AgentsRequest {
+                protocol_version: 1,
+                language: "en".into(),
+                workflow_reference: "skills/moai/workflows/".into(),
+                local_file: "tracked".into(),
+            },
+        )
+        .unwrap();
+        agents_apply_amended(
+            root.path(),
+            first,
+            &agents_plan(
+                root.path(),
+                AgentsRequest {
+                    protocol_version: 1,
+                    language: "en".into(),
+                    workflow_reference: "skills/moai/workflows/".into(),
+                    local_file: "tracked".into(),
+                },
+            )
+            .unwrap()
+            .plan_digest,
+            "fixture",
+            &mut |_, _| Ok(()),
+        )
+        .unwrap();
+        let receipts = root.path().join(apply::RECEIPTS_DIR);
+        fs::set_permissions(&receipts, fs::Permissions::from_mode(0o555)).unwrap();
+        let second = agents_plan(
+            root.path(),
+            AgentsRequest {
+                protocol_version: 1,
+                language: "ko".into(),
+                workflow_reference: "skills/moai/workflows/".into(),
+                local_file: "tracked".into(),
+            },
+        )
+        .unwrap();
+        let digest = second.plan_digest.clone();
+        let err = agents_apply_amended(
+            root.path(),
+            second,
+            &digest,
+            "fixture",
+            &mut |_, _| Ok(()),
+        )
+        .unwrap_err();
+        fs::set_permissions(&receipts, fs::Permissions::from_mode(0o755)).unwrap();
+        assert!(
+            err.contains("partial apply") && err.contains("AGENTS.md"),
+            "{err}"
+        );
+        // The fix names the receipt gap (receipt_failure ran); the buggy path
+        // returns the bare step message without it.
+        assert!(err.contains("receipt not recorded"), "{err}");
+    }
+
     #[test]
     fn amended_manifest_decode_failure_is_recorded_in_receipt() {
         let root = tempfile::TempDir::new().unwrap();
