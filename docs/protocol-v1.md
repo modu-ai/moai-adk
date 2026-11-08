@@ -45,6 +45,15 @@
 | REQ-00D-09 digest 재현성 | plan digest가 절대 경로에 묶인다 | 06, 16 |
 | REQ-00D-11 값 echo 금지 | moai-cli가 직접 내는 메시지에는 입력 값이 없다(`effort must be one of …`는 허용값 목록). 다만 clap 사용 오류는 입력한 하위 명령 이름을 그대로 되돌려 준다(`unrecognized subcommand 'no-such-command'`) | 01, 19 |
 
+### 추가된 operation (02-C #1993)
+
+`codex.projection_plan`(`codex-projection-plan`)과 `codex.doctor`(`codex-doctor`)는 01-C envelope을 그대로 쓴다. 둘 다 아무것도 쓰지 않는다. 새 `kind`는 없다.
+
+- 사용하는 kind는 `usage`, `invalid_input`, `not_found`, `io`이다.
+- 메시지와 kind의 대응은 `tests/codex_adapter.rs`의 `codex_messages_have_a_deliberate_kind`가 고정한다.
+- 위 golden fixture 21건은 00-D가 기록한 기존 명령의 기준선이라 이 두 operation을 담지 않는다.
+- 두 operation의 출력은 `tests/codex_adapter.rs`가 검사하고, `result` 키는 `docs/rust-product-path.md`의 operation 표에 있다.
+
 ## 상태 변환표
 
 7개 어휘를 모았다. Issue 본문은 6벌이라고 적었지만 실제로는 설치 lifecycle(02:148), VERIFY verdict(07:29), attempt(11:44-64), SYNC(06:67), Issue 상태(승인 계획 사본 267행), issue-report(22:590), migration(14:100)의 7개다. 키는 (도메인, 토큰)이다. `blocked`·`unknown`·`authorized`처럼 여러 도메인에 나오는 말은 도메인마다 따로 행을 둔다.

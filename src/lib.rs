@@ -1,6 +1,7 @@
 pub mod agents;
 pub mod baseline;
 pub mod contract;
+pub mod hosts;
 pub mod identity;
 pub mod session;
 pub mod spec;
