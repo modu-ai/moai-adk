@@ -43,6 +43,7 @@
 | 17:3x | 통합 게이트 보강(agent-2 지적, 리더 적용) | `strict_required_status_checks_policy: true`(base 최신 아니면 merge 불가 → `gh pr update-branch` 뒤 재감사). verdict 첫 줄 형식 고정: `AUDIT #<n> (<key>) head <40hex> base <40hex> — verdict: PASS\|FAIL`(수식어 금지), 리더는 그 줄만으로 판정하고 head==PR head 확인. 알려진 빈틈: 모든 세션이 같은 GitHub 계정이라 status 출처(integration_id) 고정 불가 — 감사 전용 GitHub App은 후속(HOLD); status description/target_url에 감사 댓글 링크 기록으로 사후 대조 | 모든 PR | — |
 | 17:3x | Go 세대 `.github` 제거·재구성 | 사용자 지시: untracked Go 세대 `.github` 23파일 제거(00-C AC-5가 moai-adk-go 템플릿과 23/23 동일 확인; sha256 기록은 리더 scratchpad), RC1 전용으로 재구성은 신규 Issue로 배차(workflows·PR 템플릿·labeler 선행 구현; 08-D·06-C는 그 위에 확장) | 신규 Issue, #2015 #2007 | 소유자 표 조정 |
 | 17:3x | AGENTS 역할 분리 | `AGENTS.md` = moai-adk 기본 워크플로·규칙(제품 템플릿 성격), `AGENTS.local.md` = moai-adk 로컬 개발 규칙(역할·lane loop·통합 정책·보존 경계·구현 지도·검사 명령) | AGENTS.md, AGENTS.local.md | 재생성은 agents-plan/apply |
+| 17:5x | `/goal` 조건 재설정 | 허브 양방향 통신 항목(다음 버전 보류)을 제외하고 RC1 레인 루프로 재설정: 열린 PR·진행 카드가 에이전틱 게이트로 모두 통합되고 레인이 다음 Issue를 받아 반복 중이며 리더가 리뷰·수리 배차를 journal·decisions에 기록 | 세션 goal | 평가기 미충족 반복 해소 |
 
 부분 결정 분리: P08은 claim 방식(⑤+①)만 결정, lease·heartbeat 수치 HOLD · P15는 ZCode 헤드리스 범위만 결정, 나머지 host 지원표 HOLD.
 
