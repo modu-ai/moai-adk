@@ -672,6 +672,49 @@ fn reconcile_rate_limited_waits() {
     );
 }
 
+/// AC-1 (#2133): a branch name with query hazards (`+` `#` `&` `=` — all legal git
+/// branch characters) reaches GitHub percent-encoded, so the recorded URL matches the
+/// encoded form byte for byte, `state=all` survives the query intact, and the hit
+/// confirms. The fixture branch is check-ref-format legal (no `~ ^ : ? * [`, no `..`).
+#[test]
+fn reconcile_head_query_encodes_special_branch_names() {
+    let tmp = tempfile::tempdir().unwrap();
+    let repo = tmp.path().join("repo");
+    git_repo(&repo);
+    let clock = FakeClock::at(CLOCK0);
+    let marker = "<!-- moai:op pr_create:101:op-9:1 -->";
+    let mut effect = publish_effect("pr_create-101-op-9-1", marker, "uncertain");
+    effect["kind"] = json!("pr_create");
+    let mut record = seed_record(&repo, 38, 1, owner("session", "agent-x"), vec![effect]);
+    record.worktree.branch = Some("hotfix/r+2026#v2&w=1".into());
+    let key = record.task_key.clone();
+    let journal = journal_of(&repo);
+    journal.commit("acquire", &record).unwrap();
+
+    // Raw `#` would truncate the query before `state=all`; raw `&` would inject a
+    // parameter; `+` would decode as a space. Encoded, none of that can happen. The
+    // slash stays raw: RFC 3986 query allows it and GitHub accepts it (#2126 precedent).
+    let head_url = "https://api.github.com/repos/acme/widgets/pulls?head=acme:hotfix/r%2B2026%23v2%26w%3D1&state=all&per_page=100";
+    let full_url = "https://api.github.com/repos/acme/widgets/pulls?state=all&per_page=100";
+    let t = RecordedTransport::new(vec![exchange(
+        "GET",
+        head_url,
+        200,
+        json!([{"number": 77, "body": format!("Implements it\n\n<!-- moai-op pr_create:101:op-9:1 -->")}]),
+    )]);
+    let out = effects_reconcile(&journal, &key, None, &t, &clock).unwrap();
+
+    assert_eq!(out["verdict"], "passed", "{}", out);
+    assert_eq!(out["transitions"][0]["to"], "confirmed");
+    let sent = t.sent.borrow();
+    assert_eq!(sent.len(), 1, "only the encoded head query ran");
+    assert_eq!(
+        sent[0].url, head_url,
+        "the URL matches the encoded form byte for byte"
+    );
+    assert!(!sent.iter().any(|r| r.url == full_url));
+}
+
 /// AC-1 (#2126): when the record knows its branch, the pr_create effect is judged from
 /// the narrow `pulls?head=<owner>:<branch>` query — a hit confirms with ZERO full-list
 /// GETs (asserted from the sent log). The `moai-op` spelling matches through the

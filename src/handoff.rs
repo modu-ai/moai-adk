@@ -494,10 +494,14 @@ fn fetch_pulls<T: Transport, C: Clock>(
     head: Option<&str>,
 ) -> std::result::Result<Vec<(i64, String)>, ForgeError> {
     let mut url = Some(match head {
-        // #2126: the narrow query for the claim's own branch — usually one page.
+        // #2126: the narrow query for the claim's own branch — usually one page. The
+        // value is percent-encoded (#2133): git allows branch names with `#` `&` `+`
+        // `%` and non-ASCII bytes, and a raw one would truncate or inject parameters.
         Some(b) => format!(
-            "https://api.github.com/repos/{}/{}/pulls?head={b}&state=all&per_page=100",
-            t.owner, t.repo
+            "https://api.github.com/repos/{}/{}/pulls?head={}&state=all&per_page=100",
+            t.owner,
+            t.repo,
+            encode_query_component(b)
         ),
         None => format!(
             "https://api.github.com/repos/{}/{}/pulls?state=all&per_page=100",
@@ -586,6 +590,25 @@ fn builtin_lookup(kind: &str) -> Option<&'static str> {
 
 /// The recorded branch the head query may use: plain, bounded, no control or whitespace
 /// characters. Anything else (a detached HEAD recorded `None`) keeps the full-scan path.
+/// Percent-encodes a query value the RFC 3986 way, with a deliberately smaller safe set
+/// than the query grammar allows: unreserved characters (ALPHA / DIGIT / `-` / `.` /
+/// `_` / `~`) plus the structural `:` (owner:branch) and `/` (slash branches) stay raw;
+/// everything else becomes %XX (uppercase hex over UTF-8 bytes). The grammar would let
+/// sub-delims like `&` `+` `=` through raw, but conventional query parsing splits on
+/// `&` and decodes `+` as a space — exactly the #2133 hazard list — so they are encoded.
+fn encode_query_component(value: &str) -> String {
+    let mut out = String::with_capacity(value.len());
+    for byte in value.bytes() {
+        match byte {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'.' | b'_' | b'~' | b':' | b'/' => {
+                out.push(byte as char)
+            }
+            _ => out.push_str(&format!("%{byte:02X}")),
+        }
+    }
+    out
+}
+
 fn head_branch(branch: Option<&str>) -> Option<&str> {
     branch.filter(|s| {
         !s.is_empty() && s.len() <= 200 && !s.chars().any(|c| c.is_control() || c.is_whitespace())
@@ -987,4 +1010,33 @@ pub fn effects_reconcile_cli<T: Transport, C: Clock>(
 ) -> Result<Value> {
     let journal = open_journal(project)?;
     effects_reconcile(&journal, key, remote_probe, transport, clock)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// AC-1 (#2133): the unreserved set plus `:` and `/` stays raw; the query hazards —
+    /// `#` (truncates), `&` (parameter injection), `+` (decodes as space), `=` `%`
+    /// and non-ASCII — become uppercase %XX over UTF-8 bytes.
+    #[test]
+    fn query_component_encoding_follows_rfc3986_safe_set() {
+        assert_eq!(
+            encode_query_component("acme:plain-branch/with/slashes"),
+            "acme:plain-branch/with/slashes"
+        );
+        assert_eq!(
+            encode_query_component("hotfix/r+2026#v2&w=1"),
+            "hotfix/r%2B2026%23v2%26w%3D1"
+        );
+        assert_eq!(encode_query_component("100%"), "100%25");
+        assert_eq!(encode_query_component("a b"), "a%20b");
+        assert_eq!(encode_query_component("release~1.rc"), "release~1.rc");
+        // Non-ASCII encodes to UTF-8 %XX bytes only — no raw byte above 0x7F survives.
+        let encoded = encode_query_component("브랜치");
+        assert!(encoded.starts_with("%EB%B8%8C"));
+        assert!(encoded
+            .bytes()
+            .all(|b| b.is_ascii() && (b.is_ascii_alphanumeric() || b == b'%')));
+    }
 }
