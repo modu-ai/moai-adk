@@ -979,6 +979,12 @@ fn launcher_codex_argv() {
         &json!("MoAI session name: agent-5\nfirst task")
     );
     assert!(!v["argv"].to_string().contains("dangerously"));
+    // A PROMPT on a Claude host is not passed on, and the output says so.
+    let v = launched(&launcher(&["cc", "-l", "--dry-run", "first task"], None));
+    assert!(!v["argv"].to_string().contains("first task"));
+    assert!(v["notes"]
+        .to_string()
+        .contains("PROMPT is used by codex only"));
 }
 
 fn git_in(dir: &std::path::Path, args: &[&str]) {

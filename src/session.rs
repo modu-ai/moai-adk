@@ -117,6 +117,9 @@ fn claude_argv(r: &SessionRequest, notes: &mut Vec<&'static str>) -> Result<Vec<
         argv.push("--advisor".into());
         argv.push(a.clone());
     }
+    if r.prompt.is_some() {
+        notes.push("PROMPT is used by codex only; it was not passed to the Claude host");
+    }
     if r.skip_permissions {
         notes.push("--dangerously-skip-permissions: every tool call runs without a permission prompt (operator interim default 2026-11-08; disable with --permissions)");
         argv.push("--dangerously-skip-permissions".into());
