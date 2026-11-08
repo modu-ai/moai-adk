@@ -1,0 +1,925 @@
+//! Project-specific file generation: plan read-only, apply with the merged 3-way
+//! decision and receipts (Issue #1997, 03-C).
+//!
+//! The AGENTS.md managed section, the personal file opt-in and the `.gitignore`
+//! section are the existing agents machinery: `generation` derives an
+//! `AgentsRequest`, calls the public `agents_plan` for its read-only judgment and
+//! `agents_apply` for its publication (receipts, baseline recovery, manifest write
+//! included). `src/agents.rs` itself is 01-B #1989's and is never modified here; the
+//! generation-specific files — portable project workflows under
+//! `.moai-cli/workflows/<id>/`, native role files `.claude/agents/<role>.md` and
+//! `.codex/agents/<role>.toml`, and skill projections `.claude/skills/<id>/SKILL.md`
+//! (`.agents/skills/…`) — are planned and published in this module through the public
+//! 01-B apply engine (`decide`, `publish_exclusive`/`publish_replace`,
+//! `save_before_bytes`, `Receipt`). Baselines of generation files live in the same
+//! `generation.json` `owned_files` list, tagged by a `section_id` of the shape
+//! `generation:<kind>:…` — a schema-compatible encoding that keeps the manifest
+//! readable by agents.rs (whose `OwnedFile` rejects unknown fields).
+//!
+//! The delegation is stale-safe: `generation_apply` first re-plans the whole
+//! generation request and refuses any drift, then re-plans the agents portion and
+//! hands `agents_apply` its own freshly computed digest — a plan that passed the
+//! outer check passes the inner one unchanged.
+//!
+//! Boundaries: `.claude/settings.json` and `.codex/config.toml` merges stay out
+//! (HOLD-2 A, owner 02-B #1992) — Codex role files carry only `name`, `description`
+//! and `developer_instructions`, never the keys that widen parent permissions.
+//! Markdown merging stays at managed-section granularity (HOLD-1 A; the diff3 study
+//! shows line-level merging has no general non-conflict guarantee). The subcommand
+//! names are `generation-plan`/`generation-apply` (HOLD-3 A). External skill content
+//! is never copied: a projection references a `reviewed` source with an attribution
+//! line, and a source whose license is not reviewed blocks every file that cites it
+//! (REQ-03C-08).
+
+use crate::agents::{agents_apply, agents_plan, AgentsPlan, AgentsRequest, FilePlan};
+use crate::apply::{
+    decide, new_request_id, publish_exclusive, publish_replace, read_opt, root_of,
+    save_before_bytes, Decision, Receipt,
+};
+use crate::{digest, read_profile, PROJECT_STATE_DIR};
+use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
+use std::{fs, path::Path};
+
+type Result<T> = std::result::Result<T, String>;
+
+const MANIFEST: &str = ".moai-cli/manifests/generation.json";
+const SOURCES_MANIFEST: &str = ".moai-cli/manifests/sources.json";
+const MAX_ROLES: usize = 16;
+const MAX_PROJECTIONS: usize = 16;
+/// Generated text stays short: Codex reads the whole AGENTS.md chain within 32 KiB
+/// by default, and the managed section must leave room for user content.
+const PURPOSE_LIMIT: usize = 500;
+
+/// Skill names follow the Agent Skills specification (same rule as 03-B).
+fn valid_skill_name(s: &str) -> bool {
+    !s.is_empty()
+        && s.len() <= 64
+        && s.bytes()
+            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
+        && !s.starts_with('-')
+        && !s.ends_with('-')
+        && !s.contains("--")
+}
+
+fn valid_revision(s: &str) -> bool {
+    s.len() == 40
+        && s.bytes()
+            .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+}
+
+/// REQ-03C-07: no rendered string may carry managed-marker tokens or a frontmatter
+/// delimiter line, and role purposes must stay single-line short.
+fn render_safe(s: &str) -> Result<()> {
+    let lower = s.to_ascii_lowercase();
+    if lower.contains("<!--")
+        || lower.contains("-->")
+        || lower.contains("moai:managed:")
+        || s.lines().any(|l| l.trim() == "---")
+    {
+        return Err("rendered value contains managed-marker or frontmatter syntax; refused".into());
+    }
+    Ok(())
+}
+
+fn bounded_purpose(s: &str) -> bool {
+    !s.trim().is_empty() && s.len() <= PURPOSE_LIMIT && !s.contains('\n')
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct NativeRole {
+    pub role_id: String,
+    /// claude | codex
+    pub host: String,
+    pub purpose: String,
+    #[serde(default)]
+    pub read_only_intent: bool,
+    /// Claude-only allowed-tools list (Codex files never carry tool keys).
+    #[serde(default)]
+    pub tools: Vec<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SkillProjection {
+    /// Installed skill name; also the projected directory name (REQ-03C-09).
+    pub id: String,
+    /// `source_url` of an entry in `.moai-cli/manifests/sources.json`.
+    pub source_url: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resolved_revision: Option<String>,
+    /// claude | codex (default: claude)
+    #[serde(default)]
+    pub host_targets: Vec<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct GenerationRequest {
+    pub protocol_version: u32,
+    /// en | ko (feeds the delegated agents rendering too).
+    pub language: String,
+    /// Repo-relative directory that must exist (agents_plan contract).
+    pub workflow_reference: String,
+    /// none | ignored | tracked (the personal-file opt-in, passed through).
+    pub local_file: String,
+    /// Portable workflow id; the generated directory name.
+    pub workflow_id: String,
+    #[serde(default)]
+    pub native_roles: Vec<NativeRole>,
+    #[serde(default)]
+    pub skill_projections: Vec<SkillProjection>,
+}
+
+/// One planned file. The agents portion carries the `agents.rs` fields it produced;
+/// generation files add their `source_refs` and kind tag.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct GenerationFilePlan {
+    pub path: String,
+    /// create | merge | append | unchanged | conflict
+    pub action: String,
+    pub tracked_by_default: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub expected_sha256: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub baseline_sha256: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rendered_sha256: Option<String>,
+    #[serde(default)]
+    pub source_refs: Vec<String>,
+    /// agents:<section> | generation:workflow:<id> |
+    /// generation:native-role:<host>:<role> | generation:skill-projection:<host>:<id>
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub kind: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub detail: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct GenerationPlan {
+    pub protocol_version: u32,
+    pub request: GenerationRequest,
+    pub target_binding: String,
+    pub files: Vec<GenerationFilePlan>,
+    /// Pass-through of the agents host_notes (CLAUDE.md family) plus generation
+    /// warnings (read-only-intent, license gate).
+    pub host_notes: Vec<String>,
+    pub warnings: Vec<String>,
+    pub plan_digest: String,
+}
+
+fn validate(r: &GenerationRequest) -> Result<()> {
+    if r.protocol_version != 1
+        || !(r.language == "en" || r.language == "ko")
+        || !["none", "ignored", "tracked"].contains(&r.local_file.as_str())
+        || !valid_skill_name(&r.workflow_id)
+        || r.workflow_reference.trim().is_empty()
+        || r.workflow_reference.len() > 256
+        || r.native_roles.len() > MAX_ROLES
+        || r.skill_projections.len() > MAX_PROJECTIONS
+    {
+        return Err("invalid generation request; no values were logged".into());
+    }
+    for role in &r.native_roles {
+        if !valid_skill_name(&role.role_id)
+            || !(role.host == "claude" || role.host == "codex")
+            || !bounded_purpose(&role.purpose)
+            || role.tools.len() > 32
+            || !role
+                .tools
+                .iter()
+                .all(|t| !t.is_empty() && t.len() <= 128 && !t.contains(char::is_whitespace))
+        {
+            return Err("invalid generation request; no values were logged".into());
+        }
+    }
+    for p in &r.skill_projections {
+        if !valid_skill_name(&p.id)
+            || p.source_url.trim().is_empty()
+            || p.source_url.len() > 2048
+            || p.resolved_revision
+                .as_ref()
+                .is_some_and(|rev| !valid_revision(rev))
+            || p.host_targets.iter().any(|h| h != "claude" && h != "codex")
+        {
+            return Err("invalid generation request; no values were logged".into());
+        }
+    }
+    for role in &r.native_roles {
+        render_safe(&role.purpose)?;
+        render_safe(&role.role_id)?;
+    }
+    render_safe(&r.workflow_id)?;
+    Ok(())
+}
+
+/// Reads `generation.json` as a Value. agents.rs owns the typed schema; the
+/// generation side only rewrites keys the schema already knows.
+fn manifest_value(root: &Path) -> Result<Value> {
+    let path = root.join(MANIFEST);
+    match fs::metadata(&path) {
+        Ok(m) if !m.is_file() || m.len() > 262_144 => {
+            Err("target is not a bounded regular file".into())
+        }
+        Ok(_) => {
+            let bytes = fs::read(&path).map_err(|_| "target read failed".to_string())?;
+            serde_json::from_slice(&bytes)
+                .map_err(|_| "generation manifest unreadable; inspect before generating".into())
+        }
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(Value::Null),
+        Err(_) => Err("target metadata unavailable".into()),
+    }
+}
+
+/// The recorded baseline digest of one generation file, from the manifest's
+/// `owned_files` (entries tagged with a `generation:` section id).
+fn generation_baseline(manifest: &Value, path: &str) -> Option<String> {
+    manifest
+        .get("owned_files")
+        .and_then(Value::as_array)
+        .and_then(|list| {
+            list.iter()
+                .find(|f| f.get("path").and_then(Value::as_str) == Some(path))
+                .and_then(|f| f.get("baseline_sha256"))
+                .and_then(Value::as_str)
+                .map(str::to_string)
+        })
+}
+
+/// License gate (REQ-03C-08): the source entry in `sources.json` must carry
+/// `license.status: reviewed` for anything to reference it. Returns the attribution
+/// pair (resolved revision, license note) when reviewed.
+fn source_reviewed(root: &Path, source_url: &str) -> Result<Option<(String, String)>> {
+    let path = root.join(SOURCES_MANIFEST);
+    let bytes = match fs::read(&path) {
+        Ok(b) => b,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(_) => return Err("target read failed".into()),
+    };
+    let manifest: Value = serde_json::from_slice(&bytes)
+        .map_err(|_| "sources manifest unreadable; inspect before generating".to_string())?;
+    for s in manifest
+        .get("sources")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+    {
+        if s.get("source_url").and_then(Value::as_str) == Some(source_url) {
+            let status = s
+                .get("license")
+                .and_then(|l| l.get("status"))
+                .and_then(Value::as_str)
+                .unwrap_or("unknown");
+            if status != "reviewed" {
+                return Ok(None);
+            }
+            let revision = s
+                .get("resolved_revision")
+                .and_then(Value::as_str)
+                .unwrap_or("unpinned");
+            let license = s
+                .get("license")
+                .and_then(|l| l.get("spdx"))
+                .and_then(Value::as_str)
+                .or_else(|| {
+                    s.get("license")
+                        .and_then(|l| l.get("evidence"))
+                        .and_then(Value::as_str)
+                })
+                .unwrap_or("evidence recorded");
+            return Ok(Some((revision.to_string(), license.to_string())));
+        }
+    }
+    Ok(None)
+}
+
+fn toml_string(s: &str) -> String {
+    let mut out = String::from("\"");
+    for c in s.chars() {
+        match c {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            '\u{8}' => out.push_str("\\b"),
+            '\t' => out.push_str("\\t"),
+            '\n' => out.push_str("\\n"),
+            '\u{c}' => out.push_str("\\f"),
+            '\r' => out.push_str("\\r"),
+            c if (c as u32) < 0x20 => out.push_str(&format!("\\u{:04X}", c as u32)),
+            c => out.push(c),
+        }
+    }
+    out.push('"');
+    out
+}
+
+fn render_workflow_skill(workflow_id: &str, language: &str) -> String {
+    if language == "ko" {
+        format!("# {id} 워크플로\n\n이 프로젝트 전용 워크플로입니다. 절차와 판단 기준은 `references/workflow.md`에 정리합니다.\n",
+            id = workflow_id)
+    } else {
+        format!("# {id} workflow\n\nA project-specific workflow. Procedures and judgment notes live in `references/workflow.md`.\n",
+            id = workflow_id)
+    }
+}
+
+fn render_workflow_reference(workflow_id: &str, language: &str) -> String {
+    if language == "ko" {
+        format!("# {id} 절차\n\n1. 대상과 범위를 확인한다.\n2. 검증 가능한 완료 조건을 먼저 정의한다.\n3. 결과와 증거를 기록한다.\n",
+            id = workflow_id)
+    } else {
+        format!("# {id} procedure\n\n1. Confirm the target and scope.\n2. Define a verifiable done condition first.\n3. Record the result and the evidence.\n",
+            id = workflow_id)
+    }
+}
+
+fn render_claude_role(role: &NativeRole) -> String {
+    let tools = if role.tools.is_empty() {
+        String::new()
+    } else {
+        format!("tools: {}\n", role.tools.join(", "))
+    };
+    format!(
+        "---\nname: {id}\ndescription: {purpose}\n{tools}---\n\n{purpose}\n",
+        id = role.role_id,
+        purpose = role.purpose,
+        tools = tools,
+    )
+}
+
+fn render_codex_role(role: &NativeRole) -> String {
+    format!(
+        "name = {name}\ndescription = {desc}\ndeveloper_instructions = {instr}\n",
+        name = toml_string(&role.role_id),
+        desc = toml_string(&role.purpose),
+        instr = toml_string(&role.purpose),
+    )
+}
+
+fn render_projection_skill(
+    projection: &SkillProjection,
+    language: &str,
+    source: &(String, String),
+) -> Result<String> {
+    let attribution = format!(
+        "source: {} @ {} (license: {})",
+        projection.source_url, source.0, source.1
+    );
+    render_safe(&attribution)?;
+    let body = if language == "ko" {
+        format!("# {id} 참조\n\n이 파일은 외부 skill을 복제하지 않고 참조만 기록합니다.\n{attribution}\n",
+            id = projection.id)
+    } else {
+        format!("# {id} reference\n\nThis file references an external skill without copying it.\n{attribution}\n",
+            id = projection.id)
+    };
+    Ok(format!(
+        "---\nname: {id}\ndescription: {desc}\n---\n\n{body}",
+        id = projection.id,
+        desc = if language == "ko" {
+            "외부 skill 참조 기록"
+        } else {
+            "external skill reference record"
+        },
+    ))
+}
+
+fn plan_digest(p: &GenerationPlan) -> String {
+    digest(
+        &serde_json::to_vec(&(
+            p.protocol_version,
+            &p.request,
+            &p.target_binding,
+            &p.files,
+            &p.host_notes,
+            &p.warnings,
+        ))
+        .expect("typed plan"),
+    )
+}
+
+fn file_from_agents(f: &FilePlan) -> GenerationFilePlan {
+    GenerationFilePlan {
+        path: f.path.clone(),
+        action: f.action.clone(),
+        tracked_by_default: f.tracked_by_default,
+        expected_sha256: f.expected_sha256.clone(),
+        baseline_sha256: f.baseline_sha256.clone(),
+        rendered_sha256: f.rendered_sha256.clone(),
+        source_refs: Vec::new(),
+        kind: Some(format!(
+            "agents:{}",
+            f.section_id.clone().unwrap_or_else(|| "personal".into())
+        )),
+        detail: f.detail.clone(),
+    }
+}
+
+fn three_way_action(
+    baseline: Option<&str>,
+    current_digest: Option<&str>,
+    rendered_digest: &str,
+) -> &'static str {
+    match decide(baseline, current_digest, Some(rendered_digest)) {
+        Decision::KeepCurrent => "unchanged",
+        Decision::Apply => "merge",
+        Decision::Conflict => "conflict",
+    }
+}
+
+/// The create/merge refinement of an Apply decision: no current bytes means create.
+fn is_create(current: Option<&Vec<u8>>) -> bool {
+    current.is_none()
+}
+
+/// `generation-plan`: the read-only judgment (REQ-03C-01). The agents portion is the
+/// public `agents_plan`; nothing is written.
+pub fn generation_plan(root: &Path, request: GenerationRequest) -> Result<GenerationPlan> {
+    validate(&request)?;
+    let root = root
+        .canonicalize()
+        .map_err(|_| "project directory unavailable")?;
+    let agents_request = AgentsRequest {
+        protocol_version: 1,
+        language: request.language.clone(),
+        workflow_reference: request.workflow_reference.clone(),
+        local_file: request.local_file.clone(),
+    };
+    let agents = agents_plan(&root, agents_request)?;
+    let manifest = manifest_value(&root)?;
+    let mut files: Vec<GenerationFilePlan> = agents.files.iter().map(file_from_agents).collect();
+    let mut warnings: Vec<String> = agents.warnings.clone();
+    let host_notes: Vec<String> = agents.host_notes.clone();
+
+    // Portable workflow (REQ-03C-01: one workflow per request).
+    let workflow_rel = format!(
+        "{PROJECT_STATE_DIR}/workflows/{}/SKILL.md",
+        request.workflow_id
+    );
+    let workflow_ref_rel = format!(
+        "{PROJECT_STATE_DIR}/workflows/{}/references/workflow.md",
+        request.workflow_id
+    );
+    let rendered_skill = render_workflow_skill(&request.workflow_id, &request.language);
+    let rendered_ref = render_workflow_reference(&request.workflow_id, &request.language);
+    for (rel, rendered) in [
+        (&workflow_rel, rendered_skill),
+        (&workflow_ref_rel, rendered_ref),
+    ] {
+        let current = fs::read(root.join(rel)).ok();
+        let baseline = generation_baseline(&manifest, rel);
+        let rendered_digest = digest(rendered.as_bytes());
+        let action = three_way_action(
+            baseline.as_deref(),
+            current.as_deref().map(digest).as_deref(),
+            &rendered_digest,
+        );
+        let action = if action == "merge" && is_create(current.as_ref()) {
+            "create"
+        } else {
+            action
+        };
+        files.push(GenerationFilePlan {
+            path: rel.into(),
+            action: action.into(),
+            tracked_by_default: true,
+            expected_sha256: current.as_deref().map(digest),
+            baseline_sha256: baseline,
+            rendered_sha256: Some(rendered_digest),
+            source_refs: Vec::new(),
+            kind: Some(format!("generation:workflow:{}", request.workflow_id)),
+            detail: None,
+        });
+    }
+
+    // Native roles (REQ-03C-05/06): nothing under .claude/agents/ or .codex/agents/
+    // is planned when the request lists no roles.
+    for role in &request.native_roles {
+        let (rel, rendered) = match role.host.as_str() {
+            "claude" => (
+                format!(".claude/agents/{}.md", role.role_id),
+                render_claude_role(role),
+            ),
+            _ => (
+                format!(".codex/agents/{}.toml", role.role_id),
+                render_codex_role(role),
+            ),
+        };
+        if role.host == "codex" && role.read_only_intent {
+            warnings.push(
+                "read_only_intent is guidance; a Codex agent file cannot create a sandbox".into(),
+            );
+        }
+        let current = fs::read(root.join(&rel)).ok();
+        let baseline = generation_baseline(&manifest, &rel);
+        let rendered_digest = digest(rendered.as_bytes());
+        let action = three_way_action(
+            baseline.as_deref(),
+            current.as_deref().map(digest).as_deref(),
+            &rendered_digest,
+        );
+        let action = if action == "merge" && is_create(current.as_ref()) {
+            "create"
+        } else {
+            action
+        };
+        files.push(GenerationFilePlan {
+            path: rel,
+            action: action.into(),
+            tracked_by_default: false,
+            expected_sha256: current.as_deref().map(digest),
+            baseline_sha256: baseline,
+            rendered_sha256: Some(rendered_digest),
+            source_refs: Vec::new(),
+            kind: Some(format!(
+                "generation:native-role:{}:{}",
+                role.host, role.role_id
+            )),
+            detail: None,
+        });
+    }
+
+    // Skill projections (REQ-03C-08/09): license gate first, attribution rendered.
+    for p in &request.skill_projections {
+        let hosts: Vec<String> = if p.host_targets.is_empty() {
+            vec!["claude".into()]
+        } else {
+            p.host_targets.clone()
+        };
+        let Some(source) = source_reviewed(&root, &p.source_url)? else {
+            warnings.push(format!(
+                "source {} is not license-reviewed; projection {} is not planned",
+                p.source_url, p.id
+            ));
+            continue;
+        };
+        let rendered = render_projection_skill(p, &request.language, &source)?;
+        let rendered_digest = digest(rendered.as_bytes());
+        for host in &hosts {
+            let rel = match host.as_str() {
+                "codex" => format!(".agents/skills/{}/SKILL.md", p.id),
+                _ => format!(".claude/skills/{}/SKILL.md", p.id),
+            };
+            let dest_dir = root
+                .join(&rel)
+                .parent()
+                .expect("projection parent")
+                .to_path_buf();
+            let current = fs::read(root.join(&rel)).ok();
+            let baseline = generation_baseline(&manifest, &rel);
+            // REQ-03C-09: an existing skill directory without a recorded baseline is
+            // a conflict — MoAI never claims a directory it did not project before.
+            let unclaimed = baseline.is_none()
+                && (current.is_some() || fs::symlink_metadata(&dest_dir).is_ok());
+            let action = if unclaimed {
+                "conflict"
+            } else {
+                let decided = three_way_action(
+                    baseline.as_deref(),
+                    current.as_deref().map(digest).as_deref(),
+                    &rendered_digest,
+                );
+                if decided == "merge" && is_create(current.as_ref()) {
+                    "create"
+                } else {
+                    decided
+                }
+            };
+            files.push(GenerationFilePlan {
+                path: rel,
+                action: action.into(),
+                tracked_by_default: false,
+                expected_sha256: current.as_deref().map(digest),
+                baseline_sha256: baseline,
+                rendered_sha256: Some(rendered_digest.clone()),
+                source_refs: vec![p.source_url.clone()],
+                kind: Some(format!("generation:skill-projection:{}:{}", host, p.id)),
+                detail: unclaimed
+                    .then_some("existing skill directory without a manifest baseline".to_string()),
+            });
+        }
+    }
+
+    let binding = digest(root.to_str().ok_or("non UTF-8 project path")?.as_bytes());
+    let mut plan = GenerationPlan {
+        protocol_version: 1,
+        request,
+        target_binding: binding,
+        files,
+        host_notes,
+        warnings,
+        plan_digest: String::new(),
+    };
+    plan.plan_digest = plan_digest(&plan);
+    Ok(plan)
+}
+
+/// Recovers the rendered text for one generation file from the plan request.
+fn rendered_text_for(root: &Path, p: &GenerationPlan, f: &GenerationFilePlan) -> Result<String> {
+    let kind = f.kind.as_deref().unwrap_or("");
+    if let Some(_id) = kind.strip_prefix("generation:workflow:") {
+        if f.path.ends_with("SKILL.md") {
+            return Ok(render_workflow_skill(
+                &p.request.workflow_id,
+                &p.request.language,
+            ));
+        }
+        return Ok(render_workflow_reference(
+            &p.request.workflow_id,
+            &p.request.language,
+        ));
+    }
+    if let Some(rest) = kind.strip_prefix("generation:native-role:") {
+        let Some((host, role_id)) = rest.split_once(':') else {
+            return Err("unknown planned path".into());
+        };
+        let role = p
+            .request
+            .native_roles
+            .iter()
+            .find(|r| r.role_id == role_id && r.host == host)
+            .ok_or("unknown planned path")?;
+        return match host {
+            "claude" => Ok(render_claude_role(role)),
+            _ => Ok(render_codex_role(role)),
+        };
+    }
+    if let Some(rest) = kind.strip_prefix("generation:skill-projection:") {
+        let Some((host, id)) = rest.split_once(':') else {
+            return Err("unknown planned path".into());
+        };
+        let projection = p
+            .request
+            .skill_projections
+            .iter()
+            .find(|sp| sp.id == id)
+            .ok_or("unknown planned path")?;
+        let hosts: Vec<String> = if projection.host_targets.is_empty() {
+            vec!["claude".into()]
+        } else {
+            projection.host_targets.clone()
+        };
+        if !hosts.iter().any(|h| h == host) {
+            return Err("unknown planned path".into());
+        }
+        let source =
+            source_reviewed(root, &projection.source_url)?.ok_or("unknown planned path")?;
+        return render_projection_skill(projection, &p.request.language, &source);
+    }
+    Err("unknown planned path".into())
+}
+
+/// `generation-apply` (REQ-03C-03/04/11): re-plans the whole request and refuses any
+/// drift, applies the agents portion through `agents_apply` with its own freshly
+/// computed digest, publishes the generation files with the 01-B engine, and records
+/// the generation baselines plus `workflow_id`, `interview_revision` and
+/// `profile_sha256` in `generation.json` last. A mid-sequence failure reports
+/// `partial apply` with what landed.
+pub fn generation_apply(
+    root: &Path,
+    p: GenerationPlan,
+    confirmed: &str,
+    permission: &str,
+) -> Result<Value> {
+    if ["", "null", "placeholder"].contains(&permission.trim())
+        || permission.len() > 128
+        || permission.chars().any(char::is_control)
+    {
+        return Err("permission reference required".into());
+    }
+    let current = generation_plan(root, p.request.clone())?;
+    if p.protocol_version != 1
+        || confirmed != p.plan_digest
+        || plan_digest(&p) != p.plan_digest
+        || current.plan_digest != p.plan_digest
+    {
+        return Err("stale or altered plan; re-preview required".into());
+    }
+    if let Some(f) = p.files.iter().find(|f| f.action == "conflict") {
+        return Err(format!(
+            "conflict in {}: {}; nothing applied",
+            f.path,
+            f.detail.as_deref().unwrap_or("review required")
+        ));
+    }
+    let root = root_of(root)?;
+
+    // 1. The agents portion: AGENTS.md managed section, personal opt-in, .gitignore,
+    //    and the manifest write agents.rs owns. The freshly re-planned digest is the
+    //    inner confirmation; the outer generation check already refused drift.
+    let agents_request = AgentsRequest {
+        protocol_version: 1,
+        language: p.request.language.clone(),
+        workflow_reference: p.request.workflow_reference.clone(),
+        local_file: p.request.local_file.clone(),
+    };
+    let agents_plan: AgentsPlan = agents_plan(&root, agents_request.clone())?;
+    let agents_result = agents_apply(
+        &root,
+        agents_plan.clone(),
+        &agents_plan.plan_digest,
+        permission,
+    )?;
+
+    // 2. The generation files, through the 01-B engine with a receipt.
+    let request_id = new_request_id("generation.apply", &p.plan_digest);
+    let mut receipt = Receipt::new(&request_id, "generation.apply", &root);
+    let mut files_created: Vec<String> = Vec::new();
+    let mut files_merged: Vec<String> = Vec::new();
+    for f in &p.files {
+        let Some(kind) = &f.kind else {
+            continue;
+        };
+        if !kind.starts_with("generation:") || f.path == MANIFEST {
+            continue;
+        }
+        if f.action == "unchanged" {
+            continue;
+        }
+        let rendered_text = rendered_text_for(&root, &p, f)?;
+        let bytes = rendered_text.into_bytes();
+        let path_abs = root.join(&f.path);
+        let before = read_opt(&path_abs)?;
+        let fail = |receipt: &Receipt, message: String| -> String {
+            match receipt.save(&root) {
+                Ok(()) => message,
+                Err(se) => format!("{message}; receipt not recorded: {se}"),
+            }
+        };
+        if before.as_deref().map(digest).as_deref() != f.expected_sha256.as_deref() {
+            receipt.entry(
+                &f.path,
+                &f.action,
+                before.as_deref().map(digest).as_deref(),
+                None,
+                false,
+                Some("target changed since plan".into()),
+            );
+            receipt.status = "partial".into();
+            return Err(fail(
+                &receipt,
+                format!(
+                    "partial apply: applied [{}]; failed at {}: target changed since plan",
+                    files_created.join(", "),
+                    f.path
+                ),
+            ));
+        }
+        if let Some(b) = before.as_deref() {
+            if let Err(e) = save_before_bytes(&root, &request_id, &f.path, b) {
+                receipt.entry(
+                    &f.path,
+                    &f.action,
+                    before.as_deref().map(digest).as_deref(),
+                    None,
+                    false,
+                    Some(e.clone()),
+                );
+                receipt.status = "partial".into();
+                return Err(fail(
+                    &receipt,
+                    format!(
+                        "partial apply: applied [{}]; failed at {}: {e}",
+                        files_created.join(", "),
+                        f.path
+                    ),
+                ));
+            }
+        }
+        let publish = if before.is_none() {
+            publish_exclusive(&path_abs, &bytes)
+        } else {
+            publish_replace(&path_abs, before.as_deref(), &bytes)
+        };
+        if let Err(e) = publish {
+            receipt.entry(
+                &f.path,
+                &f.action,
+                before.as_deref().map(digest).as_deref(),
+                None,
+                false,
+                Some(e.clone()),
+            );
+            receipt.status = "partial".into();
+            return Err(fail(
+                &receipt,
+                format!(
+                    "partial apply: applied [{}]; failed at {}: {e}",
+                    files_created.join(", "),
+                    f.path
+                ),
+            ));
+        }
+        receipt.entry(
+            &f.path,
+            &f.action,
+            before.as_deref().map(digest).as_deref(),
+            Some(&digest(&bytes)),
+            true,
+            None,
+        );
+        if before.is_none() {
+            files_created.push(f.path.clone());
+        } else {
+            files_merged.push(f.path.clone());
+        }
+    }
+
+    // 3. The manifest: record generation baselines and the profile linkage. Only
+    //    keys the agents.rs schema already knows are touched; agents_apply's write
+    //    (which resets the linkage fields) is amended afterwards.
+    let manifest_path = root.join(MANIFEST);
+    let before_bytes = read_opt(&manifest_path)?;
+    let mut manifest: Value = match before_bytes.as_deref() {
+        Some(bytes) => serde_json::from_slice(bytes)
+            .map_err(|_| "generation manifest unreadable; inspect before generating".to_string())?,
+        None => json!({"schema_version": 1}),
+    };
+    let (profile, profile_bytes) = read_profile(&root)?;
+    if let Some(map) = manifest.as_object_mut() {
+        let list = map
+            .entry("owned_files")
+            .or_insert_with(|| json!([]))
+            .as_array_mut()
+            .expect("owned_files array");
+        list.retain(|f| {
+            let path = f.get("path").and_then(Value::as_str).unwrap_or("");
+            !p.files.iter().any(|pf| {
+                pf.kind
+                    .as_deref()
+                    .is_some_and(|k| k.starts_with("generation:"))
+                    && pf.path == path
+            })
+        });
+        for f in &p.files {
+            let Some(kind) = &f.kind else {
+                continue;
+            };
+            if !kind.starts_with("generation:") || f.action == "conflict" {
+                continue;
+            }
+            let Some(rendered) = &f.rendered_sha256 else {
+                continue;
+            };
+            list.push(json!({
+                "path": f.path,
+                "section_id": kind,
+                "baseline_sha256": rendered,
+            }));
+        }
+        map.insert("workflow_id".into(), json!(p.request.workflow_id));
+        map.insert(
+            "interview_revision".into(),
+            json!(profile.interview_revision),
+        );
+        map.insert("profile_sha256".into(), json!(digest(&profile_bytes)));
+    }
+    let mut out = serde_json::to_vec_pretty(&manifest).map_err(|_| "encode failed")?;
+    out.push(b'\n');
+    if let Some(b) = before_bytes.as_deref() {
+        save_before_bytes(&root, &request_id, MANIFEST, b).map_err(|e| {
+            format!(
+                "partial apply: applied [{}]; failed at {MANIFEST}: {e}",
+                files_created.join(", ")
+            )
+        })?;
+    }
+    publish_replace(&manifest_path, before_bytes.as_deref(), &out).map_err(|e| {
+        format!(
+            "partial apply: applied [{}]; failed at {MANIFEST}: {e}",
+            files_created.join(", ")
+        )
+    })?;
+    receipt.entry(
+        MANIFEST,
+        "merge",
+        before_bytes.as_deref().map(digest).as_deref(),
+        Some(&digest(&out)),
+        true,
+        None,
+    );
+    receipt.status = "complete".into();
+    receipt
+        .save(&root)
+        .map_err(|e| format!("published files but the receipt was not recorded: {e}"))?;
+    let agents_applied: Vec<String> = agents_result
+        .get("applied")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|v| v.as_str().map(str::to_string))
+        .filter(|path| path != MANIFEST)
+        .collect();
+    let mut all_created = agents_applied.clone();
+    all_created.extend(files_created.iter().cloned());
+    Ok(json!({
+        "state": "applied",
+        "files_created": all_created,
+        "files_merged": files_merged,
+        "host_loaded": false,
+        "execution_verified": false,
+        "receipt": request_id,
+    }))
+}

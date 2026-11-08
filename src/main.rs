@@ -268,6 +268,20 @@ enum Command {
         #[arg(long)]
         name: String,
     },
+    /// Plan project-specific generated files read-only (03-C #1997): typed request on
+    /// stdin; judgment envelope on stdout; writes nothing.
+    GenerationPlan {
+        project: PathBuf,
+    },
+    /// Apply an approved generation plan (03-C #1997): the exact plan on stdin,
+    /// `--plan-digest` and `--permission-reference`.
+    GenerationApply {
+        project: PathBuf,
+        #[arg(long)]
+        plan_digest: String,
+        #[arg(long)]
+        permission_reference: String,
+    },
     /// Read-only: requested file ranges with digests and a budget (typed request on stdin).
     ContextBundle {
         project: PathBuf,
@@ -407,6 +421,8 @@ const OPERATIONS: &[(&str, &str)] = &[
     ("run-verify", "run.verify"),
     ("snapshot-describe", "snapshot.describe"),
     ("skill-source-plan", "skill_source.plan"),
+    ("generation-plan", "generation.plan"),
+    ("generation-apply", "generation.apply"),
     ("skill-source-apply", "skill_source.apply"),
     ("skill-read-receipt", "skill_source.read_receipt"),
     ("context-bundle", "context.bundle"),
@@ -697,6 +713,23 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
         Command::SkillReadReceipt { project, dir, name } => {
             moai_cli::sources::read_receipt(&project, &dir, &name)
         }
+        Command::GenerationPlan { project } => {
+            serde_json::to_value(moai_cli::generation::generation_plan(
+                &project,
+                input::<moai_cli::generation::GenerationRequest>()?,
+            )?)
+            .map_err(|_| "encode failed".into())
+        }
+        Command::GenerationApply {
+            project,
+            plan_digest,
+            permission_reference,
+        } => moai_cli::generation::generation_apply(
+            &project,
+            input::<moai_cli::generation::GenerationPlan>()?,
+            &plan_digest,
+            &permission_reference,
+        ),
         Command::ContextBundle { project } => moai_cli::context::bundle(&project, &input()?),
         Command::ContextVerify { project } => moai_cli::context::verify(&project, &input()?),
         Command::DecisionRecord {

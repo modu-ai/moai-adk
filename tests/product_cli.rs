@@ -3154,3 +3154,410 @@ fn sources_manifest_rerun_is_byte_identical() {
     assert_eq!(applied["files_installed"], json!(0));
     assert_eq!(fs::read(&manifest).unwrap(), bytes);
 }
+
+// ---- Project-specific generation (03-C #1997) --------------------------------------------
+
+fn generation_project() -> TempDir {
+    let root = TempDir::new().unwrap();
+    fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
+    fs::create_dir_all(root.path().join(".moai-cli")).unwrap();
+    let profile = json!({"schema_version":2,"project_id":"demo","purpose":"Build a small editor","tools":["Rust"],"development_methods":["TDD"],"hosts":["claude","codex"],"interview_revision":"rc1-fixture-1"});
+    let mut bytes = serde_json::to_vec_pretty(&profile).unwrap();
+    bytes.push(b'\n');
+    fs::write(root.path().join(".moai-cli/project.yaml"), &bytes).unwrap();
+    root
+}
+
+fn generation_request(local_file: &str) -> Value {
+    json!({
+        "protocol_version": 1,
+        "language": "en",
+        "workflow_reference": "skills/moai/workflows",
+        "local_file": local_file,
+        "workflow_id": "review-flow",
+        "native_roles": [],
+        "skill_projections": []
+    })
+}
+
+fn generation_plan_cli(root: &TempDir, request: &Value) -> std::process::Output {
+    cli(&["generation-plan", root.path().to_str().unwrap()], request)
+}
+
+fn generation_apply_cli(root: &TempDir, plan: &Value) -> std::process::Output {
+    cli(
+        &[
+            "generation-apply",
+            root.path().to_str().unwrap(),
+            "--plan-digest",
+            plan["plan_digest"].as_str().unwrap(),
+            "--permission-reference",
+            "fixture-approved",
+        ],
+        plan,
+    )
+}
+
+fn actions_of(plan: &Value) -> Vec<(String, String)> {
+    plan["files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|f| {
+            (
+                f["path"].as_str().unwrap().to_string(),
+                f["action"].as_str().unwrap().to_string(),
+            )
+        })
+        .collect()
+}
+
+#[test]
+fn generation_default_has_no_native_roles() {
+    // 03C-AC-1: the default request generates the AGENTS.md managed section, the
+    // portable workflow and the .gitignore section; nothing under the native role
+    // folders exists or is planned (SETUP-03).
+    let root = generation_project();
+    let request = generation_request("ignored");
+    let plan = ok_result(&generation_plan_cli(&root, &request));
+    let paths: Vec<&str> = plan["files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|f| f["path"].as_str().unwrap())
+        .collect();
+    assert!(paths.iter().any(|p| p.starts_with("AGENTS.md")));
+    assert!(paths
+        .iter()
+        .any(|p| p.starts_with(".moai-cli/workflows/review-flow/")));
+    assert!(paths.contains(&".gitignore"));
+    assert!(!paths.iter().any(|p| p.starts_with(".claude/agents/")));
+    assert!(!paths.iter().any(|p| p.starts_with(".codex/agents/")));
+    // The plan wrote nothing.
+    assert!(!root.path().join("AGENTS.md").exists());
+    assert!(!root.path().join(".moai-cli/workflows").exists());
+    let applied = ok_result(&generation_apply_cli(&root, &plan));
+    assert_eq!(applied["host_loaded"], json!(false));
+    assert_eq!(applied["execution_verified"], json!(false));
+    assert!(root.path().join("AGENTS.md").exists());
+    assert!(root
+        .path()
+        .join(".moai-cli/workflows/review-flow/SKILL.md")
+        .exists());
+    assert!(root
+        .path()
+        .join(".moai-cli/workflows/review-flow/references/workflow.md")
+        .exists());
+    assert!(root.path().join(".gitignore").exists());
+    assert!(!root.path().join(".claude/agents").exists());
+    assert!(!root.path().join(".codex/agents").exists());
+    // The manifest records the generation baselines and the profile linkage.
+    let manifest: Value = serde_json::from_slice(
+        &fs::read(root.path().join(".moai-cli/manifests/generation.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(manifest["workflow_id"], json!("review-flow"));
+    assert_eq!(manifest["interview_revision"], json!("rc1-fixture-1"));
+}
+
+#[test]
+fn generation_rerun_is_diff_zero() {
+    // 03C-AC-2: the second plan is unchanged for every managed file, and the target
+    // files plus generation.json hash identically after both applies (SETUP-05).
+    let root = generation_project();
+    let request = generation_request("ignored");
+    let plan = ok_result(&generation_plan_cli(&root, &request));
+    ok_result(&generation_apply_cli(&root, &plan));
+    let sha = |p: &std::path::Path| moai_cli::digest(&fs::read(p).unwrap());
+    let agents_before = sha(&root.path().join("AGENTS.md"));
+    let workflow_before = sha(&root.path().join(".moai-cli/workflows/review-flow/SKILL.md"));
+    let manifest_before = sha(&root.path().join(".moai-cli/manifests/generation.json"));
+    let plan2 = ok_result(&generation_plan_cli(&root, &request));
+    for (path, action) in actions_of(&plan2) {
+        if path == ".moai-cli/manifests/generation.json" {
+            // agents.rs reports the manifest row as merge by convention: its apply
+            // rewrites the manifest bytes, and the generation linkage below restores
+            // them — the equality assertions here carry the requirement.
+            continue;
+        }
+        assert_eq!(action, "unchanged", "{path}");
+    }
+    ok_result(&generation_apply_cli(&root, &plan2));
+    assert_eq!(sha(&root.path().join("AGENTS.md")), agents_before);
+    assert_eq!(
+        sha(&root.path().join(".moai-cli/workflows/review-flow/SKILL.md")),
+        workflow_before
+    );
+    assert_eq!(
+        sha(&root.path().join(".moai-cli/manifests/generation.json")),
+        manifest_before
+    );
+}
+
+#[test]
+fn generation_preserves_user_files_and_reports_conflict() {
+    // 03C-AC-3: user bytes outside the managed section (CRLF, no final newline),
+    // an unrelated native role file and user .gitignore rules survive byte for
+    // byte; a user edit inside the section plus a template change reports
+    // conflict and writes nothing (SETUP-04).
+    let root = generation_project();
+    fs::write(
+        root.path().join("AGENTS.md"),
+        b"# user header\r\n\n# user footer without final newline",
+    )
+    .unwrap();
+    fs::create_dir_all(root.path().join(".claude/agents")).unwrap();
+    fs::write(
+        root.path().join(".claude/agents/other.md"),
+        b"user's own role",
+    )
+    .unwrap();
+    fs::write(root.path().join(".gitignore"), b"target/\n*.tmp\n").unwrap();
+    let request = generation_request("ignored");
+    let plan = ok_result(&generation_plan_cli(&root, &request));
+    ok_result(&generation_apply_cli(&root, &plan));
+    assert!(
+        String::from_utf8_lossy(&fs::read(root.path().join("AGENTS.md")).unwrap())
+            .starts_with("# user header\r\n")
+    );
+    assert_eq!(
+        fs::read(root.path().join(".claude/agents/other.md")).unwrap(),
+        b"user's own role"
+    );
+    let gitignore_bytes = fs::read(root.path().join(".gitignore")).unwrap();
+    let gitignore = String::from_utf8_lossy(&gitignore_bytes);
+    assert!(gitignore.contains("*.tmp"));
+    assert!(gitignore.contains("moai:managed"));
+    // The user edits inside the managed section; a template change (language) then
+    // reports a conflict and nothing is written.
+    let agents = fs::read_to_string(root.path().join("AGENTS.md")).unwrap();
+    let edited = agents.replace(
+        "Confirm the approved SPEC and Issue scope",
+        "The user rewrote this managed line",
+    );
+    assert_ne!(
+        agents, edited,
+        "the fixture string must exist in the section"
+    );
+    fs::write(root.path().join("AGENTS.md"), edited).unwrap();
+    let before = fs::read(root.path().join("AGENTS.md")).unwrap();
+    let mut changed = generation_request("ignored");
+    changed["language"] = json!("ko");
+    let plan2 = ok_result(&generation_plan_cli(&root, &changed));
+    assert!(actions_of(&plan2)
+        .iter()
+        .any(|(p, a)| p == "AGENTS.md" && a == "conflict"));
+    let out = generation_apply_cli(&root, &plan2);
+    assert!(!out.status.success());
+    let failure: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(failure["error"]["kind"], json!("conflict"));
+    assert_eq!(fs::read(root.path().join("AGENTS.md")).unwrap(), before);
+}
+
+#[test]
+fn generation_native_roles_render_official_shapes() {
+    // 03C-AC-4: Claude roles render name/description/tools frontmatter, Codex roles
+    // only name/description/developer_instructions (never sandbox_mode), and the
+    // read-only intent surfaces as a plan warning.
+    let root = generation_project();
+    let mut request = generation_request("none");
+    request["native_roles"] = json!([
+        {"role_id": "fixer", "host": "claude", "purpose": "Fix lint and test failures",
+         "tools": ["Bash", "Edit"]},
+        {"role_id": "watcher", "host": "codex", "purpose": "Review diffs only",
+         "read_only_intent": true}
+    ]);
+    let plan = ok_result(&generation_plan_cli(&root, &request));
+    assert!(plan
+        .to_string()
+        .as_str()
+        .contains("cannot create a sandbox"));
+    ok_result(&generation_apply_cli(&root, &plan));
+    let claude_role =
+        String::from_utf8_lossy(&fs::read(root.path().join(".claude/agents/fixer.md")).unwrap())
+            .into_owned();
+    assert!(claude_role.contains("name: fixer"));
+    assert!(claude_role.contains("description: Fix lint and test failures"));
+    assert!(claude_role.contains("tools: Bash, Edit"));
+    let codex_role_bytes = fs::read(root.path().join(".codex/agents/watcher.toml")).unwrap();
+    let codex_role = String::from_utf8_lossy(&codex_role_bytes).into_owned();
+    assert!(codex_role.contains("name = \"watcher\""));
+    assert!(codex_role.contains("developer_instructions = \"Review diffs only\""));
+    assert!(!codex_role.contains("sandbox_mode"));
+    assert!(!codex_role.contains("approval_policy"));
+    assert!(!codex_role.contains("mcp_servers"));
+}
+
+#[test]
+fn generation_license_gate_and_attribution() {
+    // 03C-AC-5: a projection citing an unreviewed source is not planned and warns;
+    // a reviewed source renders an attribution line (no content copying).
+    let root = generation_project();
+    let sources = json!({
+        "schema_version": 1,
+        "sources": [
+            {"source_url": "fixtures/skill-a", "license": {"status": "unknown"},
+             "resolved_revision": null},
+            {"source_url": "fixtures/skill-b", "license": {"status": "reviewed", "spdx": "MIT"},
+             "resolved_revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
+        ]
+    });
+    fs::create_dir_all(root.path().join(".moai-cli/manifests")).unwrap();
+    fs::write(
+        root.path().join(".moai-cli/manifests/sources.json"),
+        serde_json::to_vec_pretty(&sources).unwrap(),
+    )
+    .unwrap();
+    let mut request = generation_request("none");
+    request["skill_projections"] = json!([
+        {"id": "ref-a", "source_url": "fixtures/skill-a"},
+        {"id": "ref-b", "source_url": "fixtures/skill-b",
+         "resolved_revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
+    ]);
+    let plan = ok_result(&generation_plan_cli(&root, &request));
+    let planned: Vec<&str> = plan["files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|f| f["path"].as_str().unwrap().contains("ref-"))
+        .map(|f| f["path"].as_str().unwrap())
+        .collect();
+    assert!(!planned.iter().any(|p| p.contains("ref-a")), "{planned:?}");
+    assert!(planned.iter().any(|p| p.contains("ref-b")));
+    assert!(plan.to_string().as_str().contains("not license-reviewed"));
+    ok_result(&generation_apply_cli(&root, &plan));
+    let projection_bytes = fs::read(root.path().join(".claude/skills/ref-b/SKILL.md")).unwrap();
+    let projection = String::from_utf8_lossy(&projection_bytes).into_owned();
+    assert!(projection.contains("source: fixtures/skill-b"));
+    assert!(projection.contains("license: MIT"));
+    assert!(projection.contains("name: ref-b"));
+}
+
+#[test]
+fn generation_partial_apply_recovers() {
+    // 03C-AC-6: after a forced interruption (the manifest loses its generation
+    // baselines), re-applying absorbs the already-rendered files as baselines and
+    // reaches the same final state as a clean apply.
+    let reference = generation_project();
+    let request = generation_request("ignored");
+    let plan = ok_result(&generation_plan_cli(&reference, &request));
+    ok_result(&generation_apply_cli(&reference, &plan));
+
+    let root = generation_project();
+    let plan = ok_result(&generation_plan_cli(&root, &request));
+    ok_result(&generation_apply_cli(&root, &plan));
+    // The interruption: the manifest forgets the generation baselines.
+    let manifest_path = root.path().join(".moai-cli/manifests/generation.json");
+    let mut value: Value = serde_json::from_slice(&fs::read(&manifest_path).unwrap()).unwrap();
+    if let Some(list) = value["owned_files"].as_array_mut() {
+        list.retain(|f| {
+            !f["section_id"]
+                .as_str()
+                .unwrap_or("")
+                .starts_with("generation:")
+        });
+    }
+    fs::write(&manifest_path, serde_json::to_vec_pretty(&value).unwrap()).unwrap();
+    // Re-apply: already-rendered files are absorbed as baselines, nothing is
+    // re-published, and the manifest returns to the clean-apply state.
+    let plan2 = ok_result(&generation_plan_cli(&root, &request));
+    ok_result(&generation_apply_cli(&root, &plan2));
+    for rel in [
+        "AGENTS.md",
+        ".moai-cli/workflows/review-flow/SKILL.md",
+        ".moai-cli/workflows/review-flow/references/workflow.md",
+        ".gitignore",
+    ] {
+        assert_eq!(
+            fs::read(root.path().join(rel)).unwrap(),
+            fs::read(reference.path().join(rel)).unwrap(),
+            "{rel}"
+        );
+    }
+    assert_eq!(
+        fs::read(&manifest_path).unwrap(),
+        fs::read(reference.path().join(".moai-cli/manifests/generation.json")).unwrap()
+    );
+}
+
+#[test]
+fn generation_rejects_frontmatter_delimiter_injection() {
+    // REQ-03C-07: managed-marker tokens and frontmatter delimiter lines in any
+    // rendered string are refused without echoing the value.
+    for purpose in [
+        "x <!-- moai:managed:end id=y --> z",
+        "line one\n---\nline two",
+    ] {
+        let root = generation_project();
+        let mut request = generation_request("none");
+        request["native_roles"] = json!([
+            {"role_id": "injected", "host": "claude", "purpose": purpose}
+        ]);
+        let out = generation_plan_cli(&root, &request);
+        assert!(!out.status.success(), "{purpose}");
+        let failure: Value = serde_json::from_slice(&out.stdout).unwrap();
+        assert_eq!(failure["error"]["kind"], json!("invalid_input"));
+        assert!(!String::from_utf8_lossy(&out.stdout).contains(purpose));
+        assert!(!String::from_utf8_lossy(&out.stderr).contains(purpose));
+    }
+}
+
+#[test]
+fn generation_skill_projection_name_matches_directory() {
+    // REQ-03C-09: projection ids follow the Agent Skills name rules and the rendered
+    // SKILL.md name equals the directory name; an existing unclaimed directory is a
+    // conflict.
+    let root = generation_project();
+    let mut request = generation_request("none");
+    request["skill_projections"] = json!([
+        {"id": "Bad_Name", "source_url": "fixtures/skill-b"}
+    ]);
+    let out = generation_plan_cli(&root, &request);
+    assert!(!out.status.success());
+    let failure: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(failure["error"]["kind"], json!("invalid_input"));
+    // A valid projection renders name == directory.
+    let sources = json!({
+        "schema_version": 1,
+        "sources": [{"source_url": "fixtures/skill-b",
+                     "license": {"status": "reviewed", "spdx": "MIT"},
+                     "resolved_revision": null}]
+    });
+    fs::create_dir_all(root.path().join(".moai-cli/manifests")).unwrap();
+    fs::write(
+        root.path().join(".moai-cli/manifests/sources.json"),
+        serde_json::to_vec_pretty(&sources).unwrap(),
+    )
+    .unwrap();
+    let mut request = generation_request("none");
+    request["skill_projections"] = json!([
+        {"id": "ref-b", "source_url": "fixtures/skill-b"}
+    ]);
+    let plan = ok_result(&generation_plan_cli(&root, &request));
+    ok_result(&generation_apply_cli(&root, &plan));
+    let projection_bytes = fs::read(root.path().join(".claude/skills/ref-b/SKILL.md")).unwrap();
+    let projection = String::from_utf8_lossy(&projection_bytes).into_owned();
+    assert!(projection.contains("name: ref-b"));
+    // The same directory, never projected before, is a conflict for a fresh manifest.
+    let root2 = generation_project();
+    fs::create_dir_all(root2.path().join(".moai-cli/manifests")).unwrap();
+    fs::write(
+        root2.path().join(".moai-cli/manifests/sources.json"),
+        serde_json::to_vec_pretty(&sources).unwrap(),
+    )
+    .unwrap();
+    fs::create_dir_all(root2.path().join(".claude/skills/ref-b")).unwrap();
+    fs::write(
+        root2.path().join(".claude/skills/ref-b/SKILL.md"),
+        b"user's own",
+    )
+    .unwrap();
+    let plan = ok_result(&generation_plan_cli(&root2, &request));
+    assert!(actions_of(&plan)
+        .iter()
+        .any(|(p, a)| p.contains("ref-b") && a == "conflict"));
+    assert_eq!(
+        fs::read(root2.path().join(".claude/skills/ref-b/SKILL.md")).unwrap(),
+        b"user's own"
+    );
+}
