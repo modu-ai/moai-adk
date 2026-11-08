@@ -1,0 +1,6 @@
+[
+  {"id": "T1", "depends_on": [], "write_paths": ["src/receipt"], "verifier_refs": ["AC-S-1"], "host": null},
+  {"id": "T2", "depends_on": [], "write_paths": ["./src/receipt/apply.rs"], "verifier_refs": ["AC-S-1"], "host": null},
+  {"id": "T3", "depends_on": ["T1"], "write_paths": ["src/receipt/"], "verifier_refs": ["AC-S-1"], "host": null},
+  {"id": "T4", "depends_on": [], "write_paths": ["src/receipts.rs"], "verifier_refs": ["AC-S-1"], "host": null}
+]

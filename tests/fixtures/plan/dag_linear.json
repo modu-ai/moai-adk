@@ -1,0 +1,6 @@
+[
+  {"id": "T-test", "depends_on": ["T-impl"], "write_paths": ["tests/receipt.rs"], "verifier_refs": ["AC-S-1"], "host": null},
+  {"id": "T-docs", "depends_on": ["T-test"], "write_paths": ["docs/receipt.md"], "verifier_refs": ["AC-S-1"], "host": null},
+  {"id": "T-impl", "depends_on": ["T-types"], "write_paths": ["src/receipt.rs"], "verifier_refs": ["AC-S-1"], "host": null},
+  {"id": "T-types", "depends_on": [], "write_paths": ["src/types.rs"], "verifier_refs": ["AC-S-1"], "host": null}
+]
