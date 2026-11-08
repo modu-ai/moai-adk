@@ -1,0 +1,53 @@
+# MoAI RC1 label taxonomy for modu-ai/moai-adk.
+# Applied by hand with `gh label create` after a preview, then re-read; no workflow reads this file.
+# Existing remote labels are reused and never deleted, renamed or recoloured.
+# `status` is reported in the Issue's owned report comment, never through labels
+# (labels and assignees are not a distributed lock).
+schema_version: 1
+reused:
+  type:
+    - type:feature
+    - type:fix
+    - type:docs
+    - type:chore
+    - type:ci
+    - type:test
+  priority:
+    - priority:P0
+    - priority:P1
+    - priority:P2
+    - priority:P3
+  area:
+    - area:ci
+    - area:cli
+    - area:config
+    - area:docs-site
+    - area:security
+    - area:templates
+    - area:workflow
+  functional:
+    - security
+    - duplicate
+    - wontfix
+# `blocked`, `in-progress`, `ready`, `review`, `done` exist on the remote from the previous
+# generation. They are state labels, so RC1 does not apply them; state lives in the report comment.
+added:
+  - name: host:claude
+    color: d4a5ff
+    description: Must be verified on Claude Code
+  - name: host:codex
+    color: 74d2ff
+    description: Must be verified on Codex
+  - name: area:setup
+    color: c2e0c6
+    description: "SETUP: project profile, AGENTS.md generation, host projections"
+proposed_not_created:
+  - name: area:router
+    color: c2e0c6
+    description: Common skill router, routes.json and workflow files
+  - name: area:update
+    color: c2e0c6
+    description: "UPDATE: installed-host preflight, 3-way merge, partial recovery"
+  - name: area:forge
+    color: c2e0c6
+    description: GitHub/GitLab Issues ledger, reports and reconciliation
