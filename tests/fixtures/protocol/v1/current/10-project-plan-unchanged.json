@@ -19,9 +19,10 @@
       "claude",
       "codex"
     ],
+    "interview_revision": "rc1-fixture-1",
     "project_id": "demo",
     "purpose": "Build a small editor",
-    "schema_version": 1,
+    "schema_version": 2,
     "tools": [
       "Rust"
     ]
@@ -32,7 +33,24 @@
     "protocol_version": 1,
     "result": {
       "action": "unchanged",
-      "expected_sha256": "sha256:60571df23ab38dd309f928ebbb001b1accc1f3c0d527069543ce3d7f7a375fbf",
+      "delta": {
+        "added": [],
+        "changed": [],
+        "conflict": [],
+        "removed": [],
+        "unchanged": [
+          "decisions",
+          "development_methods",
+          "hosts",
+          "interview_revision",
+          "package_pin",
+          "project_id",
+          "purpose",
+          "schema_version",
+          "tools"
+        ]
+      },
+      "expected_sha256": "sha256:52aa26c380ef197266ebad62b70dc7866f5fb658cc856e114f6919e13bc5a06a",
       "plan_digest": "<masked>",
       "profile": {
         "development_methods": [
@@ -42,9 +60,10 @@
           "claude",
           "codex"
         ],
+        "interview_revision": "rc1-fixture-1",
         "project_id": "demo",
         "purpose": "Build a small editor",
-        "schema_version": 1,
+        "schema_version": 2,
         "tools": [
           "Rust"
         ]

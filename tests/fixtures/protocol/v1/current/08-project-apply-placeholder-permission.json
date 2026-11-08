@@ -17,6 +17,24 @@
   "stderr": "permission reference required\n",
   "stdin": {
     "action": "create",
+    "delta": {
+      "added": [
+        "development_methods",
+        "hosts",
+        "interview_revision",
+        "project_id",
+        "purpose",
+        "schema_version",
+        "tools"
+      ],
+      "changed": [],
+      "conflict": [],
+      "removed": [],
+      "unchanged": [
+        "decisions",
+        "package_pin"
+      ]
+    },
     "expected_sha256": null,
     "plan_digest": "<masked>",
     "profile": {
@@ -27,9 +45,10 @@
         "claude",
         "codex"
       ],
+      "interview_revision": "rc1-fixture-1",
       "project_id": "demo",
       "purpose": "Build a small editor",
-      "schema_version": 1,
+      "schema_version": 2,
       "tools": [
         "Rust"
       ]

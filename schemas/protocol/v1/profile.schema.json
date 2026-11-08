@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:moai:protocol:v1:profile",
-  "title": "Profile (current, describes src/lib.rs Profile)",
+  "title": "Profile (current, describes src/profile.rs Profile)",
   "description": "Describes the existing serde type; deny_unknown_fields maps to additionalProperties false. Value checks done in code (portability, secret shapes) are not restated here.",
   "type": "object",
   "additionalProperties": false,
@@ -13,6 +13,23 @@
     "tools": {"type": "array", "items": {"type": "string"}},
     "development_methods": {"type": "array", "items": {"type": "string"}},
     "hosts": {"type": "array", "items": {"enum": ["claude", "codex"]}},
-    "package_pin": {"$ref": "urn:moai:protocol:v1:digest"}
+    "package_pin": {"$ref": "urn:moai:protocol:v1:digest"},
+    "interview_revision": {"type": "string"},
+    "decisions": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "topic", "value", "source", "scope"],
+        "properties": {
+          "id": {"type": "string"},
+          "topic": {"type": "string"},
+          "value": {"type": "string"},
+          "source": {"enum": ["repo", "user", "default"]},
+          "scope": {"type": "string"}
+        }
+      }
+    }
   }
 }

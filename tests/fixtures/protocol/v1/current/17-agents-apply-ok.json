@@ -40,7 +40,7 @@
     ],
     "host_notes": [],
     "plan_digest": "<masked>",
-    "profile_sha256": "sha256:60571df23ab38dd309f928ebbb001b1accc1f3c0d527069543ce3d7f7a375fbf",
+    "profile_sha256": "sha256:52aa26c380ef197266ebad62b70dc7866f5fb658cc856e114f6919e13bc5a06a",
     "project_id": "demo",
     "protocol_version": 1,
     "request": {
@@ -65,7 +65,7 @@
       "files_created": true,
       "host_loaded": false,
       "host_notes": [],
-      "manifest_sha256": "sha256:f4d9af31163b14bede547faf06556ffd4a8ee1ea155de447048c7c5e8b0cb94c",
+      "manifest_sha256": "sha256:000fbd41b73f045ea95de9e45b6de0ed6519f2417d4816f6880408cf67cb67cf",
       "state": "applied"
     }
   }

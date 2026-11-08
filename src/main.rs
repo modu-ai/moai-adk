@@ -335,8 +335,11 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             serde_json::json!({"digest":moai_cli::package_digest(&package)?,"digest_algorithm":"moai-package-tree-v1","publisher_trust":"not_verified","host_loaded":false}),
         ),
         Command::ProjectPlan { project } => {
-            serde_json::to_value(plan(&project, input::<Profile>()?)?)
-                .map_err(|_| "encode failed".into())
+            // REQ-03A-08: an unknown input key or a non-v2 schema_version is refused with
+            // the profile message; no input value is echoed.
+            let profile: Profile = serde_json::from_value(input::<serde_json::Value>()?)
+                .map_err(|_| "invalid or nonportable profile; no values were logged".to_string())?;
+            serde_json::to_value(plan(&project, profile)?).map_err(|_| "encode failed".into())
         }
         Command::ProjectApply {
             project,

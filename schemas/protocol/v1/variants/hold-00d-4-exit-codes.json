@@ -8,7 +8,7 @@
     "rows": [
       {"fixture": "01-usage-unknown-subcommand", "exit": 2, "stderr_start": "error: unrecognized subcommand", "draft_kind": "usage"},
       {"fixture": "02-usage-missing-argument", "exit": 2, "stderr_start": "error: the following required arguments were not provided", "draft_kind": "usage"},
-      {"fixture": "03-project-plan-unknown-field", "exit": 1, "stderr_start": "invalid typed JSON input", "draft_kind": "invalid_input"},
+      {"fixture": "03-project-plan-unknown-field", "exit": 1, "stderr_start": "invalid or nonportable profile; no values were logged", "draft_kind": "invalid_input"},
       {"fixture": "04-project-plan-malformed-json", "exit": 1, "stderr_start": "invalid typed JSON input", "draft_kind": "invalid_input"},
       {"fixture": "05-project-plan-input-over-limit", "exit": 1, "stderr_start": "input exceeds 64 KiB", "draft_kind": "input_too_large"},
       {"fixture": "07-project-apply-protocol-version-2", "exit": 1, "stderr_start": "stale or altered plan; re-preview required", "draft_kind": "unsupported_protocol_version", "gap": "today this is indistinguishable from a stale plan"},

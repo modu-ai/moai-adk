@@ -17,6 +17,24 @@
   "stderr": "",
   "stdin": {
     "action": "create",
+    "delta": {
+      "added": [
+        "development_methods",
+        "hosts",
+        "interview_revision",
+        "project_id",
+        "purpose",
+        "schema_version",
+        "tools"
+      ],
+      "changed": [],
+      "conflict": [],
+      "removed": [],
+      "unchanged": [
+        "decisions",
+        "package_pin"
+      ]
+    },
     "expected_sha256": null,
     "plan_digest": "<masked>",
     "profile": {
@@ -27,9 +45,10 @@
         "claude",
         "codex"
       ],
+      "interview_revision": "rc1-fixture-1",
       "project_id": "demo",
       "purpose": "Build a small editor",
-      "schema_version": 1,
+      "schema_version": 2,
       "tools": [
         "Rust"
       ]
@@ -43,7 +62,11 @@
     "protocol_version": 1,
     "result": {
       "host_verified": false,
-      "profile_digest": "sha256:60571df23ab38dd309f928ebbb001b1accc1f3c0d527069543ce3d7f7a375fbf",
+      "interview_revision": "rc1-fixture-1",
+      "next_actions": [
+        "update profile_sha256 and interview_revision in .moai-cli/manifests/generation.json through the 03-C generation apply; project.apply does not write the manifest"
+      ],
+      "profile_digest": "sha256:52aa26c380ef197266ebad62b70dc7866f5fb658cc856e114f6919e13bc5a06a",
       "state": "created"
     }
   }

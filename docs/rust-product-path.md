@@ -22,8 +22,8 @@ One row per internal operation: the name a skill adapter or a later MCP tool ref
 
 | Operation | CLI subcommand | Rust function | stdin | Flags | `result` keys | Writes |
 | --- | --- | --- | --- | --- | --- | --- |
-| `project.plan` | `project-plan PROJECT` | `moai_cli::plan` | `Profile` | — | `protocol_version`, `profile`, `expected_sha256`, `target_binding`, `action`, `plan_digest` (`plan.schema.json`) | no |
-| `project.apply` | `project-apply PROJECT` | `moai_cli::apply` | `Plan` | `--plan-digest`, `--permission-reference` | `state`, `profile_digest`, `host_verified` | `.moai-cli/project.yaml` |
+| `project.plan` | `project-plan PROJECT` | `moai_cli::plan` | `Profile` | — | `protocol_version`, `profile`, `expected_sha256`, `target_binding`, `action` (`create|update|unchanged|conflict`), `delta` (sorted `added`/`changed`/`removed`/`unchanged`/`conflict` key lists), `plan_digest` | no |
+| `project.apply` | `project-apply PROJECT` | `moai_cli::apply` | `Plan` | `--plan-digest`, `--permission-reference` | `state`, `profile_digest`, `interview_revision`, `host_verified`, `next_actions` (create/update) | `.moai-cli/project.yaml`, `.moai-cli/manifests/profile-baseline.json` |
 | `package.inspect` | `package-inspect PACKAGE` | `moai_cli::package_digest` | — | — | `digest`, `digest_algorithm`, `publisher_trust`, `host_loaded` (`package-result.schema.json`) | no |
 | `package.resolve` | `package-resolve PROJECT` | `moai_cli::resolve` | — | `--repo-package`, `--user-package` | the `package.inspect` keys plus `source` | no |
 | `agents.plan` | `agents-plan PROJECT` | `moai_cli::agents_plan` | `AgentsRequest` | — | `protocol_version`, `request`, `project_id`, `profile_sha256`, `target_binding`, `files`, `host_notes`, `warnings`, `plan_digest` (`agents-plan.schema.json`) | no |
@@ -81,22 +81,30 @@ A symlinked input path, a symlinked `<work_tree>/.moai-cli` or a symlinked `~/.m
 
 Provisional (leader RC1 decision 2026-11-08 18:1x, until P05 and P12 are decided): git as a subprocess rather than a library crate (HOLD-3); ids derived from paths with nothing recorded (HOLD-1, marked `@MX:DEBT` in `src/identity.rs`: moving or renaming the repository changes every id, and the scheme is to be re-evaluated when 06-A consumes it); the home root fixed at `~/.moai-cli` with no override or XDG mapping (HOLD-2).
 
-## Profile v1
+## Profile v2 and key-level reconfigure (03-A)
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "project_id": "example",
   "purpose": "Build an accessible editor",
   "tools": ["Rust"],
   "development_methods": ["TDD"],
-  "hosts": ["claude", "codex"]
+  "hosts": ["claude", "codex"],
+  "interview_revision": "r2026-11-08.1",
+  "decisions": [
+    {"id": "d1", "topic": "tools", "value": "Rust", "source": "user", "scope": "project"}
+  ]
 }
 ```
 
-An optional `package_pin` is `sha256:` plus 64 lowercase hexadecimal digits, obtained with package-inspect. Null/mismatched pins are not an instruction to fallback. Unknown input keys are rejected. Project ID is a bounded portable identifier; profile strings/lists are bounded and reject paths, controls and common credential-shaped strings. This conservative filter is not a universal secret detector; the host must review interview answers before supplying them. No free-form transcript is persisted and input values are not echoed in diagnostics.
+The seven v1 keys keep their v1 rules. An optional `package_pin` is `sha256:` plus 64 lowercase hexadecimal digits, obtained with package-inspect; null/mismatched pins are not an instruction to fallback. `interview_revision` (at most 128 characters) links the profile to one interview run. `decisions` (at most 32 records) keep what the interview decided: `id` (project-id charset, at most 80 characters), `topic`, `value` and `scope` (at most 256 characters each) and `source`, one of `repo`, `user` or `default` — the candidate-selection basis 03-B consumes. Every string runs through the same portable filter as v1 (paths, credential shapes and control characters refused), unknown input keys are rejected, no free-form transcript is persisted and input values are not echoed in diagnostics. This conservative filter is not a universal secret detector; the host must review interview answers before supplying them.
 
-Only `.moai-cli/project.yaml` is created. The initial serializer emits JSON syntax, a YAML 1.2 subset. General YAML, comments and changed existing profiles are preserved by refusing mutation. Existing JSON-subset profiles with identical selected values and unknown user keys are left byte-for-byte unchanged. This is not full YAML merge or reconfiguration: a lossless parser and ownership baseline remain needed. No AGENTS or host settings are written by these commands.
+A `project-plan` input must carry `schema_version` 2 (REQ-03A-08); v1 files stay readable with the new fields defaulted. The plan decides per key with a baseline/current/desired three-way table and reports `action` — `create`, `update`, `unchanged` or `conflict` — plus a `delta` of sorted key lists (`added`, `changed`, `removed`, `unchanged`, `conflict`). The baseline is the profile the last `project-apply` wrote, recorded in `.moai-cli/manifests/profile-baseline.json`; a missing, unreadable or foreign record means no baseline, every key is then treated as user-edited, and any pending change lands on `conflict`. A key the user edited away from the baseline keeps the user value when the input agrees with the baseline; a key the user edited that the input also changes is marked `conflict`, and applying a conflict plan writes nothing.
+
+`project-apply` on an `update` plan re-verifies the file hash against the plan's `expected_sha256`, replaces the file through a temporary-file rename, keeps user-preserved keys and unknown user keys, and then rewrites the baseline record; a baseline-record failure after the file write is reported as `partial apply`. The apply result carries `state`, `profile_digest`, `interview_revision`, `host_verified: false` and a `next_actions` note stating that the `generation.json` `profile_sha256`/`interview_revision` update belongs to the 03-C generation apply. The serializer emits JSON syntax, a YAML 1.2 subset, with sorted keys; general YAML (comments, anchors, block style) keeps its v1 refusal — "existing YAML requires preservation review" — until the lossless-editing HOLD is decided. No AGENTS or host settings are written by these commands.
+
+Known gaps: a hand-written unsorted file is re-serialized with sorted keys (identical content, reordered entries) — preserving key order needs the `serde_json` `preserve_order` feature, a Cargo.lock change under HOLD; the baseline record is best-effort trust (an apply wrote it, a hand-edited one cannot be authenticated, and every inconsistency degrades decisions toward conflicts); files predating the record (v1 projects) stay on the conservative conflict path until a recorded apply establishes a baseline; the 01-B (#1989, open) rollback-receipt contract is matched at the `expected_sha256` interface (`sha256:` plus 64 hex) only, its integration blocked on 01-B; rename atomicity and permission preservation are verified on macOS fixtures only (Windows/Linux not_run).
 
 The package digest algorithm `moai-package-tree-v1` frames sorted UTF-8 relative paths and file bytes with big-endian u64 lengths and a domain prefix. It covers SKILL.md and support files; symlinks, special files, oversized files/trees, deep nesting and nonportable paths are refused. It proves observed content identity, not authenticity or host compatibility. Package paths are explicit input rather than final install-layout decisions. Concurrent tree mutation and symlink swaps are not OS-level atomic snapshots.
 

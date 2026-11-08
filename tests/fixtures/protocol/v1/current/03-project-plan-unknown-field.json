@@ -10,7 +10,7 @@
     "plan_digest",
     "collected_at"
   ],
-  "stderr": "invalid typed JSON input\n",
+  "stderr": "invalid or nonportable profile; no values were logged\n",
   "stdin": {
     "development_methods": [
       "TDD"
@@ -19,9 +19,10 @@
       "claude",
       "codex"
     ],
+    "interview_revision": "rc1-fixture-1",
     "project_id": "demo",
     "purpose": "Build a small editor",
-    "schema_version": 1,
+    "schema_version": 2,
     "tools": [
       "Rust"
     ],
@@ -30,7 +31,7 @@
   "stdout": {
     "error": {
       "kind": "invalid_input",
-      "message": "invalid typed JSON input",
+      "message": "invalid or nonportable profile; no values were logged",
       "retryable": false
     },
     "ok": false,
