@@ -1,0 +1,70 @@
+# moai-template:moai-bugfix@0.1.0; machine metadata is correlation only, never authorization
+# Skeleton: field set is a starting point; details are decided with the user per fix.
+name: "MoAI: bug fix"
+description: "An observed defect. Reproduce first, then the smallest fix with a regression test. One Issue, one execution owner; labels and assignees are applied separately."
+title: "[fix] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        One Issue is one defect and has exactly one active execution owner. Nothing in this form applies labels, assignees, projects or milestones.
+
+        Redaction: never write tokens, API keys, credentials, cookies, personal data, absolute home-directory paths, raw logs or private content. Summarize and link an accessible artifact instead.
+  - type: checkboxes
+    id: redaction
+    attributes:
+      label: Redaction
+      options:
+        - label: "I removed secrets, personal data, absolute home paths, raw logs and private content"
+          required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: Observed behavior
+      description: "What actually happens, where (command, host, file), and on which revision."
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior and its source
+      description: "What should happen, with the SPEC, design section or test that says so. If no source exists, say so; do not invent one."
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: "Exact steps or command that reproduces it, and the exit code or output observed. A reproduction that was not run is marked not_run."
+    validations:
+      required: true
+  - type: textarea
+    id: regression-test
+    attributes:
+      label: Regression test
+      description: "The test that fails before the fix and passes after it (RED → GREEN). Name the file once it exists."
+  - type: textarea
+    id: scope
+    attributes:
+      label: Write scope and exclusions
+      value: |
+        - may change: <paths>
+        - must not touch: <paths>
+    validations:
+      required: true
+  - type: dropdown
+    id: hosts
+    attributes:
+      label: Host scope
+      options:
+        - both (Claude Code and Codex)
+        - claude
+        - codex
+        - host-neutral
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence at creation
+      description: "Commands already run, exit codes, and which checks are not_run or blocked."

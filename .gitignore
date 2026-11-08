@@ -1,0 +1,358 @@
+# ============================================
+# MoAI-ADK Package Distribution .gitignore
+# ============================================
+# Version: 0.33.0
+# Purpose: Essential patterns for user projects
+# ============================================
+
+# ===========================================
+# Go Build Artifacts
+# ===========================================
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+cover.out
+cover.html
+cpu.prof
+mem.prof
+
+# ===========================================
+# Build Artifacts & Distribution
+# ===========================================
+build/
+dist/
+*.egg-info/
+*.egg
+
+# ===========================================
+# Python Cache & Bytecode
+# ===========================================
+__pycache__/
+.pytest_cache/
+*.pyc
+*.pyo
+*.pyd
+.mypy_cache/
+.ruff_cache/
+*.db
+*.sqlite
+*.sqlite3
+*.rdb
+*.dbm
+
+# ===========================================
+# Virtual Environments
+# ===========================================
+venv/
+.venv/
+env/
+.env/
+.uv_cache/
+.uv-cache/
+
+# ===========================================
+# Test Coverage
+# ===========================================
+.coverage
+coverage.json
+htmlcov/
+
+# ===========================================
+# IDE & Editors
+# ===========================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sw?
+*~
+.cursor/
+*.sublime-project
+*.sublime-workspace
+*.njsproj
+*.sln
+*.suo
+.#*
+
+# ===========================================
+# OS Files
+# ===========================================
+# Mac
+.DS_Store
+.AppleDouble
+.LSOverride
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+
+# Windows
+[Dd]esktop.ini
+Thumbs.db
+ehthumbs.db
+
+# Linux
+.directory
+
+# ===========================================
+# Logs & Temporary Files
+# ===========================================
+*.log
+logs/*
+!logs/.gitkeep
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# ===========================================
+# Backups
+# ===========================================
+.moai-backups/
+.moai/backups/
+*.backup/
+*-backup/
+*_backup_*/
+
+# ===========================================
+# Secrets and Credentials (CRITICAL)
+# ===========================================
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Certificate files
+*.pem
+*.p12
+*.pfx
+*.jks
+
+# Private keys (specific patterns to avoid false positives)
+# FIXED: Issue #237 - Replaced overly broad *key* and *secret* patterns
+*-key.*
+*_key.*
+*.key.*
+*-secret-key.*
+*-api-key.*
+api-key-*
+secret-key-*
+private-key*
+*-secret.*
+*_secret.*
+*.secret.*
+secret-*.*
+
+# Credential patterns in environment files
+*_secret=*
+*_token=*
+
+# Cloud provider credentials
+.aws/config
+.aws/credentials
+
+# MoAI git-credential runtime files (defense-in-depth). The reconfigure wizard
+# delegates git provider credentials to the gh/glab CLI and never writes an
+# access token to a tracked config; these patterns ensure that if a
+# credential-bearing runtime file is ever introduced under .moai/, it is not
+# committed.
+.moai/**/credentials.yaml
+.moai/**/*.credentials
+
+# MINK agent credentials (plaintext API keys, per AC-CR-026).
+# Ignored anywhere in the tree so per-project auth dirs are never committed.
+**/.mink/auth/
+
+# ===========================================
+# Claude Code Configuration
+# ===========================================
+/CLAUDE.local.md
+.claude/settings.local.json
+.claude/settings.local.json.lock
+.claude/settings.local.*.json
+.claude/.env.local*
+.claude/local/
+.claude/plans/
+.claude/agent-memory/
+.claude/worktrees/
+
+# Skill-specific credentials
+.claude/skills/*/.env*
+.claude/skills/*/secrets/
+.claude/skills/*/*/*secret*
+.claude/skills/*/*/*key*
+.claude/skills/*/*/*token*
+# Re-include legitimate skill module/reference files containing "token" in their name
+!.claude/skills/*/modules/*token*.md
+!.claude/skills/*/references/*token*.md
+
+# ===========================================
+# Skill Mirror (build product, not source)
+# ===========================================
+# The skill catalog is deployed to .claude/skills/ and exposed a second time
+# under .agents/skills/ so agent runtimes that scan that path can see it. The
+# mirror is regenerated on every deploy, and on a checkout without symlink
+# support each entry materializes as a plain text file — neither belongs in
+# version control.
+#
+# Only the generated entries are ignored. The .agents/ root itself is NOT:
+# entries you create there, and source files placed there later, stay tracked.
+.agents/skills/moai*
+#
+# The published /moai command skills (committed template-managed content,
+# not deploy-time build products) share this root under moai-<command>
+# names. The publisher's collision guard keeps those names disjoint from
+# the canonical mirror names above, so each published entry is re-included
+# explicitly; a new command must extend this list alongside its source.
+!.agents/skills/moai-clean/
+!.agents/skills/moai-codemaps/
+!.agents/skills/moai-e2e/
+!.agents/skills/moai-feedback/
+!.agents/skills/moai-fix/
+!.agents/skills/moai-gate/
+!.agents/skills/moai-goal/
+!.agents/skills/moai-gtd/
+!.agents/skills/moai-harness/
+!.agents/skills/moai-loop/
+!.agents/skills/moai-mx/
+!.agents/skills/moai-plan/
+!.agents/skills/moai-project/
+!.agents/skills/moai-review/
+!.agents/skills/moai-run/
+!.agents/skills/moai-sync/
+!.agents/skills/moai-todo/
+
+# ===========================================
+# Local-Only Files (never sync via git pull)
+# ===========================================
+.moai/status_line.sh
+.moai/memory/
+.moai/worktrees/
+.moai/branches/
+
+# ===========================================
+# Update Noise-Suppression Ledgers (per-machine, never tracked)
+# Per-machine state + cache ledgers used to suppress redundant update noise.
+# ===========================================
+.moai/state/
+.moai/cache/
+
+# ===========================================
+# Runtime Logs (per-machine, never tracked)
+# The root-anchored `logs/*` rule above cannot reach this directory — a pattern
+# with a mid-slash is relative to the .gitignore's own directory, so it matches
+# `<root>/logs/` only. `*.log` covers the log files but not the ledgers written
+# beside them (*.jsonl and friends), so the directory needs its own rule.
+# Only the .gitkeep scaffold is tracked.
+# ===========================================
+.moai/logs/*
+!.moai/logs/.gitkeep
+
+# ===========================================
+# Reports (local artifacts)
+# Everything under .moai/reports/ — plan-audit verdicts, per-card evidence
+# directories, generated analyses — is a local artifact produced by a run on
+# this machine, not source. Only the plan-audit/ scaffold is tracked, so the
+# directory ships with the project while its contents stay local.
+#
+# Rule order is load-bearing: `.moai/reports/*` excludes the plan-audit
+# DIRECTORY, and git cannot re-include a file whose parent directory is
+# excluded — so the directory must be re-included before the rule that narrows
+# what inside it is ignored.
+# ===========================================
+.moai/reports/*
+!.moai/reports/plan-audit/
+.moai/reports/plan-audit/*.md
+!.moai/reports/plan-audit/.gitkeep
+
+# ===========================================
+# Architecture Report (regenerating derived artifact)
+# `moai graph report` rewrites this file on every run — it is the latest view
+# of the edge layers, never an analysis to keep. Rebuild it with
+# `moai graph report` instead of tracking it.
+# ===========================================
+.moai/reports/graph-report.md
+
+# ===========================================
+# Evolution Telemetry (local-only usage data)
+# Learnings and new-skills are git-tracked for team sharing.
+# ===========================================
+.moai/evolution/telemetry/*.jsonl
+!.moai/evolution/telemetry/.gitkeep
+
+# Hook duration metrics (local-only). No .gitkeep and no directory scaffold:
+# creating the directory is what opts a machine in to hook recording, so
+# shipping one would flip that opt-in to opt-out for every deployed project.
+.moai/observability/*.jsonl
+
+# ===========================================
+# Harness State + Learning History (per-machine, never tracked)
+# The usage log and the lessons inbox are unbounded per-machine runtime
+# state; the monthly learning-history archives are append-only retention
+# output whose authoritative copies live where they were produced. The
+# corrupt-file rule reaches any depth under .moai/ so a damaged archive
+# never re-enters an index.
+# ===========================================
+.moai/harness/usage-log.jsonl
+.moai/lessons-inbox.jsonl
+.moai/**/*.corrupt*
+.moai/harness/learning-history/archive/*.jsonl.gz
+
+# Harness runtime data (rewritten by live session hooks; a tracked copy keeps
+# the checkout permanently dirty). Mirrors the repository root .gitignore.
+.moai/harness/observations.yaml
+.moai/harness/usage-log.jsonl.prune-state
+.moai/harness/usage-log.jsonl.prune-heal
+.moai/harness/learning-history/
+
+# ===========================================
+# Generated Code-Graph Layer (rebuilt on demand, never committed)
+# `moai graph build` writes edges.jsonl + edges.meta.json here. edges.jsonl is
+# a machine-generated index that runs to six figures of lines on a mid-sized
+# repository, so a single `git add -A` turns it into an unreviewable diff.
+# Rebuild it with `moai graph build` instead of tracking it.
+#
+# Deliberately NOT a blanket `.moai/project/` rule: product.md, structure.md,
+# tech.md, and the codemaps/ set under the same parent ARE meant to be tracked.
+# ===========================================
+.moai/project/graph/
+
+# ===========================================
+# Node.js (for docs/Nextra)
+# ===========================================
+node_modules/
+*.tsbuildinfo
+.tscache/
+.next/
+out/
+
+# ===========================================
+# Build Tools & Frameworks
+# ===========================================
+.turbo/
+.nuxt/
+dist-ssr/
+
+# ===========================================
+# Deployment & CI/CD
+# ===========================================
+.vercel/
+.netlify/
+.firebase/
+
+# ===========================================
+# RC1 development repository policy (user decision, 2026-11-08)
+# .claude/ and .moai/ are local installed copies, not product source;
+# AGENTS.md is generated per machine by moai-cli and stays local.
+# AGENTS.local.md is explicitly allowed to be tracked in this repository.
+# ===========================================
+/.claude/
+/.moai/
+/AGENTS.md
+# Rust build output of the root package (isolated builds use CARGO_TARGET_DIR)
+/target/

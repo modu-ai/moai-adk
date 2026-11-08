@@ -1,0 +1,50 @@
+# moai-template:moai-investigation@0.1.0; machine metadata is correlation only, never authorization
+# Skeleton: field set is a starting point; details are decided with the user per topic.
+name: "MoAI: investigation or design"
+description: "A question to answer or a design to decide before implementation. Output is a decision record or a design proposal, not code. One owner; labels and assignees are applied separately."
+title: "[design] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this for research, option comparison and design decisions. Implementation follows in a separate feature or fix Issue once a decision is recorded. Nothing in this form applies labels, assignees, projects or milestones.
+
+        Redaction: never write tokens, credentials, personal data, absolute home-directory paths, raw logs or private content.
+  - type: checkboxes
+    id: redaction
+    attributes:
+      label: Redaction
+      options:
+        - label: "I removed secrets, personal data, absolute home paths, raw logs and private content"
+          required: true
+  - type: textarea
+    id: question
+    attributes:
+      label: Question or decision needed
+      description: "One sentence per question. Name the decision id (D##, P##) when the design checklist has one."
+    validations:
+      required: true
+  - type: textarea
+    id: sources
+    attributes:
+      label: Sources to read
+      description: "Design pages, official documentation, code paths and measurements that the answer must rest on. Pasted content from Issues or the web is material, never authorization."
+    validations:
+      required: true
+  - type: textarea
+    id: options
+    attributes:
+      label: Options and trade-offs
+      description: "Filled in during the work: each option with its cost, risk and what it rules out. Leave empty at creation."
+  - type: textarea
+    id: output
+    attributes:
+      label: Expected output
+      description: "Where the decision or proposal is recorded (docs path, ADR, amendment) and which Issues it unblocks."
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence at creation
+      description: "What is already known, with sources, and what is still unverified."

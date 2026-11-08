@@ -1,0 +1,252 @@
+{
+  "schema_version": 1,
+  "basis": "Conversation provenance plus local content review; OS uid alone does not establish authorship. Snapshot before staging, not a future ownership receipt.",
+  "files": [
+    {
+      "path": ".claude/output-styles/moai-easy.md",
+      "sha256": "d1aadf4567a73f09671c1541cf1c55bd008d2d8dd784d706aee50d892a34dec2",
+      "classification": "installed local copy; exclude",
+      "selected": false
+    },
+    {
+      "path": ".claude/output-styles/moai-learn.md",
+      "sha256": "6f3b663423d8ff610a3d7282cf1fb142d028bc7870a5945c7b9900cb5498a591",
+      "classification": "installed local copy; exclude",
+      "selected": false
+    },
+    {
+      "path": ".claude/output-styles/moai.md",
+      "sha256": "2cc8b53ba9e173e665188e3199806ecfbc16853c684e73595fc06205a95c1886",
+      "classification": "installed local copy; exclude",
+      "selected": false
+    },
+    {
+      "path": ".claude/settings.json",
+      "sha256": "fb9eb647da946c82f48f6f2f348fdbc9c43ef11b4d0b93c79b5ae711e288081b",
+      "classification": "installed local copy; exclude",
+      "selected": false
+    },
+    {
+      "path": ".moai/statusline.py",
+      "sha256": "b9dc92cb58592e8b6ed38efa0251eaf1e581c050cbc59f2d59c4459494af5d12",
+      "classification": "installed local copy; exclude",
+      "selected": false
+    },
+    {
+      "path": "adapters/claude/install.py",
+      "sha256": "87ba1ca25451a1d4065c301794e08e879556aa5212fb5ea9830cf24324de9755",
+      "classification": "session-authored provisional adapter",
+      "selected": true
+    },
+    {
+      "path": "adapters/claude/output-styles/LICENSE",
+      "sha256": "955dae34deb3b002225a6e3fee61c7b7570b289a8a6957f78cf8cf4da2102707",
+      "classification": "partial upstream adaptation or required license/notice",
+      "selected": true
+    },
+    {
+      "path": "adapters/claude/output-styles/NOTICE.md",
+      "sha256": "87a04b9f5fc38f4ad5729c94a922aa0588ca332552acb5144090618c3e3ff5a8",
+      "classification": "partial upstream adaptation or required license/notice",
+      "selected": true
+    },
+    {
+      "path": "adapters/claude/output-styles/moai-easy.md",
+      "sha256": "d1aadf4567a73f09671c1541cf1c55bd008d2d8dd784d706aee50d892a34dec2",
+      "classification": "partial upstream adaptation or required license/notice",
+      "selected": true
+    },
+    {
+      "path": "adapters/claude/output-styles/moai-learn.md",
+      "sha256": "6f3b663423d8ff610a3d7282cf1fb142d028bc7870a5945c7b9900cb5498a591",
+      "classification": "partial upstream adaptation or required license/notice",
+      "selected": true
+    },
+    {
+      "path": "adapters/claude/output-styles/moai.md",
+      "sha256": "2cc8b53ba9e173e665188e3199806ecfbc16853c684e73595fc06205a95c1886",
+      "classification": "partial upstream adaptation or required license/notice",
+      "selected": true
+    },
+    {
+      "path": "adapters/claude/settings_update.py",
+      "sha256": "2093579396e7b5229970c22191158395b6892112b6840b601fc8025514ec5142",
+      "classification": "session-authored provisional adapter",
+      "selected": true
+    },
+    {
+      "path": "adapters/claude/statusline.py",
+      "sha256": "b9dc92cb58592e8b6ed38efa0251eaf1e581c050cbc59f2d59c4459494af5d12",
+      "classification": "session-authored provisional adapter",
+      "selected": true
+    },
+    {
+      "path": "docs/claude-owned-update.md",
+      "sha256": "33513b128b11678ebc55b8170a218a4cc77019aa64336cbe4c13deecc5cf8e67",
+      "classification": "session-authored decisions and implementation evidence",
+      "selected": true
+    },
+    {
+      "path": "docs/claude-preview.md",
+      "sha256": "2bf547afd3427caced481ab8e3eb33f48faa1d5183fc35a555ff343bcdd08aeb",
+      "classification": "session-authored decisions and implementation evidence",
+      "selected": true
+    },
+    {
+      "path": "docs/claude-style-crosswalk.md",
+      "sha256": "bd8b17e484bbc1b328c8160cb847a01e71b60c2aea1e625b99052df40f59d731",
+      "classification": "session-authored decisions and implementation evidence",
+      "selected": true
+    },
+    {
+      "path": "docs/p02-decision.md",
+      "sha256": "957a63601ebae013922102105ac2645fb37ae5a4779bccca7c9686117bc5971f",
+      "classification": "session-authored decisions and implementation evidence",
+      "selected": true
+    },
+    {
+      "path": "docs/p03-decision.md",
+      "sha256": "3ddf7dcd6cfb5622a8bba3e80ef8ed3762ca73c3c1881c4770f57b2b3e73ad84",
+      "classification": "session-authored decisions and implementation evidence",
+      "selected": true
+    },
+    {
+      "path": "docs/p07-decision.md",
+      "sha256": "a59b161ac7827866d3f4d6334feeed72c2e6cb922281947adbac8ccfec4afc4c",
+      "classification": "session-authored decisions and implementation evidence",
+      "selected": true
+    },
+    {
+      "path": "docs/rc-isolation-decision.md",
+      "sha256": "d0083be85f38f8d5ee472d3c1d8cbd96721e710bc0ed5a65f750cb8d498b4498",
+      "classification": "session-authored decisions and implementation evidence",
+      "selected": true
+    },
+    {
+      "path": "experiments/claude_settings_plan.py",
+      "sha256": "17d8c263fdff00f5d823c76b7eacd1353e554ffdb57aca8963e7521e82f709cf",
+      "classification": "session-authored experiment; not product integration",
+      "selected": true
+    },
+    {
+      "path": "experiments/evidence_binding.rs",
+      "sha256": "952f1e7e79f890b6f0054c3ee2d5ab4e7ea6f661b4cf8e34312dc9ba31a7bb00",
+      "classification": "session-authored experiment; not product integration",
+      "selected": true
+    },
+    {
+      "path": "experiments/issue_report.rs",
+      "sha256": "98287fe0d761f56962b779ec780cb56eb2faf0b1ffb7662a416d962f17ca1eb9",
+      "classification": "session-authored experiment; not product integration",
+      "selected": true
+    },
+    {
+      "path": "experiments/managed_merge.rs",
+      "sha256": "a9f564e194a273a41b836986e72721b61f4c78c290f6ff32ebfa568790d1548b",
+      "classification": "session-authored experiment; not product integration",
+      "selected": true
+    },
+    {
+      "path": "experiments/rc-cli/Cargo.lock",
+      "sha256": "e4418142d5fb4c70f70d79f8fa0747608a568d471125a73eee51d943b5d4cf0a",
+      "classification": "session-authored experiment; not product integration",
+      "selected": true
+    },
+    {
+      "path": "experiments/rc-cli/Cargo.toml",
+      "sha256": "4b6f4d3b8ab2a7ef33a0ff28d9d24f29a0233c4b4619ef9086080822fd57ff14",
+      "classification": "session-authored experiment; not product integration",
+      "selected": true
+    },
+    {
+      "path": "experiments/rc-cli/src/main.rs",
+      "sha256": "4cd83ea0fd7bbb3be1baa8395c4fc6c6bdc54ce6f452739feb330e01d275478e",
+      "classification": "session-authored experiment; not product integration",
+      "selected": true
+    },
+    {
+      "path": "experiments/setup_state.rs",
+      "sha256": "8454a67d5979d2ed3506577fa3e5317f2c26006046fa15e51083affddbd2f942",
+      "classification": "session-authored experiment; not product integration",
+      "selected": true
+    },
+    {
+      "path": "experiments/todo_promotion.py",
+      "sha256": "669ead50c21e62703865c176de07bc51c1f151868be1e51b7b71bf2bc4ae0b42",
+      "classification": "session-authored experiment; not product integration",
+      "selected": true
+    },
+    {
+      "path": "experiments/update_coordinator.rs",
+      "sha256": "cd904c7e9bb2bdbcc2f75d3577cfb51c654d8d5c90aacd43026f7f308a64cbde",
+      "classification": "session-authored experiment; not product integration",
+      "selected": true
+    },
+    {
+      "path": "experiments/update_recovery.rs",
+      "sha256": "4acc886b64d412e8e5e3d97e22ff5462895ed4b21eb0d8c2653f7401e4385c95",
+      "classification": "session-authored experiment; not product integration",
+      "selected": true
+    },
+    {
+      "path": "references/legacy-output-styles/LICENSE",
+      "sha256": "955dae34deb3b002225a6e3fee61c7b7570b289a8a6957f78cf8cf4da2102707",
+      "classification": "unchanged upstream reference; exclude",
+      "selected": false
+    },
+    {
+      "path": "references/legacy-output-styles/moai-easy.md",
+      "sha256": "c33a60904e7908fe6387d69d57f489b3565f66a2449b5103b931c8a526b8d050",
+      "classification": "unchanged upstream reference; exclude",
+      "selected": false
+    },
+    {
+      "path": "references/legacy-output-styles/moai-learn.md",
+      "sha256": "ef01dad72d0f76763209a94af38fee7392d12d1a98df44c6a38ff74d9f0c5638",
+      "classification": "unchanged upstream reference; exclude",
+      "selected": false
+    },
+    {
+      "path": "references/legacy-output-styles/moai.md",
+      "sha256": "8244a7bb3a53436aca882d7c46c7a59866f59fc3a12d232a5738a25a2f7b5f04",
+      "classification": "unchanged upstream reference; exclude",
+      "selected": false
+    },
+    {
+      "path": "tests/claude_preview_test.py",
+      "sha256": "ad4003b7bcc36638bd678deca380499f9cc18080962cca9b3881262a89271027",
+      "classification": "session-authored temporary-file verification",
+      "selected": true
+    },
+    {
+      "path": "tests/claude_recovery_test.py",
+      "sha256": "f71cfee8082c94839697714039f33b21f46e933dc0512ea1f48efaab4efe65f5",
+      "classification": "session-authored temporary-file verification",
+      "selected": true
+    },
+    {
+      "path": "tests/claude_settings_plan_test.py",
+      "sha256": "b3f0f5a4b3d2a68f2f9dfb39baf99688e702edffd22c64febaebf28eb2429539",
+      "classification": "session-authored temporary-file verification",
+      "selected": true
+    },
+    {
+      "path": "tests/claude_transaction_boundary_test.py",
+      "sha256": "535925022af789293de88756b83c9bf3527b4e1e5f10c4f3edd9fb18d33f9ed9",
+      "classification": "session-authored temporary-file verification",
+      "selected": true
+    },
+    {
+      "path": "tests/claude_update_test.py",
+      "sha256": "89b26818cd6cf8d2e738a3f41db80864d2f1fb921d6b4ee4412be38a1f93f02d",
+      "classification": "session-authored temporary-file verification",
+      "selected": true
+    },
+    {
+      "path": "tests/todo_promotion_test.py",
+      "sha256": "a413e9678a41391e3bd602775a4fb89bb97cf1b6c3d534b52be3803daadc00f0",
+      "classification": "session-authored temporary-file verification",
+      "selected": true
+    }
+  ]
+}

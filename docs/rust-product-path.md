@@ -1,0 +1,75 @@
+# Rust product entry point: first M1 slice
+
+The root Cargo package builds `moai-cli` version `2026.11.0-rc.1`. It directly executes project profile planning/creation and package integrity selection in Rust. It neither invokes the Python adapter nor calls an existing `moai`. `experiments/rc-cli` remains historical experiment evidence, not the product entry point. This is an incomplete RC, not a release or host installation.
+
+## Internal invocation contract
+
+- `moai-cli project-plan PROJECT`: typed JSON profile on stdin; JSON plan on stdout. No writes.
+- `moai-cli project-apply PROJECT --plan-digest DIGEST --permission-reference REFERENCE`: the exact plan on stdin. Digest binds protocol, target path identity, expected target bytes, action and profile. Exclusive creation only, or unchanged result. The reference is required caller metadata; actual authorization must be enforced by the invoking host, not inferred from the string.
+- `moai-cli package-inspect PACKAGE`: read-only full support-tree digest preview.
+- `moai-cli package-resolve PROJECT --repo-package PACKAGE --user-package PACKAGE`: an explicit profile pin requires the supplied repository package and exact digest. Missing/mismatched pinned packages fail without fallback. Without a pin, only the supplied user-level package is selected. No implicit home scan or host activation occurs.
+
+- `moai-cli agents-plan PROJECT`: typed JSON request on stdin (`protocol_version`, `language` `en|ko`, `workflow_reference` repo-relative directory that must exist, `local_file` `none|ignored|tracked`); JSON plan on stdout. No writes. Reads the existing `.moai-cli/project.yaml` and `.moai-cli/manifests/generation.json`.
+- `moai-cli agents-apply PROJECT --plan-digest DIGEST --permission-reference REFERENCE`: the exact plan on stdin. Re-plans against the current tree, refuses stale or altered plans and any plan with a `conflict` file, writes target files before the manifest, and reports `partial apply` with the applied list on a mid-sequence failure.
+
+These commands are internal contracts for future native skill adapters. Users are not required to manually invoke them for SETUP. Host discovery, trust verification and skill invocation remain not_run.
+
+## State directories during the RC period
+
+The Rust RC writes project data under `<project>/.moai-cli/` and will install under `~/.moai-cli/` (constants `PROJECT_STATE_DIR`, `HOME_STATE_DIR` in `src/lib.rs`; no install command exists yet). The Go generation keeps `<project>/.moai/` and `~/.moai/`; both coexist and the Rust tool never reads, moves, renames or writes the Go directories. The design documents name the final location `.moai/`; switching the folder name is a later, separate step decided by the user (2026-11-08). The provisional Python Claude adapter follows the same rule (`.moai-cli/statusline.py`, `.moai-cli/claude-settings-owner.json`, `.moai-cli/licenses/`).
+
+## Profile v1
+
+```json
+{
+  "schema_version": 1,
+  "project_id": "example",
+  "purpose": "Build an accessible editor",
+  "tools": ["Rust"],
+  "development_methods": ["TDD"],
+  "hosts": ["claude", "codex"]
+}
+```
+
+An optional `package_pin` is `sha256:` plus 64 lowercase hexadecimal digits, obtained with package-inspect. Null/mismatched pins are not an instruction to fallback. Unknown input keys are rejected. Project ID is a bounded portable identifier; profile strings/lists are bounded and reject paths, controls and common credential-shaped strings. This conservative filter is not a universal secret detector; the host must review interview answers before supplying them. No free-form transcript is persisted and input values are not echoed in diagnostics.
+
+Only `.moai-cli/project.yaml` is created. The initial serializer emits JSON syntax, a YAML 1.2 subset. General YAML, comments and changed existing profiles are preserved by refusing mutation. Existing JSON-subset profiles with identical selected values and unknown user keys are left byte-for-byte unchanged. This is not full YAML merge or reconfiguration: a lossless parser and ownership baseline remain needed. No AGENTS or host settings are written by these commands.
+
+The package digest algorithm `moai-package-tree-v1` frames sorted UTF-8 relative paths and file bytes with big-endian u64 lengths and a domain prefix. It covers SKILL.md and support files; symlinks, special files, oversized files/trees, deep nesting and nonportable paths are refused. It proves observed content identity, not authenticity or host compatibility. Package paths are explicit input rather than final install-layout decisions. Concurrent tree mutation and symlink swaps are not OS-level atomic snapshots.
+
+## AGENTS.md managed section (agents-plan / agents-apply)
+
+`AGENTS.md` stays user-owned. The generator owns only the block between `<!-- moai:managed:begin id=moai-workflow -->` and `<!-- moai:managed:end id=moai-workflow -->`; bytes outside the block, including CRLF line endings and a missing final newline, are preserved. Per file the plan decides with a baseline/current/new comparison on digests: the baseline is the block the generator last wrote (recorded in `.moai-cli/manifests/generation.json` `owned_files[].baseline_sha256`), current is the block found in the file, new is the rendered block.
+
+| Baseline | Current block | Decision |
+| --- | --- | --- |
+| none | absent | `create` (no file) or `append` (file exists) |
+| none | present, equals new | `unchanged`; adopted as baseline on apply (recovery after a partial apply) |
+| none | present, differs | `conflict` (unowned block) |
+| recorded | equals baseline | `merge` (replace the block only) |
+| recorded | equals new | `unchanged` |
+| recorded | edited or removed, template unchanged | `unchanged` (user edit or deletion respected) |
+| recorded | edited or removed, template changed | `conflict`; nothing is applied |
+| any | duplicate, unterminated or orphaned markers | `conflict` |
+
+`AGENTS.local.md` is opt-in through `local_file`. `ignored` creates it once and appends a `# moai:managed:begin id=moai-local` section to `.gitignore` unless a line equal to `AGENTS.local.md` or `/AGENTS.local.md` already exists (effective git ignore status is not verified; no git command is run). `tracked` creates it once and adds no ignore rule. The design default for generated projects is `ignored`; `tracked` exists because the user decided on 2026-11-08 that this development repository may track `AGENTS.local.md` while `AGENTS.md`, `.claude/` and `.moai/` stay untracked. The file is never modified or recreated afterwards.
+
+Rendered profile values are checked before any write: a value containing `<!--`, `-->` or `moai:managed:` is refused, and the spliced result must contain exactly one managed block whose bytes equal the rendering. New files are published by writing a uniquely named temporary file and hard-linking it to the target, which fails if the target appeared meanwhile; existing files are replaced by rename. An update interrupted between the file write and the manifest write is repaired on the next apply: a block already equal to the rendering becomes the baseline.
+
+The manifest follows the design template (`schema_version` 1, `generator_version`, `template_version` `rc1`, `project_id`, `interview_revision` null, `workflow_id` null, `source_kind`, `sources`, `canonical_sha256`, `projections`, `owned_files`, `activation_status` `pending-validation`) plus `profile_sha256`, `workflow_reference` (the directory the managed text points at) and `created_once` (personal files MoAI created once or found already present at an apply; no digest, user-owned, never recreated after deletion). Manifests written before `created_once` existed listed `AGENTS.local.md` in `owned_files` and are migrated on the next apply. Per-file plan entries carry `tracked_by_default`, the design intent for generated projects, not a measured git state. The plan reports pre-existing `CLAUDE.md`, `.claude/CLAUDE.md`, `CLAUDE.local.md` and `AGENTS.override.md` in `host_notes` (preserved, never edited) and warns when the projected `AGENTS.md` exceeds 32 KiB. Apply results carry `files_created`, `host_loaded: false` and `execution_verified: false`; host loading is not_run.
+
+Known gaps: the provisional Python adapter has no migration for projects installed under the old `.moai/` receipt path; the `project-agents` template fields verified stack, verification commands, target users and success criteria are not rendered yet (the profile has no such fields); when `AGENTS.md` is absent the generator writes `# <project_id>` outside the block, which is user-owned from then on; hard-link publishing is untested on filesystems without hard links; no `<state_root>` per-file apply receipt (a partial apply is reported on stderr only); the ignored receipt path is undecided in the design; per-file plan values are operation names (`create`, `append`, `merge`, `unchanged`, `conflict`) rather than the design's `proposed/applied/not_required/blocked/unknown`; exit codes are 0 or 1 only; hard links are not rejected; concurrent writers are not excluded beyond hash re-checks.
+
+## Common skill package skeleton
+
+`skills/moai/` holds the canonical, host-neutral package: `SKILL.md` (`name: moai`, no Claude-only frontmatter, `$ARGUMENTS` or dynamic shell context), `references/routes.json` (eight routes, `classification_is_authorization: false`) and `workflows/{read,setup,update,plan,run,verify,audit,sync}.md`. `package-inspect skills/moai` digests it. Host projections, discovery and invocation are not implemented or verified.
+
+## Validation and scope
+
+Temporary-directory CLI fixtures cover actual profile creation, repeat preservation, unknown keys, stale/tampered/cross-project plans, YAML comments, secret-shaped inputs without diagnostic echo, symlinks, package support-file integrity and pin precedence/failure. Cargo dependencies are locked; build and tests use isolated temporary Cargo home/target directories.
+
+Agents-generation fixtures cover user-body preservation with CRLF and a missing final newline, idempotent second runs, user edits inside and outside the block, template change after a user edit (conflict), block deletion (respected, then conflict after a template change), malformed markers, `local_file` opt-in and no-rewrite, replay in another project, tampered plan, target changed after preview, tampered manifest, missing workflow reference, shadowing-file reporting, symlinked targets, and a forced partial apply followed by a resumed apply. The generator was run on this repository itself: the managed section was appended to the hand-authored `AGENTS.md`, and a second run changed nothing.
+
+F02/F03 now have a first connected Rust path. Full deep interview orchestration, common skill installation, lossless UPDATE, AGENTS merge, all-host preflight/partial recovery, and signed package provenance are still incomplete. Python Claude fixtures and pending diagnostics remain provisional adapter coverage. P07 remains a preview experiment; no external publisher is connected. No existing Go installation or global configuration is changed.
+
+Sources: [final plan](https://chatgpt.com/space/page_43faf222414c81919de71f7d7830e26c), [home/project contract](https://chatgpt.com/space/page_83f162ef14d08191917913738184f167).

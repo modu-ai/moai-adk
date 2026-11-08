@@ -1,0 +1,877 @@
+//! AGENTS.md managed-section generation: plan (read-only) and apply (hash-rechecked).
+//!
+//! AGENTS.md stays user-owned. MoAI owns only the text between its managed markers and
+//! decides per file with a baseline/current/new three-way comparison. Everything outside
+//! the markers is preserved byte for byte. A conflict is reported, never resolved by
+//! overwriting. AGENTS.local.md is created once and never modified afterwards.
+
+use crate::{digest, read_profile, Profile};
+use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
+use std::{
+    fs::{self, OpenOptions},
+    io::Write,
+    path::{Path, PathBuf},
+};
+
+type Result<T> = std::result::Result<T, String>;
+
+pub const AGENTS_SECTION: &str = "moai-workflow";
+pub const IGNORE_SECTION: &str = "moai-local";
+const MANIFEST: &str = ".moai-cli/manifests/generation.json";
+const TEMPLATE_VERSION: &str = "rc1";
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentsRequest {
+    pub protocol_version: u32,
+    /// `en` or `ko`: language of the rendered managed text.
+    pub language: String,
+    /// Repo-relative directory the managed section points at for detailed procedures.
+    /// Must exist at plan time; a missing reference blocks the plan.
+    pub workflow_reference: String,
+    /// `none` (do not create), `ignored` (create once and add a .gitignore rule) or
+    /// `tracked` (create once, no ignore rule). The personal file is opt-in by design.
+    pub local_file: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct FilePlan {
+    pub path: String,
+    /// create | merge | append | unchanged | conflict
+    pub action: String,
+    /// Design intent for generated projects, not a measured git state (no git command runs).
+    pub tracked_by_default: bool,
+    pub expected_sha256: Option<String>,
+    pub section_id: Option<String>,
+    pub baseline_sha256: Option<String>,
+    pub rendered_sha256: Option<String>,
+    pub detail: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgentsPlan {
+    pub protocol_version: u32,
+    pub request: AgentsRequest,
+    pub project_id: String,
+    pub profile_sha256: String,
+    pub target_binding: String,
+    pub files: Vec<FilePlan>,
+    /// Pre-existing host instruction files that may shadow or replace AGENTS.md. They are
+    /// preserved, never edited; actual host loading stays not_run.
+    pub host_notes: Vec<String>,
+    pub warnings: Vec<String>,
+    pub plan_digest: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct OwnedFile {
+    path: String,
+    section_id: Option<String>,
+    baseline_sha256: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Manifest {
+    schema_version: u32,
+    generator_version: String,
+    template_version: String,
+    project_id: String,
+    profile_sha256: String,
+    interview_revision: Option<String>,
+    /// Template field kept for parity; project workflow ids are not assigned yet.
+    workflow_id: Option<String>,
+    workflow_reference: String,
+    source_kind: String,
+    sources: Vec<Value>,
+    canonical_sha256: Option<String>,
+    projections: Vec<String>,
+    owned_files: Vec<OwnedFile>,
+    /// Personal files MoAI created once, or found already present at an apply. User-owned;
+    /// no digest is recorded; never recreated after the user deletes them.
+    #[serde(default)]
+    created_once: Vec<String>,
+    activation_status: String,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum Decision {
+    KeepCurrent,
+    Apply,
+    Conflict,
+}
+
+/// Three-way decision on digests. Missing values are distinct from present values and
+/// drift away from the baseline is never overwritten.
+fn decide(baseline: Option<&str>, current: Option<&str>, desired: Option<&str>) -> Decision {
+    if current == desired || desired == baseline {
+        Decision::KeepCurrent
+    } else if current == baseline {
+        Decision::Apply
+    } else {
+        Decision::Conflict
+    }
+}
+
+fn relative_ok(s: &str) -> bool {
+    !s.is_empty()
+        && s.len() <= 256
+        && !s.starts_with('/')
+        && !s.contains('\\')
+        && !s.contains(':')
+        && !s.chars().any(char::is_control)
+        && !s.split('/').any(|seg| seg == "..")
+}
+
+fn validate(r: &AgentsRequest) -> Result<()> {
+    if r.protocol_version != 1
+        || !(r.language == "en" || r.language == "ko")
+        || !relative_ok(&r.workflow_reference)
+        || !["none", "ignored", "tracked"].contains(&r.local_file.as_str())
+    {
+        return Err("invalid agents request; no values were logged".into());
+    }
+    Ok(())
+}
+
+fn root_of(root: &Path) -> Result<PathBuf> {
+    let root = root
+        .canonicalize()
+        .map_err(|_| "project directory unavailable")?;
+    if !root.is_dir() {
+        return Err("project must be a directory".into());
+    }
+    Ok(root)
+}
+
+/// Resolves a repo-relative target and refuses symlinks on the target or any ancestor
+/// below the project root.
+fn target(root: &Path, rel: &str) -> Result<PathBuf> {
+    let path = root.join(rel);
+    let mut cursor = path.clone();
+    loop {
+        match fs::symlink_metadata(&cursor) {
+            Ok(meta) if meta.file_type().is_symlink() => {
+                return Err("symlink target refused".into())
+            }
+            Ok(_) => (),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => (),
+            Err(_) => return Err("target metadata unavailable".into()),
+        }
+        match cursor.parent() {
+            Some(parent) if parent.starts_with(root) && parent != root => cursor = parent.into(),
+            _ => break,
+        }
+    }
+    Ok(path)
+}
+
+fn read_opt(path: &Path) -> Result<Option<Vec<u8>>> {
+    match fs::metadata(path) {
+        Ok(m) if !m.is_file() || m.len() > 262_144 => {
+            Err("target is not a bounded regular file".into())
+        }
+        Ok(_) => fs::read(path)
+            .map(Some)
+            .map_err(|_| "target read failed".into()),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(_) => Err("target metadata unavailable".into()),
+    }
+}
+
+fn markers(id: &str, comment: &str) -> (String, String) {
+    match comment {
+        "html" => (
+            format!("<!-- moai:managed:begin id={id} -->"),
+            format!("<!-- moai:managed:end id={id} -->"),
+        ),
+        _ => (
+            format!("# moai:managed:begin id={id}"),
+            format!("# moai:managed:end id={id}"),
+        ),
+    }
+}
+
+/// Locates exactly one managed block. Returns the body between the marker lines, or an
+/// error when markers are malformed (duplicate, unterminated, or orphaned end).
+fn find_block(text: &str, begin: &str, end: &str) -> Result<Option<(usize, usize, String)>> {
+    let mut starts = text.match_indices(begin).map(|(i, _)| i);
+    let mut ends = text.match_indices(end).map(|(i, _)| i);
+    let (start, finish) = match (starts.next(), ends.next()) {
+        (None, None) => return Ok(None),
+        (Some(s), Some(e)) if e > s && starts.next().is_none() && ends.next().is_none() => (s, e),
+        _ => return Err("malformed managed markers".into()),
+    };
+    let after_end = finish + end.len();
+    let block_end = match text[after_end..].find('\n') {
+        Some(n) => after_end + n + 1,
+        None => text.len(),
+    };
+    let body_start = start + begin.len();
+    let body = text[body_start..finish].to_owned();
+    Ok(Some((start, block_end, body)))
+}
+
+/// Values rendered into a managed block must not be able to open or close a block.
+fn injects_markers(p: &Profile, r: &AgentsRequest) -> bool {
+    let tokens = ["<!--", "-->", "moai:managed:"];
+    std::iter::once(&p.project_id)
+        .chain(std::iter::once(&p.purpose))
+        .chain(&p.tools)
+        .chain(&p.development_methods)
+        .chain(&p.hosts)
+        .chain(std::iter::once(&r.workflow_reference))
+        .any(|v| tokens.iter().any(|t| v.contains(t)))
+}
+
+fn render_agents(p: &Profile, r: &AgentsRequest) -> String {
+    let (begin, end) = markers(AGENTS_SECTION, "html");
+    let list = |v: &[String]| v.join(", ");
+    let share = match (r.language.as_str(), r.local_file.as_str()) {
+        ("ko", "tracked") => "credential과 원문 비밀 로그는 repo와 Issue에 공유하지 않는다.",
+        ("ko", _) => "개인 `AGENTS.local.md`, credential, 원문 비밀 로그는 repo와 Issue에 공유하지 않는다.",
+        (_, "tracked") => "Never share credentials or raw secret logs in the repo or in Issues.",
+        _ => "Never share the personal `AGENTS.local.md`, credentials or raw secret logs in the repo or in Issues.",
+    };
+    let body = if r.language == "ko" {
+        format!(
+            "## MoAI 작업 흐름 (관리 구간)\n\n\
+프로젝트 `{id}` · 도구: {tools} · 개발 방식: {methods} · host: {hosts}.\n\
+목적: {purpose}\n\n\
+승인한 SPEC과 Issue 범위를 확인한 뒤 계획 → 구현 → 실제 검증 → 독립 감사 → 보고 순서로 진행한다.\n\
+명확한 허용 범위의 선택은 스스로 진행하고, 권한·비용·범위가 바뀔 때만 확인한다.\n\
+실행하지 않은 검증을 PASS로 보고하지 않는다. passed·failed·not_run·blocked·stale을 구분한다.\n\
+MoAI binary가 없어도 native 도구로 가능한 작업을 수행한다. 필수 gate의 검증된 대체가 없으면 관련 실행·발행을 막고 blocked로 보고한다.\n\
+상세 절차는 `{wf}`에서 필요한 workflow만 읽는다.\n\
+{share}\n",
+            id = p.project_id,
+            tools = list(&p.tools),
+            methods = list(&p.development_methods),
+            hosts = list(&p.hosts),
+            purpose = p.purpose,
+            wf = r.workflow_reference,
+        )
+    } else {
+        format!(
+            "## MoAI workflow (managed section)\n\n\
+Project `{id}` · tools: {tools} · methods: {methods} · hosts: {hosts}.\n\
+Purpose: {purpose}\n\n\
+Confirm the approved SPEC and Issue scope, then proceed plan → implement → real verification → independent audit → report.\n\
+Decide on your own inside the allowed scope; ask only when permission, cost, or scope changes.\n\
+Never report an unexecuted check as PASS. Distinguish passed, failed, not_run, blocked and stale.\n\
+Without the MoAI binary, do what native tools allow. When a required gate has no verified substitute, block the dependent action and report blocked.\n\
+Read only the workflow you need from `{wf}`.\n\
+{share}\n",
+            id = p.project_id,
+            tools = list(&p.tools),
+            methods = list(&p.development_methods),
+            hosts = list(&p.hosts),
+            purpose = p.purpose,
+            wf = r.workflow_reference,
+        )
+    };
+    format!("{begin}\n{body}{end}\n")
+}
+
+fn render_local(r: &AgentsRequest) -> String {
+    match (r.language.as_str(), r.local_file.as_str()) {
+        ("ko", "tracked") => "# 개인 작업 보충\n\n응답 언어: 한국어\n\n<!-- MoAI가 호출 시 명시적으로 읽는 개인 파일. 이 저장소에서는 추적을 허용했으므로 비밀값을 넣지 않는다. -->\n".into(),
+        ("ko", _) => "# 개인 작업 보충\n\n응답 언어: 한국어\n\n<!-- MoAI가 호출 시 명시적으로 읽는 개인 파일. 비밀값을 넣지 않으며 repo·Issue에 공유하지 않는다. -->\n".into(),
+        (_, "tracked") => "# Personal supplement\n\nResponse language: English\n\n<!-- Personal file MoAI reads explicitly when invoked. Tracking is allowed in this repository, so keep secrets out of it. -->\n".into(),
+        _ => "# Personal supplement\n\nResponse language: English\n\n<!-- Personal file MoAI reads explicitly when invoked. Keep secrets out; never share it in the repo or in Issues. -->\n".into(),
+    }
+}
+
+fn render_ignore() -> String {
+    let (begin, end) = markers(IGNORE_SECTION, "hash");
+    format!("{begin}\nAGENTS.local.md\n{end}\n")
+}
+
+fn ignore_has_rule(text: &str) -> bool {
+    text.lines().any(|l| {
+        let t = l.trim();
+        t == "AGENTS.local.md" || t == "/AGENTS.local.md"
+    })
+}
+
+fn read_manifest(root: &Path, project_id: &str) -> Result<Option<Manifest>> {
+    let Some(bytes) = read_opt(&target(root, MANIFEST)?)? else {
+        return Ok(None);
+    };
+    let m: Manifest = serde_json::from_slice(&bytes)
+        .map_err(|_| "generation manifest unreadable; inspect before regenerating")?;
+    if m.schema_version != 1 || m.project_id != project_id {
+        return Err("generation manifest belongs to another schema or project".into());
+    }
+    Ok(Some(m))
+}
+
+fn created_once(m: Option<&Manifest>, path: &str) -> bool {
+    m.is_some_and(|m| {
+        m.created_once.iter().any(|p| p == path)
+            // Manifests written before `created_once` existed recorded the personal file in owned_files.
+            || m.owned_files.iter().any(|f| f.path == path && f.section_id.is_none())
+    })
+}
+
+fn baseline_for(m: Option<&Manifest>, path: &str) -> Option<String> {
+    m.and_then(|m| {
+        m.owned_files
+            .iter()
+            .find(|f| f.path == path)
+            .map(|f| f.baseline_sha256.clone())
+    })
+}
+
+fn section_plan(
+    path: &str,
+    tracked: bool,
+    section: &str,
+    comment: &str,
+    current: Option<&[u8]>,
+    baseline: Option<String>,
+    rendered: &str,
+) -> Result<FilePlan> {
+    let (begin, end) = markers(section, comment);
+    let rendered_digest = digest(rendered.as_bytes());
+    let mut plan = FilePlan {
+        path: path.into(),
+        action: String::new(),
+        tracked_by_default: tracked,
+        expected_sha256: current.map(digest),
+        section_id: Some(section.into()),
+        baseline_sha256: baseline.clone(),
+        rendered_sha256: Some(rendered_digest.clone()),
+        detail: None,
+    };
+    let (block_digest, present) = match current {
+        None => (None, false),
+        Some(bytes) => {
+            let text = std::str::from_utf8(bytes).map_err(|_| "target is not UTF-8")?;
+            match find_block(text, &begin, &end) {
+                Ok(Some((s, e, _))) => (Some(digest(&text.as_bytes()[s..e])), true),
+                Ok(None) => (None, true),
+                Err(_) => {
+                    plan.action = "conflict".into();
+                    plan.detail = Some("malformed managed markers".into());
+                    return Ok(plan);
+                }
+            }
+        }
+    };
+    let decision = decide(
+        baseline.as_deref(),
+        block_digest.as_deref(),
+        Some(&rendered_digest),
+    );
+    plan.action = match (decision, present, block_digest.is_some()) {
+        (Decision::KeepCurrent, _, _) => "unchanged",
+        (Decision::Apply, false, _) => "create",
+        (Decision::Apply, true, false) => "append",
+        (Decision::Apply, true, true) => "merge",
+        (Decision::Conflict, _, _) => {
+            plan.detail = Some(if block_digest.is_none() {
+                "managed block missing or removed; baseline mismatch".into()
+            } else {
+                "managed block edited after baseline; preserve and review".into()
+            });
+            "conflict"
+        }
+    }
+    .into();
+    Ok(plan)
+}
+
+fn plan_digest(p: &AgentsPlan) -> String {
+    digest(
+        &serde_json::to_vec(&(
+            p.protocol_version,
+            &p.request,
+            &p.project_id,
+            &p.profile_sha256,
+            &p.target_binding,
+            &p.files,
+            &p.host_notes,
+        ))
+        .expect("typed plan"),
+    )
+}
+
+pub fn agents_plan(root: &Path, request: AgentsRequest) -> Result<AgentsPlan> {
+    validate(&request)?;
+    let root = root_of(root)?;
+    let (profile, profile_bytes) = read_profile(&root)?;
+    let manifest = read_manifest(&root, &profile.project_id)?;
+    let m = manifest.as_ref();
+    let mut files = Vec::new();
+    let mut warnings = Vec::new();
+    if !target(&root, request.workflow_reference.trim_end_matches('/'))?.is_dir() {
+        return Err("workflow reference directory missing; generate it first".into());
+    }
+    if injects_markers(&profile, &request) {
+        return Err("profile value contains managed-marker syntax; refused".into());
+    }
+    let host_notes: Vec<String> = [
+        "CLAUDE.md",
+        ".claude/CLAUDE.md",
+        "CLAUDE.local.md",
+        "AGENTS.override.md",
+    ]
+    .iter()
+    .filter(|rel| root.join(rel).exists())
+    .map(|rel| format!("{rel} present; preserved; may shadow or replace AGENTS.md on its host (loading not_run)"))
+    .collect();
+
+    let agents = read_opt(&target(&root, "AGENTS.md")?)?;
+    files.push(section_plan(
+        "AGENTS.md",
+        true,
+        AGENTS_SECTION,
+        "html",
+        agents.as_deref(),
+        baseline_for(m, "AGENTS.md"),
+        &render_agents(&profile, &request),
+    )?);
+
+    if let Some(agents_file) = files.first() {
+        let rendered_len = render_agents(&profile, &request).len();
+        let (b, e) = markers(AGENTS_SECTION, "html");
+        let projected = match &agents {
+            Some(bytes) => {
+                let block_len = std::str::from_utf8(bytes)
+                    .ok()
+                    .and_then(|t| find_block(t, &b, &e).ok().flatten())
+                    .map_or(0, |(s, end, _)| end - s);
+                bytes.len() - block_len + rendered_len
+            }
+            None => rendered_len,
+        };
+        if agents_file.action != "conflict" && projected > 32 * 1024 {
+            warnings
+                .push("AGENTS.md may exceed the 32 KiB default instruction budget of Codex".into());
+        }
+    }
+
+    if request.local_file != "none" {
+        let local = read_opt(&target(&root, "AGENTS.local.md")?)?;
+        let local_rendered = render_local(&request);
+        files.push(FilePlan {
+            path: "AGENTS.local.md".into(),
+            action: if local.is_none() && !created_once(m, "AGENTS.local.md") {
+                "create"
+            } else {
+                "unchanged"
+            }
+            .into(),
+            tracked_by_default: request.local_file == "tracked",
+            expected_sha256: local.as_deref().map(digest),
+            section_id: None,
+            baseline_sha256: None,
+            rendered_sha256: Some(digest(local_rendered.as_bytes())),
+            detail: None,
+        });
+    }
+
+    if request.local_file == "ignored" {
+        let ignore = read_opt(&target(&root, ".gitignore")?)?;
+        let ignore_text = match &ignore {
+            Some(b) => Some(std::str::from_utf8(b).map_err(|_| "target is not UTF-8")?),
+            None => None,
+        };
+        if ignore_text.is_some_and(ignore_has_rule) && baseline_for(m, ".gitignore").is_none() {
+            files.push(FilePlan {
+                path: ".gitignore".into(),
+                action: "unchanged".into(),
+                tracked_by_default: true,
+                expected_sha256: ignore.as_deref().map(digest),
+                section_id: Some(IGNORE_SECTION.into()),
+                baseline_sha256: None,
+                rendered_sha256: None,
+                detail: Some("existing user rule names AGENTS.local.md; effective git ignore status not verified".into()),
+            });
+        } else {
+            files.push(section_plan(
+                ".gitignore",
+                true,
+                IGNORE_SECTION,
+                "hash",
+                ignore.as_deref(),
+                baseline_for(m, ".gitignore"),
+                &render_ignore(),
+            )?);
+        }
+    }
+
+    let manifest_bytes = read_opt(&target(&root, MANIFEST)?)?;
+    files.push(FilePlan {
+        path: MANIFEST.into(),
+        action: if manifest_bytes.is_none() {
+            "create"
+        } else {
+            "merge"
+        }
+        .into(),
+        tracked_by_default: true,
+        expected_sha256: manifest_bytes.as_deref().map(digest),
+        section_id: None,
+        baseline_sha256: None,
+        rendered_sha256: None,
+        detail: None,
+    });
+
+    let binding = digest(root.to_str().ok_or("non UTF-8 project path")?.as_bytes());
+    let mut plan = AgentsPlan {
+        protocol_version: 1,
+        request,
+        project_id: profile.project_id.clone(),
+        profile_sha256: digest(&profile_bytes),
+        target_binding: binding,
+        files,
+        host_notes,
+        warnings,
+        plan_digest: String::new(),
+    };
+    plan.plan_digest = plan_digest(&plan);
+    Ok(plan)
+}
+
+fn write_replace(path: &Path, before: Option<&[u8]>, after: &[u8]) -> Result<()> {
+    if read_opt(path)?.as_deref() != before {
+        return Err("target changed since plan; re-preview required".into());
+    }
+    let parent = path.parent().ok_or("target parent unavailable")?;
+    fs::create_dir_all(parent).map_err(|_| "target directory unavailable")?;
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
+    let temp = parent.join(format!(".moai-apply-{}-{nanos}.tmp", std::process::id()));
+    let mut file = OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&temp)
+        .map_err(|_| "temporary file refused")?;
+    #[cfg(unix)]
+    if let Ok(meta) = fs::metadata(path) {
+        let _ = fs::set_permissions(&temp, meta.permissions());
+    }
+    let written = file
+        .write_all(after)
+        .and_then(|_| file.sync_all())
+        .map_err(|_| "temporary write failed".to_string());
+    if written.is_err() || read_opt(path)?.as_deref() != before {
+        let _ = fs::remove_file(&temp);
+        return Err("target changed during apply; temporary file discarded".into());
+    }
+    let published = if before.is_none() {
+        // Exclusive publish: a hard link fails when the target appeared meanwhile.
+        fs::hard_link(&temp, path)
+            .map_err(|_| "exclusive create refused")
+            .map(|_| ())
+    } else {
+        fs::rename(&temp, path).map_err(|_| "atomic replace failed")
+    };
+    if before.is_none() || published.is_err() {
+        let _ = fs::remove_file(&temp);
+    }
+    published?;
+    if let Ok(dir) = fs::File::open(parent) {
+        let _ = dir.sync_all();
+    }
+    Ok(())
+}
+
+/// The written file must contain exactly one managed block whose bytes equal the rendering.
+fn assert_single_block(out: &[u8], begin: &str, end: &str, rendered: &str) -> Result<()> {
+    let text = std::str::from_utf8(out).map_err(|_| "rendered output is not UTF-8")?;
+    match find_block(text, begin, end)? {
+        Some((s, e, _)) if &text[s..e] == rendered => Ok(()),
+        _ => Err("rendered block not uniquely locatable; refused".into()),
+    }
+}
+
+fn splice(
+    current: Option<&[u8]>,
+    begin: &str,
+    end: &str,
+    rendered: &str,
+    create_prefix: &str,
+) -> Result<Vec<u8>> {
+    Ok(match current {
+        None => format!("{create_prefix}{rendered}").into_bytes(),
+        Some(bytes) => {
+            let text = std::str::from_utf8(bytes).map_err(|_| "target is not UTF-8")?;
+            match find_block(text, begin, end)? {
+                Some((s, e, _)) => format!("{}{}{}", &text[..s], rendered, &text[e..]).into_bytes(),
+                None => {
+                    let sep = if text.is_empty() || text.ends_with("\n\n") {
+                        ""
+                    } else if text.ends_with('\n') {
+                        "\n"
+                    } else {
+                        "\n\n"
+                    };
+                    format!("{text}{sep}{rendered}").into_bytes()
+                }
+            }
+        }
+    })
+}
+
+pub fn agents_apply(
+    root: &Path,
+    p: AgentsPlan,
+    confirmed: &str,
+    permission: &str,
+) -> Result<Value> {
+    // Caller authorization remains host-owned; this reference is not an authorization verifier.
+    if ["", "null", "placeholder"].contains(&permission.trim())
+        || permission.len() > 128
+        || permission.chars().any(char::is_control)
+    {
+        return Err("permission reference required".into());
+    }
+    let current = agents_plan(root, p.request.clone())?;
+    if p.protocol_version != 1
+        || confirmed != p.plan_digest
+        || plan_digest(&p) != p.plan_digest
+        || current.plan_digest != p.plan_digest
+    {
+        return Err("stale or altered plan; re-preview required".into());
+    }
+    if let Some(c) = p.files.iter().find(|f| f.action == "conflict") {
+        return Err(format!(
+            "conflict in {}: {}; nothing applied",
+            c.path,
+            c.detail.as_deref().unwrap_or("review required")
+        ));
+    }
+    let root = root_of(root)?;
+    let (profile, profile_bytes) = read_profile(&root)?;
+    let previous = read_manifest(&root, &profile.project_id)?;
+    let mut applied = Vec::new();
+    let (mut owned, mut created): (Vec<OwnedFile>, Vec<String>) = match previous {
+        Some(m) => {
+            let mut created = m.created_once;
+            for legacy in m.owned_files.iter().filter(|f| f.section_id.is_none()) {
+                if !created.contains(&legacy.path) {
+                    created.push(legacy.path.clone());
+                }
+            }
+            let owned = m
+                .owned_files
+                .into_iter()
+                .filter(|f| f.section_id.is_some())
+                .collect();
+            (owned, created)
+        }
+        None => (Vec::new(), Vec::new()),
+    };
+    fn record(owned: &mut Vec<OwnedFile>, path: &str, section: &str, bytes: &[u8]) {
+        owned.retain(|f| f.path != path);
+        owned.push(OwnedFile {
+            path: path.into(),
+            section_id: Some(section.into()),
+            baseline_sha256: digest(bytes),
+        });
+    }
+    let step = |applied: &[String], path: &str, e: String| {
+        format!(
+            "partial apply: applied [{}]; failed at {path}: {e}",
+            applied.join(", ")
+        )
+    };
+
+    for f in &p.files {
+        if f.path == MANIFEST {
+            continue;
+        }
+        if f.action == "unchanged" {
+            // Recovery after an interrupted apply: a managed block that already equals the
+            // rendered text becomes the baseline (first write or interrupted update); a
+            // personal file that equals its template is recorded as created once.
+            let Some(rendered) = &f.rendered_sha256 else {
+                continue;
+            };
+            let path = target(&root, &f.path)?;
+            let Some(bytes) = read_opt(&path)? else {
+                continue;
+            };
+            match f.section_id.as_deref() {
+                None => {
+                    // A personal file that already exists is recorded as seen so it is never
+                    // recreated after the user deletes it, whatever its content; this records
+                    // presence, not ownership.
+                    let _ = (&bytes, rendered);
+                    if !created.contains(&f.path) {
+                        created.push(f.path.clone());
+                    }
+                }
+                Some(section) if f.baseline_sha256.as_deref() != Some(rendered.as_str()) => {
+                    let comment = if f.path == ".gitignore" {
+                        "hash"
+                    } else {
+                        "html"
+                    };
+                    let (b, e) = markers(section, comment);
+                    if let Some((s, end, _)) = std::str::from_utf8(&bytes)
+                        .ok()
+                        .and_then(|text| find_block(text, &b, &e).ok().flatten())
+                    {
+                        let block = &bytes[s..end];
+                        if &digest(block) == rendered {
+                            record(&mut owned, &f.path, section, block);
+                        }
+                    }
+                }
+                Some(_) => {}
+            }
+            continue;
+        }
+        let path = target(&root, &f.path)?;
+        let before = read_opt(&path)?;
+        if before.as_deref().map(digest) != f.expected_sha256 {
+            return Err(step(&applied, &f.path, "target changed since plan".into()));
+        }
+        let (bytes, section) = match f.path.as_str() {
+            "AGENTS.md" => {
+                let (b, e) = markers(AGENTS_SECTION, "html");
+                let rendered = render_agents(&profile, &p.request);
+                let prefix = format!("# {}\n\n", profile.project_id);
+                let out = splice(before.as_deref(), &b, &e, &rendered, &prefix)?;
+                assert_single_block(&out, &b, &e, &rendered)?;
+                (out, Some(AGENTS_SECTION))
+            }
+            ".gitignore" => {
+                let (b, e) = markers(IGNORE_SECTION, "hash");
+                let rendered = render_ignore();
+                let out = splice(before.as_deref(), &b, &e, &rendered, "")?;
+                assert_single_block(&out, &b, &e, &rendered)?;
+                (out, Some(IGNORE_SECTION))
+            }
+            "AGENTS.local.md" => (render_local(&p.request).into_bytes(), None),
+            _ => return Err("unknown planned path".into()),
+        };
+        write_replace(&path, before.as_deref(), &bytes).map_err(|e| step(&applied, &f.path, e))?;
+        // Baseline is the managed text MoAI wrote, not the whole user file.
+        match section {
+            Some(AGENTS_SECTION) => record(
+                &mut owned,
+                &f.path,
+                AGENTS_SECTION,
+                render_agents(&profile, &p.request).as_bytes(),
+            ),
+            Some(IGNORE_SECTION) => record(
+                &mut owned,
+                &f.path,
+                IGNORE_SECTION,
+                render_ignore().as_bytes(),
+            ),
+            _ => {
+                if !created.contains(&f.path) {
+                    created.push(f.path.clone());
+                }
+            }
+        }
+        applied.push(f.path.clone());
+    }
+
+    let manifest = Manifest {
+        schema_version: 1,
+        generator_version: env!("CARGO_PKG_VERSION").into(),
+        template_version: TEMPLATE_VERSION.into(),
+        project_id: profile.project_id.clone(),
+        profile_sha256: digest(&profile_bytes),
+        interview_revision: None,
+        workflow_id: None,
+        workflow_reference: p.request.workflow_reference.clone(),
+        source_kind: "generated".into(),
+        sources: Vec::new(),
+        canonical_sha256: None,
+        projections: profile.hosts.clone(),
+        owned_files: owned,
+        created_once: created,
+        activation_status: "pending-validation".into(),
+    };
+    let mut manifest_bytes = serde_json::to_vec_pretty(&manifest).expect("typed manifest");
+    manifest_bytes.push(b'\n');
+    let manifest_path = target(&root, MANIFEST)?;
+    let before = read_opt(&manifest_path)?;
+    let manifest_plan = p
+        .files
+        .iter()
+        .find(|f| f.path == MANIFEST)
+        .ok_or("manifest missing from plan")?;
+    if before.as_deref().map(digest) != manifest_plan.expected_sha256 {
+        return Err(step(&applied, MANIFEST, "target changed since plan".into()));
+    }
+    if before.as_deref() != Some(manifest_bytes.as_slice()) {
+        write_replace(&manifest_path, before.as_deref(), &manifest_bytes)
+            .map_err(|e| step(&applied, MANIFEST, e))?;
+        applied.push(MANIFEST.into());
+    }
+    Ok(json!({
+        "state": if applied.is_empty() { "unchanged" } else { "applied" },
+        "applied": applied,
+        "files_created": !applied.is_empty(),
+        "manifest_sha256": digest(&manifest_bytes),
+        "host_loaded": false,
+        "execution_verified": false,
+        "host_notes": p.host_notes
+    }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn three_way_decisions() {
+        assert_eq!(decide(None, None, Some("new")), Decision::Apply);
+        assert_eq!(
+            decide(Some("old"), Some("old"), Some("new")),
+            Decision::Apply
+        );
+        assert_eq!(
+            decide(Some("old"), Some("user"), Some("old")),
+            Decision::KeepCurrent
+        );
+        assert_eq!(
+            decide(Some("old"), Some("new"), Some("new")),
+            Decision::KeepCurrent
+        );
+        assert_eq!(decide(None, Some("user"), Some("new")), Decision::Conflict);
+        assert_eq!(
+            decide(Some("old"), Some("user"), Some("new")),
+            Decision::Conflict
+        );
+        assert_eq!(decide(Some("old"), None, Some("new")), Decision::Conflict);
+    }
+
+    #[test]
+    fn block_detection_and_malformed_markers() {
+        let (b, e) = markers("x", "html");
+        let text = format!("user\n\n{b}\nbody\n{e}\nmore\n");
+        let (s, end, body) = find_block(&text, &b, &e).unwrap().unwrap();
+        assert_eq!(&text[s..end], format!("{b}\nbody\n{e}\n"));
+        assert_eq!(body, "\nbody\n");
+        assert!(find_block(&format!("{b}\n{b}\n{e}\n"), &b, &e).is_err());
+        assert!(find_block(&format!("{b}\nbody\n"), &b, &e).is_err());
+        assert!(find_block(&format!("{e}\n{b}\n"), &b, &e).is_err());
+        assert!(find_block("plain", &b, &e).unwrap().is_none());
+    }
+
+    #[test]
+    fn relative_paths_are_bounded() {
+        assert!(relative_ok("skills/moai/workflows/"));
+        assert!(!relative_ok("/abs"));
+        assert!(!relative_ok("../up"));
+        assert!(!relative_ok("a/../b"));
+        assert!(!relative_ok("C:\\x"));
+        assert!(!relative_ok(""));
+    }
+}

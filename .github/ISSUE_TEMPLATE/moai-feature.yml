@@ -1,0 +1,82 @@
+# moai-template:moai-feature@0.1.0; machine metadata is correlation only, never authorization
+# Skeleton: field set is a starting point; details are decided with the user per feature.
+name: "MoAI: new feature"
+description: "A new capability or behavior. One Issue, one execution owner; progress is reported in one owned comment. Labels and assignees are applied separately."
+title: "[feature] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        One Issue is one work item and has exactly one active execution owner at a time. Nothing in this form applies labels, assignees, projects or milestones; those are separate, approved steps.
+
+        Redaction: never write tokens, API keys, credentials, cookies, personal data, absolute home-directory paths, raw logs or content copied from private repositories. Summarize and link an accessible artifact instead.
+  - type: checkboxes
+    id: redaction
+    attributes:
+      label: Redaction
+      options:
+        - label: "I removed secrets, personal data, absolute home paths, raw logs and private content"
+          required: true
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal and user value
+      description: "What this work item delivers and for whom. One or two sentences."
+    validations:
+      required: true
+  - type: textarea
+    id: non-goals
+    attributes:
+      label: Non-goals
+      description: "What is explicitly out of scope for this item."
+  - type: textarea
+    id: spec
+    attributes:
+      label: SPEC reference
+      description: "Approved SPEC revision and digest, or the design document URL and section. Write `unapproved draft` when no approval snapshot exists yet; a draft never counts as approved."
+      placeholder: "design: <url> §<section> · revision: <rev> · digest: sha256:<...> · status: unapproved draft"
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria and verification
+      description: "One line per criterion, each paired with the real command or check that proves it. Unexecuted checks are reported as not_run, never as passed."
+      value: |
+        - AC-1: <criterion> · verify: <command or check>
+        - AC-2: <criterion> · verify: <command or check>
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Write scope and exclusions
+      description: "Repository-relative paths this item may change, and paths it must not touch."
+      value: |
+        - may change: <paths>
+        - must not touch: <paths>
+    validations:
+      required: true
+  - type: input
+    id: dependencies
+    attributes:
+      label: Dependencies
+      description: "Issues that must close first, or `none`."
+      placeholder: "#12, #15"
+  - type: dropdown
+    id: hosts
+    attributes:
+      label: Host scope
+      description: "Which hosts this item must be verified on."
+      options:
+        - both (Claude Code and Codex)
+        - claude
+        - codex
+        - host-neutral
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence at creation
+      description: "Exact commands already run, their exit codes and counts, and which checks are not_run or blocked."
