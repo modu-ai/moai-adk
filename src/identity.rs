@@ -36,7 +36,24 @@ const GIT_ENV_REMOVED: &[&str] = &[
     "GIT_DISCOVERY_ACROSS_FILESYSTEM",
 ];
 /// Under `LC_ALL=C` git starts its "no repository here" message with this text.
-const NOT_A_REPOSITORY: &str = "not a git repository";
+pub(crate) const NOT_A_REPOSITORY: &str = "not a git repository";
+
+/// Removes every variable in [`GIT_ENV_REMOVED`] and the numbered
+/// `GIT_CONFIG_KEY_<n>`/`GIT_CONFIG_VALUE_<n>` pairs from `cmd`, and fixes the locale so
+/// failures can be classified. Shared by every git subprocess (`plan`, Issue #2043).
+pub(crate) fn scrub_git_env(cmd: &mut Command) {
+    for key in GIT_ENV_REMOVED {
+        cmd.env_remove(key);
+    }
+    // GIT_CONFIG_KEY_<n>/GIT_CONFIG_VALUE_<n> are numbered, so they are matched by prefix.
+    for (key, _) in std::env::vars_os() {
+        let k = key.to_string_lossy();
+        if k.starts_with("GIT_CONFIG_KEY_") || k.starts_with("GIT_CONFIG_VALUE_") {
+            cmd.env_remove(&key);
+        }
+    }
+    cmd.env("LC_ALL", "C");
+}
 
 enum Git {
     Unavailable,
@@ -47,7 +64,7 @@ enum Git {
 
 /// First line of git's stderr without its `fatal:`/`error:` prefix, cut before the first
 /// quote or path separator so no repository path reaches the caller.
-fn failure_summary(stderr: &[u8]) -> String {
+pub(crate) fn failure_summary(stderr: &[u8]) -> String {
     let text = String::from_utf8_lossy(stderr);
     let line = text.lines().next().unwrap_or("").trim();
     let line = line
@@ -64,35 +81,20 @@ fn failure_summary(stderr: &[u8]) -> String {
     }
 }
 
-/// `git --no-optional-locks -C <dir>` with every caller variable that would redirect or
-/// reconfigure git removed, the locale fixed and stdin closed (Issue #2033). Shared by the
-/// read-only modules that run git (identity, context).
-pub(crate) fn git(dir: &Path) -> Command {
-    let mut cmd = Command::new("git");
-    cmd.arg("--no-optional-locks").arg("-C").arg(dir);
-    for key in GIT_ENV_REMOVED {
-        cmd.env_remove(key);
-    }
-    // GIT_CONFIG_KEY_<n>/GIT_CONFIG_VALUE_<n> are numbered, so they are matched by prefix.
-    for (key, _) in std::env::vars_os() {
-        let k = key.to_string_lossy();
-        if k.starts_with("GIT_CONFIG_KEY_") || k.starts_with("GIT_CONFIG_VALUE_") {
-            cmd.env_remove(&key);
-        }
-    }
-    cmd.env("GIT_OPTIONAL_LOCKS", "0")
-        .env("LC_ALL", "C")
-        .stdin(Stdio::null());
-    cmd
-}
-
 /// Runs `git -C <dir> rev-parse <args>` with a fixed argv. Variables that would redirect or
 /// reconfigure git are removed and the locale is fixed. stderr is read only to classify a
 /// failure; what reaches the caller is `failure_summary`, never a path.
 fn rev_parse(dir: &Path, args: &[&str]) -> Git {
-    let out = git(dir)
+    let mut cmd = Command::new("git");
+    cmd.arg("--no-optional-locks")
+        .arg("-C")
+        .arg(dir)
         .arg("rev-parse")
-        .args(args)
+        .args(args);
+    scrub_git_env(&mut cmd);
+    let out = cmd
+        .env("GIT_OPTIONAL_LOCKS", "0")
+        .stdin(Stdio::null())
         .stderr(Stdio::piped())
         .output();
     let Ok(out) = out else {

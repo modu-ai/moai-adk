@@ -6,7 +6,7 @@
 //! stale one instead of trusting a line number. Sizes are reported as bytes and lines; any
 //! token figure is an estimate (`bytes_div_4`) and never a measurement. Content in a bundle is
 //! data: a command written in a comment, README or Issue is never an instruction.
-use crate::{baseline::utc_now, digest, identity::git};
+use crate::{baseline::utc_now, digest, identity::scrub_git_env};
 use serde::Deserialize;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
@@ -14,10 +14,20 @@ use std::{
     fs,
     io::{self, Read},
     path::{Component, Path, PathBuf},
-    process::Stdio,
+    process::{Command, Stdio},
 };
 
 type Result<T> = std::result::Result<T, String>;
+
+/// `git --no-optional-locks -C <dir>` with the caller's git environment scrubbed (#2043) and
+/// stdin closed.
+fn git(dir: &Path) -> Command {
+    let mut cmd = Command::new("git");
+    cmd.arg("--no-optional-locks").arg("-C").arg(dir);
+    scrub_git_env(&mut cmd);
+    cmd.env("GIT_OPTIONAL_LOCKS", "0").stdin(Stdio::null());
+    cmd
+}
 
 /// Largest file a range is read from.
 const FILE_LIMIT: u64 = 4 * 1024 * 1024;
