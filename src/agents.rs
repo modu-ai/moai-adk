@@ -1163,7 +1163,7 @@ mod tests {
     /// #2125 (audit round 2): the receipt FILE records the failed file row —
     /// path=AGENTS.md, published=false, the error, the before digest — read from
     /// `receipts/*.json` after an apply whose file backup was injected to fail
-    /// (#2122's amended_manifest_decode_failure style, through the #2109 test
+    /// (#2122's amended_manifest_decode_failure style, through the #2125 test
     /// switch). Deleting the receipt.entries push breaks this assertion.
     #[test]
     fn file_backup_failure_row_is_recorded_in_the_receipt_file() {
