@@ -21,6 +21,7 @@ fn git(dir: &Path, args: &[&str]) {
             "-c",
             "commit.gpgsign=false",
         ])
+        .args(["-c", "gc.auto=0", "-c", "maintenance.auto=false"])
         .args(args)
         .env("GIT_CONFIG_GLOBAL", "/dev/null")
         .env("GIT_CONFIG_NOSYSTEM", "1")
