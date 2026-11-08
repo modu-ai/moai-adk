@@ -876,8 +876,23 @@ pub(crate) fn agents_apply_amended(
     manifest_bytes.push(b'\n');
     if before.as_deref() != Some(manifest_bytes.as_slice()) {
         if let Some(b) = before.as_deref() {
-            apply::save_before_bytes(&root, &request_id, MANIFEST, b)
-                .map_err(|e| step(&applied, MANIFEST, e))?;
+            if let Err(e) = apply::save_before_bytes(&root, &request_id, MANIFEST, b) {
+                // #2123: a failed backup is recorded like the #2119 decode failure,
+                // so the receipt still names the manifest that was not published.
+                receipt.entry(
+                    MANIFEST,
+                    &manifest_plan.action,
+                    Some(&digest(b)),
+                    None,
+                    false,
+                    Some(e.clone()),
+                );
+                return Err(receipt_failure(
+                    &receipt,
+                    &root,
+                    &step(&applied, MANIFEST, e),
+                ));
+            }
         }
         let publish = if before.is_none() {
             apply::publish_exclusive(&manifest_path, &manifest_bytes)
