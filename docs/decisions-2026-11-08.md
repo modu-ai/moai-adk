@@ -53,6 +53,7 @@
 | 18:3x | 세션 재시작(운영) | 모든 세션 재시작으로 동명 세션 중복(agent-1·2·3·4 각 2개) — 최신 세션만 활성 레인으로 지정(ref 포함 주소), 구세션은 대기 지시 | 전 레인 | — |
 | 18:5x | 05-A·07-A 임시 결정(리더 RC1) | 05-A: 정렬 직렬화 trait 임시(JCS 후속), 단일 crate `src/spec.rs`, 라이브러리 API만(subcommand는 01-C 뒤), AC-05A-6 not_run · 07-A: `gh api` subprocess, 토큰은 gh가 관리, poll 설정값(`x-poll-interval` 우선, overlap 60s·retry 3 잠정), envelope 직접 출력 후 01-C helper로 교체 · 02-A: legacy 자산 1,107행 목록은 `.moai-cli/manifests/legacy-asset-map.json`(package 64 KiB 상한) | #2001 #2008 #1991 | 레인 질문 해소 |
 | 18:5x | 여분 세션 활용(운영) | 재시작으로 생긴 여분 세션 agent-1 [d54a06]→05-A, agent-3 [437ee1]→07-A 배차(레인 5개) | #2001 #2008 | 사용자 "1~4레인 계속" 지시 범위 |
+| 18:5x | 본문 사본 기준(리더 운영 결정, agent-2 제안) | 리더 문서 PR의 "사본 = 라이브" 기준을 "사본 = manifest가 기록한 body_sha256(기록 시각 포함)"으로 바꾸고, 커밋 뒤 라이브 변동은 다음 리더 문서 PR에서 따라잡음 — 레인·사용자 결정으로 본문이 계속 바뀌어 매 커밋 깨지는 경합 해소 | 리더 문서 PR | — |
 
 부분 결정 분리: P08은 claim 방식(⑤+①)만 결정, lease·heartbeat 수치 HOLD · P15는 ZCode 헤드리스 범위만 결정, 나머지 host 지원표 HOLD.
 
