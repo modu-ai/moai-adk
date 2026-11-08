@@ -23,6 +23,7 @@ fn git(dir: &Path, args: &[&str]) -> bool {
             "user.email=fixture@example.invalid",
         ])
         .args(["-c", "commit.gpgsign=false"])
+        .args(["-c", "gc.auto=0", "-c", "maintenance.auto=false"])
         .args(args)
         .env("GIT_CONFIG_GLOBAL", "/dev/null")
         .env("GIT_CONFIG_NOSYSTEM", "1")

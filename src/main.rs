@@ -9,6 +9,32 @@ use std::{
     process::ExitCode,
 };
 
+/// Where a 06-C command reads its claim record: the local journal, or a record file that must
+/// agree with the Issue claim comment it names (the file is input, not an authority).
+#[derive(Args)]
+struct RecordSource {
+    /// The 16-hex task key of a record in the local claim journal.
+    #[arg(long)]
+    task: Option<String>,
+    /// A ClaimRecord JSON file (a claim relayed outside the local journal).
+    #[arg(long)]
+    record: Option<PathBuf>,
+    /// The Issue claim comment as JSON (`id`, `body`); required with --record.
+    #[arg(long)]
+    claim_comment: Option<PathBuf>,
+}
+
+impl RecordSource {
+    fn load(&self, project: &std::path::Path) -> Result<moai_cli::claim::ClaimRecord, String> {
+        moai_cli::worktree::load_record(
+            project,
+            self.task.as_deref(),
+            self.record.as_deref(),
+            self.claim_comment.as_deref(),
+        )
+    }
+}
+
 #[derive(Parser)]
 #[command(
     name = "moai-cli",
@@ -174,6 +200,73 @@ enum Command {
         #[arg(long)]
         reason: Option<String>,
     },
+    /// Explicit leader handoff (06-B #2006): liveness probe, worktree evidence, close as
+    /// `handed_off`; an alive or indeterminate owner needs --force-explicit.
+    ClaimHandoff {
+        project: PathBuf,
+        /// The 16-hex task key an acquire returned.
+        #[arg(long)]
+        task: String,
+        /// The epoch the request saw; a mismatch is a `stale_request` refusal (REQ-06B-01).
+        #[arg(long = "from-epoch")]
+        from_epoch: u64,
+        #[arg(long)]
+        reason: String,
+        /// Override the alive/indeterminate gate; the reason stays required.
+        #[arg(long = "force-explicit")]
+        force_explicit: bool,
+        /// This host's id; the liveness probe runs only for a local-process owner whose
+        /// host_id matches.
+        #[arg(long)]
+        host_id: Option<String>,
+    },
+    /// Record an external-write intent before it is sent (REQ-06B-06); payload JSON on
+    /// stdin gives the intent digest. A stale epoch is fenced (REQ-06B-08).
+    EffectIntend {
+        project: PathBuf,
+        #[arg(long)]
+        task: String,
+        /// The epoch the caller believes it is publishing under.
+        #[arg(long)]
+        epoch: u64,
+        /// Operation word (portable name, 07-B format).
+        #[arg(long)]
+        operation: String,
+        #[arg(long = "project-id")]
+        project_id: String,
+        #[arg(long = "local-id")]
+        local_id: String,
+        #[arg(long)]
+        attempt: u32,
+        /// The publish kind, e.g. comment_post or pr_create.
+        #[arg(long)]
+        kind: String,
+    },
+    /// Confirm an intended effect after the write returned, or mark it uncertain.
+    EffectConfirm {
+        project: PathBuf,
+        #[arg(long)]
+        task: String,
+        #[arg(long = "operation-id")]
+        operation_id: String,
+        /// What the remote returned (empty allowed for uncertain).
+        #[arg(long = "response-id", default_value = "")]
+        response_id: String,
+        /// The observed outcome; `uncertain` marks the interrupted case.
+        #[arg(long = "observed-state")]
+        observed_state: String,
+    },
+    /// Reconcile uncertain effects against the remote by their stable marker (GET only,
+    /// never re-creates). `--remote-probe` replaces the built-in comment lookup (tests).
+    EffectsReconcile {
+        project: PathBuf,
+        #[arg(long)]
+        task: String,
+        /// Probe command: exit 0 + `{"remote_id":...}` found, 4 absent, 5 + seconds
+        /// rate limited.
+        #[arg(long = "remote-probe")]
+        remote_probe: Option<String>,
+    },
     /// Read-only Claude Code check: whether a session started in PROJECT reads AGENTS.md.
     ClaudeDoctor {
         project: PathBuf,
@@ -222,6 +315,65 @@ enum Command {
         /// `project_doc_max_bytes` (default 32768; config.toml is not read).
         #[arg(long)]
         max_bytes: Option<u64>,
+    },
+    /// Plan the branch and worktree of a claim (06-C #2007). Writes nothing.
+    WorktreePlan {
+        project: PathBuf,
+        #[command(flatten)]
+        source: RecordSource,
+        /// Branch prefix (HOLD: no default; the user decides it).
+        #[arg(long)]
+        branch_prefix: String,
+        /// Worktree path; default `<primary>/.moai-cli/worktrees/<issue>-<logical_key>`.
+        #[arg(long)]
+        path: Option<PathBuf>,
+    },
+    /// Create the planned worktree with `git worktree add --lock -b` (06-C #2007); refuses
+    /// without `--force` when the branch, path or task already has a worktree.
+    WorktreeApply {
+        project: PathBuf,
+        #[command(flatten)]
+        source: RecordSource,
+        #[arg(long)]
+        branch_prefix: String,
+        #[arg(long)]
+        path: Option<PathBuf>,
+        #[arg(long)]
+        plan_digest: String,
+    },
+    /// write_scope overlap of a claim against the other active claims (06-C #2007).
+    ScopeCheck {
+        project: PathBuf,
+        #[command(flatten)]
+        source: RecordSource,
+        /// The task the leader orders first (task key, logical key or `#<issue>`).
+        #[arg(long)]
+        integration_order: Option<String>,
+    },
+    /// Render the PR body of a claim (06-C #2007): Refs, exact SHAs, receipts, op marker.
+    PrBodyRender {
+        project: PathBuf,
+        #[command(flatten)]
+        source: RecordSource,
+        /// JSON array of VERIFY receipts (05-C #2003); `[]` renders not_run.
+        #[arg(long)]
+        receipts: PathBuf,
+        #[arg(long)]
+        base_sha: String,
+        #[arg(long)]
+        base_branch: String,
+        #[arg(long)]
+        default_branch: String,
+        /// Accepted and warned about; closing keywords are never rendered.
+        #[arg(long)]
+        allow_close: bool,
+        #[arg(long)]
+        not_run: Vec<String>,
+        #[arg(long)]
+        review_link: Option<String>,
+        /// Extra bullet for the remaining-gap section (repeatable).
+        #[arg(long)]
+        gap: Vec<String>,
     },
     /// Read-only installation inspection (04-A #1998): PATH generations, receipts under
     /// `~/.moai-cli/installations/`, Go-generation path existence. Writes nothing.
@@ -416,6 +568,10 @@ const OPERATIONS: &[(&str, &str)] = &[
     ("claim-acquire", "claim.acquire"),
     ("claim-show", "claim.show"),
     ("claim-release", "claim.release"),
+    ("claim-handoff", "claim.handoff"),
+    ("effect-intend", "effect.intend"),
+    ("effect-confirm", "effect.confirm"),
+    ("effects-reconcile", "effects.reconcile"),
     ("todo-promote-preview", "todo.promote.plan"),
     ("todo-promote-apply", "todo.promote.apply"),
     ("run-verify", "run.verify"),
@@ -430,6 +586,10 @@ const OPERATIONS: &[(&str, &str)] = &[
     ("decision-record", "decision.record"),
     ("audit-reduce", "audit.reduce"),
     ("install-inspect", "install.inspect"),
+    ("worktree-plan", "worktree.plan"),
+    ("worktree-apply", "worktree.apply"),
+    ("scope-check", "scope.check"),
+    ("pr-body-render", "pr.body.render"),
 ];
 fn operation_of(word: &str) -> Option<&'static str> {
     OPERATIONS
@@ -623,6 +783,68 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             reason.as_deref().unwrap_or("unspecified"),
             &moai_cli::forge::policy::SystemClock,
         ),
+        Command::ClaimHandoff {
+            project,
+            task,
+            from_epoch,
+            reason,
+            force_explicit,
+            host_id,
+        } => moai_cli::handoff::claim_handoff_cli(
+            &project,
+            &task,
+            from_epoch,
+            &reason,
+            force_explicit,
+            host_id.as_deref(),
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        Command::EffectIntend {
+            project,
+            task,
+            epoch,
+            operation,
+            project_id,
+            local_id,
+            attempt,
+            kind,
+        } => moai_cli::handoff::effect_intend_cli(
+            &project,
+            &task,
+            epoch,
+            &operation,
+            &project_id,
+            &local_id,
+            attempt,
+            &kind,
+            input::<serde_json::Value>()?.to_string().as_bytes(),
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        Command::EffectConfirm {
+            project,
+            task,
+            operation_id,
+            response_id,
+            observed_state,
+        } => moai_cli::handoff::effect_confirm_cli(
+            &project,
+            &task,
+            &operation_id,
+            &response_id,
+            &observed_state,
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        Command::EffectsReconcile {
+            project,
+            task,
+            remote_probe,
+        } => moai_cli::handoff::effects_reconcile_cli(
+            &project,
+            &task,
+            remote_probe.as_deref(),
+            &moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
+        ),
         Command::ClaudeDoctor { project } => moai_cli::claude::doctor(&project),
         Command::CodexProjectionPlan {
             package,
@@ -661,6 +883,81 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
                 .unwrap_or_else(|| home.join(".codex"));
             let cwd = cwd.unwrap_or_else(|| project.clone());
             codex::doctor(&project, &cwd, &codex_home, &home, &fallback, max_bytes)
+        }
+        Command::WorktreePlan {
+            project,
+            source,
+            branch_prefix,
+            path,
+        } => moai_cli::worktree::plan(
+            &project,
+            &source.load(&project)?,
+            &branch_prefix,
+            path.as_deref(),
+        ),
+        Command::WorktreeApply {
+            project,
+            source,
+            branch_prefix,
+            path,
+            plan_digest,
+        } => moai_cli::worktree::apply(
+            &project,
+            &source.load(&project)?,
+            &branch_prefix,
+            path.as_deref(),
+            &plan_digest,
+        ),
+        Command::ScopeCheck {
+            project,
+            source,
+            integration_order,
+        } => {
+            let mine = source.load(&project)?;
+            let others = moai_cli::worktree::active_records(&project)?;
+            Ok(moai_cli::scope::check(
+                &mine,
+                &others,
+                integration_order.as_deref(),
+            ))
+        }
+        Command::PrBodyRender {
+            project,
+            source,
+            receipts,
+            base_sha,
+            base_branch,
+            default_branch,
+            allow_close,
+            not_run,
+            review_link,
+            gap,
+        } => {
+            let rec = source.load(&project)?;
+            let bytes = std::fs::read(&receipts).map_err(|_| "receipts file not found")?;
+            let receipts: Vec<moai_cli::run::Receipt> =
+                serde_json::from_slice(&bytes).map_err(|_| "invalid receipts file")?;
+            let head = moai_cli::worktree::head(&project)?;
+            let changes = if moai_cli::worktree::is_sha(&base_sha) {
+                moai_cli::worktree::changes(&project, &base_sha)?
+            } else {
+                Vec::new()
+            };
+            moai_cli::pr_link::render(
+                &rec,
+                &receipts,
+                &moai_cli::pr_link::RenderInput {
+                    base_branch: &base_branch,
+                    default_branch: &default_branch,
+                    base_sha: &base_sha,
+                    candidate_sha: &head,
+                    allow_close,
+                    not_run: &not_run,
+                    review_link: review_link.as_deref(),
+                    changes: &changes,
+                    gaps: &gap,
+                },
+            )
         }
         Command::InstallInspect { json: _ } => {
             let home = std::env::var_os("HOME")
