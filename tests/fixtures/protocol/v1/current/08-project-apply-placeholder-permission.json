@@ -37,5 +37,14 @@
     "protocol_version": 1,
     "target_binding": "<masked>"
   },
-  "stdout": null
+  "stdout": {
+    "error": {
+      "kind": "permission_reference_missing",
+      "message": "permission reference required",
+      "retryable": false
+    },
+    "ok": false,
+    "operation": "project.apply",
+    "protocol_version": 1
+  }
 }

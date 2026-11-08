@@ -71,10 +71,21 @@ pub struct GhTransport {
 }
 
 impl GhTransport {
-    pub fn from_env() -> Self {
-        // Test seam: a stub binary; production uses `gh` from PATH.
-        let bin = std::env::var("MOAI_FORGE_GH_BIN").unwrap_or_else(|_| "gh".into());
-        GhTransport { bin }
+    /// `gh` from PATH. `MOAI_FORGE_GH_BIN` is a test-only seam that swaps the executable; it
+    /// must never be set on a product path. To keep it from silently picking another program
+    /// through PATH it is accepted only as an absolute path to an existing regular file.
+    pub fn from_env() -> Result<Self> {
+        let Some(raw) = std::env::var_os("MOAI_FORGE_GH_BIN") else {
+            return Ok(GhTransport { bin: "gh".into() });
+        };
+        let path = std::path::PathBuf::from(&raw);
+        let regular = std::fs::metadata(&path)
+            .map(|m| m.is_file())
+            .unwrap_or(false);
+        match path.to_str() {
+            Some(s) if path.is_absolute() && regular => Ok(GhTransport { bin: s.into() }),
+            _ => Err("MOAI_FORGE_GH_BIN must be an absolute path to an existing file".into()),
+        }
     }
 }
 

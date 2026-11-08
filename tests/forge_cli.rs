@@ -321,7 +321,7 @@ fn forge_read_cli_writes_only_its_poll_state_and_never_the_token() {
             v["operation"].clone(),
             v["ok"].clone()
         ),
-        (json!(1), json!("forge-read"), json!(true))
+        (json!(1), json!("forge.read"), json!(true))
     );
     let result = &v["result"];
     for key in [
@@ -393,7 +393,8 @@ fn walk(root: &std::path::Path) -> Vec<String> {
 #[test]
 fn forge_read_rejects_bad_input_without_requests() {
     let tmp = tempfile::tempdir().unwrap();
-    let gh = tmp.path().join("no-such-gh");
+    // A real stub so the gh seam is accepted; rejected input never reaches it.
+    let gh = stub_gh(tmp.path(), "ok");
     for (input, kind) in [
         (
             r#"{"schema_version":1,"owner":"acme","repo":"widgets","token":"x"}"#,
@@ -415,11 +416,22 @@ fn forge_read_rejects_bad_input_without_requests() {
         let out = forge_read(tmp.path(), &gh, input);
         assert!(!out.status.success(), "{input}");
         let v: Value = serde_json::from_slice(&out.stdout).unwrap();
+        assert_eq!(v["operation"], json!("forge.read"));
         assert_eq!(v["error"]["kind"], json!(kind), "{input}");
-        // stderr carries one human line naming the kind.
+        // stderr carries the same message as one human line.
         let err = String::from_utf8_lossy(&out.stderr);
         assert_eq!(err.lines().count(), 1, "{err}");
-        assert!(err.starts_with(kind), "{err}");
+        assert_eq!(err.trim_end(), v["error"]["message"].as_str().unwrap());
+    }
+    // The test seam is accepted only as an absolute path to an existing file.
+    for bad in ["gh", "/no/such/gh"] {
+        let out = forge_read(
+            tmp.path(),
+            std::path::Path::new(bad),
+            r#"{"schema_version":1,"owner":"acme","repo":"widgets"}"#,
+        );
+        let v: Value = serde_json::from_slice(&out.stdout).unwrap();
+        assert_eq!(v["error"]["kind"], json!("invalid_input"), "{bad}");
     }
     let big = format!(
         r#"{{"schema_version":1,"owner":"acme","repo":"{}"}}"#,

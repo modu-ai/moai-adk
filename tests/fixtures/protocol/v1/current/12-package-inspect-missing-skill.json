@@ -12,5 +12,14 @@
   ],
   "stderr": "package SKILL.md missing\n",
   "stdin": null,
-  "stdout": null
+  "stdout": {
+    "error": {
+      "kind": "not_found",
+      "message": "package SKILL.md missing",
+      "retryable": false
+    },
+    "ok": false,
+    "operation": "package.inspect",
+    "protocol_version": 1
+  }
 }

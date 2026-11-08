@@ -1,7 +1,7 @@
-use clap::{ArgGroup, Args, Parser, Subcommand};
+use clap::{error::ErrorKind, ArgGroup, Args, Parser, Subcommand};
 use moai_cli::{
-    agents_apply, agents_plan, apply, plan, resolve, session_launch, AgentsPlan, AgentsRequest,
-    Plan, Profile, SessionRequest,
+    agents_apply, agents_plan, apply, contract, plan, resolve, session_launch, AgentsPlan,
+    AgentsRequest, Plan, Profile, SessionRequest,
 };
 use std::{
     io::{self, Read},
@@ -204,8 +204,28 @@ fn launch(
     Ok(v)
 }
 
-fn run() -> Result<serde_json::Value, String> {
-    let cli = Cli::parse();
+/// Internal operations (01-C #1990): subcommand word and operation name. The launchers are
+/// developer tools and stay outside the envelope contract.
+const OPERATIONS: [(&str, &str); 9] = [
+    ("package-inspect", "package.inspect"),
+    ("project-plan", "project.plan"),
+    ("project-apply", "project.apply"),
+    ("package-resolve", "package.resolve"),
+    ("agents-plan", "agents.plan"),
+    ("agents-apply", "agents.apply"),
+    ("baseline-inventory", "baseline.inventory"),
+    ("identity", "identity"),
+    ("forge-read", "forge.read"),
+];
+fn operation_of(word: &str) -> Option<&'static str> {
+    OPERATIONS
+        .iter()
+        .find(|(w, _)| *w == word)
+        .map(|&(_, op)| op)
+}
+
+/// Launcher paths (`-l`, `-a`, `cc|glm|codex`, `session`): plain JSON or a plain error line.
+fn run_launcher(cli: Cli) -> Result<serde_json::Value, String> {
     let Some(command) = cli.command else {
         return match (cli.leader, cli.agent) {
             (true, _) => launch("claude", true, cli.launch, None),
@@ -219,6 +239,45 @@ fn run() -> Result<serde_json::Value, String> {
         Command::Cc(h) => launch("claude", h.leader, h.launch, h.prompt),
         Command::Glm(h) => launch("glm", h.leader, h.launch, h.prompt),
         Command::Codex(h) => launch("codex", h.leader, h.launch, h.prompt),
+        Command::Session {
+            role,
+            host,
+            name,
+            model,
+            effort,
+            advisor,
+            claude_bin,
+            dry_run,
+        } => {
+            // Legacy behaviour (REQ-00F-06): Claude only, no permission skip.
+            if host != "claude" {
+                return Err(format!(
+                    "host {host} is not available on `session`; use `moai-cli cc|glm|codex -l|-a`"
+                ));
+            }
+            session_launch(
+                &SessionRequest {
+                    role,
+                    host,
+                    name,
+                    model: Some(model),
+                    effort: Some(effort),
+                    advisor,
+                    skip_permissions: false,
+                    prompt: None,
+                    claude_bin,
+                    codex_bin: "codex".into(),
+                },
+                dry_run,
+            )
+        }
+        _ => unreachable!("internal operations run through run_internal"),
+    }
+}
+
+/// Internal operations; `main` wraps the result in the envelope.
+fn run_internal(command: Command) -> Result<serde_json::Value, String> {
+    match command {
         Command::PackageInspect { package } => Ok(
             serde_json::json!({"digest":moai_cli::package_digest(&package)?,"digest_algorithm":"moai-package-tree-v1","publisher_trust":"not_verified","host_loaded":false}),
         ),
@@ -255,12 +314,12 @@ fn run() -> Result<serde_json::Value, String> {
             &plan_digest,
             &permission_reference,
         ),
-        Command::ForgeRead { project } => Ok(moai_cli::forge::forge_read_cli(
+        Command::ForgeRead { project } => moai_cli::forge::forge_read_cli(
             &project,
-            input::<moai_cli::forge::ReadRequest>(),
-            &moai_cli::forge::transport::GhTransport::from_env(),
+            input::<moai_cli::forge::ReadRequest>()?,
+            &moai_cli::forge::transport::GhTransport::from_env()?,
             &moai_cli::forge::policy::SystemClock,
-        )),
+        ),
         Command::BaselineInventory {
             project,
             go_baseline_commit,
@@ -271,59 +330,66 @@ fn run() -> Result<serde_json::Value, String> {
             go_repo.as_deref(),
         ),
         Command::Identity { path } => moai_cli::identity::identity(&path),
-        Command::Session {
-            role,
-            host,
-            name,
-            model,
-            effort,
-            advisor,
-            claude_bin,
-            dry_run,
-        } => {
-            // Legacy behaviour (REQ-00F-06): Claude only, no permission skip.
-            if host != "claude" {
-                return Err(format!(
-                    "host {host} is not available on `session`; use `moai-cli cc|glm|codex -l|-a`"
-                ));
-            }
-            session_launch(
-                &SessionRequest {
-                    role,
-                    host,
-                    name,
-                    model: Some(model),
-                    effort: Some(effort),
-                    advisor,
-                    skip_permissions: false,
-                    prompt: None,
-                    claude_bin,
-                    codex_bin: "codex".into(),
-                },
-                dry_run,
-            )
-        }
+        _ => unreachable!("launchers run through run_launcher"),
     }
 }
+
+/// A command-line error on an internal operation becomes a `usage` envelope (exit 2) with a
+/// message that echoes no argument; stderr keeps clap's first line for people. Help, version,
+/// the launchers and words that name no operation keep clap's own output.
+fn usage_error(e: clap::Error) -> ExitCode {
+    let op = std::env::args().nth(1).and_then(|w| operation_of(&w));
+    let Some(op) =
+        op.filter(|_| !matches!(e.kind(), ErrorKind::DisplayHelp | ErrorKind::DisplayVersion))
+    else {
+        e.exit()
+    };
+    let message = match e.kind() {
+        ErrorKind::MissingRequiredArgument => "required arguments were not provided; see --help",
+        ErrorKind::UnknownArgument => "unexpected argument; see --help",
+        ErrorKind::InvalidValue | ErrorKind::ValueValidation => {
+            "invalid argument value; see --help"
+        }
+        _ => "invalid command line; see --help",
+    };
+    let rendered = e.render().to_string();
+    eprintln!("{}", rendered.lines().next().unwrap_or(message));
+    println!("{}", contract::failure(op, contract::Kind::Usage, message));
+    ExitCode::from(2)
+}
+
 fn main() -> ExitCode {
-    match run() {
-        Ok(value) => {
-            println!("{value}");
-            // An envelope (`forge-read`) reports failure in-band with `ok: false`; stderr adds
-            // one human-readable line (01-C HOLD-00D-3 derivation).
-            if value.get("ok") == Some(&serde_json::Value::Bool(false)) {
-                let e = &value["error"];
-                eprintln!(
-                    "{}: {}",
-                    e["kind"].as_str().unwrap_or("error"),
-                    e["message"].as_str().unwrap_or("")
-                );
-                ExitCode::from(1)
-            } else {
+    let cli = match Cli::try_parse() {
+        Ok(cli) => cli,
+        Err(e) => return usage_error(e),
+    };
+    let op = match &cli.command {
+        Some(Command::Cc(_) | Command::Glm(_) | Command::Codex(_) | Command::Session { .. })
+        | None => None,
+        Some(_) => std::env::args().nth(1).and_then(|w| operation_of(&w)),
+    };
+    let Some(op) = op else {
+        return match run_launcher(cli) {
+            Ok(value) => {
+                println!("{value}");
                 ExitCode::SUCCESS
             }
+            Err(message) => {
+                eprintln!("{message}");
+                ExitCode::from(1)
+            }
+        };
+    };
+    match run_internal(cli.command.expect("internal operation")) {
+        Ok(result) => {
+            println!("{}", contract::success(op, result));
+            ExitCode::SUCCESS
         }
         Err(message) => {
+            println!(
+                "{}",
+                contract::failure(op, contract::classify(&message), &message)
+            );
             eprintln!("{message}");
             ExitCode::from(1)
         }

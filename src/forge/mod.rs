@@ -6,9 +6,8 @@
 //! state lives in `<project>/.moai-cli/forge/poll-state.json` (REQ-FORGE-009). The read path
 //! sends GET only; the write helpers in [`write`] are library functions for 07-B/07-C.
 //!
-//! Output follows the envelope decided for RC1 (leader, 2026-11-08):
-//! `{protocol_version, operation, ok, result | error{kind, message, retryable, next_actions?}}`.
-//! It is written here directly until the 01-C helper lands.
+//! The CLI wraps the result in the 01-C envelope (`crate::contract`); errors become messages
+//! whose kind `contract::classify` derives, so each message here carries its kind's phrase.
 pub mod policy;
 pub mod transport;
 pub mod write;
@@ -29,11 +28,13 @@ pub const SCHEMA_VERSION: u32 = 1;
 pub const API: &str = "https://api.github.com";
 const POLL_STATE: &str = "forge/poll-state.json";
 
-/// Error carried in the envelope's `error`. `kind` uses the 00-D vocabulary decided for 01-C
-/// (`invalid_input`, `input_too_large`, `unsupported_protocol_version`, `not_found`, `io`) plus
-/// two kinds this adapter adds and documents in docs/rust-product-path.md: `blocked`
-/// (authentication, permission, or a rate limit that outlived the retry budget) and `transport`
-/// (gh missing or not returning an HTTP response, or an unexpected status).
+/// A failure of the adapter. `kind` is a `contract::Kind` name, and `contract::classify` on
+/// `message` yields the same kind (tests check every constructor), so the CLI envelope and the
+/// library agree. Besides the 00-D vocabulary this adapter uses two kinds registered in
+/// `contract`: `blocked` (authentication, permission, or a rate limit that outlived the retry
+/// budget) and `transport` (gh missing, no HTTP response, or an unexpected status).
+/// `retryable` is finer than the envelope's per-kind value: an exhausted rate limit is
+/// `blocked` but retryable here, because waiting until the reset will succeed.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ForgeError {
     pub kind: &'static str,
@@ -55,21 +56,17 @@ impl ForgeError {
     fn blocked(message: impl Into<String>, retryable: bool) -> Self {
         ForgeError {
             kind: "blocked",
-            message: message.into(),
+            message: format!("forge blocked: {}", message.into()),
             retryable,
         }
     }
     fn invalid(message: impl Into<String>) -> Self {
-        ForgeError {
-            kind: "invalid_input",
-            message: message.into(),
-            retryable: false,
-        }
+        Self::of("invalid_input", message)
     }
     fn transport(message: impl Into<String>) -> Self {
         ForgeError {
             kind: "transport",
-            message: transport::redact(&message.into()),
+            message: format!("gh transport: {}", transport::redact(&message.into())),
             retryable: true,
         }
     }
@@ -77,7 +74,7 @@ impl ForgeError {
 
 impl From<ForgeError> for String {
     fn from(e: ForgeError) -> String {
-        format!("{}: {}", e.kind, e.message)
+        e.message
     }
 }
 
@@ -281,7 +278,7 @@ impl<'a, T: Transport, C: Clock> Client<'a, T, C> {
             }
             (404, _) => Err(ForgeError::of(
                 "not_found",
-                "not found or not visible to this account (404)",
+                "forge resource not found or not visible to this account (404)",
             )),
             (s, _) => Err(ForgeError::transport(format!("GET returned HTTP {s}"))),
         }
@@ -300,10 +297,10 @@ impl<'a, T: Transport, C: Clock> Client<'a, T, C> {
         while let Some(u) = url {
             n += 1;
             if n > self.config.max_pages {
-                return Err(ForgeError::blocked(
-                    format!("more than {} pages", self.config.max_pages),
-                    false,
-                ));
+                return Err(ForgeError::invalid(format!(
+                    "page limit exceeded (config.max_pages {})",
+                    self.config.max_pages
+                )));
             }
             let resp = self.get(&u, Some(project))?;
             let page = if resp.status == 304 {
@@ -564,26 +561,9 @@ pub fn identity(item: &Value) -> Option<(String, String, i64, i64)> {
     ))
 }
 
-/// `{protocol_version, operation, ok, result | error}`.
-pub fn envelope(operation: &str, outcome: Result<Value, ForgeError>) -> Value {
-    match outcome {
-        Ok(result) => {
-            json!({"protocol_version": 1, "operation": operation, "ok": true, "result": result})
-        }
-        Err(e) => {
-            let mut error = json!({"kind": e.kind, "message": e.message, "retryable": e.retryable});
-            if e.kind == "blocked" {
-                error["next_actions"] =
-                    json!(["check `gh auth status` and the repository name, then retry"]);
-            }
-            json!({"protocol_version": 1, "operation": operation, "ok": false, "error": error})
-        }
-    }
-}
-
 fn state_path(project: &Path) -> Result<PathBuf, ForgeError> {
     let meta = fs::symlink_metadata(project)
-        .map_err(|_| ForgeError::invalid("project directory unavailable"))?;
+        .map_err(|_| ForgeError::of("not_found", "project directory unavailable"))?;
     if !meta.is_dir() {
         return Err(ForgeError::invalid("project must be a directory"));
     }
@@ -593,13 +573,12 @@ fn state_path(project: &Path) -> Result<PathBuf, ForgeError> {
         match fs::symlink_metadata(&dir) {
             Ok(m) if m.file_type().is_symlink() || !m.is_dir() => {
                 return Err(ForgeError::invalid(
-                    "state directory is a symlink or not a directory",
+                    "poll state directory is a symlink or not a directory; refused",
                 ))
             }
             Ok(_) => {}
-            Err(_) => {
-                fs::create_dir(&dir).map_err(|_| ForgeError::io("cannot create state directory"))?
-            }
+            Err(_) => fs::create_dir(&dir)
+                .map_err(|_| ForgeError::io("poll state directory unavailable"))?,
         }
     }
     Ok(project.join(crate::PROJECT_STATE_DIR).join(POLL_STATE))
@@ -618,43 +597,72 @@ pub fn load_state(project: &Path) -> Option<PollState> {
 pub fn save_state(project: &Path, state: &PollState) -> Result<(), ForgeError> {
     let path = state_path(project)?;
     let tmp = path.with_extension(format!("json.tmp-{}", std::process::id()));
-    let bytes = serde_json::to_vec_pretty(state).map_err(|_| ForgeError::io("encode failed"))?;
+    let bytes = serde_json::to_vec_pretty(state)
+        .map_err(|_| ForgeError::of("internal", "encode failed"))?;
     let mut f = OpenOptions::new()
         .write(true)
         .create_new(true)
         .open(&tmp)
-        .map_err(|_| ForgeError::io("cannot write poll state"))?;
+        .map_err(|_| ForgeError::io("poll state write failed"))?;
     f.write_all(&bytes)
         .and_then(|_| f.sync_all())
-        .map_err(|_| ForgeError::io("cannot write poll state"))?;
+        .map_err(|_| ForgeError::io("poll state write failed"))?;
     fs::rename(&tmp, &path).map_err(|_| {
         let _ = fs::remove_file(&tmp);
-        ForgeError::io("cannot replace poll state")
+        ForgeError::io("poll state replace failed")
     })
 }
 
-/// CLI entry: read the request, poll, persist on success, and wrap in the envelope.
+/// CLI entry: poll, persist on success, and return the result. `main` wraps it in the 01-C
+/// envelope (`forge.read`); an error is its message, which `contract::classify` maps to the
+/// same kind as `ForgeError::kind`.
 pub fn forge_read_cli<T: Transport, C: Clock>(
     project: &Path,
-    raw: Result<ReadRequest, String>,
+    req: ReadRequest,
     transport: &T,
     clock: &C,
-) -> Value {
-    let outcome = raw
-        .map_err(|m| {
-            // `input()` reports the 64 KiB limit and malformed or unknown-field JSON as text.
-            let kind = if m.contains("exceeds") {
-                "input_too_large"
-            } else {
-                "invalid_input"
-            };
-            ForgeError::of(kind, m)
-        })
-        .and_then(|req| {
-            let prior = load_state(project);
-            let (result, state) = read(&req, prior, transport, clock)?;
-            save_state(project, &state)?;
-            Ok(result)
-        });
-    envelope("forge-read", outcome)
+) -> Result<Value, String> {
+    let prior = load_state(project);
+    let (result, state) = read(&req, prior, transport, clock)?;
+    save_state(project, &state)?;
+    Ok(result)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn every_error_kind_matches_the_contract_classifier() {
+        let errors = [
+            ForgeError::blocked("authentication failed (401)", false),
+            ForgeError::blocked("rate limited after 3 retries", true),
+            ForgeError::transport("cannot start gh: NotFound"),
+            ForgeError::transport("refused: only https://api.github.com/ URLs are requested"),
+            ForgeError::of(
+                "not_found",
+                "forge resource not found or not visible to this account (404)",
+            ),
+            ForgeError::of(
+                "unsupported_protocol_version",
+                "unsupported request schema_version",
+            ),
+            ForgeError::of("not_found", "project directory unavailable"),
+            ForgeError::invalid("project must be a directory"),
+            ForgeError::invalid("page limit exceeded (config.max_pages 50)"),
+            ForgeError::invalid("poll state directory is a symlink or not a directory; refused"),
+            ForgeError::io("poll state directory unavailable"),
+            ForgeError::io("poll state write failed"),
+            ForgeError::io("poll state replace failed"),
+            ForgeError::of("internal", "encode failed"),
+        ];
+        for e in errors {
+            assert_eq!(
+                crate::contract::classify(&e.message).as_str(),
+                e.kind,
+                "{}",
+                e.message
+            );
+        }
+    }
 }
