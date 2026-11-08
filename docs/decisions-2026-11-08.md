@@ -86,6 +86,7 @@
 | 20:5x | 사용자 결정 4건(이 대화 질문 창, 사용자 직접 선택 — 앞선 20:3x "미확인 응답"과 별개) | ① #2053 HOLD-L1 = A(역할 없는 cc에 opus/medium/fable, skip 플래그 없음) ② 실제 호스트 실측은 사용자가 체크아웃 밖에서 1회, `-l|-a`는 `--permissions`로(새 bypass 없음) ③ 06-A lease 수치 없음·journal은 git common dir 유지 ④ 01-A clone_id 형식·kind 14종·02-B 의존성 3개는 RC1 동안 유지, RC 마감 전 일괄 확정 | #2053 #2028 #2005 #1988 #1992 #1975 | 사용자 |
 | 21:1x | 리더 레인 상시 점검(사용자 결정) | "리더는 항상 에이전트 레인의 진행상태를 점검하고 무중단 레인이 가동되도록 루틴으로 체크한다" → AGENTS.local.md § Lane loop "Leader lane-check routine" 추가(병합·레인 보고·재시작·대기 직전마다 ListAgents·열린 PR·worktree status·마지막 실행 명령을 증거로 확인, 인계 레인은 다음 ready 카드나 자기 브랜치 수리, ready 카드 없으면 이유와 예약 카드 통보, 점검 결과는 dispatch journal) | 전 레인 | 사용자 |
 | 21:1x | 통합 | PR #2061(04-A) merge 35bb49e8a → #1998 done · #2065·#2066·#2067·#2058 PASS 뒤 update-branch(변경 줄 동일) → delta 대기 · #2060(06-A) FAIL(동시 claim 재조회 없음) → agent-6 수리 | #1998 #2062 #2064 #2063 #2054 #2005 | — |
+| 21:3x | 레인 대기 금지(사용자 결정) | "모두 할 일을 마치고 넘긴 상태라 쓰기 없이 기다리고 있어요 -> 이게 병목이다. PR로 넘기거나 수리 완료가 되면 완료 기다리지 말고 리더에게 보고하고 다음 이슈를 받아서 진행 하도록" → AGENTS.local.md § Lane loop "No idle lanes" 추가(PR·수리 push 즉시 보고하고 다음 카드, 리더는 레인마다 다음 카드를 준비: ① blocker가 모두 닫힌 ready 카드 ② 유일한 blocker가 리더 큐의 PR인 카드(그 PR head에서 시작, 병합 뒤 재병합) ③ 기록된 후속을 Issue로(결함 후보는 RED 먼저) ④ 셋 다 없으면 이유와 예약 카드 통보. 작업 창작·카드 분할·HOLD 해제 없음) | 전 레인 | 사용자 |
 | 19:0x | 01-C 본문 r27 정정(기록) | REQ-01C-02 `code`→`kind` 11종, HOLD-00D-1 배너 제거, request_id 제거 반영(머지 뒤 기록 정정) | #1990 | agent-2 비차단 |
 
 부분 결정 분리: P08은 claim 방식(⑤+①)만 결정, lease·heartbeat 수치 HOLD · P15는 ZCode 헤드리스 범위만 결정, 나머지 host 지원표 HOLD.
