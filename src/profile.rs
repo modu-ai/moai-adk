@@ -28,7 +28,7 @@ const DECISION_ITEM_LIMIT: usize = 32;
 const DECISION_STRING_LIMIT: usize = 256;
 const REVISION_LIMIT: usize = 128;
 /// Keys owned by the profile schema; the delta covers exactly these.
-const MANAGED_KEYS: [&str; 9] = [
+const MANAGED_KEYS: [&str; 10] = [
     "schema_version",
     "project_id",
     "purpose",
@@ -38,6 +38,7 @@ const MANAGED_KEYS: [&str; 9] = [
     "package_pin",
     "interview_revision",
     "decisions",
+    "github_issues",
 ];
 
 /// One interview decision recorded under `decisions` (REQ-03A-01). `source` says where
@@ -72,10 +73,16 @@ pub struct Profile {
     /// portable-filtered; the interview transcript itself never enters the profile.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub decisions: Vec<DecisionRecord>,
+    /// The project chose GitHub Issues, so `github-plan` generates the GitHub templates
+    /// when its request carries no explicit flag (Issue #2106, REQ-08B-04). Absent means
+    /// no choice was recorded; a profile written before this key reads unchanged.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub github_issues: Option<bool>,
 }
 
 /// Key-level reconfigure delta of a plan (REQ-03A-02). Keys are sorted in every list so
-/// the plan digest is order-stable; every managed key lands in exactly one list, and
+/// the plan digest is order-stable; every managed key lands in exactly one list (except
+/// `github_issues` while it is absent everywhere, which lands in none), and
 /// conflict keys (REQ-03A-03) appear only in `conflict`.
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
@@ -273,6 +280,12 @@ fn compute_delta(baseline: Option<&Value>, current: Option<&Value>, desired: &Va
         let d = desired_map.get(key);
         let c = current_map.and_then(|m| m.get(key));
         let b = baseline_map.and_then(|m| m.get(key));
+        // `github_issues` (#2106) is additive: absent from desired, current and baseline
+        // it is left out of the delta, so a profile without the key plans exactly as
+        // before the key existed.
+        if key == "github_issues" && d.is_none() && c.is_none() && b.is_none() {
+            continue;
+        }
         // schema_version is MoAI-owned schema state, never user content (leader decision
         // on the #2052 audit): a v1 file upgrades to v2 even without a baseline, while
         // every other key keeps the conservative no-baseline conflict.
@@ -643,6 +656,7 @@ pub fn read_profile(root: &Path) -> Result<(Profile, Vec<u8>)> {
         "package_pin",
         "interview_revision",
         "decisions",
+        "github_issues",
     ];
     let filtered: serde_json::Map<String, Value> = map
         .iter()
@@ -680,6 +694,7 @@ mod tests {
             package_pin: None,
             interview_revision: Some("r1".into()),
             decisions: vec![record("d1", "Rust", "user")],
+            github_issues: None,
         }
     }
 
