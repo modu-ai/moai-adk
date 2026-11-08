@@ -494,6 +494,67 @@ fn project_apply_writes_receipt_and_rerun_is_unchanged() {
 }
 
 #[test]
+fn project_update_recover_restores_profile_and_baseline() {
+    // Audit #1995 round 3 (leader decision a): the replaced baseline record keeps its
+    // before bytes like any other published file, so recovering an update restores
+    // project.yaml AND the baseline together, and the re-planned input is a real
+    // update again instead of a silent unchanged.
+    let root = TempDir::new().unwrap();
+    agents_project_root(&root);
+    let p = root.path().to_str().unwrap();
+    let mut next = profile();
+    next["purpose"] = json!("Second purpose");
+    let plan: Value = ok_result(&cli(&["project-plan", p], &next));
+    assert_eq!(plan["action"], json!("update"));
+    let applied = ok_result(&cli(
+        &[
+            "project-apply",
+            p,
+            "--plan-digest",
+            plan["plan_digest"].as_str().unwrap(),
+            "--permission-reference",
+            "fixture-approved",
+        ],
+        &plan,
+    ));
+    assert_eq!(applied["state"], json!("updated"));
+    assert!(String::from_utf8_lossy(
+        &fs::read(root.path().join(".moai-cli/project.yaml")).unwrap()
+    )
+    .contains("Second purpose"));
+    let receipt_id = applied["receipt"].as_str().unwrap().to_string();
+    // Recovery restores both published entries from their before bytes.
+    let recovered = ok_result(&apply_recover(&root, &receipt_id));
+    assert_eq!(recovered["state"], json!("reverted"), "{recovered}");
+    assert_eq!(
+        recovered["reverted"],
+        json!([
+            ".moai-cli/project.yaml",
+            ".moai-cli/manifests/profile-baseline.json"
+        ])
+    );
+    let profile_after: Value =
+        serde_json::from_slice(&fs::read(root.path().join(".moai-cli/project.yaml")).unwrap())
+            .unwrap();
+    assert_eq!(profile_after["purpose"], json!("Build a small editor"));
+    let baseline_after: Value = serde_json::from_slice(
+        &fs::read(
+            root.path()
+                .join(".moai-cli/manifests/profile-baseline.json"),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(
+        baseline_after["profile"]["purpose"],
+        json!("Build a small editor")
+    );
+    // The same input plans a real update again; nothing was silently absorbed.
+    let replan: Value = ok_result(&cli(&["project-plan", p], &next));
+    assert_eq!(replan["action"], json!("update"));
+}
+
+#[test]
 fn agents_ignore_block_excludes_the_receipt_directory() {
     // HOLD-B1: the managed .gitignore block renders the receipts exclusion, so the
     // per-request receipts never become tracked user content.

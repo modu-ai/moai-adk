@@ -597,17 +597,33 @@ pub fn apply(root: &Path, p: Plan, confirmed: &str, permission: &str) -> Result<
         None,
     );
     // The baseline record lives under manifests/ and coexists with the 01-B receipt
-    // store under receipts/.
+    // store under receipts/. REQ-01B-08 mirrored for the record itself: a replaced
+    // baseline keeps its before bytes, so recovery restores the whole pre-update state
+    // instead of stopping halfway between project.yaml and the baseline.
+    let baseline_before_bytes = read(&baseline_path(root)?).ok().flatten();
+    if let Some(b) = baseline_before_bytes.as_deref() {
+        if let Err(e) = crate::apply::save_before_bytes(root, &request_id, &baseline_rel, b) {
+            receipt.entry(&baseline_rel, "replace", None, None, false, Some(e.clone()));
+            receipt.status = "partial".into();
+            let message = format!(
+                "partial apply: applied [project.yaml]; failed at {baseline_rel} backup: {e}"
+            );
+            return Err(match receipt.save(root) {
+                Ok(()) => message,
+                Err(se) => format!("{message}; receipt not recorded: {se}"),
+            });
+        }
+    }
     match write_baseline(root, &bytes, &desired) {
-        Ok((baseline_before, after_baseline)) => {
+        Ok((baseline_before_digest, after_baseline)) => {
             receipt.entry(
                 &baseline_rel,
-                if baseline_before.is_some() {
+                if baseline_before_digest.is_some() {
                     "replace"
                 } else {
                     "create"
                 },
-                baseline_before.as_deref(),
+                baseline_before_digest.as_deref(),
                 Some(&after_baseline),
                 true,
                 None,
