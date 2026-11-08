@@ -2,6 +2,8 @@
 
 The root Cargo package builds `moai-cli` version `2026.11.0-rc.1`. It directly executes project profile planning/creation and package integrity selection in Rust. It neither invokes the Python adapter nor calls an existing `moai`. `experiments/rc-cli` remains historical experiment evidence, not the product entry point. This is an incomplete RC, not a release or host installation.
 
+The Rust toolchain is pinned by `rust-toolchain.toml` (1.94.1 with clippy and rustfmt) for local sessions and rc-ci alike; rustup installs it on first use where only another toolchain name (such as `stable`) is present.
+
 ## Internal invocation contract
 
 - `moai-cli project-plan PROJECT`: typed JSON profile on stdin; JSON plan on stdout. No writes.
