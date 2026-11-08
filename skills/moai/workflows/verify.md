@@ -6,7 +6,7 @@ An exact tree, the SPEC and policy digests, and a check inventory.
 
 ## Output
 
-A receipt (planned; not implemented in 2026.11.0-rc.1) with each check marked passed, failed, not_run, blocked, stale, or unknown.
+A receipt (returned on stdout by the internal `run-verify` operation; not stored in 2026.11.0-rc.1) with each check marked passed, failed, not_run, blocked, stale, or unknown.
 
 ## Procedure
 
