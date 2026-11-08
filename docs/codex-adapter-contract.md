@@ -1,6 +1,6 @@
 # Codex adapter 계약 (02-C #1993)
 
-공통 skill package(`skills/moai/`, 02-A #1991)를 OpenAI Codex(Desktop 앱, CLI, IDE 확장)에 연결하는 adapter의 계약이다. RC1에서는 projection을 계획하고 설치 상태를 진단하는 데까지만 한다. 사용자 홈에 설치하거나 UPDATE하는 일은 EP-05에서 한다. 이 Issue의 코드는 아무 파일도 쓰지 않는다. 확인일은 모두 2026-11-08이다. 지원표 행은 `docs/host-support-matrix.md`의 Codex 절에 있다.
+공통 skill package(`skills/moai/`, 02-A #1991)를 OpenAI Codex(Desktop 앱, CLI, IDE 확장)에 연결하는 adapter의 계약이다. RC1에서는 projection을 계획하고 설치 상태를 진단하는 데까지만 한다. 사용자 홈에 설치하거나 UPDATE하는 일은 EP-05에서 한다. 이 Issue의 코드는 아무 파일도 쓰지 않는다. 확인일은 모두 2026-11-08이다. 지원표 행은 `docs/support-matrix.md`에 있다(Codex 조합은 운영자 실측 전까지 not_run으로 표기된다).
 
 ## 결정 (리더 RC1 임시, 2026-11-08, Issue 본문 r30)
 
