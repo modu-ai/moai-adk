@@ -1050,3 +1050,519 @@ fn baseline_without_or_with_unknown_commit_degrades_without_error() {
     let (out, _) = baseline(&root, &["--go-baseline-commit", "HEAD"]);
     assert!(!out.status.success());
 }
+
+// ---- Current protocol contract fixtures (Issue #1987, 00-D) ------------------------------
+//
+// Records what every subcommand prints today (exit code, stdout, stderr) as golden files under
+// tests/fixtures/protocol/v1/current/. This is the baseline the protocol draft is measured
+// against; it describes behavior, it does not choose a contract. Run with
+// MOAI_UPDATE_FIXTURES=1 to rewrite the files instead of comparing.
+
+const PROTOCOL_FIXTURES: &str = "tests/fixtures/protocol/v1/current";
+/// Values that depend on the temporary directory or the clock, not on the contract.
+const MASKED_KEYS: [&str; 3] = ["target_binding", "plan_digest", "collected_at"];
+
+fn masked_values(v: &Value, out: &mut Vec<String>) {
+    match v {
+        Value::Object(m) => {
+            for (k, x) in m {
+                match (MASKED_KEYS.contains(&k.as_str()), x.as_str()) {
+                    (true, Some(s)) => out.push(s.to_string()),
+                    _ => masked_values(x, out),
+                }
+            }
+        }
+        Value::Array(a) => a.iter().for_each(|x| masked_values(x, out)),
+        _ => {}
+    }
+}
+fn mask_text(s: &str, masks: &[(String, String)]) -> String {
+    masks.iter().fold(s.to_string(), |acc, (from, to)| {
+        acc.replace(from.as_str(), to)
+    })
+}
+fn mask_value(v: &Value, masks: &[(String, String)]) -> Value {
+    match v {
+        Value::String(s) => json!(mask_text(s, masks)),
+        Value::Array(a) => Value::Array(a.iter().map(|x| mask_value(x, masks)).collect()),
+        Value::Object(m) => Value::Object(
+            m.iter()
+                .map(|(k, x)| (mask_text(k, masks), mask_value(x, masks)))
+                .collect(),
+        ),
+        other => other.clone(),
+    }
+}
+fn as_json_or_text(bytes: &[u8]) -> Value {
+    serde_json::from_slice(bytes)
+        .unwrap_or_else(|_| json!(String::from_utf8_lossy(bytes).into_owned()))
+}
+
+struct FixtureRun {
+    roots: Vec<std::path::PathBuf>,
+    home: TempDir,
+    seen: Vec<String>,
+}
+impl FixtureRun {
+    /// Runs one case and compares (or rewrites) its golden file. Returns parsed stdout.
+    fn case(&mut self, name: &str, args: &[&str], stdin: &[u8]) -> Value {
+        let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+            .args(args)
+            .env("HOME", self.home.path())
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_CONFIG_NOSYSTEM", "1")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap();
+        // Same rule as cli(): a child that exits before reading stdin surfaces as EPIPE on
+        // fast runners. The fixture records exit, stdout and stderr, never the write itself.
+        match child.stdin.take().unwrap().write_all(stdin) {
+            Ok(()) => {}
+            Err(e) if e.kind() == std::io::ErrorKind::BrokenPipe => {}
+            Err(e) => panic!("stdin write failed: {e}"),
+        }
+        let out = child.wait_with_output().unwrap();
+        let stdin_v = if stdin.is_empty() {
+            Value::Null
+        } else {
+            as_json_or_text(stdin)
+        };
+        let stdout_v = if out.stdout.is_empty() {
+            Value::Null
+        } else {
+            as_json_or_text(&out.stdout)
+        };
+        let mut secrets = Vec::new();
+        masked_values(&stdin_v, &mut secrets);
+        masked_values(&stdout_v, &mut secrets);
+        let mut masks: Vec<(String, String)> = Vec::new();
+        for r in &self.roots {
+            for spelling in [r.clone(), fs::canonicalize(r).unwrap()] {
+                masks.push((spelling.to_str().unwrap().to_string(), "<root>".into()));
+            }
+        }
+        masks.extend(secrets.into_iter().map(|s| (s, "<masked>".to_string())));
+        masks.sort_by_key(|a| std::cmp::Reverse(a.0.len()));
+        let record = json!({
+            "case": name,
+            "args": mask_value(&json!(args), &masks),
+            "stdin": mask_value(&stdin_v, &masks),
+            "exit": out.status.code(),
+            "stdout": mask_value(&stdout_v, &masks),
+            "stderr": mask_text(&String::from_utf8_lossy(&out.stderr), &masks),
+            "masked_keys": MASKED_KEYS,
+        });
+        let file = format!(
+            "{}/{:02}-{name}.json",
+            PROTOCOL_FIXTURES,
+            self.seen.len() + 1
+        );
+        self.seen.push(file.clone());
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(&file);
+        if std::env::var_os("MOAI_UPDATE_FIXTURES").is_some() {
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            let mut text = serde_json::to_string_pretty(&record).unwrap();
+            text.push('\n');
+            fs::write(&path, text).unwrap();
+        } else {
+            let golden: Value = serde_json::from_slice(
+                &fs::read(&path).unwrap_or_else(|_| panic!("missing fixture {file}")),
+            )
+            .unwrap();
+            assert_eq!(golden, record, "protocol fixture drift: {file}");
+        }
+        stdout_v
+    }
+}
+
+#[test]
+fn protocol_fixtures_record_current_contract() {
+    let project = TempDir::new().unwrap();
+    let p = project.path().to_str().unwrap().to_string();
+    let package = TempDir::new().unwrap();
+    let pkg = package.path().to_str().unwrap().to_string();
+    let empty = TempDir::new().unwrap();
+    let e = empty.path().to_str().unwrap().to_string();
+    let repo = TempDir::new().unwrap();
+    let r = repo.path().to_str().unwrap().to_string();
+    fs::create_dir_all(project.path().join("skills/moai/workflows")).unwrap();
+    fs::write(package.path().join("SKILL.md"), "router\n").unwrap();
+    let mut run = FixtureRun {
+        roots: [&project, &package, &empty, &repo]
+            .iter()
+            .map(|t| t.path().to_path_buf())
+            .collect(),
+        home: TempDir::new().unwrap(),
+        seen: Vec::new(),
+    };
+    run.roots.push(run.home.path().to_path_buf());
+    let prof = profile(None).to_string();
+
+    run.case("usage-unknown-subcommand", &["no-such-command"], b"");
+    run.case("usage-missing-argument", &["project-plan"], b"");
+    let mut extra = profile(None);
+    extra["unexpected"] = json!(1);
+    run.case(
+        "project-plan-unknown-field",
+        &["project-plan", &p],
+        extra.to_string().as_bytes(),
+    );
+    run.case("project-plan-malformed-json", &["project-plan", &p], b"{");
+    run.case(
+        "project-plan-input-over-limit",
+        &["project-plan", &p],
+        &vec![b' '; 65537],
+    );
+    let plan = run.case(
+        "project-plan-create",
+        &["project-plan", &p],
+        prof.as_bytes(),
+    );
+    let digest = plan["plan_digest"].as_str().unwrap().to_string();
+    let mut v2 = plan.clone();
+    v2["protocol_version"] = json!(2);
+    run.case(
+        "project-apply-protocol-version-2",
+        &[
+            "project-apply",
+            &p,
+            "--plan-digest",
+            &digest,
+            "--permission-reference",
+            "fixture-approved",
+        ],
+        v2.to_string().as_bytes(),
+    );
+    run.case(
+        "project-apply-placeholder-permission",
+        &[
+            "project-apply",
+            &p,
+            "--plan-digest",
+            &digest,
+            "--permission-reference",
+            "placeholder",
+        ],
+        plan.to_string().as_bytes(),
+    );
+    run.case(
+        "project-apply-created",
+        &[
+            "project-apply",
+            &p,
+            "--plan-digest",
+            &digest,
+            "--permission-reference",
+            "fixture-approved",
+        ],
+        plan.to_string().as_bytes(),
+    );
+    run.case(
+        "project-plan-unchanged",
+        &["project-plan", &p],
+        prof.as_bytes(),
+    );
+    run.case("package-inspect-ok", &["package-inspect", &pkg], b"");
+    run.case(
+        "package-inspect-missing-skill",
+        &["package-inspect", &e],
+        b"",
+    );
+    run.case(
+        "package-resolve-user",
+        &["package-resolve", &p, "--user-package", &pkg],
+        b"",
+    );
+    run.case("package-resolve-no-package", &["package-resolve", &p], b"");
+    let mut req2 = agents_request("ko", "none");
+    req2["protocol_version"] = json!(2);
+    run.case(
+        "agents-plan-protocol-version-2",
+        &["agents-plan", &p],
+        req2.to_string().as_bytes(),
+    );
+    let aplan = run.case(
+        "agents-plan-create",
+        &["agents-plan", &p],
+        agents_request("ko", "none").to_string().as_bytes(),
+    );
+    let adigest = aplan["plan_digest"].as_str().unwrap().to_string();
+    run.case(
+        "agents-apply-ok",
+        &[
+            "agents-apply",
+            &p,
+            "--plan-digest",
+            &adigest,
+            "--permission-reference",
+            "fixture-approved",
+        ],
+        aplan.to_string().as_bytes(),
+    );
+    run.case(
+        "session-dry-run",
+        &["session", "--name", "agent-1", "--dry-run"],
+        b"",
+    );
+    run.case(
+        "session-invalid-effort",
+        &[
+            "session",
+            "--name",
+            "agent-1",
+            "--effort",
+            "turbo",
+            "--dry-run",
+        ],
+        b"",
+    );
+    run.case(
+        "baseline-inventory-not-a-repo",
+        &["baseline-inventory", &e],
+        b"",
+    );
+    // Fixed identity and dates make the fixture repository's commit id reproducible.
+    write_file(repo.path(), "a.txt", b"a\n");
+    for args in [
+        &["init", "-q", "-b", "main"][..],
+        &["add", "a.txt"][..],
+        &["commit", "-q", "-m", "fixture"][..],
+    ] {
+        let out = Command::new("git")
+            .args([
+                "-c",
+                "user.name=fixture",
+                "-c",
+                "user.email=fixture@example.invalid",
+            ])
+            .args(["-c", "commit.gpgsign=false"])
+            .arg("-C")
+            .arg(repo.path())
+            .args(args)
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_CONFIG_NOSYSTEM", "1")
+            .env("GIT_AUTHOR_DATE", "2026-11-08T00:00:00Z")
+            .env("GIT_COMMITTER_DATE", "2026-11-08T00:00:00Z")
+            .output()
+            .unwrap();
+        assert!(out.status.success(), "git {args:?}");
+    }
+    run.case("baseline-inventory-ok", &["baseline-inventory", &r], b"");
+
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(PROTOCOL_FIXTURES);
+    let mut on_disk: Vec<String> = fs::read_dir(&dir)
+        .unwrap()
+        .map(|e| {
+            format!(
+                "{PROTOCOL_FIXTURES}/{}",
+                e.unwrap().file_name().to_string_lossy()
+            )
+        })
+        .collect();
+    on_disk.sort();
+    assert_eq!(on_disk, run.seen, "fixture set differs from the case list");
+}
+
+fn repo_json(rel: &str) -> Value {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(rel);
+    serde_json::from_slice(&fs::read(&path).unwrap_or_else(|_| panic!("missing {rel}"))).unwrap()
+}
+
+#[test]
+fn status_crosswalk_is_complete_and_never_promotes() {
+    let x = repo_json("schemas/protocol/v1/status-crosswalk.json");
+    let mut source: Vec<String> = Vec::new();
+    for s in x["sources"].as_array().unwrap() {
+        for t in s["tokens"].as_array().unwrap() {
+            source.push(format!(
+                "{}:{}",
+                s["domain"].as_str().unwrap(),
+                t.as_str().unwrap()
+            ));
+        }
+    }
+    source.sort();
+    let from = x["forbidden_promotions"]["from"].as_array().unwrap();
+    let to = x["forbidden_promotions"]["to"].as_array().unwrap();
+    let variants = x["variants"].as_object().unwrap();
+    assert_eq!(variants.keys().collect::<Vec<_>>(), ["A", "B"]);
+    for (name, v) in variants {
+        let allowed = v
+            .get("canonical_enum")
+            .or_else(|| v.get("common_enum"))
+            .unwrap()
+            .as_array()
+            .unwrap();
+        let mut keys = Vec::new();
+        for row in v["rows"].as_array().unwrap() {
+            let key = format!(
+                "{}:{}",
+                row["domain"].as_str().unwrap(),
+                row["source_token"].as_str().unwrap()
+            );
+            let (canonical, reason) = (&row["canonical"], &row["no_map_reason"]);
+            assert!(
+                canonical.is_null() != reason.is_null(),
+                "{name} {key}: exactly one of canonical / no_map_reason"
+            );
+            if !canonical.is_null() {
+                assert!(
+                    allowed.contains(canonical),
+                    "{name} {key}: value outside enum"
+                );
+                assert!(
+                    !(from.contains(&row["source_token"]) && to.contains(canonical)),
+                    "{name} {key}: forbidden promotion to {canonical}"
+                );
+            }
+            keys.push(key);
+        }
+        keys.sort();
+        assert_eq!(
+            keys, source,
+            "{name}: rows must cover every source token once"
+        );
+    }
+}
+
+#[test]
+fn protocol_schemas_declare_2020_12_and_cover_current_fixtures() {
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("schemas/protocol/v1");
+    let mut ids = Vec::new();
+    for sub in ["", "variants"] {
+        for e in fs::read_dir(dir.join(sub)).unwrap() {
+            let name = e.unwrap().file_name().to_string_lossy().into_owned();
+            if name.ends_with(".schema.json") {
+                let s = repo_json(&format!("schemas/protocol/v1/{sub}/{name}").replace("//", "/"));
+                assert_eq!(
+                    s["$schema"],
+                    json!("https://json-schema.org/draft/2020-12/schema"),
+                    "{name}"
+                );
+                ids.push(s["$id"].as_str().unwrap().to_string());
+            }
+        }
+    }
+    let unique: std::collections::BTreeSet<_> = ids.iter().collect();
+    assert_eq!(unique.len(), ids.len(), "duplicate $id");
+    // Key coverage only, not schema validation (the validator is HOLD-00D-2): every current
+    // success output carries exactly the required keys and nothing outside properties.
+    for (schema, fixture) in [
+        ("plan", "06-project-plan-create"),
+        ("plan", "10-project-plan-unchanged"),
+        ("agents-plan", "16-agents-plan-create"),
+        ("package-result", "11-package-inspect-ok"),
+        ("package-result", "13-package-resolve-user"),
+    ] {
+        let s = repo_json(&format!("schemas/protocol/v1/{schema}.schema.json"));
+        let out = &repo_json(&format!("{PROTOCOL_FIXTURES}/{fixture}.json"))["stdout"];
+        let props = s["properties"].as_object().unwrap();
+        for k in s["required"].as_array().unwrap() {
+            assert!(
+                out.get(k.as_str().unwrap()).is_some(),
+                "{fixture}: missing {k}"
+            );
+        }
+        for k in out.as_object().unwrap().keys() {
+            assert!(
+                props.contains_key(k),
+                "{fixture}: {k} not in {schema} schema"
+            );
+        }
+    }
+}
+
+#[test]
+fn exit_code_table_matches_current_fixtures() {
+    let t = repo_json("schemas/protocol/v1/variants/hold-00d-4-exit-codes.json");
+    let kinds: Vec<&str> = t["draft_kinds"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|k| k.as_str().unwrap())
+        .collect();
+    let mut failing = Vec::new();
+    for e in fs::read_dir(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(PROTOCOL_FIXTURES))
+        .unwrap()
+    {
+        let name = e.unwrap().file_name().to_string_lossy().into_owned();
+        let f = repo_json(&format!("{PROTOCOL_FIXTURES}/{name}"));
+        if f["exit"] != json!(0) {
+            failing.push(name.trim_end_matches(".json").to_string());
+        }
+    }
+    failing.sort();
+    let rows = t["current_observed"]["rows"].as_array().unwrap();
+    let mut listed: Vec<String> = rows
+        .iter()
+        .map(|r| r["fixture"].as_str().unwrap().to_string())
+        .collect();
+    listed.sort();
+    assert_eq!(
+        listed, failing,
+        "every failing fixture is in the observed table"
+    );
+    for r in rows {
+        let f = repo_json(&format!(
+            "{PROTOCOL_FIXTURES}/{}.json",
+            r["fixture"].as_str().unwrap()
+        ));
+        assert_eq!(f["exit"], r["exit"], "{}", r["fixture"]);
+        assert!(f["stderr"]
+            .as_str()
+            .unwrap()
+            .starts_with(r["stderr_start"].as_str().unwrap()));
+        assert!(kinds.contains(&r["draft_kind"].as_str().unwrap()));
+    }
+    for (name, opt) in t["options"].as_object().unwrap() {
+        let table = opt["table"].as_object().unwrap();
+        assert_eq!(table["ok"], json!(0), "{name}");
+        for k in &kinds {
+            let code = table[*k]
+                .as_u64()
+                .unwrap_or_else(|| panic!("{name} lacks {k}"));
+            assert!(code > 0 && code < 256, "{name} {k}");
+        }
+    }
+    // Option A is the only one today's binary already satisfies.
+    let a = t["options"]["A"]["table"].as_object().unwrap();
+    for r in rows {
+        assert_eq!(
+            a[r["draft_kind"].as_str().unwrap()],
+            r["exit"],
+            "{}",
+            r["fixture"]
+        );
+    }
+}
+
+#[test]
+fn digest_normalization_examples_are_reproducible() {
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/fixtures/protocol/v1/variants/hold-00d-5");
+    let tuple = fs::read(dir.join("serde-tuple-example.json")).unwrap();
+    assert_eq!(tuple, serde_json::to_vec(&(1u32, "create")).unwrap());
+    let jcs = fs::read(dir.join("jcs-example.json")).unwrap();
+    let n = repo_json("schemas/protocol/v1/variants/hold-00d-5-version-and-normalization.json");
+    let opts = &n["normalization_options"];
+    assert_eq!(
+        moai_cli::digest(&tuple),
+        format!(
+            "sha256:{}",
+            opts["serde_tuple"]["example_sha256"].as_str().unwrap()
+        )
+    );
+    assert_eq!(
+        moai_cli::digest(&jcs),
+        format!(
+            "sha256:{}",
+            opts["rfc8785_jcs"]["example_sha256"].as_str().unwrap()
+        )
+    );
+    assert_ne!(
+        tuple, jcs,
+        "the two normalizations disagree on the same data"
+    );
+}

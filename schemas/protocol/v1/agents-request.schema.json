@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:moai:protocol:v1:agents-request",
+  "title": "AGENTS request (current, describes src/agents.rs AgentsRequest)",
+  "description": "Code accepts protocol_version 1 only and rejects anything else with the generic invalid-request error.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["protocol_version", "language", "workflow_reference", "local_file"],
+  "properties": {
+    "protocol_version": {"const": 1},
+    "language": {"enum": ["en", "ko"]},
+    "workflow_reference": {"type": "string"},
+    "local_file": {"enum": ["none", "ignored", "tracked"]}
+  }
+}
