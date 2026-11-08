@@ -1,122 +1,122 @@
 {
+  "case": "baseline-inventory-ok",
   "args": [
     "baseline-inventory",
     "<root>"
   ],
-  "case": "baseline-inventory-ok",
-  "exit": 0,
-  "masked_keys": [
-    "target_binding",
-    "plan_digest",
-    "collected_at",
-    "receipt"
-  ],
-  "stderr": "",
   "stdin": null,
+  "exit": 0,
   "stdout": {
-    "ok": true,
-    "operation": "baseline.inventory",
     "protocol_version": 1,
+    "operation": "baseline.inventory",
+    "ok": true,
     "result": {
+      "schema_version": 1,
+      "collected_at": "<masked>",
       "baseline": {
-        "branch": "main",
+        "schema_version": 1,
         "collected_at": "<masked>",
         "head_sha": "9afa00b97696fba68a011a585f7db1e0219f6606",
-        "home": [
-          {
-            "exists": false,
-            "path": "~/.claude"
-          },
-          {
-            "exists": false,
-            "path": "~/.moai"
-          },
-          {
-            "exists": false,
-            "path": "~/.agents"
-          }
-        ],
-        "path_rule": "paths are relative to the project root; worktrees outside it read <outside-project>; home entries are ~-relative and recorded as existence only",
-        "remote_heads": {
-          "reason": "ls-remote exited 128",
-          "status": "unavailable"
-        },
-        "schema_version": 1,
+        "branch": "main",
         "worktrees": [
           {
             "branch": "refs/heads/main",
             "head": "9afa00b97696fba68a011a585f7db1e0219f6606",
             "path": "."
           }
-        ]
+        ],
+        "remote_heads": {
+          "status": "unavailable",
+          "reason": "ls-remote exited 128"
+        },
+        "home": [
+          {
+            "path": "~/.claude",
+            "exists": false
+          },
+          {
+            "path": "~/.moai",
+            "exists": false
+          },
+          {
+            "path": "~/.agents",
+            "exists": false
+          }
+        ],
+        "path_rule": "paths are relative to the project root; worktrees outside it read <outside-project>; home entries are ~-relative and recorded as existence only"
       },
-      "checksums": "87428fc522803d31065e7bce3cf03fe475096631e5e07bbd7a0fde60c4cf25c7  a.txt\n",
-      "claude_diff": {
+      "inventory": {
+        "schema_version": 1,
         "collected_at": "<masked>",
         "head_sha": "9afa00b97696fba68a011a585f7db1e0219f6606",
-        "reason": "no --go-baseline-commit",
-        "rules": {
-          "class": "baseline-only|template-only|active-only when present in one set; identical when present in two or more sets with one blob id; differing otherwise",
-          "excluded": [
-            ".claude/worktrees/",
-            ".moai-cli/worktrees/",
-            ".worktrees/"
-          ],
-          "key": "path relative to the .claude directory of each set",
-          "origin": "generated when the template set holds the path, else source",
-          "scope": "private when the file name contains .local. or ends with .local, else shared",
-          "tracking": "current checkout: tracked (ls-files), ignored (check-ignore), untracked, or absent"
-        },
-        "schema_version": 1,
-        "status": "not_collected"
-      },
-      "collected_at": "<masked>",
-      "inventory": {
+        "files": [
+          {
+            "path": "a.txt",
+            "mode": "100644",
+            "object": "78981922613b2afb6025042ff6bd878ac1994e85",
+            "kind": "file",
+            "sha256": "sha256:87428fc522803d31065e7bce3cf03fe475096631e5e07bbd7a0fde60c4cf25c7"
+          }
+        ],
         "changes": [],
-        "checksum_unrepresentable": [],
-        "collected_at": "<masked>",
-        "excluded_changes": 0,
         "excluded_prefixes": [
           ".claude/worktrees/",
           ".moai-cli/worktrees/",
           ".worktrees/"
         ],
-        "files": [
-          {
-            "kind": "file",
-            "mode": "100644",
-            "object": "78981922613b2afb6025042ff6bd878ac1994e85",
-            "path": "a.txt",
-            "sha256": "sha256:87428fc522803d31065e7bce3cf03fe475096631e5e07bbd7a0fde60c4cf25c7"
-          }
-        ],
-        "head_sha": "9afa00b97696fba68a011a585f7db1e0219f6606",
-        "measured_at": "collected_at",
+        "excluded_changes": 0,
+        "checksum_unrepresentable": [],
         "measurements": [
           {
-            "command": "git ls-files -s -z",
             "name": "tracked_files",
+            "command": "git ls-files -s -z",
             "value": 1
           },
           {
-            "command": "git status --porcelain=v2 -z --untracked-files=all",
             "name": "changed_tracked",
-            "value": 0
-          },
-          {
             "command": "git status --porcelain=v2 -z --untracked-files=all",
-            "name": "untracked_files",
             "value": 0
           },
           {
-            "command": "sha256 of regular files among tracked and changed rows",
+            "name": "untracked_files",
+            "command": "git status --porcelain=v2 -z --untracked-files=all",
+            "value": 0
+          },
+          {
             "name": "checksum_rows",
+            "command": "sha256 of regular files among tracked and changed rows",
             "value": 1
           }
         ],
-        "schema_version": 1
+        "measured_at": "collected_at"
       },
-      "schema_version": 1
+      "claude_diff": {
+        "status": "not_collected",
+        "reason": "no --go-baseline-commit",
+        "rules": {
+          "key": "path relative to the .claude directory of each set",
+          "class": "baseline-only|template-only|active-only when present in one set; identical when present in two or more sets with one blob id; differing otherwise",
+          "tracking": "current checkout: tracked (ls-files), ignored (check-ignore), untracked, or absent",
+          "origin": "generated when the template set holds the path, else source",
+          "scope": "private when the file name contains .local. or ends with .local, else shared",
+          "excluded": [
+            ".claude/worktrees/",
+            ".moai-cli/worktrees/",
+            ".worktrees/"
+          ]
+        },
+        "schema_version": 1,
+        "collected_at": "<masked>",
+        "head_sha": "9afa00b97696fba68a011a585f7db1e0219f6606"
+      },
+      "checksums": "87428fc522803d31065e7bce3cf03fe475096631e5e07bbd7a0fde60c4cf25c7  a.txt\n"
     }
-  }
+  },
+  "stderr": "",
+  "masked_keys": [
+    "target_binding",
+    "plan_digest",
+    "collected_at",
+    "receipt"
+  ]
 }
