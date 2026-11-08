@@ -9,7 +9,7 @@
     "plan_digest",
     "collected_at"
   ],
-  "stderr": "error: unrecognized subcommand 'no-such-command'\n\nUsage: moai-cli <COMMAND>\n\nFor more information, try '--help'.\n",
+  "stderr": "error: unrecognized subcommand 'no-such-command'\n\nUsage: moai-cli [OPTIONS]\n       moai-cli <COMMAND>\n\nFor more information, try '--help'.\n",
   "stdin": null,
   "stdout": null
 }

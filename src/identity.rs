@@ -5,7 +5,7 @@
 //! boundary). Nothing is written. The Go generation's `.moai/`, `~/.moai/` and `MOAI_HOME`
 //! are never returned as a state root.
 //!
-//! Provisional decisions (leader RC1, decisions log 18:2x, pending P05 and P12): git runs as a
+//! Provisional decisions (leader RC1, decisions log 18:1x, pending P05 and P12): git runs as a
 //! fixed-argv subprocess, ids are sha256 of canonical paths, the home root is fixed at
 //! `~/.moai-cli`, and the output keeps the current contract (no envelope, exit 0/1).
 use crate::{digest, read_profile, HOME_STATE_DIR, PROJECT_STATE_DIR};

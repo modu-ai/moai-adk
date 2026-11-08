@@ -1,26 +1,66 @@
 //! Development launcher: starts a leader or agent session on a host CLI with the
-//! model/effort/advisor options the operator decided (2026-11-08). Only the Claude Code
-//! host is wired in this slice; the launcher composes argv from documented flags and
-//! never invents options. Advisor rules follow https://code.claude.com/docs/en/advisor
-//! (read 2026-11-08): `--advisor <model>` takes an alias (`fable`, `opus`, `sonnet`) or a
-//! full id, must rank at or above the main model, and is disabled entirely when
-//! `CLAUDE_CODE_DISABLE_ADVISOR_TOOL=1` is set.
+//! model/effort/advisor options the operator decided (2026-11-08). The launcher composes
+//! argv from documented flags only and never invents options.
+//!
+//! Hosts (00-F #2028; sources read 2026-11-08):
+//! - `claude`: Claude Code. `--name`, `--model`, `--effort`, `--dangerously-skip-permissions`
+//!   from https://code.claude.com/docs/en/cli-reference; `--advisor <model>` from
+//!   https://code.claude.com/docs/en/advisor (alias `fable`, `opus`, `sonnet` or a full id,
+//!   must rank at or above the main model, disabled when `CLAUDE_CODE_DISABLE_ADVISOR_TOOL=1`).
+//! - `glm`: Claude Code pointed at z.ai through process environment only, per
+//!   https://docs.z.ai/scenario-example/develop-tools/claude. The token is inherited from the
+//!   caller and only its presence is checked; its value is never kept, printed or written.
+//! - `codex`: Codex CLI `-s workspace-write -a on-request [-m <model>] [PROMPT]`, per
+//!   https://learn.chatgpt.com/docs/developer-commands?surface=cli. Codex has no session-name
+//!   flag, so the name travels in the first prompt.
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
 const ROLES: [&str; 2] = ["leader", "agent"];
+const HOSTS: [&str; 3] = ["claude", "glm", "codex"];
 const EFFORTS: [&str; 6] = ["low", "medium", "high", "xhigh", "max", "ultracode"];
 const ADVISOR_ALIASES: [&str; 3] = ["fable", "opus", "sonnet"];
+const DEFAULT_MODEL: &str = "opus";
+const DEFAULT_EFFORT: &str = "medium";
+/// z.ai Anthropic-compatible endpoint and timeout from the z.ai Claude Code guide.
+pub const GLM_ENV: [(&str, &str); 2] = [
+    ("ANTHROPIC_BASE_URL", "https://api.z.ai/api/anthropic"),
+    ("API_TIMEOUT_MS", "3000000"),
+];
+/// Inherited from the caller; presence is checked, the value is never kept, printed or written.
+pub const GLM_TOKEN_VAR: &str = "ANTHROPIC_AUTH_TOKEN";
+const MAX_PROMPT: usize = 4096;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SessionRequest {
     pub role: String,
     pub host: String,
     pub name: String,
-    pub model: String,
-    pub effort: String,
+    /// `None` uses the host default: `opus` on Claude hosts, Codex's own default on codex.
+    #[serde(default)]
+    pub model: Option<String>,
+    /// `None` uses `medium` on Claude hosts; Codex has no effort flag here.
+    #[serde(default)]
+    pub effort: Option<String>,
+    #[serde(default)]
     pub advisor: Option<String>,
+    /// Adds `--dangerously-skip-permissions` on Claude hosts (operator's interim default).
+    #[serde(default)]
+    pub skip_permissions: bool,
+    /// Extra first-prompt text (codex only).
+    #[serde(default)]
+    pub prompt: Option<String>,
+    #[serde(default = "default_claude_bin")]
     pub claude_bin: String,
+    #[serde(default = "default_codex_bin")]
+    pub codex_bin: String,
+}
+
+fn default_claude_bin() -> String {
+    "claude".into()
+}
+fn default_codex_bin() -> String {
+    "codex".into()
 }
 
 fn rank(model: &str) -> Option<u8> {
@@ -37,36 +77,29 @@ fn clean(field: &str, value: &str) -> Result<(), String> {
     Ok(())
 }
 
-/// Composes the host command without running it. Returns `{host, argv, notes}`.
-pub fn compose(r: &SessionRequest) -> Result<Value, String> {
-    if !ROLES.contains(&r.role.as_str()) {
-        return Err("role must be leader or agent".into());
-    }
-    if r.host != "claude" {
-        return Err(format!("host {} not implemented in this slice", r.host));
-    }
-    if !EFFORTS.contains(&r.effort.as_str()) {
+fn claude_argv(r: &SessionRequest, notes: &mut Vec<&'static str>) -> Result<Vec<String>, String> {
+    let model = r.model.as_deref().unwrap_or(DEFAULT_MODEL);
+    let effort = r.effort.as_deref().unwrap_or(DEFAULT_EFFORT);
+    if !EFFORTS.contains(&effort) {
         return Err("effort must be one of low|medium|high|xhigh|max|ultracode".into());
     }
-    clean("name", &r.name)?;
-    clean("model", &r.model)?;
+    clean("model", model)?;
     clean("claude_bin", &r.claude_bin)?;
     let mut argv = vec![
         r.claude_bin.clone(),
         "--name".into(),
         r.name.clone(),
         "--model".into(),
-        r.model.clone(),
+        model.into(),
         "--effort".into(),
-        r.effort.clone(),
+        effort.into(),
     ];
-    let mut notes = Vec::new();
     if let Some(a) = &r.advisor {
         clean("advisor", a)?;
         if !ADVISOR_ALIASES.contains(&a.as_str()) && !a.starts_with("claude-") {
             return Err("advisor must be fable|opus|sonnet or a full claude-* model id".into());
         }
-        match (rank(&r.model), rank(a)) {
+        match (rank(model), rank(a)) {
             (Some(m), Some(x)) if x < m => {
                 return Err("advisor must rank at or above the main model".into())
             }
@@ -84,21 +117,106 @@ pub fn compose(r: &SessionRequest) -> Result<Value, String> {
         argv.push("--advisor".into());
         argv.push(a.clone());
     }
+    if r.prompt.is_some() {
+        notes.push("PROMPT is used by codex only; it was not passed to the Claude host");
+    }
+    if r.skip_permissions {
+        notes.push("--dangerously-skip-permissions: every tool call runs without a permission prompt (operator interim default 2026-11-08; disable with --permissions)");
+        argv.push("--dangerously-skip-permissions".into());
+    }
+    Ok(argv)
+}
+
+fn codex_argv(r: &SessionRequest, notes: &mut Vec<&'static str>) -> Result<Vec<String>, String> {
+    clean("codex_bin", &r.codex_bin)?;
+    let mut argv = vec![
+        r.codex_bin.clone(),
+        "-s".into(),
+        "workspace-write".into(),
+        "-a".into(),
+        "on-request".into(),
+    ];
+    if let Some(m) = &r.model {
+        clean("model", m)?;
+        argv.push("-m".into());
+        argv.push(m.clone());
+    }
+    if r.effort.is_some() {
+        notes.push("--effort is not passed to codex by this launcher");
+    }
+    if r.advisor.is_some() || r.skip_permissions {
+        notes.push("advisor and permission-skip apply to Claude hosts only; codex runs with -s workspace-write -a on-request");
+    }
+    let mut prompt = format!("MoAI session name: {}", r.name);
+    if let Some(extra) = &r.prompt {
+        if extra.len() > MAX_PROMPT
+            || extra
+                .chars()
+                .any(|c| c.is_control() && c != '\n' && c != '\t')
+        {
+            return Err("invalid prompt".into());
+        }
+        prompt.push('\n');
+        prompt.push_str(extra);
+    }
+    argv.push(prompt);
+    notes.push("codex has no session-name flag: the name is carried in the first prompt");
+    notes.push("codex sessions have no cross-session channel in RC1 (no ListAgents/SendMessage)");
+    Ok(argv)
+}
+
+/// Composes the host command without running it. Returns
+/// `{host, role, name, argv, env_keys, notes, executed:false, host_loaded:false}`.
+/// `env_keys` lists variable names only, never values.
+pub fn compose(r: &SessionRequest) -> Result<Value, String> {
+    if !ROLES.contains(&r.role.as_str()) {
+        return Err("role must be leader or agent".into());
+    }
+    if !HOSTS.contains(&r.host.as_str()) {
+        return Err(format!("unknown host {} (claude|glm|codex)", r.host));
+    }
+    clean("name", &r.name)?;
+    let mut notes = Vec::new();
+    let mut env_keys: Vec<&str> = Vec::new();
+    let argv = match r.host.as_str() {
+        "codex" => codex_argv(r, &mut notes)?,
+        "glm" => {
+            if std::env::var_os(GLM_TOKEN_VAR).is_none() {
+                return Err(format!(
+                    "blocked: {GLM_TOKEN_VAR} is not set in this environment (set it in your shell; the launcher only checks that it exists and never prints or stores it)"
+                ));
+            }
+            let mut plain = r.clone();
+            if plain.advisor.take().is_some() {
+                notes.push("--advisor omitted on glm: the advisor is Anthropic API only");
+            }
+            notes.push("model aliases resolve through ANTHROPIC_DEFAULT_*_MODEL in your own settings; the launcher sets none");
+            env_keys.extend(GLM_ENV.iter().map(|(k, _)| *k));
+            env_keys.push(GLM_TOKEN_VAR);
+            claude_argv(&plain, &mut notes)?
+        }
+        _ => claude_argv(r, &mut notes)?,
+    };
     Ok(
-        json!({"host": r.host, "role": r.role, "argv": argv, "notes": notes,
-        "host_loaded": false, "executed": false}),
+        json!({"host": r.host, "role": r.role, "name": r.name, "argv": argv,
+        "env_keys": env_keys, "notes": notes, "host_loaded": false, "executed": false}),
     )
 }
 
-/// Composes and, unless `dry_run`, replaces nothing: it spawns the host and waits.
+/// Composes and, unless `dry_run`, starts the host and waits for it to exit.
 pub fn launch(r: &SessionRequest, dry_run: bool) -> Result<Value, String> {
     let mut v = compose(r)?;
     if dry_run {
         return Ok(v);
     }
     let argv: Vec<String> = serde_json::from_value(v["argv"].clone()).map_err(|_| "argv")?;
-    let status = std::process::Command::new(&argv[0])
-        .args(&argv[1..])
+    let mut command = std::process::Command::new(&argv[0]);
+    command.args(&argv[1..]);
+    if r.host == "glm" {
+        // The token is inherited unchanged from the caller's environment.
+        command.envs(GLM_ENV);
+    }
+    let status = command
         .status()
         .map_err(|e| format!("cannot start {}: {e}", argv[0]))?;
     v["executed"] = json!(true);
