@@ -453,7 +453,12 @@ fn forge_read_rejects_bad_input_without_requests() {
 #[cfg(unix)]
 fn stalled_gh(dir: &std::path::Path) -> std::path::PathBuf {
     let path = dir.join("gh-stalled");
-    fs::write(&path, "#!/bin/sh\n# test stub: gh that hangs\nsleep 30\n").unwrap();
+    let pid_file = dir.join("sleep.pid");
+    let script = format!(
+        "#!/bin/sh\n# test stub: gh that hangs\nsleep 30 &\necho $! > '{}'\nwait\n",
+        pid_file.display()
+    );
+    fs::write(&path, script).unwrap();
     use std::os::unix::fs::PermissionsExt;
     fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
     path
@@ -475,7 +480,10 @@ fn transport_times_out_on_stalled_gh() {
     let (tx, rx) = std::sync::mpsc::channel();
     let started = Instant::now();
     std::thread::spawn(move || {
-        let t = GhTransport { bin };
+        let t = GhTransport {
+            bin,
+            timeout: Duration::from_secs(2),
+        };
         let _ = tx.send(t.send(&req));
     });
     // The stub sleeps 30s; the caller must get an answer long before that.
@@ -485,4 +493,27 @@ fn transport_times_out_on_stalled_gh() {
     let err = answer.expect_err("a stalled gh is not a response");
     assert!(started.elapsed() < Duration::from_secs(10));
     assert!(err.contains("timed out"), "{err}");
+
+    // The grandchild that held the pipes was ended with the group.
+    let pid = fs::read_to_string(tmp.path().join("sleep.pid")).unwrap();
+    let alive = Command::new("kill")
+        .args(["-0", pid.trim()])
+        .stderr(Stdio::null())
+        .status()
+        .unwrap()
+        .success();
+    assert!(!alive, "sleep grandchild {} still running", pid.trim());
+
+    // Through the adapter the timeout is the retryable `transport` kind.
+    let t = GhTransport {
+        bin: stalled_gh(tmp.path()).to_str().unwrap().to_string(),
+        timeout: Duration::from_millis(500),
+    };
+    let e = forge::read(&request("open"), None, &t, &FakeClock::at(1_794_000_000)).unwrap_err();
+    assert_eq!(e.kind, "transport");
+    assert!(
+        e.message.starts_with("gh transport: gh did not answer"),
+        "{}",
+        e.message
+    );
 }
