@@ -82,6 +82,11 @@ const RULES: &[(&str, Kind)] = &[
         "unsupported request schema_version",
         Kind::UnsupportedProtocolVersion,
     ),
+    // plan-admit (05-B #2002): the request's protocol_version is not 1.
+    (
+        "unsupported protocol_version",
+        Kind::UnsupportedProtocolVersion,
+    ),
     ("input exceeds 64 KiB", Kind::InputTooLarge),
     (
         "permission reference required",
@@ -169,6 +174,7 @@ mod tests {
     fn every_current_message_has_a_deliberate_kind() {
         use Kind::*;
         let cases = [
+            ("unsupported protocol_version; supported: 1", UnsupportedProtocolVersion),
             ("input exceeds 64 KiB", InputTooLarge),
             ("invalid typed JSON input", InvalidInput),
             ("stdin read failed", Io),
@@ -179,6 +185,11 @@ mod tests {
             ("target changed since plan; re-preview required", StalePlan),
             ("target changed during apply; temporary file discarded", StalePlan),
             ("partial apply: applied [a]; failed at b: x", Partial),
+            // The wrapper wins over the plan-admit version phrase it may quote.
+            (
+                "partial apply: applied [a]; failed at b: unsupported protocol_version; supported: 1",
+                Partial,
+            ),
             (
                 "partial apply: applied [AGENTS.md]; failed at .gitignore: target changed since plan",
                 Partial,
