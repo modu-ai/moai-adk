@@ -379,6 +379,33 @@
    "title": "[RC1][결함] agents-plan이 관리 구간이 삭제된 AGENTS.md를 unchanged로 판정",
    "reused": false,
    "created_by": "leader-found defect 2026-11-08 during AGENTS split"
+  },
+  "BUG-TEST-HELPER-BROKEN-PIPE": {
+   "number": 2024,
+   "id": 6269266326,
+   "node_id": "I_kwDOPw9rL88AAAABda1plg",
+   "url": "https://github.com/modu-ai/moai-adk/issues/2024",
+   "title": "[RC1][결함] tests/product_cli.rs cli() 헬퍼 BrokenPipe panic — rc-ci 첫 실행 실패",
+   "reused": false,
+   "created_by": "leader, rc-ci failure on PR #2021 2026-11-08"
+  },
+  "00-F": {
+   "number": 2028,
+   "id": 6269394895,
+   "node_id": "I_kwDOPw9rL88AAAABda9fzw",
+   "url": "https://github.com/modu-ai/moai-adk/issues/2028",
+   "title": "[RC1][공통 skill과 host] 00-F 개발 세션 론처 — moai -l|-a, moai cc|glm|codex -l|-a (허브 없이)",
+   "reused": false,
+   "created_by": "user instruction 2026-11-08 18:0x (launcher first, hub later)"
+  },
+  "INFRA-RUST-TOOLCHAIN-PIN": {
+   "number": 2029,
+   "id": 6269420970,
+   "node_id": "I_kwDOPw9rL88AAAABda_Fqg",
+   "url": "https://github.com/modu-ai/moai-adk/issues/2029",
+   "title": "[RC1][결함] 로컬 1.94.1 vs rc-ci 러너 1.99 Rust 툴체인 불일치 — rust-toolchain.toml 고정",
+   "reused": false,
+   "created_by": "leader, rc-ci clippy mismatch on PR #2027 (agent-2)"
   }
  },
  "links": [
@@ -644,6 +671,24 @@
    "tag": "EP-02>BUG-AGENTS-MISSING-BLOCK",
    "parent": 1977,
    "child": 2022,
+   "status": "linked"
+  },
+  {
+   "tag": "EP-02>BUG-TEST-HELPER-BROKEN-PIPE",
+   "parent": 1977,
+   "child": 2024,
+   "status": "linked"
+  },
+  {
+   "tag": "EP-03>00-F",
+   "parent": 1978,
+   "child": 2028,
+   "status": "linked"
+  },
+  {
+   "tag": "EP-09>INFRA-RUST-TOOLCHAIN-PIN",
+   "parent": 1984,
+   "child": 2029,
    "status": "linked"
   }
  ],
@@ -2637,7 +2682,7 @@
    "branch": "issue/1985-00-A",
    "base": "origin/v2026.11.0@a6c67ba2d",
    "claim": "lane posts claim comment (⑤); leader verifies read-side",
-   "status": "integrated: PR #2018 auto-merged cd6a94418 (agent-2 PASS bc22c6428 → leader moai/audit → auto-merge)",
+   "status": "integrated: PR #2018 auto-merged cd6a94418 (agent-2 PASS bc22c6428 → leader moai/audit → auto-merge); issue closed (completed) 2026-11-08",
    "worktree": ".moai-cli/worktrees/issue-1985-00-A"
   },
   {
@@ -2648,7 +2693,7 @@
    "branch": "issue/1986-00-B",
    "base": "origin/v2026.11.0@a6c67ba2d",
    "claim": "lane posts claim comment (⑤); leader verifies read-side",
-   "status": "integrated: PR #2017 merged 1a1529004 (user approval; leader merge)",
+   "status": "integrated: PR #2017 merged 1a1529004 (user approval; leader merge); issue closed (completed) 2026-11-08",
    "worktree": ".moai-cli/worktrees/issue-1986-00-B"
   },
   {
@@ -2660,7 +2705,7 @@
    "base": "origin/v2026.11.0@1a1529004",
    "worktree": ".moai-cli/worktrees/issue-1974-00-C",
    "claim": "lane posts claim comment (⑤); leader relays reports",
-   "status": "integrated: PR #2019 auto-merged 110a93775 (moai/audit status by leader after agent-2 PASS)"
+   "status": "integrated: PR #2019 auto-merged 110a93775 (moai/audit status by leader after agent-2 PASS); issue closed (completed) 2026-11-08"
   },
   {
    "at": "2026-11-08T08:37:19Z",
@@ -2670,7 +2715,7 @@
    "branch": "issue/2020-00-E",
    "base": "origin/v2026.11.0@110a93775",
    "worktree": ".moai-cli/worktrees/issue-2020-00-E",
-   "status": "dispatched"
+   "status": "integrated: PR #2021 auto-merged f094d29f8 (agent-2 PASS 7234accbb → leader moai/audit → auto-merge); rc-ci live; issue closed (completed) 2026-11-08"
   },
   {
    "at": "2026-11-08T08:40:14Z",
@@ -2680,7 +2725,7 @@
    "branch": "issue/1987-00-D",
    "base": "origin/v2026.11.0@cd6a94418",
    "worktree": ".moai-cli/worktrees/issue-1987-00-D",
-   "status": "dispatched"
+   "status": "AUDIT PASS c8ded4ec5 (relayed); PR #2027 behind after #2021 → update-branch + delta re-audit pending"
   },
   {
    "at": "2026-11-08T08:46:52Z",
@@ -2690,7 +2735,37 @@
    "branch": "issue/2022-bug-agents-missing-block",
    "base": "origin/v2026.11.0@cd6a94418",
    "worktree": ".moai-cli/worktrees/issue-2022-bug",
-   "status": "dispatched (leader implements; agent-2 audits)"
+   "status": "AUDIT PASS 0c0daeb6f (PR #2026); behind after #2021 → update-branch + delta re-audit pending; issue closed (completed) 2026-11-08"
+  },
+  {
+   "at": "2026-11-08T08:49:05Z",
+   "issue": 2024,
+   "key": "BUG-TEST-HELPER-BROKEN-PIPE",
+   "lane": "leader",
+   "branch": "issue/2024-bug-broken-pipe",
+   "base": "origin/v2026.11.0@cd6a94418",
+   "worktree": ".moai-cli/worktrees/issue-2024-bug-pipe",
+   "status": "integrated: PR #2025 auto-merged ac555ff6b (agent-2 PASS 67e95b6b3 → leader moai/audit → auto-merge); issue closed (completed) 2026-11-08"
+  },
+  {
+   "at": "2026-11-08T09:07:07Z",
+   "issue": 2028,
+   "key": "00-F",
+   "lane": "agent-3",
+   "branch": "issue/2028-00-F",
+   "base": "origin/v2026.11.0@f094d29f8",
+   "worktree": ".moai-cli/worktrees/issue-2028-00-F",
+   "status": "dispatched"
+  },
+  {
+   "at": "2026-11-08T09:10:45Z",
+   "issue": 2029,
+   "key": "INFRA-RUST-TOOLCHAIN-PIN",
+   "lane": "agent-1",
+   "branch": "issue/2029-toolchain-pin",
+   "base": "origin/v2026.11.0@ae5cea38b",
+   "worktree": ".moai-cli/worktrees/issue-2029-toolchain",
+   "status": "dispatched"
   }
  ],
  "design_update_r8": {
@@ -3072,6 +3147,94 @@
     "number": 2022,
     "status": "created",
     "body_sha256": "fb440fee01a5ec1b00bfa21700c1b681ef6530dab39ae4f378e88267d831ee13"
+   },
+   {
+    "key": "BUG-TEST-HELPER-BROKEN-PIPE",
+    "number": 2024,
+    "status": "created",
+    "body_sha256": "cad569b7fbafa43373a201744a6571e78ca894c20dbf3ccd3f2675f3704e487e"
+   },
+   {
+    "key": "BUG-AGENTS-MISSING-BLOCK",
+    "number": 2022,
+    "status": "updated (r2: reporting defect, not decision; agent-1 finding)",
+    "body_sha256": "0f47723aadd41ab69307f42c659f31509060fda6fa47765469dcaf58a4dd377b"
+   }
+  ]
+ },
+ "design_update_r17": {
+  "applied_at_utc": "2026-11-08T08:54:05Z",
+  "design_revision": "2026-11-08-r17",
+  "changes": "00-D r3: AC-4 *.schema.json glob, AC-5 request language en + trailing slash, session target dir binary path (agent-4)",
+  "results": [
+   {
+    "key": "00-D",
+    "number": 1987,
+    "status": "updated",
+    "body_sha256": "d2f9d2d021ff7be38ea636f70eee1635074f5783bd3632c9610935f51e93e035"
+   }
+  ]
+ },
+ "design_update_r18": {
+  "applied_at_utc": "2026-11-08T08:54:38Z",
+  "design_revision": "2026-11-08-r18",
+  "changes": "gitignore fixture risk note in 02-B/02-C/03-C/04-B (agent-2 #2023 audit)",
+  "results": [
+   {
+    "key": "02-B",
+    "number": 1992,
+    "status": "updated",
+    "body_sha256": "f7a540da273f49de96ea316050876943a7ee6526d55631a99bc4096a482957c3"
+   },
+   {
+    "key": "02-C",
+    "number": 1993,
+    "status": "updated",
+    "body_sha256": "4220f1eff9eaa6396c79b9c2ce322daa2d3dd7a1575f9faf4b4ac92dfc84e55d"
+   },
+   {
+    "key": "03-C",
+    "number": 1997,
+    "status": "updated",
+    "body_sha256": "4f8c815697508db05cd96d7b3deb1a20147b9ac729237f39aaaa73fa8a85cabe"
+   },
+   {
+    "key": "04-B",
+    "number": 1999,
+    "status": "updated",
+    "body_sha256": "535397a7f2c81863e0aff623e71831366ad370982e704fb660834096ef988e7d"
+   }
+  ]
+ },
+ "design_update_r19": {
+  "applied_at_utc": "2026-11-08T08:58:05Z",
+  "design_revision": "2026-11-08-r19",
+  "changes": "00-D r4: AC-4 schema files only + validator not_run until HOLD-00D-2; AC-5 jq excludes generation.json (agent-2 audit, agent-4)",
+  "results": [
+   {
+    "key": "00-D",
+    "number": 1987,
+    "status": "updated",
+    "body_sha256": "262a2e3d271cd68fc0e04b5096e18c92963a1952f5dfb3f3f19da0010cad9147"
+   }
+  ]
+ },
+ "design_update_r20": {
+  "applied_at_utc": "2026-11-08T09:07:07Z",
+  "design_revision": "2026-11-08-r20",
+  "changes": "00-F launcher issue created (user: launcher only, hub later; opus+advisor fable+skip-permissions default)",
+  "results": [
+   {
+    "key": "00-F",
+    "number": 2028,
+    "status": "created",
+    "body_sha256": "94be6649d4bdac52565eaaf2c0f005eed8537aa3c8dd2dc9a45d7f915d8035fd"
+   },
+   {
+    "key": "INFRA-RUST-TOOLCHAIN-PIN",
+    "number": 2029,
+    "status": "created",
+    "body_sha256": "af4653a3c58f3d5e1d0c8236b7f4b82729a6ba133e5c434d073ffde271ceec69"
    }
   ]
  }

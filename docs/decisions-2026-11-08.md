@@ -44,6 +44,9 @@
 | 17:3x | Go 세대 `.github` 제거·재구성 | 사용자 지시: untracked Go 세대 `.github` 23파일 제거(00-C AC-5가 moai-adk-go 템플릿과 23/23 동일 확인; sha256 기록은 리더 scratchpad), RC1 전용으로 재구성은 신규 Issue로 배차(workflows·PR 템플릿·labeler 선행 구현; 08-D·06-C는 그 위에 확장) | 신규 Issue, #2015 #2007 | 소유자 표 조정 |
 | 17:3x | AGENTS 역할 분리 | `AGENTS.md` = moai-adk 기본 워크플로·규칙(제품 템플릿 성격), `AGENTS.local.md` = moai-adk 로컬 개발 규칙(역할·lane loop·통합 정책·보존 경계·구현 지도·검사 명령) | AGENTS.md, AGENTS.local.md | 재생성은 agents-plan/apply |
 | 17:5x | `/goal` 조건 재설정 | 허브 양방향 통신 항목(다음 버전 보류)을 제외하고 RC1 레인 루프로 재설정: 열린 PR·진행 카드가 에이전틱 게이트로 모두 통합되고 레인이 다음 Issue를 받아 반복 중이며 리더가 리뷰·수리 배차를 journal·decisions에 기록 | 세션 goal | 평가기 미충족 반복 해소 |
+| 18:0x | 론처 우선(허브 보류 재확인) | `moai -l/-a`, `moai cc|glm|codex -l|-a` 론처만 구축; 세션 간 통신은 Claude Code 내장 크로스 세션 메시징만. Claude 기본: `opus` + `--advisor fable` + **`--dangerously-skip-permissions`(임시 기본, 추후 설정에서 선택)**. Issue 00-F로 배차 | 00-F | Codex `codex queue`는 존재하나 RC1 미사용 |
+| 18:1x | Rust 툴체인 고정(리더 RC1 임시) | rc-ci 러너 1.99 vs 로컬 1.94.1 불일치(PR #2027 clippy 실패)로 `rust-toolchain.toml`에 1.94.1 고정; 최신 stable 상향은 08-D | #2029 | agent-2 #2020 감사 예고 적중 |
+| 18:1x | Issue 닫기 기준 | PR merge + 독립 AUDIT PASS + AC 전부 passed(플랫폼 not_run은 명시)이면 리더가 완료 댓글과 함께 `completed`로 닫음 | #1986 #1974 #1985 #2020 #2022 #2024 | 의존성 해소를 위해 필요 |
 
 부분 결정 분리: P08은 claim 방식(⑤+①)만 결정, lease·heartbeat 수치 HOLD · P15는 ZCode 헤드리스 범위만 결정, 나머지 host 지원표 HOLD.
 

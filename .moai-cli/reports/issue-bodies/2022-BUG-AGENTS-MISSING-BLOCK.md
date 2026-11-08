@@ -15,17 +15,17 @@ evidence_status: not_run
 2. `echo '{"protocol_version":1,"language":"en","workflow_reference":"skills/moai/workflows/","local_file":"tracked"}' | moai-cli agents-plan .`
 3. 기대: 삭제를 감지해 `conflict`(detail: "managed block missing or removed")로 보고하거나, 명시 재채택 요청이 있을 때만 `append`. 실제: `AGENTS.md unchanged` — 삭제가 조용히 무시되고 apply도 `state: unchanged`.
 
-## 원인(코드 읽기)
-`src/agents.rs` `decide(baseline, current, desired)`가 `desired == baseline`이면 무조건 `KeepCurrent`를 반환한다. 블록이 없을 때 `current=None`이지만 렌더 텍스트가 baseline과 같으면 이 분기에 먼저 걸려 `section_plan`의 "missing block" 분기(`Decision::Conflict` + detail)에 도달하지 못한다. 기존 fixture는 "렌더 변경 없음 + 블록 존재" 경우만 다룬다.
+## 원인(코드 읽기, r2 정정 — agent-1 지적)
+`src/agents.rs` `decide(baseline, current, desired)`가 `desired == baseline`이면 `KeepCurrent`를 반환하므로, 블록이 삭제돼 `current=None`이어도 렌더 텍스트가 baseline과 같으면 `unchanged`가 된다. **이 동작은 의도된 것**이다: 기존 fixture `agents_user_edits_are_preserved_or_reported_as_conflict`(tests/product_cli.rs:433-440)가 "블록 삭제 + 템플릿 동일 → unchanged, apply 성공(사용자 삭제 보존)"을 단언한다(UPDATE 계약 "사용자 삭제 보존"). 결함은 **판정이 아니라 보고**다: 삭제 사실이 plan의 어디에도 나타나지 않아 운영자가 "관리 구간이 없다"는 것을 모른 채 지나간다(리더 실측 2026-11-08).
 
-## 수정 방향(이 Issue 범위)
-- `section_plan`: `present && block_digest.is_none() && baseline.is_some()` → `action: "conflict"`, detail `"managed block removed after baseline; user deletion preserved (re-adopt requires explicit request)"`. `decide()` 자체는 건드리지 않는다(01-B #1989가 apply.rs로 이관 예정 — 소유 Issue에 통지).
-- fixture 1개 추가: 블록 삭제 후 plan이 conflict, apply가 파일을 바꾸지 않음.
-- `docs/rust-product-path.md` AGENTS 절에 "삭제된 블록은 복원하지 않고 conflict로 보고" 한 줄.
+## 수정 방향(이 Issue 범위, r2)
+- action은 `unchanged` 그대로(삭제 보존·apply no-op 유지, `decide()` 불변). `section_plan`에서 `present && block_digest.is_none() && baseline.is_some()`이면 `detail: "managed block absent; user deletion preserved (re-adopt requires an explicit request)"`를 채우고, `AgentsPlan.warnings`에 같은 문구를 1건 추가한다.
+- 기존 fixture는 단언을 **확장**(unchanged 유지 + detail·warning 존재); 신규 fixture 불필요하면 생략.
+- `docs/rust-product-path.md` AGENTS 절에 "삭제된 블록은 복원하지 않으며 plan detail/warning으로 보고" 한 줄. 재채택 플래그는 HOLD(아래).
 
 ## 인수 기준
-- AC-BUG-1: 위 재현 시 `agents-plan` 출력 action == `conflict`, detail 포함 · 검증: `… cargo test --offline --locked --test product_cli agents_plan_reports_removed_block_as_conflict` · 결과: not_run
-- AC-BUG-2: 기존 15+ agents fixture 전부 통과(동작 보존) · 검증: `… cargo test --offline --locked` · 결과: not_run
+- AC-BUG-1: 위 재현 시 `agents-plan` 출력 action == `unchanged`이고 `files[].detail`과 `warnings[]`에 "managed block absent" 문구가 있으며 apply는 파일을 바꾸지 않는다 · 검증: `… cargo test --offline --locked --test product_cli agents_user_edits_are_preserved_or_reported_as_conflict`(단언 확장) · 결과: not_run
+- AC-BUG-2: 기존 agents fixture 전부 통과(위 단언 확장 외 무수정) · 검증: `… cargo test --offline --locked` · 결과: not_run
 - AC-BUG-3: 독립 AUDIT PASS → 에이전틱 게이트로 통합 · 결과: not_run
 
 ## 범위
