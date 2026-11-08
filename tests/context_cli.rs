@@ -246,6 +246,71 @@ fn budget_truncation_records_omitted() {
     assert_eq!(v["error"]["kind"], json!("invalid_input"));
 }
 
+/// Codex review #2057 (P1): a symlink inside the tree that points at an ignored file is
+/// blocked like the file itself; checking only the requested name let it through.
+#[test]
+fn symlink_to_an_ignored_file_is_excluded() {
+    let d = repo();
+    std::os::unix::fs::symlink("build/out.txt", d.path().join("alias.txt")).unwrap();
+    let b = bundle(
+        d.path(),
+        json!([{"path": "alias.txt", "reason": "x"}]),
+        json!({"max_items": 1}),
+    );
+    assert_eq!(b["items"], json!([]));
+    assert_eq!(b["omitted"][0]["cause"], json!("blocked_sensitive"));
+    assert_eq!(b["omitted"][0]["detail"], json!("ignored"));
+    assert!(
+        !b.to_string().contains("do-not-leak"),
+        "ignored bytes leaked"
+    );
+}
+
+/// Codex review #2057 (P2): moving a changed submodule to another commit changes the
+/// overlay digest, so a bundle taken before is no longer fresh.
+#[test]
+fn submodule_revision_is_part_of_the_overlay() {
+    let sub_src = TempDir::new().unwrap();
+    git(sub_src.path(), &["init", "-q", "-b", "main"]);
+    write(sub_src.path(), "lib.txt", "v1\n");
+    git(sub_src.path(), &["add", "."]);
+    git(sub_src.path(), &["commit", "-q", "-m", "v1"]);
+    let d = repo();
+    git(
+        d.path(),
+        &[
+            "-c",
+            "protocol.file.allow=always",
+            "submodule",
+            "add",
+            "-q",
+            sub_src.path().to_str().unwrap(),
+            "sub",
+        ],
+    );
+    git(d.path(), &["commit", "-q", "-m", "add sub"]);
+    let sub = d.path().join("sub");
+    let advance = |body: &str| {
+        write(&sub, "lib.txt", body);
+        git(&sub, &["commit", "-q", "-am", body.trim()]);
+        let (_, v) = run(&["snapshot-describe"], d.path(), None);
+        v["result"].clone()
+    };
+    let first = advance("v2\n");
+    let second = advance("v3\n");
+    assert_eq!(first["base_commit"], second["base_commit"]);
+    assert_eq!(first["dirty_files"][0]["path"], json!("sub"));
+    assert_ne!(
+        first["dirty_overlay_digest"], second["dirty_overlay_digest"],
+        "submodule moved but the overlay did not change"
+    );
+    // Uncommitted work inside the submodule cannot be digested: unknown, not falsely fresh.
+    write(&sub, "lib.txt", "uncommitted\n");
+    let (_, v) = run(&["snapshot-describe"], d.path(), None);
+    assert_eq!(v["result"]["base_status"], json!("unknown"));
+    assert_eq!(v["result"]["dirty_overlay_digest"], Value::Null);
+}
+
 /// CTX-TWO-WORKTREES
 #[test]
 fn worktrees_do_not_share_overlay() {

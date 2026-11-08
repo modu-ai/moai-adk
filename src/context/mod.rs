@@ -95,8 +95,10 @@ fn file_sha(path: &Path) -> Option<String> {
 }
 
 /// Tracked paths that differ from `HEAD`, with the current content digest of each (deleted
-/// files have none, a symlink is digested by its target text), and one digest over them all.
-fn overlay(top: &Path) -> Result<(String, Vec<Value>)> {
+/// files have none, a symlink is digested by its target text, a submodule by its checked-out
+/// commit), and one digest over them all. `Err` names what the digest cannot represent; the
+/// snapshot is then `unknown` rather than falsely stable.
+fn overlay(top: &Path) -> std::result::Result<(String, Vec<Value>), &'static str> {
     let raw = git_out(
         top,
         &[
@@ -131,6 +133,21 @@ fn overlay(top: &Path) -> Result<(String, Vec<Value>)> {
                     .ok()
                     .and_then(|t| t.to_str().map(|t| digest(t.as_bytes()))),
             ),
+            // A changed directory entry is a submodule (gitlink): its checked-out commit is
+            // the state. A submodule with uncommitted changes of its own cannot be digested.
+            Ok(m) if m.is_dir() => {
+                let head = git_line(&full, &["rev-parse", "--verify", "HEAD^{commit}"])
+                    .ok_or("a changed submodule has no readable HEAD")?;
+                let dirty = git_out(
+                    &full,
+                    &["status", "--porcelain=v1", "-z", "--untracked-files=no"],
+                )
+                .ok_or("a changed submodule cannot be inspected")?;
+                if !dirty.is_empty() {
+                    return Err("a submodule has uncommitted changes");
+                }
+                (b's', Some(format!("commit:{head}")))
+            }
             Ok(_) => (b'f', file_sha(&full)),
         };
         h.update((path.len() as u64).to_be_bytes());
@@ -156,10 +173,10 @@ pub fn snapshot(project: &Path) -> Result<Value> {
         &["rev-parse", "--verify", "--end-of-options", "HEAD^{commit}"],
     );
     let (status, reason, overlay_digest, files) = match (&top, &base) {
-        (Some(top), Some(_)) => {
-            let (d, f) = overlay(top)?;
-            ("ok", Value::Null, json!(d), json!(f))
-        }
+        (Some(top), Some(_)) => match overlay(top) {
+            Ok((d, f)) => ("ok", Value::Null, json!(d), json!(f)),
+            Err(why) => ("unknown", json!(why), Value::Null, Value::Null),
+        },
         (None, _) => (
             "unknown",
             json!("not inside a git work tree"),
@@ -247,22 +264,29 @@ fn resolve(root: &Path, req: &ItemRequest, ignored: &mut Option<bool>) -> Resolv
         return Resolved::Unreadable("missing");
     };
     // A symlink may lead out of the tree or onto a secret under another name.
-    match full.strip_prefix(root) {
+    let inside = match full.strip_prefix(root) {
         Err(_) => return Resolved::Blocked("outside_repository"),
         Ok(inside) if named_secret(inside) => return Resolved::Blocked("secret_pattern"),
-        Ok(_) => {}
-    }
-    let check = git(root)
-        .args(["check-ignore", "-q", "--", &req.path])
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()
-        .ok()
-        .and_then(|s| s.code());
-    *ignored = match check {
-        Some(0) => return Resolved::Blocked("ignored"),
-        Some(1) => Some(false),
-        _ => None,
+        Ok(inside) => inside.to_string_lossy().into_owned(),
+    };
+    // Both the requested name and the file it resolves to: an alias of an ignored file is
+    // as ignored as the file (Codex review #2057).
+    let check = |path: &str| {
+        git(root)
+            .args(["check-ignore", "-q", "--", path])
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .ok()
+            .and_then(|s| s.code())
+    };
+    let codes = [check(&req.path), check(&inside)];
+    *ignored = if codes.contains(&Some(0)) {
+        return Resolved::Blocked("ignored");
+    } else if codes.iter().all(|c| *c == Some(1)) {
+        Some(false)
+    } else {
+        None
     };
     match fs::metadata(&full) {
         Ok(m) if !m.is_file() => return Resolved::Unreadable("not_a_file"),
