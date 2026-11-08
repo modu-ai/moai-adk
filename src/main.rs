@@ -282,7 +282,7 @@ fn launch(
 
 /// Internal operations (01-C #1990): subcommand word and operation name. The launchers are
 /// developer tools and stay outside the envelope contract.
-const OPERATIONS: [(&str, &str); 15] = [
+const OPERATIONS: [(&str, &str); 16] = [
     ("package-inspect", "package.inspect"),
     ("project-plan", "project.plan"),
     ("project-apply", "project.apply"),
