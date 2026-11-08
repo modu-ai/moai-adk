@@ -32,6 +32,7 @@ One row per internal operation: the name a skill adapter or a later MCP tool ref
 | `baseline.inventory` | `baseline-inventory PROJECT` | `moai_cli::baseline::inventory` | — | `--go-baseline-commit`, `--go-repo` | `schema_version`, `collected_at`, `baseline`, `inventory`, `claude_diff`, `checksums` | no |
 | `identity` | `identity PATH` | `moai_cli::identity::identity` | — | — | `identity_status`, `reason`, `workspace_kind`, `clone_anchor`, `workspace_git_dir`, `work_tree`, `clone_id`, `workspace_id`, `id_derivation`, `project_id`, `profile_status`, `project_state_root`, `home_state_root`, `writes` (see below) | no |
 | `claude.doctor` | `claude-doctor PROJECT` | `moai_cli::claude::doctor` | — | — | `agents_md_status`, `reason`, `load_path`, `claude_version`, `minimum_version`, `agents_md_files`, `suppressing_files`, `importing_files`, `instruction_files`, `instruction_files_source`, `managed_settings`, `suggestions`, `basis`, `host_loaded`, `writes` | no |
+| `plan.admit` (temporary name, fixed after P06) | `plan-admit PROJECT` | `moai_cli::plan::admit` | `AdmissionRequest` | — | `decision`, `reasons`, `expected_revision`, `current_revision`, `plan`, `pinned` (see below) | no |
 
 Only the two `*.apply` operations mutate files, and both refuse to run without the confirmed `plan_digest` and a non-placeholder permission reference; whatever transport carries them later keeps that boundary (REQ-01C-03). The launchers (`-l`, `-a`, `cc|glm|codex`, `session`; see below) are developer tools, not internal operations, and stay out of this table. Not implemented yet: `apply.recover`.
 
@@ -42,7 +43,12 @@ Every internal operation prints exactly one JSON object on stdout:
 - success: `{"protocol_version": 1, "operation": "<name>", "ok": true, "result": {...}}`
 - failure: `{"protocol_version": 1, "operation": "<name>", "ok": false, "error": {"kind", "message", "retryable", "next_actions"?}}`
 
-stderr carries one human line: the same `message` for an operation failure, clap's first line for a command-line error. Exit codes stay 0 (ok), 1 (failure) and 2 (command-line error, `kind: usage`); callers tell failures apart by `kind`, from the 00-D list: `usage`, `invalid_input`, `input_too_large`, `unsupported_protocol_version`, `stale_plan`, `permission_reference_missing`, `not_found`, `conflict`, `partial`, `io`, `internal`, plus `git_failed` (Issue #2033: `identity` found git but git failed for a reason other than "not a repository", for example a `safe.directory` ownership refusal; not retryable). `retryable` is true only for `io`, the one kind where resending the unchanged request can succeed. `next_actions` appears only on `stale_plan` and `partial` from an `*.apply` and names the matching `*.plan`. A message no rule recognises is `internal`, never a guessed kind. The envelope message for a command-line error names no argument value; stderr keeps clap's line for people.
+stderr carries one human line: the same `message` for an operation failure, clap's first line for a command-line error. Exit codes stay 0 (ok), 1 (failure) and 2 (command-line error, `kind: usage`). Callers tell failures apart by `kind`, 14 in all:
+- the 00-D list: `usage`, `invalid_input`, `input_too_large`, `unsupported_protocol_version`, `stale_plan`, `permission_reference_missing`, `not_found`, `conflict`, `partial`, `io`, `internal`;
+- `git_failed` (Issue #2033): `identity` found git, but git failed for a reason other than "not a repository", for example a `safe.directory` ownership refusal. Not retryable.
+- `blocked` and `transport` (07-A #2008, `forge.read`; see the GitHub TODO reader section). These additions follow #1990 HOLD-C2 / REQ-01C-02 (r27).
+
+`retryable` is true only for `io` and `transport`, the kinds where resending the unchanged request can succeed. `next_actions` appears only on `stale_plan` and `partial` from an `*.apply`, and names the matching `*.plan`. A message no rule recognises is `internal`, never a guessed kind. The envelope message for a command-line error names no argument value; stderr keeps clap's line for people.
 
 Not enveloped: `--help` and `--version`, the launchers, and command lines whose first word names no internal operation (clap's own output and exit 2), because no operation can be attributed to them. There is no `request_id`: the decided envelope has none. The input types (`Profile`, `Plan`, `AgentsRequest`, `AgentsPlan`) are unchanged, so a caller passes an envelope's `result`, not the envelope, to the matching `*.apply`.
 
@@ -119,6 +125,54 @@ The manifest follows the design template (`schema_version` 1, `generator_version
 
 Known gaps: the provisional Python adapter has no migration for projects installed under the old `.moai/` receipt path; the `project-agents` template fields verified stack, verification commands, target users and success criteria are not rendered yet (the profile has no such fields); when `AGENTS.md` is absent the generator writes `# <project_id>` outside the block, which is user-owned from then on; hard-link publishing is untested on filesystems without hard links; no `<state_root>` per-file apply receipt (a partial apply is reported on stderr only); the ignored receipt path is undecided in the design; per-file plan values are operation names (`create`, `append`, `merge`, `unchanged`, `conflict`) rather than the design's `proposed/applied/not_required/blocked/unknown`; an out-of-range `protocol_version` is still reported through the generic stale-plan or invalid-request message, so it surfaces as `stale_plan` or `invalid_input` rather than `unsupported_protocol_version`; the error `kind` is derived from the existing message text by an ordered table (`src/contract.rs`), not from typed errors at the source; hard links are not rejected; concurrent writers are not excluded beyond hash re-checks.
 
+## GitHub TODO reader (`forge-read`, 07-A #2008)
+
+`moai-cli forge-read PROJECT` takes `{"schema_version":1,"owner","repo","state":"open|closed|all","include_comments":true,"config":{…}}` on stdin (unknown keys rejected) and is an internal operation (`forge.read`) under the Output envelope rules above: `main` wraps the result with `contract::success`, a failure becomes `contract::failure` with the kind `contract::classify` derives from the message, exit 1, and stderr carries the same message.
+
+Error kinds:
+- From the 00-D vocabulary: `invalid_input`, `input_too_large`, `unsupported_protocol_version` (request `schema_version`), `not_found` (404 or a missing project directory), `io` (poll state) and `internal`.
+- Added to `contract::Kind` by this adapter (#1990 HOLD-C2 / REQ-01C-02 (r27) allows additions when they are recorded):
+  - `blocked`: authentication failed (401), access denied (403), or a rate limit outlived the retry budget. In the CLI envelope `blocked` is always `retryable: false`: resending the same request at once cannot succeed, because it needs new credentials, a permission change, or waiting until the reset. Only the library value `ForgeError.retryable` is `true` for the rate-limit case, so a library caller knows waiting will help. That value is not in the envelope.
+  - `transport`: gh is missing, gave no HTTP response, or the response had an unexpected status. It is `retryable: true`.
+- Every forge message carries its kind's phrase (`forge blocked: `, `gh transport: `, …). The unit test `every_error_kind_matches_the_contract_classifier` checks that `ForgeError::kind` and `classify(message)` agree, and the contract table test lists the forge messages.
+
+What one run does:
+- It sends GET requests only, one at a time: the repository (for `repository_id`), then the Issue list, then the Issue comment list (`sort=updated&direction=asc&per_page=100`).
+- Every page after the first is the `Link: rel="next"` URL sent byte for byte; the client never builds page numbers.
+- Every URL already seen is re-sent with `If-None-Match`. A 304 is answered from the cached projection, and `cache_hit` is true when every page came back 304.
+- The next `since` cursor is the newest `updated_at` read minus `overlap_s`. It comes from the data rather than the clock, so a repository with no changes is asked the same URL again and answers 304. Items repeated by the overlap are deduplicated by id, keeping the newest copy.
+- Pull requests in the Issue list are kept with `kind: pull_request`. Comments keep only id, node_id, issue number and `updated_at` — no body, no login.
+
+Each item carries `ref = (provider, host, project{owner, repo, repository_id}, issue{id, node_id, number}, updated_at, etag)`. Identity is `(provider, host, repository_id, issue.id)` (`forge::identity`): names are display data and `number` is never a key.
+
+Retries follow GitHub's headers:
+- `retry-after` first.
+- Otherwise `x-ratelimit-remaining: 0` waits until `x-ratelimit-reset`.
+- Any other 403/429 that is a rate limit waits `60 s << attempt`.
+- After `max_retries` waits the result is `blocked`: `retryable: false` in the envelope, `ForgeError.retryable == true` in the library. 401 and other 403s are `blocked` at once, with `retryable: false` in both.
+
+The config is visible in every result:
+- `overlap_s` 60 and `max_retries` 3 are interim values (leader, 2026-11-08).
+- `poll_interval_s` is unmeasured (P11) and has no default; `x-poll-interval` wins when present (`next_poll_after_s`).
+- `max_pages` 50 is a safety bound.
+
+Poll state is `PROJECT/.moai-cli/forge/poll-state.json`, written as a temporary file plus rename. Symlinked or non-directory state folders are refused, nothing is written under `.moai/`, and nothing is written when the run fails. A state file for another repository is ignored and replaced on the next success.
+
+Transport is `gh api -X GET -i <URL>` (RC1 interim decision: no new crate; the same path as the 00-B collector). The token stays in gh's keyring or the caller's `GH_TOKEN`; this program never reads it, and token-shaped text is redacted from any gh stderr it surfaces. gh exits 1 on 304 and on 4xx while still printing the status line and headers, so the parsed status line decides, not the exit code (observed with gh 2.92.0 on 2026-11-08). `MOAI_FORGE_GH_BIN` swaps the gh executable and exists for tests only. Risk: whoever sets it chooses the program that runs, so it must never be set on a product path. It is accepted only as an absolute path to an existing file; anything else is `invalid_input`, so a bare name cannot resolve to another program through PATH.
+
+`forge::write::Writer` holds the edit-preserving write helpers for 07-B/07-C; it has no CLI command here.
+- Labels change only through `POST …/labels` (add) and `DELETE …/labels/{name}` (remove one). Assignees change only through `POST`/`DELETE …/assignees`. There is never a PATCH or PUT of a whole set.
+- Each write re-reads the issue first and returns `conflict` without sending anything when `updated_at` or the body digest differs from the caller's last read. GitHub does not support conditional requests on unsafe methods, so this re-read is the guard.
+- Writes are kept at least one second apart.
+
+Tests (`tests/forge_cli.rs`) replay synthetic fixtures from `tests/fixtures/forge/` with an injected clock, or point the CLI at a stub gh. They use no network and never sleep.
+
+Not verified here:
+- write helpers against the live API;
+- comment pagination and 304 on a busy live repository;
+- GitLab (`iid`, "on or after" `updated_after`, keyset pagination) — the reference schema leaves room for it but nothing is implemented;
+- whether `since` should move from the Issue list to `updated` sort plus local filtering for very large repositories.
+
 ## Requirement contract: GEARS and legacy EARS (05-A #2001)
 
 `moai_cli::spec` is a library API only; no subcommand exposes it yet (its name waits for the 01-C output contract). Tests: `tests/spec_contract.rs` with fixtures under `tests/fixtures/spec/`.
@@ -130,6 +184,16 @@ Known gaps: the provisional Python adapter has no migration for projects install
 - Input text over 64 KiB, control characters other than line breaks and tabs, secret-shaped strings (the profile `portable()` list, with `sk-` counted only at the start of a word) and personal absolute paths (`/Users/`, `/home/`, `~/`, `C:\`) are refused without echoing values. Repository-relative paths, other paths and `:` are allowed, because they appear in requirement text normally (REQ-05A-08 as redefined in #2001 r26).
 
 Known gaps: only English GEARS keywords and `shall` are recognized; commas inside a clause rely on the next segment starting with a keyword; EARS pattern identification is word-based and does not prove the sentence is well formed; the importer was checked against a small self-made corpus, not the full legacy SPEC set; 05-A output is not validated against a 00-D JSON Schema, because 00-D defines no requirement schema and the validator is HOLD-00D-2.
+
+## PLAN and task DAG admission (05-B #2002)
+
+`moai_cli::plan` builds the plan for an approved 05-A snapshot and decides RUN admission; `plan-admit PROJECT` (a temporary name until P06) reads an `AdmissionRequest` on stdin (`protocol_version`, `spec`, `tasks`, `approval`, `expected_revision`, `capabilities`), reads the project's `git rev-parse --verify --end-of-options HEAD^{commit}` with an argv array, and writes nothing. A `ready`, `stale` or `blocked` decision is a successful result (`ok: true`, `result.decision`); the failure envelope is for malformed input, an unsupported `protocol_version` (`kind: unsupported_protocol_version`) or a repository that cannot be read. Tests: `tests/plan_admission.rs` with fixtures under `tests/fixtures/plan/`.
+
+- `build_plan(spec, tasks, expected_revision)` is pure. The order is Kahn's algorithm with ties broken by task id, so the input order of tasks does not matter; on a cycle the order is empty and `cycles` lists the strongly connected components (Tarjan), so a task that only depends on a cycle is not reported as part of it (leader decision 2026-11-08 on the HOLD). `structure` fails on duplicate task ids and on `depends_on` or `verifier_refs` entries that name no task or criterion. A task is `blocked` with `verifier-missing`, plus a suggested preceding task, when it has no verifier reference or a referenced criterion's verification is not one of `command`, `test`, `property`, `manual-review` with a non-empty selector. Two tasks whose write paths overlap (equal, or one a directory prefix of the other, after removing `./` and a trailing `/`) with no dependency path between them are listed in `parallel_conflicts`; that is a warning about running them in parallel, not a refusal. This check is a private, temporary implementation: the write-scope interface belongs to 06-C #2007. `execution` is always `not_run`.
+- `plan_digest` is the 05-A canonical form (`SortedKeys`, HOLD with 05-A) over the snapshot reference and digest, the expected revision and the tasks sorted by id.
+- `admit(request, current_revision)` re-reads what the approval and the pin rest on. `stale`: the snapshot digest no longer matches its content, the approval names another snapshot reference or digest (an approval of revision 1 is not reused for revision 2), or the repository's commit differs from `expected_revision`. `blocked`: the spec is not approved, the approval is revoked or does not allow `run`, a cycle, a structure failure, a missing verifier, or a task bound to a host outside `capabilities`. Only `ready` returns `pinned`, one `{spec_ref, plan_digest, task_id, expected_revision, scope, approval_ref}` per task in order, for 05-C. The approval record names what was approved; it never grants host permissions, and its approver stays opaque (owner and epoch belong to 06-A).
+
+Known gaps: the expected revision is a commit id, so uncommitted changes are not seen (the tree-id alternative and a porcelain-v2 overlay are not implemented); write-path overlap is string-based and sees neither symlinks nor case-insensitive filesystems; approval expiry is not modelled; parallelism limits from host capabilities are not computed; the plan is not stored anywhere (where it would live is P09, owned by 01-B #1989).
 
 ## Common skill package skeleton
 

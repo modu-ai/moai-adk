@@ -109,12 +109,22 @@ enum Command {
         #[arg(long)]
         go_repo: Option<PathBuf>,
     },
+    /// Read GitHub Issues and comments as TODO (GET only; typed JSON request on stdin,
+    /// envelope on stdout). Poll state: `<PROJECT>/.moai-cli/forge/poll-state.json`.
+    ForgeRead {
+        project: PathBuf,
+    },
     /// Read-only clone/workspace identity and state roots of a path (typed JSON on stdout).
     Identity {
         path: PathBuf,
     },
     /// Read-only Claude Code check: whether a session started in PROJECT reads AGENTS.md.
     ClaudeDoctor {
+        project: PathBuf,
+    },
+    /// Temporary (05-B #2002; the name is fixed after P06): RUN admission of an approved plan.
+    /// Typed request on stdin; reads the project's `HEAD^{commit}` with git, writes nothing.
+    PlanAdmit {
         project: PathBuf,
     },
     /// Claude Code session launcher: `cc -l|-a`.
@@ -205,7 +215,7 @@ fn launch(
 
 /// Internal operations (01-C #1990): subcommand word and operation name. The launchers are
 /// developer tools and stay outside the envelope contract.
-const OPERATIONS: [(&str, &str); 9] = [
+const OPERATIONS: [(&str, &str); 11] = [
     ("package-inspect", "package.inspect"),
     ("project-plan", "project.plan"),
     ("project-apply", "project.apply"),
@@ -214,6 +224,8 @@ const OPERATIONS: [(&str, &str); 9] = [
     ("agents-apply", "agents.apply"),
     ("baseline-inventory", "baseline.inventory"),
     ("identity", "identity"),
+    ("forge-read", "forge.read"),
+    ("plan-admit", "plan.admit"),
     ("claude-doctor", "claude.doctor"),
 ];
 fn operation_of(word: &str) -> Option<&'static str> {
@@ -313,6 +325,12 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             &plan_digest,
             &permission_reference,
         ),
+        Command::ForgeRead { project } => moai_cli::forge::forge_read_cli(
+            &project,
+            input::<moai_cli::forge::ReadRequest>()?,
+            &moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
+        ),
         Command::BaselineInventory {
             project,
             go_baseline_commit,
@@ -324,6 +342,15 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
         ),
         Command::Identity { path } => moai_cli::identity::identity(&path),
         Command::ClaudeDoctor { project } => moai_cli::claude::doctor(&project),
+        Command::PlanAdmit { project } => {
+            let request = input::<moai_cli::plan::AdmissionRequest>()?;
+            if request.protocol_version != contract::PROTOCOL_VERSION {
+                return Err("unsupported protocol_version; supported: 1".into());
+            }
+            let current = moai_cli::plan::current_revision(&project)?;
+            serde_json::to_value(moai_cli::plan::admit(&request, &current))
+                .map_err(|_| "encode failed".into())
+        }
         _ => unreachable!("launchers run through run_launcher"),
     }
 }

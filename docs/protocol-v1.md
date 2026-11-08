@@ -4,7 +4,14 @@
 
 코드(`src/`)는 바꾸지 않았다. 구현 계획 6단계(Rust 오류 타입·exit 매핑·version 검사)는 선택지가 정해진 뒤에 한다.
 
-> **갱신(01-C #1990, 2026-11-08 사용자 결정)**: HOLD-00D-1·3·4가 결정되어 01-C가 구현했다. 모든 내부 operation은 stdout에 envelope 하나를 낸다. 성공은 `{protocol_version, operation, ok: true, result}`, 실패는 `{protocol_version, operation, ok: false, error{kind, message, retryable, next_actions?}}`이다. exit는 0/1/2를 유지하고, 실패 종류는 이 문서의 `kind` 11종에 `git_failed`(Issue #2033, `identity`에서 git이 저장소 밖이 아닌 다른 이유로 실패, 재시도 불가)를 더한 12종으로 구분한다. 고른 envelope에는 상태 필드가 없으므로 아래 envelope 후보 A·B(`status`/`domain_status`) 어느 쪽과도 같지 않다. 실패 쪽 모양은 오류 후보 B와 같다. 런처(`-l`, `-a`, `cc|glm|codex`, `session`)는 대상이 아니다. 아래 `현행 계약` 절의 fixture는 이 변경에 맞춰 다시 기록했다. 세부 규칙은 `docs/rust-product-path.md`의 `Output envelope` 절에 있다.
+> **갱신(01-C #1990, 2026-11-08 사용자 결정)**: HOLD-00D-1·3·4가 결정되어 01-C가 구현했다. 모든 내부 operation은 stdout에 envelope 하나를 낸다. 성공은 `{protocol_version, operation, ok: true, result}`, 실패는 `{protocol_version, operation, ok: false, error{kind, message, retryable, next_actions?}}`이다. exit는 0/1/2를 유지하고, 실패 종류는 `kind` 14종으로 구분한다. 이 문서의 11종에 다음 세 가지를 더한 것이다.
+> - `git_failed`(Issue #2033): `identity`에서 git이 "저장소 밖"이 아닌 다른 이유로 실패한 경우. 재시도 불가.
+> - `blocked`(07-A #2008, `forge.read`): 인증 실패(401), 권한 거부(403), 또는 재시도 예산을 넘긴 rate limit. 재시도 불가.
+> - `transport`(07-A #2008, `forge.read`): gh가 없거나, HTTP 응답이 없거나, 예상하지 못한 상태 코드. 재시도 가능.
+>
+> 추가는 #1990 HOLD-C2 / REQ-01C-02(r27)의 "필요 시 추가는 docs에 기록" 조항을 따랐고, 기존 11종의 의미는 바꾸지 않았다.
+>
+> 고른 envelope에는 상태 필드가 없으므로 아래 envelope 후보 A·B(`status`/`domain_status`) 어느 쪽과도 같지 않다. 실패 쪽 모양은 오류 후보 B와 같다. 런처(`-l`, `-a`, `cc|glm|codex`, `session`)는 대상이 아니다. 아래 `현행 계약` 절의 fixture는 이 변경에 맞춰 다시 기록했다. 세부 규칙은 `docs/rust-product-path.md`의 `Output envelope` 절에 있다.
 
 ## HOLD 현황
 
@@ -41,7 +48,7 @@
 | REQ-00D-01 성공 envelope | 01-C 이후 내부 operation은 envelope 안 `result`로 출력. 런처(18)는 envelope 없음 | 06, 09, 11, 13, 16, 17, 18, 21 |
 | REQ-00D-02 typed 오류와 kind별 exit | 01-C 이후 stdout 실패 envelope의 `error.kind`. exit는 kind별이 아니라 0/1/2(결정 A). 첫 낱말이 operation이 아닌 사용 오류(01)와 런처 오류(19)는 기존 평문 | 01~05, 07, 08, 12, 14, 15, 19, 20 |
 | REQ-00D-03 미지 필드 거부 | 거부는 하지만 malformed JSON과 같은 메시지(`invalid typed JSON input`) | 03, 04 |
-| REQ-00D-04 지원 밖 protocol_version | 전용 오류 없음. project-apply는 `stale or altered plan`, agents-plan은 `invalid agents request`로 나온다 | 07, 15 |
+| REQ-00D-04 지원 밖 protocol_version | project-apply는 `stale or altered plan`, agents-plan은 `invalid agents request`로 나온다. 05-B #2002의 `plan-admit`만 전용 메시지 `unsupported protocol_version; supported: 1`을 내고, `contract::classify` 규칙으로 `kind: unsupported_protocol_version`이 된다(규칙과 단위 시험은 `src/contract.rs`) | 07, 15 |
 | REQ-00D-09 digest 재현성 | plan digest가 절대 경로에 묶인다 | 06, 16 |
 | REQ-00D-11 값 echo 금지 | moai-cli가 직접 내는 메시지에는 입력 값이 없다(`effort must be one of …`는 허용값 목록). 다만 clap 사용 오류는 입력한 하위 명령 이름을 그대로 되돌려 준다(`unrecognized subcommand 'no-such-command'`) | 01, 19 |
 

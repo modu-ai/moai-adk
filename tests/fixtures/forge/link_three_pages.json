@@ -1,0 +1,27 @@
+{
+  "description": "Synthetic, secret-free. Three pages whose Link URLs use a cursor the client could not build itself; the client must send them byte for byte.",
+  "exchanges": [
+    {
+      "request": {"method": "GET", "url": "https://api.github.com/repos/acme/widgets"},
+      "response": {"status": 200, "headers": {"etag": "\"repo-1\""}, "body": {"id": 101, "full_name": "acme/widgets"}}
+    },
+    {
+      "request": {"method": "GET", "url": "https://api.github.com/repos/acme/widgets/issues?state=all&sort=updated&direction=asc&per_page=100"},
+      "response": {"status": 200, "headers": {"etag": "\"p1\"", "link": "<https://api.github.com/repositories/101/issues?state=all&sort=updated&direction=asc&per_page=100&after=Y3Vyc29yOjE%3D&page=2>; rel=\"next\", <https://api.github.com/repositories/101/issues?state=all&page=3>; rel=\"last\""}, "body": [
+        {"id": 7001, "node_id": "I_7001", "number": 7, "title": "one", "state": "open", "state_reason": null, "labels": [], "updated_at": "2026-11-01T00:00:00Z"}
+      ]}
+    },
+    {
+      "request": {"method": "GET", "url": "https://api.github.com/repositories/101/issues?state=all&sort=updated&direction=asc&per_page=100&after=Y3Vyc29yOjE%3D&page=2"},
+      "response": {"status": 200, "headers": {"etag": "\"p2\"", "link": "<https://api.github.com/repositories/101/issues?state=all&page=1>; rel=\"prev\", <https://api.github.com/repositories/101/issues?state=all&sort=updated&direction=asc&per_page=100&after=Y3Vyc29yOjI%3D&page=3>; rel=\"next\""}, "body": [
+        {"id": 8001, "node_id": "PR_8001", "number": 8, "title": "two", "state": "closed", "state_reason": null, "labels": [], "updated_at": "2026-11-02T00:00:00Z", "pull_request": {"url": "https://api.github.com/repos/acme/widgets/pulls/8"}}
+      ]}
+    },
+    {
+      "request": {"method": "GET", "url": "https://api.github.com/repositories/101/issues?state=all&sort=updated&direction=asc&per_page=100&after=Y3Vyc29yOjI%3D&page=3"},
+      "response": {"status": 200, "headers": {"etag": "\"p3\""}, "body": [
+        {"id": 9001, "node_id": "I_9001", "number": 9, "title": "three", "state": "closed", "state_reason": "completed", "labels": [{"name": "type:fix"}], "updated_at": "2026-11-03T00:00:00Z"}
+      ]}
+    }
+  ]
+}

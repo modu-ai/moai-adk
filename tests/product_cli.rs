@@ -1762,7 +1762,7 @@ fn envelope_fields_and_error_codes() {
         "baseline-inventory",
         "identity",
     ];
-    const KINDS: [&str; 12] = [
+    const KINDS: [&str; 14] = [
         "usage",
         "invalid_input",
         "input_too_large",
@@ -1775,6 +1775,8 @@ fn envelope_fields_and_error_codes() {
         "io",
         "internal",
         "git_failed",
+        "blocked",
+        "transport",
     ];
     let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(PROTOCOL_FIXTURES);
     let mut seen = (0, 0, 0);
