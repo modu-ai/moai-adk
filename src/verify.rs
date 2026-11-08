@@ -63,6 +63,9 @@ pub struct CheckRun {
     /// Sums of the `test result:` lines, when the output has any.
     pub tests_passed: Option<u64>,
     pub tests_failed: Option<u64>,
+    /// False when stdout or stderr could not be read within the grace period after the command
+    /// ended; their digests are null then. None when nothing was spawned.
+    pub output_complete: Option<bool>,
 }
 
 /// Splits a snapshot command into argv. No shell: a leading `VAR=value`, an option before the
@@ -177,11 +180,33 @@ pub fn not_run(command_ref: usize, command: &str) -> CheckRun {
         test_filters: Vec::new(),
         tests_passed: None,
         tests_failed: None,
+        output_complete: None,
     }
 }
 
-// @MX:WARN: [AUTO] spawns a child process and two reader threads; the child is killed on timeout
-// @MX:REASON: pipes must be drained while waiting, or a chatty child blocks and looks like a hang
+/// How long the output readers may take after the command ended (or was ended).
+const OUTPUT_GRACE: Duration = Duration::from_secs(2);
+
+/// Ends every process left in the command's process group (unix: `kill -KILL -- -<pgid>`, as
+/// argv). An empty group makes `kill` fail, which is fine. Without process groups, nothing.
+fn end_group(pid: u32) {
+    #[cfg(unix)]
+    {
+        let _ = Command::new("kill")
+            .args(["-KILL", "--", &format!("-{pid}")])
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status();
+    }
+    #[cfg(not(unix))]
+    let _ = pid;
+}
+
+// @MX:WARN: [AUTO] spawns a process group and two reader threads; the group is killed when the
+// command ends or times out, and the readers are waited for at most OUTPUT_GRACE
+// @MX:REASON: a grandchild holding the pipes kept an unbounded join waiting past the timeout
+// (agent-2 FAIL on 5413e0221)
 /// Runs one command in `dir` with the inherited environment and returns its record. A command
 /// that does not parse is recorded as an environment failure without spawning anything.
 pub fn run_check(dir: &Path, command_ref: usize, command: &str, timeout: Duration) -> CheckRun {
@@ -200,13 +225,16 @@ pub fn run_check(dir: &Path, command_ref: usize, command: &str, timeout: Duratio
     rec.argv = argv.clone();
     let started = Instant::now();
     rec.started_unix_ms = Some(now_ms());
-    let spawned = Command::new(&argv[0])
-        .args(&argv[1..])
+    let mut cmd = Command::new(&argv[0]);
+    cmd.args(&argv[1..])
         .current_dir(dir)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn();
+        .stderr(Stdio::piped());
+    // Its own process group, so everything the command starts can be ended with it.
+    #[cfg(unix)]
+    std::os::unix::process::CommandExt::process_group(&mut cmd, 0);
+    let spawned = cmd.spawn();
     let mut child = match spawned {
         Ok(c) => c,
         Err(e) => {
@@ -224,14 +252,17 @@ pub fn run_check(dir: &Path, command_ref: usize, command: &str, timeout: Duratio
             return rec;
         }
     };
+    // Readers hand their bytes over a channel, so the wait for them can be bounded.
     let drain = |pipe: Option<Box<dyn Read + Send>>| {
+        let (tx, rx) = std::sync::mpsc::channel();
         std::thread::spawn(move || {
             let mut buf = Vec::new();
             if let Some(mut p) = pipe {
                 let _ = p.read_to_end(&mut buf);
             }
-            buf
-        })
+            let _ = tx.send(buf);
+        });
+        rx
     };
     let out = drain(
         child
@@ -258,13 +289,17 @@ pub fn run_check(dir: &Path, command_ref: usize, command: &str, timeout: Duratio
             Err(_) => break None,
         }
     };
-    let stdout = out.join().unwrap_or_default();
-    let stderr = err.join().unwrap_or_default();
+    // Whatever the command left running (background children holding the pipes) ends with it.
+    end_group(child.id());
+    let stdout = out.recv_timeout(OUTPUT_GRACE).ok();
+    let stderr = err.recv_timeout(OUTPUT_GRACE).ok();
+    rec.output_complete = Some(stdout.is_some() && stderr.is_some());
     rec.finished_unix_ms = Some(now_ms());
     rec.duration_ms = Some(started.elapsed().as_millis() as u64);
     rec.exit_code = status.and_then(|s| s.code());
-    rec.stdout_sha256 = Some(digest(&stdout));
-    rec.stderr_sha256 = Some(digest(&stderr));
+    rec.stdout_sha256 = stdout.as_deref().map(digest);
+    rec.stderr_sha256 = stderr.as_deref().map(digest);
+    let (stdout, stderr) = (stdout.unwrap_or_default(), stderr.unwrap_or_default());
     let text = format!(
         "{}\n{}",
         String::from_utf8_lossy(&stdout),

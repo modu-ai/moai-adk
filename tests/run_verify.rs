@@ -541,6 +541,33 @@ fn real_runner_receipt() {
     println!("{}", serde_json::to_string_pretty(&env).unwrap());
 }
 
+/// agent-2 FAIL on 5413e0221: a grandchild holding the pipes kept `run_check` waiting past the
+/// timeout. The runner ends the whole process group and bounds the wait for output.
+#[cfg(unix)]
+#[test]
+fn timeout_bounds_runtime_even_with_grandchildren() {
+    let dir = project();
+    fs::write(dir.path().join("grand.sh"), "sleep 30 &\nsleep 30\n").unwrap();
+    let started = std::time::Instant::now();
+    let c = run_check(dir.path(), 0, "sh grand.sh", Duration::from_millis(500));
+    let took = started.elapsed();
+    assert!(took < Duration::from_secs(6), "took {took:?}");
+    assert!(c.timed_out);
+    assert_eq!(c.result, CheckResult::Failed);
+    assert_eq!(c.failure_class, Some(FailureClass::EnvironmentFailure));
+    // The group is gone, so its pipes closed and the output was read to the end.
+    assert_eq!(c.output_complete, Some(true));
+
+    // A command that exits but leaves a background child holding its output returns too.
+    fs::write(dir.path().join("daemon.sh"), "sleep 30 &\necho started\n").unwrap();
+    let started = std::time::Instant::now();
+    let c = run_check(dir.path(), 0, "sh daemon.sh", Duration::from_secs(20));
+    let took = started.elapsed();
+    assert!(took < Duration::from_secs(6), "took {took:?}");
+    assert!(!c.timed_out);
+    assert_eq!(c.result, CheckResult::Passed);
+}
+
 #[test]
 fn retry_budget_stops_on_repeated_failure() {
     let dir = project();
