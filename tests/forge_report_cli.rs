@@ -381,6 +381,72 @@ fn timeout_then_reconcile_creates_no_duplicate() {
     // Afterwards exactly one marker comment exists: a third run sees it and stays put.
     let t = Script::new(reads(vec![comment(9001, &body)]));
     assert_eq!(run(&project2, &p, &t).unwrap()["action"], "unchanged");
+
+    // PATCH timeouts (audit FAIL on c300973): run 1 confirms body D1, run 2's PATCH to D2
+    // times out. The remote body decides what run 3 does.
+    let mut p2 = payload();
+    p2.next = "Merge after audit".into();
+    let body2 = report::render(&p2).unwrap();
+    let after_patch_timeout = || {
+        let (tmp, project) = new_project();
+        let t = Script::new(with(
+            reads(vec![]),
+            vec![
+                ("POST", POST.into(), Reply::Echo(201, 9001)),
+                ("GET", patch(9001), Reply::Last),
+            ],
+        ));
+        run(&project, &p, &t).unwrap();
+        let t = Script::new(with(
+            reads(vec![comment(9001, &body)]),
+            vec![("PATCH", patch(9001), Reply::Fail("operation timed out"))],
+        ));
+        assert_eq!(kind_of(&run(&project, &p2, &t).unwrap_err()), "transport");
+        assert_eq!(
+            entry(&project, 2).unwrap().state,
+            OutboxState::PublishUnknown
+        );
+        (tmp, project)
+    };
+
+    // (a) Not landed: the remote still has D1, so the same comment is PATCHed again.
+    let (_t3, project3) = after_patch_timeout();
+    let t = Script::new(with(
+        reads(vec![comment(9001, &body)]),
+        vec![
+            ("PATCH", patch(9001), Reply::Echo(200, 9001)),
+            ("GET", patch(9001), Reply::Last),
+        ],
+    ));
+    let out = run(&project3, &p2, &t).unwrap();
+    assert_eq!(
+        t.writes(),
+        ["PATCH"],
+        "retry after re-reading, never a new comment"
+    );
+    assert_eq!(out["action"], "updated");
+    assert_eq!(t.last.borrow()["body"], json!(body2));
+    let third = entry(&project3, 3).unwrap();
+    assert_eq!(third.state, OutboxState::Confirmed);
+    assert_eq!(
+        third.intent.unwrap().detail["supersedes"],
+        json!(outbox::op_id("report", "acme.widgets", "7", 2).unwrap())
+    );
+
+    // (b) Landed: the remote has D2, so the unknown write is confirmed and nothing is sent.
+    let (_t4, project4) = after_patch_timeout();
+    let t = Script::new(reads(vec![comment(9001, &body2)]));
+    let out = run(&project4, &p2, &t).unwrap();
+    assert!(t.writes().is_empty());
+    assert_eq!(out["action"], "unchanged");
+    assert_eq!(entry(&project4, 2).unwrap().state, OutboxState::Confirmed);
+    assert!(entry(&project4, 3).is_none());
+
+    // (c) Neither D1 nor D2: someone edited it in between; conflict, nothing written.
+    let (_t5, project5) = after_patch_timeout();
+    let t = Script::new(reads(vec![comment(9001, &format!("{body}\n\nedited"))]));
+    assert_eq!(kind_of(&run(&project5, &p2, &t).unwrap_err()), "conflict");
+    assert!(t.writes().is_empty());
 }
 
 #[test]

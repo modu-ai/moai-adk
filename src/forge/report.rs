@@ -580,27 +580,33 @@ fn history(project: &Path, scope: &str, number: &str) -> Result<Vec<OutboxEntry>
 }
 
 /// What this machine last put on the remote, or tried to: (state, comment id, body digest).
-fn last_known(h: &[OutboxEntry]) -> Option<(OutboxState, Option<i64>, String)> {
-    h.iter().rev().find_map(|e| {
-        let pick = |ph: &Option<Phase>| ph.as_ref().map(|p| p.detail.clone());
-        match e.state {
-            OutboxState::Confirmed => pick(&e.observed).map(|d| {
-                (
-                    e.state,
-                    d["comment_id"].as_i64(),
-                    d["body_digest"].as_str().unwrap_or("").to_string(),
-                )
-            }),
-            OutboxState::PublishUnknown | OutboxState::Publishing => pick(&e.intent).map(|d| {
-                (
-                    OutboxState::PublishUnknown,
-                    d["comment_id"].as_i64(),
-                    d["body_digest"].as_str().unwrap_or("").to_string(),
-                )
-            }),
-            _ => None,
+fn digest_of(detail: &Value) -> String {
+    detail["body_digest"].as_str().unwrap_or("").to_string()
+}
+
+/// The body this machine last saw confirmed on the remote: (comment id, body digest).
+fn last_confirmed(h: &[OutboxEntry]) -> Option<(Option<i64>, String)> {
+    h.iter().rev().find_map(|e| match (e.state, &e.observed) {
+        (OutboxState::Confirmed, Some(p)) => {
+            Some((p.detail["comment_id"].as_i64(), digest_of(&p.detail)))
         }
+        _ => None,
     })
+}
+
+/// The newest write whose outcome is unknown, if it is the newest entry: its intent digest.
+fn pending(h: &[OutboxEntry]) -> Option<String> {
+    match h.last() {
+        Some(e)
+            if matches!(
+                e.state,
+                OutboxState::PublishUnknown | OutboxState::Publishing
+            ) =>
+        {
+            e.intent.as_ref().map(|p| digest_of(&p.detail))
+        }
+        _ => None,
+    }
 }
 
 /// The P11 limits in force; their defaults are not measured (leader interim decision).
@@ -694,25 +700,39 @@ pub fn publish<T: Transport, C: Clock>(
     let scope = format!("{}.{}", issue.owner, issue.repo);
     let number = issue.number.to_string();
     let hist = history(project, &scope, &number)?;
-    let known = last_known(&hist);
+    let confirmed = last_confirmed(&hist);
+    let unknown_digest = pending(&hist);
     let now = || format_utc(client.clock.now());
 
-    // Decide PATCH, POST or nothing.
+    // Decide PATCH, POST or nothing. With a write of unknown outcome pending, the remote body
+    // tells which happened: the intended body (it landed: confirm it), the last confirmed body
+    // (it did not land: write again), or anything else (someone edited it: conflict).
     let mut deleted: Option<i64> = None;
-    let target: Option<&Value> = match (marked.first(), &known) {
-        (Some(c), Some((state, _, d))) if c["body_digest"].as_str() == Some(d.as_str()) => {
-            if *state == OutboxState::PublishUnknown {
-                // The unknown write did land: confirm it from the marker before going on.
-                if let Some(mut e) = hist.last().cloned() {
-                    if e.state == OutboxState::PublishUnknown {
-                        e.advance(OutboxState::Confirmed, Phase {
-                            at: now(),
-                            detail: json!({"comment_id": c["id"], "body_digest": d, "via": "marker"}),
-                        })?;
-                        outbox::save(project, &e)?;
-                    }
-                }
+    let mut superseded: Option<String> = None;
+    let remote_digest = marked
+        .first()
+        .and_then(|c| c["body_digest"].as_str())
+        .map(str::to_string);
+    let current: Option<String> = match (&remote_digest, &unknown_digest, &confirmed) {
+        (Some(r), Some(p), _) if r == p => {
+            if let Some(mut e) = hist.last().cloned() {
+                e.advance(OutboxState::Confirmed, Phase {
+                    at: now(),
+                    detail: json!({"comment_id": marked[0]["id"], "body_digest": p, "via": "marker"}),
+                })?;
+                outbox::save(project, &e)?;
             }
+            Some(p.clone())
+        }
+        (Some(r), Some(_), Some((_, d))) if r == d => {
+            superseded = hist.last().map(|e| e.op_id.clone());
+            Some(d.clone())
+        }
+        (Some(r), None, Some((_, d))) if r == d => Some(d.clone()),
+        _ => None,
+    };
+    let target: Option<&Value> = match (marked.first(), &current, &confirmed) {
+        (Some(c), Some(d), _) => {
             if d == &body_digest {
                 return Ok(
                     json!({"schema_version": 1, "stable_run_id": run, "action": "unchanged",
@@ -722,19 +742,19 @@ pub fn publish<T: Transport, C: Clock>(
             }
             Some(c)
         }
-        (Some(_), _) => {
+        (Some(_), None, _) => {
             let proposal = save_proposal(project, run, &body)?;
             return Err(ForgeError::of(
                 "conflict",
                 format!("conflict in report comment: it was edited since this machine last published it (or was never published from here); nothing overwritten, proposal saved at {proposal}"),
             ));
         }
-        (None, Some((OutboxState::Confirmed, id, _))) => {
+        (None, _, Some((id, _))) if unknown_digest.is_none() => {
             // Someone deleted the comment: record that, then create it again.
             deleted = *id;
             None
         }
-        (None, _) => None,
+        (None, _, _) => None,
     };
 
     let attempt = hist.len() as u32 + 1;
@@ -743,7 +763,8 @@ pub fn publish<T: Transport, C: Clock>(
     entry.advance(OutboxState::Publishing, Phase {
         at: now(),
         detail: json!({"body_digest": body_digest, "comment_id": target.map(|c| c["id"].clone()),
-                       "observed_deleted": deleted, "method": if target.is_some() { "PATCH" } else { "POST" }}),
+                       "observed_deleted": deleted, "supersedes": superseded,
+                       "method": if target.is_some() { "PATCH" } else { "POST" }}),
     })?;
     outbox::save(project, &entry)?;
     let request = match target {
