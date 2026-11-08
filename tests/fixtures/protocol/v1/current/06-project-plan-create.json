@@ -27,25 +27,30 @@
     ]
   },
   "stdout": {
-    "action": "create",
-    "expected_sha256": null,
-    "plan_digest": "<masked>",
-    "profile": {
-      "development_methods": [
-        "TDD"
-      ],
-      "hosts": [
-        "claude",
-        "codex"
-      ],
-      "project_id": "demo",
-      "purpose": "Build a small editor",
-      "schema_version": 1,
-      "tools": [
-        "Rust"
-      ]
-    },
+    "ok": true,
+    "operation": "project.plan",
     "protocol_version": 1,
-    "target_binding": "<masked>"
+    "result": {
+      "action": "create",
+      "expected_sha256": null,
+      "plan_digest": "<masked>",
+      "profile": {
+        "development_methods": [
+          "TDD"
+        ],
+        "hosts": [
+          "claude",
+          "codex"
+        ],
+        "project_id": "demo",
+        "purpose": "Build a small editor",
+        "schema_version": 1,
+        "tools": [
+          "Rust"
+        ]
+      },
+      "protocol_version": 1,
+      "target_binding": "<masked>"
+    }
   }
 }

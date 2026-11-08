@@ -4,14 +4,16 @@
 
 코드(`src/`)는 바꾸지 않았다. 구현 계획 6단계(Rust 오류 타입·exit 매핑·version 검사)는 선택지가 정해진 뒤에 한다.
 
+> **갱신(01-C #1990, 2026-11-08 사용자 결정)**: HOLD-00D-1·3·4가 결정되어 01-C가 구현했다. 모든 내부 operation은 stdout에 envelope 하나를 낸다. 성공은 `{protocol_version, operation, ok: true, result}`, 실패는 `{protocol_version, operation, ok: false, error{kind, message, retryable, next_actions?}}`이다. exit는 0/1/2를 유지하고, 실패 종류는 이 문서의 `kind` 11종으로 구분한다. 고른 envelope에는 상태 필드가 없으므로 아래 envelope 후보 A·B(`status`/`domain_status`) 어느 쪽과도 같지 않다. 실패 쪽 모양은 오류 후보 B와 같다. 런처(`-l`, `-a`, `cc|glm|codex`, `session`)는 대상이 아니다. 아래 `현행 계약` 절의 fixture는 이 변경에 맞춰 다시 기록했다. 세부 규칙은 `docs/rust-product-path.md`의 `Output envelope` 절에 있다.
+
 ## HOLD 현황
 
 | HOLD | 주제 | 상태 | 이 Issue의 산출물 |
 |---|---|---|---|
-| HOLD-00D-1 | 상태 어휘 통합 수준과 envelope | HOLD 유지 | `status-crosswalk.json`의 variant A·B, envelope 후보 A·B. C(envelope 없음)는 현행 fixture가 그대로 보여 준다 |
+| HOLD-00D-1 | 상태 어휘 통합 수준과 envelope | envelope 결정됨(B: 모든 출력에 envelope, 상태 필드 없음). 상태 어휘 통합은 미결 | `status-crosswalk.json`의 variant A·B, envelope 후보 A·B |
 | HOLD-00D-2 | schema 표현과 검증기 | HOLD 유지 | 현행 serde 타입을 그대로 옮긴 2020-12 schema. 검증기는 고르지 않았다 |
-| HOLD-00D-3 | 오류 contract 형태 (01-C 소유) | HOLD 유지 | 오류 객체 후보 A(stderr), B(stdout envelope). C(현행 평문)는 현행 fixture |
-| HOLD-00D-4 | exit code 표 (01-C 소유) | HOLD 유지 | A·B·C 표와 현행 관측표 |
+| HOLD-00D-3 | 오류 contract 형태 (01-C 소유) | 결정됨: B(stdout 실패 envelope) + `retryable`·`next_actions?` | 오류 객체 후보 A(stderr), B(stdout envelope) |
+| HOLD-00D-4 | exit code 표 (01-C 소유) | 결정됨: A(0/1/2 유지, `kind`로 구분) | A·B·C 표와 관측표 |
 | HOLD-00D-5 | version 규칙과 JSON 정규화 | HOLD 유지 | version 규칙 두 안, serde tuple과 JCS 예시 fixture |
 
 ## 산출물
@@ -36,8 +38,8 @@
 
 | 요구 | 현행 | fixture |
 |---|---|---|
-| REQ-00D-01 성공 envelope | 명령마다 결과 객체를 그대로 출력, envelope 없음 | 06, 09, 11, 13, 16, 17, 18, 21 |
-| REQ-00D-02 typed 오류와 kind별 exit | stderr 평문 한 줄, exit 1. clap 사용 오류만 exit 2와 clap 형식 | 01~05, 07, 08, 12, 14, 15, 19, 20 |
+| REQ-00D-01 성공 envelope | 01-C 이후 내부 operation은 envelope 안 `result`로 출력. 런처(18)는 envelope 없음 | 06, 09, 11, 13, 16, 17, 18, 21 |
+| REQ-00D-02 typed 오류와 kind별 exit | 01-C 이후 stdout 실패 envelope의 `error.kind`. exit는 kind별이 아니라 0/1/2(결정 A). 첫 낱말이 operation이 아닌 사용 오류(01)와 런처 오류(19)는 기존 평문 | 01~05, 07, 08, 12, 14, 15, 19, 20 |
 | REQ-00D-03 미지 필드 거부 | 거부는 하지만 malformed JSON과 같은 메시지(`invalid typed JSON input`) | 03, 04 |
 | REQ-00D-04 지원 밖 protocol_version | 전용 오류 없음. project-apply는 `stale or altered plan`, agents-plan은 `invalid agents request`로 나온다 | 07, 15 |
 | REQ-00D-09 digest 재현성 | plan digest가 절대 경로에 묶인다 | 06, 16 |
