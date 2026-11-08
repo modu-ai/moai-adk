@@ -1,0 +1,3 @@
+Validating components in: /tmp/moai-ac5.7lZ77B/project/.claude/skills
+
+✔ Validation passed
