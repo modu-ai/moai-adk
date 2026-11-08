@@ -851,13 +851,27 @@ pub(crate) fn agents_apply_amended(
     if let Err(e) = amend(&root, &mut value) {
         return Err(receipt_failure(&receipt, &root, &e));
     }
-    let manifest: Manifest = serde_json::from_value(value).map_err(|_| {
-        step(
-            &applied,
-            MANIFEST,
-            "amended manifest outside the schema".into(),
-        )
-    })?;
+    let manifest: Manifest = match serde_json::from_value(value) {
+        Ok(m) => m,
+        Err(_) => {
+            // #2119: the files the hook and this apply published stay on record; the
+            // refused manifest is recorded like any other failed target.
+            let e = "amended manifest outside the schema".to_string();
+            receipt.entry(
+                MANIFEST,
+                &manifest_plan.action,
+                before.as_deref().map(digest).as_deref(),
+                None,
+                false,
+                Some(e.clone()),
+            );
+            return Err(receipt_failure(
+                &receipt,
+                &root,
+                &step(&applied, MANIFEST, e),
+            ));
+        }
+    };
     let mut manifest_bytes = serde_json::to_vec_pretty(&manifest).expect("typed manifest");
     manifest_bytes.push(b'\n');
     if before.as_deref() != Some(manifest_bytes.as_slice()) {
