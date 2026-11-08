@@ -172,6 +172,24 @@ fn claim_comment(id: i64, session: &str, lease_until: &str) -> Value {
     json!({"id": id, "body": format!("moai-claim: session={session} epoch=1 lease_until={lease_until}")})
 }
 
+/// The happy-path exchange script: pre-check GET (empty), the one POST, and the
+/// post-POST re-read that shows our own comment as the smallest live id.
+fn happy_exchanges(id: i64, session: &str, lease_until: &str) -> Vec<Exchange> {
+    vec![
+        exchange("GET", &comments_url(), resp(200, json!([]))),
+        exchange(
+            "POST",
+            "https://api.github.com/repos/acme/widgets/issues/7/comments",
+            resp(201, json!({"id": id})),
+        ),
+        exchange(
+            "GET",
+            &comments_url(),
+            resp(200, json!([claim_comment(id, session, lease_until)])),
+        ),
+    ]
+}
+
 // ---- AC-06A-11: exactly one comment POST, the id recorded ----
 
 #[test]
@@ -190,6 +208,12 @@ fn claim_comment_posted_once_and_recorded() {
                 "https://api.github.com/repos/acme/widgets/issues/7/comments",
                 resp(201, json!({"id": 900})),
             ),
+            // The post-POST re-read must see our own comment as the smallest live id.
+            exchange(
+                "GET",
+                &comments_url(),
+                resp(200, json!([claim_comment(900, "agent-x", &lease)])),
+            ),
         ],
         &clock,
     );
@@ -206,7 +230,8 @@ fn claim_comment_posted_once_and_recorded() {
         .effects
         .iter()
         .any(|e| e["kind"] == "projection_intent"));
-    // Exactly one POST was sent, with the canonical claim line.
+    // Exactly one POST was sent, with the canonical claim line; the race is settled by
+    // the re-read (GET), not by the POST itself.
     let sent = t.sent.borrow();
     let posts: Vec<&HttpRequest> = sent.iter().filter(|r| r.method == "POST").collect();
     assert_eq!(posts.len(), 1);
@@ -214,6 +239,118 @@ fn claim_comment_posted_once_and_recorded() {
         posts[0].body,
         Some(json!({"body": format!("moai-claim: session=agent-x epoch=1 lease_until={lease}")}))
     );
+    let methods: Vec<&str> = sent.iter().map(|r| r.method.as_str()).collect();
+    assert_eq!(methods, ["GET", "POST", "GET"]);
+}
+
+// ---- REQ-06A-13 at claim time: the re-read after the POST settles the race ----
+
+/// A concurrent cross-host claimant can pass the same pre-check and POST between our GET
+/// and our POST. The comment id, not the POST, decides: after posting we re-read and the
+/// smallest live id wins. The loser keeps its posted comment (it is inert under the rule,
+/// and deleting it is no authorized claim write) but records nothing.
+#[test]
+fn claim_loser_stops_after_post_reread() {
+    let tmp = tempfile::tempdir().unwrap();
+    let clock = FakeClock::at(CLOCK0);
+    let lease = format_utc(CLOCK0 + 3600);
+    let (out, t) = acquire_in(
+        tmp.path(),
+        "agent-x",
+        &lease,
+        vec![
+            exchange("GET", &comments_url(), resp(200, json!([]))),
+            exchange(
+                "POST",
+                "https://api.github.com/repos/acme/widgets/issues/7/comments",
+                resp(201, json!({"id": 900})),
+            ),
+            exchange(
+                "GET",
+                &comments_url(),
+                resp(
+                    200,
+                    json!([
+                        claim_comment(850, "agent-a", &lease),
+                        claim_comment(900, "agent-x", &lease)
+                    ]),
+                ),
+            ),
+        ],
+        &clock,
+    );
+    assert_eq!(out.outcome, "already_owned");
+    assert_eq!(out.record, None, "the loser records nothing in the journal");
+    let foreign = out.foreign_owner.unwrap();
+    assert_eq!(foreign["session"], "agent-a");
+    assert_eq!(foreign["comment_id"], 850);
+    let sent = t.sent.borrow();
+    assert_eq!(sent.iter().filter(|r| r.method == "POST").count(), 1);
+    assert!(
+        out.notes.iter().any(|n| n.contains("no journal record")),
+        "{:?}",
+        out.notes
+    );
+    assert!(
+        !tmp.path().join("journal.log").exists(),
+        "the loser's journal must stay unwritten"
+    );
+}
+
+/// When the post-POST re-read fails (transport error) or does not show our own comment,
+/// the winner is unknown: the outcome is `uncertain` and the journal is not written.
+#[test]
+fn claim_uncertain_when_reread_fails() {
+    let tmp = tempfile::tempdir().unwrap();
+    let clock = FakeClock::at(CLOCK0);
+    let lease = format_utc(CLOCK0 + 3600);
+    // The script ends after the POST, so the re-read hits an exhausted transport.
+    let (out, _) = acquire_in(
+        tmp.path(),
+        "agent-x",
+        &lease,
+        vec![
+            exchange("GET", &comments_url(), resp(200, json!([]))),
+            exchange(
+                "POST",
+                "https://api.github.com/repos/acme/widgets/issues/7/comments",
+                resp(201, json!({"id": 900})),
+            ),
+        ],
+        &clock,
+    );
+    assert_eq!(out.outcome, "uncertain");
+    assert_eq!(out.record, None);
+    assert_eq!(out.foreign_owner, None);
+    assert!(
+        !tmp.path().join("journal.log").exists(),
+        "an uncertain claim records nothing"
+    );
+
+    // A successful re-read that does not show our own comment is equally uncertain:
+    // the winner rule cannot be evaluated without read-your-writes visibility.
+    let tmp = tempfile::tempdir().unwrap();
+    let (out, _) = acquire_in(
+        tmp.path(),
+        "agent-x",
+        &lease,
+        vec![
+            exchange("GET", &comments_url(), resp(200, json!([]))),
+            exchange(
+                "POST",
+                "https://api.github.com/repos/acme/widgets/issues/7/comments",
+                resp(201, json!({"id": 900})),
+            ),
+            exchange(
+                "GET",
+                &comments_url(),
+                resp(200, json!([claim_comment(950, "agent-b", &lease)])),
+            ),
+        ],
+        &clock,
+    );
+    assert_eq!(out.outcome, "uncertain");
+    assert!(!tmp.path().join("journal.log").exists());
 }
 
 // ---- AC-06A-8: the smallest live comment id wins; the loser writes nothing ----
@@ -288,14 +425,7 @@ fn claim_no_other_github_writes() {
         tmp.path(),
         "agent-x",
         &lease,
-        vec![
-            exchange("GET", &comments_url(), resp(200, json!([]))),
-            exchange(
-                "POST",
-                "https://api.github.com/repos/acme/widgets/issues/7/comments",
-                resp(201, json!({"id": 901})),
-            ),
-        ],
+        happy_exchanges(901, "agent-x", &lease),
         &clock,
     );
     assert_eq!(out.outcome, "claimed");
@@ -371,14 +501,7 @@ fn claim_expired_requires_operator() {
     let root = journal_root(tmp.path());
     let clock = FakeClock::at(CLOCK0);
     let lease = format_utc(CLOCK0 + 3600);
-    let exchanges = vec![
-        exchange("GET", &comments_url(), resp(200, json!([]))),
-        exchange(
-            "POST",
-            "https://api.github.com/repos/acme/widgets/issues/7/comments",
-            resp(201, json!({"id": 900})),
-        ),
-    ];
+    let exchanges = happy_exchanges(900, "agent-x", &lease);
     let (first, _) = acquire_in(&root, "agent-x", &lease, exchanges, &clock);
     assert_eq!(first.outcome, "claimed");
 
@@ -410,16 +533,7 @@ fn claim_epoch_monotonic() {
     let root = journal_root(tmp.path());
     let clock = FakeClock::at(CLOCK0);
     let lease = format_utc(CLOCK0 + 3600);
-    let post = |id: i64| {
-        vec![
-            exchange("GET", &comments_url(), resp(200, json!([]))),
-            exchange(
-                "POST",
-                "https://api.github.com/repos/acme/widgets/issues/7/comments",
-                resp(201, json!({"id": id})),
-            ),
-        ]
-    };
+    let post = |id: i64| happy_exchanges(id, "agent-x", &lease);
     let (first, _) = acquire_in(&root, "agent-x", &lease, post(900), &clock);
     assert_eq!(first.record.as_ref().unwrap().epoch, 1);
 
@@ -464,14 +578,7 @@ fn claim_stale_epoch_rejected() {
     let _ = t;
 
     // Releasing with an epoch that is not the current record's is a conflict too.
-    let exchanges = vec![
-        exchange("GET", &comments_url(), resp(200, json!([]))),
-        exchange(
-            "POST",
-            "https://api.github.com/repos/acme/widgets/issues/7/comments",
-            resp(201, json!({"id": 900})),
-        ),
-    ];
+    let exchanges = happy_exchanges(900, "agent-x", &lease);
     let (first, _) = acquire_in(&root, "agent-x", &lease, exchanges, &clock);
     let journal = lock_journal(&root);
     let err = release(&journal, &task_key(&task_ref()), 5, "x", &clock).unwrap_err();
@@ -489,14 +596,7 @@ fn claim_journal_torn_write_recovers() {
     let root = journal_root(tmp.path());
     let clock = FakeClock::at(CLOCK0);
     let lease = format_utc(CLOCK0 + 3600);
-    let exchanges = vec![
-        exchange("GET", &comments_url(), resp(200, json!([]))),
-        exchange(
-            "POST",
-            "https://api.github.com/repos/acme/widgets/issues/7/comments",
-            resp(201, json!({"id": 900})),
-        ),
-    ];
+    let exchanges = happy_exchanges(900, "agent-x", &lease);
     let (first, _) = acquire_in(&root, "agent-x", &lease, exchanges, &clock);
     let log = root.join("journal.log");
     let before = fs::read(&log).unwrap();
@@ -609,14 +709,7 @@ fn claim_show_is_byte_identical() {
     let root = journal_root(tmp.path());
     let clock = FakeClock::at(CLOCK0);
     let lease = format_utc(CLOCK0 + 3600);
-    let exchanges = vec![
-        exchange("GET", &comments_url(), resp(200, json!([]))),
-        exchange(
-            "POST",
-            "https://api.github.com/repos/acme/widgets/issues/7/comments",
-            resp(201, json!({"id": 900})),
-        ),
-    ];
+    let exchanges = happy_exchanges(900, "agent-x", &lease);
     acquire_in(&root, "agent-x", &lease, exchanges, &clock);
     let key = task_key(&task_ref());
     let a = serde_json::to_string(&show(&root, &key).unwrap()).unwrap();
@@ -662,10 +755,12 @@ fn git_repo(dir: &Path) {
     );
 }
 
-/// A stub `gh`: comment-list GETs answer `CLAIM_STUB_JSON`, everything else is the 201
-/// comment creation with `CLAIM_STUB_ID`.
+/// A stub `gh` modelling read-your-writes: comment-list GETs answer `CLAIM_STUB_JSON`
+/// until a comment POST happens, after which they show the posted claim comment with
+/// `CLAIM_STUB_ID` (the claim line body is JSON-safe by construction). Everything else is
+/// the 201 comment creation.
 fn stub_gh(dir: &Path) -> PathBuf {
-    let script = "#!/bin/sh\n# claim test stub for gh api\ncase \"$*\" in\n  *per_page=100*) printf 'HTTP/2.0 200 OK\\r\\n\\r\\n%s' \"${CLAIM_STUB_JSON:-[]}\";;\n  *) printf 'HTTP/2.0 201 Created\\r\\n\\r\\n{\"id\":%s}' \"${CLAIM_STUB_ID:-4242}\";;\nesac\n";
+    let script = "#!/bin/sh\n# claim test stub for gh api (stateful: read-your-writes)\ncase \"$*\" in\n  *per_page=100*)\n    if [ -n \"${CLAIM_STUB_JSON:-}\" ]; then printf 'HTTP/2.0 200 OK\\r\\n\\r\\n%s' \"$CLAIM_STUB_JSON\";\n    elif [ -f \"$CLAIM_STUB_DIR/posted\" ]; then printf 'HTTP/2.0 200 OK\\r\\n\\r\\n[{\"id\":%s,\"body\":\"%s\"}]' \"${CLAIM_STUB_ID:-4242}\" \"$CLAIM_STUB_BODY\";\n    else printf 'HTTP/2.0 200 OK\\r\\n\\r\\n[]'; fi;;\n  *)\n    : > \"$CLAIM_STUB_DIR/posted\"\n    printf 'HTTP/2.0 201 Created\\r\\n\\r\\n{\"id\":%s}' \"${CLAIM_STUB_ID:-4242}\";;\nesac\n";
     let path = dir.join("gh-stub");
     fs::write(&path, script).unwrap();
     #[cfg(unix)]
@@ -703,18 +798,27 @@ fn cli_req(lease_until: &str, session: &str) -> String {
     .to_string()
 }
 
+fn claim_body(session: &str, lease_until: &str) -> String {
+    format!("moai-claim: session={session} epoch=1 lease_until={lease_until}")
+}
+
 fn run_claim(
     repo: &Path,
     args: &[&str],
     stdin: Option<&str>,
     home: &Path,
     gh: &Path,
+    stub_body: &str,
 ) -> std::process::Output {
     let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
         .args(args)
         .current_dir(repo)
         .env("HOME", home)
         .env("MOAI_FORGE_GH_BIN", gh)
+        // The stateful stub keeps its posted marker next to itself and shows the claim
+        // body it was given on every post-POST re-read (read-your-writes).
+        .env("CLAIM_STUB_DIR", gh.parent().unwrap())
+        .env("CLAIM_STUB_BODY", stub_body)
         .env("GIT_CONFIG_GLOBAL", "/dev/null")
         .env("GIT_CONFIG_SYSTEM", "/dev/null")
         .stdin(if stdin.is_some() {
@@ -765,6 +869,7 @@ fn claim_show_idempotent() {
         Some(&cli_req(&lease, "agent-6-742cb6")),
         &home,
         &gh,
+        &claim_body("agent-6-742cb6", &lease),
     );
     assert!(
         out.status.success(),
@@ -802,6 +907,7 @@ fn claim_show_idempotent() {
             None,
             &home,
             &gh,
+            &claim_body("agent-6-742cb6", &lease),
         );
         assert!(o.status.success());
         outputs.push(o.stdout.clone());
@@ -824,6 +930,7 @@ fn claim_show_idempotent() {
         None,
         &home,
         &gh,
+        &claim_body("agent-6-742cb6", &lease),
     );
     assert!(!o.status.success());
     let v3 = envelope(&o);
@@ -838,6 +945,7 @@ fn claim_show_idempotent() {
         None,
         &home,
         &gh,
+        &claim_body("agent-6-742cb6", &lease),
     );
     assert!(o.status.success());
     let v4 = envelope(&o);
@@ -864,7 +972,14 @@ fn claim_concurrent_exclusive() {
             .map(|_| {
                 s.spawn(|| {
                     for _ in 0..300 {
-                        let out = run_claim(&repo, &["claim-acquire", "."], Some(&req), &home, &gh);
+                        let out = run_claim(
+                            &repo,
+                            &["claim-acquire", "."],
+                            Some(&req),
+                            &home,
+                            &gh,
+                            &claim_body("agent-x", &lease),
+                        );
                         assert!(
                             out.status.success(),
                             "{}",
@@ -946,6 +1061,7 @@ fn claim_go_paths_untouched() {
         Some(&cli_req(&lease, "agent-6-742cb6")),
         &home,
         &gh,
+        &claim_body("agent-6-742cb6", &lease),
     );
     assert!(
         out.status.success(),

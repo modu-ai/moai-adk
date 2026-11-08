@@ -285,20 +285,6 @@ fn validate_request(req: &ClaimRequest) -> Result<()> {
 
 // ---- Worktree identity (01-A reuse + a minimal HEAD read) ----
 
-/// Caller variables that would redirect git or inject configuration (Issue #2033); the same
-/// list `identity` uses. Duplicated here because `identity.rs` is outside this Issue's scope.
-const GIT_ENV_REMOVED: &[&str] = &[
-    "GIT_DIR",
-    "GIT_WORK_TREE",
-    "GIT_COMMON_DIR",
-    "GIT_INDEX_FILE",
-    "GIT_NAMESPACE",
-    "GIT_CONFIG_PARAMETERS",
-    "GIT_CONFIG_COUNT",
-    "GIT_CEILING_DIRECTORIES",
-    "GIT_DISCOVERY_ACROSS_FILESYSTEM",
-];
-
 fn git_head(work_tree: &str) -> Result<String> {
     let mut cmd = Command::new("git");
     cmd.arg("--no-optional-locks")
@@ -306,18 +292,10 @@ fn git_head(work_tree: &str) -> Result<String> {
         .arg(work_tree)
         .arg("rev-parse")
         .arg("HEAD");
-    for key in GIT_ENV_REMOVED {
-        cmd.env_remove(key);
-    }
-    for (key, _) in std::env::vars_os() {
-        let k = key.to_string_lossy();
-        if k.starts_with("GIT_CONFIG_KEY_") || k.starts_with("GIT_CONFIG_VALUE_") {
-            cmd.env_remove(&key);
-        }
-    }
+    // The shared git-environment scrub (Issue #2043) — the same hygiene as `identity`.
+    identity::scrub_git_env(&mut cmd);
     let out = cmd
         .env("GIT_OPTIONAL_LOCKS", "0")
-        .env("LC_ALL", "C")
         .stdin(Stdio::null())
         .stderr(Stdio::piped())
         .output()
@@ -704,6 +682,8 @@ fn scope_of(outcome: &str, record: Option<&ClaimRecord>) -> &'static str {
                 "single-host"
             }
         }
+        // The winner is unresolved on the comment ledger, which is the cross-host layer.
+        "uncertain" => "cross-host-eventual",
         _ => "single-host",
     }
 }
@@ -806,6 +786,69 @@ pub fn acquire<T: Transport, C: Clock>(
                 &claim_line(&req.owner.id, epoch, &req.lease_until),
             )
             .map_err(String::from)?
+        }
+    };
+    // The POST does not settle a cross-host race: another claimant can pass the same
+    // pre-check and post between our GET and our POST (REQ-06A-13). The re-read decides —
+    // the smallest live comment id wins. A loser keeps its posted comment (it is inert
+    // under the rule, and deleting it is no authorized claim write) but records nothing.
+    let comment_id = if adopted {
+        comment_id
+    } else {
+        match read_claims(client, &req.task_ref) {
+            Err(e) => {
+                return Ok(AcquireOutcome {
+                    outcome: "uncertain",
+                    record: None,
+                    foreign_owner: None,
+                    notes: vec![format!(
+                        "the comment was posted (id {comment_id}) but the re-read failed ({}); \
+                             no journal record was written and the winner is unresolved — \
+                             re-check with claim-show and the issue comments",
+                        e.message
+                    )],
+                });
+            }
+            Ok(claims2) => {
+                let live2: Vec<ClaimComment> = claims2
+                    .into_iter()
+                    .filter(|c| is_live(&c.lease_until, now))
+                    .collect();
+                // Our own POST returned an id, so the comment exists; if the re-read does
+                // not show it, the list cannot be trusted to judge the winner.
+                let Some(ours) = live2.iter().find(|c| c.comment_id == comment_id) else {
+                    return Ok(AcquireOutcome {
+                        outcome: "uncertain",
+                        record: None,
+                        foreign_owner: None,
+                        notes: vec![format!(
+                            "the comment was posted (id {comment_id}) but the re-read does not \
+                             show it; without read-your-writes visibility the winner cannot be \
+                             judged — no journal record was written, re-check with claim-show"
+                        )],
+                    });
+                };
+                match resolve_winner(&live2) {
+                    Some(winner) if winner.comment_id != ours.comment_id => {
+                        return Ok(AcquireOutcome {
+                            outcome: "already_owned",
+                            record: None,
+                            foreign_owner: Some(json!({
+                                "session": winner.session, "epoch": winner.epoch,
+                                "comment_id": winner.comment_id, "lease_until": winner.lease_until,
+                            })),
+                            notes: vec![format!(
+                                "a concurrent claimant posted the smaller live comment id {winner_id}; \
+                                 our posted comment id {mine} remains on the issue and is inert under \
+                                 the smallest-live-id rule; no journal record was written",
+                                winner_id = winner.comment_id,
+                                mine = comment_id,
+                            )],
+                        });
+                    }
+                    _ => comment_id,
+                }
+            }
         }
     };
     let token = claim_token(req.task_ref.issue_number, comment_id);
