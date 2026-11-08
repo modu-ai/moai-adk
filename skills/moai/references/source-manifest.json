@@ -100,12 +100,12 @@
       }
     },
     "workflows/run.md": {
-      "sha256": "bb0754501c5361dd6cb133cd0736303ac219182298196912d204d1388c9ab10f",
+      "sha256": "44b92620aede6fd6beff4bcbed3b0746a55f80fbc8f8bc3f4fb10842973ffab9",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-run",
         "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Step 2 extended by 07-D #2011 (context bundle and verify, host-reported usage versus estimates)."
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Step 1 reads the claim journal (06-A #2005); step 2 extended by 07-D #2011 (context bundle and verify, host-reported usage versus estimates)."
       }
     },
     "workflows/verify.md": {
