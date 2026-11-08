@@ -243,16 +243,20 @@ fn scope_check_records_integration_order() {
 }
 
 #[test]
-fn pr_body_render_records_intent_and_pr_ready() {
+fn pr_body_render_records_intent_only() {
     let tmp = tempfile::tempdir().unwrap();
     let repo = tmp.path().join("primary");
     let base = make_repo(&repo);
     seed(&repo, &[record(KEY_A, "06-C", &base, &["src/a.rs"])]);
     let res = render(&repo, &base, &["--task", KEY_A]);
     assert_eq!(res["effect_intent"]["state"], "intended");
-    assert_eq!(res["record_update"]["state"], "pr_ready");
+    assert_eq!(res["record_update"]["applied"], true);
+    assert_eq!(res["record_update"]["event"], "effect_intend");
     let rec = latest(&repo, KEY_A);
-    assert_eq!(rec["state"], "pr_ready");
+    assert_eq!(
+        rec["state"], "running",
+        "rendering is not opening; pr_ready waits for the ACK"
+    );
     let intents: Vec<&Value> = rec["effects"]
         .as_array()
         .unwrap()
@@ -277,6 +281,94 @@ fn pr_body_render_records_intent_and_pr_ready() {
     assert_eq!(again["record_update"]["applied"], false);
     assert_eq!(again["effect_intent"]["state"], "intended");
     assert_eq!(events(&repo).len(), count);
+}
+
+fn pr_confirm(repo: &Path, op: &str, response: &str, observed: &str) -> Value {
+    let p = repo.to_string_lossy().to_string();
+    ok(&run(
+        repo,
+        &[
+            "pr-confirm",
+            &p,
+            "--task",
+            KEY_A,
+            "--operation-id",
+            op,
+            "--response-id",
+            response,
+            "--observed-state",
+            observed,
+        ],
+        &[],
+    ))
+}
+
+#[test]
+fn pr_ready_is_recorded_at_the_pr_ack() {
+    let tmp = tempfile::tempdir().unwrap();
+    let repo = tmp.path().join("primary");
+    let base = make_repo(&repo);
+    seed(&repo, &[record(KEY_A, "06-C", &base, &["src/a.rs"])]);
+    let res = render(&repo, &base, &["--task", KEY_A]);
+    let op = res["effect_intent"]["operation_id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let ack = pr_confirm(&repo, &op, "2098", "opened");
+    assert_eq!(ack["effect_state"], "confirmed");
+    assert_eq!(ack["effect_confirm"]["response_id"], "2098");
+    assert_eq!(ack["record_update"]["applied"], true);
+    let rec = latest(&repo, KEY_A);
+    assert_eq!(rec["state"], "pr_ready");
+    let effect = rec["effects"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|e| e["kind"] == "pr_create")
+        .unwrap()
+        .clone();
+    assert_eq!(effect["state"], "confirmed");
+    // A second ACK changes nothing and goes no further than pr_ready.
+    let count = events(&repo).len();
+    let again = pr_confirm(&repo, &op, "2098", "opened");
+    assert_eq!(again["record_update"]["applied"], false);
+    assert_eq!(events(&repo).len(), count);
+    assert_eq!(latest(&repo, KEY_A)["state"], "pr_ready");
+}
+
+#[test]
+fn pr_ready_waits_when_the_ack_is_uncertain() {
+    let tmp = tempfile::tempdir().unwrap();
+    let repo = tmp.path().join("primary");
+    let base = make_repo(&repo);
+    seed(&repo, &[record(KEY_A, "06-C", &base, &["src/a.rs"])]);
+    let res = render(&repo, &base, &["--task", KEY_A]);
+    let op = res["effect_intent"]["operation_id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let lost = pr_confirm(&repo, &op, "", "uncertain");
+    assert_eq!(lost["effect_state"], "uncertain");
+    assert_eq!(lost["record_update"]["applied"], false);
+    assert_eq!(latest(&repo, KEY_A)["state"], "running");
+    // Unknown operation ids are refused.
+    let p = repo.to_string_lossy().to_string();
+    let out = run(
+        &repo,
+        &[
+            "pr-confirm",
+            &p,
+            "--task",
+            KEY_A,
+            "--operation-id",
+            "pr_create-1-x-1",
+            "--observed-state",
+            "opened",
+        ],
+        &[],
+    );
+    let env: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(env["ok"], false);
 }
 
 #[test]
@@ -345,6 +437,12 @@ fn reconcile_finds_the_pr_by_its_body_marker() {
         .unwrap()
         .clone();
     assert_eq!(effect["state"], "confirmed");
+    // The reconciled ACK is taken by pr-confirm as is, and only then is the record pr_ready.
+    assert_eq!(latest(&repo, KEY_A)["state"], "running");
+    let ack = pr_confirm(&repo, &op, "2080", "opened");
+    assert_eq!(ack["effect_confirm"], Value::Null);
+    assert_eq!(ack["record_update"]["applied"], true);
+    assert_eq!(latest(&repo, KEY_A)["state"], "pr_ready");
     // Without the PR, the same probe reports the effect as not performed.
     fs::write(&body_path, "no marker\n").unwrap();
     seed(&repo, &[record(KEY_A, "06-C", &base, &["src/a.rs"])]);

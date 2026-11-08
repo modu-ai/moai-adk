@@ -33,7 +33,7 @@ moai-cli pr-body-render <worktree> (--task <key> | --record <file> --claim-comme
 
 ## PR 개설은 완료가 아니다
 
-PR을 열면 claim은 `pr_ready`가 될 뿐이고, `integrated`나 완료로 올라가지 않는다. 통합은 리더가 독립 AUDIT 판정을 읽고, head가 같은지 확인한 뒤 `moai/audit` 상태를 붙여서 진행한다. 병합할 때는 merge REST의 `sha` 파라미터나 `gh pr merge --match-head-commit <candidate>`로 candidate SHA를 고정한다. head가 다르면 409로 거부되며, 이 고정은 08-A #2012가 넘겨받는 인터페이스다.
+본문을 렌더링하는 것은 PR을 여는 것이 아니다. claim은 PR을 열고 그 ACK를 `pr-confirm`으로 기록할 때 `pr_ready`가 될 뿐이고, `integrated`나 완료로 올라가지 않는다. 통합은 리더가 독립 AUDIT 판정을 읽고, head가 같은지 확인한 뒤 `moai/audit` 상태를 붙여서 진행한다. 병합할 때는 merge REST의 `sha` 파라미터나 `gh pr merge --match-head-commit <candidate>`로 candidate SHA를 고정한다. head가 다르면 409로 거부되며, 이 고정은 08-A #2012가 넘겨받는 인터페이스다.
 
 ## claim record 갱신
 
@@ -41,7 +41,8 @@ PR을 열면 claim은 `pr_ready`가 될 뿐이고, `integrated`나 완료로 올
 
 - 측정한 worktree identity: `worktree_recorded` 이벤트
 - `blocked(reason=scope_conflict)` 또는 통합 순서: `scope_check` 이벤트
-- `pr_create` effect intent와 `pr_ready`: `effect_intend`, `pr_ready` 이벤트
+- 렌더 시점의 `pr_create` effect intent: `effect_intend` 이벤트
+- PR ACK(`pr-confirm --task <key> --operation-id <id> --response-id <PR 번호> --observed-state opened`): intended 상태인 effect를 06-B `effect_confirm`으로 확인한다. reconcile이 이미 confirmed로 바꾼 effect는 그대로 받는다. effect가 confirmed일 때만 `pr_ready` 이벤트를 쓴다. 응답을 잃어 `uncertain`이면 상태를 그대로 두고, `effects-reconcile`이 먼저 판정한다.
 
 06-A의 acquire·release 동작은 바꾸지 않고 이벤트만 덧붙인다. 같은 명령을 다시 실행해 record가 그대로이면 이벤트를 쓰지 않는다.
 
