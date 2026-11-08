@@ -481,15 +481,18 @@ fn fetch_comments<T: Transport, C: Clock>(
     Ok(comments)
 }
 
-/// Reads the repository's open pull requests (GET only) once — the pr_create probe
-/// matches the uncertain markers against this single pass (#2107). A PR list item
-/// carries `number` and `body`.
+/// Reads every pull request of the repository — `state=all` (#2116: a merged or closed
+/// PR carrying the marker is still evidence of creation; scanning only open PRs would
+/// report a false absence) — and matches the uncertain markers against this single pass
+/// (#2107). A PR list item carries `number` and `body`. The page cap stays: a scan that
+/// could not see every page must NOT be read as a confirmed absence, so the caller turns
+/// the error into an uncertain effect.
 fn fetch_pulls<T: Transport, C: Clock>(
     client: &Client<'_, T, C>,
     t: &TaskRef,
 ) -> std::result::Result<Vec<(i64, String)>, ForgeError> {
     let mut url = Some(format!(
-        "https://api.github.com/repos/{}/{}/pulls?state=open&per_page=100",
+        "https://api.github.com/repos/{}/{}/pulls?state=all&per_page=100",
         t.owner, t.repo
     ));
     let mut pulls = Vec::new();
