@@ -1,0 +1,7 @@
+{
+  "number": 2046,
+  "state": "open",
+  "head": {"ref": "issue/2003-05-C", "sha": "5ad9cf3154dbd6f010d2bc136885276592724ce9"},
+  "base": {"ref": "v2026.11.0", "sha": "d968e022fb67d243ed48a254012f4b6951ca04ab"},
+  "mergeable_state": null
+}

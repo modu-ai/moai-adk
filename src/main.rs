@@ -240,6 +240,11 @@ enum Command {
     RunVerify {
         project: PathBuf,
     },
+    /// Temporary (05-D #2004; the name is fixed after P06): independent audit of PROJECT. Re-runs
+    /// the approved verification itself and decides admission; receipts on stdin never count.
+    AuditReduce {
+        project: PathBuf,
+    },
     /// Claude Code session launcher: `cc -l|-a`.
     Cc(HostLaunch),
     /// Claude Code on z.ai GLM: `glm -l|-a` (needs ANTHROPIC_AUTH_TOKEN in the environment).
@@ -355,6 +360,7 @@ const OPERATIONS: &[(&str, &str)] = &[
     ("todo-promote-preview", "todo.promote.plan"),
     ("todo-promote-apply", "todo.promote.apply"),
     ("run-verify", "run.verify"),
+    ("audit-reduce", "audit.reduce"),
     ("install-inspect", "install.inspect"),
 ];
 fn operation_of(word: &str) -> Option<&'static str> {
@@ -612,6 +618,14 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             }
             let current = moai_cli::plan::current_revision(&project)?;
             serde_json::to_value(moai_cli::run::run(&project, &request, &current)?)
+                .map_err(|_| "encode failed".into())
+        }
+        Command::AuditReduce { project } => {
+            let request = input::<moai_cli::audit::AuditInput>()?;
+            if request.protocol_version != contract::PROTOCOL_VERSION {
+                return Err("unsupported protocol_version; supported: 1".into());
+            }
+            serde_json::to_value(moai_cli::audit::audit(&project, &request)?)
                 .map_err(|_| "encode failed".into())
         }
         _ => unreachable!("launchers run through run_launcher"),
