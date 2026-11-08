@@ -923,6 +923,69 @@ pub(crate) fn agents_apply_amended(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
+
+    /// #2119 path 1: a hook that succeeds but leaves the manifest outside the schema
+    /// fails the apply, and the agents.apply receipt records that manifest failure.
+    #[test]
+    fn amended_manifest_decode_failure_is_recorded_in_receipt() {
+        let root = tempfile::TempDir::new().unwrap();
+        fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
+        fs::create_dir_all(root.path().join(".moai-cli")).unwrap();
+        let profile = json!({"schema_version":2,"project_id":"demo","purpose":"Build a small editor","tools":["Rust"],"development_methods":["TDD"],"hosts":["claude","codex"],"interview_revision":"rc1-fixture-1"});
+        fs::write(
+            root.path().join(".moai-cli/project.yaml"),
+            serde_json::to_vec_pretty(&profile).unwrap(),
+        )
+        .unwrap();
+        let request = AgentsRequest {
+            protocol_version: 1,
+            language: "en".into(),
+            workflow_reference: "skills/moai/workflows/".into(),
+            local_file: "tracked".into(),
+        };
+        let p = agents_plan(root.path(), request).unwrap();
+        let digest = p.plan_digest.clone();
+        let err = agents_apply_amended(root.path(), p, &digest, "fixture", &mut |_, v| {
+            v["outside_the_schema"] = json!(true);
+            Ok(())
+        })
+        .unwrap_err();
+        assert!(err.contains("amended manifest outside the schema"), "{err}");
+        assert!(
+            !root.path().join(MANIFEST).exists(),
+            "no manifest byte moved"
+        );
+
+        let mut manifest_rows = Vec::new();
+        for entry in fs::read_dir(root.path().join(apply::RECEIPTS_DIR)).unwrap() {
+            let path = entry.unwrap().path();
+            if path.extension().and_then(|e| e.to_str()) != Some("json") {
+                continue;
+            }
+            let v: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+            if v["operation"] != json!("agents.apply") {
+                continue;
+            }
+            assert_eq!(v["status"], json!("partial"), "{v}");
+            manifest_rows.extend(
+                v["entries"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .filter(|e| e["path"] == json!(MANIFEST))
+                    .cloned(),
+            );
+        }
+        assert_eq!(manifest_rows.len(), 1, "{manifest_rows:?}");
+        assert_eq!(manifest_rows[0]["published"], json!(false));
+        assert!(
+            manifest_rows[0]["error"]
+                .as_str()
+                .is_some_and(|e| e.contains("outside the schema")),
+            "{manifest_rows:?}"
+        );
+    }
 
     #[test]
     fn owned_files_without_kind_still_deserialize() {
