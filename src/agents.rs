@@ -753,8 +753,25 @@ pub(crate) fn agents_apply_amended(
         // REQ-01B-08: keep the before bytes before publishing so recovery can restore
         // content; a created file needs no backup (recovery removes it).
         if let Some(b) = before.as_deref() {
-            apply::save_before_bytes(&root, &request_id, &f.path, b)
-                .map_err(|e| step(&applied, &f.path, e))?;
+            let backup = apply::save_before_bytes(&root, &request_id, &f.path, b);
+            #[cfg(test)]
+            let backup = if FAIL_FILE_BACKUP.with(std::cell::Cell::get) {
+                Err("injected file backup failure".to_string())
+            } else {
+                backup
+            };
+            if let Err(e) = backup {
+                // #2125: a failed file backup is recorded like the #2123 manifest
+                // path, so the receipt still names the file that was not published.
+                receipt
+                    .entries
+                    .push(failed_backup_entry(&f.path, &f.action, b, &e));
+                return Err(receipt_failure(
+                    &receipt,
+                    &root,
+                    &step(&applied, &f.path, e),
+                ));
+            }
         }
         let publish = if before.is_none() {
             apply::publish_exclusive(&path, &bytes)
@@ -955,6 +972,32 @@ pub(crate) fn agents_apply_amended(
     }))
 }
 
+/// The receipt row for a failed before-bytes backup (#2125): the file is named
+/// with `published=false`, the error, and its before digest, so recovery tooling
+/// sees the file that never reached its backup.
+fn failed_backup_entry(
+    path: &str,
+    action: &str,
+    before: &[u8],
+    error: &str,
+) -> apply::ReceiptEntry {
+    apply::ReceiptEntry {
+        path: path.into(),
+        decision: action.into(),
+        before_sha256: Some(digest(before)),
+        after_sha256: None,
+        published: false,
+        error: Some(error.to_string()),
+    }
+}
+
+// #2125: test-only switch — set before an apply to make the next file-loop
+// backup fail, so the receipt row can be observed from the receipt file.
+#[cfg(test)]
+thread_local! {
+    static FAIL_FILE_BACKUP: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1045,6 +1088,177 @@ mod tests {
 
     /// #2119 path 1: a hook that succeeds but leaves the manifest outside the schema
     /// fails the apply, and the agents.apply receipt records that manifest failure.
+    /// #2125 RED: a FILE backup failure in the loop returns through the bare `?`
+    /// without a receipt row and without the receipt-gap note (REQ-01B-06: the
+    /// receipt gap is never silent). The injection makes the receipts directory
+    /// unwritable, so the AGENTS.md merge in a language change cannot store its
+    /// before bytes; the fixed path records the file row (published=false, the
+    /// error, the before digest) and calls receipt_failure, whose save attempt
+    /// names the gap even though the directory refuses the file.
+    #[test]
+    fn file_backup_failure_names_the_receipt_gap() {
+        use std::os::unix::fs::PermissionsExt;
+        let root = tempfile::TempDir::new().unwrap();
+        fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
+        fs::create_dir_all(root.path().join(".moai-cli")).unwrap();
+        let profile = json!({"schema_version":2,"project_id":"demo","purpose":"Build a small editor","tools":["Rust"],"development_methods":["TDD"],"hosts":["claude","codex"],"interview_revision":"rc1-fixture-1"});
+        fs::write(
+            root.path().join(".moai-cli/project.yaml"),
+            serde_json::to_vec_pretty(&profile).unwrap(),
+        )
+        .unwrap();
+        let first = agents_plan(
+            root.path(),
+            AgentsRequest {
+                protocol_version: 1,
+                language: "en".into(),
+                workflow_reference: "skills/moai/workflows/".into(),
+                local_file: "tracked".into(),
+            },
+        )
+        .unwrap();
+        agents_apply_amended(
+            root.path(),
+            first,
+            &agents_plan(
+                root.path(),
+                AgentsRequest {
+                    protocol_version: 1,
+                    language: "en".into(),
+                    workflow_reference: "skills/moai/workflows/".into(),
+                    local_file: "tracked".into(),
+                },
+            )
+            .unwrap()
+            .plan_digest,
+            "fixture",
+            &mut |_, _| Ok(()),
+        )
+        .unwrap();
+        let receipts = root.path().join(apply::RECEIPTS_DIR);
+        fs::set_permissions(&receipts, fs::Permissions::from_mode(0o555)).unwrap();
+        let second = agents_plan(
+            root.path(),
+            AgentsRequest {
+                protocol_version: 1,
+                language: "ko".into(),
+                workflow_reference: "skills/moai/workflows/".into(),
+                local_file: "tracked".into(),
+            },
+        )
+        .unwrap();
+        let digest = second.plan_digest.clone();
+        let err = agents_apply_amended(root.path(), second, &digest, "fixture", &mut |_, _| Ok(()))
+            .unwrap_err();
+        fs::set_permissions(&receipts, fs::Permissions::from_mode(0o755)).unwrap();
+        assert!(
+            err.contains("partial apply") && err.contains("AGENTS.md"),
+            "{err}"
+        );
+        // The fix names the receipt gap (receipt_failure ran); the buggy path
+        // returns the bare step message without it.
+        assert!(err.contains("receipt not recorded"), "{err}");
+    }
+
+    /// #2125 (audit round 2): the receipt FILE records the failed file row —
+    /// path=AGENTS.md, published=false, the error, the before digest — read from
+    /// `receipts/*.json` after an apply whose file backup was injected to fail
+    /// (#2122's amended_manifest_decode_failure style, through the #2109 test
+    /// switch). Deleting the receipt.entries push breaks this assertion.
+    #[test]
+    fn file_backup_failure_row_is_recorded_in_the_receipt_file() {
+        let root = tempfile::TempDir::new().unwrap();
+        fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
+        fs::create_dir_all(root.path().join(".moai-cli")).unwrap();
+        let profile = json!({"schema_version":2,"project_id":"demo","purpose":"Build a small editor","tools":["Rust"],"development_methods":["TDD"],"hosts":["claude","codex"],"interview_revision":"rc1-fixture-1"});
+        fs::write(
+            root.path().join(".moai-cli/project.yaml"),
+            serde_json::to_vec_pretty(&profile).unwrap(),
+        )
+        .unwrap();
+        let first = agents_plan(
+            root.path(),
+            AgentsRequest {
+                protocol_version: 1,
+                language: "en".into(),
+                workflow_reference: "skills/moai/workflows/".into(),
+                local_file: "tracked".into(),
+            },
+        )
+        .unwrap();
+        agents_apply_amended(
+            root.path(),
+            first,
+            &agents_plan(
+                root.path(),
+                AgentsRequest {
+                    protocol_version: 1,
+                    language: "en".into(),
+                    workflow_reference: "skills/moai/workflows/".into(),
+                    local_file: "tracked".into(),
+                },
+            )
+            .unwrap()
+            .plan_digest,
+            "fixture",
+            &mut |_, _| Ok(()),
+        )
+        .unwrap();
+        let before_bytes = fs::read(root.path().join("AGENTS.md")).unwrap();
+        let expected_before = digest(&before_bytes);
+
+        FAIL_FILE_BACKUP.with(|cell| cell.set(true));
+        let second = agents_plan(
+            root.path(),
+            AgentsRequest {
+                protocol_version: 1,
+                language: "ko".into(),
+                workflow_reference: "skills/moai/workflows/".into(),
+                local_file: "tracked".into(),
+            },
+        )
+        .unwrap();
+        let digest = second.plan_digest.clone();
+        let err = agents_apply_amended(root.path(), second, &digest, "fixture", &mut |_, _| Ok(()))
+            .unwrap_err();
+        FAIL_FILE_BACKUP.with(|cell| cell.set(false));
+        assert!(
+            err.contains("partial apply") && err.contains("AGENTS.md"),
+            "{err}"
+        );
+
+        // The written agents.apply receipt names the failed file row.
+        let mut rows = Vec::new();
+        for entry in fs::read_dir(root.path().join(apply::RECEIPTS_DIR)).unwrap() {
+            let path = entry.unwrap().path();
+            if path.extension().and_then(|e| e.to_str()) != Some("json") {
+                continue;
+            }
+            let v: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+            if v["operation"] != json!("agents.apply") || v["status"] != json!("partial") {
+                continue;
+            }
+            for e in v["entries"].as_array().unwrap() {
+                if e["path"] == json!("AGENTS.md") {
+                    rows.push((v["status"].clone(), e.clone()));
+                }
+            }
+        }
+        assert_eq!(rows.len(), 1, "{rows:?}");
+        assert_eq!(rows[0].0, json!("partial"));
+        assert_eq!(rows[0].1["published"], json!(false));
+        assert_eq!(rows[0].1["decision"], json!("merge"));
+        assert!(
+            rows[0].1["error"].as_str().is_some_and(|e| !e.is_empty()),
+            "{rows:?}"
+        );
+        assert_eq!(
+            rows[0].1["before_sha256"].as_str(),
+            Some(expected_before.as_str())
+        );
+        assert_eq!(rows[0].1["after_sha256"], Value::Null);
+    }
+
     #[test]
     fn amended_manifest_decode_failure_is_recorded_in_receipt() {
         let root = tempfile::TempDir::new().unwrap();
@@ -1103,6 +1317,27 @@ mod tests {
                 .is_some_and(|e| e.contains("outside the schema")),
             "{manifest_rows:?}"
         );
+    }
+
+    /// #2125: the row recorded for a failed before-bytes backup names the file,
+    /// stays unpublished, carries the error, and pins the before digest — deleting
+    /// any of those from the row breaks this assertion.
+    #[test]
+    fn failed_backup_entry_records_the_gap_row() {
+        let before = b"AGENTS.md before bytes";
+        let row = failed_backup_entry(
+            "AGENTS.md",
+            "merge",
+            before,
+            "receipt backup directory unavailable",
+        );
+        assert_eq!(row.path, "AGENTS.md");
+        assert_eq!(row.decision, "merge");
+        assert!(!row.published);
+        let expected_before = digest(before);
+        assert_eq!(row.before_sha256.as_deref(), Some(expected_before.as_str()));
+        assert_eq!(row.after_sha256, None);
+        assert!(row.error.as_deref().is_some_and(|e| !e.is_empty()));
     }
 
     #[test]
