@@ -3563,3 +3563,76 @@ fn generation_skill_projection_name_matches_directory() {
         b"user's own"
     );
 }
+
+#[test]
+fn generation_manifest_entries_carry_kind() {
+    // #2109 AC-1: newly written generation.json entries carry the additive `kind`
+    // field, and the kind alone discriminates the entry type — without consulting
+    // the `generation:…` section_id tag kept for readers of older manifests.
+    let root = generation_project();
+    let mut request = generation_request("none");
+    request["native_roles"] = json!([
+        {"role_id": "fixer", "host": "claude", "purpose": "Fix lint and test failures"}
+    ]);
+    let plan = ok_result(&generation_plan_cli(&root, &request));
+    ok_result(&generation_apply_cli(&root, &plan));
+    let manifest_bytes = fs::read(root.path().join(".moai-cli/manifests/generation.json")).unwrap();
+    let manifest: Value = serde_json::from_slice(&manifest_bytes).unwrap();
+    let by_kind = |kind: &str| -> Vec<&Value> {
+        manifest["owned_files"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|f| f["kind"] == json!(kind))
+            .collect()
+    };
+    let workflows = by_kind("workflow");
+    assert_eq!(workflows.len(), 2, "{manifest}");
+    assert!(workflows.iter().all(|f| f["path"]
+        .as_str()
+        .unwrap()
+        .starts_with(".moai-cli/workflows/review-flow/")));
+    assert_eq!(by_kind("native-role").len(), 1);
+    assert_eq!(
+        by_kind("native-role")[0]["path"],
+        json!(".claude/agents/fixer.md")
+    );
+    // The agents-owned entries stay kind-less: their section_id already carries the
+    // managed section they belong to.
+    let agents_entries = by_kind(""); // no direct filter — count kind-less below
+    let _ = agents_entries;
+    let kindless: Vec<&Value> = manifest["owned_files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|f| f.get("kind").is_none())
+        .collect();
+    assert!(
+        kindless
+            .iter()
+            .all(|f| f["section_id"] == json!("moai-workflow")),
+        "{manifest}"
+    );
+    // Discriminating by kind alone (no section_id) partitions every generation
+    // entry exactly as the tag does.
+    let tag_partition: Vec<String> = manifest["owned_files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|f| {
+            f["section_id"]
+                .as_str()
+                .unwrap_or("")
+                .strip_prefix("generation:")
+                .and_then(|rest| rest.split(':').next())
+                .map(str::to_string)
+        })
+        .collect();
+    let kind_partition: Vec<String> = manifest["owned_files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|f| f["kind"].as_str().map(str::to_string))
+        .collect();
+    assert_eq!(tag_partition, kind_partition);
+}
