@@ -15,6 +15,7 @@ The Rust toolchain is pinned by `rust-toolchain.toml` (1.94.1 with clippy and ru
 - `moai-cli agents-apply PROJECT --plan-digest DIGEST --permission-reference REFERENCE`: the exact plan on stdin. Re-plans against the current tree, refuses stale or altered plans and any plan with a `conflict` file, writes target files before the manifest, and reports `partial apply` with the applied list on a mid-sequence failure.
 - `moai-cli baseline-inventory PROJECT [--go-baseline-commit SHA] [--go-repo REPO]`: read-only baseline (Issue #1985). One JSON on stdout with `baseline`, `inventory`, `claude_diff` and `checksums` (shasum-compatible text); writes nothing, never follows symlinks, reads the Go baseline with `cat-file`/`ls-tree` only and records home entries as existence only. The library also exports `tree_digest(root, excludes) -> Result<String, String>` (format `moai-tree-v1`), the tree digest other Issues call instead of re-implementing. Details: `docs/baseline-rc1.md`.
 - `moai-cli identity PATH`: read-only clone/workspace identity (Issue #1988), described below.
+- `moai-cli claude-doctor PROJECT`: read-only prediction of whether Claude Code reads `AGENTS.md` for a session started in `PROJECT` (Issue #1992); rules in `docs/claude-adapter-contract.md`.
 
 ### Operation table (01-C #1990)
 
@@ -30,6 +31,7 @@ One row per internal operation: the name a skill adapter or a later MCP tool ref
 | `agents.apply` | `agents-apply PROJECT` | `moai_cli::agents_apply` | `AgentsPlan` | `--plan-digest`, `--permission-reference` | `state`, `applied`, `files_created`, `manifest_sha256`, `host_notes`, `host_loaded`, `execution_verified` | `AGENTS.md`, `AGENTS.local.md`, `.gitignore`, `.moai-cli/manifests/generation.json` |
 | `baseline.inventory` | `baseline-inventory PROJECT` | `moai_cli::baseline::inventory` | — | `--go-baseline-commit`, `--go-repo` | `schema_version`, `collected_at`, `baseline`, `inventory`, `claude_diff`, `checksums` | no |
 | `identity` | `identity PATH` | `moai_cli::identity::identity` | — | — | `identity_status`, `reason`, `workspace_kind`, `clone_anchor`, `workspace_git_dir`, `work_tree`, `clone_id`, `workspace_id`, `id_derivation`, `project_id`, `profile_status`, `project_state_root`, `home_state_root`, `writes` (see below) | no |
+| `claude.doctor` | `claude-doctor PROJECT` | `moai_cli::claude::doctor` | — | — | `agents_md_status`, `reason`, `load_path`, `claude_version`, `minimum_version`, `agents_md_files`, `suppressing_files`, `importing_files`, `instruction_files`, `instruction_files_source`, `managed_settings`, `suggestions`, `basis`, `host_loaded`, `writes` | no |
 
 Only the two `*.apply` operations mutate files, and both refuse to run without the confirmed `plan_digest` and a non-placeholder permission reference; whatever transport carries them later keeps that boundary (REQ-01C-03). The launchers (`-l`, `-a`, `cc|glm|codex`, `session`; see below) are developer tools, not internal operations, and stay out of this table. Not implemented yet: `apply.recover`.
 
