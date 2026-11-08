@@ -15,6 +15,24 @@ The Rust toolchain is pinned by `rust-toolchain.toml` (1.94.1 with clippy and ru
 - `moai-cli agents-apply PROJECT --plan-digest DIGEST --permission-reference REFERENCE`: the exact plan on stdin. Re-plans against the current tree, refuses stale or altered plans and any plan with a `conflict` file, writes target files before the manifest, and reports `partial apply` with the applied list on a mid-sequence failure.
 - `moai-cli baseline-inventory PROJECT [--go-baseline-commit SHA] [--go-repo REPO]`: read-only baseline (Issue #1985). One JSON on stdout with `baseline`, `inventory`, `claude_diff` and `checksums` (shasum-compatible text); writes nothing, never follows symlinks, reads the Go baseline with `cat-file`/`ls-tree` only and records home entries as existence only. The library also exports `tree_digest(root, excludes) -> Result<String, String>` (format `moai-tree-v1`), the tree digest other Issues call instead of re-implementing. Details: `docs/baseline-rc1.md`.
 
+### Operation table (01-C #1990)
+
+One row per internal operation: the name a skill adapter or a later MCP tool refers to, the CLI subcommand that carries it, and the Rust function behind it. The operation names follow Issue #1990; `baseline.inventory` is named here because the Issue predates the command. Output keys are the success keys measured in `tests/fixtures/protocol/v1/current/` (00-D); the stdout envelope, error object and exit codes stay as they are until HOLD-00D-1/3/4 are decided.
+
+| Operation | CLI subcommand | Rust function | stdin | Flags | Success stdout keys | Writes |
+| --- | --- | --- | --- | --- | --- | --- |
+| `project.plan` | `project-plan PROJECT` | `moai_cli::plan` | `Profile` | — | `protocol_version`, `profile`, `expected_sha256`, `target_binding`, `action`, `plan_digest` (`plan.schema.json`) | no |
+| `project.apply` | `project-apply PROJECT` | `moai_cli::apply` | `Plan` | `--plan-digest`, `--permission-reference` | `state`, `profile_digest`, `host_verified` | `.moai-cli/project.yaml` |
+| `package.inspect` | `package-inspect PACKAGE` | `moai_cli::package_digest` | — | — | `digest`, `digest_algorithm`, `publisher_trust`, `host_loaded` (`package-result.schema.json`) | no |
+| `package.resolve` | `package-resolve PROJECT` | `moai_cli::resolve` | — | `--repo-package`, `--user-package` | the `package.inspect` keys plus `source` | no |
+| `agents.plan` | `agents-plan PROJECT` | `moai_cli::agents_plan` | `AgentsRequest` | — | `protocol_version`, `request`, `project_id`, `profile_sha256`, `target_binding`, `files`, `host_notes`, `warnings`, `plan_digest` (`agents-plan.schema.json`) | no |
+| `agents.apply` | `agents-apply PROJECT` | `moai_cli::agents_apply` | `AgentsPlan` | `--plan-digest`, `--permission-reference` | `state`, `applied`, `files_created`, `manifest_sha256`, `host_notes`, `host_loaded`, `execution_verified` | `AGENTS.md`, `AGENTS.local.md`, `.gitignore`, `.moai-cli/manifests/generation.json` |
+| `baseline.inventory` | `baseline-inventory PROJECT` | `moai_cli::baseline::inventory` | — | `--go-baseline-commit`, `--go-repo` | `schema_version`, `collected_at`, `baseline`, `inventory`, `claude_diff`, `checksums` | no |
+
+Only the two `*.apply` operations mutate files, and both refuse to run without the confirmed `plan_digest` and a non-placeholder permission reference; whatever transport carries them later keeps that boundary (REQ-01C-03). `session` is the developer launcher (see below), not an internal operation, and stays out of this table. Not implemented yet: `identity` (01-A #1988) and `apply.recover`.
+
+Skill-side names: `skills/moai/SKILL.md` refers to the contract only as "a plan digest plus a caller-supplied permission reference", and `references/routes.json` marks SETUP and UPDATE as the only routes with `requires_binary: true`. No workflow file names a subcommand or operation yet, so there is nothing to rename on the skill side. Read against the workflow text (an interpretation, not a binding): `setup.md` steps 5-6 (per-file preview, hash re-check, apply) correspond to `project.*` and `agents.*`, and `update.md` steps 2-3 (package digest comparison, baseline/current/new diff) to `package.*` and `agents.plan`.
+
 These commands are internal contracts for future native skill adapters. Users are not required to manually invoke them for SETUP. Host discovery, trust verification and skill invocation remain not_run.
 
 ## State directories during the RC period
