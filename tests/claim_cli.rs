@@ -73,6 +73,8 @@ fn lib_req(session: &str, lease_until: &str) -> ClaimRequest {
             kind: "session".into(),
             id: session.into(),
             host_id: None,
+            pid: None,
+            process_start: None,
         },
         attempt: None,
         base_revision: "a".repeat(40),
