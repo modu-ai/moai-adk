@@ -1,12 +1,15 @@
-//! Claude Code adapter checks (Issue #1992, 02-B). Read-only: nothing here writes.
+//! Claude Code adapter (Issue #1992, 02-B). `doctor`, `projection` and `settings_plan` only
+//! read; `settings_apply` is the one function that writes (a project's `.claude/settings.json`
+//! and its ownership receipt).
 //!
 //! `doctor` predicts whether Claude Code reads a project's `AGENTS.md`, following the rules
 //! of https://code.claude.com/docs/en/memory (read 2026-11-08): direct reading needs v2.1.277
 //! or later; a `CLAUDE.md`, `.claude/CLAUDE.md` or `CLAUDE.local.md` in the working directory
-//! or above suppresses it under the default `claude-md-or-agents-md`; the
-//! `pluginConfigs.<id>.options.instructionFiles` entry is honoured only in user, `--settings`
-//! and managed settings, never in project settings; the plugin id is
-//! `cc-plugin-agents-md@builtin` from v2.1.285 and `agents-md@builtin` before.
+//! or above suppresses it under the default `claude-md-or-agents-md`, except the user's own
+//! `~/.claude/CLAUDE.md`; the `pluginConfigs.<id>.options.instructionFiles` entry is honoured
+//! only in user, `--settings` and managed settings, never in project settings; the plugin id
+//! is `cc-plugin-agents-md@builtin` from v2.1.285, which still reads the older
+//! `agents-md@builtin`, and only `agents-md@builtin` before.
 //! The result is a prediction from files and settings; whether a session actually loaded the
 //! file is `host_loaded: not_run` until a session receipt exists.
 //!
@@ -78,6 +81,12 @@ fn found_upward(start: &Path, names: &[&str]) -> Vec<PathBuf> {
         .collect()
 }
 
+/// The line without its inline code spans: text between a backtick and the next one is
+/// dropped, and an unclosed span drops the rest of the line.
+fn outside_code_spans(line: &str) -> String {
+    line.split('`').step_by(2).collect::<Vec<_>>().join(" ")
+}
+
 /// True when the file holds an `@...AGENTS.md` import outside code fences and code spans.
 fn imports_agents(path: &Path) -> bool {
     let Some(bytes) = read_bounded(path) else {
@@ -90,26 +99,29 @@ fn imports_agents(path: &Path) -> bool {
             return false;
         }
         !fenced
-            && line
+            && outside_code_spans(line)
                 .split_whitespace()
-                .any(|t| t.starts_with('@') && t.ends_with("AGENTS.md") && !t.contains('`'))
+                .any(|t| t.starts_with('@') && t.ends_with("AGENTS.md"))
     })
 }
 
-/// The user-settings `instructionFiles` value: `Ok(None)` when absent, `Err` when the file
-/// cannot be read as JSON.
-fn user_instruction_files(home: &Path, plugin_id: &str) -> Result<Option<String>> {
+/// The user-settings `instructionFiles` value under the first of `plugin_ids` that has one:
+/// `Ok(None)` when absent, `Err` when the file cannot be read as JSON.
+fn user_instruction_files(home: &Path, plugin_ids: &[&str]) -> Result<Option<String>> {
     let path = home.join(".claude/settings.json");
     if fs::symlink_metadata(&path).is_err() {
         return Ok(None);
     }
     let bytes = read_bounded(&path).ok_or("user settings unreadable")?;
     let v: Value = serde_json::from_slice(&bytes).map_err(|_| "user settings are not JSON")?;
-    match &v["pluginConfigs"][plugin_id]["options"]["instructionFiles"] {
-        Value::Null => Ok(None),
-        Value::String(s) => Ok(Some(s.clone())),
-        _ => Err("instructionFiles is not a string".into()),
+    for id in plugin_ids {
+        match &v["pluginConfigs"][*id]["options"]["instructionFiles"] {
+            Value::Null => continue,
+            Value::String(s) => return Ok(Some(s.clone())),
+            _ => return Err("instructionFiles is not a string".into()),
+        }
     }
+    Ok(None)
 }
 
 fn paths(list: &[PathBuf]) -> Result<Value> {
@@ -130,8 +142,19 @@ pub fn doctor(project: &Path) -> Result<Value> {
         return Err("path must be a directory".into());
     }
     let dir = fs::canonicalize(project).map_err(|_| "path unavailable")?;
+    let home = std::env::var_os("HOME")
+        .filter(|h| !h.is_empty())
+        .map(PathBuf::from);
+    // The user's own ~/.claude/CLAUDE.md loads alongside AGENTS.md and does not suppress it.
+    let user_claude = home
+        .as_ref()
+        .and_then(|h| fs::canonicalize(h).ok())
+        .map(|h| h.join(".claude/CLAUDE.md"));
     let agents = found_upward(&dir, &AGENTS_FILES);
-    let claude_files = found_upward(&dir, &SUPPRESSING);
+    let claude_files: Vec<PathBuf> = found_upward(&dir, &SUPPRESSING)
+        .into_iter()
+        .filter(|p| Some(p) != user_claude.as_ref())
+        .collect();
     let importing: Vec<PathBuf> = claude_files
         .iter()
         .filter(|p| imports_agents(p))
@@ -171,13 +194,13 @@ pub fn doctor(project: &Path) -> Result<Value> {
         );
         return Ok(out);
     }
-    let plugin_id = if version >= PLUGIN_ID_SINCE {
-        "cc-plugin-agents-md@builtin"
+    let plugin_ids: &[&str] = if version >= PLUGIN_ID_SINCE {
+        &["cc-plugin-agents-md@builtin", "agents-md@builtin"]
     } else {
-        "agents-md@builtin"
+        &["agents-md@builtin"]
     };
-    let setting = match std::env::var_os("HOME").filter(|h| !h.is_empty()) {
-        Some(home) => match user_instruction_files(Path::new(&home), plugin_id) {
+    let setting = match &home {
+        Some(home) => match user_instruction_files(home, plugin_ids) {
             Ok(s) => s,
             Err(e) => {
                 set(&mut out, "unknown", &e);
@@ -296,12 +319,16 @@ const SETTINGS_FILE: &str = ".claude/settings.json";
 /// Ownership receipt under the project state root; 04-B UPDATE reads it as the baseline.
 const SETTINGS_RECEIPT: &str = "manifests/claude-settings.json";
 
+/// Size bound for the settings file and its receipt, the same as `agents::write_replace`
+/// re-reads, so a plan this module offers is one the writer accepts.
+const SETTINGS_LIMIT: u64 = 262_144;
+
 fn read_existing(path: &Path) -> Result<Option<Vec<u8>>> {
     match fs::symlink_metadata(path) {
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
         Err(_) => Err("target metadata unavailable".into()),
         Ok(m) if m.file_type().is_symlink() => Err("symlink target refused".into()),
-        Ok(m) if !m.is_file() || m.len() > READ_LIMIT => {
+        Ok(m) if !m.is_file() || m.len() > SETTINGS_LIMIT => {
             Err("target is not a bounded regular file".into())
         }
         Ok(_) => fs::read(path)
@@ -350,14 +377,7 @@ fn settings_state(project: &Path, desired: &Map<String, Value>) -> Result<Settin
     let receipt_before = read_existing(&receipt)?;
     let owned = match &receipt_before {
         None => Map::new(),
-        Some(bytes) => {
-            let r: Value = serde_json::from_slice(bytes)
-                .map_err(|_| "claude settings receipt requires preservation review")?;
-            match (&r["schema_version"], &r["owned"]) {
-                (Value::Number(n), Value::Object(o)) if n.as_u64() == Some(1) => o.clone(),
-                _ => return Err("claude settings receipt requires preservation review".into()),
-            }
-        }
+        Some(bytes) => resolve_owned(bytes, before.as_deref().map(crate::digest))?,
     };
     let current = match &before {
         None => Map::new(),
@@ -372,6 +392,12 @@ fn settings_state(project: &Path, desired: &Map<String, Value>) -> Result<Settin
         b.push(b'\n');
         b
     });
+    if after
+        .as_ref()
+        .is_some_and(|b| b.len() as u64 > SETTINGS_LIMIT)
+    {
+        return Err("rendered settings exceed the 256 KiB limit; refused".into());
+    }
     use crate::spec::Canonical;
     let canonical =
         |m: &Map<String, Value>| crate::spec::SortedKeys.bytes(&Value::Object(m.clone()));
@@ -421,11 +447,63 @@ pub fn settings_plan(project: &Path, desired: &Map<String, Value>) -> Result<Val
     }))
 }
 
+/// Receipt bytes. `pending` is the ownership MoAI intends once the settings file carries the
+/// given sha256; it is written before the settings file and cleared after.
+fn receipt_bytes(
+    owned: &Map<String, Value>,
+    settings_sha256: Option<&str>,
+    pending: Option<(&Map<String, Value>, &str)>,
+) -> Vec<u8> {
+    let mut r = json!({
+        "schema_version": 1,
+        "settings_path": SETTINGS_FILE,
+        "owned": owned,
+        "settings_sha256": settings_sha256,
+    });
+    if let Some((owned, sha)) = pending {
+        r["pending"] = json!({"owned": owned, "settings_sha256": sha});
+    }
+    let mut bytes = serde_json::to_vec_pretty(&r).expect("receipt");
+    bytes.push(b'\n');
+    bytes
+}
+
+/// The ownership a receipt grants for the settings file whose sha256 is `current`. A pending
+/// receipt left by an interrupted apply resolves by which side the file is on: the intended
+/// one (the settings write landed) or the recorded one (it did not). Anything else is a
+/// change nobody recorded and needs review.
+fn resolve_owned(bytes: &[u8], current: Option<String>) -> Result<Map<String, Value>> {
+    let review = || "claude settings receipt requires preservation review".to_string();
+    let r: Value = serde_json::from_slice(bytes).map_err(|_| review())?;
+    let Value::Object(owned) = &r["owned"] else {
+        return Err(review());
+    };
+    if r["schema_version"].as_u64() != Some(1) {
+        return Err(review());
+    }
+    let Some(pending) = r.get("pending") else {
+        return Ok(owned.clone());
+    };
+    let (Value::Object(intended), Value::String(intended_sha)) =
+        (&pending["owned"], &pending["settings_sha256"])
+    else {
+        return Err(review());
+    };
+    if current.as_deref() == Some(intended_sha.as_str()) {
+        Ok(intended.clone())
+    } else if current.as_deref() == r["settings_sha256"].as_str() {
+        Ok(owned.clone())
+    } else {
+        Err(review())
+    }
+}
+
 /// Applies a previewed settings plan: re-plans against the files now, requires the same
 /// digest, replaces the settings file only when it changes, then records ownership. A key is
 /// owned only when MoAI already owned it or set it now; an equal value the user already had is
-/// left unowned. The two files are not one atomic transaction; a failure between them is
-/// reported as partial and a re-run completes it.
+/// left unowned. Before the settings file changes, the receipt records the intended ownership
+/// as `pending`; an interruption after either write is resolved on the next plan by the file's
+/// sha256, so a re-run completes it without adopting or losing a key.
 pub fn settings_apply(
     project: &Path,
     desired: &Map<String, Value>,
@@ -449,30 +527,28 @@ pub fn settings_apply(
     if s.digest != plan_digest {
         return Err("stale or altered plan; re-preview required".into());
     }
-    let mut files = Vec::new();
-    if let Some(after) = &s.after {
-        crate::agents::write_replace(&s.settings, s.before.as_deref(), after)?;
-        files.push(SETTINGS_FILE);
-    }
     let owned: Map<String, Value> = desired
         .iter()
         .filter(|(k, v)| s.owned.contains_key(*k) || s.current.get(*k) != Some(*v))
         .map(|(k, v)| (k.clone(), v.clone()))
         .collect();
+    let before_sha = s.before.as_deref().map(crate::digest);
     let final_bytes = s.after.as_deref().or(s.before.as_deref());
-    let mut receipt = serde_json::to_vec_pretty(&json!({
-        "schema_version": 1,
-        "settings_path": SETTINGS_FILE,
-        "owned": owned,
-        "settings_sha256": final_bytes.map(crate::digest),
-    }))
-    .expect("receipt");
-    receipt.push(b'\n');
-    if s.receipt_before.as_deref() != Some(receipt.as_slice()) {
-        let rel = format!("{}/{SETTINGS_RECEIPT}", crate::PROJECT_STATE_DIR);
-        if let Err(e) =
-            crate::agents::write_replace(&s.receipt, s.receipt_before.as_deref(), &receipt)
-        {
+    let final_sha = final_bytes.map(crate::digest);
+    let receipt = receipt_bytes(&owned, final_sha.as_deref(), None);
+    let rel = format!("{}/{SETTINGS_RECEIPT}", crate::PROJECT_STATE_DIR);
+    let mut files = Vec::new();
+    let mut receipt_now = s.receipt_before.clone();
+    if let Some(after) = &s.after {
+        let after_sha = crate::digest(after);
+        let pending = receipt_bytes(&s.owned, before_sha.as_deref(), Some((&owned, &after_sha)));
+        crate::agents::write_replace(&s.receipt, receipt_now.as_deref(), &pending)?;
+        receipt_now = Some(pending);
+        crate::agents::write_replace(&s.settings, s.before.as_deref(), after)?;
+        files.push(SETTINGS_FILE);
+    }
+    if receipt_now.as_deref() != Some(receipt.as_slice()) {
+        if let Err(e) = crate::agents::write_replace(&s.receipt, receipt_now.as_deref(), &receipt) {
             return Err(if files.is_empty() {
                 e
             } else {
@@ -891,6 +967,80 @@ mod tests {
             "{}"
         );
         assert!(!p.path().join(".moai-cli").exists());
+    }
+
+    /// Codex review #2044 (1): an apply interrupted between the settings write and the final
+    /// receipt write is completed by a re-run, without losing or adopting ownership.
+    #[test]
+    fn claude_settings_interrupted_apply_resumes_from_the_pending_receipt() {
+        let line = obj(json!({"statusLine": {"type": "command", "command": "moai-statusline"}}));
+        let mut landed = obj(serde_json::from_str(USER_FILE).unwrap());
+        landed.insert("statusLine".into(), line["statusLine"].clone());
+        let mut landed_bytes = serde_json::to_vec_pretty(&landed).unwrap();
+        landed_bytes.push(b'\n');
+        let user_sha = crate::digest(USER_FILE.as_bytes());
+        let pending = receipt_bytes(
+            &Map::new(),
+            Some(&user_sha),
+            Some((&line, &crate::digest(&landed_bytes))),
+        );
+        let setup = |settings: &[u8]| {
+            let p = project_with(None);
+            fs::create_dir_all(p.path().join(".claude")).unwrap();
+            fs::write(p.path().join(SETTINGS_FILE), settings).unwrap();
+            let receipt = p.path().join(".moai-cli").join(SETTINGS_RECEIPT);
+            fs::create_dir_all(receipt.parent().unwrap()).unwrap();
+            fs::write(&receipt, &pending).unwrap();
+            (p, receipt)
+        };
+        // The settings write landed: the re-run only finishes the receipt and owns the key.
+        let (p, receipt) = setup(&landed_bytes);
+        let r = apply_now(p.path(), &line).unwrap();
+        assert_eq!(r["state"], json!("unchanged"));
+        assert_eq!(r["owned_keys"], json!(["statusLine"]));
+        let done: Value = serde_json::from_slice(&fs::read(&receipt).unwrap()).unwrap();
+        assert!(done.get("pending").is_none());
+        // ... so removing the key later removes MoAI's value and restores the user's bytes.
+        apply_now(p.path(), &Map::new()).unwrap();
+        assert_eq!(
+            fs::read_to_string(p.path().join(SETTINGS_FILE)).unwrap(),
+            USER_FILE
+        );
+        // The settings write did not land: the re-run applies it as if for the first time.
+        let (p, _) = setup(USER_FILE.as_bytes());
+        let r = apply_now(p.path(), &line).unwrap();
+        assert_eq!(
+            (r["state"].clone(), r["owned_keys"].clone()),
+            (json!("applied"), json!(["statusLine"]))
+        );
+        assert_eq!(
+            fs::read(p.path().join(SETTINGS_FILE)).unwrap(),
+            landed_bytes
+        );
+        // Neither side: someone else changed the file meanwhile; nothing is guessed.
+        let (p, _) = setup(b"{\"model\":\"opus\"}\n");
+        let err = settings_plan(p.path(), &line).unwrap_err();
+        assert_eq!(
+            crate::contract::classify(&err),
+            crate::contract::Kind::Conflict,
+            "{err}"
+        );
+    }
+
+    /// Codex review #2044 (3): the planner offers nothing the writer would refuse.
+    #[test]
+    fn claude_settings_size_limit_matches_the_writer() {
+        let big = format!("{{\"pad\":\"{}\"}}", "x".repeat(SETTINGS_LIMIT as usize));
+        let p = project_with(Some(&big));
+        let style = obj(json!({"outputStyle": "MoAI"}));
+        assert!(settings_plan(p.path(), &style).is_err());
+        let p = project_with(None);
+        let huge = obj(
+            json!({"statusLine": {"type": "command", "command": "x".repeat(SETTINGS_LIMIT as usize)}}),
+        );
+        let err = settings_plan(p.path(), &huge).unwrap_err();
+        assert!(err.contains("256 KiB"), "{err}");
+        assert!(!p.path().join(SETTINGS_FILE).exists());
     }
 
     #[test]

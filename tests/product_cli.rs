@@ -2531,11 +2531,38 @@ fn claude_doctor_agents_loading_combinations() {
     // An import inside a code fence or a code span is not an import.
     let (_p5, quoted) = case(&[("CLAUDE.md", "```\n@AGENTS.md\n```\nsee `@AGENTS.md`\n")]);
     assert_eq!(quoted["agents_md_status"], json!("suppressed_by_claude_md"));
+    // Also when the span holds more than the import, or never closes (Codex review #2044).
+    for body in ["`See @AGENTS.md for rules`\n", "see `x @AGENTS.md\n"] {
+        let (_p, v) = case(&[("CLAUDE.md", body)]);
+        assert_eq!(
+            v["agents_md_status"],
+            json!("suppressed_by_claude_md"),
+            "{body}"
+        );
+    }
     // A suppressing file above the start directory counts too.
     let (p6, _) = case(&[(".claude/CLAUDE.md", "# team\n")]);
     fs::create_dir(p6.path().join("sub")).unwrap();
     let (_, sub) = doctor(&p6.path().join("sub"), home.path(), &bin);
     assert_eq!(sub["agents_md_status"], json!("suppressed_by_claude_md"));
+}
+
+/// A project under HOME: the user's own ~/.claude/CLAUDE.md does not suppress AGENTS.md,
+/// while a CLAUDE.md in HOME itself is an ordinary directory above and does (agent-2 #2044).
+#[test]
+fn claude_doctor_ignores_the_user_claude_md() {
+    let home = TempDir::new().unwrap();
+    let bin = fake_claude(Some("2.1.319 (Claude Code)"));
+    let project = home.path().join("work/repo");
+    write_file(&project, "AGENTS.md", b"# rules\n");
+    write_file(home.path(), ".claude/CLAUDE.md", b"# my global notes\n");
+    let (out, v) = doctor(&project, home.path(), &bin);
+    assert!(out.status.success(), "{:?}", out.stderr);
+    assert_eq!(v["agents_md_status"], json!("loaded"));
+    assert_eq!(v["suppressing_files"], json!([]));
+    write_file(home.path(), "CLAUDE.md", b"# home dir file\n");
+    let (_, v) = doctor(&project, home.path(), &bin);
+    assert_eq!(v["agents_md_status"], json!("suppressed_by_claude_md"));
 }
 
 #[test]
@@ -2569,6 +2596,9 @@ fn claude_doctor_versions_and_user_settings() {
         r#"{"pluginConfigs":{"agents-md@builtin":{"options":{"instructionFiles":"claude-md-and-agents-md"}}}}"#,
     );
     let (_, v) = doctor(p.path(), home.path(), &fake_claude(Some("2.1.280")));
+    assert_eq!(v["agents_md_status"], json!("loaded"));
+    // From 2.1.285 an entry under the older id is still read.
+    let (_, v) = doctor(p.path(), home.path(), &bin);
     assert_eq!(v["agents_md_status"], json!("loaded"));
     // Project settings are ignored for this entry.
     fs::remove_file(home.path().join(".claude/settings.json")).unwrap();
