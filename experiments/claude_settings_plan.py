@@ -4,6 +4,14 @@ import json
 
 _MISSING = object()
 _ALLOWED = frozenset({"outputStyle", "statusLine"})
+# Rust (`src/claude.rs` MANAGED_SETTINGS) is the canonical settings path (#2239, #2294).
+# This mirror deliberately never manages the keys below: it has neither the
+# narrowing-only validation Rust applies to `permissions` (check_permissions) nor the
+# fixed MoAI hook set Rust writes as `hooks`. Do not use this mirror for them; use
+# `moai-cli claude-settings-plan/apply` and `hooks-apply`.
+# tests/claude_settings_mirror_parity_test.py requires _ALLOWED | RUST_ONLY to equal
+# MANAGED_SETTINGS exactly.
+RUST_ONLY = frozenset({"permissions", "hooks"})
 
 
 def _same(left, right):

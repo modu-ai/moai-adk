@@ -65,8 +65,9 @@ Hooks can come from user, project, local and managed settings, plugin `hooks/hoo
 | Exclusive copy of the output styles, `statusline.py` and their licenses into the project | none | not replaced |
 | `--recovery-plan` read of an interrupted merge | none as a separate command; the Rust plan resolves a leftover `pending` itself | partly replaced |
 
-Two differences are deliberate:
+Three differences are deliberate:
 - The Rust plan names a refused key. The Python adapter only ever sends the two keys.
+- The Rust lists are canonical: `MANAGED_SETTINGS` = `outputStyle`, `statusLine`, `permissions`, `hooks`; `USER_SETTINGS` drops `hooks`. The Python mirrors (`adapters/claude/settings_update.py`, `experiments/claude_settings_plan.py`) manage only `outputStyle` and `statusLine` and declare `permissions` and `hooks` as `RUST_ONLY` (#2294). Widening the mirrors was rejected: they have neither the narrowing-only `permissions` check nor the fixed MoAI hook set, so a widened mirror could write a permissions value the Rust path refuses. Use `claude-settings-plan/apply` and `hooks-apply` for those keys. `tests/claude_settings_mirror_parity_test.py` reads both Rust lists from `src/claude.rs` and fails unless each mirror's keys plus `RUST_ONLY` equal `MANAGED_SETTINGS`, so a key removed from or added to the Rust list needs a decision here.
 - The Rust path writes the receipt under `.moai-cli/manifests/claude-settings.json`. The Python path keeps its own state in `.moai-cli/claude-settings-owner.json`, and the two receipts are not shared. A project set up by the Python path is planned by the Rust path as a key MoAI never owned. An equal value is then `unchanged` and is not adopted; a different value is a `conflict`.
 
 So the script is marked deprecated for the settings merge: a docstring and one stderr line say so. It is not removed, because the asset copy still depends on it, the Python tests run it, and removal needs the user's approval (see below).
