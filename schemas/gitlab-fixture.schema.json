@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://modu-ai/moai-adk/schemas/gitlab-fixture.schema.json",
+  "title": "GitLab forge fixture (Issue #2171, REQ-B4-01)",
+  "description": "Declaration-only fixture for the GitLab forge contract. A fixture records capability declarations and the three resource shapes (merge_request, pipeline, note) a future adapter WOULD handle — it never carries live data and no call path exists for it to exercise.",
+  "type": "object",
+  "required": ["provider", "capabilities", "resources"],
+  "additionalProperties": false,
+  "properties": {
+    "provider": { "const": "gitlab" },
+    "capabilities": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "required": ["name", "status"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "enum": ["merge_request", "pipeline", "note"] },
+          "status": { "enum": ["unknown", "documented"] }
+        }
+      }
+    },
+    "resources": {
+      "type": "object",
+      "required": ["merge_request", "pipeline", "note"],
+      "additionalProperties": false,
+      "properties": {
+        "merge_request": { "$ref": "#/definitions/resource" },
+        "pipeline": { "$ref": "#/definitions/resource" },
+        "note": { "$ref": "#/definitions/resource" }
+      }
+    }
+  },
+  "definitions": {
+    "resource": {
+      "type": "object",
+      "required": ["documented_in", "fixture_example"],
+      "additionalProperties": false,
+      "properties": {
+        "documented_in": {
+          "type": "string",
+          "description": "Where the capability shape is documented (official GitLab REST documentation section)."
+        },
+        "fixture_example": {
+          "type": "object",
+          "description": "A minimal example of the resource's documented fields. Shape only — never live data."
+        }
+      }
+    }
+  }
+}

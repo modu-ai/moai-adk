@@ -107,6 +107,44 @@ run_rss_ops() {
     echo "$(bench_op_rss "-" "$REPO" package-inspect "$REPO/skills/moai")"
 }
 
+# Index bytes/LOC over tracked files (git ls-files): the whole repository and
+# the skills/moai package. Deterministic at a fixed commit — no timing involved.
+run_loc_ops() {
+    label="저장소 전체 (tracked files)"
+    row="$(bench_loc "")"
+    echo "$row"
+    label="skills/moai 패키지"
+    row="$(bench_loc "skills/moai")"
+    echo "$row"
+}
+
+# One bytes/LOC row: sums the byte size and newline count of every tracked file
+# matching the pathspec, from the repository top level. An empty pathspec means
+# every tracked file.
+bench_loc() {
+    local pathspec="$1"
+    BENCH_LABEL="$label" BENCH_REPO="$REPO" python3 - "$pathspec" <<'PYEOF'
+import os, subprocess, sys
+label = os.environ["BENCH_LABEL"]
+repo = os.environ["BENCH_REPO"]
+pathspec = sys.argv[1] if len(sys.argv) > 1 else ""
+cmd = ["git", "-C", repo, "ls-files", "-z"]
+if pathspec:
+    cmd += ["--", pathspec]
+files = subprocess.run(cmd, capture_output=True, check=True).stdout.split(b"\0")
+bytes_total = 0
+lines_total = 0
+for name in files:
+    if not name:
+        continue
+    with open(os.path.join(repo, os.fsdecode(name)), "rb") as f:
+        data = f.read()
+    bytes_total += len(data)
+    lines_total += data.count(b"\n")
+print(f"| {label} | {bytes_total:,} | {lines_total:,} |")
+PYEOF
+}
+
 echo "| 연산 | p50 (ms) | p95 (ms) | 최소 (ms) | 최대 (ms) |"
 echo "| --- | --- | --- | --- | --- |"
 run_time_ops
@@ -114,3 +152,7 @@ echo
 echo "| 연산 | RSS p50 (MiB) | RSS p95 (MiB) |"
 echo "| --- | --- | --- |"
 run_rss_ops
+echo
+echo "| 대상 | bytes | LOC |"
+echo "| --- | --- | --- |"
+run_loc_ops

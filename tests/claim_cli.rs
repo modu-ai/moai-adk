@@ -76,6 +76,8 @@ fn lib_req(session: &str, lease_until: &str) -> ClaimRequest {
             pid: None,
             process_start: None,
         },
+        assignee: None,
+        provider_session: None,
         attempt: None,
         base_revision: "a".repeat(40),
         write_scope: vec!["src/claim.rs".into()],
@@ -157,17 +159,20 @@ fn acquire_in(
     exchanges: Vec<Exchange>,
     clock: &FakeClock,
 ) -> (moai_cli::claim::AcquireOutcome, RecordedTransport) {
+    acquire_with(root, lib_req(session, lease_until), exchanges, clock)
+}
+
+/// Acquires with a fully caller-built request (#2169 schema tests set the new fields).
+fn acquire_with(
+    root: &Path,
+    req: moai_cli::claim::ClaimRequest,
+    exchanges: Vec<Exchange>,
+    clock: &FakeClock,
+) -> (moai_cli::claim::AcquireOutcome, RecordedTransport) {
     fs::create_dir_all(root).unwrap();
     let journal = lock_journal(root);
     let t = RecordedTransport::new(exchanges);
-    let out = acquire(
-        &journal,
-        &lib_req(session, lease_until),
-        worktree(),
-        &client(&t, clock),
-        clock,
-    )
-    .unwrap();
+    let out = acquire(&journal, &req, worktree(), &client(&t, clock), clock).unwrap();
     (out, t)
 }
 
@@ -1149,6 +1154,77 @@ fn claim_go_paths_untouched() {
         assert!(f.contains(".moai-cli"), "new file outside .moai-cli: {f}");
         assert!(!f.contains("/.moai/") && !f.contains(".claude"), "{f}");
     }
+}
+
+/// REQ-B2-01 (#2169): the record stores the four ownership fields separately — `owner`
+/// (the execution owner) is the only field the journal consults for exclusivity; the
+/// assignee, the provider session and the integration owner are recorded projections
+/// and none of them is a lock. Records written before #2169 deserialize unchanged.
+#[test]
+fn claim_record_four_ownership_fields_are_separate_and_not_locks() {
+    let tmp = tempfile::tempdir().unwrap();
+    let clock = FakeClock::at(CLOCK0);
+    let lease = format_utc(CLOCK0 + 3600);
+    let mut req = lib_req("agent-x", &lease);
+    req.assignee = Some("octocat".into());
+    req.provider_session = Some("sess-1234".into());
+    let (out, _t) = acquire_with(
+        tmp.path(),
+        req,
+        happy_exchanges(900, "agent-x", &lease),
+        &clock,
+    );
+    assert_eq!(out.outcome, "claimed");
+
+    // The four fields are distinct JSON keys on the record.
+    let record = out.record.as_ref().unwrap();
+    let v = serde_json::to_value(record).unwrap();
+    assert_eq!(
+        v["owner"]["id"],
+        json!("agent-x"),
+        "execution owner (the alias target)"
+    );
+    assert_eq!(v["assignee"], json!("octocat"));
+    assert_eq!(v["provider_session"], json!("sess-1234"));
+    assert!(
+        v.get("integration_owner").is_none(),
+        "acquire never sets the integration owner — the leader gate records it later"
+    );
+
+    // Exclusivity consults `owner` only: a second acquire whose ASSIGNEE matches but
+    // whose owner differs is still already_owned by agent-x — the assignee granted
+    // nothing and no second record appeared.
+    let mut second = lib_req("agent-y", &lease);
+    second.assignee = Some("octocat".into());
+    let journal = lock_journal(tmp.path());
+    let second_out = acquire(
+        &journal,
+        &second,
+        worktree(),
+        &client(&RecordedTransport::new(vec![]), &clock),
+        &clock,
+    )
+    .unwrap();
+    assert_eq!(second_out.outcome, "already_owned");
+    assert_eq!(
+        second_out.record.as_ref().unwrap().owner.id,
+        "agent-x",
+        "the assignee did not become a lock or an ownership claim"
+    );
+    drop(journal);
+
+    // Old-record compatibility: a record JSON without the three additive fields
+    // deserializes with them as None and the execution owner intact.
+    let mut old = serde_json::to_value(out.record.as_ref().unwrap()).unwrap();
+    let obj = old.as_object_mut().unwrap();
+    obj.remove("assignee");
+    obj.remove("provider_session");
+    obj.remove("integration_owner");
+    let parsed: moai_cli::claim::ClaimRecord = serde_json::from_value(old).unwrap();
+    assert_eq!(parsed.owner.id, "agent-x");
+    assert_eq!(parsed.assignee, None);
+    assert_eq!(parsed.provider_session, None);
+    assert_eq!(parsed.integration_owner, None);
 }
 
 // ---- #2166 (rc.2 A7): default lease, explicit lease wins, expiry shown ----

@@ -33,6 +33,9 @@ fn git(dir: &Path) -> Command {
 const FILE_LIMIT: u64 = 4 * 1024 * 1024;
 const GIT_OUTPUT_LIMIT: usize = 4 * 1024 * 1024;
 const MAX_ITEMS: usize = 256;
+/// Byte budget of a bundle whose request and profile name none (REQ-C8-01; user decision
+/// 01:1x(11-09) in `docs/decisions-2026-11-08.md`: 256 KiB, about 64k tokens by `bytes_div_4`).
+pub const DEFAULT_MAX_BYTES: u64 = 256 * 1024;
 /// File or directory names never bundled (REQ-CTX-004): `*x` ends with x, `x*` starts with x,
 /// anything else is an exact name.
 pub const SECRET_PATTERNS: &[&str] = &[
@@ -205,6 +208,7 @@ pub struct BundleRequest {
     pub protocol_version: u32,
     /// In priority order: under a budget, later items are dropped first (REQ-CTX-005).
     pub items: Vec<ItemRequest>,
+    #[serde(default)]
     pub budget: Budget,
 }
 
@@ -219,8 +223,10 @@ pub struct ItemRequest {
     pub reason: String,
 }
 
-/// Required: a bundle has no default size, and it is never enlarged on its own.
-#[derive(Deserialize)]
+/// Optional. A missing `max_bytes` comes from the profile key `context_max_bytes`, else
+/// [`DEFAULT_MAX_BYTES`] (REQ-C8-01); `max_items` has no default. A budget is never
+/// enlarged on its own.
+#[derive(Deserialize, Default)]
 #[serde(deny_unknown_fields)]
 pub struct Budget {
     #[serde(default)]
@@ -329,13 +335,28 @@ fn range(start: Option<usize>, end: Option<usize>) -> Value {
     json!({"start_line": start, "end_line": end})
 }
 
+/// The byte budget and where it came from: the request, then the profile key
+/// `context_max_bytes`, then [`DEFAULT_MAX_BYTES`] (REQ-C8-01). A missing profile means the
+/// default; an unreadable profile is an error, never a guess.
+fn resolve_max_bytes(root: &Path, budget: &Budget) -> Result<(u64, &'static str)> {
+    if let Some(m) = budget.max_bytes {
+        return Ok((m, "request"));
+    }
+    let profile_path = root.join(crate::PROJECT_STATE_DIR).join("project.yaml");
+    if crate::apply::read_opt(&profile_path)?.is_none() {
+        return Ok((DEFAULT_MAX_BYTES, "default"));
+    }
+    let (profile, _) = crate::profile::read_profile(root)?;
+    Ok(match profile.context_max_bytes {
+        Some(m) => (m, "profile"),
+        None => (DEFAULT_MAX_BYTES, "default"),
+    })
+}
+
 /// Builds a bundle for `req` in `project` (REQ-CTX-002..006). Writes nothing.
 pub fn bundle(project: &Path, req: &BundleRequest) -> Result<Value> {
     if req.protocol_version != 1 {
         return Err("unsupported protocol_version; supported: 1".into());
-    }
-    if req.budget.max_bytes.is_none() && req.budget.max_items.is_none() {
-        return Err("budget requires max_bytes or max_items".into());
     }
     if req.items.is_empty() || req.items.len() > MAX_ITEMS {
         return Err("bundle request requires 1 to 256 items".into());
@@ -345,6 +366,7 @@ pub fn bundle(project: &Path, req: &BundleRequest) -> Result<Value> {
     }
     let snapshot = snapshot(project)?;
     let root = project_root(project)?;
+    let (max_bytes, max_bytes_source) = resolve_max_bytes(&root, &req.budget)?;
     let (mut items, mut omitted) = (Vec::new(), Vec::new());
     let (mut used_bytes, mut truncated) = (0u64, false);
     let mut ignore_check = "git";
@@ -365,7 +387,7 @@ pub fn bundle(project: &Path, req: &BundleRequest) -> Result<Value> {
                 content,
             } => {
                 let size = content.len() as u64;
-                let over_bytes = req.budget.max_bytes.is_some_and(|m| used_bytes + size > m);
+                let over_bytes = used_bytes + size > max_bytes;
                 let over_items = req.budget.max_items.is_some_and(|m| items.len() >= m);
                 // Once one item does not fit, every later (lower-priority) item is dropped
                 // too, so a dropped item never outranks a kept one.
@@ -398,7 +420,8 @@ pub fn bundle(project: &Path, req: &BundleRequest) -> Result<Value> {
         "items": items,
         "omitted": omitted,
         "budget": {
-            "max_bytes": req.budget.max_bytes,
+            "max_bytes": max_bytes,
+            "max_bytes_source": max_bytes_source,
             "max_items": req.budget.max_items,
             "used_bytes": used_bytes,
             "used_items": refs.len(),
