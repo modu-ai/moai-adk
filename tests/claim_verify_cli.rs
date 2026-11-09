@@ -1034,6 +1034,67 @@ fn hook_guards_a_lane_push_without_a_claim_record() {
     assert!(err.starts_with("claim verify: trailer missing"), "{err}");
 }
 
+/// After a renewal (handoff + new epoch) the new token may sit only on a merge commit: the
+/// lane's last own commit still carries the handed-off epoch's token. The push must verify
+/// the newest claim (highest comment id among the branch's tokens), not the closed one —
+/// found by running the guard on #2270's own push (it refused the owner as `closed`).
+#[test]
+fn lane_push_after_renewal_verifies_the_newest_epoch() {
+    let clock = FixedClock(now());
+    let (_d, root) = lane_repo("issue/7-widget");
+    git(
+        &root,
+        &[
+            "commit",
+            "-q",
+            "--allow-empty",
+            "-m",
+            "epoch 1\n\nMoai-Claim: 7#100",
+        ],
+    );
+    git(&root, &["checkout", "-q", "main"]);
+    git(
+        &root,
+        &["commit", "-q", "--allow-empty", "-m", "other card"],
+    );
+    git(&root, &["update-ref", "refs/remotes/origin/main", "HEAD"]);
+    git(&root, &["checkout", "-q", "issue/7-widget"]);
+    git(
+        &root,
+        &[
+            "merge",
+            "-q",
+            "--no-ff",
+            "-m",
+            "tip sync\n\nMoai-Claim: 7#200",
+            "main",
+        ],
+    );
+    let renewed = json!([
+        raw(
+            100,
+            "GoosLab",
+            &format!("moai-claim: session=a epoch=1 lease_until={EXPIRED}")
+        ),
+        raw(
+            150,
+            "GoosLab",
+            "moai-claim-handoff: comment=100 to=a2 by=leader"
+        ),
+        raw(
+            200,
+            "GoosLab",
+            &format!("moai-claim: session=a2 epoch=2 lease_until={LIVE}")
+        ),
+    ]);
+    let t = RecordedTransport::new(vec![get(renewed)]);
+    let v = hook_cli(&root, &hook_input("git push", &root), &t, &clock).unwrap();
+    assert_eq!(v["status"], json!("owner"));
+    assert_eq!(v["mine"], json!(200));
+    // The epoch-1 lane commit is checked and accepted: its claim is handoff-closed.
+    assert_eq!(v["trailer_checked"], json!(1));
+}
+
 /// This repository's shape: the integration branch shares no history with the default
 /// branch `origin/HEAD` points to, so no merge-base with it exists. The push check still
 /// scopes to the lane's own commits (those on no other origin branch).

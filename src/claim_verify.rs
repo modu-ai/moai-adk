@@ -18,8 +18,9 @@
 //!   message (REQ-A9-01). `--hook` reads a host `PreToolUse` input and guards only a Bash
 //!   `git commit` / `git push`: in a worktree with an active claim record it verifies that
 //!   record; without one, on a lane branch `issue/<n>-…` it verifies the `Moai-Claim: <n>#<id>`
-//!   token of the commit message (commit) or of the newest own commit (push), and refuses as
-//!   `uncertain` when no usable token, GitHub origin or base is found.
+//!   token of the commit message (commit) or the highest-id token on the branch's
+//!   first-parent line, merges included (push), and refuses as `uncertain` when no usable
+//!   token or GitHub origin is found.
 //!
 //! Limits: every lane posts through one shared GitHub account, so "author mismatch" means an
 //! author outside `allowed_authors`; a forged session value from an allowed author cannot be
@@ -548,13 +549,16 @@ pub fn hook_cli<T: Transport, C: Clock>(
             }
         }
     } else {
-        // A push: the newest own (non-merge) commit carrying a token for this Issue.
+        // A push: the highest claim comment id among this Issue's tokens on the branch's
+        // first-parent line, merge commits included. A later epoch's claim always has a
+        // higher comment id, and after a renewal its token may sit only on a merge commit;
+        // taking the newest non-merge commit instead verified the handed-off epoch and
+        // refused the owner as `closed`.
         let log = git_out(
             &cwd,
             &[
                 "log",
                 "--first-parent",
-                "--no-merges",
                 "-n",
                 "200",
                 "--format=%B%x1e",
@@ -562,13 +566,11 @@ pub fn hook_cli<T: Transport, C: Clock>(
             ],
         )
         .unwrap_or_default();
-        let found = log.split('\u{1e}').find_map(|body| {
-            claim_tokens(body)
-                .iter()
-                .filter(|t| t.0 == issue)
-                .map(|t| t.1)
-                .max()
-        });
+        let found = claim_tokens(&log)
+            .iter()
+            .filter(|t| t.0 == issue)
+            .map(|t| t.1)
+            .max();
         match found {
             Some(id) => id,
             None => {
