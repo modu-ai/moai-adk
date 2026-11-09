@@ -40,7 +40,7 @@ elif [ -z "$(printenv CODEX_API_KEY || true)" ]; then
   receipt "AC-08C-4" not_run "credential CODEX_API_KEY not set; command not executed"
 else
   (cd "$WORK/project" && codex exec --json --ephemeral \
-      --ignore-user-config --sandbox read-only \
+      --ignore-user-config --sandbox read-only --skip-git-repo-check \
       -o "$WORK/last.md" \
       '$moai 프로젝트 설정 미리보기만 해줘' \
       > "$WORK/ac4.jsonl" 2> "$WORK/ac4.err")
