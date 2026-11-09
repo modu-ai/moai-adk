@@ -78,72 +78,85 @@ fn uppercase_run(s: &str) -> Option<&str> {
 }
 
 /// Parses one marker payload under grammar v1. The payload is everything after
-/// the `@MOAI:` / `@MX:` marker on the line.
+/// the `@MOAI:` / `@MX:` marker on the line. The form is decided by which delimiter
+/// comes first (#2178: a space-form tag whose args contain a URL — `@MX:NOTE see
+/// https://…` — must not be split on the URL's colons):
 ///
-/// - one segment (`KIND args` or bare `KIND`): the args keep everything after the
-///   uppercase kind run, separated by whitespace — junk glued to the kind is invalid.
-/// - two segments (`KIND:X`): `X` is a SUB only when it is a bare uppercase run
-///   (`@MOAI:SPEC:REQ` → sub REQ, no args); otherwise it is free-text args
-///   (`@MX:SPEC: SPEC-PAYMENT-001`).
-/// - three or more segments (`KIND:SUB:args…`): the second segment must be a bare
-///   uppercase run (the SUB) and the rest — colons preserved — are the args.
+/// - space form (first whitespace before any colon): the kind is the bare run before
+///   the whitespace and the args are everything after it (`@MX:NOTE see https://…`).
+/// - colon form (first colon before any whitespace): the text before the colon is the
+///   kind; of the rest, the first fragment is a SUB only when it is a bare uppercase
+///   run (`@MOAI:SPEC:REQ`) — otherwise the whole rest is args, colons preserved
+///   (`@MX:NOTE: [AUTO] …: …`, `@MX:SPEC: SPEC-PAYMENT-001`).
+/// - neither delimiter: a bare KIND. Junk glued to the kind (`REQ-Thing /path`) and
+///   empty segments (`SPEC::`) are invalid.
 fn parse_payload(payload: &str) -> Result<(String, Option<String>, Option<String>)> {
-    let segments: Vec<&str> = payload.split(':').collect();
-    if segments.len() == 1 {
-        // `KIND args` (space-separated) or a bare KIND. The raw remainder must
-        // start with whitespace; trimming before the check would accept junk.
-        let kind = uppercase_run(segments[0]).unwrap_or("").to_string();
-        if kind.is_empty() {
-            let shown = segments[0];
-            return Err(format!(
-                "kind must be an uppercase run ([A-Z][A-Z0-9_]*), found {shown:?}"
-            ));
+    let first_space = payload.find(char::is_whitespace);
+    let first_colon = payload.find(':');
+    if let Some(space) = first_space {
+        if first_colon.is_none_or(|colon| space < colon) {
+            return space_form(payload, space);
         }
-        let raw_rest = segments[0][kind.len()..].to_string();
-        let rest = raw_rest.trim().to_string();
-        if rest.is_empty() {
-            return Ok((kind, None, None));
-        }
-        if !raw_rest.starts_with(' ') && !raw_rest.starts_with('\t') {
-            return Err(format!(
-                "junk {rest:?} directly after kind {kind:?}; separate args with a space"
-            ));
-        }
-        return Ok((kind, None, Some(rest.to_string())));
     }
-    let kind = uppercase_run(segments[0]).unwrap_or("").to_string();
-    if kind.is_empty() || kind.len() != segments[0].len() {
+    match first_colon {
+        Some(colon) => colon_form(payload, colon),
+        None => bare_kind(payload),
+    }
+}
+
+fn space_form(payload: &str, space: usize) -> Result<(String, Option<String>, Option<String>)> {
+    let kind = uppercase_run(&payload[..space]).unwrap_or("").to_string();
+    if kind.len() != space {
+        let shown = &payload[..space];
         return Err(format!(
-            "kind must be an uppercase run ([A-Z][A-Z0-9_]*), found {:?}",
-            segments[0]
+            "kind must be an uppercase run ([A-Z][A-Z0-9_]*), found {shown:?}"
         ));
     }
-    if segments.len() == 2 {
-        let seg = segments[1].trim();
-        if seg.is_empty() {
-            return Err(format!("empty segment after kind {kind:?}"));
-        }
-        if let Some(sub) = uppercase_run(seg) {
-            if sub.len() == seg.len() {
+    let args = payload[space..].trim();
+    if args.is_empty() {
+        Ok((kind, None, None))
+    } else {
+        Ok((kind, None, Some(args.to_string())))
+    }
+}
+
+fn bare_kind(payload: &str) -> Result<(String, Option<String>, Option<String>)> {
+    let kind = uppercase_run(payload).unwrap_or("").to_string();
+    if kind.len() != payload.len() || kind.is_empty() {
+        let shown = payload;
+        return Err(format!(
+            "kind must be an uppercase run ([A-Z][A-Z0-9_]*), found {shown:?}"
+        ));
+    }
+    Ok((kind, None, None))
+}
+
+fn colon_form(payload: &str, colon: usize) -> Result<(String, Option<String>, Option<String>)> {
+    let kind = uppercase_run(&payload[..colon]).unwrap_or("").to_string();
+    if kind.len() != colon {
+        let shown = &payload[..colon];
+        return Err(format!(
+            "kind must be an uppercase run ([A-Z][A-Z0-9_]*), found {shown:?}"
+        ));
+    }
+    // The fragment after the colon is a SUB only when it is a bare uppercase run —
+    // otherwise it (with every later colon preserved) is args (#2178: real tags carry
+    // colons inside their args — `[AUTO] …`, URLs, `fan_in >= 3:`).
+    let rest = &payload[colon + 1..];
+    let second = rest.split(':').next().unwrap_or("").trim();
+    if second.is_empty() {
+        return Err(format!("empty segment after kind {kind:?}"));
+    }
+    if let Some(sub) = uppercase_run(second) {
+        if sub.len() == second.len() {
+            let args = rest[second.len()..].trim_start_matches(':').trim();
+            if args.is_empty() {
                 return Ok((kind, Some(sub.to_string()), None));
             }
+            return Ok((kind, Some(sub.to_string()), Some(args.to_string())));
         }
-        return Ok((kind, None, Some(seg.to_string())));
     }
-    let sub_raw = segments[1];
-    let sub = uppercase_run(sub_raw).unwrap_or("").to_string();
-    if sub.is_empty() || sub.len() != sub_raw.len() {
-        return Err(format!(
-            "invalid sub {sub_raw:?} (must be a bare uppercase run)"
-        ));
-    }
-    let args = segments[2..].join(":");
-    let args = args.trim();
-    if args.is_empty() {
-        Ok((kind, Some(sub.to_string()), None))
-    } else {
-        Ok((kind, Some(sub.to_string()), Some(args.to_string())))
-    }
+    Ok((kind, None, Some(rest.trim().to_string())))
 }
 
 fn parse_line(line: &str) -> Option<Result<Parsed>> {
@@ -224,7 +237,9 @@ fn walk_files(root: &Path, out: &mut Vec<PathBuf>, depth: usize) -> Result<()> {
 /// Read-only dual-read scan (REQ-C2-01/02): reads both `@MOAI:` and `@MX:`
 /// markers, normalizes them into one node shape, diagnoses duplicates (same
 /// namespace+kind+sub seen more than once), and never writes. `path` may be a
-/// file or a directory.
+/// file or a directory. Known limitation: `parse_line` reads only the FIRST
+/// marker on a line — a single line carrying both `@MOAI:` and `@MX:` contributes
+/// one node for the first marker, and the second is invisible to the scan.
 pub fn scan_path(path: &Path) -> Result<Value> {
     let meta = fs::symlink_metadata(path).map_err(|_| "tag scan path unavailable".to_string())?;
     let mut reports = Vec::new();
