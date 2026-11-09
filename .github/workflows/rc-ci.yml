@@ -77,3 +77,37 @@ jobs:
           run unittest python -m unittest discover -s tests -p '*_test.py'
           run diff-check git diff --check "${{ github.event.pull_request.base.sha || 'HEAD~1' }}...${{ github.event.pull_request.head.sha || 'HEAD' }}"
           exit "$failed"
+
+  # E3 #2195 (decision 01:1x(11-09): Windows is build + self-replace only, support table
+  # not_run). Build only: every target, tests included, is compiled and nothing is run.
+  # Standard GitHub-hosted runner, no secrets. Not part of the required `rc-ci` check.
+  windows-build:
+    name: windows-build
+    runs-on: windows-2025
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    env:
+      CARGO_TERM_COLOR: never
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Toolchain (rust-toolchain.toml)
+        shell: bash
+        run: |
+          rustc -V
+          rustup show
+      - name: Fetch (Cargo.lock)
+        shell: bash
+        run: cargo fetch --locked
+      - name: Build all targets (tests compiled, not run)
+        shell: bash
+        run: |
+          cargo build --offline --locked --all-targets
+          {
+            echo "## windows-build"
+            echo
+            echo "- toolchain: \`$(rustc --version)\` on \`$RUNNER_OS\` / \`$RUNNER_ARCH\`"
+            echo "- \`cargo build --offline --locked --all-targets\`: exit 0 (tests compiled, not run)"
+          } >> "$GITHUB_STEP_SUMMARY"

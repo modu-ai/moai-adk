@@ -13,7 +13,8 @@ rc.1의 지원 대상은 **Darwin/arm64(`aarch64-apple-darwin`) × Claude Code, 
 | Darwin/arm64 × Claude Code | 지원 대상 | T2 not_run(AC-08C-3·6·8 절반), 정적 검증 AC-08C-5만 passed |
 | Darwin/arm64 × Codex | 지원 대상 | T2 not_run(AC-08C-4) |
 | Darwin/x86_64(`x86_64-apple-darwin`, Tier 2) | 미지원(후속) | 측정하지 않음 |
-| Linux(ubuntu-24.04, arm 변형 포함)·Windows(windows-2025) | 미지원(후속) | 측정하지 않음 |
+| Linux(ubuntu-24.04, arm 변형 포함) | 미지원(후속) | 측정하지 않음 |
+| Windows(windows-2025) | 빌드 + self-replace 구현만(결정 01:1x(11-09), E3 #2195) | **not_run** — CI `windows-build` job이 모든 target을 컴파일만 한다. 시험 실행·실행 중 교체·host 로딩은 측정하지 않음 |
 | ZCode·그 밖의 host | 미지원(후속) | 측정하지 않음 |
 
 ## 조합 범위 (P12)
@@ -39,7 +40,9 @@ RC1의 실측 조합은 개발 Mac 단일이다: Darwin / arm64 (Rust triple `aa
 | Darwin/arm64 | Claude Code | local | 권한 거부 시 apply 차단·트리 불변 (AC-08C-6) | not_run | 동일(운영자 실측 대기) |
 | Darwin/arm64 | Codex | local | 명시 호출이 SETUP route 도달 (AC-08C-4) | not_run | `CODEX_API_KEY` 필요(운영자 실측 대기) |
 | Darwin/arm64 | Claude Code | local | clean clone READ (AC-08C-8 T2 절반) | not_run | 운영자 실측 대기 |
-| ubuntu-24.04 / windows-2025 / arm 변형 / Darwin x86_64 | — | local | 전체 | not_run | 미지원(후속) — P04로 rc.1 범위 밖. OS matrix workflow는 RC1에서 만들지 않음(08-D 소유) |
+| ubuntu-24.04 / arm 변형 / Darwin x86_64 | — | local | 전체 | not_run | 미지원(후속) — P04로 rc.1 범위 밖. OS matrix workflow는 RC1에서 만들지 않음(08-D 소유) |
+| windows-2025 | — | local | 빌드(`cargo build --offline --locked --all-targets`) | CI 실측(PR의 `windows-build` run) | E3 #2195 — 컴파일 증거일 뿐 지원 보증이 아니다 |
+| windows-2025 | — | local | 시험 실행·실행 중 binary 교체(self-replace)·host 로딩 | not_run | 결정 01:1x(11-09): Windows는 빌드 + self-replace 구현만. 교체 경로는 `src/self_update.rs`의 모의 replacer 단위 시험(macOS)으로만 확인했고, 실제 `self_replace` 호출은 시험에서 실행하지 않는다(시험 binary 자신을 교체하므로). 호출부(binary update 경로)는 04-B |
 | — | — | worktree / cloud | 전체 | not_run | RC1 범위 밖 |
 | Linux CI (ubuntu rc-ci) | — | local | AC-08C-7 재측정 | not_run | `sandbox-exec`는 macOS 전용 — Linux 대체 차단 수단 미결(HOLD, #2100 감사 지적) |
 | — | GitLab | local | Forge adapter 계약 문서화 (REQ-B4-01) | not_run | **documented, not_run** — capability 선언만 존재(`src/forge/gitlab.rs`: merge_request·pipeline·note = documented, fixture 스키마 `schemas/gitlab-fixture.schema.json`), 어댑터·실호출 경로 없음(REQ-B4-01; 계정 없음 — decisions 2026-11-09 01:1x, #2171) |
