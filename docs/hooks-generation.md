@@ -35,6 +35,18 @@ skill frontmatter의 `hooks` 필드 거부(`src/claude.rs` `CLAUDE_FIELDS`)는 �
 
 - 두 호스트가 모두 받는 교집합만 쓴다: 이벤트 4개와 handler 필드 `type: "command"`·`command`·`timeout`. `PreToolUse`는 두 호스트 모두 matcher `Bash`, stdin `tool_name`·`tool_input.command`·`cwd`, exit 2 + stderr 사유로 차단한다(§5 출처). guard의 `.`은 project다. 두 호스트 모두 command 훅을 세션의 작업 디렉터리에서 실행한다.
 - guard가 막지 못하는 경우: timeout(10초) 안에 GitHub 조회가 끝나지 않으면 호스트는 훅 실패로 보고 막지 않는다(Claude: timeout은 `onFailure: "block"`이 없으면 차단하지 않음). Codex 문서는 "Treat tool hooks as a useful guardrail, not a complete enforcement boundary"라고 적는다. 그래서 `--mode agent` workflow 6단계의 commit 전 `claim-verify` 실행 규칙은 그대로 유지한다.
+- guard가 알아보는 commit·push 철자(#2306): 명령줄을 글자로 읽어 판정한다.
+  - 알아보는 것:
+    - 앞에 붙은 래퍼 단어와 그 옵션(`env`·`command`·`nice`·`sudo`·`time`·`timeout`·`nohup`·`xargs` 등)
+    - 따옴표와 역슬래시로 감싼 `git`(`"git"`, `\git`)
+    - `sh -c` / `bash -c` 안의 명령 한 단계
+    - 같은 줄의 `git -c alias.<이름>=commit|push`
+  - 알아보지 못하는 것(남은 한계):
+    - git 설정에 정의된 alias, 셸 alias·함수
+    - `$VAR`·`$(...)` 치환, `eval`
+    - 스크립트 파일 안의 git, 두 단계 이상 중첩된 셸
+    - git을 스스로 부르는 다른 프로그램
+  - 그래서 이 guard는 경계가 아니라 guardrail이다.
 - `timeout`은 모든 handler에 명시한다. 호스트 기본값(Claude command 600초, Codex 대부분 600초)에 기대지 않는다.
 - `command`는 bare 이름이다. 개인 절대 경로가 들어가지 않는다. `moai-cli`가 PATH에 없으면 호스트는 비차단 오류로 처리한다(Claude: "Any other code: Non-blocking error… The action goes ahead").
 - Codex 파일에는 선택적 top-level `description`을 넣는다("optional top-level metadata... It doesn't change which hooks run").
