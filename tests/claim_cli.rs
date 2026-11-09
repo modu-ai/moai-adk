@@ -395,7 +395,9 @@ fn claim_lowest_comment_id_wins() {
         "journal untouched"
     );
 
-    // A live claim comment of the caller's own session is adopted, not duplicated.
+    // A live claim comment carrying the caller's session value is not adopted when this
+    // journal has no record of posting it (#2165 REQ-A6-01; this block used to expect
+    // adoption without proof).
     let tmp = tempfile::tempdir().unwrap();
     let page = resp(200, json!([claim_comment(300, "agent-x", &live)]));
     let (out, t) = acquire_in(
@@ -405,16 +407,71 @@ fn claim_lowest_comment_id_wins() {
         vec![exchange("GET", &comments_url(), page)],
         &clock,
     );
-    assert_eq!(out.outcome, "claimed");
-    assert_eq!(out.record.as_ref().unwrap().comment_id, Some(300));
+    assert_eq!(out.outcome, "uncertain");
+    assert_eq!(out.record, None);
     assert!(t.sent.borrow().iter().all(|r| r.method == "GET"), "no POST");
-    assert_eq!(
-        fs::read_to_string(tmp.path().join("journal.log"))
-            .unwrap()
-            .lines()
-            .count(),
-        1
+    assert!(!tmp.path().join("journal.log").exists(), "journal untouched");
+}
+
+// ---- #2165 A6 (REQ-A6-01, REQ-AM-04): same session value, no proof of authorship ----
+
+#[test]
+fn claim_same_session_value_without_proof_is_not_adopted() {
+    // 2026-11-09: two live sessions were both named `agent-1`. The other one's comment
+    // must not become this session's claim.
+    let tmp = tempfile::tempdir().unwrap();
+    let clock = FakeClock::at(CLOCK0);
+    let live = format_utc(CLOCK0 + 3600);
+    let page = resp(200, json!([claim_comment(6729181667, "agent-1", &live)]));
+    let (out, t) = acquire_in(
+        tmp.path(),
+        "agent-1",
+        &live,
+        vec![exchange("GET", &comments_url(), page)],
+        &clock,
     );
+    assert_eq!(out.outcome, "uncertain");
+    assert_eq!(out.record, None);
+    let foreign = out.foreign_owner.expect("the unproven comment is reported");
+    assert_eq!(foreign["session"], "agent-1");
+    assert_eq!(foreign["comment_id"], 6729181667i64);
+    assert!(out.notes.iter().any(|n| n.contains("not adopted")));
+    assert!(t.sent.borrow().iter().all(|r| r.method == "GET"), "no POST");
+    assert_eq!(t.remaining(), 0);
+    assert!(!tmp.path().join("journal.log").exists(), "journal untouched");
+}
+
+#[test]
+fn claim_same_session_comment_recorded_in_journal_is_adopted() {
+    // Proof: this journal recorded posting comment 900 (epoch 1, later released), so the
+    // same live comment is this clone's own and is adopted without a second POST.
+    let tmp = tempfile::tempdir().unwrap();
+    let root = journal_root(tmp.path());
+    let clock = FakeClock::at(CLOCK0);
+    let lease = format_utc(CLOCK0 + 3600);
+    let (first, _) = acquire_in(
+        &root,
+        "agent-x",
+        &lease,
+        happy_exchanges(900, "agent-x", &lease),
+        &clock,
+    );
+    assert_eq!(first.outcome, "claimed");
+    let journal = lock_journal(&root);
+    release(&journal, &task_key(&task_ref()), 1, "handoff", &clock).unwrap();
+    drop(journal);
+
+    let page = resp(200, json!([claim_comment(900, "agent-x", &lease)]));
+    let (out, t) = acquire_in(
+        &root,
+        "agent-x",
+        &lease,
+        vec![exchange("GET", &comments_url(), page)],
+        &clock,
+    );
+    assert_eq!(out.outcome, "claimed");
+    assert_eq!(out.record.as_ref().unwrap().comment_id, Some(900));
+    assert!(t.sent.borrow().iter().all(|r| r.method == "GET"), "no POST");
 }
 
 // ---- AC-06A-13: a claim performs no assignee/label/issue-body write ----
