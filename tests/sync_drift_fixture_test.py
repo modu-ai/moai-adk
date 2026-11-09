@@ -17,8 +17,39 @@ Fixture states mirror the design's seven-way classification wording:
 """
 
 import os
+import re
 import tempfile
 import unittest
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+SYNC = os.path.join(ROOT, "skills", "moai", "workflows", "sync.md")
+CROSSWALK_REL = "docs/design-review/appendix/state-vocabulary-crosswalk.md"
+ORIGINAL_THREE = ("omission", "amendment", "document mismatch")
+
+
+def sync_step3():
+    """The text of sync.md procedure step 3, up to step 4."""
+    with open(SYNC, encoding="utf-8") as f:
+        text = f.read()
+    match = re.search(r"^3\. \*\*Classify differences\*\*.*?(?=^4\. )", text, re.S | re.M)
+    if match is None:
+        raise AssertionError("sync.md has no procedure step 3 'Classify differences'")
+    return match.group(0)
+
+
+def documented_kinds(step3):
+    """{kind: (ground, proposed_action)} from the step-3 bullets
+    `- `kind` — ... Ground: ... Proposed action: ...`."""
+    kinds = {}
+    for m in re.finditer(r"^\s+- `([a-z_]+)` — (.*)$", step3, re.M):
+        body = m.group(2)
+        ground = re.search(r"Ground: (.*?)\. Proposed action:", body)
+        action = re.search(r"Proposed action: (.*?)\.?$", body)
+        kinds[m.group(1)] = (
+            ground.group(1) if ground else None,
+            action.group(1) if action else None,
+        )
+    return kinds
 
 
 def classify(state):
@@ -138,6 +169,63 @@ class SyncDriftFixtureTest(unittest.TestCase):
                        "reconciled": True}],
         }))
         self.assert_spec_untouched()
+
+
+class SyncStep3DocumentTest(unittest.TestCase):
+    """The fixture above is checked against the normative text, not against itself:
+    reverting sync.md step 3 to the three-kind wording breaks these tests."""
+
+    def setUp(self):
+        self.step3 = sync_step3()
+        self.kinds = documented_kinds(self.step3)
+
+    def test_step3_names_the_original_three_kinds(self):
+        for name in ORIGINAL_THREE:
+            self.assertIn(f"*{name}*", self.step3)
+
+    def test_step3_documents_exactly_the_four_new_kinds_with_ground_and_action(self):
+        self.assertEqual(
+            set(self.kinds),
+            {"spec_oracle_conflict", "broken_reference", "done_but_stale_evidence",
+             "explicit_link_unreviewed"},
+        )
+        for kind, (ground, action) in self.kinds.items():
+            with self.subTest(kind=kind):
+                self.assertTrue(ground, "each kind states its Ground")
+                self.assertTrue(action, "each kind states its Proposed action")
+        self.assertIn("(kind, ground, proposed_action)", self.step3)
+        self.assertIn("never resolved by weakening the approved SPEC", self.step3)
+
+    def test_step3_names_the_seven_way_basis_and_the_crosswalk(self):
+        self.assertIn("seven", self.step3)
+        self.assertIn(CROSSWALK_REL, self.step3)
+        self.assertNotIn("until it exists", self.step3)
+        with open(os.path.join(ROOT, CROSSWALK_REL), encoding="utf-8") as f:
+            crosswalk = f.read()
+        for kind in self.kinds:
+            with self.subTest(kind=kind):
+                self.assertIn(f"`{kind}`", crosswalk)
+
+    def test_fixture_classification_matches_the_documented_kinds(self):
+        tmp = tempfile.mkdtemp(prefix="sync-drift-doc-")
+        try:
+            states = [
+                {"spec_line": "exit 2", "oracle_line": "exit 1"},
+                {"references": [{"target": os.path.join(tmp, "gone.md")}]},
+                {"claimed_done": True, "evidence_sha": "a" * 40, "current_sha": "b" * 40},
+                {"links": [{"relation": "same-as", "to": "X", "reconciled": False}]},
+            ]
+            seen = set()
+            for state in states:
+                kind, _ground, action = classify(state)
+                with self.subTest(kind=kind):
+                    self.assertIn(kind, self.kinds)
+                    documented = self.kinds[kind][1].lower()
+                    self.assertIn(action.lower(), documented)
+                seen.add(kind)
+            self.assertEqual(seen, set(self.kinds))
+        finally:
+            __import__("shutil").rmtree(tmp, ignore_errors=True)
 
 
 if __name__ == "__main__":
