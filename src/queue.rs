@@ -190,6 +190,7 @@ fn read_claim_comments<T: Transport, C: Clock>(
         "{API}/repos/{owner}/{repo}/issues/{number}/comments?per_page=100"
     ));
     let mut out = Vec::new();
+    let mut closed = Vec::new();
     let mut pages = 0;
     while let Some(u) = url {
         pages += 1;
@@ -205,9 +206,16 @@ fn read_claim_comments<T: Transport, C: Clock>(
                 line.comment_id = id;
                 out.push(line);
             }
+            // #2255: a claim closed by a release or handoff line no longer holds the card.
+            match crate::claim_verify::classify_comment(text) {
+                crate::claim_verify::CommentKind::Release { target }
+                | crate::claim_verify::CommentKind::Handoff { target, .. } => closed.push(target),
+                _ => {}
+            }
         }
         url = next;
     }
+    out.retain(|c| !closed.contains(&c.comment_id));
     Ok(out)
 }
 
@@ -423,5 +431,51 @@ mod tests {
         assert_eq!(logical_key("[rc.2][A2] x", 7), "A2");
         assert_eq!(logical_key("plain title", 7), "issue-7");
         assert_eq!(logical_key("[only] one", 7), "issue-7");
+    }
+
+    /// #2255: a claim closed by a release or handoff line no longer counts, so the card can
+    /// be a candidate again; an open claim still does.
+    #[test]
+    fn released_claims_do_not_hold_the_card() {
+        use crate::forge::transport::{Exchange, HttpRequest, HttpResponse, RecordedTransport};
+        struct Fixed;
+        impl Clock for Fixed {
+            fn now(&self) -> i64 {
+                0
+            }
+            fn sleep(&self, _: u64) {}
+        }
+        let lease = "2026-11-09T09:00:00Z";
+        let page = |body: Value| Exchange {
+            request: HttpRequest {
+                method: "GET".into(),
+                url: format!("{API}/repos/acme/widgets/issues/7/comments?per_page=100"),
+                headers: Default::default(),
+                body: None,
+            },
+            response: HttpResponse {
+                status: 200,
+                headers: Default::default(),
+                body: Some(body),
+            },
+        };
+        let claim = |id: i64, s: &str| json!({"id": id, "body": format!("moai-claim: session={s} epoch=1 lease_until={lease}")});
+        let t = RecordedTransport::new(vec![
+            page(json!([
+                claim(100, "a"),
+                {"id": 150, "body": crate::claim_verify::render_release_line(100, "leader")},
+            ])),
+            page(json!([
+                claim(100, "a"),
+                {"id": 150, "body": crate::claim_verify::render_handoff_line(100, "b", "leader")},
+                claim(200, "b"),
+            ])),
+        ]);
+        let client = Client::new(&t, &Fixed, Default::default(), Default::default());
+        assert!(read_claim_comments(&client, "acme", "widgets", 7)
+            .unwrap()
+            .is_empty());
+        let open = read_claim_comments(&client, "acme", "widgets", 7).unwrap();
+        assert_eq!(open.iter().map(|c| c.comment_id).collect::<Vec<_>>(), [200]);
     }
 }
