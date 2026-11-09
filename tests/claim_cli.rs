@@ -410,7 +410,10 @@ fn claim_lowest_comment_id_wins() {
     assert_eq!(out.outcome, "uncertain");
     assert_eq!(out.record, None);
     assert!(t.sent.borrow().iter().all(|r| r.method == "GET"), "no POST");
-    assert!(!tmp.path().join("journal.log").exists(), "journal untouched");
+    assert!(
+        !tmp.path().join("journal.log").exists(),
+        "journal untouched"
+    );
 }
 
 // ---- #2165 A6 (REQ-A6-01, REQ-AM-04): same session value, no proof of authorship ----
@@ -438,7 +441,10 @@ fn claim_same_session_value_without_proof_is_not_adopted() {
     assert!(out.notes.iter().any(|n| n.contains("not adopted")));
     assert!(t.sent.borrow().iter().all(|r| r.method == "GET"), "no POST");
     assert_eq!(t.remaining(), 0);
-    assert!(!tmp.path().join("journal.log").exists(), "journal untouched");
+    assert!(
+        !tmp.path().join("journal.log").exists(),
+        "journal untouched"
+    );
 }
 
 #[test]
