@@ -316,6 +316,20 @@ mod tests {
             ("git failed: detected dubious ownership in repository at", GitFailed),
             ("git failed: git output exceeded the size limit", GitFailed),
             ("git failed: git output was not UTF-8", GitFailed),
+            // typed judgment route and outcome policy (rc.2 F7 #2205); every phrase already
+            // lands on a generic rule above — these rows pin the deliberate kinds.
+            ("judgment config missing for the selected backend", InvalidInput),
+            ("judgment questions must be 1 to 64 typed questions", InvalidInput),
+            ("question id must be a single-line string", InvalidInput),
+            ("score bounds are forbidden on a non-score question", InvalidInput),
+            ("score bounds must be finite with min <= max", InvalidInput),
+            ("outcome kind must be the question's kind (no implicit conversion)", InvalidInput),
+            ("noul probability must be present and within 0 to 1", InvalidInput),
+            ("chosen is forbidden on a noul outcome", InvalidInput),
+            ("chosen must be present for a choice outcome", InvalidInput),
+            ("score must be present and within the question bounds", InvalidInput),
+            ("model id must be a plain string", InvalidInput),
+            ("rationale ref must be a single-line string", InvalidInput),
         ];
         for (message, kind) in cases {
             assert_eq!(classify(message), kind, "{message}");
