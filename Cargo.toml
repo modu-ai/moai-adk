@@ -11,6 +11,9 @@ serde = { version = "=1.0.228", features = ["derive"] }
 # user's layout (Issue #1992, leader RC1 decision H1 = B).
 serde_json = { version = "=1.0.150", features = ["preserve_order"] }
 sha2 = "=0.10.9"
+# Format-preserving TOML for `.codex/config.toml` (Issue #2240): comments, order and every
+# key MoAI does not manage survive an edit. MIT OR Apache-2.0; default features only.
+toml_edit = "=0.25.3"
 
 [dev-dependencies]
 tempfile = "=3.27.0"

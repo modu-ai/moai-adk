@@ -459,7 +459,9 @@ Reference depth is counted outside the route indirection. `SKILL.md` may name on
 
 It also lists `moai` skills found under `.agents/skills` from the working directory up to the project root, `$HOME/.agents/skills` and `/etc/codex/skills`, and warns when more than one exists, because Codex does not merge same-name skills.
 
-There is no TOML parser: the TOML surface belongs to 02-B #1992 (leader RC1 decision, 2026-11-08). So `config.toml` is never read, and the doctor reports `trust`, inline `[hooks]` and `tui.status_line` as `not_evaluated`. It never reports a project as trusted. `project_doc_fallback_filenames` and `project_doc_max_bytes` arrive as arguments instead.
+The doctor reads no TOML (leader RC1 decision, 2026-11-08; the writer below is separate). So `config.toml` is never read by it, and the doctor reports `trust`, inline `[hooks]` and `tui.status_line` as `not_evaluated`. It never reports a project as trusted. `project_doc_fallback_filenames` and `project_doc_max_bytes` arrive as arguments instead.
+
+**Codex config writer (#2240, rc.2 I3).** `hosts::codex_config::{config_plan, config_apply}` (library surface, no CLI op yet) plans and applies the project `.codex/config.toml` only, with `toml_edit =0.25.3` (MIT OR Apache-2.0, format-preserving). MoAI owns at most `tui.status_line`, `skills.bundled.enabled`, `project_doc_fallback_filenames` and `project_doc_max_bytes`, decided per key three-way against `.moai-cli/manifests/codex-config.json` like the Claude settings (REQ-I3-01). Every other key, table and comment is kept. Trust is declared, never written (it lives in the user config; the home is blocked); a project equal to the home is refused. Tests: `tests/codex_config.rs`. Contract and the official-doc table: `docs/codex-adapter-contract.md` "config.toml 생성".
 
 `host_loaded` and `execution_verified` stay false. Desktop `$moai` and CLI `$moai` runs are not_run from a lane: the first needs the GUI, the second sends a prompt to OpenAI. Local evidence is `codex --version` → `codex-cli 0.163.0` only.
 

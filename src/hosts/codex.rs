@@ -14,9 +14,11 @@
 //!   untrusted projects skip the project `.codex/` layer; `tui.status_line` item identifiers are
 //!   not enumerated.
 //!
-//! RC1 interim decisions (leader, 2026-11-08): no TOML parser here (the TOML surface belongs to
-//! 02-B #1992), so trust, inline hooks and the status line are `not_evaluated` and never
-//! reported as trusted; no hooks are generated; the projection target is always explicit.
+//! RC1 interim decisions (leader, 2026-11-08): this doctor and this projection plan read no
+//! TOML, so trust, inline hooks and the status line are `not_evaluated` and never reported as
+//! trusted; no hooks are generated; the projection target is always explicit. Writing the
+//! project `.codex/config.toml` is the separate plan/apply in `codex_config` (#2240); the
+//! doctor reading it is a follow-up.
 //! The install location (`~/.agents/skills/moai` vs `<repo>/.agents/skills/moai`) stays a
 //! HOLD (P04 / contract gap C5): there is no default, the caller names the target.
 use crate::{apply, digest, package_digest};
@@ -31,9 +33,8 @@ type Result<T> = std::result::Result<T, String>;
 /// Default of `project_doc_max_bytes` stated on the AGENTS.md page (32 KiB).
 pub const DEFAULT_MAX_BYTES: u64 = 32 * 1024;
 const FILE_LIMIT: u64 = 1024 * 1024;
-const TOML_HOLD: &str =
-    "not read: no TOML parser in RC1 (02-B #1992 owns the TOML surface; leader decision 2026-11-08)";
-const STATUS_LINE_HOLD: &str = "tui.status_line item identifiers are not listed in the official config reference (read 2026-11-08); nothing is written";
+const TOML_HOLD: &str = "not read: this operation reads no TOML (leader decision 2026-11-08, TOML surface 02-B #1992); the project .codex/config.toml is written only by the codex_config plan/apply (#2240), and reading it here is a follow-up";
+const STATUS_LINE_HOLD: &str = "tui.status_line item identifiers are not listed in the official config reference (read 2026-11-09); this plan writes nothing, and codex_config (#2240) writes the items unverified";
 /// The package's own digest record (02-A); it lists every other package file's sha256.
 const SOURCE_MANIFEST: &str = "references/source-manifest.json";
 const TARGET_FILES: usize = 4096;
@@ -606,7 +607,7 @@ pub fn doctor(
             "max_bytes": budget,
             "max_bytes_source": budget_source,
             "fallback_names": fallback,
-            "fallback_source": if fallback.is_empty() { "none given; project_doc_fallback_filenames is not read (TOML HOLD)" } else { "argument" },
+            "fallback_source": if fallback.is_empty() { "none given; project_doc_fallback_filenames is not read (this doctor reads no TOML)" } else { "argument" },
             "over_budget": over_at.is_some(),
             "over_budget_at": over_at,
             "budget_note": "the project chain is counted with blank-line joins; whether Codex counts the global file in the same budget and how it cuts the crossing file are not stated on the page",
