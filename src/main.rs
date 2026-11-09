@@ -188,6 +188,11 @@ enum Command {
     QueueNext {
         project: PathBuf,
     },
+    /// Leader supervision tick (rc.2 A3 #2162): typed JSON request on stdin; GET-only read
+    /// of open PRs, reports only what changed since the last tick, drafts assignee hints.
+    LeaderTick {
+        project: PathBuf,
+    },
     /// Read the current claim record of a task key; byte-identical when repeated.
     ClaimShow {
         project: PathBuf,
@@ -677,6 +682,7 @@ const OPERATIONS: &[(&str, &str)] = &[
     ("codex-doctor", "codex.doctor"),
     ("claim-acquire", "claim.acquire"),
     ("queue-next", "queue.next"),
+    ("leader-tick", "leader.tick"),
     ("claim-show", "claim.show"),
     ("claim-release", "claim.release"),
     ("claim-handoff", "claim.handoff"),
@@ -886,6 +892,12 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
         Command::ClaimAcquire { project } => moai_cli::claim::acquire_cli(
             &project,
             input::<moai_cli::claim::ClaimRequest>()?,
+            &moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        Command::LeaderTick { project } => moai_cli::leader::tick_cli(
+            &project,
+            input::<moai_cli::leader::TickRequest>()?,
             &moai_cli::forge::transport::GhTransport::from_env()?,
             &moai_cli::forge::policy::SystemClock,
         ),
