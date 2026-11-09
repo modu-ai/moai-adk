@@ -17,11 +17,14 @@
 //!
 //! Marker values are normalized before the comparison (quotes stripped, case
 //! folded); a value outside the marker contract (`hold: yes`, `evidence:
-//! complete`, …) excludes as `ambiguous_hold` / `ambiguous_evidence`, and an
-//! indented key inside the block makes the whole block untrusted
-//! (`ambiguous_frontmatter`) — a marker the parser cannot read is never treated
-//! as "no marker" (design §12: 애매한 상태 제외; #2187 audit fix). Missing time
-//! information is excluded as `missing_time_info`, never guessed.
+//! complete`, …) excludes as `ambiguous_hold` / `ambiguous_evidence`, and any form
+//! the flat parser cannot read makes the whole block untrusted
+//! (`ambiguous_frontmatter`): an indented key, a line without `key:`, a marker key
+//! not spelled exactly `key: value` (`hold : true`, `"hold": true`, `hold:true`), the
+//! same marker key twice, or a flow mapping naming a marker key — a marker the parser
+//! cannot read is never treated as "no marker" (design §12: 애매한 상태 제외; #2187
+//! audit fixes). A readable non-terminal status is recorded as `not_terminal`.
+//! Missing time information is excluded as `missing_time_info`, never guessed.
 //! Last activity is ONE git pass over the specs tree (newest commit time per SPEC
 //! directory); outside git, or without history for a directory, the newest file mtime
 //! of that directory is the activity source; with neither the SPEC is excluded as
@@ -62,7 +65,7 @@ pub struct ExcludedSpec {
     pub status: Option<String>,
     /// `pending_evidence` | `hold` | `in_grace_window` | `ambiguous_status` |
     /// `ambiguous_evidence` | `ambiguous_hold` | `ambiguous_frontmatter` |
-    /// `missing_time_info`
+    /// `missing_time_info` | `not_terminal`
     pub reason: String,
 }
 
@@ -149,22 +152,71 @@ fn frontmatter(dir: &Path) -> Result<Frontmatter> {
         if line.trim() == "---" {
             break;
         }
+        // Blank lines and whole-line comments carry no marker.
+        if line.trim().is_empty() || line.trim_start().starts_with('#') {
+            continue;
+        }
         // Only column-0 keys are this contract's vocabulary. An indented key means
         // nested YAML the parser does not read, so the block is recorded untrusted
         // and no marker from it may vouch for eligibility (#2187 audit fix).
-        if !line.trim().is_empty() && line.starts_with([' ', '\t']) {
-            fm.indented = true;
+        if line.starts_with([' ', '\t']) {
+            fm.untrusted = true;
             continue;
         }
-        if let Some(v) = line.strip_prefix("status:") {
-            fm.status = Some(unquote(v));
-        } else if let Some(v) = line.strip_prefix("evidence:") {
-            fm.evidence = Some(unquote(v));
-        } else if let Some(v) = line.strip_prefix("hold:") {
-            fm.hold = Some(unquote(v));
+        // A line that is not `key: value` is a form this parser cannot read.
+        let Some((raw_key, value)) = line.split_once(':') else {
+            fm.untrusted = true;
+            continue;
+        };
+        let key = key_name(raw_key);
+        if !MARKER_KEYS.contains(&key.as_str()) {
+            // A flow mapping naming a marker key (`meta: {hold: true}`) is nested
+            // structure this flat contract cannot vouch for.
+            let v = value.trim_start();
+            if (v.starts_with('{') || v.starts_with('['))
+                && MARKER_KEYS.iter().any(|k| v.contains(&format!("{k}:")))
+            {
+                fm.untrusted = true;
+            }
+            continue;
         }
+        // A marker key in any form other than exactly `key: value` — `hold : true`,
+        // a quoted key, `hold:true` — is a form this parser does not trust (#2187
+        // epoch-3 audit fix F1); YAML itself may read such lines as the marker.
+        if raw_key != key || !(value.is_empty() || value.starts_with([' ', '\t'])) {
+            fm.untrusted = true;
+            continue;
+        }
+        let slot = match key.as_str() {
+            "status" => &mut fm.status,
+            "evidence" => &mut fm.evidence,
+            _ => &mut fm.hold,
+        };
+        // The same marker twice is ambiguous whatever the values: YAML keeps the
+        // last one, which would let a later line silently clear a hold (F2).
+        if slot.is_some() {
+            fm.untrusted = true;
+            continue;
+        }
+        *slot = Some(unquote(value));
     }
     Ok(fm)
+}
+
+/// The frontmatter keys this contract reads; any other column-0 key is ignored.
+const MARKER_KEYS: [&str; 3] = ["status", "evidence", "hold"];
+
+/// A key's name for the vocabulary comparison: surrounding whitespace and one layer
+/// of double or single quotes removed. Comparing the result with the raw key tells
+/// an exact `key:` apart from every other spelling of the same name.
+fn key_name(raw: &str) -> String {
+    let t = raw.trim();
+    let unq = t
+        .strip_prefix('"')
+        .and_then(|s| s.strip_suffix('"'))
+        .or_else(|| t.strip_prefix('\'').and_then(|s| s.strip_suffix('\'')))
+        .unwrap_or(t);
+    unq.trim().to_string()
 }
 
 /// The frontmatter markers a `spec.md` carries, as raw value strings.
@@ -172,9 +224,11 @@ struct Frontmatter {
     status: Option<String>,
     evidence: Option<String>,
     hold: Option<String>,
-    /// The block held an indented key: nested structure this flat contract cannot
-    /// vouch for, so every marker read from it is untrusted.
-    indented: bool,
+    /// The block held a form this flat contract cannot vouch for — an indented key,
+    /// a line without `key:`, a marker key not spelled exactly `key: value`, a
+    /// repeated marker key or a flow mapping naming one — so every marker read from
+    /// it is untrusted.
+    untrusted: bool,
 }
 
 impl Frontmatter {
@@ -183,7 +237,7 @@ impl Frontmatter {
             status: None,
             evidence: None,
             hold: None,
-            indented: false,
+            untrusted: false,
         }
     }
 }
@@ -345,9 +399,9 @@ pub fn plan(project: &Path, now: SystemTime, grace_request: Option<u64>) -> Resu
             });
             continue;
         };
-        if fm.indented {
-            // The block carried nested structure; no marker from it may vouch for
-            // eligibility, even when the status line itself parsed.
+        if fm.untrusted {
+            // The block carried a form the parser cannot read; no marker from it may
+            // vouch for eligibility, even when the status line itself parsed.
             plan.excluded.push(ExcludedSpec {
                 spec_id: spec_id.clone(),
                 status: fm.status.clone(),
@@ -364,8 +418,13 @@ pub fn plan(project: &Path, now: SystemTime, grace_request: Option<u64>) -> Resu
             continue;
         };
         if !TERMINAL_STATUSES.contains(&status.as_str()) {
-            // Non-terminal SPECs are simply not candidates; the scanned count
-            // records that they were looked at.
+            // Not a candidate — recorded with its status, so "looked at and not
+            // terminal" is distinguishable from "not looked at" (audit note 3).
+            plan.excluded.push(ExcludedSpec {
+                spec_id: spec_id.clone(),
+                status: Some(status.clone()),
+                reason: "not_terminal".into(),
+            });
             continue;
         }
         match evidence_marker(fm.evidence.as_deref()) {

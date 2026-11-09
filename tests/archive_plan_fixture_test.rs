@@ -363,3 +363,78 @@ fn cutoff_boundary_is_strict() {
         .unwrap();
     assert_eq!(at["reason"], "in_grace_window");
 }
+
+/// Epoch-3 audit probes (#2187 FAIL 6733202901): every marker form the flat parser
+/// cannot read exactly — a space before the colon (F1), a repeated key with
+/// different values (F2), a quoted key, no space after the colon, a line without a
+/// colon, a flow mapping naming a marker — excludes as `ambiguous_frontmatter`.
+/// Readable forms keep their meaning: a whole-line comment and an unrelated key stay
+/// eligible, and a readable non-terminal status is recorded as `not_terminal`.
+#[test]
+fn unreadable_marker_forms_exclude_the_whole_block() {
+    let root = TempDir::new().unwrap();
+    let project = root.path().join("project");
+    fs::create_dir_all(&project).unwrap();
+    let cases: [(&str, &str); 14] = [
+        ("P-SPACECOLON", "status: completed\nhold : true\n"),
+        ("P-DUPKEY", "status: completed\nhold: true\nhold: false\n"),
+        (
+            "P-EVDUP",
+            "status: completed\nevidence: pending\nevidence:\n",
+        ),
+        ("P-STATUSDUP", "status: draft\nstatus: completed\n"),
+        ("P-STATUSSPACE", "status : completed\n"),
+        ("P-QUOTEDKEY", "status: completed\n\"hold\": true\n"),
+        ("P-SQUOTEDKEY", "status: completed\n'evidence': pending\n"),
+        ("P-NOSPACE", "status: completed\nhold:true\n"),
+        ("P-NOCOLON", "status: completed\nhold true\n"),
+        ("P-FLOW", "status: completed\nmeta: {hold: true}\n"),
+        ("P-COMMENT", "status: completed\n# hold: true\n"),
+        ("P-OTHERKEY", "status: completed\nowner: someone\n"),
+        ("P-DRAFT", "status: draft\n"),
+        ("P-EMPTYHOLD", "status: completed\nhold:\n"),
+    ];
+    for (id, front) in cases {
+        write_spec(&project, id, front);
+    }
+    git(&project, &["init", "-q", "-b", "main"], None);
+    git(&project, &["add", ".moai-cli/specs"], None);
+    git(
+        &project,
+        &["commit", "-q", "-m", "epoch-3 probes"],
+        Some(OLD_SECS.to_string()),
+    );
+    let v = plan_at(&project, None);
+    let excluded = v["excluded"].as_array().unwrap();
+    let reason = |id: &str| -> String {
+        excluded
+            .iter()
+            .find(|r| r["spec_id"] == id)
+            .map(|r| r["reason"].as_str().unwrap().to_string())
+            .unwrap_or_else(|| format!("{id} not excluded (eligible)"))
+    };
+    for id in [
+        "P-SPACECOLON",
+        "P-DUPKEY",
+        "P-EVDUP",
+        "P-STATUSDUP",
+        "P-STATUSSPACE",
+        "P-QUOTEDKEY",
+        "P-SQUOTEDKEY",
+        "P-NOSPACE",
+        "P-NOCOLON",
+        "P-FLOW",
+    ] {
+        assert_eq!(reason(id), "ambiguous_frontmatter", "{id}");
+    }
+    assert_eq!(reason("P-DRAFT"), "not_terminal");
+    let draft = excluded.iter().find(|r| r["spec_id"] == "P-DRAFT").unwrap();
+    assert_eq!(draft["status"], "draft");
+    // Readable forms are not over-excluded.
+    let eligible = ids(v["eligible"].as_array().unwrap(), "spec_id");
+    for id in ["P-COMMENT", "P-OTHERKEY", "P-EMPTYHOLD"] {
+        assert!(eligible.contains(&id), "{id} should stay eligible: {v}");
+    }
+    assert_eq!(v["scanned"], 14);
+    assert_eq!(excluded.len() + eligible.len(), 14);
+}
