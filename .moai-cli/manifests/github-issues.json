@@ -3429,6 +3429,1886 @@
    "time": "2026-11-09T02:0xZ",
    "source": "user: AGENTS.local.md 임시 절",
    "status": "worktree .moai-cli/worktrees/leader-docs-r34 at 3e86c381b: AGENTS.local.md § Autonomous modes + launcher line, decisions 20 rows, ledger, 65 mirrors, rc2 plan+generator, assignments snapshot; check set running"
+  },
+  {
+   "issue": 2160,
+   "key": "rc2-A1",
+   "lane": "agent-1 [e29c15]",
+   "time": "2026-11-09T01:0xZ",
+   "source": "lane report",
+   "status": "PR #2210 head 295235736 open; audit dispatched"
+  },
+  {
+   "issue": 2161,
+   "key": "rc2-A2",
+   "lane": "agent-1 [e29c15]",
+   "time": "2026-11-09T01:03Z",
+   "source": "self-claim",
+   "status": "claimed 6729775566; starts from PR #2210 head (no-idle (2))"
+  },
+  {
+   "issue": 2165,
+   "key": "rc2-A6",
+   "lane": "agent-3 [89e867]",
+   "time": "2026-11-09T01:0xZ",
+   "source": "lane report",
+   "status": "PR #2211 head 3e332a270 open; audit queued"
+  },
+  {
+   "issue": "leader-docs-r34",
+   "key": "leader",
+   "lane": "leader [a963ab]",
+   "time": "2026-11-09T01:0xZ",
+   "source": "leader",
+   "status": "PR #2213 head 889c5cc6f open; audit queued"
+  },
+  {
+   "issue": "ADK_PERSONAL_CODING_CORE_20261109_01",
+   "key": "user-directive",
+   "lane": "leader [a963ab]",
+   "time": "2026-11-09T01:0xZ",
+   "source": "user",
+   "status": "received; ACK+interpretation reported; decisions asked via AskUserQuestion; design update PR pending"
+  },
+  {
+   "issue": 2160,
+   "key": "rc2-A1",
+   "lane": "agent-1 [e29c15]",
+   "time": "2026-11-09T01:1xZ",
+   "source": "gate",
+   "status": "PASS; merged tip db8cd888f; closed"
+  },
+  {
+   "issue": 2165,
+   "key": "rc2-A6",
+   "lane": "agent-3 [89e867]",
+   "time": "2026-11-09T01:1xZ",
+   "source": "gate",
+   "status": "PASS; delta-identical 5349a37c; merged tip a76135235; closed; follow-up candidate: relayed-claim journal import"
+  },
+  {
+   "issue": 2164,
+   "key": "rc2-A5",
+   "lane": "agent-8 [45deae]",
+   "time": "2026-11-09T01:1xZ",
+   "source": "lane report",
+   "status": "PR #2214 head 78d4c05b8 open; audit queued"
+  },
+  {
+   "issue": 2168,
+   "key": "rc2-B1",
+   "lane": "agent-5 [767ceb]",
+   "time": "2026-11-09T01:1xZ",
+   "source": "lane report",
+   "status": "PR #2215 head f696c720e open; audit queued"
+  },
+  {
+   "issue": 2166,
+   "key": "rc2-A7",
+   "lane": "agent-4 [f4bd07]",
+   "time": "2026-11-09T01:1xZ",
+   "source": "lane report",
+   "status": "PR #2216 head be1f40688 open; audit queued"
+  },
+  {
+   "issue": 2177,
+   "key": "rc2-C1",
+   "lane": "agent-7 [fa13f6]",
+   "time": "2026-11-09T01:1xZ",
+   "source": "lane report",
+   "status": "PR #2212 head c62b5577a open; audit queued; name decided 'MoAI Atlas' (name only)"
+  },
+  {
+   "issue": 2192,
+   "key": "rc2-D6",
+   "lane": "agent-7 [fa13f6]",
+   "time": "2026-11-09T01:20Z",
+   "source": "self-claim",
+   "status": "claimed 6729841394"
+  },
+  {
+   "issue": 2170,
+   "key": "rc2-B3",
+   "lane": "agent-5 [767ceb]",
+   "time": "2026-11-09T01:11Z",
+   "source": "self-claim",
+   "status": "claimed 6729873713"
+  },
+  {
+   "issue": 2190,
+   "key": "rc2-D4",
+   "lane": "agent-8 [45deae]",
+   "time": "2026-11-09T01:12Z",
+   "source": "self-claim",
+   "status": "claimed 6729881539 (lease normalized; stale base corrected)"
+  },
+  {
+   "issue": "leader-docs-r34",
+   "key": "leader",
+   "lane": "leader [a963ab]",
+   "time": "2026-11-09T01:1xZ",
+   "source": "audit FAIL→repair",
+   "status": "PR #2213 repaired head 5232507d2 (supervision single procedure, assignments schema/timestamps, decisions incl. 'MoAI Atlas'); re-audit queued"
+  },
+  {
+   "issue": "env-hazard",
+   "key": "ops",
+   "lane": "agent-7 [fa13f6]",
+   "time": "2026-11-09T01:1xZ",
+   "source": "lane report",
+   "status": "session cwd reverted to primary checkout mid-card (no damage; reads only); lanes told to verify rev-parse HEAD + branch before writes"
+  },
+  {
+   "issue": "ADK_ATLAS_NAME_CONFIRMED_20261109_01",
+   "key": "user-directive",
+   "lane": "leader [a963ab]",
+   "time": "2026-11-09T01:1xZ",
+   "source": "user",
+   "status": "ACK; recorded in decisions (worktree r34, PR #2213 head 5232507d2): bundle name 'MoAI Atlas' only; package/CLI/tag/trademark unconfirmed; agent-7 corrected"
+  },
+  {
+   "issue": 2177,
+   "key": "rc2-C1",
+   "lane": "agent-7 [fa13f6]",
+   "time": "2026-11-09T01:2xZ",
+   "source": "gate",
+   "status": "PASS; delta-identical 0917b8ea; merged tip 4d9730230; closed; #2178 unblocked (name 'MoAI Atlas', package/CLI/tag to be proposed in C2)"
+  },
+  {
+   "issue": 2164,
+   "key": "rc2-A5",
+   "lane": "agent-8 [45deae]",
+   "time": "2026-11-09T01:2xZ",
+   "source": "gate",
+   "status": "PASS; delta-identical 44e2b1dd; merged tip 382566a7e; closed"
+  },
+  {
+   "issue": 2161,
+   "key": "rc2-A2",
+   "lane": "agent-1 [e29c15]",
+   "time": "2026-11-09T01:2xZ",
+   "source": "lane report",
+   "status": "PR #2218 head d75065c44 open; audit queued"
+  },
+  {
+   "issue": 2162,
+   "key": "rc2-A3",
+   "lane": "agent-1 [e29c15]",
+   "time": "2026-11-09T01:23Z",
+   "source": "self-claim",
+   "status": "claimed 6730011943; starts from PR #2218 head (no-idle (2))"
+  },
+  {
+   "issue": 2168,
+   "key": "rc2-B1",
+   "lane": "agent-3 [89e867] (repair, epoch 2)",
+   "time": "2026-11-09T01:1xZ",
+   "source": "audit FAIL → repair reassigned",
+   "status": "agent-4 declined (context 46%); agent-3 repair claim 6729930482 epoch 2 (leader decision); agent-5 told not to write the branch"
+  },
+  {
+   "issue": "leader-docs-r34",
+   "key": "leader",
+   "lane": "leader [a963ab]",
+   "time": "2026-11-09T01:2xZ",
+   "source": "conflict with #2214",
+   "status": "AGENTS.local.md launcher line merged into one; pushed; hunk re-audit requested"
+  },
+  {
+   "issue": "leader-docs-r35",
+   "key": "leader",
+   "lane": "leader [a963ab]",
+   "time": "2026-11-09T01:2xZ",
+   "source": "user directive PERSONAL_CODING_CORE",
+   "status": "PR #2217 head 8b8d611cb (docs/design-review/personal-coding-core-2026-11-09.md); audit queued; boundary note on #2170"
+  },
+  {
+   "issue": "atlas-research",
+   "key": "leader",
+   "lane": "leader [a963ab] + 4 subagents",
+   "time": "2026-11-09T01:2xZ",
+   "source": "user directive ATLAS_OPEN_SOURCE_RESEARCH",
+   "status": "4 read-only research agents running → references/atlas-research/*.md; handoff = local path + private artifact only (ATLAS_REPORT_HANDOFF)"
+  },
+  {
+   "issue": "agent-4",
+   "key": "ops",
+   "lane": "agent-4 [f4bd07]",
+   "time": "2026-11-09T01:2xZ",
+   "source": "lane",
+   "status": "context 46%; declined new cards; awaiting #2216 audit; operator asked to /clear and rejoin"
+  },
+  {
+   "issue": 2166,
+   "key": "rc2-A7",
+   "lane": "agent-4 [f4bd07]",
+   "time": "2026-11-09T01:3xZ",
+   "source": "gate",
+   "status": "PASS; delta-identical 191026cf; merged tip ad21d8222; closed"
+  },
+  {
+   "issue": 2161,
+   "key": "rc2-A2",
+   "lane": "agent-1 [e29c15]",
+   "time": "2026-11-09T01:3xZ",
+   "source": "audit FAIL",
+   "status": "expired foreign claim auto-takeover; repair = pending queue #1 for first free non-author lane (agent-3 after #2168 repair)"
+  },
+  {
+   "issue": "provenance-fix",
+   "key": "user-directive",
+   "lane": "leader [a963ab]",
+   "time": "2026-11-09T01:2xZ",
+   "source": "ADK_DECISION_PROVENANCE_FIX_20261109_01",
+   "status": "r34 decisions 4 rows rewritten (9d16ed542), r35 doc provenance tiers (bed6c092a); re-audit heads sent"
+  },
+  {
+   "issue": "atlas-research",
+   "key": "leader",
+   "lane": "leader [a963ab]",
+   "time": "2026-11-09T01:5xZ",
+   "source": "ATLAS_OPEN_SOURCE_RESEARCH + SYNTHESIS_FACTCHECK",
+   "status": "4 research files done (lit 200/45+8, oss 222/87, arch 165/50+5, scope 202) → synthesis references/atlas-research/moai-atlas-open-source-research-2026-11-09.md (136 lines, sha 36377d18…) + private artifact; factcheck ①~④ applied; no publication, sharing untouched"
+  },
+  {
+   "issue": 2161,
+   "key": "rc2-A2 repair",
+   "lane": "agent-4 [f4bd07]",
+   "time": "2026-11-09T01:5xZ",
+   "source": "pending_repairs #1 → rejoined lane",
+   "status": "repair dispatched (non-author); claim pending"
+  },
+  {
+   "issue": 2168,
+   "key": "rc2-B1 repair",
+   "lane": "agent-3 [89e867]",
+   "time": "2026-11-09T01:3xZ",
+   "source": "repair report",
+   "status": "PR #2215 new head 7ab1586fa; re-audit queued"
+  },
+  {
+   "issue": 2161,
+   "key": "rc2-A2 repair",
+   "lane": "agent-4 [f4bd07]",
+   "time": "2026-11-09T01:36Z",
+   "source": "self-claim (repair)",
+   "status": "claim 6730177790 epoch 2 posted (leader decision); PR #2218 CONFLICTING to resolve"
+  },
+  {
+   "issue": 2172,
+   "key": "rc2-B5",
+   "lane": "agent-3 [89e867]",
+   "time": "2026-11-09T01:37Z",
+   "source": "self-claim",
+   "status": "claimed 6730196392"
+  },
+  {
+   "issue": 2170,
+   "key": "rc2-B3",
+   "lane": "agent-5 [767ceb]",
+   "time": "2026-11-09T01:3xZ",
+   "source": "lane report",
+   "status": "PR #2219 head d3f142096 open; audit queued"
+  },
+  {
+   "issue": 2190,
+   "key": "rc2-D4",
+   "lane": "agent-8 [45deae]",
+   "time": "2026-11-09T01:4xZ",
+   "source": "lane report",
+   "status": "PR #2220 head 56d01d340 open; audit queued"
+  },
+  {
+   "issue": 2171,
+   "key": "rc2-B4",
+   "lane": "agent-5 [767ceb]",
+   "time": "2026-11-09T01:39Z",
+   "source": "self-claim",
+   "status": "claimed 6730217327"
+  },
+  {
+   "issue": 2191,
+   "key": "rc2-D5",
+   "lane": "agent-8 [45deae]",
+   "time": "2026-11-09T01:39Z",
+   "source": "self-claim",
+   "status": "claimed 6730217648; starts from PR #2220 head"
+  },
+  {
+   "issue": "leader-docs-r34",
+   "key": "leader",
+   "lane": "leader [a963ab]",
+   "time": "2026-11-09T01:4xZ",
+   "source": "gate",
+   "status": "PR #2213 re-audit PASS (9d16ed542); delta-identical 122d9458; auto-merge armed"
+  },
+  {
+   "issue": "leader-docs-r34",
+   "key": "leader",
+   "lane": "leader [a963ab]",
+   "time": "2026-11-09T01:4xZ",
+   "source": "gate",
+   "status": "PR #2213 merged → tip 5ea15a5be (AGENTS.local § Autonomous modes, decisions 11-09 rows incl. provenance fix, rc.2 records, assignments snapshot)"
+  },
+  {
+   "issue": 2162,
+   "key": "rc2-A3",
+   "lane": "agent-1 [e29c15]",
+   "time": "2026-11-09T01:4xZ",
+   "source": "lane report",
+   "status": "PR #2221 head 61bd0a534 open (starts from #2218 head); audit after #2218 repair + remerge"
+  },
+  {
+   "issue": "agent-1",
+   "key": "ops",
+   "lane": "agent-1 [e29c15]",
+   "time": "2026-11-09T01:5xZ",
+   "source": "lane",
+   "status": "context 76% (1M window, 50% threshold); no new self-claim; sole remaining duty = remerge #2221 after #2218 repair merges; operator asked to /clear and rejoin; worktree 2162 kept, uncommitted 0"
+  },
+  {
+   "issue": 2192,
+   "key": "rc2-D6",
+   "lane": "agent-7 [fa13f6]",
+   "time": "2026-11-09T02:0xZ",
+   "source": "lane report",
+   "status": "PR #2222 head 78c67a10a open; audit queued (6th)"
+  },
+  {
+   "issue": 2178,
+   "key": "rc2-C2",
+   "lane": "agent-7 [fa13f6]",
+   "time": "2026-11-09T02:0xZ",
+   "source": "self-claim",
+   "status": "claimed 6730338400"
+  },
+  {
+   "issue": 2161,
+   "key": "rc2-A2 repair",
+   "lane": "agent-4 [f4bd07]",
+   "time": "2026-11-09T01:50Z",
+   "source": "repair report",
+   "status": "PR #2218 new head 781531f3e; re-audit queued"
+  },
+  {
+   "issue": 2184,
+   "key": "rc2-C8",
+   "lane": "agent-4 [f4bd07]",
+   "time": "2026-11-09T01:51Z",
+   "source": "self-claim",
+   "status": "claimed 6730353217"
+  },
+  {
+   "issue": "leader-docs-r35",
+   "key": "leader",
+   "lane": "leader [a963ab]",
+   "time": "2026-11-09T02:0xZ",
+   "source": "gate",
+   "status": "PR #2217 PASS; delta-identical 0d549d63; auto-merge armed"
+  },
+  {
+   "issue": 2168,
+   "key": "rc2-B1",
+   "lane": "agent-3 [89e867]",
+   "time": "2026-11-09T02:0xZ",
+   "source": "audit pending",
+   "status": "content PASS; rc-ci 42546429745 failed on unrelated handoff_cli reconcile_uncertain_no_duplicate (flaky, ETXTBSY hypothesis); failed jobs rerun requested"
+  },
+  {
+   "issue": "leader-docs-r35",
+   "key": "leader",
+   "lane": "leader [a963ab]",
+   "time": "2026-11-09T02:1xZ",
+   "source": "gate",
+   "status": "PR #2217 merged → tip 029530de8"
+  },
+  {
+   "issue": 2169,
+   "key": "rc2-B2",
+   "lane": "agent-6 [742cb6]",
+   "time": "2026-11-09T02:1xZ",
+   "source": "lane report",
+   "status": "PR #2223 head ed0c5b55f open; audit queued"
+  },
+  {
+   "issue": 2175,
+   "key": "rc2-B8",
+   "lane": "agent-6 [742cb6]",
+   "time": "2026-11-09T02:1xZ",
+   "source": "self-claim",
+   "status": "claimed 6730404371"
+  },
+  {
+   "issue": 2168,
+   "key": "rc2-B1",
+   "lane": "agent-3 [89e867]",
+   "time": "2026-11-09T02:1xZ",
+   "source": "ci",
+   "status": "rc-ci 42546429745 rerun success; PASS verdict requested from agent-2"
+  },
+  {
+   "issue": 2168,
+   "key": "rc2-B1",
+   "lane": "agent-3 [89e867]",
+   "time": "2026-11-09T02:2xZ",
+   "source": "gate",
+   "status": "re-audit PASS 7ab1586f; delta-identical ce2bdb42; auto-merge armed"
+  },
+  {
+   "issue": "ops",
+   "key": "leader-tooling",
+   "lane": "leader [a963ab]",
+   "time": "2026-11-09T02:2xZ",
+   "source": "user",
+   "status": "user re-stated: no Bash for file edits — Edit/Write only (ledger JSON included); gh/git commands remain Bash"
+  },
+  {
+   "issue": 2168,
+   "key": "rc2-B1",
+   "lane": "agent-3 [89e867] (repair) / agent-5 [767ceb] (author)",
+   "time": "2026-11-09T02:2xZ",
+   "source": "gate",
+   "status": "PR #2215 merged → tip 21abfaad0; issue closed"
+  },
+  {
+   "issue": 2170,
+   "key": "rc2-B3",
+   "lane": "agent-5 [767ceb]",
+   "time": "2026-11-09T02:3xZ",
+   "source": "gate",
+   "status": "PR #2219 PASS; delta gate run (see Issue comment); auto-merge armed"
+  },
+  {
+   "issue": 2190,
+   "key": "rc2-D4",
+   "lane": "agent-8 [45deae]",
+   "time": "2026-11-09T02:3xZ",
+   "source": "audit FAIL",
+   "status": "REQ-D4-01 partial: bytes/LOC commands missing, placeholder timestamp; repair = pending queue #1 for first free non-author lane"
+  },
+  {
+   "issue": 2170,
+   "key": "rc2-B3",
+   "lane": "agent-5 [767ceb]",
+   "time": "2026-11-09T02:4xZ",
+   "source": "gate",
+   "status": "PR #2219 merged → tip 8027613a4; issue closed"
+  },
+  {
+   "issue": 2172,
+   "key": "rc2-B5",
+   "lane": "agent-3 [89e867]",
+   "time": "2026-11-09T02:4xZ",
+   "source": "lane blocked (gate 3x)",
+   "status": "push blocked 3x by moving base (gate OK); leader sent '지금'; decision row pointer given (01:1x Forge 권한·fallback, in tip since 5ea15a5be)"
+  },
+  {
+   "issue": 2192,
+   "key": "rc2-D6",
+   "lane": "agent-7 [fa13f6]",
+   "time": "2026-11-09T02:5xZ",
+   "source": "gate",
+   "status": "PR #2222 PASS; delta-identical; auto-merge armed; follow-up: appendix/interfaces.md OPERATIONS count must be re-synced after #2218/#2221 land (47→48→49)"
+  },
+  {
+   "issue": 2192,
+   "key": "rc2-D6",
+   "lane": "agent-7 [fa13f6]",
+   "time": "2026-11-09T02:07Z",
+   "source": "gate",
+   "status": "PR #2222 merged → tip 629933420; issue closed completed"
+  },
+  {
+   "issue": 2161,
+   "key": "rc2-A2",
+   "lane": "agent-4 (repair, epoch 2)",
+   "time": "2026-11-09T02:1xZ",
+   "source": "audit",
+   "status": "PR #2218 repair head 781531f3e FAIL (body missing epoch-2 claim token only; code passes) → leader appended `Moai-Claim: 2161#6730177790` to PR body as relay; re-check requested from agent-2 on same head"
+  },
+  {
+   "issue": 2172,
+   "key": "rc2-B5",
+   "lane": "agent-3 [95982]",
+   "time": "2026-11-09T02:1xZ",
+   "source": "lane",
+   "status": "push gate blocked (base moved to 629933420 by #2222); leader decision (a): merge window held — no auto-merge armed until agent-3 reports pushed head (local HEAD 17d9fa9c0 pre-merge); option (b) push-gate exception NOT recorded"
+  },
+  {
+   "issue": 2161,
+   "key": "rc2-A2",
+   "lane": "agent-4 (repair, epoch 2)",
+   "time": "2026-11-09T02:10Z",
+   "source": "gate",
+   "status": "PR #2218 PASS (agent-2 re-check on 781531f3e); update-branch → d3836e6b5; delta-identical 778 lines; moai/audit success https://github.com/modu-ai/moai-adk/issues/2161#issuecomment-6730579323; auto-merge HELD until agent-3 reports #2172 push"
+  },
+  {
+   "issue": 2171,
+   "key": "rc2-B4",
+   "lane": "agent-5 [767ceb]",
+   "time": "2026-11-09T02:1xZ",
+   "source": "lane",
+   "status": "PR #2224 opened head 1c4b1a97a (claim 2171#6730217327); queued for agent-2 after #2223"
+  },
+  {
+   "issue": 2171,
+   "key": "rc2-B4",
+   "lane": "agent-5 [767ceb]",
+   "time": "2026-11-09T02:12Z",
+   "source": "relay",
+   "status": "completion report relayed https://github.com/modu-ai/moai-adk/issues/2171#issuecomment-6730596757; lane exited worktree (keep)"
+  },
+  {
+   "issue": 2184,
+   "key": "rc2-C5",
+   "lane": "agent-4 [f4bd07]",
+   "time": "2026-11-09T02:12Z",
+   "source": "relay",
+   "status": "PR #2225 opened head 256242a68 (claim 2184#6730353217); report relayed https://github.com/modu-ai/moai-adk/issues/2184#issuecomment-6730597029; queued for agent-2 after #2224; lane decisions flagged for audit (256 KiB cap on max_items-only requests; key context_max_bytes)"
+  },
+  {
+   "issue": 2190,
+   "key": "rc2-D4",
+   "lane": "agent-5 [767ceb] (repair, epoch 2)",
+   "time": "2026-11-09T02:12Z",
+   "source": "dispatch",
+   "status": "PR #2220 repair assigned to agent-5 (non-author; author agent-8 on #2191); claim comment 6730594359 epoch 2 lease 2026-11-09T06:12:43Z; pending_repairs #1 → assigned"
+  },
+  {
+   "issue": 2169,
+   "key": "rc2-B2",
+   "lane": "agent-6 [742cb6]",
+   "time": "2026-11-09T02:1xZ",
+   "source": "audit",
+   "status": "PR #2223 head ed0c5b55f FAIL — semantic conflict with #2218 (queue.rs:266 ClaimRequest literal lacks assignee/provider_session → E0063 on merge; standalone all PASS, rc-ci 42547923093). Relayed https://github.com/modu-ai/moai-adk/issues/2169#issuecomment-6730608126. Status/auto-merge withheld. Repair reserved for agent-4 (non-author) after #2218 merges: update-branch + add fields + owner-comment wording"
+  },
+  {
+   "issue": 2176,
+   "key": "rc2-B9",
+   "lane": "agent-4 [f4bd07]",
+   "time": "2026-11-09T02:14Z",
+   "source": "claim",
+   "status": "self-claim posted https://github.com/modu-ai/moai-adk/issues/2176#issuecomment-6730615036 (epoch 1, lease 06:13:49Z); kept despite crossed messages — agent-4 works #2176 and interleaves the #2223 repair when #2218 merges. Lane facts: #2180 blocked — DR-07 node/edge consolidated list absent from docs (needs source table first); #2187 touches same profile.rs ADDITIVE_KEYS as #2225 → do after #2225 lands"
+  },
+  {
+   "issue": 2172,
+   "key": "rc2-B5",
+   "lane": "agent-3 [89e867]",
+   "time": "2026-11-09T02:16Z",
+   "source": "lane",
+   "status": "pushed head ad1593548 (base 629933420 contained, observed via ls-remote); OPERATIONS conflict with #2222 resolved keeping both lines (ParityCheck + ForgeLinksProbe); check set 350/0 all exit 0 (lane-reported); PR pending. Merge window closed → #2218 auto-merge armed (head d3836e6b5 unchanged)"
+  },
+  {
+   "issue": 2161,
+   "key": "rc2-A2",
+   "lane": "agent-4 (repair)",
+   "time": "2026-11-09T02:16:27Z",
+   "source": "gate",
+   "status": "PR #2218 merged → tip 81f6f7148; issue closed completed"
+  },
+  {
+   "issue": 2169,
+   "key": "rc2-B2",
+   "lane": "agent-4 [f4bd07] (repair, epoch 2)",
+   "time": "2026-11-09T02:16Z",
+   "source": "dispatch",
+   "status": "repair claim 6730649888 posted; start signal sent (merge tip 81f6f7148, fill ClaimRequest fields at queue.rs:266, owner-comment wording)"
+  },
+  {
+   "issue": 2172,
+   "key": "rc2-B5",
+   "lane": "agent-3 [89e867]",
+   "time": "2026-11-09T02:17Z",
+   "source": "relay",
+   "status": "PR #2226 head ad1593548; report relayed https://github.com/modu-ai/moai-adk/issues/2172#issuecomment-6730657540; queued for agent-2; lane exited worktree (keep)"
+  },
+  {
+   "issue": 2191,
+   "key": "rc2-D5",
+   "lane": "agent-8 [45deae]",
+   "time": "2026-11-09T02:17Z",
+   "source": "relay",
+   "status": "PR #2227 head 1c8a0ed31 stacked on #2220 head 56d01d340 (re-merge needed after #2220 repair lands); report relayed https://github.com/modu-ai/moai-adk/issues/2191#issuecomment-6730657904; queued for agent-2 (standalone first)"
+  },
+  {
+   "issue": 2173,
+   "key": "rc2-B6",
+   "lane": "agent-3 [89e867]",
+   "time": "2026-11-09T02:17Z",
+   "source": "dispatch",
+   "status": "ADK_LANES_CONTINUE_20261109_01: leader-posted claim https://github.com/modu-ai/moai-adk/issues/2173#issuecomment-6730656930 epoch 1 lease 06:17:32Z; operator App registration stays keep-set HOLD"
+  },
+  {
+   "issue": 2174,
+   "key": "rc2-B7",
+   "lane": "agent-8 [45deae]",
+   "time": "2026-11-09T02:17Z",
+   "source": "dispatch",
+   "status": "ADK_LANES_CONTINUE_20261109_01: leader-posted claim https://github.com/modu-ai/moai-adk/issues/2174#issuecomment-6730657171 epoch 1 lease 06:17:32Z; research card, implementation stays blocked"
+  },
+  {
+   "issue": 2171,
+   "key": "rc2-B4",
+   "lane": "agent-5 [767ceb]",
+   "time": "2026-11-09T02:2xZ",
+   "source": "audit",
+   "status": "PR #2224 head 1c4b1a97a FAIL — fixture note example uses `author_username` (not in GitLab docs; docs use author{username}); one-line fix; all else PASS (rc-ci 42549586467). Relayed to #2171. Status/auto-merge withheld. pending_repairs #2: first free non-author lane"
+  },
+  {
+   "issue": 2184,
+   "key": "rc2-C8",
+   "lane": "agent-4 [f4bd07]",
+   "time": "2026-11-09T02:24Z",
+   "source": "gate",
+   "status": "PR #2225 PASS (agent-2; lane decisions accepted: 256 KiB cap on max_items-only, key context_max_bytes); CORRECTION: update-branch applied asynchronously → head 42dd14cc2 (parents 256242a68 + 81f6f7148); earlier 'head unchanged' was a premature read. delta-identical 184 lines on 42dd14cc2; moai/audit on 256242a68 posted, status on 42dd14cc2 deferred until rc-ci run 42550720476 succeeds (ruleset requires only moai/audit, so posting early would let merge precede CI) https://github.com/modu-ai/moai-adk/issues/2184#issuecomment-6730739244; auto-merge armed 02:24:02Z. Note: #2221 touches same profile.rs region → second lander resolves + adds Profile literal fields"
+  },
+  {
+   "issue": 2169,
+   "key": "rc2-B2",
+   "lane": "agent-4 [f4bd07] (repair, epoch 2)",
+   "time": "2026-11-09T02:26Z",
+   "source": "relay",
+   "status": "PR #2223 repair head 1486714c9 pushed (base 81f6f7148 contained; ClaimRequest fields None; owner comment reworded; check set 352/0); relayed https://github.com/modu-ai/moai-adk/issues/2169#issuecomment-6730779506; re-audit queued after #2226; agent-4 back on #2176 (doc commit 0553abaf8, check set+push pending)"
+  },
+  {
+   "issue": 2184,
+   "key": "rc2-C8",
+   "lane": "agent-4 [f4bd07]",
+   "time": "2026-11-09T02:28:45Z",
+   "source": "gate",
+   "status": "PR #2225 merged → tip 6ee819cae (moai/audit posted on 42dd14cc2 after rc-ci 42550720476 success); issue closed completed; #2187 now unblocked; #2221 re-merge must add Profile.context_max_bytes"
+  },
+  {
+   "issue": 2172,
+   "key": "rc2-B5",
+   "lane": "agent-3 [89e867]",
+   "time": "2026-11-09T02:3xZ",
+   "source": "audit",
+   "status": "PR #2226 head ad1593548 FAIL — no test enforces blocked_by 50 bound (mutation >5000 passes); design points accepted (ok:true envelope, 404/410 unavailable, 50 source); AC-1/2/3 PASS (rc-ci 42550018412). Relayed to #2172. Status/auto-merge withheld. pending_repairs #3: non-author lane (test-only + dedupe blocked_by)"
+  },
+  {
+   "issue": 2171,
+   "key": "rc2-B4",
+   "lane": "agent-3 [437ee1] (repair, epoch 2)",
+   "time": "2026-11-09T02:32Z",
+   "source": "dispatch",
+   "status": "user '빈레인 이슈 배차': idle duplicate session agent-3 [437ee1] assigned PR #2224 fixture one-line repair; claim https://github.com/modu-ai/moai-adk/issues/2171#issuecomment-6730841005 lease 06:32:22Z; pending_repairs #2 → assigned"
+  },
+  {
+   "issue": 2172,
+   "key": "rc2-B5",
+   "lane": "agent-4 [c3a17f] (repair, epoch 2)",
+   "time": "2026-11-09T02:32Z",
+   "source": "dispatch",
+   "status": "user '빈레인 이슈 배차': idle duplicate session agent-4 [c3a17f] assigned PR #2226 test-only repair (50-bound mutation test + dedupe advice); claim https://github.com/modu-ai/moai-adk/issues/2172#issuecomment-6730841348 lease 06:32:22Z; pending_repairs #3 → assigned. Not dispatched: agent-2 [6fa9bf] (auditor name — writer role would blur audit independence), agent-1 [0dd806]/[e29c15] (name collision with pending #2221 re-merge duty + unsubmitted input), work-49 (unknown role)"
+  },
+  {
+   "issue": 2169,
+   "key": "rc2-B2",
+   "lane": "agent-4 [f4bd07] (repair, epoch 2)",
+   "time": "2026-11-09T02:38Z",
+   "source": "gate",
+   "status": "PR #2223 repair head 1486714c9 PASS (agent-2; E0063 resolved, owner comment fixed, rc-ci 42550959641). Relayed https://github.com/modu-ai/moai-adk/issues/2169#issuecomment-6730922987. update-branch → head 8bac796ec; delta-identical 138 lines vs tip 6ee819cae; moai/audit deferred until rc-ci on 8bac796ec succeeds (background wait)"
+  },
+  {
+   "issue": 2178,
+   "key": "rc2-C2",
+   "lane": "agent-7 [fa13f6]",
+   "time": "2026-11-09T02:40Z",
+   "source": "relay",
+   "status": "PR #2228 head 952182c41 (claim 2178#6730338400); report relayed https://github.com/modu-ai/moai-adk/issues/2178#issuecomment-6730942791; queued for agent-2 after #2227; proposals pending user confirmation (package moai-atlas, CLI atlas-tag-scan, grammar v1); lane exited worktree (keep)"
+  },
+  {
+   "issue": 2193,
+   "key": "rc2-E1",
+   "lane": "agent-7 [fa13f6]",
+   "time": "2026-11-09T02:40Z",
+   "source": "dispatch",
+   "status": "claim https://github.com/modu-ai/moai-adk/issues/2193#issuecomment-6730943161 epoch 1 lease 06:40:49Z; release/tag push stays blocked"
+  },
+  {
+   "issue": 2171,
+   "key": "rc2-B4",
+   "lane": "agent-3 [437ee1] (repair, epoch 2)",
+   "time": "2026-11-09T02:41Z",
+   "source": "relay",
+   "status": "PR #2224 repair head 89df85409 pushed from side worktree 2171-fu-gitlab-forge-contract-a3 (original worktree untouched, now 2 commits behind); one-line fixture fix; check set 355/0; PR body epoch-2 claim line appended by leader (line 39); relayed https://github.com/modu-ai/moai-adk/issues/2171#issuecomment-6730948449; re-audit queued"
+  },
+  {
+   "issue": 2199,
+   "key": "rc2-F1",
+   "lane": "agent-3 [437ee1]",
+   "time": "2026-11-09T02:41Z",
+   "source": "dispatch",
+   "status": "claim https://github.com/modu-ai/moai-adk/issues/2199#issuecomment-6730953334 epoch 1 lease 06:41:44Z; spike — no paid calls/keys"
+  },
+  {
+   "issue": 2169,
+   "key": "rc2-B2",
+   "lane": "agent-4 [f4bd07] (repair)",
+   "time": "2026-11-09T02:43:42Z",
+   "source": "gate",
+   "status": "PR #2223 merged → tip d76a5b7ce (moai/audit on 8bac796ec after rc-ci 42552127316 success); issue closed completed"
+  },
+  {
+   "issue": 2172,
+   "key": "rc2-B5",
+   "lane": "agent-4 [c3a17f] (repair, epoch 2)",
+   "time": "2026-11-09T02:43Z",
+   "source": "relay",
+   "status": "PR #2226 repair head c6711781d pushed from side worktree 2172-repair-c3a17f (tests: 51/[5,5] reject + 50 accept; links.rs dedupe reject; mutations FAILED as expected; check set 360/0); PR body epoch-2 claim appended (line 46); relayed https://github.com/modu-ai/moai-adk/issues/2172#issuecomment-6730972865; re-audit queued"
+  },
+  {
+   "issue": 2204,
+   "key": "rc2-F6",
+   "lane": "agent-4 [c3a17f]",
+   "time": "2026-11-09T02:44Z",
+   "source": "dispatch",
+   "status": "claim https://github.com/modu-ai/moai-adk/issues/2204#issuecomment-6730981296 epoch 1 lease 06:44:02Z; research only, no paid calls"
+  },
+  {
+   "issue": 2174,
+   "key": "rc2-B7",
+   "lane": "agent-8 [45deae]",
+   "time": "2026-11-09T02:44Z",
+   "source": "relay",
+   "status": "PR #2229 head 49a06558a (research doc only); relayed https://github.com/modu-ai/moai-adk/issues/2174#issuecomment-6730986461; queued for agent-2; lane exited worktree (keep)"
+  },
+  {
+   "issue": 2203,
+   "key": "rc2-F5",
+   "lane": "agent-8 [45deae]",
+   "time": "2026-11-09T02:44Z",
+   "source": "dispatch",
+   "status": "claim https://github.com/modu-ai/moai-adk/issues/2203#issuecomment-6730986794 epoch 1 lease 06:44:29Z; research only, zero image-generation calls"
+  },
+  {
+   "issue": 2162,
+   "key": "rc2-A3",
+   "lane": "agent-1 [e29c15]",
+   "time": "2026-11-09T02:44Z",
+   "source": "dispatch",
+   "status": "ADK_AGENT1_STATE_DELTA_20261109_01: operator observed agent-1 /cleared (0%, idle, empty input). Claim owner verified = agent-1-e29c15 (#2162 comment 6730011943). Self-contained resume instruction for PR #2221 re-merge sent to agent-1 [e29c15] only (profile.rs conflict with #2225: add Profile.context_max_bytes None; keep leader field; OPERATIONS keep both). agent-1 [0dd806] NOT dispatched. Awaiting identity ack"
+  },
+  {
+   "issue": 0,
+   "key": "host-setup-report",
+   "lane": "leader",
+   "time": "2026-11-09T02:42Z",
+   "source": "report",
+   "status": "user asked host (Claude Code/Codex) setup scope + issue-plan check → read-only survey; report written .moai-cli/reports/host-setup-scope-2026-11-09.md; conclusion: rc.2 covers launcher/mode/goal/MCP-research only; 8 gaps without cards (hooks, settings CLI, TOML/config.toml, skill install+openai.yaml, project skill copy, MCP gen, permissions key, real-session tests); EP-H H1/H2/H5 unissued pending Q-A/B/C"
+  },
+  {
+   "issue": 2190,
+   "key": "rc2-D4",
+   "lane": "agent-5 [767ceb] (repair, epoch 2)",
+   "time": "2026-11-09T02:45Z",
+   "source": "relay",
+   "status": "PR #2220 repair head 7076c9747 pushed (bytes/LOC reproduce command, measured timestamps, tables re-measured; bases 629933420/81f6f7148/6ee819cae merged; body has both claim lines; check set 353/0); relayed https://github.com/modu-ai/moai-adk/issues/2190#issuecomment-6730999283; re-audit queued"
+  },
+  {
+   "issue": 2187,
+   "key": "rc2-C?",
+   "lane": "agent-5 [767ceb]",
+   "time": "2026-11-09T02:45Z",
+   "source": "dispatch",
+   "status": "claim https://github.com/modu-ai/moai-adk/issues/2187#issuecomment-6730999949 epoch 1 lease 06:45:37Z (unblocked by #2225 merge); agent-4 [f4bd07] told #2187 is taken"
+  },
+  {
+   "issue": 2162,
+   "key": "rc2-A3",
+   "lane": "agent-1 [e29c15]",
+   "time": "2026-11-09T02:45Z",
+   "source": "lane",
+   "status": "identity ack received: claim 6730011943 owner confirmed; PR #2221 re-merge started"
+  },
+  {
+   "issue": 2191,
+   "key": "rc2-D5",
+   "lane": "agent-8 [45deae]",
+   "time": "2026-11-09T02:5xZ",
+   "source": "audit",
+   "status": "PR #2227 head 1c8a0ed31 FAIL — self_report receipts summed with basis measured/structural (REQ-D5-01); AC-1/3 PASS (rc-ci 42550034216). Leader recommends fix (a) per-producer split + self_report fixture test. Relayed https://github.com/modu-ai/moai-adk/issues/2191 (latest comment). Status/auto-merge withheld. pending_repairs #4: non-author lane, start after #2220 merges (stacked on old #2220 head)"
+  },
+  {
+   "issue": 2162,
+   "key": "rc2-A3",
+   "lane": "agent-1 [e29c15]",
+   "time": "2026-11-09T02:53Z",
+   "source": "relay",
+   "status": "PR #2221 re-merge head ee9e7beff pushed (tip d76a5b7ce + old head contained — leader verified); 3-file conflicts kept both (profile.rs leader+context_max_bytes, lib.rs, rust-product-path.md); check set all 0; relayed to #2162; queued last for agent-2 (merge-build check). agent-1 reserved for #2227 repair after #2220 merges (pending_repairs #4 → reserved agent-1 [e29c15])"
+  },
+  {
+   "issue": 0,
+   "key": "t2p-identity",
+   "lane": "agent-1 [0dd806]",
+   "time": "2026-11-09T02:56Z",
+   "source": "dispatch",
+   "status": "ADK_HERDR_T2P_IDLE_20261109_01: Herdr window-1 t2p PID 67697 ↔ socket /tmp/cc-socks/67697.sock ↔ ListAgents agent-1 [0dd806] ↔ moai session current 113e4ddd-566b-4bd7-b27d-f6cc8c19dcf1 (ack received). e29c15 = PID 55748 (different session, owns #2221/#2227). No ready impl card → assigned independent verification: re-verify host-setup-scope report claims on origin/v2026.11.0 + measure OPERATIONS count (main.rs vs interfaces.md); output .moai-cli/reports/host-setup-scope-verification-2026-11-09.md; no commits/PRs"
+  },
+  {
+   "issue": 2176,
+   "key": "rc2-B9",
+   "lane": "agent-4 [f4bd07]",
+   "time": "2026-11-09T02:55Z",
+   "source": "relay",
+   "status": "PR #2230 head 343d523d9 (MCP parity research doc; interfaces.md 48→49); relayed https://github.com/modu-ai/moai-adk/issues/2176#issuecomment-6731123731; queued for agent-2; lane idle — no ready card (user decision pending on new cards)"
+  },
+  {
+   "issue": 2204,
+   "key": "rc2-F6",
+   "lane": "agent-4 [c3a17f]",
+   "time": "2026-11-09T02:56Z",
+   "source": "relay",
+   "status": "PR #2231 head 5bb690b79 (judge backend research doc, zero paid calls); relayed to #2204; queued for agent-2; lane idle — no ready card"
+  },
+  {
+   "issue": 2173,
+   "key": "rc2-B6",
+   "lane": "agent-3 [89e867]",
+   "time": "2026-11-09T02:55Z",
+   "source": "lane",
+   "status": "push gate blocked twice (base moved to d76a5b7ce); leader opened merge window '지금' — no auto-merge armed until agent-3 reports pushed head; local HEAD a5389599e check set 357/0; boundary tests 127/128·116/117·512/513 with mutation evidence"
+  },
+  {
+   "issue": 2203,
+   "key": "rc2-F5",
+   "lane": "agent-8 [45deae]",
+   "time": "2026-11-09T03:00Z",
+   "source": "gate",
+   "status": "PR #2232 opened head b0e9fdfc9 (claim 2203#6730986794, base d76a5b7ce contained — leader verified); queued for agent-2; lane report pending relay"
+  },
+  {
+   "issue": 0,
+   "key": "batch-03:2x",
+   "lane": "leader",
+   "time": "2026-11-09T03:2xZ",
+   "source": "gate",
+   "status": "agent-2 verdicts: PASS #2224(89df85409) #2229(49a06558a) #2220(7076c9747) #2221(ee9e7beff) #2231(5bb690b79) → relayed, serial gate script references/leader-tools/gate.sh running in background (update-branch→delta→rc-ci→status→auto-merge, one at a time). FAIL #2228(C2 grammar colon args; corpus invalid 30.5%) → repair agent-6 claim 6731492048 ep2; FAIL #2226 2nd (dup-blocker error kind internal) → repair agent-5 claim 6731492397 ep3; FAIL #2232 (C2 pricing wrong row, R2 URL 403) → repair agent-3 [437ee1] claim 6731492761 ep2. New PRs relayed+queued: #2233(#2173 84e2c4b96), #2234(#2199 efd1bb8ea), #2235(#2175 9cdda5921), #2236(#2187 9c4904b95), #2230 updated 62431e2b5 (interfaces.md 50). agent-1 [0dd806] verification report .moai-cli/reports/host-setup-scope-verification-2026-11-09.md: 1 partial mismatch (skip-permissions flag only for role sessions -l/-a non-codex), OPERATIONS main.rs 49 vs interfaces.md 48 (parity-check missing) at d76a5b7ce"
+  },
+  {
+   "issue": 0,
+   "key": "delegated-decision",
+   "lane": "leader",
+   "time": "2026-11-09T03:2xZ",
+   "source": "decision",
+   "status": "ADK_DELEGATED_CHOICES_20261109_01: AskUserQuestion answers were submitted by 영실이 under the user's explicit delegation (routine choices within approved scope), NOT direct user picks: (1) issue host-gap 8 + EP-I 1 + interfaces doc 1 = 10 cards; (2) issue DR-07 consolidated-table card first, #2180 Blocked-By it. HOLDs unchanged; blocked in every card: real user-home config changes, permission/security settings, App registration/keys/tokens/persistent access, paid calls, deploy/tag push, unapproved host real-session runs; EP-H Q-A/B/C and project-skill location remain undecided"
+  },
+  {
+   "issue": 2237,
+   "key": "rc2-EP-I",
+   "lane": "leader",
+   "time": "2026-11-09T03:29Z",
+   "source": "issuance",
+   "status": "issued via references/leader-tools/rc2_issue_gen_epI.py: #2237 EP-I, #2238 I1 hooks, #2239 I2 settings CLI, #2240 I3 TOML/config.toml, #2241 I4 Codex skill+openai.yaml, #2242 I5 project skill copy (P04 HOLD kept), #2243 I6 MCP config (Blocked-By #2176), #2244 I7 permissions key, #2245 I8 real-session harness, #2246 D7 interfaces.md sync test (Blocked-By #2221·#2230), #2247 C4-pre DR-07 table (#2180 Blocked-By #2247 commented). Mirrors in .moai-cli/reports/issue-bodies/. decisions log row pending (needs leader docs PR)"
+  },
+  {
+   "issue": 2244,
+   "key": "rc2-I7",
+   "lane": "agent-3 [89e867]",
+   "time": "2026-11-09T03:29Z",
+   "source": "dispatch",
+   "status": "claim 6731542657 ep1 lease 07:29:54Z"
+  },
+  {
+   "issue": 2239,
+   "key": "rc2-I2",
+   "lane": "agent-4 [f4bd07]",
+   "time": "2026-11-09T03:29Z",
+   "source": "dispatch",
+   "status": "claim 6731542968 ep1 lease 07:29:54Z; #2230 re-merge signal to follow after #2221 lands"
+  },
+  {
+   "issue": 2240,
+   "key": "rc2-I3",
+   "lane": "agent-4 [c3a17f]",
+   "time": "2026-11-09T03:29Z",
+   "source": "dispatch",
+   "status": "claim 6731543227 ep1 lease 07:29:54Z"
+  },
+  {
+   "issue": 2247,
+   "key": "rc2-C4-pre",
+   "lane": "agent-8 [45deae]",
+   "time": "2026-11-09T03:29Z",
+   "source": "dispatch",
+   "status": "claim 6731543514 ep1 lease 07:29:54Z"
+  },
+  {
+   "issue": 2245,
+   "key": "rc2-I8",
+   "lane": "agent-1 [0dd806]",
+   "time": "2026-11-09T03:29Z",
+   "source": "dispatch",
+   "status": "claim 6731543827 ep1 lease 07:29:54Z (t2p PID 67697, session 113e4ddd)"
+  },
+  {
+   "issue": 2187,
+   "key": "rc2-D1",
+   "lane": "agent-5 [767ceb]",
+   "time": "2026-11-09T03:27Z",
+   "source": "gate",
+   "status": "PR #2236 body lacked Moai-Claim line (trailer present) → leader appended `Moai-Claim: 2187#6730999949` (line 38, head unchanged) per agent-2 pre-check; conflict matrix from agent-2: #2221×#2235 lib.rs, #2221×#2236 profile.rs (mutual None fields), #2221×#2230 interfaces.md, #2233×#2236 main.rs OPERATIONS → re-merge orders after first lander"
+  },
+  {
+   "issue": 2171,
+   "key": "rc2-B4",
+   "lane": "agent-5 + agent-3 [437ee1] repair",
+   "time": "2026-11-09T03:3xZ",
+   "source": "gate",
+   "status": "PR #2224 merged b94bf004c (serial gate: update-branch 7069b1e29, delta-identical 235, rc-ci success); issue closed"
+  },
+  {
+   "issue": 2174,
+   "key": "rc2-B7",
+   "lane": "agent-8 [45deae]",
+   "time": "2026-11-09T03:3xZ",
+   "source": "gate",
+   "status": "PR #2229 merged be4505b57 (update-branch 210f98413, delta-identical 69, rc-ci success); issue closed; gate continues #2220 → #2221 → #2231"
+  },
+  {
+   "issue": 0,
+   "key": "disk-enospc",
+   "lane": "leader",
+   "time": "2026-11-09T03:3xZ",
+   "source": "incident",
+   "status": "ENOSPC on /System/Volumes/Data (3.6 TiB, 117 MiB free at 03:3x). Measured: /private/tmp/claude-501 = 213 GB (334 entries; session scratchpads incl. audit clones + cargo targets). Lanes blocked: agent-2 audits (#2234 run invalid), agent-3 x2, agent-4 x2, agent-5 (#2172 uncommitted 3-file diff preserved in worktree 2172-repair-agent5), agent-7 (#2193 uncommitted preserved), agent-8. No deletion by leader/lanes (user approval required). User cleaned some → 5.4 GiB free at 03:4x; lanes resuming with CARGO_INCREMENTAL=0. Further cleanup candidates (unmeasured, measuring): /tmp/moai-rc-target-* etc 40 dirs; .moai-cli/worktrees/*/target 60+; scratchpad clone targets"
+  },
+  {
+   "issue": 2190,
+   "key": "rc2-D4",
+   "lane": "agent-5 repair",
+   "time": "2026-11-09T03:4xZ",
+   "source": "gate",
+   "status": "PR #2220 merged 720ce67f3 (update-branch e89016fea, delta-identical 239, rc-ci success); issue closed"
+  },
+  {
+   "issue": 2191,
+   "key": "rc2-D5",
+   "lane": "agent-1 [e29c15] (repair, epoch 2)",
+   "time": "2026-11-09T03:4xZ",
+   "source": "dispatch",
+   "status": "repair claim 6731612389 posted; start signal sent (re-merge tip + fix (a) per-producer basis + tests)"
+  },
+  {
+   "issue": 0,
+   "key": "disk-cleanup",
+   "lane": "leader",
+   "time": "2026-11-09T03:5xZ",
+   "source": "decision",
+   "status": "User approved (AskUserQuestion) 3 deletion scopes: /tmp/moai-rc-target-*+moai-dist-scratch*+moai-export-nogit* (41 dirs, measured 44G), target/ under worktrees of CLOSED issues (51 of 70 target dirs; open-issue targets kept: 2014 2162 2172 2173 2175 2176 2178 2187 2191 2193 2199 2203 2204 2239 2244 2245), cargo target/ inside other sessions' scratchpads (167 dirs; leader's own excluded). Lanes notified before deletion. free: 117 MiB → 5.8 GiB (user) → 171 GiB after scope 1; scopes 2-3 running in background"
+  },
+  {
+   "issue": 2162,
+   "key": "rc2-A3",
+   "lane": "agent-1 [e29c15]",
+   "time": "2026-11-09T03:5xZ",
+   "source": "gate",
+   "status": "PR #2221 merged f4aa95bb0 (update-branch 1d2a85eee, delta-identical 672, rc-ci success); issue closed. Consequence: #2235 (lib.rs), #2236 (profile.rs), #2230 (interfaces.md) need re-merge"
+  },
+  {
+   "issue": 2204,
+   "key": "rc2-F6",
+   "lane": "agent-4 [c3a17f]",
+   "time": "2026-11-09T03:5xZ",
+   "source": "gate",
+   "status": "PR #2231 merged 1a0d82059 (update-branch 84c3be950, delta-identical 74, rc-ci success); issue closed. Serial gate queue1 complete (5/5 merged)"
+  },
+  {
+   "issue": 0,
+   "key": "sessions-lost",
+   "lane": "leader",
+   "time": "2026-11-09T03:5xZ",
+   "source": "incident",
+   "status": "ListAgents lost agent-2 [0cbdac] (auditor), agent-3 [89e867] (#2244 clean worktree, 0 commits), agent-4 [f4bd07] (#2239 uncommitted edits in worktree 2239, 0 commits; #2230 author). User decision: user will launch new agent-2 session; audits paused until then (queue: #2233 PASS→gate queue2; #2234 rerun, #2235, #2236, #2230, repair heads #2228 #2226 #2232 #2227). #2230 re-merge delegated to agent-4 [c3a17f] (not a repair; claim unchanged). #2239/#2244 wait for re-launched sessions"
+  },
+  {
+   "issue": 0,
+   "key": "goal-set",
+   "lane": "leader",
+   "time": "2026-11-09T03:5xZ",
+   "source": "user",
+   "status": "User goal: dispatch issues to lanes PR-first then issues; idle/completed lanes loop ExitWorktree → EnterWorktree → PR → ExitWorktree until all issues/PRs done. Resume messages sent to agent-5 (#2226 repair → #2236 re-merge), agent-6 (#2228 repair → #2235 re-merge), agent-4 [c3a17f] (#2240 + #2230 re-merge), agent-7 (#2193), agent-8 (#2247), agent-3 [437ee1] (#2232), agent-1 [e29c15] (#2227), agent-1 [0dd806] (#2245)"
+  },
+  {
+   "issue": 0,
+   "key": "tick-03:52",
+   "lane": "leader",
+   "time": "2026-11-09T03:52Z",
+   "source": "tick",
+   "status": "cleanup scopes 2-3 done (53 dirs + 167 dirs), free 187 GiB. All lanes busy except agent-3 [437ee1] 'waiting' (asked), agent-2 [6fa9bf] idle (not used), no new agent-2 yet. Gate queue2 (#2233 PASS) started in background. Open PRs 9: #2226 #2227 #2228 #2230 #2232 (repairs/re-merge in progress) #2233 (gating) #2234 #2235 #2236 (await new auditor)"
+  },
+  {
+   "issue": 2173,
+   "key": "rc2-B6",
+   "lane": "agent-3 [89e867] (session lost)",
+   "time": "2026-11-09T03:5xZ",
+   "source": "gate",
+   "status": "PR #2233 gate: update-branch did not apply — CONFLICTING (src/forge/mod.rs vs tip 1a0d82059, likely #2224 pub mod gitlab line). Author session gone → re-merge needed by a free lane (not a repair; keep claim 2173#6730656930, note re-merge by). pending_remerge: #2233 (forge/mod.rs), #2235 (lib.rs, agent-6), #2236 (profile.rs, agent-5), #2230 (interfaces.md, agent-4 [c3a17f])"
+  },
+  {
+   "issue": 2239,
+   "key": "rc2-I2",
+   "lane": "agent-4 [f4bd07] (unlisted but alive, socket 50304)",
+   "time": "2026-11-09T03:56Z",
+   "source": "relay",
+   "status": "PR #2248 head 92c1ed984 (claude-settings-plan/apply; install.py settings part deprecated only; check set 365/0); relayed https://github.com/modu-ai/moai-adk/issues/2239#issuecomment-6731850826; queued for new auditor. SendMessage to [f4bd07]/[50304] fails (not in ListAgents) → instruction left as #2239 comment: re-merge #2233 (forge/mod.rs) then #2241 I4. OPERATIONS doc count: 50 code / 49 doc / #2230→50 / #2248 +2 → consolidate in #2246 D7"
+  },
+  {
+   "issue": 2176,
+   "key": "rc2-B9",
+   "lane": "agent-4 [c3a17f] (re-merge)",
+   "time": "2026-11-09T03:58Z",
+   "source": "relay",
+   "status": "PR #2230 re-merged head b3b6922e8 (interfaces.md conflict → #2230 side, OPERATIONS 50 == doc set); claim unchanged; check set 362/0; awaiting auditor (no prior PASS). agent-4 [c3a17f] back on #2240"
+  },
+  {
+   "issue": 2191,
+   "key": "rc2-D5",
+   "lane": "agent-1 [e29c15] (repair, epoch 2)",
+   "time": "2026-11-09T04:00Z",
+   "source": "relay",
+   "status": "PR #2227 repair head bb21d30b5 (by_producer split, self_report self_reported/absent, top-level mixed row removed, tests added, protocol_version dup removed; check set 365/0; base 1a0d82059); relayed; awaiting auditor"
+  },
+  {
+   "issue": 2238,
+   "key": "rc2-I1",
+   "lane": "agent-1 [e29c15]",
+   "time": "2026-11-09T04:00Z",
+   "source": "dispatch",
+   "status": "claim 6731906797 ep1 lease 08:00:41Z; preceded by #2233 re-merge (forge/mod.rs) reassigned from unreachable agent-4 [f4bd07] to agent-1 [e29c15] (#2239 comment instruction to f4bd07 superseded for #2233 — f4bd07 keeps #2241 next)"
+  },
+  {
+   "issue": 0,
+   "key": "disk-cleanup-done",
+   "lane": "leader",
+   "time": "2026-11-09T04:0xZ",
+   "source": "incident",
+   "status": "approved cleanup scopes 2-3 finished (exit 0): free 277 GiB, used 93% (df). Incident closed; lanes building with CARGO_INCREMENTAL=0"
+  },
+  {
+   "issue": 0,
+   "key": "auditor-switch",
+   "lane": "agent-2 [6fa9bf]",
+   "time": "2026-11-09T04:1xZ",
+   "source": "user",
+   "status": "User direct instruction 'agent-2 [6fa9bf]를 감사자로 써라' (agent-2 [0cbdac] unreachable). Pre-check: 6fa9bf appears in 0 claims and 0 commit messages of the 10 queued PRs (non-author). Self-contained audit procedure + queue sent (read-only, verdict first-line format, mutation checks, external re-fetch, shared CARGO_TARGET_DIR). Identity ack 04:08:10Z: session e6fa0fac-fbe1-4324-9709-a50bef5952cd; audits resumed from #2227, base tip observed 1a0d820"
+  },
+  {
+   "issue": 2173,
+   "key": "rc2-B6",
+   "lane": "agent-1 [e29c15] (re-merge)",
+   "time": "2026-11-09T04:1xZ",
+   "source": "gate",
+   "status": "PR #2233 re-merge head 747d92aa4 (forge/mod.rs both mods kept, check set 366/0); relayed; serial gate queue3 running vs audited head 84e2c4b96"
+  },
+  {
+   "issue": 2247,
+   "key": "rc2-C4-pre",
+   "lane": "agent-8 [45deae]",
+   "time": "2026-11-09T04:09Z",
+   "source": "relay",
+   "status": "PR #2249 head abc766aa3 (DR-07 table 128 lines, sources [TO] L326-400 + [CB]; 'node 8 kinds' exact list unverifiable — may need user before #2180); relayed https://github.com/modu-ai/moai-adk/issues/2247#issuecomment-6732009417; queued for agent-2 [6fa9bf]"
+  },
+  {
+   "issue": 2242,
+   "key": "rc2-I5",
+   "lane": "agent-8 [45deae]",
+   "time": "2026-11-09T04:09Z",
+   "source": "dispatch",
+   "status": "claim 6732009754 ep1 lease 08:09:19Z; P04 HOLD kept"
+  },
+  {
+   "issue": 2245,
+   "key": "rc2-I8",
+   "lane": "agent-1 [0dd806]",
+   "time": "2026-11-09T04:10Z",
+   "source": "relay",
+   "status": "PR #2250 head ceab9617b (harness + test + checklist; real sessions not_run); relayed https://github.com/modu-ai/moai-adk/issues/2245#issuecomment-6732018085; queued for agent-2 [6fa9bf]"
+  },
+  {
+   "issue": 2241,
+   "key": "rc2-I4",
+   "lane": "agent-1 [0dd806]",
+   "time": "2026-11-09T04:10Z",
+   "source": "dispatch",
+   "status": "reassigned from unreachable agent-4 [f4bd07] (no commits/claim) to agent-1 [0dd806]; claim 6732018485 ep1 lease 08:10:00Z"
+  },
+  {
+   "issue": 2244,
+   "key": "rc2-I7",
+   "lane": "agent-3 [89e867] (reachable again)",
+   "time": "2026-11-09T04:11Z",
+   "source": "relay",
+   "status": "PR #2251 head 705c2f34a (permissions key; check set 368/0); relayed https://github.com/modu-ai/moai-adk/issues/2244#issuecomment-6732027706; queued for agent-2 [6fa9bf]"
+  },
+  {
+   "issue": 2175,
+   "key": "rc2-B8",
+   "lane": "agent-3 [89e867] (re-merge)",
+   "time": "2026-11-09T04:11Z",
+   "source": "dispatch",
+   "status": "PR #2235 re-merge (lib.rs vs #2221) moved from agent-6 (busy on #2228) to agent-3 [89e867]; agent-6 notified to skip unless already pushed; claim 2175#6730404371 unchanged — CANCELLED: agent-3 [89e867] unreachable for replies; #2235 re-merge back to agent-6"
+  },
+  {
+   "issue": 2173,
+   "key": "rc2-B6",
+   "lane": "agent-3 [89e867] + agent-1 [e29c15] re-merge",
+   "time": "2026-11-09T04:12Z",
+   "source": "gate",
+   "status": "PR #2233 merged → tip 0482f4ec2 (delta-identical 504 vs audited 84e2c4b96, rc-ci success, moai/audit on 747d92aa4); issue closed"
+  },
+  {
+   "issue": 0,
+   "key": "ready-scan-04:13",
+   "lane": "leader",
+   "time": "2026-11-09T04:13Z",
+   "source": "dispatch",
+   "status": "user '빈레인 이슈 배차': open rc.2 issues with 0 claims scanned (51 open). Ready for lanes (all Blocked-By closed): #2163 A4, #2167 A8, #2205 F7. Not lane work: #2206-#2209 EP-G Space apply (leader + per-page user confirmation), #2197 tag ruleset (user approval, keep-set). Still blocked: #2179 (#2178), #2180 (#2247 + node-8 list), #2181-2186, #2188-2189, #2194-2196, #2198, #2200-2202, #2243, #2246. No idle lane in ListAgents: offered #2167 to work-49 [c11db6] (identity check first), #2163 to agent-7 after #2193 (status asked); #2205 to next lane that reports done. agent-1 [e29c15] #2238 design accepted (hook-receipt op, hooks-plan/apply)"
+  },
+  {
+   "issue": 2163,
+   "key": "rc2-A4",
+   "lane": "agent-7 [fa13f6]",
+   "time": "2026-11-09T04:15Z",
+   "source": "dispatch",
+   "status": "claim 6732082285 ep1 lease 08:15:01Z; starts after #2193 PR (agent-7 reports impl+verify done, push pending)"
+  },
+  {
+   "issue": 2167,
+   "key": "rc2-A8",
+   "lane": "work-49 [c11db6]",
+   "time": "2026-11-09T04:15Z",
+   "source": "dispatch",
+   "status": "offer message HELD by recipient session (permission-mode mismatch notice) — not delivered; no claim posted; #2167 stays unassigned until a lane frees"
+  },
+  {
+   "issue": 2191,
+   "key": "rc2-D5",
+   "lane": "agent-1 [e29c15] repair",
+   "time": "2026-11-09T04:16Z",
+   "source": "audit",
+   "status": "PR #2227 repair head bb21d30b5 PASS by agent-2 [6fa9bf] (first verdict from new auditor; 3 mutations FAILED as expected; rc-ci 42559310398). Relayed to #2191; serial gate queue4 running"
+  },
+  {
+   "issue": 2167,
+   "key": "rc2-A8",
+   "lane": "agent-9 [3f685d] (new session)",
+   "time": "2026-11-09T04:17Z",
+   "source": "dispatch",
+   "status": "user 'agent-9~10 이슈 배차': claim 6732108898 ep1 lease 08:16:56Z; self-contained lane-loop instructions sent; work-49 offer (held) superseded; ACK: session 877421df-48e9-41a7-a441-aa8ff3227cb8, started"
+  },
+  {
+   "issue": 2205,
+   "key": "rc2-F7",
+   "lane": "agent-10 [a61ff4] (new session)",
+   "time": "2026-11-09T04:17Z",
+   "source": "dispatch",
+   "status": "claim 6732109259 ep1 lease 08:16:56Z; native default kept, external backend opt-in stub only, zero paid calls; ACK: session e2662838-57de-441c-a8e3-bac8340fab44, started on base b5517b4b0"
+  },
+  {
+   "issue": 2191,
+   "key": "rc2-D5",
+   "lane": "agent-8 + agent-1 [e29c15] repair",
+   "time": "2026-11-09T04:19Z",
+   "source": "gate",
+   "status": "PR #2227 merged → tip b5517b4b0 (update-branch 61d7c1e48, delta-identical 337, rc-ci success); issue closed"
+  },
+  {
+   "issue": 2176,
+   "key": "rc2-B9",
+   "lane": "agent-4 [f4bd07] + agent-4 [c3a17f] re-merge",
+   "time": "2026-11-09T04:25Z",
+   "source": "audit",
+   "status": "PR #2230 head b3b6922e8 PASS by agent-2 [6fa9bf] (38/38 tools, MCP spec re-fetch, interfaces.md 50 == OPERATIONS 50); non-blocking: report baseline 81f6f7148 omits leader.tick. Relayed; serial gate queue5 running. Merge unblocks #2243 I6 and #2246 D7"
+  },
+  {
+   "issue": 2176,
+   "key": "rc2-B9",
+   "lane": "-",
+   "time": "2026-11-09T04:3xZ",
+   "source": "gate",
+   "status": "PR #2230 merged → tip 8091f9eaa (update-branch b00713eca, delta 112, rc-ci success); issue closed with MCP-redesign note (doc kept as record, not a reuse basis)"
+  },
+  {
+   "issue": 2173,
+   "key": "rc2-B6",
+   "lane": "leader",
+   "time": "2026-11-09T04:3xZ",
+   "source": "correction",
+   "status": "advisor finding: earlier gate row 'delta-identical 504 vs audited 84e2c4b96' was unattributed (gate.sh compared re-merge head to itself). Re-measured against same tip 1a0d82059: audited 84e2c4b96 = 504 lines, re-merge 747d92aa4 = 504 lines, diff exit 0 → identical. Correction posted https://github.com/modu-ai/moai-adk/issues/2173#issuecomment-6732277882. gate.sh fixed: old = tip...AUDITED head; re-read headRefOid right before status post"
+  },
+  {
+   "issue": 2243,
+   "key": "rc2-I6",
+   "lane": "agent-1 [0dd806] (reserved)",
+   "time": "2026-11-09T04:3xZ",
+   "source": "user",
+   "status": "ADK_MCP_CLEAN_REDESIGN_20261109_01: MCP code/guidance/structure redesigned from design canon; old Go MCP and #2176/#2230 not a reuse basis (records kept). Canon grep: no MoAI MCP server definition (only Pi rows textonly L644/L718); decisions row 51 HOLD-C1 'CLI only, MCP next version' → implementation blocked (design gap + RC1 decision). Card scope realigned to design-prep only (requirements/gaps with line refs + user-decision questions); comment https://github.com/modu-ai/moai-adk/issues/2243#issuecomment-6732287215; agent-1 [0dd806] ACK received, starts after #2241"
+  },
+  {
+   "issue": 0,
+   "key": "concurrency-survey",
+   "lane": "leader (read-only Explore subagent)",
+   "time": "2026-11-09T04:3xZ",
+   "source": "user",
+   "status": "ADK_PARALLEL_CONFLICT_PREVENTION + _PERFORMANCE_20261109_01 (one task): read-only hotspot survey launched (git history touch counts, per-feature touch-points for main.rs Command/OPERATIONS/dispatch, lib.rs/forge mod lists, profile keys, error-kind table, struct literals, interfaces.md). Related existing measures to merge with (no duplicate): #2246 D7 (code↔doc OPERATIONS test), gate.sh candidate-merge delta check, agent-2 merge-tree conflict matrix. Baseline metrics source: this ledger (re-merges/conflicts/wait times) — no new runs"
+  },
+  {
+   "issue": 2199,
+   "key": "rc2-F1",
+   "lane": "agent-3 [437ee1]",
+   "time": "2026-11-09T04:34Z",
+   "source": "audit",
+   "status": "PR #2234 head efd1bb8ea PASS by agent-2 [6fa9bf] (fresh audit; gaps: measurements not re-run, npm audit not reproduced; non-blocking: measure_pi.py rmtree guard). Relayed; gate queue6 (fixed gate.sh) running. Merge unblocks #2200 (agent-1 [e29c15] reserved), #2201 (agent-10 reserved), #2202. Pi recommendation A/B/C awaits user"
+  },
+  {
+   "issue": 2199,
+   "key": "rc2-F1",
+   "lane": "agent-3 [437ee1]",
+   "time": "2026-11-09T04:37Z",
+   "source": "gate",
+   "status": "PR #2234 merged → tip cf4e662af (fixed gate: delta vs audited head identical 440, rc-ci success); issue closed. Pre-posted claims so lanes don't wait: #2200 agent-1 [e29c15] 6732369911, #2201 agent-10 6732370335 (lease 08:37:55Z). Dependabot PR #2252 targets main (not v2026.11.0) — outside rc.2 gate, left untouched"
+  },
+  {
+   "issue": 2167,
+   "key": "rc2-A8",
+   "lane": "agent-9 [3f685d]",
+   "time": "2026-11-09T04:39Z",
+   "source": "relay",
+   "status": "PR #2253 head 96c3ecddf (AGENTS.local restructure, temp Autonomous modes section removed; 25518 B); relayed https://github.com/modu-ai/moai-adk/issues/2167#issuecomment-6732383786; queued for agent-2 [6fa9bf]"
+  },
+  {
+   "issue": 2203,
+   "key": "rc2-F5",
+   "lane": "agent-9 [3f685d] (repair, epoch 3)",
+   "time": "2026-11-09T04:39Z",
+   "source": "dispatch",
+   "status": "epoch-2 writer agent-3 [437ee1] stuck 'waiting' (no reply ×2, remote head unchanged b0e9fdfc9, 0 pushes); its staged edits in worktree 2203-…-a3 preserved as orphan. Claim 6732387624 ep3 to agent-9; ACK received"
+  },
+  {
+   "issue": 0,
+   "key": "m1-priority",
+   "lane": "leader",
+   "time": "2026-11-09T04:4xZ",
+   "source": "user",
+   "status": "ADK_CLAIM_AGENT_AND_M1_PRIORITY_20261109_01 ACK. (1) M1 = milestone 2026.11.0-rc.1: open #2014 (08-C T2 host E2E — operator run per user decision 00:2x; T1/AC-5/AC-7 merged via PR #2100), #1984 (EP-09, needs #2012-#2015 closed + HOLDs P04/P12/SPEC), #1975 (top). Release tag/publish = separate user approval (not given). (2) Pi/Desktop deprioritized: pre-posted claims #2200 (agent-1 e29c15) and #2201 (agent-10) released by relay comments; #2205 F7 (agent-10, in progress) → stop at safe point, commit+push branch (no PR), keep claim. #2193 cargo-dist kept (release-relevant). (3) #2014 valid claim 6722749070 = agent-5 → no new writer; agent-5's next card = T2 preflight (script vs docs, credential-free checks, fix PR), #2188 after. (4) Claim-comment priority rule + --agent enforcement merged into the concurrency task (survey running); card to be issued after survey with existing #2161 queue-next/claim contract as base"
+  },
+  {
+   "issue": 2203,
+   "key": "rc2-F5",
+   "lane": "agent-3 [437ee1] (ep2) / agent-9 [3f685d] (ep3)",
+   "time": "2026-11-09T04:43Z",
+   "source": "correction",
+   "status": "ADK_CLAIM_2203_OWNERSHIP_CHECK_20261109_01: leader's ep3 assignment lacked basis — ep2 claim 6731492761 lease 07:25:34Z still valid, no stop/handoff ACK from 437ee1 (silence/zero pushes ≠ ownership loss; non-force rejection ≠ fencing). Hold on all #2203 writes/pushes for both: agent-9 told to stop + preserve locally + report state; 437ee1 asked to state continue or handoff. No claim deleted. Valid owner now: ep2 437ee1; ep3 on hold. Resume: 437ee1 explicit handoff ACK, or operator decision after lease expiry. Record https://github.com/modu-ai/moai-adk/issues/2203#issuecomment-6732428646. Lesson: before epoch-n+1, require lease expiry or explicit handoff, never infer from silence"
+  },
+  {
+   "issue": 2203,
+   "key": "rc2-F5",
+   "lane": "agent-9 [3f685d]",
+   "time": "2026-11-09T04:43Z",
+   "source": "lane",
+   "status": "agent-9 ACK hold: commits 0, pushes 0, PR body unchanged; local HEAD = remote b0e9fdfc9; worktree .moai-cli/worktrees/2203-f5-image-asset-research-a9 keeps 1 uncommitted edit (docs/image-asset-research-2026-11-09.md R2 + C2/C2a/C2b); re-fetched facts 04:41Z recorded in lane message. Writes stopped until 437ee1 handoff ACK or operator decision. 437ee1: no reply yet"
+  },
+  {
+   "issue": 2246,
+   "key": "rc2-D7",
+   "lane": "agent-9 [3f685d]",
+   "time": "2026-11-09T04:43Z",
+   "source": "dispatch",
+   "status": "0 existing claims verified → relay claim 6732438775 ep1 lease 08:43:49Z (lane, session, branch recorded in comment); reservation moved from agent-4 [c3a17f] (busy #2240). Part of concurrency task (doc↔code registry test)"
+  },
+  {
+   "issue": 2187,
+   "key": "rc2-D1",
+   "lane": "agent-5 [767ceb]",
+   "time": "2026-11-09T04:46Z",
+   "source": "audit",
+   "status": "PR #2236 head 9c4904b95 FAIL by agent-2 [6fa9bf] (REQ-D1-01 fail-open: quoted/uppercase/yes/indented hold & evidence pass as eligible). Relayed. Status withheld. Repair needs non-author lane; agent-5 claim 6730999949 live (lease 06:45:37Z) → asked agent-5 for explicit handoff ACK + not to re-merge #2236 before posting epoch 2"
+  },
+  {
+   "issue": 2187,
+   "key": "rc2-D1",
+   "lane": "agent-10 [a61ff4] (repair, epoch 2)",
+   "time": "2026-11-09T04:50Z",
+   "source": "dispatch",
+   "status": "agent-5 explicit handoff ACK (writes stopped, worktree clean at 9c4904b95). Relay claim 6732524120 ep2 lease 08:50:51Z with lane/session/branch/time fields; scope: fail-closed hold/evidence normalization + fixtures + tip re-merge (profile.rs)"
+  },
+  {
+   "issue": 0,
+   "key": "concurrency-design",
+   "lane": "leader",
+   "time": "2026-11-09T04:50Z",
+   "source": "design",
+   "status": "survey done; design recorded .moai-cli/reports/parallel-conflict-design-2026-11-09.md (baseline: 412 merges/109 PR merges/304 lane syncs, 136 both-sides upper bound, 9 lower; hotspots main.rs 3 points/op, profile.rs 6/key, E0063 x2, doc drift 52 vs 50). Cards issued: #2254 D8 (registry stage 1, agent-4 [c3a17f] claim 6732524613, integration window after main.rs/profile.rs PRs land), #2255 A9 (claim priority enforcement + --mode agent, agent-1 [e29c15] claim 6732524982), #2256 D9 (constructors/tests common, Blocked-By #2254, unassigned). #2246 D7 = doc drift test (agent-9) merged into same task. Deferred (user decision): inventory/linkme crates; rejected: union merge, Default literals, global lock/serialization. Wait-time metrics not_run (ledger minute precision)"
+  },
+  {
+   "issue": 2172,
+   "key": "rc2-B5",
+   "lane": "agent-5 [767ceb] (repair, epoch 3)",
+   "time": "2026-11-09T04:5xZ",
+   "source": "relay",
+   "status": "PR #2226 2nd repair head 8bcd4fabd (message reworded → invalid_input, kind asserts on 6 rejects; tip cf4e662af merged; check set 376/0); relayed; queued first for agent-2. agent-5 moved to #2014 T2 preflight"
+  },
+  {
+   "issue": 2240,
+   "key": "rc2-I3",
+   "lane": "agent-4 [c3a17f]",
+   "time": "2026-11-09T04:5xZ",
+   "source": "relay",
+   "status": "PR #2257 head 9dfee3a44 (codex config.toml plan/apply; NEW DEPENDENCY toml_edit 0.25.3 + 5 transitive — user decision required before merge per decisions:67); relayed; queued for agent-2. agent-4 [c3a17f] started #2254 D8 (prepare only, push waits for integration window)"
+  },
+  {
+   "issue": 0,
+   "key": "user-decisions-04:5x",
+   "lane": "leader",
+   "time": "2026-11-09T04:5xZ",
+   "source": "user",
+   "status": "AskUserQuestion: (1) toml_edit 0.25.3 + 5 transitive deps ADOPTED (merge #2257 on PASS; decisions log row due); (2) #2014 T2 = operator runs after agent-5 preflight; (3) #1984 HOLD P04 = macOS arm64 × both hosts only (honest 'macOS arm64 only' in support table). Recorded on #2240 and #1984"
+  },
+  {
+   "issue": 2193,
+   "key": "rc2-E1",
+   "lane": "agent-7 [fa13f6]",
+   "time": "2026-11-09T04:5xZ",
+   "source": "relay",
+   "status": "PR #2258 head ce93d735d (cargo-dist 0.34, sha256 + SBOM via cargo cyclonedx; no release/tag); relayed; queued. agent-7 redirected to already-claimed #2163 (6732082285); #2194 waits for #2258 merge"
+  },
+  {
+   "issue": 2241,
+   "key": "rc2-I4",
+   "lane": "agent-1 [0dd806]",
+   "time": "2026-11-09T04:5xZ",
+   "source": "relay",
+   "status": "PR #2259 head 73581c111 (codex-projection-apply); relayed; queued. Next #2243 claim 6732554464 (design-prep only)"
+  },
+  {
+   "issue": 2238,
+   "key": "rc2-I1",
+   "lane": "agent-1 [e29c15]",
+   "time": "2026-11-09T04:5xZ",
+   "source": "relay",
+   "status": "PR #2260 head 75b6c149a (hooks-plan/apply + hook-receipt; OPERATIONS 52→55); relayed; queued. #2200 cancelled before start (nothing done). Next #2255 (claim 6732524982)"
+  },
+  {
+   "issue": 2246,
+   "key": "rc2-D7",
+   "lane": "agent-9 [3f685d]",
+   "time": "2026-11-09T04:5xZ",
+   "source": "relay",
+   "status": "PR #2261 head 0c0b231f4 (cfg(test) operations_doc test: OPERATIONS vs interfaces.md heading/count/name set; doc 50→52); relayed; queued. Merge-order note: op-adding PRs (#2248 #2251 #2260 #2259) vs #2261 need doc re-sync on whichever lands second"
+  },
+  {
+   "issue": 2262,
+   "key": "rc1-08D-prep",
+   "lane": "agent-9 [3f685d]",
+   "time": "2026-11-09T04:5xZ",
+   "source": "issuance",
+   "status": "M1 card created (rc.1 milestone): P04 support table, release notes draft, checklist rehearsal (no tag/release). Relay claim 6732584017 to agent-9"
+  },
+  {
+   "issue": 2239,
+   "key": "rc2-I2",
+   "lane": "agent-4 [f4bd07]",
+   "time": "2026-11-09T04:56Z",
+   "source": "audit",
+   "status": "PR #2248 head 92c1ed984 PASS by agent-2 [6fa9bf] (3 mutations FAILED, home-write probes refused); relayed; gate queue7 running"
+  },
+  {
+   "issue": 2178,
+   "key": "rc2-C2",
+   "lane": "agent-6 [742cb6] (repair, epoch 2)",
+   "time": "2026-11-09T04:58Z",
+   "source": "relay",
+   "status": "PR #2228 repair head 3f21aa994 (parse_payload rewrite; Go corpus 1,726 lines invalid 0; mutation FAILED); relayed; queued front for agent-2. agent-6 next: #2235 re-merge, then #2179 after #2228 merges"
+  },
+  {
+   "issue": 2255,
+   "key": "rc2-A9",
+   "lane": "agent-1 [e29c15]",
+   "time": "2026-11-09T04:59Z",
+   "source": "decision",
+   "status": "lane decisions accepted: tip-based build; PreToolUse claim-verify guard added after #2260 merges (not stacked; AC-2 partial until then); claim line-1 fields lane/issue/branch/at/relay; machine release/handoff formats (moai-claim-release / moai-claim-handoff) — leader to re-post #2200/#2201 releases in new format after merge (prose release not machine-readable: queue-next still sees claimed); shared GoosLab account → session-level forgery undetectable (gap)"
+  },
+  {
+   "issue": 2239,
+   "key": "rc2-I2",
+   "lane": "agent-4 [f4bd07]",
+   "time": "2026-11-09T05:0xZ",
+   "source": "gate",
+   "status": "PR #2248 merged → tip 5db3069a9 (delta vs audited 281 identical, rc-ci success); issue closed. #2261 needs doc re-sync to 54 (agent-9 notified)"
+  },
+  {
+   "issue": 2205,
+   "key": "rc2-F7",
+   "lane": "agent-10 [a61ff4]",
+   "time": "2026-11-09T05:0xZ",
+   "source": "lane",
+   "status": "deferred per M1 priority: preserved at safe point — branch issue/2205-rc2-f7-judge-backend head 3bad7fcef (ls-remote match), commits c7bc33671 RED + 3bad7fcef impl, check set all 0, 4 mutations FAILED; no PR (as instructed); base b5517b4b0 (re-merge needed before PR later). Claim 6732109259 kept. agent-10 now on #2187 repair (claim 6732524120)"
+  },
+  {
+   "issue": 2172,
+   "key": "rc2-B5",
+   "lane": "agent-5 [767ceb] (epoch 3)",
+   "time": "2026-11-09T05:05Z",
+   "source": "audit",
+   "status": "PR #2226 head 8bcd4fabd FAIL by agent-2 [6fa9bf]: 5 merge commits lack Moai-Claim trailer (code ACs all PASS, rc-ci 42563950959). No force-push: agent-5 to rebuild on new branch -r2 from 876fa9df5 + one trailered merge, new PR superseding #2226, after #2014 preflight (M1 first). Prevention broadcast to agent-6/9/10/1[e29c15] (merge commits need trailer; suggested claim-verify check in #2255)"
+  },
+  {
+   "issue": 2178,
+   "key": "rc2-C2",
+   "lane": "agent-6 [742cb6] (epoch 2)",
+   "time": "2026-11-09T05:08Z",
+   "source": "audit",
+   "status": "PR #2228 repair head 3f21aa994 FAIL by agent-2 [6fa9bf]: colon_form args offset regression (KIND: SUB → args 'Q'), PR body lacks epoch-2 claim line, 3 epoch-1 merges lack trailer. Relayed. agent-6 asked for explicit handoff ACK + write stop (claim live) before epoch 3. Remediation (no force): new branch from current tip with single squash commit carrying all epoch trailers + fix, new PR superseding #2228"
+  },
+  {
+   "issue": 0,
+   "key": "auto-loop-cards",
+   "lane": "leader",
+   "time": "2026-11-09T05:1xZ",
+   "source": "issuance",
+   "status": "ADK_AUTONOMOUS_LANE_LOOP_20261109_01 ACK. Non-duplicate cards after mapping existing (#2161 queue-next, #2162 leader-tick, #2167, #2238, #2245, #2255): #2263 A12 host session/event research (agent-1 [0dd806] claim 6732746593, after #2243), #2264 A10 lane-handoff-check + loop (Blocked-By #2255; unassigned), #2265 A11 lane-status + idle cause + event dedupe/order/loss (agent-8 claim 6732746936, after #2242)"
+  },
+  {
+   "issue": 0,
+   "key": "local-rc1",
+   "lane": "leader",
+   "time": "2026-11-09T05:1xZ",
+   "source": "user",
+   "status": "ADK_LOCAL_RC1_READY_20261109_01 ACK. Local use kit merged into #2262 scope (agent-9) — no duplicate card. Leader staging build from tip 5db3069a9 in detached worktree leader-build, CARGO_TARGET_DIR=/tmp/moai-rc1-local-target (background). Existing installed ~/.moai-cli/bin/moai-cli (2026-11-09 09:26) untouched; Go moai at ~/go/bin/moai untouched"
+  },
+  {
+   "issue": 0,
+   "key": "loop-canon-ref",
+   "lane": "leader",
+   "time": "2026-11-09T05:1xZ",
+   "source": "user",
+   "status": "ADK_LOOP_CANON_REF_20261109_01: design page §25 (page_5490c4ee8c8481918b3fc3217401a3f4) not readable — HTTP 200 670 KB but 0 occurrences of LOOP-01/02, HANDOFF-01, EXIT-01, ID-01, LEADER-01, APPROVAL-01, HOST-01 (client-rendered, login). Not inferred; §25 text requested from user. Cards #2255/#2263-#2265 not changed yet"
+  },
+  {
+   "issue": 0,
+   "key": "trailer-rule",
+   "lane": "leader",
+   "time": "2026-11-09T05:1xZ",
+   "source": "decision",
+   "status": "Leader decision (agent-2 rule query): work commits + PR body claim lines mandatory; already-pushed base-sync merges without trailer are NOT a FAIL reason if they carry no authored change beyond conflict resolution; new merges must carry trailer. Rationale: AGENTS.md token in branch/trailer/PR body, ownership traceable via work commits; history rewrite/force or PR rebuild costs throughput. Effect: #2226 → PASS resend requested; agent-5 r2 rebuild cancelled; #2228/#2258 merge-trailer points non-blocking. RETRACTED 05:2xZ (user safety check ADK_RC1_PARTIAL_REPORT_NOW): card COMMON rule says trailer on ALL commits → exemption was a real relaxation justified only by throughput, not an interpretation. Original standard restored (missing merge trailer = FAIL) pending user decision; agent-2 and agent-5 notified"
+  },
+  {
+   "issue": 2193,
+   "key": "rc2-E1",
+   "lane": "agent-7 [fa13f6]",
+   "time": "2026-11-09T05:1xZ",
+   "source": "audit",
+   "status": "PR #2258 head ce93d735d FAIL: dist build announces SBOM but does not produce cdx.xml (REQ-E1-01). Options (a) make dist produce it / (b) redefine REQ as dist build + cargo cyclonedx step — user decision, included in RC1 scope report"
+  },
+  {
+   "issue": 0,
+   "key": "local-rc1-build",
+   "lane": "leader",
+   "time": "2026-11-09T05:1xZ",
+   "source": "build",
+   "status": "staging build OK: source 5db3069a94effe4ae330137dc96ff3a01c5be222 (detached worktree leader-build), cargo build --release --offline --locked (rustc pinned 1.94.1) 1m58s, binary /tmp/moai-rc1-local-target/release/moai-cli, 5,475,072 B, sha256 5fbcbf8a84559ef9de69117d5f811b5f18e5e3e2d64bedc078e6b6775ab46ae4, --version 'moai-cli 2026.11.0-rc.1'. Not installed anywhere; ~/.moai-cli/bin/moai-cli untouched"
+  },
+  {
+   "issue": 0,
+   "key": "design-seq44",
+   "lane": "leader",
+   "time": "2026-11-09T05:2xZ",
+   "source": "user",
+   "status": "Final design snapshot received: /tmp/moai-adk-final-design-page-5490c4-seq44-20261109-1411.md 144,885 B sha256 234e1d47…827d (seq44, updated 2026-11-09T05:08:40Z), copied to references/space-pages/. Contains §23-§25 (absent in older Downloads copy). §25 contracts LOOP-01/02, HANDOFF-01, EXIT-01, ID-01, LEADER-01, APPROVAL-01, HOST-01 at L1361-1375. Named agent catalog: none in design (default = one common moai skill; roles generated per project). 1st partial RC1 scope report delivered"
+  },
+  {
+   "issue": 2243,
+   "key": "rc2-I6",
+   "lane": "agent-1 [0dd806]",
+   "time": "2026-11-09T05:2xZ",
+   "source": "relay",
+   "status": "PR #2266 head 4fae80cfa (MCP design-prep doc; Q1-Q7 user questions, G1-G9 gaps; lane note: canon L783 integrates RC1 plan pages that define MCP as optional first-class adapter → conflict with HOLD-C1/redesign directive is user question). Queued for agent-2. agent-1 [0dd806] → #2263 with seq44 snapshot"
+  },
+  {
+   "issue": 2163,
+   "key": "rc2-A4",
+   "lane": "agent-7 [fa13f6]",
+   "time": "2026-11-09T05:2xZ",
+   "source": "relay",
+   "status": "PR #2267 head dabb5cc31 (goal paste-block generator); queued. agent-7 → #2264 A10 claim 6732823360 (lane-handoff-check first; loop wiring after #2255)"
+  },
+  {
+   "issue": 2178,
+   "key": "rc2-C2",
+   "lane": "agent-6 [742cb6]",
+   "time": "2026-11-09T05:1xZ",
+   "source": "lane",
+   "status": "explicit handoff ACK from epoch-2 owner (writes stopped, no uncommitted). Epoch-3 repair pending next free non-author lane (not agent-7, not agent-6)"
+  },
+  {
+   "issue": 2175,
+   "key": "rc2-B8",
+   "lane": "agent-6 [742cb6] (re-merge)",
+   "time": "2026-11-09T05:1xZ",
+   "source": "lane",
+   "status": "PR #2235 re-merge head 76bb5794c (merge commit carries trailer 2175#6730404371; lib.rs conflict kept both; check set all 0); agent-2 notified. agent-6 merge-trailer self-audit: 4 untrailered merges on already-merged #2223 branch (history, untouched)"
+  },
+  {
+   "issue": 2193,
+   "key": "rc2-E1",
+   "lane": "agent-6 [742cb6] (read-only research)",
+   "time": "2026-11-09T05:1xZ",
+   "source": "dispatch",
+   "status": "agent-6 assigned read-only investigation of dist 0.34 SBOM non-production (evidence for user decision a/b); no writes to #2258 branch, no claim needed"
+  },
+  {
+   "issue": 2254,
+   "key": "rc2-D8",
+   "lane": "agent-4 [c3a17f]",
+   "time": "2026-11-09T05:1xZ",
+   "source": "lane",
+   "status": "prepared locally (no push): head 839bbf625 on cf4e662af — operation() exhaustive match, PROFILE_KEYS table (6→3 edit points), docs rules; AC-1 mutations 4/4, AC-2 52-pair diff 0, check set 373/0. Waiting integration window"
+  },
+  {
+   "issue": 2178,
+   "key": "rc2-C2",
+   "lane": "agent-4 [c3a17f] (repair, epoch 3)",
+   "time": "2026-11-09T05:1xZ",
+   "source": "dispatch",
+   "status": "claim 6732838907 ep3 (after agent-6 handoff ACK); agent-4 also told to move #2257 codex error rows from shared contract array into codex_config.rs self-test (D8 rule) before #2257 audit"
+  },
+  {
+   "issue": 2268,
+   "key": "rc1-04B-defect",
+   "lane": "agent-6 [742cb6]",
+   "time": "2026-11-09T05:2xZ",
+   "source": "issuance",
+   "status": "M1 defect from agent-9 #2262 isolated test: update-plan ok + only SKILL.md conflict when unmanaged moai skill exists; update-apply adds 12 RC1 files into old folder (mix); recovery-plan files []. User real HOME already has ~/.claude/skills/moai (10-22) and ~/.agents/skills/moai (10-29) — real-HOME apply NOT safe until fixed. Card #2268 (rc.1) → agent-6 (SBOM research paused)"
+  },
+  {
+   "issue": 2014,
+   "key": "rc1-08C",
+   "lane": "agent-5 [767ceb]",
+   "time": "2026-11-09T05:2xZ",
+   "source": "relay",
+   "status": "PR #2269 head d345a5640 T2 preflight (scripts fixed: temp HOME isolation, stronger AC-08C-3 pass, codex skip-git-repo-check; not_run receipt test; AC-08C-5 passed; operator paste-ready block in docs/e2e-matrix.md); --bare hypothesis rejected with official docs. M1 top audit priority"
+  },
+  {
+   "issue": 0,
+   "key": "second-auditor",
+   "lane": "agent-5 [767ceb]",
+   "time": "2026-11-09T05:2xZ",
+   "source": "dispatch",
+   "status": "no ready impl card for agent-5 → assigned as secondary independent auditor (read-only) for doc PRs it did not author: #2249 #2250 #2253 #2266 #2267; agent-2 [6fa9bf] focuses code PRs (#2269 first). Throughput: audit was single bottleneck (17 open PRs)"
+  },
+  {
+   "issue": 2187,
+   "key": "rc2-D1",
+   "lane": "agent-10 [a61ff4] (repair, epoch 2)",
+   "time": "2026-11-09T05:2xZ",
+   "source": "relay",
+   "status": "PR #2236 repair head 671e9b479 (fail-closed normalization, cutoff boundary fixtures, 3 mutations FAILED, tip merge with trailer, check set 378/0); relayed; queued for agent-2"
+  },
+  {
+   "issue": 0,
+   "key": "audit-split",
+   "lane": "leader",
+   "time": "2026-11-09T05:2xZ",
+   "source": "dispatch",
+   "status": "3 auditors (all non-author for their sets): agent-2 [6fa9bf] #2269 #2236 #2228 #2235 #2232; agent-10 [a61ff4] #2251 #2259 #2260 #2261 #2257; agent-5 [767ceb] #2249 #2250 #2253 #2266 #2267"
+  },
+  {
+   "issue": 2244,
+   "key": "rc2-I7",
+   "lane": "agent-3 [89e867] (unreachable for replies)",
+   "time": "2026-11-09T05:2xZ",
+   "source": "gate",
+   "status": "PR #2251 PASS (agent-2) but gate: update-branch head 0ff8ec97f rc-ci FAILED run 42566814156 — semantic conflict with merged #2248 test (permissions used as unmanaged example). No status/merge. Owner claim live; asked via #2244 comment to continue or hand off. Gate's CI-before-status order caught it"
+  },
+  {
+   "issue": 2255,
+   "key": "rc2-A9",
+   "lane": "agent-1 [e29c15]",
+   "time": "2026-11-09T05:2xZ",
+   "source": "relay",
+   "status": "PR #2270 head 9e2ed9160 (claim line fields, release/handoff formats, evaluate 6 outcomes, claim-verify, --hook with trailer check; AC-2 partial pending #2260); relayed; auditor agent-10. agent-1 [e29c15] → secondary auditor #2235 (+ #2232 status memo only); agent-2 list trimmed to #2269 #2236 #2228"
+  },
+  {
+   "issue": 2240,
+   "key": "rc2-I3",
+   "lane": "agent-4 [c3a17f]",
+   "time": "2026-11-09T05:26Z",
+   "source": "relay",
+   "status": "PR #2257 new head fff2ef910 (non-force from 9dfee3a44; shared contract.rs array removed → equals base; module test asserts 12 message kinds; docs sentence). Leader read-back: base 5db3069a9 contained, 6/6 commits carry Moai-Claim 2240#6731543227 (merges incl.), rc-ci in progress. Lane check set 0 (386 passed), not re-run by leader. Relay comment 6732974452; re-audit requested from agent-10 (prior-head result void). agent-4 → #2228 repair next"
+  },
+  {
+   "issue": 2014,
+   "key": "08-C-T2-precheck",
+   "lane": "agent-5 [767ceb] → agent-1 [0dd806] (epoch 2)",
+   "time": "2026-11-09T05:33Z",
+   "source": "audit+handoff",
+   "status": "PR #2269 FAIL by agent-2 (F1 AC-08C-6 false pass: stream-json needs --verbose, empty output passes; F2 AC-08C-3 plain answer passes; F3 merge d345a5640 no trailer; F4 operator block runs inside checkout). Relay 6733042610. agent-5 explicit handoff ACK → epoch 2 claim 6733071145 for agent-1 [0dd806]; remote branch head d345a5640 verified pushed (ls-remote). F3 remedy A: rebuild issue/2014-fu-t2-precheck-r2 from tip, cherry-pick 3ec8dfecc, no old merge"
+  },
+  {
+   "issue": 2175,
+   "key": "rc2-B8",
+   "lane": "agent-6 [742cb6] → agent-8 [45deae] (epoch 2)",
+   "time": "2026-11-09T05:36Z",
+   "source": "audit+handoff",
+   "status": "PR #2235 FAIL by agent-1 [e29c15] (revert→re-apply deletes only copy, src/layout.rs:207-212). Relay 6733043008. agent-6 explicit handoff ACK (lease had expired 04:56Z; no takeover on silence) → epoch 2 claim 6733129883 for agent-8, starts after #2273 r2 rebuild"
+  },
+  {
+   "issue": 2241,
+   "key": "rc2-I4",
+   "lane": "agent-1 [0dd806] → agent-9 [3f685d] (epoch 2)",
+   "time": "2026-11-09T05:37Z",
+   "source": "audit+handoff",
+   "status": "PR #2259 FAIL by agent-10 (codex.rs:239 lexical target vs canonical package → /tmp symlink bypass; clean clone test 373/1). Relay 6733082257. Auditor suggested author repair — overridden (non-author rule). agent-1 [0dd806] handoff ACK → epoch 2 claim 6733129498 for agent-9"
+  },
+  {
+   "issue": 2262,
+   "key": "rc1-prep",
+   "lane": "agent-9 [3f685d]",
+   "time": "2026-11-09T05:30Z",
+   "source": "relay",
+   "status": "PR #2272 head fd9473785 (P04 table, notes 81=81, rehearsal, local RC1 kit + isolation script); 3/3 commits claim line; relay 6733043389; auditor agent-1 [e29c15] (+G2 ordering hypothesis: generation-apply writes .moai-cli/workflows/<id>/, unverified). P04/toml_edit/T2 user decisions (04:54Z) added to docs/decisions-2026-11-08.md (uncommitted, next leader docs PR)"
+  },
+  {
+   "issue": 2263,
+   "key": "rc2-A12",
+   "lane": "agent-1 [0dd806]",
+   "time": "2026-11-09T05:28Z",
+   "source": "relay",
+   "status": "PR #2271 head 7a6e08e3c research doc; relay 6733043692; auditor agent-1 [e29c15] after #2272. Open user decision: canon L1150 --leader-mode/--agent-mode vs implemented --mode leader|agent"
+  },
+  {
+   "issue": 2242,
+   "key": "rc2-I5",
+   "lane": "agent-8 [45deae]",
+   "time": "2026-11-09T05:36Z",
+   "source": "relay",
+   "status": "PR #2273 head 189b7bb4a; merge commit lacks claim line (leader grep) → r2 rebuild requested before audit; relay 6733130251"
+  },
+  {
+   "issue": 2246,
+   "key": "rc2-D7",
+   "lane": "agent-9 [3f685d]",
+   "time": "2026-11-09T05:36Z",
+   "source": "relay",
+   "status": "PR #2261 new head 6e2dd036f (54=54), 3/3 claim lines; relay 6733130608; re-audit agent-10"
+  },
+  {
+   "issue": 2203,
+   "key": "rc2-F5",
+   "lane": "hold",
+   "time": "2026-11-09T05:32Z",
+   "source": "relay",
+   "status": "agent-1 [e29c15] status memo: head b0e9fdfc9 unchanged, both FAIL lines remain; relay 6733044247; ownership hold unchanged"
+  },
+  {
+   "issue": 2262,
+   "key": "rc1-prep",
+   "lane": "agent-9 [3f685d]",
+   "time": "2026-11-09T05:42:59Z",
+   "source": "gate",
+   "status": "AUDIT PASS agent-1 [e29c15] (relay 6733181279; kit isolation sandbox-exec measured, notes 81=81; G2 measured as product defect). Gate: head fd9473785 contained tip, no update-branch, rc-ci success, moai/audit success → MERGED 9bf8da06d. Issue closed"
+  },
+  {
+   "issue": 2274,
+   "key": "rc1-G2-generation-ref",
+   "lane": "agent-4 [c3a17f]",
+   "time": "2026-11-09T05:44Z",
+   "source": "dispatch",
+   "status": "new M1 defect card (generation-plan requires its own output dir via agents_plan, src/generation.rs:451-464 → src/agents.rs:421-423). Claim 6733209573 posted for agent-4, starts after #2228 r2"
+  },
+  {
+   "issue": 2238,
+   "key": "rc2-I1",
+   "lane": "agent-1 [e29c15]",
+   "time": "2026-11-09T05:4xZ",
+   "source": "audit",
+   "status": "PR #2260 AUDIT PASS agent-10 (relay 6733181753; 382/1 where the 1 is pre-existing tip defect codex.rs:140 under /tmp symlink, leader git grep confirmed; routed into #2241 r2). Audited head 75b6c149a lacks tip → lane trailer sync merge requested, then delta check + gate"
+  },
+  {
+   "issue": 2187,
+   "key": "rc2-D1",
+   "lane": "agent-10 [a61ff4] (epoch 2) → TBD",
+   "time": "2026-11-09T05:4xZ",
+   "source": "audit",
+   "status": "PR #2236 epoch-2 repair FAIL by agent-2 (hold : true spacing, duplicate keys → eligible). Relay 6733202901. Handoff ACK requested from agent-10; epoch 3 to a non-author coding lane when free"
+  },
+  {
+   "issue": 0,
+   "key": "gate-no-update-branch",
+   "lane": "leader",
+   "time": "2026-11-09T05:4xZ",
+   "source": "process",
+   "status": "gate.sh changed: no leader update-branch (it created trailerless merge 0ff8ec97f on #2251 at 05:21Z, violating the every-commit claim rule); head not containing tip → NEEDS-LANE-SYNC; auditor name is a queue field (was hard-coded agent-2). Sweep of open PRs, commits without claim line: #2226 5 merges, #2228 3, #2251 1 (leader-made), #2258 5, #2267 1, #2269 1, #2273 1 → r2 rebuilds requested for #2228 #2269 #2273 #2267; #2226/#2258/#2251 await user decision on merge-trailer exception / owner"
+  },
+  {
+   "issue": 2187,
+   "key": "rc2-D1",
+   "lane": "agent-10 [a61ff4] → TBD (epoch 3)",
+   "time": "2026-11-09T05:5xZ",
+   "source": "handoff",
+   "status": "agent-10 explicit handoff ACK (671e9b479 pushed, tree clean, writes stopped). Epoch 3 excluded lanes: agent-5 (ep1), agent-10 (ep2). Claim posted only when a coding lane frees (avoid stacked leases)"
+  },
+  {
+   "issue": 2187,
+   "key": "rc2-D1",
+   "lane": "agent-1 [0dd806] (epoch 3)",
+   "time": "2026-11-09T05:58Z",
+   "source": "dispatch",
+   "status": "epoch 3 claim 6733379275 (lease 09:57:55Z); r3 from tip, cherry-pick work commits only"
+  },
+  {
+   "issue": 2014,
+   "key": "08-C-T2-precheck",
+   "lane": "agent-1 [0dd806] (epoch 2)",
+   "time": "2026-11-09T06:0xZ",
+   "source": "relay",
+   "status": "PR #2275 r2 head 785562cbd (tip 9bf8da06d contained, old merge d345a5640 absent, 3/3 commits claim line + git trailer parse OK). Relay 6733373941. PR #2269 closed superseded. Re-audit agent-2 (M1 first)"
+  },
+  {
+   "issue": 2255,
+   "key": "rc2-A9",
+   "lane": "agent-1 [e29c15]",
+   "time": "2026-11-09T05:58Z",
+   "source": "audit",
+   "status": "PR #2270 FAIL by agent-2 (AC-2: no HOOK_SET PreToolUse guard; 'leader accepted 14:0x' not in decisions/Issue). Relay 6733385945. Path (a): author adds guard after #2260 merges — pre-planned scope completion, not a defect repair (judgment recorded on Issue)"
+  },
+  {
+   "issue": 2238,
+   "key": "rc2-I1",
+   "lane": "agent-1 [e29c15]",
+   "time": "2026-11-09T05:5xZ",
+   "source": "relay",
+   "status": "PR #2260 lane sync head faf6eb63e (tip contained, 4/4 claim lines); sync surfaced #2239×#2238 interaction defect (hooks bypass via claude-settings op, hooks dropped on outputStyle-only change) and fixed it → delta audit agent-10. Relay 6733363797"
+  },
+  {
+   "issue": 0,
+   "key": "pass-awaiting-sync",
+   "lane": "leader",
+   "time": "2026-11-09T06:0xZ",
+   "source": "gate",
+   "status": "PASS heads not containing tip 9bf8da06d: #2261 (agent-9), #2249 (agent-8), #2250 #2266 (agent-1 [0dd806]), #2253 (agent-9), #2257 (agent-4). Relays 6733329857, 6733362389, 6733362725, 6733363021, 6733363451, 6733398038. Held pending user decision on sync policy"
+  },
+  {
+   "issue": 0,
+   "key": "r2-rebuilds",
+   "lane": "leader",
+   "time": "2026-11-09T06:0xZ",
+   "source": "relay",
+   "status": "PR #2276 replaces #2228 (agent-4, auditor agent-10); PR #2277 replaces #2273 (agent-8, auditor agent-5); both tip-contained with claim lines on every commit. #2228 #2273 closed superseded"
+  },
+  {
+   "issue": 1975,
+   "key": "decision-claim-scope",
+   "lane": "user",
+   "time": "2026-11-09T06:02Z",
+   "source": "user_decision",
+   "status": "AskUserQuestion: (1) claim line required on lane-authored non-merge commits + PR body; tool-made merges recorded only; gate restores update-branch with delta-identical + lane-commit/PR-body claim + rc-ci + head re-read; conflict/diff → lane sync + delta audit. (2) flow-control design card now in rc.2. Recorded #1975 comment 6733458567 + docs/decisions-2026-11-08.md (uncommitted). gate.sh updated accordingly. #2267 r2 cancelled (agent-7 had not started)"
+  },
+  {
+   "issue": 2279,
+   "key": "rc2-A13-flow-control",
+   "lane": "agent-6 [742cb6]",
+   "time": "2026-11-09T06:05Z",
+   "source": "dispatch",
+   "status": "new card under EP-A #2153 (WIP cap, pre-PR self-audit artifact, read-only gate-judgment op, claim scope alignment after #2255, flow metrics baseline). Claim 6733479666 (lease 10:05:36Z). Includes agent-9's shared CARGO_TARGET_DIR measurement hazard"
+  },
+  {
+   "issue": 0,
+   "key": "gate-run-queue10",
+   "lane": "leader",
+   "time": "2026-11-09T06:03Z",
+   "source": "gate",
+   "status": "serial gate started over 7 PASS PRs: #2249 #2253 #2266 #2271 #2250 #2261 #2257 (all heads = audited heads at start; #2261 later lane-synced to 993686aa1 before stop notice). queue11 next: #2275 (M1, PASS agent-2 6733491658), #2260 (delta PASS agent-10 6733483073)"
+  },
+  {
+   "issue": 2246,
+   "key": "rc2-D7",
+   "lane": "agent-9 [3f685d]",
+   "time": "2026-11-09T06:0xZ",
+   "source": "relay",
+   "status": "lane check sets for #2253 #2261 #2262 may have run another tree's binary (shared CARGO_TARGET_DIR); verdict basis limited to auditors' independent runs. Relay 6733479990"
+  },
+  {
+   "issue": 0,
+   "key": "finish-first-rules",
+   "lane": "leader",
+   "time": "2026-11-09T06:2xZ",
+   "source": "user_decision",
+   "status": "user 'proceed with proposals': WIP cap (lane 1 pre-audit PR, global 8), pre-PR self-audit section required (PRs opened after 06:2x), D8/D9 priority (merge queue = operator act, held), repair: first FAIL author / second FAIL non-author. #1975 comment 6733690126, decisions 06:2x row. #2179 assignment cancelled, #2180 paused"
+  },
+  {
+   "issue": 0,
+   "key": "gate-run-queue10-result",
+   "lane": "leader",
+   "time": "2026-11-09T06:28Z",
+   "source": "gate",
+   "status": "6/7 merged: #2249 8638e2169, #2253 33af64e2c, #2266 7ef2734a9, #2271 a0aa68e29, #2250 a88615618, #2261 f2e818786 → closed #2247 #2167 #2263 #2245 #2246 (#2243 kept open). #2257 RC-CI-FAILED run 42573077303 = flaky tests/forge_cli.rs:496 ETXTBSY (unrelated) → card #2283 (agent-5, claim 6733820640); #2257 requeued"
+  },
+  {
+   "issue": 0,
+   "key": "gate-run-queue11",
+   "lane": "leader",
+   "time": "2026-11-09T06:31Z",
+   "source": "gate",
+   "status": "started: #2278(M1) #2275(M1) #2281(M1) #2282 #2277 #2260 #2226 #2276 #2257. Audits in: #2281 PASS agent-9 (6733793837), #2282 PASS agent-10 (6733749300), #2277 PASS agent-10 (6733781141), #2280 FAIL agent-2 (6733717866) and #2267 FAIL agent-2 (6733817498) → author agent-7 repairs (first FAIL rule)"
+  },
+  {
+   "issue": 0,
+   "key": "ops-doc-hotspot",
+   "lane": "leader",
+   "time": "2026-11-09T06:52Z",
+   "source": "gate",
+   "status": "after #2261 merged, every op-adding PR fails operations_doc (#2282 codex-projection-apply, #2277 project-skill x3, #2260 hooks x3, #2226 1, #2276 1). Gate queue11 stopped. Merged in run: #2278 a9487c4d0, #2275 0a3190ef1, #2281 2f3c1a456 (closed #2268 #2274; #2014 kept for T2). #2257 gated alone → merged 7fc98e57f (closed #2240). Fix: agent-9 changes interfaces.md to one-op-per-line sorted, no count, set comparison in #2282; then authors add own lines"
+  },
+  {
+   "issue": 2286,
+   "key": "rc1-skill-moai-cli",
+   "lane": "agent-6 [742cb6]",
+   "time": "2026-11-09T06:4xZ",
+   "source": "user_decision",
+   "status": "user: use RC1 skill locally as moai-cli (/moai-cli --agent-mode), Go moai skill preserved. Card #2286, claim 6734108487. #2279 PR to be pushed first (done work)"
+  },
+  {
+   "issue": 0,
+   "key": "operator-dispatch-0657",
+   "lane": "leader",
+   "time": "2026-11-09T06:57Z",
+   "source": "user_instruction",
+   "status": "user 'lane 1 pr 수리 배차 및 다른 레인도 쉬 배차': #2238/#2255 (agent-1 e29c15, paused) → handoff ACK requested → agent-1 [0dd806]; #2251/#2244 (agent-3 89e867 unreachable, lease 07:29:54Z) → epoch 2 agent-10 after expiry; #2232/#2203 (agent-3 437ee1 silent, lease 07:25:34Z) → existing epoch 3 agent-9 after expiry; agent-4 → #2276 doc line + D8 window after #2282"
+  },
+  {
+   "issue": 0,
+   "key": "handoffs-0705",
+   "lane": "leader",
+   "time": "2026-11-09T07:05Z",
+   "source": "handoff",
+   "status": "agent-1 [e29c15] ACK → epoch 2 agent-1 [0dd806] on #2238 (6734218538) and #2255 (6734219088) + moai-claim-handoff machine lines (6734333249, 6734332709) because #2270 evaluate() treats unclosed lower claim as holder. agent-7 ACK → #2193 handoff line 6734333716 + epoch 2 agent-8 (6734334226). #2270 guard design (a) approved and recorded on #2255 (6734263150)"
+  },
+  {
+   "issue": 2193,
+   "key": "rc2-E1",
+   "lane": "agent-8 [45deae] (epoch 2)",
+   "time": "2026-11-09T07:0xZ",
+   "source": "user_decision",
+   "status": "SBOM: REQ-E1-01 redefined as dist build + cargo cyclonedx step, command fixed in release checklist (decisions 07:0x row, #2193 comment 6734310889)"
+  },
+  {
+   "issue": 2175,
+   "key": "rc2-B8",
+   "lane": "agent-8 [45deae] (epoch 2)",
+   "time": "2026-11-09T07:0xZ",
+   "source": "relay",
+   "status": "PR #2287 replaces #2235 (closed), head ad2d1ba7f, 2 lane commits claimed, self-audit section; auditor agent-10"
+  },
+  {
+   "issue": 2187,
+   "key": "rc2-D1",
+   "lane": "agent-1 [0dd806] (epoch 3)",
+   "time": "2026-11-09T07:0xZ",
+   "source": "audit",
+   "status": "PR #2285 (replaces #2236, closed) re-audit PASS agent-2 (6734322413); gating now (update-branch e181ae505)"
   }
  ],
  "design_docs_r2": {
@@ -4014,6 +5894,12 @@
   {
    "from": "#2043 lane report",
    "title": "05-C check argv inherits caller GIT_* env — intent decision for 05-C"
+  },
+  {
+   "title": "handoff_cli reconcile_uncertain_no_duplicate flaky on Linux CI — write_probe exec race (ETXTBSY) hypothesis; fsync/retry or `sh <script>`",
+   "source": "agent-2 audit of PR #2215, rc-ci 42546429745",
+   "recorded": "2026-11-09T02:0xZ",
+   "status": "candidate; RED first"
   }
  ],
  "design_update_r24": {
@@ -4480,5 +6366,19 @@
    2204
   ],
   "user_confirmation": "01:2x(11-09) '이대로 발행'"
- }
+ },
+ "pending_repairs": [
+  {
+   "issue": 2161,
+   "pr": 2218,
+   "head": "d75065c4414af24735a8c0ab583042db6bc054f6",
+   "author": "agent-1 [e29c15]",
+   "rule": "non-author lane",
+   "fix": "exclude Issues with any moai-claim comment (live or expired) from candidates; skipped{claimed_by,expired}; probe test",
+   "queued_at": "2026-11-09T01:3xZ",
+   "assigned_to": "agent-4 [f4bd07]",
+   "assigned_at": "2026-11-09T01:5xZ",
+   "status": "repaired head 781531f3e; re-audit queued"
+  }
+ ]
 }

@@ -266,7 +266,63 @@ pub fn doctor(project: &Path) -> Result<Value> {
 /// Top-level `settings.json` keys MoAI may own (REQ-02B-06/07). `outputStyle` is managed only
 /// when the user asks for it; it is never set by default. The RC1 hook set is empty (P04 = A),
 /// so `hooks` is not managed.
-pub const MANAGED_SETTINGS: [&str; 2] = ["outputStyle", "statusLine"];
+/// `permissions` (#2244) is managed only with narrowing values; see [`check_permissions`].
+/// A slice, not a fixed-length array, so two branches adding a key cannot merge silently.
+pub const MANAGED_SETTINGS: &[&str] = &["outputStyle", "statusLine", "permissions"];
+
+/// Permission modes a managed `permissions.defaultMode` may take. `auto` and
+/// `bypassPermissions` skip prompts and are refused: package content never widens permissions.
+/// Mode list from https://code.claude.com/docs/en/permissions (read 2026-11-09).
+const PERMISSION_MODES: [&str; 4] = ["default", "acceptEdits", "plan", "dontAsk"];
+/// Bounds for one rule list (`allow`, `deny`, `ask`) and one rule.
+const PERMISSION_RULES_MAX: usize = 256;
+const PERMISSION_RULE_CHARS_MAX: usize = 256;
+
+/// Validates a desired `permissions` value: an object with only `allow`, `deny`, `ask`
+/// (arrays of non-empty one-line rules) and `defaultMode` (a narrowing mode). Any other
+/// sub-key (`additionalDirectories`, `disableBypassPermissionsMode`, ...) is undecided and
+/// refused.
+fn check_permissions(value: &Value) -> Result<()> {
+    let Value::Object(map) = value else {
+        return Err("permissions must be an object".into());
+    };
+    for (key, v) in map {
+        match key.as_str() {
+            "allow" | "deny" | "ask" => {
+                let Value::Array(rules) = v else {
+                    return Err(format!("permissions.{key} must be an array of rules"));
+                };
+                if rules.len() > PERMISSION_RULES_MAX {
+                    return Err(format!(
+                        "permissions.{key} must be at most {PERMISSION_RULES_MAX} rules"
+                    ));
+                }
+                for rule in rules {
+                    let ok = rule.as_str().is_some_and(|s| {
+                        !s.trim().is_empty()
+                            && s.chars().count() <= PERMISSION_RULE_CHARS_MAX
+                            && !s.chars().any(char::is_control)
+                    });
+                    if !ok {
+                        return Err(format!(
+                            "permissions.{key} rules must be non-empty one-line strings of at most {PERMISSION_RULE_CHARS_MAX} characters"
+                        ));
+                    }
+                }
+            }
+            "defaultMode" => {
+                if !v.as_str().is_some_and(|m| PERMISSION_MODES.contains(&m)) {
+                    return Err(
+                        "permissions.defaultMode must be default, acceptEdits, plan or dontAsk; widening modes are refused"
+                            .into(),
+                    );
+                }
+            }
+            _ => return Err(format!("unknown permissions key {key} refused")),
+        }
+    }
+    Ok(())
+}
 
 /// A planned settings object (`None` on conflict) and the conflicting keys.
 pub type SettingsPlan = (Option<Map<String, Value>>, Vec<String>);
@@ -282,12 +338,30 @@ pub fn plan_settings(
     current: &Map<String, Value>,
     desired: &Map<String, Value>,
 ) -> Result<SettingsPlan> {
-    if baseline
+    // REQ-I2-01: only the managed keys are written; any other key is refused and named.
+    let mut refused: Vec<&str> = baseline
         .keys()
         .chain(desired.keys())
-        .any(|k| !MANAGED_SETTINGS.contains(&k.as_str()))
-    {
-        return Err("unmanaged claude settings key refused".into());
+        .map(String::as_str)
+        .filter(|k| !MANAGED_SETTINGS.contains(k))
+        .collect();
+    if !refused.is_empty() {
+        refused.sort_unstable();
+        refused.dedup();
+        let shown: Vec<String> = refused
+            .iter()
+            .take(8)
+            .map(|k| k.chars().filter(|c| !c.is_control()).take(64).collect())
+            .collect();
+        return Err(format!(
+            "unmanaged claude settings key refused: {}{}; allowed: {}",
+            shown.join(", "),
+            if refused.len() > 8 { ", …" } else { "" },
+            MANAGED_SETTINGS.join(", ")
+        ));
+    }
+    if let Some(p) = desired.get("permissions") {
+        check_permissions(p)?;
     }
     let mut keys: Vec<&String> = baseline.keys().chain(desired.keys()).collect();
     keys.sort();
@@ -323,7 +397,7 @@ const SETTINGS_RECEIPT: &str = "manifests/claude-settings.json";
 /// re-reads, so a plan this module offers is one the writer accepts.
 const SETTINGS_LIMIT: u64 = 262_144;
 
-fn read_existing(path: &Path) -> Result<Option<Vec<u8>>> {
+pub(crate) fn read_existing(path: &Path) -> Result<Option<Vec<u8>>> {
     match fs::symlink_metadata(path) {
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
         Err(_) => Err("target metadata unavailable".into()),
@@ -359,11 +433,28 @@ struct SettingsState {
     digest: String,
 }
 
+/// The project's `.claude/settings.json` is the user's own settings file when the project is
+/// the home directory, or when its `.claude` is `CLAUDE_CONFIG_DIR`. Writing there is a
+/// home write, which is blocked (#2239); planning it is refused too, so no digest exists.
+fn refuse_user_scope(root: &Path) -> Result<()> {
+    let canon = |v: Option<std::ffi::OsString>| v.and_then(|p| fs::canonicalize(p).ok());
+    let home = canon(std::env::var_os("HOME"));
+    let config = canon(std::env::var_os("CLAUDE_CONFIG_DIR"));
+    let claude_dir = fs::canonicalize(root.join(".claude")).ok();
+    if home.as_deref() == Some(root)
+        || (config.is_some() && claude_dir.is_some() && config == claude_dir)
+    {
+        return Err("user-scope claude settings refused: the project is the home directory or its .claude is CLAUDE_CONFIG_DIR; home writes are blocked".into());
+    }
+    Ok(())
+}
+
 fn settings_state(project: &Path, desired: &Map<String, Value>) -> Result<SettingsState> {
     let root = fs::canonicalize(project).map_err(|_| "project directory unavailable")?;
     if !root.is_dir() {
         return Err("project must be a directory".into());
     }
+    refuse_user_scope(&root)?;
     let state_dir = root.join(crate::PROJECT_STATE_DIR);
     for dir in [
         root.join(".claude"),
@@ -802,7 +893,8 @@ mod tests {
     #[test]
     fn claude_settings_refuses_unmanaged_keys_and_keeps_order() {
         for (b, d) in [
-            (json!({}), json!({"permissions": {}})),
+            // `permissions` became managed in #2244; `env` and `hooks` stay unmanaged.
+            (json!({}), json!({"env": {}})),
             (json!({"hooks": {}}), json!({})),
         ] {
             let err = plan_settings(&obj(b), &Map::new(), &obj(d)).unwrap_err();
@@ -821,6 +913,63 @@ mod tests {
         assert_eq!(keys, expected);
         expected.sort();
         assert_eq!(result.unwrap().len(), expected.len());
+    }
+
+    // #2244 (I7): `permissions` is a managed key; values that widen access are refused.
+    #[test]
+    fn claude_settings_plans_a_narrowing_permissions_key() {
+        let desired = obj(json!({"permissions": {
+            "allow": ["Bash(cargo test *)"], "deny": ["Bash(git push *)"], "ask": [],
+            "defaultMode": "plan"}}));
+        let (result, conflicts) = plan_settings(&Map::new(), &Map::new(), &desired).unwrap();
+        assert!(conflicts.is_empty());
+        assert_eq!(result.unwrap()["permissions"], desired["permissions"]);
+        for mode in ["default", "acceptEdits", "plan", "dontAsk"] {
+            let d = obj(json!({"permissions": {"defaultMode": mode}}));
+            assert!(
+                plan_settings(&Map::new(), &Map::new(), &d).is_ok(),
+                "{mode}"
+            );
+        }
+        // A user-authored permissions key MoAI never owned is a conflict, not an overwrite.
+        let current = obj(json!({"permissions": {"allow": ["Read"]}}));
+        let (result, conflicts) = plan_settings(&Map::new(), &current, &desired).unwrap();
+        assert_eq!((result, conflicts), (None, vec!["permissions".to_string()]));
+    }
+
+    #[test]
+    fn claude_settings_refuses_permissions_that_widen_or_are_malformed() {
+        let rule = |n: usize| "R".repeat(n);
+        let many = |n: usize| vec!["Read"; n];
+        let refused = [
+            json!({"permissions": {"defaultMode": "bypassPermissions"}}),
+            json!({"permissions": {"defaultMode": "auto"}}),
+            json!({"permissions": {"defaultMode": "unknownMode"}}),
+            json!({"permissions": {"additionalDirectories": ["/"]}}),
+            json!({"permissions": {"disableBypassPermissionsMode": "disable"}}),
+            json!({"permissions": {"allow": "Read"}}),
+            json!({"permissions": {"allow": [1]}}),
+            json!({"permissions": {"deny": [""]}}),
+            json!({"permissions": {"ask": [rule(257)]}}),
+            json!({"permissions": {"allow": many(257)}}),
+            json!({"permissions": {"allow": ["Read\nBash"]}}),
+            json!({"permissions": ["Read"]}),
+        ];
+        for d in refused {
+            let err = plan_settings(&Map::new(), &Map::new(), &obj(d.clone())).unwrap_err();
+            assert_eq!(
+                crate::contract::classify(&err),
+                crate::contract::Kind::InvalidInput,
+                "{d}: {err}"
+            );
+        }
+        // Edges: 256 characters per rule and 256 rules per list are accepted.
+        for d in [
+            json!({"permissions": {"ask": [rule(256)]}}),
+            json!({"permissions": {"allow": many(256)}}),
+        ] {
+            assert!(plan_settings(&Map::new(), &Map::new(), &obj(d)).is_ok());
+        }
     }
 
     // SETTINGS-PRESERVE: every case runs in a temporary project; no real settings are touched.

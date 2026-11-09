@@ -4,9 +4,21 @@
 
 **상태 한계(숨기지 않음)**: 이 표의 passed 행은 T1 결정적 fixture(호스트 `none`) 5건과 T2 정적 검증 1건이다. 실제 호스트 로딩(certified) — Claude/Codex가 `/moai`·`$moai`로 skill을 로딩하는 E2E — 는 운영자 실측(T2, 자격증명 필요) 전까지 전부 `not_run`이며, "지원" 행이 곧 실사용 보증이 아님을 이 문서 머리에 명시한다. RC1은 게시 전 단계다.
 
+## 지원 대상 조합 (P04)
+
+rc.1의 지원 대상은 **Darwin/arm64(`aarch64-apple-darwin`) × Claude Code, Darwin/arm64 × Codex** 두 조합뿐이다(사용자 결정 P04, #2262). 아래 표에서 "지원 대상"은 범위를 정한 것이지 지원 보증이 아니다. 보증은 passed receipt가 있는 행만 하고(RL-10), 두 조합의 host 로딩 E2E(T2)는 receipt가 오기 전까지 `not_run`이다.
+
+| 조합 | rc.1 범위 | 현재 결과 |
+| --- | --- | --- |
+| Darwin/arm64 × Claude Code | 지원 대상 | T2 not_run(AC-08C-3·6·8 절반), 정적 검증 AC-08C-5만 passed |
+| Darwin/arm64 × Codex | 지원 대상 | T2 not_run(AC-08C-4) |
+| Darwin/x86_64(`x86_64-apple-darwin`, Tier 2) | 미지원(후속) | 측정하지 않음 |
+| Linux(ubuntu-24.04, arm 변형 포함)·Windows(windows-2025) | 미지원(후속) | 측정하지 않음 |
+| ZCode·그 밖의 host | 미지원(후속) | 측정하지 않음 |
+
 ## 조합 범위 (P12)
 
-RC1의 실측 조합은 개발 Mac 단일이다: Darwin / arm64 (Rust triple `aarch64-apple-darwin`, Tier 1 — `x86_64-apple-darwin`은 Tier 2로 별도 표기). 나머지 OS·arch·mode는 전부 `not_run`(숨김 없음, OS matrix workflow는 RC1에서 만들지 않는다).
+RC1의 실측 조합은 개발 Mac 단일이다: Darwin / arm64 (Rust triple `aarch64-apple-darwin`, Tier 1). 나머지 OS·arch·mode는 전부 `not_run`이다(숨김 없음, OS matrix workflow는 RC1에서 만들지 않는다).
 
 ## 지원 행 (passed receipt 기반 — 6행)
 
@@ -27,9 +39,10 @@ RC1의 실측 조합은 개발 Mac 단일이다: Darwin / arm64 (Rust triple `aa
 | Darwin/arm64 | Claude Code | local | 권한 거부 시 apply 차단·트리 불변 (AC-08C-6) | not_run | 동일(운영자 실측 대기) |
 | Darwin/arm64 | Codex | local | 명시 호출이 SETUP route 도달 (AC-08C-4) | not_run | `CODEX_API_KEY` 필요(운영자 실측 대기) |
 | Darwin/arm64 | Claude Code | local | clean clone READ (AC-08C-8 T2 절반) | not_run | 운영자 실측 대기 |
-| ubuntu-24.04 / windows-2025 / arm 변형 | — | local | 전체 | not_run | P12 HOLD — RC1에서 OS matrix workflow를 만들지 않음(08-D 소유) |
+| ubuntu-24.04 / windows-2025 / arm 변형 / Darwin x86_64 | — | local | 전체 | not_run | 미지원(후속) — P04로 rc.1 범위 밖. OS matrix workflow는 RC1에서 만들지 않음(08-D 소유) |
 | — | — | worktree / cloud | 전체 | not_run | RC1 범위 밖 |
 | Linux CI (ubuntu rc-ci) | — | local | AC-08C-7 재측정 | not_run | `sandbox-exec`는 macOS 전용 — Linux 대체 차단 수단 미결(HOLD, #2100 감사 지적) |
+| — | GitLab | local | Forge adapter 계약 문서화 (REQ-B4-01) | not_run | **documented, not_run** — capability 선언만 존재(`src/forge/gitlab.rs`: merge_request·pipeline·note = documented, fixture 스키마 `schemas/gitlab-fixture.schema.json`), 어댑터·실호출 경로 없음(REQ-B4-01; 계정 없음 — decisions 2026-11-09 01:1x, #2171) |
 
 ## 집계
 
