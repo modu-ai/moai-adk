@@ -46,21 +46,21 @@
   },
   "files": {
     "SKILL.md": {
-      "sha256": "bff1c53b61ae749391f93e74f554d97a118b5984a970cc6a3d198f700f9d9f58",
+      "sha256": "98ff360c40f6fbd651b147c7cf9f4312ee522da52a350d9a807fc5324bc3c063",
       "origin": {
         "kind": "design-template",
         "template_id": "router-core",
         "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet."
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. The `--mode leader|agent` and `--autonomy` routing line added by rc.2 A1 #2160."
       }
     },
     "references/routes.json": {
-      "sha256": "15062ee4f93a57727f428322df11286ffd7f4376e3ecee6d20ff0c7872e608f4",
+      "sha256": "509a29d0c261b632d1c457c023569bf97a0ecb7b8220922fbd9e79353bed6d92",
       "origin": {
         "kind": "design-template",
         "template_id": "router-routes",
         "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet."
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. MODE-LEADER and MODE-AGENT routes added by rc.2 A1 #2160."
       }
     },
     "workflows/read.md": {
@@ -133,6 +133,24 @@
         "template_id": "workflow-sync",
         "adoption": "adopted",
         "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet."
+      }
+    },
+    "workflows/mode-leader.md": {
+      "sha256": "df75a9d3dc8c977ab350cb7f1a42666bd8a950153cec1dc1e78d7fb5c736ed12",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "workflow-mode-leader",
+        "adoption": "new",
+        "reason": "Written for rc.2 A1 #2160 from docs/design-review/autonomy-modes-spec.md (DR-02 #2138); no design-22 template exists for modes. Refers to the SPEC by section instead of restating it; user decisions D-2 and D-3 of 2026-11-09."
+      }
+    },
+    "workflows/mode-agent.md": {
+      "sha256": "d06dad7c059235a851c8c8297070780a871604415cf2c40be8d2effa4209f01e",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "workflow-mode-agent",
+        "adoption": "new",
+        "reason": "Written for rc.2 A1 #2160 from docs/design-review/autonomy-modes-spec.md (DR-02 #2138); no design-22 template exists for modes. Refers to the SPEC by section instead of restating it."
       }
     }
   }
