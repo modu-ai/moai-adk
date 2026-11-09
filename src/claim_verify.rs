@@ -30,7 +30,9 @@
 //! boundary (#2306). It sees past wrapper words, quoting, backslash escapes, one level of
 //! `sh -c` / `bash -c`, and `git -c alias.<name>=commit|push` on the same line. It does not see
 //! a git alias defined in config, a shell alias or function, `$VAR` / `$(...)` expansion,
-//! `eval`, a script file, a second shell level, or another program that runs git itself.
+//! `eval`, a script file, a second shell level, or another program that runs git itself. The
+//! ANSI-C quoting `$'git' push` likewise stays invisible — it is `$` expansion to this text
+//! detector (docs/hooks-generation.md §3, named limit; rc.2 A9 후속 2 #2323).
 
 use crate::claim::{parse_claim_line, ClaimRecord};
 use crate::forge::policy::{next_link, parse_utc, Clock};
@@ -507,10 +509,17 @@ fn command_index(words: &[String]) -> Option<usize> {
     (i < words.len()).then_some(i)
 }
 
-/// The script a shell runs with `-c` (`sh -c '...'`, `bash -lc "..."`), if any.
+/// The script a shell runs with `-c` (`sh -c '...'`, `bash -lc "..."`), if any. Options that
+/// take a value (`bash -o pipefail -c …`, `sh -O extglob -c …`, `bash +o posix -c …`) consume
+/// their next word so the scan reaches the `-c` script (rc.2 A9 후속 2 #2323).
 fn shell_script(args: &[String]) -> Option<&str> {
     let mut iter = args.iter();
     while let Some(arg) = iter.next() {
+        if matches!(arg.as_str(), "-o" | "-O" | "+o" | "+O") {
+            // The next word is this option's value, not a non-option word.
+            iter.next();
+            continue;
+        }
         match arg.strip_prefix('-') {
             Some(flags) if !flags.starts_with('-') && flags.contains('c') => {
                 return iter.next().map(String::as_str)

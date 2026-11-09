@@ -39,11 +39,11 @@ skill frontmatter의 `hooks` 필드 거부(`src/claude.rs` `CLAUDE_FIELDS`)는 �
   - 알아보는 것:
     - 앞에 붙은 래퍼 단어와 그 옵션(`env`·`command`·`nice`·`sudo`·`time`·`timeout`·`nohup`·`xargs` 등)
     - 따옴표와 역슬래시로 감싼 `git`(`"git"`, `\git`)
-    - `sh -c` / `bash -c` 안의 명령 한 단계
+    - `sh -c` / `bash -c` 안의 명령 한 단계 — 값을 받는 셸 옵션(`-o pipefail`, `-O extglob`, `+o posix`, `+O`) 뒤의 `-c`도 알아본다(rc.2 A9 후속 2 #2323)
     - 같은 줄의 `git -c alias.<이름>=commit|push`
   - 알아보지 못하는 것(남은 한계):
     - git 설정에 정의된 alias, 셸 alias·함수
-    - `$VAR`·`$(...)` 치환, `eval`
+    - `$VAR`·`$(...)` 치환, ANSI-C 따옴표 `$'git' push`(= `$` 치환으로 알아보지 못한다, rc.2 A9 후속 2 #2323에서 이름 붙임), `eval`
     - 스크립트 파일 안의 git, 두 단계 이상 중첩된 셸
     - git을 스스로 부르는 다른 프로그램
   - 그래서 이 guard는 경계가 아니라 guardrail이다.
