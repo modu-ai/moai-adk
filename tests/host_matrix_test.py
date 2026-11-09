@@ -26,12 +26,16 @@ CODEX_PER_SURFACE = ["explicit_invocation", "status_line"]
 CODEX_SURFACES = {"all", "desktop", "cli", "ide"}
 SOURCES = {
     "ZCode": re.compile(r"^https://(zcode\.z\.ai/en/docs(/[A-Za-z-]+)?|github\.com/zai-org/ZCode/blob/[0-9a-f]{40}/\S+)$"),
-    "Codex": re.compile(r"^https://learn\.chatgpt\.com/docs/[a-z0-9/-]+$"),
+    # DR-08 #2145: the `goal` row also cites the follow-goals use case and the Codex goals cookbook.
+    "Codex": re.compile(r"^https://(learn\.chatgpt\.com/(docs|use-cases)/[a-z0-9/-]+"
+                        r"|developers\.openai\.com/cookbook/examples/codex/[a-z0-9_-]+)$"),
     "Claude Code": re.compile(r"^https://code\.claude\.com/docs/en/[a-z0-9-]+$"),
 }
 # 02-B: the Claude Code items, all on the interactive terminal surface.
 CLAUDE_ITEMS = ["agents_loading", "agents_import", "skill_path", "skill_reload", "skill_limits",
-                "explicit_invocation", "output_style", "statusline", "hooks"]
+                "explicit_invocation", "output_style", "statusline", "hooks", "goal"]
+# DR-08 #2145: `goal` is a Codex CLI row as well.
+CODEX_CLI_ONLY = ["goal"]
 SUPPORTED_WORDS = re.compile(r"지원\s*\||\bsupported\b|\bcertified\b", re.IGNORECASE)
 
 
@@ -103,6 +107,8 @@ class HostMatrixTest(unittest.TestCase):
         for surface in sorted(CODEX_SURFACES - {"all"}):
             for item in CODEX_PER_SURFACE:
                 self.assertIn((surface, item), pairs)
+        for item in CODEX_CLI_ONLY:
+            self.assertIn(("cli", item), pairs)
         for r in self.codex:
             self.check_row(r)
         # Trust is never claimed: the doctor does not read config.toml.
