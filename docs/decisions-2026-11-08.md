@@ -91,6 +91,33 @@
 | 22:0x | worktree 출입 도구(사용자 지시) | "enterWorktree(), ExitWorktree() 도구를 항상 사용하라고 각 레인에게 전달" → 카드 시작은 EnterWorktree(`<primary>/.moai-cli/worktrees/<n>-<key>`), 인계 뒤 ExitWorktree(keep, 삭제 금지), 셸 `cd`로 worktree 출입 금지. 전 레인 전달·수신 확인. 이어서 사용자 "바뀐 규칙 … -> AGENTS.local.md 추가" → § Lane loop "Worktree entry and exit" 추가 | 전 레인 | 사용자 |
 | 19:0x | 01-C 본문 r27 정정(기록) | REQ-01C-02 `code`→`kind` 11종, HOLD-00D-1 배너 제거, request_id 제거 반영(머지 뒤 기록 정정) | #1990 | agent-2 비차단 |
 
-부분 결정 분리: P08은 claim 방식(⑤+①)만 결정, lease·heartbeat 수치 HOLD · P15는 ZCode 헤드리스 범위만 결정, 나머지 host 지원표 HOLD.
+| 00:2x(11-09) | 남은 RC1 결정 2건(사용자 결정, 질문 창 직접 선택) | ① 08-C T2 = "직접 실측": 운영자가 체크아웃 밖(/tmp/moai-e2e-tip)에서 기존 인증으로 tests/e2e/host-claude.sh·host-codex.sh 1회 실행, 결과 받으면 지원표 갱신 후 #2014 종료 ② 04-D = "RC1 밖으로 이동": #2016 RC1 milestone 제거(다음 milestone 없어 새로 만들지 않음), Go 상태 무변경 유지, 에픽 #1980 종료 | #2014 #2016 #1980 #1984 #1975 | 사용자 |
+| 00:0x(11-09) | 설계 문서 종합 보고서 범위 | 상위 1편+하위 19편 전부 읽고 개선점 종합; 아티팩트(사용자)·md(에이전트) 두 형태; 론처 `moai cc/glm -l`·`moai cc/glm/codex -a`는 tip에 이미 구현(00-F)이므로 신규 없음 | — | 사용자 지시 |
+| 00:0x(11-09) | 자율 무중단 모드 설계 추가 | 세션 내 `/moai --leader-mode [--autonomy full\|semi]`·`--agent-mode`; 리더 5분 PR 점검·타 레인 수리 지시; `/goal`은 Claude 내장 명령이라 모델 입력 불가 → 붙여넣기 지시문, Codex 동등 명령 미확인 | #2138 | 사용자 지시, 리더 확인 |
+| 00:3x(11-09) | 에이전트 self-claim | 리더 배차 대신 에이전트가 미배차 목록 갱신→claim→진행; 리더 판단: 중재는 Issue 댓글 id(06-A), 로컬 파일·label은 lock 아님(projection) — 사용자 "맞다면 수정" 조건부 승인 | #2138 #2139 | 사용자 지시 + 리더 판단 |
+| 00:1x(11-09) | 보고서 컨펌 → 발행·배차 | milestone `design-docs-r2`(#2), #2137~#2143 7카드(문서 전용), agent-8·1·3·4·5·6·7 배차, agent-2 감사 전담 유지; 설계 페이지는 Space에 있어 산출물은 "적용 가능한 수정안 문서" | #2137~#2143 | 사용자 "보고서 컨펌. 이슈 발행하고 배차 시작" |
+| 00:4x(11-09) | 설계 전체 Issue 발행 — 틀 | milestone `2026.11.0-rc.2` 하나(RC1 잔여는 RC1 유지) · RC1 방식(상위 EP + 한 세션 실행 카드) · 비범위 영역(§14 Pi/Desktop·F21·§16·MCP)도 전부 발행하되 "선행조건 아님/blocked by HOLD" 표시 · 설계↔RC1 충돌 4곳은 RC1 결정 우선(TOON은 별도 질의) | rc.2 전체 | 사용자 AskUserQuestion 4/4 |
+| 00:5x(11-09) | §9 Code Map+Graph 묶음명·태그 | 묶음명 **Code Atlas**(일반 용어 — 패키지·상표·명령 충돌 확인 카드 선행) + `@MOAI:` 새 namespace를 `@MX:`와 dual-read, 전환 시점은 rc.2 안에서 정하지 않음 | rc.2 Core Brain EP | 사용자 선택 1 |
+| 00:5x(11-09) | §12 자동 아카이브 | 적격 = terminal + 비활성 90일(Go 계승), pending evidence·hold 제외, **자동 이동까지 허용**(hash/readback·restore 필수) — 설계 §12 "scheduler 지금 안 켬"과 다른 결정으로 기록 | rc.2 보존 EP | 사용자 선택 |
+| 00:5x(11-09) | P08 잔여 — takeover | 수동 인계 유지(만료 자동 takeover 0, 리더 epoch+1), lease 기본 **4h**, heartbeat 없음; "GitHub에 검증된 조정 primitive 없음" 전제 기록 | rc.2 협업 EP, `src/claim.rs` 기본값 | 사용자 선택(권장) |
+| 00:5x(11-09) | §14 Pi | 고정 버전 spike 1장(conformance·보안·취소·인증) 뒤 채택 결정; Desktop UI 카드는 spike에 blocked | rc.2 후순위 EP | 사용자 선택(권장) |
+| 01:0x(11-09) | D-1 론처 `-l`/`-a` | **폐기(deprecate)** — 경고 후 제거, `--name`만 유지; 역할은 세션 안 `/moai --mode leader\|agent`로만. 00-F·#2053·AGENTS.local.md·지원표·레인 습관 갱신 카드 포함 | rc.2 자율 모드 EP | 사용자 선택 |
+| 01:0x(11-09) | D-2 리더 PR 점검 주기 | 설정 키 기본 300초(사용자 지정값, 측정값 아님 명시), 변화 없는 PR 폴링 증식 금지 | rc.2 자율 모드 EP | 사용자 선택(권장) |
+| 01:0x(11-09) | D-3 Codex 리더 | rc.2에서 리더 모드는 Claude Code만; Codex는 `--mode agent`만(댓글 claim·md 입력). Codex 리더는 채널 생긴 뒤 후속 | rc.2 자율 모드 EP | 사용자 선택(권장) |
+| 01:1x(11-09) | 배포 잔여(P12·서명) | OS matrix = macOS(arm64·x86_64)+Linux(x86_64·arm64); Windows는 빌드+self-replace 구현만(지원표 not_run); 서명은 attestation+sha256만(notarization 없음, quarantine 안내 문서); SBOM은 cargo-dist 산출물; tag ruleset `moai-cli-v*` 생성 카드(사용자 승인 1회) | rc.2 릴리스 EP | 사용자 선택(권장) |
+| 01:1x(11-09) | P11 budget 기본값 | retry max_attempts 3 · context max_bytes 256 KiB(≈64k 토큰 추정) · retention 90일 · 비용 상한 미설정 = 외부 backend 호출 0; `project.yaml` profile로 재정의; 실제 tokenizer는 host별 측정 카드 뒤 | rc.2 context·RUN EP | 사용자 선택(권장) |
+| 01:1x(11-09) | Forge 권한·fallback | GitHub 우선 + audit-only GitHub App(status 출처 고정, 운영자 App 등록 1회); sub-issue·dependency는 capability probe 후 사용, 없으면 본문 링크 fallback; GitLab은 adapter 계약(trait+fixture)만, MR 구현 blocked(계정 없음) | rc.2 협업 EP | 사용자 선택(권장) |
+| 01:1x(11-09) | P10 판단 backend | 조사 카드 1장(Jev·OpenAI Decisions·Claude/Codex 구독 credit — 공식 URL+확인일, 비용 호출 0); backend 구현 카드는 발행하되 조사 결과에 blocked; native 판단 유지 | rc.2 후순위 EP | 사용자 선택(권장) |
+| 01:2x(11-09) | rc.2 발행 확정 | 분해안(EP 7 + 카드 50) "이대로 발행"; TOON **도입하지 않음, JSON 정본**(L4450 채택, FORMAT-* 삭제, 상위 §13 L1395 수정); EP-G Space 적용은 리더(ego-browser), 페이지당 적용 전 사용자 확인 | #2153~#2209 | 사용자 AskUserQuestion 3/3 |
+| 01:3x(11-09) | rc.2 발행 완료(기록) | milestone `2026.11.0-rc.2`(#3): EP #2153~#2159, 카드 #2160~#2209. 생성기 `.moai-cli/reports/rc2_issue_gen.py`, 본문 거울 `issue-bodies/<n>-rc2-*.md`. self-claim 가능 24, blocked 22, 리더 전용 5(G1~G4·E5) | — | 리더 |
+| 01:0x(11-09) | D-4 미배차 목록 | 원격 Issue(claim 댓글 없는 열린 Issue)가 정본, `assignments.json`은 리더만 커밋하는 스냅샷 캐시, 레인은 읽기만 | #2139 schema, rc.2 | 사용자 선택(권장) |
+
+| 01:1x(11-09) | ADK_PERSONAL_CODING_CORE_20261109_01 수신 | 개인 맞춤 AI 코딩 에이전트 정체성: 5단계 기본, AGENTS.md 공통 + `/moai project` → `AGENTS.override.md`, 재귀 자기 개선 루프(권한 확대·보호 우회 아님), 호스트별 공식 배치, ADK 이름 재검토(rename 0). 로컬 설계 수정 ≠ 온라인 게시 | rc.2 EP-H(미발행) | 사용자 지시, 리더 ACK |
+| 01:2x(11-09) | 5단계 이름·순서(설계 대조) | 사용자 직접 발화는 "3개에서 확장한 다섯 과정, 플랜에서 마지막 싱크까지"(이름 미열거). **PLAN → RUN → VERIFY → AUDIT → SYNC**는 설계 §5 제목·RC1 `routes.json` 개발 route 5개의 대조 근거로 리더가 기록; READ·SETUP·UPDATE는 진입 단계로 별도(리더 제안). 출처 정정: ADK_DECISION_PROVENANCE_FIX_20261109_01 | 전체 | 사용자 발화(5단계 요청) + 리더 대조(이름) |
+| 01:2x(11-09) | AGENTS.override.md 학습 루프 승인 수준 | 재귀 개선 요청 자체는 사용자 직접 발화. "제안은 자동, 적용은 사용자 승인 1회; 사용자 구간 자동 변경 0; 롤백"은 01:2x 로컬 질문 창 선택이나 **작성자 미확인 → 리더 제안 / 사용자 확인 대기**(자동 적용 0). Codex는 override 공식 지원, Claude Code는 어댑터 필요(공식 비지원) | EP-H | 리더 제안(확인 대기) — PROVENANCE_FIX |
+| 01:2x(11-09) | ADK 이름 재검토 진행 방식 | 재검토 요청·rename 금지·새 이름 미확정은 사용자 직접 발화. "조사 카드 1장 → 후보 3~5개(URL+확인일) 보고"는 로컬 질문 창 선택으로 **작성자 미확인 → 리더 제안 / 사용자 확인 대기** | EP-H | 리더 제안(확인 대기) — PROVENANCE_FIX |
+| 01:2x(11-09) | Code Map/Graph 묶음 명칭 | #2177 조사: `code-atlas`는 crates.io 활성 패키지·GitHub org 존재로 사용 불가. 묶음 명칭 **"MoAI Atlas"**는 사용자 직접 발화로 명시 승인("MoAI Atlas 좋아, 오케이, 요거로 합시다" / "리더한테 얘기해"; ADK_ATLAS_NAME_CONFIRMED_20261109_01). 범위 한정: 제품명(MoAI ADK) 변경·패키지명·CLI 서브커맨드·태그 문법·상표 안전성은 **미확정**(패키지 404는 미등록 관측일 뿐 충돌 0·상표 가능 아님; WIPO not_run). `moai-atlas`·`moai atlas`는 제안 상태(로컬 질문 창 선택, 작성자 미확인) → C2에서 별도 | #2177, EP-C C2~ | 사용자 직접 승인(명칭만) |
+
+부분 결정 분리: P08은 claim 방식(⑤+①)만 결정, lease·heartbeat 수치 HOLD → 00:5x(11-09) lease 4h·heartbeat 없음으로 결정 · P15는 ZCode 헤드리스 범위만 결정, 나머지 host 지원표 HOLD.
 
 P12에서 아직 HOLD인 것: OS/arch matrix, locale, release matrix. P04(첫 RC 인증 순서), P05(package 경계·bridge 범위 나머지), P06, P08~P11, P14, P15는 HOLD 유지.
