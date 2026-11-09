@@ -292,3 +292,27 @@ fn go_corpus_parses_without_invalid() {
         assert_eq!(file_bytes(&p), hashes[idx], "chunk {idx} unchanged");
     }
 }
+
+/// A SUB written after spaces (`KIND: SUB`, `KIND:  SUB:args`) ends where the SUB ends in the
+/// untrimmed text: no letters of the SUB leak into args (#2228 audit, epoch 3 repair).
+#[test]
+fn a_spaced_sub_keeps_its_args_offset() {
+    let root = TempDir::new().unwrap();
+    let cases = [
+        ("@MOAI:SPEC: REQ\n", json!("REQ"), Value::Null),
+        ("@MOAI:SPEC:  REQ:extra\n", json!("REQ"), json!("extra")),
+        ("@MOAI:SPEC: REQ: two words\n", json!("REQ"), json!("two words")),
+        ("@MOAI:SPEC:REQ\n", json!("REQ"), Value::Null),
+        ("@MOAI:SPEC:REQ:x\n", json!("REQ"), json!("x")),
+    ];
+    for (idx, (body, sub, args)) in cases.iter().enumerate() {
+        let dir = root.path().join(format!("spaced-{idx}"));
+        plant(&dir, "tags.md", body);
+        let result = scan(&dir);
+        assert_eq!(result["invalid_count"], json!(0), "{body}");
+        let node = &result["files"][0]["nodes"][0];
+        assert_eq!(node["kind"], json!("SPEC"), "{body}");
+        assert_eq!(&node["sub"], sub, "{body}");
+        assert_eq!(&node["args"], args, "{body}");
+    }
+}
