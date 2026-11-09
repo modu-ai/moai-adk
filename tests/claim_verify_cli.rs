@@ -1,6 +1,7 @@
 //! rc.2 A9 #2255: claim ownership re-verification. The evaluator is pure, so every AC-1
 //! scenario is a fixture of comments; the op and the hook run over recorded exchanges or a
 //! stub `gh` in temporary repositories. No live GitHub call is made.
+mod common;
 
 use moai_cli::claim::{
     parse_claim_line, render_claim_line, resolve_winner, ClaimComment, ClaimFields, ClaimRecord,
@@ -12,7 +13,7 @@ use moai_cli::claim_verify::{
 };
 use moai_cli::contract::{classify, Kind};
 use moai_cli::forge::policy::{parse_utc, Clock};
-use moai_cli::forge::transport::{Exchange, HttpRequest, HttpResponse, RecordedTransport};
+use moai_cli::forge::transport::{Exchange, RecordedTransport};
 use serde_json::{json, Value};
 use std::fs;
 use std::path::Path;
@@ -413,19 +414,7 @@ fn branch_remote_and_token_parsing() {
 }
 
 fn get(body: Value) -> Exchange {
-    Exchange {
-        request: HttpRequest {
-            method: "GET".into(),
-            url: URL.into(),
-            headers: Default::default(),
-            body: None,
-        },
-        response: HttpResponse {
-            status: 200,
-            headers: Default::default(),
-            body: Some(body),
-        },
-    }
+    common::exchange("GET", URL, common::json_response(200, body))
 }
 
 fn raw(id: i64, login: &str, body: &str) -> Value {
@@ -508,37 +497,22 @@ fn claimed_repo(comment_id: i64, session: &str) -> tempfile::TempDir {
     let root = fs::canonicalize(dir.path()).unwrap();
     let record = ClaimRecord {
         schema_version: 1,
-        task_ref: TaskRef {
-            provider: "github".into(),
-            host: "github.com".into(),
-            owner: "acme".into(),
-            repo: "widgets".into(),
-            repository_id: 1,
-            issue_id: 70,
-            issue_number: 7,
-        },
+        task_ref: TaskRef::new("github", "github.com", "acme", "widgets", 1, 70, 7),
         task_key: "0123456789abcdef".into(),
         logical_key: "A9".into(),
-        owner: Owner {
-            kind: "session".into(),
-            id: session.into(),
-            host_id: None,
-            pid: None,
-            process_start: None,
-        },
+        owner: Owner::new("session", session),
         assignee: None,
         provider_session: None,
         integration_owner: None,
         attempt: None,
         epoch: 1,
         base_revision: base,
-        worktree: WorktreeId {
-            common_dir: root.join(".git").display().to_string(),
-            git_dir: root.join(".git").display().to_string(),
-            path: root.display().to_string(),
-            head: "b".repeat(40),
-            branch: None,
-        },
+        worktree: WorktreeId::new(
+            root.join(".git").display().to_string(),
+            root.join(".git").display().to_string(),
+            root.display().to_string(),
+            "b".repeat(40),
+        ),
         write_scope: vec!["src/x.rs".into()],
         spec_ref: SpecRef {
             id: "SPEC-A9".into(),

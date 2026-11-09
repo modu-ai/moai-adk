@@ -1,5 +1,22 @@
 //! Helpers shared by integration tests.
+use moai_cli::forge::transport::{Exchange, HttpRequest, HttpResponse};
 use std::path::Path;
+
+/// A recorded response with a JSON body and no headers (#2256). Built through the
+/// constructor, so a new optional `HttpResponse` field never touches the fixtures.
+#[allow(dead_code)] // only the forge/claim test crates replay exchanges
+pub fn json_response(status: u16, body: serde_json::Value) -> HttpResponse {
+    HttpResponse::new(status).with_body(body)
+}
+
+/// One recorded exchange: a body-less request answered by `response` (#2256).
+#[allow(dead_code)] // only the forge/claim test crates replay exchanges
+pub fn exchange(method: &str, url: &str, response: HttpResponse) -> Exchange {
+    Exchange {
+        request: HttpRequest::new(method, url),
+        response,
+    }
+}
 
 /// Writes an executable test script (mode 0755) through a short-lived `sh` child, so this
 /// multi-threaded test process never holds a write fd on the script (#2283).
@@ -9,6 +26,7 @@ use std::path::Path;
 /// exec of a file that any process holds open for writing fails with ETXTBSY ("executable
 /// file busy"), so the script's first spawn can fail at random (rc-ci run 42573077303).
 /// macOS does not refuse such an exec, so the race only shows on Linux.
+#[allow(dead_code)] // test crates that only replay exchanges include this module too (#2256)
 pub fn write_executable(path: &Path, content: &str) {
     #[cfg(unix)]
     {

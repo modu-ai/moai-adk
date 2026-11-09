@@ -647,15 +647,16 @@ pub fn apply<T: Transport, C: Clock>(
                 if wrote {
                     client.clock.sleep(1);
                 }
-                let sent = client.send_with_backoff(&HttpRequest {
-                    method: "POST".into(),
-                    url: format!(
-                        "{API}/repos/{}/{}/issues",
-                        req.target.owner, req.target.repo
-                    ),
-                    headers: Default::default(),
-                    body: Some(payload),
-                });
+                let sent = client.send_with_backoff(
+                    &HttpRequest::new(
+                        "POST",
+                        format!(
+                            "{API}/repos/{}/{}/issues",
+                            req.target.owner, req.target.repo
+                        ),
+                    )
+                    .with_body(payload),
+                );
                 wrote = true;
                 let uncertain = |entry: &mut OutboxEntry, why: String| -> Result<(), ForgeError> {
                     entry.advance(

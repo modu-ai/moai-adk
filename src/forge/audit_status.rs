@@ -135,15 +135,11 @@ pub fn post<T: Transport, C: Clock>(
     let desc = description(&req.description, source)?;
     let client = Client::new(transport, clock, Config::default(), BTreeMap::new());
     let (o, r, sha) = (&req.owner, &req.repo, &req.sha);
-    let post = HttpRequest {
-        method: "POST".into(),
-        url: format!("{API}/repos/{o}/{r}/statuses/{sha}"),
-        headers: BTreeMap::new(),
-        body: Some(json!({
+    let post =
+        HttpRequest::new("POST", format!("{API}/repos/{o}/{r}/statuses/{sha}")).with_body(json!({
             "state": req.state, "target_url": req.target_url,
             "description": desc, "context": CONTEXT,
-        })),
-    };
+        }));
     let resp = client.send_with_backoff(&post)?;
     if resp.status != 201 {
         return Err(ForgeError::transport(format!(

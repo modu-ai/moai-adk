@@ -8,7 +8,7 @@ use moai_cli::claim::{
 };
 use moai_cli::contract;
 use moai_cli::forge::policy::{format_utc, Clock};
-use moai_cli::forge::transport::{Exchange, HttpRequest, HttpResponse, RecordedTransport};
+use moai_cli::forge::transport::{Exchange, RecordedTransport};
 use moai_cli::handoff::{claim_handoff, effect_confirm, effect_intend, effects_reconcile};
 mod common;
 
@@ -50,40 +50,32 @@ impl Clock for FakeClock {
 }
 
 fn task_ref(issue: i64) -> TaskRef {
-    TaskRef {
-        provider: "github".into(),
-        host: "github.com".into(),
-        owner: "acme".into(),
-        repo: "widgets".into(),
-        repository_id: 101,
-        issue_id: 7000 + issue,
-        issue_number: issue,
-    }
+    TaskRef::new(
+        "github",
+        "github.com",
+        "acme",
+        "widgets",
+        101,
+        7000 + issue,
+        issue,
+    )
 }
 
 fn worktree_id(path: &Path, head: &str) -> WorktreeId {
-    WorktreeId {
-        common_dir: path
-            .parent()
+    WorktreeId::new(
+        path.parent()
             .unwrap()
             .join(".git")
             .to_string_lossy()
             .into_owned(),
-        git_dir: path.join(".git").to_string_lossy().into_owned(),
-        path: path.to_string_lossy().into_owned(),
-        head: head.to_string(),
-        branch: None,
-    }
+        path.join(".git").to_string_lossy().into_owned(),
+        path.to_string_lossy().into_owned(),
+        head,
+    )
 }
 
 fn owner(kind: &str, id: &str) -> Owner {
-    Owner {
-        kind: kind.into(),
-        id: id.into(),
-        host_id: None,
-        pid: None,
-        process_start: None,
-    }
+    Owner::new(kind, id)
 }
 
 fn seed_record(
@@ -209,23 +201,12 @@ fn exchange_with_headers(
     body: Value,
     headers: &[(&str, &str)],
 ) -> Exchange {
-    Exchange {
-        request: HttpRequest {
-            method: method.into(),
-            url: url.into(),
-            headers: Default::default(),
-            body: None,
-        },
-        response: HttpResponse {
-            status,
-            // Response headers are stored lower-cased, the way the real gh parser does.
-            headers: headers
-                .iter()
-                .map(|(k, v)| (k.to_ascii_lowercase(), v.to_string()))
-                .collect(),
-            body: Some(body),
-        },
+    let mut response = common::json_response(status, body);
+    // Response headers are stored lower-cased, the way the real gh parser does.
+    for (k, v) in headers {
+        response = response.with_header(k.to_ascii_lowercase(), *v);
     }
+    common::exchange(method, url, response)
 }
 
 fn comments_url(issue: i64) -> String {
@@ -289,13 +270,10 @@ fn live_sleep_owner() -> (Owner, std::process::Child, String) {
         .unwrap();
     let start = String::from_utf8_lossy(&out.stdout).trim().to_string();
     (
-        Owner {
-            kind: "local-process".into(),
-            id: "agent-9".into(),
-            host_id: Some("mac-1".into()),
-            pid: Some(pid),
-            process_start: Some(start),
-        },
+        Owner::new("local-process", "agent-9")
+            .host_id("mac-1")
+            .pid(pid)
+            .process_start(start),
         child,
         "mac-1".into(),
     )

@@ -25,17 +25,10 @@ impl Clock for FixedClock {
 
 fn get(url: &str, body: &str) -> Exchange {
     Exchange {
-        request: HttpRequest {
-            method: "GET".into(),
-            url: url.into(),
-            headers: Default::default(),
-            body: None,
-        },
-        response: HttpResponse {
-            status: 200,
-            headers: [("etag".to_string(), "\"e1\"".to_string())].into(),
-            body: Some(serde_json::from_str(body).unwrap()),
-        },
+        request: HttpRequest::new("GET", url),
+        response: HttpResponse::new(200)
+            .with_header("etag", "\"e1\"")
+            .with_body(serde_json::from_str(body).unwrap()),
     }
 }
 

@@ -271,34 +271,31 @@ pub fn next<T: Transport, C: Clock>(
     });
     let mut lost_to = Vec::new();
     for c in &candidates {
-        let claim = ClaimRequest {
-            schema_version: 1,
-            task_ref: TaskRef {
-                provider: "github".into(),
-                host: "github.com".into(),
-                owner: req.owner.clone(),
-                repo: req.repo.clone(),
+        // #2169 display projections (assignee, provider_session) stay empty: queue-next's
+        // request carries neither, and they never decide ownership (REQ-B2-01). The
+        // constructor leaves them and expected_epoch/attempt unset (#2256).
+        let claim = ClaimRequest::new(
+            1,
+            TaskRef::new(
+                "github",
+                "github.com",
+                req.owner.clone(),
+                req.repo.clone(),
                 repository_id,
-                issue_id: c.id,
-                issue_number: c.number,
-            },
-            logical_key: c.logical_key.clone(),
-            owner: req.claim.owner.clone(),
-            attempt: None,
-            base_revision: req.claim.base_revision.clone(),
-            write_scope: req.claim.write_scope.clone(),
-            spec_ref: req.claim.spec_ref.clone(),
-            lease_until: req.claim.lease_until.clone(),
-            projection_intents: vec![
-                json!({"kind": "projection_intent", "target": "label", "action": "not_run"}),
-                json!({"kind": "projection_intent", "target": "status_line", "action": "not_run"}),
-            ],
-            expected_epoch: None,
-            // #2169 display projections: queue-next's request carries neither, so the
-            // record leaves them empty (they never decide ownership, REQ-B2-01).
-            assignee: None,
-            provider_session: None,
-        };
+                c.id,
+                c.number,
+            ),
+            c.logical_key.clone(),
+            req.claim.owner.clone(),
+            req.claim.base_revision.clone(),
+            req.claim.write_scope.clone(),
+            req.claim.spec_ref.clone(),
+        )
+        .lease_until(req.claim.lease_until.clone())
+        .projection_intents(vec![
+            json!({"kind": "projection_intent", "target": "label", "action": "not_run"}),
+            json!({"kind": "projection_intent", "target": "status_line", "action": "not_run"}),
+        ]);
         // REQ-A2-01/02: a card that already carries a claim comment (live or expired) is
         // not a candidate, unless this journal holds an active record for it.
         let key = task_key(&claim.task_ref);
@@ -447,17 +444,11 @@ mod tests {
         }
         let lease = "2026-11-09T09:00:00Z";
         let page = |body: Value| Exchange {
-            request: HttpRequest {
-                method: "GET".into(),
-                url: format!("{API}/repos/acme/widgets/issues/7/comments?per_page=100"),
-                headers: Default::default(),
-                body: None,
-            },
-            response: HttpResponse {
-                status: 200,
-                headers: Default::default(),
-                body: Some(body),
-            },
+            request: HttpRequest::new(
+                "GET",
+                format!("{API}/repos/acme/widgets/issues/7/comments?per_page=100"),
+            ),
+            response: HttpResponse::new(200).with_body(body),
         };
         let claim = |id: i64, s: &str| json!({"id": id, "body": format!("moai-claim: session={s} epoch=1 lease_until={lease}")});
         let t = RecordedTransport::new(vec![

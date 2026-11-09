@@ -114,18 +114,12 @@ impl Transport for Script {
 }
 
 fn ok(body: Value) -> HttpResponse {
-    HttpResponse {
-        status: 200,
-        headers: [("etag".to_string(), "\"e1\"".to_string())].into(),
-        body: Some(body),
-    }
+    HttpResponse::new(200)
+        .with_header("etag", "\"e1\"")
+        .with_body(body)
 }
 fn status(code: u16, body: Value) -> HttpResponse {
-    HttpResponse {
-        status: code,
-        headers: Default::default(),
-        body: Some(body),
-    }
+    HttpResponse::new(code).with_body(body)
 }
 fn repo() -> (&'static str, String, Reply) {
     (
