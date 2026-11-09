@@ -156,7 +156,14 @@ fn home_layout_opt_in_moves_without_deleting_and_reverts() {
     let out = cli(
         &project,
         &home,
-        &["layout-apply", ".", "--plan-digest", &"0".repeat(64)],
+        &[
+            "layout-apply",
+            ".",
+            "--plan-digest",
+            &"0".repeat(64),
+            "--permission-reference",
+            "test:layout-apply",
+        ],
         None,
     );
     assert!(!out.status.success());
@@ -166,7 +173,14 @@ fn home_layout_opt_in_moves_without_deleting_and_reverts() {
     let out = cli(
         &project,
         &home,
-        &["layout-apply", ".", "--plan-digest", &digest],
+        &[
+            "layout-apply",
+            ".",
+            "--plan-digest",
+            &digest,
+            "--permission-reference",
+            "test:layout-apply",
+        ],
         None,
     );
     assert!(
@@ -249,7 +263,14 @@ fn layout_apply_twice_is_a_conflict() {
     let out = cli(
         &project,
         &home,
-        &["layout-apply", ".", "--plan-digest", &digest],
+        &[
+            "layout-apply",
+            ".",
+            "--plan-digest",
+            &digest,
+            "--permission-reference",
+            "test:layout-apply",
+        ],
         None,
     );
     assert!(out.status.success());
@@ -257,11 +278,26 @@ fn layout_apply_twice_is_a_conflict() {
     let out = cli(
         &project,
         &home,
-        &["layout-apply", ".", "--plan-digest", &digest],
+        &[
+            "layout-apply",
+            ".",
+            "--plan-digest",
+            &digest,
+            "--permission-reference",
+            "test:layout-apply",
+        ],
         None,
     );
     assert!(!out.status.success());
     assert_eq!(envelope(&out)["error"]["kind"], json!("conflict"));
+    assert!(
+        envelope(&out)["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("already switched"),
+        "the second apply is refused by the switched-pointer guard itself: {}",
+        envelope(&out)["error"]["message"]
+    );
     assert_eq!(hash_tree(&home), before, "a refused apply writes nothing");
 }
 
@@ -298,4 +334,185 @@ fn layout_default_keeps_project_side() {
         project.join(".git/.moai-cli/claims").is_dir(),
         "the claim journal still resolves project-side by default"
     );
+}
+
+/// The audited data-loss scenario (2026-11-09 FAIL, issue #2175): apply switches the
+/// pointer, the home side receives new data during the switched window, the marker is
+/// removed (the documented revert), and a re-apply must REFUSE instead of copying over
+/// — the old code copied project-side bytes over the home target and its verify
+/// failure deleted the home side, the only copy of the newer data. Repair direction
+/// (a): an existing home target refuses the apply; nothing is overwritten or deleted.
+#[test]
+fn revert_then_reapply_refuses_and_keeps_home_data() {
+    let tmp = tempfile::tempdir().unwrap();
+    let home = tmp.path().join("home");
+    let (project, _home_guard) = setup_project(&home);
+    let out = cli(&project, &home, &["layout-plan", "."], None);
+    let digest = envelope(&out)["result"]["plan_digest"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let out = cli(
+        &project,
+        &home,
+        &[
+            "layout-apply",
+            ".",
+            "--plan-digest",
+            &digest,
+            "--permission-reference",
+            "test:layout-apply",
+        ],
+        None,
+    );
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let home_dir = home.join(".moai-cli/projects/widgets");
+
+    // New data lands on the home side during the switched window.
+    fs::write(home_dir.join("receipts/req-2.json"), b"{\"r\":2}").unwrap();
+
+    // The documented revert: remove the marker; readers fall back to the project side.
+    fs::remove_file(home_dir.join("layout.json")).unwrap();
+    let out = cli(
+        &project,
+        &home,
+        &["claim-show", ".", "--task", "0123456789abcdef"],
+        None,
+    );
+    assert_eq!(
+        envelope(&out)["result"]["outcome"],
+        json!("unclaimed"),
+        "back on the project-side journal"
+    );
+
+    // Re-apply after the revert: refused, and the home-side req-2 (the only copy)
+    // survives byte for byte.
+    let before = hash_tree(&home);
+    let out = cli(&project, &home, &["layout-plan", "."], None);
+    let digest2 = envelope(&out)["result"]["plan_digest"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let out = cli(
+        &project,
+        &home,
+        &[
+            "layout-apply",
+            ".",
+            "--plan-digest",
+            &digest2,
+            "--permission-reference",
+            "test:layout-apply",
+        ],
+        None,
+    );
+    assert!(!out.status.success(), "the re-apply must refuse");
+    let v = envelope(&out);
+    assert_eq!(v["error"]["kind"], json!("conflict"));
+    assert!(
+        v["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("already exists"),
+        "{}",
+        v["error"]["message"]
+    );
+    assert_eq!(
+        hash_tree(&home),
+        before,
+        "a refused re-apply writes nothing and deletes nothing"
+    );
+    assert_eq!(
+        fs::read(home_dir.join("receipts/req-2.json")).unwrap(),
+        b"{\"r\":2}".to_vec(),
+        "the only copy of the switched-window data survives"
+    );
+    assert_eq!(
+        fs::read(home_dir.join("receipts/req-1.json")).unwrap(),
+        b"{\"r\":1}".to_vec()
+    );
+    assert!(
+        project.join(".moai-cli/receipts/req-1.json").is_file(),
+        "the project side is untouched"
+    );
+}
+
+/// The claim journal lock closes the copy→switch window: with the journal lock held,
+/// the apply refuses (busy) before any copy, and it succeeds once the lock is released.
+#[test]
+fn layout_apply_refuses_while_the_claim_journal_is_busy() {
+    let tmp = tempfile::tempdir().unwrap();
+    let home = tmp.path().join("home");
+    let (project, _home_guard) = setup_project(&home);
+    let out = cli(&project, &home, &["layout-plan", "."], None);
+    let digest = envelope(&out)["result"]["plan_digest"]
+        .as_str()
+        .unwrap()
+        .to_string();
+
+    // Hold the same advisory lock a claim-acquire holds (cross-process, so the
+    // subprocess below really sees busy).
+    let claims = project.join(".git/.moai-cli/claims");
+    let journal = moai_cli::claim::Journal::open(&claims).unwrap();
+    assert!(
+        journal.try_lock().unwrap(),
+        "the test holds the journal lock"
+    );
+
+    let before = hash_tree(&home);
+    let out = cli(
+        &project,
+        &home,
+        &[
+            "layout-apply",
+            ".",
+            "--plan-digest",
+            &digest,
+            "--permission-reference",
+            "test:layout-apply",
+        ],
+        None,
+    );
+    assert!(!out.status.success(), "a busy journal refuses the apply");
+    let v = envelope(&out);
+    assert_eq!(v["error"]["kind"], json!("conflict"));
+    assert!(
+        v["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("claim journal busy"),
+        "{}",
+        v["error"]["message"]
+    );
+    assert_eq!(
+        hash_tree(&home),
+        before,
+        "a busy-refused apply copies nothing"
+    );
+
+    // Released: the same command now succeeds.
+    drop(journal);
+    let out = cli(
+        &project,
+        &home,
+        &[
+            "layout-apply",
+            ".",
+            "--plan-digest",
+            &digest,
+            "--permission-reference",
+            "test:layout-apply",
+        ],
+        None,
+    );
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert_eq!(envelope(&out)["result"]["switched"], json!(true));
 }

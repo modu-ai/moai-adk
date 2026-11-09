@@ -195,6 +195,8 @@ enum Command {
         project: PathBuf,
         #[arg(long)]
         plan_digest: String,
+        #[arg(long)]
+        permission_reference: String,
     },
     /// Claim a task (06-A #2005): typed JSON request on stdin; posts exactly one claim
     /// comment (⑤) behind the same-host journal serialization (①) and records the record.
@@ -1016,7 +1018,8 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
         Command::LayoutApply {
             project,
             plan_digest,
-        } => moai_cli::layout::apply_cli(&project, &plan_digest),
+            permission_reference,
+        } => moai_cli::layout::apply_cli(&project, &plan_digest, &permission_reference),
         Command::ClaudeDoctor { project } => moai_cli::claude::doctor(&project),
         Command::ClaudeSettingsPlan { project } => {
             moai_cli::claude::settings_plan(&project, &input()?)

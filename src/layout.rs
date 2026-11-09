@@ -111,7 +111,7 @@ fn home_dir(home_root: &Path, project_id: &str, kind: &str) -> PathBuf {
     home_root.join("projects").join(project_id).join(sub)
 }
 
-fn measure_fb(root: &Path) -> (u64, u64) {
+fn measure_fb(root: &Path, excludes: &[&str]) -> (u64, u64) {
     let (mut files, mut bytes) = (0u64, 0u64);
     let mut stack = vec![root.to_path_buf()];
     while let Some(dir) = stack.pop() {
@@ -120,6 +120,13 @@ fn measure_fb(root: &Path) -> (u64, u64) {
         };
         for e in entries.flatten() {
             let p = e.path();
+            let rel = p
+                .strip_prefix(root)
+                .map(|r| r.to_string_lossy().into_owned())
+                .unwrap_or_default();
+            if excluded(rel.as_str(), excludes) {
+                continue;
+            }
             if p.is_dir() {
                 stack.push(p);
             } else if let Ok(m) = e.metadata() {
@@ -131,18 +138,34 @@ fn measure_fb(root: &Path) -> (u64, u64) {
     (files, bytes)
 }
 
+/// The journal's `.lock` is a serialization handle, not store data: it moves neither in
+/// the plan measure nor the digest nor the copy, or the apply's own `Journal::open`
+/// would make every plan stale.
+fn excluded(rel: &str, excludes: &[&str]) -> bool {
+    excludes.contains(&rel)
+}
+
+fn kind_excludes(kind: &str) -> &'static [&'static str] {
+    if kind == "claims" {
+        &[".lock"]
+    } else {
+        &[]
+    }
+}
+
 fn entry_for(project: &Path, home_root: &Path, kind: &str, project_id: &str) -> LayoutEntry {
     let target = home_dir(home_root, project_id, kind);
+    let excludes = kind_excludes(kind);
     match legacy_dir(project, kind) {
         Some(source) => {
-            let (files, bytes) = measure_fb(&source);
+            let (files, bytes) = measure_fb(&source, excludes);
             LayoutEntry {
                 kind: kind.to_string(),
                 source: source.to_string_lossy().into_owned(),
                 target: target.to_string_lossy().into_owned(),
                 files,
                 bytes,
-                source_digest: crate::tree_digest(&source, &[]).unwrap_or_default(),
+                source_digest: crate::tree_digest(&source, excludes).unwrap_or_default(),
             }
         }
         None => LayoutEntry {
@@ -180,10 +203,12 @@ fn identity_of(project: &Path) -> Result<String> {
 }
 
 /// Copies one source tree to its target without touching the source, then verifies the
-/// copy reproduces the source digest (REQ-B8-01: 복사·검증).
+/// copy reproduces the source digest (REQ-B8-01: 복사·검증). The entry's excludes (the
+/// journal `.lock`) are skipped in both the walk and the verify, matching the plan.
 fn copy_verified(entry: &LayoutEntry) -> Result<()> {
     let source = Path::new(&entry.source);
     let target = Path::new(&entry.target);
+    let excludes = kind_excludes(&entry.kind);
     std::fs::create_dir_all(target).map_err(|_| "home layout target unavailable".to_string())?;
     let mut stack = vec![source.to_path_buf()];
     while let Some(dir) = stack.pop() {
@@ -194,6 +219,9 @@ fn copy_verified(entry: &LayoutEntry) -> Result<()> {
             let rel = from
                 .strip_prefix(source)
                 .map_err(|_| "layout walk failed".to_string())?;
+            if excluded(rel.to_string_lossy().as_ref(), excludes) {
+                continue;
+            }
             let to = target.join(rel);
             if from.is_dir() {
                 stack.push(from);
@@ -204,24 +232,68 @@ fn copy_verified(entry: &LayoutEntry) -> Result<()> {
             }
         }
     }
-    let copied =
-        crate::tree_digest(target, &[]).map_err(|_| "home layout verify failed".to_string())?;
+    let copied = crate::tree_digest(target, excludes)
+        .map_err(|_| "home layout verify failed".to_string())?;
     if copied != entry.source_digest {
         // The verified copy failed: remove the partial copy, keep the source intact.
+        // Safe since repair (a): the target never pre-existed, so everything under it
+        // was created by this apply.
         let _ = std::fs::remove_dir_all(target);
         return Err("home layout verify failed; partial copy removed".into());
     }
     Ok(())
 }
 
-/// Executes a confirmed plan: copy every entry, verify the copy reproduces the source
-/// digest, then switch the pointer (write `layout.json`). The originals are never
+/// Executes a confirmed plan: validate the permission reference, refuse when the home
+/// targets already exist, hold the claim journal's advisory lock across the
+/// plan→copy→switch window, then copy every entry, verify the copy reproduces the
+/// source digest, and switch the pointer (write `layout.json`). The originals are never
 /// deleted (REQ-B8-01). A plan whose digest no longer matches the tree is refused
 /// (stale); a second apply while the pointer is already switched is a conflict.
-pub fn apply_at(project: &Path, home_root: &Path, confirmed: &str) -> Result<Value> {
+///
+/// Repairs from the 2026-11-09 audit (issue #2175 FAIL):
+/// - direction (a): a home target that already exists refuses the apply before any
+///   write. The home side may hold data written while the pointer was switched during
+///   an earlier apply — copying over it, or deleting it on a failed verify, destroyed
+///   the only copy. Nothing is overwritten or removed; the caller merges or removes the
+///   home side first, and a revert→re-apply sequence therefore cannot lose data.
+/// - the claim journal lock: a claim-acquire inside the copy window used to land on the
+///   project side and be missed by the switch; under the lock it sees busy (REQ-06A-05,
+///   never waits) and retries after the switch, landing on the home side.
+pub fn apply_at(
+    project: &Path,
+    home_root: &Path,
+    confirmed: &str,
+    permission: &str,
+) -> Result<Value> {
+    // Caller authorization remains host-owned; this reference is not an authorization verifier.
+    if ["", "null", "placeholder"].contains(&permission.trim())
+        || permission.len() > 128
+        || permission.chars().any(char::is_control)
+    {
+        return Err("permission reference required".into());
+    }
     if active_home(project, home_root).is_some() {
         return Err(
             "conflict in home layout: already switched; remove the home layout.json marker to revert first"
+                .into(),
+        );
+    }
+    let project_id = identity_of(project)?;
+    // Repair (a), checked for every kind before the first write.
+    for (kind, _, _) in KINDS {
+        if home_dir(home_root, &project_id, kind).exists() {
+            return Err(format!(
+                "conflict in home layout: home target for {kind} already exists; refusing overwrite; remove or merge it first; nothing applied"
+            ));
+        }
+    }
+    // The journal lock spans plan→copy→switch so the window closes for claimants.
+    let claims_root = crate::claim::journal_root(project)?;
+    let journal_lock = crate::claim::Journal::open(&claims_root)?;
+    if !journal_lock.try_lock()? {
+        return Err(
+            "conflict in home layout: claim journal busy; retry when no claimant holds it; nothing applied"
                 .into(),
         );
     }
@@ -277,14 +349,15 @@ pub fn plan_cli(project: &Path) -> Result<Value> {
     serde_json::to_value(&plan).map_err(|_| "encode failed".to_string())
 }
 
-pub fn apply_cli(project: &Path, confirmed: &str) -> Result<Value> {
+pub fn apply_cli(project: &Path, confirmed: &str, permission: &str) -> Result<Value> {
     let home_root = default_home_root().ok_or("home root unavailable; HOME is not set")?;
-    apply_at(project, &home_root, confirmed)
+    apply_at(project, &home_root, confirmed, permission)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
 
     #[test]
     fn plan_refuses_without_a_profile() {
@@ -293,6 +366,66 @@ mod tests {
         assert!(
             err.contains("profile") || err.contains("unavailable"),
             "{err}"
+        );
+    }
+
+    /// A minimal profile-bearing project (no git needed: the target guard fires before
+    /// the journal lock is taken).
+    fn fixture_project(root: &Path) -> PathBuf {
+        let project = root.join("project");
+        fs::create_dir_all(project.join(".moai-cli")).unwrap();
+        fs::write(
+            project.join(".moai-cli/project.yaml"),
+            r#"{"schema_version": 1, "project_id": "widgets", "purpose": "layout fixture", "tools": ["Rust"], "development_methods": ["TDD"], "hosts": ["claude"]}"#,
+        )
+        .unwrap();
+        project
+    }
+
+    /// Audit repair (a): an existing home target refuses the apply before any write —
+    /// the home side may hold data written during a previously switched window.
+    #[test]
+    fn apply_refuses_when_a_home_target_already_exists() {
+        let tmp = tempfile::tempdir().unwrap();
+        let project = fixture_project(tmp.path());
+        let home_root = tmp.path().join("home");
+        let existing = home_dir(&home_root, "widgets", "receipts");
+        fs::create_dir_all(&existing).unwrap();
+        fs::write(
+            existing.join("req-newer.json"),
+            b"{\"written while switched\":true}",
+        )
+        .unwrap();
+        let confirmed = plan(&project, &home_root).unwrap().plan_digest;
+        let err = apply_at(&project, &home_root, &confirmed, "test:layout").unwrap_err();
+        assert!(
+            err.contains("home target for receipts already exists"),
+            "{err}"
+        );
+        assert_eq!(
+            fs::read(existing.join("req-newer.json")).unwrap(),
+            b"{\"written while switched\":true}".to_vec(),
+            "the existing home data is untouched"
+        );
+        assert!(
+            !home_root.join("projects/widgets/layout.json").exists(),
+            "the pointer is never written by a refused apply"
+        );
+    }
+
+    #[test]
+    fn apply_refuses_a_placeholder_permission_reference() {
+        let tmp = tempfile::tempdir().unwrap();
+        let project = fixture_project(tmp.path());
+        let home_root = tmp.path().join("home");
+        let confirmed = plan(&project, &home_root).unwrap().plan_digest;
+        for permission in ["", "null", "placeholder"] {
+            let err = apply_at(&project, &home_root, &confirmed, permission).unwrap_err();
+            assert_eq!(err, "permission reference required", "{permission:?}");
+        }
+        assert!(
+            !home_root.join("projects").exists(),
+            "a refused apply writes nothing"
         );
     }
 }
