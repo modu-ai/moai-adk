@@ -42,6 +42,8 @@
 - `effect-confirm`
 - `effect-intend`
 - `effects-reconcile`
+- `flow-gate-verdict`
+- `flow-wip-check`
 - `forge-audit-status`
 - `forge-read`
 - `forge-report`
