@@ -1,5 +1,6 @@
 pub mod agents;
 pub mod apply;
+pub mod atlas_tag;
 pub mod audit;
 pub mod baseline;
 pub mod claim;
