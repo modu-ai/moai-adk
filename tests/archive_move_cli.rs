@@ -26,7 +26,11 @@ fn git(dir: &Path, args: &[&str]) {
         .env("GIT_COMMITTER_DATE", format!("{OLD_SECS} +0000"))
         .output()
         .unwrap();
-    assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
 }
 
 fn cli(args: &[&str]) -> (i32, Value) {

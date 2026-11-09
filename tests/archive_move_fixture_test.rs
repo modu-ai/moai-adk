@@ -252,10 +252,7 @@ fn restore_round_trips_the_archived_spec() {
     let out = restore(&project, "SPEC-A", PERMISSION).unwrap();
     assert_eq!(out["state"], "restored");
     assert_eq!(out["spec_id"], "SPEC-A");
-    assert_eq!(
-        manifest(&specs(&project).join("SPEC-A")).unwrap(),
-        original
-    );
+    assert_eq!(manifest(&specs(&project).join("SPEC-A")).unwrap(), original);
     assert!(!archived(&project).join("SPEC-A").exists());
     let idx = index(&project);
     let left: Vec<&str> = idx["entries"]
@@ -293,9 +290,40 @@ fn restore_refuses_a_tampered_archive_copy() {
     apply(&project, now(), None, &digest, PERMISSION).unwrap();
     fs::write(archived(&project).join("SPEC-A/spec.md"), b"tampered").unwrap();
     let err = restore(&project, "SPEC-A", PERMISSION).unwrap_err();
-    assert!(err.contains("digest mismatch"), "{err}");
+    // The pre-copy check names the archived copy; the later readback would not.
+    assert!(err.contains("archived copy digest mismatch"), "{err}");
     assert!(!specs(&project).join("SPEC-A").exists());
     assert!(archived(&project).join("SPEC-A/spec.md").is_file());
+}
+
+#[test]
+fn restore_refuses_a_manifest_that_disagrees_with_the_index() {
+    let (_root, project) = fixture();
+    let digest = digest_of(&project);
+    apply(&project, now(), None, &digest, PERMISSION).unwrap();
+    let mpath = archived(&project).join("SPEC-A.manifest.json");
+    let mut m: Value = serde_json::from_slice(&fs::read(&mpath).unwrap()).unwrap();
+    m["dirs"] = serde_json::json!([]);
+    fs::write(&mpath, serde_json::to_vec_pretty(&m).unwrap()).unwrap();
+    let err = restore(&project, "SPEC-A", PERMISSION).unwrap_err();
+    assert!(err.contains("archive manifest digest mismatch"), "{err}");
+    assert!(!specs(&project).join("SPEC-A").exists());
+}
+
+#[test]
+fn apply_refuses_a_spec_already_in_the_index() {
+    let (_root, project) = fixture();
+    let digest = digest_of(&project);
+    apply(&project, now(), None, &digest, PERMISSION).unwrap();
+    // The archived directory disappears but its index entry stays; the same SPEC id
+    // shows up again with old history, so the plan lists it as eligible.
+    fs::remove_dir_all(archived(&project).join("SPEC-A")).unwrap();
+    write_spec(&project, "SPEC-A", "status: completed\n", "again");
+    let digest = digest_of(&project);
+    let err = apply(&project, now(), None, &digest, PERMISSION).unwrap_err();
+    assert!(err.contains("index entry already exists"), "{err}");
+    assert!(specs(&project).join("SPEC-A/spec.md").is_file());
+    assert!(!archived(&project).join("SPEC-A").exists());
 }
 
 #[test]
@@ -311,7 +339,8 @@ fn search_finds_archived_text_case_insensitively() {
     assert_eq!(hits.len(), 1, "{hits:?}");
     assert_eq!(hits[0]["spec_id"], "SPEC-A");
     assert_eq!(hits[0]["path"], "spec.md");
-    assert_eq!(hits[0]["line"], 5);
+    // spec.md: ---, name, status, ---, heading, then the body on line 6.
+    assert_eq!(hits[0]["line"], 6);
 
     // The SPEC id itself is searchable through the index.
     let out = search(&project, "spec-b").unwrap();

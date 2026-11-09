@@ -22,7 +22,10 @@
 - `agents-apply`
 - `agents-plan`
 - `apply-recover`
+- `archive-apply`
 - `archive-plan`
+- `archive-restore`
+- `archive-search`
 - `audit-reduce`
 - `baseline-inventory`
 - `claim-acquire`
