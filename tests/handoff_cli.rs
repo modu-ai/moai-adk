@@ -10,6 +10,8 @@ use moai_cli::contract;
 use moai_cli::forge::policy::{format_utc, Clock};
 use moai_cli::forge::transport::{Exchange, HttpRequest, HttpResponse, RecordedTransport};
 use moai_cli::handoff::{claim_handoff, effect_confirm, effect_intend, effects_reconcile};
+mod common;
+
 use serde_json::{json, Value};
 use std::{
     cell::{Cell, RefCell},
@@ -192,12 +194,7 @@ fn journal_of(repo: &Path) -> Journal {
 
 fn write_probe(dir: &Path, name: &str, script: &str) -> PathBuf {
     let path = dir.join(name);
-    fs::write(&path, format!("#!/bin/sh\n{script}\n")).unwrap();
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
-    }
+    common::write_executable(&path, &format!("#!/bin/sh\n{script}\n"));
     path
 }
 
