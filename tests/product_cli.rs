@@ -2166,6 +2166,10 @@ mod skill_package {
     const INTENTS: [&str; 8] = [
         "READ", "SETUP", "UPDATE", "PLAN", "RUN", "VERIFY", "AUDIT", "SYNC",
     ];
+    /// Mode routes (rc.2 A1 #2160). Kept apart from INTENTS, which also counts the legacy
+    /// asset map's rows by intent.
+    const MODES: [&str; 2] = ["MODE-LEADER", "MODE-AGENT"];
+    const SPEC: &str = "docs/design-review/autonomy-modes-spec.md";
     const MANIFEST: &str = "references/source-manifest.json";
     // Claude Code-only frontmatter (https://code.claude.com/docs/en/skills, read 2026-11-08).
     const CLAUDE_ONLY: [&str; 9] = [
@@ -2284,7 +2288,7 @@ mod skill_package {
         let table = routes["routes"].as_object().unwrap();
         let mut keys: Vec<&str> = table.keys().map(String::as_str).collect();
         keys.sort();
-        let mut want = INTENTS.to_vec();
+        let mut want: Vec<&str> = INTENTS.iter().chain(MODES.iter()).copied().collect();
         want.sort();
         assert_eq!(keys, want);
         for (intent, route) in table {
@@ -2308,6 +2312,89 @@ mod skill_package {
             );
             assert!(body.lines().count() <= 500, "{intent}");
         }
+    }
+
+    /// The mode workflow behind a route, after checking the route itself (AC-1, #2160).
+    fn mode_workflow(route: &str) -> String {
+        let routes: Value =
+            serde_json::from_slice(&fs::read(root().join("references/routes.json")).unwrap())
+                .unwrap();
+        let r = &routes["routes"][route];
+        assert_eq!(r["requires_binary"], json!(false), "{route}");
+        let reference = r["reference"].as_str().unwrap();
+        let skill = fs::read_to_string(root().join("SKILL.md")).unwrap();
+        assert!(skill.contains(route), "SKILL.md names {route}");
+        fs::read_to_string(root().join("references").join(reference)).unwrap()
+    }
+    /// AC-2: every `SPEC §N` a mode workflow cites is a section of the SPEC, and the
+    /// workflow does not restate the claim procedure the SPEC defines.
+    fn cites_spec_sections_only(body: &str, route: &str) {
+        let spec = fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join(SPEC)).unwrap();
+        let cited: Vec<&str> = body
+            .match_indices("SPEC §")
+            .map(|(i, m)| {
+                let rest = &body[i + m.len()..];
+                &rest[..rest
+                    .find(|c: char| !c.is_ascii_digit())
+                    .unwrap_or(rest.len())]
+            })
+            .collect();
+        assert!(!cited.is_empty(), "{route} cites the SPEC by section");
+        for n in cited {
+            assert!(
+                spec.lines().any(|l| l.starts_with(&format!("## {n}. "))),
+                "{route} cites SPEC §{n}, which the SPEC does not have"
+            );
+        }
+        for restated in ["moai-claim:", "lease_until", "journal", "comment id"] {
+            assert!(!body.contains(restated), "{route} restates {restated}");
+        }
+    }
+
+    #[test]
+    fn mode_leader_route_loads_its_workflow() {
+        let body = mode_workflow("MODE-LEADER");
+        let skill = fs::read_to_string(root().join("SKILL.md")).unwrap();
+        assert!(skill.contains("`--mode leader`") && skill.contains("`--autonomy full|semi`"));
+        // REQ-A1-01: the loaded mode ignores the other mode's instructions.
+        assert!(body.contains("ignore instructions for any other mode"));
+        assert!(
+            body.contains("`/goal <condition>`") && body.contains("Never run `/goal` yourself")
+        );
+        cites_spec_sections_only(&body, "MODE-LEADER");
+    }
+
+    #[test]
+    fn mode_agent_route_loads_its_workflow() {
+        let body = mode_workflow("MODE-AGENT");
+        let skill = fs::read_to_string(root().join("SKILL.md")).unwrap();
+        assert!(skill.contains("`--mode agent`") && skill.contains("`$moai --mode …`"));
+        assert!(body.contains("ignore instructions for any other mode"));
+        assert!(
+            body.contains("`$moai --mode agent`"),
+            "Codex may enter agent mode"
+        );
+        cites_spec_sections_only(&body, "MODE-AGENT");
+    }
+
+    #[test]
+    fn mode_leader_refuses_codex_with_decision_d3() {
+        // REQ-A1-02: leader mode is Claude Code only (D-3); the refusal comes first.
+        let body = mode_workflow("MODE-LEADER");
+        let procedure = &body[body.find("## Procedure").unwrap()..];
+        let first = procedure.lines().find(|l| l.starts_with("1. ")).unwrap();
+        assert!(
+            first.contains("Codex CLI") && first.contains("refuse"),
+            "{first}"
+        );
+        assert!(
+            first.contains("D-3") && first.contains("Claude Code only"),
+            "{first}"
+        );
+        assert!(
+            first.contains("`$moai --mode agent`"),
+            "the refusal points to agent mode"
+        );
     }
 
     #[test]
