@@ -22,7 +22,10 @@
 - `agents-apply`
 - `agents-plan`
 - `apply-recover`
+- `archive-apply`
 - `archive-plan`
+- `archive-restore`
+- `archive-search`
 - `atlas-tag-scan`
 - `audit-reduce`
 - `baseline-inventory`
@@ -46,6 +49,7 @@
 - `flow-gate-verdict`
 - `flow-wip-check`
 - `forge-audit-status`
+- `forge-links-probe`
 - `forge-read`
 - `forge-report`
 - `generation-apply`

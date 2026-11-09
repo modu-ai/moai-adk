@@ -152,6 +152,11 @@ enum Command {
     ForgeRead {
         project: PathBuf,
     },
+    /// Probe whether the sub-issue and dependency APIs answer for one Issue and plan the
+    /// links: API write intents, or `Parent:`/`Blocked-By:` body lines (GET only; #2172).
+    ForgeLinksProbe {
+        project: PathBuf,
+    },
     /// Create or update the one report comment of a run on its Issue (typed JSON payload on
     /// stdin; envelope on stdout). Large output goes to artifact references, not the body.
     ForgeReport {
@@ -552,6 +557,33 @@ enum Command {
         #[arg(long)]
         grace_days: Option<u64>,
     },
+    /// Move the archive-eligible SPECs (D2 #2188, REQ-D2-01): recomputes the plan and
+    /// requires its `plan_digest`; each SPEC is hashed, copied, read back and indexed
+    /// before its source is removed. Any mismatch cancels the move and keeps the source.
+    ArchiveApply {
+        project: PathBuf,
+        #[arg(long)]
+        plan_digest: String,
+        #[arg(long)]
+        permission_reference: String,
+        #[arg(long)]
+        grace_days: Option<u64>,
+    },
+    /// Restore one archived SPEC to `.moai-cli/specs/<id>` after verifying its manifest
+    /// (D2 #2188).
+    ArchiveRestore {
+        project: PathBuf,
+        #[arg(long)]
+        spec: String,
+        #[arg(long)]
+        permission_reference: String,
+    },
+    /// Read-only, non-vector search over the archive index and archived text (D2 #2188).
+    ArchiveSearch {
+        project: PathBuf,
+        #[arg(long)]
+        query: String,
+    },
     /// Plan external skill source candidates read-only (03-B #1996): typed request on
     /// stdin; judgment envelope on stdout; writes nothing.
     SkillSourcePlan {
@@ -814,7 +846,10 @@ fn operation(command: &Command) -> Option<&'static str> {
         AgentsApply { .. } => "agents.apply",
         AgentsPlan { .. } => "agents.plan",
         ApplyRecover { .. } => "apply.recover",
+        ArchiveApply { .. } => "archive.apply",
         ArchivePlan { .. } => "archive.plan",
+        ArchiveRestore { .. } => "archive.restore",
+        ArchiveSearch { .. } => "archive.search",
         AtlasTagScan { .. } => "atlas_tag.scan",
         AuditReduce { .. } => "audit.reduce",
         BaselineInventory { .. } => "baseline.inventory",
@@ -838,6 +873,7 @@ fn operation(command: &Command) -> Option<&'static str> {
         FlowGateVerdict { .. } => "flow.gate_verdict",
         FlowWipCheck { .. } => "flow.wip_check",
         ForgeAuditStatus { .. } => "forge.audit_status",
+        ForgeLinksProbe { .. } => "forge.links_probe",
         ForgeRead { .. } => "forge.read",
         ForgeReport { .. } => "forge.report",
         GenerationApply { .. } => "generation.apply",
@@ -1044,6 +1080,12 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
         Command::ForgeRead { project } => moai_cli::forge::forge_read_cli(
             &project,
             input::<moai_cli::forge::ReadRequest>()?,
+            &moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        Command::ForgeLinksProbe { project } => moai_cli::forge::links::links_probe_cli(
+            &project,
+            input::<moai_cli::forge::links::LinksRequest>()?,
             &moai_cli::forge::transport::GhTransport::from_env()?,
             &moai_cli::forge::policy::SystemClock,
         ),
@@ -1485,6 +1527,24 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             grace_days,
         )?)
         .map_err(|_| "encode failed".into()),
+        Command::ArchiveApply {
+            project,
+            plan_digest,
+            permission_reference,
+            grace_days,
+        } => moai_cli::archive::apply(
+            &project,
+            std::time::SystemTime::now(),
+            grace_days,
+            &plan_digest,
+            &permission_reference,
+        ),
+        Command::ArchiveRestore {
+            project,
+            spec,
+            permission_reference,
+        } => moai_cli::archive::restore(&project, &spec, &permission_reference),
+        Command::ArchiveSearch { project, query } => moai_cli::archive::search(&project, &query),
         Command::SkillSourcePlan { project } => serde_json::to_value(moai_cli::sources::plan(
             &project,
             input::<moai_cli::sources::SourcesRequest>()?,
