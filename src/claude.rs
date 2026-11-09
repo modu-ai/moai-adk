@@ -802,7 +802,8 @@ mod tests {
     #[test]
     fn claude_settings_refuses_unmanaged_keys_and_keeps_order() {
         for (b, d) in [
-            (json!({}), json!({"permissions": {}})),
+            // `permissions` became managed in #2244; `env` and `hooks` stay unmanaged.
+            (json!({}), json!({"env": {}})),
             (json!({"hooks": {}}), json!({})),
         ] {
             let err = plan_settings(&obj(b), &Map::new(), &obj(d)).unwrap_err();
@@ -821,6 +822,63 @@ mod tests {
         assert_eq!(keys, expected);
         expected.sort();
         assert_eq!(result.unwrap().len(), expected.len());
+    }
+
+    // #2244 (I7): `permissions` is a managed key; values that widen access are refused.
+    #[test]
+    fn claude_settings_plans_a_narrowing_permissions_key() {
+        let desired = obj(json!({"permissions": {
+            "allow": ["Bash(cargo test *)"], "deny": ["Bash(git push *)"], "ask": [],
+            "defaultMode": "plan"}}));
+        let (result, conflicts) = plan_settings(&Map::new(), &Map::new(), &desired).unwrap();
+        assert!(conflicts.is_empty());
+        assert_eq!(result.unwrap()["permissions"], desired["permissions"]);
+        for mode in ["default", "acceptEdits", "plan", "dontAsk"] {
+            let d = obj(json!({"permissions": {"defaultMode": mode}}));
+            assert!(
+                plan_settings(&Map::new(), &Map::new(), &d).is_ok(),
+                "{mode}"
+            );
+        }
+        // A user-authored permissions key MoAI never owned is a conflict, not an overwrite.
+        let current = obj(json!({"permissions": {"allow": ["Read"]}}));
+        let (result, conflicts) = plan_settings(&Map::new(), &current, &desired).unwrap();
+        assert_eq!((result, conflicts), (None, vec!["permissions".to_string()]));
+    }
+
+    #[test]
+    fn claude_settings_refuses_permissions_that_widen_or_are_malformed() {
+        let rule = |n: usize| "R".repeat(n);
+        let many = |n: usize| vec!["Read"; n];
+        let refused = [
+            json!({"permissions": {"defaultMode": "bypassPermissions"}}),
+            json!({"permissions": {"defaultMode": "auto"}}),
+            json!({"permissions": {"defaultMode": "unknownMode"}}),
+            json!({"permissions": {"additionalDirectories": ["/"]}}),
+            json!({"permissions": {"disableBypassPermissionsMode": "disable"}}),
+            json!({"permissions": {"allow": "Read"}}),
+            json!({"permissions": {"allow": [1]}}),
+            json!({"permissions": {"deny": [""]}}),
+            json!({"permissions": {"ask": [rule(257)]}}),
+            json!({"permissions": {"allow": many(257)}}),
+            json!({"permissions": {"allow": ["Read\nBash"]}}),
+            json!({"permissions": ["Read"]}),
+        ];
+        for d in refused {
+            let err = plan_settings(&Map::new(), &Map::new(), &obj(d.clone())).unwrap_err();
+            assert_eq!(
+                crate::contract::classify(&err),
+                crate::contract::Kind::InvalidInput,
+                "{d}: {err}"
+            );
+        }
+        // Edges: 256 characters per rule and 256 rules per list are accepted.
+        for d in [
+            json!({"permissions": {"ask": [rule(256)]}}),
+            json!({"permissions": {"allow": many(256)}}),
+        ] {
+            assert!(plan_settings(&Map::new(), &Map::new(), &obj(d)).is_ok());
+        }
     }
 
     // SETTINGS-PRESERVE: every case runs in a temporary project; no real settings are touched.
