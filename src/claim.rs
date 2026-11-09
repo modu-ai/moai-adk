@@ -16,7 +16,10 @@
 //! `moai-claim: session=<id> epoch=<n> lease_until=<utc>` (after the journal check) and
 //! records the returned comment id in the record. When live claim comments collide, the
 //! smallest comment id wins and the loser stops writing and gets `already_owned`
-//! (REQ-06A-13). The token `Moai-Claim: <issue>#<comment-id>` is carried in the branch
+//! (REQ-06A-13). A winning comment with the caller's own session value is adopted only when
+//! this journal recorded posting that comment id; otherwise the outcome is `uncertain` and
+//! nothing is written, because a same-named live session may own it (#2165, REQ-AM-04).
+//! The token `Moai-Claim: <issue>#<comment-id>` is carried in the branch
 //! name (suffix `c<issue>-<id>`), in every commit trailer and in the PR body
 //! (REQ-06A-14); [`verify_claim_token`] is the leader's read-side check (REQ-06A-15).
 //! An expired lease is never taken over automatically: the outcome names the operator
@@ -855,6 +858,26 @@ pub fn acquire<T: Transport, C: Clock>(
                 notes: vec![
                     "a live claim comment with a smaller comment id is the winner; nothing was written".into(),
                 ],
+            });
+        }
+        // The winner carries our session value. A comment body proves nothing about who
+        // posted it (every lane shares one forge account), so it is adopted only when this
+        // journal recorded posting that very comment; otherwise a same-named live session
+        // may own it (#2165 REQ-A6-01, REQ-AM-04).
+        Some(winner) if !mine.iter().any(|r| r.comment_id == Some(winner.comment_id)) => {
+            return Ok(AcquireOutcome {
+                outcome: "uncertain",
+                record: None,
+                foreign_owner: Some(json!({
+                    "session": winner.session, "epoch": winner.epoch,
+                    "comment_id": winner.comment_id, "lease_until": winner.lease_until,
+                })),
+                notes: vec![format!(
+                    "the winning live claim comment (id {}) carries this session value but this \
+                     clone's journal has no record of posting it; it was not adopted — another \
+                     live session may share the name (REQ-AM-04); nothing was written",
+                    winner.comment_id
+                )],
             });
         }
         Some(winner) => {
