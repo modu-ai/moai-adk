@@ -500,8 +500,11 @@ pub fn hook_cli<T: Transport, C: Clock>(
         let mut verdict = verify_cli(&req, transport, clock)?;
         if push && record.claim_token.is_some() {
             let tokens = accepted_tokens(issue, &verdict);
-            verdict["trailer_checked"] =
-                json!(missing_trailers(&cwd, &record.base_revision, &tokens)?);
+            verdict["trailer_checked"] = json!(missing_trailers_since(
+                &cwd,
+                &record.base_revision,
+                &tokens
+            )?);
         }
         verdict["allowed"] = json!(true);
         verdict["issue"] = json!(issue);
@@ -586,13 +589,16 @@ pub fn hook_cli<T: Transport, C: Clock>(
     };
     let mut verdict = verify_cli(&req, transport, clock)?;
     if push {
-        // No recorded base: the branch's own line starts at its merge-base with the
-        // repository's default branch.
-        let Some(base) = git_out(&cwd, &["merge-base", "HEAD", "refs/remotes/origin/HEAD"]) else {
-            return uncertain("the merge-base with origin/HEAD is unavailable".into());
-        };
+        // No recorded base. The lane's own commits are those not on any other `origin`
+        // branch: the integration branch need not share history with the default branch
+        // (this repository's `v2026.11.0` and `main` have none), so no single base is assumed.
+        // With no other remote branch every commit is checked, and the push is refused.
+        // With `--remotes`, `--exclude` matches the name without `refs/remotes/` (git
+        // rev-parse docs), so the branch's own remote ref is `origin/<branch>`.
+        let own = format!("--exclude=origin/{branch}");
+        let range = ["HEAD", "--not", own.as_str(), "--remotes=origin"];
         let tokens = accepted_tokens(issue, &verdict);
-        verdict["trailer_checked"] = json!(missing_trailers(&cwd, &base, &tokens)?);
+        verdict["trailer_checked"] = json!(missing_trailers(&cwd, &range, &tokens)?);
     }
     verdict["allowed"] = json!(true);
     verdict["issue"] = json!(issue);
@@ -605,12 +611,17 @@ pub fn hook_cli<T: Transport, C: Clock>(
 /// 2026-11-09 06:02, #1975: the claim line is required on lane-written commits, a merge commit
 /// is only a record), and so are the merged-in commits of other cards. Returns the number of
 /// commits checked; refuses with the short SHAs that lack a token.
-fn missing_trailers(cwd: &Path, base: &str, tokens: &[String]) -> Result<usize> {
+fn missing_trailers_since(cwd: &Path, base: &str, tokens: &[String]) -> Result<usize> {
     if base.len() != 40 || !base.bytes().all(|b| b.is_ascii_hexdigit()) {
         return Err(
             "claim verify: trailer check unavailable; the claim base is not a commit".into(),
         );
     }
+    missing_trailers(cwd, &[&format!("{base}..HEAD")], tokens)
+}
+
+/// [`missing_trailers_since`] over a revision range given as `git log` arguments.
+fn missing_trailers(cwd: &Path, range: &[&str], tokens: &[String]) -> Result<usize> {
     let out = std::process::Command::new("git")
         .arg("-C")
         .arg(cwd)
@@ -620,7 +631,7 @@ fn missing_trailers(cwd: &Path, base: &str, tokens: &[String]) -> Result<usize> 
             "--no-merges",
             "--format=%H%x00%B%x1e",
         ])
-        .arg(format!("{base}..HEAD"))
+        .args(range)
         .output()
         .map_err(|_| "claim verify: trailer check unavailable; git could not run")?;
     if !out.status.success() {
@@ -645,9 +656,17 @@ fn missing_trailers(cwd: &Path, base: &str, tokens: &[String]) -> Result<usize> 
     if lacking.is_empty() {
         Ok(checked)
     } else {
+        // At most 10 SHAs are named: a range with no other remote branch can span history.
+        let more = lacking.len().saturating_sub(10);
+        lacking.truncate(10);
         Err(format!(
-            "claim verify: trailer missing; commits {} lack `{}`, so no push",
+            "claim verify: trailer missing; commits {}{} lack `{}`, so no push",
             lacking.join(", "),
+            if more > 0 {
+                format!(" and {more} more")
+            } else {
+                String::new()
+            },
             tokens.join("` or `")
         ))
     }

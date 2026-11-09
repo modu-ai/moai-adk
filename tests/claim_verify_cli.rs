@@ -947,7 +947,7 @@ fn hook_guards_a_lane_branch_without_a_claim_record() {
 }
 
 /// The push half of the operating path: the comment id comes from the newest own commit's
-/// token, the base is the merge-base with origin/HEAD, tip merges are not checked.
+/// token, the range is the commits on no other origin branch, tip merges are not checked.
 #[test]
 fn hook_guards_a_lane_push_without_a_claim_record() {
     let clock = FixedClock(now());
@@ -1001,7 +1001,6 @@ fn hook_guards_a_lane_push_without_a_claim_record() {
     let err = push().unwrap_err();
     assert!(err.starts_with("claim verify: trailer missing"), "{err}");
 
-    // Without origin/HEAD the base is unknown: uncertain, never an unchecked push.
     git(
         &root,
         &[
@@ -1013,12 +1012,60 @@ fn hook_guards_a_lane_push_without_a_claim_record() {
             "fixed\n\nMoai-Claim: 7#100",
         ],
     );
+    // Two lane commits now ("work" and "fixed"); the tip merge between them is not checked.
+    assert_eq!(push().unwrap()["trailer_checked"], json!(2));
+
+    // The branch's own pushed commits are still checked: excluding origin/<own branch>
+    // from "other remote branches" keeps them in range.
+    git(
+        &root,
+        &["update-ref", "refs/remotes/origin/issue/7-widget", "HEAD"],
+    );
+    assert_eq!(push().unwrap()["trailer_checked"], json!(2));
+
+    // With no other remote branch, every commit is checked: the base commit lacks the
+    // token, so the push is refused rather than passed unchecked.
     git(
         &root,
         &["symbolic-ref", "--delete", "refs/remotes/origin/HEAD"],
     );
+    git(&root, &["update-ref", "-d", "refs/remotes/origin/main"]);
     let err = push().unwrap_err();
-    assert!(err.contains("merge-base with origin/HEAD"), "{err}");
+    assert!(err.starts_with("claim verify: trailer missing"), "{err}");
+}
+
+/// This repository's shape: the integration branch shares no history with the default
+/// branch `origin/HEAD` points to, so no merge-base with it exists. The push check still
+/// scopes to the lane's own commits (those on no other origin branch).
+#[test]
+fn lane_push_works_when_the_integration_branch_is_unrelated_to_the_default_branch() {
+    let clock = FixedClock(now());
+    let (_d, root) = lane_repo("issue/7-widget");
+    git(&root, &["checkout", "-q", "--orphan", "integration"]);
+    git(
+        &root,
+        &["commit", "-q", "--allow-empty", "-m", "integration root"],
+    );
+    git(
+        &root,
+        &["update-ref", "refs/remotes/origin/integration", "HEAD"],
+    );
+    git(&root, &["branch", "-q", "-D", "issue/7-widget"]);
+    git(&root, &["checkout", "-q", "-b", "issue/7-widget"]);
+    git(
+        &root,
+        &[
+            "commit",
+            "-q",
+            "--allow-empty",
+            "-m",
+            "work\n\nMoai-Claim: 7#100",
+        ],
+    );
+    let t = RecordedTransport::new(vec![get(owner_100())]);
+    let v = hook_cli(&root, &hook_input("git push", &root), &t, &clock).unwrap();
+    assert_eq!(v["status"], json!("owner"));
+    assert_eq!(v["trailer_checked"], json!(1));
 }
 
 /// The binary on the operating path: a tokenless commit in an `issue/<n>` worktree without a
