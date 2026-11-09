@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""A4 #2163의 전체 출력 스냅샷과 실패 경로를 검증한다."""
+"""Verify full-output snapshots and failure paths for A4 #2163."""
 
 import copy
 import json
