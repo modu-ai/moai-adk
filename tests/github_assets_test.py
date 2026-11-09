@@ -171,7 +171,9 @@ class WorkflowTest(unittest.TestCase):
         self.assertEqual(check["runs-on"], "${{ matrix.runner }}")
         aggregate = flow["jobs"]["rc-ci"]
         self.assertEqual(aggregate["needs"], ["check"])
-        self.assertEqual(aggregate["if"], "${{ always() }}")
+        # #2312: runs after a failed target (so the check fails, not skips) but not after a
+        # cancellation (always() reported a cancel-in-progress run as a failure).
+        self.assertEqual(aggregate.get("if"), "${{ !cancelled() }}")
         gate = "\n".join(s.get("run", "") for s in aggregate["steps"])
         self.assertIn('[ "${{ needs.check.result }}" = "success" ]', gate)
 
