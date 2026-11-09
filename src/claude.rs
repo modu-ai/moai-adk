@@ -338,12 +338,27 @@ pub fn plan_settings(
     current: &Map<String, Value>,
     desired: &Map<String, Value>,
 ) -> Result<SettingsPlan> {
-    if baseline
+    // REQ-I2-01: only the managed keys are written; any other key is refused and named.
+    let mut refused: Vec<&str> = baseline
         .keys()
         .chain(desired.keys())
-        .any(|k| !MANAGED_SETTINGS.contains(&k.as_str()))
-    {
-        return Err("unmanaged claude settings key refused".into());
+        .map(String::as_str)
+        .filter(|k| !MANAGED_SETTINGS.contains(k))
+        .collect();
+    if !refused.is_empty() {
+        refused.sort_unstable();
+        refused.dedup();
+        let shown: Vec<String> = refused
+            .iter()
+            .take(8)
+            .map(|k| k.chars().filter(|c| !c.is_control()).take(64).collect())
+            .collect();
+        return Err(format!(
+            "unmanaged claude settings key refused: {}{}; allowed: {}",
+            shown.join(", "),
+            if refused.len() > 8 { ", …" } else { "" },
+            MANAGED_SETTINGS.join(", ")
+        ));
     }
     if let Some(p) = desired.get("permissions") {
         check_permissions(p)?;
@@ -418,11 +433,28 @@ struct SettingsState {
     digest: String,
 }
 
+/// The project's `.claude/settings.json` is the user's own settings file when the project is
+/// the home directory, or when its `.claude` is `CLAUDE_CONFIG_DIR`. Writing there is a
+/// home write, which is blocked (#2239); planning it is refused too, so no digest exists.
+fn refuse_user_scope(root: &Path) -> Result<()> {
+    let canon = |v: Option<std::ffi::OsString>| v.and_then(|p| fs::canonicalize(p).ok());
+    let home = canon(std::env::var_os("HOME"));
+    let config = canon(std::env::var_os("CLAUDE_CONFIG_DIR"));
+    let claude_dir = fs::canonicalize(root.join(".claude")).ok();
+    if home.as_deref() == Some(root)
+        || (config.is_some() && claude_dir.is_some() && config == claude_dir)
+    {
+        return Err("user-scope claude settings refused: the project is the home directory or its .claude is CLAUDE_CONFIG_DIR; home writes are blocked".into());
+    }
+    Ok(())
+}
+
 fn settings_state(project: &Path, desired: &Map<String, Value>) -> Result<SettingsState> {
     let root = fs::canonicalize(project).map_err(|_| "project directory unavailable")?;
     if !root.is_dir() {
         return Err("project must be a directory".into());
     }
+    refuse_user_scope(&root)?;
     let state_dir = root.join(crate::PROJECT_STATE_DIR);
     for dir in [
         root.join(".claude"),
