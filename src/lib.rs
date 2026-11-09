@@ -14,6 +14,7 @@ pub mod handoff;
 pub mod hosts;
 pub mod identity;
 pub mod install;
+pub mod leader;
 pub mod parity;
 pub mod plan;
 pub mod pr_link;
