@@ -274,6 +274,13 @@ mod tests {
             // queue-next (rc.2 A2 #2161)
             ("queue milestone must be a positive number", InvalidInput),
             ("queue issue page limit exceeded (50)", InvalidInput),
+            // leader-tick and the profile `leader` key (rc.2 A3 #2162)
+            ("leader tick page limit exceeded (50)", InvalidInput),
+            ("leader tick base_branch must be a plain branch name", InvalidInput),
+            ("leader pr_check_interval_secs must be a positive number", InvalidInput),
+            ("leader tick state directory unavailable", Io),
+            ("leader tick state write failed", Io),
+            ("leader tick state replace failed", Io),
             // identity (01-A #1988)
             ("path unavailable", NotFound),
             ("path must be a directory", InvalidInput),

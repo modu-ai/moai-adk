@@ -159,6 +159,13 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
+    /// Post the `moai/audit` commit status on an exact SHA (typed JSON on stdin). Uses the
+    /// audit App token from `MOAI_AUDIT_APP_TOKEN` when set, else warns (#2173).
+    ForgeAuditStatus {
+        project: PathBuf,
+        #[arg(long)]
+        permission_reference: String,
+    },
     /// Preview promotion of selected local TODOs to GitHub Issues (reads only; typed JSON
     /// request on stdin naming `tasks_path`, `target` and `selected`; envelope on stdout).
     TodoPromotePreview {
@@ -186,6 +193,11 @@ enum Command {
     /// open Issues, skips epics, pull requests and open-blocked cards, and claims the first
     /// candidate through `claim-acquire` under one journal lock.
     QueueNext {
+        project: PathBuf,
+    },
+    /// Leader supervision tick (rc.2 A3 #2162): typed JSON request on stdin; GET-only read
+    /// of open PRs, reports only what changed since the last tick, drafts assignee hints.
+    LeaderTick {
         project: PathBuf,
     },
     /// Read the current claim record of a task key; byte-identical when repeated.
@@ -659,6 +671,7 @@ const OPERATIONS: &[(&str, &str)] = &[
     ("codex-doctor", "codex.doctor"),
     ("claim-acquire", "claim.acquire"),
     ("queue-next", "queue.next"),
+    ("leader-tick", "leader.tick"),
     ("claim-show", "claim.show"),
     ("claim-release", "claim.release"),
     ("claim-handoff", "claim.handoff"),
@@ -692,6 +705,7 @@ const OPERATIONS: &[(&str, &str)] = &[
     ("pr-confirm", "pr.confirm"),
     ("parity-check", "parity.check"),
     ("atlas-tag-scan", "atlas_tag.scan"),
+    ("forge-audit-status", "forge.audit_status"),
 ];
 fn operation_of(word: &str) -> Option<&'static str> {
     OPERATIONS
@@ -832,6 +846,16 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
                 &moai_cli::forge::policy::SystemClock,
             )
         }
+        Command::ForgeAuditStatus {
+            project,
+            permission_reference,
+        } => moai_cli::forge::audit_status::audit_status_cli(
+            &project,
+            input::<moai_cli::forge::audit_status::AuditStatusRequest>()?,
+            &permission_reference,
+            moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
+        ),
         Command::ForgeRead { project } => moai_cli::forge::forge_read_cli(
             &project,
             input::<moai_cli::forge::ReadRequest>()?,
@@ -869,6 +893,12 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
         Command::ClaimAcquire { project } => moai_cli::claim::acquire_cli(
             &project,
             input::<moai_cli::claim::ClaimRequest>()?,
+            &moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        Command::LeaderTick { project } => moai_cli::leader::tick_cli(
+            &project,
+            input::<moai_cli::leader::TickRequest>()?,
             &moai_cli::forge::transport::GhTransport::from_env()?,
             &moai_cli::forge::policy::SystemClock,
         ),
