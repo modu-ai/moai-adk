@@ -406,6 +406,10 @@ fn commit_or_push_detection_sees_through_wrappers_and_quoting() {
         "sh -c 'git push origin HEAD'",
         "bash -lc \"cargo test && git commit -m x\"",
         "/bin/sh -c 'env git push'",
+        // Value-taking shell options before `-c` (rc.2 A9 후속 2 #2323, AC-1).
+        "bash -o pipefail -c 'git push'",
+        "sh -O extglob -c 'git commit -m x'",
+        "bash +o posix -c 'git push'",
         // An alias defined on the command line for commit or push.
         "git -c alias.ci=commit ci -m x",
         "git -c 'alias.p=push --force' p",
@@ -421,6 +425,9 @@ fn commit_or_push_detection_sees_through_wrappers_and_quoting() {
     for no in [
         "sh -c 'echo git commit'",
         "bash -c \"git status\"",
+        // Value-taking options reach the script now — non-git scripts stay quiet (AC-3).
+        "bash -o pipefail -c 'cargo test'",
+        "bash -o pipefail -c 'git status'",
         "env FOO=1 echo git push",
         "command -v git",
         "xargs echo git push",
@@ -433,6 +440,10 @@ fn commit_or_push_detection_sees_through_wrappers_and_quoting() {
     }
     // Documented limit (#2306 scope): a shell's `-c` script is read one level deep only.
     assert!(!is_commit_or_push("sh -c 'sh -c \"git push\"'"));
+    // Documented limit (rc.2 A9 후속 2 #2323): ANSI-C quoting `$'…'` is `$` expansion to
+    // this text detector and stays invisible.
+    assert!(!is_commit_or_push("$'git' push"));
+    assert!(!is_commit_or_push("bash -c \"$'git' push\""));
 }
 
 #[test]
