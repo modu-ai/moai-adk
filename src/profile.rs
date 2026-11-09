@@ -46,6 +46,7 @@ const PROFILE_KEYS: &[(&str, bool)] = &[
     ("github_issues", true),
     ("leader", true),
     ("context_max_bytes", true),
+    ("archive_grace_days", true),
 ];
 
 fn managed_keys() -> impl Iterator<Item = &'static str> {
@@ -107,6 +108,11 @@ pub struct Profile {
     /// key reads unchanged.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub context_max_bytes: Option<u64>,
+    /// SPEC auto-archive inactivity window in days (#2187, REQ-D1-01). Absent means
+    /// the built-in 90-day default (design §12, Go-inherited); a profile written
+    /// before this key reads unchanged.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub archive_grace_days: Option<u64>,
 }
 
 /// Key-level reconfigure delta of a plan (REQ-03A-02). Keys are sorted in every list so
@@ -217,6 +223,7 @@ fn validate(p: &Profile) -> Result<()> {
             .is_some_and(|s| !portable(s) || s.len() > REVISION_LIMIT)
         || !decisions_ok
         || p.context_max_bytes == Some(0)
+        || p.archive_grace_days == Some(0)
     {
         return Err("invalid or nonportable profile; no values were logged".into());
     }
@@ -719,6 +726,7 @@ mod tests {
             github_issues: None,
             leader: None,
             context_max_bytes: None,
+            archive_grace_days: None,
         }
     }
 
@@ -733,6 +741,7 @@ mod tests {
                 pr_check_interval_secs: 300,
             }),
             context_max_bytes: Some(1),
+            archive_grace_days: Some(7),
             ..v2()
         };
         let fields: Vec<String> = serde_json::to_value(&full)
@@ -752,7 +761,15 @@ mod tests {
             .filter(|(_, a)| *a)
             .map(|(k, _)| *k)
             .collect();
-        assert_eq!(additive, ["github_issues", "leader", "context_max_bytes"]);
+        assert_eq!(
+            additive,
+            [
+                "github_issues",
+                "leader",
+                "context_max_bytes",
+                "archive_grace_days"
+            ]
+        );
     }
 
     /// `read_profile` keeps the `PROFILE_KEYS` and leaves a user's own key out, so the

@@ -96,6 +96,31 @@ pub fn launcher_defaults(role: Option<&str>) -> bool {
     role.is_some() || ROLELESS_LAUNCHER_DEFAULTS
 }
 
+/// What the project's `.claude/settings.json` says about a `permissions` key (#2244).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PermissionsKey {
+    /// A top-level `permissions` key exists (any value): the project owns its permissions.
+    Present,
+    /// No file, or a JSON object without the key.
+    Absent,
+    /// The file exists but is not a bounded regular file holding a JSON object.
+    Unreadable,
+}
+
+/// Reads `<dir>/.claude/settings.json` with the settings reader's bounds (symlink refused,
+/// 256 KiB). Only `settings.json` is read; `settings.local.json` is not (#2244 gap).
+pub fn permissions_key(dir: &std::path::Path) -> PermissionsKey {
+    match crate::claude::read_existing(&dir.join(".claude/settings.json")) {
+        Ok(None) => PermissionsKey::Absent,
+        Ok(Some(bytes)) => match serde_json::from_slice::<Value>(&bytes) {
+            Ok(Value::Object(m)) if m.contains_key("permissions") => PermissionsKey::Present,
+            Ok(Value::Object(_)) => PermissionsKey::Absent,
+            _ => PermissionsKey::Unreadable,
+        },
+        Err(_) => PermissionsKey::Unreadable,
+    }
+}
+
 fn claude_argv(r: &SessionRequest, notes: &mut Vec<&'static str>) -> Result<Vec<String>, String> {
     let defaults = launcher_defaults(r.role.as_deref());
     let model = r.model.as_deref().or(defaults.then_some(DEFAULT_MODEL));
