@@ -61,6 +61,22 @@ L18 `proposed, applied, not_required, blocked, unknown` / L29 `"status": "propos
 
 `SetupRun`(L854)·context(L4334)·archive(L3776-3786)가 `blocked`·`stale`을 각자 정의 — RC1에서는 도메인이 다르다: `blocked`는 admission(사유 코드 있음)·sync(게이트 부재)·verify(실행 불가)로 각기 다른 사유를 가지며, `stale`은 plan admission(`snapshot-digest-mismatch` 등)과 verify(측정 시점 경과)로 나뉜다. 교차 매핑은 `schemas/protocol/v1/status-crosswalk.json` variants A·B 참조.
 
+## SYNC drift 분류 대응 (#2168, REQ-B1-01)
+
+기준: 상위 설계 §5 "PLAN RUN VERIFY AUDIT SYNC"의 "SYNC는 다음 차이를 별도로 분류한다" 7항목(원문 사본 `references/chatgpt-space/downloads-design-2026-11-09-textonly.md` L208–222, sha256 `b4242abd…7d542`, 2026-11-09 읽음; `references/`는 저장소에 들이지 않는 원문 사본이다). RC1 열은 `skills/moai/workflows/sync.md` 3단계의 분류 이름 그대로다. 같은 행의 RC1 어휘는 위 "RC1 어휘" 표의 소스에서 가져왔으며, 정확히 대응하는 토큰이 없으면 "대응 없음"으로 적는다(추정해 채우지 않는다).
+
+| # | 설계 §5 원문 | RC1 분류(sync.md 3단계) | 근거(Ground) · 제안 행동 | 관련 RC1 어휘 |
+| --- | --- | --- | --- | --- |
+| 1 | 요구가 있는데 구현·테스트 연결이 없음 | *omission* | SPEC이 요구하는데 후보에 없음 · 구현하거나 보고 | verify `not_run`·`failed`(해당 검사가 없거나 실패) |
+| 2 | 구현이 바뀌었지만 요구·승인 근거가 없음 | *amendment*(요구 변경이 맞으면), 설명되지 않으면 검토 대기 | 원 SPEC digest와 변경 · amendment 기록과 "re-approval required", 설명 없는 차이는 막음 | sync 정지 `needs_amendment`·`blocked`; admission `stale`(`approval-reference-mismatch`·`snapshot-digest-mismatch`) |
+| 3 | SPEC 문구와 테스트 oracle이 충돌함 | `spec_oracle_conflict` | 두 줄 인용 · host가 정하는 SPEC amendment, 자동 수정 금지 | sync 정지 `needs_amendment` |
+| 4 | 삭제·이름 변경으로 참조가 끊김 | `broken_reference` | 끊긴 대상 · 참조를 다시 잇거나 대상을 복원 | 대응 없음 |
+| 5 | Issue는 완료인데 검증 증거가 없거나 stale임 | `done_but_stale_evidence` | 인용된 sha·검사 시점과 현재 상태 · 검사를 다시 돌리고 증거를 다시 붙임 | verify `stale`; claim `integrated`(완료 기록)·update receipt `committed`가 현재 HEAD와 어긋남 |
+| 6 | 승인된 설계 변경이 SPEC·문서에 아직 반영되지 않음 | *document mismatch*(문서만 뒤처짐), SPEC 자체를 바꿔야 하면 *amendment* | 관리 문서 diff · 사용자 편집 보존 | sync 진행 `document_proposed` |
+| 7 | 명시 link는 있으나 의미가 맞는지 검토되지 않음 | `explicit_link_unreviewed` | link와 양 끝 · 의미를 검토·기록한 뒤에만 사용 | 대응 없음 |
+
+7항목 모두 RC1 분류 하나 이상에 대응한다(누락 0). claim 활성 상태(`ACTIVE_STATES`)는 어느 drift 종류와도 1:1로 대응하지 않는다. drift가 나와도 claim 상태를 바꾸지 않고, 보고만 따로 한다.
+
 ## 금지 승격 (REQ-00D-06, crosswalk forbidden_promotions)
 
 `not_run·unknown·blocked·stale·uncertain·publish_unknown·inherited_uninspected` → `passed·applied·host_verified·verified·completed·ok` 매핑은 금지다. 임의의 도메인에서 측정되지 않은 토큰은 성공 값으로 승격되지 않는다.
