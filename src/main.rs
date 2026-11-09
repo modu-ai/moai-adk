@@ -164,6 +164,13 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
+    /// Post the `moai/audit` commit status on an exact SHA (typed JSON on stdin). Uses the
+    /// audit App token from `MOAI_AUDIT_APP_TOKEN` when set, else warns (#2173).
+    ForgeAuditStatus {
+        project: PathBuf,
+        #[arg(long)]
+        permission_reference: String,
+    },
     /// Preview promotion of selected local TODOs to GitHub Issues (reads only; typed JSON
     /// request on stdin naming `tasks_path`, `target` and `selected`; envelope on stdout).
     TodoPromotePreview {
@@ -697,6 +704,7 @@ const OPERATIONS: &[(&str, &str)] = &[
     ("pr-confirm", "pr.confirm"),
     ("forge-links-probe", "forge.links_probe"),
     ("parity-check", "parity.check"),
+    ("forge-audit-status", "forge.audit_status"),
 ];
 fn operation_of(word: &str) -> Option<&'static str> {
     OPERATIONS
@@ -837,6 +845,16 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
                 &moai_cli::forge::policy::SystemClock,
             )
         }
+        Command::ForgeAuditStatus {
+            project,
+            permission_reference,
+        } => moai_cli::forge::audit_status::audit_status_cli(
+            &project,
+            input::<moai_cli::forge::audit_status::AuditStatusRequest>()?,
+            &permission_reference,
+            moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
+        ),
         Command::ForgeRead { project } => moai_cli::forge::forge_read_cli(
             &project,
             input::<moai_cli::forge::ReadRequest>()?,

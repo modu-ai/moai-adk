@@ -8,6 +8,7 @@
 //!
 //! The CLI wraps the result in the 01-C envelope (`crate::contract`); errors become messages
 //! whose kind `contract::classify` derives, so each message here carries its kind's phrase.
+pub mod audit_status;
 pub mod gitlab;
 pub mod links;
 pub mod outbox;
@@ -666,6 +667,19 @@ mod tests {
             ForgeError::invalid("issue links must be to other issues"),
             ForgeError::invalid("blocked_by must be at most 50 issues (one relationship type)"),
             ForgeError::invalid("blocked_by must be free of repeated issues"),
+            // audit status (#2173)
+            ForgeError::of(
+                "permission_reference_missing",
+                "permission reference required",
+            ),
+            ForgeError::invalid("sha must be a 40 lowercase hex commit"),
+            ForgeError::invalid("state must be success, failure, error or pending"),
+            ForgeError::invalid("target_url must be an https://github.com/ link"),
+            ForgeError::invalid("description must be one line without control characters"),
+            ForgeError::invalid(
+                "description must be at most 140 characters with the source marker",
+            ),
+            ForgeError::transport("status POST returned HTTP 422"),
         ];
         for e in errors {
             assert_eq!(
