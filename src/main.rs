@@ -152,6 +152,11 @@ enum Command {
     ForgeRead {
         project: PathBuf,
     },
+    /// Probe whether the sub-issue and dependency APIs answer for one Issue and plan the
+    /// links: API write intents, or `Parent:`/`Blocked-By:` body lines (GET only; #2172).
+    ForgeLinksProbe {
+        project: PathBuf,
+    },
     /// Create or update the one report comment of a run on its Issue (typed JSON payload on
     /// stdin; envelope on stdout). Large output goes to artifact references, not the body.
     ForgeReport {
@@ -893,6 +898,7 @@ const OPERATIONS: &[(&str, &str)] = &[
     ("recovery-plan", "recovery.plan"),
     ("recovery-apply", "recovery.apply"),
     ("pr-confirm", "pr.confirm"),
+    ("forge-links-probe", "forge.links_probe"),
     ("parity-check", "parity.check"),
     ("archive-plan", "archive.plan"),
     ("archive-apply", "archive.apply"),
@@ -1055,6 +1061,12 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
         Command::ForgeRead { project } => moai_cli::forge::forge_read_cli(
             &project,
             input::<moai_cli::forge::ReadRequest>()?,
+            &moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        Command::ForgeLinksProbe { project } => moai_cli::forge::links::links_probe_cli(
+            &project,
+            input::<moai_cli::forge::links::LinksRequest>()?,
             &moai_cli::forge::transport::GhTransport::from_env()?,
             &moai_cli::forge::policy::SystemClock,
         ),
