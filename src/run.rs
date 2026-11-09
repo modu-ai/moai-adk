@@ -10,7 +10,7 @@ use crate::digest;
 use crate::plan::{admit, AdmissionRequest, Decision};
 use crate::verify::{self, CheckResult, CheckRun, FailureClass, Toolchain};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::path::Path;
 use std::time::Duration;
 
@@ -480,5 +480,160 @@ pub fn run(project: &Path, req: &RunRequest, current_revision: &str) -> Result<R
         decision: Decision::Ready,
         reasons: Vec::new(),
         receipt: Some(receipt),
+    })
+}
+
+/// Cost-request input (#2191, REQ-D5-01): an array of run/verify receipts to
+/// aggregate. Receipts arrive as JSON in the exact `Receipt` schema — self-reports
+/// are aggregated as what they claim, and the report's producer rows keep that
+/// distinction visible.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CostRequest {
+    pub protocol_version: u32,
+    pub receipts: Vec<Receipt>,
+}
+
+/// `cost-report` (#2191): aggregates cost items across run/verify receipts —
+/// check outcomes, per-command and total durations, wall spans, external backend
+/// calls and tokens — separately per producer kind (REQ-D5-01: estimates and
+/// measurements are distinguished). Only runner receipts carry numbers the runner
+/// measured, so their group is `measured`; a self-report group carries what the
+/// reporter claims and is tagged `self_reported`. External backend calls are
+/// structurally zero only for runner receipts (the runner spawns local commands and
+/// has no network path); for self-reports nothing establishes the count, so it is
+/// `absent`. Token accounting has no source in any receipt and is `absent` rather
+/// than estimated; the report contains no estimate rows.
+pub fn cost_report(req: CostRequest) -> Result<Value> {
+    if req.protocol_version != 1 {
+        return Err("unsupported protocol_version; supported: 1".into());
+    }
+    let runner: Vec<&Receipt> = req
+        .receipts
+        .iter()
+        .filter(|r| r.producer.kind == ProducerKind::RunnerReceipt)
+        .collect();
+    let self_report: Vec<&Receipt> = req
+        .receipts
+        .iter()
+        .filter(|r| r.producer.kind == ProducerKind::SelfReport)
+        .collect();
+    let per_receipt: Vec<Value> = req.receipts.iter().map(receipt_row).collect();
+    Ok(json!({
+        "protocol_version": 1,
+        "receipts": req.receipts.len(),
+        "by_producer": {
+            "runner-receipt": producer_group(&runner, ProducerKind::RunnerReceipt),
+            "self-report": producer_group(&self_report, ProducerKind::SelfReport),
+        },
+        "per_receipt": per_receipt,
+        "tokens": {
+            "basis": "absent",
+            "note": "receipts carry no token source; nothing is estimated"
+        },
+        "estimates": [],
+        "network": "none",
+        "writes": "none"
+    }))
+}
+
+/// Evidence basis of a receipt's own numbers: measured by the runner, or claimed
+/// by a self-report.
+fn producer_basis(kind: ProducerKind) -> &'static str {
+    match kind {
+        ProducerKind::RunnerReceipt => "measured",
+        ProducerKind::SelfReport => "self_reported",
+    }
+}
+
+/// Sum of a receipt's check durations, with the count of checks that carry none.
+fn receipt_duration(r: &Receipt) -> (u128, usize) {
+    r.checks
+        .iter()
+        .fold((0, 0), |(sum, missing), c| match c.duration_ms {
+            Some(ms) => (sum + ms as u128, missing),
+            None => (sum, missing + 1),
+        })
+}
+
+/// Earliest check start to latest check finish, when both exist and are ordered.
+fn receipt_wall_span(r: &Receipt) -> Option<u64> {
+    let start = r.checks.iter().filter_map(|c| c.started_unix_ms).min();
+    let finish = r.checks.iter().filter_map(|c| c.finished_unix_ms).max();
+    match (start, finish) {
+        (Some(s), Some(f)) if f >= s => Some(f - s),
+        _ => None,
+    }
+}
+
+fn receipt_row(r: &Receipt) -> Value {
+    let (duration, missing) = receipt_duration(r);
+    json!({
+        "task_id": r.task_id,
+        "attempt_id": r.attempt_id,
+        "producer_kind": r.producer.kind,
+        "basis": producer_basis(r.producer.kind),
+        "checks_total": r.checks.len(),
+        "duration_ms": if missing == 0 { json!(duration as u64) } else { json!(null) },
+        "duration_missing_samples": missing,
+        "wall_span_ms": receipt_wall_span(r),
+        "result": r.result,
+    })
+}
+
+/// Aggregate of one producer kind's receipts; every row carries that kind's basis.
+/// A kind with no receipts is `null`: an empty group asserts no basis at all.
+fn producer_group(receipts: &[&Receipt], kind: ProducerKind) -> Value {
+    if receipts.is_empty() {
+        return Value::Null;
+    }
+    let basis = producer_basis(kind);
+    let (mut total, mut passed, mut failed, mut not_run) = (0usize, 0usize, 0usize, 0usize);
+    let (mut duration_total, mut duration_missing) = (0u128, 0usize);
+    let mut wall_spans = Vec::new();
+    for r in receipts {
+        for c in &r.checks {
+            total += 1;
+            match c.result {
+                CheckResult::Passed => passed += 1,
+                CheckResult::Failed => failed += 1,
+                CheckResult::NotRun => not_run += 1,
+            }
+        }
+        let (d, m) = receipt_duration(r);
+        duration_total += d;
+        duration_missing += m;
+        wall_spans.extend(receipt_wall_span(r));
+    }
+    wall_spans.sort_unstable();
+    let p50 = wall_spans.get((wall_spans.len().max(1) - 1) / 2).copied();
+    let p95 = wall_spans
+        .get(((wall_spans.len() as f64 * 0.95).ceil() as usize).max(1) - 1)
+        .copied();
+    let external = match kind {
+        ProducerKind::RunnerReceipt => json!({"count": 0, "basis": "structural"}),
+        ProducerKind::SelfReport => json!({"count": null, "basis": "absent"}),
+    };
+    json!({
+        "receipts": receipts.len(),
+        "checks": {
+            "total": total,
+            "passed": passed,
+            "failed": failed,
+            "not_run": not_run,
+            "basis": basis
+        },
+        "duration_ms": {
+            "total": duration_total as u64,
+            "samples_missing": duration_missing,
+            "basis": basis
+        },
+        "wall_span_ms": {
+            "p50": p50,
+            "p95": p95,
+            "samples": wall_spans.len(),
+            "basis": basis
+        },
+        "external_backend_calls": external,
     })
 }
