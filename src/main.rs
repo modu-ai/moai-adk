@@ -289,7 +289,7 @@ enum Command {
     ClaudeDoctor {
         project: PathBuf,
     },
-    /// Preview a three-way merge of the managed keys (`outputStyle`, `statusLine`) on stdin
+    /// Preview a three-way merge of the managed keys (`outputStyle`, `statusLine`, `permissions`) on stdin
     /// into PROJECT/.claude/settings.json (#2239); other keys are refused. Writes nothing.
     ClaudeSettingsPlan {
         project: PathBuf,
@@ -663,6 +663,27 @@ fn launch(
     let name = o
         .name
         .or_else(|| leader.map(|l| if l { "leader" } else { "agent-1" }.into()));
+    // #2244 (REQ-I7-01): a role session would get the interim permission skip; a project
+    // whose `.claude/settings.json` has a `permissions` key owns its permissions instead.
+    let wants_skip = role.is_some() && host != "codex" && !o.permissions;
+    let key = if wants_skip {
+        std::env::current_dir()
+            .map(|d| moai_cli::session::permissions_key(&d))
+            .unwrap_or(moai_cli::session::PermissionsKey::Unreadable)
+    } else {
+        moai_cli::session::PermissionsKey::Absent
+    };
+    let key_note = match key {
+        moai_cli::session::PermissionsKey::Present => {
+            let msg = "permissions key found in .claude/settings.json: --dangerously-skip-permissions omitted (#2244)";
+            eprintln!("{msg}");
+            Some(msg)
+        }
+        moai_cli::session::PermissionsKey::Unreadable => Some(
+            ".claude/settings.json unreadable: permissions key not detected; the interim skip default applies",
+        ),
+        moai_cli::session::PermissionsKey::Absent => None,
+    };
     let request = SessionRequest {
         role: role.map(str::to_string),
         host: host.into(),
@@ -674,12 +695,15 @@ fn launch(
         // skip stays `-l|-a` only — a roleless session gets none.
         advisor: (host != "codex" && !o.no_advisor && moai_cli::session::launcher_defaults(role))
             .then(|| "fable".into()),
-        skip_permissions: role.is_some() && host != "codex" && !o.permissions,
+        skip_permissions: wants_skip && key != moai_cli::session::PermissionsKey::Present,
         prompt,
         claude_bin: "claude".into(),
         codex_bin: "codex".into(),
     };
     let mut v = session_launch(&request, o.dry_run)?;
+    if let (Some(msg), Some(notes)) = (key_note, v["notes"].as_array_mut()) {
+        notes.push(msg.into());
+    }
     if leader.is_some() {
         if let Some(notes) = v["notes"].as_array_mut() {
             notes.push("deprecated: use `/moai --mode leader|agent` inside the session".into());
