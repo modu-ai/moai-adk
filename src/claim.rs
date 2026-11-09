@@ -128,6 +128,13 @@ pub struct ClaimRequest {
     pub task_ref: TaskRef,
     pub logical_key: String,
     pub owner: Owner,
+    /// #2169 additive: GitHub assignee — display projection only (REQ-B2-01), recorded
+    /// verbatim; the claim never writes it to GitHub (REQ-06A-08).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub assignee: Option<String>,
+    /// #2169 additive: the host session identifier of the executing session.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub provider_session: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub attempt: Option<u64>,
     /// The exact base commit the attempt is bound to (40 lowercase hex).
@@ -167,7 +174,21 @@ pub struct ClaimRecord {
     pub task_ref: TaskRef,
     pub task_key: String,
     pub logical_key: String,
+    /// The execution owner — the sole field the journal reads for exclusivity
+    /// (REQ-B2-01: none of the four ownership fields is a lock; this is the only one
+    /// the acquire path consults).
     pub owner: Owner,
+    /// #2169 additive: GitHub assignee of the issue — display projection only, never
+    /// consulted by the journal or any gate (REQ-06A-08: a claim never writes it).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub assignee: Option<String>,
+    /// #2169 additive: the host session identifier of the executing session.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub provider_session: Option<String>,
+    /// #2169 additive: the leader-side integration gate identifier (who owns the
+    /// integration gate for this claim). Set by the integration flow, not by acquire.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub integration_owner: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub attempt: Option<u64>,
     pub epoch: u64,
@@ -928,6 +949,11 @@ pub fn acquire<T: Transport, C: Clock>(
         task_key: key.clone(),
         logical_key: req.logical_key.clone(),
         owner: req.owner.clone(),
+        assignee: req.assignee.clone(),
+        provider_session: req.provider_session.clone(),
+        // REQ-B2-01: the integration owner is the leader gate's identity — the acquire
+        // path never sets it; the integration flow (leader) records it later.
+        integration_owner: None,
         attempt: req.attempt,
         epoch,
         base_revision: req.base_revision.clone(),
