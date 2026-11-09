@@ -270,6 +270,46 @@ pub fn doctor(project: &Path) -> Result<Value> {
 /// branches that each add a key merge without a silent length clash (PR #2044).
 pub const MANAGED_SETTINGS: &[&str] = &["outputStyle", "statusLine", "hooks"];
 
+/// The managed keys a caller may set through `claude-settings-plan` / `-apply` (#2239).
+pub const USER_SETTINGS: &[&str] = &["outputStyle", "statusLine"];
+
+/// REQ-I2-01: names every key outside `allowed` and refuses; nothing is planned.
+fn refuse_unlisted<'a>(keys: impl Iterator<Item = &'a str>, allowed: &[&str]) -> Result<()> {
+    let mut refused: Vec<&str> = keys.filter(|k| !allowed.contains(k)).collect();
+    if refused.is_empty() {
+        return Ok(());
+    }
+    refused.sort_unstable();
+    refused.dedup();
+    let shown: Vec<String> = refused
+        .iter()
+        .take(8)
+        .map(|k| k.chars().filter(|c| !c.is_control()).take(64).collect())
+        .collect();
+    Err(format!(
+        "unmanaged claude settings key refused: {}{}; allowed: {}",
+        shown.join(", "),
+        if refused.len() > 8 { ", …" } else { "" },
+        allowed.join(", ")
+    ))
+}
+
+/// The desired map for `claude-settings-plan` / `-apply` (#2239): the caller may set
+/// `outputStyle` and `statusLine`, never `hooks` — only `hooks-apply` writes that key, from the
+/// fixed MoAI hook set (#2238). A `hooks` key MoAI already owns is carried over unchanged, so a
+/// settings change never drops the generated hook set.
+pub fn user_settings_desired(
+    project: &Path,
+    desired: &Map<String, Value>,
+) -> Result<Map<String, Value>> {
+    refuse_unlisted(desired.keys().map(String::as_str), USER_SETTINGS)?;
+    let mut out = desired.clone();
+    if let Some(hooks) = owned_settings(project)?.get("hooks") {
+        out.insert("hooks".into(), hooks.clone());
+    }
+    Ok(out)
+}
+
 /// A planned settings object (`None` on conflict) and the conflicting keys.
 pub type SettingsPlan = (Option<Map<String, Value>>, Vec<String>);
 
@@ -284,13 +324,11 @@ pub fn plan_settings(
     current: &Map<String, Value>,
     desired: &Map<String, Value>,
 ) -> Result<SettingsPlan> {
-    if baseline
-        .keys()
-        .chain(desired.keys())
-        .any(|k| !MANAGED_SETTINGS.contains(&k.as_str()))
-    {
-        return Err("unmanaged claude settings key refused".into());
-    }
+    // REQ-I2-01: only the managed keys are written; any other key is refused and named.
+    refuse_unlisted(
+        baseline.keys().chain(desired.keys()).map(String::as_str),
+        MANAGED_SETTINGS,
+    )?;
     let mut keys: Vec<&String> = baseline.keys().chain(desired.keys()).collect();
     keys.sort();
     keys.dedup();
@@ -361,11 +399,28 @@ struct SettingsState {
     digest: String,
 }
 
+/// The project's `.claude/settings.json` is the user's own settings file when the project is
+/// the home directory, or when its `.claude` is `CLAUDE_CONFIG_DIR`. Writing there is a
+/// home write, which is blocked (#2239); planning it is refused too, so no digest exists.
+fn refuse_user_scope(root: &Path) -> Result<()> {
+    let canon = |v: Option<std::ffi::OsString>| v.and_then(|p| fs::canonicalize(p).ok());
+    let home = canon(std::env::var_os("HOME"));
+    let config = canon(std::env::var_os("CLAUDE_CONFIG_DIR"));
+    let claude_dir = fs::canonicalize(root.join(".claude")).ok();
+    if home.as_deref() == Some(root)
+        || (config.is_some() && claude_dir.is_some() && config == claude_dir)
+    {
+        return Err("user-scope claude settings refused: the project is the home directory or its .claude is CLAUDE_CONFIG_DIR; home writes are blocked".into());
+    }
+    Ok(())
+}
+
 fn settings_state(project: &Path, desired: &Map<String, Value>) -> Result<SettingsState> {
     let root = fs::canonicalize(project).map_err(|_| "project directory unavailable")?;
     if !root.is_dir() {
         return Err("project must be a directory".into());
     }
+    refuse_user_scope(&root)?;
     let state_dir = root.join(crate::PROJECT_STATE_DIR);
     for dir in [
         root.join(".claude"),

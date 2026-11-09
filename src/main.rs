@@ -289,6 +289,20 @@ enum Command {
     ClaudeDoctor {
         project: PathBuf,
     },
+    /// Preview a three-way merge of the managed keys (`outputStyle`, `statusLine`) on stdin
+    /// into PROJECT/.claude/settings.json (#2239); other keys are refused. Writes nothing.
+    ClaudeSettingsPlan {
+        project: PathBuf,
+    },
+    /// Apply a previewed settings merge: same stdin, the preview's digest and a permission
+    /// reference. Writes the project settings file and its receipt only; home is refused.
+    ClaudeSettingsApply {
+        project: PathBuf,
+        #[arg(long)]
+        plan_digest: String,
+        #[arg(long)]
+        permission_reference: String,
+    },
     /// Preview the MoAI hook set for one host in PROJECT (rc.2 I1 #2238); writes nothing.
     HooksPlan {
         project: PathBuf,
@@ -692,6 +706,8 @@ const OPERATIONS: &[(&str, &str)] = &[
     ("hooks-plan", "hooks.plan"),
     ("hooks-apply", "hooks.apply"),
     ("hook-receipt", "hook.receipt"),
+    ("claude-settings-plan", "claude.settings_plan"),
+    ("claude-settings-apply", "claude.settings_apply"),
     ("codex-projection-plan", "codex.projection_plan"),
     ("codex-doctor", "codex.doctor"),
     ("claim-acquire", "claim.acquire"),
@@ -1042,6 +1058,23 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
                     serde_json::json!({"recorded": false, "reason": "working directory unavailable"})
                 }
             })
+        }
+        Command::ClaudeSettingsPlan { project } => {
+            let desired = moai_cli::claude::user_settings_desired(&project, &input()?)?;
+            moai_cli::claude::settings_plan(&project, &desired)
+        }
+        Command::ClaudeSettingsApply {
+            project,
+            plan_digest,
+            permission_reference,
+        } => {
+            let desired = moai_cli::claude::user_settings_desired(&project, &input()?)?;
+            moai_cli::claude::settings_apply(
+                &project,
+                &desired,
+                &plan_digest,
+                &permission_reference,
+            )
         }
         Command::CodexProjectionPlan {
             package,
