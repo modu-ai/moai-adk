@@ -32,6 +32,10 @@ SETUP이 끝나면 같은 진입으로 READ → PLAN → RUN → VERIFY → AUDI
 | 요구 정리 | `/moai 이 기능 요구사항 정리해 줘` |
 | 구현·검증 | `/moai 이 SPEC 구현하고 검증까지 해 줘` |
 
+### 호스트 세션과 역할
+
+호스트 세션은 역할 없이 엽니다 — `moai-cli cc|glm|codex`는 평범한 host 세션이고, 세션 안에서 `/moai --mode leader|agent`로 MoAI 역할을 정합니다. 리더·에이전트 론처 플래그 `-l|-a`(`moai-cli -l|-a`, `moai-cli cc|glm|codex -l|-a`)는 deprecated입니다: 사용하면 경고가 뜨고 기존처럼 동작하지만, 새 세션은 역할 없이 열고 `/moai --mode`를 쓰는 것을 권합니다.
+
 ### 수동 명령 (명시적 fallback)
 
 자연어 진입이 불가능한 환경에서만 내부 실행 도구를 직접 씁니다: `moai-cli generation-plan`, `moai-cli update-plan` 등(각 명령은 plan/apply 2단계이며 plan digest 없이는 아무것도 쓰지 않습니다). 일상 사용 경로가 아닙니다.
@@ -41,6 +45,8 @@ SETUP이 끝나면 같은 진입으로 READ → PLAN → RUN → VERIFY → AUDI
 기존 `moai init`·`moai update`(Go 3.x)는 구 세대의 명령입니다. RC1을 이미 설치했다면 3.x 명령을 새 절차로 쓰지 마세요 — 두 세대의 업데이트 통로는 분리되어 있습니다(지원표와 릴리스 체크리스트 참조). 마이그레이션 도구는 별도 제공 예정입니다.
 
 ## 세션 론처 (저장소 개발용, 현행 — DR-08 #2145)
+
+`-l|-a` 형태는 #2164부터 deprecated입니다(위의 호스트 세션과 역할 참조) — 경고가 출력되고 동작은 유지됩니다. 아래 표는 오늘 기준 동작을 기록합니다.
 
 `moai-cli`는 저장소 개발 세션을 띄우는 론처를 갖고 있다. 사용자 진입(`/moai`·`$moai`)과는 별개인 개발 도구다. 아래 표는 `src/main.rs`의 `Cli`(45–56행), `LaunchOpts`(58–79행), `HostLaunch`(81–96행), `Command::Cc|Glm|Codex`(519–524행)와 `src/session.rs` 머리말(1–19행)을 기준으로, 2026-11-09에 base `604792666`의 빌드로 `--dry-run`을 실행해 확인했다.
 
