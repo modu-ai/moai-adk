@@ -240,11 +240,69 @@ fn budget_truncation_records_omitted() {
     assert_eq!(dropped, ["secondary", "tertiary"]);
     let b = bundle(d.path(), items, json!({"max_items": 2}));
     assert_eq!(b["items"].as_array().unwrap().len(), 2);
-    // No budget is refused rather than unbounded.
-    let req = json!({"protocol_version": 1, "items": [{"path": "README.md", "reason": "x"}], "budget": {}});
-    let (out, v) = run(&["context-bundle"], d.path(), Some(&req));
-    assert_eq!(out.status.code(), Some(1));
-    assert_eq!(v["error"]["kind"], json!("invalid_input"));
+    assert_eq!(b["budget"]["max_bytes_source"], json!("default"));
+}
+
+const PROFILE: &str = r#"{"schema_version": 2, "project_id": "demo", "purpose": "demo",
+ "tools": ["Rust"], "development_methods": ["TDD"], "hosts": ["claude"]"#;
+
+/// #2184 AC-1 (REQ-C8-01): no byte budget in the request or the profile → 256 KiB and the
+/// source `default`, whether the budget is empty or missing; there is still no unbounded run.
+#[test]
+fn missing_budget_uses_the_256_kib_default_and_records_it() {
+    let d = repo();
+    let items = json!([{"path": "README.md", "reason": "x"}]);
+    for req in [
+        json!({"protocol_version": 1, "items": items, "budget": {}}),
+        json!({"protocol_version": 1, "items": items}),
+    ] {
+        let (out, v) = run(&["context-bundle"], d.path(), Some(&req));
+        assert!(out.status.success(), "{v}");
+        let b = &v["result"]["budget"];
+        assert_eq!(b["max_bytes"], json!(262_144));
+        assert_eq!(b["max_bytes_source"], json!("default"));
+    }
+    // A profile without the key keeps the default.
+    write(d.path(), ".moai-cli/project.yaml", &format!("{PROFILE}}}"));
+    let b = bundle(d.path(), items, json!({}));
+    assert_eq!(b["budget"]["max_bytes"], json!(262_144));
+    assert_eq!(b["budget"]["max_bytes_source"], json!("default"));
+}
+
+/// #2184 AC-1: the profile key `context_max_bytes` redefines the default and truncates by
+/// it; a request `max_bytes` still wins; a zero or unreadable profile is an error.
+#[test]
+fn profile_redefines_the_byte_budget_and_the_request_wins() {
+    let d = repo();
+    let items = json!([
+        {"path": "src/a.rs", "reason": "primary"},
+        {"path": "README.md", "reason": "secondary"}
+    ]);
+    let a_len = fs::read(d.path().join("src/a.rs")).unwrap().len() as u64;
+    write(
+        d.path(),
+        ".moai-cli/project.yaml",
+        &format!("{PROFILE}, \"context_max_bytes\": {}}}", a_len + 1),
+    );
+    let b = bundle(d.path(), items.clone(), json!({}));
+    assert_eq!(b["budget"]["max_bytes"], json!(a_len + 1));
+    assert_eq!(b["budget"]["max_bytes_source"], json!("profile"));
+    assert_eq!(b["items"].as_array().unwrap().len(), 1);
+    assert_eq!(b["omitted"][0]["cause"], json!("budget_truncated"));
+
+    let b = bundle(d.path(), items.clone(), json!({"max_bytes": 1_000_000}));
+    assert_eq!(b["budget"]["max_bytes_source"], json!("request"));
+    assert_eq!(b["items"].as_array().unwrap().len(), 2);
+
+    for bad in [
+        format!("{PROFILE}, \"context_max_bytes\": 0}}"),
+        "not json".to_string(),
+    ] {
+        write(d.path(), ".moai-cli/project.yaml", &bad);
+        let req = json!({"protocol_version": 1, "items": items});
+        let (out, _) = run(&["context-bundle"], d.path(), Some(&req));
+        assert!(!out.status.success(), "a bad profile is never guessed past");
+    }
 }
 
 /// Codex review #2057 (P1): a symlink inside the tree that points at an ignored file is
