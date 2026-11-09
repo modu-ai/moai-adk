@@ -286,6 +286,10 @@ pub fn next<T: Transport, C: Clock>(
                 json!({"kind": "projection_intent", "target": "status_line", "action": "not_run"}),
             ],
             expected_epoch: None,
+            // #2169 display projections: queue-next's request carries neither, so the
+            // record leaves them empty (they never decide ownership, REQ-B2-01).
+            assignee: None,
+            provider_session: None,
         };
         // REQ-A2-01/02: a card that already carries a claim comment (live or expired) is
         // not a candidate, unless this journal holds an active record for it.
