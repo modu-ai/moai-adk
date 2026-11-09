@@ -190,3 +190,49 @@ fn audit_status_refuses_bad_input_without_requests() {
         assert_no_secret(tmp.path(), &out);
     }
 }
+
+/// Each enforced limit is pinned at its edge, so moving the bound either way fails a test:
+/// description 140 characters including the source marker (" · source=app" is 13, " ·
+/// source=shared-account" is 24), target_url 512 bytes.
+#[test]
+fn audit_status_limits_hold_exactly_at_their_edges() {
+    let base = request();
+    let with = |k: &str, v: Value| {
+        let mut r = base.clone();
+        r[k] = v;
+        r
+    };
+    let url = |len: usize| {
+        let head = "https://github.com/";
+        json!(format!("{head}{}", "a".repeat(len - head.len())))
+    };
+    // (app token?, input, accepted?)
+    let cases = [
+        (true, with("description", json!("d".repeat(127))), true),
+        (true, with("description", json!("d".repeat(128))), false),
+        (false, with("description", json!("d".repeat(116))), true),
+        (false, with("description", json!("d".repeat(117))), false),
+        (true, with("target_url", url(512)), true),
+        (true, with("target_url", url(513)), false),
+    ];
+    for (app, input, accepted) in cases {
+        let tmp = tempfile::tempdir().unwrap();
+        let token = if app { Some(APP) } else { None };
+        let (out, v) = post(tmp.path(), token, "operator-ok-2173", &input);
+        assert_eq!(v["ok"], json!(accepted), "{input}");
+        assert_eq!(out.status.success(), accepted, "{input}");
+        if accepted {
+            let sent = fs::read_to_string(tmp.path().join("gh-calls.log.bodies")).unwrap();
+            let sent: Value = serde_json::from_str(sent.lines().next().unwrap()).unwrap();
+            if input["description"].as_str().unwrap().starts_with('d') {
+                assert_eq!(sent["description"].as_str().unwrap().chars().count(), 140);
+            }
+        } else {
+            assert!(
+                log(tmp.path()).is_empty(),
+                "no request past a limit: {input}"
+            );
+        }
+        assert_no_secret(tmp.path(), &out);
+    }
+}
