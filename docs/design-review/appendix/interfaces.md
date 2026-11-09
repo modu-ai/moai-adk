@@ -49,6 +49,7 @@
 - `flow-gate-verdict`
 - `flow-wip-check`
 - `forge-audit-status`
+- `forge-links-probe`
 - `forge-read`
 - `forge-report`
 - `generation-apply`

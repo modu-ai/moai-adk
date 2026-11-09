@@ -14,7 +14,7 @@
 //! `effect-intend{kind: pr_create}` (same operation, project, local id and attempt, so
 //! `parse_op_markers` reads both markers as one operation) when the record came from the
 //! journal. Rendering is not opening: the record moves to `pr_ready` only at the PR's ACK
-//! (REQ-06C-11, "PR 개설·ACK"), through [`confirm_and_record`] (`pr-confirm`), which confirms
+//! (REQ-06C-11, "PR opening and ACK"), through [`confirm_and_record`] (`pr-confirm`), which confirms
 //! the intent with 06-B's `effect_confirm` — or takes an effect a reconcile already
 //! confirmed — and never goes further than `pr_ready`. An `uncertain` ACK leaves the state
 //! alone; `effects-reconcile` resolves it first.
