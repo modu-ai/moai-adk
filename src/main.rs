@@ -282,6 +282,29 @@ enum Command {
     ClaudeDoctor {
         project: PathBuf,
     },
+    /// Preview the MoAI hook set for one host in PROJECT (rc.2 I1 #2238); writes nothing.
+    HooksPlan {
+        project: PathBuf,
+        /// `claude` (.claude/settings.json `hooks`) or `codex` (.codex/hooks.json).
+        #[arg(long)]
+        host: String,
+    },
+    /// Write a previewed hook set and its receipt; requires the plan digest.
+    HooksApply {
+        project: PathBuf,
+        #[arg(long)]
+        host: String,
+        #[arg(long)]
+        plan_digest: String,
+        #[arg(long)]
+        permission_reference: String,
+    },
+    /// Hook handler: record one allow-listed receipt line from the host's hook stdin under
+    /// ./.moai-cli/receipts/; never fails the hook.
+    HookReceipt {
+        #[arg(long)]
+        host: String,
+    },
     /// Plan a Codex projection of the common package into an explicit target; writes nothing.
     CodexProjectionPlan {
         package: PathBuf,
@@ -654,6 +677,9 @@ const OPERATIONS: &[(&str, &str)] = &[
     ("forge-report", "forge.report"),
     ("plan-admit", "plan.admit"),
     ("claude-doctor", "claude.doctor"),
+    ("hooks-plan", "hooks.plan"),
+    ("hooks-apply", "hooks.apply"),
+    ("hook-receipt", "hook.receipt"),
     ("codex-projection-plan", "codex.projection_plan"),
     ("codex-doctor", "codex.doctor"),
     ("claim-acquire", "claim.acquire"),
@@ -959,6 +985,40 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             &moai_cli::forge::policy::SystemClock,
         ),
         Command::ClaudeDoctor { project } => moai_cli::claude::doctor(&project),
+        Command::HooksPlan { project, host } => {
+            let home = std::env::var_os("HOME").map(PathBuf::from);
+            moai_cli::hooks::plan(&project, &host, home.as_deref())
+        }
+        Command::HooksApply {
+            project,
+            host,
+            plan_digest,
+            permission_reference,
+        } => {
+            let home = std::env::var_os("HOME").map(PathBuf::from);
+            moai_cli::hooks::apply(
+                &project,
+                &host,
+                home.as_deref(),
+                &plan_digest,
+                &permission_reference,
+            )
+        }
+        Command::HookReceipt { host } => {
+            // Hook stdin can be large (tool output); read a bounded prefix. A cut-off object
+            // fails to parse and is skipped, never an error: the hook must not fail.
+            let mut bytes = Vec::new();
+            let _ = io::stdin().take(4 * 1024 * 1024).read_to_end(&mut bytes);
+            let now = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_or(0, |d| d.as_millis());
+            Ok(match std::env::current_dir() {
+                Ok(cwd) => moai_cli::hooks::receipt(&host, &bytes, &cwd, now),
+                Err(_) => {
+                    serde_json::json!({"recorded": false, "reason": "working directory unavailable"})
+                }
+            })
+        }
         Command::CodexProjectionPlan {
             package,
             target,

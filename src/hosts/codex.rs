@@ -15,7 +15,8 @@
 //!
 //! RC1 interim decisions (leader, 2026-11-08): no TOML parser here (the TOML surface belongs to
 //! 02-B #1992), so trust, inline hooks and the status line are `not_evaluated` and never
-//! reported as trusted; no hooks are generated; the projection target is always explicit.
+//! reported as trusted; this projection generates no hooks (hook generation is `hooks-plan` /
+//! `hooks-apply --host codex`, rc.2 I1 #2238); the projection target is always explicit.
 use crate::{digest, package_digest};
 use serde_json::{json, Value};
 use std::{
@@ -188,7 +189,7 @@ pub fn projection_plan(
         "files": plan,
         "skill_md_identical": skill_md_identical,
         "config_changes": config,
-        "hooks": {"generated": [], "reason": "RC1 interim decision: no Codex hooks are generated"},
+        "hooks": {"generated": [], "reason": "a projection generates no hooks; see hooks-plan / hooks-apply --host codex (#2238)"},
         "invocation": {"desktop": "$moai in the composer", "cli": "/skills or $moai", "ide": "/skills or $moai"},
         "notes": [
             "plan only: nothing is written; installing into a user home is EP-05",

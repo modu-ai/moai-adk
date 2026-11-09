@@ -7,7 +7,7 @@
 | 항목 | 결정 | 영향 |
 | --- | --- | --- |
 | TOML 읽기 | 파서를 쓰지 않는다. TOML 읽기·쓰기 표면과 의존성 결정은 02-B #1992 소유다 | `config.toml`을 읽지 않는다. trust, inline `[hooks]`, `tui.status_line`은 `not_evaluated`로 보고하고 `trusted`라고 쓰지 않는다. fallback 이름과 max-bytes는 인자로 받는다. 02-B가 파서를 들이면 승격은 후속 Issue에서 한다 |
-| hook | 0개. 아무것도 생성하지 않는다 | `.codex/hooks.json`도, inline `[hooks]`도 만들지 않는다. hash trust 검토가 필요 없다 |
+| hook | projection은 생성하지 않는다. 생성은 `hooks-plan`/`hooks-apply --host codex`(rc.2 I1 #2238)가 맡는다 | projection은 `.codex/hooks.json`도, inline `[hooks]`도 만들지 않는다. `hooks-apply`가 만든 `.codex/hooks.json`은 Codex hash trust 검토(`/hooks`)를 거쳐야 실행된다. 근거: `docs/hooks-generation.md` |
 | projection 위치 | `--target`을 꼭 받는다. 기본값은 없다 | `~/.agents/skills/moai`(사용자 홈)와 `<repo>/.agents/skills/moai`(project) 중 고르는 일은 HOLD로 남는다. 두 후보는 이 문서에만 적는다 |
 | E2E | 레인에서는 not_run | Desktop `$moai`는 GUI가 필요하다. CLI `$moai`는 실제 호출이 OpenAI로 prompt를 보내 외부 전송과 비용이 생긴다. 운영자 실측 여부는 사용자 결정이다 |
 | 시험 위치 | `tests/codex_adapter.rs` 신규 | `tests/product_cli.rs` 꼬리 충돌을 피한다 |
@@ -76,7 +76,7 @@ not_run은 Desktop 발견·호출이 실패했다는 뜻이 아니다. 그래서
 | C1 | trust 판정과 `blocked_by_trust` 보고 | 구현 필요 | config reference `projects.<path>.trust_level`. TOML 파서 HOLD | 02-B가 TOML 표면을 정한 뒤 doctor가 trust를 읽는 후속 Issue. 그때도 trust를 바꾸지는 않음 |
 | C2 | `project_doc_fallback_filenames`·`project_doc_max_bytes`를 config에서 읽기 | 대안 있음 | 지금은 `--fallback`·`--max-bytes` 인자 | C1과 같은 후속 Issue |
 | C3 | `tui.status_line` 항목 ID | 미검증 | config reference에 ID 목록 없음 | 운영자 실측(설치본의 `/statusline` 또는 schema)으로 ID를 확인한 뒤 의미 단위 병합(02-B 규칙) |
-| C4 | hook 등록(`hooks.json` 또는 inline, 한 곳만) | 대안 있음 | RC1 결정 0개 | opt-in hook이 필요해지면 별도 Issue에서 위치를 정하고 hash trust 안내 |
+| C4 | hook 등록(`hooks.json` 또는 inline, 한 곳만) | 대안 있음 | RC1 결정 0개 → rc.2 I1 #2238에서 `.codex/hooks.json` 하나로 생성 | `hooks-apply --host codex`가 `.codex/hooks.json`만 쓴다(inline `[hooks]`는 쓰지 않음). 실행 전 hash trust 검토(`/hooks`) 안내는 apply 결과 `trust_required`에 있다 |
 | C5 | projection 설치(사용자 홈/project) | 구현 필요 | plan만 있음 | EP-05 설치 Issue. 위치 HOLD 결정 뒤 |
 | C6 | Desktop·CLI·IDE 명시 호출 실측 receipt(version·표면·읽힌 경로) | 미검증 | REQ-02C-03 | 운영자 실측(HA-01, HA-10). CLI는 외부 전송을 승인한 뒤 |
 | C7 | hooks 페이지의 handler 종류·exit 의미 원문 확인 | 미검증 | 이번 조회에서 요약만 얻음 | 지원표 다음 갱신 때 원문을 다시 조회 |
