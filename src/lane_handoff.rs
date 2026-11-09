@@ -2,20 +2,24 @@
 //! exiting its worktree (design §25 HANDOFF-01 / EXIT-01).
 //!
 //! Checks, in order:
-//! 1. `status_clean` — no uncommitted changes (`git status --porcelain` empty).
+//! 1. `status_clean` — no uncommitted changes (`git status --porcelain` empty;
+//!    a failing status command is itself a failed check — fail-closed).
 //! 2. `head_remote_match` — local HEAD equals the remote head the lane observed
 //!    via `git ls-remote` (injected observation record, not re-measured here).
-//! 3. `pr_exists` — a PR record is present and its head equals the local HEAD.
+//! 3. `pr_exists` — a PR record is present AND its head equals the local HEAD.
 //!    PR creation is *delivered*, not done: separation fields keep issue-done
 //!    and merge explicitly unobserved (design §25).
-//! 4. `trailers` — every commit (merges included) in `base..HEAD` carries the
-//!    claim trailer `Moai-Claim: <issue>#<comment_id>`.
+//! 4. `trailers` — every lane-authored commit (`rev-list --no-merges`,
+//!    결정 06:02: tool merges are records, never claim-checked) in `base..HEAD`
+//!    carries `Moai-Claim: <issue>#<comment_id>` as an exact, trimmed line
+//!    (prefix-sharing ids and prose mentions do not count — #2255 rule).
 //! 5. `leader_report` — a durable report record file exists, is non-empty, and
 //!    mentions the issue. The record's existence is enforced; the sending itself
 //!    is attested (AC-3: 권고/강제 구분 — enforced rows are the mechanically
 //!    verified paths only).
 //! 6. `no_uncertain_effects` — no forge outbox entry is left in `publish_unknown`
-//!    (EXIT-01: uncertain external effects block exit).
+//!    (EXIT-01: uncertain external effects block exit). An unreadable or
+//!    unparsable outbox entry counts as uncertain — fail-closed.
 //!
 //! Any failed check blocks exit: the operation surfaces
 //! `lane handoff blocked: <failed names>` (kind `blocked`, exit != 0) with
@@ -102,15 +106,18 @@ fn uncertain_effects(project: &Path) -> Result<u64> {
         if path.extension().and_then(|e| e.to_str()) != Some("json") {
             continue;
         }
-        let bytes = match fs::read(&path) {
-            Ok(b) => b,
-            Err(_) => continue,
+        // Fail-closed (audit 비차단 1): an unreadable or unparsable entry is
+        // itself uncertain — we cannot prove its effect was published.
+        let state = fs::read(&path)
+            .ok()
+            .and_then(|b| serde_json::from_slice::<Value>(&b).ok())
+            .map(|v| v["state"].clone());
+        let is_uncertain = match state {
+            Some(v) => v == json!("publish_unknown"),
+            // Unreadable/parsable ⇒ unknown state ⇒ uncertain.
+            None => true,
         };
-        let value: Value = match serde_json::from_slice(&bytes) {
-            Ok(v) => v,
-            Err(_) => continue,
-        };
-        if value["state"] == json!("publish_unknown") {
+        if is_uncertain {
             uncertain += 1;
         }
     }
@@ -138,22 +145,27 @@ pub fn handoff_check(req: &LaneHandoffRequest) -> Result<Value> {
         .map_err(|_| "project directory unavailable".to_string())?;
     let mut checks: Vec<Check> = Vec::new();
 
-    // 1. status_clean
-    let porcelain = git(&project, &["status", "--porcelain"]).unwrap_or_default();
-    let dirty: Vec<&str> = porcelain.lines().filter(|l| !l.is_empty()).collect();
-    checks.push(check(
-        "status_clean",
-        "enforced",
-        dirty.is_empty(),
-        if dirty.is_empty() {
-            "no uncommitted changes".into()
-        } else {
-            format!(
-                "{} uncommitted changes; commit or preserve them before exit",
-                dirty.len()
+    // 1. status_clean — fail-closed (audit 비차단 2): a failing `git status`
+    //    is a failed check, not a clean tree.
+    let status_out = git(&project, &["status", "--porcelain"]);
+    let (status_ok, status_detail) = match status_out {
+        Ok(porcelain) => {
+            let dirty: Vec<&str> = porcelain.lines().filter(|l| !l.is_empty()).collect();
+            (
+                dirty.is_empty(),
+                if dirty.is_empty() {
+                    "no uncommitted changes".to_string()
+                } else {
+                    format!(
+                        "{} uncommitted changes; commit or preserve them before exit",
+                        dirty.len()
+                    )
+                },
             )
-        },
-    ));
+        }
+        Err(e) => (false, format!("git status failed: {e}")),
+    };
+    checks.push(check("status_clean", "enforced", status_ok, status_detail));
 
     // 2. head_remote_match
     let head = git(&project, &["rev-parse", "HEAD"]).unwrap_or_default();
@@ -178,23 +190,37 @@ pub fn handoff_check(req: &LaneHandoffRequest) -> Result<Value> {
         },
     ));
 
-    // 3. pr_exists (injected observation record)
-    let pr_ok = req.pr.is_some();
+    // 3. pr_exists — record present AND its head equals local HEAD (audit F1:
+    //    the PR head comparison lives here, not inside `trailers`).
+    let pr_head_ok = req.pr.as_ref().map(|p| p.head == head).unwrap_or(false);
+    let pr_ok = req.pr.is_some() && pr_head_ok;
     checks.push(check(
         "pr_exists",
         "enforced",
         pr_ok,
-        if pr_ok {
-            "PR record present".into()
-        } else {
+        if req.pr.is_none() {
             "no PR record; open the PR before exiting".into()
+        } else if !pr_head_ok {
+            format!(
+                "PR head {} != local HEAD {}; update the record after pushing",
+                req.pr.as_ref().map(|p| short(&p.head)).unwrap_or_default(),
+                short(&head)
+            )
+        } else {
+            "PR record present and its head matches".into()
         },
     ));
-    // 4. trailers — every commit in base..HEAD carries the claim trailer.
+    // 4. trailers — every lane-authored (non-merge) commit in base..HEAD
+    //    carries the claim trailer as an exact line (audit F2/F3; 결정 06:02:
+    //    tool merges are records, never checked for the claim).
     let trailer = format!("Moai-Claim: {}#{}", req.issue, req.claim_comment_id);
     let revs = git(
         &project,
-        &["rev-list", &format!("{}..HEAD", req.base_branch)],
+        &[
+            "rev-list",
+            "--no-merges",
+            &format!("{}..HEAD", req.base_branch),
+        ],
     )
     .unwrap_or_default();
     let mut trailer_commits = 0usize;
@@ -203,30 +229,29 @@ pub fn handoff_check(req: &LaneHandoffRequest) -> Result<Value> {
         for sha in revs.lines() {
             let body = git(&project, &["show", "-s", "--format=%B", sha]).unwrap_or_default();
             trailer_commits += 1;
-            if !body.contains(&trailer) {
+            // Exact-line match: a prefix-sharing id or prose mentioning the
+            // token must NOT satisfy the check (audit F2 — P1/P2 probes).
+            if !body.lines().any(|l| l.trim() == trailer) {
                 missing_trailers.push(short(sha));
             }
         }
     }
-    let pr_head_ok = req.pr.as_ref().map(|p| p.head == head).unwrap_or(false);
     checks.push(check(
         "trailers",
         "enforced",
-        !revs.is_empty() && missing_trailers.is_empty() && pr_head_ok,
+        !revs.is_empty() && missing_trailers.is_empty(),
         if revs.is_empty() {
-            "no commits in base..HEAD".into()
+            "no lane-authored commits in base..HEAD (--no-merges)".into()
         } else if !missing_trailers.is_empty() {
             format!(
-                "commits without the claim trailer: {}",
+                "commits without the exact claim line: {}",
                 missing_trailers.join(", ")
             )
-        } else if !pr_head_ok {
+        } else {
             format!(
-                "PR head does not match local HEAD ({} commits checked)",
+                "all {} lane-authored commits carry the exact claim line",
                 trailer_commits
             )
-        } else {
-            format!("all {} commits carry the claim trailer", trailer_commits)
         },
     ));
 

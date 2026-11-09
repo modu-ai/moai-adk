@@ -205,16 +205,20 @@ fn lane_handoff_check_failure_paths() {
         "names head_remote_match"
     );
 
-    // 3. trailer 누락 (a commit without the claim trailer)
-    commit(&repo.root, "work without trailer", None);
-    let (code, envelope, _) = run_check(&request, &repo.root);
+    // 3. trailer 누락 (a commit without the claim trailer). The observation
+    //    record is re-pointed at the new head so ONLY the trailer condition
+    //    fails — the PR head comparison lives in pr_exists now (audit F1).
+    let sha = commit(&repo.root, "work without trailer", None);
+    let mut r = request.clone();
+    r["remote_head"] = json!(sha);
+    r["pr"]["head"] = json!(sha);
+    let (code, envelope, _) = run_check(&r, &repo.root);
     assert_ne!(code, 0);
+    let msg = envelope["error"]["message"].as_str().unwrap();
+    assert!(msg.contains("trailers"), "names trailers: {msg}");
     assert!(
-        envelope["error"]["message"]
-            .as_str()
-            .unwrap()
-            .contains("trailers"),
-        "names trailers"
+        !msg.contains("pr_exists"),
+        "pr head was re-pointed; trailers must fail alone: {msg}"
     );
     // roll back the trailer-less commit (HEAD^ = the trailer commit)
     git(&repo.root, &["reset", "--hard", "HEAD^"]);
@@ -244,6 +248,156 @@ fn lane_handoff_check_failure_paths() {
             .contains("leader_report"),
         "names leader_report"
     );
+
+    // 6. 보고 내용 불일치 (the record exists but does not mention the issue —
+    //    the `#<issue>` condition must be load-bearing, not decorative)
+    let wrong = repo.root.join(".moai-cli/reports/wrong-issue.md");
+    std::fs::create_dir_all(wrong.parent().unwrap()).unwrap();
+    std::fs::write(&wrong, "#999 another lane's report, no mention here\n").unwrap();
+    let mut r = request.clone();
+    r["leader_report_path"] = json!(wrong.to_str().unwrap());
+    let (code, envelope, _) = run_check(&r, &repo.root);
+    assert_ne!(code, 0, "a report that never names the issue must block");
+    assert!(
+        envelope["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("leader_report"),
+        "names leader_report"
+    );
+}
+
+/// Audit F2 (P1·P2 probes) and F1 (pr-head comparison lives in pr_exists):
+/// an exact-line claim requirement — a prefix-sharing id, a prose mention,
+/// and a PR-head-only mismatch each name the RIGHT failed check, with the
+/// leader report present so nothing else fails alongside.
+#[test]
+fn trailers_match_is_exact_line_and_pr_head_lives_in_pr_exists() {
+    let parent = TempDir::new().unwrap();
+    let repo = fixture_repo(parent.path());
+    let report = write_report(&repo.root);
+    let request = base_request(&repo.root, &repo.head);
+
+    // P1: a commit whose claim line shares only the id prefix must fail.
+    let sha = commit(
+        &repo.root,
+        "prefix id work",
+        Some("Moai-Claim: 2193#67309431612"),
+    );
+    let mut r = request.clone();
+    r["remote_head"] = json!(sha);
+    r["pr"]["head"] = json!(sha);
+    r["leader_report_path"] = json!(report.to_str().unwrap());
+    let (code, envelope, _) = run_check(&r, &repo.root);
+    assert_ne!(code, 0, "prefix-sharing id must not satisfy the check");
+    let msg = envelope["error"]["message"].as_str().unwrap();
+    assert!(msg.contains("trailers"), "names trailers: {msg}");
+    assert!(
+        !msg.contains("pr_exists"),
+        "pr head matches; only trailers fails: {msg}"
+    );
+    git(&repo.root, &["reset", "--hard", "HEAD^"]);
+
+    // P2: prose that merely mentions the token must fail.
+    let sha = commit(
+        &repo.root,
+        "prose mention work",
+        Some("not my claim: see Moai-Claim: 2193#6730943161 of another lane"),
+    );
+    let mut r = request.clone();
+    r["remote_head"] = json!(sha);
+    r["pr"]["head"] = json!(sha);
+    r["leader_report_path"] = json!(report.to_str().unwrap());
+    let (code, envelope, _) = run_check(&r, &repo.root);
+    assert_ne!(code, 0, "a prose mention must not satisfy the check");
+    let msg = envelope["error"]["message"].as_str().unwrap();
+    assert!(msg.contains("trailers"), "names trailers: {msg}");
+    git(&repo.root, &["reset", "--hard", "HEAD^"]);
+
+    // PR-head-only mismatch is pr_exists, never trailers (audit F1).
+    let mut r = request.clone();
+    r["pr"]["head"] = json!(format!("{}", "e".repeat(40)));
+    r["leader_report_path"] = json!(report.to_str().unwrap());
+    let (code, envelope, _) = run_check(&r, &repo.root);
+    assert_ne!(code, 0);
+    let msg = envelope["error"]["message"].as_str().unwrap();
+    assert!(msg.contains("pr_exists"), "names pr_exists: {msg}");
+    assert!(
+        !msg.contains("trailers"),
+        "trailers must not absorb the PR head comparison: {msg}"
+    );
+}
+
+/// Audit F3 (결정 06:02): tool merges are records, never claim-checked. A
+/// claim-less `--no-ff` merge commit in base..HEAD must NOT block the exit,
+/// while the lane-authored commits are still verified.
+#[test]
+fn tool_merge_commits_are_not_claim_checked() {
+    let parent = TempDir::new().unwrap();
+    let repo = fixture_repo(parent.path());
+    let report = write_report(&repo.root);
+    // Move the base forward on a separate file (no conflict with f.txt), then
+    // merge it back with --no-ff and no claim line.
+    git(&repo.root, &["checkout", "v2026.11.0"]);
+    std::fs::write(repo.root.join("g.txt"), "new base\n").unwrap();
+    git(&repo.root, &["add", "g.txt"]);
+    git(
+        &repo.root,
+        &[
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@example.invalid",
+            "commit",
+            "-m",
+            "base moved",
+        ],
+    );
+    git(&repo.root, &["checkout", "issue/2193-e1-dist"]);
+    git(
+        &repo.root,
+        &[
+            "merge",
+            "v2026.11.0",
+            "--no-ff",
+            "-m",
+            "Merge branch v2026.11.0 (tool record, no claim)",
+        ],
+    );
+    let head = git(&repo.root, &["rev-parse", "HEAD"]);
+    let mut r = base_request(&repo.root, &head);
+    r["pr"]["head"] = json!(head);
+    r["leader_report_path"] = json!(report.to_str().unwrap());
+    let (code, envelope, stderr) = run_check(&r, &repo.root);
+    assert_eq!(code, 0, "a claim-less tool merge must not block: {stderr}");
+    assert_eq!(envelope["result"]["status"], json!("passed"));
+    // The merge commit is excluded from the trailer count.
+    assert_eq!(envelope["result"]["trailer_commits"], json!(1));
+}
+
+/// Audit 비차단 1 (P4): an unreadable or unparsable outbox entry counts as
+/// uncertain — fail-closed, exit blocked.
+#[test]
+fn unparsable_outbox_entry_counts_as_uncertain() {
+    let parent = TempDir::new().unwrap();
+    let repo = fixture_repo(parent.path());
+    let report = write_report(&repo.root);
+    let mut r = base_request(&repo.root, &repo.head);
+    r["leader_report_path"] = json!(report.to_str().unwrap());
+    let outbox = repo.root.join(".moai-cli/forge/outbox");
+    std::fs::create_dir_all(&outbox).unwrap();
+    std::fs::write(outbox.join("broken.json"), b"{\"state\": \"publi").unwrap();
+    let (code, envelope, _) = run_check(&r, &repo.root);
+    assert_ne!(code, 0, "an unparsable entry must block (fail-closed)");
+    let msg = envelope["error"]["message"].as_str().unwrap();
+    assert!(
+        msg.contains("no_uncertain_effects"),
+        "names no_uncertain_effects: {msg}"
+    );
+    std::fs::remove_file(outbox.join("broken.json")).unwrap();
+    // Back to clean after the entry is removed.
+    let (code, _, _) = run_check(&r, &repo.root);
+    assert_eq!(code, 0);
 }
 
 /// AC-2: one cycle iteration (PR → 점검 → 다음 claim 준비) replayed with
