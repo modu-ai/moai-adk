@@ -842,6 +842,12 @@ fn codex_projection_apply_messages_have_a_deliberate_kind() {
             "invalid target: a symlink under the target is refused",
             InvalidInput,
         ),
+        (
+            "invalid target: '..' components are not allowed",
+            InvalidInput,
+        ),
+        ("invalid target: path cannot be resolved", InvalidInput),
+        ("invalid target: must be outside the package", InvalidInput),
         ("target file limit exceeded", InvalidInput),
         ("target metadata unavailable", Io),
         ("stale or altered plan; re-preview required", StalePlan),
@@ -849,4 +855,51 @@ fn codex_projection_apply_messages_have_a_deliberate_kind() {
     ] {
         assert_eq!(classify(message), kind, "{message}");
     }
+}
+
+/// #2241 audit FAIL: the outside-the-package check compared a lexical target with the
+/// canonical package, so a target written through a symlinked parent (macOS `/tmp` →
+/// `/private/tmp`) passed. This builds that shape explicitly, so it fails on every host.
+#[cfg(unix)]
+#[test]
+fn codex_projection_refuses_a_package_target_reached_through_a_symlink() {
+    let dir = TempDir::new().unwrap();
+    let real = dir.path().join("real");
+    let pkg = real.join("pkg");
+    fs::create_dir_all(&pkg).unwrap();
+    copy_tree(
+        &Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai"),
+        &pkg,
+    );
+    let link = dir.path().join("link");
+    std::os::unix::fs::symlink(&real, &link).unwrap();
+    let pkg_s = s(&pkg).to_string();
+    let link_pkg = s(&link.join("pkg")).to_string();
+    for (label, package, target) in [
+        (
+            "target through symlink",
+            pkg_s.clone(),
+            link.join("pkg/moai"),
+        ),
+        (
+            "missing tail through symlink",
+            pkg_s.clone(),
+            link.join("pkg/a/b/moai"),
+        ),
+        ("package through symlink", link_pkg, pkg.join("moai")),
+        ("dot-dot", pkg_s.clone(), real.join("x/../pkg/moai")),
+    ] {
+        let (ok, v) = run(&["codex-projection-plan", &package, "--target", s(&target)]);
+        assert!(!ok, "plan {label}: {v}");
+        assert_eq!(v["error"]["kind"], "invalid_input", "plan {label}: {v}");
+        let (ok, v) = apply(&package, &target, "sha256:00", "fixture-approved");
+        assert!(!ok, "apply {label}: {v}");
+        assert_eq!(v["error"]["kind"], "invalid_input", "apply {label}: {v}");
+    }
+    assert!(!pkg.join("moai").exists());
+    assert!(!pkg.join("a").exists());
+    // Control: a target outside the package, reached through the same symlink, plans.
+    let outside = link.join("out/moai");
+    let (ok, v) = run(&["codex-projection-plan", &pkg_s, "--target", s(&outside)]);
+    assert!(ok, "{v}");
 }

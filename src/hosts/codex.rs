@@ -23,7 +23,7 @@ use crate::{apply, digest, package_digest};
 use serde_json::{json, Value};
 use std::{
     fs,
-    path::{Path, PathBuf},
+    path::{Component, Path, PathBuf},
 };
 
 type Result<T> = std::result::Result<T, String>;
@@ -220,6 +220,39 @@ fn target_action(target: &Path, rel: &str, want: &[u8]) -> Result<&'static str> 
     })
 }
 
+/// `target` with symlinks resolved, for the outside-the-package check. The target need not
+/// exist yet: its nearest existing ancestor is canonicalized and the missing tail appended.
+/// `..` is refused because it cannot be resolved through a tail that does not exist, and an
+/// entry that exists but cannot be resolved (a dangling symlink) is refused, not skipped.
+fn resolved_target(target: &Path) -> Result<PathBuf> {
+    if target.components().any(|c| c == Component::ParentDir) {
+        return Err("invalid target: '..' components are not allowed".into());
+    }
+    let mut existing = target;
+    let mut tail = Vec::new();
+    loop {
+        match existing.canonicalize() {
+            Ok(mut resolved) => {
+                resolved.extend(tail.iter().rev());
+                return Ok(resolved);
+            }
+            Err(_) if fs::symlink_metadata(existing).is_ok() => {
+                return Err("invalid target: path cannot be resolved".into());
+            }
+            Err(_) => {
+                tail.push(
+                    existing
+                        .file_name()
+                        .ok_or("invalid target: path cannot be resolved")?,
+                );
+                existing = existing
+                    .parent()
+                    .ok_or("invalid target: path cannot be resolved")?;
+            }
+        }
+    }
+}
+
 /// Plans a Codex projection of the common package into `target` without writing anything.
 /// `status_line` and `disable_bundled_skills` are config requests: they are reported as HOLD.
 /// Each file carries `target_action` against what is already at the target, so a plan run
@@ -236,7 +269,9 @@ pub fn projection_plan(
         return Err("invalid target: must be an absolute path".into());
     }
     let package_abs = package.canonicalize().map_err(|_| "package unavailable")?;
-    if target.starts_with(&package_abs) {
+    // Both sides are compared resolved: a lexical target such as `/tmp/...` against a
+    // canonical package `/private/tmp/...` would otherwise pass (#2241 audit FAIL).
+    if resolved_target(target)?.starts_with(&package_abs) {
         return Err("invalid target: must be outside the package".into());
     }
     if target.file_name().and_then(|n| n.to_str()) != Some("moai") {
