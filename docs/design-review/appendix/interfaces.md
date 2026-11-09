@@ -22,6 +22,7 @@
 - `agents-apply`
 - `agents-plan`
 - `apply-recover`
+- `archive-plan`
 - `audit-reduce`
 - `baseline-inventory`
 - `claim-acquire`
