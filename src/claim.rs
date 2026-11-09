@@ -25,8 +25,11 @@
 //! An expired lease is never taken over automatically: the outcome names the operator
 //! (06-B) instead (REQ-06A-16).
 //!
-//! HOLD (reported, never decided here): the lease and heartbeat numbers (P08/P11 —
-//! `lease_until` is caller-supplied and only read, never defaulted); the journal location
+//! Lease (rc.2 #2166, decisions 00:5x 2026-11-09): an absent `lease_until` defaults to
+//! now + [`DEFAULT_LEASE`] (4h); an explicit value wins. Expiry is only shown
+//! (`claim-show` `expired: true`) and never moves ownership.
+//!
+//! HOLD (reported, never decided here): the heartbeat numbers (P08/P11); the journal location
 //! is an interim derivation under the git common dir until P09/01-B fixes the state-root
 //! map; takeover after expiry is 06-B's operator procedure.
 use crate::digest;
@@ -46,6 +49,8 @@ use std::{
 type Result<T> = std::result::Result<T, String>;
 
 pub const SCHEMA_VERSION: u32 = 1;
+/// Default lease in seconds when a request carries no `lease_until` (#2166, 4h).
+pub const DEFAULT_LEASE: i64 = 4 * 60 * 60;
 /// Safety bound for the comment-list pagination, aligned with forge's `max_pages`.
 const CLAIM_MAX_PAGES: u32 = 50;
 /// The states in which a record holds the claim (plan §8). A record in any other state
@@ -137,7 +142,9 @@ pub struct ClaimRequest {
     pub base_revision: String,
     pub write_scope: Vec<String>,
     pub spec_ref: SpecRef,
-    /// RFC3339 `YYYY-MM-DDTHH:MM:SSZ`; caller-supplied (P08/P11 HOLD — never defaulted here).
+    /// RFC3339 `YYYY-MM-DDTHH:MM:SSZ`. Absent or empty: now + [`DEFAULT_LEASE`] at acquire
+    /// (#2166); an explicit value wins.
+    #[serde(default)]
     pub lease_until: String,
     /// Recorded as intents in `effects[]` only; never executed by this Issue (REQ-06A-08).
     #[serde(default)]
@@ -778,6 +785,18 @@ pub fn acquire<T: Transport, C: Clock>(
     client: &Client<'_, T, C>,
     clock: &C,
 ) -> Result<AcquireOutcome> {
+    let now = clock.now();
+    // #2166: an absent lease becomes now + DEFAULT_LEASE; an explicit one is kept as is.
+    let filled;
+    let req = if req.lease_until.is_empty() {
+        filled = ClaimRequest {
+            lease_until: format_utc(now + DEFAULT_LEASE),
+            ..req.clone()
+        };
+        &filled
+    } else {
+        req
+    };
     validate_request(req)?;
     let key = task_key(&req.task_ref);
     let events = journal.read_events()?;
@@ -786,7 +805,6 @@ pub fn acquire<T: Transport, C: Clock>(
         .filter(|e| e.record.task_key == key)
         .map(|e| &e.record)
         .collect();
-    let now = clock.now();
     if let Some(&existing) = mine.last() {
         if is_active(&existing.state) {
             // Never changed, never taken over (REQ-06A-03, REQ-06A-16).
@@ -1039,6 +1057,19 @@ pub fn release<C: Clock>(
     })
 }
 
+/// `show` plus `expired` against `now` (#2166): true only for an active record whose lease
+/// has passed. Display only — ownership never moves on expiry (REQ-A7-02). Byte-identical
+/// when repeated at the same `now`; no lock, no write.
+pub fn show_at(root: &Path, key: &str, now: i64) -> Result<Value> {
+    let mut v = show(root, key)?;
+    let expired = v["record"]["state"].as_str().is_some_and(is_active)
+        && v["record"]["lease_until"]
+            .as_str()
+            .is_some_and(|l| !is_live(l, now));
+    v["expired"] = json!(expired);
+    Ok(v)
+}
+
 /// `claim-show`: byte-identical when repeated (REQ-06A-10) — no lock, no write, no clock.
 pub fn show(root: &Path, key: &str) -> Result<Value> {
     if !is_key(key) {
@@ -1161,7 +1192,7 @@ pub fn acquire_cli<T: Transport, C: Clock>(
 
 pub fn show_cli(project: &Path, key: &str) -> Result<Value> {
     let root = journal_root(project)?;
-    show(&root, key)
+    show_at(&root, key, crate::forge::policy::SystemClock.now())
 }
 
 pub fn release_cli<C: Clock>(

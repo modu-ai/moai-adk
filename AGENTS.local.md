@@ -23,6 +23,7 @@ Rules for developing MoAI ADK itself in this checkout (Rust `moai-cli`, RC `2026
 - Leader session (label `leader`): owns `src/`, `tests/`, `docs/`, `.github/`, `AGENTS.md`, `AGENTS.local.md`, `.gitignore`, `.moai-cli/`; holds the user question channel; dispatches Issues; relays lane reports; integrates PRs; keeps the decisions log. Leader commits also travel through a PR under the integration gate.
 - Lane sessions (`agent-N`): one Issue at a time in their own worktree. `agent-2` is the read-only independent auditor (never writes to the repo or GitHub). `agent-1` owns `skills/moai/` only when assigned. New sessions are opened only by the operator; no session spawns another.
 - Start sessions with `moai-cli session --role leader|agent --name <label> [--advisor fable] [--dry-run]`: main model `opus` at effort `medium`, advisor `fable` for hard reasoning (user decision 2026-11-08; configurable later).
+- Launcher `-l|-a` (`moai-cli -l|-a`, `moai-cli cc|glm|codex -l|-a`) is deprecated since #2164 (user decision D-1, docs/decisions-2026-11-08.md): it warns on stderr and still composes, but new sessions are plain host sessions — `moai-cli cc|glm|codex` with no role — and the MoAI role comes from `/moai --mode leader|agent` inside the session.
 - Each session uses its own `CARGO_TARGET_DIR=/tmp/moai-rc-target-<label>`; `CARGO_HOME=/tmp/moai-rc-product-cargo` is shared. A shared target dir let one session's build overwrite another's test binary (observed 2026-11-08).
 
 ## Lane loop specifics for this repository
