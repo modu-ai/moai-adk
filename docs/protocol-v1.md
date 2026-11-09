@@ -56,6 +56,16 @@
 
 `codex.projection_plan`(`codex-projection-plan`)과 `codex.doctor`(`codex-doctor`)는 01-C envelope을 그대로 쓴다. 둘 다 아무것도 쓰지 않는다. 새 `kind`는 없다.
 
+`codex.projection_apply`(`codex-projection-apply`, I4 #2241)도 같은 envelope을 쓴다. 쓰는 곳은 `--target` 아래의 계획된 파일뿐이다. 새 `kind`는 없다. 오류는 기존 kind로 분류된다(`codex_projection_apply_messages_have_a_deliberate_kind`가 고정한다).
+
+| 상황 | kind |
+| --- | --- |
+| permission reference 없음 | `permission_reference_missing` |
+| `--plan-digest`가 새로 계산한 plan과 다름 | `stale_plan` |
+| source manifest 불일치·누락(REQ-I4-01) | `conflict` |
+| 대상 파일 바이트가 다름 | `conflict` |
+| 첫 파일을 만든 뒤 실패 | `partial` |
+
 - 사용하는 kind는 `usage`, `invalid_input`, `not_found`, `io`이다.
 - 메시지와 kind의 대응은 `tests/codex_adapter.rs`의 `codex_messages_have_a_deliberate_kind`가 고정한다.
 - 위 golden fixture 21건은 00-D가 기록한 기존 명령의 기준선이라 이 두 operation을 담지 않는다.

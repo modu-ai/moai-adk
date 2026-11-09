@@ -285,11 +285,51 @@ enum Command {
         #[arg(long = "remote-probe")]
         remote_probe: Option<String>,
     },
+    /// Flow control (A13 #2279): WIP cap check over the open pull requests of the
+    /// repository — the assignment-refusal signal (the refusal itself is the
+    /// leader's act). GET-only.
+    FlowWipCheck {
+        /// GitHub owner (e.g. modu-ai).
+        #[arg(long)]
+        owner: String,
+        /// GitHub repository name.
+        #[arg(long)]
+        repo: String,
+        /// The lane account whose open PRs are counted (author login).
+        #[arg(long)]
+        lane: String,
+        /// Lane open-PR cap (user-specified default 2, not a measured baseline).
+        #[arg(long, default_value_t = moai_cli::flow::DEFAULT_LANE_CAP)]
+        lane_cap: u64,
+        /// Total open-PR cap (user-specified default 8, not a measured baseline).
+        #[arg(long, default_value_t = moai_cli::flow::DEFAULT_TOTAL_CAP)]
+        total_cap: u64,
+    },
+    /// Flow control (A13 #2279): the integration gate verdict, read-only — checks
+    /// tip containment, changed-since-audit, claim lines, CI status, head stability.
+    /// Status posting and merging stay with the leader flow.
+    FlowGateVerdict {
+        /// GitHub owner.
+        #[arg(long)]
+        owner: String,
+        /// GitHub repository name.
+        #[arg(long)]
+        repo: String,
+        /// The pull request number to judge.
+        #[arg(long)]
+        pr: i64,
+        /// The head the last PASS audit was measured on.
+        #[arg(long = "audit-head")]
+        audit_head: String,
+        /// The base ref the tip is read from (e.g. v2026.11.0).
+        #[arg(long = "base-ref", default_value = "v2026.11.0")]
+        base_ref: String,
+    },
     /// Read-only Claude Code check: whether a session started in PROJECT reads AGENTS.md.
     ClaudeDoctor {
         project: PathBuf,
     },
-    /// Preview a three-way merge of the managed keys (`outputStyle`, `statusLine`) on stdin
+    /// Preview a three-way merge of the managed keys (`outputStyle`, `statusLine`, `permissions`) on stdin
     /// into PROJECT/.claude/settings.json (#2239); other keys are refused. Writes nothing.
     ClaudeSettingsPlan {
         project: PathBuf,
@@ -327,6 +367,29 @@ enum Command {
         /// Requested `[skills.bundled] enabled = false`; reported as HOLD, never written.
         #[arg(long)]
         disable_bundled_skills: bool,
+    },
+    /// Install a planned Codex projection into its explicit target (I4 #2241). Refuses a
+    /// stale plan, a source-manifest mismatch or a conflicting target file before writing.
+    CodexProjectionApply {
+        package: PathBuf,
+        /// Absolute skill directory named `moai`; the same target the plan was made for.
+        #[arg(long)]
+        target: PathBuf,
+        #[arg(long, default_value = "MoAI")]
+        display_name: String,
+        #[arg(
+            long,
+            default_value = "Set up, plan, implement, verify, audit and sync through one workflow"
+        )]
+        short_description: String,
+        #[arg(long, default_value = "Use $moai to read this project's status")]
+        default_prompt: String,
+        #[arg(long)]
+        allow_implicit_invocation: Option<bool>,
+        #[arg(long)]
+        plan_digest: String,
+        #[arg(long)]
+        permission_reference: String,
     },
     /// Read-only Codex doctor: AGENTS chain and budget, skill duplicates, `.codex/` layer.
     CodexDoctor {
@@ -391,6 +454,12 @@ enum Command {
         #[arg(long)]
         doc: Option<PathBuf>,
     },
+    /// Read-only dual-read scan of `@MOAI:` / `@MX:` tag markers (C2 #2178): both
+    /// namespaces normalize into one node shape, duplicates are diagnosed only,
+    /// nothing is written. PATH is a file or a directory.
+    AtlasTagScan {
+        path: PathBuf,
+    },
     /// Record the PR's ACK (06-C #2007, REQ-06C-11): confirm the `pr_create` intent and, once
     /// it is confirmed, move the claim record to `pr_ready`.
     PrConfirm {
@@ -452,9 +521,33 @@ enum Command {
     SnapshotDescribe {
         project: PathBuf,
     },
+    /// Dry-run (D1 #2187, REQ-D1-01): which SPEC directories under
+    /// `.moai-cli/specs/` are archive-eligible and why the rest are excluded.
+    /// Writes nothing. `--grace-days` overrides the profile's inactivity window.
+    ArchivePlan {
+        project: PathBuf,
+        #[arg(long)]
+        grace_days: Option<u64>,
+    },
     /// Plan external skill source candidates read-only (03-B #1996): typed request on
     /// stdin; judgment envelope on stdout; writes nothing.
     SkillSourcePlan {
+        project: PathBuf,
+    },
+    /// Plan project-unit `moai` skill copies read-only (I5 #2242, P04 HOLD):
+    /// typed request on stdin; judgment envelope on stdout; writes nothing.
+    ProjectSkillPlan {
+        project: PathBuf,
+    },
+    /// Copy the staged `moai` skill package into the project host folders
+    /// (I5 #2242): the exact request on stdin; requires `opt_in` and writes
+    /// only under the caller-supplied project root.
+    ProjectSkillApply {
+        project: PathBuf,
+    },
+    /// Revert one applied project-skill copy from its rollback receipt
+    /// (I5 #2242): typed request on stdin.
+    ProjectSkillRevert {
         project: PathBuf,
     },
     /// Install approved skill sources into the host official skill folders (03-B
@@ -632,6 +725,27 @@ fn launch(
     let name = o
         .name
         .or_else(|| leader.map(|l| if l { "leader" } else { "agent-1" }.into()));
+    // #2244 (REQ-I7-01): a role session would get the interim permission skip; a project
+    // whose `.claude/settings.json` has a `permissions` key owns its permissions instead.
+    let wants_skip = role.is_some() && host != "codex" && !o.permissions;
+    let key = if wants_skip {
+        std::env::current_dir()
+            .map(|d| moai_cli::session::permissions_key(&d))
+            .unwrap_or(moai_cli::session::PermissionsKey::Unreadable)
+    } else {
+        moai_cli::session::PermissionsKey::Absent
+    };
+    let key_note = match key {
+        moai_cli::session::PermissionsKey::Present => {
+            let msg = "permissions key found in .claude/settings.json: --dangerously-skip-permissions omitted (#2244)";
+            eprintln!("{msg}");
+            Some(msg)
+        }
+        moai_cli::session::PermissionsKey::Unreadable => Some(
+            ".claude/settings.json unreadable: permissions key not detected; the interim skip default applies",
+        ),
+        moai_cli::session::PermissionsKey::Absent => None,
+    };
     let request = SessionRequest {
         role: role.map(str::to_string),
         host: host.into(),
@@ -643,12 +757,15 @@ fn launch(
         // skip stays `-l|-a` only — a roleless session gets none.
         advisor: (host != "codex" && !o.no_advisor && moai_cli::session::launcher_defaults(role))
             .then(|| "fable".into()),
-        skip_permissions: role.is_some() && host != "codex" && !o.permissions,
+        skip_permissions: wants_skip && key != moai_cli::session::PermissionsKey::Present,
         prompt,
         claude_bin: "claude".into(),
         codex_bin: "codex".into(),
     };
     let mut v = session_launch(&request, o.dry_run)?;
+    if let (Some(msg), Some(notes)) = (key_note, v["notes"].as_array_mut()) {
+        notes.push(msg.into());
+    }
     if leader.is_some() {
         if let Some(notes) = v["notes"].as_array_mut() {
             notes.push("deprecated: use `/moai --mode leader|agent` inside the session".into());
@@ -683,6 +800,7 @@ const OPERATIONS: &[(&str, &str)] = &[
     ("claude-settings-plan", "claude.settings_plan"),
     ("claude-settings-apply", "claude.settings_apply"),
     ("codex-projection-plan", "codex.projection_plan"),
+    ("codex-projection-apply", "codex.projection_apply"),
     ("codex-doctor", "codex.doctor"),
     ("claim-acquire", "claim.acquire"),
     ("queue-next", "queue.next"),
@@ -699,6 +817,9 @@ const OPERATIONS: &[(&str, &str)] = &[
     ("snapshot-describe", "snapshot.describe"),
     ("skill-source-plan", "skill_source.plan"),
     ("cost-report", "cost.report"),
+    ("project-skill-plan", "project_skill.plan"),
+    ("project-skill-apply", "project_skill.apply"),
+    ("project-skill-revert", "project_skill.revert"),
     ("generation-plan", "generation.plan"),
     ("generation-apply", "generation.apply"),
     ("skill-source-apply", "skill_source.apply"),
@@ -720,7 +841,11 @@ const OPERATIONS: &[(&str, &str)] = &[
     ("recovery-apply", "recovery.apply"),
     ("pr-confirm", "pr.confirm"),
     ("parity-check", "parity.check"),
+    ("archive-plan", "archive.plan"),
     ("forge-audit-status", "forge.audit_status"),
+    ("atlas-tag-scan", "atlas_tag.scan"),
+    ("flow-wip-check", "flow.wip_check"),
+    ("flow-gate-verdict", "flow.gate_verdict"),
 ];
 fn operation_of(word: &str) -> Option<&'static str> {
     OPERATIONS
@@ -998,6 +1123,40 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             &moai_cli::forge::transport::GhTransport::from_env()?,
             &moai_cli::forge::policy::SystemClock,
         ),
+        Command::FlowWipCheck {
+            owner,
+            repo,
+            lane,
+            lane_cap,
+            total_cap,
+        } => {
+            let transport = moai_cli::forge::transport::GhTransport::from_env()?;
+            let clock = moai_cli::forge::policy::SystemClock;
+            let client = moai_cli::forge::Client::new(
+                &transport,
+                &clock,
+                Default::default(),
+                Default::default(),
+            );
+            moai_cli::flow::wip_check_json(&client, &owner, &repo, &lane, lane_cap, total_cap)
+        }
+        Command::FlowGateVerdict {
+            owner,
+            repo,
+            pr,
+            audit_head,
+            base_ref,
+        } => {
+            let transport = moai_cli::forge::transport::GhTransport::from_env()?;
+            let clock = moai_cli::forge::policy::SystemClock;
+            let client = moai_cli::forge::Client::new(
+                &transport,
+                &clock,
+                Default::default(),
+                Default::default(),
+            );
+            moai_cli::flow::gate_verdict(&client, &owner, &repo, pr, &audit_head, &base_ref)
+        }
         Command::ClaudeDoctor { project } => moai_cli::claude::doctor(&project),
         Command::ClaudeSettingsPlan { project } => {
             moai_cli::claude::settings_plan(&project, &input()?)
@@ -1032,6 +1191,27 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             },
             &status_line,
             disable_bundled_skills,
+        ),
+        Command::CodexProjectionApply {
+            package,
+            target,
+            display_name,
+            short_description,
+            default_prompt,
+            allow_implicit_invocation,
+            plan_digest,
+            permission_reference,
+        } => codex::projection_apply(
+            &package,
+            &target,
+            &codex::OpenAiYaml {
+                display_name,
+                short_description,
+                default_prompt,
+                allow_implicit_invocation,
+            },
+            &plan_digest,
+            &permission_reference,
         ),
         Command::CodexDoctor {
             project,
@@ -1097,6 +1277,7 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             generated,
             doc,
         } => moai_cli::parity::parity_check(&template, &generated, doc.as_deref()),
+        Command::AtlasTagScan { path } => moai_cli::atlas_tag::scan_path(&path),
         Command::PrConfirm {
             project,
             task,
@@ -1212,6 +1393,15 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
                 .map_err(|_| "encode failed".into())
         }
         Command::SnapshotDescribe { project } => moai_cli::context::snapshot(&project),
+        Command::ArchivePlan {
+            project,
+            grace_days,
+        } => serde_json::to_value(moai_cli::archive::plan(
+            &project,
+            std::time::SystemTime::now(),
+            grace_days,
+        )?)
+        .map_err(|_| "encode failed".into()),
         Command::SkillSourcePlan { project } => serde_json::to_value(moai_cli::sources::plan(
             &project,
             input::<moai_cli::sources::SourcesRequest>()?,
@@ -1239,6 +1429,24 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
         Command::CostReport {} => {
             // cost_report checks protocol_version itself (one check, not two).
             moai_cli::run::cost_report(input::<moai_cli::run::CostRequest>()?)
+        }
+        Command::ProjectSkillPlan { project } => {
+            let mut request = input::<moai_cli::project_skills::ProjectSkillRequest>()?;
+            request.project_root = project;
+            serde_json::to_value(moai_cli::project_skills::project_skill_plan(&request)?)
+                .map_err(|_| "encode failed".into())
+        }
+        Command::ProjectSkillApply { project } => {
+            let mut request = input::<moai_cli::project_skills::ProjectSkillRequest>()?;
+            request.project_root = project;
+            serde_json::to_value(moai_cli::project_skills::project_skill_apply(&request)?)
+                .map_err(|_| "encode failed".into())
+        }
+        Command::ProjectSkillRevert { project } => {
+            let mut request = input::<moai_cli::project_skills::ProjectSkillRevertRequest>()?;
+            request.project_root = project;
+            serde_json::to_value(moai_cli::project_skills::project_skill_revert(&request)?)
+                .map_err(|_| "encode failed".into())
         }
         Command::GithubPlan { project } => {
             serde_json::to_value(moai_cli::github_templates::github_plan(
@@ -1352,5 +1560,154 @@ fn main() -> ExitCode {
             eprintln!("{message}");
             ExitCode::from(1)
         }
+    }
+}
+
+#[cfg(test)]
+mod operations_doc {
+    //! rc.2 D7 #2246: `docs/design-review/appendix/interfaces.md` § "RC1 OPERATIONS 전수" must list
+    //! exactly the subcommand words of `OPERATIONS`, so a PR that adds or removes an operation
+    //! fails here unless it updates the document in the same change.
+    //!
+    //! The list is one `- `word`` line per operation in alphabetical order, with no count
+    //! (#2241 repair, leader rule ③): PRs that each add an operation then touch different lines
+    //! instead of all rewriting one shared count and one shared line.
+    use super::OPERATIONS;
+    use std::collections::BTreeSet;
+
+    const DOC: &str = include_str!("../docs/design-review/appendix/interfaces.md");
+    const HEADING: &str = "## RC1 OPERATIONS 전수";
+
+    /// The words of the item lines (`- `word``) that directly follow the heading.
+    fn doc_list(doc: &str) -> Result<Vec<String>, String> {
+        let mut lines = doc.lines();
+        lines
+            .by_ref()
+            .find(|l| l.trim_end() == HEADING)
+            .ok_or_else(|| format!("heading `{HEADING}` not found"))?;
+        let mut words = Vec::new();
+        for line in lines.skip_while(|l| l.trim().is_empty()) {
+            if !line.starts_with("- ") {
+                break;
+            }
+            let word = line
+                .strip_prefix("- `")
+                .and_then(|rest| rest.strip_suffix('`'))
+                .filter(|w| !w.is_empty() && !w.contains('`'))
+                .ok_or_else(|| format!("malformed list line (expected - `word`): {line:?}"))?;
+            words.push(word.to_string());
+        }
+        if words.is_empty() {
+            return Err("operation list missing under the heading".into());
+        }
+        Ok(words)
+    }
+
+    fn duplicates<'a>(items: impl IntoIterator<Item = &'a str>) -> BTreeSet<&'a str> {
+        let mut seen = BTreeSet::new();
+        items.into_iter().filter(|w| !seen.insert(*w)).collect()
+    }
+
+    fn compare(code: &[&str], doc: &str) -> Result<(), String> {
+        let words = doc_list(doc)?;
+        let mut problems = Vec::new();
+        let doc_dups = duplicates(words.iter().map(String::as_str));
+        if !doc_dups.is_empty() {
+            problems.push(format!("duplicate in document: {doc_dups:?}"));
+        }
+        let code_dups = duplicates(code.iter().copied());
+        if !code_dups.is_empty() {
+            problems.push(format!("duplicate in OPERATIONS: {code_dups:?}"));
+        }
+        if let Some(pair) = words.windows(2).find(|p| p[0] >= p[1]) {
+            if pair[0] != pair[1] {
+                problems.push(format!(
+                    "document list not alphabetical: {:?} before {:?}",
+                    pair[0], pair[1]
+                ));
+            }
+        }
+        let doc_set: BTreeSet<&str> = words.iter().map(String::as_str).collect();
+        let code_set: BTreeSet<&str> = code.iter().copied().collect();
+        let missing: Vec<_> = code_set.difference(&doc_set).collect();
+        let extra: Vec<_> = doc_set.difference(&code_set).collect();
+        if !missing.is_empty() {
+            problems.push(format!("missing from document: {missing:?}"));
+        }
+        if !extra.is_empty() {
+            problems.push(format!("not in OPERATIONS: {extra:?}"));
+        }
+        if problems.is_empty() {
+            Ok(())
+        } else {
+            Err(problems.join("; "))
+        }
+    }
+
+    fn code_words() -> Vec<&'static str> {
+        OPERATIONS.iter().map(|&(word, _)| word).collect()
+    }
+
+    #[test]
+    fn operations_doc_matches_code() {
+        if let Err(problems) = compare(&code_words(), DOC) {
+            panic!("interfaces.md § RC1 OPERATIONS 전수 is out of sync with src/main.rs OPERATIONS: {problems}");
+        }
+    }
+
+    fn render(words: &[&str]) -> String {
+        let list: String = words.iter().map(|w| format!("- `{w}`\n")).collect();
+        format!("{HEADING}\n\n{list}\n(note)\n")
+    }
+
+    fn err(code: &[&str], doc: &str) -> String {
+        compare(code, doc).expect_err("mutation must be detected")
+    }
+
+    #[test]
+    fn mutations_are_detected() {
+        let code = code_words();
+        let mut sorted = code.clone();
+        sorted.sort_unstable();
+        assert_eq!(compare(&code, &render(&sorted)), Ok(()));
+
+        // A document line removed: reported by name.
+        let first = sorted[0];
+        let shorter: Vec<&str> = sorted[1..].to_vec();
+        assert!(
+            err(&code, &render(&shorter)).contains(&format!("missing from document: [{first:?}]"))
+        );
+        // An operation added to the code but not to the document.
+        let mut more = code.clone();
+        more.push("zz-new-op");
+        assert!(err(&more, &render(&sorted)).contains("missing from document: [\"zz-new-op\"]"));
+        // A document line with no operation behind it.
+        let mut extra = sorted.clone();
+        extra.push("zz-ghost-op");
+        assert!(err(&code, &render(&extra)).contains("not in OPERATIONS: [\"zz-ghost-op\"]"));
+        // A renamed line: one missing and one extra, both named.
+        let mut renamed = sorted.clone();
+        renamed[0] = "aaa-renamed-op";
+        let e = err(&code, &render(&renamed));
+        assert!(e.contains(first) && e.contains("aaa-renamed-op"), "{e}");
+        // A duplicated line, on either side.
+        let mut doubled = sorted.clone();
+        doubled.insert(1, first);
+        assert!(err(&code, &render(&doubled))
+            .contains(&format!("duplicate in document: {{{first:?}}}")));
+        let mut twice = code.clone();
+        twice.push(code[0]);
+        assert!(err(&twice, &render(&sorted)).contains("duplicate in OPERATIONS"));
+        // Out of alphabetical order.
+        let mut unsorted = sorted.clone();
+        unsorted.swap(0, 1);
+        assert!(err(&code, &render(&unsorted)).contains("not alphabetical"));
+        // A malformed line, an empty list, a missing heading.
+        let malformed = render(&sorted).replacen(&format!("- `{first}`"), &format!("- {first}"), 1);
+        assert!(err(&code, &malformed).contains("malformed list line"));
+        assert!(err(&code, &format!("{HEADING}\n\n(note)\n")).contains("list missing"));
+        assert!(
+            err(&code, &render(&sorted).replacen(HEADING, "## Other", 1)).contains("not found")
+        );
     }
 }
