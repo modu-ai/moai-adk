@@ -483,6 +483,7 @@ fn transport_times_out_on_stalled_gh() {
         let t = GhTransport {
             bin,
             timeout: Duration::from_secs(2),
+            gh_token: None,
         };
         let _ = tx.send(t.send(&req));
     });
@@ -508,6 +509,7 @@ fn transport_times_out_on_stalled_gh() {
     let t = GhTransport {
         bin: stalled_gh(tmp.path()).to_str().unwrap().to_string(),
         timeout: Duration::from_millis(500),
+        gh_token: None,
     };
     let e = forge::read(&request("open"), None, &t, &FakeClock::at(1_794_000_000)).unwrap_err();
     assert_eq!(e.kind, "transport");

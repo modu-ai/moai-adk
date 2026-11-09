@@ -24,8 +24,7 @@ fn stub_gh(dir: &Path) -> PathBuf {
          printf 'token=%s %s\\n' \"$t\" \"$*\" >> '{log}'\n\
          body=$(cat)\n\
          printf '%s\\n' \"$body\" >> '{log}.bodies'\n\
-         for a in \"$@\"; do last=\"$a\"; done\n\
-         case \"$last\" in\n\
+         case \"$*\" in\n\
            */commits/*/statuses*) printf '%s' 'HTTP/2.0 200 OK\r\n\r\n[{{\"context\":\"moai/audit\",\"state\":\"success\",\"description\":\"seen\"}}]';;\n\
            */statuses/*) printf '%s' 'HTTP/2.0 201 Created\r\n\r\n{{\"id\":1,\"context\":\"moai/audit\",\"state\":\"success\"}}';;\n\
            *) printf '%s' 'HTTP/2.0 500 Unexpected\r\n\r\n{{}}'; exit 1;;\n\
