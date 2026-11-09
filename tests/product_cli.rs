@@ -1154,6 +1154,42 @@ fn launcher_flags_can_be_disabled() {
         .status
         .success());
 }
+
+/// REQ-A5-01 (#2164): `-l|-a` warns on stderr, records the deprecation note, and
+/// keeps the composed behavior — both launcher shapes.
+#[test]
+fn launcher_deprecated_roles_warn_and_keep_compose() {
+    let phrase = "deprecated: use `/moai --mode leader|agent` inside the session";
+    for args in [
+        &["-l", "--dry-run"][..],
+        &["-a", "--name", "agent-7", "--dry-run"][..],
+        &["cc", "-l", "--dry-run"][..],
+        &["codex", "-a", "--dry-run"][..],
+    ] {
+        let out = launcher(args, None);
+        let v = launched(&out);
+        assert!(
+            String::from_utf8_lossy(&out.stderr).contains(phrase),
+            "stderr: {args:?}"
+        );
+        assert!(
+            v["notes"]
+                .to_string()
+                .contains("deprecated: use `/moai --mode leader|agent` inside the session"),
+            "notes: {args:?}"
+        );
+    }
+    // REQ-A5-02: a role-less host session carries neither the warning nor the note.
+    let out = launcher(&["cc", "--dry-run"], None);
+    let v = launched(&out);
+    assert!(
+        !String::from_utf8_lossy(&out.stderr).contains("deprecated"),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(!v["notes"].to_string().contains("deprecated"));
+}
+
 #[test]
 fn launcher_glm_requires_token_name_only() {
     let sentinel = "moai-test-sentinel-not-a-real-token";
