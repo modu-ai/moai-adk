@@ -83,7 +83,7 @@
 
 설계 결정: 모델이 내장 명령을 입력할 수 있다는 근거가 없으므로, 두 모드 모두 **붙여넣기 지시문**을 안내한다. 리더 모드는 켜질 때 열린 Issue와 PR로 완료 조건 문장을 만든다(예: "milestone X의 Issue·PR이 모두 병합되거나 종료됨"). 그리고 사용자가 그대로 붙여 넣을 `/goal <조건>` 한 줄을 출력한다. 에이전트 모드는 자기 카드 범위의 조건을 같은 방식으로 안내한다. Codex 세션에도 같은 한 줄을 안내하되, Codex `/goal`이 계속 진행을 강제하는지는 확인되지 않았다. 그래서 그 효과를 보장한다고 적지 않는다. 보고서 §10.4는 Codex 항목을 "미확인"이라고 적었지만, 명령이 있다는 것은 이번에 공식 문서로 확인했다.
 
-RC1 구현 (A4 #2163): 문장 생성은 `tools/gen_goal_block.py`(stdlib만, 결정론적)로 fixture 기반 생성을 제공하고 `tests/goal_block_test.py`가 3종 fixture(열린 Issue만 / PR만 / keep-set 포함) 스냅샷을 고정한다. 지원표 goal 행(`docs/host-support-matrix.md`)과의 관계: 모델 입력 불가·붙여넣기 원칙은 두 모델 행의 "사용자가 입력한다" 서술과 일치하며, Codex의 "모델이 스스로 거는 경로"는 RC1에서 사용하지 않는다. keep-set 제외는 사유와 함께 문장에 명시된다(REQ-AM-08).
+RC1 구현 (A4 #2163): 문장 생성은 `tools/gen_goal_block.py`(stdlib만, 결정론적)로 fixture 기반 생성을 제공하고 `tests/goal_block_test.py`가 3종 fixture(열린 Issue만 / 열린 Issue 없이 PR 2개 / 실제 열린 항목과 겹치는 keep-set)의 전체 출력 스냅샷을 고정한다. keep-set 번호를 Issue·PR 목록에서 먼저 제외한 뒤 집계·에이전트 문장을 계산하며, 제외 사유도 문장에 명시한다(REQ-AM-08). 제외 후 열린 항목이 없으면 `열린 항목 없음`과 함께 leader·codex의 `goal_line`을 `null`로 내어 이미 충족된 `/goal`을 제시하지 않는다. 잘못된 번호·목록·사유 입력은 traceback 없이 거부한다. 입력 순열 동일성·빈 목록·입력 오류까지 합계 6개 시험으로 확인한다. 지원표 goal 행(`docs/host-support-matrix.md`)과의 관계: 모델 입력 불가·붙여넣기 원칙은 두 모델 행의 "사용자가 입력한다" 서술과 일치하며, Codex의 "모델이 스스로 거는 경로"는 RC1에서 사용하지 않는다.
 
 ## 8. 결정 항목(사용자 몫)
 

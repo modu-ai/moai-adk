@@ -24,16 +24,35 @@ import sys
 
 
 def build(fixture: dict) -> dict:
+    if not isinstance(fixture, dict):
+        raise ValueError("expected an object")
     milestone = fixture.get("milestone", "")
+    if not isinstance(milestone, str):
+        raise ValueError("milestone must be a string")
+    for group in ("issues", "prs", "keep_set"):
+        items = fixture.get(group, [])
+        if not isinstance(items, list):
+            raise ValueError(f"{group} must be a list")
+        for item in items:
+            if not isinstance(item, dict):
+                raise ValueError(f"{group} entries must be objects")
+            if type(item.get("number")) is not int or item["number"] <= 0:
+                raise ValueError(f"{group} entries require a positive integer number")
+            if group == "keep_set" and not isinstance(item.get("reason"), str):
+                raise ValueError("keep_set entries require a string reason")
+
+    keep_set = sorted(fixture.get("keep_set", []), key=lambda k: k["number"])
+    excluded = {k["number"] for k in keep_set}
     issues = sorted(
-        (i for i in fixture.get("issues", []) if i.get("state") == "open"),
+        (i for i in fixture.get("issues", [])
+         if i.get("state") == "open" and i["number"] not in excluded),
         key=lambda i: i["number"],
     )
     prs = sorted(
-        (p for p in fixture.get("prs", []) if p.get("state") == "open"),
+        (p for p in fixture.get("prs", [])
+         if p.get("state") == "open" and p["number"] not in excluded),
         key=lambda p: p["number"],
     )
-    keep_set = sorted(fixture.get("keep_set", []), key=lambda k: k["number"])
 
     subject = "Issue·PR"
     if issues and not prs:
@@ -41,12 +60,15 @@ def build(fixture: dict) -> dict:
     elif prs and not issues:
         subject = "PR"
 
-    open_counts = f"열린 {subject}"
-    condition = f"milestone {milestone}의 {open_counts}이 모두 병합되거나 종료됨"
+    if not issues and not prs:
+        condition = f"milestone {milestone}의 열린 항목 없음"
+    else:
+        particle = "가" if subject == "Issue" else "이"
+        condition = f"milestone {milestone}의 열린 {subject}{particle} 모두 병합되거나 종료됨"
     if keep_set:
         exclusions = ", ".join(f"#{k['number']}({k['reason']})" for k in keep_set)
         condition += f" — 다음은 제외: {exclusions}"
-    leader_line = f"/goal {condition}"
+    leader_line = f"/goal {condition}" if issues or prs else None
 
     agent_lines = []
     for i in issues:
@@ -86,7 +108,12 @@ def main(argv: list) -> int:
     except json.JSONDecodeError as exc:
         print(f"invalid fixture JSON: {exc}", file=sys.stderr)
         return 1
-    print(json.dumps(build(fixture), ensure_ascii=False, indent=2))
+    try:
+        block = build(fixture)
+    except ValueError as exc:
+        print(f"invalid fixture: {exc}", file=sys.stderr)
+        return 1
+    print(json.dumps(block, ensure_ascii=False, indent=2))
     return 0
 
 
