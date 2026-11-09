@@ -266,7 +266,63 @@ pub fn doctor(project: &Path) -> Result<Value> {
 /// Top-level `settings.json` keys MoAI may own (REQ-02B-06/07). `outputStyle` is managed only
 /// when the user asks for it; it is never set by default. The RC1 hook set is empty (P04 = A),
 /// so `hooks` is not managed.
-pub const MANAGED_SETTINGS: [&str; 2] = ["outputStyle", "statusLine"];
+/// `permissions` (#2244) is managed only with narrowing values; see [`check_permissions`].
+/// A slice, not a fixed-length array, so two branches adding a key cannot merge silently.
+pub const MANAGED_SETTINGS: &[&str] = &["outputStyle", "statusLine", "permissions"];
+
+/// Permission modes a managed `permissions.defaultMode` may take. `auto` and
+/// `bypassPermissions` skip prompts and are refused: package content never widens permissions.
+/// Mode list from https://code.claude.com/docs/en/permissions (read 2026-11-09).
+const PERMISSION_MODES: [&str; 4] = ["default", "acceptEdits", "plan", "dontAsk"];
+/// Bounds for one rule list (`allow`, `deny`, `ask`) and one rule.
+const PERMISSION_RULES_MAX: usize = 256;
+const PERMISSION_RULE_CHARS_MAX: usize = 256;
+
+/// Validates a desired `permissions` value: an object with only `allow`, `deny`, `ask`
+/// (arrays of non-empty one-line rules) and `defaultMode` (a narrowing mode). Any other
+/// sub-key (`additionalDirectories`, `disableBypassPermissionsMode`, ...) is undecided and
+/// refused.
+fn check_permissions(value: &Value) -> Result<()> {
+    let Value::Object(map) = value else {
+        return Err("permissions must be an object".into());
+    };
+    for (key, v) in map {
+        match key.as_str() {
+            "allow" | "deny" | "ask" => {
+                let Value::Array(rules) = v else {
+                    return Err(format!("permissions.{key} must be an array of rules"));
+                };
+                if rules.len() > PERMISSION_RULES_MAX {
+                    return Err(format!(
+                        "permissions.{key} must be at most {PERMISSION_RULES_MAX} rules"
+                    ));
+                }
+                for rule in rules {
+                    let ok = rule.as_str().is_some_and(|s| {
+                        !s.trim().is_empty()
+                            && s.chars().count() <= PERMISSION_RULE_CHARS_MAX
+                            && !s.chars().any(char::is_control)
+                    });
+                    if !ok {
+                        return Err(format!(
+                            "permissions.{key} rules must be non-empty one-line strings of at most {PERMISSION_RULE_CHARS_MAX} characters"
+                        ));
+                    }
+                }
+            }
+            "defaultMode" => {
+                if !v.as_str().is_some_and(|m| PERMISSION_MODES.contains(&m)) {
+                    return Err(
+                        "permissions.defaultMode must be default, acceptEdits, plan or dontAsk; widening modes are refused"
+                            .into(),
+                    );
+                }
+            }
+            _ => return Err(format!("unknown permissions key {key} refused")),
+        }
+    }
+    Ok(())
+}
 
 /// A planned settings object (`None` on conflict) and the conflicting keys.
 pub type SettingsPlan = (Option<Map<String, Value>>, Vec<String>);
@@ -288,6 +344,9 @@ pub fn plan_settings(
         .any(|k| !MANAGED_SETTINGS.contains(&k.as_str()))
     {
         return Err("unmanaged claude settings key refused".into());
+    }
+    if let Some(p) = desired.get("permissions") {
+        check_permissions(p)?;
     }
     let mut keys: Vec<&String> = baseline.keys().chain(desired.keys()).collect();
     keys.sort();
@@ -323,7 +382,7 @@ const SETTINGS_RECEIPT: &str = "manifests/claude-settings.json";
 /// re-reads, so a plan this module offers is one the writer accepts.
 const SETTINGS_LIMIT: u64 = 262_144;
 
-fn read_existing(path: &Path) -> Result<Option<Vec<u8>>> {
+pub(crate) fn read_existing(path: &Path) -> Result<Option<Vec<u8>>> {
     match fs::symlink_metadata(path) {
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
         Err(_) => Err("target metadata unavailable".into()),
