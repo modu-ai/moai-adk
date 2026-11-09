@@ -39,6 +39,10 @@ MIRRORS = {
     "settings_update": "adapters/claude/settings_update.py",
     "settings_plan": "experiments/claude_settings_plan.py",
 }
+# The #2294 decision, pinned here independently of the modules under test: the
+# mirrors manage exactly these keys. Everything else in Rust MANAGED_SETTINGS is
+# Rust-only and must be refused by every mirror.
+MIRROR_KEYS = frozenset({"outputStyle", "statusLine"})
 
 
 class MirrorParityTest(unittest.TestCase):
@@ -55,16 +59,24 @@ class MirrorParityTest(unittest.TestCase):
                 module = load(name, rel)
                 allowed = set(module._ALLOWED)
                 rust_only = set(module.RUST_ONLY)
+                # Pinned decision: a widened mirror fails here even when it also
+                # shrinks RUST_ONLY to keep the union intact.
+                self.assertEqual(allowed, MIRROR_KEYS, rel)
+                self.assertEqual(rust_only, managed - MIRROR_KEYS, rel)
                 self.assertEqual(allowed & rust_only, set(), rel)
                 self.assertEqual(allowed | rust_only, managed, rel)
                 # What the mirror does manage, a caller may also set through Rust.
                 self.assertTrue(allowed <= set(rust_list("USER_SETTINGS")), rel)
 
     def test_mirrors_refuse_every_rust_only_key(self):
+        # The keys come from src/claude.rs, never from the module's own RUST_ONLY,
+        # so a mirror that shrinks RUST_ONLY cannot shrink what is checked here.
+        rust_only = set(rust_list("MANAGED_SETTINGS")) - MIRROR_KEYS
+        self.assertTrue(rust_only, "Rust lists no key beyond the mirror keys")
         for name, rel in MIRRORS.items():
             module = load(name, rel)
             plan = module.plan_settings
-            for key in sorted(module.RUST_ONLY):
+            for key in sorted(rust_only):
                 with self.subTest(mirror=rel, key=key):
                     with self.assertRaises(ValueError):
                         plan({}, {}, {key: {}})
