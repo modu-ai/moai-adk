@@ -213,7 +213,7 @@ fn req_c4_01_axes_are_separate_fields() {
             "basis value {b} leaked into the verification vocabulary"
         );
     }
-    // Serializing keeps the two axes as distinct named fields (JSON 정본).
+    // Serializing keeps the two axes as distinct named fields (JSON is canonical).
     let v: Value = serde_json::to_value(&explicit).unwrap();
     assert!(v.get("basis").is_some(), "basis is its own field");
     assert!(
