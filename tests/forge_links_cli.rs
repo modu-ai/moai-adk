@@ -194,6 +194,10 @@ fn links_probe_rejects_bad_input_without_requests() {
                "blocked_by": [7]}),
         json!({"schema_version": 1, "owner": "acme", "repo": "widgets", "issue_number": 7,
                "extra": true}),
+        json!({"schema_version": 1, "owner": "acme", "repo": "widgets", "issue_number": 1,
+               "blocked_by": (2..=52).collect::<Vec<i64>>()}),
+        json!({"schema_version": 1, "owner": "acme", "repo": "widgets", "issue_number": 7,
+               "blocked_by": [5, 5]}),
     ] {
         let (out, v) = probe(tmp.path(), &gh, &input);
         assert!(!out.status.success(), "{input}");
@@ -201,4 +205,22 @@ fn links_probe_rejects_bad_input_without_requests() {
         assert_eq!(v["operation"], json!("forge.links_probe"), "{input}");
     }
     assert!(calls(tmp.path()).is_empty(), "no request on bad input");
+}
+
+#[test]
+fn links_probe_accepts_exactly_fifty_blockers() {
+    let tmp = tempfile::tempdir().unwrap();
+    let project = tmp.path().join("project");
+    fs::create_dir(&project).unwrap();
+    let gh = stub_gh(tmp.path(), 200, 200);
+    let input = json!({"schema_version": 1, "owner": "acme", "repo": "widgets",
+                       "issue_number": 1, "blocked_by": (2..=51).collect::<Vec<i64>>()});
+    let (out, v) = probe(&project, &gh, &input);
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert_eq!(v["ok"], json!(true));
+    assert_get_only(tmp.path());
 }

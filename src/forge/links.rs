@@ -70,6 +70,12 @@ fn validate(req: &LinksRequest) -> Result<(), ForgeError> {
             "blocked_by must be at most 50 issues (one relationship type)",
         ));
     }
+    let mut seen = req.blocked_by.clone();
+    seen.sort_unstable();
+    seen.dedup();
+    if seen.len() != req.blocked_by.len() {
+        return Err(ForgeError::invalid("blocked_by must not repeat an issue"));
+    }
     Ok(())
 }
 
