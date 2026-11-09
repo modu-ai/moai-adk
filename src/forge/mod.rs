@@ -8,6 +8,7 @@
 //!
 //! The CLI wraps the result in the 01-C envelope (`crate::contract`); errors become messages
 //! whose kind `contract::classify` derives, so each message here carries its kind's phrase.
+pub mod gitlab;
 pub mod outbox;
 pub mod policy;
 pub mod promote;
