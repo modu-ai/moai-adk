@@ -93,6 +93,9 @@ jobs:
           # macOS-only cases (#2194): cfg(target_os = "macos") Rust tests are compiled out on
           # Linux and darwin-gated Python tests are skipped; report per target which of them
           # ran, so a Linux pass is never read as a macOS-only measurement (AC-08C-7).
+          # The step shell is `bash -eo pipefail`: a grep with no match exits 1, so every
+          # grep below ends in `|| true` (without it the Linux targets failed after a green
+          # check set, rc-ci run 42618040618).
           {
             echo
             echo "### macOS-only cases"
@@ -100,7 +103,7 @@ jobs:
             echo "| case | gate | outcome on this target |"
             echo "| --- | --- | --- |"
             for t in e2e_never_writes_outside_temp_home privacy_06_operations_need_no_network; do
-              line=$(grep -E "^test ${t} \.\.\. " rc-ci-test.log | head -n 1 | sed 's/^test [^ ]* \.\.\. //')
+              line=$({ grep -E "^test ${t} \.\.\. " rc-ci-test.log || true; } | head -n 1 | sed 's/^test [^ ]* \.\.\. //')
               echo "| \`${t}\` | \`#[cfg(target_os = \"macos\")]\` | ${line:-not compiled on this target} |"
             done
             for t in e2e_host_claude_verdict_test e2e_receipt_not_run_test; do
