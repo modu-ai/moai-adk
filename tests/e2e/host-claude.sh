@@ -5,6 +5,17 @@
 # $RECEIPT_DIR (default: ./e2e-receipts, created if missing). Credential VALUES are
 # never written to any file — the receipt records only that ANTHROPIC_API_KEY was set.
 #
+# Docs grounding (code.claude.com/docs/en/headless + /skills, re-read 2026-11-09):
+# --bare skips auto-discovery of hooks/skills/commands/agents/plugins/MCP/CLAUDE.md,
+# but "A directory you name with --add-dir is a partial exception: bare mode loads
+# skills from its .claude/skills/ folder" — so the explicit `/moai` at the start of
+# the -p prompt is expanded. Caveats honored here: under --bare the model is not
+# given the skill LIST (automatic invocation is impaired; only the explicit prompt
+# invocation is measured), and a personal `~/.claude/skills/moai` would shadow the
+# added-directory fixture ("personal over project / added directory") — this script
+# therefore redirects HOME to the temporary work dir for the -p runs, which both
+# removes the shadowing and guarantees no writes to the real user HOME.
+#
 # Usage: export the existing Claude Code credentials into the environment
 # (ANTHROPIC_API_KEY — presence is checked, the value is never read into any file),
 # then run: tests/e2e/host-claude.sh [RECEIPT_DIR]
@@ -20,8 +31,9 @@ SKILL_DIGEST="$(shasum -a 256 skills/moai/SKILL.md | awk '{print $1}')"
 CLI_SHA="$(command -v moai-cli >/dev/null 2>&1 && shasum -a 256 "$(command -v moai-cli)" | awk '{print $1}' || echo absent)"
 HOST_VERSION="$(claude --version 2>/dev/null | head -1 || echo unknown)"
 
-# Pre-step: project the skill into the temporary project for both host layouts.
-mkdir -p "$WORK/project/.claude/skills" "$WORK/project/.agents/skills"
+# Pre-step: project the skill into the temporary project for both host layouts, and
+# give the -p runs an isolated HOME (no personal-skill shadowing, no real-HOME writes).
+mkdir -p "$WORK/project/.claude/skills" "$WORK/project/.agents/skills" "$WORK/home"
 cp -R skills/moai "$WORK/project/.claude/skills/moai"
 cp -R skills/moai "$WORK/project/.agents/skills/moai"
 
@@ -45,15 +57,17 @@ fi
 if [ -z "$(printenv ANTHROPIC_API_KEY || true)" ]; then
   receipt "AC-08C-3" not_run "credential ANTHROPIC_API_KEY not set; command not executed"
 else
-  if (cd "$WORK/project" && claude --bare \
+  if (cd "$WORK/project" && HOME="$WORK/home" claude --bare \
       -p '/moai 프로젝트 설정 미리보기만 해줘' \
       --add-dir "$WORK/project" \
       --output-format json \
       --permission-mode dontAsk --permission-prompts none \
       > "$WORK/ac3.json" 2> "$WORK/ac3.err"); then
-    # Expected: .result is a JSON string mentioning the SETUP route and the loaded
-    # skill; assert the structure, never the prose.
-    if jq -e '.result | type == "string"' "$WORK/ac3.json" >/dev/null 2>&1; then
+    # Expected: a clean JSON envelope — .result is a non-empty string, the run is not
+    # an error, and a session id exists. Structure only, never the prose: a plain
+    # assistant answer without the skill loading must not pass as a route hit.
+    if jq -e '.result | (type == "string" and length > 0)' "$WORK/ac3.json" >/dev/null 2>&1 \
+       && jq -e '.is_error == false and (.session_id | length > 0)' "$WORK/ac3.json" >/dev/null 2>&1; then
       receipt "AC-08C-3" passed "$WORK/ac3.json"
     else
       receipt "AC-08C-3" failed "$WORK/ac3.json"
@@ -69,7 +83,7 @@ if [ -z "$(printenv ANTHROPIC_API_KEY || true)" ]; then
   receipt "AC-08C-6" not_run "credential ANTHROPIC_API_KEY not set; command not executed"
 else
   BEFORE="$(find "$WORK/project" -type f -print0 2>/dev/null | sort -z | xargs -0 shasum -a 256)"
-  (cd "$WORK/project" && claude --bare \
+  (cd "$WORK/project" && HOME="$WORK/home" claude --bare \
       -p '/moai 설정 적용까지 진행해줘' \
       --add-dir "$WORK/project" \
       --output-format stream-json \
