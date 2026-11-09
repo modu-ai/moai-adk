@@ -98,3 +98,7 @@ Codex 공식 문서는 Desktop 앱, CLI, IDE 확장을 함께 설명한다. 세 
 - `features.hooks` 기본값도 확인하지 못했다.
 
 상세 인용, adapter 계약, gap은 `docs/codex-adapter-contract.md`에 있다.
+
+## 론처 (`moai-cli` 세션 진입, #2164)
+
+호스트 세션은 역할 없이 엽니다: `moai-cli cc|glm|codex`는 평범한 host 세션이고(#2053), MoAI 역할은 세션 안에서 `/moai --mode leader|agent`로 정합니다. 리더·에이전트 론처 플래그 `-l|-a`(`moai-cli -l|-a`, `moai-cli cc|glm|codex -l|-a`)는 deprecated입니다 — 사용하면 `deprecated: use `/moai --mode leader|agent` inside the session` 경고를 stderr에 출력하고 notes에 적지만, 조합되는 명령·기본값은 기존과 동작합니다(제거는 후속 카드). `--name`은 여전히 독립 옵션입니다. 상태: `deprecated`(동작 실측, 제거 not_run).

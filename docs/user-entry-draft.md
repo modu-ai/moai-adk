@@ -32,6 +32,10 @@ SETUP이 끝나면 같은 진입으로 READ → PLAN → RUN → VERIFY → AUDI
 | 요구 정리 | `/moai 이 기능 요구사항 정리해 줘` |
 | 구현·검증 | `/moai 이 SPEC 구현하고 검증까지 해 줘` |
 
+### 호스트 세션과 역할
+
+호스트 세션은 역할 없이 엽니다 — `moai-cli cc|glm|codex`는 평범한 host 세션이고, 세션 안에서 `/moai --mode leader|agent`로 MoAI 역할을 정합니다. 리더·에이전트 론처 플래그 `-l|-a`(`moai-cli -l|-a`, `moai-cli cc|glm|codex -l|-a`)는 deprecated입니다: 사용하면 경고가 뜨고 기존처럼 동작하지만, 새 세션은 역할 없이 열고 `/moai --mode`를 쓰는 것을 권합니다.
+
 ### 수동 명령 (명시적 fallback)
 
 자연어 진입이 불가능한 환경에서만 내부 실행 도구를 직접 씁니다: `moai-cli generation-plan`, `moai-cli update-plan` 등(각 명령은 plan/apply 2단계이며 plan digest 없이는 아무것도 쓰지 않습니다). 일상 사용 경로가 아닙니다.
