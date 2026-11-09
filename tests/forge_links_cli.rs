@@ -203,6 +203,10 @@ fn links_probe_rejects_bad_input_without_requests() {
         assert!(!out.status.success(), "{input}");
         assert_eq!(v["ok"], json!(false), "{input}");
         assert_eq!(v["operation"], json!("forge.links_probe"), "{input}");
+        // Every rejection above is an input error: the envelope kind must say so
+        // (REQ audit #2220 follow-up — the repeated-blocker message used to fall
+        // through to `internal`).
+        assert_eq!(v["error"]["kind"], json!("invalid_input"), "{input}");
     }
     assert!(calls(tmp.path()).is_empty(), "no request on bad input");
 }

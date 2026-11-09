@@ -664,6 +664,7 @@ mod tests {
             ForgeError::invalid("issue numbers must be positive"),
             ForgeError::invalid("issue links must be to other issues"),
             ForgeError::invalid("blocked_by must be at most 50 issues (one relationship type)"),
+            ForgeError::invalid("blocked_by must be free of repeated issues"),
         ];
         for e in errors {
             assert_eq!(

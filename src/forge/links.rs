@@ -74,7 +74,9 @@ fn validate(req: &LinksRequest) -> Result<(), ForgeError> {
     seen.sort_unstable();
     seen.dedup();
     if seen.len() != req.blocked_by.len() {
-        return Err(ForgeError::invalid("blocked_by must not repeat an issue"));
+        return Err(ForgeError::invalid(
+            "blocked_by must be free of repeated issues",
+        ));
     }
     Ok(())
 }
