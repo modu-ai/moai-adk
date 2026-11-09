@@ -8,6 +8,8 @@ use moai_cli::forge::{
     write::{LastRead, WriteOutcome, Writer},
     Client, Config, IssueKey, ReadRequest,
 };
+mod common;
+
 use serde_json::{json, Value};
 use std::{
     cell::{Cell, RefCell},
@@ -266,12 +268,7 @@ fn stub_gh(dir: &std::path::Path, mode: &str) -> std::path::PathBuf {
         "#!/bin/sh\n# test stub for gh api\nfor a in \"$@\"; do last=\"$a\"; done\nif [ \"{mode}\" = 401 ]; then printf '%s' '{unauthorized}'; echo \"gh: HTTP 401 $GH_TOKEN\" >&2; exit 1; fi\ncase \"$last\" in\n  *issues/comments*) printf '%s' '{comments}';;\n  *issues*) printf '%s' '{issues}';;\n  *) printf '%s' '{repo}';;\nesac\n"
     );
     let path = dir.join("gh-stub");
-    fs::write(&path, script).unwrap();
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
-    }
+    common::write_executable(&path, &script);
     path
 }
 
@@ -452,21 +449,44 @@ fn forge_read_rejects_bad_input_without_requests() {
 /// the shell, so it keeps the output pipes open even if only the shell is ended.
 #[cfg(unix)]
 fn stalled_gh(dir: &std::path::Path, name: &str) -> std::path::PathBuf {
-    // A unique path per call (#2283): rewriting an executable whose previous
-    // instance was killed microseconds earlier hits ETXTBSY on Linux (rc-ci run
-    // 42573077303: "cannot start .../gh-stalled: executable file busy"). This test
-    // calls the helper twice, so each call gets its own script path; semantics are
-    // unchanged (same 30-second stall, same pid file contract).
+    // One script and pid file per call. The ETXTBSY fix itself (#2283) is in
+    // `common::write_executable`: the script is written by a child process, so no
+    // concurrently forked test child can inherit a write fd on it.
     let path = dir.join(name);
     let pid_file = dir.join(format!("{name}.pid"));
     let script = format!(
         "#!/bin/sh\n# test stub: gh that hangs\nsleep 30 &\necho $! > '{}'\nwait\n",
         pid_file.display()
     );
-    fs::write(&path, script).unwrap();
-    use std::os::unix::fs::PermissionsExt;
-    fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
+    common::write_executable(&path, &script);
     path
+}
+
+/// True once `pid` no longer runs, waiting at most `limit`. A killed process orphaned to init
+/// stays visible to `kill -0` as a zombie until init reaps it (#2283: Linux CI showed state
+/// `Z`, parent 1, right after the group kill), so a zombie counts as ended.
+#[cfg(unix)]
+fn process_ends_within(pid: &str, limit: std::time::Duration) -> bool {
+    let started = std::time::Instant::now();
+    loop {
+        let signalable = Command::new("kill")
+            .args(["-0", pid])
+            .stderr(Stdio::null())
+            .status()
+            .unwrap()
+            .success();
+        let zombie = fs::read_to_string(format!("/proc/{pid}/stat"))
+            .ok()
+            .and_then(|s| s.rsplit_once(") ").map(|(_, rest)| rest.starts_with('Z')))
+            .unwrap_or(false);
+        if !signalable || zombie {
+            return true;
+        }
+        if started.elapsed() >= limit {
+            return false;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
 }
 
 #[cfg(unix)]
@@ -505,13 +525,11 @@ fn transport_times_out_on_stalled_gh() {
 
     // The grandchild that held the pipes was ended with the group.
     let pid = fs::read_to_string(tmp.path().join("gh-stalled-timeout.pid")).unwrap();
-    let alive = Command::new("kill")
-        .args(["-0", pid.trim()])
-        .stderr(Stdio::null())
-        .status()
-        .unwrap()
-        .success();
-    assert!(!alive, "sleep grandchild {} still running", pid.trim());
+    assert!(
+        process_ends_within(pid.trim(), Duration::from_secs(2)),
+        "sleep grandchild {} still running",
+        pid.trim()
+    );
 
     // Through the adapter the timeout is the retryable `transport` kind.
     let t = GhTransport {

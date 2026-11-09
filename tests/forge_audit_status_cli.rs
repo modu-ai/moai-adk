@@ -4,6 +4,8 @@
 //! The context stays `moai/audit` (the ruleset's required context). No token ever reaches
 //! stdout, stderr, argv or disk. Driven against a stub `gh` (no network).
 #![cfg(unix)]
+mod common;
+
 use serde_json::{json, Value};
 use std::{
     fs,
@@ -32,9 +34,7 @@ fn stub_gh(dir: &Path) -> PathBuf {
         log = log.display()
     );
     let path = dir.join("gh-stub");
-    fs::write(&path, script).unwrap();
-    use std::os::unix::fs::PermissionsExt;
-    fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
+    common::write_executable(&path, &script);
     path
 }
 

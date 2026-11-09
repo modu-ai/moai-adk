@@ -13,6 +13,8 @@ use moai_cli::{
         Client, ForgeError,
     },
 };
+mod common;
+
 use serde_json::{json, Value};
 use std::{
     cell::{Cell, RefCell},
@@ -691,12 +693,7 @@ fn stub_gh(dir: &Path) -> PathBuf {
     let marker = dir.join("gh-called");
     let script = format!("#!/bin/sh\n# test stub: records the call, refuses everything\ntouch '{}'\necho 'stub refuses' >&2\nexit 9\n", marker.display());
     let path = dir.join("gh-stub");
-    fs::write(&path, script).unwrap();
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
-    }
+    common::write_executable(&path, &script);
     path
 }
 
