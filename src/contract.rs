@@ -271,6 +271,9 @@ mod tests {
             ("target is not a bounded regular file", InvalidInput),
             ("HEAD is not a 40 hex commit", InvalidInput),
             ("package path invalid", InvalidInput),
+            // queue-next (rc.2 A2 #2161)
+            ("queue milestone must be a positive number", InvalidInput),
+            ("queue issue page limit exceeded (50)", InvalidInput),
             // identity (01-A #1988)
             ("path unavailable", NotFound),
             ("path must be a directory", InvalidInput),
