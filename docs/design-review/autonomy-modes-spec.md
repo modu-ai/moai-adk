@@ -1,5 +1,7 @@
 # 자율 무중단 개발 모드 SPEC — `/moai --leader-mode` · `/moai --agent-mode` (#2138, DR-02)
 
+> 현행 상태(#2167): 구현된 형태는 `/moai --mode leader [--autonomy full|semi]`·`/moai --mode agent`(#2160, `skills/moai/SKILL.md`)이고, 제목과 §1의 `--leader-mode`/`--agent-mode` 표기는 설계 당시 이름이다. §3의 한 회차는 `moai-cli queue-next`(#2161), §5의 한 tick은 `moai-cli leader-tick`(#2162)이 실행한다. 이 저장소에만 해당하는 운영 규칙은 `AGENTS.local.md` § Agent loop (self-claim)·§ Leader supervision·§ Gate에 있고, 그 이전 제안은 `docs/lane-loop-contract.md`(2026-11-08)다. 본문의 `AGENTS.local.md:행` 인용은 `604792666` tree 기준이며 #2167 재구성 뒤 행 번호가 바뀌었다.
+
 - 상태: SPEC 초안(Class C, 설계 변경). 이 문서는 구현하지 않는다. 코드·skill 파일은 바꾸지 않았고, 구현은 §10의 후속 카드가 맡는다.
 - 입력: 종합 개선 보고서 §10.4(`references/chatgpt-space/synthesis-improvement-report-2026-11-09.md`, 2026-11-09 작성, 저장소에 아직 tracked 아님). 사용자 결정 2026-11-09 00:0x~00:3x(모드 skill 진입, 완전/반자율, self-claim 기본, 리더 5분 PR 점검·타 에이전트 수리 지시, `/goal` 붙여넣기 안내).
 - 대조 기준: `origin/v2026.11.0` = `604792666`. 이 문서의 `경로:행`은 모두 이 tree에서 읽은 값이다. `<primary>/.claude/…`는 Go 세대 규칙 파일이며 이 저장소에 tracked가 아니다(이 tree의 `git ls-files .claude` 0건). 행 번호는 2026-11-09 primary checkout에서 읽었다.
@@ -80,6 +82,8 @@
 | ③ Codex CLI `/goal` | **확인됨**. "Set, edit, pause, resume, view, or clear a task goal", "Codex keeps the goal attached to the active chat while work continues". 조건이 충족될 때까지 턴 종료를 막는지는 문서에 없다 | **미확인** | https://learn.chatgpt.com/docs/cli/slash-commands (HTTP 200) |
 
 설계 결정: 모델이 내장 명령을 입력할 수 있다는 근거가 없으므로, 두 모드 모두 **붙여넣기 지시문**을 안내한다. 리더 모드는 켜질 때 열린 Issue와 PR로 완료 조건 문장을 만든다(예: "milestone X의 Issue·PR이 모두 병합되거나 종료됨"). 그리고 사용자가 그대로 붙여 넣을 `/goal <조건>` 한 줄을 출력한다. 에이전트 모드는 자기 카드 범위의 조건을 같은 방식으로 안내한다. Codex 세션에도 같은 한 줄을 안내하되, Codex `/goal`이 계속 진행을 강제하는지는 확인되지 않았다. 그래서 그 효과를 보장한다고 적지 않는다. 보고서 §10.4는 Codex 항목을 "미확인"이라고 적었지만, 명령이 있다는 것은 이번에 공식 문서로 확인했다.
+
+RC1 implementation (A4 #2163): `tools/gen_goal_block.py` is a deterministic, standard-library-only fixture generator. `tests/goal_block_test.py` pins the complete JSON output for issues only, two open PRs with no open issues, and a keep-set overlapping actual open items. Exclude keep-set numbers from both Issue and PR lists before computing counts and agent lines; include their reasons in the condition (REQ-AM-08). If no eligible items remain, return `goal_line: null` for leader and Codex, with an explicit no-open-items condition, rather than offering an already-satisfied `/goal`. Reject malformed numbers, lists and reasons without a traceback. Six tests cover these snapshots, input permutations, empty scopes and invalid input. The paste-only contract matches the user-input goal rows in `docs/host-support-matrix.md`: the model cannot enter `/goal`, and RC1 does not use a Codex self-arming path.
 
 ## 8. 결정 항목(사용자 몫)
 

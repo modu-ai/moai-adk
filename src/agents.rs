@@ -349,6 +349,19 @@ fn plan_digest(p: &AgentsPlan) -> String {
 }
 
 pub fn agents_plan(root: &Path, request: AgentsRequest) -> Result<AgentsPlan> {
+    agents_plan_for(root, request, false)
+}
+
+/// `agents_plan` with one exception to the reference check (#2274, REQ-2): when
+/// `reference_created_here`, the caller writes the `workflow_reference` directory in the same
+/// apply (generation's own `.moai-cli/workflows/` location), so it need not exist yet. The path
+/// is still resolved inside the project and every other refusal still applies (REQ-3). A
+/// direct `agents-plan` always passes `false` and stays fail-closed.
+pub(crate) fn agents_plan_for(
+    root: &Path,
+    request: AgentsRequest,
+    reference_created_here: bool,
+) -> Result<AgentsPlan> {
     validate(&request)?;
     let root = root_of(root)?;
     let (profile, profile_bytes) = read_profile(&root)?;
@@ -356,7 +369,8 @@ pub fn agents_plan(root: &Path, request: AgentsRequest) -> Result<AgentsPlan> {
     let m = manifest.as_ref();
     let mut files = Vec::new();
     let mut warnings = Vec::new();
-    if !target(&root, request.workflow_reference.trim_end_matches('/'))?.is_dir() {
+    let reference = target(&root, request.workflow_reference.trim_end_matches('/'))?;
+    if !reference_created_here && !reference.is_dir() {
         return Err("workflow reference directory missing; generate it first".into());
     }
     if injects_markers(&profile, &request) {
@@ -565,6 +579,19 @@ pub(crate) fn agents_apply_amended(
     permission: &str,
     amend: &mut dyn FnMut(&Path, &mut Value) -> Result<()>,
 ) -> Result<Value> {
+    agents_apply_amended_for(root, p, confirmed, permission, false, amend)
+}
+
+/// `agents_apply_amended` whose re-plan uses `agents_plan_for`: generation passes `true`
+/// only when its own `amend` hook writes the `workflow_reference` directory (#2274).
+pub(crate) fn agents_apply_amended_for(
+    root: &Path,
+    p: AgentsPlan,
+    confirmed: &str,
+    permission: &str,
+    reference_created_here: bool,
+    amend: &mut dyn FnMut(&Path, &mut Value) -> Result<()>,
+) -> Result<Value> {
     // Caller authorization remains host-owned; this reference is not an authorization verifier.
     if ["", "null", "placeholder"].contains(&permission.trim())
         || permission.len() > 128
@@ -572,7 +599,7 @@ pub(crate) fn agents_apply_amended(
     {
         return Err("permission reference required".into());
     }
-    let current = agents_plan(root, p.request.clone())?;
+    let current = agents_plan_for(root, p.request.clone(), reference_created_here)?;
     if p.protocol_version != 1
         || confirmed != p.plan_digest
         || plan_digest(&p) != p.plan_digest
