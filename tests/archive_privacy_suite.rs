@@ -255,6 +255,17 @@ fn tamper_index_path(project: &Path, path: &str) {
     fs::write(&ipath, serde_json::to_vec_pretty(&idx).unwrap()).unwrap();
 }
 
+/// Rewrites the `spec_id` of the first index entry and keeps its `path` consistent
+/// with it (`.moai-cli/archive/specs/<spec_id>`), so only the spec_id check stands
+/// between the tampered id and a directory outside the project (#2307 A2).
+fn tamper_index_spec_id(project: &Path, spec_id: &str) {
+    let ipath = project.join(".moai-cli/archive/index.json");
+    let mut idx: Value = serde_json::from_slice(&fs::read(&ipath).unwrap()).unwrap();
+    idx["entries"][0]["spec_id"] = Value::String(spec_id.into());
+    idx["entries"][0]["path"] = Value::String(format!(".moai-cli/archive/specs/{spec_id}"));
+    fs::write(&ipath, serde_json::to_vec_pretty(&idx).unwrap()).unwrap();
+}
+
 /// A second project holding text that must never surface through project A.
 fn other_project(root: &Path) -> PathBuf {
     let b = new_project(root, "other");
@@ -290,6 +301,23 @@ fn privacy_01_index_cannot_point_search_outside_the_project() {
     // ... and an absolute path, which `Path::join` would take as is.
     tamper_index_path(&a, b.join(".moai-cli/specs/SPEC-OTHER").to_str().unwrap());
     assert_no_other_project_hit(&a);
+
+    // The spec_id itself tampered, with a matching path: from
+    // <a>/.moai-cli/archive/specs/ four `..` reach the shared root, then the other
+    // project. Fresh archive per case, so each tamper starts from a valid index.
+    let a2 = new_project(root.path(), "relative-id");
+    write_spec(&a2, "SPEC-DONE", "status: completed\n", "done");
+    commit_all(&a2);
+    apply_now(&a2);
+    tamper_index_spec_id(&a2, "../../../../other/.moai-cli/specs/SPEC-OTHER");
+    assert_no_other_project_hit(&a2);
+
+    let a3 = new_project(root.path(), "absolute-id");
+    write_spec(&a3, "SPEC-DONE", "status: completed\n", "done");
+    commit_all(&a3);
+    apply_now(&a3);
+    tamper_index_spec_id(&a3, b.join(".moai-cli/specs/SPEC-OTHER").to_str().unwrap());
+    assert_no_other_project_hit(&a3);
 }
 
 #[cfg(unix)]
@@ -435,7 +463,9 @@ fn privacy_04_document_and_name_payloads_never_execute() {
     let ps = p.to_str().unwrap();
 
     let (digest, _) = cli_plan_digest(&p, &cwd);
-    cli(
+    // Each operation must succeed: a failing operation would also leave no sentinel,
+    // so the sentinel checks below only mean something after a real run (#2307 A1).
+    let (code, text) = cli(
         &[
             "archive-apply",
             ps,
@@ -446,8 +476,10 @@ fn privacy_04_document_and_name_payloads_never_execute() {
         ],
         &cwd,
     );
-    cli(&["archive-search", ps, "--query", "touch"], &cwd);
-    cli(
+    assert_eq!(code, 0, "apply: {text}");
+    let (code, text) = cli(&["archive-search", ps, "--query", "touch"], &cwd);
+    assert_eq!(code, 0, "search: {text}");
+    let (code, text) = cli(
         &[
             "archive-restore",
             ps,
@@ -458,6 +490,7 @@ fn privacy_04_document_and_name_payloads_never_execute() {
         ],
         &cwd,
     );
+    assert_eq!(code, 0, "restore: {text}");
     assert!(!sentinel.exists(), "a document payload executed");
     assert!(
         !cwd.join("pwned").exists(),

@@ -5,9 +5,10 @@
 //! replayed through a stub `gh` binary that answers from environment-set canned HTTP
 //! envelopes (read-only; no status posting, merging or ruleset change is exercised).
 
+mod common;
+
 use serde_json::{json, Value};
 use std::{
-    fs,
     path::{Path, PathBuf},
     process::{Command, Stdio},
 };
@@ -55,12 +56,7 @@ esac
 
 fn install_stub(dir: &Path, script: &str) -> PathBuf {
     let path = dir.join("gh-stub");
-    fs::write(&path, script).unwrap();
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
-    }
+    common::write_executable(&path, script);
     path
 }
 

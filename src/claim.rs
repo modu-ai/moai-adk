@@ -620,8 +620,48 @@ fn err_transport(message: impl Into<String>) -> ForgeError {
     }
 }
 
-fn claim_line(session: &str, epoch: u64, lease_until: &str) -> String {
-    format!("moai-claim: session={session} epoch={epoch} lease_until={lease_until}")
+/// Fields of a claim comment line (#2255, REQ-A9-02). The first three are the RC1 line and
+/// stay first, so every reader of the RC1 form keeps working; the rest are appended tokens.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct ClaimFields {
+    /// Session id of the claimant; `unverified` when the poster could not confirm it.
+    pub session: String,
+    pub epoch: u64,
+    pub lease_until: String,
+    /// Lane label (`agent-1`, ...), when known.
+    pub lane: Option<String>,
+    pub issue: Option<i64>,
+    pub branch: Option<String>,
+    /// UTC time the line was written (`YYYY-MM-DDTHH:MM:SSZ`).
+    pub at: Option<String>,
+    /// True when another session (the leader) posted the line on the claimant's behalf.
+    pub relay: bool,
+}
+
+/// The one claim-line generator: acquire, queue-next and a relaying leader all render
+/// through it, and `claim_verify::classify_comment` parses what it writes.
+pub fn render_claim_line(f: &ClaimFields) -> String {
+    let mut line = format!(
+        "moai-claim: session={} epoch={} lease_until={}",
+        f.session, f.epoch, f.lease_until
+    );
+    if let Some(lane) = &f.lane {
+        line.push_str(&format!(" lane={lane}"));
+    }
+    if let Some(issue) = f.issue {
+        line.push_str(&format!(" issue={issue}"));
+    }
+    if let Some(branch) = &f.branch {
+        line.push_str(&format!(" branch={branch}"));
+    }
+    if let Some(at) = &f.at {
+        line.push_str(&format!(" at={at}"));
+    }
+    // Absent means not relayed, so a line with no extra fields is the RC1 line byte for byte.
+    if f.relay {
+        line.push_str(" relay=true");
+    }
+    line
 }
 
 /// Reads every comment of the issue through the read path (GET only) and returns the
@@ -1037,7 +1077,14 @@ pub fn acquire<T: Transport, C: Clock>(
             post_claim(
                 client,
                 &req.task_ref,
-                &claim_line(&req.owner.id, epoch, &req.lease_until),
+                // The acquire line stays the RC1 line byte for byte (#2255 AC-3): the issue is
+                // the URL's, and the comment's own created_at is the server's time.
+                &render_claim_line(&ClaimFields {
+                    session: req.owner.id.clone(),
+                    epoch,
+                    lease_until: req.lease_until.clone(),
+                    ..Default::default()
+                }),
             )
             .map_err(String::from)?
         }
