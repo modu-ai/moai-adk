@@ -27,6 +27,7 @@
 
 - [x] 명령(본문 AC-08D-3 그대로, 세션 규칙상 target dir만 유지): `CARGO_HOME=/tmp/moai-rc-product-cargo CARGO_TARGET_DIR=/tmp/moai-rc-target-agent-7 cargo build --offline --locked --release && shasum -a 256 /tmp/moai-rc-target-agent-7/release/moai-cli > /tmp/sha256.sum && shasum -a 256 -c /tmp/sha256.sum`
 - [x] 결과: **OK**(exit 0) — `312ccf8c14af41de648c5a7af4821296ea677f43d11a76415948f3ea84b16b2b  /tmp/moai-rc-target-agent-7/release/moai-cli`. 참고: 이것은 **로컬 개발 빌드 산출물의 자체 검증**이며, 실제 release artifact(tarball·installer)의 checksum 목록은 게시 단계에서 만든다(cargo-dist 미도입 — 수동 `sha256.sum` 절차를 이 항목이 선행한다).
+- [x] **E1 #2193 갱신 — cargo-dist 도입**: `dist-workspace.toml` 설정 + `dist build`(cargo-dist 0.34.0)로 archive별 `.sha256` + 통합 `sha256.sum` 네이티브 산출 실측(target/distrib — `shasum -a 256 -c` OK). 게시 단계 checksum 목록은 이제 dist가 산출한다.
 - [ ] **not_run — release artifact checksum 목록**: artifact 미생성(게시 금지 범위).
 
 ## (e) provenance / 서명 (AC-08D-5)
@@ -53,7 +54,10 @@
 
 ## (i) SBOM / license
 
-- [ ] **HOLD/not_run — CycloneDX `bom.xml`·cargo-auditable**: 도구 설치·실행이 필요해 RC1 보류(선택지 B: Cargo.lock — 의존 4개 — 만 게시 단계에서 첨부하는 안, 사용자 결정 대기). 정식 릴리스 재검토.
+- [x] **SBOM 생성 실측 (E1 #2193, 결정 01:1x "SBOM=cargo-dist" 반영)**: `cargo cyclonedx`(cargo-cyclonedx 0.5.10, 세션 CARGO_HOME 설치) 실행 → `moai-cli.cdx.xml` 생성 확인 — CycloneDX 1.3, 40 components(루트 moai-cli 2026.11.0-rc.1 + 의존성 전체). 재현 명령: `CARGO_HOME=/tmp/moai-rc-product-cargo PATH="/tmp/moai-rc-product-cargo/bin:$PATH" cargo cyclonedx`(워크트리 루트에서).
+- [x] `dist-workspace.toml`에 `cargo-cyclonedx = true`·`cargo-auditable = true` 설정(dist 0.34 스키마 수용 실측). **관측 한계**: dist build가 `target/distrib/moai-cli.cdx.xml`을 announce했으나 이 환경에서 두 번 모두 파일 미실체화(플러그인 설치·직접 생성 확인 후에도 동일) — upstream dist 0.34 관측 한계로 기록. 실무 경로: `cargo cyclonedx` 직접 실행 → 생성된 XML을 distrib로 복사(게시 단계 절차에 추가).
+- [ ] **not_run — attestation 연동**: SBOM의 attestation(`actions/attest@v4`)은 게시 단계(별도 권한) — REQ-08D-08에 따라 checksum이 서명을 대체한다고 쓰지 않음.
+- [x] license: `publish = false` + Cargo.lock(의존 고정) — 정식 릴리스 시 SBOM 재생성·첨부는 (i) 절차에 포함.
 
 ## (j) 미결 목록
 
@@ -62,7 +66,7 @@
 | `moai-cli-v*` tag ruleset 추가 여부 | 저장소 설정(운영자) | REQ-08D-09 근거 — 미결 시 재배포 금지가 절차 규약으로만 성립 |
 | attestation 생성 workflow(`actions/attest@v4`) | release 운영(운영자) | AC-08D-5 not_run — provenance 부재 상태로는 게시 불가 |
 | P12 OS/arch matrix 확대 | 사용자 결정 | 지원표가 실측 단일 조합으로 좁게 유지됨 |
-| SBOM(cargo-cyclonedx) | 사용자 결정 | (i) not_run |
+| SBOM(cargo-cyclonedx) | 사용자 결정 01:1x "SBOM=cargo-dist" → **E1에서 도입·실측 완료** | (i) 참조 — attestation 연동만 게시 단계 not_run |
 | macOS codesign/notarization | 운영자(Developer ID) | 미서명 표기 또는 수동 절차(HOLD) |
 | T2 호스트 로딩 운영자 실측 | 운영자(자격증명) | certified 지원 행 0 — 지원표 머리의 한계 문단 유지 |
 
