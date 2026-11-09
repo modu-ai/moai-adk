@@ -67,4 +67,4 @@ L18 `proposed, applied, not_required, blocked, unknown` / L29 `"status": "propos
 
 ## 누락 0 확인 방법 (AC-1)
 
-검토 파일이 열거한 어휘 목록 = synthesis S4 행의 7문서 집계 + review-group2 §에지·상태 절 + review-group3 문서별 절. 위 표는 그 7문서([83f]·[25f]·[e08]·[3d9]·[66a]·[0259]·[0d45]) + Core Brain 3기계를 각각 한 절로 다루며, [25f]의 분산 어휘는 위와 같이 한계를 명시했다. 재확인 명령: `grep -c '"' schemas/protocol/v1/status-crosswalk.json` 로 69토큰 존재 확인, 각 사본 행 번호는 표 기재.
+검토 파일이 열거한 어휘 목록 = synthesis S4 행의 7문서 집계 + review-group2 §에지·상태 절 + review-group3 문서별 절. 위 표는 그 7문서([83f]·[25f]·[e08]·[3d9]·[66a]·[0259]·[0d45]) + Core Brain 3기계를 각각 한 절로 다루며, [25f]의 분산 어휘는 위와 같이 한계를 명시했다. 재확인 명령(69 실측): `python3 -I -c 'import json;print(sum(len(s["tokens"]) for s in json.load(open("schemas/protocol/v1/status-crosswalk.json"))["sources"]))'` — `sources[].tokens` 길이의 합으로 69을 재는다.
