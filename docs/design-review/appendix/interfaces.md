@@ -53,9 +53,9 @@
 - `github-plan`
 - `identity`
 - `install-inspect`
-- `leader-tick`
 - `layout-apply`
 - `layout-plan`
+- `leader-tick`
 - `package-inspect`
 - `package-resolve`
 - `parity-check`

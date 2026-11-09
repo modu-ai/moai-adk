@@ -9,7 +9,7 @@
 //! `layout-plan` measures and binds a plan (writes nothing); `layout-apply` executes it
 //! (copy → verify → switch). The home tree this defines is
 //! `~/.moai-cli/projects/<project_id>/{receipts/, forge/outbox/, claims/, layout.json}` —
-//! the P09 결정안 lives in `docs/home-layout-p09.md`.
+//! the P09 decision document lives in `docs/home-layout-p09.md`.
 use crate::profile::read_profile;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -203,7 +203,7 @@ fn identity_of(project: &Path) -> Result<String> {
 }
 
 /// Copies one source tree to its target without touching the source, then verifies the
-/// copy reproduces the source digest (REQ-B8-01: 복사·검증). The entry's excludes (the
+/// copy reproduces the source digest (REQ-B8-01: copy + verify). The entry's excludes (the
 /// journal `.lock`) are skipped in both the walk and the verify, matching the plan.
 fn copy_verified(entry: &LayoutEntry) -> Result<()> {
     let source = Path::new(&entry.source);
