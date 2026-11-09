@@ -37,6 +37,8 @@ Astro 7의 preview는 백그라운드 프로세스로 실행될 수 있습니다
 
 제목·설명·본문을 함께 번역하고 파일명과 slug는 일치시킵니다. 파일 추가·삭제 시 양쪽 언어와 `astro.config.mjs`의 사이드바를 함께 갱신합니다. 사이드바 slug에는 언어 접두사를 넣지 않습니다. 그룹 라벨은 `translations`로, 페이지 라벨은 각 페이지의 frontmatter 제목으로 현지화합니다. UI는 Starlight의 기본 번역을 사용하되, 영어 코드 블록의 세 문자열은 `src/content/i18n/en.json`에 명시합니다. Starlight 0.42.10의 기본 영어 사전에 이 키들이 없어 한국어 기본 언어로 fallback되기 때문입니다. `i18nLoader`와 `i18nSchema`로 해당 번역을 읽으며, 한국어는 기본 번역을 유지합니다.
 
+한국어 검색 UI의 상태·조작 문자열은 `src/content/i18n/ko.json`의 공식 `pagefind.*` 키로 지정합니다. Starlight의 기본 한국어 사전에는 이 키들이 없고, 설치된 Pagefind UI 번들은 자동 언어 선택을 실행하지 않는 mount hook을 포함하므로 기본 영어 문자열에 의존하지 않습니다. 기존 `i18n` 컬렉션을 통해 페이지 언어별로 전달하며 영어 검색 문자열은 변경하지 않습니다.
+
 홈은 Starlight의 `CardGrid`·`LinkCard`를 쓰는 MDX이며 나머지는 Markdown입니다. `src/content.config.ts`에서 공식 `docsLoader`와 `docsSchema`를 사용합니다. 제품 동작은 현재 Rust 구현과 저장소의 지원표를 기준으로 쓰며, 게시되지 않은 설치 URL이나 미검증 플랫폼 지원을 추가하지 않습니다.
 
 ## Vercel 신규 프로젝트 배포 제안 — 미실행
