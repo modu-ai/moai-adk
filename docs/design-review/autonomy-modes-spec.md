@@ -83,6 +83,8 @@
 
 설계 결정: 모델이 내장 명령을 입력할 수 있다는 근거가 없으므로, 두 모드 모두 **붙여넣기 지시문**을 안내한다. 리더 모드는 켜질 때 열린 Issue와 PR로 완료 조건 문장을 만든다(예: "milestone X의 Issue·PR이 모두 병합되거나 종료됨"). 그리고 사용자가 그대로 붙여 넣을 `/goal <조건>` 한 줄을 출력한다. 에이전트 모드는 자기 카드 범위의 조건을 같은 방식으로 안내한다. Codex 세션에도 같은 한 줄을 안내하되, Codex `/goal`이 계속 진행을 강제하는지는 확인되지 않았다. 그래서 그 효과를 보장한다고 적지 않는다. 보고서 §10.4는 Codex 항목을 "미확인"이라고 적었지만, 명령이 있다는 것은 이번에 공식 문서로 확인했다.
 
+RC1 implementation (A4 #2163): `tools/gen_goal_block.py` is a deterministic, standard-library-only fixture generator. `tests/goal_block_test.py` pins the complete JSON output for issues only, two open PRs with no open issues, and a keep-set overlapping actual open items. Exclude keep-set numbers from both Issue and PR lists before computing counts and agent lines; include their reasons in the condition (REQ-AM-08). If no eligible items remain, return `goal_line: null` for leader and Codex, with an explicit no-open-items condition, rather than offering an already-satisfied `/goal`. Reject malformed numbers, lists and reasons without a traceback. Six tests cover these snapshots, input permutations, empty scopes and invalid input. The paste-only contract matches the user-input goal rows in `docs/host-support-matrix.md`: the model cannot enter `/goal`, and RC1 does not use a Codex self-arming path.
+
 ## 8. 결정 항목(사용자 몫)
 
 - **D-1 론처 `-l`/`-a`**: (a) 호환용으로 남긴다. 모드 skill과 같은 세션 이름 기본값을 유지한다. (b) 폐기한다. 역할은 모드 skill로만 켠다. 어느 쪽이든 `moai-cli cc|glm|codex`만 실행하면 역할을 추측하지 않는다는 #2053의 동작은 유지한다.

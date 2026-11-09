@@ -138,6 +138,9 @@ const RULES: &[(&str, Kind)] = &[
     ("too large", Kind::InvalidInput),
     ("must be", Kind::InvalidInput),
     ("require", Kind::InvalidInput),
+    // #2242: the project-skill copy ops refuse before any write without the
+    // explicit opt-in flag.
+    ("explicit opt-in required", Kind::InvalidInput),
     ("forbidden", Kind::InvalidInput),
     ("refused", Kind::InvalidInput),
     ("outside", Kind::InvalidInput),
@@ -179,6 +182,7 @@ mod tests {
         use Kind::*;
         let cases = [
             ("unsupported protocol_version; supported: 1", UnsupportedProtocolVersion),
+            ("explicit opt-in required; nothing written", InvalidInput),
             ("input exceeds 64 KiB", InputTooLarge),
             ("invalid typed JSON input", InvalidInput),
             ("stdin read failed", Io),
@@ -316,6 +320,14 @@ mod tests {
             ("git failed: detected dubious ownership in repository at", GitFailed),
             ("git failed: git output exceeded the size limit", GitFailed),
             ("git failed: git output was not UTF-8", GitFailed),
+            // hooks-plan / hooks-apply (rc.2 I1 #2238)
+            ("unknown hook host; must be claude or codex", InvalidInput),
+            (
+                "home directory refused; hooks are written to a project tree only",
+                InvalidInput,
+            ),
+            ("existing .codex/hooks.json requires preservation review", Conflict),
+            (".codex/hooks.json receipt requires preservation review", Conflict),
         ];
         for (message, kind) in cases {
             assert_eq!(classify(message), kind, "{message}");
