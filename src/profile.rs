@@ -28,7 +28,7 @@ const DECISION_ITEM_LIMIT: usize = 32;
 const DECISION_STRING_LIMIT: usize = 256;
 const REVISION_LIMIT: usize = 128;
 /// Keys owned by the profile schema; the delta covers exactly these.
-const MANAGED_KEYS: [&str; 10] = [
+const MANAGED_KEYS: [&str; 11] = [
     "schema_version",
     "project_id",
     "purpose",
@@ -39,7 +39,11 @@ const MANAGED_KEYS: [&str; 10] = [
     "interview_revision",
     "decisions",
     "github_issues",
+    "context_max_bytes",
 ];
+/// Keys added after the first profile release: absent from desired, current and baseline
+/// they are left out of the delta, so a profile without them plans exactly as before.
+const ADDITIVE_KEYS: [&str; 2] = ["github_issues", "context_max_bytes"];
 
 /// One interview decision recorded under `decisions` (REQ-03A-01). `source` says where
 /// the value came from: `repo` (repository convention), `user` (stated in the
@@ -78,6 +82,11 @@ pub struct Profile {
     /// no choice was recorded; a profile written before this key reads unchanged.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub github_issues: Option<bool>,
+    /// Byte budget `context-bundle` uses when a request names no `max_bytes` (#2184,
+    /// REQ-C8-01). Absent means the built-in 256 KiB default; a profile written before this
+    /// key reads unchanged.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub context_max_bytes: Option<u64>,
 }
 
 /// Key-level reconfigure delta of a plan (REQ-03A-02). Keys are sorted in every list so
@@ -181,6 +190,7 @@ fn validate(p: &Profile) -> Result<()> {
             .as_ref()
             .is_some_and(|s| !portable(s) || s.len() > REVISION_LIMIT)
         || !decisions_ok
+        || p.context_max_bytes == Some(0)
     {
         return Err("invalid or nonportable profile; no values were logged".into());
     }
@@ -280,10 +290,10 @@ fn compute_delta(baseline: Option<&Value>, current: Option<&Value>, desired: &Va
         let d = desired_map.get(key);
         let c = current_map.and_then(|m| m.get(key));
         let b = baseline_map.and_then(|m| m.get(key));
-        // `github_issues` (#2106) is additive: absent from desired, current and baseline
-        // it is left out of the delta, so a profile without the key plans exactly as
-        // before the key existed.
-        if key == "github_issues" && d.is_none() && c.is_none() && b.is_none() {
+        // `github_issues` (#2106) and `context_max_bytes` (#2184) are additive: absent from
+        // desired, current and baseline they are left out of the delta, so a profile
+        // without them plans exactly as before the keys existed.
+        if ADDITIVE_KEYS.contains(&key) && d.is_none() && c.is_none() && b.is_none() {
             continue;
         }
         // schema_version is MoAI-owned schema state, never user content (leader decision
@@ -657,6 +667,7 @@ pub fn read_profile(root: &Path) -> Result<(Profile, Vec<u8>)> {
         "interview_revision",
         "decisions",
         "github_issues",
+        "context_max_bytes",
     ];
     let filtered: serde_json::Map<String, Value> = map
         .iter()
@@ -695,6 +706,7 @@ mod tests {
             interview_revision: Some("r1".into()),
             decisions: vec![record("d1", "Rust", "user")],
             github_issues: None,
+            context_max_bytes: None,
         }
     }
 
