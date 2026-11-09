@@ -51,7 +51,7 @@ fn claude_plan_apply_replan_is_noop() {
     .unwrap();
     assert_eq!(applied["state"], json!("applied"));
     assert_eq!(applied["host_loaded"], json!("not_run"));
-    assert_eq!(applied["hooks_generated"].as_array().unwrap().len(), 3);
+    assert_eq!(applied["hooks_generated"].as_array().unwrap().len(), 4);
     let settings = read_json(&p.path().join(".claude/settings.json"));
     assert_eq!(
         settings["hooks"],
@@ -96,7 +96,7 @@ fn codex_plan_apply_replan_is_noop() {
     );
     assert!(file["description"].as_str().unwrap().contains("MoAI"));
     let receipt = read_json(&p.path().join(".moai-cli/manifests/codex-hooks.json"));
-    assert_eq!(receipt["hooks"].as_array().unwrap().len(), 3);
+    assert_eq!(receipt["hooks"].as_array().unwrap().len(), 4);
     assert_eq!(receipt["sha256"], applied["hooks_sha256_after"]);
     assert!(receipt.get("pending_sha256").is_none(), "pending cleared");
 
@@ -113,24 +113,108 @@ fn codex_plan_apply_replan_is_noop() {
     assert_eq!(noop["state"], json!("unchanged"));
 }
 
-/// The hook set itself: the three events, an explicit timeout on every handler, and a bare
-/// command name (no absolute path) that is the same op for both hosts.
+/// The hook set itself: four events, an explicit timeout on every handler, and bare command
+/// names (no absolute path). Three are receipts; `PreToolUse` on Bash runs the claim guard
+/// (#2255 AC-2), the same command for both hosts.
 #[test]
 fn hook_set_has_explicit_timeouts_and_bare_commands() {
     for host in hooks::HOSTS {
         let obj = hooks::hooks_object(host).unwrap();
         let events: Vec<&String> = obj.keys().collect();
-        assert_eq!(events, ["SessionStart", "PostToolUse", "Stop"]);
+        assert_eq!(
+            events,
+            ["SessionStart", "PreToolUse", "PostToolUse", "Stop"]
+        );
+        assert_eq!(obj["PreToolUse"][0]["matcher"], json!("Bash"));
         assert_eq!(obj["PostToolUse"][0]["matcher"], json!("Bash"));
         assert!(obj["Stop"][0].get("matcher").is_none());
-        for groups in obj.values() {
+        for (event, groups) in &obj {
             let handler = &groups[0]["hooks"][0];
             assert_eq!(handler["type"], json!("command"));
             assert_eq!(handler["timeout"], json!(hooks::HOOK_TIMEOUT_SECS));
             let command = handler["command"].as_str().unwrap();
-            assert_eq!(command, format!("moai-cli hook-receipt --host {host}"));
+            let expected = if event == "PreToolUse" {
+                "moai-cli claim-verify . --hook".to_string()
+            } else {
+                format!("moai-cli hook-receipt --host {host}")
+            };
+            assert_eq!(command, expected);
             assert!(!command.contains('/'), "{command}");
         }
+    }
+}
+
+/// #2255 AC-2 (wiring): the command `hooks-apply` writes for `PreToolUse` is the guard, and
+/// running exactly that command line with a host's PreToolUse input blocks a tokenless commit
+/// in a lane worktree (exit 2, reason on stderr) and lets a non-commit through (exit 0).
+#[cfg(unix)]
+#[test]
+fn generated_pre_tool_use_command_blocks_an_unverified_commit() {
+    use std::io::Write as _;
+    let dir = project();
+    let root = fs::canonicalize(dir.path()).unwrap();
+    let git = |args: &[&str]| {
+        let out = Command::new("git")
+            .args(args)
+            .current_dir(&root)
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_CONFIG_SYSTEM", "/dev/null")
+            .env("GIT_AUTHOR_NAME", "t")
+            .env("GIT_AUTHOR_EMAIL", "t@example.invalid")
+            .env("GIT_COMMITTER_NAME", "t")
+            .env("GIT_COMMITTER_EMAIL", "t@example.invalid")
+            .output()
+            .unwrap();
+        assert!(out.status.success(), "git {args:?}");
+    };
+    git(&["init", "-q", "-b", "main"]);
+    git(&["commit", "-q", "--allow-empty", "-m", "base"]);
+    git(&[
+        "remote",
+        "add",
+        "origin",
+        "https://github.com/acme/widgets.git",
+    ]);
+    git(&["checkout", "-q", "-b", "issue/7-widget"]);
+
+    for host in hooks::HOSTS {
+        let obj = hooks::hooks_object(host).unwrap();
+        let command = obj["PreToolUse"][0]["hooks"][0]["command"]
+            .as_str()
+            .unwrap()
+            .to_string();
+        let mut words = command.split_whitespace();
+        assert_eq!(words.next(), Some("moai-cli"));
+        let args: Vec<&str> = words.collect();
+        let run = |tool_command: &str| {
+            let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+                .args(&args)
+                .current_dir(&root)
+                .env_remove("MOAI_FORGE_GH_BIN")
+                .env("GIT_CONFIG_GLOBAL", "/dev/null")
+                .env("GIT_CONFIG_SYSTEM", "/dev/null")
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn()
+                .unwrap();
+            let input = json!({"hook_event_name": "PreToolUse", "tool_name": "Bash",
+                               "tool_input": {"command": tool_command}, "cwd": root});
+            child
+                .stdin
+                .take()
+                .unwrap()
+                .write_all(input.to_string().as_bytes())
+                .unwrap();
+            child.wait_with_output().unwrap()
+        };
+        let blocked = run("git commit -m work");
+        assert_eq!(blocked.status.code(), Some(2), "{host}");
+        assert!(
+            String::from_utf8_lossy(&blocked.stderr).contains("claim verify: uncertain"),
+            "{host}"
+        );
+        assert_eq!(run("cargo test").status.code(), Some(0), "{host}");
     }
 }
 
