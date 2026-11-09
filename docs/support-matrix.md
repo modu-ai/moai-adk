@@ -12,13 +12,14 @@ rc.1의 지원 대상은 **Darwin/arm64(`aarch64-apple-darwin`) × Claude Code, 
 | --- | --- | --- |
 | Darwin/arm64 × Claude Code | 지원 대상 | T2 not_run(AC-08C-3·6·8 절반), 정적 검증 AC-08C-5만 passed |
 | Darwin/arm64 × Codex | 지원 대상 | T2 not_run(AC-08C-4) |
-| Darwin/x86_64(`x86_64-apple-darwin`, Tier 2) | 미지원(후속) | 측정하지 않음 |
-| Linux(ubuntu-24.04, arm 변형 포함)·Windows(windows-2025) | 미지원(후속) | 측정하지 않음 |
+| Darwin/x86_64(`x86_64-apple-darwin`, Tier 2) | 미지원(후속) | host 측정 없음. CI check set만 측정(아래 "CI OS matrix") |
+| Linux x86_64·arm64(ubuntu-24.04, ubuntu-24.04-arm) | 미지원(후속) | host 측정 없음. CI check set만 측정(아래 "CI OS matrix") |
+| Windows(windows-2025) | 미지원(후속) | 측정하지 않음(결정 01:1x(11-09): 빌드+self-replace만) |
 | ZCode·그 밖의 host | 미지원(후속) | 측정하지 않음 |
 
 ## 조합 범위 (P12)
 
-RC1의 실측 조합은 개발 Mac 단일이다: Darwin / arm64 (Rust triple `aarch64-apple-darwin`, Tier 1). 나머지 OS·arch·mode는 전부 `not_run`이다(숨김 없음, OS matrix workflow는 RC1에서 만들지 않는다).
+RC1의 host 실측 조합은 개발 Mac 단일이다: Darwin / arm64 (Rust triple `aarch64-apple-darwin`, Tier 1). 나머지 OS·arch·mode의 host 항목은 전부 `not_run`이다(숨김 없음). rc.2 E2(#2194)부터 `rc-ci`가 결정 01:1x(11-09)의 네 target(Linux x86_64·arm64, macOS arm64·x86_64)에서 check set을 돌린다. 그 결과는 아래 "CI OS matrix" 절에 따로 적는다. CI check set 통과는 host 지원 판정(receipt)이 아니라서 위 지원 행에 더하지 않는다.
 
 ## 지원 행 (passed receipt 기반 — 6행)
 
@@ -39,10 +40,28 @@ RC1의 실측 조합은 개발 Mac 단일이다: Darwin / arm64 (Rust triple `aa
 | Darwin/arm64 | Claude Code | local | 권한 거부 시 apply 차단·트리 불변 (AC-08C-6) | not_run | 동일(운영자 실측 대기) |
 | Darwin/arm64 | Codex | local | 명시 호출이 SETUP route 도달 (AC-08C-4) | not_run | `CODEX_API_KEY` 필요(운영자 실측 대기) |
 | Darwin/arm64 | Claude Code | local | clean clone READ (AC-08C-8 T2 절반) | not_run | 운영자 실측 대기 |
-| ubuntu-24.04 / windows-2025 / arm 변형 / Darwin x86_64 | — | local | 전체 | not_run | 미지원(후속) — P04로 rc.1 범위 밖. OS matrix workflow는 RC1에서 만들지 않음(08-D 소유) |
+| ubuntu-24.04 / windows-2025 / arm 변형 / Darwin x86_64 | — | local | host 항목 전체 | not_run | 미지원(후속) — P04로 rc.1 범위 밖. host E2E receipt 없음(CI check set은 아래 "CI OS matrix" 절, host 판정 아님) |
 | — | — | worktree / cloud | 전체 | not_run | RC1 범위 밖 |
 | Linux CI (ubuntu rc-ci) | — | local | AC-08C-7 재측정 | not_run | `sandbox-exec`는 macOS 전용 — Linux 대체 차단 수단 미결(HOLD, #2100 감사 지적) |
 | — | GitLab | local | Forge adapter 계약 문서화 (REQ-B4-01) | not_run | **documented, not_run** — capability 선언만 존재(`src/forge/gitlab.rs`: merge_request·pipeline·note = documented, fixture 스키마 `schemas/gitlab-fixture.schema.json`), 어댑터·실호출 경로 없음(REQ-B4-01; 계정 없음 — decisions 2026-11-09 01:1x, #2171) |
+
+## CI OS matrix (rc.2 E2 #2194) — check set 실측, host 지원 판정 아님
+
+입력은 GitHub Actions `rc-ci` run의 job 결과와 job log뿐이다. 이 절의 행은 host E2E receipt가 아니므로 지원 행 수(RL-10)에 들어가지 않는다. 결론 칸은 GitHub job 결론(`success`/`failure`)을 그대로 적는다.
+
+run `42619829090`(PR #2309, `pull_request`, head `15d8178bc2d9a8dd1ba16bfaae54246bd1ecb099`, 2026-11-09). 모든 runner는 공개 저장소용 표준 GitHub-hosted runner(무료)다.
+
+| target | runner label | Rust host(`rustup show`) | cargo test(`--offline --locked`) | python unittest | macOS 전용 Rust 시험 2개 | darwin 한정 Python 시험 7개 | job 결론 | job id | 대기 / 실행 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Linux x86_64 | `ubuntu-24.04` | `x86_64-unknown-linux-gnu` | 518 / 0 실패 / 0 ignored(59 binary) | Ran 118, OK(skipped=7) | 컴파일 안 됨(`cfg(target_os = "macos")`) | 0 실행 · 7 skip | success | 129168786780 | 3s / 4m05s |
+| Linux arm64 | `ubuntu-24.04-arm` | `aarch64-unknown-linux-gnu` | 518 / 0 실패 / 0 ignored(59 binary) | Ran 118, OK(skipped=7) | 컴파일 안 됨 | 0 실행 · 7 skip | success | 129168786544 | 5s / 7m42s |
+| macOS arm64 | `macos-15` | `aarch64-apple-darwin` | 517 / 0 실패 / 0 ignored(59 binary) | Ran 118, OK(skipped=1) | 2 실행 ok(`e2e_never_writes_outside_temp_home`, `privacy_06_operations_need_no_network`) | 6 실행 · 1 skip | success | 129168786250 | 2s / 3m51s |
+| macOS x86_64 | `macos-15-intel` | `x86_64-apple-darwin` | 517 / 0 실패 / 0 ignored(59 binary) | Ran 118, OK(skipped=1) | 2 실행 ok | 6 실행 · 1 skip | success | 129168786658 | 4s / 7m12s |
+
+- cargo 시험 수 차이: 공통 515개에 Linux는 `tests/script_write_race.rs`(`#![cfg(target_os = "linux")]`, 3개)를 더하고, macOS는 위 macOS 전용 2개를 더한다.
+- macOS에서 skip된 Python 1개는 `claude` 바이너리가 필요한 시험이다(hosted runner에 없음). Claude·Codex 실세션은 어느 target에서도 돌리지 않았다.
+- AC-08C-7(사용자 HOME 쓰기 차단)은 macOS 두 target의 `e2e_never_writes_outside_temp_home`이 hosted runner에서도 ok였다. Linux에는 대체 차단 수단이 없어 위 not_run 행이 그대로 유효하다.
+- 첫 run `42618040618`(head `f557b035a`)은 macOS 두 target만 success였다. Linux 두 target은 check set은 초록이었는데, workflow의 macOS 전용 요약 블록 결함(grep 일치 없음 + `pipefail`)으로 job이 failure가 됐다. 그 결함을 고친 뒤 위 run에서 측정했다.
 
 ## 집계
 
