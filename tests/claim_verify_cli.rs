@@ -370,6 +370,71 @@ fn commit_or_push_detection() {
     assert!(!is_commit_or_push("git status && echo push"));
 }
 
+/// #2306: the bypass spellings the #2255 audit (#2270, comment 6738997664) found undetected —
+/// a wrapper word before `git`, a command inside `sh -c`/`bash -c`, a `git -c alias.*` verb,
+/// and a quoted or backslash-escaped `git`.
+#[test]
+fn commit_or_push_detection_sees_through_wrappers_and_quoting() {
+    // The auditor's eight measured spellings, verbatim (all returned false at 4749bfe97).
+    for yes in [
+        "env git commit -m x",
+        "command git commit -m x",
+        "sh -c 'git commit -m x'",
+        "nice git push",
+        "git -c alias.ci=commit ci -m x",
+        "\\git commit -m x",
+        "\"git\" commit -m x",
+        "xargs git push < /dev/null",
+    ] {
+        assert!(is_commit_or_push(yes), "{yes}");
+    }
+    for yes in [
+        // Wrapper words (with their options and assignments) before `git`.
+        "env -i git push",
+        "time -p git commit -m x",
+        "sudo -k git push",
+        "env -i PATH=/usr/bin git push origin HEAD",
+        "command git push origin HEAD",
+        "nice -n 10 git commit -m x",
+        "sudo -u lane git push",
+        "time git commit -m x",
+        "nohup git push origin HEAD",
+        "timeout 30 git push",
+        "echo HEAD | xargs git push origin",
+        "xargs -I{} git commit -m {} < msgs",
+        // A command line handed to a shell.
+        "sh -c 'git push origin HEAD'",
+        "bash -lc \"cargo test && git commit -m x\"",
+        "/bin/sh -c 'env git push'",
+        // An alias defined on the command line for commit or push.
+        "git -c alias.ci=commit ci -m x",
+        "git -c 'alias.p=push --force' p",
+        // A quoted or escaped `git`.
+        "\\git commit -m x",
+        "'git' push origin HEAD",
+        "\"git\" commit -m x",
+        "g\\it push",
+    ] {
+        assert!(is_commit_or_push(yes), "{yes}");
+    }
+    // Mentions inside strings and wrappers running something else stay quiet.
+    for no in [
+        "sh -c 'echo git commit'",
+        "bash -c \"git status\"",
+        "env FOO=1 echo git push",
+        "command -v git",
+        "xargs echo git push",
+        "git -c alias.st=status st",
+        "echo '\\git commit'",
+        "nice -n 5 cargo test",
+        "grep -n 'a; git push' notes.md",
+    ] {
+        assert!(!is_commit_or_push(no), "{no}");
+    }
+    // Documented limit (#2306 scope): a shell's `-c` script is read one level deep only.
+    assert!(!is_commit_or_push("sh -c 'sh -c \"git push\"'"));
+}
+
 #[test]
 fn branch_remote_and_token_parsing() {
     use moai_cli::claim_verify::{claim_tokens, github_owner_repo, issue_from_branch};
