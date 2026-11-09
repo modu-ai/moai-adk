@@ -23,7 +23,7 @@
 //!
 //! Numbers that are not decided yet (P11): `max_body_chars` and `tail_lines` are settings
 //! with conservative, unmeasured defaults. Uploading artifacts is not implemented (P09):
-//! local references are rendered with "export/pin 필요".
+//! local references are rendered with an export/pin-required marker.
 use super::{
     outbox::{self, OutboxEntry, OutboxState, Phase},
     policy::{format_utc, next_link, parse_utc, Clock},
@@ -768,18 +768,13 @@ pub fn publish<T: Transport, C: Clock>(
     })?;
     outbox::save(project, &entry)?;
     let request = match target {
-        Some(c) => HttpRequest {
-            method: "PATCH".into(),
-            url: format!("{repo_url}/issues/comments/{}", c["id"]),
-            headers: Default::default(),
-            body: Some(json!({"body": body})),
-        },
-        None => HttpRequest {
-            method: "POST".into(),
-            url: format!("{repo_url}/issues/{}/comments", issue.number),
-            headers: Default::default(),
-            body: Some(json!({"body": body})),
-        },
+        Some(c) => HttpRequest::new("PATCH", format!("{repo_url}/issues/comments/{}", c["id"]))
+            .with_body(json!({"body": body})),
+        None => HttpRequest::new(
+            "POST",
+            format!("{repo_url}/issues/{}/comments", issue.number),
+        )
+        .with_body(json!({"body": body})),
     };
     let unknown = |entry: &mut OutboxEntry, why: String| -> Result<ForgeError, ForgeError> {
         entry.advance(

@@ -70,6 +70,14 @@ const RULES: &[(&str, Kind)] = &[
     ("partial apply", Kind::Partial),
     ("partial creation possible", Kind::Partial),
     ("conflict in ", Kind::Conflict),
+    // claim-verify (rc.2 A9 #2255): ahead of the generic words its messages quote.
+    ("claim verify: not owner", Kind::Conflict),
+    ("claim verify: closed", Kind::Conflict),
+    ("claim verify: no claim", Kind::Conflict),
+    ("claim verify: stale", Kind::Blocked),
+    ("claim verify: uncertain", Kind::Blocked),
+    ("claim verify: trailer missing", Kind::InvalidInput),
+    ("claim verify: trailer check unavailable", Kind::Blocked),
     // identity's `git failed: <git summary>`; ahead of the generic words the summary may hold.
     // The bare `git failed` of baseline (no colon) stays `io` below.
     ("git failed: ", Kind::GitFailed),
@@ -334,6 +342,89 @@ mod tests {
             ("layout source unreadable", Io),
             ("home layout marker write failed", Io),
             ("home root unavailable; HOME is not set", Io),
+            // claim-verify (rc.2 A9 #2255)
+            (
+                "claim verify: not owner; the lowest open claim is comment 7 (REQ-A9-01), so no commit or push",
+                Conflict,
+            ),
+            (
+                "claim verify: stale; claim comment 7 lease expired without a handoff, and the operator decides (REQ-A9-03)",
+                Blocked,
+            ),
+            ("claim verify: closed; claim comment 7 was released or handed off", Conflict),
+            (
+                "claim verify: uncertain; this session's claim comment is not visible on the issue",
+                Blocked,
+            ),
+            ("claim verify: no claim of this session on the issue", Conflict),
+            (
+                "claim verify: trailer missing; commits abc123def lack `Moai-Claim: 7#200`, so no push",
+                InvalidInput,
+            ),
+            (
+                "claim verify: trailer check unavailable; git log of the claim base failed",
+                Blocked,
+            ),
+            (
+                "invalid claim verify request: owner, repo, issue_number and session are required",
+                InvalidInput,
+            ),
+            (
+                "claim verify: uncertain; the commit message carries no `Moai-Claim: 7#<id>`",
+                Blocked,
+            ),
+            // archive move, restore and search (D2 #2188)
+            ("readback digest mismatch; move cancelled, original kept", Conflict),
+            ("source changed during apply; move cancelled, original kept", StalePlan),
+            ("archive destination already exists; exclusive create refused", Conflict),
+            ("archive index entry already exists; exclusive create refused", Conflict),
+            ("restore destination already exists; exclusive create refused", Conflict),
+            ("symlink in SPEC directory refused: notes/link.md", InvalidInput),
+            ("special file in SPEC directory refused: fifo", InvalidInput),
+            ("SPEC path is not a directory", InvalidInput),
+            ("SPEC directory unavailable", Io),
+            ("SPEC directory unreadable", Io),
+            ("SPEC file name is not UTF-8", InvalidInput),
+            ("SPEC file read failed: spec.md", Io),
+            ("archive destination parent unavailable", Io),
+            ("archive destination name invalid", InvalidInput),
+            ("archive directory unavailable", Io),
+            ("archive staging unavailable", Io),
+            ("archive copy write failed: spec.md", Io),
+            ("archive publish write failed", Io),
+            ("archive index invalid", InvalidInput),
+            ("archive index invalid: unknown schema_version", InvalidInput),
+            ("archive index invalid: invalid spec id", InvalidInput),
+            ("archive index invalid: spec path mismatch", InvalidInput),
+            ("invalid spec id: ../x", InvalidInput),
+            ("spec not found in archive index: SPEC-X", NotFound),
+            ("archive manifest not found", NotFound),
+            ("archive manifest invalid", InvalidInput),
+            ("archive manifest digest mismatch; restore refused", Conflict),
+            ("archived copy digest mismatch; restore refused", Conflict),
+            (
+                "partial apply: archived [SPEC-A]; failed at SPEC-B: source directory removal write failed; archived copy and index kept",
+                Partial,
+            ),
+            (
+                "partial apply: archived [SPEC-A]; failed at SPEC-A: source changed during apply; source removal refused; archived copy and index kept",
+                Partial,
+            ),
+            (
+                "partial apply: restored [SPEC-A]; failed at archive cleanup: archive manifest removal write failed",
+                Partial,
+            ),
+            ("archive manifest removal write failed", Io),
+            ("archived copy removal write failed", Io),
+            ("search query must be 1 to 256 characters", InvalidInput),
+            // hooks-plan / hooks-apply (rc.2 I1 #2238)
+            ("unknown hook host; must be claude or codex", InvalidInput),
+            (
+                "home directory refused; hooks are written to a project tree only",
+                InvalidInput,
+            ),
+            ("existing .codex/hooks.json requires preservation review", Conflict),
+            (".codex/hooks.json receipt requires preservation review", Conflict),
         ];
         for (message, kind) in cases {
             assert_eq!(classify(message), kind, "{message}");

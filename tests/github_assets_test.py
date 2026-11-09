@@ -148,11 +148,34 @@ class WorkflowTest(unittest.TestCase):
         triggers = flow.get("on", flow.get(True))  # PyYAML reads a bare `on:` key as True
         self.assertEqual(triggers["pull_request"]["branches"], ["v2026.11.0"])
         self.assertEqual(flow["jobs"]["rc-ci"]["name"], "rc-ci")
-        script = "\n".join(s.get("run", "") for s in flow["jobs"]["rc-ci"]["steps"])
+        # The check set runs on every matrix target (#2194); `rc-ci` aggregates them.
+        script = "\n".join(s.get("run", "") for s in flow["jobs"]["check"]["steps"])
         for command in ("cargo test --offline --locked", "cargo clippy --offline --locked --all-targets -- -D warnings",
-                        "cargo fmt --check", "unittest discover -s tests -p '*_test.py'", "git diff --check",
+                        "cargo fmt --check", "unittest discover -v -s tests -p '*_test.py'", "git diff --check",
                         "GITHUB_STEP_SUMMARY"):
             self.assertIn(command, script)
+
+    def test_rc_ci_runs_the_four_decided_targets_and_fails_when_any_fails(self):
+        """#2194 (decision 01:1x(11-09)): Linux x86_64/arm64 and macOS arm64/x86_64 on standard
+        free GitHub-hosted runner labels; a failing target fails `rc-ci` instead of skipping it."""
+        flow = dict(self.workflows())[WORKFLOWS / "rc-ci.yml"]
+        check = flow["jobs"]["check"]
+        self.assertIs(check["strategy"]["fail-fast"], False)
+        targets = {e["target"]: e["runner"] for e in check["strategy"]["matrix"]["include"]}
+        self.assertEqual(targets, {
+            "linux-x86_64": "ubuntu-24.04",
+            "linux-arm64": "ubuntu-24.04-arm",
+            "macos-arm64": "macos-15",
+            "macos-x86_64": "macos-15-intel",
+        })
+        self.assertEqual(check["runs-on"], "${{ matrix.runner }}")
+        aggregate = flow["jobs"]["rc-ci"]
+        self.assertEqual(aggregate["needs"], ["check"])
+        # #2312: runs after a failed target (so the check fails, not skips) but not after a
+        # cancellation (always() reported a cancel-in-progress run as a failure).
+        self.assertEqual(aggregate.get("if"), "${{ !cancelled() }}")
+        gate = "\n".join(s.get("run", "") for s in aggregate["steps"])
+        self.assertIn('[ "${{ needs.check.result }}" = "success" ]', gate)
 
     def test_label_sync_is_a_dry_run_unless_applied_by_hand(self):
         flow = dict(self.workflows())[WORKFLOWS / "rc-label-sync.yml"]

@@ -5,7 +5,7 @@
 //! project with the 01-B 3-way engine (`decide`, `publish_exclusive`/`publish_replace`,
 //! `save_before_bytes`, `Receipt`).
 //!
-//! Decisions (leader, under the user's "HOLD만 해제" rule, recorded on #2013):
+//! Decisions (leader, under the user's "lift only the HOLD" rule, recorded on #2013):
 //! - template bytes are embedded in the binary with `include_str!` (①A, as generation.rs
 //!   renders its files from strings in the binary);
 //! - Rust handles byte parity and the 3-way only; form structure is checked by the Python

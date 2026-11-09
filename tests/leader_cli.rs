@@ -2,7 +2,9 @@
 //! clock, no network), in the fixture style of `tests/claim_cli.rs`. The state file is real
 //! (a temporary project), so "report only what changed" is tested across ticks.
 use moai_cli::forge::policy::Clock;
-use moai_cli::forge::transport::{Exchange, HttpRequest, HttpResponse, RecordedTransport};
+mod common;
+
+use moai_cli::forge::transport::{Exchange, RecordedTransport};
 use moai_cli::leader::{tick_cli, TickRequest};
 use serde_json::{json, Value};
 use std::{cell::Cell, fs, path::Path};
@@ -21,19 +23,7 @@ impl Clock for FakeClock {
 }
 
 fn get(url: &str, body: Value) -> Exchange {
-    Exchange {
-        request: HttpRequest {
-            method: "GET".into(),
-            url: url.into(),
-            headers: Default::default(),
-            body: None,
-        },
-        response: HttpResponse {
-            status: 200,
-            headers: Default::default(),
-            body: Some(body),
-        },
-    }
+    common::exchange("GET", url, common::json_response(200, body))
 }
 
 /// One open PR #5 (`Refs #7`) at `head`, claimed by `author`, with the given verdict.

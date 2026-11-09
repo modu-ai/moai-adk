@@ -5,6 +5,8 @@
 //! its own repository and journal in a temporary directory; no network, no `gh`.
 use moai_cli::claim::JournalEvent;
 use moai_cli::forge::outbox::parse_op_markers;
+mod common;
+
 use serde_json::{json, Value};
 use std::{
     fs,
@@ -402,17 +404,11 @@ fn reconcile_finds_the_pr_by_its_body_marker() {
     ));
     // A PR-body probe: the recorded marker's operation, looked up as the body's marker.
     let probe = tmp.path().join("probe.sh");
-    fs::write(
+    common::write_executable(
         &probe,
         "#!/bin/sh\nid=$(printf '%s' \"$1\" | sed -e 's/^<!-- moai:op //' -e 's/ -->$//')\n\
          if grep -qF \"<!-- moai-op $id -->\" \"$PR_BODY\"; then echo '{\"remote_id\":\"2080\"}'; exit 0; fi\nexit 4\n",
-    )
-    .unwrap();
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        fs::set_permissions(&probe, fs::Permissions::from_mode(0o755)).unwrap();
-    }
+    );
     let probe_s = probe.to_string_lossy().to_string();
     let body_s = body_path.to_string_lossy().to_string();
     let rec = ok(&run(
