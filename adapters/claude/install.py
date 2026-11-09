@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
-"""Provisional project-only Claude installer with conservative settings merge."""
+"""Provisional project-only Claude installer with conservative settings merge.
+
+Deprecated for the settings merge (#2239): `moai-cli claude-settings-plan` /
+`claude-settings-apply` now carry the outputStyle/statusLine merge in Rust. This script
+stays only for the asset copy (output styles, statusline.py, licenses) and the
+`--recovery-plan` read, which have no Rust replacement yet; see
+docs/claude-adapter-contract.md "install.py replacement".
+"""
 import argparse
 import hashlib
 import json
@@ -44,6 +51,7 @@ def main():
         parse = lambda raw: json.loads(raw, object_pairs_hook=unique_object, parse_constant=lambda value: (_ for _ in ()).throw(ValueError("invalid JSON constant")))
         print(json.dumps(settings_update.recovery_plan(root, parse)))
         return
+    print("deprecated: the settings merge moved to `moai-cli claude-settings-plan/apply` (#2239); this script keeps only the asset copy", file=sys.stderr)
     command = 'python3 "${CLAUDE_PROJECT_DIR}/.moai-cli/statusline.py"'
     wanted = {"outputStyle": args.style, "statusLine": {"type": "command", "command": command}}
     settings_path = root / ".claude/settings.json"
