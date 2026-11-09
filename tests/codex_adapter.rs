@@ -490,7 +490,7 @@ fn codex_duplicate_moai_skill_is_warned() {
 
 // --- I4 #2241: projection apply ------------------------------------------------------
 // Both install locations are fixtures only (the choice is a P04 / C5 HOLD): a home-shaped
-// `<tmp>/home/.agents/skills/moai` and a project-shaped `<tmp>/repo/.agents/skills/moai`.
+// `<tmp>/home/.agents/skills/moai-cli` and a project-shaped `<tmp>/repo/.agents/skills/moai-cli`.
 
 fn plan(package: &str, target: &Path) -> Value {
     let (ok, v) = run(&["codex-projection-plan", package, "--target", s(target)]);
@@ -554,8 +554,8 @@ const PERMISSION: &str = "test-approval-2241";
 fn codex_projection_apply_installs_verifies_and_reinstalls_as_noop() {
     let f = fixture();
     for target in [
-        f.home.join(".agents/skills/moai"),
-        f.root.join(".agents/skills/moai"),
+        f.home.join(".agents/skills/moai-cli"),
+        f.root.join(".agents/skills/moai-cli"),
     ] {
         let first = plan(&package(), &target);
         assert_eq!(first["source_manifest"]["status"], "verified", "{first}");
@@ -574,7 +574,7 @@ fn codex_projection_apply_installs_verifies_and_reinstalls_as_noop() {
         assert_eq!(r["verified"], true);
         assert_eq!(r["host_loaded"], false);
         // The projection is the package's bytes plus the adapter's agents/openai.yaml.
-        let pkg = Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai");
+        let pkg = Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai-cli");
         assert_eq!(
             fs::read(target.join("SKILL.md")).unwrap(),
             fs::read(pkg.join("SKILL.md")).unwrap()
@@ -621,15 +621,15 @@ fn codex_projection_apply_installs_verifies_and_reinstalls_as_noop() {
         assert_eq!(snapshot(&target), before);
     }
     // Each target received only its own install; the other location stays as the test made it.
-    assert!(f.home.join(".agents/skills/moai/SKILL.md").is_file());
-    assert!(f.root.join(".agents/skills/moai/SKILL.md").is_file());
+    assert!(f.home.join(".agents/skills/moai-cli/SKILL.md").is_file());
+    assert!(f.root.join(".agents/skills/moai-cli/SKILL.md").is_file());
 }
 
 #[test]
 fn codex_projection_apply_refuses_a_manifest_mismatch_and_writes_nothing() {
     // REQ-I4-01: a copy whose digest differs from source-manifest.json is never written.
     let f = fixture();
-    let pkg = Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai");
+    let pkg = Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai-cli");
     type Mutate = fn(&Path);
     let cases: [(&str, Mutate, &str); 4] = [
         (
@@ -655,10 +655,10 @@ fn codex_projection_apply_refuses_a_manifest_mismatch_and_writes_nothing() {
     ];
     for (label, mutate, needle) in cases {
         let copy = TempDir::new().unwrap();
-        let package = copy.path().join("moai");
+        let package = copy.path().join("moai-cli");
         copy_tree(&pkg, &package);
         mutate(&package);
-        let target = f.home.join(".agents/skills/moai");
+        let target = f.home.join(".agents/skills/moai-cli");
         let p = plan(s(&package), &target);
         assert_ne!(p["source_manifest"]["status"], "verified", "{label}");
         assert!(p.to_string().contains(needle), "{label}: {p}");
@@ -683,7 +683,7 @@ fn codex_projection_apply_refuses_a_manifest_mismatch_and_writes_nothing() {
     let copy = TempDir::new().unwrap();
     let package = copy.path().join("moai");
     copy_tree(&pkg, &package);
-    let target = f.root.join(".agents/skills/moai");
+    let target = f.root.join(".agents/skills/moai-cli");
     let p = plan(s(&package), &target);
     let (ok, v) = apply(
         s(&package),
@@ -697,7 +697,7 @@ fn codex_projection_apply_refuses_a_manifest_mismatch_and_writes_nothing() {
 #[test]
 fn codex_projection_apply_never_overwrites_and_keeps_unowned_files() {
     let f = fixture();
-    let target = f.home.join(".agents/skills/moai");
+    let target = f.home.join(".agents/skills/moai-cli");
     // A user's own file at the target is preserved and listed, never touched.
     write(&target.join("NOTES.md"), "mine\n");
     let p = plan(&package(), &target);
@@ -714,7 +714,7 @@ fn codex_projection_apply_never_overwrites_and_keeps_unowned_files() {
         "mine\n"
     );
     // A planned path holding different bytes refuses the whole apply before any write.
-    let other = f.root.join(".agents/skills/moai");
+    let other = f.root.join(".agents/skills/moai-cli");
     write(
         &other.join("SKILL.md"),
         "---\nname: moai\ndescription: edited\n---\n",
@@ -746,7 +746,7 @@ fn codex_projection_apply_never_overwrites_and_keeps_unowned_files() {
 #[test]
 fn codex_projection_apply_gates() {
     let f = fixture();
-    let target = f.home.join(".agents/skills/moai");
+    let target = f.home.join(".agents/skills/moai-cli");
     let p = plan(&package(), &target);
     let digest = p["plan_digest"].as_str().unwrap();
     for bad in ["", "placeholder", "null"] {
@@ -868,7 +868,7 @@ fn codex_projection_refuses_a_package_target_reached_through_a_symlink() {
     let pkg = real.join("pkg");
     fs::create_dir_all(&pkg).unwrap();
     copy_tree(
-        &Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai"),
+        &Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai-cli"),
         &pkg,
     );
     let link = dir.path().join("link");
@@ -899,7 +899,7 @@ fn codex_projection_refuses_a_package_target_reached_through_a_symlink() {
     assert!(!pkg.join("moai").exists());
     assert!(!pkg.join("a").exists());
     // Control: a target outside the package, reached through the same symlink, plans.
-    let outside = link.join("out/moai");
+    let outside = link.join("out/moai-cli");
     let (ok, v) = run(&["codex-projection-plan", &pkg_s, "--target", s(&outside)]);
     assert!(ok, "{v}");
 }
