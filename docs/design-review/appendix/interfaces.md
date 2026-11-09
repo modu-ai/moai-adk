@@ -30,6 +30,6 @@
 | [25f] | `setup` / `project init` / `maintenance update` / `doctor` / `capabilities` | `project-plan/apply`(setup) · `update-plan/apply`(maintenance update) · `claude-doctor`·`codex-doctor`(doctor) · `capabilities`는 **RC1에 없음**(S11: "공통 명령은 capabilities뿐인데 RC1에 없다") |
 | [e08] | `spec plan` / `task status` / `skill show` | `agents-plan` + `plan-admit`(spec plan) · `claim-show`(task status) · skill show 없음(`install-inspect`·`context-bundle`이 부분 대체) |
 | [3d9] | `task submit/cancel` / `spec verify` / `artifacts list` | `claim-acquire`/`claim-release`(task) · `run-verify`(spec verify) · artifacts list 없음 |
-| [43fa] §18 | 문서 명령 전부 | RC1 OPERATIONS 48개로 교체(S11 결정) |
+| [43fa] §18 | 문서 명령 전부 | RC1 OPERATIONS 49개로 교체(S11 결정) |
 
 교체 규칙(S11 결정): 문서의 명령 표는 `src/main.rs` OPERATIONS 표로 교체하거나 "RC1 미출하 계약안" 배너를 단다. 번호·이름으로 누락 검사를 하지 않는다(S8 — 같은 F 번호가 다른 기능).

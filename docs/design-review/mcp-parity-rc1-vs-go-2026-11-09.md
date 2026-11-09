@@ -4,7 +4,7 @@
 - 이 문서는 조사 결과만 담는다. MCP 구현은 별도 카드에서 한다(카드 범위: "구현 blocked").
 - 대조 기준
   - Go: `moai-adk-go` commit `4fa2aa9db2e0add0f1299e35407141b2b41c5ec0`(2026-11-07), `github.com/mark3labs/mcp-go v1.3.0`(`go.mod:18`).
-  - RC1: 이 브랜치의 base `origin/v2026.11.0` `629933420`, `src/main.rs` `OPERATIONS` 48개.
+  - RC1: `origin/v2026.11.0` `81f6f7148`(#2218 `queue.next` 포함), `src/main.rs` `OPERATIONS` 49개. 줄 단위 계산과, 이름 정규식에 `_`가 든 op 4개를 더한 계산이 둘 다 49였다.
 - 측정 방법
   - Go tool 목록은 `internal/` 비시험 파일의 `mcp.NewTool(` 첫 인자로 뽑았다. 34개는 문자열 리터럴이고, 4개는 `codexRoleAudit*ToolName` 상수다. 합계 38이다.
   - 같은 build 계열의 실행 중인 `moai mcp-server`(build v3.2.1-rc.6, commit `af9d485e2d`)가 노출하는 `mcp__moai__*` 목록도 38개였다. 두 방법의 결과가 같다.
@@ -60,7 +60,7 @@
 | 27 | `todo_add` (mcp_todo.go:30) | text!, pr | backlog 큐 추가 | text | 없음 | RC1 작업 장부는 GitHub Issue다. 카드 생성은 운영자나 리더가 한다 |
 | 28 | `todo_list` (mcp_todo.go:38) | pr | 없음 | text | 부분 `forge.read` | 큐 대신 열린 Issue를 GET으로 읽는다 |
 | 29 | `todo_claim` (mcp_todo.go:45) | lane, renew, pr | lease 기록 | text(거부는 structured) | 있음 `claim.acquire` | RC1 claim은 Issue 댓글과 로컬 journal이다. 가장 작은 live 댓글 id가 이긴다 |
-| 30 | `factory_next` (mcp_factory_card.go:45) | run, card, actor, pr! | factory 기록 lease | text | 부분 `queue.next`(#2161, PR #2218 병합 대기) | milestone 열린 Issue에서 다음 카드를 self-claim한다. 이 base에는 아직 없다 |
+| 30 | `factory_next` (mcp_factory_card.go:45) | run, card, actor, pr! | factory 기록 lease | text | 부분 `queue.next`(#2161) | milestone의 열린 Issue에서 claim 댓글이 없는 다음 카드를 self-claim한다. 로컬 factory 기록은 쓰지 않는다 |
 | 31 | `factory_stage` (:55) | card!, state!, evidence, run, actor, pr! | factory 기록 | text | 부분 `forge.report` | RC1 단계는 보고 댓글의 `상태:` 줄이다(forge-report 게이트 뒤) |
 | 32 | `factory_complete` (:67) | card!, run, actor, pr! | factory 기록, 로컬 merge 또는 push+PR | text | 부분 `pr.body.render` + `pr.confirm` | RC1 레인은 병합하지 않는다. PR 생성 효과를 의도·확인으로 기록하고, 병합은 리더의 `moai/audit` 게이트가 한다 |
 | 33 | `factory_decide` (:77) | card!, gate, choice, run, pr | 운영자 결정 기록 | text | 부분 `decision.record` | RC1 decision record는 authority를 싣지 않는다. 운영자 결정 기록은 decisions log 문서다 |
@@ -74,7 +74,7 @@
 
 ### 2.1 반대 방향 — Go MCP에 대응물이 없는 RC1 op
 
-RC1 48개 op 가운데 위 표가 쓰지 않은 op는 다음과 같다. MCP로 노출할 때는 이 op들의 계약이 기준이 된다.
+RC1 49개 op 가운데 위 표가 쓰지 않은 op는 다음과 같다. MCP로 노출할 때는 이 op들의 계약이 기준이 된다.
 
 `package.inspect`, `project.plan`/`project.apply`, `package.resolve`, `agents.plan`/`agents.apply`, `apply.recover`, `baseline.inventory`, `identity`, `claude.doctor`, `codex.projection_plan`, `claim.show`, `claim.release`, `claim.handoff`, `effect.intend`, `effect.confirm`, `effects.reconcile`, `todo.promote.plan`/`todo.promote.apply`, `snapshot.describe`, `skill_source.plan`/`skill_source.apply`/`skill_source.read_receipt`, `generation.plan`/`generation.apply`, `context.bundle`, `context.verify`, `install.inspect`, `worktree.plan`/`worktree.apply`, `scope.check`, `github.plan`/`github.apply`, `update.plan`/`update.apply`, `recovery.plan`/`recovery.apply`, `parity.check`.
 
@@ -101,4 +101,4 @@ RC1 48개 op 가운데 위 표가 쓰지 않은 op는 다음과 같다. MCP로 �
 - MCP `annotations`의 개별 힌트 이름(`readOnlyHint` 등)은 이번에 읽은 사양 페이지(tools, 본문, changelog)에서 확인하지 못했다. Go 코드는 `ReadOnlyHint`를 선언한다. 사양상 위치는 schema 원문에서 다시 확인해야 한다.
 - 결과 형태와 쓰기 여부는 소스를 읽어 판정했고, Go 서버를 호출해 응답을 받아 보지는 않았다(not_run). 다만 등록 수 38은 실행 중인 서버의 tool 목록으로 교차 확인했다.
 - RC1 측 대응은 op 이름과 문서(`docs/rust-product-path.md`)를 근거로 한 기능 대조다. 입력 schema를 필드 단위로 비교하지는 않았다.
-- `queue.next`(#2161)는 이 base에 아직 없어 OPERATIONS 48에 들어 있지 않다. 병합 뒤에는 49가 된다.
+- 실행 중인 Go 서버로 tool 수를 교차 확인할 때 worktree 격리 장치가 일부 확인 명령에 "실행되지 않음" 알림을 붙였다(출력은 관찰됨). 해당 줄 확인(`mcp_factory_card.go:417`, `mcp_server.go:591`, gate 노출 16개, `go.mod:18`)은 탐색 결과와 일치했지만, 측정 상태가 불분명한 것으로 기록한다.
