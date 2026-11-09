@@ -1,0 +1,30 @@
+---
+title: Rust MoAI CLI
+description: Claude Code와 Codex에서 사용할 Rust moai-cli의 시작 절차, 명령 참조와 안전 경계를 확인합니다.
+---
+
+import { CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+MoAI CLI는 AI 코딩 호스트와 함께 프로젝트 설정과 개발 워크플로를 다루는 Rust 명령줄 도구입니다. 이 문서는 실행 파일 `moai-cli`를 기준으로 하며, 기존 Go 세대의 `moai` 명령과 구분합니다.
+
+## 먼저 알아둘 현재 상태
+
+이 체크아웃은 **2026.11.0 RC의 게시 전 단계**를 문서화합니다. 공개 Rust 설치 프로그램이나 패키지가 이미 배포되었다고 가정하지 않습니다. 시작 가이드에서 소스 빌드 경로와 사전 조건을 먼저 확인하세요.
+
+rc.1의 지원 대상 범위는 **Darwin/arm64의 Claude Code와 Codex**입니다. 지원 대상 지정은 실사용 인증이 아닙니다. 실제 호스트의 스킬 로딩 E2E는 지원표에서 `not_run`이며, Linux·Windows·다른 호스트의 지원을 보장하지 않습니다.
+
+## 시작 경로 선택
+
+<CardGrid>
+  <LinkCard title="시작하기" href="/ko/guides/getting-started/" description="현재 배포 상태, 소스에서 준비하는 절차와 첫 진입을 확인합니다." />
+  <LinkCard title="Claude Code" href="/ko/guides/claude-code/" description="Claude Code에서의 진입 방식과 호스트별 한계를 확인합니다." />
+  <LinkCard title="Codex" href="/ko/guides/codex/" description="Codex의 스킬 호출 방식과 권한 경계를 확인합니다." />
+  <LinkCard title="CLI 참조" href="/ko/reference/cli/" description="수동 작업에 필요한 명령과 plan/apply 흐름을 찾습니다." />
+  <LinkCard title="안전과 권한" href="/ko/reference/safety/" description="변경 전 검토, 사용자 승인과 기존 Go 상태 보존 원칙을 읽습니다." />
+</CardGrid>
+
+## 변경하기 전에
+
+프로젝트를 읽고 계획을 검토하는 단계와 실제 쓰기 작업을 구분하세요. plan/apply는 변경을 검토하기 위한 흐름이지 모든 명령이나 호스트 작업에 대한 무조건적인 무쓰기 보장이 아닙니다. 권한 참조 문자열이나 문서의 예제는 사용자 승인을 대신하지 않습니다.
+
+[소스 저장소](https://github.com/modu-ai/moai-adk)에서 이 버전의 구현을 확인할 수 있습니다. 기존 Go 설치와 데이터를 새 Rust 절차로 덮어쓰지 마세요.

@@ -1,0 +1,30 @@
+---
+title: Rust MoAI CLI
+description: Get started with the Rust moai-cli for Claude Code and Codex, with command references and explicit safety boundaries.
+---
+
+import { CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+MoAI CLI is a Rust command-line tool for project configuration and development workflows alongside AI coding hosts. These docs cover the `moai-cli` executable, not the older Go-generation `moai` commands.
+
+## Understand the current status
+
+This checkout documents the **pre-publication 2026.11.0 release candidate**. Do not assume a public Rust installer or package has already shipped. Start with the source-build instructions and prerequisites in the getting-started guide.
+
+The rc.1 target scope is **Claude Code and Codex on Darwin/arm64**. A target is not a live-use certification: actual host skill-loading E2E checks are marked `not_run` in the support matrix. Linux, Windows, and other hosts are not claimed as supported.
+
+## Choose your next step
+
+<CardGrid>
+  <LinkCard title="Getting started" href="/en/guides/getting-started/" description="Check release availability, prepare from source, and find the first entry point." />
+  <LinkCard title="Claude Code" href="/en/guides/claude-code/" description="Learn the Claude Code entry path and its host-specific limits." />
+  <LinkCard title="Codex" href="/en/guides/codex/" description="Find the Codex skill invocation and permission boundaries." />
+  <LinkCard title="CLI reference" href="/en/reference/cli/" description="Look up manual commands and the plan/apply workflow." />
+  <LinkCard title="Safety and permissions" href="/en/reference/safety/" description="Review change approval and preservation of existing Go-generation state." />
+</CardGrid>
+
+## Before making changes
+
+Separate reading and reviewing a plan from performing writes. Plan/apply provides a review workflow; it is not an unconditional no-write guarantee for every command or host action. Permission-reference strings and documentation examples do not replace user authorization.
+
+Consult the [source repository](https://github.com/modu-ai/moai-adk) for this version's implementation. Do not overwrite an existing Go installation or its data with the new Rust procedures.
