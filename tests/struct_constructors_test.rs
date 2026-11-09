@@ -1,27 +1,28 @@
 //! D9 #2256: constructors for the shared request/record structs. A constructor takes the
 //! required fields and fills every optional field with its default, so adding another
 //! optional field later does not break call sites (E0063, design report §2-§3). Each
-//! case pins the constructor to the value a full struct literal (or the serde form with
-//! only the required keys) produces.
+//! case pins known fields to independent literal expectations (or the serde form with
+//! only the required keys), while leaving future optional fields out of the pattern.
 
 use moai_cli::claim::{ClaimRequest, Owner, SpecRef, TaskRef, WorktreeId};
-use moai_cli::forge::transport::{GhTransport, HttpRequest, HttpResponse, GH_TIMEOUT};
+use moai_cli::forge::transport::{GhTransport, HttpRequest, HttpResponse};
 use serde_json::json;
-use std::collections::BTreeMap;
 use std::time::Duration;
 
 #[test]
 fn http_request_new_has_no_headers_and_no_body() {
     let req = HttpRequest::new("GET", "https://api.github.com/repos/o/r");
-    assert_eq!(
-        req,
-        HttpRequest {
-            method: "GET".into(),
-            url: "https://api.github.com/repos/o/r".into(),
-            headers: BTreeMap::new(),
-            body: None,
-        }
-    );
+    let HttpRequest {
+        method,
+        url,
+        headers,
+        body,
+        ..
+    } = &req;
+    assert_eq!(method, "GET");
+    assert_eq!(url, "https://api.github.com/repos/o/r");
+    assert_eq!(headers.len(), 0);
+    assert_eq!(body, &None);
     let req = req
         .with_header("If-None-Match", "\"etag\"")
         .with_body(json!({"a": 1}));
@@ -35,14 +36,15 @@ fn http_request_new_has_no_headers_and_no_body() {
 #[test]
 fn http_response_new_has_no_headers_and_no_body() {
     let resp = HttpResponse::new(200);
-    assert_eq!(
-        resp,
-        HttpResponse {
-            status: 200,
-            headers: BTreeMap::new(),
-            body: None,
-        }
-    );
+    let HttpResponse {
+        status,
+        headers,
+        body,
+        ..
+    } = &resp;
+    assert_eq!(*status, 200);
+    assert_eq!(headers.len(), 0);
+    assert_eq!(body, &None);
     let resp = resp.with_header("etag", "\"x\"").with_body(json!([1, 2]));
     assert_eq!(resp.header("ETag"), Some("\"x\""));
     assert_eq!(resp.body, Some(json!([1, 2])));
@@ -52,7 +54,7 @@ fn http_response_new_has_no_headers_and_no_body() {
 fn gh_transport_new_uses_the_default_timeout_and_no_token() {
     let t = GhTransport::new("gh");
     assert_eq!(t.bin, "gh");
-    assert_eq!(t.timeout, GH_TIMEOUT);
+    assert_eq!(t.timeout, Duration::from_secs(60));
     assert!(t.gh_token.is_none());
     let t = t
         .timeout(Duration::from_secs(5))
@@ -67,33 +69,41 @@ fn task_ref() -> TaskRef {
 
 #[test]
 fn task_ref_new_sets_every_field() {
-    assert_eq!(
-        task_ref(),
-        TaskRef {
-            provider: "github".into(),
-            host: "github.com".into(),
-            owner: "acme".into(),
-            repo: "widgets".into(),
-            repository_id: 101,
-            issue_id: 7001,
-            issue_number: 7,
-        }
-    );
+    let TaskRef {
+        provider,
+        host,
+        owner,
+        repo,
+        repository_id,
+        issue_id,
+        issue_number,
+        ..
+    } = task_ref();
+    assert_eq!(provider, "github");
+    assert_eq!(host, "github.com");
+    assert_eq!(owner, "acme");
+    assert_eq!(repo, "widgets");
+    assert_eq!(repository_id, 101);
+    assert_eq!(issue_id, 7001);
+    assert_eq!(issue_number, 7);
 }
 
 #[test]
 fn owner_new_leaves_the_optional_fields_empty() {
     let o = Owner::new("session", "s-1");
-    assert_eq!(
-        o,
-        Owner {
-            kind: "session".into(),
-            id: "s-1".into(),
-            host_id: None,
-            pid: None,
-            process_start: None,
-        }
-    );
+    let Owner {
+        kind,
+        id,
+        host_id,
+        pid,
+        process_start,
+        ..
+    } = &o;
+    assert_eq!(kind, "session");
+    assert_eq!(id, "s-1");
+    assert_eq!(host_id, &None);
+    assert_eq!(pid, &None);
+    assert_eq!(process_start, &None);
     let o = o
         .host_id("h")
         .pid(42)
@@ -106,16 +116,19 @@ fn owner_new_leaves_the_optional_fields_empty() {
 #[test]
 fn worktree_id_new_has_no_branch() {
     let w = WorktreeId::new("/r/.git", "/r/.git/worktrees/a", "/r/a", "a".repeat(40));
-    assert_eq!(
-        w,
-        WorktreeId {
-            common_dir: "/r/.git".into(),
-            git_dir: "/r/.git/worktrees/a".into(),
-            path: "/r/a".into(),
-            head: "a".repeat(40),
-            branch: None,
-        }
-    );
+    let WorktreeId {
+        common_dir,
+        git_dir,
+        path,
+        head,
+        branch,
+        ..
+    } = &w;
+    assert_eq!(common_dir, "/r/.git");
+    assert_eq!(git_dir, "/r/.git/worktrees/a");
+    assert_eq!(path, "/r/a");
+    assert_eq!(head, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+    assert_eq!(branch, &None);
     assert_eq!(w.branch("issue/1-x").branch.as_deref(), Some("issue/1-x"));
 }
 
