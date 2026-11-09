@@ -244,6 +244,30 @@ pub fn recovery_plan(home: &Path) -> Result<RecoveryPlan> {
         h.package_version = Some(receipt.package_version.clone());
         h.version_before = receipt.version_before.clone();
         h.receipt_status = receipt.status.clone();
+        // REQ-3 (#2268): a FIRST apply (`version_before` none) into a projection root
+        // that already existed (`top_skills_existed_before`) landed created files
+        // inside a previously unmanaged folder — list them so the operator sees what
+        // an apply added there. Fresh installs into an empty folder (the normal path)
+        // never trigger this.
+        if receipt.version_before.is_none() && receipt.top_skills_existed_before {
+            for entry in &receipt.entries {
+                if entry.before_sha256.is_none() && entry.published {
+                    h.files.push(crate::recovery::RecoveryFile {
+                        path: entry.path.clone(),
+                        class: "added_into_pre_existing_root".into(),
+                        reason: Some(
+                            "first apply landed this file in a folder that already existed \
+                             (unmanaged root at apply time, #2268)"
+                                .into(),
+                        ),
+                        action: "none".into(),
+                        before_sha256: None,
+                        after_sha256: entry.after_sha256.clone(),
+                        current_sha256: None,
+                    });
+                }
+            }
+        }
         if receipt.status == "pending" {
             let root = projection_root(&canonical_home, host);
             if fs::symlink_metadata(&root).is_ok_and(|m| m.file_type().is_symlink()) {

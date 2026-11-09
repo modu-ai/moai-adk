@@ -37,7 +37,7 @@ shasum -a 256 /tmp/moai-rc1-stage-target/release/moai-cli   # 바이너리 hash�
 
 ## 2. 격리 시험 (실측)
 
-재현: `WF_REF=.moai-cli/ bash tools/local-rc1-isolation.sh <BIN> <repo root> <out dir>`(`WF_REF`를 빼면 b 행처럼 agents-plan이 멈춤). 시험은 `mktemp -d`로 만든 HOME과 프로젝트에서 돌렸고, 실제 HOME은 넘기지 않았습니다. 실제 기계를 흉내 내려고 다음을 먼저 심었습니다: `~/.claude/skills/moai/SKILL.md`와 `~/.agents/skills/moai/SKILL.md`(RC1이 아닌 기존 skill), 다른 skill 하나, `~/.moai/`, `~/.codex/AGENTS.md`, 프로젝트의 `.moai/`, `.claude/settings.json`, 사용자 내용이 든 `AGENTS.md`, `AGENTS.override.md`.
+재현: `WF_REF=.moai-cli/ bash tools/local-rc1-isolation.sh <BIN> <repo root> <out dir>`(`WF_REF`를 빼면 b 행처럼 agents-plan이 멈춤). 아래 표는 #2274 이전 head의 실측이다. #2274 뒤에는 `WF_REF` 우회가 필요 없고 4절 순서(generation 먼저)를 쓴다 — 스크립트 자체는 이 카드에서 바꾸지 않았다. 시험은 `mktemp -d`로 만든 HOME과 프로젝트에서 돌렸고, 실제 HOME은 넘기지 않았습니다. 실제 기계를 흉내 내려고 다음을 먼저 심었습니다: `~/.claude/skills/moai/SKILL.md`와 `~/.agents/skills/moai/SKILL.md`(RC1이 아닌 기존 skill), 다른 skill 하나, `~/.moai/`, `~/.codex/AGENTS.md`, 프로젝트의 `.moai/`, `.claude/settings.json`, 사용자 내용이 든 `AGENTS.md`, `AGENTS.override.md`.
 
 | 순서 | 명령 | 결과 |
 | --- | --- | --- |
@@ -73,8 +73,12 @@ BIN=/tmp/moai-rc1-stage-target/release/moai-cli
 "$BIN" project-plan <P> < profile-request.json > project-plan.json      # 읽기 전용. result의 파일별 action을 확인
 "$BIN" project-apply <P> --plan-digest <project-plan.json의 result.plan_digest> --permission-reference <내 확인 메모> < project-plan.result.json
 
-# 2) AGENTS.md 관리 블록: 미리보기 → 확인 → 적용
-"$BIN" agents-plan <P> < agents-request.json > agents-plan.json          # action이 conflict면 멈춤
+# 2) 맞춤 workflow + AGENTS.md 관리 블록: 미리보기 → 확인 → 적용 (#2274)
+#    workflow_reference는 generation이 직접 만드는 .moai-cli/workflows/<id>/ — 미리 만들 필요 없음
+"$BIN" generation-plan <P> < generation-request.json > generation-plan.json   # action이 conflict면 멈춤
+"$BIN" generation-apply <P> --plan-digest <…> --permission-reference <…> < generation-plan.result.json
+# (나중에 AGENTS.md 블록만 다시 맞출 때) 같은 workflow_reference로
+"$BIN" agents-plan <P> < agents-request.json > agents-plan.json
 "$BIN" agents-apply <P> --plan-digest <…> --permission-reference <…> < agents-plan.result.json
 
 # 3) 되돌리기: apply 결과의 receipt id로
@@ -82,9 +86,10 @@ BIN=/tmp/moai-rc1-stage-target/release/moai-cli
 ```
 
 - `profile-request.json` 예: `{"schema_version":2,"project_id":"<id>","purpose":"<목적>","tools":["Rust"],"development_methods":["TDD"],"hosts":["claude","codex"],"interview_revision":"<rev>"}`
-- `agents-request.json`: `{"protocol_version":1,"language":"ko","workflow_reference":"<프로젝트 안의 기존 디렉터리>","local_file":"none"}`. `local_file`은 `none|ignored|tracked`만 받습니다.
+- `generation-request.json` 예: `{"protocol_version":1,"language":"ko","workflow_reference":".moai-cli/workflows/<id>/","local_file":"none","workflow_id":"<id>","native_roles":[],"skill_projections":[]}`
+- `agents-request.json`: `{"protocol_version":1,"language":"ko","workflow_reference":".moai-cli/workflows/<id>/","local_file":"none"}`. `agents-plan`을 단독으로 부를 때는 이 디렉터리가 이미 있어야 합니다(generation-apply 뒤). `local_file`은 `none|ignored|tracked`만 받습니다.
 - `apply-recover`는 apply 뒤에 바뀐 파일은 건너뛰고 덮지 않습니다(`skipped`에 나옵니다).
-- 2단계는 G2 때문에 아직 일반 프로젝트에서 바로 쓸 수 없습니다.
+- 2단계의 G2(일반 프로젝트에서 막힘)는 #2274로 해소: generation이 자기 출력 위치를 `workflow_reference`로 받으면 그 디렉터리를 미리 요구하지 않습니다. `.moai-cli/` 같은 우회 값은 쓰지 마세요(AGENTS.md가 엉뚱한 곳을 가리킴).
 
 ## 5. 보존 규칙
 
@@ -115,7 +120,7 @@ BIN=/tmp/moai-rc1-stage-target/release/moai-cli
 | # | 내용 | 상태 |
 | --- | --- | --- |
 | G1 | `update-plan`이 루트 `SKILL.md` conflict를 `preflight: ok`로 두고, `update-apply`가 기존 폴더에 나머지 파일을 씀 | 결함 #2268(agent-6). 병합 전 실제 HOME 적용 금지 |
-| G2 | `agents-plan`은 프로젝트 안에 `workflow_reference` 디렉터리가 있어야 하는데, 일반 프로젝트에 그것을 만드는 RC1 단계가 없음(시험 fixture도 손으로 만듦) | 후속 판단 필요(리더) |
+| G2 | `agents-plan`은 프로젝트 안에 `workflow_reference` 디렉터리가 있어야 하는데, 일반 프로젝트에 그것을 만드는 RC1 단계가 없음(시험 fixture도 손으로 만듦) | #2274에서 해소: `generation-plan`이 자기 출력 위치(`.moai-cli/workflows/<id>/`)를 받으면 미리 요구하지 않음(시험 `tests/generation_own_reference.rs`). 단독 `agents-plan`은 계속 거부 |
 | G3 | `recovery-plan`·`recovery-apply`는 `pending` host만 되돌림. `committed` 설치를 지우는 명령은 없음 | 설계 범위. 기록만 |
 | G4 | 실제 host가 투영된 skill을 로드하는지 | not_run(T2, #2014) |
 | G5 | 리더 쪽 스테이징 빌드 결과와 대조 | 아직 받지 못함 — 받으면 1절에 인용 |
