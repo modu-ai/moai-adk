@@ -12,6 +12,8 @@ use moai_cli::{
         Client, Config, ForgeError,
     },
 };
+mod common;
+
 use serde_json::{json, Value};
 use std::{
     cell::{Cell, RefCell},
@@ -709,12 +711,7 @@ fn stub_gh(dir: &Path) -> PathBuf {
         "#!/bin/sh\n# test stub for gh api (GET only)\nfor a in \"$@\"; do last=\"$a\"; done\nfor a in \"$@\"; do [ \"$a\" = POST ] && {{ echo 'stub refuses writes' >&2; exit 9; }}; done\ncase \"$last\" in\n  *issues*) printf '%s' '{issues}';;\n  *) printf '%s' '{repo}';;\nesac\n"
     );
     let path = dir.join("gh-stub");
-    fs::write(&path, script).unwrap();
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
-    }
+    common::write_executable(&path, &script);
     path
 }
 

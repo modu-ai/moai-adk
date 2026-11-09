@@ -12,6 +12,8 @@ use moai_cli::contract;
 use moai_cli::forge::policy::{format_utc, Clock};
 use moai_cli::forge::transport::{Exchange, HttpRequest, HttpResponse, RecordedTransport};
 use moai_cli::forge::{Client, Config};
+mod common;
+
 use serde_json::{json, Value};
 use std::{
     cell::{Cell, RefCell},
@@ -834,12 +836,7 @@ fn git_repo(dir: &Path) {
 fn stub_gh(dir: &Path) -> PathBuf {
     let script = "#!/bin/sh\n# claim test stub for gh api (stateful: read-your-writes)\ncase \"$*\" in\n  *per_page=100*)\n    if [ -n \"${CLAIM_STUB_JSON:-}\" ]; then printf 'HTTP/2.0 200 OK\\r\\n\\r\\n%s' \"$CLAIM_STUB_JSON\";\n    elif [ -f \"$CLAIM_STUB_DIR/posted\" ]; then printf 'HTTP/2.0 200 OK\\r\\n\\r\\n[{\"id\":%s,\"body\":\"%s\"}]' \"${CLAIM_STUB_ID:-4242}\" \"$CLAIM_STUB_BODY\";\n    else printf 'HTTP/2.0 200 OK\\r\\n\\r\\n[]'; fi;;\n  *)\n    : > \"$CLAIM_STUB_DIR/posted\"\n    printf 'HTTP/2.0 201 Created\\r\\n\\r\\n{\"id\":%s}' \"${CLAIM_STUB_ID:-4242}\";;\nesac\n";
     let path = dir.join("gh-stub");
-    fs::write(&path, script).unwrap();
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
-    }
+    common::write_executable(&path, script);
     path
 }
 

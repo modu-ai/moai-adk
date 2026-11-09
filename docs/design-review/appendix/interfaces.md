@@ -33,6 +33,7 @@
 - `claim-handoff`
 - `claim-release`
 - `claim-show`
+- `claim-verify`
 - `claude-doctor`
 - `claude-settings-apply`
 - `claude-settings-plan`
