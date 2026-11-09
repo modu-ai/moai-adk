@@ -16,13 +16,19 @@
 //!   (`.github/moai/labels.yml`, "state lives in the report comment"), and the owned report
 //!   comment belongs to `forge-report` with its own gates, so both are `not_run` here.
 //!
-//! Not handled here: an expired foreign claim comment is not live, so acquire may post over
-//! it (lease and expiry belong to A7 #2166); a local assignments file is not read (the remote
-//! is authoritative); live GitHub runs are not part of the tests (fixtures only).
+//! - A candidate whose comments already carry any `moai-claim:` line — live or expired —
+//!   is left out before acquire and recorded in `skipped` with `claimed_by` and `expired`
+//!   (REQ-A2-01 "only Issues without a claim comment", REQ-A2-02 / REQ-A7-02 "no automatic
+//!   takeover"): nothing is posted to it. The one exception is a card this journal already
+//!   holds an active record for, which acquire returns unchanged.
+//!
+//! Not handled here: a local assignments file is not read (the remote is authoritative);
+//! live GitHub runs are not part of the tests (fixtures only).
 use crate::claim::{
-    acquire, journal_root, worktree_id, ClaimRequest, Journal, Owner, SpecRef, TaskRef,
+    acquire, is_active, journal_root, parse_claim_line, task_key, worktree_id, ClaimComment,
+    ClaimRequest, Journal, Owner, SpecRef, TaskRef,
 };
-use crate::forge::policy::{next_link, Clock};
+use crate::forge::policy::{next_link, parse_utc, Clock};
 use crate::forge::transport::Transport;
 use crate::forge::Client;
 use crate::identity;
@@ -173,6 +179,57 @@ fn read_open_issues<T: Transport, C: Clock>(
     Ok(out)
 }
 
+/// Every `moai-claim:` comment of one Issue (GET only, `Link` pagination).
+fn read_claim_comments<T: Transport, C: Clock>(
+    client: &Client<'_, T, C>,
+    owner: &str,
+    repo: &str,
+    number: i64,
+) -> Result<Vec<ClaimComment>> {
+    let mut url = Some(format!(
+        "{API}/repos/{owner}/{repo}/issues/{number}/comments?per_page=100"
+    ));
+    let mut out = Vec::new();
+    let mut pages = 0;
+    while let Some(u) = url {
+        pages += 1;
+        if pages > MAX_PAGES {
+            return Err("queue claim comment page limit exceeded (50)".into());
+        }
+        let (body, next) = get_json(client, &u)?;
+        for c in body.as_array().cloned().unwrap_or_default() {
+            let (Some(id), Some(text)) = (c["id"].as_i64(), c["body"].as_str()) else {
+                continue;
+            };
+            if let Some(mut line) = parse_claim_line(text) {
+                line.comment_id = id;
+                out.push(line);
+            }
+        }
+        url = next;
+    }
+    Ok(out)
+}
+
+/// The `skipped` entry of a card that already carries claim comments: the smallest live
+/// comment id if one is live, otherwise the smallest comment id (expired).
+fn claimed_entry(number: i64, claims: &[ClaimComment], now: i64) -> Option<Value> {
+    let live = |c: &ClaimComment| parse_utc(&c.lease_until).is_some_and(|t| t > now);
+    let first = claims
+        .iter()
+        .filter(|c| live(c))
+        .min_by_key(|c| c.comment_id)
+        .or_else(|| claims.iter().min_by_key(|c| c.comment_id))?;
+    Some(json!({
+        "issue": number,
+        "reason": "claimed",
+        "claimed_by": first.session,
+        "comment_id": first.comment_id,
+        "lease_until": first.lease_until,
+        "expired": !live(first),
+    }))
+}
+
 fn validate(req: &QueueRequest) -> Result<()> {
     if req.schema_version != 1 {
         return Err("unsupported request schema_version".into());
@@ -198,7 +255,8 @@ pub fn next<T: Transport, C: Clock>(
         .as_i64()
         .ok_or("gh transport: repository response carried no id")?;
     let issues = read_open_issues(client, &req.owner, &req.repo)?;
-    let (candidates, skipped) = select(&issues, req.milestone);
+    let (candidates, mut skipped) = select(&issues, req.milestone);
+    let events = journal.read_events()?;
     let projection = json!({
         "label": {"state": "not_run", "reason": "RC1 does not apply state labels (.github/moai/labels.yml)"},
         "status_line": {"state": "not_run", "reason": "the owned report comment is forge-report's, behind its own gates"},
@@ -228,7 +286,26 @@ pub fn next<T: Transport, C: Clock>(
                 json!({"kind": "projection_intent", "target": "status_line", "action": "not_run"}),
             ],
             expected_epoch: None,
+            // #2169 display projections: queue-next's request carries neither, so the
+            // record leaves them empty (they never decide ownership, REQ-B2-01).
+            assignee: None,
+            provider_session: None,
         };
+        // REQ-A2-01/02: a card that already carries a claim comment (live or expired) is
+        // not a candidate, unless this journal holds an active record for it.
+        let key = task_key(&claim.task_ref);
+        let own_active = events
+            .iter()
+            .rev()
+            .find(|e| e.record.task_key == key)
+            .is_some_and(|e| is_active(&e.record.state));
+        if !own_active {
+            let claims = read_claim_comments(client, &req.owner, &req.repo, c.number)?;
+            if let Some(entry) = claimed_entry(c.number, &claims, clock.now()) {
+                skipped.push(entry);
+                continue;
+            }
+        }
         let out = acquire(journal, &claim, worktree.clone(), client, clock)?;
         let foreign = out.foreign_owner.clone();
         if out.outcome == "already_owned" {
@@ -267,7 +344,7 @@ pub fn next<T: Transport, C: Clock>(
         "notes": [if candidates.is_empty() {
             "no candidate: record the idle line once and stop (SPEC §3 step 2)"
         } else {
-            "every candidate is owned by a live foreign claim"
+            "every candidate already carries a claim comment or is owned by a live foreign claim"
         }],
     }))
 }

@@ -361,6 +361,15 @@ enum Command {
         #[arg(long)]
         integration_order: Option<String>,
     },
+    /// Semantic parity of TEMPLATE vs GENERATED (optional third DOC set, D6 #2192):
+    /// per-key classification with the 00-A vocabulary (missing / extra /
+    /// value_mismatch / identical / doc_only). Read-only.
+    ParityCheck {
+        template: PathBuf,
+        generated: PathBuf,
+        #[arg(long)]
+        doc: Option<PathBuf>,
+    },
     /// Record the PR's ACK (06-C #2007, REQ-06C-11): confirm the `pr_create` intent and, once
     /// it is confirmed, move the claim record to `pr_ready`.
     PrConfirm {
@@ -681,6 +690,7 @@ const OPERATIONS: &[(&str, &str)] = &[
     ("recovery-plan", "recovery.plan"),
     ("recovery-apply", "recovery.apply"),
     ("pr-confirm", "pr.confirm"),
+    ("parity-check", "parity.check"),
 ];
 fn operation_of(word: &str) -> Option<&'static str> {
     OPERATIONS
@@ -1029,6 +1039,11 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
                 &moai_cli::forge::policy::SystemClock,
             )
         }
+        Command::ParityCheck {
+            template,
+            generated,
+            doc,
+        } => moai_cli::parity::parity_check(&template, &generated, doc.as_deref()),
         Command::PrConfirm {
             project,
             task,

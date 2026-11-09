@@ -105,9 +105,11 @@ fn reads(issues: Vec<Value>) -> Vec<Exchange> {
     ]
 }
 
-/// Pre-check (empty), the one POST, and the re-read the caller supplies.
+/// Queue candidate check (empty), acquire pre-check (empty), the one POST, and the re-read
+/// the caller supplies.
 fn attempt(n: i64, posted: i64, reread: Vec<Value>) -> Vec<Exchange> {
     vec![
+        exchange("GET", &comments(n), resp(200, json!([]))),
         exchange("GET", &comments(n), resp(200, json!([]))),
         exchange(
             "POST",
@@ -232,6 +234,74 @@ fn blocked_card_is_excluded_from_candidates() {
         .borrow()
         .iter()
         .all(|r| !r.url.contains("/issues/7/")));
+    assert_eq!(t.remaining(), 0);
+}
+
+fn claim_until(id: i64, session: &str, lease: &str) -> Value {
+    json!({"id": id, "body": format!("moai-claim: session={session} epoch=1 lease_until={lease}")})
+}
+
+fn posts(t: &RecordedTransport) -> Vec<String> {
+    t.sent
+        .borrow()
+        .iter()
+        .filter(|r| r.method == "POST")
+        .map(|r| r.url.clone())
+        .collect()
+}
+
+/// agent-2 FAIL probe on PR #2218, fixed as a test (REQ-A2-01, REQ-A2-02, REQ-A7-02): #7
+/// carries only an expired foreign claim. It is not a candidate: no POST, no record; the
+/// run moves to #8 and `skipped` names the claimant with `expired: true`.
+#[test]
+fn expired_foreign_claim_is_skipped_not_taken_over() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().join("claims");
+    let mut ex = reads(vec![card(7, "A1", "상위: #2"), card(8, "A2", "상위: #2")]);
+    ex.push(exchange(
+        "GET",
+        &comments(7),
+        resp(
+            200,
+            json!([claim_until(300, "session-b", "2026-01-01T00:00:00Z")]),
+        ),
+    ));
+    ex.extend(attempt(8, 600, vec![claim(600, "session-a")]));
+    let (out, t) = run(&root, "session-a", ex);
+
+    assert_eq!(out["outcome"], json!("claimed"), "{out}");
+    assert_eq!(out["issue"], json!(8));
+    assert_eq!(
+        out["skipped"],
+        json!([{"issue": 7, "reason": "claimed", "claimed_by": "session-b",
+                "comment_id": 300, "lease_until": "2026-01-01T00:00:00Z", "expired": true}])
+    );
+    assert_eq!(posts(&t), vec![format!("{API}/issues/8/comments")]);
+    assert_eq!(t.remaining(), 0);
+    assert!(
+        !record_file(&root, 7).exists(),
+        "expired card must leave no record"
+    );
+}
+
+/// A live foreign claim comment is also skipped before acquire, with `expired: false`;
+/// with no other candidate the run ends `exhausted` and posts nothing.
+#[test]
+fn live_foreign_claim_is_skipped_and_posts_nothing() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().join("claims");
+    let mut ex = reads(vec![card(7, "A1", "상위: #2")]);
+    ex.push(exchange(
+        "GET",
+        &comments(7),
+        resp(200, json!([claim(400, "session-b")])),
+    ));
+    let (out, t) = run(&root, "session-a", ex);
+
+    assert_eq!(out["outcome"], json!("exhausted"), "{out}");
+    assert_eq!(out["skipped"][0]["claimed_by"], json!("session-b"));
+    assert_eq!(out["skipped"][0]["expired"], json!(false));
+    assert!(posts(&t).is_empty());
     assert_eq!(t.remaining(), 0);
 }
 
