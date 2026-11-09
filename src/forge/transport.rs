@@ -72,6 +72,10 @@ pub struct GhTransport {
     /// Upper bound for one `gh api` call; past it the whole process group is ended and the
     /// call fails as `transport` (#2048).
     pub timeout: Duration,
+    /// A token handed to gh as `GH_TOKEN` in the child's environment only — never argv, never
+    /// disk (#2173). `None` leaves gh's own authentication in charge. No `Debug` is derived on
+    /// this struct; one added later must skip this field.
+    pub gh_token: Option<String>,
 }
 
 // @MX:NOTE: [AUTO] default bound for one gh call; not derived from a measurement (unmeasured)
@@ -119,6 +123,7 @@ impl GhTransport {
             return Ok(GhTransport {
                 bin: "gh".into(),
                 timeout: GH_TIMEOUT,
+                gh_token: None,
             });
         };
         let path = std::path::PathBuf::from(&raw);
@@ -129,6 +134,7 @@ impl GhTransport {
             Some(s) if path.is_absolute() && regular => Ok(GhTransport {
                 bin: s.into(),
                 timeout: GH_TIMEOUT,
+                gh_token: None,
             }),
             _ => Err("MOAI_FORGE_GH_BIN must be an absolute path to an existing file".into()),
         }
@@ -175,6 +181,9 @@ impl Transport for GhTransport {
         }
         let mut cmd = Command::new(&self.bin);
         cmd.args(["api", "-X", &req.method, "-i"]);
+        if let Some(token) = &self.gh_token {
+            cmd.env("GH_TOKEN", token);
+        }
         for (k, v) in &req.headers {
             cmd.arg("-H").arg(format!("{k}: {v}"));
         }
