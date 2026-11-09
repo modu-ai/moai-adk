@@ -557,6 +557,22 @@ enum Command {
     SkillSourcePlan {
         project: PathBuf,
     },
+    /// Plan project-unit `moai` skill copies read-only (I5 #2242, P04 HOLD):
+    /// typed request on stdin; judgment envelope on stdout; writes nothing.
+    ProjectSkillPlan {
+        project: PathBuf,
+    },
+    /// Copy the staged `moai` skill package into the project host folders
+    /// (I5 #2242): the exact request on stdin; requires `opt_in` and writes
+    /// only under the caller-supplied project root.
+    ProjectSkillApply {
+        project: PathBuf,
+    },
+    /// Revert one applied project-skill copy from its rollback receipt
+    /// (I5 #2242): typed request on stdin.
+    ProjectSkillRevert {
+        project: PathBuf,
+    },
     /// Install approved skill sources into the host official skill folders (03-B
     /// #1996): the exact plan on stdin, `--plan-digest` and `--permission-reference`.
     SkillSourceApply {
@@ -827,6 +843,9 @@ const OPERATIONS: &[(&str, &str)] = &[
     ("snapshot-describe", "snapshot.describe"),
     ("skill-source-plan", "skill_source.plan"),
     ("cost-report", "cost.report"),
+    ("project-skill-plan", "project_skill.plan"),
+    ("project-skill-apply", "project_skill.apply"),
+    ("project-skill-revert", "project_skill.revert"),
     ("generation-plan", "generation.plan"),
     ("generation-apply", "generation.apply"),
     ("skill-source-apply", "skill_source.apply"),
@@ -1474,6 +1493,24 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
         Command::CostReport {} => {
             // cost_report checks protocol_version itself (one check, not two).
             moai_cli::run::cost_report(input::<moai_cli::run::CostRequest>()?)
+        }
+        Command::ProjectSkillPlan { project } => {
+            let mut request = input::<moai_cli::project_skills::ProjectSkillRequest>()?;
+            request.project_root = project;
+            serde_json::to_value(moai_cli::project_skills::project_skill_plan(&request)?)
+                .map_err(|_| "encode failed".into())
+        }
+        Command::ProjectSkillApply { project } => {
+            let mut request = input::<moai_cli::project_skills::ProjectSkillRequest>()?;
+            request.project_root = project;
+            serde_json::to_value(moai_cli::project_skills::project_skill_apply(&request)?)
+                .map_err(|_| "encode failed".into())
+        }
+        Command::ProjectSkillRevert { project } => {
+            let mut request = input::<moai_cli::project_skills::ProjectSkillRevertRequest>()?;
+            request.project_root = project;
+            serde_json::to_value(moai_cli::project_skills::project_skill_revert(&request)?)
+                .map_err(|_| "encode failed".into())
         }
         Command::GithubPlan { project } => {
             serde_json::to_value(moai_cli::github_templates::github_plan(
