@@ -43,6 +43,7 @@ RC1의 host 실측 조합은 개발 Mac 단일이다: Darwin / arm64 (Rust tripl
 | ubuntu-24.04 / arm 변형 / Darwin x86_64 | — | local | host 항목 전체 | not_run | 미지원(후속) — P04로 rc.1 범위 밖. host E2E receipt 없음(CI check set은 아래 "CI OS matrix" 절, host 판정 아님) |
 | windows-2025 | — | local | 빌드(`cargo build --offline --locked --all-targets`, 라이브러리·binary·portable 시험 target 컴파일) | PR의 `windows-build` run 참조 | E3 #2195 — 컴파일 증거일 뿐 시험 실행이나 host 지원 보증이 아니다 |
 | windows-2025 | — | local | 첫 시험 target 컴파일(`--all-targets`) | failed(run `42707532063`, 수리 전 이력) | 당시 `src/agents.rs:1127·1166·1180`, `src/claude.rs:1149`의 Unix 전용 코드가 조건부 컴파일되지 않아 실패했다. 수리에서는 권한 시험과 symlink 구간만 `cfg(unix)`로 제한하고 `--all-targets` 범위를 유지한다. 수리 후보의 결과는 PR의 최신 run으로 확인한다 |
+| windows-2025 | — | local | 추가 integration 시험 컴파일(`--all-targets`) | failed(run `42716692062`, head `1a29cfb4d`, 수리 중 이력) | library 수리 뒤 `tests/apply_receipt.rs`의 Unix chmod 시험에서 실패했다. 권한 시험만 Unix로 제한하고, context·baseline·tree digest·identity의 혼합 시험은 Unix symlink 구간만 제한하여 portable 검사를 유지한다. 최종 Windows 빌드 결과는 PR의 후속 run으로 확인한다 |
 | windows-2025 | — | local | 시험 실행·실행 중 binary 교체(self-replace)·host 로딩 | not_run | 결정 01:1x(11-09): Windows는 빌드 + self-replace 구현만. 교체 경로는 `src/self_update.rs`의 모의 replacer 단위 시험(macOS)으로만 확인했고, 실제 `self_replace` 호출은 시험에서 실행하지 않는다(시험 binary 자신을 교체하므로). 호출부(binary update 경로)는 04-B |
 | — | — | worktree / cloud | 전체 | not_run | RC1 범위 밖 |
 | Linux CI (ubuntu rc-ci) | — | local | AC-08C-7 재측정 | not_run | `sandbox-exec`는 macOS 전용 — Linux 대체 차단 수단 미결(HOLD, #2100 감사 지적) |
