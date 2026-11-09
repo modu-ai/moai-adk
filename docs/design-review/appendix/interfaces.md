@@ -1,6 +1,6 @@
 # 부록 3 — 인터페이스/명령 대응표 (DR-07 #2143)
 
-출처: synthesis S11 + `src/main.rs` OPERATIONS(전수는 아래 "RC1 OPERATIONS 전수" 절의 목록이 전부다. 개수와 이름 집합은 `src/main.rs`의 시험 `operations_doc_matches_code`가 코드 배열과 대조한다). 문서가 그린 인터페이스명(`result.admit` 등)은 RC1에 없고, RC1 OPERATIONS는 문서 어디에도 대응 표가 없었다 — 이 표가 그 대응표다.
+출처: synthesis S11 + `src/main.rs` OPERATIONS(전수는 아래 "RC1 OPERATIONS 전수" 절의 목록이 전부다. 이름 집합은 `src/main.rs`의 시험 `operations_doc_matches_code`가 코드 배열과 대조한다). 문서가 그린 인터페이스명(`result.admit` 등)은 RC1에 없고, RC1 OPERATIONS는 문서 어디에도 대응 표가 없었다 — 이 표가 그 대응표다.
 
 ## 문서 인터페이스명 → RC1 OPERATIONS
 
@@ -17,11 +17,68 @@
 | — (문서 인터페이스명 없음) | `codex-projection-plan` (`codex.projection_plan`) | 대응 없음 — [83f] §6 host adapter projection을 측정하는 op이며 문서 인터페이스 어휘가 이를 이름으로 부르지 않는다 |
 | — (문서 인터페이스명 없음) | `skill-source-plan` / `skill-source-apply` (`skill_source.plan`·`skill_source.apply`) / `skill-read-receipt` (`skill_source.read_receipt`) | 대응 없음 — 03-B #1996 신설(license review·skill 설치·read receipt); 문서 인터페이스 어휘와 [43fa] §18 명령표 어느 쪽에도 없는 영역 |
 
-## RC1 OPERATIONS 전수 — 56개
+## RC1 OPERATIONS 전수
 
-`package-inspect` `project-plan` `project-apply` `package-resolve` `agents-plan` `agents-apply` `apply-recover` `baseline-inventory` `identity` `forge-read` `forge-report` `plan-admit` `claude-doctor` `claude-settings-plan` `claude-settings-apply` `codex-projection-plan` `codex-doctor` `claim-acquire` `queue-next` `leader-tick` `claim-show` `claim-release` `claim-handoff` `effect-intend` `effect-confirm` `effects-reconcile` `todo-promote-preview` `todo-promote-apply` `run-verify` `snapshot-describe` `skill-source-plan` `cost-report` `generation-plan` `generation-apply` `skill-source-apply` `skill-read-receipt` `context-bundle` `context-verify` `decision-record` `audit-reduce` `install-inspect` `worktree-plan` `worktree-apply` `scope-check` `pr-body-render` `github-plan` `github-apply` `update-plan` `update-apply` `recovery-plan` `recovery-apply` `pr-confirm` `parity-check` `forge-audit-status` `flow-wip-check` `flow-gate-verdict`
+- `agents-apply`
+- `agents-plan`
+- `apply-recover`
+- `archive-plan`
+- `audit-reduce`
+- `baseline-inventory`
+- `claim-acquire`
+- `claim-handoff`
+- `claim-release`
+- `claim-show`
+- `claude-doctor`
+- `claude-settings-apply`
+- `claude-settings-plan`
+- `codex-doctor`
+- `codex-projection-apply`
+- `codex-projection-plan`
+- `context-bundle`
+- `context-verify`
+- `cost-report`
+- `decision-record`
+- `effect-confirm`
+- `effect-intend`
+- `effects-reconcile`
+- `flow-gate-verdict`
+- `flow-wip-check`
+- `forge-audit-status`
+- `forge-read`
+- `forge-report`
+- `generation-apply`
+- `generation-plan`
+- `github-apply`
+- `github-plan`
+- `identity`
+- `install-inspect`
+- `leader-tick`
+- `package-inspect`
+- `package-resolve`
+- `parity-check`
+- `plan-admit`
+- `pr-body-render`
+- `pr-confirm`
+- `project-apply`
+- `project-plan`
+- `queue-next`
+- `recovery-apply`
+- `recovery-plan`
+- `run-verify`
+- `scope-check`
+- `skill-read-receipt`
+- `skill-source-apply`
+- `skill-source-plan`
+- `snapshot-describe`
+- `todo-promote-apply`
+- `todo-promote-preview`
+- `update-apply`
+- `update-plan`
+- `worktree-apply`
+- `worktree-plan`
 
-(목록 순서는 `src/main.rs` 배열 순서. 이력: tip `604792666` 47개 → `queue-next`(#2161)·`parity-check`(#2192)·`leader-tick`(#2162) → `cost-report`(#2191)·`forge-audit-status`(#2173)로 tip `cf4e662af` 52개 → `claude-settings-plan`·`claude-settings-apply`(PR #2248)로 tip `5db3069a9` 54개 → `flow-wip-check`·`flow-gate-verdict`(#2279)로 56개. 이 절은 제목의 "— N개"와 바로 아래 한 줄 목록을 `src/main.rs` 시험 `operations_doc_matches_code`가 읽는다 — op를 더하거나 빼는 PR은 이 두 곳을 함께 고쳐야 시험을 통과한다. envelope 계약: `{protocol_version, operation, ok, result|error{kind, message, retryable, next_actions?}}`, exit 0/1/2, `kind` 14종 — `src/contract.rs`·`docs/protocol-v1.md`)
+(알파벳순, 한 줄에 operation 하나, 개수는 적지 않는다. `src/main.rs`의 시험 `operations_doc_matches_code`가 이 목록과 OPERATIONS 배열의 이름 집합을 비교해 빠진 것·남는 것·중복·순서 어긋남을 이름으로 보고한다 — op를 더하거나 빼는 PR은 알파벳 위치에 자기 줄만 넣거나 뺀다. 이력: tip `604792666` 47개에서 시작해 rc.2 카드들이 더했고, #2241에서 이 형식으로 바꿨다. envelope 계약: `{protocol_version, operation, ok, result|error{kind, message, retryable, next_actions?}}`, exit 0/1/2, `kind` 14종 — `src/contract.rs`·`docs/protocol-v1.md`)
 
 ## 문서별 내부 명령 체계 → RC1
 
