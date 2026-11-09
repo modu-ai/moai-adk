@@ -113,10 +113,10 @@
 | 01:0x(11-09) | D-4 미배차 목록 | 원격 Issue(claim 댓글 없는 열린 Issue)가 정본, `assignments.json`은 리더만 커밋하는 스냅샷 캐시, 레인은 읽기만 | #2139 schema, rc.2 | 사용자 선택(권장) |
 
 | 01:1x(11-09) | ADK_PERSONAL_CODING_CORE_20261109_01 수신 | 개인 맞춤 AI 코딩 에이전트 정체성: 5단계 기본, AGENTS.md 공통 + `/moai project` → `AGENTS.override.md`, 재귀 자기 개선 루프(권한 확대·보호 우회 아님), 호스트별 공식 배치, ADK 이름 재검토(rename 0). 로컬 설계 수정 ≠ 온라인 게시 | rc.2 EP-H(미발행) | 사용자 지시, 리더 ACK |
-| 01:2x(11-09) | 5단계 이름 확정 | **PLAN → RUN → VERIFY → AUDIT → SYNC**(설계 §5·RC1 routes 일치); READ·SETUP·UPDATE는 진입 단계로 별도 | 전체 | 사용자 선택(권장) |
-| 01:2x(11-09) | AGENTS.override.md 학습 루프 | 제안(diff+근거+검증)은 자동 생성, **적용은 사용자 승인 1회**; 사용자 구간 자동 변경 0; 롤백 = 이전 버전 복원; Codex는 override 공식 지원, Claude Code는 어댑터 필요(공식 비지원) | EP-H | 사용자 선택(권장) |
-| 01:2x(11-09) | ADK 이름 재검토 | 조사 카드 1장 → 후보 3~5개(충돌 조사 URL+확인일) 보고, 확정은 사용자; rename 0 | EP-H | 사용자 선택(권장) |
-| 01:2x(11-09) | Code Map/Graph 묶음 명칭 | #2177 조사: `code-atlas`는 crates.io 활성 패키지·GitHub org 존재로 사용 불가. 질문 창에서 `moai-atlas` 안 선택 후, 사용자가 ADK_ATLAS_NAME_CONFIRMED_20261109_01로 **묶음 명칭 "MoAI Atlas" 확정**. 범위 한정: 제품명(MoAI ADK) 변경·패키지명·CLI 서브커맨드·태그 문법·상표 안전성은 **미확정**(패키지 404는 "미등록 관측"일 뿐 충돌 0·상표 사용 가능 아님; WIPO 조사 not_run). 패키지 `moai-atlas`·CLI `moai atlas`는 제안 상태로 C2 카드에서 별도 결정 | #2177, EP-C C2~ | 사용자 확정(명칭만) |
+| 01:2x(11-09) | 5단계 이름·순서(설계 대조) | 사용자 직접 발화는 "3개에서 확장한 다섯 과정, 플랜에서 마지막 싱크까지"(이름 미열거). **PLAN → RUN → VERIFY → AUDIT → SYNC**는 설계 §5 제목·RC1 `routes.json` 개발 route 5개의 대조 근거로 리더가 기록; READ·SETUP·UPDATE는 진입 단계로 별도(리더 제안). 출처 정정: ADK_DECISION_PROVENANCE_FIX_20261109_01 | 전체 | 사용자 발화(5단계 요청) + 리더 대조(이름) |
+| 01:2x(11-09) | AGENTS.override.md 학습 루프 승인 수준 | 재귀 개선 요청 자체는 사용자 직접 발화. "제안은 자동, 적용은 사용자 승인 1회; 사용자 구간 자동 변경 0; 롤백"은 01:2x 로컬 질문 창 선택이나 **작성자 미확인 → 리더 제안 / 사용자 확인 대기**(자동 적용 0). Codex는 override 공식 지원, Claude Code는 어댑터 필요(공식 비지원) | EP-H | 리더 제안(확인 대기) — PROVENANCE_FIX |
+| 01:2x(11-09) | ADK 이름 재검토 진행 방식 | 재검토 요청·rename 금지·새 이름 미확정은 사용자 직접 발화. "조사 카드 1장 → 후보 3~5개(URL+확인일) 보고"는 로컬 질문 창 선택으로 **작성자 미확인 → 리더 제안 / 사용자 확인 대기** | EP-H | 리더 제안(확인 대기) — PROVENANCE_FIX |
+| 01:2x(11-09) | Code Map/Graph 묶음 명칭 | #2177 조사: `code-atlas`는 crates.io 활성 패키지·GitHub org 존재로 사용 불가. 묶음 명칭 **"MoAI Atlas"**는 사용자 직접 발화로 명시 승인("MoAI Atlas 좋아, 오케이, 요거로 합시다" / "리더한테 얘기해"; ADK_ATLAS_NAME_CONFIRMED_20261109_01). 범위 한정: 제품명(MoAI ADK) 변경·패키지명·CLI 서브커맨드·태그 문법·상표 안전성은 **미확정**(패키지 404는 미등록 관측일 뿐 충돌 0·상표 가능 아님; WIPO not_run). `moai-atlas`·`moai atlas`는 제안 상태(로컬 질문 창 선택, 작성자 미확인) → C2에서 별도 | #2177, EP-C C2~ | 사용자 직접 승인(명칭만) |
 
 부분 결정 분리: P08은 claim 방식(⑤+①)만 결정, lease·heartbeat 수치 HOLD → 00:5x(11-09) lease 4h·heartbeat 없음으로 결정 · P15는 ZCode 헤드리스 범위만 결정, 나머지 host 지원표 HOLD.
 
