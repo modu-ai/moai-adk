@@ -10,7 +10,7 @@ use crate::digest;
 use crate::plan::{admit, AdmissionRequest, Decision};
 use crate::verify::{self, CheckResult, CheckRun, FailureClass, Toolchain};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::path::Path;
 use std::time::Duration;
 
@@ -481,4 +481,119 @@ pub fn run(project: &Path, req: &RunRequest, current_revision: &str) -> Result<R
         reasons: Vec::new(),
         receipt: Some(receipt),
     })
+}
+
+/// Cost-request input (#2191, REQ-D5-01): an array of run/verify receipts to
+/// aggregate. Receipts arrive as JSON in the exact `Receipt` schema — self-reports
+/// are aggregated as what they claim, and the report's producer rows keep that
+/// distinction visible.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CostRequest {
+    pub protocol_version: u32,
+    pub receipts: Vec<Receipt>,
+}
+
+/// `cost-report` (#2191): aggregates cost items across run/verify receipts —
+/// check outcomes, per-command and total durations, wall spans, external backend
+/// calls and tokens. Measured rows come from the receipts' own numbers; token
+/// accounting has no source in a receipt, and it is reported as absent rather
+/// than estimated (REQ-D5-01: estimates and measurements are distinguished —
+/// this report contains no estimate rows). External backend calls are
+/// structurally zero: the runner spawns local commands only and has no network
+/// path.
+pub fn cost_report(req: CostRequest) -> Result<Value> {
+    if req.protocol_version != 1 {
+        return Err("unsupported protocol_version; supported: 1".into());
+    }
+    let mut checks_total = 0usize;
+    let mut checks_passed = 0usize;
+    let mut checks_failed = 0usize;
+    let mut checks_not_run = 0usize;
+    let mut duration_total_ms = 0u128;
+    let mut duration_missing = 0usize;
+    let mut per_receipt = Vec::new();
+    let mut wall_spans = Vec::new();
+    for r in &req.receipts {
+        let mut receipt_duration_ms = 0u128;
+        let mut receipt_missing = 0usize;
+        for c in &r.checks {
+            checks_total += 1;
+            match c.result {
+                CheckResult::Passed => checks_passed += 1,
+                CheckResult::Failed => checks_failed += 1,
+                CheckResult::NotRun => checks_not_run += 1,
+            }
+            match c.duration_ms {
+                Some(ms) => {
+                    receipt_duration_ms += ms as u128;
+                    duration_total_ms += ms as u128;
+                }
+                None => receipt_missing += 1,
+            }
+        }
+        duration_missing += receipt_missing;
+        let starts: Vec<u64> = r.checks.iter().filter_map(|c| c.started_unix_ms).collect();
+        let finishes: Vec<u64> = r.checks.iter().filter_map(|c| c.finished_unix_ms).collect();
+        let wall = match (starts.iter().min(), finishes.iter().max()) {
+            (Some(&s), Some(&f)) if f >= s => Some(f - s),
+            _ => None,
+        };
+        if let Some(w) = wall {
+            wall_spans.push(w);
+        }
+        per_receipt.push(json!({
+            "task_id": r.task_id,
+            "attempt_id": r.attempt_id,
+            "producer_kind": r.producer.kind,
+            "checks_total": r.checks.len(),
+            "duration_ms": if receipt_missing == 0 {
+                json!(receipt_duration_ms as u64)
+            } else {
+                json!(null)
+            },
+            "duration_missing_samples": receipt_missing,
+            "wall_span_ms": wall,
+            "result": r.result,
+        }));
+    }
+    wall_spans.sort_unstable();
+    let wall_p50 = wall_spans.get((wall_spans.len().max(1) - 1) / 2).copied();
+    let wall_p95 = wall_spans
+        .get(((wall_spans.len() as f64 * 0.95).ceil() as usize).max(1) - 1)
+        .copied();
+    Ok(json!({
+        "protocol_version": 1,
+        "receipts": req.receipts.len(),
+        "checks": {
+            "total": checks_total,
+            "passed": checks_passed,
+            "failed": checks_failed,
+            "not_run": checks_not_run,
+            "basis": "measured"
+        },
+        "duration_ms": {
+            "total": duration_total_ms as u64,
+            "samples_missing": duration_missing,
+            "basis": "measured"
+        },
+        "wall_span_ms": {
+            "p50": wall_p50,
+            "p95": wall_p95,
+            "samples": wall_spans.len(),
+            "basis": "measured"
+        },
+        "per_receipt": per_receipt,
+        "external_backend_calls": {
+            "count": 0,
+            "basis": "structural"
+        },
+        "tokens": {
+            "basis": "absent",
+            "note": "receipts carry no token source; nothing is estimated"
+        },
+        "estimates": [],
+        "network": "none",
+        "writes": "none"
+    }))
 }

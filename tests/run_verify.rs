@@ -595,3 +595,97 @@ fn retry_budget_stops_on_repeated_failure() {
         ["red", "green", "regression"]
     );
 }
+
+/// #2191 AC-1/AC-2: cost_report aggregates fixture receipts — check outcomes,
+/// durations and wall spans carry the measured basis, external backend calls are
+/// structurally zero, tokens are absent, and the estimates list is empty (nothing
+/// in the receipts is estimated).
+#[test]
+fn cost_report_aggregates_fixture_receipts() {
+    use moai_cli::run::CostRequest;
+
+    let check =
+        |command_ref: usize, duration_ms: Option<u64>, started: u64| moai_cli::verify::CheckRun {
+            command_ref,
+            command: format!("command-{command_ref}"),
+            argv: vec!["echo".into(), command_ref.to_string()],
+            result: if command_ref == 1 {
+                CheckResult::Passed
+            } else {
+                CheckResult::Failed
+            },
+            exit_code: Some(0),
+            timed_out: false,
+            cancelled: false,
+            spawn_error: None,
+            started_unix_ms: Some(started),
+            finished_unix_ms: Some(started + duration_ms.unwrap_or(0)),
+            duration_ms,
+            stdout_sha256: None,
+            stderr_sha256: None,
+            failure_class: None,
+            test_filters: Vec::new(),
+            tests_passed: None,
+            tests_failed: None,
+            output_complete: Some(true),
+        };
+    let receipt = |task_id: &str| moai_cli::run::Receipt {
+        producer: moai_cli::run::Producer {
+            kind: moai_cli::run::ProducerKind::RunnerReceipt,
+        },
+        task_id: task_id.into(),
+        attempt_id: "attempt-1".into(),
+        spec_ref: "SPEC-demo".into(),
+        spec_digest: "sha256:aa".into(),
+        plan_digest: "sha256:bb".into(),
+        base_revision: "0".repeat(40),
+        tree_digest: "sha256:cc".into(),
+        policy_digest: None,
+        toolchain: moai_cli::verify::Toolchain {
+            rustc: None,
+            cargo: None,
+        },
+        method: moai_cli::run::ResolvedMethod {
+            change_strategy: "tdd".into(),
+            domain_modeling: "not-required".into(),
+            legacy_mode: None,
+        },
+        phase: None,
+        required_evidence: Vec::new(),
+        checks: vec![check(1, Some(120), 1_000), check(2, Some(80), 130)],
+        oracle_changes: Vec::new(),
+        red_confirmed: None,
+        result: moai_cli::run::Summary::Passed,
+    };
+    let req = CostRequest {
+        protocol_version: 1,
+        receipts: vec![receipt("task-a"), receipt("task-b")],
+    };
+    let report = moai_cli::run::cost_report(req).unwrap();
+    assert_eq!(report["receipts"], json!(2));
+    assert_eq!(
+        report["checks"],
+        json!({"total": 4, "passed": 2, "failed": 2, "not_run": 0, "basis": "measured"})
+    );
+    // Measured duration: 120 + 80 per receipt, aggregated over both.
+    assert_eq!(report["duration_ms"]["total"], json!(400));
+    assert_eq!(report["duration_ms"]["samples_missing"], json!(0));
+    assert_eq!(report["duration_ms"]["basis"], json!("measured"));
+    // Wall span per receipt: earliest start (130) to latest finish (1120) = 990;
+    // both receipts share the fixture timestamps so p50 is 990.
+    assert_eq!(report["wall_span_ms"]["p50"], json!(990));
+    assert_eq!(report["wall_span_ms"]["basis"], json!("measured"));
+    // External backend calls are structurally zero: the runner spawns local
+    // commands only. Tokens have no source in a receipt and are absent, not
+    // estimated; the estimates list is empty (REQ-D5-01).
+    assert_eq!(
+        report["external_backend_calls"],
+        json!({"count": 0, "basis": "structural"})
+    );
+    assert_eq!(report["tokens"]["basis"], json!("absent"));
+    assert_eq!(report["estimates"], json!([]));
+    let first = &report["per_receipt"][0];
+    assert_eq!(first["task_id"], json!("task-a"));
+    assert_eq!(first["duration_ms"], json!(200));
+    assert_eq!(first["producer_kind"], json!("runner-receipt"));
+}
