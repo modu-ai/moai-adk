@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "refreshed_at": "2026-11-09T00:15:17Z",
+  "unassigned": [1975, 1984, 2141, 2143],
+  "assigned": [
+    {
+      "issue": 2014,
+      "agent": "agent-5-767ceb",
+      "claim_ref": "2014#6722749070",
+      "epoch": 1,
+      "stage": "claimed",
+      "worktree": ".moai-cli/worktrees/2014-08-C",
+      "pr": null,
+      "updated_at": "2026-11-09T00:15:17Z"
+    },
+    {
+      "issue": 2137,
+      "agent": "agent-8-45deae",
+      "claim_ref": "2137#6729177213",
+      "epoch": 1,
+      "stage": "claimed",
+      "worktree": ".moai-cli/worktrees/2137-dr-move-review-docs",
+      "pr": null,
+      "updated_at": "2026-11-09T00:15:17Z"
+    },
+    {
+      "issue": 2138,
+      "agent": "agent-1-e29c15",
+      "claim_ref": "2138#6729181667",
+      "epoch": 1,
+      "stage": "claimed",
+      "worktree": ".moai-cli/worktrees/2138-dr-autonomy-modes-spec",
+      "pr": null,
+      "updated_at": "2026-11-09T00:15:17Z"
+    },
+    {
+      "issue": 2139,
+      "agent": "agent-3c-89e867",
+      "claim_ref": "2139#6729176888",
+      "epoch": 1,
+      "stage": "claimed",
+      "worktree": ".moai-cli/worktrees/2139-dr-assignments-record",
+      "pr": null,
+      "updated_at": "2026-11-09T00:15:17Z"
+    },
+    {
+      "issue": 2140,
+      "agent": "1ea7cc13-8407-4026-8224-a0567cb944ba",
+      "claim_ref": "2140#6729177514",
+      "epoch": 1,
+      "stage": "claimed",
+      "worktree": ".moai-cli/worktrees/2140-dr-fix-top-design",
+      "pr": null,
+      "updated_at": "2026-11-09T00:15:17Z"
+    },
+    {
+      "issue": 2142,
+      "agent": "agent-6-742cb6",
+      "claim_ref": "2142#6729179271",
+      "epoch": 1,
+      "stage": "claimed",
+      "worktree": ".moai-cli/worktrees/2142-dr-fix-group2-and-plan",
+      "pr": null,
+      "updated_at": "2026-11-09T00:15:17Z"
+    }
+  ]
+}
