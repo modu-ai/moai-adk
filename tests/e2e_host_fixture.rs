@@ -527,7 +527,13 @@ fn e2e_clean_clone_carries_portable_read_plan_assets() {
     // the check read a tip that predates the work under test and miss its assets.
     let branch = {
         let b = Command::new("git")
-            .args(["-C", manifest.to_str().unwrap(), "rev-parse", "--abbrev-ref", "HEAD"])
+            .args([
+                "-C",
+                manifest.to_str().unwrap(),
+                "rev-parse",
+                "--abbrev-ref",
+                "HEAD",
+            ])
             .output()
             .unwrap();
         assert!(b.status.success(), "cannot resolve the current branch");

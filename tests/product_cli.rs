@@ -1173,9 +1173,9 @@ fn launcher_deprecated_roles_warn_and_keep_compose() {
             "stderr: {args:?}"
         );
         assert!(
-            v["notes"]
-                .to_string()
-                .contains("deprecated: use `/moai --mode leader|agent` inside the session"),
+            v["notes"].to_string().contains(
+                "deprecated: use `/moai-cli --leader-mode|--agent-mode` inside the session"
+            ),
             "notes: {args:?}"
         );
     }
@@ -2391,7 +2391,10 @@ mod skill_package {
     fn mode_leader_route_loads_its_workflow() {
         let body = mode_workflow("MODE-LEADER");
         let skill = fs::read_to_string(root().join("SKILL.md")).unwrap();
-        assert!(skill.contains("`--mode leader`") && skill.contains("`--autonomy full|semi`"));
+        assert!(
+            skill.contains("`--leader-mode`") && skill.contains("`--autonomy full|semi`"),
+            "the canonical leader flag is --leader-mode (#2286): {skill}"
+        );
         // REQ-A1-01: the loaded mode ignores the other mode's instructions.
         assert!(body.contains("ignore instructions for any other mode"));
         assert!(
@@ -2404,10 +2407,13 @@ mod skill_package {
     fn mode_agent_route_loads_its_workflow() {
         let body = mode_workflow("MODE-AGENT");
         let skill = fs::read_to_string(root().join("SKILL.md")).unwrap();
-        assert!(skill.contains("`--mode agent`") && skill.contains("`$moai --mode …`"));
+        assert!(
+            skill.contains("`--agent-mode`") && skill.contains("`$moai-cli --agent-mode …`"),
+            "the canonical agent flag is --agent-mode (#2286): {skill}"
+        );
         assert!(body.contains("ignore instructions for any other mode"));
         assert!(
-            body.contains("`$moai --mode agent`"),
+            body.contains("`$moai-cli --agent-mode`"),
             "Codex may enter agent mode"
         );
         cites_spec_sections_only(&body, "MODE-AGENT");
@@ -2428,8 +2434,44 @@ mod skill_package {
             "{first}"
         );
         assert!(
-            first.contains("`$moai --mode agent`"),
+            first.contains("`$moai-cli --agent-mode`"),
             "the refusal points to agent mode"
+        );
+    }
+
+    /// AC-2 (#2286): the routing line must send each spelled flag to its route and
+    /// keep `--mode agent|leader` working as a legacy alias; the routes file must
+    /// carry both MODE routes for those picks to resolve.
+    #[test]
+    fn mode_routing_flags_map_to_routes() {
+        let skill = fs::read_to_string(root().join("SKILL.md")).unwrap();
+        assert!(
+            skill.contains("`--agent-mode` or `--leader-mode`"),
+            "SKILL.md must route the canonical flags: {skill}"
+        );
+        assert!(
+            skill.contains("`--mode agent|leader`"),
+            "SKILL.md must keep the --mode legacy alias: {skill}"
+        );
+        // The canonical picks and the alias must pick the same routes.
+        assert!(
+            skill.contains("pick the MODE-AGENT or MODE-LEADER route")
+                || (skill.contains("MODE-AGENT") && skill.contains("MODE-LEADER")),
+            "SKILL.md must name both routes for the flags: {skill}"
+        );
+        let routes: Value =
+            serde_json::from_slice(&fs::read(root().join("references/routes.json")).unwrap())
+                .unwrap();
+        let route = |k: &str| routes["routes"][k]["reference"].as_str().unwrap_or("");
+        assert_eq!(route("MODE-AGENT"), "../workflows/mode-agent.md");
+        assert_eq!(route("MODE-LEADER"), "../workflows/mode-leader.md");
+        assert_eq!(
+            routes["routes"]["MODE-AGENT"]["requires_binary"],
+            json!(false)
+        );
+        assert_eq!(
+            routes["routes"]["MODE-LEADER"]["requires_binary"],
+            json!(false)
         );
     }
 

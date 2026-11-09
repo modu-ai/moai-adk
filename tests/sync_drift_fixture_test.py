@@ -22,7 +22,7 @@ import tempfile
 import unittest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SYNC = os.path.join(ROOT, "skills", "moai", "workflows", "sync.md")
+SYNC = os.path.join(ROOT, "skills", "moai-cli", "workflows", "sync.md")
 CROSSWALK_REL = "docs/design-review/appendix/state-vocabulary-crosswalk.md"
 ORIGINAL_THREE = ("omission", "amendment", "document mismatch")
 

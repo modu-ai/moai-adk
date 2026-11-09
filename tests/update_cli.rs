@@ -681,3 +681,59 @@ fn update_fixture_preserves_fake_go_state() {
     apply_ok(&home, &stage1, &p2, p2["plan_digest"].as_str().unwrap());
     assert_eq!(go_digest(&home), before);
 }
+
+/// AC-1 (#2286): a Go-type `skills/moai` directory in the home is another product's
+/// package. update-plan plans the RC1 install for `skills/moai-cli` on both hosts
+/// (preflight ok — not blocked) and says nothing about `skills/moai`; update-apply
+/// then leaves both Go trees byte-identical (tree digests unchanged).
+#[test]
+fn go_type_moai_is_untouched_while_moai_cli_installs() {
+    let (_root, home, stage1, _s2, _s3) = setup();
+    for host_dir in [".claude/skills", ".agents/skills"] {
+        write_pkg(
+            &home.join(host_dir).join("moai"),
+            &[("SKILL.md", "---\nname: moai\n---\nGo body\n")],
+        );
+    }
+    let go_before: Vec<String> = [".claude/skills/moai", ".agents/skills/moai"]
+        .iter()
+        .map(|d| tree_digest(&home.join(d), &[]).unwrap())
+        .collect();
+
+    let (plan, _) = plan_via_cli(&home, &stage1);
+    for host_name in ["claude", "codex"] {
+        // The RC1 package lands under the new name; preflight stays ok.
+        assert_eq!(plan_action(&plan, host_name, "SKILL.md"), "create");
+        // The plan never mentions the Go package: no file row, no blocked reason.
+        let host = plan["hosts"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|h| h["host"] == json!(host_name))
+            .unwrap()
+            .clone();
+        assert!(
+            host["blocked"].is_null(),
+            "{host_name} blocked: {}",
+            host["blocked"]
+        );
+        let mentioned: Vec<&str> = host["files"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter_map(|f| f["path"].as_str())
+            .filter(|p| p.contains("skills/moai") && !p.contains("skills/moai-cli"))
+            .collect();
+        assert!(mentioned.is_empty(), "{host_name} touches {mentioned:?}");
+    }
+
+    apply_ok(&home, &stage1, &plan, plan["plan_digest"].as_str().unwrap());
+    let go_after: Vec<String> = [".claude/skills/moai", ".agents/skills/moai"]
+        .iter()
+        .map(|d| tree_digest(&home.join(d), &[]).unwrap())
+        .collect();
+    assert_eq!(
+        go_after, go_before,
+        "the Go-type moai trees must be byte-identical"
+    );
+}

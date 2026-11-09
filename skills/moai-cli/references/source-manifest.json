@@ -136,7 +136,7 @@
       }
     },
     "workflows/mode-leader.md": {
-      "sha256": "615f13fae8e6d3de1fda4ccbfcb76ef075abaf1f05b81c90edd301d937752d93",
+      "sha256": "09de73c8223e1b7da3a39ced6503747f20b9380f6bb30f8422939efa8b85e6f5",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-leader",

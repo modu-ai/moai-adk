@@ -30,7 +30,7 @@ class SetupProcedureDocumentedTest(unittest.TestCase):
         with open(
             os.path.join(
                 os.path.dirname(os.path.abspath(__file__)),
-                "..", "skills", "moai", "workflows", "setup.md",
+                "..", "skills", "moai-cli", "workflows", "setup.md",
             ),
             "r", encoding="utf-8",
         ) as f:
