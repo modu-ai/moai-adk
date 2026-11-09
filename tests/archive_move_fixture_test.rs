@@ -3,10 +3,7 @@
 //! remove the source; any mismatch cancels the move and keeps the original); AC-2:
 //! the restore round trip; plus the non-vector archive search and its limits.
 
-use moai_cli::archive::{
-    apply, copy_verified_with, manifest, plan, restore, search, SEARCH_QUERY_CHARS_MAX,
-    SEARCH_RESULTS_MAX,
-};
+use moai_cli::archive::{apply, copy_verified_with, manifest, plan, restore, search};
 use serde_json::Value;
 use std::{
     fs,
@@ -272,7 +269,7 @@ fn restore_refuses_an_existing_destination_and_unknown_ids() {
 
     fs::create_dir_all(specs(&project).join("SPEC-A")).unwrap();
     let err = restore(&project, "SPEC-A", PERMISSION).unwrap_err();
-    assert!(err.contains("exclusive create refused"), "{err}");
+    assert!(err.contains("restore destination already exists"), "{err}");
     assert!(archived(&project).join("SPEC-A/spec.md").is_file());
 
     let err = restore(&project, "SPEC-NOPE", PERMISSION).unwrap_err();
@@ -358,15 +355,16 @@ fn search_finds_archived_text_case_insensitively() {
 #[test]
 fn search_query_length_is_bounded_at_the_limit() {
     let (_root, project) = fixture();
-    let ok = "q".repeat(SEARCH_QUERY_CHARS_MAX);
+    // Literal edges, not the constants: a changed bound must fail this test.
+    let ok = "q".repeat(256);
     assert!(search(&project, &ok).is_ok());
-    let long = "q".repeat(SEARCH_QUERY_CHARS_MAX + 1);
+    let long = "q".repeat(257);
     let err = search(&project, &long).unwrap_err();
     assert!(err.contains("must be"), "{err}");
     let err = search(&project, "").unwrap_err();
     assert!(err.contains("must be"), "{err}");
     // Characters, not bytes: a multi-byte query at the limit is accepted.
-    assert!(search(&project, &"한".repeat(SEARCH_QUERY_CHARS_MAX)).is_ok());
+    assert!(search(&project, &"한".repeat(256)).is_ok());
 }
 
 #[test]
@@ -374,11 +372,7 @@ fn search_results_are_capped_at_the_limit() {
     let (_root, project) = fixture();
     // SPEC-A carries exactly the cap of matching lines; SPEC-B adds one more later.
     let lines = |n: usize| -> String { (0..n).map(|i| format!("needle {i}\n")).collect() };
-    fs::write(
-        specs(&project).join("SPEC-A/notes/plan.md"),
-        lines(SEARCH_RESULTS_MAX),
-    )
-    .unwrap();
+    fs::write(specs(&project).join("SPEC-A/notes/plan.md"), lines(200)).unwrap();
     git(&project, &["add", ".moai-cli/specs"], None);
     git(
         &project,
@@ -389,11 +383,11 @@ fn search_results_are_capped_at_the_limit() {
     apply(&project, now(), None, &digest, PERMISSION).unwrap();
 
     let out = search(&project, "needle").unwrap();
-    assert_eq!(out["hits"].as_array().unwrap().len(), SEARCH_RESULTS_MAX);
+    assert_eq!(out["hits"].as_array().unwrap().len(), 200);
     assert_eq!(out["truncated"], false);
 
     fs::write(archived(&project).join("SPEC-B/needle.md"), "needle\n").unwrap();
     let out = search(&project, "needle").unwrap();
-    assert_eq!(out["hits"].as_array().unwrap().len(), SEARCH_RESULTS_MAX);
+    assert_eq!(out["hits"].as_array().unwrap().len(), 200);
     assert_eq!(out["truncated"], true);
 }
