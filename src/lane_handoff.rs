@@ -106,14 +106,16 @@ fn uncertain_effects(project: &Path) -> Result<u64> {
         if path.extension().and_then(|e| e.to_str()) != Some("json") {
             continue;
         }
-        // Fail-closed (audit non-blocking 1): an unreadable or unparsable entry is
-        // itself uncertain — we cannot prove its effect was published.
+        // Fail-closed (audit non-blocking 1 + Codex review r4509909048): an
+        // unreadable/unparsable entry is uncertain, and so is an entry still
+        // in `publishing` — the publisher stopped before recording the
+        // outcome, and `forge::report::pending` treats both states as unknown.
         let state = fs::read(&path)
             .ok()
             .and_then(|b| serde_json::from_slice::<Value>(&b).ok())
             .map(|v| v["state"].clone());
         let is_uncertain = match state {
-            Some(v) => v == json!("publish_unknown"),
+            Some(v) => v == json!("publish_unknown") || v == json!("publishing"),
             // Unreadable/parsable ⇒ unknown state ⇒ uncertain.
             None => true,
         };

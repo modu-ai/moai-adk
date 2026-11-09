@@ -387,6 +387,13 @@ fn unparsable_outbox_entry_counts_as_uncertain() {
     let outbox = repo.root.join(".moai-cli/forge/outbox");
     std::fs::create_dir_all(&outbox).unwrap();
     std::fs::write(outbox.join("broken.json"), b"{\"state\": \"publi").unwrap();
+    // A `publishing` entry (sent, outcome unrecorded) blocks the same way —
+    // Codex review r4509909048.
+    std::fs::write(
+        outbox.join("publishing.json"),
+        b"{\"state\": \"publishing\"}",
+    )
+    .unwrap();
     let (code, envelope, _) = run_check(&r, &repo.root);
     assert_ne!(code, 0, "an unparsable entry must block (fail-closed)");
     let msg = envelope["error"]["message"].as_str().unwrap();
@@ -395,7 +402,10 @@ fn unparsable_outbox_entry_counts_as_uncertain() {
         "names no_uncertain_effects: {msg}"
     );
     std::fs::remove_file(outbox.join("broken.json")).unwrap();
-    // Back to clean after the entry is removed.
+    let (code, _, _) = run_check(&r, &repo.root);
+    assert_ne!(code, 0, "an interrupted publishing entry must still block");
+    std::fs::remove_file(outbox.join("publishing.json")).unwrap();
+    // Back to clean after the entries are removed.
     let (code, _, _) = run_check(&r, &repo.root);
     assert_eq!(code, 0);
 }
