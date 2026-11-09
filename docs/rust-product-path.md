@@ -55,6 +55,7 @@ One row per internal operation: the name a skill adapter or a later MCP tool ref
 | `worktree.apply` (06-C #2007) | `worktree-apply PROJECT` | `moai_cli::worktree::apply` | — | as `worktree-plan`, plus `--plan-digest` | `decision` (`created` or `conflict`), `reason`, `branch`, `path`, `existing`, `identity`, `record_update_request`, `record_update_owner`, `record_update` | one linked worktree and its branch (`git worktree add --lock -b`); with `--task`, a `worktree_recorded` journal event |
 | `scope.check` (06-C #2007) | `scope-check PROJECT` | `moai_cli::scope::check` | — | `--task` or `--record` + `--claim-comment`, `--integration-order` | `decision` (`clear`, `blocked`, `allowed_with_order`), `task_key`, `conflicts`, `shared_interface_paths`, `record_update_request`, `record_update_owner`, `record_update` | with `--task` and a conflict, a `scope_check` journal event |
 | `pr.body.render` (06-C #2007) | `pr-body-render PROJECT` | `moai_cli::pr_link::render` | — | `--task` or `--record` + `--claim-comment`, `--receipts`, `--base-sha`, `--base-branch`, `--default-branch`, `--allow-close`, `--not-run`, `--review-link`, `--gap` | `body`, `body_digest`, `closing_keywords`, `operation_id`, `marker`, `reconcile`, `warnings`, `record_update_request`, `record_update_owner`, `record_update`, `effect_intent` | with `--task`, the `effect_intend` journal event |
+| `forge.links_probe` (B5 #2172) | `forge-links-probe PROJECT` | `moai_cli::forge::links::links_probe_cli` | `LinksRequest` | — | `schema_version`, `issue`, `sub_issues`, `dependencies` (each `status`, `http_status`, `error_kind`, `mode`, `api_write_intents`, `body_lines`), `executed: false`, `notes` | no (GET only) |
 | `pr.confirm` (06-C #2007) | `pr-confirm PROJECT` | `moai_cli::pr_link::confirm_and_record` | — | `--task`, `--operation-id`, `--response-id`, `--observed-state` | `operation_id`, `effect_confirm`, `effect_state`, `record_update` | the 06-B `effect_confirm` event for an intended effect, then `pr_ready` once the effect is confirmed |
 | `github.plan` (08-B #2013) | `github-plan PROJECT` | `moai_cli::github_templates::github_plan` | `GithubRequest` | — | `protocol_version`, `request`, `files` (`path`, `action`, `expected_sha256`, `baseline_sha256`, `rendered_sha256`, `adopt_baseline`, `detail`), `preserved`, `notes`, `plan_digest` | no |
 | `github.apply` (08-B #2013) | `github-apply PROJECT` | `moai_cli::github_templates::github_apply` | `GithubPlan` | `--plan-digest`, `--permission-reference` | `request_id`, `written`, `adopted_baselines`, `unchanged`, `preserved`, `manifest`, `rendering` | `.github/ISSUE_TEMPLATE/moai-{feature,bugfix,investigation}.yml`, `.github/moai/labels.yml`, `.moai-cli/manifests/github.json` |
@@ -237,6 +238,20 @@ Not verified here:
 - comment pagination and 304 on a busy live repository;
 - GitLab (`iid`, "on or after" `updated_after`, keyset pagination) — the reference schema leaves room for it but nothing is implemented;
 - whether `since` should move from the Issue list to `updated` sort plus local filtering for very large repositories.
+
+## Sub-issue and dependency probe (`forge-links-probe`, B5 #2172)
+
+`moai-cli forge-links-probe PROJECT` takes `{"schema_version":1,"owner","repo","issue_number","parent"?,"blocked_by"?:[…]}` on stdin (unknown keys rejected) and sends one `per_page=1` GET to each of `repos/{owner}/{repo}/issues/{n}/sub_issues` and `…/issues/{n}/dependencies/blocked_by`. Each feature is judged separately: `available` (2xx) plans `api_write_intents` (the documented POST endpoints, with the database ids still to resolve), `unavailable` (404, 410) or `blocked` (401/403, an exhausted rate limit, no response) plans Issue body lines `Parent: #<n>` / `Blocked-By: #<a>, #<b>` and no API write (REQ-B5-01). Nothing is executed and nothing is written (`executed: false`); a write is a separate permissioned effect. A failed probe is a result, not an error: only invalid input (non-positive numbers, a self-link, more than 50 blockers, names that are not GitHub names) fails the operation. The body parser also reads this repository's own `상위:` (parent) and `Blocked-By: 없음` (empty). Tests: `tests/forge_links_cli.rs` (stub `gh`, both paths, mixed, 403), unit test in `src/forge/links.rs`.
+
+Limits, read 2026-11-09 and not enforced except the 50-blocker input bound:
+
+| Limit | Value | Source |
+| --- | --- | --- |
+| Sub-issues per parent | 100 | https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/adding-sub-issues ("up to 100 sub-issues per parent issue") |
+| Sub-issue nesting | 8 levels | same page ("up to eight levels of nested sub-issues") |
+| Dependencies | 50 per relationship type (blocked by, blocking) | https://github.blog/changelog/2025-08-21-dependencies-on-issues/ ("link up to 50 issues for each relationship type"); not stated in the REST reference https://docs.github.com/en/rest/issues/issue-dependencies |
+
+Not verified: which status GitHub returns when a limit is exceeded (the REST pages list 422 without naming the cause) and whether 410 means Issues are disabled; the probe treats both 404 and 410 as `unavailable`. A real repository probe is not_run (fixtures only).
 
 ## Claim journal and Issue comment claim (`claim-*`, 06-A #2005)
 

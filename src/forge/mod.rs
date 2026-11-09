@@ -8,6 +8,7 @@
 //!
 //! The CLI wraps the result in the 01-C envelope (`crate::contract`); errors become messages
 //! whose kind `contract::classify` derives, so each message here carries its kind's phrase.
+pub mod links;
 pub mod outbox;
 pub mod policy;
 pub mod promote;
@@ -658,6 +659,11 @@ mod tests {
             ForgeError::io("poll state write failed"),
             ForgeError::io("poll state replace failed"),
             ForgeError::of("internal", "encode failed"),
+            // links (#2172)
+            ForgeError::invalid("owner and repo must be GitHub names"),
+            ForgeError::invalid("issue numbers must be positive"),
+            ForgeError::invalid("issue links must be to other issues"),
+            ForgeError::invalid("blocked_by must be at most 50 issues (one relationship type)"),
         ];
         for e in errors {
             assert_eq!(
