@@ -467,6 +467,11 @@ enum Command {
         #[arg(long)]
         name: String,
     },
+    /// Aggregate cost items across run/verify receipts (D5 #2191): typed request
+    /// (receipt array) on stdin; breakdown envelope on stdout; writes nothing.
+    /// External backend calls are structurally zero; tokens are absent, never
+    /// estimated (REQ-D5-01).
+    CostReport {},
     /// Plan project-specific generated files read-only (03-C #1997): typed request on
     /// stdin; judgment envelope on stdout; writes nothing.
     GenerationPlan {
@@ -682,6 +687,7 @@ const OPERATIONS: &[(&str, &str)] = &[
     ("run-verify", "run.verify"),
     ("snapshot-describe", "snapshot.describe"),
     ("skill-source-plan", "skill_source.plan"),
+    ("cost-report", "cost.report"),
     ("generation-plan", "generation.plan"),
     ("generation-apply", "generation.apply"),
     ("skill-source-apply", "skill_source.apply"),
@@ -1212,6 +1218,10 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
         }
         Command::SkillReadReceipt { project, dir, name } => {
             moai_cli::sources::read_receipt(&project, &dir, &name)
+        }
+        Command::CostReport {} => {
+            // cost_report checks protocol_version itself (one check, not two).
+            moai_cli::run::cost_report(input::<moai_cli::run::CostRequest>()?)
         }
         Command::GithubPlan { project } => {
             serde_json::to_value(moai_cli::github_templates::github_plan(
