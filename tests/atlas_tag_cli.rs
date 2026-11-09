@@ -169,3 +169,126 @@ fn dual_read_fixture_is_read_only_and_diagnoses_duplicates() {
         "mixed file untouched — no auto-migration"
     );
 }
+
+/// Temporary #2178 diagnostic: dump the remaining invalid corpus lines.
+#[test]
+fn debug_dump_invalid_corpus_lines() {
+    let corpus = include_str!("fixtures/atlas-tag/go-corpus.txt");
+    let root = TempDir::new().unwrap();
+    let per_file = 700usize;
+    for (idx, chunk) in corpus
+        .lines()
+        .collect::<Vec<_>>()
+        .chunks(per_file)
+        .enumerate()
+    {
+        let dir = root.path().join(format!("d-{idx:02}"));
+        plant(&dir, "tags.md", &format!("{}\n", chunk.join("\n")));
+    }
+    let result = scan(root.path());
+    for f in result["files"].as_array().unwrap() {
+        for inv in f["invalid"].as_array().cloned().unwrap_or_default() {
+            eprintln!("INVALID: {}", inv["reason"]);
+            eprintln!("  RAW: {}", inv["raw"]);
+        }
+    }
+}
+
+/// #2178 repair — AC extension: the real-world colon-args forms that the Go corpus
+/// is full of must parse valid. A second segment that is not a bare uppercase run
+/// (e.g. `[AUTO] note text`) is args, not a SUB — and colons inside the args
+/// (URLs, `fan_in >= 3:`) must survive.
+#[test]
+fn real_world_mx_forms_parse_valid() {
+    let root = TempDir::new().unwrap();
+    let valid = [
+        "@MX:NOTE: [AUTO] REQ-X (SPEC-Y): declares the mapping\n",
+        "@MX:ANCHOR: [AUTO] artifact dispatch gate; expected fan_in >= 6\n",
+        "@MX:NOTE see https://example.com/guide for the protocol\n",
+        "@MX:WARN: [AUTO] uses host-specific paths: scope.conf and defaults.conf\n",
+        "@MX:SPEC: SPEC-PAYMENT-001: the payment boundary contract\n",
+        "@MX:TODO: migrate: phase one: then phase two\n",
+    ];
+    for (idx, body) in valid.iter().enumerate() {
+        let dir = root.path().join(format!("real-{idx}"));
+        plant(&dir, "tags.md", body);
+        let result = scan(&dir);
+        assert_eq!(
+            result["invalid_count"],
+            json!(0),
+            "{body} -> {:?}",
+            result["files"][0]["invalid"]
+        );
+        assert_eq!(result["node_count"], json!(1), "{body}");
+    }
+    // The args keep their inner colons (the join preserves them).
+    let dir = root.path().join("url-args");
+    plant(
+        &dir,
+        "tags.md",
+        "@MX:NOTE see https://example.com/guide for the protocol\n",
+    );
+    let result = scan(&dir);
+    let node = &result["files"][0]["nodes"][0];
+    assert_eq!(node["kind"], json!("NOTE"));
+    assert_eq!(
+        node["args"],
+        json!("see https://example.com/guide for the protocol")
+    );
+}
+
+/// #2178 repair — the Go baseline corpus (moai-adk-go @ 4fa2aa9db2, every
+/// marker-form `@MX:<KIND>` line, extracted read-only): zero invalid across the
+/// whole corpus. The fixture is split into sub-256KB files at test time because the
+/// scanner refuses oversized files.
+#[test]
+fn go_corpus_parses_without_invalid() {
+    let corpus = include_str!("fixtures/atlas-tag/go-corpus.txt");
+    let total_lines = corpus.lines().count();
+    assert!(total_lines > 1000, "corpus looks truncated: {total_lines}");
+
+    let root = TempDir::new().unwrap();
+    let per_file = 700usize;
+    let mut hashes: Vec<Vec<u8>> = Vec::new();
+    for (idx, chunk) in corpus
+        .lines()
+        .collect::<Vec<_>>()
+        .chunks(per_file)
+        .enumerate()
+    {
+        let dir = root.path().join(format!("chunk-{idx:02}"));
+        plant(&dir, "tags.md", &format!("{}\n", chunk.join("\n")));
+        hashes.push(file_bytes(&dir.join("tags.md")));
+    }
+
+    let result = scan(root.path());
+    assert_eq!(result["file_count"], json!(hashes.len()));
+    assert_eq!(
+        result["node_count"],
+        json!(total_lines),
+        "every corpus line is a node"
+    );
+    assert_eq!(
+        result["invalid_count"],
+        json!(0),
+        "zero invalid across the whole Go corpus: {:?}",
+        result["files"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .flat_map(|f| f["invalid"].as_array().cloned().unwrap_or_default())
+            .take(5)
+            .collect::<Vec<_>>()
+    );
+    assert_eq!(result["writes"], json!(false));
+    // Chunk files have deterministic planted names — compare by name, not readdir order.
+    for (idx, _chunk) in corpus
+        .lines()
+        .collect::<Vec<_>>()
+        .chunks(per_file)
+        .enumerate()
+    {
+        let p = root.path().join(format!("chunk-{idx:02}")).join("tags.md");
+        assert_eq!(file_bytes(&p), hashes[idx], "chunk {idx} unchanged");
+    }
+}
