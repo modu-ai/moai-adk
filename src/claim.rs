@@ -79,6 +79,11 @@ pub fn journal_root(project: &Path) -> Result<PathBuf> {
             id["identity_status"].as_str().unwrap_or("unknown")
         ));
     }
+    // #2175: the P09 opt-in home layout switches the journal store to
+    // ~/.moai-cli/projects/<id>/claims once layout.json is in place.
+    if let Some(home) = crate::layout::switched_dir(project, "claims") {
+        return Ok(home);
+    }
     let common = id["clone_anchor"]
         .as_str()
         .ok_or("claim journal requires a git repository")?;
