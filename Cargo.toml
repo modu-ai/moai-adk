@@ -17,3 +17,12 @@ toml_edit = "=0.25.3"
 
 [dev-dependencies]
 tempfile = "=3.27.0"
+
+# The profile that 'dist' will build with (cargo-dist 0.34, E1 #2193)
+[profile.dist]
+inherits = "release"
+lto = "thin"
+
+# cargo-dist: publish = false hides binaries, so mark this package explicitly
+[package.metadata.dist]
+dist = true
