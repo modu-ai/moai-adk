@@ -41,8 +41,12 @@ class SettingsPlanTest(unittest.TestCase):
         self.assertEqual(plan({"outputStyle": True}, {"outputStyle": 1}, {"outputStyle": False}), (None, ["outputStyle"]))
 
     def test_rejects_unmanaged_requests_and_invalid_json(self):
+        # permissions and hooks are Rust-only keys (module.RUST_ONLY, #2294): the
+        # mirror refuses them on purpose, although Rust MANAGED_SETTINGS lists them.
         with self.assertRaises(ValueError):
             plan({}, {}, {"permissions": {}})
+        with self.assertRaises(ValueError):
+            plan({}, {}, {"hooks": {}})
         with self.assertRaises(ValueError):
             plan({}, {"model": float("nan")}, {})
 
