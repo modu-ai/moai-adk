@@ -264,11 +264,54 @@ pub fn doctor(project: &Path) -> Result<Value> {
 }
 
 /// Top-level `settings.json` keys MoAI may own (REQ-02B-06/07). `outputStyle` is managed only
-/// when the user asks for it; it is never set by default. The RC1 hook set is empty (P04 = A),
-/// so `hooks` is not managed.
+/// when the user asks for it; it is never set by default.
 /// `permissions` (#2244) is managed only with narrowing values; see [`check_permissions`].
-/// A slice, not a fixed-length array, so two branches adding a key cannot merge silently.
-pub const MANAGED_SETTINGS: &[&str] = &["outputStyle", "statusLine", "permissions"];
+/// `hooks` (rc.2 I1 #2238) is owned as a whole key and written only by `hooks::apply`, from the
+/// fixed MoAI hook set: a project whose `hooks` the user already set plans as a conflict, never
+/// a merge. A length-free slice, so two branches that each add a key merge without a silent
+/// length clash (PR #2044).
+pub const MANAGED_SETTINGS: &[&str] = &["outputStyle", "statusLine", "permissions", "hooks"];
+
+/// The managed keys a caller may set through `claude-settings-plan` / `-apply` (#2239, #2244):
+/// every managed key except `hooks`.
+pub const USER_SETTINGS: &[&str] = &["outputStyle", "statusLine", "permissions"];
+
+/// REQ-I2-01: names every key outside `allowed` and refuses; nothing is planned.
+fn refuse_unlisted<'a>(keys: impl Iterator<Item = &'a str>, allowed: &[&str]) -> Result<()> {
+    let mut refused: Vec<&str> = keys.filter(|k| !allowed.contains(k)).collect();
+    if refused.is_empty() {
+        return Ok(());
+    }
+    refused.sort_unstable();
+    refused.dedup();
+    let shown: Vec<String> = refused
+        .iter()
+        .take(8)
+        .map(|k| k.chars().filter(|c| !c.is_control()).take(64).collect())
+        .collect();
+    Err(format!(
+        "unmanaged claude settings key refused: {}{}; allowed: {}",
+        shown.join(", "),
+        if refused.len() > 8 { ", …" } else { "" },
+        allowed.join(", ")
+    ))
+}
+
+/// The desired map for `claude-settings-plan` / `-apply` (#2239): the caller may set
+/// `outputStyle`, `statusLine` and `permissions`, never `hooks` — only `hooks-apply` writes that key, from the
+/// fixed MoAI hook set (#2238). A `hooks` key MoAI already owns is carried over unchanged, so a
+/// settings change never drops the generated hook set.
+pub fn user_settings_desired(
+    project: &Path,
+    desired: &Map<String, Value>,
+) -> Result<Map<String, Value>> {
+    refuse_unlisted(desired.keys().map(String::as_str), USER_SETTINGS)?;
+    let mut out = desired.clone();
+    if let Some(hooks) = owned_settings(project)?.get("hooks") {
+        out.insert("hooks".into(), hooks.clone());
+    }
+    Ok(out)
+}
 
 /// Permission modes a managed `permissions.defaultMode` may take. `auto` and
 /// `bypassPermissions` skip prompts and are refused: package content never widens permissions.
@@ -339,27 +382,10 @@ pub fn plan_settings(
     desired: &Map<String, Value>,
 ) -> Result<SettingsPlan> {
     // REQ-I2-01: only the managed keys are written; any other key is refused and named.
-    let mut refused: Vec<&str> = baseline
-        .keys()
-        .chain(desired.keys())
-        .map(String::as_str)
-        .filter(|k| !MANAGED_SETTINGS.contains(k))
-        .collect();
-    if !refused.is_empty() {
-        refused.sort_unstable();
-        refused.dedup();
-        let shown: Vec<String> = refused
-            .iter()
-            .take(8)
-            .map(|k| k.chars().filter(|c| !c.is_control()).take(64).collect())
-            .collect();
-        return Err(format!(
-            "unmanaged claude settings key refused: {}{}; allowed: {}",
-            shown.join(", "),
-            if refused.len() > 8 { ", …" } else { "" },
-            MANAGED_SETTINGS.join(", ")
-        ));
-    }
+    refuse_unlisted(
+        baseline.keys().chain(desired.keys()).map(String::as_str),
+        MANAGED_SETTINGS,
+    )?;
     if let Some(p) = desired.get("permissions") {
         check_permissions(p)?;
     }
@@ -411,7 +437,7 @@ pub(crate) fn read_existing(path: &Path) -> Result<Option<Vec<u8>>> {
     }
 }
 
-fn refuse_symlink_dir(path: &Path) -> Result<()> {
+pub(crate) fn refuse_symlink_dir(path: &Path) -> Result<()> {
     match fs::symlink_metadata(path) {
         Ok(m) if m.file_type().is_symlink() => Err("symlink target refused".into()),
         _ => Ok(()),
@@ -515,6 +541,13 @@ fn settings_state(project: &Path, desired: &Map<String, Value>) -> Result<Settin
         after,
         digest,
     })
+}
+
+/// The managed keys MoAI owns in `PROJECT/.claude/settings.json` now, from its receipt (empty
+/// when there is none). A caller that changes one key starts from this, so its plan never drops
+/// another key MoAI already owns.
+pub fn owned_settings(project: &Path) -> Result<Map<String, Value>> {
+    Ok(settings_state(project, &Map::new())?.owned)
 }
 
 /// Previews setting `desired` (managed keys only) in `PROJECT/.claude/settings.json`. Never
@@ -893,9 +926,9 @@ mod tests {
     #[test]
     fn claude_settings_refuses_unmanaged_keys_and_keeps_order() {
         for (b, d) in [
-            // `permissions` became managed in #2244; `env` and `hooks` stay unmanaged.
+            // `permissions` (#2244) and `hooks` (#2238) are managed; `env` stays unmanaged.
             (json!({}), json!({"env": {}})),
-            (json!({"hooks": {}}), json!({})),
+            (json!({"env": {}}), json!({})),
         ] {
             let err = plan_settings(&obj(b), &Map::new(), &obj(d)).unwrap_err();
             assert_eq!(
@@ -903,6 +936,11 @@ mod tests {
                 crate::contract::Kind::InvalidInput
             );
         }
+        // `hooks` is managed since #2238: a desired value plans, it is not refused.
+        let (planned, conflicts) =
+            plan_settings(&Map::new(), &Map::new(), &obj(json!({"hooks": {}}))).unwrap();
+        assert!(conflicts.is_empty());
+        assert_eq!(planned.unwrap()["hooks"], json!({}));
         // Removing an owned key keeps the user's other keys where they were.
         let current: Map<String, Value> =
             serde_json::from_str(r#"{"z":1,"outputStyle":"MoAI","a":2,"m":3}"#).unwrap();

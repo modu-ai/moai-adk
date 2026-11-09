@@ -70,12 +70,8 @@ impl<'a, T: Transport, C: Clock> Writer<'a, T, C> {
                 self.client.clock.sleep((1 - gap) as u64);
             }
         }
-        let req = HttpRequest {
-            method: method.into(),
-            url,
-            headers: Default::default(),
-            body,
-        };
+        let mut req = HttpRequest::new(method, url);
+        req.body = body;
         let resp = self.client.send_with_backoff(&req)?;
         self.last_write.set(Some(self.client.clock.now()));
         if (200..300).contains(&resp.status) {

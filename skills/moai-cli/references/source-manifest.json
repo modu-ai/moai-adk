@@ -145,12 +145,12 @@
       }
     },
     "workflows/mode-agent.md": {
-      "sha256": "9007e8a008e5970845883de9376fdea84838cd21a8380c41735864c799e9abd7",
+      "sha256": "16244c84b682b3afd48a62d5a11d1c2850082d0473a0614e82885ae98746f368",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-agent",
         "adoption": "new",
-        "reason": "Written for rc.2 A1 #2160 from docs/design-review/autonomy-modes-spec.md (DR-02 #2138); no design-22 template exists for modes. Refers to the SPEC by section instead of restating it. The `--agent-mode` naming, the `--mode agent` legacy alias and the leader-first assignment request with the self-claim fallback (REQ-5) added by #2286."
+        "reason": "Written for rc.2 A1 #2160 from docs/design-review/autonomy-modes-spec.md (DR-02 #2138); no design-22 template exists for modes. Refers to the SPEC by section instead of restating it. The `--agent-mode` naming, the `--mode agent` legacy alias and the leader-first assignment request with the self-claim fallback (REQ-5) added by #2286. The pre-commit/pre-push claim-verify boundary from A9 #2255 is preserved during the #2286 integration sync."
       }
     }
   }

@@ -1,3 +1,5 @@
+mod common;
+
 use serde_json::{json, Value};
 use std::{
     fs,
@@ -2918,9 +2920,7 @@ fn fake_claude(version_line: Option<&str>) -> TempDir {
     let bin = TempDir::new().unwrap();
     if let Some(line) = version_line {
         let script = bin.path().join("claude");
-        fs::write(&script, format!("#!/bin/sh\necho '{line}'\n")).unwrap();
-        use std::os::unix::fs::PermissionsExt;
-        fs::set_permissions(&script, fs::Permissions::from_mode(0o755)).unwrap();
+        common::write_executable(&script, &format!("#!/bin/sh\necho '{line}'\n"));
     }
     bin
 }

@@ -3,7 +3,7 @@
 
 Usage: python3 -I rc2_issue_gen.py [--dry-run]
 Writes .moai-cli/reports/issue-bodies/<n>-<key>.md and prints a JSON map key→number.
-Source of truth for scope: ~/Downloads/MoAI ADK 환골탈태 통합 최종 설계.md (22절) + decisions 2026-11-09 00:4x~01:2x.
+Source of truth for scope: ~/Downloads/MoAI ADK 환골탈태 통합 최종 설계.md (22 sections) + decisions 2026-11-09 00:4x~01:2x.
 """
 import json
 import pathlib

@@ -387,15 +387,11 @@ pub fn identity(path: &Path) -> Result<WorktreeId> {
     let [top, common, gitdir, head, abbrev] = lines[..] else {
         return Err("unexpected git rev-parse output".into());
     };
-    Ok(WorktreeId {
-        common_dir: common.into(),
-        git_dir: gitdir.into(),
-        path: top.into(),
-        head: head.into(),
-        // #2131: the branch checked out at claim time, from the same rev-parse call.
-        // A detached HEAD prints `HEAD` (git forbids a branch of that name), so it is None.
-        branch: (abbrev != "HEAD").then(|| abbrev.to_string()),
-    })
+    let mut id = WorktreeId::new(common, gitdir, top, head);
+    // #2131: the branch checked out at claim time, from the same rev-parse call.
+    // A detached HEAD prints `HEAD` (git forbids a branch of that name), so it is None.
+    id.branch = (abbrev != "HEAD").then(|| abbrev.to_string());
+    Ok(id)
 }
 
 fn conflict(reason: &str, plan: &Value, existing: Vec<Value>) -> Value {

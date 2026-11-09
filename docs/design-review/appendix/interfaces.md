@@ -22,7 +22,10 @@
 - `agents-apply`
 - `agents-plan`
 - `apply-recover`
+- `archive-apply`
 - `archive-plan`
+- `archive-restore`
+- `archive-search`
 - `atlas-tag-scan`
 - `audit-reduce`
 - `baseline-inventory`
@@ -30,6 +33,7 @@
 - `claim-handoff`
 - `claim-release`
 - `claim-show`
+- `claim-verify`
 - `claude-doctor`
 - `claude-settings-apply`
 - `claude-settings-plan`
@@ -46,12 +50,16 @@
 - `flow-gate-verdict`
 - `flow-wip-check`
 - `forge-audit-status`
+- `forge-links-probe`
 - `forge-read`
 - `forge-report`
 - `generation-apply`
 - `generation-plan`
 - `github-apply`
 - `github-plan`
+- `hook-receipt`
+- `hooks-apply`
+- `hooks-plan`
 - `identity`
 - `install-inspect`
 - `leader-tick`
@@ -63,6 +71,9 @@
 - `pr-confirm`
 - `project-apply`
 - `project-plan`
+- `project-skill-apply`
+- `project-skill-plan`
+- `project-skill-revert`
 - `queue-next`
 - `recovery-apply`
 - `recovery-plan`
