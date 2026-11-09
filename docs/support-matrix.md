@@ -63,6 +63,56 @@ run `42619829090`(PR #2309, `pull_request`, head `15d8178bc2d9a8dd1ba16bfaae5424
 - AC-08C-7(사용자 HOME 쓰기 차단)은 macOS 두 target의 `e2e_never_writes_outside_temp_home`이 hosted runner에서도 ok였다. Linux에는 대체 차단 수단이 없어 위 not_run 행이 그대로 유효하다.
 - 첫 run `42618040618`(head `f557b035a`)은 macOS 두 target만 success였다. Linux 두 target은 check set은 초록이었는데, workflow의 macOS 전용 요약 블록 결함(grep 일치 없음 + `pipefail`)으로 job이 failure가 됐다. 그 결함을 고친 뒤 위 run에서 측정했다.
 
+## RELEASE 시험군 (rc.2 E6 #2198) — fixture 결과, host 지원 판정 아님
+
+입력은 `tests/release_suite.rs`의 시험 4개뿐이다. 가짜 release feed, 문서화된 GitHub 규칙의 모델, 임시 HOME만 쓴다. 네트워크 호출, 실제 릴리스·tag, 실제 HOME은 없다. 이 절의 행은 host E2E receipt가 아니므로 지원 행 수(RL-10)에 들어가지 않는다.
+
+- Go 3.x 업데이터 규칙은 `origin/main` `4fa2aa9db`의 `internal/update/checker.go`·`internal/cli/deps.go`를 다시 읽어 옮겼다(시험 쪽 모델이며 `src/`에는 들어가지 않는다).
+- `/releases/latest`와 `make_latest` 규칙은 GitHub REST "Releases" 문서, tag 트리거 규칙은 workflow 문법 "Filter pattern cheat sheet"를 따른다(둘 다 2026-11-09에 읽음).
+
+### feed 오염 표 (REQ-E6-01)
+
+기록된 실제 feed(`tests/fixtures/go-releases-sample.json`) 위에 후보 하나를 게시한 결과다. Go 안정 클라이언트는 `v3.1.2`(`/releases/latest`), Go RC 클라이언트는 `v3.1.2-rc.1`(`/releases` 목록, 익명)이다. 후보 자산은 cargo-dist 산출물(`sha256.sum`·`.sha256`, `checksums.txt` 없음)이고, 표시한 행만 GoReleaser 형식(`checksums.txt` 있음)이다.
+
+| 후보 tag | prerelease | `checksums.txt` | make_latest | Go 안정 결과 | Go RC 결과 |
+| --- | --- | --- | --- | --- | --- |
+| `moai-cli-v2026.11.0-rc.1` | 예 | 없음 | 기본(true) | 업데이트 없음 | 업데이트 없음 |
+| `v2026.11.0-rc.1` | 예 | 없음 | 기본(true) | 업데이트 없음 | **검사 오류**(checksum_unavailable) |
+| `v2026.11.0-rc.1` | 예 | 있음 | 기본(true) | 업데이트 없음 | **2026.11.0 업데이트로 읽음** |
+| `v2026.11.0` | 아니오 | 없음 | 기본(true) | **검사 오류** | **검사 오류** |
+| `moai-cli-v2026.11.0` | 아니오 | 없음 | 기본(true) | **검사 오류**(latest를 가져감) | 업데이트 없음 |
+| `moai-cli-v2026.11.0` | 아니오 | 없음 | false | 업데이트 없음 | 업데이트 없음 |
+| `go-v3.1.3-rc.1`(대조) | 예 | 있음 | 기본(true) | 업데이트 없음 | `go-v3.1.3-rc.1` 업데이트 |
+
+- 평문 `v*` tag는 Go RC 채널 필터(`go-v`·`v` 접두사, 첫 항목)를 통과한다. Go 응답 구조체에는 draft·prerelease 필드가 없어서, 토큰이 있는 RC 클라이언트에는 기록된 feed 맨 위의 draft `v3.1.3`도 업데이트로 보인다.
+- `moai-cli-v*` namespace는 RC 목록에서는 걸러지지만 `/releases/latest`는 막지 못한다. 더 새 Go 릴리스 `v3.2.0`이 있어도 dist 기본값으로 게시한 정식판이 latest를 가져가면 안정 클라이언트는 오류로 끝나고, `checksums.txt`가 있어도 tag가 `0.11.0`으로 읽혀 `v3.2.0`을 보지 못한다. `make_latest=false`이면 `v3.2.0`이 그대로 보인다(`docs/release-attestation.md` 운영자 승인 항목 6).
+
+### release workflow 트리거 (모델, workflow 실행 아님)
+
+| tag | dist 기본 `'**[0-9]+.[0-9]+.[0-9]+*'` | `tag-namespace = "moai-cli"` `'moai-cli**[0-9]+.[0-9]+.[0-9]+*'` |
+| --- | --- | --- |
+| `v3.1.3` | 걸림 | 안 걸림 |
+| `go-v3.2.1-rc.2` | 걸림 | 안 걸림 |
+| `v2026.11.0-rc.1` | 걸림 | 안 걸림 |
+| `moai-cli-v2026.11.0-rc.1` | 걸림 | 걸림 |
+| `moai-cli-v2026.11.0` | 걸림 | 걸림 |
+| `x-moai-cli-v2026.11.0` | 걸림 | 안 걸림 |
+| `moai-cli-nightly` | 안 걸림 | 안 걸림 |
+
+### update 중단 복구 (known-good)
+
+실제 v1→v2 update(파일 3개)를 끝낸 뒤 codex host를 중단 지점 k로 되돌려 `recovery-plan`·`recovery-apply`를 돌린 결과다. 복구에는 실제 v2 apply가 저장한 known-good 사본을 쓴다.
+
+| 중단 지점 k | 게시된 entry | 분류(SKILL.md · new.md · update.md) | 복구된 파일 | codex 트리 = v1 digest | claude host · 가짜 Go 상태 |
+| --- | --- | --- | --- | --- | --- |
+| 0 | 없음 | before · before · before | 없음 | 예 | 그대로 |
+| 1 | SKILL.md | after · before · before | SKILL.md | 예 | 그대로 |
+| 2 | + workflows/new.md | after · after · before | SKILL.md, workflows/new.md | 예 | 그대로 |
+| 3(receipt commit 전) | + workflows/update.md | after · after · after | 세 파일 모두 | 예 | 그대로 |
+
+- 마지막으로 게시된 entry는 `published: false`로 남긴다(rename과 receipt 저장 사이의 중단). 분류는 이 표시가 아니라 현재 바이트로 정해진다.
+- 설계 §17 RELEASE의 attestation 실측과 Issues end-to-end 실제 완주는 이 절에서 돌리지 않았다(not_run). attestation은 `docs/release-attestation.md`의 운영자 승인 항목을 따른다.
+
 ## 집계
 
 - 지원 행: 6 == passed receipt 6 (AC-08C-1·2·7·8, HA-02, AC-08C-5) — `tools/check_support_matrix.py`가 강제한다.
