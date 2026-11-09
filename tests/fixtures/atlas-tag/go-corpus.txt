@@ -1,0 +1,1554 @@
+// @MX:NOTE: [AUTO] Anything longer than this is not a stamp we wrote, so it parses as "no stamp".
+// @MX:ANCHOR: [AUTO] PruneStaleEntries is called by observer and tests.
+// @MX:WARN: [AUTO] The pruner reads the whole log and replaces it by rename; events other hooks append in that window are lost.
+// @MX:NOTE: [AUTO] Double-checked locking: the stamp is read again after the lock is won, with a fresh
+// @MX:NOTE: [AUTO] Stamp-before-work: a pruner killed after archiving and before the rename leaves the
+// @MX:WARN: [AUTO] Gzip files are not append-safe, so use read-and-rewrite method.
+// @MX:NOTE: [AUTO] Anything longer than this is not a stamp we wrote, so it parses as "no stamp".
+// @MX:ANCHOR: [AUTO] PruneStaleEntries is called by observer and tests.
+// @MX:WARN: [AUTO] The pruner reads the whole log and replaces it by rename; events other hooks append in that window are lost.
+// @MX:NOTE: [AUTO] Double-checked locking: the stamp is read again after the lock is won, with a fresh
+// @MX:NOTE: [AUTO] Stamp-before-work: a pruner killed after archiving and before the rename leaves the
+// @MX:WARN: [AUTO] Gzip files are not append-safe, so use read-and-rewrite method.
+// @MX:NOTE: [AUTO] Anything longer than this is not a stamp we wrote, so it parses as "no stamp".
+// @MX:ANCHOR: [AUTO] PruneStaleEntries is called by observer and tests.
+// @MX:WARN: [AUTO] The pruner reads the whole log and replaces it by rename; events other hooks append in that window are lost.
+// @MX:NOTE: [AUTO] Double-checked locking: the stamp is read again after the lock is won, with a fresh
+// @MX:NOTE: [AUTO] Stamp-before-work: a pruner killed after archiving and before the rename leaves the
+// @MX:WARN: [AUTO] Gzip files are not append-safe, so use read-and-rewrite method.
+// @MX:ANCHOR: [AUTO] main is the entry point of moai CLI. Returns exit code 1 on error,
+// @MX:DEBT: the wait is a fixed poll with no order among waiters, and its ceiling is paid by callers
+	// @MX:NOTE: Sort ascending by rule ID to guarantee deterministic output.
+// @MX:ANCHOR: [AUTO] Finding is the canonical shared data type for scanner, CLI, and hook
+// @MX:ANCHOR: [AUTO] ValidateBinary is a security-critical validation used across 3+ packages
+// @MX:ANCHOR: [AUTO] Scanner.Scan is the single entry point for all ast-grep scans
+// @MX:WARN: [AUTO] context.WithTimeout guarded by defer cancel() — previous implementation leaked cancel()
+// @MX:ANCHOR: [AUTO] the atomic-rename step every state writer shares.
+// @MX:ANCHOR: [AUTO] the read-side twin of Replace for files a Replace can race.
+// @MX:ANCHOR: [AUTO] shared audit-receipt store; written by the MCP server, read by the SubagentStop and PreToolUse guards
+// @MX:ANCHOR: [AUTO] tree-state binding seam; feeds every receipt write and the reuse check
+// @MX:WARN: [AUTO] deletes a gate mark: the phase-entry spawn deny disappears with it
+// @MX:ANCHOR: [AUTO] the one store-root answer shared by MCP writers, hook guards, review gates and the verify CLI
+// @MX:ANCHOR: [AUTO] the single verdict admission predicate shared by contract rules, kickoff decide, the card-transition guard, and the plan-audit ceiling evaluation
+// @MX:ANCHOR: the one comparison implementation both lag surfaces read
+// @MX:ANCHOR: fan_in 3 — doctor.go:520, session_start_binary_lag.go:55 and :67
+// @MX:WARN: shells out to git; every non-lag path must stay lenient
+// @MX:NOTE: empty string for every verdict except StatusBehind and StatusAhead
+// @MX:ANCHOR: [AUTO] bugreport.Capture — the single capture entry point (main recover, twelve recover sites, hook registry, update paths)
+// @MX:WARN: [AUTO] hot hook-path discipline — fail-open, time-boxed, network-free
+// @MX:ANCHOR: [AUTO] fingerprint — every dedupe, cap, title, and comment key derives from it
+// @MX:NOTE: [AUTO] why file paths are never read — the build carries no
+// @MX:ANCHOR: [AUTO] payload builder — the single constructor every capture site renders a payload through
+// @MX:ANCHOR [AUTO]: WorktreeNode — 13-field invariant contract (REQ-CHAIN-001)
+// @MX:ANCHOR [AUTO]: ResolveCurrentNode — chain node resolution entry point
+// @MX:ANCHOR [AUTO]: NewStore — chain ledger public API boundary
+// @MX:ANCHOR: [AUTO] shared evidence schema for the ci-verdict producer verb and the escalation detector's CI limb
+	// @MX:NOTE: [AUTO] isOrchestrator check — agents declaring AskUserQuestion in tools: are exempt from LR-01.
+	// @MX:WARN: [AUTO] AGENT_LINT_NO_SANDBOX_NO_JUSTIFICATION is a security-critical lint rule
+// @MX:WARN @MX:REASON: budget_tokens regex v1 may produce false positives inside code blocks; since Opus 4.7 Adaptive Thinking rejects fixed budget with HTTP 400, the cost of regression outweighs false positive cost — adopt v1 baseline, consider code-block-aware extension in v3.1
+// @MX:ANCHOR: LR-07 v2 fingerprint (SPEC-V2.20.0-RC1 hotfix)
+// @MX:ANCHOR: [AUTO] agentlint sentinel keys — invariant contract for lint enforcement
+// @MX:NOTE: [AUTO] WorkflowLintIntent — moai workflow lint parses .moai/config/sections/workflow.yaml
+// @MX:NOTE: [AUTO] ast-edit is the write-side counterpart of ast-grep; ast-grep only reads.
+// @MX:WARN: [AUTO] A non-dry run rewrites source files in place.
+// @MX:NOTE: [AUTO] ast-grep integration provides code quality scanning with sg CLI
+// @MX:NOTE: [AUTO] Supports multiple output formats: text, json, SARIF 2.1.0
+// @MX:NOTE: [AUTO] REQ-ASTG-UPG-020, REQ-ASTG-UPG-021 define scan interface
+// @MX:NOTE: [AUTO] the only place a delta review is bought; the guarantee "a delta passes only on a verified chain" holds on the card_id path only.
+// @MX:NOTE: [AUTO] only a proposal: the chain gate (evaluateDeltaChain) still decides whether the delta is reviewed; this function never admits one.
+// @MX:NOTE: [AUTO] the text fallback is a hypothesis, not a measurement: it only orders keywords the backends are known to emit, and anything it cannot place is "other".
+// @MX:NOTE: [AUTO] audit_pin.go — workflow.audit {model,effort} pin loader for the audit backends only
+// @MX:NOTE: [AUTO] audit-plan verb — the read-only plan surface both auditors run before reaching a verdict; the old-binary signature in design §D.4 relies on the verb's config_status member or its audit-plan: stderr line, never on the exit code
+// @MX:NOTE: [AUTO] cc command switches LLM backend to Claude-only mode
+// @MX:NOTE: [AUTO] Removes GLM env vars and resets team mode before launching Claude Code
+// @MX:NOTE: [AUTO] Supports profile switching via CLAUDE_CONFIG_DIR
+// @MX:NOTE: [AUTO] M6-S1 DDD: cc is a thin delegate-only entry point; print sites live in launcher.go::launchClaudeDefault
+// @MX:NOTE: [AUTO] moai ci-verdict — the CI verdict producer verb of
+// @MX:WARN: [AUTO] deletion guard — every deletion site under clean --home MUST consult this predicate in the same scan iteration that produced the candidate
+	// @MX:NOTE: [AUTO] Keep-floor invariant: the three newest backups are
+// @MX:WARN: [AUTO] home-level deletion path — os.RemoveAll fires only on scanner-produced candidates, never on a caller-assembled path
+// @MX:ANCHOR: [AUTO] single entry for every read-only role launch (verb, MCP tool, LIVE tests)
+// @MX:WARN: [AUTO] confinement of launcher writes; a name-based re-walk here would reopen the symlink-swap escape
+// @MX:WARN: [AUTO] kills the whole process group on timeout
+// @MX:WARN: [AUTO] the audit goroutine outlives the tool call by design
+// @MX:NOTE: [AUTO] C = 1 is an operator decision (Q2), not a tuned threshold; the count is per review key, not per turn
+// @MX:WARN: [AUTO] cross-process lock on the per-key block count; a holder that is alive but stalled past the bound makes contending turn ends allow instead of block
+// @MX:ANCHOR: [AUTO] codex review receipt producer (R1) — the only writer of the receipt the Codex Stop chain's member 6 compares
+// @MX:NOTE: the one policy both automatic paths share (REQ-CRO-006, REQ-CGSC-003); a WT- branch is never skipped even when its merge base is unavailable (REQ-CRO-004)
+// @MX:ANCHOR: [AUTO] codexRoleLoadPredicate is the SSOT for role-load
+// @MX:NOTE: [AUTO] Platform-specific UTF-8 console initialization (non-Windows)
+// @MX:NOTE: [AUTO] No-op function - UTF-8 is default on Unix-like systems
+// @MX:NOTE: [AUTO] Platform-specific UTF-8 console initialization (Windows)
+// @MX:NOTE: [AUTO] Sets code page 65001 to prevent mojibake in PowerShell/Command Prompt
+// @MX:NOTE: [AUTO] Constitution management commands for FROZEN/EVOLVABLE zone codification
+// @MX:NOTE: [AUTO] SPEC-V3R2-CON-001 implements zone registry with safety gates
+// @MX:NOTE: [AUTO] 5-layer safety gate: FrozenGuard, Canary, ContradictionDetector, RateLimiter, HumanOversight
+// @MX:ANCHOR: [AUTO] Single configuration read point of `moai contract`.
+// @MX:NOTE: [AUTO] Exit codes are design.md § Exit codes: verify 0/1/2, show
+// @MX:NOTE: [AUTO] guards TestTemplateNeverShipsIsolatePeerMachines + TestLauncherNeverInjectsIsolatePeerMachinesByDefault
+// @MX:ANCHOR: [AUTO] InitDependencies is the Composition Root that wires all domain modules
+	// @MX:NOTE: [AUTO] goplsBridge (loop layer) and lsphook LSP client (hook layer) are
+// @MX:NOTE: [AUTO] Doctor command runs comprehensive system diagnostics
+// @MX:NOTE: [AUTO] Checks Go runtime, Git, MoAI/Claude config, binary freshness, MCP duplicates, constitution
+// @MX:NOTE: [AUTO] Binary freshness check detects stale builds via commit hash comparison
+// @MX:NOTE: [AUTO] doctor command output — live per-check Printer step feedback
+// @MX:ANCHOR: renders the shared binlag verdict; never promotes to Fail
+		// @MX:NOTE: [AUTO] REQ-DFS-007 — the hint must stay actionable for a
+// @MX:WARN: [AUTO] 10 if-branches, each an early return carrying a distinct
+// @MX:WARN: [AUTO] this spawns the binary under judgment and lets it deploy
+// @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M5 (real JSON dump with provenance)
+// @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M3 (MarshalIndent + sort.Strings keys)
+// @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M5 (builtin tier wired from defaults.go)
+// @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M5 (dumpYAML with sorted keys + source comments)
+// @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M5 (--key single-key output mode)
+// @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M5 (--key error handling)
+// @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M5 (parseKey validation)
+// @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M5 (IsDefault flag in JSON/YAML dump output)
+// @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M5 (user tier overrides builtin, default flag absent)
+// @MX:NOTE: [AUTO] Home Disk Usage check — advisory only; the WARN threshold is the compiled DefaultHomeDiskWarnBytes (config surface per CLAUDE.local.md §14)
+	// @MX:NOTE: [AUTO] No-compiled-fallback contract: an absent state.profile_max_bytes (HOME tier, then PROJECT tier) leaves ProfileCapBytes at 0 and skips the oversize check; a loader error skips it too and is named in the detail — never substitute a compiled cap
+	// @MX:ANCHOR: [AUTO] telemetry-exclusion invariant — the harness-configured
+// @MX:NOTE: [AUTO] "configured" == "the directory holds at least one entry that
+// @MX:NOTE: [AUTO] AC-HPR-008 unit legs — hns- recognition in doctor layers.
+// @MX:ANCHOR: [AUTO] hook-wiring drift diagnostic — render-and-compare seam shared with the settings parity test
+// @MX:NOTE: [AUTO] Matches local MCP servers against claude.ai connectors by normalized name; the state file is an undocumented Claude Code internal, so every read failure degrades to OK.
+// @MX:NOTE: [AUTO] doctor_sandbox mirrors the doctor_config.go pattern:
+// @MX:WARN: [AUTO] bounded goroutine fan-out over transcript reads
+// @MX:NOTE: [AUTO] SSOT for the known-skill set is the embedded template FS
+// @MX:ANCHOR: [AUTO] known-set-from-manifest invariant — the Skills Allowlist
+// @MX:ANCHOR: [AUTO] enterFactoryLaneRun — the single shared lane-join gate every launcher (cc/glm/codex twin) passes (REQ-010)
+// @MX:NOTE: [AUTO] the run id comes from the VERIFIED LEADER's own MOAI_KANBAN_ID env read by the probe — never minted or defaulted; an unreadable env declines the candidate (fail-closed), because the run id is the address of the broker the lead already speaks on
+// @MX:DEBT: [AUTO] the parent directories (.moai and .moai/logs) are verified by path in appendLeaderAnchorAuditRow and the log file is then opened by path, so a swap of .moai/logs between that check and this open can redirect the append
+// @MX:NOTE: Stored after and bundle order outrank inferred waits; actual
+// @MX:ANCHOR: [AUTO] Bounded traversal of combined after, bundle, and hub dependencies.
+// @MX:ANCHOR: [AUTO] Lane admission predicate — every lane-gated surface funnels through it.
+// @MX:ANCHOR: [AUTO] Lane refusal predicate — one wording source for the queue guard, the decide guard, and the todo guard.
+// @MX:NOTE: [AUTO] The one serial-slot read of selection — fan-in 3 (both selection closures and the nominated validation); an ANCHOR is owed but factory_card.go is at its 3-anchor limit, and a queue-mutation path bypassing this read would break REQ-TCD-008.
+// @MX:NOTE: [AUTO] The gated lease entry point — the noNewCards boolean is the quota gate's whole effect on card selection; the ungated factoryNextLeaseOnce must stay for the relaunch and Codex loops. Fan-in 3 (the ungated wrapper, the drift-log test path, the eligibility form) — kept a NOTE because factory_card.go is at its 3-anchor limit.
+// @MX:WARN: [AUTO] the lease section holds the queue lock across a factory-record write, so its worst hold is the claim wait cap plus one promotion and one restore
+// @MX:ANCHOR: [AUTO] Per-card worktree materialization — the only path that creates a card worktree.
+// @MX:NOTE: [AUTO] The lock covers the creator and `git branch -m` only; the record write stays outside it (D3, lock order).
+// @MX:NOTE: [AUTO] The self-dispatch eligibility gate — one flag read per next invocation, five-condition predicate over arms (b)/(b2), refusal collection for the no-card answer. Assigned/bundle/promotion arms never consult it (REQ-CEP-004/D6).
+// @MX:NOTE: [AUTO] The shared keep-set predicate of the nominated lease; positive enumeration of the leasable queue states, so a state added later is refused, never leased. Fan-in 2 (validation and the in-lock re-validation) — a NOTE because factory_card.go is at its 3-anchor limit.
+// @MX:NOTE: [AUTO] The nominated lease entry point — shared by the `next --card` verb and the factory_next MCP handler (one implementation per verb, design.md §3); the single seam factoryNominateBeforeRecord sits between the promotion and RecordPicked. Fan-in 2 — a NOTE because factory_card.go is at its 3-anchor limit.
+// @MX:ANCHOR: [AUTO] Checked root resolution for factory maintenance verbs.
+// @MX:NOTE: [AUTO] the factory signal travels through the PROCESS environment, not a threaded parameter
+// @MX:ANCHOR: [AUTO] the debug-vocabulary recording site shared by the cc/glm/codex launch paths (fan-in spans all three launchers)
+// @MX:ANCHOR: [AUTO] detail-annotation site for every traced launch step (lane-claim label, worktree outcome, anchor-lock result)
+// @MX:ANCHOR: [AUTO] pre-seam debug dump — the last launcher print before the platform exec seam replaces the process
+// @MX:NOTE: [AUTO] the report must print BEFORE the platform exec seam — the direct door replaces the process (syscall.Exec), so a print after the seam never runs; the deferred error-path guard stays inert once reported
+// @MX:ANCHOR: [AUTO] the lane-direct merge entry point — triple, record, window in one sequence
+// @MX:NOTE: [AUTO] fail-open by lead decision — the dispatch and its queue runtime row stand even when factory.db cannot be written
+// @MX:ANCHOR: [AUTO] The one pressure evaluation — the lane gate, the integration-window warning, the status block, and the --auto steering line all funnel through it.
+// @MX:ANCHOR: [AUTO] The one formatter of a held window's segment — shared by the hold line, the acquire warning, and the steering line.
+// @MX:NOTE: [AUTO] The one registry reader of the quota steering path; a caller that opened the registry through the factory's own open would write to it from a status or --auto read.
+// @MX:WARN: [AUTO] decides which run a restarted leader owns and which dead runs are retired behind it
+// @MX:WARN: [AUTO] this loop decides which run a lane joins and whether a run is retired; the factory-run variable must stay unset until the operator names the run
+// @MX:NOTE: [AUTO] the transient settings file is session-private (PID + nanosecond) and cleaned up on exit
+// @MX:WARN: [AUTO] gate-read path — the workflow.jev.enabled read must stay first and short-circuiting
+// @MX:ANCHOR: [AUTO] fetch-web pipeline SSOT — CLI and MCP dispatch share this single entry point
+// @MX:ANCHOR: [AUTO] heavy commit-quality gate CLI entry point; invoked by the git pre-commit hook
+// @MX:NOTE: loadGateCfgForCLI is the SSOT seam that routes the standalone
+// @MX:NOTE: [AUTO] GitHub integration for issue parsing, SPEC linking, and workflow automation
+// @MX:NOTE: [AUTO] Dependency injection pattern for testability (GithubIssueParser, GithubSpecLinkerFactory)
+// @MX:NOTE: [AUTO] T-01: --dry-run flag for previewing actions without execution
+// @MX:NOTE: [AUTO] GLM command launches Claude Code with GLM backend via Z.AI proxy
+// @MX:NOTE: [AUTO] Requires 'moai glm setup <key>' to save API key to ~/.moai/.env.glm
+// @MX:NOTE: [AUTO] Main session uses GLM: 128K/200K/1M context windows per model tier (high=glm-5.2)
+// @MX:NOTE: [AUTO] WARNING block on stderr is plain fmt by design (non-TTY safe)
+// @MX:WARN: [AUTO] Global environment variable mutation without rollback mechanism
+// @MX:NOTE: [AUTO] RC1 change-detection gate (glm-settings-persist): the write
+// @MX:NOTE: [AUTO] CLI that registers/deregisters the official Z.AI @z_ai/mcp-server in ~/.claude.json mcpServers
+// @MX:NOTE: [AUTO] Reuses the existing loadGLMKey() helper for the token (GLM_API_KEY from ~/.moai/.env.glm)
+// @MX:NOTE: [AUTO] Fully independent from glm.go's SPEC-GLM-001 env policy (DISABLE_BETAS)
+// @MX:WARN: [AUTO] Uses atomic write (temp file + rename) when modifying ~/.claude.json
+// @MX:ANCHOR: [AUTO] runEnableMCPServer, disableMCPServerSafe — called directly by external tests and subcommands
+// @MX:NOTE: [AUTO] M3 consolidation — writeClaudeJSONAtomic deleted (sole caller inlined the marshal); this bytes-level seam delegates to writeFileAtomic so mutateClaudeJSONAtomic keeps the marshal OUTSIDE the lock (acceptance.md §C large-file constraint).
+// @MX:ANCHOR: [AUTO] Guarded RMW seam for ~/.claude.json — mirrors mutateSettingsLocal (settings.go:62)
+// @MX:ANCHOR: [AUTO] Core entry point for all GWT scenarios — signature changes affect every test
+// @MX:ANCHOR: [AUTO] Core implementation of REQ-GMC-004/010 — partial-delete safety
+// @MX:ANCHOR: [AUTO] moai goal CLI — the arming surface for the goal engine
+// @MX:NOTE: [AUTO] moai graph build — top-level command (not `moai mx export`) because the edge aggregate spans codemaps/@MX/SPEC layers, exceeding the @MX sidecar scope
+// @MX:NOTE: [AUTO] moai graph query — read-only consumer of edges.jsonl; agents use it instead of re-running go list -deps per question
+// @MX:NOTE: [AUTO] fixed rotating report path — D1 resolution: dated paths are for one-off analyses; this artifact regenerates in place and is never committed (SPEC-GRAPH-REPORT-001)
+// @MX:ANCHOR: [AUTO] moai graph check — exit-code contract consumed by moai gate and CI graph-freshness job
+	goBody := "package demo\n\n// @MX:NOTE: [AUTO] demo\n// @MX:SPEC:SPEC-GRAPH-CLI-001\nfunc Demo() {}\n"
+	// @MX:DEBT: in-memory ledger, no eviction
+// @MX:DEBT: file-scope simplification, no upgrade trigger
+// @MX:NOTE: [AUTO] test-injection seam for budget-overrun determinism (SPEC-V3R6-GRAPH-FRESHNESS-002 REQ-GFR-004)
+	if err := os.WriteFile(src, []byte("package demo\n\n// @MX:NOTE: [AUTO] extra\n// @MX:SPEC:SPEC-GRAPH-CLI-001\nfunc Extra() {}\n"), 0o644); err != nil {
+		[]byte("package demo\n\n// @MX:NOTE: [AUTO] a\n// @MX:SPEC:SPEC-GRAPH-CLI-001\nfunc ExtraA() {}\n"), 0o644); err != nil {
+		[]byte("package demo\n\n// @MX:NOTE: [AUTO] b\n// @MX:SPEC:SPEC-OTHER-999\nfunc ExtraB() {}\n"), 0o644); err != nil {
+		[]byte("package demo\n\n// @MX:NOTE: [AUTO] budget\nfunc B() {}\n"), 0o644); err != nil {
+// @MX:NOTE: [AUTO] graph stamp — content curation stays with /moai codemaps; only the provenance anchor is mechanical
+// @MX:ANCHOR: [AUTO] newHarnessCmd is the deprecation-marker harness CLI factory.
+// @MX:ANCHOR: [AUTO] runner findings-declaration detector — REQ-HRR-005 check 3
+// @MX:ANCHOR: [AUTO] Doctor is the smoke-gate entry consumed by the CLI command
+// @MX:NOTE: [AUTO] AC-HPR-007 specification — dual-pattern specialist regex +
+// @MX:NOTE: [AUTO] AutoApply: true는 in-memory PipelineConfig 값일 뿐 harness.yaml
+// @MX:NOTE: [AUTO] AutoApply=true는 L5 재pending 회피 의도 — 오케스트레이터가 C-HRA-008
+// @MX:WARN: [AUTO] AutoApply=true는 in-memory PipelineConfig 전용이다 — harness.yaml의
+// @MX:NOTE: [AUTO] *ApplyPendingError가 exit 2인 이유는 AutoApply=true 하에서는
+// @MX:ANCHOR: [AUTO] v4 harness lifecycle handlers (list/edit/remove)
+// @MX:NOTE: [AUTO] AC-HPR-006 specification — dual-pattern artifact matching +
+// @MX:NOTE: [AUTO] V3R5 supersedence — this guard now asserts that all 10 V3R5 verbs
+// @MX:NOTE: [AUTO] V3R5 harness CLI unified factory — SPEC-V3R5-HARNESS-AUTONOMY-001 §6 + AC-HRA-009
+// @MX:NOTE: [AUTO] newHarnessRouterCmd() integrates 8 additional lifecycle/proposal verbs in V3R5
+// @MX:WARN: [AUTO] V3R5 supersedes the CLI retirement declared by SPEC-V3R4-HARNESS-001
+// @MX:ANCHOR: [AUTO] V3R5 harness command factory (route/validate + 8 lifecycle/proposal verbs)
+// @MX:NOTE: [AUTO] HRN-001 harness validate CLI — SPEC-V3R2-HRN-001 run-phase
+// @MX:WARN: [AUTO] FROZEN floor validation — pass_threshold < 0.60 → ErrPassThresholdFloor
+// @MX:NOTE: [AUTO] M6-S5 DDD: cobra SetHelpFunc wrapping — rootCmd help output migrated to
+// @MX:NOTE: Help strings are English-only per language-neutrality policy (CLAUDE.local.md §15/§14).
+// @MX:NOTE: [AUTO] Cobra SetHelpFunc inherits to subcommands; guard with cmd.Use == "moai"
+// @MX:NOTE: [AUTO] Cross-platform home directory resolution with test override support
+// @MX:NOTE: [AUTO] Checks HOME env first (Windows: os.UserHomeDir ignores HOME)
+// @MX:ANCHOR: [AUTO] runHookEvent is the central dispatcher for all Claude Code hook events
+// @MX:NOTE: [AUTO] REQ-HRN-FND-009 (SPEC-V3R4-HARNESS-001): When learning.enabled
+// @MX:ANCHOR: [AUTO] recordHarnessEventWithGate is the single record-then-gate wrapper for all four observe handlers.
+// @MX:NOTE: [AUTO] REQ-HRN-OBS-002 + REQ-HRN-OBS-004 + REQ-HRN-OBS-008: Stop hook handler.
+// @MX:NOTE: [AUTO] REQ-HRN-OBS-002 + REQ-HRN-OBS-004: shared by Stop/SubagentStop handlers.
+// @MX:NOTE: [AUTO] REQ-HRN-OBS-003 + REQ-HRN-OBS-005 + REQ-HRN-OBS-008: SubagentStop hook handler.
+// @MX:ANCHOR: [AUTO] resolveUserPromptStrategy is the single decision point for the PII handling strategy.
+// @MX:WARN: [AUTO] PII-sensitive handler — user prompt body is logged when Strategy C is active.
+// @MX:ANCHOR: [AUTO] runHarnessClassify is the runtime caller of the V3R4
+// @MX:ANCHOR: [AUTO] classifyHarnessPatterns is the single classifier-invocation
+// @MX:WARN: [AUTO] fail-closed fault path — a fault on a decision-bearing event becomes a deny on exit 0; on Stop that is a block, so a handler that fails on every turn keeps the Codex turn going
+// @MX:NOTE: [AUTO] the Codex Interrupt producer of goal status `cancelled` (design.md §D6); only an armed goal is cancelled — a terminal status is recorded, never overwritten
+// @MX:NOTE: [AUTO] Pre-push hook validates commit messages against git convention
+// @MX:NOTE: [AUTO] Reads commits from stdin, exits code 2 on violation per Claude Code protocol
+// @MX:NOTE: [AUTO] Priority: MOAI_GIT_CONVENTION env > config > default "auto"
+// @MX:NOTE: [AUTO] Wires the previously-dead git_strategy.<mode>.hooks.pre_push
+// @MX:WARN: [AUTO] a Stop that fails to parse is blocked under Claude on every turn, and the host's Stop block cap does not reliably end that loop — measured on Claude Code 2.1.283 (t1230, t1272): at the default cap the host ended the turn after 9 blocks only when no tool use came in between (tool use appears to restart its count), and at the raised cap of 200 the launcher injects for factory sessions and for sessions with an infinite goal armed at launch (launcher_blockcap_infinite.go) the loop ran to the turn limit; so moai's own cap (applyStopParseCap, N=8 consecutive parse-failure Stops per counting key) releases the ninth; under Codex the same Stop is exempt because Codex was measured with no cap
+// @MX:WARN: [AUTO] releasing a Stop here lets a parse-failure Stop through with no opinion — every Stop guard handler is skipped until a parsed Stop or the expiry resets the count
+// @MX:NOTE: [AUTO] CATALOG-002 REQ-021 4-substring informational notice — extracted as a helper so the contract is unit-testable without running the full runInit pipeline.
+// @MX:NOTE: [AUTO] CATALOG-002 REQ-012/013/EC3 — single decision point for slim/full opt-out. Narrow env matching: only "1" exact or case-insensitive "true".
+// @MX:ANCHOR: [AUTO] runInit is the main entry point for project initialization
+		// @MX:NOTE: [AUTO] Interactive default-on MCP provisioning with no
+	// @MX:WARN: [AUTO] leftover judgement placement — keep above executor.Execute
+// @MX:WARN: [AUTO] Swaps package variables and environment (userHomeDirFn, profile.BaseDirOverride, MOAI_HOME, the shell-config seam); callers must not run in parallel.
+// @MX:ANCHOR: [AUTO] resumeWiringPath fixes the location of the resume-wiring record for its writer and both readers
+// @MX:ANCHOR: [AUTO] readResumeWiring is the only reader of the resume-wiring record; a change to its read contract changes every resume decision
+// @MX:ANCHOR: [AUTO] initPendingPath fixes the location of the init marker for its writer, its retirements, and the checkpoint readers
+// @MX:NOTE: [AUTO] The backup push is this constant argv, nothing else.
+// @MX:ANCHOR: [AUTO] clock seam for the candidate pipeline.
+// @MX:ANCHOR: [AUTO] 12-character SHA form for the verb family's messages.
+// @MX:ANCHOR: [AUTO] moai inventory — unified read-only composition of the three
+// @MX:NOTE: [AUTO] storage SSOT lives in internal/jevcred — this command only
+// @MX:NOTE: [AUTO] display-only by construction — reads the ledger, prints
+// @MX:NOTE: pure by construction — takes no environment, filesystem, or
+// @MX:DEBT: the snapshot fallback may lag claude's option surface — under the compound condition (derivation down + option snapshot-absent + resume-shaped value → validator false refusal; never a silently leaked resume under relaunch)
+	// @MX:NOTE: [AUTO] max leaves the settings path. Claude Code's settings
+// @MX:NOTE: [AUTO] scans the WHOLE argv, including tokens after `--`. Unlike
+// @MX:NOTE: [AUTO] a token in VALUE position is not a flag. The token after a
+// @MX:ANCHOR: [AUTO] the single launch-argv resolver; the cc and glm entries each call it twice (the anchor guard, then the launch readers)
+// @MX:ANCHOR: [AUTO] step order is load-bearing: root → resolve → mode → EnsureDir → record → exec
+// @MX:NOTE: [AUTO] GOOS-deterministic symlink resolution fallback for non-existent paths (SPEC-WORKTREE-ENTRY-STRATEGY-001 M3a windows CI fix)
+// @MX:ANCHOR: [AUTO] launch-path worktree removal is non-destructive by contract
+// @MX:NOTE: [AUTO] cross-platform path containment check (SPEC-WORKTREE-ENTRY-STRATEGY-001 M3a)
+// @MX:NOTE: [AUTO] the one shared pre--- debug-token scan for all three launchers — the uniformity contract's parse site (REQ-012); cc/glm/codex must consume this, not private scans
+// @MX:NOTE: [AUTO] HOME+USERPROFILE both set (SPEC-WORKTREE-ENTRY-STRATEGY-001 M3a windows CI fix)
+// @MX:ANCHOR: [AUTO] the only CLI surface that mints a leader approval receipt
+// @MX:NOTE: [AUTO] exists only to pin the in-lock placement of the re-validation: a rival takeover from here must be refused while the mutation section is held.
+// @MX:NOTE: [AUTO] seam exists so a test can prove the ownership read happens inside the mutation section: a rival takeover attempted from the read must be refused as lock-busy.
+// @MX:NOTE: [AUTO] seam exists so a test observes the in-lock invariant at the move itself, not at a no-op hook beside it: when it runs, the read-time tripwire must be intact and a rival takeover must be refused as lock-busy.
+// @MX:NOTE: [AUTO] Ralph feedback loop for autonomous code quality improvement
+// @MX:NOTE: [AUTO] Iterates through Spec -> Plan -> Implement -> Sync phases (4-phase Stepper)
+// @MX:NOTE: [AUTO] Uses LSP diagnostics and test results to drive loop decisions
+// @MX:NOTE: [AUTO] M6-S3 DDD: status output migrated to tui.Box + tui.Stepper + tui.Section + tui.KV
+// @MX:ANCHOR: [AUTO] loopPhaseLabels defines the canonical phase order for loop status display
+// @MX:NOTE: [AUTO] lspCmd — parent command for moai lsp subcommands (doctor, etc.)
+// @MX:ANCHOR: [AUTO] runLSPDoctorReport — core logic for moai lsp doctor
+// @MX:ANCHOR: [AUTO] the single path for every connection write (call, the initialized notification, server-request replies) — fan_in 3
+// @MX:NOTE: [AUTO] the only place a server request is mapped to an answer, and the only place its log token is chosen — keep table and log in step
+// @MX:WARN: [AUTO] the read goroutine outlives the calls that start it and its only stop signal is the done channel
+// @MX:WARN: [AUTO] goroutine that outlives the attach call; it ends only when the child exits, and stop waits on its reaped channel
+// @MX:WARN: [AUTO] started from the connection's read goroutine exit and outlives it; it blocks until the TUI child is reaped
+// @MX:NOTE: stream backends emit nothing between turns (each turn ends with
+// @MX:NOTE: operator lines belong to the session that RECEIVES them; the pump
+// @MX:WARN: a goroutine over a blocking source read cannot be cancelled.
+// @MX:NOTE: [AUTO] SPEC-TREND-MCP-001 M2 — generic entry-management CLI reusing mutateClaudeJSONAtomic unchanged.
+// @MX:NOTE: unusable commit ("", "none", "unknown") short-circuits BEFORE the
+// @MX:ANCHOR: [AUTO] single-backend required-gate enforcement; every codex_audit exit passes through here
+// @MX:WARN: [AUTO] Measure the final representation, not the source body.
+// @MX:ANCHOR: [AUTO] REQUIRED project_root resolver for the factory MCP tools.
+// @MX:WARN: [AUTO] gate-read path — handleFetchWeb reads workflow.jev.enabled on every call and must keep it first and short-circuiting
+// @MX:NOTE: [AUTO] Model stays json.RawMessage — this envelope is shared by glm_task and glm_audit (parseGLMReview); a typed field would let a non-string `model` fail the audit decode.
+// @MX:WARN: [AUTO] gate-read path — handleJevAsk reads workflow.jev.enabled on every call and must keep it first and short-circuiting
+// @MX:NOTE: progress UX for long-running MCP tools — addresses the "no
+// @MX:ANCHOR: [AUTO] the mutating-call root resolver every root-taking MCP family shares
+// @MX:ANCHOR: [AUTO] the audit-surface root resolver (validated, deliberately not confined)
+// @MX:ANCHOR: [AUTO] the one refusal serializer every factory/todo/msg MCP handler shares
+// @MX:NOTE: [AUTO] the card/uncommitted split lives here once; the card branch must keep going through reviewScopeResolver (REQ-CRO-008) — a local WT- check or merge base computation would fork the gate's discriminator
+// @MX:NOTE: [AUTO] context.AfterFunc spawns a goroutine that only forwards cancellation; the detached ctx is what keeps callGLMAudit's progress narration off this tool
+// @MX:ANCHOR: [AUTO] moai mcp-server — thin stdio JSON-RPC wrapper over internal/
+// @MX:NOTE: [AUTO] fail-OPEN default (all-enabled) — the inverse posture of the
+// @MX:WARN: [AUTO] Cross-process file lock — while held, another fold process on this store waits up to the bounded interval and then refuses; none writes until release or holder exit.
+// @MX:ANCHOR: [AUTO] migrationCheckpoint is the contract for resume-capable migrations
+// @MX:ANCHOR: [AUTO] migrateAgencyRunner.Run is the migration entry point
+// @MX:WARN: [AUTO] complex phase-based migration with rollback; cyclomatic complexity >= 15
+// @MX:NOTE: [AUTO] helper for migration pre-check — used only for disk space calculation
+// @MX:ANCHOR: [AUTO] entry point for disk space pre-check — supports test mocking
+// @MX:NOTE: [AUTO] helper for migration pre-check — used only for disk space calculation
+// @MX:ANCHOR: [AUTO] entry point for disk space pre-check — supports test mocking
+// @MX:WARN: [AUTO] goroutine launched for signal handling; must be cancelled on exit
+// @MX:WARN: [AUTO] Moves a user-authored file; every exit before the final remove leaves the original in place.
+	// @MX:NOTE: [AUTO] t2117 C2 — re-read the source immediately before the remove and compare with the bytes originally read. A concurrent writer that landed in the read->remove window would otherwise have its content destroyed by the remove while only the stale backup survives. On divergence (or a failed re-check) abort and roll back the destination; remove only when unchanged.
+// @MX:ANCHOR: [AUTO] One advisory text for the three surfaces that report a legacy local instruction file.
+// @MX:ANCHOR: [AUTO] entry point for archive → skills restore contract
+// @MX:WARN: [AUTO] ScanDir walks the whole project tree
+		"// @MX:NOTE: [AUTO] index build test marker\nfunc Foo() {}\n")
+	writeFile(t, filepath.Join(dir, "svc", "worker.go"), "package svc\n// @MX:NOTE: x\n")
+		[]byte("package main\n\n// @MX:NOTE: hello world\nfunc main() {}\n"), 0644); err != nil {
+		[]byte("package ext\n\n// @MX:NOTE: external\nfunc E() {}\n"), 0o644); err != nil {
+		[]byte("package main\n\n// @MX:NOTE: hi\nfunc main() {}\n"), 0644); err != nil {
+		[]byte("package main\n\n// @MX:NOTE: hi\nfunc main() {}\n"), 0644); err != nil {
+		[]byte("package sub\n\n// @MX:NOTE: in-subtree\nfunc A() {}\n"), 0644); err != nil {
+		[]byte("package main\n\n// @MX:NOTE: outside\nfunc B() {}\n"), 0644); err != nil {
+		"package x\n// @NAV:DEC-AUTH: OAuth2\n// @MX:NOTE: x\n// @MX:SPEC: SPEC-X-001\nfunc A() {}\n")
+// @MX:ANCHOR: [AUTO] moai paths — the one confirmed source of the project key and database paths.
+// @MX:ANCHOR: [AUTO] fan_in=2 — guards plan-auditor D7/D8 verb correctness.
+// @MX:NOTE: [AUTO] CorrectInferred — REQ-ADM-016 정정 루프 (inferred→observed 전환 + weight 감소)
+// @MX:NOTE: [AUTO] α=0.5 고정 — Standard tier 단일 값. 동적 학습은 complete tier 이월.
+// @MX:ANCHOR: [AUTO] DecayScan — recall-tier decay policy entry point
+// @MX:NOTE: [AUTO] Touch는 Get과 분리 — 빈번한 Get에서 silent write 방지
+// @MX:NOTE: [AUTO] FreshnessLabel — REQ-ADM-015 신선도 공개 (AC-ADM-015 grep 기반)
+// @MX:NOTE: [AUTO] IsSensitiveDomain — REQ-ADM-014 민감 도메인 강도 저하 게이트
+// @MX:ANCHOR: [AUTO] DecideStrength — 추천 강도 결정 진입점 (sensitive/cold-start/proficiency 분기)
+// @MX:NOTE: [AUTO] EstimateProficiency — REQ-ADM-017 숙련도 추정 (세션 카운트 단일 신호)
+// @MX:NOTE: [AUTO] sentinel 이름 — design.md §A.5 정준 경로 (.moai/state/session-preference-disabled)
+// @MX:NOTE: [AUTO] IsPersonalizationDisabled — 세션 단위 토글 게이트 (sentinel 존재 = 비활성)
+// @MX:NOTE: [AUTO] CleanupStaleSentinel — SessionStart 훅이 호출 (신규 세션 자동 재활성화)
+// @MX:NOTE: [AUTO] TogglePersonalization — locked read-then-flip (TOCTOU hardening)
+// @MX:NOTE: [AUTO] Profile management for Claude configuration directories
+// @MX:NOTE: [AUTO] Each profile is an isolated CLAUDE_CONFIG_DIR in ~/.moai/claude-profiles/
+// @MX:NOTE: [AUTO] Used with -p/--profile flag on cc, cg, glm commands
+// @MX:NOTE: [AUTO] Wired by the M5 absorption — runProfileSetup builds these lists in the run's initial locale and hands them to the profileWizardRunner seam.
+// @MX:NOTE: [AUTO] Single derivation site for every wizard select backed by the shared schema.
+// @MX:NOTE: [AUTO] Wizard v3 migration — normalizes deprecated Claude model IDs to canonical aliases before binding.
+// @MX:ANCHOR: [AUTO] sole producer of tmux session names for every capture test
+// @MX:NOTE: [AUTO] Self-Research System for autonomous moai-adk component experimentation
+// @MX:NOTE: [AUTO] Research data stored in .moai/research/ with experiments/ and evals/ subdirs
+// @MX:NOTE: [AUTO] Eval suites defined as *.eval.yaml files for automated testing
+// @MX:ANCHOR: [AUTO] Execute is the main entry point for the moai CLI
+// @MX:NOTE: [AUTO] schemaKeyToTUIField 는 스키마 키 namespace 의 단일 원천을 유지하면서
+// @MX:ANCHOR: [AUTO] CLI session subcommand — surface for SPEC-V3R6-MULTI-SESSION-COORD-001 L1 primitive
+		body := fmt.Sprintf("package pad\n\n// @MX:NOTE: pad %d\nfunc F%d() {}\n", i, i)
+// @MX:ANCHOR: [AUTO] session-worktree auto-entry wrapper (M2 init / M3 web / M6 profile)
+// @MX:NOTE: [AUTO] git version parser — `git version 2.50.1` shape (Apple Git
+// @MX:ANCHOR: [AUTO] worktree-scoped git config helper (M7)
+// @MX:ANCHOR: [AUTO] session-worktree exit disposal (M4 session-exit cleanup)
+// @MX:ANCHOR: [AUTO] the concurrent-writer refusal shared by moai codex -w and moai cc -w
+// @MX:ANCHOR: [AUTO] session-exit auto-merge entry (init/web/profile exit paths)
+// @MX:ANCHOR: [AUTO] PR-merge auto-cleanup sweep (M8 on-touch at session register)
+// @MX:NOTE: [AUTO] P2 (preserve on non-allowlisted ignored content) is a
+// @MX:ANCHOR: [AUTO] the sole parser behind the gh-no-answer merge fallback
+// @MX:ANCHOR: [AUTO] consolidated atomic-writer helper (internal/cli)
+// @MX:ANCHOR: [AUTO] tmuxSpawnFn — sole tmux new-window call site for --spawn.
+// @MX:NOTE: [AUTO] SPEC document management commands for .moai/specs/ directory
+// @MX:NOTE: [AUTO] Supports status, view, and lint subcommands for SPEC documents
+// @MX:NOTE: [AUTO] `moai spec audit` CLI subcommand for era classification + drift detection per SPEC-V3R6-LIFECYCLE-SYNC-GATE-001 M2
+// @MX:ANCHOR: [AUTO] newSpecAuditCmd is the cobra entry point for `moai spec audit`; delegates to internal/spec.Audit()
+// @MX:NOTE: [AUTO] the ceiling recording path's only caller this SPEC builds (D7) — evaluate, print, and with --record write through runtime.RecordCeilingOutcome
+// @MX:NOTE: [AUTO] `moai spec close` CLI subcommand for SPEC 4-phase close per SPEC-V3R6-LIFECYCLE-SYNC-GATE-001 M2
+// @MX:ANCHOR: [AUTO] newSpecCloseCmd is the cobra entry point for `moai spec close`; delegates to internal/spec.Close()
+// @MX:DEBT: [AUTO] the deadline is enforced by returning, not by cancelling
+// @MX:NOTE: [AUTO] newSpecLintCmd is the spec lint CLI entry point following cobra pattern.
+// @MX:ANCHOR: [AUTO] runBaselineGate is the sole decision point of the spec-lint baseline ratchet.
+// @MX:NOTE: [AUTO] SPEC-SEC-HARDEN-002 M1 — 모든 CLI SPEC-ID 경계의 단일 sanitizer (leaf package). validateSkillID(update_archive.go) 모델. ".."/경로구분자/절대경로 거부 후 filepath.Join 도달 차단.
+// @MX:NOTE: [AUTO] Session state management for workflow phases and checkpoints
+// @MX:NOTE: [AUTO] State stored in .moai/state/ with blocker reports for unresolved issues
+// @MX:NOTE: [AUTO] Supports dump, show-blocker subcommands for state inspection
+// @MX:NOTE: [AUTO] Project status command showing SPEC progress, quality metrics, config
+// @MX:NOTE: [AUTO] Counts SPECs in .moai/specs/ and config sections in .moai/config/sections/
+// @MX:NOTE: [AUTO] status command output — markdown payload through the
+// @MX:ANCHOR: statusline CLI entry point (fan_in >= 3: shell wrapper, direct CLI, tests)
+// @MX:ANCHOR: [AUTO] ClaimTask carries the SPEC-CLIFIX-CRITICAL-001 P0 O_APPEND fix
+// @MX:NOTE: [AUTO] Telemetry reporting for skill usage effectiveness analysis
+// @MX:NOTE: [AUTO] Data stored locally in .moai/evolution/telemetry/, never sent externally
+// @MX:NOTE: [AUTO] All context hashed to prevent PII storage
+// @MX:NOTE: [AUTO] SPEC-TODO-CLAIM-LEASE-001 C6 flag-form guard extension:
+// @MX:NOTE: [AUTO] gate-unrun ordering consumer (SPEC-TODO-AUTO-PRIORITY-001) —
+// @MX:NOTE: [AUTO] `moai todo undone` reads this file to emit its reversal
+// @MX:ANCHOR fan_in=5 - SPEC-BACKLOG-JSON-DISCLOSURE-001 REQ-BJD-002 sole
+// @MX:NOTE: gate-unrun Consumer C hook (SPEC-JEV-CONSUMERS-001 REQ-JEVN-016) —
+// @MX:NOTE: [AUTO] Per-pool token accounting seed: reads a CC session transcript,
+// @MX:NOTE: [AUTO] buckets usage per pool (glm/claude/other) split by main vs subagent
+// @MX:NOTE: [AUTO] origin, and appends one JSON record to .moai/state/token-accounting.jsonl
+// @MX:NOTE: [AUTO] SPEC-V3R6-TOOL-POLICY-SSOT-001 — tool/permission policy SSOT
+// @MX:NOTE: [AUTO] Provides `moai tool-policy build` (codegen YAML→settings.json) and
+// @MX:NOTE: [AUTO] `moai tool-policy list` (thin query modeled on `moai constitution list` shape).
+// @MX:NOTE: [AUTO] The query loads the YAML directly — it is DISJOINT from the constitution Rule
+// @MX:NOTE: [AUTO] schema and does NOT wrap `moai constitution list` (REQ-TPS-006 / D9).
+// @MX:NOTE: [AUTO] CLI banner output — called from root/init/update/version entry points
+// @MX:NOTE: [AUTO] Rendering utilities for CLI output using lipgloss styling
+// @MX:NOTE: [AUTO] Provides card, key-value, status, success/info card renderers
+// @MX:ANCHOR: [AUTO] RenderError is the global error render surface for M6-S6
+// @MX:ANCHOR: [AUTO] runUpdate orchestrates binary update and template synchronization
+// @MX:NOTE: [AUTO] M4-S4d-1 DDD migration — converts 18 print sites to tui primitives.
+	// @MX:WARN: [AUTO] leftover judgement placement — keep above stripRetiredV2DenyEntries
+// @MX:NOTE: [AUTO] runBinaryUpdateStep — M4-S4d-1 DDD migration. New-version notice uses
+// @MX:NOTE: [AUTO] runShellEnvConfig — M4-S4d-2 DDD migration. tui.Section header,
+// @MX:ANCHOR: [AUTO] ensureGlobalSettingsEnv is the global settings and hooks cleanup shared by the init, update, and init-resume paths; it removes the moai hooks dir from every Claude config root a session can use
+// @MX:ANCHOR: [AUTO] .mcp.json staging entry — fan_in 3 (init, template sync, clean reinstall)
+// @MX:WARN: [AUTO] must run before the flow's first removal or rewrite of .mcp.json
+// @MX:WARN: [AUTO] promotion decision — call only after the flow's .mcp.json merge
+// @MX:ANCHOR: [AUTO] The single removal path of backup rotation, called by
+// @MX:NOTE: [AUTO] The budget (REQ-UBR-003/004), the cover and irredundancy
+// @MX:ANCHOR: [AUTO] settings.json staging entry — fan_in 3 (init, template sync, clean reinstall)
+// @MX:WARN: [AUTO] must run before the flow's first removal or rewrite of .claude/settings.json
+// @MX:WARN: [AUTO] promotion decision — call only after the flow's settings.json merge
+// @MX:ANCHOR: [AUTO] snapshot location constant — pinned by Decision D1
+// @MX:ANCHOR: [AUTO] snapshot write entry — fan_in 3 (init + 2 update deploy sites)
+// @MX:NOTE: [AUTO] trust gate for the merge BASE (card t1216) — binaries before card t1139 wrote the snapshot AFTER the restore, so it holds user values; a BASE equal to a user value makes the 3-way merge replace that value with the template default
+// @MX:ANCHOR: [AUTO] Classify is the single classification entry point consumed by preview table, text fallback, and deploy enforcement
+	// @MX:NOTE: [AUTO] Lstat + ModeSymlink BEFORE IsDir is the load-bearing
+// @MX:NOTE: [AUTO] derived-base characterization only — it calls deriveTemplateBase directly, so the
+// @MX:NOTE: [AUTO] base selection boundary — canonical snapshot for snapshotBases paths, derived base otherwise
+// @MX:NOTE: [AUTO] preserve paths (ResolutionPreserved): deployed file unreadable, no base derivable, merge error
+	// @MX:NOTE: [AUTO] SPEC-HNS-PREFIX-RENAME-001 M2 — canonical hns-* recognition (REQ-HPR-005).
+	// @MX:NOTE: [AUTO] SPEC-V3R6-HARNESS-NAMESPACE-V2-001 M1 — legacy harness-* recognition.
+	// @MX:NOTE: [AUTO] SPEC-V3R6-HARNESS-V4-001 M1 — harness command subdirectory user-owned.
+	// @MX:NOTE: [AUTO] SPEC-HNS-PREFIX-RENAME-001 M2 — hns- Runner Workflow user-owned.
+	// @MX:NOTE: [AUTO] SPEC-V3R6-HARNESS-V4-001 M1 — harness Runner Workflow user-owned.
+// @MX:ANCHOR: [AUTO] IsUserOwnedNamespace is the authoritative user-owned namespace check for moai update
+	// @MX:NOTE: [AUTO] SPEC-HNS-PREFIX-RENAME-001 M2 — canonical hns-* recognition.
+	// @MX:NOTE: [AUTO] SPEC-V3R6-HARNESS-NAMESPACE-V2-001 M1 — legacy harness-* recognition.
+	// @MX:NOTE: [AUTO] SPEC-V3R6-HARNESS-V4-001 M1 — harness command subdirectory user-owned.
+	// @MX:NOTE: [AUTO] SPEC-HNS-PREFIX-RENAME-001 M2 — hns- Runner Workflow user-owned.
+	// @MX:NOTE: [AUTO] SPEC-V3R6-HARNESS-V4-001 M1 — harness Runner Workflow user-owned.
+// @MX:ANCHOR: [AUTO] single preview entry point converging both ConfirmMerge call sites
+// @MX:NOTE: [AUTO] Advisory /hooks review guidance (SPEC-HOOK-CONFIG-SAFETY-001).
+// @MX:WARN: [AUTO] filesystem moves inside a user's skill folder
+// @MX:WARN: [AUTO] filesystem moves and removals inside a user's skill folder
+// @MX:ANCHOR: [AUTO] archiveSkill is the entry point for the legacy skill archival contract
+// @MX:ANCHOR: [AUTO] archiveLegacySkills is the entry point for legacy skill archival in the update flow
+// @MX:NOTE: [AUTO] M4-S4d-3 DDD migration — archive progress uses tui.CheckLine "ok";
+// @MX:NOTE: [AUTO] SPEC-V3R6-UPDATE-ARCHIVE-CONTRACT-001 — force parameter added
+// @MX:ANCHOR: 7-step canonical clean-reinstall orchestrator. Called by M5
+// @MX:NOTE: [AUTO] single source of user-owned values for all three update render contexts (template-sync validate + deploy, clean-reinstall deploy); rendersVerbatim decides whether a value survives the update
+// @MX:NOTE: [AUTO] AC-HNS-002/004/005 characterization — pins dual recognition + substring separation.
+// @MX:NOTE: [AUTO] AC-HV4-010a/010b specification — pins commands/harness/ + workflows/harness-*.js user-owned.
+// @MX:NOTE: [AUTO] AC-HPR-003/AC-HPR-004 specification — pins skills/hns-* +
+// @MX:ANCHOR: [AUTO] assertNoUserOwnedNamespaceTouch is the namespace violation gate before destructive ops
+// @MX:NOTE: [AUTO] SPEC-INTERNAL-SECURITY-001 REQ-SEC-006 — wires the previously-dead
+// @MX:NOTE: [AUTO] SPEC-INTERNAL-SECURITY-001 REQ-SEC-005 — conservative backup superset of isUserOwnedNamespace.
+// @MX:ANCHOR: [AUTO] update_noise.go — noise-suppression ledger for `moai update` merge fallback warnings
+// @MX:WARN: [AUTO] package-level test seam — reassigning tests MUST NOT call
+// @MX:ANCHOR: Output contract consumed by runCleanReinstall MERGE-back step
+// @MX:ANCHOR: [AUTO] PRESERVE-inventory ↔ DeprecatedPaths collision predicate.
+// @MX:NOTE: [AUTO] clean-reinstall backup-coverage gate — wired between
+// @MX:NOTE: [AUTO] runTemplateSyncWithReporter — M4-S4d-2 DDD migration. Top-level header/section/
+// @MX:NOTE: [AUTO] runTemplateSyncWithProgress — M4-S4d-2 DDD migration. Console reporter
+// @MX:NOTE: [AUTO] SPEC-V3R6-UPDATE-ARCHIVE-CONTRACT-001 — return shape extended
+// @MX:ANCHOR: [AUTO] tagCharsetRegexp is the path-traversal defense for --version tag values
+// @MX:NOTE: [AUTO] runInitWizard — M4-S4d-3 DDD migration. tui.Pill (uninitialized warning,
+// @MX:ANCHOR: Output contract consumed by runCleanReinstall (M4) and
+// @MX:NOTE: [AUTO] moai verify CLI — the mechanical surface of the shared
+// @MX:NOTE: [AUTO] the only caller of auditreceipt.ClearRejectionOnApproval; keep it that way (REQ-AEC-011, AC-AEC-004c sweeps for it).
+// @MX:NOTE: [AUTO] Version command displays moai-adk version, commit hash, build date
+// @MX:NOTE: [AUTO] Version injected at build time via ldflags -X github.com/modu-ai/moai-adk/pkg/version.Version
+// @MX:NOTE: [AUTO] version command output — version card composed of tui.Box + 3 tui.Pills.
+// @MX:NOTE: [AUTO] web 서브커맨드는 MoAI Web Console(브라우저 기반 설정 CRUD)을 띄우는 thin 진입점이다.
+// @MX:NOTE: [AUTO] web_port.go owns the safety logic that reclaims the target
+// @MX:WARN: [AUTO] killProcessImpl sends SIGTERM to another process, terminating it.
+// @MX:NOTE: [AUTO] Wired by the M5 absorption — RunProfile (profile_wizard.go) drives this set as one multi-group form, and the cli runner seam (profileWizardRunner) is its only caller.
+// @MX:NOTE: [AUTO] The init set is assembled by ID; the reconfigure path
+// @MX:NOTE: [AUTO] The wizard is one huh v2 form: consecutive unconditional
+// @MX:ANCHOR: [AUTO] Consumed by every buildUnifiedForm invocation; single huh.Theme factory
+// @MX:ANCHOR: [AUTO] shared tree classifier — list, migrate, tier and retirement must never disagree
+// @MX:NOTE: [AUTO] Clean stale worktree references and merged branch worktrees
+// @MX:NOTE: [AUTO] --merged-only flag removes only fully merged branches
+// @MX:NOTE: [AUTO] --stale flag sweeps abandoned worktrees that hold nothing to lose
+// @MX:ANCHOR: [AUTO] --stale removal is gated on a two-part no-work-lost predicate
+// @MX:ANCHOR: [AUTO] the authoritative anchor source for both clean sweeps
+// @MX:NOTE: SPEC-WORKTREE-002 R2 implementation - auto-cleanup for PR merge workflow
+// @MX:NOTE: [AUTO] symlink fallback — EvalSymlinks failure returns the raw path, keeping the predicate total over missing/unresolvable targets
+// @MX:ANCHOR: [AUTO] done L1 tier guard — the single removal-refusal boundary shared by both done paths
+// @MX:NOTE: [AUTO] card-tree marker — done gates the origin-landing check on
+// @MX:NOTE: `moai worktree snapshot|verify|restore` are the orchestrator-facing
+// @MX:ANCHOR: [AUTO] hoist routine — the single evidence-retrieval core shared by the verb and done
+// @MX:NOTE: [AUTO] the only commit-level landing check past ancestry on the
+// @MX:ANCHOR: [AUTO] the single landing predicate past ancestry — done, sweep and (layers 1-2 only, via LandedByPatchID) session-exit cleanup all answer "is this card on the integration ref" here
+// @MX:NOTE: [AUTO] same-size content changes inside ignored files are NOT detected (card t2053); only path, size and file type are compared
+// @MX:WARN: [AUTO] readProcessValue reads raw cross-process memory at offsets
+// @MX:ANCHOR: [AUTO] move-list lookup — every reader of a moved tree's new path resolves here
+// @MX:ANCHOR: [AUTO] moved-by-the-migration witness — the cleanup guard refuses on it
+// @MX:NOTE: [AUTO] Remove worktree at specified path with optional force flag
+// @MX:NOTE: [AUTO] Force flag bypasses uncommitted changes safety check
+// @MX:NOTE: [AUTO] retirement — the M7 non-recursive removal of the empty MoAI legacy dir
+// @MX:NOTE: [AUTO] Worktree management for parallel SPEC development with isolated working directories
+// @MX:NOTE: [AUTO] Dependency injection pattern: WorktreeProvider set from parent CLI package
+// @MX:NOTE: [AUTO] Supports new, sync, remove, clean, recover, done, and the guard subcommands
+// @MX:WARN: [AUTO] bulk disposal loop — every guard here is load-bearing
+// @MX:NOTE: [AUTO] Sync worktree with base branch using merge or rebase strategy
+// @MX:NOTE: [AUTO] Accepts branch name or uses current directory; defaults to main base
+// @MX:ANCHOR: [AUTO] the closure report's single assembly point.
+// @MX:ANCHOR: [AUTO] the §C.7 evidence-home rule every A4 writer and reader shares.
+// @MX:ANCHOR: [AUTO] the one HEAD-resolution entry point for the closure packages.
+// @MX:NOTE: [AUTO] decision translation table — a Codex deny or needs_input row must never render as allow or the empty object (REQ-HPR-007); AC-HPR-006 checks the rows
+// @MX:NOTE: [AUTO] the single place the (Codex, Stop) parse-failure exemption lives — no second event list may encode it
+// @MX:ANCHOR: [AUTO] TranslateCodex is the single Codex rendering of a normalized decision — MapOutput (PreToolUse ask/defer), the CLI fault path, and the CLI stdin parse-failure path all route through it
+// @MX:WARN: [AUTO] fail-closed boundary — returning the no-opinion {} or an allow for deny / needs_input / fatal_error lets Codex proceed under a non-prompting approval policy (REQ-HPR-007)
+// @MX:ANCHOR: [AUTO] Conversation-scoped hybrid registry construction.
+// @MX:ANCHOR: [AUTO] Native and dispatcher execution authorization boundary.
+// @MX:WARN: [AUTO] cross-process mutual exclusion over the wiring files
+// @MX:WARN: [AUTO] deletes files in the project's wiring directories
+// @MX:ANCHOR: [AUTO] Codex Stop-chain budget table — the aggregate the single Codex Stop handler must fit (design §D3.5)
+// @MX:ANCHOR: [AUTO] the single write path for every Codex wiring file change
+// @MX:ANCHOR: [AUTO] single atomic, mode-preserving write choke point for config/CLI persistence
+// @MX:NOTE: [AUTO] audit_models.go — multi-model audit enum + AuditConfig surface for the MCP audit backends
+// @MX:NOTE: [AUTO] ResolveAuditPlan — the one gate reading REQ-ACV-005 assigns to audit_multi, the convergence enforcement, codex_audit, the receipt predicate and the plan verb (consumers land in M3/M4; promote to ANCHOR once fan_in >= 3)
+// @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-008/021/043 implementation
+// @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-008/021 all registered structs verified
+// @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-043 ScanYAMLOrphans detects unexpected yaml
+// @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-008/043 yaml↔Go struct parity enforcement.
+// @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-043/008 orphan yaml detection
+// @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-008 all registered yaml sections recognized
+// @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-008/021 orphan struct detection
+// @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-008 MIG-003-pending exceptions respected
+// @MX:ANCHOR: [AUTO] AutonomyTier reader — single Go-side read point for MOAI_AUTONOMY_TIER
+// @MX:ANCHOR: [AUTO] single resolver for workflow.autonomy — every consumer reads effective values here
+// @MX:ANCHOR: [AUTO] autonomy-tier selection surface — validation + resolution + defaultMode mapping
+// @MX:ANCHOR: [AUTO] config cache path resolver — predictable location for gitignore + cleanup
+// @MX:DEBT: LoadCacheConfig now has no caller. Only ValidSessionTTLs survives,
+// @MX:ANCHOR: [AUTO] LoadCacheConfig — sole cache.yaml loader; safe-default-on-any-failure is a contractual invariant
+	// @MX:NOTE: [AUTO] 메모리 감사 서브시스템의 실제 배선(wiring)은 아래 패키지 레벨 상수 +
+// @MX:ANCHOR: [AUTO] session-msg threshold SSOT consumed by internal/sessionmsg
+// @MX:ANCHOR: [AUTO] harness tier-threshold SSOT — single source for the 4-tier vector
+// @MX:ANCHOR: [AUTO] LLM configuration defaults factory. Single entry point for the full LLM config including model tiers, GLM settings, and performance policy.
+// @MX:ANCHOR: [AUTO] deploy-mode record reader — the single read seam for the
+// @MX:NOTE: [AUTO] Environment variable key constants centralize all env var names to prevent typos and enable IDE navigation
+// @MX:ANCHOR: [AUTO] GLM env-var name SSOT — single source for the 3 keys
+// @MX:ANCHOR: [AUTO] settings-axis key SSOT — the single declaration five former lists derive from
+// @MX:NOTE: [AUTO] Sentinel errors for configuration operations including validation errors with field context
+// @MX:NOTE: [AUTO] Never return an error from this decoder: it would reset the whole workflow section (loader.go loadWorkflowSection)
+// @MX:NOTE: [AUTO] Thread-safe configuration loader that reads YAML section files and applies defaults
+// @MX:ANCHOR: [AUTO] harness.yaml loader function — many callers (router, CLI, ConfigManager.Reload)
+// @MX:WARN: [AUTO] FROZEN-zone validation — under MOAI_CONFIG_STRICT=1, unknown keys are treated as errors
+// @MX:ANCHOR: [AUTO] LoadConstitutionConfig — public loader consumed by Loader.Load(), CLI validation, and SPEC-V3R2-EXT-004 framework hook
+// @MX:ANCHOR: [AUTO] LoadContextConfig — public loader for context_search section, consumed by Loader.Load() and CLAUDE.md §16 runtime
+// @MX:ANCHOR: [AUTO] LoadDesignConfig — public loader for design section with pass_threshold floor validation
+// @MX:ANCHOR: [AUTO] single read of git-strategy.yaml feeding three production consumers — integration acquire target, session-exit auto-merge gate, doctor Git Strategy Workflow check
+// @MX:ANCHOR: [AUTO] LoadInterviewConfig — public loader for interview section, consumed by Loader.Load() and SPEC-V3R2-WF-003 discovery mode
+// @MX:NOTE: [AUTO] the 3-way disposition SSOT — every consumer of
+// @MX:NOTE: [AUTO] the D2 interpretation table — the doctor check (REQ-GWS-009)
+// @MX:NOTE: [AUTO] SPEC-V3R2-RT-005 M4 GREEN — REQ-040: dedicated config.log for tier read failures
+// @MX:ANCHOR: [AUTO] ConfigManager is the core struct providing thread-safe configuration management. Must call Load() before use.
+// @MX:NOTE: [AUTO] Merges file values, compiled defaults, and environment variable priorities. MOAI_CONFIG_DIR env var can override config directory. Uses disk cache (SPEC-HOOK-PRETOOL-PERF-001) to skip ~20 per-section reads on cache hit.
+// @MX:ANCHOR: [AUTO] Get is the primary configuration accessor used by hooks, CLI commands, and loop controller
+// @MX:ANCHOR: [AUTO] Save is the config persistence path — atomic multi-section write to disk
+// @MX:DEBT: [AUTO] Save persists SIX sections only — user, language, quality, git-convention, git-strategy, llm (SPEC-INIT-UPDATE-CONSISTENCY-001 REQ-ICU-007, record-only disposition)
+// @MX:NOTE: [AUTO] MergedSettings implements 8-tier priority merge system with provenance tracking
+// @MX:NOTE: [AUTO] SPEC-V3R2-RT-005 — deterministic 8-tier merge. Identical tier inputs MUST produce byte-identical merged output (cache-prefix discipline; problem-catalog P-C05). Map iteration order is non-deterministic; sort keys before serialization (see merge.go:dumpJSON).
+	// @MX:WARN: [AUTO] SPEC-V3R2-RT-005 REQ-022 — policy override enforcement.
+// @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M3 GREEN — sort.Strings + MarshalIndent for determinism.
+// @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M3 GREEN — alphabetical sort + source comments.
+// @MX:ANCHOR: [AUTO] user-scoped consent reader — capture, drain, sender, preview, console, wizard, and update all read consent through it
+// @MX:WARN: [AUTO] fail-closed reader — every failure path must read as no consent
+// @MX:ANCHOR: [AUTO] NormalizeProfile — the max->high read-time alias
+// @MX:NOTE: [AUTO] the continuation enum is consumed by prose (doc-generation.md), not by a Go caller that branches on it
+// @MX:ANCHOR: [AUTO] SPEC-V3R2-RT-005 REQ-002, REQ-003 — typed-state contract; every config field that needs to answer "where from?" wraps via Value[T].
+// @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M3 GREEN — Source.String() in MarshalJSON prevents int leakage.
+// @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M4 (resolver.Reload() implementation)
+// @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M4 (Reload + loadYAMLFile real implementation)
+// @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M4 (Reload tier-detection by path prefix)
+// @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M4 (sync.RWMutex in resolver struct)
+// @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M4 (ClearSessionTier() method on resolver)
+// @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M4 (ClearSessionTier() method on resolver)
+// @MX:ANCHOR: [AUTO] SPEC-V3R2-RT-005 REQ-004 — single resolver contract; methods Load/Key/Dump/Diff/Reload form the substrate. Adding methods is breaking; reordering signatures breaks RT-002/003/006 imports.
+// @MX:ANCHOR: [AUTO] resolver is the central 8-tier config struct; concurrency via RWMutex
+// @MX:WARN: [AUTO] SPEC-V3R2-RT-005 REQ-011 — diff-aware reload. Mutex held during entire reload.
+// @MX:NOTE: [AUTO] SPEC-V3R2-RT-005 M4 GREEN — REQ-050, AC-13: session tier cleanup
+// @MX:NOTE: [AUTO] SPEC-V3R2-RT-005 M4 GREEN — REQ-001 (skill tier walked), REQ-015 partial
+// @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M5 GREEN — REQ-020/014, AC-14: reflect-walk defaults
+// @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-010/013/033 real yaml.v3 parsing
+// @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-041 yaml/yml sibling ambiguity detection
+// @MX:NOTE: [AUTO] Resolver-specific error types for 8-tier configuration loading and validation
+// @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-013 ConfigTypeError for string-where-int
+// @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-013 ConfigTypeError for nested field
+// @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-013 ConfigTypeError for array-where-string
+// @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-014 policy absent = empty tier
+// @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-014 empty policy tier no error
+// @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M4 (logTierReadFailure wired into loadPolicyTier)
+// @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-033 schema_version propagated to Provenance
+// @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-033 schema_version absent = 0
+// @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-013 schema_version non-int = ConfigTypeError
+// @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-041 sibling yaml/yml conflict = ConfigAmbiguous
+// @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-041 identical sibling values = no error
+// @MX:NOTE [AUTO] SPEC-V3R2-RT-005 M2 GREEN — REQ-041 different basenames = no ambiguity
+// @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M5 (ConfigSchemaMismatch detection)
+// @MX:TODO SPEC-V3R2-RT-005 M1 RED → GREEN at M5 (stub for EXT-004 migration runner integration)
+// @MX:ANCHOR: [AUTO] single resolver of factory session launch defaults
+// @MX:ANCHOR: [AUTO] single activation decision site for session-worktree auto-entry
+// @MX:ANCHOR: [AUTO] SPEC-V3R2-RT-005 REQ-001 — 8-tier priority enum, fan_in=71. ANY change ripples to RT-002, RT-003, RT-006, MIG-003.
+// @MX:NOTE: [AUTO] DORMANT notice helper — fires when sunset.yaml exists,
+// @MX:NOTE: [AUTO] SPEC-TOKEN-EFFICIENCY-001 P0-1 — always-loaded 토큰 예산 가드.
+// @MX:DEBT: [AUTO] temporary budget raise chain (76,000 -> 76,210 -> 76,400 -> 77,200 -> 77,600) standing in for the always-loaded rule diet
+	// @MX:NOTE: [AUTO] t2117 C3 — the real always-loaded prefix also carries the repo-root local instruction file(s) (AGENTS.local.md; legacy CLAUDE.local.md) and the instruction anchors' @-import closure. Both are enumerated only when present as regular files, keeping the enumeration discipline above (a slot naming an absent path measures nothing).
+// @MX:NOTE: [AUTO] t2117 F3+ — the boundary check runs on the REAL path (EvalSymlinks), never the link spelling: a symlink (or a symlinked ancestor) whose target escapes repoRoot would otherwise pass the lexicographic Rel check and be followed by Stat/ReadFile. A dangling link fails EvalSymlinks and is skipped. The hook-side BFS needs no equivalent: its os.Lstat guard refuses symlinks outright.
+// @MX:NOTE: [AUTO] tier→permission-bundle renderer — USER scope (defaultMode) + PROJECT scope (deny/ask) split per REQ-003 / v2.1.142+ scope rules
+// @MX:NOTE: [AUTO] Q5 set-union — user-added allow entries survive the managed-block regeneration; a last_generated entry the doc no longer generates is dropped (SPEC-USER-SETTINGS-PROTECT-001)
+// @MX:NOTE: [AUTO] Q1 keep-rule — an existing USER defaultMode is never overwritten; the tier default is written only when the key is absent, and the write path preserves the user's lists (SPEC-USER-SETTINGS-PROTECT-001)
+// @MX:WARN: [AUTO] Large mutable struct with 20+ fields — global configuration state
+// @MX:ANCHOR: [AUTO] distinctness invariant — agentic_loop vs loop_prevention
+// @MX:ANCHOR: [AUTO] SecuritySandbox is the config schema for all sandbox knobs
+// @MX:NOTE: [AUTO] DORMANT — struct schema defined but no runtime hot path
+// @MX:ANCHOR: [AUTO] Go representation of the full harness.yaml schema — return type of LoadHarnessConfig()
+// @MX:NOTE: FROZEN at per_iteration per design-constitution §11.4.1 (SPEC-V3R2-HRN-002)
+// @MX:NOTE: [AUTO] HRN-003 M4: added Profiles + Aggregation + MustPassDimensions fields (SPEC-V3R2-HRN-003)
+// @MX:ANCHOR: [AUTO] Go representation of the full constitution.yaml schema
+// @MX:ANCHOR: [AUTO] Go representation of the context_search section
+// @MX:ANCHOR: [AUTO] Go representation of the interview section
+// @MX:ANCHOR: [AUTO] Go representation of the design section
+// @MX:ANCHOR: [AUTO] user-root fixed table SSOT — userassets and the hook zone guard both derive their root set from this one list
+// @MX:ANCHOR: [AUTO] real-profile enumeration SSOT — the junk-filtered store listing both userassets and the hook derive from
+// @MX:ANCHOR: [AUTO] Core entry point that validates configuration for all CLI commands.
+// @MX:WARN: [AUTO] multi-file write with rollback; a partial failure leaves recovery to the backups
+// @MX:WARN: [AUTO] cyclomatic complexity 18; a line-level rewrite inside the yaml fence followed by a re-parse check
+// @MX:NOTE: [AUTO] CLI wiring to be added in SPEC-V3R2-SPC-003
+// @MX:ANCHOR: [AUTO] evolution-log read contract shared by the rate limiter and MarkRolledBack
+// @MX:WARN: [AUTO] cyclomatic complexity 17; fence masking and --- delimiter pairing in one scan
+// @MX:WARN: [AUTO] cyclomatic complexity 17; per-key decoding with fail-closed error paths
+// @MX:WARN: [AUTO] cyclomatic complexity 22; ordered pre-gate checks, the five FROZEN layers, and the dry-run/real split in one function
+// @MX:ANCHOR: [AUTO] the one registry path resolver shared by the CLI and Pipeline.Execute
+// @MX:ANCHOR: [AUTO] amend-path registry admission — used by Pipeline.Execute and runConstitutionAmend
+// @MX:ANCHOR: [AUTO] the one join of an entry's file: with projectDir, shared by the containment check, the rule-file alias check, and the apply read
+// @MX:ANCHOR: [AUTO] Normalization under the acceptance hash and AC count.
+// @MX:ANCHOR: [AUTO] The acceptance hash a signed contract binds to.
+// @MX:ANCHOR: [AUTO] Go port of the MOAI-AC-COUNTER awk program.
+// @MX:ANCHOR: [AUTO] The one strict decoder for contract.yaml.
+// @MX:ANCHOR: [AUTO] Canonical form behind the contract digest.
+// @MX:ANCHOR: [AUTO] Contract body digest — the value `sign` records in
+// @MX:ANCHOR: [AUTO] The one glob rule for contract ownership sets.
+// @MX:ANCHOR: [AUTO] The contract-mode plan→run gate.
+// @MX:ANCHOR: [AUTO] The only issuer of kickoff receipts.
+// @MX:ANCHOR: [AUTO] Path boundary for caller-supplied SPEC IDs.
+// @MX:ANCHOR: [AUTO] The one reader of a SPEC's contract inputs.
+// @MX:ANCHOR: [AUTO] Structural and consistency gate for kickoff receipts.
+// @MX:NOTE: [AUTO] Deliberate reproduction of the escalation store resolver;
+// @MX:ANCHOR: [AUTO] The only writer of revoke events and revoke records.
+// @MX:ANCHOR: [AUTO] Resume-block reader for revocations.
+// @MX:ANCHOR: [AUTO] Keyless seal over every signature field.
+// @MX:WARN: [AUTO] Spawns a git subprocess.
+// @MX:ANCHOR: [AUTO] Single signing entry point for SPEC contracts.
+// @MX:ANCHOR: [AUTO] SPEC-ID trust-boundary check.
+// @MX:ANCHOR: [AUTO] Single verification entry point for SPEC contracts.
+// @MX:ANCHOR: [AUTO] Create is the sole branch creation path used by worktree, workflow, and CLI callers
+// @MX:ANCHOR: [AUTO] Entry point for Git repository management. All Git operations start through this function.
+// @MX:ANCHOR: [AUTO] Status is the primary working-tree inspection point used by CLI, loop controller, and statusline consumers
+// @MX:ANCHOR: [AUTO] execGit is the core git command executor used by all Repository methods
+// @MX:NOTE: t41 — git subprocess failures stay printable and exit non-zero
+// @MX:NOTE: [AUTO] SPEC-SEC-HARDEN-002 M2b — argv `--` 구분자로 worktree-add operand option smuggling 차단. 정상 path/branch 동작 보존.
+// @MX:ANCHOR: [AUTO] reachability (S1) is retained alongside the patch-id probes (S3/S4) and conjoined with the state check (S5)
+// @MX:ANCHOR: [AUTO] both "* " and "+ " markers must be stripped
+// @MX:NOTE: [AUTO] SPEC-AUTONOMY-TIERS-001 M9 — init wiring consumes opts.AutonomyTier into the deployed settings
+// @MX:ANCHOR: [AUTO] Project type and language detection factory. Single entry point for creating Detector instances across the entire project.
+	// @MX:NOTE: [AUTO] init records only the explicit flag tracker; interactive
+// @MX:NOTE: [AUTO] Step 5 shell-config write goes through this variable; the production default writes real rc files, tests swap in a counting spy.
+// @MX:WARN: [AUTO] Package-global seam swapped by tests; a test that swaps it must not call t.Parallel and must restore it with t.Cleanup.
+// @MX:ANCHOR: [AUTO] ProgressReporter is the core progress contract; fan_in >= 3
+// @MX:ANCHOR: [AUTO] Core function for project root discovery. All .moai operations are anchored to the project root.
+// @MX:ANCHOR: [AUTO] Project structure validation factory. Shared entry point across many commands including init, update, and sync.
+// @MX:ANCHOR: [AUTO] Core package of the TRUST 5 quality gate framework. Automatically validates 5 quality principles (Tested, Readable, Understandable, Secured, Trackable).
+// @MX:WARN: [AUTO] Spawns goroutines equal to the number of validators for concurrent execution. Goroutine leak potential must be controlled.
+// @MX:ANCHOR: [AUTO] Name() is the validator identity contract — every quality gate consumer calls this to dispatch results by principle name
+// @MX:ANCHOR: [AUTO] the only writer of the decision board; the CLI and any future MCP surface route here
+// @MX:ANCHOR: SSOT for v.2.x → v3 cleanup targets.
+// @MX:ANCHOR: DeprecatedPaths is the SSOT for v.2.x → v3 cleanup targets;
+// @MX:ANCHOR: [AUTO] DiscoverLeader — the verified-leader discovery seam at the shared lane-join gate (REQ-001/REQ-010)
+// @MX:WARN: [AUTO] liveness verdict joins pid + process-start fingerprint; weakening either fact resumes against a dead or recycled process
+// @MX:NOTE: [AUTO] raw proc_info syscall because release builds are CGO-free
+// @MX:ANCHOR: [AUTO] the detector's single hook entry point — PreToolUse and PostToolUse both call it
+// @MX:ANCHOR: [AUTO] activation gate of the escalation detector — the first check on every hook and checkpoint path
+// @MX:WARN: [AUTO] the blocking flock runs in a goroutine so the wait can be bounded; on timeout the goroutine is left to finish and releases the lock itself
+// @MX:NOTE: [AUTO] no CLI verb calls this yet — the verb is plan.md §H Q2, an open operator decision; the function is the checkpoint body any surface will call
+// @MX:NOTE: [AUTO] the detector's public-behavior CI seam — reads only the civerdict package's on-disk records (SPEC-CI-VERDICT-PRODUCER-001); a schema change there re-shapes this limb's not_observed vocabulary
+// @MX:NOTE: [AUTO] sync-audit F1 — without this gate a resolved class 5/9 record re-opened at every later commit with no new evidence
+// @MX:NOTE: [AUTO] class 6 and class 8 name the observed command; every such write passes through this mask first, including the class 8 streak key kept in the state file
+// @MX:ANCHOR: [AUTO] the single contract resolver — card id from the worktree name, SPEC from the contract's card field
+// @MX:NOTE: [AUTO] mirrors memoryProjectSlug in internal/cli/memory.go (unexported there); the two must stay equal or the auto-memory exemption of REQ-AE-013 stops matching
+// @MX:ANCHOR: [AUTO] the single escalation record writer — dedup, occurrence counting, and re-trip naming
+// @MX:ANCHOR: [AUTO] sequence-item line mapping for contract_ref output.
+// @MX:NOTE: [AUTO] ApplyProposal appends to evolvable zones with backup (.bak) and atomic rename (single-writer pattern)
+// @MX:NOTE: [AUTO] Graduation pipeline: observation→heuristic (3x)→rule (5x+0.80 conf)→high-confidence (10x)→graduated
+// @MX:NOTE: [AUTO] Learning persistence with LEARN-YYYYMMDD-NNN format, atomic write, max 50 active cap, auto-archive oldest
+// @MX:WARN: [AUTO] Global mutex: all UpdateRateLimit calls are serialized
+// @MX:NOTE: [AUTO] Reflective Learning engine: observation→graduation→proposal pipeline with user approval requirement
+// @MX:NOTE: [AUTO] the vocabulary is CLOSED at five tokens (SPEC-TODO-LAND-AUTO-DONE-001
+// @MX:ANCHOR: [AUTO] writeRecord — the sole write path onto the queue database
+// @MX:NOTE: [AUTO] parity is deliberately exhaustive (every column tuple), not count-based — a count check would pass a rebuild that silently drops a spec id or landing evidence
+// @MX:WARN: [AUTO] rebuildItemsTable drops and renames the live items table inside a migration transaction — a fault past the copy step is recoverable only by rollback, never by repair
+// @MX:ANCHOR: WaitsOnOf — the direction-normalization SSOT for the sequencing pair
+// @MX:NOTE: single normalization point for both sequencing consumers —
+// @MX:ANCHOR: [AUTO] BacklogCountsForRoot — the statusline's per-render read
+// @MX:ANCHOR: [AUTO] Load — the lock-free read every backlog verb renders from
+// @MX:ANCHOR: [AUTO] LoadPure — the read that never moves bytes
+	// @MX:NOTE: [TID:PURE] A pure read projects nullable identities but never issues, stamps, or backfills them.
+// @MX:ANCHOR: [AUTO] openEngine — the layout resolver every store operation enters through
+// @MX:WARN: [AUTO] Mutate — cross-process lock held across the entire read-modify-write
+// @MX:ANCHOR: [AUTO] WithLock — the one place the queue's cross-process lock is taken for a mutation
+// @MX:WARN: [AUTO] WithLock — the lock is a non-reentrant flock on its own descriptor, so calling the public Mutate inside fn waits out the whole budget and errors
+	// @MX:WARN: [TID:TX] Identity schema, UUID backfill, and the card record must commit in one writer transaction.
+// @MX:ANCHOR: [AUTO] Add — the id-issuing append every add-path verb calls
+	// @MX:NOTE: [TID:RETURN] Add reads back the committed row so its card_uuid is exactly the persisted identity.
+// @MX:ANCHOR: [AUTO] Claim — the atomic compare-and-set card claim every claim surface calls
+// @MX:WARN: [TID:TX] claim-family engine access lives ONLY inside the Mutate callback
+// @MX:ANCHOR: [AUTO] RenewLease — the holder-checked lease extension
+// @MX:WARN: [TID:TX] claim-family engine access lives ONLY inside the Mutate callback
+// @MX:ANCHOR: [AUTO] ReclaimExpired — the queue-wide expiry-first return
+// @MX:WARN: [TID:TX] claim-family engine access lives ONLY inside the Mutate callback
+// @MX:ANCHOR: [AUTO] the single base-freshness verdict both window-entry verbs consult
+// @MX:ANCHOR: [AUTO] 12-character SHA shortener for candidate refusal messages.
+// @MX:ANCHOR: [AUTO] empty-field placeholder for candidate refusal messages.
+// @MX:ANCHOR: [AUTO] candidate mutation critical section for record writes.
+// @MX:ANCHOR: [AUTO] candidate store root: the one directory every candidate record path resolves through.
+// @MX:ANCHOR: [AUTO] path-segment guard for every candidate key part (card id and pinned SHA).
+// @MX:ANCHOR: [AUTO] candidate record reader: carries the non-regular-file refusal and the opened-descriptor check.
+// @MX:ANCHOR: [AUTO] unix record opener: O_NONBLOCK and O_NOFOLLOW before the opened descriptor is verified regular.
+// @MX:ANCHOR: [AUTO] windows record opener: the stat-after-open check stands in for the unix open flags.
+// @MX:ANCHOR: [AUTO] AbsentCardClassification — the named source of the absent-read default; every absence derivation reads this one constructor
+// @MX:ANCHOR: [AUTO] EffectiveCardClassification — the sole absent-field default derivation seam (SPEC-TODO-CLASSIFY-DISPATCH-001 REQ-TCD-014)
+// @MX:ANCHOR: [AUTO] SortByClassification — the sole queue-order restorer (SPEC-TODO-CLASSIFY-DISPATCH-001 REQ-TCD-005)
+// @MX:NOTE: [AUTO] The single definition of the relaunch command grammar
+// @MX:ANCHOR: [AUTO] ClaimFactoryLaneWithin — the lane-slot claim engine's public boundary; the recorded capacity read inside the claim transaction is the automatic scan's authority (derived marker grows, recorded count overrides and refuses a full run, absent record keeps the launcher bound — t1294 contract)
+// @MX:WARN: [AUTO] Cross-process lock serializing worktree creation and branch rename for every factory lane.
+// @MX:ANCHOR: [AUTO] the single window-root rule for the CLI verbs, the MCP handler and the PreToolUse guard
+// @MX:ANCHOR: [AUTO] ReleaseIntegrationLock — the exported release of the integration window, under which the holder check and the force override apply
+// @MX:WARN: [AUTO] an ordered 13-cause gate table read in one body — decision points well over the complexity-15 warn bar (measured 39 at the t1479 landing; the t1576 in-section card re-gate adds an if chain of its own, and the next mx scan re-measures the [AUTO] count)
+			// @MX:DEBT: an ignored byte at an added path created after the last collision probe is overwritten by the three-way merge — the flag does not reach the ort path on current git
+	// @MX:DEBT: the card gate is a point-of-effect re-check, not a cross-store serialization — a transition landing inside the read→merge span is detected and held post-merge (cause 8), not prevented
+// @MX:ANCHOR: [AUTO] ShortSHA — the length-safe SHA prefix every merge-surface render goes through
+// @MX:ANCHOR: [AUTO] the single re-measure verifier every merge path consults
+// @MX:ANCHOR: [AUTO] gated window refresh: the entry that applies the per-card red hold.
+// @MX:ANCHOR: [AUTO] red-hold refusal: the verdict check that every window grant taking the candidate gate goes through.
+// @MX:ANCHOR: [AUTO] candidate grant gate: the per-card red-hold gate that the refresh and grant paths take.
+// @MX:ANCHOR: [AUTO] the one serialized window-mutation helper — every queue mutation (acquire, release, wait, refresh, the merge step) routes through it
+// @MX:NOTE: the single exported query builder for the landed check —
+// @MX:ANCHOR: [AUTO] the single landed-ref resolution chain — the todo surface (todoLandedRef/Resolved) and, since SPEC-GITHUB-FLOW-CI-RESIDUE-001, the worktree landing surfaces (sweep default --base, done's origin-landing check) all answer from here
+// @MX:ANCHOR: [AUTO] Factory session record schema — the cross-actor contract for a factory session
+// @MX:NOTE: [AUTO] the absent error return is the fail-open guarantee, not an oversight — a launch path that cannot observe a failure cannot block on one
+// @MX:ANCHOR: [AUTO] revision-match predicate — the dedup gate's fail-safe default is FALSE
+// @MX:ANCHOR: [AUTO] composed suppression decision — an allow-list, never a deny-list
+// @MX:ANCHOR: [AUTO] ValidateSlotResourceName is the trust boundary for every path built from a resource name
+// @MX:ANCHOR: [AUTO] ResolveSlotLeaseRoot is the single root resolver shared by the CLI and the PreToolUse guard
+// @MX:ANCHOR: [AUTO] AcquireSlotLease is the atomic acquire every caller (CLI, tests, future wrappers) goes through
+// @MX:ANCHOR: [AUTO] resolveStateDir — the directory-layer resolver every queue path enters through
+// @MX:ANCHOR: [AUTO] Single pre-create guard for every caller that makes a state-lock directory (AcquireFactoryStepLock and BacklogStore.acquireLock, the queue lock).
+// @MX:ANCHOR: [AUTO] Shared opener for every state lock (queue, integration, slot lease, factory worktree-step); the owner-record write follows the safety checks.
+// @MX:ANCHOR: [AUTO] ReadCardStatus — the branch-vs-primary status source selection (REQ-KB-020)
+// @MX:ANCHOR: [AUTO] MergeBacklogRecords — the single merge decision point
+// @MX:NOTE: [AUTO] Publication verifies runtime parity before the staging DB becomes visible.
+// @MX:NOTE: [AUTO] External provenance is captured before acquiring this lock; a reported completion never archives a card.
+	// @MX:NOTE: [TID:LINK] Runtime UUIDs are projected from the one live/archive card identity snapshot; owner and provenance remain report data.
+// @MX:ANCHOR: [AUTO] InspectStaleLocalStores — the single divergence detector both disclosure surfaces and the doctor check consume
+// @MX:ANCHOR: [AUTO] the lane-direct merge condition triple (AC-FLA-009) funnels through here
+// @MX:NOTE: [AUTO] the pre-acquire timestamp on this record is what AC-FLA-009's second half verifies against the integration lock's acquired-at — deleting or rewriting runs would erase that proof.
+// @MX:NOTE: [AUTO] declared minimal consumption interface (design.md D2) — the producer schema stays t1332's; when t1332 lands, its wiring implements this seam and nothing here changes shape.
+// @MX:ANCHOR: [AUTO] messaging-availability probe predicate — every fallback declaration evaluates through it
+// @MX:ANCHOR: [AUTO] fallback mode-switch recorder — the exactly-once transition guarantee funnels through it
+// @MX:ANCHOR: [AUTO] the cross-lane count-by-lane query (M5 observability polish) — the operator-facing joint summary
+// @MX:ANCHOR: [AUTO] exactly-once result application; the check order is the contract
+// @MX:WARN: [AUTO] admission reads the endpoint row inside its own write transaction
+// @MX:WARN: [AUTO] the handoff read, the owner probe, and the ABANDONED write share one write transaction
+// @MX:WARN: [AUTO] five writes that must commit or roll back together, serialized by BEGIN IMMEDIATE against every other writer of the slot row
+// @MX:ANCHOR: [AUTO] single road to BOUND for interactive (hook SessionStart) and headless (cli controller) evidence
+// @MX:WARN: [AUTO] must read inside the caller's write transaction, after BEGIN IMMEDIATE and before the slot-row write
+// @MX:WARN: [AUTO] must run inside the launcher registration's write transaction, in the same commit as the slot-row write
+// @MX:ANCHOR: [AUTO] one invocation's canonical identity shared by registry, broker, and cache paths
+// @MX:NOTE: [AUTO] The prescription gate (internal/hook staleRunPrescriptionGate)
+// @MX:NOTE: [AUTO] Shared accessor per SPEC-STALE-RUN-LABEL-001 REQ-SRL-003 —
+// @MX:NOTE: [AUTO] Read-side sibling of ActiveRunExistsAt; the hook never
+// @MX:NOTE: [AUTO] Read-side sibling of ProbeRunState for the unbind notice's
+// @MX:WARN: [AUTO] rewrites the messages table in place (create, copy, drop, rename)
+// @MX:ANCHOR: [AUTO] context-bound broker initialization for ordinary and rebound hook registration
+// @MX:NOTE: [AUTO] observeBusy is a test seam only; production passes nil.
+// @MX:NOTE: [AUTO] read-only counterpart of ResolveActiveRun; keep it free of ReconcileActiveRuns and of any RebindRun/retire call
+// @MX:WARN: [AUTO] the handoff-state read and finalize must stay inside this write transaction, serialized by BEGIN IMMEDIATE against the handoff rebind
+// @MX:ANCHOR: [AUTO] stale-peer check shared by every Send/Poll/Ack entry and by in-transaction callers
+// @MX:NOTE: [AUTO] the threshold is deliberately biased toward false positives
+// @MX:ANCHOR: [AUTO] BugreportQueueStore — every queue-touching surface resolves the store here
+// @MX:ANCHOR: [AUTO] FlushContext — the CLI flush and the update-end trigger both enter the sender here
+// @MX:WARN: [AUTO] every gh call is a public side effect from the user's account
+// @MX:WARN: [AUTO] Mutate — cross-process lock held across the entire read-modify-write
+// @MX:ANCHOR: [AUTO] SSRF guard SSOT — both production fetch surfaces construct their page client here
+// @MX:NOTE: [AUTO] Initializes LanguageRegistry containing all language ecosystem definitions. DefaultRegistry is created via init() and referenced from 6 or more files.
+// @MX:ANCHOR: [AUTO] NewManager is a core factory called from 4+ packages
+// @MX:ANCHOR: [AUTO] Validate is a shared Validate interface implementation
+// @MX:NOTE: Workflow template validator - Checks compliance of GitHub Actions workflows and action templates
+// @MX:ANCHOR: [AUTO] GLM credential SSOT — exactly one writer implementation
+// @MX:ANCHOR: [AUTO] goal dashboard render model — XSS auto-escape binding surface
+	// @MX:WARN: [AUTO] XSS inertness test — AC-GHF-002 load-bearing; a regression
+// @MX:NOTE: [AUTO] determinism contract — stable sorts and a total order everywhere; no wall-clock in the body, so two runs over the same tree are byte-identical (REQ-GR-005)
+// @MX:NOTE: [AUTO] citations layer — accuracy axis distinct from the 3 freshness layers; blockquote exemption is deliberate (D2), documented as a false-negative risk in spec.md D2
+// @MX:NOTE: [AUTO] beta demo edge fixture
+// @MX:LEGACY: [AUTO] file-scope legacy marker
+	// @MX:ANCHOR: [AUTO] golden fixture anchor
+	// @MX:WARN: [AUTO] golden fixture warn
+	// @MX:DEBT: golden fixture debt, with trigger
+	// @MX:DEBT: golden fixture debt, no trigger
+	// @MX:TODO: golden fixture todo
+// @MX:NOTE: [AUTO] EdgeFanInSource — structural-typing seam: the consumer interface lives in hook/mx, the implementation lives with the data (SPEC-MX-TAG-EDGES-001 plan B.6)
+// @MX:NOTE: [AUTO] edges.jsonl writer — JSONL over a server/DB for operational cost: git-diffable, zero cgo, zero background services
+// @MX:NOTE: [AUTO] single-definition resolution→confidence map — stamp via this, never inline the numbers (SPEC-GRAPH-EDGE-CONFIDENCE-001)
+// @MX:ANCHOR: [AUTO] DemoAnchor — fixture anchor
+// @MX:NOTE: [AUTO] SymbolFanIn — evidence-backed caller aggregation over code-call edges; blocking count = DISTINCT evidence files, declaration file excluded (SPEC-MX-TAG-EDGES-001)
+// @MX:NOTE: [AUTO] MilestoneClaims — claim-side half of the milestone↔card gate; the queue-side half lives in the CLI where the live backlog is readable
+// @MX:NOTE: [AUTO] BlastRadius — mx-spec bidirectional rule lets a change at a code file reach the SPECs it implements and their dependents
+// @MX:ANCHOR: [AUTO] single choke point for every automatic write path's shrink evaluation — refresh, build, and the deferred path all consume this one verdict
+// @MX:NOTE: [AUTO] declares-side of the confidence join — names stay dedup+sorted so the callee→declaring-file match is deterministic (SPEC-GRAPH-EDGE-CONFIDENCE-001)
+// @MX:NOTE: [AUTO] symbol.Extract — REQ-GF-013 seam: astx consumed outside the navigator with no navigator-tier dep (tiers stays a graph-level concern)
+		[]byte("package demo\n\nimport (\n\t\"example.com/proj/internal/undoc\"\n\t\"fmt\"\n)\n\n// @MX:NOTE: [AUTO] demo\n// @MX:SPEC:SPEC-X-001\nfunc Demo() { Hidden(); undoc.Use(); fmt.Println(1) }\n\nfunc Hidden() {}\n"), 0o644); err != nil {
+	// @MX:NOTE: [AUTO] anchored inside the function body
+		// @MX:TODO: resolve the nested closure question
+	// @MX:ANCHOR: [AUTO] invariant contract marker
+// @MX:NOTE: [AUTO] file-scope note, outside any function range
+	// @MX:WARN: [AUTO] danger zone in the body
+	// @MX:DEBT: in-memory cache, no eviction
+	// @MX:TODO: wire the exporter
+	// @MX:LEGACY: no SPEC coverage
+	// @MX:DEBT: rotting cache, no upgrade trigger
+// @MX:WARN: [AUTO] unjoined background goroutine — the refresh outlives this
+// @MX:TODO: [AUTO] Phase 4: wire learning.auto_apply config to enable writes
+// @MX:ANCHOR: [AUTO] EnrichDescription, InjectTrigger are learning pipeline write paths.
+// @MX:WARN: [AUTO] If enableTriggerInjectionWrites is OFF (Phase 2), skip actual file write.
+// @MX:ANCHOR: [AUTO] ApplyPendingError is the subagent→orchestrator boundary type.
+// @MX:ANCHOR: [AUTO] Apply is the single entry point of Phase 4 learning application pipeline.
+// @MX:ANCHOR: [AUTO] RestoreSnapshot is the core function of rollback functionality.
+// @MX:ANCHOR: [AUTO] Capturer.OnSubagentStop is the M1 lesson capture entry point.
+// @MX:NOTE: [AUTO] append-only contract — Tier-3 LOCAL surface appends only,
+// @MX:WARN reason="prior-judgment leak detection per REQ-HRN-002-017"
+// @MX:ANCHOR: [AUTO] EnsureAllowed — FROZEN gate that must be called before meta-harness writes
+// @MX:NOTE: [AUTO] AC-HPR-007 specification — hns- recognition on the
+// @MX:ANCHOR: [AUTO] AggregatePatterns, ClassifyTier, WritePromotion are learning pipeline entry points.
+// @MX:ANCHOR: [AUTO] Used by multiple callers as the first step of the learning pipeline.
+// @MX:ANCHOR: [AUTO] WriteLineageEntry는 lineage 기록의 단일 진입점.
+// @MX:ANCHOR: [AUTO] LoadManifest는 lineage 조회의 단일 진입점.
+// @MX:ANCHOR: [AUTO] ErrReProposalSuppressed is the A7 early-block sentinel.
+// @MX:ANCHOR: [AUTO] RecordEvent is the entry point called from all hook paths.
+// @MX:NOTE: [AUTO] The learning.enabled gate lives in the CLI hook wrapper
+// @MX:ANCHOR: [AUTO] RecordExtendedEvent is the common entry point for the Stop/SubagentStop/UserPromptSubmit handlers.
+// @MX:NOTE: [AUTO] REQ-CGA-001/003: eager-vs-on-demand weight estimator with fail-open.
+// @MX:NOTE: [AUTO] OutcomeRecord is composed inside applyWithRegressionGate from
+// @MX:ANCHOR: [AUTO] RecordOutcome is the observer entry point for Apply outcomes.
+// @MX:NOTE: [AUTO] Cross-references internal/harness/rubric.go ParseRubricMarkdown (SPEC-V3R2-HRN-003)
+// @MX:ANCHOR: [AUTO] MetricTriple is the shared measurement record of the gate.
+// @MX:ANCHOR: [AUTO] ApplyRegressionError is the gate→orchestrator boundary type.
+// @MX:NOTE: [AUTO] Anything longer than this is not a stamp we wrote, so it parses as "no stamp".
+// @MX:ANCHOR: [AUTO] PruneStaleEntries is the prune entry: the retention-prune child verb and the tests call it.
+// @MX:WARN: [AUTO] The pruner replaces the log by rename; an event appended after its final tail reading is lost.
+// @MX:NOTE: [AUTO] Double-checked locking: the stamp is read again after the lock is won, with a fresh
+// @MX:NOTE: [AUTO] Stamp-before-work: a pruner killed after archiving and before the rename leaves the
+// @MX:WARN: [AUTO] This path removes an entry from the log directory.
+// @MX:NOTE: [AUTO] classifiedEnd is the boundary overwriteWithEvents carries the log tail from; a
+// @MX:WARN: [AUTO] The write is atomic per prune, but a kill after the rename and before the
+// @MX:WARN: [AUTO] flock on a file that a hostile actor could replace; never opened through a link.
+// @MX:ANCHOR: [AUTO] MaybeSpawnRetentionPruner is the single spawn gate all four hook observe handlers reach.
+// @MX:WARN: [AUTO] Detached-process spawn: a child process escapes the hook's lifetime and process group.
+// @MX:WARN: [AUTO] Detached-process spawn: a child process escapes the hook's lifetime and process group.
+// @MX:ANCHOR: [AUTO] EffortForLevel — source of the effort field for CLI route --json
+// @MX:WARN: [AUTO] FROZEN ceiling — changing this value violates REQ-HRN-001-013
+// @MX:ANCHOR: [AUTO] entry point for the escalation counter and level bump
+// @MX:WARN: [AUTO] FROZEN keyword set — modifications require a CON-002 amendment
+// @MX:ANCHOR: [AUTO] FROZEN level enum — {minimal, standard, thorough} (REQ-HRN-001-017)
+// @MX:ANCHOR: [AUTO] harness routing interface — Route, RouteFromFile methods
+// @MX:NOTE: [AUTO] Fixed precedence abort > non-zero-gate > terminal-pass > pending;
+// @MX:ANCHOR: [AUTO] Append is the single ledger write entry point.
+// @MX:NOTE: [AUTO] FROZEN at {0.25, 0.50, 0.75, 1.00} per design-constitution §12 Mechanism 1; adding anchors requires CON-002 amendment
+// @MX:WARN: [AUTO] FROZEN-zone constraint per CONST-V3R2-155; anchor set must remain {0.25, 0.50, 0.75, 1.00}
+// @MX:ANCHOR: [AUTO] EvaluateCanary is the single entry point for Layer 2.
+// @MX:ANCHOR: [AUTO] EvaluateCanaryWithScorer is the test injection entry point.
+// @MX:ANCHOR: [AUTO] CanaryVeto is the Canary veto gateway for provisional evolution.
+// @MX:ANCHOR: [AUTO] DetectOverlappingTriggers is the trigger overlap detection entry point.
+// @MX:ANCHOR: [AUTO] DetectChainRuleContradictions is the chaining rule contradiction detection entry point.
+// @MX:ANCHOR: [AUTO] DetectFrozenRuleContradictions is the Curator-path L3 consult.
+// @MX:ANCHOR: [AUTO] LogViolation is the single entry point for FROZEN violation recording.
+// @MX:ANCHOR: [AUTO] FrozenRuleRegistry is the L3 contradiction consult target.
+// @MX:ANCHOR: [AUTO] BuildOversightProposal is the L5 subagent→orchestrator interface.
+// @MX:ANCHOR: [AUTO] Pipeline.Evaluate is the 5-Layer Safety Architecture entry point.
+// @MX:WARN: [AUTO] l1~l5 function fields are for test injection, use only NewPipeline in production.
+// @MX:ANCHOR: [AUTO] RateLimiter is the core component of Layer 4.
+// @MX:ANCHOR: [AUTO] NewRateLimiter is the core factory of Layer 4.
+// @MX:NOTE: [AUTO] FROZEN at 4 values per spec.md REQ-HRN-003-001; 5th dimension requires CON-002 amendment
+// @MX:WARN: [AUTO] FROZEN-zone constraint; addition of 5th dimension requires CON-002 amendment per zone-registry CONST-V3R2-154
+// @MX:NOTE: [AUTO] aggregation default = min per REQ-HRN-003-007; mean opt-in per REQ-HRN-003-015; per-dimension override supported
+// @MX:WARN: [AUTO] must-pass firewall FROZEN per design-constitution §12 Mechanism 3; bypass requires CON-002 amendment
+// @MX:ANCHOR: [AUTO] EvaluatorRunner.AggregateScoreCard — fan_in=3 (scorer_engine_test + SKILL.md Phase 3b + future HRN-001 router)
+// @MX:ANCHOR: [AUTO] Loader.LoadForProject is the M5 seed entry point.
+// @MX:ANCHOR: [AUTO] Throttler.Check is the M4 throttling entry point for all proposals.
+// @MX:ANCHOR: [AUTO] Engine.Increment is the tier engine entry point.
+// @MX:ANCHOR: [AUTO] Engine is the central tier state machine for the harness autonomy system.
+	// @MX:NOTE: [AUTO] Three new event kinds for session termination (Stop hook),
+// @MX:NOTE: [AUTO] 12 new fields added as omitempty. Existing entries remain compatible.
+// @MX:TODO: [AUTO] Plan to add gate with learning.enabled setting key in Phase 4.
+// @MX:ANCHOR: [AUTO] Used by multiple callers as ClassifyTier return value.
+// @MX:NOTE: [AUTO] proposalgen mapper(buildActionablePatternRE)가 파생하는
+// @MX:ANCHOR: [AUTO] Proposal is the input type for the entire safety pipeline.
+// @MX:ANCHOR: [AUTO] OversightProposal is the subagent→orchestrator interface boundary.
+// @MX:ANCHOR: [AUTO] LineageEntry는 lineage writer/loader와 Apply 통합의 공유 record 타입.
+// @MX:ANCHOR: [AUTO] CommandTemplate is the single source of the thin-wrapper command body.
+// @MX:ANCHOR: [AUTO] TestDogfood_MoaiAdkDevHarnessEndToEnd is the v4 system composition gate.
+// @MX:ANCHOR: [AUTO] migratedSpecialists is the v4 mapping SSOT for the 4 Layer B specialists.
+// @MX:ANCHOR: [AUTO] RunnerTemplate is the single source of the Runner script body.
+// @MX:ANCHOR: [AUTO] learning.tier vocabulary SSOT — derived from harness.Tier.String()
+// @MX:ANCHOR: [AUTO] Validate is the single entry point for manifest validation.
+// @MX:ANCHOR: [AUTO] SetCardSpec — the sole post-pick spec-id record-layer mutation (REQ-CMV-005)
+// @MX:ANCHOR: [AUTO] the F1 card transition table — the complete set of requested edges the record accepts
+// @MX:ANCHOR: [AUTO] the only writer that moves a factory card between states
+// @MX:WARN: [AUTO] holds the drift log's lock across one record write's transaction while the record's write lock is held
+// @MX:ANCHOR: [AUTO] rebind — the recorded-path move the migration rebinds cards through
+// @MX:NOTE: [AUTO] the cross-run binding read the lease-boundary carry-over is built on (card t1521)
+// @MX:WARN: [AUTO] the retired-run check and the repair's writes must stay in this one transaction
+// @MX:NOTE: [AUTO] only a single DEAD-owner candidate classified on its own stamp is returned as adopt; indeterminate and peer-classified candidates surface through the warn list
+// @MX:NOTE: [AUTO] test-only seam; production code never sets it and the nil check is the only production cost
+// @MX:WARN: [AUTO] abandons another run's card row inside the lease transaction; every skip condition fails toward leaving the row alone
+// @MX:ANCHOR: [AUTO] the single consolidation operation behind leader entry, `runs --retire --rebind-to` and the join prompt's m<n>
+// @MX:WARN: [AUTO] moves rows between runs inside one write transaction; every guard must precede its first write
+// @MX:WARN: [AUTO] retires a run with no identity at all; every premise must hold or the row stays indeterminate
+// @MX:NOTE: [AUTO] order inside the transaction is status -> stamp -> cards -> flip -> event; the stamp check precedes the card read so a restamped run never yields the cards error
+// @MX:DEBT: user/system git config is not part of the location fingerprint
+// @MX:ANCHOR: [AUTO] the one project identity key all home-state paths derive from.
+// @MX:ANCHOR: [AUTO] worktree-to-shared-root normalization feeding ProjectKey.
+// @MX:NOTE: [AUTO] zero is the capacity-open marker, not an unset datum — a join reading it must grow the scan, never fall back to a launcher-side bound
+// @MX:ANCHOR: [AUTO] strict agent-memory path predicate shared by drain + mirror
+// @MX:ANCHOR: [AUTO] DrainTree is the shared drain/mirror reconciliation entry (backfill CLI + mirror)
+// @MX:ANCHOR: [AUTO] auditor receipt guard; entry points on SubagentStart, SubagentStop and the Agent/Task spawn path
+// @MX:NOTE: [AUTO] staleness only trims the PreToolUse spawn deny; SubagentStart/Stop paths and the record files are unchanged
+// @MX:ANCHOR: [AUTO] branchStatePatterns — branch-state regex SSOT; M2 deny-origin test swaps this var.
+// @MX:NOTE: [AUTO] git branch flag-class classifier — M1 matrix (branch_guard_flagclass_test.go) is the classification authority
+// @MX:NOTE: [AUTO] SPEC-WORKTREE-BRANCH-GUARD-DISCRIM-001 M1 worktree discriminant regression suite.
+// @MX:WARN: cyclomatic complexity well above 15 — pipeline of classification,
+// @MX:ANCHOR: [AUTO] Hook pre-execution contract validator; gate for all hook handler dispatches
+// @MX:ANCHOR: [AUTO] CoverageTable is the authoritative 29-event inventory post-MIG-002
+// @MX:NOTE: [AUTO] t236/#1640 — sole producer of the MOAI_PROJECT_DIR export;
+// @MX:NOTE: [AUTO] code-change Edit/Write 가 Outcome=success 를 갖는 이유 —
+// @MX:ANCHOR: [AUTO] logEvidence 는 증거 게이트 활성화의 production write 경로다 —
+// @MX:NOTE: [AUTO] interactive BOUND is triggered only by SessionStart evidence; UserPromptSubmit never binds a handoff
+// @MX:NOTE: [AUTO] the unknown on lookup-failure is deliberate; record-present
+// @MX:NOTE: [AUTO] The notice state machine of SPEC-FACTORY-STALE-RUN-HEAL-001
+			fileContent: "// @MX:NOTE: This is a note\npackage main\n",
+	if err := os.WriteFile(path, []byte("package main\n// @MX:NOTE: x\nfunc main(){}\n"), 0644); err != nil {
+	if err := os.WriteFile(path, []byte("// @MX:ANCHOR: side\n// @MX:REASON: test\npackage main\nfunc main(){}\n"), 0644); err != nil {
+	if err := os.WriteFile(path, []byte("// @MX:NOTE: bench\npackage main\nfunc main(){}\n"), 0644); err != nil {
+	if err := os.WriteFile(outsideFile, []byte("// @MX:NOTE: leaked\npackage secret\n"), 0644); err != nil {
+	if err := os.WriteFile(inRootFile, []byte("// @MX:NOTE: fine\npackage ok\n"), 0644); err != nil {
+	if err := os.WriteFile(inRootFile, []byte("// @MX:ANCHOR: keep\n// @MX:REASON: regression\npackage main\nfunc main(){}\n"), 0644); err != nil {
+	if err := os.WriteFile(secretFile, []byte("// @MX:NOTE: "+secretTag+"\npackage secret\n"), 0644); err != nil {
+// @MX:ANCHOR: [AUTO] Entry point for GLM+team mode tmux environment variable injection in the SessionStart hook
+// @MX:ANCHOR: [AUTO] SessionEnd hook 호출 단일 진입점 (public API). 6단계 파이프라인: 1) pending.md 검출 (REQ-SHA-002 absent=no-op) → 2) parsePending 검증 (REQ-SHA-004/005/011) → 3) memoryDir 존재 확인 (§B.2 directory 생성 금지) → 4) atomicWriteFile (REQ-SHA-006) → 5) prependToMemoryMD (REQ-SHA-007/008) → 6) pending 제거 (REQ-SHA-010).
+// @MX:ANCHOR: [AUTO] frontmatter + body 구조 검증 단일 진실 공급원. REQ-SHA-004 (malformed) + REQ-SHA-005 (structural-defect) + REQ-SHA-011 (path-injection guard) 통합 게이트. PersistIfPending에서 유일하게 호출 (fan_in=1, 본 함수가 검증 책임 전체 보유).
+// @MX:ANCHOR: [AUTO] atomic 쓰기 계약 (CreateTemp → Write → Chmod → Sync → Close → Rename). 동시 읽기자에게 부분 쓰기를 노출하지 않음 (REQ-SHA-006). PersistIfPending + prependToMemoryMD 양쪽 호출 (fan_in=2 + 잠재 외부 호출자).
+// @MX:NOTE: [AUTO] read-modify-write 루프 최대 3회 재시도 (memoryMdRetryLimit). mtime + size 양쪽 비교로 read와 write 사이 동시 수정 감지. drift 감지 시 재시도, 한계 초과 시 contention 에러 반환 (slog.Warn 처리는 caller PersistIfPending). MEMORY.md 부재 시 신규 생성 (atomic rename 보장).
+// @MX:NOTE: [AUTO] FIRST 매치 라인만 supersede marker 적용 후 즉시 반환 (§A.3 opportunistic 정책 — 다중 매치 시에도 첫 줄만 처리). 중복 marker 방지를 위해 라인 prefix `[SUPERSEDED ` 검사 후 skip. 미매치 시 content 변경 없이 그대로 반환.
+// @MX:ANCHOR: [AUTO] SessionStart auto-resume 주입 단일 진입점 (4-source × mode branch table). 유일 소비 셀 = source==clear ∧ mode==auto ∧ live pending. 나머지 7셀은 pending 보존.
+// @MX:ANCHOR: [AUTO] hookOptInEnabled is the master gate for the 3 HOI hook series
+// @MX:ANCHOR: [AUTO] LSEL drain-ownership probe — the single NFC-4 contact point
+// @MX:NOTE: 210000 is the operator ruling, not a derived limit — do not tune
+		// @MX:NOTE: [AUTO] t2117 C1 — a non-regular entry (FIFO, socket, device) must never reach ReadFile: a writer-less FIFO at an instruction-file path blocks the read forever. Lstat (the entry itself must be a regular file, links included in the refusal), same discipline as the migration verb.
+// @MX:ANCHOR: [AUTO] ValidateType is a shared Validate interface implementation
+// @MX:NOTE: [AUTO] SPEC-AGENT-MEMORY-DRAIN-001 M2 — write-time mirror wrapper; the strict path anchor lives in agentmemory.go (plan D7).
+// @MX:NOTE: [AUTO] FanInEvidenceSource — structural-typing seam owned at the consumer: the implementation (internal/graph.EdgeFanInSource) never imports this package (SPEC-MX-TAG-EDGES-001)
+// @MX:ANCHOR: [AUTO] MX tag validator factory. Entry point for the ValidateFile/ValidateFiles call chain.
+// @MX:NOTE: [AUTO] NewValidatorWithSource — batch-surface constructor (SessionEnd is the sole sanctioned caller); PostToolUse keeps the default textual constructor (SPEC-MX-TAG-EDGES-001)
+// @MX:WARN: [AUTO] Called in parallel via goroutines from ValidateFiles. Can be interrupted via ctx.Done(), but individual countFanIn calls may block on file I/O.
+// @MX:ANCHOR: [AUTO] fanInIndex — REQ-PERF-002-A single-traversal optimization
+// @MX:WARN: [AUTO] Spawns bounded goroutine pool; semaphore caps concurrency at runtime.NumCPU()*2.
+	// @MX:WARN: [AUTO] Goroutine that closes resultsCh after all workers finish; must not be cancelled externally
+// @MX:WARN: [AUTO] context pattern present
+// @MX:WARN: [AUTO] goroutine lifecycle risk
+// @MX:ANCHOR without adjacent @MX:REASON → P1 violation with MissingTag="@MX:REASON".
+// @MX:ANCHOR: [AUTO] HighFanIn is a frequently called entry point.
+// @MX:WARN with an adjacent @MX:REASON on the immediate next line → no REASON-pairing violation.
+// @MX:WARN: [AUTO] Goroutine lifecycle risk.
+// @MX:ANCHOR: [AUTO] ProcessRequest is a high fan_in entry point.
+// @MX:ANCHOR: [AUTO] HighFanIn
+// @MX:ANCHOR: [AUTO] HighFanIn
+// @MX:WARN: [AUTO] goroutine lifecycle
+// @MX:WARN: [AUTO] goroutine lifecycle
+// @MX:ANCHOR: [AUTO] ProcessRequest is a high fan_in entry point
+// @MX:WARN: [AUTO] Goroutine lifecycle risk
+// @MX:ANCHOR: [AUTO] existing tag
+// @MX:ANCHOR: [AUTO] observabilityOptIn guards all RETIRE-OBS-ONLY handler entry paths
+// @MX:NOTE: [AUTO] post_tool_duration_threshold_test.go — REQ-CC2122-HOOK-002 yaml read
+// @MX:ANCHOR: [AUTO] postToolGuardianHandler is the in-process PostToolUse guardian, registered alongside the post-tool handler in internal/cli/deps.go.
+// @MX:NOTE: [AUTO] t236/#1640 — new integration point on the PostToolUse
+// @MX:ANCHOR: [AUTO] HARNESS_FROZEN_* sentinel catalog — PreToolUse W3 first implementer.
+		// @MX:ANCHOR: [AUTO] the destructive-pattern denylist below runs UNCONDITIONALLY on every Bash command
+// @MX:NOTE: [AUTO] the 240-byte bound and the fixed field order are a wire
+// @MX:NOTE: filterExcludedPaths is the authoritative path-exclusion boundary
+// @MX:ANCHOR: [AUTO] Quality gate executor; primary entry point called by multiple hook handlers before git operations
+// @MX:ANCHOR: [AUTO] Hook Registry is the central registration and dispatch system for all Claude Code event handlers. Supports sequential execution, timeout, and block short-circuit.
+// @MX:NOTE: [AUTO] Default timeout is 30 seconds (DefaultHookTimeout). If handler does not complete within timeout, ErrHookTimeout is returned.
+// @MX:ANCHOR: [AUTO] RetiredEventNames is the single source of truth for retired hook events
+// @MX:WARN: [AUTO] Parallel file scan using goroutines — bounded by semaphore (SPEC-UTIL-002).
+// @MX:ANCHOR: [AUTO] File extension validation gate. Single entry point for extension filtering before scanning.
+// @MX:ANCHOR: [AUTO] ScanDiff is the Layer-2 turn-diff analyzer invoked at Stop by HandleSecurityTurn.
+// @MX:ANCHOR: [AUTO] HandleSecurityScan is the Layer-1 PostToolUse entrypoint wired via `moai hook security-scan`.
+// @MX:ANCHOR: [AUTO] guardianClasses is the single-source dangerous-pattern table consumed by all 3 guardian layers.
+// @MX:ANCHOR: [AUTO] ScanBuffer is the Layer-1 in-process regex scan shared by Layers 1/2/3 (Layer 2 scans diff hunks, Layer 3 scans each cross-file buffer).
+// @MX:ANCHOR: [AUTO] the single coupling point between served-model observation and the notion of an expected model
+// @MX:NOTE: [AUTO] streaming read — the transcript is never loaded whole; the budget is what keeps the SubagentStop hook inside its wrapper timeout
+		// @MX:NOTE: [AUTO] a payload naming no transcript at all (neither agent_transcript_path nor transcript_path + agent_id) identifies no subagent run to observe, so it yields no row and no warning; whether the runtime ever sends such a SubagentStop payload has not been measured — if it does, that stop goes unobserved rather than recorded unknown
+// @MX:NOTE: [AUTO] per-cwd 해석(slug = raw session CWD 기반, git-root 정규화 없음)은
+	// @MX:NOTE: [AUTO] cleanup write-back must preserve 0o600 even when env is wiped
+// @MX:NOTE this advisory is read-only and fail-open (REQ-PES-004).
+// @MX:ANCHOR: [AUTO] 세션 원장 판단 로직의 단일 진입점 — runEvidenceGate 와 단위 테스트가 호출
+// @MX:NOTE: [AUTO] opt-in cross-package sync seam — a caller that owns and deletes ProjectDir needs this
+// @MX:NOTE: [AUTO] input-lag budget — synchronous path is turn-visible-effects only
+		// @MX:NOTE: [AUTO] registry RMW + goal orphan prune sequenced per shared file
+		// @MX:WARN @MX:REASON migration errors MUST NOT block the session (REQ-021);
+		// @MX:WARN @MX:REASON bounded-background-goroutine join — if the scan
+// @MX:NOTE: [AUTO] deferred advisory scans — best-effort, idempotent, non-blocking
+	// @MX:ANCHOR: [AUTO] settings.local.json holds GLM ANTHROPIC_AUTH_TOKEN — write with 0o600 only
+	// @MX:NOTE: [AUTO] settings.local.json may contain GLM credentials elsewhere; use 0o600
+	// @MX:NOTE: [AUTO] same settings.local.json may carry sensitive env; 0o600 mandatory
+// @MX:NOTE: [AUTO] async/sync test seam — TestMain sets false; production CLI keeps true
+// @MX:NOTE: the join bound lives in the caller, never inside the seam
+// @MX:WARN @MX:REASON bounded-background-goroutine join — a comparison that
+// @MX:WARN: [AUTO] fire-and-forget detached child — never awaited, exit status never read.
+	// @MX:WARN: [AUTO] unjoined background goroutine — a read that outruns
+// @MX:WARN @MX:REASON: the seam runs inside the SessionStart deferred
+// @MX:DEBT: the advisory goroutine is detached, so it races the short-lived
+// @MX:WARN @MX:REASON bounded-background-goroutine join — a read that
+// @MX:ANCHOR: [AUTO] the only test proving a migration failure reaches the user
+		"// @MX:NOTE: [AUTO] integration marker\nfunc Bar() {}\n")
+// @MX:NOTE: [AUTO] measurement seam only — nil in production, never a feature switch
+// @MX:ANCHOR: [AUTO] secureSettingsMode enforces 0o600 across all settings.local.json writers
+// @MX:ANCHOR: [AUTO] shell-tool predicate — every guard and evidence branch that inspects command text routes through it
+// @MX:ANCHOR: [AUTO] checkSlotLease is the PreToolUse decision for the slot lease; its fail-open and root-normalization contract is what AC-RSL-010/011/012/016 pin
+// @MX:NOTE: [AUTO] agentStartHandler SPEC-V3R3-RETIRED-AGENT-001 5-layer defect chain
+// @MX:NOTE: [AUTO] the predicate's evaluation order is load-bearing — the two
+	if err := os.WriteFile(file, []byte("// @MX:NOTE: probe\npackage sub\n"), 0o644); err != nil {
+	if err := os.WriteFile(file, []byte("// @MX:NOTE: probe\npackage root\n"), 0o644); err != nil {
+// @MX:ANCHOR: [AUTO] WaitForAsync is the canonical async-completion barrier for hook tests
+// @MX:WARN: [AUTO] Starts a background goroutine (go w.run()) whose lifetime is tied to Close(); leaks if Close is never called
+// @MX:ANCHOR: [AUTO] Primary trace output interface called by all hook handlers that emit observability events
+// @MX:NOTE: [AUTO] Close and CloseWithTimeout are the only flush barriers; measured production fan_in is 1 (registry.Shutdown calls CloseWithTimeout), and Close itself has no production caller
+// @MX:ANCHOR: [AUTO] PreToolUse allow response factory. Used to generate the default allow response in all hook handlers.
+// @MX:NOTE: [AUTO] Mode-aware safe-path decision for PreToolUse. Fixes the
+// @MX:ANCHOR: [AUTO] PreToolUse deny response factory. Core factory used when rejecting tool execution.
+// @MX:ANCHOR: [AUTO] PreToolUse permission-ask response factory. Used when user confirmation is required.
+// @MX:WARN: [AUTO] Package-level mutex guards shared worktree state file; all reads and writes must acquire this lock
+// @MX:ANCHOR: [AUTO] Hook event type selector for the dispatcher routing table
+// @MX:ANCHOR: [AUTO] Worktree lifecycle hook handler called by the central hook dispatcher
+// @MX:ANCHOR: [AUTO] root-copy sweep for hook wrappers — replaces the hand list's scope with the whole deployable set.
+// @MX:NOTE: [AUTO] the named residual loss windows are documented in
+	// @MX:WARN @MX:REASON: the seam exists to prove the rejudge catches a
+	// @MX:WARN @MX:REASON: the seam sits inside the symlink-safety window;
+	// @MX:WARN @MX:REASON: the anchored root handle is the D27 closure; a
+// @MX:ANCHOR: [AUTO] GC.Run — the fail-closed deletion gate for state GC
+// @MX:ANCHOR: [AUTO] Liveness.Evaluate — the three-signal fail-closed verdict
+// @MX:NOTE: [AUTO] No-compiled-fallback contract: an absent key returns
+// @MX:NOTE: [AUTO] Warning-only invariant: this function deletes nothing —
+	// @MX:WARN @MX:REASON: the stat seam is the documented stale-decision
+	// @MX:WARN @MX:REASON: the exclusion seam models the Windows
+// @MX:ANCHOR: [AUTO] Rotator.Run — the apply/report mode gate for every rotation
+// @MX:ANCHOR: [AUTO] SinkRegistry — the closed-registry accessor
+// @MX:ANCHOR: [AUTO] ScanSourceSinks — the registry-completeness guard
+// @MX:ANCHOR: [AUTO] enumerateCandidates — the closed-registry enumeration
+// @MX:ANCHOR: [AUTO] TypeSafe System One call-path SSOT — the only client implementation
+// @MX:ANCHOR: [AUTO] TypeSafe credential SSOT — exactly one writer implementation
+// @MX:ANCHOR: [AUTO] Append is the single entry point through which every Jev decision row reaches disk; the -002 hook adapter, the tests and the -003 report fixtures all depend on its fail-open contract
+// @MX:WARN: [AUTO] Opens a path the project controls, which may have been replaced by a link, a pipe or a directory
+// @MX:ANCHOR: [AUTO] Lock/Unlock exported advisory-lock API — invariant contract
+// @MX:NOTE: [AUTO] Windows locks are LockFileEx byte-range locks, so they exclude
+// @MX:ANCHOR: [AUTO] Feedback loop controller factory - entry point for all loop executions
+// @MX:WARN: [AUTO] Starts the runLoop goroutine; requires context-based lifecycle management
+// @MX:NOTE: [AUTO] Stagnation detector extended with diagnostic trend awareness (REQ-LL-010)
+// @MX:WARN: [AUTO] Bounded channel — overflow drops oldest event silently (after warn log)
+// @MX:NOTE: [AUTO] Router interface is a DI boundary that allows injecting fakes in tests without coupling to Manager
+// @MX:ANCHOR: [AUTO] Aggregator — core diagnostic collection type shared by Ralph, QGATE, LOOP, MCP and other callers
+// @MX:ANCHOR: [AUTO] WithLogger is a functional option used across 3+ packages
+// @MX:ANCHOR: [AUTO] NewAggregator — sole entry point for constructing an Aggregator
+// @MX:ANCHOR: [AUTO] Aggregator.GetDiagnostics — core path for collecting diagnostics
+// @MX:NOTE: [AUTO] Extension-based language detection helper — determines the CircuitBreaker map key without coupling to Manager
+// @MX:ANCHOR: [AUTO] DiagnosticCache — core diagnostic cache type shared by Aggregator, tests, and Manager
+// @MX:ANCHOR: [AUTO] DiagnosticCache.Set — entry point for storing diagnostic results
+// @MX:ANCHOR: [AUTO] DiagnosticCache.Get — core path for cache lookup
+// @MX:WARN: [AUTO] Start goroutine — long-running background goroutine that evicts expired entries every cleanupInterval
+// @MX:ANCHOR: [AUTO] CacheEntry — TTL cache entry type referenced directly by DiagnosticCache, Aggregator, tests, and other callers
+// @MX:ANCHOR: [AUTO] Load — primary entry point for LSP config; all server startup paths call this
+// @MX:ANCHOR: [AUTO] ServerConfig is the central config type consumed by subprocess.Launcher, core.Client, and Manager
+// @MX:ANCHOR: [AUTO] ServersConfig — top-level config type returned by Load() and used as a Manager initialization argument
+// @MX:NOTE: [AUTO] ResolveClientImpl — default resolution for SPEC-LSP-CORE-002 AC10 Feature Flag
+// @MX:NOTE: [AUTO] supervisorIface — allows faking process supervision in unit tests without real subprocesses
+// @MX:ANCHOR: [AUTO] Client interface — primary LSP client contract consumed across the system
+// @MX:ANCHOR: [AUTO] WithLogger is a functional option used across 3+ packages
+// @MX:ANCHOR: [AUTO] NewClient — factory function, primary entry point for client construction
+	// @MX:WARN: [AUTO] subprocess stderr drain goroutine — bound to the subprocess stderr pipe lifetime without a context.Context
+	// @MX:NOTE: [AUTO] Routes async publishDiagnostics notifications to the diagnostic cache via NotificationRouter
+// @MX:ANCHOR: [AUTO] documentCache — central state store for all document synchronization operations
+// @MX:ANCHOR: [AUTO] ErrFileNotOpen — sentinel used across GetDiagnostics, Manager, and test assertions
+// @MX:ANCHOR: [AUTO] ErrNoLanguageDetected — public sentinel error for Manager.RouteFor
+// @MX:ANCHOR: [AUTO] Manager — multi-language LSP client coordinator (REQ-LC-008, REQ-LC-009, REQ-LC-050)
+	// @MX:NOTE: [AUTO] sf — singleflight.Group; prevents duplicate clientFactory+Start calls for the same language (REQ-UTIL-003-004, REQ-UTIL-003-005)
+// @MX:ANCHOR: [AUTO] NewManager — Manager factory and sole entry point for constructing a Manager
+	// @MX:WARN: [AUTO] reaper goroutine — long-running background goroutine that cleans up idle clients during the Manager's lifetime
+// @MX:ANCHOR: [AUTO] Manager.RouteFor — core path for file-path-based LSP client routing
+// @MX:ANCHOR: [AUTO] GetDiagnostics — public API for LSP diagnostic queries
+// @MX:ANCHOR: [AUTO] FindReferences — public API for LSP references queries
+// @MX:ANCHOR: [AUTO] GotoDefinition — public API for LSP definition queries
+// @MX:NOTE: [AUTO] StateMachine.Transition — state transitions are logged at slog.Debug for debuggability
+// @MX:ANCHOR: [AUTO] NewStateMachine — creates the client state machine; consumed by NewClient and tests
+// @MX:ANCHOR: [AUTO] Bridge — core type for gopls subprocess lifecycle management and diagnostic collection
+// @MX:WARN: [AUTO] readLoop runs as a goroutine and must be terminated via shutdownCh
+// @MX:WARN: [AUTO] channel-based debounce logic — watch for race conditions around timer reset
+// @MX:WARN: [AUTO] goroutine — terminated only by shutdownCh closing or reader EOF
+// @MX:ANCHOR: [AUTO] Config type and loader — the settings entry point depended on by bridge.go and NewBridge
+// @MX:ANCHOR: [AUTO] Core type for request-response correlation. Used by readLoop and sendRequest in bridge.go.
+// @MX:ANCHOR: [AUTO] Core LSP URI conversion helper — called from initialize and GetDiagnostics in bridge.go
+// @MX:ANCHOR: [AUTO] Loads quality gate settings from YAML. All hooks load configuration through this function.
+// @MX:ANCHOR: [AUTO] EnforcePhase is the phase-aware gate enforcement entry point
+// @MX:NOTE: [AUTO] Phase dispatch: plan captures baseline, run enforces error/type/lint thresholds, sync enforces max_warnings and require_clean_lsp
+// @MX:NOTE: [AUTO] trust5_integration maps TRUST 5 dimensions to LSP diagnostic checks; influences scoring of tested/readable/understandable/secured/trackable dimensions
+// @MX:ANCHOR: [AUTO] Error sentinel used across quality gate error handling throughout all LSP hook paths
+// @MX:ANCHOR: [AUTO] Range membership check used across diagnostic filtering and hover result scoping
+// @MX:ANCHOR: [AUTO] ErrBinaryNotFound — sentinel consumed by Manager, CLI, and tests
+// @MX:NOTE: [AUTO] InstallHintError — wraps ErrBinaryNotFound with install hint for user-facing messages
+// @MX:ANCHOR: [AUTO] Launcher — central subprocess factory consumed by core.Client and integration tests
+// @MX:NOTE: [AUTO] TestMain — package-wide shared fake binary initialization entry point
+// @MX:ANCHOR: [AUTO] pkgSharedBinaryPath — shared binary path used to eliminate the ETXTBSY race
+// @MX:NOTE: [AUTO] launcher_test.go — to avoid the fork-exec ETXTBSY race,
+// @MX:NOTE: [AUTO] HappyPath — uses the shared fake binary; ETXTBSY race eliminated
+// @MX:NOTE: [AUTO] StdioPipesNonNil — uses the shared fake binary; ETXTBSY race eliminated
+// @MX:NOTE: [AUTO] WithArgs — uses the shared fake binary; ETXTBSY race eliminated
+// @MX:ANCHOR: [AUTO] Supervisor — subprocess lifecycle monitor used by core.Client and degraded-state handler
+// @MX:WARN: [AUTO] NewSupervisor starts a goroutine that owns cmd.Wait for the subprocess lifetime
+// @MX:ANCHOR: [AUTO] NotificationRouter — central notification dispatcher used by core.Client and document sync
+// @MX:NOTE: [AUTO] Attach connects the router to a Transport via Transport.OnNotification
+// @MX:NOTE: [AUTO] publishDiagnostics parsing — reuses internal/lsp.Diagnostic, no duplicate type definitions
+// @MX:ANCHOR: [AUTO] ErrRequestTimeout — sentinel used by core.Client, Quality Gates, and test assertions
+// @MX:NOTE: [AUTO] Error wrapping rule: use fmt.Errorf("%w" pattern — preserves errors.Is/As chain
+// @MX:ANCHOR: [AUTO] Transport interface — central contract between core.Client and the wire layer
+// @MX:WARN: [AUTO] pnTransport wraps a live subprocess stdio connection
+// @MX:ANCHOR: [AUTO] SHA-256 hash computation utility - used by 6 or more callers throughout the manifest
+// @MX:ANCHOR: [AUTO] File provenance tracking manager factory - entry point depended on by 6 or more callers
+// @MX:ANCHOR: [AUTO] Load is the manifest initialization gate — every operation requiring file provenance data flows through this function
+// @MX:ANCHOR: [AUTO] Remove is the manifest entry deletion path called by update, merge, and deployment operations
+// @MX:ANCHOR: [AUTO] Manifest data structure creation - called from 3 or more paths including Load, corrupt recovery, and Track
+// @MX:ANCHOR: [AUTO] single shared declaration of the moai MCP tool surface
+// @MX:ANCHOR: [AUTO] ParseGoTestJSON is the shared test-pass parser.
+// @MX:ANCHOR: [AUTO] ParseCoverageFile is the shared coverage parser.
+// @MX:ANCHOR: [AUTO] CountNonEmptyLines is the shared lint-line parser.
+// @MX:NOTE: [AUTO] diffLinesThreshold — REQ-PERF-005-A resource guard threshold
+// @MX:NOTE: [AUTO] Merge strategy selection per file type - high cyclomatic complexity due to ordered checks: exact filename match, extension match, then text/binary classification
+// @MX:NOTE: [AUTO] managed-section allow-list consulted by mergeSectionBased on the preservation path
+// @MX:NOTE: [AUTO] managed sections (managedSectionHeadings) are preserved verbatim from the local side when upstream is unchanged; conflicting populated content surfaces a conflict
+// @MX:NOTE - SPEC-V3R2-RT-007 REQ-024 m001 is intentionally NON-rollback-able.
+// @MX:NOTE - m002 settings-cleanup migration step. Relocated from the former
+// @MX:WARN: writes to user .claude/settings.json — partial writes corrupt configuration.
+// @MX:ANCHOR fan_in=4 - SPEC-V3R2-RT-007 REQ-016 compile-time static registry.
+// @MX:ANCHOR fan_in=2 - SPEC-V3R2-RT-007 REQ-012, REQ-020 entry point.
+// @MX:NOTE - SPEC-V3R2-RT-007 .moai/state/migration-version is the single source of truth for "applied migrations".
+// @MX:NOTE: [AUTO] deliberately absent from validateGovernanceBinding — the binding fields decide, the auxiliary item only records; the integrity digest still covers it so a receipt cannot gain or lose a recorded signal silently.
+// @MX:NOTE: [AUTO] Callsite — G-04 location-info type; element of ResolveAnchorCallsites' return value
+// @MX:NOTE: [AUTO] DangerCategoryConfig — default category patterns are conservatively designed
+// @MX:WARN: [AUTO] TextualFanInCounter — text search method has false positive risk on strings/comments
+// @MX:NOTE: [AUTO] IsTestFileWithPatterns — single shared definition of the hard-coded test-pattern fallback set; graph fan-in and textual fan-in must not fork it (SPEC-MX-TAG-EDGES-001)
+// @MX:NOTE: [AUTO] NewTextualFanInCounterWithTestPaths — public constructor that injects mx.yaml test_paths.
+// @MX:NOTE: [AUTO] LSPReferencesClient — abstracts LSP reference queries inside the mx package without depending on core.Client.
+// @MX:ANCHOR: [AUTO] LSPFanInCounter — LSP implementation of the FanInCounter interface
+// @MX:NOTE: [AUTO] Provenance — GeneratedAt is display-only; freshness never reads wall-clock time (mtime and timestamps are banned staleness signals per REQ-GF-002)
+// @MX:NOTE: [AUTO] described-roots SSOT — hardcoded here deliberately: the roots are a property of what codemaps documents, not a per-project knob
+// @MX:NOTE: [AUTO] explicit-commit resolution — survivability is NOT decided here: a local machine cannot judge merge-survivability, so the CI reachability guard owns that half (SPEC-STAMP-REACHABILITY-001 §B.2)
+// @MX:NOTE: [AUTO] RefreshIndex — detection hashes every walked file but parses only changed ones; FilesParsed is the changed-files-only observable
+		body := "package " + filepath.Base(filepath.Dir(rel)) + "\n\n// @MX:NOTE: [AUTO] " + tagBody + "\nfunc F() {}\n"
+		body := "package " + filepath.Base(filepath.Dir(rel)) + "\n\n// @MX:NOTE: [AUTO] edited\nfunc F() {}\n"
+	edited := "package b\n\n// @MX:NOTE: [AUTO] beta EDITED body\nfunc F() {}\n"
+	added := "package a\n\n// @MX:NOTE: [AUTO] brand new\nfunc G() {}\n"
+	shifted := "package a\n\n\n\n\n\n// @MX:NOTE: [AUTO] alpha note\nfunc F() {}\n"
+// @MX:ANCHOR: [AUTO] ResolveAnchor — invariant contract of AnchorID single lookup API
+// @MX:ANCHOR: [AUTO] ResolveAnchorCallsites — additive location-aware variant of ResolveAnchor
+// @MX:ANCHOR: [AUTO] NewQuery — Query constructor for CLI and external callers; safely injects internal unexported fields
+// @MX:ANCHOR: [AUTO] Resolve — invariant contract of Query API entry point
+// standalone "// @MX:LEGACY:" comment as a sub-line sentinel — a regression.
+				// @MX:NOTE: [AUTO] @MX:SPEC capture arm — attaches the sub-line SPEC ID to the most recent tag's SpecRef (a pending WARN first, else the last appended tag); DanglingSpecRef when neither exists
+// @MX:NOTE: [AUTO] extractSpecRef — narrows @MX:SPEC text to the SPEC-ID token for association
+// @MX:DEBT: in-memory map cache, no eviction
+// @MX:DEBT: hardcoded retry count
+// @MX:DEBT: in-memory map cache, no eviction
+// @MX:DEBT: bare simplification, no ceiling no trigger
+// (D-NEW-1 regression guard): a standalone // @MX:LEGACY: comment STILL
+// @MX:LEGACY: pre-SPEC code, no characterization tests yet
+	path, tags, warnings := scanPendingWarnFixture(t, "package fixture\n// @MX:WARN: missing reason\n// @MX:NOTE: another tag\n")
+	path, tags, warnings := scanPendingWarnFixture(t, "package fixture\n// @MX:WARN: first\n// @MX:WARN: second\n")
+	_, tags, warnings := scanPendingWarnFixture(t, "package fixture\n// @MX:WARN: danger\n// @MX:REASON: shared state\n")
+		"package fixture\n// @MX:NOTE: prior tag\n// @MX:WARN: danger\n// @MX:SPEC: SPEC-WARN-001\n// @MX:REASON: shared state\n")
+		"package fixture\n// @MX:NOTE: prior tag\n// @MX:WARN: danger\n// @MX:REASON: shared state\n// @MX:SPEC: SPEC-WARN-001\n")
+		"package fixture\n// @MX:WARN: danger\nfunc a() {}\nfunc b() {}\nfunc c() {}\nfunc d() {}\n")
+		"package fixture\n// @MX:WARN: danger\n// @MX:PRIORITY: P1\n// @MX:PRIORITY: P1\n// @MX:PRIORITY: P1\n// @MX:REASON: too late\n")
+	path, tags, warnings := scanPendingWarnFixture(t, "package fixture\n// @MX:WARN: danger\n")
+		"package fixture\n// @MX:WARN: danger\n// @MX:SPEC: SPEC-WARN-001\n// @MX:REASON: shared state\n")
+			body: `// @MX:WARN: unguarded goroutine
+			body: `// @MX:WARN: unguarded goroutine
+			body: `// @MX:NOTE: a context note
+// @MX:WARN: unguarded goroutine
+			body: `// @MX:NOTE: a context note
+	path := writeSubLineFixture(t, dir, "capture.go", `// @MX:NOTE: a context note
+// @MX:NOTE: explains why handler forks
+		".go":    "// @MX:NOTE: Go tag",
+		".ts":    "// @MX:NOTE: TypeScript tag",
+		".js":    "// @MX:NOTE: JavaScript tag",
+		".rs":    "// @MX:NOTE: Rust tag",
+		".java":  "// @MX:NOTE: Java tag",
+		".kt":    "// @MX:NOTE: Kotlin tag",
+		".cs":    "// @MX:NOTE: C# tag",
+		".php":   "// @MX:NOTE: PHP tag",
+		".cpp":   "// @MX:NOTE: C++ tag",
+		".scala": "// @MX:NOTE: Scala tag",
+		".dart":  "// @MX:NOTE: Dart tag",
+		".swift": "// @MX:NOTE: Swift tag",
+			content: `// @MX:WARN: missing timeout
+			content:      `// @MX:WARN: missing timeout`,
+			content: `// @MX:WARN: missing timeout
+	content := `// @MX:ANCHOR:auth-handler-v1: Authentication handler
+		"file1.go": "// @MX:NOTE: first file\n",
+		"file2.go": "// @MX:NOTE: second file\n",
+	if err := os.WriteFile(vendorFile, []byte("// @MX:NOTE: vendor code\n"), 0644); err != nil {
+	if err := os.WriteFile(mainFile, []byte("// @MX:NOTE: main code\n"), 0644); err != nil {
+			line:     "// @MX:NOTE something else",
+			line:          "// @MX:NOTE some text",
+	content := "// @MX:NOTE: timestamp test\n"
+// @MX:ANCHOR: [AUTO] NewManager is a core factory called from 4+ packages
+// @MX:NOTE: [AUTO] SpecAssociator — unifies three SPEC-association sources: path-based, body-based, and sub-line (@MX:SPEC).
+// @MX:NOTE: [AUTO] AssociateWithDiagnostics — additive sub-line source + flag-but-keep validation; de-duped via seen map
+// @MX:ANCHOR: [AUTO] LoadSpecModules — SPEC module path loader; CLI, Resolver, and SpecAssociator all configure path-based association via this function
+// @MX:NOTE: [AUTO] LoadSpecDependencies — frontmatter depends_on edge-list loader for the graph writer
+	// @MX:NOTE: [AUTO] SpecRef — additive sub-line content carrier for @MX:SPEC; parallel to Reason, drives the sub-line association source
+// @MX:NOTE: [AUTO] registration order is stable for deterministic output
+// @MX:ANCHOR: [AUTO] per-file extraction entry point; high fan_in (called once per walked source file)
+// @MX:ANCHOR: [AUTO] call-edge extraction entry point; consumed by the graph builder's code-derived layers
+// @MX:ANCHOR: [AUTO] whole-run enrichment entry point; consumed by the navigator-enrich CLI
+// @MX:ANCHOR: [AUTO] deterministic approval-token derivation (REQ-NS5-008 c4)
+// @MX:ANCHOR: [AUTO] apply-on-approval engine (AC-NS5-008c/008d)
+// @MX:NOTE [AUTO]: layer-1 deterministic producer entry point + public API
+// @MX:NOTE [AUTO], REQ-NS5-003: diff-scope = UNION(git-diff stale subtrees,
+// @MX:ANCHOR: [AUTO] scope-conformance partition for draft-vs-diff_scope validation
+	// @MX:DEBT: path-based association (source (a) of AssociateWithDiagnostics)
+			"// @MX:NOTE: SPEC-FAKE-001 placeholder\n"+
+			"// @MX:NOTE: SPEC-FAKE-001 placeholder\n"+
+			"// @MX:NOTE: generic context note with no SPEC reference\n"+
+			"// @MX:NOTE: header parser\n"+
+// @MX:ANCHOR: [AUTO] ADR resolution entry; high fan_in (enumerateDecisions + supersedeDecision + tests)
+// @MX:WARN: [AUTO] supersede mutates an existing ADR's Status line only — body immutability is the load-bearing invariant (AC-NS3-009)
+// @MX:ANCHOR: [AUTO] scaffold-then-refine gate; load-bearing for the blueprint-first stance (REQ-NS3-006)
+// @MX:NOTE: [AUTO] ModuleDependency — exported adjacency seam so the graph writer (internal/graph) reuses the scaffold parser without a second markdown extractor
+// @MX:ANCHOR: [AUTO] Tier 0 contract enumeration entry; high fan_in (consumed by Enrich + tests + future CLI)
+// @MX:NOTE: [AUTO] env-read single point for drift-CI flag — kept isolated so the no-wall-clock invariant is mechanically auditable
+// @MX:ANCHOR: [AUTO] 4-tier overlay emission entry point; high fan_in (called by the M4.6 CLI + tests + future /moai project wiring)
+// @MX:ANCHOR: [AUTO] CodeWiki narrative gate; load-bearing for the LLM-cost-bounding invariant
+// @MX:NOTE: [AUTO] per-language dispatch — Go is the only configured path at M4; SCIP is forward-compat per design.md §1.D1
+// @MX:ANCHOR: [AUTO] Tier 3 deterministic structure dispatch; high fan_in (enumerateSymbols + tests + future SCIP indexers)
+// @MX:WARN: [AUTO] walks every .go file in projectRoot — output size is bounded by MaxReferences per symbol; large monorepos may need a path filter
+// @MX:ANCHOR: [AUTO] home-resolution SSOT — HOME-first contract for every ~/.moai consumer
+// @MX:ANCHOR: [AUTO] ~/.moai root SSOT — the only MOAI_HOME-aware entry point
+// @MX:NOTE: [AUTO] deeper segments (e.g. "state/loop") join at the call site via the accessor, not here (plan.md §4 resolved accessor granularity)
+// @MX:ANCHOR: [AUTO] DispatchToParent is the freeze point of the bubble-mode IPC contract
+// @MX:NOTE: [AUTO] SPEC-SEC-HARDEN-001 M2 — injectable log-dir seam for the conflict audit write; tests override to a t.TempDir() root.
+// @MX:NOTE: [AUTO] resolveConflict — higher specificity wins; on an equal-specificity tie, deny wins (SPEC-SEC-HARDEN-001 M2), else later Origin lexicographic order (fs-order)
+// @MX:NOTE: [AUTO] tiebreak rule: REQ-V3R2-RT-002-042 AC-12 + REQ-SEC-M2-001..003 — conflicts are recorded in .moai/logs/permission.log
+// @MX:ANCHOR: [AUTO] Resolve is the single entry point of the 8-tier permission stack
+	// @MX:WARN: [AUTO] hook UpdatedInput re-match — guard against infinite loops (newCtx.HookResponse=nil clear)
+	// @MX:WARN: [AUTO] Non-interactive mode fail-closed — convert ask → deny and record in permission.log
+// @MX:NOTE: [AUTO] PermissionMode 5-enum — CC official modes (default/acceptEdits/bypassPermissions/plan/bubble)
+// @MX:NOTE: [AUTO] bubble is a first-class mode that escalates a fork agent's prompts to the parent session's AskUserQuestion channel
+// @MX:NOTE: [AUTO] SPEC-SEC-HARDEN-001 M1 — quote-aware shell-separator scan guards the ":*" prefix branch against command-chain bypass; unterminated quote (D1) is treated as ambiguous → deny.
+// @MX:NOTE: [AUTO] SPEC-SEC-HARDEN-005 §F.1 — shell-aware ${IFS} word-split guard; fail-closed on parse error except lone trailing literal "$" (Go regex anchor) which stays ALLOW per REQ-SEC5-006.
+// @MX:ANCHOR: [AUTO] PreAllowlist is the SrcBuiltin-based rule source for the 8-tier resolver
+// @MX:NOTE: [AUTO] Complete list of Claude Code permission modes. Referenced by CLI input validation and the profile wizard.
+// @MX:NOTE: [AUTO] Permission mode string validation. Used for user input validation in CLI, GLM launcher, and other places.
+// @MX:NOTE: [AUTO] Last-used-profile fallback resolver — read-only, no error return.
+// @MX:NOTE: [AUTO] subtree resolution walk — the read-side twin of
+// @MX:NOTE: [AUTO] Last-used-profile ledger recorder — atomic read-modify-write.
+// @MX:NOTE: [AUTO] write-key precedence for subtree launches — exact/alias,
+// @MX:ANCHOR: [AUTO] dead-row reclamation for the launch ledger's projects map
+	// @MX:ANCHOR: [AUTO] ErrorLevelBlocker — highest-priority classification for compiler errors
+// @MX:ANCHOR: [AUTO] ClassifyFeedback — central classification entry point
+// @MX:NOTE: [AUTO] LintAsInstruction/WarnAsInstruction influence classification severity
+// @MX:NOTE: [AUTO] 5-rule severity+source classification — rule order matters; compiler errors rank highest
+// @MX:ANCHOR: [AUTO] Circuit breaker pattern factory - core entry point for preventing failure propagation
+		// @MX:NOTE: [AUTO] OnStateChange callback invoked as a goroutine while the mutex is held by the caller; the goroutine body recovers from panics so a panicking callback no longer crashes the process (SPEC-SEC-HARDEN-001 §M5)
+// @MX:ANCHOR: [AUTO] AuditCache is the primary caching interface for the audit gate
+// @MX:ANCHOR: [AUTO] the ceiling-policy outcome ladder every LIVE run-entry admission seam evaluates before admitting a verdict
+// @MX:NOTE: [AUTO] operator-override record path for a required-backend refusal — the acknowledgement note is mandatory, there is no silent-skip form
+// @MX:ANCHOR: [AUTO] the ONE ceiling-outcome recording path — every recorded plan-audit ceiling outcome is written by this function, never elsewhere
+// @MX:NOTE: [AUTO] the round count derives from durable disk evidence only — dedupe identity is the (SPEC id, iteration number) pair; in-process memory is never consulted
+// @MX:ANCHOR: [AUTO] AuditResult is the primary output type of the gate
+// @MX:ANCHOR: [AUTO] PlanAuditor is the primary abstraction for plan-auditor invocation
+// @MX:ANCHOR: [AUTO] the required-backend gate-set resolver both LIVE admission seams share
+// @MX:ANCHOR: [AUTO] AuditReporter is the primary interface for persisting audit verdicts
+// @MX:NOTE: [AUTO] SPEC-AUDIT-SNAPSHOT-001 A2 의 Go 체현. doctrinal SSOT는
+// @MX:ANCHOR: [AUTO] Token Circuit Breaker central type — all budget tracking flows through Tracker
+// @MX:ANCHOR: [AUTO] Graceful-abort entry point — budget exhaustion triggers handoff generation
+// @MX:NOTE: [AUTO] Retention marker — this package is NOT dead code. In addition to the
+// @MX:ANCHOR fan_in=2 - SPEC-V3R2-RT-007 REQ-001 single source of truth for GoBinPath.
+// @MX:DEBT: [AUTO] route-(ii) kept exec seeder (decision-index Q2, leader ruling (a) — OVERRIDABLE by an operator ruling): cp -p shells out, so the fd-verify→rename microsecond race keeps victim-overwrite possible; kept because darwin offers no fd-anchored ACL copy without cgo
+// @MX:NOTE: [AUTO] SPEC-AUDIT-SNAPSHOT-001 A3 의 Go 체현. clean PASS 시 4-dim 워크플로
+	// @MX:WARN: [AUTO] user namespace availability for bwrap --unshare-all depends on the OS kernel configuration
+// @MX:WARN: [AUTO] buildArgs is a security-critical function — changing argument order or values breaks sandbox isolation
+// @MX:ANCHOR: [AUTO] Sandbox enum is the primary type contract for all backends
+// @MX:ANCHOR: [AUTO] SandboxOptions is consumed by every backend Exec call
+// @MX:ANCHOR: [AUTO] SandboxBackend is the polymorphism contract for all OS backends
+// @MX:ANCHOR: [AUTO] ScrubEnv is the single entry point for sandbox environment-variable scrubbing
+// @MX:NOTE: [AUTO] Sentinel errors are the primary error signaling mechanism for sandbox failures.
+// @MX:NOTE: [AUTO] resolveBackend contains the OS × CI × role dispatch table
+// @MX:ANCHOR: [AUTO] Launcher is the primary entry point for all sandbox execution
+// @MX:ANCHOR: [AUTO] generateSBPL is the primary macOS profile generator
+// @MX:ANCHOR: [AUTO] GenerateBwrapArgs is the primary Linux bwrap argument generator
+	// @MX:WARN: [AUTO] sandbox-exec has been deprecated by Apple (operational since macOS 10.5)
+// @MX:WARN: [AUTO] execSandboxExec — the SBPL profile is generated just before exec and never written to a file
+// @MX:NOTE: [AUTO] SPEC-SESSION-ANCHOR-ATTR-001 — feeds the REQ-SAA-004
+// @MX:NOTE: [AUTO] Anything unrecognised reports not-ok — recorded as the
+// @MX:NOTE: [AUTO] SPEC-SESSION-ANCHOR-ATTR-001 REQ-SAA-003/004/005 — the
+// @MX:NOTE: [AUTO] SPEC-SESSION-ANCHOR-ATTR-001 — the W3 measurement
+// @MX:NOTE: [AUTO] SPEC-V3R2-RT-004 interrupt() equivalent — subagents call RecordBlocker;
+// @MX:ANCHOR: [AUTO] the cross-package version-view seam (session → cli)
+// @MX:NOTE: the anchor duty — `-d txt` also lists mapped frameworks and
+// @MX:ANCHOR: [AUTO] SPEC-V3R2-RT-004 cache-prefix discipline (P-C05 closure)
+// @MX:ANCHOR: [AUTO] the sole ignored-content predicate behind every sweep
+// @MX:ANCHOR: [AUTO] SPEC-V3R2-RT-004 REQ-040 cross-platform lock contract
+// @MX:NOTE: [AUTO] while the table churns, CreateToolhelp32Snapshot can fail
+// @MX:ANCHOR: [AUTO] SPEC-V3R6-MULTI-SESSION-COORD-001 L1 registry primitive
+// @MX:ANCHOR: [AUTO] registry purge — liveness-aware zombie removal consumed by SessionStart protocol + CLI purge verb
+// @MX:NOTE: [AUTO] path-keyed in-process mutex; double-locking with cross-process flock (in-process serialization + cross-process coordination)
+// @MX:NOTE: [AUTO] Every registry mutation flows through withLock. Reads
+// @MX:NOTE: [AUTO] SPEC-V3R2-RT-004 file-first state hand-off; the next phase reads this struct from disk, not the prior conversation.
+// @MX:ANCHOR: [AUTO] SPEC-V3R2-RT-004 REQ-002/004/010/020/040 enforcer — every phase boundary writes through here
+// @MX:WARN: [AUTO] STALE_SECONDS gate — bypassing staleness check defeats crash-resume safety
+// @MX:WARN: [AUTO] SPEC-V3R2-RT-004 REQ-043 ArtifactEncodingMismatch
+// @MX:ANCHOR: [AUTO] broker registration primitive — idempotent kind+name to stable agentId
+// @MX:WARN: [AUTO] package-global sync.Map grows with distinct lock paths over the process lifetime
+// @MX:ANCHOR: [AUTO] broker send — validated atomic enqueue into recipient pending
+// @MX:ANCHOR: [AUTO] broker poll — lazy sweep + atomic batch claim + ack deletion
+// @MX:ANCHOR: [AUTO] the full-field traversal both settings surfaces share.
+// @MX:ANCHOR: [AUTO] per-section field ordering for both settings surfaces.
+// @MX:WARN: [AUTO] WriteProjectNestedConfig 는 프로필 스토어가 아닌 *프로젝트 설정*
+// @MX:WARN: [AUTO] WriteProjectScalars는 프로필 스토어가 아닌 *프로젝트 설정*
+// @MX:ANCHOR: [AUTO] settings 스키마는 TUI(huh)와 웹(templ) 두 표면의 단일 진실 공급원이다.
+// @MX:WARN: [AUTO] ApplySchemaEdits는 10섹션 확장 필드를 디스크에 쓰는 영속화
+// @MX:WARN: [AUTO] WriteSectionViaSeam은 프로필 스토어가 아닌 *프로젝트 설정*
+// @MX:ANCHOR: [AUTO] PatchFile은 seam 섹션 yaml의 공유 부분-쓰기 진입점이다 —
+// @MX:NOTE: [AUTO] lenient 분기는 PatchFileWithMode만 탄다. PatchFile의 빈 문서 거부는
+// @MX:NOTE: [AUTO] absent 대상은 greenfield로 생성한다 — 읽기 계층
+// @MX:ANCHOR: [AUTO] NewDetector is a factory called from 3+ packages
+// @MX:ANCHOR: [AUTO] Shell type string conversion - cross-system integration point used by CLI, hook, and template subsystems
+// @MX:ANCHOR: [AUTO] PlanArchive — the archive eligibility contract.
+// @MX:ANCHOR: [AUTO] shared status normalizer — fan_in 5 across internal/spec and internal/factory
+// @MX:ANCHOR: [AUTO] Close는 `moai spec close`의 단일 진입점 — CLI(spec_close.go) + 단위/통합 테스트가 호출(fan_in=3)
+// @MX:ANCHOR: [AUTO] performAtomicClose는 Close()의 유일한 commit 수행 경로 — full-close happy path가 여기로 수렴(AC-LSG-001/014)
+// @MX:NOTE: [AUTO] Tarjan SCC detects cycles with O(V+E) time complexity
+// @MX:ANCHOR: [AUTO] driftDeps — the drift-path git seam.
+// @MX:ANCHOR: [AUTO] DetectDrift — public drift entry point (session-start critical path).
+		// @MX:NOTE: [AUTO] terminal frontmatter는 git 추론보다 우선한다.
+		// @MX:NOTE: [AUTO] grandfather era는 drift 면제 — audit.go grandfather 정책과 정합.
+		// @MX:NOTE: [AUTO] combined-scope prefix fallback — 이제 shared index를 조회한다
+// @MX:NOTE: [AUTO] Rationale for N=50: average matching git-log commits per SPEC are 5-10, providing a 5-10x safety margin.
+// @MX:NOTE: [AUTO] three error shapes — the lint rule's emission decision is per-shape
+// @MX:ANCHOR: [AUTO] getGitImpliedStatus — entry point for git-implied status inference
+		// @MX:NOTE: [AUTO] skip chore(spec) commits — guards against a bootstrapping bug
+		// @MX:NOTE: [AUTO] LSGF-001 word-boundary filter
+	// @MX:NOTE: [AUTO] walker exhaustion at N=50 signals "unknown" — the lint rule treats it as skip to prevent false positives
+// @MX:NOTE: [AUTO] commitMatchesSPECID — word-boundary SPEC-ID filter (LSGF-001)
+// @MX:NOTE: [AUTO] shouldSkipCommitTitle — metadata-sweep + narrow backfill skip filter
+// @MX:NOTE: [AUTO] SPEC-ID-scoped chore 식별 — backfill skip을 lifecycle-bearing chore에만 적용.
+// @MX:NOTE: [AUTO] terminal status enum — audit.go의 terminal early-return과 정합.
+// @MX:NOTE: [AUTO] scope-prefix 파생 — combined-scope close의 SPEC-{PREFIX} 추출.
+// @MX:NOTE: [AUTO] combined-scope 3-gate matcher — LSGF-001 보존 (word-boundary token match).
+// @MX:WARN: [AUTO] launches a goroutine whose result is discarded on timeout.
+// @MX:NOTE: [AUTO] characterization baseline — do not relax these assertions.
+// @MX:NOTE: [AUTO] one subprocess replaces ~2×N per-SPEC `git log --grep` spawns.
+// @MX:ANCHOR: [AUTO] inMemImpliedStatus — the drift behavior-preservation invariant.
+// @MX:NOTE: [AUTO] body-declared close — third FALLBACK-ONLY axis; the output is
+	// @MX:NOTE: [AUTO] CI shallow-clone skip guard permanently removed.
+// @MX:NOTE: "Hierarchical AC schema per SPEC-V3R2-SPC-001 §11.2"
+// @MX:NOTE: "2-pass extraction: section locator + REQ enumerator. The single-pass
+// @MX:ANCHOR: [AUTO] progressFieldYAMLPattern — package-level compiled regex for extractProgressField
+// @MX:ANCHOR: [AUTO] gitQueryCache — REQ-PERF-001-A per-run git env cache
+// @MX:ANCHOR: [AUTO] cachedOwnershipTransition — one history walk per document per Lint() run
+// @MX:ANCHOR: [AUTO] Linter is the central lint engine; all lint rules are dispatched through it.
+// @MX:ANCHOR: [AUTO] Lint is the primary entry point; orchestrates rule execution across all SPECs
+// @MX:NOTE: [AUTO] Rule interface inspects a single SPEC document
+// @MX:NOTE: [AUTO] terminal lifecycle state — status values where a mismatch with git history is considered normal
+// @MX:NOTE: [AUTO] OwnershipTransitionRule — F13 programmatic DRI verification
+// @MX:NOTE: [AUTO] 테스트 주입 hook — 운영은 default, 테스트는 fake function 주입
+// @MX:NOTE: [AUTO] git log --follow로 spec.md status 라인 변화 감지
+// @MX:NOTE: [AUTO] batchedOwnershipTransition — the constant-subprocess seam of the ownership walk
+// @MX:ANCHOR: [AUTO] StatusTransitionValidityRule — judges the transition pair, not its author
+// @MX:NOTE: [AUTO] Gate is keyed on frontmatter `created` vs vacuousGateCutoff; warnings on older SPECs stay advisory so the corpus lands green
+// @MX:NOTE: [AUTO] fan-in anchor selector — the vocabulary early-return keeps
+// @MX:WARN reason="365-leaf parse perf budget - AC-SPC-001-14 requires <500ms for 365 leaves"
+// @MX:NOTE: [AUTO] status regexes promoted to package level — REQ-PERF-004-A
+// @MX:ANCHOR: [AUTO] shared frontmatter-block locator for status read/write paths
+// @MX:NOTE: [AUTO] close-infix는 walker의 유일한 positive `completed` 신호다.
+// @MX:NOTE: [AUTO] sync convention 매칭 — Status Transition Ownership Matrix sync subject 정합.
+// @MX:NOTE: [AUTO] plan-phase feat → draft (plan-merge), not implemented
+	// @MX:NOTE: [AUTO] sync-phase 매칭은 Status Transition Ownership Matrix sync subject에 정합.
+// @MX:ANCHOR: [AUTO] the one builder for file: SQLite DSNs
+// @MX:ANCHOR: [AUTO] single state-anchor seam — every state read/write member resolves through here
+// @MX:ANCHOR: [AUTO] Public constructor for statusline package - all external callers create Builder through this function
+// @MX:ANCHOR: [AUTO] Core method of the statusline build pipeline
+// @MX:NOTE: [AUTO] 4-level fallback chain for project directory extraction
+// @MX:ANCHOR: statusline config-root seam — the segments/theme lever and the forge lever resolve through here
+// @MX:NOTE: [AUTO] two opt-out gates reach this spawn: the segment gate at the
+// @MX:DEBT: this entry point, its cache path, and GitHubCounts still say
+// @MX:ANCHOR: [AUTO] Core function for all usage bar (CW/5H/7D) rendering - called from renderer.go
+// @MX:NOTE: [AUTO] 70% threshold per AC-V3-13 - update BatteryIcon tests in usage_test.go if changed
+// @MX:NOTE: [AUTO] Fallback chain: stdin → MOAI_LAST_MODEL → cache file → unavailable
+// @MX:ANCHOR: [AUTO] Model cache reader for fallback chain (AC-SF-004)
+// @MX:ANCHOR: [AUTO] Model cache writer — atomic temp+rename (AC-SF-005)
+// @MX:ANCHOR: [AUTO] Single entry point for all mode rendering - called from Build() in builder.go
+// @MX:ANCHOR: [AUTO] subagentStatusLine JSONL row output — called from Build() in builder.go
+// @MX:NOTE: [AUTO] layout v3 CH3 — the sole renderer of the repo+branch line.
+// @MX:NOTE: [AUTO] Hide the FORGE half when remote repo info is missing (per user request 2026-05-22 — written when this segment carried repo identity alone).
+// @MX:NOTE: [AUTO] 2026-08-18 merge — GitHub counts moved here from renderSessionLine; ahead/behind demoted from ↑N/↓N arrows on the branch to an always-on "a/b" pair on the repo.
+// @MX:NOTE: [AUTO] 2026-08-20 — the slash pair carries open issues / open PRs.
+// @MX:NOTE: [AUTO] ahead/behind restored on the branch as ↑N ↓N (arrows, not a slash pair) per operator request — the counts had been collected but rendered nowhere.
+// @MX:NOTE: [AUTO] two-stage band: soft at band threshold, hard at min(cap, autoCompact+margin) — aligned with context-window-management.md HARD rule.
+// @MX:WARN: [AUTO] Global mutable singleton with internal mutex; concurrent access risk at package boundary
+// @MX:NOTE: [AUTO] M6-S4 R-07 thin wrapper — zero local hex constants; color values imported from internal/tui/catppuccin.go
+// @MX:ANCHOR: [AUTO] Theme constructor entry point; fan_in >= 3 (renderer.go NewRenderer, theme_test.go, builder.go)
+// @MX:NOTE: [AUTO] subagentStatusLine tasks[] row — optional fields are
+// @MX:NOTE: [AUTO] PR info struct — maps Claude Code v2.1.145+ stdin pr.{number,url,review_state} fields.
+// @MX:NOTE: [AUTO] Effort level information struct added in Claude Code v2.1.139+.
+// @MX:NOTE: [AUTO] Extended reasoning (thinking) activation flag struct added in Claude Code v2.1.139+.
+// @MX:NOTE: [AUTO] Repository identity struct — maps Claude Code v2.1.145+ workspace.repo.{host,owner,name} fields.
+// @MX:NOTE: [AUTO] StatusData-side workspace projection — populated by
+// @MX:WARN: [AUTO] goroutine + channel pattern: goroutine lifetime is explicitly terminated via Close()
+// @MX:ANCHOR: [AUTO] NewAsyncRecorder — async telemetry entry point
+// @MX:NOTE: [AUTO] Singleton pattern: concentrates file I/O into a single writer goroutine per process
+// @MX:ANCHOR: [AUTO] RecordSkillUsage is the primary telemetry write path
+// @MX:ANCHOR: [AUTO] ResolveAgentOverrideConsumption — the opt-in consumption gate's single resolver
+// @MX:ANCHOR: [AUTO] single derivation of per-role contract restrictions
+// @MX:NOTE - Audit suite for SPEC-V3R2-WF-004 Agentless contract. Three tests:
+// @MX:ANCHOR fan_in=1 - SPEC-V3R2-WF-003 REQ-WF003-010 enforcer; guards
+// @MX:ANCHOR fan_in=4 - SPEC-V3R2-WF-004 REQ-WF004-013 enforcer; guards 4 utility
+// @MX:ANCHOR fan_in=5 - SPEC-V3R2-WF-004 REQ-WF004-013 enforcer.
+// @MX:ANCHOR fan_in=1 - SPEC-V3R2-WF-003 REQ-WF003-010 enforcer; guards
+// @MX:NOTE: [AUTO] REQ-WF003-010 enforcer — run.md must document
+// @MX:NOTE: [AUTO] REQ-WF003-011 enforcer — run.md must document MODE_TEAM_UNAVAILABLE
+// @MX:NOTE: [AUTO] REQ-WF003-004 enforcer — loop.md must cross-reference
+// @MX:NOTE: [AUTO] agents_frontmatter_test.go — REQ-CC2122-HOOK-002 static linter
+// @MX:ANCHOR: [AUTO] deploy-mode record write side (SPEC-INIT-SHRINK-001
+// @MX:NOTE: [AUTO] llm.harness persistence entry point (SPEC-INIT-HARNESS-001
+// @MX:NOTE: [AUTO] fan_in=2 — guards the branch-protection template mirror
+// @MX:NOTE: [AUTO] Shared hash normalization for catalog drift detection.
+// @MX:ANCHOR: [AUTO] Primary entry point for catalog.yaml access — expected fan_in >= 3 (audit suite, deployer, follow-up SPEC loaders)
+// @MX:NOTE: [AUTO] CATALOG-002 audit suite — REQ-014/015/016/017/003 invariants over the real production catalog.
+// @MX:NOTE: [AUTO] Audit suite for SPEC-V3R4-CATALOG-001 catalog manifest integrity.
+// @MX:ANCHOR: [AUTO] Sole rendering path for published command skills; the golden drift check and the byte-equality ACs all judge its output.
+// @MX:NOTE: [AUTO] Converts a language code to its display name - called from 3 paths including NewTemplateContext and WithLanguage
+// @MX:ANCHOR: [AUTO] Deployer is the core interface that extracts templates from embedded filesystem and deploys to project root. Each file is tracked in manifest.
+	// @MX:NOTE: [AUTO] renderCache — REQ-PERF-006-A single-render optimization
+// @MX:NOTE: [AUTO] Checks context cancellation for per-file abort capability. Files with .tmpl suffix are rendered via Renderer and saved without the suffix.
+// @MX:NOTE: [AUTO] Implements transactional validation - renders all templates in memory without writing to disk
+// @MX:ANCHOR: [AUTO] go:embed template filesystem access point - depended on by 6 or more callers including init/update/deployer
+// @MX:NOTE: [AUTO] CATALOG-001 + CATALOG-002 wrapper convenience. Loads embedded catalog.yaml and returns typed *Catalog.
+// @MX:ANCHOR: [AUTO] CATALOG-002 encapsulated entry point — sole external surface for slim deploy.
+// @MX:NOTE: [AUTO] embedded_namespace_test.go — SPEC-V3R6-HARNESS-NAMESPACE-CLEANUP-001 REQ-HNC-005 regression guard
+// @MX:ANCHOR: [AUTO] ResolveGLMReasoningForModel — the console GLM column's single-derivation resolver
+// @MX:ANCHOR: [AUTO] harnessFS — sole codex-only deployment filter surface
+// @MX:ANCHOR: [AUTO] sole external entry point for codex-only deployment
+// @MX:ANCHOR: [AUTO] C++ sync-gate behavioural guard — the only test that proves the gate can block.
+// @MX:ANCHOR: [AUTO] M1 hook-contract characterization guard — fan_in=5 ACs route through here.
+// @MX:NOTE: [AUTO] Audit suite for SPEC-V3R2-WF-005 language-as-rules contract.
+// @MX:ANCHOR: [AUTO] SPEC-V3R2-WF-005 REQ-WF005-002,007,009 enforcer; guards 16 language rules
+// @MX:NOTE: [SYNC] ModelIDSonnet55 — canonical target of the "sonnet" alias
+// @MX:NOTE: [SYNC] ModelIDFable51 — canonical target of the "fable" alias.
+// @MX:ANCHOR: [AUTO] ModelAliasTable — single SSOT for alias↔canonical-id mapping
+// @MX:NOTE: [AUTO] obligation coverage predicate (AC-HPR-018); a required row passing here without a path, marker, or resolvable check widens the parity claim silently
+// @MX:NOTE: [AUTO] parity aggregate (AC-HPR-019) — only an effect-verified, fully attributed, passing required obligation is PASS; a skip, empty run, NOT_RUN, UNSUPPORTED, blocked, unverified, or unattributed row keeps the whole verdict below PASS
+// @MX:ANCHOR: [AUTO] defaultProfileMatrix — per-agent model+effort SSOT (models from config claude_models defaults, efforts the judgment policy)
+// @MX:ANCHOR: [AUTO] ResolveAgentModelEffort — profile → per-agent {model, effort} resolver
+// @MX:NOTE: [AUTO] Escapes only what a YAML double-quoted scalar cannot carry literally (quote, backslash, line breaks, non-printable controls); every other character is emitted unchanged so ordinary values render byte-identical to the unescaped form.
+// @MX:ANCHOR: [AUTO] Go text/template renderer factory - used from 3 or more paths including deployer, init, and update
+// @MX:ANCHOR: [AUTO] canonical retained-agent roster; internal/harness/rosterguard compares every registered roster site against it
+// @MX:ANCHOR: [AUTO] StripRetiredModelKeys — the moai update strip step for retired per-agent model/effort keys
+// @MX:ANCHOR: [AUTO] fan_in=2 — guards rule mirror invariant for SPEC-V3R5-WORKFLOW-OPT-001
+// @MX:NOTE: [AUTO] AC-WO-003 (template mirror parity) is verified by this test
+// @MX:NOTE: [AUTO] AC-LB-005 (template mirror parity for LATE-BRANCH-001) is verified
+// @MX:ANCHOR: [AUTO] buildSmartPATHFor is the GOOS-injected, deterministic core of BuildSmartPATH
+		// @MX:NOTE: [AUTO] Windows assembles Windows-shaped entries only — the POSIX system tail below is never appended under windows (GH #1690: the GOOS-blind generator fell into the default/linux branch and shipped a ";-joined" mix of POSIX dirs that broke exec-form hook bash resolution).
+// @MX:WARN: [AUTO] package-global mutable path — assigning it redirects every
+// @MX:ANCHOR: [AUTO] Sole entry point for .agents/skills mirror creation; called once per Deploy.
+// @MX:NOTE: [AUTO] SSOT source for the doctor Skills Allowlist known-set.
+// @MX:ANCHOR: [AUTO] Primary SlimFS constructor — expected fan_in >= 3 (init, update, audit, M3 parallel stress)
+// @MX:NOTE: [AUTO] CATALOG-002 REQ-021 friendly error — sentinel CATALOG_SLIM_HARNESS_MISSING + 4-substring hint for moai doctor diagnostic routing.
+// @MX:NOTE: [AUTO] split_namespace_test.go — SPEC-V3R6-DEV-HARNESS-SPLIT-001
+// @MX:NOTE the production scan mirrors the load shape of the in-repo
+// @MX:ANCHOR: [AUTO] NewDetector is a factory called from 3+ packages
+// @MX:NOTE: [AUTO] tied to SPEC-V3R5-SECURITY-CRIT-001 REQ-SEC-002-005 stale cleanup
+// @MX:ANCHOR: [AUTO] InjectSensitiveEnv is the only safe entry point for tmux env values containing credentials
+// @MX:ANCHOR: [AUTO] per-SPEC 토큰 귀속 공개 진입점 — session-set 합산 + 신뢰도 판정 계약
+// @MX:NOTE: [AUTO] 신뢰도 휴리스틱 — lineage 부재 시 environment-fallback이므로 측정 정밀도를 보장할 수 없어 강제 "low". 공유 UUID는 세션이 여러 SPEC에 인터리브되었음을 의미하여 과다계상 가능성 → "low" 강등. "high"는 모든 기여 세션이 SPEC-전용일 때만 부여
+// @MX:NOTE: [AUTO] the nine field keys mirror the Attribution struct JSON tags (tokens_spent, token_attribution, ...) so the rendered section round-trips 1:1 with the struct the audit surface (M4) will parse
+// @MX:ANCHOR: [AUTO] progress.md §I sync-close writer — public write entry point consumed by manager-docs (sync-close) and the M4 audit surface
+// @MX:ANCHOR: [AUTO] token-accounting extraction entry point — the read-only transcript-sum contract that the Token-Economy attribution/persistence/audit milestones (M2-M4) build on
+// @MX:NOTE: [AUTO] the ratio denominator excludes output_tokens by design (cache read/creation applies to the input side); the 0-denominator guard returns 0 rather than NaN so downstream JSON/audit surfaces never carry a non-finite value
+// @MX:ANCHOR: [AUTO] Box is a core primitive; expected fan_in >= 5 across M3-M6
+// @MX:ANCHOR: [AUTO] ThickBox is a core primitive; expected fan_in >= 3 across M4-M6
+// @MX:ANCHOR: [AUTO] Single source of truth for the Catppuccin palette; imported by the statusline package
+// @MX:ANCHOR: [AUTO] Env interface is the invariant contract for theme resolution;
+// @MX:NOTE: [AUTO] Priority chain: NO_COLOR > MOAI_THEME(light/dark) > DetectDark > dark-default.
+// @MX:NOTE: [AUTO] Boolean twin of Resolve; NO_COLOR yields dark (safe default),
+// @MX:NOTE: [AUTO] OSEnv is the production Env; used by CLI entry points to
+// @MX:ANCHOR: [AUTO] RadioRow is a core primitive; expected fan_in >= 3 in M5
+// @MX:ANCHOR: [AUTO] CheckRow is a core primitive; expected fan_in >= 3 in M5-M6
+// @MX:ANCHOR: [AUTO] Glyph* is the canonical status-glyph SSOT; fan_in >= 4
+// @MX:ANCHOR: [AUTO] HelpBar is a core primitive; expected fan_in >= 4 in M5-M6
+// @MX:NOTE: [AUTO] embed.FS is used to avoid filesystem dependency at runtime;
+// @MX:NOTE: [AUTO] loadCatalog is the single load point; sync.RWMutex ensures
+// @MX:NOTE: [AUTO] Translate is the single i18n entry point for all TUI surfaces.
+// @MX:ANCHOR: [AUTO] CoralRamp is the logo gradient SSOT; fan_in via Logo + M3 PrintBanner
+// @MX:ANCHOR: [AUTO] Logo is the restored large-banner primitive; fan_in via M3 PrintBanner (3 surfaces)
+// @MX:ANCHOR: [AUTO] Pill is a core primitive; expected fan_in >= 5 across M3-M6
+// @MX:ANCHOR: [AUTO] ProfileEnv extends Env for colour-depth detection; high fan_in expected
+// @MX:NOTE: [AUTO] Profile() composes Resolve() with colour-depth degradation;
+// @MX:NOTE: [AUTO] DetectedProfileEnv is the production ProfileEnv used by CLI
+// @MX:ANCHOR: [AUTO] ProgressLineHandle is the canonical progress-line
+// @MX:ANCHOR: [AUTO] Prompt is a core primitive; expected fan_in >= 3 in M4-M6
+// @MX:ANCHOR: [AUTO] StatusIcon is a core primitive; expected fan_in >= 4 across M4-M5
+// @MX:ANCHOR: [AUTO] Progress is a core primitive; expected fan_in >= 3 across M4-M6
+// @MX:ANCHOR: [AUTO] Stepper is a core primitive; expected fan_in >= 3 in M5-M6
+// @MX:ANCHOR: [AUTO] KV is a core primitive; expected fan_in >= 5 across M4-M5-M6
+// @MX:ANCHOR: [AUTO] CheckLine is a core primitive; expected fan_in >= 5 across M4
+// @MX:ANCHOR: [AUTO] Section is a core primitive; expected fan_in >= 4 across M4-M6
+// @MX:ANCHOR: [AUTO] Term is a screenshot-mode primitive; fan_in >= 2 in M4-M6
+// @MX:ANCHOR: [AUTO] LightTheme is the canonical light token source; fan_in expected >=3
+// @MX:ANCHOR: [AUTO] DarkTheme is the canonical dark token source; fan_in expected >=3
+// @MX:ANCHOR: [AUTO] Update cache retrieval - read path used by update checker, version display, and statusline
+// @MX:ANCHOR: [AUTO] Update cache write path - used by update checker and session hooks to persist version state
+// @MX:ANCHOR: [AUTO] buildVersionInfo is the single point that gates whether updates may proceed without verification — it must NEVER yield an empty Checksum
+// @MX:WARN: [AUTO] HTTP client timeout without explicit context cancellation propagation
+// @MX:ANCHOR: [AUTO] AcquireUserLock is the single entry point to the user-level lock; callers depend on its ErrLocked contract and its stale-reclaim behavior
+// @MX:ANCHOR: [AUTO] Release is the release contract of every user-lock holder: at most once per handle, and removal only after the token check
+// @MX:ANCHOR: [AUTO] profile-store base resolver — the single profile-base seam
+// @MX:WARN: [AUTO] 두 겹의 직렬화 — in-process sync.Mutex (goroutine 안전) + O_EXCL 파일 락
+// @MX:NOTE: [AUTO] exit-code-only predicate keeps the detector decoupled from Conditions optionality; the snapshot key pins the head
+// @MX:ANCHOR: [AUTO] receipt comparison predicate — the one place the Stop chain decides whether an out-of-hook check counts as run
+// @MX:ANCHOR: [AUTO] verify-run reuse decision — the single place that decides whether a recorded result stands in for re-running a command
+// @MX:NOTE: [AUTO] Host-check 미들웨어는 2-layer 안전 모델이다 — (1) Host 헤더 검사로 DNS-rebinding 차단(REQ-WC-009 개정: 모든 메서드·모든 라우트, /static/ 포함),
+// @MX:WARN: [AUTO] 이 함수는 디스크의 사용자/프로젝트 설정을 변경하는 쓰기 위험 구역이다 — 직접 YAML 쓰기는 없고 전부 시임 경유다.
+// @MX:ANCHOR: [AUTO] the save-failure render seam — all 9 persistence seams of handleSave funnel their failure through this one re-render
+// @MX:ANCHOR: [AUTO] the single save-failure stderr emitter — all 9 persistence seams funnel through this one line; grep surface is the `moai web: ` prefix
+// @MX:NOTE: [AUTO] triggerShutdown 은 반드시 고루틴으로 호출해야 한다 — 동기 호출 시
+// @MX:WARN: [AUTO] readProjectConfig/writeProjectConfig는 프로필 스토어가 아닌 *프로젝트 설정*
+// @MX:ANCHOR: [AUTO] Console HTTP 서버 엔트리 포인트 — 루프백 바인드 + graceful shutdown 불변식을 보장한다.
+// @MX:NOTE: [AUTO] SPEC-WEB-CONSOLE-010: 기존에 손수-미러되던 5개 정규 목록
+// @MX:ANCHOR: [AUTO] ValidateSpecID is a shared Validate interface implementation
+// @MX:ANCHOR: Snapshot/Diff primitives are the public API contract for orchestrator
+// @MX:ANCHOR: [AUTO] resolver entry SSOT — every creation path and reader resolves the home root here
+// @MX:NOTE: [AUTO] Defines development methodology modes. Supports ModeDDD (existing codebase) and ModeTDD (new development).
+// @MX:NOTE: [AUTO] Contains TRUST 5 quality gate settings. Manages LSP integration, test coverage, and development methodology (DDD/TDD) configuration.
+// @MX:NOTE: [AUTO] Defines project types (web-app, api, cli, library) and settings. Data model loaded from YAML.
+// @MX:NOTE: never falls back to Version — Version cannot order two builds
+// @MX:ANCHOR: [AUTO] Version classification — called by main + all unit tests
+// @MX:WARN: [AUTO] Calls os/exec (git archive) — subprocess execution
+// @MX:NOTE: [AUTO] --diff mode temporal oracle. Uses git show + git diff shell-out.
+// @MX:NOTE: [AUTO] Layer 2 + Layer 3 implementation. Shared AST cache prevents double-parsing.
+// @MX:ANCHOR: [AUTO] Core output structure consumed by both oracle modes.
+// @MX:NOTE: [AUTO] Entry point for i18n-validator. Two-oracle design (--all-files + --diff).
+// @MX:ANCHOR: exported data structures are consumed by both test files and diff.go.
+// @MX:ANCHOR: [AUTO] Core data structure referenced by all layers.
+// @MX:ANCHOR: [AUTO] Used by both --all-files and --diff oracles.
+// @MX:WARN: [AUTO] Uses goroutine + channel for cancellation.
+// @MX:WARN: [AUTO] Uses goroutine + channel for cancellation.

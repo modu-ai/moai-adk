@@ -343,6 +343,29 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
+    /// Preview the MoAI hook set for one host in PROJECT (rc.2 I1 #2238); writes nothing.
+    HooksPlan {
+        project: PathBuf,
+        /// `claude` (.claude/settings.json `hooks`) or `codex` (.codex/hooks.json).
+        #[arg(long)]
+        host: String,
+    },
+    /// Write a previewed hook set and its receipt; requires the plan digest.
+    HooksApply {
+        project: PathBuf,
+        #[arg(long)]
+        host: String,
+        #[arg(long)]
+        plan_digest: String,
+        #[arg(long)]
+        permission_reference: String,
+    },
+    /// Hook handler: record one allow-listed receipt line from the host's hook stdin under
+    /// ./.moai-cli/receipts/; never fails the hook.
+    HookReceipt {
+        #[arg(long)]
+        host: String,
+    },
     /// Plan a Codex projection of the common package into an explicit target; writes nothing.
     CodexProjectionPlan {
         package: PathBuf,
@@ -454,6 +477,12 @@ enum Command {
         #[arg(long)]
         doc: Option<PathBuf>,
     },
+    /// Read-only dual-read scan of `@MOAI:` / `@MX:` tag markers (C2 #2178): both
+    /// namespaces normalize into one node shape, duplicates are diagnosed only,
+    /// nothing is written. PATH is a file or a directory.
+    AtlasTagScan {
+        path: PathBuf,
+    },
     /// Record the PR's ACK (06-C #2007, REQ-06C-11): confirm the `pr_create` intent and, once
     /// it is confirmed, move the claim record to `pr_ready`.
     PrConfirm {
@@ -553,6 +582,22 @@ enum Command {
     /// Plan external skill source candidates read-only (03-B #1996): typed request on
     /// stdin; judgment envelope on stdout; writes nothing.
     SkillSourcePlan {
+        project: PathBuf,
+    },
+    /// Plan project-unit `moai` skill copies read-only (I5 #2242, P04 HOLD):
+    /// typed request on stdin; judgment envelope on stdout; writes nothing.
+    ProjectSkillPlan {
+        project: PathBuf,
+    },
+    /// Copy the staged `moai` skill package into the project host folders
+    /// (I5 #2242): the exact request on stdin; requires `opt_in` and writes
+    /// only under the caller-supplied project root.
+    ProjectSkillApply {
+        project: PathBuf,
+    },
+    /// Revert one applied project-skill copy from its rollback receipt
+    /// (I5 #2242): typed request on stdin.
+    ProjectSkillRevert {
         project: PathBuf,
     },
     /// Install approved skill sources into the host official skill folders (03-B
@@ -802,6 +847,9 @@ const OPERATIONS: &[(&str, &str)] = &[
     ("forge-report", "forge.report"),
     ("plan-admit", "plan.admit"),
     ("claude-doctor", "claude.doctor"),
+    ("hooks-plan", "hooks.plan"),
+    ("hooks-apply", "hooks.apply"),
+    ("hook-receipt", "hook.receipt"),
     ("claude-settings-plan", "claude.settings_plan"),
     ("claude-settings-apply", "claude.settings_apply"),
     ("codex-projection-plan", "codex.projection_plan"),
@@ -822,6 +870,9 @@ const OPERATIONS: &[(&str, &str)] = &[
     ("snapshot-describe", "snapshot.describe"),
     ("skill-source-plan", "skill_source.plan"),
     ("cost-report", "cost.report"),
+    ("project-skill-plan", "project_skill.plan"),
+    ("project-skill-apply", "project_skill.apply"),
+    ("project-skill-revert", "project_skill.revert"),
     ("generation-plan", "generation.plan"),
     ("generation-apply", "generation.apply"),
     ("skill-source-apply", "skill_source.apply"),
@@ -848,6 +899,7 @@ const OPERATIONS: &[(&str, &str)] = &[
     ("archive-restore", "archive.restore"),
     ("archive-search", "archive.search"),
     ("forge-audit-status", "forge.audit_status"),
+    ("atlas-tag-scan", "atlas_tag.scan"),
     ("flow-wip-check", "flow.wip_check"),
     ("flow-gate-verdict", "flow.gate_verdict"),
 ];
@@ -1162,19 +1214,57 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             moai_cli::flow::gate_verdict(&client, &owner, &repo, pr, &audit_head, &base_ref)
         }
         Command::ClaudeDoctor { project } => moai_cli::claude::doctor(&project),
+        Command::HooksPlan { project, host } => {
+            let home = std::env::var_os("HOME").map(PathBuf::from);
+            moai_cli::hooks::plan(&project, &host, home.as_deref())
+        }
+        Command::HooksApply {
+            project,
+            host,
+            plan_digest,
+            permission_reference,
+        } => {
+            let home = std::env::var_os("HOME").map(PathBuf::from);
+            moai_cli::hooks::apply(
+                &project,
+                &host,
+                home.as_deref(),
+                &plan_digest,
+                &permission_reference,
+            )
+        }
+        Command::HookReceipt { host } => {
+            // Hook stdin can be large (tool output); read a bounded prefix. A cut-off object
+            // fails to parse and is skipped, never an error: the hook must not fail.
+            let mut bytes = Vec::new();
+            let _ = io::stdin().take(4 * 1024 * 1024).read_to_end(&mut bytes);
+            let now = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_or(0, |d| d.as_millis());
+            Ok(match std::env::current_dir() {
+                Ok(cwd) => moai_cli::hooks::receipt(&host, &bytes, &cwd, now),
+                Err(_) => {
+                    serde_json::json!({"recorded": false, "reason": "working directory unavailable"})
+                }
+            })
+        }
         Command::ClaudeSettingsPlan { project } => {
-            moai_cli::claude::settings_plan(&project, &input()?)
+            let desired = moai_cli::claude::user_settings_desired(&project, &input()?)?;
+            moai_cli::claude::settings_plan(&project, &desired)
         }
         Command::ClaudeSettingsApply {
             project,
             plan_digest,
             permission_reference,
-        } => moai_cli::claude::settings_apply(
-            &project,
-            &input()?,
-            &plan_digest,
-            &permission_reference,
-        ),
+        } => {
+            let desired = moai_cli::claude::user_settings_desired(&project, &input()?)?;
+            moai_cli::claude::settings_apply(
+                &project,
+                &desired,
+                &plan_digest,
+                &permission_reference,
+            )
+        }
         Command::CodexProjectionPlan {
             package,
             target,
@@ -1281,6 +1371,7 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             generated,
             doc,
         } => moai_cli::parity::parity_check(&template, &generated, doc.as_deref()),
+        Command::AtlasTagScan { path } => moai_cli::atlas_tag::scan_path(&path),
         Command::PrConfirm {
             project,
             task,
@@ -1450,6 +1541,24 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
         Command::CostReport {} => {
             // cost_report checks protocol_version itself (one check, not two).
             moai_cli::run::cost_report(input::<moai_cli::run::CostRequest>()?)
+        }
+        Command::ProjectSkillPlan { project } => {
+            let mut request = input::<moai_cli::project_skills::ProjectSkillRequest>()?;
+            request.project_root = project;
+            serde_json::to_value(moai_cli::project_skills::project_skill_plan(&request)?)
+                .map_err(|_| "encode failed".into())
+        }
+        Command::ProjectSkillApply { project } => {
+            let mut request = input::<moai_cli::project_skills::ProjectSkillRequest>()?;
+            request.project_root = project;
+            serde_json::to_value(moai_cli::project_skills::project_skill_apply(&request)?)
+                .map_err(|_| "encode failed".into())
+        }
+        Command::ProjectSkillRevert { project } => {
+            let mut request = input::<moai_cli::project_skills::ProjectSkillRevertRequest>()?;
+            request.project_root = project;
+            serde_json::to_value(moai_cli::project_skills::project_skill_revert(&request)?)
+                .map_err(|_| "encode failed".into())
         }
         Command::GithubPlan { project } => {
             serde_json::to_value(moai_cli::github_templates::github_plan(

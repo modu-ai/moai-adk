@@ -26,6 +26,7 @@
 - `archive-plan`
 - `archive-restore`
 - `archive-search`
+- `atlas-tag-scan`
 - `audit-reduce`
 - `baseline-inventory`
 - `claim-acquire`
@@ -54,6 +55,9 @@
 - `generation-plan`
 - `github-apply`
 - `github-plan`
+- `hook-receipt`
+- `hooks-apply`
+- `hooks-plan`
 - `identity`
 - `install-inspect`
 - `leader-tick`
@@ -65,6 +69,9 @@
 - `pr-confirm`
 - `project-apply`
 - `project-plan`
+- `project-skill-apply`
+- `project-skill-plan`
+- `project-skill-revert`
 - `queue-next`
 - `recovery-apply`
 - `recovery-plan`
