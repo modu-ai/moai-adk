@@ -285,11 +285,51 @@ enum Command {
         #[arg(long = "remote-probe")]
         remote_probe: Option<String>,
     },
+    /// Flow control (A13 #2279): WIP cap check over the open pull requests of the
+    /// repository — the assignment-refusal signal (the refusal itself is the
+    /// leader's act). GET-only.
+    FlowWipCheck {
+        /// GitHub owner (e.g. modu-ai).
+        #[arg(long)]
+        owner: String,
+        /// GitHub repository name.
+        #[arg(long)]
+        repo: String,
+        /// The lane account whose open PRs are counted (author login).
+        #[arg(long)]
+        lane: String,
+        /// Lane open-PR cap (user-specified default 2, not a measured baseline).
+        #[arg(long, default_value_t = moai_cli::flow::DEFAULT_LANE_CAP)]
+        lane_cap: u64,
+        /// Total open-PR cap (user-specified default 8, not a measured baseline).
+        #[arg(long, default_value_t = moai_cli::flow::DEFAULT_TOTAL_CAP)]
+        total_cap: u64,
+    },
+    /// Flow control (A13 #2279): the integration gate verdict, read-only — checks
+    /// tip containment, changed-since-audit, claim lines, CI status, head stability.
+    /// Status posting and merging stay with the leader flow.
+    FlowGateVerdict {
+        /// GitHub owner.
+        #[arg(long)]
+        owner: String,
+        /// GitHub repository name.
+        #[arg(long)]
+        repo: String,
+        /// The pull request number to judge.
+        #[arg(long)]
+        pr: i64,
+        /// The head the last PASS audit was measured on.
+        #[arg(long = "audit-head")]
+        audit_head: String,
+        /// The base ref the tip is read from (e.g. v2026.11.0).
+        #[arg(long = "base-ref", default_value = "v2026.11.0")]
+        base_ref: String,
+    },
     /// Read-only Claude Code check: whether a session started in PROJECT reads AGENTS.md.
     ClaudeDoctor {
         project: PathBuf,
     },
-    /// Preview a three-way merge of the managed keys (`outputStyle`, `statusLine`) on stdin
+    /// Preview a three-way merge of the managed keys (`outputStyle`, `statusLine`, `permissions`) on stdin
     /// into PROJECT/.claude/settings.json (#2239); other keys are refused. Writes nothing.
     ClaudeSettingsPlan {
         project: PathBuf,
@@ -690,6 +730,27 @@ fn launch(
     let name = o
         .name
         .or_else(|| leader.map(|l| if l { "leader" } else { "agent-1" }.into()));
+    // #2244 (REQ-I7-01): a role session would get the interim permission skip; a project
+    // whose `.claude/settings.json` has a `permissions` key owns its permissions instead.
+    let wants_skip = role.is_some() && host != "codex" && !o.permissions;
+    let key = if wants_skip {
+        std::env::current_dir()
+            .map(|d| moai_cli::session::permissions_key(&d))
+            .unwrap_or(moai_cli::session::PermissionsKey::Unreadable)
+    } else {
+        moai_cli::session::PermissionsKey::Absent
+    };
+    let key_note = match key {
+        moai_cli::session::PermissionsKey::Present => {
+            let msg = "permissions key found in .claude/settings.json: --dangerously-skip-permissions omitted (#2244)";
+            eprintln!("{msg}");
+            Some(msg)
+        }
+        moai_cli::session::PermissionsKey::Unreadable => Some(
+            ".claude/settings.json unreadable: permissions key not detected; the interim skip default applies",
+        ),
+        moai_cli::session::PermissionsKey::Absent => None,
+    };
     let request = SessionRequest {
         role: role.map(str::to_string),
         host: host.into(),
@@ -701,12 +762,15 @@ fn launch(
         // skip stays `-l|-a` only — a roleless session gets none.
         advisor: (host != "codex" && !o.no_advisor && moai_cli::session::launcher_defaults(role))
             .then(|| "fable".into()),
-        skip_permissions: role.is_some() && host != "codex" && !o.permissions,
+        skip_permissions: wants_skip && key != moai_cli::session::PermissionsKey::Present,
         prompt,
         claude_bin: "claude".into(),
         codex_bin: "codex".into(),
     };
     let mut v = session_launch(&request, o.dry_run)?;
+    if let (Some(msg), Some(notes)) = (key_note, v["notes"].as_array_mut()) {
+        notes.push(msg.into());
+    }
     if leader.is_some() {
         if let Some(notes) = v["notes"].as_array_mut() {
             notes.push("deprecated: use `/moai --mode leader|agent` inside the session".into());
@@ -784,6 +848,8 @@ const OPERATIONS: &[(&str, &str)] = &[
     ("archive-restore", "archive.restore"),
     ("archive-search", "archive.search"),
     ("forge-audit-status", "forge.audit_status"),
+    ("flow-wip-check", "flow.wip_check"),
+    ("flow-gate-verdict", "flow.gate_verdict"),
 ];
 fn operation_of(word: &str) -> Option<&'static str> {
     OPERATIONS
@@ -1061,6 +1127,40 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             &moai_cli::forge::transport::GhTransport::from_env()?,
             &moai_cli::forge::policy::SystemClock,
         ),
+        Command::FlowWipCheck {
+            owner,
+            repo,
+            lane,
+            lane_cap,
+            total_cap,
+        } => {
+            let transport = moai_cli::forge::transport::GhTransport::from_env()?;
+            let clock = moai_cli::forge::policy::SystemClock;
+            let client = moai_cli::forge::Client::new(
+                &transport,
+                &clock,
+                Default::default(),
+                Default::default(),
+            );
+            moai_cli::flow::wip_check_json(&client, &owner, &repo, &lane, lane_cap, total_cap)
+        }
+        Command::FlowGateVerdict {
+            owner,
+            repo,
+            pr,
+            audit_head,
+            base_ref,
+        } => {
+            let transport = moai_cli::forge::transport::GhTransport::from_env()?;
+            let clock = moai_cli::forge::policy::SystemClock;
+            let client = moai_cli::forge::Client::new(
+                &transport,
+                &clock,
+                Default::default(),
+                Default::default(),
+            );
+            moai_cli::flow::gate_verdict(&client, &owner, &repo, pr, &audit_head, &base_ref)
+        }
         Command::ClaudeDoctor { project } => moai_cli::claude::doctor(&project),
         Command::ClaudeSettingsPlan { project } => {
             moai_cli::claude::settings_plan(&project, &input()?)
