@@ -585,6 +585,11 @@ fn launch(
     prompt: Option<String>,
 ) -> Result<serde_json::Value, String> {
     let role = leader.map(|l| if l { "leader" } else { "agent" });
+    // REQ-A5-01 (#2164): `-l|-a` is deprecated — warn on stderr and record a note,
+    // keeping the composed behavior unchanged until the removal card lands.
+    if leader.is_some() {
+        eprintln!("deprecated: use `/moai --mode leader|agent` inside the session");
+    }
     let name_given = o.name.is_some();
     // A role brings its default name; a plain session gets none.
     let name = o
@@ -607,6 +612,11 @@ fn launch(
         codex_bin: "codex".into(),
     };
     let mut v = session_launch(&request, o.dry_run)?;
+    if leader.is_some() {
+        if let Some(notes) = v["notes"].as_array_mut() {
+            notes.push("deprecated: use `/moai --mode leader|agent` inside the session".into());
+        }
+    }
     if leader == Some(false) && !name_given {
         // HOLD (00-F): automatic agent numbering is undecided; RC1 uses a fixed default.
         if let Some(notes) = v["notes"].as_array_mut() {
