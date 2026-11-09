@@ -8,6 +8,8 @@ use moai_cli::forge::{
     write::{LastRead, WriteOutcome, Writer},
     Client, Config, IssueKey, ReadRequest,
 };
+mod common;
+
 use serde_json::{json, Value};
 use std::{
     cell::{Cell, RefCell},
@@ -136,12 +138,7 @@ fn forge_conditional_get_uses_etag_and_304() {
 #[test]
 fn forge_backoff_follows_github_headers() {
     let script = exchanges(&fixture("ratelimit_sequence.json")["exchanges"]);
-    let req = HttpRequest {
-        method: "GET".into(),
-        url: "https://api.github.com/repos/acme/widgets".into(),
-        headers: Default::default(),
-        body: None,
-    };
+    let req = HttpRequest::new("GET", "https://api.github.com/repos/acme/widgets");
 
     let t = RecordedTransport::new(script.clone());
     let clock = FakeClock::at(1_794_000_000);
@@ -266,12 +263,7 @@ fn stub_gh(dir: &std::path::Path, mode: &str) -> std::path::PathBuf {
         "#!/bin/sh\n# test stub for gh api\nfor a in \"$@\"; do last=\"$a\"; done\nif [ \"{mode}\" = 401 ]; then printf '%s' '{unauthorized}'; echo \"gh: HTTP 401 $GH_TOKEN\" >&2; exit 1; fi\ncase \"$last\" in\n  *issues/comments*) printf '%s' '{comments}';;\n  *issues*) printf '%s' '{issues}';;\n  *) printf '%s' '{repo}';;\nesac\n"
     );
     let path = dir.join("gh-stub");
-    fs::write(&path, script).unwrap();
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
-    }
+    common::write_executable(&path, &script);
     path
 }
 
@@ -451,17 +443,45 @@ fn forge_read_rejects_bad_input_without_requests() {
 /// A `gh` that prints nothing and never exits on its own. The `sleep` runs as a grandchild of
 /// the shell, so it keeps the output pipes open even if only the shell is ended.
 #[cfg(unix)]
-fn stalled_gh(dir: &std::path::Path) -> std::path::PathBuf {
-    let path = dir.join("gh-stalled");
-    let pid_file = dir.join("sleep.pid");
+fn stalled_gh(dir: &std::path::Path, name: &str) -> std::path::PathBuf {
+    // One script and pid file per call. The ETXTBSY fix itself (#2283) is in
+    // `common::write_executable`: the script is written by a child process, so no
+    // concurrently forked test child can inherit a write fd on it.
+    let path = dir.join(name);
+    let pid_file = dir.join(format!("{name}.pid"));
     let script = format!(
         "#!/bin/sh\n# test stub: gh that hangs\nsleep 30 &\necho $! > '{}'\nwait\n",
         pid_file.display()
     );
-    fs::write(&path, script).unwrap();
-    use std::os::unix::fs::PermissionsExt;
-    fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
+    common::write_executable(&path, &script);
     path
+}
+
+/// True once `pid` no longer runs, waiting at most `limit`. A killed process orphaned to init
+/// stays visible to `kill -0` as a zombie until init reaps it (#2283: Linux CI showed state
+/// `Z`, parent 1, right after the group kill), so a zombie counts as ended.
+#[cfg(unix)]
+fn process_ends_within(pid: &str, limit: std::time::Duration) -> bool {
+    let started = std::time::Instant::now();
+    loop {
+        let signalable = Command::new("kill")
+            .args(["-0", pid])
+            .stderr(Stdio::null())
+            .status()
+            .unwrap()
+            .success();
+        let zombie = fs::read_to_string(format!("/proc/{pid}/stat"))
+            .ok()
+            .and_then(|s| s.rsplit_once(") ").map(|(_, rest)| rest.starts_with('Z')))
+            .unwrap_or(false);
+        if !signalable || zombie {
+            return true;
+        }
+        if started.elapsed() >= limit {
+            return false;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
 }
 
 #[cfg(unix)]
@@ -470,21 +490,15 @@ fn transport_times_out_on_stalled_gh() {
     use moai_cli::forge::transport::{GhTransport, Transport};
     use std::time::{Duration, Instant};
     let tmp = tempfile::tempdir().unwrap();
-    let bin = stalled_gh(tmp.path()).to_str().unwrap().to_string();
-    let req = HttpRequest {
-        method: "GET".into(),
-        url: "https://api.github.com/repos/acme/widgets".into(),
-        headers: Default::default(),
-        body: None,
-    };
+    let bin = stalled_gh(tmp.path(), "gh-stalled-timeout")
+        .to_str()
+        .unwrap()
+        .to_string();
+    let req = HttpRequest::new("GET", "https://api.github.com/repos/acme/widgets");
     let (tx, rx) = std::sync::mpsc::channel();
     let started = Instant::now();
     std::thread::spawn(move || {
-        let t = GhTransport {
-            bin,
-            timeout: Duration::from_secs(2),
-            gh_token: None,
-        };
+        let t = GhTransport::new(bin).timeout(Duration::from_secs(2));
         let _ = tx.send(t.send(&req));
     });
     // The stub sleeps 30s; the caller must get an answer long before that.
@@ -496,21 +510,20 @@ fn transport_times_out_on_stalled_gh() {
     assert!(err.contains("timed out"), "{err}");
 
     // The grandchild that held the pipes was ended with the group.
-    let pid = fs::read_to_string(tmp.path().join("sleep.pid")).unwrap();
-    let alive = Command::new("kill")
-        .args(["-0", pid.trim()])
-        .stderr(Stdio::null())
-        .status()
-        .unwrap()
-        .success();
-    assert!(!alive, "sleep grandchild {} still running", pid.trim());
+    let pid = fs::read_to_string(tmp.path().join("gh-stalled-timeout.pid")).unwrap();
+    assert!(
+        process_ends_within(pid.trim(), Duration::from_secs(2)),
+        "sleep grandchild {} still running",
+        pid.trim()
+    );
 
     // Through the adapter the timeout is the retryable `transport` kind.
-    let t = GhTransport {
-        bin: stalled_gh(tmp.path()).to_str().unwrap().to_string(),
-        timeout: Duration::from_millis(500),
-        gh_token: None,
-    };
+    let t = GhTransport::new(
+        stalled_gh(tmp.path(), "gh-stalled-adapter")
+            .to_str()
+            .unwrap(),
+    )
+    .timeout(Duration::from_millis(500));
     let e = forge::read(&request("open"), None, &t, &FakeClock::at(1_794_000_000)).unwrap_err();
     assert_eq!(e.kind, "transport");
     assert!(
