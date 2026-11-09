@@ -3,6 +3,7 @@ pub mod apply;
 pub mod audit;
 pub mod baseline;
 pub mod claim;
+pub mod claim_verify;
 pub mod claude;
 pub mod context;
 pub mod contract;

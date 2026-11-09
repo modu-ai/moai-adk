@@ -70,6 +70,14 @@ const RULES: &[(&str, Kind)] = &[
     ("partial apply", Kind::Partial),
     ("partial creation possible", Kind::Partial),
     ("conflict in ", Kind::Conflict),
+    // claim-verify (rc.2 A9 #2255): ahead of the generic words its messages quote.
+    ("claim verify: not owner", Kind::Conflict),
+    ("claim verify: closed", Kind::Conflict),
+    ("claim verify: no claim", Kind::Conflict),
+    ("claim verify: stale", Kind::Blocked),
+    ("claim verify: uncertain", Kind::Blocked),
+    ("claim verify: trailer missing", Kind::InvalidInput),
+    ("claim verify: trailer check unavailable", Kind::Blocked),
     // identity's `git failed: <git summary>`; ahead of the generic words the summary may hold.
     // The bare `git failed` of baseline (no colon) stays `io` below.
     ("git failed: ", Kind::GitFailed),
@@ -316,6 +324,33 @@ mod tests {
             ("git failed: detected dubious ownership in repository at", GitFailed),
             ("git failed: git output exceeded the size limit", GitFailed),
             ("git failed: git output was not UTF-8", GitFailed),
+            // claim-verify (rc.2 A9 #2255)
+            (
+                "claim verify: not owner; the lowest open claim is comment 7 (REQ-A9-01), so no commit or push",
+                Conflict,
+            ),
+            (
+                "claim verify: stale; claim comment 7 lease expired without a handoff, and the operator decides (REQ-A9-03)",
+                Blocked,
+            ),
+            ("claim verify: closed; claim comment 7 was released or handed off", Conflict),
+            (
+                "claim verify: uncertain; this session's claim comment is not visible on the issue",
+                Blocked,
+            ),
+            ("claim verify: no claim of this session on the issue", Conflict),
+            (
+                "claim verify: trailer missing; commits abc123def lack `Moai-Claim: 7#200`, so no push",
+                InvalidInput,
+            ),
+            (
+                "claim verify: trailer check unavailable; git log of the claim base failed",
+                Blocked,
+            ),
+            (
+                "invalid claim verify request: owner, repo, issue_number and session are required",
+                InvalidInput,
+            ),
         ];
         for (message, kind) in cases {
             assert_eq!(classify(message), kind, "{message}");

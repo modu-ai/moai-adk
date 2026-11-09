@@ -200,6 +200,13 @@ enum Command {
     LeaderTick {
         project: PathBuf,
     },
+    /// Re-verify claim ownership before a commit or push (rc.2 A9 #2255); GET only. Typed
+    /// request on stdin, or `--hook` with a host PreToolUse input (refusal exits 2).
+    ClaimVerify {
+        project: PathBuf,
+        #[arg(long)]
+        hook: bool,
+    },
     /// Read the current claim record of a task key; byte-identical when repeated.
     ClaimShow {
         project: PathBuf,
@@ -674,6 +681,7 @@ const OPERATIONS: &[(&str, &str)] = &[
     ("claim-show", "claim.show"),
     ("claim-release", "claim.release"),
     ("claim-handoff", "claim.handoff"),
+    ("claim-verify", "claim.verify"),
     ("effect-intend", "effect.intend"),
     ("effect-confirm", "effect.confirm"),
     ("effects-reconcile", "effects.reconcile"),
@@ -907,6 +915,19 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             &moai_cli::forge::transport::GhTransport::from_env()?,
             &moai_cli::forge::policy::SystemClock,
         ),
+        Command::ClaimVerify { project, hook } => {
+            let transport = moai_cli::forge::transport::GhTransport::from_env()?;
+            let clock = moai_cli::forge::policy::SystemClock;
+            if hook {
+                // Host hook stdin can carry large tool input; read a bounded prefix.
+                let mut bytes = Vec::new();
+                let _ = io::stdin().take(4 * 1024 * 1024).read_to_end(&mut bytes);
+                moai_cli::claim_verify::hook_cli(&project, &bytes, &transport, &clock)
+            } else {
+                let request = input::<moai_cli::claim_verify::VerifyRequest>()?;
+                moai_cli::claim_verify::verify_cli(&request, &transport, &clock)
+            }
+        }
         Command::ClaimShow { project, task } => moai_cli::claim::show_cli(&project, &task),
         Command::ClaimRelease {
             project,
@@ -1310,6 +1331,8 @@ fn main() -> ExitCode {
             }
         };
     };
+    // A host hook blocks a tool call only on exit 2 (Claude Code and Codex hooks docs).
+    let hook_mode = matches!(&cli.command, Some(Command::ClaimVerify { hook: true, .. }));
     match run_internal(cli.command.expect("internal operation")) {
         Ok(result) => {
             println!("{}", contract::success(op, result));
@@ -1321,7 +1344,7 @@ fn main() -> ExitCode {
                 contract::failure(op, contract::classify(&message), &message)
             );
             eprintln!("{message}");
-            ExitCode::from(1)
+            ExitCode::from(if hook_mode { 2 } else { 1 })
         }
     }
 }
