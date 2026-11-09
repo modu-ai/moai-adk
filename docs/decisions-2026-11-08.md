@@ -112,6 +112,12 @@
 | 01:3x(11-09) | rc.2 발행 완료(기록) | milestone `2026.11.0-rc.2`(#3): EP #2153~#2159, 카드 #2160~#2209. 생성기 `.moai-cli/reports/rc2_issue_gen.py`, 본문 거울 `issue-bodies/<n>-rc2-*.md`. self-claim 가능 24, blocked 22, 리더 전용 5(G1~G4·E5) | — | 리더 |
 | 01:0x(11-09) | D-4 미배차 목록 | 원격 Issue(claim 댓글 없는 열린 Issue)가 정본, `assignments.json`은 리더만 커밋하는 스냅샷 캐시, 레인은 읽기만 | #2139 schema, rc.2 | 사용자 선택(권장) |
 
+| 01:1x(11-09) | ADK_PERSONAL_CODING_CORE_20261109_01 수신 | 개인 맞춤 AI 코딩 에이전트 정체성: 5단계 기본, AGENTS.md 공통 + `/moai project` → `AGENTS.override.md`, 재귀 자기 개선 루프(권한 확대·보호 우회 아님), 호스트별 공식 배치, ADK 이름 재검토(rename 0). 로컬 설계 수정 ≠ 온라인 게시 | rc.2 EP-H(미발행) | 사용자 지시, 리더 ACK |
+| 01:2x(11-09) | 5단계 이름 확정 | **PLAN → RUN → VERIFY → AUDIT → SYNC**(설계 §5·RC1 routes 일치); READ·SETUP·UPDATE는 진입 단계로 별도 | 전체 | 사용자 선택(권장) |
+| 01:2x(11-09) | AGENTS.override.md 학습 루프 | 제안(diff+근거+검증)은 자동 생성, **적용은 사용자 승인 1회**; 사용자 구간 자동 변경 0; 롤백 = 이전 버전 복원; Codex는 override 공식 지원, Claude Code는 어댑터 필요(공식 비지원) | EP-H | 사용자 선택(권장) |
+| 01:2x(11-09) | ADK 이름 재검토 | 조사 카드 1장 → 후보 3~5개(충돌 조사 URL+확인일) 보고, 확정은 사용자; rename 0 | EP-H | 사용자 선택(권장) |
+| 01:2x(11-09) | Code Atlas 이름 | #2177 조사: `code-atlas` crates.io 활성·GitHub org 존재 → 사용 불가. **`moai-atlas` / CLI `moai atlas`** 채택(npm·PyPI·crates 404 실측; WIPO는 not_run) | #2177, EP-C C2~ | 사용자 선택(권장) |
+
 부분 결정 분리: P08은 claim 방식(⑤+①)만 결정, lease·heartbeat 수치 HOLD → 00:5x(11-09) lease 4h·heartbeat 없음으로 결정 · P15는 ZCode 헤드리스 범위만 결정, 나머지 host 지원표 HOLD.
 
 P12에서 아직 HOLD인 것: OS/arch matrix, locale, release matrix. P04(첫 RC 인증 순서), P05(package 경계·bridge 범위 나머지), P06, P08~P11, P14, P15는 HOLD 유지.

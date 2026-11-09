@@ -1,6 +1,6 @@
 {
  "schema_version": 1,
- "refreshed_at": "2026-11-09T01:5xZ",
+ "refreshed_at": "2026-11-09T01:10:11Z",
  "unassigned": [
   2170,
   2171,
@@ -13,7 +13,6 @@
   2184,
   2187,
   2190,
-  2192,
   2193,
   2199,
   2203,
@@ -38,37 +37,47 @@
    "stage": "pr_open",
    "worktree": null,
    "pr": 2152,
-   "updated_at": "2026-11-09T01:5xZ"
+   "updated_at": "2026-11-09T01:10:11Z"
   },
   {
    "issue": 2160,
    "agent": "agent-1 [e29c15]",
    "claim_ref": "2160#6729637720",
    "epoch": 1,
-   "stage": "claimed",
+   "stage": "pr_open",
    "worktree": null,
+   "pr": 2210,
+   "updated_at": "2026-11-09T01:10:11Z"
+  },
+  {
+   "issue": 2161,
+   "agent": "agent-1 [e29c15]",
+   "claim_ref": "2161#6729775566",
+   "epoch": 1,
+   "worktree": null,
+   "stage": "claimed",
    "pr": null,
-   "updated_at": "2026-11-09T01:5xZ"
+   "updated_at": "2026-11-09T01:10:11Z"
   },
   {
    "issue": 2164,
    "agent": "agent-8 [45deae]",
    "claim_ref": "2164#6729649255",
    "epoch": 1,
-   "stage": "claimed",
+   "stage": "pr_open",
    "worktree": null,
-   "pr": null,
-   "updated_at": "2026-11-09T01:5xZ"
+   "pr": 2214,
+   "updated_at": "2026-11-09T01:10:11Z"
   },
   {
    "issue": 2165,
    "agent": "agent-3 [89e867]",
    "claim_ref": "2165#6729635996",
    "epoch": 1,
-   "stage": "claimed",
+   "stage": "pr_open",
    "worktree": null,
-   "pr": null,
-   "updated_at": "2026-11-09T01:5xZ"
+   "pr": 2211,
+   "updated_at": "2026-11-09T01:10:11Z"
   },
   {
    "issue": 2166,
@@ -78,17 +87,17 @@
    "stage": "claimed",
    "worktree": null,
    "pr": null,
-   "updated_at": "2026-11-09T01:5xZ"
+   "updated_at": "2026-11-09T01:10:11Z"
   },
   {
    "issue": 2168,
    "agent": "agent-5 [767ceb]",
    "claim_ref": "2168#6729668133",
    "epoch": 1,
-   "stage": "claimed",
+   "stage": "pr_open",
    "worktree": null,
-   "pr": null,
-   "updated_at": "2026-11-09T01:5xZ"
+   "pr": 2215,
+   "updated_at": "2026-11-09T01:10:11Z"
   },
   {
    "issue": 2169,
@@ -98,48 +107,27 @@
    "stage": "claimed",
    "worktree": null,
    "pr": null,
-   "updated_at": "2026-11-09T01:5xZ"
+   "updated_at": "2026-11-09T01:10:11Z"
   },
   {
    "issue": 2177,
    "agent": "agent-7 [fa13f6]",
    "claim_ref": "2177#6729645277",
    "epoch": 1,
-   "stage": "claimed",
+   "stage": "pr_open",
    "worktree": null,
+   "pr": 2212,
+   "updated_at": "2026-11-09T01:10:11Z"
+  },
+  {
+   "issue": 2192,
+   "agent": "agent-7 [fa13f6]",
+   "claim_ref": "2192#6729841394",
+   "epoch": 1,
+   "worktree": null,
+   "stage": "claimed",
    "pr": null,
-   "updated_at": "2026-11-09T01:5xZ"
+   "updated_at": "2026-11-09T01:10:11Z"
   }
- ],
- "blocked": [
-  2161,
-  2162,
-  2163,
-  2167,
-  2178,
-  2179,
-  2181,
-  2182,
-  2183,
-  2185,
-  2186,
-  2188,
-  2189,
-  2191,
-  2194,
-  2195,
-  2196,
-  2198,
-  2200,
-  2201,
-  2202,
-  2205
- ],
- "leader_only": [
-  2197,
-  2206,
-  2207,
-  2208,
-  2209
  ]
 }
