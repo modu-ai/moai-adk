@@ -396,7 +396,7 @@ fn git_branch(work_tree: &str) -> Result<Option<String>> {
     }
 }
 
-fn worktree_id(identity: &Value) -> Result<WorktreeId> {
+pub(crate) fn worktree_id(identity: &Value) -> Result<WorktreeId> {
     let path = identity["work_tree"]
         .as_str()
         .ok_or("claim journal requires a git work tree")?;
@@ -764,7 +764,7 @@ fn scope_of(outcome: &str, record: Option<&ClaimRecord>) -> &'static str {
 }
 
 impl AcquireOutcome {
-    fn to_json(&self) -> Value {
+    pub(crate) fn to_json(&self) -> Value {
         json!({
             "outcome": self.outcome,
             "record": self.record.as_ref().map(|r| json!(r)).unwrap_or(Value::Null),
