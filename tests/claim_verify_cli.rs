@@ -136,6 +136,63 @@ fn late_visible_competitor_is_judged_on_reread() {
     assert_eq!(v["lost_to"], json!(150));
 }
 
+/// Claim default (user instruction 2026-11-09, #1975): after a full re-read of every page, the
+/// earliest server-registered VALID claim holds — an earlier malformed or foreign-author line
+/// does not — and an existing live owner blocks a later competing claim. Through the op: the
+/// competitor's claim is on the second page, so a single-page read would wrongly pass it.
+#[test]
+fn full_reread_earliest_valid_claim_wins_and_blocks_later_claims() {
+    let page2 = "https://api.github.com/repos/acme/widgets/issues/7/comments?per_page=100&page=2";
+    let mut first = get(json!([
+        raw(
+            40,
+            "mallory",
+            &format!("moai-claim: session=m epoch=1 lease_until={LIVE}")
+        ),
+        raw(
+            50,
+            "GoosLab",
+            "moai-claim: session=x epoch=1 lease_until=tomorrow"
+        ),
+        raw(
+            100,
+            "GoosLab",
+            &format!("moai-claim: session=a epoch=1 lease_until={LIVE}")
+        ),
+    ]));
+    first
+        .response
+        .headers
+        .insert("link".into(), format!("<{page2}>; rel=\"next\""));
+    let mut second = get(json!([raw(
+        300,
+        "GoosLab",
+        &format!("moai-claim: session=b epoch=1 lease_until={LIVE}")
+    )]));
+    second.request.url = page2.into();
+    let clock = FixedClock(now());
+
+    // The later claimant (300, page 2) is refused; the holder is 100, not 40 or 50.
+    let t = RecordedTransport::new(vec![first.clone(), second.clone()]);
+    let err = verify_cli(&request("b", Some(300)), &t, &clock).unwrap_err();
+    assert_eq!(classify(&err), Kind::Conflict, "{err}");
+    assert!(err.contains("comment 100"), "{err}");
+    assert_eq!(t.sent.borrow().len(), 2, "both pages read");
+
+    // The existing owner keeps the Issue on the same full read.
+    let t = RecordedTransport::new(vec![first, second]);
+    let v = verify_cli(&request("a", Some(100)), &t, &clock).unwrap();
+    assert_eq!(v["status"], json!("owner"));
+    assert_eq!(v["holder"], json!(100));
+    let reasons: Vec<&str> = v["invalid"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|i| i["reason"].as_str().unwrap())
+        .collect();
+    assert_eq!(reasons, ["author_mismatch", "malformed"]);
+}
+
 /// AC-1 post failure / uncertain: our recorded comment id is not on the Issue.
 #[test]
 fn missing_own_comment_is_uncertain() {

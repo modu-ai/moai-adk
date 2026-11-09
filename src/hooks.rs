@@ -1,7 +1,7 @@
 //! Host hook generation (rc.2 I1 #2238): one fixed MoAI hook set rendered for Claude Code
 //! (`.claude/settings.json` key `hooks`) and Codex (`.codex/hooks.json`), with a dry-run plan,
 //! a digest-bound apply and an ownership receipt; plus `hook-receipt`, the handler every
-//! generated hook runs.
+//! generated hook runs, and the `claim-verify --hook` guard (rc.2 A9 #2255) before Bash calls.
 //!
 //! Sources (read 2026-11-09):
 //! - https://code.claude.com/docs/en/hooks — `hooks` is event name -> matcher groups ->
@@ -12,8 +12,9 @@
 //!   project hooks load only when the project `.codex/` layer is trusted, and non-managed hooks
 //!   are reviewed and trusted (by hash) before they run.
 //!
-//! Only the intersection both hosts accept is used: events `SessionStart`, `PostToolUse` and
-//! `Stop`, handler fields `type: "command"`, `command` and an explicit `timeout`, so neither
+//! Only the intersection both hosts accept is used: events `SessionStart`, `PreToolUse`,
+//! `PostToolUse` and `Stop` (both hosts: matcher `Bash`, stdin `tool_name`,
+//! `tool_input.command` and `cwd`, exit 2 blocks with the reason on stderr), handler fields `type: "command"`, `command` and an explicit `timeout`, so neither
 //! host's defaults matter. Nothing here writes a home directory: a project equal to the given
 //! home, or inside its host configuration directories, is refused. No host session runs here;
 //! whether a host loaded the hooks is `host_loaded: not_run`.
@@ -28,13 +29,25 @@ use std::path::{Path, PathBuf};
 /// in well under a second, and a host cancelling it loses one receipt line, nothing else.
 pub const HOOK_TIMEOUT_SECS: u64 = 10;
 
-/// The MoAI hook set: (event, matcher). Receipt collection only: session start, each Bash tool
-/// call that finished, and turn end. A guard that blocks (`PreToolUse` with exit 2) is a policy
-/// decision this set does not make.
-pub const HOOK_SET: &[(&str, Option<&str>)] = &[
-    ("SessionStart", None),
-    ("PostToolUse", Some("Bash")),
-    ("Stop", None),
+/// What a generated hook runs.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Handler {
+    /// `hook-receipt`: records allow-listed fields, never blocks (always exit 0).
+    Receipt,
+    /// `claim-verify . --hook`: the claim write boundary (rc.2 A9 #2255). Allows every call
+    /// except a Bash `git commit` / `git push` in a lane worktree whose claim does not verify,
+    /// which it refuses with exit 2 — the code both hosts treat as blocking.
+    ClaimGuard,
+}
+
+/// The MoAI hook set: (event, matcher, handler). Receipts at session start, after each Bash
+/// tool call and at turn end; one blocking guard before each Bash tool call, which refuses
+/// only an unverified claim's commit or push (#2255 AC-2).
+pub const HOOK_SET: &[(&str, Option<&str>, Handler)] = &[
+    ("SessionStart", None, Handler::Receipt),
+    ("PreToolUse", Some("Bash"), Handler::ClaimGuard),
+    ("PostToolUse", Some("Bash"), Handler::Receipt),
+    ("Stop", None, Handler::Receipt),
 ];
 
 pub const HOSTS: &[&str] = &["claude", "codex"];
@@ -53,23 +66,27 @@ fn check_host(host: &str) -> Result<()> {
     }
 }
 
-/// The command a generated hook runs: the bare binary name, never an absolute path.
-fn hook_command(host: &str) -> String {
-    format!("moai-cli hook-receipt --host {host}")
+/// The command a generated hook runs: the bare binary name, never an absolute path. The guard
+/// names the project as `.`: both hosts run a command hook in the session's working directory.
+pub fn hook_command(host: &str, handler: Handler) -> String {
+    match handler {
+        Handler::Receipt => format!("moai-cli hook-receipt --host {host}"),
+        Handler::ClaimGuard => "moai-cli claim-verify . --hook".to_string(),
+    }
 }
 
 /// The hook set as a host `hooks` object (event -> matcher groups -> handlers).
 pub fn hooks_object(host: &str) -> Result<Map<String, Value>> {
     check_host(host)?;
     let mut out = Map::new();
-    for (event, matcher) in HOOK_SET {
+    for (event, matcher, handler) in HOOK_SET {
         let mut group = Map::new();
         if let Some(m) = matcher {
             group.insert("matcher".into(), json!(m));
         }
         group.insert(
             "hooks".into(),
-            json!([{"type": "command", "command": hook_command(host), "timeout": HOOK_TIMEOUT_SECS}]),
+            json!([{"type": "command", "command": hook_command(host, *handler), "timeout": HOOK_TIMEOUT_SECS}]),
         );
         out.insert((*event).into(), json!([group]));
     }
@@ -80,8 +97,8 @@ pub fn hooks_object(host: &str) -> Result<Map<String, Value>> {
 fn hook_list(host: &str) -> Value {
     HOOK_SET
         .iter()
-        .map(|(event, matcher)| {
-            json!({"event": event, "matcher": matcher, "command": hook_command(host),
+        .map(|(event, matcher, handler)| {
+            json!({"event": event, "matcher": matcher, "command": hook_command(host, *handler),
                    "timeout": HOOK_TIMEOUT_SECS})
         })
         .collect()
