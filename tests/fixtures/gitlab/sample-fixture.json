@@ -1,0 +1,38 @@
+{
+  "provider": "gitlab",
+  "capabilities": [
+    { "name": "merge_request", "status": "documented" },
+    { "name": "pipeline", "status": "documented" },
+    { "name": "note", "status": "documented" }
+  ],
+  "resources": {
+    "merge_request": {
+      "documented_in": "GitLab REST API documentation — merge requests (docs.gitlab.com/api/merge_requests.html)",
+      "fixture_example": {
+        "iid": 7,
+        "state": "opened",
+        "title": "sample merge request",
+        "source_branch": "issue/7-key",
+        "target_branch": "main"
+      }
+    },
+    "pipeline": {
+      "documented_in": "GitLab REST API documentation — pipelines (docs.gitlab.com/api/pipelines.html)",
+      "fixture_example": {
+        "id": 42,
+        "status": "success",
+        "ref": "main",
+        "sha": "0123456789abcdef0123456789abcdef01234567"
+      }
+    },
+    "note": {
+      "documented_in": "GitLab REST API documentation — issue notes (docs.gitlab.com/api/notes.html)",
+      "fixture_example": {
+        "id": 9,
+        "body": "sample note body",
+        "system": false,
+        "author": {"username": "fixture-user"}
+      }
+    }
+  }
+}

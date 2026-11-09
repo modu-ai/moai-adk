@@ -30,6 +30,7 @@ RC1의 실측 조합은 개발 Mac 단일이다: Darwin / arm64 (Rust triple `aa
 | ubuntu-24.04 / windows-2025 / arm 변형 | — | local | 전체 | not_run | P12 HOLD — RC1에서 OS matrix workflow를 만들지 않음(08-D 소유) |
 | — | — | worktree / cloud | 전체 | not_run | RC1 범위 밖 |
 | Linux CI (ubuntu rc-ci) | — | local | AC-08C-7 재측정 | not_run | `sandbox-exec`는 macOS 전용 — Linux 대체 차단 수단 미결(HOLD, #2100 감사 지적) |
+| — | GitLab | local | Forge adapter 계약 문서화 (REQ-B4-01) | not_run | **documented, not_run** — capability 선언만 존재(`src/forge/gitlab.rs`: merge_request·pipeline·note = documented, fixture 스키마 `schemas/gitlab-fixture.schema.json`), 어댑터·실호출 경로 없음(REQ-B4-01; 계정 없음 — decisions 2026-11-09 01:1x, #2171) |
 
 ## 집계
 
