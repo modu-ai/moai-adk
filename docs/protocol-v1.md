@@ -70,6 +70,19 @@
 
 두 variant 모두 `not_run`·`unknown`·`blocked`·`stale`·`uncertain`·`publish_unknown`·`inherited_uninspected`를 성공 값으로 올리지 않는다. 테스트 `status_crosswalk_is_complete_and_never_promotes`가 이를 검사하며, 일부러 금지 매핑을 넣었을 때 실패하는 것도 확인했다.
 
+## 실행 소유권 4필드 (#2169, REQ-B2-01)
+
+claim record(`src/claim.rs` `ClaimRecord`)과 handoff가 운반하는 동일 레코드는 소유권을 네 필드로 분리 저장한다. 어느 필드도 lock으로 해석하지 않는다 — 저널의 배타성은 `task_ref`와 `owner`만 읽는다(`acquire` 경로, REQ-B2-01 시험 `claim_record_four_ownership_fields_are_separate_and_not_locks`).
+
+| 필드 | 뜻 | 설정자 | lock 여부 |
+|---|---|---|---|
+| `owner` (execution_owner의 별칭 — JSON 키는 `owner` 유지) | 실행 owner(`{kind, id, host_id?, pid?, process_start?}`) | `claim-acquire` 요청 | 저널 배타성의 유일한 판단 기준(단, lock은 아니며 advisory journal) |
+| `assignee` | GitHub assignee — 표시 projection 전용 | `claim-acquire` 요청(기록만; claim은 GitHub에 절대 쓰지 않음 — REQ-06A-08) | 아니오 — 저널·게이트가 읽지 않음 |
+| `provider_session` | 실행 세션의 host 식별자 | `claim-acquire` 요청 | 아니오 |
+| `integration_owner` | 리더 통합 게이트 식별자(누가 이 claim의 통합 게이트를 소유하는지) | 통합 흐름(리더) — `claim-acquire`는 절대 설정하지 않음 | 아니오 |
+
+세 가산 필드는 모두 serde-default(`Option`, 기록 없으면 직렬화에서 생략)이라 #2169 이전 레코드도 역직렬화가 불변이고, 스키마 시험 `claim_record_four_ownership_fields_are_separate_and_not_locks`가 분리 저장·비lock 해석·구형 레코드 호환을 함께 검사한다.
+
 ## CLI·MCP parity 정의 (01-C 실측용 체크리스트)
 
 어느 envelope 선택지를 고르든 parity는 다음이 성립해야 한다. 실측은 01-C가 한다.
