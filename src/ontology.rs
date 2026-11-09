@@ -275,7 +275,6 @@ pub fn validate_node(node: &OntologyNode) -> Result<()> {
 /// Validates an edge record. Basis and verification are checked against their
 /// own vocabularies in their own fields (REQ-C4-01).
 pub fn validate_edge(edge: &OntologyEdge) -> Result<()> {
-
     // kind ∈ core ∪ CB-only; included_in_context is excluded (HOLD 3).
     if !CORE_EDGE_TYPES.contains(&edge.kind.as_str())
         && !CB_ONLY_EDGE_TYPES.contains(&edge.kind.as_str())
