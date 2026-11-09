@@ -182,6 +182,12 @@ enum Command {
     ClaimAcquire {
         project: PathBuf,
     },
+    /// Self-claim the next card (rc.2 A2 #2161): typed JSON request on stdin; re-reads the
+    /// open Issues, skips epics, pull requests and open-blocked cards, and claims the first
+    /// candidate through `claim-acquire` under one journal lock.
+    QueueNext {
+        project: PathBuf,
+    },
     /// Read the current claim record of a task key; byte-identical when repeated.
     ClaimShow {
         project: PathBuf,
@@ -349,6 +355,15 @@ enum Command {
         /// The task the leader orders first (task key, logical key or `#<issue>`).
         #[arg(long)]
         integration_order: Option<String>,
+    },
+    /// Semantic parity of TEMPLATE vs GENERATED (optional third DOC set, D6 #2192):
+    /// per-key classification with the 00-A vocabulary (missing / extra /
+    /// value_mismatch / identical / doc_only). Read-only.
+    ParityCheck {
+        template: PathBuf,
+        generated: PathBuf,
+        #[arg(long)]
+        doc: Option<PathBuf>,
     },
     /// Record the PR's ACK (06-C #2007, REQ-06C-11): confirm the `pr_create` intent and, once
     /// it is confirmed, move the claim record to `pr_ready`.
@@ -637,6 +652,7 @@ const OPERATIONS: &[(&str, &str)] = &[
     ("codex-projection-plan", "codex.projection_plan"),
     ("codex-doctor", "codex.doctor"),
     ("claim-acquire", "claim.acquire"),
+    ("queue-next", "queue.next"),
     ("claim-show", "claim.show"),
     ("claim-release", "claim.release"),
     ("claim-handoff", "claim.handoff"),
@@ -668,6 +684,7 @@ const OPERATIONS: &[(&str, &str)] = &[
     ("recovery-plan", "recovery.plan"),
     ("recovery-apply", "recovery.apply"),
     ("pr-confirm", "pr.confirm"),
+    ("parity-check", "parity.check"),
 ];
 fn operation_of(word: &str) -> Option<&'static str> {
     OPERATIONS
@@ -848,6 +865,12 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             &moai_cli::forge::transport::GhTransport::from_env()?,
             &moai_cli::forge::policy::SystemClock,
         ),
+        Command::QueueNext { project } => moai_cli::queue::next_cli(
+            &project,
+            input::<moai_cli::queue::QueueRequest>()?,
+            &moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
+        ),
         Command::ClaimShow { project, task } => moai_cli::claim::show_cli(&project, &task),
         Command::ClaimRelease {
             project,
@@ -1004,6 +1027,11 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
                 &moai_cli::forge::policy::SystemClock,
             )
         }
+        Command::ParityCheck {
+            template,
+            generated,
+            doc,
+        } => moai_cli::parity::parity_check(&template, &generated, doc.as_deref()),
         Command::PrConfirm {
             project,
             task,
