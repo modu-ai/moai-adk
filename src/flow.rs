@@ -257,7 +257,8 @@ pub struct GateCheck {
     pub detail: String,
 }
 
-/// The integration gate verdict (판정만 — status 게시·병합은 리더 경로). Checks:
+/// The integration gate verdict (verdict only — status posting and merging stay on
+/// the leader path). Checks:
 /// tip containment (behind = update-branch needed), files changed since the audited
 /// head (advisory count), claim lines on lane-authored non-merge commits, the PR
 /// body claim line, the CI commit status, and a head re-read.
