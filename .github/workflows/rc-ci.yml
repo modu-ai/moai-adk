@@ -135,10 +135,9 @@ jobs:
           [ "${{ needs.check.result }}" = "success" ]
 
   # E3 #2195 (decision 01:1x(11-09): Windows is build + self-replace only, support table
-  # not_run). Build only: the library and the moai-cli binary are compiled; tests are
-  # neither compiled nor run. Test targets do not compile on Windows yet: unix-only test
-  # code (`std::os::unix`, `Permissions::from_mode`) in src/agents.rs and src/claude.rs
-  # is not cfg(unix)-gated (first run 42707532063) — a follow-up outside E3.
+  # not_run). Compile all targets, including portable test targets, without running tests.
+  # Unix-only test setup is cfg(unix)-gated; Windows runtime replacement and host loading
+  # remain not_run.
   # Standard GitHub-hosted runner, no secrets. Not part of the required `rc-ci` check.
   windows-build:
     name: windows-build
@@ -160,13 +159,13 @@ jobs:
       - name: Fetch (Cargo.lock)
         shell: bash
         run: cargo fetch --locked
-      - name: Build library and binary (tests not compiled, not run)
+      - name: Build all targets (tests compiled, not run)
         shell: bash
         run: |
-          cargo build --offline --locked
+          cargo build --offline --locked --all-targets
           {
             echo "## windows-build"
             echo
             echo "- toolchain: \`$(rustc --version)\` on \`$RUNNER_OS\` / \`$RUNNER_ARCH\`"
-            echo "- \`cargo build --offline --locked\` (lib + moai-cli bin): exit 0 — tests not compiled, not run"
+            echo "- \`cargo build --offline --locked --all-targets\`: exit 0 — tests compiled, not run"
           } >> "$GITHUB_STEP_SUMMARY"

@@ -14,7 +14,7 @@ rc.1의 지원 대상은 **Darwin/arm64(`aarch64-apple-darwin`) × Claude Code, 
 | Darwin/arm64 × Codex | 지원 대상 | T2 not_run(AC-08C-4) |
 | Darwin/x86_64(`x86_64-apple-darwin`, Tier 2) | 미지원(후속) | host 측정 없음. CI check set만 측정(아래 "CI OS matrix") |
 | Linux x86_64·arm64(ubuntu-24.04, ubuntu-24.04-arm) | 미지원(후속) | host 측정 없음. CI check set만 측정(아래 "CI OS matrix") |
-| Windows(windows-2025) | 빌드 + self-replace 구현만(결정 01:1x(11-09), E3 #2195) | **not_run** — CI `windows-build` job이 라이브러리와 `moai-cli` binary만 컴파일한다. 시험 컴파일·실행, 실행 중 교체, host 로딩은 측정하지 않음 |
+| Windows(windows-2025) | 빌드 + self-replace 구현만(결정 01:1x(11-09), E3 #2195) | **not_run** — CI `windows-build` job은 `--all-targets`로 라이브러리·`moai-cli` binary·portable 시험 target을 컴파일한다. 시험 실행·실행 중 교체·host 로딩은 측정하지 않음 |
 | ZCode·그 밖의 host | 미지원(후속) | 측정하지 않음 |
 
 ## 조합 범위 (P12)
@@ -41,8 +41,8 @@ RC1의 host 실측 조합은 개발 Mac 단일이다: Darwin / arm64 (Rust tripl
 | Darwin/arm64 | Codex | local | 명시 호출이 SETUP route 도달 (AC-08C-4) | not_run | `CODEX_API_KEY` 필요(운영자 실측 대기) |
 | Darwin/arm64 | Claude Code | local | clean clone READ (AC-08C-8 T2 절반) | not_run | 운영자 실측 대기 |
 | ubuntu-24.04 / arm 변형 / Darwin x86_64 | — | local | host 항목 전체 | not_run | 미지원(후속) — P04로 rc.1 범위 밖. host E2E receipt 없음(CI check set은 아래 "CI OS matrix" 절, host 판정 아님) |
-| windows-2025 | — | local | 빌드(`cargo build --offline --locked`, lib + `moai-cli` bin) | CI 실측(PR의 `windows-build` run) | E3 #2195 — 컴파일 증거일 뿐 지원 보증이 아니다 |
-| windows-2025 | — | local | 시험 target 컴파일(`--all-targets`) | failed(run `42707532063`) | `src/agents.rs:1127·1166·1180`, `src/claude.rs:1149`의 unix 전용 시험 코드(`std::os::unix`, `Permissions::from_mode`)에 `cfg(unix)`가 없다. 라이브러리·binary는 같은 run에서 컴파일됨. E3 밖 후속 |
+| windows-2025 | — | local | 빌드(`cargo build --offline --locked --all-targets`, 라이브러리·binary·portable 시험 target 컴파일) | PR의 `windows-build` run 참조 | E3 #2195 — 컴파일 증거일 뿐 시험 실행이나 host 지원 보증이 아니다 |
+| windows-2025 | — | local | 첫 시험 target 컴파일(`--all-targets`) | failed(run `42707532063`, 수리 전 이력) | 당시 `src/agents.rs:1127·1166·1180`, `src/claude.rs:1149`의 Unix 전용 코드가 조건부 컴파일되지 않아 실패했다. 수리에서는 권한 시험과 symlink 구간만 `cfg(unix)`로 제한하고 `--all-targets` 범위를 유지한다. 수리 후보의 결과는 PR의 최신 run으로 확인한다 |
 | windows-2025 | — | local | 시험 실행·실행 중 binary 교체(self-replace)·host 로딩 | not_run | 결정 01:1x(11-09): Windows는 빌드 + self-replace 구현만. 교체 경로는 `src/self_update.rs`의 모의 replacer 단위 시험(macOS)으로만 확인했고, 실제 `self_replace` 호출은 시험에서 실행하지 않는다(시험 binary 자신을 교체하므로). 호출부(binary update 경로)는 04-B |
 | — | — | worktree / cloud | 전체 | not_run | RC1 범위 밖 |
 | Linux CI (ubuntu rc-ci) | — | local | AC-08C-7 재측정 | not_run | `sandbox-exec`는 macOS 전용 — Linux 대체 차단 수단 미결(HOLD, #2100 감사 지적) |
@@ -65,7 +65,7 @@ run `42619829090`(PR #2309, `pull_request`, head `15d8178bc2d9a8dd1ba16bfaae5424
 - macOS에서 skip된 Python 1개는 `claude` 바이너리가 필요한 시험이다(hosted runner에 없음). Claude·Codex 실세션은 어느 target에서도 돌리지 않았다.
 - AC-08C-7(사용자 HOME 쓰기 차단)은 macOS 두 target의 `e2e_never_writes_outside_temp_home`이 hosted runner에서도 ok였다. Linux에는 대체 차단 수단이 없어 위 not_run 행이 그대로 유효하다.
 - 첫 run `42618040618`(head `f557b035a`)은 macOS 두 target만 success였다. Linux 두 target은 check set은 초록이었는데, workflow의 macOS 전용 요약 블록 결함(grep 일치 없음 + `pipefail`)으로 job이 failure가 됐다. 그 결함을 고친 뒤 위 run에서 측정했다.
-- windows-2025는 위 matrix에 없다. 별도 job `windows-build`(E3 #2195)가 라이브러리와 binary만 컴파일하고 시험은 컴파일하지도 돌리지도 않는다. `rc-ci` 집계(`needs: [check]`)에 들어가지 않으므로 `rc-ci` 결론에 영향이 없다. 결과는 위 not_run 절의 windows-2025 행에 적는다.
+- windows-2025는 위 matrix에 없다. 별도 job `windows-build`(E3 #2195)가 `--all-targets`로 라이브러리·binary·portable 시험 target을 컴파일하되 시험은 실행하지 않는다. Unix 권한 시험과 Unix symlink 구간만 조건부 컴파일한다. `rc-ci` 집계(`needs: [check]`)에 들어가지 않으므로 `rc-ci` 결론에 영향이 없다. 결과는 위 not_run 절의 windows-2025 행에 적는다.
 
 ## RELEASE 시험군 (rc.2 E6 #2198) — fixture 결과, host 지원 판정 아님
 
