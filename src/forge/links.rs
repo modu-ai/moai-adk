@@ -86,12 +86,7 @@ fn probe_one<T: Transport, C: Clock>(
     client: &Client<'_, T, C>,
     url: String,
 ) -> (&'static str, Option<u16>, Option<&'static str>) {
-    let req = HttpRequest {
-        method: "GET".into(),
-        url,
-        headers: BTreeMap::new(),
-        body: None,
-    };
+    let req = HttpRequest::new("GET", url);
     match client.send_with_backoff(&req) {
         Ok(resp) if (200..300).contains(&resp.status) => ("available", Some(resp.status), None),
         Ok(resp) if resp.status == 404 || resp.status == 410 => {
