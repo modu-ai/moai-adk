@@ -205,7 +205,7 @@ fn lane_handoff_check_failure_paths() {
         "names head_remote_match"
     );
 
-    // 3. trailer 누락 (a commit without the claim trailer). The observation
+    // 3. missing trailer (a commit without the claim trailer). The observation
     //    record is re-pointed at the new head so ONLY the trailer condition
     //    fails — the PR head comparison lives in pr_exists now (audit F1).
     let sha = commit(&repo.root, "work without trailer", None);
@@ -249,7 +249,7 @@ fn lane_handoff_check_failure_paths() {
         "names leader_report"
     );
 
-    // 6. 보고 내용 불일치 (the record exists but does not mention the issue —
+    // 6. report content mismatch (the record exists but does not mention the issue —
     //    the `#<issue>` condition must be load-bearing, not decorative)
     let wrong = repo.root.join(".moai-cli/reports/wrong-issue.md");
     std::fs::create_dir_all(wrong.parent().unwrap()).unwrap();
@@ -328,7 +328,7 @@ fn trailers_match_is_exact_line_and_pr_head_lives_in_pr_exists() {
     );
 }
 
-/// Audit F3 (결정 06:02): tool merges are records, never claim-checked. A
+/// Audit F3 (decision 06:02): tool merges are records, never claim-checked. A
 /// claim-less `--no-ff` merge commit in base..HEAD must NOT block the exit,
 /// while the lane-authored commits are still verified.
 #[test]
@@ -375,7 +375,7 @@ fn tool_merge_commits_are_not_claim_checked() {
     assert_eq!(envelope["result"]["trailer_commits"], json!(1));
 }
 
-/// Audit 비차단 1 (P4): an unreadable or unparsable outbox entry counts as
+/// Audit non-blocking 1 (P4): an unreadable or unparsable outbox entry counts as
 /// uncertain — fail-closed, exit blocked.
 #[test]
 fn unparsable_outbox_entry_counts_as_uncertain() {

@@ -10,7 +10,7 @@
 //!    PR creation is *delivered*, not done: separation fields keep issue-done
 //!    and merge explicitly unobserved (design §25).
 //! 4. `trailers` — every lane-authored commit (`rev-list --no-merges`,
-//!    결정 06:02: tool merges are records, never claim-checked) in `base..HEAD`
+//!    decision 06:02: tool merges are records, never claim-checked) in `base..HEAD`
 //!    carries `Moai-Claim: <issue>#<comment_id>` as an exact, trimmed line
 //!    (prefix-sharing ids and prose mentions do not count — #2255 rule).
 //! 5. `leader_report` — a durable report record file exists, is non-empty, and
@@ -106,7 +106,7 @@ fn uncertain_effects(project: &Path) -> Result<u64> {
         if path.extension().and_then(|e| e.to_str()) != Some("json") {
             continue;
         }
-        // Fail-closed (audit 비차단 1): an unreadable or unparsable entry is
+        // Fail-closed (audit non-blocking 1): an unreadable or unparsable entry is
         // itself uncertain — we cannot prove its effect was published.
         let state = fs::read(&path)
             .ok()
@@ -145,7 +145,7 @@ pub fn handoff_check(req: &LaneHandoffRequest) -> Result<Value> {
         .map_err(|_| "project directory unavailable".to_string())?;
     let mut checks: Vec<Check> = Vec::new();
 
-    // 1. status_clean — fail-closed (audit 비차단 2): a failing `git status`
+    // 1. status_clean — fail-closed (audit non-blocking 2): a failing `git status`
     //    is a failed check, not a clean tree.
     let status_out = git(&project, &["status", "--porcelain"]);
     let (status_ok, status_detail) = match status_out {
@@ -211,7 +211,7 @@ pub fn handoff_check(req: &LaneHandoffRequest) -> Result<Value> {
         },
     ));
     // 4. trailers — every lane-authored (non-merge) commit in base..HEAD
-    //    carries the claim trailer as an exact line (audit F2/F3; 결정 06:02:
+    //    carries the claim trailer as an exact line (audit F2/F3; decision 06:02:
     //    tool merges are records, never checked for the claim).
     let trailer = format!("Moai-Claim: {}#{}", req.issue, req.claim_comment_id);
     let revs = git(
