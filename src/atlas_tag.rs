@@ -143,13 +143,16 @@ fn colon_form(payload: &str, colon: usize) -> Result<(String, Option<String>, Op
     // otherwise it (with every later colon preserved) is args (#2178: real tags carry
     // colons inside their args — `[AUTO] …`, URLs, `fan_in >= 3:`).
     let rest = &payload[colon + 1..];
-    let second = rest.split(':').next().unwrap_or("").trim();
+    // The untrimmed first segment: its length is where the SUB ends inside `rest`, so
+    // `KIND: SUB` and `KIND:  SUB:args` cut args after the SUB, not inside it.
+    let raw = rest.split(':').next().unwrap_or("");
+    let second = raw.trim();
     if second.is_empty() {
         return Err(format!("empty segment after kind {kind:?}"));
     }
     if let Some(sub) = uppercase_run(second) {
         if sub.len() == second.len() {
-            let args = rest[second.len()..].trim_start_matches(':').trim();
+            let args = rest[raw.len()..].trim_start_matches(':').trim();
             if args.is_empty() {
                 return Ok((kind, Some(sub.to_string()), None));
             }
