@@ -444,17 +444,11 @@ mod tests {
         }
         let lease = "2026-11-09T09:00:00Z";
         let page = |body: Value| Exchange {
-            request: HttpRequest {
-                method: "GET".into(),
-                url: format!("{API}/repos/acme/widgets/issues/7/comments?per_page=100"),
-                headers: Default::default(),
-                body: None,
-            },
-            response: HttpResponse {
-                status: 200,
-                headers: Default::default(),
-                body: Some(body),
-            },
+            request: HttpRequest::new(
+                "GET",
+                format!("{API}/repos/acme/widgets/issues/7/comments?per_page=100"),
+            ),
+            response: HttpResponse::new(200).with_body(body),
         };
         let claim = |id: i64, s: &str| json!({"id": id, "body": format!("moai-claim: session={s} epoch=1 lease_until={lease}")});
         let t = RecordedTransport::new(vec![
