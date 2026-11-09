@@ -15,8 +15,11 @@
 //!   `no_claim` or `uncertain` — with every ignored comment reported (`malformed`,
 //!   `duplicate`, `author_mismatch`; REQ-A9-02).
 //! - `claim-verify`: GET-only; succeeds only for `owner`, otherwise refuses with a classified
-//!   message (REQ-A9-01). `--hook` reads a host `PreToolUse` input and refuses only a Bash
-//!   `git commit` / `git push` run inside a worktree that has an active claim record.
+//!   message (REQ-A9-01). `--hook` reads a host `PreToolUse` input and guards only a Bash
+//!   `git commit` / `git push`: in a worktree with an active claim record it verifies that
+//!   record; without one, on a lane branch `issue/<n>-…` it verifies the `Moai-Claim: <n>#<id>`
+//!   token of the commit message (commit) or of the newest own commit (push), and refuses as
+//!   `uncertain` when no usable token, GitHub origin or base is found.
 //!
 //! Limits: every lane posts through one shared GitHub account, so "author mismatch" means an
 //! author outside `allowed_authors`; a forged session value from an allowed author cannot be
@@ -352,15 +355,102 @@ pub fn verify_cli<T: Transport, C: Clock>(
     }
 }
 
-/// True when a shell command line runs `git commit` or `git push` in any of its segments.
-pub fn is_commit_or_push(command: &str) -> bool {
+/// True when one segment of a shell command line runs `git <verb>`: the segment's first word,
+/// after `NAME=value` assignments, is `git` (or a path ending in `/git`), and `verb` follows
+/// it. A `git` that is only an argument (`echo git commit`) does not count. Quoting is not
+/// parsed: a separator inside quotes splits the segment, which can only add a check.
+fn runs_git(command: &str, verbs: &[&str]) -> bool {
     command
         .split([';', '&', '|', '\n', '(', ')'])
         .any(|segment| {
-            let mut words = segment.split_whitespace();
-            let found_git = words.any(|w| w == "git" || w.ends_with("/git"));
-            found_git && words.any(|w| w == "commit" || w == "push")
+            let mut words = segment
+                .split_whitespace()
+                .skip_while(|w| w.contains('=') && !w.starts_with('-'));
+            words
+                .next()
+                .is_some_and(|w| w == "git" || w.ends_with("/git"))
+                && words.any(|w| verbs.contains(&w))
         })
+}
+
+/// True when a shell command line runs `git commit` or `git push` in any of its segments.
+pub fn is_commit_or_push(command: &str) -> bool {
+    runs_git(command, &["commit", "push"])
+}
+
+/// The Issue number of a lane branch `issue/<n>-<key>` (or `issue/<n>`).
+pub fn issue_from_branch(branch: &str) -> Option<i64> {
+    let rest = branch.strip_prefix("issue/")?;
+    let digits: String = rest.chars().take_while(char::is_ascii_digit).collect();
+    let tail = &rest[digits.len()..];
+    if digits.is_empty() || !(tail.is_empty() || tail.starts_with('-')) {
+        return None;
+    }
+    digits.parse().ok().filter(|n| *n > 0)
+}
+
+/// Owner and repository of a GitHub remote URL: `https://github.com/o/r(.git)`,
+/// `git@github.com:o/r(.git)` or `ssh://git@github.com/o/r(.git)`.
+pub fn github_owner_repo(url: &str) -> Option<(String, String)> {
+    let url = url.trim();
+    let path = url
+        .strip_prefix("https://github.com/")
+        .or_else(|| url.strip_prefix("git@github.com:"))
+        .or_else(|| url.strip_prefix("ssh://git@github.com/"))?;
+    let path = path.strip_suffix(".git").unwrap_or(path);
+    let (owner, repo) = path.split_once('/')?;
+    let ok = |s: &str| {
+        !s.is_empty()
+            && s.len() <= 100
+            && s.chars()
+                .all(|c| c.is_ascii_alphanumeric() || "-_.".contains(c))
+    };
+    (ok(owner) && ok(repo)).then(|| (owner.to_string(), repo.to_string()))
+}
+
+/// Every `Moai-Claim: <issue>#<comment-id>` token in a text, in order. The token is found
+/// anywhere (a commit command carries it inside a quoted `-m` argument), digits only.
+pub fn claim_tokens(text: &str) -> Vec<(i64, i64)> {
+    let mut out = Vec::new();
+    for (at, _) in text.match_indices("Moai-Claim:") {
+        let rest = text[at + "Moai-Claim:".len()..].trim_start_matches([' ', '\t']);
+        let issue: String = rest.chars().take_while(char::is_ascii_digit).collect();
+        let Some(after) = rest[issue.len()..].strip_prefix('#') else {
+            continue;
+        };
+        let id: String = after.chars().take_while(char::is_ascii_digit).collect();
+        if let (Ok(n), Ok(id)) = (issue.parse(), id.parse()) {
+            out.push((n, id));
+        }
+    }
+    out
+}
+
+fn git_out(cwd: &Path, args: &[&str]) -> Option<String> {
+    let out = std::process::Command::new("git")
+        .arg("-C")
+        .arg(cwd)
+        .args(args)
+        .output()
+        .ok()?;
+    out.status
+        .success()
+        .then(|| String::from_utf8_lossy(&out.stdout).trim().to_string())
+}
+
+/// The claim tokens a push accepts on the branch's commits: the verifier's own claim and
+/// every earlier claim of the Issue closed by a handoff line, so commits written under a
+/// previous epoch stay valid after the handoff.
+fn accepted_tokens(issue: i64, verdict: &Value) -> Vec<String> {
+    let mut ids: Vec<i64> = verdict["mine"].as_i64().into_iter().collect();
+    for c in verdict["closed"].as_array().into_iter().flatten() {
+        if c["by"] == json!("handoff") {
+            ids.extend(c["comment_id"].as_i64());
+        }
+    }
+    ids.iter()
+        .map(|id| crate::claim::claim_token(issue, *id))
+        .collect()
 }
 
 /// The active claim record whose worktree contains `cwd`.
@@ -394,45 +484,128 @@ pub fn hook_cli<T: Transport, C: Clock>(
         return allow("working directory unavailable; no claimed worktree to guard");
     };
     let records = crate::worktree::active_records(project).unwrap_or_default();
-    let Some(record) = record_for(records, &cwd) else {
-        return allow("not a claimed worktree");
+    let push = runs_git(command, &["push"]);
+    // A journal record, when this clone has one, decides: its comment id and base.
+    if let Some(record) = record_for(records, &cwd) {
+        let issue = record.task_ref.issue_number;
+        let req = VerifyRequest {
+            schema_version: 1,
+            owner: record.task_ref.owner.clone(),
+            repo: record.task_ref.repo.clone(),
+            issue_number: issue,
+            session: record.owner.id.clone(),
+            comment_id: record.comment_id,
+            allowed_authors: Vec::new(),
+        };
+        let mut verdict = verify_cli(&req, transport, clock)?;
+        if push && record.claim_token.is_some() {
+            let tokens = accepted_tokens(issue, &verdict);
+            verdict["trailer_checked"] =
+                json!(missing_trailers(&cwd, &record.base_revision, &tokens)?);
+        }
+        verdict["allowed"] = json!(true);
+        verdict["issue"] = json!(issue);
+        verdict["source"] = json!("journal");
+        return Ok(verdict);
+    }
+    // No record (the claim was posted for the lane, not by `claim-acquire`): a lane branch
+    // `issue/<n>-…` is still guarded, from the branch name and the `Moai-Claim` token.
+    let Some(branch) = git_out(&cwd, &["symbolic-ref", "--short", "-q", "HEAD"]) else {
+        return allow("no claim record and no branch (detached HEAD); not a lane worktree");
+    };
+    let Some(issue) = issue_from_branch(&branch) else {
+        return allow("no claim record and the branch is not issue/<n>; not a lane worktree");
+    };
+    let uncertain = |why: String| -> Result<Value> {
+        Err(format!(
+            "claim verify: uncertain; {why}; ask the leader for the claim comment id and put \
+             `Moai-Claim: {issue}#<id>` in the commit message"
+        ))
+    };
+    let Some((owner, repo)) =
+        git_out(&cwd, &["remote", "get-url", "origin"]).and_then(|u| github_owner_repo(&u))
+    else {
+        return uncertain("the origin remote is not a GitHub repository".into());
+    };
+    let comment_id = if runs_git(command, &["commit"]) {
+        // The commit being written: its message, as typed in the command line.
+        let tokens = claim_tokens(command);
+        match tokens.iter().filter(|t| t.0 == issue).map(|t| t.1).max() {
+            Some(id) => id,
+            None if !tokens.is_empty() => {
+                return uncertain(format!(
+                    "the commit message names another Issue than the branch's #{issue}"
+                ))
+            }
+            None => {
+                return uncertain(format!(
+                    "the commit message carries no `Moai-Claim: {issue}#<id>` (a message from \
+                     -F or an editor is not read)"
+                ))
+            }
+        }
+    } else {
+        // A push: the newest own (non-merge) commit carrying a token for this Issue.
+        let log = git_out(
+            &cwd,
+            &[
+                "log",
+                "--first-parent",
+                "--no-merges",
+                "-n",
+                "200",
+                "--format=%B%x1e",
+                "HEAD",
+            ],
+        )
+        .unwrap_or_default();
+        let found = log.split('\u{1e}').find_map(|body| {
+            claim_tokens(body)
+                .iter()
+                .filter(|t| t.0 == issue)
+                .map(|t| t.1)
+                .max()
+        });
+        match found {
+            Some(id) => id,
+            None => {
+                return uncertain(format!(
+                    "no commit on the branch carries `Moai-Claim: {issue}#<id>`"
+                ))
+            }
+        }
     };
     let req = VerifyRequest {
         schema_version: 1,
-        owner: record.task_ref.owner.clone(),
-        repo: record.task_ref.repo.clone(),
-        issue_number: record.task_ref.issue_number,
-        session: record.owner.id.clone(),
-        comment_id: record.comment_id,
+        owner,
+        repo,
+        issue_number: issue,
+        session: "unverified".into(),
+        comment_id: Some(comment_id),
         allowed_authors: Vec::new(),
     };
     let mut verdict = verify_cli(&req, transport, clock)?;
-    if is_push(command) {
-        if let Some(token) = &record.claim_token {
-            verdict["trailer_checked"] =
-                json!(missing_trailers(&cwd, &record.base_revision, token)?);
-        }
+    if push {
+        // No recorded base: the branch's own line starts at its merge-base with the
+        // repository's default branch.
+        let Some(base) = git_out(&cwd, &["merge-base", "HEAD", "refs/remotes/origin/HEAD"]) else {
+            return uncertain("the merge-base with origin/HEAD is unavailable".into());
+        };
+        let tokens = accepted_tokens(issue, &verdict);
+        verdict["trailer_checked"] = json!(missing_trailers(&cwd, &base, &tokens)?);
     }
     verdict["allowed"] = json!(true);
-    verdict["issue"] = json!(record.task_ref.issue_number);
+    verdict["issue"] = json!(issue);
+    verdict["source"] = json!("branch");
     Ok(verdict)
 }
 
-/// True when a command line runs `git push` in any segment.
-fn is_push(command: &str) -> bool {
-    command
-        .split([';', '&', '|', '\n', '(', ')'])
-        .any(|segment| {
-            let mut words = segment.split_whitespace();
-            words.any(|w| w == "git" || w.ends_with("/git")) && words.any(|w| w == "push")
-        })
-}
-
-/// Before a push, every commit on the branch's own first-parent line since the claim's base —
-/// merge commits included, the merged-in commits of other cards excluded — must carry the
-/// claim token (the #2226 failure: merge commits without the trailer). Returns the number of
-/// commits checked; refuses with the short SHAs that lack it.
-fn missing_trailers(cwd: &Path, base: &str, token: &str) -> Result<usize> {
+/// Before a push, every commit the lane wrote on the branch's own first-parent line since the
+/// base must carry one of the accepted claim tokens. Merge commits are excluded (decision
+/// 2026-11-09 06:02, #1975: the claim line is required on lane-written commits, a merge commit
+/// is only a record), and so are the merged-in commits of other cards. Returns the number of
+/// commits checked; refuses with the short SHAs that lack a token.
+fn missing_trailers(cwd: &Path, base: &str, tokens: &[String]) -> Result<usize> {
     if base.len() != 40 || !base.bytes().all(|b| b.is_ascii_hexdigit()) {
         return Err(
             "claim verify: trailer check unavailable; the claim base is not a commit".into(),
@@ -441,7 +614,12 @@ fn missing_trailers(cwd: &Path, base: &str, token: &str) -> Result<usize> {
     let out = std::process::Command::new("git")
         .arg("-C")
         .arg(cwd)
-        .args(["log", "--first-parent", "--format=%H%x00%B%x1e"])
+        .args([
+            "log",
+            "--first-parent",
+            "--no-merges",
+            "--format=%H%x00%B%x1e",
+        ])
         .arg(format!("{base}..HEAD"))
         .output()
         .map_err(|_| "claim verify: trailer check unavailable; git could not run")?;
@@ -460,7 +638,7 @@ fn missing_trailers(cwd: &Path, base: &str, token: &str) -> Result<usize> {
     {
         let (sha, body) = entry.split_once('\0').unwrap_or((entry, ""));
         checked += 1;
-        if !body.lines().any(|l| l.trim() == token) {
+        if !body.lines().any(|l| tokens.iter().any(|t| l.trim() == t)) {
             lacking.push(sha.get(..9).unwrap_or(sha).to_string());
         }
     }
@@ -468,8 +646,9 @@ fn missing_trailers(cwd: &Path, base: &str, token: &str) -> Result<usize> {
         Ok(checked)
     } else {
         Err(format!(
-            "claim verify: trailer missing; commits {} lack `{token}`, so no push",
-            lacking.join(", ")
+            "claim verify: trailer missing; commits {} lack `{}`, so no push",
+            lacking.join(", "),
+            tokens.join("` or `")
         ))
     }
 }

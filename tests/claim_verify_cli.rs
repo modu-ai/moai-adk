@@ -293,22 +293,66 @@ fn commit_or_push_detection() {
         "cargo test && git commit -F msg.txt",
         "/usr/bin/git push",
         "(cd x; git commit)",
+        "GIT_EDITOR=true git commit --amend",
     ] {
         assert!(is_commit_or_push(yes), "{yes}");
     }
+    // `git` only as an argument is not a git run (the #2270 audit's non-blocking (2)).
     for no in [
         "git status",
         "git log --grep=commit",
         "echo commit",
+        "echo git commit",
+        "grep -n 'git push' notes.md",
         "gh pr create",
         "",
     ] {
-        assert!(
-            !is_commit_or_push(no) || no.contains("--grep=commit"),
-            "{no}"
-        );
+        assert!(!is_commit_or_push(no), "{no}");
     }
     assert!(!is_commit_or_push("git status && echo push"));
+}
+
+#[test]
+fn branch_remote_and_token_parsing() {
+    use moai_cli::claim_verify::{claim_tokens, github_owner_repo, issue_from_branch};
+    assert_eq!(
+        issue_from_branch("issue/2255-rc2-a9-claim-enforce"),
+        Some(2255)
+    );
+    assert_eq!(issue_from_branch("issue/7"), Some(7));
+    for no in [
+        "issue/x-1",
+        "issue/7x",
+        "issue/",
+        "issue/0-a",
+        "feature/7-a",
+        "main",
+    ] {
+        assert_eq!(issue_from_branch(no), None, "{no}");
+    }
+    let pair = Some(("modu-ai".to_string(), "moai-adk".to_string()));
+    for url in [
+        "https://github.com/modu-ai/moai-adk.git",
+        "https://github.com/modu-ai/moai-adk",
+        "git@github.com:modu-ai/moai-adk.git",
+        "ssh://git@github.com/modu-ai/moai-adk.git\n",
+    ] {
+        assert_eq!(github_owner_repo(url), pair, "{url}");
+    }
+    for no in [
+        "https://gitlab.com/a/b.git",
+        "https://github.com/a",
+        "https://github.com/a/b/c",
+        "/srv/repo.git",
+    ] {
+        assert_eq!(github_owner_repo(no), None, "{no}");
+    }
+    assert_eq!(
+        claim_tokens("git commit -m \"fix\n\nMoai-Claim: 7#100\nMoai-Claim: 7#250\""),
+        vec![(7, 100), (7, 250)]
+    );
+    assert_eq!(claim_tokens("Moai-Claim: 7#"), vec![]);
+    assert_eq!(claim_tokens("Moai-Claim: #5"), vec![]);
 }
 
 fn get(body: Value) -> Exchange {
@@ -504,13 +548,17 @@ fn hook_guards_commit_in_claimed_worktree_only() {
     let v = hook_cli(&oroot, &hook_input("git push", &oroot), &t, &clock).unwrap();
     assert_eq!(v["status"], json!("owner"));
 
-    // A commit in a tree without a claim record is not guarded.
+    // A commit in a tree with neither a claim record nor an issue/<n> branch is not guarded.
     let plain = tempfile::TempDir::new().unwrap();
-    git(plain.path(), &["init", "-q"]);
+    git(plain.path(), &["init", "-q", "-b", "main"]);
     let proot = fs::canonicalize(plain.path()).unwrap();
     let t = RecordedTransport::new(vec![]);
     let v = hook_cli(&proot, &hook_input("git commit", &proot), &t, &clock).unwrap();
-    assert_eq!(v["reason"], json!("not a claimed worktree"));
+    assert_eq!(
+        v["reason"],
+        json!("no claim record and the branch is not issue/<n>; not a lane worktree")
+    );
+    assert!(t.sent.borrow().is_empty());
 }
 
 fn gh_stub(dir: &Path, json_body: &str) -> std::path::PathBuf {
@@ -592,9 +640,11 @@ fn hook_binary_exits_2_on_refusal() {
     assert_eq!(allowed.status.code(), Some(0));
 }
 
-/// The leader's #2226 follow-up: before a push, every commit on the branch's own first-parent
-/// line since the claim base must carry the claim token — a merge commit without it refuses
-/// the push; commits of other cards brought in by the merge are not checked.
+/// Before a push, every lane-written commit on the branch's own first-parent line since the
+/// claim base must carry the claim token. Merge commits are not checked (decision 2026-11-09
+/// 06:02, #1975: the claim line is required on lane commits, a merge commit is only a record;
+/// this reverses the earlier #2226 follow-up that checked merges), and neither are the commits
+/// of other cards a merge brings in.
 #[test]
 fn hook_refuses_push_when_a_branch_commit_lacks_the_trailer() {
     let clock = FixedClock(now());
@@ -637,31 +687,315 @@ fn hook_refuses_push_when_a_branch_commit_lacks_the_trailer() {
     let v = push().unwrap();
     assert_eq!(v["trailer_checked"], json!(1));
 
+    // A tip merge without the token passes: neither it nor the merged-in commit is checked.
     git(&root, &["merge", "-q", "--no-ff", "-m", "Merge tip", "tip"]);
+    let v = push().unwrap();
+    assert_eq!(v["trailer_checked"], json!(1));
+
+    // A lane commit without the token refuses the push.
+    git(
+        &root,
+        &["commit", "-q", "--allow-empty", "-m", "forgot the trailer"],
+    );
     let err = push().unwrap_err();
     assert!(err.starts_with("claim verify: trailer missing"), "{err}");
     assert_eq!(classify(&err), Kind::InvalidInput);
-
-    // A merge that carries the token passes; the merged-in commit itself is not checked.
-    git(&root, &["reset", "-q", "--hard", "HEAD~1"]);
-    git(
-        &root,
-        &[
-            "merge",
-            "-q",
-            "--no-ff",
-            "-m",
-            &format!("Merge tip\n\n{token}"),
-            "tip",
-        ],
-    );
-    let v = push().unwrap();
-    assert_eq!(v["trailer_checked"], json!(2));
 
     // A commit (not a push) is not trailer-checked here.
     let t = RecordedTransport::new(vec![get(owner_only.clone())]);
     let v = hook_cli(&root, &hook_input("git commit -m x", &root), &t, &clock).unwrap();
     assert!(v.get("trailer_checked").is_none());
+}
+
+/// After a handoff, commits written under the previous epoch's token stay valid: the push
+/// accepts the own claim's token and every earlier claim closed by a handoff line (the #2270
+/// audit's non-blocking (1): a new epoch's base no longer has to be the hand-over tip).
+#[test]
+fn push_accepts_tokens_of_claims_closed_by_handoff() {
+    let clock = FixedClock(now());
+    let repo = claimed_repo(300, "b");
+    let root = fs::canonicalize(repo.path()).unwrap();
+    git(
+        &root,
+        &[
+            "commit",
+            "-q",
+            "--allow-empty",
+            "-m",
+            "epoch 1\n\nMoai-Claim: 7#100",
+        ],
+    );
+    git(
+        &root,
+        &[
+            "commit",
+            "-q",
+            "--allow-empty",
+            "-m",
+            "epoch 2\n\nMoai-Claim: 7#300",
+        ],
+    );
+    let claims = |with_handoff: bool| {
+        let mut c = vec![raw(
+            100,
+            "GoosLab",
+            &format!("moai-claim: session=a epoch=1 lease_until={LIVE}"),
+        )];
+        if with_handoff {
+            c.push(raw(
+                250,
+                "GoosLab",
+                "moai-claim-handoff: comment=100 to=b by=leader",
+            ));
+        }
+        c.push(raw(
+            300,
+            "GoosLab",
+            &format!("moai-claim: session=b epoch=2 lease_until={LIVE}"),
+        ));
+        Value::Array(c)
+    };
+    let t = RecordedTransport::new(vec![get(claims(true))]);
+    let v = hook_cli(&root, &hook_input("git push", &root), &t, &clock).unwrap();
+    assert_eq!(v["status"], json!("owner"));
+    assert_eq!(v["trailer_checked"], json!(2));
+
+    // Without the handoff line the epoch-1 claim still holds: epoch 2 is not the owner.
+    let t = RecordedTransport::new(vec![get(claims(false))]);
+    let err = hook_cli(&root, &hook_input("git push", &root), &t, &clock).unwrap_err();
+    assert_eq!(classify(&err), Kind::Conflict, "{err}");
+}
+
+/// A lane worktree with no claim record: branch `issue/7-x`, origin on GitHub, the default
+/// branch at `refs/remotes/origin/HEAD`. No journal is written, as when the leader posts
+/// the claim for the lane.
+fn lane_repo(branch: &str) -> (tempfile::TempDir, std::path::PathBuf) {
+    let dir = tempfile::TempDir::new().unwrap();
+    let root = fs::canonicalize(dir.path()).unwrap();
+    git(&root, &["init", "-q", "-b", "main"]);
+    git(&root, &["commit", "-q", "--allow-empty", "-m", "base"]);
+    git(
+        &root,
+        &[
+            "remote",
+            "add",
+            "origin",
+            "https://github.com/acme/widgets.git",
+        ],
+    );
+    git(&root, &["update-ref", "refs/remotes/origin/main", "HEAD"]);
+    git(
+        &root,
+        &[
+            "symbolic-ref",
+            "refs/remotes/origin/HEAD",
+            "refs/remotes/origin/main",
+        ],
+    );
+    git(&root, &["checkout", "-q", "-b", branch]);
+    (dir, root)
+}
+
+fn owner_100() -> Value {
+    json!([raw(
+        100,
+        "GoosLab",
+        &format!("moai-claim: session=agent-1-abc epoch=1 lease_until={LIVE}")
+    )])
+}
+
+/// AC-2 (operating path, #2270 audit FAIL): with no claim record the guard still verifies a
+/// commit in an `issue/<n>` worktree, from the branch's Issue and the `Moai-Claim` token in
+/// the commit message; without a usable token it refuses before any GitHub read
+/// (fail-closed, with the next action in the message).
+#[test]
+fn hook_guards_a_lane_branch_without_a_claim_record() {
+    let clock = FixedClock(now());
+    let (_d, root) = lane_repo("issue/7-widget");
+
+    // The owner's commit, token in the message: verified against the Issue, allowed.
+    let t = RecordedTransport::new(vec![get(owner_100())]);
+    let cmd = "git commit -m \"work\n\nMoai-Claim: 7#100\"";
+    let v = hook_cli(&root, &hook_input(cmd, &root), &t, &clock).unwrap();
+    assert_eq!(v["status"], json!("owner"));
+    assert_eq!(v["source"], json!("branch"));
+    assert_eq!(t.sent.borrow().len(), 1);
+    assert_eq!(t.sent.borrow()[0].url, URL);
+
+    // A lower live claim holds: the same commit is refused (Conflict).
+    let lower = json!([
+        raw(
+            50,
+            "GoosLab",
+            &format!("moai-claim: session=x epoch=1 lease_until={LIVE}")
+        ),
+        raw(
+            100,
+            "GoosLab",
+            &format!("moai-claim: session=y epoch=1 lease_until={LIVE}")
+        ),
+    ]);
+    let t = RecordedTransport::new(vec![get(lower)]);
+    let err = hook_cli(&root, &hook_input(cmd, &root), &t, &clock).unwrap_err();
+    assert_eq!(classify(&err), Kind::Conflict, "{err}");
+
+    // No token (the first commit before the claim id arrived): uncertain, no GitHub read.
+    let t = RecordedTransport::new(vec![]);
+    let err = hook_cli(&root, &hook_input("git commit -m work", &root), &t, &clock).unwrap_err();
+    assert!(err.starts_with("claim verify: uncertain;"), "{err}");
+    assert!(
+        err.contains("ask the leader for the claim comment id"),
+        "{err}"
+    );
+    assert!(err.contains("`Moai-Claim: 7#<id>`"), "{err}");
+    assert_eq!(classify(&err), Kind::Blocked);
+    assert!(t.sent.borrow().is_empty());
+
+    // A token for another Issue only: uncertain.
+    let err = hook_cli(
+        &root,
+        &hook_input("git commit -m \"x\n\nMoai-Claim: 8#100\"", &root),
+        &t,
+        &clock,
+    )
+    .unwrap_err();
+    assert!(err.contains("names another Issue"), "{err}");
+    assert_eq!(classify(&err), Kind::Blocked);
+
+    // A message from -F is not read: uncertain, not allowed.
+    let err = hook_cli(
+        &root,
+        &hook_input("git commit -F msg.txt", &root),
+        &t,
+        &clock,
+    )
+    .unwrap_err();
+    assert_eq!(classify(&err), Kind::Blocked, "{err}");
+
+    // An origin that is not GitHub: uncertain.
+    git(&root, &["remote", "set-url", "origin", "/srv/repo.git"]);
+    let err = hook_cli(&root, &hook_input(cmd, &root), &t, &clock).unwrap_err();
+    assert!(err.contains("not a GitHub repository"), "{err}");
+    assert!(t.sent.borrow().is_empty());
+
+    // Other branches and a detached HEAD are not lane worktrees: allowed, reason given.
+    let (_e, other) = lane_repo("leader/docs");
+    let v = hook_cli(&other, &hook_input("git commit -m x", &other), &t, &clock).unwrap();
+    assert_eq!(v["allowed"], json!(true));
+    assert!(v["reason"].as_str().unwrap().contains("not issue/<n>"));
+    git(&other, &["checkout", "-q", "--detach"]);
+    let v = hook_cli(&other, &hook_input("git commit -m x", &other), &t, &clock).unwrap();
+    assert!(v["reason"].as_str().unwrap().contains("detached HEAD"));
+    assert!(t.sent.borrow().is_empty());
+}
+
+/// The push half of the operating path: the comment id comes from the newest own commit's
+/// token, the base is the merge-base with origin/HEAD, tip merges are not checked.
+#[test]
+fn hook_guards_a_lane_push_without_a_claim_record() {
+    let clock = FixedClock(now());
+    let (_d, root) = lane_repo("issue/7-widget");
+    let push = || {
+        let t = RecordedTransport::new(vec![get(owner_100())]);
+        hook_cli(
+            &root,
+            &hook_input("git push -u origin HEAD", &root),
+            &t,
+            &clock,
+        )
+    };
+
+    // No commit carries a token yet: uncertain.
+    let err = push().unwrap_err();
+    assert!(err.contains("no commit on the branch carries"), "{err}");
+    assert_eq!(classify(&err), Kind::Blocked);
+
+    git(
+        &root,
+        &[
+            "commit",
+            "-q",
+            "--allow-empty",
+            "-m",
+            "work\n\nMoai-Claim: 7#100",
+        ],
+    );
+    // A tip merge (the default branch moved on) without the token, as decision 06:02 allows.
+    git(&root, &["checkout", "-q", "main"]);
+    git(
+        &root,
+        &["commit", "-q", "--allow-empty", "-m", "other card"],
+    );
+    git(&root, &["update-ref", "refs/remotes/origin/main", "HEAD"]);
+    git(&root, &["checkout", "-q", "issue/7-widget"]);
+    git(
+        &root,
+        &["merge", "-q", "--no-ff", "-m", "Merge main", "main"],
+    );
+    let v = push().unwrap();
+    assert_eq!(v["status"], json!("owner"));
+    assert_eq!(v["trailer_checked"], json!(1));
+
+    // A lane commit without the token: the push is refused.
+    git(
+        &root,
+        &["commit", "-q", "--allow-empty", "-m", "no trailer"],
+    );
+    let err = push().unwrap_err();
+    assert!(err.starts_with("claim verify: trailer missing"), "{err}");
+
+    // Without origin/HEAD the base is unknown: uncertain, never an unchecked push.
+    git(
+        &root,
+        &[
+            "commit",
+            "-q",
+            "--amend",
+            "--allow-empty",
+            "-m",
+            "fixed\n\nMoai-Claim: 7#100",
+        ],
+    );
+    git(
+        &root,
+        &["symbolic-ref", "--delete", "refs/remotes/origin/HEAD"],
+    );
+    let err = push().unwrap_err();
+    assert!(err.contains("merge-base with origin/HEAD"), "{err}");
+}
+
+/// The binary on the operating path: a tokenless commit in an `issue/<n>` worktree without a
+/// claim record exits 2 (the host blocks it); a non-commit exits 0.
+#[cfg(unix)]
+#[test]
+fn hook_binary_exits_2_on_a_lane_branch_without_a_token() {
+    let (_d, root) = lane_repo("issue/7-widget");
+    let run = |command: &str| {
+        use std::io::Write as _;
+        let mut child = Command::new(env!("CARGO_BIN_EXE_moai-cli"))
+            .args(["claim-verify", ".", "--hook"])
+            .current_dir(&root)
+            // The refusal comes before any GitHub read, so no `gh` stub is needed.
+            .env_remove("MOAI_FORGE_GH_BIN")
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_CONFIG_SYSTEM", "/dev/null")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap();
+        child
+            .stdin
+            .take()
+            .unwrap()
+            .write_all(&hook_input(command, &root))
+            .unwrap();
+        child.wait_with_output().unwrap()
+    };
+    let refused = run("git commit -m work");
+    assert_eq!(refused.status.code(), Some(2));
+    assert!(String::from_utf8_lossy(&refused.stderr).contains("claim verify: uncertain"));
+    assert_eq!(run("cargo test").status.code(), Some(0));
 }
 
 /// AC-2 (workflow text): the `--mode agent` workflow names the boundary before commit and
