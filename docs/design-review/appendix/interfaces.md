@@ -23,6 +23,7 @@
 - `agents-plan`
 - `apply-recover`
 - `archive-plan`
+- `atlas-tag-scan`
 - `audit-reduce`
 - `baseline-inventory`
 - `claim-acquire`
