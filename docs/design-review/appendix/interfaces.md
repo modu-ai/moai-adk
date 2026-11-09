@@ -65,6 +65,9 @@
 - `pr-confirm`
 - `project-apply`
 - `project-plan`
+- `project-skill-apply`
+- `project-skill-plan`
+- `project-skill-revert`
 - `queue-next`
 - `recovery-apply`
 - `recovery-plan`
