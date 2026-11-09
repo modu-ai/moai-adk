@@ -19,11 +19,11 @@
 //! exist, the project copy is what a session in that project reads — Claude
 //! documents project skills taking precedence over personal ones and Codex
 //! walks from the working directory up toward `$HOME/.agents/skills`, so
-//! the nearest copy wins. Both copies stay independent per host (host별
-//! 독립 복사; symlinks refused — 설계 textonly §4 L166). The plan reports
+//! the nearest copy wins. Both copies stay independent per host (independent
+//! copy per host; symlinks refused — design textonly §4 L166). The plan reports
 //! the duplication instead of guessing.
 //!
-//! Rollback (AC-1 되돌리기): apply stores the before bytes of every
+//! Rollback (AC-1 revert): apply stores the before bytes of every
 //! replaced folder under `<project>/.moai-cli/project-skill-rollback/
 //! <request-id>/before/<host>/` plus a receipt JSON; revert restores from
 //! that record (a created folder is removed, a replaced folder is restored
@@ -252,7 +252,7 @@ fn copy_tree(src: &Path, dest: &Path, depth: usize, count: &mut usize) -> Result
     Ok(())
 }
 
-/// One applied copy with what revert needs (AC-1 되돌리기): the action
+/// One applied copy with what revert needs (AC-1 revert): the action
 /// taken, the before digest, and the backup directory holding the pre-apply
 /// bytes for `replace` (a `create` is reverted by removing the directory).
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -280,7 +280,7 @@ pub struct ProjectSkillApplyReceipt {
     pub status: String,
 }
 
-/// Revert request (#2242 AC-1 되돌리기): names the persisted rollback
+/// Revert request (#2242 AC-1 revert): names the persisted rollback
 /// receipt to undo.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -451,7 +451,7 @@ pub fn project_skill_apply(req: &ProjectSkillRequest) -> Result<ProjectSkillAppl
     Ok(receipt)
 }
 
-/// `project-skill-revert` (#2242 AC-1 되돌리기): restores what one apply
+/// `project-skill-revert` (#2242 AC-1 revert): restores what one apply
 /// changed — a created folder is removed, a replaced folder is restored
 /// byte for byte from the rollback backup. Reads only the persisted
 /// receipt; executes only local file moves.
