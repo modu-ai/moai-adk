@@ -19,6 +19,7 @@ pub mod parity;
 pub mod plan;
 pub mod pr_link;
 pub mod profile;
+pub mod queue;
 pub mod recovery;
 pub mod redact;
 pub mod run;
