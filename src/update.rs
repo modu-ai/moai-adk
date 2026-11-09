@@ -260,6 +260,12 @@ pub struct HostReceipt {
     /// receipt keeps the PRE-apply manifest, so a crashed apply surfaces as per-file
     /// conflict instead of a silent overwrite (04-C recovers).
     pub owned: Vec<FileHash>,
+    /// #2268 additive (REQ-3): whether the projection root already existed before this
+    /// apply. On a first apply (`version_before` none) into a pre-existing root, the
+    /// created entries landed inside a previously unmanaged folder — recovery lists
+    /// them. serde-default keeps pre-#2268 receipts readable.
+    #[serde(default)]
+    pub top_skills_existed_before: bool,
 }
 
 /// Receipt path; `create` also creates the directory chain (apply only — the plan must
@@ -751,10 +757,47 @@ pub fn plan_update(home: &Path, staged: &StagedPackage) -> Result<UpdatePlan> {
         }
 
         files.sort_by(|a, b| a.path.cmp(&b.path));
+
+        // REQ-1 (#2268, fail-closed): pre-existing content the install receipt does not
+        // own means the projection root holds a foreign or previous-generation package
+        // (the agent-9 repro: an old-generation SKILL.md with 12 pending RC1 creates
+        // around it). The host is blocked — apply writes nothing for it. A managed
+        // root (every staged file owned) keeps the normal three-way path (AC-2).
+        // REQ-2: the reason names the condition ('unmanaged existing package') and the
+        // safe alternatives — never an automatic overwrite.
+        let unmanaged: Vec<&str> = files
+            .iter()
+            .filter(|f| {
+                f.baseline_sha256.is_none()
+                    && f.current_sha256.is_some()
+                    && staged.files.contains_key(&f.path)
+            })
+            .map(|f| f.path.as_str())
+            .collect();
+        let (preflight, blocked) = if !unmanaged.is_empty() {
+            (
+                "blocked".to_string(),
+                Some(format!(
+                    "unmanaged existing package: {} file(s) present in the projection root \
+                     that install receipt {install_id} does not own ({}); \
+                     safe alternatives: install to a separate location, or a \
+                     user-confirmed backup-then-replace — never automatic; \
+                     per-file actions below are informational only",
+                    unmanaged.len(),
+                    unmanaged.join(", "),
+                )),
+            )
+        } else {
+            let reason = blocked.clone();
+            (
+                if reason.is_some() { "blocked" } else { "ok" }.into(),
+                reason,
+            )
+        };
         hosts.push(HostPlan {
             host: (*host).to_string(),
             projection_root: root_text,
-            preflight: if blocked.is_some() { "blocked" } else { "ok" }.into(),
+            preflight,
             blocked_reason: blocked,
             files,
         });
@@ -920,6 +963,7 @@ pub fn apply_update(
             package_digest: staged.digest.clone(),
             package_version: fresh.target_version.clone(),
             version_before: previous.as_ref().map(|p| p.package_version.clone()),
+            top_skills_existed_before: top_skills_existed,
             status: "pending".into(),
             started_at: now_rfc3339(),
             finished_at: None,

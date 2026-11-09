@@ -42,10 +42,18 @@ const MANAGED_KEYS: &[&str] = &[
     "github_issues",
     "leader",
     "context_max_bytes",
+    "archive_grace_days",
 ];
 /// Keys added after the first profile release: absent from desired, current and baseline
 /// they are left out of the delta, so a profile without them plans exactly as before.
-const ADDITIVE_KEYS: &[&str] = &["github_issues", "context_max_bytes", "leader"];
+/// Keys added after the first profile release: absent from desired, current and baseline
+/// they are left out of the delta, so a profile without them plans exactly as before.
+const ADDITIVE_KEYS: &[&str] = &[
+    "github_issues",
+    "context_max_bytes",
+    "leader",
+    "archive_grace_days",
+];
 
 /// Leader supervision settings (rc.2 A3 #2161/#2162, user decision D-2 2026-11-09).
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -102,6 +110,11 @@ pub struct Profile {
     /// key reads unchanged.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub context_max_bytes: Option<u64>,
+    /// SPEC auto-archive inactivity window in days (#2187, REQ-D1-01). Absent means
+    /// the built-in 90-day default (design §12, Go-inherited); a profile written
+    /// before this key reads unchanged.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub archive_grace_days: Option<u64>,
 }
 
 /// Key-level reconfigure delta of a plan (REQ-03A-02). Keys are sorted in every list so
@@ -212,6 +225,7 @@ fn validate(p: &Profile) -> Result<()> {
             .is_some_and(|s| !portable(s) || s.len() > REVISION_LIMIT)
         || !decisions_ok
         || p.context_max_bytes == Some(0)
+        || p.archive_grace_days == Some(0)
     {
         return Err("invalid or nonportable profile; no values were logged".into());
     }
@@ -311,7 +325,8 @@ fn compute_delta(baseline: Option<&Value>, current: Option<&Value>, desired: &Va
         let d = desired_map.get(key);
         let c = current_map.and_then(|m| m.get(key));
         let b = baseline_map.and_then(|m| m.get(key));
-        // `github_issues` (#2106), `context_max_bytes` (#2184) and `leader` (#2162) are additive: absent from
+        // `github_issues` (#2106), `leader` (#2162), `context_max_bytes` (#2184) and
+        // `archive_grace_days` (#2187) are additive: absent from
         // desired, current and baseline they are left out of the delta, so a profile
         // without them plans exactly as before the keys existed.
         if ADDITIVE_KEYS.contains(&key) && d.is_none() && c.is_none() && b.is_none() {
@@ -690,6 +705,7 @@ pub fn read_profile(root: &Path) -> Result<(Profile, Vec<u8>)> {
         "github_issues",
         "leader",
         "context_max_bytes",
+        "archive_grace_days",
     ];
     let filtered: serde_json::Map<String, Value> = map
         .iter()
@@ -730,6 +746,7 @@ mod tests {
             github_issues: None,
             leader: None,
             context_max_bytes: None,
+            archive_grace_days: None,
         }
     }
 
