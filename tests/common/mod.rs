@@ -32,3 +32,30 @@ pub fn write_executable(path: &Path, content: &str) {
     #[cfg(not(unix))]
     std::fs::write(path, content).unwrap();
 }
+
+/// Copies an executable (mode 0755) through a short-lived `sh` child, for the same reason as
+/// [`write_executable`]: an in-process `fs::copy` holds a write fd on `dest` that a concurrent
+/// fork can inherit. A temp-name write plus rename does not help — the inherited fd still
+/// refers to the renamed inode.
+#[allow(dead_code)] // only some test crates copy a binary
+pub fn copy_executable(src: &Path, dest: &Path) {
+    #[cfg(unix)]
+    {
+        let status = std::process::Command::new("sh")
+            .args(["-c", "cp \"$1\" \"$2\" && chmod 755 \"$2\"", "sh"])
+            .arg(src)
+            .arg(dest)
+            .status()
+            .expect("spawn sh to copy a test executable");
+        assert!(
+            status.success(),
+            "copying {} to {} failed",
+            src.display(),
+            dest.display()
+        );
+    }
+    #[cfg(not(unix))]
+    {
+        std::fs::copy(src, dest).unwrap();
+    }
+}

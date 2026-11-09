@@ -3,8 +3,9 @@
 //! A forked child keeps every fd of its parent until its own exec. When a parallel test thread
 //! forks while this process holds a write fd on a freshly written script, the script cannot be
 //! exec'd until that child execs: ETXTBSY ("executable file busy"). The first test pins that
-//! mechanism deterministically; the second shows `common::write_executable` survives the same
-//! concurrent forking. macOS does not refuse such an exec, so both are Linux-only.
+//! mechanism deterministically; the others show `common::write_executable` and
+//! `common::copy_executable` survive the same concurrent forking. macOS does not refuse such an
+//! exec, so all are Linux-only.
 #![cfg(target_os = "linux")]
 mod common;
 
@@ -56,6 +57,22 @@ fn inherited_writer_fd_makes_exec_fail_with_etxtbsy() {
 
 #[test]
 fn write_executable_survives_concurrent_forks() {
+    exec_survives_concurrent_forks(|path| {
+        common::write_executable(path, "#!/bin/sh\nexit 0\n");
+    });
+}
+
+#[test]
+fn copy_executable_survives_concurrent_forks() {
+    let src_dir = tempfile::tempdir().unwrap();
+    let src = src_dir.path().join("source");
+    common::write_executable(&src, "#!/bin/sh\nexit 0\n");
+    exec_survives_concurrent_forks(|path| common::copy_executable(&src, path));
+}
+
+/// Makes and execs 300 executables with `make` while four threads keep forking children that
+/// sit between fork and exec; every exec must succeed.
+fn exec_survives_concurrent_forks(make: impl Fn(&std::path::Path)) {
     let tmp = tempfile::tempdir().unwrap();
     let stop = Arc::new(AtomicBool::new(false));
     let forkers: Vec<_> = (0..4)
@@ -71,7 +88,7 @@ fn write_executable_survives_concurrent_forks() {
     let mut failures = Vec::new();
     for i in 0..300 {
         let path = tmp.path().join(format!("stub-{i}"));
-        common::write_executable(&path, "#!/bin/sh\nexit 0\n");
+        make(&path);
         match Command::new(&path).status() {
             Ok(s) if s.success() => {}
             other => failures.push(format!("stub-{i}: {other:?}")),
