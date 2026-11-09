@@ -487,3 +487,366 @@ fn codex_duplicate_moai_skill_is_warned() {
         .unwrap()
         .contains("does not merge"));
 }
+
+// --- I4 #2241: projection apply ------------------------------------------------------
+// Both install locations are fixtures only (the choice is a P04 / C5 HOLD): a home-shaped
+// `<tmp>/home/.agents/skills/moai` and a project-shaped `<tmp>/repo/.agents/skills/moai`.
+
+fn plan(package: &str, target: &Path) -> Value {
+    let (ok, v) = run(&["codex-projection-plan", package, "--target", s(target)]);
+    assert!(ok, "{v}");
+    v["result"].clone()
+}
+fn apply(package: &str, target: &Path, digest: &str, permission: &str) -> (bool, Value) {
+    run(&[
+        "codex-projection-apply",
+        package,
+        "--target",
+        s(target),
+        "--plan-digest",
+        digest,
+        "--permission-reference",
+        permission,
+    ])
+}
+fn actions(plan: &Value) -> Vec<String> {
+    plan["files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|e| e["target_action"].as_str().unwrap().to_string())
+        .collect()
+}
+/// Path → (bytes, modified time) of every file under `dir`; equal maps mean no write.
+fn snapshot(dir: &Path) -> std::collections::BTreeMap<String, (Vec<u8>, std::time::SystemTime)> {
+    let mut out = std::collections::BTreeMap::new();
+    let mut stack = vec![dir.to_path_buf()];
+    while let Some(d) = stack.pop() {
+        for e in fs::read_dir(&d).unwrap() {
+            let p = e.unwrap().path();
+            if p.is_dir() {
+                stack.push(p);
+            } else {
+                let rel = p.strip_prefix(dir).unwrap().to_str().unwrap().to_string();
+                let modified = fs::metadata(&p).unwrap().modified().unwrap();
+                out.insert(rel, (fs::read(&p).unwrap(), modified));
+            }
+        }
+    }
+    out
+}
+fn copy_tree(from: &Path, to: &Path) {
+    for e in fs::read_dir(from).unwrap() {
+        let p = e.unwrap().path();
+        let dest = to.join(p.file_name().unwrap());
+        if p.is_dir() {
+            fs::create_dir_all(&dest).unwrap();
+            copy_tree(&p, &dest);
+        } else {
+            fs::create_dir_all(to).unwrap();
+            fs::copy(&p, &dest).unwrap();
+        }
+    }
+}
+const PERMISSION: &str = "test-approval-2241";
+
+#[test]
+fn codex_projection_apply_installs_verifies_and_reinstalls_as_noop() {
+    let f = fixture();
+    for target in [
+        f.home.join(".agents/skills/moai"),
+        f.root.join(".agents/skills/moai"),
+    ] {
+        let first = plan(&package(), &target);
+        assert_eq!(first["source_manifest"]["status"], "verified", "{first}");
+        assert!(actions(&first).iter().all(|a| a == "create"));
+        let total = first["files"].as_array().unwrap().len();
+        let (ok, v) = apply(
+            &package(),
+            &target,
+            first["plan_digest"].as_str().unwrap(),
+            PERMISSION,
+        );
+        assert!(ok, "{v}");
+        assert_eq!(v["operation"], "codex.projection_apply");
+        let r = &v["result"];
+        assert_eq!(r["files_created"].as_array().unwrap().len(), total);
+        assert_eq!(r["verified"], true);
+        assert_eq!(r["host_loaded"], false);
+        // The projection is the package's bytes plus the adapter's agents/openai.yaml.
+        let pkg = Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai");
+        assert_eq!(
+            fs::read(target.join("SKILL.md")).unwrap(),
+            fs::read(pkg.join("SKILL.md")).unwrap()
+        );
+        let yaml = first["files"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|e| e["path"] == "agents/openai.yaml")
+            .unwrap();
+        assert_eq!(
+            fs::read_to_string(target.join("agents/openai.yaml")).unwrap(),
+            yaml["content"].as_str().unwrap()
+        );
+        // Verification: a fresh plan sees every file unchanged; the first digest is now stale.
+        let second = plan(&package(), &target);
+        assert!(
+            actions(&second).iter().all(|a| a == "unchanged"),
+            "{second}"
+        );
+        assert_ne!(second["plan_digest"], first["plan_digest"]);
+        let (ok, v) = apply(
+            &package(),
+            &target,
+            first["plan_digest"].as_str().unwrap(),
+            PERMISSION,
+        );
+        assert!(!ok);
+        assert_eq!(v["error"]["kind"], "stale_plan");
+        // Re-install: no byte and no modification time changes.
+        let before = snapshot(&target);
+        let (ok, v) = apply(
+            &package(),
+            &target,
+            second["plan_digest"].as_str().unwrap(),
+            PERMISSION,
+        );
+        assert!(ok, "{v}");
+        assert_eq!(v["result"]["files_created"], serde_json::json!([]));
+        assert_eq!(
+            v["result"]["files_unchanged"].as_array().unwrap().len(),
+            total
+        );
+        assert_eq!(snapshot(&target), before);
+    }
+    // Each target received only its own install; the other location stays as the test made it.
+    assert!(f.home.join(".agents/skills/moai/SKILL.md").is_file());
+    assert!(f.root.join(".agents/skills/moai/SKILL.md").is_file());
+}
+
+#[test]
+fn codex_projection_apply_refuses_a_manifest_mismatch_and_writes_nothing() {
+    // REQ-I4-01: a copy whose digest differs from source-manifest.json is never written.
+    let f = fixture();
+    let pkg = Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai");
+    type Mutate = fn(&Path);
+    let cases: [(&str, Mutate, &str); 4] = [
+        (
+            "edited file",
+            |p| fs::write(p.join("references/routes.json"), "{}\n").unwrap(),
+            "references/routes.json",
+        ),
+        (
+            "unlisted file",
+            |p| fs::write(p.join("workflows/extra.md"), "x\n").unwrap(),
+            "workflows/extra.md",
+        ),
+        (
+            "listed but absent",
+            |p| fs::remove_file(p.join("references/routes.json")).unwrap(),
+            "references/routes.json",
+        ),
+        (
+            "manifest absent",
+            |p| fs::remove_file(p.join("references/source-manifest.json")).unwrap(),
+            "missing",
+        ),
+    ];
+    for (label, mutate, needle) in cases {
+        let copy = TempDir::new().unwrap();
+        let package = copy.path().join("moai");
+        copy_tree(&pkg, &package);
+        mutate(&package);
+        let target = f.home.join(".agents/skills/moai");
+        let p = plan(s(&package), &target);
+        assert_ne!(p["source_manifest"]["status"], "verified", "{label}");
+        assert!(p.to_string().contains(needle), "{label}: {p}");
+        let (ok, v) = apply(
+            s(&package),
+            &target,
+            p["plan_digest"].as_str().unwrap(),
+            PERMISSION,
+        );
+        assert!(!ok, "{label}");
+        assert_eq!(v["error"]["kind"], "conflict", "{label}: {v}");
+        assert!(
+            v["error"]["message"]
+                .as_str()
+                .unwrap()
+                .contains("nothing applied"),
+            "{label}"
+        );
+        assert!(!target.exists(), "{label}: something was written");
+    }
+    // The unmodified copy of the same package installs: the refusal came from the mismatch.
+    let copy = TempDir::new().unwrap();
+    let package = copy.path().join("moai");
+    copy_tree(&pkg, &package);
+    let target = f.root.join(".agents/skills/moai");
+    let p = plan(s(&package), &target);
+    let (ok, v) = apply(
+        s(&package),
+        &target,
+        p["plan_digest"].as_str().unwrap(),
+        PERMISSION,
+    );
+    assert!(ok, "{v}");
+}
+
+#[test]
+fn codex_projection_apply_never_overwrites_and_keeps_unowned_files() {
+    let f = fixture();
+    let target = f.home.join(".agents/skills/moai");
+    // A user's own file at the target is preserved and listed, never touched.
+    write(&target.join("NOTES.md"), "mine\n");
+    let p = plan(&package(), &target);
+    assert_eq!(p["preserved"], serde_json::json!(["NOTES.md"]));
+    let (ok, v) = apply(
+        &package(),
+        &target,
+        p["plan_digest"].as_str().unwrap(),
+        PERMISSION,
+    );
+    assert!(ok, "{v}");
+    assert_eq!(
+        fs::read_to_string(target.join("NOTES.md")).unwrap(),
+        "mine\n"
+    );
+    // A planned path holding different bytes refuses the whole apply before any write.
+    let other = f.root.join(".agents/skills/moai");
+    write(
+        &other.join("SKILL.md"),
+        "---\nname: moai\ndescription: edited\n---\n",
+    );
+    let p = plan(&package(), &other);
+    let skill = p["files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|e| e["path"] == "SKILL.md")
+        .unwrap();
+    assert_eq!(skill["target_action"], "conflict");
+    let (ok, v) = apply(
+        &package(),
+        &other,
+        p["plan_digest"].as_str().unwrap(),
+        PERMISSION,
+    );
+    assert!(!ok);
+    assert_eq!(v["error"]["kind"], "conflict", "{v}");
+    assert!(!other.join("agents/openai.yaml").exists());
+    assert!(!other.join("references").exists());
+    assert_eq!(
+        fs::read_to_string(other.join("SKILL.md")).unwrap(),
+        "---\nname: moai\ndescription: edited\n---\n"
+    );
+}
+
+#[test]
+fn codex_projection_apply_gates() {
+    let f = fixture();
+    let target = f.home.join(".agents/skills/moai");
+    let p = plan(&package(), &target);
+    let digest = p["plan_digest"].as_str().unwrap();
+    for bad in ["", "placeholder", "null"] {
+        let (ok, v) = apply(&package(), &target, digest, bad);
+        assert!(!ok);
+        assert_eq!(
+            v["error"]["kind"], "permission_reference_missing",
+            "{bad:?}"
+        );
+    }
+    let (ok, v) = apply(&package(), &target, "sha256:0000", PERMISSION);
+    assert!(!ok);
+    assert_eq!(v["error"]["kind"], "stale_plan");
+    // Changing the openai.yaml choice changes the plan, so the old digest is stale.
+    let (ok, v) = run(&[
+        "codex-projection-apply",
+        &package(),
+        "--target",
+        s(&target),
+        "--display-name",
+        "Other",
+        "--plan-digest",
+        digest,
+        "--permission-reference",
+        PERMISSION,
+    ]);
+    assert!(!ok);
+    assert_eq!(v["error"]["kind"], "stale_plan");
+    assert!(!target.exists());
+    // A target that is a file, or holds a symlink, is refused.
+    let file_target = f.root.join("x/moai");
+    write(&file_target, "x");
+    let (ok, v) = run(&[
+        "codex-projection-plan",
+        &package(),
+        "--target",
+        s(&file_target),
+    ]);
+    assert!(!ok);
+    assert_eq!(v["error"]["kind"], "invalid_input");
+    #[cfg(unix)]
+    {
+        let linked = f.root.join("y/moai");
+        fs::create_dir_all(&linked).unwrap();
+        std::os::unix::fs::symlink(&f.home, linked.join("escape")).unwrap();
+        let (ok, v) = run(&["codex-projection-plan", &package(), "--target", s(&linked)]);
+        assert!(!ok);
+        assert_eq!(v["error"]["kind"], "invalid_input", "{v}");
+    }
+}
+
+#[test]
+fn codex_projection_apply_messages_have_a_deliberate_kind() {
+    use moai_cli::contract::{classify, Kind::*};
+    for (message, kind) in [
+        (
+            "source manifest digest mismatch (mismatch): references/routes.json; nothing applied",
+            Conflict,
+        ),
+        (
+            "source manifest digest mismatch (missing): ; nothing applied",
+            Conflict,
+        ),
+        (
+            "conflict in codex projection: SKILL.md differ from the planned bytes; nothing applied",
+            Conflict,
+        ),
+        (
+            "codex projection digest mismatch after write: SKILL.md",
+            Conflict,
+        ),
+        (
+            "partial apply: created 2 file(s) before x; failed at x: exclusive create refused",
+            Partial,
+        ),
+        (
+            "exclusive create refused (SKILL.md); nothing applied",
+            Conflict,
+        ),
+        (
+            "package changed since plan (SKILL.md); nothing applied",
+            StalePlan,
+        ),
+        (
+            "target directory write failed (SKILL.md); nothing applied",
+            Io,
+        ),
+        (
+            "invalid target: must be a directory, not a file or symlink",
+            InvalidInput,
+        ),
+        (
+            "invalid target: a symlink under the target is refused",
+            InvalidInput,
+        ),
+        ("target file limit exceeded", InvalidInput),
+        ("target metadata unavailable", Io),
+        ("stale or altered plan; re-preview required", StalePlan),
+        ("permission reference required", PermissionReferenceMissing),
+    ] {
+        assert_eq!(classify(message), kind, "{message}");
+    }
+}

@@ -328,6 +328,29 @@ enum Command {
         #[arg(long)]
         disable_bundled_skills: bool,
     },
+    /// Install a planned Codex projection into its explicit target (I4 #2241). Refuses a
+    /// stale plan, a source-manifest mismatch or a conflicting target file before writing.
+    CodexProjectionApply {
+        package: PathBuf,
+        /// Absolute skill directory named `moai`; the same target the plan was made for.
+        #[arg(long)]
+        target: PathBuf,
+        #[arg(long, default_value = "MoAI")]
+        display_name: String,
+        #[arg(
+            long,
+            default_value = "Set up, plan, implement, verify, audit and sync through one workflow"
+        )]
+        short_description: String,
+        #[arg(long, default_value = "Use $moai to read this project's status")]
+        default_prompt: String,
+        #[arg(long)]
+        allow_implicit_invocation: Option<bool>,
+        #[arg(long)]
+        plan_digest: String,
+        #[arg(long)]
+        permission_reference: String,
+    },
     /// Read-only Codex doctor: AGENTS chain and budget, skill duplicates, `.codex/` layer.
     CodexDoctor {
         /// Project root (Codex walks from here down to the working directory).
@@ -683,6 +706,7 @@ const OPERATIONS: &[(&str, &str)] = &[
     ("claude-settings-plan", "claude.settings_plan"),
     ("claude-settings-apply", "claude.settings_apply"),
     ("codex-projection-plan", "codex.projection_plan"),
+    ("codex-projection-apply", "codex.projection_apply"),
     ("codex-doctor", "codex.doctor"),
     ("claim-acquire", "claim.acquire"),
     ("queue-next", "queue.next"),
@@ -1032,6 +1056,27 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             },
             &status_line,
             disable_bundled_skills,
+        ),
+        Command::CodexProjectionApply {
+            package,
+            target,
+            display_name,
+            short_description,
+            default_prompt,
+            allow_implicit_invocation,
+            plan_digest,
+            permission_reference,
+        } => codex::projection_apply(
+            &package,
+            &target,
+            &codex::OpenAiYaml {
+                display_name,
+                short_description,
+                default_prompt,
+                allow_implicit_invocation,
+            },
+            &plan_digest,
+            &permission_reference,
         ),
         Command::CodexDoctor {
             project,
