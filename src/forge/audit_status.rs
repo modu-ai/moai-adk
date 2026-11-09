@@ -1,5 +1,5 @@
 //! The `moai/audit` commit status, posted by an audit-only GitHub App when its token is set
-//! (#2173, B6; decisions 01:1x(11-09) "Forge 권한·fallback").
+//! (#2173, B6; decisions 01:1x(11-09) "Forge permissions and fallback").
 //!
 //! `forge-audit-status` posts one status on an exact head SHA and reads it back once:
 //!

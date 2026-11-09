@@ -4,7 +4,7 @@
 //! top §9 L1184 `@MOAI:REQ SPEC-X/REQ-007` (space form) and Core Brain
 //! L3472-3473 `@MOAI:SPEC: SPEC-PAYMENT-001` (colon form); the conflict and the
 //! "define schema + parser version before adding sub-lines" note are recorded in
-//! review-group2 §태그 문법):
+//! review-group2, tag grammar section):
 //!
 //! ```text
 //! line    := prefix? "@MOAI:" payload | prefix? "@MX:" payload

@@ -1,4 +1,4 @@
-use clap::{error::ErrorKind, ArgGroup, Args, Parser, Subcommand};
+use clap::{error::ErrorKind, ArgGroup, Args, CommandFactory, Parser, Subcommand};
 use moai_cli::{
     agents_apply, agents_plan, apply, contract, hosts::codex, plan, resolve, session_launch,
     AgentsPlan, AgentsRequest, Plan, Profile, SessionRequest,
@@ -150,6 +150,11 @@ enum Command {
     /// Read GitHub Issues and comments as TODO (GET only; typed JSON request on stdin,
     /// envelope on stdout). Poll state: `<PROJECT>/.moai-cli/forge/poll-state.json`.
     ForgeRead {
+        project: PathBuf,
+    },
+    /// Probe whether the sub-issue and dependency APIs answer for one Issue and plan the
+    /// links: API write intents, or `Parent:`/`Blocked-By:` body lines (GET only; #2172).
+    ForgeLinksProbe {
         project: PathBuf,
     },
     /// Create or update the one report comment of a run on its Issue (typed JSON payload on
@@ -559,6 +564,33 @@ enum Command {
         #[arg(long)]
         grace_days: Option<u64>,
     },
+    /// Move the archive-eligible SPECs (D2 #2188, REQ-D2-01): recomputes the plan and
+    /// requires its `plan_digest`; each SPEC is hashed, copied, read back and indexed
+    /// before its source is removed. Any mismatch cancels the move and keeps the source.
+    ArchiveApply {
+        project: PathBuf,
+        #[arg(long)]
+        plan_digest: String,
+        #[arg(long)]
+        permission_reference: String,
+        #[arg(long)]
+        grace_days: Option<u64>,
+    },
+    /// Restore one archived SPEC to `.moai-cli/specs/<id>` after verifying its manifest
+    /// (D2 #2188).
+    ArchiveRestore {
+        project: PathBuf,
+        #[arg(long)]
+        spec: String,
+        #[arg(long)]
+        permission_reference: String,
+    },
+    /// Read-only, non-vector search over the archive index and archived text (D2 #2188).
+    ArchiveSearch {
+        project: PathBuf,
+        #[arg(long)]
+        query: String,
+    },
     /// Plan external skill source candidates read-only (03-B #1996): typed request on
     /// stdin; judgment envelope on stdout; writes nothing.
     SkillSourcePlan {
@@ -810,82 +842,105 @@ fn launch(
     Ok(v)
 }
 
-/// Internal operations (01-C #1990): subcommand word and operation name. The launchers are
-/// developer tools and stay outside the envelope contract. A slice, not a fixed-length array:
-/// two branches each bumping the length to the same number merged silently (#2044).
-const OPERATIONS: &[(&str, &str)] = &[
-    ("package-inspect", "package.inspect"),
-    ("project-plan", "project.plan"),
-    ("project-apply", "project.apply"),
-    ("package-resolve", "package.resolve"),
-    ("agents-plan", "agents.plan"),
-    ("agents-apply", "agents.apply"),
-    ("apply-recover", "apply.recover"),
-    ("baseline-inventory", "baseline.inventory"),
-    ("identity", "identity"),
-    ("forge-read", "forge.read"),
-    ("forge-report", "forge.report"),
-    ("plan-admit", "plan.admit"),
-    ("claude-doctor", "claude.doctor"),
-    ("hooks-plan", "hooks.plan"),
-    ("hooks-apply", "hooks.apply"),
-    ("hook-receipt", "hook.receipt"),
-    ("claude-settings-plan", "claude.settings_plan"),
-    ("claude-settings-apply", "claude.settings_apply"),
-    ("codex-projection-plan", "codex.projection_plan"),
-    ("codex-projection-apply", "codex.projection_apply"),
-    ("codex-doctor", "codex.doctor"),
-    ("claim-acquire", "claim.acquire"),
-    ("queue-next", "queue.next"),
-    ("leader-tick", "leader.tick"),
-    ("claim-show", "claim.show"),
-    ("claim-release", "claim.release"),
-    ("claim-handoff", "claim.handoff"),
-    ("claim-verify", "claim.verify"),
-    ("effect-intend", "effect.intend"),
-    ("effect-confirm", "effect.confirm"),
-    ("effects-reconcile", "effects.reconcile"),
-    ("todo-promote-preview", "todo.promote.plan"),
-    ("todo-promote-apply", "todo.promote.apply"),
-    ("run-verify", "run.verify"),
-    ("snapshot-describe", "snapshot.describe"),
-    ("skill-source-plan", "skill_source.plan"),
-    ("cost-report", "cost.report"),
-    ("project-skill-plan", "project_skill.plan"),
-    ("project-skill-apply", "project_skill.apply"),
-    ("project-skill-revert", "project_skill.revert"),
-    ("generation-plan", "generation.plan"),
-    ("generation-apply", "generation.apply"),
-    ("skill-source-apply", "skill_source.apply"),
-    ("skill-read-receipt", "skill_source.read_receipt"),
-    ("context-bundle", "context.bundle"),
-    ("context-verify", "context.verify"),
-    ("decision-record", "decision.record"),
-    ("audit-reduce", "audit.reduce"),
-    ("install-inspect", "install.inspect"),
-    ("worktree-plan", "worktree.plan"),
-    ("worktree-apply", "worktree.apply"),
-    ("scope-check", "scope.check"),
-    ("pr-body-render", "pr.body.render"),
-    ("github-plan", "github.plan"),
-    ("github-apply", "github.apply"),
-    ("update-plan", "update.plan"),
-    ("update-apply", "update.apply"),
-    ("recovery-plan", "recovery.plan"),
-    ("recovery-apply", "recovery.apply"),
-    ("pr-confirm", "pr.confirm"),
-    ("parity-check", "parity.check"),
-    ("archive-plan", "archive.plan"),
-    ("forge-audit-status", "forge.audit_status"),
-    ("atlas-tag-scan", "atlas_tag.scan"),
-    ("flow-wip-check", "flow.wip_check"),
-    ("flow-gate-verdict", "flow.gate_verdict"),
-];
+/// Operation name of an internal command (01-C #1990); `None` for the launchers, which are
+/// developer tools outside the envelope contract. Exhaustive on purpose (#2254, REQ-D8-01):
+/// a `Command` variant without an arm here does not compile, where the old word table only
+/// panicked at run time. Put a new arm at its alphabetical place, not at the end.
+fn operation(command: &Command) -> Option<&'static str> {
+    use Command::*;
+    Some(match command {
+        Cc(_) | Glm(_) | Codex(_) | Session { .. } => return None,
+        AgentsApply { .. } => "agents.apply",
+        AgentsPlan { .. } => "agents.plan",
+        ApplyRecover { .. } => "apply.recover",
+        ArchiveApply { .. } => "archive.apply",
+        ArchivePlan { .. } => "archive.plan",
+        ArchiveRestore { .. } => "archive.restore",
+        ArchiveSearch { .. } => "archive.search",
+        AtlasTagScan { .. } => "atlas_tag.scan",
+        AuditReduce { .. } => "audit.reduce",
+        BaselineInventory { .. } => "baseline.inventory",
+        ClaimAcquire { .. } => "claim.acquire",
+        ClaimHandoff { .. } => "claim.handoff",
+        ClaimRelease { .. } => "claim.release",
+        ClaimShow { .. } => "claim.show",
+        ClaimVerify { .. } => "claim.verify",
+        ClaudeDoctor { .. } => "claude.doctor",
+        ClaudeSettingsApply { .. } => "claude.settings_apply",
+        ClaudeSettingsPlan { .. } => "claude.settings_plan",
+        CodexDoctor { .. } => "codex.doctor",
+        CodexProjectionApply { .. } => "codex.projection_apply",
+        CodexProjectionPlan { .. } => "codex.projection_plan",
+        ContextBundle { .. } => "context.bundle",
+        ContextVerify { .. } => "context.verify",
+        CostReport { .. } => "cost.report",
+        DecisionRecord { .. } => "decision.record",
+        EffectConfirm { .. } => "effect.confirm",
+        EffectIntend { .. } => "effect.intend",
+        EffectsReconcile { .. } => "effects.reconcile",
+        FlowGateVerdict { .. } => "flow.gate_verdict",
+        FlowWipCheck { .. } => "flow.wip_check",
+        ForgeAuditStatus { .. } => "forge.audit_status",
+        ForgeLinksProbe { .. } => "forge.links_probe",
+        ForgeRead { .. } => "forge.read",
+        ForgeReport { .. } => "forge.report",
+        GenerationApply { .. } => "generation.apply",
+        GenerationPlan { .. } => "generation.plan",
+        GithubApply { .. } => "github.apply",
+        GithubPlan { .. } => "github.plan",
+        HookReceipt { .. } => "hook.receipt",
+        HooksApply { .. } => "hooks.apply",
+        HooksPlan { .. } => "hooks.plan",
+        Identity { .. } => "identity",
+        InstallInspect { .. } => "install.inspect",
+        LeaderTick { .. } => "leader.tick",
+        PackageInspect { .. } => "package.inspect",
+        PackageResolve { .. } => "package.resolve",
+        ParityCheck { .. } => "parity.check",
+        PlanAdmit { .. } => "plan.admit",
+        PrBodyRender { .. } => "pr.body.render",
+        PrConfirm { .. } => "pr.confirm",
+        ProjectApply { .. } => "project.apply",
+        ProjectPlan { .. } => "project.plan",
+        ProjectSkillApply { .. } => "project_skill.apply",
+        ProjectSkillPlan { .. } => "project_skill.plan",
+        ProjectSkillRevert { .. } => "project_skill.revert",
+        QueueNext { .. } => "queue.next",
+        RecoveryApply { .. } => "recovery.apply",
+        RecoveryPlan { .. } => "recovery.plan",
+        RunVerify { .. } => "run.verify",
+        ScopeCheck { .. } => "scope.check",
+        SkillReadReceipt { .. } => "skill_source.read_receipt",
+        SkillSourceApply { .. } => "skill_source.apply",
+        SkillSourcePlan { .. } => "skill_source.plan",
+        SnapshotDescribe { .. } => "snapshot.describe",
+        TodoPromoteApply { .. } => "todo.promote.apply",
+        TodoPromotePreview { .. } => "todo.promote.plan",
+        UpdateApply { .. } => "update.apply",
+        UpdatePlan { .. } => "update.plan",
+        WorktreeApply { .. } => "worktree.apply",
+        WorktreePlan { .. } => "worktree.plan",
+    })
+}
+
+/// Operation of a subcommand word when the command line did not parse (`usage_error`): the
+/// word's subcommand is parsed once with each required argument filled in, so the name
+/// still comes from `operation` alone. A word that names no internal operation is `None`.
 fn operation_of(word: &str) -> Option<&'static str> {
-    OPERATIONS
-        .iter()
-        .find(|(w, _)| *w == word)
-        .map(|&(_, op)| op)
+    let cli = Cli::command();
+    let sub = cli.get_subcommands().find(|s| s.get_name() == word)?;
+    let mut argv = vec!["moai-cli".to_string(), word.to_string()];
+    for arg in sub.get_arguments().filter(|a| a.is_required_set()) {
+        let value = arg
+            .get_possible_values()
+            .first()
+            .map_or_else(|| "1".to_string(), |v| v.get_name().to_string());
+        if let Some(long) = arg.get_long() {
+            argv.push(format!("--{long}"));
+        }
+        argv.push(value);
+    }
+    operation(Cli::try_parse_from(argv).ok()?.command.as_ref()?)
 }
 
 /// `-l` → leader, `-a` → agent, neither → no role (never guessed).
@@ -1033,6 +1088,12 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
         Command::ForgeRead { project } => moai_cli::forge::forge_read_cli(
             &project,
             input::<moai_cli::forge::ReadRequest>()?,
+            &moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        Command::ForgeLinksProbe { project } => moai_cli::forge::links::links_probe_cli(
+            &project,
+            input::<moai_cli::forge::links::LinksRequest>()?,
             &moai_cli::forge::transport::GhTransport::from_env()?,
             &moai_cli::forge::policy::SystemClock,
         ),
@@ -1487,6 +1548,24 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             grace_days,
         )?)
         .map_err(|_| "encode failed".into()),
+        Command::ArchiveApply {
+            project,
+            plan_digest,
+            permission_reference,
+            grace_days,
+        } => moai_cli::archive::apply(
+            &project,
+            std::time::SystemTime::now(),
+            grace_days,
+            &plan_digest,
+            &permission_reference,
+        ),
+        Command::ArchiveRestore {
+            project,
+            spec,
+            permission_reference,
+        } => moai_cli::archive::restore(&project, &spec, &permission_reference),
+        Command::ArchiveSearch { project, query } => moai_cli::archive::search(&project, &query),
         Command::SkillSourcePlan { project } => serde_json::to_value(moai_cli::sources::plan(
             &project,
             input::<moai_cli::sources::SourcesRequest>()?,
@@ -1615,11 +1694,7 @@ fn main() -> ExitCode {
         Ok(cli) => cli,
         Err(e) => return usage_error(e),
     };
-    let op = match &cli.command {
-        Some(Command::Cc(_) | Command::Glm(_) | Command::Codex(_) | Command::Session { .. })
-        | None => None,
-        Some(_) => std::env::args().nth(1).and_then(|w| operation_of(&w)),
-    };
+    let op = cli.command.as_ref().and_then(operation);
     let Some(op) = op else {
         return match run_launcher(cli) {
             Ok(value) => {
@@ -1651,15 +1726,65 @@ fn main() -> ExitCode {
 }
 
 #[cfg(test)]
+mod tests {
+    use super::*;
+
+    const LAUNCHERS: [&str; 4] = ["cc", "glm", "codex", "session"];
+
+    /// Every clap subcommand word names exactly one operation through `operation` (#2254): a
+    /// word whose required arguments cannot be filled, or two words with one name, fail here.
+    /// `MOAI_DUMP_OPERATIONS=1` prints the `word operation` pairs (the before/after diff).
+    #[test]
+    fn every_subcommand_word_maps_to_one_operation() {
+        let mut seen = std::collections::BTreeMap::new();
+        let cli = Cli::command();
+        for sub in cli.get_subcommands() {
+            let word = sub.get_name();
+            if word == "help" {
+                continue;
+            }
+            let op = operation_of(word);
+            if LAUNCHERS.contains(&word) {
+                assert_eq!(op, None, "{word} is a launcher");
+                continue;
+            }
+            let op = op.unwrap_or_else(|| panic!("{word} maps to no operation"));
+            if let Some(other) = seen.insert(op, word) {
+                panic!("{word} and {other} share {op}");
+            }
+        }
+        // Every non-launcher word was counted once: no hand-kept total to bump.
+        let words = cli
+            .get_subcommands()
+            .filter(|s| s.get_name() != "help")
+            .count();
+        assert_eq!(seen.len() + LAUNCHERS.len(), words);
+        if std::env::var_os("MOAI_DUMP_OPERATIONS").is_some() {
+            let mut pairs: Vec<_> = seen.iter().map(|(op, w)| format!("{w} {op}")).collect();
+            pairs.sort();
+            println!("{}", pairs.join("\n"));
+        }
+    }
+
+    #[test]
+    fn a_word_that_is_no_subcommand_has_no_operation() {
+        for word in ["", "nope", "package", "package.inspect", "--help"] {
+            assert_eq!(operation_of(word), None, "{word:?}");
+        }
+    }
+}
+
+#[cfg(test)]
 mod operations_doc {
     //! rc.2 D7 #2246: `docs/design-review/appendix/interfaces.md` § "RC1 OPERATIONS 전수" must list
-    //! exactly the subcommand words of `OPERATIONS`, so a PR that adds or removes an operation
+    //! exactly the internal subcommand words mapped by `operation`, so a PR that adds or removes an operation
     //! fails here unless it updates the document in the same change.
     //!
     //! The list is one `- `word`` line per operation in alphabetical order, with no count
     //! (#2241 repair, leader rule ③): PRs that each add an operation then touch different lines
     //! instead of all rewriting one shared count and one shared line.
-    use super::OPERATIONS;
+    use super::{operation_of, Cli};
+    use clap::CommandFactory;
     use std::collections::BTreeSet;
 
     const DOC: &str = include_str!("../docs/design-review/appendix/interfaces.md");
@@ -1731,13 +1856,16 @@ mod operations_doc {
         }
     }
 
-    fn code_words() -> Vec<&'static str> {
-        OPERATIONS.iter().map(|&(word, _)| word).collect()
+    fn code_words(cli: &clap::Command) -> Vec<&str> {
+        cli.get_subcommands()
+            .filter_map(|sub| operation_of(sub.get_name()).map(|_| sub.get_name()))
+            .collect()
     }
 
     #[test]
     fn operations_doc_matches_code() {
-        if let Err(problems) = compare(&code_words(), DOC) {
+        let cli = Cli::command();
+        if let Err(problems) = compare(&code_words(&cli), DOC) {
             panic!("interfaces.md § RC1 OPERATIONS 전수 is out of sync with src/main.rs OPERATIONS: {problems}");
         }
     }
@@ -1753,7 +1881,8 @@ mod operations_doc {
 
     #[test]
     fn mutations_are_detected() {
-        let code = code_words();
+        let cli = Cli::command();
+        let code = code_words(&cli);
         let mut sorted = code.clone();
         sorted.sort_unstable();
         assert_eq!(compare(&code, &render(&sorted)), Ok(()));
