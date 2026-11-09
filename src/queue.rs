@@ -1,0 +1,350 @@
+//! Agent self-claim queue: `queue-next` (rc.2 A2 #2161; SPEC
+//! `docs/design-review/autonomy-modes-spec.md` §3 steps 1-6).
+//!
+//! One call re-reads the open Issues of the repository (the remote is the source of truth,
+//! user decision D-4), keeps the cards of one milestone, drops pull requests, epics (title
+//! `][EP-`) and cards whose `Blocked-By:` line names an Issue that is still open, orders the
+//! rest by parent epic (`상위: #N`) and number, and claims the first one it can through
+//! 06-A's [`crate::claim::acquire`] under one journal lock for the whole run.
+//!
+//! - `already_owned` against a live foreign claim → the card is recorded in `lost_to` and the
+//!   next candidate is tried. The loser writes nothing to the journal (`claim.rs`, unchanged).
+//! - `claimed` → stop. `uncertain` → stop: the comment is posted and this session may be the
+//!   winner (SPEC §4 item 4), so no further candidate is touched. `expired`, or an active
+//!   record of this session, → stop and return it.
+//! - Projection (SPEC §3 step 6) is recorded as intents only. RC1 does not apply state labels
+//!   (`.github/moai/labels.yml`, "state lives in the report comment"), and the owned report
+//!   comment belongs to `forge-report` with its own gates, so both are `not_run` here.
+//!
+//! Not handled here: an expired foreign claim comment is not live, so acquire may post over
+//! it (lease and expiry belong to A7 #2166); a local assignments file is not read (the remote
+//! is authoritative); live GitHub runs are not part of the tests (fixtures only).
+use crate::claim::{
+    acquire, journal_root, worktree_id, ClaimRequest, Journal, Owner, SpecRef, TaskRef,
+};
+use crate::forge::policy::{next_link, Clock};
+use crate::forge::transport::Transport;
+use crate::forge::Client;
+use crate::identity;
+use serde::Deserialize;
+use serde_json::{json, Value};
+use std::collections::BTreeSet;
+use std::path::Path;
+
+type Result<T> = std::result::Result<T, String>;
+
+const API: &str = "https://api.github.com";
+/// Same safety bound as the claim comment pagination.
+const MAX_PAGES: u32 = 50;
+
+/// The caller-supplied part of every claim request; `queue-next` fills `task_ref` and
+/// `logical_key` per candidate and defaults nothing else.
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ClaimTemplate {
+    pub owner: Owner,
+    pub base_revision: String,
+    pub write_scope: Vec<String>,
+    pub spec_ref: SpecRef,
+    pub lease_until: String,
+}
+
+/// `queue-next` stdin (typed JSON, unknown keys rejected).
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct QueueRequest {
+    pub schema_version: u32,
+    pub owner: String,
+    pub repo: String,
+    /// Milestone number whose cards are candidates.
+    pub milestone: i64,
+    pub claim: ClaimTemplate,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Candidate {
+    pub number: i64,
+    pub id: i64,
+    pub logical_key: String,
+    pub parent: Option<i64>,
+}
+
+/// Issue numbers named on lines that start with `prefix` (`#123` tokens only).
+fn refs_on(body: &str, prefix: &str) -> Vec<i64> {
+    body.lines()
+        .filter_map(|l| l.trim().strip_prefix(prefix))
+        .flat_map(|rest| {
+            rest.split('#')
+                .skip(1)
+                .filter_map(|t| {
+                    let digits: String = t.chars().take_while(char::is_ascii_digit).collect();
+                    digits.parse().ok()
+                })
+                .collect::<Vec<i64>>()
+        })
+        .collect()
+}
+
+/// The second bracket of `[rc.2][A2] …` → `A2`; otherwise `issue-<n>`.
+fn logical_key(title: &str, number: i64) -> String {
+    let brackets: Vec<&str> = title
+        .split('[')
+        .skip(1)
+        .filter_map(|s| s.split_once(']').map(|(k, _)| k.trim()))
+        .collect();
+    match brackets.get(1) {
+        Some(k) if !k.is_empty() && k.len() <= 100 && !k.chars().any(char::is_control) => {
+            (*k).to_string()
+        }
+        _ => format!("issue-{number}"),
+    }
+}
+
+/// Splits the open Issues into ordered candidates and the cards left out (with a reason).
+/// `issues` are GitHub issue objects of every open Issue of the repository, so a blocker in
+/// another milestone still counts as open.
+pub fn select(issues: &[Value], milestone: i64) -> (Vec<Candidate>, Vec<Value>) {
+    let open: BTreeSet<i64> = issues.iter().filter_map(|i| i["number"].as_i64()).collect();
+    let mut picked = Vec::new();
+    let mut skipped = Vec::new();
+    for i in issues {
+        let (Some(number), Some(id)) = (i["number"].as_i64(), i["id"].as_i64()) else {
+            continue;
+        };
+        if i["milestone"]["number"].as_i64() != Some(milestone) {
+            continue;
+        }
+        let title = i["title"].as_str().unwrap_or_default();
+        let body = i["body"].as_str().unwrap_or_default();
+        let reason = if i.get("pull_request").is_some_and(|p| !p.is_null()) {
+            Some(json!("pull_request"))
+        } else if title.contains("][EP-") {
+            Some(json!("epic"))
+        } else {
+            let open_blockers: Vec<i64> = refs_on(body, "Blocked-By:")
+                .into_iter()
+                .filter(|n| open.contains(n) && *n != number)
+                .collect();
+            (!open_blockers.is_empty()).then(|| json!({"blocked_by": open_blockers}))
+        };
+        match reason {
+            Some(r) => skipped.push(json!({"issue": number, "reason": r})),
+            None => picked.push(Candidate {
+                number,
+                id,
+                logical_key: logical_key(title, number),
+                parent: refs_on(body, "상위:").first().copied(),
+            }),
+        }
+    }
+    picked.sort_by_key(|c| (c.parent.unwrap_or(i64::MAX), c.number));
+    (picked, skipped)
+}
+
+fn get_json<T: Transport, C: Clock>(
+    client: &Client<'_, T, C>,
+    url: &str,
+) -> Result<(Value, Option<String>)> {
+    let resp = client.get(url, None).map_err(String::from)?;
+    let next = next_link(resp.header("link"));
+    Ok((resp.body.unwrap_or(Value::Null), next))
+}
+
+/// Every open Issue object of the repository (GET only, `Link` pagination).
+fn read_open_issues<T: Transport, C: Clock>(
+    client: &Client<'_, T, C>,
+    owner: &str,
+    repo: &str,
+) -> Result<Vec<Value>> {
+    let mut url = Some(format!(
+        "{API}/repos/{owner}/{repo}/issues?state=open&per_page=100"
+    ));
+    let mut out = Vec::new();
+    let mut pages = 0;
+    while let Some(u) = url {
+        pages += 1;
+        if pages > MAX_PAGES {
+            return Err("queue issue page limit exceeded (50)".into());
+        }
+        let (body, next) = get_json(client, &u)?;
+        out.extend(body.as_array().cloned().unwrap_or_default());
+        url = next;
+    }
+    Ok(out)
+}
+
+fn validate(req: &QueueRequest) -> Result<()> {
+    if req.schema_version != 1 {
+        return Err("unsupported request schema_version".into());
+    }
+    if req.milestone <= 0 {
+        return Err("queue milestone must be a positive number".into());
+    }
+    Ok(())
+}
+
+/// The run: read, select, then claim the first candidate that can be claimed. The caller
+/// holds the journal lock for the whole run.
+pub fn next<T: Transport, C: Clock>(
+    journal: &Journal,
+    req: &QueueRequest,
+    worktree: crate::claim::WorktreeId,
+    client: &Client<'_, T, C>,
+    clock: &C,
+) -> Result<Value> {
+    validate(req)?;
+    let (repo, _) = get_json(client, &format!("{API}/repos/{}/{}", req.owner, req.repo))?;
+    let repository_id = repo["id"]
+        .as_i64()
+        .ok_or("gh transport: repository response carried no id")?;
+    let issues = read_open_issues(client, &req.owner, &req.repo)?;
+    let (candidates, skipped) = select(&issues, req.milestone);
+    let projection = json!({
+        "label": {"state": "not_run", "reason": "RC1 does not apply state labels (.github/moai/labels.yml)"},
+        "status_line": {"state": "not_run", "reason": "the owned report comment is forge-report's, behind its own gates"},
+    });
+    let mut lost_to = Vec::new();
+    for c in &candidates {
+        let claim = ClaimRequest {
+            schema_version: 1,
+            task_ref: TaskRef {
+                provider: "github".into(),
+                host: "github.com".into(),
+                owner: req.owner.clone(),
+                repo: req.repo.clone(),
+                repository_id,
+                issue_id: c.id,
+                issue_number: c.number,
+            },
+            logical_key: c.logical_key.clone(),
+            owner: req.claim.owner.clone(),
+            attempt: None,
+            base_revision: req.claim.base_revision.clone(),
+            write_scope: req.claim.write_scope.clone(),
+            spec_ref: req.claim.spec_ref.clone(),
+            lease_until: req.claim.lease_until.clone(),
+            projection_intents: vec![
+                json!({"kind": "projection_intent", "target": "label", "action": "not_run"}),
+                json!({"kind": "projection_intent", "target": "status_line", "action": "not_run"}),
+            ],
+            expected_epoch: None,
+        };
+        let out = acquire(journal, &claim, worktree.clone(), client, clock)?;
+        let foreign = out.foreign_owner.clone();
+        if out.outcome == "already_owned" {
+            if let Some(f) = foreign {
+                // A live foreign claim wins (smallest comment id); nothing was written here.
+                lost_to.push(json!({"issue": c.number, "comment_id": f["comment_id"]}));
+                continue;
+            }
+        }
+        let mut v = out.to_json();
+        v["issue"] = json!(c.number);
+        v["lost_to"] = json!(lost_to);
+        v["skipped"] = json!(skipped);
+        v["projection"] = if out.outcome == "claimed" {
+            projection
+        } else {
+            Value::Null
+        };
+        return Ok(v);
+    }
+    let outcome = if candidates.is_empty() {
+        "idle"
+    } else {
+        "exhausted"
+    };
+    Ok(json!({
+        "outcome": outcome,
+        "issue": Value::Null,
+        "record": Value::Null,
+        "foreign_owner": Value::Null,
+        "coordination_scope": "cross-host-eventual",
+        "cross_host_atomic": false,
+        "lost_to": lost_to,
+        "skipped": skipped,
+        "projection": Value::Null,
+        "notes": [if candidates.is_empty() {
+            "no candidate: record the idle line once and stop (SPEC §3 step 2)"
+        } else {
+            "every candidate is owned by a live foreign claim"
+        }],
+    }))
+}
+
+/// CLI: identity + worktree, journal open + one lock for the whole run (busy never waits).
+pub fn next_cli<T: Transport, C: Clock>(
+    project: &Path,
+    req: QueueRequest,
+    transport: &T,
+    clock: &C,
+) -> Result<Value> {
+    let root = journal_root(project)?;
+    let id = identity::identity(project)?;
+    let worktree = worktree_id(&id)?;
+    let journal = Journal::open(&root)?;
+    if !journal.try_lock()? {
+        return Ok(json!({
+            "outcome": "busy",
+            "issue": Value::Null,
+            "record": Value::Null,
+            "foreign_owner": Value::Null,
+            "coordination_scope": "single-host",
+            "cross_host_atomic": false,
+            "lost_to": [],
+            "skipped": [],
+            "projection": Value::Null,
+            "notes": ["another process holds the journal lock; retry policy is the caller's (REQ-06A-05)"],
+        }));
+    }
+    let client = Client::new(transport, clock, Default::default(), Default::default());
+    next(&journal, &req, worktree, &client, clock)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn issue(number: i64, title: &str, body: &str, milestone: i64) -> Value {
+        json!({"number": number, "id": number * 10, "title": title, "body": body,
+               "milestone": {"number": milestone}})
+    }
+
+    #[test]
+    fn selection_drops_prs_epics_blocked_and_orders_by_parent() {
+        let issues = vec![
+            issue(10, "[rc.2][EP-A] epic", "", 3),
+            issue(12, "[rc.2][A2] two", "상위: #10\nBlocked-By: #11", 3),
+            issue(11, "[rc.2][A1] one", "상위: #10\nBlocked-By: 없음", 3),
+            issue(21, "[rc.2][B1] b", "상위: #20\nBlocked-By: #999", 3),
+            issue(13, "[rc.2][A3] three", "상위: #10", 3),
+            issue(30, "[rc.2][X] other milestone", "", 4),
+            json!({"number": 14, "id": 140, "title": "pr", "body": "", "milestone": {"number": 3},
+                   "pull_request": {"url": "x"}}),
+        ];
+        let (picked, skipped) = select(&issues, 3);
+        let order: Vec<i64> = picked.iter().map(|c| c.number).collect();
+        // #999 is not open, so #21 is not blocked; parent #10 sorts before #20.
+        assert_eq!(order, vec![11, 13, 21]);
+        assert_eq!(picked[0].logical_key, "A1");
+        assert_eq!(picked[0].parent, Some(10));
+        let reasons: Vec<(i64, Value)> = skipped
+            .iter()
+            .map(|s| (s["issue"].as_i64().unwrap(), s["reason"].clone()))
+            .collect();
+        assert!(reasons.contains(&(10, json!("epic"))));
+        assert!(reasons.contains(&(12, json!({"blocked_by": [11]}))));
+        assert!(reasons.contains(&(14, json!("pull_request"))));
+        assert!(
+            !reasons.iter().any(|(n, _)| *n == 30),
+            "other milestones are not listed"
+        );
+    }
+
+    #[test]
+    fn logical_key_falls_back_to_issue_number() {
+        assert_eq!(logical_key("[rc.2][A2] x", 7), "A2");
+        assert_eq!(logical_key("plain title", 7), "issue-7");
+        assert_eq!(logical_key("[only] one", 7), "issue-7");
+    }
+}

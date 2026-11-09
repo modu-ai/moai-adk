@@ -182,6 +182,12 @@ enum Command {
     ClaimAcquire {
         project: PathBuf,
     },
+    /// Self-claim the next card (rc.2 A2 #2161): typed JSON request on stdin; re-reads the
+    /// open Issues, skips epics, pull requests and open-blocked cards, and claims the first
+    /// candidate through `claim-acquire` under one journal lock.
+    QueueNext {
+        project: PathBuf,
+    },
     /// Read the current claim record of a task key; byte-identical when repeated.
     ClaimShow {
         project: PathBuf,
@@ -627,6 +633,7 @@ const OPERATIONS: &[(&str, &str)] = &[
     ("codex-projection-plan", "codex.projection_plan"),
     ("codex-doctor", "codex.doctor"),
     ("claim-acquire", "claim.acquire"),
+    ("queue-next", "queue.next"),
     ("claim-show", "claim.show"),
     ("claim-release", "claim.release"),
     ("claim-handoff", "claim.handoff"),
@@ -835,6 +842,12 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
         Command::ClaimAcquire { project } => moai_cli::claim::acquire_cli(
             &project,
             input::<moai_cli::claim::ClaimRequest>()?,
+            &moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        Command::QueueNext { project } => moai_cli::queue::next_cli(
+            &project,
+            input::<moai_cli::queue::QueueRequest>()?,
             &moai_cli::forge::transport::GhTransport::from_env()?,
             &moai_cli::forge::policy::SystemClock,
         ),
