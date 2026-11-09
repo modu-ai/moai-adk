@@ -1,5 +1,7 @@
 # 자율 무중단 개발 모드 SPEC — `/moai --leader-mode` · `/moai --agent-mode` (#2138, DR-02)
 
+> 현행 상태(#2167): 구현된 형태는 `/moai --mode leader [--autonomy full|semi]`·`/moai --mode agent`(#2160, `skills/moai/SKILL.md`)이고, 제목과 §1의 `--leader-mode`/`--agent-mode` 표기는 설계 당시 이름이다. §3의 한 회차는 `moai-cli queue-next`(#2161), §5의 한 tick은 `moai-cli leader-tick`(#2162)이 실행한다. 이 저장소에만 해당하는 운영 규칙은 `AGENTS.local.md` § Agent loop (self-claim)·§ Leader supervision·§ Gate에 있고, 그 이전 제안은 `docs/lane-loop-contract.md`(2026-11-08)다. 본문의 `AGENTS.local.md:행` 인용은 `604792666` tree 기준이며 #2167 재구성 뒤 행 번호가 바뀌었다.
+
 - 상태: SPEC 초안(Class C, 설계 변경). 이 문서는 구현하지 않는다. 코드·skill 파일은 바꾸지 않았고, 구현은 §10의 후속 카드가 맡는다.
 - 입력: 종합 개선 보고서 §10.4(`references/chatgpt-space/synthesis-improvement-report-2026-11-09.md`, 2026-11-09 작성, 저장소에 아직 tracked 아님). 사용자 결정 2026-11-09 00:0x~00:3x(모드 skill 진입, 완전/반자율, self-claim 기본, 리더 5분 PR 점검·타 에이전트 수리 지시, `/goal` 붙여넣기 안내).
 - 대조 기준: `origin/v2026.11.0` = `604792666`. 이 문서의 `경로:행`은 모두 이 tree에서 읽은 값이다. `<primary>/.claude/…`는 Go 세대 규칙 파일이며 이 저장소에 tracked가 아니다(이 tree의 `git ls-files .claude` 0건). 행 번호는 2026-11-09 primary checkout에서 읽었다.
