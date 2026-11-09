@@ -36,12 +36,14 @@ T1 receipt 필드(위 5행 공통): os=Darwin, arch=aarch64, host=none, mode=loc
 
 레인은 실행하지 않는다(리더 범위: 기존 인증만 쓰는 운영자 1회 실측, 체크아웃 밖). 명령과 기대 결과는 스크립트에 receipt 형식으로 준비돼 있고, 운영자 실행 전까지 전부 not_run이다. 스크립트는 자격증명 값의 존재만 확인하고 값은 어떤 파일에도 쓰지 않는다.
 
+**--bare 가설 판정(2026-11-09 공식 문서 재조회 — agent-1 가설 기각)**: `--bare`는 skill 자동 탐색을 생략하지만 `--add-dir`은 부분 예외다 — "A directory you name with --add-dir is a partial exception: bare mode loads skills from its .claude/skills/ folder"(headless 문서). 프롬프트 앞머리의 `/moai`는 -p 모드에서 클라이언트가 전개("Include /skill-name in the prompt string and Claude Code expands it before running"). 주의: --bare 아래 모델은 스킬 **목록**을 받지 못하므로 자동(암묵) 호출은 측정 불가 — 명시 호출만이 이 E2E의 대상이며, 운영자 `~/.claude/skills/moai`(개인)가 fixture를 덮는(personal > added directory) 것을 막기 위해 스크립트는 -p 실행에 `HOME=<임시>`를 격리한다. 측정 대상은 명시 호출 자체다.
+
 | host | surface | item | capability_status | unknown_class | 내용 | source |
 | --- | --- | --- | --- | --- | --- | --- |
 | Claude Code | cli | skill_static_validation (AC-08C-5) | probed | | `claude plugin validate <tmp>/.claude/skills` — 자격증명 불필요, 레인 실행 가능. 실행은 AC 명령 절에서 수행하고 receipt로 기록 | 이 문서의 AC 명령 절 |
-| Claude Code | cli | explicit_invocation_setup_route (AC-08C-3) | unknown | 시험 대기 | `claude --bare -p '/moai …' --add-dir <tmp> --output-format json --permission-mode dontAsk --permission-prompts none` — 기대: `.result`가 문자열로 SETUP route 진입과 로드된 skill을 보고(JSON 구조만 단언, 자연어 단언 없음). not_run — 운영자 실측 대기 | tests/e2e/host-claude.sh |
-| Claude Code | cli | permission_denial_blocked (AC-08C-6) | unknown | 시험 대기 | 동일 옵션으로 apply 요청 → `permission_denials` 기록 + 대상 트리 shasum 전후 동일. not_run — 운영자 실측 대기 | tests/e2e/host-claude.sh |
-| Codex | cli | explicit_invocation_setup_route (AC-08C-4) | unknown | 시험 대기 | `codex exec --json --ephemeral --ignore-user-config --sandbox read-only -o last.md '$moai …'` — 기대: JSONL에 `"type":"turn.completed"` 존재 + last message 비어 있지 않음. not_run — 운영자 실측 대기 | tests/e2e/host-codex.sh |
+| Claude Code | cli | explicit_invocation_setup_route (AC-08C-3) | unknown | 시험 대기 | `claude --bare -p '/moai …' --add-dir <tmp> --output-format stream-json --verbose --permission-mode dontAsk --permission-prompts none`(HOME 격리) — 기대: exit 0 + `result` 이벤트 `is_error == false` + fixture의 `.claude/skills/moai/references/routes.json`과 `workflows/setup.md`를 가리키는 `tool_use` 이벤트(skill 본문이 "references/routes.json으로 route를 고른다"고 지시하므로, skill 로드와 SETUP route 도달이 이벤트로 드러난다. dontAsk가 거부한 시도도 센다). skill 없는 일반 답변은 failed. 이벤트 구조만 단언하고 자연어는 단언하지 않는다. not_run — 운영자 실측 대기 | tests/e2e/host-claude.sh |
+| Claude Code | cli | permission_denial_blocked (AC-08C-6) | unknown | 시험 대기 | 동일 옵션(`stream-json --verbose`)으로 apply 요청 → `result` 이벤트의 `permission_denials`가 비어 있지 않은 배열 + 대상 트리 shasum 전후 동일. `result` 이벤트가 없거나(예: exit≠0, 빈 출력) `[]`이면 failed. not_run — 운영자 실측 대기 | tests/e2e/host-claude.sh |
+| Codex | cli | explicit_invocation_setup_route (AC-08C-4) | unknown | 시험 대기 | `HOME`·`CODEX_HOME` 임시 격리 + `codex exec --json --ephemeral --ignore-user-config --sandbox read-only --skip-git-repo-check -o last.md '$moai …'` — 기대: JSONL에 `"type":"turn.completed"` 존재 + last message 비어 있지 않음. 인증은 `CODEX_API_KEY`만 쓴다. not_run — 운영자 실측 대기 | tests/e2e/host-codex.sh |
 | Claude Code | cli | clean_clone_read_plan (AC-08C-8, T2 절반) | unknown | 시험 대기 | binary 없는 clean clone에서 `claude --bare -p '/moai 현재 저장소 읽기' --output-format json` — not_run — 운영자 실측 대기(T1 절반은 위 표 probed) | 이 문서의 AC 명령 절 |
 
 ## OS·mode 조합 (P12)
@@ -68,3 +70,25 @@ TMP=$(mktemp -d /tmp/e2e-ac5-XXXXXX) && mkdir -p "$TMP/.claude/skills" \
 AC-08C-7의 Go 바이너리 해시는 읽기만 한다(실행 금지): `shasum -a 256 "$(command -v moai)"` — 실행 전후 동일.
 
 AC-08C-9(독립 AUDIT)는 리더 통합 게이트가 진행한다.
+
+## 운영자 T2 실행 블록 (paste-ready — #2014 사전 점검 완료 후)
+
+사전 조건: 이 저장소 checkout의 최신 `v2026.11.0`(본 수정안 병합 후), API 키(`ANTHROPIC_API_KEY` — `--bare`는 OAuth를 읽지 않는다. `CODEX_API_KEY` — 격리된 `CODEX_HOME`에는 저장된 로그인이 없다), `jq`, macOS.
+
+실행은 **체크아웃 밖**에서 한다. 아래 블록은 `v2026.11.0`의 트리를 체크아웃 밖 임시 디렉터리로 꺼내 그 사본의 스크립트를 실행하고, receipts도 체크아웃 밖에 둔다. 체크아웃의 작업 트리·branch·stash는 건드리지 않는다. 스크립트는 자기 위치 기준으로 `skills/moai`를 찾으므로 어느 디렉터리에서 실행해도 된다. 키는 `read -s`로 받아 셸 이력에 남지 않게 한다. 자격증명 값은 스크립트가 어떤 파일에도 쓰지 않는다.
+
+```sh
+git -C <이 저장소의 checkout 루트> fetch origin v2026.11.0
+T2="$(mktemp -d /tmp/moai-t2-XXXXXX)"
+git -C <이 저장소의 checkout 루트> archive origin/v2026.11.0 tests/e2e skills/moai | tar -x -C "$T2"
+RECEIPTS="$(mktemp -d /tmp/moai-t2-receipts-XXXXXX)"
+read -rs -p 'ANTHROPIC_API_KEY: ' ANTHROPIC_API_KEY; echo; export ANTHROPIC_API_KEY   # AC-08C-3·6
+read -rs -p 'CODEX_API_KEY (없으면 Enter): ' CODEX_API_KEY; echo; export CODEX_API_KEY  # AC-08C-4
+cd "$T2"
+bash tests/e2e/host-claude.sh "$RECEIPTS"
+bash tests/e2e/host-codex.sh  "$RECEIPTS"
+unset ANTHROPIC_API_KEY CODEX_API_KEY
+cat "$RECEIPTS/receipts.jsonl"; ls "$RECEIPTS"
+```
+
+`$RECEIPTS/receipts.jsonl`의 각 줄이 `schemas/e2e-receipt.schema.json` 형식의 receipt이고, `detail`이 가리키는 원시 출력도 같은 디렉터리에 남는다. 이 디렉터리가 08-D 지원표 갱신 입력이다(AC-08C-3·4·6 행을 not_run에서 실측값으로 교체). 저장소에 옮기기 전에 원시 출력에 자격증명 값이나 개인 경로가 없는지 확인한다.
