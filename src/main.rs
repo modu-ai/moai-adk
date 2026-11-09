@@ -159,6 +159,13 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
+    /// Post the `moai/audit` commit status on an exact SHA (typed JSON on stdin). Uses the
+    /// audit App token from `MOAI_AUDIT_APP_TOKEN` when set, else warns (#2173).
+    ForgeAuditStatus {
+        project: PathBuf,
+        #[arg(long)]
+        permission_reference: String,
+    },
     /// Preview promotion of selected local TODOs to GitHub Issues (reads only; typed JSON
     /// request on stdin naming `tasks_path`, `target` and `selected`; envelope on stdout).
     TodoPromotePreview {
@@ -281,6 +288,20 @@ enum Command {
     /// Read-only Claude Code check: whether a session started in PROJECT reads AGENTS.md.
     ClaudeDoctor {
         project: PathBuf,
+    },
+    /// Preview a three-way merge of the managed keys (`outputStyle`, `statusLine`) on stdin
+    /// into PROJECT/.claude/settings.json (#2239); other keys are refused. Writes nothing.
+    ClaudeSettingsPlan {
+        project: PathBuf,
+    },
+    /// Apply a previewed settings merge: same stdin, the preview's digest and a permission
+    /// reference. Writes the project settings file and its receipt only; home is refused.
+    ClaudeSettingsApply {
+        project: PathBuf,
+        #[arg(long)]
+        plan_digest: String,
+        #[arg(long)]
+        permission_reference: String,
     },
     /// Plan a Codex projection of the common package into an explicit target; writes nothing.
     CodexProjectionPlan {
@@ -471,6 +492,11 @@ enum Command {
         #[arg(long)]
         name: String,
     },
+    /// Aggregate cost items across run/verify receipts (D5 #2191): typed request
+    /// (receipt array) on stdin; breakdown envelope on stdout; writes nothing.
+    /// External backend calls are structurally zero; tokens are absent, never
+    /// estimated (REQ-D5-01).
+    CostReport {},
     /// Plan project-specific generated files read-only (03-C #1997): typed request on
     /// stdin; judgment envelope on stdout; writes nothing.
     GenerationPlan {
@@ -670,6 +696,8 @@ const OPERATIONS: &[(&str, &str)] = &[
     ("forge-report", "forge.report"),
     ("plan-admit", "plan.admit"),
     ("claude-doctor", "claude.doctor"),
+    ("claude-settings-plan", "claude.settings_plan"),
+    ("claude-settings-apply", "claude.settings_apply"),
     ("codex-projection-plan", "codex.projection_plan"),
     ("codex-doctor", "codex.doctor"),
     ("claim-acquire", "claim.acquire"),
@@ -689,6 +717,7 @@ const OPERATIONS: &[(&str, &str)] = &[
     ("project-skill-plan", "project_skill.plan"),
     ("project-skill-apply", "project_skill.apply"),
     ("project-skill-revert", "project_skill.revert"),
+    ("cost-report", "cost.report"),
     ("generation-plan", "generation.plan"),
     ("generation-apply", "generation.apply"),
     ("skill-source-apply", "skill_source.apply"),
@@ -710,6 +739,7 @@ const OPERATIONS: &[(&str, &str)] = &[
     ("recovery-apply", "recovery.apply"),
     ("pr-confirm", "pr.confirm"),
     ("parity-check", "parity.check"),
+    ("forge-audit-status", "forge.audit_status"),
 ];
 fn operation_of(word: &str) -> Option<&'static str> {
     OPERATIONS
@@ -850,6 +880,16 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
                 &moai_cli::forge::policy::SystemClock,
             )
         }
+        Command::ForgeAuditStatus {
+            project,
+            permission_reference,
+        } => moai_cli::forge::audit_status::audit_status_cli(
+            &project,
+            input::<moai_cli::forge::audit_status::AuditStatusRequest>()?,
+            &permission_reference,
+            moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
+        ),
         Command::ForgeRead { project } => moai_cli::forge::forge_read_cli(
             &project,
             input::<moai_cli::forge::ReadRequest>()?,
@@ -978,6 +1018,19 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             &moai_cli::forge::policy::SystemClock,
         ),
         Command::ClaudeDoctor { project } => moai_cli::claude::doctor(&project),
+        Command::ClaudeSettingsPlan { project } => {
+            moai_cli::claude::settings_plan(&project, &input()?)
+        }
+        Command::ClaudeSettingsApply {
+            project,
+            plan_digest,
+            permission_reference,
+        } => moai_cli::claude::settings_apply(
+            &project,
+            &input()?,
+            &plan_digest,
+            &permission_reference,
+        ),
         Command::CodexProjectionPlan {
             package,
             target,
@@ -1219,6 +1272,10 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             request.project_root = project;
             serde_json::to_value(moai_cli::project_skills::project_skill_revert(&request)?)
                 .map_err(|_| "encode failed".into())
+        }
+        Command::CostReport {} => {
+            // cost_report checks protocol_version itself (one check, not two).
+            moai_cli::run::cost_report(input::<moai_cli::run::CostRequest>()?)
         }
         Command::GithubPlan { project } => {
             serde_json::to_value(moai_cli::github_templates::github_plan(
