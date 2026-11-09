@@ -35,7 +35,52 @@ pub struct HttpResponse {
     pub body: Option<serde_json::Value>,
 }
 
+impl HttpRequest {
+    /// A request with no headers and no body (#2256). Optional fields get their defaults
+    /// here, so adding one does not touch call sites.
+    pub fn new(method: impl Into<String>, url: impl Into<String>) -> Self {
+        HttpRequest {
+            method: method.into(),
+            url: url.into(),
+            headers: BTreeMap::new(),
+            body: None,
+        }
+    }
+
+    /// Adds one header, name kept as given.
+    pub fn with_header(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
+        self.headers.insert(name.into(), value.into());
+        self
+    }
+
+    pub fn with_body(mut self, body: serde_json::Value) -> Self {
+        self.body = Some(body);
+        self
+    }
+}
+
 impl HttpResponse {
+    /// A response with no headers and no body (#2256).
+    pub fn new(status: u16) -> Self {
+        HttpResponse {
+            status,
+            headers: BTreeMap::new(),
+            body: None,
+        }
+    }
+
+    /// Adds one header, name kept as given; callers pass the lower-cased name this type
+    /// documents, as the literals it replaces did.
+    pub fn with_header(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
+        self.headers.insert(name.into(), value.into());
+        self
+    }
+
+    pub fn with_body(mut self, body: serde_json::Value) -> Self {
+        self.body = Some(body);
+        self
+    }
+
     pub fn header(&self, name: &str) -> Option<&str> {
         self.headers
             .get(&name.to_ascii_lowercase())
@@ -115,27 +160,39 @@ fn drain<R: Read + Send + 'static>(pipe: Option<R>) -> std::sync::mpsc::Receiver
 }
 
 impl GhTransport {
+    /// `gh` at `bin` with the default timeout and gh's own authentication (#2256). Optional
+    /// fields get their defaults here, so adding one does not touch call sites.
+    pub fn new(bin: impl Into<String>) -> Self {
+        GhTransport {
+            bin: bin.into(),
+            timeout: GH_TIMEOUT,
+            gh_token: None,
+        }
+    }
+
+    pub fn timeout(mut self, timeout: Duration) -> Self {
+        self.timeout = timeout;
+        self
+    }
+
+    pub fn gh_token(mut self, gh_token: Option<String>) -> Self {
+        self.gh_token = gh_token;
+        self
+    }
+
     /// `gh` from PATH. `MOAI_FORGE_GH_BIN` is a test-only seam that swaps the executable; it
     /// must never be set on a product path. To keep it from silently picking another program
     /// through PATH it is accepted only as an absolute path to an existing regular file.
     pub fn from_env() -> Result<Self> {
         let Some(raw) = std::env::var_os("MOAI_FORGE_GH_BIN") else {
-            return Ok(GhTransport {
-                bin: "gh".into(),
-                timeout: GH_TIMEOUT,
-                gh_token: None,
-            });
+            return Ok(GhTransport::new("gh"));
         };
         let path = std::path::PathBuf::from(&raw);
         let regular = std::fs::metadata(&path)
             .map(|m| m.is_file())
             .unwrap_or(false);
         match path.to_str() {
-            Some(s) if path.is_absolute() && regular => Ok(GhTransport {
-                bin: s.into(),
-                timeout: GH_TIMEOUT,
-                gh_token: None,
-            }),
+            Some(s) if path.is_absolute() && regular => Ok(GhTransport::new(s)),
             _ => Err("MOAI_FORGE_GH_BIN must be an absolute path to an existing file".into()),
         }
     }
@@ -167,11 +224,10 @@ fn parse_gh_output(stdout: &str) -> Option<HttpResponse> {
     } else {
         serde_json::from_str(body).ok()
     };
-    Some(HttpResponse {
-        status,
-        headers,
-        body,
-    })
+    let mut resp = HttpResponse::new(status);
+    resp.headers = headers;
+    resp.body = body;
+    Some(resp)
 }
 
 impl Transport for GhTransport {

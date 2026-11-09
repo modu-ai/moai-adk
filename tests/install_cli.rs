@@ -15,6 +15,8 @@
 
 #![cfg(unix)]
 
+mod common;
+
 use moai_cli::install::{
     plan_receipt, record_receipt, validate_receipt, InstallReceipt, InstallerOwner, ReceiptPlan,
 };
@@ -22,7 +24,6 @@ use moai_cli::tree_digest;
 use serde_json::{json, Value};
 use std::{
     fs,
-    os::unix::fs::PermissionsExt,
     path::{Path, PathBuf},
     process::{Command, Stdio},
 };
@@ -30,18 +31,13 @@ use tempfile::TempDir;
 
 const EXE: &str = env!("CARGO_BIN_EXE_moai-cli");
 
+// Both fixtures are exec'd by install-inspect, so they are written by a child process (#2283).
 fn cli_copy(dest: &Path) {
-    fs::copy(EXE, dest).expect("copy binary fixture");
-    let mut perm = fs::metadata(dest).unwrap().permissions();
-    perm.set_mode(0o755);
-    fs::set_permissions(dest, perm).unwrap();
+    common::copy_executable(Path::new(EXE), dest);
 }
 
 fn script(dest: &Path, body: &str) {
-    fs::write(dest, body).unwrap();
-    let mut perm = fs::metadata(dest).unwrap().permissions();
-    perm.set_mode(0o755);
-    fs::set_permissions(dest, perm).unwrap();
+    common::write_executable(dest, body);
 }
 
 fn run_inspect(home: &Path, path_env: &Path, cwd: &Path) -> std::process::Output {
