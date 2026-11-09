@@ -55,6 +55,9 @@
 - `generation-plan`
 - `github-apply`
 - `github-plan`
+- `hook-receipt`
+- `hooks-apply`
+- `hooks-plan`
 - `identity`
 - `install-inspect`
 - `leader-tick`

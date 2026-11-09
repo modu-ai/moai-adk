@@ -364,6 +364,14 @@ mod tests {
             ("archive manifest removal write failed", Io),
             ("archived copy removal write failed", Io),
             ("search query must be 1 to 256 characters", InvalidInput),
+            // hooks-plan / hooks-apply (rc.2 I1 #2238)
+            ("unknown hook host; must be claude or codex", InvalidInput),
+            (
+                "home directory refused; hooks are written to a project tree only",
+                InvalidInput,
+            ),
+            ("existing .codex/hooks.json requires preservation review", Conflict),
+            (".codex/hooks.json receipt requires preservation review", Conflict),
         ];
         for (message, kind) in cases {
             assert_eq!(classify(message), kind, "{message}");
