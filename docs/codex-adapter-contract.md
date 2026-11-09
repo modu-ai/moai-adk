@@ -98,7 +98,7 @@ not_run은 Desktop 발견·호출이 실패했다는 뜻이 아니다. 그래서
 | `project_doc_fallback_filenames` | 파일 이름 1–32개(`/`·`\`·`.`·`..` 거부) | 기본값 미기재 |
 | `project_doc_max_bytes` | 정수 1–1,048,576 | 기본 32 KiB(AGENTS.md 페이지). 상한은 문서에 없어 MoAI가 1 MiB로 정함 |
 
-거부: `projects.*`(trust는 user config, 홈 쓰기 blocked), 프로젝트 파일에서 Codex가 무시하는 키(`openai_base_url`, `chatgpt_base_url`, `apps_mcp_product_sku`, `model_provider`, `model_providers`, `notify`, `profile`, `profiles`, `experimental_realtime_ws_base_url`, `otel`), 그 밖의 키, 홈 디렉터리와 같은 project, symlink `.codex/`·`.moai-cli/`, 256 KiB를 넘는 파일·receipt·결과, 파싱되지 않거나 부모가 표가 아닌 파일(`requires preservation review`). 오류 문구는 `src/contract.rs` 분류표 시험에 등록했다.
+거부: `projects.*`(trust는 user config, 홈 쓰기 blocked), 프로젝트 파일에서 Codex가 무시하는 키(`openai_base_url`, `chatgpt_base_url`, `apps_mcp_product_sku`, `model_provider`, `model_providers`, `notify`, `profile`, `profiles`, `experimental_realtime_ws_base_url`, `otel`), 그 밖의 키, 홈 디렉터리와 같은 project, symlink `.codex/`·`.moai-cli/`, 256 KiB를 넘는 파일·receipt·결과, 파싱되지 않거나 부모가 표가 아닌 파일(`requires preservation review`). 오류 문구의 kind는 `src/hosts/codex_config.rs` 자체 시험(`every_message_has_a_deliberate_kind`, `contract::classify` 단언)이 확인한다(D8 #2254 규칙: 공용 배열에 행을 더하지 않음).
 
 | 공식 문서 | 확인한 내용 | 확인일 |
 | --- | --- | --- |

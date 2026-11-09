@@ -316,23 +316,6 @@ mod tests {
             ("git failed: detected dubious ownership in repository at", GitFailed),
             ("git failed: git output exceeded the size limit", GitFailed),
             ("git failed: git output was not UTF-8", GitFailed),
-            // codex config (#2240): every message lands on an existing phrase.
-            ("existing .codex/config.toml requires preservation review", Conflict),
-            ("codex config receipt requires preservation review", Conflict),
-            (
-                "conflict in .codex/config.toml: tui.status_line changed outside MoAI; nothing applied",
-                Conflict,
-            ),
-            (
-                "partial apply: applied [.codex/config.toml]; failed at .moai-cli/manifests/codex-config.json: x",
-                Partial,
-            ),
-            ("projects.<path>.trust_level belongs to the user config; refused", InvalidInput),
-            ("codex ignores model_provider in a project config; refused", InvalidInput),
-            ("invalid codex config value for project_doc_max_bytes", InvalidInput),
-            ("unmanaged codex config key refused", InvalidInput),
-            ("project is the home directory; the user codex config is refused", InvalidInput),
-            ("rendered codex config exceeds the 256 KiB limit; refused", InvalidInput),
         ];
         for (message, kind) in cases {
             assert_eq!(classify(message), kind, "{message}");

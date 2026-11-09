@@ -500,3 +500,48 @@ pub fn config_apply(
         "execution_verified": "not_run",
     }))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::contract::{classify, Kind};
+
+    /// This module's error messages map to a deliberate kind (#2254: module-local, not a row
+    /// in the shared `contract.rs` list). Validation messages come from `validate` itself.
+    #[test]
+    fn every_message_has_a_deliberate_kind() {
+        let refused = |key: &str, value: Value| validate(key, &value).unwrap_err();
+        let cases = [
+            (review(), Kind::Conflict),
+            (
+                "codex config receipt requires preservation review".into(),
+                Kind::Conflict,
+            ),
+            (
+                format!("conflict in {CONFIG_FILE}: tui.status_line changed outside MoAI; nothing applied"),
+                Kind::Conflict,
+            ),
+            (
+                format!("partial apply: applied [{CONFIG_FILE}]; failed at .moai-cli/{CONFIG_RECEIPT}: x"),
+                Kind::Partial,
+            ),
+            (refused("projects./x.trust_level", json!("trusted")), Kind::InvalidInput),
+            (refused("model_provider", json!("x")), Kind::InvalidInput),
+            (refused("project_doc_max_bytes", json!(0)), Kind::InvalidInput),
+            (refused("model", json!("x")), Kind::InvalidInput),
+            (
+                "project is the home directory; the user codex config is refused".into(),
+                Kind::InvalidInput,
+            ),
+            (
+                "rendered codex config exceeds the 256 KiB limit; refused".into(),
+                Kind::InvalidInput,
+            ),
+            ("symlink target refused".into(), Kind::InvalidInput),
+            ("target is not a bounded regular file".into(), Kind::InvalidInput),
+        ];
+        for (message, kind) in cases {
+            assert_eq!(classify(&message), kind, "{message}");
+        }
+    }
+}
