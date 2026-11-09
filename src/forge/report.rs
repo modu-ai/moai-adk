@@ -23,7 +23,7 @@
 //!
 //! Numbers that are not decided yet (P11): `max_body_chars` and `tail_lines` are settings
 //! with conservative, unmeasured defaults. Uploading artifacts is not implemented (P09):
-//! local references are rendered with "export/pin 필요".
+//! local references are rendered with an export/pin-required marker.
 use super::{
     outbox::{self, OutboxEntry, OutboxState, Phase},
     policy::{format_utc, next_link, parse_utc, Clock},
