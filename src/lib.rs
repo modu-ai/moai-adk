@@ -1,5 +1,6 @@
 pub mod agents;
 pub mod apply;
+pub mod archive;
 pub mod audit;
 pub mod baseline;
 pub mod claim;
@@ -7,6 +8,7 @@ pub mod claude;
 pub mod context;
 pub mod contract;
 pub mod decision;
+pub mod flow;
 pub mod forge;
 pub mod generation;
 pub mod github_templates;
