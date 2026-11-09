@@ -452,6 +452,14 @@ enum Command {
     SnapshotDescribe {
         project: PathBuf,
     },
+    /// Dry-run (D1 #2187, REQ-D1-01): which SPEC directories under
+    /// `.moai-cli/specs/` are archive-eligible and why the rest are excluded.
+    /// Writes nothing. `--grace-days` overrides the profile's inactivity window.
+    ArchivePlan {
+        project: PathBuf,
+        #[arg(long)]
+        grace_days: Option<u64>,
+    },
     /// Plan external skill source candidates read-only (03-B #1996): typed request on
     /// stdin; judgment envelope on stdout; writes nothing.
     SkillSourcePlan {
@@ -720,6 +728,7 @@ const OPERATIONS: &[(&str, &str)] = &[
     ("recovery-apply", "recovery.apply"),
     ("pr-confirm", "pr.confirm"),
     ("parity-check", "parity.check"),
+    ("archive-plan", "archive.plan"),
     ("forge-audit-status", "forge.audit_status"),
 ];
 fn operation_of(word: &str) -> Option<&'static str> {
@@ -1212,6 +1221,15 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
                 .map_err(|_| "encode failed".into())
         }
         Command::SnapshotDescribe { project } => moai_cli::context::snapshot(&project),
+        Command::ArchivePlan {
+            project,
+            grace_days,
+        } => serde_json::to_value(moai_cli::archive::plan(
+            &project,
+            std::time::SystemTime::now(),
+            grace_days,
+        )?)
+        .map_err(|_| "encode failed".into()),
         Command::SkillSourcePlan { project } => serde_json::to_value(moai_cli::sources::plan(
             &project,
             input::<moai_cli::sources::SourcesRequest>()?,
