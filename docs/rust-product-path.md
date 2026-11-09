@@ -64,6 +64,7 @@ One row per internal operation: the name a skill adapter or a later MCP tool ref
 | `worktree.apply` (06-C #2007) | `worktree-apply PROJECT` | `moai_cli::worktree::apply` | — | as `worktree-plan`, plus `--plan-digest` | `decision` (`created` or `conflict`), `reason`, `branch`, `path`, `existing`, `identity`, `record_update_request`, `record_update_owner`, `record_update` | one linked worktree and its branch (`git worktree add --lock -b`); with `--task`, a `worktree_recorded` journal event |
 | `scope.check` (06-C #2007) | `scope-check PROJECT` | `moai_cli::scope::check` | — | `--task` or `--record` + `--claim-comment`, `--integration-order` | `decision` (`clear`, `blocked`, `allowed_with_order`), `task_key`, `conflicts`, `shared_interface_paths`, `record_update_request`, `record_update_owner`, `record_update` | with `--task` and a conflict, a `scope_check` journal event |
 | `pr.body.render` (06-C #2007) | `pr-body-render PROJECT` | `moai_cli::pr_link::render` | — | `--task` or `--record` + `--claim-comment`, `--receipts`, `--base-sha`, `--base-branch`, `--default-branch`, `--allow-close`, `--not-run`, `--review-link`, `--gap` | `body`, `body_digest`, `closing_keywords`, `operation_id`, `marker`, `reconcile`, `warnings`, `record_update_request`, `record_update_owner`, `record_update`, `effect_intent` | with `--task`, the `effect_intend` journal event |
+| `forge.links_probe` (B5 #2172) | `forge-links-probe PROJECT` | `moai_cli::forge::links::links_probe_cli` | `LinksRequest` | — | `schema_version`, `issue`, `sub_issues`, `dependencies` (each `status`, `http_status`, `error_kind`, `mode`, `api_write_intents`, `body_lines`), `executed: false`, `notes` | no (GET only) |
 | `forge.audit_status` (B6 #2173) | `forge-audit-status PROJECT` | `moai_cli::forge::audit_status::audit_status_cli` | `AuditStatusRequest` | `--permission-reference` | `schema_version`, `sha`, `context` (`moai/audit`), `state`, `description`, `token_source` (`app`\|`shared_account`), `token_variable`, `observed`, `warnings`, `notes` | one commit status POST (`repos/{o}/{r}/statuses/{sha}`); no file |
 | `pr.confirm` (06-C #2007) | `pr-confirm PROJECT` | `moai_cli::pr_link::confirm_and_record` | — | `--task`, `--operation-id`, `--response-id`, `--observed-state` | `operation_id`, `effect_confirm`, `effect_state`, `record_update` | the 06-B `effect_confirm` event for an intended effect, then `pr_ready` once the effect is confirmed |
 | `github.plan` (08-B #2013) | `github-plan PROJECT` | `moai_cli::github_templates::github_plan` | `GithubRequest` | — | `protocol_version`, `request`, `files` (`path`, `action`, `expected_sha256`, `baseline_sha256`, `rendered_sha256`, `adopt_baseline`, `detail`), `preserved`, `notes`, `plan_digest` | no |
@@ -262,6 +263,20 @@ Not verified here:
 - comment pagination and 304 on a busy live repository;
 - GitLab (`iid`, "on or after" `updated_after`, keyset pagination) — the reference schema leaves room for it but nothing is implemented;
 - whether `since` should move from the Issue list to `updated` sort plus local filtering for very large repositories.
+
+## Sub-issue and dependency probe (`forge-links-probe`, B5 #2172)
+
+`moai-cli forge-links-probe PROJECT` takes `{"schema_version":1,"owner","repo","issue_number","parent"?,"blocked_by"?:[…]}` on stdin (unknown keys rejected) and sends one `per_page=1` GET to each of `repos/{owner}/{repo}/issues/{n}/sub_issues` and `…/issues/{n}/dependencies/blocked_by`. Each feature is judged separately: `available` (2xx) plans `api_write_intents` (the documented POST endpoints, with the database ids still to resolve), `unavailable` (404, 410) or `blocked` (401/403, an exhausted rate limit, no response) plans Issue body lines `Parent: #<n>` / `Blocked-By: #<a>, #<b>` and no API write (REQ-B5-01). Nothing is executed and nothing is written (`executed: false`); a write is a separate permissioned effect. A failed probe is a result, not an error: only invalid input (non-positive numbers, a self-link, more than 50 blockers or a repeated blocker, names that are not GitHub names) fails the operation. The body parser also reads this repository's own `상위:` (parent) and `Blocked-By: 없음` (empty). Tests: `tests/forge_links_cli.rs` (stub `gh`, both paths, mixed, 403), unit test in `src/forge/links.rs`. User decision: `docs/decisions-2026-11-08.md` row "01:1x(11-09) Forge 권한·fallback" ("sub-issue·dependency는 capability probe 후 사용, 없으면 본문 링크 fallback").
+
+Limits, read 2026-11-09 and not enforced except the 50-blocker input bound:
+
+| Limit | Value | Source |
+| --- | --- | --- |
+| Sub-issues per parent | 100 | https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/adding-sub-issues ("up to 100 sub-issues per parent issue") |
+| Sub-issue nesting | 8 levels | same page ("up to eight levels of nested sub-issues") |
+| Dependencies | 50 per relationship type (blocked by, blocking) | https://github.blog/changelog/2025-08-21-dependencies-on-issues/ ("link up to 50 issues for each relationship type"); not stated in the REST reference https://docs.github.com/en/rest/issues/issue-dependencies |
+
+Not verified: which status GitHub returns when a limit is exceeded (the REST pages list 422 without naming the cause) and whether 410 means Issues are disabled; the probe treats both 404 and 410 as `unavailable`. A real repository probe is not_run (fixtures only).
 
 ## Audit status from an audit-only App (`forge-audit-status`, B6 #2173)
 
@@ -590,3 +605,25 @@ Decision 2026-11-09 00:5x allows the automatic move as long as it hashes, reads 
 The final manifest check narrows the concurrent-write window but does not close the check-to-removal race or lock writers. A write after that check can still be lost during removal; this command does not guarantee an atomic move against concurrent writers. Rust 1.94.1 [`remove_dir_all`](https://doc.rust-lang.org/1.94.1/std/fs/fn.remove_dir_all.html) also permits partially completed removal when another writer changes the directory. Full writer exclusion or a stronger filesystem protocol remains a gap.
 
 Fixtures: `tests/archive_move_fixture_test.rs` (success fixture with hash, readback and index, the held SPEC left in place; readback mismatch through the `copy_verified_with` seam that corrupts the staged copy; source change mid-copy; stale digest; missing permission reference; existing destination; symlink refusal; restore round trip; restore refusals; tampered archive copy; search hits; the 256/257 query and 200/201 result edges) and `tests/archive_move_cli.rs` (the four operations through the binary, including the `stale_plan` envelope).
+
+## ARCHIVE and PRIVACY suites (D3 #2189, design §17)
+
+`tests/archive_privacy_suite.rs` holds both acceptance suites (REQ-D3-01: every case judges its own criterion; `cargo test --offline --locked --test archive_privacy_suite`). The library cases pin `now`; the CLI cases run the real binary against fixture commits dated 2025-01-01, so they hold under the real clock too. The design §17 text names the suites only, so the criteria below come from the Issue scope (ARCHIVE: no move of active work, pending or held SPECs, hash/readback, restore, search retained; PRIVACY: no leak across projects or permissions, no secret transmission, no execution of document instructions).
+
+| Suite | Case | Automatic pass criterion | 3736fca3c (D2 as audited) | b51bfc1be (D2 repaired, merged #2295) |
+|---|---|---|---|---|
+| ARCHIVE | `archive_01_active_work_never_moves` | `draft` and `in-progress` SPECs keep a byte-identical manifest and get no archived copy; only the eligible SPEC moves | passed | passed |
+| ARCHIVE | `archive_02_pending_evidence_never_moves` | `evidence: pending` SPEC unchanged, not archived | passed | passed |
+| ARCHIVE | `archive_03_hold_and_ambiguous_hold_never_move` | `hold: true` and `hold: yes` SPECs unchanged, not archived | passed | passed |
+| ARCHIVE | `archive_04_hash_and_readback_gate_the_move` | a corrupted staged copy is refused with `readback digest mismatch` and the source keeps its pre-move hash; the real move publishes a copy whose manifest equals the pre-move hash, and the index records that digest | passed | passed |
+| ARCHIVE | `archive_05_restore_round_trips_nested_and_binary_files` | nested directories, an empty-but-for-`.keep` directory and a binary file come back with an identical manifest and identical bytes; the archived copy is gone | passed | passed |
+| ARCHIVE | `archive_06_archived_text_stays_searchable_until_restored` | archived text is found with `source: "file"`; after restore the same query returns no hit | passed | passed |
+| ARCHIVE | `archive_07_every_archived_id_can_be_restored` | an id that restore refuses (`SPEC odd name`) is never archived, or else restores | **failed** — #2295 audit F1 | passed |
+| PRIVACY | `privacy_01_index_cannot_point_search_outside_the_project` | an index `path` rewritten to a relative escape or to an absolute path into a second project yields no hit from that project (or `archive index invalid`) | **failed** — #2295 audit N1 | passed |
+| PRIVACY | `privacy_02_symlink_into_another_project_is_never_copied` | a symlink to a second project's file makes apply refuse with `symlink`; nothing is archived and the source stays | passed | passed |
+| PRIVACY | `privacy_03_secret_values_never_leave_the_archived_file` | a secret-shaped value never appears in the stdout or stderr of plan, apply, search and restore (the line is still found by a neighbouring word), nor in `index.json` or the manifest file | passed | passed |
+| PRIVACY | `privacy_04_document_and_name_payloads_never_execute` | `$(touch …)`, backticks, a fenced `sh` block, an "ignore previous instructions" line and a `SPEC-$(touch pwned)` directory name pass through plan, apply, search and restore; neither sentinel file exists afterwards | passed | passed |
+| PRIVACY | `privacy_05_file_permission_bits_survive_archive_and_restore` | a `0600` file is `0600` in the archive and after restore (unix) | passed | passed |
+| PRIVACY | `privacy_06_operations_need_no_network` | plan, apply, search and restore succeed under `sandbox-exec` with `(deny network*)`, and plan reports `network: disabled` — macOS only; on Linux the case does not compile and is not_run, never passed | passed (macOS) | passed (macOS) |
+
+The two cases that failed at 3736fca3c were the #2295 audit findings F1 and N1, reproduced independently. The D2 repair went to another lane (leader decision 2026-11-09) and this card does not change `src/archive.rs`. With the repaired D2 merged (b51bfc1be) all 13 cases pass.

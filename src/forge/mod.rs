@@ -10,6 +10,7 @@
 //! whose kind `contract::classify` derives, so each message here carries its kind's phrase.
 pub mod audit_status;
 pub mod gitlab;
+pub mod links;
 pub mod outbox;
 pub mod policy;
 pub mod promote;
@@ -660,12 +661,17 @@ mod tests {
             ForgeError::io("poll state write failed"),
             ForgeError::io("poll state replace failed"),
             ForgeError::of("internal", "encode failed"),
+            // links (#2172)
+            ForgeError::invalid("owner and repo must be GitHub names"),
+            ForgeError::invalid("issue numbers must be positive"),
+            ForgeError::invalid("issue links must be to other issues"),
+            ForgeError::invalid("blocked_by must be at most 50 issues (one relationship type)"),
+            ForgeError::invalid("blocked_by must be free of repeated issues"),
             // audit status (#2173)
             ForgeError::of(
                 "permission_reference_missing",
                 "permission reference required",
             ),
-            ForgeError::invalid("owner and repo must be GitHub names"),
             ForgeError::invalid("sha must be a 40 lowercase hex commit"),
             ForgeError::invalid("state must be success, failure, error or pending"),
             ForgeError::invalid("target_url must be an https://github.com/ link"),
