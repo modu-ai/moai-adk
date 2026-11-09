@@ -1,0 +1,58 @@
+{
+  "ages_days": {
+    "2226": 0.18,
+    "2232": 0.15,
+    "2235": 0.15,
+    "2236": 0.14,
+    "2251": 0.11,
+    "2252": 0.09,
+    "2257": 0.08,
+    "2258": 0.08,
+    "2260": 0.07,
+    "2267": 0.06,
+    "2270": 0.05,
+    "2276": 0.03,
+    "2277": 0.03,
+    "2280": 0.02,
+    "2281": 0.02,
+    "2282": 0.02,
+    "2284": 0.0
+  },
+  "gh_call_ceiling": 4,
+  "gh_calls_used": 1,
+  "max_age_days": 0.18,
+  "measured_at": "2026-11-09T06:41:12.809055+00:00",
+  "not_run": [
+    "pr_to_first_verdict",
+    "pass_to_merge",
+    "fail_ratio_and_causes",
+    "sync_count"
+  ],
+  "notes": "baseline measured before the flow-control policy (#2279); re-measure after the caps land is a separate not_run entry",
+  "open_issues": [
+    2163,
+    2172,
+    2175,
+    2178,
+    2187,
+    2193,
+    2203,
+    2238,
+    2240,
+    2241,
+    2242,
+    2244,
+    2254,
+    2255,
+    2264,
+    2274
+  ],
+  "open_pr_count": 17,
+  "owner": "modu-ai",
+  "per_author": {
+    "GoosLab": 16,
+    "app/dependabot": 1
+  },
+  "repo": "moai-adk",
+  "schema_version": 1
+}
