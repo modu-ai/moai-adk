@@ -221,3 +221,129 @@ fn missing_specs_dir_is_a_clean_empty_plan() {
     assert_eq!(v["eligible"], Value::Array(vec![]));
     assert_eq!(v["excluded"], Value::Array(vec![]));
 }
+
+/// The audit probes (#2187 FAIL relay 2026-11-09): hold·evidence values outside the
+/// canonical spelling must never read as "no marker" — quoted, case-shifted and
+/// unrecognized values exclude fail-closed, and an indented key makes the whole
+/// block ambiguous (design §12: 애매한 상태 제외).
+fn probe_fixture() -> (TempDir, PathBuf) {
+    let root = TempDir::new().unwrap();
+    let project = root.path().join("project");
+    fs::create_dir_all(&project).unwrap();
+    write_spec(&project, "SPEC-HOLD-Q", "status: completed\nhold: \"true\"\n");
+    write_spec(&project, "SPEC-HOLD-CASE", "status: completed\nhold: TRUE\n");
+    write_spec(&project, "SPEC-HOLD-YES", "status: completed\nhold: yes\n");
+    write_spec(
+        &project,
+        "SPEC-EVID-CASE",
+        "status: completed\nevidence: Pending\n",
+    );
+    write_spec(
+        &project,
+        "SPEC-EVID-OTHER",
+        "status: completed\nevidence: complete\n",
+    );
+    write_spec(&project, "SPEC-INDENT-1", "status: completed\n  hold: true\n");
+    write_spec(&project, "SPEC-CLEAR-1", "status: completed\nhold: false\n");
+    write_spec(&project, "SPEC-HOLD-QF", "status: completed\nhold: \"false\"\n");
+    git(&project, &["init", "-q", "-b", "main"], None);
+    for id in [
+        "SPEC-HOLD-Q",
+        "SPEC-HOLD-CASE",
+        "SPEC-HOLD-YES",
+        "SPEC-EVID-CASE",
+        "SPEC-EVID-OTHER",
+        "SPEC-INDENT-1",
+        "SPEC-CLEAR-1",
+        "SPEC-HOLD-QF",
+    ] {
+        git(&project, &["add", &format!(".moai-cli/specs/{id}")], None);
+    }
+    git(
+        &project,
+        &["commit", "-q", "-m", "probe specs"],
+        Some(OLD_SECS.to_string()),
+    );
+    (root, project)
+}
+
+#[test]
+fn marker_normalization_excludes_the_audit_probes() {
+    let (_root, project) = probe_fixture();
+    let v = plan_at(&project, None);
+    let excluded = v["excluded"].as_array().unwrap();
+    let reason = |id: &str| -> String {
+        excluded
+            .iter()
+            .find(|r| r["spec_id"] == id)
+            .map(|r| r["reason"].as_str().unwrap().to_string())
+            .unwrap_or_else(|| format!("{id} not excluded (eligible)"))
+    };
+    assert_eq!(reason("SPEC-HOLD-Q"), "hold", "quoted true is a hold");
+    assert_eq!(reason("SPEC-HOLD-CASE"), "hold", "TRUE is a hold");
+    assert_eq!(
+        reason("SPEC-HOLD-YES"),
+        "ambiguous_hold",
+        "yes is outside the contract — excluded, never eligible"
+    );
+    assert_eq!(
+        reason("SPEC-EVID-CASE"),
+        "pending_evidence",
+        "Pending normalizes to pending"
+    );
+    assert_eq!(
+        reason("SPEC-EVID-OTHER"),
+        "ambiguous_evidence",
+        "a value outside the evidence contract excludes"
+    );
+    assert_eq!(
+        reason("SPEC-INDENT-1"),
+        "ambiguous_frontmatter",
+        "an indented key makes the block untrusted"
+    );
+    // Explicit no-marker spellings stay eligible — the repair must not over-exclude.
+    let eligible = ids(v["eligible"].as_array().unwrap(), "spec_id");
+    assert!(
+        eligible.contains(&"SPEC-CLEAR-1"),
+        "hold: false is a clear no-hold signal"
+    );
+    assert!(
+        eligible.contains(&"SPEC-HOLD-QF"),
+        "a quoted false is a clear no-hold signal"
+    );
+}
+
+/// The cutoff is strict: activity exactly at `now − grace_days` keeps the SPEC put
+/// (in_grace_window), one second older is eligible (audit: the `>=` boundary had no
+/// fixture, so a `>` mutation passed silently).
+#[test]
+fn cutoff_boundary_is_strict() {
+    let root = TempDir::new().unwrap();
+    let project = root.path().join("project");
+    fs::create_dir_all(&project).unwrap();
+    let cutoff = NOW_SECS - 90 * 86_400;
+    write_spec(&project, "SPEC-AT-CUT", "status: completed\n");
+    write_spec(&project, "SPEC-BEFORE-CUT", "status: completed\n");
+    git(&project, &["init", "-q", "-b", "main"], None);
+    git(&project, &["add", ".moai-cli/specs/SPEC-BEFORE-CUT"], None);
+    git(
+        &project,
+        &["commit", "-q", "-m", "one second older"],
+        Some((cutoff - 1).to_string()),
+    );
+    git(&project, &["add", ".moai-cli/specs/SPEC-AT-CUT"], None);
+    git(
+        &project,
+        &["commit", "-q", "-m", "exactly at the cutoff"],
+        Some(cutoff.to_string()),
+    );
+    let v = plan_at(&project, None);
+    let eligible = ids(v["eligible"].as_array().unwrap(), "spec_id");
+    assert_eq!(eligible, ["SPEC-BEFORE-CUT"]);
+    let excluded = v["excluded"].as_array().unwrap();
+    let at = excluded
+        .iter()
+        .find(|r| r["spec_id"] == "SPEC-AT-CUT")
+        .unwrap();
+    assert_eq!(at["reason"], "in_grace_window");
+}
