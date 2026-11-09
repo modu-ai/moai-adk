@@ -184,6 +184,18 @@ enum Command {
     Identity {
         path: PathBuf,
     },
+    /// P09 opt-in home layout (#2175): measure the receipt/outbox/claim stores and bind
+    /// a move plan to `~/.moai-cli/projects/<project_id>/`. Writes nothing.
+    LayoutPlan {
+        project: PathBuf,
+    },
+    /// Execute a confirmed layout plan: copy without deleting the originals, verify the
+    /// copy, then switch the pointer (`layout.json`). The default stays project-side.
+    LayoutApply {
+        project: PathBuf,
+        #[arg(long)]
+        plan_digest: String,
+    },
     /// Claim a task (06-A #2005): typed JSON request on stdin; posts exactly one claim
     /// comment (⑤) behind the same-host journal serialization (①) and records the record.
     ClaimAcquire {
@@ -693,6 +705,8 @@ const OPERATIONS: &[(&str, &str)] = &[
     ("effect-intend", "effect.intend"),
     ("effect-confirm", "effect.confirm"),
     ("effects-reconcile", "effects.reconcile"),
+    ("layout-plan", "layout.plan"),
+    ("layout-apply", "layout.apply"),
     ("todo-promote-preview", "todo.promote.plan"),
     ("todo-promote-apply", "todo.promote.apply"),
     ("run-verify", "run.verify"),
@@ -998,6 +1012,11 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             &moai_cli::forge::transport::GhTransport::from_env()?,
             &moai_cli::forge::policy::SystemClock,
         ),
+        Command::LayoutPlan { project } => moai_cli::layout::plan_cli(&project),
+        Command::LayoutApply {
+            project,
+            plan_digest,
+        } => moai_cli::layout::apply_cli(&project, &plan_digest),
         Command::ClaudeDoctor { project } => moai_cli::claude::doctor(&project),
         Command::ClaudeSettingsPlan { project } => {
             moai_cli::claude::settings_plan(&project, &input()?)

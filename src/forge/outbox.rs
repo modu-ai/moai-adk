@@ -197,6 +197,13 @@ pub fn op_id(
 }
 
 fn outbox_dir(project: &Path) -> Result<PathBuf, ForgeError> {
+    // #2175: the P09 opt-in home layout switches the outbox store to
+    // ~/.moai-cli/projects/<id>/forge/outbox once layout.json is in place.
+    if let Some(home) = crate::layout::switched_dir(project, "forge/outbox") {
+        std::fs::create_dir_all(&home)
+            .map_err(|_| ForgeError::io("outbox directory unavailable"))?;
+        return Ok(home);
+    }
     let mut dir = project.to_path_buf();
     for part in [crate::PROJECT_STATE_DIR, "forge", "outbox"] {
         dir.push(part);
