@@ -64,6 +64,7 @@ run `42619829090`(PR #2309, `pull_request`, head `15d8178bc2d9a8dd1ba16bfaae5424
 - macOS에서 skip된 Python 1개는 `claude` 바이너리가 필요한 시험이다(hosted runner에 없음). Claude·Codex 실세션은 어느 target에서도 돌리지 않았다.
 - AC-08C-7(사용자 HOME 쓰기 차단)은 macOS 두 target의 `e2e_never_writes_outside_temp_home`이 hosted runner에서도 ok였다. Linux에는 대체 차단 수단이 없어 위 not_run 행이 그대로 유효하다.
 - 첫 run `42618040618`(head `f557b035a`)은 macOS 두 target만 success였다. Linux 두 target은 check set은 초록이었는데, workflow의 macOS 전용 요약 블록 결함(grep 일치 없음 + `pipefail`)으로 job이 failure가 됐다. 그 결함을 고친 뒤 위 run에서 측정했다.
+- windows-2025는 위 matrix에 없다. 별도 job `windows-build`(E3 #2195)가 모든 target을 컴파일만 하고 시험은 돌리지 않는다. `rc-ci` 집계(`needs: [check]`)에 들어가지 않으므로 `rc-ci` 결론에 영향이 없다. 결과는 위 not_run 절의 windows-2025 행에 적는다.
 
 ## RELEASE 시험군 (rc.2 E6 #2198) — fixture 결과, host 지원 판정 아님
 
