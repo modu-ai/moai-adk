@@ -28,7 +28,7 @@ const DECISION_ITEM_LIMIT: usize = 32;
 const DECISION_STRING_LIMIT: usize = 256;
 const REVISION_LIMIT: usize = 128;
 /// Keys owned by the profile schema; the delta covers exactly these.
-const MANAGED_KEYS: [&str; 11] = [
+const MANAGED_KEYS: [&str; 12] = [
     "schema_version",
     "project_id",
     "purpose",
@@ -40,10 +40,11 @@ const MANAGED_KEYS: [&str; 11] = [
     "decisions",
     "github_issues",
     "context_max_bytes",
+    "archive_grace_days",
 ];
 /// Keys added after the first profile release: absent from desired, current and baseline
 /// they are left out of the delta, so a profile without them plans exactly as before.
-const ADDITIVE_KEYS: [&str; 2] = ["github_issues", "context_max_bytes"];
+const ADDITIVE_KEYS: [&str; 3] = ["github_issues", "context_max_bytes", "archive_grace_days"];
 
 /// One interview decision recorded under `decisions` (REQ-03A-01). `source` says where
 /// the value came from: `repo` (repository convention), `user` (stated in the
@@ -87,6 +88,11 @@ pub struct Profile {
     /// key reads unchanged.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub context_max_bytes: Option<u64>,
+    /// SPEC auto-archive inactivity window in days (#2187, REQ-D1-01). Absent means
+    /// the built-in 90-day default (design §12, Go-inherited); a profile written
+    /// before this key reads unchanged.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub archive_grace_days: Option<u64>,
 }
 
 /// Key-level reconfigure delta of a plan (REQ-03A-02). Keys are sorted in every list so
@@ -191,6 +197,7 @@ fn validate(p: &Profile) -> Result<()> {
             .is_some_and(|s| !portable(s) || s.len() > REVISION_LIMIT)
         || !decisions_ok
         || p.context_max_bytes == Some(0)
+        || p.archive_grace_days == Some(0)
     {
         return Err("invalid or nonportable profile; no values were logged".into());
     }
@@ -668,6 +675,7 @@ pub fn read_profile(root: &Path) -> Result<(Profile, Vec<u8>)> {
         "decisions",
         "github_issues",
         "context_max_bytes",
+        "archive_grace_days",
     ];
     let filtered: serde_json::Map<String, Value> = map
         .iter()
@@ -707,6 +715,7 @@ mod tests {
             decisions: vec![record("d1", "Rust", "user")],
             github_issues: None,
             context_max_bytes: None,
+            archive_grace_days: None,
         }
     }
 
