@@ -301,7 +301,11 @@ fn a_spaced_sub_keeps_its_args_offset() {
     let cases = [
         ("@MOAI:SPEC: REQ\n", json!("REQ"), Value::Null),
         ("@MOAI:SPEC:  REQ:extra\n", json!("REQ"), json!("extra")),
-        ("@MOAI:SPEC: REQ: two words\n", json!("REQ"), json!("two words")),
+        (
+            "@MOAI:SPEC: REQ: two words\n",
+            json!("REQ"),
+            json!("two words"),
+        ),
         ("@MOAI:SPEC:REQ\n", json!("REQ"), Value::Null),
         ("@MOAI:SPEC:REQ:x\n", json!("REQ"), json!("x")),
     ];
