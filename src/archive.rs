@@ -15,8 +15,13 @@
 //!  3. neither pending evidence (`evidence: pending`) nor a preservation hold
 //!     (`hold: true`) is recorded — such candidates are excluded with the reason.
 //!
-//! Ambiguous input (missing or unparseable status) and missing time information are
-//! excluded with reasons, never guessed (design §12: 애매한 상태·시간 정보 제외).
+//! Marker values are normalized before the comparison (quotes stripped, case
+//! folded); a value outside the marker contract (`hold: yes`, `evidence:
+//! complete`, …) excludes as `ambiguous_hold` / `ambiguous_evidence`, and an
+//! indented key inside the block makes the whole block untrusted
+//! (`ambiguous_frontmatter`) — a marker the parser cannot read is never treated
+//! as "no marker" (design §12: 애매한 상태 제외; #2187 audit fix). Missing time
+//! information is excluded as `missing_time_info`, never guessed.
 //! Last activity is ONE git pass over the specs tree (newest commit time per SPEC
 //! directory); outside git, or without history for a directory, the newest file mtime
 //! of that directory is the activity source; with neither the SPEC is excluded as
@@ -56,6 +61,7 @@ pub struct ExcludedSpec {
     /// The parsed status when one could be read.
     pub status: Option<String>,
     /// `pending_evidence` | `hold` | `in_grace_window` | `ambiguous_status` |
+    /// `ambiguous_evidence` | `ambiguous_hold` | `ambiguous_frontmatter` |
     /// `missing_time_info`
     pub reason: String,
 }
@@ -125,35 +131,102 @@ pub fn resolve_grace_days(project: &Path, request: Option<u64>) -> Result<(u64, 
     })
 }
 
-/// Minimal frontmatter scan of `spec.md`: returns the `status`, `evidence` and `hold`
-/// values from the leading `---` block. Missing file, missing block or missing key
-/// reads as `None` — the caller decides what absence means.
-fn frontmatter(dir: &Path) -> Result<(Option<String>, Option<String>, Option<bool>)> {
+/// Minimal frontmatter scan of `spec.md`: the raw `status`, `evidence` and `hold`
+/// values from the leading `---` block. Missing file or missing block reads as all
+/// `None` — the caller decides what absence means.
+fn frontmatter(dir: &Path) -> Result<Frontmatter> {
     let bytes = match crate::apply::read_opt(&dir.join("spec.md"))? {
         Some(b) => b,
-        None => return Ok((None, None, None)),
+        None => return Ok(Frontmatter::absent()),
     };
     let text = String::from_utf8(bytes).map_err(|_| "spec.md is not UTF-8".to_string())?;
     let mut lines = text.lines();
     if lines.next().ok_or("empty spec.md")?.trim() != "---" {
-        return Ok((None, None, None));
+        return Ok(Frontmatter::absent());
     }
-    let mut status = None;
-    let mut evidence = None;
-    let mut hold = None;
+    let mut fm = Frontmatter::absent();
     for line in lines {
         if line.trim() == "---" {
             break;
         }
+        // Only column-0 keys are this contract's vocabulary. An indented key means
+        // nested YAML the parser does not read, so the block is recorded untrusted
+        // and no marker from it may vouch for eligibility (#2187 audit fix).
+        if !line.trim().is_empty() && line.starts_with([' ', '\t']) {
+            fm.indented = true;
+            continue;
+        }
         if let Some(v) = line.strip_prefix("status:") {
-            status = Some(v.trim().trim_matches('"').to_string());
+            fm.status = Some(unquote(v));
         } else if let Some(v) = line.strip_prefix("evidence:") {
-            evidence = Some(v.trim().trim_matches('"').to_string());
+            fm.evidence = Some(unquote(v));
         } else if let Some(v) = line.strip_prefix("hold:") {
-            hold = Some(v.trim().eq_ignore_ascii_case("true"));
+            fm.hold = Some(unquote(v));
         }
     }
-    Ok((status, evidence, hold))
+    Ok(fm)
+}
+
+/// The frontmatter markers a `spec.md` carries, as raw value strings.
+struct Frontmatter {
+    status: Option<String>,
+    evidence: Option<String>,
+    hold: Option<String>,
+    /// The block held an indented key: nested structure this flat contract cannot
+    /// vouch for, so every marker read from it is untrusted.
+    indented: bool,
+}
+
+impl Frontmatter {
+    fn absent() -> Self {
+        Self {
+            status: None,
+            evidence: None,
+            hold: None,
+            indented: false,
+        }
+    }
+}
+
+/// Strips the surrounding whitespace and quotes of a frontmatter value, case
+/// preserved (the status echo stays verbatim).
+fn unquote(v: &str) -> String {
+    v.trim().trim_matches('"').to_string()
+}
+
+/// The three readings of a hold·evidence marker: the signal, an explicit
+/// no-signal, or a value outside the contract — which excludes, never eligible
+/// (design §12: 애매한 상태 제외; #2187 audit fix).
+enum Marker {
+    Signal,
+    Clear,
+    Ambiguous,
+}
+
+/// Reads the `hold` value: `true` (any case, quoting already stripped) signals a
+/// hold, `false` an explicit no-hold, anything else is ambiguous.
+fn hold_marker(value: Option<&str>) -> Marker {
+    match value {
+        None | Some("") => Marker::Clear,
+        Some(v) => match v.to_ascii_lowercase().as_str() {
+            "true" => Marker::Signal,
+            "false" => Marker::Clear,
+            _ => Marker::Ambiguous,
+        },
+    }
+}
+
+/// Reads the `evidence` value: `pending` (any case, quoting already stripped)
+/// signals pending evidence; this contract knows no other value, so anything
+/// else is ambiguous.
+fn evidence_marker(value: Option<&str>) -> Marker {
+    match value {
+        None | Some("") => Marker::Clear,
+        Some(v) => match v.to_ascii_lowercase().as_str() {
+            "pending" => Marker::Signal,
+            _ => Marker::Ambiguous,
+        },
+    }
 }
 
 /// One git pass over the specs tree: per-SPEC-directory newest commit time (Unix
@@ -264,7 +337,7 @@ pub fn plan(project: &Path, now: SystemTime, grace_request: Option<u64>) -> Resu
     for spec_id in ids {
         plan.scanned += 1;
         let dir = specs.join(&spec_id);
-        let Ok((status, evidence, hold)) = frontmatter(&dir) else {
+        let Ok(fm) = frontmatter(&dir) else {
             plan.excluded.push(ExcludedSpec {
                 spec_id: spec_id.clone(),
                 status: None,
@@ -272,7 +345,17 @@ pub fn plan(project: &Path, now: SystemTime, grace_request: Option<u64>) -> Resu
             });
             continue;
         };
-        let Some(status) = status else {
+        if fm.indented {
+            // The block carried nested structure; no marker from it may vouch for
+            // eligibility, even when the status line itself parsed.
+            plan.excluded.push(ExcludedSpec {
+                spec_id: spec_id.clone(),
+                status: fm.status.clone(),
+                reason: "ambiguous_frontmatter".into(),
+            });
+            continue;
+        }
+        let Some(status) = fm.status else {
             plan.excluded.push(ExcludedSpec {
                 spec_id: spec_id.clone(),
                 status: None,
@@ -285,21 +368,43 @@ pub fn plan(project: &Path, now: SystemTime, grace_request: Option<u64>) -> Resu
             // records that they were looked at.
             continue;
         }
-        if evidence.as_deref() == Some("pending") {
-            plan.excluded.push(ExcludedSpec {
-                spec_id: spec_id.clone(),
-                status: Some(status.clone()),
-                reason: "pending_evidence".into(),
-            });
-            continue;
+        match evidence_marker(fm.evidence.as_deref()) {
+            Marker::Signal => {
+                plan.excluded.push(ExcludedSpec {
+                    spec_id: spec_id.clone(),
+                    status: Some(status.clone()),
+                    reason: "pending_evidence".into(),
+                });
+                continue;
+            }
+            Marker::Ambiguous => {
+                plan.excluded.push(ExcludedSpec {
+                    spec_id: spec_id.clone(),
+                    status: Some(status.clone()),
+                    reason: "ambiguous_evidence".into(),
+                });
+                continue;
+            }
+            Marker::Clear => {}
         }
-        if hold == Some(true) {
-            plan.excluded.push(ExcludedSpec {
-                spec_id: spec_id.clone(),
-                status: Some(status.clone()),
-                reason: "hold".into(),
-            });
-            continue;
+        match hold_marker(fm.hold.as_deref()) {
+            Marker::Signal => {
+                plan.excluded.push(ExcludedSpec {
+                    spec_id: spec_id.clone(),
+                    status: Some(status.clone()),
+                    reason: "hold".into(),
+                });
+                continue;
+            }
+            Marker::Ambiguous => {
+                plan.excluded.push(ExcludedSpec {
+                    spec_id: spec_id.clone(),
+                    status: Some(status.clone()),
+                    reason: "ambiguous_hold".into(),
+                });
+                continue;
+            }
+            Marker::Clear => {}
         }
         let (last_activity, source) = match activity.get(&spec_id) {
             Some(secs) => (*secs, "git"),

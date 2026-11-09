@@ -230,8 +230,16 @@ fn probe_fixture() -> (TempDir, PathBuf) {
     let root = TempDir::new().unwrap();
     let project = root.path().join("project");
     fs::create_dir_all(&project).unwrap();
-    write_spec(&project, "SPEC-HOLD-Q", "status: completed\nhold: \"true\"\n");
-    write_spec(&project, "SPEC-HOLD-CASE", "status: completed\nhold: TRUE\n");
+    write_spec(
+        &project,
+        "SPEC-HOLD-Q",
+        "status: completed\nhold: \"true\"\n",
+    );
+    write_spec(
+        &project,
+        "SPEC-HOLD-CASE",
+        "status: completed\nhold: TRUE\n",
+    );
     write_spec(&project, "SPEC-HOLD-YES", "status: completed\nhold: yes\n");
     write_spec(
         &project,
@@ -243,9 +251,17 @@ fn probe_fixture() -> (TempDir, PathBuf) {
         "SPEC-EVID-OTHER",
         "status: completed\nevidence: complete\n",
     );
-    write_spec(&project, "SPEC-INDENT-1", "status: completed\n  hold: true\n");
+    write_spec(
+        &project,
+        "SPEC-INDENT-1",
+        "status: completed\n  hold: true\n",
+    );
     write_spec(&project, "SPEC-CLEAR-1", "status: completed\nhold: false\n");
-    write_spec(&project, "SPEC-HOLD-QF", "status: completed\nhold: \"false\"\n");
+    write_spec(
+        &project,
+        "SPEC-HOLD-QF",
+        "status: completed\nhold: \"false\"\n",
+    );
     git(&project, &["init", "-q", "-b", "main"], None);
     for id in [
         "SPEC-HOLD-Q",
