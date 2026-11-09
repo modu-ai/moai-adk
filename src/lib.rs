@@ -18,6 +18,7 @@ pub mod handoff;
 pub mod hooks;
 pub mod hosts;
 pub mod identity;
+pub mod index;
 pub mod install;
 pub mod leader;
 pub mod ontology;

@@ -131,6 +131,9 @@ const RULES: &[(&str, Kind)] = &[
     ("malformed ls-", Kind::Io),
     ("read failed", Kind::Io),
     ("write failed", Kind::Io),
+    // incremental index (rc.2 C6 #2182): a failed build is plain I/O trouble; the
+    // previous generation is kept and the query state turns partial.
+    ("index build failed", Kind::Io),
     ("replace failed", Kind::Io),
     ("temporary", Kind::Io),
     ("unavailable", Kind::Io),
@@ -411,6 +414,15 @@ mod tests {
             ),
             ("existing .codex/hooks.json requires preservation review", Conflict),
             (".codex/hooks.json receipt requires preservation review", Conflict),
+            // incremental index (rc.2 C6 #2182); every current message of the module
+            ("index build failed; previous generation kept: a.txt read failed", Io),
+            ("index source unavailable: no HEAD commit", Io),
+            ("index generation staging write failed: x", Io),
+            ("index file limit exceeded (16384)", InvalidInput),
+            ("index manifest encode failed", Internal),
+            ("index pointer write failed", Io),
+            ("index pointer replace failed", Io),
+            ("index pointer encode failed", Internal),
         ];
         for (message, kind) in cases {
             assert_eq!(classify(message), kind, "{message}");
