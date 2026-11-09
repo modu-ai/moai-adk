@@ -116,8 +116,12 @@ jobs:
 
   rc-ci:
     name: rc-ci
-    # always(): a failed target must fail this check, not skip it (a skipped check is neutral).
-    if: ${{ always() }}
+    # !cancelled() (#2312): a failed target must fail this check, not skip it (a job without
+    # a status function gets the default success() and is skipped, which reads as neutral);
+    # a run cancelled by cancel-in-progress stays cancelled instead of always() reporting it
+    # as a failure. GitHub's recommended alternative to always():
+    # https://docs.github.com/en/actions/reference/workflows-and-actions/expressions (2026-11-09).
+    if: ${{ !cancelled() }}
     needs: [check]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
