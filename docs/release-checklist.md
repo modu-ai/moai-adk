@@ -34,6 +34,7 @@
 ## (e) provenance / 서명 (AC-08D-5)
 
 - [ ] **HOLD/not_run — attestation**: 방식은 결정됨(GitHub artifact attestation 단독, `actions/attest@v4` + `gh attestation verify <artifact> -R modu-ai/moai-adk`)으나 **생성 실측 없음**(게시·workflow 실행 미허용). `gh attestation verify`는 not_run이다.
+- [ ] **E4 #2196 — 설계·dry-run 완료, 생성은 승인 대기**: `docs/release-attestation.md`. cargo-dist 생성 workflow(`tag-namespace = "moai-cli"`, attestation과 GitHub Release를 host 단계에 배치)와 사용자 확인 절차(`gh attestation verify -R modu-ai/moai-adk --signer-workflow …`), macOS quarantine 안내를 담았다. `gh attestation verify` 절차는 공개 저장소(cli/cli v2.92.0)의 실제 attestation으로 성공·실패 경우를 실측했다. 이 저장소의 attestation 생성은 운영자 승인 항목이다(그 문서 6절).
 - [x] REQ-08D-08 준수: **checksum이 서명 검증을 대체한다고 쓰지 않았다.** checksum은 무결성 재확인이며 provenance(빌드 출처 연결)는 attestation 계열만 담당한다(in-toto/Reproducible Builds 근거, Issue 본문).
 
 ## (f) known-good restore
