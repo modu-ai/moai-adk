@@ -454,6 +454,12 @@ enum Command {
         #[arg(long)]
         doc: Option<PathBuf>,
     },
+    /// Read-only dual-read scan of `@MOAI:` / `@MX:` tag markers (C2 #2178): both
+    /// namespaces normalize into one node shape, duplicates are diagnosed only,
+    /// nothing is written. PATH is a file or a directory.
+    AtlasTagScan {
+        path: PathBuf,
+    },
     /// Record the PR's ACK (06-C #2007, REQ-06C-11): confirm the `pr_create` intent and, once
     /// it is confirmed, move the claim record to `pr_ready`.
     PrConfirm {
@@ -818,6 +824,7 @@ const OPERATIONS: &[(&str, &str)] = &[
     ("parity-check", "parity.check"),
     ("archive-plan", "archive.plan"),
     ("forge-audit-status", "forge.audit_status"),
+    ("atlas-tag-scan", "atlas_tag.scan"),
     ("flow-wip-check", "flow.wip_check"),
     ("flow-gate-verdict", "flow.gate_verdict"),
 ];
@@ -1251,6 +1258,7 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             generated,
             doc,
         } => moai_cli::parity::parity_check(&template, &generated, doc.as_deref()),
+        Command::AtlasTagScan { path } => moai_cli::atlas_tag::scan_path(&path),
         Command::PrConfirm {
             project,
             task,
