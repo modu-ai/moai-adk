@@ -23,8 +23,8 @@ fn http_request_new_has_no_headers_and_no_body() {
         }
     );
     let req = req
-        .header("If-None-Match", "\"etag\"")
-        .body(json!({"a": 1}));
+        .with_header("If-None-Match", "\"etag\"")
+        .with_body(json!({"a": 1}));
     assert_eq!(
         req.headers.get("If-None-Match").map(String::as_str),
         Some("\"etag\"")
@@ -43,7 +43,7 @@ fn http_response_new_has_no_headers_and_no_body() {
             body: None,
         }
     );
-    let resp = resp.header("etag", "\"x\"").body(json!([1, 2]));
+    let resp = resp.with_header("etag", "\"x\"").with_body(json!([1, 2]));
     assert_eq!(resp.header("ETag"), Some("\"x\""));
     assert_eq!(resp.body, Some(json!([1, 2])));
 }
