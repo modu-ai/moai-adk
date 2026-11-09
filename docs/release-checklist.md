@@ -28,7 +28,7 @@
 - [x] 명령(본문 AC-08D-3 그대로, 세션 규칙상 target dir만 유지): `CARGO_HOME=/tmp/moai-rc-product-cargo CARGO_TARGET_DIR=/tmp/moai-rc-target-agent-7 cargo build --offline --locked --release && shasum -a 256 /tmp/moai-rc-target-agent-7/release/moai-cli > /tmp/sha256.sum && shasum -a 256 -c /tmp/sha256.sum`
 - [x] 결과: **OK**(exit 0) — `312ccf8c14af41de648c5a7af4821296ea677f43d11a76415948f3ea84b16b2b  /tmp/moai-rc-target-agent-7/release/moai-cli`. 참고: 이것은 **로컬 개발 빌드 산출물의 자체 검증**이며, 실제 release artifact(tarball·installer)의 checksum 목록은 게시 단계에서 만든다(cargo-dist 미도입 — 수동 `sha256.sum` 절차를 이 항목이 선행한다).
 - [x] **E1 #2193 갱신 — cargo-dist 도입**: `dist-workspace.toml` 설정 + `dist build`(cargo-dist 0.34.0)로 archive별 `.sha256` + 통합 `sha256.sum` 네이티브 산출 실측(target/distrib — `shasum -a 256 -c` OK). 게시 단계 checksum 목록은 이제 dist가 산출한다.
-- [x] **재현 명령 고정 (E1 #2193 수리, 사용자 결정 2026-11-09 07:0x — REQ-E1-01 재정의)**: 세션 CARGO_HOME(`cargo install --locked cargo-dist@0.34.0 cargo-cyclonedx@0.5.10`)을 만든 뒤 워크트리 루트에서 `CARGO_HOME=<session-cargo-home> PATH="<session-cargo-home>/bin:$PATH" dist build --artifacts=all`. **산출 범위(실측 2026-11-09T07:1xZ, tree `e41bb62e7`)**: `--artifacts=all`은 `target/distrib/`에 archive 바이너리 tarball + archive별 `.sha256` + **통합 `sha256.sum`** + `source.tar.gz`(+`.sha256`)을 낸다. `--artifacts=local`(빈 distrib 재현)은 로컬 조합 archive + archive별 `.sha256`**만** 낸다 — `sha256.sum`과 source tarball은 제외되므로 게시 단계 checksum 목록에는 `--artifacts=all`이 필요하다. 검증: `shasum -a 256 -c target/distrib/sha256.sum` → 두 항목 `OK` + `WARNING: 1 line is improperly formatted`(파일 끝 빈 줄 — 기능 영향 없음).
+- [x] **재현 명령 고정 (E1 #2193 수리, 사용자 결정 2026-11-09 07:0x — REQ-E1-01 재정의)**: 새 빈 세션 CARGO_HOME에 `cargo install --locked cargo-dist@0.34.0 cargo-cyclonedx@0.5.10 cargo-auditable@0.7.7`로 세 도구를 모두 설치한다. `dist-workspace.toml`의 `cargo-auditable = true`를 유지하므로 cargo-auditable도 필수다. 기존 두 도구만 설치한 절차는 빈 CARGO_HOME에서 `dist build --artifacts=all` exit 255로 실패했다(감사 #2193 댓글 6738998094). 아래 로컬 재현 블록이 설치부터 검증까지의 전체 명령이다. **산출 범위(실측 2026-11-09T07:1xZ, tree `e41bb62e7`)**: `--artifacts=all`은 `target/distrib/`에 archive 바이너리 tarball + archive별 `.sha256` + **통합 `sha256.sum`** + `source.tar.gz`(+`.sha256`)을 낸다. `--artifacts=local`(빈 distrib 재현)은 로컬 조합 archive + archive별 `.sha256`**만** 낸다 — `sha256.sum`과 source tarball은 제외되므로 게시 단계 checksum 목록에는 `--artifacts=all`이 필요하다. 체크섬의 상대 파일명은 `target/distrib/`을 기준으로 검증해야 한다. 두 항목 `OK` + `WARNING: 1 line is improperly formatted`는 파일 끝 빈 줄에 따른 기존 관측이다.
 - [ ] **not_run — release artifact checksum 목록**: artifact 미생성(게시 금지 범위).
 
 ## (e) provenance / 서명 (AC-08D-5)
@@ -55,10 +55,50 @@
 
 ## (i) SBOM / license
 
-- [x] **SBOM 생성 실측 (E1 #2193 수리 — REQ-E1-01은 사용자 결정 2026-11-09 07:0x로 재정의: "dist build(바이너리·sha256) + cargo cyclonedx 단계(SBOM)")**: SBOM의 실제 산출은 **`cargo cyclonedx` 단계**가 담당한다. 재현 명령(고정): 세션 CARGO_HOME에서 워크트리 루트로 `CARGO_HOME=<session-cargo-home> PATH="<session-cargo-home>/bin:$PATH" cargo cyclonedx`(cargo-cyclonedx 0.5.10) → **워크트리 루트에** `moai-cli.cdx.xml` 생성. CycloneDX 1.3의 XML을 파싱하면 **`<component>` 요소 46개**(의존성 43개 + metadata의 패키지·lib·bin 3개)다. `<components>` 컨테이너 2개는 세지 않는다. 이전 48 수치는 정정한다(인계받은 XML과 head `f92e97a3d5` / tree `b35b75eb3`의 재생성 XML에서 같은 46개를 확인). 재현: `python3 -c 'import xml.etree.ElementTree as E; r=E.parse("moai-cli.cdx.xml").getroot(); print(len(r.findall(".//{http://cyclonedx.org/schema/bom/1.3}component")))'` → `46`. 게시 절차: 생성된 XML을 `target/distrib/`으로 복사. 이전 결정 01:1x("SBOM=cargo-dist"가 build가 산출)는 이 재정의로 대체된다.
+- [x] **SBOM 생성 실측 (E1 #2193 수리 — REQ-E1-01은 사용자 결정 2026-11-09 07:0x로 재정의: "dist build(바이너리·sha256) + cargo cyclonedx 단계(SBOM)")**: SBOM의 실제 산출은 **`cargo cyclonedx` 단계**가 담당한다. 세션 CARGO_HOME에서 워크트리 루트로 `cargo cyclonedx`(cargo-cyclonedx 0.5.10)를 실행한 뒤 `mv moai-cli.cdx.xml target/distrib/moai-cli.cdx.xml`로 Git이 무시하는 산출물 경로로 옮긴다. 루트에 XML을 남기거나 커밋하지 않는다. CycloneDX 1.3의 XML을 파싱하면 **`<component>` 요소 46개**(의존성 43개 + metadata의 패키지·lib·bin 3개)다. `<components>` 컨테이너 2개는 세지 않는다. 이전 48 수치는 정정한다(인계받은 XML과 head `f92e97a3d5` / tree `b35b75eb3`의 재생성 XML에서 같은 46개를 확인). 재현: `python3 -c 'import xml.etree.ElementTree as E; r=E.parse("target/distrib/moai-cli.cdx.xml").getroot(); print(len(r.findall(".//{http://cyclonedx.org/schema/bom/1.3}component")))'` → `46`. 이전 결정 01:1x("SBOM=cargo-dist"가 build가 산출)는 이 재정의로 대체된다.
 - [x] `dist-workspace.toml`에 `cargo-cyclonedx = true`·`cargo-auditable = true` 설정(dist 0.34 스키마 수용 실측). **관측 한계(upstream)**: dist build가 산출 목록에 `target/distrib/moai-cli.cdx.xml`을 announce하지만 파일을 실체화하지 않는다(2026-11-09 agent-7 2회 + 같은 날 수리 재현 1회, 플러그인 설치 상태에서도 동일 — upstream dist 0.34 관측 한계). 재정의된 REQ에서 SBOM 산출은 cyclonedx 단계가 담당하므로 이 한계는 REQ 이행을 막지 않는다.
 - [ ] **not_run — attestation 연동**: SBOM의 attestation(`actions/attest@v4`)은 게시 단계(별도 권한) — REQ-08D-08에 따라 checksum이 서명을 대체한다고 쓰지 않음.
 - [x] license: `publish = false` + Cargo.lock(의존 고정) — 정식 릴리스 시 SBOM 재생성·첨부는 (i) 절차에 포함.
+
+### E1 로컬 전체 재현 — 새 빈 CARGO_HOME
+
+macOS arm64의 깨끗한 임시 clone 루트에서 아래 블록을 그대로 실행한다. Rust `1.94.1`(저장소 toolchain), 네이티브 빌드 도구, Python 3와 `shasum`이 필요하다. 설치·빌드는 네트워크를 사용한다. CARGO_HOME과 CARGO_TARGET_DIR은 각각 새 빈 디렉터리이며 다른 세션의 도구·레지스트리·빌드 캐시를 복사하지 않는다. `target/distrib`가 이미 있는 clone은 사용하지 않는다. all 산출물을 보관한 뒤 빈 distrib에서 local 범위를 확인하고, 마지막에 all 산출물과 SBOM을 복원한다. 이 블록은 로컬 빌드만 수행한다.
+
+<!-- e1-local-repro:begin -->
+```sh
+set -eu
+export CARGO_HOME="$(mktemp -d /tmp/moai-e1-cargo.XXXXXX)"
+export CARGO_TARGET_DIR="$(mktemp -d /tmp/moai-e1-target.XXXXXX)"
+test -z "$(ls -A "$CARGO_HOME")"
+test -z "$(ls -A "$CARGO_TARGET_DIR")"
+test ! -e target/distrib
+test ! -e target/distrib-all
+test ! -e target/distrib-local
+export PATH="$CARGO_HOME/bin:$PATH"
+printf 'CARGO_HOME=%s\nCARGO_TARGET_DIR=%s\n' "$CARGO_HOME" "$CARGO_TARGET_DIR"
+cargo install --locked cargo-dist@0.34.0 cargo-cyclonedx@0.5.10 cargo-auditable@0.7.7
+cargo install --list
+for tool in dist cargo-cyclonedx cargo-auditable; do
+    test "$(command -v "$tool")" = "$CARGO_HOME/bin/$tool"
+done
+dist --version
+cargo cyclonedx --version
+dist build --artifacts=all
+python3 -c 'import subprocess; subprocess.run(["shasum", "-a", "256", "-c", "sha256.sum"], cwd="target/distrib", check=True)'
+cargo cyclonedx
+mv moai-cli.cdx.xml target/distrib/moai-cli.cdx.xml
+python3 -c 'import xml.etree.ElementTree as E; r=E.parse("target/distrib/moai-cli.cdx.xml").getroot(); print("SBOM components:", len(r.findall(".//{http://cyclonedx.org/schema/bom/1.3}component")))'
+mv target/distrib target/distrib-all
+dist build --artifacts=local
+python3 -c 'from pathlib import Path; import subprocess; p=Path("target/distrib"); sums=list(p.glob("*.sha256")); assert sums; [subprocess.run(["shasum", "-a", "256", "-c", f.name], cwd=p, check=True) for f in sums]'
+test ! -e target/distrib/sha256.sum
+test ! -e target/distrib/source.tar.gz
+mv target/distrib target/distrib-local
+mv target/distrib-all target/distrib
+test ! -e moai-cli.cdx.xml
+git status --short
+```
+<!-- e1-local-repro:end -->
 
 ## (j) 미결 목록
 
