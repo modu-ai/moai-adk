@@ -39,7 +39,7 @@
 | --- | --- | --- |
 | Q1 | Playwright는 **접근성 스냅샷 단언**(`toMatchAriaSnapshot`, `.aria.yml`)과 구조 단언(locator·getByRole)을 제공 — DOM/AX 축의 검사는 구조·접근성 검증이다 | https://playwright.dev/docs/api/class-locatorassertions |
 | Q2 | Playwright의 **visual 비교는 별도 단언**(`toHaveScreenshot`) — PNG/WebP 스냅샷 pixel diff로 `maxDiffPixels`·`maxDiffPixelRatio`·YIQ 색 공간 `threshold`·`mask`·애니메이션 비활성화 옵션을 갖는다. 구조 단언과 픽셀 단언은 서로 다른 API 계열이다 | https://playwright.dev/docs/test-snapshots , https://playwright.dev/docs/api/class-locatorassertions |
-| Q3 | Playwright visual comparison은 **동일 엔진에서 두 번 연속 캡처가 일치할 때까지 대기**하는 안정화 절차를 내장한다(애니메이션·캐럿 처리 포함) — 픽셀 단언의 불안정 요소를 줄이는 공식 기능 | https://playwright.dev/docs/api/class-locatorassertions |
+| Q3 | Playwright visual comparison은 **두 번 연속 캡처가 일치할 때까지 대기**하는 안정화 절차를 내장한다(애니메이션·캐럿 처리 포함) — 픽셀 단언의 불안정 요소를 줄이는 공식 기능 | https://playwright.dev/docs/api/class-locatorassertions |
 
 ## 미확인 항목
 
@@ -56,7 +56,7 @@
 | 설계 요구 | 외부 근거 | 계약 반영 방식(제안) |
 | --- | --- | --- |
 | reference 권리 정보 입력 | R1: z.ai 조항은 사용자 prompt·output 권리를 인정하되 타인 output과의 유사 가능성을 명시 | asset 레코드에 `reference_rights` 필드(사용자 확인 스트링)와 `provider_terms_ref`(약관 URL·확인일)를 의무 기록 |
-| 생성 시각·비용 기록 | C1·C2·C2a: provider·모델별 과금 단위가 다름(장당 vs 토큰, OpenAI는 tier별) | asset 레코드에 `cost`를 provider 과금 단위 그대로 기록(환산 금지) — provider 가격표 URL·확인일 동봉 |
+| 생성 시각·비용 기록 | C1·C2·C2a: provider·모델별 장당 요율·토큰 단가를 구분함. OpenAI는 Standard/Batch 요금방식·modality별 토큰 단가와 장당 출력가 예시를 병기함 | asset 레코드에 `cost`를 provider 과금 단위 그대로 기록(환산 금지) — provider 가격표 URL·확인일 동봉 |
 | prompt/version provenance | R3: C2PA·SynthID 신호 존재, 변형·제거 가능성 명시 | `provenance`에 C2PA/SynthID 관측 결과를 **관측값으로만** 기록(보증 아님), 미탐지 가능성도 함께 기록 |
 | visual QA 기록 | Q1·Q2: DOM/AX 단언과 픽셀 단언이 별도 API 계열 | QA 기록을 두 절로 분리 — (1) 구조·접근성(aria snapshot·locator 단언), (2) visual(스냅샷 pixel diff, threshold·mask 기록) |
 | 실제 화면·텍스트·크롭·투명도·접근성 검사 | Q2의 `omitBackground`(투명도)·`mask`·애니메이션 처리 등 공식 옵션 | 검사 항목별 사용 옵션을 QA 기록에 남긴다 |
