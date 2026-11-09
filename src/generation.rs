@@ -35,7 +35,9 @@
 //! line, and a source whose license is not reviewed blocks every file that cites it
 //! (REQ-03C-08).
 
-use crate::agents::{agents_apply_amended, agents_plan, AgentsPlan, AgentsRequest, FilePlan};
+use crate::agents::{
+    agents_apply_amended_for, agents_plan_for, AgentsPlan, AgentsRequest, FilePlan,
+};
 use crate::apply::{
     decide, new_request_id, publish_exclusive, publish_replace, read_opt, root_of,
     save_before_bytes, Decision, Receipt,
@@ -449,6 +451,15 @@ fn normalize_workflow_reference(raw: &str) -> String {
     format!("{}/", raw.trim_end_matches('/'))
 }
 
+/// The canonical `workflow_reference` names a directory this request's own apply writes:
+/// `.moai-cli/workflows/` or `.moai-cli/workflows/<workflow_id>/` (#2274, REQ-1). Only then
+/// may the agents plan skip its "directory exists" check; any other reference keeps it.
+fn reference_is_own_output(request: &GenerationRequest) -> bool {
+    let base = format!("{PROJECT_STATE_DIR}/workflows/");
+    request.workflow_reference == base
+        || request.workflow_reference == format!("{base}{}/", request.workflow_id)
+}
+
 pub fn generation_plan(root: &Path, request: GenerationRequest) -> Result<GenerationPlan> {
     let mut request = request;
     request.workflow_reference = normalize_workflow_reference(&request.workflow_reference);
@@ -462,7 +473,7 @@ pub fn generation_plan(root: &Path, request: GenerationRequest) -> Result<Genera
         workflow_reference: request.workflow_reference.clone(),
         local_file: request.local_file.clone(),
     };
-    let agents = agents_plan(&root, agents_request)?;
+    let agents = agents_plan_for(&root, agents_request, reference_is_own_output(&request))?;
     let manifest = manifest_value(&root)?;
     let mut files: Vec<GenerationFilePlan> = agents.files.iter().map(file_from_agents).collect();
     let mut warnings: Vec<String> = agents.warnings.clone();
@@ -735,7 +746,8 @@ pub fn generation_apply(
         workflow_reference: p.request.workflow_reference.clone(),
         local_file: p.request.local_file.clone(),
     };
-    let agents_plan: AgentsPlan = agents_plan(&root, agents_request.clone())?;
+    let own_output = reference_is_own_output(&p.request);
+    let agents_plan: AgentsPlan = agents_plan_for(&root, agents_request.clone(), own_output)?;
     // 2 and 3 run inside the agents hook, after the agents files and before the one
     //    manifest publish (#2114): a failure here leaves the previous manifest intact.
     let request_id = new_request_id("generation.apply", &p.plan_digest);
@@ -899,11 +911,12 @@ pub fn generation_apply(
             .save(root)
             .map_err(|e| format!("published files but the receipt was not recorded: {e}"))
     };
-    let agents_result = agents_apply_amended(
+    let agents_result = agents_apply_amended_for(
         &root,
         agents_plan.clone(),
         &agents_plan.plan_digest,
         permission,
+        own_output,
         &mut hook,
     )?;
     receipt.status = "complete".into();
