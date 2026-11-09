@@ -1150,3 +1150,89 @@ fn claim_go_paths_untouched() {
         assert!(!f.contains("/.moai/") && !f.contains(".claude"), "{f}");
     }
 }
+
+// ---- #2166 (rc.2 A7): default lease, explicit lease wins, expiry shown ----
+
+/// REQ-A7-01: an absent `lease_until` becomes now + 4h, in the posted comment and the
+/// record alike.
+#[test]
+fn lease_defaults_to_four_hours() {
+    let tmp = tempfile::tempdir().unwrap();
+    let clock = FakeClock::at(CLOCK0);
+    let expected = format_utc(CLOCK0 + 4 * 60 * 60);
+    assert_eq!(moai_cli::claim::DEFAULT_LEASE, 4 * 60 * 60);
+    let (out, t) = acquire_in(
+        tmp.path(),
+        "agent-x",
+        "",
+        happy_exchanges(910, "agent-x", &expected),
+        &clock,
+    );
+    assert_eq!(out.outcome, "claimed");
+    let record = out.record.unwrap();
+    assert_eq!(record.lease_until.as_deref(), Some(expected.as_str()));
+    let sent = t.sent.borrow();
+    let posted = sent.iter().find(|r| r.method == "POST").unwrap();
+    assert!(
+        posted.body.as_ref().unwrap().to_string().contains(&format!(
+            "moai-claim: session=agent-x epoch=1 lease_until={expected}"
+        )),
+        "{:?}",
+        posted.body
+    );
+}
+
+/// The caller's explicit `lease_until` wins over the default.
+#[test]
+fn explicit_lease_wins_over_default() {
+    let tmp = tempfile::tempdir().unwrap();
+    let clock = FakeClock::at(CLOCK0);
+    let explicit = format_utc(CLOCK0 + 600);
+    let (out, _) = acquire_in(
+        tmp.path(),
+        "agent-x",
+        &explicit,
+        happy_exchanges(911, "agent-x", &explicit),
+        &clock,
+    );
+    assert_eq!(out.outcome, "claimed");
+    assert_eq!(
+        out.record.unwrap().lease_until.as_deref(),
+        Some(explicit.as_str())
+    );
+}
+
+/// AC-2: `claim-show` marks an expired active record `expired: true` and moves nothing;
+/// the same read twice at one instant is byte-identical.
+#[test]
+fn show_marks_expired_lease_without_takeover() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = journal_root(tmp.path());
+    let clock = FakeClock::at(CLOCK0);
+    let lease = format_utc(CLOCK0 + 3600);
+    acquire_in(
+        &root,
+        "agent-x",
+        &lease,
+        happy_exchanges(912, "agent-x", &lease),
+        &clock,
+    );
+    let key = task_key(&task_ref());
+    let log = root.join("journal.log");
+    let before = fs::read(&log).unwrap();
+
+    let live = moai_cli::claim::show_at(&root, &key, CLOCK0 + 60).unwrap();
+    assert_eq!(live["expired"], json!(false));
+    let late = moai_cli::claim::show_at(&root, &key, CLOCK0 + 3601).unwrap();
+    assert_eq!(late["expired"], json!(true));
+    assert_eq!(late["outcome"], "held", "expiry moves no ownership");
+    assert_eq!(late["record"]["epoch"], json!(1));
+    assert_eq!(
+        serde_json::to_string(&late).unwrap(),
+        serde_json::to_string(&moai_cli::claim::show_at(&root, &key, CLOCK0 + 3601).unwrap())
+            .unwrap()
+    );
+    assert_eq!(fs::read(&log).unwrap(), before, "journal untouched");
+    let none = moai_cli::claim::show_at(&root, "ffffffffffffffff", CLOCK0).unwrap();
+    assert_eq!(none["expired"], json!(false));
+}
