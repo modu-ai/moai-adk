@@ -184,9 +184,9 @@ pub struct ClaimRecord {
     pub task_ref: TaskRef,
     pub task_key: String,
     pub logical_key: String,
-    /// The execution owner — the sole field the journal reads for exclusivity
-    /// (REQ-B2-01: none of the four ownership fields is a lock; this is the only one
-    /// the acquire path consults).
+    /// The execution owner — the only one of the four ownership fields the acquire path
+    /// compares with the winning claim comment's session (REQ-B2-01). Exclusivity itself
+    /// comes from that comment and the journal record, never from a field value alone.
     pub owner: Owner,
     /// #2169 additive: GitHub assignee of the issue — display projection only, never
     /// consulted by the journal or any gate (REQ-06A-08: a claim never writes it).
