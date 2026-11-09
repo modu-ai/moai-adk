@@ -5,6 +5,8 @@
 //! `tests/fixtures/github/{sub-issues,dependencies}.json`: #1991 is a child of #1978 and is
 //! blocked by #1985 and #1987.
 #![cfg(unix)]
+mod common;
+
 use serde_json::{json, Value};
 use std::{
     fs,
@@ -36,9 +38,7 @@ fn stub_gh(dir: &Path, subs: u16, deps: u16) -> PathBuf {
         de = exit(deps),
     );
     let path = dir.join("gh-stub");
-    fs::write(&path, script).unwrap();
-    use std::os::unix::fs::PermissionsExt;
-    fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
+    common::write_executable(&path, &script);
     path
 }
 
