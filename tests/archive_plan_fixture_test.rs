@@ -183,7 +183,7 @@ fn detects_the_fixture_eligible_and_excluded_sets() {
 
 /// AC-2 shape check plus the profile override: a profile `archive_grace_days: 5`
 /// pulls the cutoff to `now − 5 days`, which makes the 10-day-old terminal SPEC
-/// eligible — the value is profile-overridable (Issue #2187 범위).
+/// eligible — the value is profile-overridable (Issue #2187 scope).
 #[test]
 fn profile_grace_days_override_moves_the_cutoff() {
     let (_root, project) = fixture();
@@ -225,7 +225,7 @@ fn missing_specs_dir_is_a_clean_empty_plan() {
 /// The audit probes (#2187 FAIL relay 2026-11-09): hold·evidence values outside the
 /// canonical spelling must never read as "no marker" — quoted, case-shifted and
 /// unrecognized values exclude fail-closed, and an indented key makes the whole
-/// block ambiguous (design §12: 애매한 상태 제외).
+/// block ambiguous (design §12: exclude ambiguous states).
 fn probe_fixture() -> (TempDir, PathBuf) {
     let root = TempDir::new().unwrap();
     let project = root.path().join("project");

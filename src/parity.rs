@@ -1,9 +1,9 @@
 //! Semantic parity check (D6 #2192): classify key differences between a template
 //! tree and a generated tree, with an optional third (doc) set, reusing the 00-A
 //! classification vocabulary from `docs/baseline-rc1.md`: a key present in exactly
-//! one set names that set (`template-only` = 누락/missing, `generated-only` =
-//! 추가/extra, `doc-only` = doc set only); a key in two or more sets is `identical`
-//! when all content digests agree and otherwise `differing` (값 상이/value
+//! one set names that set (`template-only` = missing, `generated-only` =
+//! extra, `doc-only` = doc set only); a key in two or more sets is `identical`
+//! when all content digests agree and otherwise `differing` (value
 //! mismatch). Plain filesystem walks only — no git, nothing written, credential
 //! values are not a concern because the caller names the trees.
 
@@ -89,8 +89,8 @@ fn scan_set(root: &Path) -> Result<BTreeMap<String, String>> {
 
 /// Classifies one key across the three sets with the 00-A vocabulary: a single-set
 /// key names its set, a multi-set key is `identical` when every digest agrees and
-/// `differing` otherwise. `kind` is the REQ-D6-01 grouping (누락 missing / 추가
-/// extra / 값 상이 value_mismatch / identical / doc_only).
+/// `differing` otherwise. `kind` is the REQ-D6-01 grouping (missing /
+/// extra / value_mismatch / identical / doc_only).
 fn classify(
     t: Option<&String>,
     g: Option<&String>,

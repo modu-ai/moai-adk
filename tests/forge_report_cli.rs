@@ -13,6 +13,8 @@ use moai_cli::{
         Client, ForgeError,
     },
 };
+mod common;
+
 use serde_json::{json, Value};
 use std::{
     cell::{Cell, RefCell},
@@ -89,11 +91,7 @@ impl Transport for Script {
             Reply::Echo(status, id) => {
                 let c = comment(id, req.body.as_ref().unwrap()["body"].as_str().unwrap());
                 *self.last.borrow_mut() = c.clone();
-                Ok(HttpResponse {
-                    status,
-                    headers: Default::default(),
-                    body: Some(c),
-                })
+                Ok(HttpResponse::new(status).with_body(c))
             }
             Reply::Last => Ok(ok(self.last.borrow().clone(), None)),
         }
@@ -101,15 +99,12 @@ impl Transport for Script {
 }
 
 fn ok(body: Value, link: Option<&str>) -> HttpResponse {
-    let mut headers: std::collections::BTreeMap<String, String> =
-        [("etag".to_string(), "\"e\"".to_string())].into();
-    if let Some(l) = link {
-        headers.insert("link".into(), l.into());
-    }
-    HttpResponse {
-        status: 200,
-        headers,
-        body: Some(body),
+    let resp = HttpResponse::new(200)
+        .with_header("etag", "\"e\"")
+        .with_body(body);
+    match link {
+        Some(l) => resp.with_header("link", l),
+        None => resp,
     }
 }
 fn comment(id: i64, body: &str) -> Value {
@@ -346,15 +341,7 @@ fn timeout_then_reconcile_creates_no_duplicate() {
     let (_tmp2, project2) = new_project();
     let t = Script::new(with(
         reads(vec![]),
-        vec![(
-            "POST",
-            POST.into(),
-            Reply::Resp(HttpResponse {
-                status: 502,
-                headers: Default::default(),
-                body: None,
-            }),
-        )],
+        vec![("POST", POST.into(), Reply::Resp(HttpResponse::new(502)))],
     ));
     assert_eq!(kind_of(&run(&project2, &p, &t).unwrap_err()), "transport");
     let t = Script::new(with(
@@ -691,12 +678,7 @@ fn stub_gh(dir: &Path) -> PathBuf {
     let marker = dir.join("gh-called");
     let script = format!("#!/bin/sh\n# test stub: records the call, refuses everything\ntouch '{}'\necho 'stub refuses' >&2\nexit 9\n", marker.display());
     let path = dir.join("gh-stub");
-    fs::write(&path, script).unwrap();
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
-    }
+    common::write_executable(&path, &script);
     path
 }
 
