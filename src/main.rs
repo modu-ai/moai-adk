@@ -454,6 +454,12 @@ enum Command {
         #[arg(long)]
         doc: Option<PathBuf>,
     },
+    /// Read-only dual-read scan of `@MOAI:` / `@MX:` tag markers (C2 #2178): both
+    /// namespaces normalize into one node shape, duplicates are diagnosed only,
+    /// nothing is written. PATH is a file or a directory.
+    AtlasTagScan {
+        path: PathBuf,
+    },
     /// Record the PR's ACK (06-C #2007, REQ-06C-11): confirm the `pr_create` intent and, once
     /// it is confirmed, move the claim record to `pr_ready`.
     PrConfirm {
@@ -553,6 +559,22 @@ enum Command {
     /// Plan external skill source candidates read-only (03-B #1996): typed request on
     /// stdin; judgment envelope on stdout; writes nothing.
     SkillSourcePlan {
+        project: PathBuf,
+    },
+    /// Plan project-unit `moai` skill copies read-only (I5 #2242, P04 HOLD):
+    /// typed request on stdin; judgment envelope on stdout; writes nothing.
+    ProjectSkillPlan {
+        project: PathBuf,
+    },
+    /// Copy the staged `moai` skill package into the project host folders
+    /// (I5 #2242): the exact request on stdin; requires `opt_in` and writes
+    /// only under the caller-supplied project root.
+    ProjectSkillApply {
+        project: PathBuf,
+    },
+    /// Revert one applied project-skill copy from its rollback receipt
+    /// (I5 #2242): typed request on stdin.
+    ProjectSkillRevert {
         project: PathBuf,
     },
     /// Install approved skill sources into the host official skill folders (03-B
@@ -822,6 +844,9 @@ const OPERATIONS: &[(&str, &str)] = &[
     ("snapshot-describe", "snapshot.describe"),
     ("skill-source-plan", "skill_source.plan"),
     ("cost-report", "cost.report"),
+    ("project-skill-plan", "project_skill.plan"),
+    ("project-skill-apply", "project_skill.apply"),
+    ("project-skill-revert", "project_skill.revert"),
     ("generation-plan", "generation.plan"),
     ("generation-apply", "generation.apply"),
     ("skill-source-apply", "skill_source.apply"),
@@ -848,6 +873,7 @@ const OPERATIONS: &[(&str, &str)] = &[
     ("archive-restore", "archive.restore"),
     ("archive-search", "archive.search"),
     ("forge-audit-status", "forge.audit_status"),
+    ("atlas-tag-scan", "atlas_tag.scan"),
     ("flow-wip-check", "flow.wip_check"),
     ("flow-gate-verdict", "flow.gate_verdict"),
 ];
@@ -1281,6 +1307,7 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             generated,
             doc,
         } => moai_cli::parity::parity_check(&template, &generated, doc.as_deref()),
+        Command::AtlasTagScan { path } => moai_cli::atlas_tag::scan_path(&path),
         Command::PrConfirm {
             project,
             task,
@@ -1450,6 +1477,24 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
         Command::CostReport {} => {
             // cost_report checks protocol_version itself (one check, not two).
             moai_cli::run::cost_report(input::<moai_cli::run::CostRequest>()?)
+        }
+        Command::ProjectSkillPlan { project } => {
+            let mut request = input::<moai_cli::project_skills::ProjectSkillRequest>()?;
+            request.project_root = project;
+            serde_json::to_value(moai_cli::project_skills::project_skill_plan(&request)?)
+                .map_err(|_| "encode failed".into())
+        }
+        Command::ProjectSkillApply { project } => {
+            let mut request = input::<moai_cli::project_skills::ProjectSkillRequest>()?;
+            request.project_root = project;
+            serde_json::to_value(moai_cli::project_skills::project_skill_apply(&request)?)
+                .map_err(|_| "encode failed".into())
+        }
+        Command::ProjectSkillRevert { project } => {
+            let mut request = input::<moai_cli::project_skills::ProjectSkillRevertRequest>()?;
+            request.project_root = project;
+            serde_json::to_value(moai_cli::project_skills::project_skill_revert(&request)?)
+                .map_err(|_| "encode failed".into())
         }
         Command::GithubPlan { project } => {
             serde_json::to_value(moai_cli::github_templates::github_plan(

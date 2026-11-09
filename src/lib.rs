@@ -1,6 +1,7 @@
 pub mod agents;
 pub mod apply;
 pub mod archive;
+pub mod atlas_tag;
 pub mod audit;
 pub mod baseline;
 pub mod claim;
@@ -21,6 +22,7 @@ pub mod parity;
 pub mod plan;
 pub mod pr_link;
 pub mod profile;
+pub mod project_skills;
 pub mod queue;
 pub mod recovery;
 pub mod redact;

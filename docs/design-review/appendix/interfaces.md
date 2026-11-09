@@ -26,6 +26,7 @@
 - `archive-plan`
 - `archive-restore`
 - `archive-search`
+- `atlas-tag-scan`
 - `audit-reduce`
 - `baseline-inventory`
 - `claim-acquire`
@@ -65,6 +66,9 @@
 - `pr-confirm`
 - `project-apply`
 - `project-plan`
+- `project-skill-apply`
+- `project-skill-plan`
+- `project-skill-revert`
 - `queue-next`
 - `recovery-apply`
 - `recovery-plan`
