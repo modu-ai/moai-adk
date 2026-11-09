@@ -32,6 +32,14 @@
     "SYNC": {
       "reference": "../workflows/sync.md",
       "requires_binary": false
+    },
+    "MODE-LEADER": {
+      "reference": "../workflows/mode-leader.md",
+      "requires_binary": false
+    },
+    "MODE-AGENT": {
+      "reference": "../workflows/mode-agent.md",
+      "requires_binary": false
     }
   },
   "classification_is_authorization": false
