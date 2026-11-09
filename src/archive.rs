@@ -24,7 +24,7 @@
 //! (`ambiguous_frontmatter`): an indented key, a line without `key:`, a marker key
 //! not spelled exactly `key: value` (`hold : true`, `"hold": true`, `hold:true`), the
 //! same marker key twice, or a flow mapping naming a marker key — a marker the parser
-//! cannot read is never treated as "no marker" (design §12: 애매한 상태 제외; #2187
+//! cannot read is never treated as "no marker" (design §12: ambiguous states are excluded; #2187
 //! audit fixes). A readable non-terminal status is recorded as `not_terminal`.
 //! Missing time information is excluded as `missing_time_info`, never guessed.
 //! Last activity is ONE git pass over the specs tree (newest commit time per SPEC
@@ -41,7 +41,7 @@ use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 pub const SCHEMA_VERSION: u32 = 1;
-/// The inherited inactivity window (design §12: 기본 90일 — Go `DefaultArchiveGraceDays`).
+/// The inherited inactivity window (design §12: 90 days by default — Go `DefaultArchiveGraceDays`).
 pub const DEFAULT_ARCHIVE_GRACE_DAYS: u64 = 90;
 /// The statuses the archive policy treats as terminal (Go `archiveTerminalStatuses`,
 /// inherited by decision 2026-11-09 00:5x). Deliberately narrower than any other
@@ -256,7 +256,7 @@ fn unquote(v: &str) -> String {
 
 /// The three readings of a hold·evidence marker: the signal, an explicit
 /// no-signal, or a value outside the contract — which excludes, never eligible
-/// (design §12: 애매한 상태 제외; #2187 audit fix).
+/// (design §12: ambiguous states are excluded; #2187 audit fix).
 enum Marker {
     Signal,
     Clear,
