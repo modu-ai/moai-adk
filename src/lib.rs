@@ -34,6 +34,7 @@ pub mod scope;
 pub mod session;
 pub mod sources;
 pub mod spec;
+pub mod spec_links;
 pub mod update;
 pub mod verify;
 pub mod worktree;
