@@ -1354,3 +1354,139 @@ fn main() -> ExitCode {
         }
     }
 }
+
+#[cfg(test)]
+mod operations_doc {
+    //! rc.2 D7 #2246: `docs/design-review/appendix/interfaces.md` § "RC1 OPERATIONS 전수" must list
+    //! exactly the subcommand words of `OPERATIONS`, so a PR that adds or removes an operation
+    //! fails here unless it updates the document in the same change.
+    use super::OPERATIONS;
+    use std::collections::BTreeSet;
+
+    const DOC: &str = include_str!("../docs/design-review/appendix/interfaces.md");
+    const HEADING: &str = "## RC1 OPERATIONS 전수 — ";
+
+    /// The heading's declared count and the backticked words on the first non-empty line after it.
+    fn doc_list(doc: &str) -> Result<(usize, Vec<String>), String> {
+        let mut lines = doc.lines();
+        let heading = lines
+            .by_ref()
+            .find(|l| l.starts_with(HEADING))
+            .ok_or_else(|| format!("heading `{HEADING}N개` not found"))?;
+        let count = heading[HEADING.len()..]
+            .strip_suffix("개")
+            .and_then(|n| n.trim().parse::<usize>().ok())
+            .ok_or_else(|| format!("heading count unreadable: {heading}"))?;
+        let list = lines
+            .find(|l| !l.trim().is_empty())
+            .ok_or("operation list line missing")?;
+        let words = list
+            .split('`')
+            .skip(1)
+            .step_by(2)
+            .map(str::to_string)
+            .collect();
+        Ok((count, words))
+    }
+
+    fn compare(code: &[&str], doc: &str) -> Result<(), String> {
+        let (count, words) = doc_list(doc)?;
+        let mut problems = Vec::new();
+        let doc_set: BTreeSet<&str> = words.iter().map(String::as_str).collect();
+        let code_set: BTreeSet<&str> = code.iter().copied().collect();
+        if doc_set.len() != words.len() {
+            problems.push(format!(
+                "duplicate word in document list ({} words, {} distinct)",
+                words.len(),
+                doc_set.len()
+            ));
+        }
+        if code_set.len() != code.len() {
+            problems.push(format!(
+                "duplicate word in OPERATIONS ({} entries, {} distinct)",
+                code.len(),
+                code_set.len()
+            ));
+        }
+        if count != code.len() {
+            problems.push(format!(
+                "heading says {count}, OPERATIONS has {}",
+                code.len()
+            ));
+        }
+        if words.len() != code.len() {
+            problems.push(format!(
+                "document lists {}, OPERATIONS has {}",
+                words.len(),
+                code.len()
+            ));
+        }
+        let missing: Vec<_> = code_set.difference(&doc_set).collect();
+        let extra: Vec<_> = doc_set.difference(&code_set).collect();
+        if !missing.is_empty() {
+            problems.push(format!("missing from document: {missing:?}"));
+        }
+        if !extra.is_empty() {
+            problems.push(format!("not in OPERATIONS: {extra:?}"));
+        }
+        if problems.is_empty() {
+            Ok(())
+        } else {
+            Err(problems.join("; "))
+        }
+    }
+
+    fn code_words() -> Vec<&'static str> {
+        OPERATIONS.iter().map(|&(word, _)| word).collect()
+    }
+
+    #[test]
+    fn operations_doc_matches_code() {
+        if let Err(problems) = compare(&code_words(), DOC) {
+            panic!("interfaces.md § RC1 OPERATIONS 전수 is out of sync with src/main.rs OPERATIONS: {problems}");
+        }
+    }
+
+    #[test]
+    fn mutations_are_detected() {
+        let code = code_words();
+        let (_, words) = doc_list(DOC).expect("document list");
+        let list = words
+            .iter()
+            .map(|w| format!("`{w}`"))
+            .collect::<Vec<_>>()
+            .join(" ");
+        let doc = |count: usize, list: &str| format!("{HEADING}{count}개\n\n{list}\n");
+        assert_eq!(compare(&code, &doc(code.len(), &list)), Ok(()));
+
+        // A document word removed, with or without fixing the count.
+        let first = format!("`{}` ", words[0]);
+        let shorter = list.replacen(&first, "", 1);
+        assert!(compare(&code, &doc(code.len(), &shorter)).is_err());
+        assert!(compare(&code, &doc(code.len() - 1, &shorter)).is_err());
+        // An operation added to the code but not to the document.
+        let mut more = code.clone();
+        more.push("new-op");
+        assert!(compare(&more, &doc(code.len(), &list)).is_err());
+        assert!(compare(&more, &doc(more.len(), &list)).is_err());
+        // A duplicated word, on either side, even when the count is adjusted.
+        let doubled = format!("{list} `{}`", words[0]);
+        assert!(compare(&code, &doc(code.len() + 1, &doubled)).is_err());
+        let mut twice = code.clone();
+        twice.push(code[0]);
+        let twice_list = twice
+            .iter()
+            .map(|w| format!("`{w}`"))
+            .collect::<Vec<_>>()
+            .join(" ");
+        assert!(compare(&twice, &doc(twice.len(), &twice_list)).is_err());
+        // A heading count off by one in either direction.
+        assert!(compare(&code, &doc(code.len() + 1, &list)).is_err());
+        assert!(compare(&code, &doc(code.len() - 1, &list)).is_err());
+        // A renamed word (same count, different set).
+        let renamed = list.replacen(&format!("`{}`", words[0]), "`renamed-op`", 1);
+        assert!(compare(&code, &doc(code.len(), &renamed)).is_err());
+        // A missing heading.
+        assert!(compare(&code, &list).is_err());
+    }
+}
