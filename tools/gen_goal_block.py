@@ -14,7 +14,7 @@ Output kinds:
   codex   — the same one-liner with the Codex caveat (effect unverified,
             docs/host-support-matrix.md goal rows)
 
-The model cannot type `/goal` itself (autonomy-modes-spec.md §7, 지원표 goal
+The model cannot type `/goal` itself (autonomy-modes-spec.md §7, support table goal
 rows); the only supported path is the user pasting this block. Stdlib only;
 output is deterministic (sorted by number, stable wording).
 """
