@@ -289,6 +289,20 @@ enum Command {
     ClaudeDoctor {
         project: PathBuf,
     },
+    /// Preview a three-way merge of the managed keys (`outputStyle`, `statusLine`) on stdin
+    /// into PROJECT/.claude/settings.json (#2239); other keys are refused. Writes nothing.
+    ClaudeSettingsPlan {
+        project: PathBuf,
+    },
+    /// Apply a previewed settings merge: same stdin, the preview's digest and a permission
+    /// reference. Writes the project settings file and its receipt only; home is refused.
+    ClaudeSettingsApply {
+        project: PathBuf,
+        #[arg(long)]
+        plan_digest: String,
+        #[arg(long)]
+        permission_reference: String,
+    },
     /// Plan a Codex projection of the common package into an explicit target; writes nothing.
     CodexProjectionPlan {
         package: PathBuf,
@@ -672,6 +686,8 @@ const OPERATIONS: &[(&str, &str)] = &[
     ("forge-report", "forge.report"),
     ("plan-admit", "plan.admit"),
     ("claude-doctor", "claude.doctor"),
+    ("claude-settings-plan", "claude.settings_plan"),
+    ("claude-settings-apply", "claude.settings_apply"),
     ("codex-projection-plan", "codex.projection_plan"),
     ("codex-doctor", "codex.doctor"),
     ("claim-acquire", "claim.acquire"),
@@ -990,6 +1006,19 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             &moai_cli::forge::policy::SystemClock,
         ),
         Command::ClaudeDoctor { project } => moai_cli::claude::doctor(&project),
+        Command::ClaudeSettingsPlan { project } => {
+            moai_cli::claude::settings_plan(&project, &input()?)
+        }
+        Command::ClaudeSettingsApply {
+            project,
+            plan_digest,
+            permission_reference,
+        } => moai_cli::claude::settings_apply(
+            &project,
+            &input()?,
+            &plan_digest,
+            &permission_reference,
+        ),
         Command::CodexProjectionPlan {
             package,
             target,
