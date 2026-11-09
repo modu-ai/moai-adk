@@ -511,6 +511,14 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
+    /// Read-only: resolve the typed judgment backend route and its cost gate (typed request
+    /// on stdin; F7 #2205). Native is the default; no transport ships, so no call is made.
+    JudgeRoute {
+        project: PathBuf,
+    },
+    /// Read-only: evaluate one backend judgment outcome against the response policy (typed
+    /// request on stdin; F7 #2205). Authority stays `none`; no network, no filesystem.
+    JudgeEvaluate,
     /// Temporary (05-D #2004; the name is fixed after P06): independent audit of PROJECT. Re-runs
     /// the approved verification itself and decides admission; receipts on stdin never count.
     AuditReduce {
@@ -690,6 +698,8 @@ const OPERATIONS: &[(&str, &str)] = &[
     ("context-bundle", "context.bundle"),
     ("context-verify", "context.verify"),
     ("decision-record", "decision.record"),
+    ("judge-route", "judge.route"),
+    ("judge-evaluate", "judge.evaluate"),
     ("audit-reduce", "audit.reduce"),
     ("install-inspect", "install.inspect"),
     ("worktree-plan", "worktree.plan"),
@@ -1252,6 +1262,8 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             run,
             permission_reference,
         } => moai_cli::decision::append(&project, &run, &input()?, &permission_reference),
+        Command::JudgeRoute { .. } => moai_cli::judge::route(&input()?),
+        Command::JudgeEvaluate => moai_cli::judge::evaluate(&input()?),
         Command::AuditReduce { project } => {
             let request = input::<moai_cli::audit::AuditInput>()?;
             if request.protocol_version != contract::PROTOCOL_VERSION {

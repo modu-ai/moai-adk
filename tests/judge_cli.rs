@@ -72,7 +72,10 @@ fn kind_of(v: &Value) -> &str {
 #[test]
 fn route_defaults_to_native_with_no_external_call() {
     let dir = TempDir::new().unwrap();
-    let (code, v) = run_route(&dir.path(), &route_request(Value::Null, Value::Null, Value::Null));
+    let (code, v) = run_route(
+        dir.path(),
+        &route_request(Value::Null, Value::Null, Value::Null),
+    );
     assert_eq!(code, Some(0), "exit 0, got {v}");
     assert_eq!(v["ok"], json!(true));
     let r = &v["result"];
@@ -98,7 +101,7 @@ fn route_enabled_external_with_ceiling_opens_the_gate() {
         json!({"enabled": true, "limit_usd_micros": 5000}),
         Value::Null,
     );
-    let (code, v) = run_route(&dir.path(), &req);
+    let (code, v) = run_route(dir.path(), &req);
     assert_eq!(code, Some(0), "exit 0, got {v}");
     let r = &v["result"];
     assert_eq!(r["selected_backend"], json!("decisions"));
@@ -114,7 +117,7 @@ fn route_enabled_external_with_ceiling_opens_the_gate() {
 fn route_external_without_ceiling_keeps_calls_at_zero() {
     let dir = TempDir::new().unwrap();
     let req = route_request(json!("decisions"), json!({"enabled": true}), Value::Null);
-    let (code, v) = run_route(&dir.path(), &req);
+    let (code, v) = run_route(dir.path(), &req);
     assert_eq!(code, Some(0), "exit 0, got {v}");
     let r = &v["result"];
     assert_eq!(r["external_calls_allowed"], json!(false));
@@ -133,7 +136,7 @@ fn route_external_without_ceiling_keeps_calls_at_zero() {
 fn route_disabled_backend_keeps_calls_at_zero() {
     let dir = TempDir::new().unwrap();
     let req = route_request(json!("jev"), Value::Null, json!({"enabled": false}));
-    let (code, v) = run_route(&dir.path(), &req);
+    let (code, v) = run_route(dir.path(), &req);
     assert_eq!(code, Some(0), "exit 0, got {v}");
     let r = &v["result"];
     assert_eq!(r["selected_backend"], json!("jev"));
@@ -156,7 +159,7 @@ fn route_zero_ceiling_keeps_calls_at_zero() {
         Value::Null,
         json!({"enabled": true, "limit_usd_micros": 0}),
     );
-    let (code, v) = run_route(&dir.path(), &req);
+    let (code, v) = run_route(dir.path(), &req);
     assert_eq!(code, Some(0), "exit 0, got {v}");
     let r = &v["result"];
     assert_eq!(r["external_calls_allowed"], json!(false));
@@ -178,7 +181,7 @@ fn route_selects_exactly_one_path_and_names_other_enabled() {
         json!({"enabled": true, "limit_usd_micros": 5000}),
         json!({"enabled": true, "limit_usd_micros": 5000}),
     );
-    let (code, v) = run_route(&dir.path(), &req);
+    let (code, v) = run_route(dir.path(), &req);
     assert_eq!(code, Some(0), "exit 0, got {v}");
     let r = &v["result"];
     assert_eq!(r["selected_backend"], json!("decisions"));
@@ -190,7 +193,7 @@ fn route_selects_exactly_one_path_and_names_other_enabled() {
 fn route_refuses_an_unknown_backend() {
     let dir = TempDir::new().unwrap();
     let req = route_request(json!("openai"), Value::Null, Value::Null);
-    let (code, v) = run_route(&dir.path(), &req);
+    let (code, v) = run_route(dir.path(), &req);
     assert_eq!(code, Some(1), "exit 1, got {v}");
     assert_eq!(v["ok"], json!(false));
     assert_eq!(kind_of(&v), "invalid_input");
@@ -200,7 +203,7 @@ fn route_refuses_an_unknown_backend() {
 fn route_refuses_selection_without_its_config() {
     let dir = TempDir::new().unwrap();
     let req = route_request(json!("decisions"), Value::Null, Value::Null);
-    let (code, v) = run_route(&dir.path(), &req);
+    let (code, v) = run_route(dir.path(), &req);
     assert_eq!(code, Some(1), "exit 1, got {v}");
     assert_eq!(kind_of(&v), "invalid_input");
 }
@@ -210,7 +213,7 @@ fn route_rejects_unsupported_protocol_version() {
     let dir = TempDir::new().unwrap();
     let mut req = route_request(Value::Null, Value::Null, Value::Null);
     req["protocol_version"] = json!(2);
-    let (code, v) = run_route(&dir.path(), &req);
+    let (code, v) = run_route(dir.path(), &req);
     assert_eq!(code, Some(1), "exit 1, got {v}");
     assert_eq!(kind_of(&v), "unsupported_protocol_version");
 }
@@ -220,7 +223,7 @@ fn route_rejects_empty_questions() {
     let dir = TempDir::new().unwrap();
     let mut req = route_request(Value::Null, Value::Null, Value::Null);
     req["questions"] = json!([]);
-    let (code, v) = run_route(&dir.path(), &req);
+    let (code, v) = run_route(dir.path(), &req);
     assert_eq!(code, Some(1), "exit 1, got {v}");
     assert_eq!(kind_of(&v), "invalid_input");
 }
@@ -232,9 +235,22 @@ fn route_rejects_too_many_questions() {
     req["questions"] = json!((0..65)
         .map(|i| json!({"id": format!("q{i}"), "kind": "noul"}))
         .collect::<Vec<_>>());
-    let (code, v) = run_route(&dir.path(), &req);
+    let (code, v) = run_route(dir.path(), &req);
     assert_eq!(code, Some(1), "exit 1, got {v}");
     assert_eq!(kind_of(&v), "invalid_input");
+}
+
+#[test]
+fn route_accepts_exactly_the_question_limit() {
+    let dir = TempDir::new().unwrap();
+    let req = route_request(Value::Null, Value::Null, Value::Null);
+    let mut req = req;
+    req["questions"] = json!((0..64)
+        .map(|i| json!({"id": format!("q{i}"), "kind": "noul"}))
+        .collect::<Vec<_>>());
+    let (code, v) = run_route(dir.path(), &req);
+    assert_eq!(code, Some(0), "64 questions stay inside the limit, got {v}");
+    assert_eq!(v["ok"], json!(true));
 }
 
 #[test]
@@ -309,6 +325,20 @@ fn evaluate_refuses_probability_out_of_range() {
 }
 
 #[test]
+fn evaluate_accepts_probability_at_both_bounds() {
+    for p in [0.0, 1.0] {
+        let req = eval_request(
+            json!({"id": "q1", "kind": "noul"}),
+            Value::Null,
+            json!({"backend": "jev", "kind": "noul", "probability": p}),
+        );
+        let (code, v) = run(&["judge-evaluate"], &req);
+        assert_eq!(code, Some(0), "probability {p} is inside 0..=1, got {v}");
+        assert_eq!(v["result"]["authority"], json!("none"));
+    }
+}
+
+#[test]
 fn evaluate_refuses_a_choice_field_on_noul() {
     let req = eval_request(
         json!({"id": "q1", "kind": "noul"}),
@@ -319,7 +349,10 @@ fn evaluate_refuses_a_choice_field_on_noul() {
     assert_eq!(code, Some(1), "exit 1, got {v}");
     assert_eq!(kind_of(&v), "invalid_input");
     assert!(
-        v["error"]["message"].as_str().unwrap().contains("forbidden"),
+        v["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("forbidden"),
         "message names the forbidden field: {}",
         v["error"]["message"]
     );
@@ -358,6 +391,20 @@ fn evaluate_score_checks_the_question_bounds() {
     let (code, v) = run(&["judge-evaluate"], &out_of_bounds);
     assert_eq!(code, Some(1), "exit 1, got {v}");
     assert_eq!(kind_of(&v), "invalid_input");
+
+    // The bound itself is inside: a score of exactly max passes.
+    let at_bound = eval_request(
+        json!({"id": "q3", "kind": "score", "min": 0, "max": 1}),
+        Value::Null,
+        json!({"backend": "native", "kind": "score", "score": 1}),
+    );
+    let (code, v) = run(&["judge-evaluate"], &at_bound);
+    assert_eq!(
+        code,
+        Some(0),
+        "score == max stays inside the bounds, got {v}"
+    );
+    assert_eq!(v["result"]["authority"], json!("none"));
 }
 
 #[test]
