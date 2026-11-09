@@ -451,9 +451,14 @@ fn forge_read_rejects_bad_input_without_requests() {
 /// A `gh` that prints nothing and never exits on its own. The `sleep` runs as a grandchild of
 /// the shell, so it keeps the output pipes open even if only the shell is ended.
 #[cfg(unix)]
-fn stalled_gh(dir: &std::path::Path) -> std::path::PathBuf {
-    let path = dir.join("gh-stalled");
-    let pid_file = dir.join("sleep.pid");
+fn stalled_gh(dir: &std::path::Path, name: &str) -> std::path::PathBuf {
+    // A unique path per call (#2283): rewriting an executable whose previous
+    // instance was killed microseconds earlier hits ETXTBSY on Linux (rc-ci run
+    // 42573077303: "cannot start .../gh-stalled: executable file busy"). This test
+    // calls the helper twice, so each call gets its own script path; semantics are
+    // unchanged (same 30-second stall, same pid file contract).
+    let path = dir.join(name);
+    let pid_file = dir.join(format!("{name}.pid"));
     let script = format!(
         "#!/bin/sh\n# test stub: gh that hangs\nsleep 30 &\necho $! > '{}'\nwait\n",
         pid_file.display()
@@ -470,7 +475,10 @@ fn transport_times_out_on_stalled_gh() {
     use moai_cli::forge::transport::{GhTransport, Transport};
     use std::time::{Duration, Instant};
     let tmp = tempfile::tempdir().unwrap();
-    let bin = stalled_gh(tmp.path()).to_str().unwrap().to_string();
+    let bin = stalled_gh(tmp.path(), "gh-stalled-timeout")
+        .to_str()
+        .unwrap()
+        .to_string();
     let req = HttpRequest {
         method: "GET".into(),
         url: "https://api.github.com/repos/acme/widgets".into(),
@@ -496,7 +504,7 @@ fn transport_times_out_on_stalled_gh() {
     assert!(err.contains("timed out"), "{err}");
 
     // The grandchild that held the pipes was ended with the group.
-    let pid = fs::read_to_string(tmp.path().join("sleep.pid")).unwrap();
+    let pid = fs::read_to_string(tmp.path().join("gh-stalled-timeout.pid")).unwrap();
     let alive = Command::new("kill")
         .args(["-0", pid.trim()])
         .stderr(Stdio::null())
@@ -507,7 +515,10 @@ fn transport_times_out_on_stalled_gh() {
 
     // Through the adapter the timeout is the retryable `transport` kind.
     let t = GhTransport {
-        bin: stalled_gh(tmp.path()).to_str().unwrap().to_string(),
+        bin: stalled_gh(tmp.path(), "gh-stalled-adapter")
+            .to_str()
+            .unwrap()
+            .to_string(),
         timeout: Duration::from_millis(500),
         gh_token: None,
     };
