@@ -18,7 +18,7 @@
 | `actions/attest` | 최신 릴리스 `v4.2.2`(2026-08-04, 커밋 `1e69f48acb82d1966a394da916b4c1698aa569d6`). 필요한 권한은 `id-token: write`, `attestations: write`. 공개 저장소는 Sigstore public-good 인스턴스로 서명한다. 입력은 `subject-path`·`subject-digest`·`subject-checksums`(shasum 형식) 중 하나이고, 한 번에 최대 1024개 subject를 받는다. GitHub Enterprise Server는 지원하지 않는다 | **채택**(cargo-dist가 생성하는 단계가 이 액션을 쓴다) |
 | `actions/attest-build-provenance` | v4부터 `actions/attest`의 래퍼다. 새 구현은 `actions/attest`를 쓰라고 안내한다 | **기각**(래퍼를 직접 쓰지 않음) |
 | `gh attestation verify` | 기본으로 SLSA provenance v1(`https://slsa.dev/provenance/v1`)을 요구한다. 기본 OIDC issuer는 `https://token.actions.githubusercontent.com`이다. `--repo`/`--owner`, `--signer-workflow`, `--source-ref`, `--deny-self-hosted-runners`, `--bundle`(오프라인)을 지원한다 | **채택**(사용자 확인 절차) |
-| cargo-dist 0.34.0 `github-attestations` | `ci = ["github"]`일 때 생성 workflow에 `actions/attest@v4` 단계를 넣는다. 기본 위치는 `build-local-artifacts` 단계이고, `github-attestations-phase = "host"`이면 게시 단계로 옮긴다 | **채택**(host 단계 설정과 함께) |
+| cargo-dist 0.34.0 `github-attestations`·`github-attestations-phase` | 공식 설정 문서는 두 옵션을 모두 **experimental**로 표시한다. `ci = ["github"]`일 때 생성 workflow에 `actions/attest@v4` 단계를 넣는다. 기본 위치는 `build-local-artifacts` 단계이고, `github-attestations-phase = "host"`이면 게시 단계로 옮긴다 | **채택 제안**(experimental 상태와 host 단계 설정을 함께 운영자 승인 대상으로 둠) |
 | 직접 쓴 attestation workflow | 같은 일을 cargo-dist 생성 workflow 밖에서 따로 하는 방식 | **기각**(dist 설정과 workflow가 어긋날 위험. dist가 생성 workflow를 관리한다) |
 | Apple notarization | macOS는 기본적으로 서명·notarization된 소프트웨어를 요구한다. 그렇지 않은 앱은 "개인정보 보호 및 보안 → 그래도 열기"로 열 수 있다 | **해당 없음**(decisions 01:1x: notarization 없음). 아래 4절 안내로 대신한다 |
 
@@ -34,7 +34,15 @@
 | https://support.apple.com/en-us/102445 | `78ee1279889dfac1eaa7dc3271ac7ba9095ba2ece2faf26d93b4e43a2345b38f` |
 | https://support.apple.com/guide/security/gatekeeper-and-runtime-protection-sec5599b66df/web | `95587f80b642293775837dc4180da12bfe3d0d2b38bd3cefae7397e26deea6d3` |
 
-로컬 도구: `gh version 2.92.0`, `cargo-dist 0.34.0`, macOS 27.0.1.
+F1·F2·N1 수리에서 원문을 다시 받았다(2026-11-09T12:58Z, HTTP 200). cargo-dist 소스는 v0.34.0의 커밋 `294c1b25d372d86e74cafead8469b9f36d02da29`로 고정했다. 설정 문서와 workflow template의 hash는 위 표와 동일했고, 추가 근거는 다음과 같다. 이 대조는 실제 릴리스·attestation 실행을 포함하지 않는다.
+
+| 추가 출처 | sha256 |
+|---|---|
+| [cargo-dist 0.34.0 릴리스 명령 생성부](https://github.com/axodotdev/cargo-dist/blob/294c1b25d372d86e74cafead8469b9f36d02da29/cargo-dist/src/backend/ci/github.rs#L502-L528) | `80254ca74cf5844aeb847cecaa567363e37ddfb76549f547244303bef83a7414` |
+| [GitHub REST Release 생성·수정의 `make_latest`](https://docs.github.com/en/rest/releases/releases#create-a-release) | `a9e5c962fff1357844e7fa5df39f3ac5f26fa4a0706b82eed730bcdd4761fb86` |
+| [GitHub CLI `gh release edit`](https://cli.github.com/manual/gh_release_edit) | `a185a01c5ff0bf392ec0a4afafd7fc8d3bdfebeb198a100bcff6fd7a8af81c71` |
+
+로컬 도구(5절 기존 측정): `gh version 2.92.0`, `cargo-dist 0.34.0`, macOS 27.0.1.
 
 ## 3. CI 단계 설계 (승인 전, 적용하지 않음)
 
@@ -48,6 +56,7 @@ github-attestations = true
 github-attestations-phase = "host"
 github-release = "host"
 tag-namespace = "moai-cli"
+pr-run-mode = "skip"
 ```
 
 `Cargo.toml` `[package]`:
@@ -58,9 +67,9 @@ repository = "https://github.com/modu-ai/moai-adk"
 
 그다음 `dist generate --mode ci`로 `.github/workflows/moai-cli-release.yml`을 생성한다.
 
-### 3.2 설정마다 이유 (생성 결과로 확인)
+### 3.2 설정마다 이유 (기존 생성 결과와 고정 소스 대조)
 
-임시 사본에서 위 설정으로 workflow를 만들어 보고 확인했다(`target/e4/release.variant2.yml`, 커밋하지 않음).
+기존 측정은 `pr-run-mode`를 지정하지 않은 임시 사본에서 생성한 workflow다(`target/e4/release.variant2.yml`, 커밋하지 않음). 이번 수리의 `pr-run-mode = "skip"` 제안은 고정한 공식 설정 문서와 template의 조건문으로 대조했다. 이 추가 설정을 적용한 workflow 생성·실행은 not_run이다.
 
 - **`tag-namespace = "moai-cli"`**
   - 기본 트리거는 `'**[0-9]+.[0-9]+.[0-9]+*'`이다. 이 패턴은 Go 릴리스 tag(`v3.1.3`, `go-v…`)에도 걸린다. 기본값 그대로면 Go 릴리스 tag를 push할 때 Rust 릴리스 workflow도 함께 돈다.
@@ -71,9 +80,12 @@ repository = "https://github.com/modu-ai/moai-adk"
   - host로 옮기면 attest 단계가 `host` job 안의 `Create GitHub Release` 바로 앞에 놓인다. 이 job은 `needs.plan.outputs.publishing == 'true'`일 때만 돈다(실측).
   - 그래서 PR에서 도는 `plan`은 attestation을 만들지 않는다.
   - 문서는 두 값을 같이 설정하라고 한다("Make sure `github-release = "host"` is also set").
-- **권한:** 생성 결과에서 `attestations: write`·`id-token: write`·`contents: write`는 `host` job 한 곳에만 있다. 최상위 `permissions`는 `contents: write`다.
+- **PR 실행과 권한:** 기본 `pr-run-mode = "plan"`인 생성 workflow는 브랜치·경로 필터 없는 `pull_request` 이벤트에서도 `plan` job으로 `dist plan`을 실행하도록 되어 있다. 최상위 `permissions`는 `contents: write`이고, 별도 권한 선언이 없는 `plan` job도 이 요청 권한을 상속한다. 실제 토큰 권한은 fork·저장소 정책에 따라 낮아질 수 있지만, 생성 YAML의 쓰기 권한 요청 자체는 남는다. `host` job에는 `attestations: write`·`id-token: write`·`contents: write`가 명시된다.
+  - 제안: `pr-run-mode = "skip"`. 공식 template은 이 값일 때 `pull_request` 트리거를 생성하지 않는다. PR에서 attestation이 생성되지 않는다는 사실만으로 PR workflow 실행과 쓰기 권한 요청까지 없다고 판단하지 않는다. 적용 여부와 권한은 운영자 승인 항목 1이다.
 - **subject:** host 단계는 `subject-path: artifacts/*`로 내려받은 산출물 전부를 attest한다. 로컬 `dist build --artifacts=all`이 만든 산출물(아래 5절)이 그 대상이다.
-- **prerelease:** dist는 버전에 접미사(예: `-rc.1`)가 있으면 GitHub Release를 prerelease로 만든다. 그래서 RC는 Go updater가 읽는 "latest"가 되지 않는다(release-checklist (g)와 같은 요구).
+- **prerelease와 정식판의 latest:** dist는 버전에 접미사(예: `-rc.1`)가 있으면 GitHub Release를 prerelease로 만든다. GitHub API는 draft·prerelease의 latest 지정을 허용하지 않는다. RC의 격리는 이 prerelease 속성에 근거한다.
+  - cargo-dist 0.34.0의 릴리스 명령 생성부에는 `--latest` 인자가 없고, `$PRERELEASE_FLAG`만 전달된다. GitHub REST의 새 게시 릴리스는 `make_latest` 기본값이 `true`다. 따라서 접미사가 없는 첫 정식 `moai-cli-v2026.11.0`을 기본 경로로 게시하면 `/releases/latest`가 되어 Go 3.x 안정 업데이터에 노출될 수 있다. tag namespace는 이 latest 선택을 막지 않는다.
+  - 이 기본 경로는 release-checklist (g)와 3단계의 `--latest=false` 요구를 자동으로 보장하지 않는다. 정식판 게시 경로를 운영자 승인 항목 6으로 결정하기 전까지 정식판 게시는 HOLD다.
 
 ### 3.3 함께 결정할 것
 
@@ -156,8 +168,10 @@ shasum -a 256 -c sha256.sum
 
 ## 6. 운영자 승인이 필요한 일 (이 PR은 하지 않음)
 
-1. 3.1 설정을 적용하고, 생성된 `.github/workflows/moai-cli-release.yml`을 커밋한다. 새 workflow와 `attestations: write`·`id-token: write`·`contents: write` 권한이 추가된다.
+1. 3.1 설정을 적용하고, 생성된 `.github/workflows/moai-cli-release.yml`을 커밋할지 결정한다. 기본 생성물은 모든 `pull_request`를 대상으로 `plan` job을 실행하며, 루트 `permissions: contents: write`를 그 job이 상속한다. `attestations: write`·`id-token: write`·`contents: write`를 명시하는 host job도 추가된다. PR 실행을 제거하는 `pr-run-mode = "skip"` 제안과 권한 범위를 함께 승인해야 한다. `github-attestations`·`github-attestations-phase`가 공식 문서상 experimental이라는 점도 이 승인에 포함한다.
 2. 액션을 커밋 SHA로 고정할지 정한다(`[dist.github-action-commits]`).
 3. `moai-cli-v*` tag ruleset을 추가한다(release-checklist (a)).
 4. 첫 실제 attestation을 만든다. 첫 `moai-cli-v…` tag를 push하면 GitHub Release와 attestation이 공개 Sigstore 투명성 로그에 남는다. 되돌릴 수 없는 외부 기록이다.
 5. 위가 끝난 뒤 4.1 절차를 이 저장소의 실제 산출물로 다시 실측하고, release-checklist (e)의 not_run 항목을 갱신한다.
+
+6. **첫 정식판의 latest 격리 경로를 결정한다.** cargo-dist 0.34.0 기본 릴리스 명령에는 `--latest=false`가 없어 첫 `moai-cli-v2026.11.0`이 Go 안정 업데이터의 `/releases/latest`에 노출될 수 있다. 후보는 릴리스 뒤 `gh release edit <정식 tag> -R modu-ai/moai-adk --latest=false`를 수행하는 별도 job, 또는 정식판을 dist 게시 workflow 밖에서 release-checklist 3단계의 명시적 `--latest=false` 경로로 게시하는 방식이다. **사후 edit 방식에는 생성부터 edit까지 latest 노출 구간이 남는다.** Go updater 무노출을 보장해야 한다면 게시 시점부터 latest가 되지 않는 경로를 선택·검증해야 한다. 경로 결정과 검증 전까지 정식판 게시는 HOLD이고, 게시 뒤 `/releases/latest`가 Go stable을 가리키는지 다시 읽어야 한다. 이 항목은 해결안의 승인 요청이며 job 추가·설정 적용·릴리스 실행은 하지 않았다.
