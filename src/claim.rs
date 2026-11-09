@@ -141,6 +141,13 @@ pub struct ClaimRequest {
     pub task_ref: TaskRef,
     pub logical_key: String,
     pub owner: Owner,
+    /// #2169 additive: GitHub assignee — display projection only (REQ-B2-01), recorded
+    /// verbatim; the claim never writes it to GitHub (REQ-06A-08).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub assignee: Option<String>,
+    /// #2169 additive: the host session identifier of the executing session.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub provider_session: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub attempt: Option<u64>,
     /// The exact base commit the attempt is bound to (40 lowercase hex).
@@ -182,7 +189,21 @@ pub struct ClaimRecord {
     pub task_ref: TaskRef,
     pub task_key: String,
     pub logical_key: String,
+    /// The execution owner — the only one of the four ownership fields the acquire path
+    /// compares with the winning claim comment's session (REQ-B2-01). Exclusivity itself
+    /// comes from that comment and the journal record, never from a field value alone.
     pub owner: Owner,
+    /// #2169 additive: GitHub assignee of the issue — display projection only, never
+    /// consulted by the journal or any gate (REQ-06A-08: a claim never writes it).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub assignee: Option<String>,
+    /// #2169 additive: the host session identifier of the executing session.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub provider_session: Option<String>,
+    /// #2169 additive: the leader-side integration gate identifier (who owns the
+    /// integration gate for this claim). Set by the integration flow, not by acquire.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub integration_owner: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub attempt: Option<u64>,
     pub epoch: u64,
@@ -401,7 +422,7 @@ fn git_branch(work_tree: &str) -> Result<Option<String>> {
     }
 }
 
-fn worktree_id(identity: &Value) -> Result<WorktreeId> {
+pub(crate) fn worktree_id(identity: &Value) -> Result<WorktreeId> {
     let path = identity["work_tree"]
         .as_str()
         .ok_or("claim journal requires a git work tree")?;
@@ -769,7 +790,7 @@ fn scope_of(outcome: &str, record: Option<&ClaimRecord>) -> &'static str {
 }
 
 impl AcquireOutcome {
-    fn to_json(&self) -> Value {
+    pub(crate) fn to_json(&self) -> Value {
         json!({
             "outcome": self.outcome,
             "record": self.record.as_ref().map(|r| json!(r)).unwrap_or(Value::Null),
@@ -974,6 +995,11 @@ pub fn acquire<T: Transport, C: Clock>(
         task_key: key.clone(),
         logical_key: req.logical_key.clone(),
         owner: req.owner.clone(),
+        assignee: req.assignee.clone(),
+        provider_session: req.provider_session.clone(),
+        // REQ-B2-01: the integration owner is the leader gate's identity — the acquire
+        // path never sets it; the integration flow (leader) records it later.
+        integration_owner: None,
         attempt: req.attempt,
         epoch,
         base_revision: req.base_revision.clone(),
