@@ -50,6 +50,17 @@ git diff --cached --check
 
 Test in temporary projects or fixtures, never against installed user state. Do not claim Windows/Linux results from Mac fixtures.
 
+## Assignment record and supervision
+
+- Record: `.moai-cli/manifests/assignments.json`, schema in `docs/design-review/assignments-schema.md` (#2139, user decision 2026-11-09 00:3x). `unassigned` is a snapshot recomputed from the remote (open Issues of the active milestones minus those with a claim comment); `assigned` gets an entry only when a claim comment id exists; a claim that lost the lowest-id race stays as `stage: lost`.
+- **The local file is not a lock; ownership is the claim comment.** The file is a same-host cache and write-ordering aid. A name in it grants no right to write that Issue, and when it disagrees with the remote, the remote wins.
+- Leader supervision, on every 5-minute tick (and after every merge, lane report or restart, together with the lane-check routine above):
+  1. Read PR state: open PRs with head, base, merge state and the `moai/audit` status on the current head.
+  2. Compare the claim comments with `assignments.json`. On a mismatch, correct the file from the remote and record what differed as a comment on that Issue; the file keeps no history.
+  3. When a PR needs a repair and its author lane is not free, send an `assignee-hint` to a different free lane (one writer per branch still holds).
+  4. Refill: recompute `unassigned` from the remote and keep a next card ready for every lane.
+- Stage changes are read from the remote (branch, PR, status, merge), never from a lane message or an idle notice alone. An expired lease never triggers automatic takeover; the operator decides.
+
 ## Repository and preservation boundaries
 
 - Branches: integration target `v2026.11.0` (first commit `f6808390`; design commits `970e81f8`, `a6c67ba2`, `334ed74d`; first lane merges `1a152900`, `110a9377`, `cd6a9441`). `2026.11.0-rc.1` and `archive/main-based-2026.11.0-rc.1` are preserved refs; remote `main` is untouched (its Go-generation workflows still run on RC PRs via `pull_request_target` — cleanup is a user HOLD). Re-read `HEAD` and the branch immediately before any commit or push; never reset, rebase, stash or switch branches in the shared checkout.
