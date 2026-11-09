@@ -100,6 +100,30 @@ pub struct TaskRef {
     pub issue_number: i64,
 }
 
+impl TaskRef {
+    /// Every field is required today; an optional field added later gets its default here,
+    /// so call sites stay unchanged (#2256).
+    pub fn new(
+        provider: impl Into<String>,
+        host: impl Into<String>,
+        owner: impl Into<String>,
+        repo: impl Into<String>,
+        repository_id: i64,
+        issue_id: i64,
+        issue_number: i64,
+    ) -> Self {
+        TaskRef {
+            provider: provider.into(),
+            host: host.into(),
+            owner: owner.into(),
+            repo: repo.into(),
+            repository_id,
+            issue_id,
+            issue_number,
+        }
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct Owner {
@@ -117,6 +141,34 @@ pub struct Owner {
     /// it guards against pid reuse. Recorded with `pid`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub process_start: Option<String>,
+}
+
+impl Owner {
+    /// An owner with no host id, pid or process start (#2256).
+    pub fn new(kind: impl Into<String>, id: impl Into<String>) -> Self {
+        Owner {
+            kind: kind.into(),
+            id: id.into(),
+            host_id: None,
+            pid: None,
+            process_start: None,
+        }
+    }
+
+    pub fn host_id(mut self, host_id: impl Into<String>) -> Self {
+        self.host_id = Some(host_id.into());
+        self
+    }
+
+    pub fn pid(mut self, pid: u32) -> Self {
+        self.pid = Some(pid);
+        self
+    }
+
+    pub fn process_start(mut self, process_start: impl Into<String>) -> Self {
+        self.process_start = Some(process_start.into());
+        self
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -162,6 +214,66 @@ pub struct ClaimRequest {
     pub expected_epoch: Option<u64>,
 }
 
+impl ClaimRequest {
+    /// The required fields; every optional field takes the value serde gives an absent key,
+    /// so a built request equals the parsed one (#2256).
+    pub fn new(
+        schema_version: u32,
+        task_ref: TaskRef,
+        logical_key: impl Into<String>,
+        owner: Owner,
+        base_revision: impl Into<String>,
+        write_scope: Vec<String>,
+        spec_ref: SpecRef,
+    ) -> Self {
+        ClaimRequest {
+            schema_version,
+            task_ref,
+            logical_key: logical_key.into(),
+            owner,
+            assignee: None,
+            provider_session: None,
+            attempt: None,
+            base_revision: base_revision.into(),
+            write_scope,
+            spec_ref,
+            lease_until: String::new(),
+            projection_intents: Vec::new(),
+            expected_epoch: None,
+        }
+    }
+
+    pub fn assignee(mut self, assignee: impl Into<String>) -> Self {
+        self.assignee = Some(assignee.into());
+        self
+    }
+
+    pub fn provider_session(mut self, provider_session: impl Into<String>) -> Self {
+        self.provider_session = Some(provider_session.into());
+        self
+    }
+
+    pub fn attempt(mut self, attempt: u64) -> Self {
+        self.attempt = Some(attempt);
+        self
+    }
+
+    pub fn lease_until(mut self, lease_until: impl Into<String>) -> Self {
+        self.lease_until = lease_until.into();
+        self
+    }
+
+    pub fn projection_intents(mut self, projection_intents: Vec<Value>) -> Self {
+        self.projection_intents = projection_intents;
+        self
+    }
+
+    pub fn expected_epoch(mut self, expected_epoch: u64) -> Self {
+        self.expected_epoch = Some(expected_epoch);
+        self
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct WorktreeId {
     pub common_dir: String,
@@ -174,6 +286,29 @@ pub struct WorktreeId {
     /// deserialize unchanged; `None` falls back to the full pull-list scan.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub branch: Option<String>,
+}
+
+impl WorktreeId {
+    /// A work tree identity with no branch (#2256).
+    pub fn new(
+        common_dir: impl Into<String>,
+        git_dir: impl Into<String>,
+        path: impl Into<String>,
+        head: impl Into<String>,
+    ) -> Self {
+        WorktreeId {
+            common_dir: common_dir.into(),
+            git_dir: git_dir.into(),
+            path: path.into(),
+            head: head.into(),
+            branch: None,
+        }
+    }
+
+    pub fn branch(mut self, branch: impl Into<String>) -> Self {
+        self.branch = Some(branch.into());
+        self
+    }
 }
 
 /// One claim record (REQ-06A-01). `comment_id`/`claim_token` are the ⑤ fencing token
@@ -421,19 +556,16 @@ pub(crate) fn worktree_id(identity: &Value) -> Result<WorktreeId> {
     let path = identity["work_tree"]
         .as_str()
         .ok_or("claim journal requires a git work tree")?;
-    Ok(WorktreeId {
-        common_dir: identity["clone_anchor"]
-            .as_str()
-            .ok_or("claim journal requires a git repository")?
-            .to_string(),
-        git_dir: identity["workspace_git_dir"]
-            .as_str()
-            .ok_or("claim journal requires a git repository")?
-            .to_string(),
-        path: path.to_string(),
-        head: git_head(path)?,
-        branch: git_branch(path)?,
-    })
+    // Same evaluation order as the former literal, so the first failing source wins as before.
+    let common_dir = identity["clone_anchor"]
+        .as_str()
+        .ok_or("claim journal requires a git repository")?;
+    let git_dir = identity["workspace_git_dir"]
+        .as_str()
+        .ok_or("claim journal requires a git repository")?;
+    let mut id = WorktreeId::new(common_dir, git_dir, path, git_head(path)?);
+    id.branch = git_branch(path)?;
+    Ok(id)
 }
 
 // ---- Comment claim (⑤) ----
@@ -584,12 +716,7 @@ fn post_claim<T: Transport, C: Clock>(
         "https://api.github.com/repos/{}/{}/issues/{}/comments",
         t.owner, t.repo, t.issue_number
     );
-    let req = HttpRequest {
-        method: "POST".into(),
-        url,
-        headers: Default::default(),
-        body: Some(json!({"body": line})),
-    };
+    let req = HttpRequest::new("POST", url).with_body(json!({"body": line}));
     let resp = client.send_with_backoff(&req)?;
     if !(200..300).contains(&resp.status) {
         return Err(if resp.status == 404 {
@@ -1297,15 +1424,7 @@ mod tests {
     use crate::contract;
 
     fn task_ref() -> TaskRef {
-        TaskRef {
-            provider: "github".into(),
-            host: "github.com".into(),
-            owner: "acme".into(),
-            repo: "widgets".into(),
-            repository_id: 101,
-            issue_id: 7001,
-            issue_number: 7,
-        }
+        TaskRef::new("github", "github.com", "acme", "widgets", 101, 7001, 7)
     }
 
     #[test]

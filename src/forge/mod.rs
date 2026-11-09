@@ -256,12 +256,8 @@ impl<'a, T: Transport, C: Clock> Client<'a, T, C> {
         if let Some(c) = &cached {
             headers.insert("If-None-Match".to_string(), c.etag.clone());
         }
-        let req = HttpRequest {
-            method: "GET".into(),
-            url: url.into(),
-            headers,
-            body: None,
-        };
+        let mut req = HttpRequest::new("GET", url);
+        req.headers = headers;
         let resp = self.send_with_backoff(&req)?;
         match (resp.status, cached) {
             (304, Some(c)) => {

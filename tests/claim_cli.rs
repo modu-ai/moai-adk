@@ -10,7 +10,7 @@ use moai_cli::claim::{
 };
 use moai_cli::contract;
 use moai_cli::forge::policy::{format_utc, Clock};
-use moai_cli::forge::transport::{Exchange, HttpRequest, HttpResponse, RecordedTransport};
+use moai_cli::forge::transport::{Exchange, HttpRequest, RecordedTransport};
 use moai_cli::forge::{Client, Config};
 mod common;
 
@@ -55,76 +55,39 @@ impl Clock for FakeClock {
 }
 
 fn task_ref() -> TaskRef {
-    TaskRef {
-        provider: "github".into(),
-        host: "github.com".into(),
-        owner: "acme".into(),
-        repo: "widgets".into(),
-        repository_id: 101,
-        issue_id: 7001,
-        issue_number: 7,
-    }
+    TaskRef::new("github", "github.com", "acme", "widgets", 101, 7001, 7)
 }
 
 fn lib_req(session: &str, lease_until: &str) -> ClaimRequest {
-    ClaimRequest {
-        schema_version: 1,
-        task_ref: task_ref(),
-        logical_key: "06-A".into(),
-        owner: Owner {
-            kind: "session".into(),
-            id: session.into(),
-            host_id: None,
-            pid: None,
-            process_start: None,
-        },
-        assignee: None,
-        provider_session: None,
-        attempt: None,
-        base_revision: "a".repeat(40),
-        write_scope: vec!["src/claim.rs".into()],
-        spec_ref: SpecRef {
+    ClaimRequest::new(
+        1,
+        task_ref(),
+        "06-A",
+        Owner::new("session", session),
+        "a".repeat(40),
+        vec!["src/claim.rs".into()],
+        SpecRef {
             id: "SPEC-RC1-06-A".into(),
             revision: "r1".into(),
             digest: None,
         },
-        lease_until: lease_until.into(),
-        projection_intents: vec![
-            json!({"kind": "projection_intent", "target": "assignees", "action": "add"}),
-        ],
-        expected_epoch: None,
-    }
+    )
+    .lease_until(lease_until)
+    .projection_intents(vec![
+        json!({"kind": "projection_intent", "target": "assignees", "action": "add"}),
+    ])
 }
 
 fn worktree() -> WorktreeId {
-    WorktreeId {
-        common_dir: "/tmp/repo/.git".into(),
-        git_dir: "/tmp/repo/.git/worktrees/lane".into(),
-        path: "/tmp/repo".into(),
-        head: "b".repeat(40),
-        branch: None,
-    }
+    WorktreeId::new(
+        "/tmp/repo/.git",
+        "/tmp/repo/.git/worktrees/lane",
+        "/tmp/repo",
+        "b".repeat(40),
+    )
 }
 
-fn resp(status: u16, body: Value) -> HttpResponse {
-    HttpResponse {
-        status,
-        headers: Default::default(),
-        body: Some(body),
-    }
-}
-
-fn exchange(method: &str, url: &str, response: HttpResponse) -> Exchange {
-    Exchange {
-        request: HttpRequest {
-            method: method.into(),
-            url: url.into(),
-            headers: Default::default(),
-            body: None,
-        },
-        response,
-    }
-}
+use common::{exchange, json_response as resp};
 
 fn comments_url() -> String {
     "https://api.github.com/repos/acme/widgets/issues/7/comments?per_page=100".into()

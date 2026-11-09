@@ -138,12 +138,7 @@ fn forge_conditional_get_uses_etag_and_304() {
 #[test]
 fn forge_backoff_follows_github_headers() {
     let script = exchanges(&fixture("ratelimit_sequence.json")["exchanges"]);
-    let req = HttpRequest {
-        method: "GET".into(),
-        url: "https://api.github.com/repos/acme/widgets".into(),
-        headers: Default::default(),
-        body: None,
-    };
+    let req = HttpRequest::new("GET", "https://api.github.com/repos/acme/widgets");
 
     let t = RecordedTransport::new(script.clone());
     let clock = FakeClock::at(1_794_000_000);
@@ -499,20 +494,11 @@ fn transport_times_out_on_stalled_gh() {
         .to_str()
         .unwrap()
         .to_string();
-    let req = HttpRequest {
-        method: "GET".into(),
-        url: "https://api.github.com/repos/acme/widgets".into(),
-        headers: Default::default(),
-        body: None,
-    };
+    let req = HttpRequest::new("GET", "https://api.github.com/repos/acme/widgets");
     let (tx, rx) = std::sync::mpsc::channel();
     let started = Instant::now();
     std::thread::spawn(move || {
-        let t = GhTransport {
-            bin,
-            timeout: Duration::from_secs(2),
-            gh_token: None,
-        };
+        let t = GhTransport::new(bin).timeout(Duration::from_secs(2));
         let _ = tx.send(t.send(&req));
     });
     // The stub sleeps 30s; the caller must get an answer long before that.
@@ -532,14 +518,12 @@ fn transport_times_out_on_stalled_gh() {
     );
 
     // Through the adapter the timeout is the retryable `transport` kind.
-    let t = GhTransport {
-        bin: stalled_gh(tmp.path(), "gh-stalled-adapter")
+    let t = GhTransport::new(
+        stalled_gh(tmp.path(), "gh-stalled-adapter")
             .to_str()
-            .unwrap()
-            .to_string(),
-        timeout: Duration::from_millis(500),
-        gh_token: None,
-    };
+            .unwrap(),
+    )
+    .timeout(Duration::from_millis(500));
     let e = forge::read(&request("open"), None, &t, &FakeClock::at(1_794_000_000)).unwrap_err();
     assert_eq!(e.kind, "transport");
     assert!(

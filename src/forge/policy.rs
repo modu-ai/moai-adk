@@ -134,14 +134,12 @@ mod tests {
     use std::collections::BTreeMap;
 
     fn resp(status: u16, headers: &[(&str, &str)]) -> HttpResponse {
-        HttpResponse {
-            status,
-            headers: headers
-                .iter()
-                .map(|(k, v)| (k.to_string(), v.to_string()))
-                .collect::<BTreeMap<_, _>>(),
-            body: None,
-        }
+        let mut r = HttpResponse::new(status);
+        r.headers = headers
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect::<BTreeMap<_, _>>();
+        r
     }
 
     #[test]

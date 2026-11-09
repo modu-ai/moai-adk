@@ -2,9 +2,12 @@
 //! with an injected clock — no network, no sleeping), in the fixture style of
 //! `tests/claim_cli.rs`. `RecordedTransport` asserts method and URL in order, so an
 //! unexpected request (for example a second POST to a lost card) fails the test.
+mod common;
+
+use common::{exchange, json_response as resp};
 use moai_cli::claim::{task_key, Journal, Owner, SpecRef, TaskRef, WorktreeId};
 use moai_cli::forge::policy::Clock;
-use moai_cli::forge::transport::{Exchange, HttpRequest, HttpResponse, RecordedTransport};
+use moai_cli::forge::transport::{Exchange, RecordedTransport};
 use moai_cli::forge::{Client, Config};
 use moai_cli::queue::{next, ClaimTemplate, QueueRequest};
 use serde_json::{json, Value};
@@ -31,13 +34,7 @@ fn request(session: &str) -> QueueRequest {
         repo: "widgets".into(),
         milestone: 3,
         claim: ClaimTemplate {
-            owner: Owner {
-                kind: "session".into(),
-                id: session.into(),
-                host_id: None,
-                pid: None,
-                process_start: None,
-            },
+            owner: Owner::new("session", session),
             base_revision: "a".repeat(40),
             write_scope: vec!["src/queue.rs".into()],
             spec_ref: SpecRef {
@@ -51,33 +48,12 @@ fn request(session: &str) -> QueueRequest {
 }
 
 fn worktree() -> WorktreeId {
-    WorktreeId {
-        common_dir: "/tmp/repo/.git".into(),
-        git_dir: "/tmp/repo/.git/worktrees/lane".into(),
-        path: "/tmp/repo".into(),
-        head: "b".repeat(40),
-        branch: None,
-    }
-}
-
-fn resp(status: u16, body: Value) -> HttpResponse {
-    HttpResponse {
-        status,
-        headers: Default::default(),
-        body: Some(body),
-    }
-}
-
-fn exchange(method: &str, url: &str, response: HttpResponse) -> Exchange {
-    Exchange {
-        request: HttpRequest {
-            method: method.into(),
-            url: url.into(),
-            headers: Default::default(),
-            body: None,
-        },
-        response,
-    }
+    WorktreeId::new(
+        "/tmp/repo/.git",
+        "/tmp/repo/.git/worktrees/lane",
+        "/tmp/repo",
+        "b".repeat(40),
+    )
 }
 
 fn card(number: i64, key: &str, body: &str) -> Value {
@@ -143,15 +119,15 @@ fn run(root: &Path, session: &str, exchanges: Vec<Exchange>) -> (Value, Recorded
 }
 
 fn record_file(root: &Path, issue: i64) -> std::path::PathBuf {
-    let key = task_key(&TaskRef {
-        provider: "github".into(),
-        host: "github.com".into(),
-        owner: "acme".into(),
-        repo: "widgets".into(),
-        repository_id: 101,
-        issue_id: issue * 1000,
-        issue_number: issue,
-    });
+    let key = task_key(&TaskRef::new(
+        "github",
+        "github.com",
+        "acme",
+        "widgets",
+        101,
+        issue * 1000,
+        issue,
+    ));
     root.join(format!("{key}.json"))
 }
 
