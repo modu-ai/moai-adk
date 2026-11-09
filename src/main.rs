@@ -328,6 +328,29 @@ enum Command {
         #[arg(long)]
         disable_bundled_skills: bool,
     },
+    /// Install a planned Codex projection into its explicit target (I4 #2241). Refuses a
+    /// stale plan, a source-manifest mismatch or a conflicting target file before writing.
+    CodexProjectionApply {
+        package: PathBuf,
+        /// Absolute skill directory named `moai`; the same target the plan was made for.
+        #[arg(long)]
+        target: PathBuf,
+        #[arg(long, default_value = "MoAI")]
+        display_name: String,
+        #[arg(
+            long,
+            default_value = "Set up, plan, implement, verify, audit and sync through one workflow"
+        )]
+        short_description: String,
+        #[arg(long, default_value = "Use $moai to read this project's status")]
+        default_prompt: String,
+        #[arg(long)]
+        allow_implicit_invocation: Option<bool>,
+        #[arg(long)]
+        plan_digest: String,
+        #[arg(long)]
+        permission_reference: String,
+    },
     /// Read-only Codex doctor: AGENTS chain and budget, skill duplicates, `.codex/` layer.
     CodexDoctor {
         /// Project root (Codex walks from here down to the working directory).
@@ -691,6 +714,7 @@ const OPERATIONS: &[(&str, &str)] = &[
     ("claude-settings-plan", "claude.settings_plan"),
     ("claude-settings-apply", "claude.settings_apply"),
     ("codex-projection-plan", "codex.projection_plan"),
+    ("codex-projection-apply", "codex.projection_apply"),
     ("codex-doctor", "codex.doctor"),
     ("claim-acquire", "claim.acquire"),
     ("queue-next", "queue.next"),
@@ -1042,6 +1066,27 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             &status_line,
             disable_bundled_skills,
         ),
+        Command::CodexProjectionApply {
+            package,
+            target,
+            display_name,
+            short_description,
+            default_prompt,
+            allow_implicit_invocation,
+            plan_digest,
+            permission_reference,
+        } => codex::projection_apply(
+            &package,
+            &target,
+            &codex::OpenAiYaml {
+                display_name,
+                short_description,
+                default_prompt,
+                allow_implicit_invocation,
+            },
+            &plan_digest,
+            &permission_reference,
+        ),
         Command::CodexDoctor {
             project,
             cwd,
@@ -1378,67 +1423,67 @@ mod operations_doc {
     //! rc.2 D7 #2246: `docs/design-review/appendix/interfaces.md` § "RC1 OPERATIONS 전수" must list
     //! exactly the subcommand words of `OPERATIONS`, so a PR that adds or removes an operation
     //! fails here unless it updates the document in the same change.
+    //!
+    //! The list is one `- `word`` line per operation in alphabetical order, with no count
+    //! (#2241 repair, leader rule ③): PRs that each add an operation then touch different lines
+    //! instead of all rewriting one shared count and one shared line.
     use super::OPERATIONS;
     use std::collections::BTreeSet;
 
     const DOC: &str = include_str!("../docs/design-review/appendix/interfaces.md");
-    const HEADING: &str = "## RC1 OPERATIONS 전수 — ";
+    const HEADING: &str = "## RC1 OPERATIONS 전수";
 
-    /// The heading's declared count and the backticked words on the first non-empty line after it.
-    fn doc_list(doc: &str) -> Result<(usize, Vec<String>), String> {
+    /// The words of the item lines (`- `word``) that directly follow the heading.
+    fn doc_list(doc: &str) -> Result<Vec<String>, String> {
         let mut lines = doc.lines();
-        let heading = lines
+        lines
             .by_ref()
-            .find(|l| l.starts_with(HEADING))
-            .ok_or_else(|| format!("heading `{HEADING}N개` not found"))?;
-        let count = heading[HEADING.len()..]
-            .strip_suffix("개")
-            .and_then(|n| n.trim().parse::<usize>().ok())
-            .ok_or_else(|| format!("heading count unreadable: {heading}"))?;
-        let list = lines
-            .find(|l| !l.trim().is_empty())
-            .ok_or("operation list line missing")?;
-        let words = list
-            .split('`')
-            .skip(1)
-            .step_by(2)
-            .map(str::to_string)
-            .collect();
-        Ok((count, words))
+            .find(|l| l.trim_end() == HEADING)
+            .ok_or_else(|| format!("heading `{HEADING}` not found"))?;
+        let mut words = Vec::new();
+        for line in lines.skip_while(|l| l.trim().is_empty()) {
+            if !line.starts_with("- ") {
+                break;
+            }
+            let word = line
+                .strip_prefix("- `")
+                .and_then(|rest| rest.strip_suffix('`'))
+                .filter(|w| !w.is_empty() && !w.contains('`'))
+                .ok_or_else(|| format!("malformed list line (expected - `word`): {line:?}"))?;
+            words.push(word.to_string());
+        }
+        if words.is_empty() {
+            return Err("operation list missing under the heading".into());
+        }
+        Ok(words)
+    }
+
+    fn duplicates<'a>(items: impl IntoIterator<Item = &'a str>) -> BTreeSet<&'a str> {
+        let mut seen = BTreeSet::new();
+        items.into_iter().filter(|w| !seen.insert(*w)).collect()
     }
 
     fn compare(code: &[&str], doc: &str) -> Result<(), String> {
-        let (count, words) = doc_list(doc)?;
+        let words = doc_list(doc)?;
         let mut problems = Vec::new();
+        let doc_dups = duplicates(words.iter().map(String::as_str));
+        if !doc_dups.is_empty() {
+            problems.push(format!("duplicate in document: {doc_dups:?}"));
+        }
+        let code_dups = duplicates(code.iter().copied());
+        if !code_dups.is_empty() {
+            problems.push(format!("duplicate in OPERATIONS: {code_dups:?}"));
+        }
+        if let Some(pair) = words.windows(2).find(|p| p[0] >= p[1]) {
+            if pair[0] != pair[1] {
+                problems.push(format!(
+                    "document list not alphabetical: {:?} before {:?}",
+                    pair[0], pair[1]
+                ));
+            }
+        }
         let doc_set: BTreeSet<&str> = words.iter().map(String::as_str).collect();
         let code_set: BTreeSet<&str> = code.iter().copied().collect();
-        if doc_set.len() != words.len() {
-            problems.push(format!(
-                "duplicate word in document list ({} words, {} distinct)",
-                words.len(),
-                doc_set.len()
-            ));
-        }
-        if code_set.len() != code.len() {
-            problems.push(format!(
-                "duplicate word in OPERATIONS ({} entries, {} distinct)",
-                code.len(),
-                code_set.len()
-            ));
-        }
-        if count != code.len() {
-            problems.push(format!(
-                "heading says {count}, OPERATIONS has {}",
-                code.len()
-            ));
-        }
-        if words.len() != code.len() {
-            problems.push(format!(
-                "document lists {}, OPERATIONS has {}",
-                words.len(),
-                code.len()
-            ));
-        }
         let missing: Vec<_> = code_set.difference(&doc_set).collect();
         let extra: Vec<_> = doc_set.difference(&code_set).collect();
         if !missing.is_empty() {
@@ -1465,46 +1510,59 @@ mod operations_doc {
         }
     }
 
+    fn render(words: &[&str]) -> String {
+        let list: String = words.iter().map(|w| format!("- `{w}`\n")).collect();
+        format!("{HEADING}\n\n{list}\n(note)\n")
+    }
+
+    fn err(code: &[&str], doc: &str) -> String {
+        compare(code, doc).expect_err("mutation must be detected")
+    }
+
     #[test]
     fn mutations_are_detected() {
         let code = code_words();
-        let (_, words) = doc_list(DOC).expect("document list");
-        let list = words
-            .iter()
-            .map(|w| format!("`{w}`"))
-            .collect::<Vec<_>>()
-            .join(" ");
-        let doc = |count: usize, list: &str| format!("{HEADING}{count}개\n\n{list}\n");
-        assert_eq!(compare(&code, &doc(code.len(), &list)), Ok(()));
+        let mut sorted = code.clone();
+        sorted.sort_unstable();
+        assert_eq!(compare(&code, &render(&sorted)), Ok(()));
 
-        // A document word removed, with or without fixing the count.
-        let first = format!("`{}` ", words[0]);
-        let shorter = list.replacen(&first, "", 1);
-        assert!(compare(&code, &doc(code.len(), &shorter)).is_err());
-        assert!(compare(&code, &doc(code.len() - 1, &shorter)).is_err());
+        // A document line removed: reported by name.
+        let first = sorted[0];
+        let shorter: Vec<&str> = sorted[1..].to_vec();
+        assert!(
+            err(&code, &render(&shorter)).contains(&format!("missing from document: [{first:?}]"))
+        );
         // An operation added to the code but not to the document.
         let mut more = code.clone();
-        more.push("new-op");
-        assert!(compare(&more, &doc(code.len(), &list)).is_err());
-        assert!(compare(&more, &doc(more.len(), &list)).is_err());
-        // A duplicated word, on either side, even when the count is adjusted.
-        let doubled = format!("{list} `{}`", words[0]);
-        assert!(compare(&code, &doc(code.len() + 1, &doubled)).is_err());
+        more.push("zz-new-op");
+        assert!(err(&more, &render(&sorted)).contains("missing from document: [\"zz-new-op\"]"));
+        // A document line with no operation behind it.
+        let mut extra = sorted.clone();
+        extra.push("zz-ghost-op");
+        assert!(err(&code, &render(&extra)).contains("not in OPERATIONS: [\"zz-ghost-op\"]"));
+        // A renamed line: one missing and one extra, both named.
+        let mut renamed = sorted.clone();
+        renamed[0] = "aaa-renamed-op";
+        let e = err(&code, &render(&renamed));
+        assert!(e.contains(first) && e.contains("aaa-renamed-op"), "{e}");
+        // A duplicated line, on either side.
+        let mut doubled = sorted.clone();
+        doubled.insert(1, first);
+        assert!(err(&code, &render(&doubled))
+            .contains(&format!("duplicate in document: {{{first:?}}}")));
         let mut twice = code.clone();
         twice.push(code[0]);
-        let twice_list = twice
-            .iter()
-            .map(|w| format!("`{w}`"))
-            .collect::<Vec<_>>()
-            .join(" ");
-        assert!(compare(&twice, &doc(twice.len(), &twice_list)).is_err());
-        // A heading count off by one in either direction.
-        assert!(compare(&code, &doc(code.len() + 1, &list)).is_err());
-        assert!(compare(&code, &doc(code.len() - 1, &list)).is_err());
-        // A renamed word (same count, different set).
-        let renamed = list.replacen(&format!("`{}`", words[0]), "`renamed-op`", 1);
-        assert!(compare(&code, &doc(code.len(), &renamed)).is_err());
-        // A missing heading.
-        assert!(compare(&code, &list).is_err());
+        assert!(err(&twice, &render(&sorted)).contains("duplicate in OPERATIONS"));
+        // Out of alphabetical order.
+        let mut unsorted = sorted.clone();
+        unsorted.swap(0, 1);
+        assert!(err(&code, &render(&unsorted)).contains("not alphabetical"));
+        // A malformed line, an empty list, a missing heading.
+        let malformed = render(&sorted).replacen(&format!("- `{first}`"), &format!("- {first}"), 1);
+        assert!(err(&code, &malformed).contains("malformed list line"));
+        assert!(err(&code, &format!("{HEADING}\n\n(note)\n")).contains("list missing"));
+        assert!(
+            err(&code, &render(&sorted).replacen(HEADING, "## Other", 1)).contains("not found")
+        );
     }
 }
