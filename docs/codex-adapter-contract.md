@@ -6,7 +6,7 @@
 
 | 항목 | 결정 | 영향 |
 | --- | --- | --- |
-| TOML 읽기 | 파서를 쓰지 않는다. TOML 읽기·쓰기 표면과 의존성 결정은 02-B #1992 소유다 | `config.toml`을 읽지 않는다. trust, inline `[hooks]`, `tui.status_line`은 `not_evaluated`로 보고하고 `trusted`라고 쓰지 않는다. fallback 이름과 max-bytes는 인자로 받는다. 02-B가 파서를 들이면 승격은 후속 Issue에서 한다 |
+| TOML 읽기 | 파서를 쓰지 않는다. TOML 읽기·쓰기 표면과 의존성 결정은 02-B #1992 소유다(rc.2 #2240에서 쓰기용 파서 도입, 아래 "config.toml 생성") | doctor는 `config.toml`을 읽지 않는다. trust, inline `[hooks]`, `tui.status_line`은 `not_evaluated`로 보고하고 `trusted`라고 쓰지 않는다. fallback 이름과 max-bytes는 인자로 받는다. doctor 읽기 승격은 후속 Issue에서 한다 |
 | hook | 0개. 아무것도 생성하지 않는다 | `.codex/hooks.json`도, inline `[hooks]`도 만들지 않는다. hash trust 검토가 필요 없다 |
 | projection 위치 | `--target`을 꼭 받는다. 기본값은 없다 | `~/.agents/skills/moai`(사용자 홈)와 `<repo>/.agents/skills/moai`(project) 중 고르는 일은 HOLD로 남는다. 두 후보는 이 문서에만 적는다 |
 | E2E | 레인에서는 not_run | Desktop `$moai`는 GUI가 필요하다. CLI `$moai`는 실제 호출이 OpenAI로 prompt를 보내 외부 전송과 비용이 생긴다. 운영자 실측 여부는 사용자 결정이다 |
@@ -73,9 +73,9 @@ not_run은 Desktop 발견·호출이 실패했다는 뜻이 아니다. 그래서
 
 | # | 책임 | 분류 | 근거 | 후속 제안 |
 | --- | --- | --- | --- | --- |
-| C1 | trust 판정과 `blocked_by_trust` 보고 | 구현 필요 | config reference `projects.<path>.trust_level`. TOML 파서 HOLD | 02-B가 TOML 표면을 정한 뒤 doctor가 trust를 읽는 후속 Issue. 그때도 trust를 바꾸지는 않음 |
-| C2 | `project_doc_fallback_filenames`·`project_doc_max_bytes`를 config에서 읽기 | 대안 있음 | 지금은 `--fallback`·`--max-bytes` 인자 | C1과 같은 후속 Issue |
-| C3 | `tui.status_line` 항목 ID | 미검증 | config reference에 ID 목록 없음 | 운영자 실측(설치본의 `/statusline` 또는 schema)으로 ID를 확인한 뒤 의미 단위 병합(02-B 규칙) |
+| C1 | trust 판정과 `blocked_by_trust` 보고 | 구현 필요 | config reference `projects.<path>.trust_level`(2026-11-09 재확인: 위치는 user config만 명시). 파서는 #2240에서 들어옴(아래 "config.toml 생성") | doctor가 user config의 trust를 **읽는** 후속 Issue. 쓰기는 하지 않음: #2240은 trust를 선언(`trust.declaration`)만 하고 홈 쓰기는 blocked |
+| C2 | `project_doc_fallback_filenames`·`project_doc_max_bytes`를 config에서 읽기 | 대안 있음 | 쓰기는 #2240(managed 키). doctor는 아직 `--fallback`·`--max-bytes` 인자 | doctor가 project `.codex/config.toml`을 읽는 후속 Issue(C1과 함께) |
+| C3 | `tui.status_line` 항목 ID | 미검증 | config reference에 ID 목록 없음(2026-11-09 재확인) | #2240은 받은 항목을 그대로 쓰고 `status_line_unverified`로 보고. 운영자 실측(설치본 `/statusline` 또는 schema)으로 ID를 확인하면 검증 추가 |
 | C4 | hook 등록(`hooks.json` 또는 inline, 한 곳만) | 대안 있음 | RC1 결정 0개 | opt-in hook이 필요해지면 별도 Issue에서 위치를 정하고 hash trust 안내 |
 | C5 | projection 설치(사용자 홈/project) | 구현 필요 | plan만 있음 | EP-05 설치 Issue. 위치 HOLD 결정 뒤 |
 | C6 | Desktop·CLI·IDE 명시 호출 실측 receipt(version·표면·읽힌 경로) | 미검증 | REQ-02C-03 | 운영자 실측(HA-01, HA-10). CLI는 외부 전송을 승인한 뒤 |
@@ -85,7 +85,28 @@ not_run은 Desktop 발견·호출이 실패했다는 뜻이 아니다. 그래서
 
 - **projection 위치**: HOLD. A `~/.agents/skills/moai`(D24 기본 후보) / B `<repo>/.agents/skills/moai`(동명 skill 중복 노출 위험).
 - **운영자 E2E**: HOLD. Desktop GUI 실측과 CLI `$moai` 실제 호출(외부 전송·비용)을 할지, 누가 할지.
-- **TOML 파서**: 02-B #1992에서 정한다. 정해지면 C1·C2·C3을 승격하는 후속 Issue를 만든다.
+- **TOML 파서**: #2240에서 `toml_edit =0.25.3`(MIT OR Apache-2.0, 서식 보존)으로 들였다. doctor 읽기(C1·C2)는 후속 Issue다.
+
+## config.toml 생성 (Issue #2240, rc.2 I3)
+
+`moai_cli::hosts::codex_config::{config_plan, config_apply}`(라이브러리 표면; CLI op은 Claude settings와 같이 후속)가 프로젝트 `.codex/config.toml`만 다룬다. Claude `settings.json`과 같은 baseline/current/desired 3-way(REQ-I3-01): 소유 receipt는 `.moai-cli/manifests/codex-config.json`, 사용자가 MoAI가 둔 값을 바꾼 키는 `conflict`로 아무것도 쓰지 않고, 사용자가 이미 같은 값을 갖고 있던 키는 소유하지 않는다. managed 키 밖의 키·표·주석·빈 줄·순서는 그대로다(`toml_edit`). 바꾼 키도 앞뒤 주석을 유지한다.
+
+| managed 키 | 받는 값 | 근거 |
+| --- | --- | --- |
+| `tui.status_line` | 문자열 1–32개(각 1–128자, 제어 문자 없음). `null`은 받지 않음(TOML에 null 없음) | 항목 ID 미열거 → `status_line_unverified` |
+| `skills.bundled.enabled` | bool | 기본 `true`, trusted project에서 `false` 가능 |
+| `project_doc_fallback_filenames` | 파일 이름 1–32개(`/`·`\`·`.`·`..` 거부) | 기본값 미기재 |
+| `project_doc_max_bytes` | 정수 1–1,048,576 | 기본 32 KiB(AGENTS.md 페이지). 상한은 문서에 없어 MoAI가 1 MiB로 정함 |
+
+거부: `projects.*`(trust는 user config, 홈 쓰기 blocked), 프로젝트 파일에서 Codex가 무시하는 키(`openai_base_url`, `chatgpt_base_url`, `apps_mcp_product_sku`, `model_provider`, `model_providers`, `notify`, `profile`, `profiles`, `experimental_realtime_ws_base_url`, `otel`), 그 밖의 키, 홈 디렉터리와 같은 project, symlink `.codex/`·`.moai-cli/`, 256 KiB를 넘는 파일·receipt·결과, 파싱되지 않거나 부모가 표가 아닌 파일(`requires preservation review`). 오류 문구의 kind는 `src/hosts/codex_config.rs` 자체 시험(`every_message_has_a_deliberate_kind`, `contract::classify` 단언)이 확인한다(D8 #2254 규칙: 공용 배열에 행을 더하지 않음).
+
+| 공식 문서 | 확인한 내용 | 확인일 |
+| --- | --- | --- |
+| https://learn.chatgpt.com/docs/config-file/config-basic | user `~/.codex/config.toml`, project `.codex/config.toml` override, "loads project `.codex/` layers only when you trust the project", project root→cwd 순서(가까운 쪽 우선) | 2026-11-09 |
+| https://learn.chatgpt.com/docs/config-file/config-reference | `tui.status_line` `array<string> \| null`(ID 미열거), `skills.bundled.enabled` `boolean` 기본 `true`, `project_doc_fallback_filenames` `array<string>`, `project_doc_max_bytes` `number`, `projects.<path>.trust_level` `"trusted"\|"untrusted"`(위치는 user config만 명시), 프로젝트에서 무시되는 키 10개 | 2026-11-09 |
+| https://learn.chatgpt.com/docs/agent-configuration/agents-md | `project_doc_max_bytes` 기본 32 KiB, fallback 이름은 디렉터리마다 `AGENTS.override.md`·`AGENTS.md` 다음 | 2026-11-09 |
+
+미확인: 세 페이지 모두 "last updated" 없음, `project_doc_fallback_filenames` 기본값, `project_doc_max_bytes` 상한, status line 항목 ID, project 파일 안의 `trust_level` 취급. host 실측(`host_loaded`, `execution_verified`)은 not_run.
 
 ## 미실행·위험
 

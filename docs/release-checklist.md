@@ -77,3 +77,35 @@
 ## 릴리스 게시 절차 (별도 권한 단계 — 이 체크리스트가 수행하지 않는다)
 
 1. 운영자가 위 HOLD/not_run을 해소·승인한다. 2. `git tag moai-cli-v2026.11.0-rc.1 <candidate>` + `--verify-tag`. 3. `gh release create --prerelease --latest=false --verify-tag` + 자산 + `sha256.sum`. 4. attestation 생성 후 `gh attestation verify`. 5. `/releases/latest`가 RC tag을 반환하지 않음을 재확인. 6. 이 체크리스트의 not_run 항목을 실측값으로 갱신한다. 같은 version 재배포 금지 — 교정은 `rc.2`.
+
+## 리허설 기록 (2026-11-09, #2262 — tag·release·공개·서명 0)
+
+tree `v2026.11.0` tip `cf4e662aff5b33ceb96c47757eafa9eb6f250f20`, 실행 2026-11-09T04:58Z~05:05Z(`date -u`), 개발 Mac(Darwin/arm64). 위 (a)~(k)의 체크 표시는 08-D 당시 기록이고, 이 표는 같은 항목을 이번에 다시 실행한 결과다. verdict는 그대로 **`release blocked`**다.
+
+| 항목 | 상태 | 명령 → 관측 |
+| --- | --- | --- |
+| (a) version | passed | `grep -m1 '^version' Cargo.toml` → `version = "2026.11.0-rc.1"` |
+| (a) tag 미생성 | passed | `git ls-remote --tags origin 'moai-cli-v*'` → 출력 없음(tag 0) |
+| (a) `moai-cli-v*` tag ruleset | blocked | `gh api repos/modu-ai/moai-adk/rulesets` → `26791615 RC1 integration gate (v2026.11.0) target=branch`, `19583648 Release tag immutability (v*) target=tag`; `…/rulesets/19583648 --jq .conditions.ref_name` → `include: ["refs/tags/v*"]` — `moai-cli-v*`는 덮이지 않음. 추가는 저장소 설정(운영자 결정) |
+| (b) candidate SHA | not_run | 후보 SHA는 게시 승인 때 정한다. 이 리허설의 tree는 위 tip이다 |
+| (c) `cargo test --offline --locked` | passed | exit 0, 369 passed / 0 failed |
+| (c) `cargo clippy --offline --locked --all-targets -- -D warnings` | passed | exit 0 |
+| (c) `cargo fmt --check` | passed | exit 0 |
+| (c) `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p '*_test.py'` | passed | exit 0, Ran 80, OK |
+| (c) `python3 -I tools/check_support_matrix.py docs/support-matrix.md docs/e2e-receipts/` | passed | exit 0, `supported rows: 6` / `passed receipts: 6 (9 receipts total)` |
+| (d) 로컬 release 빌드 sha256 자체 검증 | passed | `cargo build --offline --locked --release` exit 0; `shasum -a 256 <target>/release/moai-cli > sha256.sum && shasum -a 256 -c sha256.sum` → `OK`, `f828b1a8df658dfce07f49d8f06d750c617689bbb2eb0787852cfcce17f8ffd1`(CARGO_TARGET_DIR=/tmp/moai-rc-target-agent-9) |
+| (d) release artifact checksum 목록 | not_run | artifact 미생성(게시 금지 범위) |
+| (e) attestation·`gh attestation verify` | blocked | workflow 실행·게시 미허용(사용자 승인) |
+| (e) 서명(codesign/notarization) | blocked | 서명 키 사용 금지 |
+| (f) known-good restore | passed | `docs/e2e-receipts/receipts.jsonl`에 `AC-08C-1 passed` 1건(08-C T1, 2026-11-08) — 이번에 다시 실행한 것은 위 `cargo test` 전체다 |
+| (g) Go updater 격리(게시 전 상태) | passed | `gh api repos/modu-ai/moai-adk/releases/latest --jq '.tag_name+" prerelease="+(.prerelease\|tostring)'` → `v3.1.2 prerelease=false`; `gh release view moai-cli-v2026.11.0-rc.1` → `release not found` |
+| (g) 게시 후 `/releases/latest` 재확인 | not_run | 게시 후에만 측정 가능 |
+| (h) 3.x 명령 안내 grep | passed | `grep -nE 'moai (init\|update)\b' docs/*.md README.md \| grep -v 'fallback\|3\.x'` → 2건(`docs/decisions-2026-11-08.md:11`, `docs/github-inventory-rc1.md:49`, 둘 다 내부 장부) — 08-D 기록과 같음. 이 tip에는 저장소 루트 `README.md`가 없다(grep 경고 `No such file`) — README 확인 부분은 not_run |
+| (h) secret·개인 경로 | passed | `tests/support_matrix_test.py` `test_real_documents_have_no_secret_shapes`(개인 홈 경로·토큰·개인키 모양) 통과. 같은 모양을 릴리스 노트에도 grep → 0건. 패턴 문자열은 이 문서에 적지 않는다(적으면 시험이 문서 자체를 잡는다) |
+| (h) `rc-ci.yml` | passed | `ruby -ryaml` 파싱 → trigger `pull_request`(branches `v2026.11.0`)·`workflow_dispatch`, `permissions: {contents: read}` |
+| (h) ruleset 필수 체크 | blocked | `gh api …/rulesets/26791615` → required_status_checks `["moai/audit"]`만 — `rc-ci` 필수 등록은 저장소 설정(HOLD) |
+| (i) SBOM | blocked | HOLD(사용자 결정 대기) |
+| (k) 독립 감사 verdict(`docs/rc-release-review.md`) | not_run | 이 리허설은 감사가 아니다. #2262 PR의 독립 감사는 agent-2 |
+| T2 host 로딩 E2E | not_run | #2014 OPEN — receipt `AC-08C-3`·`AC-08C-4`·`AC-08C-6` = `not_run`(receipts.jsonl) |
+
+이 리허설에서 하지 않은 것: `git tag`, `gh release create`, 공개 게시, 서명 키 사용, workflow 실행, 저장소 설정 변경.
