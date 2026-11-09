@@ -3,7 +3,9 @@
 //! remove the source; any mismatch cancels the move and keeps the original); AC-2:
 //! the restore round trip; plus the non-vector archive search and its limits.
 
-use moai_cli::archive::{apply, copy_verified_with, manifest, plan, restore, search};
+use moai_cli::archive::{
+    apply, apply_with_before_remove, copy_verified_with, manifest, plan, restore, search,
+};
 use serde_json::Value;
 use std::{
     fs,
@@ -107,6 +109,138 @@ fn archived(project: &Path) -> PathBuf {
 fn index(project: &Path) -> Value {
     serde_json::from_slice(&fs::read(project.join(".moai-cli/archive/index.json")).unwrap())
         .unwrap()
+}
+
+#[test]
+fn repair_apply_preserves_ids_that_restore_cannot_accept() {
+    let (_root, project) = fixture();
+    let invalid = ["SPEC 1", "SPEC-한글", "SPEC+1", ".SPEC-A.staging-123"];
+    for id in invalid {
+        write_spec(&project, id, "status: completed\n", "must remain available");
+    }
+    write_spec(
+        &project,
+        "SPEC.OK_3-extra",
+        "status: completed\n",
+        "valid neighbor",
+    );
+    git(&project, &["add", ".moai-cli/specs"], None);
+    git(
+        &project,
+        &["commit", "-q", "-m", "old id fixtures"],
+        Some(OLD_SECS.to_string()),
+    );
+    let before: Vec<_> = invalid
+        .iter()
+        .map(|id| manifest(&specs(&project).join(id)).unwrap())
+        .collect();
+    let preview = plan(&project, now(), None).unwrap();
+    let out = apply(&project, now(), None, &preview.plan_digest, PERMISSION).unwrap();
+    for (id, expected) in invalid.iter().zip(before) {
+        assert!(
+            specs(&project).join(id).exists(),
+            "unrestorable source removed: {id}"
+        );
+        assert_eq!(manifest(&specs(&project).join(id)).unwrap(), expected);
+        assert!(!archived(&project).join(id).exists());
+    }
+    assert_eq!(
+        preview
+            .excluded
+            .iter()
+            .filter(|e| e.reason == "invalid_spec_id")
+            .count(),
+        invalid.len()
+    );
+    let moved = out["archived"].as_array().unwrap();
+    assert_eq!(moved.len(), 3, "valid neighboring ids must still move");
+    for entry in moved {
+        let id = entry["spec_id"].as_str().unwrap();
+        restore(&project, id, PERMISSION).unwrap();
+        assert!(specs(&project).join(id).join("spec.md").is_file());
+    }
+}
+
+#[test]
+fn repair_search_refuses_index_paths_outside_the_matching_archive() {
+    for absolute in [false, true] {
+        let (_root, project) = fixture();
+        apply(&project, now(), None, &digest_of(&project), PERMISSION).unwrap();
+        let outside = project.parent().unwrap().join("outside");
+        fs::create_dir(&outside).unwrap();
+        fs::write(outside.join("private.md"), "outside-only-sentinel").unwrap();
+        let mut idx = index(&project);
+        idx["entries"][0]["path"] = if absolute {
+            serde_json::json!(outside.to_str().unwrap())
+        } else {
+            serde_json::json!("../outside")
+        };
+        fs::write(
+            project.join(".moai-cli/archive/index.json"),
+            serde_json::to_vec(&idx).unwrap(),
+        )
+        .unwrap();
+        let err = search(&project, "outside-only-sentinel").unwrap_err();
+        assert!(err.starts_with("archive index invalid"), "{err}");
+        assert_eq!(
+            fs::read_to_string(outside.join("private.md")).unwrap(),
+            "outside-only-sentinel"
+        );
+    }
+}
+
+#[test]
+fn repair_apply_keeps_source_changed_after_index_publication() {
+    let (_root, project) = fixture();
+    let before = manifest(&specs(&project).join("SPEC-A")).unwrap();
+    let err = apply_with_before_remove(
+        &project,
+        now(),
+        None,
+        &digest_of(&project),
+        PERMISSION,
+        |src| {
+            assert_eq!(src, specs(&project).join("SPEC-A"));
+            assert_eq!(index(&project)["entries"][0]["spec_id"], "SPEC-A");
+            assert_eq!(
+                manifest(&archived(&project).join("SPEC-A")).unwrap(),
+                before
+            );
+            fs::write(src.join("late.md"), "late source content").unwrap();
+        },
+    )
+    .unwrap_err();
+    assert!(err.starts_with("partial apply:"), "{err}");
+    assert!(err.contains("source changed during apply"), "{err}");
+    assert_eq!(
+        moai_cli::contract::classify(&err),
+        moai_cli::contract::Kind::Partial
+    );
+    assert_eq!(
+        fs::read_to_string(specs(&project).join("SPEC-A/late.md")).unwrap(),
+        "late source content"
+    );
+    assert_eq!(
+        manifest(&archived(&project).join("SPEC-A")).unwrap(),
+        before
+    );
+    assert!(specs(&project).join("SPEC-B/spec.md").is_file());
+    assert!(!archived(&project).join("SPEC-B").exists());
+}
+
+#[test]
+fn repair_search_refuses_traversal_in_index_ids() {
+    let (_root, project) = fixture();
+    apply(&project, now(), None, &digest_of(&project), PERMISSION).unwrap();
+    let mut idx = index(&project);
+    idx["entries"][0]["spec_id"] = serde_json::json!("../outside");
+    fs::write(
+        project.join(".moai-cli/archive/index.json"),
+        serde_json::to_vec(&idx).unwrap(),
+    )
+    .unwrap();
+    let err = search(&project, "completed").unwrap_err();
+    assert!(err.starts_with("archive index invalid"), "{err}");
 }
 
 #[test]

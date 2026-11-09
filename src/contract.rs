@@ -337,6 +337,8 @@ mod tests {
             ("archive publish write failed", Io),
             ("archive index invalid", InvalidInput),
             ("archive index invalid: unknown schema_version", InvalidInput),
+            ("archive index invalid: invalid spec id", InvalidInput),
+            ("archive index invalid: spec path mismatch", InvalidInput),
             ("invalid spec id: ../x", InvalidInput),
             ("spec not found in archive index: SPEC-X", NotFound),
             ("archive manifest not found", NotFound),
@@ -345,6 +347,10 @@ mod tests {
             ("archived copy digest mismatch; restore refused", Conflict),
             (
                 "partial apply: archived [SPEC-A]; failed at SPEC-B: source directory removal write failed; archived copy and index kept",
+                Partial,
+            ),
+            (
+                "partial apply: archived [SPEC-A]; failed at SPEC-A: source changed during apply; source removal refused; archived copy and index kept",
                 Partial,
             ),
             (

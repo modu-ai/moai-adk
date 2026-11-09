@@ -397,6 +397,15 @@ pub fn plan(project: &Path, now: SystemTime, grace_request: Option<u64>) -> Resu
 
     for spec_id in ids {
         plan.scanned += 1;
+        // Every moved id must also be accepted by restore; staging names stay put.
+        if !spec_id_ok(&spec_id) {
+            plan.excluded.push(ExcludedSpec {
+                spec_id,
+                status: None,
+                reason: "invalid_spec_id".into(),
+            });
+            continue;
+        }
         let dir = specs.join(&spec_id);
         let Ok(fm) = frontmatter(&dir) else {
             plan.excluded.push(ExcludedSpec {
@@ -771,6 +780,19 @@ pub fn apply(
     plan_digest: &str,
     permission: &str,
 ) -> Result<Value> {
+    apply_with_before_remove(project, now, grace_request, plan_digest, permission, |_| {})
+}
+
+/// Test seam after index publication and before the final source check.
+#[doc(hidden)]
+pub fn apply_with_before_remove(
+    project: &Path,
+    now: SystemTime,
+    grace_request: Option<u64>,
+    plan_digest: &str,
+    permission: &str,
+    mut before_remove: impl FnMut(&Path),
+) -> Result<Value> {
     permission_ok(permission)?;
     let current = plan(project, now, grace_request)?;
     if current.plan_digest != plan_digest {
@@ -791,7 +813,7 @@ pub fn apply(
                 )
             }
         };
-        let step = (|| -> Result<IndexEntry> {
+        let step = (|| -> Result<(IndexEntry, Manifest)> {
             let src = specs.join(id);
             let rel = format!("{ARCHIVE_DIR}/specs/{id}");
             let dst = project.join(&rel);
@@ -823,11 +845,21 @@ pub fn apply(
             next.entries.push(entry.clone());
             next.entries.sort_by(|a, b| a.spec_id.cmp(&b.spec_id));
             write_index(project, &next, before.as_deref())?;
-            Ok(entry)
+            Ok((entry, m))
         })();
-        let entry = step.map_err(|e| wrap(&done, e))?;
+        let (entry, expected) = step.map_err(|e| wrap(&done, e))?;
+        let src = specs.join(id);
+        before_remove(&src);
+        if manifest(&src).ok().as_ref() != Some(&expected) {
+            done.push(id.clone());
+            return Err(format!(
+                "partial apply: archived [{}]; failed at {id}: source changed during apply; source removal refused; archived copy and index kept",
+                done.join(", ")
+            ));
+        }
         // 6) remove the source only after the verified copy and its pointer exist.
-        if fs::remove_dir_all(specs.join(id)).is_err() {
+        // This final check narrows the race; concurrent writers are not locked out.
+        if fs::remove_dir_all(&src).is_err() {
             done.push(id.clone());
             return Err(format!(
                 "partial apply: archived [{}]; failed at {id}: source directory removal write failed; archived copy and index kept",
@@ -935,13 +967,20 @@ pub fn search(project: &Path, query: &str) -> Result<Value> {
         true
     };
     'outer: for e in &index.entries {
+        if !spec_id_ok(&e.spec_id) {
+            return Err("archive index invalid: invalid spec id".into());
+        }
+        let rel = format!("{ARCHIVE_DIR}/specs/{}", e.spec_id);
+        if e.path != rel {
+            return Err("archive index invalid: spec path mismatch".into());
+        }
         if e.spec_id.to_lowercase().contains(&needle) || e.status.to_lowercase().contains(&needle) {
             let hit = json!({"spec_id": e.spec_id, "source": "index", "path": null, "line": null});
             if !push(hit, &mut hits) {
                 break 'outer;
             }
         }
-        let dir = project.join(&e.path);
+        let dir = project.join(ARCHIVE_DIR).join("specs").join(&e.spec_id);
         let Ok(m) = manifest(&dir) else {
             continue;
         };
