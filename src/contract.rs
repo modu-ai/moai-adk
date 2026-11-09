@@ -138,6 +138,9 @@ const RULES: &[(&str, Kind)] = &[
     ("too large", Kind::InvalidInput),
     ("must be", Kind::InvalidInput),
     ("require", Kind::InvalidInput),
+    // #2242: the project-skill copy ops refuse before any write without the
+    // explicit opt-in flag.
+    ("explicit opt-in required", Kind::InvalidInput),
     ("forbidden", Kind::InvalidInput),
     ("refused", Kind::InvalidInput),
     ("outside", Kind::InvalidInput),
@@ -179,6 +182,7 @@ mod tests {
         use Kind::*;
         let cases = [
             ("unsupported protocol_version; supported: 1", UnsupportedProtocolVersion),
+            ("explicit opt-in required; nothing written", InvalidInput),
             ("input exceeds 64 KiB", InputTooLarge),
             ("invalid typed JSON input", InvalidInput),
             ("stdin read failed", Io),
@@ -316,6 +320,58 @@ mod tests {
             ("git failed: detected dubious ownership in repository at", GitFailed),
             ("git failed: git output exceeded the size limit", GitFailed),
             ("git failed: git output was not UTF-8", GitFailed),
+            // archive move, restore and search (D2 #2188)
+            ("readback digest mismatch; move cancelled, original kept", Conflict),
+            ("source changed during apply; move cancelled, original kept", StalePlan),
+            ("archive destination already exists; exclusive create refused", Conflict),
+            ("archive index entry already exists; exclusive create refused", Conflict),
+            ("restore destination already exists; exclusive create refused", Conflict),
+            ("symlink in SPEC directory refused: notes/link.md", InvalidInput),
+            ("special file in SPEC directory refused: fifo", InvalidInput),
+            ("SPEC path is not a directory", InvalidInput),
+            ("SPEC directory unavailable", Io),
+            ("SPEC directory unreadable", Io),
+            ("SPEC file name is not UTF-8", InvalidInput),
+            ("SPEC file read failed: spec.md", Io),
+            ("archive destination parent unavailable", Io),
+            ("archive destination name invalid", InvalidInput),
+            ("archive directory unavailable", Io),
+            ("archive staging unavailable", Io),
+            ("archive copy write failed: spec.md", Io),
+            ("archive publish write failed", Io),
+            ("archive index invalid", InvalidInput),
+            ("archive index invalid: unknown schema_version", InvalidInput),
+            ("archive index invalid: invalid spec id", InvalidInput),
+            ("archive index invalid: spec path mismatch", InvalidInput),
+            ("invalid spec id: ../x", InvalidInput),
+            ("spec not found in archive index: SPEC-X", NotFound),
+            ("archive manifest not found", NotFound),
+            ("archive manifest invalid", InvalidInput),
+            ("archive manifest digest mismatch; restore refused", Conflict),
+            ("archived copy digest mismatch; restore refused", Conflict),
+            (
+                "partial apply: archived [SPEC-A]; failed at SPEC-B: source directory removal write failed; archived copy and index kept",
+                Partial,
+            ),
+            (
+                "partial apply: archived [SPEC-A]; failed at SPEC-A: source changed during apply; source removal refused; archived copy and index kept",
+                Partial,
+            ),
+            (
+                "partial apply: restored [SPEC-A]; failed at archive cleanup: archive manifest removal write failed",
+                Partial,
+            ),
+            ("archive manifest removal write failed", Io),
+            ("archived copy removal write failed", Io),
+            ("search query must be 1 to 256 characters", InvalidInput),
+            // hooks-plan / hooks-apply (rc.2 I1 #2238)
+            ("unknown hook host; must be claude or codex", InvalidInput),
+            (
+                "home directory refused; hooks are written to a project tree only",
+                InvalidInput,
+            ),
+            ("existing .codex/hooks.json requires preservation review", Conflict),
+            (".codex/hooks.json receipt requires preservation review", Conflict),
         ];
         for (message, kind) in cases {
             assert_eq!(classify(message), kind, "{message}");
