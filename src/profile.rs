@@ -27,25 +27,30 @@ const LIMIT: u64 = 65536;
 const DECISION_ITEM_LIMIT: usize = 32;
 const DECISION_STRING_LIMIT: usize = 256;
 const REVISION_LIMIT: usize = 128;
-/// Keys owned by the profile schema; the delta covers exactly these. A length-free slice,
-/// so two branches that each add a key merge without a silent length clash (PR #2044).
-const MANAGED_KEYS: &[&str] = &[
-    "schema_version",
-    "project_id",
-    "purpose",
-    "tools",
-    "development_methods",
-    "hosts",
-    "package_pin",
-    "interview_revision",
-    "decisions",
-    "github_issues",
-    "leader",
-    "context_max_bytes",
+/// Keys owned by the profile schema, as `(key, additive)`: the delta covers exactly these, in
+/// this order, and `read_profile` keeps exactly these. An additive key (added after the first
+/// profile release) absent from desired, current and baseline is left out of the delta, so a
+/// profile without it plans exactly as before the key existed. A length-free slice, so two
+/// branches that each add a key merge without a silent length clash (PR #2044). Adding a key
+/// touches this table, the `Profile` field and `validate` (#2254).
+const PROFILE_KEYS: &[(&str, bool)] = &[
+    ("schema_version", false),
+    ("project_id", false),
+    ("purpose", false),
+    ("tools", false),
+    ("development_methods", false),
+    ("hosts", false),
+    ("package_pin", false),
+    ("interview_revision", false),
+    ("decisions", false),
+    ("github_issues", true),
+    ("leader", true),
+    ("context_max_bytes", true),
 ];
-/// Keys added after the first profile release: absent from desired, current and baseline
-/// they are left out of the delta, so a profile without them plans exactly as before.
-const ADDITIVE_KEYS: &[&str] = &["github_issues", "context_max_bytes", "leader"];
+
+fn managed_keys() -> impl Iterator<Item = &'static str> {
+    PROFILE_KEYS.iter().map(|&(key, _)| key)
+}
 
 /// Leader supervision settings (rc.2 A3 #2161/#2162, user decision D-2 2026-11-09).
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -307,14 +312,12 @@ fn compute_delta(baseline: Option<&Value>, current: Option<&Value>, desired: &Va
     let current_map = current.and_then(Value::as_object);
     let baseline_map = baseline.and_then(Value::as_object);
     let mut delta = Delta::default();
-    for &key in MANAGED_KEYS {
+    for &(key, additive) in PROFILE_KEYS {
         let d = desired_map.get(key);
         let c = current_map.and_then(|m| m.get(key));
         let b = baseline_map.and_then(|m| m.get(key));
-        // `github_issues` (#2106), `context_max_bytes` (#2184) and `leader` (#2162) are additive: absent from
-        // desired, current and baseline they are left out of the delta, so a profile
-        // without them plans exactly as before the keys existed.
-        if ADDITIVE_KEYS.contains(&key) && d.is_none() && c.is_none() && b.is_none() {
+        // An additive key absent from desired, current and baseline is left out of the delta.
+        if additive && d.is_none() && c.is_none() && b.is_none() {
             continue;
         }
         // schema_version is MoAI-owned schema state, never user content (leader decision
@@ -677,23 +680,9 @@ pub fn read_profile(root: &Path) -> Result<(Profile, Vec<u8>)> {
     if map.get("package_pin").is_some_and(Value::is_null) {
         return Err("explicit null pin is invalid".into());
     }
-    let known = [
-        "schema_version",
-        "project_id",
-        "purpose",
-        "tools",
-        "development_methods",
-        "hosts",
-        "package_pin",
-        "interview_revision",
-        "decisions",
-        "github_issues",
-        "leader",
-        "context_max_bytes",
-    ];
     let filtered: serde_json::Map<String, Value> = map
         .iter()
-        .filter(|(k, _)| known.contains(&k.as_str()))
+        .filter(|(k, _)| managed_keys().any(|m| m == k.as_str()))
         .map(|(k, v)| (k.clone(), v.clone()))
         .collect();
     let profile: Profile =
@@ -731,6 +720,54 @@ mod tests {
             leader: None,
             context_max_bytes: None,
         }
+    }
+
+    /// `PROFILE_KEYS` lists exactly the `Profile` fields, and the additive ones are exactly
+    /// the fields a v2 profile may omit (#2254: the table replaced three hand-kept lists).
+    #[test]
+    fn profile_keys_match_the_profile_fields() {
+        let full = Profile {
+            package_pin: Some("pin".into()),
+            github_issues: Some(true),
+            leader: Some(LeaderSettings {
+                pr_check_interval_secs: 300,
+            }),
+            context_max_bytes: Some(1),
+            ..v2()
+        };
+        let fields: Vec<String> = serde_json::to_value(&full)
+            .unwrap()
+            .as_object()
+            .unwrap()
+            .keys()
+            .cloned()
+            .collect();
+        let mut keys: Vec<String> = managed_keys().map(String::from).collect();
+        let mut sorted = fields.clone();
+        sorted.sort();
+        keys.sort();
+        assert_eq!(keys, sorted);
+        let additive: Vec<&str> = PROFILE_KEYS
+            .iter()
+            .filter(|(_, a)| *a)
+            .map(|(k, _)| *k)
+            .collect();
+        assert_eq!(additive, ["github_issues", "leader", "context_max_bytes"]);
+    }
+
+    /// `read_profile` keeps the `PROFILE_KEYS` and leaves a user's own key out, so the
+    /// strict `Profile` still reads a file that carries one.
+    #[test]
+    fn read_profile_skips_keys_outside_the_table() {
+        let tmp = tempfile::tempdir().unwrap();
+        let mut file = serde_json::to_value(v2()).unwrap();
+        file["my_own_key"] = json!("kept in the file");
+        let path = tmp.path().join(PROJECT_STATE_DIR).join("project.yaml");
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(&path, serde_json::to_vec(&file).unwrap()).unwrap();
+        let (profile, bytes) = read_profile(tmp.path()).unwrap();
+        assert_eq!(profile.project_id, "demo");
+        assert!(String::from_utf8(bytes).unwrap().contains("my_own_key"));
     }
 
     #[test]
@@ -836,7 +873,7 @@ mod tests {
     /// `github_issues`, and its interval must be positive.
     #[test]
     fn leader_key_is_managed_additive_and_validated() {
-        assert!(MANAGED_KEYS.contains(&"leader"));
+        assert!(PROFILE_KEYS.contains(&("leader", true)));
         let base = serde_json::json!({
             "schema_version": 2, "project_id": "demo", "purpose": "p",
             "tools": ["Rust"], "development_methods": ["TDD"], "hosts": ["claude"]
