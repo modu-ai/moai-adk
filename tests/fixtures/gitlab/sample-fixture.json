@@ -31,7 +31,7 @@
         "id": 9,
         "body": "sample note body",
         "system": false,
-        "author_username": "fixture-user"
+        "author": {"username": "fixture-user"}
       }
     }
   }
