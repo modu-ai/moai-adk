@@ -116,7 +116,7 @@
 | 01:2x(11-09) | 5단계 이름 확정 | **PLAN → RUN → VERIFY → AUDIT → SYNC**(설계 §5·RC1 routes 일치); READ·SETUP·UPDATE는 진입 단계로 별도 | 전체 | 사용자 선택(권장) |
 | 01:2x(11-09) | AGENTS.override.md 학습 루프 | 제안(diff+근거+검증)은 자동 생성, **적용은 사용자 승인 1회**; 사용자 구간 자동 변경 0; 롤백 = 이전 버전 복원; Codex는 override 공식 지원, Claude Code는 어댑터 필요(공식 비지원) | EP-H | 사용자 선택(권장) |
 | 01:2x(11-09) | ADK 이름 재검토 | 조사 카드 1장 → 후보 3~5개(충돌 조사 URL+확인일) 보고, 확정은 사용자; rename 0 | EP-H | 사용자 선택(권장) |
-| 01:2x(11-09) | Code Atlas 이름 | #2177 조사: `code-atlas` crates.io 활성·GitHub org 존재 → 사용 불가. **`moai-atlas` / CLI `moai atlas`** 채택(npm·PyPI·crates 404 실측; WIPO는 not_run) | #2177, EP-C C2~ | 사용자 선택(권장) |
+| 01:2x(11-09) | Code Map/Graph 묶음 명칭 | #2177 조사: `code-atlas`는 crates.io 활성 패키지·GitHub org 존재로 사용 불가. 질문 창에서 `moai-atlas` 안 선택 후, 사용자가 ADK_ATLAS_NAME_CONFIRMED_20261109_01로 **묶음 명칭 "MoAI Atlas" 확정**. 범위 한정: 제품명(MoAI ADK) 변경·패키지명·CLI 서브커맨드·태그 문법·상표 안전성은 **미확정**(패키지 404는 "미등록 관측"일 뿐 충돌 0·상표 사용 가능 아님; WIPO 조사 not_run). 패키지 `moai-atlas`·CLI `moai atlas`는 제안 상태로 C2 카드에서 별도 결정 | #2177, EP-C C2~ | 사용자 확정(명칭만) |
 
 부분 결정 분리: P08은 claim 방식(⑤+①)만 결정, lease·heartbeat 수치 HOLD → 00:5x(11-09) lease 4h·heartbeat 없음으로 결정 · P15는 ZCode 헤드리스 범위만 결정, 나머지 host 지원표 HOLD.
 
