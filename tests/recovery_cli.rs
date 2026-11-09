@@ -117,10 +117,10 @@ fn fixture() -> Fixture {
 
 impl Fixture {
     fn codex(&self) -> PathBuf {
-        self.home.join(".agents/skills/moai")
+        self.home.join(".agents/skills/moai-cli")
     }
     fn claude(&self) -> PathBuf {
-        self.home.join(".claude/skills/moai")
+        self.home.join(".claude/skills/moai-cli")
     }
     fn hosts_dir(&self) -> PathBuf {
         let inst = self.home.join(".moai-cli/installations");

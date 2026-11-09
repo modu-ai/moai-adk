@@ -1,6 +1,6 @@
 """SYNC drift detection fixtures for the four kinds added by #2168 (REQ-B1-01).
 
-The normative procedure is skills/moai/workflows/sync.md step 3: drift beyond
+The normative procedure is skills/moai-cli/workflows/sync.md step 3: drift beyond
 the original three kinds (omission, amendment, document mismatch) is classified
 as `(kind, ground, proposed_action)`, reported separately, and the approved
 SPEC is never auto-weakened. This file is the DETECTION FIXTURE for the four

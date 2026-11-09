@@ -174,11 +174,11 @@ fn fixture() -> Fixture {
 
 impl Fixture {
     fn claude(&self) -> PathBuf {
-        self.home.join(".claude/skills/moai")
+        self.home.join(".claude/skills/moai-cli")
     }
 
     fn codex(&self) -> PathBuf {
-        self.home.join(".agents/skills/moai")
+        self.home.join(".agents/skills/moai-cli")
     }
 
     fn hosts_dir(&self) -> PathBuf {
@@ -521,6 +521,18 @@ fn e2e_clean_clone_carries_portable_read_plan_assets() {
     } else {
         manifest.join(gitdir)
     };
+    // Clone THIS checkout's branch, not the repository's default one: a worktree
+    // (e.g. `.claude/worktrees/…`) shares the common dir with a main checkout whose
+    // default branch may not carry this tree's files yet. A default-branch clone made
+    // the check read a tip that predates the work under test and miss its assets.
+    let branch = {
+        let b = Command::new("git")
+            .args(["-C", manifest.to_str().unwrap(), "rev-parse", "--abbrev-ref", "HEAD"])
+            .output()
+            .unwrap();
+        assert!(b.status.success(), "cannot resolve the current branch");
+        String::from_utf8_lossy(&b.stdout).trim().to_string()
+    };
     let dest = TempDir::new().unwrap();
     let clone = dest.path().join("clean");
     let out = Command::new("git")
@@ -529,6 +541,8 @@ fn e2e_clean_clone_carries_portable_read_plan_assets() {
             "--no-hardlinks",
             "--depth",
             "1",
+            "--branch",
+            &branch,
             gitdir.to_str().unwrap(),
             clone.to_str().unwrap(),
         ])
@@ -541,10 +555,10 @@ fn e2e_clean_clone_carries_portable_read_plan_assets() {
     );
 
     // The portable assets are all plain files in the clone — no binary, no state dir.
-    let skill = clone.join("skills/moai");
+    let skill = clone.join("skills/moai-cli");
     let skill_md = fs::read_to_string(skill.join("SKILL.md")).unwrap();
     assert!(
-        skill_md.starts_with("---\nname: moai\ndescription: "),
+        skill_md.starts_with("---\nname: moai-cli\ndescription: "),
         "SKILL.md frontmatter must name the skill: {skill_md}"
     );
     let routes: Value =

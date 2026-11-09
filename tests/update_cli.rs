@@ -209,9 +209,9 @@ fn go_digest(home: &Path) -> String {
 
 fn projection_digest(home: &Path, host: &str) -> String {
     let dir = if host == "claude" {
-        home.join(".claude/skills/moai")
+        home.join(".claude/skills/moai-cli")
     } else {
-        home.join(".agents/skills/moai")
+        home.join(".agents/skills/moai-cli")
     };
     moai_cli::package_digest(&dir).unwrap()
 }
@@ -240,8 +240,8 @@ fn update_plan_is_read_only_and_covers_all_hosts() {
     // Pre-existing projections: claude has one user-modified file and the rest of v1;
     // codex matches v1 byte for byte. No receipts exist yet, so the user-modified
     // file (baseline=None, current≠new) plans as a conflict.
-    let claude = home.join(".claude/skills/moai");
-    let codex = home.join(".agents/skills/moai");
+    let claude = home.join(".claude/skills/moai-cli");
+    let codex = home.join(".agents/skills/moai-cli");
     let v1: Vec<(&str, String)> = stage_v1();
     write_pkg(&claude, &[("SKILL.md", &skill_md("user edited locally"))]);
     write_pkg(
@@ -321,9 +321,9 @@ fn update_apply_both_hosts_match_package_digest() {
         );
         // Independent copies, not symlinks (REQ-04B-08).
         let skill = if name == "claude" {
-            home.join(".claude/skills/moai/SKILL.md")
+            home.join(".claude/skills/moai-cli/SKILL.md")
         } else {
-            home.join(".agents/skills/moai/SKILL.md")
+            home.join(".agents/skills/moai-cli/SKILL.md")
         };
         assert!(fs::symlink_metadata(&skill).unwrap().is_file());
     }
@@ -362,10 +362,10 @@ fn update_preserves_user_edits_and_reports_conflict_per_file() {
     apply_ok(&home, &stage1, &p1, p1["plan_digest"].as_str().unwrap());
 
     // User edits one projected file and adds a private file on the claude host.
-    let update_md = home.join(".claude/skills/moai/workflows/update.md");
+    let update_md = home.join(".claude/skills/moai-cli/workflows/update.md");
     fs::write(&update_md, "# UPDATE\nv1\nUSER EDIT\n").unwrap();
     fs::write(
-        home.join(".claude/skills/moai/references/extra.md"),
+        home.join(".claude/skills/moai-cli/references/extra.md"),
         "mine\n",
     )
     .unwrap();
@@ -396,24 +396,24 @@ fn update_preserves_user_edits_and_reports_conflict_per_file() {
         "conflicted file not overwritten"
     );
     assert_eq!(
-        fs::read_to_string(home.join(".claude/skills/moai/SKILL.md")).unwrap(),
+        fs::read_to_string(home.join(".claude/skills/moai-cli/SKILL.md")).unwrap(),
         stage_v2()[0].1,
         "non-conflicted file applied"
     );
     assert_eq!(
-        fs::read_to_string(home.join(".claude/skills/moai/references/extra.md")).unwrap(),
+        fs::read_to_string(home.join(".claude/skills/moai-cli/references/extra.md")).unwrap(),
         "mine\n",
         "user file preserved"
     );
     assert_eq!(
-        fs::read_to_string(home.join(".agents/skills/moai/workflows/update.md")).unwrap(),
+        fs::read_to_string(home.join(".agents/skills/moai-cli/workflows/update.md")).unwrap(),
         "# UPDATE\nv2\n",
         "other host applied"
     );
 
     // Template unchanged + user edited: preserved (routes.json user edit, v3 keeps it).
     fs::write(
-        home.join(".claude/skills/moai/references/routes.json"),
+        home.join(".claude/skills/moai-cli/references/routes.json"),
         "{\"routes\": mine}\n",
     )
     .unwrap();
@@ -434,21 +434,22 @@ fn update_preserves_user_edits_and_reports_conflict_per_file() {
     let r3 = apply_ok(&home, &stage3, &p3, p3["plan_digest"].as_str().unwrap());
     assert_eq!(r3["status"], json!("applied"));
     assert_eq!(
-        fs::read_to_string(home.join(".claude/skills/moai/references/routes.json")).unwrap(),
+        fs::read_to_string(home.join(".claude/skills/moai-cli/references/routes.json")).unwrap(),
         "{\"routes\": mine}\n",
         "template-unchanged user edit preserved"
     );
     assert!(
-        home.join(".claude/skills/moai/workflows/update.md")
+        home.join(".claude/skills/moai-cli/workflows/update.md")
             .exists(),
         "dropped file kept"
     );
     assert!(
-        home.join(".claude/skills/moai/workflows/new.md").exists(),
+        home.join(".claude/skills/moai-cli/workflows/new.md")
+            .exists(),
         "dropped file kept"
     );
     assert_eq!(
-        fs::read_to_string(home.join(".claude/skills/moai/SKILL.md")).unwrap(),
+        fs::read_to_string(home.join(".claude/skills/moai-cli/SKILL.md")).unwrap(),
         stage_v3()[0].1,
     );
 }
@@ -607,7 +608,7 @@ fn update_result_reports_per_host_and_partial() {
     // Sabotage the codex projection for a deterministic mid-apply failure: the
     // `workflows` path becomes a plain file, so creating workflows/new.md fails inside
     // step (b) — after the pending receipt was written.
-    let codex = home.join(".agents/skills/moai");
+    let codex = home.join(".agents/skills/moai-cli");
     fs::remove_dir_all(codex.join("workflows")).unwrap();
     fs::write(codex.join("workflows"), b"not a directory\n").unwrap();
 

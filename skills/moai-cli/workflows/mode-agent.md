@@ -1,6 +1,6 @@
 # MODE-AGENT
 
-Entered with `/moai --mode agent` in Claude Code or `$moai --mode agent` in Codex CLI. The procedures this mode follows are defined once in the MoAI repository's `docs/design-review/autonomy-modes-spec.md` (the SPEC below); this workflow names them by section and does not restate them.
+Entered with `/moai-cli --agent-mode` in Claude Code or `$moai-cli --agent-mode` in Codex CLI (the legacy alias `--mode agent` selects this route too). The procedures this mode follows are defined once in the MoAI repository's `docs/design-review/autonomy-modes-spec.md` (the SPEC below); this workflow names them by section and does not restate them.
 
 ## Input
 
@@ -16,7 +16,7 @@ A mode banner, a read-only state summary, and, for every round, the claim outcom
 2. Print the banner: mode `agent`, the session id, the repository, and the base branch.
 3. Summarise the current state read-only: unclaimed Issues, their blockers, and any claim this session already holds. Report anything unread as unread.
 4. Make sure the session id is unique among live sessions before claiming; a duplicate id stops the round (SPEC §4, item 6).
-5. First action: one self-claim round, steps 1 to 7 of SPEC §3, with the failure branch of each step. Act as the owner only on a `claimed` outcome; `uncertain` means no write (SPEC §4, item 4).
+5. First action, before any self-claim: look for a live leader session and ask it for a card assignment through the cross-session message channel (one round). If no leader answers, the message is held, refused or cannot be routed, or the leader's card pointer does not arrive within that one round, fall back to one self-claim round — steps 1 to 7 of SPEC §3, with the failure branch of each step — without waiting further. On a host without a cross-session channel (Codex CLI and others), go straight to the self-claim round. Ownership comes only from the claim comment either way: a leader's pointer is a hint, never a grant; act as the owner only on a `claimed` outcome; `uncertain` means no write (SPEC §4, item 4). Progress never waits on the leader's reply.
 6. After the hand-off, start the next round without waiting for the merge. When no candidate is left, record the idle line once and stop (SPEC §3, step 2).
 7. If the user wants the session to keep going, print one `/goal <condition>` line scoped to the claimed card for the user to paste (SPEC §7). Never run `/goal` yourself.
 

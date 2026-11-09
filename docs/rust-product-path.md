@@ -92,7 +92,7 @@ stderr carries one human line: the same `message` for an operation failure, clap
 
 Not enveloped: `--help` and `--version`, the launchers, and command lines whose first word names no internal operation (clap's own output and exit 2), because no operation can be attributed to them. There is no `request_id`: the decided envelope has none. The input types (`Profile`, `Plan`, `AgentsRequest`, `AgentsPlan`) are unchanged, so a caller passes an envelope's `result`, not the envelope, to the matching `*.apply`.
 
-Skill-side names: `skills/moai/SKILL.md` refers to the contract only as "a plan digest plus a caller-supplied permission reference", and `references/routes.json` marks SETUP and UPDATE as the only routes with `requires_binary: true`. No workflow file names a subcommand or operation yet, so there is nothing to rename on the skill side. Read against the workflow text (an interpretation, not a binding): `setup.md` steps 5-6 (per-file preview, hash re-check, apply) correspond to `project.*` and `agents.*`, and `update.md` steps 2-3 (package digest comparison, baseline/current/new diff) to `package.*` and `agents.plan`.
+Skill-side names: `skills/moai-cli/SKILL.md` refers to the contract only as "a plan digest plus a caller-supplied permission reference", and `references/routes.json` marks SETUP and UPDATE as the only routes with `requires_binary: true`. No workflow file names a subcommand or operation yet, so there is nothing to rename on the skill side. Read against the workflow text (an interpretation, not a binding): `setup.md` steps 5-6 (per-file preview, hash re-check, apply) correspond to `project.*` and `agents.*`, and `update.md` steps 2-3 (package digest comparison, baseline/current/new diff) to `package.*` and `agents.plan`.
 
 These commands are internal contracts for future native skill adapters. Users are not required to manually invoke them for SETUP. Host discovery, trust verification and skill invocation remain not_run.
 
@@ -421,7 +421,7 @@ Known gaps: the verdict is not stored anywhere (P09, owned by 01-B #1989); every
 
 ## Common skill package skeleton
 
-`skills/moai/` holds the canonical, host-neutral package: `SKILL.md` (`name: moai`, no Claude-only frontmatter, `$ARGUMENTS` or dynamic shell context), `references/routes.json` (eight routes, `classification_is_authorization: false`) and `workflows/{read,setup,update,plan,run,verify,audit,sync}.md`. `package-inspect skills/moai` digests it. Host projections, discovery and invocation are not implemented or verified.
+`skills/moai-cli/` holds the canonical, host-neutral package (named `moai-cli` since #2286, so it coexists with the Go `moai` skill): `SKILL.md` (`name: moai-cli`, no Claude-only frontmatter, `$ARGUMENTS` or dynamic shell context), `references/routes.json` (eight routes plus MODE-LEADER and MODE-AGENT, `classification_is_authorization: false`) and `workflows/{read,setup,update,plan,run,verify,audit,sync,mode-leader,mode-agent}.md`. `package-inspect skills/moai-cli` digests it. Host projections, discovery and invocation are not implemented or verified.
 
 `references/source-manifest.json` (02-A #1991) records where every other package file came from: the design-22 template id (`router-core`, `router-routes`, `workflow-*`), the template Page and snapshot sha256, and the file's current sha256, so a stale entry fails a test. It also pins the legacy source the package is meant to inherit: `modu-ai/moai-adk` at `4fa2aa9db2e0add0f1299e35407141b2b41c5ec0`, Apache-2.0 (read from `LICENSE` at that revision). The inventory's 1,107 rows match `git ls-tree` at that revision blob for blob. The row list itself is `.moai-cli/manifests/legacy-asset-map.json` in the repository, pinned by sha256 and kept outside the package. Two reasons: package files are read with a 64 KiB per-file bound, and the list is about 400 KB that installs would carry while the router never loads it. Every row stays `unchecked`: a row's `intents` and `proposed_action` are an earlier proposal, not an adoption. No legacy bytes are copied into the package.
 
@@ -432,14 +432,14 @@ Package structure is checked by tests only (`cargo test --offline --locked skill
 - The manifest covers every package file with a current sha256.
 - `package-inspect` is repeatable and refuses a tree without `SKILL.md`.
 
-Reference depth is counted outside the route indirection. `SKILL.md` may name only `references/routes.json`, routes point at workflows, and a workflow names no other package file. The SKILL.md → routes → workflow chain is the sanctioned layout, not a depth violation. Package text stays English (RC1 interim decision; a Korean projection is a later step). Not run here: `npx skills-ref validate skills/moai`, because Node is only a lazy nvm shell function in this environment and nothing is installed for the check.
+Reference depth is counted outside the route indirection. `SKILL.md` may name only `references/routes.json`, routes point at workflows, and a workflow names no other package file. The SKILL.md → routes → workflow chain is the sanctioned layout, not a depth violation. Package text stays English (RC1 interim decision; a Korean projection is a later step). Not run here: `npx skills-ref validate skills/moai-cli`, because Node is only a lazy nvm shell function in this environment and nothing is installed for the check.
 
 ## Codex adapter (02-C #1993)
 
 `codex-projection-plan` and `codex-doctor` plan and diagnose a Codex projection of the common package. Neither one writes anything. The contract, sources and gaps are in `docs/codex-adapter-contract.md`.
 
 `codex-projection-plan`:
-- It requires `--target`, an absolute directory named `moai` outside the package. No default location is chosen: `~/.agents/skills/moai` against `<repo>/.agents/skills/moai` is a HOLD.
+- It requires `--target`, an absolute directory named `moai-cli` outside the package (#2286; before it, `moai`). No default location is chosen: `~/.agents/skills/moai-cli` against `<repo>/.agents/skills/moai-cli` is a HOLD.
 - It plans every package file as a byte-identical copy with its sha256.
 - It adds `agents/openai.yaml` with only `interface.display_name`, `short_description` and `default_prompt`. `policy.allow_implicit_invocation` is written only when the flag is passed, so Codex's documented default (`true`) is kept by omission.
 - Requested `tui.status_line` items and `[skills.bundled] enabled = false` come back as `config_changes.status: hold` with every item in `unverified_items`. The official reference lists no item identifiers, and nothing is written.

@@ -245,7 +245,7 @@ fn known_good_copy_holds_pre_overwrite_bytes() {
     );
     // The copies hold the PRE-overwrite bytes: SKILL.md on disk is now v2.
     assert_eq!(
-        fs::read(home.join(".claude/skills/moai/SKILL.md")).unwrap(),
+        fs::read(home.join(".claude/skills/moai-cli/SKILL.md")).unwrap(),
         stage_v2()[0].1.as_bytes()
     );
 }
@@ -326,7 +326,7 @@ fn known_good_failure_starts_nothing_for_the_host() {
         h["reload_basis"]
     );
     assert_eq!(
-        fs::read(home.join(".claude/skills/moai/SKILL.md")).unwrap(),
+        fs::read(home.join(".claude/skills/moai-cli/SKILL.md")).unwrap(),
         v1_skill.as_bytes(),
         "the host must be untouched when the copy fails"
     );

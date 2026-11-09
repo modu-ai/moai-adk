@@ -22,7 +22,7 @@ fn s(p: &Path) -> &str {
 }
 fn package() -> String {
     Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("skills/moai")
+        .join("skills/moai-cli")
         .to_str()
         .unwrap()
         .to_string()
@@ -226,7 +226,7 @@ fn codex_doctor_never_claims_trust() {
 #[test]
 fn codex_config_requests_report_hold_without_writes() {
     let f = fixture();
-    let target = f.home.join(".agents/skills/moai");
+    let target = f.home.join(".agents/skills/moai-cli");
     let (ok, v) = run(&[
         "codex-projection-plan",
         &package(),
@@ -250,7 +250,7 @@ fn codex_config_requests_report_hold_without_writes() {
 #[test]
 fn codex_statusline_items_are_unverified() {
     let f = fixture();
-    let target = f.home.join(".agents/skills/moai");
+    let target = f.home.join(".agents/skills/moai-cli");
     let (ok, v) = run(&[
         "codex-projection-plan",
         &package(),
@@ -275,7 +275,7 @@ fn codex_statusline_items_are_unverified() {
 #[test]
 fn codex_hooks_not_generated() {
     let f = fixture();
-    let target = f.home.join(".agents/skills/moai");
+    let target = f.home.join(".agents/skills/moai-cli");
     let (_, v) = run(&["codex-projection-plan", &package(), "--target", s(&target)]);
     assert_eq!(v["result"]["hooks"]["generated"], serde_json::json!([]));
     assert!(!v["result"]["files"].to_string().contains("hooks"));
@@ -287,7 +287,7 @@ fn codex_hooks_not_generated() {
 #[test]
 fn codex_openai_yaml_only_explicit_fields() {
     let f = fixture();
-    let target = f.home.join(".agents/skills/moai");
+    let target = f.home.join(".agents/skills/moai-cli");
     let pkg = package();
     let yaml = |extra: &[&str]| {
         let mut args = vec![
@@ -350,7 +350,7 @@ fn codex_projection_plan_writes_nothing() {
     let (ok, v) = run(&["codex-projection-plan", &package()]);
     assert!(!ok);
     assert_eq!(v["error"]["kind"], "usage");
-    let target = f.home.join(".agents/skills/moai");
+    let target = f.home.join(".agents/skills/moai-cli");
     let (ok, v) = run(&["codex-projection-plan", &package(), "--target", s(&target)]);
     assert!(ok, "{v}");
     let r = &v["result"];
@@ -358,7 +358,7 @@ fn codex_projection_plan_writes_nothing() {
     assert_eq!(r["host_loaded"], false);
     assert_eq!(r["execution_verified"], false);
     // Every package file is a byte-identical copy (REQ-02C-01).
-    let pkg = Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai");
+    let pkg = Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai-cli");
     let copies: Vec<&Value> = r["files"]
         .as_array()
         .unwrap()
@@ -386,7 +386,7 @@ fn codex_projection_plan_writes_nothing() {
 fn codex_projection_requires_host_neutral_frontmatter() {
     // REQ-02C-01: the projected SKILL.md is the package's bytes, with only name and description.
     let f = fixture();
-    let target = f.home.join(".agents/skills/moai");
+    let target = f.home.join(".agents/skills/moai-cli");
     let (ok, v) = run(&["codex-projection-plan", &package(), "--target", s(&target)]);
     assert!(ok, "{v}");
     assert_eq!(v["result"]["skill_md_identical"], true);
@@ -468,18 +468,18 @@ fn codex_duplicate_moai_skill_is_warned() {
     let (_, v) = doctor(&f, &[]);
     assert!(v["result"]["skills"]["duplicate_warning"].is_null());
     write(
-        &f.root.join("a/.agents/skills/moai/SKILL.md"),
-        "---\nname: moai\n---\n",
+        &f.root.join("a/.agents/skills/moai-cli/SKILL.md"),
+        "---\nname: moai-cli\n---\n",
     );
     write(
-        &f.home.join(".agents/skills/moai/SKILL.md"),
-        "---\nname: moai\n---\n",
+        &f.home.join(".agents/skills/moai-cli/SKILL.md"),
+        "---\nname: moai-cli\n---\n",
     );
     // A folder named moai outside a skills root is not a skill.
     write(&f.root.join("moai/SKILL.md"), "x");
     let (ok, v) = doctor(&f, &[]);
     assert!(ok, "{v}");
-    let found = v["result"]["skills"]["moai"].as_array().unwrap();
+    let found = v["result"]["skills"]["moai-cli"].as_array().unwrap();
     let scopes: Vec<&str> = found.iter().map(|e| e["scope"].as_str().unwrap()).collect();
     assert_eq!(scopes, ["repository", "user"]);
     assert!(v["result"]["skills"]["duplicate_warning"]

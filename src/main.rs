@@ -633,7 +633,7 @@ fn launch(
     // REQ-A5-01 (#2164): `-l|-a` is deprecated — warn on stderr and record a note,
     // keeping the composed behavior unchanged until the removal card lands.
     if leader.is_some() {
-        eprintln!("deprecated: use `/moai --mode leader|agent` inside the session");
+        eprintln!("deprecated: use `/moai-cli --leader-mode|--agent-mode` inside the session");
     }
     let name_given = o.name.is_some();
     // A role brings its default name; a plain session gets none.
@@ -659,7 +659,9 @@ fn launch(
     let mut v = session_launch(&request, o.dry_run)?;
     if leader.is_some() {
         if let Some(notes) = v["notes"].as_array_mut() {
-            notes.push("deprecated: use `/moai --mode leader|agent` inside the session".into());
+            notes.push(
+                "deprecated: use `/moai-cli --leader-mode|--agent-mode` inside the session".into(),
+            );
         }
     }
     if leader == Some(false) && !name_given {

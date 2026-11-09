@@ -118,8 +118,8 @@ fn check_frontmatter(skill: &[u8]) -> Result<()> {
             "invalid package: SKILL.md frontmatter must hold only name and description".into(),
         );
     }
-    if keys.iter().any(|(k, v)| *k == "name" && *v != "moai") {
-        return Err("invalid package: SKILL.md name must be moai".into());
+    if keys.iter().any(|(k, v)| *k == "name" && *v != "moai-cli") {
+        return Err("invalid package: SKILL.md name must be moai-cli".into());
     }
     Ok(())
 }
@@ -141,8 +141,8 @@ pub fn projection_plan(
     if target.starts_with(&package_abs) {
         return Err("invalid target: must be outside the package".into());
     }
-    if target.file_name().and_then(|n| n.to_str()) != Some("moai") {
-        return Err("invalid target: the skill directory must be named moai".into());
+    if target.file_name().and_then(|n| n.to_str()) != Some("moai-cli") {
+        return Err("invalid target: the skill directory must be named moai-cli".into());
     }
     let mut files = Vec::new();
     package_files(&package_abs, &package_abs, &mut files)?;
@@ -230,11 +230,13 @@ fn first_doc(dir: &Path, names: &[String]) -> Result<Option<(PathBuf, String)>> 
     Ok(None)
 }
 
-/// `roots` are skill roots (directories that hold `<name>/SKILL.md`).
+/// `roots` are skill roots (directories that hold `<name>/SKILL.md`). Only the RC1
+/// package name (`moai-cli`, #2286) is detected — a Go `moai` skill is another
+/// product's directory and stays unread here.
 fn moai_skills(roots: &[(PathBuf, &str)]) -> Vec<Value> {
     roots
         .iter()
-        .map(|(root, scope)| (root.join("moai/SKILL.md"), scope))
+        .map(|(root, scope)| (root.join("moai-cli/SKILL.md"), scope))
         .filter(|(path, _)| path.is_file())
         .map(|(path, scope)| json!({"path": path, "scope": scope}))
         .collect()
@@ -355,8 +357,8 @@ pub fn doctor(
             "status_line": "not_evaluated",
             "reason": TOML_HOLD
         },
-        "skills": {"moai": found, "duplicate_warning": if duplicate {
-            json!("more than one skill named moai was found; Codex does not merge them and both can appear in selectors")
+        "skills": {"moai-cli": found, "duplicate_warning": if duplicate {
+            json!("more than one skill named moai-cli was found; Codex does not merge them and both can appear in selectors")
         } else { Value::Null }},
         "writes": [],
         "host_loaded": false,

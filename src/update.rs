@@ -1,7 +1,7 @@
 //! Host projection UPDATE (Issue #1999, 04-B).
 //!
-//! `update-plan` inventories every host projection (Claude `~/.claude/skills/moai/`,
-//! Codex `~/.agents/skills/moai/` — the design-verified paths; project-level projections
+//! `update-plan` inventories every host projection (Claude `~/.claude/skills/moai-cli/`,
+//! Codex `~/.agents/skills/moai-cli/` — the design-verified paths; project-level projections
 //! are a P04 HOLD and are not included), compares each file three-way (baseline = the
 //! ownership manifest of the latest host receipt, current = bytes on disk, new = the
 //! staged package) and writes nothing. `update-apply` recomputes the plan and refuses
@@ -56,8 +56,15 @@ fn skills_dir(host: &str) -> &'static str {
     }
 }
 
+/// The installed skill's projection directory name (#2286): `moai-cli`, so the RC1
+/// skill coexists with the Go MoAI `moai` skill under the same `skills/` root —
+/// the same state-root principle that put RC1 in `.moai-cli/`. A pre-existing
+/// `skills/moai` directory is another product's package: never read as ours, never
+/// written, never blocked on (AC-1, #2286).
+pub(crate) const SKILL_DIR: &str = "moai-cli";
+
 pub(crate) fn projection_root(home: &Path, host: &str) -> PathBuf {
-    home.join(skills_dir(host)).join("moai")
+    home.join(skills_dir(host)).join(SKILL_DIR)
 }
 
 /// UTC RFC3339 second precision; local copy of install.rs's private formatter.

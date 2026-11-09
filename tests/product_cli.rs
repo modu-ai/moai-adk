@@ -297,7 +297,7 @@ fn profile_v1_file_still_readable_under_v2() {
     // REQ-03A-01: v1 files stay readable with defaulted new fields, and a matching v2
     // input plans the upgrade instead of stalling on the schema marker (audit #2052).
     let root = TempDir::new().unwrap();
-    fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
+    fs::create_dir_all(root.path().join("skills/moai-cli/workflows")).unwrap();
     let file = root.path().join(".moai-cli/project.yaml");
     fs::create_dir_all(file.parent().unwrap()).unwrap();
     let v1 = json!({
@@ -561,7 +561,7 @@ fn package_inspection_is_stable_and_covers_support_files() {
 // ---- AGENTS.md managed-section generation -------------------------------------------------
 
 fn agents_request(language: &str, local_file: &str) -> Value {
-    json!({"protocol_version":1,"language":language,"workflow_reference":"skills/moai/workflows/","local_file":local_file})
+    json!({"protocol_version":1,"language":language,"workflow_reference":"skills/moai-cli/workflows/","local_file":local_file})
 }
 fn agents_plan(root: &TempDir, request: &Value) -> std::process::Output {
     cli(&["agents-plan", root.path().to_str().unwrap()], request)
@@ -581,7 +581,7 @@ fn agents_apply(root: &TempDir, plan: &Value) -> std::process::Output {
 }
 fn agents_project(language: &str, local_file: &str) -> (TempDir, Value) {
     let root = TempDir::new().unwrap();
-    fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
+    fs::create_dir_all(root.path().join("skills/moai-cli/workflows")).unwrap();
     create(&root, &profile(None));
     let out = agents_plan(&root, &agents_request(language, local_file));
     assert!(
@@ -615,7 +615,7 @@ fn actions(plan: &Value) -> Vec<(String, String)> {
 #[test]
 fn agents_generation_is_idempotent_and_preserves_user_body() {
     let root = TempDir::new().unwrap();
-    fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
+    fs::create_dir_all(root.path().join("skills/moai-cli/workflows")).unwrap();
     create(&root, &profile(None));
     let user_body = "# My project\r\n\r\nUser rules stay as written.\r\n";
     fs::write(root.path().join("AGENTS.md"), user_body).unwrap();
@@ -640,7 +640,7 @@ fn agents_generation_is_idempotent_and_preserves_user_body() {
     let agents = fs::read_to_string(root.path().join("AGENTS.md")).unwrap();
     assert!(agents.starts_with(user_body));
     assert!(agents.contains("<!-- moai:managed:begin id=moai-workflow -->"));
-    assert!(agents.contains("skills/moai/workflows/"));
+    assert!(agents.contains("skills/moai-cli/workflows/"));
     let ignore = fs::read_to_string(root.path().join(".gitignore")).unwrap();
     assert!(ignore.starts_with("target/\n"));
     assert!(ignore.contains("\nAGENTS.local.md\n"));
@@ -806,7 +806,7 @@ fn agents_plan_rejects_replay_tamper_missing_reference_and_shadowing_is_reported
     assert!(!agents_plan(&root, &agents_request("en", "none"))
         .status
         .success());
-    fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
+    fs::create_dir_all(root.path().join("skills/moai-cli/workflows")).unwrap();
     fs::write(root.path().join("CLAUDE.md"), "existing\n").unwrap();
     fs::write(root.path().join("AGENTS.override.md"), "codex override\n").unwrap();
     let out = agents_plan(&root, &agents_request("en", "none"));
@@ -817,7 +817,7 @@ fn agents_plan_rejects_replay_tamper_missing_reference_and_shadowing_is_reported
     // Replay in another project is refused.
     let other = TempDir::new().unwrap();
     create(&other, &profile(None));
-    fs::create_dir_all(other.path().join("skills/moai/workflows")).unwrap();
+    fs::create_dir_all(other.path().join("skills/moai-cli/workflows")).unwrap();
     assert!(!agents_apply(&other, &plan).status.success());
     assert!(!other.path().join("AGENTS.md").exists());
     // Tampered plan is refused.
@@ -859,7 +859,7 @@ fn agents_apply_refuses_symlinked_parents_and_recovers_from_partial_apply() {
     use std::os::unix::fs::symlink;
     let root = TempDir::new().unwrap();
     let outside = TempDir::new().unwrap();
-    fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
+    fs::create_dir_all(root.path().join("skills/moai-cli/workflows")).unwrap();
     create(&root, &profile(None));
     symlink(outside.path(), root.path().join("AGENTS.md")).unwrap();
     assert!(!agents_plan(&root, &agents_request("en", "none"))
@@ -951,7 +951,7 @@ fn profile_values_cannot_inject_managed_markers() {
         ("purpose", json!("mentions moai:managed: syntax")),
     ] {
         let root = TempDir::new().unwrap();
-        fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
+        fs::create_dir_all(root.path().join("skills/moai-cli/workflows")).unwrap();
         let mut input = profile(None);
         input[field] = value;
         create(&root, &input);
@@ -1159,7 +1159,7 @@ fn launcher_flags_can_be_disabled() {
 /// keeps the composed behavior — both launcher shapes.
 #[test]
 fn launcher_deprecated_roles_warn_and_keep_compose() {
-    let phrase = "deprecated: use `/moai --mode leader|agent` inside the session";
+    let phrase = "deprecated: use `/moai-cli --leader-mode|--agent-mode` inside the session";
     for args in [
         &["-l", "--dry-run"][..],
         &["-a", "--name", "agent-7", "--dry-run"][..],
@@ -1717,7 +1717,7 @@ fn protocol_fixtures_record_current_contract() {
     let e = empty.path().to_str().unwrap().to_string();
     let repo = TempDir::new().unwrap();
     let r = repo.path().to_str().unwrap().to_string();
-    fs::create_dir_all(project.path().join("skills/moai/workflows")).unwrap();
+    fs::create_dir_all(project.path().join("skills/moai-cli/workflows")).unwrap();
     fs::write(package.path().join("SKILL.md"), "router\n").unwrap();
     let mut run = FixtureRun {
         roots: [&project, &package, &empty, &repo]
@@ -2222,7 +2222,7 @@ mod skill_package {
     const ALLOWED_KEYS: [&str; 4] = ["name", "description", "license", "metadata"];
 
     fn root() -> PathBuf {
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai")
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai-cli")
     }
     fn files(dir: &Path, base: &Path, out: &mut Vec<String>) {
         for entry in fs::read_dir(dir).unwrap() {
@@ -3284,7 +3284,7 @@ fn sources_manifest_rerun_is_byte_identical() {
 
 fn generation_project() -> TempDir {
     let root = TempDir::new().unwrap();
-    fs::create_dir_all(root.path().join("skills/moai/workflows")).unwrap();
+    fs::create_dir_all(root.path().join("skills/moai-cli/workflows")).unwrap();
     fs::create_dir_all(root.path().join(".moai-cli")).unwrap();
     let profile = json!({"schema_version":2,"project_id":"demo","purpose":"Build a small editor","tools":["Rust"],"development_methods":["TDD"],"hosts":["claude","codex"],"interview_revision":"rc1-fixture-1"});
     let mut bytes = serde_json::to_vec_pretty(&profile).unwrap();
@@ -3297,7 +3297,7 @@ fn generation_request(local_file: &str) -> Value {
     json!({
         "protocol_version": 1,
         "language": "en",
-        "workflow_reference": "skills/moai/workflows",
+        "workflow_reference": "skills/moai-cli/workflows",
         "local_file": local_file,
         "workflow_id": "review-flow",
         "native_roles": [],

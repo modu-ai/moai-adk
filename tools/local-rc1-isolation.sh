@@ -38,17 +38,17 @@ PD="$(python3 -I -c 'import json,sys; print(json.load(open(sys.argv[1]))["plan_d
 run project-apply project-apply "$P" --plan-digest "$PD" --permission-reference kit-isolation < "$OUT/project-plan.result.json"
 
 # --- project leg: agents-plan -> agents-apply ---
-printf '{"protocol_version":1,"language":"en","workflow_reference":"'"${WF_REF:-skills/moai/workflows/}"'","local_file":"none"}' > "$OUT/agents-request.json"
+printf '{"protocol_version":1,"language":"en","workflow_reference":"'"${WF_REF:-skills/moai-cli/workflows/}"'","local_file":"none"}' > "$OUT/agents-request.json"
 run agents-plan agents-plan "$P" < "$OUT/agents-request.json"
 python3 -I -c 'import json,sys; v=json.load(open(sys.argv[1])); json.dump(v["result"],open(sys.argv[2],"w"))' "$OUT/agents-plan.json" "$OUT/agents-plan.result.json" 2>/dev/null
 AD="$(python3 -I -c 'import json,sys; print(json.load(open(sys.argv[1]))["plan_digest"])' "$OUT/agents-plan.result.json" 2>/dev/null)"
 run agents-apply agents-apply "$P" --plan-digest "$AD" --permission-reference kit-isolation < "$OUT/agents-plan.result.json"
 
 # --- home leg: update-plan -> update-apply -> recovery-plan ---
-run update-plan update-plan "$H" "$REPO/skills/moai" < /dev/null
+run update-plan update-plan "$H" "$REPO/skills/moai-cli" < /dev/null
 python3 -I -c 'import json,sys; v=json.load(open(sys.argv[1])); json.dump(v["result"],open(sys.argv[2],"w"))' "$OUT/update-plan.json" "$OUT/update-plan.result.json" 2>/dev/null
 UD="$(python3 -I -c 'import json,sys; print(json.load(open(sys.argv[1]))["plan_digest"])' "$OUT/update-plan.result.json" 2>/dev/null)"
-run update-apply update-apply "$H" "$REPO/skills/moai" --plan-digest "$UD" --permission-reference kit-isolation < "$OUT/update-plan.result.json"
+run update-apply update-apply "$H" "$REPO/skills/moai-cli" --plan-digest "$UD" --permission-reference kit-isolation < "$OUT/update-plan.result.json"
 run recovery-plan recovery-plan "$H" < /dev/null
 
 snap "$H" > "$OUT/home-after.sha256"; snap "$P" > "$OUT/proj-after.sha256"
