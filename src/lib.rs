@@ -8,6 +8,7 @@ pub mod claude;
 pub mod context;
 pub mod contract;
 pub mod decision;
+pub mod flow;
 pub mod forge;
 pub mod generation;
 pub mod github_templates;
