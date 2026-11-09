@@ -16,9 +16,10 @@
 //!
 //! RC1 interim decisions (leader, 2026-11-08): this doctor and this projection plan read no
 //! TOML, so trust, inline hooks and the status line are `not_evaluated` and never reported as
-//! trusted; no hooks are generated; the projection target is always explicit. Writing the
-//! project `.codex/config.toml` is the separate plan/apply in `codex_config` (#2240); the
-//! doctor reading it is a follow-up.
+//! trusted; this projection generates no hooks (hook generation is `hooks-plan` /
+//! `hooks-apply --host codex`, rc.2 I1 #2238); the projection target is always explicit.
+//! Writing the project `.codex/config.toml` is the separate plan/apply in `codex_config`
+//! (#2240); the doctor reading it is a follow-up.
 //! The install location (`~/.agents/skills/moai` vs `<repo>/.agents/skills/moai`) stays a
 //! HOLD (P04 / contract gap C5): there is no default, the caller names the target.
 use crate::{apply, digest, package_digest};
@@ -345,7 +346,7 @@ pub fn projection_plan(
         "location": LOCATION_HOLD,
         "skill_md_identical": skill_md_identical,
         "config_changes": config,
-        "hooks": {"generated": [], "reason": "RC1 interim decision: no Codex hooks are generated"},
+        "hooks": {"generated": [], "reason": "a projection generates no hooks; see hooks-plan / hooks-apply --host codex (#2238)"},
         "invocation": {"desktop": "$moai in the composer", "cli": "/skills or $moai", "ide": "/skills or $moai"},
         "notes": [
             "plan only: nothing is written; codex-projection-apply writes this plan when given its plan_digest",

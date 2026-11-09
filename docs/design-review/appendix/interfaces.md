@@ -22,7 +22,10 @@
 - `agents-apply`
 - `agents-plan`
 - `apply-recover`
+- `archive-apply`
 - `archive-plan`
+- `archive-restore`
+- `archive-search`
 - `atlas-tag-scan`
 - `audit-reduce`
 - `baseline-inventory`
@@ -52,6 +55,9 @@
 - `generation-plan`
 - `github-apply`
 - `github-plan`
+- `hook-receipt`
+- `hooks-apply`
+- `hooks-plan`
 - `identity`
 - `install-inspect`
 - `leader-tick`

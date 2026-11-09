@@ -14,6 +14,7 @@ pub mod forge;
 pub mod generation;
 pub mod github_templates;
 pub mod handoff;
+pub mod hooks;
 pub mod hosts;
 pub mod identity;
 pub mod install;

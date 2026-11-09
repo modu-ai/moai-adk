@@ -1,7 +1,7 @@
 //! GitLab forge contract declaration (Issue #2171, REQ-B4-01) — metadata only.
 //!
-//! Decided 2026-11-09 01:1x (`docs/decisions-2026-11-08.md`: GitLab 계약만 — 계정
-//! 없음). This module declares the capabilities the official GitLab REST
+//! Decided 2026-11-09 01:1x (`docs/decisions-2026-11-08.md`: GitLab contract only — no
+//! account). This module declares the capabilities the official GitLab REST
 //! documentation describes and NOTHING else: there is no GitLab transport,
 //! client, URL or call path anywhere in this crate, and growing one is a
 //! separate issue. A declaration is not a route (REQ-B4-01).
@@ -37,7 +37,7 @@ pub trait ForgeCapabilities {
     fn capabilities(&self) -> &'static [ProviderCapability];
 }
 
-/// GitLab contract (decisions 2026-11-09 01:1x: 계약만 — 계정 없음). The three
+/// GitLab contract (decisions 2026-11-09 01:1x: contract only — no account). The three
 /// capabilities the SYNC procedure needs (merge request, pipeline, note) are
 /// `documented` by the official GitLab REST documentation. Every other
 /// capability is unknown by absence — it is not declared here at all, and a
