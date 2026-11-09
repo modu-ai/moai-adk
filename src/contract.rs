@@ -76,6 +76,7 @@ const RULES: &[(&str, Kind)] = &[
     // forge-read (07-A #2008): its messages carry these prefixes; they precede the generic
     // words because a transport message may quote `unavailable` or `refused`.
     ("forge blocked: ", Kind::Blocked),
+    ("lane handoff blocked: ", Kind::Blocked),
     ("gh transport: ", Kind::Transport),
     ("forge resource not found", Kind::NotFound),
     (

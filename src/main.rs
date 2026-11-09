@@ -200,6 +200,14 @@ enum Command {
     LeaderTick {
         project: PathBuf,
     },
+    /// Lane handoff gate (rc.2 A10 #2264): typed JSON request on stdin; read-only
+    /// verification that the worktree is safe to exit — status clean, HEAD ==
+    /// observed remote == PR head, claim trailers on all commits, leader report
+    /// record present, no publish_unknown outbox effects. A failed status blocks
+    /// the exit (kind blocked, exit 1) with a preservation note.
+    LaneHandoffCheck {
+        project: PathBuf,
+    },
     /// Read the current claim record of a task key; byte-identical when repeated.
     ClaimShow {
         project: PathBuf,
@@ -686,6 +694,7 @@ const OPERATIONS: &[(&str, &str)] = &[
     ("codex-doctor", "codex.doctor"),
     ("claim-acquire", "claim.acquire"),
     ("queue-next", "queue.next"),
+    ("lane-handoff-check", "lane_handoff.check"),
     ("leader-tick", "leader.tick"),
     ("claim-show", "claim.show"),
     ("claim-release", "claim.release"),
@@ -911,6 +920,23 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             &moai_cli::forge::transport::GhTransport::from_env()?,
             &moai_cli::forge::policy::SystemClock,
         ),
+        Command::LaneHandoffCheck { project } => {
+            let mut request = input::<moai_cli::lane_handoff::LaneHandoffRequest>()?;
+            // The CLI positional project wins over any stdin value (consistency
+            // with every other project-taking op).
+            request.project = project.clone();
+
+            let report = moai_cli::lane_handoff::handoff_check(&request)?;
+            if report["status"] == serde_json::json!("failed") {
+                eprintln!(
+                    "{}",
+                    serde_json::to_string_pretty(&report).unwrap_or_default()
+                );
+                return Err(moai_cli::lane_handoff::blocked_message(&report)
+                    .unwrap_or_else(|| "lane handoff blocked".into()));
+            }
+            Ok(report)
+        }
         Command::LeaderTick { project } => moai_cli::leader::tick_cli(
             &project,
             input::<moai_cli::leader::TickRequest>()?,
