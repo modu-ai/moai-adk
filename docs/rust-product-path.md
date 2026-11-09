@@ -595,20 +595,20 @@ Fixtures: `tests/archive_move_fixture_test.rs` (success fixture with hash, readb
 
 `tests/archive_privacy_suite.rs` holds both acceptance suites (REQ-D3-01: every case judges its own criterion; `cargo test --offline --locked --test archive_privacy_suite`). The library cases pin `now`; the CLI cases run the real binary against fixture commits dated 2025-01-01, so they hold under the real clock too. The design §17 text names the suites only, so the criteria below come from the Issue scope (ARCHIVE: no move of active work, pending or held SPECs, hash/readback, restore, search retained; PRIVACY: no leak across projects or permissions, no secret transmission, no execution of document instructions).
 
-| Suite | Case | Automatic pass criterion | 3736fca3c (D2 as audited) |
-|---|---|---|---|
-| ARCHIVE | `archive_01_active_work_never_moves` | `draft` and `in-progress` SPECs keep a byte-identical manifest and get no archived copy; only the eligible SPEC moves | passed |
-| ARCHIVE | `archive_02_pending_evidence_never_moves` | `evidence: pending` SPEC unchanged, not archived | passed |
-| ARCHIVE | `archive_03_hold_and_ambiguous_hold_never_move` | `hold: true` and `hold: yes` SPECs unchanged, not archived | passed |
-| ARCHIVE | `archive_04_hash_and_readback_gate_the_move` | a corrupted staged copy is refused with `readback digest mismatch` and the source keeps its pre-move hash; the real move publishes a copy whose manifest equals the pre-move hash, and the index records that digest | passed |
-| ARCHIVE | `archive_05_restore_round_trips_nested_and_binary_files` | nested directories, an empty-but-for-`.keep` directory and a binary file come back with an identical manifest and identical bytes; the archived copy is gone | passed |
-| ARCHIVE | `archive_06_archived_text_stays_searchable_until_restored` | archived text is found with `source: "file"`; after restore the same query returns no hit | passed |
-| ARCHIVE | `archive_07_every_archived_id_can_be_restored` | an id that restore refuses (`SPEC odd name`) is never archived, or else restores | **failed** — #2295 audit F1 |
-| PRIVACY | `privacy_01_index_cannot_point_search_outside_the_project` | an index `path` rewritten to a relative escape or to an absolute path into a second project yields no hit from that project (or `archive index invalid`) | **failed** — #2295 audit N1 |
-| PRIVACY | `privacy_02_symlink_into_another_project_is_never_copied` | a symlink to a second project's file makes apply refuse with `symlink`; nothing is archived and the source stays | passed |
-| PRIVACY | `privacy_03_secret_values_never_leave_the_archived_file` | a secret-shaped value never appears in the stdout or stderr of plan, apply, search and restore (the line is still found by a neighbouring word), nor in `index.json` or the manifest file | passed |
-| PRIVACY | `privacy_04_document_and_name_payloads_never_execute` | `$(touch …)`, backticks, a fenced `sh` block, an "ignore previous instructions" line and a `SPEC-$(touch pwned)` directory name pass through plan, apply, search and restore; neither sentinel file exists afterwards | passed |
-| PRIVACY | `privacy_05_file_permission_bits_survive_archive_and_restore` | a `0600` file is `0600` in the archive and after restore (unix) | passed |
-| PRIVACY | `privacy_06_operations_need_no_network` | plan, apply, search and restore succeed under `sandbox-exec` with `(deny network*)`, and plan reports `network: disabled` — macOS only; on Linux the case does not compile and is not_run, never passed | passed (macOS) |
+| Suite | Case | Automatic pass criterion | 3736fca3c (D2 as audited) | b51bfc1be (D2 repaired, merged #2295) |
+|---|---|---|---|---|
+| ARCHIVE | `archive_01_active_work_never_moves` | `draft` and `in-progress` SPECs keep a byte-identical manifest and get no archived copy; only the eligible SPEC moves | passed | passed |
+| ARCHIVE | `archive_02_pending_evidence_never_moves` | `evidence: pending` SPEC unchanged, not archived | passed | passed |
+| ARCHIVE | `archive_03_hold_and_ambiguous_hold_never_move` | `hold: true` and `hold: yes` SPECs unchanged, not archived | passed | passed |
+| ARCHIVE | `archive_04_hash_and_readback_gate_the_move` | a corrupted staged copy is refused with `readback digest mismatch` and the source keeps its pre-move hash; the real move publishes a copy whose manifest equals the pre-move hash, and the index records that digest | passed | passed |
+| ARCHIVE | `archive_05_restore_round_trips_nested_and_binary_files` | nested directories, an empty-but-for-`.keep` directory and a binary file come back with an identical manifest and identical bytes; the archived copy is gone | passed | passed |
+| ARCHIVE | `archive_06_archived_text_stays_searchable_until_restored` | archived text is found with `source: "file"`; after restore the same query returns no hit | passed | passed |
+| ARCHIVE | `archive_07_every_archived_id_can_be_restored` | an id that restore refuses (`SPEC odd name`) is never archived, or else restores | **failed** — #2295 audit F1 | passed |
+| PRIVACY | `privacy_01_index_cannot_point_search_outside_the_project` | an index `path` rewritten to a relative escape or to an absolute path into a second project yields no hit from that project (or `archive index invalid`) | **failed** — #2295 audit N1 | passed |
+| PRIVACY | `privacy_02_symlink_into_another_project_is_never_copied` | a symlink to a second project's file makes apply refuse with `symlink`; nothing is archived and the source stays | passed | passed |
+| PRIVACY | `privacy_03_secret_values_never_leave_the_archived_file` | a secret-shaped value never appears in the stdout or stderr of plan, apply, search and restore (the line is still found by a neighbouring word), nor in `index.json` or the manifest file | passed | passed |
+| PRIVACY | `privacy_04_document_and_name_payloads_never_execute` | `$(touch …)`, backticks, a fenced `sh` block, an "ignore previous instructions" line and a `SPEC-$(touch pwned)` directory name pass through plan, apply, search and restore; neither sentinel file exists afterwards | passed | passed |
+| PRIVACY | `privacy_05_file_permission_bits_survive_archive_and_restore` | a `0600` file is `0600` in the archive and after restore (unix) | passed | passed |
+| PRIVACY | `privacy_06_operations_need_no_network` | plan, apply, search and restore succeed under `sandbox-exec` with `(deny network*)`, and plan reports `network: disabled` — macOS only; on Linux the case does not compile and is not_run, never passed | passed (macOS) | passed (macOS) |
 
-The two failed cases are the #2295 audit findings, reproduced independently; the D2 repair is handed to another lane (leader decision 2026-11-09), and this card does not change `src/archive.rs`. The table's last column is refreshed when the repaired head is merged.
+The two cases that failed at 3736fca3c were the #2295 audit findings F1 and N1, reproduced independently. The D2 repair went to another lane (leader decision 2026-11-09) and this card does not change `src/archive.rs`. With the repaired D2 merged (b51bfc1be) all 13 cases pass.
