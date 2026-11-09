@@ -234,6 +234,7 @@ fn repair_search_refuses_traversal_in_index_ids() {
     apply(&project, now(), None, &digest_of(&project), PERMISSION).unwrap();
     let mut idx = index(&project);
     idx["entries"][0]["spec_id"] = serde_json::json!("../outside");
+    idx["entries"][0]["path"] = serde_json::json!(".moai-cli/archive/specs/../outside");
     fs::write(
         project.join(".moai-cli/archive/index.json"),
         serde_json::to_vec(&idx).unwrap(),
