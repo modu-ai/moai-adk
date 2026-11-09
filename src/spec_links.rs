@@ -83,7 +83,8 @@ pub fn req_ids_in_test_name(name: &str) -> Vec<String> {
         let numbered = segs
             .last()
             .is_some_and(|g| g.bytes().all(|b| b.is_ascii_digit()));
-        if numbered && segs.len() >= 2 {
+        // `is_req_id` requires a segment before the number, so `req_2195_x` is refused.
+        if numbered {
             let id = format!("REQ-{}", segs.join("-"));
             if is_req_id(&id) && !out.contains(&id) {
                 out.push(id);
