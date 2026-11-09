@@ -1178,11 +1178,8 @@ fn run_internal(command: Command) -> Result<serde_json::Value, String> {
             moai_cli::sources::read_receipt(&project, &dir, &name)
         }
         Command::CostReport {} => {
-            let request = input::<moai_cli::run::CostRequest>()?;
-            if request.protocol_version != contract::PROTOCOL_VERSION {
-                return Err("unsupported protocol_version; supported: 1".into());
-            }
-            moai_cli::run::cost_report(request)
+            // cost_report checks protocol_version itself (one check, not two).
+            moai_cli::run::cost_report(input::<moai_cli::run::CostRequest>()?)
         }
         Command::GithubPlan { project } => {
             serde_json::to_value(moai_cli::github_templates::github_plan(

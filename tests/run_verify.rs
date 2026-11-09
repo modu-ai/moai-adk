@@ -596,14 +596,12 @@ fn retry_budget_stops_on_repeated_failure() {
     );
 }
 
-/// #2191 AC-1/AC-2: cost_report aggregates fixture receipts — check outcomes,
-/// durations and wall spans carry the measured basis, external backend calls are
-/// structurally zero, tokens are absent, and the estimates list is empty (nothing
-/// in the receipts is estimated).
-#[test]
-fn cost_report_aggregates_fixture_receipts() {
-    use moai_cli::run::CostRequest;
-
+/// Fixture receipt for the cost_report tests: two checks (120 ms passed, 80 ms
+/// failed) whose span runs from 130 to 1120.
+fn cost_fixture_receipt(
+    task_id: &str,
+    kind: moai_cli::run::ProducerKind,
+) -> moai_cli::run::Receipt {
     let check =
         |command_ref: usize, duration_ms: Option<u64>, started: u64| moai_cli::verify::CheckRun {
             command_ref,
@@ -629,10 +627,8 @@ fn cost_report_aggregates_fixture_receipts() {
             tests_failed: None,
             output_complete: Some(true),
         };
-    let receipt = |task_id: &str| moai_cli::run::Receipt {
-        producer: moai_cli::run::Producer {
-            kind: moai_cli::run::ProducerKind::RunnerReceipt,
-        },
+    moai_cli::run::Receipt {
+        producer: moai_cli::run::Producer { kind },
         task_id: task_id.into(),
         attempt_id: "attempt-1".into(),
         spec_ref: "SPEC-demo".into(),
@@ -656,36 +652,111 @@ fn cost_report_aggregates_fixture_receipts() {
         oracle_changes: Vec::new(),
         red_confirmed: None,
         result: moai_cli::run::Summary::Passed,
-    };
-    let req = CostRequest {
+    }
+}
+
+fn cost_report_of(receipts: Vec<moai_cli::run::Receipt>) -> serde_json::Value {
+    moai_cli::run::cost_report(moai_cli::run::CostRequest {
         protocol_version: 1,
-        receipts: vec![receipt("task-a"), receipt("task-b")],
-    };
-    let report = moai_cli::run::cost_report(req).unwrap();
+        receipts,
+    })
+    .unwrap()
+}
+
+/// #2191 AC-1/AC-2: cost_report aggregates runner receipts — check outcomes,
+/// durations and wall spans carry the measured basis, external backend calls are
+/// structurally zero, tokens are absent, and the estimates list is empty (nothing
+/// in the receipts is estimated).
+#[test]
+fn cost_report_aggregates_fixture_receipts() {
+    use moai_cli::run::ProducerKind::RunnerReceipt;
+    let report = cost_report_of(vec![
+        cost_fixture_receipt("task-a", RunnerReceipt),
+        cost_fixture_receipt("task-b", RunnerReceipt),
+    ]);
     assert_eq!(report["receipts"], json!(2));
+    let runner = &report["by_producer"]["runner-receipt"];
+    assert_eq!(runner["receipts"], json!(2));
     assert_eq!(
-        report["checks"],
+        runner["checks"],
         json!({"total": 4, "passed": 2, "failed": 2, "not_run": 0, "basis": "measured"})
     );
     // Measured duration: 120 + 80 per receipt, aggregated over both.
-    assert_eq!(report["duration_ms"]["total"], json!(400));
-    assert_eq!(report["duration_ms"]["samples_missing"], json!(0));
-    assert_eq!(report["duration_ms"]["basis"], json!("measured"));
+    assert_eq!(runner["duration_ms"]["total"], json!(400));
+    assert_eq!(runner["duration_ms"]["samples_missing"], json!(0));
+    assert_eq!(runner["duration_ms"]["basis"], json!("measured"));
     // Wall span per receipt: earliest start (130) to latest finish (1120) = 990;
     // both receipts share the fixture timestamps so p50 is 990.
-    assert_eq!(report["wall_span_ms"]["p50"], json!(990));
-    assert_eq!(report["wall_span_ms"]["basis"], json!("measured"));
+    assert_eq!(runner["wall_span_ms"]["p50"], json!(990));
+    assert_eq!(runner["wall_span_ms"]["basis"], json!("measured"));
     // External backend calls are structurally zero: the runner spawns local
     // commands only. Tokens have no source in a receipt and are absent, not
     // estimated; the estimates list is empty (REQ-D5-01).
     assert_eq!(
-        report["external_backend_calls"],
+        runner["external_backend_calls"],
         json!({"count": 0, "basis": "structural"})
     );
+    assert_eq!(report["by_producer"]["self-report"], json!(null));
     assert_eq!(report["tokens"]["basis"], json!("absent"));
     assert_eq!(report["estimates"], json!([]));
     let first = &report["per_receipt"][0];
     assert_eq!(first["task_id"], json!("task-a"));
     assert_eq!(first["duration_ms"], json!(200));
     assert_eq!(first["producer_kind"], json!("runner-receipt"));
+    assert_eq!(first["basis"], json!("measured"));
+}
+
+/// #2191 audit repair (REQ-D5-01): a self-report's numbers are what the reporter
+/// claims, not runner measurements — the same fixture with only the producer kind
+/// switched is tagged self_reported, and its external backend call count is absent
+/// rather than structurally zero. Nothing lands in the runner group.
+#[test]
+fn cost_report_tags_self_report_receipts_self_reported() {
+    use moai_cli::run::ProducerKind::SelfReport;
+    let report = cost_report_of(vec![cost_fixture_receipt("task-s", SelfReport)]);
+    // No runner receipts: the runner group is null, not a zero-filled measured row.
+    assert_eq!(report["by_producer"]["runner-receipt"], json!(null));
+    let own = &report["by_producer"]["self-report"];
+    assert_eq!(own["receipts"], json!(1));
+    assert_eq!(
+        own["checks"],
+        json!({"total": 2, "passed": 1, "failed": 1, "not_run": 0, "basis": "self_reported"})
+    );
+    assert_eq!(own["duration_ms"]["total"], json!(200));
+    assert_eq!(own["duration_ms"]["basis"], json!("self_reported"));
+    assert_eq!(own["wall_span_ms"]["basis"], json!("self_reported"));
+    assert_eq!(
+        own["external_backend_calls"],
+        json!({"count": null, "basis": "absent"})
+    );
+    let row = &report["per_receipt"][0];
+    assert_eq!(row["producer_kind"], json!("self-report"));
+    assert_eq!(row["basis"], json!("self_reported"));
+    // No measured or structural basis anywhere for a self-report-only input.
+    let text = report.to_string();
+    assert!(!text.contains("\"measured\""), "{text}");
+    assert!(!text.contains("\"structural\""), "{text}");
+}
+
+/// #2191 audit repair: mixed input keeps the two producers apart — runner totals
+/// count only runner receipts, and per_receipt rows carry their own basis.
+#[test]
+fn cost_report_keeps_mixed_producers_apart() {
+    use moai_cli::run::ProducerKind::{RunnerReceipt, SelfReport};
+    let report = cost_report_of(vec![
+        cost_fixture_receipt("task-r", RunnerReceipt),
+        cost_fixture_receipt("task-s", SelfReport),
+    ]);
+    assert_eq!(report["receipts"], json!(2));
+    let runner = &report["by_producer"]["runner-receipt"];
+    let own = &report["by_producer"]["self-report"];
+    assert_eq!(runner["receipts"], json!(1));
+    assert_eq!(runner["checks"]["total"], json!(2));
+    assert_eq!(runner["duration_ms"]["total"], json!(200));
+    assert_eq!(runner["checks"]["basis"], json!("measured"));
+    assert_eq!(own["receipts"], json!(1));
+    assert_eq!(own["duration_ms"]["total"], json!(200));
+    assert_eq!(own["checks"]["basis"], json!("self_reported"));
+    assert_eq!(report["per_receipt"][0]["basis"], json!("measured"));
+    assert_eq!(report["per_receipt"][1]["basis"], json!("self_reported"));
 }
