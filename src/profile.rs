@@ -27,8 +27,9 @@ const LIMIT: u64 = 65536;
 const DECISION_ITEM_LIMIT: usize = 32;
 const DECISION_STRING_LIMIT: usize = 256;
 const REVISION_LIMIT: usize = 128;
-/// Keys owned by the profile schema; the delta covers exactly these.
-const MANAGED_KEYS: [&str; 11] = [
+/// Keys owned by the profile schema; the delta covers exactly these. A length-free slice,
+/// so two branches that each add a key merge without a silent length clash (PR #2044).
+const MANAGED_KEYS: &[&str] = &[
     "schema_version",
     "project_id",
     "purpose",
@@ -39,11 +40,21 @@ const MANAGED_KEYS: [&str; 11] = [
     "interview_revision",
     "decisions",
     "github_issues",
+    "leader",
     "context_max_bytes",
 ];
 /// Keys added after the first profile release: absent from desired, current and baseline
 /// they are left out of the delta, so a profile without them plans exactly as before.
-const ADDITIVE_KEYS: [&str; 2] = ["github_issues", "context_max_bytes"];
+const ADDITIVE_KEYS: &[&str] = &["github_issues", "context_max_bytes", "leader"];
+
+/// Leader supervision settings (rc.2 A3 #2161/#2162, user decision D-2 2026-11-09).
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct LeaderSettings {
+    /// Seconds between leader PR checks. A user-chosen value (default 300 when absent),
+    /// not a measured one; the tick itself never sleeps — scheduling is the caller's.
+    pub pr_check_interval_secs: u64,
+}
 
 /// One interview decision recorded under `decisions` (REQ-03A-01). `source` says where
 /// the value came from: `repo` (repository convention), `user` (stated in the
@@ -82,6 +93,10 @@ pub struct Profile {
     /// no choice was recorded; a profile written before this key reads unchanged.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub github_issues: Option<bool>,
+    /// Leader supervision settings (#2162). Absent means the default interval; a profile
+    /// written before this key reads unchanged.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub leader: Option<LeaderSettings>,
     /// Byte budget `context-bundle` uses when a request names no `max_bytes` (#2184,
     /// REQ-C8-01). Absent means the built-in 256 KiB default; a profile written before this
     /// key reads unchanged.
@@ -91,7 +106,7 @@ pub struct Profile {
 
 /// Key-level reconfigure delta of a plan (REQ-03A-02). Keys are sorted in every list so
 /// the plan digest is order-stable; every managed key lands in exactly one list (except
-/// `github_issues` while it is absent everywhere, which lands in none), and
+/// `github_issues` and `leader` while absent everywhere, which land in none), and
 /// conflict keys (REQ-03A-03) appear only in `conflict`.
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
@@ -162,6 +177,12 @@ fn bounded_decision_string(s: &str) -> bool {
 /// Accepts both schema versions so v1 files stay readable (fields default); a plan
 /// input must be v2, which `plan` checks separately (REQ-03A-08).
 fn validate(p: &Profile) -> Result<()> {
+    if p.leader
+        .as_ref()
+        .is_some_and(|l| l.pr_check_interval_secs == 0)
+    {
+        return Err("leader pr_check_interval_secs must be a positive number".into());
+    }
     let decisions_ok = p.decisions.len() <= DECISION_ITEM_LIMIT
         && p.decisions.iter().all(|d| {
             ["repo", "user", "default"].contains(&d.source.as_str())
@@ -286,11 +307,11 @@ fn compute_delta(baseline: Option<&Value>, current: Option<&Value>, desired: &Va
     let current_map = current.and_then(Value::as_object);
     let baseline_map = baseline.and_then(Value::as_object);
     let mut delta = Delta::default();
-    for key in MANAGED_KEYS {
+    for &key in MANAGED_KEYS {
         let d = desired_map.get(key);
         let c = current_map.and_then(|m| m.get(key));
         let b = baseline_map.and_then(|m| m.get(key));
-        // `github_issues` (#2106) and `context_max_bytes` (#2184) are additive: absent from
+        // `github_issues` (#2106), `context_max_bytes` (#2184) and `leader` (#2162) are additive: absent from
         // desired, current and baseline they are left out of the delta, so a profile
         // without them plans exactly as before the keys existed.
         if ADDITIVE_KEYS.contains(&key) && d.is_none() && c.is_none() && b.is_none() {
@@ -667,6 +688,7 @@ pub fn read_profile(root: &Path) -> Result<(Profile, Vec<u8>)> {
         "interview_revision",
         "decisions",
         "github_issues",
+        "leader",
         "context_max_bytes",
     ];
     let filtered: serde_json::Map<String, Value> = map
@@ -706,6 +728,7 @@ mod tests {
             interview_revision: Some("r1".into()),
             decisions: vec![record("d1", "Rust", "user")],
             github_issues: None,
+            leader: None,
             context_max_bytes: None,
         }
     }
@@ -807,5 +830,39 @@ mod tests {
         // purpose keeps the user value (desired == baseline), the unknown key is not managed.
         assert!(delta.unchanged.contains(&"purpose".to_string()));
         assert!(!delta.unchanged.contains(&"custom".to_string()));
+    }
+
+    /// AC-3 (#2162): `leader` is a managed key with the same additive rule as
+    /// `github_issues`, and its interval must be positive.
+    #[test]
+    fn leader_key_is_managed_additive_and_validated() {
+        assert!(MANAGED_KEYS.contains(&"leader"));
+        let base = serde_json::json!({
+            "schema_version": 2, "project_id": "demo", "purpose": "p",
+            "tools": ["Rust"], "development_methods": ["TDD"], "hosts": ["claude"]
+        });
+        let all = |d: &Delta| {
+            [&d.added, &d.changed, &d.removed, &d.unchanged, &d.conflict]
+                .iter()
+                .any(|l| l.contains(&"leader".to_string()))
+        };
+        // Absent everywhere: in no list, so an old profile plans exactly as before.
+        assert!(!all(&compute_delta(Some(&base), Some(&base), &base)));
+        let mut desired = base.clone();
+        desired["leader"] = serde_json::json!({"pr_check_interval_secs": 60});
+        let delta = compute_delta(Some(&base), Some(&base), &desired);
+        assert_eq!(delta.added, vec!["leader"]);
+        let mut p = v2();
+        p.leader = Some(LeaderSettings {
+            pr_check_interval_secs: 60,
+        });
+        assert!(validate(&p).is_ok());
+        p.leader = Some(LeaderSettings {
+            pr_check_interval_secs: 0,
+        });
+        assert_eq!(
+            validate(&p).unwrap_err(),
+            "leader pr_check_interval_secs must be a positive number"
+        );
     }
 }
