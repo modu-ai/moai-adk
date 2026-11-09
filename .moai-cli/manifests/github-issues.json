@@ -1984,6 +1984,18 @@
  },
  "user_decisions": [
   {
+   "at": "2026-11-09 00:2x KST",
+   "topic": "남은 RC1 결정 2건",
+   "decision": "08-C T2 = 운영자 직접 실측(체크아웃 밖, 기존 인증); 04-D #2016 = RC1 밖으로 이동(milestone 제거, Go 상태 무변경), 에픽 #1980 종료",
+   "source": "user via AskUserQuestion (direct selection in this conversation)"
+  },
+  {
+   "at": "2026-11-08 22:0x KST",
+   "topic": "제약 해제 범위",
+   "decision": "HOLD만 해제: 사용자 결정 대기 HOLD는 리더가 현재 구현값으로 확정. 유지 = Go 상태 보존, 04-D·release·deploy 금지, 독립 감사 게이트, 비밀값·훅·권한 우회 금지. 파일 수정은 Edit/Write 도구",
+   "source": "user via AskUserQuestion (direct selection in this conversation)"
+  },
+  {
    "at": "2026-11-08 15:5x KST",
    "topic": "04-A 배포·설치 채널",
    "decision": "A GitHub Releases + dist installer"
@@ -2115,6 +2127,34 @@
    "time": "2026-11-08T12:1xZ",
    "id": "USER_LANE_CHECK_ROUTINE_20261108",
    "text": "리더는 항상 에이전트 레인의 진행상태를 점검하고 무중단 레인이 가동되도록 루틴으로 체크한다 → AGENTS.local.md (Leader lane-check routine)"
+  },
+  {
+   "time": "2026-11-08T12:3xZ",
+   "id": "USER_NO_IDLE_LANES_20261108",
+   "text": "레인이 할 일을 마치고 기다리는 것이 병목 — PR로 넘기거나 수리 완료 시 완료를 기다리지 말고 리더에게 보고하고 다음 이슈를 받아 진행 → AGENTS.local.md No idle lanes (leader keeps next card: ready card / card blocked only by a queued PR / recorded follow-up as Issue)"
+  },
+  {
+   "time": "2026-11-09T00:4x-01:1xZ",
+   "topic": "rc.2 issuance frame + 12 remaining decisions",
+   "answers": {
+    "milestone": "2026.11.0-rc.2 single",
+    "structure": "EP + session cards",
+    "out_of_scope": "issue all, mark blocked",
+    "conflicts": "RC1 decisions win",
+    "code_atlas": "Code Atlas + @MOAI: dual-read",
+    "archive": "auto move allowed (hash/readback)",
+    "takeover": "manual handoff, lease 4h",
+    "pi": "spike first",
+    "launcher_-l_-a": "deprecate",
+    "pr_check": "300s configurable",
+    "codex_leader": "Claude only",
+    "unassigned_list": "remote canonical, local cache",
+    "platform": "macOS+Linux x86_64/arm64, attestation only",
+    "budget": "conservative defaults + profile override",
+    "forge": "GitHub + audit App, GitLab contract only",
+    "judgment_backend": "research card, impl blocked"
+   },
+   "recorded": "docs/decisions-2026-11-08.md 00:4x~01:1x(11-09)"
   }
  ],
  "design_update_r3": {
@@ -2936,7 +2976,7 @@
    "key": "06-A",
    "lane": "agent-6 [742cb6]",
    "base": "e324e0c72a27854d13535d6d021be15c8ee3c1f4",
-   "status": "PR #2060 AUDIT FAIL 2c7709f08 (no POST-then-recheck for lowest id) → agent-6 repairing"
+   "status": "done — PR #2060 merged e77c6d359 (audit 78ced087b PASS + b8f532890 delta PASS)"
   },
   {
    "issue": 1998,
@@ -2950,7 +2990,7 @@
    "key": "03-A",
    "lane": "agent-8 [45deae]",
    "base": "e324e0c72a27854d13535d6d021be15c8ee3c1f4",
-   "status": "PR #2052 repair PASS 9f851ce27 (base d85d6478); conflict vs ff7267e4 → agent-8 repairing; full re-audit"
+   "status": "done — PR #2052 merged aaa28393c (3rd repair PASS 93f2f55d1 + deltas → 0644281af)"
   },
   {
    "issue": 2010,
@@ -2964,14 +3004,14 @@
    "key": "05-D",
    "lane": "agent-1 [0dd806]",
    "base": "8d60ad5665a1e32f8f76fec8026e5e12ea1301e5",
-   "status": "PR #2055 conflict vs ff7267e4 (lib.rs) → agent-1 repairing"
+   "status": "done — PR #2055 merged 7a80cab4a (full PASS 322f599b5 + conflict PASS 3ba92945c + deltas → d20eb6974)"
   },
   {
    "issue": 2011,
    "key": "07-D",
    "lane": "agent-4 [f4bd07]",
    "base": "8d60ad5665a1e32f8f76fec8026e5e12ea1301e5",
-   "status": "PR #2057 conflict-merge PASS 6d3db8b86 (code PASS 0b2a12f03); needs update-branch → delta"
+   "status": "done — PR #2057 merged 3f0d4b42e"
   },
   {
    "issue": 2048,
@@ -2992,30 +3032,422 @@
    "key": "BUG-BASELINE-GIT-ENV",
    "lane": "agent-3 [89e867]",
    "base": "c473d2b08b9237fda3425e5e1305135d67b9ebbc",
-   "status": "PR #2058 PASS 52b2e24c1; update-branch → d256f6920; delta pending"
+   "status": "done — PR #2058 merged 6e779a29c (audit 52b2e24c1 PASS + d256f6920 delta PASS)"
   },
   {
    "issue": 2062,
    "key": "FU-2053-HOLD-L1",
    "lane": "agent-3 [437ee1]",
    "base": "ff7267e439a6da4ed35c1d8ff02a05d969b1b847",
-   "status": "PR #2065 PASS 45e0132cc; update-branch → 8fe8bfdd8; delta pending"
+   "status": "done — PR #2065 merged 118ddb31a"
   },
   {
    "issue": 2063,
    "key": "FU-1989-COMMENTS",
    "lane": "agent-5 [767ceb]",
    "base": "ff7267e439a6da4ed35c1d8ff02a05d969b1b847",
-   "status": "PR #2067 PASS 546e05774; update-branch → 1d5311b87; delta pending"
+   "status": "done — PR #2067 merged b7079c0ad"
   },
   {
    "issue": 2064,
    "key": "FU-2048-DOC",
    "lane": "agent-7 [fa13f6]",
    "base": "ff7267e439a6da4ed35c1d8ff02a05d969b1b847",
-   "status": "PR #2066 PASS 3f726eff2; update-branch → d7d04fcc9; delta pending"
+   "status": "PR #2066 → 47108a451 delta pending"
+  },
+  {
+   "issue": 2069,
+   "key": "FU-1998-DOC",
+   "lane": "agent-5 [767ceb]",
+   "base": "118ddb31a69ec98a07062d0077bee2a8feb14d8a",
+   "status": "done: PR #2070 merged de43010"
+  },
+  {
+   "issue": 2006,
+   "key": "06-B",
+   "lane": "agent-6 [742cb6]",
+   "base": "e77c6d359367164785b36696f8fde643e146b5be",
+   "status": "PR #2083 head c6ad075ea, handed off; report relayed 6721743220; awaiting audit; HOLD P08/liveness/probe kept at (a)"
+  },
+  {
+   "issue": 2007,
+   "key": "06-C",
+   "lane": "agent-1 [0dd806]",
+   "base": "e77c6d359367164785b36696f8fde643e146b5be",
+   "status": "PR #2080 head d7f8d2810, handed off; report relayed 6721706974; awaiting audit; branch prefix HOLD"
+  },
+  {
+   "issue": 1999,
+   "key": "04-B",
+   "lane": "agent-7 [fa13f6]",
+   "base": "7a80cab4af513120cf36efdfa184b8be433ec258",
+   "status": "claimed 6721512195; implementing"
+  },
+  {
+   "issue": 1996,
+   "key": "03-B",
+   "lane": "agent-8 [45deae]",
+   "base": "aaa28393c5efc16ede350ced3596416f03b84938",
+   "status": "claimed 6721576820; implementing"
+  },
+  {
+   "issue": 2071,
+   "key": "FU-03A-APPLY-ENGINE",
+   "lane": "agent-4 [f4bd07]",
+   "base": "aaa28393c5efc16ede350ced3596416f03b84938",
+   "status": "done: PR #2076 merged 8c95e93"
+  },
+  {
+   "issue": 2072,
+   "key": "BUG-RECOVER-PARTIAL",
+   "lane": "agent-3 [437ee1]",
+   "base": "aaa28393c5efc16ede350ced3596416f03b84938",
+   "status": "done: PR #2075 merged 55b1d05 (2026-11-08T13:0xZ); next #2077 merged 2831946 (#2074 closed not planned)"
+  },
+  {
+   "issue": 2073,
+   "key": "FU-DOCS-BUNDLE-1",
+   "lane": "agent-5 [767ceb]",
+   "base": "aaa28393c5efc16ede350ced3596416f03b84938",
+   "status": "PR #2078 head d82f4dfe7, handed off; report relayed 6721655803; awaiting audit"
+  },
+  {
+   "issue": 2074,
+   "key": "BUG-PROMOTE-DIGEST-ORDER",
+   "lane": "agent-3 [89e867]",
+   "base": "aaa28393c5efc16ede350ced3596416f03b84938",
+   "status": "PR #2077 head 6755ea06a (test only, not a defect); report relayed 6721653684; awaiting audit"
+  },
+  {
+   "issue": 2079,
+   "key": "FU-CTX-COMMENT",
+   "lane": "agent-5 [767ceb]",
+   "time": "2026-11-08T12:48Z",
+   "source": "#2073 lane report out-of-scope observation",
+   "status": "PR #2081 head 41399bcba, handed off; report relayed 6721705850; awaiting audit"
+  },
+  {
+   "issue": 2082,
+   "key": "BUG-FLAKY-IDENTITY",
+   "lane": "agent-5 [767ceb]",
+   "time": "2026-11-08T12:55Z",
+   "source": "rc-ci 42481918815 on PR #2075 (identity_primary_checkout NotFound)",
+   "status": "claimed 6721722915; RED reproduction"
+  },
+  {
+   "issue": 2012,
+   "key": "08-A",
+   "lane": "agent-3 [89e867]",
+   "time": "2026-11-08T12:55Z",
+   "source": "no-idle (2): start from PR #2080 head d7f8d28",
+   "status": "claimed 6721714464; scoping HOLDs"
+  },
+  {
+   "issue": 2137,
+   "key": "DR-01",
+   "milestone": "design-docs-r2",
+   "lane": "agent-8 [45deae]",
+   "time": "2026-11-09T00:12Z",
+   "source": "design report confirmed 00:1x; prerequisite card (F-D)",
+   "status": "claimed 6729177213; base 604792666; body r2 (copy only, originals kept)"
+  },
+  {
+   "issue": 2138,
+   "key": "DR-02",
+   "milestone": "design-docs-r2",
+   "lane": "agent-1 [e29c15]",
+   "time": "2026-11-09T00:12Z",
+   "source": "report §10.4 autonomy modes (Class C, SPEC only)",
+   "status": "claimed 6729181667; base 604792666"
+  },
+  {
+   "issue": 2139,
+   "key": "DR-03",
+   "milestone": "design-docs-r2",
+   "lane": "agent-3 [89e867]",
+   "time": "2026-11-09T00:12Z",
+   "source": "report §10.2 F-B/F-C assignments record",
+   "status": "claimed 6729176888; base 604792666"
+  },
+  {
+   "issue": 2140,
+   "key": "DR-04",
+   "milestone": "design-docs-r2",
+   "lane": "agent-4 [f4bd07]",
+   "time": "2026-11-09T00:12Z",
+   "source": "report §2/§3 top-design fix proposals",
+   "status": "claimed 6729177514; base 604792666"
+  },
+  {
+   "issue": 2141,
+   "key": "DR-05",
+   "milestone": "design-docs-r2",
+   "lane": "agent-5 [767ceb]",
+   "time": "2026-11-09T00:12Z",
+   "source": "report §3 group3 (7 pages) fix proposals",
+   "status": "claimed 6729195463; base 604792666"
+  },
+  {
+   "issue": 2142,
+   "key": "DR-06",
+   "milestone": "design-docs-r2",
+   "lane": "agent-6 [742cb6]",
+   "time": "2026-11-09T00:12Z",
+   "source": "report §3 group2 (5 pages) + 43fa fix proposals",
+   "status": "claimed 6729179271; base 604792666"
+  },
+  {
+   "issue": 2143,
+   "key": "DR-07",
+   "milestone": "design-docs-r2",
+   "lane": "agent-7 [fa13f6]",
+   "time": "2026-11-09T00:12Z",
+   "source": "report §2 S3/S4/S11 appendices + §20 lessons rewrite",
+   "status": "claimed 6729186674; base 604792666"
+  },
+  {
+   "issue": 2139,
+   "key": "DR-03",
+   "lane": "agent-3 [89e867]",
+   "time": "2026-11-09T00:4xZ",
+   "source": "lane report",
+   "status": "PR #2144 head fc778d5ac open; audit dispatched to agent-2"
+  },
+  {
+   "issue": 2145,
+   "key": "DR-08",
+   "milestone": "design-docs-r2",
+   "lane": "agent-3 [89e867]",
+   "time": "2026-11-09T00:4xZ",
+   "source": "no-idle (3): user 00:4x build+launcher docs, Codex /goal check (report §10.4 follow-up)",
+   "status": "claimed 6729262672; base 604792666; leader note: role-less launcher at tip = plain host session (agent-3 measured; leader's earlier 'clap error' came from a stale local-HEAD build, retracted)"
+  },
+  {
+   "issue": 2137,
+   "key": "DR-01",
+   "lane": "agent-8 [45deae]",
+   "time": "2026-11-09T00:5xZ",
+   "source": "lane report",
+   "status": "PR #2146 head 047cabcab open; audit dispatched to agent-2"
+  },
+  {
+   "issue": 2140,
+   "key": "DR-04",
+   "lane": "agent-4 [f4bd07]",
+   "time": "2026-11-09T00:5xZ",
+   "source": "lane report",
+   "status": "PR #2147 head 4a24023df open (19 items); audit queued (after #2144, #2146)"
+  },
+  {
+   "issue": 2139,
+   "key": "DR-03",
+   "lane": "agent-3 [89e867]",
+   "time": "2026-11-09T00:5xZ",
+   "source": "gate",
+   "status": "PR #2144 PASS; merged tip 677e1092f"
+  },
+  {
+   "issue": 2137,
+   "key": "DR-01",
+   "lane": "agent-8 [45deae]",
+   "time": "2026-11-09T01:0xZ",
+   "source": "gate",
+   "status": "PR #2146 PASS; delta-identical 732f09ed; merged tip 53d4a55ff"
+  },
+  {
+   "issue": 2140,
+   "key": "DR-04",
+   "lane": "agent-4 [f4bd07]",
+   "time": "2026-11-09T01:0xZ",
+   "source": "gate",
+   "status": "PR #2147 PASS; delta-identical 82e85e95; merged tip 84cb253e7"
+  },
+  {
+   "issue": 2138,
+   "key": "DR-02",
+   "lane": "agent-1 [e29c15]",
+   "time": "2026-11-09T01:1xZ",
+   "source": "gate",
+   "status": "PR #2148 PASS; delta-identical e811d2e3; auto-merge armed"
+  },
+  {
+   "issue": 2143,
+   "key": "DR-07",
+   "lane": "agent-7 [fa13f6]",
+   "time": "2026-11-09T01:1xZ",
+   "source": "lane report",
+   "status": "PR #2149 head 6d86c516e open; audit queued"
+  },
+  {
+   "issue": 2141,
+   "key": "DR-05",
+   "lane": "agent-5 [767ceb]",
+   "time": "2026-11-09T01:1xZ",
+   "source": "lane report",
+   "status": "PR #2150 head 05ddcc1ee open; audit queued"
+  },
+  {
+   "issue": 2145,
+   "key": "DR-08",
+   "lane": "agent-3 [89e867]",
+   "time": "2026-11-09T01:1xZ",
+   "source": "lane report",
+   "status": "push blocked 3x by moving base (gate working); told (a) retry once"
+  },
+  {
+   "issue": "2153-2209",
+   "key": "rc.2",
+   "lane": "(self-claim)",
+   "time": "2026-11-09T01:3xZ",
+   "source": "user: 설계 전체 발행; 16 decisions",
+   "status": "57 issued (EP 7 + cards 50); ready 23, blocked 22, leader-only 5"
+  },
+  {
+   "issue": 2142,
+   "key": "DR-06",
+   "lane": "agent-6 [742cb6]",
+   "time": "2026-11-09T01:4xZ",
+   "source": "gate",
+   "status": "PR #2151 PASS; delta-identical b347f09f; merged tip 3e86c381b; issue closed"
+  },
+  {
+   "issue": "2137,2138,2139,2140",
+   "key": "DR-01/02/03/04",
+   "lane": "-",
+   "time": "2026-11-09T01:4xZ",
+   "source": "gate",
+   "status": "issues closed after merges (#2146,#2148,#2144,#2147)"
+  },
+  {
+   "issue": 2145,
+   "key": "DR-08",
+   "lane": "agent-3 [89e867]",
+   "time": "2026-11-09T01:3xZ",
+   "source": "lane report",
+   "status": "PR #2152 head 04988a4a open; audit queued"
+  },
+  {
+   "issue": 2143,
+   "key": "DR-07",
+   "lane": "agent-7 [fa13f6]",
+   "time": "2026-11-09T01:3xZ",
+   "source": "repair",
+   "status": "FAIL repaired; new head 8aa39d2af; re-audit queued"
+  },
+  {
+   "issue": 2141,
+   "key": "DR-05",
+   "lane": "agent-5 [767ceb]",
+   "time": "2026-11-09T01:3xZ",
+   "source": "repair",
+   "status": "FAIL repaired; new head c1a873551; re-audit queued"
+  },
+  {
+   "issue": 2165,
+   "key": "rc2-A6",
+   "lane": "agent-3 [89e867]",
+   "time": "2026-11-09T00:51Z",
+   "source": "self-claim",
+   "status": "claimed 6729635996 (agent-4 lost: no post)"
+  },
+  {
+   "issue": 2160,
+   "key": "rc2-A1",
+   "lane": "agent-1 [e29c15]",
+   "time": "2026-11-09T00:51Z",
+   "source": "self-claim",
+   "status": "claimed 6729637720"
+  },
+  {
+   "issue": 2169,
+   "key": "rc2-B2",
+   "lane": "agent-6 [742cb6]",
+   "time": "2026-11-09T00:52Z",
+   "source": "self-claim",
+   "status": "claimed 6729640796"
+  },
+  {
+   "issue": 2177,
+   "key": "rc2-C1",
+   "lane": "agent-7 [fa13f6]",
+   "time": "2026-11-09T00:56Z",
+   "source": "self-claim",
+   "status": "claimed 6729645277"
+  },
+  {
+   "issue": 2164,
+   "key": "rc2-A5",
+   "lane": "agent-8 [45deae]",
+   "time": "2026-11-09T00:52Z",
+   "source": "self-claim",
+   "status": "claimed 6729649255"
+  },
+  {
+   "issue": 2166,
+   "key": "rc2-A7",
+   "lane": "agent-4 [f4bd07]",
+   "time": "2026-11-09T00:53Z",
+   "source": "self-claim",
+   "status": "claimed 6729654594"
+  },
+  {
+   "issue": 2143,
+   "key": "DR-07",
+   "lane": "agent-7 [fa13f6]",
+   "time": "2026-11-09T02:0xZ",
+   "source": "gate",
+   "status": "re-audit PASS 8aa39d2a; delta-identical 9cbdec49; merged tip bbb60aad2; closed"
+  },
+  {
+   "issue": 2141,
+   "key": "DR-05",
+   "lane": "agent-5 [767ceb]",
+   "time": "2026-11-09T02:0xZ",
+   "source": "gate",
+   "status": "re-audit PASS c1a87355; delta-identical 0f77c90a; merged tip f87407da1; closed"
+  },
+  {
+   "issue": 2145,
+   "key": "DR-08",
+   "lane": "agent-3 [89e867]",
+   "time": "2026-11-09T02:0xZ",
+   "source": "gate",
+   "status": "PASS 04988a4a; delta-identical 92dadfd7; auto-merge armed; ownership notice on #1992/#1993"
+  },
+  {
+   "issue": 2168,
+   "key": "rc2-B1",
+   "lane": "agent-5 [767ceb]",
+   "time": "2026-11-09T01:5xZ",
+   "source": "self-claim",
+   "status": "claimed 6729668133 (lease normalized +4h)"
+  },
+  {
+   "issue": "leader-docs-r34",
+   "key": "leader",
+   "lane": "leader [a963ab]",
+   "time": "2026-11-09T02:0xZ",
+   "source": "user: AGENTS.local.md 임시 절",
+   "status": "worktree .moai-cli/worktrees/leader-docs-r34 at 3e86c381b: AGENTS.local.md § Autonomous modes + launcher line, decisions 20 rows, ledger, 65 mirrors, rc2 plan+generator, assignments snapshot; check set running"
   }
  ],
+ "design_docs_r2": {
+  "milestone_number": 2,
+  "confirmed_by_user_utc": "2026-11-09T00:1x",
+  "report_md": "references/chatgpt-space/synthesis-improvement-report-2026-11-09.md (untracked; DR-01 copies to docs/design-review/)",
+  "report_artifact": "https://claude.ai/artifact/Xd6rRwBTZKkDH7JJow7xgG (v3)",
+  "cards": [
+   2137,
+   2138,
+   2139,
+   2140,
+   2141,
+   2142,
+   2143
+  ],
+  "dispatch_model": "leader dispatch this round; report §10.4 proposes agent self-claim (comment-id arbitration, local file/label are projection only) — DR-02 specifies, DR-03 records",
+  "audit": "agent-2 [0cbdac] read-only, moai/audit status gate unchanged"
+ },
  "design_update_r8": {
   "applied_at_utc": "2026-11-08T07:54:11Z",
   "design_revision": "2026-11-08-r8",
@@ -3661,6 +4093,12 @@
    "contents": "AGENTS.local.md lane cycle + update-branch semantic-conflict check; decisions 19:4x-20:2x; ledger r31; 1989 body snapshot",
    "merged": "a165d29a2",
    "audit": "agent-2 PASS 25f92d1d + deltas → 7d8ac64d"
+  },
+  {
+   "pr": 2068,
+   "branch": "leader/docs-20261108-r32",
+   "audit": "agent-2 PASS 878c8dae3; update-branch → 0ce89e1ce delta pending",
+   "contents": "Leader lane-check routine (user decision), decisions 20:3x-21:1x, ledger r32, 1995 snapshot"
   }
  ],
  "design_update_r26": {
@@ -3744,6 +4182,66 @@
   {
    "time": "2026-11-08T11:58Z",
    "note": "lane survey: 19 worktrees all clean; agent-6 busy, others idle; 7 open PRs behind ff7267e4 — 3 updated cleanly, 4 conflict → last-writer repair; follow-ups #2062-#2064 to free lanes; agent-6 waits for #2060 merge (06-B)"
+  },
+  {
+   "time": "2026-11-08T12:27Z",
+   "note": "/loop 5m lane check armed (cron fc5d45c1). check: busy agent-1,2,4,5,6,8; idle agent-3 x2, agent-7; open PRs 2052,2057(DIRTY),2066,2067,2068; 04-B ready → agent-7; agent-3 x2 no ready card"
+  },
+  {
+   "time": "2026-11-08T12:3xZ",
+   "note": "agent-1 #2007: spawned manager-develop was attached by runtime to an isolated .claude/worktrees/agent-* on Go-era base 4fa2aa9; lane stopped it immediately (no commits, runtime auto-removed it, lane worktree and primary .moai/.git_hooks untouched); writer is agent-1 alone. Lesson: verify where a sub-agent spawn lands before letting it write."
+  },
+  {
+   "time": "2026-11-08T12:33Z",
+   "note": "lane check: busy agent-1(06-C), agent-6(06-B), agent-7(04-B), agent-2(audit); idle agent-3 x2, agent-4, agent-5, agent-8. No ready card: 03-B<-#1995, 03-C<-#1996, 04-C/04-D<-#1999, 08-A<-#2007, 08-B<-#1997, 08-C<-#2000/#2012/#2013, 08-D<-#2014. Next unlock: #2052 merge -> 03-B to agent-8."
+  },
+  {
+   "time": "2026-11-08T12:39Z",
+   "note": "lane check: all working lanes busy (agent-1,3x2,4,5,6,7,8 + auditor); open PRs 2066/2068/2070 awaiting audit; no lane idle"
+  },
+  {
+   "time": "2026-11-08T12:44Z",
+   "note": "PR #2066 merged 8b653aa (#2064 closed); #2070 update-branch ed040767b DELTA-IDENTICAL, delta asked; #2068 FAIL (missing decisions row) fixed 678c969, head 6a43409, re-audit asked; #2075 (#2072) queued for audit; agent-3[89e867] #2074 not reproduced -> regression-test PR; agent-3[437ee1] no ready card, 04-C #2000 reserved pending 04-B PR"
+  },
+  {
+   "time": "2026-11-08T12:46Z",
+   "note": "agent-4[f4bd07] no ready card: 03-C #1997 reserved pending 03-B PR; audit queue order 2070 delta, 2068 re-audit, 2075, 2076"
+  },
+  {
+   "time": "2026-11-08T12:48Z",
+   "note": "#2075 update-branch 6bcf809ad DELTA-IDENTICAL; agent-3[89e867] reserved 08-A #2012 pending 06-C PR; audit queue 2070,2068,2075,2076,2077,2078"
+  },
+  {
+   "time": "2026-11-08T12:52Z",
+   "note": "user goal set: \"issues/pr 모두 병합 완료\". PR #2070 merged de43010 (#2069 closed). PASS: #2068 6a43409, #2075 5bb4ed8/6bcf809. update-branch -> #2068 79a192840, #2075 2fcdde188 DELTA-IDENTICAL, delta asked. Write hook denied scratchpad script; gate run inline instead (no bypass)."
+  },
+  {
+   "time": "2026-11-08T12:55Z",
+   "note": "#2075 rc-ci 42481918815 failed in identity_primary_checkout (unrelated to diff); failed job rerun; defect candidate #2082. agent-1 reserved 08-B #2013 pending 03-C PR. audit queue 2068d,2075d,2076,2077,2078,2080,2081"
+  },
+  {
+   "time": "2026-11-08T12:58Z",
+   "note": "PR #2068 merged a6fb25e (leader docs r32). #2075 2fcdde1 FAIL (rc-ci flake) -> update-branch 8c2b861; #2076 PASS 6ed3ceb -> update-branch 9768fe0; both DELTA-IDENTICAL, delta asked. local leader-docs-r32 branch behind remote (update-branch merges) - pull --ff-only before reuse"
+  },
+  {
+   "time": "2026-11-08T12:59Z",
+   "note": "agent-6 no reservable card (all remaining cards reserved or blocked; 04-D prohibited); first in line for next follow-up. first relay to #2006 failed silently (bad --jq flag) - read back caught it, reposted"
+  },
+  {
+   "time": "2026-11-08T13:00Z",
+   "note": "PR #2076 merged 8c95e93 (#2071 closed). PASS: #2077 6755ea0, #2078 d82f4df (full); #2075 8c2b861 delta. update-branch -> #2075 62a9cca, #2077 dc7d199, #2078 4c5352e all DELTA-IDENTICAL; delta asked. New PR #2084 (08-A) seen."
+  },
+  {
+   "time": "2026-11-08T13:25Z",
+   "note": "Merged: #2075 55b1d05 (#2072), #2077 2831946 (#2074 not planned), #2078 84d2fe4 (#2073), #2081 3db7a01 (#2079), #2085 40ae3dd (leader docs r33). User decisions: HOLD-only release; Edit/Write for files; EnterWorktree/ExitWorktree for lanes (all lanes acked). HOLDs confirmed at current implementation on #2007, #2006, #2012, #1996 (HOLD-3 corrected: record-only), #1999. Issue body corrections: #2007 (AC --test worktree_cli, jq, marker), #2006 (--test handoff_cli, AC-4 name), #2012 amendment A1-A3. #2082 kept as defect, fix by agent-5 (CI 3 observations as RED). Dispatch: 03-C #1997 agent-4 -> handed to agent-8 (agent-4 context 76%, zero writes; claim 6722026349 closed); 04-C #2000 agent-3[437ee1] claim 6722040924. Queue: #2080 b1c31ee delta, #2083, #2084 re-judge, #2086, #2087."
+  },
+  {
+   "time": "2026-11-08T15:23Z",
+   "note": "PR queue empty. Merged after 13:25Z: #2080 1a469c1, #2083 c3af36a, #2086 cd69e45, #2088 3e9875d, #2084 f89a32b, #2087 c12a2be, #2093 5915a01, #2091 b508d1f, #2094 b7e485c, #2097 604e1ff, #2096 661f471, #2090 ba5a30b, #2101 55c6a28, #2098 be9b90c, #2100 450535a, #2102 a8f4052. Closed: #2006 #2007 #2012 #2013 #2000 #1996 #1997 #1999 #2082 #2089 #2092 #2095 #2099 #2015 #1973 + epics #1976 #1977 #1978 #1979 #1981 #1982 #1983. Open: #2014 (T2 operator measurement; scripts tests/e2e/host-*.sh), #2016 (04-D prohibited), epics #1980 #1984, root #1975. New follow-ups created+closed this window: #2089 #2092 #2095 #2099."
+  },
+  {
+   "time": "2026-11-08T22:45Z",
+   "note": "User decisions 00:2x KST: 08-C T2 = operator measures (scripts tests/e2e/host-*.sh, results pending); 04-D #2016 removed from RC1 milestone (left open for next version); epic #1980 closed. Follow-up wave from audit/lane residuals, all audited+merged: #2110(#2105) #2111(#2103) #2112(#2104, Issue premise corrected r2: two support matrices) #2113(#2108, claim-before-commit violation by agent-3[89e867] fixed with empty trailer commit) #2115(#2109) #2116(#2107, FAIL state=open fixed to state=all) #2117(#2106) #2118(#2114) #2121(#2120) #2122(#2119). Tip 692ba14. Open PR: #2124(#2123, audit pending). Dispatched: #2125 agent-8. agent-2 kept audit-only (user decision). Remaining RC1: #2014 (T2 operator), #1984, #1975; #2016 deferred."
   }
  ],
  "launcher_verification": [
@@ -3802,5 +4300,185 @@
   "body_sha256": {
    "1995": "0ca539ec76f7496824a2d4fd3a900a31fccdc02d20d1ec9c98dc9f64547c9ca7"
   }
+ },
+ "pending_user_decisions": [
+  {
+   "issue": 2007,
+   "item": "REQ-06C-01 branch prefix (current practice issue/<n>-<key> vs REQ form <prefix>/<logical_key>-<n>-e<epoch>)",
+   "status": "resolved 2026-11-08 22:0x KST by leader under user decision 'HOLD만 해제': current implementation confirmed (--branch-prefix required input; RC1 lanes use issue/<n>-<key>)"
+  }
+ ],
+ "rc2_issuance": {
+  "milestone_number": 3,
+  "milestone": "2026.11.0-rc.2",
+  "issued_at_utc": "2026-11-09T01:3xZ",
+  "generator": ".moai-cli/reports/rc2_issue_gen.py",
+  "plan": ".moai-cli/reports/rc2-issue-plan.md",
+  "numbers": {
+   "EP-A": 2153,
+   "EP-B": 2154,
+   "EP-C": 2155,
+   "EP-D": 2156,
+   "EP-E": 2157,
+   "EP-F": 2158,
+   "EP-G": 2159,
+   "A1": 2160,
+   "A2": 2161,
+   "A3": 2162,
+   "A4": 2163,
+   "A5": 2164,
+   "A6": 2165,
+   "A7": 2166,
+   "A8": 2167,
+   "B1": 2168,
+   "B2": 2169,
+   "B3": 2170,
+   "B4": 2171,
+   "B5": 2172,
+   "B6": 2173,
+   "B7": 2174,
+   "B8": 2175,
+   "B9": 2176,
+   "C1": 2177,
+   "C2": 2178,
+   "C3": 2179,
+   "C4": 2180,
+   "C5": 2181,
+   "C6": 2182,
+   "C7": 2183,
+   "C8": 2184,
+   "C9": 2185,
+   "C10": 2186,
+   "D1": 2187,
+   "D2": 2188,
+   "D3": 2189,
+   "D4": 2190,
+   "D5": 2191,
+   "D6": 2192,
+   "E1": 2193,
+   "E2": 2194,
+   "E3": 2195,
+   "E4": 2196,
+   "E5": 2197,
+   "E6": 2198,
+   "F1": 2199,
+   "F2": 2200,
+   "F3": 2201,
+   "F4": 2202,
+   "F5": 2203,
+   "F6": 2204,
+   "F7": 2205,
+   "G1": 2206,
+   "G2": 2207,
+   "G3": 2208,
+   "G4": 2209
+  },
+  "blocked_by": {
+   "A2": [
+    2160
+   ],
+   "A3": [
+    2161
+   ],
+   "A4": [
+    2160
+   ],
+   "A8": [
+    2160,
+    2161,
+    2162
+   ],
+   "C2": [
+    2177
+   ],
+   "C3": [
+    2178
+   ],
+   "C5": [
+    2178,
+    2180
+   ],
+   "C6": [
+    2180
+   ],
+   "C7": [
+    2181,
+    2182
+   ],
+   "C9": [
+    2182,
+    2183
+   ],
+   "C10": [
+    2183
+   ],
+   "D2": [
+    2187
+   ],
+   "D3": [
+    2188
+   ],
+   "D5": [
+    2190
+   ],
+   "E2": [
+    2193
+   ],
+   "E3": [
+    2193
+   ],
+   "E4": [
+    2193
+   ],
+   "E6": [
+    2196
+   ],
+   "F2": [
+    2199
+   ],
+   "F3": [
+    2199
+   ],
+   "F4": [
+    2199,
+    2201
+   ],
+   "F7": [
+    2204
+   ]
+  },
+  "leader_only": [
+   2197,
+   2206,
+   2207,
+   2208,
+   2209
+  ],
+  "ready_for_self_claim": [
+   2160,
+   2164,
+   2165,
+   2166,
+   2168,
+   2169,
+   2170,
+   2171,
+   2172,
+   2173,
+   2174,
+   2175,
+   2176,
+   2177,
+   2180,
+   2184,
+   2187,
+   2190,
+   2192,
+   2193,
+   2199,
+   2203,
+   2204
+  ],
+  "user_confirmation": "01:2x(11-09) '이대로 발행'"
  }
 }
