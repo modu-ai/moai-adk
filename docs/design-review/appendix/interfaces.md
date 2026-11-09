@@ -1,6 +1,6 @@
 # 부록 3 — 인터페이스/명령 대응표 (DR-07 #2143)
 
-출처: synthesis S11 + `src/main.rs` OPERATIONS(전수 — tip `604792666` 기준 47개, rc.2 A2 #2161이 `queue-next`를 더해 **48개**, 아래 목록이 전부다). 문서가 그린 인터페이스명(`result.admit` 등)은 RC1에 없고, RC1 OPERATIONS는 문서 어디에도 대응 표가 없었다 — 이 표가 그 대응표다.
+출처: synthesis S11 + `src/main.rs` OPERATIONS(전수 — tip `604792666` 기준 47개, rc.2 A2 #2161이 `queue-next`, A3 #2162가 `leader-tick`을 더해 **49개**, 아래 목록이 전부다). 문서가 그린 인터페이스명(`result.admit` 등)은 RC1에 없고, RC1 OPERATIONS는 문서 어디에도 대응 표가 없었다 — 이 표가 그 대응표다.
 
 ## 문서 인터페이스명 → RC1 OPERATIONS
 
@@ -17,9 +17,9 @@
 | — (문서 인터페이스명 없음) | `codex-projection-plan` (`codex.projection_plan`) | 대응 없음 — [83f] §6 host adapter projection을 측정하는 op이며 문서 인터페이스 어휘가 이를 이름으로 부르지 않는다 |
 | — (문서 인터페이스명 없음) | `skill-source-plan` / `skill-source-apply` (`skill_source.plan`·`skill_source.apply`) / `skill-read-receipt` (`skill_source.read_receipt`) | 대응 없음 — 03-B #1996 신설(license review·skill 설치·read receipt); 문서 인터페이스 어휘와 [43fa] §18 명령표 어느 쪽에도 없는 영역 |
 
-## RC1 OPERATIONS 전수 (tip `604792666` 47개 + rc.2 A2 `queue-next` = 48개)
+## RC1 OPERATIONS 전수 (tip `604792666` 47개 + rc.2 A2 `queue-next` + A3 `leader-tick` = 49개)
 
-`package-inspect` `project-plan` `project-apply` `package-resolve` `agents-plan` `agents-apply` `apply-recover` `baseline-inventory` `identity` `forge-read` `forge-report` `plan-admit` `claude-doctor` `codex-projection-plan` `codex-doctor` `claim-acquire` `queue-next` `claim-show` `claim-release` `claim-handoff` `effect-intend` `effect-confirm` `effects-reconcile` `todo-promote-preview` `todo-promote-apply` `run-verify` `snapshot-describe` `skill-source-plan` `generation-plan` `generation-apply` `skill-source-apply` `skill-read-receipt` `context-bundle` `context-verify` `decision-record` `audit-reduce` `install-inspect` `worktree-plan` `worktree-apply` `scope-check` `pr-body-render` `github-plan` `github-apply` `update-plan` `update-apply` `recovery-plan` `recovery-apply` `pr-confirm`
+`package-inspect` `project-plan` `project-apply` `package-resolve` `agents-plan` `agents-apply` `apply-recover` `baseline-inventory` `identity` `forge-read` `forge-report` `plan-admit` `claude-doctor` `codex-projection-plan` `codex-doctor` `claim-acquire` `queue-next` `leader-tick` `claim-show` `claim-release` `claim-handoff` `effect-intend` `effect-confirm` `effects-reconcile` `todo-promote-preview` `todo-promote-apply` `run-verify` `snapshot-describe` `skill-source-plan` `generation-plan` `generation-apply` `skill-source-apply` `skill-read-receipt` `context-bundle` `context-verify` `decision-record` `audit-reduce` `install-inspect` `worktree-plan` `worktree-apply` `scope-check` `pr-body-render` `github-plan` `github-apply` `update-plan` `update-apply` `recovery-plan` `recovery-apply` `pr-confirm`
 
 (추출: `git show 604792666:src/main.rs`의 `const OPERATIONS` 블록 파싱 — `_`를 포함한 operation명(`codex.projection_plan`·`skill_source.*`)이 누락되지 않도록 `[a-z._]`로 매칭. envelope 계약: `{protocol_version, operation, ok, result|error{kind, message, retryable, next_actions?}}`, exit 0/1/2, `kind` 14종 — `src/contract.rs`·`docs/protocol-v1.md`)
 
