@@ -2547,25 +2547,24 @@ mod skill_package {
             skill.contains("`--mode-agent` or `--mode-leader`"),
             "SKILL.md must route the canonical flags: {skill}"
         );
-        let package = [
-            "SKILL.md",
-            "workflows/mode-agent.md",
-            "workflows/mode-leader.md",
-        ]
-        .iter()
-        .map(|p| fs::read_to_string(root().join(p)).unwrap())
-        .collect::<Vec<_>>()
-        .join("\n");
-        for retired in [
-            "--agent-mode",
-            "--leader-mode",
-            "--mode agent",
-            "--mode leader",
-        ] {
-            assert!(
-                !package.contains(retired),
-                "retired mode spelling {retired} is still in the package"
-            );
+        // Every package file is scanned except the source manifest, whose `reason` strings
+        // keep the history of earlier spellings on purpose (#2286 pre-audit B1).
+        for file in package_files()
+            .into_iter()
+            .filter(|p| p != "references/source-manifest.json")
+        {
+            let text = fs::read_to_string(root().join(&file)).unwrap();
+            for retired in [
+                "--agent-mode",
+                "--leader-mode",
+                "--mode agent",
+                "--mode leader",
+            ] {
+                assert!(
+                    !text.contains(retired),
+                    "retired mode spelling {retired} is still in the package file {file}"
+                );
+            }
         }
         // The canonical picks and the alias must pick the same routes.
         assert!(
