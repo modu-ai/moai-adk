@@ -20,6 +20,7 @@ pub mod hosts;
 pub mod identity;
 pub mod install;
 pub mod lane_handoff;
+pub mod layout;
 pub mod leader;
 pub mod ontology;
 pub mod parity;
