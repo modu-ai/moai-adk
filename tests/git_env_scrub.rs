@@ -8,10 +8,11 @@
 //!   `scrub_git_env(` before the command runs (`.output()`, `.status()` or `.spawn()`);
 //! - a behaviour repro on the claim guard, where a contaminated `GIT_DIR` turned a refusal
 //!   into a pass (fail-open).
+mod common;
+
 use serde_json::json;
 use std::{
     fs,
-    io::Write as _,
     path::{Path, PathBuf},
     process::{Command, Stdio},
 };
@@ -174,12 +175,7 @@ fn claim_guard_ignores_an_inherited_git_dir() {
         .stderr(Stdio::piped())
         .spawn()
         .unwrap();
-    child
-        .stdin
-        .take()
-        .unwrap()
-        .write_all(input.as_bytes())
-        .unwrap();
+    common::feed_stdin(&mut child, input.as_bytes());
     let out = child.wait_with_output().unwrap();
     let stderr = String::from_utf8_lossy(&out.stderr);
     assert_eq!(
