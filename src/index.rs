@@ -448,7 +448,12 @@ fn canonical_manifest_bytes(m: &IndexManifest) -> Result<Vec<u8>> {
 /// the sorted file table) — same content, same id, so an identical rebuild dedupes into
 /// the existing immutable directory. `built_at` and the carried id are excluded: a
 /// timestamp is not content.
-fn content_id(base_commit: &str, files: &[IndexedFile]) -> String {
+///
+/// `history` is the digest of the Graph's history part (`build_history`): the same HEAD
+/// and files can reach a different commit history (a shallow clone later unshallowed),
+/// and that changes the Graph, so it must change the id — an immutable generation never
+/// stands for two different Graphs.
+fn content_id(base_commit: &str, files: &[IndexedFile], history: &str) -> String {
     let mut sorted: Vec<&IndexedFile> = files.iter().collect();
     sorted.sort_by(|a, b| a.path.cmp(&b.path));
     let mut h = Sha256::new();
@@ -456,8 +461,10 @@ fn content_id(base_commit: &str, files: &[IndexedFile]) -> String {
     // versions are content — a generation built by older extractors is never reused.
     h.update(b"moai-index-generation-v2\0");
     let versions = crate::index_records::versions();
-    h.update((versions.len() as u64).to_be_bytes());
-    h.update(versions.as_bytes());
+    for part in [versions.as_str(), history] {
+        h.update((part.len() as u64).to_be_bytes());
+        h.update(part.as_bytes());
+    }
     h.update((base_commit.len() as u64).to_be_bytes());
     h.update(base_commit.as_bytes());
     for f in sorted {
@@ -642,6 +649,7 @@ fn build_views(
     gen_id: &str,
     base_commit: &str,
     files: &[IndexedFile],
+    history: crate::spec_links::Builder,
 ) -> Result<(crate::index_records::Views, RecordsRef, usize, usize)> {
     use crate::index_records::{self as rec, Content};
     let observed_at = commit_time(root, base_commit)?;
@@ -678,13 +686,6 @@ fn build_views(
         };
         fragments.insert(f.path.clone(), frag);
     }
-    // An unreadable history (a git failure, a non-UTF-8 commit body) is reported as
-    // missing coverage; it never fails a build that the file scan completed.
-    let mut history = crate::spec_links::Builder::default();
-    if let Err(reason) = crate::spec_links::commit_links(&mut history, root, Some(base_commit)) {
-        history = crate::spec_links::Builder::default();
-        history.miss("history_unavailable", json!({"reason": reason}));
-    }
     let views = rec::assemble(
         fragments,
         history,
@@ -704,6 +705,34 @@ fn build_views(
         graph_records: views.graph_records,
     };
     Ok((views, records, reused, extracted))
+}
+
+/// The Graph's history part for `base` — commit → issue mentions reachable from the base
+/// commit in this clone — and its digest. Coverage limits are recorded, never hidden: an
+/// unreadable history (a git failure) is `history_unavailable` and a shallow clone is
+/// `history_shallow`; neither fails a build that the file scan completed. The digest
+/// enters the generation id (`content_id`).
+fn build_history(root: &Path, base: &str) -> (crate::spec_links::Builder, String) {
+    let mut history = crate::spec_links::Builder::default();
+    if let Err(reason) = crate::spec_links::commit_links(&mut history, root, Some(base)) {
+        history = crate::spec_links::Builder::default();
+        history.miss("history_unavailable", json!({"reason": reason}));
+    }
+    if git_line(root, &["rev-parse", "--is-shallow-repository"]).as_deref() == Some("true") {
+        history.miss(
+            "history_shallow",
+            json!({"reason": "commits beyond the shallow boundary are not read"}),
+        );
+    }
+    let edges: Vec<_> = history.edges.iter().collect();
+    let digest = serde_json::to_vec(&json!({
+        "nodes": history.nodes,
+        "edges": edges,
+        "missing": history.missing,
+    }))
+    .map(|bytes| crate::digest(&bytes))
+    .unwrap_or_default();
+    (history, digest)
 }
 
 /// Builds a new generation from the current scan and publishes it with the atomic
@@ -727,9 +756,10 @@ pub fn index_build(project: &Path, req: &IndexBuildRequest) -> Result<Value> {
         }
         let (base_commit, files) = scan(&root, &source)?;
         let total_bytes: u64 = files.iter().map(|f| f.bytes).sum();
-        let gen_id = content_id(&base_commit, &files);
+        let (history, history_digest) = build_history(&root, &base_commit);
+        let gen_id = content_id(&base_commit, &files, &history_digest);
         let (views, records, reused, extracted) =
-            build_views(&root, &source, &gen_id, &base_commit, &files)?;
+            build_views(&root, &source, &gen_id, &base_commit, &files, history)?;
         let manifest = IndexManifest {
             schema_version: SCHEMA_VERSION,
             generation_id: gen_id.clone(),
@@ -1146,18 +1176,23 @@ mod tests {
         };
         // Same base and files give the same id regardless of order; any content or
         // base change moves the id.
-        let a = content_id("base1", &files(&[("a.md", "s1"), ("b.md", "s2")]));
-        let b = content_id("base1", &files(&[("b.md", "s2"), ("a.md", "s1")]));
+        let a = content_id("base1", &files(&[("a.md", "s1"), ("b.md", "s2")]), "h");
+        let b = content_id("base1", &files(&[("b.md", "s2"), ("a.md", "s1")]), "h");
         assert_eq!(a, b, "file order must not change identity");
         assert_ne!(
             a,
-            content_id("base2", &files(&[("a.md", "s1"), ("b.md", "s2")]))
+            content_id("base2", &files(&[("a.md", "s1"), ("b.md", "s2")]), "h")
         );
         assert_ne!(
             a,
-            content_id("base1", &files(&[("a.md", "OTHER"), ("b.md", "s2")]))
+            content_id("base1", &files(&[("a.md", "OTHER"), ("b.md", "s2")]), "h")
         );
-        assert_ne!(a, content_id("base1", &files(&[("a.md", "s1")])));
+        assert_ne!(a, content_id("base1", &files(&[("a.md", "s1")]), "h"));
+        // Same base and files, different reachable history: a different Graph.
+        assert_ne!(
+            a,
+            content_id("base1", &files(&[("a.md", "s1"), ("b.md", "s2")]), "h2")
+        );
     }
 
     #[test]
@@ -1174,7 +1209,7 @@ mod tests {
         ] {
             let matching = case == "matching";
             let tmp = tempfile::tempdir().unwrap();
-            let gen_id = content_id("base", &[]);
+            let gen_id = content_id("base", &[], "h");
             let file_set = crate::index_records::file_set_digest(&[]);
             let views = crate::index_records::assemble(
                 Default::default(),
@@ -1298,10 +1333,14 @@ mod handle_io_tests {
         let root = fs::canonicalize(&project).unwrap();
         let source = IndexIo::new(&root).unwrap();
         let (base, files) = scan(&root, &source).unwrap();
-        let id = content_id(&base, &files);
-        assert!(build_views(&root, &source, &id, &base, &files).is_ok());
+        let views = |root: &Path| {
+            let (history, digest) = build_history(root, &base);
+            let id = content_id(&base, &files, &digest);
+            build_views(root, &source, &id, &base, &files, history)
+        };
+        assert!(views(&root).is_ok());
         fs::write(project.join("a.rs"), b"// @MOAI:REQ REQ-C6B-09\n").unwrap();
-        let err = build_views(&root, &source, &id, &base, &files)
+        let err = views(&root)
             .err()
             .expect("a rewritten source must refuse the views");
         assert_eq!(err, "index source changed during build: a.rs");

@@ -392,3 +392,61 @@ fn unreadable_history_is_missing_coverage_not_a_failed_build() {
     );
     assert!(edges(&q["graph"]).iter().all(|e| e.0 != "mentions_issue"));
 }
+
+fn issues(q: &Value) -> BTreeSet<String> {
+    edges(&q["graph"])
+        .into_iter()
+        .filter(|e| e.0 == "mentions_issue")
+        .map(|e| e.2)
+        .collect()
+}
+
+fn has_miss(q: &Value, kind: &str) -> bool {
+    q["graph"]["missing"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|m| m["kind"] == kind)
+}
+
+/// Pre-audit B1 (#2347 comment 6774913904): unshallowing a clone keeps HEAD and every
+/// tracked byte but extends the reachable history, so the Graph changes. The new
+/// history must give a new generation (no "refusing reuse" on the old id), the
+/// incremental build must still equal a full rebuild, and the shallow boundary must be
+/// visible as missing coverage while it exists.
+#[test]
+fn unshallowing_a_clone_builds_a_new_generation_equal_to_a_full_rebuild() {
+    let (tmp, producer) = setup();
+    commit(&producer, "second\n\nRefs: #42");
+    let url = format!("file://{}", producer.display());
+    git(
+        tmp.path(),
+        &["clone", "-q", "--depth", "1", &url, "shallow"],
+    );
+    let root = tmp.path().join("shallow");
+
+    let shallow = build(&root);
+    let q = records(&root);
+    assert_eq!(issues(&q), BTreeSet::from(["issue:42".to_string()]));
+    assert!(has_miss(&q, "history_shallow"));
+
+    git(&root, &["fetch", "-q", "--unshallow", "origin"]);
+    let full_history = build(&root);
+    assert_ne!(full_history["generation_id"], shallow["generation_id"]);
+    assert_eq!(full_history["records"]["reused_files"], 5);
+    let gen = full_history["generation_id"].as_str().unwrap().to_string();
+    let q = records(&root);
+    assert_eq!(q["state"], "fresh");
+    assert_eq!(
+        issues(&q),
+        BTreeSet::from(["issue:42".to_string(), "issue:2347".to_string()])
+    );
+    assert!(!has_miss(&q, "history_shallow"));
+
+    let incremental = view_bytes(&root, &gen);
+    fs::remove_dir_all(root.join(".moai-cli/index")).unwrap();
+    let rebuilt = build(&root);
+    assert_eq!(rebuilt["generation_id"], gen.as_str());
+    assert_eq!(rebuilt["records"]["reused_files"], 0);
+    assert_eq!(view_bytes(&root, &gen), incremental);
+}

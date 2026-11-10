@@ -2,10 +2,10 @@
 //!
 //! Design basis (Core Brain detailed design; local text copy
 //! `references/chatgpt-space/page_136c8203bf2881919eb1f543f72f87ea.md`, 4,450 lines,
-//! read by the #2347 lane on 2026-11-10 with sha256 `49e445f4…47fa` — the design
-//! review records `747ac160…57cb` for the same name, so the copy's provenance is
-//! unverified, and the live Space page was not re-read): one generation directory
-//! holds `manifest.json`, `map.jsonl`,
+//! retrieved 2026-11-08T23:19:26Z; body sha256 `747ac160…57cb` as its header line
+//! states and as re-measured by the #2347 lane — `49e445f4…47fa` is the whole file
+//! including that header line; the live Space page was not re-read): one generation
+//! directory holds `manifest.json`, `map.jsonl`,
 //! `graph.jsonl` (L3816-3819); Map and Graph are two views built under the same
 //! repository identity and snapshot and never silently show different file sets or
 //! commits (L2936); a full rebuild and an incremental build of the same input give the
