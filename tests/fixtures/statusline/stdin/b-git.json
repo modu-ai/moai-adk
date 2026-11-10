@@ -1,0 +1,1 @@
+{"model": {"display_name": "Opus"}, "session_id": "fixture-b", "workspace": {"current_dir": "{PROJECT}", "project_dir": "{PROJECT}", "repo": {"host": "github.com", "owner": "modu-ai", "name": "moai-adk"}}, "context_window": {"context_window_size": 200000, "used_percentage": 30}}

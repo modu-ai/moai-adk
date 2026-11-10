@@ -19,7 +19,8 @@
 # removes the shadowing and guarantees no writes to the real user HOME.
 # `--output-format stream-json` with `-p` requires `--verbose` (claude 2.1.319:
 # "When using --print, --output-format=stream-json requires --verbose"; the headless
-# docs' stream-json examples pass it too).
+# docs' stream-json examples pass it too). Both -p runs read stdin from /dev/null so
+# the host does not wait for piped input that never comes (#2291).
 #
 # Usage: export the existing Claude Code credentials into the environment
 # (ANTHROPIC_API_KEY — presence is checked, the value is never read into any file),
@@ -81,7 +82,7 @@ else
       --add-dir "$WORK/project" \
       --output-format stream-json --verbose \
       --permission-mode dontAsk --permission-prompts none \
-      > "$WORK/ac3.jsonl" 2> "$WORK/ac3.err")
+      < /dev/null > "$WORK/ac3.jsonl" 2> "$WORK/ac3.err")
   RC3=$?
   # Path suffixes, not absolute paths: /tmp resolves to /private/tmp on macOS and the
   # host may report either form. HOME is isolated, so no personal copy can match.
@@ -113,7 +114,7 @@ else
       --add-dir "$WORK/project" \
       --output-format stream-json --verbose \
       --permission-mode dontAsk --permission-prompts none \
-      > "$WORK/ac6.jsonl" 2> "$WORK/ac6.err")
+      < /dev/null > "$WORK/ac6.jsonl" 2> "$WORK/ac6.err")
   RC6=$?
   AFTER="$(find "$WORK/project" -type f -print0 2>/dev/null | sort -z | xargs -0 shasum -a 256)"
   if jq -se 'any(.[]; .type == "result" and ((.permission_denials | type) == "array") and ((.permission_denials | length) > 0))' \

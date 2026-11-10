@@ -1,9 +1,10 @@
 #!/bin/bash
 # #2262 local RC1 kit — isolation rehearsal. Everything happens under a fresh
 # temporary HOME and a fresh temporary project; the real HOME is never passed.
-# Usage: [WF_REF=<dir/>] bash tools/local-rc1-isolation.sh <moai-cli binary> <repo root (for skills/moai)> <out dir>
-# WF_REF overrides agents-plan's workflow_reference (default skills/moai/workflows/, which a
-# fresh project lacks — see docs/local-rc1-kit.md gap G2). Results: docs/local-rc1-kit.md §2.
+# Usage: bash tools/local-rc1-isolation.sh <moai-cli binary> <repo root (for skills/moai)> <out dir>
+# Project leg order (#2291): project -> generation (creates .moai-cli/workflows/<id>/ itself,
+# #2274) -> agents with the same workflow_reference. No WF_REF workaround is needed or
+# accepted any more. Results: docs/local-rc1-kit.md §2.
 set -u
 BIN="$1"; REPO="$2"; OUT="$3"
 mkdir -p "$OUT"
@@ -37,8 +38,16 @@ python3 -I -c 'import json,sys; v=json.load(open(sys.argv[1])); json.dump(v["res
 PD="$(python3 -I -c 'import json,sys; print(json.load(open(sys.argv[1]))["plan_digest"])' "$OUT/project-plan.result.json" 2>/dev/null)"
 run project-apply project-apply "$P" --plan-digest "$PD" --permission-reference kit-isolation < "$OUT/project-plan.result.json"
 
-# --- project leg: agents-plan -> agents-apply ---
-printf '{"protocol_version":1,"language":"en","workflow_reference":"'"${WF_REF:-skills/moai/workflows/}"'","local_file":"none"}' > "$OUT/agents-request.json"
+# --- project leg: generation-plan -> generation-apply (custom workflow + AGENTS.md block) ---
+WORKFLOW_REF=".moai-cli/workflows/kit-demo/"
+printf '{"protocol_version":1,"language":"en","workflow_reference":"%s","local_file":"none","workflow_id":"kit-demo","native_roles":[],"skill_projections":[]}' "$WORKFLOW_REF" > "$OUT/generation-request.json"
+run generation-plan generation-plan "$P" < "$OUT/generation-request.json"
+python3 -I -c 'import json,sys; v=json.load(open(sys.argv[1])); json.dump(v["result"],open(sys.argv[2],"w"))' "$OUT/generation-plan.json" "$OUT/generation-plan.result.json" 2>/dev/null
+GD="$(python3 -I -c 'import json,sys; print(json.load(open(sys.argv[1]))["plan_digest"])' "$OUT/generation-plan.result.json" 2>/dev/null)"
+run generation-apply generation-apply "$P" --plan-digest "$GD" --permission-reference kit-isolation < "$OUT/generation-plan.result.json"
+
+# --- project leg: agents-plan -> agents-apply (re-sync the block, same workflow_reference) ---
+printf '{"protocol_version":1,"language":"en","workflow_reference":"%s","local_file":"none"}' "$WORKFLOW_REF" > "$OUT/agents-request.json"
 run agents-plan agents-plan "$P" < "$OUT/agents-request.json"
 python3 -I -c 'import json,sys; v=json.load(open(sys.argv[1])); json.dump(v["result"],open(sys.argv[2],"w"))' "$OUT/agents-plan.json" "$OUT/agents-plan.result.json" 2>/dev/null
 AD="$(python3 -I -c 'import json,sys; print(json.load(open(sys.argv[1]))["plan_digest"])' "$OUT/agents-plan.result.json" 2>/dev/null)"

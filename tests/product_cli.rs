@@ -1351,7 +1351,7 @@ fn tree_state(dir: &std::path::Path) -> Vec<(String, Vec<u8>)> {
 }
 /// Fixture repo: a Go-style baseline commit with `.claude` and template `.claude`, then an
 /// ignored installed `.claude/` that partly differs, a lane worktree directory inside it,
-/// CRLF bytes, a symlink, one modified and one untracked file.
+/// CRLF bytes, a Unix symlink, one modified and one untracked file.
 fn baseline_fixture() -> (TempDir, String) {
     let root = tempfile::Builder::new()
         .prefix("moai baseline ")
@@ -1371,6 +1371,7 @@ fn baseline_fixture() -> (TempDir, String) {
     );
     write_file(r, "crlf.txt", b"a\r\nb\r\n");
     write_file(r, "edited.txt", b"before\n");
+    #[cfg(unix)]
     std::os::unix::fs::symlink("crlf.txt", r.join("link")).unwrap();
     git_in(r, &["add", "-A"]);
     git_in(r, &["commit", "-q", "-m", "baseline"]);
@@ -1466,8 +1467,11 @@ fn baseline_inventory_is_read_only_repeatable_and_relative() {
         file("crlf.txt")["sha256"],
         json!(moai_cli::digest(b"a\r\nb\r\n"))
     );
-    assert_eq!(file("link")["kind"], json!("symlink"));
-    assert_eq!(file("link")["sha256"], json!(moai_cli::digest(b"crlf.txt")));
+    #[cfg(unix)]
+    {
+        assert_eq!(file("link")["kind"], json!("symlink"));
+        assert_eq!(file("link")["sha256"], json!(moai_cli::digest(b"crlf.txt")));
+    }
     assert_eq!(
         file("edited.txt")["sha256"],
         json!(moai_cli::digest(b"after\n"))
@@ -1482,6 +1486,7 @@ fn baseline_inventory_is_read_only_repeatable_and_relative() {
     assert_eq!(v1["inventory"]["excluded_changes"], json!(1));
     let sums = v1["checksums"].as_str().unwrap();
     assert!(sums.contains("  crlf.txt\n"));
+    #[cfg(unix)]
     assert!(!sums.contains("  link\n"), "symlinks are not followed");
     assert!(sums.contains("  new.txt\n"));
 }
@@ -1528,6 +1533,7 @@ fn tree_digest_stable_sensitive_and_excludes() {
     write_file(r, "a.txt", b"a\r\n");
     write_file(r, "dir/b.txt", b"b\n");
     write_file(r, "skip/c.txt", b"c\n");
+    #[cfg(unix)]
     std::os::unix::fs::symlink("a.txt", r.join("link")).unwrap();
     let before = tree_state(r);
     let d1 = moai_cli::tree_digest(r, &["skip/"]).unwrap();
@@ -1543,11 +1549,14 @@ fn tree_digest_stable_sensitive_and_excludes() {
     assert_ne!(d1, d2);
     write_file(r, "dir/b.txt", b"b\n");
     assert_eq!(d1, moai_cli::tree_digest(r, &["skip/"]).unwrap());
-    fs::remove_file(r.join("link")).unwrap();
-    std::os::unix::fs::symlink("dir/b.txt", r.join("link")).unwrap();
-    assert_ne!(d1, moai_cli::tree_digest(r, &["skip/"]).unwrap());
-    fs::remove_file(r.join("link")).unwrap();
-    std::os::unix::fs::symlink("a.txt", r.join("link")).unwrap();
+    #[cfg(unix)]
+    {
+        fs::remove_file(r.join("link")).unwrap();
+        std::os::unix::fs::symlink("dir/b.txt", r.join("link")).unwrap();
+        assert_ne!(d1, moai_cli::tree_digest(r, &["skip/"]).unwrap());
+        fs::remove_file(r.join("link")).unwrap();
+        std::os::unix::fs::symlink("a.txt", r.join("link")).unwrap();
+    }
     fs::create_dir(r.join("empty")).unwrap();
     assert_eq!(d1, moai_cli::tree_digest(r, &["skip/"]).unwrap());
     fs::rename(r.join("a.txt"), r.join("z.txt")).unwrap();
@@ -2389,6 +2398,80 @@ mod skill_package {
         }
     }
 
+    /// AC-1 (#2334): the mode workflows bind the /goal step to the tested
+    /// generator instead of free-form wording — leader feeds the state it read
+    /// to tools/gen_goal_block.py and prints its `leader` line, with the
+    /// keep-set exclusion rule stated as the generator's rule; agent binds its
+    /// card-scoped lines to the generator's `agent` kind.
+    #[test]
+    fn goal_step_is_bound_to_the_goal_block_generator() {
+        let leader = mode_workflow("MODE-LEADER");
+        assert!(
+            leader.contains("`tools/gen_goal_block.py`"),
+            "leader workflow must name the generator: {leader}"
+        );
+        assert!(
+            leader.contains("`leader` goal line"),
+            "leader workflow must print the generator's leader line: {leader}"
+        );
+        assert!(
+            leader.contains("keep-set") && leader.contains("reason"),
+            "leader workflow must state the keep-set exclusion with reasons: {leader}"
+        );
+        assert!(
+            leader.contains("never hand-edit the generated line"),
+            "leader workflow must forbid editing the generated line: {leader}"
+        );
+        let agent = mode_workflow("MODE-AGENT");
+        assert!(
+            agent.contains("`tools/gen_goal_block.py`"),
+            "agent workflow must name the generator: {agent}"
+        );
+        assert!(
+            agent.contains("`agent` goal lines"),
+            "agent workflow must print the generator's agent lines: {agent}"
+        );
+        assert!(
+            agent.contains("never hand-edit the generated lines"),
+            "agent workflow must forbid editing the generated lines: {agent}"
+        );
+        // The generator itself still enforces the rule: a keep-set entry without
+        // a reason is refused, and excluded numbers leave the condition.
+        let run = |input: &str| {
+            let mut out = std::process::Command::new("python3")
+                .args(["-I", "tools/gen_goal_block.py"])
+                .stdin(std::process::Stdio::piped())
+                .stdout(std::process::Stdio::piped())
+                .stderr(std::process::Stdio::piped())
+                .spawn()
+                .unwrap();
+            out.stdin
+                .take()
+                .unwrap()
+                .write_all(input.as_bytes())
+                .unwrap();
+            out.wait_with_output().unwrap()
+        };
+        use std::io::Write as _;
+        let bad = run(r#"{"milestone":"m","keep_set":[{"number":7}]}"#);
+        assert!(
+            !bad.status.success(),
+            "keep-set entry without a reason must be refused"
+        );
+        let good = run(
+            r#"{"milestone":"m1","issues":[{"number":1,"state":"open"},{"number":2,"state":"open"}],"prs":[{"number":3,"state":"open"}],"keep_set":[{"number":2,"reason":"operator-held"}]}"#,
+        );
+        let v: Value = serde_json::from_slice(&good.stdout).unwrap();
+        // The excluded entry drops out of the counts (2 issues -> 1) and the
+        // condition carries its number and reason.
+        assert_eq!(v["counts"]["open_issues"], json!(1));
+        assert_eq!(v["counts"]["open_prs"], json!(1));
+        assert_eq!(v["counts"]["keep_set"], json!(1));
+        let cond = v["leader"]["condition"].as_str().unwrap();
+        assert!(cond.contains("#2(operator-held)"), "{cond}");
+        assert!(v["keep_set_excluded"][0]["reason"] == json!("operator-held"));
+    }
+
     #[test]
     fn mode_leader_route_loads_its_workflow() {
         let body = mode_workflow("MODE-LEADER");
@@ -2832,11 +2915,17 @@ fn identity_refuses_symlinks_and_bad_paths_without_echo() {
     let repo = base.path().join("repo");
     fs::create_dir(&repo).unwrap();
     committed_repo(&repo);
+    #[cfg(unix)]
     let link = base.path().join("link");
+    #[cfg(unix)]
     std::os::unix::fs::symlink(&repo, &link).unwrap();
     let missing = base.path().join("does-not-exist");
     let file = repo.join("a.txt");
-    for p in [&link, &missing, &file] {
+    #[cfg(unix)]
+    let bad_paths = [&link, &missing, &file];
+    #[cfg(not(unix))]
+    let bad_paths = [&missing, &file];
+    for p in bad_paths {
         let (out, _) = ident(p, home.path(), None);
         assert!(!out.status.success(), "{p:?} must be refused");
         // A failure envelope on stdout (01-C #1990); neither stream echoes the path.
@@ -2857,17 +2946,20 @@ fn identity_refuses_symlinks_and_bad_paths_without_echo() {
             );
         }
     }
-    // A symlinked project state root is refused like target() refuses it.
-    let elsewhere = TempDir::new().unwrap();
-    std::os::unix::fs::symlink(elsewhere.path(), repo.join(".moai-cli")).unwrap();
-    let (out, _) = ident(&repo, home.path(), None);
-    assert!(!out.status.success());
-    assert!(String::from_utf8_lossy(&out.stderr).contains("symlink"));
-    fs::remove_file(repo.join(".moai-cli")).unwrap();
-    // So is a symlinked home state root.
-    std::os::unix::fs::symlink(elsewhere.path(), home.path().join(".moai-cli")).unwrap();
-    let (out, _) = ident(&repo, home.path(), None);
-    assert!(!out.status.success());
+    #[cfg(unix)]
+    {
+        // A symlinked project state root is refused like target() refuses it.
+        let elsewhere = TempDir::new().unwrap();
+        std::os::unix::fs::symlink(elsewhere.path(), repo.join(".moai-cli")).unwrap();
+        let (out, _) = ident(&repo, home.path(), None);
+        assert!(!out.status.success());
+        assert!(String::from_utf8_lossy(&out.stderr).contains("symlink"));
+        fs::remove_file(repo.join(".moai-cli")).unwrap();
+        // So is a symlinked home state root.
+        std::os::unix::fs::symlink(elsewhere.path(), home.path().join(".moai-cli")).unwrap();
+        let (out, _) = ident(&repo, home.path(), None);
+        assert!(!out.status.success());
+    }
 }
 
 // ---- claude-doctor (Issue #1992, 02-B) --------------------------------------------------
