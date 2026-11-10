@@ -90,9 +90,17 @@ const BYPASS_MIN_PREFIX: usize = 9;
 /// The reason a Bash command line is refused, or `None`.
 pub fn bash_guard(command: &str) -> Option<&'static str> {
     // A fork bomb defines a function made of punctuation, which the word splitter does not
-    // keep; read the text outside quotes (quoted, it is only data — pre-audit H5-B4).
-    let bare = unquoted(command);
-    if bare.contains(":(){") || bare.contains(": () {") {
+    // keep, so it is read from text: outside quotes, in the line and in every script the line
+    // hands to a shell or `eval`. Quoted data stays data (pre-audit H5-B4); a quoted script
+    // that runs is read again (re-audit regression, `sh -c '…'` / `eval '…'`).
+    let bomb = |text: &str| {
+        let bare = unquoted(text);
+        bare.contains(":(){") || bare.contains(": () {")
+    };
+    if crate::claim_verify::executed_scripts(command)
+        .iter()
+        .any(|s| bomb(s))
+    {
         return Some(FORK_BOMB);
     }
     for (name, args) in crate::claim_verify::shell_commands(command) {
@@ -691,6 +699,19 @@ mod tests {
             ("printf '%s' ':(){'".to_string(), None),
             ("echo \":(){ :|:& };:\"".to_string(), None),
             (":(){ :|:& };:".to_string(), Some(FORK_BOMB)),
+            // Re-audit: a quoted script that a shell or `eval` runs is code, not data.
+            ("sh -c ':(){ :|:& };:'".to_string(), Some(FORK_BOMB)),
+            ("bash -c \":(){ :|:& };:\"".to_string(), Some(FORK_BOMB)),
+            ("eval ':(){ :|:& };:'".to_string(), Some(FORK_BOMB)),
+            ("eval \":(){ :|:& };:\"".to_string(), Some(FORK_BOMB)),
+            (
+                "cd x && sh -c ': () { :|:& };:'".to_string(),
+                Some(FORK_BOMB),
+            ),
+            // ...while data stays data, also inside a script that runs.
+            ("git commit -m ':(){ :|:& };:'".to_string(), None),
+            ("sh -c 'echo \":(){\"'".to_string(), None),
+            ("sh -c \"printf '%s' ':(){'\"".to_string(), None),
             // B5: a statement inside an SQL string literal is data.
             ("psql -c \"SELECT 'DROP DATABASE app';\"".to_string(), None),
             (

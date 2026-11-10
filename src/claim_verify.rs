@@ -688,17 +688,40 @@ fn collect_commands(command: &str, depth: u8, out: &mut Vec<(String, Vec<String>
         };
         let name = command_name(&words[i]).to_string();
         let args = words[i + 1..].to_vec();
-        if depth == 0 && SHELLS.contains(&name.as_str()) {
-            if let Some(script) = shell_script(&args) {
-                collect_commands(script, depth + 1, out);
+        if depth == 0 {
+            if let Some(script) = script_run_by(&name, &args) {
+                collect_commands(&script, depth + 1, out);
             }
-        }
-        // `eval` joins its arguments with spaces and runs the result as a script.
-        if depth == 0 && name == "eval" && !args.is_empty() {
-            collect_commands(&args.join(" "), depth + 1, out);
         }
         out.push((name, args));
     }
+}
+
+/// The script a command runs as shell code: a shell's `-c` script, or `eval`'s arguments
+/// joined with spaces. The one place that decides which quoted text is code, shared by the
+/// command reading above and [`executed_scripts`].
+fn script_run_by(name: &str, args: &[String]) -> Option<String> {
+    if SHELLS.contains(&name) {
+        return shell_script(args).map(str::to_string);
+    }
+    (name == "eval" && !args.is_empty()).then(|| args.join(" "))
+}
+
+/// The shell text a command line runs: the line itself, then every script it hands to a
+/// shell (`sh -c '…'`) or to `eval`, one level deep — the same reading as
+/// [`shell_commands`]. A check that reads raw text (a fork bomb is punctuation, not a
+/// command word) looks at each of these, so quoting a script for `sh -c` does not hide it.
+pub(crate) fn executed_scripts(command: &str) -> Vec<String> {
+    let mut out = vec![command.to_string()];
+    for words in shell_segments(command) {
+        let Some(i) = command_index(&words) else {
+            continue;
+        };
+        if let Some(script) = script_run_by(command_name(&words[i]), &words[i + 1..]) {
+            out.push(script);
+        }
+    }
+    out
 }
 
 /// One git subcommand a `git` argument list may run: the verb, its arguments, and git's own
