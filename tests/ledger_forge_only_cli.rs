@@ -26,7 +26,10 @@ fn removed_todo_promotion_commands_are_usage_errors() {
         let (code, stdout, stderr) = run(&[name, "."]);
         assert_eq!(code, 2, "{name}: {stderr}");
         assert_eq!(stdout, "", "{name}");
-        assert!(stderr.contains("unrecognized subcommand"), "{name}: {stderr}");
+        assert!(
+            stderr.contains("unrecognized subcommand"),
+            "{name}: {stderr}"
+        );
     }
 }
 
