@@ -148,17 +148,49 @@ pub fn project_skill_plan(req: &ProjectSkillRequest) -> Result<ProjectSkillPlan>
     for host in &req.hosts {
         let folder = host_folder(host)?;
         let project_dir = project_skill_dir(&req.project_root, host)?;
-        let project_digest = installed_digest(&project_dir)?;
-        let action = match project_digest.as_deref() {
-            None => "create",
-            Some(d) if d == staged.digest => "unchanged",
-            Some(_) => "replace",
+        // Decision row 22 (#2286): an existing folder is ours only when one of our own
+        // rollback receipts recorded its current digest; anything else — including a
+        // folder the digest cannot read — is blocked, never replaced.
+        let exists = fs::symlink_metadata(&project_dir).is_ok();
+        let project_digest = if exists {
+            installed_digest(&project_dir).ok().flatten()
+        } else {
+            None
+        };
+        let (action, blocked_reason) = match project_digest.as_deref() {
+            None if !exists => ("create", None),
+            Some(d)
+                if own_copy_digests(&req.project_root, host)
+                    .iter()
+                    .any(|o| o == d) =>
+            {
+                (
+                    if d == staged.digest {
+                        "unchanged"
+                    } else {
+                        "replace"
+                    },
+                    None,
+                )
+            }
+            _ => (
+                "blocked",
+                Some(format!(
+                    "existing {folder}/{} is not a copy this tool made (no own rollback \
+                     receipt records its digest); {}",
+                    crate::update::SKILL_DIR,
+                    crate::update::GO_ERA_GUIDANCE
+                )),
+            ),
         };
         let mut home_sha256 = None;
         let mut duplicated = false;
         let mut note = String::new();
         if let Some(home) = &req.home {
-            let home_digest = installed_digest(&project_skill_dir(home, host)?)?;
+            // Report only: a home folder the digest cannot read is reported absent.
+            let home_digest = installed_digest(&project_skill_dir(home, host)?)
+                .ok()
+                .flatten();
             duplicated = home_digest.is_some() && project_digest.is_some();
             if duplicated {
                 note = READING_ORDER_NOTE.into();
@@ -169,7 +201,7 @@ pub fn project_skill_plan(req: &ProjectSkillRequest) -> Result<ProjectSkillPlan>
             host: host.clone(),
             path: format!("{folder}/{}", crate::update::SKILL_DIR),
             action: action.into(),
-            blocked_reason: None,
+            blocked_reason,
             source_sha256: staged.digest.clone(),
             current_sha256: project_digest,
             home_sha256,
@@ -299,6 +331,21 @@ fn rollback_root(project_root: &Path) -> PathBuf {
     project_root.join(".moai-cli/project-skill-rollback")
 }
 
+/// Every `after_sha256` our own rollback receipts recorded for `host` — the digests of
+/// copies this tool made. Unreadable or foreign receipts grant no ownership.
+fn own_copy_digests(project_root: &Path, host: &str) -> Vec<String> {
+    let Ok(dirs) = fs::read_dir(rollback_root(project_root)) else {
+        return Vec::new();
+    };
+    dirs.filter_map(|e| e.ok())
+        .filter_map(|e| fs::read(e.path().join("receipt.json")).ok())
+        .filter_map(|b| serde_json::from_slice::<ProjectSkillApplyReceipt>(&b).ok())
+        .flat_map(|r| r.applied)
+        .filter(|a| a.host == host)
+        .filter_map(|a| a.after_sha256)
+        .collect()
+}
+
 /// `project-skill-apply` (#2242, REQ-I5-01 gate): re-plans, refuses without
 /// `opt_in` before any write, refuses when the plan changed since preview,
 /// then copies each requested host folder (backup → remove → rename for
@@ -311,6 +358,15 @@ pub fn project_skill_apply(req: &ProjectSkillRequest) -> Result<ProjectSkillAppl
     }
     validate(req)?;
     let plan = project_skill_plan(req)?;
+    // Decision row 22: a plan with any blocked host is refused whole, before any write
+    // (the rollback directory included).
+    if let Some(blocked) = plan.entries.iter().find(|e| e.action == "blocked") {
+        return Err(format!(
+            "project skill copy blocked for {}: {}; nothing written",
+            blocked.host,
+            blocked.blocked_reason.as_deref().unwrap_or("blocked")
+        ));
+    }
     let root = req
         .project_root
         .canonicalize()
@@ -397,7 +453,7 @@ pub fn project_skill_apply(req: &ProjectSkillRequest) -> Result<ProjectSkillAppl
                     return Err(step_failed(&applied, &rollback_dir, &entry.host, &e));
                 }
             },
-            _ => {
+            "replace" => {
                 // replace: keep the before bytes for revert, move the old tree
                 // aside atomically, then rename the staged tree in.
                 let backup_rel = format!("before/{folder}");
@@ -438,6 +494,14 @@ pub fn project_skill_apply(req: &ProjectSkillRequest) -> Result<ProjectSkillAppl
                         return Err(step_failed(&applied, &rollback_dir, &entry.host, &e));
                     }
                 }
+            }
+            other => {
+                return Err(step_failed(
+                    &applied,
+                    &rollback_dir,
+                    &entry.host,
+                    &format!("unknown plan action {other}"),
+                ));
             }
         }
     }

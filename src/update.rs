@@ -66,6 +66,13 @@ fn skills_dir(host: &str) -> &'static str {
 /// baseline for this one.
 pub(crate) const SKILL_DIR: &str = "moai";
 
+/// Guidance appended wherever a `moai` skill folder this tool did not write is found
+/// (decision row 22, #2286): block and guide, never replace automatically. The
+/// backup-then-replace path is a separate, user-confirmed procedure, not implemented.
+pub(crate) const GO_ERA_GUIDANCE: &str = "this can be an earlier-generation (Go-era) \
+     MoAI `moai` skill at that path; moai-cli will not replace it — move it aside \
+     yourself, or wait for a confirmed backup-then-replace procedure";
+
 pub(crate) fn projection_root(home: &Path, host: &str) -> PathBuf {
     home.join(skills_dir(host)).join(SKILL_DIR)
 }
@@ -795,7 +802,7 @@ pub fn plan_update(home: &Path, staged: &StagedPackage) -> Result<UpdatePlan> {
                      that install receipt {install_id} does not own ({}); \
                      safe alternatives: install to a separate location, or a \
                      user-confirmed backup-then-replace — never automatic; \
-                     per-file actions below are informational only",
+                     per-file actions below are informational only; {GO_ERA_GUIDANCE}",
                     unmanaged.len(),
                     unmanaged.join(", "),
                 )),

@@ -444,8 +444,7 @@ fn update_preserves_user_edits_and_reports_conflict_per_file() {
         "dropped file kept"
     );
     assert!(
-        home.join(".claude/skills/moai/workflows/new.md")
-            .exists(),
+        home.join(".claude/skills/moai/workflows/new.md").exists(),
         "dropped file kept"
     );
     assert_eq!(
@@ -730,7 +729,12 @@ fn go_type_moai_blocks_the_install_and_stays_untouched() {
 /// `hosts/moai-cli/`. Returns each moved root and receipt with its digest/bytes.
 fn into_rc_era_layout(home: &Path, stage: &Path) -> Vec<(PathBuf, String, PathBuf, Vec<u8>)> {
     let (initial, _) = plan_via_cli(home, stage);
-    apply_ok(home, stage, &initial, initial["plan_digest"].as_str().unwrap());
+    apply_ok(
+        home,
+        stage,
+        &initial,
+        initial["plan_digest"].as_str().unwrap(),
+    );
     let current_receipts = receipts_dir(home);
     let legacy_receipts = current_receipts.parent().unwrap().join("moai-cli");
     fs::create_dir_all(&legacy_receipts).unwrap();
@@ -796,7 +800,10 @@ fn legacy_receipts_do_not_own_a_go_era_moai_tree() {
     for parent in [".claude/skills", ".agents/skills"] {
         write_pkg(
             &home.join(parent).join("moai"),
-            &[("SKILL.md", "---\nname: moai\ndescription: go\n---\nGo body\n")],
+            &[(
+                "SKILL.md",
+                "---\nname: moai\ndescription: go\n---\nGo body\n",
+            )],
         );
     }
     let (plan, _) = plan_via_cli(&home, &stage2);
