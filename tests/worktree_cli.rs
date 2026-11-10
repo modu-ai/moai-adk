@@ -789,6 +789,7 @@ fn a_created_worktree_reports_capacity_and_the_warning_line() {
     assert!(c["free_bytes"].as_u64().unwrap() > 0, "{c}");
     assert!(c["project_bytes"].as_u64().unwrap() > 0, "{c}");
     assert_eq!(c["warning"], true, "{c}");
+    assert_eq!(c["override"], true, "{c}");
 
     let g = fixture();
     let pl = plan(&g, "lane");
@@ -804,4 +805,27 @@ fn a_created_worktree_reports_capacity_and_the_warning_line() {
     );
     assert_eq!(env["result"]["decision"], "created", "{env}");
     assert_eq!(env["result"]["capacity"]["warning"], false);
+}
+
+/// Pre-audit FAIL 6775775969 B2: without the hidden flags the real call path uses the
+/// decided limits (30 GiB floor, 40 GiB warning line) and says it is not an override,
+/// whether this host's free space lets the worktree be created or not.
+#[test]
+fn without_flags_the_decided_limits_apply() {
+    let f = fixture();
+    let pl = plan(&f, "lane");
+    let env = apply_with(&f, pl["plan_digest"].as_str().unwrap(), &[]);
+    assert_eq!(env["ok"], true, "{env}");
+    let r = &env["result"];
+    let limits = match r["decision"].as_str() {
+        Some("created") => r["capacity"].clone(),
+        Some("conflict") => {
+            assert_eq!(r["reason"], "disk_free_below_floor", "{r}");
+            r["existing"][0].clone()
+        }
+        other => panic!("unexpected decision {other:?}: {r}"),
+    };
+    assert_eq!(limits["floor_bytes"], 32_212_254_720u64, "{limits}");
+    assert_eq!(limits["warn_bytes"], 42_949_672_960u64, "{limits}");
+    assert_eq!(limits["override"], false, "{limits}");
 }

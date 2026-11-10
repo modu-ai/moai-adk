@@ -65,10 +65,24 @@ impl Default for Capacity {
     }
 }
 
-/// True when `free` bytes are at or above the floor. An unmeasured free space (`None`, e.g.
-/// off Unix) does not block; the answer says it was not measured.
+impl Capacity {
+    /// True when a limit differs from the decided value (the hidden test flags were used);
+    /// the answer shows it as `capacity.override`.
+    pub fn is_override(&self) -> bool {
+        self.floor_bytes != DISK_FLOOR_BYTES || self.warn_bytes != PROJECT_WARN_BYTES
+    }
+}
+
+/// True when `free` bytes are at or above the floor. An unmeasured free space (`None`: off
+/// Unix, or `df -Pk` failed or was unreadable on Unix) does not block; the answer shows
+/// `free_bytes: null`.
 pub fn disk_floor_ok(free: Option<u64>, floor: u64) -> bool {
     free.is_none_or(|f| f >= floor)
+}
+
+/// True when the project total is above the warning line (exactly the line is no warning).
+pub fn over_warning(total: u64, warn: u64) -> bool {
+    total > warn
 }
 
 /// Time budget for the project-total measurement behind the warning.
@@ -510,7 +524,12 @@ pub fn apply(
         return Ok(conflict(
             "disk_free_below_floor",
             &p,
-            vec![json!({"free_bytes": free, "floor_bytes": capacity.floor_bytes})],
+            vec![json!({
+                "free_bytes": free,
+                "floor_bytes": capacity.floor_bytes,
+                "warn_bytes": capacity.warn_bytes,
+                "override": capacity.is_override(),
+            })],
         ));
     }
     let target_s = target.to_string_lossy().to_string();
@@ -531,7 +550,8 @@ pub fn apply(
         "project_bytes": measured.map(|m| m.0),
         "project_bytes_partial": measured.map(|m| m.1),
         "warn_bytes": capacity.warn_bytes,
-        "warning": measured.is_some_and(|m| m.0 > capacity.warn_bytes),
+        "warning": measured.is_some_and(|m| over_warning(m.0, capacity.warn_bytes)),
+        "override": capacity.is_override(),
     });
     Ok(json!({
         "decision": "created",
@@ -562,5 +582,26 @@ mod tests {
         assert!(!disk_floor_ok(Some(32_212_254_719), DISK_FLOOR_BYTES));
         // Unmeasured free space does not block.
         assert!(disk_floor_ok(None, DISK_FLOOR_BYTES));
+    }
+
+    #[test]
+    fn the_warning_starts_one_byte_above_40_gib() {
+        assert!(!over_warning(42_949_672_960, PROJECT_WARN_BYTES));
+        assert!(over_warning(42_949_672_961, PROJECT_WARN_BYTES));
+    }
+
+    #[test]
+    fn only_the_decided_values_are_not_an_override() {
+        assert!(!Capacity::default().is_override());
+        let floor = Capacity {
+            floor_bytes: 0,
+            ..Capacity::default()
+        };
+        assert!(floor.is_override());
+        let warn = Capacity {
+            warn_bytes: 0,
+            ..Capacity::default()
+        };
+        assert!(warn.is_override());
     }
 }
