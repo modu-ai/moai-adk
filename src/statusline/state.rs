@@ -872,15 +872,19 @@ mod tests {
         assert_eq!(read(1_048_577), 1_048_576);
     }
 
+    /// `git init -b main` for a test repository, scrubbed like every git call in `src/`
+    /// (#2337), so an inherited `GIT_DIR` cannot redirect it.
+    fn git_init(dir: &Path) {
+        let mut cmd = Command::new("git");
+        cmd.args(["init", "-q", "-b", "main"]).current_dir(dir);
+        crate::identity::scrub_git_env(&mut cmd);
+        assert!(cmd.status().unwrap().success());
+    }
+
     #[test]
     fn git_is_stopped_at_the_render_deadline() {
         let tmp = tempfile::tempdir().unwrap();
-        let init = Command::new("git")
-            .args(["init", "-q"])
-            .current_dir(tmp.path())
-            .status()
-            .unwrap();
-        assert!(init.success());
+        git_init(tmp.path());
         let mut ctx = Context::for_test(&[], Some(tmp.path()), 0);
         assert!(run_git(tmp.path(), &["status", "--porcelain"], &ctx).is_some());
         ctx.deadline = Some(Instant::now());
@@ -915,12 +919,7 @@ mod tests {
 
         let repo = tmp.path().join("repo");
         std::fs::create_dir(&repo).unwrap();
-        let init = Command::new("git")
-            .args(["init", "-q", "-b", "main"])
-            .current_dir(&repo)
-            .status()
-            .unwrap();
-        assert!(init.success());
+        git_init(&repo);
         assert_eq!(
             collect_git(&repo, &ctx).map(|s| s.branch),
             Some("main".into())
