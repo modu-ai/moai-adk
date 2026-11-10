@@ -89,7 +89,7 @@ def probe_skill(marker: str) -> str:
 def build_fixture(kind: str, host: str, project: Path, repo: Path, markers: dict) -> None:
     """Writes the item's temporary project. markers gets the expected/forbidden values."""
     skills = ".claude/skills" if host == "claude" else ".agents/skills"
-    shutil.copytree(repo / "skills/moai", project / skills / "moai")
+    shutil.copytree(repo / "skills/moai-cli", project / skills / "moai-cli")
     if kind in ("agents", "agents_shadowed", "agents_override"):
         markers["expect"] = "mp-" + secrets.token_hex(8)
         write(project / "AGENTS.md", agents_text(markers["expect"]))
@@ -301,9 +301,9 @@ def main(argv: list) -> int:
         args, overrides = parse_args(argv)
     except SystemExit as exc:
         return 2 if exc.code else 0
-    skill_md = args.repo / "skills/moai/SKILL.md"
+    skill_md = args.repo / "skills/moai-cli/SKILL.md"
     if not skill_md.is_file():
-        print(f"not a repository root (skills/moai/SKILL.md missing): {args.repo}", file=sys.stderr)
+        print(f"not a repository root (skills/moai-cli/SKILL.md missing): {args.repo}", file=sys.stderr)
         return 1
     try:
         args.out.mkdir(parents=True, exist_ok=True)
