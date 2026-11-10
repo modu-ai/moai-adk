@@ -95,6 +95,7 @@
 - `update-apply`
 - `update-plan`
 - `worktree-apply`
+- `worktree-gc-plan`
 - `worktree-plan`
 - `worktree-report`
 
