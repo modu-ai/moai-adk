@@ -398,7 +398,6 @@ fn f5a_quoted_argument_is_not_split_on_whitespace() {
 
 /// F5b: a check that ran zero tests is not a pass; one test that ran is (the boundary).
 #[test]
-#[ignore = "#2392 repro F5b: RED until zero tests are not_run"]
 fn f5b_zero_tests_is_not_a_pass() {
     let dir = tempfile::TempDir::new().unwrap();
     fs::write(

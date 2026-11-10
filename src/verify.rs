@@ -347,7 +347,13 @@ pub fn run_check(dir: &Path, command_ref: usize, command: &str, timeout: Duratio
     (rec.tests_passed, rec.tests_failed) = test_counts(&text);
     let success = status.is_some_and(|s| s.success());
     rec.failure_class = classify(None, rec.timed_out, success, &text);
-    rec.result = if success && !rec.timed_out {
+    // A test command whose output says it ran zero tests tested nothing: `not_run`, not a pass
+    // (#2392 decision 6774899518 row 19 = A). Only cargo `test result:` lines are counted; a
+    // command without them keeps its exit-code result.
+    let ran_zero = rec.tests_passed == Some(0) && rec.tests_failed == Some(0);
+    rec.result = if success && !rec.timed_out && ran_zero {
+        CheckResult::NotRun
+    } else if success && !rec.timed_out {
         CheckResult::Passed
     } else {
         CheckResult::Failed
