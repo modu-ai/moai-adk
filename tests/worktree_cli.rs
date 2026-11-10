@@ -383,8 +383,10 @@ fn worktree_refuses_checked_out_branch() {
     );
     let plan = plan(&f, "lane");
     let env = apply(&f, "lane", plan["plan_digest"].as_str().unwrap());
-    assert_eq!(env["ok"], true, "{env}");
-    let r = &env["result"];
+    // HOLD-00D-1 (decision 6774899518 row 44 = A): a refused create is a failure.
+    assert_eq!(env["ok"], false, "{env}");
+    assert_eq!(env["error"]["kind"], "conflict");
+    let r = &env["error"]["detail"];
     assert_eq!(r["decision"], "conflict");
     assert_eq!(r["reason"], "branch_in_use");
     let existing = r["existing"][0]["path"].as_str().unwrap();
