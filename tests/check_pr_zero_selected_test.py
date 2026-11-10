@@ -180,6 +180,138 @@ class ZeroSelectedTest(unittest.TestCase):
         table = "| cmd | exit |\n|---|---|\n| `cargo test --lib x --test y` | 0 |\n"
         self.assert_blocked(body(table=table), "filter-multi-target")
 
+    def test_unrelated_cargo_apostrophe_span_does_not_break_command_checks(self):
+        note = "- note: `cargo's cache` was reused\n"
+        self.assert_pass(body(note))
+        self.assert_blocked(
+            body(note + "- check: `cargo test --lib --test cli_a needle` exit 0\n"),
+            "filter-multi-target",
+        )
+
+    def test_shell_redirections_preserve_real_filters_and_quoted_punctuation(self):
+        redirections = [
+            "> result.log",
+            ">>result.log",
+            '>"result log"',
+            ">> 'result log'",
+            "2> errors.log",
+            '2>"error log"',
+            "2>&1",
+            "< input.txt",
+            '<"input file"',
+            "&> combined.log",
+            '&>"combined log"',
+        ]
+        for redirection in redirections:
+            with self.subTest(redirection=redirection, selection="whole-suite"):
+                self.assert_pass(
+                    body(f"- check: `cargo test {redirection}` exit 0\n")
+                )
+            for command in [
+                f"cargo test --lib --test cli_a needle {redirection}",
+                f"cargo test {redirection} --lib --test cli_a needle",
+            ]:
+                with self.subTest(redirection=redirection, command=command):
+                    self.assert_blocked(
+                        body(f"- check: `{command}` exit 0\n"),
+                        "filter-multi-target",
+                    )
+        for value in ['">"', "'2>&1'", '"slow > test"', '"slow < test &> log"']:
+            with self.subTest(quoted_option_value=value):
+                self.assert_pass(
+                    body(f"- check: `cargo test --lib --test cli_a -- --skip {value}` exit 0\n")
+                )
+        for value in ['">"', "'>>'", '"2>&1"', '"<"', '"&>"']:
+            with self.subTest(quoted_filter=value):
+                self.assert_blocked(
+                    body(f"- check: `cargo test --lib --test cli_a {value}` exit 0\n"),
+                    "filter-multi-target",
+                )
+
+    def test_cargo_global_options_do_not_hide_test_filters(self):
+        prefixes = [
+            "+nightly",
+            "--offline",
+            "--locked",
+            "--frozen",
+            "-q",
+            "-v",
+            "-vv",
+            "-qv",
+            "--color always",
+            "--color=always",
+            '--config "build.jobs=2"',
+            "--config=build.jobs=2",
+            "-Z unstable-options",
+            "-Z=unstable-options",
+            "-C workspace",
+            "-C=workspace",
+            '+nightly --offline --locked -vv --color=never --config "build.jobs=2"',
+        ]
+        for prefix in prefixes:
+            with self.subTest(prefix=prefix, selection="two-targets"):
+                self.assert_blocked(
+                    body(f"- check: `cargo {prefix} test --lib --test cli_a needle` exit 0\n"),
+                    "filter-multi-target",
+                )
+            with self.subTest(prefix=prefix, selection="one-target"):
+                self.assert_pass(
+                    body(f"- check: `cargo {prefix} test --test cli_a needle` exit 0\n")
+                )
+            with self.subTest(prefix=prefix, selection="unfiltered"):
+                self.assert_pass(
+                    body(f"- check: `cargo {prefix} test --lib --test cli_a` exit 0\n")
+                )
+        for command in [
+            "cargo --offline build --lib --bin app needle",
+            "cargo --color always check --lib --bin app needle",
+            "cargo +nightly --locked fmt -- --check",
+        ]:
+            with self.subTest(non_test_command=command):
+                self.assert_pass(body(f"- check: `{command}` exit 0\n"))
+
+    def test_report_time_is_a_boolean_harness_flag(self):
+        self.assert_blocked(
+            body("- check: `cargo test --lib --test cli_a -- -Z unstable-options --report-time needle` exit 0\n"),
+            "filter-multi-target",
+        )
+        self.assert_pass(
+            body("- check: `cargo test --lib --test cli_a -- -Z unstable-options --report-time` exit 0\n")
+        )
+
+    def test_optional_leading_pipe_tables_are_evidence_but_plain_prose_is_not(self):
+        layouts = [
+            ("check | result", "--- | ---", "{check} | {result}"),
+            ("check | result", ":--- | ---:", "{check} | {result}"),
+            ("check | result |", ":---: | ---: |", "{check} | {result} |"),
+            ("| check | result |", "| :--- | ---: |", "| {check} | {result} |"),
+            ("check | result | notes", "--- | --- | ---", "{check} | {result}"),
+            ("check | result", "--- | ---", "{check} | {result} | measured"),
+        ]
+        for header, delimiter, row in layouts:
+            for check, result, tag in [
+                ("hooks_cli", "ok. 0 passed", "zero-selected"),
+                ("`cargo test --lib --test cli_a needle`", "exit 0", "filter-multi-target"),
+            ]:
+                table = "\n".join([header, delimiter, row.format(check=check, result=result), ""])
+                with self.subTest(header=header, delimiter=delimiter, evidence=tag):
+                    self.assert_blocked(body(table=table), tag)
+            table = "\n".join([
+                header,
+                delimiter,
+                row.format(check="hooks_cli", result="0 passed -> not_run"),
+                "",
+            ])
+            with self.subTest(header=header, delimiter=delimiter, evidence="not_run"):
+                self.assert_pass(body(table=table))
+        for prose in [
+            "Earlier a filtered run printed 0 passed; it was rerun per target.\n",
+            "The example `cargo test --lib --test cli_a needle` is not execution evidence.\n",
+            "Earlier 0 passed | historical result, not a table.\n",
+        ]:
+            with self.subTest(prose=prose):
+                self.assert_pass(body(table=prose))
+
 
 if __name__ == "__main__":
     unittest.main()
